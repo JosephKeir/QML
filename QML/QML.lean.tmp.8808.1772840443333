@@ -1,0 +1,140 @@
+import Mathlib.Data.Set.Basic
+
+/-!
+# Propositional Modal Logic: Natural Deduction
+
+This file defines the syntax and proof theory of propositional modal logic
+via a natural deduction system.
+-/
+
+-- Proposition symbols
+axiom Prop_m : Type
+
+-- Well-formed formulas
+inductive WFF : Type where
+  | atom : Prop_m → WFF
+  | top  : WFF
+  | bot  : WFF
+  | and  : WFF → WFF → WFF
+  | or   : WFF → WFF → WFF
+  | imp  : WFF → WFF → WFF
+  | box  : WFF → WFF
+  | dia  : WFF → WFF
+
+namespace WFF
+
+-- Negation as shorthand for "implies bottom"
+def neg (φ : WFF) : WFF := imp φ bot
+
+end WFF
+
+open WFF
+
+/-! ## Notation -/
+
+-- Connectives with subscript m to avoid clashing with Lean builtins
+infixr:35  " →ₘ " => WFF.imp
+infixl:65  " ∧ₘ " => WFF.and
+infixl:60  " ∨ₘ " => WFF.or
+prefix:75  "¬ₘ"   => WFF.neg
+notation   "⊤ₘ"   => WFF.top
+notation   "⊥ₘ"   => WFF.bot
+-- Typeclass for overloading □ on both WFF and Set WFF
+class Box (α : Type) (β : Type) where
+  box : α → β
+
+instance : Box WFF WFF where
+  box := WFF.box
+
+instance : Box (Set WFF) (Set WFF) where
+  box := Set.image WFF.box
+
+prefix:75  "□"     => Box.box
+
+-- Typeclass for overloading ◇ on both WFF and Set WFF
+class Dia (α : Type) (β : Type) where
+  dia : α → β
+
+instance : Dia WFF WFF where
+  dia := WFF.dia
+
+instance : Dia (Set WFF) (Set WFF) where
+  dia := Set.image WFF.dia
+
+prefix:75  "◇"     => Dia.dia
+
+/-! ## Natural Deduction Proof System -/
+
+-- `Proof Γ φ` means: from hypotheses Γ, we can derive φ.
+inductive Proof : Set WFF → WFF → Prop where
+  -- Axiom: if φ ∈ Γ then Γ ⊢ φ
+  | ax        : φ ∈ Γ → Proof Γ φ
+  -- Weakening: if Γ ⊢ φ and Γ ⊆ Γ' then Γ' ⊢ φ
+  | weak      : Proof Γ φ → Γ ⊆ Γ' → Proof Γ' φ
+  -- Conjunction introduction
+  | and_intro : Proof Γ φ → Proof Γ ψ → Proof Γ (φ ∧ₘ ψ)
+  -- Conjunction elimination (left and right)
+  | and_elim_l : Proof Γ (φ ∧ₘ ψ) → Proof Γ φ
+  | and_elim_r : Proof Γ (φ ∧ₘ ψ) → Proof Γ ψ
+  -- Disjunction introduction (left and right)
+  | or_intro_l : Proof Γ φ → Proof Γ (φ ∨ₘ ψ)
+  | or_intro_r : Proof Γ ψ → Proof Γ (φ ∨ₘ ψ)
+  -- Disjunction elimination (case analysis)
+  | or_elim   : Proof Γ (φ ∨ₘ ψ) → Proof (Γ ∪ {φ}) χ → Proof (Γ ∪ {ψ}) χ → Proof Γ χ
+  -- Implication introduction (discharge hypothesis)
+  | to_intro : Proof (Γ ∪ {φ}) ψ → Proof Γ (φ →ₘ ψ)
+  -- Implication elimination (modus ponens)
+  | imp_elim  : Proof Γ (φ →ₘ ψ) → Proof Γ φ → Proof Γ ψ
+  -- Top introduction
+  | top_intro : Proof Γ ⊤ₘ
+  -- Bottom elimination (ex falso)
+  | bot_elim  : Proof Γ ⊥ₘ → Proof Γ φ
+  -- The K rules
+  | K_box      : Proof Γ φ → Proof (□ Γ) (□ φ)
+  | K_dia      : Proof (Γ ∪ {φ}) ψ → Proof ((□ Γ) ∪ {◇ φ}) (◇ ψ)
+  -- Rule stating that ◇⊥ is equivalent to ⊥
+  | dia_bot : Proof Γ (◇ ⊥ₘ) → Proof Γ ⊥ₘ
+  -- Law of excluded middle
+  -- Remove this for the intuitionistic version
+  | lem        : Proof Γ (φ ∨ₘ (¬ₘ φ))
+  -- The modal version of LEM
+  | Mlem : Proof Γ ((□ φ) ∨ₘ (◇ ¬ₘ φ))
+
+-- Turnstile notation
+notation:30 Γ " ⊢ₘ " φ => Proof Γ φ
+
+/-! ## Box-Diamond Duality -/
+
+open Proof in
+theorem box_imp_not_dia_not (φ : WFF) (Γ : Set WFF) :
+    Γ ⊢ₘ ((□ φ) →ₘ (¬ₘ (◇ (¬ₘ φ)))) := by
+  apply to_intro
+  show Proof (Γ ∪ {□ φ}) ((◇ (¬ₘ φ)) →ₘ ⊥ₘ)
+  apply to_intro
+  apply dia_bot
+  -- {φ, ¬ₘφ} ⊢ ⊥ₘ by modus ponens
+  have h1 : Proof ({φ} ∪ {¬ₘ φ}) ⊥ₘ :=
+    imp_elim (ax (Or.inr rfl)) (ax (Or.inl rfl))
+  -- K_dia gives □{φ} ∪ {◇(¬ₘφ)} ⊢ ◇⊥ₘ
+  have h2 := K_dia h1
+  -- □{φ} = {□φ}
+  have h3 : (□ ({φ} : Set WFF)) = ({□ φ} : Set WFF) := by
+    change WFF.box '' {φ} = {WFF.box φ}
+    exact Set.image_singleton
+  rw [h3] at h2
+  -- weaken to (Γ ∪ {□φ}) ∪ {◇(¬ₘφ)}
+  exact weak h2 (fun x hx => by
+    cases hx with
+    | inl h => exact Or.inl (Or.inr h)
+    | inr h => exact Or.inr h)
+
+open Proof in
+theorem not_dia_not_imp_box (φ : WFF) (Γ : Set WFF) :
+    Γ ⊢ₘ ((¬ₘ (◇ (¬ₘ φ))) →ₘ (□ φ)) := by
+  apply to_intro
+  -- case split on □φ ∨ₘ ◇(¬ₘφ) via Mlem
+  apply or_elim Mlem
+  -- case □φ: immediate by ax
+  · exact ax (Or.inr rfl)
+  -- case ◇(¬ₘφ): contradicts ¬ₘ(◇(¬ₘφ)) in hypotheses
+  · exact bot_elim (imp_elim (ax (Or.inl (Or.inr rfl))) (ax (Or.inr rfl)))

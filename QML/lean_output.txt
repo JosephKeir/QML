@@ -1,0 +1,5 @@
+QML_Full_v3.lean:1:0: error: unknown module prefix 'Mathlib'
+
+No directory 'Mathlib' or file 'Mathlib.olean' in the search path entries:
+c:\Users\Joseph Keir\.elan\toolchains\leanprover--lean4---v4.28.0\lib\lean
+c:\Users\Joseph Keir\.elan\toolchains\leanprover--lean4---v4.28.0\lib\lean

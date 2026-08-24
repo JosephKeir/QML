@@ -1,0 +1,7 @@
+✖ [2/4] Building QML.QML_Full (1.1s)
+trace: .> LEAN_PATH=C:\Users\Joseph Keir\Lean4Projects\QML\.lake\packages\Cli\.lake\build\lib\lean;C:\Users\Joseph Keir\Lean4Projects\QML\.lake\packages\batteries\.lake\build\lib\lean;C:\Users\Joseph Keir\Lean4Projects\QML\.lake\packages\Qq\.lake\build\lib\lean;C:\Users\Joseph Keir\Lean4Projects\QML\.lake\packages\aesop\.lake\build\lib\lean;C:\Users\Joseph Keir\Lean4Projects\QML\.lake\packages\proofwidgets\.lake\build\lib\lean;C:\Users\Joseph Keir\Lean4Projects\QML\.lake\packages\importGraph\.lake\build\lib\lean;C:\Users\Joseph Keir\Lean4Projects\QML\.lake\packages\LeanSearchClient\.lake\build\lib\lean;C:\Users\Joseph Keir\Lean4Projects\QML\.lake\packages\plausible\.lake\build\lib\lean;C:\Users\Joseph Keir\Lean4Projects\QML\.lake\packages\mathlib\.lake\build\lib\lean;C:\Users\Joseph Keir\Lean4Projects\QML\.lake\build\lib\lean c:\Users\Joseph Keir\.elan\toolchains\leanprover--lean4---v4.28.0\bin\lean.exe C:\Users\Joseph Keir\Lean4Projects\QML\QML\QML_Full.lean -o C:\Users\Joseph Keir\Lean4Projects\QML\.lake\build\lib\lean\QML\QML_Full.olean -i C:\Users\Joseph Keir\Lean4Projects\QML\.lake\build\lib\lean\QML\QML_Full.ilean -c C:\Users\Joseph Keir\Lean4Projects\QML\.lake\build\ir\QML\QML_Full.c --setup C:\Users\Joseph Keir\Lean4Projects\QML\.lake\build\ir\QML\QML_Full.setup.json --json
+error: QML/QML_Full.lean:1:0: expected token
+error: QML/QML_Full.lean:2:0: invalid 'import' command, it must be used in the beginning of the file
+error: Lean exited with code 1
+Some required targets logged failures:
+- QML.QML_Full
