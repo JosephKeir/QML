@@ -79,5 +79,7 @@ def eqRec {σ : Signature} {V : VarCtx} :
   | .VTypeOne,   _,         _         => WFF.top
   | .VTypeProd A B, .pair a b, .pair c d => WFF.and (eqRec A a c) (eqRec B b d)
   | .VTypeProd _ _, _,       _         => sorry   -- neutral pair_elim (either side)
-  | .VTypeBox _,    _,       _         => sorry   -- boxterm/boxterm (cast) + neutral pair_elim
+  | .VTypeBox A, .boxterm tt₁ hsub₁ h₁, .boxterm tt₂ hsub₂ h₂ =>
+      WFF.box (eqRec A tt₁ ((boxterm_ctx_unique hsub₁ h₁ hsub₂ h₂).symm ▸ tt₂)) hsub₁ h₁
+  | .VTypeBox _,    _,       _         => sorry   -- neutral pair_elim (either side)
   | .VTypeDia _,    _,       _         => sorry   -- diaterm/diaterm (witness eq) + neutral pair_elim
