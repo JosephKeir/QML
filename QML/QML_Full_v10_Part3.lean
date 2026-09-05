@@ -68,25 +68,78 @@ theorem diaterm_ctx_unique {x : VarSymb × VarType} {V₁ V₂ W : VarCtx}
 
 /-! ## The recursive extensional equality `eqRec` (STAGING, additive)
 
-Recurses on the type; the `.Var` base uses the existing `WFF.eq` constructor (which becomes the
-Var-only primitive `primEq` after the swap).  Modal cases use the determinacy lemmas above; the
-neutral `pair_elim` cases use `Term.unpair` + combined-fresh (EqProtoNamed mechanism).  Currently
-only the atomic + structural product cases are filled; box/dia/pelim are `sorry` pending the next
-iteration. -/
-def eqRec {σ : Signature} {V : VarCtx} :
-    (S : VarType) → Term σ V S → Term σ V S → WFF σ V
-  | .Var,        t,         s         => WFF.eq t s
-  | .VTypeOne,   _,         _         => WFF.top
-  | .VTypeProd A B, .pair a b, .pair c d => WFF.and (eqRec A a c) (eqRec B b d)
-  | .VTypeProd _ _, _,       _         => sorry   -- neutral pair_elim (either side)
-  | .VTypeBox A, .boxterm tt₁ hsub₁ h₁, .boxterm tt₂ hsub₂ h₂ =>
-      WFF.box (eqRec A tt₁ ((boxterm_ctx_unique hsub₁ h₁ hsub₂ h₂).symm ▸ tt₂)) hsub₁ h₁
-  | .VTypeBox _,    _,       _         => sorry   -- neutral pair_elim (either side)
-  | .VTypeDia A, .diaterm x₁ hx₁ tt₁ hsub₁ h₁, .diaterm x₂ hx₂ tt₂ hsub₂ h₂ => by
-      by_cases h_x : x₁ = x₂
-      · subst h_x
-        have hV := diaterm_ctx_unique hsub₁ h₁ hsub₂ h₂
-        subst hV
-        exact WFF.box_x x₁ hx₁ hsub₁ h₁ (eqRec A tt₁ tt₂)
-      · exact WFF.bot
-  | .VTypeDia _,    _,       _         => sorry   -- neutral pair_elim (either side)
+Dispatches on `V.firstPairVar` (mirroring `ctx_rest_MU`/`substVar_peel`): if the context has a
+product var `z`, PEEL — unpair BOTH terms at `z` with shared combined-fresh `v1,v2`, recurse, and
+re-pair via `WFF.pairElim`; otherwise the context is pair-free (so no term is a `pair_elim`) and we
+reduce on the type — `.Var` base is the existing `WFF.eq` constructor (→ Var-only `primEq` after the
+swap), `□`/`◇` via the determinacy casts (`boxterm`/`diaterm`), product = `∧` of components,
+`VTypeOne` = `⊤`.  COMPLETE + axiom-clean (no `sorry`). -/
+def eqRec {σ : Signature} :
+    (V : VarCtx) → (S : VarType) → Term σ V S → Term σ V S → WFF σ V
+  | V, S, t, s =>
+    match hfp : V.firstPairVar with
+    | some ⟨⟨z, V1, V2⟩, hzmem⟩ =>
+        -- NEUTRAL PAIR-ELIM PEEL (mirrors `substVar_peel`): unpair BOTH terms at the first product
+        -- var `z` using shared combined-fresh `v1,v2`, recurse, re-pair via `WFF.pairElim`.
+        let V₀ := VarCtx_erase V ⟨z, V1.VTypeProd V2⟩
+        have hz_fresh : z ∉ VarCtx_to_VarSymbs V₀ := VarCtx_erase_fresh hzmem
+        have V_eq : VarCtx_insert ⟨z, V1.VTypeProd V2⟩ V₀ hz_fresh = V :=
+          VarCtx_insert_erase hzmem hz_fresh
+        let avoid : Finset VarSymb :=
+          VarCtx_to_VarSymbs V ∪ Term.boundVars t ∪ Term.boundVars s
+        let v1 : VarSymb := VarSymb.fresh avoid
+        have hv1_avoid : v1 ∉ avoid := VarSymb.fresh_not_mem _
+        let v2 : VarSymb := VarSymb.fresh (insert v1 avoid)
+        have hv2_avoid_v1 : v2 ∉ insert v1 avoid := VarSymb.fresh_not_mem _
+        have hv2_avoid : v2 ∉ avoid := fun h => hv2_avoid_v1 (Finset.mem_insert_of_mem h)
+        have hv1v2 : v1 ≠ v2 := fun h => hv2_avoid_v1 (h ▸ Finset.mem_insert_self _ _)
+        have h_avoid_V : VarCtx_to_VarSymbs V ⊆ avoid := fun _ h =>
+          Finset.mem_union_left _ (Finset.mem_union_left _ h)
+        have h_avoid_t : Term.boundVars t ⊆ avoid := fun _ h =>
+          Finset.mem_union_left _ (Finset.mem_union_right _ h)
+        have h_avoid_s : Term.boundVars s ⊆ avoid := fun _ h => Finset.mem_union_right _ h
+        have hv1_V : v1 ∉ VarCtx_to_VarSymbs V := fun h => hv1_avoid (h_avoid_V h)
+        have hv2_V : v2 ∉ VarCtx_to_VarSymbs V := fun h => hv2_avoid (h_avoid_V h)
+        have hv1_V₀ : v1 ∉ VarCtx_to_VarSymbs V₀ :=
+          fun h => hv1_V (VarCtx_to_VarSymbs_erase_subset h)
+        have hv2_V₀ : v2 ∉ VarCtx_to_VarSymbs V₀ :=
+          fun h => hv2_V (VarCtx_to_VarSymbs_erase_subset h)
+        have hv1_nb_t : v1 ∉ Term.boundVars t := fun h => hv1_avoid (h_avoid_t h)
+        have hv2_nb_t : v2 ∉ Term.boundVars t := fun h => hv2_avoid (h_avoid_t h)
+        have hv1_nb_s : v1 ∉ Term.boundVars s := fun h => hv1_avoid (h_avoid_s h)
+        have hv2_nb_s : v2 ∉ Term.boundVars s := fun h => hv2_avoid (h_avoid_s h)
+        let two_comp : VarCtx := VarCtx_insert_twice ⟨v1, V1⟩ ⟨v2, V2⟩ V₀ hv1_V₀ hv2_V₀ hv1v2
+        let t' : Term σ two_comp S :=
+          Term.unpair z V1 V2 v1 v2 V₀ V two_comp S hz_fresh hv1_V₀ hv2_V₀ hv1v2
+            V_eq.symm rfl t hv1_nb_t hv2_nb_t
+        let s' : Term σ two_comp S :=
+          Term.unpair z V1 V2 v1 v2 V₀ V two_comp S hz_fresh hv1_V₀ hv2_V₀ hv1v2
+            V_eq.symm rfl s hv1_nb_s hv2_nb_s
+        V_eq ▸ WFF.pairElim ⟨v1, V1⟩ ⟨v2, V2⟩ z hv1_V₀ hv2_V₀ hv1v2 hz_fresh rfl rfl
+          (eqRec two_comp S t' s')
+    | none =>
+        match S, t, s with
+        | _, .pair_elim v₁ v₂ z _ _ _ _ _ w₂eq _, _ => by
+            subst w₂eq
+            exact (VarCtx.firstPairVar_none_no_pair hfp (Finset.mem_insert_self _ _)).elim
+        | _, _, .pair_elim v₁ v₂ z _ _ _ _ _ w₂eq _ => by
+            subst w₂eq
+            exact (VarCtx.firstPairVar_none_no_pair hfp (Finset.mem_insert_self _ _)).elim
+        | .Var, t, s => WFF.eq t s
+        | .VTypeOne, _, _ => WFF.top
+        | .VTypeProd A B, .pair a b, .pair c d => WFF.and (eqRec _ A a c) (eqRec _ B b d)
+        | .VTypeBox A, .boxterm tt₁ hsub₁ h₁, .boxterm tt₂ hsub₂ h₂ =>
+            WFF.box (eqRec _ A tt₁ ((boxterm_ctx_unique hsub₁ h₁ hsub₂ h₂).symm ▸ tt₂)) hsub₁ h₁
+        | .VTypeDia A, .diaterm x₁ hx₁ tt₁ hsub₁ h₁, .diaterm x₂ hx₂ tt₂ hsub₂ h₂ => by
+            by_cases h_x : x₁ = x₂
+            · subst h_x
+              have hV := diaterm_ctx_unique hsub₁ h₁ hsub₂ h₂
+              subst hV
+              exact WFF.box_x x₁ hx₁ hsub₁ h₁ (eqRec _ A tt₁ tt₂)
+            · exact WFF.bot
+termination_by V S _ _ => (sizeOf S, V.pairDepth)
+decreasing_by
+  all_goals first
+    | (apply Prod.Lex.right
+       exact VarCtx.pairDepth_unpair_lt hzmem hv1_V₀ hv2_V₀ hv1v2)
+    | (apply Prod.Lex.left; simp_wf; try omega)
