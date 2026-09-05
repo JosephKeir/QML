@@ -82,4 +82,11 @@ def eqRec {σ : Signature} {V : VarCtx} :
   | .VTypeBox A, .boxterm tt₁ hsub₁ h₁, .boxterm tt₂ hsub₂ h₂ =>
       WFF.box (eqRec A tt₁ ((boxterm_ctx_unique hsub₁ h₁ hsub₂ h₂).symm ▸ tt₂)) hsub₁ h₁
   | .VTypeBox _,    _,       _         => sorry   -- neutral pair_elim (either side)
-  | .VTypeDia _,    _,       _         => sorry   -- diaterm/diaterm (witness eq) + neutral pair_elim
+  | .VTypeDia A, .diaterm x₁ hx₁ tt₁ hsub₁ h₁, .diaterm x₂ hx₂ tt₂ hsub₂ h₂ => by
+      by_cases h_x : x₁ = x₂
+      · subst h_x
+        have hV := diaterm_ctx_unique hsub₁ h₁ hsub₂ h₂
+        subst hV
+        exact WFF.box_x x₁ hx₁ hsub₁ h₁ (eqRec A tt₁ tt₂)
+      · exact WFF.bot
+  | .VTypeDia _,    _,       _         => sorry   -- neutral pair_elim (either side)
