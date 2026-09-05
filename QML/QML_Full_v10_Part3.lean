@@ -65,3 +65,19 @@ theorem diaterm_ctx_unique {x : VarSymb × VarType} {V₁ V₂ W : VarCtx}
     (fun p hp hbox => dia_box_entry_in_box hx₁ (h₁ p hp hbox) hbox)
     (fun _ hp => hsub₂ (VarCtx_box_subset_dia hx₂ hp))
     (fun p hp hbox => dia_box_entry_in_box hx₂ (h₂ p hp hbox) hbox)
+
+/-! ## The recursive extensional equality `eqRec` (STAGING, additive)
+
+Recurses on the type; the `.Var` base uses the existing `WFF.eq` constructor (which becomes the
+Var-only primitive `primEq` after the swap).  Modal cases use the determinacy lemmas above; the
+neutral `pair_elim` cases use `Term.unpair` + combined-fresh (EqProtoNamed mechanism).  Currently
+only the atomic + structural product cases are filled; box/dia/pelim are `sorry` pending the next
+iteration. -/
+def eqRec {σ : Signature} {V : VarCtx} :
+    (S : VarType) → Term σ V S → Term σ V S → WFF σ V
+  | .Var,        t,         s         => WFF.eq t s
+  | .VTypeOne,   _,         _         => WFF.top
+  | .VTypeProd A B, .pair a b, .pair c d => WFF.and (eqRec A a c) (eqRec B b d)
+  | .VTypeProd _ _, _,       _         => sorry   -- neutral pair_elim (either side)
+  | .VTypeBox _,    _,       _         => sorry   -- boxterm/boxterm (cast) + neutral pair_elim
+  | .VTypeDia _,    _,       _         => sorry   -- diaterm/diaterm (witness eq) + neutral pair_elim
