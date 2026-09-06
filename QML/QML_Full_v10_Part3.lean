@@ -75,14 +75,54 @@ theorem pair_elim_ctx_mem {V pe_V : VarCtx} {v₁ v₂ : VarSymb × VarType}
     (⟨z, v₁.2.VTypeProd v₂.2⟩ : VarSymb × VarType) ∈ V.1 := by
   rw [← w₂eq]; exact Finset.mem_insert_self _ _
 
+/-- The **box determinacy cast**: `boxterm_ctx_unique` says two same-typed boxterms in the same
+    outer context share their inner context, so the second inner term transports into the first's.
+    Given a NAME (rather than an inline `▸`) so that `eqRecCore`'s box arm and its extensionality
+    equation are syntactically identical. -/
+def boxCast {σ : Signature} {A : VarType} {V₁ V₂ W : VarCtx}
+    (hsub₁ : (VarCtx_box V₁).1 ⊆ W.1)
+    (h₁ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V₁).1)
+    (hsub₂ : (VarCtx_box V₂).1 ⊆ W.1)
+    (h₂ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V₂).1)
+    (tt₂ : Term σ V₂ A) : Term σ V₁ A :=
+  (boxterm_ctx_unique hsub₁ h₁ hsub₂ h₂).symm ▸ tt₂
+
+/-- The **dia determinacy cast** (same ◇-witness): with `x₁ = x₂`, `diaterm_ctx_unique` gives
+    `V₁ = V₂`, and the two inner contexts agree (the freshness fields are `Prop`s, so proof
+    irrelevance makes them defeq).  Isolated in its own definition so that the `subst`s stay OUT of
+    `eqRecCore`'s matcher. -/
+def diaCast {σ : Signature} {A : VarType} {x₁ x₂ : VarSymb × VarType} {V₁ V₂ W : VarCtx}
+    {hx₁ : x₁.1 ∉ VarCtx_to_VarSymbs V₁} {hx₂ : x₂.1 ∉ VarCtx_to_VarSymbs V₂}
+    (hx : x₁ = x₂)
+    (hsub₁ : (VarCtx_dia x₁ V₁ hx₁).1 ⊆ W.1)
+    (h₁ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x₁ V₁ hx₁).1)
+    (hsub₂ : (VarCtx_dia x₂ V₂ hx₂).1 ⊆ W.1)
+    (h₂ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x₂ V₂ hx₂).1)
+    (tt₂ : Term σ (VarCtx_insert x₂ V₂ hx₂) A) : Term σ (VarCtx_insert x₁ V₁ hx₁) A := by
+  subst hx
+  have hV := diaterm_ctx_unique hsub₁ h₁ hsub₂ h₂
+  subst hV
+  exact tt₂
+
 /-! ## The recursive extensional equality `eqRec` (STAGING, additive)
 
-Dispatches on `V.firstPairVar` (mirroring `ctx_rest_MU`/`substVar_peel`): if the context has a
-product var `z`, PEEL — unpair BOTH terms at `z` with shared combined-fresh `v1,v2`, recurse, and
-re-pair via `WFF.pairElim`; otherwise the context is pair-free (so no term is a `pair_elim`) and we
-reduce on the type — `.Var` base is the existing `WFF.eq` constructor (→ Var-only `primEq` after the
-swap), `□`/`◇` via the determinacy casts (`boxterm`/`diaterm`), product = `∧` of components,
-`VTypeOne` = `⊤`.  COMPLETE + axiom-clean (no `sorry`). -/
+Split into a **dispatcher** (`eqRec`) and a **pair-free core** (`eqRecCore`):
+
+* `eqRec` dispatches on `V.firstPairVar` (mirroring `ctx_rest_MU`/`substVar_peel`): if the context
+  has a product var `z`, PEEL — unpair BOTH terms at `z` with shared combined-fresh `v1,v2`,
+  recurse, re-pair via `WFF.pairElim`; otherwise hand `hfp` to the core.
+* `eqRecCore` takes `hfp : V.firstPairVar = none` as an ordinary argument and matches directly on
+  `(S, t, s)`: `.Var` base is the existing `WFF.eq` constructor (→ Var-only `primEq` after the
+  swap), `□`/`◇` via the determinacy casts, product = `∧` of components, `VTypeOne` = `⊤`.  The
+  (unreachable) `pair_elim` arms come LAST so the constructive arms lead the matcher.
+
+Why the split: with one catch-all arm the generated equation held the *entire* nested match, so
+`simp only [eqRec]` re-exposed the peel branch (whose recursive call sits at a different context)
+and looped.  `eqRecCore` has per-arm patterns, so `simp only [eqRecCore]` rewrites ONE case and
+leaves the `eqRec` occurrences on the right alone — which is what makes the modal extensionality
+equations extractable. -/
+mutual
+
 def eqRec {σ : Signature} :
     (V : VarCtx) → (S : VarType) → Term σ V S → Term σ V S → WFF σ V
   | V, S, t, s =>
@@ -126,49 +166,156 @@ def eqRec {σ : Signature} :
             V_eq.symm rfl s hv1_nb_s hv2_nb_s
         V_eq ▸ WFF.pairElim ⟨v1, V1⟩ ⟨v2, V2⟩ z hv1_V₀ hv2_V₀ hv1v2 hz_fresh rfl rfl
           (eqRec two_comp S t' s')
-    | none =>
-        match S, t, s with
-        | _, .pair_elim _ _ _ _ _ _ _ _ w₂eq _, _ =>
-            (VarCtx.firstPairVar_none_no_pair hfp (pair_elim_ctx_mem w₂eq)).elim
-        | _, _, .pair_elim _ _ _ _ _ _ _ _ w₂eq _ =>
-            (VarCtx.firstPairVar_none_no_pair hfp (pair_elim_ctx_mem w₂eq)).elim
-        | .Var, t, s => WFF.eq t s
-        | .VTypeOne, _, _ => WFF.top
-        | .VTypeProd A B, .pair a b, .pair c d => WFF.and (eqRec _ A a c) (eqRec _ B b d)
-        | .VTypeBox A, .boxterm tt₁ hsub₁ h₁, .boxterm tt₂ hsub₂ h₂ =>
-            WFF.box (eqRec _ A tt₁ ((boxterm_ctx_unique hsub₁ h₁ hsub₂ h₂).symm ▸ tt₂)) hsub₁ h₁
-        | .VTypeDia A, .diaterm x₁ hx₁ tt₁ hsub₁ h₁, .diaterm x₂ hx₂ tt₂ hsub₂ h₂ => by
-            by_cases h_x : x₁ = x₂
-            · subst h_x
-              have hV := diaterm_ctx_unique hsub₁ h₁ hsub₂ h₂
-              subst hV
-              exact WFF.box_x x₁ hx₁ hsub₁ h₁ (eqRec _ A tt₁ tt₂)
-            · exact WFF.bot
-termination_by V S _ _ => (sizeOf S, V.pairDepth)
+    | none => eqRecCore V S hfp t s
+termination_by V S _ _ => (sizeOf S, V.pairDepth, 1)
 decreasing_by
+  all_goals
+    apply Prod.Lex.right
+    first
+      | (apply Prod.Lex.left
+         exact VarCtx.pairDepth_unpair_lt hzmem hv1_V₀ hv2_V₀ hv1v2)
+      | (apply Prod.Lex.right; omega)
+
+def eqRecCore {σ : Signature} :
+    (V : VarCtx) → (S : VarType) → V.firstPairVar = none →
+      Term σ V S → Term σ V S → WFF σ V
+  | _, .Var,           _,   t,                     s                     => WFF.eq t s
+  | _, .VTypeOne,      _,   _,                     _                     => WFF.top
+  | _, .VTypeProd A B, _,   .pair a b,             .pair c d             =>
+      WFF.and (eqRec _ A a c) (eqRec _ B b d)
+  | _, .VTypeBox A,    _,   .boxterm tt₁ hsub₁ h₁, .boxterm tt₂ hsub₂ h₂ =>
+      WFF.box (eqRec _ A tt₁ (boxCast hsub₁ h₁ hsub₂ h₂ tt₂)) hsub₁ h₁
+  | _, .VTypeDia A,    _,   .diaterm x₁ hx₁ tt₁ hsub₁ h₁,
+                            .diaterm x₂ hx₂ tt₂ hsub₂ h₂ =>
+      if hx : x₁ = x₂ then
+        WFF.box_x x₁ hx₁ hsub₁ h₁ (eqRec _ A tt₁ (diaCast hx hsub₁ h₁ hsub₂ h₂ tt₂))
+      else WFF.bot
+  -- The (unreachable) neutral `pair_elim` arms come LAST, so the constructive arms lead the
+  -- matcher and reduce on concrete inputs.  A `pair_elim`'s context holds a product var,
+  -- contradicting `hfp`.
+  | _, _,              hfp, .pair_elim _ _ _ _ _ _ _ _ w₂eq _, _ =>
+      (VarCtx.firstPairVar_none_no_pair hfp (pair_elim_ctx_mem w₂eq)).elim
+  | _, _,              hfp, _, .pair_elim _ _ _ _ _ _ _ _ w₂eq _ =>
+      (VarCtx.firstPairVar_none_no_pair hfp (pair_elim_ctx_mem w₂eq)).elim
+termination_by V S _ _ _ => (sizeOf S, V.pairDepth, 0)
+decreasing_by
+  all_goals (apply Prod.Lex.left; simp_wf; try omega)
+
+end
+
+/-! ### Extensionality equations: how `eqRec` computes.
+
+`eqRec_of_none` is the one-step dispatcher equation.  The `eqRecCore_*` equations then unfold ONE
+constructive arm each — `simp only [eqRecCore]` leaves the `eqRec` occurrences on the right-hand
+side alone, so nothing loops (which is exactly what the dispatcher/core split buys).  Composing
+them yields the modal extensionality equations: **`box_ext` and `dia_ext` as defining equations.** -/
+
+theorem eqRec_of_none {σ : Signature} {V : VarCtx} {S : VarType}
+    (hfp : V.firstPairVar = none) (t s : Term σ V S) :
+    eqRec V S t s = eqRecCore V S hfp t s := by
+  unfold eqRec
+  split
   all_goals first
-    | (apply Prod.Lex.right
-       exact VarCtx.pairDepth_unpair_lt hzmem hv1_V₀ hv2_V₀ hv1v2)
-    | (apply Prod.Lex.left; simp_wf; try omega)
+    | rfl
+    | (rename_i hsome; rw [hfp] at hsome; exact absurd hsome (by simp))
 
-/-! ### Extensionality equations (pair-free context): how `eqRec` computes.
+theorem eqRecCore_var {σ : Signature} {V : VarCtx} (hfp : V.firstPairVar = none)
+    (t s : Term σ V .Var) : eqRecCore V .Var hfp t s = WFF.eq t s := by
+  simp only [eqRecCore]
 
-In a pair-free context the `firstPairVar = none` branch fires and `eqRec` reduces on the type.
-The `.Var`/`.VTypeOne`/`.VTypeProd` cases reduce via `simp only [eqRec, hfp]`; the `□`/`◇` cases
-require reducing the nested dependent match past the (unreachable) `pair_elim` arms — a Lean
-match-reduction issue still to be resolved (their RHS `eqRec` is at a different context, so plain
-`simp only [eqRec]` loops). -/
+theorem eqRecCore_unit {σ : Signature} {V : VarCtx} (hfp : V.firstPairVar = none)
+    (t s : Term σ V .VTypeOne) : eqRecCore V .VTypeOne hfp t s = WFF.top := by
+  simp only [eqRecCore]
+
+theorem eqRecCore_prod {σ : Signature} {V : VarCtx} (hfp : V.firstPairVar = none)
+    {A B : VarType} (a c : Term σ V A) (b d : Term σ V B) :
+    eqRecCore V (.VTypeProd A B) hfp (.pair a b) (.pair c d)
+      = WFF.and (eqRec V A a c) (eqRec V B b d) := by
+  simp only [eqRecCore]
+
+/-- **`box_ext` as a defining equation**: necessary-object equality IS the `box` of the inner
+    equality (the second inner term transported by the determinacy cast). -/
+theorem eqRecCore_box {σ : Signature} {W : VarCtx} (hfp : W.firstPairVar = none)
+    {A : VarType} {V₁ V₂ : VarCtx}
+    (tt₁ : Term σ V₁ A) (tt₂ : Term σ V₂ A)
+    (hsub₁ : (VarCtx_box V₁).1 ⊆ W.1)
+    (h₁ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V₁).1)
+    (hsub₂ : (VarCtx_box V₂).1 ⊆ W.1)
+    (h₂ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V₂).1) :
+    eqRecCore W (.VTypeBox A) hfp (.boxterm tt₁ hsub₁ h₁) (.boxterm tt₂ hsub₂ h₂)
+      = WFF.box (eqRec V₁ A tt₁ (boxCast hsub₁ h₁ hsub₂ h₂ tt₂)) hsub₁ h₁ := by
+  simp only [eqRecCore]
+
+/-- **`dia_ext` as a defining equation** (same ◇-witness): possible-object equality IS the
+    witnessed `box_x` of the inner equality. -/
+theorem eqRecCore_dia_same {σ : Signature} {W : VarCtx} (hfp : W.firstPairVar = none)
+    {A : VarType} {x₁ x₂ : VarSymb × VarType} {V₁ V₂ : VarCtx}
+    {hx₁ : x₁.1 ∉ VarCtx_to_VarSymbs V₁} {hx₂ : x₂.1 ∉ VarCtx_to_VarSymbs V₂}
+    (tt₁ : Term σ (VarCtx_insert x₁ V₁ hx₁) A) (tt₂ : Term σ (VarCtx_insert x₂ V₂ hx₂) A)
+    (hsub₁ : (VarCtx_dia x₁ V₁ hx₁).1 ⊆ W.1)
+    (h₁ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x₁ V₁ hx₁).1)
+    (hsub₂ : (VarCtx_dia x₂ V₂ hx₂).1 ⊆ W.1)
+    (h₂ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x₂ V₂ hx₂).1)
+    (hx : x₁ = x₂) :
+    eqRecCore W (.VTypeDia A) hfp (.diaterm x₁ hx₁ tt₁ hsub₁ h₁) (.diaterm x₂ hx₂ tt₂ hsub₂ h₂)
+      = WFF.box_x x₁ hx₁ hsub₁ h₁
+          (eqRec (VarCtx_insert x₁ V₁ hx₁) A tt₁ (diaCast hx hsub₁ h₁ hsub₂ h₂ tt₂)) := by
+  simp only [eqRecCore, dif_pos hx]
+
+/-- Different ◇-witnesses denote possibly-distinct possible objects, so they are not equated. -/
+theorem eqRecCore_dia_ne {σ : Signature} {W : VarCtx} (hfp : W.firstPairVar = none)
+    {A : VarType} {x₁ x₂ : VarSymb × VarType} {V₁ V₂ : VarCtx}
+    {hx₁ : x₁.1 ∉ VarCtx_to_VarSymbs V₁} {hx₂ : x₂.1 ∉ VarCtx_to_VarSymbs V₂}
+    (tt₁ : Term σ (VarCtx_insert x₁ V₁ hx₁) A) (tt₂ : Term σ (VarCtx_insert x₂ V₂ hx₂) A)
+    (hsub₁ : (VarCtx_dia x₁ V₁ hx₁).1 ⊆ W.1)
+    (h₁ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x₁ V₁ hx₁).1)
+    (hsub₂ : (VarCtx_dia x₂ V₂ hx₂).1 ⊆ W.1)
+    (h₂ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x₂ V₂ hx₂).1)
+    (hx : ¬ x₁ = x₂) :
+    eqRecCore W (.VTypeDia A) hfp (.diaterm x₁ hx₁ tt₁ hsub₁ h₁) (.diaterm x₂ hx₂ tt₂ hsub₂ h₂)
+      = WFF.bot := by
+  simp only [eqRecCore, dif_neg hx]
+
+/-! ### The same equations at the `eqRec` level (pair-free context). -/
 
 theorem eqRec_var {σ : Signature} {V : VarCtx} (hfp : V.firstPairVar = none)
     (t s : Term σ V .Var) : eqRec V .Var t s = WFF.eq t s := by
-  simp only [eqRec, hfp]
+  rw [eqRec_of_none hfp, eqRecCore_var]
 
 theorem eqRec_unit {σ : Signature} {V : VarCtx} (hfp : V.firstPairVar = none)
     (t s : Term σ V .VTypeOne) : eqRec V .VTypeOne t s = WFF.top := by
-  simp only [eqRec, hfp]
+  rw [eqRec_of_none hfp, eqRecCore_unit]
 
-theorem eqRec_prod {σ : Signature} {V : VarCtx} (hfp : V.firstPairVar = none) {A B : VarType}
-    (a c : Term σ V A) (b d : Term σ V B) :
+theorem eqRec_prod {σ : Signature} {V : VarCtx} (hfp : V.firstPairVar = none)
+    {A B : VarType} (a c : Term σ V A) (b d : Term σ V B) :
     eqRec V (.VTypeProd A B) (.pair a b) (.pair c d)
       = WFF.and (eqRec V A a c) (eqRec V B b d) := by
-  simp only [eqRec, hfp]
+  rw [eqRec_of_none hfp, eqRecCore_prod]
+
+/-- **`box_ext`, definitionally** — at the `eqRec` level. -/
+theorem eqRec_box {σ : Signature} {W : VarCtx} (hfp : W.firstPairVar = none)
+    {A : VarType} {V₁ V₂ : VarCtx}
+    (tt₁ : Term σ V₁ A) (tt₂ : Term σ V₂ A)
+    (hsub₁ : (VarCtx_box V₁).1 ⊆ W.1)
+    (h₁ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V₁).1)
+    (hsub₂ : (VarCtx_box V₂).1 ⊆ W.1)
+    (h₂ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V₂).1) :
+    eqRec W (.VTypeBox A) (.boxterm tt₁ hsub₁ h₁) (.boxterm tt₂ hsub₂ h₂)
+      = WFF.box (eqRec V₁ A tt₁ (boxCast hsub₁ h₁ hsub₂ h₂ tt₂)) hsub₁ h₁ := by
+  rw [eqRec_of_none hfp, eqRecCore_box]
+
+/-- **`dia_ext`, definitionally** — at the `eqRec` level. -/
+theorem eqRec_dia_same {σ : Signature} {W : VarCtx} (hfp : W.firstPairVar = none)
+    {A : VarType} {x₁ x₂ : VarSymb × VarType} {V₁ V₂ : VarCtx}
+    {hx₁ : x₁.1 ∉ VarCtx_to_VarSymbs V₁} {hx₂ : x₂.1 ∉ VarCtx_to_VarSymbs V₂}
+    (tt₁ : Term σ (VarCtx_insert x₁ V₁ hx₁) A) (tt₂ : Term σ (VarCtx_insert x₂ V₂ hx₂) A)
+    (hsub₁ : (VarCtx_dia x₁ V₁ hx₁).1 ⊆ W.1)
+    (h₁ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x₁ V₁ hx₁).1)
+    (hsub₂ : (VarCtx_dia x₂ V₂ hx₂).1 ⊆ W.1)
+    (h₂ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x₂ V₂ hx₂).1)
+    (hx : x₁ = x₂) :
+    eqRec W (.VTypeDia A) (.diaterm x₁ hx₁ tt₁ hsub₁ h₁) (.diaterm x₂ hx₂ tt₂ hsub₂ h₂)
+      = WFF.box_x x₁ hx₁ hsub₁ h₁
+          (eqRec (VarCtx_insert x₁ V₁ hx₁) A tt₁ (diaCast hx hsub₁ h₁ hsub₂ h₂ tt₂)) := by
+  rw [eqRec_of_none hfp, eqRecCore_dia_same _ _ _ _ _ _ _ hx]
+
