@@ -1659,3 +1659,120 @@ theorem Leib.eqVar {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
     (Term.substVar hx a t2) (Term.substVar hx b t2) h2 hs2
   rw [key2] at step2
   exact step2
+
+/-! ### The vacuous cases
+
+A `pair_elim`-headed formula or term carries a product variable in its own context, which
+contradicts pair-freeness.  So — exactly as for `eqRecCore`'s two trailing arms — there is no
+pair-free Leibniz instance at a `pair_elim`, and the honest content is the vacuity.
+
+Likewise `.VTypeOne` is a singleton: in a pair-free context the only term of that type is `unit`,
+so `a` and `b` coincide and the whole type is trivial. -/
+
+theorem Leib.pair_elim {σ : Signature} {V V₀ : VarCtx} {S : VarType} {x : VarSymb}
+    {hx : x ∉ VarCtx_to_VarSymbs V}
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none) (a b : Term σ V S)
+    {W₁ : VarCtx} (v₁ v₂ : VarSymb × VarType) (z : VarSymb)
+    (hv₁ : v₁.1 ∉ VarCtx_to_VarSymbs V₀) (hv₂ : v₂.1 ∉ VarCtx_to_VarSymbs V₀)
+    (hv₁v₂ : v₁.1 ≠ v₂.1) (hz : z ∉ VarCtx_to_VarSymbs V₀)
+    (w₁eq : VarCtx_insert_twice v₁ v₂ V₀ hv₁ hv₂ hv₁v₂ = W₁)
+    (w₂eq : VarCtx_insert ⟨z, v₁.2.VTypeProd v₂.2⟩ V₀ hz = VarCtx_insert ⟨x, S⟩ V hx)
+    (ψ : WFF σ W₁) :
+    Leib hx a b (WFF.pair_elim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq ψ) :=
+  (VarCtx.firstPairVar_none_no_pair hpf (pair_elim_ctx_mem w₂eq)).elim
+
+theorem TermLeib.pair_elim {σ : Signature} {V V₀ : VarCtx} {S T : VarType} {x : VarSymb}
+    {hx : x ∉ VarCtx_to_VarSymbs V}
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none) (a b : Term σ V S)
+    {W₁ : VarCtx} (v₁ v₂ : VarSymb × VarType) (z : VarSymb)
+    (hv₁ : v₁.1 ∉ VarCtx_to_VarSymbs V₀) (hv₂ : v₂.1 ∉ VarCtx_to_VarSymbs V₀)
+    (hv₁v₂ : v₁.1 ≠ v₂.1) (hz : z ∉ VarCtx_to_VarSymbs V₀)
+    (w₁eq : VarCtx_insert_twice v₁ v₂ V₀ hv₁ hv₂ hv₁v₂ = W₁)
+    (w₂eq : VarCtx_insert ⟨z, v₁.2.VTypeProd v₂.2⟩ V₀ hz = VarCtx_insert ⟨x, S⟩ V hx)
+    (body : Term σ W₁ T) :
+    TermLeib hx a b (Term.pair_elim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq body) :=
+  (VarCtx.firstPairVar_none_no_pair hpf (pair_elim_ctx_mem w₂eq)).elim
+
+/-- In a pair-free context the only term of type `.VTypeOne` is `unit`. -/
+theorem Term.unit_of_VTypeOne {σ : Signature} {V : VarCtx} (hpf : V.firstPairVar = none)
+    (t : Term σ V .VTypeOne) : t = Term.unit := by
+  cases t with
+  | unit => rfl
+  | pair_elim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq body =>
+      exact (VarCtx.firstPairVar_none_no_pair hpf (pair_elim_ctx_mem w₂eq)).elim
+
+/-- Substituting at `.VTypeOne` is trivial: the two terms are equal. -/
+theorem Leib.of_unitType {σ : Signature} {V : VarCtx} {x : VarSymb}
+    {hx : x ∉ VarCtx_to_VarSymbs V} (hpfV : V.firstPairVar = none)
+    (a b : Term σ V .VTypeOne) (φ : WFF σ (VarCtx_insert ⟨x, VarType.VTypeOne⟩ V hx)) :
+    Leib hx a b φ := by
+  unfold Leib
+  rw [Term.unit_of_VTypeOne hpfV a, Term.unit_of_VTypeOne hpfV b]
+  exact ⟨Proof.impId⟩
+
+theorem TermLeib.of_unitType {σ : Signature} {V : VarCtx} {x : VarSymb} {T : VarType}
+    {hx : x ∉ VarCtx_to_VarSymbs V} (hpfV : V.firstPairVar = none)
+    (a b : Term σ V .VTypeOne)
+    (u : Term σ (VarCtx_insert ⟨x, VarType.VTypeOne⟩ V hx) T) :
+    TermLeib hx a b u := by
+  unfold TermLeib
+  rw [Term.unit_of_VTypeOne hpfV a, Term.unit_of_VTypeOne hpfV b]
+  exact ⟨Proof.ofEmpty (eqRec_refl V T _).some⟩
+
+/-- **Witnessed necessitation with hypotheses**: `Δ ⊢ φ` gives `□_xΔ ⊢ □_xφ`.  `Proof.necx` is the
+    `Δ = ∅` case; this is what the term-level ◇ case needs. -/
+def Proof.necxG {σ : Signature} {V W : VarCtx} {x : VarSymb × VarType}
+    {hx : x.1 ∉ VarCtx_to_VarSymbs V} {Δ : Finset (WFF σ (VarCtx_insert x V hx))}
+    {φ : WFF σ (VarCtx_insert x V hx)}
+    (hsub : (VarCtx_dia x V hx).1 ⊆ W.1)
+    (h : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x V hx).1)
+    (p : Proof σ (VarCtx_insert x V hx) Δ φ) :
+    Proof σ W (WFF.box_x_Finset x hx hsub h Δ) (WFF.box_x x hx hsub h φ) := by
+  have hneg : Proof σ (VarCtx_insert x V hx) (Δ ∪ {neg φ}) WFF.bot :=
+    Proof.imp_elim (Proof.ax (by simp)) (Proof.weak p)
+  have hK := Proof.K_dia (Γ := (∅ : Finset (WFF σ V))) (Δ := Δ) x hx hsub h
+    (by simpa [WFF.ctx_ext_Finset] using hneg)
+  simp only [WFF.box_Finset, Finset.image_empty, Finset.empty_union] at hK
+  exact Proof.imp_intro (Proof.dia_bot x hx hsub h hK)
+
+/-- The term-level ◇ case, modal β: the substituted variable IS the diaterm's witness, so
+    `substVar` replaces the witness and reorders the body.  `necxG` carries the inner equality out
+    through `□_xv_s`, which by `dia_ext` is exactly the outer equality at `◇`. -/
+theorem TermLeib.diaterm_beta {σ : Signature} {V V_inner : VarCtx} {S_tt : VarType}
+    (xv : VarSymb × VarType) (hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner)
+    (hx : xv.1 ∉ VarCtx_to_VarSymbs V)
+    (xv_s : VarSymb × VarType) (hxv_s : xv_s.1 ∉ VarCtx_to_VarSymbs V_inner)
+    (h_xv_ne_xv_s : xv.1 ≠ xv_s.1)
+    (tt : Term σ (VarCtx_insert xv V_inner hxv) S_tt)
+    (hsub_t : (VarCtx_dia xv V_inner hxv).1
+                ⊆ (VarCtx_insert ⟨xv.1, xv.2.VTypeDia⟩ V hx).1)
+    (h_no_extras_t : ∀ p ∈ (VarCtx_insert ⟨xv.1, xv.2.VTypeDia⟩ V hx).1,
+                      VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv V_inner hxv).1)
+    (tt_s tt_s' : Term σ (VarCtx_insert xv_s V_inner hxv_s) xv.2)
+    (hsub_s : (VarCtx_dia xv_s V_inner hxv_s).1 ⊆ V.1)
+    (h_no_extras_s : ∀ p ∈ V.1, VarType.isBox p.2 = true
+                      → p ∈ (VarCtx_dia xv_s V_inner hxv_s).1)
+    (hpf : (VarCtx_insert ⟨xv.1, xv.2.VTypeDia⟩ V hx).firstPairVar = none)
+    (hpfV : V.firstPairVar = none)
+    (hxv_s_outer : xv_s.1 ∉ VarCtx_to_VarSymbs (VarCtx_insert xv V_inner hxv))
+    (hxv_xv_s_outer : xv.1 ∉ VarCtx_to_VarSymbs (VarCtx_insert xv_s V_inner hxv_s))
+    (h_x_inner : xv.1 ∉ VarCtx_to_VarSymbs (VarCtx_insert xv_s V_inner hxv_s))
+    (h_reorder : VarCtx_insert xv_s (VarCtx_insert xv V_inner hxv) hxv_s_outer
+               = VarCtx_insert xv (VarCtx_insert xv_s V_inner hxv_s) hxv_xv_s_outer)
+    (h_reform : VarCtx_insert xv (VarCtx_insert xv_s V_inner hxv_s) hxv_xv_s_outer
+              = VarCtx_insert ⟨xv.1, xv.2⟩ (VarCtx_insert xv_s V_inner hxv_s) h_x_inner)
+    (ih : TermLeib h_x_inner tt_s tt_s'
+            (h_reform ▸ h_reorder ▸ Term.ctx_ext xv_s hxv_s_outer tt)) :
+    TermLeib hx (Term.diaterm xv_s hxv_s tt_s hsub_s h_no_extras_s)
+                (Term.diaterm xv_s hxv_s tt_s' hsub_s h_no_extras_s)
+                (Term.diaterm xv hxv tt hsub_t h_no_extras_t) := by
+  unfold TermLeib at ih ⊢
+  rw [Term.substVar_diaterm_modal_beta xv hxv hx xv_s hxv_s h_xv_ne_xv_s tt hsub_t h_no_extras_t
+        tt_s hsub_s h_no_extras_s hpf hxv_s_outer hxv_xv_s_outer h_x_inner h_reorder h_reform,
+      Term.substVar_diaterm_modal_beta xv hxv hx xv_s hxv_s h_xv_ne_xv_s tt hsub_t h_no_extras_t
+        tt_s' hsub_s h_no_extras_s hpf hxv_s_outer hxv_xv_s_outer h_x_inner h_reorder h_reform,
+      eqRec_dia_same hpfV tt_s tt_s' hsub_s h_no_extras_s hsub_s h_no_extras_s rfl,
+      eqRec_dia_same hpfV _ _ hsub_s h_no_extras_s hsub_s h_no_extras_s rfl]
+  simp only [diaCast_id]
+  refine ⟨Proof.cast_ctx ?_ (Proof.necxG hsub_s h_no_extras_s ih.some)⟩
+  simp [WFF.box_x_Finset]
