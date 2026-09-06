@@ -674,3 +674,51 @@ theorem eqRec_symm_of_none' {σ : Signature}
     Nonempty (Proof σ V ∅ ((eqRec V S a b).imp (eqRec V S b a))) :=
   eqRec_symm_of_none varSymm V S hfp a b IH
 
+
+/-! ## Symmetry: the peel case
+
+`eqRecPeel … a b` and `eqRecPeel … b a` choose fresh names from `… ∪ boundVars a ∪ boundVars b`
+and `… ∪ boundVars b ∪ boundVars a`.  Those differ only by `Finset.union_right_comm`, and rewriting
+ALL their occurrences simultaneously is motive-correct (each occurrence feeds either
+`VarSymb.fresh avoid` or a proof about `avoid`), so the two sides end up with literally the same
+fresh names, `two_comp`, and unpaired terms — after which `congPairElim` of the IH finishes. -/
+
+/-- Context transport distributes over implication. -/
+theorem WFF_ctx_cast_imp {σ : Signature} {V W : VarCtx} (h : V = W) (φ ψ : WFF σ V) :
+    h ▸ (φ.imp ψ) = (h ▸ φ).imp (h ▸ ψ) := by cases h; rfl
+
+/-- `pairElim`-congruence in exactly the shape the peel produces.  Stating the conclusion's context
+    as `VarCtx_insert ⟨z, S1.VTypeProd S2⟩ V₀ hz` — with the component types as direct parameters
+    rather than as `.2` projections of the binder pairs — is what lets `apply` unify it against the
+    unfolded peel. -/
+def Proof.congPeel {σ : Signature} {V₀ : VarCtx} {S1 S2 : VarType} {w1 w2 z : VarSymb}
+    {hw1 : w1 ∉ VarCtx_to_VarSymbs V₀} {hw2 : w2 ∉ VarCtx_to_VarSymbs V₀} {hw : w1 ≠ w2}
+    {hz : z ∉ VarCtx_to_VarSymbs V₀}
+    {φ ψ : WFF σ (VarCtx_insert_twice ⟨w1, S1⟩ ⟨w2, S2⟩ V₀ hw1 hw2 hw)}
+    (h : Proof σ (VarCtx_insert_twice ⟨w1, S1⟩ ⟨w2, S2⟩ V₀ hw1 hw2 hw) ∅ (φ.imp ψ)) :
+    Proof σ (VarCtx_insert ⟨z, S1.VTypeProd S2⟩ V₀ hz) ∅
+      ((WFF.pairElim ⟨w1, S1⟩ ⟨w2, S2⟩ z hw1 hw2 hw hz rfl rfl φ).imp
+        (WFF.pairElim ⟨w1, S1⟩ ⟨w2, S2⟩ z hw1 hw2 hw hz rfl rfl ψ)) :=
+  Proof.congPairElim _ _ _ _ _ _ _ rfl rfl h
+
+/- **STATUS of symmetry's peel case.**  The mathematical content is settled: `eqRecPeel … a b` and
+   `eqRecPeel … b a` choose their fresh names from `… ∪ boundVars a ∪ boundVars b` versus
+   `… ∪ boundVars b ∪ boundVars a`, and
+
+     simp only [Finset.union_right_comm (VarCtx_to_VarSymbs V) (Term.boundVars b) (Term.boundVars a)]
+
+   rewrites ALL occurrences simultaneously (motive-correct, since each feeds either
+   `VarSymb.fresh avoid` or a proof about it), after which BOTH sides demonstrably carry the same
+   `VarSymb.fresh (VarCtx_to_VarSymbs V ∪ a.boundVars ∪ b.boundVars)`, the same `two_comp`, and the
+   same unpaired terms — differing only in the order of the two arguments of the inner `eqRec`.
+   `rw [← WFF_ctx_cast_imp]` then puts the goal in the form `V_eq ▸ (X.imp Y)`, and
+   `Proof.ctx_cast (VarCtx_insert_erase hzmem (VarCtx_erase_fresh hzmem))` discharges the transport.
+
+   What is NOT yet done is purely elaboration plumbing: getting `congPairElim`/`congPeel` to unify
+   against the (very large) unfolded peel.  `Proof.congPeel` below is the shape-matched congruence
+   for it; the obstruction is that the pairElim binder pairs enter as `⟨w, T⟩` so the base context
+   and `W₁` are reachable only through `.2` projections and through proof arguments, which the
+   unifier does not use.  The fix is to expose the peel's final `WFF.pairElim` behind a helper whose
+   context arguments are explicit (so `eqRecPeel`'s equation mentions it directly), and then apply
+   `congPeel` to that.  Reflexivity is unaffected and already complete, because there both sides use
+   the same term and hence literally the same `avoid`. -/
