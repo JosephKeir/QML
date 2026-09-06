@@ -121,6 +121,18 @@ Why the split: with one catch-all arm the generated equation held the *entire* n
 and looped.  `eqRecCore` has per-arm patterns, so `simp only [eqRecCore]` rewrites ONE case and
 leaves the `eqRec` occurrences on the right alone — which is what makes the modal extensionality
 equations extractable. -/
+/-- The peel's final re-pairing, with the base context and component TYPES as EXPLICIT arguments.
+    `eqRecPeel` ends in this, so its equation mentions `peelWrap` directly — which is what lets the
+    congruence lemmas below unify against it.  (Going through `WFF.pairElim` raw, the base context
+    and `W₁` are reachable only via `.2` projections of the binder pairs and via proof arguments,
+    neither of which the unifier uses.) -/
+def peelWrap {σ : Signature} (V₀ : VarCtx) (S1 S2 : VarType) (w1 w2 z : VarSymb)
+    (hw1 : w1 ∉ VarCtx_to_VarSymbs V₀) (hw2 : w2 ∉ VarCtx_to_VarSymbs V₀) (hw : w1 ≠ w2)
+    (hz : z ∉ VarCtx_to_VarSymbs V₀)
+    (φ : WFF σ (VarCtx_insert_twice ⟨w1, S1⟩ ⟨w2, S2⟩ V₀ hw1 hw2 hw)) :
+    WFF σ (VarCtx_insert ⟨z, S1.VTypeProd S2⟩ V₀ hz) :=
+  WFF.pairElim ⟨w1, S1⟩ ⟨w2, S2⟩ z hw1 hw2 hw hz rfl rfl φ
+
 mutual
 
 def eqRec {σ : Signature} :
@@ -173,8 +185,7 @@ def eqRecPeel {σ : Signature} (V : VarCtx) (S : VarType) (z : VarSymb) (V1 V2 :
   let s' : Term σ two_comp S :=
     Term.unpair z V1 V2 v1 v2 V₀ V two_comp S hz_fresh hv1_V₀ hv2_V₀ hv1v2
       V_eq.symm rfl s hv1_nb_s hv2_nb_s
-  V_eq ▸ WFF.pairElim ⟨v1, V1⟩ ⟨v2, V2⟩ z hv1_V₀ hv2_V₀ hv1v2 hz_fresh rfl rfl
-    (eqRec two_comp S t' s')
+  V_eq ▸ peelWrap V₀ V1 V2 v1 v2 z hv1_V₀ hv2_V₀ hv1v2 hz_fresh (eqRec two_comp S t' s')
 termination_by (sizeOf S, V.pairDepth, 1)
 decreasing_by
   apply Prod.Lex.right
@@ -356,6 +367,16 @@ def Proof.peElim {σ : Signature} {V W₁ W₂ : VarCtx} {φ : WFF σ W₁}
   have hP := Proof.pair_elim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq p
   simpa [WFF.pairElim_Finset] using hP
 
+/-- The `pair_elim` rule at the empty hypothesis set, in `peelWrap` shape. -/
+def Proof.peelWrapI {σ : Signature} {V₀ : VarCtx} {S1 S2 : VarType} {w1 w2 z : VarSymb}
+    {hw1 : w1 ∉ VarCtx_to_VarSymbs V₀} {hw2 : w2 ∉ VarCtx_to_VarSymbs V₀} {hw : w1 ≠ w2}
+    {hz : z ∉ VarCtx_to_VarSymbs V₀}
+    {φ : WFF σ (VarCtx_insert_twice ⟨w1, S1⟩ ⟨w2, S2⟩ V₀ hw1 hw2 hw)}
+    (h : Proof σ (VarCtx_insert_twice ⟨w1, S1⟩ ⟨w2, S2⟩ V₀ hw1 hw2 hw) ∅ φ) :
+    Proof σ (VarCtx_insert ⟨z, S1.VTypeProd S2⟩ V₀ hz) ∅
+      (peelWrap V₀ S1 S2 w1 w2 z hw1 hw2 hw hz φ) :=
+  Proof.peElim _ _ _ _ _ _ _ rfl rfl h
+
 /-- **Witnessed necessitation**: `⊢ φ` gives `⊢ □_x φ`.  DERIVED (not primitive): from `⊢ φ` we get
     `¬φ ⊢ ⊥`, so `K_dia` gives `◇_x¬φ ⊢ ◇_x⊥`, `dia_bot` gives `◇_x¬φ ⊢ ⊥`, and `imp_intro` gives
     `⊢ ¬◇_x¬φ`, which is `□_x φ` by definition. -/
@@ -402,7 +423,7 @@ theorem eqRecPeel_refl {σ : Signature} (V : VarCtx) (S : VarType) (z : VarSymb)
     Nonempty (Proof σ V ∅ (eqRecPeel V S z V1 V2 hzmem t t)) := by
   unfold eqRecPeel
   obtain ⟨p⟩ := IH _ (VarCtx.pairDepth_unpair_lt hzmem _ _ _) _
-  exact ⟨Proof.ctx_cast _ (Proof.peElim _ _ _ _ _ _ _ _ _ p)⟩
+  exact ⟨Proof.ctx_cast (VarCtx_insert_erase hzmem (VarCtx_erase_fresh hzmem)) (Proof.peelWrapI p)⟩
 
 /-- Reflexivity for the PAIR-FREE CORE, given the induction hypothesis at strictly smaller type
     (which is where the core recurses). -/
@@ -697,31 +718,41 @@ def Proof.congPeel {σ : Signature} {V₀ : VarCtx} {S1 S2 : VarType} {w1 w2 z :
     {φ ψ : WFF σ (VarCtx_insert_twice ⟨w1, S1⟩ ⟨w2, S2⟩ V₀ hw1 hw2 hw)}
     (h : Proof σ (VarCtx_insert_twice ⟨w1, S1⟩ ⟨w2, S2⟩ V₀ hw1 hw2 hw) ∅ (φ.imp ψ)) :
     Proof σ (VarCtx_insert ⟨z, S1.VTypeProd S2⟩ V₀ hz) ∅
-      ((WFF.pairElim ⟨w1, S1⟩ ⟨w2, S2⟩ z hw1 hw2 hw hz rfl rfl φ).imp
-        (WFF.pairElim ⟨w1, S1⟩ ⟨w2, S2⟩ z hw1 hw2 hw hz rfl rfl ψ)) :=
+      ((peelWrap V₀ S1 S2 w1 w2 z hw1 hw2 hw hz φ).imp
+        (peelWrap V₀ S1 S2 w1 w2 z hw1 hw2 hw hz ψ)) :=
   Proof.congPairElim _ _ _ _ _ _ _ rfl rfl h
 
-/- **STATUS of symmetry's peel case.**  The mathematical content is settled: `eqRecPeel … a b` and
-   `eqRecPeel … b a` choose their fresh names from `… ∪ boundVars a ∪ boundVars b` versus
-   `… ∪ boundVars b ∪ boundVars a`, and
+/- **STATUS of symmetry's peel case.**  Two of the three ingredients are DONE.
+
+   (1) FRESH NAMES — solved.  `eqRecPeel … a b` and `… b a` choose from `… ∪ boundVars a ∪ boundVars b`
+   and `… ∪ boundVars b ∪ boundVars a`; after `unfold eqRecPeel`,
 
      simp only [Finset.union_right_comm (VarCtx_to_VarSymbs V) (Term.boundVars b) (Term.boundVars a)]
 
-   rewrites ALL occurrences simultaneously (motive-correct, since each feeds either
-   `VarSymb.fresh avoid` or a proof about it), after which BOTH sides demonstrably carry the same
-   `VarSymb.fresh (VarCtx_to_VarSymbs V ∪ a.boundVars ∪ b.boundVars)`, the same `two_comp`, and the
-   same unpaired terms — differing only in the order of the two arguments of the inner `eqRec`.
-   `rw [← WFF_ctx_cast_imp]` then puts the goal in the form `V_eq ▸ (X.imp Y)`, and
-   `Proof.ctx_cast (VarCtx_insert_erase hzmem (VarCtx_erase_fresh hzmem))` discharges the transport.
+   rewrites all occurrences simultaneously (motive-correct: each feeds `VarSymb.fresh avoid` or a
+   proof about it).  VERIFIED from the goal: both sides then carry the SAME fresh names, `two_comp`
+   and unpaired terms, differing only in the inner `eqRec`'s argument order.  NB plain `rw` fails
+   here on the body's `have`s — `simp only` is required.
 
-   What is NOT yet done is purely elaboration plumbing: getting `congPairElim`/`congPeel` to unify
-   against the (very large) unfolded peel.  `Proof.congPeel` below is the shape-matched congruence
-   for it; the obstruction is that the pairElim binder pairs enter as `⟨w, T⟩` so the base context
-   and `W₁` are reachable only through `.2` projections and through proof arguments, which the
-   unifier does not use.  The fix is to expose the peel's final `WFF.pairElim` behind a helper whose
-   context arguments are explicit (so `eqRecPeel`'s equation mentions it directly), and then apply
-   `congPeel` to that.  Reflexivity is unaffected and already complete, because there both sides use
-   the same term and hence literally the same `avoid`. -/
+   (2) SHAPE — done.  `eqRecPeel` now ends in `peelWrap` (above), whose base context and component
+   TYPES are explicit arguments, so its equation mentions `peelWrap` directly; `Proof.peelWrapI` and
+   `Proof.congPeel` are the matching intro/congruence rules, and `WFF_ctx_cast_imp` +
+   `Proof.ctx_cast (VarCtx_insert_erase hzmem (VarCtx_erase_fresh hzmem))` handle the `V_eq ▸`
+   transport (the transport equality must be supplied EXPLICITLY — `h ▸ ?φ =?= goal` is
+   higher-order).
+
+   (3) The remaining gap is ONLY elaboration: `apply`/`refine`/`exact Proof.congPeel` against the
+   unfolded peel still fails, even though the goal and `congPeel`'s conclusion print as structurally
+   identical `peelWrap` applications with the same visible arguments.  The residual difference is in
+   the elided proof arguments, which `congPeel` forces to be shared between its two `peelWrap`s.
+   Approaches already tried and rejected: `apply`, `refine … ?_`, `exact` with the IH inline, naming
+   `V`/`W₁`/`S1`/`S2`, `rfl rfl` for the context equations, and explicit binder pairs.  A different
+   technique is needed — most likely restating the congruence so the two `peelWrap`s may carry
+   DISTINCT (propositionally equal) proof arguments, or driving it through `conv`/`Nonempty.map`
+   rather than unification against the whole goal.
+
+   Reflexivity is unaffected and complete: there both sides use the same term, hence literally the
+   same `avoid`. -/
 
 /-! ## Leibniz
 
@@ -743,4 +774,5 @@ theorem eqRec_leibniz_Var {σ : Signature} {V : VarCtx} (hfp : V.firstPairVar = 
   rw [eqRec_var hfp]
   exact ⟨Proof.imp_intro (Proof.imp_intro
     (Proof.eq_elim ⟨x, VarType.Var⟩ hx a b (Proof.ax (by simp)) (Proof.ax (by simp))))⟩
+
 
