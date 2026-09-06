@@ -139,35 +139,40 @@ def eqRec {σ : Signature} :
     (V : VarCtx) → (S : VarType) → Term σ V S → Term σ V S → WFF σ V
   | V, S, t, s =>
     match hfp : V.firstPairVar with
-    | some ⟨⟨z, V1, V2⟩, hzmem⟩ => eqRecPeel V S z V1 V2 hzmem t s
+    | some ⟨⟨z, V1, V2⟩, hzmem⟩ =>
+        eqRecPeelA V S z V1 V2 hzmem
+          (VarCtx_to_VarSymbs V ∪ Term.boundVars t ∪ Term.boundVars s)
+          (fun _ h => Finset.mem_union_left _ (Finset.mem_union_left _ h)) t s
+          (fun _ h => Finset.mem_union_left _ (Finset.mem_union_right _ h))
+          (fun _ h => Finset.mem_union_right _ h)
     | none => eqRecCore V S hfp t s
 termination_by V S _ _ => (sizeOf S, V.pairDepth, 2)
 decreasing_by all_goals (apply Prod.Lex.right; apply Prod.Lex.right; omega)
 
-/-- The **neutral pair-elim peel** (mirrors `substVar_peel`): unpair BOTH terms at the product var
-    `z` using shared combined-fresh `v1,v2`, recurse in the two-component context, and re-pair via
-    `WFF.pairElim`.  Factored out of `eqRec`'s `some` branch — symmetrically to `eqRecCore` — so the
-    branch is reachable by a plain equation instead of through a dependent `match`. -/
-def eqRecPeel {σ : Signature} (V : VarCtx) (S : VarType) (z : VarSymb) (V1 V2 : VarType)
+/-- The **neutral pair-elim peel**, PARAMETERISED over the `avoid` set used to pick the two fresh
+    component names (with the three subset facts it must satisfy).  `eqRec` supplies the canonical
+    `VarCtx_to_VarSymbs V ∪ boundVars t ∪ boundVars s`.
+
+    Taking `avoid` as a parameter is what makes symmetry's peel case tractable: `eqRecPeelA … a b`
+    and `eqRecPeelA … b a` at the SAME `avoid` unfold to literally the same `v1`, `v2`, `two_comp`
+    and unpaired terms — those are functions of `avoid` alone — so no rewriting happens inside the
+    unfolded peel at all.  The commutation of the two canonical avoid sets is then a rewrite on a
+    small explicit ARGUMENT, done in `eqRec_symm` rather than inside the peel. -/
+def eqRecPeelA {σ : Signature} (V : VarCtx) (S : VarType) (z : VarSymb) (V1 V2 : VarType)
     (hzmem : (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ V.1)
-    (t s : Term σ V S) : WFF σ V :=
+    (avoid : Finset VarSymb) (h_avoid_V : VarCtx_to_VarSymbs V ⊆ avoid)
+    (t s : Term σ V S)
+    (h_avoid_t : Term.boundVars t ⊆ avoid) (h_avoid_s : Term.boundVars s ⊆ avoid) : WFF σ V :=
   let V₀ := VarCtx_erase V ⟨z, V1.VTypeProd V2⟩
   have hz_fresh : z ∉ VarCtx_to_VarSymbs V₀ := VarCtx_erase_fresh hzmem
   have V_eq : VarCtx_insert ⟨z, V1.VTypeProd V2⟩ V₀ hz_fresh = V :=
     VarCtx_insert_erase hzmem hz_fresh
-  let avoid : Finset VarSymb :=
-    VarCtx_to_VarSymbs V ∪ Term.boundVars t ∪ Term.boundVars s
   let v1 : VarSymb := VarSymb.fresh avoid
   have hv1_avoid : v1 ∉ avoid := VarSymb.fresh_not_mem _
   let v2 : VarSymb := VarSymb.fresh (insert v1 avoid)
   have hv2_avoid_v1 : v2 ∉ insert v1 avoid := VarSymb.fresh_not_mem _
   have hv2_avoid : v2 ∉ avoid := fun h => hv2_avoid_v1 (Finset.mem_insert_of_mem h)
   have hv1v2 : v1 ≠ v2 := fun h => hv2_avoid_v1 (h ▸ Finset.mem_insert_self _ _)
-  have h_avoid_V : VarCtx_to_VarSymbs V ⊆ avoid := fun _ h =>
-    Finset.mem_union_left _ (Finset.mem_union_left _ h)
-  have h_avoid_t : Term.boundVars t ⊆ avoid := fun _ h =>
-    Finset.mem_union_left _ (Finset.mem_union_right _ h)
-  have h_avoid_s : Term.boundVars s ⊆ avoid := fun _ h => Finset.mem_union_right _ h
   have hv1_V : v1 ∉ VarCtx_to_VarSymbs V := fun h => hv1_avoid (h_avoid_V h)
   have hv2_V : v2 ∉ VarCtx_to_VarSymbs V := fun h => hv2_avoid (h_avoid_V h)
   have hv1_V₀ : v1 ∉ VarCtx_to_VarSymbs V₀ :=
@@ -416,15 +421,17 @@ theorem diaCast_self {σ : Signature} {A : VarType} {x : VarSymb × VarType} {V 
 
 /-- Reflexivity for the PEEL branch, given the induction hypothesis at strictly smaller
     `pairDepth` (which is where the peel recurses). -/
-theorem eqRecPeel_refl {σ : Signature} (V : VarCtx) (S : VarType) (z : VarSymb) (V1 V2 : VarType)
-    (hzmem : (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ V.1) (t : Term σ V S)
+theorem eqRecPeelA_refl {σ : Signature} (V : VarCtx) (S : VarType) (z : VarSymb) (V1 V2 : VarType)
+    (hzmem : (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ V.1)
+    (avoid : Finset VarSymb) (h_avoid_V : VarCtx_to_VarSymbs V ⊆ avoid)
+    (t : Term σ V S) (h_avoid_t : Term.boundVars t ⊆ avoid)
     (IH : ∀ (W : VarCtx), W.pairDepth < V.pairDepth → ∀ (u : Term σ W S),
             Nonempty (Proof σ W ∅ (eqRec W S u u))) :
-    Nonempty (Proof σ V ∅ (eqRecPeel V S z V1 V2 hzmem t t)) := by
-  unfold eqRecPeel
+    Nonempty (Proof σ V ∅
+      (eqRecPeelA V S z V1 V2 hzmem avoid h_avoid_V t t h_avoid_t h_avoid_t)) := by
+  unfold eqRecPeelA
   obtain ⟨p⟩ := IH _ (VarCtx.pairDepth_unpair_lt hzmem _ _ _) _
   exact ⟨Proof.ctx_cast (VarCtx_insert_erase hzmem (VarCtx_erase_fresh hzmem)) (Proof.peelWrapI p)⟩
-
 /-- Reflexivity for the PAIR-FREE CORE, given the induction hypothesis at strictly smaller type
     (which is where the core recurses). -/
 theorem eqRecCore_refl {σ : Signature} : ∀ (V : VarCtx) (S : VarType)
@@ -456,7 +463,7 @@ theorem eqRec_refl {σ : Signature} : ∀ (V : VarCtx) (S : VarType) (t : Term �
   | V, S, t => by
     unfold eqRec
     split
-    · exact eqRecPeel_refl _ _ _ _ _ _ t (fun W hW u => eqRec_refl W S u)
+    · exact eqRecPeelA_refl _ _ _ _ _ _ _ _ t _ (fun W hW u => eqRec_refl W S u)
     · exact eqRecCore_refl _ _ _ t (fun A hA W u => eqRec_refl W A u)
 termination_by V S _ => (sizeOf S, V.pairDepth)
 decreasing_by
@@ -600,12 +607,8 @@ theorem eqRecCore_symm {σ : Signature}
   | _, _, hfp, _, .pair_elim _ _ _ _ _ _ _ _ w₂eq _, _ =>
       (VarCtx.firstPairVar_none_no_pair hfp (pair_elim_ctx_mem w₂eq)).elim
 
-/-- **Symmetry at the `eqRec` level, for a pair-free context.**  (The remaining case — a context
-    WITH a product variable — needs the peel's fresh names to agree between `eqRecPeel … a b` and
-    `eqRecPeel … b a`; their `avoid` sets are `… ∪ boundVars a ∪ boundVars b` and
-    `… ∪ boundVars b ∪ boundVars a`, equal as `Finset`s but not syntactically, so it needs
-    `eqRecPeel` generalised over its fresh names.  Reflexivity is unaffected, since there both
-    sides use the same term and hence literally the same `avoid`.) -/
+/-- **Symmetry at the `eqRec` level, for a pair-free context** (superseded by `eqRec_symm`, which
+    covers every context; kept because it is the form the core case is stated in). -/
 theorem eqRec_symm_of_none {σ : Signature}
     (hVarSymm : ∀ (W : VarCtx), W.firstPairVar = none → ∀ (u v : Term σ W .Var),
       Nonempty (Proof σ W ∅ ((WFF.eq u v).imp (WFF.eq v u))))
@@ -722,37 +725,6 @@ def Proof.congPeel {σ : Signature} {V₀ : VarCtx} {S1 S2 : VarType} {w1 w2 z :
         (peelWrap V₀ S1 S2 w1 w2 z hw1 hw2 hw hz ψ)) :=
   Proof.congPairElim _ _ _ _ _ _ _ rfl rfl h
 
-/- **STATUS of symmetry's peel case.**  Two of the three ingredients are DONE.
-
-   (1) FRESH NAMES — solved.  `eqRecPeel … a b` and `… b a` choose from `… ∪ boundVars a ∪ boundVars b`
-   and `… ∪ boundVars b ∪ boundVars a`; after `unfold eqRecPeel`,
-
-     simp only [Finset.union_right_comm (VarCtx_to_VarSymbs V) (Term.boundVars b) (Term.boundVars a)]
-
-   rewrites all occurrences simultaneously (motive-correct: each feeds `VarSymb.fresh avoid` or a
-   proof about it).  VERIFIED from the goal: both sides then carry the SAME fresh names, `two_comp`
-   and unpaired terms, differing only in the inner `eqRec`'s argument order.  NB plain `rw` fails
-   here on the body's `have`s — `simp only` is required.
-
-   (2) SHAPE — done.  `eqRecPeel` now ends in `peelWrap` (above), whose base context and component
-   TYPES are explicit arguments, so its equation mentions `peelWrap` directly; `Proof.peelWrapI` and
-   `Proof.congPeel` are the matching intro/congruence rules, and `WFF_ctx_cast_imp` +
-   `Proof.ctx_cast (VarCtx_insert_erase hzmem (VarCtx_erase_fresh hzmem))` handle the `V_eq ▸`
-   transport (the transport equality must be supplied EXPLICITLY — `h ▸ ?φ =?= goal` is
-   higher-order).
-
-   (3) The remaining gap is ONLY elaboration: `apply`/`refine`/`exact Proof.congPeel` against the
-   unfolded peel still fails, even though the goal and `congPeel`'s conclusion print as structurally
-   identical `peelWrap` applications with the same visible arguments.  The residual difference is in
-   the elided proof arguments, which `congPeel` forces to be shared between its two `peelWrap`s.
-   Approaches already tried and rejected: `apply`, `refine … ?_`, `exact` with the IH inline, naming
-   `V`/`W₁`/`S1`/`S2`, `rfl rfl` for the context equations, and explicit binder pairs.  A different
-   technique is needed — most likely restating the congruence so the two `peelWrap`s may carry
-   DISTINCT (propositionally equal) proof arguments, or driving it through `conv`/`Nonempty.map`
-   rather than unification against the whole goal.
-
-   Reflexivity is unaffected and complete: there both sides use the same term, hence literally the
-   same `avoid`. -/
 
 /-! ## Leibniz
 
@@ -775,4 +747,37 @@ theorem eqRec_leibniz_Var {σ : Signature} {V : VarCtx} (hfp : V.firstPairVar = 
   exact ⟨Proof.imp_intro (Proof.imp_intro
     (Proof.eq_elim ⟨x, VarType.Var⟩ hx a b (Proof.ax (by simp)) (Proof.ax (by simp))))⟩
 
+
+
+theorem eqRecPeelA_symm {σ : Signature} (V : VarCtx) (S : VarType) (z : VarSymb) (V1 V2 : VarType)
+    (hzmem : (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ V.1)
+    (avoid : Finset VarSymb) (h_avoid_V : VarCtx_to_VarSymbs V ⊆ avoid)
+    (a b : Term σ V S) (ha : Term.boundVars a ⊆ avoid) (hb : Term.boundVars b ⊆ avoid)
+    (IH : ∀ (W : VarCtx), W.pairDepth < V.pairDepth → ∀ (u v : Term σ W S),
+            Nonempty (Proof σ W ∅ ((eqRec W S u v).imp (eqRec W S v u)))) :
+    Nonempty (Proof σ V ∅
+      ((eqRecPeelA V S z V1 V2 hzmem avoid h_avoid_V a b ha hb).imp
+       (eqRecPeelA V S z V1 V2 hzmem avoid h_avoid_V b a hb ha))) := by
+  unfold eqRecPeelA
+  rw [← WFF_ctx_cast_imp]
+  refine ⟨Proof.ctx_cast (VarCtx_insert_erase hzmem (VarCtx_erase_fresh hzmem)) ?_⟩
+  apply Proof.congPeel
+  exact (IH _ (VarCtx.pairDepth_unpair_lt hzmem _ _ _) _ _).some
+
+/-- **Symmetry of the defined equality**: `⊢ (a ≐ b) → (b ≐ a)`, at every type and every context. -/
+theorem eqRec_symm {σ : Signature} : ∀ (V : VarCtx) (S : VarType) (a b : Term σ V S),
+    Nonempty (Proof σ V ∅ ((eqRec V S a b).imp (eqRec V S b a)))
+  | V, S, a, b => by
+    unfold eqRec
+    split
+    · have h : VarCtx_to_VarSymbs V ∪ Term.boundVars b ∪ Term.boundVars a
+             = VarCtx_to_VarSymbs V ∪ Term.boundVars a ∪ Term.boundVars b :=
+        Finset.union_right_comm _ _ _
+      simp only [h]
+      exact eqRecPeelA_symm _ _ _ _ _ _ _ _ a b _ _ (fun W hW u v => eqRec_symm W S u v)
+    · exact eqRecCore_symm varSymm _ _ _ a b (fun A hA W u v => eqRec_symm W A u v)
+termination_by V S _ _ => (sizeOf S, V.pairDepth)
+decreasing_by
+  · exact Prod.Lex.right _ hW
+  · exact Prod.Lex.left _ _ hA
 
