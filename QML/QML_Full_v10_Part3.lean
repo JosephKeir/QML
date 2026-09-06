@@ -480,14 +480,15 @@ equality UNDER a `□`/`□_x` — which needs K distribution, not just necessit
 def Proof.cast_ctx {σ : Signature} {V : VarCtx} {Γ Γ' : Finset (WFF σ V)} {φ : WFF σ V}
     (h : Γ = Γ') (p : Proof σ V Γ φ) : Proof σ V Γ' φ := h ▸ p
 
-def Proof.impId {σ : Signature} {V : VarCtx} {φ : WFF σ V} : Proof σ V ∅ (φ.imp φ) :=
+def Proof.impId {σ : Signature} {V : VarCtx} {Γ : Finset (WFF σ V)} {φ : WFF σ V} :
+    Proof σ V Γ (φ.imp φ) :=
   Proof.imp_intro (Proof.ax (by simp))
 
 /-- `∧`-congruence. -/
-def Proof.congAnd {σ : Signature} {V : VarCtx} {p p' q q' : WFF σ V}
-    (hp : Proof σ V ∅ (p.imp p')) (hq : Proof σ V ∅ (q.imp q')) :
-    Proof σ V ∅ ((p.and q).imp (p'.and q')) := by
-  have hax : Proof σ V (∅ ∪ {p.and q}) (p.and q) := Proof.ax (by simp)
+def Proof.congAnd {σ : Signature} {V : VarCtx} {Γ : Finset (WFF σ V)} {p p' q q' : WFF σ V}
+    (hp : Proof σ V Γ (p.imp p')) (hq : Proof σ V Γ (q.imp q')) :
+    Proof σ V Γ ((p.and q).imp (p'.and q')) := by
+  have hax : Proof σ V (Γ ∪ {p.and q}) (p.and q) := Proof.ax (by simp)
   exact Proof.imp_intro (Proof.and_intro
     (Proof.imp_elim (Proof.weak hp) (Proof.and_elim_l hax))
     (Proof.imp_elim (Proof.weak hq) (Proof.and_elim_r hax)))
@@ -781,3 +782,440 @@ decreasing_by
   · exact Prod.Lex.right _ hW
   · exact Prod.Lex.left _ _ hA
 
+
+/-! ### Propositional congruences (for Leibniz's easy cases) -/
+/-! ### Propositional congruences (for Leibniz's easy cases).
+
+All stated at an ARBITRARY hypothesis set `Γ` — Leibniz carries the equation `a ≐ b` as a
+hypothesis rather than as an antecedent (that is the form `K_box`/`K_dia` transport through a
+modality), so its connective cases need these at `Γ = {a ≐ b}`. -/
+
+/-- `∨`-congruence. -/
+def Proof.congOr {σ : Signature} {V : VarCtx} {Γ : Finset (WFF σ V)} {p p' q q' : WFF σ V}
+    (hp : Proof σ V Γ (p.imp p')) (hq : Proof σ V Γ (q.imp q')) :
+    Proof σ V Γ ((p.or q).imp (p'.or q')) := by
+  have hdisj : Proof σ V (Γ ∪ {p.or q}) (p.or q) := Proof.ax (by simp)
+  refine Proof.imp_intro (Proof.or_elim hdisj ?_ ?_)
+  · have hax : Proof σ V ((Γ ∪ {p.or q}) ∪ {p}) p := Proof.ax (by simp)
+    have hpw : Proof σ V ((Γ ∪ {p.or q}) ∪ {p}) (p.imp p') := Proof.weak (Proof.weak hp)
+    exact Proof.or_intro_l (Proof.imp_elim hpw hax)
+  · have hax : Proof σ V ((Γ ∪ {p.or q}) ∪ {q}) q := Proof.ax (by simp)
+    have hqw : Proof σ V ((Γ ∪ {p.or q}) ∪ {q}) (q.imp q') := Proof.weak (Proof.weak hq)
+    exact Proof.or_intro_r (Proof.imp_elim hqw hax)
+
+/-- `→`-congruence.  Note it is CONTRAVARIANT in the antecedent — which is exactly why Leibniz's
+    `imp` case needs symmetry (to get the reversed direction on the antecedent). -/
+def Proof.congImp {σ : Signature} {V : VarCtx} {Γ : Finset (WFF σ V)} {p p' q q' : WFF σ V}
+    (hp : Proof σ V Γ (p'.imp p)) (hq : Proof σ V Γ (q.imp q')) :
+    Proof σ V Γ ((p.imp q).imp (p'.imp q')) := by
+  refine Proof.imp_intro (Proof.imp_intro ?_)
+  have hp_ : Proof σ V ((Γ ∪ {p.imp q}) ∪ {p'}) p :=
+    Proof.imp_elim (Proof.weak (Proof.weak hp)) (Proof.ax (by simp))
+  have hq_ : Proof σ V ((Γ ∪ {p.imp q}) ∪ {p'}) q :=
+    Proof.imp_elim (Proof.ax (by simp)) hp_
+  exact Proof.imp_elim (Proof.weak (Proof.weak hq)) hq_
+
+/-- Cut. -/
+def Proof.cut {σ : Signature} {V : VarCtx} {Γ : Finset (WFF σ V)} {φ ψ : WFF σ V}
+    (h1 : Proof σ V Γ φ) (h2 : Proof σ V (Γ ∪ {φ}) ψ) : Proof σ V Γ ψ :=
+  Proof.imp_elim (Proof.imp_intro h2) h1
+/-- Replace the single hypothesis `φ` by anything that entails it. -/
+def Proof.reHyp {σ : Signature} {V : VarCtx} {φ φ' ψ : WFF σ V}
+    (h : Proof σ V ∅ (φ'.imp φ)) (p : Proof σ V {φ} ψ) : Proof σ V {φ'} ψ := by
+  have hax : Proof σ V {φ'} φ' := Proof.ax (by simp)
+  have hw : Proof σ V {φ'} (φ'.imp φ) := Proof.cast_ctx (by simp) (Proof.weak (ψ := φ') h)
+  have hφ : Proof σ V {φ'} φ := Proof.imp_elim hw hax
+  have hi : Proof σ V ∅ (φ.imp ψ) := Proof.imp_intro (Proof.cast_ctx (by simp) p)
+  exact Proof.imp_elim (Proof.cast_ctx (by simp) (Proof.weak (ψ := φ') hi)) hφ
+
+/-! ## Leibniz substitution for the defined equality
+
+With equality DEFINED (`eqRec`), the primitive `eq_elim` survives only at `.Var`.  Its full
+strength has to come back as a THEOREM: `a ≐ b ⊢ φ[a] → φ[b]` at every type.  The induction is on
+the shape of `φ`, not on the type — connectives recurse, quantifiers pass through, and the modal
+constructors are where the defining equations `box_ext`/`dia_ext` are consumed.
+
+`Leib` states one instance.  The equation sits in the HYPOTHESIS SET rather than as an antecedent:
+that is the form `K_box`/`K_dia` transport through a modality, so the box case can hand the inner
+instance straight to `K_box`. -/
+
+/-- Leibniz's law for the single formula `φ`: from `a ≐ b`, `φ[a] → φ[b]`. -/
+def Leib {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
+    (hx : x ∉ VarCtx_to_VarSymbs V) (a b : Term σ V S)
+    (φ : WFF σ (VarCtx_insert ⟨x, S⟩ V hx)) : Prop :=
+  Nonempty (Proof σ V {eqRec V S a b} ((WFF.substVar hx a φ).imp (WFF.substVar hx b φ)))
+
+/-! ### Propositional cases.
+
+All four are immediate: the `substVar` reduction lemma splits both sides, and the matching
+congruence closes the goal at `Γ = {a ≐ b}`.  Only `imp` is not a plain recursion — being
+contravariant in its antecedent it needs the REVERSED instance, which `eqRec_symm` supplies. -/
+
+theorem Leib.top {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
+    {hx : x ∉ VarCtx_to_VarSymbs V} (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    (a b : Term σ V S) : Leib hx a b WFF.top := by
+  unfold Leib
+  rw [WFF.substVar_top hx a hpf, WFF.substVar_top hx b hpf]
+  exact ⟨Proof.impId⟩
+
+theorem Leib.bot {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
+    {hx : x ∉ VarCtx_to_VarSymbs V} (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    (a b : Term σ V S) : Leib hx a b WFF.bot := by
+  unfold Leib
+  rw [WFF.substVar_bot hx a hpf, WFF.substVar_bot hx b hpf]
+  exact ⟨Proof.impId⟩
+
+theorem Leib.and {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
+    {hx : x ∉ VarCtx_to_VarSymbs V} (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    {a b : Term σ V S} {φ ψ : WFF σ (VarCtx_insert ⟨x, S⟩ V hx)}
+    (ihφ : Leib hx a b φ) (ihψ : Leib hx a b ψ) : Leib hx a b (φ.and ψ) := by
+  unfold Leib at *
+  rw [WFF.substVar_and hx a hpf φ ψ, WFF.substVar_and hx b hpf φ ψ]
+  exact ⟨Proof.congAnd ihφ.some ihψ.some⟩
+
+theorem Leib.or {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
+    {hx : x ∉ VarCtx_to_VarSymbs V} (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    {a b : Term σ V S} {φ ψ : WFF σ (VarCtx_insert ⟨x, S⟩ V hx)}
+    (ihφ : Leib hx a b φ) (ihψ : Leib hx a b ψ) : Leib hx a b (φ.or ψ) := by
+  unfold Leib at *
+  rw [WFF.substVar_or hx a hpf φ ψ, WFF.substVar_or hx b hpf φ ψ]
+  exact ⟨Proof.congOr ihφ.some ihψ.some⟩
+
+/-- The `→` case.  Contravariance means the antecedent needs the instance the OTHER way round;
+    `eqRec_symm` converts the hypothesis `a ≐ b` into the `b ≐ a` that instance expects. -/
+theorem Leib.imp {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
+    {hx : x ∉ VarCtx_to_VarSymbs V} (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    {a b : Term σ V S} {φ ψ : WFF σ (VarCtx_insert ⟨x, S⟩ V hx)}
+    (ihφ : Leib hx b a φ) (ihψ : Leib hx a b ψ) : Leib hx a b (φ.imp ψ) := by
+  unfold Leib at *
+  rw [WFF.substVar_imp hx a hpf φ ψ, WFF.substVar_imp hx b hpf φ ψ]
+  exact ⟨Proof.congImp (Proof.reHyp (eqRec_symm V S a b).some ihφ.some) ihψ.some⟩
+
+/-! ### Modal congruences at an arbitrary hypothesis set.
+
+The `∅` versions above suffice for symmetry, where the equation is an antecedent.  Leibniz keeps
+the equation in `Γ`, and this is precisely the form `K_box`/`K_dia` were built for: they carry a
+hypothesis SET through the modality, turning the inner equation into `□(t₁ ≐ t₂)` — which, by the
+defining equation `eqRec_box`, IS the outer equation at `□A`.  So the box case of Leibniz is just
+`K_box` applied to the inner instance. -/
+
+/-- `Γ ⊢ φ → ψ` gives `□Γ ⊢ □φ → □ψ`. -/
+def Proof.congBoxG {σ : Signature} {V W : VarCtx} {Γ : Finset (WFF σ V)} {φ ψ : WFF σ V}
+    (hsub : (VarCtx_box V).1 ⊆ W.1)
+    (h : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V).1)
+    (hφψ : Proof σ V Γ (φ.imp ψ)) :
+    Proof σ W (WFF.box_Finset hsub h Γ) ((WFF.box φ hsub h).imp (WFF.box ψ hsub h)) := by
+  have h1 : Proof σ V (Γ ∪ {φ}) ψ := Proof.imp_elim (Proof.weak hφψ) (Proof.ax (by simp))
+  have hK := Proof.K_box hsub h h1
+  rw [show WFF.box_Finset hsub h (Γ ∪ {φ})
+        = WFF.box_Finset hsub h Γ ∪ {WFF.box φ hsub h} by
+      simp [WFF.box_Finset, Finset.image_union]] at hK
+  exact Proof.imp_intro hK
+
+/-- `Δ ⊢ φ → ψ` gives `□_xΔ ⊢ □_xφ → □_xψ`. -/
+def Proof.congBoxxG {σ : Signature} {V W : VarCtx} {x : VarSymb × VarType}
+    {hx : x.1 ∉ VarCtx_to_VarSymbs V} {Δ : Finset (WFF σ (VarCtx_insert x V hx))}
+    {φ ψ : WFF σ (VarCtx_insert x V hx)}
+    (hsub : (VarCtx_dia x V hx).1 ⊆ W.1)
+    (h : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x V hx).1)
+    (hφψ : Proof σ (VarCtx_insert x V hx) Δ (φ.imp ψ)) :
+    Proof σ W (WFF.box_x_Finset x hx hsub h Δ)
+      ((WFF.box_x x hx hsub h φ).imp (WFF.box_x x hx hsub h ψ)) := by
+  -- `¬ψ ⊢ ¬φ` in the inner context, then `K_dia` with `Γ = ∅` and the given `Δ`.
+  have hnn : Proof σ (VarCtx_insert x V hx) (Δ ∪ {neg ψ}) (neg φ) :=
+    Proof.imp_intro (Proof.imp_elim (Proof.ax (by simp))
+      (Proof.imp_elim (Proof.weak (Proof.weak hφψ)) (Proof.ax (by simp))))
+  have hK := Proof.K_dia (Γ := (∅ : Finset (WFF σ V))) (Δ := Δ) x hx hsub h
+    (by simpa [WFF.ctx_ext_Finset] using hnn)
+  simp only [WFF.box_Finset, Finset.image_empty, Finset.empty_union] at hK
+  refine Proof.imp_intro (Proof.imp_intro ?_)
+  have hd : Proof σ W ((WFF.box_x_Finset x hx hsub h Δ ∪ {WFF.box_x x hx hsub h φ})
+      ∪ {WFF.dia x hx (neg ψ) hsub h}) (WFF.dia x hx (neg φ) hsub h) :=
+    Proof.cast_ctx (by
+      rw [Finset.union_right_comm]) (Proof.weak (ψ := WFF.box_x x hx hsub h φ) hK)
+  have hbx : Proof σ W ((WFF.box_x_Finset x hx hsub h Δ ∪ {WFF.box_x x hx hsub h φ})
+      ∪ {WFF.dia x hx (neg ψ) hsub h}) (WFF.box_x x hx hsub h φ) := Proof.ax (by simp)
+  exact Proof.imp_elim hbx hd
+
+/-! ### The `box` case — where `box_ext` is consumed.
+
+This is the case the whole reform is aimed at.  `eqRec` at `□A` IS `□` of the inner equality
+(`eqRec_box`), and `substVar` of a `boxterm` into a `box` IS `box` of the inner substitution
+(`substVar_boxterm_box_gen_base`), with the substituted variable UNBOXED inside.  So both sides
+of the goal are `□` of the inner Leibniz instance, and `K_box` — in its hypothesis-set form
+`congBoxG` — carries the inner instance out.  The recursion drops both the formula (`χ < □χ`) and
+the type (`A < □A`).
+
+The two boxterms share one inner context and one pair of side conditions; that is not a
+restriction but `boxterm_ctx_unique`, which forces it. -/
+
+theorem Leib.box {σ : Signature} {x : VarSymb × VarType} {V W : VarCtx}
+    (hx : x.1 ∉ VarCtx_to_VarSymbs V) (hxW : x.1 ∉ VarCtx_to_VarSymbs W)
+    (hsub : (VarCtx_box V).1 ⊆ W.1)
+    (hnbe : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V).1)
+    (hpfW : (VarCtx_insert ⟨x.1, x.2.VTypeBox⟩ W hxW).firstPairVar = none)
+    (hpf : W.firstPairVar = none)
+    (t s : Term σ V x.2) (χ : WFF σ (VarCtx_insert x V hx))
+    (ih : Leib hx t s χ) :
+    Leib hxW (Term.boxterm t hsub hnbe) (Term.boxterm s hsub hnbe)
+      (WFF.box χ (box_hsub_insert hx hxW hsub) (box_extras_insert hx hxW hnbe)) := by
+  unfold Leib at ih ⊢
+  rw [WFF.substVar_boxterm_box_gen_base hx hxW hsub hnbe hpfW t χ,
+      WFF.substVar_boxterm_box_gen_base hx hxW hsub hnbe hpfW s χ,
+      eqRec_box hpf t s hsub hnbe hsub hnbe, boxCast_id]
+  refine ⟨Proof.cast_ctx ?_ (Proof.congBoxG hsub hnbe ih.some)⟩
+  simp [WFF.box_Finset]
+
+/-- `Δ ⊢ φ → ψ` gives `□_xΔ ⊢ ◇_xφ → ◇_xψ` — `K_dia` with the plain-`□` slot empty. -/
+def Proof.congDiaG {σ : Signature} {V W : VarCtx} {x : VarSymb × VarType}
+    {hx : x.1 ∉ VarCtx_to_VarSymbs V} {Δ : Finset (WFF σ (VarCtx_insert x V hx))}
+    {φ ψ : WFF σ (VarCtx_insert x V hx)}
+    (hsub : (VarCtx_dia x V hx).1 ⊆ W.1)
+    (h : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x V hx).1)
+    (hφψ : Proof σ (VarCtx_insert x V hx) Δ (φ.imp ψ)) :
+    Proof σ W (WFF.box_x_Finset x hx hsub h Δ)
+      ((WFF.dia x hx φ hsub h).imp (WFF.dia x hx ψ hsub h)) := by
+  have h1 : Proof σ (VarCtx_insert x V hx) (Δ ∪ {φ}) ψ :=
+    Proof.imp_elim (Proof.weak hφψ) (Proof.ax (by simp))
+  have hK := Proof.K_dia (Γ := (∅ : Finset (WFF σ V))) (Δ := Δ) x hx hsub h
+    (by simpa [WFF.ctx_ext_Finset] using h1)
+  simp only [WFF.box_Finset, Finset.image_empty, Finset.empty_union] at hK
+  exact Proof.imp_intro hK
+
+/-! ### The `dia` case — modal β, and where `dia_ext` is consumed.
+
+The `◇` analogue of `Leib.box`, but genuinely different in shape: the substituted variable IS the
+`◇`-binder's witness, so `substVar` performs a modal-β reduction — the outer `◇_xv` binder is
+REPLACED by the substituted diaterm's own witness `xv_s`, and the body is reordered accordingly
+(`WFF.dia_arm_case3_reorder`).  Meanwhile `eqRec` at `◇A` is a `□_xv_s` of the inner equality, and
+`□_xv_s` is exactly `K_dia`'s witnessed-hypothesis slot.  So the two fit together: `congDiaG`
+carries the inner instance out through the `◇`.
+
+Both diaterms carry the SAME witness `xv_s` — for different witnesses `eqRec` is `⊥`
+(`eqRecCore_dia_ne`) and the instance is vacuous. -/
+
+theorem Leib.dia {σ : Signature} {V_inner W : VarCtx}
+    (xv : VarSymb × VarType) (hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner)
+    (hxW : xv.1 ∉ VarCtx_to_VarSymbs W)
+    (xv_s : VarSymb × VarType) (hxv_s : xv_s.1 ∉ VarCtx_to_VarSymbs V_inner)
+    (h_ne : xv.1 ≠ xv_s.1)
+    (tt tt' : Term σ (VarCtx_insert xv_s V_inner hxv_s) xv.2)
+    (hsub_s : (VarCtx_dia xv_s V_inner hxv_s).1 ⊆ W.1)
+    (h_s : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv_s V_inner hxv_s).1)
+    (hpfW : (VarCtx_insert ⟨xv.1, xv.2.VTypeDia⟩ W hxW).firstPairVar = none)
+    (hpf : W.firstPairVar = none)
+    (ψ : WFF σ (VarCtx_insert xv V_inner hxv))
+    (hsub : (VarCtx_dia xv V_inner hxv).1
+              ⊆ (VarCtx_insert ⟨xv.1, xv.2.VTypeDia⟩ W hxW).1)
+    (hextras : ∀ p ∈ (VarCtx_insert ⟨xv.1, xv.2.VTypeDia⟩ W hxW).1,
+                VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv V_inner hxv).1)
+    (ih : Leib (WFF.dia_arm_case3_reorder xv xv_s hxv hxv_s h_ne rfl ψ).1 tt tt'
+              (WFF.dia_arm_case3_reorder xv xv_s hxv hxv_s h_ne rfl ψ).2.1) :
+    Leib hxW (Term.diaterm xv_s hxv_s tt hsub_s h_s)
+             (Term.diaterm xv_s hxv_s tt' hsub_s h_s)
+      (WFF.dia xv hxv ψ hsub hextras) := by
+  unfold Leib at ih ⊢
+  rw [WFF.substVar_diaterm_dia_gen_base xv hxv hxW xv_s hxv_s h_ne tt hsub_s h_s hpfW
+        ψ hsub hextras,
+      WFF.substVar_diaterm_dia_gen_base xv hxv hxW xv_s hxv_s h_ne tt' hsub_s h_s hpfW
+        ψ hsub hextras,
+      eqRec_dia_same hpf tt tt' hsub_s h_s hsub_s h_s rfl, diaCast_id]
+  refine ⟨Proof.cast_ctx ?_ (Proof.congDiaG hsub_s h_s ih.some)⟩
+  simp [WFF.box_x_Finset]
+
+/-! ## Reflecting a free variable back into a term (`Term.eta`)
+
+`Term.var` is deliberately `.Var`-only, so a free variable of higher type has no *immediate* term
+form.  It does have a canonical one, built by recursion on the TYPE — a product variable is
+destructured and repaired, a `□`/`◇` variable is re-wrapped with itself as the inner (resp.
+witness) variable.  This is what `all_elim` needs in order to instantiate a quantifier at a fresh
+free variable, which in turn is what Leibniz's `all`/`ex` cases need:
+
+    assume `P → Q` and `∀x:A. P`;  extend the context by a fresh `y : A`;
+    `all_elim` at `η y` gives `P`;  modus ponens gives `Q`;  `all_intro` on `y` gives `∀y:A. Q`.
+
+Note this does NOT say every bound variable has a term — only every FREE one.
+
+The `□`/`◇` cases need the inverse of `VarCtx_box`: the inner context a `boxterm` in ambient `W`
+must have, which by `boxterm_ctx_unique` is forced to be exactly `W`'s box-typed part, unboxed. -/
+/-- Strip one `□`. -/
+def VarType.debox : VarType → VarType
+  | .VTypeBox S => S
+  | S           => S
+
+@[simp] theorem VarType.debox_box (S : VarType) : (VarType.VTypeBox S).debox = S := rfl
+
+def VarCtx_unbox (W : VarCtx) : VarCtx := by
+  refine ⟨(W.1.filter (fun p => p.2.isBox)).image
+            (fun p => (⟨p.1, p.2.debox⟩ : VarSymb × VarType)), ?_⟩
+  intro v hv w hw heq
+  rcases Finset.mem_image.mp hv with ⟨⟨av, aS⟩, hav, rfl⟩
+  rcases Finset.mem_image.mp hw with ⟨⟨bv, bS⟩, hbw, rfl⟩
+  exact congrArg VarType.debox
+    (W.2 ⟨av, aS⟩ (Finset.mem_filter.mp hav).1 ⟨bv, bS⟩ (Finset.mem_filter.mp hbw).1 heq)
+
+theorem mem_VarCtx_unbox {W : VarCtx} {v : VarSymb} {S : VarType}
+    (hmem : (⟨v, S.VTypeBox⟩ : VarSymb × VarType) ∈ W.1) :
+    (⟨v, S⟩ : VarSymb × VarType) ∈ (VarCtx_unbox W).1 :=
+  Finset.mem_image.mpr ⟨⟨v, S.VTypeBox⟩, Finset.mem_filter.mpr ⟨hmem, rfl⟩, rfl⟩
+
+/-- In a pair-free context every box-typed entry is literally a `□`, so `debox` really is inverse
+    to boxing and `VarCtx_box (VarCtx_unbox W)` recovers exactly `W`'s box-typed part. -/
+theorem VarCtx_box_unbox_subset {W : VarCtx} (hpf : W.firstPairVar = none) :
+    (VarCtx_box (VarCtx_unbox W)).1 ⊆ W.1 := by
+  intro p hp
+  rcases Finset.mem_image.mp hp with ⟨⟨av, aS⟩, hav, rfl⟩
+  rcases Finset.mem_image.mp hav with ⟨⟨bv, bS⟩, hbv, hbeq⟩
+  obtain ⟨hbmem, hbbox⟩ := Finset.mem_filter.mp hbv
+  have hv : bv = av := congrArg Prod.fst hbeq
+  have hS : bS.debox = aS := congrArg Prod.snd hbeq
+  subst hv
+  show (⟨bv, aS.VTypeBox⟩ : VarSymb × VarType) ∈ W.1
+  cases bS with
+  | VTypeBox T => cases hS; exact hbmem
+  | VTypeProd T1 T2 => exact (VarCtx.firstPairVar_none_no_pair hpf hbmem).elim
+  | Var => simp [VarType.isBox] at hbbox
+  | VTypeDia T => simp [VarType.isBox] at hbbox
+  | VTypeOne => simp [VarType.isBox] at hbbox
+
+theorem VarCtx_unbox_no_box_extras {W : VarCtx} (hpf : W.firstPairVar = none) :
+    ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box (VarCtx_unbox W)).1 := by
+  rintro ⟨v, S⟩ hmem hbox
+  cases S with
+  | VTypeBox T => exact Finset.mem_image.mpr ⟨⟨v, T⟩, mem_VarCtx_unbox hmem, rfl⟩
+  | VTypeProd T1 T2 => exact (VarCtx.firstPairVar_none_no_pair hpf hmem).elim
+  | Var => simp [VarType.isBox] at hbox
+  | VTypeDia T => simp [VarType.isBox] at hbox
+  | VTypeOne => simp [VarType.isBox] at hbox
+
+/-- A non-box-typed entry's symbol is absent from the unboxed context. -/
+theorem not_mem_VarCtx_unbox {W : VarCtx} {v : VarSymb} {S : VarType}
+    (hmem : (⟨v, S⟩ : VarSymb × VarType) ∈ W.1) (hnb : VarType.isBox S = false) :
+    v ∉ VarCtx_to_VarSymbs (VarCtx_unbox W) := by
+  intro hv
+  rcases Finset.mem_image.mp hv with ⟨p, hp, hpeq⟩
+  rcases Finset.mem_image.mp hp with ⟨q, hq, hqeq⟩
+  obtain ⟨hqmem, hqbox⟩ := Finset.mem_filter.mp hq
+  have hq1 : q.1 = v := by rw [← hpeq, ← hqeq]
+  have hqS : q.2 = S := W.2 q hqmem ⟨v, S⟩ hmem hq1
+  rw [hqS, hnb] at hqbox
+  exact Bool.noConfusion hqbox
+
+/-- Context functionality: a pair variable in `W` is a different variable from any target whose
+    type is not that pair. -/
+theorem eta_pairvar_ne {W : VarCtx} {v z : VarSymb} {T V1 V2 : VarType}
+    (hmem : (⟨v, T⟩ : VarSymb × VarType) ∈ W.1)
+    (hzmem : (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ W.1)
+    (hT : T ≠ V1.VTypeProd V2) : z ≠ v := by
+  rintro rfl
+  exact hT (W.2 ⟨z, T⟩ hmem ⟨z, V1.VTypeProd V2⟩ hzmem rfl)
+
+mutual
+
+/-- **Reflection of a free variable into a term.**  `Term.var` covers only `.Var`; every other
+    type gets its canonical form, by recursion on the TYPE:
+
+    * `.VTypeOne`  — `unit` (the type is a singleton, so this is forced);
+    * `.VTypeProd` — destructure the variable and re-pair the two component reflections;
+    * `.VTypeBox`  — `boxterm` over `VarCtx_unbox W`, the inner context `boxterm_ctx_unique` forces,
+                     with the unboxed variable inside;
+    * `.VTypeDia`  — `diaterm` **with the variable itself as the ◇-witness**.  No rule GENERATES a
+                     possible object, but reading an existing free ◇-variable back out is not
+                     generating one.
+
+    `box`/`dia` cannot be formed over a context holding a pair variable (`no_box_extras` would
+    fail), so those two arms first peel any pair variable away — the same dispatcher/peel shape as
+    `eqRec`, and unary here, so the fresh names come from `W` alone. -/
+def Term.eta {σ : Signature} (W : VarCtx) (v : VarSymb) :
+    (T : VarType) → (⟨v, T⟩ : VarSymb × VarType) ∈ W.1 → Term σ W T
+  | .Var,      hmem => Term.var ⟨v, hmem⟩
+  | .VTypeOne, _    => Term.unit
+  | .VTypeProd A B, hmem =>
+      -- The target IS a pair variable: destructure it and re-pair the component reflections.
+      let V₀ := VarCtx_erase W ⟨v, A.VTypeProd B⟩
+      have hz_fresh : v ∉ VarCtx_to_VarSymbs V₀ := VarCtx_erase_fresh hmem
+      have W_eq : VarCtx_insert ⟨v, A.VTypeProd B⟩ V₀ hz_fresh = W :=
+        VarCtx_insert_erase hmem hz_fresh
+      let v1 : VarSymb := VarSymb.fresh (VarCtx_to_VarSymbs W)
+      have hv1_W : v1 ∉ VarCtx_to_VarSymbs W := VarSymb.fresh_not_mem _
+      let v2 : VarSymb := VarSymb.fresh (insert v1 (VarCtx_to_VarSymbs W))
+      have hv2_i : v2 ∉ insert v1 (VarCtx_to_VarSymbs W) := VarSymb.fresh_not_mem _
+      have hv2_W : v2 ∉ VarCtx_to_VarSymbs W := fun h => hv2_i (Finset.mem_insert_of_mem h)
+      have hv1v2 : v1 ≠ v2 := fun h => hv2_i (h ▸ Finset.mem_insert_self _ _)
+      have hv1_V₀ : v1 ∉ VarCtx_to_VarSymbs V₀ :=
+        fun h => hv1_W (VarCtx_to_VarSymbs_erase_subset h)
+      have hv2_V₀ : v2 ∉ VarCtx_to_VarSymbs V₀ :=
+        fun h => hv2_W (VarCtx_to_VarSymbs_erase_subset h)
+      W_eq ▸ Term.pair_elim ⟨v1, A⟩ ⟨v2, B⟩ v hv1_V₀ hv2_V₀ hv1v2 hz_fresh rfl rfl
+        (Term.pair
+          (Term.eta (VarCtx_insert_twice ⟨v1, A⟩ ⟨v2, B⟩ V₀ hv1_V₀ hv2_V₀ hv1v2) v1 A
+            (Finset.mem_insert_self _ _))
+          (Term.eta (VarCtx_insert_twice ⟨v1, A⟩ ⟨v2, B⟩ V₀ hv1_V₀ hv2_V₀ hv1v2) v2 B
+            (Finset.mem_insert_of_mem (Finset.mem_insert_self _ _))))
+  | .VTypeBox U, hmem =>
+      match hfp : W.firstPairVar with
+      | some ⟨⟨z, V1, V2⟩, hzmem⟩ =>
+          Term.etaPeel W v (.VTypeBox U) hmem z V1 V2 hzmem
+            (eta_pairvar_ne hmem hzmem (fun h => VarType.noConfusion h))
+      | none =>
+          Term.boxterm (Term.eta (VarCtx_unbox W) v U (mem_VarCtx_unbox hmem))
+            (VarCtx_box_unbox_subset hfp) (VarCtx_unbox_no_box_extras hfp)
+  | .VTypeDia U, hmem =>
+      match hfp : W.firstPairVar with
+      | some ⟨⟨z, V1, V2⟩, hzmem⟩ =>
+          Term.etaPeel W v (.VTypeDia U) hmem z V1 V2 hzmem
+            (eta_pairvar_ne hmem hzmem (fun h => VarType.noConfusion h))
+      | none =>
+          have hfresh : v ∉ VarCtx_to_VarSymbs (VarCtx_unbox W) :=
+            not_mem_VarCtx_unbox hmem rfl
+          Term.diaterm ⟨v, U⟩ hfresh
+            (Term.eta (VarCtx_insert ⟨v, U⟩ (VarCtx_unbox W) hfresh) v U
+              (Finset.mem_insert_self _ _))
+            (by
+              intro p hp
+              rcases Finset.mem_insert.mp hp with rfl | hrest
+              · exact hmem
+              · exact VarCtx_box_unbox_subset hfp hrest)
+            (fun p hp hbox =>
+              Finset.mem_insert_of_mem (VarCtx_unbox_no_box_extras hfp p hp hbox))
+termination_by T _ => (sizeOf T, W.pairDepth, 1)
+decreasing_by
+  all_goals
+    first
+      | (apply Prod.Lex.left; simp_wf; omega)
+      | (apply Prod.Lex.left; simp_wf; done)
+      | (apply Prod.Lex.right; apply Prod.Lex.right; simp_wf; omega)
+      | (apply Prod.Lex.right; apply Prod.Lex.right; simp_wf; done)
+
+/-- Peel a pair variable `⟨z, V1×V2⟩` (with `z ≠ v`) out of `W`, reflect the target in the peeled
+    context, and re-pair.  Needed because `box`/`dia` cannot be formed while a pair variable is
+    in the ambient context. -/
+def Term.etaPeel {σ : Signature} (W : VarCtx) (v : VarSymb) (T : VarType)
+    (hmem : (⟨v, T⟩ : VarSymb × VarType) ∈ W.1)
+    (z : VarSymb) (V1 V2 : VarType)
+    (hzmem : (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ W.1)
+    (hzv : z ≠ v) : Term σ W T :=
+  let V₀ := VarCtx_erase W ⟨z, V1.VTypeProd V2⟩
+  have hz_fresh : z ∉ VarCtx_to_VarSymbs V₀ := VarCtx_erase_fresh hzmem
+  have W_eq : VarCtx_insert ⟨z, V1.VTypeProd V2⟩ V₀ hz_fresh = W :=
+    VarCtx_insert_erase hzmem hz_fresh
+  let v1 : VarSymb := VarSymb.fresh (VarCtx_to_VarSymbs W)
+  have hv1_W : v1 ∉ VarCtx_to_VarSymbs W := VarSymb.fresh_not_mem _
+  let v2 : VarSymb := VarSymb.fresh (insert v1 (VarCtx_to_VarSymbs W))
+  have hv2_i : v2 ∉ insert v1 (VarCtx_to_VarSymbs W) := VarSymb.fresh_not_mem _
+  have hv2_W : v2 ∉ VarCtx_to_VarSymbs W := fun h => hv2_i (Finset.mem_insert_of_mem h)
+  have hv1v2 : v1 ≠ v2 := fun h => hv2_i (h ▸ Finset.mem_insert_self _ _)
+  have hv1_V₀ : v1 ∉ VarCtx_to_VarSymbs V₀ :=
+    fun h => hv1_W (VarCtx_to_VarSymbs_erase_subset h)
+  have hv2_V₀ : v2 ∉ VarCtx_to_VarSymbs V₀ :=
+    fun h => hv2_W (VarCtx_to_VarSymbs_erase_subset h)
+  W_eq ▸ Term.pair_elim ⟨v1, V1⟩ ⟨v2, V2⟩ z hv1_V₀ hv2_V₀ hv1v2 hz_fresh rfl rfl
+    (Term.eta (VarCtx_insert_twice ⟨v1, V1⟩ ⟨v2, V2⟩ V₀ hv1_V₀ hv2_V₀ hv1v2) v T
+      (Finset.mem_insert_of_mem (Finset.mem_insert_of_mem
+        (Finset.mem_erase.mpr ⟨fun h => hzv (congrArg Prod.fst h).symm, hmem⟩))))
+termination_by (sizeOf T, W.pairDepth, 0)
+decreasing_by
+  exact Prod.Lex.right _ (Prod.Lex.left _ _
+    (VarCtx.pairDepth_unpair_lt hzmem hv1_V₀ hv2_V₀ hv1v2))
+
+end
