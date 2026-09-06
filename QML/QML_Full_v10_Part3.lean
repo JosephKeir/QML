@@ -1,4 +1,4 @@
-import QML.QML_Full_v10_Part2
+import QML.SubstitutionLemmas10
 
 /-!
 # v10 Part 3 — "equality by extensionality" reform (staging)
@@ -541,14 +541,14 @@ theorem diaCast_id {σ : Signature} {A : VarType} {x : VarSymb × VarType} {V W 
 
 /-- **Symmetry for the pair-free core**, given atomic Var-symmetry and the IH at smaller type. -/
 theorem eqRecCore_symm {σ : Signature}
-    (hVarSymm : ∀ (W : VarCtx) (u v : Term σ W .Var),
+    (hVarSymm : ∀ (W : VarCtx), W.firstPairVar = none → ∀ (u v : Term σ W .Var),
       Nonempty (Proof σ W ∅ ((WFF.eq u v).imp (WFF.eq v u)))) :
     ∀ (V : VarCtx) (S : VarType) (hfp : V.firstPairVar = none) (a b : Term σ V S),
     (∀ (A : VarType), sizeOf A < sizeOf S → ∀ (W : VarCtx) (u v : Term σ W A),
         Nonempty (Proof σ W ∅ ((eqRec W A u v).imp (eqRec W A v u)))) →
     Nonempty (Proof σ V ∅ ((eqRecCore V S hfp a b).imp (eqRecCore V S hfp b a)))
   | _, .Var, hfp, a, b, _ => by
-      rw [eqRecCore_var, eqRecCore_var]; exact hVarSymm _ a b
+      rw [eqRecCore_var, eqRecCore_var]; exact hVarSymm _ hfp a b
   | _, .VTypeOne, hfp, a, b, _ => by
       rw [eqRecCore_unit, eqRecCore_unit]; exact ⟨Proof.impId⟩
   | V, .VTypeProd A B, hfp, .pair a b, .pair c d, IH => by
@@ -586,7 +586,7 @@ theorem eqRecCore_symm {σ : Signature}
     `eqRecPeel` generalised over its fresh names.  Reflexivity is unaffected, since there both
     sides use the same term and hence literally the same `avoid`.) -/
 theorem eqRec_symm_of_none {σ : Signature}
-    (hVarSymm : ∀ (W : VarCtx) (u v : Term σ W .Var),
+    (hVarSymm : ∀ (W : VarCtx), W.firstPairVar = none → ∀ (u v : Term σ W .Var),
       Nonempty (Proof σ W ∅ ((WFF.eq u v).imp (WFF.eq v u))))
     (V : VarCtx) (S : VarType) (hfp : V.firstPairVar = none) (a b : Term σ V S)
     (IH : ∀ (A : VarType), sizeOf A < sizeOf S → ∀ (W : VarCtx) (u v : Term σ W A),
@@ -594,4 +594,83 @@ theorem eqRec_symm_of_none {σ : Signature}
     Nonempty (Proof σ V ∅ ((eqRec V S a b).imp (eqRec V S b a))) := by
   rw [eqRec_of_none hfp, eqRec_of_none hfp]
   exact eqRecCore_symm hVarSymm V S hfp a b IH
+
+
+/-! ## Atomic (`.Var`) symmetry — discharging `eqRecCore_symm`'s hypothesis
+
+The Leibniz derivation via `eq_elim` with `φ := (x ≐ a↑)`, which needs the `substVar` reduction
+lemmas (now available for v10 via `SubstitutionLemmas10`).  They carry a pair-free side condition
+on the EXTENDED context, which follows from the pair-free context we are already in. -/
+
+/-- Adding a `.Var`-typed entry preserves pair-freeness: a product-typed entry of the extension
+    cannot be the new `.Var` entry, so it already lay in `V`. -/
+theorem firstPairVar_insert_Var {V : VarCtx} {x : VarSymb} (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hfp : V.firstPairVar = none) :
+    (VarCtx_insert ⟨x, VarType.Var⟩ V hx).firstPairVar = none := by
+  cases h : (VarCtx_insert ⟨x, VarType.Var⟩ V hx).firstPairVar with
+  | none => rfl
+  | some p =>
+      exfalso
+      obtain ⟨⟨z, V1, V2⟩, hzmem⟩ := p
+      rcases Finset.mem_insert.mp hzmem with heq | hmem
+      · exact VarType.noConfusion (congrArg Prod.snd heq)
+      · exact VarCtx.firstPairVar_none_no_pair hfp hmem
+
+/-- Public re-derivation of the (private) `Term.substVar_eq_ctx_rest`: for a pair-free extended
+    context, `substVar` coincides with `ctx_rest`. -/
+theorem Term.substVar_eq_ctx_rest' {σ : Signature} {V : VarCtx}
+    {x : VarSymb} {S S' : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V) (s : Term σ V S)
+    (t : Term σ (VarCtx_insert ⟨x, S⟩ V hx) S')
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none) :
+    Term.substVar hx s t = Term.ctx_rest hx hpf s t := by
+  simp only [Term.substVar]
+  conv_lhs => unfold Term.ctx_rest_MU
+  split
+  · rfl
+  · exfalso
+    rename_i z V1 V2 hzmem heq
+    rw [hpf] at heq
+    simp at heq
+
+/-- **Atomic symmetry of the primitive equality** (Leibniz via `eq_elim`, `φ := (x ≐ a↑)`):
+    `substVar a φ = (a ≐ a)` is `eq_intro`, and `eq_elim` transports it along `a ≐ b` to
+    `substVar b φ = (b ≐ a)`. -/
+def Proof.eqSymmAtomic {σ : Signature} {V : VarCtx} {Γ : Finset (WFF σ V)}
+    (hfp : V.firstPairVar = none) (a b : Term σ V .Var)
+    (p : Proof σ V Γ (WFF.eq a b)) : Proof σ V Γ (WFF.eq b a) := by
+  set x : VarSymb := VarSymb.fresh (VarCtx_to_VarSymbs V) with hxdef
+  have hx : x ∉ VarCtx_to_VarSymbs V := VarSymb.fresh_not_mem _
+  have hpf : (VarCtx_insert ⟨x, VarType.Var⟩ V hx).firstPairVar = none :=
+    firstPairVar_insert_Var hx hfp
+  set xv : VarSymb × VarType := ⟨x, VarType.Var⟩ with hxv
+  have hxmem : (⟨x, VarType.Var⟩ : VarSymb × VarType) ∈ (VarCtx_insert xv V hx).1 :=
+    Finset.mem_insert_self _ _
+  set φ : WFF σ (VarCtx_insert xv V hx) :=
+    WFF.eq (Term.var ⟨x, hxmem⟩) (Term.ctx_ext xv hx a) with hφ
+  have key : ∀ (c : Term σ V .Var), WFF.substVar hx c φ = WFF.eq c a := by
+    intro c
+    rw [hφ, WFF.substVar_eq hx c hpf]
+    congr 1
+    · rw [Term.substVar_var hx c hpf x hxmem, dif_pos rfl]
+    · rw [Term.substVar_eq_ctx_rest' hx c (Term.ctx_ext xv hx a) hpf]
+      exact Term.ctx_rest_ctx_ext hx hpf c a
+  have pa : Proof σ V Γ (WFF.substVar hx a φ) := (key a).symm ▸ Proof.eq_intro a
+  have pb : Proof σ V Γ (WFF.substVar hx b φ) := Proof.eq_elim xv hx a b p pa
+  exact (key b) ▸ pb
+
+/-- Atomic symmetry in the object-implication form `eqRecCore_symm` wants. -/
+theorem varSymm {σ : Signature} (W : VarCtx) (hfp : W.firstPairVar = none)
+    (u v : Term σ W .Var) :
+    Nonempty (Proof σ W ∅ ((WFF.eq u v).imp (WFF.eq v u))) :=
+  ⟨Proof.imp_intro (Proof.eqSymmAtomic hfp u v (Proof.ax (by simp)))⟩
+
+/-- **Symmetry for a pair-free context, with the atomic base discharged.**  No hypotheses beyond
+    the induction hypothesis at smaller type. -/
+theorem eqRec_symm_of_none' {σ : Signature}
+    (V : VarCtx) (S : VarType) (hfp : V.firstPairVar = none) (a b : Term σ V S)
+    (IH : ∀ (A : VarType), sizeOf A < sizeOf S → ∀ (W : VarCtx) (u v : Term σ W A),
+        Nonempty (Proof σ W ∅ ((eqRec W A u v).imp (eqRec W A v u)))) :
+    Nonempty (Proof σ V ∅ ((eqRec V S a b).imp (eqRec V S b a))) :=
+  eqRec_symm_of_none varSymm V S hfp a b IH
 
