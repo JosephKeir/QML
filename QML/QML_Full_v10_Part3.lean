@@ -722,3 +722,25 @@ def Proof.congPeel {σ : Signature} {V₀ : VarCtx} {S1 S2 : VarType} {w1 w2 z :
    context arguments are explicit (so `eqRecPeel`'s equation mentions it directly), and then apply
    `congPeel` to that.  Reflexivity is unaffected and already complete, because there both sides use
    the same term and hence literally the same `avoid`. -/
+
+/-! ## Leibniz
+
+The statement to derive is, for a pair-free context,
+
+  `⊢ (a ≐ b) → (φ[a] → φ[b])`,   where `φ[t] := WFF.substVar hx t φ`
+
+for `a b : Term σ V S` at EVERY type `S`, using only the `.Var`-level `eq_elim`.  At `.Var` the
+defined equality IS the primitive equality, so Leibniz is exactly `eq_elim` repackaged; the content
+of the reform is that the higher types are then derivable rather than primitive. -/
+
+/-- **Leibniz at the atomic type.**  `eqRec V .Var a b` is the primitive `WFF.eq a b`, so this is
+    `eq_elim` packaged as an object implication. -/
+theorem eqRec_leibniz_Var {σ : Signature} {V : VarCtx} (hfp : V.firstPairVar = none)
+    (x : VarSymb) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (φ : WFF σ (VarCtx_insert ⟨x, VarType.Var⟩ V hx)) (a b : Term σ V .Var) :
+    Nonempty (Proof σ V ∅ ((eqRec V .Var a b).imp
+      ((WFF.substVar hx a φ).imp (WFF.substVar hx b φ)))) := by
+  rw [eqRec_var hfp]
+  exact ⟨Proof.imp_intro (Proof.imp_intro
+    (Proof.eq_elim ⟨x, VarType.Var⟩ hx a b (Proof.ax (by simp)) (Proof.ax (by simp))))⟩
+
