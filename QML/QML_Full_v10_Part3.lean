@@ -1776,3 +1776,281 @@ theorem TermLeib.diaterm_beta {σ : Signature} {V V_inner : VarCtx} {S_tt : VarT
   simp only [diaCast_id]
   refine ⟨Proof.cast_ctx ?_ (Proof.necxG hsub_s h_no_extras_s ih.some)⟩
   simp [WFF.box_x_Finset]
+
+/-! ### Pass-through: when the substituted variable never reaches inside the modality
+
+A `box`'s inner context holds only the UNBOXED images of the ambient's box-typed variables, so a
+variable of non-box type simply is not there: the substitution passes the whole `box` through
+untouched, `φ[a] = φ[b]`, and `impId` finishes.  `WFF.ctx_rest_box_arm` already branches on exactly
+this (`by_cases h_x_in : x ∈ VarCtx_to_VarSymbs V_inner`) — these lemmas name its `else` branch,
+which `SubstitutionLemmas10` never needed. -/
+
+/-- If the substituted variable occurs in a `box`'s inner context, its type must be a `□`. -/
+theorem box_inner_mem_forces_box {V V_inner : VarCtx} {x : VarSymb} {S : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hsub : (VarCtx_box V_inner).1 ⊆ (VarCtx_insert ⟨x, S⟩ V hx).1)
+    (h_x_in : x ∈ VarCtx_to_VarSymbs V_inner) : ∃ T : VarType, S = T.VTypeBox := by
+  obtain ⟨⟨x', T'⟩, hx'T', hx'_eq⟩ := Finset.mem_image.mp h_x_in
+  simp only at hx'_eq; subst hx'_eq
+  have hbox_in : (⟨x', T'.VTypeBox⟩ : VarSymb × VarType) ∈ (VarCtx_box V_inner).1 :=
+    Finset.mem_image.mpr ⟨⟨x', T'⟩, hx'T', rfl⟩
+  rcases Finset.mem_insert.mp (hsub hbox_in) with h_eq | h_in_V
+  · exact ⟨T', ((Prod.mk.inj h_eq).2).symm⟩
+  · exact absurd (Finset.mem_image.mpr ⟨_, h_in_V, rfl⟩) hx
+
+theorem box_inner_not_mem {V V_inner : VarCtx} {x : VarSymb} {S : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hsub : (VarCtx_box V_inner).1 ⊆ (VarCtx_insert ⟨x, S⟩ V hx).1)
+    (hS : ∀ T : VarType, S ≠ T.VTypeBox) : x ∉ VarCtx_to_VarSymbs V_inner := fun h =>
+  let ⟨T, hT⟩ := box_inner_mem_forces_box hx hsub h
+  hS T hT
+
+theorem WFF.substVar_box_passthrough {σ : Signature} {V V_inner : VarCtx}
+    {x : VarSymb} {S : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    (s : Term σ V S) (ψ : WFF σ V_inner)
+    (hsub : (VarCtx_box V_inner).1 ⊆ (VarCtx_insert ⟨x, S⟩ V hx).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨x, S⟩ V hx).1,
+            VarType.isBox p.2 = true → p ∈ (VarCtx_box V_inner).1)
+    (h_x_out : x ∉ VarCtx_to_VarSymbs V_inner)
+    (hsub' : (VarCtx_box V_inner).1 ⊆ V.1)
+    (hne' : ∀ p ∈ V.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V_inner).1) :
+    WFF.substVar hx s (WFF.box ψ hsub hne) = WFF.box ψ hsub' hne' := by
+  simp only [WFF.substVar]
+  conv_lhs => unfold WFF.ctx_rest_MU
+  split
+  · conv_lhs => unfold WFF.ctx_rest
+    dsimp only
+    simp only [WFF.ctx_rest_box_arm]
+    rw [dif_neg h_x_out]
+  · exfalso
+    rename_i z V1 V2 hzmem heq
+    rw [hpf] at heq
+    simp at heq
+
+/-- The `box` case of Leibniz when the substituted variable is not of box type: nothing to do. -/
+theorem Leib.box_passthrough {σ : Signature} {V V_inner : VarCtx}
+    {x : VarSymb} {S : VarType} {hx : x ∉ VarCtx_to_VarSymbs V}
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    (a b : Term σ V S) (ψ : WFF σ V_inner)
+    (hsub : (VarCtx_box V_inner).1 ⊆ (VarCtx_insert ⟨x, S⟩ V hx).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨x, S⟩ V hx).1,
+            VarType.isBox p.2 = true → p ∈ (VarCtx_box V_inner).1)
+    (hS : ∀ T : VarType, S ≠ T.VTypeBox) :
+    Leib hx a b (WFF.box ψ hsub hne) := by
+  have h_x_out : x ∉ VarCtx_to_VarSymbs V_inner := box_inner_not_mem hx hsub hS
+  have hsub' : (VarCtx_box V_inner).1 ⊆ V.1 := by
+    intro p hp
+    rcases Finset.mem_insert.mp (hsub hp) with h_eq | h_V
+    · exfalso
+      rcases Finset.mem_image.mp hp with ⟨w, hw, hweq⟩
+      exact h_x_out (Finset.mem_image.mpr
+        ⟨w, hw, (Prod.mk.inj (hweq.trans h_eq)).1⟩)
+    · exact h_V
+  have hne' : ∀ p ∈ V.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V_inner).1 :=
+    fun p hp h_box => hne p (Finset.mem_insert_of_mem hp) h_box
+  unfold Leib
+  rw [WFF.substVar_box_passthrough hx hpf a ψ hsub hne h_x_out hsub' hne',
+      WFF.substVar_box_passthrough hx hpf b ψ hsub hne h_x_out hsub' hne']
+  exact ⟨Proof.impId⟩
+
+/-- The `dia` analogue: if the substituted variable occurs in a `dia`'s inner context and is not
+    the witness, its type must be a `□` (the non-witness part of `VarCtx_dia` is `VarCtx_box`). -/
+theorem dia_inner_mem_forces_box {V V_inner : VarCtx} {x : VarSymb} {S : VarType}
+    {xv : VarSymb × VarType} {hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hsub : (VarCtx_dia xv V_inner hxv).1 ⊆ (VarCtx_insert ⟨x, S⟩ V hx).1)
+    (h_x_in : x ∈ VarCtx_to_VarSymbs V_inner) : ∃ T : VarType, S = T.VTypeBox := by
+  obtain ⟨⟨x', T'⟩, hx'T', hx'_eq⟩ := Finset.mem_image.mp h_x_in
+  simp only at hx'_eq; subst hx'_eq
+  have hbox_in : (⟨x', T'.VTypeBox⟩ : VarSymb × VarType)
+      ∈ (VarCtx_dia xv V_inner hxv).1 := by
+    rw [VarCtx_dia_fst]
+    exact Finset.mem_insert_of_mem (Finset.mem_image.mpr ⟨⟨x', T'⟩, hx'T', rfl⟩)
+  rcases Finset.mem_insert.mp (hsub hbox_in) with h_eq | h_in_V
+  · exact ⟨T', ((Prod.mk.inj h_eq).2).symm⟩
+  · exact absurd (Finset.mem_image.mpr ⟨_, h_in_V, rfl⟩) hx
+
+theorem WFF.substVar_dia_passthrough {σ : Signature} {V V_inner : VarCtx}
+    {x : VarSymb} {S : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    (s : Term σ V S)
+    (xv : VarSymb × VarType) (hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner)
+    (ψ : WFF σ (VarCtx_insert xv V_inner hxv))
+    (hsub : (VarCtx_dia xv V_inner hxv).1 ⊆ (VarCtx_insert ⟨x, S⟩ V hx).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨x, S⟩ V hx).1,
+            VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv V_inner hxv).1)
+    (h_xv_ne : ¬ (xv.1 = x)) (h_x_out : x ∉ VarCtx_to_VarSymbs V_inner)
+    (hsub' : (VarCtx_dia xv V_inner hxv).1 ⊆ V.1)
+    (hne' : ∀ p ∈ V.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv V_inner hxv).1) :
+    WFF.substVar hx s (WFF.dia xv hxv ψ hsub hne) = WFF.dia xv hxv ψ hsub' hne' := by
+  simp only [WFF.substVar]
+  conv_lhs => unfold WFF.ctx_rest_MU
+  split
+  · conv_lhs => unfold WFF.ctx_rest
+    dsimp only
+    simp only [WFF.ctx_rest_dia_arm]
+    rw [dif_neg h_xv_ne, dif_neg h_x_out]
+  · exfalso
+    rename_i z V1 V2 hzmem heq
+    rw [hpf] at heq
+    simp at heq
+
+/-- The `dia` case of Leibniz when the substituted variable is neither the witness nor of box
+    type — so it does not occur under the modality at all. -/
+theorem Leib.dia_passthrough {σ : Signature} {V V_inner : VarCtx}
+    {x : VarSymb} {S : VarType} {hx : x ∉ VarCtx_to_VarSymbs V}
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    (a b : Term σ V S)
+    (xv : VarSymb × VarType) (hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner)
+    (ψ : WFF σ (VarCtx_insert xv V_inner hxv))
+    (hsub : (VarCtx_dia xv V_inner hxv).1 ⊆ (VarCtx_insert ⟨x, S⟩ V hx).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨x, S⟩ V hx).1,
+            VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv V_inner hxv).1)
+    (h_xv_ne : ¬ (xv.1 = x)) (hS : ∀ T : VarType, S ≠ T.VTypeBox) :
+    Leib hx a b (WFF.dia xv hxv ψ hsub hne) := by
+  have h_x_out : x ∉ VarCtx_to_VarSymbs V_inner := fun h =>
+    let ⟨T, hT⟩ := dia_inner_mem_forces_box hx hsub h
+    hS T hT
+  have hsub' : (VarCtx_dia xv V_inner hxv).1 ⊆ V.1 := by
+    rw [VarCtx_dia_fst]
+    intro p hp
+    rcases Finset.mem_insert.mp hp with h_eq | hp_box
+    · subst h_eq
+      have hp_in_dia : (⟨xv.1, xv.2.VTypeDia⟩ : VarSymb × VarType)
+          ∈ (VarCtx_dia xv V_inner hxv).1 := by
+        rw [VarCtx_dia_fst]; exact Finset.mem_insert_self _ _
+      rcases Finset.mem_insert.mp (hsub hp_in_dia) with h_eq' | h_in_V
+      · exact absurd (Prod.mk.inj h_eq').1 h_xv_ne
+      · exact h_in_V
+    · have hp_in_dia : p ∈ (VarCtx_dia xv V_inner hxv).1 := by
+        rw [VarCtx_dia_fst]; exact Finset.mem_insert_of_mem hp_box
+      rcases Finset.mem_insert.mp (hsub hp_in_dia) with h_eq | h_in_V
+      · subst h_eq
+        exfalso
+        rcases Finset.mem_image.mp hp_box with ⟨q, hq_in, hq_eq⟩
+        exact h_x_out (Finset.mem_image.mpr ⟨q, hq_in, (Prod.mk.inj hq_eq).1⟩)
+      · exact h_in_V
+  have hne' : ∀ p ∈ V.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv V_inner hxv).1 :=
+    fun p hp h_box => hne p (Finset.mem_insert_of_mem hp) h_box
+  unfold Leib
+  rw [WFF.substVar_dia_passthrough hx hpf a xv hxv ψ hsub hne h_xv_ne h_x_out hsub' hne',
+      WFF.substVar_dia_passthrough hx hpf b xv hxv ψ hsub hne h_xv_ne h_x_out hsub' hne']
+  exact ⟨Proof.impId⟩
+
+/-! ### Term-level pass-through (the `Term.ctx_rest` mirrors of the two above). -/
+
+theorem Term.substVar_boxterm_passthrough {σ : Signature} {V V_inner : VarCtx}
+    {x : VarSymb} {S T : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    (s : Term σ V S) (tt : Term σ V_inner T)
+    (hsub : (VarCtx_box V_inner).1 ⊆ (VarCtx_insert ⟨x, S⟩ V hx).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨x, S⟩ V hx).1,
+            VarType.isBox p.2 = true → p ∈ (VarCtx_box V_inner).1)
+    (h_x_out : x ∉ VarCtx_to_VarSymbs V_inner)
+    (hsub' : (VarCtx_box V_inner).1 ⊆ V.1)
+    (hne' : ∀ p ∈ V.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V_inner).1) :
+    Term.substVar hx s (Term.boxterm tt hsub hne) = Term.boxterm tt hsub' hne' := by
+  simp only [Term.substVar]
+  conv_lhs => unfold Term.ctx_rest_MU
+  split
+  · conv_lhs => unfold Term.ctx_rest
+    dsimp only
+    rw [dif_neg h_x_out]
+  · exfalso
+    rename_i z V1 V2 hzmem heq
+    rw [hpf] at heq
+    simp at heq
+
+theorem TermLeib.boxterm_passthrough {σ : Signature} {V V_inner : VarCtx}
+    {x : VarSymb} {S T : VarType} {hx : x ∉ VarCtx_to_VarSymbs V}
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    (a b : Term σ V S) (tt : Term σ V_inner T)
+    (hsub : (VarCtx_box V_inner).1 ⊆ (VarCtx_insert ⟨x, S⟩ V hx).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨x, S⟩ V hx).1,
+            VarType.isBox p.2 = true → p ∈ (VarCtx_box V_inner).1)
+    (hS : ∀ U : VarType, S ≠ U.VTypeBox) :
+    TermLeib hx a b (Term.boxterm tt hsub hne) := by
+  have h_x_out : x ∉ VarCtx_to_VarSymbs V_inner := box_inner_not_mem hx hsub hS
+  have hsub' : (VarCtx_box V_inner).1 ⊆ V.1 := by
+    intro p hp
+    rcases Finset.mem_insert.mp (hsub hp) with h_eq | h_V
+    · exfalso
+      rcases Finset.mem_image.mp hp with ⟨w, hw, hweq⟩
+      exact h_x_out (Finset.mem_image.mpr ⟨w, hw, (Prod.mk.inj (hweq.trans h_eq)).1⟩)
+    · exact h_V
+  have hne' : ∀ p ∈ V.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V_inner).1 :=
+    fun p hp h_box => hne p (Finset.mem_insert_of_mem hp) h_box
+  unfold TermLeib
+  rw [Term.substVar_boxterm_passthrough hx hpf a tt hsub hne h_x_out hsub' hne',
+      Term.substVar_boxterm_passthrough hx hpf b tt hsub hne h_x_out hsub' hne']
+  exact ⟨Proof.ofEmpty (eqRec_refl V T.VTypeBox _).some⟩
+
+theorem Term.substVar_diaterm_passthrough {σ : Signature} {V V_inner : VarCtx}
+    {x : VarSymb} {S T : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    (s : Term σ V S)
+    (xv : VarSymb × VarType) (hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner)
+    (tt : Term σ (VarCtx_insert xv V_inner hxv) T)
+    (hsub : (VarCtx_dia xv V_inner hxv).1 ⊆ (VarCtx_insert ⟨x, S⟩ V hx).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨x, S⟩ V hx).1,
+            VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv V_inner hxv).1)
+    (h_xv_ne : ¬ (xv.1 = x)) (h_x_out : x ∉ VarCtx_to_VarSymbs V_inner)
+    (hsub' : (VarCtx_dia xv V_inner hxv).1 ⊆ V.1)
+    (hne' : ∀ p ∈ V.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv V_inner hxv).1) :
+    Term.substVar hx s (Term.diaterm xv hxv tt hsub hne)
+      = Term.diaterm xv hxv tt hsub' hne' := by
+  simp only [Term.substVar]
+  conv_lhs => unfold Term.ctx_rest_MU
+  split
+  · conv_lhs => unfold Term.ctx_rest
+    dsimp only
+    rw [dif_neg h_xv_ne, dif_neg h_x_out]
+  · exfalso
+    rename_i z V1 V2 hzmem heq
+    rw [hpf] at heq
+    simp at heq
+
+theorem TermLeib.diaterm_passthrough {σ : Signature} {V V_inner : VarCtx}
+    {x : VarSymb} {S T : VarType} {hx : x ∉ VarCtx_to_VarSymbs V}
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    (a b : Term σ V S)
+    (xv : VarSymb × VarType) (hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner)
+    (tt : Term σ (VarCtx_insert xv V_inner hxv) T)
+    (hsub : (VarCtx_dia xv V_inner hxv).1 ⊆ (VarCtx_insert ⟨x, S⟩ V hx).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨x, S⟩ V hx).1,
+            VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv V_inner hxv).1)
+    (h_xv_ne : ¬ (xv.1 = x)) (hS : ∀ U : VarType, S ≠ U.VTypeBox) :
+    TermLeib hx a b (Term.diaterm xv hxv tt hsub hne) := by
+  have h_x_out : x ∉ VarCtx_to_VarSymbs V_inner := fun h =>
+    let ⟨U, hU⟩ := dia_inner_mem_forces_box hx hsub h
+    hS U hU
+  have hsub' : (VarCtx_dia xv V_inner hxv).1 ⊆ V.1 := by
+    rw [VarCtx_dia_fst]
+    intro p hp
+    rcases Finset.mem_insert.mp hp with h_eq | hp_box
+    · subst h_eq
+      have hp_in_dia : (⟨xv.1, xv.2.VTypeDia⟩ : VarSymb × VarType)
+          ∈ (VarCtx_dia xv V_inner hxv).1 := by
+        rw [VarCtx_dia_fst]; exact Finset.mem_insert_self _ _
+      rcases Finset.mem_insert.mp (hsub hp_in_dia) with h_eq' | h_in_V
+      · exact absurd (Prod.mk.inj h_eq').1 h_xv_ne
+      · exact h_in_V
+    · have hp_in_dia : p ∈ (VarCtx_dia xv V_inner hxv).1 := by
+        rw [VarCtx_dia_fst]; exact Finset.mem_insert_of_mem hp_box
+      rcases Finset.mem_insert.mp (hsub hp_in_dia) with h_eq | h_in_V
+      · subst h_eq
+        exfalso
+        rcases Finset.mem_image.mp hp_box with ⟨q, hq_in, hq_eq⟩
+        exact h_x_out (Finset.mem_image.mpr ⟨q, hq_in, (Prod.mk.inj hq_eq).1⟩)
+      · exact h_in_V
+  have hne' : ∀ p ∈ V.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv V_inner hxv).1 :=
+    fun p hp h_box => hne p (Finset.mem_insert_of_mem hp) h_box
+  unfold TermLeib
+  rw [Term.substVar_diaterm_passthrough hx hpf a xv hxv tt hsub hne h_xv_ne h_x_out hsub' hne',
+      Term.substVar_diaterm_passthrough hx hpf b xv hxv tt hsub hne h_xv_ne h_x_out hsub' hne']
+  exact ⟨Proof.ofEmpty (eqRec_refl V T.VTypeDia _).some⟩
