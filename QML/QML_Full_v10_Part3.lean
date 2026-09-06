@@ -1219,3 +1219,443 @@ decreasing_by
     (VarCtx.pairDepth_unpair_lt hzmem hv1_V₀ hv2_V₀ hv1v2))
 
 end
+
+/-! ## Term-level congruence
+
+`Leibniz`'s `atom` and `eq` cases bottom out here: a box-typed ambient variable can only occur in
+a term through a `boxterm` (its inner context holds the unboxed variable), so substituting into an
+atom genuinely changes it, and we need
+
+    a ≐ b  ⊢  u[a] ≐ u[b]
+
+by induction on the TERM `u`.  Unlike `Leib` this is a direct entailment, not an implication —
+the conclusion is an equality, and the modal cases are again `K_box`/`K_dia` carrying the
+hypothesis through. -/
+
+/-- Weakening a closed proof to a single hypothesis. -/
+def Proof.ofEmpty {σ : Signature} {V : VarCtx} {ψ φ : WFF σ V}
+    (p : Proof σ V ∅ φ) : Proof σ V {ψ} φ :=
+  Proof.cast_ctx (by simp) (Proof.weak (ψ := ψ) p)
+
+/-- Term-level Leibniz for the single term `u`. -/
+def TermLeib {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
+    (hx : x ∉ VarCtx_to_VarSymbs V) (a b : Term σ V S) {T : VarType}
+    (u : Term σ (VarCtx_insert ⟨x, S⟩ V hx) T) : Prop :=
+  Nonempty (Proof σ V {eqRec V S a b}
+    (eqRec V T (Term.substVar hx a u) (Term.substVar hx b u)))
+
+theorem TermLeib.unit {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
+    {hx : x ∉ VarCtx_to_VarSymbs V}
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none) (hpfV : V.firstPairVar = none)
+    (a b : Term σ V S) : TermLeib hx a b (Term.unit) := by
+  unfold TermLeib
+  rw [Term.substVar_unit hx a hpf, Term.substVar_unit hx b hpf, eqRec_unit hpfV]
+  exact ⟨Proof.top_intro⟩
+
+theorem TermLeib.pair {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
+    {hx : x ∉ VarCtx_to_VarSymbs V}
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none) (hpfV : V.firstPairVar = none)
+    {a b : Term σ V S} {T1 T2 : VarType}
+    {u : Term σ (VarCtx_insert ⟨x, S⟩ V hx) T1} {w : Term σ (VarCtx_insert ⟨x, S⟩ V hx) T2}
+    (ihu : TermLeib hx a b u) (ihw : TermLeib hx a b w) :
+    TermLeib hx a b (Term.pair u w) := by
+  unfold TermLeib at *
+  rw [Term.substVar_pair hx a hpf u w, Term.substVar_pair hx b hpf u w,
+      eqRec_prod hpfV]
+  exact ⟨Proof.and_intro ihu.some ihw.some⟩
+
+/-- The `.var` base.  Either the variable IS the substituted one — and then `S = .Var`, both sides
+    are `a` and `b`, and the goal is the hypothesis — or it is some other variable, untouched by
+    the substitution, and the goal is reflexivity. -/
+theorem TermLeib.var {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
+    {hx : x ∉ VarCtx_to_VarSymbs V}
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    (a b : Term σ V S) (w : VarSymb)
+    (hw : (⟨w, VarType.Var⟩ : VarSymb × VarType) ∈ (VarCtx_insert ⟨x, S⟩ V hx).1) :
+    TermLeib hx a b (Term.var ⟨w, hw⟩) := by
+  unfold TermLeib
+  rw [Term.substVar_var hx a hpf w hw, Term.substVar_var hx b hpf w hw]
+  by_cases h_eq : (⟨w, VarType.Var⟩ : VarSymb × VarType) = ⟨x, S⟩
+  · simp only [dif_pos h_eq]
+    obtain ⟨rfl, rfl⟩ := Prod.mk.inj h_eq
+    exact ⟨Proof.ax (by simp)⟩
+  · simp only [dif_neg h_eq]
+    exact ⟨Proof.ofEmpty (eqRec_refl V VarType.Var _).some⟩
+
+/-- The `boxterm` case: the exact term-level mirror of `Leib.box`.  A box-typed ambient variable
+    lives inside the box (unboxed), so the substitution descends and `K_box` carries the inner
+    equality back out. -/
+theorem TermLeib.boxterm {σ : Signature} {x : VarSymb × VarType} {V W : VarCtx}
+    (hx : x.1 ∉ VarCtx_to_VarSymbs V) (hxW : x.1 ∉ VarCtx_to_VarSymbs W)
+    (hsub : (VarCtx_box V).1 ⊆ W.1)
+    (hnbe : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V).1)
+    (hpfW : (VarCtx_insert ⟨x.1, x.2.VTypeBox⟩ W hxW).firstPairVar = none)
+    (hpf : W.firstPairVar = none)
+    (t s : Term σ V x.2) {Sφ : VarType} (u : Term σ (VarCtx_insert x V hx) Sφ)
+    (ih : TermLeib hx t s u) :
+    TermLeib hxW (Term.boxterm t hsub hnbe) (Term.boxterm s hsub hnbe)
+      (Term.boxterm u (box_hsub_insert hx hxW hsub) (box_extras_insert hx hxW hnbe)) := by
+  unfold TermLeib at ih ⊢
+  rw [Term.substVar_boxterm hx hxW hsub hnbe hpfW t u,
+      Term.substVar_boxterm hx hxW hsub hnbe hpfW s u,
+      eqRec_box hpf t s hsub hnbe hsub hnbe,
+      eqRec_box hpf (Term.substVar hx t u) (Term.substVar hx s u) hsub hnbe hsub hnbe]
+  simp only [boxCast_id]
+  refine ⟨Proof.cast_ctx ?_ (Proof.K_box hsub hnbe ih.some)⟩
+  simp [WFF.box_Finset]
+
+/-! ### Atomic congruence
+
+`Rel` and `Func` take `.Var`-TYPED ARGUMENTS ONLY (`eval : Rel σ V (n+1) → Term σ V .Var → Rel σ V n`),
+so an atom's dependence on a higher-typed variable is entirely through those `.Var` argument terms.
+`TermLeib` gives us `u[a] ≐ u[b]` for each of them, and `eqRec_leibniz_Var` — the primitive
+`eq_elim`, the one equality rule the reform keeps — turns those into the atom congruence.
+
+The induction changes one argument at a time, from the outermost inwards, so it has to carry the
+arguments already changed.  `Rel.closeN` is that carrier: the arity is an EXPLICIT `ℕ` with the
+list length matched by a `Prop` hypothesis, which keeps every rewrite below off the type index.
+
+(NB: inside the `Rel` namespace the identifier `R` resolves to the constructor `Rel.R`, so the
+head relation is spelled `Rl` in every pattern below.) -/
+
+/-- Apply `args` to an arity-`n` relation, first element innermost. -/
+def Rel.closeN {σ : Signature} {V : VarCtx} :
+    (n : ℕ) → Rel σ V n → (args : List (Term σ V .Var)) → args.length = n → Rel σ V 0
+  | 0,     Rl, [],        _ => Rl
+  | n + 1, Rl, u :: rest, h => Rel.closeN n (Rl.eval u) rest (by simpa using h)
+  | 0,     _,  _ :: _,    h => absurd h (by simp)
+  | _ + 1, _,  [],        h => absurd h (by simp)
+
+/-- Peeling one argument off the front is the same as `eval`-ing it on. -/
+theorem Rel.closeN_eval {σ : Signature} {V : VarCtx} (n : ℕ)
+    (Rl : Rel σ V (n + 1)) (w : Term σ V .Var) (args : List (Term σ V .Var))
+    (h : args.length = n) (h' : (w :: args).length = n + 1) :
+    Rel.closeN n (Rl.eval w) args h = Rel.closeN (n + 1) Rl (w :: args) h' := rfl
+
+theorem Rel.ctx_rest_eval {σ : Signature} {V : VarCtx} {n : ℕ} {x : VarSymb} {S : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none) (s : Term σ V S)
+    (Rl : Rel σ (VarCtx_insert ⟨x, S⟩ V hx) (n + 1))
+    (t : Term σ (VarCtx_insert ⟨x, S⟩ V hx) .Var) :
+    Rel.ctx_rest hx hpf s (Rl.eval t)
+      = (Rel.ctx_rest hx hpf s Rl).eval (Term.ctx_rest hx hpf s t) := rfl
+
+/-- Substitution commutes with closing: it acts on the head relation and on each argument. -/
+theorem Rel.ctx_rest_closeN {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none) (s : Term σ V S) :
+    ∀ (n : ℕ) (Rl : Rel σ (VarCtx_insert ⟨x, S⟩ V hx) n)
+      (args : List (Term σ (VarCtx_insert ⟨x, S⟩ V hx) .Var)) (h : args.length = n)
+      (h' : (args.map (Term.ctx_rest hx hpf s)).length = n),
+      Rel.ctx_rest hx hpf s (Rel.closeN n Rl args h)
+        = Rel.closeN n (Rel.ctx_rest hx hpf s Rl) (args.map (Term.ctx_rest hx hpf s)) h'
+  | 0,     _,  [],        _, _  => rfl
+  | n + 1, Rl, u :: rest, h, _  => by
+      show Rel.ctx_rest hx hpf s (Rel.closeN n (Rl.eval u) rest _) = _
+      rw [Rel.ctx_rest_closeN hx hpf s n (Rl.eval u) rest (by simpa using h) (by simpa using h)]
+      rfl
+  | 0,     _,  _ :: _,    h, _  => absurd h (by simp)
+  | _ + 1, _,  [],        h, _  => absurd h (by simp)
+
+/-- `closeN` depends on its length proof only proof-irrelevantly. -/
+theorem Rel.closeN_congr {σ : Signature} {V : VarCtx} (n : ℕ)
+    (Rl Rl' : Rel σ V n) (args args' : List (Term σ V .Var))
+    (h : args.length = n) (h' : args'.length = n)
+    (hR : Rl = Rl') (ha : args = args') :
+    Rel.closeN n Rl args h = Rel.closeN n Rl' args' h' := by
+  subst hR; subst ha; rfl
+
+/-- Composition of two object implications under a common hypothesis set. -/
+def Proof.impTrans {σ : Signature} {V : VarCtx} {Γ : Finset (WFF σ V)} {p q r : WFF σ V}
+    (h1 : Proof σ V Γ (p.imp q)) (h2 : Proof σ V Γ (q.imp r)) : Proof σ V Γ (p.imp r) := by
+  have hp : Proof σ V (Γ ∪ {p}) p := Proof.ax (by simp)
+  exact Proof.imp_intro (Proof.imp_elim (Proof.weak h2) (Proof.imp_elim (Proof.weak h1) hp))
+
+/-- The one-argument abstraction the `eq_elim` step needs: an atom with its innermost argument
+    replaced by a fresh variable, and what substituting for that variable gives back. -/
+theorem atom_abstract_key {σ : Signature} {V : VarCtx} {y : VarSymb}
+    (hy : y ∉ VarCtx_to_VarSymbs V)
+    (hpfy : (VarCtx_insert ⟨y, VarType.Var⟩ V hy).firstPairVar = none)
+    (n : ℕ) (Rl : Rel σ V (n + 1)) (args : List (Term σ V .Var)) (h : args.length = n)
+    (c : Term σ V .Var) :
+    WFF.substVar hy c (WFF.atom (Rel.closeN (n + 1)
+        (Rel.ctx_ext ⟨y, VarType.Var⟩ hy Rl)
+        (Term.var ⟨y, Finset.mem_insert_self _ _⟩
+          :: args.map (Term.ctx_ext ⟨y, VarType.Var⟩ hy)) (by simp [h])))
+      = WFF.atom (Rel.closeN (n + 1) Rl (c :: args) (by simp [h])) := by
+  rw [WFF.substVar_atom hy c hpfy,
+      Rel.ctx_rest_closeN hy hpfy c (n + 1) _ _ (by simp [h]) (by simp [h])]
+  refine congrArg WFF.atom (Rel.closeN_congr _ _ _ _ _ _ _ ?_ ?_)
+  · exact Rel.ctx_rest_ctx_ext hy hpfy c Rl
+  · rw [List.map_cons, List.map_map]
+    congr 1
+    · rw [← Term.substVar_eq_ctx_rest' hy c _ hpfy,
+          Term.substVar_var hy c hpfy y (Finset.mem_insert_self _ _), dif_pos rfl]
+    · rw [show (Term.ctx_rest hy hpfy c ∘ Term.ctx_ext ⟨y, VarType.Var⟩ hy) = id from
+            funext fun t => Term.ctx_rest_ctx_ext hy hpfy c t]
+      exact List.map_id args
+
+/-- **Atomic congruence.**  By induction on the relation, changing one argument at a time from the
+    outermost inwards; `args` carries the arguments already switched from `a` to `b`.  Each single
+    change is `eqRec_leibniz_Var` — the primitive `.Var` `eq_elim` — applied to the argument
+    equality that `TermLeib` supplies. -/
+theorem relLeibClosed {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    (hpfV : V.firstPairVar = none) (a b : Term σ V S)
+    (hterm : ∀ (u : Term σ (VarCtx_insert ⟨x, S⟩ V hx) .Var), TermLeib hx a b u) :
+    ∀ (n : ℕ) (Rl : Rel σ (VarCtx_insert ⟨x, S⟩ V hx) n)
+      (args : List (Term σ V .Var)) (h : args.length = n),
+      Nonempty (Proof σ V {eqRec V S a b}
+        ((WFF.atom (Rel.closeN n (Rel.ctx_rest hx hpf a Rl) args h)).imp
+         (WFF.atom (Rel.closeN n (Rel.ctx_rest hx hpf b Rl) args h))))
+  | _, .R _,        _,    _ => ⟨Proof.impId⟩
+  | n, .eval Rl' u, args, h => by
+      set y : VarSymb := VarSymb.fresh (VarCtx_to_VarSymbs V) with hydef
+      have hy : y ∉ VarCtx_to_VarSymbs V := VarSymb.fresh_not_mem _
+      have hpfy : (VarCtx_insert ⟨y, VarType.Var⟩ V hy).firstPairVar = none :=
+        firstPairVar_insert_Var hy hpfV
+      set ua : Term σ V .Var := Term.ctx_rest hx hpf a u with huadef
+      set ub : Term σ V .Var := Term.ctx_rest hx hpf b u with hubdef
+      set Ra : Rel σ V (n + 1) := Rel.ctx_rest hx hpf a Rl' with hRadef
+      -- STEP B: switch the innermost argument, by `.Var` Leibniz at a fresh variable.
+      have hkey := atom_abstract_key hy hpfy n Ra args h
+      have hleib := eqRec_leibniz_Var hpfV y hy
+        (WFF.atom (Rel.closeN (n + 1) (Rel.ctx_ext ⟨y, VarType.Var⟩ hy Ra)
+          (Term.var ⟨y, Finset.mem_insert_self _ _⟩
+            :: args.map (Term.ctx_ext ⟨y, VarType.Var⟩ hy)) (by simp [h]))) ua ub
+      rw [hkey ua, hkey ub] at hleib
+      have harg : Proof σ V {eqRec V S a b} (eqRec V VarType.Var ua ub) := by
+        have := (hterm u).some
+        rw [Term.substVar_eq_ctx_rest' hx a u hpf, Term.substVar_eq_ctx_rest' hx b u hpf] at this
+        exact this
+      have stepB : Proof σ V {eqRec V S a b}
+          ((WFF.atom (Rel.closeN (n + 1) Ra (ua :: args) (by simp [h]))).imp
+           (WFF.atom (Rel.closeN (n + 1) Ra (ub :: args) (by simp [h])))) :=
+        Proof.imp_elim (Proof.ofEmpty hleib.some) harg
+      -- STEP A: the induction hypothesis, with the switched argument already in `args`.
+      have stepA := (relLeibClosed hx hpf hpfV a b hterm (n + 1) Rl' (ub :: args) (by simp [h])).some
+      exact ⟨Proof.impTrans stepB stepA⟩
+  termination_by _ Rl _ _ => sizeOf Rl
+
+/-- The `atom` case of Leibniz: `relLeibClosed` at arity `0` with no carried arguments. -/
+theorem Leib.atom {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
+    {hx : x ∉ VarCtx_to_VarSymbs V}
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none) (hpfV : V.firstPairVar = none)
+    {a b : Term σ V S}
+    (hterm : ∀ (u : Term σ (VarCtx_insert ⟨x, S⟩ V hx) .Var), TermLeib hx a b u)
+    (R : Rel σ (VarCtx_insert ⟨x, S⟩ V hx) 0) :
+    Leib hx a b (WFF.atom R) := by
+  unfold Leib
+  rw [WFF.substVar_atom hx a hpf R, WFF.substVar_atom hx b hpf R]
+  exact relLeibClosed hx hpf hpfV a b hterm 0 R [] rfl
+
+/-! ### Function-symbol congruence
+
+The `Func` mirror of the above, for `TermLeib`'s `.func` case.  The conclusion is an EQUALITY
+rather than an implication, so instead of composing two implications we run the single Leibniz
+step in the reverse direction (`Proof.eqSymmAtomic` on the argument equality), which lands the
+induction hypothesis and the goal on the two sides of one substitution.
+
+(Inside the `Func` namespace `F` is the constructor `Func.F`, so the head is spelled `Fl`.) -/
+
+def Func.closeN {σ : Signature} {V : VarCtx} :
+    (n : ℕ) → Func σ V n → (args : List (Term σ V .Var)) → args.length = n → Func σ V 0
+  | 0,     Fl, [],        _ => Fl
+  | n + 1, Fl, u :: rest, h => Func.closeN n (Fl.eval u) rest (by simpa using h)
+  | 0,     _,  _ :: _,    h => absurd h (by simp)
+  | _ + 1, _,  [],        h => absurd h (by simp)
+
+theorem Func.closeN_congr {σ : Signature} {V : VarCtx} (n : ℕ)
+    (Fl Fl' : Func σ V n) (args args' : List (Term σ V .Var))
+    (h : args.length = n) (h' : args'.length = n)
+    (hF : Fl = Fl') (ha : args = args') :
+    Func.closeN n Fl args h = Func.closeN n Fl' args' h' := by
+  subst hF; subst ha; rfl
+
+theorem Func.ctx_rest_eval {σ : Signature} {V : VarCtx} {n : ℕ} {x : VarSymb} {S : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none) (s : Term σ V S)
+    (Fl : Func σ (VarCtx_insert ⟨x, S⟩ V hx) (n + 1))
+    (t : Term σ (VarCtx_insert ⟨x, S⟩ V hx) .Var) :
+    Func.ctx_rest hx hpf s (Fl.eval t)
+      = (Func.ctx_rest hx hpf s Fl).eval (Term.ctx_rest hx hpf s t) := by
+  conv_lhs => unfold Func.ctx_rest
+
+theorem Func.ctx_rest_closeN {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none) (s : Term σ V S) :
+    ∀ (n : ℕ) (Fl : Func σ (VarCtx_insert ⟨x, S⟩ V hx) n)
+      (args : List (Term σ (VarCtx_insert ⟨x, S⟩ V hx) .Var)) (h : args.length = n)
+      (h' : (args.map (Term.ctx_rest hx hpf s)).length = n),
+      Func.ctx_rest hx hpf s (Func.closeN n Fl args h)
+        = Func.closeN n (Func.ctx_rest hx hpf s Fl) (args.map (Term.ctx_rest hx hpf s)) h'
+  | 0,     _,  [],        _, _  => rfl
+  | n + 1, Fl, u :: rest, h, _  => by
+      show Func.ctx_rest hx hpf s (Func.closeN n (Fl.eval u) rest _) = _
+      rw [Func.ctx_rest_closeN hx hpf s n (Fl.eval u) rest (by simpa using h) (by simpa using h),
+          Func.ctx_rest_eval]
+      rfl
+  | 0,     _,  _ :: _,    h, _  => absurd h (by simp)
+  | _ + 1, _,  [],        h, _  => absurd h (by simp)
+
+theorem Func.ctx_rest_F {σ : Signature} {V : VarCtx} {n : ℕ} {x : VarSymb} {S : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none) (s : Term σ V S)
+    (hsym : {f : σ.FuncSyms // σ.funcArity f = n}) :
+    Func.ctx_rest hx hpf s (Func.F (V := VarCtx_insert ⟨x, S⟩ V hx) hsym) = Func.F hsym := by
+  conv_lhs => unfold Func.ctx_rest
+
+/-- The `Func` mirror of `atom_abstract_key`: one argument abstracted to a fresh variable, with
+    the (already finished) right-hand side merely weakened so that it restores untouched. -/
+theorem func_abstract_key {σ : Signature} {V : VarCtx} {y : VarSymb}
+    (hy : y ∉ VarCtx_to_VarSymbs V)
+    (hpfy : (VarCtx_insert ⟨y, VarType.Var⟩ V hy).firstPairVar = none)
+    (n : ℕ) (Fl : Func σ V (n + 1)) (args : List (Term σ V .Var)) (h : args.length = n)
+    (rhs : Term σ V .Var) (c : Term σ V .Var) :
+    WFF.substVar hy c (WFF.eq
+        (Term.func (Func.closeN (n + 1) (Func.ctx_ext ⟨y, VarType.Var⟩ hy Fl)
+          (Term.var ⟨y, Finset.mem_insert_self _ _⟩
+            :: args.map (Term.ctx_ext ⟨y, VarType.Var⟩ hy)) (by simp [h])))
+        (Term.ctx_ext ⟨y, VarType.Var⟩ hy rhs))
+      = WFF.eq (Term.func (Func.closeN (n + 1) Fl (c :: args) (by simp [h]))) rhs := by
+  rw [WFF.substVar_eq hy c hpfy]
+  congr 1
+  · rw [Term.substVar_func hy c hpfy,
+        Func.ctx_rest_closeN hy hpfy c (n + 1) _ _ (by simp [h]) (by simp [h])]
+    refine congrArg Term.func (Func.closeN_congr _ _ _ _ _ _ _ ?_ ?_)
+    · exact Func.ctx_rest_ctx_ext hy hpfy c Fl
+    · rw [List.map_cons, List.map_map]
+      congr 1
+      · rw [← Term.substVar_eq_ctx_rest' hy c _ hpfy,
+            Term.substVar_var hy c hpfy y (Finset.mem_insert_self _ _), dif_pos rfl]
+      · rw [show (Term.ctx_rest hy hpfy c ∘ Term.ctx_ext ⟨y, VarType.Var⟩ hy) = id from
+              funext fun t => Term.ctx_rest_ctx_ext hy hpfy c t]
+        exact List.map_id args
+  · rw [Term.substVar_eq_ctx_rest' hy c _ hpfy]
+    exact Term.ctx_rest_ctx_ext hy hpfy c rhs
+
+/-- **Function-symbol congruence.**  Same induction as `relLeibClosed`; the Leibniz step is run
+    on the REVERSED argument equality so that the induction hypothesis and the goal sit on the two
+    sides of a single substitution — no transitivity of equality needed. -/
+theorem funcLeibClosed {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+    (hpfV : V.firstPairVar = none) (a b : Term σ V S)
+    (hterm : ∀ (u : Term σ (VarCtx_insert ⟨x, S⟩ V hx) .Var), TermLeib hx a b u) :
+    ∀ (n : ℕ) (Fl : Func σ (VarCtx_insert ⟨x, S⟩ V hx) n)
+      (args : List (Term σ V .Var)) (h : args.length = n),
+      Nonempty (Proof σ V {eqRec V S a b}
+        (WFF.eq (Term.func (Func.closeN n (Func.ctx_rest hx hpf a Fl) args h))
+                (Term.func (Func.closeN n (Func.ctx_rest hx hpf b Fl) args h))))
+  | _, .F hsym,     _,    _ => by
+      rw [Func.ctx_rest_F hx hpf a hsym, Func.ctx_rest_F hx hpf b hsym]
+      exact ⟨Proof.eq_intro _⟩
+  | n, .eval Fl' u, args, h => by
+      set y : VarSymb := VarSymb.fresh (VarCtx_to_VarSymbs V) with hydef
+      have hy : y ∉ VarCtx_to_VarSymbs V := VarSymb.fresh_not_mem _
+      have hpfy : (VarCtx_insert ⟨y, VarType.Var⟩ V hy).firstPairVar = none :=
+        firstPairVar_insert_Var hy hpfV
+      set ua : Term σ V .Var := Term.ctx_rest hx hpf a u with huadef
+      set ub : Term σ V .Var := Term.ctx_rest hx hpf b u with hubdef
+      set Fa : Func σ V (n + 1) := Func.ctx_rest hx hpf a Fl' with hFadef
+      set Fb : Func σ V (n + 1) := Func.ctx_rest hx hpf b Fl' with hFbdef
+      rw [Func.ctx_rest_eval hx hpf a Fl' u, Func.ctx_rest_eval hx hpf b Fl' u]
+      set rhs : Term σ V .Var :=
+        Term.func (Func.closeN (n + 1) Fb (ub :: args) (by simp [h])) with hrhs
+      have hkey := func_abstract_key hy hpfy n Fa args h rhs
+      have hleib := eqRec_leibniz_Var hpfV y hy
+        (WFF.eq (Term.func (Func.closeN (n + 1) (Func.ctx_ext ⟨y, VarType.Var⟩ hy Fa)
+            (Term.var ⟨y, Finset.mem_insert_self _ _⟩
+              :: args.map (Term.ctx_ext ⟨y, VarType.Var⟩ hy)) (by simp [h])))
+          (Term.ctx_ext ⟨y, VarType.Var⟩ hy rhs)) ub ua
+      rw [hkey ub, hkey ua] at hleib
+      have harg : Proof σ V {eqRec V S a b} (eqRec V VarType.Var ua ub) := by
+        have hu := (hterm u).some
+        rw [Term.substVar_eq_ctx_rest' hx a u hpf, Term.substVar_eq_ctx_rest' hx b u hpf] at hu
+        exact hu
+      have hargSym : Proof σ V {eqRec V S a b} (eqRec V VarType.Var ub ua) := by
+        rw [eqRec_var hpfV] at harg ⊢
+        exact Proof.eqSymmAtomic hpfV ua ub harg
+      have hIH := (funcLeibClosed hx hpf hpfV a b hterm (n + 1) Fl' (ub :: args) (by simp [h])).some
+      exact ⟨Proof.imp_elim (Proof.imp_elim (Proof.ofEmpty hleib.some) hargSym) hIH⟩
+  termination_by _ Fl _ _ => sizeOf Fl
+
+/-- The `.func` case of `TermLeib`: `funcLeibClosed` at arity `0`. -/
+theorem TermLeib.func {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
+    {hx : x ∉ VarCtx_to_VarSymbs V}
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none) (hpfV : V.firstPairVar = none)
+    {a b : Term σ V S}
+    (hterm : ∀ (u : Term σ (VarCtx_insert ⟨x, S⟩ V hx) .Var), TermLeib hx a b u)
+    (f : Func σ (VarCtx_insert ⟨x, S⟩ V hx) 0) :
+    TermLeib hx a b (Term.func f) := by
+  unfold TermLeib
+  rw [Term.substVar_func hx a hpf f, Term.substVar_func hx b hpf f, eqRec_var hpfV]
+  exact funcLeibClosed hx hpf hpfV a b hterm 0 f [] rfl
+
+/-- The `eq` case of Leibniz, at `.Var` — the only type at which the reform keeps a primitive
+    equality.  Two `eq_elim` steps, one per side, each abstracting that side to a fresh variable. -/
+theorem Leib.eqVar {σ : Signature} {V : VarCtx} {S : VarType} {x : VarSymb}
+    {hx : x ∉ VarCtx_to_VarSymbs V}
+    (hpf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none) (hpfV : V.firstPairVar = none)
+    {a b : Term σ V S} (t1 t2 : Term σ (VarCtx_insert ⟨x, S⟩ V hx) .Var)
+    (ih1 : TermLeib hx a b t1) (ih2 : TermLeib hx a b t2) :
+    Leib hx a b (WFF.eq t1 t2) := by
+  unfold Leib TermLeib at *
+  rw [WFF.substVar_eq hx a hpf t1 t2, WFF.substVar_eq hx b hpf t1 t2]
+  rw [eqRec_var hpfV] at ih1 ih2
+  have hy : VarSymb.fresh (VarCtx_to_VarSymbs V) ∉ VarCtx_to_VarSymbs V :=
+    VarSymb.fresh_not_mem _
+  set y : VarSymb := VarSymb.fresh (VarCtx_to_VarSymbs V) with hydef
+  have hpfy : (VarCtx_insert ⟨y, VarType.Var⟩ V hy).firstPairVar = none :=
+    firstPairVar_insert_Var hy hpfV
+  have hymem : (⟨y, VarType.Var⟩ : VarSymb × VarType)
+      ∈ (VarCtx_insert (⟨y, VarType.Var⟩ : VarSymb × VarType) V hy).1 :=
+    Finset.mem_insert_self _ _
+  -- Abstract the LEFT side of the equation.
+  set φ1 : WFF σ (VarCtx_insert (⟨y, VarType.Var⟩ : VarSymb × VarType) V hy) :=
+    WFF.eq (Term.var ⟨y, hymem⟩)
+      (Term.ctx_ext ⟨y, VarType.Var⟩ hy (Term.substVar hx a t2)) with hφ1
+  have key1 : ∀ (c : Term σ V .Var),
+      WFF.substVar hy c φ1 = WFF.eq c (Term.substVar hx a t2) := by
+    intro c
+    rw [hφ1, WFF.substVar_eq hy c hpfy]
+    congr 1
+    · rw [Term.substVar_var hy c hpfy y hymem, dif_pos rfl]
+    · rw [Term.substVar_eq_ctx_rest' hy c _ hpfy]
+      exact Term.ctx_rest_ctx_ext hy hpfy c _
+  -- Abstract the RIGHT side.
+  set φ2 : WFF σ (VarCtx_insert (⟨y, VarType.Var⟩ : VarSymb × VarType) V hy) :=
+    WFF.eq (Term.ctx_ext ⟨y, VarType.Var⟩ hy (Term.substVar hx b t1))
+      (Term.var ⟨y, hymem⟩) with hφ2
+  have key2 : ∀ (c : Term σ V .Var),
+      WFF.substVar hy c φ2 = WFF.eq (Term.substVar hx b t1) c := by
+    intro c
+    rw [hφ2, WFF.substVar_eq hy c hpfy]
+    congr 1
+    · rw [Term.substVar_eq_ctx_rest' hy c _ hpfy]
+      exact Term.ctx_rest_ctx_ext hy hpfy c _
+    · rw [Term.substVar_var hy c hpfy y hymem, dif_pos rfl]
+  refine ⟨Proof.imp_intro ?_⟩
+  have hhyp : Proof σ V ({eqRec V S a b}
+      ∪ {WFF.eq (Term.substVar hx a t1) (Term.substVar hx a t2)})
+      (WFF.eq (Term.substVar hx a t1) (Term.substVar hx a t2)) := Proof.ax (by simp)
+  have h1 := Proof.weak (ψ := WFF.eq (Term.substVar hx a t1) (Term.substVar hx a t2)) ih1.some
+  have h2 := Proof.weak (ψ := WFF.eq (Term.substVar hx a t1) (Term.substVar hx a t2)) ih2.some
+  -- Step 1: replace `t1[a]` by `t1[b]` on the left.
+  have hs1 : Proof σ V ({eqRec V S a b}
+      ∪ {WFF.eq (Term.substVar hx a t1) (Term.substVar hx a t2)})
+      (WFF.substVar hy (Term.substVar hx a t1) φ1) := by
+    rw [key1]; exact hhyp
+  have step1 := Proof.eq_elim ⟨y, VarType.Var⟩ hy
+    (Term.substVar hx a t1) (Term.substVar hx b t1) h1 hs1
+  rw [key1] at step1
+  -- Step 2: replace `t2[a]` by `t2[b]` on the right.
+  have hs2 : Proof σ V ({eqRec V S a b}
+      ∪ {WFF.eq (Term.substVar hx a t1) (Term.substVar hx a t2)})
+      (WFF.substVar hy (Term.substVar hx a t2) φ2) := by
+    rw [key2]; exact step1
+  have step2 := Proof.eq_elim ⟨y, VarType.Var⟩ hy
+    (Term.substVar hx a t2) (Term.substVar hx b t2) h2 hs2
+  rw [key2] at step2
+  exact step2
