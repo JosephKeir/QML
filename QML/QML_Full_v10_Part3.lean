@@ -2054,3 +2054,147 @@ theorem TermLeib.diaterm_passthrough {σ : Signature} {V V_inner : VarCtx}
   rw [Term.substVar_diaterm_passthrough hx hpf a xv hxv tt hsub hne h_xv_ne h_x_out hsub' hne',
       Term.substVar_diaterm_passthrough hx hpf b xv hxv tt hsub hne h_xv_ne h_x_out hsub' hne']
   exact ⟨Proof.ofEmpty (eqRec_refl V T.VTypeDia _).some⟩
+
+/-- `K_dia` with the WITNESSED slot empty: `□Γ ⊢ ◇_xφ → ◇_xψ` from `Γ↑ ⊢ φ → ψ`.  This is the
+    variant the "box variable under a ◇" case needs — its equation hypothesis is a plain `□`. -/
+def Proof.congDiaBoxG {σ : Signature} {V W : VarCtx} {x : VarSymb × VarType}
+    {hx : x.1 ∉ VarCtx_to_VarSymbs V} {Γ : Finset (WFF σ V)}
+    {φ ψ : WFF σ (VarCtx_insert x V hx)}
+    (hsub : (VarCtx_dia x V hx).1 ⊆ W.1)
+    (h : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x V hx).1)
+    (hφψ : Proof σ (VarCtx_insert x V hx) (WFF.ctx_ext_Finset x hx Γ) (φ.imp ψ)) :
+    Proof σ W (WFF.box_Finset (box_subs_of_dia_subs hsub) (in_box_of_in_dia h) Γ)
+      ((WFF.dia x hx φ hsub h).imp (WFF.dia x hx ψ hsub h)) := by
+  have h1 : Proof σ (VarCtx_insert x V hx) (WFF.ctx_ext_Finset x hx Γ ∪ {φ}) ψ :=
+    Proof.imp_elim (Proof.weak hφψ) (Proof.ax (by simp))
+  have hK := Proof.K_dia (Γ := Γ) (Δ := (∅ : Finset (WFF σ (VarCtx_insert x V hx))))
+    x hx hsub h (by simpa using h1)
+  simp only [WFF.box_x_Finset, Finset.image_empty, Finset.union_empty] at hK
+  exact Proof.imp_intro hK
+
+/-! ### A `□`-typed variable under a `◇`
+
+The last modal case: the substituted variable is box-typed and the formula is a `◇` whose witness
+is some OTHER variable.  `substVar` descends under the `◇` — weakening the boxterm's inner term
+past the witness and reordering the body — and `K_dia`'s plain-`□` slot carries the equation in.
+
+The one thing this needs and does not yet have is that **`eqRec` commutes with weakening**; it is
+taken as the hypothesis `hcomm`, isolating that single dependency exactly as `eqRecCore_symm` once
+took atomic symmetry.
+
+`hcomm` is stated as an OBJECT IMPLICATION, not an equality, and deliberately so: the equality is
+very likely FALSE.  `eqRecPeelA` picks its two fresh component names from
+`VarCtx_to_VarSymbs V ∪ boundVars t ∪ boundVars s`, so weakening the context changes the avoid set
+and hence the names — the two sides end up α-variants rather than syntactically equal.  The
+implication is what is actually true, and is exactly what the reform buys: with equality defined,
+α-variants are PROVABLY equivalent (`pair_elim_alpha` derivable) rather than equal.  `Proof.reHyp`
+consumes it. -/
+
+theorem Leib.dia_box {σ : Signature} {x : VarSymb × VarType} {V W : VarCtx}
+    (hx : x.1 ∉ VarCtx_to_VarSymbs V) (hxW : x.1 ∉ VarCtx_to_VarSymbs W)
+    (hsub : (VarCtx_box V).1 ⊆ W.1)
+    (hnbe : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V).1)
+    (hpfW : (VarCtx_insert ⟨x.1, x.2.VTypeBox⟩ W hxW).firstPairVar = none)
+    (hpf : W.firstPairVar = none)
+    (t s : Term σ V x.2)
+    (xv : VarSymb × VarType) (hxv_ne : xv.1 ≠ x.1)
+    (hxv_V : xv.1 ∉ VarCtx_to_VarSymbs V)
+    (hxv_outer : xv.1 ∉ VarCtx_to_VarSymbs (VarCtx_insert x V hx))
+    (hx_out : x.1 ∉ VarCtx_to_VarSymbs (VarCtx_insert xv V hxv_V))
+    (h_reorder : VarCtx_insert xv (VarCtx_insert x V hx) hxv_outer
+               = VarCtx_insert ⟨x.1, x.2⟩ (VarCtx_insert xv V hxv_V) hx_out)
+    (ψ : WFF σ (VarCtx_insert xv (VarCtx_insert x V hx) hxv_outer))
+    (P : (VarCtx_dia xv (VarCtx_insert x V hx) hxv_outer).1
+          ⊆ (VarCtx_insert ⟨x.1, x.2.VTypeBox⟩ W hxW).1)
+    (Q : ∀ p ∈ (VarCtx_insert ⟨x.1, x.2.VTypeBox⟩ W hxW).1, VarType.isBox p.2 = true
+          → p ∈ (VarCtx_dia xv (VarCtx_insert x V hx) hxv_outer).1)
+    (P' : (VarCtx_dia xv V hxv_V).1 ⊆ W.1)
+    (Q' : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv V hxv_V).1)
+    (hcomm : Nonempty (Proof σ (VarCtx_insert xv V hxv_V) ∅
+      ((WFF.ctx_ext xv hxv_V (eqRec V x.2 t s)).imp
+        (eqRec (VarCtx_insert xv V hxv_V) x.2
+          (Term.ctx_ext xv hxv_V t) (Term.ctx_ext xv hxv_V s)))))
+    (ih : Leib hx_out (Term.ctx_ext xv hxv_V t) (Term.ctx_ext xv hxv_V s) (h_reorder ▸ ψ)) :
+    Leib hxW (Term.boxterm t hsub hnbe) (Term.boxterm s hsub hnbe)
+      (WFF.dia xv hxv_outer ψ P Q) := by
+  unfold Leib at ih ⊢
+  rw [WFF.substVar_boxterm_dia_gen_base hx hxW hsub hnbe hpfW t xv hxv_ne hxv_V hxv_outer
+        hx_out h_reorder ψ P Q P' Q',
+      WFF.substVar_boxterm_dia_gen_base hx hxW hsub hnbe hpfW s xv hxv_ne hxv_V hxv_outer
+        hx_out h_reorder ψ P Q P' Q',
+      eqRec_box hpf t s hsub hnbe hsub hnbe]
+  simp only [boxCast_id]
+  have hinner : Proof σ (VarCtx_insert xv V hxv_V)
+      (WFF.ctx_ext_Finset xv hxv_V {eqRec V x.2 t s})
+      ((WFF.substVar hx_out (Term.ctx_ext xv hxv_V t) (h_reorder ▸ ψ)).imp
+       (WFF.substVar hx_out (Term.ctx_ext xv hxv_V s) (h_reorder ▸ ψ))) := by
+    rw [WFF.ctx_ext_Finset, Finset.image_singleton]
+    exact Proof.reHyp hcomm.some ih.some
+  refine ⟨Proof.cast_ctx ?_ (Proof.congDiaBoxG P' Q' hinner)⟩
+  simp [WFF.box_Finset]
+
+/-- Witnessed necessitation whose hypotheses arrive as plain `□`s: `Γ↑ ⊢ φ` gives `□Γ ⊢ □_xφ`.
+    (`necxG` is the same with the hypotheses already witnessed; `necx` is both at `Γ = ∅`.) -/
+def Proof.necxBoxG {σ : Signature} {V W : VarCtx} {x : VarSymb × VarType}
+    {hx : x.1 ∉ VarCtx_to_VarSymbs V} {Γ : Finset (WFF σ V)}
+    {φ : WFF σ (VarCtx_insert x V hx)}
+    (hsub : (VarCtx_dia x V hx).1 ⊆ W.1)
+    (h : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x V hx).1)
+    (p : Proof σ (VarCtx_insert x V hx) (WFF.ctx_ext_Finset x hx Γ) φ) :
+    Proof σ W (WFF.box_Finset (box_subs_of_dia_subs hsub) (in_box_of_in_dia h) Γ)
+      (WFF.box_x x hx hsub h φ) := by
+  have hneg : Proof σ (VarCtx_insert x V hx) (WFF.ctx_ext_Finset x hx Γ ∪ {neg φ}) WFF.bot :=
+    Proof.imp_elim (Proof.ax (by simp)) (Proof.weak p)
+  have hK := Proof.K_dia (Γ := Γ) (Δ := (∅ : Finset (WFF σ (VarCtx_insert x V hx))))
+    x hx hsub h (by simpa using hneg)
+  simp only [WFF.box_x_Finset, Finset.image_empty, Finset.union_empty] at hK
+  exact Proof.imp_intro (Proof.dia_bot x hx hsub h hK)
+
+/-- The term-level mirror of `Leib.dia_box`: a box-typed variable substituted into a `diaterm`
+    whose witness is some other variable.  Same `hcomm` dependency. -/
+theorem TermLeib.diaterm_box {σ : Signature} {x : VarSymb × VarType} {V W : VarCtx}
+    {Sψ : VarType}
+    (hx : x.1 ∉ VarCtx_to_VarSymbs V) (hxW : x.1 ∉ VarCtx_to_VarSymbs W)
+    (hsub : (VarCtx_box V).1 ⊆ W.1)
+    (hnbe : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V).1)
+    (hpfW : (VarCtx_insert ⟨x.1, x.2.VTypeBox⟩ W hxW).firstPairVar = none)
+    (hpf : W.firstPairVar = none)
+    (t s : Term σ V x.2)
+    (xv : VarSymb × VarType) (hxv_ne : xv.1 ≠ x.1)
+    (hxv_V : xv.1 ∉ VarCtx_to_VarSymbs V)
+    (hxv_outer : xv.1 ∉ VarCtx_to_VarSymbs (VarCtx_insert x V hx))
+    (hx_out : x.1 ∉ VarCtx_to_VarSymbs (VarCtx_insert xv V hxv_V))
+    (h_reorder : VarCtx_insert xv (VarCtx_insert x V hx) hxv_outer
+               = VarCtx_insert ⟨x.1, x.2⟩ (VarCtx_insert xv V hxv_V) hx_out)
+    (ψ : Term σ (VarCtx_insert xv (VarCtx_insert x V hx) hxv_outer) Sψ)
+    (P : (VarCtx_dia xv (VarCtx_insert x V hx) hxv_outer).1
+          ⊆ (VarCtx_insert ⟨x.1, x.2.VTypeBox⟩ W hxW).1)
+    (Q : ∀ p ∈ (VarCtx_insert ⟨x.1, x.2.VTypeBox⟩ W hxW).1, VarType.isBox p.2 = true
+          → p ∈ (VarCtx_dia xv (VarCtx_insert x V hx) hxv_outer).1)
+    (P' : (VarCtx_dia xv V hxv_V).1 ⊆ W.1)
+    (Q' : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv V hxv_V).1)
+    (hcomm : Nonempty (Proof σ (VarCtx_insert xv V hxv_V) ∅
+      ((WFF.ctx_ext xv hxv_V (eqRec V x.2 t s)).imp
+        (eqRec (VarCtx_insert xv V hxv_V) x.2
+          (Term.ctx_ext xv hxv_V t) (Term.ctx_ext xv hxv_V s)))))
+    (ih : TermLeib hx_out (Term.ctx_ext xv hxv_V t) (Term.ctx_ext xv hxv_V s)
+            (h_reorder ▸ ψ)) :
+    TermLeib hxW (Term.boxterm t hsub hnbe) (Term.boxterm s hsub hnbe)
+      (Term.diaterm xv hxv_outer ψ P Q) := by
+  unfold TermLeib at ih ⊢
+  rw [Term.substVar_diaterm_base hx hxW hsub hnbe hpfW t xv hxv_ne hxv_V hxv_outer
+        hx_out h_reorder ψ P Q P' Q',
+      Term.substVar_diaterm_base hx hxW hsub hnbe hpfW s xv hxv_ne hxv_V hxv_outer
+        hx_out h_reorder ψ P Q P' Q',
+      eqRec_box hpf t s hsub hnbe hsub hnbe,
+      eqRec_dia_same hpf _ _ P' Q' P' Q' rfl]
+  simp only [boxCast_id, diaCast_id]
+  have hinner : Proof σ (VarCtx_insert xv V hxv_V)
+      (WFF.ctx_ext_Finset xv hxv_V {eqRec V x.2 t s})
+      (eqRec (VarCtx_insert xv V hxv_V) Sψ
+        (Term.substVar hx_out (Term.ctx_ext xv hxv_V t) (h_reorder ▸ ψ))
+        (Term.substVar hx_out (Term.ctx_ext xv hxv_V s) (h_reorder ▸ ψ))) := by
+    rw [WFF.ctx_ext_Finset, Finset.image_singleton]
+    exact Proof.reHyp hcomm.some ih.some
+  refine ⟨Proof.cast_ctx ?_ (Proof.necxBoxG P' Q' hinner)⟩
+  simp [WFF.box_Finset]
