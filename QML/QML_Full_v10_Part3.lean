@@ -66,6 +66,15 @@ theorem diaterm_ctx_unique {x : VarSymb × VarType} {V₁ V₂ W : VarCtx}
     (fun _ hp => hsub₂ (VarCtx_box_subset_dia hx₂ hp))
     (fun p hp hbox => dia_box_entry_in_box hx₂ (h₂ p hp hbox) hbox)
 
+/-- A `pair_elim`'s result context contains the product-typed variable `z` it eliminates.  Used to
+    discharge the (unreachable) `pair_elim` cases in `eqRec`'s pair-free branch WITHOUT `subst`, so
+    that `eqRec` still reduces definitionally on concrete inputs. -/
+theorem pair_elim_ctx_mem {V pe_V : VarCtx} {v₁ v₂ : VarSymb × VarType}
+    {z : VarSymb} {hz : z ∉ VarCtx_to_VarSymbs pe_V}
+    (w₂eq : VarCtx_insert ⟨z, v₁.2.VTypeProd v₂.2⟩ pe_V hz = V) :
+    (⟨z, v₁.2.VTypeProd v₂.2⟩ : VarSymb × VarType) ∈ V.1 := by
+  rw [← w₂eq]; exact Finset.mem_insert_self _ _
+
 /-! ## The recursive extensional equality `eqRec` (STAGING, additive)
 
 Dispatches on `V.firstPairVar` (mirroring `ctx_rest_MU`/`substVar_peel`): if the context has a
@@ -119,12 +128,10 @@ def eqRec {σ : Signature} :
           (eqRec two_comp S t' s')
     | none =>
         match S, t, s with
-        | _, .pair_elim v₁ v₂ z _ _ _ _ _ w₂eq _, _ => by
-            subst w₂eq
-            exact (VarCtx.firstPairVar_none_no_pair hfp (Finset.mem_insert_self _ _)).elim
-        | _, _, .pair_elim v₁ v₂ z _ _ _ _ _ w₂eq _ => by
-            subst w₂eq
-            exact (VarCtx.firstPairVar_none_no_pair hfp (Finset.mem_insert_self _ _)).elim
+        | _, .pair_elim _ _ _ _ _ _ _ _ w₂eq _, _ =>
+            (VarCtx.firstPairVar_none_no_pair hfp (pair_elim_ctx_mem w₂eq)).elim
+        | _, _, .pair_elim _ _ _ _ _ _ _ _ w₂eq _ =>
+            (VarCtx.firstPairVar_none_no_pair hfp (pair_elim_ctx_mem w₂eq)).elim
         | .Var, t, s => WFF.eq t s
         | .VTypeOne, _, _ => WFF.top
         | .VTypeProd A B, .pair a b, .pair c d => WFF.and (eqRec _ A a c) (eqRec _ B b d)
@@ -143,3 +150,25 @@ decreasing_by
     | (apply Prod.Lex.right
        exact VarCtx.pairDepth_unpair_lt hzmem hv1_V₀ hv2_V₀ hv1v2)
     | (apply Prod.Lex.left; simp_wf; try omega)
+
+/-! ### Extensionality equations (pair-free context): how `eqRec` computes.
+
+In a pair-free context the `firstPairVar = none` branch fires and `eqRec` reduces on the type.
+The `.Var`/`.VTypeOne`/`.VTypeProd` cases reduce via `simp only [eqRec, hfp]`; the `□`/`◇` cases
+require reducing the nested dependent match past the (unreachable) `pair_elim` arms — a Lean
+match-reduction issue still to be resolved (their RHS `eqRec` is at a different context, so plain
+`simp only [eqRec]` loops). -/
+
+theorem eqRec_var {σ : Signature} {V : VarCtx} (hfp : V.firstPairVar = none)
+    (t s : Term σ V .Var) : eqRec V .Var t s = WFF.eq t s := by
+  simp only [eqRec, hfp]
+
+theorem eqRec_unit {σ : Signature} {V : VarCtx} (hfp : V.firstPairVar = none)
+    (t s : Term σ V .VTypeOne) : eqRec V .VTypeOne t s = WFF.top := by
+  simp only [eqRec, hfp]
+
+theorem eqRec_prod {σ : Signature} {V : VarCtx} (hfp : V.firstPairVar = none) {A B : VarType}
+    (a c : Term σ V A) (b d : Term σ V B) :
+    eqRec V (.VTypeProd A B) (.pair a b) (.pair c d)
+      = WFF.and (eqRec V A a c) (eqRec V B b d) := by
+  simp only [eqRec, hfp]
