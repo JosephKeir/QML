@@ -1851,15 +1851,125 @@ theorem WFF.binderPairDepth_rename {σ : Signature}
 
 /-! ### Pair-Elim Distribution (η-Normalisation) -/
 
--- `WFF.pairElim` distributes a `pair_elim` over the structure of a WFF.
--- Mirrors `Term.pairElim` and `Rel.pairElim`: structural connectives
--- (`atom`, `top`, `bot`, `and`, `or`, `imp`, `eq`) push the destructure
--- inside, handing off to `Rel.pairElim` for atoms and `Term.pairElim` for
--- equalities.  Modal binders (`box`, `dia`), quantifier binders (`all`,
--- `ex`), and nested `pair_elim` are "stuck": they wrap with the outer
--- `WFF.pair_elim` constructor (because moving the destructure past a
--- binder would require collision-handling/α-renaming that the WFF.rename
--- machinery has not been built yet).
+/-! `WFF.pairElim`'s quantifier arms push the destructure *inside* the binder, α-renaming the
+binder to a canonical fresh name.  Renaming unconditionally (rather than only on collision with
+the new pair variable `z`) keeps the arm branch-free and makes the arm total on `all`/`ex`. -/
+
+-- A binder fresh for `W₁ = V + v₁ + v₂` is automatically distinct from `v₁`/`v₂` and fresh for `V`.
+theorem pairElim_binder_fresh {V W₁ : VarCtx} {v₁ v₂ : VarSymb × VarType}
+    {hv₁ : v₁.1 ∉ VarCtx_to_VarSymbs V} {hv₂ : v₂.1 ∉ VarCtx_to_VarSymbs V}
+    {hv₁v₂ : v₁.1 ≠ v₂.1}
+    (w₁eq : VarCtx_insert_twice v₁ v₂ V hv₁ hv₂ hv₁v₂ = W₁)
+    {y : VarSymb} (hy : y ∉ VarCtx_to_VarSymbs W₁) :
+    y ≠ v₁.1 ∧ y ≠ v₂.1 ∧ y ∉ VarCtx_to_VarSymbs V := by
+  subst w₁eq
+  refine ⟨fun h => hy (Finset.mem_image.mpr ⟨v₁, Finset.mem_insert_self _ _, h.symm⟩),
+          fun h => hy (Finset.mem_image.mpr
+            ⟨v₂, Finset.mem_insert_of_mem (Finset.mem_insert_self _ _), h.symm⟩),
+          fun h => ?_⟩
+  rcases Finset.mem_image.mp h with ⟨p, hp, hpeq⟩
+  exact hy (Finset.mem_image.mpr
+    ⟨p, Finset.mem_insert_of_mem (Finset.mem_insert_of_mem hp), hpeq⟩)
+
+theorem pairElim_quant_w₁eq {V W₁ : VarCtx} {v₁ v₂ : VarSymb × VarType}
+    {hv₁ : v₁.1 ∉ VarCtx_to_VarSymbs V} {hv₂ : v₂.1 ∉ VarCtx_to_VarSymbs V}
+    {hv₁v₂ : v₁.1 ≠ v₂.1}
+    (w₁eq : VarCtx_insert_twice v₁ v₂ V hv₁ hv₂ hv₁v₂ = W₁)
+    {y : VarSymb × VarType} (hyV : y.1 ∉ VarCtx_to_VarSymbs V)
+    (hyW₁ : y.1 ∉ VarCtx_to_VarSymbs W₁)
+    (hv₁y : v₁.1 ∉ VarCtx_to_VarSymbs (VarCtx_insert y V hyV))
+    (hv₂y : v₂.1 ∉ VarCtx_to_VarSymbs (VarCtx_insert y V hyV)) :
+    VarCtx_insert_twice v₁ v₂ (VarCtx_insert y V hyV) hv₁y hv₂y hv₁v₂
+      = VarCtx_insert y W₁ hyW₁ := by
+  subst w₁eq
+  apply VarCtx_ext
+  change insert v₁ (insert v₂ (insert y V.1)) = insert y (insert v₁ (insert v₂ V.1))
+  rw [Finset.insert_comm v₂ y, Finset.insert_comm v₁ y]
+
+theorem pairElim_quant_w₂eq {V W₂ : VarCtx} {v₁ v₂ : VarSymb × VarType} {z : VarSymb}
+    {hz : z ∉ VarCtx_to_VarSymbs V}
+    (w₂eq : VarCtx_insert ⟨z, VarType.VTypeProd v₁.2 v₂.2⟩ V hz = W₂)
+    {y : VarSymb × VarType} (hyV : y.1 ∉ VarCtx_to_VarSymbs V)
+    (hyW₂ : y.1 ∉ VarCtx_to_VarSymbs W₂)
+    (hzy : z ∉ VarCtx_to_VarSymbs (VarCtx_insert y V hyV)) :
+    VarCtx_insert ⟨z, VarType.VTypeProd v₁.2 v₂.2⟩ (VarCtx_insert y V hyV) hzy
+      = VarCtx_insert y W₂ hyW₂ := by
+  subst w₂eq
+  exact VarCtx_insert_comm _ _
+
+/-- The canonical fresh binder: avoids the new pair variable `z`, the ambient `W₁`, and the
+    body's own binders (the last is `WFF.rename`'s capture-avoidance condition). -/
+def pairElim_qy (z : VarSymb) (W₁ : VarCtx) (bv : Finset VarSymb) : VarSymb :=
+  VarSymb.fresh (insert z (VarCtx_to_VarSymbs W₁ ∪ bv))
+
+theorem pairElim_qy_spec (z : VarSymb) (W₁ : VarCtx) (bv : Finset VarSymb) :
+    pairElim_qy z W₁ bv ∉ insert z (VarCtx_to_VarSymbs W₁ ∪ bv) := VarSymb.fresh_not_mem _
+
+theorem pairElim_qy_ne_z (z : VarSymb) (W₁ : VarCtx) (bv : Finset VarSymb) :
+    pairElim_qy z W₁ bv ≠ z :=
+  fun h => pairElim_qy_spec z W₁ bv (Finset.mem_insert.mpr (Or.inl h))
+
+theorem pairElim_qy_notin_W₁ (z : VarSymb) (W₁ : VarCtx) (bv : Finset VarSymb) :
+    pairElim_qy z W₁ bv ∉ VarCtx_to_VarSymbs W₁ :=
+  fun h => pairElim_qy_spec z W₁ bv (Finset.mem_insert_of_mem (Finset.mem_union_left _ h))
+
+theorem pairElim_qy_notin_bv (z : VarSymb) (W₁ : VarCtx) (bv : Finset VarSymb) :
+    pairElim_qy z W₁ bv ∉ bv :=
+  fun h => pairElim_qy_spec z W₁ bv (Finset.mem_insert_of_mem (Finset.mem_union_right _ h))
+
+theorem pairElim_qyV {V W₁ : VarCtx} {v₁ v₂ : VarSymb × VarType}
+    {hv₁ : v₁.1 ∉ VarCtx_to_VarSymbs V} {hv₂ : v₂.1 ∉ VarCtx_to_VarSymbs V}
+    {hv₁v₂ : v₁.1 ≠ v₂.1}
+    (w₁eq : VarCtx_insert_twice v₁ v₂ V hv₁ hv₂ hv₁v₂ = W₁)
+    (z : VarSymb) (bv : Finset VarSymb) :
+    pairElim_qy z W₁ bv ∉ VarCtx_to_VarSymbs V :=
+  (pairElim_binder_fresh w₁eq (pairElim_qy_notin_W₁ z W₁ bv)).2.2
+
+theorem pairElim_qyv₁ {V W₁ : VarCtx} {v₁ v₂ : VarSymb × VarType}
+    {hv₁ : v₁.1 ∉ VarCtx_to_VarSymbs V} {hv₂ : v₂.1 ∉ VarCtx_to_VarSymbs V}
+    {hv₁v₂ : v₁.1 ≠ v₂.1}
+    (w₁eq : VarCtx_insert_twice v₁ v₂ V hv₁ hv₂ hv₁v₂ = W₁)
+    (z : VarSymb) (bv : Finset VarSymb) (T : VarType) :
+    v₁.1 ∉ VarCtx_to_VarSymbs (VarCtx_insert
+      (⟨pairElim_qy z W₁ bv, T⟩ : VarSymb × VarType) V (pairElim_qyV w₁eq z bv)) :=
+  not_mem_VarSymbs_insert
+    (Ne.symm (pairElim_binder_fresh w₁eq (pairElim_qy_notin_W₁ z W₁ bv)).1) hv₁
+
+theorem pairElim_qyv₂ {V W₁ : VarCtx} {v₁ v₂ : VarSymb × VarType}
+    {hv₁ : v₁.1 ∉ VarCtx_to_VarSymbs V} {hv₂ : v₂.1 ∉ VarCtx_to_VarSymbs V}
+    {hv₁v₂ : v₁.1 ≠ v₂.1}
+    (w₁eq : VarCtx_insert_twice v₁ v₂ V hv₁ hv₂ hv₁v₂ = W₁)
+    (z : VarSymb) (bv : Finset VarSymb) (T : VarType) :
+    v₂.1 ∉ VarCtx_to_VarSymbs (VarCtx_insert
+      (⟨pairElim_qy z W₁ bv, T⟩ : VarSymb × VarType) V (pairElim_qyV w₁eq z bv)) :=
+  not_mem_VarSymbs_insert
+    (Ne.symm (pairElim_binder_fresh w₁eq (pairElim_qy_notin_W₁ z W₁ bv)).2.1) hv₂
+
+theorem pairElim_qyz {V W₁ : VarCtx} {v₁ v₂ : VarSymb × VarType} {z : VarSymb}
+    {hv₁ : v₁.1 ∉ VarCtx_to_VarSymbs V} {hv₂ : v₂.1 ∉ VarCtx_to_VarSymbs V}
+    {hv₁v₂ : v₁.1 ≠ v₂.1} (hz : z ∉ VarCtx_to_VarSymbs V)
+    (w₁eq : VarCtx_insert_twice v₁ v₂ V hv₁ hv₂ hv₁v₂ = W₁)
+    (bv : Finset VarSymb) (T : VarType) :
+    z ∉ VarCtx_to_VarSymbs (VarCtx_insert
+      (⟨pairElim_qy z W₁ bv, T⟩ : VarSymb × VarType) V (pairElim_qyV w₁eq z bv)) :=
+  not_mem_VarSymbs_insert (Ne.symm (pairElim_qy_ne_z z W₁ bv)) hz
+
+theorem pairElim_qyW₂ {V W₁ W₂ : VarCtx} {v₁ v₂ : VarSymb × VarType} {z : VarSymb}
+    {hv₁ : v₁.1 ∉ VarCtx_to_VarSymbs V} {hv₂ : v₂.1 ∉ VarCtx_to_VarSymbs V}
+    {hv₁v₂ : v₁.1 ≠ v₂.1} {hz : z ∉ VarCtx_to_VarSymbs V}
+    (w₁eq : VarCtx_insert_twice v₁ v₂ V hv₁ hv₂ hv₁v₂ = W₁)
+    (w₂eq : VarCtx_insert ⟨z, VarType.VTypeProd v₁.2 v₂.2⟩ V hz = W₂)
+    (bv : Finset VarSymb) :
+    pairElim_qy z W₁ bv ∉ VarCtx_to_VarSymbs W₂ :=
+  w₂eq ▸ not_mem_VarSymbs_insert (pairElim_qy_ne_z z W₁ bv) (pairElim_qyV w₁eq z bv)
+
+-- `WFF.pairElim` distributes a `pair_elim` over the structure of a WFF.  Structural connectives
+-- push the destructure inside.  QUANTIFIER binders also push inside, α-renaming the binder to
+-- `pairElim_qy` (which avoids `z`, so the newly-freed pair variable is never captured).  Modal
+-- binders (`box`, `dia`) and nested `pair_elim` remain STUCK, and structurally so: `isBox` of a
+-- product is the disjunction of its components, so when either `v₁.2` or `v₂.2` is box-typed,
+-- `⟨z, v₁.2 ×ᵥ v₂.2⟩ ∈ W₂` is a box-typed entry not of the form `□T`, making `h_no_box_extras`
+-- unsatisfiable — no `box` can exist in `W₂` at all, so the pushed-in form does not typecheck.
 def WFF.pairElim {σ : Signature} {V W₁ W₂ : VarCtx}
     (v₁ v₂ : VarSymb × VarType) (z : VarSymb)
     (hv₁ : v₁.1 ∉ VarCtx_to_VarSymbs V) (hv₂ : v₂.1 ∉ VarCtx_to_VarSymbs V)
@@ -1883,11 +1993,46 @@ def WFF.pairElim {σ : Signature} {V W₁ W₂ : VarCtx}
   | .eq s t   =>
       .eq (Term.pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq s)
           (Term.pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq t)
-  | .all x φ  =>
-      -- Stuck: quantifier binder.  Wrap with WFF.pair_elim constructor.
-      .pair_elim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq (.all x φ)
-  | .ex  x φ  =>
-      .pair_elim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq (.ex  x φ)
+  | @WFF.all _ _ x hx φ =>
+      @WFF.all σ W₂ ⟨pairElim_qy z W₁ (WFF.boundVars φ), x.2⟩
+        (pairElim_qyW₂ w₁eq w₂eq (WFF.boundVars φ))
+        (WFF.pairElim
+          (V := VarCtx_insert (⟨pairElim_qy z W₁ (WFF.boundVars φ), x.2⟩ : VarSymb × VarType) V
+                  (pairElim_qyV w₁eq z (WFF.boundVars φ)))
+          v₁ v₂ z
+          (pairElim_qyv₁ w₁eq z (WFF.boundVars φ) x.2)
+          (pairElim_qyv₂ w₁eq z (WFF.boundVars φ) x.2)
+          hv₁v₂ (pairElim_qyz hz w₁eq (WFF.boundVars φ) x.2)
+          (pairElim_quant_w₁eq w₁eq (pairElim_qyV w₁eq z (WFF.boundVars φ))
+            (pairElim_qy_notin_W₁ z W₁ (WFF.boundVars φ))
+            (pairElim_qyv₁ w₁eq z (WFF.boundVars φ) x.2)
+            (pairElim_qyv₂ w₁eq z (WFF.boundVars φ) x.2))
+          (pairElim_quant_w₂eq w₂eq (pairElim_qyV w₁eq z (WFF.boundVars φ))
+            (pairElim_qyW₂ w₁eq w₂eq (WFF.boundVars φ))
+            (pairElim_qyz hz w₁eq (WFF.boundVars φ) x.2))
+          (WFF.rename x.1 (pairElim_qy z W₁ (WFF.boundVars φ)) x.2 W₁
+            (VarCtx_insert x W₁ hx) hx (pairElim_qy_notin_W₁ z W₁ (WFF.boundVars φ)) rfl φ
+            (pairElim_qy_notin_bv z W₁ (WFF.boundVars φ))))
+  | @WFF.ex _ _ x hx φ =>
+      @WFF.ex σ W₂ ⟨pairElim_qy z W₁ (WFF.boundVars φ), x.2⟩
+        (pairElim_qyW₂ w₁eq w₂eq (WFF.boundVars φ))
+        (WFF.pairElim
+          (V := VarCtx_insert (⟨pairElim_qy z W₁ (WFF.boundVars φ), x.2⟩ : VarSymb × VarType) V
+                  (pairElim_qyV w₁eq z (WFF.boundVars φ)))
+          v₁ v₂ z
+          (pairElim_qyv₁ w₁eq z (WFF.boundVars φ) x.2)
+          (pairElim_qyv₂ w₁eq z (WFF.boundVars φ) x.2)
+          hv₁v₂ (pairElim_qyz hz w₁eq (WFF.boundVars φ) x.2)
+          (pairElim_quant_w₁eq w₁eq (pairElim_qyV w₁eq z (WFF.boundVars φ))
+            (pairElim_qy_notin_W₁ z W₁ (WFF.boundVars φ))
+            (pairElim_qyv₁ w₁eq z (WFF.boundVars φ) x.2)
+            (pairElim_qyv₂ w₁eq z (WFF.boundVars φ) x.2))
+          (pairElim_quant_w₂eq w₂eq (pairElim_qyV w₁eq z (WFF.boundVars φ))
+            (pairElim_qyW₂ w₁eq w₂eq (WFF.boundVars φ))
+            (pairElim_qyz hz w₁eq (WFF.boundVars φ) x.2))
+          (WFF.rename x.1 (pairElim_qy z W₁ (WFF.boundVars φ)) x.2 W₁
+            (VarCtx_insert x W₁ hx) hx (pairElim_qy_notin_W₁ z W₁ (WFF.boundVars φ)) rfl φ
+            (pairElim_qy_notin_bv z W₁ (WFF.boundVars φ))))
   | @WFF.box _ V_inner _ φ hsub h_no_box_extras =>
       -- Stuck: modal binder.
       .pair_elim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq
@@ -1899,6 +2044,13 @@ def WFF.pairElim {σ : Signature} {V W₁ W₂ : VarCtx}
       -- Stuck: nested pair_elim.
       .pair_elim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq
         (.pair_elim v₁' v₂' z' hv₁' hv₂' hv₁v₂' hz' w₁eq' w₂eq' body)
+termination_by φ => WFF.numNodes φ
+decreasing_by
+  all_goals
+    simp only [WFF.numNodes]
+    first
+      | omega
+      | (rw [WFF.numNodes_rename]; omega)
 
 def WFF.pairElim_Finset {σ : Signature} {V W₁ W₂ : VarCtx}
     (v₁ v₂ : VarSymb × VarType) (z : VarSymb)
@@ -1909,51 +2061,9 @@ def WFF.pairElim_Finset {σ : Signature} {V W₁ W₂ : VarCtx}
     Finset (WFF σ W₁) → Finset (WFF σ W₂) :=
   fun Γ => Finset.image (WFF.pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq) Γ
 
--- `WFF.pairElim` preserves `diaCount`.  Structural arms push diaCount through
--- (atom: via Rel.diaCount_pairElim; and/or/imp: structural sum; eq: via
--- Term.diaCount_pairElim).  "Stuck" arms (all/ex/box/dia/nested pair_elim)
--- wrap with the `.pair_elim` constructor, and `diaCount (.pair_elim _ _ _ _
--- _ _ _ _ _ body) = diaCount body` matches the input's diaCount.  Mirrors
--- `Term.diaCount_pairElim`'s structure.
-theorem WFF.diaCount_pairElim {σ : Signature} {V : VarCtx}
-    (v₁ v₂ : VarSymb × VarType) (z : VarSymb)
-    (hv₁ : v₁.1 ∉ VarCtx_to_VarSymbs V) (hv₂ : v₂.1 ∉ VarCtx_to_VarSymbs V)
-    (hv₁v₂ : v₁.1 ≠ v₂.1) (hz : z ∉ VarCtx_to_VarSymbs V)
-    (φ : WFF σ (VarCtx_insert_twice v₁ v₂ V hv₁ hv₂ hv₁v₂)) :
-    WFF.diaCount (WFF.pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz rfl rfl φ)
-      = WFF.diaCount φ := by
-  match φ with
-  | .atom R =>
-      have ih := Rel.diaCount_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz R
-      simp only [WFF.pairElim, WFF.diaCount, ih]
-  | .top => rfl
-  | .bot => rfl
-  | .and φ' ψ' =>
-      have ih_1 := WFF.diaCount_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz φ'
-      have ih_2 := WFF.diaCount_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz ψ'
-      simp only [WFF.pairElim, WFF.diaCount, ih_1, ih_2]
-  | .or φ' ψ' =>
-      have ih_1 := WFF.diaCount_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz φ'
-      have ih_2 := WFF.diaCount_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz ψ'
-      simp only [WFF.pairElim, WFF.diaCount, ih_1, ih_2]
-  | .imp φ' ψ' =>
-      have ih_1 := WFF.diaCount_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz φ'
-      have ih_2 := WFF.diaCount_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz ψ'
-      simp only [WFF.pairElim, WFF.diaCount, ih_1, ih_2]
-  | .eq s t =>
-      have ih_s := Term.diaCount_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz s
-      have ih_t := Term.diaCount_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz t
-      simp only [WFF.pairElim, WFF.diaCount, ih_s, ih_t]
-  | .all _ _ => rfl
-  | .ex  _ _ => rfl
-  | .box _ _ _ => rfl
-  | .dia _ _ _ _ _ => rfl
-  | .pair_elim _ _ _ _ _ _ _ _ _ _ => rfl
-termination_by WFF.numNodes φ
-decreasing_by all_goals (simp [WFF.numNodes]; try omega)
-
--- Generalized version: allow arbitrary W₁/W₂.  Mirrors
--- `Term.diaCount_pairElim_gen` / `Func.diaCount_pairElim_gen`.
+-- `WFF.pairElim` preserves `diaCount`.  Stated GENERALLY (arbitrary `W₁`/`W₂`) because the
+-- quantifier arms hand the recursive call PERMUTED context equations, not `rfl`; the α-rename is
+-- absorbed by `WFF.diaCount_rename`.
 theorem WFF.diaCount_pairElim_gen {σ : Signature} {V W₁ W₂ : VarCtx}
     (v₁ v₂ : VarSymb × VarType) (z : VarSymb)
     (hv₁ : v₁.1 ∉ VarCtx_to_VarSymbs V) (hv₂ : v₂.1 ∉ VarCtx_to_VarSymbs V)
@@ -1961,51 +2071,60 @@ theorem WFF.diaCount_pairElim_gen {σ : Signature} {V W₁ W₂ : VarCtx}
     (w₁eq : VarCtx_insert_twice v₁ v₂ V hv₁ hv₂ hv₁v₂ = W₁)
     (w₂eq : VarCtx_insert ⟨z, .VTypeProd v₁.2 v₂.2⟩ V hz = W₂)
     (φ : WFF σ W₁) :
-    WFF.diaCount (WFF.pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq φ)
-      = WFF.diaCount φ := by
-  subst w₁eq
-  subst w₂eq
-  exact WFF.diaCount_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz φ
+    WFF.diaCount (WFF.pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq φ) = WFF.diaCount φ := by
+  match φ with
+  | .atom R =>
+      simp only [WFF.pairElim, WFF.diaCount]
+      exact Rel.diaCount_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq R
+  | .top => simp only [WFF.pairElim, WFF.diaCount]
+  | .bot => simp only [WFF.pairElim, WFF.diaCount]
+  | .and φ' ψ' =>
+      simp only [WFF.pairElim, WFF.diaCount,
+        WFF.diaCount_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq φ',
+        WFF.diaCount_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq ψ']
+  | .or φ' ψ' =>
+      simp only [WFF.pairElim, WFF.diaCount,
+        WFF.diaCount_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq φ',
+        WFF.diaCount_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq ψ']
+  | .imp φ' ψ' =>
+      simp only [WFF.pairElim, WFF.diaCount,
+        WFF.diaCount_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq φ',
+        WFF.diaCount_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq ψ']
+  | .eq s t =>
+      simp only [WFF.pairElim, WFF.diaCount,
+        Term.diaCount_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq s,
+        Term.diaCount_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq t]
+  | @WFF.all _ _ x hx φ' =>
+      simp only [WFF.pairElim, WFF.diaCount,
+        WFF.diaCount_pairElim_gen _ _ _ _ _ _ _ _ _
+          (WFF.rename x.1 _ x.2 W₁ _ hx _ rfl φ' _),
+        WFF.diaCount_rename]
+  | @WFF.ex _ _ x hx φ' =>
+      simp only [WFF.pairElim, WFF.diaCount,
+        WFF.diaCount_pairElim_gen _ _ _ _ _ _ _ _ _
+          (WFF.rename x.1 _ x.2 W₁ _ hx _ rfl φ' _),
+        WFF.diaCount_rename]
+  | .box _ _ _ => simp only [WFF.pairElim, WFF.diaCount]
+  | .dia _ _ _ _ _ => simp only [WFF.pairElim, WFF.diaCount]
+  | .pair_elim _ _ _ _ _ _ _ _ _ _ => simp only [WFF.pairElim, WFF.diaCount]
+termination_by WFF.numNodes φ
+decreasing_by
+  all_goals
+    simp only [WFF.numNodes]
+    first
+      | omega
+      | (rw [WFF.numNodes_rename]; omega)
 
--- `WFF.pairElim` preserves `binderPairDepth`.  Mirrors
--- `WFF.diaCount_pairElim`'s structure.  Atomic / structural arms (atom: 0;
--- and/or/imp: sum) push through; stuck arms (.all/.ex/.box/.dia/nested
--- .pair_elim) wrap with `.pair_elim`, which has
--- `binderPairDepth (.pair_elim ... body) = binderPairDepth body`,
--- matching the input's binderPairDepth.
-theorem WFF.binderPairDepth_pairElim {σ : Signature} {V : VarCtx}
+theorem WFF.diaCount_pairElim {σ : Signature} {V : VarCtx}
     (v₁ v₂ : VarSymb × VarType) (z : VarSymb)
     (hv₁ : v₁.1 ∉ VarCtx_to_VarSymbs V) (hv₂ : v₂.1 ∉ VarCtx_to_VarSymbs V)
     (hv₁v₂ : v₁.1 ≠ v₂.1) (hz : z ∉ VarCtx_to_VarSymbs V)
     (φ : WFF σ (VarCtx_insert_twice v₁ v₂ V hv₁ hv₂ hv₁v₂)) :
-    WFF.binderPairDepth (WFF.pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz rfl rfl φ)
-      = WFF.binderPairDepth φ := by
-  match φ with
-  | .atom _ => simp only [WFF.pairElim, WFF.binderPairDepth]
-  | .top => rfl
-  | .bot => rfl
-  | .and φ' ψ' =>
-      have ih_1 := WFF.binderPairDepth_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz φ'
-      have ih_2 := WFF.binderPairDepth_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz ψ'
-      simp only [WFF.pairElim, WFF.binderPairDepth, ih_1, ih_2]
-  | .or φ' ψ' =>
-      have ih_1 := WFF.binderPairDepth_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz φ'
-      have ih_2 := WFF.binderPairDepth_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz ψ'
-      simp only [WFF.pairElim, WFF.binderPairDepth, ih_1, ih_2]
-  | .imp φ' ψ' =>
-      have ih_1 := WFF.binderPairDepth_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz φ'
-      have ih_2 := WFF.binderPairDepth_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz ψ'
-      simp only [WFF.pairElim, WFF.binderPairDepth, ih_1, ih_2]
-  | .eq _ _ => simp only [WFF.pairElim, WFF.binderPairDepth]
-  | .all _ _ => rfl
-  | .ex  _ _ => rfl
-  | .box _ _ _ => rfl
-  | .dia _ _ _ _ _ => rfl
-  | .pair_elim _ _ _ _ _ _ _ _ _ _ => rfl
-termination_by WFF.numNodes φ
-decreasing_by all_goals (simp [WFF.numNodes]; try omega)
+    WFF.diaCount (WFF.pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz rfl rfl φ) = WFF.diaCount φ :=
+  WFF.diaCount_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz rfl rfl φ
 
--- Generalized version, mirrors `WFF.diaCount_pairElim_gen`.
+-- Same for `binderPairDepth`.  The quantifier arms work because `WFF.rename` changes only the
+-- binder's SYMBOL, not its type, and `binderPairDepth` reads only the type.
 theorem WFF.binderPairDepth_pairElim_gen {σ : Signature} {V W₁ W₂ : VarCtx}
     (v₁ v₂ : VarSymb × VarType) (z : VarSymb)
     (hv₁ : v₁.1 ∉ VarCtx_to_VarSymbs V) (hv₂ : v₂.1 ∉ VarCtx_to_VarSymbs V)
@@ -2015,9 +2134,52 @@ theorem WFF.binderPairDepth_pairElim_gen {σ : Signature} {V W₁ W₂ : VarCtx}
     (φ : WFF σ W₁) :
     WFF.binderPairDepth (WFF.pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq φ)
       = WFF.binderPairDepth φ := by
-  subst w₁eq
-  subst w₂eq
-  exact WFF.binderPairDepth_pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz φ
+  match φ with
+  | .atom _ => simp only [WFF.pairElim, WFF.binderPairDepth]
+  | .top => simp only [WFF.pairElim, WFF.binderPairDepth]
+  | .bot => simp only [WFF.pairElim, WFF.binderPairDepth]
+  | .and φ' ψ' =>
+      simp only [WFF.pairElim, WFF.binderPairDepth,
+        WFF.binderPairDepth_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq φ',
+        WFF.binderPairDepth_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq ψ']
+  | .or φ' ψ' =>
+      simp only [WFF.pairElim, WFF.binderPairDepth,
+        WFF.binderPairDepth_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq φ',
+        WFF.binderPairDepth_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq ψ']
+  | .imp φ' ψ' =>
+      simp only [WFF.pairElim, WFF.binderPairDepth,
+        WFF.binderPairDepth_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq φ',
+        WFF.binderPairDepth_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz w₁eq w₂eq ψ']
+  | .eq _ _ => simp only [WFF.pairElim, WFF.binderPairDepth]
+  | @WFF.all _ _ x hx φ' =>
+      simp only [WFF.pairElim, WFF.binderPairDepth,
+        WFF.binderPairDepth_pairElim_gen _ _ _ _ _ _ _ _ _
+          (WFF.rename x.1 _ x.2 W₁ _ hx _ rfl φ' _),
+        WFF.binderPairDepth_rename]
+  | @WFF.ex _ _ x hx φ' =>
+      simp only [WFF.pairElim, WFF.binderPairDepth,
+        WFF.binderPairDepth_pairElim_gen _ _ _ _ _ _ _ _ _
+          (WFF.rename x.1 _ x.2 W₁ _ hx _ rfl φ' _),
+        WFF.binderPairDepth_rename]
+  | .box _ _ _ => simp only [WFF.pairElim, WFF.binderPairDepth]
+  | .dia _ _ _ _ _ => simp only [WFF.pairElim, WFF.binderPairDepth]
+  | .pair_elim _ _ _ _ _ _ _ _ _ _ => simp only [WFF.pairElim, WFF.binderPairDepth]
+termination_by WFF.numNodes φ
+decreasing_by
+  all_goals
+    simp only [WFF.numNodes]
+    first
+      | omega
+      | (rw [WFF.numNodes_rename]; omega)
+
+theorem WFF.binderPairDepth_pairElim {σ : Signature} {V : VarCtx}
+    (v₁ v₂ : VarSymb × VarType) (z : VarSymb)
+    (hv₁ : v₁.1 ∉ VarCtx_to_VarSymbs V) (hv₂ : v₂.1 ∉ VarCtx_to_VarSymbs V)
+    (hv₁v₂ : v₁.1 ≠ v₂.1) (hz : z ∉ VarCtx_to_VarSymbs V)
+    (φ : WFF σ (VarCtx_insert_twice v₁ v₂ V hv₁ hv₂ hv₁v₂)) :
+    WFF.binderPairDepth (WFF.pairElim v₁ v₂ z hv₁ hv₂ hv₁v₂ hz rfl rfl φ)
+      = WFF.binderPairDepth φ :=
+  WFF.binderPairDepth_pairElim_gen v₁ v₂ z hv₁ hv₂ hv₁v₂ hz rfl rfl φ
 
 /-! ### Context Extension -/
 
