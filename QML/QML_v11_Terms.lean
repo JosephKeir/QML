@@ -759,6 +759,48 @@ mutual
     | .pair_elim _ _ _ _ _ _ b => Term.diaCount b
 end
 
+-- `mapCtx` is a pure rebuild: it never creates or destroys a `◇`-node.
+mutual
+  theorem Func.diaCount_mapCtx {σ : Signature} {V V' : VarCtx} (m : CtxBij V V') {N : ℕ}
+      (fn : Func σ V N) : Func.diaCount (Func.mapCtx m fn) = Func.diaCount fn := by
+    match fn with
+    | .F _ => rw [Func.mapCtx]; rfl
+    | .eval g t =>
+        rw [Func.mapCtx]
+        simp only [Func.diaCount]
+        rw [Func.diaCount_mapCtx m g, Term.diaCount_mapCtx m t]
+  termination_by sizeOf fn
+
+  theorem Term.diaCount_mapCtx {σ : Signature} {V V' : VarCtx} (m : CtxBij V V') {S : VarType}
+      (t : Term σ V S) : Term.diaCount (Term.mapCtx m t) = Term.diaCount t := by
+    match t with
+    | .var _ => rw [Term.mapCtx]; rfl
+    | .unit => rw [Term.mapCtx]; rfl
+    | .func fn =>
+        rw [Term.mapCtx]
+        simp only [Term.diaCount]
+        rw [Func.diaCount_mapCtx m fn]
+    | .pair t1 t2 =>
+        rw [Term.mapCtx]
+        simp only [Term.diaCount]
+        rw [Term.diaCount_mapCtx m t1, Term.diaCount_mapCtx m t2]
+    | .boxterm inner hsub h =>
+        rw [Term.mapCtx]
+        simp only [Term.diaCount]
+        rw [Term.diaCount_mapCtx _ inner]
+    | .diaterm xv hxv inner hsub h =>
+        rw [Term.mapCtx]
+        simp only [Term.diaCount]
+        rw [Term.diaCount_mapCtx _ inner]
+    | .pair_elim T1 T2 z hz w1eq w2eq body =>
+        rename_i pe_V pe_W1
+        subst w2eq
+        rw [Term.mapCtx]
+        simp only [Term.diaCount]
+        rw [Term.diaCount_mapCtx _ body]
+  termination_by sizeOf t
+end
+
 /-! ## Pair-elim distribution
 
 `pairElim` moves a term from the SPLIT context `V + two slots` to the JOINED one `V + ⟨z, T₁×T₂⟩`.
@@ -822,6 +864,47 @@ mutual
     | .pair_elim T₁' T₂' z' hz' w₁eq' w₂eq' body =>
         Term.pair_elim T₁ T₂ z hz w₁eq w₂eq
           (.pair_elim T₁' T₂' z' hz' w₁eq' w₂eq' body)
+end
+
+-- `pairElim` only ever wraps or descends; it never creates or destroys a `◇`-node.
+mutual
+  theorem Func.diaCount_pairElim {σ : Signature} {V W₁ W₂ : VarCtx}
+      (T₁ T₂ : VarType) (z : VarSymb) (hz : z ∉ VarCtx_to_VarSymbs V)
+      (w₁eq : VarCtx.insertBnd2 T₁ T₂ V = W₁)
+      (w₂eq : VarCtx_insert ⟨z, .VTypeProd T₁ T₂⟩ V hz = W₂) {N : ℕ} (fn : Func σ W₁ N) :
+      Func.diaCount (Func.pairElim T₁ T₂ z hz w₁eq w₂eq fn) = Func.diaCount fn := by
+    match fn with
+    | .F _ => rfl
+    | .eval g t =>
+        rw [Func.pairElim]
+        simp only [Func.diaCount]
+        rw [Func.diaCount_pairElim T₁ T₂ z hz w₁eq w₂eq g,
+            Term.diaCount_pairElim T₁ T₂ z hz w₁eq w₂eq t]
+  termination_by sizeOf fn
+
+  theorem Term.diaCount_pairElim {σ : Signature} {V W₁ W₂ : VarCtx}
+      (T₁ T₂ : VarType) (z : VarSymb) (hz : z ∉ VarCtx_to_VarSymbs V)
+      (w₁eq : VarCtx.insertBnd2 T₁ T₂ V = W₁)
+      (w₂eq : VarCtx_insert ⟨z, .VTypeProd T₁ T₂⟩ V hz = W₂) {S : VarType} (t : Term σ W₁ S) :
+      Term.diaCount (Term.pairElim T₁ T₂ z hz w₁eq w₂eq t) = Term.diaCount t := by
+    match t with
+    | .unit => rfl
+    | .var ⟨w, hw⟩ =>
+        rw [Term.pairElim]
+        split_ifs <;> rfl
+    | .func f =>
+        rw [Term.pairElim]
+        simp only [Term.diaCount]
+        rw [Func.diaCount_pairElim T₁ T₂ z hz w₁eq w₂eq f]
+    | .pair t₁ t₂ =>
+        rw [Term.pairElim]
+        simp only [Term.diaCount]
+        rw [Term.diaCount_pairElim T₁ T₂ z hz w₁eq w₂eq t₁,
+            Term.diaCount_pairElim T₁ T₂ z hz w₁eq w₂eq t₂]
+    | .boxterm _ _ _ => rfl
+    | .diaterm _ _ _ _ _ => rfl
+    | .pair_elim _ _ _ _ _ _ _ => rfl
+  termination_by sizeOf t
 end
 
 /-! ## Weakening by a user variable
@@ -1000,4 +1083,524 @@ mutual
           (VarCtx_insert_comm hz' (not_mem_VarSymbs_insert (Ne.symm hz_ne) hu_pe))
           (Term.ctx_extU u T hu_W₁ body)
   termination_by (sizeOf T, sizeOf t)
+end
+
+/-! ## Cast invariance of the measures (ported from v10) -/
+
+-- Term.numNodes is invariant under VarCtx-equality casts.
+lemma Term.numNodes_ctx_cast {σ : Signature} {V V' : VarCtx} {S : VarType}
+    (h : V = V') (t : Term σ V S) :
+    Term.numNodes (h ▸ t) = Term.numNodes t := by
+  cases h; rfl
+
+-- Term.sizeOf is invariant under VarCtx-equality casts.
+lemma Term.sizeOf_ctx_cast {σ : Signature} {V V' : VarCtx} {S : VarType}
+    (h : V = V') (t : Term σ V S) :
+    sizeOf (h ▸ t) = sizeOf t := by
+  cases h; rfl
+
+-- Term.diaCount is invariant under VarCtx-equality casts.
+lemma Term.diaCount_ctx_cast {σ : Signature} {V V' : VarCtx} {S : VarType}
+    (h : V = V') (t : Term σ V S) :
+    Term.diaCount (h ▸ t) = Term.diaCount t := by
+  cases h; rfl
+
+-- Func.diaCount is invariant under VarCtx-equality casts.
+lemma Func.diaCount_ctx_cast {σ : Signature} {V V' : VarCtx} {N : ℕ}
+    (h : V = V') (f : Func σ V N) :
+    Func.diaCount (h ▸ f) = Func.diaCount f := by
+  cases h; rfl
+/-! ## Weakening by an ARBITRARY symbol, and its `diaCount` invariance
+
+`ctx_extU` only covers user symbols, because inserting one leaves `nextBnd` alone.  Weakening by a
+BOUND slot does move the canonical slots — but that is exactly what `mapCtx` recomputes, so the
+general case is `ctx_extU` under a fresh user name followed by `rename'` onto the wanted symbol.
+
+The `diaCount` invariance is what the modal-β arm of `substCore` needs: there the recursion target
+is a LIFTED subterm, so `sizeOf` is no help and the measure counts `◇`-nodes instead. -/
+
+/-- `rename'` preserves `diaCount` (it is `mapCtx`). -/
+theorem Term.diaCount_rename' {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
+    (hold : old ∉ VarCtx_to_VarSymbs V) (hnew : new ∉ VarCtx_to_VarSymbs V)
+    {S : VarType} (t : Term σ (VarCtx_insert ⟨old, T⟩ V hold) S) :
+    Term.diaCount (Term.rename' old new T hold hnew t) = Term.diaCount t :=
+  Term.diaCount_mapCtx _ t
+
+mutual
+  theorem Func.diaCount_ctx_extU {σ : Signature} {V : VarCtx} (u : UserSymb) (T : VarType)
+      (hu : u.toVar ∉ VarCtx_to_VarSymbs V) {N : ℕ} (fn : Func σ V N) :
+      Func.diaCount (Func.ctx_extU u T hu fn) = Func.diaCount fn := by
+    match fn with
+    | .F _ => rw [Func.ctx_extU]; rfl
+    | .eval g t =>
+        rw [Func.ctx_extU]
+        simp only [Func.diaCount]
+        rw [Func.diaCount_ctx_extU u T hu g, Term.diaCount_ctx_extU u T hu t]
+  termination_by (sizeOf T, sizeOf fn)
+
+  theorem Term.diaCount_ctx_extU {σ : Signature} {V : VarCtx} (u : UserSymb) (T : VarType)
+      (hu : u.toVar ∉ VarCtx_to_VarSymbs V) {S : VarType} (t : Term σ V S) :
+      Term.diaCount (Term.ctx_extU u T hu t) = Term.diaCount t := by
+    match t with
+    | .var _ => rw [Term.ctx_extU]; rfl
+    | .unit => rw [Term.ctx_extU]; rfl
+    | .func fn =>
+        rw [Term.ctx_extU]
+        simp only [Term.diaCount]
+        rw [Func.diaCount_ctx_extU u T hu fn]
+    | .pair t1 t2 =>
+        rw [Term.ctx_extU]
+        simp only [Term.diaCount]
+        rw [Term.diaCount_ctx_extU u T hu t1, Term.diaCount_ctx_extU u T hu t2]
+    | .boxterm tt hsub hne =>
+        match h_T : T with
+        | .VTypeBox U' =>
+            subst h_T
+            rw [Term.ctx_extU]
+            simp only [Term.diaCount]
+            rw [Term.diaCount_ctx_extU u U' _ tt]
+        | .VTypeProd a b =>
+            subst h_T
+            rw [Term.ctx_extU, Term.diaCount_pairElim, Term.diaCount_rename',
+                Term.diaCount_ctx_extU _ b, Term.diaCount_rename',
+                Term.diaCount_ctx_extU _ a]
+        | .Var => subst h_T; rw [Term.ctx_extU]; rfl
+        | .VTypeOne => subst h_T; rw [Term.ctx_extU]; rfl
+        | .VTypeDia _ => subst h_T; rw [Term.ctx_extU]; rfl
+    | .diaterm xv hxv inner hsub hne =>
+        match h_T : T with
+        | .VTypeBox U' =>
+            subst h_T
+            rw [Term.ctx_extU]
+            simp only [Term.diaCount]
+            rw [Term.diaCount_ctx_cast, Term.diaCount_ctx_extU u U' _ inner]
+        | .VTypeProd a b =>
+            subst h_T
+            rw [Term.ctx_extU, Term.diaCount_pairElim, Term.diaCount_rename',
+                Term.diaCount_ctx_extU _ b, Term.diaCount_rename',
+                Term.diaCount_ctx_extU _ a]
+        | .Var => subst h_T; rw [Term.ctx_extU]; rfl
+        | .VTypeOne => subst h_T; rw [Term.ctx_extU]; rfl
+        | .VTypeDia _ => subst h_T; rw [Term.ctx_extU]; rfl
+    | .pair_elim T₁ T₂ z hz w₁eq w₂eq body =>
+        rename_i pe_V pe_W₁
+        subst w₂eq
+        rw [Term.ctx_extU]
+        simp only [Term.diaCount]
+        rw [Term.diaCount_ctx_extU u T _ body]
+  termination_by (sizeOf T, sizeOf t)
+end
+
+/-- Weakening by an ARBITRARY symbol: weaken under a fresh user name, then rename onto `v`.
+    `mapCtx` recomputes the canonical slots, so this is correct even when `v` is a slot. -/
+def Term.ctx_ext {σ : Signature} {V : VarCtx} (xv : VarSymb × VarType)
+    (hv : xv.1 ∉ VarCtx_to_VarSymbs V) {S : VarType} (t : Term σ V S) :
+    Term σ (VarCtx_insert xv V hv) S :=
+  Term.rename' (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar xv.1 xv.2
+    (UserSymb.fresh_not_mem _) hv
+    (Term.ctx_extU (UserSymb.fresh (VarCtx_to_VarSymbs V)) xv.2 (UserSymb.fresh_not_mem _) t)
+
+theorem Term.diaCount_ctx_ext {σ : Signature} {V : VarCtx} (xv : VarSymb × VarType)
+    (hv : xv.1 ∉ VarCtx_to_VarSymbs V) {S : VarType} (t : Term σ V S) :
+    Term.diaCount (Term.ctx_ext xv hv t) = Term.diaCount t := by
+  rw [Term.ctx_ext, Term.diaCount_rename', Term.diaCount_ctx_extU]
+
+
+-- Bound-vars preservation for renaming: every binder of `Term.rename ... t` is
+
+/-! ## Substitution
+
+`substCore` is the structural pass: it replaces the TOP context entry `⟨x, S⟩` by a term `s`.
+It requires the extended context to be pair-free, which makes the `pair_elim` arm unreachable —
+a `pair_elim`'s output context holds `⟨z, T₁×ᵥT₂⟩`.  The dispatcher (`substVar`, below) unpairs
+first when the context does hold a pair variable.
+
+⭐Note the erasure is always of the TOP entry, so it can never leave a GAP in the slot numbering:
+if that entry is a slot it is the highest one, and if it is a user symbol the slots are untouched.
+(Gaps would revive the α-equivalence problem — see `VarCtx.bndLevel`.) -/
+
+/-! ### The termination measure
+
+Four components, lexicographically:
+
+1. `pairDepth` of the extended context — strictly drops when `substVar` unpairs.
+2. `diaCount` of the term — strictly drops at a `◇`-node, which is what the two interior calls
+   need: their recursion target is a LIFTED subterm, so `sizeOf` says nothing about it.
+3. `sizeOf` of the term — the ordinary structural component.
+4. A TAG separating the two functions: `substVar` (1) may call `substCore` (0) at the same
+   context and term.
+
+`lex4_intro` states the order arithmetically; the three wrappers below are the only shapes the
+`decreasing_by` blocks actually use. -/
+
+theorem lex4_intro {a₁ b₁ c₁ d₁ a₂ b₂ c₂ d₂ : ℕ}
+    (h : a₁ < a₂ ∨ (a₁ = a₂ ∧ (b₁ < b₂ ∨ (b₁ = b₂ ∧ (c₁ < c₂ ∨ (c₁ = c₂ ∧ d₁ < d₂)))))) :
+    Prod.Lex (fun x1 x2 : ℕ => x1 < x2)
+      (Prod.Lex (fun x1 x2 : ℕ => x1 < x2)
+        (Prod.Lex (fun x1 x2 : ℕ => x1 < x2) (fun x1 x2 : ℕ => x1 < x2)))
+      (a₁, b₁, c₁, d₁) (a₂, b₂, c₂, d₂) := by
+  rcases h with h | ⟨rfl, h⟩
+  · exact Prod.Lex.left _ _ h
+  · refine Prod.Lex.right _ ?_
+    rcases h with h | ⟨rfl, h⟩
+    · exact Prod.Lex.left _ _ h
+    · refine Prod.Lex.right _ ?_
+      rcases h with h | ⟨rfl, h⟩
+      · exact Prod.Lex.left _ _ h
+      · exact Prod.Lex.right _ h
+
+/-- Structural shape: context no bigger, no more `◇`s, strictly smaller term. -/
+theorem lex4_le {a₁ b₁ c₁ d₁ a₂ b₂ c₂ d₂ : ℕ}
+    (ha : a₁ ≤ a₂) (hb : b₁ ≤ b₂) (hc : c₁ < c₂) :
+    Prod.Lex (fun x1 x2 : ℕ => x1 < x2)
+      (Prod.Lex (fun x1 x2 : ℕ => x1 < x2)
+        (Prod.Lex (fun x1 x2 : ℕ => x1 < x2) (fun x1 x2 : ℕ => x1 < x2)))
+      (a₁, b₁, c₁, d₁) (a₂, b₂, c₂, d₂) :=
+  lex4_intro (by omega)
+
+/-- Modal shape: context no bigger, strictly fewer `◇`s (the term itself may have grown). -/
+theorem lex4_lt {a₁ b₁ c₁ d₁ a₂ b₂ c₂ d₂ : ℕ}
+    (ha : a₁ ≤ a₂) (hb : b₁ < b₂) :
+    Prod.Lex (fun x1 x2 : ℕ => x1 < x2)
+      (Prod.Lex (fun x1 x2 : ℕ => x1 < x2)
+        (Prod.Lex (fun x1 x2 : ℕ => x1 < x2) (fun x1 x2 : ℕ => x1 < x2)))
+      (a₁, b₁, c₁, d₁) (a₂, b₂, c₂, d₂) :=
+  lex4_intro (by omega)
+
+/-- Dispatch shape: everything equal but the tag (`substVar` handing off to `substCore`). -/
+theorem lex4_tag {a₁ b₁ c₁ d₁ a₂ b₂ c₂ d₂ : ℕ}
+    (ha : a₁ ≤ a₂) (hb : b₁ ≤ b₂) (hc : c₁ ≤ c₂) (hd : d₁ < d₂) :
+    Prod.Lex (fun x1 x2 : ℕ => x1 < x2)
+      (Prod.Lex (fun x1 x2 : ℕ => x1 < x2)
+        (Prod.Lex (fun x1 x2 : ℕ => x1 < x2) (fun x1 x2 : ℕ => x1 < x2)))
+      (a₁, b₁, c₁, d₁) (a₂, b₂, c₂, d₂) :=
+  lex4_intro (by omega)
+
+mutual
+  def Func.substCore {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
+      (hx : x ∉ VarCtx_to_VarSymbs V)
+      (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+      (s : Term σ V S) {N : ℕ}
+      (fn : Func σ (VarCtx_insert ⟨x, S⟩ V hx) N) : Func σ V N := by
+    match fn with
+    | .F fs => exact .F fs
+    | .eval g t =>
+        exact .eval (Func.substCore hx h_pf s g) (Term.substCore hx h_pf s t)
+  termination_by ((VarCtx_insert ⟨x, S⟩ V hx).pairDepth, Func.diaCount fn, sizeOf fn, 0)
+  decreasing_by
+    all_goals
+      refine lex4_le (le_refl _) ?_ ?_
+      · simp only [Func.diaCount]; omega
+      · decreasing_tactic
+
+  def Term.substCore {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
+      (hx : x ∉ VarCtx_to_VarSymbs V)
+      (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+      (s : Term σ V S) {S' : VarType}
+      (t : Term σ (VarCtx_insert ⟨x, S⟩ V hx) S') : Term σ V S' := by
+    match t with
+    | .var ⟨w, hw⟩ =>
+        by_cases h_eq : (⟨w, .Var⟩ : VarSymb × VarType) = ⟨x, S⟩
+        · -- the substituted variable itself
+          have hS : S = .Var := (Prod.mk.inj h_eq).2.symm
+          subst hS
+          exact s
+        · exact .var ⟨w, (Finset.mem_insert.mp hw).resolve_left h_eq⟩
+    | .func fn => exact .func (Func.substCore hx h_pf s fn)
+    | .unit => exact .unit
+    | .pair t1 t2 =>
+        exact .pair (Term.substCore hx h_pf s t1) (Term.substCore hx h_pf s t2)
+    | .boxterm tt hsub hne =>
+        rename_i V_inner S_inner
+        by_cases h_x_in : x ∈ VarCtx_to_VarSymbs V_inner
+        · -- `x` occurs inside the box, so its ambient type must be a BOX type.
+          -- `boxterm_subst_type` discharges the four impossible shapes in one line each
+          -- (v10 spends ~10 lines on each).
+          cases S with
+          | Var =>
+              exact absurd (boxterm_subst_type hsub h_x_in)
+                (by rintro ⟨T, hT⟩; exact VarType.noConfusion hT)
+          | VTypeOne =>
+              exact absurd (boxterm_subst_type hsub h_x_in)
+                (by rintro ⟨T, hT⟩; exact VarType.noConfusion hT)
+          | VTypeDia _ =>
+              exact absurd (boxterm_subst_type hsub h_x_in)
+                (by rintro ⟨T, hT⟩; exact VarType.noConfusion hT)
+          | VTypeProd _ _ =>
+              exact absurd (boxterm_subst_type hsub h_x_in)
+                (by rintro ⟨T, hT⟩; exact VarType.noConfusion hT)
+          | VTypeBox T =>
+              by_cases hxT_in : (⟨x, T⟩ : VarSymb × VarType) ∈ V_inner.1
+              · match s with
+                | .boxterm s_inner s_hsub s_hne =>
+                    have hx_minus : x ∉ VarCtx_to_VarSymbs (VarCtx_erase V_inner ⟨x, T⟩) :=
+                      VarCtx_erase_fresh hxT_in
+                    have h_V_eq : _ = VarCtx_erase V_inner ⟨x, T⟩ :=
+                      ctx_rest_box_V_s_eq hxT_in hsub hne s_hsub s_hne
+                    subst h_V_eq
+                    exact .boxterm
+                      (Term.substVar hx_minus s_inner
+                        ((VarCtx_insert_erase hxT_in hx_minus).symm ▸ tt))
+                      s_hsub s_hne
+                | .pair_elim sT₁ sT₂ sz _ _ sw₂eq _ =>
+                    -- Impossible: `s`'s context `V` would hold `⟨sz, sT₁×ᵥsT₂⟩`, but `h_pf` says
+                    -- the extended context — hence `V` — is pair-free.
+                    exfalso
+                    refine VarCtx.firstPairVar_none_no_pair h_pf
+                      (z := sz) (V1 := sT₁) (V2 := sT₂) ?_
+                    exact Finset.mem_insert_of_mem
+                      (by rw [← sw₂eq]; exact Finset.mem_insert_self _ _)
+              · -- `x` has SOME type in `V_inner`; uniqueness forces it to be `T`.
+                exfalso
+                obtain ⟨⟨x', T'⟩, hx'T', hx'_eq⟩ := Finset.mem_image.mp h_x_in
+                simp only at hx'_eq; subst hx'_eq
+                have hbox : (⟨x', T'.VTypeBox⟩ : VarSymb × VarType) ∈ (VarCtx_box V_inner).1 :=
+                  Finset.mem_image.mpr ⟨⟨x', T'⟩, hx'T', rfl⟩
+                rcases Finset.mem_insert.mp (hsub hbox) with h_eq | h_in_V
+                · exact hxT_in (VarType.VTypeBox.inj (Prod.mk.inj h_eq).2 ▸ hx'T')
+                · exact hx (Finset.mem_image.mpr ⟨_, h_in_V, rfl⟩)
+        · -- `x` does not occur inside the box: pass straight through.
+          refine .boxterm tt ?_ (fun p hp h_box => hne p (Finset.mem_insert_of_mem hp) h_box)
+          intro p hp
+          rcases Finset.mem_insert.mp (hsub hp) with h_eq | h_V
+          · exfalso
+            subst h_eq
+            rcases Finset.mem_image.mp hp with ⟨w, hw, hweq⟩
+            exact h_x_in (Finset.mem_image.mpr ⟨w, hw, (Prod.mk.inj hweq).1⟩)
+          · exact h_V
+    | .diaterm xv hxv tt hsub hne =>
+        rename_i V_inner S_inner
+        by_cases h_xv_eq_x : xv.1 = x
+        · -- ⭐Case 3 — MODAL β.  The ◇-witness IS the substituted variable, so `s` must itself be a
+          -- `◇`-term, and substitution reduces the redex.
+          have hxv_in_Vext : (⟨xv.1, xv.2.VTypeDia⟩ : VarSymb × VarType) ∈
+              (VarCtx_insert ⟨x, S⟩ V hx).1 := by
+            apply hsub; rw [VarCtx_dia_fst]; exact Finset.mem_insert_self _ _
+          have h_S_eq : S = xv.2.VTypeDia := by
+            rcases Finset.mem_insert.mp hxv_in_Vext with h_eq | h_in_V
+            · exact ((Prod.mk.inj h_eq).2).symm
+            · exact absurd (Finset.mem_image.mpr ⟨_, h_in_V, h_xv_eq_x⟩) hx
+          match (h_S_eq ▸ s : Term σ V xv.2.VTypeDia) with
+          | @Term.diaterm _ V_inner_s _ _ xv_s hxv_s tt_s hsub_s hne_s =>
+              -- The two ◇-nodes see the SAME box-context: `⟨x, ◇xv.2⟩` is not box-typed, so it
+              -- contributes nothing, and `VarCtx_box` is injective.
+              have h_V_inner_eq : V_inner_s = V_inner := by
+                refine VarCtx_box_inj (VarCtx_ext _ _ (Finset.ext (fun p => ⟨?_, ?_⟩)))
+                · intro hp_s
+                  have hp_box : VarType.isBox p.2 = true := by
+                    rcases Finset.mem_image.mp hp_s with ⟨q, _, hq_eq⟩
+                    rw [← hq_eq]; simp [VarType.isBox]
+                  have hp_V : p ∈ V.1 := by
+                    apply hsub_s; rw [VarCtx_dia_fst]; exact Finset.mem_insert_of_mem hp_s
+                  have hp_dia := hne p (Finset.mem_insert_of_mem hp_V) hp_box
+                  rw [VarCtx_dia_fst] at hp_dia
+                  rcases Finset.mem_insert.mp hp_dia with h_eq | h_in_box
+                  · subst h_eq; simp [VarType.isBox] at hp_box
+                  · exact h_in_box
+                · intro hp
+                  have hp_box : VarType.isBox p.2 = true := by
+                    rcases Finset.mem_image.mp hp with ⟨q, _, hq_eq⟩
+                    rw [← hq_eq]; simp [VarType.isBox]
+                  have hp_Vext : p ∈ (VarCtx_insert ⟨x, S⟩ V hx).1 := by
+                    apply hsub; rw [VarCtx_dia_fst]; exact Finset.mem_insert_of_mem hp
+                  have hp_V : p ∈ V.1 := by
+                    rcases Finset.mem_insert.mp hp_Vext with h_eq | h_V
+                    · subst h_eq; rw [h_S_eq] at hp_box; simp [VarType.isBox] at hp_box
+                    · exact h_V
+                  have hp_dia := hne_s p hp_V hp_box
+                  rw [VarCtx_dia_fst] at hp_dia
+                  rcases Finset.mem_insert.mp hp_dia with h_eq | h_in_box
+                  · subst h_eq; simp [VarType.isBox] at hp_box
+                  · exact h_in_box
+              cases h_V_inner_eq
+              -- `xv_s.1` is free in `V`, so it is not `x`.
+              have hxv_s_ne_x : xv_s.1 ≠ x := by
+                intro h
+                refine hx (Finset.mem_image.mpr ⟨⟨xv_s.1, xv_s.2.VTypeDia⟩, ?_, h⟩)
+                apply hsub_s; rw [VarCtx_dia_fst]; exact Finset.mem_insert_self _ _
+              have hxv_s_outer : xv_s.1 ∉ VarCtx_to_VarSymbs (VarCtx_insert xv V_inner hxv) :=
+                not_mem_VarSymbs_insert (fun h => hxv_s_ne_x (h.trans h_xv_eq_x)) hxv_s
+              have hxv_xv_s_outer :
+                  xv.1 ∉ VarCtx_to_VarSymbs (VarCtx_insert xv_s V_inner hxv_s) :=
+                not_mem_VarSymbs_insert (fun h => hxv_s_ne_x (h ▸ h_xv_eq_x)) hxv
+              have h_x_inner : x ∉ VarCtx_to_VarSymbs (VarCtx_insert xv_s V_inner hxv_s) :=
+                not_mem_VarSymbs_insert (fun h => hxv_s_ne_x h.symm) (h_xv_eq_x ▸ hxv)
+              -- Lift `tt` past the NEW witness, reorder so `x` is outermost, and substitute.
+              -- ⭐`ctx_ext` is the general (arbitrary-symbol) weakening: `xv_s.1` may be a slot,
+              -- and the `mapCtx` inside it recomputes any binder slots that moved.
+              have h_reorder :
+                  VarCtx_insert xv_s (VarCtx_insert xv V_inner hxv) hxv_s_outer
+                    = VarCtx_insert xv (VarCtx_insert xv_s V_inner hxv_s) hxv_xv_s_outer :=
+                VarCtx_insert_comm hxv_s_outer hxv_xv_s_outer
+              have h_reform :
+                  VarCtx_insert xv (VarCtx_insert xv_s V_inner hxv_s) hxv_xv_s_outer
+                    = VarCtx_insert (⟨x, xv.2⟩ : VarSymb × VarType)
+                        (VarCtx_insert xv_s V_inner hxv_s) h_x_inner := by
+                refine VarCtx_ext _ _ ?_
+                change insert xv (VarCtx_insert xv_s V_inner hxv_s).1
+                     = insert (⟨x, xv.2⟩ : VarSymb × VarType) (VarCtx_insert xv_s V_inner hxv_s).1
+                rw [show xv = (⟨x, xv.2⟩ : VarSymb × VarType) from Prod.ext h_xv_eq_x rfl]
+              exact .diaterm xv_s hxv_s
+                (Term.substVar h_x_inner tt_s
+                  (h_reform ▸ h_reorder ▸ Term.ctx_ext xv_s hxv_s_outer tt))
+                hsub_s hne_s
+          | .pair_elim sT₁ sT₂ sz _ _ sw₂eq _ =>
+              -- Impossible: `s`'s context `V` would hold a pair variable, but `h_pf` says the
+              -- extended context — hence `V` — is pair-free.
+              exfalso
+              refine VarCtx.firstPairVar_none_no_pair h_pf
+                (z := sz) (V1 := sT₁) (V2 := sT₂) ?_
+              exact Finset.mem_insert_of_mem
+                (by rw [← sw₂eq]; exact Finset.mem_insert_self _ _)
+        · by_cases h_x_in : x ∈ VarCtx_to_VarSymbs V_inner
+          · -- Case 2: the witness differs from `x`, but `x` occurs INSIDE the ◇.  As for `boxterm`,
+            -- `x`'s ambient type must then be a BOX type.
+            cases S with
+            | Var | VTypeOne | VTypeDia _ | VTypeProd _ _ =>
+                exfalso
+                obtain ⟨⟨x', T'⟩, hx'T', hx'_eq⟩ := Finset.mem_image.mp h_x_in
+                simp only at hx'_eq; subst hx'_eq
+                have hx'box_in_dia : (⟨x', T'.VTypeBox⟩ : VarSymb × VarType) ∈
+                    (VarCtx_dia xv V_inner hxv).1 := by
+                  rw [VarCtx_dia_fst]
+                  exact Finset.mem_insert_of_mem (Finset.mem_image.mpr ⟨⟨x', T'⟩, hx'T', rfl⟩)
+                rcases Finset.mem_insert.mp (hsub hx'box_in_dia) with h_eq | h_in_V
+                all_goals first
+                  | exact VarType.noConfusion (Prod.mk.inj h_eq).2
+                  | exact hx (Finset.mem_image.mpr ⟨_, h_in_V, rfl⟩)
+            | VTypeBox T =>
+                by_cases hxT_in : (⟨x, T⟩ : VarSymb × VarType) ∈ V_inner.1
+                · have hx_minus : x ∉ VarCtx_to_VarSymbs (VarCtx_erase V_inner ⟨x, T⟩) :=
+                    VarCtx_erase_fresh hxT_in
+                  have hxv_minus : xv.1 ∉ VarCtx_to_VarSymbs (VarCtx_erase V_inner ⟨x, T⟩) :=
+                    fun h => hxv (VarCtx_to_VarSymbs_erase_subset h)
+                  match s with
+                  | .boxterm s_inner s_hsub s_hne =>
+                      have h_V_eq : _ = VarCtx_erase V_inner ⟨x, T⟩ :=
+                        ctx_rest_dia_V_s_eq hxT_in hsub hne s_hsub s_hne
+                      subst h_V_eq
+                      have hx_in_outer : x ∉ VarCtx_to_VarSymbs
+                          (VarCtx_insert xv (VarCtx_erase V_inner ⟨x, T⟩) hxv_minus) :=
+                        not_mem_VarSymbs_insert (fun h => h_xv_eq_x h.symm) hx_minus
+                      have h_combined : VarCtx_insert xv V_inner hxv
+                          = VarCtx_insert (⟨x, T⟩ : VarSymb × VarType)
+                              (VarCtx_insert xv (VarCtx_erase V_inner ⟨x, T⟩) hxv_minus)
+                              hx_in_outer := by
+                        refine VarCtx_ext _ _ ?_
+                        change insert xv V_inner.1
+                             = insert (⟨x, T⟩ : VarSymb × VarType)
+                                 (insert xv (VarCtx_erase V_inner ⟨x, T⟩).1)
+                        rw [Finset.insert_comm]
+                        congr 1
+                        exact (Finset.insert_erase hxT_in).symm
+                      exact .diaterm xv hxv_minus
+                        (Term.substVar hx_in_outer
+                          (Term.ctx_ext xv hxv_minus s_inner) (h_combined ▸ tt))
+                        (ctx_rest_dia_hsub_erase hxv_minus h_xv_eq_x hsub)
+                        (ctx_rest_dia_h_no_extras_erase hxv_minus hne)
+                  | .pair_elim sT₁ sT₂ sz _ _ sw₂eq _ =>
+                      exfalso
+                      refine VarCtx.firstPairVar_none_no_pair h_pf
+                        (z := sz) (V1 := sT₁) (V2 := sT₂) ?_
+                      exact Finset.mem_insert_of_mem
+                        (by rw [← sw₂eq]; exact Finset.mem_insert_self _ _)
+                · -- `x` has SOME type in `V_inner`; uniqueness forces it to be `T`.
+                  exfalso
+                  obtain ⟨⟨x', T'⟩, hx'T', hx'_eq⟩ := Finset.mem_image.mp h_x_in
+                  simp only at hx'_eq; subst hx'_eq
+                  have hx'box_in_dia : (⟨x', T'.VTypeBox⟩ : VarSymb × VarType) ∈
+                      (VarCtx_dia xv V_inner hxv).1 := by
+                    rw [VarCtx_dia_fst]
+                    exact Finset.mem_insert_of_mem (Finset.mem_image.mpr ⟨⟨x', T'⟩, hx'T', rfl⟩)
+                  rcases Finset.mem_insert.mp (hsub hx'box_in_dia) with h_eq | h_in_V
+                  · exact hxT_in (VarType.VTypeBox.inj (Prod.mk.inj h_eq).2 ▸ hx'T')
+                  · exact hx (Finset.mem_image.mpr ⟨_, h_in_V, rfl⟩)
+          · -- Case 1: neither the witness nor the interior mentions `x` — pass straight through.
+            refine .diaterm xv hxv tt ?_
+              (fun p hp h_box => hne p (Finset.mem_insert_of_mem hp) h_box)
+            rw [VarCtx_dia_fst]
+            intro p hp
+            rcases Finset.mem_insert.mp hp with h_eq | hp_box
+            · subst h_eq
+              have hp_in_dia : (⟨xv.1, xv.2.VTypeDia⟩ : VarSymb × VarType) ∈
+                  (VarCtx_dia xv V_inner hxv).1 := by
+                rw [VarCtx_dia_fst]; exact Finset.mem_insert_self _ _
+              rcases Finset.mem_insert.mp (hsub hp_in_dia) with h_eq' | h_in_V
+              · exact absurd (Prod.mk.inj h_eq').1 h_xv_eq_x
+              · exact h_in_V
+            · have hp_in_dia : p ∈ (VarCtx_dia xv V_inner hxv).1 := by
+                rw [VarCtx_dia_fst]; exact Finset.mem_insert_of_mem hp_box
+              rcases Finset.mem_insert.mp (hsub hp_in_dia) with h_eq | h_in_V
+              · exfalso
+                subst h_eq
+                rcases Finset.mem_image.mp hp_box with ⟨q, hq_in, hq_eq⟩
+                exact h_x_in (Finset.mem_image.mpr ⟨q, hq_in, (Prod.mk.inj hq_eq).1⟩)
+              · exact h_in_V
+    | .pair_elim T₁ T₂ z hz w₁eq w₂eq body =>
+        -- Unreachable: the node's output context holds `⟨z, T₁ ×ᵥ T₂⟩`, contradicting `h_pf`.
+        exact absurd h_pf (by
+          intro hnone
+          exact VarCtx.firstPairVar_none_no_pair hnone
+            (by rw [← w₂eq]; exact Finset.mem_insert_self _ _))
+  termination_by ((VarCtx_insert ⟨x, S⟩ V hx).pairDepth, Term.diaCount t, sizeOf t, 0)
+  decreasing_by
+    all_goals first
+      -- structural: same context, no new `◇`s, smaller term
+      | (refine lex4_le (le_refl _) ?_ ?_
+         · simp only [Term.diaCount]; omega
+         · decreasing_tactic)
+      -- interior call at a `boxterm`'s inner context: `pairDepth` cannot grow, `diaCount` is
+      -- untouched (a box adds none), and the recursion target is a cast of the subterm.
+      | (have hS : S = T.VTypeBox := by assumption
+         subst hS
+         refine lex4_le ?_ ?_ ?_
+         · have h_le := VarCtx.pairDepth_le_of_box_subset hsub
+           rw [VarCtx.pairDepth_insert, ← VarCtx_insert_erase hxT_in hx_minus,
+               VarCtx.pairDepth_insert ⟨x, T⟩ _ hx_minus] at h_le
+           rw [VarCtx.pairDepth_insert, VarCtx.pairDepth_insert]
+           exact h_le
+         · rw [Term.diaCount_ctx_cast]
+           simp only [Term.diaCount]
+           omega
+         · rw [Term.sizeOf_ctx_cast]
+           decreasing_tactic)
+      | skip
+    -- Two goals remain, in order: `diaterm` Case 3 (modal β), then `diaterm` Case 2.
+    · -- ⭐Case 3 (modal β): the recursion target is a LIFTED subterm, so only `diaCount` —
+      -- which `ctx_ext` preserves — can see the decrease.
+      refine lex4_lt ?_ ?_
+      · have h_le := VarCtx.pairDepth_le_of_dia_subset hsub_s
+        have hSpd : S.pairDepth = xv.2.pairDepth := by
+          simp only [h_S_eq, VarType.pairDepth]
+        simp only [VarCtx.pairDepth_insert] at h_le ⊢
+        omega
+      · rw [Term.diaCount_ctx_cast, Term.diaCount_ctx_cast, Term.diaCount_ctx_ext]
+        simp only [Term.diaCount]
+        omega
+    · -- ⭐Case 2: `pairDepth` cannot grow, and the `◇`-node just consumed makes `diaCount`
+      -- STRICTLY smaller — which is the whole reason it is in the measure.
+      have hS : S = T.VTypeBox := by assumption
+      subst hS
+      refine lex4_lt ?_ ?_
+      · have h_le := VarCtx.pairDepth_le_of_dia_subset hsub
+        have h_V_inner := VarCtx.pairDepth_insert (⟨x, T⟩ : VarSymb × VarType) _ hx_minus
+        rw [VarCtx_insert_erase hxT_in hx_minus] at h_V_inner
+        simp only [VarCtx.pairDepth_insert, VarType.pairDepth] at h_le h_V_inner ⊢
+        omega
+      · rw [Term.diaCount_ctx_cast]
+        simp only [Term.diaCount]
+        omega
+
+  /-- The dispatcher.  If the context holds a pair variable, unpair at it first (which strictly
+      decreases `pairDepth`); otherwise hand off to the structural pass. -/
+  def Term.substVar {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
+      (hx : x ∉ VarCtx_to_VarSymbs V)
+      (s : Term σ V S) {S' : VarType}
+      (t : Term σ (VarCtx_insert ⟨x, S⟩ V hx) S') : Term σ V S' := by
+    match h_pv : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar with
+    | none => exact Term.substCore hx h_pv s t
+    | some ⟨(z, V1, V2), hzmem⟩ => sorry
+  termination_by ((VarCtx_insert ⟨x, S⟩ V hx).pairDepth, Term.diaCount t, sizeOf t, 1)
+  decreasing_by
+    all_goals exact lex4_tag (le_refl _) (le_refl _) (le_refl _) (by omega)
 end

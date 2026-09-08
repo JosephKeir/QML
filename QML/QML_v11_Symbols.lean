@@ -1,7 +1,15 @@
+import Mathlib.Algebra.BigOperators.Group.Finset.Basic
+import Mathlib.Algebra.Order.BigOperators.Group.Finset
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Finset.Image
 import Mathlib.Data.Finset.Lattice.Fold
+import Mathlib.Data.Finset.Sort
+import Mathlib.Data.Finset.Union
+import Mathlib.Data.Nat.Pairing
+import Mathlib.Data.Prod.Lex
+import Mathlib.Order.Basic
 import Mathlib.Tactic.Common
+import Mathlib.Tactic.Linarith
 
 /-!
 # QML v11 — Symbols and contexts (locally-nameless foundation)
@@ -533,7 +541,8 @@ example : VarCtx.nextBnd ⟨∅, by simp⟩ = VarSymb.bnd 0 := by
 example (n : ℕ) (T : VarType) :
     VarCtx.nextBnd ⟨{(⟨VarSymb.mk n, T⟩ : VarSymb × VarType)},
       by
-      intro v hv w hw _; rw [Finset.mem_singleton] at hv hw; subst hv; subst hw; rfl⟩ = VarSymb.bnd 0 := by
+      intro v hv w hw _
+      rw [Finset.mem_singleton] at hv hw; subst hv; subst hw; rfl⟩ = VarSymb.bnd 0 := by
   simp [VarCtx.nextBnd, VarCtx.bndLevel, VarSymb.bndCeil]
 
 /-! ## Lifting past a binder
@@ -967,3 +976,564 @@ def CtxBij.renameOne {V : VarCtx} (old new : VarSymb) (T : VarType)
       have hne : p.1 ≠ old := fun h => hold (h ▸ Finset.mem_image.mpr ⟨p, hp', rfl⟩)
       rw [VarSymb.update_of_ne _ hne]
       rfl
+
+/-! ## Encoding, and the pair-variable machinery
+
+`substVar` dispatches on whether the context holds a pair-typed variable, and its termination
+measure uses `pairDepth`.  Both need a deterministic way to pick a pair variable out of a `Finset`,
+which goes through a `LinearOrder` on entries, which goes through an injective ℕ-encoding.
+
+⭐NOTE `VarSymb.toNat` does NO freshness work in v11 — freshness goes through `usrIdx` (user names)
+and `bndCeil` (slots).  Its only job is this injective encoding, which orders context entries so
+`firstPairVar` can pick a pair variable DETERMINISTICALLY (v10 chose this route to avoid the
+noncomputable `Finset.toList`).  It must be injective across BOTH constructors, hence even codes
+for user symbols and odd for slots. -/
+
+/-- Injective ℕ-encoding of a symbol: `.mk n ↦ 2n`, `.bnd n ↦ 2n+1`. -/
+def VarSymb.toNat : VarSymb → ℕ
+  | .mk n  => 2 * n
+  | .bnd n => 2 * n + 1
+
+theorem VarSymb.toNat_injective : Function.Injective VarSymb.toNat := by
+  intro a b h
+  cases a with
+  | mk m => cases b with
+    | mk n => simp only [VarSymb.toNat] at h; simp; omega
+    | bnd n => simp only [VarSymb.toNat] at h; omega
+  | bnd m => cases b with
+    | mk n => simp only [VarSymb.toNat] at h; omega
+    | bnd n => simp only [VarSymb.toNat] at h; simp; omega
+-- pair-typed binder deterministically (via `Finset.sort`, avoiding the
+-- noncomputable `Finset.toList`).
+-- Encoding: constructor index determines value mod 5, recursive arguments are
+-- packed into the higher bits via `Nat.pair`.
+def VarType.encode : VarType → ℕ
+  | .Var            => 0
+  | .VTypeOne       => 1
+  | .VTypeBox a     => 5 * a.encode + 2
+  | .VTypeDia a     => 5 * a.encode + 3
+  | .VTypeProd a b  => 5 * Nat.pair a.encode b.encode + 4
+
+theorem VarType.encode_injective : Function.Injective VarType.encode := by
+  intro a
+  induction a with
+  | Var =>
+      intro b heq
+      cases b with
+      | Var => rfl
+      | VTypeOne => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeBox _ => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeDia _ => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeProd _ _ => exact absurd heq (by simp only [VarType.encode]; omega)
+  | VTypeOne =>
+      intro b heq
+      cases b with
+      | Var => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeOne => rfl
+      | VTypeBox _ => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeDia _ => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeProd _ _ => exact absurd heq (by simp only [VarType.encode]; omega)
+  | VTypeBox a ih =>
+      intro b heq
+      cases b with
+      | Var => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeOne => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeBox a' =>
+          have h_inner : a.encode = a'.encode := by
+            have : VarType.encode (.VTypeBox a) = VarType.encode (.VTypeBox a') := heq
+            simp [VarType.encode] at this; omega
+          exact congrArg _ (ih h_inner)
+      | VTypeDia _ => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeProd _ _ => exact absurd heq (by simp only [VarType.encode]; omega)
+  | VTypeDia a ih =>
+      intro b heq
+      cases b with
+      | Var => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeOne => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeBox _ => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeDia a' =>
+          have h_inner : a.encode = a'.encode := by
+            have : VarType.encode (.VTypeDia a) = VarType.encode (.VTypeDia a') := heq
+            simp [VarType.encode] at this; omega
+          exact congrArg _ (ih h_inner)
+      | VTypeProd _ _ => exact absurd heq (by simp only [VarType.encode]; omega)
+  | VTypeProd a b iha ihb =>
+      intro c heq
+      cases c with
+      | Var => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeOne => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeBox _ => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeDia _ => exact absurd heq (by simp only [VarType.encode]; omega)
+      | VTypeProd a' b' =>
+          have hpair : Nat.pair a.encode b.encode = Nat.pair a'.encode b'.encode := by
+            have h_unfolded :
+                5 * Nat.pair a.encode b.encode + 4 = 5 * Nat.pair a'.encode b'.encode + 4 := heq
+            omega
+          have h_un := congrArg Nat.unpair hpair
+          simp only [Nat.unpair_pair, Prod.ext_iff] at h_un
+          rw [iha h_un.1, ihb h_un.2]
+
+
+/-! ## Pair depth, and finding a pair variable (ported verbatim from v10 — independent of the
+
+    symbol change, since these concern TYPES and contexts rather than binder names) -/
+def VarType.pairDepth : VarType → ℕ
+  | .Var            => 0
+  | .VTypeBox a     => a.pairDepth
+  | .VTypeDia a     => a.pairDepth
+  | .VTypeOne       => 0
+  | .VTypeProd a b  => 1 + a.pairDepth + b.pairDepth
+
+def VarCtx.pairDepth (V : VarCtx) : ℕ :=
+  V.1.sum (fun p => p.2.pairDepth)
+
+-- VarCtx_box preserves pairDepth: each ⟨v, T⟩ becomes ⟨v, T.VTypeBox⟩, and
+-- with the recursive `pairDepth` definition, `T.VTypeBox.pairDepth = T.pairDepth`.
+lemma VarCtx.pairDepth_box (V : VarCtx) :
+    (VarCtx_box V).pairDepth = V.pairDepth := by
+  change ((VarCtx_box V).1).sum (fun p => p.2.pairDepth)
+       = V.1.sum (fun p => p.2.pairDepth)
+  rw [show (VarCtx_box V).1
+        = V.1.image (fun p => (⟨p.1, p.2.VTypeBox⟩ : VarSymb × VarType)) from rfl]
+  rw [Finset.sum_image]
+  · rfl
+  · -- injectivity of the box-wrap function on V.1
+    intro a _ b _ hab
+    simp only [Prod.mk.injEq] at hab
+    exact Prod.ext hab.1 (VarType.VTypeBox.inj hab.2)
+
+-- Key termination lemma (boxterm): if `VarCtx_box V_inner ⊆ V`, then
+-- `V_inner.pairDepth ≤ V.pairDepth`. Enables lex `(V.pairDepth, sizeOf t)`
+-- termination for the boxterm modal-interior descent.
+lemma VarCtx.pairDepth_le_of_box_subset {V_inner V : VarCtx}
+    (h : (VarCtx_box V_inner).1 ⊆ V.1) :
+    V_inner.pairDepth ≤ V.pairDepth := by
+  rw [← VarCtx.pairDepth_box V_inner]
+  exact Finset.sum_le_sum_of_subset h
+
+-- Companion lemma (diaterm): if `VarCtx_dia x V_inner hx ⊆ V`, then
+-- `(VarCtx_insert x V_inner hx).pairDepth ≤ V.pairDepth`. The inner-extended
+-- context for `tt` is `VarCtx_insert x V_inner hx`, and its pairDepth equals
+-- that of `VarCtx_dia x V_inner hx` (both add `x.2.pairDepth + V_inner.pairDepth`).
+lemma VarCtx.pairDepth_le_of_dia_subset {x : VarSymb × VarType} {V_inner V : VarCtx}
+    {hx : x.1 ∉ VarCtx_to_VarSymbs V_inner}
+    (h : (VarCtx_dia x V_inner hx).1 ⊆ V.1) :
+    (VarCtx_insert x V_inner hx).pairDepth ≤ V.pairDepth := by
+  -- Show (VarCtx_insert x V_inner hx).pairDepth = (VarCtx_dia x V_inner hx).pairDepth
+  -- then conclude via subset.
+  have h_eq : (VarCtx_insert x V_inner hx).pairDepth
+              = (VarCtx_dia x V_inner hx).pairDepth := by
+    change (insert x V_inner.1).sum (fun p => p.2.pairDepth)
+       = (insert (⟨x.1, x.2.VTypeDia⟩ : VarSymb × VarType) (VarCtx_box V_inner).1).sum
+            (fun p => p.2.pairDepth)
+    have hx_typed : x ∉ V_inner.1 := fun hmem =>
+      hx (Finset.mem_image.mpr ⟨x, hmem, rfl⟩)
+    have hx_typed_box : (⟨x.1, x.2.VTypeDia⟩ : VarSymb × VarType) ∉ (VarCtx_box V_inner).1 := by
+      intro hmem
+      rcases Finset.mem_image.mp hmem with ⟨⟨w, T⟩, _, hweq⟩
+      simp only [Prod.mk.injEq] at hweq
+      exact VarType.noConfusion hweq.2
+    rw [Finset.sum_insert hx_typed, Finset.sum_insert hx_typed_box]
+    change x.2.pairDepth + V_inner.pairDepth
+       = (x.2.VTypeDia).pairDepth + (VarCtx_box V_inner).pairDepth
+    rw [VarCtx.pairDepth_box]
+    simp [VarType.pairDepth]
+  rw [h_eq]
+  exact Finset.sum_le_sum_of_subset h
+
+-- Lemma: unpairing strictly decreases pairDepth (replacing one VTypeProd-typed
+-- binder of pairDepth `1 + a + b` with two binders of pairDepth `a` and `b`).
+-- Used by `ctx_rest_MU`'s Case B `decreasing_by` to justify the recursive call on
+-- the smaller context.
+lemma VarCtx.pairDepth_unpair_lt {V : VarCtx} {z : VarSymb} {V1 V2 : VarType}
+    (hzmem : (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ V.1)
+    {v1 v2 : VarSymb}
+    (hv1 : v1 ∉ VarCtx_to_VarSymbs (VarCtx_erase V ⟨z, V1.VTypeProd V2⟩))
+    (hv2 : v2 ∉ VarCtx_to_VarSymbs (VarCtx_erase V ⟨z, V1.VTypeProd V2⟩))
+    (hv1v2 : v1 ≠ v2) :
+    (VarCtx_insert_twice ⟨v1, V1⟩ ⟨v2, V2⟩
+       (VarCtx_erase V ⟨z, V1.VTypeProd V2⟩) hv1 hv2 hv1v2).pairDepth
+      < V.pairDepth := by
+  -- Let V' = V.erase ⟨z, V1×V2⟩
+  set V_minus_z := VarCtx_erase V ⟨z, V1.VTypeProd V2⟩ with hVmz
+  set f : VarSymb × VarType → ℕ := fun p => p.2.pairDepth with hf
+  -- v1, v2 (typed) are not in V_minus_z.1
+  have hv1_not_in : (⟨v1, V1⟩ : VarSymb × VarType) ∉ V_minus_z.1 := fun h =>
+    hv1 (Finset.mem_image.mpr ⟨_, h, rfl⟩)
+  have hv2_not_in : (⟨v2, V2⟩ : VarSymb × VarType) ∉ V_minus_z.1 := fun h =>
+    hv2 (Finset.mem_image.mpr ⟨_, h, rfl⟩)
+  have hv1_ne_v2_typed : (⟨v1, V1⟩ : VarSymb × VarType) ≠ ⟨v2, V2⟩ := fun h =>
+    hv1v2 (congrArg Prod.fst h)
+  have hv1_not_in_outer :
+      (⟨v1, V1⟩ : VarSymb × VarType) ∉ insert (⟨v2, V2⟩ : VarSymb × VarType) V_minus_z.1 :=
+    fun h => (Finset.mem_insert.mp h).elim hv1_ne_v2_typed (fun h' => hv1_not_in h')
+  -- Compute LHS via two sum_insert peels.
+  change (insert (⟨v1, V1⟩ : VarSymb × VarType)
+          (insert (⟨v2, V2⟩ : VarSymb × VarType) V_minus_z.1)).sum f < V.1.sum f
+  rw [Finset.sum_insert hv1_not_in_outer, Finset.sum_insert hv2_not_in]
+  -- Goal: f ⟨v1,V1⟩ + (f ⟨v2,V2⟩ + V_minus_z.1.sum f) < V.1.sum f
+  -- Express V.1.sum f as f ⟨z, V1×V2⟩ + V_minus_z.1.sum f.
+  have h_V_sum : V.1.sum f = f ⟨z, V1.VTypeProd V2⟩ + V_minus_z.1.sum f := by
+    rw [hVmz]
+    change V.1.sum f = f ⟨z, V1.VTypeProd V2⟩ + (V.1.erase _).sum f
+    rw [← Finset.add_sum_erase V.1 f hzmem]
+  rw [h_V_sum]
+  -- f ⟨a, T⟩ = T.pairDepth; (V1.VTypeProd V2).pairDepth = 1 + V1.pairDepth + V2.pairDepth.
+  simp only [hf, VarType.pairDepth]
+  omega
+
+-- Insertion increases pairDepth by the inserted entry's type-level depth.
+-- Used by `Term.ctx_rest_MU`'s `decreasing_by` to relate the pairDepth
+-- of `VarCtx_insert ⟨x, S⟩ V hx` to `V.pairDepth + S.pairDepth`.
+lemma VarCtx.pairDepth_insert (x : VarSymb × VarType) (V : VarCtx)
+    (hx : x.1 ∉ VarCtx_to_VarSymbs V) :
+    (VarCtx_insert x V hx).pairDepth = x.2.pairDepth + V.pairDepth := by
+  have hx_typed : x ∉ V.1 := fun h => hx (Finset.mem_image.mpr ⟨_, h, rfl⟩)
+  change (insert x V.1).sum (fun p => p.2.pairDepth)
+       = x.2.pairDepth + V.1.sum _
+  rw [Finset.sum_insert hx_typed]
+
+-- Boolean test: is this a pair (VTypeProd) type?
+def VarType.isPair : VarType → Bool
+  | .VTypeProd _ _ => true
+  | _              => false
+
+-- Predicate: V contains a pair-typed (VTypeProd) binder.
+def VarCtx.hasPairVar (V : VarCtx) : Prop :=
+  ∃ (z : VarSymb) (V1 V2 : VarType),
+    (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ V.1
+
+instance (V : VarCtx) : Decidable V.hasPairVar :=
+  decidable_of_iff (∃ p ∈ V.1, p.2.isPair = true) <| by
+    constructor
+    · rintro ⟨⟨s, T⟩, hmem, h⟩
+      match T, h with
+      | .VTypeProd a b, _ => exact ⟨s, a, b, hmem⟩
+    · rintro ⟨z, V1, V2, hmem⟩
+      exact ⟨⟨z, V1.VTypeProd V2⟩, hmem, rfl⟩
+
+-- Constructive search for a pair-typed element in a list.
+def List.findPairTyped (l : List (VarSymb × VarType)) :
+    Option { p : VarSymb × VarType × VarType //
+             (⟨p.1, p.2.1.VTypeProd p.2.2⟩ : VarSymb × VarType) ∈ l } :=
+  match l with
+  | [] => none
+  | (z, T) :: rest =>
+    match T with
+    | .VTypeProd V1 V2 =>
+        some ⟨(z, V1, V2), List.mem_cons_self⟩
+    | _ =>
+        match List.findPairTyped rest with
+        | none => none
+        | some ⟨p, hmem⟩ =>
+            some ⟨p, List.mem_cons_of_mem _ hmem⟩
+
+-- A computable linear order on VarCtx entries, used by `VarCtx.firstPairVar`
+-- to extract a pair-typed binder via `Finset.sort` (avoiding noncomputable
+-- `Finset.toList`). Defined by lifting through an injective encoding to ℕ.
+private def varCtxEntryEncode (p : VarSymb × VarType) : ℕ :=
+  Nat.pair p.1.toNat p.2.encode
+
+-- v11: `VarSymb` has two constructors, so this goes through `VarSymb.toNat_injective` rather
+-- than destructuring the symbol.
+private theorem varCtxEntryEncode_injective : Function.Injective varCtxEntryEncode := by
+  intro a b heq
+  obtain ⟨a1, a2⟩ := a
+  obtain ⟨b1, b2⟩ := b
+  simp only [varCtxEntryEncode] at heq
+  have h_un := congrArg Nat.unpair heq
+  simp only [Nat.unpair_pair] at h_un
+  obtain ⟨h_n, h_enc⟩ := Prod.mk.inj h_un
+  rw [VarSymb.toNat_injective h_n, VarType.encode_injective h_enc]
+
+instance : LinearOrder (VarSymb × VarType) :=
+  LinearOrder.lift' varCtxEntryEncode varCtxEntryEncode_injective
+
+-- Extraction of a pair-typed binder from V. Uses `Finset.sort` with the
+-- linear order above to deterministically enumerate V's entries in encoding
+-- order, then picks the first pair-typed one.
+def VarCtx.firstPairVar (V : VarCtx) :
+    Option { p : VarSymb × VarType × VarType //
+             (⟨p.1, p.2.1.VTypeProd p.2.2⟩ : VarSymb × VarType) ∈ V.1 } :=
+  let sorted := V.1.sort (· ≤ ·)
+  match h : sorted.findPairTyped with
+  | none => none
+  | some ⟨p, hmem⟩ =>
+      some ⟨p, by
+        have h_sorted_perm : sorted.Perm V.1.toList := by
+          change (V.1.sort (· ≤ ·)).Perm V.1.toList
+          exact Finset.sort_perm_toList _ _
+        exact Finset.mem_toList.mp (h_sorted_perm.mem_iff.mp hmem)⟩
+
+-- If `l.findPairTyped = none`, then `l` contains no pair-typed element.
+private lemma List.findPairTyped_none_no_pair :
+    ∀ {l : List (VarSymb × VarType)} (_h : l.findPairTyped = none)
+      {z : VarSymb} {V1 V2 : VarType}
+      (_hmem : (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ l), False
+  | [], _, _, _, _, hmem => nomatch hmem
+  | (hsym, htype) :: tail, h, z, V1, V2, hmem => by
+      rcases List.mem_cons.mp hmem with heq | htail
+      · cases heq
+        simp [List.findPairTyped] at h
+      · cases htype with
+        | VTypeProd _ _ => simp [List.findPairTyped] at h
+        | _ =>
+            simp only [List.findPairTyped] at h
+            split at h
+            · exact List.findPairTyped_none_no_pair (by assumption) htail
+            · simp at h
+
+-- VarCtx version of the above.
+lemma VarCtx.firstPairVar_none_no_pair {V : VarCtx}
+    (h : V.firstPairVar = none)
+    {z : VarSymb} {V1 V2 : VarType}
+    (hmem : (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ V.1) : False := by
+  simp only [VarCtx.firstPairVar] at h
+  split at h
+  · rename_i h_sort_none
+    have h_sort_perm : (V.1.sort (· ≤ ·)).Perm V.1.toList :=
+      Finset.sort_perm_toList _ _
+    have h_mem_sort : (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈
+        V.1.sort (· ≤ ·) := by
+      rw [(h_sort_perm.mem_iff (a := (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType)))]
+      exact Finset.mem_toList.mpr hmem
+    exact List.findPairTyped_none_no_pair h_sort_none h_mem_sort
+  · nomatch h
+
+
+/-! ## Inner-context determinacy (ported verbatim from v10)
+
+
+
+`h_no_box_extras` pins a `box`/`dia` term's inner context to the box-typed part of the ambient one,
+
+so the inner context is DETERMINED.  `substVar`'s modal arms need this to identify the substituted
+
+term's inner context with the target's. -/
+
+-- `VarCtx_box` is injective: if two contexts have equal box-wraps, they're equal.
+lemma VarCtx_box_inj {V₁ V₂ : VarCtx} (h : VarCtx_box V₁ = VarCtx_box V₂) :
+    V₁ = V₂ := by
+  apply VarCtx_ext
+  have h1 : (VarCtx_box V₁).1 = (VarCtx_box V₂).1 := congrArg PSigma.fst h
+  have h_fn_inj :
+      Function.Injective (fun (p : VarSymb × VarType) =>
+        (⟨p.1, p.2.VTypeBox⟩ : VarSymb × VarType)) := by
+    intro a b hab
+    simp only [Prod.mk.injEq] at hab
+    exact Prod.ext hab.1 (VarType.VTypeBox.inj hab.2)
+  exact Finset.image_injective h_fn_inj h1
+
+-- Helper for `Term.ctx_rest`'s boxterm descent. Given a `.boxterm` in
+-- `V_ext = V + {⟨x, T.VTypeBox⟩}` whose inner context `V_inner` contains
+-- `⟨x, T⟩`, and a substitution term `s = .boxterm s_inner _ _` with inner
+-- context `V_s`, we have `V_s = V_inner.erase ⟨x, T⟩`. This follows from
+-- both `VarCtx_box V_s` and `VarCtx_box (V_inner.erase ⟨x, T⟩)` equalling
+-- "V's box-typed entries", then `VarCtx_box_inj`.
+lemma ctx_rest_box_V_s_eq
+    {V V_inner V_s : VarCtx} {x : VarSymb} {T : VarType}
+    {hx : x ∉ VarCtx_to_VarSymbs V}
+    (_hxT_in : (⟨x, T⟩ : VarSymb × VarType) ∈ V_inner.1)
+    (hsub : (VarCtx_box V_inner).1 ⊆ (VarCtx_insert ⟨x, T.VTypeBox⟩ V hx).1)
+    (h_no_extras : ∀ p ∈ (VarCtx_insert ⟨x, T.VTypeBox⟩ V hx).1,
+                   VarType.isBox p.2 = true → p ∈ (VarCtx_box V_inner).1)
+    (s_hsub : (VarCtx_box V_s).1 ⊆ V.1)
+    (s_h_no_extras : ∀ p ∈ V.1, VarType.isBox p.2 = true →
+                     p ∈ (VarCtx_box V_s).1) :
+    V_s = VarCtx_erase V_inner ⟨x, T⟩ := by
+  -- Proof: show V_s and V_inner.erase ⟨x, T⟩ have the same Finset, by extensionality.
+  -- Avoids nested obtain destructure (which has a Lean elaboration bug) by using
+  -- `cases q with | mk qv qS` to destructure after `rcases`, plus the
+  -- `VarCtx_box`-wrap injectivity to recover the original entry.
+  apply VarCtx_ext
+  ext q
+  cases q with
+  | mk qv qS =>
+    constructor
+    · -- q ∈ V_s → q ∈ V_inner.erase ⟨x, T⟩.
+      intro hq_in_s
+      -- ⟨qv, qS.VTypeBox⟩ ∈ VarCtx_box V_s ⊆ V.
+      have hbox_in_box_s : (⟨qv, qS.VTypeBox⟩ : VarSymb × VarType)
+                            ∈ (VarCtx_box V_s).1 :=
+        Finset.mem_image.mpr ⟨⟨qv, qS⟩, hq_in_s, rfl⟩
+      have hbox_in_V : (⟨qv, qS.VTypeBox⟩ : VarSymb × VarType) ∈ V.1 :=
+        s_hsub hbox_in_box_s
+      have hbox_in_Vext : (⟨qv, qS.VTypeBox⟩ : VarSymb × VarType)
+                           ∈ (VarCtx_insert ⟨x, T.VTypeBox⟩ V hx).1 :=
+        Finset.mem_insert_of_mem hbox_in_V
+      have hbox_in_box_inner : (⟨qv, qS.VTypeBox⟩ : VarSymb × VarType)
+                                ∈ (VarCtx_box V_inner).1 :=
+        h_no_extras _ hbox_in_Vext rfl
+      -- So ∃ ⟨a, B⟩ ∈ V_inner, ⟨a, B.VTypeBox⟩ = ⟨qv, qS.VTypeBox⟩.
+      -- By injectivity, ⟨a, B⟩ = ⟨qv, qS⟩.
+      rcases Finset.mem_image.mp hbox_in_box_inner with ⟨r, hr_in, hr_eq⟩
+      cases r with
+      | mk rv rS =>
+        -- hr_eq : ⟨rv, rS.VTypeBox⟩ = ⟨qv, qS.VTypeBox⟩.
+        obtain ⟨h_v_eq, h_S_box_eq⟩ := Prod.mk.inj hr_eq
+        have h_S_eq : rS = qS := VarType.VTypeBox.inj h_S_box_eq
+        rw [h_v_eq, h_S_eq] at hr_in
+        -- Now hr_in : ⟨qv, qS⟩ ∈ V_inner.
+        have hne : (⟨qv, qS⟩ : VarSymb × VarType) ≠ ⟨x, T⟩ := by
+          intro h_eq
+          obtain ⟨h_qv_x, _⟩ := Prod.mk.inj h_eq
+          apply hx
+          refine Finset.mem_image.mpr ⟨_, hbox_in_V, ?_⟩
+          exact h_qv_x
+        exact Finset.mem_erase.mpr ⟨hne, hr_in⟩
+    · -- q ∈ V_inner.erase ⟨x, T⟩ → q ∈ V_s.
+      intro hq_in_minus
+      have hq_in_inner : (⟨qv, qS⟩ : VarSymb × VarType) ∈ V_inner.1 :=
+        (Finset.mem_erase.mp hq_in_minus).2
+      have hne_xT : (⟨qv, qS⟩ : VarSymb × VarType) ≠ ⟨x, T⟩ :=
+        (Finset.mem_erase.mp hq_in_minus).1
+      have hbox_in_box_inner : (⟨qv, qS.VTypeBox⟩ : VarSymb × VarType)
+                                ∈ (VarCtx_box V_inner).1 :=
+        Finset.mem_image.mpr ⟨⟨qv, qS⟩, hq_in_inner, rfl⟩
+      have hbox_in_Vext := hsub hbox_in_box_inner
+      rcases Finset.mem_insert.mp hbox_in_Vext with h_eq | h_in_V
+      · exfalso
+        obtain ⟨h_qv_x, h_qSbox_T⟩ := Prod.mk.inj h_eq
+        have h_qS_T : qS = T := VarType.VTypeBox.inj h_qSbox_T
+        exact hne_xT (by rw [h_qv_x, h_qS_T])
+      · have hbox_in_box_s : (⟨qv, qS.VTypeBox⟩ : VarSymb × VarType)
+                              ∈ (VarCtx_box V_s).1 :=
+          s_h_no_extras _ h_in_V rfl
+        rcases Finset.mem_image.mp hbox_in_box_s with ⟨r, hr_in_s, hr_eq⟩
+        cases r with
+        | mk rv rS =>
+          obtain ⟨h_v_eq, h_S_box_eq⟩ := Prod.mk.inj hr_eq
+          have h_S_eq : rS = qS := VarType.VTypeBox.inj h_S_box_eq
+          rw [h_v_eq, h_S_eq] at hr_in_s
+          exact hr_in_s
+
+-- Parallel of `ctx_rest_box_V_s_eq` for diaterm context: given a `.diaterm`
+-- in V_ext whose inner V_inner has `⟨x, T⟩`, and a substitution `.boxterm`
+-- s in V, we have V_s = V_inner.erase ⟨x, T⟩. Proven by reducing to the
+-- box version after stripping the dia binder.
+lemma ctx_rest_dia_V_s_eq
+    {V V_inner V_s : VarCtx} {x : VarSymb} {T : VarType}
+    {xv : VarSymb × VarType} {hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner}
+    {hx : x ∉ VarCtx_to_VarSymbs V}
+    (hxT_in : (⟨x, T⟩ : VarSymb × VarType) ∈ V_inner.1)
+    (hsub : (VarCtx_dia xv V_inner hxv).1 ⊆
+            (VarCtx_insert ⟨x, T.VTypeBox⟩ V hx).1)
+    (h_no_extras : ∀ p ∈ (VarCtx_insert ⟨x, T.VTypeBox⟩ V hx).1,
+                   VarType.isBox p.2 = true →
+                   p ∈ (VarCtx_dia xv V_inner hxv).1)
+    (s_hsub : (VarCtx_box V_s).1 ⊆ V.1)
+    (s_h_no_extras : ∀ p ∈ V.1, VarType.isBox p.2 = true →
+                     p ∈ (VarCtx_box V_s).1) :
+    V_s = VarCtx_erase V_inner ⟨x, T⟩ := by
+  have hsub_box : (VarCtx_box V_inner).1 ⊆
+                  (VarCtx_insert ⟨x, T.VTypeBox⟩ V hx).1 := by
+    intro p hp
+    apply hsub
+    rw [VarCtx_dia_fst]
+    exact Finset.mem_insert_of_mem hp
+  have h_no_extras_box :
+      ∀ p ∈ (VarCtx_insert ⟨x, T.VTypeBox⟩ V hx).1,
+        VarType.isBox p.2 = true → p ∈ (VarCtx_box V_inner).1 := by
+    intro p hp h_box
+    have hp_in_dia := h_no_extras p hp h_box
+    rw [VarCtx_dia_fst] at hp_in_dia
+    rcases Finset.mem_insert.mp hp_in_dia with h_eq | hp_box
+    · subst h_eq; simp [VarType.isBox] at h_box
+    · exact hp_box
+  exact ctx_rest_box_V_s_eq hxT_in hsub_box h_no_extras_box s_hsub s_h_no_extras
+
+-- After erasing ⟨x, T⟩ from V_inner, the new `VarCtx_dia ⊆ V` follows from
+-- the old `VarCtx_dia ⊆ V_ext` plus disjointness of x from the dia binder
+-- and the V_inner.erase entries.
+lemma ctx_rest_dia_hsub_erase
+    {V V_inner : VarCtx} {x : VarSymb} {T : VarType}
+    {xv : VarSymb × VarType}
+    {hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner}
+    (hxv_minus : xv.1 ∉ VarCtx_to_VarSymbs (VarCtx_erase V_inner ⟨x, T⟩))
+    {hx : x ∉ VarCtx_to_VarSymbs V}
+    (h_xv_ne_x : xv.1 ≠ x)
+    (hsub : (VarCtx_dia xv V_inner hxv).1 ⊆
+            (VarCtx_insert ⟨x, T.VTypeBox⟩ V hx).1) :
+    (VarCtx_dia xv (VarCtx_erase V_inner ⟨x, T⟩) hxv_minus).1 ⊆ V.1 := by
+  rw [VarCtx_dia_fst]
+  intro p hp
+  rcases Finset.mem_insert.mp hp with h_eq | hp_box
+  · subst h_eq
+    have hp_in_dia : (⟨xv.1, xv.2.VTypeDia⟩ : VarSymb × VarType) ∈
+                      (VarCtx_dia xv V_inner hxv).1 := by
+      rw [VarCtx_dia_fst]; exact Finset.mem_insert_self _ _
+    rcases Finset.mem_insert.mp (hsub hp_in_dia) with h_eq' | h_in_V
+    · exact absurd (Prod.mk.inj h_eq').1 h_xv_ne_x
+    · exact h_in_V
+  · obtain ⟨q, hq_in_minus, hq_eq⟩ := Finset.mem_image.mp hp_box
+    have hq_in_inner : q ∈ V_inner.1 :=
+      (Finset.mem_erase.mp hq_in_minus).2
+    have hp_in_inner_box : p ∈ (VarCtx_box V_inner).1 :=
+      Finset.mem_image.mpr ⟨q, hq_in_inner, hq_eq⟩
+    have hp_in_dia : p ∈ (VarCtx_dia xv V_inner hxv).1 := by
+      rw [VarCtx_dia_fst]; exact Finset.mem_insert_of_mem hp_in_inner_box
+    rcases Finset.mem_insert.mp (hsub hp_in_dia) with h_eq | h_in_V
+    · exfalso
+      subst h_eq
+      cases q with
+      | mk qv qT =>
+        obtain ⟨hqv_eq, hqT_box_eq⟩ := Prod.mk.inj hq_eq
+        have hqT_eq : qT = T := VarType.VTypeBox.inj hqT_box_eq
+        subst hqv_eq; subst hqT_eq
+        exact (Finset.mem_erase.mp hq_in_minus).1 rfl
+    · exact h_in_V
+
+-- After erasing ⟨x, T⟩ from V_inner, the new `h_no_extras` (for box-typed
+-- entries of V) follows from the old (for box-typed entries of V_ext): any
+-- such p is in VarCtx_dia via the original h_no_extras, and the box-image
+-- entries don't involve x (since p ∈ V where x ∉ V).
+lemma ctx_rest_dia_h_no_extras_erase
+    {V V_inner : VarCtx} {x : VarSymb} {T : VarType}
+    {xv : VarSymb × VarType}
+    {hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner}
+    (hxv_minus : xv.1 ∉ VarCtx_to_VarSymbs (VarCtx_erase V_inner ⟨x, T⟩))
+    {hx : x ∉ VarCtx_to_VarSymbs V}
+    (h_no_extras : ∀ p ∈ (VarCtx_insert ⟨x, T.VTypeBox⟩ V hx).1,
+                   VarType.isBox p.2 = true →
+                   p ∈ (VarCtx_dia xv V_inner hxv).1) :
+    ∀ p ∈ V.1, VarType.isBox p.2 = true →
+      p ∈ (VarCtx_dia xv (VarCtx_erase V_inner ⟨x, T⟩) hxv_minus).1 := by
+  intro p hp h_box
+  rw [VarCtx_dia_fst]
+  have hp_ext : p ∈ (VarCtx_insert ⟨x, T.VTypeBox⟩ V hx).1 :=
+    Finset.mem_insert_of_mem hp
+  have hp_in_dia := h_no_extras p hp_ext h_box
+  rw [VarCtx_dia_fst] at hp_in_dia
+  rcases Finset.mem_insert.mp hp_in_dia with h_eq | hp_box
+  · subst h_eq; exact Finset.mem_insert_self _ _
+  · apply Finset.mem_insert_of_mem
+    obtain ⟨q, hq_in, hq_eq⟩ := Finset.mem_image.mp hp_box
+    cases q with
+    | mk qv qT =>
+      have hqv_ne_x : qv ≠ x := by
+        intro h_qv_x
+        subst h_qv_x
+        apply hx
+        refine Finset.mem_image.mpr ⟨p, hp, ?_⟩
+        exact (Prod.mk.inj hq_eq).1.symm
+      refine Finset.mem_image.mpr ⟨⟨qv, qT⟩, ?_, hq_eq⟩
+      exact Finset.mem_erase.mpr
+        ⟨fun h_eq => hqv_ne_x (Prod.mk.inj h_eq).1, hq_in⟩
+
+
+/-- If a `boxterm`'s inner context mentions `x`, then `x`'s type in the ambient context must be a
+    BOX type.  This collapses v10's four identical `exfalso` branches (`Var`/`One`/`Dia`/`Prod`)
+    into a single `obtain`. -/
+theorem boxterm_subst_type {V V_inner : VarCtx} {x : VarSymb} {S : VarType}
+    {hx : x ∉ VarCtx_to_VarSymbs V}
+    (hsub : (VarCtx_box V_inner).1 ⊆ (VarCtx_insert ⟨x, S⟩ V hx).1)
+    (h_x_in : x ∈ VarCtx_to_VarSymbs V_inner) :
+    ∃ T : VarType, S = VarType.VTypeBox T := by
+  obtain ⟨⟨x', T'⟩, hx'T', hx'_eq⟩ := Finset.mem_image.mp h_x_in
+  simp only at hx'_eq
+  subst hx'_eq
+  have hbox : (⟨x', T'.VTypeBox⟩ : VarSymb × VarType) ∈ (VarCtx_box V_inner).1 :=
+    Finset.mem_image.mpr ⟨⟨x', T'⟩, hx'T', rfl⟩
+  rcases Finset.mem_insert.mp (hsub hbox) with h_eq | h_in_V
+  · exact ⟨T', ((Prod.mk.inj h_eq).2).symm⟩
+  · exact absurd (Finset.mem_image.mpr ⟨_, h_in_V, rfl⟩) hx
