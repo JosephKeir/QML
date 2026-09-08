@@ -977,6 +977,210 @@ def CtxBij.renameOne {V : VarCtx} (old new : VarSymb) (T : VarType)
       rw [VarSymb.update_of_ne _ hne]
       rfl
 
+/-! ### Slot arithmetic, and the four-slot swap
+
+`Term.unpair` (the inverse of `pair_elim`) meets one genuinely new context identity: unpairing at
+`z` UNDER another `pair_elim` produces the two slot-pairs in the opposite order to the one the
+rebuilt node needs.  The two contexts hold the same four slots carrying the same four types — just
+at swapped levels — so they are related by a `CtxBij`, and `mapCtx` does the rest. -/
+
+/-- A bound slot present in a context is below its level. -/
+theorem VarCtx.bnd_lt_bndLevel {V : VarCtx} {k : ℕ}
+    (h : VarSymb.bnd k ∈ VarCtx_to_VarSymbs V) : k < VarCtx.bndLevel V := by
+  have hle := Finset.le_sup (f := VarSymb.bndCeil) h
+  rw [VarCtx.bndLevel_eq]
+  simpa [VarSymb.bndCeil] using hle
+
+/-- Contrapositive: a slot at or above the level is fresh. -/
+theorem VarCtx.notMem_bnd_of_le {V : VarCtx} {k : ℕ} (h : VarCtx.bndLevel V ≤ k) :
+    VarSymb.bnd k ∉ VarCtx_to_VarSymbs V :=
+  fun hm => absurd (VarCtx.bnd_lt_bndLevel hm) (by omega)
+
+theorem VarCtx.insertBnd_fst (T : VarType) (V : VarCtx) :
+    (VarCtx.insertBnd T V).1
+      = insert (⟨VarSymb.bnd (VarCtx.bndLevel V), T⟩ : VarSymb × VarType) V.1 := rfl
+
+theorem VarCtx.insertBnd2_fst (T₁ T₂ : VarType) (V : VarCtx) :
+    (VarCtx.insertBnd2 T₁ T₂ V).1
+      = insert (⟨VarSymb.bnd (VarCtx.bndLevel V + 1), T₂⟩ : VarSymb × VarType)
+          (insert (⟨VarSymb.bnd (VarCtx.bndLevel V), T₁⟩ : VarSymb × VarType) V.1) := by
+  change (VarCtx.insertBnd T₂ (VarCtx.insertBnd T₁ V)).1 = _
+  rw [VarCtx.insertBnd_fst, VarCtx.insertBnd_fst, VarCtx.bndLevel_insertBnd]
+
+theorem VarCtx.bndLevel_insertBnd2 (T₁ T₂ : VarType) (V : VarCtx) :
+    VarCtx.bndLevel (VarCtx.insertBnd2 T₁ T₂ V) = VarCtx.bndLevel V + 2 := by
+  change VarCtx.bndLevel (VarCtx.insertBnd T₂ (VarCtx.insertBnd T₁ V)) = _
+  rw [VarCtx.bndLevel_insertBnd, VarCtx.bndLevel_insertBnd]
+
+/-- `bndLevel` is monotone in the context. -/
+theorem VarCtx.bndLevel_mono {U V : VarCtx} (h : U.1 ⊆ V.1) :
+    VarCtx.bndLevel U ≤ VarCtx.bndLevel V := by
+  rw [VarCtx.bndLevel_eq, VarCtx.bndLevel_eq]
+  refine Finset.sup_le (fun v hv => Finset.le_sup ?_)
+  obtain ⟨q, hq, rfl⟩ := Finset.mem_image.mp hv
+  exact Finset.mem_image.mpr ⟨q, h hq, rfl⟩
+
+/-- A USER insert does not move the level (the companion of `nextBnd_insert_isUsr`). -/
+theorem VarCtx.bndLevel_insert_isUsr (x : VarSymb × VarType) (V : VarCtx)
+    (hx : x.1 ∉ VarCtx_to_VarSymbs V) (hu : x.1.isUsr = true) :
+    VarCtx.bndLevel (VarCtx_insert x V hx) = VarCtx.bndLevel V := by
+  have h := VarCtx.nextBnd_insert_isUsr x V hx hu
+  simpa [VarCtx.nextBnd] using h
+
+/-- The map exchanging the slot BLOCK `[n, n+2)` with `[n+2, n+4)` **and** relocating the pair of
+    blocks to start at `L`.  Stated arithmetically so every side condition is `omega`'s business.
+
+    When `L = n` this is the plain four-slot swap; `L > n` arises when the enclosing binder that a
+    `pair_elim` is being rebuilt under sits at a HIGHER slot than the base's level. -/
+def VarSymb.swap4At (n L : ℕ) : VarSymb → VarSymb
+  | .mk m  => .mk m
+  | .bnd k =>
+      if k < n then .bnd k
+      else if k < n + 2 then .bnd (k - n + L + 2)
+      else if k < n + 4 then .bnd (k - n - 2 + L)
+      else .bnd k
+
+/-- Evaluation, in the one form the proofs below need. -/
+theorem VarSymb.swap4At_eq (n L k m : ℕ)
+    (h : (k < n ∧ m = k) ∨ (n ≤ k ∧ k < n + 2 ∧ m = k - n + L + 2)
+         ∨ (n + 2 ≤ k ∧ k < n + 4 ∧ m = k - n - 2 + L) ∨ (n + 4 ≤ k ∧ m = k)) :
+    VarSymb.swap4At n L (.bnd k) = .bnd m := by
+  simp only [VarSymb.swap4At]
+  split_ifs <;> (congr 1) <;> omega
+
+/-- Below the level, `swap4At` is the identity. -/
+theorem VarSymb.swap4At_of_lt {n L k : ℕ} (h : k < n) :
+    VarSymb.swap4At n L (.bnd k) = .bnd k :=
+  VarSymb.swap4At_eq _ _ _ _ (Or.inl ⟨h, rfl⟩)
+
+/-- ⭐The four-slot swap, as a context bijection.  `X` holds the blocks in the order
+    `A B` (at `n`) then `C D`; `Y` holds `C D` (at `L`) then `A B`.  This is what `Term.unpair`
+    rebuilds a NESTED `pair_elim` along: unpairing under another binder produces the two slot
+    pairs in the opposite order, and possibly at a different level. -/
+def CtxBij.swap4At (n L : ℕ) (A B C D : VarType) (U X Y : VarCtx)
+    (hn : VarCtx.bndLevel U = n) (hnL : n ≤ L)
+    (hX : X.1 = insert (⟨VarSymb.bnd (n + 3), D⟩ : VarSymb × VarType)
+                 (insert (⟨VarSymb.bnd (n + 2), C⟩ : VarSymb × VarType)
+                  (insert (⟨VarSymb.bnd (n + 1), B⟩ : VarSymb × VarType)
+                   (insert (⟨VarSymb.bnd n, A⟩ : VarSymb × VarType) U.1))))
+    (hY : Y.1 = insert (⟨VarSymb.bnd (L + 3), B⟩ : VarSymb × VarType)
+                 (insert (⟨VarSymb.bnd (L + 2), A⟩ : VarSymb × VarType)
+                  (insert (⟨VarSymb.bnd (L + 1), D⟩ : VarSymb × VarType)
+                   (insert (⟨VarSymb.bnd L, C⟩ : VarSymb × VarType) U.1)))) :
+    CtxBij X Y where
+  f := VarSymb.swap4At n L
+  inj := by
+    -- Every slot of `X` is below `n + 4`, so the four images `L … L+3` and the fixed part
+    -- (everything below `n ≤ L`) cannot be confused.
+    have hbound : ∀ k, VarSymb.bnd k ∈ VarCtx_to_VarSymbs X → k < n + 4 := by
+      intro k hk
+      obtain ⟨q, hq, hqeq⟩ := Finset.mem_image.mp hk
+      rw [hX] at hq
+      rcases Finset.mem_insert.mp hq with rfl | hq1
+      · simp only [VarSymb.bnd.injEq] at hqeq; omega
+      rcases Finset.mem_insert.mp hq1 with rfl | hq2
+      · simp only [VarSymb.bnd.injEq] at hqeq; omega
+      rcases Finset.mem_insert.mp hq2 with rfl | hq3
+      · simp only [VarSymb.bnd.injEq] at hqeq; omega
+      rcases Finset.mem_insert.mp hq3 with rfl | hq4
+      · simp only [VarSymb.bnd.injEq] at hqeq; omega
+      · have : VarSymb.bnd k ∈ VarCtx_to_VarSymbs U :=
+          Finset.mem_image.mpr ⟨q, hq4, hqeq⟩
+        have := VarCtx.bnd_lt_bndLevel this
+        omega
+    intro a ha b hb hab
+    cases a with
+    | mk p =>
+        cases b with
+        | mk q => simpa [VarSymb.swap4At] using hab
+        | bnd j =>
+            exfalso
+            simp only [VarSymb.swap4At] at hab
+            split_ifs at hab
+    | bnd k =>
+        cases b with
+        | mk q =>
+            exfalso
+            simp only [VarSymb.swap4At] at hab
+            split_ifs at hab
+        | bnd j =>
+            have hk := hbound k ha
+            have hj := hbound j hb
+            simp only [VarSymb.swap4At, VarSymb.bnd.injEq] at hab ⊢
+            split_ifs at hab <;> simp only [VarSymb.bnd.injEq] at hab <;> omega
+  maps := by
+    intro p hp
+    rw [hX] at hp
+    rw [hY]
+    rcases Finset.mem_insert.mp hp with rfl | hp1
+    · rw [show (⟨VarSymb.bnd (n + 3), D⟩ : VarSymb × VarType).1 = VarSymb.bnd (n + 3) from rfl,
+        VarSymb.swap4At_eq n L (n + 3) (L + 1) (by omega)]
+      exact Finset.mem_insert_of_mem (Finset.mem_insert_of_mem (Finset.mem_insert_self _ _))
+    rcases Finset.mem_insert.mp hp1 with rfl | hp2
+    · rw [show (⟨VarSymb.bnd (n + 2), C⟩ : VarSymb × VarType).1 = VarSymb.bnd (n + 2) from rfl,
+        VarSymb.swap4At_eq n L (n + 2) L (by omega)]
+      exact Finset.mem_insert_of_mem (Finset.mem_insert_of_mem
+        (Finset.mem_insert_of_mem (Finset.mem_insert_self _ _)))
+    rcases Finset.mem_insert.mp hp2 with rfl | hp3
+    · rw [show (⟨VarSymb.bnd (n + 1), B⟩ : VarSymb × VarType).1 = VarSymb.bnd (n + 1) from rfl,
+        VarSymb.swap4At_eq n L (n + 1) (L + 3) (by omega)]
+      exact Finset.mem_insert_self _ _
+    rcases Finset.mem_insert.mp hp3 with rfl | hp4
+    · rw [show (⟨VarSymb.bnd n, A⟩ : VarSymb × VarType).1 = VarSymb.bnd n from rfl,
+        VarSymb.swap4At_eq n L n (L + 2) (by omega)]
+      exact Finset.mem_insert_of_mem (Finset.mem_insert_self _ _)
+    · -- an original entry of `U`: fixed, since its slots are below `n`
+      have hfix : VarSymb.swap4At n L p.1 = p.1 := by
+        cases hp1' : p.1 with
+        | mk m => rfl
+        | bnd k =>
+            refine VarSymb.swap4At_of_lt ?_
+            have : VarSymb.bnd k ∈ VarCtx_to_VarSymbs U :=
+              hp1' ▸ Finset.mem_image.mpr ⟨p, hp4, rfl⟩
+            have := VarCtx.bnd_lt_bndLevel this
+            omega
+      rw [hfix]
+      exact Finset.mem_insert_of_mem (Finset.mem_insert_of_mem
+        (Finset.mem_insert_of_mem (Finset.mem_insert_of_mem hp4)))
+  onto := by
+    intro p hp
+    rw [hY] at hp
+    rcases Finset.mem_insert.mp hp with rfl | hp1
+    · refine ⟨⟨VarSymb.bnd (n + 1), B⟩, ?_, ?_⟩
+      · rw [hX]; exact Finset.mem_insert_of_mem (Finset.mem_insert_of_mem
+          (Finset.mem_insert_self _ _))
+      · rw [show (⟨VarSymb.bnd (n + 1), B⟩ : VarSymb × VarType).1 = VarSymb.bnd (n + 1) from rfl,
+          VarSymb.swap4At_eq n L (n + 1) (L + 3) (by omega)]
+    rcases Finset.mem_insert.mp hp1 with rfl | hp2
+    · refine ⟨⟨VarSymb.bnd n, A⟩, ?_, ?_⟩
+      · rw [hX]; exact Finset.mem_insert_of_mem (Finset.mem_insert_of_mem
+          (Finset.mem_insert_of_mem (Finset.mem_insert_self _ _)))
+      · rw [show (⟨VarSymb.bnd n, A⟩ : VarSymb × VarType).1 = VarSymb.bnd n from rfl,
+          VarSymb.swap4At_eq n L n (L + 2) (by omega)]
+    rcases Finset.mem_insert.mp hp2 with rfl | hp3
+    · refine ⟨⟨VarSymb.bnd (n + 3), D⟩, ?_, ?_⟩
+      · rw [hX]; exact Finset.mem_insert_self _ _
+      · rw [show (⟨VarSymb.bnd (n + 3), D⟩ : VarSymb × VarType).1 = VarSymb.bnd (n + 3) from rfl,
+          VarSymb.swap4At_eq n L (n + 3) (L + 1) (by omega)]
+    rcases Finset.mem_insert.mp hp3 with rfl | hp4
+    · refine ⟨⟨VarSymb.bnd (n + 2), C⟩, ?_, ?_⟩
+      · rw [hX]; exact Finset.mem_insert_of_mem (Finset.mem_insert_self _ _)
+      · rw [show (⟨VarSymb.bnd (n + 2), C⟩ : VarSymb × VarType).1 = VarSymb.bnd (n + 2) from rfl,
+          VarSymb.swap4At_eq n L (n + 2) L (by omega)]
+    · refine ⟨p, ?_, ?_⟩
+      · rw [hX]; exact Finset.mem_insert_of_mem (Finset.mem_insert_of_mem
+          (Finset.mem_insert_of_mem (Finset.mem_insert_of_mem hp4)))
+      · have hfix : VarSymb.swap4At n L p.1 = p.1 := by
+          cases hp1' : p.1 with
+          | mk m => rfl
+          | bnd k =>
+              refine VarSymb.swap4At_of_lt ?_
+              have : VarSymb.bnd k ∈ VarCtx_to_VarSymbs U :=
+                hp1' ▸ Finset.mem_image.mpr ⟨p, hp4, rfl⟩
+              have := VarCtx.bnd_lt_bndLevel this
+              omega
+        rw [hfix]
+
 /-! ## Encoding, and the pair-variable machinery
 
 `substVar` dispatches on whether the context holds a pair-typed variable, and its termination
