@@ -1,4 +1,5 @@
 import QML.QML_v11_Rel
+import QML.QML_v11_TermSubst
 
 /-!
 # QML v11 — Well-formed formulas
