@@ -1421,6 +1421,34 @@ theorem VarCtx.quant_pairElim_w₂eq {V W₂ : VarCtx} {z : VarSymb} {T₁ T₂ 
       (VarCtx.notMem_insertBnd_of_isUsr hzu T hz)).symm.trans
     (congrArg (VarCtx.insertBnd T) w₂eq)
 
+
+/-- Invert a context bijection along an explicitly supplied inverse map.  `CtxBij` carries a bare
+    function, so there is no way to invert it without one; every use here has a computable inverse
+    to hand (`rot3` is its own square-inverse, `renameOne` its own inverse, …). -/
+def CtxBij.symmOf {V V' : VarCtx} (m : CtxBij V V') (g : VarSymb → VarSymb)
+    (hgf : ∀ v, g (m.toCtxMap.f v) = v) (hfg : ∀ v, m.toCtxMap.f (g v) = v) :
+    CtxBij V' V where
+  f := g
+  inj := by
+    intro a _ b _ hab
+    rw [← hfg a, ← hfg b, hab]
+  maps := by
+    intro p hp
+    obtain ⟨q, hq, rfl⟩ := m.onto p hp
+    simpa [hgf] using hq
+  onto := by
+    intro p hp
+    exact ⟨⟨m.toCtxMap.f p.1, p.2⟩, m.toCtxMap.maps p hp, by simp [hgf]⟩
+
+/-- The inverse of `quantRot`: `rot3` has order three, so `rot3 ∘ rot3` inverts it. -/
+def CtxBij.quantRotInv (T₁ T₂ T : VarType) (V : VarCtx) :
+    CtxBij (VarCtx.insertBnd2 T₁ T₂ (VarCtx.insertBnd T V))
+           (VarCtx.insertBnd T (VarCtx.insertBnd2 T₁ T₂ V)) :=
+  CtxBij.symmOf (CtxBij.quantRot T₁ T₂ T V)
+    (fun v => VarSymb.rot3 (VarCtx.bndLevel V) (VarSymb.rot3 (VarCtx.bndLevel V) v))
+    (fun v => VarSymb.rot3_cube _ v)
+    (fun v => VarSymb.rot3_cube _ v)
+
 /-! ## Encoding, and the pair-variable machinery
 
 `substVar` dispatches on whether the context holds a pair-typed variable, and its termination
