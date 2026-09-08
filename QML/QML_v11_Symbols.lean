@@ -136,6 +136,10 @@ def VarCtx_insert (x : VarSymb × VarType) (V : VarCtx)
     · exact V.2 v hv_mem w hw_mem one_eq
 
 
+-- The underlying `Finset` of an insertion, for rewriting.
+@[simp] theorem VarCtx_insert_fst (x : VarSymb × VarType) (V : VarCtx)
+    (hx : x.1 ∉ VarCtx_to_VarSymbs V) : (VarCtx_insert x V hx).1 = insert x V.1 := rfl
+
 -- Wrap every variable's type in VTypeBox
 def VarCtx_box (V : VarCtx) : VarCtx := by
   refine ⟨V.1.image (fun ⟨v, S⟩ => (⟨v, S.VTypeBox⟩ : VarSymb × VarType)), ?_⟩
@@ -1181,6 +1185,79 @@ def CtxBij.swap4At (n L : ℕ) (A B C D : VarType) (U X Y : VarCtx)
               omega
         rw [hfix]
 
+/-! ### The two contexts `Term.unpair`'s nested arm relates
+
+Unpairing at `z` UNDER a `pair_elim` binder `z'` yields the four slots in the order
+`(T₁', T₂', T₁, T₂)` starting at the level of the shared base `U`, while the rebuilt node needs
+them as `(T₁, T₂, T₁', T₂')` starting at the level of `V = U + ⟨z', T₁'×T₂'⟩`.  `CtxBij.swap4At`
+is exactly that exchange; these three lemmas supply its hypotheses. -/
+
+theorem VarCtx.unpair_level_le {U V : VarCtx} {z' : VarSymb} {A B : VarType}
+    {hz'U : z' ∉ VarCtx_to_VarSymbs U}
+    (hVU : VarCtx_insert ⟨z', A.VTypeProd B⟩ U hz'U = V) :
+    VarCtx.bndLevel U ≤ VarCtx.bndLevel V := by
+  rw [← hVU]
+  exact VarCtx.bndLevel_mono (fun p hp => Finset.mem_insert_of_mem hp)
+
+theorem VarCtx.unpair_srcCtx (A B C D : VarType) (U : VarCtx) :
+    (VarCtx.insertBnd2 C D (VarCtx.insertBnd2 A B U)).1
+      = insert (⟨VarSymb.bnd (VarCtx.bndLevel U + 3), D⟩ : VarSymb × VarType)
+         (insert (⟨VarSymb.bnd (VarCtx.bndLevel U + 2), C⟩ : VarSymb × VarType)
+          (insert (⟨VarSymb.bnd (VarCtx.bndLevel U + 1), B⟩ : VarSymb × VarType)
+           (insert (⟨VarSymb.bnd (VarCtx.bndLevel U), A⟩ : VarSymb × VarType) U.1))) := by
+  rw [VarCtx.insertBnd2_fst, VarCtx.bndLevel_insertBnd2, VarCtx.insertBnd2_fst]
+
+theorem VarCtx.unpair_tgtCtx (A B C D : VarType) {U V : VarCtx} {z' : VarSymb}
+    {hz'U : z' ∉ VarCtx_to_VarSymbs U}
+    (hVU : VarCtx_insert ⟨z', A.VTypeProd B⟩ U hz'U = V) :
+    (VarCtx.insertBnd2 A B
+        (VarCtx_erase (VarCtx.insertBnd2 C D V) ⟨z', A.VTypeProd B⟩)).1
+      = insert (⟨VarSymb.bnd (VarCtx.bndLevel V + 3), B⟩ : VarSymb × VarType)
+         (insert (⟨VarSymb.bnd (VarCtx.bndLevel V + 2), A⟩ : VarSymb × VarType)
+          (insert (⟨VarSymb.bnd (VarCtx.bndLevel V + 1), D⟩ : VarSymb × VarType)
+           (insert (⟨VarSymb.bnd (VarCtx.bndLevel V), C⟩ : VarSymb × VarType) U.1))) := by
+  -- `z'` is below `V`'s level, so it is neither of the two slots `insertBnd2 C D` adds.
+  have hz'V : z' ∈ VarCtx_to_VarSymbs V := by
+    rw [← hVU]; exact Finset.mem_image.mpr ⟨_, Finset.mem_insert_self _ _, rfl⟩
+  have hz'lt : ∀ k, z' = VarSymb.bnd k → k < VarCtx.bndLevel V := by
+    intro k hk; exact VarCtx.bnd_lt_bndLevel (hk ▸ hz'V)
+  have hne1 : (⟨VarSymb.bnd (VarCtx.bndLevel V + 1), D⟩ : VarSymb × VarType)
+      ≠ ⟨z', A.VTypeProd B⟩ := by
+    intro hc
+    exact absurd (hz'lt _ (Prod.mk.inj hc).1.symm) (by omega)
+  have hne0 : (⟨VarSymb.bnd (VarCtx.bndLevel V), C⟩ : VarSymb × VarType)
+      ≠ ⟨z', A.VTypeProd B⟩ := by
+    intro hc
+    exact absurd (hz'lt _ (Prod.mk.inj hc).1.symm) (by omega)
+  have hz'notU : (⟨z', A.VTypeProd B⟩ : VarSymb × VarType) ∉ U.1 :=
+    fun hm => hz'U (Finset.mem_image.mpr ⟨_, hm, rfl⟩)
+  -- The erased context, explicitly.
+  have hBfst : (VarCtx_erase (VarCtx.insertBnd2 C D V) ⟨z', A.VTypeProd B⟩).1
+      = insert (⟨VarSymb.bnd (VarCtx.bndLevel V + 1), D⟩ : VarSymb × VarType)
+          (insert (⟨VarSymb.bnd (VarCtx.bndLevel V), C⟩ : VarSymb × VarType) U.1) := by
+    change (VarCtx.insertBnd2 C D V).1.erase _ = _
+    rw [VarCtx.insertBnd2_fst]
+    conv_lhs => rw [show V.1 = insert (⟨z', A.VTypeProd B⟩ : VarSymb × VarType) U.1 from by
+      rw [← hVU]; rfl]
+    rw [Finset.erase_insert_of_ne hne1, Finset.erase_insert_of_ne hne0,
+        Finset.erase_insert hz'notU]
+  -- and its level.
+  have hBlevel : VarCtx.bndLevel (VarCtx_erase (VarCtx.insertBnd2 C D V) ⟨z', A.VTypeProd B⟩)
+      = VarCtx.bndLevel V + 2 := by
+    refine le_antisymm ?_ ?_
+    · have hsub : (VarCtx_erase (VarCtx.insertBnd2 C D V) ⟨z', A.VTypeProd B⟩).1
+          ⊆ (VarCtx.insertBnd2 C D V).1 := Finset.erase_subset _ _
+      have := VarCtx.bndLevel_mono hsub
+      rwa [VarCtx.bndLevel_insertBnd2] at this
+    · have hmem : VarSymb.bnd (VarCtx.bndLevel V + 1)
+          ∈ VarCtx_to_VarSymbs
+              (VarCtx_erase (VarCtx.insertBnd2 C D V) ⟨z', A.VTypeProd B⟩) := by
+        refine Finset.mem_image.mpr ⟨⟨VarSymb.bnd (VarCtx.bndLevel V + 1), D⟩, ?_, rfl⟩
+        rw [hBfst]; exact Finset.mem_insert_self _ _
+      have := VarCtx.bnd_lt_bndLevel hmem
+      omega
+  rw [VarCtx.insertBnd2_fst, hBlevel, hBfst]
+
 /-! ## Encoding, and the pair-variable machinery
 
 `substVar` dispatches on whether the context holds a pair-typed variable, and its termination
@@ -1503,6 +1580,25 @@ lemma VarCtx.firstPairVar_none_no_pair {V : VarCtx}
       exact Finset.mem_toList.mpr hmem
     exact List.findPairTyped_none_no_pair h_sort_none h_mem_sort
   · nomatch h
+
+/-- The property `substCore` actually needs: no pair-typed entry anywhere in the context.
+    `firstPairVar = none` implies it, and it is far easier to propagate. -/
+def VarCtx.PairFree (V : VarCtx) : Prop :=
+  ∀ (z : VarSymb) (T₁ T₂ : VarType),
+    (⟨z, VarType.VTypeProd T₁ T₂⟩ : VarSymb × VarType) ∉ V.1
+
+theorem VarCtx.pairFree_of_firstPairVar_none {V : VarCtx} (h : V.firstPairVar = none) :
+    V.PairFree := fun _ _ _ hmem => VarCtx.firstPairVar_none_no_pair h hmem
+
+/-- Extending a pair-free context by a NON-pair entry keeps it pair-free. -/
+theorem VarCtx.pairFree_insert {V : VarCtx} {x : VarSymb} {S : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V) (hV : V.PairFree)
+    (hS : ∀ T₁ T₂, S ≠ VarType.VTypeProd T₁ T₂) :
+    (VarCtx_insert ⟨x, S⟩ V hx).PairFree := by
+  intro z T₁ T₂ h
+  rcases Finset.mem_insert.mp h with h_eq | h_V
+  · exact hS T₁ T₂ ((Prod.mk.inj h_eq).2).symm
+  · exact hV z T₁ T₂ h_V
 
 
 /-! ## Inner-context determinacy (ported verbatim from v10)

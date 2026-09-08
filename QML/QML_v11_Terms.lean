@@ -1208,6 +1208,215 @@ theorem Term.diaCount_ctx_ext {σ : Signature} {V : VarCtx} (xv : VarSymb × Var
 
 -- Bound-vars preservation for renaming: every binder of `Term.rename ... t` is
 
+/-! ## Unpairing
+
+`unpair` is the INVERSE of `pairElim`: it moves a term from the JOINED context `V + ⟨z, T₁×T₂⟩` to
+the SPLIT one `insertBnd2 T₁ T₂ V`.  `substVar` uses it to remove a pair variable from the context
+before the structural pass runs.
+
+Two things make it work in v11:
+
+* **`z` is never a `.var`.**  `.var` is `Var`-typed only, so a pair-typed symbol can occur in a term
+  ONLY as a `pair_elim` binder.  Unpairing therefore deletes exactly those nodes and touches
+  nothing else — there is no term-level replacement to perform.
+* **`z` is required to be USER-named** (`hzu`).  A user insert does not move `nextBnd`, which is
+  what lets the nested node's slots be recomputed.  Call sites α-rename first — free, since
+  `rename'` is `mapCtx`.
+
+The modal arms pass straight through.  If either component were box-typed then `⟨z, T₁×T₂⟩` would
+itself be box-DETECTED (`isBox` recurses through `VTypeProd`), and `h_no_box_extras` would place a
+`VTypeProd`-headed entry inside a `VarCtx_box` image — impossible.  So neither new slot is
+box-typed either, and the "no extras" condition transfers unchanged. -/
+
+/-- Membership in a base context transfers to the split one. -/
+theorem VarCtx.mem_insertBnd2_of_mem {V : VarCtx} {T₁ T₂ : VarType} {p : VarSymb × VarType}
+    (hp : p ∈ V.1) : p ∈ (VarCtx.insertBnd2 T₁ T₂ V).1 :=
+  Finset.mem_insert_of_mem (Finset.mem_insert_of_mem hp)
+
+/-- Case analysis on the split context: the two new slots, or an original entry. -/
+theorem VarCtx.mem_insertBnd2 {V : VarCtx} {T₁ T₂ : VarType} {p : VarSymb × VarType}
+    (hp : p ∈ (VarCtx.insertBnd2 T₁ T₂ V).1) :
+    p = (⟨VarSymb.bnd (VarCtx.bndLevel V + 1), T₂⟩ : VarSymb × VarType)
+      ∨ p = (⟨VarSymb.bnd (VarCtx.bndLevel V), T₁⟩ : VarSymb × VarType) ∨ p ∈ V.1 := by
+  rw [VarCtx.insertBnd2_fst] at hp
+  rcases Finset.mem_insert.mp hp with h | h1
+  · exact Or.inl h
+  · rcases Finset.mem_insert.mp h1 with h | h2
+    · exact Or.inr (Or.inl h)
+    · exact Or.inr (Or.inr h2)
+
+mutual
+  def Func.unpair {σ : Signature} {V : VarCtx} (T₁ T₂ : VarType) (z : VarSymb)
+      (hzu : z.isUsr = true) (hz : z ∉ VarCtx_to_VarSymbs V) {N : ℕ}
+      (fn : Func σ (VarCtx_insert ⟨z, .VTypeProd T₁ T₂⟩ V hz) N) :
+      Func σ (VarCtx.insertBnd2 T₁ T₂ V) N := by
+    match fn with
+    | .F fs => exact .F fs
+    | .eval g t =>
+        exact .eval (Func.unpair T₁ T₂ z hzu hz g) (Term.unpair T₁ T₂ z hzu hz t)
+  termination_by sizeOf fn
+
+  def Term.unpair {σ : Signature} {V : VarCtx} (T₁ T₂ : VarType) (z : VarSymb)
+      (hzu : z.isUsr = true) (hz : z ∉ VarCtx_to_VarSymbs V) {S : VarType}
+      (t : Term σ (VarCtx_insert ⟨z, .VTypeProd T₁ T₂⟩ V hz) S) :
+      Term σ (VarCtx.insertBnd2 T₁ T₂ V) S := by
+    match t with
+    | .unit => exact .unit
+    | .var ⟨w, hw⟩ =>
+        refine .var ⟨w, VarCtx.mem_insertBnd2_of_mem ?_⟩
+        rcases Finset.mem_insert.mp hw with h_eq | hw_V
+        · exact VarType.noConfusion (Prod.mk.inj h_eq).2
+        · exact hw_V
+    | .func fn => exact .func (Func.unpair T₁ T₂ z hzu hz fn)
+    | .pair t1 t2 =>
+        exact .pair (Term.unpair T₁ T₂ z hzu hz t1) (Term.unpair T₁ T₂ z hzu hz t2)
+    | .boxterm inner hsub hne =>
+        rename_i V_inner S_inner
+        have hnb : ¬ ((VarType.VTypeProd T₁ T₂).isBox = true) := by
+          intro hbox
+          obtain ⟨q, _, hqeq⟩ := Finset.mem_image.mp
+            (hne ⟨z, .VTypeProd T₁ T₂⟩ (Finset.mem_insert_self _ _) hbox)
+          exact VarType.noConfusion (Prod.mk.inj hqeq).2
+        have h1 : ¬ (T₁.isBox = true) := fun h => hnb (by simp [VarType.isBox, h])
+        have h2 : ¬ (T₂.isBox = true) := fun h => hnb (by simp [VarType.isBox, h])
+        refine .boxterm inner ?_ ?_
+        · intro p hp
+          rcases Finset.mem_insert.mp (hsub hp) with h_eq | hp_V
+          · exfalso
+            subst h_eq
+            obtain ⟨q, _, hqeq⟩ := Finset.mem_image.mp hp
+            exact VarType.noConfusion (Prod.mk.inj hqeq).2
+          · exact VarCtx.mem_insertBnd2_of_mem hp_V
+        · intro p hp h_box
+          rcases VarCtx.mem_insertBnd2 hp with rfl | rfl | hp_V
+          · exact absurd h_box h2
+          · exact absurd h_box h1
+          · exact hne p (Finset.mem_insert_of_mem hp_V) h_box
+    | .diaterm xv hxv inner hsub hne =>
+        rename_i V_inner S_inner
+        have hnb : ¬ ((VarType.VTypeProd T₁ T₂).isBox = true) := by
+          intro hbox
+          have hin := hne ⟨z, .VTypeProd T₁ T₂⟩ (Finset.mem_insert_self _ _) hbox
+          rw [VarCtx_dia_fst] at hin
+          rcases Finset.mem_insert.mp hin with h_eq | h_box
+          · exact VarType.noConfusion (Prod.mk.inj h_eq).2
+          · obtain ⟨q, _, hqeq⟩ := Finset.mem_image.mp h_box
+            exact VarType.noConfusion (Prod.mk.inj hqeq).2
+        have h1 : ¬ (T₁.isBox = true) := fun h => hnb (by simp [VarType.isBox, h])
+        have h2 : ¬ (T₂.isBox = true) := fun h => hnb (by simp [VarType.isBox, h])
+        refine .diaterm xv hxv inner ?_ ?_
+        · intro p hp
+          rcases Finset.mem_insert.mp (hsub hp) with h_eq | hp_V
+          · exfalso
+            subst h_eq
+            rw [VarCtx_dia_fst] at hp
+            rcases Finset.mem_insert.mp hp with h_eq' | h_box
+            · exact VarType.noConfusion (Prod.mk.inj h_eq').2
+            · obtain ⟨q, _, hqeq⟩ := Finset.mem_image.mp h_box
+              exact VarType.noConfusion (Prod.mk.inj hqeq).2
+          · exact VarCtx.mem_insertBnd2_of_mem hp_V
+        · intro p hp h_box
+          rcases VarCtx.mem_insertBnd2 hp with rfl | rfl | hp_V
+          · exact absurd h_box h2
+          · exact absurd h_box h1
+          · exact hne p (Finset.mem_insert_of_mem hp_V) h_box
+    | .pair_elim T₁' T₂' z' hz' w₁eq w₂eq body =>
+        rename_i pe_V pe_W₁
+        by_cases hzz : z' = z
+        · -- ⭐The node eliminates exactly the variable being unpaired: its body ALREADY lives in
+          -- the split context, so the node simply disappears.
+          subst hzz
+          have hmem' : (⟨z', T₁'.VTypeProd T₂'⟩ : VarSymb × VarType)
+              ∈ (VarCtx_insert ⟨z', .VTypeProd T₁ T₂⟩ V hz).1 := by
+            rw [← w₂eq]; exact Finset.mem_insert_self _ _
+          have hTeq : (T₁'.VTypeProd T₂') = VarType.VTypeProd T₁ T₂ :=
+            (VarCtx_insert ⟨z', .VTypeProd T₁ T₂⟩ V hz).2
+              ⟨z', T₁'.VTypeProd T₂'⟩ hmem'
+              ⟨z', .VTypeProd T₁ T₂⟩ (Finset.mem_insert_self _ _) rfl
+          have hT₁ : T₁' = T₁ := (VarType.VTypeProd.inj hTeq).1
+          have hT₂ : T₂' = T₂ := (VarType.VTypeProd.inj hTeq).2
+          subst hT₁; subst hT₂
+          have hpe_not : (⟨z', VarType.VTypeProd T₁' T₂'⟩ : VarSymb × VarType) ∉ pe_V.1 :=
+            fun h => hz' (Finset.mem_image.mpr ⟨_, h, rfl⟩)
+          have hV_not : (⟨z', VarType.VTypeProd T₁' T₂'⟩ : VarSymb × VarType) ∉ V.1 :=
+            fun h => hz (Finset.mem_image.mpr ⟨_, h, rfl⟩)
+          have hpeV : pe_V = V := by
+            refine VarCtx_ext _ _ ?_
+            have h : insert (⟨z', VarType.VTypeProd T₁' T₂'⟩ : VarSymb × VarType) pe_V.1
+                = insert (⟨z', VarType.VTypeProd T₁' T₂'⟩ : VarSymb × VarType) V.1 :=
+              congrArg (fun (W : VarCtx) => W.1) w₂eq
+            have h1 := congrArg
+              (fun (s : Finset (VarSymb × VarType)) =>
+                s.erase (⟨z', VarType.VTypeProd T₁' T₂'⟩ : VarSymb × VarType)) h
+            simp only at h1
+            rwa [Finset.erase_insert hpe_not, Finset.erase_insert hV_not] at h1
+          subst hpeV
+          exact w₁eq ▸ body
+        · -- ⭐The node eliminates a DIFFERENT variable, so `z` sits in its base context.  Unpair
+          -- under the binder and rebuild — which needs the four-slot swap, because the two slot
+          -- pairs come out in the opposite order (and possibly at a different level).
+          have hz_pe : (⟨z, VarType.VTypeProd T₁ T₂⟩ : VarSymb × VarType) ∈ pe_V.1 := by
+            have hin : (⟨z, VarType.VTypeProd T₁ T₂⟩ : VarSymb × VarType)
+                ∈ (VarCtx_insert ⟨z', T₁'.VTypeProd T₂'⟩ pe_V hz').1 := by
+              rw [w₂eq]; exact Finset.mem_insert_self _ _
+            rcases Finset.mem_insert.mp hin with h | h
+            · exact absurd (Prod.mk.inj h).1.symm hzz
+            · exact h
+          have hzU : z ∉ VarCtx_to_VarSymbs (VarCtx_erase pe_V ⟨z, .VTypeProd T₁ T₂⟩) :=
+            VarCtx_erase_fresh hz_pe
+          have hpeU : VarCtx_insert ⟨z, .VTypeProd T₁ T₂⟩
+              (VarCtx_erase pe_V ⟨z, .VTypeProd T₁ T₂⟩) hzU = pe_V :=
+            VarCtx_insert_erase hz_pe hzU
+          have hz'U : z' ∉ VarCtx_to_VarSymbs (VarCtx_erase pe_V ⟨z, .VTypeProd T₁ T₂⟩) :=
+            fun h => hz' (VarCtx_to_VarSymbs_erase_subset h)
+          have hVU : VarCtx_insert ⟨z', T₁'.VTypeProd T₂'⟩
+              (VarCtx_erase pe_V ⟨z, .VTypeProd T₁ T₂⟩) hz'U = V := by
+            refine VarCtx_ext _ _ ?_
+            have h : insert (⟨z', T₁'.VTypeProd T₂'⟩ : VarSymb × VarType) pe_V.1
+                = insert (⟨z, VarType.VTypeProd T₁ T₂⟩ : VarSymb × VarType) V.1 :=
+              congrArg (fun (W : VarCtx) => W.1) w₂eq
+            have hne' : (⟨z', T₁'.VTypeProd T₂'⟩ : VarSymb × VarType)
+                ≠ (⟨z, VarType.VTypeProd T₁ T₂⟩ : VarSymb × VarType) :=
+              fun hc => hzz (Prod.mk.inj hc).1
+            have hV_not : (⟨z, VarType.VTypeProd T₁ T₂⟩ : VarSymb × VarType) ∉ V.1 :=
+              fun hm => hz (Finset.mem_image.mpr ⟨_, hm, rfl⟩)
+            have h1 := congrArg
+              (fun (s : Finset (VarSymb × VarType)) =>
+                s.erase (⟨z, VarType.VTypeProd T₁ T₂⟩ : VarSymb × VarType)) h
+            simp only at h1
+            rw [Finset.erase_insert_of_ne hne', Finset.erase_insert hV_not] at h1
+            exact h1
+          have hz_P : z ∉ VarCtx_to_VarSymbs
+              (VarCtx.insertBnd2 T₁' T₂' (VarCtx_erase pe_V ⟨z, .VTypeProd T₁ T₂⟩)) :=
+            VarCtx.notMem_insertBnd_of_isUsr hzu T₂'
+              (VarCtx.notMem_insertBnd_of_isUsr hzu T₁' hzU)
+          have hsplit : VarCtx.insertBnd2 T₁' T₂' pe_V
+              = VarCtx_insert ⟨z, .VTypeProd T₁ T₂⟩
+                  (VarCtx.insertBnd2 T₁' T₂' (VarCtx_erase pe_V ⟨z, .VTypeProd T₁ T₂⟩)) hz_P := by
+            conv_lhs => rw [← hpeU]
+            exact VarCtx.insertBnd2_comm_insert ⟨z, .VTypeProd T₁ T₂⟩ _ hzU hzu T₁' T₂' hz_P
+          have hz'_tgt : (⟨z', T₁'.VTypeProd T₂'⟩ : VarSymb × VarType)
+              ∈ (VarCtx.insertBnd2 T₁ T₂ V).1 :=
+            VarCtx.mem_insertBnd2_of_mem (by rw [← hVU]; exact Finset.mem_insert_self _ _)
+          have hbij : CtxBij
+              (VarCtx.insertBnd2 T₁ T₂
+                (VarCtx.insertBnd2 T₁' T₂' (VarCtx_erase pe_V ⟨z, .VTypeProd T₁ T₂⟩)))
+              (VarCtx.insertBnd2 T₁' T₂'
+                (VarCtx_erase (VarCtx.insertBnd2 T₁ T₂ V) ⟨z', T₁'.VTypeProd T₂'⟩)) :=
+            CtxBij.swap4At _ _ T₁' T₂' T₁ T₂ (VarCtx_erase pe_V ⟨z, .VTypeProd T₁ T₂⟩) _ _
+              rfl (VarCtx.unpair_level_le hVU)
+              (VarCtx.unpair_srcCtx T₁' T₂' T₁ T₂ _)
+              (VarCtx.unpair_tgtCtx T₁' T₂' T₁ T₂ hVU)
+          refine .pair_elim T₁' T₂' z' (VarCtx_erase_fresh hz'_tgt) rfl
+            (VarCtx_insert_erase hz'_tgt (VarCtx_erase_fresh hz'_tgt)) ?_
+          exact Term.mapCtx hbij (Term.unpair T₁ T₂ z hzu hz_P (hsplit ▸ (w₁eq ▸ body)))
+  termination_by sizeOf t
+  decreasing_by
+    all_goals first
+      | decreasing_tactic
+      | (rw [Term.sizeOf_ctx_cast, Term.sizeOf_ctx_cast]; decreasing_tactic)
+end
+
 /-! ## Substitution
 
 `substCore` is the structural pass: it replaces the TOP context entry `⟨x, S⟩` by a term `s`.
@@ -1267,6 +1476,14 @@ theorem lex4_lt {a₁ b₁ c₁ d₁ a₂ b₂ c₂ d₂ : ℕ}
       (a₁, b₁, c₁, d₁) (a₂, b₂, c₂, d₂) :=
   lex4_intro (by omega)
 
+/-- Pair shape: the context strictly loses `pairDepth` (an unpairing step). -/
+theorem lex4_pd {a₁ b₁ c₁ d₁ a₂ b₂ c₂ d₂ : ℕ} (ha : a₁ < a₂) :
+    Prod.Lex (fun x1 x2 : ℕ => x1 < x2)
+      (Prod.Lex (fun x1 x2 : ℕ => x1 < x2)
+        (Prod.Lex (fun x1 x2 : ℕ => x1 < x2) (fun x1 x2 : ℕ => x1 < x2)))
+      (a₁, b₁, c₁, d₁) (a₂, b₂, c₂, d₂) :=
+  lex4_intro (Or.inl ha)
+
 /-- Dispatch shape: everything equal but the tag (`substVar` handing off to `substCore`). -/
 theorem lex4_tag {a₁ b₁ c₁ d₁ a₂ b₂ c₂ d₂ : ℕ}
     (ha : a₁ ≤ a₂) (hb : b₁ ≤ b₂) (hc : c₁ ≤ c₂) (hd : d₁ < d₂) :
@@ -1279,7 +1496,7 @@ theorem lex4_tag {a₁ b₁ c₁ d₁ a₂ b₂ c₂ d₂ : ℕ}
 mutual
   def Func.substCore {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
       (hx : x ∉ VarCtx_to_VarSymbs V)
-      (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+      (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).PairFree)
       (s : Term σ V S) {N : ℕ}
       (fn : Func σ (VarCtx_insert ⟨x, S⟩ V hx) N) : Func σ V N := by
     match fn with
@@ -1295,7 +1512,7 @@ mutual
 
   def Term.substCore {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
       (hx : x ∉ VarCtx_to_VarSymbs V)
-      (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar = none)
+      (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).PairFree)
       (s : Term σ V S) {S' : VarType}
       (t : Term σ (VarCtx_insert ⟨x, S⟩ V hx) S') : Term σ V S' := by
     match t with
@@ -1345,11 +1562,10 @@ mutual
                 | .pair_elim sT₁ sT₂ sz _ _ sw₂eq _ =>
                     -- Impossible: `s`'s context `V` would hold `⟨sz, sT₁×ᵥsT₂⟩`, but `h_pf` says
                     -- the extended context — hence `V` — is pair-free.
-                    exfalso
-                    refine VarCtx.firstPairVar_none_no_pair h_pf
-                      (z := sz) (V1 := sT₁) (V2 := sT₂) ?_
-                    exact Finset.mem_insert_of_mem
-                      (by rw [← sw₂eq]; exact Finset.mem_insert_self _ _)
+                    exact absurd
+                      (Finset.mem_insert_of_mem
+                        (by rw [← sw₂eq]; exact Finset.mem_insert_self _ _))
+                      (h_pf sz sT₁ sT₂)
               · -- `x` has SOME type in `V_inner`; uniqueness forces it to be `T`.
                 exfalso
                 obtain ⟨⟨x', T'⟩, hx'T', hx'_eq⟩ := Finset.mem_image.mp h_x_in
@@ -1447,11 +1663,10 @@ mutual
           | .pair_elim sT₁ sT₂ sz _ _ sw₂eq _ =>
               -- Impossible: `s`'s context `V` would hold a pair variable, but `h_pf` says the
               -- extended context — hence `V` — is pair-free.
-              exfalso
-              refine VarCtx.firstPairVar_none_no_pair h_pf
-                (z := sz) (V1 := sT₁) (V2 := sT₂) ?_
-              exact Finset.mem_insert_of_mem
-                (by rw [← sw₂eq]; exact Finset.mem_insert_self _ _)
+              exact absurd
+                (Finset.mem_insert_of_mem
+                  (by rw [← sw₂eq]; exact Finset.mem_insert_self _ _))
+                (h_pf sz sT₁ sT₂)
         · by_cases h_x_in : x ∈ VarCtx_to_VarSymbs V_inner
           · -- Case 2: the witness differs from `x`, but `x` occurs INSIDE the ◇.  As for `boxterm`,
             -- `x`'s ambient type must then be a BOX type.
@@ -1499,11 +1714,10 @@ mutual
                         (ctx_rest_dia_hsub_erase hxv_minus h_xv_eq_x hsub)
                         (ctx_rest_dia_h_no_extras_erase hxv_minus hne)
                   | .pair_elim sT₁ sT₂ sz _ _ sw₂eq _ =>
-                      exfalso
-                      refine VarCtx.firstPairVar_none_no_pair h_pf
-                        (z := sz) (V1 := sT₁) (V2 := sT₂) ?_
-                      exact Finset.mem_insert_of_mem
-                        (by rw [← sw₂eq]; exact Finset.mem_insert_self _ _)
+                      exact absurd
+                        (Finset.mem_insert_of_mem
+                          (by rw [← sw₂eq]; exact Finset.mem_insert_self _ _))
+                        (h_pf sz sT₁ sT₂)
                 · -- `x` has SOME type in `V_inner`; uniqueness forces it to be `T`.
                   exfalso
                   obtain ⟨⟨x', T'⟩, hx'T', hx'_eq⟩ := Finset.mem_image.mp h_x_in
@@ -1538,10 +1752,10 @@ mutual
               · exact h_in_V
     | .pair_elim T₁ T₂ z hz w₁eq w₂eq body =>
         -- Unreachable: the node's output context holds `⟨z, T₁ ×ᵥ T₂⟩`, contradicting `h_pf`.
-        exact absurd h_pf (by
-          intro hnone
-          exact VarCtx.firstPairVar_none_no_pair hnone
-            (by rw [← w₂eq]; exact Finset.mem_insert_self _ _))
+        exact absurd
+          (show (⟨z, VarType.VTypeProd T₁ T₂⟩ : VarSymb × VarType) ∈ _ from by
+            rw [← w₂eq]; exact Finset.mem_insert_self _ _)
+          (h_pf z T₁ T₂)
   termination_by ((VarCtx_insert ⟨x, S⟩ V hx).pairDepth, Term.diaCount t, sizeOf t, 0)
   decreasing_by
     all_goals first
@@ -1591,16 +1805,158 @@ mutual
         simp only [Term.diaCount]
         omega
 
-  /-- The dispatcher.  If the context holds a pair variable, unpair at it first (which strictly
-      decreases `pairDepth`); otherwise hand off to the structural pass. -/
+  /-- ⭐The dispatcher.  Three cases, keyed on the BASE context `V` rather than the extended one:
+
+      * **B** — `V` holds a pair variable `z`.  Unpair `s` and `t` at `z`, recurse in the split
+        context (strictly smaller `pairDepth`), and re-pair with `pairElim`.
+      * **A** — `V` is pair-free but `x` ITSELF is pair-typed.  Then `s` cannot be a `pair_elim`
+        (that would put a pair variable in `V`), so it is a literal `.pair s₁ s₂`.  Unpair `t` at
+        `x` and substitute the two components into the two canonical slots in turn.
+      * otherwise the extended context is pair-free and the structural pass applies.
+
+      Both cases α-rename to a fresh USER symbol first: `unpair` needs a user-named binder so that
+      a nested node's slots can be recomputed, and `insertBnd2` only commutes past a user insert.
+      Renaming is free — `rename'` is `mapCtx`. -/
   def Term.substVar {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
       (hx : x ∉ VarCtx_to_VarSymbs V)
       (s : Term σ V S) {S' : VarType}
       (t : Term σ (VarCtx_insert ⟨x, S⟩ V hx) S') : Term σ V S' := by
-    match h_pv : (VarCtx_insert ⟨x, S⟩ V hx).firstPairVar with
-    | none => exact Term.substCore hx h_pv s t
-    | some ⟨(z, V1, V2), hzmem⟩ => sorry
+    match h_pv : V.firstPairVar with
+    | some ⟨(z, V1, V2), hzmem⟩ =>
+        -- ⭐Case B.  `U` is `V` without `z`.
+        have hzV : z ∈ VarCtx_to_VarSymbs V := Finset.mem_image.mpr ⟨_, hzmem, rfl⟩
+        have hzU : z ∉ VarCtx_to_VarSymbs (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩) :=
+          VarCtx_erase_fresh hzmem
+        have hVU : VarCtx_insert ⟨z, .VTypeProd V1 V2⟩
+            (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩) hzU = V :=
+          VarCtx_insert_erase hzmem hzU
+        -- `u` renames the substituted variable, `w` the pair variable; both fresh and USER.
+        have hu : (UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar
+            ∉ VarCtx_to_VarSymbs V := fun h =>
+          UserSymb.fresh_not_mem _ (Finset.mem_insert_of_mem h)
+        have hu_U : (UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar
+            ∉ VarCtx_to_VarSymbs (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩) := fun h =>
+          hu (VarCtx_to_VarSymbs_erase_subset h)
+        have hw_V : (UserSymb.fresh
+            (insert (UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar
+              (VarCtx_to_VarSymbs V))).toVar ∉ VarCtx_to_VarSymbs V := fun h =>
+          UserSymb.fresh_not_mem _ (Finset.mem_insert_of_mem h)
+        have hw_ne_u : (UserSymb.fresh
+            (insert (UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar
+              (VarCtx_to_VarSymbs V))).toVar
+            ≠ (UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar := fun h =>
+          UserSymb.fresh_not_mem _ (by rw [h]; exact Finset.mem_insert_self _ _)
+        have hw_U : (UserSymb.fresh
+            (insert (UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar
+              (VarCtx_to_VarSymbs V))).toVar
+            ∉ VarCtx_to_VarSymbs (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩) := fun h =>
+          hw_V (VarCtx_to_VarSymbs_erase_subset h)
+        have hu_US : (UserSymb.fresh
+            (insert (UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar
+              (VarCtx_to_VarSymbs V))).toVar
+            ∉ VarCtx_to_VarSymbs (VarCtx_insert
+                ⟨(UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar, S⟩
+                (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩) hu_U) :=
+          not_mem_VarSymbs_insert hw_ne_u hw_U
+        have hz_ne_u : z ≠ (UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar := by
+          intro h
+          exact hu (h ▸ hzV)
+        have hz_US : z ∉ VarCtx_to_VarSymbs (VarCtx_insert
+            ⟨(UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar, S⟩
+            (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩) hu_U) :=
+          not_mem_VarSymbs_insert hz_ne_u hzU
+        have hu_bnd : (UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar
+            ∉ VarCtx_to_VarSymbs (VarCtx.insertBnd2 V1 V2
+                (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩)) :=
+          VarCtx.notMem_insertBnd_of_isUsr rfl V2 (VarCtx.notMem_insertBnd_of_isUsr rfl V1 hu_U)
+        have hVfst : V.1 = insert (⟨z, VarType.VTypeProd V1 V2⟩ : VarSymb × VarType)
+            (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩).1 :=
+          (congrArg (fun (W : VarCtx) => W.1) hVU).symm
+        -- Move `z` outermost in `t`'s context, so it can be renamed and then unpaired.
+        have hcomm : VarCtx_insert
+            ⟨(UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar, S⟩ V hu
+            = VarCtx_insert ⟨z, .VTypeProd V1 V2⟩ (VarCtx_insert
+                ⟨(UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar, S⟩
+                (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩) hu_U) hz_US := by
+          refine VarCtx_ext _ _ ?_
+          change insert
+              (⟨(UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar, S⟩ :
+                VarSymb × VarType) V.1
+            = insert (⟨z, VarType.VTypeProd V1 V2⟩ : VarSymb × VarType)
+                (insert (⟨(UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar, S⟩ :
+                  VarSymb × VarType) (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩).1)
+          rw [hVfst, Finset.insert_comm]
+        -- and the same on the split side.
+        have hcomm2 : VarCtx.insertBnd2 V1 V2 (VarCtx_insert
+              ⟨(UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar, S⟩
+              (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩) hu_U)
+            = VarCtx_insert ⟨(UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar, S⟩
+                (VarCtx.insertBnd2 V1 V2 (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩)) hu_bnd :=
+          VarCtx.insertBnd2_comm_insert _ _ hu_U rfl V1 V2 hu_bnd
+        have hdecB : (VarCtx_insert ⟨(UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar, S⟩
+              (VarCtx.insertBnd2 V1 V2 (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩)) hu_bnd).pairDepth
+            < (VarCtx_insert ⟨x, S⟩ V hx).pairDepth := by
+          have hVd := VarCtx.pairDepth_insert (⟨z, VarType.VTypeProd V1 V2⟩ : VarSymb × VarType)
+            (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩) hzU
+          rw [hVU] at hVd
+          simp only [VarCtx.insertBnd2, VarCtx.insertBnd, VarCtx.pairDepth_insert,
+            VarType.pairDepth] at hVd ⊢
+          omega
+        have hsEq : Term σ (VarCtx_insert ⟨z, .VTypeProd V1 V2⟩
+            (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩) hzU) S = Term σ V S := by rw [hVU]
+        exact Term.pairElim V1 V2 z hzU rfl hVU
+          (Term.substVar hu_bnd
+            (Term.unpair V1 V2 _ rfl hw_U
+              (Term.rename' z _ (.VTypeProd V1 V2) hzU hw_U
+                (cast hsEq.symm s)))
+            (hcomm2 ▸ Term.unpair V1 V2 _ rfl hu_US
+              (Term.rename' z _ (.VTypeProd V1 V2) hz_US hu_US
+                (hcomm ▸ Term.rename' x _ S hx hu t))))
+    | none =>
+        have hVfree : V.PairFree := VarCtx.pairFree_of_firstPairVar_none h_pv
+        match hSp : S.isPair with
+        | false =>
+            -- Not a pair type, so the EXTENDED context is pair-free too.
+            exact Term.substCore hx
+              (VarCtx.pairFree_insert hx hVfree (fun T₁ T₂ h => by
+                subst h; simp [VarType.isPair] at hSp)) s t
+        | true =>
+            cases S with
+            | VTypeProd V1 V2 =>
+                -- ⭐Case A.  `s` is a literal pair: a `pair_elim` would need a pair variable in `V`.
+                match s with
+                | .pair s1 s2 =>
+                    have hufresh : (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar
+                        ∉ VarCtx_to_VarSymbs V := UserSymb.fresh_not_mem _
+                    have hdecA1 : (VarCtx_insert ⟨V.nextBnd, V1⟩ V
+                          (VarCtx.nextBnd_not_mem V)).pairDepth
+                        < (VarCtx_insert ⟨x, VarType.VTypeProd V1 V2⟩ V hx).pairDepth := by
+                      simp only [VarCtx.pairDepth_insert, VarType.pairDepth]; omega
+                    have hdecA2 : (VarCtx_insert ⟨(VarCtx.insertBnd V1 V).nextBnd, V2⟩
+                          (VarCtx.insertBnd V1 V) (VarCtx.nextBnd_not_mem _)).pairDepth
+                        < (VarCtx_insert ⟨x, VarType.VTypeProd V1 V2⟩ V hx).pairDepth := by
+                      simp only [VarCtx.insertBnd, VarCtx.pairDepth_insert, VarType.pairDepth]
+                      omega
+                    exact Term.substVar (VarCtx.nextBnd_not_mem V) s1
+                      (Term.substVar (VarCtx.nextBnd_not_mem (VarCtx.insertBnd V1 V))
+                        (Term.ctx_ext ⟨V.nextBnd, V1⟩ (VarCtx.nextBnd_not_mem V) s2)
+                        (Term.unpair V1 V2 _ rfl hufresh
+                          (Term.rename' x _ (.VTypeProd V1 V2) hx hufresh t)))
+                | .pair_elim sT₁ sT₂ sz _ _ sw₂eq _ =>
+                    exact absurd
+                      (show (⟨sz, VarType.VTypeProd sT₁ sT₂⟩ : VarSymb × VarType) ∈ V.1 from by
+                        rw [← sw₂eq]; exact Finset.mem_insert_self _ _)
+                      (hVfree sz sT₁ sT₂)
+            | Var => exact absurd hSp (by simp [VarType.isPair])
+            | VTypeOne => exact absurd hSp (by simp [VarType.isPair])
+            | VTypeBox T => exact absurd hSp (by simp [VarType.isPair])
+            | VTypeDia T => exact absurd hSp (by simp [VarType.isPair])
   termination_by ((VarCtx_insert ⟨x, S⟩ V hx).pairDepth, Term.diaCount t, sizeOf t, 1)
   decreasing_by
-    all_goals exact lex4_tag (le_refl _) (le_refl _) (le_refl _) (by omega)
+    -- The two shapes: the hand-off to the structural pass keeps everything but the tag, and both
+    -- unpairing steps strictly drop `pairDepth` (proved in place, where the names are still bound).
+    all_goals (try subst_vars)
+    all_goals first
+      | exact lex4_tag (le_refl _) (le_refl _) (le_refl _) (by omega)
+      | exact lex4_pd (by assumption)
 end
