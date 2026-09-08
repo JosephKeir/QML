@@ -296,7 +296,13 @@ alone — not of the body — which is what makes two formulas built at the same
 antecedent and consequent of `congAll`) choose the SAME binder. -/
 
 /-- The bound LEVEL of a context: one above every bound index it holds.  Binder slots are named
-    by this, so it is the single number the whole scheme turns on. -/
+    by this, so it is the single number the whole scheme turns on.
+
+    ⚠️FUTURE (erasure): when a variable is ERASED, remaining slots must be shifted DOWN so no gap
+    is left.  `nextBnd` is "one above all present", not "lowest unused", so a gap would make two
+    contexts that agree up to that gap choose DIFFERENT slots — resurrecting exactly the
+    α-equivalence problem this design exists to remove.  Relevant to `substVar`/`ctx_rest`, which
+    erase a pair variable together with its internal binders. -/
 def VarCtx.bndLevel (V : VarCtx) : ℕ :=
   ((VarCtx_to_VarSymbs V).image VarSymb.bndCeil).sup id
 

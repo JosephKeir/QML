@@ -719,3 +719,285 @@ def Func.rename' {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
     {N : ℕ} (fn : Func σ (VarCtx_insert ⟨old, T⟩ V hold) N) :
     Func σ (VarCtx_insert ⟨new, T⟩ V hnew) N :=
   Func.mapCtx (CtxBij.renameOne old new T hold hnew) fn
+
+/-! ## Measures
+
+`numNodes` and `diaCount` are the termination measures the substitution machinery uses.  Both drop
+the `pair_elim` binder arguments, which are no longer data.
+
+⭐Note what is ABSENT: v10 also carries `Term.boundVars` / `Func.boundVars`, used solely to state
+capture-avoidance side conditions.  Those conditions are vacuous in v11 (a user variable cannot be
+captured, and a bound one is never renamed by hand), so the whole `boundVars` family is gone. -/
+
+mutual
+  def Func.numNodes {σ : Signature} {V : VarCtx} {N : ℕ} : Func σ V N → ℕ
+    | .F _      => 1
+    | .eval g t => 1 + Func.numNodes g + Term.numNodes t
+
+  def Term.numNodes {σ : Signature} {V : VarCtx} {S : VarType} : Term σ V S → ℕ
+    | .var _                   => 1
+    | .func f                  => 1 + Func.numNodes f
+    | .boxterm inner_t _ _     => 1 + Term.numNodes inner_t
+    | .diaterm _ _ inner_t _ _ => 1 + Term.numNodes inner_t
+    | .unit                    => 1
+    | .pair t1 t2              => 1 + Term.numNodes t1 + Term.numNodes t2
+    | .pair_elim _ _ _ _ _ _ b => 1 + Term.numNodes b
+end
+
+mutual
+  def Func.diaCount {σ : Signature} {V : VarCtx} {N : ℕ} : Func σ V N → ℕ
+    | .F _      => 0
+    | .eval g t => Func.diaCount g + Term.diaCount t
+
+  def Term.diaCount {σ : Signature} {V : VarCtx} {S : VarType} : Term σ V S → ℕ
+    | .var _                   => 0
+    | .func f                  => Func.diaCount f
+    | .boxterm inner_t _ _     => Term.diaCount inner_t
+    | .diaterm _ _ inner_t _ _ => 1 + Term.diaCount inner_t
+    | .unit                    => 0
+    | .pair t1 t2              => Term.diaCount t1 + Term.diaCount t2
+    | .pair_elim _ _ _ _ _ _ b => Term.diaCount b
+end
+
+/-! ## Pair-elim distribution
+
+`pairElim` moves a term from the SPLIT context `V + two slots` to the JOINED one `V + ⟨z, T₁×T₂⟩`.
+It is needed by `ctx_ext`: weakening by a pair-typed variable proceeds by weakening by the two
+components and re-pairing.
+
+`Rel.pairElim`/`Term.pairElim` never get genuinely stuck the way `WFF.pairElim` does — `eval` only
+takes `Var`-typed terms — but the modal and nested-`pair_elim` arms still wrap rather than descend.
+In v11 the two components are the canonical slots of `V`, so they are not arguments. -/
+
+mutual
+  def Func.pairElim {σ : Signature} {V W₁ W₂ : VarCtx}
+      (T₁ T₂ : VarType) (z : VarSymb) (hz : z ∉ VarCtx_to_VarSymbs V)
+      (w₁eq : VarCtx.insertBnd2 T₁ T₂ V = W₁)
+      (w₂eq : VarCtx_insert ⟨z, .VTypeProd T₁ T₂⟩ V hz = W₂) {N : ℕ} :
+      Func σ W₁ N → Func σ W₂ N
+    | .F h => .F h
+    | .eval g t =>
+        .eval (Func.pairElim T₁ T₂ z hz w₁eq w₂eq g)
+              (Term.pairElim T₁ T₂ z hz w₁eq w₂eq t)
+
+  def Term.pairElim {σ : Signature} {V W₁ W₂ : VarCtx}
+      (T₁ T₂ : VarType) (z : VarSymb) (hz : z ∉ VarCtx_to_VarSymbs V)
+      (w₁eq : VarCtx.insertBnd2 T₁ T₂ V = W₁)
+      (w₂eq : VarCtx_insert ⟨z, .VTypeProd T₁ T₂⟩ V hz = W₂) {S : VarType} :
+      Term σ W₁ S → Term σ W₂ S
+    | .unit => .unit
+    | .var ⟨w, hw⟩ =>
+        have hb₁ : (⟨V.nextBnd, T₁⟩ : VarSymb × VarType) ∈ W₁.1 := by
+          rw [← w₁eq]
+          exact Finset.mem_insert_of_mem (Finset.mem_insert_self _ _)
+        have hb₂ : (⟨(VarCtx.insertBnd T₁ V).nextBnd, T₂⟩ : VarSymb × VarType) ∈ W₁.1 := by
+          rw [← w₁eq]
+          exact Finset.mem_insert_self _ _
+        if h₁ : w = V.nextBnd then
+          have hT₁ : T₁ = .Var := W₁.2 _ hb₁ ⟨w, .Var⟩ hw h₁.symm
+          Term.pair_elim T₁ T₂ z hz w₁eq w₂eq
+            (.var ⟨V.nextBnd, by rw [← hT₁]; exact hb₁⟩)
+        else if h₂ : w = (VarCtx.insertBnd T₁ V).nextBnd then
+          have hT₂ : T₂ = .Var := W₁.2 _ hb₂ ⟨w, .Var⟩ hw h₂.symm
+          Term.pair_elim T₁ T₂ z hz w₁eq w₂eq
+            (.var ⟨(VarCtx.insertBnd T₁ V).nextBnd, by rw [← hT₂]; exact hb₂⟩)
+        else
+          have hw_V : (⟨w, .Var⟩ : VarSymb × VarType) ∈ V.1 := by
+            have hw_W : (⟨w, .Var⟩ : VarSymb × VarType) ∈ W₁.1 := hw
+            rw [← w₁eq] at hw_W
+            rcases Finset.mem_insert.mp hw_W with h_eq | h_rest
+            · exact absurd (congrArg Prod.fst h_eq) h₂
+            · rcases Finset.mem_insert.mp h_rest with h_eq | h_in
+              · exact absurd (congrArg Prod.fst h_eq) h₁
+              · exact h_in
+          .var ⟨w, by rw [← w₂eq]; exact Finset.mem_insert_of_mem hw_V⟩
+    | .func f => .func (Func.pairElim T₁ T₂ z hz w₁eq w₂eq f)
+    | .pair t₁ t₂ =>
+        .pair (Term.pairElim T₁ T₂ z hz w₁eq w₂eq t₁)
+              (Term.pairElim T₁ T₂ z hz w₁eq w₂eq t₂)
+    | .boxterm tt hsub hne =>
+        Term.pair_elim T₁ T₂ z hz w₁eq w₂eq (.boxterm tt hsub hne)
+    | .diaterm xv hxv tt hsub hne =>
+        Term.pair_elim T₁ T₂ z hz w₁eq w₂eq (.diaterm xv hxv tt hsub hne)
+    | .pair_elim T₁' T₂' z' hz' w₁eq' w₂eq' body =>
+        Term.pair_elim T₁ T₂ z hz w₁eq w₂eq
+          (.pair_elim T₁' T₂' z' hz' w₁eq' w₂eq' body)
+end
+
+/-! ## Weakening by a user variable
+
+Weakening is NOT a `CtxBij` (it is not onto), so it needs its own traversal.  This is the
+user-variable case — the only one the proof rules ever need, since the variable being added is
+always an eigenvariable.  It takes a `UserSymb` directly, so there is no predicate to carry.
+
+⭐The binder arms are trivial here: `VarCtx.nextBnd_insert_isUsr` says a user insert does not move
+the canonical slot, so a `pair_elim`'s components are the SAME before and after — no renaming, no
+recomputation.  (Weakening by a BOUND slot does move them; that case belongs with the substitution
+machinery, which is where it is needed.) -/
+
+mutual
+  def Func.ctx_extU {σ : Signature} {V : VarCtx} (u : UserSymb) (T : VarType)
+      (hu : u.toVar ∉ VarCtx_to_VarSymbs V) {N : ℕ} (fn : Func σ V N) :
+      Func σ (VarCtx_insert ⟨u.toVar, T⟩ V hu) N := by
+    match fn with
+    | .F fs => exact .F fs
+    | .eval g t => exact .eval (Func.ctx_extU u T hu g) (Term.ctx_extU u T hu t)
+  termination_by (sizeOf T, sizeOf fn)
+
+  def Term.ctx_extU {σ : Signature} {V : VarCtx} (u : UserSymb) (T : VarType)
+      (hu : u.toVar ∉ VarCtx_to_VarSymbs V) {S : VarType} (t : Term σ V S) :
+      Term σ (VarCtx_insert ⟨u.toVar, T⟩ V hu) S := by
+    match t with
+    | .var ⟨w, hw⟩ => exact .var ⟨w, Finset.mem_insert_of_mem hw⟩
+    | .func fn => exact .func (Func.ctx_extU u T hu fn)
+    | .unit => exact .unit
+    | .pair t1 t2 => exact .pair (Term.ctx_extU u T hu t1) (Term.ctx_extU u T hu t2)
+    | .boxterm tt hsub hne =>
+        rename_i V_inner S_inner
+        have hu_inner : u.toVar ∉ VarCtx_to_VarSymbs V_inner := by
+          intro h_in
+          apply hu
+          obtain ⟨q, hq_in, hq_eq⟩ := Finset.mem_image.mp h_in
+          exact Finset.mem_image.mpr ⟨⟨q.1, q.2.VTypeBox⟩,
+            hsub (Finset.mem_image.mpr ⟨q, hq_in, rfl⟩), hq_eq⟩
+        match h_T : T with
+        | .VTypeBox U' =>
+            -- Box-typed: the inner context gains `⟨u, U'⟩`; recurse into `tt` at the SMALLER type.
+            subst h_T
+            refine .boxterm (Term.ctx_extU u U' hu_inner tt) ?_ ?_
+            · rw [VarCtx_box_fst_insert]
+              intro p hp
+              rcases Finset.mem_insert.mp hp with rfl | hp_box
+              · exact Finset.mem_insert_self _ _
+              · exact Finset.mem_insert_of_mem (hsub hp_box)
+            · intro p hp h_box
+              rw [VarCtx_box_fst_insert]
+              rcases Finset.mem_insert.mp hp with rfl | hp_V
+              · exact Finset.mem_insert_self _ _
+              · exact Finset.mem_insert_of_mem (hne p hp_V h_box)
+        | .VTypeProd a b =>
+            -- ⭐Pair-typed: weaken by the two COMPONENTS under fresh USER names, rename each to
+            -- its canonical slot, then re-pair.  v10 needs `Term.boundVars` in its avoid set here;
+            -- capture is impossible in v11, so the CONTEXT alone suffices.
+            subst h_T
+            have hw1 : (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar ∉ VarCtx_to_VarSymbs V :=
+              UserSymb.fresh_not_mem _
+            have hw2 : (UserSymb.fresh (VarCtx_to_VarSymbs (VarCtx.insertBnd a V))).toVar
+                ∉ VarCtx_to_VarSymbs (VarCtx.insertBnd a V) := UserSymb.fresh_not_mem _
+            exact Term.pairElim a b u.toVar hu rfl rfl
+              (Term.rename' _ (VarCtx.insertBnd a V).nextBnd b hw2 (VarCtx.nextBnd_not_mem _)
+                (Term.ctx_extU (UserSymb.fresh (VarCtx_to_VarSymbs (VarCtx.insertBnd a V))) b hw2
+                  (Term.rename' _ V.nextBnd a hw1 (VarCtx.nextBnd_not_mem V)
+                    (Term.ctx_extU (UserSymb.fresh (VarCtx_to_VarSymbs V)) a hw1
+                      (.boxterm tt hsub hne)))))
+        | .Var | .VTypeOne | .VTypeDia _ =>
+            -- Not box-typed and not a pair: the inner context is untouched, and the added entry
+            -- cannot be box-typed, so `h_no_box_extras` transfers unchanged.
+            all_goals
+              subst h_T
+              refine .boxterm tt (fun p hp => Finset.mem_insert_of_mem (hsub hp)) ?_
+              intro p hp h_box
+              rcases Finset.mem_insert.mp hp with rfl | hp_V
+              · simp [VarType.isBox] at h_box
+              · exact hne p hp_V h_box
+    | .diaterm x hx inner hsub hne =>
+        rename_i V_inner S_inner
+        have hu_inner : u.toVar ∉ VarCtx_to_VarSymbs V_inner := by
+          intro h_in
+          apply hu
+          obtain ⟨q, hq_in, hq_eq⟩ := Finset.mem_image.mp h_in
+          refine Finset.mem_image.mpr ⟨⟨q.1, q.2.VTypeBox⟩, hsub ?_, hq_eq⟩
+          rw [VarCtx_dia_fst]
+          exact Finset.mem_insert_of_mem (Finset.mem_image.mpr ⟨q, hq_in, rfl⟩)
+        -- The witness `x` is FREE in `V` (as `⟨x.1, ◇x.2⟩`), so it differs from the new variable.
+        have hu_ne_x : u.toVar ≠ x.1 := by
+          intro h_eq
+          apply hu
+          refine Finset.mem_image.mpr ⟨⟨x.1, x.2.VTypeDia⟩, hsub ?_, h_eq.symm⟩
+          rw [VarCtx_dia_fst]; exact Finset.mem_insert_self _ _
+        have hu_outer : u.toVar ∉ VarCtx_to_VarSymbs (VarCtx_insert x V_inner hx) :=
+          not_mem_VarSymbs_insert hu_ne_x hu_inner
+        match h_T : T with
+        | .VTypeBox U' =>
+            -- Recurse into the inner term, then swap the inserts so the ◇-witness stays outermost.
+            subst h_T
+            have hx_ext : x.1 ∉ VarCtx_to_VarSymbs
+                (VarCtx_insert ⟨u.toVar, U'⟩ V_inner hu_inner) :=
+              not_mem_VarSymbs_insert (Ne.symm hu_ne_x) hx
+            have h_swap : VarCtx_insert ⟨u.toVar, U'⟩ (VarCtx_insert x V_inner hx) hu_outer
+                = VarCtx_insert x (VarCtx_insert ⟨u.toVar, U'⟩ V_inner hu_inner) hx_ext :=
+              VarCtx_insert_comm hu_outer hx_ext
+            refine .diaterm x hx_ext
+              (h_swap ▸ Term.ctx_extU u U' hu_outer inner) ?_ ?_
+            · rw [VarCtx_dia_fst, VarCtx_box_fst_insert]
+              intro p hp
+              rcases Finset.mem_insert.mp hp with rfl | hp1
+              · refine Finset.mem_insert_of_mem (hsub ?_)
+                rw [VarCtx_dia_fst]; exact Finset.mem_insert_self _ _
+              · rcases Finset.mem_insert.mp hp1 with rfl | hp_box
+                · exact Finset.mem_insert_self _ _
+                · refine Finset.mem_insert_of_mem (hsub ?_)
+                  rw [VarCtx_dia_fst]; exact Finset.mem_insert_of_mem hp_box
+            · intro p hp h_box
+              rw [VarCtx_dia_fst, VarCtx_box_fst_insert]
+              rcases Finset.mem_insert.mp hp with rfl | hp_V
+              · exact Finset.mem_insert_of_mem (Finset.mem_insert_self _ _)
+              · have := hne p hp_V h_box
+                rw [VarCtx_dia_fst] at this
+                rcases Finset.mem_insert.mp this with rfl | hp_box
+                · exact Finset.mem_insert_self _ _
+                · exact Finset.mem_insert_of_mem (Finset.mem_insert_of_mem hp_box)
+        | .VTypeProd a b =>
+            -- Same peel as `boxterm`: weaken by the two components under fresh USER names,
+            -- rename each to its canonical slot, then re-pair.
+            subst h_T
+            have hw1 : (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar ∉ VarCtx_to_VarSymbs V :=
+              UserSymb.fresh_not_mem _
+            have hw2 : (UserSymb.fresh (VarCtx_to_VarSymbs (VarCtx.insertBnd a V))).toVar
+                ∉ VarCtx_to_VarSymbs (VarCtx.insertBnd a V) := UserSymb.fresh_not_mem _
+            exact Term.pairElim a b u.toVar hu rfl rfl
+              (Term.rename' _ (VarCtx.insertBnd a V).nextBnd b hw2 (VarCtx.nextBnd_not_mem _)
+                (Term.ctx_extU (UserSymb.fresh (VarCtx_to_VarSymbs (VarCtx.insertBnd a V))) b hw2
+                  (Term.rename' _ V.nextBnd a hw1 (VarCtx.nextBnd_not_mem V)
+                    (Term.ctx_extU (UserSymb.fresh (VarCtx_to_VarSymbs V)) a hw1
+                      (.diaterm x hx inner hsub hne)))))
+        | .Var | .VTypeOne | .VTypeDia _ =>
+            all_goals
+              subst h_T
+              refine .diaterm x hx inner (fun p hp => Finset.mem_insert_of_mem (hsub hp)) ?_
+              intro p hp h_box
+              rcases Finset.mem_insert.mp hp with rfl | hp_V
+              · simp [VarType.isBox] at h_box
+              · exact hne p hp_V h_box
+    | .pair_elim T₁ T₂ z hz w₁eq w₂eq body =>
+        rename_i pe_V pe_W₁
+        subst w₂eq
+        have hu_pe : u.toVar ∉ VarCtx_to_VarSymbs pe_V := by
+          intro hm
+          exact hu (by rw [VarCtx_to_VarSymbs_insert]; exact Finset.mem_insert_of_mem hm)
+        have hz_ne : z ≠ u.toVar := by
+          intro h
+          refine hu ?_
+          rw [VarCtx_to_VarSymbs_insert, ← h]
+          exact Finset.mem_insert_self _ _
+        have hz' : z ∉ VarCtx_to_VarSymbs (VarCtx_insert ⟨u.toVar, T⟩ pe_V hu_pe) :=
+          not_mem_VarSymbs_insert hz_ne hz
+        have hu_bnd2 : u.toVar ∉ VarCtx_to_VarSymbs (VarCtx.insertBnd2 T₁ T₂ pe_V) :=
+          VarCtx.notMem_insertBnd_of_isUsr rfl T₂
+            (VarCtx.notMem_insertBnd_of_isUsr rfl T₁ hu_pe)
+        have hu_W₁ : u.toVar ∉ VarCtx_to_VarSymbs pe_W₁ := w₁eq ▸ hu_bnd2
+        -- ⭐The slots do not move: a user insert leaves `nextBnd` alone, so the rebuilt node's
+        -- components are literally the same ones.  Target the BODY's context so `body` is passed
+        -- untouched (transporting it would break the `sizeOf` relation termination needs).
+        have w₁eq' : VarCtx.insertBnd2 T₁ T₂ (VarCtx_insert ⟨u.toVar, T⟩ pe_V hu_pe)
+            = VarCtx_insert ⟨u.toVar, T⟩ pe_W₁ hu_W₁ := by
+          rw [VarCtx.insertBnd2_comm_insert ⟨u.toVar, T⟩ pe_V hu_pe rfl T₁ T₂ hu_bnd2]
+          apply VarCtx_ext
+          change insert (⟨u.toVar, T⟩ : VarSymb × VarType) (VarCtx.insertBnd2 T₁ T₂ pe_V).1
+               = insert (⟨u.toVar, T⟩ : VarSymb × VarType) pe_W₁.1
+          rw [w₁eq]
+        exact .pair_elim T₁ T₂ z hz' w₁eq'
+          (VarCtx_insert_comm hz' (not_mem_VarSymbs_insert (Ne.symm hz_ne) hu_pe))
+          (Term.ctx_extU u T hu_W₁ body)
+  termination_by (sizeOf T, sizeOf t)
+end
