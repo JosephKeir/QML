@@ -801,6 +801,49 @@ mutual
   termination_by sizeOf t
 end
 
+
+-- `mapCtx` is a pure rebuild: the node count is unchanged.
+mutual
+  theorem Func.numNodes_mapCtx {σ : Signature} {V V' : VarCtx} (m : CtxBij V V') {N : ℕ}
+      (fn : Func σ V N) : Func.numNodes (Func.mapCtx m fn) = Func.numNodes fn := by
+    match fn with
+    | .F _ => rw [Func.mapCtx]; rfl
+    | .eval g t =>
+        rw [Func.mapCtx]
+        simp only [Func.numNodes]
+        rw [Func.numNodes_mapCtx m g, Term.numNodes_mapCtx m t]
+  termination_by sizeOf fn
+
+  theorem Term.numNodes_mapCtx {σ : Signature} {V V' : VarCtx} (m : CtxBij V V') {S : VarType}
+      (t : Term σ V S) : Term.numNodes (Term.mapCtx m t) = Term.numNodes t := by
+    match t with
+    | .var _ => rw [Term.mapCtx]; rfl
+    | .unit => rw [Term.mapCtx]; rfl
+    | .func fn =>
+        rw [Term.mapCtx]
+        simp only [Term.numNodes]
+        rw [Func.numNodes_mapCtx m fn]
+    | .pair t1 t2 =>
+        rw [Term.mapCtx]
+        simp only [Term.numNodes]
+        rw [Term.numNodes_mapCtx m t1, Term.numNodes_mapCtx m t2]
+    | .boxterm inner hsub h =>
+        rw [Term.mapCtx]
+        simp only [Term.numNodes]
+        rw [Term.numNodes_mapCtx _ inner]
+    | .diaterm xv hxv inner hsub h =>
+        rw [Term.mapCtx]
+        simp only [Term.numNodes]
+        rw [Term.numNodes_mapCtx _ inner]
+    | .pair_elim T1 T2 z hz w1eq w2eq body =>
+        rename_i pe_V pe_W1
+        subst w2eq
+        rw [Term.mapCtx]
+        simp only [Term.numNodes]
+        rw [Term.numNodes_mapCtx _ body]
+  termination_by sizeOf t
+end
+
 /-! ## Pair-elim distribution
 
 `pairElim` moves a term from the SPLIT context `V + two slots` to the JOINED one `V + ⟨z, T₁×T₂⟩`.

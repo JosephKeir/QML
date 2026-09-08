@@ -1258,6 +1258,169 @@ theorem VarCtx.unpair_tgtCtx (A B C D : VarType) {U V : VarCtx} {z' : VarSymb}
       omega
   rw [VarCtx.insertBnd2_fst, hBlevel, hBfst]
 
+/-! ### The three-slot rotation
+
+`WFF.pairElim` pushing through a QUANTIFIER meets the three-slot analogue of `swap4At`.  The body
+lives in `insertBnd T (insertBnd2 T₁ T₂ V)` — slots `(T₁, T₂, T)` — while the rebuilt node needs
+`insertBnd2 T₁ T₂ (insertBnd T V)` — slots `(T, T₁, T₂)`.  Same three types, cyclically shifted.
+
+`rot3` has order three, so one `maps` lemma (instantiated at the three rotations of `A B C`)
+supplies `maps` and `onto` both, and injectivity falls out of `rot3_cube`. -/
+
+/-- The three-cycle on the slots `n`, `n+1`, `n+2`. -/
+def VarSymb.rot3 (n : ℕ) : VarSymb → VarSymb
+  | .mk m  => .mk m
+  | .bnd k =>
+      if k < n then .bnd k
+      else if k < n + 2 then .bnd (k + 1)
+      else if k < n + 3 then .bnd n
+      else .bnd k
+
+theorem VarSymb.rot3_eq (n k m : ℕ)
+    (h : (k < n ∧ m = k) ∨ (n ≤ k ∧ k < n + 2 ∧ m = k + 1)
+         ∨ (n + 2 ≤ k ∧ k < n + 3 ∧ m = n) ∨ (n + 3 ≤ k ∧ m = k)) :
+    VarSymb.rot3 n (.bnd k) = .bnd m := by
+  simp only [VarSymb.rot3]
+  split_ifs <;> (congr 1) <;> omega
+
+theorem VarSymb.rot3_of_lt {n k : ℕ} (h : k < n) :
+    VarSymb.rot3 n (.bnd k) = .bnd k :=
+  VarSymb.rot3_eq _ _ _ (Or.inl ⟨h, rfl⟩)
+
+theorem VarSymb.rot3_cube (n : ℕ) (v : VarSymb) :
+    VarSymb.rot3 n (VarSymb.rot3 n (VarSymb.rot3 n v)) = v := by
+  cases v with
+  | mk m => rfl
+  | bnd k =>
+      rcases Nat.lt_or_ge k n with h | h
+      · rw [VarSymb.rot3_of_lt h, VarSymb.rot3_of_lt h, VarSymb.rot3_of_lt h]
+      rcases Nat.lt_or_ge k (n + 1) with h1 | h1
+      · rw [VarSymb.rot3_eq n k (n + 1) (by omega), VarSymb.rot3_eq n (n + 1) (n + 2) (by omega),
+            VarSymb.rot3_eq n (n + 2) n (by omega)]
+        congr 1; omega
+      rcases Nat.lt_or_ge k (n + 2) with h2 | h2
+      · rw [VarSymb.rot3_eq n k (n + 2) (by omega), VarSymb.rot3_eq n (n + 2) n (by omega),
+            VarSymb.rot3_eq n n (n + 1) (by omega)]
+        congr 1; omega
+      rcases Nat.lt_or_ge k (n + 3) with h3 | h3
+      · rw [VarSymb.rot3_eq n k n (by omega), VarSymb.rot3_eq n n (n + 1) (by omega),
+            VarSymb.rot3_eq n (n + 1) (n + 2) (by omega)]
+        congr 1; omega
+      · rw [VarSymb.rot3_eq n k k (by omega), VarSymb.rot3_eq n k k (by omega),
+            VarSymb.rot3_eq n k k (by omega)]
+
+/-- `rot3` sends the block `(A, B, C)` to the block `(C, A, B)`.  Instantiating at `(A,B,C)`,
+    `(C,A,B)` and `(B,C,A)` walks the whole cycle. -/
+theorem VarCtx.rot3_maps (n : ℕ) (A B C : VarType) (U X Y : VarCtx)
+    (hn : VarCtx.bndLevel U = n)
+    (hX : X.1 = insert (⟨VarSymb.bnd (n + 2), C⟩ : VarSymb × VarType)
+                 (insert (⟨VarSymb.bnd (n + 1), B⟩ : VarSymb × VarType)
+                  (insert (⟨VarSymb.bnd n, A⟩ : VarSymb × VarType) U.1)))
+    (hY : Y.1 = insert (⟨VarSymb.bnd (n + 2), B⟩ : VarSymb × VarType)
+                 (insert (⟨VarSymb.bnd (n + 1), A⟩ : VarSymb × VarType)
+                  (insert (⟨VarSymb.bnd n, C⟩ : VarSymb × VarType) U.1))) :
+    ∀ p ∈ X.1, (⟨VarSymb.rot3 n p.1, p.2⟩ : VarSymb × VarType) ∈ Y.1 := by
+  intro p hp
+  rw [hX] at hp
+  rw [hY]
+  rcases Finset.mem_insert.mp hp with rfl | hp1
+  · rw [show (⟨VarSymb.bnd (n + 2), C⟩ : VarSymb × VarType).1 = VarSymb.bnd (n + 2) from rfl,
+      VarSymb.rot3_eq n (n + 2) n (by omega)]
+    exact Finset.mem_insert_of_mem (Finset.mem_insert_of_mem (Finset.mem_insert_self _ _))
+  rcases Finset.mem_insert.mp hp1 with rfl | hp2
+  · rw [show (⟨VarSymb.bnd (n + 1), B⟩ : VarSymb × VarType).1 = VarSymb.bnd (n + 1) from rfl,
+      VarSymb.rot3_eq n (n + 1) (n + 2) (by omega)]
+    exact Finset.mem_insert_self _ _
+  rcases Finset.mem_insert.mp hp2 with rfl | hp3
+  · rw [show (⟨VarSymb.bnd n, A⟩ : VarSymb × VarType).1 = VarSymb.bnd n from rfl,
+      VarSymb.rot3_eq n n (n + 1) (by omega)]
+    exact Finset.mem_insert_of_mem (Finset.mem_insert_self _ _)
+  · have hfix : VarSymb.rot3 n p.1 = p.1 := by
+      cases hp1' : p.1 with
+      | mk m => rfl
+      | bnd k =>
+          refine VarSymb.rot3_of_lt ?_
+          have hmem : VarSymb.bnd k ∈ VarCtx_to_VarSymbs U :=
+            hp1' ▸ Finset.mem_image.mpr ⟨p, hp3, rfl⟩
+          have := VarCtx.bnd_lt_bndLevel hmem
+          omega
+    rw [hfix]
+    exact Finset.mem_insert_of_mem (Finset.mem_insert_of_mem (Finset.mem_insert_of_mem hp3))
+
+/-- ⭐The three-slot rotation as a context bijection. -/
+def CtxBij.rot3 (n : ℕ) (A B C : VarType) (U X Y : VarCtx)
+    (hn : VarCtx.bndLevel U = n)
+    (hX : X.1 = insert (⟨VarSymb.bnd (n + 2), C⟩ : VarSymb × VarType)
+                 (insert (⟨VarSymb.bnd (n + 1), B⟩ : VarSymb × VarType)
+                  (insert (⟨VarSymb.bnd n, A⟩ : VarSymb × VarType) U.1)))
+    (hY : Y.1 = insert (⟨VarSymb.bnd (n + 2), B⟩ : VarSymb × VarType)
+                 (insert (⟨VarSymb.bnd (n + 1), A⟩ : VarSymb × VarType)
+                  (insert (⟨VarSymb.bnd n, C⟩ : VarSymb × VarType) U.1)))
+    :
+    CtxBij X Y where
+  f := VarSymb.rot3 n
+  inj := by
+    intro a _ b _ hab
+    have h := congrArg (fun v => VarSymb.rot3 n (VarSymb.rot3 n v)) hab
+    simp only at h
+    rwa [VarSymb.rot3_cube, VarSymb.rot3_cube] at h
+  maps := VarCtx.rot3_maps n A B C U X Y hn hX hY
+  onto := by
+    intro p hp
+    rw [hY] at hp
+    rcases Finset.mem_insert.mp hp with rfl | hp1
+    · refine ⟨⟨VarSymb.bnd (n + 1), B⟩, ?_, ?_⟩
+      · rw [hX]; exact Finset.mem_insert_of_mem (Finset.mem_insert_self _ _)
+      · rw [show (⟨VarSymb.bnd (n + 1), B⟩ : VarSymb × VarType).1 = VarSymb.bnd (n + 1) from rfl,
+          VarSymb.rot3_eq n (n + 1) (n + 2) (by omega)]
+    rcases Finset.mem_insert.mp hp1 with rfl | hp2
+    · refine ⟨⟨VarSymb.bnd n, A⟩, ?_, ?_⟩
+      · rw [hX]
+        exact Finset.mem_insert_of_mem (Finset.mem_insert_of_mem (Finset.mem_insert_self _ _))
+      · rw [show (⟨VarSymb.bnd n, A⟩ : VarSymb × VarType).1 = VarSymb.bnd n from rfl,
+          VarSymb.rot3_eq n n (n + 1) (by omega)]
+    rcases Finset.mem_insert.mp hp2 with rfl | hp3
+    · refine ⟨⟨VarSymb.bnd (n + 2), C⟩, ?_, ?_⟩
+      · rw [hX]; exact Finset.mem_insert_self _ _
+      · rw [show (⟨VarSymb.bnd (n + 2), C⟩ : VarSymb × VarType).1 = VarSymb.bnd (n + 2) from rfl,
+          VarSymb.rot3_eq n (n + 2) n (by omega)]
+    · refine ⟨p, ?_, ?_⟩
+      · rw [hX]
+        exact Finset.mem_insert_of_mem (Finset.mem_insert_of_mem (Finset.mem_insert_of_mem hp3))
+      · have hfix : VarSymb.rot3 n p.1 = p.1 := by
+          cases hp1' : p.1 with
+          | mk m => rfl
+          | bnd k =>
+              refine VarSymb.rot3_of_lt ?_
+              have hmem : VarSymb.bnd k ∈ VarCtx_to_VarSymbs U :=
+                hp1' ▸ Finset.mem_image.mpr ⟨p, hp3, rfl⟩
+              have := VarCtx.bnd_lt_bndLevel hmem
+              omega
+        rw [hfix]
+
+
+/-- ⭐The rotation `WFF.pairElim`'s QUANTIFIER arm rebuilds along.  The body of a `∀` inside a
+    split context sits in `insertBnd T (insertBnd2 T₁ T₂ V)` — slots `(T₁, T₂, T)` — while the
+    rebuilt node needs `insertBnd2 T₁ T₂ (insertBnd T V)` — slots `(T, T₁, T₂)`. -/
+def CtxBij.quantRot (T₁ T₂ T : VarType) (V : VarCtx) :
+    CtxBij (VarCtx.insertBnd T (VarCtx.insertBnd2 T₁ T₂ V))
+           (VarCtx.insertBnd2 T₁ T₂ (VarCtx.insertBnd T V)) :=
+  CtxBij.rot3 (VarCtx.bndLevel V) T₁ T₂ T V _ _ rfl
+    (by rw [VarCtx.insertBnd_fst, VarCtx.bndLevel_insertBnd2, VarCtx.insertBnd2_fst])
+    (by rw [VarCtx.insertBnd2_fst, VarCtx.bndLevel_insertBnd, VarCtx.insertBnd_fst])
+
+/-- A binder slot commutes past the (user-named) pair variable, so a `pair_elim` node under a
+    quantifier keeps its shape. -/
+theorem VarCtx.quant_pairElim_w₂eq {V W₂ : VarCtx} {z : VarSymb} {T₁ T₂ : VarType}
+    (hzu : z.isUsr = true) (hz : z ∉ VarCtx_to_VarSymbs V)
+    (w₂eq : VarCtx_insert ⟨z, .VTypeProd T₁ T₂⟩ V hz = W₂) (T : VarType) :
+    VarCtx_insert ⟨z, .VTypeProd T₁ T₂⟩ (VarCtx.insertBnd T V)
+        (VarCtx.notMem_insertBnd_of_isUsr hzu T hz)
+      = VarCtx.insertBnd T W₂ :=
+  (VarCtx.insertBnd_comm_insert ⟨z, .VTypeProd T₁ T₂⟩ V hz hzu T
+      (VarCtx.notMem_insertBnd_of_isUsr hzu T hz)).symm.trans
+    (congrArg (VarCtx.insertBnd T) w₂eq)
+
 /-! ## Encoding, and the pair-variable machinery
 
 `substVar` dispatches on whether the context holds a pair-typed variable, and its termination
