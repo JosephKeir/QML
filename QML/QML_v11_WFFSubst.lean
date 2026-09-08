@@ -8,7 +8,7 @@ file first: every construction here has the same shape, with two extra arms (`al
 uniformly cheap because the binders are nameless.
 
 * **`WFF.ctx_ext`** — weakening by an ARBITRARY symbol: `ctx_extU` under a fresh user name followed
-  by `rename'`.
+  by `rename`.
 * **`WFF.unpair`** — the inverse of `pairElim`: `V + ⟨z, T₁×T₂⟩ → insertBnd2 T₁ T₂ V`.
 * **`WFF.substCore` / `WFF.substVar`** — substitution proper.
 -/
@@ -32,18 +32,18 @@ def VarType.psnd : VarType → VarType
 
 /-- Weakening by an ARBITRARY symbol.  `ctx_extU` only covers USER symbols (it relies on a user
     insert leaving `nextBnd` alone); the general case is `ctx_extU` under a fresh user name
-    followed by `rename'`, since `mapCtx` recomputes the slots. -/
+    followed by `rename`, since `mapCtx` recomputes the slots. -/
 def WFF.ctx_ext {σ : Signature} {V : VarCtx} (xv : VarSymb × VarType)
     (hv : xv.1 ∉ VarCtx_to_VarSymbs V) (φ : WFF σ V) :
     WFF σ (VarCtx_insert xv V hv) :=
-  WFF.rename' (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar xv.1 xv.2
+  WFF.rename (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar xv.1 xv.2
     (UserSymb.fresh_not_mem _) hv
     (WFF.ctx_extU (UserSymb.fresh (VarCtx_to_VarSymbs V)) xv.2 (UserSymb.fresh_not_mem _) φ)
 
 theorem WFF.diaCount_ctx_ext {σ : Signature} {V : VarCtx} (xv : VarSymb × VarType)
     (hv : xv.1 ∉ VarCtx_to_VarSymbs V) (φ : WFF σ V) :
     WFF.diaCount (WFF.ctx_ext xv hv φ) = WFF.diaCount φ := by
-  rw [WFF.ctx_ext, WFF.diaCount_rename', WFF.diaCount_ctx_extU]
+  rw [WFF.ctx_ext, WFF.diaCount_rename, WFF.diaCount_ctx_extU]
 
 /-! ## Unpairing
 
@@ -234,7 +234,7 @@ def WFF.unpair {σ : Signature} {V : VarCtx} (T₁ T₂ : VarType) (z : VarSymb)
 theorem WFF.binderPairDepth_ctx_ext {σ : Signature} {V : VarCtx} (xv : VarSymb × VarType)
     (hv : xv.1 ∉ VarCtx_to_VarSymbs V) (φ : WFF σ V) :
     WFF.binderPairDepth (WFF.ctx_ext xv hv φ) = WFF.binderPairDepth φ := by
-  rw [WFF.ctx_ext, WFF.binderPairDepth_rename', WFF.binderPairDepth_ctx_extU]
+  rw [WFF.ctx_ext, WFF.binderPairDepth_rename, WFF.binderPairDepth_ctx_extU]
 
 /-- ⭐Unpairing does not touch quantifier binders, so it leaves `binderPairDepth` alone.  This is
     what makes `substVar`'s unpairing cases strictly decrease the measure. -/
@@ -284,10 +284,10 @@ theorem WFF.binderPairDepth_unpair {σ : Signature} {V : VarCtx} (T₁ T₂ : Va
       | (simp only [WFF.numNodes]; omega)
       | (simp only [WFF.numNodes_ctx_cast, WFF.numNodes]; omega)
 
-theorem WFF.numNodes_rename' {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
+theorem WFF.numNodes_rename {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
     (hold : old ∉ VarCtx_to_VarSymbs V) (hnew : new ∉ VarCtx_to_VarSymbs V)
     (φ : WFF σ (VarCtx_insert ⟨old, T⟩ V hold)) :
-    WFF.numNodes (WFF.rename' old new T hold hnew φ) = WFF.numNodes φ :=
+    WFF.numNodes (WFF.rename old new T hold hnew φ) = WFF.numNodes φ :=
   WFF.numNodes_mapCtx _ φ
 
 /-! ## Substitution
@@ -383,7 +383,7 @@ mutual
                     have hx_minus : x ∉ VarCtx_to_VarSymbs (VarCtx_erase V_inner ⟨x, T⟩) :=
                       VarCtx_erase_fresh hxT_in
                     have h_V_eq : _ = VarCtx_erase V_inner ⟨x, T⟩ :=
-                      ctx_rest_box_V_s_eq hxT_in hsub hne s_hsub s_hne
+                      substCore_box_V_s_eq hxT_in hsub hne s_hsub s_hne
                     subst h_V_eq
                     have r := WFF.substVar hx_minus s_inner
                       ((VarCtx_insert_erase hxT_in hx_minus).symm ▸ inner)
@@ -517,7 +517,7 @@ mutual
                   match s with
                   | .boxterm s_inner s_hsub s_hne =>
                       have h_V_eq : _ = VarCtx_erase V_inner ⟨x, T⟩ :=
-                        ctx_rest_dia_V_s_eq hxT_in hsub hne s_hsub s_hne
+                        substCore_dia_V_s_eq hxT_in hsub hne s_hsub s_hne
                       subst h_V_eq
                       have hx_in_outer : x ∉ VarCtx_to_VarSymbs
                           (VarCtx_insert xv (VarCtx_erase V_inner ⟨x, T⟩) hxv_minus) :=
@@ -536,8 +536,8 @@ mutual
                       have r := WFF.substVar hx_in_outer
                         (Term.ctx_ext xv hxv_minus s_inner) (h_combined ▸ inner)
                       refine ⟨.dia xv hxv_minus r.val
-                        (ctx_rest_dia_hsub_erase hxv_minus h_xv_eq_x hsub)
-                        (ctx_rest_dia_h_no_extras_erase hxv_minus hne), ?_⟩
+                        (substCore_dia_hsub_erase hxv_minus h_xv_eq_x hsub)
+                        (substCore_dia_h_no_extras_erase hxv_minus hne), ?_⟩
                       simp only [WFF.binderPairDepth]
                       exact le_trans r.property
                         (le_of_eq (WFF.binderPairDepth_ctx_cast _ inner))
@@ -738,17 +738,17 @@ mutual
             (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩) hzU) S = Term σ V S := by rw [hVU]
         -- `bpd` survives the whole rename / unpair / recast chain.
         have hbpd : WFF.binderPairDepth (hcomm2 ▸ WFF.unpair V1 V2 _ rfl hu_US
-              (WFF.rename' z _ (.VTypeProd V1 V2) hz_US hu_US
-                (hcomm ▸ WFF.rename' x _ S hx hu φ)))
+              (WFF.rename z _ (.VTypeProd V1 V2) hz_US hu_US
+                (hcomm ▸ WFF.rename x _ S hx hu φ)))
             = WFF.binderPairDepth φ := by
           rw [WFF.binderPairDepth_ctx_cast, WFF.binderPairDepth_unpair,
-              WFF.binderPairDepth_rename', WFF.binderPairDepth_ctx_cast,
-              WFF.binderPairDepth_rename']
+              WFF.binderPairDepth_rename, WFF.binderPairDepth_ctx_cast,
+              WFF.binderPairDepth_rename]
         have hdecB : (VarCtx_insert ⟨(UserSymb.fresh (insert x (VarCtx_to_VarSymbs V))).toVar, S⟩
               (VarCtx.insertBnd2 V1 V2 (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩)) hu_bnd).pairDepth
               + WFF.binderPairDepth (hcomm2 ▸ WFF.unpair V1 V2 _ rfl hu_US
-                  (WFF.rename' z _ (.VTypeProd V1 V2) hz_US hu_US
-                    (hcomm ▸ WFF.rename' x _ S hx hu φ)))
+                  (WFF.rename z _ (.VTypeProd V1 V2) hz_US hu_US
+                    (hcomm ▸ WFF.rename x _ S hx hu φ)))
             < (VarCtx_insert ⟨x, S⟩ V hx).pairDepth + WFF.binderPairDepth φ := by
           have hVd := VarCtx.pairDepth_insert (⟨z, VarType.VTypeProd V1 V2⟩ : VarSymb × VarType)
             (VarCtx_erase V ⟨z, .VTypeProd V1 V2⟩) hzU
@@ -759,10 +759,10 @@ mutual
           omega
         have r := WFF.substVar hu_bnd
           (Term.unpair V1 V2 _ rfl hw_U
-            (Term.rename' z _ (.VTypeProd V1 V2) hzU hw_U (cast hsEq.symm s)))
+            (Term.rename z _ (.VTypeProd V1 V2) hzU hw_U (cast hsEq.symm s)))
           (hcomm2 ▸ WFF.unpair V1 V2 _ rfl hu_US
-            (WFF.rename' z _ (.VTypeProd V1 V2) hz_US hu_US
-              (hcomm ▸ WFF.rename' x _ S hx hu φ)))
+            (WFF.rename z _ (.VTypeProd V1 V2) hz_US hu_US
+              (hcomm ▸ WFF.rename x _ S hx hu φ)))
         exact ⟨.pair_elim V1 V2 z hzU rfl hVU r.val,
           le_trans r.property (le_of_eq hbpd)⟩
     | none =>
@@ -775,9 +775,9 @@ mutual
             have r := WFF.substCore (x := (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar) rfl hu
               (VarCtx.pairFree_insert hu hVfree (fun T₁ T₂ h => by
                 subst h; simp [VarType.isPair] at hSp)) s
-              (WFF.rename' x _ S hx hu φ)
+              (WFF.rename x _ S hx hu φ)
             exact ⟨r.val, le_trans r.property
-              (le_of_eq (WFF.binderPairDepth_rename' x _ S hx hu φ))⟩
+              (le_of_eq (WFF.binderPairDepth_rename x _ S hx hu φ))⟩
         | true =>
             -- ⚠️NO `cases S` here.  Casing the TYPE re-introduces the formula `φ` as a fresh
             -- variable, and the termination goals then compare `binderPairDepth` of two unrelated
@@ -799,9 +799,9 @@ mutual
                     ∉ VarCtx_to_VarSymbs V := UserSymb.fresh_not_mem _
                 have hbpd : WFF.binderPairDepth
                     (WFF.unpair S.pfst S.psnd _ rfl hufresh
-                      (WFF.rename' x _ (.VTypeProd S.pfst S.psnd) hx hufresh (hctx ▸ φ)))
+                      (WFF.rename x _ (.VTypeProd S.pfst S.psnd) hx hufresh (hctx ▸ φ)))
                     = WFF.binderPairDepth φ := by
-                  rw [WFF.binderPairDepth_unpair, WFF.binderPairDepth_rename',
+                  rw [WFF.binderPairDepth_unpair, WFF.binderPairDepth_rename,
                       WFF.binderPairDepth_ctx_cast]
                 -- ⚠️DESTRUCTURE rather than `have r1 := …`: a data-valued `have` does not survive
                 -- into the termination goals, so its bound would be unavailable there — and that
@@ -810,7 +810,7 @@ mutual
                   (VarCtx.nextBnd_not_mem (VarCtx.insertBnd S.pfst V))
                   (Term.ctx_ext ⟨V.nextBnd, S.pfst⟩ (VarCtx.nextBnd_not_mem V) s2)
                   (WFF.unpair S.pfst S.psnd _ rfl hufresh
-                    (WFF.rename' x _ (.VTypeProd S.pfst S.psnd) hx hufresh (hctx ▸ φ)))
+                    (WFF.rename x _ (.VTypeProd S.pfst S.psnd) hx hufresh (hctx ▸ φ)))
                 obtain ⟨r2v, r2p⟩ := WFF.substVar (VarCtx.nextBnd_not_mem V) s1 r1v
                 exact ⟨r2v, le_trans r2p (le_trans r1p (le_of_eq hbpd))⟩
             | .pair_elim sT₁ sT₂ sz _ _ sw₂eq _ =>
@@ -829,17 +829,17 @@ mutual
       -- hand-off to the structural pass: the α-rename leaves all three measures alone,
       -- so only the tag moves.
       | exact lex4_tag
-          (by rw [VarCtx.pairDepth_insert, VarCtx.pairDepth_insert, WFF.binderPairDepth_rename'])
-          (by rw [WFF.diaCount_rename'])
-          (by rw [WFF.numNodes_rename'])
+          (by rw [VarCtx.pairDepth_insert, VarCtx.pairDepth_insert, WFF.binderPairDepth_rename])
+          (by rw [WFF.diaCount_rename])
+          (by rw [WFF.numNodes_rename])
           (by omega)
       -- Case B: the `have` in the arm states the decrease directly.
       | exact lex4_pd (by assumption)
       -- Case A, both calls: unpairing replaces the pair variable by two slots, dropping
-      -- `pairDepth` by one; `binderPairDepth` is preserved by `unpair`/`rename'` (`hbpd`) and
+      -- `pairDepth` by one; `binderPairDepth` is preserved by `unpair`/`rename` (`hbpd`) and
       -- bounded by `r1p` for the second call.  `hSpd` supplies `S.pairDepth`.
       | (refine lex4_pd ?_
-         try rw [WFF.binderPairDepth_unpair, WFF.binderPairDepth_rename',
+         try rw [WFF.binderPairDepth_unpair, WFF.binderPairDepth_rename,
                  WFF.binderPairDepth_ctx_cast]
          simp only [VarCtx.insertBnd, VarCtx.pairDepth_insert, VarType.pairDepth]
          omega)

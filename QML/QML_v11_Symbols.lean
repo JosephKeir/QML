@@ -313,8 +313,8 @@ antecedent and consequent of `congAll`) choose the SAME binder. -/
     ⚠️FUTURE (erasure): when a variable is ERASED, remaining slots must be shifted DOWN so no gap
     is left.  `nextBnd` is "one above all present", not "lowest unused", so a gap would make two
     contexts that agree up to that gap choose DIFFERENT slots — resurrecting exactly the
-    α-equivalence problem this design exists to remove.  Relevant to `substVar`/`ctx_rest`, which
-    erase a pair variable together with its internal binders. -/
+    α-equivalence problem this design exists to remove.  Relevant to `substVar`, which erases a
+    pair variable together with its internal binders. -/
 def VarCtx.bndLevel (V : VarCtx) : ℕ :=
   ((VarCtx_to_VarSymbs V).image VarSymb.bndCeil).sup id
 
@@ -389,10 +389,10 @@ theorem VarCtx.insertBnd_comm_user (u : UserSymb) (Tu : VarType) (V : VarCtx)
 
 /-! ## Recognising user symbols
 
-`Term.rename` and friends only ever rename FREE variables, which are user symbols.  They take
-`isUsr` hypotheses because the canonical binder slots must be preserved across the rename: erasing
-`⟨old, T⟩` from a context and inserting `⟨new, T⟩` leaves `nextBnd` fixed exactly when both are
-user symbols. -/
+Weakening, unpairing and substitution all need to know that inserting a variable leaves the
+canonical binder slots ALONE, and that holds exactly for user symbols: a `.mk` contributes `0` to
+`bndLevel`, a `.bnd` does not.  So `ctx_extU`, `unpair` and `substCore` carry `isUsr` hypotheses,
+and `ctx_ext` / `substVar` discharge them by α-renaming to a fresh user symbol first. -/
 
 def VarSymb.isUsr : VarSymb → Bool
   | .mk _  => true
@@ -418,9 +418,9 @@ theorem VarCtx.nextBnd_insert_isUsr (x : VarSymb × VarType) (V : VarCtx)
   rw [VarSymb.bndCeil_of_isUsr hu]
   simp [Finset.sup_insert]
 
-/-- ⭐**Binder slots commute with inserting a user variable.**  This is what lets a rename descend
-    under a `pair_elim`: erasing `⟨old,T⟩` from the inner context and rebuilding gives back
-    *literally the same* canonical slots, because a user insert does not move `nextBnd`. -/
+/-- ⭐**Binder slots commute with inserting a user variable.**  This is what lets `ctx_extU` and
+    `unpair` descend under a binder: the rebuilt node gets *literally the same* canonical slot,
+    because a user insert does not move `nextBnd`. -/
 theorem VarCtx.insertBnd_comm_insert (x : VarSymb × VarType) (V : VarCtx)
     (hx : x.1 ∉ VarCtx_to_VarSymbs V) (hu : x.1.isUsr = true) (T : VarType)
     (hx' : x.1 ∉ VarCtx_to_VarSymbs (VarCtx.insertBnd T V)) :
@@ -448,7 +448,8 @@ theorem VarCtx.notMem_insertBnd_of_isUsr {v : VarSymb} (h : v.isUsr = true) (T :
   exact fun hm => (Finset.mem_insert.mp hm).elim (VarCtx.ne_nextBnd_of_isUsr h V) hv
 
 /-- ⭐The two-slot form: `pair_elim`'s binder pair commutes with a user insert.  This is what
-    lets `Term.rename` descend into a `pair_elim` body and rebuild with the same slots. -/
+    lets `ctx_extU` and `unpair` descend into a `pair_elim` body and rebuild with the same
+    slots. -/
 theorem VarCtx.insertBnd2_comm_insert (x : VarSymb × VarType) (V : VarCtx)
     (hx : x.1 ∉ VarCtx_to_VarSymbs V) (hu : x.1.isUsr = true) (T₁ T₂ : VarType)
     (hx' : x.1 ∉ VarCtx_to_VarSymbs (VarCtx.insertBnd2 T₁ T₂ V)) :
@@ -467,8 +468,11 @@ theorem VarCtx.insertBnd2_comm_insert (x : VarSymb × VarType) (V : VarCtx)
 
 When a BOUND slot is inserted into a context — which happens when substitution descends under a
 binder — every existing slot at or above the insertion level must move up by one.  This is de
-Bruijn shifting, and it is a different operation from `rename`: `rename` moves USER variables and
-leaves slots fixed, `shiftBnd` moves slots and leaves user variables fixed.
+Bruijn shifting.
+
+⚠️UNUSED as of 2026-09-09: this section was built for the fixed-offset lift design that `mapCtx`
+replaced, and nothing outside this file references `shiftBnd` or `liftAt`.  Kept in case a future
+de Bruijn bridge wants it; delete freely otherwise.
 
 Because binders always take `nextBnd`, insertions are always at the canonical next position, so the
 offset is always `+1` at a known level — never arbitrary renumbering. -/
@@ -1615,8 +1619,8 @@ lemma VarCtx.pairDepth_le_of_dia_subset {x : VarSymb × VarType} {V_inner V : Va
 
 -- Lemma: unpairing strictly decreases pairDepth (replacing one VTypeProd-typed
 -- binder of pairDepth `1 + a + b` with two binders of pairDepth `a` and `b`).
--- Used by `ctx_rest_MU`'s Case B `decreasing_by` to justify the recursive call on
--- the smaller context.
+-- Used by `substVar`'s unpairing cases to justify the recursive call on the
+-- smaller context.
 lemma VarCtx.pairDepth_unpair_lt {V : VarCtx} {z : VarSymb} {V1 V2 : VarType}
     (hzmem : (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ V.1)
     {v1 v2 : VarSymb}
@@ -1655,8 +1659,8 @@ lemma VarCtx.pairDepth_unpair_lt {V : VarCtx} {z : VarSymb} {V1 V2 : VarType}
   omega
 
 -- Insertion increases pairDepth by the inserted entry's type-level depth.
--- Used by `Term.ctx_rest_MU`'s `decreasing_by` to relate the pairDepth
--- of `VarCtx_insert ⟨x, S⟩ V hx` to `V.pairDepth + S.pairDepth`.
+-- Used by the `substCore`/`substVar` `decreasing_by` blocks to relate the
+-- pairDepth of `VarCtx_insert ⟨x, S⟩ V hx` to `V.pairDepth + S.pairDepth`.
 lemma VarCtx.pairDepth_insert (x : VarSymb × VarType) (V : VarCtx)
     (hx : x.1 ∉ VarCtx_to_VarSymbs V) :
     (VarCtx_insert x V hx).pairDepth = x.2.pairDepth + V.pairDepth := by
@@ -1815,13 +1819,13 @@ lemma VarCtx_box_inj {V₁ V₂ : VarCtx} (h : VarCtx_box V₁ = VarCtx_box V₂
     exact Prod.ext hab.1 (VarType.VTypeBox.inj hab.2)
   exact Finset.image_injective h_fn_inj h1
 
--- Helper for `Term.ctx_rest`'s boxterm descent. Given a `.boxterm` in
+-- Helper for `Term.substCore`'s boxterm descent. Given a `.boxterm` in
 -- `V_ext = V + {⟨x, T.VTypeBox⟩}` whose inner context `V_inner` contains
 -- `⟨x, T⟩`, and a substitution term `s = .boxterm s_inner _ _` with inner
 -- context `V_s`, we have `V_s = V_inner.erase ⟨x, T⟩`. This follows from
 -- both `VarCtx_box V_s` and `VarCtx_box (V_inner.erase ⟨x, T⟩)` equalling
 -- "V's box-typed entries", then `VarCtx_box_inj`.
-lemma ctx_rest_box_V_s_eq
+lemma substCore_box_V_s_eq
     {V V_inner V_s : VarCtx} {x : VarSymb} {T : VarType}
     {hx : x ∉ VarCtx_to_VarSymbs V}
     (_hxT_in : (⟨x, T⟩ : VarSymb × VarType) ∈ V_inner.1)
@@ -1898,11 +1902,11 @@ lemma ctx_rest_box_V_s_eq
           rw [h_v_eq, h_S_eq] at hr_in_s
           exact hr_in_s
 
--- Parallel of `ctx_rest_box_V_s_eq` for diaterm context: given a `.diaterm`
+-- Parallel of `substCore_box_V_s_eq` for diaterm context: given a `.diaterm`
 -- in V_ext whose inner V_inner has `⟨x, T⟩`, and a substitution `.boxterm`
 -- s in V, we have V_s = V_inner.erase ⟨x, T⟩. Proven by reducing to the
 -- box version after stripping the dia binder.
-lemma ctx_rest_dia_V_s_eq
+lemma substCore_dia_V_s_eq
     {V V_inner V_s : VarCtx} {x : VarSymb} {T : VarType}
     {xv : VarSymb × VarType} {hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner}
     {hx : x ∉ VarCtx_to_VarSymbs V}
@@ -1931,12 +1935,12 @@ lemma ctx_rest_dia_V_s_eq
     rcases Finset.mem_insert.mp hp_in_dia with h_eq | hp_box
     · subst h_eq; simp [VarType.isBox] at h_box
     · exact hp_box
-  exact ctx_rest_box_V_s_eq hxT_in hsub_box h_no_extras_box s_hsub s_h_no_extras
+  exact substCore_box_V_s_eq hxT_in hsub_box h_no_extras_box s_hsub s_h_no_extras
 
 -- After erasing ⟨x, T⟩ from V_inner, the new `VarCtx_dia ⊆ V` follows from
 -- the old `VarCtx_dia ⊆ V_ext` plus disjointness of x from the dia binder
 -- and the V_inner.erase entries.
-lemma ctx_rest_dia_hsub_erase
+lemma substCore_dia_hsub_erase
     {V V_inner : VarCtx} {x : VarSymb} {T : VarType}
     {xv : VarSymb × VarType}
     {hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner}
@@ -1978,7 +1982,7 @@ lemma ctx_rest_dia_hsub_erase
 -- entries of V) follows from the old (for box-typed entries of V_ext): any
 -- such p is in VarCtx_dia via the original h_no_extras, and the box-image
 -- entries don't involve x (since p ∈ V where x ∉ V).
-lemma ctx_rest_dia_h_no_extras_erase
+lemma substCore_dia_h_no_extras_erase
     {V V_inner : VarCtx} {x : VarSymb} {T : VarType}
     {xv : VarSymb × VarType}
     {hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner}

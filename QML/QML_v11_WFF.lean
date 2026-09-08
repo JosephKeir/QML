@@ -173,7 +173,7 @@ def WFF.mapCtx {σ : Signature} {V V' : VarCtx} (m : CtxBij V V') (φ : WFF σ V
   termination_by sizeOf φ
 
 /-- Rename one free variable in a formula, by rebuilding along the swap bijection. -/
-def WFF.rename' {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
+def WFF.rename {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
     (hold : old ∉ VarCtx_to_VarSymbs V) (hnew : new ∉ VarCtx_to_VarSymbs V)
     (φ : WFF σ (VarCtx_insert ⟨old, T⟩ V hold)) :
     WFF σ (VarCtx_insert ⟨new, T⟩ V hnew) :=
@@ -268,10 +268,10 @@ theorem WFF.binderPairDepth_mapCtx {σ : Signature} {V V' : VarCtx} (m : CtxBij 
       rw [WFF.mapCtx]; simp only [WFF.binderPairDepth]; rw [WFF.binderPairDepth_mapCtx _ body]
   termination_by sizeOf φ
 
-theorem WFF.binderPairDepth_rename' {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
+theorem WFF.binderPairDepth_rename {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
     (hold : old ∉ VarCtx_to_VarSymbs V) (hnew : new ∉ VarCtx_to_VarSymbs V)
     (φ : WFF σ (VarCtx_insert ⟨old, T⟩ V hold)) :
-    WFF.binderPairDepth (WFF.rename' old new T hold hnew φ) = WFF.binderPairDepth φ :=
+    WFF.binderPairDepth (WFF.rename old new T hold hnew φ) = WFF.binderPairDepth φ :=
   WFF.binderPairDepth_mapCtx _ φ
 
 /-! ## Cast and `mapCtx` invariance of the measures -/
@@ -351,10 +351,10 @@ theorem WFF.diaCount_mapCtx {σ : Signature} {V V' : VarCtx} (m : CtxBij V V') (
       rw [WFF.mapCtx]; simp only [WFF.diaCount]; rw [WFF.diaCount_mapCtx _ body]
   termination_by sizeOf φ
 
-theorem WFF.diaCount_rename' {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
+theorem WFF.diaCount_rename {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
     (hold : old ∉ VarCtx_to_VarSymbs V) (hnew : new ∉ VarCtx_to_VarSymbs V)
     (φ : WFF σ (VarCtx_insert ⟨old, T⟩ V hold)) :
-    WFF.diaCount (WFF.rename' old new T hold hnew φ) = WFF.diaCount φ :=
+    WFF.diaCount (WFF.rename old new T hold hnew φ) = WFF.diaCount φ :=
   WFF.diaCount_mapCtx _ φ
 
 /-! ## Pair-elim distribution
@@ -488,9 +488,9 @@ def WFF.ctx_extU {σ : Signature} {V : VarCtx} (u : UserSymb) (T : VarType)
           have hw2 : (UserSymb.fresh (VarCtx_to_VarSymbs (VarCtx.insertBnd a V))).toVar
               ∉ VarCtx_to_VarSymbs (VarCtx.insertBnd a V) := UserSymb.fresh_not_mem _
           exact WFF.pairElim a b u.toVar rfl hu rfl rfl
-            (WFF.rename' _ (VarCtx.insertBnd a V).nextBnd b hw2 (VarCtx.nextBnd_not_mem _)
+            (WFF.rename _ (VarCtx.insertBnd a V).nextBnd b hw2 (VarCtx.nextBnd_not_mem _)
               (WFF.ctx_extU (UserSymb.fresh (VarCtx_to_VarSymbs (VarCtx.insertBnd a V))) b hw2
-                (WFF.rename' _ V.nextBnd a hw1 (VarCtx.nextBnd_not_mem V)
+                (WFF.rename _ V.nextBnd a hw1 (VarCtx.nextBnd_not_mem V)
                   (WFF.ctx_extU (UserSymb.fresh (VarCtx_to_VarSymbs V)) a hw1
                     (.box inner hsub hne)))))
       | .Var | .VTypeOne | .VTypeDia _ =>
@@ -552,9 +552,9 @@ def WFF.ctx_extU {σ : Signature} {V : VarCtx} (u : UserSymb) (T : VarType)
           have hw2 : (UserSymb.fresh (VarCtx_to_VarSymbs (VarCtx.insertBnd a V))).toVar
               ∉ VarCtx_to_VarSymbs (VarCtx.insertBnd a V) := UserSymb.fresh_not_mem _
           exact WFF.pairElim a b u.toVar rfl hu rfl rfl
-            (WFF.rename' _ (VarCtx.insertBnd a V).nextBnd b hw2 (VarCtx.nextBnd_not_mem _)
+            (WFF.rename _ (VarCtx.insertBnd a V).nextBnd b hw2 (VarCtx.nextBnd_not_mem _)
               (WFF.ctx_extU (UserSymb.fresh (VarCtx_to_VarSymbs (VarCtx.insertBnd a V))) b hw2
-                (WFF.rename' _ V.nextBnd a hw1 (VarCtx.nextBnd_not_mem V)
+                (WFF.rename _ V.nextBnd a hw1 (VarCtx.nextBnd_not_mem V)
                   (WFF.ctx_extU (UserSymb.fresh (VarCtx_to_VarSymbs V)) a hw1
                     (.dia x hx inner hsub hne)))))
       | .Var | .VTypeOne | .VTypeDia _ =>
@@ -683,8 +683,8 @@ theorem WFF.diaCount_ctx_extU {σ : Signature} {V : VarCtx} (u : UserSymb) (T : 
           rw [WFF.diaCount_ctx_extU u U' _ inner]
       | .VTypeProd a b =>
           subst h_T
-          rw [WFF.ctx_extU, WFF.diaCount_pairElim, WFF.diaCount_rename',
-              WFF.diaCount_ctx_extU _ b, WFF.diaCount_rename', WFF.diaCount_ctx_extU _ a]
+          rw [WFF.ctx_extU, WFF.diaCount_pairElim, WFF.diaCount_rename,
+              WFF.diaCount_ctx_extU _ b, WFF.diaCount_rename, WFF.diaCount_ctx_extU _ a]
       | .Var => subst h_T; rw [WFF.ctx_extU]; rfl
       | .VTypeOne => subst h_T; rw [WFF.ctx_extU]; rfl
       | .VTypeDia _ => subst h_T; rw [WFF.ctx_extU]; rfl
@@ -696,8 +696,8 @@ theorem WFF.diaCount_ctx_extU {σ : Signature} {V : VarCtx} (u : UserSymb) (T : 
           rw [WFF.diaCount_ctx_cast, WFF.diaCount_ctx_extU u U' _ inner]
       | .VTypeProd a b =>
           subst h_T
-          rw [WFF.ctx_extU, WFF.diaCount_pairElim, WFF.diaCount_rename',
-              WFF.diaCount_ctx_extU _ b, WFF.diaCount_rename', WFF.diaCount_ctx_extU _ a]
+          rw [WFF.ctx_extU, WFF.diaCount_pairElim, WFF.diaCount_rename,
+              WFF.diaCount_ctx_extU _ b, WFF.diaCount_rename, WFF.diaCount_ctx_extU _ a]
       | .Var => subst h_T; rw [WFF.ctx_extU]; rfl
       | .VTypeOne => subst h_T; rw [WFF.ctx_extU]; rfl
       | .VTypeDia _ => subst h_T; rw [WFF.ctx_extU]; rfl
@@ -782,8 +782,8 @@ theorem WFF.binderPairDepth_ctx_extU {σ : Signature} {V : VarCtx} (u : UserSymb
           rw [WFF.binderPairDepth_ctx_extU u U' _ inner]
       | .VTypeProd a b =>
           subst h_T
-          rw [WFF.ctx_extU, WFF.binderPairDepth_pairElim, WFF.binderPairDepth_rename',
-              WFF.binderPairDepth_ctx_extU _ b, WFF.binderPairDepth_rename',
+          rw [WFF.ctx_extU, WFF.binderPairDepth_pairElim, WFF.binderPairDepth_rename,
+              WFF.binderPairDepth_ctx_extU _ b, WFF.binderPairDepth_rename,
               WFF.binderPairDepth_ctx_extU _ a]
       | .Var => subst h_T; rw [WFF.ctx_extU]; rfl
       | .VTypeOne => subst h_T; rw [WFF.ctx_extU]; rfl
@@ -796,8 +796,8 @@ theorem WFF.binderPairDepth_ctx_extU {σ : Signature} {V : VarCtx} (u : UserSymb
           rw [WFF.binderPairDepth_ctx_cast, WFF.binderPairDepth_ctx_extU u U' _ inner]
       | .VTypeProd a b =>
           subst h_T
-          rw [WFF.ctx_extU, WFF.binderPairDepth_pairElim, WFF.binderPairDepth_rename',
-              WFF.binderPairDepth_ctx_extU _ b, WFF.binderPairDepth_rename',
+          rw [WFF.ctx_extU, WFF.binderPairDepth_pairElim, WFF.binderPairDepth_rename,
+              WFF.binderPairDepth_ctx_extU _ b, WFF.binderPairDepth_rename,
               WFF.binderPairDepth_ctx_extU _ a]
       | .Var => subst h_T; rw [WFF.ctx_extU]; rfl
       | .VTypeOne => subst h_T; rw [WFF.ctx_extU]; rfl

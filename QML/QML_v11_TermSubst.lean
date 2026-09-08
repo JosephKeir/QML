@@ -11,7 +11,7 @@ The three operations, in dependency order:
 
 * **`Term.ctx_ext`** — weakening by an ARBITRARY symbol.  `ctx_extU` (previous file) only covers
   USER symbols, because it relies on a user insert leaving `nextBnd` alone; the general case is
-  `ctx_extU` under a fresh user name followed by `rename'`, since `mapCtx` recomputes the slots.
+  `ctx_extU` under a fresh user name followed by `rename`, since `mapCtx` recomputes the slots.
 * **`Term.unpair`** — the inverse of `pairElim`: `V + ⟨z, T₁×T₂⟩ → insertBnd2 T₁ T₂ V`.
 * **`Term.substCore` / `Term.substVar`** — substitution proper.  `substCore` is the structural pass
   and needs a pair-free context; `substVar` is the dispatcher that gets it there by unpairing.
@@ -25,16 +25,16 @@ modal-β arm of `substCore` turns on, since there the recursion target is a LIFT
 
 `ctx_extU` only covers user symbols, because inserting one leaves `nextBnd` alone.  Weakening by a
 BOUND slot does move the canonical slots — but that is exactly what `mapCtx` recomputes, so the
-general case is `ctx_extU` under a fresh user name followed by `rename'` onto the wanted symbol.
+general case is `ctx_extU` under a fresh user name followed by `rename` onto the wanted symbol.
 
 The `diaCount` invariance is what the modal-β arm of `substCore` needs: there the recursion target
 is a LIFTED subterm, so `sizeOf` is no help and the measure counts `◇`-nodes instead. -/
 
-/-- `rename'` preserves `diaCount` (it is `mapCtx`). -/
-theorem Term.diaCount_rename' {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
+/-- `rename` preserves `diaCount` (it is `mapCtx`). -/
+theorem Term.diaCount_rename {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
     (hold : old ∉ VarCtx_to_VarSymbs V) (hnew : new ∉ VarCtx_to_VarSymbs V)
     {S : VarType} (t : Term σ (VarCtx_insert ⟨old, T⟩ V hold) S) :
-    Term.diaCount (Term.rename' old new T hold hnew t) = Term.diaCount t :=
+    Term.diaCount (Term.rename old new T hold hnew t) = Term.diaCount t :=
   Term.diaCount_mapCtx _ t
 
 mutual
@@ -72,8 +72,8 @@ mutual
             rw [Term.diaCount_ctx_extU u U' _ tt]
         | .VTypeProd a b =>
             subst h_T
-            rw [Term.ctx_extU, Term.diaCount_pairElim, Term.diaCount_rename',
-                Term.diaCount_ctx_extU _ b, Term.diaCount_rename',
+            rw [Term.ctx_extU, Term.diaCount_pairElim, Term.diaCount_rename,
+                Term.diaCount_ctx_extU _ b, Term.diaCount_rename,
                 Term.diaCount_ctx_extU _ a]
         | .Var => subst h_T; rw [Term.ctx_extU]; rfl
         | .VTypeOne => subst h_T; rw [Term.ctx_extU]; rfl
@@ -87,8 +87,8 @@ mutual
             rw [Term.diaCount_ctx_cast, Term.diaCount_ctx_extU u U' _ inner]
         | .VTypeProd a b =>
             subst h_T
-            rw [Term.ctx_extU, Term.diaCount_pairElim, Term.diaCount_rename',
-                Term.diaCount_ctx_extU _ b, Term.diaCount_rename',
+            rw [Term.ctx_extU, Term.diaCount_pairElim, Term.diaCount_rename,
+                Term.diaCount_ctx_extU _ b, Term.diaCount_rename,
                 Term.diaCount_ctx_extU _ a]
         | .Var => subst h_T; rw [Term.ctx_extU]; rfl
         | .VTypeOne => subst h_T; rw [Term.ctx_extU]; rfl
@@ -107,17 +107,15 @@ end
 def Term.ctx_ext {σ : Signature} {V : VarCtx} (xv : VarSymb × VarType)
     (hv : xv.1 ∉ VarCtx_to_VarSymbs V) {S : VarType} (t : Term σ V S) :
     Term σ (VarCtx_insert xv V hv) S :=
-  Term.rename' (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar xv.1 xv.2
+  Term.rename (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar xv.1 xv.2
     (UserSymb.fresh_not_mem _) hv
     (Term.ctx_extU (UserSymb.fresh (VarCtx_to_VarSymbs V)) xv.2 (UserSymb.fresh_not_mem _) t)
 
 theorem Term.diaCount_ctx_ext {σ : Signature} {V : VarCtx} (xv : VarSymb × VarType)
     (hv : xv.1 ∉ VarCtx_to_VarSymbs V) {S : VarType} (t : Term σ V S) :
     Term.diaCount (Term.ctx_ext xv hv t) = Term.diaCount t := by
-  rw [Term.ctx_ext, Term.diaCount_rename', Term.diaCount_ctx_extU]
+  rw [Term.ctx_ext, Term.diaCount_rename, Term.diaCount_ctx_extU]
 
-
--- Bound-vars preservation for renaming: every binder of `Term.rename ... t` is
 
 /-! ## Unpairing
 
@@ -132,7 +130,7 @@ Two things make it work in v11:
   nothing else — there is no term-level replacement to perform.
 * **`z` is required to be USER-named** (`hzu`).  A user insert does not move `nextBnd`, which is
   what lets the nested node's slots be recomputed.  Call sites α-rename first — free, since
-  `rename'` is `mapCtx`.
+  `rename` is `mapCtx`.
 
 The modal arms pass straight through.  If either component were box-typed then `⟨z, T₁×T₂⟩` would
 itself be box-DETECTED (`isBox` recurses through `VTypeProd`), and `h_no_box_extras` would place a
@@ -464,7 +462,7 @@ mutual
                     have hx_minus : x ∉ VarCtx_to_VarSymbs (VarCtx_erase V_inner ⟨x, T⟩) :=
                       VarCtx_erase_fresh hxT_in
                     have h_V_eq : _ = VarCtx_erase V_inner ⟨x, T⟩ :=
-                      ctx_rest_box_V_s_eq hxT_in hsub hne s_hsub s_hne
+                      substCore_box_V_s_eq hxT_in hsub hne s_hsub s_hne
                     subst h_V_eq
                     exact .boxterm
                       (Term.substVar hx_minus s_inner
@@ -603,7 +601,7 @@ mutual
                   match s with
                   | .boxterm s_inner s_hsub s_hne =>
                       have h_V_eq : _ = VarCtx_erase V_inner ⟨x, T⟩ :=
-                        ctx_rest_dia_V_s_eq hxT_in hsub hne s_hsub s_hne
+                        substCore_dia_V_s_eq hxT_in hsub hne s_hsub s_hne
                       subst h_V_eq
                       have hx_in_outer : x ∉ VarCtx_to_VarSymbs
                           (VarCtx_insert xv (VarCtx_erase V_inner ⟨x, T⟩) hxv_minus) :=
@@ -622,8 +620,8 @@ mutual
                       exact .diaterm xv hxv_minus
                         (Term.substVar hx_in_outer
                           (Term.ctx_ext xv hxv_minus s_inner) (h_combined ▸ tt))
-                        (ctx_rest_dia_hsub_erase hxv_minus h_xv_eq_x hsub)
-                        (ctx_rest_dia_h_no_extras_erase hxv_minus hne)
+                        (substCore_dia_hsub_erase hxv_minus h_xv_eq_x hsub)
+                        (substCore_dia_h_no_extras_erase hxv_minus hne)
                   | .pair_elim sT₁ sT₂ sz _ _ sw₂eq _ =>
                       exact absurd
                         (Finset.mem_insert_of_mem
@@ -727,7 +725,7 @@ mutual
 
       Both cases α-rename to a fresh USER symbol first: `unpair` needs a user-named binder so that
       a nested node's slots can be recomputed, and `insertBnd2` only commutes past a user insert.
-      Renaming is free — `rename'` is `mapCtx`. -/
+      Renaming is free — `rename` is `mapCtx`. -/
   def Term.substVar {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
       (hx : x ∉ VarCtx_to_VarSymbs V)
       (s : Term σ V S) {S' : VarType}
@@ -818,11 +816,11 @@ mutual
         exact Term.pairElim V1 V2 z hzU rfl hVU
           (Term.substVar hu_bnd
             (Term.unpair V1 V2 _ rfl hw_U
-              (Term.rename' z _ (.VTypeProd V1 V2) hzU hw_U
+              (Term.rename z _ (.VTypeProd V1 V2) hzU hw_U
                 (cast hsEq.symm s)))
             (hcomm2 ▸ Term.unpair V1 V2 _ rfl hu_US
-              (Term.rename' z _ (.VTypeProd V1 V2) hz_US hu_US
-                (hcomm ▸ Term.rename' x _ S hx hu t))))
+              (Term.rename z _ (.VTypeProd V1 V2) hz_US hu_US
+                (hcomm ▸ Term.rename x _ S hx hu t))))
     | none =>
         have hVfree : V.PairFree := VarCtx.pairFree_of_firstPairVar_none h_pv
         match hSp : S.isPair with
@@ -852,7 +850,7 @@ mutual
                       (Term.substVar (VarCtx.nextBnd_not_mem (VarCtx.insertBnd V1 V))
                         (Term.ctx_ext ⟨V.nextBnd, V1⟩ (VarCtx.nextBnd_not_mem V) s2)
                         (Term.unpair V1 V2 _ rfl hufresh
-                          (Term.rename' x _ (.VTypeProd V1 V2) hx hufresh t)))
+                          (Term.rename x _ (.VTypeProd V1 V2) hx hufresh t)))
                 | .pair_elim sT₁ sT₂ sz _ _ sw₂eq _ =>
                     exact absurd
                       (show (⟨sz, VarType.VTypeProd sT₁ sT₂⟩ : VarSymb × VarType) ∈ V.1 from by

@@ -32,7 +32,7 @@ def Rel.mapCtx {σ : Signature} {V V' : VarCtx} (m : CtxBij V V') :
   | _, .eval R' t => .eval (Rel.mapCtx m R') (Term.mapCtx m t)
 
 /-- Rename one free variable in a `Rel`, by rebuilding along the swap bijection. -/
-def Rel.rename' {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
+def Rel.rename {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
     (hold : old ∉ VarCtx_to_VarSymbs V) (hnew : new ∉ VarCtx_to_VarSymbs V)
     {n : ℕ} (R : Rel σ (VarCtx_insert ⟨old, T⟩ V hold) n) :
     Rel σ (VarCtx_insert ⟨new, T⟩ V hnew) n :=
@@ -63,10 +63,10 @@ theorem Rel.diaCount_mapCtx {σ : Signature} {V V' : VarCtx} (m : CtxBij V V') :
   | _, .eval R' t => by
       simp only [Rel.mapCtx, Rel.diaCount, Rel.diaCount_mapCtx m R', Term.diaCount_mapCtx m t]
 
-theorem Rel.diaCount_rename' {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
+theorem Rel.diaCount_rename {σ : Signature} {V : VarCtx} (old new : VarSymb) (T : VarType)
     (hold : old ∉ VarCtx_to_VarSymbs V) (hnew : new ∉ VarCtx_to_VarSymbs V)
     {n : ℕ} (R : Rel σ (VarCtx_insert ⟨old, T⟩ V hold) n) :
-    Rel.diaCount (Rel.rename' old new T hold hnew R) = Rel.diaCount R :=
+    Rel.diaCount (Rel.rename old new T hold hnew R) = Rel.diaCount R :=
   Rel.diaCount_mapCtx _ R
 
 /-! ## Pair-elim distribution -/
@@ -111,18 +111,18 @@ theorem Rel.diaCount_ctx_extU {σ : Signature} {V : VarCtx} (u : UserSymb) (T : 
         Term.diaCount_ctx_extU u T hu t]
 
 /-- Weakening by an ARBITRARY symbol: as for terms, `ctx_extU` under a fresh user name followed by
-    `rename'`. -/
+    `rename`. -/
 def Rel.ctx_ext {σ : Signature} {V : VarCtx} (xv : VarSymb × VarType)
     (hv : xv.1 ∉ VarCtx_to_VarSymbs V) {n : ℕ} (R : Rel σ V n) :
     Rel σ (VarCtx_insert xv V hv) n :=
-  Rel.rename' (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar xv.1 xv.2
+  Rel.rename (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar xv.1 xv.2
     (UserSymb.fresh_not_mem _) hv
     (Rel.ctx_extU (UserSymb.fresh (VarCtx_to_VarSymbs V)) xv.2 (UserSymb.fresh_not_mem _) R)
 
 theorem Rel.diaCount_ctx_ext {σ : Signature} {V : VarCtx} (xv : VarSymb × VarType)
     (hv : xv.1 ∉ VarCtx_to_VarSymbs V) {n : ℕ} (R : Rel σ V n) :
     Rel.diaCount (Rel.ctx_ext xv hv R) = Rel.diaCount R := by
-  rw [Rel.ctx_ext, Rel.diaCount_rename', Rel.diaCount_ctx_extU]
+  rw [Rel.ctx_ext, Rel.diaCount_rename, Rel.diaCount_ctx_extU]
 
 /-! ## Unpairing and substitution -/
 

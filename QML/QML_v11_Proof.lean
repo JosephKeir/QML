@@ -12,7 +12,7 @@ reform was for, and it changes in exactly the way the design predicted:
 
 * **Binder-introducing rules take a `UserSymb`.**  `all_intro`'s eigenvariable is user-facing —
   it is FREE in the subproof, so it has a meaningful name — and the conclusion's binder is
-  canonical.  The rule renames the one to the other with `rename'`, landing DEFINITIONALLY in
+  canonical.  The rule renames the one to the other with `rename`, landing DEFINITIONALLY in
   `insertBnd T V` (no cast): `insertBnd T V` unfolds to `VarCtx_insert ⟨V.nextBnd, T⟩ V _`.
   The user-facing type is injected at the rule boundary and nowhere else, which is the whole
   point of using a type rather than an `isUsr` predicate.
@@ -119,13 +119,13 @@ inductive Proof (σ : Signature) : (V : VarCtx) → Finset (WFF σ V) → WFF σ
   -- Classical logic
   | lem        : (φ : WFF σ V) → Proof σ V Γ (φ.or (neg φ))
   -- ⭐Universal quantifier.  The eigenvariable is USER-facing (free in the subproof); the
-  -- conclusion's binder is the canonical slot, and `rename'` moves one to the other.  The
+  -- conclusion's binder is the canonical slot, and `rename` moves one to the other.  The
   -- target context `VarCtx_insert ⟨V.nextBnd, T⟩ V _` IS `VarCtx.insertBnd T V`, definitionally.
   | all_intro  : (u : UserSymb) → (T : VarType) → (hu : u.toVar ∉ VarCtx_to_VarSymbs V)
                  → {φ : WFF σ (VarCtx_insert ⟨u.toVar, T⟩ V hu)}
                  → Proof σ (VarCtx_insert ⟨u.toVar, T⟩ V hu) (WFF.ctx_extU_Finset u T hu Γ) φ
                  → Proof σ V Γ
-                     (.all T (WFF.rename' u.toVar V.nextBnd T hu (VarCtx.nextBnd_not_mem V) φ))
+                     (.all T (WFF.rename u.toVar V.nextBnd T hu (VarCtx.nextBnd_not_mem V) φ))
   -- Elimination mentions no variable at all: the slot is a function of `V`.
   | all_elim   : (T : VarType) → {φ : WFF σ (VarCtx.insertBnd T V)}
                  → (t : Term σ V T)
@@ -139,7 +139,7 @@ inductive Proof (σ : Signature) : (V : VarCtx) → Finset (WFF σ V) → WFF σ
   | ex_elim    : (u : UserSymb) → (T : VarType) → (hu : u.toVar ∉ VarCtx_to_VarSymbs V)
                  → {φ : WFF σ (VarCtx_insert ⟨u.toVar, T⟩ V hu)}
                  → Proof σ V Γ
-                     (.ex T (WFF.rename' u.toVar V.nextBnd T hu (VarCtx.nextBnd_not_mem V) φ))
+                     (.ex T (WFF.rename u.toVar V.nextBnd T hu (VarCtx.nextBnd_not_mem V) φ))
                  → Proof σ (VarCtx_insert ⟨u.toVar, T⟩ V hu)
                      (WFF.ctx_extU_Finset u T hu Γ ∪ {φ}) (WFF.ctx_extU u T hu ψ)
                  → Proof σ V Γ ψ
