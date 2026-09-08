@@ -13,6 +13,21 @@ uniformly cheap because the binders are nameless.
 * **`WFF.substCore` / `WFF.substVar`** — substitution proper.
 -/
 
+/-! ## Splitting a product type at the PROP level
+
+`substVar` needs the two components of a pair-typed `S`, but it must NOT `cases S`: that
+re-introduces the formula parameter as a fresh variable and the termination goals then compare
+`binderPairDepth` of two unrelated atoms.  These total projections plus a `Prop`-level equation
+give the components without touching any data. -/
+
+def VarType.pfst : VarType → VarType
+  | .VTypeProd a _ => a
+  | T              => T
+
+def VarType.psnd : VarType → VarType
+  | .VTypeProd _ b => b
+  | T              => T
+
 /-! ## Weakening by an arbitrary symbol -/
 
 /-- Weakening by an ARBITRARY symbol.  `ctx_extU` only covers USER symbols (it relies on a user
@@ -571,7 +586,10 @@ mutual
                   WFF.diaCount φ, WFF.numNodes φ, 0)
   -- ⭐Five recursion shapes, each alternative self-contained so their ORDER does not matter
   -- (`first` backtracks on any failure inside an alternative, and the `·` bullets force each
-  -- component goal to be closed).
+  -- component goal to be closed).  ⚠️Every cast rewrite is `try`ed: whether Lean leaves a visible
+  -- `▸` in the recursion argument depends on how the arm was elaborated.  ⚠️And every hypothesis
+  -- an alternative reaches for is fetched by `assumption`, never by name: an unknown identifier
+  -- is a hard elaboration error that `first` cannot backtrack out of.
   decreasing_by
     all_goals first
       -- structural: the connective arms.  Same context, so component 1 compares `bpd` alone.
@@ -582,37 +600,41 @@ mutual
       -- ⭐quantifier descent: `T.pairDepth` moves from the formula into the context, so
       -- component 1 is EQUAL and `numNodes` carries the decrease.
       | (refine lex4_le ?_ ?_ ?_
-         · rw [WFF.binderPairDepth_ctx_cast]
+         · try rw [WFF.binderPairDepth_ctx_cast]
            simp only [VarCtx.insertBnd, VarCtx.pairDepth_insert, WFF.binderPairDepth]
            try omega
-         · rw [WFF.diaCount_ctx_cast]; simp only [WFF.diaCount]; try omega
-         · rw [WFF.numNodes_ctx_cast]; simp only [WFF.numNodes]; try omega)
+         · try rw [WFF.diaCount_ctx_cast]
+           simp only [WFF.diaCount]; try omega
+         · try rw [WFF.numNodes_ctx_cast]
+           simp only [WFF.numNodes]; try omega)
       -- interior call at a `box`'s inner context: `diaCount` is untouched, `numNodes` decreases
       | (have hS : S = T.VTypeBox := by assumption
          subst hS
          refine lex4_le ?_ ?_ ?_
-         · rw [WFF.binderPairDepth_ctx_cast]
-           have h_le := VarCtx.pairDepth_le_of_box_subset hsub
-           rw [VarCtx.pairDepth_insert, ← VarCtx_insert_erase hxT_in hx_minus,
-               VarCtx.pairDepth_insert ⟨x, T⟩ _ hx_minus] at h_le
-           rw [VarCtx.pairDepth_insert, VarCtx.pairDepth_insert]
-           simp only [WFF.binderPairDepth]
+         · have h_le := VarCtx.pairDepth_le_of_box_subset hsub
+           have hVi := VarCtx.pairDepth_insert (⟨x, T⟩ : VarSymb × VarType) _ hx_minus
+           rw [VarCtx_insert_erase hxT_in hx_minus] at hVi
+           try rw [WFF.binderPairDepth_ctx_cast]
+           simp only [VarCtx.pairDepth_insert, VarType.pairDepth, WFF.binderPairDepth]
+             at h_le hVi ⊢
            try omega
-         · rw [WFF.diaCount_ctx_cast]; simp only [WFF.diaCount]; try omega
-         · rw [WFF.numNodes_ctx_cast]; simp only [WFF.numNodes]; try omega)
+         · try rw [WFF.diaCount_ctx_cast]
+           simp only [WFF.diaCount]; try omega
+         · try rw [WFF.numNodes_ctx_cast]
+           simp only [WFF.numNodes]; try omega)
       -- interior call at a `dia`'s inner context: the `◇`-node just consumed makes `diaCount`
       -- STRICTLY smaller, which is the whole reason it is in the measure
       | (have hS : S = T.VTypeBox := by assumption
          subst hS
          refine lex4_lt ?_ ?_
-         · rw [WFF.binderPairDepth_ctx_cast]
-           have h_le := VarCtx.pairDepth_le_of_dia_subset hsub
-           have h_V_inner := VarCtx.pairDepth_insert (⟨x, T⟩ : VarSymb × VarType) _ hx_minus
-           rw [VarCtx_insert_erase hxT_in hx_minus] at h_V_inner
+         · have h_le := VarCtx.pairDepth_le_of_dia_subset hsub
+           have hVi := VarCtx.pairDepth_insert (⟨x, T⟩ : VarSymb × VarType) _ hx_minus
+           rw [VarCtx_insert_erase hxT_in hx_minus] at hVi
+           try rw [WFF.binderPairDepth_ctx_cast]
            simp only [VarCtx.pairDepth_insert, VarType.pairDepth, WFF.binderPairDepth]
-             at h_le h_V_inner ⊢
+             at h_le hVi ⊢
            try omega
-         · rw [WFF.diaCount_ctx_cast]
+         · try rw [WFF.diaCount_ctx_cast]
            simp only [WFF.diaCount]
            try omega)
       -- ⭐modal β: the target is a LIFTED subformula, so only `diaCount` sees the decrease
@@ -620,11 +642,12 @@ mutual
          · have h_le := VarCtx.pairDepth_le_of_dia_subset hsub_s
            have hSpd : S.pairDepth = xv.2.pairDepth := by
              simp only [h_S_eq, VarType.pairDepth]
-           rw [WFF.binderPairDepth_ctx_cast, WFF.binderPairDepth_ctx_cast,
-               WFF.binderPairDepth_ctx_ext]
+           try rw [WFF.binderPairDepth_ctx_cast, WFF.binderPairDepth_ctx_cast]
+           try rw [WFF.binderPairDepth_ctx_ext]
            simp only [VarCtx.pairDepth_insert, WFF.binderPairDepth] at h_le ⊢
            try omega
-         · rw [WFF.diaCount_ctx_cast, WFF.diaCount_ctx_cast, WFF.diaCount_ctx_ext]
+         · try rw [WFF.diaCount_ctx_cast, WFF.diaCount_ctx_cast]
+           try rw [WFF.diaCount_ctx_ext]
            simp only [WFF.diaCount]
            try omega)
 
@@ -756,55 +779,52 @@ mutual
             exact ⟨r.val, le_trans r.property
               (le_of_eq (WFF.binderPairDepth_rename' x _ S hx hu φ))⟩
         | true =>
-            cases S with
-            | VTypeProd V1 V2 =>
-                -- ⭐Case A.  `s` is a literal pair: a `pair_elim` would need a pair variable in `V`.
-                match s with
-                | .pair s1 s2 =>
-                    have hufresh : (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar
-                        ∉ VarCtx_to_VarSymbs V := UserSymb.fresh_not_mem _
-                    have hbpd : WFF.binderPairDepth
-                        (WFF.unpair V1 V2 _ rfl hufresh
-                          (WFF.rename' x _ (.VTypeProd V1 V2) hx hufresh φ))
-                        = WFF.binderPairDepth φ := by
-                      rw [WFF.binderPairDepth_unpair, WFF.binderPairDepth_rename']
-                    have hdecA1 : (VarCtx_insert ⟨(VarCtx.insertBnd V1 V).nextBnd, V2⟩
-                          (VarCtx.insertBnd V1 V) (VarCtx.nextBnd_not_mem _)).pairDepth
-                          + WFF.binderPairDepth (WFF.unpair V1 V2 _ rfl hufresh
-                              (WFF.rename' x _ (.VTypeProd V1 V2) hx hufresh φ))
-                        < (VarCtx_insert ⟨x, VarType.VTypeProd V1 V2⟩ V hx).pairDepth
-                          + WFF.binderPairDepth φ := by
-                      rw [hbpd]
-                      simp only [VarCtx.insertBnd, VarCtx.pairDepth_insert, VarType.pairDepth]
-                      omega
-                    have r1 := WFF.substVar (VarCtx.nextBnd_not_mem (VarCtx.insertBnd V1 V))
-                      (Term.ctx_ext ⟨V.nextBnd, V1⟩ (VarCtx.nextBnd_not_mem V) s2)
-                      (WFF.unpair V1 V2 _ rfl hufresh
-                        (WFF.rename' x _ (.VTypeProd V1 V2) hx hufresh φ))
-                    have hdecA2 : (VarCtx_insert ⟨V.nextBnd, V1⟩ V
-                          (VarCtx.nextBnd_not_mem V)).pairDepth + WFF.binderPairDepth r1.val
-                        < (VarCtx_insert ⟨x, VarType.VTypeProd V1 V2⟩ V hx).pairDepth
-                          + WFF.binderPairDepth φ := by
-                      have h1 : WFF.binderPairDepth r1.val ≤ WFF.binderPairDepth φ :=
-                        le_trans r1.property (le_of_eq hbpd)
-                      simp only [VarCtx.pairDepth_insert, VarType.pairDepth]
-                      omega
-                    have r2 := WFF.substVar (VarCtx.nextBnd_not_mem V) s1 r1.val
-                    exact ⟨r2.val,
-                      le_trans r2.property (le_trans r1.property (le_of_eq hbpd))⟩
-                | .pair_elim sT₁ sT₂ sz _ _ sw₂eq _ =>
-                    exact absurd
-                      (show (⟨sz, VarType.VTypeProd sT₁ sT₂⟩ : VarSymb × VarType) ∈ V.1 from by
-                        rw [← sw₂eq]; exact Finset.mem_insert_self _ _)
-                      (hVfree sz sT₁ sT₂)
-            | Var => exact absurd hSp (by simp [VarType.isPair])
-            | VTypeOne => exact absurd hSp (by simp [VarType.isPair])
-            | VTypeBox T => exact absurd hSp (by simp [VarType.isPair])
-            | VTypeDia T => exact absurd hSp (by simp [VarType.isPair])
+            -- ⚠️NO `cases S` here.  Casing the TYPE re-introduces the formula `φ` as a fresh
+            -- variable, and the termination goals then compare `binderPairDepth` of two unrelated
+            -- atoms (the arm's `φ` and the parameter's).  Split `S` at the PROP level instead and
+            -- cast `φ` ONCE along a VarCtx equality, which `binderPairDepth_ctx_cast` sees through.
+            have hSeq : S = VarType.VTypeProd S.pfst S.psnd := by
+              revert hSp
+              cases S <;> simp [VarType.isPair, VarType.pfst, VarType.psnd]
+            have hctx : VarCtx_insert ⟨x, S⟩ V hx
+                = VarCtx_insert ⟨x, VarType.VTypeProd S.pfst S.psnd⟩ V hx := by
+              rw [← hSeq]
+            have hSpd : S.pairDepth = 1 + S.pfst.pairDepth + S.psnd.pairDepth := by
+              conv_lhs => rw [hSeq]
+              simp only [VarType.pairDepth]
+            -- ⭐Case A.  `s` is a literal pair: a `pair_elim` would need a pair variable in `V`.
+            match (hSeq ▸ s : Term σ V (VarType.VTypeProd S.pfst S.psnd)) with
+            | .pair s1 s2 =>
+                have hufresh : (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar
+                    ∉ VarCtx_to_VarSymbs V := UserSymb.fresh_not_mem _
+                have hbpd : WFF.binderPairDepth
+                    (WFF.unpair S.pfst S.psnd _ rfl hufresh
+                      (WFF.rename' x _ (.VTypeProd S.pfst S.psnd) hx hufresh (hctx ▸ φ)))
+                    = WFF.binderPairDepth φ := by
+                  rw [WFF.binderPairDepth_unpair, WFF.binderPairDepth_rename',
+                      WFF.binderPairDepth_ctx_cast]
+                -- ⚠️DESTRUCTURE rather than `have r1 := …`: a data-valued `have` does not survive
+                -- into the termination goals, so its bound would be unavailable there — and that
+                -- bound is exactly what the SECOND call needs.
+                obtain ⟨r1v, r1p⟩ := WFF.substVar
+                  (VarCtx.nextBnd_not_mem (VarCtx.insertBnd S.pfst V))
+                  (Term.ctx_ext ⟨V.nextBnd, S.pfst⟩ (VarCtx.nextBnd_not_mem V) s2)
+                  (WFF.unpair S.pfst S.psnd _ rfl hufresh
+                    (WFF.rename' x _ (.VTypeProd S.pfst S.psnd) hx hufresh (hctx ▸ φ)))
+                obtain ⟨r2v, r2p⟩ := WFF.substVar (VarCtx.nextBnd_not_mem V) s1 r1v
+                exact ⟨r2v, le_trans r2p (le_trans r1p (le_of_eq hbpd))⟩
+            | .pair_elim sT₁ sT₂ sz _ _ sw₂eq _ =>
+                exact absurd
+                  (show (⟨sz, VarType.VTypeProd sT₁ sT₂⟩ : VarSymb × VarType) ∈ V.1 from by
+                    rw [← sw₂eq]; exact Finset.mem_insert_self _ _)
+                  (hVfree sz sT₁ sT₂)
   termination_by ((VarCtx_insert ⟨x, S⟩ V hx).pairDepth + WFF.binderPairDepth φ,
                   WFF.diaCount φ, WFF.numNodes φ, 1)
+  -- ⚠️No `subst_vars` here: substituting `S := V1 ×ᵥ V2` re-introduces the formula parameter as a
+  -- FRESH variable, so the in-arm `have`s stop matching the goal.  Feed `omega` the arithmetic
+  -- consequence of `S = V1 ×ᵥ V2` instead — that `rw` lives inside a `have` about `ℕ`, so it has
+  -- no motive to compute.
   decreasing_by
-    all_goals (try subst_vars)
     all_goals first
       -- hand-off to the structural pass: the α-rename leaves all three measures alone,
       -- so only the tag moves.
@@ -813,7 +833,14 @@ mutual
           (by rw [WFF.diaCount_rename'])
           (by rw [WFF.numNodes_rename'])
           (by omega)
-      -- both unpairing steps strictly drop `pairDepth + binderPairDepth` (proved in place,
-      -- where the names are still bound)
+      -- Case B: the `have` in the arm states the decrease directly.
       | exact lex4_pd (by assumption)
+      -- Case A, both calls: unpairing replaces the pair variable by two slots, dropping
+      -- `pairDepth` by one; `binderPairDepth` is preserved by `unpair`/`rename'` (`hbpd`) and
+      -- bounded by `r1p` for the second call.  `hSpd` supplies `S.pairDepth`.
+      | (refine lex4_pd ?_
+         try rw [WFF.binderPairDepth_unpair, WFF.binderPairDepth_rename',
+                 WFF.binderPairDepth_ctx_cast]
+         simp only [VarCtx.insertBnd, VarCtx.pairDepth_insert, VarType.pairDepth]
+         omega)
 end
