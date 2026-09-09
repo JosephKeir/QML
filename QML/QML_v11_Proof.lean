@@ -66,6 +66,81 @@ def WFF.pairElim_Finset {σ : Signature} {V W₁ W₂ : VarCtx}
     Finset (WFF σ W₁) → Finset (WFF σ W₂) :=
   fun Γ => Γ.image (WFF.pairElim T₁ T₂ z hzu hz w₁eq w₂eq)
 
+/-! ## Binding a user-named component pair onto the canonical slots
+
+⭐The `pair_elim` rule is the exact parallel of `all_intro`: the user builds the subproof with
+FREE, user-named components, and the rule renames them to the canonical slots as it BINDS them.
+Renaming happens on the FORMULA, never on the proof — which is what makes `all_intro` cheap and
+makes this cheap too.
+
+⚠️Getting this wrong is what put SLOTS into a proof context.  The earlier version stated the
+premise directly over `insertBnd2 T₁ T₂ V`, so a proof context held `⟨.bnd n, T₁⟩` — pair-typed
+whenever `T₁` is a product, which is exactly the case `eqRec`'s peel cannot re-pair.  Contexts hold
+only FREE variables, so they must never contain reserved bound names; this restores that. -/
+
+/-- Move a formula from a split context with USER-named components onto the canonical slots.
+    `rename` acts on the TOP entry, so the second component goes first, then the pair is commuted,
+    then the first.  Targeting `V.nextBnd` and `(insertBnd T₁ V).nextBnd` makes the landing context
+    `insertBnd2 T₁ T₂ V` DEFINITIONALLY — there is no final cast. -/
+def WFF.bindPair {σ : Signature} {V : VarCtx} (T₁ T₂ : VarType) (u₁ u₂ : UserSymb)
+    (hu₁ : u₁.toVar ∉ VarCtx_to_VarSymbs V)
+    (hu₂ : u₂.toVar ∉ VarCtx_to_VarSymbs (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁))
+    (φ : WFF σ (VarCtx_insert ⟨u₂.toVar, T₂⟩ (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁) hu₂)) :
+    WFF σ (VarCtx.insertBnd2 T₁ T₂ V) := by
+  have hlvl : VarCtx.bndLevel (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁) = VarCtx.bndLevel V :=
+    VarCtx.bndLevel_insert_isUsr _ _ _ rfl
+  -- the second slot is fresh for the user-named split context …
+  have hs₂u : (VarCtx.insertBnd T₁ V).nextBnd
+      ∉ VarCtx_to_VarSymbs (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁) := by
+    change VarSymb.bnd (VarCtx.bndLevel (VarCtx.insertBnd T₁ V)) ∉ _
+    rw [VarCtx.bndLevel_insertBnd]
+    exact VarCtx.notMem_bnd_of_le (by omega)
+  -- … and for `V` itself
+  have hs₂V : (VarCtx.insertBnd T₁ V).nextBnd ∉ VarCtx_to_VarSymbs V := by
+    change VarSymb.bnd (VarCtx.bndLevel (VarCtx.insertBnd T₁ V)) ∉ _
+    rw [VarCtx.bndLevel_insertBnd]
+    exact VarCtx.notMem_bnd_of_le (by omega)
+  -- STEP 1 — rename the top (second) component onto the second slot
+  have φ₂ := WFF.rename u₂.toVar (VarCtx.insertBnd T₁ V).nextBnd T₂ hu₂ hs₂u φ
+  -- STEP 2 — commute, so the first component is on top
+  have hu₁' : u₁.toVar ∉ VarCtx_to_VarSymbs
+      (VarCtx_insert ⟨(VarCtx.insertBnd T₁ V).nextBnd, T₂⟩ V hs₂V) :=
+    not_mem_VarSymbs_insert
+      (by
+        change u₁.toVar ≠ VarSymb.bnd (VarCtx.bndLevel (VarCtx.insertBnd T₁ V))
+        exact VarCtx.ne_nextBnd_of_isUsr rfl _)
+      hu₁
+  have φ₃ := (VarCtx_insert_comm
+      (a := (⟨(VarCtx.insertBnd T₁ V).nextBnd, T₂⟩ : VarSymb × VarType))
+      (b := (⟨u₁.toVar, T₁⟩ : VarSymb × VarType)) hs₂u hu₁' ▸ φ₂ :
+    WFF σ (VarCtx_insert ⟨u₁.toVar, T₁⟩
+      (VarCtx_insert ⟨(VarCtx.insertBnd T₁ V).nextBnd, T₂⟩ V hs₂V) hu₁'))
+  -- STEP 3 — rename the first component onto the first slot
+  have hs₁ : V.nextBnd ∉ VarCtx_to_VarSymbs
+      (VarCtx_insert ⟨(VarCtx.insertBnd T₁ V).nextBnd, T₂⟩ V hs₂V) := by
+    refine not_mem_VarSymbs_insert ?_ (VarCtx.nextBnd_not_mem V)
+    change VarSymb.bnd (VarCtx.bndLevel V)
+      ≠ VarSymb.bnd (VarCtx.bndLevel (VarCtx.insertBnd T₁ V))
+    rw [VarCtx.bndLevel_insertBnd]
+    simp
+  have φ₄ := WFF.rename u₁.toVar V.nextBnd T₁ hu₁' hs₁ φ₃
+  -- STEP 4 — commute back; the target is `insertBnd2 T₁ T₂ V` definitionally
+  change WFF σ (VarCtx_insert (⟨(VarCtx.insertBnd T₁ V).nextBnd, T₂⟩ : VarSymb × VarType)
+    (VarCtx_insert (⟨V.nextBnd, T₁⟩ : VarSymb × VarType) V (VarCtx.nextBnd_not_mem V))
+    (VarCtx.nextBnd_not_mem (VarCtx.insertBnd T₁ V)))
+  exact VarCtx_insert_comm
+    (a := (⟨V.nextBnd, T₁⟩ : VarSymb × VarType))
+    (b := (⟨(VarCtx.insertBnd T₁ V).nextBnd, T₂⟩ : VarSymb × VarType))
+    hs₁ (VarCtx.nextBnd_not_mem (VarCtx.insertBnd T₁ V)) ▸ φ₄
+
+/-- `bindPair` on a hypothesis set. -/
+def WFF.bindPair_Finset {σ : Signature} {V : VarCtx} (T₁ T₂ : VarType) (u₁ u₂ : UserSymb)
+    (hu₁ : u₁.toVar ∉ VarCtx_to_VarSymbs V)
+    (hu₂ : u₂.toVar ∉ VarCtx_to_VarSymbs (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁)) :
+    Finset (WFF σ (VarCtx_insert ⟨u₂.toVar, T₂⟩ (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁) hu₂))
+      → Finset (WFF σ (VarCtx.insertBnd2 T₁ T₂ V)) :=
+  fun Γ => Γ.image (WFF.bindPair T₁ T₂ u₁ u₂ hu₁ hu₂)
+
 /-! ## Modal bridging (ported verbatim from v10)
 
 `◇_x`'s context contains `□`'s, so a `◇`-side hypothesis restricts to a `□`-side one.  Used by
@@ -157,15 +232,31 @@ inductive Proof (σ : Signature) : (V : VarCtx) → Finset (WFF σ V) → WFF σ
                  → Proof σ V Γ (WFF.eq t s)
                  → Proof σ V Γ (WFF.subst hu t φ)
                  → Proof σ V Γ (WFF.subst hu s φ)
-  -- ⭐Pairing: the positive eliminator.  Only `z` is named — it stays FREE in `W₂` — and the two
-  -- components are the canonical slots of `V`, so they are not arguments.
-  | pair_elim  : (T₁ T₂ : VarType) → (z : UserSymb)
+  -- ⭐Pairing: the positive eliminator, and the exact parallel of `all_intro`.  The subproof is
+  -- built with FREE, USER-named components `u₁ u₂`; the rule renames them onto the canonical slots
+  -- as it BINDS them (`bindPair`), renaming the FORMULA rather than the proof.  `z` stays named
+  -- because it stays FREE in `W₂`.
+  -- ⚠️Stating the premise directly over `insertBnd2 T₁ T₂ V` — as an earlier version did — puts
+  -- SLOTS into a proof context, and they are pair-typed whenever `T₁`/`T₂` is a product.  That is
+  -- the one case `eqRec`'s peel cannot re-pair, and it is why contexts must hold only free
+  -- (user-named) variables.
+  | pair_elim  : (T₁ T₂ : VarType) → (u₁ u₂ : UserSymb) → (z : UserSymb)
+                 → (hu₁ : u₁.toVar ∉ VarCtx_to_VarSymbs V)
+                 → (hu₂ : u₂.toVar
+                     ∉ VarCtx_to_VarSymbs (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁))
                  → (hz : z.toVar ∉ VarCtx_to_VarSymbs V)
-                 → (w₁eq : VarCtx.insertBnd2 T₁ T₂ V = W₁)
                  → (w₂eq : VarCtx_insert ⟨z.toVar, .VTypeProd T₁ T₂⟩ V hz = W₂)
-                 → Proof σ W₁ Γ φ
-                 → Proof σ W₂ (WFF.pairElim_Finset T₁ T₂ z.toVar rfl hz w₁eq w₂eq Γ)
-                     (WFF.pairElim T₁ T₂ z.toVar rfl hz w₁eq w₂eq φ)
+                 → {Γ : Finset (WFF σ (VarCtx_insert ⟨u₂.toVar, T₂⟩
+                     (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁) hu₂))}
+                 → {φ : WFF σ (VarCtx_insert ⟨u₂.toVar, T₂⟩
+                     (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁) hu₂)}
+                 → Proof σ (VarCtx_insert ⟨u₂.toVar, T₂⟩
+                     (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁) hu₂) Γ φ
+                 → Proof σ W₂
+                     (WFF.pairElim_Finset T₁ T₂ z.toVar rfl hz rfl w₂eq
+                       (WFF.bindPair_Finset T₁ T₂ u₁ u₂ hu₁ hu₂ Γ))
+                     (WFF.pairElim T₁ T₂ z.toVar rfl hz rfl w₂eq
+                       (WFF.bindPair T₁ T₂ u₁ u₂ hu₁ hu₂ φ))
   -- Modal K
   | K_box      : (hsub : (VarCtx_box V).1 ⊆ W.1)
                  → (h_no_box_extras :
