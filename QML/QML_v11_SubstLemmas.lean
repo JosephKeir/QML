@@ -373,3 +373,63 @@ theorem WFF.substCore_box_out {σ : Signature} {V_inner W : VarCtx} {x : VarSymb
     (WFF.substCore hxu hxW h_pf s (WFF.box χ hsub hne)).val = WFF.box χ hsub' hne' := by
   conv_lhs => unfold WFF.substCore
   simp only [dif_neg h_x_out]
+
+/-! ## The `dia` arm — MODAL β, and where `dia_ext` gets consumed
+
+Genuinely different in shape from `box`: the substituted variable IS the `◇`-binder's witness, so
+substitution performs a modal-β reduction — the outer `◇_x` binder is REPLACED by the substituted
+diaterm's own witness `xv_s`, and the body is weakened by `xv_s` and reordered accordingly.
+
+As with `box`, the statement is aligned with what the definition produces: the witness is written
+`⟨x, A⟩` literally (so the definition's `h_xv_eq_x` is `rfl`) and `s`'s inner context is the SAME
+`V_inner` as the formula's (so its `cases h_V_inner_eq` is a `cases` along `rfl`). -/
+
+theorem WFF.substCore_dia_beta {σ : Signature} {V V_inner : VarCtx} {x : VarSymb} {A : VarType}
+    (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (hxv : x ∉ VarCtx_to_VarSymbs V_inner)
+    (h_pf : (VarCtx_insert ⟨x, A.VTypeDia⟩ V hx).PairFree)
+    {xv_s : VarSymb × VarType} (hxv_s : xv_s.1 ∉ VarCtx_to_VarSymbs V_inner)
+    (tt_s : Term σ (VarCtx_insert xv_s V_inner hxv_s) A)
+    (hsub_s : (VarCtx_dia xv_s V_inner hxv_s).1 ⊆ V.1)
+    (hne_s : ∀ p ∈ V.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv_s V_inner hxv_s).1)
+    (inner : WFF σ (VarCtx_insert (⟨x, A⟩ : VarSymb × VarType) V_inner hxv))
+    (hsub : (VarCtx_dia (⟨x, A⟩ : VarSymb × VarType) V_inner hxv).1
+              ⊆ (VarCtx_insert ⟨x, A.VTypeDia⟩ V hx).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨x, A.VTypeDia⟩ V hx).1, VarType.isBox p.2 = true
+             → p ∈ (VarCtx_dia (⟨x, A⟩ : VarSymb × VarType) V_inner hxv).1)
+    (hxv_s_outer : xv_s.1
+      ∉ VarCtx_to_VarSymbs (VarCtx_insert (⟨x, A⟩ : VarSymb × VarType) V_inner hxv))
+    (hx_inner : x ∉ VarCtx_to_VarSymbs (VarCtx_insert xv_s V_inner hxv_s))
+    (hcomm : VarCtx_insert xv_s (VarCtx_insert (⟨x, A⟩ : VarSymb × VarType) V_inner hxv)
+                 hxv_s_outer
+               = VarCtx_insert (⟨x, A⟩ : VarSymb × VarType)
+                   (VarCtx_insert xv_s V_inner hxv_s) hx_inner) :
+    (WFF.substCore hxu hx h_pf (Term.diaterm xv_s hxv_s tt_s hsub_s hne_s)
+        (WFF.dia ⟨x, A⟩ hxv inner hsub hne)).val
+      = WFF.dia xv_s hxv_s
+          (WFF.subst hx_inner tt_s (hcomm ▸ WFF.ctx_ext xv_s hxv_s_outer inner))
+          hsub_s hne_s := by
+  conv_lhs => unfold WFF.substCore
+  -- ⚠️The EMPTY simp set is doing real work: it reduces the `dite` at `x = x` and the two
+  -- `Eq.rec`s along `rfl` proofs that the aligned statement produces.  Plain `rfl` does not
+  -- reach through them at its default transparency.
+  simp only []
+  rfl
+
+/-- The `dia` PASS-THROUGH: neither the witness nor the interior mentions the substituted
+    variable, so the node is rebuilt with its body untouched. -/
+theorem WFF.substCore_dia_out {σ : Signature} {V V_inner : VarCtx} {x : VarSymb} {S : VarType}
+    (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).PairFree) (s : Term σ V S)
+    {xv : VarSymb × VarType} (hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner)
+    (inner : WFF σ (VarCtx_insert xv V_inner hxv))
+    (hsub : (VarCtx_dia xv V_inner hxv).1 ⊆ (VarCtx_insert ⟨x, S⟩ V hx).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨x, S⟩ V hx).1, VarType.isBox p.2 = true
+             → p ∈ (VarCtx_dia xv V_inner hxv).1)
+    (h_xv_ne : ¬ (xv.1 = x)) (h_x_out : x ∉ VarCtx_to_VarSymbs V_inner)
+    (hsub' : (VarCtx_dia xv V_inner hxv).1 ⊆ V.1)
+    (hne' : ∀ p ∈ V.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv V_inner hxv).1) :
+    (WFF.substCore hxu hx h_pf s (WFF.dia xv hxv inner hsub hne)).val
+      = WFF.dia xv hxv inner hsub' hne' := by
+  conv_lhs => unfold WFF.substCore
+  simp only [dif_neg h_xv_ne, dif_neg h_x_out]

@@ -235,3 +235,94 @@ theorem Leib.box_out {σ : Signature} {V_inner W : VarCtx} {u : UserSymb} {S : V
       WFF.substCore_box_out (h_x_out := h_x_out) (hsub' := hsub') (hne' := hne'),
       WFF.substCore_box_out (h_x_out := h_x_out) (hsub' := hsub') (hne' := hne')]
   exact ⟨Proof.impId⟩
+
+/-! ### The `dia` case — modal β, and where `dia_ext` is consumed
+
+The `◇` analogue of `Leib.box`, but genuinely different in shape: the substituted variable IS the
+`◇`-binder's witness, so `subst` performs a MODAL β reduction — the outer `◇_x` binder is REPLACED
+by the substituted diaterm's own witness `xv_s`, and the body is weakened by `xv_s` and reordered.
+Meanwhile `eqRec` at `◇A` is a `□_{xv_s}` of the inner equality, and `□_x` is exactly `K_dia`'s
+witnessed-hypothesis slot — so the two fit together and `congDiaG` carries the inner instance out
+through the `◇`.
+
+Both diaterms carry the SAME witness: for different witnesses `eqRec` is `⊥` (`eqRecCore_dia_ne`)
+and the instance is vacuous. -/
+
+/-- `Δ ⊢ φ → ψ` gives `□_xΔ ⊢ ◇_xφ → ◇_xψ` — `K_dia` with the plain-`□` slot empty. -/
+def Proof.congDiaG {σ : Signature} {V W : VarCtx} {x : VarSymb × VarType}
+    {hx : x.1 ∉ VarCtx_to_VarSymbs V} {Δ : Finset (WFF σ (VarCtx_insert x V hx))}
+    {φ ψ : WFF σ (VarCtx_insert x V hx)}
+    (hsub : (VarCtx_dia x V hx).1 ⊆ W.1)
+    (h : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x V hx).1)
+    (hφψ : Proof σ (VarCtx_insert x V hx) Δ (φ.imp ψ)) :
+    Proof σ W (WFF.box_x_Finset x hx hsub h Δ)
+      ((WFF.dia x hx φ hsub h).imp (WFF.dia x hx ψ hsub h)) := by
+  have h1 : Proof σ (VarCtx_insert x V hx) (Δ ∪ {φ}) ψ :=
+    Proof.imp_elim (Proof.weak hφψ) (Proof.ax (by simp))
+  have hK := Proof.K_dia (Γ := (∅ : Finset (WFF σ V))) (Δ := Δ) x hx hsub h
+    (by simpa [WFF.ctx_ext_Finset] using h1)
+  simp only [WFF.box_Finset, Finset.image_empty, Finset.empty_union] at hK
+  exact Proof.imp_intro hK
+
+theorem Leib.dia {σ : Signature} {V V_inner : VarCtx} {u : UserSymb} {A : VarType}
+    (hV : V.AllUsr) (hx : u.toVar ∉ VarCtx_to_VarSymbs V)
+    (h_pv : V.firstPairVar = none)
+    (hxv : u.toVar ∉ VarCtx_to_VarSymbs V_inner)
+    {xv_s : VarSymb × VarType} (hxv_s : xv_s.1 ∉ VarCtx_to_VarSymbs V_inner)
+    (tt tt' : Term σ (VarCtx_insert xv_s V_inner hxv_s) A)
+    (hsub_s : (VarCtx_dia xv_s V_inner hxv_s).1 ⊆ V.1)
+    (hne_s : ∀ p ∈ V.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv_s V_inner hxv_s).1)
+    (inner : WFF σ (VarCtx_insert (⟨u.toVar, A⟩ : VarSymb × VarType) V_inner hxv))
+    (hsub : (VarCtx_dia (⟨u.toVar, A⟩ : VarSymb × VarType) V_inner hxv).1
+              ⊆ (VarCtx_insert ⟨u.toVar, A.VTypeDia⟩ V hx).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨u.toVar, A.VTypeDia⟩ V hx).1, VarType.isBox p.2 = true
+             → p ∈ (VarCtx_dia (⟨u.toVar, A⟩ : VarSymb × VarType) V_inner hxv).1)
+    (hxv_s_outer : xv_s.1
+      ∉ VarCtx_to_VarSymbs (VarCtx_insert (⟨u.toVar, A⟩ : VarSymb × VarType) V_inner hxv))
+    (hx_inner : u.toVar ∉ VarCtx_to_VarSymbs (VarCtx_insert xv_s V_inner hxv_s))
+    (hcomm : VarCtx_insert xv_s (VarCtx_insert (⟨u.toVar, A⟩ : VarSymb × VarType) V_inner hxv)
+                 hxv_s_outer
+               = VarCtx_insert (⟨u.toVar, A⟩ : VarSymb × VarType)
+                   (VarCtx_insert xv_s V_inner hxv_s) hx_inner)
+    (ih : Leib (hV.of_dia_sub hsub_s) hx_inner tt tt'
+            (hcomm ▸ WFF.ctx_ext xv_s hxv_s_outer inner)) :
+    Leib hV hx (Term.diaterm xv_s hxv_s tt hsub_s hne_s)
+               (Term.diaterm xv_s hxv_s tt' hsub_s hne_s)
+      (WFF.dia ⟨u.toVar, A⟩ hxv inner hsub hne) := by
+  have hSp : (A.VTypeDia).isPair = false := rfl
+  unfold Leib at ih ⊢
+  rw [WFF.subst_eq_substCore (UserSymb.isUsr_toVar u) hx h_pv hSp
+        (pairFree_ext hx h_pv hSp) (Term.diaterm xv_s hxv_s tt hsub_s hne_s)
+        (WFF.dia ⟨u.toVar, A⟩ hxv inner hsub hne),
+      WFF.subst_eq_substCore (UserSymb.isUsr_toVar u) hx h_pv hSp
+        (pairFree_ext hx h_pv hSp) (Term.diaterm xv_s hxv_s tt' hsub_s hne_s)
+        (WFF.dia ⟨u.toVar, A⟩ hxv inner hsub hne),
+      WFF.substCore_dia_beta (hcomm := hcomm), WFF.substCore_dia_beta (hcomm := hcomm),
+      eqRec_of_none h_pv, eqRecCore_dia_same _ _ _ _ _ _ _ _ rfl, diaCast_id]
+  refine ⟨Proof.hyp_cast ?_ (Proof.congDiaG hsub_s hne_s ih.some)⟩
+  simp [WFF.box_x_Finset]
+
+/-- The `dia` PASS-THROUGH: neither the witness nor the interior mentions the substituted
+    variable, so both sides of the implication are literally the same formula. -/
+theorem Leib.dia_out {σ : Signature} {V V_inner : VarCtx} {u : UserSymb} {S : VarType}
+    (hV : V.AllUsr) (hx : u.toVar ∉ VarCtx_to_VarSymbs V)
+    (h_pv : V.firstPairVar = none) (hSp : S.isPair = false) (a b : Term σ V S)
+    {xv : VarSymb × VarType} (hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner)
+    (inner : WFF σ (VarCtx_insert xv V_inner hxv))
+    (hsub : (VarCtx_dia xv V_inner hxv).1 ⊆ (VarCtx_insert ⟨u.toVar, S⟩ V hx).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨u.toVar, S⟩ V hx).1, VarType.isBox p.2 = true
+             → p ∈ (VarCtx_dia xv V_inner hxv).1)
+    (h_xv_ne : ¬ (xv.1 = u.toVar)) (h_x_out : u.toVar ∉ VarCtx_to_VarSymbs V_inner)
+    (hsub' : (VarCtx_dia xv V_inner hxv).1 ⊆ V.1)
+    (hne' : ∀ p ∈ V.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia xv V_inner hxv).1) :
+    Leib hV hx a b (WFF.dia xv hxv inner hsub hne) := by
+  unfold Leib
+  rw [WFF.subst_eq_substCore (UserSymb.isUsr_toVar u) hx h_pv hSp
+        (pairFree_ext hx h_pv hSp) a (WFF.dia xv hxv inner hsub hne),
+      WFF.subst_eq_substCore (UserSymb.isUsr_toVar u) hx h_pv hSp
+        (pairFree_ext hx h_pv hSp) b (WFF.dia xv hxv inner hsub hne),
+      WFF.substCore_dia_out (h_xv_ne := h_xv_ne) (h_x_out := h_x_out)
+        (hsub' := hsub') (hne' := hne'),
+      WFF.substCore_dia_out (h_xv_ne := h_xv_ne) (h_x_out := h_x_out)
+        (hsub' := hsub') (hne' := hne')]
+  exact ⟨Proof.impId⟩
