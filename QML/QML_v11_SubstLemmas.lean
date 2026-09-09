@@ -186,3 +186,122 @@ theorem varSymm {σ : Signature} (W : VarCtx) (hfp : W.firstPairVar = none)
     (u v : Term σ W .Var) :
     Nonempty (Proof σ W ∅ ((WFF.eq u v).imp (WFF.eq v u))) :=
   ⟨Proof.imp_intro (Proof.eqSymmAtomic hfp u v (Proof.ax (by simp)))⟩
+
+/-! ## The propositional arms of `WFF.substCore`
+
+One `conv_lhs => unfold` each.  Stated on `.val` because `substCore` is subtype-valued; the
+`WFF.subst_*` corollaries below are the forms `Leib` actually uses. -/
+
+theorem WFF.substCore_atom {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
+    (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).PairFree) (s : Term σ V S)
+    (R : Rel σ (VarCtx_insert ⟨x, S⟩ V hx) 0) :
+    (WFF.substCore hxu hx h_pf s (WFF.atom R)).val = WFF.atom (Rel.substCore hx h_pf s R) := by
+  conv_lhs => unfold WFF.substCore
+
+theorem WFF.substCore_top {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
+    (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).PairFree) (s : Term σ V S) :
+    (WFF.substCore hxu hx h_pf s WFF.top).val = WFF.top := by
+  conv_lhs => unfold WFF.substCore
+
+theorem WFF.substCore_bot {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
+    (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).PairFree) (s : Term σ V S) :
+    (WFF.substCore hxu hx h_pf s WFF.bot).val = WFF.bot := by
+  conv_lhs => unfold WFF.substCore
+
+theorem WFF.substCore_and {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
+    (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).PairFree) (s : Term σ V S)
+    (φ ψ : WFF σ (VarCtx_insert ⟨x, S⟩ V hx)) :
+    (WFF.substCore hxu hx h_pf s (WFF.and φ ψ)).val
+      = WFF.and (WFF.substCore hxu hx h_pf s φ).val (WFF.substCore hxu hx h_pf s ψ).val := by
+  conv_lhs => unfold WFF.substCore
+
+theorem WFF.substCore_or {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
+    (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).PairFree) (s : Term σ V S)
+    (φ ψ : WFF σ (VarCtx_insert ⟨x, S⟩ V hx)) :
+    (WFF.substCore hxu hx h_pf s (WFF.or φ ψ)).val
+      = WFF.or (WFF.substCore hxu hx h_pf s φ).val (WFF.substCore hxu hx h_pf s ψ).val := by
+  conv_lhs => unfold WFF.substCore
+
+theorem WFF.substCore_imp {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
+    (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).PairFree) (s : Term σ V S)
+    (φ ψ : WFF σ (VarCtx_insert ⟨x, S⟩ V hx)) :
+    (WFF.substCore hxu hx h_pf s (WFF.imp φ ψ)).val
+      = WFF.imp (WFF.substCore hxu hx h_pf s φ).val (WFF.substCore hxu hx h_pf s ψ).val := by
+  conv_lhs => unfold WFF.substCore
+
+/-! ## The public `WFF.subst` corollaries
+
+`Leib` is stated with `WFF.subst`, so each of the above is repackaged by composing it with
+`WFF.subst_eq_substCore` on both sides. -/
+
+/-- A pair-free base context plus a non-product substituted type makes the EXTENDED context
+    pair-free — the side condition every reduction lemma needs. -/
+theorem pairFree_ext {V : VarCtx} {x : VarSymb} {S : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V) (h_pv : V.firstPairVar = none) (hSp : S.isPair = false) :
+    (VarCtx_insert ⟨x, S⟩ V hx).PairFree :=
+  VarCtx.pairFree_insert hx (VarCtx.pairFree_of_firstPairVar_none h_pv)
+    (fun _ _ h => by subst h; simp [VarType.isPair] at hSp)
+
+variable {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
+
+theorem WFF.subst_atom (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pv : V.firstPairVar = none) (hSp : S.isPair = false) (s : Term σ V S)
+    (R : Rel σ (VarCtx_insert ⟨x, S⟩ V hx) 0) :
+    WFF.subst hx s (WFF.atom R)
+      = WFF.atom (Rel.substCore hx (pairFree_ext hx h_pv hSp) s R) := by
+  rw [WFF.subst_eq_substCore hxu hx h_pv hSp (pairFree_ext hx h_pv hSp) s (WFF.atom R),
+      WFF.substCore_atom]
+
+theorem WFF.subst_top (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pv : V.firstPairVar = none) (hSp : S.isPair = false) (s : Term σ V S) :
+    WFF.subst hx s (WFF.top : WFF σ (VarCtx_insert ⟨x, S⟩ V hx)) = WFF.top := by
+  rw [WFF.subst_eq_substCore hxu hx h_pv hSp (pairFree_ext hx h_pv hSp) s WFF.top,
+      WFF.substCore_top]
+
+theorem WFF.subst_bot (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pv : V.firstPairVar = none) (hSp : S.isPair = false) (s : Term σ V S) :
+    WFF.subst hx s (WFF.bot : WFF σ (VarCtx_insert ⟨x, S⟩ V hx)) = WFF.bot := by
+  rw [WFF.subst_eq_substCore hxu hx h_pv hSp (pairFree_ext hx h_pv hSp) s WFF.bot,
+      WFF.substCore_bot]
+
+theorem WFF.subst_and (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pv : V.firstPairVar = none) (hSp : S.isPair = false) (s : Term σ V S)
+    (φ ψ : WFF σ (VarCtx_insert ⟨x, S⟩ V hx)) :
+    WFF.subst hx s (WFF.and φ ψ) = WFF.and (WFF.subst hx s φ) (WFF.subst hx s ψ) := by
+  rw [WFF.subst_eq_substCore hxu hx h_pv hSp (pairFree_ext hx h_pv hSp) s (WFF.and φ ψ),
+      WFF.subst_eq_substCore hxu hx h_pv hSp (pairFree_ext hx h_pv hSp) s φ,
+      WFF.subst_eq_substCore hxu hx h_pv hSp (pairFree_ext hx h_pv hSp) s ψ,
+      WFF.substCore_and]
+
+theorem WFF.subst_or (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pv : V.firstPairVar = none) (hSp : S.isPair = false) (s : Term σ V S)
+    (φ ψ : WFF σ (VarCtx_insert ⟨x, S⟩ V hx)) :
+    WFF.subst hx s (WFF.or φ ψ) = WFF.or (WFF.subst hx s φ) (WFF.subst hx s ψ) := by
+  rw [WFF.subst_eq_substCore hxu hx h_pv hSp (pairFree_ext hx h_pv hSp) s (WFF.or φ ψ),
+      WFF.subst_eq_substCore hxu hx h_pv hSp (pairFree_ext hx h_pv hSp) s φ,
+      WFF.subst_eq_substCore hxu hx h_pv hSp (pairFree_ext hx h_pv hSp) s ψ,
+      WFF.substCore_or]
+
+theorem WFF.subst_imp (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pv : V.firstPairVar = none) (hSp : S.isPair = false) (s : Term σ V S)
+    (φ ψ : WFF σ (VarCtx_insert ⟨x, S⟩ V hx)) :
+    WFF.subst hx s (WFF.imp φ ψ) = WFF.imp (WFF.subst hx s φ) (WFF.subst hx s ψ) := by
+  rw [WFF.subst_eq_substCore hxu hx h_pv hSp (pairFree_ext hx h_pv hSp) s (WFF.imp φ ψ),
+      WFF.subst_eq_substCore hxu hx h_pv hSp (pairFree_ext hx h_pv hSp) s φ,
+      WFF.subst_eq_substCore hxu hx h_pv hSp (pairFree_ext hx h_pv hSp) s ψ,
+      WFF.substCore_imp]
+
+theorem WFF.subst_eq (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pv : V.firstPairVar = none) (hSp : S.isPair = false) (s : Term σ V S)
+    (s' t' : Term σ (VarCtx_insert ⟨x, S⟩ V hx) .Var) :
+    WFF.subst hx s (WFF.eq s' t')
+      = WFF.eq (Term.substCore hx (pairFree_ext hx h_pv hSp) s s')
+               (Term.substCore hx (pairFree_ext hx h_pv hSp) s t') := by
+  rw [WFF.subst_eq_substCore hxu hx h_pv hSp (pairFree_ext hx h_pv hSp) s (WFF.eq s' t'),
+      WFF.substCore_eq]
