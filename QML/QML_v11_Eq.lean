@@ -240,6 +240,19 @@ def Term.unbindPair {σ : Signature} {V : VarCtx} (T₁ T₂ : VarType) (u₁ u�
     (a := (⟨u₁.toVar, T₁⟩ : VarSymb × VarType))
     (b := (⟨u₂.toVar, T₂⟩ : VarSymb × VarType)) hu₁' hu₂ ▸ t₄
 
+/-- Extract the `UserSymb` behind a user-named symbol.  `eqRec`'s peel needs this: `firstPairVar`
+    hands back a `VarSymb`, `AllUsr` says it is user-named, and `Proof.pair_elim` takes the
+    user-facing TYPE. -/
+def VarSymb.toUser : (v : VarSymb) → v.isUsr = true → UserSymb
+  | .mk n, _  => ⟨n⟩
+  | .bnd _, h => absurd h (by simp [VarSymb.isUsr])
+
+@[simp] theorem VarSymb.toUser_toVar (v : VarSymb) (h : v.isUsr = true) :
+    (v.toUser h).toVar = v := by
+  cases v with
+  | mk n => rfl
+  | bnd n => simp [VarSymb.isUsr] at h
+
 /-! ## The recursive extensional equality `eqRec`
 
 Split into a **dispatcher** (`eqRec`), a **peel** and a **pair-free core**:
@@ -269,7 +282,9 @@ def eqRec {σ : Signature} :
     (V : VarCtx) → V.AllUsr → (S : VarType) → Term σ V S → Term σ V S → WFF σ V
   | V, hV, S, t, s =>
     match hfp : V.firstPairVar with
-    | some ⟨⟨z, V1, V2⟩, hzmem⟩ => eqRecPeel V hV S z V1 V2 hzmem t s
+    | some ⟨⟨z, V1, V2⟩, hzmem⟩ =>
+        eqRecPeel V hV S (z.toUser (hV _ hzmem)) V1 V2
+          (by rw [VarSymb.toUser_toVar]; exact hzmem) t s
     | none => eqRecCore V hV S hfp t s
 termination_by V _ S _ _ => (sizeOf S, V.pairDepth, 2)
 decreasing_by
@@ -279,14 +294,13 @@ decreasing_by
     then bind those components back onto the canonical slots and re-pair.  The result has exactly
     the shape `Proof.pair_elim` discharges. -/
 def eqRecPeel {σ : Signature} (V : VarCtx) (hV : V.AllUsr) (S : VarType)
-    (z : VarSymb) (V1 V2 : VarType)
-    (hzmem : (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ V.1)
+    (z : UserSymb) (V1 V2 : VarType)
+    (hzmem : (⟨z.toVar, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ V.1)
     (t s : Term σ V S) : WFF σ V :=
-  let V₀ := VarCtx_erase V ⟨z, V1.VTypeProd V2⟩
-  have hz_fresh : z ∉ VarCtx_to_VarSymbs V₀ := VarCtx_erase_fresh hzmem
-  have V_eq : VarCtx_insert ⟨z, V1.VTypeProd V2⟩ V₀ hz_fresh = V :=
+  let V₀ := VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩
+  have hz_fresh : z.toVar ∉ VarCtx_to_VarSymbs V₀ := VarCtx_erase_fresh hzmem
+  have V_eq : VarCtx_insert ⟨z.toVar, V1.VTypeProd V2⟩ V₀ hz_fresh = V :=
     VarCtx_insert_erase hzmem hz_fresh
-  have hzu : z.isUsr = true := hV _ hzmem
   have hu₁ : (UserSymb.fresh (VarCtx_to_VarSymbs V₀)).toVar ∉ VarCtx_to_VarSymbs V₀ :=
     UserSymb.fresh_not_mem _
   have hu₂ : (UserSymb.fresh (VarCtx_to_VarSymbs
@@ -294,20 +308,20 @@ def eqRecPeel {σ : Signature} (V : VarCtx) (hV : V.AllUsr) (S : VarType)
       ∉ VarCtx_to_VarSymbs
         (VarCtx_insert ⟨(UserSymb.fresh (VarCtx_to_VarSymbs V₀)).toVar, V1⟩ V₀ hu₁) :=
     UserSymb.fresh_not_mem _
-  have hT : Term σ (VarCtx_insert ⟨z, V1.VTypeProd V2⟩ V₀ hz_fresh) S = Term σ V S := by rw [V_eq]
-  have hW : WFF σ (VarCtx_insert ⟨z, V1.VTypeProd V2⟩ V₀ hz_fresh) = WFF σ V := by rw [V_eq]
-  cast hW (WFF.pairElim V1 V2 z hzu hz_fresh rfl rfl
+  have hT : Term σ (VarCtx_insert ⟨z.toVar, V1.VTypeProd V2⟩ V₀ hz_fresh) S = Term σ V S := by
+    rw [V_eq]
+  V_eq ▸ (WFF.pairElim V1 V2 z.toVar rfl hz_fresh rfl rfl
     (WFF.bindPair V1 V2 _ _ hu₁ hu₂
       (eqRec _ (((hV.erase _).insert hu₁ rfl).insert hu₂ rfl) S
         (Term.unbindPair V1 V2 _ _ hu₁ hu₂
-          (Term.unpair V1 V2 z hzu hz_fresh (cast hT.symm t)))
+          (Term.unpair V1 V2 z.toVar rfl hz_fresh (cast hT.symm t)))
         (Term.unbindPair V1 V2 _ _ hu₁ hu₂
-          (Term.unpair V1 V2 z hzu hz_fresh (cast hT.symm s))))))
+          (Term.unpair V1 V2 z.toVar rfl hz_fresh (cast hT.symm s))))))
 termination_by (sizeOf S, V.pairDepth, 1)
 decreasing_by
   refine Prod.Lex.right _ (Prod.Lex.left _ _ ?_)
-  have hV0 := VarCtx.pairDepth_insert (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType)
-    (VarCtx_erase V ⟨z, V1.VTypeProd V2⟩) (VarCtx_erase_fresh hzmem)
+  have hV0 := VarCtx.pairDepth_insert (⟨z.toVar, V1.VTypeProd V2⟩ : VarSymb × VarType)
+    (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩) (VarCtx_erase_fresh hzmem)
   rw [VarCtx_insert_erase hzmem (VarCtx_erase_fresh hzmem)] at hV0
   simp only [VarCtx.pairDepth_insert, VarType.pairDepth] at hV0 ⊢
   omega
@@ -339,3 +353,377 @@ decreasing_by
   all_goals (refine Prod.Lex.left _ _ ?_; simp; try omega)
 
 end
+
+/-! ### How `eqRec` computes
+
+`eqRec_of_none` is the one-step dispatcher equation.  The `eqRecCore_*` equations then unfold ONE
+constructive arm each, leaving the `eqRec` occurrences on the right alone — which is exactly what
+the dispatcher/core split buys.  Composing them gives the modal extensionality equations:
+⭐**`box_ext` and `dia_ext` as DEFINING EQUATIONS**, which is why they are no longer rules. -/
+
+theorem eqRec_of_none {σ : Signature} {V : VarCtx} {hV : V.AllUsr} {S : VarType}
+    (hfp : V.firstPairVar = none) (t s : Term σ V S) :
+    eqRec V hV S t s = eqRecCore V hV S hfp t s := by
+  unfold eqRec
+  split
+  all_goals first
+    | rfl
+    | (rename_i hsome; rw [hfp] at hsome; exact absurd hsome (by simp))
+
+theorem eqRecCore_var {σ : Signature} {V : VarCtx} (hV : V.AllUsr)
+    (hfp : V.firstPairVar = none) (t s : Term σ V .Var) :
+    eqRecCore V hV .Var hfp t s = WFF.eq t s := by simp only [eqRecCore]
+
+theorem eqRecCore_unit {σ : Signature} {V : VarCtx} (hV : V.AllUsr)
+    (hfp : V.firstPairVar = none) (t s : Term σ V .VTypeOne) :
+    eqRecCore V hV .VTypeOne hfp t s = WFF.top := by simp only [eqRecCore]
+
+theorem eqRecCore_prod {σ : Signature} {V : VarCtx} (hV : V.AllUsr)
+    (hfp : V.firstPairVar = none) {A B : VarType}
+    (a c : Term σ V A) (b d : Term σ V B) :
+    eqRecCore V hV (.VTypeProd A B) hfp (.pair a b) (.pair c d)
+      = WFF.and (eqRec V hV A a c) (eqRec V hV B b d) := by simp only [eqRecCore]
+
+/-- ⭐**`box_ext`, definitionally.** -/
+theorem eqRecCore_box {σ : Signature} {W : VarCtx} (hW : W.AllUsr)
+    (hfp : W.firstPairVar = none) {A : VarType} {V₁ V₂ : VarCtx}
+    (tt₁ : Term σ V₁ A) (tt₂ : Term σ V₂ A)
+    (hsub₁ : (VarCtx_box V₁).1 ⊆ W.1)
+    (h₁ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V₁).1)
+    (hsub₂ : (VarCtx_box V₂).1 ⊆ W.1)
+    (h₂ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V₂).1) :
+    eqRecCore W hW (.VTypeBox A) hfp (.boxterm tt₁ hsub₁ h₁) (.boxterm tt₂ hsub₂ h₂)
+      = WFF.box (eqRec V₁ (hW.of_box_sub hsub₁) A tt₁ (boxCast hsub₁ h₁ hsub₂ h₂ tt₂))
+          hsub₁ h₁ := by
+  simp only [eqRecCore]
+
+/-- ⭐**`dia_ext`, definitionally** (same ◇-witness). -/
+theorem eqRecCore_dia_same {σ : Signature} {W : VarCtx} (hW : W.AllUsr)
+    (hfp : W.firstPairVar = none) {A : VarType} {x₁ x₂ : VarSymb × VarType} {V₁ V₂ : VarCtx}
+    {hx₁ : x₁.1 ∉ VarCtx_to_VarSymbs V₁} {hx₂ : x₂.1 ∉ VarCtx_to_VarSymbs V₂}
+    (tt₁ : Term σ (VarCtx_insert x₁ V₁ hx₁) A) (tt₂ : Term σ (VarCtx_insert x₂ V₂ hx₂) A)
+    (hsub₁ : (VarCtx_dia x₁ V₁ hx₁).1 ⊆ W.1)
+    (h₁ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x₁ V₁ hx₁).1)
+    (hsub₂ : (VarCtx_dia x₂ V₂ hx₂).1 ⊆ W.1)
+    (h₂ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x₂ V₂ hx₂).1)
+    (hx : x₁ = x₂) :
+    eqRecCore W hW (.VTypeDia A) hfp (.diaterm x₁ hx₁ tt₁ hsub₁ h₁)
+        (.diaterm x₂ hx₂ tt₂ hsub₂ h₂)
+      = WFF.box_x x₁ hx₁ hsub₁ h₁
+          (eqRec (VarCtx_insert x₁ V₁ hx₁) (hW.of_dia_sub hsub₁) A tt₁
+            (diaCast hx hsub₁ h₁ hsub₂ h₂ tt₂)) := by
+  simp only [eqRecCore, dif_pos hx]
+
+/-! ## Reflexivity of `eqRec`
+
+`⊢ t ≐ t` at every type.  The modal cases are necessitation of the inner reflexivity — plain for
+`□`, witnessed for `◇` — and the peel case is exactly `Proof.pair_elim`, which is what the
+user-named components were for. -/
+
+theorem eqRecPeel_refl {σ : Signature} (V : VarCtx) (hV : V.AllUsr) (S : VarType)
+    (z : UserSymb) (V1 V2 : VarType)
+    (hzmem : (⟨z.toVar, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ V.1)
+    (t : Term σ V S)
+    (IH : ∀ (W : VarCtx) (hW : W.AllUsr), W.pairDepth < V.pairDepth →
+            ∀ (u : Term σ W S), Nonempty (Proof σ W ∅ (eqRec W hW S u u))) :
+    Nonempty (Proof σ V ∅ (eqRecPeel V hV S z V1 V2 hzmem t t)) := by
+  have hz_fresh : z.toVar ∉ VarCtx_to_VarSymbs (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩) :=
+    VarCtx_erase_fresh hzmem
+  have V_eq : VarCtx_insert ⟨z.toVar, V1.VTypeProd V2⟩
+      (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩) hz_fresh = V :=
+    VarCtx_insert_erase hzmem hz_fresh
+  have hu₁ : (UserSymb.fresh (VarCtx_to_VarSymbs
+        (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩))).toVar
+      ∉ VarCtx_to_VarSymbs (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩) :=
+    UserSymb.fresh_not_mem _
+  have hu₂ : (UserSymb.fresh (VarCtx_to_VarSymbs (VarCtx_insert
+        ⟨(UserSymb.fresh (VarCtx_to_VarSymbs
+          (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩))).toVar, V1⟩
+        (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩) hu₁))).toVar
+      ∉ VarCtx_to_VarSymbs (VarCtx_insert
+        ⟨(UserSymb.fresh (VarCtx_to_VarSymbs
+          (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩))).toVar, V1⟩
+        (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩) hu₁) :=
+    UserSymb.fresh_not_mem _
+  have hlt : (VarCtx_insert ⟨_, V2⟩ (VarCtx_insert ⟨_, V1⟩
+      (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩) hu₁) hu₂).pairDepth < V.pairDepth := by
+    have hV0 := VarCtx.pairDepth_insert (⟨z.toVar, V1.VTypeProd V2⟩ : VarSymb × VarType)
+      (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩) hz_fresh
+    rw [V_eq] at hV0
+    simp only [VarCtx.pairDepth_insert, VarType.pairDepth] at hV0 ⊢
+    omega
+  unfold eqRecPeel
+  obtain ⟨p⟩ := IH _ (((hV.erase _).insert hu₁ rfl).insert hu₂ rfl) hlt _
+  refine ⟨Proof.ctx_cast V_eq ?_⟩
+  have hP := Proof.pair_elim V1 V2 _ _ z hu₁ hu₂ hz_fresh rfl p
+  simpa [WFF.pairElim_Finset, WFF.bindPair_Finset] using hP
+
+/-- Reflexivity for the PAIR-FREE CORE, given the induction hypothesis at strictly smaller type. -/
+theorem eqRecCore_refl {σ : Signature} : ∀ (V : VarCtx) (hV : V.AllUsr) (S : VarType)
+    (hfp : V.firstPairVar = none) (t : Term σ V S),
+    (∀ (A : VarType), sizeOf A < sizeOf S → ∀ (W : VarCtx) (hW : W.AllUsr) (u : Term σ W A),
+        Nonempty (Proof σ W ∅ (eqRec W hW A u u))) →
+    Nonempty (Proof σ V ∅ (eqRecCore V hV S hfp t t))
+  | _, hV, .Var, hfp, t, _ => by rw [eqRecCore_var]; exact ⟨Proof.eq_intro t⟩
+  | _, hV, .VTypeOne, hfp, t, _ => by rw [eqRecCore_unit]; exact ⟨Proof.top_intro⟩
+  | V, hV, .VTypeProd A B, hfp, .pair a b, IH => by
+      rw [eqRecCore_prod]
+      obtain ⟨pa⟩ := IH A (by simp; try omega) V hV a
+      obtain ⟨pb⟩ := IH B (by simp; try omega) V hV b
+      exact ⟨Proof.and_intro pa pb⟩
+  | _, hV, .VTypeBox A, hfp, .boxterm tt hsub h, IH => by
+      rw [eqRecCore_box, boxCast_self]
+      obtain ⟨p⟩ := IH A (by simp; try omega) _ (hV.of_box_sub hsub) tt
+      exact ⟨Proof.nec hsub h p⟩
+  | _, hV, .VTypeDia A, hfp, .diaterm x hx tt hsub h, IH => by
+      rw [eqRecCore_dia_same _ _ _ _ _ _ _ _ rfl, diaCast_self]
+      obtain ⟨p⟩ := IH A (by simp; try omega) _ (hV.of_dia_sub hsub) tt
+      exact ⟨Proof.necx hsub h p⟩
+  | _, _, _, hfp, .pair_elim _ _ _ _ _ w₂eq _, _ =>
+      (VarCtx.firstPairVar_none_no_pair hfp (pair_elim_ctx_mem w₂eq)).elim
+
+/-- ⭐**Reflexivity of the defined equality**: `⊢ t ≐ t`. -/
+theorem eqRec_refl {σ : Signature} : ∀ (V : VarCtx) (hV : V.AllUsr) (S : VarType) (t : Term σ V S),
+    Nonempty (Proof σ V ∅ (eqRec V hV S t t))
+  | V, hV, S, t => by
+    unfold eqRec
+    split
+    · exact eqRecPeel_refl _ _ _ _ _ _ _ t (fun W hW _ u => eqRec_refl W hW S u)
+    · exact eqRecCore_refl _ _ _ _ t (fun A _ W hW u => eqRec_refl W hW A u)
+termination_by V _ S _ => (sizeOf S, V.pairDepth)
+decreasing_by
+  · exact Prod.Lex.right _ (by assumption)
+  · exact Prod.Lex.left _ _ (by assumption)
+
+/-! ## Congruence / K-distribution infrastructure (for symmetry)
+
+Symmetry must be an OBJECT implication `⊢ (a ≐ b) → (b ≐ a)`, because the modal cases transform the
+equality UNDER a `□`/`□_x` — which needs K distribution, not just necessitation.  The peel case
+needs the same thing for `pairElim`, which is `pair_elim` applied to a singleton hypothesis set. -/
+
+/-- Transport a proof along an equality of HYPOTHESIS SETS (`Proof.ctx_cast` moves the `VarCtx`). -/
+def Proof.hyp_cast {σ : Signature} {V : VarCtx} {Γ Γ' : Finset (WFF σ V)} {φ : WFF σ V}
+    (h : Γ = Γ') (p : Proof σ V Γ φ) : Proof σ V Γ' φ := h ▸ p
+
+def Proof.impId {σ : Signature} {V : VarCtx} {Γ : Finset (WFF σ V)} {φ : WFF σ V} :
+    Proof σ V Γ (φ.imp φ) :=
+  Proof.imp_intro (Proof.ax (by simp))
+
+/-- `∧`-congruence. -/
+def Proof.congAnd {σ : Signature} {V : VarCtx} {Γ : Finset (WFF σ V)} {p p' q q' : WFF σ V}
+    (hp : Proof σ V Γ (p.imp p')) (hq : Proof σ V Γ (q.imp q')) :
+    Proof σ V Γ ((p.and q).imp (p'.and q')) := by
+  have hax : Proof σ V (Γ ∪ {p.and q}) (p.and q) := Proof.ax (by simp)
+  exact Proof.imp_intro (Proof.and_intro
+    (Proof.imp_elim (Proof.weak hp) (Proof.and_elim_l hax))
+    (Proof.imp_elim (Proof.weak hq) (Proof.and_elim_r hax)))
+
+/-- **K distribution for `□`**: `⊢ φ → ψ` gives `⊢ □φ → □ψ` (`K_box` at a singleton context). -/
+def Proof.congBox {σ : Signature} {V W : VarCtx} {φ ψ : WFF σ V}
+    (hsub : (VarCtx_box V).1 ⊆ W.1)
+    (h : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V).1)
+    (hφψ : Proof σ V ∅ (φ.imp ψ)) :
+    Proof σ W ∅ ((WFF.box φ hsub h).imp (WFF.box ψ hsub h)) := by
+  have h1 : Proof σ V (∅ ∪ {φ}) ψ := Proof.imp_elim (Proof.weak hφψ) (Proof.ax (by simp))
+  have hK := Proof.K_box hsub h h1
+  simp only [WFF.box_Finset, Finset.empty_union, Finset.image_singleton] at hK
+  exact Proof.imp_intro (by simpa using hK)
+
+/-- **K distribution for the witnessed `□_x`**: `⊢ φ → ψ` gives `⊢ □_xφ → □_xψ`.  Derived from
+    `K_dia`: `¬ψ ⊢ ¬φ`, hence `◇_x¬ψ ⊢ ◇_x¬φ`; since `□_xφ = ¬◇_x¬φ` that contradicts, giving
+    `□_xφ, ◇_x¬ψ ⊢ ⊥`, and two `imp_intro`s finish. -/
+def Proof.congBoxx {σ : Signature} {V W : VarCtx} {x : VarSymb × VarType}
+    {hx : x.1 ∉ VarCtx_to_VarSymbs V} {φ ψ : WFF σ (VarCtx_insert x V hx)}
+    (hsub : (VarCtx_dia x V hx).1 ⊆ W.1)
+    (h : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x V hx).1)
+    (hφψ : Proof σ (VarCtx_insert x V hx) ∅ (φ.imp ψ)) :
+    Proof σ W ∅ ((WFF.box_x x hx hsub h φ).imp (WFF.box_x x hx hsub h ψ)) := by
+  have hnn : Proof σ (VarCtx_insert x V hx) (∅ ∪ {neg ψ}) (neg φ) :=
+    Proof.imp_intro (Proof.imp_elim (Proof.ax (by simp))
+      (Proof.imp_elim (Proof.weak (Proof.weak hφψ)) (Proof.ax (by simp))))
+  have hK := Proof.K_dia (Γ := (∅ : Finset (WFF σ V)))
+    (Δ := (∅ : Finset (WFF σ (VarCtx_insert x V hx)))) x hx hsub h
+    (by simpa [WFF.ctx_ext_Finset] using hnn)
+  simp only [WFF.box_Finset, WFF.box_x_Finset, Finset.image_empty, Finset.empty_union] at hK
+  refine Proof.imp_intro (Proof.imp_intro ?_)
+  have hd : Proof σ W ((∅ ∪ {WFF.box_x x hx hsub h φ}) ∪ {WFF.dia x hx (neg ψ) hsub h})
+      (WFF.dia x hx (neg φ) hsub h) :=
+    Proof.hyp_cast (by rw [Finset.empty_union]; exact Finset.union_comm _ _) (Proof.weak hK)
+  have hbx : Proof σ W ((∅ ∪ {WFF.box_x x hx hsub h φ}) ∪ {WFF.dia x hx (neg ψ) hsub h})
+      (WFF.box_x x hx hsub h φ) := Proof.ax (by simp)
+  exact Proof.imp_elim hbx hd
+
+/-- **`pairElim`-congruence**, in exactly the shape `eqRecPeel` produces: the peel's body is
+    `pairElim ∘ bindPair`, so this is `Proof.pair_elim` at the singleton hypothesis set `{φ}`. -/
+def Proof.congPeel {σ : Signature} {V W₂ : VarCtx} (T₁ T₂ : VarType) (u₁ u₂ z : UserSymb)
+    (hu₁ : u₁.toVar ∉ VarCtx_to_VarSymbs V)
+    (hu₂ : u₂.toVar ∉ VarCtx_to_VarSymbs (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁))
+    (hz : z.toVar ∉ VarCtx_to_VarSymbs V)
+    (w₂eq : VarCtx_insert ⟨z.toVar, .VTypeProd T₁ T₂⟩ V hz = W₂)
+    {φ ψ : WFF σ (VarCtx_insert ⟨u₂.toVar, T₂⟩ (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁) hu₂)}
+    (hφψ : Proof σ (VarCtx_insert ⟨u₂.toVar, T₂⟩ (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁) hu₂) ∅
+             (φ.imp ψ)) :
+    Proof σ W₂ ∅
+      ((WFF.pairElim T₁ T₂ z.toVar rfl hz rfl w₂eq (WFF.bindPair T₁ T₂ u₁ u₂ hu₁ hu₂ φ)).imp
+       (WFF.pairElim T₁ T₂ z.toVar rfl hz rfl w₂eq (WFF.bindPair T₁ T₂ u₁ u₂ hu₁ hu₂ ψ))) := by
+  have h1 : Proof σ (VarCtx_insert ⟨u₂.toVar, T₂⟩ (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁) hu₂)
+      (∅ ∪ {φ}) ψ := Proof.imp_elim (Proof.weak hφψ) (Proof.ax (by simp))
+  have hP := Proof.pair_elim T₁ T₂ u₁ u₂ z hu₁ hu₂ hz w₂eq h1
+  simp only [WFF.pairElim_Finset, WFF.bindPair_Finset, Finset.empty_union,
+    Finset.image_singleton] at hP
+  exact Proof.imp_intro (by simpa using hP)
+
+/-- Context transport distributes over implication. -/
+theorem WFF_ctx_cast_imp {σ : Signature} {V W : VarCtx} (h : V = W) (φ ψ : WFF σ V) :
+    h ▸ (φ.imp ψ) = (h ▸ φ).imp (h ▸ ψ) := by cases h; rfl
+
+/-! ### Determinacy casts on the diagonal, with INDEPENDENT proof arguments
+
+`eqRecCore_symm` rewrites both orientations, and the reversed one supplies the two subset/no-extras
+proofs the other way round.  They are `Prop`s, so the cast is still the identity — but the equation
+has to be stated with four independent arguments for `rw` to fire on it. -/
+
+theorem boxCast_id {σ : Signature} {A : VarType} {V W : VarCtx}
+    (hsub₁ : (VarCtx_box V).1 ⊆ W.1)
+    (h₁ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V).1)
+    (hsub₂ : (VarCtx_box V).1 ⊆ W.1)
+    (h₂ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V).1)
+    (tt : Term σ V A) : boxCast hsub₁ h₁ hsub₂ h₂ tt = tt := rfl
+
+theorem diaCast_id {σ : Signature} {A : VarType} {x : VarSymb × VarType} {V W : VarCtx}
+    {hx₁ hx₂ : x.1 ∉ VarCtx_to_VarSymbs V}
+    (hsub₁ : (VarCtx_dia x V hx₁).1 ⊆ W.1)
+    (h₁ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x V hx₁).1)
+    (hsub₂ : (VarCtx_dia x V hx₂).1 ⊆ W.1)
+    (h₂ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x V hx₂).1)
+    (tt : Term σ (VarCtx_insert x V hx₂) A) :
+    diaCast rfl hsub₁ h₁ hsub₂ h₂ tt = tt := rfl
+
+/-- The ◇-arm at DIFFERENT witnesses: distinct witnesses can never be equated, so the defined
+    equality is `⊥`.  (Needed only for symmetry, where `⊥ → ⊥` is `impId`.) -/
+theorem eqRecCore_dia_ne {σ : Signature} {W : VarCtx} (hW : W.AllUsr)
+    (hfp : W.firstPairVar = none) {A : VarType} {x₁ x₂ : VarSymb × VarType} {V₁ V₂ : VarCtx}
+    {hx₁ : x₁.1 ∉ VarCtx_to_VarSymbs V₁} {hx₂ : x₂.1 ∉ VarCtx_to_VarSymbs V₂}
+    (tt₁ : Term σ (VarCtx_insert x₁ V₁ hx₁) A) (tt₂ : Term σ (VarCtx_insert x₂ V₂ hx₂) A)
+    (hsub₁ : (VarCtx_dia x₁ V₁ hx₁).1 ⊆ W.1)
+    (h₁ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x₁ V₁ hx₁).1)
+    (hsub₂ : (VarCtx_dia x₂ V₂ hx₂).1 ⊆ W.1)
+    (h₂ : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x₂ V₂ hx₂).1)
+    (hx : ¬ (x₁ = x₂)) :
+    eqRecCore W hW (.VTypeDia A) hfp (.diaterm x₁ hx₁ tt₁ hsub₁ h₁)
+        (.diaterm x₂ hx₂ tt₂ hsub₂ h₂)
+      = WFF.bot := by
+  simp only [eqRecCore, dif_neg hx]
+
+/-! ## Symmetry of `eqRec`
+
+Stated as an object implication `⊢ (a ≐ b) → (b ≐ a)`.  The `.Var` base is ATOMIC symmetry of the
+primitive equality — a Leibniz derivation via `eq_elim` that needs the `substVar` reduction lemmas,
+not yet ported to v11 — so it is taken as a hypothesis, isolating that single dependency;
+everything structural and modal is proved here.
+
+⭐**The peel case is where v11 pays off.**  In v10 the peel chose its fresh names from
+`… ∪ boundVars a ∪ boundVars b`, so `eqRecPeel … a b` and `eqRecPeel … b a` picked names differing
+by a `Finset.union_right_comm`, and symmetry had to rewrite them into agreement.  In v11 the names
+come from the ERASED CONTEXT alone — the terms play no part — so the two sides are literally the
+same peel applied to swapped arguments, and `congPeel` of the induction hypothesis finishes. -/
+
+/-- **Symmetry for the pair-free core**, given atomic Var-symmetry and the IH at smaller type. -/
+theorem eqRecCore_symm {σ : Signature}
+    (hVarSymm : ∀ (W : VarCtx), W.firstPairVar = none → ∀ (u v : Term σ W .Var),
+      Nonempty (Proof σ W ∅ ((WFF.eq u v).imp (WFF.eq v u)))) :
+    ∀ (V : VarCtx) (hV : V.AllUsr) (S : VarType) (hfp : V.firstPairVar = none) (a b : Term σ V S),
+    (∀ (A : VarType), sizeOf A < sizeOf S → ∀ (W : VarCtx) (hW : W.AllUsr) (u v : Term σ W A),
+        Nonempty (Proof σ W ∅ ((eqRec W hW A u v).imp (eqRec W hW A v u)))) →
+    Nonempty (Proof σ V ∅ ((eqRecCore V hV S hfp a b).imp (eqRecCore V hV S hfp b a)))
+  | _, hV, .Var, hfp, a, b, _ => by
+      rw [eqRecCore_var, eqRecCore_var]; exact hVarSymm _ hfp a b
+  | _, hV, .VTypeOne, hfp, a, b, _ => by
+      rw [eqRecCore_unit, eqRecCore_unit]; exact ⟨Proof.impId⟩
+  | V, hV, .VTypeProd A B, hfp, .pair a b, .pair c d, IH => by
+      rw [eqRecCore_prod, eqRecCore_prod]
+      obtain ⟨p1⟩ := IH A (by simp; try omega) V hV a c
+      obtain ⟨p2⟩ := IH B (by simp; try omega) V hV b d
+      exact ⟨Proof.congAnd p1 p2⟩
+  | _, hV, .VTypeBox A, hfp, .boxterm tt₁ hsub₁ h₁, .boxterm tt₂ hsub₂ h₂, IH => by
+      have hVeq := boxterm_ctx_unique hsub₁ h₁ hsub₂ h₂
+      subst hVeq
+      rw [eqRecCore_box, eqRecCore_box, boxCast_id, boxCast_id]
+      obtain ⟨p⟩ := IH A (by simp; try omega) _ (hV.of_box_sub hsub₁) tt₁ tt₂
+      exact ⟨Proof.congBox hsub₁ h₁ p⟩
+  | _, hV, .VTypeDia A, hfp, .diaterm x₁ hx₁ tt₁ hsub₁ h₁, .diaterm x₂ hx₂ tt₂ hsub₂ h₂, IH => by
+      by_cases hx : x₁ = x₂
+      · subst hx
+        have hVeq := diaterm_ctx_unique hsub₁ h₁ hsub₂ h₂
+        subst hVeq
+        rw [eqRecCore_dia_same _ _ _ _ _ _ _ _ rfl, eqRecCore_dia_same _ _ _ _ _ _ _ _ rfl,
+            diaCast_id, diaCast_id]
+        obtain ⟨p⟩ := IH A (by simp; try omega) _ (hV.of_dia_sub hsub₁) tt₁ tt₂
+        exact ⟨Proof.congBoxx hsub₁ h₁ p⟩
+      · rw [eqRecCore_dia_ne _ _ _ _ _ _ _ _ hx,
+            eqRecCore_dia_ne _ _ _ _ _ _ _ _ (fun hh => hx hh.symm)]
+        exact ⟨Proof.impId⟩
+  | _, _, _, hfp, .pair_elim _ _ _ _ _ w₂eq _, _, _ =>
+      (VarCtx.firstPairVar_none_no_pair hfp (pair_elim_ctx_mem w₂eq)).elim
+  | _, _, _, hfp, _, .pair_elim _ _ _ _ _ w₂eq _, _ =>
+      (VarCtx.firstPairVar_none_no_pair hfp (pair_elim_ctx_mem w₂eq)).elim
+
+/-- **Symmetry for the peel case.**  Both orientations peel with the SAME fresh names, so this is
+    `congPeel` of the induction hypothesis at the unpaired context. -/
+theorem eqRecPeel_symm {σ : Signature} (V : VarCtx) (hV : V.AllUsr) (S : VarType)
+    (z : UserSymb) (V1 V2 : VarType)
+    (hzmem : (⟨z.toVar, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ V.1)
+    (a b : Term σ V S)
+    (IH : ∀ (W : VarCtx) (hW : W.AllUsr), W.pairDepth < V.pairDepth →
+            ∀ (u v : Term σ W S),
+              Nonempty (Proof σ W ∅ ((eqRec W hW S u v).imp (eqRec W hW S v u)))) :
+    Nonempty (Proof σ V ∅ ((eqRecPeel V hV S z V1 V2 hzmem a b).imp
+                           (eqRecPeel V hV S z V1 V2 hzmem b a))) := by
+  have hz_fresh : z.toVar ∉ VarCtx_to_VarSymbs (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩) :=
+    VarCtx_erase_fresh hzmem
+  have V_eq : VarCtx_insert ⟨z.toVar, V1.VTypeProd V2⟩
+      (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩) hz_fresh = V :=
+    VarCtx_insert_erase hzmem hz_fresh
+  have hu₁ : (UserSymb.fresh (VarCtx_to_VarSymbs
+        (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩))).toVar
+      ∉ VarCtx_to_VarSymbs (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩) :=
+    UserSymb.fresh_not_mem _
+  have hu₂ : (UserSymb.fresh (VarCtx_to_VarSymbs (VarCtx_insert
+        ⟨(UserSymb.fresh (VarCtx_to_VarSymbs
+          (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩))).toVar, V1⟩
+        (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩) hu₁))).toVar
+      ∉ VarCtx_to_VarSymbs (VarCtx_insert
+        ⟨(UserSymb.fresh (VarCtx_to_VarSymbs
+          (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩))).toVar, V1⟩
+        (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩) hu₁) :=
+    UserSymb.fresh_not_mem _
+  have hlt : (VarCtx_insert ⟨_, V2⟩ (VarCtx_insert ⟨_, V1⟩
+      (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩) hu₁) hu₂).pairDepth < V.pairDepth := by
+    have hV0 := VarCtx.pairDepth_insert (⟨z.toVar, V1.VTypeProd V2⟩ : VarSymb × VarType)
+      (VarCtx_erase V ⟨z.toVar, V1.VTypeProd V2⟩) hz_fresh
+    rw [V_eq] at hV0
+    simp only [VarCtx.pairDepth_insert, VarType.pairDepth] at hV0 ⊢
+    omega
+  unfold eqRecPeel
+  rw [← WFF_ctx_cast_imp]
+  refine ⟨Proof.ctx_cast V_eq ?_⟩
+  exact Proof.congPeel V1 V2 _ _ z hu₁ hu₂ hz_fresh rfl
+    (IH _ (((hV.erase _).insert hu₁ rfl).insert hu₂ rfl) hlt _ _).some
+
+/-- ⭐**Symmetry of the defined equality**: `⊢ (a ≐ b) → (b ≐ a)`, at every type and context. -/
+theorem eqRec_symm {σ : Signature}
+    (hVarSymm : ∀ (W : VarCtx), W.firstPairVar = none → ∀ (u v : Term σ W .Var),
+      Nonempty (Proof σ W ∅ ((WFF.eq u v).imp (WFF.eq v u)))) :
+    ∀ (V : VarCtx) (hV : V.AllUsr) (S : VarType) (a b : Term σ V S),
+    Nonempty (Proof σ V ∅ ((eqRec V hV S a b).imp (eqRec V hV S b a)))
+  | V, hV, S, a, b => by
+    unfold eqRec
+    split
+    · exact eqRecPeel_symm _ _ _ _ _ _ _ a b
+        (fun W hW _ u v => eqRec_symm hVarSymm W hW S u v)
+    · exact eqRecCore_symm hVarSymm _ _ _ _ a b
+        (fun A _ W hW u v => eqRec_symm hVarSymm W hW A u v)
+termination_by V _ S _ _ => (sizeOf S, V.pairDepth)
+decreasing_by
+  · exact Prod.Lex.right _ (by assumption)
+  · exact Prod.Lex.left _ _ (by assumption)
