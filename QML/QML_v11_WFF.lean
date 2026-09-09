@@ -27,7 +27,10 @@ inductive WFF (σ : Signature) : VarCtx → Type where
   -- ⭐Nameless: the binder is `VarCtx.nextBnd V`, so only its TYPE is data.
   | all  : (T : VarType) → WFF σ (VarCtx.insertBnd T V) → WFF σ V
   | ex   : (T : VarType) → WFF σ (VarCtx.insertBnd T V) → WFF σ V
-  | eq   : Term σ V S → Term σ V S → WFF σ V
+  -- ⭐PRIMITIVE ONLY AT `.Var`.  Equality at every compound type is DEFINED from this one by
+  -- `eqRec`, recursing through the extensionality principles, so `box_ext`/`dia_ext` are not
+  -- rules but definitional unfoldings — see the eq-by-extensionality reform.
+  | eq   : Term σ V .Var → Term σ V .Var → WFF σ V
   -- Modal: inner-context variables are PROMOTED FREE, so they keep their names.
   | box : WFF σ V → (hsub : (VarCtx_box V).1 ⊆ W.1) →
           (h_no_box_extras :

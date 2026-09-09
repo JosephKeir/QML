@@ -18,6 +18,11 @@ reform was for, and it changes in exactly the way the design predicted:
   point of using a type rather than an `isUsr` predicate.
 * **Binder-eliminating rules mention no variable at all.**  `all_elim` takes the TYPE and a term;
   the slot substituted for is `V.nextBnd`, a function of the context.
+* ⛔**`box_ext` / `dia_ext` are GONE, and `eq` is PRIMITIVE ONLY AT `.Var`.**  Equality at every
+  compound type is DEFINED from the `.Var` one by `eqRec`, recursing through exactly those two
+  extensionality principles — so they are definitional unfoldings of that definition, not rules.
+  ⚠️Until `eqRec` is ported to v11 there is NO compound-type equality here at all; nothing uses it
+  yet, but that is a real gap rather than a no-op.
 * ⛔**`pair_elim_alpha` is GONE.**  v10 needed it as a PRIMITIVE rule: α-variants of a stuck
   `pair_elim` are not derivable (pair-β fires only on a literal pair, and a positive product has
   no projections to η-expand a neutral `z`).  In v11 they are not even EXPRESSIBLE — two
@@ -143,10 +148,12 @@ inductive Proof (σ : Signature) : (V : VarCtx) → Finset (WFF σ V) → WFF σ
                  → Proof σ (VarCtx_insert ⟨u.toVar, T⟩ V hu)
                      (WFF.ctx_extU_Finset u T hu Γ ∪ {φ}) (WFF.ctx_extU u T hu ψ)
                  → Proof σ V Γ ψ
-  -- Equality
-  | eq_intro   : (t : Term σ V S) → Proof σ V Γ (WFF.eq t t)
-  | eq_elim    : (u : UserSymb) → (T : VarType) → (hu : u.toVar ∉ VarCtx_to_VarSymbs V)
-                 → {φ : WFF σ (VarCtx_insert ⟨u.toVar, T⟩ V hu)} → (t s : Term σ V T)
+  -- ⭐Equality, PRIMITIVE ONLY AT `.Var`.  Equality at compound types is DEFINED from this one by
+  -- `eqRec`, recursing through the extensionality principles; `box_ext` / `dia_ext` are therefore
+  -- not rules here but definitional unfoldings of that definition, and are gone.
+  | eq_intro   : (t : Term σ V .Var) → Proof σ V Γ (WFF.eq t t)
+  | eq_elim    : (u : UserSymb) → (hu : u.toVar ∉ VarCtx_to_VarSymbs V)
+                 → {φ : WFF σ (VarCtx_insert ⟨u.toVar, .Var⟩ V hu)} → (t s : Term σ V .Var)
                  → Proof σ V Γ (WFF.eq t s)
                  → Proof σ V Γ (WFF.subst hu t φ)
                  → Proof σ V Γ (WFF.subst hu s φ)
@@ -193,24 +200,3 @@ inductive Proof (σ : Signature) : (V : VarCtx) → Finset (WFF σ V) → WFF σ
                  → {Γ : Finset (WFF σ W)}
                  → Proof σ W Γ (WFF.dia x hx WFF.bot hsub h_no_box_extras)
                  → Proof σ W Γ WFF.bot
-  -- World-extensionality: necessarily / possibly equal box / dia terms are equal.  Sound in
-  -- EVERY model (both conclusions are `necIntro` / `posIntro` of what the premise provides).
-  | box_ext    : {V W : VarCtx} → {S : VarType} → {Γ : Finset (WFF σ W)}
-                 → (hsub : (VarCtx_box V).1 ⊆ W.1)
-                 → (h_no_box_extras :
-                     ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V).1)
-                 → (tt₁ tt₂ : Term σ V S)
-                 → Proof σ W Γ (WFF.box (WFF.eq tt₁ tt₂) hsub h_no_box_extras)
-                 → Proof σ W Γ (WFF.eq (Term.boxterm tt₁ hsub h_no_box_extras)
-                     (Term.boxterm tt₂ hsub h_no_box_extras))
-  | dia_ext    : {V W : VarCtx} → {S : VarType} → {Γ : Finset (WFF σ W)}
-                 → (x : VarSymb × VarType) → (hx : x.1 ∉ VarCtx_to_VarSymbs V)
-                 → (hsub : (VarCtx_dia x V hx).1 ⊆ W.1)
-                 → (h_no_box_extras :
-                     ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x V hx).1)
-                 → (tt₁ tt₂ : Term σ (VarCtx_insert x V hx) S)
-                 -- the premise is `□_x (tt₁ ≐ tt₂)`: the terms agree at EVERY realization of `x`
-                 -- (the existential `◇_x` would give only one — too weak).
-                 → Proof σ W Γ (neg (WFF.dia x hx (neg (WFF.eq tt₁ tt₂)) hsub h_no_box_extras))
-                 → Proof σ W Γ (WFF.eq (Term.diaterm x hx tt₁ hsub h_no_box_extras)
-                     (Term.diaterm x hx tt₂ hsub h_no_box_extras))
