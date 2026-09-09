@@ -159,3 +159,183 @@ def Proof.necx {σ : Signature} {V W : VarCtx} {x : VarSymb × VarType}
   simp only [WFF.box_Finset, WFF.box_x_Finset, Finset.image_empty, Finset.empty_union] at hK
   have hbot := Proof.dia_bot x hx hsub h hK
   exact Proof.imp_intro (by simpa using hbot)
+
+/-! ## All-user contexts
+
+⭐`eqRec`'s peel re-pairs at the context's pair variable, and `WFF.pairElim` can only bind a
+USER-named one (its quantifier arm needs `bndLevel (V + ⟨z,T₁×T₂⟩) = bndLevel V`).  So `eqRec`
+carries the invariant that its context holds only user symbols.
+
+That is not a restriction in practice: it is exactly the design principle that **contexts hold only
+FREE variables, and free variables are user-named**.  Every proof rule preserves it — `weak_ctx`,
+`all_intro`, `ex_elim` and `pair_elim` all extend by `UserSymb`s, and `K_box`/`K_dia`'s premise
+contexts are the un-boxed / witness-extended versions of their conclusion's.  Slots live inside
+formulas, under binders, never in a context a derivation is carried out in. -/
+
+def VarCtx.AllUsr (V : VarCtx) : Prop := ∀ p ∈ V.1, p.1.isUsr = true
+
+theorem VarCtx.AllUsr.insert {V : VarCtx} (hV : V.AllUsr) {x : VarSymb × VarType}
+    (hx : x.1 ∉ VarCtx_to_VarSymbs V) (hu : x.1.isUsr = true) :
+    (VarCtx_insert x V hx).AllUsr := by
+  intro p hp
+  rcases Finset.mem_insert.mp hp with rfl | hp'
+  · exact hu
+  · exact hV p hp'
+
+theorem VarCtx.AllUsr.erase {V : VarCtx} (hV : V.AllUsr) (x : VarSymb × VarType) :
+    (VarCtx_erase V x).AllUsr :=
+  fun p hp => hV p (Finset.erase_subset _ _ hp)
+
+/-- A `boxterm`'s inner context inherits it: every `⟨v, T⟩` inside appears as `⟨v, □T⟩` outside. -/
+theorem VarCtx.AllUsr.of_box_sub {V_inner V : VarCtx} (hV : V.AllUsr)
+    (hsub : (VarCtx_box V_inner).1 ⊆ V.1) : V_inner.AllUsr := by
+  intro p hp
+  exact hV ⟨p.1, p.2.VTypeBox⟩ (hsub (Finset.mem_image.mpr ⟨p, hp, by cases p; rfl⟩))
+
+/-- A `diaterm`'s inner context, witness included. -/
+theorem VarCtx.AllUsr.of_dia_sub {x : VarSymb × VarType} {V_inner V : VarCtx}
+    {hx : x.1 ∉ VarCtx_to_VarSymbs V_inner} (hV : V.AllUsr)
+    (hsub : (VarCtx_dia x V_inner hx).1 ⊆ V.1) :
+    (VarCtx_insert x V_inner hx).AllUsr := by
+  refine (hV.of_box_sub (fun p hp => hsub (VarCtx_box_subset_dia hx hp))).insert hx ?_
+  refine hV ⟨x.1, x.2.VTypeDia⟩ (hsub ?_)
+  rw [VarCtx_dia_fst]
+  exact Finset.mem_insert_self _ _
+
+/-! ## Unbinding a slot pair onto user names
+
+The inverse of `WFF.bindPair`, at the TERM level: `Term.unpair` lands on the canonical slots, and
+the peel needs the components as FREE user variables so that its re-pairing has exactly the shape
+`Proof.pair_elim` discharges.  Same two-renames-and-a-commute shape as `bindPair`, run backwards. -/
+
+def Term.unbindPair {σ : Signature} {V : VarCtx} (T₁ T₂ : VarType) (u₁ u₂ : UserSymb)
+    (hu₁ : u₁.toVar ∉ VarCtx_to_VarSymbs V)
+    (hu₂ : u₂.toVar ∉ VarCtx_to_VarSymbs (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁))
+    {S : VarType} (t : Term σ (VarCtx.insertBnd2 T₁ T₂ V) S) :
+    Term σ (VarCtx_insert ⟨u₂.toVar, T₂⟩ (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁) hu₂) S := by
+  have hu₁V : u₁.toVar ∉ VarCtx_to_VarSymbs V := hu₁
+  have hu₂V : u₂.toVar ∉ VarCtx_to_VarSymbs V := fun h =>
+    hu₂ (by rw [VarCtx_to_VarSymbs_insert]; exact Finset.mem_insert_of_mem h)
+  have hu₂bnd : u₂.toVar ∉ VarCtx_to_VarSymbs (VarCtx.insertBnd T₁ V) :=
+    VarCtx.notMem_insertBnd_of_isUsr rfl T₁ hu₂V
+  -- STEP 1 — rename the top slot onto `u₂`
+  have t₂ := Term.rename (VarCtx.insertBnd T₁ V).nextBnd u₂.toVar T₂
+    (VarCtx.nextBnd_not_mem (VarCtx.insertBnd T₁ V)) hu₂bnd t
+  -- STEP 2 — commute, so the first slot is on top
+  have hs₁ : V.nextBnd ∉ VarCtx_to_VarSymbs (VarCtx_insert ⟨u₂.toVar, T₂⟩ V hu₂V) :=
+    not_mem_VarSymbs_insert (VarCtx.ne_nextBnd_of_isUsr rfl V).symm (VarCtx.nextBnd_not_mem V)
+  have t₃ := (VarCtx_insert_comm
+      (a := (⟨u₂.toVar, T₂⟩ : VarSymb × VarType))
+      (b := (⟨V.nextBnd, T₁⟩ : VarSymb × VarType)) hu₂bnd hs₁ ▸ t₂ :
+    Term σ (VarCtx_insert ⟨V.nextBnd, T₁⟩ (VarCtx_insert ⟨u₂.toVar, T₂⟩ V hu₂V) hs₁) S)
+  -- STEP 3 — rename the first slot onto `u₁`
+  have hu₁mem : u₁.toVar ∈ VarCtx_to_VarSymbs (VarCtx_insert ⟨u₁.toVar, T₁⟩ V hu₁) := by
+    rw [VarCtx_to_VarSymbs_insert]; exact Finset.mem_insert_self _ _
+  have hu₁u₂ : u₁.toVar ≠ u₂.toVar := fun h => hu₂ (h ▸ hu₁mem)
+  have hu₁' : u₁.toVar ∉ VarCtx_to_VarSymbs (VarCtx_insert ⟨u₂.toVar, T₂⟩ V hu₂V) :=
+    not_mem_VarSymbs_insert hu₁u₂ hu₁V
+  have t₄ := Term.rename V.nextBnd u₁.toVar T₁ hs₁ hu₁' t₃
+  -- STEP 4 — commute back
+  exact VarCtx_insert_comm
+    (a := (⟨u₁.toVar, T₁⟩ : VarSymb × VarType))
+    (b := (⟨u₂.toVar, T₂⟩ : VarSymb × VarType)) hu₁' hu₂ ▸ t₄
+
+/-! ## The recursive extensional equality `eqRec`
+
+Split into a **dispatcher** (`eqRec`), a **peel** and a **pair-free core**:
+
+* `eqRec` dispatches on `V.firstPairVar`: if the context holds a product variable `z`, PEEL —
+  unpair BOTH terms at `z` onto fresh USER components, recurse, and re-pair; otherwise hand `hfp`
+  to the core.
+* `eqRecCore` matches directly on `(S, t, s)`: `.Var` is the primitive `WFF.eq`, `□`/`◇` go through
+  the determinacy casts, a product is the `∧` of its components, `VTypeOne` is `⊤`.  The
+  (unreachable) `pair_elim` arms come LAST so the constructive arms lead the matcher.
+
+⭐The peel is where v11 pays off twice over.  v10 needed an `avoid` set threaded as a parameter, two
+`VarSymb.fresh` picks, four `boundVars` side conditions, and the whole `avoid`-parameterisation
+trick to make symmetry's peel case tractable.  Here `Term.unpair` targets the canonical slots, so
+freshness is one `UserSymb.fresh` and `eqRecPeel … a b` / `… b a` land on the same components
+automatically.
+
+Why the dispatcher/core split (v10's finding, still true): with one catch-all arm the generated
+equation holds the ENTIRE nested match, so `simp only [eqRec]` re-exposes the peel branch — whose
+recursive call sits at a different context — and loops.  `eqRecCore` has per-arm patterns, so
+`simp only [eqRecCore]` rewrites ONE case and leaves the `eqRec` occurrences alone.  That is what
+makes the modal extensionality equations extractable. -/
+
+mutual
+
+def eqRec {σ : Signature} :
+    (V : VarCtx) → V.AllUsr → (S : VarType) → Term σ V S → Term σ V S → WFF σ V
+  | V, hV, S, t, s =>
+    match hfp : V.firstPairVar with
+    | some ⟨⟨z, V1, V2⟩, hzmem⟩ => eqRecPeel V hV S z V1 V2 hzmem t s
+    | none => eqRecCore V hV S hfp t s
+termination_by V _ S _ _ => (sizeOf S, V.pairDepth, 2)
+decreasing_by
+  all_goals exact Prod.Lex.right _ (Prod.Lex.right _ (by omega))
+
+/-- The **neutral pair-elim peel**: unpair both terms at `z` onto FRESH USER components, recurse,
+    then bind those components back onto the canonical slots and re-pair.  The result has exactly
+    the shape `Proof.pair_elim` discharges. -/
+def eqRecPeel {σ : Signature} (V : VarCtx) (hV : V.AllUsr) (S : VarType)
+    (z : VarSymb) (V1 V2 : VarType)
+    (hzmem : (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType) ∈ V.1)
+    (t s : Term σ V S) : WFF σ V :=
+  let V₀ := VarCtx_erase V ⟨z, V1.VTypeProd V2⟩
+  have hz_fresh : z ∉ VarCtx_to_VarSymbs V₀ := VarCtx_erase_fresh hzmem
+  have V_eq : VarCtx_insert ⟨z, V1.VTypeProd V2⟩ V₀ hz_fresh = V :=
+    VarCtx_insert_erase hzmem hz_fresh
+  have hzu : z.isUsr = true := hV _ hzmem
+  have hu₁ : (UserSymb.fresh (VarCtx_to_VarSymbs V₀)).toVar ∉ VarCtx_to_VarSymbs V₀ :=
+    UserSymb.fresh_not_mem _
+  have hu₂ : (UserSymb.fresh (VarCtx_to_VarSymbs
+        (VarCtx_insert ⟨(UserSymb.fresh (VarCtx_to_VarSymbs V₀)).toVar, V1⟩ V₀ hu₁))).toVar
+      ∉ VarCtx_to_VarSymbs
+        (VarCtx_insert ⟨(UserSymb.fresh (VarCtx_to_VarSymbs V₀)).toVar, V1⟩ V₀ hu₁) :=
+    UserSymb.fresh_not_mem _
+  have hT : Term σ (VarCtx_insert ⟨z, V1.VTypeProd V2⟩ V₀ hz_fresh) S = Term σ V S := by rw [V_eq]
+  have hW : WFF σ (VarCtx_insert ⟨z, V1.VTypeProd V2⟩ V₀ hz_fresh) = WFF σ V := by rw [V_eq]
+  cast hW (WFF.pairElim V1 V2 z hzu hz_fresh rfl rfl
+    (WFF.bindPair V1 V2 _ _ hu₁ hu₂
+      (eqRec _ (((hV.erase _).insert hu₁ rfl).insert hu₂ rfl) S
+        (Term.unbindPair V1 V2 _ _ hu₁ hu₂
+          (Term.unpair V1 V2 z hzu hz_fresh (cast hT.symm t)))
+        (Term.unbindPair V1 V2 _ _ hu₁ hu₂
+          (Term.unpair V1 V2 z hzu hz_fresh (cast hT.symm s))))))
+termination_by (sizeOf S, V.pairDepth, 1)
+decreasing_by
+  refine Prod.Lex.right _ (Prod.Lex.left _ _ ?_)
+  have hV0 := VarCtx.pairDepth_insert (⟨z, V1.VTypeProd V2⟩ : VarSymb × VarType)
+    (VarCtx_erase V ⟨z, V1.VTypeProd V2⟩) (VarCtx_erase_fresh hzmem)
+  rw [VarCtx_insert_erase hzmem (VarCtx_erase_fresh hzmem)] at hV0
+  simp only [VarCtx.pairDepth_insert, VarType.pairDepth] at hV0 ⊢
+  omega
+
+def eqRecCore {σ : Signature} :
+    (V : VarCtx) → V.AllUsr → (S : VarType) → V.firstPairVar = none →
+      Term σ V S → Term σ V S → WFF σ V
+  | _, _,  .Var,           _,   t,         s         => WFF.eq t s
+  | _, _,  .VTypeOne,      _,   _,         _         => WFF.top
+  | V, hV, .VTypeProd A B, _,   .pair a b, .pair c d =>
+      WFF.and (eqRec V hV A a c) (eqRec V hV B b d)
+  | _, hV, .VTypeBox A,    _,   .boxterm tt₁ hsub₁ h₁, .boxterm tt₂ hsub₂ h₂ =>
+      WFF.box (eqRec _ (hV.of_box_sub hsub₁) A tt₁ (boxCast hsub₁ h₁ hsub₂ h₂ tt₂)) hsub₁ h₁
+  | _, hV, .VTypeDia A,    _,   .diaterm x₁ hx₁ tt₁ hsub₁ h₁,
+                                .diaterm x₂ hx₂ tt₂ hsub₂ h₂ =>
+      if hx : x₁ = x₂ then
+        WFF.box_x x₁ hx₁ hsub₁ h₁
+          (eqRec _ (hV.of_dia_sub hsub₁) A tt₁ (diaCast hx hsub₁ h₁ hsub₂ h₂ tt₂))
+      else WFF.bot
+  -- The (unreachable) neutral `pair_elim` arms come LAST, so the constructive arms lead the
+  -- matcher and reduce on concrete inputs.  A `pair_elim`'s context holds a product variable,
+  -- contradicting `hfp`.
+  | _, _,  _,              hfp, .pair_elim _ _ _ _ _ w₂eq _, _ =>
+      (VarCtx.firstPairVar_none_no_pair hfp (pair_elim_ctx_mem w₂eq)).elim
+  | _, _,  _,              hfp, _, .pair_elim _ _ _ _ _ w₂eq _ =>
+      (VarCtx.firstPairVar_none_no_pair hfp (pair_elim_ctx_mem w₂eq)).elim
+termination_by V _ S _ _ _ => (sizeOf S, V.pairDepth, 0)
+decreasing_by
+  all_goals (refine Prod.Lex.left _ _ ?_; simp; try omega)
+
+end
