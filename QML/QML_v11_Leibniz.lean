@@ -326,3 +326,36 @@ theorem Leib.dia_out {σ : Signature} {V V_inner : VarCtx} {u : UserSymb} {S : V
       WFF.substCore_dia_out (h_xv_ne := h_xv_ne) (h_x_out := h_x_out)
         (hsub' := hsub') (hne' := hne')]
   exact ⟨Proof.impId⟩
+
+/-! ### ⭐The `eq` and `atom` cases — vacuous above the atomic type
+
+`WFF.eq` is `.Var`-only in v11 and `Rel.eval` takes only `.Var`-typed terms, so once the
+substituted variable's type `S` is anything but `.Var` it cannot occur in either — substitution
+never consumes the substituted term, and the two sides of the implication are literally the same
+formula.  (At `S = .Var` these cases are covered wholesale by `eqRec_leibniz_Var`.)
+
+⭐This is the eq-by-extensionality reform paying off a second time.  In v10 `WFF.eq` ranged over
+ARBITRARY types, so its Leibniz arm had to recurse through box- and dia-typed terms, and v10 built
+a whole term-level Leibniz family (`TermLeib`, with its own `boxterm`/`diaterm`/modal-β cases) to
+do it.  v11 needs none of it. -/
+
+theorem Leib.eq_of_ne_Var (hV : V.AllUsr) (hu : u.toVar ∉ VarCtx_to_VarSymbs V)
+    (h_pv : V.firstPairVar = none) (hSp : S.isPair = false) (hS : S ≠ VarType.Var)
+    (a b : Term σ V S) (s' t' : Term σ (VarCtx_insert ⟨u.toVar, S⟩ V hu) .Var) :
+    Leib hV hu a b (WFF.eq s' t') := by
+  unfold Leib
+  rw [WFF.subst_eq (UserSymb.isUsr_toVar u) hu h_pv hSp a s' t',
+      WFF.subst_eq (UserSymb.isUsr_toVar u) hu h_pv hSp b s' t',
+      Term.substCore_Var_indep hu (pairFree_ext hu h_pv hSp) hS a b s',
+      Term.substCore_Var_indep hu (pairFree_ext hu h_pv hSp) hS a b t']
+  exact ⟨Proof.impId⟩
+
+theorem Leib.atom_of_ne_Var (hV : V.AllUsr) (hu : u.toVar ∉ VarCtx_to_VarSymbs V)
+    (h_pv : V.firstPairVar = none) (hSp : S.isPair = false) (hS : S ≠ VarType.Var)
+    (a b : Term σ V S) (R : Rel σ (VarCtx_insert ⟨u.toVar, S⟩ V hu) 0) :
+    Leib hV hu a b (WFF.atom R) := by
+  unfold Leib
+  rw [WFF.subst_atom (UserSymb.isUsr_toVar u) hu h_pv hSp a R,
+      WFF.subst_atom (UserSymb.isUsr_toVar u) hu h_pv hSp b R,
+      Rel.substCore_Var_indep hu (pairFree_ext hu h_pv hSp) hS a b R]
+  exact ⟨Proof.impId⟩

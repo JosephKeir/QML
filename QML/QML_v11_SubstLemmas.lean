@@ -433,3 +433,72 @@ theorem WFF.substCore_dia_out {σ : Signature} {V V_inner : VarCtx} {x : VarSymb
       = WFF.dia xv hxv inner hsub' hne' := by
   conv_lhs => unfold WFF.substCore
   simp only [dif_neg h_xv_ne, dif_neg h_x_out]
+
+/-! ## ⭐A non-`Var`-typed variable cannot occur in a `Var`-typed term
+
+`Term.var` is `Var`-typed by construction and `Func.eval` only takes `Var`-typed arguments, so a
+`Var`-typed term is built entirely from `var`/`func` (plus `pair_elim`, excluded by pair-freeness)
+and every subterm is again `Var`-typed.  A context entry `⟨x, S⟩` with `S ≠ Var` is therefore
+UNREACHABLE from such a term — substitution for it never consumes the substituted term.
+
+⭐This is why v11 needs no `TermLeib`.  In v10 `WFF.eq` ranged over ARBITRARY types, so Leibniz's
+`eq` arm had to recurse through box- and dia-typed terms and v10 built a whole term-level Leibniz
+family for it.  The eq-by-extensionality reform makes `WFF.eq` `.Var`-only, and this lemma collapses
+that entire family to "both sides are literally the same term". -/
+
+mutual
+theorem Term.substCore_Var_indep {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).PairFree)
+    (hS : S ≠ VarType.Var) (s s' : Term σ V S)
+    (t : Term σ (VarCtx_insert ⟨x, S⟩ V hx) .Var) :
+    Term.substCore hx h_pf s t = Term.substCore hx h_pf s' t := by
+  match t with
+  | .var ⟨w, hw⟩ =>
+      have hne : ¬ ((⟨w, VarType.Var⟩ : VarSymb × VarType) = ⟨x, S⟩) :=
+        fun h => hS ((Prod.mk.inj h).2).symm
+      conv_lhs => unfold Term.substCore
+      conv_rhs => unfold Term.substCore
+      simp only [dif_neg hne]
+  | .func fn =>
+      conv_lhs => unfold Term.substCore
+      conv_rhs => unfold Term.substCore
+      rw [Func.substCore_Var_indep hx h_pf hS s s' fn]
+  | .pair_elim T₁ T₂ z hz w₁eq w₂eq body =>
+      refine absurd (show (⟨z, VarType.VTypeProd T₁ T₂⟩ : VarSymb × VarType)
+          ∈ (VarCtx_insert ⟨x, S⟩ V hx).1 from ?_) (h_pf z T₁ T₂)
+      rw [← w₂eq]
+      exact Finset.mem_insert_self _ _
+  termination_by Term.numNodes t
+  decreasing_by all_goals (simp only [Term.numNodes]; omega)
+
+theorem Func.substCore_Var_indep {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).PairFree)
+    (hS : S ≠ VarType.Var) (s s' : Term σ V S) {N : ℕ}
+    (fn : Func σ (VarCtx_insert ⟨x, S⟩ V hx) N) :
+    Func.substCore hx h_pf s fn = Func.substCore hx h_pf s' fn := by
+  match fn with
+  | .F fs =>
+      conv_lhs => unfold Func.substCore
+      conv_rhs => unfold Func.substCore
+  | .eval g t =>
+      conv_lhs => unfold Func.substCore
+      conv_rhs => unfold Func.substCore
+      rw [Func.substCore_Var_indep hx h_pf hS s s' g,
+          Term.substCore_Var_indep hx h_pf hS s s' t]
+  termination_by Func.numNodes fn
+  decreasing_by all_goals (simp only [Func.numNodes]; omega)
+end
+
+/-- The `Rel` version: a relation symbol is applied to `Var`-typed terms only. -/
+theorem Rel.substCore_Var_indep {σ : Signature} {V : VarCtx} {x : VarSymb} {S : VarType}
+    (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pf : (VarCtx_insert ⟨x, S⟩ V hx).PairFree)
+    (hS : S ≠ VarType.Var) (s s' : Term σ V S) :
+    ∀ {n : ℕ} (R : Rel σ (VarCtx_insert ⟨x, S⟩ V hx) n),
+      Rel.substCore hx h_pf s R = Rel.substCore hx h_pf s' R
+  | _, .R _       => rfl
+  | _, .eval R' t => by
+      simp only [Rel.substCore, Rel.substCore_Var_indep hx h_pf hS s s' R',
+        Term.substCore_Var_indep hx h_pf hS s s' t]
