@@ -769,15 +769,28 @@ mutual
         have hVfree : V.PairFree := VarCtx.pairFree_of_firstPairVar_none h_pv
         match hSp : S.isPair with
         | false =>
-            -- ⭐α-rename `x` to a fresh USER symbol, then hand off to the structural pass.
-            have hu : (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar ∉ VarCtx_to_VarSymbs V :=
-              UserSymb.fresh_not_mem _
-            have r := WFF.substCore (x := (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar) rfl hu
-              (VarCtx.pairFree_insert hu hVfree (fun T₁ T₂ h => by
-                subst h; simp [VarType.isPair] at hSp)) s
-              (WFF.rename x _ S hx hu φ)
-            exact ⟨r.val, le_trans r.property
-              (le_of_eq (WFF.binderPairDepth_rename x _ S hx hu φ))⟩
+            match hxu : x.isUsr with
+            | true =>
+                -- ⭐`x` is ALREADY user-named — which is the only case the proof system ever
+                -- produces, since `Proof.eq_elim`'s eigenvariable is a `UserSymb`.  Hand straight
+                -- off to the structural pass: the α-rename below exists solely to manufacture the
+                -- `isUsr` that `substCore`'s quantifier arms need, so here it is pure overhead,
+                -- and skipping it is what makes the reduction lemmas (`WFF.subst_eq` and friends
+                -- in `QML_v11_SubstLemmas`) reachable at all.
+                exact WFF.substCore hxu hx
+                  (VarCtx.pairFree_insert hx hVfree (fun T₁ T₂ h => by
+                    subst h; simp [VarType.isPair] at hSp)) s φ
+            | false =>
+                -- α-rename `x` to a fresh USER symbol, then hand off to the structural pass.
+                have hu : (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar
+                    ∉ VarCtx_to_VarSymbs V := UserSymb.fresh_not_mem _
+                have r := WFF.substCore (x := (UserSymb.fresh (VarCtx_to_VarSymbs V)).toVar)
+                  rfl hu
+                  (VarCtx.pairFree_insert hu hVfree (fun T₁ T₂ h => by
+                    subst h; simp [VarType.isPair] at hSp)) s
+                  (WFF.rename x _ S hx hu φ)
+                exact ⟨r.val, le_trans r.property
+                  (le_of_eq (WFF.binderPairDepth_rename x _ S hx hu φ))⟩
         | true =>
             -- ⚠️NO `cases S` here.  Casing the TYPE re-introduces the formula `φ` as a fresh
             -- variable, and the termination goals then compare `binderPairDepth` of two unrelated
@@ -826,6 +839,8 @@ mutual
   -- no motive to compute.
   decreasing_by
     all_goals first
+      -- hand-off to the structural pass at an ALREADY user-named `x`: nothing moves but the tag.
+      | exact lex4_tag (le_refl _) (le_refl _) (le_refl _) (by omega)
       -- hand-off to the structural pass: the α-rename leaves all three measures alone,
       -- so only the tag moves.
       | exact lex4_tag

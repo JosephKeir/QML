@@ -1,4 +1,4 @@
-import QML.QML_v11_Proof
+import QML.QML_v11_SubstLemmas
 
 /-!
 # QML v11 — equality by extensionality (staging)
@@ -727,3 +727,9 @@ termination_by V _ S _ _ => (sizeOf S, V.pairDepth)
 decreasing_by
   · exact Prod.Lex.right _ (by assumption)
   · exact Prod.Lex.left _ _ (by assumption)
+
+/-- ⭐**Symmetry of the defined equality, unconditionally**: `⊢ (a ≐ b) → (b ≐ a)` at every type
+    and every context, with the atomic base discharged by `varSymm`. -/
+theorem eqRec_symm' {σ : Signature} (V : VarCtx) (hV : V.AllUsr) (S : VarType) (a b : Term σ V S) :
+    Nonempty (Proof σ V ∅ ((eqRec V hV S a b).imp (eqRec V hV S b a))) :=
+  eqRec_symm varSymm V hV S a b
