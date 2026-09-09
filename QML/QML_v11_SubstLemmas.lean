@@ -502,3 +502,42 @@ theorem Rel.substCore_Var_indep {σ : Signature} {V : VarCtx} {x : VarSymb} {S :
   | _, .eval R' t => by
       simp only [Rel.substCore, Rel.substCore_Var_indep hx h_pf hS s s' R',
         Term.substCore_Var_indep hx h_pf hS s s' t]
+
+/-! ## A `□`-typed variable under a `◇`
+
+The last modal arm: the substituted variable is box-typed and the formula is a `◇` whose witness is
+some OTHER variable.  `substCore` descends under the `◇` — weakening the boxterm's inner term past
+the witness and reordering the body — and the `◇`'s inner context loses `⟨x,T⟩`. -/
+
+theorem WFF.substCore_dia_boxvar {σ : Signature} {V V_inner : VarCtx} {x : VarSymb} {T : VarType}
+    (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
+    (h_pf : (VarCtx_insert ⟨x, T.VTypeBox⟩ V hx).PairFree)
+    {xv : VarSymb × VarType} (hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner)
+    (h_xv_ne : ¬ (xv.1 = x))
+    (hxT_in : (⟨x, T⟩ : VarSymb × VarType) ∈ V_inner.1)
+    (s_inner : Term σ (VarCtx_erase V_inner ⟨x, T⟩) T)
+    (s_hsub : (VarCtx_box (VarCtx_erase V_inner ⟨x, T⟩)).1 ⊆ V.1)
+    (s_hne : ∀ p ∈ V.1, VarType.isBox p.2 = true
+               → p ∈ (VarCtx_box (VarCtx_erase V_inner ⟨x, T⟩)).1)
+    (inner : WFF σ (VarCtx_insert xv V_inner hxv))
+    (hsub : (VarCtx_dia xv V_inner hxv).1 ⊆ (VarCtx_insert ⟨x, T.VTypeBox⟩ V hx).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨x, T.VTypeBox⟩ V hx).1, VarType.isBox p.2 = true
+             → p ∈ (VarCtx_dia xv V_inner hxv).1)
+    (hxv_minus : xv.1 ∉ VarCtx_to_VarSymbs (VarCtx_erase V_inner ⟨x, T⟩))
+    (hx_in_outer : x ∉ VarCtx_to_VarSymbs
+      (VarCtx_insert xv (VarCtx_erase V_inner ⟨x, T⟩) hxv_minus))
+    (h_combined : VarCtx_insert xv V_inner hxv
+        = VarCtx_insert (⟨x, T⟩ : VarSymb × VarType)
+            (VarCtx_insert xv (VarCtx_erase V_inner ⟨x, T⟩) hxv_minus) hx_in_outer)
+    (hsub' : (VarCtx_dia xv (VarCtx_erase V_inner ⟨x, T⟩) hxv_minus).1 ⊆ V.1)
+    (hne' : ∀ p ∈ V.1, VarType.isBox p.2 = true
+              → p ∈ (VarCtx_dia xv (VarCtx_erase V_inner ⟨x, T⟩) hxv_minus).1) :
+    (WFF.substCore hxu hx h_pf (Term.boxterm s_inner s_hsub s_hne)
+        (WFF.dia xv hxv inner hsub hne)).val
+      = WFF.dia xv hxv_minus
+          (WFF.subst hx_in_outer (Term.ctx_ext xv hxv_minus s_inner) (h_combined ▸ inner))
+          hsub' hne' := by
+  have h_x_in : x ∈ VarCtx_to_VarSymbs V_inner := Finset.mem_image.mpr ⟨_, hxT_in, rfl⟩
+  conv_lhs => unfold WFF.substCore
+  simp only [dif_neg h_xv_ne, dif_pos h_x_in, dif_pos hxT_in]
+  rfl

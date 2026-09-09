@@ -359,3 +359,94 @@ theorem Leib.atom_of_ne_Var (hV : V.AllUsr) (hu : u.toVar ∉ VarCtx_to_VarSymbs
       WFF.subst_atom (UserSymb.isUsr_toVar u) hu h_pv hSp b R,
       Rel.substCore_Var_indep hu (pairFree_ext hu h_pv hSp) hS a b R]
   exact ⟨Proof.impId⟩
+
+/-! ### A `□`-typed variable under a `◇`
+
+The last modal case: the substituted variable is box-typed and the formula is a `◇` whose witness
+is some OTHER variable.  `subst` descends under the `◇` — weakening the boxterm's inner term past
+the witness and reordering the body — and `K_dia`'s plain-`□` slot carries the equation in.
+
+The one thing this needs is `hcomm`: that **`eqRec` commutes with weakening**, here by the
+`◇`-witness.  It is taken as a hypothesis, isolating that single dependency exactly as
+`eqRecCore_symm` once isolated atomic symmetry.  ⭐Note it is stated as an EQUALITY.  v10 had to
+state it as an object implication, because there the peel's fresh component names reach the output
+and the two sides are only α-variants; `WFF.bindPair` erases them in v11.  `QML_v11_EqComm.lean`
+proves it for pass-through weakening types. -/
+
+/-- `Γ ⊢ φ → ψ` gives `□Γ ⊢ ◇_xφ → ◇_xψ` — `K_dia` with the WITNESSED slot empty, so the
+    hypotheses arrive as plain `□`s. -/
+def Proof.congDiaBoxG {σ : Signature} {V W : VarCtx} {x : VarSymb × VarType}
+    {hx : x.1 ∉ VarCtx_to_VarSymbs V} {Γ : Finset (WFF σ V)}
+    {φ ψ : WFF σ (VarCtx_insert x V hx)}
+    (hsub : (VarCtx_dia x V hx).1 ⊆ W.1)
+    (h : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_dia x V hx).1)
+    (hφψ : Proof σ (VarCtx_insert x V hx) (WFF.ctx_ext_Finset x hx Γ) (φ.imp ψ)) :
+    Proof σ W (WFF.box_Finset (box_subs_of_dia_subs hsub) (in_box_of_in_dia h) Γ)
+      ((WFF.dia x hx φ hsub h).imp (WFF.dia x hx ψ hsub h)) := by
+  have h1 : Proof σ (VarCtx_insert x V hx) (WFF.ctx_ext_Finset x hx Γ ∪ {φ}) ψ :=
+    Proof.imp_elim (Proof.weak hφψ) (Proof.ax (by simp))
+  have hK := Proof.K_dia (Γ := Γ) (Δ := (∅ : Finset (WFF σ (VarCtx_insert x V hx))))
+    x hx hsub h (by simpa using h1)
+  simp only [WFF.box_x_Finset, Finset.image_empty, Finset.union_empty] at hK
+  exact Proof.imp_intro hK
+
+theorem Leib.dia_box {σ : Signature} {W V_inner : VarCtx} {u : UserSymb} {T : VarType}
+    (hW : W.AllUsr) (hx : u.toVar ∉ VarCtx_to_VarSymbs W)
+    (h_pv : W.firstPairVar = none)
+    {xv : VarSymb × VarType} (hxv : xv.1 ∉ VarCtx_to_VarSymbs V_inner)
+    (h_xv_ne : ¬ (xv.1 = u.toVar))
+    (hxT_in : (⟨u.toVar, T⟩ : VarSymb × VarType) ∈ V_inner.1)
+    (t s : Term σ (VarCtx_erase V_inner ⟨u.toVar, T⟩) T)
+    (s_hsub : (VarCtx_box (VarCtx_erase V_inner ⟨u.toVar, T⟩)).1 ⊆ W.1)
+    (s_hne : ∀ p ∈ W.1, VarType.isBox p.2 = true
+               → p ∈ (VarCtx_box (VarCtx_erase V_inner ⟨u.toVar, T⟩)).1)
+    (inner : WFF σ (VarCtx_insert xv V_inner hxv))
+    (hsub : (VarCtx_dia xv V_inner hxv).1 ⊆ (VarCtx_insert ⟨u.toVar, T.VTypeBox⟩ W hx).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨u.toVar, T.VTypeBox⟩ W hx).1, VarType.isBox p.2 = true
+             → p ∈ (VarCtx_dia xv V_inner hxv).1)
+    (hxv_minus : xv.1 ∉ VarCtx_to_VarSymbs (VarCtx_erase V_inner ⟨u.toVar, T⟩))
+    (hx_in_outer : u.toVar ∉ VarCtx_to_VarSymbs
+      (VarCtx_insert xv (VarCtx_erase V_inner ⟨u.toVar, T⟩) hxv_minus))
+    (h_combined : VarCtx_insert xv V_inner hxv
+        = VarCtx_insert (⟨u.toVar, T⟩ : VarSymb × VarType)
+            (VarCtx_insert xv (VarCtx_erase V_inner ⟨u.toVar, T⟩) hxv_minus) hx_in_outer)
+    (hsub' : (VarCtx_dia xv (VarCtx_erase V_inner ⟨u.toVar, T⟩) hxv_minus).1 ⊆ W.1)
+    (hne' : ∀ p ∈ W.1, VarType.isBox p.2 = true
+              → p ∈ (VarCtx_dia xv (VarCtx_erase V_inner ⟨u.toVar, T⟩) hxv_minus).1)
+    (hVxv : (VarCtx_insert xv (VarCtx_erase V_inner ⟨u.toVar, T⟩) hxv_minus).AllUsr)
+    -- ⭐`hcomm`: `eqRec` commutes with weakening by the `◇`-witness.
+    (hcomm : eqRec (VarCtx_insert xv (VarCtx_erase V_inner ⟨u.toVar, T⟩) hxv_minus) hVxv T
+               (Term.ctx_ext xv hxv_minus t) (Term.ctx_ext xv hxv_minus s)
+             = WFF.ctx_ext xv hxv_minus (eqRec _ (hW.of_box_sub s_hsub) T t s))
+    (ih : Leib hVxv hx_in_outer
+            (Term.ctx_ext xv hxv_minus t) (Term.ctx_ext xv hxv_minus s) (h_combined ▸ inner)) :
+    Leib hW hx (Term.boxterm t s_hsub s_hne) (Term.boxterm s s_hsub s_hne)
+      (WFF.dia xv hxv inner hsub hne) := by
+  have hSp : (T.VTypeBox).isPair = false := rfl
+  unfold Leib at ih ⊢
+  rw [hcomm] at ih
+  rw [WFF.subst_eq_substCore (UserSymb.isUsr_toVar u) hx h_pv hSp
+        (pairFree_ext hx h_pv hSp) (Term.boxterm t s_hsub s_hne) (WFF.dia xv hxv inner hsub hne),
+      WFF.subst_eq_substCore (UserSymb.isUsr_toVar u) hx h_pv hSp
+        (pairFree_ext hx h_pv hSp) (Term.boxterm s s_hsub s_hne) (WFF.dia xv hxv inner hsub hne),
+      WFF.substCore_dia_boxvar (h_xv_ne := h_xv_ne) (hxT_in := hxT_in)
+        (h_combined := h_combined) (hsub' := hsub') (hne' := hne'),
+      WFF.substCore_dia_boxvar (h_xv_ne := h_xv_ne) (hxT_in := hxT_in)
+        (h_combined := h_combined) (hsub' := hsub') (hne' := hne'),
+      eqRec_of_none h_pv, eqRecCore_box, boxCast_id]
+  refine ⟨Proof.hyp_cast ?_
+    (Proof.congDiaBoxG (Γ := {eqRec _ (hW.of_box_sub s_hsub) T t s}) hsub' hne'
+      (Proof.hyp_cast ?_ ih.some))⟩
+  · simp [WFF.box_Finset]
+  · simp [WFF.ctx_ext_Finset]
+
+/-- The `pair_elim` arm is VACUOUS: a stuck `pair_elim`'s result context holds the product-typed
+    variable it eliminates, which the pair-freeness side condition forbids. -/
+theorem Leib.pair_elim {pe_V W₁ : VarCtx} {T₁ T₂ : VarType} {z : VarSymb}
+    (hV : V.AllUsr) (hu : u.toVar ∉ VarCtx_to_VarSymbs V)
+    (h_pv : V.firstPairVar = none) (hSp : S.isPair = false) (a b : Term σ V S)
+    {hz : z ∉ VarCtx_to_VarSymbs pe_V} {w₁eq : VarCtx.insertBnd2 T₁ T₂ pe_V = W₁}
+    (w₂eq : VarCtx_insert ⟨z, .VTypeProd T₁ T₂⟩ pe_V hz = VarCtx_insert ⟨u.toVar, S⟩ V hu)
+    (body : WFF σ W₁) :
+    Leib hV hu a b (WFF.pair_elim T₁ T₂ z hz w₁eq w₂eq body) :=
+  absurd (pair_elim_ctx_mem w₂eq) (pairFree_ext hu h_pv hSp z T₁ T₂)
