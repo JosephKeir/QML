@@ -162,3 +162,76 @@ theorem Leib.of_unitType (hV : V.AllUsr) (hu : u.toVar ∉ VarCtx_to_VarSymbs V)
   have hb := Term.unit_unique (VarCtx.pairFree_of_firstPairVar_none h_pv) b
   subst ha; subst hb
   exact ⟨Proof.impId⟩
+
+/-! ### The `box` case — where `box_ext` is consumed
+
+⭐This is the case the whole reform is aimed at.  `eqRec` at `□T` IS `□` of the inner equality
+(`eqRecCore_box`), and `subst` of a `boxterm` into a `box` IS `box` of the inner substitution
+(`WFF.substCore_box_erased`), with the substituted variable UNBOXED inside.  So both sides of the
+goal are `□` of the inner Leibniz instance, and `K_box` — in its hypothesis-set form `congBoxG` —
+carries it out.  The recursion drops both the formula (`χ < □χ`) and the type (`T < □T`).
+
+The two boxterms share one inner context and one pair of side conditions; that is not a
+restriction but `boxterm_ctx_unique`, which forces it. -/
+
+/-- `Γ ⊢ φ → ψ` gives `□Γ ⊢ □φ → □ψ`. -/
+def Proof.congBoxG {σ : Signature} {V W : VarCtx} {Γ : Finset (WFF σ V)} {φ ψ : WFF σ V}
+    (hsub : (VarCtx_box V).1 ⊆ W.1)
+    (h : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V).1)
+    (hφψ : Proof σ V Γ (φ.imp ψ)) :
+    Proof σ W (WFF.box_Finset hsub h Γ) ((WFF.box φ hsub h).imp (WFF.box ψ hsub h)) := by
+  have h1 : Proof σ V (Γ ∪ {φ}) ψ := Proof.imp_elim (Proof.weak hφψ) (Proof.ax (by simp))
+  have hK := Proof.K_box hsub h h1
+  rw [show WFF.box_Finset hsub h (Γ ∪ {φ})
+        = WFF.box_Finset hsub h Γ ∪ {WFF.box φ hsub h} by
+      simp [WFF.box_Finset]] at hK
+  exact Proof.imp_intro hK
+
+theorem Leib.box {σ : Signature} {V_inner W : VarCtx} {u : UserSymb} {T : VarType}
+    (hW : W.AllUsr) (hxW : u.toVar ∉ VarCtx_to_VarSymbs W)
+    (h_pv : W.firstPairVar = none)
+    (hxT_in : (⟨u.toVar, T⟩ : VarSymb × VarType) ∈ V_inner.1)
+    (t s : Term σ (VarCtx_erase V_inner ⟨u.toVar, T⟩) T)
+    (s_hsub : (VarCtx_box (VarCtx_erase V_inner ⟨u.toVar, T⟩)).1 ⊆ W.1)
+    (s_hne : ∀ p ∈ W.1, VarType.isBox p.2 = true
+               → p ∈ (VarCtx_box (VarCtx_erase V_inner ⟨u.toVar, T⟩)).1)
+    (χ : WFF σ V_inner)
+    (hsub : (VarCtx_box V_inner).1 ⊆ (VarCtx_insert ⟨u.toVar, T.VTypeBox⟩ W hxW).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨u.toVar, T.VTypeBox⟩ W hxW).1, VarType.isBox p.2 = true
+             → p ∈ (VarCtx_box V_inner).1)
+    (ih : Leib (hW.of_box_sub s_hsub) (VarCtx_erase_fresh hxT_in) t s
+            ((VarCtx_insert_erase hxT_in (VarCtx_erase_fresh hxT_in)).symm ▸ χ)) :
+    Leib hW hxW (Term.boxterm t s_hsub s_hne) (Term.boxterm s s_hsub s_hne)
+      (WFF.box χ hsub hne) := by
+  have hSp : (T.VTypeBox).isPair = false := rfl
+  unfold Leib at ih ⊢
+  rw [WFF.subst_eq_substCore (UserSymb.isUsr_toVar u) hxW h_pv hSp
+        (pairFree_ext hxW h_pv hSp) (Term.boxterm t s_hsub s_hne) (WFF.box χ hsub hne),
+      WFF.subst_eq_substCore (UserSymb.isUsr_toVar u) hxW h_pv hSp
+        (pairFree_ext hxW h_pv hSp) (Term.boxterm s s_hsub s_hne) (WFF.box χ hsub hne),
+      WFF.substCore_box_erased (hxT_in := hxT_in), WFF.substCore_box_erased (hxT_in := hxT_in),
+      eqRec_of_none h_pv, eqRecCore_box, boxCast_id]
+  refine ⟨Proof.hyp_cast ?_ (Proof.congBoxG s_hsub s_hne ih.some)⟩
+  simp [WFF.box_Finset]
+
+/-- The `box` PASS-THROUGH: the substituted variable does not occur inside the box, so both sides
+    of the implication are literally the same formula. -/
+theorem Leib.box_out {σ : Signature} {V_inner W : VarCtx} {u : UserSymb} {S : VarType}
+    (hW : W.AllUsr) (hxW : u.toVar ∉ VarCtx_to_VarSymbs W)
+    (h_pv : W.firstPairVar = none) (hSp : S.isPair = false) (a b : Term σ W S)
+    (χ : WFF σ V_inner)
+    (hsub : (VarCtx_box V_inner).1 ⊆ (VarCtx_insert ⟨u.toVar, S⟩ W hxW).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨u.toVar, S⟩ W hxW).1, VarType.isBox p.2 = true
+             → p ∈ (VarCtx_box V_inner).1)
+    (h_x_out : u.toVar ∉ VarCtx_to_VarSymbs V_inner)
+    (hsub' : (VarCtx_box V_inner).1 ⊆ W.1)
+    (hne' : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V_inner).1) :
+    Leib hW hxW a b (WFF.box χ hsub hne) := by
+  unfold Leib
+  rw [WFF.subst_eq_substCore (UserSymb.isUsr_toVar u) hxW h_pv hSp
+        (pairFree_ext hxW h_pv hSp) a (WFF.box χ hsub hne),
+      WFF.subst_eq_substCore (UserSymb.isUsr_toVar u) hxW h_pv hSp
+        (pairFree_ext hxW h_pv hSp) b (WFF.box χ hsub hne),
+      WFF.substCore_box_out (h_x_out := h_x_out) (hsub' := hsub') (hne' := hne'),
+      WFF.substCore_box_out (h_x_out := h_x_out) (hsub' := hsub') (hne' := hne')]
+  exact ⟨Proof.impId⟩

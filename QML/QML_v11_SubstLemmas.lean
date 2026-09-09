@@ -305,3 +305,71 @@ theorem WFF.subst_eq (hxu : x.isUsr = true) (hx : x ∉ VarCtx_to_VarSymbs V)
                (Term.substCore hx (pairFree_ext hx h_pv hSp) s t') := by
   rw [WFF.subst_eq_substCore hxu hx h_pv hSp (pairFree_ext hx h_pv hSp) s (WFF.eq s' t'),
       WFF.substCore_eq]
+
+/-! ## The `box` arm — where `box_ext` gets consumed
+
+⭐This is the reduction the whole equality reform turns on: substituting a `boxterm` into a `box`
+IS `box` of the inner substitution, with the substituted variable UNBOXED inside.
+
+Stated in the ERASED form the definition itself produces — `s`'s inner context given as
+`VarCtx_erase V_inner ⟨x, T⟩` rather than as an abstract `V` — so the definition's internal
+`subst h_V_eq` is a substitution along `rfl` and reduces away.  The `V + ⟨x,T⟩` form is recovered
+by the caller transporting `χ` along `VarCtx_insert_erase`. -/
+
+theorem box_hsub_insert {V W : VarCtx} {x : VarSymb × VarType}
+    (hx : x.1 ∉ VarCtx_to_VarSymbs V) (hxW : x.1 ∉ VarCtx_to_VarSymbs W)
+    (hsub : (VarCtx_box V).1 ⊆ W.1) :
+    (VarCtx_box (VarCtx_insert x V hx)).1
+      ⊆ (VarCtx_insert (⟨x.1, x.2.VTypeBox⟩ : VarSymb × VarType) W hxW).1 := by
+  rw [VarCtx_box_fst_insert]
+  intro p hp
+  rcases Finset.mem_insert.mp hp with rfl | hp_box
+  · exact Finset.mem_insert_self _ _
+  · exact Finset.mem_insert_of_mem (hsub hp_box)
+
+theorem box_extras_insert {V W : VarCtx} {x : VarSymb × VarType}
+    (hx : x.1 ∉ VarCtx_to_VarSymbs V) (hxW : x.1 ∉ VarCtx_to_VarSymbs W)
+    (hne : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V).1) :
+    ∀ p ∈ (VarCtx_insert (⟨x.1, x.2.VTypeBox⟩ : VarSymb × VarType) W hxW).1,
+      VarType.isBox p.2 = true → p ∈ (VarCtx_box (VarCtx_insert x V hx)).1 := by
+  intro p hp h_box
+  rw [VarCtx_box_fst_insert]
+  rcases Finset.mem_insert.mp hp with rfl | hp_V
+  · exact Finset.mem_insert_self _ _
+  · exact Finset.mem_insert_of_mem (hne p hp_V h_box)
+
+theorem WFF.substCore_box_erased {σ : Signature} {V_inner W : VarCtx} {x : VarSymb} {T : VarType}
+    (hxu : x.isUsr = true) (hxW : x ∉ VarCtx_to_VarSymbs W)
+    (hxT_in : (⟨x, T⟩ : VarSymb × VarType) ∈ V_inner.1)
+    (h_pf : (VarCtx_insert ⟨x, T.VTypeBox⟩ W hxW).PairFree)
+    (s_inner : Term σ (VarCtx_erase V_inner ⟨x, T⟩) T)
+    (s_hsub : (VarCtx_box (VarCtx_erase V_inner ⟨x, T⟩)).1 ⊆ W.1)
+    (s_hne : ∀ p ∈ W.1, VarType.isBox p.2 = true
+               → p ∈ (VarCtx_box (VarCtx_erase V_inner ⟨x, T⟩)).1)
+    (χ : WFF σ V_inner)
+    (hsub : (VarCtx_box V_inner).1 ⊆ (VarCtx_insert ⟨x, T.VTypeBox⟩ W hxW).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨x, T.VTypeBox⟩ W hxW).1, VarType.isBox p.2 = true
+             → p ∈ (VarCtx_box V_inner).1) :
+    (WFF.substCore hxu hxW h_pf (Term.boxterm s_inner s_hsub s_hne) (WFF.box χ hsub hne)).val
+      = WFF.box (WFF.subst (VarCtx_erase_fresh hxT_in) s_inner
+          ((VarCtx_insert_erase hxT_in (VarCtx_erase_fresh hxT_in)).symm ▸ χ)) s_hsub s_hne := by
+  have h_x_in : x ∈ VarCtx_to_VarSymbs V_inner := Finset.mem_image.mpr ⟨_, hxT_in, rfl⟩
+  conv_lhs => unfold WFF.substCore
+  simp only [dif_pos h_x_in, dif_pos hxT_in]
+  rfl
+
+/-- The `box` PASS-THROUGH: the substituted variable does not occur inside the box, so the node is
+    rebuilt with its inner formula untouched (only the side conditions are restricted). -/
+theorem WFF.substCore_box_out {σ : Signature} {V_inner W : VarCtx} {x : VarSymb} {S : VarType}
+    (hxu : x.isUsr = true) (hxW : x ∉ VarCtx_to_VarSymbs W)
+    (h_pf : (VarCtx_insert ⟨x, S⟩ W hxW).PairFree) (s : Term σ W S)
+    (χ : WFF σ V_inner)
+    (hsub : (VarCtx_box V_inner).1 ⊆ (VarCtx_insert ⟨x, S⟩ W hxW).1)
+    (hne : ∀ p ∈ (VarCtx_insert ⟨x, S⟩ W hxW).1, VarType.isBox p.2 = true
+             → p ∈ (VarCtx_box V_inner).1)
+    (h_x_out : x ∉ VarCtx_to_VarSymbs V_inner)
+    (hsub' : (VarCtx_box V_inner).1 ⊆ W.1)
+    (hne' : ∀ p ∈ W.1, VarType.isBox p.2 = true → p ∈ (VarCtx_box V_inner).1) :
+    (WFF.substCore hxu hxW h_pf s (WFF.box χ hsub hne)).val = WFF.box χ hsub' hne' := by
+  conv_lhs => unfold WFF.substCore
+  simp only [dif_neg h_x_out]
