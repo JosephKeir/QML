@@ -300,12 +300,126 @@ theorem Term.diaterm_congr' {σ : Signature} {W V_inner V_inner' : VarCtx} {S : 
   subst hX
   rfl
 
+/-! ### The `pair_elim` side conditions
+
+⚠️This arm is the awkward one.  `boxterm`/`diaterm` recurse along `toImage`/`extendPoint`, whose
+underlying function is `m.f` UNCHANGED, so the round-trip hypothesis transfers verbatim.
+`pair_elim` recurses along `((restrictInsert hz m).extendBnd T₁).extendBnd T₂`, and
+`CtxMap.extendBnd`'s function is `VarSymb.update m.f V.nextBnd V'.nextBnd` — so the composite is a
+chain of four `update`s.  `CtxBij.extendBnd_id` handles one layer at a time. -/
+
+@[simp] theorem CtxBij.extendBnd_f {V V' : VarCtx} (m : CtxBij V V') (T : VarType) :
+    (m.extendBnd T).toCtxMap.f
+      = VarSymb.update m.toCtxMap.f V.nextBnd V'.nextBnd := rfl
+
+@[simp] theorem CtxBij.restrictInsert_f {pe_V V' : VarCtx} {z : VarSymb} {T : VarType}
+    (hz : z ∉ VarCtx_to_VarSymbs pe_V) (m : CtxBij (VarCtx_insert ⟨z, T⟩ pe_V hz) V') :
+    (CtxBij.restrictInsert hz m).toCtxMap.f = m.toCtxMap.f := rfl
+
+theorem CtxBij.cast_f {A B V' : VarCtx} (h : A = B) (m : CtxBij A V') :
+    (h ▸ m : CtxBij B V').toCtxMap.f = m.toCtxMap.f := by subst h; rfl
+
+/-- ⭐One `extendBnd` layer of the round trip.  The slot goes `A.nextBnd ↦ B.nextBnd ↦ C.nextBnd`,
+    and `hC : C = A` closes the loop; every other symbol dodges both `update`s because a context's
+    `nextBnd` is never one of its own symbols. -/
+theorem CtxBij.extendBnd_id {A B C : VarCtx} (m₁ : CtxBij A B) (m₂ : CtxBij B C) (hC : C = A)
+    (hid : ∀ v ∈ VarCtx_to_VarSymbs A, m₂.toCtxMap.f (m₁.toCtxMap.f v) = v) (T : VarType) :
+    ∀ v ∈ VarCtx_to_VarSymbs (VarCtx.insertBnd T A),
+      (m₂.extendBnd T).toCtxMap.f ((m₁.extendBnd T).toCtxMap.f v) = v := by
+  intro v hv
+  rw [VarCtx.symbs_insertBnd] at hv
+  rcases Finset.mem_insert.mp hv with rfl | hv'
+  · rw [CtxBij.extendBnd_f, CtxBij.extendBnd_f, VarSymb.update_self, VarSymb.update_self, hC]
+  · have h1 : v ≠ A.nextBnd := fun h => VarCtx.nextBnd_not_mem A (h ▸ hv')
+    have hmB : m₁.toCtxMap.f v ∈ VarCtx_to_VarSymbs B := by
+      rcases Finset.mem_image.mp hv' with ⟨p, hp, rfl⟩
+      exact Finset.mem_image.mpr ⟨⟨m₁.toCtxMap.f p.1, p.2⟩, m₁.toCtxMap.maps p hp, rfl⟩
+    have h2 : m₁.toCtxMap.f v ≠ B.nextBnd := fun h => VarCtx.nextBnd_not_mem B (h ▸ hmB)
+    rw [CtxBij.extendBnd_f, CtxBij.extendBnd_f, VarSymb.update_of_ne _ h1,
+        VarSymb.update_of_ne _ h2]
+    exact hid v hv'
+
+theorem Term.cast_pair_elim {σ : Signature} {pe_V W₁ W₂ W₂' : VarCtx} {T₁ T₂ S : VarType}
+    {z : VarSymb} (h : W₂ = W₂') (hz : z ∉ VarCtx_to_VarSymbs pe_V)
+    (w₁eq : VarCtx.insertBnd2 T₁ T₂ pe_V = W₁)
+    (w₂eq : VarCtx_insert ⟨z, T₁.VTypeProd T₂⟩ pe_V hz = W₂) (body : Term σ W₁ S) :
+    (h ▸ (Term.pair_elim T₁ T₂ z hz w₁eq w₂eq body : Term σ W₂ S))
+      = Term.pair_elim T₁ T₂ z hz w₁eq (w₂eq.trans h) body := by subst h; rfl
+
+/-- Rebuild a `pair_elim` across an equality of the destructured variable, of the base context and
+    of the body's context. -/
+theorem Term.pair_elim_congr' {σ : Signature} {pe_V pe_V' W₁ W₁' W₂ : VarCtx}
+    {T₁ T₂ S : VarType} {z z' : VarSymb}
+    {hz' : z' ∉ VarCtx_to_VarSymbs pe_V'} {hz : z ∉ VarCtx_to_VarSymbs pe_V}
+    (hzz : z' = z) (hB : pe_V' = pe_V) (hW : W₁' = W₁)
+    (w₁eq' : VarCtx.insertBnd2 T₁ T₂ pe_V' = W₁')
+    (w₁eq : VarCtx.insertBnd2 T₁ T₂ pe_V = W₁)
+    (w₂eq' : VarCtx_insert ⟨z', T₁.VTypeProd T₂⟩ pe_V' hz' = W₂)
+    (w₂eq : VarCtx_insert ⟨z, T₁.VTypeProd T₂⟩ pe_V hz = W₂)
+    (X : Term σ W₁' S) (body : Term σ W₁ S) (hX : hW ▸ X = body) :
+    (Term.pair_elim T₁ T₂ z' hz' w₁eq' w₂eq' X : Term σ W₂ S)
+      = Term.pair_elim T₁ T₂ z hz w₁eq w₂eq body := by
+  subst hzz
+  subst hB
+  subst hW
+  subst hX
+  rfl
+
+/-- Move a bijection across an equality of its SOURCE by rebuilding it, not by transporting it.
+    ⚠️This matters: `h ▸ m` makes `(h ▸ m).f` opaque until `h` is substituted, and in the
+    `pair_elim` arm `h`'s left side mentions the very context being substituted (through
+    `VarCtx_erase V' …`), so `subst` is unavailable.  Rebuilding keeps `f` DEFINITIONALLY `m.f`. -/
+def CtxBij.ofEq {A B V' : VarCtx} (h : A = B) (m : CtxBij B V') : CtxBij A V' where
+  f := m.toCtxMap.f
+  inj := by subst h; exact m.toCtxMap.inj
+  maps := by subst h; exact m.toCtxMap.maps
+  onto := by subst h; exact m.onto
+
+@[simp] theorem CtxBij.ofEq_f {A B V' : VarCtx} (h : A = B) (m : CtxBij B V') :
+    (CtxBij.ofEq h m).toCtxMap.f = m.toCtxMap.f := rfl
+
+theorem CtxBij.cast_ofEq {A B V' : VarCtx} (h : A = B) (m : CtxBij B V') :
+    h ▸ (CtxBij.ofEq h m) = m := by subst h; rfl
+
+/-- Present a `pair_elim` whose output-context equation is `w₂eq` as a TRANSPORT of the `rfl`
+    form, so the `rfl`-form computation rule applies. -/
+theorem Term.pair_elim_as_cast {σ : Signature} {pe_V W₂ : VarCtx} {T₁ T₂ S : VarType}
+    {z : VarSymb} (hz : z ∉ VarCtx_to_VarSymbs pe_V)
+    (X : Term σ (VarCtx.insertBnd2 T₁ T₂ pe_V) S)
+    (w₂eq : VarCtx_insert ⟨z, T₁.VTypeProd T₂⟩ pe_V hz = W₂) :
+    (Term.pair_elim T₁ T₂ z hz rfl w₂eq X : Term σ W₂ S)
+      = w₂eq ▸ (Term.pair_elim T₁ T₂ z hz rfl rfl X) := by subst w₂eq; rfl
+
+/-- Moving a context transport past `mapCtx`: transport the MAP instead of the term.  (Same
+    principle as `mapCtx`'s own `pair_elim` arm, which transports `w₁eq` onto the map so the body
+    is passed untouched.) -/
+theorem Term.mapCtx_cast {σ : Signature} {A B V' : VarCtx} {S : VarType} (h : A = B)
+    (m : CtxBij B V') (m' : CtxBij A V') (hm : h ▸ m' = m) (t : Term σ A S) :
+    Term.mapCtx m (h ▸ t) = Term.mapCtx m' t := by
+  subst h; subst hm; rfl
+
+/-- The `pair_elim` computation rule, in the `rfl` form the definition itself produces.  The
+    general `w₁eq`/`w₂eq` case is reached by `subst`ing them at the call site (they equate a
+    context to a VARIABLE, so `subst` applies). -/
+theorem Term.mapCtx_pair_elim {σ : Signature} {pe_V V' : VarCtx} {T₁ T₂ S : VarType}
+    {z : VarSymb} (hz : z ∉ VarCtx_to_VarSymbs pe_V)
+    (body : Term σ (VarCtx.insertBnd2 T₁ T₂ pe_V) S)
+    (m : CtxBij (VarCtx_insert ⟨z, T₁.VTypeProd T₂⟩ pe_V hz) V')
+    (hz' : m.toCtxMap.f z ∉ VarCtx_to_VarSymbs
+             (VarCtx_erase V' ⟨m.toCtxMap.f z, T₁.VTypeProd T₂⟩))
+    (w₂eq' : VarCtx_insert ⟨m.toCtxMap.f z, T₁.VTypeProd T₂⟩
+               (VarCtx_erase V' ⟨m.toCtxMap.f z, T₁.VTypeProd T₂⟩) hz' = V') :
+    Term.mapCtx m (Term.pair_elim T₁ T₂ z hz rfl rfl body)
+      = Term.pair_elim T₁ T₂ (m.toCtxMap.f z) hz' rfl w₂eq'
+          (Term.mapCtx (((CtxBij.restrictInsert hz m).extendBnd T₁).extendBnd T₂) body) := by
+  conv_lhs => unfold Term.mapCtx
+
 /-! ## The round trip -/
 
 mutual
 theorem Term.mapCtx_roundtrip {σ : Signature} :
     ∀ (V V' V'' : VarCtx) (m₁ : CtxBij V V') (m₂ : CtxBij V' V'') (hVV : V'' = V)
-      (hid : ∀ v ∈ VarCtx_to_VarSymbs V, m₂.toCtxMap.f (m₁.toCtxMap.f v) = v)
+      (_hid : ∀ v ∈ VarCtx_to_VarSymbs V, m₂.toCtxMap.f (m₁.toCtxMap.f v) = v)
       (S : VarType) (t : Term σ V S),
       hVV ▸ (Term.mapCtx m₂ (Term.mapCtx m₁ t)) = t
   | V, _, _, m₁, m₂, hVV, hid, _, .var ⟨v, hv⟩ => by
@@ -396,19 +510,87 @@ theorem Term.mapCtx_roundtrip {σ : Signature} :
           Term.mapCtx_diaterm m₂ hx'₁ _ hsub₁ hne₁ hU₂ hxV' hx'₂ hsub₂ hne₂,
           Term.cast_diaterm]
       exact Term.diaterm_congr' hxx hI _ tt hCtx hIH _ _ _ _
-  -- ⛔THE ONE REMAINING GAP.  Unlike `boxterm`/`diaterm`, whose maps are `toImage`/`extendPoint`
-  -- (both carrying `m.f` UNCHANGED, so `hid` transfers verbatim), the `pair_elim` arm's body map
-  -- is `w₁eq ▸ ((restrictInsert hz m).extendBnd T₁).extendBnd T₂`, and `CtxMap.extendBnd`'s
-  -- function is `VarSymb.update m.f V.nextBnd V'.nextBnd` — NOT `m.f`.  So the composite is a
-  -- chain of four `update`s, and showing it is the identity needs the intermediate `nextBnd`s to
-  -- line up across `VarCtx_erase (VarCtx_insert ⟨z,T₁×T₂⟩ pe_V hz) ⟨z,T₁×T₂⟩ = pe_V`
-  -- (`Finset.erase_insert`) — one more layer of context algebra.
-  | V, V', V'', m₁, m₂, hVV, hid, _, .pair_elim T₁ T₂ z hz w₁eq w₂eq body => by sorry
-  termination_by V V' V'' m₁ m₂ hVV hid S t => sizeOf t
+  -- ⭐The hard arm.  Unlike `boxterm`/`diaterm`, whose maps are `toImage`/`extendPoint` (both
+  -- carrying `m.f` UNCHANGED, so `hid` transfers verbatim), the body map here is
+  -- `((restrictInsert hz m).extendBnd T₁).extendBnd T₂`, and `CtxMap.extendBnd`'s function is
+  -- `VarSymb.update m.f V.nextBnd V'.nextBnd`.  The composite is a chain of four `update`s;
+  -- `CtxBij.extendBnd_id` peels one layer at a time against the base equation `hB`, which is
+  -- `Finset.erase_insert` once `hzz` has brought the destructured variable back to `z`.
+  -- The second map cannot be reached by transport (`VarCtx_erase V' …` blocks `subst` on `V'`),
+  -- so it is REBUILT at the insert form with `CtxBij.ofEq`.
+  | V, V', V'', m₁, m₂, hVV, hid, _, .pair_elim T₁ T₂ z hz w₁eq w₂eq body => by
+      rename_i pe_V pe_W₁
+      -- ⚠️Take the induction hypothesis BEFORE any `subst`, generalized over the maps: `subst`
+      -- re-binds `body`, and the termination checker then cannot relate the recursive call's
+      -- argument to the pattern's `body`.  Substituting a HYPOTHESIS afterwards is harmless.
+      have IH : ∀ (A B : VarCtx) (M₁ : CtxBij pe_W₁ A) (M₂ : CtxBij A B) (h : B = pe_W₁)
+          (hid' : ∀ v ∈ VarCtx_to_VarSymbs pe_W₁, M₂.toCtxMap.f (M₁.toCtxMap.f v) = v),
+          h ▸ (Term.mapCtx M₂ (Term.mapCtx M₁ body)) = body :=
+        fun A B M₁ M₂ h hid' => Term.mapCtx_roundtrip pe_W₁ A B M₁ M₂ h hid' _ body
+      -- Both equations equate a context to a VARIABLE, so they can be substituted outright.
+      subst w₂eq
+      subst w₁eq
+      -- Step 1: `m₁` destructures at `m₁.f z`, over the erased base `E₁`.
+      have hzV₁ : (⟨m₁.toCtxMap.f z, T₁.VTypeProd T₂⟩ : VarSymb × VarType) ∈ V'.1 :=
+        m₁.toCtxMap.maps _ (Finset.mem_insert_self _ _)
+      have hz₁ : m₁.toCtxMap.f z
+          ∉ VarCtx_to_VarSymbs (VarCtx_erase V' ⟨m₁.toCtxMap.f z, T₁.VTypeProd T₂⟩) :=
+        VarCtx_erase_fresh hzV₁
+      have w₂eq₁ : VarCtx_insert ⟨m₁.toCtxMap.f z, T₁.VTypeProd T₂⟩
+          (VarCtx_erase V' ⟨m₁.toCtxMap.f z, T₁.VTypeProd T₂⟩) hz₁ = V' :=
+        VarCtx_insert_erase hzV₁ hz₁
+      -- Step 2 runs along `m₂` REBUILT at the insert form of `V'` (see `CtxBij.ofEq`).
+      have hzV₂ : (⟨(CtxBij.ofEq w₂eq₁ m₂).toCtxMap.f (m₁.toCtxMap.f z), T₁.VTypeProd T₂⟩
+          : VarSymb × VarType) ∈ V''.1 :=
+        (CtxBij.ofEq w₂eq₁ m₂).toCtxMap.maps _ (Finset.mem_insert_self _ _)
+      have hz₂ : (CtxBij.ofEq w₂eq₁ m₂).toCtxMap.f (m₁.toCtxMap.f z)
+          ∉ VarCtx_to_VarSymbs (VarCtx_erase V''
+              ⟨(CtxBij.ofEq w₂eq₁ m₂).toCtxMap.f (m₁.toCtxMap.f z), T₁.VTypeProd T₂⟩) :=
+        VarCtx_erase_fresh hzV₂
+      have w₂eq₂ : VarCtx_insert
+          ⟨(CtxBij.ofEq w₂eq₁ m₂).toCtxMap.f (m₁.toCtxMap.f z), T₁.VTypeProd T₂⟩
+          (VarCtx_erase V''
+            ⟨(CtxBij.ofEq w₂eq₁ m₂).toCtxMap.f (m₁.toCtxMap.f z), T₁.VTypeProd T₂⟩) hz₂ = V'' :=
+        VarCtx_insert_erase hzV₂ hz₂
+      rw [Term.mapCtx_pair_elim hz body m₁ hz₁ w₂eq₁,
+          Term.pair_elim_as_cast hz₁ _ w₂eq₁,
+          Term.mapCtx_cast w₂eq₁ m₂ (CtxBij.ofEq w₂eq₁ m₂) (CtxBij.cast_ofEq w₂eq₁ m₂),
+          Term.mapCtx_pair_elim hz₁ _ (CtxBij.ofEq w₂eq₁ m₂) hz₂ w₂eq₂,
+          Term.cast_pair_elim]
+      -- The destructured variable comes back to `z` …
+      have hzz : (CtxBij.ofEq w₂eq₁ m₂).toCtxMap.f (m₁.toCtxMap.f z) = z :=
+        hid z (by rw [VarCtx_to_VarSymbs_insert]; exact Finset.mem_insert_self _ _)
+      -- … so the doubly-erased base is `pe_V` again (`Finset.erase_insert`).
+      have hB : VarCtx_erase V''
+          ⟨(CtxBij.ofEq w₂eq₁ m₂).toCtxMap.f (m₁.toCtxMap.f z), T₁.VTypeProd T₂⟩ = pe_V := by
+        rw [hzz, hVV]
+        refine VarCtx_ext _ _ ?_
+        change (insert (⟨z, T₁.VTypeProd T₂⟩ : VarSymb × VarType) pe_V.1).erase
+            ⟨z, T₁.VTypeProd T₂⟩ = pe_V.1
+        exact Finset.erase_insert (fun hmem => hz (Finset.mem_image.mpr ⟨_, hmem, rfl⟩))
+      have hW : VarCtx.insertBnd2 T₁ T₂ (VarCtx_erase V''
+          ⟨(CtxBij.ofEq w₂eq₁ m₂).toCtxMap.f (m₁.toCtxMap.f z), T₁.VTypeProd T₂⟩)
+          = VarCtx.insertBnd2 T₁ T₂ pe_V := by rw [hB]
+      -- The body maps cancel: `restrictInsert` keeps `f`, and each `extendBnd` layer is closed
+      -- by `CtxBij.extendBnd_id` against the base equation.
+      have hid₀ : ∀ v ∈ VarCtx_to_VarSymbs pe_V,
+          (CtxBij.restrictInsert hz₁ (CtxBij.ofEq w₂eq₁ m₂)).toCtxMap.f
+            ((CtxBij.restrictInsert hz m₁).toCtxMap.f v) = v := fun v hv =>
+        hid v (by rw [VarCtx_to_VarSymbs_insert]; exact Finset.mem_insert_of_mem hv)
+      have hid₁ := CtxBij.extendBnd_id (CtxBij.restrictInsert hz m₁)
+        (CtxBij.restrictInsert hz₁ (CtxBij.ofEq w₂eq₁ m₂)) hB hid₀ T₁
+      have hidB := CtxBij.extendBnd_id ((CtxBij.restrictInsert hz m₁).extendBnd T₁)
+        ((CtxBij.restrictInsert hz₁ (CtxBij.ofEq w₂eq₁ m₂)).extendBnd T₁) (by rw [hB]) hid₁ T₂
+      have hIH := IH _ _
+        (((CtxBij.restrictInsert hz m₁).extendBnd T₁).extendBnd T₂)
+        (((CtxBij.restrictInsert hz₁ (CtxBij.ofEq w₂eq₁ m₂)).extendBnd T₁).extendBnd T₂)
+        hW hidB
+      exact Term.pair_elim_congr' hzz hB hW _ _ _ _ _ body hIH
+  termination_by _ _ _ _ _ _ _ _ t => sizeOf t
 
 theorem Func.mapCtx_roundtrip {σ : Signature} :
     ∀ (V V' V'' : VarCtx) (m₁ : CtxBij V V') (m₂ : CtxBij V' V'') (hVV : V'' = V)
-      (hid : ∀ v ∈ VarCtx_to_VarSymbs V, m₂.toCtxMap.f (m₁.toCtxMap.f v) = v)
+      (_hid : ∀ v ∈ VarCtx_to_VarSymbs V, m₂.toCtxMap.f (m₁.toCtxMap.f v) = v)
       (N : ℕ) (fn : Func σ V N),
       hVV ▸ (Func.mapCtx m₂ (Func.mapCtx m₁ fn)) = fn
   | _, _, _, m₁, m₂, hVV, _, _, .F hr => by
@@ -417,5 +599,5 @@ theorem Func.mapCtx_roundtrip {σ : Signature} :
       rw [Func.mapCtx_eval, Func.mapCtx_eval, Func.cast_eval,
           Func.mapCtx_roundtrip V V' V'' m₁ m₂ hVV hid _ g,
           Term.mapCtx_roundtrip V V' V'' m₁ m₂ hVV hid _ t]
-  termination_by V V' V'' m₁ m₂ hVV hid N fn => sizeOf fn
+  termination_by _ _ _ _ _ _ _ _ fn => sizeOf fn
 end
