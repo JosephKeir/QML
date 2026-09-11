@@ -14,6 +14,9 @@ compared.
 
 namespace V12
 
+-- ⚠️Keep the context an INDEX: promoted to a parameter, the heterogeneous `Rel.beq` below would
+-- depend on `Quot.sound`.
+set_option inductive.autoPromoteIndices false in
 inductive Rel (σ : Signature) : Ctx → ℕ → Type where
   | R {Γ : Ctx} {n : ℕ} (r : {r : σ.RelSyms // σ.relArity r = n}) : Rel σ Γ n
   | eval {Γ : Ctx} {n : ℕ} : Rel σ Γ (n + 1) → Term σ Γ .Var .var → Rel σ Γ n
@@ -305,8 +308,9 @@ theorem eqRec_boxtm {σ : Signature} {Γ Δ : Ctx} {A : VarType} {a : Ann A}
   simp only [eqRec, dite_true, cast_eq]
 
 theorem eqRec_diatm {σ : Signature} {Γ Δ : Ctx} {A : VarType} {a : Ann A}
-    {b : Ann (.VTypeDia A)} (x : VarSymb) (X : VarType) (hx hx' : Γ.refType x = some (.VTypeDia X))
-    (t s : Term σ Δ A a) (hΔ : Δ = Γ.diaIn x X) (hb hb' : b = .dia x.toIdx (a.mapIdx (Δ.diaOut x))) :
+    {b : Ann (.VTypeDia A)} (x : VarSymb) (X : VarType)
+    (hx hx' : Γ.refType x = some (.VTypeDia X)) (t s : Term σ Δ A a) (hΔ : Δ = Γ.diaIn x X)
+    (hb hb' : b = .dia x.toIdx (a.mapIdx (Δ.diaOut x))) :
     eqRec (.VTypeDia A) (Term.diatm x X hx t hΔ hb) (Term.diatm x X hx' s hΔ hb') =
       .boxx x X hx (eqRec A t s) hΔ := by
   simp only [eqRec, and_self, dite_true, cast_eq]

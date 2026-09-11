@@ -546,14 +546,15 @@ theorem unbox_refine_leaf (T : VarType) (p : Pat)
     (h : ((Entry.leaf (some T)).refine p).NoBoxProd) :
     ((Entry.leaf (some T)).refine p).unbox = ((Entry.leaf (some T)).refine (forcedTy T)).unbox := by
   induction T generalizing p with
-  | Var => rw [refine_nonprod_leaf (by simp) p]; rfl
-  | VTypeOne => rw [refine_nonprod_leaf (by simp) p]; rfl
-  | VTypeBox X _ => rw [refine_nonprod_leaf (by simp) p]; rfl
-  | VTypeDia X _ => rw [refine_nonprod_leaf (by simp) p]; rfl
+  | Var => rw [refine_nonprod_leaf (fun _ _ h => by cases h) p]; rfl
+  | VTypeOne => rw [refine_nonprod_leaf (fun _ _ h => by cases h) p]; rfl
+  | VTypeBox X _ => rw [refine_nonprod_leaf (fun _ _ h => by cases h) p]; rfl
+  | VTypeDia X _ => rw [refine_nonprod_leaf (fun _ _ h => by cases h) p]; rfl
   | VTypeProd A B ihA ihB =>
       by_cases hb : (VarType.VTypeProd A B).boxy = true
       · cases p with
-        | stop => simp [NoBoxProd, VarType.boxyProd, VarType.boxy] at h hb; simp_all
+        | stop =>
+            exact absurd ((h : (VarType.VTypeProd A B).boxy = false).symm.trans hb) (by decide)
         | split pa pb =>
             simp only [forcedTy, hb, if_true, refine, unbox] at h ⊢
             rw [ihA pa h.1, ihB pb h.2]
@@ -568,7 +569,8 @@ theorem unbox_refine_forced (e : Entry) (p : Pat) (h : (e.refine p).NoBoxProd) :
   induction e generalizing p with
   | leaf o =>
       rcases o with _ | T
-      · rw [refine_nonprod_leaf (by simp) p, refine_nonprod_leaf (by simp) _]
+      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p,
+          refine_nonprod_leaf (fun _ _ h => by cases h) _]
       · exact unbox_refine_leaf T p h
   | node a b iha ihb =>
       cases p with
@@ -609,7 +611,7 @@ theorem lookup_of_leafAt (q : List PStep) : ∀ (e : Entry) {T : VarType},
       intro e T h
       rcases e with ⟨_ | T'⟩ | ⟨a, b⟩
       · simp [leafAt] at h
-      · simpa [leafAt, lookup, VarType.follow] using h
+      · cases T' <;> exact h
       · simp [leafAt] at h
   | cons s q ih =>
       intro e T h
@@ -627,10 +629,10 @@ theorem leafAt_refine_forcedPath (q : List PStep) : ∀ (e : Entry) (X : VarType
       intro e X h
       rcases e with ⟨_ | ⟨_ | _ | ⟨A, B⟩ | _ | Y⟩⟩ | ⟨a, b⟩
       · simp [lookup] at h
-      · simp [lookup, VarType.follow] at h
-      · simp [lookup, VarType.follow] at h
-      · simp [lookup, VarType.follow] at h
-      · simp [lookup, VarType.follow] at h
+      · cases h
+      · cases h
+      · cases h
+      · cases h
       · simp only [lookup, Option.bind, VarType.follow, Option.some.injEq,
           VarType.VTypeDia.injEq] at h
         subst h
@@ -640,8 +642,8 @@ theorem leafAt_refine_forcedPath (q : List PStep) : ∀ (e : Entry) (X : VarType
       intro e X h
       rcases e with ⟨_ | ⟨_ | _ | ⟨A, B⟩ | _ | Y⟩⟩ | ⟨a, b⟩
       · simp [lookup] at h
-      · cases s <;> simp [lookup, VarType.follow] at h
-      · cases s <;> simp [lookup, VarType.follow] at h
+      · cases s <;> cases h
+      · cases s <;> cases h
       · cases s
         · have hA : (Entry.leaf (some A)).lookup q = some (.VTypeDia X) := h
           by_cases hb : (VarType.VTypeProd A B).boxy = true
@@ -664,8 +666,8 @@ theorem leafAt_refine_forcedPath (q : List PStep) : ∀ (e : Entry) (X : VarType
               refine, leafAt]
             have := ih _ X hB
             simpa only [forced, forcedTy_of_not_boxy hB', Pat.join] using this
-      · cases s <;> simp [lookup, VarType.follow] at h
-      · cases s <;> simp [lookup, VarType.follow] at h
+      · cases s <;> cases h
+      · cases s <;> cases h
       · cases s
         · simp only [forced, Pat.path, Pat.join, Pat.join_stop, refine, leafAt]
           exact ih a X h
@@ -680,23 +682,24 @@ theorem unboxExcept_refine_forced (q : List PStep) : ∀ (e : Entry) (p : Pat) (
   | nil =>
       intro e p X _ hl
       rcases e with ⟨_ | ⟨_ | _ | ⟨A, B⟩ | _ | Y⟩⟩ | ⟨a, b⟩
-      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
-      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
-      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
+      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
+      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
+      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
       · cases p with
         | stop => simp [leafAt] at hl
         | split pa pb => simp [refine, leafAt] at hl
-      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
-      · rw [refine_nonprod_leaf (by simp) p, refine_nonprod_leaf (by simp) _]
+      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
+      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p,
+          refine_nonprod_leaf (fun _ _ h => by cases h) _]
       · cases p with
         | stop => simp [leafAt] at hl
         | split pa pb => simp [refine, leafAt] at hl
   | cons s q ih =>
       intro e p X h hl
       rcases e with ⟨_ | ⟨_ | _ | ⟨A, B⟩ | _ | Y⟩⟩ | ⟨a, b⟩
-      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
-      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
-      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
+      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
+      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
+      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
       · cases p with
         | stop => simp [leafAt] at hl
         | split pa pb =>
@@ -730,8 +733,8 @@ theorem unboxExcept_refine_forced (q : List PStep) : ∀ (e : Entry) (p : Pat) (
                   ((unbox_refine_nonboxy A hb'.1 pa).trans
                     (unbox_refine_nonboxy A hb'.1 .stop).symm)
                   hih
-      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
-      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
+      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
+      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
       · cases p with
         | stop =>
             cases s
@@ -771,11 +774,11 @@ theorem Sim.refl (e : Entry) : e.Sim e := ⟨fun _ _ _ => Iff.rfl, rfl, fun _ _ 
 
 theorem Sim.symm {e e' : Entry} (h : e.Sim e') : e'.Sim e :=
   ⟨fun q T hT => (h.lookup q T hT).symm, h.box.symm,
-   fun q X hl => (h.dia q X ((h.lookup q _ (by simp)).mpr hl)).symm⟩
+   fun q X hl => (h.dia q X ((h.lookup q _ (fun _ _ h => by cases h)).mpr hl)).symm⟩
 
 theorem Sim.trans {e e' e'' : Entry} (h : e.Sim e') (h' : e'.Sim e'') : e.Sim e'' :=
   ⟨fun q T hT => (h.lookup q T hT).trans (h'.lookup q T hT), h'.box.trans h.box,
-   fun q X hl => (h'.dia q X ((h.lookup q _ (by simp)).mp hl)).trans (h.dia q X hl)⟩
+   fun q X hl => (h'.dia q X ((h.lookup q _ (fun _ _ h => by cases h)).mp hl)).trans (h.dia q X hl)⟩
 
 /-- ⭐Refining an entry is invisible to terms and formulas. -/
 theorem sim_refine (e : Entry) (p : Pat) : (e.refine p).Sim e := by
@@ -923,7 +926,7 @@ theorem diaIn_refine (Γ : Ctx) (P : Root → Pat) {x : VarSymb} {X : VarType}
     (hx : Γ.refType x = some (.VTypeDia X)) : (Γ.refine P).diaIn x X = Γ.diaIn x X := by
   unfold diaIn
   have hx' : (Γ.refine P).refType x = some (.VTypeDia X) :=
-    (refType_refine_nonprod Γ P x (by simp)).mpr hx
+    (refType_refine_nonprod Γ P x (fun _ _ h => by cases h)).mpr hx
   have h := noBoxProd_forcedX (Γ.refine P) x
   have hl := lookup_forcedX hx'
   rw [refine_join] at h hl ⊢
@@ -965,16 +968,17 @@ theorem Sim.trans {Γ Γ' Γ'' : Ctx} (h : Γ.Sim Γ') (h' : Γ'.Sim Γ'') : Γ.
 
 /-- Leaving a split. -/
 theorem sim_refine_left (Γ : Ctx) (P : Root → Pat) : (Γ.refine P).Sim Γ :=
-  ⟨fun v hv => (refType_refine_nonprod Γ P v (by simp)).mp hv,
+  ⟨fun v hv => (refType_refine_nonprod Γ P v (fun _ _ h => by cases h)).mp hv,
    fun x X hx => by
-     have hx' := (refType_refine_nonprod Γ P x (by simp)).mp hx
+     have hx' := (refType_refine_nonprod Γ P x (fun _ _ h => by cases h)).mp hx
      exact ⟨hx', (diaIn_refine Γ P hx').symm⟩,
    (boxIn_refine Γ P).symm⟩
 
 /-- Entering a split. -/
 theorem sim_refine_right (Γ : Ctx) (P : Root → Pat) : Γ.Sim (Γ.refine P) :=
-  ⟨fun v hv => (refType_refine_nonprod Γ P v (by simp)).mpr hv,
-   fun x X hx => ⟨(refType_refine_nonprod Γ P x (by simp)).mpr hx, diaIn_refine Γ P hx⟩,
+  ⟨fun v hv => (refType_refine_nonprod Γ P v (fun _ _ h => by cases h)).mpr hv,
+   fun x X hx =>
+     ⟨(refType_refine_nonprod Γ P x (fun _ _ h => by cases h)).mpr hx, diaIn_refine Γ P hx⟩,
    boxIn_refine Γ P⟩
 
 /-! ### Pointwise similar contexts
@@ -995,9 +999,9 @@ theorem PSim.trans {Γ Γ' Γ'' : Ctx} (h : Γ.PSim Γ') (h' : Γ'.PSim Γ'') : 
   ⟨h'.depth.trans h.depth, fun r => (h.tree r).trans (h'.tree r)⟩
 
 theorem PSim.toSim {Γ Γ' : Ctx} (h : Γ.PSim Γ') : Γ.Sim Γ' := by
-  refine ⟨fun v hv => ((h.tree v.root).lookup v.path .Var (by simp)).mp hv, ?_, ?_⟩
+  refine ⟨fun v hv => ((h.tree v.root).lookup v.path .Var (fun _ _ h => by cases h)).mp hv, ?_, ?_⟩
   · intro x X hx
-    refine ⟨((h.tree x.root).lookup x.path _ (by simp)).mp hx, ?_⟩
+    refine ⟨((h.tree x.root).lookup x.path _ (fun _ _ h => by cases h)).mp hx, ?_⟩
     ext r
     · simp only [diaIn, dia, refine, forcedX, forced, pathPat]
       by_cases hr : r = x.root
