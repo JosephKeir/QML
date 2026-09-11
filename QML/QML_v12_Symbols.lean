@@ -144,17 +144,19 @@ def PStep.toStep : PStep → Step
   | .fst => .fst
   | .snd => .snd
 
-/-- An annotation index: the `◇`-node reached from the name `root` by `path`. -/
+/-- An annotation index, in CANONICAL form: a root and the full access path through the root's
+    type (product steps and modal steps interleaved as they occur).  A `◇`-node therefore has ONE
+    index however its root happens to be split. -/
 structure Idx where
-  root : VarSymb
+  root : Root
   path : List Step
 deriving DecidableEq
 
-def Idx.pre (s : Step) (i : Idx) : Idx := ⟨i.root, s :: i.path⟩
-def Idx.strip (i : Idx) : Idx := ⟨i.root, i.path.tail⟩
-def Idx.ren (f : VarSymb → VarSymb) (i : Idx) : Idx := ⟨f i.root, i.path⟩
+def Idx.ext (i : Idx) (s : Step) : Idx := ⟨i.root, i.path ++ [s]⟩
+def Idx.ren (f : Root → Root) (i : Idx) : Idx := ⟨f i.root, i.path⟩
 
-@[simp] theorem Idx.strip_pre (s : Step) (i : Idx) : (i.pre s).strip = i := rfl
+/-- The index of the node that a name itself reaches. -/
+def VarSymb.toIdx (v : VarSymb) : Idx := ⟨v.root, v.path.map PStep.toStep⟩
 
 /-- The annotation over a plain type: a witness index at every `◇`. -/
 inductive Ann : VarType → Type where
@@ -190,14 +192,14 @@ def idxAt : {T : VarType} → Ann T → List Step → Idx
   | _, dia _ a, .dia :: p => a.idxAt p
   | _, _, _ => ⟨.free 0, []⟩
 
-/-- The SELF annotation of a variable: every `◇`-node indexed by the variable itself along its
-    path — how a declared variable elaborates to a term type. -/
-def self (v : VarSymb) : (T : VarType) → Ann T
+/-- The SELF annotation at an index: every `◇`-node indexed by its own position — how a declared
+    variable `v` elaborates to a term type (`self v.toIdx T`). -/
+def self (i : Idx) : (T : VarType) → Ann T
   | .Var => var
   | .VTypeOne => one
-  | .VTypeProd A B => prod ((self v A).mapIdx (Idx.pre .fst)) ((self v B).mapIdx (Idx.pre .snd))
-  | .VTypeBox A => box ((self v A).mapIdx (Idx.pre .box))
-  | .VTypeDia A => dia ⟨v, []⟩ ((self v A).mapIdx (Idx.pre .dia))
+  | .VTypeProd A B => prod (self (i.ext .fst) A) (self (i.ext .snd) B)
+  | .VTypeBox A => box (self (i.ext .box) A)
+  | .VTypeDia A => dia i (self (i.ext .dia) A)
 
 end Ann
 
@@ -746,6 +748,12 @@ theorem unboxExcept_refine_forced (q : List PStep) : ∀ (e : Entry) (p : Pat) (
               simp only [forced, Pat.path, Pat.join, Pat.join_stop, refine, unboxExcept]
               exact congrArg₂ Entry.node (unbox_refine_forced a pa h.1) (ih b pb X h.2 hl)
 
+/-- The split-node path an index path walks before it reaches a leaf. -/
+def walk : Entry → List Step → List PStep
+  | .node a _, .fst :: p => .fst :: a.walk p
+  | .node _ b, .snd :: p => .snd :: b.walk p
+  | _, _ => []
+
 end Entry
 
 /-! ## Contexts -/
@@ -854,6 +862,82 @@ theorem dia_refine_forced {Γ : Ctx} {P : Root → Pat} {x : VarSymb} {X : VarTy
     · simp only [hr, if_false, Pat.join_stop]
       exact Entry.unbox_refine_forced _ _ (h r)
   · rfl
+
+/-! ### Modal inner contexts
+
+⭐A modal node applies the FORCED split itself: its inner context is computed from the forced
+refinement of the outer one.  So there is never a separate pair-elimination node, and any extra
+splitting outside a modal node is invisible inside it (`boxIn_refine`, `diaIn_refine`). -/
+
+/-- The inner context of a `□`. -/
+def boxIn (Γ : Ctx) : Ctx := (Γ.refine Γ.forced).unbox
+
+/-- The inner context of a `◇_x`. -/
+def diaIn (Γ : Ctx) (x : VarSymb) (X : VarType) : Ctx := (Γ.refine (Γ.forcedX x)).dia x X
+
+theorem boxIn_refine (Γ : Ctx) (P : Root → Pat) : (Γ.refine P).boxIn = Γ.boxIn := by
+  unfold boxIn
+  have h := noBoxProd_forced (Γ.refine P)
+  rw [refine_join] at h ⊢
+  exact unbox_refine_forced h
+
+theorem diaIn_refine (Γ : Ctx) (P : Root → Pat) {x : VarSymb} {X : VarType}
+    (hx : Γ.refType x = some (.VTypeDia X)) : (Γ.refine P).diaIn x X = Γ.diaIn x X := by
+  unfold diaIn
+  have hx' : (Γ.refine P).refType x = some (.VTypeDia X) :=
+    (refType_refine_nonprod Γ P x (by simp)).mpr hx
+  have h := noBoxProd_forcedX (Γ.refine P) x
+  have hl := lookup_forcedX hx'
+  rw [refine_join] at h hl ⊢
+  exact dia_refine_forced h hl
+
+/-! ### Index out-maps
+
+An index of an inner context is re-expressed outside the modal node by inserting the modal step
+where the index path leaves the INNER split tree, i.e. at its leaf.  The maps read only the inner
+context, so they are unchanged by anything that leaves the inner context unchanged. -/
+
+def outIdx (Δ : Ctx) (s : Root → List PStep → Step) (i : Idx) : Idx :=
+  let q := (Δ.tree i.root).walk i.path
+  ⟨i.root, q.map PStep.toStep ++ s i.root q :: i.path.drop q.length⟩
+
+def boxOut (Δ : Ctx) : Idx → Idx := Δ.outIdx (fun _ _ => .box)
+
+/-- Out of `◇_x`: a `◇`-step into the witness leaf, a `□`-step into every other leaf. -/
+def diaOut (Δ : Ctx) (x : VarSymb) : Idx → Idx :=
+  Δ.outIdx (fun r q => if r = x.root ∧ q = x.path then .dia else .box)
+
+/-! ### Similar contexts -/
+
+/-- Two contexts that type the same terms: they agree on the base-typed and `◇`-typed names, and
+    on every modal inner context. -/
+structure Sim (Γ Γ' : Ctx) : Prop where
+  var : ∀ v, Γ.refType v = some .Var → Γ'.refType v = some .Var
+  dia : ∀ x X, Γ.refType x = some (.VTypeDia X) →
+    Γ'.refType x = some (.VTypeDia X) ∧ Γ'.diaIn x X = Γ.diaIn x X
+  box : Γ'.boxIn = Γ.boxIn
+
+theorem Sim.refl (Γ : Ctx) : Γ.Sim Γ := ⟨fun _ h => h, fun _ _ h => ⟨h, rfl⟩, rfl⟩
+
+theorem Sim.trans {Γ Γ' Γ'' : Ctx} (h : Γ.Sim Γ') (h' : Γ'.Sim Γ'') : Γ.Sim Γ'' :=
+  ⟨fun v hv => h'.var v (h.var v hv),
+   fun x X hx =>
+     ⟨(h'.dia x X (h.dia x X hx).1).1, (h'.dia x X (h.dia x X hx).1).2.trans (h.dia x X hx).2⟩,
+   h'.box.trans h.box⟩
+
+/-- Leaving a split. -/
+theorem sim_refine_left (Γ : Ctx) (P : Root → Pat) : (Γ.refine P).Sim Γ :=
+  ⟨fun v hv => (refType_refine_nonprod Γ P v (by simp)).mp hv,
+   fun x X hx => by
+     have hx' := (refType_refine_nonprod Γ P x (by simp)).mp hx
+     exact ⟨hx', (diaIn_refine Γ P hx').symm⟩,
+   (boxIn_refine Γ P).symm⟩
+
+/-- Entering a split. -/
+theorem sim_refine_right (Γ : Ctx) (P : Root → Pat) : Γ.Sim (Γ.refine P) :=
+  ⟨fun v hv => (refType_refine_nonprod Γ P v (by simp)).mpr hv,
+   fun x X hx => ⟨(refType_refine_nonprod Γ P x (by simp)).mpr hx, diaIn_refine Γ P hx⟩,
+   boxIn_refine Γ P⟩
 
 end Ctx
 
