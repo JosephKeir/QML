@@ -7,20 +7,22 @@ Isolated.  Tests one reusable operation for eliminating pair variables:
 
 * a **pattern** says which product nodes of a context entry to destructure;
 * `unpair` moves a formula into the split context, and the smart `pelim` moves it back, pushing
-  the elimination inward and keeping, at each stuck `□`, exactly the FORCED part;
+  the elimination inward and keeping, at each stuck modal node, exactly the FORCED part;
 * maximal unpairing and normal forms are the same operation with different patterns.
 
 Design choices of the prototype:
 * **Components are named by ACCESS PATHS** (a root variable plus `fst`/`snd` steps), as in the
   witness annotations — so splitting allocates nothing and is order-free by construction;
 * a context entry is a **split tree** whose leaves are typed (present) or hidden;
-* the v11 box discipline: `□` can be formed only when no present leaf is a BOXY product
-  (a product containing a box), and inside `□` only box-typed leaves stay visible;
+* the v11 box discipline: a modal node can be formed only when no present leaf is a BOXY product
+  (a product containing a box), and inside it only box-typed leaves stay visible;
+* the two sources of forcing: boxy products (every `□` and `□_x`), and the witness path of `□_x`
+  (the witness must be an ENTRY, not a component of an unsplit product);
 * references (`prim a b`) may point THROUGH an unsplit product (a leaf elimination);
-* normal forms put a `split (forced Γ)` node above EVERY `□` (trivial when nothing is forced), so
-  normality needs no decision about triviality.
+* normal forms put a `split (forced …)` node above EVERY modal node (trivial when nothing is
+  forced), so normality needs no decision about triviality.
 
-Not modelled here: `◇` witness paths (the second source of forcing), terms other than references.
+Not modelled here: terms other than references.
 -/
 
 namespace PatSplit
@@ -41,10 +43,13 @@ def Ty.boxy : Ty → Bool
   | .box _ => true
   | .dia _ => false
 
-/-- A product that contains a box: such an entry blocks `□`. -/
+/-- A product that contains a box: such an entry blocks modal nodes. -/
 def Ty.boxyProd : Ty → Bool
   | .prod A B => A.boxy || B.boxy
   | _ => false
+
+theorem Ty.boxyProd_of_boxy {T : Ty} (h : T.boxy = false) : T.boxyProd = false := by
+  cases T <;> simp_all [Ty.boxy, Ty.boxyProd]
 
 inductive Step where
   | fst
@@ -70,11 +75,25 @@ def Pat.join : Pat → Pat → Pat
   | p, .stop => p
   | .split a b, .split c d => .split (a.join c) (b.join d)
 
+@[simp] theorem Pat.join_stop (p : Pat) : p.join .stop = p := by cases p <;> rfl
+
+/-- The pattern that splits exactly along a path. -/
+def Pat.path : List Step → Pat
+  | [] => .stop
+  | .fst :: q => .split (Pat.path q) .stop
+  | .snd :: q => .split .stop (Pat.path q)
+
 /-- A context entry: a split tree whose leaves are present (typed) or hidden. -/
 inductive Entry where
   | leaf (o : Option Ty)
   | node (a b : Entry)
 deriving DecidableEq
+
+def Ty.follow : Ty → List Step → Option Ty
+  | T, [] => some T
+  | .prod A _, .fst :: q => A.follow q
+  | .prod _ B, .snd :: q => B.follow q
+  | _, _ :: _ => none
 
 namespace Entry
 
@@ -92,7 +111,7 @@ def forcedTy : Ty → Pat
   | .prod A B => if (Ty.prod A B).boxy then .split (forcedTy A) (forcedTy B) else .stop
   | _ => .stop
 
-/-- The FORCED pattern: split boxy products, and nothing else. -/
+/-- The FORCED box pattern: split boxy products, and nothing else. -/
 def forced : Entry → Pat
   | .leaf (some T) => forcedTy T
   | .leaf none => .stop
@@ -108,22 +127,32 @@ def unbox : Entry → Entry
   | .leaf _ => .leaf none
   | .node a b => mkNode (unbox a) (unbox b)
 
+/-- Into a `◇_x` whose witness leaf is at path `q`: the box shadow, with the witness revealed at its
+    realization type.  Along the witness path the tree stays OPEN (no collapse). -/
+def unboxExcept : Entry → List Step → Ty → Entry
+  | .leaf _, [], X => .leaf (some X)
+  | .node a b, .fst :: q, X => .node (a.unboxExcept q X) b.unbox
+  | .node a b, .snd :: q, X => .node a.unbox (b.unboxExcept q X)
+  | e, _, _ => e.unbox
+
 def NoBoxProd : Entry → Prop
   | .leaf (some T) => T.boxyProd = false
   | .leaf none => True
   | .node a b => NoBoxProd a ∧ NoBoxProd b
-
-def _root_.PatSplit.Ty.follow : Ty → List Step → Option Ty
-  | T, [] => some T
-  | .prod A _, .fst :: q => A.follow q
-  | .prod _ B, .snd :: q => B.follow q
-  | _, _ :: _ => none
 
 /-- The type at a path: through split nodes, then through the leaf's own product type. -/
 def lookup : Entry → List Step → Option Ty
   | .leaf o, q => o.bind (fun T => T.follow q)
   | .node a _, .fst :: q => a.lookup q
   | .node _ b, .snd :: q => b.lookup q
+  | .node _ _, [] => none
+
+/-- The entry EXACTLY at a path (no looking inside an unsplit product). -/
+def leafAt : Entry → List Step → Option Ty
+  | .leaf o, [] => o
+  | .leaf _, _ :: _ => none
+  | .node a _, .fst :: q => a.leafAt q
+  | .node _ b, .snd :: q => b.leafAt q
   | .node _ _, [] => none
 
 end Entry
@@ -160,6 +189,24 @@ theorem refine_join (e : Entry) (p q : Pat) : (e.refine p).refine q = e.refine (
           · rfl
           · rfl
           · simp only [refine, Pat.join, iha, ihb]
+
+theorem forcedTy_of_not_boxy {T : Ty} (h : T.boxy = false) : forcedTy T = .stop := by
+  cases T with
+  | prod A B => simp only [forcedTy]; rw [if_neg (by simp_all [Ty.boxy])]
+  | _ => rfl
+
+theorem noBoxProd_refine (e : Entry) (p : Pat) (h : e.NoBoxProd) : (e.refine p).NoBoxProd := by
+  induction p generalizing e with
+  | stop => exact h
+  | split pa pb iha ihb =>
+      rcases e with ⟨_ | ⟨_ | ⟨A, B⟩ | _ | _⟩⟩ | ⟨a, b⟩
+      · exact h
+      · exact h
+      · simp only [NoBoxProd, Ty.boxyProd, Bool.or_eq_false_iff] at h
+        exact ⟨iha _ (Ty.boxyProd_of_boxy h.1), ihb _ (Ty.boxyProd_of_boxy h.2)⟩
+      · exact h
+      · exact h
+      · exact ⟨iha a h.1, ihb b h.2⟩
 
 theorem noBoxProd_forcedTy (T : Ty) : ((Entry.leaf (some T)).refine (forcedTy T)).NoBoxProd := by
   induction T with
@@ -235,9 +282,9 @@ theorem unbox_refine_forced (e : Entry) (p : Pat) (h : (e.refine p).NoBoxProd) :
           simp only [refine, forced, unbox] at h ⊢
           rw [iha pa h.1, ihb pb h.2]
 
-/-- Refinement does not change which names are base-typed. -/
-theorem lookup_refine_base (e : Entry) (p : Pat) (q : List Step) :
-    (e.refine p).lookup q = some .base ↔ e.lookup q = some .base := by
+/-- Refinement does not change which names have a non-product type. -/
+theorem lookup_refine_nonprod (e : Entry) (p : Pat) (q : List Step) {T : Ty}
+    (hT : ∀ A B, T ≠ .prod A B) : (e.refine p).lookup q = some T ↔ e.lookup q = some T := by
   induction p generalizing e q with
   | stop => rfl
   | split pa pb iha ihb =>
@@ -245,17 +292,163 @@ theorem lookup_refine_base (e : Entry) (p : Pat) (q : List Step) :
       · rfl
       · rfl
       · rcases q with _ | ⟨_ | _, q⟩
-        · simp [refine, lookup, Ty.follow]
-        · simp only [refine, lookup]
-          rw [iha]; simp [lookup, Ty.follow]
-        · simp only [refine, lookup]
-          rw [ihb]; simp [lookup, Ty.follow]
+        · change none = some T ↔ some (Ty.prod A B) = some T
+          exact ⟨(fun h => by cases h), fun h => absurd (Option.some.inj h).symm (hT A B)⟩
+        · exact iha (.leaf (some A)) q
+        · exact ihb (.leaf (some B)) q
       · rfl
       · rfl
       · rcases q with _ | ⟨_ | _, q⟩
-        · simp [refine, lookup]
-        · simp only [refine, lookup]; exact iha a q
-        · simp only [refine, lookup]; exact ihb b q
+        · rfl
+        · exact iha a q
+        · exact ihb b q
+
+theorem lookup_of_leafAt (q : List Step) : ∀ (e : Entry) {T : Ty},
+    e.leafAt q = some T → e.lookup q = some T := by
+  induction q with
+  | nil =>
+      intro e T h
+      rcases e with ⟨_ | T'⟩ | ⟨a, b⟩
+      · simp [leafAt] at h
+      · simpa [leafAt, lookup, Ty.follow] using h
+      · simp [leafAt] at h
+  | cons s q ih =>
+      intro e T h
+      rcases e with ⟨o⟩ | ⟨a, b⟩
+      · simp [leafAt] at h
+      · cases s
+        · exact ih a h
+        · exact ih b h
+
+/-- The witness-path forcing makes the witness an ENTRY. -/
+theorem leafAt_refine_forcedPath (q : List Step) : ∀ (e : Entry) (X : Ty),
+    e.lookup q = some (.dia X) → (e.refine (e.forced.join (Pat.path q))).leafAt q = some (.dia X) := by
+  induction q with
+  | nil =>
+      intro e X h
+      rcases e with ⟨_ | ⟨_ | ⟨A, B⟩ | _ | Y⟩⟩ | ⟨a, b⟩
+      · simp [lookup] at h
+      · simp [lookup, Ty.follow] at h
+      · simp [lookup, Ty.follow] at h
+      · simp [lookup, Ty.follow] at h
+      · simp only [lookup, Option.bind, Ty.follow, Option.some.injEq, Ty.dia.injEq] at h
+        subst h
+        rfl
+      · simp [lookup] at h
+  | cons s q ih =>
+      intro e X h
+      rcases e with ⟨_ | ⟨_ | ⟨A, B⟩ | _ | Y⟩⟩ | ⟨a, b⟩
+      · simp [lookup] at h
+      · cases s <;> simp [lookup, Ty.follow] at h
+      · cases s
+        · have hA : (Entry.leaf (some A)).lookup q = some (.dia X) := h
+          by_cases hb : (Ty.prod A B).boxy = true
+          · simp only [forced, forcedTy, hb, if_true, Pat.path, Pat.join, Pat.join_stop, refine,
+              leafAt]
+            exact ih _ X hA
+          · have hA' : A.boxy = false := by
+              simp only [Ty.boxy, Bool.or_eq_true, not_or, Bool.not_eq_true] at hb; exact hb.1
+            simp only [forced, forcedTy, hb, Bool.false_eq_true, if_false, Pat.path, Pat.join,
+              refine, leafAt]
+            have := ih _ X hA
+            simpa only [forced, forcedTy_of_not_boxy hA', Pat.join] using this
+        · have hB : (Entry.leaf (some B)).lookup q = some (.dia X) := h
+          by_cases hb : (Ty.prod A B).boxy = true
+          · simp only [forced, forcedTy, hb, if_true, Pat.path, Pat.join, refine, leafAt]
+            exact ih _ X hB
+          · have hB' : B.boxy = false := by
+              simp only [Ty.boxy, Bool.or_eq_true, not_or, Bool.not_eq_true] at hb; exact hb.2
+            simp only [forced, forcedTy, hb, Bool.false_eq_true, if_false, Pat.path, Pat.join,
+              refine, leafAt]
+            have := ih _ X hB
+            simpa only [forced, forcedTy_of_not_boxy hB', Pat.join] using this
+      · cases s <;> simp [lookup, Ty.follow] at h
+      · cases s <;> simp [lookup, Ty.follow] at h
+      · cases s
+        · simp only [forced, Pat.path, Pat.join, Pat.join_stop, refine, leafAt]
+          exact ih a X h
+        · simp only [forced, Pat.path, Pat.join, refine, leafAt]
+          exact ih b X h
+
+/-- ⭐**Extra refinement is invisible inside `◇_x` too**: with the witness an entry, any
+    refinement permitting the modal node has the same inner context as the forced one — and the
+    witness path stays open on both sides. -/
+theorem unboxExcept_refine_forced (q : List Step) : ∀ (e : Entry) (p : Pat) (X : Ty),
+    (e.refine p).NoBoxProd → (e.refine p).leafAt q = some (.dia X) →
+    (e.refine p).unboxExcept q X = (e.refine (e.forced.join (Pat.path q))).unboxExcept q X := by
+  induction q with
+  | nil =>
+      intro e p X _ hl
+      rcases e with ⟨_ | ⟨_ | ⟨A, B⟩ | _ | Y⟩⟩ | ⟨a, b⟩
+      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
+      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
+      · cases p with
+        | stop => simp [leafAt] at hl
+        | split pa pb => simp [refine, leafAt] at hl
+      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
+      · rw [refine_nonprod_leaf (by simp) p, refine_nonprod_leaf (by simp) _]
+      · cases p with
+        | stop => simp [leafAt] at hl
+        | split pa pb => simp [refine, leafAt] at hl
+  | cons s q ih =>
+      intro e p X h hl
+      rcases e with ⟨_ | ⟨_ | ⟨A, B⟩ | _ | Y⟩⟩ | ⟨a, b⟩
+      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
+      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
+      · cases p with
+        | stop => simp [leafAt] at hl
+        | split pa pb =>
+            have hA : A.boxy = false ∨ (Ty.prod A B).boxy = true := by
+              cases hAb : A.boxy <;> simp [Ty.boxy, hAb]
+            by_cases hb : (Ty.prod A B).boxy = true
+            · cases s
+              · simp only [refine, NoBoxProd, leafAt] at h hl
+                simp only [forced, forcedTy, hb, if_true, Pat.path, Pat.join, Pat.join_stop,
+                  refine, unboxExcept]
+                exact congrArg₂ Entry.node (ih _ pa X h.1 hl) (unbox_refine_leaf B pb h.2)
+              · simp only [refine, NoBoxProd, leafAt] at h hl
+                simp only [forced, forcedTy, hb, if_true, Pat.path, Pat.join, Pat.join_stop,
+                  refine, unboxExcept]
+                exact congrArg₂ Entry.node (unbox_refine_leaf A pa h.1) (ih _ pb X h.2 hl)
+            · have hb' : (Ty.prod A B).boxy = false := by simpa using hb
+              simp only [Ty.boxy, Bool.or_eq_false_iff] at hb'
+              cases s
+              · simp only [refine, NoBoxProd, leafAt] at h hl
+                simp only [forced, forcedTy, hb, Bool.false_eq_true, if_false, Pat.path,
+                  Pat.join, refine, refine_stop, unboxExcept]
+                have hih := ih _ pa X h.1 hl
+                simp only [forced, forcedTy_of_not_boxy hb'.1, Pat.join] at hih
+                exact congrArg₂ Entry.node hih
+                  ((unbox_refine_nonboxy B hb'.2 pb).trans (unbox_refine_nonboxy B hb'.2 .stop).symm)
+              · simp only [refine, NoBoxProd, leafAt] at h hl
+                simp only [forced, forcedTy, hb, Bool.false_eq_true, if_false, Pat.path,
+                  Pat.join, refine, refine_stop, unboxExcept]
+                have hih := ih _ pb X h.2 hl
+                simp only [forced, forcedTy_of_not_boxy hb'.2, Pat.join] at hih
+                exact congrArg₂ Entry.node
+                  ((unbox_refine_nonboxy A hb'.1 pa).trans (unbox_refine_nonboxy A hb'.1 .stop).symm)
+                  hih
+      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
+      · rw [refine_nonprod_leaf (by simp) p] at hl; simp [leafAt] at hl
+      · cases p with
+        | stop =>
+            cases s
+            · simp only [refine_stop, NoBoxProd, leafAt] at h hl
+              simp only [forced, Pat.path, Pat.join, Pat.join_stop, refine, refine_stop,
+                unboxExcept]
+              exact congrArg₂ Entry.node (ih a .stop X h.1 hl) (unbox_refine_forced b .stop h.2)
+            · simp only [refine_stop, NoBoxProd, leafAt] at h hl
+              simp only [forced, Pat.path, Pat.join, Pat.join_stop, refine, refine_stop,
+                unboxExcept]
+              exact congrArg₂ Entry.node (unbox_refine_forced a .stop h.1) (ih b .stop X h.2 hl)
+        | split pa pb =>
+            cases s
+            · simp only [refine, NoBoxProd, leafAt] at h hl
+              simp only [forced, Pat.path, Pat.join, Pat.join_stop, refine, unboxExcept]
+              exact congrArg₂ Entry.node (ih a pa X h.1 hl) (unbox_refine_forced b pb h.2)
+            · simp only [refine, NoBoxProd, leafAt] at h hl
+              simp only [forced, Pat.path, Pat.join, Pat.join_stop, refine, unboxExcept]
+              exact congrArg₂ Entry.node (unbox_refine_forced a pa h.1) (ih b pb X h.2 hl)
 
 end Entry
 
@@ -269,6 +462,17 @@ def forcedCtx (Γ : Ctx) : Nat → Pat := fun r => (Γ r).forced
 def joinCtx (P Q : Nat → Pat) : Nat → Pat := fun r => (P r).join (Q r)
 def NoBoxProdCtx (Γ : Ctx) : Prop := ∀ r, (Γ r).NoBoxProd
 def refType (Γ : Ctx) (a : Name) : Option Ty := (Γ a.root).lookup a.path
+def entryType (Γ : Ctx) (a : Name) : Option Ty := (Γ a.root).leafAt a.path
+
+/-- The witness path as a context pattern. -/
+def pathCtx (x : Name) : Nat → Pat := fun r => if r = x.root then Pat.path x.path else .stop
+
+/-- The forced pattern for `□_x`: boxy products, plus the witness path. -/
+def forcedX (Γ : Ctx) (x : Name) : Nat → Pat := joinCtx (forcedCtx Γ) (pathCtx x)
+
+/-- Into `◇_x`: box shadow everywhere, witness revealed at its realization type. -/
+def diaCtx (Γ : Ctx) (x : Name) (X : Ty) : Ctx :=
+  fun r => if r = x.root then (Γ r).unboxExcept x.path X else (Γ r).unbox
 
 theorem refineCtx_join (Γ : Ctx) (P Q : Nat → Pat) :
     refineCtx (refineCtx Γ P) Q = refineCtx Γ (joinCtx P Q) :=
@@ -277,11 +481,16 @@ theorem refineCtx_join (Γ : Ctx) (P Q : Nat → Pat) :
 theorem noBoxProdCtx_forced (Γ : Ctx) : NoBoxProdCtx (refineCtx Γ (forcedCtx Γ)) :=
   fun r => Entry.noBoxProd_forced (Γ r)
 
+theorem noBoxProdCtx_forcedX (Γ : Ctx) (x : Name) : NoBoxProdCtx (refineCtx Γ (forcedX Γ x)) := by
+  intro r
+  show ((Γ r).refine ((Γ r).forced.join (pathCtx x r))).NoBoxProd
+  rw [← Entry.refine_join]
+  exact Entry.noBoxProd_refine _ _ (Entry.noBoxProd_forced (Γ r))
+
 theorem unboxCtx_refine_forced {Γ : Ctx} {P : Nat → Pat} (h : NoBoxProdCtx (refineCtx Γ P)) :
     unboxCtx (refineCtx Γ P) = unboxCtx (refineCtx Γ (forcedCtx Γ)) :=
   funext fun r => Entry.unbox_refine_forced (Γ r) (P r) (h r)
 
-/-- Refining further and then forcing again lands on the same box shadow as forcing at once. -/
 theorem unboxCtx_refine_forced_refine (Γ : Ctx) (P : Nat → Pat) :
     unboxCtx (refineCtx (refineCtx Γ P) (forcedCtx (refineCtx Γ P)))
       = unboxCtx (refineCtx Γ (forcedCtx Γ)) := by
@@ -290,9 +499,38 @@ theorem unboxCtx_refine_forced_refine (Γ : Ctx) (P : Nat → Pat) :
   rw [← refineCtx_join]
   exact noBoxProdCtx_forced _
 
-theorem refType_refine_base (Γ : Ctx) (P : Nat → Pat) (a : Name) :
-    refType (refineCtx Γ P) a = some .base ↔ refType Γ a = some .base :=
-  Entry.lookup_refine_base _ _ _
+theorem refType_refine_nonprod (Γ : Ctx) (P : Nat → Pat) (a : Name) {T : Ty}
+    (hT : ∀ A B, T ≠ .prod A B) : refType (refineCtx Γ P) a = some T ↔ refType Γ a = some T :=
+  Entry.lookup_refine_nonprod _ _ _ hT
+
+theorem entryType_forcedX {Γ : Ctx} {x : Name} {X : Ty} (h : refType Γ x = some (.dia X)) :
+    entryType (refineCtx Γ (forcedX Γ x)) x = some (.dia X) := by
+  show ((Γ x.root).refine ((Γ x.root).forced.join (pathCtx x x.root))).leafAt x.path = _
+  simp only [pathCtx, if_true]
+  exact Entry.leafAt_refine_forcedPath _ _ _ h
+
+theorem diaCtx_refine_forced {Γ : Ctx} {P : Nat → Pat} {x : Name} {X : Ty}
+    (h : NoBoxProdCtx (refineCtx Γ P)) (hx : entryType (refineCtx Γ P) x = some (.dia X)) :
+    diaCtx (refineCtx Γ P) x X = diaCtx (refineCtx Γ (forcedX Γ x)) x X := by
+  funext r
+  simp only [diaCtx, refineCtx, forcedX, joinCtx, forcedCtx, pathCtx]
+  by_cases hr : r = x.root
+  · subst hr
+    simp only [if_true]
+    exact Entry.unboxExcept_refine_forced _ _ _ _ (h _) hx
+  · simp only [hr, if_false, Pat.join_stop]
+    exact Entry.unbox_refine_forced _ _ (h r)
+
+theorem diaCtx_refine_forcedX_refine (Γ : Ctx) (P : Nat → Pat) {x : Name} {X : Ty}
+    (hx : refType Γ x = some (.dia X)) :
+    diaCtx (refineCtx (refineCtx Γ P) (forcedX (refineCtx Γ P) x)) x X
+      = diaCtx (refineCtx Γ (forcedX Γ x)) x X := by
+  have hx' : refType (refineCtx Γ P) x = some (.dia X) :=
+    (refType_refine_nonprod Γ P x (by intro A B h; cases h)).mpr hx
+  rw [refineCtx_join]
+  apply diaCtx_refine_forced
+  · rw [← refineCtx_join]; exact noBoxProdCtx_forcedX _ _
+  · rw [← refineCtx_join]; exact entryType_forcedX hx'
 
 /-! ## Formulas, typing, normal forms -/
 
@@ -302,6 +540,7 @@ inductive Wff where
   | conj (φ ψ : Wff)
   | imp (φ ψ : Wff)
   | box (φ : Wff)
+  | boxx (x : Name) (X : Ty) (φ : Wff)
   | split (P : Nat → Pat) (φ : Wff)
 
 inductive WfWff : Ctx → Wff → Prop where
@@ -311,29 +550,36 @@ inductive WfWff : Ctx → Wff → Prop where
   | conj {Γ : Ctx} {φ ψ : Wff} : WfWff Γ φ → WfWff Γ ψ → WfWff Γ (.conj φ ψ)
   | imp {Γ : Ctx} {φ ψ : Wff} : WfWff Γ φ → WfWff Γ ψ → WfWff Γ (.imp φ ψ)
   | box {Γ : Ctx} {φ : Wff} : NoBoxProdCtx Γ → WfWff (unboxCtx Γ) φ → WfWff Γ (.box φ)
+  | boxx {Γ : Ctx} {x : Name} {X : Ty} {φ : Wff} :
+      entryType Γ x = some (.dia X) → NoBoxProdCtx Γ → WfWff (diaCtx Γ x X) φ →
+      WfWff Γ (.boxx x X φ)
   | split {Γ : Ctx} {P : Nat → Pat} {φ : Wff} :
       WfWff (refineCtx Γ P) φ → WfWff Γ (.split P φ)
 
-/-- Normal forms: eliminations only directly above a `□`, with EXACTLY the forced pattern. -/
+/-- Normal forms: eliminations only directly above a modal node, with EXACTLY the forced pattern. -/
 def Normal : Ctx → Wff → Prop
   | _, .prim _ _ => True
   | _, .top => True
   | Γ, .conj φ ψ => Normal Γ φ ∧ Normal Γ ψ
   | Γ, .imp φ ψ => Normal Γ φ ∧ Normal Γ ψ
   | _, .box _ => False
+  | _, .boxx _ _ _ => False
   | Γ, .split P (.box χ) => P = forcedCtx Γ ∧ Normal (unboxCtx (refineCtx Γ P)) χ
+  | Γ, .split P (.boxx x X χ) =>
+      refType Γ x = some (.dia X) ∧ P = forcedX Γ x ∧ Normal (diaCtx (refineCtx Γ P) x X) χ
   | _, .split _ _ => False
 
 /-! ## The two directions -/
 
 /-- **Smart re-pairing**: from the context refined by `P` back to `Γ`.  Pushes inward; nested
-    splits merge; at a `□` the pattern is REPLACED by the forced one. -/
+    splits merge; at a modal node the pattern is REPLACED by the forced one. -/
 def pelim (Γ : Ctx) : (Nat → Pat) → Wff → Wff
   | _, .prim a b => .prim a b
   | _, .top => .top
   | P, .conj φ ψ => .conj (pelim Γ P φ) (pelim Γ P ψ)
   | P, .imp φ ψ => .imp (pelim Γ P φ) (pelim Γ P ψ)
   | _, .box χ => .split (forcedCtx Γ) (.box χ)
+  | _, .boxx x X χ => .split (forcedX Γ x) (.boxx x X χ)
   | P, .split Q φ => pelim Γ (joinCtx P Q) φ
 
 /-- **Unpairing**: from `Γ` into the context refined by `P`. -/
@@ -343,18 +589,22 @@ def unpair (Γ : Ctx) (P : Nat → Pat) : Wff → Wff
   | .conj φ ψ => .conj (unpair Γ P φ) (unpair Γ P ψ)
   | .imp φ ψ => .imp (unpair Γ P φ) (unpair Γ P ψ)
   | .box χ => .box χ
+  | .boxx x X χ => .boxx x X χ
+  | .split _ (.boxx x X φ) => .split (forcedX (refineCtx Γ P) x) (.boxx x X φ)
   | .split _ φ => .split (forcedCtx (refineCtx Γ P)) φ
 
 /-! ## Theorems -/
 
 /-- ⭐**The forced restriction typechecks**: re-pairing a well-typed formula gives a well-typed
-    formula. -/
+    formula, for both sources of forcing. -/
 theorem wf_pelim {Δ : Ctx} {φ : Wff} (h : WfWff Δ φ) :
     ∀ (Γ : Ctx) (P : Nat → Pat), Δ = refineCtx Γ P → WfWff Γ (pelim Γ P φ) := by
   induction h with
   | prim ha hb =>
       intro Γ P hΔ; subst hΔ
-      exact .prim ((refType_refine_base _ _ _).mp ha) ((refType_refine_base _ _ _).mp hb)
+      have hT : ∀ A B, Ty.base ≠ .prod A B := by intro A B h; cases h
+      exact .prim ((refType_refine_nonprod _ _ _ hT).mp ha)
+        ((refType_refine_nonprod _ _ _ hT).mp hb)
   | top => intro _ _ _; exact .top
   | conj _ _ ih₁ ih₂ => intro Γ P hΔ; exact .conj (ih₁ Γ P hΔ) (ih₂ Γ P hΔ)
   | imp _ _ ih₁ ih₂ => intro Γ P hΔ; exact .imp (ih₁ Γ P hΔ) (ih₂ Γ P hΔ)
@@ -362,6 +612,14 @@ theorem wf_pelim {Δ : Ctx} {φ : Wff} (h : WfWff Δ φ) :
       intro Γ P hΔ; subst hΔ
       refine .split (.box (noBoxProdCtx_forced Γ) ?_)
       rw [← unboxCtx_refine_forced hnb]
+      exact hχ
+  | @boxx Δ x X χ hx hnb hχ _ =>
+      intro Γ P hΔ; subst hΔ
+      have hlook : refType Γ x = some (.dia X) :=
+        (refType_refine_nonprod Γ P x (by intro A B h; cases h)).mp
+          (Entry.lookup_of_leafAt _ _ hx)
+      refine .split (.boxx (entryType_forcedX hlook) (noBoxProdCtx_forcedX Γ x) ?_)
+      rw [← diaCtx_refine_forced hnb hx]
       exact hχ
   | @split Δ Q ψ _ ih =>
       intro Γ P hΔ; subst hΔ
@@ -374,10 +632,18 @@ theorem normal_pelim (Γ : Ctx) : ∀ (φ : Wff) (P : Nat → Pat),
   | .conj φ ψ, P, h => ⟨normal_pelim Γ φ P h.1, normal_pelim Γ ψ P h.2⟩
   | .imp φ ψ, P, h => ⟨normal_pelim Γ φ P h.1, normal_pelim Γ ψ P h.2⟩
   | .box _, _, h => h.elim
+  | .boxx _ _ _, _, h => h.elim
   | .split Q (.box χ), P, h => by
       obtain ⟨rfl, hχ⟩ := h
       refine ⟨rfl, ?_⟩
       rw [← unboxCtx_refine_forced_refine Γ P]
+      exact hχ
+  | .split Q (.boxx x X χ), P, h => by
+      obtain ⟨hx, rfl, hχ⟩ := h
+      have hx' : refType Γ x = some (.dia X) :=
+        (refType_refine_nonprod Γ P x (by intro A B h; cases h)).mp hx
+      refine ⟨hx', rfl, ?_⟩
+      rw [← diaCtx_refine_forcedX_refine Γ P hx']
       exact hχ
   | .split _ .top, _, h => h.elim
   | .split _ (.prim _ _), _, h => h.elim
@@ -392,10 +658,16 @@ theorem normal_unpair (Γ : Ctx) (P : Nat → Pat) : ∀ ψ : Wff,
   | .conj φ ψ, h => ⟨normal_unpair Γ P φ h.1, normal_unpair Γ P ψ h.2⟩
   | .imp φ ψ, h => ⟨normal_unpair Γ P φ h.1, normal_unpair Γ P ψ h.2⟩
   | .box _, h => h.elim
+  | .boxx _ _ _, h => h.elim
   | .split Q (.box χ), h => by
       obtain ⟨rfl, hχ⟩ := h
       refine ⟨rfl, ?_⟩
       rw [unboxCtx_refine_forced_refine Γ P]
+      exact hχ
+  | .split Q (.boxx x X χ), h => by
+      obtain ⟨hx, rfl, hχ⟩ := h
+      refine ⟨(refType_refine_nonprod Γ P x (by intro A B h; cases h)).mpr hx, rfl, ?_⟩
+      rw [diaCtx_refine_forcedX_refine Γ P hx]
       exact hχ
   | .split _ .top, h => h.elim
   | .split _ (.prim _ _), h => h.elim
@@ -413,8 +685,12 @@ theorem unpair_pelim (Γ : Ctx) : ∀ (φ : Wff) (P : Nat → Pat),
   | .imp φ ψ, P, h => by
       simp only [pelim, unpair, unpair_pelim Γ φ P h.1, unpair_pelim Γ ψ P h.2]
   | .box _, _, h => h.elim
+  | .boxx _ _ _, _, h => h.elim
   | .split Q (.box χ), P, h => by
       obtain ⟨rfl, -⟩ := h
+      rfl
+  | .split Q (.boxx x X χ), P, h => by
+      obtain ⟨-, rfl, -⟩ := h
       rfl
   | .split _ .top, _, h => h.elim
   | .split _ (.prim _ _), _, h => h.elim
@@ -433,8 +709,12 @@ theorem pelim_unpair (Γ : Ctx) (P : Nat → Pat) : ∀ ψ : Wff,
   | .imp φ ψ, h => by
       simp only [unpair, pelim, pelim_unpair Γ P φ h.1, pelim_unpair Γ P ψ h.2]
   | .box _, h => h.elim
+  | .boxx _ _ _, h => h.elim
   | .split Q (.box χ), h => by
       obtain ⟨rfl, -⟩ := h
+      rfl
+  | .split Q (.boxx x X χ), h => by
+      obtain ⟨-, rfl, -⟩ := h
       rfl
   | .split _ .top, h => h.elim
   | .split _ (.prim _ _), h => h.elim
@@ -452,6 +732,7 @@ theorem pelim_pat_irrel (Γ : Ctx) : ∀ (φ : Wff) (P P' : Nat → Pat), pelim 
   | .imp φ ψ, P, P' => by
       simp only [pelim, pelim_pat_irrel Γ φ P P', pelim_pat_irrel Γ ψ P P']
   | .box _, _, _ => rfl
+  | .boxx _ _ _, _, _ => rfl
   | .split Q φ, P, P' => by
       simp only [pelim]
       exact pelim_pat_irrel Γ φ _ _
@@ -482,6 +763,7 @@ def Wff.rename (ρ : Equiv.Perm ℕ) : Wff → Wff
   | .conj φ ψ => .conj (φ.rename ρ) (ψ.rename ρ)
   | .imp φ ψ => .imp (φ.rename ρ) (ψ.rename ρ)
   | .box φ => .box (φ.rename ρ)
+  | .boxx x X φ => .boxx (x.rename ρ) X (φ.rename ρ)
   | .split P φ => .split (renamePat ρ P) (φ.rename ρ)
 
 /-- ⭐**Order-free**: renaming the root variables by ANY bijection commutes with the defined
@@ -500,6 +782,7 @@ theorem rename_eqRec (ρ : Equiv.Perm ℕ) : ∀ (T : Ty) (Γ : Ctx) (a b : Name
 end PatSplit
 
 #print axioms PatSplit.wf_pelim
+#print axioms PatSplit.normal_pelim
 #print axioms PatSplit.unpair_pelim
 #print axioms PatSplit.pelim_unpair
 #print axioms PatSplit.pelim_pat_irrel
