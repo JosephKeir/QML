@@ -297,8 +297,8 @@ inductive Tm where
   | unit
   | pair (a b : Tm)
   | boxtm (t : Tm)
-  | diatm (x : Nat) (t : Tm)
-  | pelim (p : Nat) (t : Tm)
+  | diatm (x : Nat) (X : Ty) (t : Tm)
+  | pelim (p : Nat) (A B : Ty) (t : Tm)
 
 /-- `HasTy Γ t T S`: in the plain context `Γ`, the term `t` has plain type `T` with elaborated
     annotation `S`. -/
@@ -311,18 +311,18 @@ inductive HasTy : Ctx → Tm → (T : Ty) → ITy T → Prop where
       HasTy (unboxCtx Γ) t A S → HasTy Γ (.boxtm t) (.box A) (.box (S.mapIdx boxOut))
   | diatm {Γ : Ctx} {x : Nat} {X : Ty} {t : Tm} {A : Ty} {S : ITy A} :
       Γ x = some (.dia X) → HasTy (diaCtx Γ x X) t A S →
-      HasTy Γ (.diatm x t) (.dia A) (.dia ⟨x, []⟩ (S.mapIdx (diaOut x)))
+      HasTy Γ (.diatm x X t) (.dia A) (.dia ⟨x, []⟩ (S.mapIdx (diaOut x)))
   | pelim {Γ : Ctx} {p : Nat} {A B : Ty} {t : Tm} {T : Ty} {S : ITy T} :
       Γ p = some (.prod A B) → HasTy (cons2 (some B) (some A) Γ) t T S →
-      HasTy Γ (.pelim p t) T (S.mapIdx (pelimOut p))
+      HasTy Γ (.pelim p A B t) T (S.mapIdx (pelimOut p))
 
 def Tm.PelimFree : Tm → Prop
   | var _ => True
   | unit => True
   | pair a b => a.PelimFree ∧ b.PelimFree
   | boxtm t => t.PelimFree
-  | diatm _ t => t.PelimFree
-  | pelim _ _ => False
+  | diatm _ _ t => t.PelimFree
+  | pelim _ _ _ _ => False
 
 /-! ## Scoping: every index names a live variable, along a path to a `◇` -/
 
@@ -418,8 +418,8 @@ def Tm.rename (ρ : Nat → Nat) : Tm → Tm
   | unit => unit
   | pair a b => pair (a.rename ρ) (b.rename ρ)
   | boxtm t => boxtm (t.rename ρ)
-  | diatm x t => diatm (ρ x) (t.rename ρ)
-  | pelim p t => pelim (ρ p) (t.rename (lift2 ρ))
+  | diatm x X t => diatm (ρ x) X (t.rename ρ)
+  | pelim p A B t => pelim (ρ p) A B (t.rename (lift2 ρ))
 
 theorem Tm.PelimFree.rename {t : Tm} (h : t.PelimFree) (ρ : Nat → Nat) : (t.rename ρ).PelimFree := by
   induction t generalizing ρ with
@@ -427,7 +427,7 @@ theorem Tm.PelimFree.rename {t : Tm} (h : t.PelimFree) (ρ : Nat → Nat) : (t.r
   | unit => trivial
   | pair a b iha ihb => exact ⟨iha h.1 ρ, ihb h.2 ρ⟩
   | boxtm t ih => exact ih h ρ
-  | diatm x t ih => exact ih h ρ
+  | diatm x X t ih => exact ih h ρ
   | pelim => exact h.elim
 
 def RenOk (ρ : Nat → Nat) (Γ Δ : Ctx) : Prop := ∀ j T, Γ j = some T → Δ (ρ j) = some T
@@ -505,7 +505,7 @@ theorem canon_box {Δ : Ctx} {s : Tm} {A : Ty} {S : ITy (.box A)} (h : HasTy Δ 
 
 theorem canon_dia {Δ : Ctx} {s : Tm} {A : Ty} {S : ITy (.dia A)} (h : HasTy Δ s (.dia A) S)
     (hs : s.PelimFree) :
-    ∃ (y : Nat) (Y : Ty) (u : Tm) (U : ITy A), s = .diatm y u ∧ S = .dia ⟨y, []⟩ (U.mapIdx (diaOut y)) ∧
+    ∃ (y : Nat) (Y : Ty) (u : Tm) (U : ITy A), s = .diatm y Y u ∧ S = .dia ⟨y, []⟩ (U.mapIdx (diaOut y)) ∧
       Δ y = some (.dia Y) ∧ HasTy (diaCtx Δ y Y) u A U ∧ u.PelimFree := by
   cases h with
   | diatm hy hu => exact ⟨_, _, _, _, rfl, rfl, hy, hu, hs⟩
@@ -577,16 +577,17 @@ def Tm.psubst : (Nat → Sub) → Tm → Tm
   | _, .unit => .unit
   | σ, .pair a b => .pair (Tm.psubst σ a) (Tm.psubst σ b)
   | σ, .boxtm t => .boxtm (Tm.psubst (unboxSub σ) t)
-  | σ, .diatm x t =>
+  | σ, .diatm x X t =>
       match σ x with
-      | .ren i => .diatm i (Tm.psubst (Function.update (unboxSub σ) x (.ren i)) t)
+      | .ren i => .diatm i X (Tm.psubst (Function.update (unboxSub σ) x (.ren i)) t)
       -- modal β: the witness slot receives the substituted diaterm's body
-      | .tm (.diatm y u) (.dia A) (.dia _ U) =>
-          .diatm y (Tm.psubst (Function.update (unboxSub σ) x (.tm u A (U.mapIdx Idx.strip))) t)
+      | .tm (.diatm y Y u) (.dia A) (.dia _ U) =>
+          .diatm y Y
+            (Tm.psubst (Function.update (unboxSub σ) x (.tm u A (U.mapIdx Idx.strip))) t)
       | .tm _ _ _ => .unit
-  | σ, .pelim p t =>
+  | σ, .pelim p A B t =>
       match σ p with
-      | .ren i => .pelim i (Tm.psubst (liftSub2 σ) t)
+      | .ren i => .pelim i A B (Tm.psubst (liftSub2 σ) t)
       -- pair β
       | .tm (.pair a b) (.prod A B) (.prod SA SB) => Tm.psubst (pairSub a A SA b B SB σ) t
       | .tm _ _ _ => .unit
@@ -877,7 +878,7 @@ inductive Wff where
   | conj (φ ψ : Wff)
   | imp (φ ψ : Wff)
   | box (φ : Wff)
-  | boxx (x : Nat) (φ : Wff)
+  | boxx (x : Nat) (X : Ty) (φ : Wff)
 
 inductive WfWff : Ctx → Wff → Prop where
   | prim {Γ : Ctx} {a b : Tm} :
@@ -887,7 +888,7 @@ inductive WfWff : Ctx → Wff → Prop where
   | imp {Γ : Ctx} {φ ψ : Wff} : WfWff Γ φ → WfWff Γ ψ → WfWff Γ (.imp φ ψ)
   | box {Γ : Ctx} {φ : Wff} : WfWff (unboxCtx Γ) φ → WfWff Γ (.box φ)
   | boxx {Γ : Ctx} {x : Nat} {X : Ty} {φ : Wff} :
-      Γ x = some (.dia X) → WfWff (diaCtx Γ x X) φ → WfWff Γ (.boxx x φ)
+      Γ x = some (.dia X) → WfWff (diaCtx Γ x X) φ → WfWff Γ (.boxx x X φ)
 
 /-- ⭐**The defined equality**, by recursion on the PLAIN type.  The `◇` arm takes its witness
     from the LEFT term and never looks at the right one's: there is no different-witness (`⊥`)
@@ -898,22 +899,23 @@ def eqf : Ty → Tm → Tm → Wff
   | .unit, _, _ => .top
   | .prod A B, .pair a b, .pair c d => .conj (eqf A a c) (eqf B b d)
   | .box A, .boxtm t, .boxtm s => .box (eqf A t s)
-  | .dia A, .diatm x t, .diatm _ s => .boxx x (eqf A t s)
+  | .dia A, .diatm x X t, .diatm _ _ s => .boxx x X (eqf A t s)
   | _, _, _ => .top
 
-theorem HasTy.diatm_inv {Γ : Ctx} {x : Nat} {t : Tm} {A : Ty} {S : ITy (.dia A)}
-    (h : HasTy Γ (.diatm x t) (.dia A) S) :
-    ∃ (X : Ty) (U : ITy A), Γ x = some (.dia X) ∧ HasTy (diaCtx Γ x X) t A U ∧
+theorem HasTy.diatm_inv {Γ : Ctx} {x : Nat} {X : Ty} {t : Tm} {A : Ty} {S : ITy (.dia A)}
+    (h : HasTy Γ (.diatm x X t) (.dia A) S) :
+    ∃ (U : ITy A), Γ x = some (.dia X) ∧ HasTy (diaCtx Γ x X) t A U ∧
       S = .dia ⟨x, []⟩ (U.mapIdx (diaOut x)) := by
   cases h with
-  | diatm hx ht => exact ⟨_, _, hx, ht, rfl⟩
+  | diatm hx ht => exact ⟨_, hx, ht, rfl⟩
 
 /-- ⭐**Two `◇`-terms of the same elaborated type have the same witness.**  So an equation between
     different-witness `◇`-terms cannot even be written down. -/
-theorem witness_eq {Γ : Ctx} {x y : Nat} {t s : Tm} {A : Ty} {S : ITy (.dia A)}
-    (ht : HasTy Γ (.diatm x t) (.dia A) S) (hs : HasTy Γ (.diatm y s) (.dia A) S) : x = y := by
-  obtain ⟨_, _, _, _, rfl⟩ := ht.diatm_inv
-  obtain ⟨_, _, _, _, h⟩ := hs.diatm_inv
+theorem witness_eq {Γ : Ctx} {x y : Nat} {X Y : Ty} {t s : Tm} {A : Ty} {S : ITy (.dia A)}
+    (ht : HasTy Γ (.diatm x X t) (.dia A) S) (hs : HasTy Γ (.diatm y Y s) (.dia A) S) :
+    x = y := by
+  obtain ⟨_, _, _, rfl⟩ := ht.diatm_inv
+  obtain ⟨_, _, _, h⟩ := hs.diatm_inv
   simp only [ITy.dia.injEq, Idx.mk.injEq] at h
   exact h.1.1
 
@@ -922,7 +924,7 @@ theorem witness_eq {Γ : Ctx} {x y : Nat} {t s : Tm} {A : Ty} {S : ITy (.dia A)}
 theorem dia_same_inner {Γ : Ctx} {x : Nat} {X : Ty} {b : Tm} {A : Ty} {S : ITy A}
     (hx : Γ x = some (.dia X)) (hb : HasTy Γ b (.dia A) (.dia ⟨x, []⟩ (S.mapIdx (diaOut x))))
     (hpb : b.PelimFree) :
-    ∃ s, b = .diatm x s ∧ HasTy (diaCtx Γ x X) s A S ∧ s.PelimFree := by
+    ∃ s, b = .diatm x X s ∧ HasTy (diaCtx Γ x X) s A S ∧ s.PelimFree := by
   obtain ⟨y, Y, s, U, rfl, hS, hy, hs, hspf⟩ := canon_dia hb hpb
   simp only [ITy.dia.injEq, Idx.mk.injEq, and_true] at hS
   obtain ⟨rfl, hSU⟩ := hS
@@ -983,9 +985,10 @@ inductive Pf : Wff → Prop where
   | conjCong {p p' q q' : Wff} :
       Pf (.imp p p') → Pf (.imp q q') → Pf (.imp (.conj p q) (.conj p' q'))
   | nec {p : Wff} : Pf p → Pf (.box p)
-  | necx {x : Nat} {p : Wff} : Pf p → Pf (.boxx x p)
+  | necx {x : Nat} {X : Ty} {p : Wff} : Pf p → Pf (.boxx x X p)
   | Kdist {p q : Wff} : Pf (.box (.imp p q)) → Pf (.imp (.box p) (.box q))
-  | Kdistx {x : Nat} {p q : Wff} : Pf (.boxx x (.imp p q)) → Pf (.imp (.boxx x p) (.boxx x q))
+  | Kdistx {x : Nat} {X : Ty} {p q : Wff} :
+      Pf (.boxx x X (.imp p q)) → Pf (.imp (.boxx x X p) (.boxx x X q))
 
 theorem eqf_refl {Γ : Ctx} {a : Tm} {T : Ty} {S : ITy T} (ha : HasTy Γ a T S)
     (hpa : a.PelimFree) : Pf (eqf T a a) := by
@@ -1033,11 +1036,11 @@ def Wff.psubst : (Nat → Sub) → Wff → Wff
   | σ, .conj φ ψ => .conj (Wff.psubst σ φ) (Wff.psubst σ ψ)
   | σ, .imp φ ψ => .imp (Wff.psubst σ φ) (Wff.psubst σ ψ)
   | σ, .box φ => .box (Wff.psubst (unboxSub σ) φ)
-  | σ, .boxx x φ =>
+  | σ, .boxx x X φ =>
       match σ x with
-      | .ren i => .boxx i (Wff.psubst (Function.update (unboxSub σ) x (.ren i)) φ)
-      | .tm (.diatm y u) (.dia A) (.dia _ U) =>
-          .boxx y (Wff.psubst (Function.update (unboxSub σ) x (.tm u A (U.mapIdx Idx.strip))) φ)
+      | .ren i => .boxx i X (Wff.psubst (Function.update (unboxSub σ) x (.ren i)) φ)
+      | .tm (.diatm y Y u) (.dia A) (.dia _ U) =>
+          .boxx y Y (Wff.psubst (Function.update (unboxSub σ) x (.tm u A (U.mapIdx Idx.strip))) φ)
       | .tm _ _ _ => .top
 
 theorem eqf_psubst {Γ : Ctx} {a : Tm} {T : Ty} {S : ITy T} (ha : HasTy Γ a T S) :
