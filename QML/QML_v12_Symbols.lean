@@ -753,11 +753,12 @@ theorem unboxExcept_refine_forced (q : List PStep) : ∀ (e : Entry) (p : Pat) (
               simp only [forced, Pat.path, Pat.join, Pat.join_stop, refine, unboxExcept]
               exact congrArg₂ Entry.node (unbox_refine_forced a pa h.1) (ih b pb X h.2 hl)
 
-/-- The split-node path an index path walks before it reaches a leaf. -/
-def walk : Entry → List Step → List PStep
-  | .node a _, .fst :: p => .fst :: a.walk p
-  | .node _ b, .snd :: p => .snd :: b.walk p
-  | _, _ => []
+/-- Re-express an index path of an inner tree outside its modal node: walk the split nodes, and
+    where the path reaches a leaf insert the modal step `s q` (`q` = the node path walked). -/
+def outPath (s : List PStep → Step) : Entry → List Step → List Step
+  | .node a _, .fst :: p => .fst :: a.outPath (fun q => s (.fst :: q)) p
+  | .node _ b, .snd :: p => .snd :: b.outPath (fun q => s (.snd :: q)) p
+  | _, p => s [] :: p
 
 /-! ### Similar entries -/
 
@@ -939,8 +940,7 @@ where the index path leaves the INNER split tree, i.e. at its leaf.  The maps re
 context, so they are unchanged by anything that leaves the inner context unchanged. -/
 
 def outIdx (Δ : Ctx) (s : Root → List PStep → Step) (i : Idx) : Idx :=
-  let q := (Δ.tree i.root).walk i.path
-  ⟨i.root, q.map PStep.toStep ++ s i.root q :: i.path.drop q.length⟩
+  ⟨i.root, (Δ.tree i.root).outPath (s i.root) i.path⟩
 
 def boxOut (Δ : Ctx) : Idx → Idx := Δ.outIdx (fun _ _ => .box)
 
