@@ -756,6 +756,41 @@ def walk : Entry → List Step → List PStep
   | .node _ b, .snd :: p => .snd :: b.walk p
   | _, _ => []
 
+/-! ### Similar entries -/
+
+/-- Two entries that look the same to terms and formulas at one root: they agree on every
+    non-product lookup and on every modal view of the root. -/
+structure Sim (e e' : Entry) : Prop where
+  lookup : ∀ q T, (∀ A B, T ≠ .VTypeProd A B) → (e.lookup q = some T ↔ e'.lookup q = some T)
+  box : (e'.refine e'.forced).unbox = (e.refine e.forced).unbox
+  dia : ∀ q X, e.lookup q = some (.VTypeDia X) →
+    (e'.refine (e'.forced.join (Pat.path q))).unboxExcept q X =
+      (e.refine (e.forced.join (Pat.path q))).unboxExcept q X
+
+theorem Sim.refl (e : Entry) : e.Sim e := ⟨fun _ _ _ => Iff.rfl, rfl, fun _ _ _ => rfl⟩
+
+theorem Sim.symm {e e' : Entry} (h : e.Sim e') : e'.Sim e :=
+  ⟨fun q T hT => (h.lookup q T hT).symm, h.box.symm,
+   fun q X hl => (h.dia q X ((h.lookup q _ (by simp)).mpr hl)).symm⟩
+
+theorem Sim.trans {e e' e'' : Entry} (h : e.Sim e') (h' : e'.Sim e'') : e.Sim e'' :=
+  ⟨fun q T hT => (h.lookup q T hT).trans (h'.lookup q T hT), h'.box.trans h.box,
+   fun q X hl => (h'.dia q X ((h.lookup q _ (by simp)).mp hl)).trans (h.dia q X hl)⟩
+
+/-- ⭐Refining an entry is invisible to terms and formulas. -/
+theorem sim_refine (e : Entry) (p : Pat) : (e.refine p).Sim e := by
+  refine ⟨fun q T hT => lookup_refine_nonprod e p q hT, ?_, ?_⟩
+  · have h := noBoxProd_forced (e.refine p)
+    rw [refine_join] at h ⊢
+    exact (unbox_refine_forced e _ h).symm
+  · intro q X hl
+    have hn : ((e.refine p).refine ((e.refine p).forced.join (Pat.path q))).NoBoxProd := by
+      rw [← refine_join]
+      exact noBoxProd_refine _ _ (noBoxProd_forced _)
+    have hlf := leafAt_refine_forcedPath q (e.refine p) X hl
+    rw [refine_join] at hn hlf ⊢
+    exact (unboxExcept_refine_forced q e _ X hn hlf).symm
+
 end Entry
 
 /-! ## Contexts -/
@@ -941,6 +976,54 @@ theorem sim_refine_right (Γ : Ctx) (P : Root → Pat) : Γ.Sim (Γ.refine P) :=
   ⟨fun v hv => (refType_refine_nonprod Γ P v (by simp)).mpr hv,
    fun x X hx => ⟨(refType_refine_nonprod Γ P x (by simp)).mpr hx, diaIn_refine Γ P hx⟩,
    boxIn_refine Γ P⟩
+
+/-! ### Pointwise similar contexts
+
+`Sim` is what terms need.  Formulas also go under quantifiers, which extend the context at one
+root; `PSim` is the root-by-root version, and such extensions preserve it (`PSim.insertBnd`). -/
+
+structure PSim (Γ Γ' : Ctx) : Prop where
+  depth : Γ'.depth = Γ.depth
+  tree : ∀ r, (Γ.tree r).Sim (Γ'.tree r)
+
+theorem PSim.refl (Γ : Ctx) : Γ.PSim Γ := ⟨rfl, fun _ => Entry.Sim.refl _⟩
+
+theorem PSim.symm {Γ Γ' : Ctx} (h : Γ.PSim Γ') : Γ'.PSim Γ :=
+  ⟨h.depth.symm, fun r => (h.tree r).symm⟩
+
+theorem PSim.trans {Γ Γ' Γ'' : Ctx} (h : Γ.PSim Γ') (h' : Γ'.PSim Γ'') : Γ.PSim Γ'' :=
+  ⟨h'.depth.trans h.depth, fun r => (h.tree r).trans (h'.tree r)⟩
+
+theorem PSim.toSim {Γ Γ' : Ctx} (h : Γ.PSim Γ') : Γ.Sim Γ' := by
+  refine ⟨fun v hv => ((h.tree v.root).lookup v.path .Var (by simp)).mp hv, ?_, ?_⟩
+  · intro x X hx
+    refine ⟨((h.tree x.root).lookup x.path _ (by simp)).mp hx, ?_⟩
+    ext r
+    · simp only [diaIn, dia, refine, forcedX, forced, pathPat]
+      by_cases hr : r = x.root
+      · subst hr
+        simp only [if_true]
+        exact (h.tree x.root).dia x.path X hx
+      · simp only [hr, if_false, Pat.join_stop]
+        exact (h.tree r).box
+    · exact h.depth
+  · ext r
+    · exact (h.tree r).box
+    · exact h.depth
+
+theorem PSim.insertBnd {Γ Γ' : Ctx} (h : Γ.PSim Γ') (T : VarType) :
+    (Γ.insertBnd T).PSim (Γ'.insertBnd T) := by
+  refine ⟨by simp [Ctx.insertBnd, h.depth], fun r => ?_⟩
+  simp only [Ctx.insertBnd, h.depth, Function.update_apply]
+  split_ifs
+  · exact Entry.Sim.refl _
+  · exact h.tree r
+
+theorem psim_refine_left (Γ : Ctx) (P : Root → Pat) : (Γ.refine P).PSim Γ :=
+  ⟨rfl, fun r => Entry.sim_refine (Γ.tree r) (P r)⟩
+
+theorem psim_refine_right (Γ : Ctx) (P : Root → Pat) : Γ.PSim (Γ.refine P) :=
+  (psim_refine_left Γ P).symm
 
 end Ctx
 
