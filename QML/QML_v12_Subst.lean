@@ -397,4 +397,149 @@ theorem Subst.ok_unbox {σ : Signature} {Δ : Ctx} {θ : Subst σ Δ} {Γ : Ctx}
     θ.unbox.Ok Γ.boxIn :=
   fun r => SubE.ok_unbox (Γ.tree r) (θ r) (hθ r)
 
+/-! ## Index maps commute with the `□` out-map (on indices in scope) -/
+
+theorem Entry.outPath_subtree : ∀ (q : List PStep) (e E : Entry) (s : List PStep → Step)
+    (p : List Step), e.subtree q = some E →
+      e.outPath s (q.map PStep.toStep ++ p) =
+        q.map PStep.toStep ++ E.outPath (fun q' => s (q ++ q')) p
+  | [], _, _, _, _, h => by cases h; rfl
+  | _ :: _, .leaf _, _, _, _, h => by cases h
+  | .fst :: q, .node a _, E, s, p, h => by
+      change .fst :: a.outPath (fun q' => s (.fst :: q')) (q.map PStep.toStep ++ p) = _
+      rw [Entry.outPath_subtree q a E _ p h]
+      rfl
+  | .snd :: q, .node _ b, E, s, p, h => by
+      change .snd :: b.outPath (fun q' => s (.snd :: q')) (q.map PStep.toStep ++ p) = _
+      rw [Entry.outPath_subtree q b E _ p h]
+      rfl
+
+theorem Entry.not_noPresent_of_diaAt : ∀ {E : Entry} {p : List Step}, E.DiaAt p → ¬E.NoPresent
+  | .leaf none, _, h, _ => h
+  | .leaf (some T), _, _, hn => hn [] T rfl
+  | .node a _, .fst :: _, h, hn => Entry.not_noPresent_of_diaAt (E := a) h hn.node.1
+  | .node _ b, .snd :: _, h, hn => Entry.not_noPresent_of_diaAt (E := b) h hn.node.2
+  | .node _ _, [], h, _ => h
+  | .node _ _, .box :: _, h, _ => h
+  | .node _ _, .dia :: _, h, _ => h
+
+theorem Entry.not_noPresent_boxView_of_diaAt {E : Entry} {p : List Step}
+    (h : ((E.refine E.forced).unbox).DiaAt p) : ¬E.NoPresent :=
+  fun hn => Entry.not_noPresent_of_diaAt h (Entry.noPresent_boxView E hn)
+
+namespace SubE
+
+variable {σ : Signature} {Δ : Ctx}
+
+theorem idx_ren_fst {Δ' : Ctx} (w : VarSymb) (X : List Step) :
+    (SubE.ren w : SubE σ Δ').idx (.fst :: X) = (SubE.ren (w.comp .fst) : SubE σ Δ').idx X := by
+  simp [SubE.idx, VarSymb.path, VarSymb.root, PStep.toStep]
+
+theorem idx_ren_snd {Δ' : Ctx} (w : VarSymb) (X : List Step) :
+    (SubE.ren w : SubE σ Δ').idx (.snd :: X) = (SubE.ren (w.comp .snd) : SubE σ Δ').idx X := by
+  simp [SubE.idx, VarSymb.path, VarSymb.root, PStep.toStep]
+
+theorem idx_boxOut_tm (U : VarType) : ∀ {a : Ann U} (s : Term σ Δ U a) (p : List Step),
+    (((Entry.leaf (some U)).refine (Entry.forcedTy U)).unbox).DiaAt p →
+      Δ.boxIn.boxOut ((SubE.unboxTm s).idx p) =
+        a.idxAt ((((Entry.leaf (some U)).refine (Entry.forcedTy U)).unbox).outPath
+          (fun _ => .box) p) := by
+  induction U with
+  | Var => intro a s p hp; exact False.elim hp
+  | VTypeOne => intro a s p hp; exact False.elim hp
+  | VTypeDia X _ => intro a s p hp; exact False.elim hp
+  | VTypeBox A _ =>
+      intro a s p hp
+      cases s with
+      | @boxtm _ Δt _ at' _ t hΔ hb =>
+          subst hΔ hb
+          change Δ.boxIn.boxOut (at'.idxAt p) = (at'.mapIdx Δ.boxIn.boxOut).idxAt p
+          rw [Ann.idxAt_mapIdx Δ.boxIn.boxOut at' p (hp : A.DiaAt p)]
+  | VTypeProd A B ihA ihB =>
+      intro a s p hp
+      cases s with
+      | pair s₁ s₂ =>
+          by_cases hb : (VarType.VTypeProd A B).boxy = true
+          · simp only [Entry.forcedTy, hb, if_true, Entry.refine, Entry.unbox] at hp ⊢
+            have hn := Entry.mkNode_of_diaAt hp
+            rw [hn] at hp ⊢
+            rcases p with _ | ⟨_ | _ | _ | _, p⟩
+            · exact False.elim hp
+            · exact ihA s₁ p hp
+            · exact ihB s₂ p hp
+            · exact False.elim hp
+            · exact False.elim hp
+          · rw [Entry.forcedTy_of_not_boxy (Bool.eq_false_iff.mpr hb)] at hp
+            exact False.elim hp
+
+/-- ⭐Mapping an inner index by the `□`-viewed substitution and then out of the target's `□` is
+    the same as going out of the source's `□` and then mapping. -/
+theorem idx_boxOut : ∀ (E : Entry) (e : SubE σ Δ) (p : List Step), e.Ok E →
+    ((E.refine E.forced).unbox).DiaAt p →
+      Δ.boxIn.boxOut (e.unbox.idx p) = e.idx (((E.refine E.forced).unbox).outPath (fun _ => .box) p)
+  | .leaf none, _, _, _, hp => False.elim hp
+  | .leaf (some U), e, p, h, hp => by
+      have hl := ok_leaf.mp h
+      cases e with
+      | hide => exact False.elim hl
+      | node _ _ => exact False.elim hl
+      | ren w =>
+          rcases Entry.subtree_boxView w.path (Δ.tree w.root) _ hl with h' | h'
+          · change (⟨w.root, (((Δ.tree w.root).refine (Δ.tree w.root).forced).unbox).outPath
+                (fun _ => .box) (w.path.map PStep.toStep ++ p)⟩ : Idx) =
+              ⟨w.root, w.path.map PStep.toStep ++
+                ((((Entry.leaf (some U)).refine (Entry.leaf (some U)).forced).unbox).outPath
+                  (fun _ => .box) p)⟩
+            rw [Entry.outPath_subtree w.path _ _ _ p h']
+          · exact (Entry.not_noPresent_of_diaAt hp h').elim
+      | tm s =>
+          have hU : _ = U := hl
+          subst hU
+          exact idx_boxOut_tm _ s p hp
+  | .node E₁ E₂, e, p, h, hp => by
+      obtain ⟨h₁, h₂⟩ := ok_node.mp h
+      change (Entry.mkNode ((E₁.refine E₁.forced).unbox) ((E₂.refine E₂.forced).unbox)).DiaAt p
+        at hp
+      change Δ.boxIn.boxOut (e.unbox.idx p) = e.idx ((Entry.mkNode ((E₁.refine E₁.forced).unbox)
+        ((E₂.refine E₂.forced).unbox)).outPath (fun _ => .box) p)
+      have hn := Entry.mkNode_of_diaAt hp
+      rw [hn] at hp ⊢
+      rcases p with _ | ⟨_ | _ | _ | _, p⟩
+      · exact False.elim hp
+      · have ih := idx_boxOut E₁ (e.proj .fst) p h₁ hp
+        cases e with
+        | hide => exact (Entry.not_noPresent_boxView_of_diaAt hp (noPresent_of_ok_hide h₁)).elim
+        | ren w =>
+            change Δ.boxIn.boxOut ((SubE.ren w : SubE σ Δ.boxIn).idx (.fst :: p)) =
+              (SubE.ren w : SubE σ Δ).idx (.fst :: _)
+            rw [idx_ren_fst, idx_ren_fst]
+            exact ih
+        | node l r => exact ih
+        | tm s =>
+            cases s with
+            | pair s₁ s₂ => exact ih
+            | _ => exact (Entry.not_noPresent_boxView_of_diaAt hp (noPresent_of_ok_hide h₁)).elim
+      · have ih := idx_boxOut E₂ (e.proj .snd) p h₂ hp
+        cases e with
+        | hide => exact (Entry.not_noPresent_boxView_of_diaAt hp (noPresent_of_ok_hide h₂)).elim
+        | ren w =>
+            change Δ.boxIn.boxOut ((SubE.ren w : SubE σ Δ.boxIn).idx (.snd :: p)) =
+              (SubE.ren w : SubE σ Δ).idx (.snd :: _)
+            rw [idx_ren_snd, idx_ren_snd]
+            exact ih
+        | node l r => exact ih
+        | tm s =>
+            cases s with
+            | pair s₁ s₂ => exact ih
+            | _ => exact (Entry.not_noPresent_boxView_of_diaAt hp (noPresent_of_ok_hide h₂)).elim
+      · exact False.elim hp
+      · exact False.elim hp
+
+end SubE
+
+theorem Subst.idx_boxOut {σ : Signature} {Δ : Ctx} {θ : Subst σ Δ} {Γ : Ctx} (hθ : θ.Ok Γ)
+    {i : Idx} (hi : (Γ.boxIn.tree i.root).DiaAt i.path) :
+    Δ.boxIn.boxOut (θ.unbox.idx i) = θ.idx (Γ.boxIn.boxOut i) :=
+  SubE.idx_boxOut (Γ.tree i.root) (θ i.root) i.path (hθ i.root) hi
+
 end V12
