@@ -604,7 +604,8 @@ theorem subEntry_unbox_diaPush {Γ Δ : Ctx} {w : F.W} {σ : Nat → Sub} (hσ :
     have hky : k ≠ y := fun he => by rw [he] at hk; simp [unboxCtx, hy, unboxSlot] at hk
     rw [diaCtx, Function.update_of_ne hky]
     exact hk
-  show _ = ⟨(subEntry env' (σ j) (.box T) _).1 w'.1, (subEntry env' (σ j) (.box T) _).2 w'.1⟩
+  show _ = (⟨(subEntry env' (σ j) (.box T) _).1 w'.1, (subEntry env' (σ j) (.box T) _).2 w'.1⟩ :
+    F.Obj T w'.1.1)
   rcases Sub.cases_eq (σ j) with ⟨k, hsj⟩ | ⟨s, T', S', hsj⟩
   · have hk : Δ k = some (.box T) := by rw [hsj] at hokj; exact hokj
     have hky : k ≠ y := fun he => by rw [he, hy] at hk; simp at hk
@@ -668,8 +669,8 @@ theorem substEnv_diaTm {Γ Δ : Ctx} {w : F.W} {σ : Nat → Sub} (hσ : SubOk �
       rw [ITy.mapIdx_mapIdx, strip_comp_diaOut, ITy.mapIdx_id]
     have p₂ : (Sub.tm u X ((U.mapIdx (diaOut y)).mapIdx Idx.strip)).Ok (diaCtx Δ y Y) X :=
       ⟨rfl, by rw [hU]; exact hu, hupf⟩
-    show subEntry _ (Function.update _ j (.tm u X ((U.mapIdx (diaOut y)).mapIdx Idx.strip)) j) X _
-      = _
+    show subEntry _ (Function.update (unboxSub σ) j
+        (Sub.tm u X ((U.mapIdx (diaOut y)).mapIdx Idx.strip)) j) X _ = _
     rw [subEntry_congr _ _ _ (Function.update_self _ _ _) _ p₂]
     simp only [Frame.Env.diaPush, dif_pos]
     rfl
@@ -696,10 +697,11 @@ theorem substEnv_lift2 {Γ Δ : Ctx} {w : F.W} {σ : Nat → Sub} (hσ : SubOk �
     · rw [hsj] at hokj
       simp only [Sub.Ok] at hokj
       obtain ⟨rfl, hs, -⟩ := hokj
-      have hs2 : (σ j).shift2 = .tm (s.rename (· + 2)) T (S'.mapIdx (Idx.ren (· + 2))) := by
+      have hs2 : (σ j).shift2 = .tm (s.rename (· + 2)) _ (S'.mapIdx (Idx.ren (· + 2))) := by
         rw [hsj]; rfl
       rw [subEntry_tm _ _ _ hs2, subEntry_tm _ _ _ hsj]
-      exact interp_rename hs (fun _ _ hk => hk) env' (env'.pelimPush A B o) (fun _ _ _ => rfl)
+      exact interp_rename (Δ := cons2 (some B) (some A) Δ) (ρ := (· + 2)) hs
+        (fun _ _ hk => hk) env' (env'.pelimPush A B o) (fun _ _ _ => rfl)
 
 theorem substEnv_pairSub {Γ Δ : Ctx} {w : F.W} {σ : Nat → Sub} (hσ : SubOk σ Γ Δ) {A B : Ty}
     {a b : Tm} {SA : ITy A} {SB : ITy B} (ha : HasTy Δ a A SA) (hb : HasTy Δ b B SB)
