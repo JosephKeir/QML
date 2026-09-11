@@ -330,3 +330,25 @@ theorem Func.substCore_var_ctx_extU {σ : Signature} {B : VarCtx} (u : UserSymb)
           Term.substCore_var_ctx_extU u hyB huB hu_y hy_u hreord h_pf hmem _ t]
   termination_by _ fn => sizeOf fn
 end
+
+/-! ## LEMMA B1 for `Rel` -/
+
+theorem Rel.substCore_var_ctx_extU {σ : Signature} {B : VarCtx} (u : UserSymb) {y : VarSymb}
+    (hyB : y ∉ VarCtx_to_VarSymbs B) (huB : u.toVar ∉ VarCtx_to_VarSymbs B)
+    (hu_y : u.toVar ∉ VarCtx_to_VarSymbs (VarCtx_insert ⟨y, .Var⟩ B hyB))
+    (hy_u : y ∉ VarCtx_to_VarSymbs (VarCtx_insert ⟨u.toVar, .Var⟩ B huB))
+    (hreord : VarCtx_insert ⟨u.toVar, .Var⟩ (VarCtx_insert ⟨y, .Var⟩ B hyB) hu_y
+                = VarCtx_insert ⟨y, .Var⟩ (VarCtx_insert ⟨u.toVar, .Var⟩ B huB) hy_u)
+    (h_pf : (VarCtx_insert ⟨y, .Var⟩ (VarCtx_insert ⟨u.toVar, .Var⟩ B huB) hy_u).PairFree)
+    (hmem : (⟨u.toVar, .Var⟩ : VarSymb × VarType)
+      ∈ (VarCtx_insert ⟨u.toVar, .Var⟩ B huB).1) :
+    ∀ {n : ℕ} (R : Rel σ (VarCtx_insert ⟨y, .Var⟩ B hyB) n),
+      Rel.substCore hy_u h_pf (Term.var ⟨u.toVar, hmem⟩)
+          (Rel.mapCtx (CtxBij.idOfEq hreord) (Rel.ctx_extU u .Var hu_y R))
+        = Rel.mapCtx (CtxBij.renameOne y u.toVar .Var hyB huB) R
+  | _, .R _ => rfl
+  | _, .eval R' t => by
+      rw [Rel.ctx_extU_eval, Rel.mapCtx_eval, Rel.mapCtx_eval]
+      simp only [Rel.substCore,
+        Rel.substCore_var_ctx_extU u hyB huB hu_y hy_u hreord h_pf hmem R',
+        Term.substCore_var_ctx_extU u hyB huB hu_y hy_u hreord h_pf hmem _ t]
