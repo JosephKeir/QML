@@ -14,8 +14,9 @@ Terms are typed INTRINSICALLY by a plain type together with its witness annotati
   as variables with defining equations.  Moving a term between similar contexts (`Ctx.Sim`) then
   only replaces those proofs: `Term.transport` is cast-free and never enters a modal body.
   Splitting and unsplitting are instances, and they are inverse.
-* `DecidableEq` is written by hand: the stored contexts are functions, but both sides' contexts
-  equal the same computed one, so they are substituted away rather than compared.
+* `DecidableEq` comes from a structurally recursive boolean comparison, so it reduces in the
+  kernel and needs no `Classical.choice` (the derived handler cannot be used: it would try to
+  compare the stored contexts, which are functions).
 -/
 
 namespace V12
@@ -54,65 +55,122 @@ mutual
         Term σ Γ (.VTypeDia A) b
 end
 
-/-! ## Decidable equality -/
+/-! ## Decidable equality
+
+Terms are compared by a STRUCTURALLY recursive boolean test on terms over possibly different
+contexts, so modal bodies are compared without any cast; it is shown sound by the recursor.  No
+well-founded recursion is involved, so the instance reduces in the kernel and uses no
+`Classical.choice`. -/
+
+/-- Annotations of possibly different plain types, compared as one. -/
+def Ann.heq {A B : VarType} (a : Ann A) (b : Ann B) : Bool :=
+  decide ((⟨A, a⟩ : Σ T, Ann T) = ⟨B, b⟩)
 
 mutual
-  def Func.decEq {σ : Signature} {Γ : Ctx} {n : ℕ} (f g : Func σ Γ n) : Decidable (f = g) :=
-    match f, g with
-    | .F f, .F g =>
-        if h : f = g then isTrue (by subst h; rfl) else isFalse (fun e => by cases e; exact h rfl)
-    | .F _, .eval _ _ => isFalse (fun e => by cases e)
-    | .eval _ _, .F _ => isFalse (fun e => by cases e)
-    | .eval f s, .eval g t =>
-        match Func.decEq f g, Term.decEq s t with
-        | isTrue h₁, isTrue h₂ => isTrue (by subst h₁; subst h₂; rfl)
-        | isFalse h₁, _ => isFalse (fun e => by cases e; exact h₁ rfl)
-        | _, isFalse h₂ => isFalse (fun e => by cases e; exact h₂ rfl)
-  termination_by sizeOf f
+  def Func.beq {σ : Signature} : {Γ Γ' : Ctx} → {n n' : ℕ} →
+      Func σ Γ n → Func σ Γ' n' → Bool
+    | _, _, _, _, .F f, .F g => decide (f.1 = g.1)
+    | _, _, _, _, .F _, .eval _ _ => false
+    | _, _, _, _, .eval _ _, .F _ => false
+    | _, _, _, _, .eval f s, .eval g t => Func.beq f g && Term.beq s t
 
-  def Term.decEq {σ : Signature} {Γ : Ctx} {T : VarType} {b : Ann T} (s t : Term σ Γ T b) :
-      Decidable (s = t) :=
-    match s, t with
-    | .var v _, .var w _ =>
-        if h : v = w then isTrue (by subst h; rfl) else isFalse (fun e => by cases e; exact h rfl)
-    | .var _ _, .func _ => isFalse (fun e => by cases e)
-    | .func _, .var _ _ => isFalse (fun e => by cases e)
-    | .func f, .func g =>
-        match Func.decEq f g with
-        | isTrue h => isTrue (by subst h; rfl)
-        | isFalse h => isFalse (fun e => by cases e; exact h rfl)
-    | .unit, .unit => isTrue rfl
-    | .pair s₁ s₂, .pair t₁ t₂ =>
-        match Term.decEq s₁ t₁, Term.decEq s₂ t₂ with
-        | isTrue h₁, isTrue h₂ => isTrue (by subst h₁; subst h₂; rfl)
-        | isFalse h₁, _ => isFalse (fun e => by cases e; exact h₁ rfl)
-        | _, isFalse h₂ => isFalse (fun e => by cases e; exact h₂ rfl)
-    | .boxtm (Δ := Δ₁) (a := a₁) t₁ hΔ₁ hb₁, .boxtm (Δ := Δ₂) (a := a₂) t₂ hΔ₂ hb₂ =>
-        if ha : a₁ = a₂ then
-          have hΔ : Δ₂ = Δ₁ := hΔ₂.trans hΔ₁.symm
-          -- the recursion stays on `t₁`; only `t₂` is cast
-          match Term.decEq t₁ (cast (by rw [hΔ, ha]) t₂) with
-          | isTrue h => isTrue (by subst ha hΔ₁ hΔ₂; subst h; rfl)
-          | isFalse h => isFalse (fun e => by subst ha hΔ₁ hΔ₂; cases e; exact h rfl)
-        else isFalse (fun e => by cases e; exact ha rfl)
-    | .diatm (Δ := Δ₁) (a := a₁) x₁ X₁ _ t₁ hΔ₁ hb₁,
-      .diatm (Δ := Δ₂) (a := a₂) x₂ X₂ _ t₂ hΔ₂ hb₂ =>
-        if hx : x₁ = x₂ then
-          if hX : X₁ = X₂ then
-            if ha : a₁ = a₂ then
-              have hΔ : Δ₂ = Δ₁ := hΔ₂.trans (by subst hx hX; exact hΔ₁.symm)
-              match Term.decEq t₁ (cast (by rw [hΔ, ha]) t₂) with
-              | isTrue h => isTrue (by subst hx hX ha hΔ₁ hΔ₂; subst h; rfl)
-              | isFalse h => isFalse (fun e => by subst hx hX ha hΔ₁ hΔ₂; cases e; exact h rfl)
-            else isFalse (fun e => by cases e; exact ha rfl)
-          else isFalse (fun e => by cases e; exact hX rfl)
-        else isFalse (fun e => by cases e; exact hx rfl)
-  termination_by sizeOf s
+  def Term.beq {σ : Signature} : {Γ Γ' : Ctx} → {T T' : VarType} → {a : Ann T} → {a' : Ann T'} →
+      Term σ Γ T a → Term σ Γ' T' a' → Bool
+    | _, _, _, _, _, _, .var v _, .var w _ => decide (v = w)
+    | _, _, _, _, _, _, .func f, .func g => Func.beq f g
+    | _, _, _, _, _, _, .unit, .unit => true
+    | _, _, _, _, _, _, .pair s₁ s₂, .pair t₁ t₂ => Term.beq s₁ t₁ && Term.beq s₂ t₂
+    -- ⚠️the proof fields must be NAMED in these patterns: `_` fails to elaborate
+    | _, _, _, _, _, _, .boxtm (a := a₁) t₁ _hΔ₁ _hb₁, .boxtm (a := a₂) t₂ _hΔ₂ _hb₂ =>
+        Ann.heq a₁ a₂ && Term.beq t₁ t₂
+    | _, _, _, _, _, _, .diatm (a := a₁) x₁ X₁ _hx₁ t₁ _hΔ₁ _hb₁,
+      .diatm (a := a₂) x₂ X₂ _hx₂ t₂ _hΔ₂ _hb₂ =>
+        decide (x₁ = x₂) && decide (X₁ = X₂) && Ann.heq a₁ a₂ && Term.beq t₁ t₂
+    | _, _, _, _, _, _, _, _ => false
 end
 
-instance {σ : Signature} {Γ : Ctx} {n : ℕ} : DecidableEq (Func σ Γ n) := Func.decEq
-instance {σ : Signature} {Γ : Ctx} {T : VarType} {b : Ann T} : DecidableEq (Term σ Γ T b) :=
-  Term.decEq
+/-- Soundness of `beq`, by the recursor: its induction hypotheses are plain variables, so the
+    context substitutions a modal case needs cannot disturb the recursion (a structural proof
+    fails exactly there). -/
+theorem Term.eq_of_beq {σ : Signature} {Γ : Ctx} {T : VarType} {a : Ann T} (s : Term σ Γ T a) :
+    ∀ t, Term.beq s t = true → s = t := by
+  refine Term.rec
+    (motive_1 := fun Γ n f => ∀ g : Func σ Γ n, Func.beq f g = true → f = g)
+    (motive_2 := fun Γ T a s => ∀ t : Term σ Γ T a, Term.beq s t = true → s = t)
+    ?F ?eval ?var ?func ?unit ?pair ?boxtm ?diatm s
+  case F =>
+    intro Γ n f g h
+    cases g with
+    | F g => simp only [Func.beq, decide_eq_true_eq] at h; rw [Subtype.ext h]
+    | eval _ _ => simp [Func.beq] at h
+  case eval =>
+    intro Γ n f s ihf ihs g h
+    cases g with
+    | F _ => simp [Func.beq] at h
+    | eval g t =>
+        simp only [Func.beq, Bool.and_eq_true] at h
+        rw [ihf g h.1, ihs t h.2]
+  case var =>
+    intro Γ v hv t h
+    cases t with
+    | var w hw => simp only [Term.beq, decide_eq_true_eq] at h; subst h; rfl
+    | func _ => simp [Term.beq] at h
+  case func =>
+    intro Γ f ih t h
+    cases t with
+    | var _ _ => simp [Term.beq] at h
+    | func g => simp only [Term.beq] at h; rw [ih g h]
+  case unit =>
+    intro Γ t _
+    cases t; rfl
+  case pair =>
+    intro Γ A B a b s₁ s₂ ih₁ ih₂ t h
+    cases t with
+    | pair t₁ t₂ =>
+        simp only [Term.beq, Bool.and_eq_true] at h
+        rw [ih₁ t₁ h.1, ih₂ t₂ h.2]
+  case boxtm =>
+    intro Γ Δ A a b t₁ hΔ₁ hb₁ ih t h
+    cases t with
+    | @boxtm _ Δ₂ _ a₂ _ t₂ hΔ₂ hb₂ =>
+        simp only [Term.beq, Ann.heq, Bool.and_eq_true, decide_eq_true_eq] at h
+        obtain ⟨ha, ht⟩ := h
+        have ha' : a = a₂ := eq_of_heq (Sigma.mk.inj ha).2
+        subst ha' hΔ₁ hΔ₂
+        rw [ih t₂ ht]
+  case diatm =>
+    intro Γ Δ A a b x X hx t₁ hΔ₁ hb₁ ih t h
+    cases t with
+    | @diatm _ Δ₂ _ a₂ _ x₂ X₂ hx₂ t₂ hΔ₂ hb₂ =>
+        simp only [Term.beq, Ann.heq, Bool.and_eq_true, decide_eq_true_eq] at h
+        obtain ⟨⟨⟨hxx, hXX⟩, ha⟩, ht⟩ := h
+        have ha' : a = a₂ := eq_of_heq (Sigma.mk.inj ha).2
+        subst hxx hXX ha' hΔ₁ hΔ₂
+        rw [ih t₂ ht]
+
+mutual
+  theorem Func.beq_refl {σ : Signature} : {Γ : Ctx} → {n : ℕ} → (f : Func σ Γ n) →
+      Func.beq f f = true
+    | _, _, .F _ => decide_eq_true rfl
+    | _, _, .eval f s => by
+        simp only [Func.beq, Func.beq_refl f, Term.beq_refl s, Bool.and_self]
+
+  theorem Term.beq_refl {σ : Signature} : {Γ : Ctx} → {T : VarType} → {a : Ann T} →
+      (t : Term σ Γ T a) → Term.beq t t = true
+    | _, _, _, .var _ _ => decide_eq_true rfl
+    | _, _, _, .func f => Func.beq_refl f
+    | _, _, _, .unit => rfl
+    | _, _, _, .pair s t => by simp only [Term.beq, Term.beq_refl s, Term.beq_refl t, Bool.and_self]
+    | _, _, _, .boxtm t _hΔ _hb => by
+        simp only [Term.beq, Ann.heq, Term.beq_refl t, decide_true, Bool.and_self]
+    | _, _, _, .diatm _x _X _hx t _hΔ _hb => by
+        simp only [Term.beq, Ann.heq, Term.beq_refl t, decide_true, Bool.and_self]
+end
+
+instance {σ : Signature} {Γ : Ctx} {T : VarType} {a : Ann T} : DecidableEq (Term σ Γ T a) :=
+  fun s t =>
+    if h : Term.beq s t = true then isTrue (Term.eq_of_beq s t h)
+    else isFalse (fun e => h (by subst e; exact Term.beq_refl s))
 
 /-! ## Transport between similar contexts -/
 

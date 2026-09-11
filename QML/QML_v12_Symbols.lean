@@ -5,14 +5,16 @@ import Mathlib.Tactic
 
 The v12 redesign, combining the three prototypes (`DiaIdxProto`, `DiaIdxSem`, `PatSplitProto`):
 
-* **Three kinds of names.**  FREE variables (`free n`, the former "user" variables), QUANTIFIER-BOUND
-  variables (`bnd n`, canonical by binder depth), and PAIR-BOUND components (`comp v s`, canonical by
-  an access path from the eliminated variable).  Nothing is allocated for pair components, so no
-  order on names is needed anywhere — the v11 `ℕ` encoding and `firstPairVar` are gone.
-* **Contexts are functions**, stored as root-keyed SPLIT TREES: a root variable holds a tree whose
-  leaves are typed (present) or hidden; its components are reached by paths.  Promotions (`□`, `◇_x`)
-  HIDE/REVEAL leaves rather than building existential inner contexts, and pattern splits REFINE trees
-  in place.  A context also records the binder DEPTH, so the next quantifier slot is `bnd depth`.
+* **Three kinds of names.**  FREE variables (`free n`, the former "user" variables),
+  QUANTIFIER-BOUND variables (`bnd n`, canonical by binder depth), and PAIR-BOUND components
+  (`comp v s`, canonical by an access path from the eliminated variable).  Nothing is allocated
+  for pair components, so no order on names is needed anywhere — the v11 `ℕ` encoding and
+  `firstPairVar` are gone.
+* **Contexts are functions**, stored as root-keyed SPLIT TREES: a root variable holds a tree
+  whose leaves are typed (present) or hidden; its components are reached by paths.  Promotions
+  (`□`, `◇_x`) HIDE/REVEAL leaves rather than building existential inner contexts, and pattern
+  splits REFINE trees in place.  A context also records the binder DEPTH, so the next quantifier
+  slot is `bnd depth`.
 * **Witness annotations.**  A term's type is a plain `VarType` together with an annotation indexed
   by it (`Ann T`), whose `◇`-nodes carry an access-path index `⟨root, path⟩`.
 
@@ -829,7 +831,7 @@ theorem noBoxProd_forced (Γ : Ctx) : (Γ.refine Γ.forced).NoBoxProd :=
 
 theorem noBoxProd_forcedX (Γ : Ctx) (x : VarSymb) : (Γ.refine (Γ.forcedX x)).NoBoxProd := by
   intro r
-  show ((Γ.tree r).refine ((Γ.tree r).forced.join (pathPat x r))).NoBoxProd
+  change ((Γ.tree r).refine ((Γ.tree r).forced.join (pathPat x r))).NoBoxProd
   rw [← Entry.refine_join]
   exact Entry.noBoxProd_refine _ _ (Entry.noBoxProd_forced (Γ.tree r))
 
@@ -846,7 +848,8 @@ theorem refType_refine_nonprod (Γ : Ctx) (P : Root → Pat) (v : VarSymb) {T : 
 theorem lookup_forcedX {Γ : Ctx} {x : VarSymb} {X : VarType}
     (h : Γ.refType x = some (.VTypeDia X)) :
     (Γ.refine (Γ.forcedX x)).lookup x = some (.VTypeDia X) := by
-  show ((Γ.tree x.root).refine ((Γ.tree x.root).forced.join (pathPat x x.root))).leafAt x.path = _
+  change ((Γ.tree x.root).refine ((Γ.tree x.root).forced.join (pathPat x x.root))).leafAt
+    x.path = _
   simp only [pathPat, if_true]
   exact Entry.leafAt_refine_forcedPath _ _ _ h
 
