@@ -1,4 +1,5 @@
 import QML.QML_v12_Subst
+import QML.QML_v12_Presented
 
 /-!
 # QML v12 — the proof system
@@ -164,12 +165,13 @@ macro "by_hyp" : tactic => `(tactic| exact Proof.lookup (by first | decide | sim
 macro "hyps_from " p:term : tactic =>
   `(tactic| exact Proof.ofSubset (by first | decide | simp) $p)
 
-/-- Discharge `Γ.RootFresh (.free u)` for contexts built from `Ctx.empty` by adding variables and
-    taking views, or from a freshness hypothesis. -/
+/-- Discharge `Γ.RootFresh (.free u)` for presented contexts (`u` beyond the bound), contexts built
+    from `Ctx.empty` by adding variables and taking views, or from a freshness hypothesis. -/
 macro "fresh" : tactic =>
   `(tactic| repeat (first
     | exact Ctx.RootFresh.empty _
     | assumption
+    | exact Ctx.Presented.fresh _ (by decide)
     | refine Ctx.RootFresh.insert_ne ?_ (by decide) _
     | refine Ctx.RootFresh.boxIn ?_
     | refine Ctx.RootFresh.diaIn ?_ _))

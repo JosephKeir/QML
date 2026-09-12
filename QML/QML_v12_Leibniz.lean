@@ -8,33 +8,11 @@ From `t = s` (at any type, `eqRec`) and `φ[t]` derive `φ[s]`.
 
 Proved for substitutions in general: two substitutions whose entries are equal-or-provably-equal
 (`EqE`) send any formula to formulas that prove each other.  The quantifier cases need
-eigenvariables, supplied computably by `Ctx.FreshFrom`, and the substitution lemmas.
+eigenvariables, computed from the context's presentation (`Ctx.Presented`), and the substitution
+lemmas.
 -/
 
 namespace V12
-
-/-! ## Fresh free variables -/
-
-/-- Every free root from `bound` on is unused: eigenvariables, found by instance search. -/
-class Ctx.FreshFrom (Γ : Ctx) where
-  bound : ℕ
-  fresh : ∀ n, bound ≤ n → Γ.RootFresh (.free n)
-
-instance : Ctx.empty.FreshFrom := ⟨0, fun _ _ => Ctx.RootFresh.empty _⟩
-
-instance {Γ : Ctx} [h : Γ.FreshFrom] {u : ℕ} {T : VarType} :
-    (Γ.insert (.free u) T).FreshFrom :=
-  ⟨max h.bound (u + 1), fun n hn =>
-    (h.fresh n (Nat.max_le.mp hn).1).insert_ne
-      (fun he => by
-        cases he
-        exact absurd (Nat.max_le.mp hn).2 (Nat.not_succ_le_self _)) T⟩
-
-instance {Γ : Ctx} [h : Γ.FreshFrom] : Γ.boxIn.FreshFrom :=
-  ⟨h.bound, fun n hn => (h.fresh n hn).boxIn⟩
-
-instance {Γ : Ctx} [h : Γ.FreshFrom] {x : VarSymb} : (Γ.diaIn x).FreshFrom :=
-  ⟨h.bound, fun n hn => (h.fresh n hn).diaIn x⟩
 
 /-! ## Substitutions that rename every visible address to itself -/
 

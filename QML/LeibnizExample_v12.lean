@@ -16,9 +16,8 @@ variable {σ : Signature} (P : {r : σ.RelSyms // σ.relArity r = 1})
 
 abbrev atomP {Γ : Ctx} {d : ℕ} (t : Term σ Γ .Var .var) : WFF σ Γ d := .atom (.eval (.R P) t)
 
-/-- `x y : □Var`, as the free variables 0 and 1. -/
-abbrev Γxy : Ctx :=
-  (Ctx.empty.insert (.free 0) (.VTypeBox .Var)).insert (.free 1) (.VTypeBox .Var)
+/-- `x y : □Var`, as the free variables 0 and 1: a presented context. -/
+abbrev Γxy : Ctx := Ctx.ofDecls [(1, .VTypeBox .Var), (0, .VTypeBox .Var)]
 
 def tx : Term σ Γxy (.VTypeBox .Var) (.box .var) :=
   .boxtm (.var (.step (.root (.free 0)) .box) (by decide))

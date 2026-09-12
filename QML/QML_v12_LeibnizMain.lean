@@ -9,7 +9,8 @@ send a formula to formulas that prove each other.  By induction on the formula:
 
 * atoms and base equalities: congruence (`relCong`, `termCong`);
 * connectives: the induction hypothesis, both ways round for `→`;
-* quantifiers: an eigenvariable (`Ctx.FreshFrom`), `toFree`, and the quantifier-step identities;
+* quantifiers: an eigenvariable (from the presentation, `Ctx.Presented`), `toFree`, and the
+  quantifier-step identities;
 * `□` and `◇_w`: K, with the hypotheses under the modality discharged by search.
 
 `Proof.leibniz`: the instance substituting `t` and `s` for the slot.
@@ -18,26 +19,26 @@ send a formula to formulas that prove each other.  By induction on the formula:
 namespace V12
 
 /-- ⭐Provably equal substitutions send a formula to formulas that prove each other. -/
-def Proof.substEq {σ : Signature} : {Γ Δ : Ctx} → [Δ.NoSlots] → [Δ.FreshFrom] → {d : ℕ} →
+def Proof.substEq {σ : Signature} : {Γ Δ : Ctx} → [Δ.Presented] → {d : ℕ} →
     {ι : VarSymb → VarSymb} → (θ₁ θ₂ : Subst σ Δ) → (hθ₁ : Subst.Ok Γ θ₁) →
     (hθ₂ : Subst.Ok Γ θ₂) → (hc₁ : Subst.Coh ι Γ θ₁) → (hc₂ : Subst.Coh ι Γ θ₂) →
     (hΓ : Γ.SlotsFrom d) → (E : List (WFF σ Δ 0)) → Subst.EqRel E Γ θ₁ θ₂ →
     (φ : WFF σ Γ d) →
     Proof σ Δ (WFF.subst ι θ₁ hθ₁ hc₁ hΓ Ctx.NoSlots.slots φ :: E)
       (WFF.subst ι θ₂ hθ₂ hc₂ hΓ Ctx.NoSlots.slots φ)
-  | _, _, _, _, _, _, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, _, E, hrel, .atom ρ =>
+  | _, _, _, _, _, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, _, E, hrel, .atom ρ =>
       Proof.relCong θ₁ θ₂ hθ₁ hθ₂ hc₁ hc₂ E hrel ρ .nil
-  | _, Δ, _, _, _, ι, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, _, E, hrel, .eq t s =>
+  | _, Δ, _, _, ι, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, _, E, hrel, .eq t s =>
       have ht : Proof σ Δ E (.eq (Term.subst ι θ₁ hθ₁ hc₁ t) (Term.subst ι θ₂ hθ₂ hc₂ t)) :=
         Proof.conv (eqRec_Var _ _) (Proof.termCong θ₁ θ₂ hθ₁ hθ₂ hc₁ hc₂ E hrel t rfl)
       have hs : Proof σ Δ E (.eq (Term.subst ι θ₁ hθ₁ hc₁ s) (Term.subst ι θ₂ hθ₂ hc₂ s)) :=
         Proof.conv (eqRec_Var _ _) (Proof.termCong θ₁ θ₂ hθ₁ hθ₂ hc₁ hc₂ E hrel s rfl)
       Proof.eq_trans_base (Proof.eq_symm_base (Proof.weak _ ht))
         (Proof.eq_trans_base (Proof.lookup List.mem_cons_self) (Proof.weak _ hs))
-  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, .top => Proof.top_intro
-  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, .bot =>
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, .top => Proof.top_intro
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, .bot =>
       Proof.bot_elim _ (Proof.lookup List.mem_cons_self)
-  | _, _, _, _, _, _, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, hΓ, E, hrel, .and φ ψ =>
+  | _, _, _, _, _, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, hΓ, E, hrel, .and φ ψ =>
       have ihφ := Proof.substEq θ₁ θ₂ hθ₁ hθ₂ hc₁ hc₂ hΓ E hrel φ
       have ihψ := Proof.substEq θ₁ θ₂ hθ₁ hθ₂ hc₁ hc₂ hΓ E hrel ψ
       .and_intro
@@ -45,13 +46,13 @@ def Proof.substEq {σ : Signature} : {Γ Δ : Ctx} → [Δ.NoSlots] → [Δ.Fres
           (.and_elim_l (Proof.lookup List.mem_cons_self)))
         (Proof.cut (Proof.ofSubset (List.sub_cons_cons _ _ _) ihψ)
           (.and_elim_r (Proof.lookup List.mem_cons_self)))
-  | _, _, _, _, _, _, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, hΓ, E, hrel, .or φ ψ =>
+  | _, _, _, _, _, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, hΓ, E, hrel, .or φ ψ =>
       have ihφ := Proof.substEq θ₁ θ₂ hθ₁ hθ₂ hc₁ hc₂ hΓ E hrel φ
       have ihψ := Proof.substEq θ₁ θ₂ hθ₁ hθ₂ hc₁ hc₂ hΓ E hrel ψ
       .or_elim (Proof.lookup List.mem_cons_self)
         (.or_intro_l _ (Proof.ofSubset (List.sub_cons_cons _ _ _) ihφ))
         (.or_intro_r _ (Proof.ofSubset (List.sub_cons_cons _ _ _) ihψ))
-  | _, _, _, _, _, ι, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, hΓ, E, hrel, .imp φ ψ =>
+  | _, _, _, _, ι, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, hΓ, E, hrel, .imp φ ψ =>
       have ihφ := Proof.substEq θ₂ θ₁ hθ₂ hθ₁ hc₂ hc₁ hΓ E hrel.symm φ
       have ihψ := Proof.substEq θ₁ θ₂ hθ₁ hθ₂ hc₁ hc₂ hΓ E hrel ψ
       .imp_intro
@@ -65,9 +66,8 @@ def Proof.substEq {σ : Signature} : {Γ Δ : Ctx} → [Δ.NoSlots] → [Δ.Fres
               (WFF.subst ι θ₁ hθ₁ hc₁ hΓ Ctx.NoSlots.slots ψ))
               (List.mem_cons_of_mem _ List.mem_cons_self))
             (Proof.ofSubset (List.sub_cons_cons _ _ _) ihφ)))
-  | _, Δ, _, _, d, ι, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, hΓ, E, hrel, .all T ψ =>
-      have hu : Δ.RootFresh (.free (Ctx.FreshFrom.bound (Γ := Δ))) :=
-        Ctx.FreshFrom.fresh (Γ := Δ) _ le_rfl
+  | _, Δ, _, d, _, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, hΓ, E, hrel, .all T ψ =>
+      have hu : Δ.RootFresh (.free (Ctx.Presented.bound Δ)) := Ctx.Presented.fresh _ le_rfl
       have ih := Proof.substEq (θ₁.toFree d _ T hu.root) (θ₂.toFree d _ T hu.root)
         (Subst.ok_toFree hθ₁ T hu.root) (Subst.ok_toFree hθ₂ T hu.root)
         (Subst.coh_toFree hθ₁ hc₁ hΓ T hu.root) (Subst.coh_toFree hθ₂ hc₂ hΓ T hu.root)
@@ -81,9 +81,8 @@ def Proof.substEq {σ : Signature} : {Γ Δ : Ctx} → [Δ.NoSlots] → [Δ.Fres
         (congrArg (WFF.all T)
           (WFF.bindFree_toFree θ₂ hθ₂ hc₂ hΓ Ctx.NoSlots.slots _ hu T ψ))
         (Proof.all_intro _ T hu step)
-  | _, Δ, _, _, d, ι, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, hΓ, E, hrel, .ex T ψ =>
-      have hu : Δ.RootFresh (.free (Ctx.FreshFrom.bound (Γ := Δ))) :=
-        Ctx.FreshFrom.fresh (Γ := Δ) _ le_rfl
+  | _, Δ, _, d, _, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, hΓ, E, hrel, .ex T ψ =>
+      have hu : Δ.RootFresh (.free (Ctx.Presented.bound Δ)) := Ctx.Presented.fresh _ le_rfl
       have ih := Proof.substEq (θ₁.toFree d _ T hu.root) (θ₂.toFree d _ T hu.root)
         (Subst.ok_toFree hθ₁ T hu.root) (Subst.ok_toFree hθ₂ T hu.root)
         (Subst.coh_toFree hθ₁ hc₁ hΓ T hu.root) (Subst.coh_toFree hθ₂ hc₂ hΓ T hu.root)
@@ -97,7 +96,7 @@ def Proof.substEq {σ : Signature} : {Γ Δ : Ctx} → [Δ.NoSlots] → [Δ.Fres
           (WFF.instantiate_toFree θ₂ hθ₂ hc₂ hΓ Ctx.NoSlots.slots _ hu T Ctx.NoSlots.slots ψ).symm
           (Proof.ofSubset (List.sub_cons_cons _ _ _) ih))
       Proof.ex_elim _ T hu p₁ p₂
-  | _, Δ, _, _, _, ι, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, hΓ, E, hrel, .box ψ =>
+  | _, Δ, _, _, ι, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, hΓ, E, hrel, .box ψ =>
       have ih := Proof.substEq θ₁.box θ₂.box (Subst.ok_box hθ₁) (Subst.ok_box hθ₂)
         (Subst.coh_box hθ₁ hc₁) (Subst.coh_box hθ₂ hc₂) hΓ.boxIn (E.flatMap WFF.boxConjs)
         (Subst.eqRel_box hrel) ψ
@@ -108,7 +107,7 @@ def Proof.substEq {σ : Signature} : {Γ Δ : Ctx} → [Δ.NoSlots] → [Δ.Fres
             subst h
             exact Proof.lookup List.mem_cons_self
           else Proof.weak _ (Proof.boxedConj E ((List.mem_cons.mp hc).resolve_left h)))
-  | _, Δ, _, _, _, ι, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, hΓ, E, hrel, .dia x hx ψ =>
+  | _, Δ, _, _, ι, θ₁, θ₂, hθ₁, hθ₂, hc₁, hc₂, hΓ, E, hrel, .dia x hx ψ =>
       have hw₁ : (θ₁.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc₁ x _ hX []
       have hw₂ : (θ₂.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc₂ x _ hX []
       have hwx : ∃ X, Δ.ref (ι x) = some (.VTypeDia X) :=
@@ -124,7 +123,7 @@ def Proof.substEq {σ : Signature} : {Γ Δ : Ctx} → [Δ.NoSlots] → [Δ.Fres
               Proof.weak _ (Proof.boxedConj E hc))))
 
 /-- ⭐**Leibniz**: from `t = s` at any type and `φ[t]`, conclude `φ[s]`. -/
-def Proof.leibniz {σ : Signature} {Γ : Ctx} [Γ.NoSlots] [Γ.FreshFrom] {Δ : List (WFF σ Γ 0)}
+def Proof.leibniz {σ : Signature} {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
     (T : VarType) {a : Ann T} {t s : Term σ Γ T a} {φ : WFF σ (Γ.insert (.bnd 0) T) 1}
     (hts : Proof σ Γ Δ (eqRec T t s))
     (hφ : Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t φ)) :
