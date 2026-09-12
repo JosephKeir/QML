@@ -96,7 +96,7 @@ theorem idxAlong_proj : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step} (p : Lis
   | .tm (T := U') s₀, U, T, s, p, he, hs, hst => by
       have hU : U' = U := he
       subst hU
-      cases s <;> (try cases hs) <;> cases s₀ <;> first | rfl | cases hst
+      cases s <;> (try cases hs) <;> cases s₀ <;> rfl
 
 theorem okRef_unbox : ∀ {e : SubE σ Δ} {A : VarType}, e.OkRef (.VTypeBox A) → e.unbox.OkRef A
   | .ren w, A, he => by
