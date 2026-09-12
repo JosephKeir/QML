@@ -67,16 +67,34 @@ mutual
       {n : ℕ} → (f : Func σ Γ n) → Func.subst ι θ hθ hc (Func.mono hle f) = f
     | _, .F _ => rfl
     | _, .eval g t => by
-        simp only [Func.mono, Func.subst, Func.subst_mono_id ι hle θ hθ hc hid g,
-          Term.subst_mono_id ι hle θ hθ hc hid t]
+        change Func.eval (Func.subst ι θ hθ hc (Func.mono hle g))
+          (Term.subst ι θ hθ hc (Term.mono hle t)) = _
+        rw [Func.subst_mono_id ι hle θ hθ hc hid g,
+          eq_of_heq (Term.subst_mono_id_heq ι hle θ hθ hc hid t rfl)]
+    termination_by structural _ f => f
 
-  theorem Term.subst_mono_id {σ : Signature} (ι : VarSymb → VarSymb) {Γ Γ' : Ctx}
+  /-- Stated at arbitrary indices (so the recursion is structural); only `Var` terms qualify. -/
+  theorem Term.subst_mono_id_heq {σ : Signature} (ι : VarSymb → VarSymb) {Γ Γ' : Ctx}
       (hle : Γ.Le Γ') (θ : Subst σ Γ) (hθ : Subst.Ok Γ' θ) (hc : Subst.Coh ι Γ' θ)
       (hid : ∀ v, Γ.ref v = some .Var → θ.at v = .ren v) :
-      (t : Term σ Γ .Var .var) → Term.subst ι θ hθ hc (Term.mono hle t) = t
-    | .var v hv => SubE.toVar_of_eq_ren (hid v hv) _
-    | .func f => by simp only [Term.mono, Term.subst, Func.subst_mono_id ι hle θ hθ hc hid f]
+      {T : VarType} → {a : Ann T} → (t : Term σ Γ T a) → T = .Var →
+      HEq (Term.subst ι θ hθ hc (Term.mono hle t)) t
+    | _, _, .var v hv, _ => heq_of_eq (SubE.toVar_of_eq_ren (hid v hv) _)
+    | _, _, .func f, _ => heq_of_eq (by
+        change Term.func (Func.subst ι θ hθ hc (Func.mono hle f)) = _
+        rw [Func.subst_mono_id ι hle θ hθ hc hid f])
+    | _, _, .unit, h => nomatch h
+    | _, _, .pair _ _, h => nomatch h
+    | _, _, .boxtm _, h => nomatch h
+    | _, _, .diatm _ _ _, h => nomatch h
+    termination_by structural _ _ t => t
 end
+
+theorem Term.subst_mono_id {σ : Signature} (ι : VarSymb → VarSymb) {Γ Γ' : Ctx}
+    (hle : Γ.Le Γ') (θ : Subst σ Γ) (hθ : Subst.Ok Γ' θ) (hc : Subst.Coh ι Γ' θ)
+    (hid : ∀ v, Γ.ref v = some .Var → θ.at v = .ren v) (t : Term σ Γ .Var .var) :
+    Term.subst ι θ hθ hc (Term.mono hle t) = t :=
+  eq_of_heq (Term.subst_mono_id_heq ι hle θ hθ hc hid t rfl)
 
 /-! ## Base equality -/
 
@@ -168,8 +186,9 @@ def eqRec_symm {σ : Signature} : {Γ : Ctx} → [Γ.NoSlots] → {Δ : List (WF
         (Proof.weakenTail Δ
           (Proof.K_dia (Δ₁ := []) (Δ₂ := []) (ψ := (eqRec A s t).neg)
             (φ := (eqRec A t s).neg) x hx
-            (.imp_intro (.imp_elim (Proof.lookup (x := (eqRec A s t).neg) (by simp))
-              (eqRec_symm A (Proof.lookup (x := eqRec A t s) (by simp))))))))
+            (.imp_intro (.imp_elim
+              (Proof.lookup (x := (eqRec A s t).neg) (List.mem_cons_of_mem _ List.mem_cons_self))
+              (eqRec_symm A (Proof.lookup (x := eqRec A t s) List.mem_cons_self)))))))
 
 /-- ⭐Transitivity. -/
 def eqRec_trans {σ : Signature} : {Γ : Ctx} → [Γ.NoSlots] → {Δ : List (WFF σ Γ 0)} →
@@ -186,17 +205,18 @@ def eqRec_trans {σ : Signature} : {Γ : Ctx} → [Γ.NoSlots] → {Δ : List (W
       have h₁ : Proof σ Γ (WFF.box (eqRec A t s) :: WFF.box (eqRec A s r) :: Δ)
           (.box (eqRec A t r)) :=
         Proof.weakenTail Δ (Proof.K_box (Δ := [eqRec A t s, eqRec A s r])
-          (eqRec_trans A (Proof.lookup (x := eqRec A t s) (by simp))
-            (Proof.lookup (x := eqRec A s r) (by simp))))
+          (eqRec_trans A (Proof.lookup (x := eqRec A t s) List.mem_cons_self)
+            (Proof.lookup (x := eqRec A s r) (List.mem_cons_of_mem _ List.mem_cons_self))))
       Proof.cut (Proof.cut h₁ (.weak _ p)) q
   | Γ, _, Δ, .VTypeDia A, .dia x _, .diatm _ hx t, .diatm _ _ s, .diatm _ _ r, p, q =>
       have inner : Proof σ Γ [.dia x hx (eqRec A t r).neg, WFF.boxx x hx (eqRec A t s),
           WFF.boxx x hx (eqRec A s r)] .bot :=
         .dia_bot x hx (Proof.K_dia (Δ₁ := []) (Δ₂ := [eqRec A t s, eqRec A s r])
           (ψ := (eqRec A t r).neg) (φ := .bot) x hx
-          (.imp_elim (Proof.lookup (x := (eqRec A t r).neg) (by simp))
-            (eqRec_trans A (Proof.lookup (x := eqRec A t s) (by simp))
-              (Proof.lookup (x := eqRec A s r) (by simp)))))
+          (.imp_elim (Proof.lookup (x := (eqRec A t r).neg) List.mem_cons_self)
+            (eqRec_trans A (Proof.lookup (x := eqRec A t s) (List.mem_cons_of_mem _ List.mem_cons_self))
+              (Proof.lookup (x := eqRec A s r)
+                (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ List.mem_cons_self))))))
       have h₁ : Proof σ Γ (.dia x hx (eqRec A t r).neg :: WFF.boxx x hx (eqRec A t s) ::
           WFF.boxx x hx (eqRec A s r) :: Δ) .bot :=
         Proof.weakenTail Δ inner
