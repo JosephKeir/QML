@@ -2,18 +2,13 @@ import QML.QML_v12_Theory
 import QML.QML_v12_SubstComp
 
 /-!
-# QML v12 — staged languages
+# QML v12 — weakening twice; declaring variables in stages
 
-A world's language grows in stages: a **base** context (the empty context, or a modal view of
-another world's language), and at stage `k + 1` the free variable `ρ k` is declared at the type
-`τ k`.  The names `ρ k` are distinct (`ρ` injective) and fresh for the base — a modal view still
-exposes addresses rooted at the outer language's variables (`u.box`), so a world's own variables
-must avoid those names.  Every name `ρ n` with `n ≥ k` is fresh at stage `k`, so witnesses are
-always available, and moving a proof to a later stage is the rule `weak_ctx`.
-
-* `Lang`, `Lang.ctx k`, `Lang.le`, `Lang.lift`;
-* `WFF.mono_mono`, `WFF.mono_refl`;
-* ⭐`Lang.Provable.lift`: provability survives lifting to a later stage.
+* `WFF.mono_mono`, `WFF.mono_refl`: weakening a formula twice is weakening once; weakening along
+  `Γ ≤ Γ` changes nothing.
+* `Ctx.stage B τ ρ k`: the context `B` with the variables `ρ 0 : τ 0, …, ρ (k - 1) : τ (k - 1)`
+  declared; names fresh for `B` and distinct stay fresh at every earlier stage
+  (`Ctx.stage_fresh`).  World languages (`QML_v12_WorldLang`) are built from these stages.
 -/
 
 namespace V12
@@ -91,77 +86,5 @@ theorem Ctx.stage_slots {B : Ctx} {τ : ℕ → VarType} {ρ : ℕ → ℕ} (hB 
     ∀ k, (B.stage τ ρ k).SlotsFrom 0
   | 0 => hB
   | k + 1 => (Ctx.stage_slots hB k).insertFree (ρ k) (τ k)
-
-/-- A staged language: a base without slots, the distinct fresh names of its own variables, and
-    their types. -/
-structure Lang where
-  base : Ctx
-  τ : ℕ → VarType
-  ρ : ℕ → ℕ
-  ρ_inj : Function.Injective ρ
-  fresh_base : ∀ n, base.RootFresh (.free (ρ n))
-  slots : base.SlotsFrom 0
-
-namespace Lang
-
-variable (L : Lang)
-
-/-- The context at stage `k`. -/
-def ctx (k : ℕ) : Ctx := L.base.stage L.τ L.ρ k
-
-instance (k : ℕ) : (L.ctx k).NoSlots := ⟨Ctx.stage_slots L.slots k⟩
-
-theorem fresh {k n : ℕ} (h : k ≤ n) : (L.ctx k).RootFresh (.free (L.ρ n)) :=
-  Ctx.stage_fresh L.ρ_inj L.fresh_base h
-
-theorem le_succ (k : ℕ) : (L.ctx k).Le (L.ctx (k + 1)) := Ctx.le_insert (L.fresh le_rfl).root _
-
-theorem le {k m : ℕ} (h : k ≤ m) : (L.ctx k).Le (L.ctx m) := by
-  induction h with
-  | refl => exact Ctx.Le.refl _
-  | step _ ih => exact ih.trans (L.le_succ _)
-
-variable {L} {σ : Signature}
-
-/-- A formula moved to a later stage. -/
-def lift {k m : ℕ} (h : k ≤ m) (φ : WFF σ (L.ctx k) 0) : WFF σ (L.ctx m) 0 := WFF.mono (L.le h) φ
-
-theorem lift_lift {k m n : ℕ} (h₁ : k ≤ m) (h₂ : m ≤ n) (φ : WFF σ (L.ctx k) 0) :
-    lift h₂ (lift h₁ φ) = lift (h₁.trans h₂) φ :=
-  WFF.mono_mono _ _ φ
-
-theorem lift_refl {k : ℕ} (h : k ≤ k) (φ : WFF σ (L.ctx k) 0) : lift h φ = φ :=
-  WFF.mono_refl _ φ
-
-theorem lift_neg {k m : ℕ} (h : k ≤ m) (φ : WFF σ (L.ctx k) 0) :
-    lift h φ.neg = (lift h φ).neg :=
-  rfl
-
-theorem lift_bot {k m : ℕ} (h : k ≤ m) : lift h (.bot : WFF σ (L.ctx k) 0) = .bot := rfl
-
-/-- ⭐Provability survives lifting to a later stage. -/
-theorem Provable.lift {k m : ℕ} (h : k ≤ m) {Δ : List (WFF σ (L.ctx k) 0)}
-    {φ : WFF σ (L.ctx k) 0} (p : Provable Δ φ) :
-    Provable (Δ.map (Lang.lift h)) (Lang.lift h φ) := by
-  induction h with
-  | refl =>
-      have hΔ : Δ.map (Lang.lift (Nat.le_refl k)) = Δ := by
-        conv_rhs => rw [← List.map_id Δ]
-        exact List.map_congr_left fun ψ _ => lift_refl _ ψ
-      rw [hΔ, lift_refl]
-      exact p
-  | @step m hkm ih =>
-      have p' := ih.map (Proof.weak_ctx (L.ρ m) (L.τ m) (L.fresh le_rfl))
-      have hΔ : (Δ.map (Lang.lift hkm)).map (WFF.weaken (L.fresh (le_refl m)).root (L.τ m)) =
-          Δ.map (Lang.lift (Nat.le.step hkm)) := by
-        rw [List.map_map]
-        exact List.map_congr_left fun ψ _ => lift_lift hkm (Nat.le_succ m) ψ
-      have hφ : WFF.weaken (L.fresh (le_refl m)).root (L.τ m) (Lang.lift hkm φ) =
-          Lang.lift (Nat.le.step hkm) φ :=
-        lift_lift hkm (Nat.le_succ m) φ
-      rw [hΔ, hφ] at p'
-      exact p'
-
-end Lang
 
 end V12

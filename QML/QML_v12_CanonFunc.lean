@@ -157,7 +157,8 @@ theorem outArgs_eq {w : World σ N₀} {n : ℕ} {i : ℕ × ℕ} (ts : Fin n �
 
 theorem canonFunc_cls {w : World σ N₀} (f : σ.FuncSyms) {i : ℕ × ℕ}
     (ts : Fin (σ.funcArity f) → Term σ (w.L.ctx i) .Var .var) :
-    canonFunc w f (fun k => w.cls i (ts k)) = w.cls i (.func ((Spine.ofFn ts).fill (.F ⟨f, rfl⟩))) := by
+    canonFunc w f (fun k => w.cls i (ts k)) =
+      w.cls i (.func ((Spine.ofFn ts).fill (.F ⟨f, rfl⟩))) := by
   unfold canonFunc
   set s := stageSup fun k => (w.cls i (ts k)).out.1
   refine (World.cls_eq_iff (K := s ⊔ i) le_sup_left le_sup_right).mpr ?_

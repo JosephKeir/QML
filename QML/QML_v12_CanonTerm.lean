@@ -64,7 +64,9 @@ theorem canonEnv_ref (w : World σ N₀) (i : ℕ × ℕ) :
           have hT : U.step s = some T := by
             rw [Ctx.ref_step_prod _ _ hs, hU] at h
             exact h
-          cases U <;> cases s <;> simp [VarType.step, Step.isProd] at hT hs
+          cases U <;> cases s <;>
+            simp only [VarType.step, Step.isProd, reduceCtorEq, Option.some.injEq,
+              Bool.false_eq_true] at hT hs
           · subst hT
             rfl
           · subst hT
@@ -88,7 +90,7 @@ theorem boxPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) (w' : Succ w) :
   intro v T hv
   match v with
   | .step u .box =>
-      show (model w₀).necEval ((canonEnv w₀ w i).ref u (Ctx.boxIn_step_box hv)) w' = _
+      change (model w₀).necEval ((canonEnv w₀ w i).ref u (Ctx.boxIn_step_box hv)) w' = _
       rw [canonEnv_ref]
       exact toDom_congr w₀ (rden_eta_le (w'.2.boxIn_le i) _ _ _ _ _ _) _ _
   | .root _ => cases hv

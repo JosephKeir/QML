@@ -66,8 +66,8 @@ theorem Rel.subst_mono_id {σ : Signature} {ι : VarSymb → VarSymb} {Γ Γ' : 
     ∀ {n : ℕ} (ρ : Rel σ Γ n), Rel.subst ι θ hθ hc (Rel.mono hle ρ) = ρ
   | _, .R _ => rfl
   | _, .eval ρ t => by
-      change Rel.eval (Rel.subst ι θ hθ hc (Rel.mono hle ρ)) (Term.subst ι θ hθ hc (Term.mono hle t))
-        = _
+      change Rel.eval (Rel.subst ι θ hθ hc (Rel.mono hle ρ))
+        (Term.subst ι θ hθ hc (Term.mono hle t)) = _
       rw [Rel.subst_mono_id hle θ hθ hc hid ρ, Term.subst_mono_id ι hle θ hθ hc hid t]
 
 /-! ## Holes in argument position -/
@@ -135,11 +135,13 @@ def append : {L₁ L₂ : List (WFF σ Γ 0)} → Proofs σ Γ M L₁ → Proofs
 def ofMap {Γ' : Ctx} (f : WFF σ Γ' 0 → WFF σ Γ 0) :
     (L : List (WFF σ Γ' 0)) → (∀ c ∈ L, Proof σ Γ M (f c)) → Proofs σ Γ M (L.map f)
   | [], _ => .nil
-  | c :: L, h => .cons (h c List.mem_cons_self) (ofMap f L fun c' hc' => h c' (List.mem_cons_of_mem _ hc'))
+  | c :: L, h =>
+      .cons (h c List.mem_cons_self) (ofMap f L fun c' hc' => h c' (List.mem_cons_of_mem _ hc'))
 
 def ofMem : (L : List (WFF σ Γ 0)) → (∀ c ∈ L, Proof σ Γ M c) → Proofs σ Γ M L
   | [], _ => .nil
-  | c :: L, h => .cons (h c List.mem_cons_self) (ofMem L fun c' hc' => h c' (List.mem_cons_of_mem _ hc'))
+  | c :: L, h =>
+      .cons (h c List.mem_cons_self) (ofMem L fun c' hc' => h c' (List.mem_cons_of_mem _ hc'))
 
 end Proofs
 
@@ -170,7 +172,8 @@ mutual
         have p₁ := Proof.funcCong θ₁ θ₂ hθ₁ hθ₂ hc₁ hc₂ E hrel g
           (.cons (Term.subst ι θ₁ hθ₁ hc₁ t) S)
         have p₂ : Proof σ Δ E (WFF.eq
-            (Term.func ((Spine.cons (Term.subst ι θ₁ hθ₁ hc₁ t) S).fill (Func.subst ι θ₂ hθ₂ hc₂ g)))
+            (Term.func ((Spine.cons (Term.subst ι θ₁ hθ₁ hc₁ t) S).fill
+              (Func.subst ι θ₂ hθ₂ hc₂ g)))
             (Term.func ((Spine.cons (Term.subst ι θ₂ hθ₂ hc₂ t) S).fill
               (Func.subst ι θ₂ hθ₂ hc₂ g)))) :=
           Proof.conv (instantiate_funcHole _ S _ _)

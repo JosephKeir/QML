@@ -412,7 +412,7 @@ theorem WFF.subst_bindPair {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (u₁ u₂ z
   by_cases hvr : v = .root (.free u₂)
   · subst hvr
     rw [Subst.pairSplit, Subst.set_root, Subst.single_root, SubE.comp_ren]
-    show SubE.Sim U _ (((θ.set (.free u₁) ((θ (.root (.free z))).proj .fst))
+    change SubE.Sim U _ (((θ.set (.free u₁) ((θ (.root (.free z))).proj .fst))
       (.root (.free z))).proj .snd)
     rw [Subst.set_ne _ _ (fun h => hne_z₁ (VarSymb.root.inj h))]
     exact .refl _
@@ -532,7 +532,8 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         (by
           rw [List.map_map, List.map_map]
           rfl)
-        (Proof.K_box (Γ := Γ') (Proof.subst p θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn))
+        (Proof.K_box (Γ := Γ')
+          (Proof.subst p θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn))
   | _, _, _, @Proof.K_dia _ _ x hx Δ₁ Δ₂ φ ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
       have hwx : ∃ X, Γ'.ref (ι x) = some (.VTypeDia X) :=

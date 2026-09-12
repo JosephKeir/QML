@@ -214,7 +214,8 @@ def eqRec_trans {σ : Signature} : {Γ : Ctx} → [Γ.NoSlots] → {Δ : List (W
         .dia_bot x hx (Proof.K_dia (Δ₁ := []) (Δ₂ := [eqRec A t s, eqRec A s r])
           (ψ := (eqRec A t r).neg) (φ := .bot) x hx
           (.imp_elim (Proof.lookup (x := (eqRec A t r).neg) List.mem_cons_self)
-            (eqRec_trans A (Proof.lookup (x := eqRec A t s) (List.mem_cons_of_mem _ List.mem_cons_self))
+            (eqRec_trans A
+              (Proof.lookup (x := eqRec A t s) (List.mem_cons_of_mem _ List.mem_cons_self))
               (Proof.lookup (x := eqRec A s r)
                 (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ List.mem_cons_self))))))
       have h₁ : Proof σ Γ (.dia x hx (eqRec A t r).neg :: WFF.boxx x hx (eqRec A t s) ::

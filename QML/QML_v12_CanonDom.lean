@@ -175,7 +175,8 @@ theorem rden_mono : ∀ {A : VarType} {a : Ann A} {Γ Γ' : Ctx} (h : Γ.Le Γ')
     rden w i e (Term.mono h t) = rden w i (h.trans e) t
   | _, _, _, _, _, .var _ _, _, _, _ => rfl
   | _, _, _, _, h, .func f, w, i, e => by
-      change w.cls i (Term.mono e (Term.mono h (.func f))) = w.cls i (Term.mono (h.trans e) (.func f))
+      change w.cls i (Term.mono e (Term.mono h (.func f))) =
+        w.cls i (Term.mono (h.trans e) (.func f))
       rw [Term.mono_mono]
   | _, _, _, _, _, .unit, _, _, _ => rfl
   | _, _, _, _, h, .pair s t, w, i, e => Prod.ext (rden_mono h s w i e) (rden_mono h t w i e)

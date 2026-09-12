@@ -177,7 +177,8 @@ theorem Rel.mono_subst {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ Δ' : 
       Rel.subst ι (θ.mono h) (Subst.ok_mono hθ h) (Subst.coh_mono hc h) ρ
   | _, .R _ => rfl
   | _, .eval ρ t => by
-      change Rel.eval (Rel.mono h (Rel.subst ι θ hθ hc ρ)) (Term.mono h (Term.subst ι θ hθ hc t)) = _
+      change Rel.eval (Rel.mono h (Rel.subst ι θ hθ hc ρ))
+        (Term.mono h (Term.subst ι θ hθ hc t)) = _
       rw [Rel.mono_subst h θ hθ hc ρ, Term.mono_subst h θ hθ hc t]
       rfl
 

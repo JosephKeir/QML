@@ -4,10 +4,9 @@ import QML.QML_v12_Presented
 /-!
 # QML v12 — the proof system
 
-Classical natural deduction, following v11 rule for rule.  The hypotheses form a LIST, with
-explicit weakening, contraction and exchange; `Proof.lookup` / `Proof.ofSubset` and the tactics
-`by_hyp` / `hyps_from` handle them in practice, so the structural rules never need to be applied by
-hand.
+Classical natural deduction.  The hypotheses form a LIST, with explicit weakening, contraction and
+exchange; `Proof.lookup` / `Proof.ofSubset` and the tactics `by_hyp` / `hyps_from` handle them in
+practice, so the structural rules never need to be applied by hand.
 
 * **Proofs live at binder depth 0**: no rule changes the depth, so it is fixed once and for all.
   The slot side conditions are the type class `Ctx.NoSlots`, found by instance search.

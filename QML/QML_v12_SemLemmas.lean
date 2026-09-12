@@ -57,7 +57,7 @@ theorem Env.boxPush_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : 
   intro v T hv
   match v with
   | .step u .box =>
-      show M.necEval (env.ref u (Ctx.boxIn_step_box hv)) w' =
+      change M.necEval (env.ref u (Ctx.boxIn_step_box hv)) w' =
         M.necEval (env'.ref u (h.ref (Ctx.boxIn_step_box hv))) w'
       rw [Env.ref_agree hag u (Ctx.boxIn_step_box hv)]
   | .root _ => cases hv

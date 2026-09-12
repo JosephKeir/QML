@@ -25,7 +25,7 @@ structure StageSys (I : Type) [Preorder I] where
   pres : ∀ i, (ctx i).Presented
 
 /-- Along a chain, finitely many conditions each met by some member are met by one member. -/
-theorem chain_exists_mem_of_list' {α β : Type} {c : Set (Set α)} (hc : IsChain (· ⊆ ·) c)
+theorem chain_exists_mem_of_list {α β : Type} {c : Set (Set α)} (hc : IsChain (· ⊆ ·) c)
     (hne : c.Nonempty) {P : Set α → β → Prop} (hP : ∀ {s t : Set α}, s ⊆ t → ∀ b, P s b → P t b) :
     ∀ l : List β, (∀ b ∈ l, ∃ s ∈ c, P s b) → ∃ s ∈ c, ∀ b ∈ l, P s b
   | [], _ => by
@@ -33,7 +33,7 @@ theorem chain_exists_mem_of_list' {α β : Type} {c : Set (Set α)} (hc : IsChai
       exact ⟨s, hs, fun _ h => absurd h List.not_mem_nil⟩
   | b :: l, h => by
       obtain ⟨t, ht, hbt⟩ := h b List.mem_cons_self
-      obtain ⟨s, hs, hls⟩ := chain_exists_mem_of_list' hc hne hP l
+      obtain ⟨s, hs, hls⟩ := chain_exists_mem_of_list hc hne hP l
         (fun b' hb' => h b' (List.mem_cons_of_mem _ hb'))
       rcases eq_or_ne s t with rfl | hst
       · refine ⟨s, hs, fun b' hb' => ?_⟩
@@ -144,7 +144,7 @@ theorem atStage_insert_not_le {s : S.Sentence σ} {i : I} (h : ¬ s.1 ≤ i) :
 theorem consistent_sUnion {c : Set (Set (S.Sentence σ))} (hc : IsChain (· ⊆ ·) c)
     (hne : c.Nonempty) (hcons : ∀ t ∈ c, Consistent t) : Consistent (⋃₀ c) := by
   rintro i ⟨Δ, hΔ, p⟩
-  obtain ⟨t, ht, hsub⟩ := chain_exists_mem_of_list' hc hne
+  obtain ⟨t, ht, hsub⟩ := chain_exists_mem_of_list hc hne
     (P := fun t ψ => ψ ∈ atStage t i) (fun hle ψ hψ => atStage_mono hle i hψ) Δ
     (fun ψ hψ => by
       obtain ⟨s, hs, hsi, e⟩ := hΔ ψ hψ

@@ -126,51 +126,62 @@ theorem WFF.code_inj {Γ : Ctx} {d : ℕ} (φ ψ : WFF σ Γ d) (h : φ.code = �
   induction φ with
   | atom ρ =>
       intro ψ h
-      cases ψ <;> simp [WFF.code] at h
+      cases ψ <;> simp only [WFF.code, Code.node.injEq, Nat.reduceEqDiff, false_and, true_and,
+        and_true] at h
       rw [Rel.code_inj _ _ h]
   | eq t s =>
       intro ψ h
-      cases ψ <;> simp [WFF.code] at h
+      cases ψ <;> simp only [WFF.code, Code.node.injEq, Nat.reduceEqDiff, false_and,
+        true_and] at h
       rw [Term.code_inj _ _ h.1, Term.code_inj _ _ h.2]
   | top =>
       intro ψ h
-      cases ψ <;> simp [WFF.code] at h
+      cases ψ <;> simp only [WFF.code, Code.node.injEq, Code.leaf.injEq, Nat.reduceEqDiff,
+        false_and, and_true] at h
       rfl
   | bot =>
       intro ψ h
-      cases ψ <;> simp [WFF.code] at h
+      cases ψ <;> simp only [WFF.code, Code.node.injEq, Code.leaf.injEq, Nat.reduceEqDiff,
+        false_and, and_true] at h
       rfl
   | and φ₁ φ₂ ih₁ ih₂ =>
       intro ψ h
-      cases ψ <;> simp [WFF.code] at h
+      cases ψ <;> simp only [WFF.code, Code.node.injEq, Nat.reduceEqDiff, false_and,
+        true_and] at h
       rw [ih₁ _ h.1, ih₂ _ h.2]
   | or φ₁ φ₂ ih₁ ih₂ =>
       intro ψ h
-      cases ψ <;> simp [WFF.code] at h
+      cases ψ <;> simp only [WFF.code, Code.node.injEq, Nat.reduceEqDiff, false_and,
+        true_and] at h
       rw [ih₁ _ h.1, ih₂ _ h.2]
   | imp φ₁ φ₂ ih₁ ih₂ =>
       intro ψ h
-      cases ψ <;> simp [WFF.code] at h
+      cases ψ <;> simp only [WFF.code, Code.node.injEq, Nat.reduceEqDiff, false_and,
+        true_and] at h
       rw [ih₁ _ h.1, ih₂ _ h.2]
   | all T φ ih =>
       intro ψ h
-      cases ψ <;> simp [WFF.code] at h
+      cases ψ <;> simp only [WFF.code, Code.node.injEq, Code.leaf.injEq, Nat.reduceEqDiff,
+        false_and, true_and] at h
       obtain ⟨h₁, h₂⟩ := h
       cases natCode_injective h₁
       rw [ih _ h₂]
   | ex T φ ih =>
       intro ψ h
-      cases ψ <;> simp [WFF.code] at h
+      cases ψ <;> simp only [WFF.code, Code.node.injEq, Code.leaf.injEq, Nat.reduceEqDiff,
+        false_and, true_and] at h
       obtain ⟨h₁, h₂⟩ := h
       cases natCode_injective h₁
       rw [ih _ h₂]
   | box φ ih =>
       intro ψ h
-      cases ψ <;> simp [WFF.code] at h
+      cases ψ <;> simp only [WFF.code, Code.node.injEq, Nat.reduceEqDiff, false_and, true_and,
+        and_true] at h
       rw [ih _ h]
   | dia x hx φ ih =>
       intro ψ h
-      cases ψ <;> simp [WFF.code] at h
+      cases ψ <;> simp only [WFF.code, Code.node.injEq, Code.leaf.injEq, Nat.reduceEqDiff,
+        false_and, true_and] at h
       obtain ⟨h₁, h₂⟩ := h
       cases natCode_injective h₁
       rw [ih _ h₂]

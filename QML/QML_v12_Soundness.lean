@@ -39,7 +39,8 @@ theorem sat_bindPair {M : Model.{u} σ} {Γ : Ctx} {d : ℕ} {w : M.frame.W} (hn
   let E₁ := (envZ.restrict (Ctx.Le.refl _)).extend (.free u₁)
     (envZ.ref (.step (.root (.free z)) .fst) (Ctx.ref_insert_fst _ _ A B))
   let E₁' := E₁.restrict (Ctx.insert_swap_le hne_z₁.symm A (.VTypeProd A B))
-  let E₂ := (E₁'.restrict (Ctx.le_insert (hzf.insert_ne hne_z₁.symm A).root (.VTypeProd A B))).extend
+  let E₂ := (E₁'.restrict
+    (Ctx.le_insert (hzf.insert_ne hne_z₁.symm A).root (.VTypeProd A B))).extend
     (.free u₂) (E₁'.ref (.step (.root (.free z)) .snd) (Ctx.ref_insert_snd _ _ A B))
   refine ⟨E₂, fun φ => ?_⟩
   exact (sat_renameRoot envZ (hnp.insert _ _) (.free u₁) (hu₁.insert_ne hne_z₁ _) (Ctx.Le.refl _)

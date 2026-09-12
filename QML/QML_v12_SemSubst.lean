@@ -69,7 +69,7 @@ theorem entryVal_proj {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
       (hst : U.step s = some T),
       entryVal env (e.proj s) (SubE.okRef_proj he hs hst) = M.stepObj hs hst (entryVal env e he)
   | .ren v, U, T, s, he, hs, hst => by
-      show env.ref (.step v s) (SubE.okRef_proj he hs hst) = M.stepObj hs hst (env.ref v he)
+      change env.ref (.step v s) (SubE.okRef_proj he hs hst) = M.stepObj hs hst (env.ref v he)
       rw [Env.ref, dif_pos hs]
       split
       · rename_i U' hU'
@@ -155,7 +155,7 @@ theorem substEnv_box {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : Sub
   funext v T hv
   match v with
   | .step u .box =>
-      show entryVal (env.boxPush w') ((θ.at u).unbox) _ =
+      change entryVal (env.boxPush w') ((θ.at u).unbox) _ =
         M.necEval ((substEnv θ hθ hnp env).ref u (Ctx.boxIn_step_box hv)) w'
       rw [substEnv_ref, entryVal_unbox env w' (Subst.okRef_at hθ (Ctx.boxIn_step_box hv))]
   | .root _ => cases hv
@@ -266,12 +266,13 @@ theorem substEnv_dia {Γ Δ : Ctx} {ι : VarSymb → VarSymb} {w : M.frame.W} (�
       subst hux
       have hXT := Ctx.diaIn_step_dia hr hv
       subst hXT
-      show entryVal (env.diaPush (ι u) hr₁ w') (if u = u then (θ.at u).diaBody (ι u) else .hide) _ = _
+      change entryVal (env.diaPush (ι u) hr₁ w')
+        (if u = u then (θ.at u).diaBody (ι u) else .hide) _ = _
       rw [entryVal_congr _ (if_pos rfl) _ (SubE.okRef_diaBody (Subst.okRef_at hθ hr) hw),
         entryVal_dia_content env (Subst.okRef_at hθ hr) hw hr₁ w']
       exact posEval_snd_congr (substEnv_ref θ hθ hnp env u hr).symm _ hm
   | .step u .box =>
-      show entryVal (env.diaPush (ι x) hr₁ w') (((θ.at u).unbox).mono _) _ =
+      change entryVal (env.diaPush (ι x) hr₁ w') (((θ.at u).unbox).mono _) _ =
         M.necEval ((substEnv θ hθ hnp env).ref u (Ctx.boxIn_step_box hv)) w'.1
       rw [entryVal_mono (Env.box_dia_agree env hr₁ w') _
           (SubE.okRef_unbox (Subst.okRef_at hθ (Ctx.boxIn_step_box hv))),

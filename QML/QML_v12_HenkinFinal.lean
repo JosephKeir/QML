@@ -316,13 +316,14 @@ theorem finalT_ex_witness {S₀ : Set ((L.pre []).Sentence σ)} (hS₀ : StageSy
     rw [WFF.mono_instantiate _ Ctx.NoSlots.slots Ctx.NoSlots.slots, Term.mono_eta]
     simp only [WFF.mono_mono]
     exact WFF.instantiate_eta_congr _ (by rw [length_chain]) _ _ _
-  show (⟨decM n, WFF.mono (L.toChain S₀ (m := decM n) (le_refl (n + 1))) _⟩ :
+  change (⟨decM n, WFF.mono (L.toChain S₀ (m := decM n) (le_refl (n + 1))) _⟩ :
     (L.pre (L.chain S₀ (n + 1)).l).Sentence σ) ∈ _
   rw [e]
   exact hmem
 
 /-- ⭐A universal missing from the finished theory has an instance missing there, at a term. -/
-theorem finalT_all_witness {S₀ : Set ((L.pre []).Sentence σ)} {i : ℕ × ℕ} {A : VarType} {ψ : WFF σ (((L.final S₀).ctx i).insert (.bnd 0) A) 1}
+theorem finalT_all_witness {S₀ : Set ((L.pre []).Sentence σ)} {i : ℕ × ℕ} {A : VarType}
+    {ψ : WFF σ (((L.final S₀).ctx i).insert (.bnd 0) A) 1}
     (h : (⟨i, .all A ψ⟩ : (L.final S₀).sys.Sentence σ) ∉ L.finalT S₀) :
     ∃ (i' : ℕ × ℕ) (hi : i ≤ i') (a : Ann A) (t : Term σ ((L.final S₀).ctx i') A a),
       (⟨i', (WFF.instantiate Ctx.NoSlots.slots t
@@ -362,7 +363,7 @@ theorem finalT_all_witness {S₀ : Set ((L.pre []).Sentence σ)} {i : ℕ × ℕ
     rw [WFF.mono_instantiate _ Ctx.NoSlots.slots Ctx.NoSlots.slots, Term.mono_eta]
     simp only [WFF.mono_mono]
     exact WFF.instantiate_eta_congr _ (by rw [length_chain]) _ _ _
-  show (⟨decM n, WFF.mono (L.toChain S₀ (m := decM n) (le_refl (n + 1))) (WFF.neg _)⟩ :
+  change (⟨decM n, WFF.mono (L.toChain S₀ (m := decM n) (le_refl (n + 1))) (WFF.neg _)⟩ :
     (L.pre (L.chain S₀ (n + 1)).l).Sentence σ) ∈ _
   have e' := congrArg (fun x => WFF.neg x) e
   simp only at e'

@@ -123,18 +123,21 @@ theorem posEval_injective {A : VarType} {w : World σ N₀} :
 /-- The function algebra on the carriers. -/
 noncomputable def ops : (frame w₀).Ops where
   necMap g n := ⟨rawEval (.boxMap g) _ n.1, definable_rawEval (.boxMap g) n.2⟩
-  necPair a b := ⟨rawEval (.boxPair _ _) _ ((a.1, b.1) : RDom (.VTypeProd (.VTypeBox _) (.VTypeBox _)) _),
+  necPair a b := ⟨rawEval (.boxPair _ _) _
+      ((a.1, b.1) : RDom (.VTypeProd (.VTypeBox _) (.VTypeBox _)) _),
     definable_rawEval (.boxPair _ _) (definable_pair a.2 b.2)⟩
   necUnit := ⟨rawEval .boxUnit _ (PUnit.unit : RDom .VTypeOne _),
     definable_rawEval .boxUnit (definable_unit _)⟩
   posMap g p := ⟨rawEval (.diaMap g) _ p.1, definable_rawEval (.diaMap g) p.2⟩
-  posStrength n p := ⟨rawEval (.strength _ _) _ ((n.1, p.1) : RDom (.VTypeProd (.VTypeBox _) (.VTypeDia _)) _),
+  posStrength n p := ⟨rawEval (.strength _ _) _
+      ((n.1, p.1) : RDom (.VTypeProd (.VTypeBox _) (.VTypeDia _)) _),
     definable_rawEval (.strength _ _) (definable_pair n.2 p.2)⟩
 
 /-- ⭐Evaluating a map on a frame object is evaluating it on the raw object. -/
 theorem eval_toDom : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀) (o : RDom A w)
     (h : Definable A w o),
-    GFunc.eval (ops w₀) g w (toDom w₀ A w o h) = toDom w₀ B w (rawEval g w o) (definable_rawEval g h)
+    GFunc.eval (ops w₀) g w (toDom w₀ A w o h) =
+      toDom w₀ B w (rawEval g w o) (definable_rawEval g h)
   | _, _, .id _, _, _, _ => rfl
   | _, _, .comp g f, w, o, h =>
       (congrArg (GFunc.eval (ops w₀) g w) (eval_toDom f w o h)).trans (eval_toDom g w _ _)
