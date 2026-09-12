@@ -78,10 +78,11 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ ψ
   -- ⭐Equality, primitive only at base type (compound equality is `eqRec`).
   | eq_intro {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (t : Term σ Γ .Var .var) : Proof σ Γ Δ (.eq t t)
-  | eq_elim {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (u : ℕ) (hu : Γ.RootFresh (.free u))
-      {φ : WFF σ (Γ.insert (.free u) .Var) 0} (t s : Term σ Γ .Var .var) :
-      Proof σ Γ Δ (.eq t s) → Proof σ Γ Δ (WFF.substFree u hu Ctx.NoSlots.slots t φ) →
-      Proof σ Γ Δ (WFF.substFree u hu Ctx.NoSlots.slots s φ)
+  -- The formula `φ` has its hole at the slot `bnd 0`, as for `all_elim`.
+  | eq_elim {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} {φ : WFF σ (Γ.insert (.bnd 0) .Var) 1}
+      (t s : Term σ Γ .Var .var) :
+      Proof σ Γ Δ (.eq t s) → Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t φ) →
+      Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots s φ)
   -- ⭐Pairing: the user's components `u₁ u₂` become `z.fst`, `z.snd`.
   | pair_elim {Γ : Ctx} [Γ.NoSlots] (A B : VarType) (u₁ u₂ z : ℕ) (hu : u₁ ≠ u₂) (hz₁ : z ≠ u₁)
       (hu₁ : Γ.RootFresh (.free u₁)) (hu₂ : Γ.RootFresh (.free u₂))
