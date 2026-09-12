@@ -43,17 +43,34 @@ def WFF.conjuncts {σ : Signature} {Γ : Ctx} {d : ℕ} : WFF σ Γ d → List (
   | .and φ ψ => φ.conjuncts ++ ψ.conjuncts
   | φ => [φ]
 
+/-- Where a conjunct sits in a nest of conjunctions. -/
+inductive WFF.ConjPath {σ : Signature} {Γ : Ctx} {d : ℕ} : WFF σ Γ d → WFF σ Γ d → Type where
+  | self (φ : WFF σ Γ d) : ConjPath φ φ
+  | left {φ₁ φ₂ c : WFF σ Γ d} : ConjPath φ₁ c → ConjPath (.and φ₁ φ₂) c
+  | right {φ₁ φ₂ c : WFF σ Γ d} : ConjPath φ₂ c → ConjPath (.and φ₁ φ₂) c
+
+/-- Find the conjunct.  At any depth, so that the recursion is structural. -/
+def WFF.conjPath {σ : Signature} {Γ : Ctx} : {d : ℕ} → (ψ : WFF σ Γ d) → {c : WFF σ Γ d} →
+    c ∈ ψ.conjuncts → WFF.ConjPath ψ c
+  | _, .and φ₁ φ₂, c, h =>
+      if h₁ : c ∈ φ₁.conjuncts then .left (WFF.conjPath φ₁ h₁)
+      else .right (WFF.conjPath φ₂ ((List.mem_append.mp h).resolve_left h₁))
+  | _, .atom _, _, h | _, .eq _ _, _, h | _, .top, _, h | _, .bot, _, h | _, .or _ _, _, h
+  | _, .imp _ _, _, h | _, .all _ _, _, h | _, .ex _ _, _, h | _, .box _, _, h
+  | _, .dia _ _ _, _, h => (List.mem_singleton.mp h).symm ▸ .self _
+
+def Proof.ofConjPath {σ : Signature} {Γ : Ctx} :
+    {ψ c : WFF σ Γ 0} → WFF.ConjPath ψ c → Proof σ Γ [ψ] c
+  | _, _, .self _ => Proof.ax _
+  | .and φ₁ φ₂, _, .left p =>
+      Proof.cut (Proof.weakenTail [WFF.and φ₁ φ₂] (Proof.ofConjPath p)) (.and_elim_l (.ax _))
+  | .and φ₁ φ₂, _, .right p =>
+      Proof.cut (Proof.weakenTail [WFF.and φ₁ φ₂] (Proof.ofConjPath p)) (.and_elim_r (.ax _))
+
 /-- A formula proves each of its conjuncts. -/
-def Proof.conjunct {σ : Signature} {Γ : Ctx} {c : WFF σ Γ 0} :
-    (ψ : WFF σ Γ 0) → c ∈ ψ.conjuncts → Proof σ Γ [ψ] c
-  | .and φ₁ φ₂, h =>
-      if h₁ : c ∈ φ₁.conjuncts then
-        Proof.cut (Proof.weakenTail [WFF.and φ₁ φ₂] (Proof.conjunct φ₁ h₁)) (.and_elim_l (.ax _))
-      else
-        Proof.cut (Proof.weakenTail [WFF.and φ₁ φ₂]
-          (Proof.conjunct φ₂ ((List.mem_append.mp h).resolve_left h₁))) (.and_elim_r (.ax _))
-  | .atom _, h | .eq _ _, h | .top, h | .bot, h | .or _ _, h | .imp _ _, h | .all _ _, h
-  | .ex _ _, h | .box _, h | .dia _ _ _, h => Proof.lookup h
+def Proof.conjunct {σ : Signature} {Γ : Ctx} {c : WFF σ Γ 0} (ψ : WFF σ Γ 0)
+    (h : c ∈ ψ.conjuncts) : Proof σ Γ [ψ] c :=
+  Proof.ofConjPath (ψ.conjPath h)
 
 /-- Weakening commutes with equality at every type. -/
 theorem eqRec_mono {σ : Signature} {d : ℕ} : {Γ Γ' : Ctx} → (h : Γ.Le Γ') → (T : VarType) →
