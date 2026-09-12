@@ -1,0 +1,78 @@
+import QML.QML_v12_Leibniz
+
+/-!
+# QML v12 — Leibniz: hypothesis bookkeeping
+
+* `Proof.discharge`: drop hypotheses that are provable.
+* `Proof.box_mono`, `Proof.boxx_mono`: monotonicity of `□` and `□_x` (from K).
+* `WFF.conjuncts` and `Proof.conjunct`: a conjunction proves each conjunct (found by search, so
+  the proof is computed from a membership proof).
+* `eqRec_mono`: weakening commutes with equality at every type.
+-/
+
+namespace V12
+
+namespace Proof
+
+variable {σ : Signature} {Γ : Ctx}
+
+/-- Discharge hypotheses that are provable. -/
+def discharge : {L M : List (WFF σ Γ 0)} → {χ : WFF σ Γ 0} → Proof σ Γ L χ →
+    (∀ ℓ ∈ L, Proof σ Γ M ℓ) → Proof σ Γ M χ
+  | [], _, _, p, _ => Proof.ofSubset (fun _ h => absurd h List.not_mem_nil) p
+  | _ :: _, _, _, p, h =>
+      Proof.imp_elim (discharge (Proof.imp_intro p) fun x hx => h x (List.mem_cons_of_mem _ hx))
+        (h _ List.mem_cons_self)
+
+/-- `□` is monotone. -/
+def box_mono {ψ c : WFF σ Γ.boxIn 0} (p : Proof σ Γ.boxIn [ψ] c) :
+    Proof σ Γ [.box ψ] (.box c) :=
+  Proof.K_box (Δ := [ψ]) p
+
+/-- `□_x` is monotone. -/
+def boxx_mono (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    {ψ c : WFF σ (Γ.diaIn x) 0} (p : Proof σ (Γ.diaIn x) [ψ] c) :
+    Proof σ Γ [WFF.boxx x hx ψ] (WFF.boxx x hx c) :=
+  .imp_intro (.dia_bot x hx (Proof.K_dia (Δ₁ := []) (Δ₂ := [ψ]) (ψ := c.neg) (φ := .bot) x hx
+    (.imp_elim (Proof.lookup (x := c.neg) List.mem_cons_self) (.weak _ p))))
+
+end Proof
+
+/-- The conjuncts of a formula, nested conjunctions flattened. -/
+def WFF.conjuncts {σ : Signature} {Γ : Ctx} {d : ℕ} : WFF σ Γ d → List (WFF σ Γ d)
+  | .and φ ψ => φ.conjuncts ++ ψ.conjuncts
+  | φ => [φ]
+
+/-- A formula proves each of its conjuncts. -/
+def Proof.conjunct {σ : Signature} {Γ : Ctx} {c : WFF σ Γ 0} :
+    (ψ : WFF σ Γ 0) → c ∈ ψ.conjuncts → Proof σ Γ [ψ] c
+  | .and φ₁ φ₂, h =>
+      if h₁ : c ∈ φ₁.conjuncts then
+        Proof.cut (Proof.weakenTail [WFF.and φ₁ φ₂] (Proof.conjunct φ₁ h₁)) (.and_elim_l (.ax _))
+      else
+        Proof.cut (Proof.weakenTail [WFF.and φ₁ φ₂]
+          (Proof.conjunct φ₂ ((List.mem_append.mp h).resolve_left h₁))) (.and_elim_r (.ax _))
+  | .atom _, h | .eq _ _, h | .top, h | .bot, h | .or _ _, h | .imp _ _, h | .all _ _, h
+  | .ex _ _, h | .box _, h | .dia _ _ _, h => Proof.lookup h
+
+/-- Weakening commutes with equality at every type. -/
+theorem eqRec_mono {σ : Signature} {d : ℕ} : {Γ Γ' : Ctx} → (h : Γ.Le Γ') → (T : VarType) →
+    {a : Ann T} → (t s : Term σ Γ T a) →
+    WFF.mono h (eqRec T t s : WFF σ Γ d) = eqRec T (Term.mono h t) (Term.mono h s)
+  | _, _, h, .Var, .var, t, s =>
+      (congrArg (WFF.mono h) (eqRec_Var t s)).trans (eqRec_Var _ _).symm
+  | _, _, _, .VTypeOne, .one, .unit, .unit => rfl
+  | _, _, h, .VTypeProd A B, .prod _ _, .pair t₁ t₂, .pair s₁ s₂ => by
+      change WFF.and (WFF.mono h (eqRec A t₁ s₁)) (WFF.mono h (eqRec B t₂ s₂)) = _
+      rw [eqRec_mono h A, eqRec_mono h B]
+      rfl
+  | _, _, h, .VTypeBox A, .box _, .boxtm t, .boxtm s => by
+      change WFF.box (WFF.mono h.boxIn (eqRec A t s)) = _
+      rw [eqRec_mono h.boxIn A]
+      rfl
+  | _, _, h, .VTypeDia A, .dia x _, .diatm _ _ t, .diatm _ _ s => by
+      change WFF.imp (WFF.dia x _ (WFF.imp (WFF.mono (h.diaIn x) (eqRec A t s)) .bot)) .bot = _
+      rw [eqRec_mono (h.diaIn x) A]
+      rfl
+
+end V12
