@@ -294,16 +294,41 @@ theorem SlotsFrom.diaIn {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (x : VarSymb) 
   | .step _ .fst => rfl
   | .step _ .snd => rfl
 
-/-- A top-level context shows only roots. -/
-def TopLevel (Γ : Ctx) : Prop := ∀ v T, Γ v = some T → ∃ r, v = .root r
+/-- Every address with root `r` is hidden. -/
+def RootFresh (Γ : Ctx) (r : Root) : Prop := ∀ v, v.rt = r → Γ v = none
 
-theorem TopLevel.insert {Γ : Ctx} (h : Γ.TopLevel) (r : Root) (T : VarType) :
-    (Γ.insert r T).TopLevel := by
+theorem RootFresh.root {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) : Γ (.root r) = none := h _ rfl
+
+theorem RootFresh.insert_ne {Γ : Ctx} {r r' : Root} (h : Γ.RootFresh r) (hne : r' ≠ r)
+    (T : VarType) : (Γ.insert r' T).RootFresh r := by
+  intro v hv
+  simp only [Ctx.insert]
+  split_ifs with hvr
+  · subst hvr
+    exact absurd hv hne
+  · exact h v hv
+
+theorem SlotsFrom.rootFresh {Γ : Ctx} {d n : ℕ} (h : Γ.SlotsFrom d) (hn : d ≤ n) :
+    Γ.RootFresh (.bnd n) :=
+  fun v hv => h v n hv hn
+
+theorem insert_swap_le {Γ : Ctx} {r r' : Root} (hne : r ≠ r') (T T' : VarType) :
+    ((Γ.insert r T).insert r' T').Le ((Γ.insert r' T').insert r T) := by
   intro v U hv
-  simp only [Ctx.insert] at hv
-  split_ifs at hv with hvr
-  · exact ⟨r, hvr⟩
-  · exact h v U hv
+  simp only [Ctx.insert] at hv ⊢
+  by_cases h₁ : v = .root r' <;> by_cases h₂ : v = .root r <;> simp_all
+
+theorem ref_insert_root (Γ : Ctx) (r : Root) (T : VarType) :
+    (Γ.insert r T).ref (.root r) = some T := by
+  simp [Ctx.ref, Ctx.insert]
+
+theorem ref_insert_fst (Γ : Ctx) (r : Root) (A B : VarType) :
+    (Γ.insert r (.VTypeProd A B)).ref (.step (.root r) .fst) = some A := by
+  simp [Ctx.ref, Ctx.insert, Step.isProd, VarType.step]
+
+theorem ref_insert_snd (Γ : Ctx) (r : Root) (A B : VarType) :
+    (Γ.insert r (.VTypeProd A B)).ref (.step (.root r) .snd) = some B := by
+  simp [Ctx.ref, Ctx.insert, Step.isProd, VarType.step]
 
 end Ctx
 

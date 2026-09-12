@@ -15,8 +15,9 @@ target: an address (`ren`) or a term (`tm`).  Product components are reached by 
 * Under a binder the source slot `bnd d` goes to the target slot `bnd d'`, the other entries are
   weakened, and the address map is re-rooted there.
 
-Renaming, pair elimination (`u₁ ↦ z.fst`, `u₂ ↦ z.snd`), binding a free variable to a slot, and
-instantiation are all built from root assignments.
+The instances the proof rules need all replace ONE root and leave every other address alone
+(`Subst.single`), in any context: instantiation, substituting for a free variable, binding a free
+variable to a slot, and (twice) pair elimination.
 -/
 
 namespace V12
@@ -202,7 +203,9 @@ def «at» (θ : Subst σ Δ) : VarSymb → SubE σ Δ
   | .root r => θ (.root r)
   | .step v s => if s.isProd then (θ.at v).proj s else θ (.step v s)
 
-def Ok (Γ : Ctx) (θ : Subst σ Δ) : Prop := ∀ v T, Γ v = some T → (θ v).OkRef T
+/-- The entries fit the visible non-product addresses (product components follow by projection). -/
+def Ok (Γ : Ctx) (θ : Subst σ Δ) : Prop :=
+  ∀ v T, v.lastProd = false → Γ v = some T → (θ v).OkRef T
 
 def Coh (ι : VarSymb → VarSymb) (Γ : Ctx) (θ : Subst σ Δ) : Prop :=
   ∀ v T, Γ.ref v = some T → ∀ p, (θ.at v).idxAlong p = ι (v.ext p)
@@ -234,7 +237,7 @@ theorem okRef_at {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) :
     ∀ {v : VarSymb} {T : VarType}, Γ.ref v = some T → (θ.at v).OkRef T := by
   intro v
   induction v with
-  | root r => intro T hv; exact hθ _ _ hv
+  | root r => intro T hv; exact hθ _ _ rfl hv
   | step v s ih =>
       intro T hv
       simp only [Ctx.ref, Subst.at] at hv ⊢
@@ -244,7 +247,7 @@ theorem okRef_at {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) :
         | some U =>
             rw [hU] at hv
             exact SubE.okRef_proj (ih hU) hs hv
-      · exact hθ _ _ hv
+      · exact hθ _ _ (show (VarSymb.step v s).lastProd = false from Bool.eq_false_iff.mpr hs) hv
 
 /-- Coherence follows from coherence on the visible non-product addresses. -/
 theorem coh_of {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
@@ -264,10 +267,11 @@ theorem coh_of {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : O
             rw [hU] at hv
             rw [SubE.idxAlong_proj p (okRef_at hθ hU) hs hv, ih U hU (s :: p)]
             rfl
-      · exact hvis _ _ (show (VarSymb.step v s).lastProd = false from Bool.eq_false_iff.mpr hs) hv p
+      · exact hvis _ _ (show (VarSymb.step v s).lastProd = false from Bool.eq_false_iff.mpr hs)
+          hv p
 
 theorem ok_box {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) : Ok Γ.boxIn θ.box := by
-  intro v T hv
+  intro v T _ hv
   match v with
   | .step u .box =>
       change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
@@ -306,7 +310,7 @@ theorem ok_dia {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {x ιx : VarSymb}
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (hw : (θ.at x).idxAlong [] = ιx) :
     Ok (Γ.diaIn x) (θ.dia x ιx) := by
   obtain ⟨X, hx⟩ := hx
-  intro v T hv
+  intro v T _ hv
   match v with
   | .step u .dia =>
       change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
@@ -317,7 +321,7 @@ theorem ok_dia {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {x ιx : VarSymb}
         change (if u = x then (θ.at x).diaBody ιx else SubE.hide).OkRef X
         rw [if_pos hux]
         exact SubE.okRef_diaBody (okRef_at hθ hx) hw
-  | .step u .box => exact SubE.okRef_mono _ (ok_box hθ (.step u .box) T hv)
+  | .step u .box => exact SubE.okRef_mono _ (ok_box hθ (.step u .box) T rfl hv)
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -356,17 +360,16 @@ theorem coh_dia {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : 
 
 theorem ok_under {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {d d' : ℕ} (T : VarType)
     (h : Δ (.root (.bnd d')) = none) : Ok (Γ.insert (.bnd d) T) (θ.under d d' T h) := by
-  intro v U hv
+  intro v U hlp hv
   by_cases hvr : v = .root (.bnd d)
   · subst hvr
     have hTU : T = U := by simpa [Ctx.insert] using hv
     subst hTU
     rw [show θ.under d d' T h (.root (.bnd d)) = .ren (.root (.bnd d')) from if_pos rfl]
-    change (Δ.insert (.bnd d') T) (.root (.bnd d')) = some T
-    simp [Ctx.insert]
+    exact Ctx.ref_insert_root Δ _ T
   · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
     rw [show θ.under d d' T h v = (θ v).mono (Ctx.le_insert h T) from if_neg hvr]
-    exact SubE.okRef_mono _ (hθ v U hv')
+    exact SubE.okRef_mono _ (hθ v U hlp hv')
 
 theorem coh_under {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
     (hc : Coh ι Γ θ) {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (T : VarType)
@@ -455,138 +458,104 @@ def WFF.subst {σ : Signature} : (ι : VarSymb → VarSymb) → {Γ Δ : Ctx} �
         (WFF.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx)
           (hΓ.diaIn x) (hΔ.diaIn (ι x)) φ)
 
-/-! ## Substitutions from a root assignment -/
+/-! ## Substituting one root -/
 
 namespace Subst
 
 variable {σ : Signature} {Δ : Ctx}
 
-def ofRoots (ρ : Root → SubE σ Δ) : Subst σ Δ := fun v =>
-  match v with
-  | .root r => ρ r
-  | _ => .hide
+/-- `r ↦ e`, every other address to itself. -/
+def single (r : Root) (e : SubE σ Δ) : Subst σ Δ := fun v => if v = .root r then e else .ren v
 
-def idxOfRoots (ρ : Root → SubE σ Δ) : VarSymb → VarSymb := fun i => (ρ i.rt).idxAlong i.path
+def singleIdx (r : Root) (e : SubE σ Δ) : VarSymb → VarSymb :=
+  fun i => if i.rt = r then e.idxAlong i.path else i
 
-theorem ok_ofRoots {Γ : Ctx} {ρ : Root → SubE σ Δ} (hΓ : Γ.TopLevel)
-    (hρ : ∀ r T, Γ (.root r) = some T → (ρ r).OkRef T) : Ok Γ (ofRoots ρ) := by
-  intro v T hv
-  obtain ⟨r, rfl⟩ := hΓ v T hv
-  exact hρ r T hv
+theorem ok_single {Γ : Ctx} {r : Root} {T : VarType} {e : SubE σ Δ} (hle : Γ.Le Δ)
+    (he : e.OkRef T) : Ok (Γ.insert r T) (single r e) := by
+  intro v U hlp hv
+  by_cases hvr : v = .root r
+  · subst hvr
+    have hTU : T = U := by simpa [Ctx.insert] using hv
+    subst hTU
+    rw [show single r e (.root r) = e from if_pos rfl]
+    exact he
+  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+    rw [show single r e v = .ren v from if_neg hvr]
+    exact (Ctx.ref_nonprod Δ hlp).trans (hle v U hv')
 
-theorem coh_ofRoots {Γ : Ctx} {ρ : Root → SubE σ Δ} (hΓ : Γ.TopLevel)
-    (hρ : ∀ r T, Γ (.root r) = some T → (ρ r).OkRef T) :
-    Coh (idxOfRoots ρ) Γ (ofRoots ρ) := by
-  refine coh_of (ok_ofRoots hΓ hρ) ?_
-  intro v T _ hv p
-  obtain ⟨r, rfl⟩ := hΓ v T hv
-  change (ρ r).idxAlong p =
-    (ρ ((VarSymb.root r).ext p).rt).idxAlong ((VarSymb.root r).ext p).path
-  simp only [VarSymb.ext_rt, VarSymb.ext_path, VarSymb.rt, VarSymb.path, List.nil_append]
-
-/-- `bnd d ↦ s`, every other root to itself. -/
-def instRoots {Γ : Ctx} (d : ℕ) {T : VarType} {a : Ann T} (s : Term σ Γ T a) :
-    Root → SubE σ Γ :=
-  fun r => if r = .bnd d then .tm s else .ren (.root r)
-
-/-- `free u ↦ bnd d`, every other root to itself. -/
-def bindRoots (Δ : Ctx) (u d : ℕ) : Root → SubE σ Δ :=
-  fun r => if r = .free u then .ren (.root (.bnd d)) else .ren (.root r)
-
-/-- `free u₁ ↦ z.fst`, `free u₂ ↦ z.snd`, every other root to itself. -/
-def pairRoots (Δ : Ctx) (u₁ u₂ z : ℕ) : Root → SubE σ Δ :=
-  fun r => if r = .free u₁ then .ren (.step (.root (.free z)) .fst)
-    else if r = .free u₂ then .ren (.step (.root (.free z)) .snd) else .ren (.root r)
+theorem coh_single {Γ : Ctx} {r : Root} {T : VarType} {e : SubE σ Δ} (hr : Γ.RootFresh r)
+    (hle : Γ.Le Δ) (he : e.OkRef T) : Coh (singleIdx r e) (Γ.insert r T) (single r e) := by
+  refine coh_of (ok_single hle he) ?_
+  intro v U hlp hv p
+  by_cases hvr : v = .root r
+  · subst hvr
+    rw [show single r e (.root r) = e from if_pos rfl]
+    change e.idxAlong p = if ((VarSymb.root r).ext p).rt = r then
+      e.idxAlong ((VarSymb.root r).ext p).path else _
+    simp only [VarSymb.ext_rt, VarSymb.ext_path, VarSymb.rt, VarSymb.path, List.nil_append,
+      if_true]
+  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+    have hrt : v.rt ≠ r := fun he' => by
+      rw [hr v he'] at hv'
+      cases hv'
+    rw [show single r e v = .ren v from if_neg hvr]
+    change v.ext p = if (v.ext p).rt = r then _ else v.ext p
+    rw [VarSymb.ext_rt, if_neg hrt]
 
 end Subst
 
-/-- ⭐Instantiation (for `∀`-elimination / `∃`-introduction). -/
-def WFF.instantiate {σ : Signature} {Γ : Ctx} {d : ℕ} (hΓ : Γ.TopLevel) (hs : Γ.SlotsFrom d)
-    {T : VarType} {a : Ann T} (s : Term σ Γ T a) (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) :
-    WFF σ Γ d :=
-  have hρ : ∀ r U, (Γ.insert (.bnd d) T) (.root r) = some U →
-      (Subst.instRoots d s r).OkRef U := by
-    intro r U hU
-    by_cases hr : r = .bnd d
-    · subst hr
-      have hTU : T = U := by simpa [Ctx.insert] using hU
-      subst hTU
-      rw [show Subst.instRoots _ s (.bnd _) = .tm s from if_pos rfl]
-      rfl
-    · have hU' : Γ (.root r) = some U := by simpa [Ctx.insert, hr] using hU
-      rw [show Subst.instRoots d s r = .ren (.root r) from if_neg hr]
-      exact hU'
-  WFF.subst (Subst.idxOfRoots (Subst.instRoots d s)) (Subst.ofRoots (Subst.instRoots d s))
-    (Subst.ok_ofRoots (hΓ.insert _ T) hρ) (Subst.coh_ofRoots (hΓ.insert _ T) hρ)
-    (hs.insert T) hs φ
+/-- ⭐Substituting a term for a root. -/
+def WFF.substRoot {σ : Signature} {Γ : Ctx} {d d' : ℕ} (r : Root) {T : VarType}
+    (hr : Γ.RootFresh r) (hs : Γ.SlotsFrom d) (hs' : (Γ.insert r T).SlotsFrom d') {a : Ann T}
+    (s : Term σ Γ T a) (φ : WFF σ (Γ.insert r T) d') : WFF σ Γ d :=
+  WFF.subst (Subst.singleIdx r (.tm s)) (Subst.single r (.tm s))
+    (Subst.ok_single (Ctx.Le.refl Γ) rfl) (Subst.coh_single hr (Ctx.Le.refl Γ) rfl) hs' hs φ
 
-/-- ⭐Binding a free variable to the next slot (for `∀`-introduction / `∃`-elimination). -/
-def WFF.bindFree {σ : Signature} {Γ : Ctx} {d : ℕ} (hΓ : Γ.TopLevel) (hs : Γ.SlotsFrom d)
-    (u : ℕ) (T : VarType) (φ : WFF σ (Γ.insert (.free u) T) d) :
+/-- ⭐Instantiating the slot `bnd d` (for `∀`-elimination / `∃`-introduction). -/
+def WFF.instantiate {σ : Signature} {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {T : VarType}
+    {a : Ann T} (s : Term σ Γ T a) (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) : WFF σ Γ d :=
+  WFF.substRoot (.bnd d) (hs.rootFresh le_rfl) hs (hs.insert T) s φ
+
+/-- Substituting a term for a free variable (for `=`-elimination). -/
+def WFF.substFree {σ : Signature} {Γ : Ctx} {d : ℕ} (u : ℕ) (hu : Γ.RootFresh (.free u))
+    (hs : Γ.SlotsFrom d) {T : VarType} {a : Ann T} (s : Term σ Γ T a)
+    (φ : WFF σ (Γ.insert (.free u) T) d) : WFF σ Γ d :=
+  WFF.substRoot (.free u) hu hs (hs.insertFree u T) s φ
+
+/-- Renaming a fresh root `r` to the address `w` of the target. -/
+def WFF.renameRoot {σ : Signature} {Γ Δ : Ctx} {d d' : ℕ} (r : Root) {T : VarType}
+    (hr : Γ.RootFresh r) (hle : Γ.Le Δ) (w : VarSymb) (hw : Δ.ref w = some T)
+    (hs : (Γ.insert r T).SlotsFrom d) (hs' : Δ.SlotsFrom d') (φ : WFF σ (Γ.insert r T) d) :
+    WFF σ Δ d' :=
+  WFF.subst (Subst.singleIdx r (.ren w)) (Subst.single r (.ren w))
+    (Subst.ok_single (σ := σ) hle hw) (Subst.coh_single hr hle hw) hs hs' φ
+
+/-- ⭐Binding a free variable to the slot `bnd d` (for `∀`-introduction / `∃`-elimination). -/
+def WFF.bindFree {σ : Signature} {Γ : Ctx} {d : ℕ} (u : ℕ) (hu : Γ.RootFresh (.free u))
+    (hs : Γ.SlotsFrom d) (T : VarType) (φ : WFF σ (Γ.insert (.free u) T) d) :
     WFF σ (Γ.insert (.bnd d) T) (d + 1) :=
-  have hρ : ∀ r U, (Γ.insert (.free u) T) (.root r) = some U →
-      (Subst.bindRoots (σ := σ) (Γ.insert (.bnd d) T) u d r).OkRef U := by
-    intro r U hU
-    by_cases hr : r = .free u
-    · subst hr
-      have hTU : T = U := by simpa [Ctx.insert] using hU
-      subst hTU
-      rw [show Subst.bindRoots (σ := σ) (Γ.insert (.bnd d) T) _ d (.free _) =
-        .ren (.root (.bnd d)) from if_pos rfl]
-      change (Γ.insert (.bnd d) T) (.root (.bnd d)) = some T
-      simp [Ctx.insert]
-    · have hU' : Γ (.root r) = some U := by simpa [Ctx.insert, hr] using hU
-      have hrb : r ≠ .bnd d := fun he => by
-        subst he
-        rw [hs.root] at hU'
-        cases hU'
-      rw [show Subst.bindRoots (σ := σ) (Γ.insert (.bnd d) T) u d r = .ren (.root r)
-        from if_neg hr]
-      change (Γ.insert (.bnd d) T) (.root r) = some U
-      simp [Ctx.insert, hrb, hU']
-  WFF.subst (Subst.idxOfRoots (Subst.bindRoots (Γ.insert (.bnd d) T) u d))
-    (Subst.ofRoots (Subst.bindRoots (Γ.insert (.bnd d) T) u d))
-    (Subst.ok_ofRoots (hΓ.insert _ T) hρ) (Subst.coh_ofRoots (hΓ.insert _ T) hρ)
-    (hs.insertFree u T) (hs.insert T) φ
+  WFF.renameRoot (.free u) hu (Ctx.le_insert hs.root T) (.root (.bnd d))
+    (Ctx.ref_insert_root Γ _ T) (hs.insertFree u T) (hs.insert T) φ
 
 /-- ⭐Pair elimination: the components `u₁`, `u₂` become `z.fst`, `z.snd`. -/
-def WFF.bindPair {σ : Signature} {Γ : Ctx} {d : ℕ} (hΓ : Γ.TopLevel) (hs : Γ.SlotsFrom d)
-    (u₁ u₂ z : ℕ) (hu : u₁ ≠ u₂) (hz : Γ (.root (.free z)) = none) (A B : VarType)
+def WFF.bindPair {σ : Signature} {Γ : Ctx} {d : ℕ} (u₁ u₂ z : ℕ) (hu : u₁ ≠ u₂)
+    (hz₁ : z ≠ u₁) (hu₁ : Γ.RootFresh (.free u₁)) (hu₂ : Γ.RootFresh (.free u₂))
+    (hzf : Γ.RootFresh (.free z)) (hs : Γ.SlotsFrom d) (A B : VarType)
     (φ : WFF σ ((Γ.insert (.free u₁) A).insert (.free u₂) B) d) :
     WFF σ (Γ.insert (.free z) (.VTypeProd A B)) d :=
-  have hρ : ∀ r U, ((Γ.insert (.free u₁) A).insert (.free u₂) B) (.root r) = some U →
-      (Subst.pairRoots (σ := σ) (Γ.insert (.free z) (.VTypeProd A B)) u₁ u₂ z r).OkRef U := by
-    intro r U hU
-    by_cases h₁ : r = .free u₁
-    · subst h₁
-      have hAU : A = U := by simpa [Ctx.insert, hu] using hU
-      subst hAU
-      rw [show Subst.pairRoots (σ := σ) (Γ.insert (.free z) (.VTypeProd A B)) u₁ u₂ z
-        (.free u₁) = .ren (.step (.root (.free z)) .fst) from if_pos rfl]
-      change (Γ.insert (.free z) (.VTypeProd A B)).ref (.step (.root (.free z)) .fst) = some A
-      simp [Ctx.ref, Ctx.insert, Step.isProd, VarType.step]
-    · by_cases h₂ : r = .free u₂
-      · subst h₂
-        have hBU : B = U := by simpa [Ctx.insert] using hU
-        subst hBU
-        rw [show Subst.pairRoots (σ := σ) (Γ.insert (.free z) (.VTypeProd A B)) u₁ u₂ z
-          (.free u₂) = .ren (.step (.root (.free z)) .snd) from (if_neg h₁).trans (if_pos rfl)]
-        change (Γ.insert (.free z) (.VTypeProd A B)).ref (.step (.root (.free z)) .snd) = some B
-        simp [Ctx.ref, Ctx.insert, Step.isProd, VarType.step]
-      · have hU' : Γ (.root r) = some U := by simpa [Ctx.insert, h₁, h₂] using hU
-        have hrz : r ≠ .free z := fun he => by
-          subst he
-          rw [hz] at hU'
-          cases hU'
-        rw [show Subst.pairRoots (σ := σ) (Γ.insert (.free z) (.VTypeProd A B)) u₁ u₂ z r =
-          .ren (.root r) from (if_neg h₁).trans (if_neg h₂)]
-        change (Γ.insert (.free z) (.VTypeProd A B)) (.root r) = some U
-        simp [Ctx.insert, hrz, hU']
-  WFF.subst (Subst.idxOfRoots (Subst.pairRoots (Γ.insert (.free z) (.VTypeProd A B)) u₁ u₂ z))
-    (Subst.ofRoots (Subst.pairRoots (Γ.insert (.free z) (.VTypeProd A B)) u₁ u₂ z))
-    (Subst.ok_ofRoots ((hΓ.insert _ A).insert _ B) hρ)
-    (Subst.coh_ofRoots ((hΓ.insert _ A).insert _ B) hρ)
-    ((hs.insertFree u₁ A).insertFree u₂ B) (hs.insertFree z _) φ
+  have hne₁₂ : Root.free u₁ ≠ Root.free u₂ := fun h => hu (Root.free.inj h)
+  have hne_z₁ : Root.free z ≠ Root.free u₁ := fun h => hz₁ (Root.free.inj h)
+  -- `u₂ ↦ z.snd`, over `Γ, u₁ : A`
+  have φ₁ : WFF σ ((Γ.insert (.free u₁) A).insert (.free z) (.VTypeProd A B)) d :=
+    WFF.renameRoot (.free u₂) (hu₂.insert_ne hne₁₂ A)
+      (Ctx.le_insert (hzf.insert_ne hne_z₁.symm A).root _) (.step (.root (.free z)) .snd)
+      (Ctx.ref_insert_snd _ _ A B) ((hs.insertFree u₁ A).insertFree u₂ B)
+      ((hs.insertFree u₁ A).insertFree z _) φ
+  -- reorder, then `u₁ ↦ z.fst`, over `Γ, z : A × B`
+  WFF.renameRoot (.free u₁) (hu₁.insert_ne hne_z₁ _) (Ctx.Le.refl _)
+    (.step (.root (.free z)) .fst) (Ctx.ref_insert_fst _ _ A B)
+    ((hs.insertFree z _).insertFree u₁ A) (hs.insertFree z _)
+    (WFF.mono (Ctx.insert_swap_le hne_z₁.symm _ _) φ₁)
 
 /-! ## Computed checks -/
 
@@ -597,8 +566,8 @@ def σ0 : Signature :=
 
 def Γ₀ : Ctx := fun _ => none
 
-theorem Γ₀_top : Γ₀.TopLevel := fun _ _ h => by cases h
 theorem Γ₀_slots : Γ₀.SlotsFrom 0 := fun _ _ _ _ => rfl
+theorem Γ₀_fresh (r : Root) : Γ₀.RootFresh r := fun _ _ => rfl
 
 def fr (n : ℕ) : VarSymb := .root (.free n)
 def b0 : VarSymb := .root (.bnd 0)
@@ -607,7 +576,6 @@ def b1 : VarSymb := .root (.bnd 1)
 /-- Instantiating `◇_z(z.dia = z.dia) ∧ ∀w:Var. w = w` at `z := ◇_y (y.dia)`. -/
 def Γy : Ctx := Γ₀.insert (.free 2) (.VTypeDia .Var)
 
-theorem Γy_top : Γy.TopLevel := Γ₀_top.insert _ _
 theorem Γy_slots : Γy.SlotsFrom 0 := Γ₀_slots.insertFree _ _
 
 def sy : Term σ0 Γy (.VTypeDia .Var) (.dia (fr 2) .var) :=
@@ -624,7 +592,7 @@ def φinst' : WFF σ0 Γy 0 :=
     (.all .Var (.eq (.var b0 (by decide)) (.var b0 (by decide))))
 
 /-- ⭐Modal β and slot shifting. -/
-example : WFF.instantiate Γy_top Γy_slots sy φinst = φinst' := by decide
+example : WFF.instantiate Γy_slots sy φinst = φinst' := by decide
 
 /-- Binding `u : ◇Var` in `◇_u(u.dia = u.dia)` to the slot `bnd 0`. -/
 def φfree : WFF σ0 (Γ₀.insert (.free 5) (.VTypeDia .Var)) 0 :=
@@ -635,7 +603,7 @@ def φfree' : WFF σ0 (Γ₀.insert (.bnd 0) (.VTypeDia .Var)) 1 :=
   .dia b0 ⟨.Var, by decide⟩ (.eq (.var (.step b0 .dia) (by decide))
     (.var (.step b0 .dia) (by decide)))
 
-example : WFF.bindFree Γ₀_top Γ₀_slots 5 _ φfree = φfree' := by decide
+example : WFF.bindFree 5 (Γ₀_fresh _) Γ₀_slots _ φfree = φfree' := by decide
 
 /-- Pair elimination: `u₁ = u₂` becomes `z.fst = z.snd`. -/
 def φpair : WFF σ0 ((Γ₀.insert (.free 1) .Var).insert (.free 2) .Var) 0 :=
@@ -644,7 +612,8 @@ def φpair : WFF σ0 ((Γ₀.insert (.free 1) .Var).insert (.free 2) .Var) 0 :=
 def φpair' : WFF σ0 (Γ₀.insert (.free 3) (.VTypeProd .Var .Var)) 0 :=
   .eq (.var (.step (fr 3) .fst) (by decide)) (.var (.step (fr 3) .snd) (by decide))
 
-example : WFF.bindPair Γ₀_top Γ₀_slots 1 2 3 (by decide) rfl _ _ φpair = φpair' := by decide
+example : WFF.bindPair 1 2 3 (by decide) (by decide) (Γ₀_fresh _) (Γ₀_fresh _)
+    (Γ₀_fresh _) Γ₀_slots _ _ φpair = φpair' := by decide
 
 end SubstCheck
 
