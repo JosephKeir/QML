@@ -1,179 +1,69 @@
-import QML.QML_v12_Mono
+import QML.QML_v12_WFF
 
 /-!
-# QML v12 — substitution (entries and their algebra)
+# QML v12 — substitution
 
-A substitution `θ : Root → SubE σ Δ` sends each root of the source context to an ENTRY over the
-target `Δ`: a name (`ren`), a term (`tm`), a split `node`, or nothing (`hide`).  Renaming, pair
-grafting (`u₁ ↦ z.1`) and instantiation are all instances.
+A substitution at some modal level sends each VISIBLE source address to an ENTRY over the current
+target: an address (`ren`) or a term (`tm`).  Product components are reached by projection
+(`Subst.at`).  Under `□`, `◇_x` and binders the substitution is transformed pointwise
+(`Subst.box`, `Subst.dia`, `Subst.under`).  Annotations are mapped by an address map `ι`;
+`Subst.Coh` says the entries agree with it.
 
-Entries are tree-shaped because source contexts under modal nodes are split trees; they are
-projected along name paths (`SubE.atPath`) and viewed through `□` (`SubE.unbox`).
+* The `□` case is literally `boxtm` of the substituted body — no out-map commutation.
+* The `◇` case builds the new witness `ι x` directly; a term entry `◇_y u` for the witness
+  contributes its body `u` (modal β).
+* Under a binder the source slot `bnd d` goes to the target slot `bnd d'`, the other entries are
+  weakened, and the address map is re-rooted there.
+
+Renaming, pair elimination (`u₁ ↦ z.fst`, `u₂ ↦ z.snd`), binding a free variable to a slot, and
+instantiation are all built from root assignments.
 -/
 
 namespace V12
-
-/-- The subtree at a node path (none if the path enters a leaf). -/
-def Entry.subtree : Entry → List PStep → Option Entry
-  | e, [] => some e
-  -- ⚠️split on the list first: with mixed patterns the matcher also splits on the step, and
-  -- `(leaf o).subtree (st :: q)` would not reduce for a variable `st`
-  | e, st :: q => match e, st with
-    | .node a _, .fst => a.subtree q
-    | .node _ b, .snd => b.subtree q
-    | .leaf _, _ => none
--- ⚠️recurse on the LIST, so that `e.subtree []` reduces for a variable `e`
-termination_by structural _ q => q
-
-theorem Ctx.Sim.of_eq {Γ Γ' : Ctx} (h : Γ = Γ') : Γ.Sim Γ' := by
-  subst h
-  exact Ctx.Sim.refl _
 
 inductive SubE (σ : Signature) (Δ : Ctx) : Type where
   | hide
   | ren (w : VarSymb)
   | tm {T : VarType} {a : Ann T} (s : Term σ Δ T a)
-  | node (l r : SubE σ Δ)
 
 namespace SubE
 
 variable {σ : Signature} {Δ : Ctx}
 
-/-- One projection of a term entry: terms are η-long, so a product term is a pair. -/
-def projTm : {T : VarType} → {a : Ann T} → Term σ Δ T a → PStep → SubE σ Δ
-  | _, _, .pair s _, .fst => .tm s
-  | _, _, .pair _ t, .snd => .tm t
-  | _, _, _, _ => .hide
-
-def proj : SubE σ Δ → PStep → SubE σ Δ
-  | .hide, _ => .hide
-  | .ren w, st => .ren (.comp w st)
-  | .tm s, st => projTm s st
-  | .node l _, .fst => l
-  | .node _ r, .snd => r
-
-/-- The entry at a name path. -/
-def atPath : SubE σ Δ → List PStep → SubE σ Δ
-  | e, [] => e
-  | e, st :: p => (e.proj st).atPath p
-
-/-- A term entry seen through `□`: its box bodies (moved onto `Δ.boxIn`), through pairs. -/
-def unboxTm : {T : VarType} → {a : Ann T} → Term σ Δ T a → SubE σ Δ.boxIn
-  | _, _, .boxtm t hΔ _hb => .tm (Term.transport (Ctx.Sim.of_eq hΔ) t)
-  | _, _, .pair s t => .node (unboxTm s) (unboxTm t)
-  | _, _, _ => .hide
+def proj : SubE σ Δ → Step → SubE σ Δ
+  | .ren w, s => .ren (.step w s)
+  | .tm (.pair s _), .fst => .tm s
+  | .tm (.pair _ t), .snd => .tm t
+  | _, _ => .hide
 
 def unbox : SubE σ Δ → SubE σ Δ.boxIn
+  | .ren w => .ren (.step w .box)
+  | .tm (.boxtm t) => .tm t
+  | _ => .hide
+
+def mono {Δ₁ Δ₂ : Ctx} (h : Δ₁.Le Δ₂) : SubE σ Δ₁ → SubE σ Δ₂
   | .hide => .hide
   | .ren w => .ren w
-  | .tm s => unboxTm s
-  | .node l r => .node l.unbox r.unbox
+  | .tm s => .tm (Term.mono h s)
 
-/-- Where an index of the source root lands. -/
-def idx : SubE σ Δ → List Step → Idx
-  | .ren w, p => ⟨w.root, w.path.map PStep.toStep ++ p⟩
-  | .tm (a := a) _, p => a.idxAt p
-  | .node l _, .fst :: p => l.idx p
-  | .node _ r, .snd :: p => r.idx p
-  | _, _ => ⟨.free 0, []⟩
+/-- The entry at the witness body, for the new witness `ιx` (modal β for a term entry). -/
+def diaBody (ιx : VarSymb) : SubE σ Δ → SubE σ (Δ.diaIn ιx)
+  | .ren _ => .ren (.step ιx .dia)
+  | .tm (.diatm y _hy u) =>
+      if h : y = ιx then .tm (Term.mono (by subst h; exact Ctx.Le.refl _) u) else .hide
+  | _ => .hide
 
-/-- The entry fits a present source leaf of type `T`. -/
-def OkLeaf : SubE σ Δ → VarType → Prop
-  | .ren w, T => (Δ.tree w.root).subtree w.path = some (.leaf (some T))
-  | .tm (T := U) _, T => U = T
-  | _, _ => False
-
-/-- The entry fits a source root's tree: at every present leaf. -/
-def Ok (e : SubE σ Δ) (E : Entry) : Prop :=
-  ∀ p T, E.subtree p = some (.leaf (some T)) → (e.atPath p).OkLeaf T
-
-@[simp] theorem atPath_nil (e : SubE σ Δ) : e.atPath [] = e := rfl
-@[simp] theorem atPath_cons (e : SubE σ Δ) (st : PStep) (p : List PStep) :
-    e.atPath (st :: p) = (e.proj st).atPath p := rfl
-
-theorem atPath_append (e : SubE σ Δ) (p q : List PStep) :
-    e.atPath (p ++ q) = (e.atPath p).atPath q := by
-  induction p generalizing e with
-  | nil => rfl
-  | cons st p ih => exact ih _
-
-theorem ren_atPath (w : VarSymb) (p : List PStep) :
-    (SubE.ren w : SubE σ Δ).atPath p = .ren (p.foldl VarSymb.comp w) := by
-  induction p generalizing w with
-  | nil => rfl
-  | cons st p ih => exact ih _
-
-end SubE
-
-theorem VarSymb.root_foldl_comp (w : VarSymb) (p : List PStep) :
-    (p.foldl VarSymb.comp w).root = w.root := by
-  induction p generalizing w with
-  | nil => rfl
-  | cons st p ih => exact ih _
-
-theorem VarSymb.path_foldl_comp (w : VarSymb) (p : List PStep) :
-    (p.foldl VarSymb.comp w).path = w.path ++ p := by
-  induction p generalizing w with
-  | nil => simp
-  | cons st p ih => rw [List.foldl_cons, ih]; simp [VarSymb.path]
-
-/-- A substitution from `Γ` into `Δ`. -/
-abbrev Subst (σ : Signature) (Δ : Ctx) := Root → SubE σ Δ
-
-def Subst.Ok {σ : Signature} {Δ : Ctx} (θ : Subst σ Δ) (Γ : Ctx) : Prop :=
-  ∀ r, (θ r).Ok (Γ.tree r)
-
-def Subst.idx {σ : Signature} {Δ : Ctx} (θ : Subst σ Δ) (i : Idx) : Idx := (θ i.root).idx i.path
-
-def Subst.unbox {σ : Signature} {Δ : Ctx} (θ : Subst σ Δ) : Subst σ Δ.boxIn :=
-  fun r => (θ r).unbox
-
-/-! ## Subtrees and lookups -/
-
-theorem Entry.subtree_append : ∀ (e : Entry) (p q : List PStep),
-    e.subtree (p ++ q) = (e.subtree p).bind (fun e' => e'.subtree q)
-  | e, [], q => by rw [List.nil_append]; rfl
-  | .node a _, .fst :: p, q => Entry.subtree_append a p q
-  | .node _ b, .snd :: p, q => Entry.subtree_append b p q
-  | .leaf _, _ :: _, _ => rfl
-
-/-- A lookup goes through split nodes to a present leaf, then into the leaf's type. -/
-theorem Entry.lookup_split : ∀ (e : Entry) (p : List PStep) (T : VarType),
-    e.lookup p = some T →
-      ∃ p₁ p₂ U, p = p₁ ++ p₂ ∧ e.subtree p₁ = some (.leaf (some U)) ∧ U.follow p₂ = some T
-  | .leaf none, _, _, h => by cases h
-  | .leaf (some U), p, _, h => ⟨[], p, U, rfl, rfl, h⟩
-  | .node _ _, [], _, h => by cases h
-  | .node a _, .fst :: p, T, h => by
-      obtain ⟨p₁, p₂, U, rfl, h1, h2⟩ := Entry.lookup_split a p T h
-      exact ⟨.fst :: p₁, p₂, U, rfl, h1, h2⟩
-  | .node _ b, .snd :: p, T, h => by
-      obtain ⟨p₁, p₂, U, rfl, h1, h2⟩ := Entry.lookup_split b p T h
-      exact ⟨.snd :: p₁, p₂, U, rfl, h1, h2⟩
-
-theorem Entry.lookup_of_subtree : ∀ (e : Entry) (q p : List PStep) (U T : VarType),
-    e.subtree q = some (.leaf (some U)) → U.follow p = some T → e.lookup (q ++ p) = some T
-  | .leaf _, [], _, _, _, h, hf => by cases h; exact hf
-  | .leaf _, _ :: _, _, _, _, h, _ => by cases h
-  | .node _ _, [], _, _, _, h, _ => by cases h
-  | .node a _, .fst :: q, p, U, T, h, hf => Entry.lookup_of_subtree a q p U T h hf
-  | .node _ b, .snd :: q, p, U, T, h, hf => Entry.lookup_of_subtree b q p U T h hf
-
-namespace SubE
-
-variable {σ : Signature} {Δ : Ctx}
-
-/-- The entry has plain type `T` in the target (a name may point inside an unsplit leaf). -/
+/-- The entry has plain type `T` in the target. -/
 def OkRef : SubE σ Δ → VarType → Prop
-  | .ren w, T => Δ.refType w = some T
+  | .ren w, T => Δ.ref w = some T
   | .tm (T := U) _, T => U = T
-  | _, _ => False
+  | .hide, _ => False
 
-theorem okRef_tm_atPath (p : List PStep) : ∀ {U T : VarType} {a : Ann U} (s : Term σ Δ U a),
-    U.follow p = some T → ((SubE.tm s).atPath p).OkRef T := by
-  induction p with
-  | nil => intro U T a s h; cases U <;> cases h <;> rfl
-  | cons st p ih => intro U T a s h; cases st <;> cases s <;> first | exact ih _ h | cases h
+/-- Where an index below this entry lands. -/
+def idxAlong : SubE σ Δ → List Step → VarSymb
+  | .ren w, p => w.ext p
+  | .tm (a := a) _, p => a.idxAt p
+  | .hide, _ => .root (.free 0)
 
 /-- A base-typed entry, as a term. -/
 def toVar : (e : SubE σ Δ) → e.OkRef .Var → Term σ Δ .Var .var
@@ -182,364 +72,580 @@ def toVar : (e : SubE σ Δ) → e.OkRef .Var → Term σ Δ .Var .var
   | .tm (.func f), _ => .func f
   | .tm .unit, h => nomatch h
   | .tm (.pair _ _), h => nomatch h
-  | .tm (.boxtm _t _hΔ _hb), h => nomatch h
-  | .tm (.diatm _x _X _hx _t _hΔ _hb), h => nomatch h
+  | .tm (.boxtm _), h => nomatch h
+  | .tm (.diatm _ _ _), h => nomatch h
   | .hide, h => False.elim h
-  | .node _ _, h => False.elim h
 
-end SubE
-
-/-- ⭐An `Ok` substitution fits every lookup of the source. -/
-theorem Subst.okRef {σ : Signature} {Δ : Ctx} {θ : Subst σ Δ} {Γ : Ctx} (hθ : θ.Ok Γ)
-    {v : VarSymb} {T : VarType} (hv : Γ.refType v = some T) :
-    ((θ v.root).atPath v.path).OkRef T := by
-  obtain ⟨p₁, p₂, U, hp, h1, h2⟩ := Entry.lookup_split _ _ _ hv
-  have hleaf := hθ v.root p₁ U h1
-  rw [hp, SubE.atPath_append]
-  generalize (θ v.root).atPath p₁ = e at hleaf ⊢
-  cases e with
-  | hide => exact False.elim hleaf
-  | ren w =>
-      rw [SubE.ren_atPath]
-      change Δ.refType _ = some T
-      simp only [Ctx.refType, VarSymb.root_foldl_comp, VarSymb.path_foldl_comp]
-      exact Entry.lookup_of_subtree _ _ _ _ _ hleaf h2
-  | tm s =>
-      have hU : _ = U := hleaf
+theorem okRef_proj : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef U → s.isProd = true →
+    U.step s = some T → (e.proj s).OkRef T
+  | .ren w, U, T, s, he, hs, hst => by
+      change (if s.isProd then (Δ.ref w).bind (·.step s) else Δ (.step w s)) = some T
+      rw [if_pos hs, he]
+      exact hst
+  | .hide, _, _, _, he, _, _ => False.elim he
+  | .tm (T := U') s₀, U, T, s, he, hs, hst => by
+      have hU : U' = U := he
       subst hU
-      exact SubE.okRef_tm_atPath p₂ s h2
-  | node _ _ => exact False.elim hleaf
+      cases s <;> (try cases hs) <;> cases s₀ <;> cases hst <;> rfl
 
-/-! ## Present leaves -/
+theorem idxAlong_proj : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step} (p : List Step),
+    e.OkRef U → s.isProd = true → U.step s = some T →
+      (e.proj s).idxAlong p = e.idxAlong (s :: p)
+  | .ren _, _, _, _, _, _, _, _ => rfl
+  | .hide, _, _, _, _, he, _, _ => False.elim he
+  | .tm (T := U') s₀, U, T, s, p, he, hs, hst => by
+      have hU : U' = U := he
+      subst hU
+      cases s <;> (try cases hs) <;> cases s₀ <;> first | rfl | cases hst
 
-def Entry.NoPresent (E : Entry) : Prop := ∀ p T, E.subtree p ≠ some (.leaf (some T))
-
-theorem Entry.noPresent_of_leaf_none : ∀ {q : List PStep} {V : Entry},
-    (Entry.leaf none).subtree q = some V → V.NoPresent
-  | [], _, h => by
-      cases h
-      intro p T hp
-      cases p with
-      | nil => cases hp
-      | cons _ _ => cases hp
-  | _ :: _, _, h => by cases h
-
-theorem Entry.noPresent_leaf_none : (Entry.leaf none).NoPresent :=
-  Entry.noPresent_of_leaf_none (q := []) rfl
-
-theorem Entry.NoPresent.node {E₁ E₂ : Entry} (h : (Entry.node E₁ E₂).NoPresent) :
-    E₁.NoPresent ∧ E₂.NoPresent :=
-  ⟨fun p T hp => h (.fst :: p) T hp, fun p T hp => h (.snd :: p) T hp⟩
-
-theorem Entry.noPresent_node {E₁ E₂ : Entry} (h₁ : E₁.NoPresent) (h₂ : E₂.NoPresent) :
-    (Entry.node E₁ E₂).NoPresent := by
-  intro p T hp
-  rcases p with _ | ⟨_ | _, p⟩
-  · cases hp
-  · exact h₁ p T hp
-  · exact h₂ p T hp
-
-theorem Entry.noPresent_mkNode {E₁ E₂ : Entry} (h₁ : E₁.NoPresent) (h₂ : E₂.NoPresent) :
-    (Entry.mkNode E₁ E₂).NoPresent := by
-  by_cases hc : E₁ = .leaf none ∧ E₂ = .leaf none
-  · obtain ⟨rfl, rfl⟩ := hc
-    exact Entry.noPresent_leaf_none
-  · rw [Entry.mkNode_of_ne hc]
-    exact Entry.noPresent_node h₁ h₂
-
-theorem Entry.noPresent_boxView : ∀ (E : Entry), E.NoPresent →
-    ((E.refine E.forced).unbox).NoPresent
-  | .leaf none, _ => Entry.noPresent_leaf_none
-  | .leaf (some T), h => (h [] T rfl).elim
-  | .node E₁ E₂, h => Entry.noPresent_mkNode (Entry.noPresent_boxView E₁ h.node.1)
-      (Entry.noPresent_boxView E₂ h.node.2)
-
-/-- The subtree of a `□` view is the view of the subtree, unless the view hides it entirely. -/
-theorem Entry.subtree_boxView : ∀ (q : List PStep) (e E : Entry), e.subtree q = some E →
-    ((e.refine e.forced).unbox).subtree q = some ((E.refine E.forced).unbox) ∨
-      ((E.refine E.forced).unbox).NoPresent
-  | [], _, _, h => by cases h; exact Or.inl rfl
-  | _ :: _, .leaf _, _, h => by cases h
-  | .fst :: q, .node a b, E, h => by
-      rcases Entry.subtree_boxView q a E h with h' | h'
-      · by_cases hc : (a.refine a.forced).unbox = .leaf none ∧
-            (b.refine b.forced).unbox = .leaf none
-        · right
-          rw [hc.1] at h'
-          exact Entry.noPresent_of_leaf_none h'
-        · left
-          change (Entry.mkNode _ _).subtree (.fst :: q) = _
-          rw [Entry.mkNode_of_ne hc]
-          exact h'
-      · exact Or.inr h'
-  | .snd :: q, .node a b, E, h => by
-      rcases Entry.subtree_boxView q b E h with h' | h'
-      · by_cases hc : (a.refine a.forced).unbox = .leaf none ∧
-            (b.refine b.forced).unbox = .leaf none
-        · right
-          rw [hc.2] at h'
-          exact Entry.noPresent_of_leaf_none h'
-        · left
-          change (Entry.mkNode _ _).subtree (.snd :: q) = _
-          rw [Entry.mkNode_of_ne hc]
-          exact h'
-      · exact Or.inr h'
-
-/-! ## The `Ok` condition, structurally -/
-
-namespace SubE
-
-variable {σ : Signature} {Δ : Ctx}
-
-theorem ok_of_noPresent {e : SubE σ Δ} {E : Entry} (hE : E.NoPresent) : e.Ok E :=
-  fun p T hp => absurd hp (hE p T)
-
-theorem ok_node {e : SubE σ Δ} {E₁ E₂ : Entry} :
-    e.Ok (.node E₁ E₂) ↔ (e.proj .fst).Ok E₁ ∧ (e.proj .snd).Ok E₂ := by
-  constructor
-  · intro h
-    exact ⟨fun p T hp => h (.fst :: p) T hp, fun p T hp => h (.snd :: p) T hp⟩
-  · rintro ⟨h₁, h₂⟩ p T hp
-    rcases p with _ | ⟨_ | _, p⟩
-    · cases hp
-    · exact h₁ p T hp
-    · exact h₂ p T hp
-
-theorem ok_leaf {e : SubE σ Δ} {U : VarType} : e.Ok (.leaf (some U)) ↔ e.OkLeaf U := by
-  constructor
-  · intro h
-    exact h [] U rfl
-  · intro h p T hp
-    rcases p with _ | ⟨_, p⟩
-    · cases hp
-      exact h
-    · cases hp
-
-theorem ok_mkNode {e : SubE σ Δ} {E₁ E₂ : Entry} (h₁ : (e.proj .fst).Ok E₁)
-    (h₂ : (e.proj .snd).Ok E₂) : e.Ok (Entry.mkNode E₁ E₂) := by
-  by_cases hc : E₁ = .leaf none ∧ E₂ = .leaf none
-  · obtain ⟨rfl, rfl⟩ := hc
-    exact ok_of_noPresent Entry.noPresent_leaf_none
-  · rw [Entry.mkNode_of_ne hc]
-    exact ok_node.mpr ⟨h₁, h₂⟩
-
-theorem ok_ren {w : VarSymb} {E : Entry} (h : (Δ.tree w.root).subtree w.path = some E) :
-    (SubE.ren w : SubE σ Δ).Ok E := by
-  intro p T hp
-  rw [ren_atPath]
-  change (Δ.tree (p.foldl VarSymb.comp w).root).subtree (p.foldl VarSymb.comp w).path = _
-  rw [VarSymb.root_foldl_comp, VarSymb.path_foldl_comp, Entry.subtree_append, h]
-  exact hp
-
-theorem hide_atPath : ∀ (p : List PStep), (SubE.hide : SubE σ Δ).atPath p = .hide
-  | [] => rfl
-  | _ :: p => hide_atPath p
-
-theorem noPresent_of_ok_hide {E : Entry} (h : (SubE.hide : SubE σ Δ).Ok E) : E.NoPresent := by
-  intro p T hp
-  have h' := h p T hp
-  rw [hide_atPath] at h'
-  exact h'
-
-theorem ok_unboxTm (U : VarType) : ∀ {a : Ann U} (s : Term σ Δ U a),
-    (SubE.unboxTm s).Ok (((Entry.leaf (some U)).refine (Entry.forcedTy U)).unbox) := by
-  induction U with
-  | Var => intro a s; exact ok_of_noPresent Entry.noPresent_leaf_none
-  | VTypeOne => intro a s; exact ok_of_noPresent Entry.noPresent_leaf_none
-  | VTypeDia X _ => intro a s; exact ok_of_noPresent Entry.noPresent_leaf_none
-  | VTypeBox A _ =>
-      intro a s
+theorem okRef_unbox : ∀ {e : SubE σ Δ} {A : VarType}, e.OkRef (.VTypeBox A) → e.unbox.OkRef A
+  | .ren w, A, he => by
+      change (match Δ.ref w with | some (.VTypeBox A) => some A | _ => none) = some A
+      rw [he]
+  | .hide, _, he => False.elim he
+  | .tm (T := U) s, A, he => by
+      have hU : U = .VTypeBox A := he
+      subst hU
       cases s
-      exact ok_leaf.mpr rfl
-  | VTypeProd A B ihA ihB =>
-      intro a s
-      cases s with
-      | pair s₁ s₂ =>
-          by_cases hb : (VarType.VTypeProd A B).boxy = true
-          · simp only [Entry.forcedTy, hb, if_true, Entry.refine, Entry.unbox]
-            exact ok_mkNode (ihA s₁) (ihB s₂)
-          · rw [Entry.forcedTy_of_not_boxy (Bool.eq_false_iff.mpr hb)]
-            exact ok_of_noPresent Entry.noPresent_leaf_none
+      rfl
 
-/-- ⭐Seen through `□`, an entry that fits a source tree fits its view. -/
-theorem ok_unbox : ∀ (E : Entry) (e : SubE σ Δ), e.Ok E → e.unbox.Ok ((E.refine E.forced).unbox)
-  | .leaf none, _, _ => ok_of_noPresent Entry.noPresent_leaf_none
-  | .leaf (some U), e, h => by
-      have hl := ok_leaf.mp h
-      cases e with
-      | hide => exact False.elim hl
-      | node _ _ => exact False.elim hl
-      | ren w =>
-          rcases Entry.subtree_boxView w.path (Δ.tree w.root) _ hl with h' | h'
-          · exact ok_ren h'
-          · exact ok_of_noPresent h'
-      | tm s =>
-          have hU : _ = U := hl
-          subst hU
-          exact ok_unboxTm _ s
-  | .node E₁ E₂, e, h => by
-      obtain ⟨h₁, h₂⟩ := ok_node.mp h
-      cases e with
-      | hide =>
-          exact ok_of_noPresent (Entry.noPresent_boxView _ (noPresent_of_ok_hide h))
-      | ren w => exact ok_mkNode (ok_unbox E₁ _ h₁) (ok_unbox E₂ _ h₂)
-      | node l r => exact ok_mkNode (ok_unbox E₁ l h₁) (ok_unbox E₂ r h₂)
-      | tm s =>
-          cases s with
-          | pair s₁ s₂ => exact ok_mkNode (ok_unbox E₁ _ h₁) (ok_unbox E₂ _ h₂)
-          | _ =>
-              exact ok_of_noPresent (Entry.noPresent_boxView _
-                (Entry.noPresent_node (noPresent_of_ok_hide h₁) (noPresent_of_ok_hide h₂)))
+theorem idxAlong_unbox : ∀ {e : SubE σ Δ} {A : VarType} (p : List Step),
+    e.OkRef (.VTypeBox A) → e.unbox.idxAlong p = e.idxAlong (.box :: p)
+  | .ren _, _, _, _ => rfl
+  | .hide, _, _, he => False.elim he
+  | .tm (T := U) s, A, p, he => by
+      have hU : U = .VTypeBox A := he
+      subst hU
+      cases s
+      rfl
+
+theorem okRef_mono {Δ₁ Δ₂ : Ctx} (h : Δ₁.Le Δ₂) :
+    ∀ {e : SubE σ Δ₁} {T : VarType}, e.OkRef T → (e.mono h).OkRef T
+  | .ren _, _, he => h.ref he
+  | .tm _, _, he => he
+  | .hide, _, he => False.elim he
+
+theorem idxAlong_mono {Δ₁ Δ₂ : Ctx} (h : Δ₁.Le Δ₂) :
+    ∀ (e : SubE σ Δ₁) (p : List Step), (e.mono h).idxAlong p = e.idxAlong p
+  | .ren _, _ => rfl
+  | .tm _, _ => rfl
+  | .hide, _ => rfl
+
+theorem okRef_diaBody {ιx : VarSymb} : ∀ {e : SubE σ Δ} {X : VarType},
+    e.OkRef (.VTypeDia X) → e.idxAlong [] = ιx → (e.diaBody ιx).OkRef X
+  | .ren w, X, he, hw => by
+      have hw' : w = ιx := hw
+      subst hw'
+      change (if w = w then (match Δ.ref w with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some X
+      rw [if_pos rfl, he]
+  | .tm (.diatm y _hy u), X, he, hw => by
+      have hw' : y = ιx := hw
+      rw [show ((SubE.tm (Term.diatm y _hy u) : SubE σ Δ).diaBody ιx) =
+        SubE.tm (Term.mono (by subst hw'; exact Ctx.Le.refl _) u) from dif_pos hw']
+      exact VarType.VTypeDia.inj he
+  | .tm (.var _ _), _, he, _ => nomatch he
+  | .tm (.func _), _, he, _ => nomatch he
+  | .tm .unit, _, he, _ => nomatch he
+  | .tm (.pair _ _), _, he, _ => nomatch he
+  | .tm (.boxtm _), _, he, _ => nomatch he
+  | .hide, _, he, _ => False.elim he
+
+theorem idxAlong_diaBody {ιx : VarSymb} : ∀ {e : SubE σ Δ} {X : VarType} (p : List Step),
+    e.OkRef (.VTypeDia X) → e.idxAlong [] = ιx →
+      (e.diaBody ιx).idxAlong p = e.idxAlong (.dia :: p)
+  | .ren w, _, p, _, hw => by
+      have hw' : w = ιx := hw
+      subst hw'
+      rfl
+  | .tm (.diatm y _hy u), X, p, he, hw => by
+      have hw' : y = ιx := hw
+      rw [show ((SubE.tm (Term.diatm y _hy u) : SubE σ Δ).diaBody ιx) =
+        SubE.tm (Term.mono (by subst hw'; exact Ctx.Le.refl _) u) from dif_pos hw']
+      rfl
+  | .tm (.var _ _), _, _, he, _ => nomatch he
+  | .tm (.func _), _, _, he, _ => nomatch he
+  | .tm .unit, _, _, he, _ => nomatch he
+  | .tm (.pair _ _), _, _, he, _ => nomatch he
+  | .tm (.boxtm _), _, _, he, _ => nomatch he
+  | .hide, _, _, he, _ => False.elim he
+
+theorem ref_witness {w : VarSymb} : ∀ {e : SubE σ Δ} {X : VarType},
+    e.OkRef (.VTypeDia X) → e.idxAlong [] = w → ∃ Y, Δ.ref w = some (.VTypeDia Y)
+  | .ren w', X, he, hw => by
+      have hw' : w' = w := hw
+      subst hw'
+      exact ⟨X, he⟩
+  | .tm (.diatm y hy _), _, _, hw => by
+      have hw' : y = w := hw
+      subst hw'
+      exact hy
+  | .tm (.var _ _), _, he, _ => nomatch he
+  | .tm (.func _), _, he, _ => nomatch he
+  | .tm .unit, _, he, _ => nomatch he
+  | .tm (.pair _ _), _, he, _ => nomatch he
+  | .tm (.boxtm _), _, he, _ => nomatch he
+  | .hide, _, he, _ => False.elim he
 
 end SubE
 
-theorem Subst.ok_unbox {σ : Signature} {Δ : Ctx} {θ : Subst σ Δ} {Γ : Ctx} (hθ : θ.Ok Γ) :
-    θ.unbox.Ok Γ.boxIn :=
-  fun r => SubE.ok_unbox (Γ.tree r) (θ r) (hθ r)
+/-! ## Substitutions at a modal level -/
 
-/-! ## Index maps commute with the `□` out-map (on indices in scope) -/
+abbrev Subst (σ : Signature) (Δ : Ctx) := VarSymb → SubE σ Δ
 
-theorem Entry.outPath_subtree : ∀ (q : List PStep) (e E : Entry) (s : List PStep → Step)
-    (p : List Step), e.subtree q = some E →
-      e.outPath s (q.map PStep.toStep ++ p) =
-        q.map PStep.toStep ++ E.outPath (fun q' => s (q ++ q')) p
-  | [], _, _, _, _, h => by cases h; rfl
-  | _ :: _, .leaf _, _, _, _, h => by cases h
-  | .fst :: q, .node a _, E, s, p, h => by
-      change .fst :: a.outPath (fun q' => s (.fst :: q')) (q.map PStep.toStep ++ p) = _
-      rw [Entry.outPath_subtree q a E _ p h]
-      rfl
-  | .snd :: q, .node _ b, E, s, p, h => by
-      change .snd :: b.outPath (fun q' => s (.snd :: q')) (q.map PStep.toStep ++ p) = _
-      rw [Entry.outPath_subtree q b E _ p h]
-      rfl
-
-theorem Entry.not_noPresent_of_diaAt : ∀ {E : Entry} {p : List Step}, E.DiaAt p → ¬E.NoPresent
-  | .leaf none, _, h, _ => h
-  | .leaf (some T), _, _, hn => hn [] T rfl
-  | .node a _, .fst :: _, h, hn => Entry.not_noPresent_of_diaAt (E := a) h hn.node.1
-  | .node _ b, .snd :: _, h, hn => Entry.not_noPresent_of_diaAt (E := b) h hn.node.2
-  | .node _ _, [], h, _ => h
-  | .node _ _, .box :: _, h, _ => h
-  | .node _ _, .dia :: _, h, _ => h
-
-theorem Entry.not_noPresent_boxView_of_diaAt {E : Entry} {p : List Step}
-    (h : ((E.refine E.forced).unbox).DiaAt p) : ¬E.NoPresent :=
-  fun hn => Entry.not_noPresent_of_diaAt h (Entry.noPresent_boxView E hn)
-
-namespace SubE
+namespace Subst
 
 variable {σ : Signature} {Δ : Ctx}
 
-theorem idx_ren_fst {Δ' : Ctx} (w : VarSymb) (X : List Step) :
-    (SubE.ren w : SubE σ Δ').idx (.fst :: X) = (SubE.ren (w.comp .fst) : SubE σ Δ').idx X := by
-  simp [SubE.idx, VarSymb.path, VarSymb.root, PStep.toStep]
+/-- The entry reachable at an address: product components by projection. -/
+def «at» (θ : Subst σ Δ) : VarSymb → SubE σ Δ
+  | .root r => θ (.root r)
+  | .step v s => if s.isProd then (θ.at v).proj s else θ (.step v s)
 
-theorem idx_ren_snd {Δ' : Ctx} (w : VarSymb) (X : List Step) :
-    (SubE.ren w : SubE σ Δ').idx (.snd :: X) = (SubE.ren (w.comp .snd) : SubE σ Δ').idx X := by
-  simp [SubE.idx, VarSymb.path, VarSymb.root, PStep.toStep]
+def Ok (Γ : Ctx) (θ : Subst σ Δ) : Prop := ∀ v T, Γ v = some T → (θ v).OkRef T
 
-theorem idx_boxOut_tm (U : VarType) : ∀ {a : Ann U} (s : Term σ Δ U a) (p : List Step),
-    (((Entry.leaf (some U)).refine (Entry.forcedTy U)).unbox).DiaAt p →
-      Δ.boxIn.boxOut ((SubE.unboxTm s).idx p) =
-        a.idxAt ((((Entry.leaf (some U)).refine (Entry.forcedTy U)).unbox).outPath
-          (fun _ => .box) p) := by
-  induction U with
-  | Var => intro a s p hp; exact False.elim hp
-  | VTypeOne => intro a s p hp; exact False.elim hp
-  | VTypeDia X _ => intro a s p hp; exact False.elim hp
-  | VTypeBox A _ =>
-      intro a s p hp
-      cases s with
-      | @boxtm _ Δt _ at' _ t hΔ hb =>
-          subst hΔ hb
-          change Δ.boxIn.boxOut (at'.idxAt p) = (at'.mapIdx Δ.boxIn.boxOut).idxAt p
-          rw [Ann.idxAt_mapIdx Δ.boxIn.boxOut at' p (hp : A.DiaAt p)]
-  | VTypeProd A B ihA ihB =>
-      intro a s p hp
-      cases s with
-      | pair s₁ s₂ =>
-          by_cases hb : (VarType.VTypeProd A B).boxy = true
-          · simp only [Entry.forcedTy, hb, if_true, Entry.refine, Entry.unbox] at hp ⊢
-            have hn := Entry.mkNode_of_diaAt hp
-            rw [hn] at hp ⊢
-            rcases p with _ | ⟨_ | _ | _ | _, p⟩
-            · exact False.elim hp
-            · exact ihA s₁ p hp
-            · exact ihB s₂ p hp
-            · exact False.elim hp
-            · exact False.elim hp
-          · rw [Entry.forcedTy_of_not_boxy (Bool.eq_false_iff.mpr hb)] at hp
-            exact False.elim hp
+def Coh (ι : VarSymb → VarSymb) (Γ : Ctx) (θ : Subst σ Δ) : Prop :=
+  ∀ v T, Γ.ref v = some T → ∀ p, (θ.at v).idxAlong p = ι (v.ext p)
 
-/-- ⭐Mapping an inner index by the `□`-viewed substitution and then out of the target's `□` is
-    the same as going out of the source's `□` and then mapping. -/
-theorem idx_boxOut : ∀ (E : Entry) (e : SubE σ Δ) (p : List Step), e.Ok E →
-    ((E.refine E.forced).unbox).DiaAt p →
-      Δ.boxIn.boxOut (e.unbox.idx p) = e.idx (((E.refine E.forced).unbox).outPath (fun _ => .box) p)
-  | .leaf none, _, _, _, hp => False.elim hp
-  | .leaf (some U), e, p, h, hp => by
-      have hl := ok_leaf.mp h
-      cases e with
-      | hide => exact False.elim hl
-      | node _ _ => exact False.elim hl
-      | ren w =>
-          rcases Entry.subtree_boxView w.path (Δ.tree w.root) _ hl with h' | h'
-          · change (⟨w.root, (((Δ.tree w.root).refine (Δ.tree w.root).forced).unbox).outPath
-                (fun _ => .box) (w.path.map PStep.toStep ++ p)⟩ : Idx) =
-              ⟨w.root, w.path.map PStep.toStep ++
-                ((((Entry.leaf (some U)).refine (Entry.leaf (some U)).forced).unbox).outPath
-                  (fun _ => .box) p)⟩
-            rw [Entry.outPath_subtree w.path _ _ _ p h']
-          · exact (Entry.not_noPresent_of_diaAt hp h').elim
-      | tm s =>
-          have hU : _ = U := hl
-          subst hU
-          exact idx_boxOut_tm _ s p hp
-  | .node E₁ E₂, e, p, h, hp => by
-      obtain ⟨h₁, h₂⟩ := ok_node.mp h
-      change (Entry.mkNode ((E₁.refine E₁.forced).unbox) ((E₂.refine E₂.forced).unbox)).DiaAt p
-        at hp
-      change Δ.boxIn.boxOut (e.unbox.idx p) = e.idx ((Entry.mkNode ((E₁.refine E₁.forced).unbox)
-        ((E₂.refine E₂.forced).unbox)).outPath (fun _ => .box) p)
-      have hn := Entry.mkNode_of_diaAt hp
-      rw [hn] at hp ⊢
-      rcases p with _ | ⟨_ | _ | _ | _, p⟩
-      · exact False.elim hp
-      · have ih := idx_boxOut E₁ (e.proj .fst) p h₁ hp
-        cases e with
-        | hide => exact (Entry.not_noPresent_boxView_of_diaAt hp (noPresent_of_ok_hide h₁)).elim
-        | ren w =>
-            change Δ.boxIn.boxOut ((SubE.ren w : SubE σ Δ.boxIn).idx (.fst :: p)) =
-              (SubE.ren w : SubE σ Δ).idx (.fst :: _)
-            rw [idx_ren_fst, idx_ren_fst]
-            exact ih
-        | node l r => exact ih
-        | tm s =>
-            cases s with
-            | pair s₁ s₂ => exact ih
-            | _ => exact (Entry.not_noPresent_boxView_of_diaAt hp (noPresent_of_ok_hide h₁)).elim
-      · have ih := idx_boxOut E₂ (e.proj .snd) p h₂ hp
-        cases e with
-        | hide => exact (Entry.not_noPresent_boxView_of_diaAt hp (noPresent_of_ok_hide h₂)).elim
-        | ren w =>
-            change Δ.boxIn.boxOut ((SubE.ren w : SubE σ Δ.boxIn).idx (.snd :: p)) =
-              (SubE.ren w : SubE σ Δ).idx (.snd :: _)
-            rw [idx_ren_snd, idx_ren_snd]
-            exact ih
-        | node l r => exact ih
-        | tm s =>
-            cases s with
-            | pair s₁ s₂ => exact ih
-            | _ => exact (Entry.not_noPresent_boxView_of_diaAt hp (noPresent_of_ok_hide h₂)).elim
-      · exact False.elim hp
-      · exact False.elim hp
+def box (θ : Subst σ Δ) : Subst σ Δ.boxIn := fun v =>
+  match v with
+  | .step u .box => (θ.at u).unbox
+  | _ => .hide
 
-end SubE
+def dia (θ : Subst σ Δ) (x ιx : VarSymb) : Subst σ (Δ.diaIn ιx) := fun v =>
+  match v with
+  | .step u .dia => if u = x then (θ.at x).diaBody ιx else .hide
+  | .step u .box => (θ.at u).unbox.mono (Ctx.le_boxIn_diaIn Δ ιx)
+  | _ => .hide
 
-theorem Subst.idx_boxOut {σ : Signature} {Δ : Ctx} {θ : Subst σ Δ} {Γ : Ctx} (hθ : θ.Ok Γ)
-    {i : Idx} (hi : (Γ.boxIn.tree i.root).DiaAt i.path) :
-    Δ.boxIn.boxOut (θ.unbox.idx i) = θ.idx (Γ.boxIn.boxOut i) :=
-  SubE.idx_boxOut (Γ.tree i.root) (θ i.root) i.path (hθ i.root) hi
+/-- Under a binder: the source slot goes to the target slot; everything else is weakened. -/
+def under (θ : Subst σ Δ) (d d' : ℕ) (T : VarType) (h : Δ (.root (.bnd d')) = none) :
+    Subst σ (Δ.insert (.bnd d') T) := fun v =>
+  if v = .root (.bnd d) then .ren (.root (.bnd d')) else (θ v).mono (Ctx.le_insert h T)
+
+theorem at_nonprod (θ : Subst σ Δ) : ∀ {v : VarSymb}, v.lastProd = false → θ.at v = θ v
+  | .root _, _ => rfl
+  | .step v s, h => by
+      change (if s.isProd then (θ.at v).proj s else θ (.step v s)) = _
+      have hs : s.isProd = false := h
+      rw [if_neg (Bool.eq_false_iff.mp hs)]
+
+theorem okRef_at {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) :
+    ∀ {v : VarSymb} {T : VarType}, Γ.ref v = some T → (θ.at v).OkRef T := by
+  intro v
+  induction v with
+  | root r => intro T hv; exact hθ _ _ hv
+  | step v s ih =>
+      intro T hv
+      simp only [Ctx.ref, Subst.at] at hv ⊢
+      split_ifs at hv ⊢ with hs
+      · cases hU : Γ.ref v with
+        | none => rw [hU] at hv; cases hv
+        | some U =>
+            rw [hU] at hv
+            exact SubE.okRef_proj (ih hU) hs hv
+      · exact hθ _ _ hv
+
+/-- Coherence follows from coherence on the visible non-product addresses. -/
+theorem coh_of {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
+    (hvis : ∀ v T, v.lastProd = false → Γ v = some T → ∀ p, (θ v).idxAlong p = ι (v.ext p)) :
+    Coh ι Γ θ := by
+  intro v
+  induction v with
+  | root r => intro T hv p; exact hvis _ _ rfl hv p
+  | step v s ih =>
+      intro T hv p
+      simp only [Ctx.ref] at hv
+      simp only [Subst.at]
+      split_ifs at hv ⊢ with hs
+      · cases hU : Γ.ref v with
+        | none => rw [hU] at hv; cases hv
+        | some U =>
+            rw [hU] at hv
+            rw [SubE.idxAlong_proj p (okRef_at hθ hU) hs hv, ih U hU (s :: p)]
+            rfl
+      · exact hvis _ _ (show (VarSymb.step v s).lastProd = false from Bool.eq_false_iff.mpr hs) hv p
+
+theorem ok_box {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) : Ok Γ.boxIn θ.box := by
+  intro v T hv
+  match v with
+  | .step u .box =>
+      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
+      cases hu : Γ.ref u with
+      | none => rw [hu] at hv; cases hv
+      | some U =>
+          rw [hu] at hv
+          cases U <;> try cases hv
+          exact SubE.okRef_unbox (okRef_at hθ hu)
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .dia => cases hv
+
+theorem coh_box {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
+    (hc : Coh ι Γ θ) : Coh ι Γ.boxIn θ.box := by
+  refine coh_of (ok_box hθ) ?_
+  intro v T _ hv p
+  match v with
+  | .step u .box =>
+      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
+      cases hu : Γ.ref u with
+      | none => rw [hu] at hv; cases hv
+      | some U =>
+          rw [hu] at hv
+          cases U <;> try cases hv
+          change ((θ.at u).unbox).idxAlong p = _
+          rw [SubE.idxAlong_unbox p (okRef_at hθ hu), hc u _ hu (.box :: p)]
+          rfl
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .dia => cases hv
+
+theorem ok_dia {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {x ιx : VarSymb}
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (hw : (θ.at x).idxAlong [] = ιx) :
+    Ok (Γ.diaIn x) (θ.dia x ιx) := by
+  obtain ⟨X, hx⟩ := hx
+  intro v T hv
+  match v with
+  | .step u .dia =>
+      change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T at hv
+      split_ifs at hv with hux
+      · rw [hx] at hv
+        cases hv
+        change (if u = x then (θ.at x).diaBody ιx else SubE.hide).OkRef X
+        rw [if_pos hux]
+        exact SubE.okRef_diaBody (okRef_at hθ hx) hw
+  | .step u .box => exact SubE.okRef_mono _ (ok_box hθ (.step u .box) T hv)
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+
+theorem coh_dia {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
+    (hc : Coh ι Γ θ) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
+    Coh ι (Γ.diaIn x) (θ.dia x (ι x)) := by
+  have hw : (θ.at x).idxAlong [] = ι x := by
+    obtain ⟨X, hX⟩ := hx
+    exact hc x _ hX []
+  refine coh_of (ok_dia hθ hx hw) ?_
+  obtain ⟨X, hx⟩ := hx
+  intro v T _ hv p
+  match v with
+  | .step u .dia =>
+      change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T at hv
+      split_ifs at hv with hux
+      · subst hux
+        change (if u = u then (θ.at u).diaBody (ι u) else SubE.hide).idxAlong p = _
+        rw [if_pos rfl, SubE.idxAlong_diaBody p (okRef_at hθ hx) hw, hc u _ hx (.dia :: p)]
+        rfl
+  | .step u .box =>
+      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
+      cases hu : Γ.ref u with
+      | none => rw [hu] at hv; cases hv
+      | some U =>
+          rw [hu] at hv
+          cases U <;> try cases hv
+          change (((θ.at u).unbox).mono _).idxAlong p = _
+          rw [SubE.idxAlong_mono, SubE.idxAlong_unbox p (okRef_at hθ hu), hc u _ hu (.box :: p)]
+          rfl
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+
+theorem ok_under {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {d d' : ℕ} (T : VarType)
+    (h : Δ (.root (.bnd d')) = none) : Ok (Γ.insert (.bnd d) T) (θ.under d d' T h) := by
+  intro v U hv
+  by_cases hvr : v = .root (.bnd d)
+  · subst hvr
+    have hTU : T = U := by simpa [Ctx.insert] using hv
+    subst hTU
+    rw [show θ.under d d' T h (.root (.bnd d)) = .ren (.root (.bnd d')) from if_pos rfl]
+    change (Δ.insert (.bnd d') T) (.root (.bnd d')) = some T
+    simp [Ctx.insert]
+  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+    rw [show θ.under d d' T h v = (θ v).mono (Ctx.le_insert h T) from if_neg hvr]
+    exact SubE.okRef_mono _ (hθ v U hv')
+
+theorem coh_under {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
+    (hc : Coh ι Γ θ) {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (T : VarType)
+    (h : Δ (.root (.bnd d')) = none) :
+    Coh (VarSymb.shiftSlot ι d d') (Γ.insert (.bnd d) T) (θ.under d d' T h) := by
+  refine coh_of (ok_under hθ T h) ?_
+  intro v U hlp hv p
+  by_cases hvr : v = .root (.bnd d)
+  · subst hvr
+    rw [show θ.under d d' T h (.root (.bnd d)) = .ren (.root (.bnd d')) from if_pos rfl]
+    change (VarSymb.root (.bnd d')).ext p =
+      (if ((VarSymb.root (.bnd d)).ext p).rt = .bnd d then
+        ((VarSymb.root (.bnd d)).ext p).reroot (.bnd d') else ι _)
+    have hc0 : (VarSymb.root (Root.bnd d)).rt = Root.bnd d := rfl
+    rw [VarSymb.ext_rt, if_pos hc0]
+    exact (VarSymb.reroot_ext (.bnd d') (.root (.bnd d)) p).symm
+  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+    have hrt : v.rt ≠ .bnd d := fun he => by
+      rw [hΓ v d he le_rfl] at hv'
+      cases hv'
+    rw [show θ.under d d' T h v = (θ v).mono (Ctx.le_insert h T) from if_neg hvr,
+      SubE.idxAlong_mono, ← at_nonprod θ hlp, hc v U ((Ctx.ref_nonprod Γ hlp).trans hv') p]
+    change ι (v.ext p) = if (v.ext p).rt = .bnd d then _ else ι (v.ext p)
+    rw [VarSymb.ext_rt, if_neg hrt]
+
+end Subst
+
+/-! ## Substitution in terms and formulas -/
+
+mutual
+  def Func.subst {σ : Signature} (ι : VarSymb → VarSymb) : {Γ Δ : Ctx} → (θ : Subst σ Δ) →
+      Subst.Ok Γ θ → Subst.Coh ι Γ θ → {n : ℕ} → Func σ Γ n → Func σ Δ n
+    | _, _, _, _, _, _, .F f => .F f
+    | _, _, θ, hθ, hc, _, .eval g t => .eval (Func.subst ι θ hθ hc g) (Term.subst ι θ hθ hc t)
+
+  /-- ⭐**Substitution**, intrinsically typed, annotations mapped by `ι`. -/
+  def Term.subst {σ : Signature} (ι : VarSymb → VarSymb) : {Γ Δ : Ctx} → (θ : Subst σ Δ) →
+      Subst.Ok Γ θ → Subst.Coh ι Γ θ → {T : VarType} → {a : Ann T} →
+      Term σ Γ T a → Term σ Δ T (a.mapIdx ι)
+    | _, _, θ, hθ, _, _, _, .var _ hv => (θ.at _).toVar (Subst.okRef_at hθ hv)
+    | _, _, θ, hθ, hc, _, _, .func f => .func (Func.subst ι θ hθ hc f)
+    | _, _, _, _, _, _, _, .unit => .unit
+    | _, _, θ, hθ, hc, _, _, .pair s t =>
+        .pair (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
+    | _, _, θ, hθ, hc, _, _, .boxtm t =>
+        .boxtm (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) t)
+    | _, _, θ, hθ, hc, _, _, .diatm x hx t =>
+        have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
+        .diatm (ι x) (hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw)
+          (Term.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) t)
+end
+
+def Rel.subst {σ : Signature} (ι : VarSymb → VarSymb) {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) : {n : ℕ} → Rel σ Γ n → Rel σ Δ n
+  | _, .R r => .R r
+  | _, .eval ρ t => .eval (Rel.subst ι θ hθ hc ρ) (Term.subst ι θ hθ hc t)
+
+/-- ⭐Substitution in formulas. -/
+def WFF.subst {σ : Signature} : (ι : VarSymb → VarSymb) → {Γ Δ : Ctx} → {d d' : ℕ} →
+    (θ : Subst σ Δ) → Subst.Ok Γ θ → Subst.Coh ι Γ θ → Γ.SlotsFrom d → Δ.SlotsFrom d' →
+    WFF σ Γ d → WFF σ Δ d'
+  | ι, _, _, _, _, θ, hθ, hc, _, _, .atom ρ => .atom (Rel.subst ι θ hθ hc ρ)
+  | ι, _, _, _, _, θ, hθ, hc, _, _, .eq t s =>
+      .eq (Term.subst ι θ hθ hc t) (Term.subst ι θ hθ hc s)
+  | _, _, _, _, _, _, _, _, _, _, .top => .top
+  | _, _, _, _, _, _, _, _, _, _, .bot => .bot
+  | ι, _, _, _, _, θ, hθ, hc, hΓ, hΔ, .and φ ψ =>
+      .and (WFF.subst ι θ hθ hc hΓ hΔ φ) (WFF.subst ι θ hθ hc hΓ hΔ ψ)
+  | ι, _, _, _, _, θ, hθ, hc, hΓ, hΔ, .or φ ψ =>
+      .or (WFF.subst ι θ hθ hc hΓ hΔ φ) (WFF.subst ι θ hθ hc hΓ hΔ ψ)
+  | ι, _, _, _, _, θ, hθ, hc, hΓ, hΔ, .imp φ ψ =>
+      .imp (WFF.subst ι θ hθ hc hΓ hΔ φ) (WFF.subst ι θ hθ hc hΓ hΔ ψ)
+  | ι, _, _, d, d', θ, hθ, hc, hΓ, hΔ, .all T φ =>
+      .all T (WFF.subst (VarSymb.shiftSlot ι d d') (θ.under d d' T hΔ.root)
+        (Subst.ok_under hθ T hΔ.root) (Subst.coh_under hθ hc hΓ T hΔ.root)
+        (hΓ.insert T) (hΔ.insert T) φ)
+  | ι, _, _, d, d', θ, hθ, hc, hΓ, hΔ, .ex T φ =>
+      .ex T (WFF.subst (VarSymb.shiftSlot ι d d') (θ.under d d' T hΔ.root)
+        (Subst.ok_under hθ T hΔ.root) (Subst.coh_under hθ hc hΓ T hΔ.root)
+        (hΓ.insert T) (hΔ.insert T) φ)
+  | ι, _, _, _, _, θ, hθ, hc, hΓ, hΔ, .box φ =>
+      .box (WFF.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn hΔ.boxIn φ)
+  | ι, _, _, _, _, θ, hθ, hc, hΓ, hΔ, .dia x hx φ =>
+      have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
+      .dia (ι x) (hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw)
+        (WFF.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx)
+          (hΓ.diaIn x) (hΔ.diaIn (ι x)) φ)
+
+/-! ## Substitutions from a root assignment -/
+
+namespace Subst
+
+variable {σ : Signature} {Δ : Ctx}
+
+def ofRoots (ρ : Root → SubE σ Δ) : Subst σ Δ := fun v =>
+  match v with
+  | .root r => ρ r
+  | _ => .hide
+
+def idxOfRoots (ρ : Root → SubE σ Δ) : VarSymb → VarSymb := fun i => (ρ i.rt).idxAlong i.path
+
+theorem ok_ofRoots {Γ : Ctx} {ρ : Root → SubE σ Δ} (hΓ : Γ.TopLevel)
+    (hρ : ∀ r T, Γ (.root r) = some T → (ρ r).OkRef T) : Ok Γ (ofRoots ρ) := by
+  intro v T hv
+  obtain ⟨r, rfl⟩ := hΓ v T hv
+  exact hρ r T hv
+
+theorem coh_ofRoots {Γ : Ctx} {ρ : Root → SubE σ Δ} (hΓ : Γ.TopLevel)
+    (hρ : ∀ r T, Γ (.root r) = some T → (ρ r).OkRef T) :
+    Coh (idxOfRoots ρ) Γ (ofRoots ρ) := by
+  refine coh_of (ok_ofRoots hΓ hρ) ?_
+  intro v T _ hv p
+  obtain ⟨r, rfl⟩ := hΓ v T hv
+  change (ρ r).idxAlong p =
+    (ρ ((VarSymb.root r).ext p).rt).idxAlong ((VarSymb.root r).ext p).path
+  simp only [VarSymb.ext_rt, VarSymb.ext_path, VarSymb.rt, VarSymb.path, List.nil_append]
+
+/-- `bnd d ↦ s`, every other root to itself. -/
+def instRoots {Γ : Ctx} (d : ℕ) {T : VarType} {a : Ann T} (s : Term σ Γ T a) :
+    Root → SubE σ Γ :=
+  fun r => if r = .bnd d then .tm s else .ren (.root r)
+
+/-- `free u ↦ bnd d`, every other root to itself. -/
+def bindRoots (Δ : Ctx) (u d : ℕ) : Root → SubE σ Δ :=
+  fun r => if r = .free u then .ren (.root (.bnd d)) else .ren (.root r)
+
+/-- `free u₁ ↦ z.fst`, `free u₂ ↦ z.snd`, every other root to itself. -/
+def pairRoots (Δ : Ctx) (u₁ u₂ z : ℕ) : Root → SubE σ Δ :=
+  fun r => if r = .free u₁ then .ren (.step (.root (.free z)) .fst)
+    else if r = .free u₂ then .ren (.step (.root (.free z)) .snd) else .ren (.root r)
+
+end Subst
+
+/-- ⭐Instantiation (for `∀`-elimination / `∃`-introduction). -/
+def WFF.instantiate {σ : Signature} {Γ : Ctx} {d : ℕ} (hΓ : Γ.TopLevel) (hs : Γ.SlotsFrom d)
+    {T : VarType} {a : Ann T} (s : Term σ Γ T a) (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) :
+    WFF σ Γ d :=
+  have hρ : ∀ r U, (Γ.insert (.bnd d) T) (.root r) = some U →
+      (Subst.instRoots d s r).OkRef U := by
+    intro r U hU
+    by_cases hr : r = .bnd d
+    · subst hr
+      have hTU : T = U := by simpa [Ctx.insert] using hU
+      subst hTU
+      rw [show Subst.instRoots _ s (.bnd _) = .tm s from if_pos rfl]
+      rfl
+    · have hU' : Γ (.root r) = some U := by simpa [Ctx.insert, hr] using hU
+      rw [show Subst.instRoots d s r = .ren (.root r) from if_neg hr]
+      exact hU'
+  WFF.subst (Subst.idxOfRoots (Subst.instRoots d s)) (Subst.ofRoots (Subst.instRoots d s))
+    (Subst.ok_ofRoots (hΓ.insert _ T) hρ) (Subst.coh_ofRoots (hΓ.insert _ T) hρ)
+    (hs.insert T) hs φ
+
+/-- ⭐Binding a free variable to the next slot (for `∀`-introduction / `∃`-elimination). -/
+def WFF.bindFree {σ : Signature} {Γ : Ctx} {d : ℕ} (hΓ : Γ.TopLevel) (hs : Γ.SlotsFrom d)
+    (u : ℕ) (T : VarType) (φ : WFF σ (Γ.insert (.free u) T) d) :
+    WFF σ (Γ.insert (.bnd d) T) (d + 1) :=
+  have hρ : ∀ r U, (Γ.insert (.free u) T) (.root r) = some U →
+      (Subst.bindRoots (σ := σ) (Γ.insert (.bnd d) T) u d r).OkRef U := by
+    intro r U hU
+    by_cases hr : r = .free u
+    · subst hr
+      have hTU : T = U := by simpa [Ctx.insert] using hU
+      subst hTU
+      rw [show Subst.bindRoots (σ := σ) (Γ.insert (.bnd d) T) _ d (.free _) =
+        .ren (.root (.bnd d)) from if_pos rfl]
+      change (Γ.insert (.bnd d) T) (.root (.bnd d)) = some T
+      simp [Ctx.insert]
+    · have hU' : Γ (.root r) = some U := by simpa [Ctx.insert, hr] using hU
+      have hrb : r ≠ .bnd d := fun he => by
+        subst he
+        rw [hs.root] at hU'
+        cases hU'
+      rw [show Subst.bindRoots (σ := σ) (Γ.insert (.bnd d) T) u d r = .ren (.root r)
+        from if_neg hr]
+      change (Γ.insert (.bnd d) T) (.root r) = some U
+      simp [Ctx.insert, hrb, hU']
+  WFF.subst (Subst.idxOfRoots (Subst.bindRoots (Γ.insert (.bnd d) T) u d))
+    (Subst.ofRoots (Subst.bindRoots (Γ.insert (.bnd d) T) u d))
+    (Subst.ok_ofRoots (hΓ.insert _ T) hρ) (Subst.coh_ofRoots (hΓ.insert _ T) hρ)
+    (hs.insertFree u T) (hs.insert T) φ
+
+/-- ⭐Pair elimination: the components `u₁`, `u₂` become `z.fst`, `z.snd`. -/
+def WFF.bindPair {σ : Signature} {Γ : Ctx} {d : ℕ} (hΓ : Γ.TopLevel) (hs : Γ.SlotsFrom d)
+    (u₁ u₂ z : ℕ) (hu : u₁ ≠ u₂) (hz : Γ (.root (.free z)) = none) (A B : VarType)
+    (φ : WFF σ ((Γ.insert (.free u₁) A).insert (.free u₂) B) d) :
+    WFF σ (Γ.insert (.free z) (.VTypeProd A B)) d :=
+  have hρ : ∀ r U, ((Γ.insert (.free u₁) A).insert (.free u₂) B) (.root r) = some U →
+      (Subst.pairRoots (σ := σ) (Γ.insert (.free z) (.VTypeProd A B)) u₁ u₂ z r).OkRef U := by
+    intro r U hU
+    by_cases h₁ : r = .free u₁
+    · subst h₁
+      have hAU : A = U := by simpa [Ctx.insert, hu] using hU
+      subst hAU
+      rw [show Subst.pairRoots (σ := σ) (Γ.insert (.free z) (.VTypeProd A B)) u₁ u₂ z
+        (.free u₁) = .ren (.step (.root (.free z)) .fst) from if_pos rfl]
+      change (Γ.insert (.free z) (.VTypeProd A B)).ref (.step (.root (.free z)) .fst) = some A
+      simp [Ctx.ref, Ctx.insert, Step.isProd, VarType.step]
+    · by_cases h₂ : r = .free u₂
+      · subst h₂
+        have hBU : B = U := by simpa [Ctx.insert] using hU
+        subst hBU
+        rw [show Subst.pairRoots (σ := σ) (Γ.insert (.free z) (.VTypeProd A B)) u₁ u₂ z
+          (.free u₂) = .ren (.step (.root (.free z)) .snd) from (if_neg h₁).trans (if_pos rfl)]
+        change (Γ.insert (.free z) (.VTypeProd A B)).ref (.step (.root (.free z)) .snd) = some B
+        simp [Ctx.ref, Ctx.insert, Step.isProd, VarType.step]
+      · have hU' : Γ (.root r) = some U := by simpa [Ctx.insert, h₁, h₂] using hU
+        have hrz : r ≠ .free z := fun he => by
+          subst he
+          rw [hz] at hU'
+          cases hU'
+        rw [show Subst.pairRoots (σ := σ) (Γ.insert (.free z) (.VTypeProd A B)) u₁ u₂ z r =
+          .ren (.root r) from (if_neg h₁).trans (if_neg h₂)]
+        change (Γ.insert (.free z) (.VTypeProd A B)) (.root r) = some U
+        simp [Ctx.insert, hrz, hU']
+  WFF.subst (Subst.idxOfRoots (Subst.pairRoots (Γ.insert (.free z) (.VTypeProd A B)) u₁ u₂ z))
+    (Subst.ofRoots (Subst.pairRoots (Γ.insert (.free z) (.VTypeProd A B)) u₁ u₂ z))
+    (Subst.ok_ofRoots ((hΓ.insert _ A).insert _ B) hρ)
+    (Subst.coh_ofRoots ((hΓ.insert _ A).insert _ B) hρ)
+    ((hs.insertFree u₁ A).insertFree u₂ B) (hs.insertFree z _) φ
+
+/-! ## Computed checks -/
+
+namespace SubstCheck
+
+def σ0 : Signature :=
+  { FuncSyms := Empty, RelSyms := Empty, funcArity := Empty.elim, relArity := Empty.elim }
+
+def Γ₀ : Ctx := fun _ => none
+
+theorem Γ₀_top : Γ₀.TopLevel := fun _ _ h => by cases h
+theorem Γ₀_slots : Γ₀.SlotsFrom 0 := fun _ _ _ _ => rfl
+
+def fr (n : ℕ) : VarSymb := .root (.free n)
+def b0 : VarSymb := .root (.bnd 0)
+def b1 : VarSymb := .root (.bnd 1)
+
+/-- Instantiating `◇_z(z.dia = z.dia) ∧ ∀w:Var. w = w` at `z := ◇_y (y.dia)`. -/
+def Γy : Ctx := Γ₀.insert (.free 2) (.VTypeDia .Var)
+
+theorem Γy_top : Γy.TopLevel := Γ₀_top.insert _ _
+theorem Γy_slots : Γy.SlotsFrom 0 := Γ₀_slots.insertFree _ _
+
+def sy : Term σ0 Γy (.VTypeDia .Var) (.dia (fr 2) .var) :=
+  .diatm (fr 2) ⟨.Var, by decide⟩ (.var (.step (fr 2) .dia) (by decide))
+
+def φinst : WFF σ0 (Γy.insert (.bnd 0) (.VTypeDia .Var)) 1 :=
+  .and (.dia b0 ⟨.Var, by decide⟩ (.eq (.var (.step b0 .dia) (by decide))
+      (.var (.step b0 .dia) (by decide))))
+    (.all .Var (.eq (.var b1 (by decide)) (.var b1 (by decide))))
+
+def φinst' : WFF σ0 Γy 0 :=
+  .and (.dia (fr 2) ⟨.Var, by decide⟩ (.eq (.var (.step (fr 2) .dia) (by decide))
+      (.var (.step (fr 2) .dia) (by decide))))
+    (.all .Var (.eq (.var b0 (by decide)) (.var b0 (by decide))))
+
+/-- ⭐Modal β and slot shifting. -/
+example : WFF.instantiate Γy_top Γy_slots sy φinst = φinst' := by decide
+
+/-- Binding `u : ◇Var` in `◇_u(u.dia = u.dia)` to the slot `bnd 0`. -/
+def φfree : WFF σ0 (Γ₀.insert (.free 5) (.VTypeDia .Var)) 0 :=
+  .dia (fr 5) ⟨.Var, by decide⟩ (.eq (.var (.step (fr 5) .dia) (by decide))
+    (.var (.step (fr 5) .dia) (by decide)))
+
+def φfree' : WFF σ0 (Γ₀.insert (.bnd 0) (.VTypeDia .Var)) 1 :=
+  .dia b0 ⟨.Var, by decide⟩ (.eq (.var (.step b0 .dia) (by decide))
+    (.var (.step b0 .dia) (by decide)))
+
+example : WFF.bindFree Γ₀_top Γ₀_slots 5 _ φfree = φfree' := by decide
+
+/-- Pair elimination: `u₁ = u₂` becomes `z.fst = z.snd`. -/
+def φpair : WFF σ0 ((Γ₀.insert (.free 1) .Var).insert (.free 2) .Var) 0 :=
+  .eq (.var (fr 1) (by decide)) (.var (fr 2) (by decide))
+
+def φpair' : WFF σ0 (Γ₀.insert (.free 3) (.VTypeProd .Var .Var)) 0 :=
+  .eq (.var (.step (fr 3) .fst) (by decide)) (.var (.step (fr 3) .snd) (by decide))
+
+example : WFF.bindPair Γ₀_top Γ₀_slots 1 2 3 (by decide) rfl _ _ φpair = φpair' := by decide
+
+end SubstCheck
 
 end V12

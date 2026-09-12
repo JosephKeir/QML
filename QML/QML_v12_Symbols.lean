@@ -1,29 +1,22 @@
 import Mathlib.Tactic
 
 /-!
-# QML v12 — foundations: types, names, annotations, contexts
+# QML v12 — foundations: types, addresses, contexts, annotations
 
-The v12 redesign, combining the three prototypes (`DiaIdxProto`, `DiaIdxSem`, `PatSplitProto`):
-
-* **Three kinds of names.**  FREE variables (`free n`, the former "user" variables),
-  QUANTIFIER-BOUND variables (`bnd n`, canonical by binder depth), and PAIR-BOUND components
-  (`comp v s`, canonical by an access path from the eliminated variable).  Nothing is allocated
-  for pair components, so no order on names is needed anywhere — the v11 `ℕ` encoding and
-  `firstPairVar` are gone.
-* **Contexts are functions**, stored as root-keyed SPLIT TREES: a root variable holds a tree
-  whose leaves are typed (present) or hidden; its components are reached by paths.  Promotions
-  (`□`, `◇_x`) HIDE/REVEAL leaves rather than building existential inner contexts, and pattern
-  splits REFINE trees in place.  A context also records the binder DEPTH, so the next quantifier
-  slot is `bnd depth`.
-* **Witness annotations.**  A term's type is a plain `VarType` together with an annotation indexed
-  by it (`Ann T`), whose `◇`-nodes carry an access-path index `⟨root, path⟩`.
-
-This file holds only the data and its algebra; terms, formulas and proofs build on it.
+* **Variable symbols are ADDRESSES**: a root (a free variable or a quantifier slot) and a path of
+  steps `fst | snd | box | dia`.  Inside `□` the content of `z : □A` is `z.box`; inside `◇_x` the
+  content of the witness is `x.dia`; product components are `z.fst`, `z.snd`.
+* **Annotation indices are addresses**, fixed where their root was declared, so a witness has the
+  same index at every modal level: there are no out-maps.
+* **A context is a partial function on addresses**: the positions visible at the current level
+  (roots, `….box`, `….dia`).  Product components are always reached by projection (`Ctx.ref`).
+  The `□` and `◇_x` views are pointwise (`Ctx.boxIn`, `Ctx.diaIn`).
+* Quantifier slots are roots `bnd d`; formulas record the binder depth `d` (see the formula file).
 -/
 
 namespace V12
 
-/-! ## Plain types -/
+/-! ## Types -/
 
 inductive VarType where
   | Var
@@ -33,108 +26,6 @@ inductive VarType where
   | VTypeDia (A : VarType)
 deriving DecidableEq
 
-namespace VarType
-
-/-- Contains a box somewhere in its product structure. -/
-def boxy : VarType → Bool
-  | .Var => false
-  | .VTypeOne => false
-  | .VTypeProd A B => A.boxy || B.boxy
-  | .VTypeBox _ => true
-  | .VTypeDia _ => false
-
-/-- A product containing a box: such an entry blocks the formation of modal nodes. -/
-def boxyProd : VarType → Bool
-  | .VTypeProd A B => A.boxy || B.boxy
-  | _ => false
-
-theorem boxyProd_of_boxy {T : VarType} (h : T.boxy = false) : T.boxyProd = false := by
-  cases T <;> simp_all [boxy, boxyProd]
-
-end VarType
-
-/-! ## Names -/
-
-/-- A step into a product. -/
-inductive PStep where
-  | fst
-  | snd
-deriving DecidableEq
-
-/-- The root of a name: a free or a quantifier-bound variable. -/
-inductive Root where
-  | free (n : ℕ)
-  | bnd (n : ℕ)
-deriving DecidableEq
-
-/-- Variable symbols: free, quantifier-bound, or a pair-bound component of another symbol. -/
-inductive VarSymb where
-  | free (n : ℕ)
-  | bnd (n : ℕ)
-  | comp (v : VarSymb) (s : PStep)
-deriving DecidableEq
-
-/-- The free-variable symbols — what proof rules take from the user. -/
-structure FreeSymb where
-  idx : ℕ
-deriving DecidableEq
-
-def FreeSymb.toVar (u : FreeSymb) : VarSymb := .free u.idx
-
-namespace VarSymb
-
-def root : VarSymb → Root
-  | .free n => .free n
-  | .bnd n => .bnd n
-  | .comp v _ => v.root
-
-/-- The access path from the root, root-first. -/
-def path : VarSymb → List PStep
-  | .free _ => []
-  | .bnd _ => []
-  | .comp v s => v.path ++ [s]
-
-def isFree : VarSymb → Bool
-  | .free _ => true
-  | _ => false
-
-def ofRoot : Root → VarSymb
-  | .free n => .free n
-  | .bnd n => .bnd n
-
-@[simp] theorem root_comp (v : VarSymb) (s : PStep) : (VarSymb.comp v s).root = v.root := rfl
-@[simp] theorem path_comp (v : VarSymb) (s : PStep) : (VarSymb.comp v s).path = v.path ++ [s] := rfl
-@[simp] theorem root_ofRoot (r : Root) : (VarSymb.ofRoot r).root = r := by cases r <;> rfl
-@[simp] theorem path_ofRoot (r : Root) : (VarSymb.ofRoot r).path = [] := by cases r <;> rfl
-
-/-- A name is determined by its root and its path. -/
-theorem ext_root_path {v w : VarSymb} (hr : v.root = w.root) (hp : v.path = w.path) : v = w := by
-  induction v generalizing w with
-  | free n =>
-      cases w with
-      | free m => simp_all [root]
-      | bnd m => simp [root] at hr
-      | comp w' s => simp [path] at hp
-  | bnd n =>
-      cases w with
-      | free m => simp [root] at hr
-      | bnd m => simp_all [root]
-      | comp w' s => simp [path] at hp
-  | comp v' s ih =>
-      cases w with
-      | free m => simp [path] at hp
-      | bnd m => simp [path] at hp
-      | comp w' t =>
-          simp only [root, path] at hr hp
-          obtain ⟨hp', hst⟩ := List.append_inj' hp rfl
-          simp only [List.cons.injEq, and_true] at hst
-          rw [ih hr hp', hst]
-
-end VarSymb
-
-/-! ## Witness annotations -/
-
-/-- A step of an annotation's access path: into a product, a box, or a diamond. -/
 inductive Step where
   | fst
   | snd
@@ -142,893 +33,304 @@ inductive Step where
   | dia
 deriving DecidableEq
 
-def PStep.toStep : PStep → Step
-  | .fst => .fst
-  | .snd => .snd
+def VarType.step : VarType → Step → Option VarType
+  | .VTypeProd A _, .fst => some A
+  | .VTypeProd _ B, .snd => some B
+  | .VTypeBox A, .box => some A
+  | .VTypeDia A, .dia => some A
+  | _, _ => none
 
-/-- An annotation index, in CANONICAL form: a root and the full access path through the root's
-    type (product steps and modal steps interleaved as they occur).  A `◇`-node therefore has ONE
-    index however its root happens to be split. -/
-structure Idx where
-  root : Root
-  path : List Step
+def Step.isProd : Step → Bool
+  | .fst => true
+  | .snd => true
+  | _ => false
+
+/-! ## Addresses -/
+
+inductive Root where
+  | free (n : ℕ)
+  | bnd (n : ℕ)
 deriving DecidableEq
 
-def Idx.ext (i : Idx) (s : Step) : Idx := ⟨i.root, i.path ++ [s]⟩
-def Idx.ren (f : Root → Root) (i : Idx) : Idx := ⟨f i.root, i.path⟩
+/-- A variable symbol: a root and steps, the innermost step LAST. -/
+inductive VarSymb where
+  | root (r : Root)
+  | step (v : VarSymb) (s : Step)
+deriving DecidableEq
 
-/-- The index of the node that a name itself reaches. -/
-def VarSymb.toIdx (v : VarSymb) : Idx := ⟨v.root, v.path.map PStep.toStep⟩
+namespace VarSymb
 
-/-- The annotation over a plain type: a witness index at every `◇`. -/
+def rt : VarSymb → Root
+  | root r => r
+  | step v _ => v.rt
+
+/-- The steps, root-first. -/
+def path : VarSymb → List Step
+  | root _ => []
+  | step v s => v.path ++ [s]
+
+def ext : VarSymb → List Step → VarSymb
+  | v, [] => v
+  | v, s :: p => ext (.step v s) p
+
+def reroot (r' : Root) : VarSymb → VarSymb
+  | root _ => root r'
+  | step v s => step (v.reroot r') s
+
+/-- The last step is a product step. -/
+def lastProd : VarSymb → Bool
+  | root _ => false
+  | step _ s => s.isProd
+
+theorem ext_rt : ∀ (v : VarSymb) (p : List Step), (v.ext p).rt = v.rt
+  | _, [] => rfl
+  | v, s :: p => ext_rt (.step v s) p
+
+theorem ext_path : ∀ (v : VarSymb) (p : List Step), (v.ext p).path = v.path ++ p
+  | v, [] => by simp [ext]
+  | v, s :: p => by
+      change (ext (.step v s) p).path = _
+      rw [ext_path]
+      simp [path]
+
+theorem reroot_ext (r' : Root) :
+    ∀ (v : VarSymb) (p : List Step), (v.ext p).reroot r' = (v.reroot r').ext p
+  | _, [] => rfl
+  | v, s :: p => reroot_ext r' (.step v s) p
+
+/-- Shift the addresses under the slot `bnd d` to the slot `bnd d'`. -/
+def shiftSlot (ι : VarSymb → VarSymb) (d d' : ℕ) : VarSymb → VarSymb :=
+  fun i => if i.rt = .bnd d then i.reroot (.bnd d') else ι i
+
+end VarSymb
+
+/-! ## Contexts and their modal views -/
+
+abbrev Ctx := VarSymb → Option VarType
+
+namespace Ctx
+
+/-- The type reachable at an address: product steps project from the parent, modal steps must be
+    visible. -/
+def ref (Γ : Ctx) : VarSymb → Option VarType
+  | .root r => Γ (.root r)
+  | .step v s => if s.isProd then (Γ.ref v).bind (·.step s) else Γ (.step v s)
+
+/-- Inside `□`: `v.box : A` exactly when `v : □A` is reachable. -/
+def boxIn (Γ : Ctx) : Ctx := fun v =>
+  match v with
+  | .step u .box =>
+      match Γ.ref u with
+      | some (.VTypeBox A) => some A
+      | _ => none
+  | _ => none
+
+/-- Inside `◇_x`: the `□` view, and `x.dia : X` where `x : ◇X`. -/
+def diaIn (Γ : Ctx) (x : VarSymb) : Ctx := fun v =>
+  match v with
+  | .step u .dia =>
+      if u = x then
+        match Γ.ref x with
+        | some (.VTypeDia X) => some X
+        | _ => none
+      else none
+  | v => Γ.boxIn v
+
+/-- Declare a root. -/
+def insert (Γ : Ctx) (r : Root) (T : VarType) : Ctx :=
+  fun v => if v = .root r then some T else Γ v
+
+theorem ref_nonprod (Γ : Ctx) : ∀ {v : VarSymb}, v.lastProd = false → Γ.ref v = Γ v
+  | .root _, _ => rfl
+  | .step v s, h => by
+      change (if s.isProd then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = _
+      have hs : s.isProd = false := h
+      rw [if_neg (Bool.eq_false_iff.mp hs)]
+
+theorem ref_none_of_rootFresh {Γ : Ctx} {r : Root} (h : ∀ v, v.rt = r → Γ v = none) :
+    ∀ v, v.rt = r → Γ.ref v = none := by
+  intro v
+  induction v with
+  | root r' => intro hv; exact h _ hv
+  | step v s ih =>
+      intro hv
+      simp only [ref]
+      split_ifs
+      · simp only [ih hv, Option.bind_none]
+      · exact h _ hv
+
+/-! ## Revealing more positions -/
+
+def Le (Γ Γ' : Ctx) : Prop := ∀ v T, Γ v = some T → Γ' v = some T
+
+theorem Le.refl (Γ : Ctx) : Γ.Le Γ := fun _ _ h => h
+
+theorem Le.ref {Γ Γ' : Ctx} (h : Γ.Le Γ') :
+    ∀ {v : VarSymb} {T : VarType}, Γ.ref v = some T → Γ'.ref v = some T := by
+  intro v
+  induction v with
+  | root r => intro T hv; exact h _ _ hv
+  | step v s ih =>
+      intro T hv
+      simp only [Ctx.ref] at hv ⊢
+      split_ifs at hv ⊢ with hs
+      · cases hU : Γ.ref v with
+        | none => rw [hU] at hv; cases hv
+        | some U => rw [hU] at hv; rw [ih hU]; exact hv
+      · exact h _ _ hv
+
+theorem Le.boxIn {Γ Γ' : Ctx} (h : Γ.Le Γ') : Γ.boxIn.Le Γ'.boxIn := by
+  intro v T hv
+  match v with
+  | .step u .box =>
+      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
+      change (match Γ'.ref u with | some (.VTypeBox A) => some A | _ => none) = some T
+      cases hu : Γ.ref u with
+      | none => rw [hu] at hv; cases hv
+      | some U => rw [hu] at hv; rw [h.ref hu]; exact hv
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .dia => cases hv
+
+theorem Le.diaIn {Γ Γ' : Ctx} (h : Γ.Le Γ') (x : VarSymb) : (Γ.diaIn x).Le (Γ'.diaIn x) := by
+  intro v T hv
+  match v with
+  | .step u .dia =>
+      change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T at hv
+      change (if u = x then (match Γ'.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T
+      split_ifs at hv ⊢ with hux
+      · cases hx : Γ.ref x with
+        | none => rw [hx] at hv; cases hv
+        | some U => rw [hx] at hv; rw [h.ref hx]; exact hv
+  | .step u .box => exact h.boxIn (.step u .box) T hv
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+
+theorem Le.insert {Γ Γ' : Ctx} (h : Γ.Le Γ') (r : Root) (T : VarType) :
+    (Γ.insert r T).Le (Γ'.insert r T) := by
+  intro v U hv
+  simp only [Ctx.insert] at hv ⊢
+  split_ifs at hv ⊢
+  · exact hv
+  · exact h v U hv
+
+theorem le_boxIn_diaIn (Γ : Ctx) (x : VarSymb) : Γ.boxIn.Le (Γ.diaIn x) := by
+  intro v T hv
+  match v with
+  | .step u .box => exact hv
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .dia => cases hv
+
+/-- Weakening by a fresh root. -/
+theorem le_insert {Γ : Ctx} {r : Root} (hr : Γ (.root r) = none) (T : VarType) :
+    Γ.Le (Γ.insert r T) := by
+  intro v U hv
+  simp only [Ctx.insert]
+  split_ifs with h
+  · subst h
+    rw [hr] at hv
+    cases hv
+  · exact hv
+
+/-! ## Fresh quantifier slots; top-level contexts -/
+
+/-- No slot at or above `d` is visible. -/
+def SlotsFrom (Γ : Ctx) (d : ℕ) : Prop := ∀ v n, v.rt = .bnd n → d ≤ n → Γ v = none
+
+theorem SlotsFrom.root {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) : Γ (.root (.bnd d)) = none :=
+  h _ d rfl le_rfl
+
+theorem SlotsFrom.insert {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (T : VarType) :
+    (Γ.insert (.bnd d) T).SlotsFrom (d + 1) := by
+  intro v n hv hn
+  simp only [Ctx.insert]
+  split_ifs with hvr
+  · subst hvr
+    cases hv
+    omega
+  · exact h v n hv (by omega)
+
+theorem SlotsFrom.insertFree {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (u : ℕ) (T : VarType) :
+    (Γ.insert (.free u) T).SlotsFrom d := by
+  intro v n hv hn
+  simp only [Ctx.insert]
+  split_ifs with hvr
+  · subst hvr
+    cases hv
+  · exact h v n hv hn
+
+theorem SlotsFrom.boxIn {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) : Γ.boxIn.SlotsFrom d := by
+  intro v n hv hn
+  have hfresh : ∀ w, w.rt = .bnd n → Γ w = none := fun w hw => h w n hw hn
+  match v with
+  | .step u .box =>
+      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = none
+      simp only [ref_none_of_rootFresh hfresh u hv]
+  | .root _ => rfl
+  | .step _ .fst => rfl
+  | .step _ .snd => rfl
+  | .step _ .dia => rfl
+
+theorem SlotsFrom.diaIn {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (x : VarSymb) :
+    (Γ.diaIn x).SlotsFrom d := by
+  intro v n hv hn
+  have hfresh : ∀ w, w.rt = .bnd n → Γ w = none := fun w hw => h w n hw hn
+  match v with
+  | .step u .dia =>
+      change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = none
+      split_ifs with hux
+      · rw [← hux]
+        simp only [ref_none_of_rootFresh hfresh u hv]
+      · rfl
+  | .step u .box => exact h.boxIn (.step u .box) n hv hn
+  | .root _ => rfl
+  | .step _ .fst => rfl
+  | .step _ .snd => rfl
+
+/-- A top-level context shows only roots. -/
+def TopLevel (Γ : Ctx) : Prop := ∀ v T, Γ v = some T → ∃ r, v = .root r
+
+theorem TopLevel.insert {Γ : Ctx} (h : Γ.TopLevel) (r : Root) (T : VarType) :
+    (Γ.insert r T).TopLevel := by
+  intro v U hv
+  simp only [Ctx.insert] at hv
+  split_ifs at hv with hvr
+  · exact ⟨r, hvr⟩
+  · exact h v U hv
+
+end Ctx
+
+/-! ## Witness annotations -/
+
 inductive Ann : VarType → Type where
   | var : Ann .Var
   | one : Ann .VTypeOne
   | prod {A B : VarType} (a : Ann A) (b : Ann B) : Ann (.VTypeProd A B)
   | box {A : VarType} (a : Ann A) : Ann (.VTypeBox A)
-  | dia {A : VarType} (i : Idx) (a : Ann A) : Ann (.VTypeDia A)
+  | dia {A : VarType} (i : VarSymb) (a : Ann A) : Ann (.VTypeDia A)
 deriving DecidableEq
 
-namespace Ann
-
-def mapIdx (f : Idx → Idx) : {T : VarType} → Ann T → Ann T
-  | _, var => var
-  | _, one => one
-  | _, prod a b => prod (a.mapIdx f) (b.mapIdx f)
-  | _, box a => box (a.mapIdx f)
-  | _, dia i a => dia (f i) (a.mapIdx f)
-
-def idxs : {T : VarType} → Ann T → List Idx
-  | _, var => []
-  | _, one => []
-  | _, prod a b => a.idxs ++ b.idxs
-  | _, box a => a.idxs
-  | _, dia i a => i :: a.idxs
-
-/-- The index at the `◇`-node reached by a path (junk if the path does not lead to one). -/
-def idxAt : {T : VarType} → Ann T → List Step → Idx
-  | _, dia i _, [] => i
-  | _, prod a _, .fst :: p => a.idxAt p
-  | _, prod _ b, .snd :: p => b.idxAt p
-  | _, box a, .box :: p => a.idxAt p
-  | _, dia _ a, .dia :: p => a.idxAt p
-  | _, _, _ => ⟨.free 0, []⟩
-
-/-- The SELF annotation at an index: every `◇`-node indexed by its own position — how a declared
-    variable `v` elaborates to a term type (`self v.toIdx T`). -/
-def self (i : Idx) : (T : VarType) → Ann T
-  | .Var => var
-  | .VTypeOne => one
-  | .VTypeProd A B => prod (self (i.ext .fst) A) (self (i.ext .snd) B)
-  | .VTypeBox A => box (self (i.ext .box) A)
-  | .VTypeDia A => dia i (self (i.ext .dia) A)
-
-end Ann
-
-/-- The path leads to a `◇`-node. -/
-def VarType.DiaAt : VarType → List Step → Prop
-  | .VTypeDia _, [] => True
-  | .VTypeProd A _, .fst :: p => A.DiaAt p
-  | .VTypeProd _ B, .snd :: p => B.DiaAt p
-  | .VTypeBox A, .box :: p => A.DiaAt p
-  | .VTypeDia A, .dia :: p => A.DiaAt p
-  | _, _ => False
-
-namespace Ann
-
-theorem mapIdx_mapIdx (f g : Idx → Idx) {T : VarType} (S : Ann T) :
-    (S.mapIdx f).mapIdx g = S.mapIdx (g ∘ f) := by
-  induction S with
-  | var => rfl
-  | one => rfl
-  | prod a b iha ihb => simp [mapIdx, iha, ihb]
-  | box a ih => simp [mapIdx, ih]
-  | dia i a ih => simp [mapIdx, ih]
-
-@[simp] theorem mapIdx_id {T : VarType} (S : Ann T) : S.mapIdx id = S := by
-  induction S with
-  | var => rfl
-  | one => rfl
-  | prod a b iha ihb => simp [mapIdx, iha, ihb]
-  | box a ih => simp [mapIdx, ih]
-  | dia i a ih => simp [mapIdx, ih]
-
-theorem mapIdx_congr {f g : Idx → Idx} {T : VarType} (S : Ann T) (h : ∀ i ∈ S.idxs, f i = g i) :
-    S.mapIdx f = S.mapIdx g := by
-  induction S with
-  | var => rfl
-  | one => rfl
-  | prod a b iha ihb =>
-      simp only [mapIdx]
-      rw [iha (fun i hi => h i (by simp [idxs, hi])), ihb (fun i hi => h i (by simp [idxs, hi]))]
-  | box a ih => simp only [mapIdx]; rw [ih (fun i hi => h i (by simpa [idxs] using hi))]
-  | dia j a ih =>
-      simp only [mapIdx]
-      rw [h j (by simp [idxs]), ih (fun i hi => h i (by simp [idxs, hi]))]
-
-theorem mem_idxs_mapIdx {f : Idx → Idx} {i : Idx} {T : VarType} {S : Ann T}
-    (hi : i ∈ (S.mapIdx f).idxs) : ∃ j ∈ S.idxs, f j = i := by
-  induction S with
-  | var => simp [mapIdx, idxs] at hi
-  | one => simp [mapIdx, idxs] at hi
-  | prod a b iha ihb =>
-      simp only [mapIdx, idxs, List.mem_append] at hi
-      rcases hi with hi | hi
-      · obtain ⟨j, hj, rfl⟩ := iha hi; exact ⟨j, by simp [idxs, hj], rfl⟩
-      · obtain ⟨j, hj, rfl⟩ := ihb hi; exact ⟨j, by simp [idxs, hj], rfl⟩
-  | box a ih => simpa [mapIdx, idxs] using ih (by simpa [mapIdx, idxs] using hi)
-  | dia k a ih =>
-      simp only [mapIdx, idxs, List.mem_cons] at hi
-      rcases hi with rfl | hi
-      · exact ⟨k, by simp [idxs], rfl⟩
-      · obtain ⟨j, hj, rfl⟩ := ih hi; exact ⟨j, by simp [idxs, hj], rfl⟩
-
-theorem idxAt_mapIdx (f : Idx → Idx) {T : VarType} (S : Ann T) (p : List Step) :
-    T.DiaAt p → (S.mapIdx f).idxAt p = f (S.idxAt p) := by
-  induction S generalizing p with
-  | var => intro h; cases p <;> exact (h : False).elim
-  | one => intro h; cases p <;> exact (h : False).elim
-  | prod a b iha ihb =>
-      intro h
-      rcases p with _ | ⟨s, p⟩
-      · exact (h : False).elim
-      · cases s
-        · exact iha p h
-        · exact ihb p h
-        · exact (h : False).elim
-        · exact (h : False).elim
-  | box a ih =>
-      intro h
-      rcases p with _ | ⟨s, p⟩
-      · exact (h : False).elim
-      · cases s
-        · exact (h : False).elim
-        · exact (h : False).elim
-        · exact ih p h
-        · exact (h : False).elim
-  | dia i a ih =>
-      intro h
-      rcases p with _ | ⟨s, p⟩
-      · rfl
-      · cases s
-        · exact (h : False).elim
-        · exact (h : False).elim
-        · exact (h : False).elim
-        · exact ih p h
-
-theorem idxAt_mem {T : VarType} (S : Ann T) (p : List Step) : T.DiaAt p → S.idxAt p ∈ S.idxs := by
-  induction S generalizing p with
-  | var => intro h; cases p <;> exact (h : False).elim
-  | one => intro h; cases p <;> exact (h : False).elim
-  | prod a b iha ihb =>
-      intro h
-      rcases p with _ | ⟨s, p⟩
-      · exact (h : False).elim
-      · cases s
-        · exact List.mem_append_left _ (iha p h)
-        · exact List.mem_append_right _ (ihb p h)
-        · exact (h : False).elim
-        · exact (h : False).elim
-  | box a ih =>
-      intro h
-      rcases p with _ | ⟨s, p⟩
-      · exact (h : False).elim
-      · cases s
-        · exact (h : False).elim
-        · exact (h : False).elim
-        · exact ih p h
-        · exact (h : False).elim
-  | dia i a ih =>
-      intro h
-      rcases p with _ | ⟨s, p⟩
-      · exact List.mem_cons_self
-      · cases s
-        · exact (h : False).elim
-        · exact (h : False).elim
-        · exact (h : False).elim
-        · exact List.mem_cons_of_mem _ (ih p h)
-
-theorem mapIdx_injective {f : Idx → Idx} (hf : Function.Injective f) {T : VarType} :
-    Function.Injective (Ann.mapIdx f : Ann T → Ann T) := by
-  intro S S' h
-  induction S with
-  | var => cases S'; rfl
-  | one => cases S'; rfl
-  | prod a b iha ihb =>
-      cases S' with
-      | prod a' b' =>
-          simp only [mapIdx, prod.injEq] at h
-          rw [iha h.1, ihb h.2]
-  | box a ih =>
-      cases S' with
-      | box a' =>
-          simp only [mapIdx, box.injEq] at h
-          rw [ih h]
-  | dia i a ih =>
-      cases S' with
-      | dia i' a' =>
-          simp only [mapIdx, dia.injEq] at h
-          rw [hf h.1, ih h.2]
-
-end Ann
-
-/-! ## Split patterns and split trees -/
-
-inductive Pat where
-  | stop
-  | split (a b : Pat)
-deriving DecidableEq
-
-def Pat.join : Pat → Pat → Pat
-  | .stop, q => q
-  | p, .stop => p
-  | .split a b, .split c d => .split (a.join c) (b.join d)
-
-@[simp] theorem Pat.join_stop (p : Pat) : p.join .stop = p := by cases p <;> rfl
-
-/-- The pattern that splits exactly along a path. -/
-def Pat.path : List PStep → Pat
-  | [] => .stop
-  | .fst :: q => .split (Pat.path q) .stop
-  | .snd :: q => .split .stop (Pat.path q)
-
-/-- The entry of one root variable: a split tree whose leaves are present (typed) or hidden. -/
-inductive Entry where
-  | leaf (o : Option VarType)
-  | node (a b : Entry)
-deriving DecidableEq
-
-def VarType.follow : VarType → List PStep → Option VarType
-  | T, [] => some T
-  | .VTypeProd A _, .fst :: q => A.follow q
-  | .VTypeProd _ B, .snd :: q => B.follow q
-  | _, _ :: _ => none
-
-namespace Entry
-
-/-- Apply a pattern: split product leaves where the pattern says so. -/
-def refine : Entry → Pat → Entry
-  | e, .stop => e
-  | e, .split pa pb =>
-      match e with
-      | .leaf (some (.VTypeProd A B)) =>
-          .node (refine (.leaf (some A)) pa) (refine (.leaf (some B)) pb)
-      | .node a b => .node (refine a pa) (refine b pb)
-      | e => e
-
-def forcedTy : VarType → Pat
-  | .VTypeProd A B =>
-      if (VarType.VTypeProd A B).boxy then .split (forcedTy A) (forcedTy B) else .stop
-  | _ => .stop
-
-/-- The FORCED box pattern: split boxy products, and nothing else. -/
-def forced : Entry → Pat
-  | .leaf (some T) => forcedTy T
-  | .leaf none => .stop
-  | .node a b => .split (forced a) (forced b)
-
-def mkNode : Entry → Entry → Entry
-  | .leaf none, .leaf none => .leaf none
-  | a, b => .node a b
-
-/-- Into a `□`: box-typed leaves unboxed, everything else hidden (hidden subtrees collapse). -/
-def unbox : Entry → Entry
-  | .leaf (some (.VTypeBox X)) => .leaf (some X)
-  | .leaf _ => .leaf none
-  | .node a b => mkNode (unbox a) (unbox b)
-
-/-- Into a `◇_x` whose witness leaf is at path `q`: the box shadow, with the witness revealed at its
-    realization type.  Along the witness path the tree stays OPEN. -/
-def unboxExcept : Entry → List PStep → VarType → Entry
-  | .leaf _, [], X => .leaf (some X)
-  | .node a b, .fst :: q, X => .node (a.unboxExcept q X) b.unbox
-  | .node a b, .snd :: q, X => .node a.unbox (b.unboxExcept q X)
-  | e, _, _ => e.unbox
-
-def NoBoxProd : Entry → Prop
-  | .leaf (some T) => T.boxyProd = false
-  | .leaf none => True
-  | .node a b => NoBoxProd a ∧ NoBoxProd b
-
-/-- The type at a path: through split nodes, then through the leaf's own product type. -/
-def lookup : Entry → List PStep → Option VarType
-  | .leaf o, q => o.bind (fun T => T.follow q)
-  | .node a _, .fst :: q => a.lookup q
-  | .node _ b, .snd :: q => b.lookup q
-  | .node _ _, [] => none
-
-/-- The entry EXACTLY at a path (no looking inside an unsplit product). -/
-def leafAt : Entry → List PStep → Option VarType
-  | .leaf o, [] => o
-  | .leaf _, _ :: _ => none
-  | .node a _, .fst :: q => a.leafAt q
-  | .node _ b, .snd :: q => b.leafAt q
-  | .node _ _, [] => none
-
-/-- Set the leaf at a path (used to declare a variable). -/
-def setLeaf : Entry → List PStep → Option VarType → Entry
-  | .leaf _, [], o => .leaf o
-  | .node _ _, [], o => .leaf o
-  | .node a b, .fst :: q, o => .node (a.setLeaf q o) b
-  | .node a b, .snd :: q, o => .node a (b.setLeaf q o)
-  | e, _ :: _, _ => e
-
-/-! ### Split-tree lemmas -/
-
-@[simp] theorem refine_stop (e : Entry) : e.refine .stop = e := rfl
-
-theorem refine_nonprod_leaf {o : Option VarType} (ho : ∀ A B, o ≠ some (.VTypeProd A B)) (p : Pat) :
-    (Entry.leaf o).refine p = .leaf o := by
-  cases p with
-  | stop => rfl
-  | split pa pb =>
-      rcases o with _ | ⟨_ | _ | ⟨A, B⟩ | _ | _⟩
-      · rfl
-      · rfl
-      · rfl
-      · exact absurd rfl (ho A B)
-      · rfl
-      · rfl
-
-theorem refine_join (e : Entry) (p q : Pat) : (e.refine p).refine q = e.refine (p.join q) := by
-  induction p generalizing e q with
-  | stop => rfl
-  | split pa pb iha ihb =>
-      cases q with
-      | stop => rfl
-      | split qa qb =>
-          rcases e with ⟨_ | ⟨_ | _ | ⟨A, B⟩ | _ | _⟩⟩ | ⟨a, b⟩
-          · rfl
-          · rfl
-          · rfl
-          · simp only [refine, Pat.join, iha, ihb]
-          · rfl
-          · rfl
-          · simp only [refine, Pat.join, iha, ihb]
-
-theorem forcedTy_of_not_boxy {T : VarType} (h : T.boxy = false) : forcedTy T = .stop := by
-  cases T with
-  | VTypeProd A B => simp only [forcedTy]; rw [if_neg (by simp_all [VarType.boxy])]
-  | _ => rfl
-
-theorem noBoxProd_refine (e : Entry) (p : Pat) (h : e.NoBoxProd) : (e.refine p).NoBoxProd := by
-  induction p generalizing e with
-  | stop => exact h
-  | split pa pb iha ihb =>
-      rcases e with ⟨_ | ⟨_ | _ | ⟨A, B⟩ | _ | _⟩⟩ | ⟨a, b⟩
-      · exact h
-      · exact h
-      · exact h
-      · simp only [NoBoxProd, VarType.boxyProd, Bool.or_eq_false_iff] at h
-        exact ⟨iha _ (VarType.boxyProd_of_boxy h.1), ihb _ (VarType.boxyProd_of_boxy h.2)⟩
-      · exact h
-      · exact h
-      · exact ⟨iha a h.1, ihb b h.2⟩
-
-theorem noBoxProd_forcedTy (T : VarType) :
-    ((Entry.leaf (some T)).refine (forcedTy T)).NoBoxProd := by
-  induction T with
-  | Var => rfl
-  | VTypeOne => rfl
-  | VTypeProd A B ihA ihB =>
-      by_cases hb : (VarType.VTypeProd A B).boxy = true
-      · simp only [forcedTy, hb, if_true, refine, NoBoxProd]
-        exact ⟨ihA, ihB⟩
-      · simp only [forcedTy, hb, Bool.false_eq_true, if_false, refine_stop, NoBoxProd]
-        simpa [VarType.boxyProd, VarType.boxy] using hb
-  | VTypeBox A _ => rfl
-  | VTypeDia A _ => rfl
-
-theorem noBoxProd_forced (e : Entry) : (e.refine e.forced).NoBoxProd := by
-  induction e with
-  | leaf o =>
-      rcases o with _ | T
-      · trivial
-      · exact noBoxProd_forcedTy T
-  | node a b iha ihb => exact ⟨iha, ihb⟩
-
-theorem unbox_refine_nonboxy (T : VarType) (hT : T.boxy = false) (p : Pat) :
-    ((Entry.leaf (some T)).refine p).unbox = .leaf none := by
-  induction p generalizing T with
-  | stop =>
-      cases T with
-      | VTypeBox _ => simp [VarType.boxy] at hT
-      | _ => rfl
-  | split pa pb iha ihb =>
-      cases T with
-      | VTypeProd A B =>
-          simp only [VarType.boxy, Bool.or_eq_false_iff] at hT
-          simp only [refine, unbox, iha A hT.1, ihb B hT.2, mkNode]
-      | VTypeBox _ => simp [VarType.boxy] at hT
-      | _ => rfl
-
-theorem unbox_refine_leaf (T : VarType) (p : Pat)
-    (h : ((Entry.leaf (some T)).refine p).NoBoxProd) :
-    ((Entry.leaf (some T)).refine p).unbox = ((Entry.leaf (some T)).refine (forcedTy T)).unbox := by
-  induction T generalizing p with
-  | Var => rw [refine_nonprod_leaf (fun _ _ h => by cases h) p]; rfl
-  | VTypeOne => rw [refine_nonprod_leaf (fun _ _ h => by cases h) p]; rfl
-  | VTypeBox X _ => rw [refine_nonprod_leaf (fun _ _ h => by cases h) p]; rfl
-  | VTypeDia X _ => rw [refine_nonprod_leaf (fun _ _ h => by cases h) p]; rfl
-  | VTypeProd A B ihA ihB =>
-      by_cases hb : (VarType.VTypeProd A B).boxy = true
-      · cases p with
-        | stop =>
-            exact absurd ((h : (VarType.VTypeProd A B).boxy = false).symm.trans hb) (by decide)
-        | split pa pb =>
-            simp only [forcedTy, hb, if_true, refine, unbox] at h ⊢
-            rw [ihA pa h.1, ihB pb h.2]
-      · have hb' : (VarType.VTypeProd A B).boxy = false := by simpa using hb
-        simp only [forcedTy, hb, Bool.false_eq_true, if_false, refine_stop]
-        rw [unbox_refine_nonboxy _ hb' p]
-        rfl
-
-/-- ⭐Extra refinement is invisible inside `□`. -/
-theorem unbox_refine_forced (e : Entry) (p : Pat) (h : (e.refine p).NoBoxProd) :
-    (e.refine p).unbox = (e.refine e.forced).unbox := by
-  induction e generalizing p with
-  | leaf o =>
-      rcases o with _ | T
-      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p,
-          refine_nonprod_leaf (fun _ _ h => by cases h) _]
-      · exact unbox_refine_leaf T p h
-  | node a b iha ihb =>
-      cases p with
-      | stop =>
-          have ha := iha .stop h.1
-          have hb := ihb .stop h.2
-          simp only [refine_stop] at ha hb
-          simp only [forced, refine, unbox, ha, hb]
-      | split pa pb =>
-          simp only [refine, forced, unbox] at h ⊢
-          rw [iha pa h.1, ihb pb h.2]
-
-theorem lookup_refine_nonprod (e : Entry) (p : Pat) (q : List PStep) {T : VarType}
-    (hT : ∀ A B, T ≠ .VTypeProd A B) : (e.refine p).lookup q = some T ↔ e.lookup q = some T := by
-  induction p generalizing e q with
-  | stop => rfl
-  | split pa pb iha ihb =>
-      rcases e with ⟨_ | ⟨_ | _ | ⟨A, B⟩ | _ | _⟩⟩ | ⟨a, b⟩
-      · rfl
-      · rfl
-      · rfl
-      · rcases q with _ | ⟨_ | _, q⟩
-        · change none = some T ↔ some (VarType.VTypeProd A B) = some T
-          exact ⟨(fun h => by cases h), fun h => absurd (Option.some.inj h).symm (hT A B)⟩
-        · exact iha (.leaf (some A)) q
-        · exact ihb (.leaf (some B)) q
-      · rfl
-      · rfl
-      · rcases q with _ | ⟨_ | _, q⟩
-        · rfl
-        · exact iha a q
-        · exact ihb b q
-
-theorem lookup_of_leafAt (q : List PStep) : ∀ (e : Entry) {T : VarType},
-    e.leafAt q = some T → e.lookup q = some T := by
-  induction q with
-  | nil =>
-      intro e T h
-      rcases e with ⟨_ | T'⟩ | ⟨a, b⟩
-      · simp [leafAt] at h
-      · cases T' <;> exact h
-      · simp [leafAt] at h
-  | cons s q ih =>
-      intro e T h
-      rcases e with ⟨o⟩ | ⟨a, b⟩
-      · simp [leafAt] at h
-      · cases s
-        · exact ih a h
-        · exact ih b h
-
-theorem leafAt_refine_forcedPath (q : List PStep) : ∀ (e : Entry) (X : VarType),
-    e.lookup q = some (.VTypeDia X) →
-      (e.refine (e.forced.join (Pat.path q))).leafAt q = some (.VTypeDia X) := by
-  induction q with
-  | nil =>
-      intro e X h
-      rcases e with ⟨_ | ⟨_ | _ | ⟨A, B⟩ | _ | Y⟩⟩ | ⟨a, b⟩
-      · simp [lookup] at h
-      · cases h
-      · cases h
-      · cases h
-      · cases h
-      · simp only [lookup, Option.bind, VarType.follow, Option.some.injEq,
-          VarType.VTypeDia.injEq] at h
-        subst h
-        rfl
-      · simp [lookup] at h
-  | cons s q ih =>
-      intro e X h
-      rcases e with ⟨_ | ⟨_ | _ | ⟨A, B⟩ | _ | Y⟩⟩ | ⟨a, b⟩
-      · simp [lookup] at h
-      · cases s <;> cases h
-      · cases s <;> cases h
-      · cases s
-        · have hA : (Entry.leaf (some A)).lookup q = some (.VTypeDia X) := h
-          by_cases hb : (VarType.VTypeProd A B).boxy = true
-          · simp only [forced, forcedTy, hb, if_true, Pat.path, Pat.join, Pat.join_stop, refine,
-              leafAt]
-            exact ih _ X hA
-          · have hA' : A.boxy = false := by
-              simp only [VarType.boxy, Bool.or_eq_true, not_or, Bool.not_eq_true] at hb; exact hb.1
-            simp only [forced, forcedTy, hb, Bool.false_eq_true, if_false, Pat.path, Pat.join,
-              refine, leafAt]
-            have := ih _ X hA
-            simpa only [forced, forcedTy_of_not_boxy hA', Pat.join] using this
-        · have hB : (Entry.leaf (some B)).lookup q = some (.VTypeDia X) := h
-          by_cases hb : (VarType.VTypeProd A B).boxy = true
-          · simp only [forced, forcedTy, hb, if_true, Pat.path, Pat.join, refine, leafAt]
-            exact ih _ X hB
-          · have hB' : B.boxy = false := by
-              simp only [VarType.boxy, Bool.or_eq_true, not_or, Bool.not_eq_true] at hb; exact hb.2
-            simp only [forced, forcedTy, hb, Bool.false_eq_true, if_false, Pat.path, Pat.join,
-              refine, leafAt]
-            have := ih _ X hB
-            simpa only [forced, forcedTy_of_not_boxy hB', Pat.join] using this
-      · cases s <;> cases h
-      · cases s <;> cases h
-      · cases s
-        · simp only [forced, Pat.path, Pat.join, Pat.join_stop, refine, leafAt]
-          exact ih a X h
-        · simp only [forced, Pat.path, Pat.join, refine, leafAt]
-          exact ih b X h
-
-/-- ⭐Extra refinement is invisible inside `◇_x` too, with the witness path kept open. -/
-theorem unboxExcept_refine_forced (q : List PStep) : ∀ (e : Entry) (p : Pat) (X : VarType),
-    (e.refine p).NoBoxProd → (e.refine p).leafAt q = some (.VTypeDia X) →
-    (e.refine p).unboxExcept q X = (e.refine (e.forced.join (Pat.path q))).unboxExcept q X := by
-  induction q with
-  | nil =>
-      intro e p X _ hl
-      rcases e with ⟨_ | ⟨_ | _ | ⟨A, B⟩ | _ | Y⟩⟩ | ⟨a, b⟩
-      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
-      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
-      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
-      · cases p with
-        | stop => simp [leafAt] at hl
-        | split pa pb => simp [refine, leafAt] at hl
-      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
-      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p,
-          refine_nonprod_leaf (fun _ _ h => by cases h) _]
-      · cases p with
-        | stop => simp [leafAt] at hl
-        | split pa pb => simp [refine, leafAt] at hl
-  | cons s q ih =>
-      intro e p X h hl
-      rcases e with ⟨_ | ⟨_ | _ | ⟨A, B⟩ | _ | Y⟩⟩ | ⟨a, b⟩
-      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
-      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
-      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
-      · cases p with
-        | stop => simp [leafAt] at hl
-        | split pa pb =>
-            by_cases hb : (VarType.VTypeProd A B).boxy = true
-            · cases s
-              · simp only [refine, NoBoxProd, leafAt] at h hl
-                simp only [forced, forcedTy, hb, if_true, Pat.path, Pat.join, Pat.join_stop,
-                  refine, unboxExcept]
-                exact congrArg₂ Entry.node (ih _ pa X h.1 hl) (unbox_refine_leaf B pb h.2)
-              · simp only [refine, NoBoxProd, leafAt] at h hl
-                simp only [forced, forcedTy, hb, if_true, Pat.path, Pat.join, Pat.join_stop,
-                  refine, unboxExcept]
-                exact congrArg₂ Entry.node (unbox_refine_leaf A pa h.1) (ih _ pb X h.2 hl)
-            · have hb' : (VarType.VTypeProd A B).boxy = false := by simpa using hb
-              simp only [VarType.boxy, Bool.or_eq_false_iff] at hb'
-              cases s
-              · simp only [refine, NoBoxProd, leafAt] at h hl
-                simp only [forced, forcedTy, hb, Bool.false_eq_true, if_false, Pat.path,
-                  Pat.join, refine, unboxExcept]
-                have hih := ih _ pa X h.1 hl
-                simp only [forced, forcedTy_of_not_boxy hb'.1, Pat.join] at hih
-                exact congrArg₂ Entry.node hih
-                  ((unbox_refine_nonboxy B hb'.2 pb).trans
-                    (unbox_refine_nonboxy B hb'.2 .stop).symm)
-              · simp only [refine, NoBoxProd, leafAt] at h hl
-                simp only [forced, forcedTy, hb, Bool.false_eq_true, if_false, Pat.path,
-                  Pat.join, refine, unboxExcept]
-                have hih := ih _ pb X h.2 hl
-                simp only [forced, forcedTy_of_not_boxy hb'.2, Pat.join] at hih
-                exact congrArg₂ Entry.node
-                  ((unbox_refine_nonboxy A hb'.1 pa).trans
-                    (unbox_refine_nonboxy A hb'.1 .stop).symm)
-                  hih
-      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
-      · rw [refine_nonprod_leaf (fun _ _ h => by cases h) p] at hl; simp [leafAt] at hl
-      · cases p with
-        | stop =>
-            cases s
-            · simp only [refine_stop, NoBoxProd, leafAt] at h hl
-              simp only [forced, Pat.path, Pat.join, Pat.join_stop, refine, unboxExcept]
-              exact congrArg₂ Entry.node (ih a .stop X h.1 hl) (unbox_refine_forced b .stop h.2)
-            · simp only [refine_stop, NoBoxProd, leafAt] at h hl
-              simp only [forced, Pat.path, Pat.join, Pat.join_stop, refine, unboxExcept]
-              exact congrArg₂ Entry.node (unbox_refine_forced a .stop h.1) (ih b .stop X h.2 hl)
-        | split pa pb =>
-            cases s
-            · simp only [refine, NoBoxProd, leafAt] at h hl
-              simp only [forced, Pat.path, Pat.join, Pat.join_stop, refine, unboxExcept]
-              exact congrArg₂ Entry.node (ih a pa X h.1 hl) (unbox_refine_forced b pb h.2)
-            · simp only [refine, NoBoxProd, leafAt] at h hl
-              simp only [forced, Pat.path, Pat.join, Pat.join_stop, refine, unboxExcept]
-              exact congrArg₂ Entry.node (unbox_refine_forced a pa h.1) (ih b pb X h.2 hl)
-
-/-- Re-express an index path of an inner tree outside its modal node: walk the split nodes, and
-    where the path reaches a leaf insert the modal step `s q` (`q` = the node path walked). -/
-def outPath (s : List PStep → Step) : Entry → List Step → List Step
-  | .node a _, .fst :: p => .fst :: a.outPath (fun q => s (.fst :: q)) p
-  | .node _ b, .snd :: p => .snd :: b.outPath (fun q => s (.snd :: q)) p
-  | _, p => s [] :: p
-
-/-! ### Similar entries -/
-
-/-- Two entries that look the same to terms and formulas at one root: they agree on every
-    non-product lookup and on every modal view of the root. -/
-structure Sim (e e' : Entry) : Prop where
-  lookup : ∀ q T, (∀ A B, T ≠ .VTypeProd A B) → (e.lookup q = some T ↔ e'.lookup q = some T)
-  box : (e'.refine e'.forced).unbox = (e.refine e.forced).unbox
-  dia : ∀ q X, e.lookup q = some (.VTypeDia X) →
-    (e'.refine (e'.forced.join (Pat.path q))).unboxExcept q X =
-      (e.refine (e.forced.join (Pat.path q))).unboxExcept q X
-
-theorem Sim.refl (e : Entry) : e.Sim e := ⟨fun _ _ _ => Iff.rfl, rfl, fun _ _ _ => rfl⟩
-
-theorem Sim.symm {e e' : Entry} (h : e.Sim e') : e'.Sim e :=
-  ⟨fun q T hT => (h.lookup q T hT).symm, h.box.symm,
-   fun q X hl => (h.dia q X ((h.lookup q _ (fun _ _ h => by cases h)).mpr hl)).symm⟩
-
-theorem Sim.trans {e e' e'' : Entry} (h : e.Sim e') (h' : e'.Sim e'') : e.Sim e'' :=
-  ⟨fun q T hT => (h.lookup q T hT).trans (h'.lookup q T hT), h'.box.trans h.box,
-   fun q X hl => (h'.dia q X ((h.lookup q _ (fun _ _ h => by cases h)).mp hl)).trans (h.dia q X hl)⟩
-
-/-- ⭐Refining an entry is invisible to terms and formulas. -/
-theorem sim_refine (e : Entry) (p : Pat) : (e.refine p).Sim e := by
-  refine ⟨fun q T hT => lookup_refine_nonprod e p q hT, ?_, ?_⟩
-  · have h := noBoxProd_forced (e.refine p)
-    rw [refine_join] at h ⊢
-    exact (unbox_refine_forced e _ h).symm
-  · intro q X hl
-    have hn : ((e.refine p).refine ((e.refine p).forced.join (Pat.path q))).NoBoxProd := by
-      rw [← refine_join]
-      exact noBoxProd_refine _ _ (noBoxProd_forced _)
-    have hlf := leafAt_refine_forcedPath q (e.refine p) X hl
-    rw [refine_join] at hn hlf ⊢
-    exact (unboxExcept_refine_forced q e _ X hn hlf).symm
-
-end Entry
-
-/-! ## Contexts -/
-
-/-- A context: for each root, its split tree; and the binder depth (the next quantifier slot is
-    `bnd depth`). -/
-@[ext] structure Ctx where
-  tree : Root → Entry
-  depth : ℕ
-
-namespace Ctx
-
-/-- The type of the name `v` as a context ENTRY (a present leaf). -/
-def lookup (Γ : Ctx) (v : VarSymb) : Option VarType := (Γ.tree v.root).leafAt v.path
-
-/-- The type reachable at `v`, possibly through an unsplit product (a leaf elimination). -/
-def refType (Γ : Ctx) (v : VarSymb) : Option VarType := (Γ.tree v.root).lookup v.path
-
-/-- The empty context. -/
-def empty : Ctx := ⟨fun _ => .leaf none, 0⟩
-
-/-- A free name is fresh: nothing of its root is present. -/
-def FreshRoot (Γ : Ctx) (r : Root) : Prop := Γ.tree r = .leaf none
-
-/-- Declare a variable at a fresh ROOT. -/
-def insertRoot (Γ : Ctx) (r : Root) (T : VarType) : Ctx :=
-  { Γ with tree := Function.update Γ.tree r (.leaf (some T)) }
-
-def insertFree (Γ : Ctx) (u : FreeSymb) (T : VarType) : Ctx := Γ.insertRoot (.free u.idx) T
-
-/-- The next quantifier slot. -/
-def nextBnd (Γ : Ctx) : VarSymb := .bnd Γ.depth
-
-/-- Go under a quantifier binder: declare its slot and deepen. -/
-def insertBnd (Γ : Ctx) (T : VarType) : Ctx :=
-  ⟨Function.update Γ.tree (.bnd Γ.depth) (.leaf (some T)), Γ.depth + 1⟩
-
-def unbox (Γ : Ctx) : Ctx := { Γ with tree := fun r => (Γ.tree r).unbox }
-
-def dia (Γ : Ctx) (x : VarSymb) (X : VarType) : Ctx :=
-  { Γ with tree := fun r =>
-      if r = x.root then (Γ.tree r).unboxExcept x.path X else (Γ.tree r).unbox }
-
-def refine (Γ : Ctx) (P : Root → Pat) : Ctx := { Γ with tree := fun r => (Γ.tree r).refine (P r) }
-
-def forced (Γ : Ctx) : Root → Pat := fun r => (Γ.tree r).forced
-
-def pathPat (x : VarSymb) : Root → Pat := fun r => if r = x.root then Pat.path x.path else .stop
-
-def forcedX (Γ : Ctx) (x : VarSymb) : Root → Pat := fun r => (Γ.forced r).join (pathPat x r)
-
-def joinPat (P Q : Root → Pat) : Root → Pat := fun r => (P r).join (Q r)
-
-def NoBoxProd (Γ : Ctx) : Prop := ∀ r, (Γ.tree r).NoBoxProd
-
-/-! ### Context lemmas -/
-
-@[simp] theorem refine_depth (Γ : Ctx) (P : Root → Pat) : (Γ.refine P).depth = Γ.depth := rfl
-@[simp] theorem unbox_depth (Γ : Ctx) : Γ.unbox.depth = Γ.depth := rfl
-@[simp] theorem dia_depth (Γ : Ctx) (x : VarSymb) (X : VarType) : (Γ.dia x X).depth = Γ.depth := rfl
-
-/-- ⭐Splitting never changes the binder depth, so it can never make a slot be reused. -/
-theorem nextBnd_refine (Γ : Ctx) (P : Root → Pat) : (Γ.refine P).nextBnd = Γ.nextBnd := rfl
-
-theorem refine_join (Γ : Ctx) (P Q : Root → Pat) :
-    (Γ.refine P).refine Q = Γ.refine (joinPat P Q) := by
-  ext r
-  · exact Entry.refine_join _ _ _
-  · rfl
-
-theorem noBoxProd_forced (Γ : Ctx) : (Γ.refine Γ.forced).NoBoxProd :=
-  fun r => Entry.noBoxProd_forced (Γ.tree r)
-
-theorem noBoxProd_forcedX (Γ : Ctx) (x : VarSymb) : (Γ.refine (Γ.forcedX x)).NoBoxProd := by
-  intro r
-  change ((Γ.tree r).refine ((Γ.tree r).forced.join (pathPat x r))).NoBoxProd
-  rw [← Entry.refine_join]
-  exact Entry.noBoxProd_refine _ _ (Entry.noBoxProd_forced (Γ.tree r))
-
-theorem unbox_refine_forced {Γ : Ctx} {P : Root → Pat} (h : (Γ.refine P).NoBoxProd) :
-    (Γ.refine P).unbox = (Γ.refine Γ.forced).unbox := by
-  ext r
-  · exact Entry.unbox_refine_forced (Γ.tree r) (P r) (h r)
-  · rfl
-
-theorem refType_refine_nonprod (Γ : Ctx) (P : Root → Pat) (v : VarSymb) {T : VarType}
-    (hT : ∀ A B, T ≠ .VTypeProd A B) : (Γ.refine P).refType v = some T ↔ Γ.refType v = some T :=
-  Entry.lookup_refine_nonprod _ _ _ hT
-
-theorem lookup_forcedX {Γ : Ctx} {x : VarSymb} {X : VarType}
-    (h : Γ.refType x = some (.VTypeDia X)) :
-    (Γ.refine (Γ.forcedX x)).lookup x = some (.VTypeDia X) := by
-  change ((Γ.tree x.root).refine ((Γ.tree x.root).forced.join (pathPat x x.root))).leafAt
-    x.path = _
-  simp only [pathPat, if_true]
-  exact Entry.leafAt_refine_forcedPath _ _ _ h
-
-theorem dia_refine_forced {Γ : Ctx} {P : Root → Pat} {x : VarSymb} {X : VarType}
-    (h : (Γ.refine P).NoBoxProd) (hx : (Γ.refine P).lookup x = some (.VTypeDia X)) :
-    (Γ.refine P).dia x X = (Γ.refine (Γ.forcedX x)).dia x X := by
-  ext r
-  · simp only [dia, refine, forcedX, forced, pathPat]
-    by_cases hr : r = x.root
-    · subst hr
-      simp only [if_true]
-      exact Entry.unboxExcept_refine_forced _ _ _ _ (h _) hx
-    · simp only [hr, if_false, Pat.join_stop]
-      exact Entry.unbox_refine_forced _ _ (h r)
-  · rfl
-
-/-! ### Modal inner contexts
-
-⭐A modal node applies the FORCED split itself: its inner context is computed from the forced
-refinement of the outer one.  So there is never a separate pair-elimination node, and any extra
-splitting outside a modal node is invisible inside it (`boxIn_refine`, `diaIn_refine`). -/
-
-/-- The inner context of a `□`. -/
-def boxIn (Γ : Ctx) : Ctx := (Γ.refine Γ.forced).unbox
-
-/-- The inner context of a `◇_x`. -/
-def diaIn (Γ : Ctx) (x : VarSymb) (X : VarType) : Ctx := (Γ.refine (Γ.forcedX x)).dia x X
-
-theorem boxIn_refine (Γ : Ctx) (P : Root → Pat) : (Γ.refine P).boxIn = Γ.boxIn := by
-  unfold boxIn
-  have h := noBoxProd_forced (Γ.refine P)
-  rw [refine_join] at h ⊢
-  exact unbox_refine_forced h
-
-theorem diaIn_refine (Γ : Ctx) (P : Root → Pat) {x : VarSymb} {X : VarType}
-    (hx : Γ.refType x = some (.VTypeDia X)) : (Γ.refine P).diaIn x X = Γ.diaIn x X := by
-  unfold diaIn
-  have hx' : (Γ.refine P).refType x = some (.VTypeDia X) :=
-    (refType_refine_nonprod Γ P x (fun _ _ h => by cases h)).mpr hx
-  have h := noBoxProd_forcedX (Γ.refine P) x
-  have hl := lookup_forcedX hx'
-  rw [refine_join] at h hl ⊢
-  exact dia_refine_forced h hl
-
-/-! ### Index out-maps
-
-An index of an inner context is re-expressed outside the modal node by inserting the modal step
-where the index path leaves the INNER split tree, i.e. at its leaf.  The maps read only the inner
-context, so they are unchanged by anything that leaves the inner context unchanged. -/
-
-def outIdx (Δ : Ctx) (s : Root → List PStep → Step) (i : Idx) : Idx :=
-  ⟨i.root, (Δ.tree i.root).outPath (s i.root) i.path⟩
-
-def boxOut (Δ : Ctx) : Idx → Idx := Δ.outIdx (fun _ _ => .box)
-
-/-- Out of `◇_x`: a `◇`-step into the witness leaf, a `□`-step into every other leaf. -/
-def diaOut (Δ : Ctx) (x : VarSymb) : Idx → Idx :=
-  Δ.outIdx (fun r q => if r = x.root ∧ q = x.path then .dia else .box)
-
-/-! ### Similar contexts -/
-
-/-- Two contexts that type the same terms: they agree on the base-typed and `◇`-typed names, and
-    on every modal inner context. -/
-structure Sim (Γ Γ' : Ctx) : Prop where
-  var : ∀ v, Γ.refType v = some .Var → Γ'.refType v = some .Var
-  dia : ∀ x X, Γ.refType x = some (.VTypeDia X) →
-    Γ'.refType x = some (.VTypeDia X) ∧ Γ'.diaIn x X = Γ.diaIn x X
-  box : Γ'.boxIn = Γ.boxIn
-
-theorem Sim.refl (Γ : Ctx) : Γ.Sim Γ := ⟨fun _ h => h, fun _ _ h => ⟨h, rfl⟩, rfl⟩
-
-theorem Sim.trans {Γ Γ' Γ'' : Ctx} (h : Γ.Sim Γ') (h' : Γ'.Sim Γ'') : Γ.Sim Γ'' :=
-  ⟨fun v hv => h'.var v (h.var v hv),
-   fun x X hx =>
-     ⟨(h'.dia x X (h.dia x X hx).1).1, (h'.dia x X (h.dia x X hx).1).2.trans (h.dia x X hx).2⟩,
-   h'.box.trans h.box⟩
-
-/-- Leaving a split. -/
-theorem sim_refine_left (Γ : Ctx) (P : Root → Pat) : (Γ.refine P).Sim Γ :=
-  ⟨fun v hv => (refType_refine_nonprod Γ P v (fun _ _ h => by cases h)).mp hv,
-   fun x X hx => by
-     have hx' := (refType_refine_nonprod Γ P x (fun _ _ h => by cases h)).mp hx
-     exact ⟨hx', (diaIn_refine Γ P hx').symm⟩,
-   (boxIn_refine Γ P).symm⟩
-
-/-- Entering a split. -/
-theorem sim_refine_right (Γ : Ctx) (P : Root → Pat) : Γ.Sim (Γ.refine P) :=
-  ⟨fun v hv => (refType_refine_nonprod Γ P v (fun _ _ h => by cases h)).mpr hv,
-   fun x X hx =>
-     ⟨(refType_refine_nonprod Γ P x (fun _ _ h => by cases h)).mpr hx, diaIn_refine Γ P hx⟩,
-   boxIn_refine Γ P⟩
-
-/-! ### Pointwise similar contexts
-
-`Sim` is what terms need.  Formulas also go under quantifiers, which extend the context at one
-root; `PSim` is the root-by-root version, and such extensions preserve it (`PSim.insertBnd`). -/
-
-structure PSim (Γ Γ' : Ctx) : Prop where
-  depth : Γ'.depth = Γ.depth
-  tree : ∀ r, (Γ.tree r).Sim (Γ'.tree r)
-
-theorem PSim.refl (Γ : Ctx) : Γ.PSim Γ := ⟨rfl, fun _ => Entry.Sim.refl _⟩
-
-theorem PSim.symm {Γ Γ' : Ctx} (h : Γ.PSim Γ') : Γ'.PSim Γ :=
-  ⟨h.depth.symm, fun r => (h.tree r).symm⟩
-
-theorem PSim.trans {Γ Γ' Γ'' : Ctx} (h : Γ.PSim Γ') (h' : Γ'.PSim Γ'') : Γ.PSim Γ'' :=
-  ⟨h'.depth.trans h.depth, fun r => (h.tree r).trans (h'.tree r)⟩
-
-theorem PSim.toSim {Γ Γ' : Ctx} (h : Γ.PSim Γ') : Γ.Sim Γ' := by
-  refine ⟨fun v hv => ((h.tree v.root).lookup v.path .Var (fun _ _ h => by cases h)).mp hv, ?_, ?_⟩
-  · intro x X hx
-    refine ⟨((h.tree x.root).lookup x.path _ (fun _ _ h => by cases h)).mp hx, ?_⟩
-    ext r
-    · simp only [diaIn, dia, refine, forcedX, forced, pathPat]
-      by_cases hr : r = x.root
-      · subst hr
-        simp only [if_true]
-        exact (h.tree x.root).dia x.path X hx
-      · simp only [hr, if_false, Pat.join_stop]
-        exact (h.tree r).box
-    · exact h.depth
-  · ext r
-    · exact (h.tree r).box
-    · exact h.depth
-
-theorem PSim.insertBnd {Γ Γ' : Ctx} (h : Γ.PSim Γ') (T : VarType) :
-    (Γ.insertBnd T).PSim (Γ'.insertBnd T) := by
-  refine ⟨by simp [Ctx.insertBnd, h.depth], fun r => ?_⟩
-  simp only [Ctx.insertBnd, h.depth, Function.update_apply]
-  split_ifs
-  · exact Entry.Sim.refl _
-  · exact h.tree r
-
-theorem psim_refine_left (Γ : Ctx) (P : Root → Pat) : (Γ.refine P).PSim Γ :=
-  ⟨rfl, fun r => Entry.sim_refine (Γ.tree r) (P r)⟩
-
-theorem psim_refine_right (Γ : Ctx) (P : Root → Pat) : Γ.PSim (Γ.refine P) :=
-  (psim_refine_left Γ P).symm
-
-end Ctx
+def Ann.mapIdx (f : VarSymb → VarSymb) : {T : VarType} → Ann T → Ann T
+  | _, .var => .var
+  | _, .one => .one
+  | _, .prod a b => .prod (a.mapIdx f) (b.mapIdx f)
+  | _, .box a => .box (a.mapIdx f)
+  | _, .dia i a => .dia (f i) (a.mapIdx f)
+
+/-- The index at the `◇`-node a path reaches (junk otherwise). -/
+def Ann.idxAt : {T : VarType} → Ann T → List Step → VarSymb
+  | _, .dia i _, [] => i
+  | _, .prod a _, .fst :: p => a.idxAt p
+  | _, .prod _ b, .snd :: p => b.idxAt p
+  | _, .box a, .box :: p => a.idxAt p
+  | _, .dia _ a, .dia :: p => a.idxAt p
+  | _, _, _ => .root (.free 0)
 
 end V12
