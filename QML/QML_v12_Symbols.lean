@@ -312,6 +312,51 @@ theorem SlotsFrom.rootFresh {Γ : Ctx} {d n : ℕ} (h : Γ.SlotsFrom d) (hn : d 
     Γ.RootFresh (.bnd n) :=
   fun v hv => h v n hv hn
 
+/-- The empty context. -/
+def empty : Ctx := fun _ => none
+
+theorem RootFresh.empty (r : Root) : Ctx.empty.RootFresh r := fun _ _ => rfl
+
+theorem RootFresh.boxIn {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) : Γ.boxIn.RootFresh r := by
+  intro v hv
+  match v with
+  | .step u .box =>
+      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = none
+      simp only [ref_none_of_rootFresh h u hv]
+  | .root _ => rfl
+  | .step _ .fst => rfl
+  | .step _ .snd => rfl
+  | .step _ .dia => rfl
+
+theorem RootFresh.diaIn {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) (x : VarSymb) :
+    (Γ.diaIn x).RootFresh r := by
+  intro v hv
+  match v with
+  | .step u .dia =>
+      change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = none
+      split_ifs with hux
+      · rw [← hux]
+        simp only [ref_none_of_rootFresh h u hv]
+      · rfl
+  | .step u .box => exact h.boxIn (.step u .box) hv
+  | .root _ => rfl
+  | .step _ .fst => rfl
+  | .step _ .snd => rfl
+
+/-- No quantifier slot is visible: the contexts proofs live in.  Found by instance search. -/
+class NoSlots (Γ : Ctx) : Prop where
+  slots : Γ.SlotsFrom 0
+
+instance : Ctx.empty.NoSlots := ⟨fun _ _ _ _ => rfl⟩
+
+instance {Γ : Ctx} [h : Γ.NoSlots] {u : ℕ} {T : VarType} : (Γ.insert (.free u) T).NoSlots :=
+  ⟨h.slots.insertFree u T⟩
+
+instance {Γ : Ctx} [h : Γ.NoSlots] : Γ.boxIn.NoSlots := ⟨h.slots.boxIn⟩
+
+instance {Γ : Ctx} [h : Γ.NoSlots] {x : VarSymb} : (Γ.diaIn x).NoSlots := ⟨h.slots.diaIn x⟩
+
 theorem insert_swap_le {Γ : Ctx} {r r' : Root} (hne : r ≠ r') (T T' : VarType) :
     ((Γ.insert r T).insert r' T').Le ((Γ.insert r' T').insert r T) := by
   intro v U hv
