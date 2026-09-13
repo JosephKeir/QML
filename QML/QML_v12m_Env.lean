@@ -43,8 +43,7 @@ def stepObj {w : M.frame.W} {U T : VarType} {s : Step} (hs : s.isProj = true)
   cases U <;> cases s <;> (try cases hs) <;> (try cases h)
   · exact a.1
   · exact a.2
-  · obtain ⟨hT, rfl⟩ := VarType.step_here h
-    exact M.necEval a ⟨w, M.frame.refl hT w⟩
+  · exact (VarType.step_here h).2 ▸ M.necEval a ⟨w, M.frame.refl (VarType.step_here h).1 w⟩
 
 variable {M}
 
