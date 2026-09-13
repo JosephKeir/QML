@@ -1,0 +1,492 @@
+import Mathlib.Tactic
+
+/-!
+# QML v12m — foundations: modal systems, types, addresses, contexts, annotations
+
+The generalised counterpart of `QML_v12_Symbols`, parameterised by a modal system (`ModalSys`,
+a type class, so the parameter is invisible in the notation).  With every flag off it is K.
+
+* **Variable symbols are ADDRESSES**: a root and a path of steps.  Steps are either
+  *projections* (`fst`, `snd`, and under T `here`), which stay at the current level and are always
+  reached from the parent (`Ctx.ref`), or *level steps* (`box`, `dia`), which descend into a
+  modality and must be visible.
+* **Weak T** reads a necessary object at the current world: `u.here : A` for `u : □A`.  It is a
+  projection, so it needs no context entry.  It is a different step from `box`: for `u : □□C`,
+  inside a `□` the address `u.here.box` is `u(w)(v)` while `u.box.here` is `u(v)(v)`.
+* **Collapsing** a level turns a `box` into `here` (`VarSymb.collapse k`: the level step with
+  exactly `k` level steps after it).  It moves syntax from a `□` view to the current level.
+-/
+
+namespace V12M
+
+/-! ## Modal systems -/
+
+/-- The modal principles in force.  K has every flag off. -/
+class ModalSys where
+  /-- Weak T: necessary objects can be read at the current world (`u.here`). -/
+  T : Bool
+
+/-- The system K. -/
+def ModalSys.K : ModalSys := ⟨false⟩
+
+/-! ## Types and steps -/
+
+inductive VarType where
+  | Var
+  | VTypeOne
+  | VTypeProd (A B : VarType)
+  | VTypeBox (A : VarType)
+  | VTypeDia (A : VarType)
+deriving DecidableEq
+
+inductive Step where
+  | fst
+  | snd
+  | box
+  | dia
+  /-- Under T: a necessary object read at the current world. -/
+  | here
+deriving DecidableEq
+
+/-- Projection steps stay at the current level; the others are level steps. -/
+def Step.isProj : Step → Bool
+  | .fst => true
+  | .snd => true
+  | .here => true
+  | _ => false
+
+/-- The number of level steps of a path. -/
+def Step.levels : List Step → ℕ
+  | [] => 0
+  | s :: p => (if s.isProj then 0 else 1) + Step.levels p
+
+/-! ## Addresses -/
+
+inductive Root where
+  | free (n : ℕ)
+  | bnd (n : ℕ)
+deriving DecidableEq
+
+/-- A variable symbol: a root and steps, the innermost step LAST. -/
+inductive VarSymb where
+  | root (r : Root)
+  | step (v : VarSymb) (s : Step)
+deriving DecidableEq
+
+namespace VarSymb
+
+def rt : VarSymb → Root
+  | root r => r
+  | step v _ => v.rt
+
+/-- The steps, root-first. -/
+def path : VarSymb → List Step
+  | root _ => []
+  | step v s => v.path ++ [s]
+
+def ext : VarSymb → List Step → VarSymb
+  | v, [] => v
+  | v, s :: p => ext (.step v s) p
+
+def reroot (r' : Root) : VarSymb → VarSymb
+  | root _ => root r'
+  | step v s => step (v.reroot r') s
+
+/-- The last step is a projection. -/
+def lastProj : VarSymb → Bool
+  | root _ => false
+  | step _ s => s.isProj
+
+/-- Collapse the level step with exactly `k` level steps after it: a `box` becomes `here`.  (On a
+    `dia` this is junk, chosen so that collapses at different levels commute.) -/
+def collapse : ℕ → VarSymb → VarSymb
+  | _, root r => root r
+  | k, step v s =>
+      if s.isProj then step (collapse k v) s
+      else match k with
+        | 0 => step v .here
+        | k + 1 => step (collapse k v) s
+
+theorem ext_rt : ∀ (v : VarSymb) (p : List Step), (v.ext p).rt = v.rt
+  | _, [] => rfl
+  | v, s :: p => ext_rt (.step v s) p
+
+theorem ext_path : ∀ (v : VarSymb) (p : List Step), (v.ext p).path = v.path ++ p
+  | v, [] => by simp [ext]
+  | v, s :: p => by
+      change (ext (.step v s) p).path = _
+      rw [ext_path]
+      simp [path]
+
+theorem reroot_ext (r' : Root) :
+    ∀ (v : VarSymb) (p : List Step), (v.ext p).reroot r' = (v.reroot r').ext p
+  | _, [] => rfl
+  | v, s :: p => reroot_ext r' (.step v s) p
+
+theorem collapse_rt : ∀ (k : ℕ) (v : VarSymb), (v.collapse k).rt = v.rt
+  | _, root _ => rfl
+  | k, step v s => by
+      by_cases hs : s.isProj = true
+      · simp only [collapse, if_pos hs, rt]
+        exact collapse_rt k v
+      · cases k with
+        | zero =>
+            simp only [collapse, if_neg hs]
+            rfl
+        | succ k =>
+            simp only [collapse, if_neg hs, rt]
+            exact collapse_rt k v
+
+/-- Shift the addresses under the slot `bnd d` to the slot `bnd d'`. -/
+def shiftSlot (ι : VarSymb → VarSymb) (d d' : ℕ) : VarSymb → VarSymb :=
+  fun i => if i.rt = .bnd d then i.reroot (.bnd d') else ι i
+
+end VarSymb
+
+/-! ## Contexts: declarations and freshness -/
+
+abbrev Ctx := VarSymb → Option VarType
+
+namespace Ctx
+
+/-- Declare a root. -/
+def insert (Γ : Ctx) (r : Root) (T : VarType) : Ctx :=
+  fun v => if v = .root r then some T else Γ v
+
+def Le (Γ Γ' : Ctx) : Prop := ∀ v T, Γ v = some T → Γ' v = some T
+
+theorem Le.refl (Γ : Ctx) : Γ.Le Γ := fun _ _ h => h
+
+theorem Le.trans {Γ Γ' Γ'' : Ctx} (h₁ : Γ.Le Γ') (h₂ : Γ'.Le Γ'') : Γ.Le Γ'' :=
+  fun v T h => h₂ v T (h₁ v T h)
+
+theorem Le.insert {Γ Γ' : Ctx} (h : Γ.Le Γ') (r : Root) (T : VarType) :
+    (Γ.insert r T).Le (Γ'.insert r T) := by
+  intro v U hv
+  simp only [Ctx.insert] at hv ⊢
+  split_ifs at hv ⊢
+  · exact hv
+  · exact h v U hv
+
+/-- Weakening by a fresh root. -/
+theorem le_insert {Γ : Ctx} {r : Root} (hr : Γ (.root r) = none) (T : VarType) :
+    Γ.Le (Γ.insert r T) := by
+  intro v U hv
+  simp only [Ctx.insert]
+  split_ifs with h
+  · subst h
+    rw [hr] at hv
+    cases hv
+  · exact hv
+
+/-- No slot at or above `d` is visible. -/
+def SlotsFrom (Γ : Ctx) (d : ℕ) : Prop := ∀ v n, v.rt = .bnd n → d ≤ n → Γ v = none
+
+theorem SlotsFrom.root {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) : Γ (.root (.bnd d)) = none :=
+  h _ d rfl le_rfl
+
+theorem SlotsFrom.insert {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (T : VarType) :
+    (Γ.insert (.bnd d) T).SlotsFrom (d + 1) := by
+  intro v n hv hn
+  simp only [Ctx.insert]
+  split_ifs with hvr
+  · subst hvr
+    cases hv
+    omega
+  · exact h v n hv (by omega)
+
+theorem SlotsFrom.insertFree {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (u : ℕ) (T : VarType) :
+    (Γ.insert (.free u) T).SlotsFrom d := by
+  intro v n hv hn
+  simp only [Ctx.insert]
+  split_ifs with hvr
+  · subst hvr
+    cases hv
+  · exact h v n hv hn
+
+/-- Every address with root `r` is hidden. -/
+def RootFresh (Γ : Ctx) (r : Root) : Prop := ∀ v, v.rt = r → Γ v = none
+
+theorem RootFresh.root {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) : Γ (.root r) = none := h _ rfl
+
+theorem RootFresh.insert_ne {Γ : Ctx} {r r' : Root} (h : Γ.RootFresh r) (hne : r' ≠ r)
+    (T : VarType) : (Γ.insert r' T).RootFresh r := by
+  intro v hv
+  simp only [Ctx.insert]
+  split_ifs with hvr
+  · subst hvr
+    exact absurd hv hne
+  · exact h v hv
+
+theorem SlotsFrom.rootFresh {Γ : Ctx} {d n : ℕ} (h : Γ.SlotsFrom d) (hn : d ≤ n) :
+    Γ.RootFresh (.bnd n) :=
+  fun v hv => h v n hv hn
+
+/-- The empty context. -/
+def empty : Ctx := fun _ => none
+
+theorem RootFresh.empty (r : Root) : Ctx.empty.RootFresh r := fun _ _ => rfl
+
+/-- No quantifier slot is visible: the contexts proofs live in.  Found by instance search. -/
+class NoSlots (Γ : Ctx) : Prop where
+  slots : Γ.SlotsFrom 0
+
+instance : Ctx.empty.NoSlots := ⟨fun _ _ _ _ => rfl⟩
+
+instance {Γ : Ctx} [h : Γ.NoSlots] {u : ℕ} {T : VarType} : (Γ.insert (.free u) T).NoSlots :=
+  ⟨h.slots.insertFree u T⟩
+
+theorem insert_swap_le {Γ : Ctx} {r r' : Root} (hne : r ≠ r') (T T' : VarType) :
+    ((Γ.insert r T).insert r' T').Le ((Γ.insert r' T').insert r T) := by
+  intro v U hv
+  simp only [Ctx.insert] at hv ⊢
+  by_cases h₁ : v = .root r' <;> by_cases h₂ : v = .root r <;> simp_all
+
+end Ctx
+
+/-! ## Witness annotations -/
+
+inductive Ann : VarType → Type where
+  | var : Ann .Var
+  | one : Ann .VTypeOne
+  | prod {A B : VarType} (a : Ann A) (b : Ann B) : Ann (.VTypeProd A B)
+  | box {A : VarType} (a : Ann A) : Ann (.VTypeBox A)
+  | dia {A : VarType} (i : VarSymb) (a : Ann A) : Ann (.VTypeDia A)
+deriving DecidableEq
+
+def Ann.mapIdx (f : VarSymb → VarSymb) : {T : VarType} → Ann T → Ann T
+  | _, .var => .var
+  | _, .one => .one
+  | _, .prod a b => .prod (a.mapIdx f) (b.mapIdx f)
+  | _, .box a => .box (a.mapIdx f)
+  | _, .dia i a => .dia (f i) (a.mapIdx f)
+
+/-- Collapse the indices of an annotation found `k` levels below the collapsed one. -/
+def Ann.collapse : ℕ → {T : VarType} → Ann T → Ann T
+  | _, _, .var => .var
+  | _, _, .one => .one
+  | k, _, .prod a b => .prod (a.collapse k) (b.collapse k)
+  | k, _, .box a => .box (a.collapse (k + 1))
+  | k, _, .dia i a => .dia (i.collapse k) (a.collapse (k + 1))
+
+/-- The index at the `◇`-node a path reaches (junk otherwise).  Reading a necessary object at the
+    current world (`here`) collapses the level it would have descended into. -/
+def Ann.idxAt : {T : VarType} → Ann T → List Step → VarSymb
+  | _, .dia i _, [] => i
+  | _, .prod a _, .fst :: p => a.idxAt p
+  | _, .prod _ b, .snd :: p => b.idxAt p
+  | _, .box a, .box :: p => a.idxAt p
+  | _, .box a, .here :: p => (a.idxAt p).collapse (Step.levels p)
+  | _, .dia _ a, .dia :: p => a.idxAt p
+  | _, _, _ => .root (.free 0)
+
+/-! ## The system-dependent part: reaching addresses and modal views -/
+
+variable [ModalSys]
+
+def VarType.step : VarType → Step → Option VarType
+  | .VTypeProd A _, .fst => some A
+  | .VTypeProd _ B, .snd => some B
+  | .VTypeBox A, .box => some A
+  | .VTypeBox A, .here => if ModalSys.T then some A else none
+  | .VTypeDia A, .dia => some A
+  | _, _ => none
+
+theorem VarType.step_here {A T : VarType} (h : (VarType.VTypeBox A).step .here = some T) :
+    ModalSys.T = true ∧ A = T := by
+  simp only [VarType.step] at h
+  split_ifs at h with hT
+  exact ⟨hT, Option.some.inj h⟩
+
+namespace Ctx
+
+/-- The type reachable at an address: projections from the parent, level steps must be visible. -/
+def ref (Γ : Ctx) : VarSymb → Option VarType
+  | .root r => Γ (.root r)
+  | .step v s => if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)
+
+/-- Inside `□`: `v.box : A` exactly when `v : □A` is reachable. -/
+def boxIn (Γ : Ctx) : Ctx := fun v =>
+  match v with
+  | .step u .box =>
+      match Γ.ref u with
+      | some (.VTypeBox A) => some A
+      | _ => none
+  | _ => none
+
+/-- Inside `◇_x`: the `□` view, and `x.dia : X` where `x : ◇X`. -/
+def diaIn (Γ : Ctx) (x : VarSymb) : Ctx := fun v =>
+  match v with
+  | .step u .dia =>
+      if u = x then
+        match Γ.ref x with
+        | some (.VTypeDia X) => some X
+        | _ => none
+      else none
+  | v => Γ.boxIn v
+
+theorem ref_nonproj (Γ : Ctx) : ∀ {v : VarSymb}, v.lastProj = false → Γ.ref v = Γ v
+  | .root _, _ => rfl
+  | .step v s, h => by
+      change (if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = _
+      have hs : s.isProj = false := h
+      rw [if_neg (Bool.eq_false_iff.mp hs)]
+
+theorem ref_step_proj (Γ : Ctx) (v : VarSymb) {s : Step} (hs : s.isProj = true) :
+    Γ.ref (.step v s) = (Γ.ref v).bind (·.step s) := by
+  change (if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = _
+  rw [if_pos hs]
+
+theorem ref_step_nonproj (Γ : Ctx) (v : VarSymb) {s : Step} (hs : ¬ s.isProj = true) :
+    Γ.ref (.step v s) = Γ (.step v s) := by
+  change (if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = _
+  rw [if_neg hs]
+
+theorem ref_none_of_rootFresh {Γ : Ctx} {r : Root} (h : ∀ v, v.rt = r → Γ v = none) :
+    ∀ v, v.rt = r → Γ.ref v = none := by
+  intro v
+  induction v with
+  | root r' => intro hv; exact h _ hv
+  | step v s ih =>
+      intro hv
+      simp only [ref]
+      split_ifs
+      · simp only [ih hv, Option.bind_none]
+      · exact h _ hv
+
+theorem Le.ref {Γ Γ' : Ctx} (h : Γ.Le Γ') :
+    ∀ {v : VarSymb} {T : VarType}, Γ.ref v = some T → Γ'.ref v = some T := by
+  intro v
+  induction v with
+  | root r => intro T hv; exact h _ _ hv
+  | step v s ih =>
+      intro T hv
+      simp only [Ctx.ref] at hv ⊢
+      split_ifs at hv ⊢ with hs
+      · cases hU : Γ.ref v with
+        | none => rw [hU] at hv; cases hv
+        | some U => rw [hU] at hv; rw [ih hU]; exact hv
+      · exact h _ _ hv
+
+theorem Le.boxIn {Γ Γ' : Ctx} (h : Γ.Le Γ') : Γ.boxIn.Le Γ'.boxIn := by
+  intro v T hv
+  match v with
+  | .step u .box =>
+      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
+      change (match Γ'.ref u with | some (.VTypeBox A) => some A | _ => none) = some T
+      cases hu : Γ.ref u with
+      | none => rw [hu] at hv; cases hv
+      | some U => rw [hu] at hv; rw [h.ref hu]; exact hv
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .dia => cases hv
+  | .step _ .here => cases hv
+
+theorem Le.diaIn {Γ Γ' : Ctx} (h : Γ.Le Γ') (x : VarSymb) : (Γ.diaIn x).Le (Γ'.diaIn x) := by
+  intro v T hv
+  match v with
+  | .step u .dia =>
+      change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T at hv
+      change (if u = x then (match Γ'.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T
+      split_ifs at hv ⊢ with hux
+      · cases hx : Γ.ref x with
+        | none => rw [hx] at hv; cases hv
+        | some U => rw [hx] at hv; rw [h.ref hx]; exact hv
+  | .step u .box => exact h.boxIn (.step u .box) T hv
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .here => cases hv
+
+theorem le_boxIn_diaIn (Γ : Ctx) (x : VarSymb) : Γ.boxIn.Le (Γ.diaIn x) := by
+  intro v T hv
+  match v with
+  | .step u .box => exact hv
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .dia => cases hv
+  | .step _ .here => cases hv
+
+theorem SlotsFrom.boxIn {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) : Γ.boxIn.SlotsFrom d := by
+  intro v n hv hn
+  have hfresh : ∀ w, w.rt = .bnd n → Γ w = none := fun w hw => h w n hw hn
+  match v with
+  | .step u .box =>
+      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = none
+      simp only [ref_none_of_rootFresh hfresh u hv]
+  | .root _ => rfl
+  | .step _ .fst => rfl
+  | .step _ .snd => rfl
+  | .step _ .dia => rfl
+  | .step _ .here => rfl
+
+theorem SlotsFrom.diaIn {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (x : VarSymb) :
+    (Γ.diaIn x).SlotsFrom d := by
+  intro v n hv hn
+  have hfresh : ∀ w, w.rt = .bnd n → Γ w = none := fun w hw => h w n hw hn
+  match v with
+  | .step u .dia =>
+      change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = none
+      split_ifs with hux
+      · rw [← hux]
+        simp only [ref_none_of_rootFresh hfresh u hv]
+      · rfl
+  | .step u .box => exact h.boxIn (.step u .box) n hv hn
+  | .root _ => rfl
+  | .step _ .fst => rfl
+  | .step _ .snd => rfl
+  | .step _ .here => rfl
+
+theorem RootFresh.boxIn {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) : Γ.boxIn.RootFresh r := by
+  intro v hv
+  match v with
+  | .step u .box =>
+      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = none
+      simp only [ref_none_of_rootFresh h u hv]
+  | .root _ => rfl
+  | .step _ .fst => rfl
+  | .step _ .snd => rfl
+  | .step _ .dia => rfl
+  | .step _ .here => rfl
+
+theorem RootFresh.diaIn {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) (x : VarSymb) :
+    (Γ.diaIn x).RootFresh r := by
+  intro v hv
+  match v with
+  | .step u .dia =>
+      change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = none
+      split_ifs with hux
+      · rw [← hux]
+        simp only [ref_none_of_rootFresh h u hv]
+      · rfl
+  | .step u .box => exact h.boxIn (.step u .box) hv
+  | .root _ => rfl
+  | .step _ .fst => rfl
+  | .step _ .snd => rfl
+  | .step _ .here => rfl
+
+instance {Γ : Ctx} [h : Γ.NoSlots] : Γ.boxIn.NoSlots := ⟨h.slots.boxIn⟩
+
+instance {Γ : Ctx} [h : Γ.NoSlots] {x : VarSymb} : (Γ.diaIn x).NoSlots := ⟨h.slots.diaIn x⟩
+
+theorem ref_insert_root (Γ : Ctx) (r : Root) (T : VarType) :
+    (Γ.insert r T).ref (.root r) = some T := by
+  simp [Ctx.ref, Ctx.insert]
+
+theorem ref_insert_fst (Γ : Ctx) (r : Root) (A B : VarType) :
+    (Γ.insert r (.VTypeProd A B)).ref (.step (.root r) .fst) = some A := by
+  simp [Ctx.ref, Ctx.insert, Step.isProj, VarType.step]
+
+theorem ref_insert_snd (Γ : Ctx) (r : Root) (A B : VarType) :
+    (Γ.insert r (.VTypeProd A B)).ref (.step (.root r) .snd) = some B := by
+  simp [Ctx.ref, Ctx.insert, Step.isProj, VarType.step]
+
+end Ctx
+
+end V12M
