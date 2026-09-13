@@ -1,7 +1,8 @@
 # QML v12: modal extensions (design)
 
-Status: design pass, 2026-09-13. Nothing here is implemented. Claims marked *(sketch)* come from
-paper arguments that have not been checked in Lean.
+Status: design pass, 2026-09-13. **Weak T is implemented** (soundness and completeness, files
+`QML/QML_v12m_*.lean`, namespace `V12M`); everything else is design. Claims marked *(sketch)* come
+from paper arguments that have not been checked in Lean.
 
 ## 1. Goals and constraints
 
@@ -61,6 +62,20 @@ content of a possible object.
   - Semantics: an `extract` operation on `Nec` with law `extract n = necEval n ⟨w, refl⟩`, and a
     matching `GFunc` constructor for compiled bodies.
   - Rule `T_box`: `□φ ⊢ φ`, with φ over `Γ.boxIn` collapsed onto `Γ` (`WFF.collapse`).
+  - *Implemented.* Soundness via `sat_boxHere` (environments agree across the collapse,
+    `Env.CollapseAgree`). The general Leibniz principle of K (`SubE.EqE`, equalities tracked by
+    membership among hypotheses) is not carried over: a `here` component needs the collapsed
+    equality, which is provable but not a hypothesis. Completeness only needs argument spines
+    (`LeibnizSpine`), and gives Leibniz back.
+  - *Canonical model (implemented).* Proper accessibility `Acc'` additionally requires the
+    successor to be one level deeper, so a world is never its own proper successor. The frame
+    relation is `R w v := Acc' w v ∨ (T ∧ v = w)`; a successor at the same depth is the world itself
+    (`Succ.self`). Raw necessary objects range over all of `R(w)`. `rden (□t)` at a proper
+    successor is `rden t` there, and at `w` itself it is `rden` of `t` collapsed. Collapsing keeps
+    the type, so `rden` recurses on the type. Extents contain only proper successors. `applyG`
+    sends `extract` to collapsing, which commutes with application (`applyG_collapse`). The
+    term truth lemma uses induction on term size. In the `□` truth case, the self-successor goes
+    through `sat_boxHere` and `T_box`; the proper successors go through `exists_box_fail` as in K.
 - **Strong (inward, named): unit `A → ◇A` (`unitT`).**
   - New canonical form of `◇`-terms, `unitT t`, beside `diatm x _ t`. It needs a new annotation
     (`Ann.dia` currently records the witness address).
@@ -199,6 +214,9 @@ Canonical accessibility is the shared redesign.
 - `BoxContents` already quantifies over arbitrary `Ctx.Le` embeddings. So the planned change is to
   replace view equality by view **inclusion** (or a translation), making `w` its own successor
   under T and making successors compose under 4.
+- *For T this was not needed*: the world itself is added to the frame relation beside the proper
+  successors (tagged by depth), and denotations at it are computed by collapsing (§3, T). Whether
+  4 can use the same trick (adding composites of proper successors) is the next question.
 
 ## 7. Implementation plan
 
@@ -220,7 +238,8 @@ Canonical accessibility is the shared redesign.
 1. Strong 4 (lift) without strong 5 — and whether it exists at all.
 2. Weak B without strong B; weak 5 without 4; ◇-BF alone; KB5 weak.
 3. The address-level design of B's singleton addresses and of the round-trip reduction.
-4. How flags are carried in Lean (a structure argument vs a typeclass), and how closure is computed.
+4. How closure of flag sets is computed. (Flags are carried by a typeclass `ModalSys`, with
+   `ModalSys.K` all flags off.)
 5. Later axis: comprehension principles for carriers (modal choice
    `□∃y. φ(y) ⊢ ∃u:□B. □φ(u.box)`, the `◇`-export). They hold in full models only.
 6. Other frame conditions (.2, .3, density, functionality) and GL/Grz are out of scope.
