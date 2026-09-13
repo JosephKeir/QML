@@ -33,6 +33,66 @@ from paper arguments that have not been checked in Lean.
 - **Name it iff it is unique.** An object determined by current-level data (by extensionality,
   `nec_inj`/`pos_inj`) should be a term or an address, not an existential.
 
+## 2a. Witness combinations and components *(sketch)*
+
+**Contraposition pairs the two-operator forms**, so each slogan pair is one principle:
+
+| Axiom | Unwitnessed | Same witness |
+|---|---|---|
+| 4 | `□φ → □□φ` ⟺ `◇◇ψ → ◇ψ` | `□_x`/`◇_x` forms likewise |
+| B | `φ → □◇φ` ⟺ `◇□ψ → ψ` | |
+| 5 | `◇φ → □◇φ` ⟺ `◇□ψ → □ψ` | `◇_x φ → □◇_x φ` ⟺ `◇□_x ψ → □_x ψ` |
+
+For example, "possibly necessary ⇒ necessary" and "possible ⇒ necessarily possible" are the same
+axiom. Neither is easier than the other.
+
+**Decorating the operators does not generate new principles.** Take `◇φ → □◇φ`, whose premise `◇`,
+conclusion `□` and conclusion `◇` can each carry a witness:
+
+| Decoration | Status |
+|---|---|
+| conclusion `□_x` | weaker; follows from the plain form by `□ψ ⊢ □_x ψ` |
+| premise `◇_x` only | follows from the plain form by `◇_x φ ⊢ ◇φ` |
+| plain premise, conclusion `◇_z` | asserts that possible objects exist: a comprehension principle (§8.5), not part of 5 |
+| same witness on both `◇`s | the named inward principle (strong 5) |
+| different witnesses | unrelated, not a principle |
+
+**What matters is where the objects live.** Objects of the outer world pushed inward can be named.
+Objects born at an inner world and pulled outward depend on that world, so they need an
+existential. The existential lives on the "possibly necessary ⇒ necessary" side for 5, even
+though the restriction map itself is a total function. So every axiom has up to three
+**components**:
+
+1. the frame schema (closed formulas);
+2. an inward, named carrier map (a context principle);
+3. an outward, existential carrier map.
+
+| Axiom | Inward, named | Outward, existential |
+|---|---|---|
+| 4 | `Nec(w)→Nec(v)` restriction: `□`-items visible deeper, `□φ ⊢ □□φ` | `Pos(v)→Pos(w)` lift: `◇_x◇_{x.dia}θ ⊢ ∃z:◇A. ◇_z θ(z.dia)` |
+| B | `D(w)→Pos(v)` singletons: `φ(z) ⊢ □◇_{z↑}φ(z↑.dia)` | `Nec(v)→D(w)` value at origin: `◇∃u:□A. □φ(u.box) ⊢ ∃a:A. φ(a)` |
+| 5 | `Pos(w)→Pos(v)`: `◇`-items visible under `□`, `◇_x φ ⊢ □◇_x φ` | `Nec(v)→Nec(w)` restriction: `◇∃c:□B. □χ(c.box) ⊢ ∃c:□B. □χ(c.box)` |
+
+The weak/strong labels of §3 put the `Nec`-side component in *weak* and add the `Pos`-side
+component in *strong*. For 4 the weak component is the named one. For B and 5 it is the existential
+one, so the nesting weak ⊂ strong puts the open part inside strong B and strong 5.
+
+**Components as flags, or bundles.**
+- Semantically the components look independent. For example, 5's `Pos` map does not force euclidean
+  frames or the `Nec` restriction. A flag per component would describe the systems more finely than
+  weak/strong.
+- Completeness may not respect that independence. An outward component needs a link, and every link
+  known so far comes from another component:
+  - weak B's link is strong B's singleton;
+  - weak 5's link is 4's visibility;
+  - strong 4's lift has a link only with strong 5.
+- The frame schema of B and 5 probably also needs the outward component, because the canonical
+  proof carries an inner world's necessities through the outer world.
+- So some components may only be completable in **bundles** (e.g. weak B only together with strong
+  B). Inward-only systems are the tractable kind and may be complete alone.
+- Plan: keep components as separate flags where the syntax allows it. Treat "which flag sets are
+  complete" as a feasibility question beside the closure question of §4, settled case by case.
+
 ## 3. The flags
 
 `R` is the accessibility relation. `Nec`/`Pos` are the carriers, `ext`/`cont` the extent and
@@ -127,8 +187,12 @@ content of a possible object.
 - **Strong (inward, named): `Pos(w) → Pos(v)`.** Context principle: `◇`-items stay visible inside
   `□` (and inside `◇_y`). Rule: `◇_x φ ⊢ □◇_x φ`.
 - **Weak (outward): restriction `Nec(v) → Nec(w)`.** Rule: `◇φ ⊢ □◇φ`; with free `□`-parameters it
-  is only statable when 4's visibility is present. **Open without 4**; with 4 the link is
-  `□(c.box = u.box)`.
+  is only statable when 4's visibility is present. The carrier principle that completeness needs
+  is the existential `◇∃c:□B. □χ(c.box) ⊢ ∃c:□B. □χ(c.box)` (§2a). **Open without 4**; with 4
+  the link is `□(c.box = u.box)`.
+- The two halves are contrapositive-paired with the slogans the other way round from 4 (§2a):
+  "possible ⇒ necessarily possible" with its witness kept is the named half; "possibly necessary ⇒
+  necessary" for objects born inside is the existential half.
 
 ### □-BF and ◇-BF
 Base variables are invisible under `□`, so each Barcan formula pairs a concept quantifier outside
@@ -243,3 +307,6 @@ Canonical accessibility is the shared redesign.
 5. Later axis: comprehension principles for carriers (modal choice
    `□∃y. φ(y) ⊢ ∃u:□B. □φ(u.box)`, the `◇`-export). They hold in full models only.
 6. Other frame conditions (.2, .3, density, functionality) and GL/Grz are out of scope.
+7. Flags per component (§2a) or per weak/strong version? Which components are complete alone, and
+   which only in bundles (e.g. weak B with strong B)? Are inward-only systems (5's `Pos` map
+   without the euclidean schema) complete?
