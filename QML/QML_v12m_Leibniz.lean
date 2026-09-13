@@ -50,6 +50,11 @@ theorem ren_box {Γ : Ctx} {θ : Subst σ Δ} (hid : ∀ v T, Γ.ref v = some T 
             change (θ.at u).unbox = _
             rw [hid u U hu]
             rfl
+    | .step u .keep =>
+        obtain ⟨_, hu, _, rfl⟩ := Ctx.boxIn_keep hv
+        change (θ.at u).keepE = _
+        rw [hid u _ hu]
+        rfl
     | .root _ => cases hv
     | .step _ .fst => cases hv
     | .step _ .snd => cases hv
@@ -78,6 +83,11 @@ theorem ren_dia {Γ : Ctx} {θ : Subst σ Δ} (hid : ∀ v T, Γ.ref v = some T 
             change ((θ.at u).unbox).mono _ = _
             rw [hid u U hu]
             rfl
+    | .step u .keep =>
+        obtain ⟨_, hu, _, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+        change ((θ.at u).keepE).mono _ = _
+        rw [hid u _ hu]
+        rfl
     | .root _ => cases hv
     | .step _ .fst => cases hv
     | .step _ .snd => cases hv

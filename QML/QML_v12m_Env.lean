@@ -11,7 +11,7 @@ at the current world (reflexivity).  Entering a modality moves the environment i
 of the context:
 
 * `Env.boxPush env w'` — at an accessible world `w'`, the content `u.box` of each necessary
-  `u` is its value at `w'`;
+  `u` is its value at `w'`, and under 4 the kept `u.keep` is `u` kept at `w'` (`GFunc.keep`);
 * `Env.diaPush env x hx w'` — at a world `w'` of the extent of the possible object `x`, its
   content `x.dia` is its one object there, and the necessary objects are read at `w'` as for `□`.
 
@@ -64,6 +64,9 @@ def Env.ref {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
 def Env.boxPush {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (w' : M.frame.Acc w) :
     M.Env Γ.boxIn w'.1
   | .step u .box, _, h => M.necEval (env.ref u (Ctx.boxIn_step_box h)) w'
+  | .step u .keep, _, h =>
+      M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) (Ctx.boxIn_keep h).1 (Ctx.boxIn_keep h).2.2)
+        w (env.ref u (Ctx.boxIn_keep h).2.1)) w'
   | .root _, _, h => False.elim (by cases h)
   | .step _ .fst, _, h => False.elim (by cases h)
   | .step _ .snd, _, h => False.elim (by cases h)
@@ -76,6 +79,7 @@ def Env.diaPush {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (x : VarSymb) {X :
     M.Env (Γ.diaIn x) w'.1.1
   | .step _ .dia, _, h => Ctx.diaIn_step_dia hx h ▸ (M.posEval (env.ref x hx)).2 w'
   | .step u .box, T, h => env.boxPush w'.1 (.step u .box) T h
+  | .step u .keep, T, h => env.boxPush w'.1 (.step u .keep) T h
   | .root _, _, h => False.elim (by cases h)
   | .step _ .fst, _, h => False.elim (by cases h)
   | .step _ .snd, _, h => False.elim (by cases h)

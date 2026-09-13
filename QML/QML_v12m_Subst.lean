@@ -1,4 +1,4 @@
-import QML.QML_v12m_Collapse
+import QML.QML_v12m_Shift
 
 /-!
 # QML v12m — substitution
@@ -14,6 +14,8 @@ target: an address (`ren`) or a term (`tm`).  Projection components are reached 
   contributes its body `u` (modal β).
 * Under T, the `here` component of a term entry `□t` is `t` collapsed to the current level
   (`Term.collapse`); its annotation indices collapse accordingly (`Ann.idxAt`).
+* Under 4, the kept component (`keep`) of a term entry `□t` is `□t` with its body shifted one view
+  further in (`Term.shift`), and its annotation shifts accordingly.
 * Under a binder the source slot `bnd d` goes to the target slot `bnd d'`, the other entries are
   weakened, and the address map is re-rooted there.
 
@@ -47,6 +49,14 @@ def proj : SubE σ Δ → Step → SubE σ Δ
 def unbox : SubE σ Δ → SubE σ Δ.boxIn
   | .ren w => .ren (.step w .box)
   | .tm (.boxtm t) => .tm t
+  | _ => .hide
+
+/-- The kept component of a necessary entry, one view further in (under 4). -/
+def keepE : SubE σ Δ → SubE σ Δ.boxIn
+  | .ren w => .ren (.step w .keep)
+  | .tm (.boxtm t) =>
+      if hF : ModalSys.Four = true then .tm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Δ) t))
+      else .hide
   | _ => .hide
 
 def mono {Δ₁ Δ₂ : Ctx} (h : Δ₁.Le Δ₂) : SubE σ Δ₁ → SubE σ Δ₂
@@ -89,6 +99,11 @@ theorem proj_boxtm_here {A : VarType} {a : Ann A} (t : Term σ Δ.boxIn A a)
     (SubE.tm (Term.boxtm t)).proj .here = .tm (Term.collapse (Ctx.collapses_boxIn_self hT Δ) t) :=
   dif_pos hT
 
+theorem keepE_tm {A : VarType} {a : Ann A} (t : Term σ Δ.boxIn A a)
+    (hF : ModalSys.Four = true) :
+    (SubE.tm (Term.boxtm t)).keepE = .tm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Δ) t)) :=
+  dif_pos hF
+
 theorem okRef_proj : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef U → s.isProj = true →
     U.step s = some T → (e.proj s).OkRef T
   | .ren w, U, T, s, he, hs, hst => by
@@ -108,6 +123,7 @@ theorem okRef_proj : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef U 
           rfl
       | box => cases hs
       | dia => cases hs
+      | keep => cases hs
       | here =>
           cases s₀ with
           | boxtm t =>
@@ -130,6 +146,7 @@ theorem idxAlong_proj : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step} (p : Lis
       | snd => cases s₀ <;> rfl
       | box => cases hs
       | dia => cases hs
+      | keep => cases hs
       | here =>
           cases s₀ with
           | boxtm t =>
@@ -160,6 +177,30 @@ theorem idxAlong_unbox : ∀ {e : SubE σ Δ} {A : VarType} (p : List Step),
       subst hU
       cases s
       rfl
+
+theorem okRef_keepE (hF : ModalSys.Four = true) : ∀ {e : SubE σ Δ} {A : VarType},
+    e.OkRef (.VTypeBox A) → e.keepE.OkRef (.VTypeBox A)
+  | .ren _, _, he => Ctx.ref_keep_of hF he
+  | .hide, _, he => False.elim he
+  | .tm (T := U) s, A, he => by
+      have hU : U = .VTypeBox A := he
+      subst hU
+      cases s with
+      | boxtm t =>
+          rw [keepE_tm t hF]
+          rfl
+
+theorem idxAlong_keepE (hF : ModalSys.Four = true) : ∀ {e : SubE σ Δ} {A : VarType}
+    (p : List Step), e.OkRef (.VTypeBox A) → e.keepE.idxAlong p = e.idxAlong (.keep :: p)
+  | .ren _, _, _, _ => rfl
+  | .hide, _, _, he => False.elim he
+  | .tm (T := U) s, A, p, he => by
+      have hU : U = .VTypeBox A := he
+      subst hU
+      cases s with
+      | boxtm t =>
+          rw [keepE_tm t hF]
+          rfl
 
 theorem okRef_mono {Δ₁ Δ₂ : Ctx} (h : Δ₁.Le Δ₂) :
     ∀ {e : SubE σ Δ₁} {T : VarType}, e.OkRef T → (e.mono h).OkRef T
@@ -254,12 +295,14 @@ def Coh (ι : VarSymb → VarSymb) (Γ : Ctx) (θ : Subst σ Δ) : Prop :=
 def box (θ : Subst σ Δ) : Subst σ Δ.boxIn := fun v =>
   match v with
   | .step u .box => (θ.at u).unbox
+  | .step u .keep => (θ.at u).keepE
   | _ => .hide
 
 def dia (θ : Subst σ Δ) (x ιx : VarSymb) : Subst σ (Δ.diaIn ιx) := fun v =>
   match v with
   | .step u .dia => if u = x then (θ.at x).diaBody ιx else .hide
   | .step u .box => (θ.at u).unbox.mono (Ctx.le_boxIn_diaIn Δ ιx)
+  | .step u .keep => (θ.at u).keepE.mono (Ctx.le_boxIn_diaIn Δ ιx)
   | _ => .hide
 
 /-- Under a binder: the source slot goes to the target slot; everything else is weakened. -/
@@ -322,6 +365,9 @@ theorem ok_box {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) : Ok Γ.boxIn θ.b
           rw [hu] at hv
           cases U <;> try cases hv
           exact SubE.okRef_unbox (okRef_at hθ hu)
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      exact SubE.okRef_keepE hF (okRef_at hθ hu)
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -343,6 +389,11 @@ theorem coh_box {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : 
           change ((θ.at u).unbox).idxAlong p = _
           rw [SubE.idxAlong_unbox p (okRef_at hθ hu), hc u _ hu (.box :: p)]
           rfl
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      change ((θ.at u).keepE).idxAlong p = _
+      rw [SubE.idxAlong_keepE hF p (okRef_at hθ hu), hc u _ hu (.keep :: p)]
+      rfl
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -365,6 +416,7 @@ theorem ok_dia {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {x ιx : VarSymb}
         rw [if_pos hux]
         exact SubE.okRef_diaBody (okRef_at hθ hx) hw
   | .step u .box => exact SubE.okRef_mono _ (ok_box hθ (.step u .box) T rfl hv)
+  | .step u .keep => exact SubE.okRef_mono _ (ok_box hθ (.step u .keep) T rfl hv)
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -398,6 +450,11 @@ theorem coh_dia {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : 
           change (((θ.at u).unbox).mono _).idxAlong p = _
           rw [SubE.idxAlong_mono, SubE.idxAlong_unbox p (okRef_at hθ hu), hc u _ hu (.box :: p)]
           rfl
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+      change (((θ.at u).keepE).mono _).idxAlong p = _
+      rw [SubE.idxAlong_mono, SubE.idxAlong_keepE hF p (okRef_at hθ hu), hc u _ hu (.keep :: p)]
+      rfl
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

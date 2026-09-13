@@ -1,4 +1,4 @@
-import QML.QML_v12m_SemCollapse
+import QML.QML_v12m_SemShift
 import QML.QML_v12m_SubstTwice
 
 /-!
@@ -28,6 +28,7 @@ theorem Ctx.noProjLast_boxIn (Γ : Ctx) : Γ.boxIn.NoProjLast := by
   intro v T hv
   match v with
   | .step _ .box => rfl
+  | .step _ .keep => rfl
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -38,6 +39,7 @@ theorem Ctx.noProjLast_diaIn (Γ : Ctx) (x : VarSymb) : (Γ.diaIn x).NoProjLast 
   match v with
   | .step _ .dia => rfl
   | .step _ .box => rfl
+  | .step _ .keep => rfl
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -95,6 +97,7 @@ theorem entryVal_proj {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
           rfl
       | box => cases hs
       | dia => cases hs
+      | keep => cases hs
       | here =>
           cases s₀ with
           | boxtm t =>
@@ -168,6 +171,27 @@ theorem entryVal_unbox {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (w' : M.fra
       | boxtm t => exact (box_beta env t w').symm
   | .hide, _, he => False.elim he
 
+theorem entryVal_keepE {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (w' : M.frame.Acc w)
+    (hF : ModalSys.Four = true) :
+    ∀ {e : SubE σ Δ} {A : VarType} (he : e.OkRef (.VTypeBox A)),
+      entryVal (env.boxPush w') e.keepE (SubE.okRef_keepE hF he) =
+        M.necEval (M.ops.necDup hF (entryVal env e he)) w'
+  | .ren _, _, _ => rfl
+  | .tm (T := U) s, A, he => by
+      have hU : U = .VTypeBox A := he
+      subst hU
+      cases s with
+      | boxtm t =>
+          rw [entryVal_congr _ (SubE.keepE_tm t hF) _ rfl]
+          apply M.nec_inj
+          funext s
+          change M.necEval (interp (env.boxPush w')
+              (Term.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Δ) t))) s =
+            M.necEval (M.necEval (M.ops.necDup hF (interp env (Term.boxtm t))) w') s
+          rw [box_beta, M.necDup_eval, box_beta]
+          exact interp_shift (Env.shiftAgree_twoBox hF env w' s) t
+  | .hide, _, he => False.elim he
+
 theorem substEnv_box {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
     (hnp : Γ.NoProjLast) (env : M.Env Δ w) (w' : M.frame.Acc w) :
     substEnv θ.box (Subst.ok_box hθ) (Ctx.noProjLast_boxIn Γ) (env.boxPush w') =
@@ -178,6 +202,11 @@ theorem substEnv_box {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : Sub
       change entryVal (env.boxPush w') ((θ.at u).unbox) _ =
         M.necEval ((substEnv θ hθ hnp env).ref u (Ctx.boxIn_step_box hv)) w'
       rw [substEnv_ref, entryVal_unbox env w' (Subst.okRef_at hθ (Ctx.boxIn_step_box hv))]
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      change entryVal (env.boxPush w') ((θ.at u).keepE) _ =
+        M.necEval (M.ops.necDup hF ((substEnv θ hθ hnp env).ref u hu)) w'
+      rw [substEnv_ref, entryVal_keepE env w' hF (Subst.okRef_at hθ hu)]
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -204,6 +233,7 @@ theorem Env.box_dia_agree {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {x : Var
   intro v T hv
   match v with
   | .step _ .box => rfl
+  | .step _ .keep => rfl
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -297,6 +327,13 @@ theorem substEnv_dia {Γ Δ : Ctx} {ι : VarSymb → VarSymb} {w : M.frame.W} (�
       rw [entryVal_mono (Env.box_dia_agree env hr₁ w') _
           (SubE.okRef_unbox (Subst.okRef_at hθ (Ctx.boxIn_step_box hv))),
         entryVal_unbox, substEnv_ref]
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+      change entryVal (env.diaPush (ι x) hr₁ w') (((θ.at u).keepE).mono _) _ =
+        M.necEval (M.ops.necDup hF ((substEnv θ hθ hnp env).ref u hu)) w'.1
+      rw [entryVal_mono (Env.box_dia_agree env hr₁ w') _
+          (SubE.okRef_keepE hF (Subst.okRef_at hθ hu)),
+        entryVal_keepE, substEnv_ref]
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

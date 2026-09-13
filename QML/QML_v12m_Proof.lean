@@ -115,6 +115,12 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       {φ : WFF σ Γ.boxIn 0} :
       Proof σ Γ Δ (.box φ) →
       Proof σ Γ Δ (WFF.collapse (Ctx.collapses_boxIn_self hT Γ) Ctx.NoSlots.slots φ)
+  -- Weak 4
+  /-- What is necessary is necessarily necessary: the `□` view shifted one view further in. -/
+  | four_box {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)}
+      {φ : WFF σ Γ.boxIn 0} :
+      Proof σ Γ Δ (.box φ) →
+      Proof σ Γ Δ (.box (.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots φ)))
 
 /-! ## Handling hypotheses -/
 

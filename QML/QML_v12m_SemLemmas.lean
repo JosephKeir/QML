@@ -62,6 +62,13 @@ theorem Env.boxPush_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : 
       change M.necEval (env.ref u (Ctx.boxIn_step_box hv)) w' =
         M.necEval (env'.ref u (h.ref (Ctx.boxIn_step_box hv))) w'
       rw [Env.ref_agree hag u (Ctx.boxIn_step_box hv)]
+  | .step u .keep =>
+      have hk := Ctx.boxIn_keep hv
+      change M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hk.1 hk.2.2) w (env.ref u hk.2.1))
+          w' =
+        M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hk.1 hk.2.2) w
+          (env'.ref u (h.ref hk.2.1))) w'
+      rw [Env.ref_agree hag u hk.2.1]
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -97,6 +104,7 @@ theorem Env.diaPush_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : 
       subst hXT
       exact posEval_snd_congr (Env.ref_agree hag x hr) w₁ hm
   | .step u .box => exact Env.boxPush_agree hag w₁.1 (.step u .box) T hv
+  | .step u .keep => exact Env.boxPush_agree hag w₁.1 (.step u .keep) T hv
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

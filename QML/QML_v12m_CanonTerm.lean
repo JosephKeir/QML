@@ -86,6 +86,8 @@ omit w₀ in
 theorem World.noProjLast (w : World σ N₀) (i : ℕ × ℕ) : (w.L.ctx i).NoProjLast :=
   Ctx.Presented.noProjLast _
 
+variable [ModalSys.NoFour]
+
 /-- ⭐The canonical environment: every visible address denotes its η-expansion. -/
 noncomputable def canonEnv (w : World σ N₀) (i : ℕ × ℕ) : (model w₀).Env (w.L.ctx i) w :=
   fun v T hv => toDom w₀ T w
@@ -126,9 +128,10 @@ theorem canonEnv_ref (w : World σ N₀) (i : ℕ × ℕ) :
                 ((rden_boxtm_self (Ctx.Le.refl _) (Term.eta (.step v .box) _ (Ctx.ref_boxIn_of hU))
                   ⟨w, Or.inr ⟨hT₁, rfl⟩⟩ rfl).trans
                   (rden_sigma _ ((Term.collapse_eta _ _ _ _).trans
-                    (Term.eta_congr (VarSymb.collapse_level_zero rfl) _ _ _)))) _ _
+                    (Term.eta_congr (VarSymb.collapse_level_zero rfl (by decide)) _ _ _)))) _ _
           | box => cases hs
           | dia => cases hs
+          | keep => cases hs
         · rename_i hU
           rw [Ctx.ref_step_proj _ _ hs, hU] at h
           cases h
@@ -156,6 +159,7 @@ theorem boxPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) (w' : Succ w)
         (.boxtm (Term.eta (.step u .box) T _)) w') _ = _
       exact toDom_congr w₀ ((rden_boxtm_acc _ _ w' hd).trans
         (rden_eta_le ((w'.acc hd).boxIn_le i) _ _ _ _ _ _)) _ _
+  | .step _ .keep => exact (ModalSys.NoFour.absurd (Ctx.boxIn_keep hv).1).elim
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -189,6 +193,7 @@ theorem diaPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) {x : VarSymb} {
       exact toDom_congr w₀ (rden_eta_le (extent_le hw i) _ _ _ _ _ _) _ _
   | .step u .box =>
       exact boxPush_agree_canon w₀ w i w'.1 (extent_depth hw) (.step u .box) T hv
+  | .step _ .keep => exact (ModalSys.NoFour.absurd (Ctx.boxIn_keep (Γ := w.L.ctx i) hv).1).elim
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

@@ -44,6 +44,10 @@ theorem sim_box_mono {Γ : Ctx} (θ : Subst σ Δ) (h : Δ.Le Δ') :
       change SubE.Sim T (((θ.at u).unbox).mono h.boxIn) ((θ.mono h).at u).unbox
       rw [at_mono, SubE.unbox_mono]
       exact .refl _
+  | .step u .keep =>
+      change SubE.Sim T (((θ.at u).keepE).mono h.boxIn) ((θ.mono h).at u).keepE
+      rw [at_mono, SubE.keepE_mono]
+      exact .refl _
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -67,6 +71,11 @@ theorem sim_dia_mono {Γ : Ctx} (θ : Subst σ Δ) (h : Δ.Le Δ') (x ιx : VarS
       change SubE.Sim T (SubE.mono (h.diaIn ιx) (((θ.at u).unbox).mono (Ctx.le_boxIn_diaIn Δ ιx)))
         ((((θ.mono h).at u).unbox).mono (Ctx.le_boxIn_diaIn Δ' ιx))
       rw [at_mono, SubE.unbox_mono, SubE.mono_mono, SubE.mono_mono]
+      exact .refl _
+  | .step u .keep =>
+      change SubE.Sim T (SubE.mono (h.diaIn ιx) (((θ.at u).keepE).mono (Ctx.le_boxIn_diaIn Δ ιx)))
+        ((((θ.mono h).at u).keepE).mono (Ctx.le_boxIn_diaIn Δ' ιx))
+      rw [at_mono, SubE.keepE_mono, SubE.mono_mono, SubE.mono_mono]
       exact .refl _
   | .root _ => cases hv
   | .step _ .fst => cases hv

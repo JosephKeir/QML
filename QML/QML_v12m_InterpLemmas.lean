@@ -85,6 +85,9 @@ theorem gatherBox_eval {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (L : Supp �
   | ⟨.step u .box, T, h⟩ :: L', hL => by
       simp only [Supp.gatherBox, GFunc.eval, Env.necBundle]
       rw [refGF_eval, gatherBox_eval env L L']
+  | ⟨.step u .keep, T, h⟩ :: L', hL => by
+      simp only [Supp.gatherBox, GFunc.eval, Env.necBundle]
+      rw [refGF_eval, gatherBox_eval env L L']
   | ⟨.root _, _, h⟩ :: _, _ => by cases h
   | ⟨.step _ .fst, _, h⟩ :: _, _ => by cases h
   | ⟨.step _ .snd, _, h⟩ :: _, _ => by cases h
@@ -94,6 +97,8 @@ theorem necBundle_eval {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (w' : M.fra
     ∀ (L : Supp Δ.boxIn), M.necEval (env.necBundle L) w' = (env.boxPush w').bundle L
   | [] => rfl
   | ⟨.step u .box, T, h⟩ :: L =>
+      (M.necPair_eval _ _ w').trans (Prod.ext rfl (necBundle_eval env w' L))
+  | ⟨.step u .keep, T, h⟩ :: L =>
       (M.necPair_eval _ _ w').trans (Prod.ext rfl (necBundle_eval env w' L))
   | ⟨.root _, _, h⟩ :: _ => by cases h
   | ⟨.step _ .fst, _, h⟩ :: _ => by cases h
@@ -109,6 +114,8 @@ theorem assemble_eval {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {x : VarSymb
         (env.diaPush x hr w').bundle L
   | [] => rfl
   | ⟨.step u .box, T, h⟩ :: L =>
+      Prod.ext rfl (assemble_eval env hr w' L)
+  | ⟨.step u .keep, T, h⟩ :: L =>
       Prod.ext rfl (assemble_eval env hr w' L)
   | ⟨.step u .dia, T, h⟩ :: L => by
       have hXT := Ctx.diaIn_step_dia hr h

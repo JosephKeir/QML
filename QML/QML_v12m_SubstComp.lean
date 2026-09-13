@@ -118,6 +118,47 @@ mutual
     termination_by structural _ _ t => t
 end
 
+/-! ## Shifting commutes with weakening -/
+
+mutual
+  theorem Func.shift_mono {σ : Signature} {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx}
+      (h : Ctx.Shifts k Γ₁ Γ₂) (h' : Ctx.Shifts k Γ₁' Γ₂') (l₁ : Γ₁.Le Γ₁')
+      (l₂ : Γ₂.Le Γ₂') :
+      {n : ℕ} → (f : Func σ Γ₁ n) →
+      Func.shift h' (Func.mono l₁ f) = Func.mono l₂ (Func.shift h f)
+    | _, .F _ => rfl
+    | _, .eval g t => by
+        change Func.eval (Func.shift h' (Func.mono l₁ g)) (Term.shift h' (Term.mono l₁ t)) = _
+        rw [Func.shift_mono h h' l₁ l₂ g, Term.shift_mono h h' l₁ l₂ t]
+        rfl
+    termination_by structural _ f => f
+
+  theorem Term.shift_mono {σ : Signature} {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx}
+      (h : Ctx.Shifts k Γ₁ Γ₂) (h' : Ctx.Shifts k Γ₁' Γ₂') (l₁ : Γ₁.Le Γ₁')
+      (l₂ : Γ₂.Le Γ₂') :
+      {T : VarType} → {a : Ann T} → (t : Term σ Γ₁ T a) →
+      Term.shift h' (Term.mono l₁ t) = Term.mono l₂ (Term.shift h t)
+    | _, _, .var _ _ => rfl
+    | _, _, .func f => by
+        change Term.func (Func.shift h' (Func.mono l₁ f)) = _
+        rw [Func.shift_mono h h' l₁ l₂ f]
+        rfl
+    | _, _, .unit => rfl
+    | _, _, .pair s t => by
+        change Term.pair (Term.shift h' (Term.mono l₁ s)) (Term.shift h' (Term.mono l₁ t)) = _
+        rw [Term.shift_mono h h' l₁ l₂ s, Term.shift_mono h h' l₁ l₂ t]
+        rfl
+    | _, _, .boxtm t => by
+        change Term.boxtm (Term.shift h'.boxIn (Term.mono l₁.boxIn t)) = _
+        rw [Term.shift_mono h.boxIn h'.boxIn l₁.boxIn l₂.boxIn t]
+        rfl
+    | _, _, .diatm x _ t => by
+        change Term.diatm _ _ (Term.shift (h'.diaIn x) (Term.mono (l₁.diaIn x) t)) = _
+        rw [Term.shift_mono (h.diaIn x) (h'.diaIn x) (l₁.diaIn x) (l₂.diaIn _) t]
+        rfl
+    termination_by structural _ _ t => t
+end
+
 namespace SubE
 
 variable {σ : Signature}
@@ -154,6 +195,25 @@ theorem unbox_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') :
   | .hide => rfl
   | .ren _ => rfl
   | .tm t => by cases t <;> rfl
+
+theorem keepE_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') :
+    ∀ (e : SubE σ Δ), (e.mono h).keepE = e.keepE.mono h.boxIn
+  | .hide => rfl
+  | .ren _ => rfl
+  | .tm t => by
+      cases t with
+      | boxtm t =>
+          change (SubE.tm (Term.boxtm (Term.mono h.boxIn t))).keepE =
+            ((SubE.tm (Term.boxtm t)).keepE).mono h.boxIn
+          by_cases hF : ModalSys.Four = true
+          · rw [keepE_tm _ hF, keepE_tm _ hF]
+            exact congrArg (fun s => SubE.tm (Term.boxtm s))
+              (Term.shift_mono _ _ h.boxIn h.boxIn.boxIn t)
+          · rw [show (SubE.tm (Term.boxtm (Term.mono h.boxIn t)) : SubE σ Δ').keepE = .hide from
+                dif_neg hF,
+              show (SubE.tm (Term.boxtm t) : SubE σ Δ).keepE = .hide from dif_neg hF]
+            rfl
+      | _ => rfl
 
 theorem diaBody_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') (ιx : VarSymb) :
     ∀ (e : SubE σ Δ), (e.mono h).diaBody ιx = (e.diaBody ιx).mono (h.diaIn ιx)

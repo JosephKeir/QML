@@ -157,6 +157,46 @@ content of a possible object.
   - Context principle: `□`-items stay visible deeper; `Γ.boxIn` also contains `u : □A`.
   - Rule: `□φ ⊢ □□φ`.
   - Semantics: a restriction map with `necEval (restrict n v) s = necEval n s`.
+  - *Implementation design (in progress).*
+    - **Addresses.** A new LEVEL step `keep`, visible in `Γ.boxIn` (and so in `Γ.diaIn x`) when the
+      flag is on: `u.keep : □A` for `u : □A`, the restriction of `u`. At each level an address
+      records whether the object was evaluated (`box`) or kept (`keep`), so addresses are unique:
+      at depth 2, `u.keep.box = u(s)`, `u.box.keep = u(v)|R(s)`, `u.keep.keep = u|R(s)`.
+    - **Rejected: a projection `u.dup : □□A`.** It would need no change to `boxIn`, but it names
+      the same object twice (`u.dup.dup.box = u.dup.box.dup` by coassociativity). Completeness
+      would then need equations between variables.
+    - **Shifting** (`VarSymb.shift k`, the counterpart of `collapse`) inserts `keep` before the
+      level step with exactly `k` level steps after it. It moves syntax one view further in:
+      `Ctx.Shifts 0 Γ.boxIn Γ.boxIn.boxIn` (`u.box ↦ u.keep.box`, `u.keep ↦ u.keep.keep`).
+    - **Rule** `four_box`: `□φ ⊢ □□(shift φ)`.
+    - **Semantics.** `□` becomes a comonad: T is the counit (`extract`), 4 the comultiplication
+      (`GFunc.dup : □A → □□A`). The law is `necEval (necEval (dup n) v) s = necEval n s` (by
+      transitivity), and `boxPush` reads `u.keep` at `v` as `necEval (dup u) v`. Soundness goes
+      through a `ShiftAgree` analogue of `CollapseAgree`.
+    - **Collapse under T + 4:** `u.keep` collapses to `u`, which removes the step.
+    - **Canonical model (plan).** `R w s` holds for successors at depth difference `n`: `n = 0`
+      under T, `n = 1` proper, `n ≥ 2` chains of proper successors under 4. `rden (□t)` at depth
+      difference `n ≥ 1` is `rden` of `shift^(n-1) t`, since shifting keeps the type. In the truth
+      lemma, far successors are reached by iterating `four_box` and `BoxContents`.
+      - Define the iterated view and shift **inner-first**
+        (`boxIter (m+1) Γ = boxIter m Γ.boxIn`, `shiftIter (m+1) t = shiftIter m (shift t)`). Then
+        the denotation at a far successor is *definitionally* the denotation of `□(shift t)` from
+        the intermediate world, and every proof reduces to one-step lemmas (`shiftAgree_twoBox`)
+        plus induction on the distance.
+    - *Implemented so far.* Syntax (`keep`, `shift`, `Ctx.Shifts`), substitution (`keepE`,
+      `ShiftSubst`: shifting commutes with substitution, collapse and weakening), models
+      (`Frame.trans`, `GFunc.dup`, `necDup_eval`), semantics (`SemShift`), the rule `four_box` and
+      **soundness** for every flag combination. Completeness is currently stated for systems
+      without 4 (a temporary class `ModalSys.NoFour`).
+    - **Finding: T + 4 (S4) breaks address uniqueness.** With both flags, `u.keep.here` (`u` kept
+      at `v`, read at `v`) and `u.box` name the same object, by the comonad law
+      `extract ∘ dup = id`. Collapsing produces such addresses (`p.keep.box ↦ p.keep.here` at
+      level 0). Completeness for S4 therefore needs either
+      1. no `here` directly after `keep`, with collapse sending `p.keep.box ↦ p.box` at level 0
+         (keeps addresses unique; `Ctx.ref` must then look at the parent address); or
+      2. an equational rule `u.keep.here = u.box`.
+
+      Option 1 fits the "unique addresses" design. T alone and 4 alone have no such coincidence.
 - **Strong (outward): lift `Pos(v) → Pos(w)`.**
   - Rule, matching the path condition "for `x : ◇◇A` and `v ∈ ext(x)`, the lift of `cont(x)(v)`
     is in `Pos(w)`": `◇_x ◇_{x.dia} θ ⊢ ∃z:◇A. ◇_z θ(z.dia)`. Sound.

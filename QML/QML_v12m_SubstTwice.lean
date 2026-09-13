@@ -1,4 +1,4 @@
-import QML.QML_v12m_CollapseSubst
+import QML.QML_v12m_ShiftSubst
 
 /-!
 # QML v12m — substituting twice
@@ -23,13 +23,30 @@ theorem SubE.proj_here_eq {σ : Signature} {Δ : Ctx} (hT : ModalSys.T = true) :
       e.proj .here = e.unbox.collapse (Ctx.collapses_boxIn_self hT Δ)
   | .ren w, _, _ => by
       change SubE.ren (.step w .here) = SubE.ren ((VarSymb.step w .box).collapse 0)
-      rw [VarSymb.collapse_level_zero rfl]
+      rw [VarSymb.collapse_level_zero rfl (by decide)]
   | .hide, _, he => False.elim he
   | .tm (T := U) s, A, he => by
       have hU : U = .VTypeBox A := he
       subst hU
       cases s with
       | boxtm t => exact SubE.proj_boxtm_here t hT
+
+/-- Under T and 4, a kept entry collapsed onto the current level is the entry. -/
+theorem SubE.keepE_collapse_self {σ : Signature} {Δ : Ctx} (hT : ModalSys.T = true)
+    (hF : ModalSys.Four = true) :
+    ∀ {e : SubE σ Δ} {A : VarType}, e.OkRef (.VTypeBox A) →
+      e.keepE.collapse (Ctx.collapses_boxIn_self hT Δ) = e
+  | .ren _, _, _ => rfl
+  | .hide, _, he => False.elim he
+  | .tm (T := U) s, A, he => by
+      have hU : U = .VTypeBox A := he
+      subst hU
+      cases s with
+      | boxtm t =>
+          rw [SubE.keepE_tm _ hF]
+          exact SubE.tm_eq_of_sig (sig_boxtm ((Term.collapse_shift_self (m := 0)
+            (Ctx.shifts_boxIn_boxIn hF Δ) (Ctx.collapses_boxIn_self hT Δ).boxIn
+            (Ctx.Le.refl _) t).trans (congrArg (Sigma.mk _) (Term.mono_refl _ t))))
 
 theorem Subst.corr_box_self {σ : Signature} {Γ Δ : Ctx} (hT : ModalSys.T = true)
     {θ : Subst σ Δ} (hθ : Subst.Ok Γ θ) :
@@ -42,6 +59,11 @@ theorem Subst.corr_box_self {σ : Signature} {Γ Δ : Ctx} (hT : ModalSys.T = tr
       change SubE.Sim T (θ.at (.step u .here)) ((θ.at u).unbox.collapse _)
       rw [show θ.at (.step u .here) = (θ.at u).proj .here from if_pos rfl,
         SubE.proj_here_eq hT (Subst.okRef_at hθ hu)]
+      exact .refl _
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      change SubE.Sim (.VTypeBox A) (θ.at u) ((θ.at u).keepE.collapse _)
+      rw [SubE.keepE_collapse_self hT hF (Subst.okRef_at hθ hu)]
       exact .refl _
   | .root _ => cases hv
   | .step _ .fst => cases hv
@@ -114,6 +136,7 @@ theorem proj_comp : ∀ {e : SubE σ Δ₁} {U T : VarType} {s : Step}, e.OkRef 
           rfl
       | box => cases hs
       | dia => cases hs
+      | keep => cases hs
       | here =>
           cases s₀ with
           | boxtm t =>
@@ -137,6 +160,27 @@ theorem unbox_comp : ∀ {e : SubE σ Δ₁} {A : VarType}, e.OkRef (.VTypeBox A
       subst hU
       cases s
       rfl
+
+theorem keepE_comp (hF : ModalSys.Four = true) : ∀ {e : SubE σ Δ₁} {A : VarType},
+    e.OkRef (.VTypeBox A) →
+    (e.comp θ₂ hθ₂ hc₂).keepE = e.keepE.comp θ₂.box (Subst.ok_box hθ₂) (Subst.coh_box hθ₂ hc₂)
+  | .ren _, _, _ => rfl
+  | .hide, _, he => False.elim he
+  | .tm (T := U) s, A, he => by
+      have hU : U = .VTypeBox A := he
+      subst hU
+      cases s with
+      | boxtm t =>
+          change (SubE.tm (Term.boxtm (Term.subst ι₂ θ₂.box (Subst.ok_box hθ₂)
+              (Subst.coh_box hθ₂ hc₂) t))).keepE =
+            ((SubE.tm (Term.boxtm t)).keepE).comp θ₂.box (Subst.ok_box hθ₂)
+              (Subst.coh_box hθ₂ hc₂)
+          rw [keepE_tm _ hF, keepE_tm _ hF]
+          exact tm_eq_of_sig (sig_boxtm (Term.shift_subst (Ctx.shifts_boxIn_boxIn hF Δ₁)
+            (Ctx.shifts_boxIn_boxIn hF Δ₂) θ₂.box (Subst.ok_box hθ₂) (Subst.coh_box hθ₂ hc₂)
+            θ₂.box.box (Subst.ok_box (Subst.ok_box hθ₂))
+            (Subst.coh_box (Subst.ok_box hθ₂) (Subst.coh_box hθ₂ hc₂))
+            (Subst.shiftCorr_box_box hF hθ₂) t))
 
 theorem diaBody_comp {x₁ : VarSymb} (hx₁ : ∃ X, Δ₁.ref x₁ = some (.VTypeDia X))
     (hw : (θ₂.at x₁).idxAlong [] = ι₂ x₁) :
@@ -232,6 +276,7 @@ theorem dia_eq_box_mono (θ₂ : Subst σ Δ₂) (x₁ y : VarSymb) :
   at_eq_mono_of _ fun v T _ hv => by
     match v with
     | .step u .box => rfl
+    | .step u .keep => rfl
     | .root _ => cases hv
     | .step _ .fst => cases hv
     | .step _ .snd => cases hv
@@ -276,6 +321,12 @@ theorem sim_box_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (h�
             (((θ₁.at u).unbox).comp θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂))
           rw [← SubE.unbox_comp θ₂ hθ₂ hc₂ (okRef_at hθ₁ hu), ← at_comp hθ₁ θ₂ hθ₂ hc₂ hu]
           exact (hs u _ hu).unbox
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      change SubE.Sim (.VTypeBox A) (θ₃.at u).keepE
+        (((θ₁.at u).keepE).comp θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂))
+      rw [← SubE.keepE_comp θ₂ hθ₂ hc₂ hF (okRef_at hθ₁ hu), ← at_comp hθ₁ θ₂ hθ₂ hc₂ hu]
+      exact (hs u _ hu).keepE hF
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -326,6 +377,17 @@ theorem sim_dia_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (h�
               (dia_eq_box_mono θ₂ (ι₁ x) (ι₂ (ι₁ x))) (SubE.okRef_unbox (okRef_at hθ₁ hu)),
             ← SubE.unbox_comp θ₂ hθ₂ hc₂ (okRef_at hθ₁ hu), ← at_comp hθ₁ θ₂ hθ₂ hc₂ hu]
           exact (hs u _ hu).unbox.mono _
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+      change SubE.Sim (.VTypeBox A)
+        (((θ₃.at u).keepE).mono (Ctx.le_boxIn_diaIn Δ₂ (ι₂ (ι₁ x))))
+        ((((θ₁.at u).keepE).mono (Ctx.le_boxIn_diaIn Δ₁ (ι₁ x))).comp
+          (θ₂.dia (ι₁ x) (ι₂ (ι₁ x))) (ok_dia hθ₂ hx₁ hw₂) (coh_dia hθ₂ hc₂ hx₁))
+      rw [SubE.comp_mono θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂)
+          (Ctx.le_boxIn_diaIn Δ₁ (ι₁ x)) (Ctx.le_boxIn_diaIn Δ₂ (ι₂ (ι₁ x))) _ _ _
+          (dia_eq_box_mono θ₂ (ι₁ x) (ι₂ (ι₁ x))) (SubE.okRef_keepE hF (okRef_at hθ₁ hu)),
+        ← SubE.keepE_comp θ₂ hθ₂ hc₂ hF (okRef_at hθ₁ hu), ← at_comp hθ₁ θ₂ hθ₂ hc₂ hu]
+      exact ((hs u _ hu).keepE hF).mono _
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

@@ -88,6 +88,95 @@ mutual
     termination_by structural _ _ t => t
 end
 
+/-! ## Collapsing and shifting commute -/
+
+mutual
+  theorem Func.collapse_shift {σ : Signature} {k m : ℕ} {Γ₁ Γ₂ Γ₃ Γ₄ : Ctx}
+      (h₁₂ : Ctx.Shifts m Γ₁ Γ₂) (h₂₃ : Ctx.Collapses (k + 2 + m) Γ₂ Γ₃)
+      (h₁₄ : Ctx.Collapses (k + 1 + m) Γ₁ Γ₄) (h₄₃ : Ctx.Shifts m Γ₄ Γ₃) :
+      {n : ℕ} → (f : Func σ Γ₁ n) →
+      Func.collapse h₂₃ (Func.shift h₁₂ f) = Func.shift h₄₃ (Func.collapse h₁₄ f)
+    | _, .F _ => rfl
+    | _, .eval g t => by
+        change Func.eval (Func.collapse h₂₃ (Func.shift h₁₂ g))
+            (Term.collapse h₂₃ (Term.shift h₁₂ t)) =
+          Func.eval (Func.shift h₄₃ (Func.collapse h₁₄ g))
+            (Term.shift h₄₃ (Term.collapse h₁₄ t))
+        rw [Func.collapse_shift h₁₂ h₂₃ h₁₄ h₄₃ g,
+          eq_of_heq (Sigma.mk.inj (Term.collapse_shift h₁₂ h₂₃ h₁₄ h₄₃ t)).2]
+    termination_by structural _ f => f
+
+  /-- A collapse outside a shift commutes with it. -/
+  theorem Term.collapse_shift {σ : Signature} {k m : ℕ} {Γ₁ Γ₂ Γ₃ Γ₄ : Ctx}
+      (h₁₂ : Ctx.Shifts m Γ₁ Γ₂) (h₂₃ : Ctx.Collapses (k + 2 + m) Γ₂ Γ₃)
+      (h₁₄ : Ctx.Collapses (k + 1 + m) Γ₁ Γ₄) (h₄₃ : Ctx.Shifts m Γ₄ Γ₃) :
+      {T : VarType} → {a : Ann T} → (t : Term σ Γ₁ T a) →
+      (⟨_, Term.collapse h₂₃ (Term.shift h₁₂ t)⟩ : Σ b, Term σ Γ₃ T b) =
+        ⟨_, Term.shift h₄₃ (Term.collapse h₁₄ t)⟩
+    | _, _, .var v _ => sig_var (VarSymb.collapse_shift v k m).symm _ _
+    | _, _, .func f => by
+        change (⟨_, Term.func (Func.collapse h₂₃ (Func.shift h₁₂ f))⟩ :
+            Σ b, Term σ Γ₃ .Var b) = ⟨_, Term.func (Func.shift h₄₃ (Func.collapse h₁₄ f))⟩
+        rw [Func.collapse_shift h₁₂ h₂₃ h₁₄ h₄₃ f]
+    | _, _, .unit => rfl
+    | _, _, .pair s t =>
+        sig_pair (Term.collapse_shift h₁₂ h₂₃ h₁₄ h₄₃ s) (Term.collapse_shift h₁₂ h₂₃ h₁₄ h₄₃ t)
+    | _, _, .boxtm t =>
+        sig_boxtm (Term.collapse_shift (m := m + 1) h₁₂.boxIn h₂₃.boxIn h₁₄.boxIn h₄₃.boxIn t)
+    | _, _, .diatm x hx t => by
+        have key : ∀ (y : VarSymb) (_hy : y = (x.shift m).collapse (k + 2 + m))
+            (P : ∃ X, Γ₃.ref y = some (.VTypeDia X))
+            (h' : Ctx.Shifts (m + 1) (Γ₄.diaIn (x.collapse (k + 1 + m))) (Γ₃.diaIn y)),
+            (⟨_, Term.collapse h₂₃ (Term.shift h₁₂ (Term.diatm x hx t))⟩ :
+              Σ b, Term σ Γ₃ _ b) =
+              ⟨_, Term.diatm y P (Term.shift h' (Term.collapse (h₁₄.diaIn x) t))⟩ := by
+          intro y hy P h'
+          subst hy
+          exact sig_diatm (Term.collapse_shift (m := m + 1) (h₁₂.diaIn x) (h₂₃.diaIn _)
+            (h₁₄.diaIn x) h' t)
+        exact key _ (VarSymb.collapse_shift x k m) _ _
+    termination_by structural _ _ t => t
+end
+
+mutual
+  theorem Func.collapse_shift_self {σ : Signature} {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx}
+      (hs : Ctx.Shifts m Γ₁ Γ₂) (hc : Ctx.Collapses (m + 1) Γ₂ Γ₃) (hle : Γ₁.Le Γ₃) :
+      {n : ℕ} → (f : Func σ Γ₁ n) → Func.collapse hc (Func.shift hs f) = Func.mono hle f
+    | _, .F _ => rfl
+    | _, .eval g t => by
+        change Func.eval (Func.collapse hc (Func.shift hs g))
+            (Term.collapse hc (Term.shift hs t)) = Func.eval (Func.mono hle g) (Term.mono hle t)
+        rw [Func.collapse_shift_self hs hc hle g,
+          eq_of_heq (Sigma.mk.inj (Term.collapse_shift_self hs hc hle t)).2]
+    termination_by structural _ f => f
+
+  /-- Collapsing just outside a shift undoes it. -/
+  theorem Term.collapse_shift_self {σ : Signature} {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx}
+      (hs : Ctx.Shifts m Γ₁ Γ₂) (hc : Ctx.Collapses (m + 1) Γ₂ Γ₃) (hle : Γ₁.Le Γ₃) :
+      {T : VarType} → {a : Ann T} → (t : Term σ Γ₁ T a) →
+      (⟨_, Term.collapse hc (Term.shift hs t)⟩ : Σ b, Term σ Γ₃ T b) = ⟨_, Term.mono hle t⟩
+    | _, _, .var v _ => sig_var (VarSymb.collapse_shift_self v m) _ _
+    | _, _, .func f => by
+        change (⟨_, Term.func (Func.collapse hc (Func.shift hs f))⟩ : Σ b, Term σ Γ₃ .Var b) =
+          ⟨_, Term.func (Func.mono hle f)⟩
+        rw [Func.collapse_shift_self hs hc hle f]
+    | _, _, .unit => rfl
+    | _, _, .pair s t =>
+        sig_pair (Term.collapse_shift_self hs hc hle s) (Term.collapse_shift_self hs hc hle t)
+    | _, _, .boxtm t =>
+        sig_boxtm (Term.collapse_shift_self (m := m + 1) hs.boxIn hc.boxIn hle.boxIn t)
+    | _, _, .diatm x hx t => by
+        have key : ∀ (y : VarSymb) (_hy : y = (x.shift m).collapse (m + 1))
+            (P : ∃ X, Γ₃.ref y = some (.VTypeDia X)) (hle' : (Γ₁.diaIn x).Le (Γ₃.diaIn y)),
+            (⟨_, Term.collapse hc (Term.shift hs (Term.diatm x hx t))⟩ : Σ b, Term σ Γ₃ _ b) =
+              ⟨_, Term.diatm y P (Term.mono hle' t)⟩ := by
+          intro y hy P hle'
+          subst hy
+          exact sig_diatm (Term.collapse_shift_self (m := m + 1) (hs.diaIn x) (hc.diaIn _) hle' t)
+        exact key x (VarSymb.collapse_shift_self x m).symm _ _
+    termination_by structural _ _ t => t
+end
+
 /-! ## Collapsing entries -/
 
 namespace SubE
@@ -150,6 +239,30 @@ theorem unbox_collapse : ∀ {e : SubE σ Δ} {A : VarType}, e.OkRef (.VTypeBox 
       cases s
       rfl
 
+theorem keepE_collapse : ∀ {e : SubE σ Δ} {A : VarType}, e.OkRef (.VTypeBox A) →
+    e.keepE.collapse D.boxIn = (e.collapse D).keepE
+  | .ren w, _, _ => by
+      change SubE.ren ((VarSymb.step w .keep).collapse (k + 1)) =
+        SubE.ren (.step (w.collapse k) .keep)
+      rw [VarSymb.collapse_level_succ rfl]
+  | .hide, _, he => False.elim he
+  | .tm (T := U) s, A, he => by
+      have hU : U = .VTypeBox A := he
+      subst hU
+      cases s with
+      | boxtm t =>
+          change (SubE.tm (Term.boxtm t)).keepE.collapse D.boxIn =
+            (SubE.tm (Term.boxtm (Term.collapse D.boxIn t))).keepE
+          by_cases hF : ModalSys.Four = true
+          · rw [keepE_tm _ hF, keepE_tm _ hF]
+            exact tm_eq_of_sig (sig_boxtm (Term.collapse_shift (k := k) (m := 0)
+              (Ctx.shifts_boxIn_boxIn hF Δ) D.boxIn.boxIn D.boxIn
+              (Ctx.shifts_boxIn_boxIn hF Δ') t))
+          · rw [show (SubE.tm (Term.boxtm t) : SubE σ Δ).keepE = .hide from dif_neg hF,
+              show (SubE.tm (Term.boxtm (Term.collapse D.boxIn t)) : SubE σ Δ').keepE = .hide
+                from dif_neg hF]
+            rfl
+
 /-- The `here` projection of a collapsed entry. -/
 theorem proj_collapse : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef U →
     s.isProj = true → U.step s = some T → (e.proj s).collapse D = (e.collapse D).proj s
@@ -169,6 +282,7 @@ theorem proj_collapse : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef
           rfl
       | box => cases hs
       | dia => cases hs
+      | keep => cases hs
       | here =>
           cases s₀ with
           | boxtm t =>
@@ -280,6 +394,12 @@ theorem corr_box (hθ : Ok Γ θ) (hcr : Corr Γ D θ θ') :
       change SubE.Sim T (θ'.at (u.collapse k)).unbox ((θ.at u).unbox.collapse D.boxIn)
       rw [SubE.unbox_collapse D (okRef_at hθ hu)]
       exact (hcr u _ hu).unbox
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      change SubE.Sim (.VTypeBox A) (θ'.at (u.collapse k)).keepE
+        ((θ.at u).keepE.collapse D.boxIn)
+      rw [SubE.keepE_collapse D (okRef_at hθ hu)]
+      exact (hcr u _ hu).keepE hF
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -314,6 +434,14 @@ theorem corr_dia (hθ : Ok Γ θ) (hcr : Corr Γ D θ θ') {x ιx : VarSymb}
       rw [SubE.collapse_mono D.boxIn (D.diaIn ιx) (Ctx.le_boxIn_diaIn Δ ιx)
           (Ctx.le_boxIn_diaIn Δ' (ιx.collapse k)), SubE.unbox_collapse D (okRef_at hθ hu)]
       exact ((hcr u _ hu).unbox).mono _
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+      change SubE.Sim (.VTypeBox A)
+        ((θ'.at (u.collapse k)).keepE.mono (Ctx.le_boxIn_diaIn Δ' (ιx.collapse k)))
+        ((((θ.at u).keepE).mono (Ctx.le_boxIn_diaIn Δ ιx)).collapse (D.diaIn ιx))
+      rw [SubE.collapse_mono D.boxIn (D.diaIn ιx) (Ctx.le_boxIn_diaIn Δ ιx)
+          (Ctx.le_boxIn_diaIn Δ' (ιx.collapse k)), SubE.keepE_collapse D (okRef_at hθ hu)]
+      exact ((hcr u _ hu).keepE hF).mono _
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

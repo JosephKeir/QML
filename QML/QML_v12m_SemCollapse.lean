@@ -143,6 +143,14 @@ theorem Env.CollapseAgree.boxPush (hag : Env.CollapseAgree h env₁ env₂) (w' 
         (Ctx.ref_boxIn_of (h u _ hu)), Env.ref, dif_neg (by decide : ¬ Step.box.isProj = true)]
       change M.necEval (env₁.ref u hu) w' = M.necEval (env₂.ref (u.collapse k) (h u _ hu)) w'
       rw [hag u _ hu]
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      rw [Env.ref_congr _ (VarSymb.collapse_level_succ (s := .keep) rfl) _
+        (Ctx.ref_keep_of hF (h u _ hu)), Env.ref, dif_neg (by decide : ¬ Step.keep.isProj = true)]
+      change M.necEval (GFunc.eval M.ops (GFunc.dup (σ := σ) hF) w (env₁.ref u hu)) w' =
+        M.necEval (GFunc.eval M.ops (GFunc.dup (σ := σ) hF) w
+          (env₂.ref (u.collapse k) (h u _ hu))) w'
+      rw [hag u _ hu]
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -176,6 +184,15 @@ theorem Env.CollapseAgree.diaPush (hag : Env.CollapseAgree h env₁ env₂) {x :
         dif_neg (by decide : ¬ Step.box.isProj = true)]
       change M.necEval (env₁.ref u hu) w₁.1 =
         M.necEval (env₂.ref (u.collapse k) (h u _ hu)) w₁.1
+      rw [hag u _ hu]
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ₁) hv
+      rw [Env.ref_congr _ (VarSymb.collapse_level_succ (s := .keep) rfl) _
+        ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_keep_of hF (h u _ hu))), Env.ref,
+        dif_neg (by decide : ¬ Step.keep.isProj = true)]
+      change M.necEval (GFunc.eval M.ops (GFunc.dup (σ := σ) hF) w (env₁.ref u hu)) w₁.1 =
+        M.necEval (GFunc.eval M.ops (GFunc.dup (σ := σ) hF) w
+          (env₂.ref (u.collapse k) (h u _ hu))) w₁.1
       rw [hag u _ hu]
   | .root _ => cases hv
   | .step _ .fst => cases hv
@@ -212,7 +229,7 @@ theorem Env.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} (env : M.Env 
   | .step u .box =>
       have hu := Ctx.boxIn_step_box hv
       have hhs : Step.here.isProj = true := rfl
-      rw [Env.ref_congr env (VarSymb.collapse_level_zero (s := .box) rfl) _
+      rw [Env.ref_congr env (VarSymb.collapse_level_zero (s := .box) rfl (by decide)) _
         (Ctx.ref_here_of hT hu), Env.ref, dif_pos hhs]
       split
       · rename_i U hU
@@ -223,6 +240,13 @@ theorem Env.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} (env : M.Env 
         exfalso
         rw [hU] at hu
         cases hu
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      rw [Env.ref_congr env (VarSymb.collapse_keep_zero (v := u)) _ hu]
+      change M.necEval (M.ops.necDup hF (env.ref u hu)) ⟨w, M.frame.refl hT w⟩ = env.ref u hu
+      apply M.nec_inj
+      funext s
+      rw [M.necDup_eval]
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

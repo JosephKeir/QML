@@ -20,6 +20,10 @@ carriers (`Ops`) and their evaluation laws.
 **Weak T.**  Accessibility is reflexive (`Frame.refl`), and a necessary object can be read at the
 current world (`GFunc.extract`, evaluated by `Ops.necExtract`, which is `necEval` at the world
 itself).
+
+**Weak 4.**  Accessibility is transitive (`Frame.trans`), and a necessary object can be kept at an
+accessible world as the necessary object of its values further on (`GFunc.dup`, evaluated by
+`Ops.necDup`): with T, `□` is a comonad.
 -/
 
 namespace V12M
@@ -35,6 +39,8 @@ structure Frame (σ : Signature) where
   R : W → W → Prop
   /-- Under T, accessibility is reflexive. -/
   refl : ModalSys.T = true → ∀ w, R w w
+  /-- Under 4, accessibility is transitive. -/
+  trans : ModalSys.Four = true → ∀ {w v s : W}, R w v → R v s → R w s
   D : W → Type u
   Nec : VarType → W → Type u
   Pos : VarType → W → Type u
@@ -90,6 +96,18 @@ inductive GFunc (σ : Signature) : VarType → VarType → Type where
       GFunc σ (.VTypeProd (.VTypeBox A) (.VTypeDia B)) (.VTypeDia (.VTypeProd A B))
   /-- Under T: a necessary object read at the current world. -/
   | extract {A : VarType} (hT : ModalSys.T = true) : GFunc σ (.VTypeBox A) A
+  /-- Under 4: a necessary object kept at each accessible world. -/
+  | dup {A : VarType} (hF : ModalSys.Four = true) :
+      GFunc σ (.VTypeBox A) (.VTypeBox (.VTypeBox A))
+
+/-- Under 4, keep an object of a necessary type. -/
+def GFunc.keep {σ : Signature} (hF : ModalSys.Four = true) :
+    {T : VarType} → (∃ A, T = .VTypeBox A) → GFunc σ T (.VTypeBox T)
+  | .VTypeBox _, _ => .dup hF
+  | .Var, h => False.elim (h.elim fun _ e => by cases e)
+  | .VTypeOne, h => False.elim (h.elim fun _ e => by cases e)
+  | .VTypeProd _ _, h => False.elim (h.elim fun _ e => by cases e)
+  | .VTypeDia _, h => False.elim (h.elim fun _ e => by cases e)
 
 /-- The lifts of the function algebra to the carriers. -/
 structure Frame.Ops {σ : Signature} (F : Frame.{u} σ) where
@@ -100,6 +118,8 @@ structure Frame.Ops {σ : Signature} (F : Frame.{u} σ) where
   posStrength : {A B : VarType} → {w : F.W} → F.Nec A w → F.Pos B w →
     F.Pos (.VTypeProd A B) w
   necExtract : {A : VarType} → {w : F.W} → ModalSys.T = true → F.Nec A w → F.Dom A w
+  necDup : {A : VarType} → {w : F.W} → ModalSys.Four = true → F.Nec A w →
+    F.Nec (.VTypeBox A) w
 
 /-- Evaluating a definable map at a world. -/
 def GFunc.eval {σ : Signature} {F : Frame.{u} σ} (ops : F.Ops) :
@@ -117,6 +137,7 @@ def GFunc.eval {σ : Signature} {F : Frame.{u} σ} (ops : F.Ops) :
   | _, _, .diaMap f, _, p => ops.posMap f p
   | _, _, .strength _ _, _, p => ops.posStrength p.1 p.2
   | _, _, .extract hT, _, n => ops.necExtract hT n
+  | _, _, .dup hF, _, n => ops.necDup hF n
 
 /-! ## Models -/
 
@@ -143,5 +164,8 @@ structure Model (σ : Signature) where
         ((necEval n w'.1, (posEval p).2 w') : frame.Dom (.VTypeProd A B) w'.1.1)⟩
   necExtract_eval : ∀ {A : VarType} {w : frame.W} (hT : ModalSys.T = true) (n : frame.Nec A w),
     ops.necExtract hT n = necEval n ⟨w, frame.refl hT w⟩
+  necDup_eval : ∀ {A : VarType} {w : frame.W} (hF : ModalSys.Four = true) (n : frame.Nec A w)
+    (v : frame.Acc w) (s : frame.Acc v.1),
+    necEval (necEval (ops.necDup hF n) v) s = necEval n ⟨s.1, frame.trans hF v.2 s.2⟩
 
 end V12M

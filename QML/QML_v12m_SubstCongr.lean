@@ -157,7 +157,38 @@ theorem SubE.proj_here_eta {σ : Signature} {Δ : Ctx} (hT : ModalSys.T = true) 
     .here = _
   rw [SubE.proj_boxtm_here _ hT]
   exact SubE.tm_eq_of_sig ((Term.collapse_eta _ _ A _).trans
-    (Term.eta_congr (VarSymb.collapse_level_zero (s := .box) rfl) A _ _))
+    (Term.eta_congr (VarSymb.collapse_level_zero (s := .box) rfl (by decide)) A _ _))
+
+/-- Shifting an η-expansion expands the shifted address. -/
+theorem Term.shift_eta {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂)
+    (w : VarSymb) (T : VarType) (hw : Γ₁.ref w = some T),
+    (⟨_, Term.shift h (Term.eta (σ := σ) w T hw)⟩ : Σ b, Term σ Γ₂ T b) =
+      ⟨_, Term.eta (w.shift k) T (h w T hw)⟩
+  | _, _, _, _, _, .Var, _ => rfl
+  | _, _, _, _, _, .VTypeOne, _ => rfl
+  | _, _, _, h, w, .VTypeProd A B, hw =>
+      sig_pair
+        ((Term.shift_eta h (.step w .fst) A (Ctx.ref_fst_of hw)).trans
+          (Term.eta_congr (VarSymb.shift_proj (s := .fst) rfl) A _ _))
+        ((Term.shift_eta h (.step w .snd) B (Ctx.ref_snd_of hw)).trans
+          (Term.eta_congr (VarSymb.shift_proj (s := .snd) rfl) B _ _))
+  | _, _, _, h, w, .VTypeBox A, hw =>
+      sig_boxtm ((Term.shift_eta h.boxIn (.step w .box) A (Ctx.ref_boxIn_of hw)).trans
+        (Term.eta_congr (VarSymb.shift_level_succ (s := .box) rfl) A _ _))
+  | _, _, _, h, w, .VTypeDia A, hw =>
+      sig_diatm ((Term.shift_eta (h.diaIn w) (.step w .dia) A (Ctx.ref_diaIn_of hw)).trans
+        (Term.eta_congr (VarSymb.shift_level_succ (s := .dia) rfl) A _ _))
+
+/-- Under 4, the kept component of an η-expanded necessary address. -/
+theorem SubE.keepE_eta {σ : Signature} {Δ : Ctx} (hF : ModalSys.Four = true) {w : VarSymb}
+    {A : VarType} (hw : Δ.ref w = some (.VTypeBox A)) :
+    (SubE.tm (Term.eta (σ := σ) w (.VTypeBox A) hw)).keepE =
+      SubE.tm (Term.eta (.step w .keep) (.VTypeBox A) (Ctx.ref_keep_of hF hw)) := by
+  change (SubE.tm (Term.boxtm (Term.eta (σ := σ) (.step w .box) A (Ctx.ref_boxIn_of hw)))).keepE
+    = _
+  rw [SubE.keepE_tm _ hF]
+  exact SubE.tm_eq_of_sig (sig_boxtm ((Term.shift_eta _ _ A _).trans
+    (Term.eta_congr (VarSymb.shift_level_zero (s := .box) rfl) A _ _)))
 
 /-! ## Entries agreeing up to η -/
 
@@ -177,6 +208,7 @@ theorem Sim.proj_step {U T : VarType} {s : Step} {e e' : SubE σ Δ} (h : Sim U 
   cases s with
   | box => cases hs
   | dia => cases hs
+  | keep => cases hs
   | here =>
       cases U <;> try cases hst
       obtain ⟨hT, hAT⟩ := VarType.step_here hst
@@ -208,6 +240,17 @@ theorem Sim.unbox {A : VarType} {e e' : SubE σ Δ} (h : Sim (.VTypeBox A) e e')
   | refl => exact .refl _
   | eta_ren w h => exact .eta_ren _ (Ctx.ref_boxIn_of h)
   | ren_eta w h => exact .ren_eta _ (Ctx.ref_boxIn_of h)
+
+theorem Sim.keepE (hF : ModalSys.Four = true) {A : VarType} {e e' : SubE σ Δ}
+    (h : Sim (.VTypeBox A) e e') : Sim (.VTypeBox A) e.keepE e'.keepE := by
+  cases h with
+  | refl => exact .refl _
+  | eta_ren w h =>
+      rw [SubE.keepE_eta hF h]
+      exact .eta_ren _ _
+  | ren_eta w h =>
+      rw [SubE.keepE_eta hF h]
+      exact .ren_eta _ _
 
 theorem Sim.mono {Δ' : Ctx} (hle : Δ.Le Δ') {T : VarType} {e e' : SubE σ Δ} (h : Sim T e e') :
     Sim T (e.mono hle) (e'.mono hle) := by
@@ -291,6 +334,9 @@ theorem sim_box {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') : Sim Γ.
           rw [hu] at hv
           cases U <;> try cases hv
           exact (hs u _ hu).unbox
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      exact (hs u _ hu).keepE hF
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -324,6 +370,9 @@ theorem sim_dia {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') {x ιx : 
           rw [hu] at hv
           cases U <;> try cases hv
           exact (hs u _ hu).unbox.mono _
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+      exact ((hs u _ hu).keepE hF).mono _
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

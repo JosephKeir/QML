@@ -8,13 +8,18 @@ a type class, so the parameter is invisible in the notation).  With every flag o
 
 * **Variable symbols are ADDRESSES**: a root and a path of steps.  Steps are either
   *projections* (`fst`, `snd`, and under T `here`), which stay at the current level and are always
-  reached from the parent (`Ctx.ref`), or *level steps* (`box`, `dia`), which descend into a
-  modality and must be visible.
+  reached from the parent (`Ctx.ref`), or *level steps* (`box`, `dia`, and under 4 `keep`), which
+  descend into a modality and must be visible.
 * **Weak T** reads a necessary object at the current world: `u.here : A` for `u : □A`.  It is a
   projection, so it needs no context entry.  It is a different step from `box`: for `u : □□C`,
   inside a `□` the address `u.here.box` is `u(w)(v)` while `u.box.here` is `u(v)(v)`.
 * **Collapsing** a level turns a `box` into `here` (`VarSymb.collapse k`: the level step with
   exactly `k` level steps after it).  It moves syntax from a `□` view to the current level.
+* **Weak 4** keeps a necessary object inside a `□`, restricted to the worlds accessible from there:
+  `u.keep : □A` for `u : □A`.  At each level an address records whether an object was evaluated
+  (`box`) or kept (`keep`), so every object has one address.
+* **Shifting** inserts a `keep` below a level (`VarSymb.shift k`).  It moves syntax from a `□` view
+  one view further in.
 -/
 
 namespace V12M
@@ -25,9 +30,11 @@ namespace V12M
 class ModalSys where
   /-- Weak T: necessary objects can be read at the current world (`u.here`). -/
   T : Bool
+  /-- Weak 4: necessary objects stay visible, restricted, inside `□` (`u.keep`). -/
+  Four : Bool
 
 /-- The system K. -/
-def ModalSys.K : ModalSys := ⟨false⟩
+def ModalSys.K : ModalSys := ⟨false, false⟩
 
 /-! ## Types and steps -/
 
@@ -46,6 +53,8 @@ inductive Step where
   | dia
   /-- Under T: a necessary object read at the current world. -/
   | here
+  /-- Under 4: a necessary object kept, restricted, one level further in. -/
+  | keep
 deriving DecidableEq
 
 /-- Projection steps stay at the current level; the others are level steps. -/
@@ -97,15 +106,26 @@ def lastProj : VarSymb → Bool
   | root _ => false
   | step _ s => s.isProj
 
-/-- Collapse the level step with exactly `k` level steps after it: a `box` becomes `here`.  (On a
+/-- Collapse the level step with exactly `k` level steps after it: a `box` becomes `here`, and a
+    `keep` disappears (a kept object read at the world it was kept from is the object).  (On a
     `dia` this is junk, chosen so that collapses at different levels commute.) -/
 def collapse : ℕ → VarSymb → VarSymb
   | _, root r => root r
   | k, step v s =>
       if s.isProj then step (collapse k v) s
       else match k with
-        | 0 => step v .here
+        | 0 => if s = .keep then v else step v .here
         | k + 1 => step (collapse k v) s
+
+/-- Insert a level below the level step with exactly `k` level steps after it: that step is then
+    reached through a `keep`. -/
+def shift : ℕ → VarSymb → VarSymb
+  | _, root r => root r
+  | k, step v s =>
+      if s.isProj then step (shift k v) s
+      else match k with
+        | 0 => step (step v .keep) s
+        | k + 1 => step (shift k v) s
 
 theorem ext_rt : ∀ (v : VarSymb) (p : List Step), (v.ext p).rt = v.rt
   | _, [] => rfl
@@ -132,10 +152,24 @@ theorem collapse_rt : ∀ (k : ℕ) (v : VarSymb), (v.collapse k).rt = v.rt
       · cases k with
         | zero =>
             simp only [collapse, if_neg hs]
-            rfl
+            split_ifs <;> rfl
         | succ k =>
             simp only [collapse, if_neg hs, rt]
             exact collapse_rt k v
+
+theorem shift_rt : ∀ (k : ℕ) (v : VarSymb), (v.shift k).rt = v.rt
+  | _, root _ => rfl
+  | k, step v s => by
+      by_cases hs : s.isProj = true
+      · simp only [shift, if_pos hs, rt]
+        exact shift_rt k v
+      · cases k with
+        | zero =>
+            simp only [shift, if_neg hs]
+            rfl
+        | succ k =>
+            simp only [shift, if_neg hs, rt]
+            exact shift_rt k v
 
 /-- Shift the addresses under the slot `bnd d` to the slot `bnd d'`. -/
 def shiftSlot (ι : VarSymb → VarSymb) (d d' : ℕ) : VarSymb → VarSymb :=
@@ -269,14 +303,24 @@ def Ann.collapse : ℕ → {T : VarType} → Ann T → Ann T
   | k, _, .box a => .box (a.collapse (k + 1))
   | k, _, .dia i a => .dia (i.collapse k) (a.collapse (k + 1))
 
+/-- Shift the indices of an annotation found `k` levels below the shifted one. -/
+def Ann.shift : ℕ → {T : VarType} → Ann T → Ann T
+  | _, _, .var => .var
+  | _, _, .one => .one
+  | k, _, .prod a b => .prod (a.shift k) (b.shift k)
+  | k, _, .box a => .box (a.shift (k + 1))
+  | k, _, .dia i a => .dia (i.shift k) (a.shift (k + 1))
+
 /-- The index at the `◇`-node a path reaches (junk otherwise).  Reading a necessary object at the
-    current world (`here`) collapses the level it would have descended into. -/
+    current world (`here`) collapses the level it would have descended into; keeping it (`keep`)
+    shifts its body one view further in. -/
 def Ann.idxAt : {T : VarType} → Ann T → List Step → VarSymb
   | _, .dia i _, [] => i
   | _, .prod a _, .fst :: p => a.idxAt p
   | _, .prod _ b, .snd :: p => b.idxAt p
   | _, .box a, .box :: p => a.idxAt p
   | _, .box a, .here :: p => (a.idxAt p).collapse (Step.levels p)
+  | _, .box a, .keep :: p => (Ann.box (a.shift 0)).idxAt p
   | _, .dia _ a, .dia :: p => a.idxAt p
   | _, _, _ => .root (.free 0)
 
@@ -305,13 +349,19 @@ def ref (Γ : Ctx) : VarSymb → Option VarType
   | .root r => Γ (.root r)
   | .step v s => if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)
 
-/-- Inside `□`: `v.box : A` exactly when `v : □A` is reachable. -/
+/-- Inside `□`: `v.box : A` exactly when `v : □A` is reachable, and under 4 also `v.keep : □A`. -/
 def boxIn (Γ : Ctx) : Ctx := fun v =>
   match v with
   | .step u .box =>
       match Γ.ref u with
       | some (.VTypeBox A) => some A
       | _ => none
+  | .step u .keep =>
+      if ModalSys.Four then
+        match Γ.ref u with
+        | some (.VTypeBox A) => some (.VTypeBox A)
+        | _ => none
+      else none
   | _ => none
 
 /-- Inside `◇_x`: the `□` view, and `x.dia : X` where `x : ◇X`. -/
@@ -324,6 +374,35 @@ def diaIn (Γ : Ctx) (x : VarSymb) : Ctx := fun v =>
         | _ => none
       else none
   | v => Γ.boxIn v
+
+theorem boxIn_keep {Γ : Ctx} {u : VarSymb} {T : VarType}
+    (h : Γ.boxIn (.step u .keep) = some T) :
+    ModalSys.Four = true ∧ Γ.ref u = some T ∧ ∃ A, T = .VTypeBox A := by
+  change (if ModalSys.Four = true then
+    (match Γ.ref u with | some (.VTypeBox A) => some (.VTypeBox A) | _ => none) else none) =
+      some T at h
+  split_ifs at h with hF
+  refine ⟨hF, ?_⟩
+  cases hu : Γ.ref u with
+  | none => rw [hu] at h; cases h
+  | some U =>
+      rw [hu] at h
+      cases U <;> first | (cases h; done) | (cases h; exact ⟨rfl, _, rfl⟩)
+
+theorem boxIn_keep_of {Γ : Ctx} {u : VarSymb} {A : VarType} (hF : ModalSys.Four = true)
+    (hu : Γ.ref u = some (.VTypeBox A)) : Γ.boxIn (.step u .keep) = some (.VTypeBox A) := by
+  change (if ModalSys.Four = true then
+    (match Γ.ref u with | some (.VTypeBox B) => some (.VTypeBox B) | _ => none) else none) =
+      some (VarType.VTypeBox A)
+  rw [if_pos hF, hu]
+
+theorem boxIn_keep_none {Γ : Ctx} {u : VarSymb} (hu : Γ.ref u = none) :
+    Γ.boxIn (.step u .keep) = none := by
+  change (if ModalSys.Four = true then
+    (match Γ.ref u with | some (.VTypeBox B) => some (.VTypeBox B) | _ => none) else none) =
+      (none : Option VarType)
+  rw [hu]
+  split_ifs <;> rfl
 
 theorem ref_nonproj (Γ : Ctx) : ∀ {v : VarSymb}, v.lastProj = false → Γ.ref v = Γ v
   | .root _, _ => rfl
@@ -377,6 +456,9 @@ theorem Le.boxIn {Γ Γ' : Ctx} (h : Γ.Le Γ') : Γ.boxIn.Le Γ'.boxIn := by
       cases hu : Γ.ref u with
       | none => rw [hu] at hv; cases hv
       | some U => rw [hu] at hv; rw [h.ref hu]; exact hv
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := boxIn_keep hv
+      exact boxIn_keep_of hF (h.ref hu)
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -396,6 +478,7 @@ theorem Le.diaIn {Γ Γ' : Ctx} (h : Γ.Le Γ') (x : VarSymb) : (Γ.diaIn x).Le 
         | none => rw [hx] at hv; cases hv
         | some U => rw [hx] at hv; rw [h.ref hx]; exact hv
   | .step u .box => exact h.boxIn (.step u .box) T hv
+  | .step u .keep => exact h.boxIn (.step u .keep) T hv
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -405,6 +488,7 @@ theorem le_boxIn_diaIn (Γ : Ctx) (x : VarSymb) : Γ.boxIn.Le (Γ.diaIn x) := by
   intro v T hv
   match v with
   | .step u .box => exact hv
+  | .step u .keep => exact hv
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -418,6 +502,7 @@ theorem SlotsFrom.boxIn {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) : Γ.boxIn.Slo
   | .step u .box =>
       change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = none
       simp only [ref_none_of_rootFresh hfresh u hv]
+  | .step u .keep => exact boxIn_keep_none (ref_none_of_rootFresh hfresh u hv)
   | .root _ => rfl
   | .step _ .fst => rfl
   | .step _ .snd => rfl
@@ -437,6 +522,7 @@ theorem SlotsFrom.diaIn {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (x : VarSymb) 
         simp only [ref_none_of_rootFresh hfresh u hv]
       · rfl
   | .step u .box => exact h.boxIn (.step u .box) n hv hn
+  | .step u .keep => exact h.boxIn (.step u .keep) n hv hn
   | .root _ => rfl
   | .step _ .fst => rfl
   | .step _ .snd => rfl
@@ -448,6 +534,7 @@ theorem RootFresh.boxIn {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) : Γ.boxIn.Ro
   | .step u .box =>
       change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = none
       simp only [ref_none_of_rootFresh h u hv]
+  | .step u .keep => exact boxIn_keep_none (ref_none_of_rootFresh h u hv)
   | .root _ => rfl
   | .step _ .fst => rfl
   | .step _ .snd => rfl
@@ -466,6 +553,7 @@ theorem RootFresh.diaIn {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) (x : VarSymb)
         simp only [ref_none_of_rootFresh h u hv]
       · rfl
   | .step u .box => exact h.boxIn (.step u .box) hv
+  | .step u .keep => exact h.boxIn (.step u .keep) hv
   | .root _ => rfl
   | .step _ .fst => rfl
   | .step _ .snd => rfl

@@ -35,6 +35,14 @@ end Canon
 
 variable [ModalSys]
 
+/-- For now the canonical model covers the systems without weak 4. -/
+class ModalSys.NoFour : Prop where
+  noFour : ModalSys.Four = false
+
+theorem ModalSys.NoFour.absurd [ModalSys.NoFour] (hF : ModalSys.Four = true) : False := by
+  rw [ModalSys.NoFour.noFour] at hF
+  cases hF
+
 theorem CtxExpr.noProjLast : ∀ e : CtxExpr, e.denote.NoProjLast
   | .empty => fun _ _ h => by simp [CtxExpr.denote, Ctx.empty] at h
   | .insertFree e _ T => (CtxExpr.noProjLast e).insert _ T

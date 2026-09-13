@@ -174,6 +174,10 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M w env hnp hΔ
       exact (sat_boxHere hT env Ctx.NoSlots.slots φ).mpr
         (ih M env hnp hΔ ⟨w, M.frame.refl hT w⟩)
+  | @four_box Γ _ hF Δ φ p ih =>
+      intro M w env hnp hΔ v s
+      exact (sat_shift_twoBox hF env Ctx.NoSlots.slots φ v s).mpr
+        (ih M env hnp hΔ ⟨s.1, M.frame.trans hF v.2 s.2⟩)
 
 end Model
 

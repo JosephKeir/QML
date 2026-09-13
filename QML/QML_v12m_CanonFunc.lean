@@ -228,7 +228,8 @@ theorem canonRel_cls {w : World σ N₀} (r : σ.RelSyms) {i : ℕ × ℕ}
 /-! ## Raw evaluation and application -/
 
 /-- ⭐The function algebra on raw objects. -/
-noncomputable def rawEval : {A B : VarType} → GFunc σ A B → (w : World σ N₀) → RDom A w → RDom B w
+noncomputable def rawEval [ModalSys.NoFour] :
+    {A B : VarType} → GFunc σ A B → (w : World σ N₀) → RDom A w → RDom B w
   | _, _, .id _, _, o => o
   | _, _, .comp g f, w, o => rawEval g w (rawEval f w o)
   | _, _, .fst, _, o => o.1
@@ -242,13 +243,15 @@ noncomputable def rawEval : {A B : VarType} → GFunc σ A B → (w : World σ N
   | _, _, .diaMap f, _, o => ⟨o.1, fun w' => rawEval f w'.1.1 (o.2 w')⟩
   | _, _, .strength _ _, _, o => ⟨o.2.1, fun w' => (o.1 w'.1, o.2.2 w')⟩
   | _, _, .extract hT, w, o => o ⟨w, Or.inr ⟨hT, rfl⟩⟩
+  | _, _, .dup hF, _, _ => (ModalSys.NoFour.absurd hF).elim
 
 /-- A base-typed term with its (only possible) annotation. -/
 def varTerm {Γ : Ctx} : (Σ b : Ann .Var, Term σ Γ .Var b) → Term σ Γ .Var .var
   | ⟨.var, t⟩ => t
 
 /-- A definable map applied to a term. -/
-def applyG : {A B : VarType} → GFunc σ A B → {Γ : Ctx} → {a : Ann A} → Term σ Γ A a →
+def applyG [ModalSys.NoFour] :
+    {A B : VarType} → GFunc σ A B → {Γ : Ctx} → {a : Ann A} → Term σ Γ A a →
     Σ b : Ann B, Term σ Γ B b
   | _, _, .id _, _, _, t => ⟨_, t⟩
   | _, _, .comp g f, _, _, t => applyG g (applyG f t).2
@@ -265,6 +268,7 @@ def applyG : {A B : VarType} → GFunc σ A B → {Γ : Ctx} → {a : Ann A} →
   | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c) =>
       ⟨_, .diatm x hx (.pair (Term.mono (Ctx.le_boxIn_diaIn Γ x) b) c)⟩
   | _, _, .extract hT, Γ, _, .boxtm b => ⟨_, Term.collapse (Ctx.collapses_boxIn_self hT Γ) b⟩
+  | _, _, .dup hF, _, _, _ => (ModalSys.NoFour.absurd hF).elim
 
 theorem varTerm_collapse {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Collapses k Γ₁ Γ₂) :
     ∀ p : (Σ b : Ann .Var, Term σ Γ₁ .Var b),
@@ -273,8 +277,9 @@ theorem varTerm_collapse {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Collapses k Γ�
   | ⟨.var, _⟩ => rfl
 
 /-- Applying a definable map commutes with collapsing. -/
-theorem applyG_collapse : ∀ {A B : VarType} (g : GFunc σ A B) {k : ℕ} {Γ₁ Γ₂ : Ctx}
-    (h : Ctx.Collapses k Γ₁ Γ₂) {a : Ann A} (t : Term σ Γ₁ A a),
+theorem applyG_collapse [ModalSys.NoFour] :
+    ∀ {A B : VarType} (g : GFunc σ A B) {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Collapses k Γ₁ Γ₂)
+      {a : Ann A} (t : Term σ Γ₁ A a),
     applyG g (Term.collapse h t) = ⟨(applyG g t).1.collapse k, Term.collapse h (applyG g t).2⟩
   | _, _, .id _, _, _, _, _, _, _ => rfl
   | _, _, .comp g f, _, _, _, h, _, t => by
@@ -321,6 +326,7 @@ theorem applyG_collapse : ∀ {A B : VarType} (g : GFunc σ A B) {k : ℕ} {Γ�
       simp only [applyG, Term.collapse]
       exact Term.collapse_collapse (k := k) (m := 0) h.boxIn (Ctx.collapses_boxIn_self hT Γ₂)
         (Ctx.collapses_boxIn_self hT Γ₁) h b
+  | _, _, .dup hF, _, _, _, _, _, _ => (ModalSys.NoFour.absurd hF).elim
 
 theorem rden_varTerm {Γ : Ctx} (w : World σ N₀) (i : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)) :
     ∀ p : (Σ b : Ann .Var, Term σ Γ .Var b), rden w i e (varTerm p) = rden w i e p.2
@@ -332,8 +338,9 @@ theorem rden_var_mono {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ} (e : Γ.Le
   | .func _ => rfl
 
 /-- ⭐The denotation of an applied map is its raw evaluation. -/
-theorem rden_applyG : ∀ {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} {a : Ann A}
-    (t : Term σ Γ A a) (w : World σ N₀) (i : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)),
+theorem rden_applyG [ModalSys.NoFour] :
+    ∀ {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} {a : Ann A} (t : Term σ Γ A a)
+      (w : World σ N₀) (i : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)),
     rden w i e (applyG g t).2 = rawEval g w (rden w i e t)
   | _, _, .id _, _, _, _, _, _, _ => rfl
   | _, _, .comp g f, _, _, t, w, i, e =>
@@ -375,9 +382,11 @@ theorem rden_applyG : ∀ {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} {a : Ann
         ((rden_mono _ _ _ _ _).trans (rden_boxtm_acc e b w'.1 (extent_depth w'.2)).symm) rfl)
   | _, _, .extract hT, _, _, .boxtm b, w, _, e =>
       (rden_boxtm_self e b ⟨w, Or.inr ⟨hT, rfl⟩⟩ rfl).symm
+  | _, _, .dup hF, _, _, _, _, _, _ => (ModalSys.NoFour.absurd hF).elim
 
 /-- ⭐Definable objects are closed under the function algebra. -/
-theorem definable_rawEval {A B : VarType} (g : GFunc σ A B) {w : World σ N₀} {o : RDom A w}
+theorem definable_rawEval [ModalSys.NoFour] {A B : VarType} (g : GFunc σ A B) {w : World σ N₀}
+    {o : RDom A w}
     (h : Definable A w o) : Definable B w (rawEval g w o) := by
   obtain ⟨i, a, t, rfl⟩ := h
   exact ⟨i, _, (applyG g t).2, rden_applyG g t w i _⟩

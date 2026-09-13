@@ -63,6 +63,9 @@ def Supp.outerBox {Δ : Ctx} : Supp Δ.boxIn → Supp Δ
   | ⟨.step u .box, _, h⟩ :: L =>
       ⟨u.base, (Ctx.baseOf Δ u (Ctx.boxIn_step_box h)).1,
         (Ctx.baseOf Δ u (Ctx.boxIn_step_box h)).2⟩ :: Supp.outerBox L
+  | ⟨.step u .keep, _, h⟩ :: L =>
+      ⟨u.base, (Ctx.baseOf Δ u (Ctx.boxIn_keep h).2.1).1,
+        (Ctx.baseOf Δ u (Ctx.boxIn_keep h).2.1).2⟩ :: Supp.outerBox L
   | ⟨.root _, _, h⟩ :: _ => False.elim (by cases h)
   | ⟨.step _ .fst, _, h⟩ :: _ => False.elim (by cases h)
   | ⟨.step _ .snd, _, h⟩ :: _ => False.elim (by cases h)
@@ -72,6 +75,7 @@ def Supp.outerBox {Δ : Ctx} : Supp Δ.boxIn → Supp Δ
 def Supp.boxPart {Δ : Ctx} {x : VarSymb} : Supp (Δ.diaIn x) → Supp Δ.boxIn
   | [] => []
   | ⟨.step u .box, T, h⟩ :: L => ⟨.step u .box, T, h⟩ :: Supp.boxPart L
+  | ⟨.step u .keep, T, h⟩ :: L => ⟨.step u .keep, T, h⟩ :: Supp.boxPart L
   | ⟨.step _ .dia, _, _⟩ :: L => Supp.boxPart L
   | ⟨.root _, _, h⟩ :: _ => False.elim (by cases h)
   | ⟨.step _ .fst, _, h⟩ :: _ => False.elim (by cases h)
@@ -125,6 +129,11 @@ def Supp.gatherBox {σ : Signature} {Δ : Ctx} (L : Supp Δ) : (L' : Supp Δ.box
       .comp (.boxPair T (Supp.ty L'))
         (.pair (Supp.refGF L u (Ctx.boxIn_step_box h) (hL _ List.mem_cons_self))
           (Supp.gatherBox L L' (fun e he => hL e (List.mem_cons_of_mem _ he))))
+  | ⟨.step u .keep, T, h⟩ :: L', hL =>
+      .comp (.boxPair T (Supp.ty L'))
+        (.pair (.comp (GFunc.keep (Ctx.boxIn_keep h).1 (Ctx.boxIn_keep h).2.2)
+            (Supp.refGF L u (Ctx.boxIn_keep h).2.1 (hL _ List.mem_cons_self)))
+          (Supp.gatherBox L L' (fun e he => hL e (List.mem_cons_of_mem _ he))))
   | ⟨.root _, _, h⟩ :: _, _ => False.elim (by cases h)
   | ⟨.step _ .fst, _, h⟩ :: _, _ => False.elim (by cases h)
   | ⟨.step _ .snd, _, h⟩ :: _, _ => False.elim (by cases h)
@@ -136,6 +145,8 @@ def Supp.assemble {σ : Signature} {Δ : Ctx} {x : VarSymb} {X : VarType}
     (L : Supp (Δ.diaIn x)) → GFunc σ (.VTypeProd (Supp.ty (Supp.boxPart L)) X) (Supp.ty L)
   | [] => .unit _
   | ⟨.step _ .box, _, _⟩ :: L =>
+      .pair (.comp .fst .fst) (.comp (Supp.assemble hx L) (.pair (.comp .snd .fst) .snd))
+  | ⟨.step _ .keep, _, _⟩ :: L =>
       .pair (.comp .fst .fst) (.comp (Supp.assemble hx L) (.pair (.comp .snd .fst) .snd))
   | ⟨.step _ .dia, _, h⟩ :: L =>
       .pair (.comp (GFunc.ofEq (Ctx.diaIn_step_dia hx h)) .snd) (Supp.assemble hx L)
@@ -225,6 +236,11 @@ def Env.necBundle {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
   | [] => M.ops.necUnit
   | ⟨.step u .box, _, h⟩ :: L =>
       M.ops.necPair (env.ref u (Ctx.boxIn_step_box h)) (Env.necBundle env L)
+  | ⟨.step u .keep, _, h⟩ :: L =>
+      M.ops.necPair
+        (GFunc.eval M.ops (GFunc.keep (σ := σ) (Ctx.boxIn_keep h).1 (Ctx.boxIn_keep h).2.2) w
+          (env.ref u (Ctx.boxIn_keep h).2.1))
+        (Env.necBundle env L)
   | ⟨.root _, _, h⟩ :: _ => False.elim (by cases h)
   | ⟨.step _ .fst, _, h⟩ :: _ => False.elim (by cases h)
   | ⟨.step _ .snd, _, h⟩ :: _ => False.elim (by cases h)

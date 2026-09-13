@@ -570,6 +570,15 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
           θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) θ hθ hc hΓ.boxIn hΓ Ctx.NoSlots.slots
           Ctx.NoSlots.slots (Subst.corr_box_self hT hθ) φ)
         (Proof.T_box hT (Proof.subst p θ hθ hc hΓ))
+  | _, _, _, @Proof.four_box _ _ _ _ hF _ φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      Proof.conv
+        (congrArg (fun χ => WFF.box (WFF.box χ))
+          (WFF.shift_subst (Ctx.shifts_boxIn_boxIn hF _) (Ctx.shifts_boxIn_boxIn hF Γ')
+            θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) θ.box.box
+            (Subst.ok_box (Subst.ok_box hθ)) (Subst.coh_box (Subst.ok_box hθ) (Subst.coh_box hθ hc))
+            hΓ.boxIn hΓ.boxIn.boxIn Ctx.NoSlots.slots Ctx.NoSlots.slots
+            (Subst.shiftCorr_box_box hF hθ) φ))
+        (Proof.four_box hF (Proof.subst p θ hθ hc hΓ))
 
 /-- ⭐**Weakening** along any inclusion of contexts, into a presented context. -/
 def Proof.mono {σ : Signature} {Γ Γ' : Ctx} [Γ'.Presented] {Δs : List (WFF σ Γ 0)}
