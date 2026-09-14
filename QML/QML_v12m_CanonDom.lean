@@ -9,11 +9,12 @@ import QML.QML_v12m_CanonWorld
   successor (`□`, the world itself included under T), an extent with a raw object at each of its
   worlds (`◇`).
 * The **denotation** of a term (`rden`): a variable or a function term is its class; `□t` gives at
-  each proper successor the denotation of `t` there, and at the world itself the denotation of `t`
-  collapsed (`rden_boxtm_self`); `◇_x t` has the extent of `x` and at each of its worlds the
-  denotation of `t` there.  Collapsing keeps the type, so this is a recursion on the type.  It does
-  not depend on the stage it is computed at (`rden_congr`) and commutes with weakening
-  (`rden_mono`).
+  a successor `d + 1` levels deeper the denotation there of `t` shifted `d` times
+  (`rden_boxtm_far`; under 4 this is what `□(shift t)` gives from a proper successor on the way,
+  `rden_boxtm_step`), and at the world itself the denotation of `t` collapsed (`rden_boxtm_self`);
+  `◇_x t` has the extent of `x` and at each of its worlds the denotation of `t` there.  Shifting
+  and collapsing keep the type, so this is a recursion on the type.  It does not depend on the
+  stage it is computed at (`rden_congr`) and commutes with weakening (`rden_mono`).
 * **Definable** raw objects are the denotations of terms; they are closed under the components of
   pairs, the values of necessary objects and the contents of possible ones.
 -/
@@ -134,6 +135,36 @@ theorem cls_lift {i j : ℕ × ℕ} (h : i ≤ j) (t : Term σ (w.L.ctx i) .Var 
 
 end World
 
+/-! ## Iterated shifts -/
+
+omit [ModalSys] in
+/-- An annotation shifted `n` times, innermost first. -/
+def _root_.V12M.Ann.shiftIter : ℕ → {A : VarType} → Ann A → Ann A
+  | 0, _, a => a
+  | n + 1, _, a => Ann.shiftIter n (a.shift 0)
+
+/-- A `□` body moved `n` views further in (under 4 when `n ≠ 0`), innermost first. -/
+def _root_.V12M.Term.shiftIter : (n : ℕ) → (n ≠ 0 → ModalSys.Four = true) → {Γ : Ctx} →
+    {A : VarType} → {a : Ann A} → Term σ Γ.boxIn A a →
+    Term σ (Ctx.boxIter (n + 1) Γ) A (Ann.shiftIter n a)
+  | 0, _, _, _, _, t => t
+  | n + 1, hF, Γ, _, _, t =>
+      Term.shiftIter n (fun _ => hF (Nat.succ_ne_zero n)) (Γ := Γ.boxIn)
+        (Term.shift (Ctx.shifts_boxIn_boxIn (hF (Nat.succ_ne_zero n)) Γ) t)
+
+theorem _root_.V12M.Term.shiftIter_mono : ∀ (n : ℕ) (hF : n ≠ 0 → ModalSys.Four = true)
+    {Γ Γ' : Ctx} (h : Γ.Le Γ') {A : VarType} {a : Ann A} (t : Term σ Γ.boxIn A a),
+    Term.shiftIter n hF (Term.mono h.boxIn t) =
+      Term.mono (Ctx.Le.boxIter (n + 1) h) (Term.shiftIter n hF t)
+  | 0, _, _, _, _, _, _, _ => rfl
+  | n + 1, hF, Γ, Γ', h, _, _, t => by
+      have hF' := hF (Nat.succ_ne_zero n)
+      change Term.shiftIter n (fun _ => hF') (Term.shift (Ctx.shifts_boxIn_boxIn hF' Γ')
+        (Term.mono h.boxIn t)) = _
+      rw [Term.shift_mono (Ctx.shifts_boxIn_boxIn hF' Γ) (Ctx.shifts_boxIn_boxIn hF' Γ') h.boxIn
+        h.boxIn.boxIn t]
+      exact Term.shiftIter_mono n (fun _ => hF') h.boxIn _
+
 /-! ## Raw objects -/
 
 /-- Raw objects of a type at a world. -/
@@ -152,27 +183,61 @@ def rden : {A : VarType} → {a : Ann A} → {Γ : Ctx} → (w : World σ N₀) 
   | _, _, _, _, _, _, .unit => PUnit.unit
   | _, _, _, w, i, e, .pair s t => (rden w i e s, rden w i e t)
   | _, _, Γ, w, i, e, .boxtm t => fun w' =>
-      if h : w'.1.depth = w.depth then
-        rden w'.1 i (by rw [(w'.self h).2]; exact e)
-          (Term.collapse (Ctx.collapses_boxIn_self (w'.self h).1 Γ) t)
-      else rden w'.1 (childStage i) (e.boxIn.trans ((w'.acc h).boxIn_le i)) t
+      match hd : w'.1.depth - w.depth with
+      | 0 => rden w'.1 i (by rw [(w'.self hd).2]; exact e)
+          (Term.collapse (Ctx.collapses_boxIn_self (w'.self hd).1 Γ) t)
+      | d + 1 =>
+          rden w'.1 (childIter (d + 1) i) (w'.chainLe hd e) (Term.shiftIter d (w'.four hd) t)
   | _, _, _, w, i, e, .diatm x _ t =>
       ⟨extent w x, fun w' => rden w'.1.1 (childStage i) ((e.diaIn x).trans (extent_le w'.2 i)) t⟩
   termination_by structural A => A
 
 /-- At the world itself, a necessary term denotes its body collapsed. -/
 theorem rden_boxtm_self {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
-    (e : Γ.Le (w.L.ctx i)) (t : Term σ Γ.boxIn A a) (w' : Succ w) (h : w'.1.depth = w.depth) :
+    (e : Γ.Le (w.L.ctx i)) (t : Term σ Γ.boxIn A a) (w' : Succ w)
+    (h : w'.1.depth - w.depth = 0) :
     rden w i e (.boxtm t) w' = rden w'.1 i (by rw [(w'.self h).2]; exact e)
       (Term.collapse (Ctx.collapses_boxIn_self (w'.self h).1 Γ) t) := by
-  simp only [rden, dif_pos h]
+  simp only [rden]
+  split
+  · rfl
+  · omega
+
+/-- At a successor `d + 1` levels deeper, a necessary term denotes its body shifted `d` times. -/
+theorem rden_boxtm_far {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
+    (e : Γ.Le (w.L.ctx i)) (t : Term σ Γ.boxIn A a) (w' : Succ w) {d : ℕ}
+    (h : w'.1.depth - w.depth = d + 1) :
+    rden w i e (.boxtm t) w' =
+      rden w'.1 (childIter (d + 1) i) (w'.chainLe h e) (Term.shiftIter d (w'.four h) t) := by
+  simp only [rden]
+  split
+  · omega
+  · rename_i d' hd'
+    obtain rfl : d' = d := by omega
+    rfl
 
 /-- At a proper successor, a necessary term denotes its body there. -/
 theorem rden_boxtm_acc {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
-    (e : Γ.Le (w.L.ctx i)) (t : Term σ Γ.boxIn A a) (w' : Succ w) (h : w'.1.depth ≠ w.depth) :
+    (e : Γ.Le (w.L.ctx i)) (t : Term σ Γ.boxIn A a) (w' : Succ w)
+    (h : w'.1.depth - w.depth = 1) :
     rden w i e (.boxtm t) w' =
-      rden w'.1 (childStage i) (e.boxIn.trans ((w'.acc h).boxIn_le i)) t := by
-  simp only [rden, dif_neg h]
+      rden w'.1 (childStage i) (e.boxIn.trans ((w'.acc h).boxIn_le i)) t :=
+  rden_boxtm_far e t w' (d := 0) h
+
+/-- Under 4, at a far successor a necessary term denotes what its body shifted denotes from a
+    proper successor on the way. -/
+theorem rden_boxtm_step {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
+    (hF : ModalSys.Four = true) (e : Γ.Le (w.L.ctx i)) (t : Term σ Γ.boxIn A a) (w' : Succ w)
+    {u : World σ N₀} (hu : Acc' w u) (hr : R u w'.1) (hd : w'.1.depth - u.depth ≠ 0) :
+    rden w i e (.boxtm t) w' =
+      rden u (childStage i) (e.boxIn.trans (hu.boxIn_le i))
+        (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) t)) ⟨w'.1, hr⟩ := by
+  obtain ⟨d, hd'⟩ : ∃ d, w'.1.depth - u.depth = d + 1 :=
+    ⟨_, (Nat.succ_pred_eq_of_ne_zero hd).symm⟩
+  have hw : w'.1.depth - w.depth = d + 1 + 1 := by
+    have := hu.1
+    omega
+  exact (rden_boxtm_far e t w' hw).trans (rden_boxtm_far _ _ ⟨w'.1, hr⟩ hd').symm
 
 theorem rden_sigma {A : VarType} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i))
     {p q : Σ b : Ann A, Term σ Γ A b} (h : p = q) : rden w i e p.2 = rden w i e q.2 := by
@@ -193,11 +258,11 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
   | _, _, _, .pair s t, w, i, j, e, e' =>
       Prod.ext (rden_congr s w i j e e') (rden_congr t w i j e e')
   | _, _, _, .boxtm t, w, i, j, e, e' => funext fun w' => by
-      by_cases h : w'.1.depth = w.depth
+      rcases h : w'.1.depth - w.depth with _ | d
       · rw [rden_boxtm_self e t w' h, rden_boxtm_self e' t w' h]
         exact rden_congr _ w'.1 i j _ _
-      · rw [rden_boxtm_acc e t w' h, rden_boxtm_acc e' t w' h]
-        exact rden_congr t w'.1 (childStage i) (childStage j) _ _
+      · rw [rden_boxtm_far e t w' h, rden_boxtm_far e' t w' h]
+        exact rden_congr _ w'.1 _ _ _ _
   | _, _, _, .diatm _ _ t, _, i, j, _, _ =>
       congrArg (Sigma.mk _) (funext fun w' => rden_congr t w'.1.1 (childStage i) (childStage j) _ _)
   termination_by structural A => A
@@ -215,13 +280,14 @@ theorem rden_mono : ∀ {A : VarType} {a : Ann A} {Γ Γ' : Ctx} (h : Γ.Le Γ')
   | _, _, _, _, h, .pair s t, w, i, e => Prod.ext (rden_mono h s w i e) (rden_mono h t w i e)
   | _, _, Γ, Γ', h, .boxtm t, w, i, e => funext fun w' => by
       change rden w i e (.boxtm (Term.mono h.boxIn t)) w' = _
-      by_cases hd : w'.1.depth = w.depth
+      rcases hd : w'.1.depth - w.depth with _ | d
       · rw [rden_boxtm_self e _ w' hd, rden_boxtm_self (h.trans e) t w' hd,
           Term.collapse_mono (Ctx.collapses_boxIn_self (w'.self hd).1 Γ)
             (Ctx.collapses_boxIn_self (w'.self hd).1 Γ') h.boxIn h t]
         exact rden_mono h _ w'.1 i _
-      · rw [rden_boxtm_acc e _ w' hd, rden_boxtm_acc (h.trans e) t w' hd]
-        exact rden_mono h.boxIn t w'.1 (childStage i) _
+      · rw [rden_boxtm_far e _ w' hd, rden_boxtm_far (h.trans e) t w' hd,
+          Term.shiftIter_mono d _ h t]
+        exact rden_mono _ _ w'.1 _ _
   | _, _, _, _, h, .diatm x _ t, _, i, _ =>
       congrArg (Sigma.mk _) (funext fun w' => rden_mono (h.diaIn x) t w'.1.1 (childStage i) _)
   termination_by structural A => A
@@ -280,10 +346,10 @@ theorem definable_box_apply {A : VarType} {w : World σ N₀} {o : RDom (.VTypeB
   obtain ⟨i, a, t, rfl⟩ := h
   cases t with
   | boxtm b =>
-      by_cases hd : w'.1.depth = w.depth
+      rcases hd : w'.1.depth - w.depth with _ | d
       · rw [rden_boxtm_self _ b w' hd]
         exact definable_rden _ _
-      · rw [rden_boxtm_acc _ b w' hd]
+      · rw [rden_boxtm_far _ b w' hd]
         exact definable_rden _ _
 
 theorem definable_dia_apply {A : VarType} {w : World σ N₀} {o : RDom (.VTypeDia A) w}

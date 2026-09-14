@@ -16,7 +16,7 @@ evaluation laws.
 
 namespace V12M
 
-variable [ModalSys] [ModalSys.NoFour]
+variable [ModalSys]
 
 namespace Canon
 
@@ -27,8 +27,8 @@ noncomputable def frame (w₀ : World σ N₀) : Frame.{0} σ where
   W := World σ N₀
   actual := w₀
   R := Canon.R
-  refl := fun hT _ => Or.inr ⟨hT, rfl⟩
-  trans := fun hF => (ModalSys.NoFour.absurd hF).elim
+  refl := fun hT w => R.refl hT w
+  trans := fun hF => R.trans hF
   D w := w.D
   Nec A w := {o : RDom (.VTypeBox A) w // Definable (.VTypeBox A) w o}
   Pos A w := {o : RDom (.VTypeDia A) w // Definable (.VTypeDia A) w o}
@@ -139,7 +139,7 @@ noncomputable def ops : (frame w₀).Ops where
     definable_rawEval (.strength _ _) (definable_pair n.2 p.2)⟩
   necExtract hT n :=
     toDom w₀ _ _ (rawEval (.extract hT) _ n.1) (definable_rawEval (.extract hT) n.2)
-  necDup hF _ := (ModalSys.NoFour.absurd hF).elim
+  necDup hF n := ⟨rawEval (.dup hF) _ n.1, definable_rawEval (.dup hF) n.2⟩
 
 /-- ⭐Evaluating a map on a frame object is evaluating it on the raw object. -/
 theorem eval_toDom : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀) (o : RDom A w)
@@ -161,7 +161,7 @@ theorem eval_toDom : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀) 
   | _, _, .diaMap _, _, _, _ => rfl
   | _, _, .strength _ _, _, _, _ => rfl
   | _, _, .extract _, _, _, _ => rfl
-  | _, _, .dup hF, _, _, _ => (ModalSys.NoFour.absurd hF).elim
+  | _, _, .dup _, _, _, _ => rfl
 
 /-- ⭐The canonical model. -/
 noncomputable def model : Model.{0} σ where
@@ -176,7 +176,7 @@ noncomputable def model : Model.{0} σ where
   posMap_eval g _ := congrArg (Sigma.mk _) (funext fun w' => (eval_toDom w₀ g w'.1.1 _ _).symm)
   posStrength_eval _ _ := rfl
   necExtract_eval _ _ := rfl
-  necDup_eval hF _ _ _ := (ModalSys.NoFour.absurd hF).elim
+  necDup_eval _ _ _ _ := rfl
 
 end Canon
 

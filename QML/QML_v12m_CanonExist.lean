@@ -300,7 +300,7 @@ theorem exists_dia (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
     (hχ : (⟨i, .dia x hx χ⟩ : w.L.sys.Sentence σ) ∈ w.T) :
     ∃ (w' : Succ w) (hw' : w' ∈ extent w x),
       (⟨childStage i, WFF.mono (extent_le hw' i) χ⟩ : w'.1.L.sys.Sentence σ) ∈ w'.1.T := by
-  have hext : (⟨diaWorld w x hx χ hχ, Or.inl (diaWorld_acc w x hx χ hχ)⟩ : Succ w) ∈
+  have hext : (⟨diaWorld w x hx χ hχ, R.of_acc (diaWorld_acc w x hx χ hχ)⟩ : Succ w) ∈
       extent w x := by
     refine ⟨rfl, fun _ => rfl, ?_⟩
     intro i' hx' ψ j h hmem

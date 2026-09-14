@@ -11,9 +11,12 @@ import QML.QML_v12m_LeibnizSpine
   representatives, and its value on classes of terms at one stage (`canonFunc_cls`,
   `canonRel_cls`).
 * Raw evaluation of the function algebra (`rawEval`), syntactic application of a definable map to a
-  term (`applyG`; under T `extract` collapses the body), which commutes with collapsing
-  (`applyG_collapse`), and ⭐`rden_applyG`: the denotation of the applied term is the evaluation.
-  So definable objects are closed under the function algebra (`definable_rawEval`).
+  term (`applyG`; under T `extract` collapses the body, under 4 `dup` gives `□□` of the shifted
+  body), which commutes with collapsing and shifting (`applyG_collapse`, `applyG_shift`), and
+  ⭐`rden_applyG`: the denotation of the applied term is the evaluation.  For `dup` this is
+  `rden_dup`; under T and 4 it needs shifting then collapsing one level to undo itself
+  (`Term.collapse_shift_same`), which holds because views then have only kept entries.  So
+  definable objects are closed under the function algebra (`definable_rawEval`).
 -/
 
 namespace V12M
@@ -62,6 +65,24 @@ theorem Spine.collapse_ofFn {σ : Signature} {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : 
       (Spine.ofFn ts).collapse h = Spine.ofFn (fun k => Term.collapse h (ts k))
   | 0, _ => rfl
   | _ + 1, ts => congrArg (Spine.cons _) (Spine.collapse_ofFn h (fun k => ts k.succ))
+
+/-- A spine moved one view further in. -/
+def Spine.shift {σ : Signature} {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂) :
+    {n : ℕ} → Spine σ Γ₁ n → Spine σ Γ₂ n
+  | _, .nil => .nil
+  | _, .cons t S => .cons (Term.shift h t) (S.shift h)
+
+theorem Func.shift_fill {σ : Signature} {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂) :
+    ∀ {n : ℕ} (S : Spine σ Γ₁ n) (f : Func σ Γ₁ n),
+      Func.shift h (S.fill f) = (S.shift h).fill (Func.shift h f)
+  | _, .nil, _ => rfl
+  | _, .cons t S, f => Func.shift_fill h S (.eval f t)
+
+theorem Spine.shift_ofFn {σ : Signature} {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂) :
+    ∀ {n : ℕ} (ts : Fin n → Term σ Γ₁ .Var .var),
+      (Spine.ofFn ts).shift h = Spine.ofFn (fun k => Term.shift h (ts k))
+  | 0, _ => rfl
+  | _ + 1, ts => congrArg (Spine.cons _) (Spine.shift_ofFn h (fun k => ts k.succ))
 
 namespace Model
 
@@ -134,6 +155,128 @@ def Proof.spineRelCong {σ : Signature} {Δ : Ctx} [Δ.NoSlots] {E : List (WFF �
         (S 0) (S' 0) (Proof.weak _ (h 0))
         (Proof.conv (instantiate_relHole _ ρ (S 0)).symm p₁)
       Proof.conv (instantiate_relHole _ ρ (S' 0)) p₂
+
+/-! ## Collapsing a shift at the same level -/
+
+/-- Shifting then collapsing at level `m` leaves every reachable address as it was. -/
+def Ctx.ShiftCollapseId (m : ℕ) (Γ : Ctx) : Prop :=
+  ∀ v T, Γ.ref v = some T → (v.shift m).collapse m = v
+
+theorem Ctx.ShiftCollapseId.of_raw {m : ℕ} {Γ : Ctx}
+    (h : ∀ v T, v.lastProj = false → Γ v = some T → (v.shift m).collapse m = v) :
+    Γ.ShiftCollapseId m := by
+  intro v
+  induction v with
+  | root r => intro T hv; exact h _ _ rfl hv
+  | step v s ih =>
+      intro T hv
+      by_cases hs : s.isProj = true
+      · rw [Ctx.ref_step_proj _ _ hs] at hv
+        rw [VarSymb.shift_proj hs, VarSymb.collapse_proj hs]
+        cases hU : Γ.ref v with
+        | none => rw [hU] at hv; cases hv
+        | some U => rw [ih U hU]
+      · exact h _ _ (Bool.eq_false_iff.mpr hs) (by rwa [Ctx.ref_step_nonproj _ _ hs] at hv)
+
+theorem Ctx.ShiftCollapseId.boxIn {m : ℕ} {Γ : Ctx} (h : Γ.ShiftCollapseId m) :
+    Γ.boxIn.ShiftCollapseId (m + 1) := by
+  refine Ctx.ShiftCollapseId.of_raw ?_
+  intro v T _ hv
+  match v with
+  | .step u .box =>
+      rw [VarSymb.shift_level_succ rfl, VarSymb.collapse_level_succ rfl,
+        h u _ (Ctx.boxIn_step_box hv)]
+  | .step u .keep =>
+      rw [VarSymb.shift_level_succ rfl, VarSymb.collapse_level_succ rfl,
+        h u _ (Ctx.boxIn_keep hv).2.1]
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .dia => cases hv
+  | .step _ .here => cases hv
+
+theorem Ctx.ShiftCollapseId.diaIn {m : ℕ} {Γ : Ctx} (h : Γ.ShiftCollapseId m) (x : VarSymb) :
+    (Γ.diaIn x).ShiftCollapseId (m + 1) := by
+  refine Ctx.ShiftCollapseId.of_raw ?_
+  intro v T _ hv
+  match v with
+  | .step u .dia =>
+      change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T at hv
+      split_ifs at hv with hux
+      subst hux
+      cases hx : Γ.ref u with
+      | none => rw [hx] at hv; cases hv
+      | some U =>
+          rw [VarSymb.shift_level_succ rfl, VarSymb.collapse_level_succ rfl, h u _ hx]
+  | .step u .box =>
+      rw [VarSymb.shift_level_succ rfl, VarSymb.collapse_level_succ rfl,
+        h u _ (Ctx.boxIn_step_box (Γ := Γ) hv)]
+  | .step u .keep =>
+      rw [VarSymb.shift_level_succ rfl, VarSymb.collapse_level_succ rfl,
+        h u _ (Ctx.boxIn_keep (Γ := Γ) hv).2.1]
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .here => cases hv
+
+/-- Under T and 4 a view has only kept entries, so shifting then collapsing its level is the
+    identity on it. -/
+theorem Ctx.shiftCollapseId_keepOnly (hk : ModalSys.keepOnly = true) (Γ : Ctx) :
+    Γ.boxIn.ShiftCollapseId 0 := by
+  refine Ctx.ShiftCollapseId.of_raw ?_
+  intro v T _ hv
+  match v with
+  | .step u .box => exact absurd ((Ctx.boxIn_box hv).1.symm.trans hk) (by decide)
+  | .step u .keep => rw [VarSymb.shift_level_zero rfl, VarSymb.collapse_keep_zero]
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .dia => cases hv
+  | .step _ .here => cases hv
+
+mutual
+  theorem Func.collapse_shift_same {σ : Signature} {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx}
+      (hs : Ctx.Shifts m Γ₁ Γ₂) (hc : Ctx.Collapses m Γ₂ Γ₃) (hle : Γ₁.Le Γ₃)
+      (hid : Γ₁.ShiftCollapseId m) :
+      {n : ℕ} → (f : Func σ Γ₁ n) → Func.collapse hc (Func.shift hs f) = Func.mono hle f
+    | _, .F _ => rfl
+    | _, .eval g t => by
+        change Func.eval (Func.collapse hc (Func.shift hs g))
+            (Term.collapse hc (Term.shift hs t)) = Func.eval (Func.mono hle g) (Term.mono hle t)
+        rw [Func.collapse_shift_same hs hc hle hid g,
+          eq_of_heq (Sigma.mk.inj (Term.collapse_shift_same hs hc hle hid t)).2]
+    termination_by structural _ f => f
+
+  /-- Where shifting then collapsing at one level fixes the addresses, it undoes itself. -/
+  theorem Term.collapse_shift_same {σ : Signature} {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx}
+      (hs : Ctx.Shifts m Γ₁ Γ₂) (hc : Ctx.Collapses m Γ₂ Γ₃) (hle : Γ₁.Le Γ₃)
+      (hid : Γ₁.ShiftCollapseId m) :
+      {T : VarType} → {a : Ann T} → (t : Term σ Γ₁ T a) →
+      (⟨_, Term.collapse hc (Term.shift hs t)⟩ : Σ b, Term σ Γ₃ T b) = ⟨_, Term.mono hle t⟩
+    | _, _, .var v hv => sig_var (hid v _ hv) _ _
+    | _, _, .func f => by
+        change (⟨_, Term.func (Func.collapse hc (Func.shift hs f))⟩ : Σ b, Term σ Γ₃ .Var b) =
+          ⟨_, Term.func (Func.mono hle f)⟩
+        rw [Func.collapse_shift_same hs hc hle hid f]
+    | _, _, .unit => rfl
+    | _, _, .pair s t =>
+        sig_pair (Term.collapse_shift_same hs hc hle hid s)
+          (Term.collapse_shift_same hs hc hle hid t)
+    | _, _, .boxtm t =>
+        sig_boxtm (Term.collapse_shift_same (m := m + 1) hs.boxIn hc.boxIn hle.boxIn hid.boxIn t)
+    | _, _, .diatm x hx t => by
+        have key : ∀ (y : VarSymb) (_hy : y = (x.shift m).collapse m)
+            (P : ∃ X, Γ₃.ref y = some (.VTypeDia X)) (hle' : (Γ₁.diaIn x).Le (Γ₃.diaIn y)),
+            (⟨_, Term.collapse hc (Term.shift hs (Term.diatm x hx t))⟩ : Σ b, Term σ Γ₃ _ b) =
+              ⟨_, Term.diatm y P (Term.mono hle' t)⟩ := by
+          intro y hy P hle'
+          subst hy
+          exact sig_diatm (Term.collapse_shift_same (m := m + 1) (hs.diaIn x) (hc.diaIn _) hle'
+            (hid.diaIn x) t)
+        exact hx.elim fun _ hX => key x (hid x _ hX).symm _ _
+    termination_by structural _ _ t => t
+end
 
 namespace Canon
 
@@ -228,7 +371,7 @@ theorem canonRel_cls {w : World σ N₀} (r : σ.RelSyms) {i : ℕ × ℕ}
 /-! ## Raw evaluation and application -/
 
 /-- ⭐The function algebra on raw objects. -/
-noncomputable def rawEval [ModalSys.NoFour] :
+noncomputable def rawEval :
     {A B : VarType} → GFunc σ A B → (w : World σ N₀) → RDom A w → RDom B w
   | _, _, .id _, _, o => o
   | _, _, .comp g f, w, o => rawEval g w (rawEval f w o)
@@ -242,15 +385,15 @@ noncomputable def rawEval [ModalSys.NoFour] :
   | _, _, .boxUnit, _, _ => fun _ => PUnit.unit
   | _, _, .diaMap f, _, o => ⟨o.1, fun w' => rawEval f w'.1.1 (o.2 w')⟩
   | _, _, .strength _ _, _, o => ⟨o.2.1, fun w' => (o.1 w'.1, o.2.2 w')⟩
-  | _, _, .extract hT, w, o => o ⟨w, Or.inr ⟨hT, rfl⟩⟩
-  | _, _, .dup hF, _, _ => (ModalSys.NoFour.absurd hF).elim
+  | _, _, .extract hT, w, o => o ⟨w, R.refl hT w⟩
+  | _, _, .dup hF, _, o => fun v s => o ⟨s.1, R.trans hF v.2 s.2⟩
 
 /-- A base-typed term with its (only possible) annotation. -/
 def varTerm {Γ : Ctx} : (Σ b : Ann .Var, Term σ Γ .Var b) → Term σ Γ .Var .var
   | ⟨.var, t⟩ => t
 
 /-- A definable map applied to a term. -/
-def applyG [ModalSys.NoFour] :
+def applyG :
     {A B : VarType} → GFunc σ A B → {Γ : Ctx} → {a : Ann A} → Term σ Γ A a →
     Σ b : Ann B, Term σ Γ B b
   | _, _, .id _, _, _, t => ⟨_, t⟩
@@ -268,7 +411,8 @@ def applyG [ModalSys.NoFour] :
   | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c) =>
       ⟨_, .diatm x hx (.pair (Term.mono (Ctx.le_boxIn_diaIn Γ x) b) c)⟩
   | _, _, .extract hT, Γ, _, .boxtm b => ⟨_, Term.collapse (Ctx.collapses_boxIn_self hT Γ) b⟩
-  | _, _, .dup hF, _, _, _ => (ModalSys.NoFour.absurd hF).elim
+  | _, _, .dup hF, Γ, _, .boxtm b =>
+      ⟨_, .boxtm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))⟩
 
 theorem varTerm_collapse {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Collapses k Γ₁ Γ₂) :
     ∀ p : (Σ b : Ann .Var, Term σ Γ₁ .Var b),
@@ -277,7 +421,7 @@ theorem varTerm_collapse {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Collapses k Γ�
   | ⟨.var, _⟩ => rfl
 
 /-- Applying a definable map commutes with collapsing. -/
-theorem applyG_collapse [ModalSys.NoFour] :
+theorem applyG_collapse :
     ∀ {A B : VarType} (g : GFunc σ A B) {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Collapses k Γ₁ Γ₂)
       {a : Ann A} (t : Term σ Γ₁ A a),
     applyG g (Term.collapse h t) = ⟨(applyG g t).1.collapse k, Term.collapse h (applyG g t).2⟩
@@ -326,7 +470,104 @@ theorem applyG_collapse [ModalSys.NoFour] :
       simp only [applyG, Term.collapse]
       exact Term.collapse_collapse (k := k) (m := 0) h.boxIn (Ctx.collapses_boxIn_self hT Γ₂)
         (Ctx.collapses_boxIn_self hT Γ₁) h b
-  | _, _, .dup hF, _, _, _, _, _, _ => (ModalSys.NoFour.absurd hF).elim
+  | _, _, .dup hF, k, Γ₁, Γ₂, h, _, .boxtm b => by
+      simp only [applyG, Term.collapse]
+      exact (sig_boxtm (sig_boxtm (Term.collapse_shift (k := k) (m := 0)
+        (Ctx.shifts_boxIn_boxIn hF Γ₁) h.boxIn.boxIn h.boxIn
+        (Ctx.shifts_boxIn_boxIn hF Γ₂) b))).symm
+
+theorem varTerm_shift {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂) :
+    ∀ p : (Σ b : Ann .Var, Term σ Γ₁ .Var b),
+      varTerm (⟨p.1.shift k, Term.shift h p.2⟩ : Σ b : Ann .Var, Term σ Γ₂ .Var b) =
+        Term.shift h (varTerm p)
+  | ⟨.var, _⟩ => rfl
+
+/-- Applying a definable map commutes with shifting. -/
+theorem applyG_shift :
+    ∀ {A B : VarType} (g : GFunc σ A B) {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂)
+      {a : Ann A} (t : Term σ Γ₁ A a),
+    applyG g (Term.shift h t) = ⟨(applyG g t).1.shift k, Term.shift h (applyG g t).2⟩
+  | _, _, .id _, _, _, _, _, _, _ => rfl
+  | _, _, .comp g f, _, _, _, h, _, t => by
+      have hf := applyG_shift f h t
+      simp only [applyG]
+      rw [hf]
+      exact applyG_shift g h _
+  | _, _, .fst, _, _, _, _, _, .pair _ _ => rfl
+  | _, _, .snd, _, _, _, _, _, .pair _ _ => rfl
+  | _, _, .pair f g, _, _, _, h, _, t => by
+      have hf := applyG_shift f h t
+      have hg := applyG_shift g h t
+      simp only [applyG, Term.shift]
+      rw [hf, hg]
+      rfl
+  | _, _, .unit _, _, _, _, _, _, _ => rfl
+  | _, _, .func f args, _, _, _, h, _, t => by
+      have hj : ∀ j, varTerm (applyG (args j) (Term.shift h t)) =
+          Term.shift h (varTerm (applyG (args j) t)) := fun j => by
+        rw [applyG_shift (args j) h t]
+        exact varTerm_shift h _
+      simp only [applyG, Term.shift]
+      rw [Func.shift_fill, Spine.shift_ofFn]
+      simp only [hj]
+      rfl
+  | _, _, .boxMap f, _, _, _, h, _, .boxtm b => by
+      have hf := applyG_shift f h.boxIn b
+      simp only [applyG, Term.shift]
+      rw [hf]
+      rfl
+  | _, _, .boxPair _ _, _, _, _, _, _, .pair (.boxtm _) (.boxtm _) => rfl
+  | _, _, .boxUnit, _, _, _, _, _, .unit => rfl
+  | _, _, .diaMap f, _, _, _, h, _, .diatm x _ c => by
+      have hf := applyG_shift f (h.diaIn x) c
+      simp only [applyG, Term.shift]
+      rw [hf]
+      rfl
+  | _, _, .strength _ _, _, Γ₁, Γ₂, h, _, .pair (.boxtm b) (.diatm x _ c) => by
+      simp only [applyG, Term.shift]
+      rw [Term.shift_mono h.boxIn (h.diaIn x) (Ctx.le_boxIn_diaIn Γ₁ x)
+        (Ctx.le_boxIn_diaIn Γ₂ _) b]
+      rfl
+  | _, _, .extract hT, k, Γ₁, Γ₂, h, _, .boxtm b => by
+      simp only [applyG, Term.shift]
+      exact Term.shift_collapse (k := k) (m := 0) h.boxIn (Ctx.collapses_boxIn_self hT Γ₂)
+        (Ctx.collapses_boxIn_self hT Γ₁) h b
+  | _, _, .dup hF, k, Γ₁, Γ₂, h, _, .boxtm b => by
+      simp only [applyG, Term.shift]
+      exact (sig_boxtm (sig_boxtm (Term.shift_shift (k := k) (m := 0)
+        (Ctx.shifts_boxIn_boxIn hF Γ₁) h.boxIn.boxIn h.boxIn
+        (Ctx.shifts_boxIn_boxIn hF Γ₂) b))).symm
+
+theorem shiftIter_sigma {n : ℕ} (hF : n ≠ 0 → ModalSys.Four = true) {Γ : Ctx} {A : VarType}
+    {p q : Σ b : Ann A, Term σ Γ.boxIn A b} (h : p = q) :
+    (⟨_, Term.shiftIter n hF p.2⟩ : Σ b, Term σ (Ctx.boxIter (n + 1) Γ) A b) =
+      ⟨_, Term.shiftIter n hF q.2⟩ := by
+  subst h
+  rfl
+
+/-- Applying a definable map commutes with iterated shifting. -/
+theorem applyG_shiftIter {A B : VarType} (g : GFunc σ A B) :
+    ∀ (n : ℕ) (hF : n ≠ 0 → ModalSys.Four = true) {Γ : Ctx} {a : Ann A}
+      (t : Term σ Γ.boxIn A a),
+      applyG g (Term.shiftIter n hF t) = ⟨_, Term.shiftIter n hF (applyG g t).2⟩
+  | 0, _, _, _, _ => rfl
+  | n + 1, hF, Γ, _, t => by
+      have hF' := hF (Nat.succ_ne_zero n)
+      change applyG g (Term.shiftIter n (fun _ => hF')
+        (Term.shift (Ctx.shifts_boxIn_boxIn hF' Γ) t)) = _
+      rw [applyG_shiftIter g n (fun _ => hF') (Term.shift (Ctx.shifts_boxIn_boxIn hF' Γ) t)]
+      exact shiftIter_sigma _ (applyG_shift g _ t)
+
+theorem Term.shiftIter_pair : ∀ (n : ℕ) (hF : n ≠ 0 → ModalSys.Four = true) {Γ : Ctx}
+    {A B : VarType} {a : Ann A} {b : Ann B} (s : Term σ Γ.boxIn A a) (t : Term σ Γ.boxIn B b),
+    (⟨_, Term.shiftIter n hF (.pair s t)⟩ :
+        Σ c, Term σ (Ctx.boxIter (n + 1) Γ) (.VTypeProd A B) c) =
+      ⟨_, .pair (Term.shiftIter n hF s) (Term.shiftIter n hF t)⟩
+  | 0, _, _, _, _, _, _, _, _ => rfl
+  | n + 1, hF, Γ, _, _, _, _, s, t =>
+      Term.shiftIter_pair n (fun _ => hF (Nat.succ_ne_zero n))
+        (Term.shift (Ctx.shifts_boxIn_boxIn (hF (Nat.succ_ne_zero n)) Γ) s)
+        (Term.shift (Ctx.shifts_boxIn_boxIn (hF (Nat.succ_ne_zero n)) Γ) t)
 
 theorem rden_varTerm {Γ : Ctx} (w : World σ N₀) (i : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)) :
     ∀ p : (Σ b : Ann .Var, Term σ Γ .Var b), rden w i e (varTerm p) = rden w i e p.2
@@ -337,8 +578,58 @@ theorem rden_var_mono {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ} (e : Γ.Le
   | .var _ _ => rfl
   | .func _ => rfl
 
+theorem Succ.depth_le {w : World σ N₀} (w' : Succ w) : w.depth ≤ w'.1.depth := by
+  have := w'.chain.1.depth
+  omega
+
+/-- ⭐Under 4, `□□` of the shifted body reads, two steps on, what `□` of the body reads at the
+    composite successor. -/
+theorem rden_dup (hF : ModalSys.Four = true) : ∀ (p : ℕ) {A : VarType} {a : Ann A} {Γ : Ctx}
+    (b : Term σ Γ.boxIn A a) (w : World σ N₀) (i : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)) (v : Succ w),
+    v.1.depth - w.depth = p → ∀ (s : Succ v.1),
+      rden w i e (.boxtm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))) v s =
+        rden w i e (.boxtm b) ⟨s.1, R.trans hF v.2 s.2⟩
+  | 0, _, _, Γ, b, w, i, e, ⟨v, hv⟩, hp, s => by
+      obtain ⟨hT, hw⟩ := Succ.self ⟨v, hv⟩ hp
+      change v = w at hw
+      subst hw
+      rw [rden_boxtm_self e _ ⟨v, hv⟩ hp]
+      have h₁ := rden_sigma (w := v) (i := i) e (sig_boxtm (Term.collapse_shift_self (m := 0)
+        (Ctx.shifts_boxIn_boxIn hF Γ) (Ctx.collapses_boxIn_self hT Γ).boxIn (Ctx.Le.refl _) b))
+      rw [Term.mono_refl] at h₁
+      exact congrFun h₁ s
+  | 1, _, _, Γ, b, w, i, e, v, hp, s => by
+      rw [rden_boxtm_acc e _ v hp]
+      rcases hq : s.1.depth - v.1.depth with _ | q
+      · obtain ⟨hT, hsv⟩ := s.self hq
+        have hk : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
+        have hs1 : s.1.depth - w.depth = 1 := by
+          rw [hsv]
+          exact hp
+        rw [rden_boxtm_self _ _ s hq, rden_boxtm_acc e b ⟨s.1, R.trans hF v.2 s.2⟩ hs1]
+        exact (rden_sigma _ (Term.collapse_shift_same (Ctx.shifts_boxIn_boxIn hF Γ)
+          (Ctx.collapses_boxIn_self hT Γ.boxIn) (Ctx.Le.refl _)
+          (Ctx.shiftCollapseId_keepOnly hk Γ) b)).trans (rden_mono _ _ _ _ _)
+      · have hs2 : s.1.depth - w.depth = q + 1 + 1 := by omega
+        exact (rden_boxtm_far _ _ s hq).trans
+          (rden_boxtm_far e b ⟨s.1, R.trans hF v.2 s.2⟩ hs2).symm
+  | p + 2, _, _, Γ, b, w, i, e, v, hp, s => by
+      obtain ⟨u, hu, hr, hd⟩ := v.split hp
+      have hne : v.1.depth - u.depth ≠ 0 := by omega
+      have hsu : s.1.depth - u.depth ≠ 0 := by
+        have := s.depth_le
+        omega
+      have hsh := Term.shift_shift_same (m := 0) (Ctx.shifts_boxIn_boxIn hF Γ)
+        (Ctx.shifts_boxIn_boxIn hF Γ.boxIn) (Ctx.shifts_boxIn_boxIn hF Γ).boxIn b
+      exact (congrFun (rden_boxtm_step hF e (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))
+          v hu hr hne) s).trans
+        ((congrFun (congrFun (rden_sigma _ (sig_boxtm (sig_boxtm hsh.symm))) ⟨v.1, hr⟩) s).trans
+          ((rden_dup hF (p + 1) (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b) u (childStage i) _
+              ⟨v.1, hr⟩ hd s).trans
+            (rden_boxtm_step hF e b ⟨s.1, R.trans hF v.2 s.2⟩ hu (R.trans hF hr s.2) hsu).symm))
+
 /-- ⭐The denotation of an applied map is its raw evaluation. -/
-theorem rden_applyG [ModalSys.NoFour] :
+theorem rden_applyG :
     ∀ {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} {a : Ann A} (t : Term σ Γ A a)
       (w : World σ N₀) (i : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)),
     rden w i e (applyG g t).2 = rawEval g w (rden w i e t)
@@ -359,33 +650,35 @@ theorem rden_applyG [ModalSys.NoFour] :
       rfl
   | _, _, .boxMap f, Γ, _, .boxtm b, w, i, e => funext fun w' => by
       change rden w i e (.boxtm (applyG f b).2) w' = rawEval f w'.1 (rden w i e (.boxtm b) w')
-      by_cases hd : w'.1.depth = w.depth
+      rcases hd : w'.1.depth - w.depth with _ | d
       · rw [rden_boxtm_self e _ w' hd, rden_boxtm_self e b w' hd]
         exact (rden_sigma _
           (applyG_collapse f (Ctx.collapses_boxIn_self (w'.self hd).1 Γ) b)).symm.trans
           (rden_applyG f _ w'.1 i _)
-      · rw [rden_boxtm_acc e _ w' hd, rden_boxtm_acc e b w' hd]
-        exact rden_applyG f b w'.1 (childStage i) _
+      · rw [rden_boxtm_far e _ w' hd, rden_boxtm_far e b w' hd]
+        exact (rden_sigma _ (applyG_shiftIter f d (w'.four hd) b)).symm.trans
+          (rden_applyG f _ w'.1 _ _)
   | _, _, .boxPair _ _, _, _, .pair (.boxtm b) (.boxtm c), w, i, e => funext fun w' => by
       change rden w i e (.boxtm (.pair b c)) w' =
         (rden w i e (.boxtm b) w', rden w i e (.boxtm c) w')
-      by_cases hd : w'.1.depth = w.depth
+      rcases hd : w'.1.depth - w.depth with _ | d
       · rw [rden_boxtm_self e _ w' hd, rden_boxtm_self e b w' hd, rden_boxtm_self e c w' hd]
         rfl
-      · rw [rden_boxtm_acc e _ w' hd, rden_boxtm_acc e b w' hd, rden_boxtm_acc e c w' hd]
-        rfl
+      · rw [rden_boxtm_far e _ w' hd, rden_boxtm_far e b w' hd, rden_boxtm_far e c w' hd]
+        exact rden_sigma _ (Term.shiftIter_pair d (w'.four hd) b c)
   | _, _, .boxUnit, _, _, .unit, _, _, _ => rfl
   | _, _, .diaMap f, _, _, .diatm _ _ c, _, i, _ =>
       congrArg (Sigma.mk _) (funext fun w' => rden_applyG f c w'.1.1 (childStage i) _)
   | _, _, .strength _ _, _, _, .pair (.boxtm b) (.diatm _ _ _), _, _, e =>
       congrArg (Sigma.mk _) (funext fun w' => Prod.ext
-        ((rden_mono _ _ _ _ _).trans (rden_boxtm_acc e b w'.1 (extent_depth w'.2)).symm) rfl)
+        ((rden_mono _ _ _ _ _).trans (rden_boxtm_acc e b w'.1 (extent_dist w'.2)).symm) rfl)
   | _, _, .extract hT, _, _, .boxtm b, w, _, e =>
-      (rden_boxtm_self e b ⟨w, Or.inr ⟨hT, rfl⟩⟩ rfl).symm
-  | _, _, .dup hF, _, _, _, _, _, _ => (ModalSys.NoFour.absurd hF).elim
+      (rden_boxtm_self e b ⟨w, R.refl hT w⟩ (Nat.sub_self _)).symm
+  | _, _, .dup hF, _, _, .boxtm b, w, i, e =>
+      funext fun v => funext fun s => rden_dup hF _ b w i e v rfl s
 
 /-- ⭐Definable objects are closed under the function algebra. -/
-theorem definable_rawEval [ModalSys.NoFour] {A B : VarType} (g : GFunc σ A B) {w : World σ N₀}
+theorem definable_rawEval {A B : VarType} (g : GFunc σ A B) {w : World σ N₀}
     {o : RDom A w}
     (h : Definable A w o) : Definable B w (rawEval g w o) := by
   obtain ⟨i, a, t, rfl⟩ := h

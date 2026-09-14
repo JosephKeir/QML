@@ -7,9 +7,10 @@ import QML.QML_v12m_CanonExist
   satisfies exactly the formulas of the world's theory.  By induction on the size of the formula
   (which substitution and collapsing do not change): atoms and equations by the truth lemma for
   terms, the connectives by maximality, the quantifiers by definability of every object and the
-  witnesses, `□` by the necessary contents and `exists_box_fail` — and at the world itself under T
-  by `Model.sat_boxHere` and the rule `T_box` — `◇_x` by `exists_dia` and the `□_x`-necessary
-  contents of the extent.
+  witnesses, `□` by the necessary contents and `exists_box_fail` — at the world itself under T by
+  `Model.sat_boxHere` and the rule `T_box`, at a far successor under 4 by `four_box`, the necessary
+  contents of the first step and `Model.sat_shift_twoBox` — `◇_x` by `exists_dia` and the
+  `□_x`-necessary contents of the extent.
 * ⭐`completeness`: over a countable signature, a sequent in a presented context valid in every
   model is provable.
 * ⭐`provable_iff_valid`: with soundness.
@@ -90,6 +91,24 @@ theorem WFF.size_collapse {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {
   | _, _, _, _, _, _, .box φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
   | _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
 
+theorem WFF.size_shift {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d : ℕ}
+    (h : Ctx.Shifts k Γ₁ Γ₂) (hs : Γ₁.SlotsFrom d) (φ : WFF σ Γ₁ d),
+    (WFF.shift h hs φ).size = φ.size
+  | _, _, _, _, _, _, .atom _ => rfl
+  | _, _, _, _, _, _, .eq _ _ => rfl
+  | _, _, _, _, _, _, .top => rfl
+  | _, _, _, _, _, _, .bot => rfl
+  | _, _, _, _, h, hs, .and φ ψ =>
+      congrArg₂ (· + · + 1) (WFF.size_shift h hs φ) (WFF.size_shift h hs ψ)
+  | _, _, _, _, h, hs, .or φ ψ =>
+      congrArg₂ (· + · + 1) (WFF.size_shift h hs φ) (WFF.size_shift h hs ψ)
+  | _, _, _, _, h, hs, .imp φ ψ =>
+      congrArg₂ (· + · + 1) (WFF.size_shift h hs φ) (WFF.size_shift h hs ψ)
+  | _, _, _, _, _, _, .all _ φ => congrArg (· + 1) (WFF.size_shift _ _ φ)
+  | _, _, _, _, _, _, .ex _ φ => congrArg (· + 1) (WFF.size_shift _ _ φ)
+  | _, _, _, _, _, _, .box φ => congrArg (· + 1) (WFF.size_shift _ _ φ)
+  | _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_shift _ _ φ)
+
 /-! ## Helpers -/
 
 theorem Model.Env.Agree.refl' {σ : Signature} {M : Model.{u} σ} {Γ : Ctx} {w : M.frame.W}
@@ -111,7 +130,7 @@ def Proof.boxx_neg_of_not_dia {σ : Signature} {Γ : Ctx} (x : VarSymb)
 
 namespace Canon
 
-variable {σ : Signature} {N₀ : ℕ} (w₀ : World σ N₀) [ModalSys.NoFour]
+variable {σ : Signature} {N₀ : ℕ} (w₀ : World σ N₀)
 
 theorem canon_agree_le (w : World σ N₀) {i j : ℕ × ℕ} (h : i ≤ j) :
     Model.Env.Agree (w.L.ctx_le h) (canonEnv w₀ w i) (canonEnv w₀ w j) :=
@@ -256,22 +275,59 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
           have hχs : χ.size < n := by simp only [WFF.size] at hφ; omega
           change (∀ w' : (model w₀).frame.Acc w,
             (model w₀).sat ((canonEnv w₀ w i).boxPush w') χ) ↔ _
-          have key : ∀ (w' : Succ w) (hd : w'.1.depth ≠ w.depth),
+          have key : ∀ (w' : Succ w) (hd : w'.1.depth - w.depth = 1),
               (model w₀).sat ((canonEnv w₀ w i).boxPush w') χ ↔
                 (⟨childStage i, WFF.mono ((w'.acc hd).boxIn_le i) χ⟩ :
                   w'.1.L.sys.Sentence σ) ∈ w'.1.T :=
             fun w' hd => (Model.sat_mono (boxPush_agree_canon w₀ w i w' hd) χ).symm.trans
               (truth_lt n w'.1 (childStage i) _ (by rw [WFF.size_mono]; exact hχs))
+          -- Far successors, by the distance: `four_box`, then the necessary contents of the
+          -- first step.
+          have far : ∀ (d : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (χ : WFF σ (w.L.ctx i).boxIn 0),
+              χ.size < n → (⟨i, .box χ⟩ : w.L.sys.Sentence σ) ∈ w.T →
+              ∀ (w' : Succ w), w'.1.depth - w.depth = d + 1 →
+                (model w₀).sat ((canonEnv w₀ w i).boxPush w') χ := by
+            intro d
+            induction d with
+            | zero =>
+                intro w i χ hχs hmem w' hd
+                exact (Model.sat_mono (boxPush_agree_canon w₀ w i w' hd) χ).mp
+                  ((truth_lt n w'.1 (childStage i) _ (by rw [WFF.size_mono]; exact hχs)).mpr
+                    ((w'.acc hd).2.2 i χ (childStage i) _ hmem))
+            | succ d ih =>
+                intro w i χ hχs hmem w' hd
+                obtain ⟨u, hu, hr, hd'⟩ := w'.split hd
+                have hF : ModalSys.Four = true := w'.four hd (Nat.succ_ne_zero d)
+                have hu1 : (⟨u, R.of_acc hu⟩ : Succ w).1.depth - w.depth = 1 := by
+                  have := hu.1
+                  change u.depth - w.depth = 1
+                  omega
+                have h4 : (⟨i, .box (.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF _)
+                    Ctx.NoSlots.slots χ))⟩ : w.L.sys.Sentence σ) ∈ w.T :=
+                  World.mem_of_provable (Δ := [.box χ])
+                    (fun ψ hψ => by
+                      rw [List.mem_singleton.mp hψ]
+                      exact hmem)
+                    ⟨Proof.four_box hF (Proof.lookup List.mem_cons_self)⟩
+                have hsat := ih u (childStage i)
+                  (WFF.mono (hu.boxIn_le i).boxIn
+                    (WFF.shift (Ctx.shifts_boxIn_boxIn hF _) Ctx.NoSlots.slots χ))
+                  (by rw [WFF.size_mono, WFF.size_shift]; exact hχs)
+                  (hu.2.2 i _ (childStage i) (hu.boxIn_le i) h4) ⟨w'.1, hr⟩ hd'
+                have hsat₂ := (Model.sat_mono (Model.Env.boxPush_agree
+                  (boxPush_agree_canon w₀ w i ⟨u, R.of_acc hu⟩ hu1) ⟨w'.1, hr⟩) _).mp hsat
+                exact (Model.sat_shift_twoBox hF (canonEnv w₀ w i) Ctx.NoSlots.slots χ
+                  ⟨u, R.of_acc hu⟩ ⟨w'.1, hr⟩).mp hsat₂
           constructor
           · intro hsat
             by_contra hnot
             obtain ⟨w', ha, hw'⟩ := exists_box_fail w χ hnot
-            have hd : w'.depth ≠ w.depth := by
+            have hd : w'.depth - w.depth = 1 := by
               have := ha.1
               omega
-            exact hw' ((key ⟨w', Or.inl ha⟩ hd).mp (hsat ⟨w', Or.inl ha⟩))
+            exact hw' ((key ⟨w', R.of_acc ha⟩ hd).mp (hsat ⟨w', R.of_acc ha⟩))
           · intro hmem w'
-            by_cases hd : w'.1.depth = w.depth
+            rcases hd : w'.1.depth - w.depth with _ | d
             · obtain ⟨w₁, hw₁⟩ := w'
               obtain ⟨hT, hw⟩ := Succ.self ⟨w₁, hw₁⟩ hd
               change w₁ = w at hw
@@ -285,7 +341,7 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
                     rw [List.mem_singleton.mp hψ]
                     exact hmem)
                   ⟨Proof.T_box hT (Proof.lookup List.mem_cons_self)⟩
-            · exact (key w' hd).mpr ((Succ.acc w' hd).2.2 i χ (childStage i) _ hmem)
+            · exact far d w i χ hχs hmem w' hd
       | dia x hx χ =>
           have hχs : χ.size < n := by simp only [WFF.size] at hφ; omega
           change (∃ (X : VarType) (h : (w.L.ctx i).ref x = some (.VTypeDia X))
@@ -324,7 +380,7 @@ end Canon
 
 /-! ## Completeness -/
 
-variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoFour]
+variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
 /-- ⭐**Completeness**: a sequent in a presented context that holds in every model, at every
     world, in every environment, is provable. -/

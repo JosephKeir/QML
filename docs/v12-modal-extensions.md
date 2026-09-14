@@ -1,7 +1,8 @@
 # QML v12: modal extensions (design)
 
-Status: design pass, 2026-09-13. **Weak T is implemented** (soundness and completeness, files
-`QML/QML_v12m_*.lean`, namespace `V12M`); everything else is design. Claims marked *(sketch)* come
+Status: 2026-09-14. **Weak T and weak 4 are implemented**, with soundness and completeness for
+every combination (K, T, 4, and T + 4 = S4); files `QML/QML_v12m_*.lean`, namespace `V12M`.
+Everything else is design. Claims marked *(sketch)* come
 from paper arguments that have not been checked in Lean.
 
 ## 1. Goals and constraints
@@ -157,7 +158,7 @@ content of a possible object.
   - Context principle: `□`-items stay visible deeper; `Γ.boxIn` also contains `u : □A`.
   - Rule: `□φ ⊢ □□φ`.
   - Semantics: a restriction map with `necEval (restrict n v) s = necEval n s`.
-  - *Implementation design (in progress).*
+  - *Implementation (done).*
     - **Addresses.** A new LEVEL step `keep`, visible in `Γ.boxIn` (and so in `Γ.diaIn x`) when the
       flag is on: `u.keep : □A` for `u : □A`, the restriction of `u`. At each level an address
       records whether the object was evaluated (`box`) or kept (`keep`), so addresses are unique:
@@ -174,20 +175,28 @@ content of a possible object.
       transitivity), and `boxPush` reads `u.keep` at `v` as `necEval (dup u) v`. Soundness goes
       through a `ShiftAgree` analogue of `CollapseAgree`.
     - **Collapse under T + 4:** `u.keep` collapses to `u`, which removes the step.
-    - **Canonical model (plan).** `R w s` holds for successors at depth difference `n`: `n = 0`
-      under T, `n = 1` proper, `n ≥ 2` chains of proper successors under 4. `rden (□t)` at depth
-      difference `n ≥ 1` is `rden` of `shift^(n-1) t`, since shifting keeps the type. In the truth
-      lemma, far successors are reached by iterating `four_box` and `BoxContents`.
-      - Define the iterated view and shift **inner-first**
-        (`boxIter (m+1) Γ = boxIter m Γ.boxIn`, `shiftIter (m+1) t = shiftIter m (shift t)`). Then
-        the denotation at a far successor is *definitionally* the denotation of `□(shift t)` from
-        the intermediate world, and every proof reduces to one-step lemmas (`shiftAgree_twoBox`)
-        plus induction on the distance.
-    - *Implemented so far.* Syntax (`keep`, `shift`, `Ctx.Shifts`), substitution (`keepE`,
-      `ShiftSubst`: shifting commutes with substitution, collapse and weakening), models
-      (`Frame.trans`, `GFunc.dup`, `necDup_eval`), semantics (`SemShift`), the rule `four_box` and
-      **soundness** for every flag combination. Completeness is currently stated for systems
-      without 4 (a temporary class `ModalSys.NoFour`).
+    - **Canonical model (implemented).** Accessibility is a chain of proper steps (`Chain`), of
+      length 0 only under T (the world itself) and of length at least 2 only under 4. So it is
+      reflexive under T and transitive under 4, and a successor's depth difference is the length
+      of its chain.
+      - `rden (□t)` at a successor `d + 1` levels deeper is `rden` of `t` shifted `d` times
+        (`Term.shiftIter`, in the iterated view `Ctx.boxIter`); shifting keeps the type. The
+        iterates are **inner-first** (`boxIter (n+1) Γ = boxIter n Γ.boxIn`), so a far denotation
+        is definitionally what `□(shift t)` gives from the first proper step
+        (`rden_boxtm_step`), and proofs go by induction on the distance with one-step lemmas.
+      - `dup` is raw evaluation at the composite successor. Its closure law (`rden_dup`) uses
+        `collapse_shift_self`, `shift_shift_same` and, under T + 4, `Term.collapse_shift_same`:
+        shifting then collapsing one level undoes itself because views have only kept entries.
+        That identity is exactly what the T + 4 naming decision below makes true.
+      - Truth lemma for terms at far successors: `interp_box_far`, via `interp_shift` and
+        `shiftAgree_twoBox`. For formulas: `four_box`, the necessary contents of the first step,
+        and `sat_shift_twoBox`, by induction on the distance.
+      - `completeness` and `provable_iff_valid` hold for every flag combination (the temporary
+        `ModalSys.NoFour` is gone); axioms `propext`, `Classical.choice`, `Quot.sound`.
+    - *Implemented.* Syntax (`keep`, `shift`, `Ctx.Shifts`), substitution (`keepE`, `ShiftSubst`:
+      shifting commutes with substitution, collapse and weakening), models (`Frame.trans`,
+      `GFunc.dup`, `necDup_eval`), semantics (`SemShift`), the rule `four_box`, and soundness and
+      completeness for every flag combination.
     - **Finding: T + 4 (S4) breaks address uniqueness.** With both flags, `u.keep.here` (`u` kept
       at `v`, read at `v`) and `u.box` name the same object, by the comonad law
       `extract ∘ dup = id`. T alone and 4 alone have no such coincidence.
