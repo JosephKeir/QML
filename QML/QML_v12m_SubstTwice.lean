@@ -22,8 +22,8 @@ theorem SubE.proj_here_eq {σ : Signature} {Δ : Ctx} (hT : ModalSys.T = true) :
     ∀ {e : SubE σ Δ} {A : VarType}, e.OkRef (.VTypeBox A) →
       e.proj .here = e.unbox.collapse (Ctx.collapses_boxIn_self hT Δ)
   | .ren w, _, _ => by
-      change SubE.ren (.step w .here) = SubE.ren ((VarSymb.step w .box).collapse 0)
-      rw [VarSymb.collapse_level_zero rfl (by decide)]
+      change SubE.ren (.step w .here) = SubE.ren (w.inner.collapse 0)
+      rw [VarSymb.inner_collapse_zero]
   | .hide, _, he => False.elim he
   | .tm (T := U) s, A, he => by
       have hU : U = .VTypeBox A := he
@@ -151,9 +151,13 @@ theorem proj_comp : ∀ {e : SubE σ Δ₁} {U T : VarType} {s : Step}, e.OkRef 
                 (Subst.coh_box hθ₂ hc₂) θ₂ hθ₂ hc₂ (Subst.corr_box_self hT hθ₂) t)
           | _ => cases hst
 
-theorem unbox_comp : ∀ {e : SubE σ Δ₁} {A : VarType}, e.OkRef (.VTypeBox A) →
+theorem unbox_comp (hk : ModalSys.keepOnly = false) : ∀ {e : SubE σ Δ₁} {A : VarType},
+    e.OkRef (.VTypeBox A) →
     (e.comp θ₂ hθ₂ hc₂).unbox = e.unbox.comp θ₂.box (Subst.ok_box hθ₂) (Subst.coh_box hθ₂ hc₂)
-  | .ren _, _, _ => rfl
+  | .ren w, _, _ => by
+      change (θ₂.at w).unbox = θ₂.box.at w.inner
+      rw [VarSymb.inner_box hk]
+      rfl
   | .hide, _, he => False.elim he
   | .tm (T := U) s, A, he => by
       have hU : U = .VTypeBox A := he
@@ -311,16 +315,11 @@ theorem sim_box_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (h�
   intro v T _ hv
   match v with
   | .step u .box =>
-      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
-      cases hu : Γ.ref u with
-      | none => rw [hu] at hv; cases hv
-      | some U =>
-          rw [hu] at hv
-          cases U <;> try cases hv
-          change SubE.Sim _ (θ₃.at u).unbox
-            (((θ₁.at u).unbox).comp θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂))
-          rw [← SubE.unbox_comp θ₂ hθ₂ hc₂ (okRef_at hθ₁ hu), ← at_comp hθ₁ θ₂ hθ₂ hc₂ hu]
-          exact (hs u _ hu).unbox
+      obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv
+      change SubE.Sim _ (θ₃.at u).unbox
+        (((θ₁.at u).unbox).comp θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂))
+      rw [← SubE.unbox_comp θ₂ hθ₂ hc₂ hk (okRef_at hθ₁ hu), ← at_comp hθ₁ θ₂ hθ₂ hc₂ hu]
+      exact (hs u _ hu).unbox
   | .step u .keep =>
       obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
       change SubE.Sim (.VTypeBox A) (θ₃.at u).keepE
@@ -363,20 +362,15 @@ theorem sim_dia_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (h�
       · rw [if_neg hux, if_neg hux]
         exact .refl _
   | .step u .box =>
-      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
-      cases hu : Γ.ref u with
-      | none => rw [hu] at hv; cases hv
-      | some U =>
-          rw [hu] at hv
-          cases U <;> try cases hv
-          change SubE.Sim _ (((θ₃.at u).unbox).mono (Ctx.le_boxIn_diaIn Δ₂ (ι₂ (ι₁ x))))
-            ((((θ₁.at u).unbox).mono (Ctx.le_boxIn_diaIn Δ₁ (ι₁ x))).comp
-              (θ₂.dia (ι₁ x) (ι₂ (ι₁ x))) (ok_dia hθ₂ hx₁ hw₂) (coh_dia hθ₂ hc₂ hx₁))
-          rw [SubE.comp_mono θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂)
-              (Ctx.le_boxIn_diaIn Δ₁ (ι₁ x)) (Ctx.le_boxIn_diaIn Δ₂ (ι₂ (ι₁ x))) _ _ _
-              (dia_eq_box_mono θ₂ (ι₁ x) (ι₂ (ι₁ x))) (SubE.okRef_unbox (okRef_at hθ₁ hu)),
-            ← SubE.unbox_comp θ₂ hθ₂ hc₂ (okRef_at hθ₁ hu), ← at_comp hθ₁ θ₂ hθ₂ hc₂ hu]
-          exact (hs u _ hu).unbox.mono _
+      obtain ⟨hk, hu⟩ := Ctx.boxIn_box (Γ := Γ) hv
+      change SubE.Sim _ (((θ₃.at u).unbox).mono (Ctx.le_boxIn_diaIn Δ₂ (ι₂ (ι₁ x))))
+        ((((θ₁.at u).unbox).mono (Ctx.le_boxIn_diaIn Δ₁ (ι₁ x))).comp
+          (θ₂.dia (ι₁ x) (ι₂ (ι₁ x))) (ok_dia hθ₂ hx₁ hw₂) (coh_dia hθ₂ hc₂ hx₁))
+      rw [SubE.comp_mono θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂)
+          (Ctx.le_boxIn_diaIn Δ₁ (ι₁ x)) (Ctx.le_boxIn_diaIn Δ₂ (ι₂ (ι₁ x))) _ _ _
+          (dia_eq_box_mono θ₂ (ι₁ x) (ι₂ (ι₁ x))) (SubE.okRef_unbox (okRef_at hθ₁ hu)),
+        ← SubE.unbox_comp θ₂ hθ₂ hc₂ hk (okRef_at hθ₁ hu), ← at_comp hθ₁ θ₂ hθ₂ hc₂ hu]
+      exact (hs u _ hu).unbox.mono _
   | .step u .keep =>
       obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
       change SubE.Sim (.VTypeBox A)

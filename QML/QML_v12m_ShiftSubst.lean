@@ -248,8 +248,8 @@ theorem shift_mono {k : ℕ} {Δ₁ Δ₂ Δ₁' Δ₂' : Ctx} (D₁ : Ctx.Shift
 theorem unbox_keepE {Δ : Ctx} (hF : ModalSys.Four = true) : ∀ {e : SubE σ Δ} {A : VarType},
     e.OkRef (.VTypeBox A) → e.keepE.unbox = e.unbox.shift (Ctx.shifts_boxIn_boxIn hF Δ)
   | .ren w, _, _ => by
-      change SubE.ren (.step (.step w .keep) .box) = SubE.ren ((VarSymb.step w .box).shift 0)
-      rw [VarSymb.shift_level_zero rfl]
+      change SubE.ren (VarSymb.step w .keep).inner = SubE.ren (w.inner.shift 0)
+      rw [VarSymb.inner_shift_zero]
   | .hide, _, he => False.elim he
   | .tm (T := U) s, A, he => by
       have hU : U = .VTypeBox A := he
@@ -302,8 +302,8 @@ theorem toVar_shift : ∀ (e : SubE σ Δ) (he : e.OkRef .Var),
 theorem unbox_shift : ∀ {e : SubE σ Δ} {A : VarType}, e.OkRef (.VTypeBox A) →
     e.unbox.shift D.boxIn = (e.shift D).unbox
   | .ren w, _, _ => by
-      change SubE.ren ((VarSymb.step w .box).shift (k + 1)) = SubE.ren (.step (w.shift k) .box)
-      rw [VarSymb.shift_level_succ rfl]
+      change SubE.ren (w.inner.shift (k + 1)) = SubE.ren (w.shift k).inner
+      rw [VarSymb.inner_shift_succ]
   | .hide, _, he => False.elim he
   | .tm (T := U) s, A, he => by
       have hU : U = .VTypeBox A := he

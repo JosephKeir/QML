@@ -229,9 +229,8 @@ theorem toVar_collapse : ∀ (e : SubE σ Δ) (he : e.OkRef .Var),
 theorem unbox_collapse : ∀ {e : SubE σ Δ} {A : VarType}, e.OkRef (.VTypeBox A) →
     e.unbox.collapse D.boxIn = (e.collapse D).unbox
   | .ren w, _, _ => by
-      change SubE.ren ((VarSymb.step w .box).collapse (k + 1)) =
-        SubE.ren (.step (w.collapse k) .box)
-      rw [VarSymb.collapse_level_succ rfl]
+      change SubE.ren (w.inner.collapse (k + 1)) = SubE.ren (w.collapse k).inner
+      rw [VarSymb.inner_collapse_succ]
   | .hide, _, he => False.elim he
   | .tm (T := U) s, A, he => by
       have hU : U = .VTypeBox A := he

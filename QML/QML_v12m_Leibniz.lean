@@ -43,13 +43,11 @@ theorem ren_box {Γ : Ctx} {θ : Subst σ Δ} (hid : ∀ v T, Γ.ref v = some T 
   at_ren_of fun v T _ hv => by
     match v with
     | .step u .box =>
-        change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
-        cases hu : Γ.ref u with
-        | none => rw [hu] at hv; cases hv
-        | some U =>
-            change (θ.at u).unbox = _
-            rw [hid u U hu]
-            rfl
+        obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv
+        change (θ.at u).unbox = _
+        rw [hid u _ hu]
+        change SubE.ren u.inner = _
+        rw [VarSymb.inner_box hk]
     | .step u .keep =>
         obtain ⟨_, hu, _, rfl⟩ := Ctx.boxIn_keep hv
         change (θ.at u).keepE = _
@@ -76,13 +74,11 @@ theorem ren_dia {Γ : Ctx} {θ : Subst σ Δ} (hid : ∀ v T, Γ.ref v = some T 
               rw [if_pos rfl, hid u U hx]
               rfl
     | .step u .box =>
-        change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
-        cases hu : Γ.ref u with
-        | none => rw [hu] at hv; cases hv
-        | some U =>
-            change ((θ.at u).unbox).mono _ = _
-            rw [hid u U hu]
-            rfl
+        obtain ⟨hk, hu⟩ := Ctx.boxIn_box (Γ := Γ) hv
+        change ((θ.at u).unbox).mono _ = _
+        rw [hid u _ hu]
+        change SubE.ren u.inner = _
+        rw [VarSymb.inner_box hk]
     | .step u .keep =>
         obtain ⟨_, hu, _, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
         change ((θ.at u).keepE).mono _ = _

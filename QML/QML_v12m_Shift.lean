@@ -105,6 +105,22 @@ end VarSymb
 
 variable [ModalSys]
 
+/-- Shifting a level further out keeps a contents address a contents address. -/
+theorem VarSymb.inner_shift_succ (u : VarSymb) (k : ℕ) :
+    u.inner.shift (k + 1) = (u.shift k).inner := by
+  unfold VarSymb.inner
+  split_ifs
+  · rw [VarSymb.shift_proj (s := .here) rfl, VarSymb.shift_level_succ (s := .keep) rfl]
+  · rw [VarSymb.shift_level_succ (s := .box) rfl]
+
+/-- Shifting the view of a contents address gives the contents of the kept object. -/
+theorem VarSymb.inner_shift_zero (u : VarSymb) :
+    u.inner.shift 0 = (VarSymb.step u .keep).inner := by
+  unfold VarSymb.inner
+  split_ifs
+  · rw [VarSymb.shift_proj (s := .here) rfl, VarSymb.shift_level_zero (s := .keep) rfl]
+  · rw [VarSymb.shift_level_zero (s := .box) rfl]
+
 /-! ## Shifting contexts -/
 
 namespace Ctx
@@ -136,6 +152,18 @@ theorem ref_keep_of {Γ : Ctx} (hF : ModalSys.Four = true) {w : VarSymb} {A : Va
     (h : Γ.ref w = some (.VTypeBox A)) : Γ.boxIn.ref (.step w .keep) = some (.VTypeBox A) :=
   (Ctx.ref_nonproj Γ.boxIn (v := .step w .keep) rfl).trans (boxIn_keep_of hF h)
 
+/-- The contents address of a reachable necessary address is reachable inside `□`. -/
+theorem ref_inner {Γ : Ctx} {w : VarSymb} {A : VarType} (h : Γ.ref w = some (.VTypeBox A)) :
+    Γ.boxIn.ref w.inner = some A := by
+  cases hk : ModalSys.keepOnly with
+  | true =>
+      obtain ⟨hT, hF⟩ := ModalSys.keepOnly_flags hk
+      rw [VarSymb.inner_keepOnly hk, Ctx.ref_step_proj _ _ rfl, ref_keep_of hF h]
+      simp only [Option.bind_some, VarType.step, hT, if_true]
+  | false =>
+      rw [VarSymb.inner_box hk, Ctx.ref_nonproj _ rfl]
+      exact boxIn_box_of hk h
+
 /-- ⭐Under 4 the `□` view shifts one view further in. -/
 theorem shifts_boxIn_boxIn (hF : ModalSys.Four = true) (Γ : Ctx) :
     Shifts 0 Γ.boxIn Γ.boxIn.boxIn := by
@@ -143,10 +171,9 @@ theorem shifts_boxIn_boxIn (hF : ModalSys.Four = true) (Γ : Ctx) :
   intro v T _ hv
   match v with
   | .step u .box =>
+      obtain ⟨hk, hu⟩ := boxIn_box hv
       rw [VarSymb.shift_level_zero rfl, Ctx.ref_nonproj _ rfl]
-      change (match Γ.boxIn.ref (.step u .keep) with
-        | some (.VTypeBox A) => some A | _ => none) = some T
-      rw [ref_keep_of hF (boxIn_step_box hv)]
+      exact boxIn_box_of hk (ref_keep_of hF hu)
   | .step u .keep =>
       obtain ⟨_, hu, A, rfl⟩ := boxIn_keep hv
       rw [VarSymb.shift_level_zero rfl, Ctx.ref_nonproj _ rfl]
@@ -163,10 +190,9 @@ theorem Shifts.boxIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Shifts k Γ₁ Γ₂) :
   intro v T _ hv
   match v with
   | .step u .box =>
+      obtain ⟨hk, hu⟩ := boxIn_box hv
       rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]
-      change (match Γ₂.ref (u.shift k) with | some (.VTypeBox A) => some A | _ => none) =
-        some T
-      rw [h u _ (boxIn_step_box hv)]
+      exact boxIn_box_of hk (h u _ hu)
   | .step u .keep =>
       obtain ⟨hF, hu, A, rfl⟩ := boxIn_keep hv
       rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]
@@ -198,10 +224,9 @@ theorem Shifts.diaIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Shifts k Γ₁ Γ₂) (x
           rw [if_pos rfl, h u _ hx]
           exact hv
   | .step u .box =>
+      obtain ⟨hk, hu⟩ := boxIn_box (Γ := Γ₁) hv
       rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]
-      change (match Γ₂.ref (u.shift k) with | some (.VTypeBox A) => some A | _ => none) =
-        some T
-      rw [h u _ (boxIn_step_box hv)]
+      exact boxIn_box_of (Γ := Γ₂) hk (h u _ hu)
   | .step u .keep =>
       obtain ⟨hF, hu, A, rfl⟩ := boxIn_keep (Γ := Γ₁) hv
       rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]

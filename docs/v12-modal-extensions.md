@@ -190,13 +190,35 @@ content of a possible object.
       without 4 (a temporary class `ModalSys.NoFour`).
     - **Finding: T + 4 (S4) breaks address uniqueness.** With both flags, `u.keep.here` (`u` kept
       at `v`, read at `v`) and `u.box` name the same object, by the comonad law
-      `extract ∘ dup = id`. Collapsing produces such addresses (`p.keep.box ↦ p.keep.here` at
-      level 0). Completeness for S4 therefore needs either
-      1. no `here` directly after `keep`, with collapse sending `p.keep.box ↦ p.box` at level 0
-         (keeps addresses unique; `Ctx.ref` must then look at the parent address); or
-      2. an equational rule `u.keep.here = u.box`.
-
-      Option 1 fits the "unique addresses" design. T alone and 4 alone have no such coincidence.
+      `extract ∘ dup = id`. T alone and 4 alone have no such coincidence.
+      - *Rejected: no `here` directly after `keep`* (collapse `p.keep.box ↦ p.box`). Names become
+        unique, but a view still has both `u.box` and `u.keep` as entries, and the syntax now
+        identifies one with the other read here. Soundness then fails for arbitrary environments
+        on view contexts, which are presented. In `Γ = (x : □A).boxIn`, `T_box` derives
+        `□P(x.keep.box) ⊢ P(x.box)`; an environment giving `x.box` and `x.keep` unrelated values
+        falsifies it on a one-world reflexive frame. Rescuing it would restrict validity to
+        "coherent" environments.
+      - *Rejected: an equational rule.* It would have to be stated from outside the view,
+        `□(u.keep.here = u.box)`, since the unboxed equation has the same counterexample. It adds a
+        rule and gives up normal forms.
+      - **Principle adopted:** names are unique *and the entries of every view are independent*.
+        Anything derivable from other entries is notation (a smart constructor), not an entry.
+    - **Implemented: under T + 4 a view shows only kept objects.** `ModalSys.keepOnly := T ∧ Four`.
+      - `Ctx.boxIn` has no `u.box` entries under `keepOnly`; the contents of `u` are `u.keep.here`.
+        The smart constructor `VarSymb.inner u` is `u.box` or `u.keep.here`. `Term.eta`, `Ann.eta`
+        and `SubE.unbox` use it, and `Ctx.ref_inner` gives `u.inner : A` in the view for `u : □A`.
+      - Collapse and shift are unchanged: `u.keep.here` collapses to `u.here` and shifts to
+        `u.keep.keep.here` (`VarSymb.inner_collapse_zero/succ`, `inner_shift_zero/succ`).
+      - Semantics: `Env.ref_inner` (the pushed environment at `u.inner` holds `u` evaluated at the
+        accessible world; under `keepOnly` by `necDup_eval`).
+      - Lemmas about `box` entries (`idxAlong_unbox`, `unbox_comp`, `ref_boxIn_of`) take
+        `keepOnly = false`, which any visible `box` entry provides (`Ctx.boxIn_box`).
+      - Environments and substitutions need no side condition; soundness and completeness keep
+        their statements. All v12m files build; axioms `propext`, `Classical.choice`,
+        `Quot.sound`.
+      - The issue should recur for B and 5: a singleton view returns to an earlier world, so which
+        entries are redundant depends on the view, not only on the flags. Decide per flag when it
+        is designed, with boxed equations as the fallback.
 - **Strong (outward): lift `Pos(v) → Pos(w)`.**
   - Rule, matching the path condition "for `x : ◇◇A` and `v ∈ ext(x)`, the lift of `cont(x)(v)`
     is in `Pos(w)`": `◇_x ◇_{x.dia} θ ⊢ ∃z:◇A. ◇_z θ(z.dia)`. Sound.

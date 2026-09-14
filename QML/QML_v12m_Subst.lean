@@ -16,6 +16,8 @@ target: an address (`ren`) or a term (`tm`).  Projection components are reached 
   (`Term.collapse`); its annotation indices collapse accordingly (`Ann.idxAt`).
 * Under 4, the kept component (`keep`) of a term entry `□t` is `□t` with its body shifted one view
   further in (`Term.shift`), and its annotation shifts accordingly.
+* The contents of an address entry `w` inside `□` are at `w.inner` (`w.box`, or `w.keep.here`
+  under T and 4).
 * Under a binder the source slot `bnd d` goes to the target slot `bnd d'`, the other entries are
   weakened, and the address map is re-rooted there.
 
@@ -47,7 +49,7 @@ def proj : SubE σ Δ → Step → SubE σ Δ
   | _, _ => .hide
 
 def unbox : SubE σ Δ → SubE σ Δ.boxIn
-  | .ren w => .ren (.step w .box)
+  | .ren w => .ren w.inner
   | .tm (.boxtm t) => .tm t
   | _ => .hide
 
@@ -158,9 +160,7 @@ theorem idxAlong_proj : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step} (p : Lis
           | _ => cases hst
 
 theorem okRef_unbox : ∀ {e : SubE σ Δ} {A : VarType}, e.OkRef (.VTypeBox A) → e.unbox.OkRef A
-  | .ren w, A, he => by
-      change (match Δ.ref w with | some (.VTypeBox A) => some A | _ => none) = some A
-      rw [he]
+  | .ren _, _, he => Ctx.ref_inner he
   | .hide, _, he => False.elim he
   | .tm (T := U) s, A, he => by
       have hU : U = .VTypeBox A := he
@@ -168,9 +168,12 @@ theorem okRef_unbox : ∀ {e : SubE σ Δ} {A : VarType}, e.OkRef (.VTypeBox A) 
       cases s
       rfl
 
-theorem idxAlong_unbox : ∀ {e : SubE σ Δ} {A : VarType} (p : List Step),
-    e.OkRef (.VTypeBox A) → e.unbox.idxAlong p = e.idxAlong (.box :: p)
-  | .ren _, _, _, _ => rfl
+theorem idxAlong_unbox (hk : ModalSys.keepOnly = false) :
+    ∀ {e : SubE σ Δ} {A : VarType} (p : List Step),
+      e.OkRef (.VTypeBox A) → e.unbox.idxAlong p = e.idxAlong (.box :: p)
+  | .ren w, _, p, _ => by
+      change w.inner.ext p = (VarSymb.step w .box).ext p
+      rw [VarSymb.inner_box hk]
   | .hide, _, _, he => False.elim he
   | .tm (T := U) s, A, p, he => by
       have hU : U = .VTypeBox A := he
@@ -357,14 +360,7 @@ theorem coh_of {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : O
 theorem ok_box {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) : Ok Γ.boxIn θ.box := by
   intro v T _ hv
   match v with
-  | .step u .box =>
-      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
-      cases hu : Γ.ref u with
-      | none => rw [hu] at hv; cases hv
-      | some U =>
-          rw [hu] at hv
-          cases U <;> try cases hv
-          exact SubE.okRef_unbox (okRef_at hθ hu)
+  | .step u .box => exact SubE.okRef_unbox (okRef_at hθ (Ctx.boxIn_step_box hv))
   | .step u .keep =>
       obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
       exact SubE.okRef_keepE hF (okRef_at hθ hu)
@@ -380,15 +376,10 @@ theorem coh_box {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : 
   intro v T _ hv p
   match v with
   | .step u .box =>
-      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
-      cases hu : Γ.ref u with
-      | none => rw [hu] at hv; cases hv
-      | some U =>
-          rw [hu] at hv
-          cases U <;> try cases hv
-          change ((θ.at u).unbox).idxAlong p = _
-          rw [SubE.idxAlong_unbox p (okRef_at hθ hu), hc u _ hu (.box :: p)]
-          rfl
+      obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv
+      change ((θ.at u).unbox).idxAlong p = _
+      rw [SubE.idxAlong_unbox hk p (okRef_at hθ hu), hc u _ hu (.box :: p)]
+      rfl
   | .step u .keep =>
       obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
       change ((θ.at u).keepE).idxAlong p = _
@@ -441,15 +432,10 @@ theorem coh_dia {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : 
         rw [if_pos rfl, SubE.idxAlong_diaBody p (okRef_at hθ hx) hw, hc u _ hx (.dia :: p)]
         rfl
   | .step u .box =>
-      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
-      cases hu : Γ.ref u with
-      | none => rw [hu] at hv; cases hv
-      | some U =>
-          rw [hu] at hv
-          cases U <;> try cases hv
-          change (((θ.at u).unbox).mono _).idxAlong p = _
-          rw [SubE.idxAlong_mono, SubE.idxAlong_unbox p (okRef_at hθ hu), hc u _ hu (.box :: p)]
-          rfl
+      obtain ⟨hk, hu⟩ := Ctx.boxIn_box (Γ := Γ) hv
+      change (((θ.at u).unbox).mono _).idxAlong p = _
+      rw [SubE.idxAlong_mono, SubE.idxAlong_unbox hk p (okRef_at hθ hu), hc u _ hu (.box :: p)]
+      rfl
   | .step u .keep =>
       obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
       change (((θ.at u).keepE).mono _).idxAlong p = _

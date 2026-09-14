@@ -166,18 +166,28 @@ theorem Ann.idxAt_collapse : ∀ {T : VarType} (a : Ann T) (k : ℕ) (p : List S
 
 variable [ModalSys]
 
+/-- Collapsing a level further out keeps a contents address a contents address. -/
+theorem VarSymb.inner_collapse_succ (u : VarSymb) (k : ℕ) :
+    u.inner.collapse (k + 1) = (u.collapse k).inner := by
+  unfold VarSymb.inner
+  split_ifs
+  · rw [VarSymb.collapse_proj (s := .here) rfl, VarSymb.collapse_level_succ (s := .keep) rfl]
+  · rw [VarSymb.collapse_level_succ (s := .box) rfl]
+
+/-- Collapsing the view of a contents address reads the object here. -/
+theorem VarSymb.inner_collapse_zero (u : VarSymb) : u.inner.collapse 0 = .step u .here := by
+  unfold VarSymb.inner
+  split_ifs
+  · rw [VarSymb.collapse_proj (s := .here) rfl, VarSymb.collapse_keep_zero]
+  · exact VarSymb.collapse_level_zero rfl (by decide)
+
 /-! ## Collapsing contexts -/
 
 namespace Ctx
 
 theorem boxIn_step_box {Γ : Ctx} {u : VarSymb} {T : VarType}
-    (h : Γ.boxIn (.step u .box) = some T) : Γ.ref u = some (.VTypeBox T) := by
-  change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at h
-  cases hu : Γ.ref u with
-  | none => rw [hu] at h; cases h
-  | some U =>
-      rw [hu] at h
-      cases U <;> first | (cases h; done) | (cases h; rfl)
+    (h : Γ.boxIn (.step u .box) = some T) : Γ.ref u = some (.VTypeBox T) :=
+  (boxIn_box h).2
 
 theorem ref_insert_ne {Γ : Ctx} {r : Root} (T : VarType) :
     ∀ {v : VarSymb}, v.rt ≠ r → (Γ.insert r T).ref v = Γ.ref v
@@ -237,10 +247,9 @@ theorem Collapses.boxIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ�
   intro v T _ hv
   match v with
   | .step u .box =>
+      obtain ⟨hk, hu⟩ := boxIn_box hv
       rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
-      change (match Γ₂.ref (u.collapse k) with | some (.VTypeBox A) => some A | _ => none) =
-        some T
-      rw [h u _ (boxIn_step_box hv)]
+      exact boxIn_box_of hk (h u _ hu)
   | .step u .keep =>
       obtain ⟨hF, hu, A, rfl⟩ := boxIn_keep hv
       rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
@@ -272,10 +281,9 @@ theorem Collapses.diaIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ�
           rw [if_pos rfl, h u _ hx]
           exact hv
   | .step u .box =>
+      obtain ⟨hk, hu⟩ := boxIn_box (Γ := Γ₁) hv
       rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
-      change (match Γ₂.ref (u.collapse k) with | some (.VTypeBox A) => some A | _ => none) =
-        some T
-      rw [h u _ (boxIn_step_box hv)]
+      exact boxIn_box_of (Γ := Γ₂) hk (h u _ hu)
   | .step u .keep =>
       obtain ⟨hF, hu, A, rfl⟩ := boxIn_keep (Γ := Γ₁) hv
       rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]

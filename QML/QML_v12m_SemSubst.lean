@@ -163,7 +163,7 @@ theorem entryVal_mono {Δ Δ' : Ctx} {h : Δ.Le Δ'} {w : M.frame.W} {env : M.En
 theorem entryVal_unbox {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (w' : M.frame.Acc w) :
     ∀ {e : SubE σ Δ} {A : VarType} (he : e.OkRef (.VTypeBox A)),
       entryVal (env.boxPush w') e.unbox (SubE.okRef_unbox he) = M.necEval (entryVal env e he) w'
-  | .ren _, _, _ => rfl
+  | .ren _, _, he => Env.ref_inner env w' he _
   | .tm (T := U) s, A, he => by
       have hU : U = .VTypeBox A := he
       subst hU

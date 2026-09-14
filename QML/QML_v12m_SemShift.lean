@@ -73,9 +73,10 @@ theorem Env.ShiftAgree.boxPush (hag : Env.ShiftAgree h env₁ env₂) (w' : M.fr
   intro v T _ hv
   match v with
   | .step u .box =>
-      have hu := Ctx.boxIn_step_box hv
+      obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv
       rw [Env.ref_congr _ (VarSymb.shift_level_succ (s := .box) rfl) _
-        (Ctx.ref_boxIn_of (h u _ hu)), Env.ref, dif_neg (by decide : ¬ Step.box.isProj = true)]
+        (Ctx.ref_boxIn_of hk (h u _ hu)), Env.ref,
+        dif_neg (by decide : ¬ Step.box.isProj = true)]
       change M.necEval (env₁.ref u hu) w' = M.necEval (env₂.ref (u.shift k) (h u _ hu)) w'
       rw [hag u _ hu]
   | .step u .keep =>
@@ -113,9 +114,9 @@ theorem Env.ShiftAgree.diaPush (hag : Env.ShiftAgree h env₁ env₂) {x : VarSy
       simp only [Env.diaPush]
       exact posEval_snd_congr (hag u _ hr) w₁ hm
   | .step u .box =>
-      have hu := Ctx.boxIn_step_box (Γ := Γ₁) hv
+      obtain ⟨hk, hu⟩ := Ctx.boxIn_box (Γ := Γ₁) hv
       rw [Env.ref_congr _ (VarSymb.shift_level_succ (s := .box) rfl) _
-        ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_boxIn_of (h u _ hu))), Env.ref,
+        ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_boxIn_of hk (h u _ hu))), Env.ref,
         dif_neg (by decide : ¬ Step.box.isProj = true)]
       change M.necEval (env₁.ref u hu) w₁.1 = M.necEval (env₂.ref (u.shift k) (h u _ hu)) w₁.1
       rw [hag u _ hu]
@@ -162,9 +163,9 @@ theorem Env.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} (env : M.En
   intro x T _ hx
   match x with
   | .step u .box =>
-      have hu := Ctx.boxIn_step_box hx
+      obtain ⟨hk, hu⟩ := Ctx.boxIn_box hx
       rw [Env.ref_congr _ (VarSymb.shift_level_zero (s := .box) rfl) _
-        (Ctx.ref_boxIn_of (Ctx.ref_keep_of hF hu)), Env.ref,
+        (Ctx.ref_boxIn_of hk (Ctx.ref_keep_of hF hu)), Env.ref,
         dif_neg (by decide : ¬ Step.box.isProj = true)]
       change M.necEval (env.ref u hu) ⟨s.1, _⟩ =
         M.necEval ((env.boxPush v).ref (.step u .keep) (Ctx.ref_keep_of hF hu)) s

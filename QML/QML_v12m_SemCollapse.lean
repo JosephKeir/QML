@@ -31,6 +31,35 @@ theorem Env.ref_congr {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {v v' : VarS
   subst e
   rfl
 
+/-- Pushed into `□`, the contents address of `u` holds `u` evaluated at the accessible world.
+    (Under T and 4 it is the kept copy read there, by `necDup_eval`.) -/
+theorem Env.ref_inner {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (w' : M.frame.Acc w)
+    {u : VarSymb} {A : VarType} (hu : Γ.ref u = some (.VTypeBox A))
+    (h : Γ.boxIn.ref u.inner = some A) :
+    (env.boxPush w').ref u.inner h = M.necEval (env.ref u hu) w' := by
+  cases hk : ModalSys.keepOnly with
+  | false =>
+      rw [Env.ref_congr _ (VarSymb.inner_box hk) _ (Ctx.ref_boxIn_of hk hu), Env.ref,
+        dif_neg (by decide : ¬ Step.box.isProj = true)]
+      rfl
+  | true =>
+      obtain ⟨hT, hF⟩ := ModalSys.keepOnly_flags hk
+      have hkeep : Γ.boxIn.ref (.step u .keep) = some (.VTypeBox A) := Ctx.ref_keep_of hF hu
+      have hhs : Step.here.isProj = true := rfl
+      rw [Env.ref_congr _ (VarSymb.inner_keepOnly hk) _ (Ctx.ref_here_of hT hkeep), Env.ref,
+        dif_pos hhs]
+      split
+      · rename_i U hU
+        have hUU : U = .VTypeBox A := Option.some.inj (hU.symm.trans hkeep)
+        subst hUU
+        change M.necEval (M.necEval (M.ops.necDup hF (env.ref u hu)) w')
+          ⟨w'.1, M.frame.refl hT w'.1⟩ = _
+        rw [M.necDup_eval]
+      · rename_i hU
+        exfalso
+        rw [hU] at hkeep
+        cases hkeep
+
 theorem Env.ref_of_nonproj {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
     ∀ {v : VarSymb} {T : VarType} (_hlp : v.lastProj = false) (h : Γ.ref v = some T)
       (h' : Γ v = some T), env.ref v h = env v T h'
@@ -138,9 +167,10 @@ theorem Env.CollapseAgree.boxPush (hag : Env.CollapseAgree h env₁ env₂) (w' 
   intro v T _ hv
   match v with
   | .step u .box =>
-      have hu := Ctx.boxIn_step_box hv
+      obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv
       rw [Env.ref_congr _ (VarSymb.collapse_level_succ (s := .box) rfl) _
-        (Ctx.ref_boxIn_of (h u _ hu)), Env.ref, dif_neg (by decide : ¬ Step.box.isProj = true)]
+        (Ctx.ref_boxIn_of hk (h u _ hu)), Env.ref,
+        dif_neg (by decide : ¬ Step.box.isProj = true)]
       change M.necEval (env₁.ref u hu) w' = M.necEval (env₂.ref (u.collapse k) (h u _ hu)) w'
       rw [hag u _ hu]
   | .step u .keep =>
@@ -178,9 +208,9 @@ theorem Env.CollapseAgree.diaPush (hag : Env.CollapseAgree h env₁ env₂) {x :
       simp only [Env.diaPush]
       exact posEval_snd_congr (hag u _ hr) w₁ hm
   | .step u .box =>
-      have hu := Ctx.boxIn_step_box (Γ := Γ₁) hv
+      obtain ⟨hk, hu⟩ := Ctx.boxIn_box (Γ := Γ₁) hv
       rw [Env.ref_congr _ (VarSymb.collapse_level_succ (s := .box) rfl) _
-        ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_boxIn_of (h u _ hu))), Env.ref,
+        ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_boxIn_of hk (h u _ hu))), Env.ref,
         dif_neg (by decide : ¬ Step.box.isProj = true)]
       change M.necEval (env₁.ref u hu) w₁.1 =
         M.necEval (env₂.ref (u.collapse k) (h u _ hu)) w₁.1

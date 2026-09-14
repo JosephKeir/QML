@@ -123,12 +123,12 @@ theorem canonEnv_ref (w : World σ N₀) (i : ℕ × ℕ) :
               rename_i A
               obtain ⟨hT₁, rfl⟩ := VarType.step_here hT
               change toDom w₀ _ w (rden w i (Ctx.Le.refl _)
-                (.boxtm (Term.eta (.step v .box) _ (Ctx.ref_boxIn_of hU))) ⟨w, _⟩) _ = _
+                (.boxtm (Term.eta v.inner _ (Ctx.ref_inner hU))) ⟨w, _⟩) _ = _
               exact toDom_congr w₀
-                ((rden_boxtm_self (Ctx.Le.refl _) (Term.eta (.step v .box) _ (Ctx.ref_boxIn_of hU))
+                ((rden_boxtm_self (Ctx.Le.refl _) (Term.eta v.inner _ (Ctx.ref_inner hU))
                   ⟨w, Or.inr ⟨hT₁, rfl⟩⟩ rfl).trans
                   (rden_sigma _ ((Term.collapse_eta _ _ _ _).trans
-                    (Term.eta_congr (VarSymb.collapse_level_zero rfl (by decide)) _ _ _)))) _ _
+                    (Term.eta_congr (VarSymb.inner_collapse_zero v) _ _ _)))) _ _
           | box => cases hs
           | dia => cases hs
           | keep => cases hs
@@ -153,12 +153,14 @@ theorem boxPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) (w' : Succ w)
   intro v T hv
   match v with
   | .step u .box =>
+      obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv
       change (model w₀).necEval ((canonEnv w₀ w i).ref u (Ctx.boxIn_step_box hv)) w' = _
       rw [canonEnv_ref]
       change toDom w₀ T w'.1 (rden w i (Ctx.Le.refl _)
-        (.boxtm (Term.eta (.step u .box) T _)) w') _ = _
+        (.boxtm (Term.eta u.inner T (Ctx.ref_inner hu))) w') _ = _
       exact toDom_congr w₀ ((rden_boxtm_acc _ _ w' hd).trans
-        (rden_eta_le ((w'.acc hd).boxIn_le i) _ _ _ _ _ _)) _ _
+        ((rden_sigma _ (Term.eta_congr (VarSymb.inner_box hk) T _ (Ctx.ref_boxIn_of hk hu))).trans
+          (rden_eta_le ((w'.acc hd).boxIn_le i) _ _ _ _ _ _))) _ _
   | .step _ .keep => exact (ModalSys.NoFour.absurd (Ctx.boxIn_keep hv).1).elim
   | .root _ => cases hv
   | .step _ .fst => cases hv

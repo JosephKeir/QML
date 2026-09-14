@@ -20,6 +20,9 @@ a type class, so the parameter is invisible in the notation).  With every flag o
   (`box`) or kept (`keep`), so every object has one address.
 * **Shifting** inserts a `keep` below a level (`VarSymb.shift k`).  It moves syntax from a `□` view
   one view further in.
+* **T and 4 together** make `u.box` the kept copy read where it was kept (`u.keep.here`).  A view
+  then shows only `u.keep` (`ModalSys.keepOnly`), so its entries stay independent and every object
+  still has one address; `VarSymb.inner` builds the contents address for either case.
 -/
 
 namespace V12M
@@ -35,6 +38,13 @@ class ModalSys where
 
 /-- The system K. -/
 def ModalSys.K : ModalSys := ⟨false, false⟩
+
+/-- Under T and 4 a view shows only kept objects: the contents of `u` are `u.keep.here`. -/
+def ModalSys.keepOnly [ModalSys] : Bool := ModalSys.T && ModalSys.Four
+
+theorem ModalSys.keepOnly_flags [ModalSys] (hk : ModalSys.keepOnly = true) :
+    ModalSys.T = true ∧ ModalSys.Four = true := by
+  simpa [ModalSys.keepOnly] using hk
 
 /-! ## Types and steps -/
 
@@ -342,6 +352,18 @@ theorem VarType.step_here {A T : VarType} (h : (VarType.VTypeBox A).step .here =
   split_ifs at h with hT
   exact ⟨hT, Option.some.inj h⟩
 
+/-- The contents of `u : □A` one view in: `u.box`, or under T and 4 `u.keep.here`. -/
+def VarSymb.inner (u : VarSymb) : VarSymb :=
+  if ModalSys.keepOnly then .step (.step u .keep) .here else .step u .box
+
+theorem VarSymb.inner_keepOnly {u : VarSymb} (hk : ModalSys.keepOnly = true) :
+    u.inner = .step (.step u .keep) .here :=
+  if_pos hk
+
+theorem VarSymb.inner_box {u : VarSymb} (hk : ModalSys.keepOnly = false) :
+    u.inner = .step u .box :=
+  if_neg (by simp [hk])
+
 namespace Ctx
 
 /-- The type reachable at an address: projections from the parent, level steps must be visible. -/
@@ -349,13 +371,16 @@ def ref (Γ : Ctx) : VarSymb → Option VarType
   | .root r => Γ (.root r)
   | .step v s => if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)
 
-/-- Inside `□`: `v.box : A` exactly when `v : □A` is reachable, and under 4 also `v.keep : □A`. -/
+/-- Inside `□`: `v.box : A` exactly when `v : □A` is reachable, and under 4 also `v.keep : □A`.
+    Under T and 4 only `v.keep`: `v.box` would be `v.keep.here`. -/
 def boxIn (Γ : Ctx) : Ctx := fun v =>
   match v with
   | .step u .box =>
-      match Γ.ref u with
-      | some (.VTypeBox A) => some A
-      | _ => none
+      if ModalSys.keepOnly then none
+      else
+        match Γ.ref u with
+        | some (.VTypeBox A) => some A
+        | _ => none
   | .step u .keep =>
       if ModalSys.Four then
         match Γ.ref u with
@@ -400,6 +425,33 @@ theorem boxIn_keep_none {Γ : Ctx} {u : VarSymb} (hu : Γ.ref u = none) :
     Γ.boxIn (.step u .keep) = none := by
   change (if ModalSys.Four = true then
     (match Γ.ref u with | some (.VTypeBox B) => some (.VTypeBox B) | _ => none) else none) =
+      (none : Option VarType)
+  rw [hu]
+  split_ifs <;> rfl
+
+theorem boxIn_box {Γ : Ctx} {u : VarSymb} {T : VarType}
+    (h : Γ.boxIn (.step u .box) = some T) :
+    ModalSys.keepOnly = false ∧ Γ.ref u = some (.VTypeBox T) := by
+  change (if ModalSys.keepOnly = true then none
+    else (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none)) = some T at h
+  split_ifs at h with hk
+  refine ⟨Bool.eq_false_iff.mpr hk, ?_⟩
+  cases hu : Γ.ref u with
+  | none => rw [hu] at h; cases h
+  | some U =>
+      rw [hu] at h
+      cases U <;> first | (cases h; done) | (cases h; rfl)
+
+theorem boxIn_box_of {Γ : Ctx} {u : VarSymb} {A : VarType} (hk : ModalSys.keepOnly = false)
+    (hu : Γ.ref u = some (.VTypeBox A)) : Γ.boxIn (.step u .box) = some A := by
+  change (if ModalSys.keepOnly = true then none
+    else (match Γ.ref u with | some (.VTypeBox B) => some B | _ => none)) = some A
+  rw [if_neg (by simp [hk]), hu]
+
+theorem boxIn_box_none {Γ : Ctx} {u : VarSymb} (hu : Γ.ref u = none) :
+    Γ.boxIn (.step u .box) = none := by
+  change (if ModalSys.keepOnly = true then none
+    else (match Γ.ref u with | some (.VTypeBox B) => some B | _ => none)) =
       (none : Option VarType)
   rw [hu]
   split_ifs <;> rfl
@@ -451,11 +503,8 @@ theorem Le.boxIn {Γ Γ' : Ctx} (h : Γ.Le Γ') : Γ.boxIn.Le Γ'.boxIn := by
   intro v T hv
   match v with
   | .step u .box =>
-      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
-      change (match Γ'.ref u with | some (.VTypeBox A) => some A | _ => none) = some T
-      cases hu : Γ.ref u with
-      | none => rw [hu] at hv; cases hv
-      | some U => rw [hu] at hv; rw [h.ref hu]; exact hv
+      obtain ⟨hk, hu⟩ := boxIn_box hv
+      exact boxIn_box_of hk (h.ref hu)
   | .step u .keep =>
       obtain ⟨hF, hu, A, rfl⟩ := boxIn_keep hv
       exact boxIn_keep_of hF (h.ref hu)
@@ -499,9 +548,7 @@ theorem SlotsFrom.boxIn {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) : Γ.boxIn.Slo
   intro v n hv hn
   have hfresh : ∀ w, w.rt = .bnd n → Γ w = none := fun w hw => h w n hw hn
   match v with
-  | .step u .box =>
-      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = none
-      simp only [ref_none_of_rootFresh hfresh u hv]
+  | .step u .box => exact boxIn_box_none (ref_none_of_rootFresh hfresh u hv)
   | .step u .keep => exact boxIn_keep_none (ref_none_of_rootFresh hfresh u hv)
   | .root _ => rfl
   | .step _ .fst => rfl
@@ -531,9 +578,7 @@ theorem SlotsFrom.diaIn {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (x : VarSymb) 
 theorem RootFresh.boxIn {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) : Γ.boxIn.RootFresh r := by
   intro v hv
   match v with
-  | .step u .box =>
-      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = none
-      simp only [ref_none_of_rootFresh h u hv]
+  | .step u .box => exact boxIn_box_none (ref_none_of_rootFresh h u hv)
   | .step u .keep => exact boxIn_keep_none (ref_none_of_rootFresh h u hv)
   | .root _ => rfl
   | .step _ .fst => rfl

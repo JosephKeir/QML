@@ -16,14 +16,14 @@ namespace V12M
 
 /-! ## η-expansion -/
 
+variable [ModalSys]
+
 def Ann.eta : VarSymb → (T : VarType) → Ann T
   | _, .Var => .var
   | _, .VTypeOne => .one
   | w, .VTypeProd A B => .prod (Ann.eta (.step w .fst) A) (Ann.eta (.step w .snd) B)
-  | w, .VTypeBox A => .box (Ann.eta (.step w .box) A)
+  | w, .VTypeBox A => .box (Ann.eta w.inner A)
   | w, .VTypeDia A => .dia w (Ann.eta (.step w .dia) A)
-
-variable [ModalSys]
 
 namespace Ctx
 
@@ -42,11 +42,10 @@ theorem ref_here_of {Γ : Ctx} (hT : ModalSys.T = true) {w : VarSymb} {A : VarTy
   rw [Ctx.ref_step_proj _ _ rfl, h]
   simp only [Option.bind_some, VarType.step, hT, if_true]
 
-theorem ref_boxIn_of {Γ : Ctx} {w : VarSymb} {A : VarType} (h : Γ.ref w = some (.VTypeBox A)) :
-    Γ.boxIn.ref (.step w .box) = some A := by
+theorem ref_boxIn_of {Γ : Ctx} (hk : ModalSys.keepOnly = false) {w : VarSymb} {A : VarType}
+    (h : Γ.ref w = some (.VTypeBox A)) : Γ.boxIn.ref (.step w .box) = some A := by
   rw [Ctx.ref_nonproj _ (rfl : (VarSymb.step w .box).lastProj = false)]
-  change (match Γ.ref w with | some (.VTypeBox A) => some A | _ => none) = some A
-  rw [h]
+  exact Ctx.boxIn_box_of hk h
 
 theorem ref_diaIn_of {Γ : Ctx} {w : VarSymb} {A : VarType} (h : Γ.ref w = some (.VTypeDia A)) :
     (Γ.diaIn w).ref (.step w .dia) = some A := by
@@ -65,7 +64,7 @@ def Term.eta {σ : Signature} : {Γ : Ctx} → (w : VarSymb) → (T : VarType) �
   | _, w, .VTypeProd A B, h =>
       .pair (Term.eta (.step w .fst) A (Ctx.ref_fst_of h))
         (Term.eta (.step w .snd) B (Ctx.ref_snd_of h))
-  | _, w, .VTypeBox A, h => .boxtm (Term.eta (.step w .box) A (Ctx.ref_boxIn_of h))
+  | _, w, .VTypeBox A, h => .boxtm (Term.eta w.inner A (Ctx.ref_inner h))
   | _, w, .VTypeDia A, h => .diatm w ⟨A, h⟩ (Term.eta (.step w .dia) A (Ctx.ref_diaIn_of h))
 
 theorem Term.mono_eta {σ : Signature} : ∀ {Γ Γ' : Ctx} (hle : Γ.Le Γ') (w : VarSymb)
@@ -142,8 +141,8 @@ theorem Term.collapse_eta {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} (
         ((Term.collapse_eta h (.step w .snd) B (Ctx.ref_snd_of hw)).trans
           (Term.eta_congr (VarSymb.collapse_proj (s := .snd) rfl) B _ _))
   | _, _, _, h, w, .VTypeBox A, hw =>
-      sig_boxtm ((Term.collapse_eta h.boxIn (.step w .box) A (Ctx.ref_boxIn_of hw)).trans
-        (Term.eta_congr (VarSymb.collapse_level_succ (s := .box) rfl) A _ _))
+      sig_boxtm ((Term.collapse_eta h.boxIn w.inner A (Ctx.ref_inner hw)).trans
+        (Term.eta_congr (VarSymb.inner_collapse_succ w _) A _ _))
   | _, _, _, h, w, .VTypeDia A, hw =>
       sig_diatm ((Term.collapse_eta (h.diaIn w) (.step w .dia) A (Ctx.ref_diaIn_of hw)).trans
         (Term.eta_congr (VarSymb.collapse_level_succ (s := .dia) rfl) A _ _))
@@ -153,11 +152,10 @@ theorem SubE.proj_here_eta {σ : Signature} {Δ : Ctx} (hT : ModalSys.T = true) 
     {A : VarType} (hw : Δ.ref w = some (.VTypeBox A)) :
     (SubE.tm (Term.eta (σ := σ) w (.VTypeBox A) hw)).proj .here =
       SubE.tm (Term.eta (.step w .here) A (Ctx.ref_here_of hT hw)) := by
-  change (SubE.tm (Term.boxtm (Term.eta (σ := σ) (.step w .box) A (Ctx.ref_boxIn_of hw)))).proj
-    .here = _
+  change (SubE.tm (Term.boxtm (Term.eta (σ := σ) w.inner A (Ctx.ref_inner hw)))).proj .here = _
   rw [SubE.proj_boxtm_here _ hT]
   exact SubE.tm_eq_of_sig ((Term.collapse_eta _ _ A _).trans
-    (Term.eta_congr (VarSymb.collapse_level_zero (s := .box) rfl (by decide)) A _ _))
+    (Term.eta_congr (VarSymb.inner_collapse_zero w) A _ _))
 
 /-- Shifting an η-expansion expands the shifted address. -/
 theorem Term.shift_eta {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂)
@@ -173,8 +171,8 @@ theorem Term.shift_eta {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} (h :
         ((Term.shift_eta h (.step w .snd) B (Ctx.ref_snd_of hw)).trans
           (Term.eta_congr (VarSymb.shift_proj (s := .snd) rfl) B _ _))
   | _, _, _, h, w, .VTypeBox A, hw =>
-      sig_boxtm ((Term.shift_eta h.boxIn (.step w .box) A (Ctx.ref_boxIn_of hw)).trans
-        (Term.eta_congr (VarSymb.shift_level_succ (s := .box) rfl) A _ _))
+      sig_boxtm ((Term.shift_eta h.boxIn w.inner A (Ctx.ref_inner hw)).trans
+        (Term.eta_congr (VarSymb.inner_shift_succ w _) A _ _))
   | _, _, _, h, w, .VTypeDia A, hw =>
       sig_diatm ((Term.shift_eta (h.diaIn w) (.step w .dia) A (Ctx.ref_diaIn_of hw)).trans
         (Term.eta_congr (VarSymb.shift_level_succ (s := .dia) rfl) A _ _))
@@ -184,11 +182,10 @@ theorem SubE.keepE_eta {σ : Signature} {Δ : Ctx} (hF : ModalSys.Four = true) {
     {A : VarType} (hw : Δ.ref w = some (.VTypeBox A)) :
     (SubE.tm (Term.eta (σ := σ) w (.VTypeBox A) hw)).keepE =
       SubE.tm (Term.eta (.step w .keep) (.VTypeBox A) (Ctx.ref_keep_of hF hw)) := by
-  change (SubE.tm (Term.boxtm (Term.eta (σ := σ) (.step w .box) A (Ctx.ref_boxIn_of hw)))).keepE
-    = _
+  change (SubE.tm (Term.boxtm (Term.eta (σ := σ) w.inner A (Ctx.ref_inner hw)))).keepE = _
   rw [SubE.keepE_tm _ hF]
   exact SubE.tm_eq_of_sig (sig_boxtm ((Term.shift_eta _ _ A _).trans
-    (Term.eta_congr (VarSymb.shift_level_zero (s := .box) rfl) A _ _)))
+    (Term.eta_congr (VarSymb.inner_shift_zero w) A _ _)))
 
 /-! ## Entries agreeing up to η -/
 
@@ -238,8 +235,8 @@ theorem Sim.unbox {A : VarType} {e e' : SubE σ Δ} (h : Sim (.VTypeBox A) e e')
     Sim A e.unbox e'.unbox := by
   cases h with
   | refl => exact .refl _
-  | eta_ren w h => exact .eta_ren _ (Ctx.ref_boxIn_of h)
-  | ren_eta w h => exact .ren_eta _ (Ctx.ref_boxIn_of h)
+  | eta_ren w h => exact .eta_ren _ (Ctx.ref_inner h)
+  | ren_eta w h => exact .ren_eta _ (Ctx.ref_inner h)
 
 theorem Sim.keepE (hF : ModalSys.Four = true) {A : VarType} {e e' : SubE σ Δ}
     (h : Sim (.VTypeBox A) e e') : Sim (.VTypeBox A) e.keepE e'.keepE := by
@@ -326,14 +323,7 @@ theorem sim_box {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') : Sim Γ.
   refine sim_of ?_
   intro v T _ hv
   match v with
-  | .step u .box =>
-      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
-      cases hu : Γ.ref u with
-      | none => rw [hu] at hv; cases hv
-      | some U =>
-          rw [hu] at hv
-          cases U <;> try cases hv
-          exact (hs u _ hu).unbox
+  | .step u .box => exact (hs u _ (Ctx.boxIn_step_box hv)).unbox
   | .step u .keep =>
       obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
       exact (hs u _ hu).keepE hF
@@ -362,14 +352,7 @@ theorem sim_dia {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') {x ιx : 
               (if u = u then (θ'.at u).diaBody ιx else SubE.hide)
             rw [if_pos rfl, if_pos rfl]
             exact (hs u _ hx).diaBody hw
-  | .step u .box =>
-      change (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none) = some T at hv
-      cases hu : Γ.ref u with
-      | none => rw [hu] at hv; cases hv
-      | some U =>
-          rw [hu] at hv
-          cases U <;> try cases hv
-          exact (hs u _ hu).unbox.mono _
+  | .step u .box => exact (hs u _ (Ctx.boxIn_step_box (Γ := Γ) hv)).unbox.mono _
   | .step u .keep =>
       obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
       exact ((hs u _ hu).keepE hF).mono _
