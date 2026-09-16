@@ -43,6 +43,16 @@ Notes before starting:
   *not* admissible. The conclusion has to keep the variable bound.
 - So the statement to aim for is the "hypotheses do not mention `c`" version, matching the shape of
   `all_intro`, and the work is the induction that rewrites the proof.
+- **The eigenvariable must have the same type as the constant**, and that is what keeps the
+  renaming sound in modal positions. Roots are invisible inside `□` (`Ctx.boxIn` has only `u.box`
+  and, under 4, `u.keep`), so a constant `c : Var` simply cannot occur under a modality: `□(y = c)`
+  is not well-formed. A constant occurs under a modality only as an address built from its root —
+  `c.box`, `c.here`, `c.keep`, or as the witness of `◇_c` with `c.dia` in its view — and each maps
+  to the same address built from the eigenvariable. Renaming `c : □Var` to `x : □Var` sends
+  `□(y = c.box)` to `□(y = x.box)`; renaming it to an `x : Var` does not typecheck.
+- For a constant of `◇` type the annotation indices move too, since witnesses live in annotations.
+  That is the map `ι` of `Subst.Coh`, which for a renaming is the same map on addresses. State this
+  explicitly: it is where a careless version would go wrong.
 
 ## 3. Uniform substitution
 
