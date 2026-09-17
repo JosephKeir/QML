@@ -22,6 +22,32 @@ namespace V12M
 
 variable [ModalSys]
 
+/-! ## Strong T: the two readings of a `□`-view formula with a hole
+
+`ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1` is a formula of the `□` view with a hole for an object.
+It is read either at the current world (`hereRead`, under weak T: the view collapses and the hole
+takes a term) or inside a `◇_c` view (`viewRead`: the hole takes the witness content `c.dia`).
+-/
+
+/-- The `□`-view formula `ψ` read at the current world, with `t` in its hole. -/
+def WFF.hereRead {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {A : VarType}
+    {a : Ann A} (t : Term σ Γ A a) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) : WFF σ Γ 0 :=
+  WFF.instantiate Ctx.NoSlots.slots t
+    (WFF.collapse ((Ctx.collapses_boxIn_self hT Γ).insert
+        ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) A)
+      ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A) ψ)
+
+/-- The `□`-view formula `ψ` read inside `◇_c`, with the witness content in its hole. -/
+def WFF.viewRead {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) (hc : Γ.RootFresh (.free c))
+    (A : VarType) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
+    WFF σ ((Γ.insert (.free c) (.VTypeDia A)).diaIn (.root (.free c))) 0 :=
+  WFF.renameRoot (.bnd 0) ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0))
+    ((Ctx.le_insert hc.root (.VTypeDia A)).boxIn.trans
+      (Ctx.le_boxIn_diaIn _ (.root (.free c))))
+    (.step (.root (.free c)) .dia)
+    (Ctx.ref_diaIn_of (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)))
+    ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A) Ctx.NoSlots.slots ψ
+
 inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ Γ 0 → Type where
   -- Structural
   | ax {Γ : Ctx} (φ : WFF σ Γ 0) : Proof σ Γ [φ] φ
@@ -121,6 +147,21 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       {φ : WFF σ Γ.boxIn 0} :
       Proof σ Γ Δ (.box φ) →
       Proof σ Γ Δ (.box (.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots φ)))
+  -- Strong T
+  /-- Every object has a possible object realised here.  The witness `c : ◇A` is fresh, and the
+      subproof may use, for finitely many `□`-view formulas with a hole, that what holds of `t`
+      here holds of the witness content in `◇_c`.  As only that direction is available, `◇_c` can
+      only be used positively. -/
+  | T_dia {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) (hS : ModalSys.TStrong = true)
+      (A : VarType) {a : Ann A} (t : Term σ Γ A a) (c : ℕ) (hc : Γ.RootFresh (.free c))
+      {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0}
+      (Ψ : List (WFF σ (Γ.boxIn.insert (.bnd 0) A) 1)) :
+      Proof σ (Γ.insert (.free c) (.VTypeDia A))
+        (Ψ.map (fun ψ => WFF.imp ((WFF.hereRead hT t ψ).weaken hc.root (.VTypeDia A))
+            (.dia (.root (.free c)) ⟨A, Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)⟩
+              (WFF.viewRead c hc A ψ))) ++ Δ.map (WFF.weaken hc.root (.VTypeDia A)))
+          (φ.weaken hc.root (.VTypeDia A)) →
+      Proof σ Γ Δ φ
 
 /-! ## Handling hypotheses -/
 

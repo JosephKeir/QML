@@ -147,8 +147,8 @@ noncomputable def ops : (frame w₀).Ops where
   necExtract hT n :=
     toDom w₀ _ _ (rawEval (.extract hT) _ n.1) (definable_rawEval (.extract hT) n.2)
   necDup hF n := ⟨rawEval (.dup hF) _ n.1, definable_rawEval (.dup hF) n.2⟩
-  posRet hS _ := (ModalSys.NoTStrong.absurd hS).elim
 
+omit [ModalSys.NoTStrong] in
 /-- ⭐Evaluating a map on a frame object is evaluating it on the raw object. -/
 theorem eval_toDom : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀) (o : RDom A w)
     (h : Definable A w o),
@@ -185,7 +185,7 @@ noncomputable def model : Model.{0} σ where
   posStrength_eval _ _ := rfl
   necExtract_eval _ _ := rfl
   necDup_eval _ _ _ _ := rfl
-  posRet_eval hS _ := (ModalSys.NoTStrong.absurd hS).elim
+  posRet_exists hS _ := (ModalSys.NoTStrong.absurd hS).elim
 
 end Canon
 

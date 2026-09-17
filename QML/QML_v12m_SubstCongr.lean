@@ -47,13 +47,6 @@ theorem ref_boxIn_of {Γ : Ctx} (hk : ModalSys.keepOnly = false) {w : VarSymb} {
   rw [Ctx.ref_nonproj _ (rfl : (VarSymb.step w .box).lastProj = false)]
   exact Ctx.boxIn_box_of hk h
 
-theorem ref_diaIn_of {Γ : Ctx} {w : VarSymb} {A : VarType} (h : Γ.ref w = some (.VTypeDia A)) :
-    (Γ.diaIn w).ref (.step w .dia) = some A := by
-  rw [Ctx.ref_nonproj _ (rfl : (VarSymb.step w .dia).lastProj = false)]
-  change (if w = w then (match Γ.ref w with | some (.VTypeDia X) => some X | _ => none)
-    else none) = some A
-  rw [if_pos rfl, h]
-
 end Ctx
 
 /-- ⭐The η-expansion of a reachable address. -/

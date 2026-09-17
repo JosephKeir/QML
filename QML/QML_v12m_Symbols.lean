@@ -476,6 +476,14 @@ theorem ref_step_nonproj (Γ : Ctx) (v : VarSymb) {s : Step} (hs : ¬ s.isProj =
   change (if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = _
   rw [if_neg hs]
 
+/-- The content of a reachable possible address is reachable in its view. -/
+theorem ref_diaIn_of {Γ : Ctx} {w : VarSymb} {A : VarType} (h : Γ.ref w = some (.VTypeDia A)) :
+    (Γ.diaIn w).ref (.step w .dia) = some A := by
+  rw [ref_nonproj _ (rfl : (VarSymb.step w .dia).lastProj = false)]
+  change (if w = w then (match Γ.ref w with | some (.VTypeDia X) => some X | _ => none)
+    else none) = some A
+  rw [if_pos rfl, h]
+
 theorem ref_none_of_rootFresh {Γ : Ctx} {r : Root} (h : ∀ v, v.rt = r → Γ v = none) :
     ∀ v, v.rt = r → Γ.ref v = none := by
   intro v

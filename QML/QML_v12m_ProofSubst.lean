@@ -427,6 +427,195 @@ end Commute
 
 /-! ## Substitution in proofs -/
 
+/-- Substituting into the `here` reading of a `□`-view formula with a hole: the term substitutes,
+    and the hole formula substitutes one view in, under the slot. -/
+theorem WFF.subst_hereRead {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
+    (hT : ModalSys.T = true) (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ)
+    (hΓ : Γ.SlotsFrom 0) (hΔ : Δ.SlotsFrom 0) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
+    (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
+    WFF.subst ι θ hθ hc hΓ hΔ (WFF.hereRead hT t ψ) =
+      WFF.hereRead hT (Term.subst ι θ hθ hc t)
+        (WFF.subst (VarSymb.shiftSlot ι 0 0) (θ.box.under 0 0 A hΔ.boxIn.root)
+          (Subst.ok_under (Subst.ok_box hθ) A hΔ.boxIn.root)
+          (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn A hΔ.boxIn.root)
+          (hΓ.boxIn.insert A) (hΔ.boxIn.insert A) ψ) := by
+  refine (WFF.subst_instantiate θ hθ hc hΓ hΔ t _).trans ?_
+  exact congrArg (WFF.instantiate hΔ (Term.subst ι θ hθ hc t))
+    (WFF.collapse_subst
+      ((Ctx.collapses_boxIn_self hT Γ).insert (hΓ.boxIn.rootFresh le_rfl) A)
+      ((Ctx.collapses_boxIn_self hT Δ).insert (hΔ.boxIn.rootFresh le_rfl) A)
+      (θ.box.under 0 0 A hΔ.boxIn.root) (Subst.ok_under (Subst.ok_box hθ) A hΔ.boxIn.root)
+      (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn A hΔ.boxIn.root)
+      (θ.under 0 0 A hΔ.root) (Subst.ok_under hθ A hΔ.root)
+      (Subst.coh_under hθ hc hΓ A hΔ.root)
+      (hΓ.boxIn.insert A) (hΓ.insert A) (hΔ.boxIn.insert A) (hΔ.insert A)
+      (Subst.corr_under (Subst.ok_box hθ) (Subst.corr_box_self hT hθ) hΓ.boxIn A
+        hΔ.boxIn.root hΔ.root (hΔ.boxIn.rootFresh le_rfl))
+      ψ).symm
+
+/-- The `.dia` arm of `WFF.subst`, stated with the target witness address as a *variable*.
+
+    `WFF.subst` builds the node at `ι x`, and callers usually want it at some `y` with `ι x = y`
+    only propositionally.  Rewriting that in place is not possible: the address occurs in the type
+    of the body, and the `Subst.ok_dia` / `Subst.coh_dia` arguments the arm generates mention `ι x`
+    inside their own types, so it cannot be abstracted uniformly — `rw` fails the motive check and
+    `generalize` fails outright.  Taking `y` as a variable and the right-hand side's side conditions
+    as hypotheses fixes both problems: `subst hxy` rewrites uniformly, and `Ok`, `Coh` and
+    `SlotsFrom` are `Prop`s, so what is left is proof irrelevance. -/
+theorem WFF.subst_dia {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
+    {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (y : VarSymb) (hxy : ι x = y)
+    (hy : ∃ X, Δ.ref y = some (.VTypeDia X))
+    (hθy : Subst.Ok (Γ.diaIn x) (θ.dia x y)) (hcy : Subst.Coh ι (Γ.diaIn x) (θ.dia x y))
+    (hsy : (Δ.diaIn y).SlotsFrom d') (φ : WFF σ (Γ.diaIn x) d) :
+    WFF.subst ι θ hθ hc hΓ hΔ (.dia x hx φ) =
+      .dia y hy (WFF.subst ι (θ.dia x y) hθy hcy (hΓ.diaIn x) hsy φ) := by
+  subst hxy
+  rfl
+
+/-- Substituting into the `◇_c` reading, with the eigenvariable `c` renamed to `c'`.
+
+    The witness index is dealt with by `WFF.subst_dia` above: the `.dia` arm builds the node at
+    `ι x`, which here is `VarSymb.renameIdx ι c c' (.root (.free c))`, only propositionally equal to
+    `.root (.free c')` — it reduces to an `if` on `Root.free c = Root.free c`, and `Nat.decEq c c`
+    does not reduce for a variable `c`.
+
+    The body is the `◇` counterpart of `WFF.subst_bindFree`: both sides are a `WFF.renameRoot`, so
+    each is composed by `WFF.subst_comp` against the common substitution
+    `(θ.box.mono _).set (.bnd 0) (.ren (.step (.root (.free c')) .dia))`, which sends the slot to
+    `c'.dia` and each `□` entry to its weakening into the `◇_{c'}` view.  Of the two `Subst.Sim`
+    obligations, the first goes through `Subst.dia_eq_box_mono` away from the slot — with
+    `θ.rename`'s entries related to `θ`'s by `Subst.at_eq_mono_of` and freshness of `c` in `Γ`,
+    then `SubE.unbox_mono` / `SubE.keepE_mono` — and through `SubE.diaBody` on a `.ren` at the
+    slot; the second is `Subst.under_eq_mono` with the `SubE.comp_mono` / `idRen` step, exactly as
+    in `WFF.subst_bindFree`. -/
+theorem WFF.subst_diaViewRead {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
+    (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0)
+    (hΔ : Δ.SlotsFrom 0) {c c' : ℕ} (hcf : Γ.RootFresh (.free c)) (hcf' : Δ.RootFresh (.free c'))
+    (A : VarType) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
+    WFF.subst (VarSymb.renameIdx ι c c') (θ.rename c c' (.VTypeDia A) hcf'.root)
+        (Subst.ok_rename hθ (.VTypeDia A) hcf'.root)
+        (Subst.coh_rename hθ hc hcf (.VTypeDia A) hcf'.root)
+        (hΓ.insertFree c (.VTypeDia A)) (hΔ.insertFree c' (.VTypeDia A))
+        (WFF.dia (.root (.free c)) ⟨A, Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)⟩
+          (WFF.viewRead c hcf A ψ)) =
+      WFF.dia (.root (.free c')) ⟨A, Ctx.ref_insert_root Δ (.free c') (.VTypeDia A)⟩
+        (WFF.viewRead c' hcf' A
+          (WFF.subst (VarSymb.shiftSlot ι 0 0) (θ.box.under 0 0 A hΔ.boxIn.root)
+            (Subst.ok_under (Subst.ok_box hθ) A hΔ.boxIn.root)
+            (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn A hΔ.boxIn.root)
+            (hΓ.boxIn.insert A) (hΔ.boxIn.insert A) ψ)) := by
+  have hrefΓ : (Γ.insert (.free c) (.VTypeDia A)).ref (.root (.free c)) = some (.VTypeDia A) :=
+    Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)
+  have hx : ∃ X, (Γ.insert (.free c) (.VTypeDia A)).ref (.root (.free c)) = some (.VTypeDia X) :=
+    ⟨A, hrefΓ⟩
+  have hy : ∃ X, (Δ.insert (.free c') (.VTypeDia A)).ref (.root (.free c')) = some (.VTypeDia X) :=
+    ⟨A, Ctx.ref_insert_root Δ (.free c') (.VTypeDia A)⟩
+  have hidx : VarSymb.renameIdx ι c c' (.root (.free c)) = .root (.free c') := if_pos rfl
+  have hθr := Subst.ok_rename (u := c) hθ (.VTypeDia A) hcf'.root
+  have hcr := Subst.coh_rename hθ hc hcf (.VTypeDia A) hcf'.root
+  have hw : ((θ.rename c c' (.VTypeDia A) hcf'.root).at (.root (.free c))).idxAlong [] =
+      .root (.free c') := (hcr (.root (.free c)) _ hrefΓ []).trans hidx
+  refine (WFF.subst_dia _ hθr hcr (hΓ.insertFree c (.VTypeDia A))
+    (hΔ.insertFree c' (.VTypeDia A)) hx (.root (.free c')) hidx hy
+    (Subst.ok_dia hθr hx hw) (hidx ▸ Subst.coh_dia hθr hcr hx)
+    ((hΔ.insertFree c' (.VTypeDia A)).diaIn _) _).trans ?_
+  refine congrArg (WFF.dia (.root (.free c')) hy) ?_
+  -- Both sides are a `renameRoot`, i.e. a `subst` by `single (.bnd 0) (.ren _)`; compose each
+  -- against the common substitution `θ₃`, which sends the slot to `c'.dia` and everything else
+  -- to its `□` entry weakened into the `◇_{c'}` view.
+  have hmono : Δ.boxIn.Le ((Δ.insert (.free c') (.VTypeDia A)).diaIn (.root (.free c'))) :=
+    (Ctx.le_insert hcf'.root (.VTypeDia A)).boxIn.trans
+      (Ctx.le_boxIn_diaIn _ (.root (.free c')))
+  have hedge : ((Δ.insert (.free c') (.VTypeDia A)).diaIn (.root (.free c'))).ref
+      (.step (.root (.free c')) .dia) = some A :=
+    Ctx.ref_diaIn_of (Ctx.ref_insert_root Δ (.free c') (.VTypeDia A))
+  have hθ₃ : Subst.Ok (Γ.boxIn.insert (.bnd 0) A)
+      ((θ.box.mono hmono).set (.bnd 0) (.ren (.step (.root (.free c')) .dia))) :=
+    Subst.ok_set (Subst.ok_mono (Subst.ok_box hθ) hmono)
+      (e := .ren (.step (.root (.free c')) .dia)) hedge
+  have hc₃ : Subst.Coh (Subst.setIdx ι (.bnd 0) (.ren (.step (.root (.free c')) .dia)))
+      (Γ.boxIn.insert (.bnd 0) A)
+      ((θ.box.mono hmono).set (.bnd 0) (.ren (.step (.root (.free c')) .dia))) :=
+    Subst.coh_set (Subst.ok_mono (Subst.ok_box hθ) hmono)
+      (Subst.coh_mono (Subst.coh_box hθ hc) hmono) (hΓ.boxIn.rootFresh le_rfl)
+      (e := .ren (.step (.root (.free c')) .dia)) hedge
+  refine (WFF.subst_comp _ _ _ _ _ _ _ hθ₃ hc₃ _ _ _ ?_ ψ).trans
+    (WFF.subst_comp _ _ _ _ _ _ _ hθ₃ hc₃ _ _ _ ?_ ψ).symm
+  · -- `single (.bnd 0) (.ren c.dia)` then the `◇_{c'}` view of the renamed substitution.
+    have hat : ∀ w T, Γ.ref w = some T →
+        (θ.rename c c' (.VTypeDia A) hcf'.root).at w =
+          (θ.at w).mono (Ctx.le_insert hcf'.root (.VTypeDia A)) :=
+      Subst.at_eq_mono_of _ (fun w T _ hw =>
+        Subst.rename_ne θ c' (.VTypeDia A) hcf'.root (fun he => by
+          subst he
+          rw [hcf.root] at hw
+          cases hw))
+    have hbox : ∀ w T, Γ.boxIn.ref w = some T →
+        (θ.rename c c' (.VTypeDia A) hcf'.root).box.at w =
+          (θ.box.at w).mono ((Ctx.le_insert hcf'.root (.VTypeDia A)).boxIn) :=
+      Subst.at_eq_mono_of _ (fun w T _ hw => by
+        match w with
+        | .step u .box =>
+            change ((θ.rename c c' (.VTypeDia A) hcf'.root).at u).unbox = _
+            rw [hat u _ (Ctx.boxIn_step_box hw), SubE.unbox_mono]
+            rfl
+        | .step u .keep =>
+            obtain ⟨hF, hu, B, rfl⟩ := Ctx.boxIn_keep hw
+            change ((θ.rename c c' (.VTypeDia A) hcf'.root).at u).keepE = _
+            rw [hat u _ hu, SubE.keepE_mono]
+            rfl
+        | .root _ => cases hw
+        | .step _ .fst => cases hw
+        | .step _ .snd => cases hw
+        | .step _ .dia => cases hw
+        | .step _ .here => cases hw)
+    refine Subst.sim_of ?_
+    intro v U hlp hv
+    rw [Subst.comp_apply]
+    by_cases hvr : v = .root (.bnd 0)
+    · subst hvr
+      rw [Subst.set_root, Subst.single_root, SubE.comp_ren,
+        Subst.at_nonproj _ (rfl : (VarSymb.step (.root (.free c)) .dia).lastProj = false)]
+      change SubE.Sim U (SubE.ren (.step (.root (.free c')) .dia))
+        (if (VarSymb.root (.free c)) = (VarSymb.root (.free c)) then
+          ((θ.rename c c' (.VTypeDia A) hcf'.root).at (.root (.free c))).diaBody
+            (.root (.free c'))
+          else SubE.hide)
+      rw [if_pos rfl, show (θ.rename c c' (.VTypeDia A) hcf'.root).at (.root (.free c)) =
+        SubE.ren (.root (.free c')) from Subst.rename_root θ c c' (.VTypeDia A) hcf'.root]
+      exact .refl _
+    · have hv' : Γ.boxIn v = some U := by simpa [Ctx.insert, hvr] using hv
+      have hvr' : Γ.boxIn.ref v = some U := (Ctx.ref_nonproj Γ.boxIn hlp).trans hv'
+      rw [Subst.set_ne _ _ hvr, Subst.single_ne _ hvr, SubE.comp_ren,
+        Subst.dia_eq_box_mono _ _ _ v U
+          (((Ctx.le_insert hcf.root (.VTypeDia A)).boxIn).ref hvr'),
+        hbox v U hvr', SubE.mono_mono, Subst.at_nonproj θ.box hlp]
+      exact .refl _
+  · -- The `□` view under the slot, then `single (.bnd 0) (.ren c'.dia)`.
+    refine Subst.sim_of ?_
+    intro v U hlp hv
+    rw [Subst.comp_apply]
+    by_cases hvr : v = .root (.bnd 0)
+    · subst hvr
+      rw [Subst.set_root,
+        show θ.box.under 0 0 A hΔ.boxIn.root (.root (.bnd 0)) = .ren (.root (.bnd 0)) from
+          if_pos rfl, SubE.comp_ren, Subst.at_nonproj _ hlp, Subst.single_root]
+      exact .refl _
+    · have hv' : Γ.boxIn v = some U := by simpa [Ctx.insert, hvr] using hv
+      rw [Subst.set_ne _ _ hvr,
+        show θ.box.under 0 0 A hΔ.boxIn.root v = (θ.box v).mono
+          (Ctx.le_insert hΔ.boxIn.root A) from if_neg hvr,
+        SubE.comp_mono (Subst.idRen _) Subst.ok_idRen Subst.coh_idRen
+          (Ctx.le_insert hΔ.boxIn.root A) hmono _ _ _
+          (fun w _ hw' => by
+            rw [Subst.single_at_ne (Ctx.ref_rt_ne (hΔ.boxIn.rootFresh le_rfl) hw'),
+              Subst.at_idRen]
+            rfl)
+          (Subst.ok_box hθ v U hlp hv'),
+        SubE.comp_idRen]
+      exact .refl _
+
 /-- ⭐**Substitution in proofs**: a substitution from the context of a proof into a presented
     context sends the proof to a proof of the substituted sequent. -/
 def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} → {φ : WFF σ Γ 0} →
@@ -579,6 +768,29 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
             hΓ.boxIn hΓ.boxIn.boxIn Ctx.NoSlots.slots Ctx.NoSlots.slots
             (Subst.shiftCorr_box_box hF hθ) φ))
         (Proof.four_box hF (Proof.subst p θ hθ hc hΓ))
+  | _, _, _, @Proof.T_dia _ _ _ _ hT hS A _ t c hcf _ _ Ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      have hcf' : Γ'.RootFresh (.free (Ctx.Presented.bound Γ')) := Ctx.Presented.fresh _ le_rfl
+      have ih := Proof.subst p (Γ' := Γ'.insert (.free (Ctx.Presented.bound Γ')) (.VTypeDia A))
+        (θ.rename c _ (.VTypeDia A) hcf'.root) (Subst.ok_rename hθ (.VTypeDia A) hcf'.root)
+        (Subst.coh_rename hθ hc hcf (.VTypeDia A) hcf'.root) (hΓ.insertFree c (.VTypeDia A))
+      Proof.T_dia hT hS A (Term.subst ι θ hθ hc t) _ hcf'
+        (Ψ.map (fun ψ => WFF.subst (VarSymb.shiftSlot ι 0 0)
+          (θ.box.under 0 0 A hΓ'.boxIn.root) (Subst.ok_under (Subst.ok_box hθ) A hΓ'.boxIn.root)
+          (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn A hΓ'.boxIn.root)
+          (hΓ.boxIn.insert A) (hΓ'.boxIn.insert A) ψ))
+        (Proof.castHyps
+          (by
+            simp only [List.map_append, List.map_map, Function.comp_def]
+            refine congrArg₂ (· ++ ·) (List.map_congr_left fun ψ _ => ?_)
+              (List.map_congr_left fun χ _ =>
+                WFF.subst_weaken_rename θ hθ hc hΓ hΓ' hcf hcf' (.VTypeDia A) χ)
+            exact congrArg₂ WFF.imp
+              ((WFF.subst_weaken_rename θ hθ hc hΓ hΓ' hcf hcf' (.VTypeDia A) _).trans
+                (congrArg (WFF.weaken hcf'.root (.VTypeDia A))
+                  (WFF.subst_hereRead hT θ hθ hc hΓ hΓ' t ψ)))
+              (WFF.subst_diaViewRead θ hθ hc hΓ hΓ' hcf hcf' A ψ))
+          (Proof.conv (WFF.subst_weaken_rename θ hθ hc hΓ hΓ' hcf hcf' (.VTypeDia A) _) ih))
 
 /-- ⭐**Weakening** along any inclusion of contexts, into a presented context. -/
 def Proof.mono {σ : Signature} {Γ Γ' : Ctx} [Γ'.Presented] {Δs : List (WFF σ Γ 0)}

@@ -1,4 +1,5 @@
 import QML.QML_v12m_SatInst
+import QML.QML_v12m_SemStrongT
 
 /-!
 # QML v12m — soundness
@@ -178,6 +179,22 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M w env hnp hΔ v s
       exact (sat_shift_twoBox hF env Ctx.NoSlots.slots φ v s).mpr
         (ih M env hnp hΔ ⟨s.1, M.frame.trans hF v.2 s.2⟩)
+  | @T_dia Γ _ hT hS A a t c hc Δ φ Ψ p ih =>
+      -- Interpret the eigenvariable as some possible object realised here.
+      intro M w env hnp hΔ
+      obtain ⟨q, hrefl, hmem, hcont⟩ := M.posRet_exists hS (interp env t)
+      refine (sat_weaken (T := .VTypeDia A) env hc.root q φ).mp
+        (ih M (env.extend (T := .VTypeDia A) (.free c) q) (hnp.insert _ _) ?_)
+      intro χ hχ
+      rcases List.mem_append.mp hχ with h₁ | h₂
+      · -- A `Ψ` implication: its premise is the `here` reading, its conclusion the `◇` reading.
+        obtain ⟨ψ, _, rfl⟩ := List.mem_map.mp h₁
+        intro hpre
+        exact sat_ret hT env hnp t c hc ψ q hrefl hmem hcont
+          ((sat_weaken (T := .VTypeDia A) env hc.root q _).mp hpre)
+      · -- An old hypothesis, merely weakened by the eigenvariable.
+        obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
+        exact (sat_weaken (T := .VTypeDia A) env hc.root q χ').mpr (hΔ χ' hχ')
 
 end Model
 

@@ -1,8 +1,9 @@
 # QML v12m: metatheory to do
 
-Recorded 2026-09-16. These are general proof-theory jobs, not modal-extension work. The agreed
-order is: finish the modal extensions (strong T, strong B, S5, D, BF) first, then items 2 and 3
-here. Item 1 is close enough to done that it could be taken at any time.
+Recorded 2026-09-16; items 4 and 5 added 2026-09-18. These are general proof-theory jobs, not
+modal-extension work. The agreed order is: finish the modal extensions (strong T, strong B, S5, D,
+BF) and their completeness first, then the items here. Item 1 is close enough to done that it could
+be taken at any time; items 4 and 5 are research questions rather than routine jobs.
 
 ## 1. Strong completeness and compactness
 
@@ -67,5 +68,43 @@ Notes before starting:
   reachable there.
 - Given that, `ψ` can be instantiated at each occurrence's own context, and the induction should be
   routine. The cases worth checking first are the modal rules (`K_box`, `K_dia`, `T_box`,
-  `four_box`), since they move formulas between levels, and the equality rules, which instantiate a
-  formula at a slot.
+  `four_box`, `T_dia`), since they move formulas between levels, and the equality rules, which
+  instantiate a formula at a slot.
+
+## 4. Cut elimination
+
+**Goal.** A sequent calculus equivalent to the natural-deduction system, with cut admissible.
+
+Notes before starting:
+- The user already has a picture of the appropriate sequent calculus. The ND system is close to a
+  sequent system already — `Proof σ Γ Δ φ` carries an explicit hypothesis list, and the structural
+  rules (`weak`, `contr`, `exch`) are explicit — so the equivalence proof should be comparatively
+  direct: left rules from the elimination rules via `cut` (which is `Proof.cut`, derived from
+  `imp_intro`/`imp_elim`), right rules from the introduction rules.
+- Scope is genuinely open. It may hold only for K. The extensions add rules that move formulas
+  between levels (`T_box` collapses, `four_box` shifts, `T_dia` introduces an eigenvariable with
+  view hypotheses), and each needs a cut-reduction case. Known background: cut-free sequent calculi
+  for propositional K, T and S4 are standard; S5 notoriously needs a richer structure (hypersequents,
+  labelled or nested sequents). How the address/view machinery changes this is part of the question.
+- Equality needs care: `eq_elim` rewrites under an arbitrary formula context, which is the usual
+  obstacle to cut elimination with identity.
+
+## 5. Craig interpolation
+
+**Goal.** If `φ ⊢ ψ`, there is `θ` using only the non-logical symbols common to `φ` and `ψ` with
+`φ ⊢ θ` and `θ ⊢ ψ`.
+
+Notes before starting:
+- **Why it would be interesting.** Interpolation holds for the standard *propositional* normal modal
+  logics (K, T, S4, S5), but fails for many *quantified* ones: Fine (1979) showed first-order S5 with
+  constant domains lacks it, and the failure recurs across quantified modal logics. The usual culprit
+  is that the classical interpolant would have to quantify over something the object language cannot
+  express. This system makes more of that expressible — possible objects are first-class, witnesses
+  are named in `◇_x`, and quantifiers range over modal types — so it is a reasonable hope that
+  interpolation holds here where it fails classically. A positive result would be a good selling
+  point; a failure would be informative about where the extra expressiveness stops.
+- The standard route is via cut elimination (Maehara's method on a cut-free sequent calculus), so
+  item 4 is likely a prerequisite. A semantic route through the canonical model (amalgamation or a
+  Robinson-consistency argument) is the alternative if cut elimination only holds for K.
+- Decide early what "common language" means: relation and function symbols only, or also the
+  witness addresses and modal types occurring in the formulas.

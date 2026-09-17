@@ -1,9 +1,12 @@
 # QML v12: modal extensions (design)
 
-Status: 2026-09-14. **Weak T and weak 4 are implemented**, with soundness and completeness for
+Status: 2026-09-17. **Weak T and weak 4 are implemented**, with soundness and completeness for
 every combination (K, T, 4, and T + 4 = S4); files `QML/QML_v12m_*.lean`, namespace `V12M`.
-Everything else is design. Claims marked *(sketch)* come
-from paper arguments that have not been checked in Lean.
+**Strong T is implemented through soundness and substitution**: the flag, the model axiom, the rule
+`T_dia`, its soundness case and substitution into it are all sorry-free, and `QML_v12m_*` as a whole
+contains no `sorry`. Its canonical model is not started, so completeness does not yet cover strong T
+(`ModalSys.NoTStrong` is still assumed there). Everything else is design. Claims marked *(sketch)*
+come from paper arguments that have not been checked in Lean.
 
 ## 1. Goals and constraints
 
@@ -138,17 +141,111 @@ content of a possible object.
     term truth lemma uses induction on term size. In the `□` truth case, the self-successor goes
     through `sat_boxHere` and `T_box`; the proper successors go through `exists_box_fail` as in K.
 - **Strong (inward, UNNAMED): a possible object realised here (decided 2026-09-17).**
-  - **Semantics.** A model operation `posRet : Dom A w → Pos A w` whose extent contains `w` with
-    the object as its content there. Stated existentially — `∃ (h : R w w), ⟨w, h⟩ ∈ extent ∧
-    content = a` — so it needs no reflexivity hypothesis and implies `R w w` wherever a domain is
-    inhabited. **No uniqueness and no naturality**: the object need not be a singleton, and nothing
-    relates `posRet (f a)` to `posRet a`.
+  - **Semantics.** A model axiom `posRet_exists`: every object has *some* possible object whose
+    extent contains `w`, with the object as its content there — `∃ p, ∃ (h : R w w),
+    ⟨w, h⟩ ∈ extent p ∧ content = a`. It needs no reflexivity hypothesis and implies `R w w`
+    wherever a domain is inhabited.
+  - **Not an operation on `Frame.Ops`** (changed 2026-09-17). Strong T adds no term former, so
+    nothing interprets a map from objects to possible objects, and none is intended. **No
+    uniqueness and no naturality**: the object need not be a singleton, and nothing relates the
+    witness for `f a` to the witness for `a`. Demanding an operation would force the canonical
+    model to choose one — and if naturality were ever wanted the choices would have to cohere,
+    which is what sank `y.ret`. Existentially, the canonical model just `obtain`s a term from
+    `Definable` inside an existential goal, with no choice principle at all.
   - **Rule (Henkin-style, with a fresh witness `c : ◇A`).** From
-    `Δ, θ₁↓(t) → ◇_c θ₁, …, θₙ↓(t) → ◇_c θₙ ⊢ φ`, with `c` fresh and not in `Δ` or `φ`, conclude
-    `Δ ⊢ φ`. Here `θ↓(t)` reads the view formula `θ` at the current world: `c.dia ↦ t`,
-    `u.box ↦ u.here` (weak T), `u.keep ↦ u` (4). That is an ordinary substitution into `Γ`, so
-    `WFF.subst` states it and `sat_subst` proves it sound; the agreement lemma is the `◇` analogue
-    of `Env.collapseAgree_self`, namely `diaPush` at the self-world.
+    `Δ, ψ₁↓(t) → ◇_c ψ₁↑, …, ψₙ↓(t) → ◇_c ψₙ↑ ⊢ φ`, with `c` fresh and not in `Δ` or `φ`, conclude
+    `Δ ⊢ φ`.
+  - **Both readings are existing operations**, because the rule is parameterised by a `□`-view
+    formula *with a hole*, `ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1`:
+    - `ψ↓(t)` (at the current world) is `WFF.collapse` — weak T's operation, extended over the hole
+      by `Collapses.insert` — followed by `WFF.instantiate` at `t`;
+    - `ψ↑` (in the view) is `WFF.renameRoot`, weakening into `(Γ.insert c ◇A).diaIn c` and filling
+      the hole with the *address* `c.dia`. Not `instantiate` at a term: `Term.var` builds only
+      base-typed terms, so the hole has to be filled by an address rather than via `Term.eta`.
+    This is fully general: a view formula cannot mention `c` except as `c.dia`, since roots are
+    invisible in views.
+  - *Why not a substitution.* Reading a view at the current world maps annotation indices the way
+    `collapse` does, which is depth-sensitive, and `Subst.Coh`'s index map `ι` is a plain function
+    on addresses. Writing it as a substitution would need a bespoke operation with its own
+    annotation theory; the hole formulation avoids that entirely.
+  - Soundness: `sat_instantiate` and `sat_collapse` on the `↓` side, and on the `↑` side the `◇`
+    analogue of `Env.collapseAgree_self` — `diaPush` at the world the object is realised at.
+  - *Implemented (2026-09-17), sorry-free.* The `posRet_exists` axiom
+    (`QML_v12m_Model`); `WFF.hereRead`, `WFF.viewRead` and the rule `T_dia` (`QML_v12m_Proof`);
+    `Env.diaPush_ret` and `sat_ret` (`QML_v12m_SemStrongT`), where `sat_ret` takes the possible
+    object and its realisation facts as hypotheses; the `T_dia` soundness case
+    (`QML_v12m_Soundness`), which obtains the eigenvariable's value from `posRet_exists`.
+  - *Substitution: done.* `Proof.subst`'s `T_dia` case is complete, with the eigenvariable renamed
+    as in `all_intro`/`ex_elim`. `WFF.subst_hereRead` is `subst_instantiate` followed by
+    `collapse_subst`, with a `Corr` from `corr_under` and `corr_box_self`.
+    `WFF.subst_diaViewRead` splits in two. Its witness index is handled by `WFF.subst_dia`, which
+    states the `.dia` arm of `WFF.subst` with the target address as a *variable* and the right-hand
+    side's side conditions as hypotheses, so `subst` rewrites uniformly — including through the
+    types of the `ok_dia`/`coh_dia` arguments, which is what defeats `rw` and `generalize` in
+    place. Its body is the `◇` counterpart of `WFF.subst_bindFree`: a `WFF.subst_comp` on each side
+    against `(θ.box.mono _).set (.bnd 0) (.ren (c'.dia))`, the two `Subst.Sim` obligations going
+    through `dia_eq_box_mono` (with `at_eq_mono_of` plus freshness of `c` relating `θ.rename`'s
+    entries to `θ`'s) and `under_eq_mono` respectively.
+  - *Canonical model: barely started.* `ModalSys.NoTStrong` is still assumed in `QML_v12m_Canon*`
+    and `QML_v12m_Completeness`. **`posRet_exists` is currently false there**, not merely unproved:
+    every definable possible object has extent `extent w x`, which requires
+    `w'.depth = w.depth + 1`, so no extent contains the self-successor. Admitting it needs a
+    *content* at `w`, and neither the syntax nor the theory determines one — the axioms
+    `ψ↓(t) → ◇_{c_t} ψ↑` constrain the content only through view-expressible `ψ`, and an arbitrary
+    `t` at `w` is not expressible in the `◇_{c_t}` view. So the association must be carried by the
+    construction (design A, decided 2026-09-17): a witness-to-term field on `World`, an `extent`
+    disjunct for the self-successor, a depth split in `rden`'s `.diatm` case, repairs at the
+    `extent_dist`/`extent_le` sites, the Henkin stage, then the discharge.
+  - *Realisation (`QML_v12m_Realise`) — **done**; builds clean, no sorries, imported by nothing.*
+
+    **Rejected vehicle: a substitution.** `Subst.realise` (`x.dia ↦ t₀`, `u.box ↦ u.here`,
+    `u.keep ↦ u`) with `Subst.ok_realise` is kept only for the typing facts. `Term.subst` needs
+    `Subst.Coh ι`, and `coh_of` forces `ι ((.step u .box).ext p) = (.step u .here).ext p` — a map
+    acting on the level step the view introduced, which is *not* a function of the address
+    (`(.step u .box).ext [.box]` and `(.step (.step u .box) .box).ext []` coincide with different
+    intended images). The existing combinators dodge this: `coh_box`/`coh_dia` keep the same `ι`,
+    `setIdx`/`singleIdx` discriminate on the root.
+
+    **Chosen vehicle: a dedicated recursion over an address map**, following weak T's actual
+    pattern — `Term.collapse` threads an explicit level `k` rather than being a substitution, which
+    is exactly why it has no such ambiguity. The extra simplification is to let the canonical
+    model *name* the realised content by a constant `d` in the world's language (as the Henkin
+    construction already names `∃`-witnesses). Realisation is then a pure **address** map, so
+    `Term.realise` mirrors `Term.collapse` instead of threading `SubE` entries across view
+    boundaries. This is a model-level device only: no term former, no equation, no congruence, and
+    nothing for substitution to commute with, so the `y.ret` objection (substituting a compound term
+    leaves no address for the witness) does not arise.
+
+    *Built and verified.* `VarSymb.belowDia` (strip the inner prefix `x.dia`) with `belowDia_self`
+    and `belowDia_dia_ext`; `ext_snoc`; `VarSymb.realiseAddr` with `realiseAddr_proj`,
+    `realiseAddr_level` and `realiseAddr_dia_ne`; `Ann.realise`; `Ctx.Realises` (exactly
+    `Ctx.Collapses`' shape with `collapse k` replaced by `realiseAddr x d k`) with
+    `Realises.of_raw`, `Realises.boxIn` and `Realises.diaIn`; and the mutual
+    `Term.realise` / `Func.realise`, a near-copy of `Term.collapse`: `k` threaded, `var` by
+    `realiseAddr`, result annotation `Ann.realise`. The recursion additionally threads
+    `Γ₁.ref (.root r) = none`, preserved at each descent by `Ctx.ref_root_boxIn` /
+    `Ctx.ref_root_diaIn`, which is what discharges `Realises.diaIn`'s side condition.
+
+    *The `diaIn` side condition (diagnosed and confirmed, 2026-09-17).* `Realises.diaIn` will read
+    `Realises (k+1) x d (Γ₁.diaIn y) (Γ₂.diaIn (realiseAddr x d k y))`, which is false when `y = x`:
+    the entry `.step x .dia` then maps to `d`, a constant of `Γ₂` rather than an address of the
+    view. This would be **unsound**, not merely unprovable — an inner witness spelled `x` would have
+    its content collide, under `belowDia`, with the outer realised content, though the two denote
+    different objects (addresses are relative to their context).
+
+    An earlier note claimed this is vacuous because "a view never contains the outer address `x`".
+    **That claim is false.** If `x` is a level-step address `u.box`, then `(Γ.diaIn x).ref x` is
+    `Γ.boxIn x`, which is `◇`-typed whenever `Γ.ref u = some (□◇_)`. Attempts to build such a
+    context push the root one level deeper each time without bottoming out, so vacuity for general
+    `x` would need a regress argument.
+
+    The cheap and correct condition is the one that actually holds in the canonical model, where
+    witnesses are Henkin **constants**: require `x` to be a *root*. Roots are never entries of a
+    view, so `Γ₁.ref x = none` at every depth and `y ≠ x` is immediate. Confirmed in Lean by
+    `Ctx.ref_root_boxIn` and `Ctx.ref_root_diaIn` (both `rfl`), with corollaries
+    `Ctx.ne_root_of_ref_boxIn` and `Ctx.ne_root_of_ref_diaIn`. `Realises.diaIn` accordingly carries
+    `y ≠ x`, which `Term.realise` discharges from the threaded freshness hypothesis — and with that
+    the recursion goes through.
   - **No polarity condition is needed.** Only the one direction `θ↓(t) → ◇_c θ` is ever available,
     so `◇_c` can only be used positively. The user's axiom "from `P` infer `∃x:◇A. ◇_x P†`" is the
     one-instance case: modus ponens, then `ex_intro` at `c`, then discharge `c`.
