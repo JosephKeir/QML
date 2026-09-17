@@ -1,5 +1,6 @@
 import QML.QML_v12m_HenkinFinal
 import QML.QML_v12m_Soundness
+import QML.QML_v12m_DiaAbs
 
 /-!
 # QML v12m — the canonical model: worlds and accessibility
@@ -100,6 +101,66 @@ theorem fresh_deeper (w : World σ N₀) {d : ℕ} (hd : w.depth < d) (n : ℕ) 
     (fun n' => by
       rw [w.hρ]
       exact names_ne (Nat.ne_of_lt hd)) i
+
+/-- An own variable is declared with its own type. -/
+theorem ctx_ref_own (w : World σ N₀) {m j k : ℕ} (h : k < j) :
+    (w.L.ctx (m, j)).ref (.root (.free (w.L.ρ k))) = some (w.L.τ k) :=
+  Ctx.stage_ref_root w.L.ρ w.L.ρ_inj (fun n => w.L.fresh m n) h
+
+/-- Declaring an own variable writes only at its root, so nothing else there is reachable. -/
+theorem ctx_only_root (w : World σ N₀) {m j k : ℕ} :
+    ∀ v : VarSymb, v.rt = .free (w.L.ρ k) → v ≠ .root (.free (w.L.ρ k)) →
+      (w.L.ctx (m, j)) v = none :=
+  Ctx.stage_only_root w.L.ρ w.L.ρ_inj (fun n => w.L.fresh m n) j
+
+end World
+
+/-! ## Realised witnesses (strong T) -/
+
+namespace World
+
+variable (w : World σ N₀)
+
+/-- ⭐Strong T: the data making the address `x` a **realised** witness.  The root `c` is declared
+    at type `◇A` from stage `i₀` on, `t₀` is the term it realises, and `spec` says the theory turns
+    what `t₀` satisfies here into the corresponding `◇_c` statement — which is exactly what the
+    rule `T_dia` puts into the theory for the chain's witnesses. -/
+structure RealData (x : VarSymb) where
+  hT : ModalSys.T = true
+  /-- Only strong T realises a witness. -/
+  hS : ModalSys.TStrong = true
+  c : ℕ
+  hx : x = .root (.free c)
+  A : VarType
+  i₀ : ℕ × ℕ
+  a₀ : Ann A
+  t₀ : Term σ (w.L.ctx i₀) A a₀
+  /-- The witness is declared from `i₀` on. -/
+  hdecl : ∀ i : ℕ × ℕ, i₀ ≤ i → (w.L.ctx i).ref (.root (.free c)) = some (.VTypeDia A)
+  /-- Nothing else is written at its root. -/
+  hfr : ∀ (i : ℕ × ℕ) (v : VarSymb), v.rt = .free c → v ≠ .root (.free c) → (w.L.ctx i) v = none
+  /-- Everything `t₀` satisfies here, the witness satisfies in its view. -/
+  spec : ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i)
+    (χ : WFF σ ((w.L.ctx i).diaIn (.root (.free c))) 0),
+    (⟨i, WFF.realiseAt hT c (hdecl i hi) (hfr i) (Term.mono (w.L.ctx_le hi) t₀) χ⟩ :
+      w.L.sys.Sentence σ) ∈ w.T →
+      (⟨i, .dia (.root (.free c)) ⟨A, hdecl i hi⟩ χ⟩ : w.L.sys.Sentence σ) ∈ w.T
+
+/-- ⭐The addresses realised at `w`. -/
+def Realised (x : VarSymb) : Prop := Nonempty (w.RealData x)
+
+variable {w}
+
+theorem Realised.T {x : VarSymb} (h : w.Realised x) : ModalSys.T = true := h.some.hT
+
+theorem Realised.TStrong {x : VarSymb} (h : w.Realised x) : ModalSys.TStrong = true := h.some.hS
+
+/-- Without strong T nothing is realised, so the extent has only proper successors. -/
+def Realised.elim [ModalSys.NoTStrong] {x : VarSymb} {α : Sort*} (h : w.Realised x) : α :=
+  (ModalSys.NoTStrong.absurd h.TStrong).elim
+
+/-- A chosen realisation. -/
+noncomputable def Realised.data {x : VarSymb} (h : w.Realised x) : w.RealData x := h.some
 
 end World
 
@@ -253,22 +314,53 @@ theorem Succ.split {w : World σ N₀} (w' : Succ w) {d : ℕ} (h : w'.1.depth -
   rw [hc'.depth, hu.1]
   omega
 
-/-- ⭐The extent of the possible object named by `x`. -/
+/-- ⭐The extent of the possible object named by `x`: the proper successors with the `◇_x` view
+    that hold everything `□_x`-necessary here and, under strong T, the world itself when `x` is
+    realised. -/
 def extent (w : World σ N₀) (x : VarSymb) : Set (Succ w) :=
-  {w' | w'.1.depth = w.depth + 1 ∧ DiaView x w w'.1 ∧ BoxxContents x w w'.1}
+  {w' | (w'.1.depth = w.depth + 1 ∧ DiaView x w w'.1 ∧ BoxxContents x w w'.1) ∨
+    (w'.1 = w ∧ w.Realised x)}
 
-theorem extent_dist {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x) :
-    w'.1.depth - w.depth = 1 := by
-  have := hw'.1
-  omega
+/-- A member of the extent is the world itself or one level deeper. -/
+theorem extent_cases {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x) :
+    (w'.1.depth - w.depth = 1 ∧ DiaView x w w'.1 ∧ BoxxContents x w w'.1) ∨
+      (w'.1.depth - w.depth = 0 ∧ w'.1 = w ∧ w.Realised x) := by
+  rcases hw' with ⟨hd, hv, hb⟩ | ⟨he, hr⟩
+  · exact Or.inl ⟨by omega, hv, hb⟩
+  · exact Or.inr ⟨by rw [he]; omega, he, hr⟩
 
-theorem extent_acc {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x) :
-    Acc' w w'.1 :=
-  w'.acc (extent_dist hw')
+/-- A member of the extent one level deeper is a proper one. -/
+theorem extent_proper {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
+    (hd : w'.1.depth - w.depth ≠ 0) :
+    w'.1.depth - w.depth = 1 ∧ DiaView x w w'.1 ∧ BoxxContents x w w'.1 := by
+  rcases extent_cases hw' with h | ⟨h, _⟩
+  · exact h
+  · exact absurd h hd
+
+/-- A member of the extent at this depth is the world itself, and then `x` is realised. -/
+theorem extent_self {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
+    (hd : w'.1.depth - w.depth = 0) : w'.1 = w ∧ w.Realised x := by
+  rcases extent_cases hw' with ⟨h, _⟩ | ⟨_, h⟩
+  · omega
+  · exact h
+
+theorem extent_dist {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
+    (hd : w'.1.depth - w.depth ≠ 0) : w'.1.depth - w.depth = 1 :=
+  (extent_proper hw' hd).1
+
+theorem extent_acc {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
+    (hd : w'.1.depth - w.depth ≠ 0) : Acc' w w'.1 :=
+  w'.acc (extent_dist hw' hd)
 
 theorem extent_le {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
-    (i : ℕ × ℕ) : ((w.L.ctx i).diaIn x).Le (w'.1.L.ctx (childStage i)) :=
-  hw'.2.1.le (le_max_left _ _) (le_max_right _ _) 0
+    (hd : w'.1.depth - w.depth ≠ 0) (i : ℕ × ℕ) :
+    ((w.L.ctx i).diaIn x).Le (w'.1.L.ctx (childStage i)) :=
+  (extent_proper hw' hd).2.1.le (le_max_left _ _) (le_max_right _ _) 0
+
+/-- The world itself is in the extent of a realised address. -/
+theorem self_mem_extent {w : World σ N₀} {x : VarSymb} (h : w.Realised x) :
+    (⟨w, R.refl h.T w⟩ : Succ w) ∈ extent w x :=
+  Or.inr ⟨rfl, h⟩
 
 end Canon
 

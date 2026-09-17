@@ -1,5 +1,6 @@
 import QML.QML_v12m_WorldLang
 import QML.QML_v12m_Countable
+import QML.QML_v12m_RetMono
 
 /-!
 # QML v12m — the Henkin construction: the chain
@@ -11,8 +12,10 @@ contexts `ctxL m l` (stage `m` of the base, all `n` variables).  Step `n`:
 1. reads an enumerated formula `query n` (at an earlier own stage, lifted to the current one);
 2. adds it if that keeps the theory consistent, and otherwise adds its negation (`choice`);
 3. declares the next variable `ρ n`: if the added formula is `∃x:A. ψ` or `¬∀x:A. ψ`, at the
-   type `A`, with the witness sentence `ψ[ρ n]` or `¬ψ[ρ n]`; otherwise at the unit type, which
-   is always inhabited (`witStep`).
+   type `A`, with the witness sentence `ψ[ρ n]` or `¬ψ[ρ n]`; otherwise, under strong T, as a
+   witness `ρ n : ◇A` for an enumerated term `t : A` (`termQ n`) with all its hypotheses
+   `WFF.retHyp` (`retSet`, consistent by `T_dia`); and otherwise at the unit type, which is always
+   inhabited (`witStep`, `retStep`).
 
 Declaring a variable asserts that its type is inhabited, so the types cannot be fixed in
 advance: they are chosen as the witnesses are needed.  Keeping them as a list, newest first,
@@ -95,6 +98,32 @@ theorem exists_hyps_cons_map {α β : Type} {P : α → Prop} (f : α → β) (w
             · exact List.mem_cons_of_mem _ (List.mem_cons_of_mem _ hd')
 
 omit [ModalSys] in
+/-- Hypotheses drawn from `range g ∪ f '' P` come from two lists. -/
+theorem exists_hyps_two {α γ β : Type} {P : α → Prop} (f : α → β) (g : γ → β) :
+    ∀ Δ : List β, (∀ δ ∈ Δ, (∃ z, g z = δ) ∨ ∃ x, P x ∧ f x = δ) →
+      ∃ (Γ₀ : List γ) (Δ₀ : List α), (∀ x ∈ Δ₀, P x) ∧ ∀ δ ∈ Δ, δ ∈ Γ₀.map g ++ Δ₀.map f
+  | [], _ => ⟨[], [], fun _ h => absurd h List.not_mem_nil, fun _ h => absurd h List.not_mem_nil⟩
+  | δ :: Δ, h => by
+      obtain ⟨Γ₀, Δ₀, h₀, h₁⟩ :=
+        exists_hyps_two f g Δ (fun d hd => h d (List.mem_cons_of_mem _ hd))
+      rcases h δ List.mem_cons_self with ⟨z, rfl⟩ | ⟨x, hx, rfl⟩
+      · refine ⟨z :: Γ₀, Δ₀, h₀, fun d hd => ?_⟩
+        rcases List.mem_cons.mp hd with rfl | hd
+        · exact List.mem_append_left _ List.mem_cons_self
+        · rcases List.mem_append.mp (h₁ d hd) with h' | h'
+          · exact List.mem_append_left _ (List.mem_cons_of_mem _ h')
+          · exact List.mem_append_right _ h'
+      · refine ⟨Γ₀, x :: Δ₀, fun y hy => ?_, fun d hd => ?_⟩
+        · rcases List.mem_cons.mp hy with rfl | hy
+          · exact hx
+          · exact h₀ y hy
+        · rcases List.mem_cons.mp hd with rfl | hd
+          · exact List.mem_append_right _ List.mem_cons_self
+          · rcases List.mem_append.mp (h₁ d hd) with h' | h'
+            · exact List.mem_append_left _ h'
+            · exact List.mem_append_right _ (List.mem_cons_of_mem _ h')
+
+omit [ModalSys] in
 /-- Hypotheses drawn from `f '' P` come from a list over `P`. -/
 theorem exists_hyps_map {α β : Type} {P : α → Prop} (f : α → β) :
     ∀ Δ : List β, (∀ δ ∈ Δ, ∃ x, P x ∧ f x = δ) →
@@ -114,10 +143,6 @@ theorem exists_hyps_map {α β : Type} {P : α → Prop} (f : α → β) :
 namespace Subst
 
 variable {σ : Signature} {Δ : Ctx}
-
-theorem mono_apply {Δ' : Ctx} (θ : Subst σ Δ) (h : Δ.Le Δ') (v : VarSymb) :
-    θ.mono h v = (θ v).mono h :=
-  rfl
 
 theorem toFree_root (θ : Subst σ Δ) (d u : ℕ) (T : VarType) (h : Δ (.root (.free u)) = none) :
     θ.toFree d u T h (.root (.bnd d)) = .ren (.root (.free u)) :=
@@ -181,6 +206,18 @@ noncomputable def enumF {σ : Signature} [Countable σ.FuncSyms] [Countable σ.R
 theorem enumF_surjective {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
     (Γ : Ctx) : Function.Surjective (enumF (σ := σ) Γ) :=
   Classical.choose_spec (exists_surjective_nat (WFF σ Γ 0))
+
+instance {σ : Signature} {Γ : Ctx} : Nonempty (Σ A : VarType, Σ a : Ann A, Term σ Γ A a) :=
+  ⟨⟨.VTypeOne, .one, .unit⟩⟩
+
+/-- A fixed enumeration of the terms over a context, of every type (for strong T witnesses). -/
+noncomputable def enumT {σ : Signature} [Countable σ.FuncSyms] (Γ : Ctx) :
+    ℕ → Σ A : VarType, Σ a : Ann A, Term σ Γ A a :=
+  Classical.choose (exists_surjective_nat (Σ A : VarType, Σ a : Ann A, Term σ Γ A a))
+
+theorem enumT_surjective {σ : Signature} [Countable σ.FuncSyms] (Γ : Ctx) :
+    Function.Surjective (enumT (σ := σ) Γ) :=
+  Classical.choose_spec (exists_surjective_nat (Σ A : VarType, Σ a : Ann A, Term σ Γ A a))
 
 /-! ## Contexts along the construction -/
 
@@ -250,15 +287,6 @@ theorem mem_atStage_grow {l : List VarType} {A : VarType} {S : Set ((L.pre l).Se
     (WFF.mono_mono _ _ _).trans (WFF.mono_mono _ _ _).symm⟩
 
 /-! ## One step -/
-
-variable (L) in
-/-- The declaration made after adding `χ`, and its witness sentence. -/
-noncomputable def witStep (m : ℕ) (l : List VarType) :
-    WFF σ (L.ctxL m l) 0 → Σ A : VarType, Set ((L.pre (A :: l)).Sentence σ)
-  | .ex A ψ => ⟨A, {⟨m, WFF.openFree (L.ρ l.length) (L.ctxL_fresh le_rfl) Ctx.NoSlots.slots ψ⟩}⟩
-  | .imp (.all A ψ) .bot =>
-      ⟨A, {⟨m, WFF.openFree (L.ρ l.length) (L.ctxL_fresh le_rfl) Ctx.NoSlots.slots ψ.neg⟩}⟩
-  | _ => ⟨.VTypeOne, ∅⟩
 
 /-- A declaration of unit type keeps a theory consistent. -/
 theorem consistent_grow_unit {l : List VarType} {S : Set ((L.pre l).Sentence σ)}
@@ -337,6 +365,98 @@ theorem consistent_grow_negAll {l : List VarType} {S : Set ((L.pre l).Sentence �
   exact (consistent_grow_ex hS' (Set.mem_insert _ _)).mono_set
     (Set.union_subset_union_left _ (grow_mono (Set.subset_insert _ _)))
 
+/-! ## Strong T witnesses -/
+
+theorem ρ_succ_ne (l : List VarType) : L.ρ (l.length + 1) ≠ L.ρ l.length := fun e => by
+  have := L.ρ_inj e
+  omega
+
+variable (L) in
+/-- The strong T hypotheses of a witness `ρ l.length : ◇A` for the term `t`: every
+    `WFF.retHyp` at every stage from `m` on, with parameter name `ρ (l.length + 1)`.  All later
+    stages are included because a hole formula there may mention that stage's base constants. -/
+def retSet (hT : ModalSys.T = true) (l : List VarType) (m : ℕ) {A : VarType} {a : Ann A}
+    (t : Term σ (L.ctxL m l) A a) : Set ((L.pre (.VTypeDia A :: l)).Sentence σ) :=
+  {s | ∃ (m' : ℕ) (hm : m ≤ m') (B : VarType)
+      (ψ : WFF σ (((L.ctxL m' l).insert (.free (L.ρ (l.length + 1))) B).boxIn.insert (.bnd 0) A)
+        1),
+      s = ⟨m', WFF.retHyp hT (Term.mono (L.ctxL_base_le hm l) t) (L.ρ l.length)
+        (L.ρ (l.length + 1)) (L.ctxL_fresh le_rfl) (L.ctxL_fresh (Nat.le_succ _))
+        (ρ_succ_ne l) B ψ⟩}
+
+/-- ⭐A strong T witness for a term keeps a theory consistent: a derivation of `⊥` uses finitely many
+    of its hypotheses, each lifted to one stage, where they are `WFF.retHyp` instances
+    (`WFF.mono_retHyp`) and `T_dia` discharges the witness. -/
+theorem consistent_grow_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true)
+    {l : List VarType} {S : Set ((L.pre l).Sentence σ)} (hS : StageSys.Consistent S) {m : ℕ}
+    {A : VarType} {a : Ann A} (t : Term σ (L.ctxL m l) A a) :
+    StageSys.Consistent (grow l (.VTypeDia A) S ∪ L.retSet hT l m t) := by
+  have key : ∀ M, m ≤ M →
+      Theory.Consistent (StageSys.atStage (grow l (.VTypeDia A) S ∪ L.retSet hT l m t) M) := by
+    rintro M hM ⟨Δ, hΔ, p⟩
+    have hc : (L.ctxL M l).RootFresh (.free (L.ρ l.length)) := L.ctxL_fresh le_rfl
+    have hy : (L.ctxL M l).RootFresh (.free (L.ρ (l.length + 1))) := L.ctxL_fresh (Nat.le_succ _)
+    let g : (Σ B : VarType,
+        WFF σ (((L.ctxL M l).insert (.free (L.ρ (l.length + 1))) B).boxIn.insert (.bnd 0) A) 1) →
+        WFF σ (L.ctxL M (.VTypeDia A :: l)) 0 := fun z =>
+      WFF.retHyp hT (Term.mono (L.ctxL_base_le hM l) t) (L.ρ l.length) (L.ρ (l.length + 1)) hc hy
+        (ρ_succ_ne l) z.1 z.2
+    have hcases : ∀ δ ∈ Δ, (∃ z, g z = δ) ∨
+        ∃ x, x ∈ StageSys.atStage S M ∧ WFF.mono (L.ctxL_le_cons M (.VTypeDia A) l) x = δ := by
+      intro δ hδ
+      obtain ⟨s, hs, hle, rfl⟩ := hΔ δ hδ
+      rcases hs with hs | hs
+      · exact Or.inr (mem_atStage_grow ⟨s, hs, hle, rfl⟩)
+      · obtain ⟨m', hm', B, ψ, rfl⟩ := hs
+        refine Or.inl ⟨⟨B, WFF.mono
+          (((L.ctxL_base_le hle l).insert (.free (L.ρ (l.length + 1))) B).boxIn.insert (.bnd 0) A)
+          ψ⟩, ?_⟩
+        change _ = WFF.mono ((L.ctxL_base_le hle l).insert (.free (L.ρ l.length)) (.VTypeDia A)) _
+        rw [WFF.mono_retHyp hT (L.ctxL_base_le hle l) _ (L.ctxL_fresh le_rfl) hc
+          (L.ctxL_fresh (Nat.le_succ _)) hy (ρ_succ_ne l) B ψ, Term.mono_mono]
+    obtain ⟨Ψ, Δ₀, h₀, h₁⟩ := exists_hyps_two (P := fun x => x ∈ StageSys.atStage S M)
+      (fun x => WFF.mono (L.ctxL_le_cons M (.VTypeDia A) l) x) g Δ hcases
+    obtain ⟨q⟩ := Provable.mono h₁ p
+    exact hS M ⟨Δ₀, h₀, ⟨Proof.T_dia hT hTS A (Term.mono (L.ctxL_base_le hM l) t) _ _ hc hy
+      (ρ_succ_ne l) (φ := .bot) Ψ q⟩⟩
+  intro M
+  rcases le_total m M with hM | hM
+  · exact key M hM
+  · exact StageSys.consistent_of_le (key m le_rfl) hM
+
+variable (L) in
+/-- The declaration made when no witness is needed: under strong T (with weak T), a witness for
+    the term `t` with all its hypotheses; otherwise a variable of unit type. -/
+noncomputable def retStep (m : ℕ) (l : List VarType)
+    (tq : Σ A : VarType, Σ a : Ann A, Term σ (L.ctxL m l) A a) :
+    Σ A : VarType, Set ((L.pre (A :: l)).Sentence σ) :=
+  if h : ModalSys.T = true ∧ ModalSys.TStrong = true then
+    ⟨.VTypeDia tq.1, L.retSet h.1 l m tq.2.2⟩
+  else ⟨.VTypeOne, ∅⟩
+
+theorem consistent_retStep {l : List VarType} {S : Set ((L.pre l).Sentence σ)}
+    (hS : StageSys.Consistent S) (m : ℕ)
+    (tq : Σ A : VarType, Σ a : Ann A, Term σ (L.ctxL m l) A a) :
+    StageSys.Consistent (grow l (L.retStep m l tq).1 S ∪ (L.retStep m l tq).2) := by
+  by_cases h : ModalSys.T = true ∧ ModalSys.TStrong = true
+  · have e : L.retStep m l tq = ⟨.VTypeDia tq.1, L.retSet h.1 l m tq.2.2⟩ := dif_pos h
+    rw [e]
+    exact consistent_grow_ret h.1 h.2 hS tq.2.2
+  · have e : L.retStep m l tq = ⟨.VTypeOne, ∅⟩ := dif_neg h
+    rw [e]
+    exact consistent_grow_unit hS
+
+variable (L) in
+/-- The declaration made after adding `χ`, and its witness sentences: the witness of an
+    existential or a negated universal, and otherwise `retStep` for the step's term `tq`. -/
+noncomputable def witStep (m : ℕ) (l : List VarType)
+    (tq : Σ A : VarType, Σ a : Ann A, Term σ (L.ctxL m l) A a) :
+    WFF σ (L.ctxL m l) 0 → Σ A : VarType, Set ((L.pre (A :: l)).Sentence σ)
+  | .ex A ψ => ⟨A, {⟨m, WFF.openFree (L.ρ l.length) (L.ctxL_fresh le_rfl) Ctx.NoSlots.slots ψ⟩}⟩
+  | .imp (.all A ψ) .bot =>
+      ⟨A, {⟨m, WFF.openFree (L.ρ l.length) (L.ctxL_fresh le_rfl) Ctx.NoSlots.slots ψ.neg⟩}⟩
+  | _ => L.retStep m l tq
+
 section Chain
 
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
@@ -347,18 +467,31 @@ structure HState (L : WorldLang) (σ : Signature) where
   l : List VarType
   S : Set ((L.pre l).Sentence σ)
 
-/-- Step `n` reads the `k`-th formula at base stage `m` and own stage `j`, where
-    `n = ⟪j, ⟪m, k⟫⟫`. -/
+/-- Step `n` reads the `k`-th formula and the `k'`-th term at base stage `m` and own stage `j`,
+    where `n = ⟪j, ⟪m, ⟪k, k'⟫⟫⟫`. -/
 def decJ (n : ℕ) : ℕ := n.unpair.1
 
 def decM (n : ℕ) : ℕ := n.unpair.2.unpair.1
 
 def decK (n : ℕ) : ℕ := n.unpair.2.unpair.2
 
+/-- The formula index read at step `n`. -/
+def decKF (n : ℕ) : ℕ := (decK n).unpair.1
+
+/-- The term index read at step `n`. -/
+def decKT (n : ℕ) : ℕ := (decK n).unpair.2
+
 variable (L) in
 /-- The formula read at step `n`, lifted to all current own variables. -/
 noncomputable def query (n : ℕ) (l : List VarType) : WFF σ (L.ctxL (decM n) l) 0 :=
-  WFF.mono (L.ctxL_drop_le _ (n - decJ n) l) (enumF _ (decK n))
+  WFF.mono (L.ctxL_drop_le _ (n - decJ n) l) (enumF _ (decKF n))
+
+variable (L) in
+/-- The term read at step `n`, lifted to all current own variables. -/
+noncomputable def termQ (n : ℕ) (l : List VarType) :
+    Σ A : VarType, Σ a : Ann A, Term σ (L.ctxL (decM n) l) A a :=
+  ⟨_, _, Term.mono (L.ctxL_drop_le _ (n - decJ n) l)
+    (enumT (L.ctxL (decM n) (l.drop (n - decJ n))) (decKT n)).2.2⟩
 
 variable (L) in
 open Classical in
@@ -370,9 +503,9 @@ noncomputable def choice (n : ℕ) (st : HState L σ) : WFF σ (L.ctxL (decM n) 
 variable (L) in
 /-- Step `n` of the construction. -/
 noncomputable def step (n : ℕ) (st : HState L σ) : HState L σ :=
-  ⟨(L.witStep (decM n) st.l (L.choice n st)).1 :: st.l,
+  ⟨(L.witStep (decM n) st.l (L.termQ n st.l) (L.choice n st)).1 :: st.l,
     grow st.l _ (insert ⟨decM n, L.choice n st⟩ st.S) ∪
-      (L.witStep (decM n) st.l (L.choice n st)).2⟩
+      (L.witStep (decM n) st.l (L.termQ n st.l) (L.choice n st)).2⟩
 
 variable (L) in
 /-- The construction from a starting theory over the base. -/
@@ -402,7 +535,7 @@ theorem consistent_step (n : ℕ) (st : HState L σ) (hS : StageSys.Consistent s
       insert ⟨decM n, L.choice n st⟩ st.S :=
     Set.mem_insert _ _
   change StageSys.Consistent (grow st.l _ (insert ⟨decM n, L.choice n st⟩ st.S) ∪
-    (L.witStep (decM n) st.l (L.choice n st)).2)
+    (L.witStep (decM n) st.l (L.termQ n st.l) (L.choice n st)).2)
   generalize L.choice n st = χ at h₁ hmem ⊢
   cases χ with
   | ex A ψ => exact consistent_grow_ex h₁ hmem
@@ -411,9 +544,9 @@ theorem consistent_step (n : ℕ) (st : HState L σ) (hS : StageSys.Consistent s
       | all A ψ =>
           cases φ₂ with
           | bot => exact consistent_grow_negAll h₁ hmem
-          | _ => exact consistent_grow_unit h₁
-      | _ => exact consistent_grow_unit h₁
-  | _ => exact consistent_grow_unit h₁
+          | _ => exact consistent_retStep h₁ _ _
+      | _ => exact consistent_retStep h₁ _ _
+  | _ => exact consistent_retStep h₁ _ _
 
 /-- ⭐Every stage of the construction is consistent. -/
 theorem consistent_chain {S₀ : Set ((L.pre []).Sentence σ)} (hS₀ : StageSys.Consistent S₀) :
@@ -425,7 +558,8 @@ theorem consistent_chain {S₀ : Set ((L.pre []).Sentence σ)} (hS₀ : StageSys
 
 theorem chain_succ_l (S₀ : Set ((L.pre []).Sentence σ)) (n : ℕ) :
     (L.chain S₀ (n + 1)).l =
-      (L.witStep (decM n) (L.chain S₀ n).l (L.choice n (L.chain S₀ n))).1 :: (L.chain S₀ n).l :=
+      (L.witStep (decM n) (L.chain S₀ n).l (L.termQ n (L.chain S₀ n).l)
+        (L.choice n (L.chain S₀ n))).1 :: (L.chain S₀ n).l :=
   rfl
 
 theorem length_chain (S₀ : Set ((L.pre []).Sentence σ)) : ∀ n, (L.chain S₀ n).l.length = n
@@ -474,7 +608,8 @@ theorem mem_chain_mono (S₀ : Set ((L.pre []).Sentence σ)) {n N : ℕ} (h : n 
 /-- The formula chosen at step `n` is in the theory from step `n + 1` on. -/
 theorem choice_mem (S₀ : Set ((L.pre []).Sentence σ)) (n : ℕ) :
     (⟨decM n, WFF.mono (L.ctxL_le_cons (decM n)
-        (L.witStep (decM n) (L.chain S₀ n).l (L.choice n (L.chain S₀ n))).1 (L.chain S₀ n).l)
+        (L.witStep (decM n) (L.chain S₀ n).l (L.termQ n (L.chain S₀ n).l)
+          (L.choice n (L.chain S₀ n))).1 (L.chain S₀ n).l)
         (L.choice n (L.chain S₀ n))⟩ :
       (L.pre (L.chain S₀ (n + 1)).l).Sentence σ) ∈ (L.chain S₀ (n + 1)).S :=
   Or.inl (mem_grow (Set.mem_insert _ _))

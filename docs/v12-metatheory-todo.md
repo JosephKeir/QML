@@ -1,6 +1,6 @@
 # QML v12m: metatheory to do
 
-Recorded 2026-09-16; items 4 and 5 added 2026-09-18. These are general proof-theory jobs, not
+Recorded 2026-09-16; items 4 and 5 added 2026-09-18; item 6 added 2026-09-18. These are general proof-theory jobs, not
 modal-extension work. The agreed order is: finish the modal extensions (strong T, strong B, S5, D,
 BF) and their completeness first, then the items here. Item 1 is close enough to done that it could
 be taken at any time; items 4 and 5 are research questions rather than routine jobs.
@@ -108,3 +108,31 @@ Notes before starting:
   Robinson-consistency argument) is the alternative if cut elimination only holds for K.
 - Decide early what "common language" means: relation and function symbols only, or also the
   witness addresses and modal types occurring in the formulas.
+
+## 6. Strong T: `T_dia∀` is equivalent to the positive-Φ rule
+
+**Goal.** Prove in Lean that the implemented rule `T_dia∀` and the rule the paper will state are
+interderivable (added 2026-09-18, after completeness for strong T):
+
+  from `Γ;Δ ⊢ Φ⟨x := t⟩` and `Γ, c:◇A ; Φ(c), Δ ⊢ φ` infer `Γ;Δ ⊢ φ`,
+
+with `c` fresh for `Γ, Δ, φ` and `Φ` positive in `x`. It reads as ∃-elimination generalised to a
+witness that no term can name.
+
+Notes before starting:
+- Paper sketch in `docs/v12-modal-extensions.md` (strong T, "Equivalence with the
+  positive-polarity schema"): monotonicity `Φ⟨x:=t⟩ → Φ(c)` by induction on positive `Φ`, from
+  `T_dia∀` hypotheses, one per `◇_x` atom, with the variables bound above the atom as parameter
+  (a product if several); conversely `Φ(x) := ∀y. (ψ↓(t,y) → ◇_x ψ↑(y))` makes the first premise
+  trivial.
+- New syntax needed: the substitution `Φ⟨x := t⟩` (each atom `◇_x χ` becomes `χ↓(t)`, i.e.
+  `hereRead`), and a positivity predicate on formulas. Slot renumbering under the binders above an
+  atom is where the effort goes.
+- Positivity is necessary, not a convenience: with `Φ(x) = ¬◇_x ψ` the rule would yield `□_c ¬ψ`
+  from `¬ψ↓`, which fails when the extent of `c` holds more than the realised object.
+- Why ordinary ∃-elimination needs no such generalisation: its premise `∃x.ψ(x)` already allows any
+  `ψ`, quantifiers included, and `Φ(t) ⊢ ∃x.Φ(x)` is plain ∃-introduction because `t` is itself a
+  value for `x`. Here `t : A` is not a value of `◇A`, so the witness is manufactured, and it is
+  pinned down only one way (it realises `t`, but may not be the only object there).
+- A bare `◇_c ψ↑` hypothesis (no quantifiers around it) is equivalent only to the unparameterised
+  `T_dia` (`∀y ∃c`), not to `T_dia∀` (`∃c ∀y`).

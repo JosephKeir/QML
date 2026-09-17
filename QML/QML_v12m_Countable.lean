@@ -30,6 +30,29 @@ noncomputable def natCode {α : Type} [Countable α] : α → ℕ :=
 theorem natCode_injective {α : Type} [Countable α] : Function.Injective (natCode (α := α)) :=
   Classical.choose_spec (Countable.exists_injective_nat α)
 
+/-- Annotations, encoded: an annotation is determined by its type and its witness indices. -/
+noncomputable def Ann.code : {T : VarType} → Ann T → Code
+  | _, .var => .leaf 0
+  | _, .one => .leaf 1
+  | _, .prod a b => .node 0 a.code b.code
+  | _, .box a => .node 1 a.code (.leaf 0)
+  | _, .dia i a => .node 2 (.leaf (natCode i)) a.code
+
+theorem Ann.code_injective : ∀ {T : VarType}, Function.Injective (Ann.code (T := T))
+  | .Var, .var, .var, _ => rfl
+  | .VTypeOne, .one, .one, _ => rfl
+  | .VTypeProd _ _, .prod a b, .prod a' b', h => by
+      simp only [Ann.code, Code.node.injEq, true_and] at h
+      rw [Ann.code_injective h.1, Ann.code_injective h.2]
+  | .VTypeBox _, .box a, .box a', h => by
+      simp only [Ann.code, Code.node.injEq, true_and, and_true] at h
+      rw [Ann.code_injective h]
+  | .VTypeDia _, .dia i a, .dia i' a', h => by
+      simp only [Ann.code, Code.node.injEq, Code.leaf.injEq, true_and] at h
+      rw [natCode_injective h.1, Ann.code_injective h.2]
+
+instance (T : VarType) : Countable (Ann T) := Ann.code_injective.countable
+
 variable [ModalSys]
 
 section Terms

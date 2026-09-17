@@ -85,6 +85,34 @@ theorem Ctx.stage_fresh {B : Ctx} {τ : ℕ → VarType} {ρ : ℕ → ℕ} (hρ
           have hkn := hρ (Root.free.inj he)
           omega) _
 
+/-- A variable declared at an earlier stage is reachable at its own type. -/
+theorem Ctx.stage_ref_root {B : Ctx} {τ : ℕ → VarType} (ρ : ℕ → ℕ) (hρ : Function.Injective ρ)
+    (hB : ∀ n, B.RootFresh (.free (ρ n))) {k : ℕ} :
+    ∀ {j : ℕ}, k < j → (B.stage τ ρ j).ref (.root (.free (ρ k))) = some (τ k)
+  | j + 1, h => by
+      change (if (VarSymb.root (.free (ρ k))) = .root (.free (ρ j)) then some (τ j)
+        else (B.stage τ ρ j) (.root (.free (ρ k)))) = _
+      by_cases hkj : k = j
+      · subst hkj
+        rw [if_pos rfl]
+      · rw [if_neg (fun he => hkj (hρ (Root.free.inj (VarSymb.root.inj he))))]
+        exact Ctx.stage_ref_root ρ hρ hB (by omega)
+
+omit [ModalSys] in
+/-- Declaring a variable writes only at its root: nothing else rooted there is reachable. -/
+theorem Ctx.stage_only_root {B : Ctx} {τ : ℕ → VarType} (ρ : ℕ → ℕ) (hρ : Function.Injective ρ)
+    (hB : ∀ n, B.RootFresh (.free (ρ n))) {k : ℕ} :
+    ∀ (j : ℕ) (v : VarSymb), v.rt = .free (ρ k) → v ≠ .root (.free (ρ k)) →
+      (B.stage τ ρ j) v = none
+  | 0, v, hv, _ => hB k v hv
+  | j + 1, v, hv, hne => by
+      change (if v = .root (.free (ρ j)) then some (τ j) else (B.stage τ ρ j) v) = none
+      rw [if_neg ?_]
+      · exact Ctx.stage_only_root ρ hρ hB j v hv hne
+      · intro he
+        subst he
+        exact hne (congrArg (fun r => VarSymb.root (Root.free r)) (Root.free.inj hv))
+
 omit [ModalSys] in
 theorem Ctx.stage_slots {B : Ctx} {τ : ℕ → VarType} {ρ : ℕ → ℕ} (hB : B.SlotsFrom 0) :
     ∀ k, (B.stage τ ρ k).SlotsFrom 0

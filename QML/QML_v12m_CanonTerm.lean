@@ -207,8 +207,9 @@ theorem boxPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) (w' : Succ w)
 /-- Pushing the canonical environment into `◇_x` agrees with the successor's. -/
 theorem diaPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) {x : VarSymb} {X : VarType}
     (hr : (w.L.ctx i).ref x = some (.VTypeDia X))
-    (w' : ((model w₀).posEval ((canonEnv w₀ w i).ref x hr)).1) :
-    Model.Env.Agree (extent_le (canonEnv_extent w₀ w i hr ▸ w'.2) i)
+    (w' : ((model w₀).posEval ((canonEnv w₀ w i).ref x hr)).1)
+    (hd : w'.1.1.depth - w.depth ≠ 0) :
+    Model.Env.Agree (extent_le (canonEnv_extent w₀ w i hr ▸ w'.2) hd i)
       ((canonEnv w₀ w i).diaPush x hr w') (canonEnv w₀ w'.1.1 (childStage i)) := by
   have hw : w'.1 ∈ extent w x := canonEnv_extent w₀ w i hr ▸ w'.2
   intro v T hv
@@ -228,11 +229,14 @@ theorem diaPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) {x : VarSymb} {
         hpq ▸ w'.2
       change ((model w₀).posEval ((canonEnv w₀ w i).ref u hr)).2 w' = _
       rw [Model.posEval_snd_congr hpq w' hm]
-      exact toDom_congr w₀ (rden_eta_le (extent_le hw i) _ _ _ _ _ _) _ _
+      refine toDom_congr w₀ ?_ _ _
+      exact (rden_diatm_acc' (Ctx.Le.refl _) ⟨X, hr⟩
+          (Term.eta (.step u .dia) X (Ctx.ref_diaIn_of hr)) w'.1 hm hd (extent_le hw hd i)).trans
+        (rden_eta_le (extent_le hw hd i) _ _ _ _ _ _)
   | .step u .box =>
-      exact boxPush_agree_canon w₀ w i w'.1 (extent_dist hw) (.step u .box) T hv
+      exact boxPush_agree_canon w₀ w i w'.1 (extent_dist hw hd) (.step u .box) T hv
   | .step u .keep =>
-      exact boxPush_agree_canon w₀ w i w'.1 (extent_dist hw) (.step u .keep) T hv
+      exact boxPush_agree_canon w₀ w i w'.1 (extent_dist hw hd) (.step u .keep) T hv
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -337,8 +341,12 @@ mutual
         refine Model.posSec_ext hpq _ _ fun w' => ?_
         have hm : w'.1 ∈ ((model w₀).posEval ((canonEnv w₀ w i).ref x (e.ref hr))).1 :=
           hpq₀ ▸ w'.2
-        exact interp_canon t ((Model.Env.diaPush_agree hag hr w' hm).trans
-          (diaPush_agree_canon w₀ w i (e.ref hr) ⟨w'.1, hm⟩))
+        by_cases hd : (w'.1.1 : World σ N₀).depth - w.depth ≠ 0
+        · simp only [toDom, rden, dif_neg hd]
+          exact interp_canon t ((Model.Env.diaPush_agree hag hr w' hm).trans
+            (diaPush_agree_canon w₀ w i (e.ref hr) ⟨w'.1, hm⟩ hd))
+        · exact (extent_self (canonEnv_extent w₀ w i (e.ref hr) ▸ hm)
+            (not_not.mp hd)).2.elim
     termination_by _ _ _ t => t.size
     decreasing_by
       all_goals simp only [Term.size, Term.size_collapse]

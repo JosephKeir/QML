@@ -175,9 +175,24 @@ def RDom : VarType → World σ N₀ → Type
   | .VTypeBox A, w => (w' : Succ w) → RDom A w'.1
   | .VTypeDia A, w => Σ E : Set (Succ w), (w' : E) → RDom A w'.1.1
 
+/-- Under strong T, the view term a realised witness's content is read from at the world itself:
+    the view term realised by the chosen term of the realisation (`WFF.realiseAt`'s term form).
+    Both terms are lifted to one stage. -/
+theorem realisedLe (w : World σ N₀) {x : VarSymb} (hr : w.Realised x) {Γ : Ctx} {i : ℕ × ℕ}
+    (e : Γ.Le (w.L.ctx i)) :
+    (Γ.diaIn x).Le ((w.L.ctx (i ⊔ hr.data.i₀)).diaIn (.root (.free hr.data.c))) := by
+  rw [← hr.data.hx]
+  exact (e.trans (w.L.ctx_le le_sup_left)).diaIn x
+
+noncomputable def realisedTerm (w : World σ N₀) {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
+    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {A : VarType} {a : Ann A} (t : Term σ (Γ.diaIn x) A a) :
+    Σ b : Ann A, Term σ (w.L.ctx (i ⊔ hr.data.i₀)) A b :=
+  ⟨_, Term.realiseAt hr.data.hT hr.data.c (hr.data.hdecl _ le_sup_right) (hr.data.hfr _)
+    (Term.mono (w.L.ctx_le le_sup_right) hr.data.t₀) (Term.mono (realisedLe w hr e) t)⟩
+
 /-- ⭐The denotation of a term at a world, computed at a stage containing its context. -/
-def rden : {A : VarType} → {a : Ann A} → {Γ : Ctx} → (w : World σ N₀) → (i : ℕ × ℕ) →
-    Γ.Le (w.L.ctx i) → Term σ Γ A a → RDom A w
+noncomputable def rden : {A : VarType} → {a : Ann A} → {Γ : Ctx} → (w : World σ N₀) →
+    (i : ℕ × ℕ) → Γ.Le (w.L.ctx i) → Term σ Γ A a → RDom A w
   | _, _, _, w, i, e, .var v hv => w.cls i (.var v (e.ref hv))
   | _, _, _, w, i, e, .func f => w.cls i (Term.mono e (.func f))
   | _, _, _, _, _, _, .unit => PUnit.unit
@@ -189,7 +204,12 @@ def rden : {A : VarType} → {a : Ann A} → {Γ : Ctx} → (w : World σ N₀) 
       | d + 1 =>
           rden w'.1 (childIter (d + 1) i) (w'.chainLe hd e) (Term.shiftIter d (w'.four hd) t)
   | _, _, _, w, i, e, .diatm x _ t =>
-      ⟨extent w x, fun w' => rden w'.1.1 (childStage i) ((e.diaIn x).trans (extent_le w'.2 i)) t⟩
+      ⟨extent w x, fun w' =>
+        if hd : w'.1.1.depth - w.depth = 0 then
+          ((extent_self w'.2 hd).1).symm ▸
+            rden w (i ⊔ ((extent_self w'.2 hd).2).data.i₀) (Ctx.Le.refl _)
+              (realisedTerm w (extent_self w'.2 hd).2 e t).2
+        else rden w'.1.1 (childStage i) ((e.diaIn x).trans (extent_le w'.2 hd i)) t⟩
   termination_by structural A => A
 
 /-- At the world itself, a necessary term denotes its body collapsed. -/
@@ -239,33 +259,53 @@ theorem rden_boxtm_step {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
     omega
   exact (rden_boxtm_far e t w' hw).trans (rden_boxtm_far _ _ ⟨w'.1, hr⟩ hd').symm
 
+/-- At a proper successor, a possible term denotes its body there. -/
+theorem rden_diatm_acc {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
+    (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    (t : Term σ (Γ.diaIn x) A a) (w' : (extent w x)) (hd : w'.1.1.depth - w.depth ≠ 0) :
+    (rden w i e (.diatm x hx t)).2 w' =
+      rden w'.1.1 (childStage i) ((e.diaIn x).trans (extent_le w'.2 hd i)) t := by
+  simp only [rden, dif_neg hd]
+
+/-- The same, for a membership proof given separately and at any embedding of the view. -/
+theorem rden_diatm_acc' {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
+    (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    (t : Term σ (Γ.diaIn x) A a) (v : Succ w) (hv : v ∈ (rden w i e (.diatm x hx t)).1)
+    (hd : v.1.depth - w.depth ≠ 0) (le : (Γ.diaIn x).Le (v.1.L.ctx (childStage i))) :
+    (rden w i e (.diatm x hx t)).2 ⟨v, hv⟩ = rden v.1 (childStage i) le t := by
+  simp only [rden, dif_neg hd]
+
+/-- ⭐At the world itself, a possible term whose witness is realised denotes its body realised. -/
+theorem rden_diatm_self {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
+    (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    (t : Term σ (Γ.diaIn x) A a) (w' : (extent w x)) (hd : w'.1.1.depth - w.depth = 0) :
+    (rden w i e (.diatm x hx t)).2 w' =
+      ((extent_self w'.2 hd).1).symm ▸ rden w (i ⊔ ((extent_self w'.2 hd).2).data.i₀)
+        (Ctx.Le.refl _) (realisedTerm w (extent_self w'.2 hd).2 e t).2 := by
+  simp only [rden, dif_pos hd]
+
 theorem rden_sigma {A : VarType} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i))
     {p q : Σ b : Ann A, Term σ Γ A b} (h : p = q) : rden w i e p.2 = rden w i e q.2 := by
   subst h
   rfl
 
-/-- The denotation does not depend on the stage it is computed at. -/
-theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A a)
-    (w : World σ N₀) (i j : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)) (e' : Γ.Le (w.L.ctx j)),
-    rden w i e t = rden w j e' t
-  | _, _, _, .var _ _, w, i, j, _, _ =>
-      Quotient.sound (World.TEq_of_lift_eq (w := w) (le_sup_left (b := j))
-        (le_sup_right (a := i)) rfl)
-  | _, _, _, .func _, w, i, j, _, _ =>
-      Quotient.sound (World.TEq_of_lift_eq (w := w) (le_sup_left (b := j))
-        (le_sup_right (a := i)) ((Term.mono_mono _ _ _).trans (Term.mono_mono _ _ _).symm))
-  | _, _, _, .unit, _, _, _, _, _ => rfl
-  | _, _, _, .pair s t, w, i, j, e, e' =>
-      Prod.ext (rden_congr s w i j e e') (rden_congr t w i j e e')
-  | _, _, _, .boxtm t, w, i, j, e, e' => funext fun w' => by
-      rcases h : w'.1.depth - w.depth with _ | d
-      · rw [rden_boxtm_self e t w' h, rden_boxtm_self e' t w' h]
-        exact rden_congr _ w'.1 i j _ _
-      · rw [rden_boxtm_far e t w' h, rden_boxtm_far e' t w' h]
-        exact rden_congr _ w'.1 _ _ _ _
-  | _, _, _, .diatm _ _ t, _, i, j, _, _ =>
-      congrArg (Sigma.mk _) (funext fun w' => rden_congr t w'.1.1 (childStage i) (childStage j) _ _)
-  termination_by structural A => A
+/-- Transporting a raw object along an equation of worlds respects equality. -/
+theorem rden_transport_congr {w₁ w₂ : World σ N₀} (hw : w₁ = w₂) {A : VarType}
+    {u v : RDom A w₁} (h : u = v) : hw ▸ u = hw ▸ v := by
+  cases hw
+  exact h
+
+/-- Realising a weakened view term is weakening its realisation. -/
+theorem realisedTerm_mono {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ Γ' : Ctx}
+    (h : Γ.Le Γ') {i : ℕ × ℕ} (e : Γ'.Le (w.L.ctx i)) {A : VarType} {a : Ann A}
+    (t : Term σ (Γ.diaIn x) A a) :
+    realisedTerm w hr e (Term.mono (h.diaIn x) t) = realisedTerm w hr (h.trans e) t := by
+  have key : Term.mono (realisedLe w hr e) (Term.mono (h.diaIn x) t) =
+      Term.mono (realisedLe w hr (h.trans e)) t := by
+    rw [Term.mono_mono]
+  exact congrArg (fun u => (⟨_, Term.realiseAt hr.data.hT hr.data.c (hr.data.hdecl _ le_sup_right)
+    (hr.data.hfr _) (Term.mono (w.L.ctx_le le_sup_right) hr.data.t₀) u⟩ :
+      Σ b : Ann A, Term σ (w.L.ctx (i ⊔ hr.data.i₀)) A b)) key
 
 /-- The denotation commutes with weakening. -/
 theorem rden_mono : ∀ {A : VarType} {a : Ann A} {Γ Γ' : Ctx} (h : Γ.Le Γ') (t : Term σ Γ A a)
@@ -288,9 +328,67 @@ theorem rden_mono : ∀ {A : VarType} {a : Ann A} {Γ Γ' : Ctx} (h : Γ.Le Γ')
       · rw [rden_boxtm_far e _ w' hd, rden_boxtm_far (h.trans e) t w' hd,
           Term.shiftIter_mono d _ h t]
         exact rden_mono _ _ w'.1 _ _
-  | _, _, _, _, h, .diatm x _ t, _, i, _ =>
-      congrArg (Sigma.mk _) (funext fun w' => rden_mono (h.diaIn x) t w'.1.1 (childStage i) _)
+  | _, _, _, _, h, .diatm x _ t, w, i, e =>
+      congrArg (Sigma.mk _) (funext fun w' => by
+        by_cases hd : w'.1.1.depth - w.depth = 0
+        · simp only [dif_pos hd]
+          exact rden_transport_congr _ (rden_sigma _ (realisedTerm_mono _ h e t))
+        · simp only [dif_neg hd]
+          exact rden_mono (h.diaIn x) t w'.1.1 (childStage i) _)
   termination_by structural A => A
+
+/-- The denotation does not depend on the stage it is computed at. -/
+theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A a)
+    (w : World σ N₀) (i j : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)) (e' : Γ.Le (w.L.ctx j)),
+    rden w i e t = rden w j e' t
+  | _, _, _, .var _ _, w, i, j, _, _ =>
+      Quotient.sound (World.TEq_of_lift_eq (w := w) (le_sup_left (b := j))
+        (le_sup_right (a := i)) rfl)
+  | _, _, _, .func _, w, i, j, _, _ =>
+      Quotient.sound (World.TEq_of_lift_eq (w := w) (le_sup_left (b := j))
+        (le_sup_right (a := i)) ((Term.mono_mono _ _ _).trans (Term.mono_mono _ _ _).symm))
+  | _, _, _, .unit, _, _, _, _, _ => rfl
+  | _, _, _, .pair s t, w, i, j, e, e' =>
+      Prod.ext (rden_congr s w i j e e') (rden_congr t w i j e e')
+  | _, _, _, .boxtm t, w, i, j, e, e' => funext fun w' => by
+      rcases h : w'.1.depth - w.depth with _ | d
+      · rw [rden_boxtm_self e t w' h, rden_boxtm_self e' t w' h]
+        exact rden_congr _ w'.1 i j _ _
+      · rw [rden_boxtm_far e t w' h, rden_boxtm_far e' t w' h]
+        exact rden_congr _ w'.1 _ _ _ _
+  | _, _, _, .diatm x _ t, w, i, j, e, e' =>
+      congrArg (Sigma.mk _) (funext fun w' => by
+        by_cases hd : w'.1.1.depth - w.depth = 0
+        · simp only [dif_pos hd]
+          refine rden_transport_congr _ ?_
+          have hr := (extent_self w'.2 hd).2
+          have h₁ : (w.L.ctx (i ⊔ hr.data.i₀)).Le
+              (w.L.ctx ((i ⊔ hr.data.i₀) ⊔ (j ⊔ hr.data.i₀))) := w.L.ctx_le le_sup_left
+          have h₂ : (w.L.ctx (j ⊔ hr.data.i₀)).Le
+              (w.L.ctx ((i ⊔ hr.data.i₀) ⊔ (j ⊔ hr.data.i₀))) := w.L.ctx_le le_sup_right
+          have key : Term.mono h₁ (realisedTerm w hr e t).2 =
+              Term.mono h₂ (realisedTerm w hr e' t).2 := by
+            simp only [realisedTerm]
+            rw [Term.mono_realiseAt hr.data.hT _
+                (hcA' := hr.data.hdecl _ (le_sup_right.trans le_sup_left))
+                (hfr' := hr.data.hfr _),
+              Term.mono_realiseAt hr.data.hT _
+                (hcA' := hr.data.hdecl _ (le_sup_right.trans le_sup_left))
+                (hfr' := hr.data.hfr _),
+              Term.mono_mono, Term.mono_mono, Term.mono_mono, Term.mono_mono]
+          calc rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e t).2
+              = rden w _ h₁ (realisedTerm w hr e t).2 := rden_congr _ w _ _ _ _
+            _ = rden w _ (Ctx.Le.refl _) (Term.mono h₁ (realisedTerm w hr e t).2) :=
+                (rden_mono h₁ _ w _ (Ctx.Le.refl _)).symm
+            _ = rden w _ (Ctx.Le.refl _) (Term.mono h₂ (realisedTerm w hr e' t).2) := by
+                rw [key]
+            _ = rden w _ h₂ (realisedTerm w hr e' t).2 := rden_mono h₂ _ w _ (Ctx.Le.refl _)
+            _ = rden w (j ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e' t).2 :=
+                rden_congr _ w _ _ _ _
+        · simp only [dif_neg hd]
+          exact rden_congr t w'.1.1 (childStage i) (childStage j) _ _)
+  termination_by structural A => A
+
 
 /-- A base term denotes its class. -/
 theorem rden_var_cls {w : World σ N₀} {i : ℕ × ℕ} :
@@ -352,11 +450,25 @@ theorem definable_box_apply {A : VarType} {w : World σ N₀} {o : RDom (.VTypeB
       · rw [rden_boxtm_far _ b w' hd]
         exact definable_rden _ _
 
+/-- Definability transports along an equation of worlds. -/
+theorem definable_transport {w₁ w₂ : World σ N₀} (hw : w₁ = w₂) {A : VarType} {u : RDom A w₁}
+    (h : Definable A w₁ u) : Definable A w₂ (hw ▸ u) := by
+  cases hw
+  exact h
+
 theorem definable_dia_apply {A : VarType} {w : World σ N₀} {o : RDom (.VTypeDia A) w}
     (h : Definable (.VTypeDia A) w o) (w' : o.1) : Definable A w'.1.1 (o.2 w') := by
   obtain ⟨i, a, t, rfl⟩ := h
   cases t with
-  | diatm x hx b => exact definable_rden _ b
+  | diatm x hx b =>
+      have hmem : w'.1 ∈ extent w x := w'.2
+      by_cases hd : w'.1.1.depth - w.depth = 0
+      · change Definable A w'.1.1 (dite _ _ _)
+        simp only [dif_pos hd]
+        exact definable_transport _ (definable_rden _ _)
+      · change Definable A w'.1.1 (dite _ _ _)
+        simp only [dif_neg hd]
+        exact definable_rden _ b
 
 end Canon
 

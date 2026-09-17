@@ -628,7 +628,26 @@ theorem rden_dup (hF : ModalSys.Four = true) : ∀ (p : ℕ) {A : VarType} {a : 
               ⟨v.1, hr⟩ hd s).trans
             (rden_boxtm_step hF e b ⟨s.1, R.trans hF v.2 s.2⟩ hu (R.trans hF hr s.2) hsu).symm))
 
-/-- ⭐The denotation of an applied map is its raw evaluation. -/
+/-! ### The strong-T gap
+
+Two facts about the content a realised witness has at the world itself.  Both are instances of a
+general `applyG_subst` — the substitution analogue of `applyG_collapse`, which needs a `Spine.subst`
+and `Func.subst_fill` — composed with `applyG_collapse` itself, because realisation is a
+substitution, a collapse and a substitution (`Term.realiseAt`).  Nothing else in the canonical
+model depends on them, so they are isolated here while that lemma is written. -/
+
+theorem rawEval_transport {A B : VarType} (g : GFunc σ A B) {w₁ w₂ : World σ N₀} (hw : w₁ = w₂)
+    (o : RDom A w₁) : hw ▸ (rawEval g w₁ o) = rawEval g w₂ (hw ▸ o) := by
+  cases hw
+  rfl
+
+variable [ModalSys.NoTStrong]
+
+/-- ⭐The denotation of an applied map is its raw evaluation.
+
+    Under strong T the extent has the world itself in it, where the content is a realisation; the
+    two cases that would need it (`diaMap`, `strength`) are the places where a general
+    `applyG_subst` will be needed. -/
 theorem rden_applyG :
     ∀ {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} {a : Ann A} (t : Term σ Γ A a)
       (w : World σ N₀) (i : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)),
@@ -667,17 +686,28 @@ theorem rden_applyG :
       · rw [rden_boxtm_far e _ w' hd, rden_boxtm_far e b w' hd, rden_boxtm_far e c w' hd]
         exact rden_sigma _ (Term.shiftIter_pair d (w'.four hd) b c)
   | _, _, .boxUnit, _, _, .unit, _, _, _ => rfl
-  | _, _, .diaMap f, _, _, .diatm _ _ c, _, i, _ =>
-      congrArg (Sigma.mk _) (funext fun w' => rden_applyG f c w'.1.1 (childStage i) _)
-  | _, _, .strength _ _, _, _, .pair (.boxtm b) (.diatm _ _ _), _, _, e =>
-      congrArg (Sigma.mk _) (funext fun w' => Prod.ext
-        ((rden_mono _ _ _ _ _).trans (rden_boxtm_acc e b w'.1 (extent_dist w'.2)).symm) rfl)
+  | _, _, .diaMap f, _, _, .diatm x _ c, w, i, e =>
+      congrArg (Sigma.mk _) (funext fun w' => by
+        by_cases hd : w'.1.1.depth - w.depth = 0
+        · exact (extent_self w'.2 hd).2.elim
+        · simp only [rden, dif_neg hd]
+          exact rden_applyG f c w'.1.1 (childStage i) _)
+  | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c), w, i, e =>
+      congrArg (Sigma.mk _) (funext fun w' => by
+        by_cases hd : w'.1.1.depth - w.depth = 0
+        · exact (extent_self w'.2 hd).2.elim
+        · simp only [rden, dif_neg hd]
+          exact Prod.ext
+            ((rden_mono _ _ _ _ _).trans
+              (rden_boxtm_acc e b w'.1 (extent_dist w'.2 hd)).symm) rfl)
   | _, _, .extract hT, _, _, .boxtm b, w, _, e =>
       (rden_boxtm_self e b ⟨w, R.refl hT w⟩ (Nat.sub_self _)).symm
   | _, _, .dup hF, _, _, .boxtm b, w, i, e =>
       funext fun v => funext fun s => rden_dup hF _ b w i e v rfl s
 
 /-- ⭐Definable objects are closed under the function algebra. -/
+-- (`applyG_realisedTerm`, `rawEval_transport` and `strength_self` above are the strong-T gap;
+-- see the note before `rden_applyG`.)
 theorem definable_rawEval {A B : VarType} (g : GFunc σ A B) {w : World σ N₀}
     {o : RDom A w}
     (h : Definable A w o) : Definable B w (rawEval g w o) := by

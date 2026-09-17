@@ -17,25 +17,6 @@ namespace V12M
 
 variable [ModalSys]
 
-/-- Instantiating commutes with weakening. -/
-theorem WFF.mono_instantiate {σ : Signature} {Γ Γ' : Ctx} (h : Γ.Le Γ') (hs : Γ.SlotsFrom 0)
-    (hs' : Γ'.SlotsFrom 0) {T : VarType} {a : Ann T} (t : Term σ Γ T a)
-    (φ : WFF σ (Γ.insert (.bnd 0) T) 1) :
-    WFF.mono h (WFF.instantiate hs t φ) =
-      WFF.instantiate hs' (Term.mono h t) (WFF.mono (h.insert (.bnd 0) T) φ) := by
-  unfold WFF.instantiate WFF.substRoot
-  rw [WFF.mono_subst, WFF.subst_mono]
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ ?_ φ
-  refine Subst.sim_of ?_
-  intro v U _ _
-  rw [Subst.mono_apply]
-  by_cases hvr : v = .root (.bnd 0)
-  · subst hvr
-    rw [Subst.single_root, Subst.single_root]
-    exact .refl _
-  · rw [Subst.single_ne _ hvr, Subst.single_ne _ hvr]
-    exact .refl _
-
 theorem WFF.instantiate_eta_congr {σ : Signature} {Γ : Ctx} (hs : Γ.SlotsFrom 0) {A : VarType}
     {w w' : VarSymb} (e : w = w') (h : Γ.ref w = some A) (h' : Γ.ref w' = some A)
     (F : WFF σ (Γ.insert (.bnd 0) A) 1) :
@@ -51,9 +32,16 @@ omit [ModalSys] in
 theorem decJ_le (n : ℕ) : decJ n ≤ n := Nat.unpair_left_le n
 
 omit [ModalSys] in
-/-- Every (own stage, base stage, index) triple is read at some step. -/
-theorem exists_dec (m j k : ℕ) : ∃ n, decJ n = j ∧ decM n = m ∧ decK n = k :=
-  ⟨Nat.pair j (Nat.pair m k), by simp [decJ, decM, decK, Nat.unpair_pair]⟩
+/-- Every formula index at every stage is read at some step. -/
+theorem exists_decF (m j k : ℕ) : ∃ n, decJ n = j ∧ decM n = m ∧ decKF n = k :=
+  ⟨Nat.pair j (Nat.pair m (Nat.pair k 0)), by simp [decJ, decM, decK, decKF, Nat.unpair_pair]⟩
+
+omit [ModalSys] in
+/-- Every term index at every stage is read at some step, with any chosen formula index. -/
+theorem exists_decFT (m j k k' : ℕ) :
+    ∃ n, decJ n = j ∧ decM n = m ∧ decKF n = k ∧ decKT n = k' :=
+  ⟨Nat.pair j (Nat.pair m (Nat.pair k k')),
+    by simp [decJ, decM, decK, decKF, decKT, Nat.unpair_pair]⟩
 
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
@@ -69,13 +57,14 @@ theorem step_wit_ex (n : ℕ) (st : HState L σ) {A : VarType}
     (⟨decM n, WFF.instantiate Ctx.NoSlots.slots (Term.eta _ A href) (WFF.mono hle ψ)⟩ :
       (L.pre (L.step n st).l).Sentence σ) ∈ (L.step n st).S := by
   have key : ∀ (χ : WFF σ (L.ctxL (decM n) st.l) 0), χ = .ex A ψ →
-      ∀ (href : (L.ctxL (decM n) ((L.witStep (decM n) st.l χ).1 :: st.l)).ref
+      ∀ (href : (L.ctxL (decM n) ((L.witStep (decM n) st.l (L.termQ n st.l) χ).1 :: st.l)).ref
           (.root (.free (L.ρ st.l.length))) = some A)
         (hle : ((L.ctxL (decM n) st.l).insert (.bnd 0) A).Le
-          ((L.ctxL (decM n) ((L.witStep (decM n) st.l χ).1 :: st.l)).insert (.bnd 0) A)),
+          ((L.ctxL (decM n) ((L.witStep (decM n) st.l (L.termQ n st.l) χ).1 :: st.l)).insert
+            (.bnd 0) A)),
       (⟨decM n, WFF.instantiate Ctx.NoSlots.slots (Term.eta _ A href) (WFF.mono hle ψ)⟩ :
-        (L.pre ((L.witStep (decM n) st.l χ).1 :: st.l)).Sentence σ) ∈
-        (L.witStep (decM n) st.l χ).2 := by
+        (L.pre ((L.witStep (decM n) st.l (L.termQ n st.l) χ).1 :: st.l)).Sentence σ) ∈
+        (L.witStep (decM n) st.l (L.termQ n st.l) χ).2 := by
     rintro χ rfl href hle
     exact congrArg (Sigma.mk (decM n))
       (WFF.instantiate_eta_openFree _ (L.ctxL_fresh le_rfl) Ctx.NoSlots.slots Ctx.NoSlots.slots ψ)
@@ -91,13 +80,14 @@ theorem step_wit_negAll (n : ℕ) (st : HState L σ) {A : VarType}
     (⟨decM n, (WFF.instantiate Ctx.NoSlots.slots (Term.eta _ A href) (WFF.mono hle ψ)).neg⟩ :
       (L.pre (L.step n st).l).Sentence σ) ∈ (L.step n st).S := by
   have key : ∀ (χ : WFF σ (L.ctxL (decM n) st.l) 0), χ = (WFF.all A ψ).neg →
-      ∀ (href : (L.ctxL (decM n) ((L.witStep (decM n) st.l χ).1 :: st.l)).ref
+      ∀ (href : (L.ctxL (decM n) ((L.witStep (decM n) st.l (L.termQ n st.l) χ).1 :: st.l)).ref
           (.root (.free (L.ρ st.l.length))) = some A)
         (hle : ((L.ctxL (decM n) st.l).insert (.bnd 0) A).Le
-          ((L.ctxL (decM n) ((L.witStep (decM n) st.l χ).1 :: st.l)).insert (.bnd 0) A)),
+          ((L.ctxL (decM n) ((L.witStep (decM n) st.l (L.termQ n st.l) χ).1 :: st.l)).insert
+            (.bnd 0) A)),
       (⟨decM n, (WFF.instantiate Ctx.NoSlots.slots (Term.eta _ A href) (WFF.mono hle ψ)).neg⟩ :
-        (L.pre ((L.witStep (decM n) st.l χ).1 :: st.l)).Sentence σ) ∈
-        (L.witStep (decM n) st.l χ).2 := by
+        (L.pre ((L.witStep (decM n) st.l (L.termQ n st.l) χ).1 :: st.l)).Sentence σ) ∈
+        (L.witStep (decM n) st.l (L.termQ n st.l) χ).2 := by
     rintro χ rfl href hle
     exact congrArg (Sigma.mk (decM n))
       (WFF.instantiate_eta_openFree _ (L.ctxL_fresh le_rfl) Ctx.NoSlots.slots Ctx.NoSlots.slots
@@ -119,15 +109,15 @@ theorem enumF_mono_congr (m k : ℕ) {X : Ctx} :
 theorem query_chain (S₀ : Set ((L.pre []).Sentence σ)) (n : ℕ)
     (h₀ : (L.ctxL (decM n) (L.chain S₀ (decJ n)).l).Le (L.ctxL (decM n) (L.chain S₀ n).l)) :
     L.query (σ := σ) n (L.chain S₀ n).l =
-      WFF.mono h₀ (enumF (σ := σ) (L.ctxL (decM n) (L.chain S₀ (decJ n)).l) (decK n)) :=
-  enumF_mono_congr (decM n) (decK n) (drop_chain S₀ (decJ_le n)) _ _
+      WFF.mono h₀ (enumF (σ := σ) (L.ctxL (decM n) (L.chain S₀ (decJ n)).l) (decKF n)) :=
+  enumF_mono_congr (decM n) (decKF n) (drop_chain S₀ (decJ_le n)) _ _
 
 /-! ## The finished language -/
 
 variable (L) in
 /-- The type chosen at step `i`. -/
 noncomputable def finalτ (S₀ : Set ((L.pre []).Sentence σ)) (i : ℕ) : VarType :=
-  (L.witStep (decM i) (L.chain S₀ i).l (L.choice i (L.chain S₀ i))).1
+  (L.witStep (decM i) (L.chain S₀ i).l (L.termQ i (L.chain S₀ i).l) (L.choice i (L.chain S₀ i))).1
 
 variable (L) in
 /-- The finished language. -/
@@ -226,7 +216,7 @@ theorem finalT_not_both {S₀ : Set ((L.pre []).Sentence σ)} (hS₀ : StageSys.
 /-- The step reading a formula of the finished language decides it. -/
 theorem finalT_decides (S₀ : Set ((L.pre []).Sentence σ)) (n : ℕ)
     {φ : WFF σ ((L.final S₀).ctx (decM n, decJ n)) 0}
-    (hq : enumF (L.ctxL (decM n) (L.chain S₀ (decJ n)).l) (decK n) =
+    (hq : enumF (L.ctxL (decM n) (L.chain S₀ (decJ n)).l) (decKF n) =
       WFF.mono (L.final_le_ctxL S₀ _ _) φ) :
     (L.choice n (L.chain S₀ n) = WFF.mono (L.toChain S₀ (decJ_le n)) φ ∧
         (⟨(decM n, decJ n), φ⟩ : (L.final S₀).sys.Sentence σ) ∈ L.finalT S₀) ∨
@@ -257,7 +247,7 @@ theorem finalT_complete (S₀ : Set ((L.pre []).Sentence σ)) {i : ℕ × ℕ}
   obtain ⟨m, j⟩ := i
   obtain ⟨k, hk⟩ := enumF_surjective (σ := σ) (L.ctxL m (L.chain S₀ j).l)
     (WFF.mono (L.final_le_ctxL S₀ m j) φ)
-  obtain ⟨n, rfl, rfl, rfl⟩ := exists_dec m j k
+  obtain ⟨n, rfl, rfl, rfl⟩ := exists_decF m j k
   rcases finalT_decides S₀ n hk with ⟨_, h⟩ | ⟨_, h⟩
   · exact Or.inl h
   · exact Or.inr h
@@ -288,7 +278,7 @@ theorem finalT_ex_witness {S₀ : Set ((L.pre []).Sentence σ)} (hS₀ : StageSy
   obtain ⟨m, j⟩ := i
   obtain ⟨k, hk⟩ := enumF_surjective (σ := σ) (L.ctxL m (L.chain S₀ j).l)
     (WFF.mono (L.final_le_ctxL S₀ m j) (.ex A ψ))
-  obtain ⟨n, rfl, rfl, rfl⟩ := exists_dec m j k
+  obtain ⟨n, rfl, rfl, rfl⟩ := exists_decF m j k
   rcases finalT_decides S₀ n hk with ⟨hc, _⟩ | ⟨_, hneg⟩
   swap
   · exact (finalT_not_both hS₀ h hneg).elim
@@ -336,7 +326,7 @@ theorem finalT_all_witness {S₀ : Set ((L.pre []).Sentence σ)} {i : ℕ × ℕ
   obtain ⟨m, j⟩ := i
   obtain ⟨k, hk⟩ := enumF_surjective (σ := σ) (L.ctxL m (L.chain S₀ j).l)
     (WFF.mono (L.final_le_ctxL S₀ m j) (.all A ψ))
-  obtain ⟨n, rfl, rfl, rfl⟩ := exists_dec m j k
+  obtain ⟨n, rfl, rfl, rfl⟩ := exists_decF m j k
   rcases finalT_decides S₀ n hk with ⟨_, hpos⟩ | ⟨hc, _⟩
   · exact (h hpos).elim
   have hτ : L.finalτ S₀ n = A := by

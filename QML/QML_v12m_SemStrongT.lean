@@ -136,6 +136,46 @@ theorem Env.extend_swap_agree {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {r r
         Env.extend_ne _ _ _ _ h₂ (by simpa [Ctx.insert, h₁] using hv'),
         Env.extend_ne _ _ _ _ h₁ hv']
 
+/-- ⭐At the world where the witness is realised, a hole formula read in the `◇` view holds exactly
+    when it holds here with `t` in its hole.  This is `sat_ret` as an equivalence, at that one
+    member of the extent: the canonical model's truth lemma needs both directions. -/
+theorem sat_viewRead_ret (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
+    {w : M.frame.W} (env : M.Env Γ w) (hnp : Γ.NoProjLast) {A : VarType} {a : Ann A}
+    (t : Term σ Γ A a) (c : ℕ) (hc : Γ.RootFresh (.free c))
+    (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) (p : M.frame.Dom (.VTypeDia A) w)
+    (hrefl : M.frame.R w w) (hmem : (⟨w, hrefl⟩ : M.frame.Acc w) ∈ (M.posEval p).1)
+    (hcont : (M.posEval p).2 ⟨⟨w, hrefl⟩, hmem⟩ = interp env t)
+    (hmem' : (⟨w, hrefl⟩ : M.frame.Acc w) ∈
+      (M.posEval ((env.extend (.free c) p).ref (.root (.free c))
+        (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)))).1) :
+    M.sat ((env.extend (.free c) p).diaPush (.root (.free c))
+        (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)) ⟨⟨w, hrefl⟩, hmem'⟩)
+      (WFF.viewRead c hc A ψ) ↔ M.sat env (WFF.hereRead hT t ψ) := by
+  have hrc : (Γ.insert (.free c) (.VTypeDia A)).ref (.root (.free c)) = some (.VTypeDia A) :=
+    Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)
+  have hpe : (env.extend (.free c) p).ref (.root (.free c)) hrc = p :=
+    Env.extend_root env (.free c) p hrc
+  have hval : ((env.extend (.free c) p).diaPush (.root (.free c)) hrc ⟨⟨w, hrefl⟩, hmem'⟩).ref
+      (.step (.root (.free c)) .dia) (Ctx.ref_diaIn_of hrc) = interp env t := by
+    rw [Env.ref, dif_neg (by decide : ¬ Step.dia.isProj = true)]
+    simp only [Env.diaPush]
+    rw [posEval_snd_congr hpe ⟨⟨w, hrefl⟩, hmem'⟩ hmem]
+    exact hcont
+  have henvs : Env.restrict ((Ctx.le_insert hc.root (.VTypeDia A)).boxIn.trans
+        (Ctx.le_boxIn_diaIn _ (.root (.free c))))
+      ((env.extend (.free c) p).diaPush (.root (.free c)) hrc ⟨⟨w, hrefl⟩, hmem'⟩) =
+      env.boxPush ⟨w, hrefl⟩ := by
+    funext v T hv
+    exact (Env.diaPush_ret env hc p hrefl hrc hmem' v T hv).symm
+  refine (sat_renameRoot _ (Ctx.noProjLast_boxIn Γ) (.bnd 0)
+    ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) _ _ _ _ Ctx.NoSlots.slots ψ).trans
+    ?_
+  rw [hval, henvs]
+  refine Iff.symm ((sat_instantiate env hnp Ctx.NoSlots.slots t _).trans ?_)
+  exact sat_collapse ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A)
+    ((Env.collapseAgree_self hT env).extend
+      ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) (interp env t)) ψ
+
 /-- ⭐Strong T, with a parameter: a witness realised here with `t`'s value as its content satisfies
     the hypothesis `WFF.retHyp` for every value of the parameter.  The witness is chosen before the
     parameter — it depends only on `t`'s value — which is why the rule's `∃x ∀y` form is sound. -/

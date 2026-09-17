@@ -348,28 +348,32 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
             (w' : ((model w₀).posEval ((canonEnv w₀ w i).ref x h)).1),
               (model w₀).sat ((canonEnv w₀ w i).diaPush x h w') χ) ↔ _
           have key : ∀ {X : VarType} (h : (w.L.ctx i).ref x = some (.VTypeDia X))
-              (w' : ((model w₀).posEval ((canonEnv w₀ w i).ref x h)).1),
+              (w' : ((model w₀).posEval ((canonEnv w₀ w i).ref x h)).1)
+              (hd : w'.1.1.depth - w.depth ≠ 0),
               (model w₀).sat ((canonEnv w₀ w i).diaPush x h w') χ ↔
-                (⟨childStage i, WFF.mono (extent_le (canonEnv_extent w₀ w i h ▸ w'.2) i) χ⟩ :
+                (⟨childStage i, WFF.mono (extent_le (canonEnv_extent w₀ w i h ▸ w'.2) hd i) χ⟩ :
                   w'.1.1.L.sys.Sentence σ) ∈ w'.1.1.T :=
-            fun h w' => (Model.sat_mono (diaPush_agree_canon w₀ w i h w') χ).symm.trans
+            fun h w' hd => (Model.sat_mono (diaPush_agree_canon w₀ w i h w' hd) χ).symm.trans
               (truth_lt n w'.1.1 (childStage i) _ (by rw [WFF.size_mono]; exact hχs))
           constructor
           · rintro ⟨X, h, w', hsat⟩
             have hw' : w'.1 ∈ extent w x := canonEnv_extent w₀ w i h ▸ w'.2
-            by_contra hnot
-            have hbx : (⟨i, WFF.boxx x hx χ.neg⟩ : w.L.sys.Sentence σ) ∈ w.T :=
-              World.mem_of_provable (Δ := [(WFF.dia x hx χ).neg])
-                (fun ψ hψ => by
-                  rw [List.mem_singleton.mp hψ]
-                  exact w.mcs.neg_mem_iff.mpr hnot)
-                ⟨Proof.boxx_neg_of_not_dia x hx χ⟩
-            have hneg := hw'.2.2 i hx χ.neg (childStage i) (extent_le hw' i) hbx
-            exact (w'.1.1.mcs.neg_mem_iff.mp hneg) ((key h w').mp hsat)
+            by_cases hd : w'.1.1.depth - w.depth ≠ 0
+            · by_contra hnot
+              have hbx : (⟨i, WFF.boxx x hx χ.neg⟩ : w.L.sys.Sentence σ) ∈ w.T :=
+                World.mem_of_provable (Δ := [(WFF.dia x hx χ).neg])
+                  (fun ψ hψ => by
+                    rw [List.mem_singleton.mp hψ]
+                    exact w.mcs.neg_mem_iff.mpr hnot)
+                  ⟨Proof.boxx_neg_of_not_dia x hx χ⟩
+              have hneg := (extent_proper hw' hd).2.2 i hx χ.neg (childStage i)
+                (extent_le hw' hd i) hbx
+              exact (w'.1.1.mcs.neg_mem_iff.mp hneg) ((key h w' hd).mp hsat)
+            · exact (extent_self hw' (not_not.mp hd)).2.elim
           · intro hmem
             obtain ⟨X, h⟩ : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X) := hx
-            obtain ⟨w', hw', hmem'⟩ := exists_dia w x ⟨X, h⟩ χ hmem
-            exact ⟨X, h, ⟨w', (canonEnv_extent w₀ w i h).symm ▸ hw'⟩, (key h _).mpr hmem'⟩
+            obtain ⟨w', hw', hd, hmem'⟩ := exists_dia w x ⟨X, h⟩ χ hmem
+            exact ⟨X, h, ⟨w', (canonEnv_extent w₀ w i h).symm ▸ hw'⟩, (key h _ hd).mpr hmem'⟩
 
 /-- ⭐**The truth lemma.** -/
 theorem truth (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF σ (w.L.ctx i) 0) :
