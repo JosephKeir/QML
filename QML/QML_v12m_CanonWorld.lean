@@ -38,6 +38,14 @@ end Canon
 
 variable [ModalSys]
 
+/-- For now the canonical model covers the systems without strong T. -/
+class ModalSys.NoTStrong : Prop where
+  noTStrong : ModalSys.TStrong = false
+
+theorem ModalSys.NoTStrong.absurd [ModalSys.NoTStrong] (hS : ModalSys.TStrong = true) : False := by
+  rw [ModalSys.NoTStrong.noTStrong] at hS
+  cases hS
+
 theorem CtxExpr.noProjLast : ∀ e : CtxExpr, e.denote.NoProjLast
   | .empty => fun _ _ h => by simp [CtxExpr.denote, Ctx.empty] at h
   | .insertFree e _ T => (CtxExpr.noProjLast e).insert _ T

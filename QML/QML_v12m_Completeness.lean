@@ -130,7 +130,7 @@ def Proof.boxx_neg_of_not_dia {σ : Signature} {Γ : Ctx} (x : VarSymb)
 
 namespace Canon
 
-variable {σ : Signature} {N₀ : ℕ} (w₀ : World σ N₀)
+variable {σ : Signature} {N₀ : ℕ} (w₀ : World σ N₀) [ModalSys.NoTStrong]
 
 theorem canon_agree_le (w : World σ N₀) {i j : ℕ × ℕ} (h : i ≤ j) :
     Model.Env.Agree (w.L.ctx_le h) (canonEnv w₀ w i) (canonEnv w₀ w j) :=
@@ -380,7 +380,7 @@ end Canon
 
 /-! ## Completeness -/
 
-variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
+variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoTStrong]
 
 /-- ⭐**Completeness**: a sequent in a presented context that holds in every model, at every
     world, in every environment, is provable. -/

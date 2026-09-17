@@ -120,6 +120,8 @@ structure Frame.Ops {σ : Signature} (F : Frame.{u} σ) where
   necExtract : {A : VarType} → {w : F.W} → ModalSys.T = true → F.Nec A w → F.Dom A w
   necDup : {A : VarType} → {w : F.W} → ModalSys.Four = true → F.Nec A w →
     F.Nec (.VTypeBox A) w
+  /-- Under strong T, an object has a possible object realised at the current world. -/
+  posRet : {A : VarType} → {w : F.W} → ModalSys.TStrong = true → F.Dom A w → F.Pos A w
 
 /-- Evaluating a definable map at a world. -/
 def GFunc.eval {σ : Signature} {F : Frame.{u} σ} (ops : F.Ops) :
@@ -167,5 +169,10 @@ structure Model (σ : Signature) where
   necDup_eval : ∀ {A : VarType} {w : frame.W} (hF : ModalSys.Four = true) (n : frame.Nec A w)
     (v : frame.Acc w) (s : frame.Acc v.1),
     necEval (necEval (ops.necDup hF n) v) s = necEval n ⟨s.1, frame.trans hF v.2 s.2⟩
+  /-- ⭐Strong T: the possible object of `a` has the current world in its extent, with `a` as its
+      content there.  This says on its own that `R` is reflexive wherever a domain is inhabited. -/
+  posRet_eval : ∀ {A : VarType} {w : frame.W} (hS : ModalSys.TStrong = true)
+    (a : frame.Dom A w), ∃ (h : frame.R w w) (hm : (⟨w, h⟩ : frame.Acc w) ∈
+      (posEval (ops.posRet hS a)).1), (posEval (ops.posRet hS a)).2 ⟨⟨w, h⟩, hm⟩ = a
 
 end V12M

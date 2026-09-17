@@ -137,20 +137,37 @@ content of a possible object.
     sends `extract` to collapsing, which commutes with application (`applyG_collapse`). The
     term truth lemma uses induction on term size. In the `□` truth case, the self-successor goes
     through `sat_boxHere` and `T_box`; the proper successors go through `exists_box_fail` as in K.
-- **Strong (inward, named): unit `A → ◇A` (`unitT`).**
-  - New canonical form of `◇`-terms, `unitT t`, beside `diatm x _ t`. It needs a new annotation
-    (`Ann.dia` currently records the witness address).
-  - `eqRec` case: `unitT t = unitT s` is `eqRec A t s`. Mixed annotations are never compared.
-  - **Collapse lives in substitution**: `◇_z φ [z ↦ unitT t] = φ [z.dia ↦ t, u.box ↦ u.here]` and
-    `diatm z s [z ↦ unitT t] = unitT (s[z.dia ↦ t, …])`. `SubE` entries for `◇`-addresses become
-    "address or unitT", and `WFF.subst` at `.dia z` collapses in the unitT case. This type-checks
-    only because of weak T's context principle.
-  - No new rule: the singleton principle is ordinary `∃`-intro/`∀`-elim at `unitT t`.
-  - Semantics: `posUnit : Dom A w → Pos A w` with extent `{w}` and content the object.
-  - `Proof.subst` needs `K_dia`/`dia_bot` cases that use T's `□`-elimination.
-  - Rejected alternative: an existential rule `Φ⟨x := t⟩ ⊢ ∃x:◇A. Φ(x)` with positive `◇_x` only
-    (extent *contains* `w`). It is complete-able only with a chain invariant and one Henkin constant
-    per term, and it makes proofs non-modular.
+- **Strong (inward, UNNAMED): a possible object realised here (decided 2026-09-17).**
+  - **Semantics.** A model operation `posRet : Dom A w → Pos A w` whose extent contains `w` with
+    the object as its content there. Stated existentially — `∃ (h : R w w), ⟨w, h⟩ ∈ extent ∧
+    content = a` — so it needs no reflexivity hypothesis and implies `R w w` wherever a domain is
+    inhabited. **No uniqueness and no naturality**: the object need not be a singleton, and nothing
+    relates `posRet (f a)` to `posRet a`.
+  - **Rule (Henkin-style, with a fresh witness `c : ◇A`).** From
+    `Δ, θ₁↓(t) → ◇_c θ₁, …, θₙ↓(t) → ◇_c θₙ ⊢ φ`, with `c` fresh and not in `Δ` or `φ`, conclude
+    `Δ ⊢ φ`. Here `θ↓(t)` reads the view formula `θ` at the current world: `c.dia ↦ t`,
+    `u.box ↦ u.here` (weak T), `u.keep ↦ u` (4). That is an ordinary substitution into `Γ`, so
+    `WFF.subst` states it and `sat_subst` proves it sound; the agreement lemma is the `◇` analogue
+    of `Env.collapseAgree_self`, namely `diaPush` at the self-world.
+  - **No polarity condition is needed.** Only the one direction `θ↓(t) → ◇_c θ` is ever available,
+    so `◇_c` can only be used positively. The user's axiom "from `P` infer `∃x:◇A. ◇_x P†`" is the
+    one-instance case: modus ponens, then `ex_intro` at `c`, then discharge `c`.
+  - **Why finitely many instances suffice.** The canonical construction adds one witness constant
+    per term with all instances as axioms; consistency of that extension is exactly this rule with
+    the finitely many instances of a hypothetical derivation of `⊥`. Stronger consequences, such as
+    `∃x ∀y …`, follow from completeness rather than from the rule.
+  - No new term formers, so `◇` canonical forms, `eqRec` and the address-witness design are
+    untouched.
+  - *Rejected: named singletons (`unitT t`).* A new `◇` canonical form and annotation, with the
+    collapse `◇_z φ [z ↦ unitT t] = φ[z.dia ↦ t, u.box ↦ u.here]` living in substitution. Clean and
+    complete-able, but it forces every possible object realised here to be a singleton, and every
+    witness use then reduces to a statement about the object.
+  - *Rejected: naming the unnamed object (`y.ret`).* Substituting a compound term for `y` has no
+    address to name `ret(t)`; requiring one (naturality) plus projections forces a single extent per
+    world and homomorphic counterpart maps. Uniqueness of the realised-here object forces the same.
+  - *Rejected: the positive-polarity schema `Φ⟨x := t⟩ ⊢ ∃x. Φ(x)`.* Same strength, but it needs a
+    new formula transformation with polarity tracking and slot renumbering. The Henkin rule reuses
+    `WFF.subst` instead.
 
 ### 4 (transitivity)
 - Frame: `R(v) ⊆ R(w)` for `v ∈ R(w)`.
