@@ -246,13 +246,77 @@ content of a possible object.
     `Ctx.ne_root_of_ref_boxIn` and `Ctx.ne_root_of_ref_diaIn`. `Realises.diaIn` accordingly carries
     `y ≠ x`, which `Term.realise` discharges from the threaded freshness hypothesis — and with that
     the recursion goes through.
+  - *Plan revision (2026-09-18): no association field on `World`.* The content at the world itself
+    need not be named by a constant of the world's language. Realise the body with a transient bound
+    root `d` (`Term.realise`), then substitute the witness's term `t` for `d` with `Subst.single` —
+    a root substitution, so its index map is unproblematic. Every non-`Var` term is in canonical
+    form (`var`/`func` build only `Var`), so no equality at higher types is needed. The world then
+    needs only a *property*, like `exW`/`allW`: a root `x` is **realised by `t`** when `T` holds
+    every instance `hereRead t ψ → ◇_x viewRead ψ`; `extent w x` admits the world itself iff `x` is
+    realised, and the content there uses a chosen such `t`. Any choice works — each direction of the
+    truth lemma uses only the chosen `t`'s instances (for `□_x χ`: if `χ` failed here, `¬χ` holds
+    here and the instance gives `◇_x ¬χ`).
+  - *Open problem (2026-09-18, analysis, not checked in Lean): later constants.* The Henkin chain
+    enumerates formulas, and terms of non-`Var` type never occur inside a formula, so strong-T
+    witnesses must come from a separate enumeration of terms (they are countable). But the truth
+    lemma needs a witness `c` realised for **all** formulas, including ones mentioning constants
+    declared *after* `c`, while `T_dia` only justifies instances when `c` is fresh for the rest of
+    the theory — and later sentences may mention `c` (e.g. the witness of `∃y. P(y, c)`).
+    Where it bites: a hole formula lives in a `□` view, which exposes only constants of
+    `□`-reaching type (`u.box`, `u.keep`, through projections). So (a) a new strong-T witness, of
+    type `◇A`, never appears in another witness's instances, and adding one is safe by `T_dia`;
+    but (b) a later `∃`/`¬∀` witness of `□`-reaching type needs instances mentioning its `.box`,
+    which do not follow from instances over the earlier language — quantifying inside the view
+    (`∀z. ψ(z, hole)`) gives the right conclusion but too strong a premise, and pinning `z` to the
+    new constant needs equality at higher types.
+    **Candidate fix:** let the rule's instances carry universally quantified parameters,
+    `∀ȳ:B. (hereRead t ψ(ȳ) → ◇_c viewRead ψ(ȳ))` with `c` outside the quantifier, so later
+    constants are covered by `all_elim`. Soundness should extend easily (the `posRet` witness
+    depends only on `t`'s value, not on `ȳ`), but it does not seem derivable from the current rule:
+    applying `T_dia` under `∀ȳ` yields a different witness for each `ȳ`. This changes the proof
+    rule, so it needs the user's decision. The alternative — a chain keeping "theory plus all
+    current instances" consistent at every step — has no known argument for case (b).
+  - **Decision (2026-09-18): the rule becomes `T_dia∀`.** From
+    `Γ, c:◇A ; { ∀y:B. (ψ↓(t) → ◇_c ψ↑) | (B, ψ) ∈ Ψ }, Δ ⊢ φ` infer `Γ ; Δ ⊢ φ`, with `c` fresh
+    for `Γ, Δ, φ` and each `ψ` over `(Γ, y:B).boxIn` plus a hole of type `A`. `B` = unit is the old
+    rule; several parameters pack into a product. On paper the user states the positive-polarity
+    schema, justified by the sketch below.
+    *Implemented (2026-09-18), sorry-free.* `WFF.retHyp` builds one hypothesis:
+    `WFF.all B (WFF.bindFree y …)` around the old implication taken over `Γ, y:B`, moved into
+    place along `Ctx.insert_swap_le` (the rule declares `c` before `y`). The rule `T_dia` now takes
+    `c y`, freshness for both, `y ≠ c`, and `Ψ : List (Σ B, hole formula)`. Soundness:
+    `sat_retHyp` reduces to `sat_ret` for each parameter value, with `Env.extend_swap_agree` for
+    the swap — the witness is chosen from `t`'s value before the parameter, which is what makes
+    `∃x ∀y` sound. Substitution: `WFF.subst_retHyp` renames `c ↦ c'` and `y ↦ y'`
+    (`c' = bound Γ'`, `y' = bound Γ' + 1`) via `subst_bindFree`, then `subst_mono_eq` for the swap
+    (a `Sim` check that renaming `c` then `y` agrees with `y` then `c`), then the old argument over
+    `Γ, y:B`. `Term.subst` annotates by the index map, so the weakened term is compared as a
+    dependent pair (`Term.subst_mono_rename_sigma`, `WFF.hereRead_congr`).
+  - *Equivalence with the positive-polarity schema (paper sketch, not checked in Lean).* A root `x`
+    is invisible in every view, and `◇`-typed terms cannot sit inside `=` or function arguments, so
+    `x` occurs in a formula only as the witness of a top-level `◇_x χ`. A `Φ` positive in `x` is
+    built from such atoms and `x`-free formulas by `∧`, `∨`, `∃`, `∀`, and `θ → A` with `θ`
+    `x`-free. **Monotonicity:** given, for each atom `α(z̄)` with `z̄` the variables bound above it,
+    the hypothesis `∀z̄. (α↓(z̄) → α(z̄))`, we get `Φ⟨x := t⟩ → Φ(c)` by induction — the `∨` case by
+    `or_elim`/`or_intro`, the `∃z` case by `ex_elim`/`ex_intro` from `∀z. (A↓(z) → A(z))`. The
+    hypotheses are `∀`-quantified whether the binder in `Φ` is `∀` or `∃`, which is exactly what the
+    parameter supplies. **Schema from `T_dia∀`:** from `⊢ Φ⟨x := t⟩`, apply `T_dia∀` with one
+    hypothesis per atom, get `Φ(c)`, then `ex_intro` at `c`; the goal does not mention `c`.
+    **Converse:** with `Φ(x) := ∀y. (ψ↓(t,y) → ◇_x ψ↑(y))` (conjoined over hypotheses) the
+    premise is trivial, so the schema gives `∃x. Φ(x)`, and `ex_elim` with a fresh `c` recovers
+    `T_dia∀`. **Corollary:** the unparameterised `T_dia` handles exactly the `Φ` in which no bound
+    variable of `□`-reaching type sits above an atom — the same condition that broke the canonical
+    model.
   - **No polarity condition is needed.** Only the one direction `θ↓(t) → ◇_c θ` is ever available,
     so `◇_c` can only be used positively. The user's axiom "from `P` infer `∃x:◇A. ◇_x P†`" is the
     one-instance case: modus ponens, then `ex_intro` at `c`, then discharge `c`.
   - **Why finitely many instances suffice.** The canonical construction adds one witness constant
     per term with all instances as axioms; consistency of that extension is exactly this rule with
-    the finitely many instances of a hypothetical derivation of `⊥`. Stronger consequences, such as
-    `∃x ∀y …`, follow from completeness rather than from the rule.
+    the finitely many instances of a hypothetical derivation of `⊥`. ~~Stronger consequences, such
+    as `∃x ∀y …`, follow from completeness rather than from the rule.~~ **Wrong (corrected
+    2026-09-18):** this was circular. The canonical construction itself needs the uniform `∃x ∀y`
+    strength (a witness must also serve formulas mentioning later constants), so completeness does
+    not supply it — see "Open problem: later constants" below.
   - No new term formers, so `◇` canonical forms, `eqRec` and the address-witness design are
     untouched.
   - *Rejected: named singletons (`unitT t`).* A new `◇` canonical form and annotation, with the
@@ -262,9 +326,13 @@ content of a possible object.
   - *Rejected: naming the unnamed object (`y.ret`).* Substituting a compound term for `y` has no
     address to name `ret(t)`; requiring one (naturality) plus projections forces a single extent per
     world and homomorphic counterpart maps. Uniqueness of the realised-here object forces the same.
-  - *Rejected: the positive-polarity schema `Φ⟨x := t⟩ ⊢ ∃x. Φ(x)`.* Same strength, but it needs a
-    new formula transformation with polarity tracking and slot renumbering. The Henkin rule reuses
-    `WFF.subst` instead.
+  - *Rejected: the positive-polarity schema `Φ⟨x := t⟩ ⊢ ∃x. Φ(x)`.* It needs a new formula
+    transformation with polarity tracking and slot renumbering; the Henkin rule reuses `WFF.subst`
+    instead. ~~Same strength.~~ **Not the same strength (corrected 2026-09-18).** `Φ` may put
+    quantifiers around `◇_x`: with `Φ(x) = ∀y. (ψ↓(t,y) → ◇_x ψ↑(y))` the premise is trivial and
+    the schema yields the uniform `∃x ∀y` witness, whereas `T_dia`'s hypotheses are bare
+    implications and give only `∀y ∃x`. The parameterised rule proposed under "Open problem: later
+    constants" restores that strength in Henkin form.
 
 ### 4 (transitivity)
 - Frame: `R(v) ⊆ R(w)` for `v ∈ R(w)`.

@@ -48,6 +48,25 @@ def WFF.viewRead {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) (hc : Γ.Roo
     (Ctx.ref_diaIn_of (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)))
     ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A) Ctx.NoSlots.slots ψ
 
+/-- One hypothesis of `T_dia`: for every value of the parameter `y : B`, what holds of `t` here
+    holds of the witness content in `◇_c`.  The hole formula `ψ` may mention the parameter's
+    box-components.  The parameter is bound *inside* the scope of `c`, which is what makes the
+    witness uniform in it (`∃x ∀y`, not `∀y ∃x`); `B` = unit gives the unparameterised form. -/
+def WFF.retHyp {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {A : VarType}
+    {a : Ann A} (t : Term σ Γ A a) (c y : ℕ) (hc : Γ.RootFresh (.free c))
+    (hy : Γ.RootFresh (.free y)) (hyc : y ≠ c) (B : VarType)
+    (ψ : WFF σ ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A) 1) :
+    WFF σ (Γ.insert (.free c) (.VTypeDia A)) 0 :=
+  have hne : Root.free y ≠ Root.free c := fun h => hyc (Root.free.inj h)
+  have hcy : (Γ.insert (.free y) B).RootFresh (.free c) := hc.insert_ne hne B
+  WFF.all B (WFF.bindFree y (hy.insert_ne hne.symm (.VTypeDia A)) Ctx.NoSlots.slots B
+    (WFF.mono (Ctx.insert_swap_le hne B (.VTypeDia A))
+      (WFF.imp
+        ((WFF.hereRead hT (Term.mono (Ctx.le_insert hy.root B) t) ψ).weaken hcy.root
+          (.VTypeDia A))
+        (.dia (.root (.free c)) ⟨A, Ctx.ref_insert_root _ (.free c) (.VTypeDia A)⟩
+          (WFF.viewRead c hcy A ψ)))))
+
 inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ Γ 0 → Type where
   -- Structural
   | ax {Γ : Ctx} (φ : WFF σ Γ 0) : Proof σ Γ [φ] φ
@@ -149,17 +168,20 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (.box (.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots φ)))
   -- Strong T
   /-- Every object has a possible object realised here.  The witness `c : ◇A` is fresh, and the
-      subproof may use, for finitely many `□`-view formulas with a hole, that what holds of `t`
-      here holds of the witness content in `◇_c`.  As only that direction is available, `◇_c` can
-      only be used positively. -/
+      subproof may use, for finitely many `□`-view formulas with a hole and a parameter, that for
+      every value of the parameter what holds of `t` here holds of the witness content in `◇_c`
+      (`WFF.retHyp`).  One parameter name `y` serves all the hypotheses; several parameters pack
+      into a product type.  As only that direction is available, `◇_c` is only used positively;
+      on paper this rule is equivalent to the positive-polarity schema
+      `Φ⟨x := t⟩ ⊢ ∃x:◇A. Φ(x)`. -/
   | T_dia {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) (hS : ModalSys.TStrong = true)
-      (A : VarType) {a : Ann A} (t : Term σ Γ A a) (c : ℕ) (hc : Γ.RootFresh (.free c))
+      (A : VarType) {a : Ann A} (t : Term σ Γ A a) (c y : ℕ) (hc : Γ.RootFresh (.free c))
+      (hy : Γ.RootFresh (.free y)) (hyc : y ≠ c)
       {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0}
-      (Ψ : List (WFF σ (Γ.boxIn.insert (.bnd 0) A) 1)) :
+      (Ψ : List (Σ B : VarType, WFF σ ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A) 1)) :
       Proof σ (Γ.insert (.free c) (.VTypeDia A))
-        (Ψ.map (fun ψ => WFF.imp ((WFF.hereRead hT t ψ).weaken hc.root (.VTypeDia A))
-            (.dia (.root (.free c)) ⟨A, Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)⟩
-              (WFF.viewRead c hc A ψ))) ++ Δ.map (WFF.weaken hc.root (.VTypeDia A)))
+        (Ψ.map (fun ψ => WFF.retHyp hT t c y hc hy hyc ψ.1 ψ.2) ++
+          Δ.map (WFF.weaken hc.root (.VTypeDia A)))
           (φ.weaken hc.root (.VTypeDia A)) →
       Proof σ Γ Δ φ
 

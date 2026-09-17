@@ -616,6 +616,112 @@ theorem WFF.subst_diaViewRead {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlo
         SubE.comp_idRen]
       exact .refl _
 
+/-- Substituting into a term weakened past a renamed eigenvariable is weakening the substituted
+    term.  Stated for dependent pairs: the annotations are built from `renameIdx ι u u'` and `ι`,
+    which agree on the term's indices only propositionally. -/
+theorem Term.subst_mono_rename_sigma {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) {u u' : ℕ} (hu : Γ.RootFresh (.free u))
+    (hu' : Δ.RootFresh (.free u')) (T : VarType) {A : VarType} {a : Ann A} (t : Term σ Γ A a) :
+    (⟨_, Term.subst (VarSymb.renameIdx ι u u') (θ.rename u u' T hu'.root)
+        (Subst.ok_rename hθ T hu'.root) (Subst.coh_rename hθ hc hu T hu'.root)
+        (Term.mono (Ctx.le_insert hu.root T) t)⟩ : Σ b, Term σ (Δ.insert (.free u') T) A b) =
+      ⟨_, Term.mono (Ctx.le_insert hu'.root T) (Term.subst ι θ hθ hc t)⟩ := by
+  rw [Term.subst_mono, Term.mono_subst]
+  exact Term.subst_congr _ _ _ _ _ _ (Subst.sim_rename_mono hu T hu'.root) t
+
+/-- The `here` reading depends on its term only as a dependent pair. -/
+theorem WFF.hereRead_congr {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {A : VarType}
+    {a₁ a₂ : Ann A} {t₁ : Term σ Γ A a₁} {t₂ : Term σ Γ A a₂}
+    (h : (⟨a₁, t₁⟩ : Σ b, Term σ Γ A b) = ⟨a₂, t₂⟩) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
+    WFF.hereRead hT t₁ ψ = WFF.hereRead hT t₂ ψ := by
+  cases h
+  rfl
+
+/-- ⭐Substituting into one hypothesis of `T_dia`: the eigenvariable `c` and the parameter `y` are
+    renamed to `c'` and `y'`, the term substitutes, and the hole formula substitutes one view in,
+    under the slot, with the parameter renamed. -/
+theorem WFF.subst_retHyp {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
+    (hT : ModalSys.T = true) (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ)
+    (hΓ : Γ.SlotsFrom 0) (hΔ : Δ.SlotsFrom 0) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
+    {c c' y y' : ℕ} (hcf : Γ.RootFresh (.free c)) (hcf' : Δ.RootFresh (.free c'))
+    (hy : Γ.RootFresh (.free y)) (hy' : Δ.RootFresh (.free y')) (hyc : y ≠ c) (hyc' : y' ≠ c')
+    (B : VarType) (ψ : WFF σ ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A) 1) :
+    WFF.subst (VarSymb.renameIdx ι c c') (θ.rename c c' (.VTypeDia A) hcf'.root)
+        (Subst.ok_rename hθ (.VTypeDia A) hcf'.root)
+        (Subst.coh_rename hθ hc hcf (.VTypeDia A) hcf'.root)
+        (hΓ.insertFree c (.VTypeDia A)) (hΔ.insertFree c' (.VTypeDia A))
+        (WFF.retHyp hT t c y hcf hy hyc B ψ) =
+      WFF.retHyp hT (Term.subst ι θ hθ hc t) c' y' hcf' hy' hyc' B
+        (WFF.subst (VarSymb.shiftSlot (VarSymb.renameIdx ι y y') 0 0)
+          ((θ.rename y y' B hy'.root).box.under 0 0 A (hΔ.insertFree y' B).boxIn.root)
+          (Subst.ok_under (Subst.ok_box (Subst.ok_rename (u := y) hθ B hy'.root)) A
+            (hΔ.insertFree y' B).boxIn.root)
+          (Subst.coh_under (Subst.ok_box (Subst.ok_rename (u := y) hθ B hy'.root))
+            (Subst.coh_box (Subst.ok_rename (u := y) hθ B hy'.root)
+              (Subst.coh_rename hθ hc hy B hy'.root))
+            (hΓ.insertFree y B).boxIn A (hΔ.insertFree y' B).boxIn.root)
+          ((hΓ.insertFree y B).boxIn.insert A) ((hΔ.insertFree y' B).boxIn.insert A) ψ) := by
+  have hne : Root.free y ≠ Root.free c := fun h => hyc (Root.free.inj h)
+  have hne' : Root.free y' ≠ Root.free c' := fun h => hyc' (Root.free.inj h)
+  have hcy : (Γ.insert (.free y) B).RootFresh (.free c) := hcf.insert_ne hne B
+  have hcy' : (Δ.insert (.free y') B).RootFresh (.free c') := hcf'.insert_ne hne' B
+  have hθy := Subst.ok_rename (u := y) hθ B hy'.root
+  have hcθy := Subst.coh_rename hθ hc hy B hy'.root
+  have hΓy : (Γ.insert (.free y) B).SlotsFrom 0 := hΓ.insertFree y B
+  have hΔy : (Δ.insert (.free y') B).SlotsFrom 0 := hΔ.insertFree y' B
+  have hcy_ne : (VarSymb.root (.free c)) ≠ .root (.free y) :=
+    fun h => hne (VarSymb.root.inj h).symm
+  have hyΓc : (Γ.insert (.free c) (.VTypeDia A)).RootFresh (.free y) :=
+    hy.insert_ne hne.symm (.VTypeDia A)
+  have hyΔc : (Δ.insert (.free c') (.VTypeDia A)).RootFresh (.free y') :=
+    hy'.insert_ne hne'.symm (.VTypeDia A)
+  have hθc := Subst.ok_rename (u := c) hθ (.VTypeDia A) hcf'.root
+  have hcθc := Subst.coh_rename hθ hc hcf (.VTypeDia A) hcf'.root
+  -- The quantifier, then the parameter's binder: `y` is renamed to `y'`.
+  refine congrArg (WFF.all B) ?_
+  refine (WFF.subst_bindFree (θ.rename c c' (.VTypeDia A) hcf'.root) hθc hcθc
+    (hΓ.insertFree c _) (hΔ.insertFree c' _) hyΓc hyΔc B _).trans ?_
+  refine congrArg (WFF.bindFree y' hyΔc (hΔ.insertFree c' (.VTypeDia A)) B) ?_
+  -- The swap of `c` and `y`: renaming `c` then `y` agrees with renaming `y` then `c`.
+  refine (WFF.subst_mono_eq (Ctx.insert_swap_le hne B (.VTypeDia A))
+    (Ctx.insert_swap_le hne' B (.VTypeDia A))
+    ((θ.rename y y' B hy'.root).rename c c' (.VTypeDia A) hcy'.root)
+    (Subst.ok_rename hθy (.VTypeDia A) hcy'.root)
+    (Subst.coh_rename hθy hcθy hcy (.VTypeDia A) hcy'.root)
+    ((θ.rename c c' (.VTypeDia A) hcf'.root).rename y y' B hyΔc.root)
+    (Subst.ok_rename (u := y) hθc B hyΔc.root) (Subst.coh_rename hθc hcθc hyΓc B hyΔc.root)
+    (hΓy.insertFree c _) ((hΓ.insertFree c _).insertFree y B)
+    (hΔy.insertFree c' _) ((hΔ.insertFree c' _).insertFree y' B) ?_ _).trans ?_
+  · refine Subst.sim_of fun v U _ _ => ?_
+    by_cases hvc : v = .root (.free c)
+    · subst hvc
+      rw [Subst.rename_ne _ _ _ _ hcy_ne, Subst.rename_root]
+      change SubE.Sim U _ ((((θ.rename y y' B hy'.root).rename c c' (.VTypeDia A) hcy'.root)
+        (.root (.free c))).mono _)
+      rw [Subst.rename_root]
+      exact .refl _
+    · by_cases hvy : v = .root (.free y)
+      · subst hvy
+        rw [Subst.rename_root]
+        change SubE.Sim U _ ((((θ.rename y y' B hy'.root).rename c c' (.VTypeDia A) hcy'.root)
+          (.root (.free y))).mono _)
+        rw [Subst.rename_ne _ _ _ _ (fun h => hcy_ne h.symm), Subst.rename_root]
+        exact .refl _
+      · rw [Subst.rename_ne _ _ _ _ hvy, Subst.rename_ne _ _ _ _ hvc]
+        change SubE.Sim U _ ((((θ.rename y y' B hy'.root).rename c c' (.VTypeDia A) hcy'.root)
+          v).mono _)
+        rw [Subst.rename_ne _ _ _ _ hvc, Subst.rename_ne _ _ _ _ hvy]
+        simp only [SubE.mono_mono]
+        exact .refl _
+  · -- The body: the unparameterised argument, over `Γ, y:B`.
+    refine congrArg (WFF.mono (Ctx.insert_swap_le hne' B (.VTypeDia A))) ?_
+    exact congrArg₂ WFF.imp
+      ((WFF.subst_weaken_rename _ hθy hcθy hΓy hΔy hcy hcy' (.VTypeDia A) _).trans
+        (congrArg (WFF.weaken hcy'.root (.VTypeDia A))
+          ((WFF.subst_hereRead hT _ hθy hcθy hΓy hΔy _ ψ).trans
+            (WFF.hereRead_congr hT (Term.subst_mono_rename_sigma θ hθ hc hy hy' B t) _))))
+      (WFF.subst_diaViewRead _ hθy hcθy hΓy hΔy hcy hcy' A ψ)
+
 /-- ⭐**Substitution in proofs**: a substitution from the context of a proof into a presented
     context sends the proof to a proof of the substituted sequent. -/
 def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} → {φ : WFF σ Γ 0} →
@@ -768,28 +874,38 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
             hΓ.boxIn hΓ.boxIn.boxIn Ctx.NoSlots.slots Ctx.NoSlots.slots
             (Subst.shiftCorr_box_box hF hθ) φ))
         (Proof.four_box hF (Proof.subst p θ hθ hc hΓ))
-  | _, _, _, @Proof.T_dia _ _ _ _ hT hS A _ t c hcf _ _ Ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.T_dia _ _ _ _ hT hS A _ t c y hcf hy hyc _ _ Ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       have hcf' : Γ'.RootFresh (.free (Ctx.Presented.bound Γ')) := Ctx.Presented.fresh _ le_rfl
+      have hy' : Γ'.RootFresh (.free (Ctx.Presented.bound Γ' + 1)) :=
+        Ctx.Presented.fresh _ (Nat.le_succ _)
+      have hyc' : Ctx.Presented.bound Γ' + 1 ≠ Ctx.Presented.bound Γ' := Nat.succ_ne_self _
       have ih := Proof.subst p (Γ' := Γ'.insert (.free (Ctx.Presented.bound Γ')) (.VTypeDia A))
         (θ.rename c _ (.VTypeDia A) hcf'.root) (Subst.ok_rename hθ (.VTypeDia A) hcf'.root)
         (Subst.coh_rename hθ hc hcf (.VTypeDia A) hcf'.root) (hΓ.insertFree c (.VTypeDia A))
-      Proof.T_dia hT hS A (Term.subst ι θ hθ hc t) _ hcf'
-        (Ψ.map (fun ψ => WFF.subst (VarSymb.shiftSlot ι 0 0)
-          (θ.box.under 0 0 A hΓ'.boxIn.root) (Subst.ok_under (Subst.ok_box hθ) A hΓ'.boxIn.root)
-          (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn A hΓ'.boxIn.root)
-          (hΓ.boxIn.insert A) (hΓ'.boxIn.insert A) ψ))
+      Proof.T_dia hT hS A (Term.subst ι θ hθ hc t) (Ctx.Presented.bound Γ')
+        (Ctx.Presented.bound Γ' + 1) hcf' hy' hyc'
+        (Ψ.map (fun ψ => ⟨ψ.1,
+          WFF.subst (VarSymb.shiftSlot (VarSymb.renameIdx ι y (Ctx.Presented.bound Γ' + 1)) 0 0)
+          ((θ.rename y (Ctx.Presented.bound Γ' + 1) ψ.1 hy'.root).box.under 0 0 A
+            (hΓ'.insertFree (Ctx.Presented.bound Γ' + 1) ψ.1).boxIn.root)
+          (Subst.ok_under (Subst.ok_box (Subst.ok_rename (u := y) hθ ψ.1 hy'.root)) A
+            (hΓ'.insertFree (Ctx.Presented.bound Γ' + 1) ψ.1).boxIn.root)
+          (Subst.coh_under (Subst.ok_box (Subst.ok_rename (u := y) hθ ψ.1 hy'.root))
+            (Subst.coh_box (Subst.ok_rename (u := y) hθ ψ.1 hy'.root)
+              (Subst.coh_rename hθ hc hy ψ.1 hy'.root))
+            (hΓ.insertFree y ψ.1).boxIn A
+            (hΓ'.insertFree (Ctx.Presented.bound Γ' + 1) ψ.1).boxIn.root)
+          ((hΓ.insertFree y ψ.1).boxIn.insert A)
+          ((hΓ'.insertFree (Ctx.Presented.bound Γ' + 1) ψ.1).boxIn.insert A) ψ.2⟩))
         (Proof.castHyps
           (by
             simp only [List.map_append, List.map_map, Function.comp_def]
-            refine congrArg₂ (· ++ ·) (List.map_congr_left fun ψ _ => ?_)
+            exact congrArg₂ (· ++ ·)
+              (List.map_congr_left fun ψ _ =>
+                WFF.subst_retHyp hT θ hθ hc hΓ hΓ' t hcf hcf' hy hy' hyc hyc' ψ.1 ψ.2)
               (List.map_congr_left fun χ _ =>
-                WFF.subst_weaken_rename θ hθ hc hΓ hΓ' hcf hcf' (.VTypeDia A) χ)
-            exact congrArg₂ WFF.imp
-              ((WFF.subst_weaken_rename θ hθ hc hΓ hΓ' hcf hcf' (.VTypeDia A) _).trans
-                (congrArg (WFF.weaken hcf'.root (.VTypeDia A))
-                  (WFF.subst_hereRead hT θ hθ hc hΓ hΓ' t ψ)))
-              (WFF.subst_diaViewRead θ hθ hc hΓ hΓ' hcf hcf' A ψ))
+                WFF.subst_weaken_rename θ hθ hc hΓ hΓ' hcf hcf' (.VTypeDia A) χ))
           (Proof.conv (WFF.subst_weaken_rename θ hθ hc hΓ hΓ' hcf hcf' (.VTypeDia A) _) ih))
 
 /-- ⭐**Weakening** along any inclusion of contexts, into a presented context. -/

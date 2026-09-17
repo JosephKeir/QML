@@ -112,6 +112,53 @@ theorem sat_ret (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
   rw [hval, henvs]
   exact hbox
 
+/-- Extending by two distinct roots in either order gives agreeing environments. -/
+theorem Env.extend_swap_agree {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {r r' : Root}
+    (hne : r ≠ r') {T T' : VarType} (o : M.frame.Dom T w) (o' : M.frame.Dom T' w) :
+    Env.Agree (Ctx.insert_swap_le hne T T') ((env.extend r o).extend r' o')
+      ((env.extend r' o').extend r o) := by
+  have hne' : VarSymb.root r' ≠ .root r := fun h => hne (VarSymb.root.inj h).symm
+  intro v U hv
+  by_cases h₁ : v = .root r'
+  · subst h₁
+    have hU : T' = U := by simpa [Ctx.insert] using hv
+    subst hU
+    rw [Env.extend_root, Env.extend_ne _ _ _ _ hne' (by simp [Ctx.insert]), Env.extend_root]
+  · by_cases h₂ : v = .root r
+    · subst h₂
+      have hU : T = U := by simpa [Ctx.insert, hne'.symm] using hv
+      subst hU
+      rw [Env.extend_ne _ _ _ _ hne'.symm (by simp [Ctx.insert]), Env.extend_root,
+        Env.extend_root]
+    · have hv' : Γ v = some U := by simpa [Ctx.insert, h₁, h₂] using hv
+      rw [Env.extend_ne _ _ _ _ h₁ (by simpa [Ctx.insert, h₂] using hv'),
+        Env.extend_ne _ _ _ _ h₂ hv',
+        Env.extend_ne _ _ _ _ h₂ (by simpa [Ctx.insert, h₁] using hv'),
+        Env.extend_ne _ _ _ _ h₁ hv']
+
+/-- ⭐Strong T, with a parameter: a witness realised here with `t`'s value as its content satisfies
+    the hypothesis `WFF.retHyp` for every value of the parameter.  The witness is chosen before the
+    parameter — it depends only on `t`'s value — which is why the rule's `∃x ∀y` form is sound. -/
+theorem sat_retHyp (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
+    (env : M.Env Γ w) (hnp : Γ.NoProjLast) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
+    (c y : ℕ) (hc : Γ.RootFresh (.free c)) (hy : Γ.RootFresh (.free y)) (hyc : y ≠ c)
+    (B : VarType) (ψ : WFF σ ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A) 1)
+    (p : M.frame.Dom (.VTypeDia A) w) (hrefl : M.frame.R w w)
+    (hmem : (⟨w, hrefl⟩ : M.frame.Acc w) ∈ (M.posEval p).1)
+    (hcont : (M.posEval p).2 ⟨⟨w, hrefl⟩, hmem⟩ = interp env t) :
+    M.sat (env.extend (.free c) p) (WFF.retHyp hT t c y hc hy hyc B ψ) := by
+  have hne : Root.free y ≠ Root.free c := fun h => hyc (Root.free.inj h)
+  have hcy : (Γ.insert (.free y) B).RootFresh (.free c) := hc.insert_ne hne B
+  intro b
+  refine (sat_bindFree (env.extend (.free c) p) (hnp.insert _ _) y
+    (hy.insert_ne hne.symm (.VTypeDia A)) Ctx.NoSlots.slots B b _).mpr ?_
+  refine (sat_mono (Env.extend_swap_agree env hne b p) _).mpr ?_
+  intro hhere
+  have hhere' := (sat_weaken (env.extend (.free y) b) hcy.root p _).mp hhere
+  exact sat_ret hT (env.extend (.free y) b) (hnp.insert _ _) (Term.mono (Ctx.le_insert hy.root B) t)
+    c hcy ψ p hrefl hmem
+    (hcont.trans (interp_mono (Env.agree_extend env hy.root b) t).symm) hhere'
+
 end Model
 
 end V12M
