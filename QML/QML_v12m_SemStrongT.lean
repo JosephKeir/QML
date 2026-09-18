@@ -1,5 +1,6 @@
 import QML.QML_v12m_SatInst
 import QML.QML_v12m_Proof
+import QML.QML_v12m_DiaAbs
 
 /-!
 # QML v12m — semantics of strong T
@@ -12,7 +13,12 @@ formula holds in the `◇` view of that possible object with its content in the 
 
 * `Env.diaPush_ret`: at the realised world the pushed environment agrees with the environment
   pushed into `□` at the current world — the `◇` counterpart of `Env.collapseAgree_self`.
-* ⭐`sat_ret`: the two readings agree, which is the semantic content of the rule `T_dia`.
+* ⭐`sat_ret`, `sat_viewRead_ret`: the two readings agree, which is the semantic content of the
+  rule `T_dia`.
+* ⭐`Env.substEnv_diaAbs`, `interp_realiseAt`, `sat_realiseAt`: at any context where the witness is
+  a declared root, a term or formula of its `◇` view denotes, or holds, exactly what its
+  realisation (`Term.realiseAt`, `WFF.realiseAt`) does here.  This is what the canonical model
+  needs at the world itself, where `viewRead`'s shape (the witness declared last) does not apply.
 -/
 
 namespace V12M
@@ -175,6 +181,94 @@ theorem sat_viewRead_ret (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
   exact sat_collapse ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A)
     ((Env.collapseAgree_self hT env).extend
       ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) (interp env t)) ψ
+
+/-! ## Realisation at any context
+
+`sat_ret` and `sat_viewRead_ret` are stated where the witness has just been declared, which is the
+shape of the rule.  The canonical model needs them where the witness is one root among many
+(`hcA`, `hfr`) and for an arbitrary formula of its view, not only one read from a hole: there
+realisation is `WFF.realiseAt` (abstraction, then `hereRead`), and everything follows from one
+equation between environments. -/
+
+/-- The environment abstraction induces, at the world where the witness is realised, is the
+    environment pushed into its `◇` view there. -/
+theorem Env.substEnv_diaAbs (_hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
+    (env : M.Env Γ w) {c : ℕ} {A : VarType}
+    (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
+    (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
+    {a₀ : Ann A} (t₀ : Term σ Γ A a₀) (hrefl : M.frame.R w w)
+    (hmem : (⟨w, hrefl⟩ : M.frame.Acc w) ∈ (M.posEval (env.ref (.root (.free c)) hcA)).1)
+    (hcont : (M.posEval (env.ref (.root (.free c)) hcA)).2 ⟨⟨w, hrefl⟩, hmem⟩ = interp env t₀) :
+    substEnv (Subst.diaAbs σ (Γ.boxIn.insert (.bnd 0) A) c)
+        (Subst.ok_diaAbs hcA hfr ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).root))
+        (Ctx.noProjLast_diaIn Γ (.root (.free c)))
+        ((env.boxPush ⟨w, hrefl⟩).extend (.bnd 0) (interp env t₀)) =
+      env.diaPush (.root (.free c)) hcA ⟨⟨w, hrefl⟩, hmem⟩ := by
+  funext v T hv
+  rcases Subst.diaIn_cases hcA hfr hv with ⟨rfl, rfl⟩ | ⟨_, hb, hen, hroot⟩
+  · refine (entryVal_congr _ (show Subst.diaAbs σ (Γ.boxIn.insert (.bnd 0) T) c
+        (.step (.root (.free c)) .dia) = .ren (.root (.bnd 0)) from if_pos rfl) _
+      (Ctx.ref_insert_root _ (.bnd 0) T)).trans ?_
+    refine (Env.extend_root (env.boxPush ⟨w, hrefl⟩) (.bnd 0) (interp env t₀)
+      (by simp [Ctx.insert])).trans ?_
+    exact hcont.symm
+  · have hbr : (Γ.boxIn.insert (.bnd 0) A) v = some T := by
+      change (if v = .root (.bnd 0) then some A else Γ.boxIn v) = some T
+      rw [if_neg (hroot (.bnd 0))]
+      exact hb
+    refine (entryVal_congr _ (hen (Γ.boxIn.insert (.bnd 0) A)) _
+      ((Ctx.ref_nonproj _ (Ctx.noProjLast_diaIn Γ (.root (.free c)) v T hv)).trans hbr)).trans ?_
+    refine (Env.ref_of_nonproj _ (Ctx.noProjLast_diaIn Γ (.root (.free c)) v T hv) _ hbr).trans ?_
+    refine (Env.extend_ne (env.boxPush ⟨w, hrefl⟩) (.bnd 0) (interp env t₀) hbr
+      (hroot (.bnd 0)) hb).trans ?_
+    match v with
+    | .step _ .box => rfl
+    | .step _ .keep => rfl
+    | .root _ => exact absurd rfl (hroot _)
+    | .step _ .fst => cases hb
+    | .step _ .snd => cases hb
+    | .step _ .dia => cases hb
+    | .step _ .here => cases hb
+
+/-- ⭐At the world where the witness is realised, a term of its `◇` view denotes what its
+    realisation denotes here. -/
+theorem interp_realiseAt (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
+    (env : M.Env Γ w) (hnp : Γ.NoProjLast) {c : ℕ} {A : VarType}
+    (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
+    (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
+    {a₀ : Ann A} (t₀ : Term σ Γ A a₀) (hrefl : M.frame.R w w)
+    (hmem : (⟨w, hrefl⟩ : M.frame.Acc w) ∈ (M.posEval (env.ref (.root (.free c)) hcA)).1)
+    (hcont : (M.posEval (env.ref (.root (.free c)) hcA)).2 ⟨⟨w, hrefl⟩, hmem⟩ = interp env t₀)
+    {T : VarType} {b : Ann T} (t : Term σ (Γ.diaIn (.root (.free c))) T b) :
+    interp env (Term.realiseAt hT c hcA hfr t₀ t) =
+      interp (env.diaPush (.root (.free c)) hcA ⟨⟨w, hrefl⟩, hmem⟩) t := by
+  simp only [Term.realiseAt, Term.hereRead, Term.diaAbs]
+  rw [interp_subst _ _ _ (hnp.insert (.bnd 0) A) env, substEnv_single_tm env hnp (.bnd 0) t₀,
+    interp_collapse ((Env.collapseAgree_self hT env).extend
+      ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) (interp env t₀)),
+    interp_subst _ _ _ (Ctx.noProjLast_diaIn Γ (.root (.free c))) _,
+    Env.substEnv_diaAbs hT env hcA hfr t₀ hrefl hmem hcont]
+
+/-- ⭐The same for formulas: at the world where the witness is realised, a formula of its `◇` view
+    holds exactly when its realisation holds here.  This is what the canonical model's truth lemma
+    needs at the world itself. -/
+theorem sat_realiseAt (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
+    (env : M.Env Γ w) (hnp : Γ.NoProjLast) {c : ℕ} {A : VarType}
+    (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
+    (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
+    {a₀ : Ann A} (t₀ : Term σ Γ A a₀) (hrefl : M.frame.R w w)
+    (hmem : (⟨w, hrefl⟩ : M.frame.Acc w) ∈ (M.posEval (env.ref (.root (.free c)) hcA)).1)
+    (hcont : (M.posEval (env.ref (.root (.free c)) hcA)).2 ⟨⟨w, hrefl⟩, hmem⟩ = interp env t₀)
+    (χ : WFF σ (Γ.diaIn (.root (.free c))) 0) :
+    M.sat env (WFF.realiseAt hT c hcA hfr t₀ χ) ↔
+      M.sat (env.diaPush (.root (.free c)) hcA ⟨⟨w, hrefl⟩, hmem⟩) χ := by
+  refine (sat_instantiate env hnp Ctx.NoSlots.slots t₀ _).trans ?_
+  refine (sat_collapse ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A)
+    ((Env.collapseAgree_self hT env).extend
+      ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) (interp env t₀)) _).trans ?_
+  refine (sat_subst _ _ _ Ctx.NoSlots.slots ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A)
+    (Ctx.noProjLast_diaIn Γ (.root (.free c))) _ χ).trans ?_
+  rw [Env.substEnv_diaAbs hT env hcA hfr t₀ hrefl hmem hcont]
 
 /-- ⭐Strong T, with a parameter: a witness realised here with `t`'s value as its content satisfies
     the hypothesis `WFF.retHyp` for every value of the parameter.  The witness is chosen before the
