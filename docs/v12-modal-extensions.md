@@ -348,6 +348,31 @@ content of a possible object.
     cases go to a successor at own stage `0` with a smaller term, the realised case recurses at
     `t₀` (earlier stage) and at the realised body (same stage, smaller term).  `interp_box_far`'s
     induction hypothesis accordingly asks for the stage it is used at.
+  - **The world names its realisations (2026-09-18).** `Realised x` was `Nonempty (RealData x)`,
+    with the realising term recovered by `Classical.choice`. That cannot work: `Model.posRet_exists`
+    demands a possible object whose content *at the world itself* is a **given** object, and that
+    content is read off the realising term, so the model must control which term the address
+    carries — a choice function on a `Nonempty` returns an unknowable element of a type that has
+    several. So `World` gained a field `real : ∀ c, Option (RealDatum σ L T c)`: the world chooses,
+    once, the realisation of each of its roots, `Realised x` is `(w.realAt x).isSome`, and
+    `Realised.data` is `Option.get` — determined, and no choice. `RealDatum` is the old `RealData`
+    without the address; `RealData` keeps the old projections, so nothing downstream changed.
+  - **Packing later constants into the parameter (`QML_v12m_Pack.lean`, 2026-09-18).** `spec` must
+    serve formulas of *every* stage past the witness's, which mention the constants declared after
+    it, while the chain's `retHyp` instances only have hole formulas over the stage where the
+    witness was declared. This is what `T_dia`'s parameter `y : B` is for (its docstring: "several
+    parameters pack into a product type"). `VarType.pack` is the right-nested product of a list of
+    types, `Subst.pack` the renaming sending each listed root to its component `y.snd…snd.fst`,
+    `Term.tuple` the tuple of the roots themselves, and ⭐`WFF.subst_pack_single` the round trip:
+    packing and then instantiating the parameter at that tuple leaves a formula unchanged. Since
+    packing is a renaming (projections are level steps-free) `Subst.Coh` is automatic, and the
+    composite is `Subst.Sim` to the identity — `SubE.proj` on a `pair` entry is the pair-β, and the
+    residual `.tm (eta v)` versus `.ren v` is exactly `SubE.Sim.ren_eta`.
+  - *Rejected: reaching later stages by induction on the stage.* Take `spec` at stage `j` for
+    `∀z. χ[ρ_j := z]` and eliminate the `∀` inside the `◇_c` view by monotonicity. Unsound: the
+    premise needs `realiseAt (∀z. χ[z])` from `realiseAt χ[ρ_j]`, i.e. generalisation on a Henkin
+    constant, which the theory does not admit. The parameter is on the *hypothesis* side, so
+    packing instantiates rather than generalises.
   - *Rejected: named singletons (`unitT t`).* A new `◇` canonical form and annotation, with the
     collapse `◇_z φ [z ↦ unitT t] = φ[z.dia ↦ t, u.box ↦ u.here]` living in substitution. Clean and
     complete-able, but it forces every possible object realised here to be a singleton, and every
