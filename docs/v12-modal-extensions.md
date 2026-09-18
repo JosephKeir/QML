@@ -414,11 +414,23 @@ content of a possible object.
     calls for a witness of its own), and `chainReal_ret` says that is what the world names there.
     `Model.posRet_exists` now asks for weak T as well as strong T — which `Proof.T_dia` carries
     anyway, and without which the chain declares no witnesses at all, so nothing would be realised.
-  - *Still to do for strong T's model*: `posRet_exists` itself, from `realW` — the possible object
-    is the witness's η-expansion, its extent contains the world (`self_mem_extent`) and its content
-    there is the realising term (`realiseAt_eta`); then drop `ModalSys.NoTStrong`, at which point
-    `interp_canon`'s realised case, `diaPush_agree_canon` and the truth lemma's `◇` case need their
-    real proofs, on the lexicographic (own stage, term size) measure.
+  - **The content half of `posRet_exists` (2026-09-18).** `rden_realisedTerm_eta`: reading a
+    realised witness's content off its own η-expansion, at the world itself, gives what the
+    realising term denotes. Like the other `realisedTerm` lemmas it is stated purely in terms of
+    `hr.data`.
+  - *The gap in `posRet_exists`, and how to close it.* The pieces are all there — the possible
+    object is the witness's η-expansion, `self_mem_extent` puts the world in its extent,
+    `rden_diatm_self` and `rden_realisedTerm_eta` compute the content — but the *world's chosen*
+    datum `hr.data` is only **propositionally** the datum a construction hands over (`w.real c =
+    some d` is a hypothesis, so `Option.get` does not reduce). Every use of it inside `realisedTerm`
+    is therefore a dependent position, and `rw`/`simp` cannot carry the identification through: the
+    type of the content is `hr.data.A` where the goal wants `A`. Fighting this at the use site does
+    not work. The fix is an API: from `w.real c = some d`, prove *once* a package of equations about
+    the world's realisation at that root — including the `rden`-level statement with the type given
+    separately — so the caller never has to rewrite under `realisedTerm`.
+  - *Then*: drop `ModalSys.NoTStrong`, at which point `interp_canon`'s realised case,
+    `diaPush_agree_canon` and the truth lemma's `◇` case need their real proofs, on the
+    lexicographic (own stage, term size) measure.
   - *Rejected: reaching later stages by induction on the stage.* Take `spec` at stage `j` for
     `∀z. χ[ρ_j := z]` and eliminate the `∀` inside the `◇_c` view by monotonicity. Unsound: the
     premise needs `realiseAt (∀z. χ[z])` from `realiseAt χ[ρ_j]`, i.e. generalisation on a Henkin
