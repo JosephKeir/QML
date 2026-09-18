@@ -71,6 +71,36 @@ namespace Canon
 
 variable (σ : Signature) (N₀ : ℕ)
 
+/-- ⭐Strong T: the data making the root `c` a **realised** witness of the language `L` under the
+    theory `T`.  The root is declared at type `◇A` from just past the own stage `i₀.2` on, `t₀` is
+    the term it realises, and `spec` says the theory turns what `t₀` satisfies at a stage into the
+    corresponding `◇_c` statement — which is exactly what the rule `T_dia` puts into the theory for
+    the chain's witnesses. -/
+structure RealDatum (L : WorldLang) (T : Set (L.sys.Sentence σ)) (c : ℕ) where
+  hT : ModalSys.T = true
+  /-- Only strong T realises a witness. -/
+  hS : ModalSys.TStrong = true
+  A : VarType
+  i₀ : ℕ × ℕ
+  a₀ : Ann A
+  t₀ : Term σ (L.ctx i₀) A a₀
+  /-- The witness is declared at every later own stage.  In the chain it is declared at the step
+      after the one that enumerated `t₀`, so it is exactly the own stages past `i₀`. -/
+  hdecl : ∀ i : ℕ × ℕ, i₀.2 < i.2 → (L.ctx i).ref (.root (.free c)) = some (.VTypeDia A)
+  /-- Nothing else is written at its root. -/
+  hfr : ∀ (i : ℕ × ℕ) (v : VarSymb), v.rt = .free c → v ≠ .root (.free c) → (L.ctx i) v = none
+  /-- Conversely, wherever the witness is declared the realising term comes from a strictly earlier
+      own stage.  This is what makes the induction of `interp_canon` well founded: the content at
+      the world itself is read off `t₀`, which therefore belongs to an earlier stage than the term
+      being interpreted. -/
+  hstage : ∀ i : ℕ × ℕ, (∃ Y, (L.ctx i).ref (.root (.free c)) = some (.VTypeDia Y)) → i₀.2 < i.2
+  /-- Everything `t₀` satisfies at a stage, the witness satisfies in its view. -/
+  spec : ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i) (hlt : i₀.2 < i.2)
+    (χ : WFF σ ((L.ctx i).diaIn (.root (.free c))) 0),
+    (⟨i, WFF.realiseAt hT c (hdecl i hlt) (hfr i) (Term.mono (L.ctx_le hi) t₀) χ⟩ :
+      L.sys.Sentence σ) ∈ T →
+      (⟨i, .dia (.root (.free c)) ⟨A, hdecl i hlt⟩ χ⟩ : L.sys.Sentence σ) ∈ T
+
 /-- A world of the canonical model. -/
 structure World where
   depth : ℕ
@@ -89,6 +119,10 @@ structure World where
     ∃ (i' : ℕ × ℕ) (hi : i ≤ i') (a : Ann A) (t : Term σ (L.ctx i') A a),
       (⟨i', (WFF.instantiate Ctx.NoSlots.slots t
         (WFF.mono ((L.ctx_le hi).insert (.bnd 0) A) ψ)).neg⟩ : L.sys.Sentence σ) ∈ T
+  /-- Strong T: the realisation the world **chooses** for each of its roots.  Data rather than mere
+      existence because the content of a realised witness at the world itself is read off the
+      realising term: the model has to name one, not merely know that there is one. -/
+  real : ∀ c : ℕ, Option (RealDatum σ L T c)
 
 variable {σ N₀}
 
@@ -121,52 +155,64 @@ namespace World
 
 variable (w : World σ N₀)
 
-/-- ⭐Strong T: the data making the address `x` a **realised** witness.  The root `c` is declared
-    at type `◇A` from stage `i₀` on, `t₀` is the term it realises, and `spec` says the theory turns
-    what `t₀` satisfies here into the corresponding `◇_c` statement — which is exactly what the
-    rule `T_dia` puts into the theory for the chain's witnesses. -/
+/-- ⭐Strong T: the data making the address `x` a **realised** witness — a `RealDatum` of the
+    world's language together with the root it sits at. -/
 structure RealData (x : VarSymb) where
-  hT : ModalSys.T = true
-  /-- Only strong T realises a witness. -/
-  hS : ModalSys.TStrong = true
   c : ℕ
   hx : x = .root (.free c)
-  A : VarType
-  i₀ : ℕ × ℕ
-  a₀ : Ann A
-  t₀ : Term σ (w.L.ctx i₀) A a₀
-  /-- The witness is declared from `i₀` on. -/
-  hdecl : ∀ i : ℕ × ℕ, i₀ ≤ i → (w.L.ctx i).ref (.root (.free c)) = some (.VTypeDia A)
-  /-- Nothing else is written at its root. -/
-  hfr : ∀ (i : ℕ × ℕ) (v : VarSymb), v.rt = .free c → v ≠ .root (.free c) → (w.L.ctx i) v = none
-  /-- The realising term comes from a strictly earlier own stage than any stage that declares the
-      witness.  In the chain, the witness declared at step `n` realises the term enumerated at
-      step `n`, and is declared only from own stage `n + 1` on.  This is what makes the induction
-      of `interp_canon` well founded: the content at the world itself is read off `t₀`, which
-      therefore belongs to an earlier stage than the term being interpreted. -/
-  hstage : ∀ i : ℕ × ℕ, (w.L.ctx i).ref (.root (.free c)) = some (.VTypeDia A) → i₀.2 < i.2
-  /-- Everything `t₀` satisfies here, the witness satisfies in its view. -/
-  spec : ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i)
-    (χ : WFF σ ((w.L.ctx i).diaIn (.root (.free c))) 0),
-    (⟨i, WFF.realiseAt hT c (hdecl i hi) (hfr i) (Term.mono (w.L.ctx_le hi) t₀) χ⟩ :
-      w.L.sys.Sentence σ) ∈ w.T →
-      (⟨i, .dia (.root (.free c)) ⟨A, hdecl i hi⟩ χ⟩ : w.L.sys.Sentence σ) ∈ w.T
-
-/-- ⭐The addresses realised at `w`. -/
-def Realised (x : VarSymb) : Prop := Nonempty (w.RealData x)
+  datum : RealDatum σ w.L w.T c
 
 variable {w}
 
-theorem Realised.T {x : VarSymb} (h : w.Realised x) : ModalSys.T = true := h.some.hT
+/-- The fields of the underlying datum, read off the address. -/
+@[reducible] def RealData.hT {x : VarSymb} (d : w.RealData x) : ModalSys.T = true := d.datum.hT
+@[reducible] def RealData.hS {x : VarSymb} (d : w.RealData x) : ModalSys.TStrong = true :=
+  d.datum.hS
+@[reducible] def RealData.A {x : VarSymb} (d : w.RealData x) : VarType := d.datum.A
+@[reducible] def RealData.i₀ {x : VarSymb} (d : w.RealData x) : ℕ × ℕ := d.datum.i₀
+@[reducible] def RealData.a₀ {x : VarSymb} (d : w.RealData x) : Ann d.A := d.datum.a₀
+@[reducible] def RealData.t₀ {x : VarSymb} (d : w.RealData x) :
+    Term σ (w.L.ctx d.i₀) d.A d.a₀ := d.datum.t₀
+@[reducible] def RealData.hdecl {x : VarSymb} (d : w.RealData x) :
+    ∀ i : ℕ × ℕ, d.i₀.2 < i.2 → (w.L.ctx i).ref (.root (.free d.c)) = some (.VTypeDia d.A) :=
+  d.datum.hdecl
+@[reducible] def RealData.hfr {x : VarSymb} (d : w.RealData x) :
+    ∀ (i : ℕ × ℕ) (v : VarSymb), v.rt = .free d.c → v ≠ .root (.free d.c) → (w.L.ctx i) v = none :=
+  d.datum.hfr
+@[reducible] def RealData.hstage {x : VarSymb} (d : w.RealData x) :
+    ∀ i : ℕ × ℕ, (∃ Y, (w.L.ctx i).ref (.root (.free d.c)) = some (.VTypeDia Y)) → d.i₀.2 < i.2 :=
+  d.datum.hstage
+@[reducible] def RealData.spec {x : VarSymb} (d : w.RealData x) :
+    ∀ (i : ℕ × ℕ) (hi : d.i₀ ≤ i) (hlt : d.i₀.2 < i.2)
+      (χ : WFF σ ((w.L.ctx i).diaIn (.root (.free d.c))) 0),
+      (⟨i, WFF.realiseAt d.hT d.c (d.hdecl i hlt) (d.hfr i) (Term.mono (w.L.ctx_le hi) d.t₀) χ⟩ :
+        w.L.sys.Sentence σ) ∈ w.T →
+        (⟨i, .dia (.root (.free d.c)) ⟨d.A, d.hdecl i hlt⟩ χ⟩ : w.L.sys.Sentence σ) ∈ w.T :=
+  d.datum.spec
 
-theorem Realised.TStrong {x : VarSymb} (h : w.Realised x) : ModalSys.TStrong = true := h.some.hS
+variable (w)
+
+/-- The realisation the world names at an address, if any: only a bare free root can carry one. -/
+def realAt : ∀ x : VarSymb, Option (w.RealData x)
+  | .root (.free c) => (w.real c).map fun d => ⟨c, rfl, d⟩
+  | .root (.bnd _) => none
+  | .step _ _ => none
+
+/-- ⭐The addresses realised at `w`. -/
+def Realised (x : VarSymb) : Prop := (w.realAt x).isSome
+
+variable {w}
+
+/-- The realisation named at a realised address — determined by the world, not chosen here. -/
+def Realised.data {x : VarSymb} (h : w.Realised x) : w.RealData x := (w.realAt x).get h
+
+theorem Realised.T {x : VarSymb} (h : w.Realised x) : ModalSys.T = true := h.data.hT
+
+theorem Realised.TStrong {x : VarSymb} (h : w.Realised x) : ModalSys.TStrong = true := h.data.hS
 
 /-- Without strong T nothing is realised, so the extent has only proper successors. -/
 def Realised.elim [ModalSys.NoTStrong] {x : VarSymb} {α : Sort*} (h : w.Realised x) : α :=
   (ModalSys.NoTStrong.absurd h.TStrong).elim
-
-/-- A chosen realisation. -/
-noncomputable def Realised.data {x : VarSymb} (h : w.Realised x) : w.RealData x := h.some
 
 end World
 

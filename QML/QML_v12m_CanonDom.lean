@@ -184,10 +184,22 @@ theorem realisedLe (w : World σ N₀) {x : VarSymb} (hr : w.Realised x) {Γ : C
   rw [← hr.data.hx]
   exact (e.trans (w.L.ctx_le le_sup_left)).diaIn x
 
+/-- Where the witness is declared, its realising term comes from an earlier own stage. -/
+theorem realisedLt {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx} {i : ℕ × ℕ}
+    (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) : hr.data.i₀.2 < i.2 :=
+  hr.data.hstage i (hx.imp fun _ h => hr.data.hx ▸ e.ref h)
+
+/-- So it is declared at the stage where both it and the term live. -/
+theorem realisedDecl {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx} {i : ℕ × ℕ}
+    (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
+    (w.L.ctx (i ⊔ hr.data.i₀)).ref (.root (.free hr.data.c)) = some (.VTypeDia hr.data.A) :=
+  hr.data.hdecl _ (lt_of_lt_of_le (realisedLt hr e hx) le_sup_left)
+
 noncomputable def realisedTerm (w : World σ N₀) {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
-    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {A : VarType} {a : Ann A} (t : Term σ (Γ.diaIn x) A a) :
+    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
+    {a : Ann A} (t : Term σ (Γ.diaIn x) A a) :
     Σ b : Ann A, Term σ (w.L.ctx (i ⊔ hr.data.i₀)) A b :=
-  ⟨_, Term.realiseAt hr.data.hT hr.data.c (hr.data.hdecl _ le_sup_right) (hr.data.hfr _)
+  ⟨_, Term.realiseAt hr.data.hT hr.data.c (realisedDecl hr e hx) (hr.data.hfr _)
     (Term.mono (w.L.ctx_le le_sup_right) hr.data.t₀) (Term.mono (realisedLe w hr e) t)⟩
 
 /-- ⭐The denotation of a term at a world, computed at a stage containing its context. -/
@@ -203,12 +215,12 @@ noncomputable def rden : {A : VarType} → {a : Ann A} → {Γ : Ctx} → (w : W
           (Term.collapse (Ctx.collapses_boxIn_self (w'.self hd).1 Γ) t)
       | d + 1 =>
           rden w'.1 (childIter (d + 1) i) (w'.chainLe hd e) (Term.shiftIter d (w'.four hd) t)
-  | _, _, _, w, i, e, .diatm x _ t =>
+  | _, _, _, w, i, e, .diatm x hx t =>
       ⟨extent w x, fun w' =>
         if hd : w'.1.1.depth - w.depth = 0 then
           ((extent_self w'.2 hd).1).symm ▸
             rden w (i ⊔ ((extent_self w'.2 hd).2).data.i₀) (Ctx.Le.refl _)
-              (realisedTerm w (extent_self w'.2 hd).2 e t).2
+              (realisedTerm w (extent_self w'.2 hd).2 e hx t).2
         else rden w'.1.1 (childStage i) ((e.diaIn x).trans (extent_le w'.2 hd i)) t⟩
   termination_by structural A => A
 
@@ -281,7 +293,7 @@ theorem rden_diatm_self {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
     (t : Term σ (Γ.diaIn x) A a) (w' : (extent w x)) (hd : w'.1.1.depth - w.depth = 0) :
     (rden w i e (.diatm x hx t)).2 w' =
       ((extent_self w'.2 hd).1).symm ▸ rden w (i ⊔ ((extent_self w'.2 hd).2).data.i₀)
-        (Ctx.Le.refl _) (realisedTerm w (extent_self w'.2 hd).2 e t).2 := by
+        (Ctx.Le.refl _) (realisedTerm w (extent_self w'.2 hd).2 e hx t).2 := by
   simp only [rden, dif_pos hd]
 
 theorem rden_sigma {A : VarType} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i))
@@ -297,13 +309,14 @@ theorem rden_transport_congr {w₁ w₂ : World σ N₀} (hw : w₁ = w₂) {A :
 
 /-- Realising a weakened view term is weakening its realisation. -/
 theorem realisedTerm_mono {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ Γ' : Ctx}
-    (h : Γ.Le Γ') {i : ℕ × ℕ} (e : Γ'.Le (w.L.ctx i)) {A : VarType} {a : Ann A}
-    (t : Term σ (Γ.diaIn x) A a) :
-    realisedTerm w hr e (Term.mono (h.diaIn x) t) = realisedTerm w hr (h.trans e) t := by
+    (h : Γ.Le Γ') {i : ℕ × ℕ} (e : Γ'.Le (w.L.ctx i))
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (hx' : ∃ X, Γ'.ref x = some (.VTypeDia X))
+    {A : VarType} {a : Ann A} (t : Term σ (Γ.diaIn x) A a) :
+    realisedTerm w hr e hx' (Term.mono (h.diaIn x) t) = realisedTerm w hr (h.trans e) hx t := by
   have key : Term.mono (realisedLe w hr e) (Term.mono (h.diaIn x) t) =
       Term.mono (realisedLe w hr (h.trans e)) t := by
     rw [Term.mono_mono]
-  exact congrArg (fun u => (⟨_, Term.realiseAt hr.data.hT hr.data.c (hr.data.hdecl _ le_sup_right)
+  exact congrArg (fun u => (⟨_, Term.realiseAt hr.data.hT hr.data.c (realisedDecl hr e hx')
     (hr.data.hfr _) (Term.mono (w.L.ctx_le le_sup_right) hr.data.t₀) u⟩ :
       Σ b : Ann A, Term σ (w.L.ctx (i ⊔ hr.data.i₀)) A b)) key
 
@@ -328,11 +341,12 @@ theorem rden_mono : ∀ {A : VarType} {a : Ann A} {Γ Γ' : Ctx} (h : Γ.Le Γ')
       · rw [rden_boxtm_far e _ w' hd, rden_boxtm_far (h.trans e) t w' hd,
           Term.shiftIter_mono d _ h t]
         exact rden_mono _ _ w'.1 _ _
-  | _, _, _, _, h, .diatm x _ t, w, i, e =>
+  | _, _, _, _, h, .diatm x hx t, w, i, e =>
       congrArg (Sigma.mk _) (funext fun w' => by
         by_cases hd : w'.1.1.depth - w.depth = 0
         · simp only [dif_pos hd]
-          exact rden_transport_congr _ (rden_sigma _ (realisedTerm_mono _ h e t))
+          exact rden_transport_congr _ (rden_sigma _
+            (realisedTerm_mono _ h e hx (hx.imp fun _ hh => h.ref hh) t))
         · simp only [dif_neg hd]
           exact rden_mono (h.diaIn x) t w'.1.1 (childStage i) _)
   termination_by structural A => A
@@ -369,7 +383,7 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
         exact rden_congr _ w'.1 i j _ _
       · rw [rden_boxtm_far e t w' h, rden_boxtm_far e' t w' h]
         exact rden_congr _ w'.1 _ _ _ _
-  | _, _, _, .diatm x _ t, w, i, j, e, e' =>
+  | _, _, _, .diatm x hx t, w, i, j, e, e' =>
       congrArg (Sigma.mk _) (funext fun w' => by
         by_cases hd : w'.1.1.depth - w.depth = 0
         · simp only [dif_pos hd]
@@ -379,24 +393,26 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
               (w.L.ctx ((i ⊔ hr.data.i₀) ⊔ (j ⊔ hr.data.i₀))) := w.L.ctx_le le_sup_left
           have h₂ : (w.L.ctx (j ⊔ hr.data.i₀)).Le
               (w.L.ctx ((i ⊔ hr.data.i₀) ⊔ (j ⊔ hr.data.i₀))) := w.L.ctx_le le_sup_right
-          have key : Term.mono h₁ (realisedTerm w hr e t).2 =
-              Term.mono h₂ (realisedTerm w hr e' t).2 := by
+          have key : Term.mono h₁ (realisedTerm w hr e hx t).2 =
+              Term.mono h₂ (realisedTerm w hr e' hx t).2 := by
             simp only [realisedTerm]
             rw [Term.mono_realiseAt hr.data.hT _
-                (hcA' := hr.data.hdecl _ (le_sup_right.trans le_sup_left))
+                (hcA' := hr.data.hdecl _ (lt_of_lt_of_le (realisedLt hr e hx)
+                  (le_sup_left.trans le_sup_left)))
                 (hfr' := hr.data.hfr _),
               Term.mono_realiseAt hr.data.hT _
-                (hcA' := hr.data.hdecl _ (le_sup_right.trans le_sup_left))
+                (hcA' := hr.data.hdecl _ (lt_of_lt_of_le (realisedLt hr e hx)
+                  (le_sup_left.trans le_sup_left)))
                 (hfr' := hr.data.hfr _),
               Term.mono_mono, Term.mono_mono, Term.mono_mono, Term.mono_mono]
-          calc rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e t).2
-              = rden w _ h₁ (realisedTerm w hr e t).2 := rden_congr _ w _ _ _ _
-            _ = rden w _ (Ctx.Le.refl _) (Term.mono h₁ (realisedTerm w hr e t).2) :=
+          calc rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e hx t).2
+              = rden w _ h₁ (realisedTerm w hr e hx t).2 := rden_congr _ w _ _ _ _
+            _ = rden w _ (Ctx.Le.refl _) (Term.mono h₁ (realisedTerm w hr e hx t).2) :=
                 (rden_mono h₁ _ w _ (Ctx.Le.refl _)).symm
-            _ = rden w _ (Ctx.Le.refl _) (Term.mono h₂ (realisedTerm w hr e' t).2) := by
+            _ = rden w _ (Ctx.Le.refl _) (Term.mono h₂ (realisedTerm w hr e' hx t).2) := by
                 rw [key]
-            _ = rden w _ h₂ (realisedTerm w hr e' t).2 := rden_mono h₂ _ w _ (Ctx.Le.refl _)
-            _ = rden w (j ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e' t).2 :=
+            _ = rden w _ h₂ (realisedTerm w hr e' hx t).2 := rden_mono h₂ _ w _ (Ctx.Le.refl _)
+            _ = rden w (j ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e' hx t).2 :=
                 rden_congr _ w _ _ _ _
         · simp only [dif_neg hd]
           exact rden_congr t w'.1.1 (childStage i) (childStage j) _ _)
@@ -405,21 +421,22 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
 
 /-- The realised content of a pair is the pair of realised contents. -/
 theorem rden_realisedTerm_pair {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
-    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {A B : VarType} {a : Ann A} {b : Ann B}
+    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A B : VarType}
+    {a : Ann A} {b : Ann B}
     (s : Term σ (Γ.diaIn x) A a) (t : Term σ (Γ.diaIn x) B b) :
-    rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e (Term.pair s t)).2 =
-      ((rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e s).2,
-        rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e t).2) :
+    rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e hx (Term.pair s t)).2 =
+      ((rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e hx s).2,
+        rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e hx t).2) :
         RDom (.VTypeProd A B) w) :=
   rfl
 
 /-- ⭐The realised content of a term of the `□` view is what the term denotes here: realisation
     collapses it, so the witness plays no part. -/
 theorem rden_realisedTerm_mono_boxIn {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
-    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {A : VarType} {a : Ann A}
-    (b : Term σ Γ.boxIn A a) :
+    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
+    {a : Ann A} (b : Term σ Γ.boxIn A a) :
     rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _)
-        (realisedTerm w hr e (Term.mono (Ctx.le_boxIn_diaIn Γ x) b)).2 =
+        (realisedTerm w hr e hx (Term.mono (Ctx.le_boxIn_diaIn Γ x) b)).2 =
       rden w i e (Term.collapse (Ctx.collapses_boxIn_self hr.T Γ) b) := by
   have hle : Γ.boxIn.Le (w.L.ctx (i ⊔ hr.data.i₀)).boxIn :=
     (e.trans (w.L.ctx_le le_sup_left)).boxIn
@@ -429,7 +446,7 @@ theorem rden_realisedTerm_mono_boxIn {w : World σ N₀} {x : VarSymb} (hr : w.R
     rw [Term.mono_mono, Term.mono_mono]
   simp only [realisedTerm]
   rw [hcomb, rden_sigma _ (Term.realiseAt_mono_boxIn hr.data.hT hr.data.c
-      (hr.data.hdecl _ le_sup_right) (hr.data.hfr _) _ (Term.mono hle b)),
+      (realisedDecl hr e hx) (hr.data.hfr _) _ (Term.mono hle b)),
     Term.collapse_mono (Ctx.collapses_boxIn_self hr.T Γ)
       (Ctx.collapses_boxIn_self hr.data.hT (w.L.ctx (i ⊔ hr.data.i₀))) hle
       (e.trans (w.L.ctx_le le_sup_left)) b,

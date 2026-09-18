@@ -58,6 +58,7 @@ noncomputable def ofHenkin (d : ℕ) (L₀ : WorldLang) (hρ : ∀ n, L₀.ρ n 
   mcs := WorldLang.finalT_isMCS hS₀
   exW := WorldLang.finalT_ex_witness hS₀
   allW := WorldLang.finalT_all_witness
+  real := fun _ => none
 
 end World
 

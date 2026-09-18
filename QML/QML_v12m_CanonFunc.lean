@@ -867,9 +867,9 @@ theorem applyG_realiseAt {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} [Γ.NoSlo
 
 /-- ⭐Applying a definable map commutes with the realised content of a witness. -/
 theorem applyG_realisedTerm {A B : VarType} (g : GFunc σ A B) {w : World σ N₀} {x : VarSymb}
-    (hr : w.Realised x) {Γ : Ctx} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {a : Ann A}
-    (t : Term σ (Γ.diaIn x) A a) :
-    realisedTerm w hr e (applyG g t).2 = applyG g (realisedTerm w hr e t).2 := by
+    (hr : w.Realised x) {Γ : Ctx} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i))
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {a : Ann A} (t : Term σ (Γ.diaIn x) A a) :
+    realisedTerm w hr e hx (applyG g t).2 = applyG g (realisedTerm w hr e hx t).2 := by
   simp only [realisedTerm]
   rw [applyG_realiseAt, applyG_mono]
 
@@ -1024,7 +1024,7 @@ theorem rden_applyG :
           rw [rden_diatm_self e hx c w' hd, ← rawEval_transport f _ _]
           simp only [dif_pos hd]
           refine rden_transport_congr _ ?_
-          exact (rden_sigma _ (applyG_realisedTerm f hr e c)).trans (rden_applyG f _ w _ _)
+          exact (rden_sigma _ (applyG_realisedTerm f hr e hx c)).trans (rden_applyG f _ w _ _)
         · simp only [rden, dif_neg hd]
           exact rden_applyG f c w'.1.1 (childStage i) _)
   | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c), w, i, e =>
@@ -1034,9 +1034,9 @@ theorem rden_applyG :
           change _ = (rden w i e (Term.boxtm b) w'.1, (rden w i e (Term.diatm x hx c)).2 w')
           rw [rden_diatm_self e hx c w' hd, rden_boxtm_self e b w'.1 hd]
           simp only [dif_pos hd]
-          rw [rden_realisedTerm_pair hr e, rden_transport_pair]
+          rw [rden_realisedTerm_pair hr e hx, rden_transport_pair]
           refine Prod.ext ?_ rfl
-          refine (rden_transport_congr _ (rden_realisedTerm_mono_boxIn hr e b)).trans ?_
+          refine (rden_transport_congr _ (rden_realisedTerm_mono_boxIn hr e hx b)).trans ?_
           exact rden_transport_world _ _ _ _
         · simp only [rden, dif_neg hd]
           exact Prod.ext
