@@ -319,6 +319,35 @@ content of a possible object.
     not supply it — see "Open problem: later constants" below.
   - No new term formers, so `◇` canonical forms, `eqRec` and the address-witness design are
     untouched.
+  - **Canonical model: realisation needs no new recursion (2026-09-18, in Lean).** The note above
+    (and `QML_v12m_Realise`) assumed the model would need a `Term.realise` recursion, level-threaded
+    like `Term.collapse`, because `Subst.realise` fails `Subst.Coh`.  It does not.  Split the job:
+    *abstraction* sends the view `Γ.diaIn c` back to a hole formula (`c.dia ↦ bnd 0`, every `u.box`
+    and `u.keep` fixed), and that changes **no levels**, so its address map is a function of the
+    address and `Coh` holds — it is an ordinary substitution (`Subst.diaAbs`).  Realisation is then
+    abstraction followed by the existing `hereRead`: `WFF.realiseAt`, `Term.realiseAt`.  The round
+    trip `WFF.viewReadAt_diaAbs` turns the theory's `retHyp` instances, which are stated for hole
+    formulas, into instances for an arbitrary formula of the view.
+  - *Semantics (done).* `Model.sat_viewRead_ret` is `sat_ret` as an equivalence at the realised
+    world; `Env.substEnv_diaAbs` identifies the environment abstraction induces there with the one
+    pushed into the witness's `◇` view, and gives `interp_realiseAt` and `sat_realiseAt` at any
+    context where the witness is a declared root — the shape a world's contexts actually have.
+  - *The model (in progress).* `World.RealData` is the evidence that an address is a realised
+    witness: the root, its type, the realising term `t₀`, and the theory's instances.  `extent w x`
+    gains the world itself when `x` is realised, and `rden` gives the content there as the body
+    realised by `t₀`.  The function algebra commutes with realisation (`applyG_subst`,
+    `applyG_realiseAt`), and reading the witness's own content back gives `t₀` (`realiseAt_eta`,
+    from `Term.subst_eta_ren` and `Term.subst_eta_tm`).
+  - **Why `RealData` records the stage (2026-09-18).** `interp_canon` — a term's value in any
+    environment agreeing with the canonical one is its denotation — is proved by induction on term
+    size.  At the world itself the content is read off `t₀`, so the case needs `interp_canon` at
+    `t₀`, whose size is unrelated.  There is no circle: in the chain the witness declared at step
+    `n` realises the term enumerated at step `n` and is declared only from own stage `n + 1` on, so
+    the realising term always comes from a strictly earlier own stage.  `RealData.hstage` records
+    that, and the induction becomes lexicographic in (own stage, term size): the `□` and proper `◇`
+    cases go to a successor at own stage `0` with a smaller term, the realised case recurses at
+    `t₀` (earlier stage) and at the realised body (same stage, smaller term).  `interp_box_far`'s
+    induction hypothesis accordingly asks for the stage it is used at.
   - *Rejected: named singletons (`unitT t`).* A new `◇` canonical form and annotation, with the
     collapse `◇_z φ [z ↦ unitT t] = φ[z.dia ↦ t, u.box ↦ u.here]` living in substitution. Clean and
     complete-able, but it forces every possible object realised here to be a singleton, and every
