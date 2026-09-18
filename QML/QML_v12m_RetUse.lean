@@ -1,6 +1,7 @@
 import QML.QML_v12m_Pack
 import QML.QML_v12m_DiaAbs
 import QML.QML_v12m_ProofSubst
+import QML.QML_v12m_RetMono
 
 /-!
 # QML v12m — using a strong T hypothesis at a later stage
@@ -13,6 +14,8 @@ value is a tuple of constants that did not exist yet.
 * ⭐`WFF.instantiate_mono_retBody`: weakening the hypothesis to a later context and instantiating
   its `∀` at a term there gives the implication with that term substituted for the parameter — the
   antecedent read here, the consequent read inside `◇_c`.
+* ⭐`WFF.instantiate_mono_retBody_pack`: the instance a realised witness needs, with the later
+  constants packed: `WFF.realiseAt … χ → ◇_c χ`, for any `χ` of the witness's view.
 
 The two readings keep the hole formula over `Δ.boxIn` (the later context *without* the witness):
 the antecedent stays in the weakened form `WFF.weaken` that `WFF.retHyp` gives it, so both sides
@@ -55,6 +58,26 @@ theorem WFF.retHyp_eq {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T 
     (hy : Γ.RootFresh (.free y)) (hyc : y ≠ c) (B : VarType)
     (ψ : WFF σ ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A) 1) :
     WFF.retHyp hT t c y hc hy hyc B ψ = .all B (WFF.retBody hT t c y hc hy hyc B ψ) := rfl
+
+omit [ModalSys] in
+/-- Declaring a `◇`-typed root writes nothing else at that root. -/
+theorem Ctx.fr_insert_dia {Δ : Ctx} {c : ℕ} (hcΔ : Δ.RootFresh (.free c)) (A : VarType) :
+    ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) →
+      (Δ.insert (.free c) (.VTypeDia A)) v = none := by
+  intro v hv hne
+  change (if v = .root (.free c) then some (.VTypeDia A) else Δ v) = none
+  rw [if_neg hne]
+  exact hcΔ v hv
+
+/-- The reading inside `◇_c` at a context that has just declared the witness is the reading at any
+    context that declares it. -/
+theorem WFF.viewRead_eq_viewReadAt {σ : Signature} {Δ : Ctx} [Δ.NoSlots] {c : ℕ}
+    (hcΔ : Δ.RootFresh (.free c)) (A : VarType) (ψ : WFF σ (Δ.boxIn.insert (.bnd 0) A) 1) :
+    WFF.viewRead c hcΔ A ψ =
+      WFF.viewReadAt c (Ctx.ref_insert_root Δ (.free c) (.VTypeDia A))
+        (WFF.mono ((Ctx.le_insert hcΔ.root (.VTypeDia A)).boxIn.insert (.bnd 0) A) ψ) := by
+  unfold WFF.viewRead WFF.viewReadAt WFF.renameRoot
+  rw [WFF.subst_mono]
 
 /-- Substituting a term for the parameter, as a substitution of the later context. -/
 abbrev Subst.paramS {σ : Signature} {Δ : Ctx} (y : ℕ) {B : VarType} {b : Ann B}
@@ -148,5 +171,101 @@ theorem WFF.instantiate_mono_retBody {σ : Signature} {Γ Δ : Ctx}
   · -- What the witness content satisfies in its view: the reading inside `◇_c` substitutes.
     exact WFF.subst_diaViewRead (Subst.paramS y s) hok hcoh Ctx.NoSlots.slots Ctx.NoSlots.slots
       hcy hcΔ A ψ
+
+/-! ## The instance a realised witness needs -/
+
+section Instance
+
+variable {σ : Signature} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots] {c y : ℕ} {A : VarType}
+  {zs : List (VarType × ℕ)}
+
+/-- The hole formula of the hypothesis a realised witness needs: the abstraction of `χ` — read one
+    context down, since a `◇`-typed root contributes nothing to the `□` view — with the constants
+    declared after the witness packed into the parameter. -/
+def WFF.retHole (hy : Γ.RootFresh (.free y)) (hcΔ : Δ.RootFresh (.free c))
+    (hz : ∀ z ∈ zs, Δ.ref (.root (.free z.2)) = some z.1)
+    (honly : ∀ (v : VarSymb) (n : ℕ), v.rt = .free n → Subst.packOf zs n ≠ none →
+      v ≠ .root (.free n) → Δ v = none)
+    (hsub : ∀ (v : VarSymb) (T : VarType), (∀ n, v.rt = .free n → Subst.packOf zs n = none) →
+      Δ v = some T → Γ v = some T)
+    (χ : WFF σ ((Δ.insert (.free c) (.VTypeDia A)).diaIn (.root (.free c))) 0) :
+    WFF σ ((Γ.insert (.free y) (Subst.packType zs)).boxIn.insert (.bnd 0) A) 1 :=
+  WFF.holeInst (Subst.pack σ (Γ.insert (.free y) (Subst.packType zs)) y zs)
+    (Subst.ok_pack hy hz honly hsub) (Subst.coh_pack hy hz honly hsub)
+    Ctx.NoSlots.slots Ctx.NoSlots.slots A
+    (WFF.mono ((Ctx.boxIn_insert_dia_le hcΔ A).insert (.bnd 0) A)
+      (WFF.diaAbs c (Ctx.ref_insert_root Δ (.free c) (.VTypeDia A)) (Ctx.fr_insert_dia hcΔ A) χ))
+
+/-- ⭐The instance: the packed hypothesis, weakened to the later stage and instantiated at the
+    tuple of the constants declared after the witness, says exactly that what `χ` states of the
+    realising term here gives `◇_c χ`. -/
+theorem WFF.instantiate_mono_retBody_pack (hT : ModalSys.T = true) {a : Ann A} (t : Term σ Γ A a)
+    (hc : Γ.RootFresh (.free c)) (hy : Γ.RootFresh (.free y)) (hyc : y ≠ c)
+    (hle : Γ.Le Δ) (hcΔ : Δ.RootFresh (.free c))
+    (hz : ∀ z ∈ zs, Δ.ref (.root (.free z.2)) = some z.1)
+    (honly : ∀ (v : VarSymb) (n : ℕ), v.rt = .free n → Subst.packOf zs n ≠ none →
+      v ≠ .root (.free n) → Δ v = none)
+    (hsub : ∀ (v : VarSymb) (T : VarType), (∀ n, v.rt = .free n → Subst.packOf zs n = none) →
+      Δ v = some T → Γ v = some T)
+    (χ : WFF σ ((Δ.insert (.free c) (.VTypeDia A)).diaIn (.root (.free c))) 0) :
+    WFF.instantiate Ctx.NoSlots.slots
+        (Term.mono (Ctx.le_insert hcΔ.root (.VTypeDia A)) (Term.tuple zs hz))
+        (WFF.mono ((hle.insert (.free c) (.VTypeDia A)).insert (.bnd 0) (Subst.packType zs))
+          (WFF.retBody hT t c y hc hy hyc (Subst.packType zs)
+            (WFF.retHole hy hcΔ hz honly hsub χ))) =
+      .imp
+        (WFF.realiseAt hT c (Ctx.ref_insert_root Δ (.free c) (.VTypeDia A))
+          (Ctx.fr_insert_dia hcΔ A)
+          (Term.mono (hle.trans (Ctx.le_insert hcΔ.root (.VTypeDia A))) t) χ)
+        (.dia (.root (.free c)) ⟨A, Ctx.ref_insert_root Δ (.free c) (.VTypeDia A)⟩ χ) := by
+  rw [WFF.instantiate_mono_retBody hT t c y hc hy hyc (Subst.packType zs)
+      (WFF.retHole hy hcΔ hz honly hsub χ) hle hcΔ (Term.tuple zs hz),
+    show WFF.holeInst (Subst.paramS y (Term.tuple zs hz)) (Subst.ok_single hle rfl)
+        (Subst.coh_single hy hle rfl) Ctx.NoSlots.slots Ctx.NoSlots.slots A
+        (WFF.retHole hy hcΔ hz honly hsub χ) =
+        WFF.mono ((Ctx.boxIn_insert_dia_le hcΔ A).insert (.bnd 0) A)
+          (WFF.diaAbs c (Ctx.ref_insert_root Δ (.free c) (.VTypeDia A))
+            (Ctx.fr_insert_dia hcΔ A) χ) from
+      WFF.subst_pack_single_view hy hle hz honly hsub Ctx.NoSlots.slots Ctx.NoSlots.slots A _]
+  refine congrArg₂ WFF.imp ?_ ?_
+  · -- What `χ` says of the realising term, read here.
+    rw [show (WFF.hereRead hT
+          (Term.subst (Subst.singleIdx (.free y) (.tm (Term.tuple zs hz)))
+            (Subst.paramS y (Term.tuple zs hz))
+            (Subst.ok_single (T := Subst.packType zs) (e := SubE.tm (Term.tuple zs hz)) hle rfl)
+            (Subst.coh_single (T := Subst.packType zs) (e := SubE.tm (Term.tuple zs hz))
+              hy hle rfl)
+            (Term.mono (Ctx.le_insert hy.root (Subst.packType zs)) t))
+          (WFF.mono ((Ctx.boxIn_insert_dia_le hcΔ A).insert (.bnd 0) A)
+            (WFF.diaAbs c (Ctx.ref_insert_root Δ (.free c) (.VTypeDia A))
+              (Ctx.fr_insert_dia hcΔ A) χ))).weaken hcΔ.root (.VTypeDia A) =
+        WFF.mono (Ctx.le_insert hcΔ.root (.VTypeDia A)) _ from rfl,
+      WFF.mono_hereRead hT (Ctx.le_insert hcΔ.root (.VTypeDia A)), WFF.mono_mono, WFF.mono_refl]
+    refine WFF.hereRead_congr hT ?_ _
+    have hsub' : (⟨_, Term.subst (Subst.singleIdx (.free y) (.tm (Term.tuple zs hz)))
+          (Subst.paramS y (Term.tuple zs hz))
+          (Subst.ok_single (T := Subst.packType zs) (e := SubE.tm (Term.tuple zs hz)) hle rfl)
+          (Subst.coh_single (T := Subst.packType zs) (e := SubE.tm (Term.tuple zs hz)) hy hle rfl)
+          (Term.mono (Ctx.le_insert hy.root (Subst.packType zs)) t)⟩ : Σ b, Term σ Δ A b) =
+        ⟨a, Term.mono hle t⟩ := by
+      rw [Term.subst_mono (Ctx.le_insert hy.root (Subst.packType zs))]
+      refine (Term.subst_congr _ (Subst.idS σ Δ) _ (Subst.ok_idS.restrict hle) _
+        (Subst.coh_idS.restrict hle) ?_ t).trans
+        (Term.subst_idS_mono hle (Subst.ok_idS.restrict hle) (Subst.coh_idS.restrict hle) t)
+      refine Subst.sim_of ?_
+      intro v _ _ hv
+      have hvy : v.rt ≠ .free y := fun he => by rw [hy v he] at hv; cases hv
+      rw [show Subst.paramS (σ := σ) y (Term.tuple zs hz) v = .ren v from
+        if_neg (fun he => hvy (by rw [he]; rfl))]
+      exact .refl _
+    exact congrArg (fun z => (⟨_, Term.mono (Ctx.le_insert hcΔ.root (.VTypeDia A)) z.2⟩ :
+        Σ b, Term σ (Δ.insert (.free c) (.VTypeDia A)) A b)) hsub' |>.trans
+      (congrArg (Sigma.mk _) (Term.mono_mono hle (Ctx.le_insert hcΔ.root (.VTypeDia A)) t))
+  · -- What the witness content satisfies in its view.
+    refine congrArg (WFF.dia (.root (.free c)) _) ?_
+    rw [WFF.viewRead_eq_viewReadAt, WFF.mono_mono, WFF.mono_refl]
+    exact WFF.viewReadAt_diaAbs c _ _ χ
+
+end Instance
 
 end V12M

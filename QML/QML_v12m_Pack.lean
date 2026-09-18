@@ -264,7 +264,7 @@ theorem at_single_of_rt_ne {Δ : Ctx} {r : Root} {e : SubE σ Δ} :
         exact if_neg (fun he => by cases he)
 
 /-- Substituting the tuple of the packed roots for the parameter. -/
-def tupleS (y : ℕ) (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1) : Subst σ Γ :=
+abbrev tupleS (y : ℕ) (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1) : Subst σ Γ :=
   single (.free y) (.tm (Term.tuple zs hz))
 
 theorem ok_tupleS (hle : Γ₀.Le Γ) (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1) :
