@@ -156,7 +156,7 @@ theorem packIdx_other {y : ℕ} {zs : List (VarType × ℕ)} {v : VarSymb}
     | bnd _ => rfl
     | free n => exact h n hrt]
 
-variable {Γ : Ctx} {y : ℕ} {zs : List (VarType × ℕ)}
+variable {Γ Γ₀ : Ctx} {y : ℕ} {zs : List (VarType × ℕ)}
 
 /-- The type of the parameter that packs `zs`. -/
 abbrev packType (zs : List (VarType × ℕ)) : VarType := VarType.pack (zs.map Prod.fst)
@@ -171,19 +171,23 @@ theorem type_of_packed (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1
   rw [List.getElem?_map, hz']
   exact congrArg some (Option.some.inj hv)
 
-/-- The packing lands in the context with the parameter declared. -/
-theorem ok_pack (hy : Γ.RootFresh (.free y))
+/-- The packing lands in the smaller context with the parameter declared: the packed roots go to
+    the parameter's components, and everything else is already there (`hsub`). -/
+theorem ok_pack (hy : Γ₀.RootFresh (.free y))
     (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1)
     (honly : ∀ (v : VarSymb) (n : ℕ), v.rt = .free n → packOf zs n ≠ none →
-      v ≠ .root (.free n) → Γ v = none) :
-    Ok Γ (pack σ (Γ.insert (.free y) (packType zs)) y zs) := by
+      v ≠ .root (.free n) → Γ v = none)
+    (hsub : ∀ (v : VarSymb) (T : VarType), (∀ n, v.rt = .free n → packOf zs n = none) →
+      Γ v = some T → Γ₀ v = some T) :
+    Ok Γ (pack σ (Γ₀.insert (.free y) (packType zs)) y zs) := by
   intro v T hlp hv
   cases hrt : v.rt with
   | bnd _ =>
       have he : packIdx y zs v = v := packIdx_other (fun n hn => by rw [hrt] at hn; cases hn)
-      change (Γ.insert (.free y) (packType zs)).ref (packIdx y zs v) = some T
+      change (Γ₀.insert (.free y) (packType zs)).ref (packIdx y zs v) = some T
       rw [he]
-      exact (Ctx.ref_nonproj _ hlp).trans (Ctx.le_insert hy.root (packType zs) v T hv)
+      exact (Ctx.ref_nonproj _ hlp).trans (Ctx.le_insert hy.root (packType zs) v T
+        (hsub v T (fun n hn => by rw [hrt] at hn; cases hn) hv))
   | free n =>
       cases hk : packOf zs n with
       | none =>
@@ -191,27 +195,30 @@ theorem ok_pack (hy : Γ.RootFresh (.free y))
             rw [hrt] at hn'
             cases hn'
             exact hk)
-          change (Γ.insert (.free y) (packType zs)).ref (packIdx y zs v) = some T
+          change (Γ₀.insert (.free y) (packType zs)).ref (packIdx y zs v) = some T
           rw [he]
-          exact (Ctx.ref_nonproj _ hlp).trans (Ctx.le_insert hy.root (packType zs) v T hv)
+          exact (Ctx.ref_nonproj _ hlp).trans (Ctx.le_insert hy.root (packType zs) v T
+            (hsub v T (fun n' hn' => by rw [hrt] at hn'; cases hn'; exact hk) hv))
       | some k =>
           have hvr : v = .root (.free n) := by
             by_contra hne
             rw [honly v n hrt (by rw [hk]; exact fun h => by cases h) hne] at hv
             cases hv
           subst hvr
-          change (Γ.insert (.free y) (packType zs)).ref (packIdx y zs (.root (.free n))) = some T
+          change (Γ₀.insert (.free y) (packType zs)).ref (packIdx y zs (.root (.free n))) = some T
           rw [packIdx_packed (y := y) rfl hk]
           exact Ctx.ref_comp k (zs.map Prod.fst)
-            (Ctx.ref_insert_root Γ (.free y) (packType zs))
+            (Ctx.ref_insert_root Γ₀ (.free y) (packType zs))
             (type_of_packed hz hk hv)
 
-theorem coh_pack (hy : Γ.RootFresh (.free y))
+theorem coh_pack (hy : Γ₀.RootFresh (.free y))
     (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1)
     (honly : ∀ (v : VarSymb) (n : ℕ), v.rt = .free n → packOf zs n ≠ none →
-      v ≠ .root (.free n) → Γ v = none) :
-    Coh (packIdx y zs) Γ (pack σ (Γ.insert (.free y) (packType zs)) y zs) :=
-  coh_of (ok_pack hy hz honly) (fun v _ _ _ p => (packIdx_ext y zs v p).symm)
+      v ≠ .root (.free n) → Γ v = none)
+    (hsub : ∀ (v : VarSymb) (T : VarType), (∀ n, v.rt = .free n → packOf zs n = none) →
+      Γ v = some T → Γ₀ v = some T) :
+    Coh (packIdx y zs) Γ (pack σ (Γ₀.insert (.free y) (packType zs)) y zs) :=
+  coh_of (ok_pack hy hz honly hsub) (fun v _ _ _ p => (packIdx_ext y zs v p).symm)
 
 /-! ## Instantiating the parameter at the tuple -/
 
@@ -260,15 +267,15 @@ theorem at_single_of_rt_ne {Δ : Ctx} {r : Root} {e : SubE σ Δ} :
 def tupleS (y : ℕ) (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1) : Subst σ Γ :=
   single (.free y) (.tm (Term.tuple zs hz))
 
-theorem ok_tupleS (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1) :
-    Ok (Γ.insert (.free y) (packType zs)) (tupleS (σ := σ) y hz) :=
-  ok_single (T := packType zs) (e := SubE.tm (Term.tuple zs hz)) (Ctx.Le.refl Γ) rfl
+theorem ok_tupleS (hle : Γ₀.Le Γ) (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1) :
+    Ok (Γ₀.insert (.free y) (packType zs)) (tupleS (σ := σ) y hz) :=
+  ok_single (T := packType zs) (e := SubE.tm (Term.tuple zs hz)) hle rfl
 
-theorem coh_tupleS (hy : Γ.RootFresh (.free y))
+theorem coh_tupleS (hy : Γ₀.RootFresh (.free y)) (hle : Γ₀.Le Γ)
     (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1) :
-    Coh (singleIdx (σ := σ) (.free y) (.tm (Term.tuple zs hz))) (Γ.insert (.free y) (packType zs))
-      (tupleS (σ := σ) y hz) :=
-  coh_single (T := packType zs) (e := SubE.tm (Term.tuple zs hz)) hy (Ctx.Le.refl Γ) rfl
+    Coh (singleIdx (σ := σ) (.free y) (.tm (Term.tuple zs hz)))
+      (Γ₀.insert (.free y) (packType zs)) (tupleS (σ := σ) y hz) :=
+  coh_single (T := packType zs) (e := SubE.tm (Term.tuple zs hz)) hy hle rfl
 
 theorem at_single_root {Δ : Ctx} (r : Root) (e : SubE σ Δ) : (single r e).at (.root r) = e := by
   change (if (VarSymb.root r) = .root r then e else SubE.ren (.root r)) = _
@@ -279,30 +286,37 @@ theorem at_tupleS_of_rt_ne (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some
 
 /-- ⭐The round trip: instantiating the parameter at the tuple of the packed roots undoes the
     packing. -/
-theorem sim_pack_single (hy : Γ.RootFresh (.free y))
+theorem sim_pack_single (hy : Γ₀.RootFresh (.free y)) (hle : Γ₀.Le Γ)
     (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1)
     (honly : ∀ (v : VarSymb) (n : ℕ), v.rt = .free n → packOf zs n ≠ none →
-      v ≠ .root (.free n) → Γ v = none) :
+      v ≠ .root (.free n) → Γ v = none)
+    (hsub : ∀ (v : VarSymb) (T : VarType), (∀ n, v.rt = .free n → packOf zs n = none) →
+      Γ v = some T → Γ₀ v = some T) :
     Sim Γ (idS σ Γ)
-      ((pack σ (Γ.insert (.free y) (packType zs)) y zs).comp
-        (tupleS y hz) (ok_tupleS hz) (coh_tupleS hy hz)) := by
+      ((pack σ (Γ₀.insert (.free y) (packType zs)) y zs).comp
+        (tupleS y hz) (ok_tupleS hle hz) (coh_tupleS hy hle hz)) := by
   refine sim_of ?_
   intro v T _ hv
-  have hvy : v.rt ≠ .free y := fun he => by rw [hy v he] at hv; cases hv
   change SubE.Sim T (.ren v)
-    ((SubE.ren (packIdx y zs v)).comp _ (ok_tupleS hz)
-      (coh_tupleS hy hz))
+    ((SubE.ren (packIdx y zs v)).comp _ (ok_tupleS hle hz)
+      (coh_tupleS hy hle hz))
   change SubE.Sim T (.ren v) ((tupleS y hz).at (packIdx y zs v))
   cases hrt : v.rt with
   | bnd _ =>
-      rw [packIdx_other (fun n hn => by rw [hrt] at hn; cases hn),
-        at_tupleS_of_rt_ne hz hvy]
+      have hun : ∀ n, v.rt = .free n → packOf zs n = none := fun n hn => by
+        rw [hrt] at hn; cases hn
+      have h₀ : Γ₀ v = some T := hsub v T hun hv
+      have hvy : v.rt ≠ .free y := fun he => by rw [hy v he] at h₀; cases h₀
+      rw [packIdx_other hun, at_tupleS_of_rt_ne hz hvy]
       exact .refl _
   | free n =>
       cases hk : packOf zs n with
       | none =>
-          rw [packIdx_other (fun n' hn' => by rw [hrt] at hn'; cases hn'; exact hk),
-            at_tupleS_of_rt_ne hz hvy]
+          have hun : ∀ n', v.rt = .free n' → packOf zs n' = none := fun n' hn' => by
+            rw [hrt] at hn'; cases hn'; exact hk
+          have h₀ : Γ₀ v = some T := hsub v T hun hv
+          have hvy : v.rt ≠ .free y := fun he => by rw [hy v he] at h₀; cases h₀
+          rw [packIdx_other hun, at_tupleS_of_rt_ne hz hvy]
           exact .refl _
       | some k =>
           have hvr : v = .root (.free n) := by
@@ -334,24 +348,29 @@ end Subst
 
 /-- ⭐The packing round trip one view in and under the hole — the form a `T_dia` hypothesis needs,
     since its hole formula lives in the `□` view with a slot for the object. -/
-theorem WFF.subst_pack_single_view {σ : Signature} {Γ : Ctx} {y : ℕ} {zs : List (VarType × ℕ)}
-    (hy : Γ.RootFresh (.free y)) (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1)
+theorem WFF.subst_pack_single_view {σ : Signature} {Γ Γ₀ : Ctx} {y : ℕ} {zs : List (VarType × ℕ)}
+    (hy : Γ₀.RootFresh (.free y)) (hle : Γ₀.Le Γ)
+    (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1)
     (honly : ∀ (v : VarSymb) (n : ℕ), v.rt = .free n → Subst.packOf zs n ≠ none →
       v ≠ .root (.free n) → Γ v = none)
-    (hΓ : Γ.SlotsFrom 0) (hΔ : (Γ.insert (.free y) (Subst.packType zs)).SlotsFrom 0)
+    (hsub : ∀ (v : VarSymb) (T : VarType), (∀ n, v.rt = .free n → Subst.packOf zs n = none) →
+      Γ v = some T → Γ₀ v = some T)
+    (hΓ : Γ.SlotsFrom 0) (hΔ : (Γ₀.insert (.free y) (Subst.packType zs)).SlotsFrom 0)
     (A : VarType) (φ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
     WFF.subst (VarSymb.shiftSlot (Subst.singleIdx (.free y) (.tm (Term.tuple zs hz))) 0 0)
         ((Subst.tupleS y hz).box.under 0 0 A hΓ.boxIn.root)
-        (Subst.ok_under (Subst.ok_box (Subst.ok_tupleS hz)) A hΓ.boxIn.root)
-        (Subst.coh_under (Subst.ok_box (Subst.ok_tupleS hz))
-          (Subst.coh_box (Subst.ok_tupleS hz) (Subst.coh_tupleS hy hz)) hΔ.boxIn A hΓ.boxIn.root)
+        (Subst.ok_under (Subst.ok_box (Subst.ok_tupleS hle hz)) A hΓ.boxIn.root)
+        (Subst.coh_under (Subst.ok_box (Subst.ok_tupleS hle hz))
+          (Subst.coh_box (Subst.ok_tupleS hle hz) (Subst.coh_tupleS hy hle hz)) hΔ.boxIn A
+          hΓ.boxIn.root)
         (hΔ.boxIn.insert A) (hΓ.boxIn.insert A)
       (WFF.subst (VarSymb.shiftSlot (Subst.packIdx y zs) 0 0)
-        ((Subst.pack σ (Γ.insert (.free y) (Subst.packType zs)) y zs).box.under 0 0 A
+        ((Subst.pack σ (Γ₀.insert (.free y) (Subst.packType zs)) y zs).box.under 0 0 A
           hΔ.boxIn.root)
-        (Subst.ok_under (Subst.ok_box (Subst.ok_pack hy hz honly)) A hΔ.boxIn.root)
-        (Subst.coh_under (Subst.ok_box (Subst.ok_pack hy hz honly))
-          (Subst.coh_box (Subst.ok_pack hy hz honly) (Subst.coh_pack hy hz honly)) hΓ.boxIn A
+        (Subst.ok_under (Subst.ok_box (Subst.ok_pack hy hz honly hsub)) A hΔ.boxIn.root)
+        (Subst.coh_under (Subst.ok_box (Subst.ok_pack hy hz honly hsub))
+          (Subst.coh_box (Subst.ok_pack hy hz honly hsub) (Subst.coh_pack hy hz honly hsub))
+          hΓ.boxIn A
           hΔ.boxIn.root)
         (hΓ.boxIn.insert A) (hΔ.boxIn.insert A) φ) = φ := by
   refine (WFF.subst_comp _ _ ((Subst.idS σ Γ).box.under 0 0 A hΓ.boxIn.root) _ _ _ _
@@ -359,11 +378,11 @@ theorem WFF.subst_pack_single_view {σ : Signature} {Γ : Ctx} {y : ℕ} {zs : L
     (Subst.coh_under (Subst.ok_box Subst.ok_idS)
       (Subst.coh_box Subst.ok_idS Subst.coh_idS) hΓ.boxIn A hΓ.boxIn.root)
     (hΓ.boxIn.insert A) (hΔ.boxIn.insert A) (hΓ.boxIn.insert A)
-    (Subst.sim_under_comp (Subst.ok_box (Subst.ok_pack hy hz honly))
-      (Subst.ok_box (Subst.ok_tupleS hz))
-      (Subst.coh_box (Subst.ok_tupleS hz) (Subst.coh_tupleS hy hz))
-      (Subst.sim_box_comp (Subst.ok_pack hy hz honly) (Subst.ok_tupleS hz)
-        (Subst.coh_tupleS hy hz) (Subst.sim_pack_single hy hz honly))
+    (Subst.sim_under_comp (Subst.ok_box (Subst.ok_pack hy hz honly hsub))
+      (Subst.ok_box (Subst.ok_tupleS hle hz))
+      (Subst.coh_box (Subst.ok_tupleS hle hz) (Subst.coh_tupleS hy hle hz))
+      (Subst.sim_box_comp (Subst.ok_pack hy hz honly hsub) (Subst.ok_tupleS hle hz)
+        (Subst.coh_tupleS hy hle hz) (Subst.sim_pack_single hy hle hz honly hsub))
       hΔ.boxIn A hΔ.boxIn.root hΓ.boxIn.root) φ).trans ?_
   refine (WFF.subst_congr _ ((Subst.idS σ Γ.boxIn).under 0 0 A hΓ.boxIn.root) _
     (Subst.ok_under Subst.ok_idS A hΓ.boxIn.root)
@@ -421,18 +440,23 @@ theorem WFF.instantiate_mono_bindFree {σ : Signature} {Γ Δ : Ctx} {T : VarTyp
     tuple of the roots themselves leaves a formula unchanged.  This is how a hypothesis of `T_dia`,
     whose hole formula may only mention the context of the stage where the witness was declared,
     serves a formula of a later stage. -/
-theorem WFF.subst_pack_single {σ : Signature} {Γ : Ctx} {y : ℕ} {zs : List (VarType × ℕ)} {d : ℕ}
-    (hy : Γ.RootFresh (.free y)) (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1)
+theorem WFF.subst_pack_single {σ : Signature} {Γ Γ₀ : Ctx} {y : ℕ} {zs : List (VarType × ℕ)} {d : ℕ}
+    (hy : Γ₀.RootFresh (.free y)) (hle : Γ₀.Le Γ)
+    (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1)
     (honly : ∀ (v : VarSymb) (n : ℕ), v.rt = .free n → Subst.packOf zs n ≠ none →
       v ≠ .root (.free n) → Γ v = none)
-    (hΓ : Γ.SlotsFrom d) (hΔ : (Γ.insert (.free y) (Subst.packType zs)).SlotsFrom d)
+    (hsub : ∀ (v : VarSymb) (T : VarType), (∀ n, v.rt = .free n → Subst.packOf zs n = none) →
+      Γ v = some T → Γ₀ v = some T)
+    (hΓ : Γ.SlotsFrom d) (hΔ : (Γ₀.insert (.free y) (Subst.packType zs)).SlotsFrom d)
     (φ : WFF σ Γ d) :
     WFF.subst (Subst.singleIdx (.free y) (.tm (Term.tuple zs hz))) (Subst.tupleS y hz)
-        (Subst.ok_tupleS hz) (Subst.coh_tupleS hy hz) hΔ hΓ
-      (WFF.subst (Subst.packIdx y zs) (Subst.pack σ (Γ.insert (.free y) (Subst.packType zs)) y zs)
-        (Subst.ok_pack hy hz honly) (Subst.coh_pack hy hz honly) hΓ hΔ φ) = φ :=
-  (WFF.subst_comp _ _ (Subst.idS σ Γ) (Subst.ok_pack hy hz honly) (Subst.coh_pack hy hz honly)
-    (Subst.ok_tupleS hz) (Subst.coh_tupleS hy hz) Subst.ok_idS Subst.coh_idS hΓ hΔ hΓ
-    (Subst.sim_pack_single hy hz honly) φ).trans (WFF.subst_id Subst.ok_idS Subst.coh_idS hΓ φ)
+        (Subst.ok_tupleS hle hz) (Subst.coh_tupleS hy hle hz) hΔ hΓ
+      (WFF.subst (Subst.packIdx y zs) (Subst.pack σ (Γ₀.insert (.free y) (Subst.packType zs)) y zs)
+        (Subst.ok_pack hy hz honly hsub) (Subst.coh_pack hy hz honly hsub) hΓ hΔ φ) = φ :=
+  (WFF.subst_comp _ _ (Subst.idS σ Γ) (Subst.ok_pack hy hz honly hsub)
+    (Subst.coh_pack hy hz honly hsub)
+    (Subst.ok_tupleS hle hz) (Subst.coh_tupleS hy hle hz) Subst.ok_idS Subst.coh_idS hΓ hΔ hΓ
+    (Subst.sim_pack_single hy hle hz honly hsub) φ).trans
+    (WFF.subst_id Subst.ok_idS Subst.coh_idS hΓ φ)
 
 end V12M
