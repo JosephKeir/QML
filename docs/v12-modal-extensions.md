@@ -433,9 +433,20 @@ content of a possible object.
     `rden_eta_of_real` is the form callers use. Worth remembering as the general move: to cross an
     equation that sits in dependent positions, bind the thing as a variable in a lemma and `subst`
     it there.
-  - *Then*: drop `ModalSys.NoTStrong`, at which point `interp_canon`'s realised case,
-    `diaPush_agree_canon` and the truth lemma's `◇` case need their real proofs, on the
-    lexicographic (own stage, term size) measure.
+  - *Then*: drop `ModalSys.NoTStrong`. What is still behind it is exactly `interp_canon`'s realised
+    case and the truth lemma's `◇` case at the world itself; everything else in `QML_v12m_CanonTerm`
+    is already marked `omit`, so it is independent of the flag. Two things to know before starting.
+    **(i) The recursion must be decomposed semantically first.** Recursing directly at the realised
+    term `realisedTerm … t` does *not* decrease in (own stage, size): that term lives at stage
+    `i ⊔ i₀`, whose own component is `i.2` again (since `hstage` gives `i₀.2 < i.2`), and it is
+    larger than `t`. The realised case has to go through `Model.interp_realiseAt`, which expresses
+    the reading at the world as the body `t` interpreted in the environment extended by the value of
+    `t₀`: then the two recursive calls are at `t₀` (own stage `i₀.2 < i.2`) and at `t` (same stage,
+    smaller), and the lexicographic measure works. **(ii) State the self-case lemmas at the self
+    element.** A lemma about an arbitrary successor `w'` with `w'.depth - w.depth = 0` puts the
+    content at `w'.1.1` where the caller wants `w`; the equation `w'.1.1 = w` then has to be carried
+    through a dependent position. Stating them at `⟨⟨w, R.refl …⟩, self_mem_extent hr⟩` avoids it —
+    the same move as the realisation API above.
   - *Rejected: reaching later stages by induction on the stage.* Take `spec` at stage `j` for
     `∀z. χ[ρ_j := z]` and eliminate the `∀` inside the `◇_c` view by monotonicity. Unsound: the
     premise needs `realiseAt (∀z. χ[z])` from `realiseAt χ[ρ_j]`, i.e. generalisation on a Henkin
