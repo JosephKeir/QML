@@ -386,11 +386,23 @@ content of a possible object.
     is a function, so declarations commute: `Ctx.stage_eq_skip_insert` rewrites the stage as the
     stage without the witness with the witness on top, and `Ctx.stageSkip_cases` gives what its raw
     entries are, which is what the packing's side conditions ask for.
-  - *Still to do for strong T's model*: the chain's list of later constants and the three packing
-    side conditions; the `RealDatum` for each chain witness (`chainReal`), which `World.ofHenkin`
-    then names; `posRet_exists`; and then dropping `ModalSys.NoTStrong`, at which point
-    `interp_canon`'s realised case, `diaPush_agree_canon` and the truth lemma's `◇` case need their
-    real proofs, on the lexicographic (own stage, term size) measure.
+  - **The specification, from the chain's hypotheses (`QML_v12m_HenkinRet.lean`).**
+    ⭐`WorldLang.spec_of_retHyps` is `RealDatum.spec` for a witness declared with its `retSet`
+    instances: at any later stage, everything the realising term satisfies there, the witness
+    satisfies in its `◇` view. It takes the instance for the packed abstraction of the formula at
+    that stage's base, reads off what instantiating its `∀` at the tuple gives
+    (`WFF.instantiate_mono_retBody_pack`), and finishes by `∀`-elimination and modus ponens inside
+    the maximal consistent theory. The stage of the formula is the witness's stage with the witness
+    declared last, and since those contexts are *equal*, weakening carries everything across and
+    the round trip collapses by `WFF.mono_mono` and `WFF.mono_refl`. `laterList` is the packing and
+    its side conditions follow from what a raw entry of a stage can be.
+  - *Still to do for strong T's model*: the bridge from the chain's own `retSet` membership to that
+    hypothesis (plumbing: the chain's `ctxL m l` versus `final.ctx (m, j)`, and `l.length` versus
+    the step number — equal in both cases, so weakening carries them); then the `RealDatum` per
+    chain witness, which `World.ofHenkin` names in its `real` field; then `posRet_exists`; and then
+    dropping `ModalSys.NoTStrong`, at which point `interp_canon`'s realised case,
+    `diaPush_agree_canon` and the truth lemma's `◇` case need their real proofs, on the
+    lexicographic (own stage, term size) measure.
   - *Rejected: reaching later stages by induction on the stage.* Take `spec` at stage `j` for
     `∀z. χ[ρ_j := z]` and eliminate the `∀` inside the `◇_c` view by monotonicity. Unsound: the
     premise needs `realiseAt (∀z. χ[z])` from `realiseAt χ[ρ_j]`, i.e. generalisation on a Henkin
