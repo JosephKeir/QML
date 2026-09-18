@@ -112,6 +112,43 @@ theorem le_of_eq {Γ Γ' : Ctx} (E : Γ = Γ') : Γ.Le Γ' := fun _ _ h => E ▸
 
 end Ctx
 
+/-- A `T_dia` hypothesis carried along equalities of its context, its two names and its target:
+    all of them are equalities, so the weakenings collapse. -/
+theorem WFF.retHyp_transport {σ : Signature} {Γ Γ' Δ : Ctx} [Γ.NoSlots] [Γ'.NoSlots]
+    (hT : ModalSys.T = true) {A : VarType} {a : Ann A} (t : Term σ Γ A a) {c c' y y' : ℕ}
+    (hΓ : Γ = Γ') (hcc : c = c') (hyy : y = y')
+    (hc : Γ.RootFresh (.free c)) (hy : Γ.RootFresh (.free y)) (hyc : y ≠ c)
+    (hc' : Γ'.RootFresh (.free c')) (hy' : Γ'.RootFresh (.free y')) (hyc' : y' ≠ c')
+    (B : VarType) (ψ : WFF σ ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A) 1)
+    (ht : Term σ Γ' A a) (hteq : ht = Term.mono (Ctx.le_of_eq hΓ) t)
+    (hΔ : Γ'.insert (.free c') (.VTypeDia A) = Δ)
+    (hle : (Γ.insert (.free c) (.VTypeDia A)).Le Δ)
+    (hψ : ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A).Le
+      ((Γ'.insert (.free y') B).boxIn.insert (.bnd 0) A)) :
+    WFF.mono hle (WFF.retHyp hT t c y hc hy hyc B ψ) =
+      WFF.mono (Ctx.le_of_eq hΔ) (WFF.retHyp hT ht c' y' hc' hy' hyc' B (WFF.mono hψ ψ)) := by
+  subst hΓ
+  subst hcc
+  subst hyy
+  subst hΔ
+  subst hteq
+  rw [Term.mono_refl, WFF.mono_refl, WFF.mono_refl, WFF.mono_refl]
+
+/-- A `T_dia` hypothesis does not depend on how its two names are written. -/
+theorem WFF.retHyp_congr {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true)
+    {A : VarType} {a : Ann A} (t : Term σ Γ A a) {c c' y y' : ℕ} (hc₀ : c = c') (hy₀ : y = y')
+    (hc : Γ.RootFresh (.free c)) (hy : Γ.RootFresh (.free y)) (hyc : y ≠ c)
+    (hc' : Γ.RootFresh (.free c')) (hy' : Γ.RootFresh (.free y')) (hyc' : y' ≠ c')
+    (B : VarType) (ψ : WFF σ ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A) 1)
+    (hΓ : (Γ.insert (.free c) (.VTypeDia A)).Le (Γ.insert (.free c') (.VTypeDia A)))
+    (hψ : ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A).Le
+      ((Γ.insert (.free y') B).boxIn.insert (.bnd 0) A)) :
+    WFF.mono hΓ (WFF.retHyp hT t c y hc hy hyc B ψ) =
+      WFF.retHyp hT t c' y' hc' hy' hyc' B (WFF.mono hψ ψ) := by
+  subst hc₀
+  subst hy₀
+  rw [WFF.mono_refl, WFF.mono_refl]
+
 /-! ## The witness's specification -/
 
 namespace WorldLang
@@ -210,6 +247,167 @@ theorem spec_of_retHyps {T : Set (F.sys.Sentence σ)} (hmcs : StageSys.IsMCS T)
   rw [← key₂]
   obtain ⟨Δ₀, hΔ₀, p⟩ := Theory.Derives.of_mem (StageSys.mem_atStage_self hHlift)
   exact ⟨Δ₀, hΔ₀, p.map (Proof.all_elim _ (Term.tuple (laterList F.τ F.ρ n k) hz₂))⟩
+
+/-! ## The chain's hypotheses, in the finished language -/
+
+section Chain
+
+variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] (L : WorldLang)
+  {S₀ : Set ((L.pre []).Sentence σ)}
+
+/-- Step `n` of the chain declared a strong T witness: the formula it chose called for no witness
+    of its own, so the step made the `retStep` declaration. -/
+def IsRet (S₀ : Set ((L.pre []).Sentence σ)) (n : ℕ) : Prop :=
+  (∀ (A : VarType) (ψ : WFF σ ((L.ctxL (decM n) (L.chain S₀ n).l).insert (.bnd 0) A) 1),
+      L.choice n (L.chain S₀ n) ≠ .ex A ψ) ∧
+    ∀ (A : VarType) (ψ : WFF σ ((L.ctxL (decM n) (L.chain S₀ n).l).insert (.bnd 0) A) 1),
+      L.choice n (L.chain S₀ n) ≠ .imp (.all A ψ) .bot
+
+variable {L}
+
+/-- At such a step the declaration is the one `retStep` makes. -/
+theorem witStep_eq_retStep {n : ℕ} (hret : IsRet L S₀ n) :
+    L.witStep (decM n) (L.chain S₀ n).l
+        (L.termQ (σ := σ) n (L.chain S₀ n).l) (L.choice n (L.chain S₀ n)) =
+      L.retStep (decM n) (L.chain S₀ n).l (L.termQ (σ := σ) n (L.chain S₀ n).l) := by
+  unfold WorldLang.witStep
+  split
+  · next A ψ h => exact absurd h (hret.1 A ψ)
+  · next A ψ h => exact absurd h (hret.2 A ψ)
+  · rfl
+
+/-- At a strong T step the witness is declared at the `◇` of the enumerated term's type. -/
+theorem finalτ_of_isRet (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) {n : ℕ}
+    (hret : IsRet L S₀ n) :
+    L.finalτ S₀ n = .VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1 := by
+  unfold WorldLang.finalτ
+  rw [witStep_eq_retStep hret,
+    show L.retStep (decM n) (L.chain S₀ n).l (L.termQ (σ := σ) n (L.chain S₀ n).l) =
+    ⟨.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1,
+      L.retSet hT (L.chain S₀ n).l (decM n) (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2⟩ from
+    dif_pos ⟨hT, hTS⟩]
+
+/-- ⭐The hypotheses the chain added for a strong T witness, as sentences of the finished
+    theory. -/
+theorem retHyp_mem_retSet (hT : ModalSys.T = true) {n : ℕ} (m : ℕ) (hm : decM n ≤ m) (B : VarType)
+    (ψ : WFF σ (((L.ctxL m (L.chain S₀ n).l).insert
+      (.free (L.ρ ((L.chain S₀ n).l.length + 1))) B).boxIn.insert (.bnd 0)
+        (L.termQ (σ := σ) n (L.chain S₀ n).l).1) 1) :
+    (⟨m, WFF.retHyp hT (Term.mono (L.ctxL_base_le hm (L.chain S₀ n).l)
+        (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2)
+        (L.ρ (L.chain S₀ n).l.length) (L.ρ ((L.chain S₀ n).l.length + 1))
+        (L.ctxL_fresh le_rfl) (L.ctxL_fresh (Nat.le_succ _)) (L.ρ_succ_ne _) B ψ⟩ :
+      (L.pre (.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1 :: (L.chain S₀ n).l)).Sentence σ) ∈
+      L.retSet hT (L.chain S₀ n).l (decM n) (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2 :=
+  ⟨m, hm, B, ψ, rfl⟩
+
+/-- ⭐At a strong T step, every hypothesis the chain adds for the enumerated term is in the step's
+    theory.  Stated with the step's declaration left stuck, so that the match can be split. -/
+theorem step_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) {n : ℕ}
+    (hret : IsRet L S₀ n) (m : ℕ) (hm : decM n ≤ m) (B : VarType)
+    (ψ : WFF σ (((L.ctxL m (L.chain S₀ n).l).insert
+      (.free (L.ρ ((L.chain S₀ n).l.length + 1))) B).boxIn.insert (.bnd 0)
+        (L.termQ (σ := σ) n (L.chain S₀ n).l).1) 1)
+    (hEq : (L.ctxL m (L.chain S₀ n).l).insert (.free (L.ρ (L.chain S₀ n).l.length))
+        (.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1) =
+      L.ctxL m (L.chain S₀ (n + 1)).l) :
+    (⟨m, WFF.mono (Ctx.le_of_eq hEq)
+        (WFF.retHyp hT (Term.mono (L.ctxL_base_le hm (L.chain S₀ n).l)
+          (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2)
+          (L.ρ (L.chain S₀ n).l.length) (L.ρ ((L.chain S₀ n).l.length + 1))
+          (L.ctxL_fresh le_rfl) (L.ctxL_fresh (Nat.le_succ _)) (L.ρ_succ_ne _) B ψ)⟩ :
+      (L.pre (L.chain S₀ (n + 1)).l).Sentence σ) ∈ (L.chain S₀ (n + 1)).S := by
+  refine Set.mem_union_right _ ?_
+  -- the hypothesis, as a statement about the step's declaration, transported twice
+  have base : ∀ hEq'' : (L.ctxL m (L.chain S₀ n).l).insert (.free (L.ρ (L.chain S₀ n).l.length))
+        (.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1) =
+      L.ctxL m ((⟨.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1,
+        L.retSet hT (L.chain S₀ n).l (decM n) (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2⟩ :
+          Σ A : VarType, Set ((L.pre (A :: (L.chain S₀ n).l)).Sentence σ)).1 :: (L.chain S₀ n).l),
+      (⟨m, WFF.mono (Ctx.le_of_eq hEq'')
+          (WFF.retHyp hT (Term.mono (L.ctxL_base_le hm (L.chain S₀ n).l)
+            (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2)
+            (L.ρ (L.chain S₀ n).l.length) (L.ρ ((L.chain S₀ n).l.length + 1))
+            (L.ctxL_fresh le_rfl) (L.ctxL_fresh (Nat.le_succ _)) (L.ρ_succ_ne _) B ψ)⟩ :
+        (L.pre ((⟨.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1,
+          L.retSet hT (L.chain S₀ n).l (decM n)
+            (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2⟩ :
+              Σ A : VarType, Set ((L.pre (A :: (L.chain S₀ n).l)).Sentence σ)).1 ::
+                (L.chain S₀ n).l)).Sentence σ) ∈
+        (⟨.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1,
+          L.retSet hT (L.chain S₀ n).l (decM n)
+            (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2⟩ :
+              Σ A : VarType, Set ((L.pre (A :: (L.chain S₀ n).l)).Sentence σ)).2 := by
+    intro hEq''
+    rw [WFF.mono_refl]
+    exact ⟨m, hm, B, ψ, rfl⟩
+  exact Eq.subst
+    (motive := fun X : Σ A : VarType, Set ((L.pre (A :: (L.chain S₀ n).l)).Sentence σ) =>
+      ∀ hEq'' : (L.ctxL m (L.chain S₀ n).l).insert (.free (L.ρ (L.chain S₀ n).l.length))
+          (.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1) =
+        L.ctxL m (X.1 :: (L.chain S₀ n).l),
+        (⟨m, WFF.mono (Ctx.le_of_eq hEq'')
+            (WFF.retHyp hT (Term.mono (L.ctxL_base_le hm (L.chain S₀ n).l)
+              (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2)
+              (L.ρ (L.chain S₀ n).l.length) (L.ρ ((L.chain S₀ n).l.length + 1))
+              (L.ctxL_fresh le_rfl) (L.ctxL_fresh (Nat.le_succ _)) (L.ρ_succ_ne _) B ψ)⟩ :
+          (L.pre (X.1 :: (L.chain S₀ n).l)).Sentence σ) ∈ X.2)
+    ((dif_pos ⟨hT, hTS⟩ : L.retStep (decM n) (L.chain S₀ n).l
+        (L.termQ (σ := σ) n (L.chain S₀ n).l) = ⟨_, _⟩).symm.trans
+      (witStep_eq_retStep hret).symm) base hEq
+theorem ctxL_eq_final (S₀ : Set ((L.pre []).Sentence σ)) (m j : ℕ) :
+    L.ctxL m (L.chain S₀ j).l = (L.final S₀).ctx (m, j) := (L.final_ctx S₀ m j).symm
+
+/-- At a strong T step the next stage declares the witness at the `◇` of the term's type. -/
+theorem ctx_succ_of_isRet (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) {n : ℕ}
+    (hret : IsRet L S₀ n) (m : ℕ) :
+    ((L.final S₀).ctx (m, n)).insert (.free (L.ρ n))
+        (.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1) = (L.final S₀).ctx (m, n + 1) := by
+  rw [WorldLang.ctx_succ, show (L.final S₀).τ n =
+    .VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1 from finalτ_of_isRet hT hTS hret]
+  rfl
+
+/-- ⭐The chain's hypotheses for a strong T witness, as the finished theory's sentences: this is
+    what `spec_of_retHyps` asks for. -/
+theorem hhyp_of_isRet (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) {n : ℕ}
+    (hret : IsRet L S₀ n) (m : ℕ) (hm : decM n ≤ m) (B : VarType)
+    (ψ : WFF σ (((((L.final S₀).ctx (m, n))).insert (.free (L.ρ (n + 1))) B).boxIn.insert
+      (.bnd 0) (L.termQ (σ := σ) n (L.chain S₀ n).l).1) 1) :
+    (⟨(m, n + 1), WFF.mono
+        (Ctx.le_of_eq (ctx_succ_of_isRet hT hTS hret m))
+        (WFF.retHyp hT
+          (Term.mono ((L.final S₀).ctx_le (Prod.mk_le_mk.mpr ⟨hm, le_rfl⟩))
+            (Term.mono (Ctx.le_of_eq (ctxL_eq_final S₀ (decM n) n))
+              (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2))
+          (L.ρ n) (L.ρ (n + 1)) ((L.final S₀).fresh_ctx le_rfl)
+          ((L.final S₀).fresh_ctx (Nat.le_succ n))
+          (fun he => Nat.succ_ne_self n (L.ρ_inj he)) B ψ)⟩ :
+      (L.final S₀).sys.Sentence σ) ∈ L.finalT S₀ := by
+  refine ⟨n + 1, le_rfl, ?_⟩
+  have hlen : (L.chain S₀ n).l.length = n := length_chain S₀ n
+  have hctx : (L.final S₀).ctx (m, n) = L.ctxL m (L.chain S₀ n).l := L.final_ctx S₀ m n
+  have hname : L.ρ n = L.ρ (L.chain S₀ n).l.length := by rw [hlen]
+  have hnameS : L.ρ (n + 1) = L.ρ ((L.chain S₀ n).l.length + 1) := by rw [hlen]
+  have hEq' : (L.ctxL m (L.chain S₀ n).l).insert (.free (L.ρ (L.chain S₀ n).l.length))
+      (.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1) = L.ctxL m (L.chain S₀ (n + 1)).l := by
+    rw [← hname, ← hctx]
+    exact (ctx_succ_of_isRet hT hTS hret m).trans (L.final_ctx S₀ m (n + 1))
+  have hψle : ((((L.final S₀).ctx (m, n)).insert (.free (L.ρ (n + 1))) B).boxIn.insert (.bnd 0)
+        (L.termQ (σ := σ) n (L.chain S₀ n).l).1).Le
+      (((L.ctxL m (L.chain S₀ n).l).insert (.free (L.ρ ((L.chain S₀ n).l.length + 1)))
+        B).boxIn.insert (.bnd 0) (L.termQ (σ := σ) n (L.chain S₀ n).l).1) :=
+    Ctx.le_of_eq (by rw [hctx, hnameS])
+  refine Eq.mp (congrArg (fun φ => (⟨m, φ⟩ : (L.pre (L.chain S₀ (n + 1)).l).Sentence σ) ∈
+    (L.chain S₀ (n + 1)).S) ?_) (step_ret hT hTS hret m hm B (WFF.mono hψle ψ) hEq')
+  rw [WFF.mono_mono]
+  refine (WFF.retHyp_transport hT _ hctx hname hnameS ((L.final S₀).fresh_ctx le_rfl)
+    ((L.final S₀).fresh_ctx (Nat.le_succ n)) (fun he => Nat.succ_ne_self n (L.ρ_inj he))
+    (L.ctxL_fresh le_rfl) (L.ctxL_fresh (Nat.le_succ _)) (L.ρ_succ_ne _) B ψ
+    (Term.mono (L.ctxL_base_le hm (L.chain S₀ n).l) (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2)
+    ?_ hEq' _ hψle).symm
+  rw [Term.mono_mono, Term.mono_mono]
+
+end Chain
 
 end WorldLang
 
