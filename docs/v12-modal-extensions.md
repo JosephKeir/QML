@@ -80,6 +80,26 @@ The weak/strong labels of §3 put the `Nec`-side component in *weak* and add the
 component in *strong*. For 4 the weak component is the named one. For B and 5 it is the existential
 one, so the nesting weak ⊂ strong puts the open part inside strong B and strong 5.
 
+**⭐Nameable is not the same as named (2026-09-18, after strong T).** The classification above says
+*where* an object lives, and that does settle whether an existential is **forced**: an object born
+at an inner world cannot be named from outside. It does **not** settle how the carrier map is
+*implemented*. Strong T is the worked case: its object `t` lives at the outer world and is pushed
+inward (to `w` itself), so by the criterion above it is nameable — and it shipped as an
+**existential** anyway, `T_dia` with a Henkin witness and `posRet_exists` as the carrier condition,
+with the canonical model naming the realisation as *data on `World`* (`real`) rather than as a
+syntactic address.
+
+The reason is cost, and it applies to every remaining axiom. A new address former must be stable
+under `mono`, `collapse`, `shift` and `subst`, and must keep view entries independent — weak 4's
+single `keep` step is what forced the whole `keepOnly` redesign. An existential needs no new
+address: it reuses `∃`, a Henkin constant, and a carrier condition of `posRet_exists` shape, all of
+which now have a worked precedent. A new *term* former is dearer still: new cases in `Term.mono`,
+`collapse`, `shift`, `subst`, `rden`, `interp`, `size` and every congruence lemma.
+
+**So the default is: state a carrier map existentially, and let the canonical model name the
+witness as data.** Reach for a named address or a term former only when the existential cannot say
+what is needed. This is what the entries below for B and D have been rewritten to follow.
+
 **Components as flags, or bundles.**
 - Semantically the components look independent. For example, 5's `Pos` map does not force euclidean
   frames or the `Nec` restriction. A flag per component would describe the systems more finely than
@@ -106,6 +126,37 @@ content of a possible object.
 - **Weak**: rule `□⊥ ⊢ ⊥`. Canonical seriality is the usual successor for `◇⊤`.
 - **Strong**: axiom `⊢ ∃x:◇𝟙. ◇_x ⊤`. Carrier condition: some possible object has nonempty extent.
   Same level, not unique ⇒ existential. A Henkin witness satisfies it directly.
+- **Take the `⊥` forms as the rules and the familiar forms as theorems (2026-09-18).** Both are
+  interderivable in K, both ways short, so state the minimal one and derive the recognisable one —
+  `⊢ ∃x:◇𝟙. ◇_x ⊤` in particular is closed, so closure under substitution is nearly free, which is
+  exactly what cost work for `T_dia`. Present the familiar forms on paper.
+  - `□P ⊢ ◇P` (with `◇φ := ¬□¬φ`, the only unwitnessed `◇` there is) ⟺ `□⊥ ⊢ ⊥`. Forwards at
+    `P := ⊥`, using that `□¬⊥` is a theorem; backwards from `P, ¬P ⊢ ⊥` by `K_box`. Note
+    `WFF.neg φ = imp φ .bot`, so `¬⊥` is `imp ⊥ ⊥`, not `.top`.
+  - `□P ⊢ ∃x:◇𝟙. ◇_x P↑` ⟺ `⊢ ∃x:◇𝟙. ◇_x ⊤`, where `P : WFF σ Γ.boxIn 0` and `P↑` is
+    `WFF.mono (Ctx.le_boxIn_diaIn Γ x) P`. **`K_dia` already gives `◇_x ⊤, □P ⊢ ◇_x P↑`** — take
+    `ψ := ⊤`, `Δ₂ := []`, `Δ₁ := [P]`, whose premise is `⊤, P↑ ⊢ P↑`. So one direction is
+    `ex_elim` + `K_dia` + `ex_intro`, and the other is `P := ⊤` with `□⊤` a theorem.
+  - The witness contributes **nothing** to `P`: `P` lives in the `□` view and is merely weakened
+    into the `◇_x` view, which is what `K_dia`'s two-list split is for. So `x` is a pure
+    world-selector and its type should be `◇𝟙`. At a general `A` the axiom would assert that every
+    type has a possible object with nonempty extent, which entails inhabitation of every domain at
+    some accessible world — a domain-nonemptiness principle, orthogonal to seriality. Keep separate.
+- *Considered: strong D as a map `Nec(w) → Pos(w)`* (2026-09-18) — `u : □A` to the possible object
+  with extent all of `R(w)` and content `v ↦ necEval u v`. It answers §2a's "not unique" (this map
+  *is* canonical, with no choice), and it is attractive: at such an `x` the witnessed modalities
+  collapse to the unwitnessed ones, `□φ(u.box) ⊣⊢ □_x φ(x.dia)` and `◇_x φ(x.dia) ⊣⊢ ◇φ(u.box)`,
+  which is a bridge the link problems could use. But **it is not seriality**: the map is available
+  whether or not `R(w)` is empty, and when it is empty it yields a possible object with empty
+  extent and everything stays consistent. All of D's content sits in the *nonemptiness* of the
+  extent. So the map factors strong D into (i) a comprehension principle on carriers (§8.5 — it is
+  automatic in full models and a real condition otherwise) and (ii) seriality proper; at `A = 𝟙`
+  the content is trivial and (i) collapses, leaving exactly the axiom above. Verdict: keep strong D
+  as the pure existential, and record the map as a **separate candidate flag** on the comprehension
+  axis. If it is taken up, state it existentially and schematically —
+  `□φ ⊢ ∃x:◇A. ◇_x(φ↑ ∧ x.dia = u.box)`, which subsumes strong D at `φ := ⊤`, `A := 𝟙` — and **not**
+  as a term former `u ↦ u↓ : □A → ◇A`, which would need new cases in `Term.mono`, `collapse`,
+  `shift`, `subst`, `rden`, `interp`, `size` and every congruence lemma (§2a).
 
 ### T (reflexivity)
 - Frame: `w R w`.
@@ -576,17 +627,53 @@ content of a possible object.
 
 ### B (symmetry)
 - Frame: `v R w` for `v ∈ R(w)`.
-- **Strong (inward, named): singletons at the origin `D(w) → Pos(v)`.**
-  - Context principle: inside a modality, current items `z : A` are visible as singleton addresses
-    `z↑ : ◇A` with extent `{w}`. The address-level form is still to be designed.
-  - Round trips must reduce: going out along `u↑` and back along `y↑` normalises to `u.box`. This
-    is needed for parameterised instances of the ◇-BF derivation (§5).
-  - Rules: `φ(z) ⊢ □◇_{z↑} φ(z↑.dia)` and `◇◇_{z↑} φ ⊢ φ(z)` (and the `□_{z↑}` forms).
+- **Strong (inward): `D(w) → Pos(v)`, an object of the origin as a possible object there.**
+  - **⭐Design changed 2026-09-18: existential, not singletons.** Following strong T and the
+    "nameable is not named" note in §2a. The earlier design is recorded under *rejected* below.
+  - Carrier condition, the `posRet_exists` analogue: for every `v ∈ R(w)` and every `a ∈ Dom A w`
+    there is a `p ∈ Pos A v` with `w ∈ ext(p)` and `cont(p)(w) = a`. Note this does **not** demand
+    `ext(p) = {w}`; only that the origin is in it with the right content. That weakening is what
+    removes the need for a new address.
+  - Rule, the `T_dia` analogue: `φ↓(t) ⊢ □ ∃x:◇A. ◇_x φ`, where `φ` lives in the witness's view
+    inside the `□` and `φ↓(t)` is that formula read back at the origin with `t` in the hole. The
+    converse direction is the `□_x` form, as for strong T.
+  - **The return path is the piece to design first.** `WFF.realiseAt` is
+    `instantiate ∘ collapse ∘ diaAbs`: abstract the witness, collapse the view, plug the term. For
+    strong T the collapse step is `Collapses 0 Γ.boxIn Γ` — T's "the box view is here". Run the
+    same recipe for B and `diaAbs` lands in `Γ.boxIn.boxIn.insert (.bnd 0) A`, so what is needed is
+
+    ```
+    Γ.boxIn.boxIn ⟶ Γ        -- two box steps cancel
+    ```
+
+    the syntactic shadow of `w ∈ R(v)` for `v ∈ R(w)`. `Ctx.Collapses` is already indexed by a
+    level count, and `WFF.collapse`/`Term.collapse`/`CollapseAgree`/`size_collapse` are proven, so
+    **the first question is whether B's return is an instance of `Ctx.Collapses` or needs a
+    variant.** Everything else in the recipe transfers.
+  - **Canonical model.** `extent` needs a *parent* disjunct, as strong T needed a self-successor
+    disjunct, with the repairs at the `extent_dist`/`extent_le` sites that went with it. Settle the
+    recursion measure for `interp_canon` **before** fixing the rule (the strong-T lesson): the
+    return goes to a strictly shallower world, so parent-of may serve directly where strong T
+    needed `RealDatum.hstage`'s stage discipline — but it has to be checked, not assumed.
+  - *Rejected: singleton addresses `z↑ : ◇A` with extent `{w}`* (the design to 2026-09-17). It
+    needed a new address former, a context principle putting current items inside every modality,
+    and a **round-trip normalisation** (out along `u↑`, back along `y↑`, reducing to `u.box`) — a
+    confluence problem on addresses that exists only because the addresses do. It would also have
+    met the entry-independence problem that `keep` met, and for the reason predicted below: a
+    singleton view returns to an earlier world, so which entries are redundant depends on the view.
+    The existential design dissolves both.
 - **Weak (outward): value at the origin `Nec(v) → D(w)`.**
   - Forced by the frame (`necEval` lands in `Dom A w`), so canonical symmetry needs it.
   - Rule: closed `B` (`ψ ⊢ □◇ψ`). The parameter-free export `◇∃u:□A. □φ(u.box) ⊢ ∃a:A. φ(a)` is
-    derivable from it *(sketch)*.
-  - **Open alone.** Its link is strong B's singleton, `◇_{a↑}(a↑.dia = u.box)`.
+    derivable from it *(sketch)*. This half is **already existential** and stays as it is. Two
+    things not to get wrong: the object pulled out must be a **necessary** object `u : □A`, since
+    only a necessary object at `v` has a value back at `w` — an `x.dia : A` is an object of the
+    inner world and nothing carries it out; and decorating the premise `◇` with a witness gives a
+    *weaker* rule, not a new one (§2a's decoration table).
+  - **Open alone.** Under the new design its link becomes `∃x:◇A. ◇_x(x.dia = u.box)` — the
+    `posRet_exists` shape — rather than the singleton's `◇_{a↑}(a↑.dia = u.box)`. That does not
+    make it automatic, and weak B remains the smallest instance of the no-link problem (§5), but it
+    is now the one shape with a worked canonical construction behind it.
 
 ### 5 (euclidean)
 - Frame: `R(w) ⊆ R(v)` for `v ∈ R(w)`.
@@ -638,7 +725,7 @@ Known edges *(all sketch)*:
 | T + 5 ⇒ B, 4 (frames) | ✓ | propositional ✓; object level via closure |
 | B + 4 ⇒ 5 (frames) | ✓ | propositional ✓; object level via closure |
 | strong T + strong 5 ⇒ strong B, strong 4 | ✓ (symmetry turns 5's inclusion around) | ? |
-| strong B ⇒ ◇-BF | ✓ | parameter-free ✓; parameters need round-trip reduction |
+| strong B ⇒ ◇-BF | ✓ | parameter-free ✓; parameterised: was "round-trip reduction", now the return path of §3 B |
 | strong T + strong 4 ⇒ ◇-BF | ✓ | ? |
 | anything ⇒ □-BF | ✗ (countermodel) | ✗ |
 
@@ -707,7 +794,9 @@ Canonical accessibility is the shared redesign.
 
 1. Strong 4 (lift) without strong 5 — and whether it exists at all.
 2. Weak B without strong B; weak 5 without 4; ◇-BF alone; KB5 weak.
-3. The address-level design of B's singleton addresses and of the round-trip reduction.
+3. Whether B's return path `Γ.boxIn.boxIn ⟶ Γ` is an instance of `Ctx.Collapses` or needs a
+   variant (§3 B). This replaces the old question about singleton addresses and round-trip
+   reduction, which the existential design removes.
 4. How closure of flag sets is computed. (Flags are carried by a typeclass `ModalSys`, with
    `ModalSys.K` all flags off.)
 5. Later axis: comprehension principles for carriers (modal choice
