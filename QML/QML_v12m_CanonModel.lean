@@ -16,7 +16,7 @@ evaluation laws.
 
 namespace V12M
 
-variable [ModalSys] [ModalSys.NoTStrong]
+variable [ModalSys]
 
 namespace Canon
 
@@ -61,7 +61,6 @@ def fromDom : (A : VarType) → (w : World σ N₀) → (frame w₀).Dom A w →
   | .VTypeDia A, w, d =>
       (d : {o : RDom (.VTypeDia A) w // Definable (.VTypeDia A) w o}).1
 
-omit [ModalSys.NoTStrong] in
 theorem definable_fromDom : ∀ (A : VarType) (w : World σ N₀) (d : (frame w₀).Dom A w),
     Definable A w (fromDom w₀ A w d)
   | .Var, _, d => definable_var d
@@ -72,7 +71,6 @@ theorem definable_fromDom : ∀ (A : VarType) (w : World σ N₀) (d : (frame w�
   | .VTypeBox A, w, d => (d : {o : RDom (.VTypeBox A) w // Definable (.VTypeBox A) w o}).2
   | .VTypeDia A, w, d => (d : {o : RDom (.VTypeDia A) w // Definable (.VTypeDia A) w o}).2
 
-omit [ModalSys.NoTStrong] in
 theorem fromDom_toDom : ∀ (A : VarType) (w : World σ N₀) (o : RDom A w) (h : Definable A w o),
     fromDom w₀ A w (toDom w₀ A w o h) = o
   | .Var, _, _, _ => rfl
@@ -82,7 +80,6 @@ theorem fromDom_toDom : ∀ (A : VarType) (w : World σ N₀) (o : RDom A w) (h 
   | .VTypeBox _, _, _, _ => rfl
   | .VTypeDia _, _, _, _ => rfl
 
-omit [ModalSys.NoTStrong] in
 theorem toDom_fromDom : ∀ (A : VarType) (w : World σ N₀) (d : (frame w₀).Dom A w),
     toDom w₀ A w (fromDom w₀ A w d) (definable_fromDom w₀ A w d) = d
   | .Var, _, _ => rfl
@@ -93,12 +90,10 @@ theorem toDom_fromDom : ∀ (A : VarType) (w : World σ N₀) (d : (frame w₀).
   | .VTypeBox _, _, _ => rfl
   | .VTypeDia _, _, _ => rfl
 
-omit [ModalSys.NoTStrong] in
 theorem toDom_inj {A : VarType} {w : World σ N₀} {o o' : RDom A w} {h : Definable A w o}
     {h' : Definable A w o'} (e : toDom w₀ A w o h = toDom w₀ A w o' h') : o = o' := by
   rw [← fromDom_toDom w₀ A w o h, ← fromDom_toDom w₀ A w o' h', e]
 
-omit [ModalSys.NoTStrong] in
 theorem toDom_congr {A : VarType} {w : World σ N₀} {o o' : RDom A w} (e : o = o')
     (h : Definable A w o) (h' : Definable A w o') : toDom w₀ A w o h = toDom w₀ A w o' h' := by
   subst e
@@ -114,7 +109,6 @@ def posEval {A : VarType} {w : World σ N₀} (p : (frame w₀).Pos A w) :
     (frame w₀).PosSec A w :=
   ⟨p.1.1, fun w' => toDom w₀ A w'.1.1 (p.1.2 w') (definable_dia_apply p.2 w')⟩
 
-omit [ModalSys.NoTStrong] in
 theorem necEval_injective {A : VarType} {w : World σ N₀} :
     Function.Injective (necEval w₀ (A := A) (w := w)) := by
   intro n n' h
@@ -122,7 +116,6 @@ theorem necEval_injective {A : VarType} {w : World σ N₀} :
   funext w'
   exact toDom_inj w₀ (congrFun h w')
 
-omit [ModalSys.NoTStrong] in
 theorem posEval_injective {A : VarType} {w : World σ N₀} :
     Function.Injective (posEval w₀ (A := A) (w := w)) := by
   rintro ⟨⟨E, c⟩, hp⟩ ⟨⟨E', c'⟩, hp'⟩ h
@@ -148,7 +141,6 @@ noncomputable def ops : (frame w₀).Ops where
     toDom w₀ _ _ (rawEval (.extract hT) _ n.1) (definable_rawEval (.extract hT) n.2)
   necDup hF n := ⟨rawEval (.dup hF) _ n.1, definable_rawEval (.dup hF) n.2⟩
 
-omit [ModalSys.NoTStrong] in
 /-- ⭐Evaluating a map on a frame object is evaluating it on the raw object. -/
 theorem eval_toDom : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀) (o : RDom A w)
     (h : Definable A w o),
@@ -173,7 +165,6 @@ theorem eval_toDom : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀) 
 
 /-! ## Strong T: every object is the content of a possible object here -/
 
-omit [ModalSys.NoTStrong] in
 /-- ⭐Every object of a domain is the content, at the world itself, of a possible object: the
     witness the world realises by a term denoting it.  The possible object is that witness's
     η-expansion; `self_mem_extent` puts the world in its extent and `rden_eta_of_real` says its

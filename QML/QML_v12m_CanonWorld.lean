@@ -39,14 +39,6 @@ end Canon
 
 variable [ModalSys]
 
-/-- For now the canonical model covers the systems without strong T. -/
-class ModalSys.NoTStrong : Prop where
-  noTStrong : ModalSys.TStrong = false
-
-theorem ModalSys.NoTStrong.absurd [ModalSys.NoTStrong] (hS : ModalSys.TStrong = true) : False := by
-  rw [ModalSys.NoTStrong.noTStrong] at hS
-  cases hS
-
 theorem CtxExpr.noProjLast : ∀ e : CtxExpr, e.denote.NoProjLast
   | .empty => fun _ _ h => by simp [CtxExpr.denote, Ctx.empty] at h
   | .insertFree e _ T => (CtxExpr.noProjLast e).insert _ T
@@ -240,9 +232,19 @@ theorem data_of_real {c : ℕ} {d : RealDatum σ w.L w.T c} (hsome : w.real c = 
   simp only [realAt_of_real hsome]
   rfl
 
-/-- Without strong T nothing is realised, so the extent has only proper successors. -/
-def Realised.elim [ModalSys.NoTStrong] {x : VarSymb} {α : Sort*} (h : w.Realised x) : α :=
-  (ModalSys.NoTStrong.absurd h.TStrong).elim
+/-- ⭐Conversely, a realised address carries the datum the world names at its root.  This is what
+    lets a proof forget the address and work with the world's own naming, where the datum is a
+    variable and the equations can be `subst`ed. -/
+theorem real_of_realised {x : VarSymb} (h : w.Realised x) :
+    w.real h.data.c = some h.data.datum := by
+  match x with
+  | .root (.free c) =>
+      rcases hc : w.real c with _ | d
+      · exact absurd h (by simp [Realised, realAt, hc])
+      · exact Eq.mpr (congrArg (fun D : w.RealData (.root (.free c)) => w.real D.c = some D.datum)
+          (data_of_real hc)) hc
+  | .root (.bnd _) => exact absurd h (by simp [Realised, realAt])
+  | .step _ _ => exact absurd h (by simp [Realised, realAt])
 
 end World
 

@@ -1106,13 +1106,13 @@ theorem rden_realisedTerm_eta_sigma {w : World σ N₀} {x : VarSymb} (hr : w.Re
 
 /-- ⭐The content, at the world itself, of the possible object a realised witness names: what its
     realising term denotes.  Stated in terms of the world's own choice. -/
-theorem rden_eta_realised {w : World σ N₀} {c : ℕ} (hr : w.Realised (.root (.free c)))
-    {k : ℕ × ℕ} (hdecl : (w.L.ctx k).ref (.root (.free c)) = some (.VTypeDia hr.data.A)) :
-    (rden w k (Ctx.Le.refl _) (Term.eta (.root (.free c)) (.VTypeDia hr.data.A) hdecl)).2
+theorem rden_eta_realised {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
+    {k : ℕ × ℕ} (hdecl : (w.L.ctx k).ref x = some (.VTypeDia hr.data.A)) :
+    (rden w k (Ctx.Le.refl _) (Term.eta x (.VTypeDia hr.data.A) hdecl)).2
         ⟨⟨w, R.refl hr.T w⟩, self_mem_extent hr⟩ =
       rden w hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀ :=
   (rden_diatm_self (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩
-    (Term.eta (.step (.root (.free c)) .dia) hr.data.A (Ctx.ref_diaIn_of hdecl))
+    (Term.eta (.step x .dia) hr.data.A (Ctx.ref_diaIn_of hdecl))
     ⟨⟨w, R.refl hr.T w⟩, self_mem_extent hr⟩ (Nat.sub_self _)).trans
     (rden_realisedTerm_eta hr (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩ (Ctx.ref_diaIn_of hdecl))
 

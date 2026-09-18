@@ -1,12 +1,11 @@
 # QML v12: modal extensions (design)
 
-Status: 2026-09-17. **Weak T and weak 4 are implemented**, with soundness and completeness for
-every combination (K, T, 4, and T + 4 = S4); files `QML/QML_v12m_*.lean`, namespace `V12M`.
-**Strong T is implemented through soundness and substitution**: the flag, the model axiom, the rule
-`T_dia`, its soundness case and substitution into it are all sorry-free, and `QML_v12m_*` as a whole
-contains no `sorry`. Its canonical model is not started, so completeness does not yet cover strong T
-(`ModalSys.NoTStrong` is still assumed there). Everything else is design. Claims marked *(sketch)*
-come from paper arguments that have not been checked in Lean.
+Status: 2026-09-18. **Weak T, weak 4 and strong T are implemented**, with soundness *and*
+completeness for every combination of the flags; files `QML/QML_v12m_*.lean`, namespace `V12M`.
+`V12M.completeness` and `V12M.provable_iff_valid` now hold under a bare `[ModalSys]`: the scaffold
+`ModalSys.NoTStrong` has been **removed**, and `QML_v12m_*` as a whole contains no `sorry` and
+builds without warnings. Everything else is design. Claims marked *(sketch)* come from paper
+arguments that have not been checked in Lean.
 
 ## 1. Goals and constraints
 
@@ -186,8 +185,9 @@ content of a possible object.
     against `(θ.box.mono _).set (.bnd 0) (.ren (c'.dia))`, the two `Subst.Sim` obligations going
     through `dia_eq_box_mono` (with `at_eq_mono_of` plus freshness of `c` relating `θ.rename`'s
     entries to `θ`'s) and `under_eq_mono` respectively.
-  - *Canonical model: barely started.* `ModalSys.NoTStrong` is still assumed in `QML_v12m_Canon*`
-    and `QML_v12m_Completeness`. **`posRet_exists` is currently false there**, not merely unproved:
+  - *Canonical model: **done** (2026-09-18); `ModalSys.NoTStrong` is gone.* What follows records
+    why it was needed. **`posRet_exists` was false in the original canonical model**, not merely
+    unproved:
     every definable possible object has extent `extent w x`, which requires
     `w'.depth = w.depth + 1`, so no extent contains the self-successor. Admitting it needs a
     *content* at `w`, and neither the syntax nor the theory determines one — the axioms
@@ -433,20 +433,40 @@ content of a possible object.
     `rden_eta_of_real` is the form callers use. Worth remembering as the general move: to cross an
     equation that sits in dependent positions, bind the thing as a variable in a lemma and `subst`
     it there.
-  - *Then*: drop `ModalSys.NoTStrong`. What is still behind it is exactly `interp_canon`'s realised
-    case and the truth lemma's `◇` case at the world itself; everything else in `QML_v12m_CanonTerm`
-    is already marked `omit`, so it is independent of the flag. Two things to know before starting.
-    **(i) The recursion must be decomposed semantically first.** Recursing directly at the realised
-    term `realisedTerm … t` does *not* decrease in (own stage, size): that term lives at stage
-    `i ⊔ i₀`, whose own component is `i.2` again (since `hstage` gives `i₀.2 < i.2`), and it is
-    larger than `t`. The realised case has to go through `Model.interp_realiseAt`, which expresses
-    the reading at the world as the body `t` interpreted in the environment extended by the value of
-    `t₀`: then the two recursive calls are at `t₀` (own stage `i₀.2 < i.2`) and at `t` (same stage,
-    smaller), and the lexicographic measure works. **(ii) State the self-case lemmas at the self
-    element.** A lemma about an arbitrary successor `w'` with `w'.depth - w.depth = 0` puts the
-    content at `w'.1.1` where the caller wants `w`; the equation `w'.1.1 = w` then has to be carried
-    through a dependent position. Stating them at `⟨⟨w, R.refl …⟩, self_mem_extent hr⟩` avoids it —
-    the same move as the realisation API above.
+  - **⭐`ModalSys.NoTStrong` dropped (2026-09-18).** The class, `ModalSys.NoTStrong.absurd` and
+    `World.Realised.elim` are deleted; nothing in `QML_v12m_*` assumes the flag any more. What was
+    behind it was exactly two cases, and each needed the right measure.
+    - **The measure of the truth lemma for terms is `(i.2, VarType.tsize A, t.size)`** — own stage
+      first, then the type, then the size. The realised case of `.diatm x hx t` recurses twice: at
+      the realising term `dat.t₀`, of an *unrelated* type, justified only by `hstage`'s
+      `dat.i₀.2 < i.2`; and at the whole realisation `Term.realiseAt … (Term.mono … t)`, which is
+      far larger than `t` but has type `A`, one `tsize` below `◇A`, at stage `i ⊔ dat.i₀` whose own
+      component is `i.2` again. Entering a modality drops the own component to `0`
+      (`childStage i = (max i.1 i.2, 0)`), so those calls are covered by the first component
+      whenever `i.2 > 0` and by the type otherwise; `interp_box_far`'s `i.2 = 0` hypothesis is
+      what the checker uses there. `decreasing_by` needs `Prod.lex_def` and `true_and` in the simp
+      set before `omega`: `omega` treats an unreduced `Prod.Lex` — or a stray `True ∧ _` — as an
+      atom and fails with an unhelpful counterexample.
+    - **`interp_dia_self`** does the case, with both recursive calls taken as hypotheses (as
+      `interp_box_far` does). It goes through `Model.interp_realiseAt`, whose `hcont` obligation —
+      the witness's content at the world itself — is `rden_eta_of_real`, and whose conclusion is
+      matched to the goal by `Model.Env.diaPush_agree` against `canonEnv_le` (the canonical
+      environment is stage-independent). The address is a variable there, so the lemma takes the
+      datum's root `c`, the equation `x = .root (.free c)` and the `RealDatum` as *separate*
+      arguments: that makes `subst` legal, where `hr.data.hx` alone is circular (`hr.data.c`
+      mentions `x`). `World.real_of_realised` is what turns a `Realised` back into the world's
+      naming at the use site.
+    - **The truth lemma's `◇` case at the world itself** is `dia_mem_of_sat_self`: satisfaction in
+      the witness's view transfers to the realisation by `Model.sat_realiseAt`, the induction
+      hypothesis turns that into theoryhood, `RealDatum.spec` turns it into `◇_c`, and
+      `World.mem_mono_congr` brings the stage back down. This works only because **`WFF.size`
+      counts connectives and ignores terms**, so `WFF.size_realiseAt` gives
+      `(WFF.realiseAt … χ).size = χ.size` — the formula grows but its logical structure does not,
+      and the existing induction on size goes through untouched.
+    - **State the self-case lemmas at the self element.** A lemma about an arbitrary successor `w'`
+      with `w'.depth - w.depth = 0` puts the content at `w'.1.1` where the caller wants `w`; the
+      equation `w'.1.1 = w` then has to be carried through a dependent position. Stating them at
+      `⟨⟨w, R.refl …⟩, self_mem_extent hr⟩` avoids it — the same move as the realisation API above.
   - *Rejected: reaching later stages by induction on the stage.* Take `spec` at stage `j` for
     `∀z. χ[ρ_j := z]` and eliminate the `∀` inside the `◇_c` view by monotonicity. Unsound: the
     premise needs `realiseAt (∀z. χ[z])` from `realiseAt χ[ρ_j]`, i.e. generalisation on a Henkin
