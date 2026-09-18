@@ -452,6 +452,46 @@ noncomputable def chainReal (hS₀ : StageSys.Consistent S₀) (c : ℕ) :
       retDatum h.choose_spec.1.1.1 h.choose_spec.1.1.2 h.choose_spec.1.2 hS₀)
   else none
 
+
+/-! ## Every term is realised -/
+
+omit [Countable σ.RelSyms] in
+/-- The term enumeration does not depend on how the list of own types is written (the mirror of
+    `enumF_mono_congr`). -/
+theorem enumT_mono_congr (m k : ℕ) {X : Ctx} :
+    ∀ {l l' : List VarType} (_ : l = l') (h : (L.ctxL m l).Le X) (h' : (L.ctxL m l').Le X),
+      (⟨_, _, Term.mono h (enumT (σ := σ) (L.ctxL m l) k).2.2⟩ :
+          Σ A : VarType, Σ a : Ann A, Term σ X A a) =
+        ⟨_, _, Term.mono h' (enumT (σ := σ) (L.ctxL m l') k).2.2⟩
+  | _, _, rfl, _, _ => rfl
+
+/-- The term read at step `n` is the enumerated term at its own stage, lifted (the mirror of
+    `query_chain`). -/
+theorem termQ_chain (S₀ : Set ((L.pre []).Sentence σ)) (n : ℕ)
+    (h₀ : (L.ctxL (decM n) (L.chain S₀ (decJ n)).l).Le (L.ctxL (decM n) (L.chain S₀ n).l)) :
+    L.termQ (σ := σ) n (L.chain S₀ n).l =
+      ⟨_, _, Term.mono h₀
+        (enumT (σ := σ) (L.ctxL (decM n) (L.chain S₀ (decJ n)).l) (decKT n)).2.2⟩ :=
+  enumT_mono_congr (decM n) (decKT n) (drop_chain S₀ (decJ_le n)) _ _
+
+/-- A step whose formula is `⊤` declares a strong T witness: neither `⊤` nor its negation calls
+    for a witness of its own. -/
+theorem isRet_of_top {n : ℕ}
+    (htop : enumF (σ := σ) (L.ctxL (decM n) (L.chain S₀ (decJ n)).l) (decKF n) = .top) :
+    IsRet L S₀ n := by
+  have hq : L.query (σ := σ) n (L.chain S₀ n).l = .top := by
+    rw [query_chain S₀ n (chain_le S₀ (decJ_le n) (decM n)), htop]
+    rfl
+  refine ⟨fun A ψ => ?_, fun A ψ => ?_⟩ <;>
+    rcases choice_cases (L := L) n (L.chain S₀ n) with hc | hc <;> rw [hc, hq]
+  · exact fun h => by cases h
+  · exact fun h => by cases h
+  · exact fun h => by cases h
+  · intro h
+    injection h
+    rename_i h₁ h₂ h₃
+    cases h₂
+
 end Chain
 
 end WorldLang
