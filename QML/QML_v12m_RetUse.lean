@@ -172,6 +172,67 @@ theorem WFF.instantiate_mono_retBody {σ : Signature} {Γ Δ : Ctx}
     exact WFF.subst_diaViewRead (Subst.paramS y s) hok hcoh Ctx.NoSlots.slots Ctx.NoSlots.slots
       hcy hcΔ A ψ
 
+/-! ## Weakening the pieces -/
+
+/-- Abstracting a view formula commutes with weakening (the `WFF` mirror of
+    `Term.mono_diaAbs`). -/
+theorem WFF.mono_diaAbs {σ : Signature} {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] {c : ℕ}
+    {A : VarType} (h : Γ.Le Γ')
+    (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
+    (hcA' : Γ'.ref (.root (.free c)) = some (.VTypeDia A))
+    (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
+    (hfr' : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ' v = none)
+    (χ : WFF σ (Γ.diaIn (.root (.free c))) 0) :
+    WFF.mono (h.boxIn.insert (.bnd 0) A) (WFF.diaAbs c hcA hfr χ) =
+      WFF.diaAbs c hcA' hfr' (WFF.mono (h.diaIn (.root (.free c))) χ) := by
+  unfold WFF.diaAbs
+  rw [WFF.mono_subst, WFF.subst_mono]
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ ?_ χ
+  refine Subst.sim_of ?_
+  intro v U _ _
+  match v with
+  | .step u .dia =>
+      change SubE.Sim U (SubE.mono _ (if u = .root (.free c) then SubE.ren (.root (.bnd 0))
+        else .hide)) (if u = .root (.free c) then SubE.ren (.root (.bnd 0)) else .hide)
+      by_cases hu : u = .root (.free c)
+      · simp only [if_pos hu]
+        exact .refl _
+      · simp only [if_neg hu]
+        exact .refl _
+  | .step _ .box => exact .refl _
+  | .step _ .keep => exact .refl _
+  | .root _ => exact .refl _
+  | .step _ .fst => exact .refl _
+  | .step _ .snd => exact .refl _
+  | .step _ .here => exact .refl _
+
+/-- ⭐Realisation commutes with weakening. -/
+theorem WFF.mono_realiseAt {σ : Signature} {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots]
+    (hT : ModalSys.T = true) {c : ℕ} {A : VarType} (h : Γ.Le Γ')
+    (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
+    (hcA' : Γ'.ref (.root (.free c)) = some (.VTypeDia A))
+    (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
+    (hfr' : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ' v = none)
+    {a₀ : Ann A} (t₀ : Term σ Γ A a₀) (χ : WFF σ (Γ.diaIn (.root (.free c))) 0) :
+    WFF.mono h (WFF.realiseAt hT c hcA hfr t₀ χ) =
+      WFF.realiseAt hT c hcA' hfr' (Term.mono h t₀) (WFF.mono (h.diaIn (.root (.free c))) χ) := by
+  unfold WFF.realiseAt
+  rw [WFF.mono_hereRead hT h t₀ (WFF.diaAbs c hcA hfr χ),
+    WFF.mono_diaAbs h hcA hcA' hfr hfr' χ]
+
+/-- The tuple of the packed roots commutes with weakening. -/
+theorem Term.mono_tuple {σ : Signature} {Γ Γ' : Ctx} (h : Γ.Le Γ') :
+    ∀ (zs : List (VarType × ℕ)) (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1)
+      (hz' : ∀ z ∈ zs, Γ'.ref (.root (.free z.2)) = some z.1),
+      Term.mono h (Term.tuple (σ := σ) zs hz) = Term.tuple zs hz'
+  | [], _, _ => rfl
+  | z :: zs, hz, hz' => by
+      change Term.pair (Term.mono h (Term.eta _ z.1 _)) (Term.mono h (Term.tuple zs _)) =
+        Term.pair (Term.eta _ z.1 _) (Term.tuple zs _)
+      rw [Term.mono_eta h _ z.1 _,
+        Term.mono_tuple h zs (fun z' hz'' => hz z' (List.mem_cons_of_mem _ hz''))
+          (fun z' hz'' => hz' z' (List.mem_cons_of_mem _ hz''))]
+
 /-! ## The instance a realised witness needs -/
 
 section Instance

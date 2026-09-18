@@ -102,6 +102,112 @@ theorem stageSkip_cases : ∀ (j : ℕ) {v : VarSymb} {T : VarType},
           · exact Or.inl h'
           · exact Or.inr ⟨k, Nat.lt_succ_of_lt hk, hkn, hv', hT⟩
 
+omit [ModalSys] in
+/-- Own names from `j` on are fresh in the skipped stage. -/
+theorem stageSkip_fresh (hρ : Function.Injective ρ) (hB : ∀ p, B.RootFresh (.free (ρ p))) :
+    ∀ {j k : ℕ}, j ≤ k → (B.stageSkip τ ρ n j).RootFresh (.free (ρ k))
+  | 0, _, _ => hB _
+  | j + 1, k, h => by
+    intro v hv
+    by_cases hj : j = n
+    · rw [show B.stageSkip τ ρ n (j + 1) = B.stageSkip τ ρ n j from if_pos hj]
+      exact stageSkip_fresh hρ hB (by omega) v hv
+    · rw [show B.stageSkip τ ρ n (j + 1) =
+        (B.stageSkip τ ρ n j).insert (.free (ρ j)) (τ j) from if_neg hj]
+      change (if v = .root (.free (ρ j)) then some (τ j) else _) = none
+      rw [if_neg (fun he => by
+        subst he
+        exact absurd (hρ (Root.free.inj hv)) (by omega))]
+      exact stageSkip_fresh hρ hB (by omega) v hv
+
+/-- A variable other than the skipped one is reachable in the skipped stage at its own type. -/
+theorem stageSkip_ref_root (hρ : Function.Injective ρ) (hB : ∀ p, B.RootFresh (.free (ρ p)))
+    {k : ℕ} : ∀ {j : ℕ}, k < j → k ≠ n →
+      (B.stageSkip τ ρ n j).ref (.root (.free (ρ k))) = some (τ k)
+  | j + 1, h, hkn => by
+      by_cases hj : j = n
+      · rw [show B.stageSkip τ ρ n (j + 1) = B.stageSkip τ ρ n j from if_pos hj]
+        exact stageSkip_ref_root hρ hB (by omega) hkn
+      · rw [show B.stageSkip τ ρ n (j + 1) =
+          (B.stageSkip τ ρ n j).insert (.free (ρ j)) (τ j) from if_neg hj]
+        change (if (VarSymb.root (.free (ρ k))) = .root (.free (ρ j)) then some (τ j)
+          else (B.stageSkip τ ρ n j) (.root (.free (ρ k)))) = _
+        by_cases hkj : k = j
+        · subst hkj
+          rw [if_pos rfl]
+        · rw [if_neg (fun he => hkj (hρ (Root.free.inj (VarSymb.root.inj he))))]
+          exact stageSkip_ref_root hρ hB (by omega) hkn
+
+omit [ModalSys] in
+/-- Nothing else is written at an own root of the skipped stage. -/
+theorem stageSkip_only_root (hρ : Function.Injective ρ) (hB : ∀ p, B.RootFresh (.free (ρ p)))
+    {k : ℕ} : ∀ (j : ℕ) (v : VarSymb), v.rt = .free (ρ k) → v ≠ .root (.free (ρ k)) →
+      (B.stageSkip τ ρ n j) v = none
+  | 0, v, hv, _ => hB k v hv
+  | j + 1, v, hv, hne => by
+      by_cases hj : j = n
+      · rw [show B.stageSkip τ ρ n (j + 1) = B.stageSkip τ ρ n j from if_pos hj]
+        exact stageSkip_only_root hρ hB j v hv hne
+      · rw [show B.stageSkip τ ρ n (j + 1) =
+          (B.stageSkip τ ρ n j).insert (.free (ρ j)) (τ j) from if_neg hj]
+        change (if v = .root (.free (ρ j)) then some (τ j) else _) = none
+        rw [if_neg ?_]
+        · exact stageSkip_only_root hρ hB j v hv hne
+        · intro he
+          subst he
+          exact hne (congrArg (fun r => VarSymb.root (Root.free r)) (Root.free.inj hv))
+
+omit [ModalSys] in
+/-- The skipped variable itself is fresh in the skipped stage. -/
+theorem stageSkip_fresh_skipped (hρ : Function.Injective ρ) (hB : ∀ p, B.RootFresh (.free (ρ p))) :
+    ∀ (j : ℕ), (B.stageSkip τ ρ n j).RootFresh (.free (ρ n))
+  | 0 => hB n
+  | j + 1 => by
+      by_cases hj : j = n
+      · rw [show B.stageSkip τ ρ n (j + 1) = B.stageSkip τ ρ n j from if_pos hj]
+        exact stageSkip_fresh_skipped hρ hB j
+      · rw [show B.stageSkip τ ρ n (j + 1) =
+          (B.stageSkip τ ρ n j).insert (.free (ρ j)) (τ j) from if_neg hj]
+        intro v hv
+        change (if v = .root (.free (ρ j)) then some (τ j) else _) = none
+        rw [if_neg (fun he => by subst he; exact hj (hρ (Root.free.inj hv)))]
+        exact stageSkip_fresh_skipped hρ hB j v hv
+
+omit [ModalSys] in
+/-- The skipped stage has no slots. -/
+theorem stageSkip_slots (hB : B.SlotsFrom 0) : ∀ j, (B.stageSkip τ ρ n j).SlotsFrom 0
+  | 0 => hB
+  | j + 1 => by
+      by_cases hj : j = n
+      · rw [show B.stageSkip τ ρ n (j + 1) = B.stageSkip τ ρ n j from if_pos hj]
+        exact stageSkip_slots hB j
+      · rw [show B.stageSkip τ ρ n (j + 1) =
+          (B.stageSkip τ ρ n j).insert (.free (ρ j)) (τ j) from if_neg hj]
+        exact (stageSkip_slots hB j).insertFree (ρ j) (τ j)
+
+omit [ModalSys] in
+/-- The stage at the witness embeds in every later skipped stage. -/
+theorem stage_le_stageSkip (hρ : Function.Injective ρ) (hB : ∀ p, B.RootFresh (.free (ρ p))) :
+    ∀ {j : ℕ}, n ≤ j → (B.stage τ ρ n).Le (B.stageSkip τ ρ n j)
+  | 0, h => by
+      have hn : n = 0 := Nat.le_zero.mp h
+      subst hn
+      exact Ctx.Le.refl _
+  | j + 1, h => by
+      rcases Nat.lt_or_ge n (j + 1) with hn | hn
+      · have hnj : n ≤ j := by omega
+        by_cases hj : j = n
+        · rw [show B.stageSkip τ ρ n (j + 1) = B.stageSkip τ ρ n j from if_pos hj]
+          exact stage_le_stageSkip hρ hB hnj
+        · rw [show B.stageSkip τ ρ n (j + 1) =
+            (B.stageSkip τ ρ n j).insert (.free (ρ j)) (τ j) from if_neg hj]
+          exact (stage_le_stageSkip hρ hB hnj).trans
+            (Ctx.le_insert (stageSkip_fresh hρ hB (le_refl j)).root (τ j))
+      · have hn' : n = j + 1 := by omega
+        subst hn'
+        rw [stageSkip_le (le_refl _)]
+        exact Ctx.Le.refl _
+
 end Ctx
 
 end V12M
