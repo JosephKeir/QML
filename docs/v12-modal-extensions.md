@@ -153,10 +153,33 @@ content of a possible object.
   automatic in full models and a real condition otherwise) and (ii) seriality proper; at `A = 𝟙`
   the content is trivial and (i) collapses, leaving exactly the axiom above. Verdict: keep strong D
   as the pure existential, and record the map as a **separate candidate flag** on the comprehension
-  axis. If it is taken up, state it existentially and schematically —
-  `□φ ⊢ ∃x:◇A. ◇_x(φ↑ ∧ x.dia = u.box)`, which subsumes strong D at `φ := ⊤`, `A := 𝟙` — and **not**
-  as a term former `u ↦ u↓ : □A → ◇A`, which would need new cases in `Term.mono`, `collapse`,
-  `shift`, `subst`, `rden`, `interp`, `size` and every congruence lemma (§2a).
+  axis. If it is taken up, state it as the **graph of the map and nothing else** — no formula
+  parameter and no conjunct:
+
+  ```
+  ⊢ ∀u:□A. ∃x:◇A. ◇_x (x.dia = u.box)
+  ```
+
+  Closed, so substitution-closure is nearly free. Three things follow.
+  - **It degenerates to strong D.** `eqRec` at `VTypeOne` is `.top` (`QML_v12m_WFF`), so at
+    `A = 𝟙` the body *is* `◇_x ⊤` and the axiom is definitionally `⊢ ∃x:◇𝟙. ◇_x ⊤`. The graph of
+    the map at the trivial type is bare seriality — the sense in which "strong D is a `Nec → Pos`
+    map" was right.
+  - **The schematic form is derivable, off one witness.** `K_dia` at `x` with
+    `ψ := (x.dia = u.box)`, `Δ₁ := [φ(u.box)]` has premise `x.dia = u.box, φ(u.box)↑ ⊢ φ(x.dia)`,
+    which is Leibniz at `A` (`QML_v12m_Leibniz*`; vacuous at `𝟙`). So
+    `□φ(u.box) ⊢ ∃x:◇A. ◇_x φ(x.dia)` for **every** `φ`, from the same `x`.
+  - *Rejected: the schematic form as the axiom* (`□φ(u.box) ⊢ ∃x:◇A. ◇_x φ(x.dia)`, the shape
+    `T_dia` has). Strictly weaker: it constrains the content only through view-expressible `φ`, and
+    binds `x` *per formula*, so different `φ` may get different witnesses. That is the "several
+    witnesses cannot be linked jointly" failure mode already recorded for ◇-BF (§3), and it defeats
+    the only reason to want this flag, which is to bridge the link problems. The equation is
+    available here although it is **not** available for strong T: `u.box` lives in
+    `Γ.boxIn ⊆ Γ.diaIn x` (`Ctx.le_boxIn_diaIn`), so it is visible inside the view, whereas strong
+    T's `t` lives at `Γ` and is invisible in `Γ.diaIn c` — which is exactly why `T_dia` must be
+    schematic and go through `realiseAt`'s substitution instead.
+  - **Not** as a term former `u ↦ u↓ : □A → ◇A`, which would need new cases in `Term.mono`,
+    `collapse`, `shift`, `subst`, `rden`, `interp`, `size` and every congruence lemma (§2a).
 
 ### T (reflexivity)
 - Frame: `w R w`.
