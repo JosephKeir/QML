@@ -418,16 +418,21 @@ content of a possible object.
     realised witness's content off its own η-expansion, at the world itself, gives what the
     realising term denotes. Like the other `realisedTerm` lemmas it is stated purely in terms of
     `hr.data`.
-  - *The gap in `posRet_exists`, and how to close it.* The pieces are all there — the possible
-    object is the witness's η-expansion, `self_mem_extent` puts the world in its extent,
-    `rden_diatm_self` and `rden_realisedTerm_eta` compute the content — but the *world's chosen*
-    datum `hr.data` is only **propositionally** the datum a construction hands over (`w.real c =
-    some d` is a hypothesis, so `Option.get` does not reduce). Every use of it inside `realisedTerm`
-    is therefore a dependent position, and `rw`/`simp` cannot carry the identification through: the
-    type of the content is `hr.data.A` where the goal wants `A`. Fighting this at the use site does
-    not work. The fix is an API: from `w.real c = some d`, prove *once* a package of equations about
-    the world's realisation at that root — including the `rden`-level statement with the type given
-    separately — so the caller never has to rewrite under `realisedTerm`.
+  - **⭐`posRet_exists` (2026-09-18).** `posRet_exists_canon`: the possible object is the witness
+    the world realises by a term denoting the given object, `self_mem_extent` puts the world in its
+    extent, and its content there is what the realising term denotes. The canonical model proves
+    the field instead of discharging it from `ModalSys.NoTStrong`.
+  - **The API that made it work.** The world's chosen datum `hr.data` is only *propositionally* the
+    datum a construction hands over — `w.real c = some d` is a hypothesis, so `Option.get` does not
+    reduce — and every use of it inside `realisedTerm` is a dependent position that neither `rw` nor
+    `simp` can carry the identification through (the content's type is `hr.data.A` where the goal
+    wants `A`). Fighting that at the use site does not work. Instead: `World.realAt_of_real`,
+    `realised_of_real`, `data_of_real` read off what a world names at a root; `rden_eta_realised`
+    states the content purely in terms of `hr.data`; and `rden_eta_realised_of_eq` takes the datum
+    as a **variable** with an equation, which turns the identification into a `subst`.
+    `rden_eta_of_real` is the form callers use. Worth remembering as the general move: to cross an
+    equation that sits in dependent positions, bind the thing as a variable in a lemma and `subst`
+    it there.
   - *Then*: drop `ModalSys.NoTStrong`, at which point `interp_canon`'s realised case,
     `diaPush_agree_canon` and the truth lemma's `◇` case need their real proofs, on the
     lexicographic (own stage, term size) measure.
