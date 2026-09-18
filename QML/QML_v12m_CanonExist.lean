@@ -1,4 +1,5 @@
 import QML.QML_v12m_CanonTerm
+import QML.QML_v12m_HenkinRet
 
 /-!
 # QML v12m — the canonical model: existence of successors
@@ -58,7 +59,7 @@ noncomputable def ofHenkin (d : ℕ) (L₀ : WorldLang) (hρ : ∀ n, L₀.ρ n 
   mcs := WorldLang.finalT_isMCS hS₀
   exW := WorldLang.finalT_ex_witness hS₀
   allW := WorldLang.finalT_all_witness
-  real := fun _ => none
+  real := L₀.chainReal hS₀
 
 end World
 

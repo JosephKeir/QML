@@ -407,6 +407,51 @@ theorem hhyp_of_isRet (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) {
     ?_ hEq' _ hψle).symm
   rw [Term.mono_mono, Term.mono_mono]
 
+
+/-! ## The realisation a strong T step provides -/
+
+/-- ⭐The witness declared at a strong T step is a realised one: the term it was declared for is
+    its realisation. -/
+noncomputable def retDatum (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) {n : ℕ}
+    (hret : IsRet L S₀ n) (hS₀ : StageSys.Consistent S₀) :
+    Canon.RealDatum σ (L.final S₀) (L.finalT S₀) (L.ρ n) where
+  hT := hT
+  hS := hTS
+  A := (L.termQ (σ := σ) n (L.chain S₀ n).l).1
+  i₀ := (decM n, n)
+  a₀ := (L.termQ (σ := σ) n (L.chain S₀ n).l).2.1
+  t₀ := Term.mono (Ctx.le_of_eq (ctxL_eq_final S₀ (decM n) n))
+    (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2
+  hdecl := fun i hlt => by
+    obtain ⟨m, j⟩ := i
+    exact (finalτ_of_isRet hT hTS hret) ▸ ref_wit hlt
+  hfr := fun i => by
+    obtain ⟨m, j⟩ := i
+    exact fr_wit (F := L.final S₀) (n := n) (m := m) (j := j)
+  hstage := fun i hi => by
+    obtain ⟨m, j⟩ := i
+    by_contra hle
+    obtain ⟨Y, hY⟩ := hi
+    have hnone : ((L.final S₀).ctx (m, j)).ref (.root (.free (L.ρ n))) = none := by
+      rw [Ctx.ref_nonproj _ (show (VarSymb.root (Root.free (L.ρ n))).lastProj = false from rfl)]
+      exact (L.final S₀).fresh_ctx (Nat.le_of_not_lt hle) _ rfl
+    rw [hnone] at hY
+    cases hY
+  spec := fun i hi hlt χ hmem =>
+    spec_of_retHyps (WorldLang.finalT_isMCS hS₀) hT (finalτ_of_isRet hT hTS hret) _
+      (hhyp_of_isRet hT hTS hret) hi hlt χ hmem
+
+open Classical in
+/-- ⭐The realisation the finished language names at each of its roots: the one the chain's strong
+    T step for that constant provides, if it made one.  The name determines the step (`ρ` is
+    injective), so this is a choice in name only. -/
+noncomputable def chainReal (hS₀ : StageSys.Consistent S₀) (c : ℕ) :
+    Option (Canon.RealDatum σ (L.final S₀) (L.finalT S₀) c) :=
+  if h : ∃ n, ((ModalSys.T = true ∧ ModalSys.TStrong = true) ∧ IsRet L S₀ n) ∧ L.ρ n = c then
+    some (h.choose_spec.2 ▸
+      retDatum h.choose_spec.1.1.1 h.choose_spec.1.1.2 h.choose_spec.1.2 hS₀)
+  else none
+
 end Chain
 
 end WorldLang
