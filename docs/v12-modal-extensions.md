@@ -407,11 +407,18 @@ content of a possible object.
     world names at each root: the realisation of the step that declared that constant, if one did —
     a choice in name only, since `ρ` is injective. `World.ofHenkin` passes it. Without strong T the
     condition is unsatisfiable, so nothing is realised and the K/T/4/S4 proof is untouched.
-  - *Still to do for strong T's model*: `posRet_exists` — for a term `t`, pick a step that
-    enumerates it whose *formula* is neither an existential nor a negated universal (`⊤` will do,
-    under either polarity), so the step is a `retStep`; then drop `ModalSys.NoTStrong`, at which
-    point `interp_canon`'s realised case, `diaPush_agree_canon` and the truth lemma's `◇` case need
-    their real proofs, on the lexicographic (own stage, term size) measure.
+  - **Every term of a Henkin world is realised (2026-09-18).** `World.realW`: under T and strong T,
+    every term at every stage is the realising term of some root, with the datum the world names
+    there. `ofHenkin` supplies it — `exists_isRet_term` finds the step that enumerates the term and
+    reads `⊤`, which therefore declares a witness (`isRet_of_top`: neither `⊤` nor its negation
+    calls for a witness of its own), and `chainReal_ret` says that is what the world names there.
+    `Model.posRet_exists` now asks for weak T as well as strong T — which `Proof.T_dia` carries
+    anyway, and without which the chain declares no witnesses at all, so nothing would be realised.
+  - *Still to do for strong T's model*: `posRet_exists` itself, from `realW` — the possible object
+    is the witness's η-expansion, its extent contains the world (`self_mem_extent`) and its content
+    there is the realising term (`realiseAt_eta`); then drop `ModalSys.NoTStrong`, at which point
+    `interp_canon`'s realised case, `diaPush_agree_canon` and the truth lemma's `◇` case need their
+    real proofs, on the lexicographic (own stage, term size) measure.
   - *Rejected: reaching later stages by induction on the stage.* Take `spec` at stage `j` for
     `∀z. χ[ρ_j := z]` and eliminate the `∀` inside the `◇_c` view by monotonicity. Unsound: the
     premise needs `realiseAt (∀z. χ[z])` from `realiseAt χ[ρ_j]`, i.e. generalisation on a Henkin
