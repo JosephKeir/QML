@@ -368,6 +368,29 @@ content of a possible object.
     packing is a renaming (projections are level steps-free) `Subst.Coh` is automatic, and the
     composite is `Subst.Sim` to the identity — `SubE.proj` on a `pair` entry is the pair-β, and the
     residual `.tm (eta v)` versus `.ren v` is exactly `SubE.Sim.ren_eta`.
+  - **Using a hypothesis at a later stage (`QML_v12m_RetUse.lean`, 2026-09-18).** Once the
+    parameter is bound the name is gone, so a later stage may declare that name itself and the
+    instance may be taken at a term the declaring stage could not write
+    (`WFF.instantiate_mono_bindFree`). ⭐`WFF.instantiate_mono_retBody` then says what comes out of
+    weakening a hypothesis and instantiating its `∀`: the implication with the term substituted for
+    the parameter. Both readings keep their hole formula over the later context *without* the
+    witness, because the antecedent stays in the weakened form `WFF.retHyp` gives it —
+    `WFF.subst_mono_eq` with `Subst.sim_rename_mono` pulls the weakening out, and then
+    `WFF.subst_hereRead` and `WFF.subst_diaViewRead` handle a side each. The second applies only
+    because the parameter substitution *is* the rename that keeps the witness
+    (`Subst.single_eq_rename`). Specialised to the packing, ⭐`WFF.instantiate_mono_retBody_pack`
+    gives exactly `RealDatum.spec`'s implication `WFF.realiseAt … χ → ◇_c χ`, for an arbitrary `χ`
+    of the witness's view at an arbitrary later stage.
+  - **The witness must be declared outermost (`QML_v12m_StageSkip.lean`).** `WFF.subst_diaViewRead`
+    works in `Δ.insert c (◇A)`, and a world's contexts declare the witness in the middle. A context
+    is a function, so declarations commute: `Ctx.stage_eq_skip_insert` rewrites the stage as the
+    stage without the witness with the witness on top, and `Ctx.stageSkip_cases` gives what its raw
+    entries are, which is what the packing's side conditions ask for.
+  - *Still to do for strong T's model*: the chain's list of later constants and the three packing
+    side conditions; the `RealDatum` for each chain witness (`chainReal`), which `World.ofHenkin`
+    then names; `posRet_exists`; and then dropping `ModalSys.NoTStrong`, at which point
+    `interp_canon`'s realised case, `diaPush_agree_canon` and the truth lemma's `◇` case need their
+    real proofs, on the lexicographic (own stage, term size) measure.
   - *Rejected: reaching later stages by induction on the stage.* Take `spec` at stage `j` for
     `∀z. χ[ρ_j := z]` and eliminate the `∀` inside the `◇_c` view by monotonicity. Unsound: the
     premise needs `realiseAt (∀z. χ[z])` from `realiseAt χ[ρ_j]`, i.e. generalisation on a Henkin
