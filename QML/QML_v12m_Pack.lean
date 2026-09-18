@@ -270,6 +270,10 @@ theorem coh_tupleS (hy : Γ.RootFresh (.free y))
       (tupleS (σ := σ) y hz) :=
   coh_single (T := packType zs) (e := SubE.tm (Term.tuple zs hz)) hy (Ctx.Le.refl Γ) rfl
 
+theorem at_single_root {Δ : Ctx} (r : Root) (e : SubE σ Δ) : (single r e).at (.root r) = e := by
+  change (if (VarSymb.root r) = .root r then e else SubE.ren (.root r)) = _
+  exact if_pos rfl
+
 theorem at_tupleS_of_rt_ne (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1) {v : VarSymb}
     (h : v.rt ≠ .free y) : (tupleS (σ := σ) y hz).at v = .ren v := at_single_of_rt_ne h
 
@@ -327,6 +331,91 @@ theorem sim_pack_single (hy : Γ.RootFresh (.free y))
           exact .ren_eta _ _
 
 end Subst
+
+/-- ⭐The packing round trip one view in and under the hole — the form a `T_dia` hypothesis needs,
+    since its hole formula lives in the `□` view with a slot for the object. -/
+theorem WFF.subst_pack_single_view {σ : Signature} {Γ : Ctx} {y : ℕ} {zs : List (VarType × ℕ)}
+    (hy : Γ.RootFresh (.free y)) (hz : ∀ z ∈ zs, Γ.ref (.root (.free z.2)) = some z.1)
+    (honly : ∀ (v : VarSymb) (n : ℕ), v.rt = .free n → Subst.packOf zs n ≠ none →
+      v ≠ .root (.free n) → Γ v = none)
+    (hΓ : Γ.SlotsFrom 0) (hΔ : (Γ.insert (.free y) (Subst.packType zs)).SlotsFrom 0)
+    (A : VarType) (φ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
+    WFF.subst (VarSymb.shiftSlot (Subst.singleIdx (.free y) (.tm (Term.tuple zs hz))) 0 0)
+        ((Subst.tupleS y hz).box.under 0 0 A hΓ.boxIn.root)
+        (Subst.ok_under (Subst.ok_box (Subst.ok_tupleS hz)) A hΓ.boxIn.root)
+        (Subst.coh_under (Subst.ok_box (Subst.ok_tupleS hz))
+          (Subst.coh_box (Subst.ok_tupleS hz) (Subst.coh_tupleS hy hz)) hΔ.boxIn A hΓ.boxIn.root)
+        (hΔ.boxIn.insert A) (hΓ.boxIn.insert A)
+      (WFF.subst (VarSymb.shiftSlot (Subst.packIdx y zs) 0 0)
+        ((Subst.pack σ (Γ.insert (.free y) (Subst.packType zs)) y zs).box.under 0 0 A
+          hΔ.boxIn.root)
+        (Subst.ok_under (Subst.ok_box (Subst.ok_pack hy hz honly)) A hΔ.boxIn.root)
+        (Subst.coh_under (Subst.ok_box (Subst.ok_pack hy hz honly))
+          (Subst.coh_box (Subst.ok_pack hy hz honly) (Subst.coh_pack hy hz honly)) hΓ.boxIn A
+          hΔ.boxIn.root)
+        (hΓ.boxIn.insert A) (hΔ.boxIn.insert A) φ) = φ := by
+  refine (WFF.subst_comp _ _ ((Subst.idS σ Γ).box.under 0 0 A hΓ.boxIn.root) _ _ _ _
+    (Subst.ok_under (Subst.ok_box Subst.ok_idS) A hΓ.boxIn.root)
+    (Subst.coh_under (Subst.ok_box Subst.ok_idS)
+      (Subst.coh_box Subst.ok_idS Subst.coh_idS) hΓ.boxIn A hΓ.boxIn.root)
+    (hΓ.boxIn.insert A) (hΔ.boxIn.insert A) (hΓ.boxIn.insert A)
+    (Subst.sim_under_comp (Subst.ok_box (Subst.ok_pack hy hz honly))
+      (Subst.ok_box (Subst.ok_tupleS hz))
+      (Subst.coh_box (Subst.ok_tupleS hz) (Subst.coh_tupleS hy hz))
+      (Subst.sim_box_comp (Subst.ok_pack hy hz honly) (Subst.ok_tupleS hz)
+        (Subst.coh_tupleS hy hz) (Subst.sim_pack_single hy hz honly))
+      hΔ.boxIn A hΔ.boxIn.root hΓ.boxIn.root) φ).trans ?_
+  refine (WFF.subst_congr _ ((Subst.idS σ Γ.boxIn).under 0 0 A hΓ.boxIn.root) _
+    (Subst.ok_under Subst.ok_idS A hΓ.boxIn.root)
+    _ (Subst.coh_under Subst.ok_idS Subst.coh_idS hΓ.boxIn A hΓ.boxIn.root)
+    (hΓ.boxIn.insert A) (hΓ.boxIn.insert A)
+    (Subst.sim_under Subst.sim_box_idS A hΓ.boxIn.root) φ).trans ?_
+  refine (WFF.subst_congr _ (Subst.idS σ (Γ.boxIn.insert (.bnd 0) A)) _ Subst.ok_idS _
+    Subst.coh_idS (hΓ.boxIn.insert A) (hΓ.boxIn.insert A)
+    (Subst.sim_under_idS 0 A hΓ.boxIn.root) φ).trans ?_
+  exact WFF.subst_id Subst.ok_idS Subst.coh_idS (hΓ.boxIn.insert A) φ
+
+/-- ⭐Binding a free root, weakening to a larger context, and instantiating the bound slot at a
+    term there is just substituting that term for the root.  This is how a `∀`-quantified
+    hypothesis of an earlier stage is used at a later one: the parameter's name is gone once it is
+    bound, so the later stage may well declare it, and the instance may be taken at a term the
+    earlier stage could not write. -/
+theorem WFF.instantiate_mono_bindFree {σ : Signature} {Γ Δ : Ctx} {T : VarType} {a : Ann T}
+    (hle : Γ.Le Δ) (u : ℕ) (hu : Γ.RootFresh (.free u)) (hΓ : Γ.SlotsFrom 0) (hΔ : Δ.SlotsFrom 0)
+    (s : Term σ Δ T a) (φ : WFF σ (Γ.insert (.free u) T) 0) :
+    WFF.instantiate hΔ s (WFF.mono (hle.insert (.bnd 0) T) (WFF.bindFree u hu hΓ T φ)) =
+      WFF.subst (Subst.singleIdx (.free u) (.tm s)) (Subst.single (.free u) (.tm s))
+        (Subst.ok_single hle rfl) (Subst.coh_single hu hle rfl) (hΓ.insertFree u T) hΔ φ := by
+  refine (WFF.subst_mono (hle.insert (.bnd 0) T) (Subst.single (.bnd 0) (.tm s))
+    (Subst.ok_single (Ctx.Le.refl Δ) rfl)
+    (Subst.coh_single (hΔ.rootFresh le_rfl) (Ctx.Le.refl Δ) rfl) (hΓ.insert T) (hΔ.insert T) hΔ
+    (WFF.bindFree u hu hΓ T φ)).trans ?_
+  refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ φ
+  refine Subst.sim_of ?_
+  intro v U _ hv
+  by_cases hvu : v = .root (.free u)
+  · subst hvu
+    change SubE.Sim U (Subst.single (.free u) (SubE.tm s) (.root (.free u)))
+      ((Subst.single (.free u) (SubE.ren (.root (.bnd 0))) (.root (.free u))).comp _ _ _)
+    rw [show Subst.single (σ := σ) (Δ := Δ) (.free u) (SubE.tm s) (.root (.free u)) = .tm s from
+        if_pos rfl,
+      show Subst.single (σ := σ) (Δ := Γ.insert (.bnd 0) T) (.free u) (SubE.ren (.root (.bnd 0)))
+          (.root (.free u)) = .ren (.root (.bnd 0)) from if_pos rfl]
+    change SubE.Sim U (.tm s) ((Subst.single (.bnd 0) (SubE.tm s)).at (.root (.bnd 0)))
+    rw [Subst.at_single_root (Δ := Δ) (.bnd 0) (SubE.tm s)]
+    exact .refl _
+  · have hv2 : Γ v = some U := by simpa [Ctx.insert, hvu] using hv
+    have hvb : v.rt ≠ .bnd 0 := fun he => by
+      rw [hΓ.rootFresh (le_refl 0) v he] at hv2
+      cases hv2
+    change SubE.Sim U (Subst.single (.free u) (SubE.tm s) v)
+      ((Subst.single (.free u) (SubE.ren (.root (.bnd 0))) v).comp _ _ _)
+    rw [show Subst.single (σ := σ) (Δ := Δ) (.free u) (SubE.tm s) v = .ren v from if_neg hvu,
+      show Subst.single (σ := σ) (Δ := Γ.insert (.bnd 0) T) (.free u) (SubE.ren (.root (.bnd 0)))
+        v = .ren v from if_neg hvu]
+    change SubE.Sim U (.ren v) ((Subst.single (.bnd 0) (SubE.tm s)).at v)
+    rw [Subst.at_single_of_rt_ne hvb]
+    exact .refl _
 
 /-- ⭐Packing the listed roots into a fresh parameter and then instantiating that parameter at the
     tuple of the roots themselves leaves a formula unchanged.  This is how a hypothesis of `T_dia`,
