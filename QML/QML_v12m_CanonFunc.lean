@@ -1056,6 +1056,54 @@ theorem definable_rawEval {A B : VarType} (g : GFunc σ A B) {w : World σ N₀}
   obtain ⟨i, a, t, rfl⟩ := h
   exact ⟨i, _, (applyG g t).2, rden_applyG g t w i _⟩
 
+
+/-! ### The witness's own content -/
+
+/-- Realisation respects equality of the view term, annotations and all. -/
+theorem Term.realiseAt_sigma {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true)
+    (c : ℕ) {A : VarType} (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
+    (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
+    {a₀ : Ann A} (t₀ : Term σ Γ A a₀) {T : VarType} {b b' : Ann T}
+    {t : Term σ (Γ.diaIn (.root (.free c))) T b} {t' : Term σ (Γ.diaIn (.root (.free c))) T b'}
+    (h : (⟨b, t⟩ : Σ z : Ann T, Term σ (Γ.diaIn (.root (.free c))) T z) = ⟨b', t'⟩) :
+    (⟨_, Term.realiseAt hT c hcA hfr t₀ t⟩ : Σ z : Ann T, Term σ Γ T z) =
+      ⟨_, Term.realiseAt hT c hcA hfr t₀ t'⟩ := by
+  cases h
+  rfl
+
+/-- ⭐The realised content of the witness's own content is the realising term: this is what makes
+    every object the content, at the world itself, of a possible object. -/
+theorem rden_realisedTerm_eta {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
+    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    (hdia : (Γ.diaIn x).ref (.step x .dia) = some hr.data.A) :
+    rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _)
+        (realisedTerm w hr e hx (Term.eta (.step x .dia) hr.data.A hdia)).2 =
+      rden w hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀ := by
+  have hmono : (⟨_, Term.mono (realisedLe w hr e) (Term.eta (.step x .dia) hr.data.A hdia)⟩ :
+      Σ z : Ann hr.data.A,
+        Term σ ((w.L.ctx (i ⊔ hr.data.i₀)).diaIn (.root (.free hr.data.c))) hr.data.A z) =
+      ⟨_, Term.eta (.step (.root (.free hr.data.c)) .dia) hr.data.A
+        (Ctx.ref_diaIn_of (realisedDecl hr e hx))⟩ := by
+    rw [Term.mono_eta]
+    exact Term.eta_congr (congrArg (fun v => VarSymb.step v .dia) hr.data.hx) _ _ _
+  simp only [realisedTerm]
+  rw [rden_sigma _ (Term.realiseAt_sigma hr.data.hT hr.data.c (realisedDecl hr e hx)
+      (hr.data.hfr _) _ hmono),
+    rden_sigma _ (Term.realiseAt_eta hr.data.hT hr.data.c (realisedDecl hr e hx)
+      (hr.data.hfr _) (Term.mono (w.L.ctx_le le_sup_right) hr.data.t₀)),
+    rden_mono]
+  exact rden_congr _ _ _ _ _ _
+
+/-- The same, with the type of the content given separately. -/
+theorem rden_realisedTerm_eta_sigma {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
+    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
+    (hA : hr.data.A = A) (hdia : (Γ.diaIn x).ref (.step x .dia) = some A) :
+    (⟨A, rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _)
+        (realisedTerm w hr e hx (Term.eta (.step x .dia) A hdia)).2⟩ : Σ B, RDom B w) =
+      ⟨hr.data.A, rden w hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀⟩ := by
+  subst hA
+  exact congrArg _ (rden_realisedTerm_eta hr e hx hdia)
+
 end Canon
 
 end V12M
