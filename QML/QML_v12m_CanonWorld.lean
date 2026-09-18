@@ -219,6 +219,27 @@ theorem Realised.T {x : VarSymb} (h : w.Realised x) : ModalSys.T = true := h.dat
 
 theorem Realised.TStrong {x : VarSymb} (h : w.Realised x) : ModalSys.TStrong = true := h.data.hS
 
+/-- ⭐What the world names at a root is what it realises there. -/
+theorem realAt_of_real {c : ℕ} {d : RealDatum σ w.L w.T c} (hsome : w.real c = some d) :
+    w.realAt (.root (.free c)) = some ⟨c, rfl, d⟩ := by
+  change (w.real c).map (fun d' => (⟨c, rfl, d'⟩ : w.RealData (.root (.free c)))) = _
+  rw [hsome]
+  rfl
+
+/-- So that root is realised … -/
+theorem realised_of_real {c : ℕ} {d : RealDatum σ w.L w.T c} (hsome : w.real c = some d) :
+    w.Realised (.root (.free c)) := by
+  unfold Realised
+  rw [realAt_of_real hsome]
+  rfl
+
+/-- … by that datum. -/
+theorem data_of_real {c : ℕ} {d : RealDatum σ w.L w.T c} (hsome : w.real c = some d) :
+    (realised_of_real hsome).data = ⟨c, rfl, d⟩ := by
+  unfold Realised.data
+  simp only [realAt_of_real hsome]
+  rfl
+
 /-- Without strong T nothing is realised, so the extent has only proper successors. -/
 def Realised.elim [ModalSys.NoTStrong] {x : VarSymb} {α : Sort*} (h : w.Realised x) : α :=
   (ModalSys.NoTStrong.absurd h.TStrong).elim

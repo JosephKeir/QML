@@ -1104,6 +1104,41 @@ theorem rden_realisedTerm_eta_sigma {w : World σ N₀} {x : VarSymb} (hr : w.Re
   subst hA
   exact congrArg _ (rden_realisedTerm_eta hr e hx hdia)
 
+/-- ⭐The content, at the world itself, of the possible object a realised witness names: what its
+    realising term denotes.  Stated in terms of the world's own choice. -/
+theorem rden_eta_realised {w : World σ N₀} {c : ℕ} (hr : w.Realised (.root (.free c)))
+    {k : ℕ × ℕ} (hdecl : (w.L.ctx k).ref (.root (.free c)) = some (.VTypeDia hr.data.A)) :
+    (rden w k (Ctx.Le.refl _) (Term.eta (.root (.free c)) (.VTypeDia hr.data.A) hdecl)).2
+        ⟨⟨w, R.refl hr.T w⟩, self_mem_extent hr⟩ =
+      rden w hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀ :=
+  (rden_diatm_self (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩
+    (Term.eta (.step (.root (.free c)) .dia) hr.data.A (Ctx.ref_diaIn_of hdecl))
+    ⟨⟨w, R.refl hr.T w⟩, self_mem_extent hr⟩ (Nat.sub_self _)).trans
+    (rden_realisedTerm_eta hr (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩ (Ctx.ref_diaIn_of hdecl))
+
+/-- The same for any datum the world's choice is known to be.  Taking the datum as a variable with
+    an equation turns the identification into a `subst`, so callers never have to rewrite under
+    `realisedTerm`, where it sits in dependent positions. -/
+theorem rden_eta_realised_of_eq {w : World σ N₀} {c : ℕ} (hr : w.Realised (.root (.free c)))
+    (D : w.RealData (.root (.free c))) (hD : hr.data = D) {k : ℕ × ℕ}
+    (hdecl : (w.L.ctx k).ref (.root (.free c)) = some (.VTypeDia D.A)) :
+    (rden w k (Ctx.Le.refl _) (Term.eta (.root (.free c)) (.VTypeDia D.A) hdecl)).2
+        ⟨⟨w, R.refl hr.T w⟩, self_mem_extent hr⟩ =
+      rden w D.i₀ (Ctx.Le.refl _) D.t₀ := by
+  subst hD
+  exact rden_eta_realised hr hdecl
+
+/-- ⭐What a world names at a root, as the model uses it: the content, at the world itself, of the
+    possible object that root denotes is what the named realising term denotes. -/
+theorem rden_eta_of_real {w : World σ N₀} {c : ℕ} {d : RealDatum σ w.L w.T c}
+    (hsome : w.real c = some d) {k : ℕ × ℕ}
+    (hdecl : (w.L.ctx k).ref (.root (.free c)) = some (.VTypeDia d.A)) :
+    (rden w k (Ctx.Le.refl _) (Term.eta (.root (.free c)) (.VTypeDia d.A) hdecl)).2
+        ⟨⟨w, R.refl (World.realised_of_real hsome).T w⟩,
+          self_mem_extent (World.realised_of_real hsome)⟩ =
+      rden w d.i₀ (Ctx.Le.refl _) d.t₀ :=
+  rden_eta_realised_of_eq _ ⟨c, rfl, d⟩ (World.data_of_real hsome) hdecl
+
 end Canon
 
 end V12M

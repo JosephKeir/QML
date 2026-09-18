@@ -171,6 +171,42 @@ theorem eval_toDom : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀) 
   | _, _, .extract _, _, _, _ => rfl
   | _, _, .dup _, _, _, _ => rfl
 
+/-! ## Strong T: every object is the content of a possible object here -/
+
+omit [ModalSys.NoTStrong] in
+/-- ⭐Every object of a domain is the content, at the world itself, of a possible object: the
+    witness the world realises by a term denoting it.  The possible object is that witness's
+    η-expansion; `self_mem_extent` puts the world in its extent and `rden_eta_of_real` says its
+    content there is what the realising term denotes. -/
+theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T = true)
+    (hS : ModalSys.TStrong = true) (a : (frame w₀).Dom A w) :
+    ∃ (p : (frame w₀).Pos A w) (h : Canon.R w w)
+      (hm : (⟨w, h⟩ : (frame w₀).Acc w) ∈ (posEval w₀ p).1),
+      (posEval w₀ p).2 ⟨⟨w, h⟩, hm⟩ = a := by
+  obtain ⟨i, a', t, ht⟩ := definable_fromDom w₀ A w a
+  obtain ⟨c, i', hle, d, hsome, hfields⟩ := w.realW hT hS i t
+  have hA : d.A = A := congrArg (fun z => z.1) hfields
+  subst hA
+  have hi₀ : d.i₀ = i' := congrArg (fun z => z.2.1) hfields
+  subst hi₀
+  obtain ⟨-, h1⟩ := Sigma.mk.inj_iff.mp hfields
+  obtain ⟨-, h2⟩ := Sigma.mk.inj_iff.mp (eq_of_heq h1)
+  have hterm : (⟨d.a₀, d.t₀⟩ : Σ b : Ann d.A, Term σ (w.L.ctx d.i₀) d.A b) =
+    ⟨a', Term.mono (w.L.ctx_le hle) t⟩ := eq_of_heq h2
+  have hr := World.realised_of_real hsome
+  have hdecl : (w.L.ctx (d.i₀.1, d.i₀.2 + 1)).ref (.root (.free c)) = some (.VTypeDia d.A) :=
+    d.hdecl _ (Nat.lt_succ_self _)
+  refine ⟨⟨rden w (d.i₀.1, d.i₀.2 + 1) (Ctx.Le.refl _)
+      (Term.eta (.root (.free c)) (.VTypeDia d.A) hdecl), definable_rden _ _⟩,
+    R.refl hr.T w, self_mem_extent hr, ?_⟩
+  refine Eq.trans ?_ (toDom_fromDom w₀ d.A w a)
+  refine toDom_congr w₀ ?_ _ _
+  rw [← ht]
+  refine (rden_eta_of_real hsome hdecl).trans ?_
+  rw [rden_sigma (Ctx.Le.refl _) hterm, rden_mono]
+  exact rden_congr _ _ _ _ _ _
+
+
 /-- ⭐The canonical model. -/
 noncomputable def model : Model.{0} σ where
   frame := frame w₀
@@ -185,7 +221,7 @@ noncomputable def model : Model.{0} σ where
   posStrength_eval _ _ := rfl
   necExtract_eval _ _ := rfl
   necDup_eval _ _ _ _ := rfl
-  posRet_exists _ hS _ := (ModalSys.NoTStrong.absurd hS).elim
+  posRet_exists hT hS a := posRet_exists_canon w₀ hT hS a
 
 end Canon
 

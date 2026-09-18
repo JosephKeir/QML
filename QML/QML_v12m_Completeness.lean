@@ -132,6 +132,7 @@ namespace Canon
 
 variable {σ : Signature} {N₀ : ℕ} (w₀ : World σ N₀) [ModalSys.NoTStrong]
 
+omit [ModalSys.NoTStrong] in
 theorem canon_agree_le (w : World σ N₀) {i j : ℕ × ℕ} (h : i ≤ j) :
     Model.Env.Agree (w.L.ctx_le h) (canonEnv w₀ w i) (canonEnv w₀ w j) :=
   fun v T _ => toDom_congr w₀ (rden_eta_le (w.L.ctx_le h) _ _ v T _ _) _ _

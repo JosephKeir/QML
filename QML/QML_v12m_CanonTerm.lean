@@ -116,6 +116,7 @@ noncomputable def canonEnv (w : World σ N₀) (i : ℕ × ℕ) : (model w₀).E
     (rden w i (Ctx.Le.refl _) (Term.eta v T ((Ctx.ref_nonproj _ (w.noProjLast i v T hv)).trans hv)))
     (definable_rden _ _)
 
+omit [ModalSys.NoTStrong] in
 /-- Every reachable address reads as its η-expansion. -/
 theorem canonEnv_ref (w : World σ N₀) (i : ℕ × ℕ) :
     ∀ (v : VarSymb) {T : VarType} (h : (w.L.ctx i).ref v = some T),
@@ -160,12 +161,14 @@ theorem canonEnv_ref (w : World σ N₀) (i : ℕ × ℕ) :
       · rw [Model.Env.ref, dif_neg hs]
         rfl
 
+omit [ModalSys.NoTStrong] in
 theorem canonEnv_extent (w : World σ N₀) (i : ℕ × ℕ) {x : VarSymb} {X : VarType}
     (hr : (w.L.ctx i).ref x = some (.VTypeDia X)) :
     ((model w₀).posEval ((canonEnv w₀ w i).ref x hr)).1 = extent w x := by
   rw [canonEnv_ref]
   rfl
 
+omit [ModalSys.NoTStrong] in
 /-- Pushing the canonical environment into `□` at a proper successor agrees with the
     successor's. -/
 theorem boxPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) (w' : Succ w)
@@ -204,6 +207,7 @@ theorem boxPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) (w' : Succ w)
   | .step _ .dia => cases hv
   | .step _ .here => cases hv
 
+omit [ModalSys.NoTStrong] in
 /-- Pushing the canonical environment into `◇_x` agrees with the successor's. -/
 theorem diaPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) {x : VarSymb} {X : VarType}
     (hr : (w.L.ctx i).ref x = some (.VTypeDia X))
@@ -242,6 +246,7 @@ theorem diaPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) {x : VarSymb} {
   | .step _ .snd => cases hv
   | .step _ .here => cases hv
 
+omit [ModalSys.NoTStrong] in
 /-- Under 4, the value of a necessary term at a successor `d + 1` levels deeper is its
     denotation there, given the truth lemma for terms no larger than its body. -/
 theorem interp_box_far (S : ℕ)
@@ -277,6 +282,9 @@ theorem interp_box_far (S : ℕ)
 
 /-! ## The truth lemma for terms -/
 
+-- `interp_canon`'s realised case still appeals to `ModalSys.NoTStrong`; its companions in the
+-- block do not, so the linter flags them.
+set_option linter.unusedSectionVars false in
 mutual
   theorem interpFunc_canon : ∀ {Γ : Ctx} {n : ℕ} (g : Func σ Γ n) {w : World σ N₀}
       {i : ℕ × ℕ} {e : Γ.Le (w.L.ctx i)} {env : (model w₀).Env Γ w},
