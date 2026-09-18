@@ -394,6 +394,74 @@ theorem Term.mono_realiseAt {σ : Signature} {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.No
   rw [Term.mono_hereRead hT h t₀ (Term.diaAbs c hcA hfr t),
     Term.mono_diaAbs h hcA hcA' hfr hfr' t]
 
+/-- Away from the witness content, abstraction is the identity. -/
+theorem Subst.sim_diaAbs_idS {σ : Signature} {Γ : Ctx} (c : ℕ) (A : VarType) :
+    Subst.Sim Γ.boxIn (Subst.diaAbs σ (Γ.boxIn.insert (.bnd 0) A) c)
+      (Subst.idS σ (Γ.boxIn.insert (.bnd 0) A)) := by
+  refine Subst.sim_of ?_
+  intro v T _ hv
+  match v with
+  | .step _ .box => exact .refl _
+  | .step _ .keep => exact .refl _
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .dia => cases hv
+  | .step _ .here => cases hv
+
+/-- The hole substitution is the identity away from the hole. -/
+theorem Subst.sim_single_idS {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A : VarType} {a₀ : Ann A}
+    (t₀ : Term σ Γ A a₀) :
+    Subst.Sim Γ (Subst.single (.bnd 0) (.tm t₀)) (Subst.idS σ Γ) := by
+  refine Subst.sim_of ?_
+  intro v T _ hv
+  have hne : v ≠ .root (.bnd 0) := by
+    intro he
+    rw [he, (Ctx.NoSlots.slots (Γ := Γ)).root] at hv
+    cases hv
+  change SubE.Sim T (if v = .root (.bnd 0) then SubE.tm t₀ else .ren v) (.ren v)
+  rw [if_neg hne]
+  exact .refl _
+
+theorem Term.hereRead_sigma {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true)
+    {A : VarType} {a₀ : Ann A} (t₀ : Term σ Γ A a₀) {T : VarType}
+    {p q : Σ b : Ann T, Term σ (Γ.boxIn.insert (.bnd 0) A) T b} (h : p = q) :
+    (⟨_, Term.hereRead hT t₀ p.2⟩ : Σ d, Term σ Γ T d) = ⟨_, Term.hereRead hT t₀ q.2⟩ := by
+  cases h
+  rfl
+
+/-- ⭐Realising a term of the `□` view is collapsing it: the witness content does not occur. -/
+theorem Term.realiseAt_mono_boxIn {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true)
+    (c : ℕ) {A : VarType} (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
+    (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
+    {a₀ : Ann A} (t₀ : Term σ Γ A a₀) {T : VarType} {b : Ann T} (s : Term σ Γ.boxIn T b) :
+    (⟨_, Term.realiseAt hT c hcA hfr t₀
+        (Term.mono (Ctx.le_boxIn_diaIn Γ (.root (.free c))) s)⟩ : Σ d, Term σ Γ T d) =
+      ⟨_, Term.collapse (Ctx.collapses_boxIn_self hT Γ) s⟩ := by
+  have h₀ : Γ.boxIn (.root (.bnd 0)) = none := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root
+  have hrf : Γ.boxIn.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)
+  -- abstraction is a weakening here
+  have habs : (⟨_, Term.diaAbs c hcA hfr (Term.mono (Ctx.le_boxIn_diaIn Γ (.root (.free c))) s)⟩ :
+        Σ d, Term σ (Γ.boxIn.insert (.bnd 0) A) T d) =
+      ⟨_, Term.mono (Ctx.le_insert h₀ A) s⟩ := by
+    simp only [Term.diaAbs]
+    rw [Term.subst_mono]
+    exact (Term.subst_congr _ (Subst.idS σ (Γ.boxIn.insert (.bnd 0) A)) _
+      (Subst.ok_idS_le (Ctx.le_insert h₀ A)) _ (Subst.coh_idS_le (Ctx.le_insert h₀ A))
+      (Subst.sim_diaAbs_idS c A) s).trans
+      (Term.subst_idS_mono (Ctx.le_insert h₀ A) _ _ s)
+  -- and then reading here is collapsing
+  refine (Term.hereRead_sigma hT t₀ habs).trans ?_
+  have hl₂ : Γ.Le (Γ.insert (.bnd 0) A) :=
+    Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root A
+  simp only [Term.hereRead]
+  rw [Term.collapse_mono (Ctx.collapses_boxIn_self hT Γ)
+    ((Ctx.collapses_boxIn_self hT Γ).insert hrf A) (Ctx.le_insert h₀ A) hl₂ s, Term.subst_mono]
+  refine ((Term.subst_congr _ (Subst.idS σ Γ) _ Subst.ok_idS _ Subst.coh_idS
+    (Subst.sim_single_idS t₀) _).trans
+    (Term.subst_idS_mono (Ctx.Le.refl Γ) Subst.ok_idS Subst.coh_idS _)).trans ?_
+  exact congrArg (Sigma.mk _) (Term.mono_refl _ _)
+
 /-- ⭐A hole formula read inside `◇_c`, at any context where `c` is a declared `◇`-typed root.
     `WFF.viewRead` is the case of a context that has just declared it. -/
 def WFF.viewReadAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) {A : VarType}

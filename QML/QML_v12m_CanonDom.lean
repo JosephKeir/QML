@@ -337,6 +337,19 @@ theorem rden_mono : ∀ {A : VarType} {a : Ann A} {Γ Γ' : Ctx} (h : Γ.Le Γ')
           exact rden_mono (h.diaIn x) t w'.1.1 (childStage i) _)
   termination_by structural A => A
 
+/-- Transporting a pair of raw objects along an equation of worlds is the pair of transports. -/
+theorem rden_transport_world {w₁ w₂ : World σ N₀} (hw : w₁ = w₂) {Γ : Ctx} {i : ℕ × ℕ}
+    (e : Γ.Le (w₁.L.ctx i)) (e2 : Γ.Le (w₂.L.ctx i)) {A : VarType} {a : Ann A} (t : Term σ Γ A a) :
+    hw ▸ rden w₁ i e t = rden w₂ i e2 t := by
+  cases hw
+  rfl
+
+theorem rden_transport_pair {w₁ w₂ : World σ N₀} (hw : w₁ = w₂) {A B : VarType}
+    (u : RDom A w₁) (v : RDom B w₁) :
+    (hw ▸ ((u, v) : RDom (.VTypeProd A B) w₁) : RDom (.VTypeProd A B) w₂) = (hw ▸ u, hw ▸ v) := by
+  cases hw
+  rfl
+
 /-- The denotation does not depend on the stage it is computed at. -/
 theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A a)
     (w : World σ N₀) (i j : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)) (e' : Γ.Le (w.L.ctx j)),
@@ -389,6 +402,39 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
           exact rden_congr t w'.1.1 (childStage i) (childStage j) _ _)
   termination_by structural A => A
 
+
+/-- The realised content of a pair is the pair of realised contents. -/
+theorem rden_realisedTerm_pair {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
+    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {A B : VarType} {a : Ann A} {b : Ann B}
+    (s : Term σ (Γ.diaIn x) A a) (t : Term σ (Γ.diaIn x) B b) :
+    rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e (Term.pair s t)).2 =
+      ((rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e s).2,
+        rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e t).2) :
+        RDom (.VTypeProd A B) w) :=
+  rfl
+
+/-- ⭐The realised content of a term of the `□` view is what the term denotes here: realisation
+    collapses it, so the witness plays no part. -/
+theorem rden_realisedTerm_mono_boxIn {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
+    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {A : VarType} {a : Ann A}
+    (b : Term σ Γ.boxIn A a) :
+    rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _)
+        (realisedTerm w hr e (Term.mono (Ctx.le_boxIn_diaIn Γ x) b)).2 =
+      rden w i e (Term.collapse (Ctx.collapses_boxIn_self hr.T Γ) b) := by
+  have hle : Γ.boxIn.Le (w.L.ctx (i ⊔ hr.data.i₀)).boxIn :=
+    (e.trans (w.L.ctx_le le_sup_left)).boxIn
+  have hcomb : Term.mono (realisedLe w hr e) (Term.mono (Ctx.le_boxIn_diaIn Γ x) b) =
+      Term.mono (Ctx.le_boxIn_diaIn (w.L.ctx (i ⊔ hr.data.i₀)) (.root (.free hr.data.c)))
+        (Term.mono hle b) := by
+    rw [Term.mono_mono, Term.mono_mono]
+  simp only [realisedTerm]
+  rw [hcomb, rden_sigma _ (Term.realiseAt_mono_boxIn hr.data.hT hr.data.c
+      (hr.data.hdecl _ le_sup_right) (hr.data.hfr _) _ (Term.mono hle b)),
+    Term.collapse_mono (Ctx.collapses_boxIn_self hr.T Γ)
+      (Ctx.collapses_boxIn_self hr.data.hT (w.L.ctx (i ⊔ hr.data.i₀))) hle
+      (e.trans (w.L.ctx_le le_sup_left)) b,
+    rden_mono]
+  exact rden_congr _ _ _ _ _ _
 
 /-- A base term denotes its class. -/
 theorem rden_var_cls {w : World σ N₀} {i : ℕ × ℕ} :

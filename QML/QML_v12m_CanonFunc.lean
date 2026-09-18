@@ -476,6 +476,67 @@ theorem applyG_collapse :
         (Ctx.shifts_boxIn_boxIn hF Γ₁) h.boxIn.boxIn h.boxIn
         (Ctx.shifts_boxIn_boxIn hF Γ₂) b))).symm
 
+/-! ### Substitution
+
+Applying a definable map commutes with substitution too, which is what the content of a realised
+witness needs (strong T): realisation is a substitution, a collapse and a substitution. -/
+
+/-- A spine substituted. -/
+def Spine.subst {σ : Signature} (ι : VarSymb → VarSymb) {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) : {n : ℕ} → Spine σ Γ n → Spine σ Δ n
+  | _, .nil => .nil
+  | _, .cons t S => .cons (Term.subst ι θ hθ hc t) (Spine.subst ι θ hθ hc S)
+
+theorem Func.subst_fill {σ : Signature} (ι : VarSymb → VarSymb) {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) :
+    ∀ {n : ℕ} (S : Spine σ Γ n) (f : Func σ Γ n),
+      Func.subst ι θ hθ hc (S.fill f) =
+        (Spine.subst ι θ hθ hc S).fill (Func.subst ι θ hθ hc f)
+  | _, .nil, _ => rfl
+  | _, .cons t S, f => Func.subst_fill ι θ hθ hc S (.eval f t)
+
+theorem Spine.subst_ofFn {σ : Signature} (ι : VarSymb → VarSymb) {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) :
+    ∀ {n : ℕ} (ts : Fin n → Term σ Γ .Var .var),
+      Spine.subst ι θ hθ hc (Spine.ofFn ts) = Spine.ofFn (fun k => Term.subst ι θ hθ hc (ts k))
+  | 0, _ => rfl
+  | _ + 1, ts => congrArg (Spine.cons _) (Spine.subst_ofFn ι θ hθ hc (fun k => ts k.succ))
+
+theorem Func.mono_fill {σ : Signature} {Δ Δ' : Ctx} (h : Δ.Le Δ') :
+    ∀ {n : ℕ} (S : Spine σ Δ n) (f : Func σ Δ n),
+      Func.mono h (S.fill f) = (S.mono h).fill (Func.mono h f)
+  | _, .nil, _ => rfl
+  | _, .cons t S, f => Func.mono_fill h S (.eval f t)
+
+theorem varTerm_mono {σ : Signature} {Γ Δ : Ctx} (h : Γ.Le Δ) :
+    ∀ p : (Σ b : Ann .Var, Term σ Γ .Var b),
+      varTerm (⟨p.1, Term.mono h p.2⟩ : Σ b : Ann .Var, Term σ Δ .Var b) =
+        Term.mono h (varTerm p)
+  | ⟨.var, _⟩ => rfl
+
+theorem varTerm_subst {σ : Signature} (ι : VarSymb → VarSymb) {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) :
+    ∀ p : (Σ b : Ann .Var, Term σ Γ .Var b),
+      varTerm (⟨p.1.mapIdx ι, Term.subst ι θ hθ hc p.2⟩ : Σ b : Ann .Var, Term σ Δ .Var b) =
+        Term.subst ι θ hθ hc (varTerm p)
+  | ⟨.var, _⟩ => rfl
+
+/-- Substituting into the `◇_x` view of a term weakened from the `□` view is weakening its
+    substitution into the `□` view. -/
+theorem Term.subst_dia_mono {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) {x : VarSymb}
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (hw : (θ.at x).idxAlong [] = ι x) {A : VarType}
+    {a : Ann A} (b : Term σ Γ.boxIn A a) :
+    Term.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx)
+        (Term.mono (Ctx.le_boxIn_diaIn Γ x) b) =
+      Term.mono (Ctx.le_boxIn_diaIn Δ (ι x))
+        (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) b) := by
+  rw [Term.subst_mono, Term.mono_subst]
+  refine eq_of_heq (Sigma.mk.inj (Term.subst_congr _ _ _ _ _ _ ?_ b)).2
+  intro v T hv
+  rw [Subst.dia_eq_box_mono θ x (ι x) v T hv, ← Subst.at_mono]
+  exact .refl _
+
 theorem varTerm_shift {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂) :
     ∀ p : (Σ b : Ann .Var, Term σ Γ₁ .Var b),
       varTerm (⟨p.1.shift k, Term.shift h p.2⟩ : Σ b : Ann .Var, Term σ Γ₂ .Var b) =
@@ -537,6 +598,138 @@ theorem applyG_shift :
       exact (sig_boxtm (sig_boxtm (Term.shift_shift (k := k) (m := 0)
         (Ctx.shifts_boxIn_boxIn hF Γ₁) h.boxIn.boxIn h.boxIn
         (Ctx.shifts_boxIn_boxIn hF Γ₂) b))).symm
+
+/-- ⭐Applying a definable map commutes with substitution. -/
+theorem applyG_subst :
+    ∀ {A B : VarType} (g : GFunc σ A B) {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+      (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) {a : Ann A} (t : Term σ Γ A a),
+    applyG g (Term.subst ι θ hθ hc t) =
+      ⟨(applyG g t).1.mapIdx ι, Term.subst ι θ hθ hc (applyG g t).2⟩
+  | _, _, .id _, _, _, _, _, _, _, _, _ => rfl
+  | _, _, .comp g f, _, _, _, θ, hθ, hc, _, t => by
+      have hf := applyG_subst f θ hθ hc t
+      simp only [applyG]
+      rw [hf]
+      exact applyG_subst g θ hθ hc _
+  | _, _, .fst, _, _, _, _, _, _, _, .pair _ _ => rfl
+  | _, _, .snd, _, _, _, _, _, _, _, .pair _ _ => rfl
+  | _, _, .pair f g, _, _, _, θ, hθ, hc, _, t => by
+      have hf := applyG_subst f θ hθ hc t
+      have hg := applyG_subst g θ hθ hc t
+      simp only [applyG, Term.subst]
+      rw [hf, hg]
+      rfl
+  | _, _, .unit _, _, _, _, _, _, _, _, _ => rfl
+  | _, _, .func f args, ι, _, _, θ, hθ, hc, _, t => by
+      have hj : ∀ j, varTerm (applyG (args j) (Term.subst ι θ hθ hc t)) =
+          Term.subst ι θ hθ hc (varTerm (applyG (args j) t)) := fun j => by
+        rw [applyG_subst (args j) θ hθ hc t]
+        exact varTerm_subst ι θ hθ hc _
+      simp only [applyG, Term.subst]
+      rw [Func.subst_fill, Spine.subst_ofFn]
+      simp only [hj]
+      rfl
+  | _, _, .boxMap f, _, _, _, θ, hθ, hc, _, .boxtm b => by
+      have hf := applyG_subst f θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) b
+      simp only [applyG, Term.subst]
+      rw [hf]
+      rfl
+  | _, _, .boxPair _ _, _, _, _, _, _, _, _, .pair (.boxtm _) (.boxtm _) => rfl
+  | _, _, .boxUnit, _, _, _, _, _, _, _, .unit => rfl
+  | _, _, .diaMap f, ι, _, _, θ, hθ, hc, _, .diatm x hx c => by
+      have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
+      have hf := applyG_subst f (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) c
+      simp only [applyG, Term.subst]
+      rw [hf]
+      rfl
+  | _, _, .strength _ _, ι, _, _, θ, hθ, hc, _, .pair (.boxtm b) (.diatm x hx c) => by
+      have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
+      simp only [applyG, Term.subst]
+      rw [Term.subst_dia_mono θ hθ hc hx hw b]
+      rfl
+  | _, _, .extract hT, _, Γ, Δ, θ, hθ, hc, _, .boxtm b => by
+      simp only [applyG, Term.subst]
+      exact Term.collapse_subst (Ctx.collapses_boxIn_self hT Γ) (Ctx.collapses_boxIn_self hT Δ)
+        θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) θ hθ hc (Subst.corr_box_self hT hθ) b
+  | _, _, .dup hF, _, Γ, Δ, θ, hθ, hc, _, .boxtm b => by
+      simp only [applyG, Term.subst]
+      exact sig_boxtm (sig_boxtm (Term.shift_subst (Ctx.shifts_boxIn_boxIn hF Γ)
+        (Ctx.shifts_boxIn_boxIn hF Δ) θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc)
+        θ.box.box (Subst.ok_box (Subst.ok_box hθ))
+        (Subst.coh_box (Subst.ok_box hθ) (Subst.coh_box hθ hc))
+        (Subst.shiftCorr_box_box hF hθ) b))
+
+/-- Applying a definable map commutes with weakening. -/
+theorem applyG_mono :
+    ∀ {A B : VarType} (g : GFunc σ A B) {Γ Δ : Ctx} (h : Γ.Le Δ) {a : Ann A} (t : Term σ Γ A a),
+    applyG g (Term.mono h t) = ⟨(applyG g t).1, Term.mono h (applyG g t).2⟩
+  | _, _, .id _, _, _, _, _, _ => rfl
+  | _, _, .comp g f, _, _, h, _, t => by
+      have hf := applyG_mono f h t
+      simp only [applyG]
+      rw [hf]
+      exact applyG_mono g h _
+  | _, _, .fst, _, _, _, _, .pair _ _ => rfl
+  | _, _, .snd, _, _, _, _, .pair _ _ => rfl
+  | _, _, .pair f g, _, _, h, _, t => by
+      have hf := applyG_mono f h t
+      have hg := applyG_mono g h t
+      simp only [applyG, Term.mono]
+      rw [hf, hg]
+  | _, _, .unit _, _, _, _, _, _ => rfl
+  | _, _, .func f args, _, _, h, _, t => by
+      have hj : ∀ j, varTerm (applyG (args j) (Term.mono h t)) =
+          Term.mono h (varTerm (applyG (args j) t)) := fun j => by
+        rw [applyG_mono (args j) h t]
+        exact varTerm_mono h _
+      simp only [applyG, Term.mono]
+      rw [Func.mono_fill, Spine.mono_ofFn]
+      simp only [hj]
+      rfl
+  | _, _, .boxMap f, _, _, h, _, .boxtm b => by
+      have hf := applyG_mono f h.boxIn b
+      simp only [applyG, Term.mono]
+      rw [hf]
+  | _, _, .boxPair _ _, _, _, _, _, .pair (.boxtm _) (.boxtm _) => rfl
+  | _, _, .boxUnit, _, _, _, _, .unit => rfl
+  | _, _, .diaMap f, _, _, h, _, .diatm x _ c => by
+      have hf := applyG_mono f (h.diaIn x) c
+      simp only [applyG, Term.mono]
+      rw [hf]
+  | _, _, .strength _ _, Γ, Δ, h, _, .pair (.boxtm b) (.diatm x _ c) => by
+      simp only [applyG, Term.mono]
+      rw [Term.mono_mono, Term.mono_mono]
+  | _, _, .extract hT, Γ, Δ, h, _, .boxtm b => by
+      simp only [applyG, Term.mono]
+      exact Term.collapse_mono (Ctx.collapses_boxIn_self hT Γ) (Ctx.collapses_boxIn_self hT Δ)
+        h.boxIn h b ▸ rfl
+  | _, _, .dup hF, Γ, Δ, h, _, .boxtm b => by
+      simp only [applyG, Term.mono]
+      rw [Term.shift_mono (Ctx.shifts_boxIn_boxIn hF Γ) (Ctx.shifts_boxIn_boxIn hF Δ) h.boxIn
+        h.boxIn.boxIn b]
+
+/-- ⭐Applying a definable map commutes with realisation (strong T): realisation is a
+    substitution, a collapse and a substitution. -/
+theorem applyG_realiseAt {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} [Γ.NoSlots]
+    (hT : ModalSys.T = true) (c : ℕ) {X : VarType}
+    (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia X))
+    (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
+    {a₀ : Ann X} (t₀ : Term σ Γ X a₀) {a : Ann A}
+    (t : Term σ (Γ.diaIn (.root (.free c))) A a) :
+    applyG g (Term.realiseAt hT c hcA hfr t₀ t) =
+      ⟨_, Term.realiseAt hT c hcA hfr t₀ (applyG g t).2⟩ := by
+  have habs : applyG g (Term.diaAbs c hcA hfr t) = ⟨_, Term.diaAbs c hcA hfr (applyG g t).2⟩ := by
+    simp only [Term.diaAbs, applyG_subst]
+  simp only [Term.realiseAt, Term.hereRead, applyG_subst]
+  rw [applyG_collapse g _ (Term.diaAbs c hcA hfr t), habs]
+
+/-- ⭐Applying a definable map commutes with the realised content of a witness. -/
+theorem applyG_realisedTerm {A B : VarType} (g : GFunc σ A B) {w : World σ N₀} {x : VarSymb}
+    (hr : w.Realised x) {Γ : Ctx} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {a : Ann A}
+    (t : Term σ (Γ.diaIn x) A a) :
+    realisedTerm w hr e (applyG g t).2 = applyG g (realisedTerm w hr e t).2 := by
+  simp only [realisedTerm]
+  rw [applyG_realiseAt, applyG_mono]
 
 theorem shiftIter_sigma {n : ℕ} (hF : n ≠ 0 → ModalSys.Four = true) {Γ : Ctx} {A : VarType}
     {p q : Σ b : Ann A, Term σ Γ.boxIn A b} (h : p = q) :
@@ -641,13 +834,9 @@ theorem rawEval_transport {A B : VarType} (g : GFunc σ A B) {w₁ w₂ : World 
   cases hw
   rfl
 
-variable [ModalSys.NoTStrong]
-
-/-- ⭐The denotation of an applied map is its raw evaluation.
-
-    Under strong T the extent has the world itself in it, where the content is a realisation; the
-    two cases that would need it (`diaMap`, `strength`) are the places where a general
-    `applyG_subst` will be needed. -/
+/-- ⭐The denotation of an applied map is its raw evaluation.  Under strong T the extent has the
+    world itself in it, where the content is a realisation (`applyG_realisedTerm`,
+    `rden_realisedTerm_mono_boxIn`). -/
 theorem rden_applyG :
     ∀ {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} {a : Ann A} (t : Term σ Γ A a)
       (w : World σ N₀) (i : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)),
@@ -686,16 +875,27 @@ theorem rden_applyG :
       · rw [rden_boxtm_far e _ w' hd, rden_boxtm_far e b w' hd, rden_boxtm_far e c w' hd]
         exact rden_sigma _ (Term.shiftIter_pair d (w'.four hd) b c)
   | _, _, .boxUnit, _, _, .unit, _, _, _ => rfl
-  | _, _, .diaMap f, _, _, .diatm x _ c, w, i, e =>
+  | _, _, .diaMap f, _, _, .diatm x hx c, w, i, e =>
       congrArg (Sigma.mk _) (funext fun w' => by
         by_cases hd : w'.1.1.depth - w.depth = 0
-        · exact (extent_self w'.2 hd).2.elim
+        · have hr := (extent_self w'.2 hd).2
+          rw [rden_diatm_self e hx c w' hd, ← rawEval_transport f _ _]
+          simp only [dif_pos hd]
+          refine rden_transport_congr _ ?_
+          exact (rden_sigma _ (applyG_realisedTerm f hr e c)).trans (rden_applyG f _ w _ _)
         · simp only [rden, dif_neg hd]
           exact rden_applyG f c w'.1.1 (childStage i) _)
   | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c), w, i, e =>
       congrArg (Sigma.mk _) (funext fun w' => by
         by_cases hd : w'.1.1.depth - w.depth = 0
-        · exact (extent_self w'.2 hd).2.elim
+        · have hr := (extent_self w'.2 hd).2
+          change _ = (rden w i e (Term.boxtm b) w'.1, (rden w i e (Term.diatm x hx c)).2 w')
+          rw [rden_diatm_self e hx c w' hd, rden_boxtm_self e b w'.1 hd]
+          simp only [dif_pos hd]
+          rw [rden_realisedTerm_pair hr e, rden_transport_pair]
+          refine Prod.ext ?_ rfl
+          refine (rden_transport_congr _ (rden_realisedTerm_mono_boxIn hr e b)).trans ?_
+          exact rden_transport_world _ _ _ _
         · simp only [rden, dif_neg hd]
           exact Prod.ext
             ((rden_mono _ _ _ _ _).trans

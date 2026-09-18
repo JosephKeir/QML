@@ -110,6 +110,16 @@ theorem sim_dia_idS (x : VarSymb) :
   | .step _ .snd => cases hv
   | .step _ .here => cases hv
 
+theorem ok_idS_le {Γ : Ctx} (hle : Γ.Le Δ) : Ok Γ (idS σ Δ) :=
+  fun v T hlp hv => (Ctx.ref_nonproj Δ hlp).trans (hle v T hv)
+
+theorem coh_idS_le {Γ : Ctx} (hle : Γ.Le Δ) : Coh id Γ (idS σ Δ) :=
+  coh_of (ok_idS_le hle) (fun _ _ _ _ _ => rfl)
+
+theorem Sim.restrict {Γ Δ Δ' : Ctx} {θ θ' : Subst σ Δ'} (h : Sim Δ θ θ')
+    (hle : Γ.Le Δ) : Sim Γ θ θ' :=
+  fun v T hv => h v T (hle.ref hv)
+
 theorem sim_under_idS (d : ℕ) (T : VarType) (h : Δ (.root (.bnd d)) = none) :
     Sim (Δ.insert (.bnd d) T) ((idS σ Δ).under d d T h) (idS σ (Δ.insert (.bnd d) T)) := by
   refine sim_of ?_
@@ -155,6 +165,66 @@ theorem Rel.subst_id {σ : Signature} {Δ : Ctx} (hθ : Subst.Ok Δ (Subst.idS �
   | _, .eval ρ t => by
       change Rel.eval (Rel.subst id _ hθ hc ρ) (Term.subst id _ hθ hc t) = _
       rw [Rel.subst_id hθ hc ρ, Term.subst_id_var hθ hc t]
+
+/-! ## Substituting by the identity into a larger context -/
+
+mutual
+  theorem Func.subst_idS_mono {σ : Signature} {Γ Δ : Ctx} (hle : Γ.Le Δ)
+      (hθ : Subst.Ok Γ (Subst.idS σ Δ)) (hc : Subst.Coh id Γ (Subst.idS σ Δ)) :
+      ∀ {n : ℕ} (f : Func σ Γ n), Func.subst id (Subst.idS σ Δ) hθ hc f = Func.mono hle f
+    | _, .F _ => rfl
+    | _, .eval g t => by
+        change Func.eval (Func.subst id _ hθ hc g) (Term.subst id _ hθ hc t) = _
+        rw [Func.subst_idS_mono hle hθ hc g, Term.subst_idS_mono_var hle hθ hc t]
+        rfl
+
+  theorem Term.subst_idS_mono_var {σ : Signature} {Γ Δ : Ctx} (hle : Γ.Le Δ)
+      (hθ : Subst.Ok Γ (Subst.idS σ Δ)) (hc : Subst.Coh id Γ (Subst.idS σ Δ))
+      (t : Term σ Γ .Var .var) :
+      Term.subst id (Subst.idS σ Δ) hθ hc t = Term.mono hle t := by
+    match t with
+    | .var v hv =>
+        change ((Subst.idS σ Δ).at v).toVar _ = _
+        have e : (Subst.idS σ Δ).at v = .ren v := Subst.at_idS v
+        simp only [e]
+        rfl
+    | .func f =>
+        change Term.func (Func.subst id _ hθ hc f) = _
+        rw [Func.subst_idS_mono hle hθ hc f]
+        rfl
+end
+
+/-- ⭐Substituting every address for itself into a larger context is weakening. -/
+theorem Term.subst_idS_mono {σ : Signature} : {Γ Δ : Ctx} → (hle : Γ.Le Δ) →
+    (hθ : Subst.Ok Γ (Subst.idS σ Δ)) → (hc : Subst.Coh id Γ (Subst.idS σ Δ)) →
+    {T : VarType} → {a : Ann T} → (t : Term σ Γ T a) →
+    (⟨_, Term.subst id (Subst.idS σ Δ) hθ hc t⟩ : Σ b, Term σ Δ T b) = ⟨a, Term.mono hle t⟩
+  | _, _, hle, hθ, hc, _, _, .var v hv =>
+      congrArg (Sigma.mk _) (Term.subst_idS_mono_var hle hθ hc (.var v hv))
+  | _, _, hle, hθ, hc, _, _, .func f =>
+      congrArg (Sigma.mk _) (Term.subst_idS_mono_var hle hθ hc (.func f))
+  | _, _, _, _, _, _, _, .unit => rfl
+  | _, _, hle, hθ, hc, _, _, .pair s t => by
+      have hs := Term.subst_idS_mono hle hθ hc s
+      have ht := Term.subst_idS_mono hle hθ hc t
+      exact sig_pair hs ht
+  | _, Δ, hle, hθ, hc, _, _, .boxtm b => by
+      change (⟨_, Term.boxtm (Term.subst id (Subst.idS σ Δ).box _ _ b)⟩ :
+        Σ c, Term σ Δ (.VTypeBox _) c) = _
+      exact sig_boxtm ((Term.subst_congr (Subst.idS σ Δ).box (Subst.idS σ Δ.boxIn) _
+        (Subst.ok_idS_le hle.boxIn) _ (Subst.coh_idS_le hle.boxIn)
+        (Subst.sim_box_idS.restrict hle.boxIn) b).trans
+        (Term.subst_idS_mono hle.boxIn (Subst.ok_idS_le hle.boxIn)
+          (Subst.coh_idS_le hle.boxIn) b))
+  | _, Δ, hle, hθ, hc, _, _, .diatm x hx b => by
+      change (⟨_, Term.diatm x _ (Term.subst id ((Subst.idS σ Δ).dia x x) _ _ b)⟩ :
+        Σ c, Term σ Δ (.VTypeDia _) c) = _
+      exact sig_diatm ((Term.subst_congr ((Subst.idS σ Δ).dia x x) (Subst.idS σ (Δ.diaIn x)) _
+        (Subst.ok_idS_le (hle.diaIn x)) _ (Subst.coh_idS_le (hle.diaIn x))
+        ((Subst.sim_dia_idS x).restrict (hle.diaIn x)) b).trans
+        (Term.subst_idS_mono (hle.diaIn x) (Subst.ok_idS_le (hle.diaIn x))
+          (Subst.coh_idS_le (hle.diaIn x)) b))
+  termination_by structural _ _ _ _ _ _ _ t => t
 
 /-- ⭐Substituting every address for itself changes nothing. -/
 theorem WFF.subst_id {σ : Signature} : {Δ : Ctx} → {d : ℕ} → (hθ : Subst.Ok Δ (Subst.idS σ Δ)) →
