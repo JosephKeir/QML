@@ -396,13 +396,22 @@ content of a possible object.
     declared last, and since those contexts are *equal*, weakening carries everything across and
     the round trip collapses by `WFF.mono_mono` and `WFF.mono_refl`. `laterList` is the packing and
     its side conditions follow from what a raw entry of a stage can be.
-  - *Still to do for strong T's model*: the bridge from the chain's own `retSet` membership to that
-    hypothesis (plumbing: the chain's `ctxL m l` versus `final.ctx (m, j)`, and `l.length` versus
-    the step number — equal in both cases, so weakening carries them); then the `RealDatum` per
-    chain witness, which `World.ofHenkin` names in its `real` field; then `posRet_exists`; and then
-    dropping `ModalSys.NoTStrong`, at which point `interp_canon`'s realised case,
-    `diaPush_agree_canon` and the truth lemma's `◇` case need their real proofs, on the
-    lexicographic (own stage, term size) measure.
+  - **The chain's witnesses are realised (2026-09-18).** `hhyp_of_isRet` bridges the chain's own
+    `retSet` membership to that hypothesis. Two things had to cross, both of them equalities that
+    `rw` and `simp` cannot use because they sit inside types: the step's declaration (reached
+    through `(chain (n+1)).l`) is carried by `step_ret`, which transports the *membership* as a
+    statement about that declaration with an explicit motive; and the chain's `ρ l.length` over
+    `ctxL m l` versus the model's `ρ n` over `final.ctx (m, n)` are carried by
+    `WFF.retHyp_transport`, which takes context, both names and target as equalities and collapses
+    every weakening at once. `retDatum` then assembles the `RealDatum`, and ⭐`chainReal` is what a
+    world names at each root: the realisation of the step that declared that constant, if one did —
+    a choice in name only, since `ρ` is injective. `World.ofHenkin` passes it. Without strong T the
+    condition is unsatisfiable, so nothing is realised and the K/T/4/S4 proof is untouched.
+  - *Still to do for strong T's model*: `posRet_exists` — for a term `t`, pick a step that
+    enumerates it whose *formula* is neither an existential nor a negated universal (`⊤` will do,
+    under either polarity), so the step is a `retStep`; then drop `ModalSys.NoTStrong`, at which
+    point `interp_canon`'s realised case, `diaPush_agree_canon` and the truth lemma's `◇` case need
+    their real proofs, on the lexicographic (own stage, term size) measure.
   - *Rejected: reaching later stages by induction on the stage.* Take `spec` at stage `j` for
     `∀z. χ[ρ_j := z]` and eliminate the `∀` inside the `◇_c` view by monotonicity. Unsound: the
     premise needs `realiseAt (∀z. χ[z])` from `realiseAt χ[ρ_j]`, i.e. generalisation on a Henkin
