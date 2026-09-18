@@ -139,6 +139,12 @@ structure RealData (x : VarSymb) where
   hdecl : ∀ i : ℕ × ℕ, i₀ ≤ i → (w.L.ctx i).ref (.root (.free c)) = some (.VTypeDia A)
   /-- Nothing else is written at its root. -/
   hfr : ∀ (i : ℕ × ℕ) (v : VarSymb), v.rt = .free c → v ≠ .root (.free c) → (w.L.ctx i) v = none
+  /-- The realising term comes from a strictly earlier own stage than any stage that declares the
+      witness.  In the chain, the witness declared at step `n` realises the term enumerated at
+      step `n`, and is declared only from own stage `n + 1` on.  This is what makes the induction
+      of `interp_canon` well founded: the content at the world itself is read off `t₀`, which
+      therefore belongs to an earlier stage than the term being interpreted. -/
+  hstage : ∀ i : ℕ × ℕ, (w.L.ctx i).ref (.root (.free c)) = some (.VTypeDia A) → i₀.2 < i.2
   /-- Everything `t₀` satisfies here, the witness satisfies in its view. -/
   spec : ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i)
     (χ : WFF σ ((w.L.ctx i).diaIn (.root (.free c))) 0),

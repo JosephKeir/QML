@@ -462,6 +462,147 @@ theorem Term.realiseAt_mono_boxIn {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT :
     (Term.subst_idS_mono (Ctx.Le.refl Γ) Subst.ok_idS Subst.coh_idS _)).trans ?_
   exact congrArg (Sigma.mk _) (Term.mono_refl _ _)
 
+/-! ### η-expansions
+
+The canonical model reads the content of a realised witness off the η-expansion of its address, so
+it needs realisation to undo that expansion: abstracting `c.dia`'s η-expansion gives the hole's,
+and filling the hole gives the realising term back. -/
+
+/-- A substitution whose entries are the renaming `ι`. -/
+def Subst.IsRen {σ : Signature} (ι : VarSymb → VarSymb) (Γ : Ctx) {Δ : Ctx} (θ : Subst σ Δ) :
+    Prop :=
+  ∀ (u : VarSymb) (U : VarType), Γ.ref u = some U → θ.at u = .ren (ι u)
+
+/-- A renaming renames the components of an address too. -/
+theorem Subst.IsRen.ext {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {θ : Subst σ Δ}
+    (hc : Subst.Coh ι Γ θ) (hren : Subst.IsRen ι Γ θ) {u : VarSymb} {U : VarType}
+    (hu : Γ.ref u = some U) (p : List Step) : ι (u.ext p) = (ι u).ext p := by
+  have h := hc u _ hu p
+  rw [hren u _ hu] at h
+  exact h.symm
+
+/-- A renaming renames each step of an address too. -/
+theorem Subst.IsRen.step {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {θ : Subst σ Δ}
+    (hc : Subst.Coh ι Γ θ) (hren : Subst.IsRen ι Γ θ) {u : VarSymb} {U : VarType}
+    (hu : Γ.ref u = some U) (s : Step) : ι (.step u s) = .step (ι u) s := by
+  have h := hc u _ hu [s]
+  rw [hren u _ hu] at h
+  exact h.symm
+
+/-- It is enough to check the visible non-projection addresses. -/
+theorem Subst.isRen_of {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {θ : Subst σ Δ}
+    (hc : Subst.Coh ι Γ θ)
+    (hvis : ∀ (u : VarSymb) (U : VarType), u.lastProj = false → Γ u = some U →
+      θ u = .ren (ι u)) : Subst.IsRen ι Γ θ := by
+  intro u
+  induction u with
+  | root r => intro U hu; exact hvis _ _ rfl hu
+  | step u s ih =>
+      intro U hu
+      by_cases hs : s.isProj = true
+      · have hu' := hu
+        rw [Ctx.ref_step_proj _ _ hs] at hu'
+        cases hU : Γ.ref u with
+        | none => rw [hU] at hu'; cases hu'
+        | some W =>
+            have hstep : ι (.step u s) = .step (ι u) s := by
+              have h := hc u _ hU [s]
+              rw [ih W hU] at h
+              exact h.symm
+            change (if s.isProj then (θ.at u).proj s else _) = _
+            rw [if_pos hs, ih W hU, hstep]
+            rfl
+      · have hlp : (VarSymb.step u s).lastProj = false := Bool.eq_false_iff.mpr hs
+        rw [Subst.at_nonproj _ hlp]
+        exact hvis _ _ hlp ((Ctx.ref_nonproj Γ hlp).symm.trans hu)
+
+theorem Subst.IsRen.box {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {θ : Subst σ Δ}
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hren : Subst.IsRen ι Γ θ) :
+    Subst.IsRen ι Γ.boxIn θ.box := by
+  refine Subst.isRen_of (Subst.coh_box hθ hc) ?_
+  intro u U hlp hu
+  match u, hu with
+  | .step z .box, hu =>
+      obtain ⟨hk, hz⟩ := Ctx.boxIn_box hu
+      change (θ.at z).unbox = _
+      rw [hren z _ hz]
+      change SubE.ren (ι z).inner = _
+      rw [VarSymb.inner_box hk, hren.step hc hz Step.box]
+  | .step z .keep, hu =>
+      obtain ⟨hF, hz, B, rfl⟩ := Ctx.boxIn_keep hu
+      change (θ.at z).keepE = _
+      rw [hren z _ hz, hren.step hc hz Step.keep]
+      rfl
+
+theorem Subst.IsRen.dia {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {θ : Subst σ Δ}
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hren : Subst.IsRen ι Γ θ) {x : VarSymb}
+    {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) :
+    Subst.IsRen ι (Γ.diaIn x) (θ.dia x (ι x)) := by
+  refine Subst.isRen_of (Subst.coh_dia hθ hc ⟨X, hx⟩) ?_
+  intro u U hlp hu
+  match u, hu with
+  | .step z .dia, hu =>
+      have hzx : z = x := by
+        change (if z = x then (match Γ.ref x with
+          | some (.VTypeDia Y) => some Y | _ => none) else none) = some U at hu
+        split_ifs at hu with h
+        exact h
+      subst hzx
+      change (if z = z then (θ.at z).diaBody (ι z) else .hide) = _
+      rw [if_pos rfl, hren z _ hx]
+      change SubE.ren (.step (ι z) .dia) = _
+      rw [hren.step hc hx Step.dia]
+  | .step z .box, hu =>
+      obtain ⟨hk, hz⟩ := Ctx.boxIn_box (Γ := Γ) hu
+      change ((θ.at z).unbox).mono _ = _
+      rw [hren z _ hz]
+      change SubE.ren (ι z).inner = _
+      rw [VarSymb.inner_box hk, hren.step hc hz Step.box]
+  | .step z .keep, hu =>
+      obtain ⟨hF, hz, B, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hu
+      change ((θ.at z).keepE).mono _ = _
+      rw [hren z _ hz, hren.step hc hz Step.keep]
+      rfl
+
+/-- A renaming sends an η-expansion to the η-expansion of the renamed address. -/
+theorem Term.subst_eta_ren {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hren : Subst.IsRen ι Γ θ) :
+    ∀ (T : VarType) (v : VarSymb) (hv : Γ.ref v = some T) (hw : Δ.ref (ι v) = some T),
+      (⟨_, Term.subst ι θ hθ hc (Term.eta v T hv)⟩ : Σ b, Term σ Δ T b) = ⟨_, Term.eta (ι v) T hw⟩
+  | .Var, v, hv, hw => by
+      refine congrArg (Sigma.mk _) ?_
+      change (θ.at v).toVar (Subst.okRef_at hθ hv) = Term.var (ι v) hw
+      exact SubE.toVar_congr (hren v _ hv) _ hw
+  | .VTypeOne, _, _, _ => rfl
+  | .VTypeProd A B, v, hv, hw => by
+      have hfst : ι (.step v .fst) = .step (ι v) .fst := hren.step hc hv .fst
+      have hsnd : ι (.step v .snd) = .step (ι v) .snd := hren.step hc hv .snd
+      have hA := Term.subst_eta_ren θ hθ hc hren A (.step v .fst) (Ctx.ref_fst_of hv)
+        (by rw [hfst]; exact Ctx.ref_fst_of hw)
+      have hB := Term.subst_eta_ren θ hθ hc hren B (.step v .snd) (Ctx.ref_snd_of hv)
+        (by rw [hsnd]; exact Ctx.ref_snd_of hw)
+      exact (sig_pair hA hB).trans (sig_pair (Term.eta_congr hfst A _ _)
+        (Term.eta_congr hsnd B _ _))
+  | .VTypeBox A, v, hv, hw => by
+      have hin : ι v.inner = (ι v).inner := by
+        by_cases hk : ModalSys.keepOnly = true
+        · rw [VarSymb.inner_keepOnly hk, VarSymb.inner_keepOnly hk]
+          exact hren.ext hc hv [Step.keep, Step.here]
+        · rw [VarSymb.inner_box (Bool.eq_false_iff.mpr hk),
+            VarSymb.inner_box (Bool.eq_false_iff.mpr hk)]
+          exact hren.ext hc hv [Step.box]
+      have hb := Term.subst_eta_ren θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc)
+        (hren.box hθ hc) A v.inner (Ctx.ref_inner hv) (by rw [hin]; exact Ctx.ref_inner hw)
+      exact (sig_boxtm hb).trans (sig_boxtm (Term.eta_congr hin A _ _))
+  | .VTypeDia A, v, hv, hw => by
+      have hd : ι (.step v .dia) = .step (ι v) .dia := hren.step hc hv .dia
+      have hwit : (θ.at v).idxAlong [] = ι v := by rw [hren v _ hv]; rfl
+      have hb := Term.subst_eta_ren (θ.dia v (ι v)) (Subst.ok_dia hθ ⟨A, hv⟩ hwit)
+        (Subst.coh_dia hθ hc ⟨A, hv⟩) (hren.dia hθ hc hv) A
+        (.step v .dia) (Ctx.ref_diaIn_of hv) (by rw [hd]; exact Ctx.ref_diaIn_of hw)
+      exact (sig_diatm (hx := ⟨A, hw⟩) hb).trans
+        (sig_diatm (hx := ⟨A, hw⟩) (hx' := ⟨A, hw⟩) (Term.eta_congr hd A _ _))
+
 /-- ⭐A hole formula read inside `◇_c`, at any context where `c` is a declared `◇`-typed root.
     `WFF.viewRead` is the case of a context that has just declared it. -/
 def WFF.viewReadAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) {A : VarType}

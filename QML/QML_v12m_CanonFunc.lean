@@ -282,6 +282,148 @@ namespace Canon
 
 variable {σ : Signature} {N₀ : ℕ}
 
+/-! ## Substituting into an η-expansion
+
+Reading a witness's own content back gives the realising term: the abstraction sends the η-expansion
+of `c.dia` to the hole's (`Term.subst_eta_ren`), and filling the hole undoes that expansion.  Under
+`keepOnly` the `□` case goes through `keep` and `here`, where shifting then collapsing undoes itself
+(`Term.collapse_shift_same`), which is why this lives here. -/
+
+theorem Term.subst_sigma {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {θ : Subst σ Δ}
+    {hθ : Subst.Ok Γ θ} {hc : Subst.Coh ι Γ θ} {T : VarType} {p q : Σ b : Ann T, Term σ Γ T b}
+    (h : p = q) :
+    (⟨_, Term.subst ι θ hθ hc p.2⟩ : Σ b, Term σ Δ T b) = ⟨_, Term.subst ι θ hθ hc q.2⟩ := by
+  cases h
+  rfl
+
+theorem SubE.tm_sigma {σ : Signature} {Δ : Ctx} {T : VarType} {p q : Σ a : Ann T, Term σ Δ T a}
+    (h : p = q) : (SubE.tm p.2 : SubE σ Δ) = SubE.tm q.2 := by
+  cases h
+  rfl
+
+theorem Term.subst_eta_tm {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) :
+    ∀ (T : VarType) (v : VarSymb) (hv : Γ.ref v = some T) {a : Ann T} (s : Term σ Δ T a),
+      θ.at v = .tm s →
+      (⟨_, Term.subst ι θ hθ hc (Term.eta v T hv)⟩ : Σ b, Term σ Δ T b) = ⟨a, s⟩
+  | .Var, v, hv, _, s, hs => by
+      match s with
+      | .var v' hv' =>
+          refine congrArg (Sigma.mk _) ?_
+          change (θ.at v).toVar (Subst.okRef_at hθ hv) = _
+          rw [SubE.toVar_congr hs _ rfl]
+          exact SubE.toVar_tmSelf _ rfl
+      | .func f =>
+          refine congrArg (Sigma.mk _) ?_
+          change (θ.at v).toVar (Subst.okRef_at hθ hv) = _
+          rw [SubE.toVar_congr hs _ rfl]
+          exact SubE.toVar_tmSelf _ rfl
+  | .VTypeOne, _, _, _, s, _ => by
+      match s with
+      | .unit => rfl
+  | .VTypeProd A B, v, hv, _, s, hs => by
+      match s with
+      | .pair s₁ s₂ =>
+          have h₁ : θ.at (.step v .fst) = .tm s₁ := by
+            change (θ.at v).proj .fst = _
+            rw [hs]
+            rfl
+          have h₂ : θ.at (.step v .snd) = .tm s₂ := by
+            change (θ.at v).proj .snd = _
+            rw [hs]
+            rfl
+          exact sig_pair (Term.subst_eta_tm θ hθ hc A _ (Ctx.ref_fst_of hv) s₁ h₁)
+            (Term.subst_eta_tm θ hθ hc B _ (Ctx.ref_snd_of hv) s₂ h₂)
+  | .VTypeBox A, v, hv, _, s, hs => by
+      match s with
+      | .boxtm b =>
+          have hin : θ.box.at v.inner = .tm b := by
+            by_cases hk : ModalSys.keepOnly = true
+            · have hTF := ModalSys.keepOnly_flags hk
+              rw [VarSymb.inner_keepOnly hk]
+              change (((θ.at v).keepE).proj .here) = _
+              rw [hs, SubE.keepE_tm b hTF.2,
+                SubE.proj_boxtm_here _ hTF.1]
+              exact SubE.tm_sigma ((Term.collapse_shift_same
+                (Ctx.shifts_boxIn_boxIn hTF.2 Δ)
+                (Ctx.collapses_boxIn_self hTF.1 Δ.boxIn) (Ctx.Le.refl _)
+                (Ctx.shiftCollapseId_keepOnly hk Δ) b).trans
+                (congrArg (Sigma.mk _) (Term.mono_refl _ b)))
+            · rw [VarSymb.inner_box (Bool.eq_false_iff.mpr hk)]
+              change (θ.at v).unbox = _
+              rw [hs]
+              rfl
+          exact sig_boxtm (Term.subst_eta_tm θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) A
+            v.inner (Ctx.ref_inner hv) b hin)
+  | .VTypeDia A, v, hv, _, s, hs => by
+      match s with
+      | .diatm y hy b =>
+          have hwit : ι v = y := by
+            have h := hc v _ hv []
+            rw [hs] at h
+            exact h.symm
+          subst hwit
+          have hbody : (θ.dia v (ι v)).at (.step v .dia) =
+              .tm (Term.mono (Ctx.Le.refl _) b) := by
+            change (if v = v then (θ.at v).diaBody (ι v) else .hide) = _
+            rw [if_pos rfl, hs]
+            change (if _h : ι v = ι v then SubE.tm (Term.mono _ b) else .hide) = _
+            rw [dif_pos rfl]
+          have hinner := (Term.subst_eta_tm (θ.dia v (ι v)) (Subst.ok_dia hθ ⟨A, hv⟩
+              (by rw [hs]; rfl)) (Subst.coh_dia hθ hc ⟨A, hv⟩) A (.step v .dia)
+            (Ctx.ref_diaIn_of hv) _ hbody).trans
+            (congrArg (Sigma.mk _) (Term.mono_refl _ b))
+          exact sig_diatm (hx := hy) (hx' := hy) hinner
+
+omit [ModalSys] in
+theorem Subst.diaAbsIdx_dia_self (c : ℕ) :
+    Subst.diaAbsIdx c (.step (.root (.free c)) .dia) = .root (.bnd 0) :=
+  Subst.diaAbsIdx_dia c []
+
+/-- The abstraction is a renaming by `Subst.diaAbsIdx`. -/
+theorem Subst.isRen_diaAbs {σ : Signature} {Γ : Ctx} {c : ℕ} {A : VarType}
+    (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
+    (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
+    (h₀ : Γ.boxIn (.root (.bnd 0)) = none) :
+    Subst.IsRen (Subst.diaAbsIdx c) (Γ.diaIn (.root (.free c)))
+      (Subst.diaAbs σ (Γ.boxIn.insert (.bnd 0) A) c) := by
+  refine Subst.isRen_of (Subst.coh_diaAbs hcA hfr h₀) ?_
+  intro u U _ hu
+  rcases Subst.diaIn_cases hcA hfr hu with ⟨rfl, _⟩ | ⟨hrt, _, hen, _⟩
+  · change (if (VarSymb.root (.free c)) = .root (.free c) then SubE.ren (.root (.bnd 0))
+      else .hide) = _
+    rw [if_pos rfl, Subst.diaAbsIdx_dia_self c]
+  · rw [hen (Γ.boxIn.insert (.bnd 0) A), Subst.diaAbsIdx_of_rt_ne hrt]
+
+/-- ⭐Realising the witness's own content gives the realising term back: the canonical model reads
+    the content off the η-expansion of the witness's address. -/
+theorem Term.realiseAt_eta {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true)
+    (c : ℕ) {A : VarType} (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
+    (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
+    {a₀ : Ann A} (t₀ : Term σ Γ A a₀) :
+    (⟨_, Term.realiseAt hT c hcA hfr t₀
+        (Term.eta (.step (.root (.free c)) .dia) A (Ctx.ref_diaIn_of hcA))⟩ :
+      Σ b, Term σ Γ A b) = ⟨a₀, t₀⟩ := by
+  have h₀ : Γ.boxIn (.root (.bnd 0)) = none := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root
+  have hrf : Γ.boxIn.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)
+  -- the abstraction sends the witness content's η-expansion to the hole's
+  have habs : (⟨_, Term.diaAbs c hcA hfr
+        (Term.eta (.step (.root (.free c)) .dia) A (Ctx.ref_diaIn_of hcA))⟩ :
+      Σ b, Term σ (Γ.boxIn.insert (.bnd 0) A) A b) =
+      ⟨_, Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root _ (.bnd 0) A)⟩ := by
+    refine (Term.subst_eta_ren _ _ _ (Subst.isRen_diaAbs hcA hfr h₀) A _ (Ctx.ref_diaIn_of hcA)
+      (by rw [Subst.diaAbsIdx_dia_self c]; exact Ctx.ref_insert_root _ (.bnd 0) A)).trans ?_
+    exact Term.eta_congr (Subst.diaAbsIdx_dia_self c) A _ _
+  -- and filling the hole gives the realising term
+  refine (Term.hereRead_sigma hT t₀ habs).trans ?_
+  simp only [Term.hereRead]
+  refine (Term.subst_sigma (Term.collapse_eta ((Ctx.collapses_boxIn_self hT Γ).insert hrf A)
+    (.root (.bnd 0)) A (Ctx.ref_insert_root _ (.bnd 0) A))).trans ?_
+  refine Term.subst_eta_tm _ _ _ A (.root (.bnd 0)) (Ctx.ref_insert_root _ (.bnd 0) A) t₀ ?_
+  change (if (VarSymb.root (Root.bnd 0)) = .root (.bnd 0) then SubE.tm t₀
+    else SubE.ren (VarSymb.root (Root.bnd 0))) = _
+  rw [if_pos rfl]
+
 /-! ## The signature on classes -/
 
 omit [ModalSys] in

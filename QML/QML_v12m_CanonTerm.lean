@@ -246,7 +246,8 @@ theorem diaPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) {x : VarSymb} {
     denotation there, given the truth lemma for terms no larger than its body. -/
 theorem interp_box_far (S : ℕ)
     (IH : ∀ {Γ : Ctx} {A : VarType} {a : Ann A} (t : Term σ Γ A a), t.size ≤ S →
-      ∀ {w : World σ N₀} {i : ℕ × ℕ} {e : Γ.Le (w.L.ctx i)} {env : (model w₀).Env Γ w},
+      ∀ {w : World σ N₀} {i : ℕ × ℕ} (_hi : i.2 = 0) {e : Γ.Le (w.L.ctx i)}
+      {env : (model w₀).Env Γ w},
       Model.Env.Agree e env (canonEnv w₀ w i) →
       Model.interp env t = toDom w₀ A w (rden w i e t) (definable_rden e t)) :
     ∀ (d : ℕ) {Γ : Ctx} {A : VarType} {a : Ann A} (t : Term σ Γ.boxIn A a), t.size ≤ S →
@@ -256,7 +257,8 @@ theorem interp_box_far (S : ℕ)
         toDom w₀ A w'.1 (rden w i e (.boxtm t) w')
           (definable_box_apply (definable_rden e (.boxtm t)) w')
   | 0, _, _, _, t, ht, w, i, e, env, hag, w', hd =>
-      (IH t ht ((Model.Env.boxPush_agree hag w').trans (boxPush_agree_canon w₀ w i w' hd))).trans
+      (IH t ht rfl ((Model.Env.boxPush_agree hag w').trans
+        (boxPush_agree_canon w₀ w i w' hd))).trans
         (toDom_congr w₀ (rden_boxtm_acc e t w' hd).symm _ _)
   | d + 1, Γ, _, _, t, ht, w, i, e, env, hag, w', hd => by
       obtain ⟨u, hu, hr, hd'⟩ := w'.split hd
@@ -329,7 +331,7 @@ mutual
             (interp_canon (Term.collapse (Ctx.collapses_boxIn_self hT Γ) t) hag)).trans
             (toDom_congr w₀ (rden_boxtm_self e t _ hd).symm _ _)
         · exact interp_box_far w₀ t.size
-            (fun {_Γ} {_A} {_a} t' _ht' {_w} {_i} {_e} {_env} hag' => interp_canon t' hag') d t
+            (fun {_Γ} {_A} {_a} t' _ht' {_w} {_i} _hi {_e} {_env} hag' => interp_canon t' hag') d t
             le_rfl hag w' hd
     | _, _, _, .diatm x hx t, w, i, e, env, hag => by
         obtain ⟨X, hr⟩ := hx
