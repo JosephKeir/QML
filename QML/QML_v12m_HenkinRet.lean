@@ -492,6 +492,62 @@ theorem isRet_of_top {n : ℕ}
     rename_i h₁ h₂ h₃
     cases h₂
 
+
+/-- ⭐Every term at every stage is the term some strong T step was declared for: the step that
+    enumerates it and reads `⊤`. -/
+theorem exists_isRet_term (m j : ℕ) {A : VarType} {a : Ann A}
+    (t : Term σ (L.ctxL m (L.chain S₀ j).l) A a) :
+    ∃ n, IsRet L S₀ n ∧ decM n = m ∧ decJ n = j ∧
+      ∃ hle : (L.ctxL m (L.chain S₀ j).l).Le (L.ctxL (decM n) (L.chain S₀ n).l),
+        L.termQ (σ := σ) n (L.chain S₀ n).l = ⟨A, a, Term.mono hle t⟩ := by
+  obtain ⟨k', hk'⟩ := enumT_surjective (σ := σ) (L.ctxL m (L.chain S₀ j).l) ⟨A, a, t⟩
+  obtain ⟨kt, hkt⟩ := enumF_surjective (σ := σ) (L.ctxL m (L.chain S₀ j).l) .top
+  obtain ⟨n, hj, hm, hkf, hkT⟩ := exists_decFT m j kt k'
+  subst hm
+  subst hj
+  refine ⟨n, isRet_of_top (by rw [hkf]; exact hkt), rfl, rfl,
+    chain_le S₀ (decJ_le n) (decM n), ?_⟩
+  rw [termQ_chain S₀ n (chain_le S₀ (decJ_le n) (decM n)), hkT, hk']
+
+
+/-- The data a strong T step provides, read off under a renaming of its witness. -/
+theorem retDatum_fields (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) {n c : ℕ}
+    (hret : IsRet L S₀ n) (hS₀ : StageSys.Consistent S₀) (hc : L.ρ n = c) :
+    (⟨(hc ▸ retDatum hT hTS hret hS₀ :
+            Canon.RealDatum σ (L.final S₀) (L.finalT S₀) c).A,
+        (hc ▸ retDatum hT hTS hret hS₀ :
+            Canon.RealDatum σ (L.final S₀) (L.finalT S₀) c).i₀,
+        (hc ▸ retDatum hT hTS hret hS₀ :
+            Canon.RealDatum σ (L.final S₀) (L.finalT S₀) c).a₀,
+        (hc ▸ retDatum hT hTS hret hS₀ :
+            Canon.RealDatum σ (L.final S₀) (L.finalT S₀) c).t₀⟩ :
+        Σ (A : VarType) (i : ℕ × ℕ) (a : Ann A), Term σ ((L.final S₀).ctx i) A a) =
+      ⟨(L.termQ (σ := σ) n (L.chain S₀ n).l).1, (decM n, n),
+        (L.termQ (σ := σ) n (L.chain S₀ n).l).2.1,
+        Term.mono (Ctx.le_of_eq (ctxL_eq_final S₀ (decM n) n))
+          (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2⟩ := by
+  subst hc
+  rfl
+
+/-- ⭐What a world names at the witness of a strong T step: that step's own data. -/
+theorem chainReal_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true)
+    (hS₀ : StageSys.Consistent S₀) {n : ℕ} (hret : IsRet L S₀ n) :
+    ∃ d : Canon.RealDatum σ (L.final S₀) (L.finalT S₀) (L.ρ n),
+      L.chainReal hS₀ (L.ρ n) = some d ∧
+      (⟨d.A, d.i₀, d.a₀, d.t₀⟩ :
+          Σ (A : VarType) (i : ℕ × ℕ) (a : Ann A), Term σ ((L.final S₀).ctx i) A a) =
+        ⟨(L.termQ (σ := σ) n (L.chain S₀ n).l).1, (decM n, n),
+          (L.termQ (σ := σ) n (L.chain S₀ n).l).2.1,
+          Term.mono (Ctx.le_of_eq (ctxL_eq_final S₀ (decM n) n))
+            (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2⟩ := by
+  have h : ∃ n', ((ModalSys.T = true ∧ ModalSys.TStrong = true) ∧ IsRet L S₀ n') ∧
+      L.ρ n' = L.ρ n := ⟨n, ⟨⟨hT, hTS⟩, hret⟩, rfl⟩
+  have hch : h.choose = n := L.ρ_inj h.choose_spec.2
+  refine ⟨_, dif_pos h, ?_⟩
+  conv_rhs => rw [← hch]
+  exact retDatum_fields h.choose_spec.1.1.1 h.choose_spec.1.1.2 h.choose_spec.1.2 hS₀
+    h.choose_spec.2
+
 end Chain
 
 end WorldLang

@@ -182,7 +182,7 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
   | @T_dia Γ _ hT hS A a t c y hc hy hyc Δ φ Ψ p ih =>
       -- Interpret the eigenvariable as some possible object realised here.
       intro M w env hnp hΔ
-      obtain ⟨q, hrefl, hmem, hcont⟩ := M.posRet_exists hS (interp env t)
+      obtain ⟨q, hrefl, hmem, hcont⟩ := M.posRet_exists hT hS (interp env t)
       refine (sat_weaken (T := .VTypeDia A) env hc.root q φ).mp
         (ih M (env.extend (T := .VTypeDia A) (.free c) q) (hnp.insert _ _) ?_)
       intro χ hχ

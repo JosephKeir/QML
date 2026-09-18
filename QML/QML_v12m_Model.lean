@@ -176,7 +176,8 @@ structure Model (σ : Signature) where
       particular there is no uniqueness and no naturality.  Demanding an operation would force the
       canonical model to choose one (and, if naturality were ever wanted, to make the choices
       cohere, which is what sank the `y.ret` design). -/
-  posRet_exists : ∀ {A : VarType} {w : frame.W} (_hS : ModalSys.TStrong = true)
+  posRet_exists : ∀ {A : VarType} {w : frame.W} (_hT : ModalSys.T = true)
+    (_hS : ModalSys.TStrong = true)
     (a : frame.Dom A w), ∃ (p : frame.Pos A w) (h : frame.R w w)
       (hm : (⟨w, h⟩ : frame.Acc w) ∈ (posEval p).1), (posEval p).2 ⟨⟨w, h⟩, hm⟩ = a
 

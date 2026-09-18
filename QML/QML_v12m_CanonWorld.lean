@@ -123,6 +123,15 @@ structure World where
       existence because the content of a realised witness at the world itself is read off the
       realising term: the model has to name one, not merely know that there is one. -/
   real : ∀ c : ℕ, Option (RealDatum σ L T c)
+  /-- Strong T: every term is the realising term of some root.  This is what `posRet_exists`
+      needs — every object of a domain is the content, at the world itself, of a possible
+      object. -/
+  realW : ModalSys.T = true → ModalSys.TStrong = true → ∀ (i : ℕ × ℕ) {A : VarType} {a : Ann A}
+      (t : Term σ (L.ctx i) A a),
+      ∃ (c : ℕ) (i' : ℕ × ℕ) (hle : i ≤ i') (d : RealDatum σ L T c), real c = some d ∧
+        (⟨d.A, d.i₀, d.a₀, d.t₀⟩ :
+            Σ (A : VarType) (i'' : ℕ × ℕ) (a : Ann A), Term σ (L.ctx i'') A a) =
+          ⟨A, i', a, Term.mono (L.ctx_le hle) t⟩
 
 variable {σ N₀}
 

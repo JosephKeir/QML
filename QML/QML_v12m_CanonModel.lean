@@ -185,7 +185,7 @@ noncomputable def model : Model.{0} σ where
   posStrength_eval _ _ := rfl
   necExtract_eval _ _ := rfl
   necDup_eval _ _ _ _ := rfl
-  posRet_exists hS _ := (ModalSys.NoTStrong.absurd hS).elim
+  posRet_exists _ hS _ := (ModalSys.NoTStrong.absurd hS).elim
 
 end Canon
 
