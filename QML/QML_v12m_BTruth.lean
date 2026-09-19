@@ -1,0 +1,231 @@
+import QML.QML_v12m_BCanonTerm
+import QML.QML_v12m_Completeness
+
+/-!
+# QML v12m — B's canonical model: the truth lemma
+
+⭐`BData.truth`: at every world and stage, the canonical environment satisfies exactly the formulas
+of the world's theory.  By induction on the size of the formula, which substitution does not
+change.  Atoms and equations by the truth lemma for terms, the connectives by maximality, the
+quantifiers by definability and the Henkin witnesses (`BWorld.exW`, `BWorld.allW`).  The modal
+steps are where the arrows do their work: pushing the canonical environment along an arrow is
+the target's canonical environment read through the arrow (`boxPush_canon`, `diaPush_canon`), so by
+`Model.sat_subst` the view satisfies `χ` exactly when the target's theory contains `χ` translated
+along the arrow — which transfer (`tr`, `trX`) and existence (`ex`, `exX`) settle.
+-/
+
+namespace V12M
+
+variable [ModalSys]
+
+namespace BArrow
+
+variable {σ : Signature}
+
+namespace BData
+
+variable [ModalSys.NoTFour] {B : BData σ}
+
+/-- The truth lemma for atoms. -/
+theorem relSat_canon : ∀ {Γ : Ctx} {n : ℕ} (ρ : Rel σ Γ n) {s : B.W} {i : ℕ}
+    {e : Γ.Le ((B.w s).ctx i)} {env : B.model.Env Γ s},
+    Model.Env.Agree e env (B.canonEnv s i) →
+    ∀ (args : Fin n → (B.w s).D) (ts : Fin n → Term σ Γ .Var .var),
+      (∀ k, args k = (B.w s).cls i (Term.mono e (ts k))) →
+      (Model.relSat env ρ args ↔
+        WFF.mono e (.atom ((Spine.ofFn ts).fillR ρ)) ∈ (B.w s).M i)
+  | _, _, .R ⟨r, rfl⟩, s, i, e, _, _, args, ts, hts => by
+      change (B.w s).canonRel r (fun k => args (Fin.cast rfl k)) ↔ _
+      rw [WFF.mono_fillR, Spine.mono_ofFn,
+        show (fun k => args (Fin.cast rfl k)) = fun k => (B.w s).cls i (Term.mono e (ts k)) from
+          funext fun k => hts k,
+        BWorld.canonRel_cls]
+      rfl
+  | _, _, .eval ρ t, s, i, e, env, hag, args, ts, hts => by
+      change Model.relSat env ρ (Fin.cons (Model.interp env t) args) ↔ _
+      have h0 : Model.interp env t = (B.w s).cls i (Term.mono e t) :=
+        (interp_canon t hag).trans (rden_var_mono e t)
+      rw [relSat_canon ρ hag (Fin.cons (Model.interp env t) args) (Fin.cons t ts)
+        (fun k => by cases k using Fin.cases <;> simp [h0, hts]), Spine.ofFn_cons]
+      rfl
+
+/-- A denotable object is the value of a term at a later stage. -/
+theorem interp_lift {A : VarType} {s : B.W} {i i' : ℕ} {a : Ann A}
+    {t' : Term σ ((B.w s).ctx i') A a} {o : B.model.frame.Dom A s}
+    (ht' : B.rden s i' (Ctx.Le.refl _) t' = B.fromDom A s o) (hK : i' ≤ i) :
+    Model.interp (B.canonEnv s i) ((B.w s).liftT hK t') = o :=
+  (interp_canon _ (Model.Env.Agree.refl' _)).trans
+    ((toDom_congr ((rden_mono _ t' s _ _).trans ((rden_congr t' s _ i' _ _).trans ht')) _
+      _).trans (B.toDom_fromDom A s o))
+
+theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i) 0), φ.size < n →
+    (B.model.sat (B.canonEnv s i) φ ↔ φ ∈ (B.w s).M i)
+  | 0, _, _, _, h => absurd h (Nat.not_lt_zero _)
+  | n + 1, s, i, φ, hφ => by
+      cases φ with
+      | atom ρ =>
+          change Model.relSat (B.canonEnv s i) ρ Fin.elim0 ↔ _
+          rw [relSat_canon ρ (Model.Env.Agree.refl' _) Fin.elim0 Fin.elim0 (fun k => k.elim0)]
+          change WFF.mono (Ctx.Le.refl _) (.atom ρ) ∈ (B.w s).M i ↔ _
+          rw [WFF.mono_refl]
+      | eq t u =>
+          change Model.interp (B.canonEnv s i) t = Model.interp (B.canonEnv s i) u ↔ _
+          rw [interp_canon t (Model.Env.Agree.refl' _), interp_canon u (Model.Env.Agree.refl' _)]
+          change B.rden s i (Ctx.Le.refl _) t = B.rden s i (Ctx.Le.refl _) u ↔ _
+          rw [rden_var_cls, rden_var_cls, BWorld.cls_eq_iff (le_refl i) (le_refl i)]
+          change WFF.eq (Term.mono ((B.w s).le (le_refl i)) t)
+            (Term.mono ((B.w s).le (le_refl i)) u) ∈ (B.w s).M i ↔ _
+          rw [Term.mono_refl, Term.mono_refl]
+      | top => exact ⟨fun _ => ((B.w s).mcs i).top_mem, fun _ => trivial⟩
+      | bot => exact ⟨False.elim, fun h => ((B.w s).mcs i).bot_not_mem h⟩
+      | and φ ψ =>
+          have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
+          have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega
+          change _ ∧ _ ↔ _
+          rw [truth_lt n s i φ h₁, truth_lt n s i ψ h₂, ((B.w s).mcs i).and_mem_iff]
+      | or φ ψ =>
+          have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
+          have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega
+          change _ ∨ _ ↔ _
+          rw [truth_lt n s i φ h₁, truth_lt n s i ψ h₂, ((B.w s).mcs i).or_mem_iff]
+      | imp φ ψ =>
+          have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
+          have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega
+          change (_ → _) ↔ _
+          rw [truth_lt n s i φ h₁, truth_lt n s i ψ h₂, ((B.w s).mcs i).imp_mem_iff]
+      | all A ψ =>
+          have hψ : ψ.size < n := by simp only [WFF.size] at hφ; omega
+          change (∀ o : B.model.frame.Dom A s,
+            B.model.sat ((B.canonEnv s i).extend (.bnd 0) o) ψ) ↔ _
+          constructor
+          · intro hsat
+            by_contra hnot
+            obtain ⟨i', hi, a, t, hmem⟩ := (B.w s).allW (((B.w s).mcs i).neg_mem_iff.mpr hnot)
+            have hs₁ := (Model.sat_mono (Model.Env.extend_agree (canonEnv_le s hi) (.bnd 0)
+              (Model.interp (B.canonEnv s i') t)) ψ).mpr (hsat _)
+            have hs₂ := (Model.sat_instantiate (B.canonEnv s i') (noProjLast s i')
+              Ctx.NoSlots.slots t _).mpr hs₁
+            have hs₃ := (truth_lt n s i' _
+              (by rw [WFF.size_instantiate, WFF.size_mono]; exact hψ)).mp hs₂
+            exact (((B.w s).mcs i').neg_mem_iff.mp hmem) hs₃
+          · intro hmem o
+            obtain ⟨i', a, t', ht'⟩ := B.definable_fromDom A s o
+            have hK : i ≤ i ⊔ i' := le_sup_left
+            have hK' : i' ≤ i ⊔ i' := le_sup_right
+            have hinst : WFF.instantiate Ctx.NoSlots.slots ((B.w s).liftT hK' t')
+                (WFF.mono (((B.w s).le hK).insert (.bnd 0) A) ψ) ∈ (B.w s).M (i ⊔ i') :=
+              BWorld.mem_of_provable
+                (Δ := [WFF.all A (WFF.mono (((B.w s).le hK).insert (.bnd 0) A) ψ)])
+                (fun χ hχ => by
+                  rw [List.mem_singleton.mp hχ]
+                  exact (BWorld.mem_lift hK).mp hmem)
+                ⟨Proof.all_elim A ((B.w s).liftT hK' t') (Proof.lookup List.mem_cons_self)⟩
+            have hs := (truth_lt n s (i ⊔ i') _
+              (by rw [WFF.size_instantiate, WFF.size_mono]; exact hψ)).mpr hinst
+            have hs₁ := (Model.sat_instantiate (B.canonEnv s (i ⊔ i')) (noProjLast s _)
+              Ctx.NoSlots.slots ((B.w s).liftT hK' t') _).mp hs
+            rw [interp_lift ht' hK'] at hs₁
+            exact (Model.sat_mono (Model.Env.extend_agree (canonEnv_le s hK) (.bnd 0) o)
+              ψ).mp hs₁
+      | ex A ψ =>
+          have hψ : ψ.size < n := by simp only [WFF.size] at hφ; omega
+          change (∃ o : B.model.frame.Dom A s,
+            B.model.sat ((B.canonEnv s i).extend (.bnd 0) o) ψ) ↔ _
+          constructor
+          · rintro ⟨o, hsat⟩
+            obtain ⟨i', a, t', ht'⟩ := B.definable_fromDom A s o
+            have hK : i ≤ i ⊔ i' := le_sup_left
+            have hK' : i' ≤ i ⊔ i' := le_sup_right
+            have hs₁ := (Model.sat_mono (Model.Env.extend_agree (canonEnv_le s hK) (.bnd 0) o)
+              ψ).mpr hsat
+            rw [← interp_lift ht' hK'] at hs₁
+            have hs₂ := (Model.sat_instantiate (B.canonEnv s (i ⊔ i')) (noProjLast s _)
+              Ctx.NoSlots.slots ((B.w s).liftT hK' t') _).mpr hs₁
+            have hmemK := (truth_lt n s (i ⊔ i') _
+              (by rw [WFF.size_instantiate, WFF.size_mono]; exact hψ)).mp hs₂
+            exact (BWorld.mem_lift hK).mpr (BWorld.mem_of_provable
+              (Δ := [WFF.instantiate Ctx.NoSlots.slots ((B.w s).liftT hK' t')
+                (WFF.mono (((B.w s).le hK).insert (.bnd 0) A) ψ)])
+              (fun χ hχ => by
+                rw [List.mem_singleton.mp hχ]
+                exact hmemK)
+              ⟨Proof.ex_intro A ((B.w s).liftT hK' t') (Proof.lookup List.mem_cons_self)⟩)
+          · intro hmem
+            obtain ⟨i', hi, a, t, hmem'⟩ := (B.w s).exW hmem
+            refine ⟨Model.interp (B.canonEnv s i') t, ?_⟩
+            have hs := (truth_lt n s i' _
+              (by rw [WFF.size_instantiate, WFF.size_mono]; exact hψ)).mpr hmem'
+            have hs₁ := (Model.sat_instantiate (B.canonEnv s i') (noProjLast s i')
+              Ctx.NoSlots.slots t _).mp hs
+            exact (Model.sat_mono (Model.Env.extend_agree (canonEnv_le s hi) (.bnd 0) _)
+              ψ).mp hs₁
+      | box χ =>
+          have hχs : χ.size < n := by simp only [WFF.size] at hφ; omega
+          change (∀ a : B.Acc s, B.model.sat ((B.canonEnv s i).boxPush a) χ) ↔ _
+          have key : ∀ a : B.Acc s, B.model.sat ((B.canonEnv s i).boxPush a) χ ↔
+              WFF.subst (arrowIdx (B.img s a.1)) (arrowS σ _ (B.img s a.1))
+                (ok_arrowS (B.imgOk a.2.down i)) (coh_arrowS (B.imgOk a.2.down i))
+                Ctx.NoSlots.slots Ctx.NoSlots.slots χ ∈ (B.w a.1).M (B.stg s a.1 i) := by
+            intro a
+            rw [boxPush_canon]
+            exact (Model.sat_subst _ _ (coh_arrowS (B.imgOk a.2.down i)) Ctx.NoSlots.slots
+              Ctx.NoSlots.slots _ _ χ).symm.trans
+              (truth_lt n a.1 _ _ (by rw [WFF.size_subst]; exact hχs))
+          constructor
+          · intro hsat
+            by_contra hnot
+            obtain ⟨t, h, hneg⟩ := B.ex s i χ hnot
+            exact ((B.w t).mcs _).neg_mem_iff.mp hneg ((key ⟨t, ⟨h⟩⟩).mp (hsat ⟨t, ⟨h⟩⟩))
+          · intro hmem a
+            exact (key a).mpr (B.tr a.2.down i χ hmem)
+      | dia x hx χ =>
+          have hχs : χ.size < n := by simp only [WFF.size] at hφ; omega
+          change (∃ (X : VarType) (h : ((B.w s).ctx i).ref x = some (.VTypeDia X))
+            (a : (B.model.posEval ((B.canonEnv s i).ref x h)).1),
+              B.model.sat ((B.canonEnv s i).diaPush x h a) χ) ↔ _
+          have key : ∀ {X : VarType} (h : ((B.w s).ctx i).ref x = some (.VTypeDia X))
+              (a : (B.model.posEval ((B.canonEnv s i).ref x h)).1)
+              (hk : B.kd s a.1.1 = some (x, X)),
+              B.model.sat ((B.canonEnv s i).diaPush x h a) χ ↔
+                WFF.subst (arrowXIdx (B.img s a.1.1) x (B.cx s a.1.1))
+                  (arrowXS σ _ (B.img s a.1.1) x (B.cx s a.1.1))
+                  (ok_arrowXS (B.imgOk (B.kdR hk) i) h (B.hcx hk i))
+                  (coh_arrowXS (B.imgOk (B.kdR hk) i) h (B.hcx hk i))
+                  Ctx.NoSlots.slots Ctx.NoSlots.slots χ ∈ (B.w a.1.1).M (B.stg s a.1.1 i) := by
+            intro X h a hk
+            rw [diaPush_canon s i h a]
+            exact (Model.sat_subst _ _ (coh_arrowXS (B.imgOk (B.kdR hk) i) h (B.hcx hk i))
+              Ctx.NoSlots.slots Ctx.NoSlots.slots _ _ χ).symm.trans
+              (truth_lt n a.1.1 _ _ (by rw [WFF.size_subst]; exact hχs))
+          constructor
+          · rintro ⟨X, h, a, hsat⟩
+            obtain ⟨X', hk⟩ : a.1 ∈ B.extent s x := canonEnv_extent s i h ▸ a.2
+            obtain rfl := B.hxX hk i X h
+            by_contra hnot
+            have hbx : WFF.boxx x hx χ.neg ∈ (B.w s).M i :=
+              BWorld.mem_of_provable (Δ := [(WFF.dia x hx χ).neg])
+                (fun ψ hψ => by
+                  rw [List.mem_singleton.mp hψ]
+                  exact ((B.w s).mcs i).neg_mem_iff.mpr hnot)
+                ⟨Proof.boxx_neg_of_not_dia x hx χ⟩
+            have hneg := B.trX hk i h χ.neg hbx
+            exact ((B.w a.1.1).mcs _).neg_mem_iff.mp hneg ((key h a hk).mp hsat)
+          · intro hmem
+            obtain ⟨X, h⟩ : ∃ X, ((B.w s).ctx i).ref x = some (.VTypeDia X) := hx
+            obtain ⟨t, hk, hm⟩ := B.exX s i x X h χ hmem
+            have hmt : (⟨t, ⟨B.kdR hk⟩⟩ : B.Acc s) ∈
+                (B.model.posEval ((B.canonEnv s i).ref x h)).1 := by
+              rw [canonEnv_extent]
+              exact ⟨X, hk⟩
+            exact ⟨X, h, ⟨_, hmt⟩, (key h ⟨_, hmt⟩ hk).mpr hm⟩
+
+/-- ⭐**The truth lemma** for B's canonical model. -/
+theorem truth (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i) 0) :
+    B.model.sat (B.canonEnv s i) φ ↔ φ ∈ (B.w s).M i :=
+  truth_lt (φ.size + 1) s i φ (Nat.lt_succ_self _)
+
+end BData
+
+end BArrow
+
+end V12M
