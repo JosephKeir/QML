@@ -94,8 +94,10 @@ That was a cost decision, and the costs apply to every remaining axiom. A new ad
 be stable under `mono`, `collapse`, `shift` and `subst`, and must keep view entries independent —
 weak 4's single `keep` step is what forced the whole `keepOnly` redesign. An existential needs no
 new address: it reuses `∃`, a Henkin constant, and a carrier condition of `posRet_exists` shape,
-all of which now have a worked precedent. A new *term* former is dearer still: new cases in
-`Term.mono`, `collapse`, `shift`, `subst`, `rden`, `interp`, `size` and every congruence lemma.
+all of which now have a worked precedent. A new *term* former is dearer still **in the syntax**:
+new cases in `Term.mono`, `collapse`, `shift`, `subst`, `rden`, `interp`, `size` and every
+congruence lemma. It can repay that in the canonical model, though, so this is a default and not a
+rule — see the term-former option kept open under §3 T.
 **So the default is: state a carrier map existentially, and let the canonical model name the
 witness as data.**
 
@@ -595,6 +597,36 @@ content of a possible object.
     the schema yields the uniform `∃x ∀y` witness, whereas `T_dia`'s hypotheses are bare
     implications and give only `∀y ∃x`. The parameterised rule proposed under "Open problem: later
     constants" restores that strength in Henkin form.
+  - **Kept open: a term former `t_dia : ◇A` for `t : A` (2026-09-19).** Not taken, and there is no
+    plan to redo strong T this way. It is recorded so that we remember strong T *could* be redone
+    if the option starts to look right — for instance if other rules come to want term formers, or
+    cut elimination needs uniform, syntactic witnesses.
+    - *Same logic.* `T_dia` is `ex_intro` at `t_dia` with the term forgotten, and the canonical
+      model already builds `t_dia`: `World.realW` gives each term a realising root `c_t`, and
+      `RealDatum.spec` says `c_t` satisfies everything `t` does. That is a Skolem function for
+      `T_dia` kept in the model. The option moves it into the syntax.
+    - *What it would save* — most of steps 3–4: `posRet_exists` becomes immediate, with no `realW`
+      and no chain enumeration of a `⊤` step; `rden` of `t_dia` at the world itself reads the
+      subterm `t`, so there is no `hstage` and no stage-first measure; and probably the packing,
+      since `t_dia` substitutes to `(θt)_dia` rather than being a constant fixed before later
+      constants exist. The witness would also be uniform across formulas in the syntax, not only
+      through `spec`.
+    - *What it would not save.* `◇_x` is indexed by addresses (`WFF.dia` takes a `VarSymb`), so
+      reading `◇_{t_dia} φ` means putting a term in a witness position, which substitution cannot
+      do directly; it is `realiseAt` again. The scope criterion of §2b is unchanged: `t` is still
+      out of scope in the view, so the rule stays schematic. (This differs from the rejected
+      `y.ret` above, which asked for an *address* naming `ret(t)`.)
+    - *What it would cost.* The term former, with its cases everywhere and in Leibniz; a new `Ann`
+      constructor, since `eqRec` at `◇A` is defined only between terms sharing a witness
+      annotation; and a `SubE` case for a term in a witness position.
+    - *The trap: fix the extent.* With extent exactly `{w}`, `□_{t_dia}` and `◇_{t_dia}` agree and
+      `P(t) ⊢ ∃x. □_x P(x.dia)` becomes provable — strictly stronger than `T_dia`, and the
+      singleton design rejected for B (§3 B) coming back in. The extent must be left unspecified
+      beyond containing `w`, with a model operation `Dom A w → Pos A w` (§6's `posUnit`); then the
+      logic is `T_dia`'s.
+    - *Balance.* Extra syntax against the model-side work that was the bulk of steps 3–4:
+      comparable at least, possibly cheaper. The same choice will face strong B's inward half,
+      which is schematic like T's (§2b): a `World.real` analogue, or this term former.
 
 ### 4 (transitivity)
 - Frame: `R(v) ⊆ R(w)` for `v ∈ R(w)`.
