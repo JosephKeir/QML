@@ -1,4 +1,4 @@
-import QML.QML_v12m_CanonTerm
+import QML.QML_v12m_CanonDom
 import QML.QML_v12m_HenkinRet
 
 /-!
@@ -183,6 +183,17 @@ theorem exists_box_fail (w : World σ N₀) {i : ℕ × ℕ} (χ : WFF σ (w.L.c
     (Or.inr rfl : (⟨max i.1 i.2, WFF.mono (le_diag_max w i).boxIn χ.neg⟩ :
       ((boxLang w).pre []).Sentence σ) ∈ boxStart w χ)
   exact ((boxWorld w χ hχ).mcs.neg_mem_iff (φ := WFF.mono (le_diag_max w i).boxIn χ)).mp hneg hin
+
+/-- ⭐Under D every world has a proper successor: the rule `D_box` refutes `□⊥`, so `□⊥` is not in
+    the theory, and a `□` that fails has a successor (`exists_box_fail`).  This is the canonical
+    frame's seriality. -/
+theorem exists_succ (hD : ModalSys.D = true) (w : World σ N₀) : ∃ w' : World σ N₀, Acc' w w' := by
+  have hnot : (⟨(0, 0), .box .bot⟩ : w.L.sys.Sentence σ) ∉ w.T := fun h =>
+    w.mcs.bot_not_mem (World.mem_of_provable (Δ := [.box .bot])
+      (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact h)
+      ⟨Proof.D_box hD (Proof.lookup List.mem_cons_self)⟩)
+  obtain ⟨w', ha, -⟩ := exists_box_fail w (i := (0, 0)) .bot hnot
+  exact ⟨w', ha⟩
 
 end
 

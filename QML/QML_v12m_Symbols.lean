@@ -38,9 +38,11 @@ class ModalSys where
   /-- Strong T: every object has a possible object realised at the current world with it as its
       content there.  Needs weak T, which the rules using it require. -/
   TStrong : Bool
+  /-- Weak D: every world has an accessible world. -/
+  D : Bool
 
 /-- The system K. -/
-def ModalSys.K : ModalSys := ⟨false, false, false⟩
+def ModalSys.K : ModalSys := ⟨false, false, false, false⟩
 
 /-- Under T and 4 a view shows only kept objects: the contents of `u` are `u.keep.here`. -/
 def ModalSys.keepOnly [ModalSys] : Bool := ModalSys.T && ModalSys.Four

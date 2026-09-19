@@ -41,6 +41,8 @@ structure Frame (σ : Signature) where
   refl : ModalSys.T = true → ∀ w, R w w
   /-- Under 4, accessibility is transitive. -/
   trans : ModalSys.Four = true → ∀ {w v s : W}, R w v → R v s → R w s
+  /-- Under D, every world has an accessible world. -/
+  serial : ModalSys.D = true → ∀ w, ∃ v, R w v
   D : W → Type u
   Nec : VarType → W → Type u
   Pos : VarType → W → Type u

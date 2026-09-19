@@ -171,6 +171,10 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M w env hnp hΔ
       obtain ⟨_, _, _, h⟩ := ih M env hnp hΔ
       exact h
+  | @D_box Γ Δ hD p ih =>
+      intro M w env hnp hΔ
+      obtain ⟨v, hv⟩ := M.frame.serial hD w
+      exact ih M env hnp hΔ ⟨v, hv⟩
   | @T_box Γ _ hT Δ φ p ih =>
       intro M w env hnp hΔ
       exact (sat_boxHere hT env Ctx.NoSlots.slots φ).mpr

@@ -1,15 +1,17 @@
 import QML.QML_v12m_CanonFunc
+import QML.QML_v12m_CanonExist
 
 /-!
 # QML v12m — the canonical model
 
-The **frame**: the worlds, accessibility (reflexive under T), the base domains, and as carriers
-the definable raw objects (`Nec A w`, `Pos A w`).  A frame object of any type corresponds to a
-definable raw object (`toDom`, `fromDom`); a necessary object evaluates at each successor to its
-raw value there, a possible one to its extent with its raw contents.  Evaluation is injective
-because the correspondence is.  The function algebra acts by raw evaluation (`ops`), and evaluating
-a map on a frame object is evaluating it on the raw object (`eval_toDom`), which gives the
-evaluation laws.
+The **frame**: the worlds, accessibility (reflexive under T, serial under D — every world has a
+successor, `exists_succ`, which is why the frame needs a countable signature), the base domains,
+and as carriers the definable raw objects (`Nec A w`, `Pos A w`).  A frame object of any type
+corresponds to a definable raw object (`toDom`, `fromDom`); a necessary object evaluates at each
+successor to its raw value there, a possible one to its extent with its raw contents.  Evaluation
+is injective because the correspondence is.  The function algebra acts by raw evaluation (`ops`),
+and evaluating a map on a frame object is evaluating it on the raw object (`eval_toDom`), which
+gives the evaluation laws.
 
 ⭐`Canon.model w₀`: the canonical model, pointed at `w₀`.
 -/
@@ -22,6 +24,10 @@ namespace Canon
 
 variable {σ : Signature} {N₀ : ℕ}
 
+-- Seriality under D needs a successor for every world, which is a Henkin construction, so the
+-- canonical frame is built over a countable signature — the setting of completeness anyway.
+variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
+
 /-- ⭐The canonical frame, pointed at a world. -/
 noncomputable def frame (w₀ : World σ N₀) : Frame.{0} σ where
   W := World σ N₀
@@ -29,6 +35,7 @@ noncomputable def frame (w₀ : World σ N₀) : Frame.{0} σ where
   R := Canon.R
   refl := fun hT w => R.refl hT w
   trans := fun hF => R.trans hF
+  serial := fun hD w => (exists_succ hD w).imp fun _ ha => R.of_acc ha
   D w := w.D
   Nec A w := {o : RDom (.VTypeBox A) w // Definable (.VTypeBox A) w o}
   Pos A w := {o : RDom (.VTypeDia A) w // Definable (.VTypeDia A) w o}

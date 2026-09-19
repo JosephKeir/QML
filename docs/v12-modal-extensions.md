@@ -1,6 +1,6 @@
 # QML v12: modal extensions (design)
 
-Status: 2026-09-18. **Weak T, weak 4 and strong T are implemented**, with soundness *and*
+Status: 2026-09-19. **Weak D, weak T, weak 4 and strong T are implemented**, with soundness *and*
 completeness for every combination of the flags; files `QML/QML_v12m_*.lean`, namespace `V12M`.
 `V12M.completeness` and `V12M.provable_iff_valid` now hold under a bare `[ModalSys]`: the scaffold
 `ModalSys.NoTStrong` has been **removed**, and `QML_v12m_*` as a whole contains no `sorry` and
@@ -161,6 +161,20 @@ content of a possible object.
 ### D (seriality)
 - Frame: `R(w)` nonempty.
 - **Weak**: rule `□⊥ ⊢ ⊥`. Canonical seriality is the usual successor for `◇⊤`.
+  - *Implemented (2026-09-19).* Flag `ModalSys.D`; frame condition `Frame.serial`; rule
+    `Proof.D_box` (`□⊥ ⊢ ⊥`), with `Proof.D_dia` deriving `□φ ⊢ ◇φ` and `Proof.D_box_of_dia` the
+    converse. Substitution and soundness are one line each: the formula is closed, and `□⊥`
+    fails at any world with a successor. Canonically, `Canon.exists_succ`: the rule refutes `□⊥`,
+    so it is not in the theory, and a failing `□` has a successor (`exists_box_fail`).
+  - *Layout change.* The canonical frame now proves its own seriality, and a successor is a
+    Henkin construction, so `Canon.frame` and everything after it take
+    `[Countable σ.FuncSyms] [Countable σ.RelSyms]` — the setting of completeness anyway.
+    `QML_v12m_CanonExist` never used the canonical model, so it now imports `CanonDom` and
+    `HenkinRet` and sits *before* `CanonModel`. Unlike T and 4, whose frame conditions hold of
+    the canonical `R` by definition, D needs a construction; any later flag whose frame
+    condition needs new worlds will too, so this order is the one to keep.
+  - Flags stay independent: under T the rule is derivable (`T_box` on `□⊥`), but D is not
+    switched on by T.
 - **Strong**: axiom `⊢ ∃x:◇𝟙. ◇_x ⊤`. Carrier condition: some possible object has nonempty extent.
   Same level, not unique ⇒ existential. A Henkin witness satisfies it directly.
 - **Take the `⊥` forms as the rules and the familiar forms as theorems (2026-09-18).** Both are
@@ -826,12 +840,12 @@ Known edges *(all sketch)*:
 | System | weak | strong | Obstacle |
 |---|---|---|---|
 | K | done | done | |
-| KD | ✓ | ✓ | |
+| KD | done | ✓ | |
 | T | ✓ | ✓ | |
 | KB | ✗ | ✓ | weak B |
 | K4 | ✓ | ✗ | lift |
 | K5 | ✗ | ✗ | 5's box half without 4 |
-| KD4 | ✓ | ✗ | lift |
+| KD4 | done | ✗ | lift |
 | KD5 | ✗ | ✗ | 5's box half without 4 |
 | KDB | ✗ | ✓ | weak B |
 | KTB | ✗ | ✓ | weak B |

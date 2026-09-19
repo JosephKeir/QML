@@ -1,4 +1,4 @@
-import QML.QML_v12m_CanonExist
+import QML.QML_v12m_CanonTerm
 
 /-!
 # QML v12m — the truth lemma and completeness
@@ -152,11 +152,7 @@ def Proof.boxx_neg_of_not_dia {σ : Signature} {Γ : Ctx} (x : VarSymb)
 
 namespace Canon
 
-variable {σ : Signature} {N₀ : ℕ} (w₀ : World σ N₀)
-
-theorem canon_agree_le (w : World σ N₀) {i j : ℕ × ℕ} (h : i ≤ j) :
-    Model.Env.Agree (w.L.ctx_le h) (canonEnv w₀ w i) (canonEnv w₀ w j) :=
-  fun v T _ => toDom_congr w₀ (rden_eta_le (w.L.ctx_le h) _ _ v T _ _) _ _
+variable {σ : Signature} {N₀ : ℕ} (w₀ : World σ N₀) [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
 /-- The truth lemma for atoms. -/
 theorem relSat_canon : ∀ {Γ : Ctx} {n : ℕ} (ρ : Rel σ Γ n) {w : World σ N₀} {i : ℕ × ℕ}
@@ -210,7 +206,7 @@ theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {c : ℕ} (dat 
     omega
   have hdecl := dat.hdecl (i ⊔ dat.i₀) hj2
   have hagj : Model.Env.Agree (w.L.ctx_le hj) (canonEnv w₀ w i) (canonEnv w₀ w (i ⊔ dat.i₀)) :=
-    canon_agree_le w₀ w hj
+    canonEnv_le w₀ w hj
   have hm' : (⟨w, R.refl dat.hT w⟩ : Succ w) ∈
       ((model w₀).posEval ((canonEnv w₀ w (i ⊔ dat.i₀)).ref (.root (.free c)) hdecl)).1 := by
     rw [canonEnv_extent]
@@ -221,7 +217,7 @@ theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {c : ℕ} (dat 
         (Term.mono (w.L.ctx_le (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀) := by
     have hpq := canonEnv_ref w₀ w (i ⊔ dat.i₀) (.root (.free c)) hdecl
     rw [Model.posEval_snd_congr hpq ⟨⟨w, R.refl dat.hT w⟩, hm'⟩ (hpq ▸ hm'),
-      Model.interp_mono (canon_agree_le w₀ w (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀,
+      Model.interp_mono (canonEnv_le w₀ w (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀,
       interp_canon w₀ dat.t₀ (Model.Env.Agree.refl' _)]
     exact toDom_congr w₀ (rden_eta_of_real hreal hdecl) _ _
   have hsatR := (Model.sat_realiseAt dat.hT (canonEnv w₀ w (i ⊔ dat.i₀)) (w.noProjLast _) hdecl
@@ -233,8 +229,6 @@ theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {c : ℕ} (dat 
   have hmem' := World.mem_mono_congr w (Ctx.Le.refl _) (w.L.ctx_le hj)
     (ψ := WFF.dia (.root (.free c)) hx χ) hdia
   rwa [WFF.mono_refl] at hmem'
-
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
 theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF σ (w.L.ctx i) 0), φ.size < n →
     ((model w₀).sat (canonEnv w₀ w i) φ ↔ (⟨i, φ⟩ : w.L.sys.Sentence σ) ∈ w.T)
@@ -280,7 +274,7 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
           · intro hsat
             by_contra hnot
             obtain ⟨i', hi, a, t, hmem⟩ := w.allW hnot
-            have hs₁ := (Model.sat_mono (Model.Env.extend_agree (canon_agree_le w₀ w hi) (.bnd 0)
+            have hs₁ := (Model.sat_mono (Model.Env.extend_agree (canonEnv_le w₀ w hi) (.bnd 0)
               (Model.interp (canonEnv w₀ w i') t)) ψ).mpr (hsat _)
             have hs₂ := (Model.sat_instantiate (canonEnv w₀ w i') (w.noProjLast i')
               Ctx.NoSlots.slots t _).mpr hs₁
@@ -308,7 +302,7 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
             have hs₁ := (Model.sat_instantiate (canonEnv w₀ w (i ⊔ i')) (w.noProjLast _)
               Ctx.NoSlots.slots (w.liftT hK' t') _).mp hs
             rw [ho] at hs₁
-            exact (Model.sat_mono (Model.Env.extend_agree (canon_agree_le w₀ w hK) (.bnd 0) o)
+            exact (Model.sat_mono (Model.Env.extend_agree (canonEnv_le w₀ w hK) (.bnd 0) o)
               ψ).mp hs₁
       | ex A ψ =>
           have hψ : ψ.size < n := by simp only [WFF.size] at hφ; omega
@@ -323,7 +317,7 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
               (interp_canon w₀ _ (Model.Env.Agree.refl' _)).trans
                 ((toDom_congr w₀ ((rden_mono _ t' w _ _).trans
                   ((rden_congr t' w _ i' _ _).trans ht')) _ _).trans (toDom_fromDom w₀ A w o))
-            have hs₁ := (Model.sat_mono (Model.Env.extend_agree (canon_agree_le w₀ w hK) (.bnd 0) o)
+            have hs₁ := (Model.sat_mono (Model.Env.extend_agree (canonEnv_le w₀ w hK) (.bnd 0) o)
               ψ).mpr hsat
             rw [← ho] at hs₁
             have hs₂ := (Model.sat_instantiate (canonEnv w₀ w (i ⊔ i')) (w.noProjLast _)
@@ -344,7 +338,7 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
               (by rw [WFF.size_instantiate, WFF.size_mono]; exact hψ)).mpr hmem'
             have hs₁ := (Model.sat_instantiate (canonEnv w₀ w i') (w.noProjLast i')
               Ctx.NoSlots.slots t _).mp hs
-            exact (Model.sat_mono (Model.Env.extend_agree (canon_agree_le w₀ w hi) (.bnd 0) _)
+            exact (Model.sat_mono (Model.Env.extend_agree (canonEnv_le w₀ w hi) (.bnd 0) _)
               ψ).mp hs₁
       | box χ =>
           have hχs : χ.size < n := by simp only [WFF.size] at hφ; omega

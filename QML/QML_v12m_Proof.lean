@@ -154,6 +154,11 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
   | dia_bot {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (x : VarSymb)
       (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
       Proof σ Γ Δ (.dia x hx .bot) → Proof σ Γ Δ .bot
+  -- Weak D
+  /-- Something is accessible, so not everything is impossible: `□⊥ ⊢ ⊥`.  The familiar
+      `□φ ⊢ ◇φ` is derived from it (`Proof.D_dia`). -/
+  | D_box {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hD : ModalSys.D = true) :
+      Proof σ Γ Δ (.box .bot) → Proof σ Γ Δ .bot
   -- Weak T
   /-- What is necessary holds here: the `□` view collapsed onto the current level. -/
   | T_box {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {Δ : List (WFF σ Γ 0)}
@@ -231,6 +236,23 @@ def ofSubset : {Δ Δ' : List (WFF σ Γ 0)} → {φ : WFF σ Γ 0} → (∀ ψ 
   | x :: Δ, _, _, h, p =>
       Proof.imp_elim (ofSubset (fun ψ hψ => h ψ (List.mem_cons_of_mem x hψ)) (Proof.imp_intro p))
         (lookup (h x List.mem_cons_self))
+
+/-- ⭐Weak D in its familiar form, `□φ ⊢ ◇φ`, with `◇φ` the dual `¬□¬φ`: from `□¬φ` and `□φ`,
+    `K_box` gives `□⊥`, which the rule `D_box` refutes. -/
+def D_dia (hD : ModalSys.D = true) (φ : WFF σ Γ.boxIn 0) :
+    Proof σ Γ [.box φ] (WFF.box (Γ := Γ) φ.neg).neg :=
+  .imp_intro (.D_box hD (Proof.K_box (Δ := [φ.neg, φ])
+    (.imp_elim (lookup List.mem_cons_self) (lookup (List.mem_cons_of_mem _ List.mem_cons_self)))))
+
+/-- Conversely `□⊥ ⊢ ⊥` is the instance `φ := ⊥` of `□φ ⊢ ◇φ`, since `□¬⊥` is a theorem: the two
+    forms of weak D are interderivable in K. -/
+def D_box_of_dia {Δ : List (WFF σ Γ 0)}
+    (hdia : Proof σ Γ [.box .bot] (WFF.box (Γ := Γ) (WFF.bot : WFF σ Γ.boxIn 0).neg).neg)
+    (p : Proof σ Γ Δ (.box .bot)) : Proof σ Γ Δ .bot :=
+  .imp_elim
+    (.imp_elim (ofSubset (fun _ h => by simp at h) (.imp_intro hdia)) p)
+    (ofSubset (fun _ h => by simp at h)
+      (Proof.K_box (Δ := []) (.imp_intro (lookup List.mem_cons_self))))
 
 end Proof
 
