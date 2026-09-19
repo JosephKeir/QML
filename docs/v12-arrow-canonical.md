@@ -170,21 +170,36 @@ for those combinations is a decision about the intended semantics, not only abou
 
 `θ'` sends each of `v`'s `□`-items to a term of `w`: the back-translation.
 
-**⭐Finite-piece lemma — weak B suffices (checked on paper, not in Lean).** Take finitely many of
-`v`'s `□`-items `c⃗` and one `χ` with `□χ(c⃗.box) ∈ T_v`. Then some `w`-terms `t⃗` satisfy
-`χ(t⃗) ∈ T_w`.
+**⭐Finite-piece lemma — weak B suffices. Checked in Lean (2026-09-19):
+`Canon.finite_piece_closed` and `Canon.finite_piece` in `QML_v12m_ArrowCheck.lean`.** If `v` is
+accessible from `w`, and `v`'s theory has `□χ(s)` for a formula `χ` closed apart from its hole and
+any term `s` of `v`'s `□` view, then some `w`-term `t` has `χ(t)` in `w`'s theory. Finitely many of
+`v`'s `□`-items are covered by taking `s` to be their tuple.
 
-1. `v`'s `□` view contains none of `v`'s base items, and `w`'s items appear in it only through
-   their round trips, which are themselves among the `c⃗`. So `χ` is **closed apart from the
-   `c⃗`**.
-2. By `∃`-introduction at `v`, the closed formula `∃y⃗:□A⃗. □χ(y⃗.box)` is in `T_v`.
-3. A closed formula is in every `□` view, and the contrapositive of necessity transfer gives
-   `◇∃y⃗. □χ(y⃗.box) ∈ T_w`.
-4. The outward B rule — a theorem of propositional B for formulas closed apart from their hole —
-   gives `∃x⃗. χ(x⃗) ∈ T_w`, and `w`'s Henkin witnesses are the `t⃗`.
+1. At `v`, push `∃x` *inside* the `□`: `□χ(s)` gives `□∃x.χ(x)` (`K_box` on `ex_intro`), a closed
+   formula.
+2. At `w`, `◇□∃x.χ(x)`: otherwise `□¬□∃x.χ(x)`, whose body, being closed, holds at `v` and
+   contradicts step 1.
+3. Weak B, `◇□ψ ⊢ ψ` for closed `ψ`, gives `∃x.χ(x)` at `w`.
+4. Its Henkin witness is `t` (`World.exW`).
 
-So no new *logical* principle is needed for any finite piece. It is small, and it is the evidence
-that weak B alone might suffice, so it is the first thing to check in Lean.
+This is shorter than the paper sketch recorded here before, which went through
+`∃y⃗:□A⃗. □χ(y⃗.box)`: no quantifier over `□A` is needed.
+
+Two observations from the Lean:
+
+- **The translation plays no part.** The only formula that has to cross from `w` to `v` is closed,
+  so the lemma needs only accessibility on closed formulas (`finite_piece_closed`). The arrow
+  version follows because substitution fixes closed formulas (`WFF.subst_mono_empty`, via
+  `subst_mono_eq` and `subst_id`). The finite pieces of a back-type are therefore *propositional*
+  information, and the translation matters only for realising a whole type at once — which is
+  where open questions 1 and 2 sit.
+- **What it assumes.** Weak B enters as closure of `w`'s theory under `◇□ψ ⊢ ψ` for closed `ψ`,
+  not as a rule, and accessibility at a single pair of stages. It is stated for a formula `χ`
+  already closed apart from its hole. That every formula of `v`'s `□` view has this form — its
+  finitely many free `□`-items abstracted into a tuple — is purely syntactic and is not formalised.
+
+So no new *logical* principle is needed for any finite piece.
 
 **The whole type.** `θ'` fixes one term for each of `v`'s `□`-items, respecting every `χ` at once.
 The type may have as many variables as `v` has `□`-items — at least as many as `w` has, since `θ`
@@ -228,8 +243,9 @@ reverse arrows of *all* successors of `w` coherently, not one successor at a tim
 
 **Early checks, before any rebuild:**
 
-1. The finite-piece lemma (§6), in the current Lean, as a statement about two theories and a
-   substitution.
+1. ~~The finite-piece lemma (§6), in the current Lean, as a statement about two theories and a
+   substitution.~~ **Done** (`QML_v12m_ArrowCheck`); the substitution turned out to be
+   unnecessary.
 2. Collapse as a substitution: `WFF.collapse` for `Ctx.collapses_boxIn_self` equal to
    `WFF.subst` along `u.box ↦ u.here`, `u.keep ↦ u` (T's identity arrow).
 3. A throwaway arrow-indexed `Frame`, to see how much of `Soundness` survives the reindexing
