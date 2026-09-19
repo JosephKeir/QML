@@ -23,7 +23,8 @@ variable [ModalSys]
 namespace BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoTFour]
-  (hB : ModalSys.B = true) {M₀ : Set (WFF σ (ctxOf []) 0)} (hM₀ : Theory.IsMCS M₀)
+  (hB : ModalSys.B = true) {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  (hM₀ : Theory.IsMCS M₀)
 
 /-! ## Worlds -/
 

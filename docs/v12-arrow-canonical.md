@@ -332,9 +332,9 @@ reverse arrows of *all* successors of `w` coherently, not one successor at a tim
 ## 6a. Implemented: weak B without T and 4 (2026-09-19)
 
 **⭐`BArrow.completenessB` (`QML_v12m_BCompleteness`): with `ModalSys.B` and
-`[ModalSys.NoTFour]` (T and 4 off; D and strong D free), a sequent of closed formulas valid in every
-model is provable.** Sorry-free; axioms `propext`, `Classical.choice`, `Quot.sound`. The files, in
-dependency order:
+`[ModalSys.NoTFour]` (T and 4 off; D and strong D free), a sequent in a context of declared
+variables (`ctxOf l₀`, the root world's starting language) valid in every model is provable.**
+Sorry-free; axioms `propext`, `Classical.choice`, `Quot.sound`. The files, in dependency order:
 
 | File | Content |
 |---|---|
@@ -365,7 +365,8 @@ What the design turned out to need, beyond §2–6:
   arrow and relational model classes validate exactly the same sequents. Whether the same trick
   collapses B + 4 and 5 is open; that is where round-trip coherence would bite.
 
-Open: presented contexts (not just closed sequents), strong completeness, and B with T or 4.
+Open: presented contexts built with `boxIn` or `diaIn` (whose variables are view items, not roots;
+the reduction is sketched above), strong completeness, and B with T or 4.
 
 ## 7. What carries over, and what it costs
 

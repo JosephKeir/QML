@@ -10,7 +10,7 @@ Lean 4 + Mathlib formalisation of a quantified modal logic with first-class poss
   `variable [ModalSys]`). Frames are arrow-indexed (`Frame.R : W → W → Sort v`; relational frames
   are the `Prop` case). Soundness holds for every flag; completeness, strong completeness and
   compactness for every flag combination without B (`[ModalSys.NoB]`). Weak B without T and 4
-  (`[ModalSys.NoTFour]`) is complete for closed sequents (`BArrow.completenessB`), via the
+  (`[ModalSys.NoTFour]`) is complete for contexts of declared variables (`ctxOf l`), via the
   arrow-based canonical model (`QML_v12m_B*.lean`: network construction, `BData`, truth lemma).
 - `QML/QML_v12_*.lean` (namespace `V12`) is the K-only version, kept untouched until the
   generalised files supersede it.

@@ -272,7 +272,7 @@ section Chain
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoTFour]
 
 /-- ⭐Along the chain, later networks extend earlier ones. -/
-theorem ext_net (hB : ModalSys.B = true) {M₀ : Set (WFF σ (ctxOf []) 0)}
+theorem ext_net (hB : ModalSys.B = true) {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
     (h : Theory.IsMCS M₀) {n m : ℕ} (hnm : n ≤ m) : NetSt.Ext (net M₀ n) (net M₀ m) := by
   induction hnm with
   | refl => exact NetSt.Ext.refl _

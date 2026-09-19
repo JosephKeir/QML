@@ -77,8 +77,8 @@ theorem Good.applyOp [ModalSys.NoTFour] (hB : ModalSys.B = true) {N : NetSt σ} 
     · exact hN
 
 /-- The network of one world with theory `M₀` over no variables. -/
-def init (M₀ : Set (WFF σ (ctxOf []) 0)) : NetSt σ where
-  st := fun _ => ⟨[], M₀⟩
+def init {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : NetSt σ where
+  st := fun _ => ⟨l₀, M₀⟩
   nch := fun _ => 0
   kind := fun _ => none
   cx := fun _ => 0
@@ -87,11 +87,13 @@ def init (M₀ : Set (WFF σ (ctxOf []) 0)) : NetSt σ where
   bcl := fun _ => []
   bimg := fun _ => id
 
-theorem init_live {M₀ : Set (WFF σ (ctxOf []) 0)} : ∀ {k : Node}, (init M₀).Live k → k = []
+theorem init_live {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} :
+    ∀ {k : Node}, (init M₀).Live k → k = []
   | [], _ => rfl
   | _ :: _, h => absurd h.2 (Nat.not_lt_zero _)
 
-theorem Good.init [ModalSys.NoTFour] {M₀ : Set (WFF σ (ctxOf []) 0)} (h : Theory.IsMCS M₀) :
+theorem Good.init [ModalSys.NoTFour] {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+    (h : Theory.IsMCS M₀) :
     (init M₀).Good :=
   ⟨fun _ _ => h, fun _ _ hk => absurd (init_live hk) (by simp),
     fun _ _ hk => absurd (init_live hk) (by simp)⟩
@@ -103,12 +105,12 @@ section Chain
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoTFour]
 
 /-- ⭐The chain of networks from a root theory `M₀`. -/
-noncomputable def net (M₀ : Set (WFF σ (ctxOf []) 0)) : ℕ → NetSt σ
+noncomputable def net {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : ℕ → NetSt σ
   | 0 => NetSt.init M₀
   | n + 1 => (net M₀ n).applyOp (sched n)
 
 /-- ⭐Every network of the chain is good. -/
-theorem good_net (hB : ModalSys.B = true) {M₀ : Set (WFF σ (ctxOf []) 0)}
+theorem good_net (hB : ModalSys.B = true) {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
     (h : Theory.IsMCS M₀) : ∀ n, (net M₀ n).Good
   | 0 => NetSt.Good.init h
   | n + 1 => (good_net hB h n).applyOp hB (sched n)

@@ -807,8 +807,8 @@ content of a possible object.
 
 ### B (symmetry)
 - Frame: `v R w` for `v ∈ R(w)`.
-- **Weak B: implemented (2026-09-19), sound; complete without T and 4 for closed sequents
-  (2026-09-19, `BArrow.completenessB`, `QML_v12m_BCompleteness`).** Flag `ModalSys.B`; frame
+- **Weak B: implemented (2026-09-19), sound; complete without T and 4 for contexts of declared
+  variables (2026-09-19, `BArrow.completenessB`, `QML_v12m_BCompleteness`).** Flag `ModalSys.B`; frame
   condition `Frame.symm` (every arrow `w → v` has *some* arrow `v → w`; existence only). Rule
   `Proof.B_dia`: `◇□ψ ⊢ ψ` for closed `ψ` (`WFF.closed`, weakened from `Ctx.empty`; `WFF.diaBox`
   is `¬□¬□`). `Proof.B_box` derives the familiar `ψ ⊢ □◇ψ`, and `Proof.B_dia_of_box` goes back,
@@ -824,8 +824,9 @@ content of a possible object.
     `[ModalSys.NoB]` (the pattern `ModalSys.NoTStrong` used before strong T was complete).
   - *Completeness* comes from the arrow-based canonical model instead
     (`docs/v12-arrow-canonical.md` §6a), so far with `[ModalSys.NoTFour]` (T and 4 off; D and
-    strong D may be on) and for sequents of closed formulas (`ctxOf []`, which is `Ctx.empty`).
-    Extending it to presented contexts, and to T and 4, is open.
+    strong D may be on) and for contexts of declared variables (`ctxOf l₀`, the root world's
+    starting language; `ctxOf []` is `Ctx.empty`). Extending it to presentations that use `boxIn`
+    or `diaIn`, and to T and 4, is open.
   - *Not yet*: the two strong Bs below.
 - **Redesigned 2026-09-19** around necessary objects, and sorted by §2a's criterion (weak = no new
   objects, strong = new objects). One weak B and **two** strong Bs. `P` below is a formula closed
