@@ -28,7 +28,7 @@ accessible world as the necessary object of its values further on (`GFunc.dup`, 
 
 namespace V12M
 
-universe u
+universe u v
 
 variable [ModalSys]
 
@@ -36,13 +36,31 @@ variable [ModalSys]
 structure Frame (σ : Signature) where
   W : Type u
   actual : W
-  R : W → W → Prop
-  /-- Under T, accessibility is reflexive. -/
+  /-- The **arrows** from one world to another. A `Prop`-valued `R` is an ordinary accessibility
+      relation (at most one arrow per pair); a `Type`-valued one lets two arrows between the same
+      worlds carry different values, which the canonical construction for B and 5 uses before it
+      is unravelled (`docs/v12-arrow-canonical.md`). -/
+  R : W → W → Sort v
+  /-- Under T, an identity arrow at each world. -/
   refl : ModalSys.T = true → ∀ w, R w w
-  /-- Under 4, accessibility is transitive. -/
+  /-- Under 4, arrows compose. -/
   trans : ModalSys.Four = true → ∀ {w v s : W}, R w v → R v s → R w s
-  /-- Under D, every world has an accessible world. -/
-  serial : ModalSys.D = true → ∀ w, ∃ v, R w v
+  /-- Under D, every world has an arrow out. -/
+  serial : ModalSys.D = true → ∀ w, ∃ v, Nonempty (R w v)
+  /-- Under B, every arrow has some arrow back.  Only existence: which arrow comes back, and
+      whether a round trip agrees with anything, is left open (`docs/v12-arrow-canonical.md` §6). -/
+  symm : ModalSys.B = true → ∀ {w v : W}, R w v → Nonempty (R v w)
+  /-- Under T and 4, the identity arrows are units for composition: reading a kept object at the
+      world it was kept at is reading the object (`u.keep.here`), and keeping and then reading at
+      once is reading. Automatic for a relational frame. -/
+  refl_trans : ∀ (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {w v : W} (a : R w v),
+    trans hF (refl hT w) a = a
+  trans_refl : ∀ (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {w v : W} (a : R w v),
+    trans hF a (refl hT v) = a
+  /-- Under 4, composition is associative: keeping twice is keeping once, whichever pair of steps
+      is merged first. Automatic for a relational frame. -/
+  trans_assoc : ∀ (hF : ModalSys.Four = true) {w v s t : W} (a : R w v) (b : R v s)
+    (c : R s t), trans hF (trans hF a b) c = trans hF a (trans hF b c)
   D : W → Type u
   Nec : VarType → W → Type u
   Pos : VarType → W → Type u
@@ -51,9 +69,14 @@ structure Frame (σ : Signature) where
 
 namespace Frame
 
-variable {σ : Signature} (F : Frame.{u} σ)
+variable {σ : Signature} (F : Frame.{u, v} σ)
 
-abbrev Acc (w : F.W) : Type u := {w' : F.W // F.R w w'}
+/-- The arrows out of a world, each with its target. For a relational frame this is the set of
+    accessible worlds. -/
+abbrev Acc (w : F.W) : Type (max u v) := Σ w' : F.W, PLift (F.R w w')
+
+/-- The identity arrow at a world, under T: the arrow `T`'s rules read along. -/
+abbrev reflAcc (hT : ModalSys.T = true) (w : F.W) : F.Acc w := ⟨w, ⟨F.refl hT w⟩⟩
 
 /-- The domain of a type at a world. -/
 def Dom : VarType → F.W → Type u
@@ -64,10 +87,10 @@ def Dom : VarType → F.W → Type u
   | .VTypeDia A, w => F.Pos A w
 
 /-- What a necessary object delivers: an object at every accessible world. -/
-abbrev NecSec (A : VarType) (w : F.W) : Type u := (w' : F.Acc w) → F.Dom A w'.1
+abbrev NecSec (A : VarType) (w : F.W) : Type (max u v) := (w' : F.Acc w) → F.Dom A w'.1
 
 /-- What a possible object delivers: an extent, and exactly one object at each of its worlds. -/
-abbrev PosSec (A : VarType) (w : F.W) : Type u :=
+abbrev PosSec (A : VarType) (w : F.W) : Type (max u v) :=
   Σ E : Set (F.Acc w), (w' : E) → F.Dom A w'.1.1
 
 end Frame
@@ -112,7 +135,7 @@ def GFunc.keep {σ : Signature} (hF : ModalSys.Four = true) :
   | .VTypeDia _, h => False.elim (h.elim fun _ e => by cases e)
 
 /-- The lifts of the function algebra to the carriers. -/
-structure Frame.Ops {σ : Signature} (F : Frame.{u} σ) where
+structure Frame.Ops {σ : Signature} (F : Frame.{u, v} σ) where
   necMap : {A B : VarType} → {w : F.W} → GFunc σ A B → F.Nec A w → F.Nec B w
   necPair : {A B : VarType} → {w : F.W} → F.Nec A w → F.Nec B w → F.Nec (.VTypeProd A B) w
   necUnit : {w : F.W} → F.Nec .VTypeOne w
@@ -124,7 +147,7 @@ structure Frame.Ops {σ : Signature} (F : Frame.{u} σ) where
     F.Nec (.VTypeBox A) w
 
 /-- Evaluating a definable map at a world. -/
-def GFunc.eval {σ : Signature} {F : Frame.{u} σ} (ops : F.Ops) :
+def GFunc.eval {σ : Signature} {F : Frame.{u, v} σ} (ops : F.Ops) :
     {A B : VarType} → GFunc σ A B → (w : F.W) → F.Dom A w → F.Dom B w
   | _, _, .id _, _, a => a
   | _, _, .comp g f, w, a => GFunc.eval ops g w (GFunc.eval ops f w a)
@@ -146,7 +169,7 @@ def GFunc.eval {σ : Signature} {F : Frame.{u} σ} (ops : F.Ops) :
 /-- ⭐A model: a pointed frame whose carriers evaluate injectively and are closed under the
     function algebra. -/
 structure Model (σ : Signature) where
-  frame : Frame.{u} σ
+  frame : Frame.{u, v} σ
   necEval : {A : VarType} → {w : frame.W} → frame.Nec A w → frame.NecSec A w
   nec_inj : ∀ {A : VarType} {w : frame.W}, Function.Injective (@necEval A w)
   posEval : {A : VarType} → {w : frame.W} → frame.Pos A w → frame.PosSec A w
@@ -165,10 +188,10 @@ structure Model (σ : Signature) where
       ⟨(posEval p).1, fun w' =>
         ((necEval n w'.1, (posEval p).2 w') : frame.Dom (.VTypeProd A B) w'.1.1)⟩
   necExtract_eval : ∀ {A : VarType} {w : frame.W} (hT : ModalSys.T = true) (n : frame.Nec A w),
-    ops.necExtract hT n = necEval n ⟨w, frame.refl hT w⟩
+    ops.necExtract hT n = necEval n ⟨w, ⟨frame.refl hT w⟩⟩
   necDup_eval : ∀ {A : VarType} {w : frame.W} (hF : ModalSys.Four = true) (n : frame.Nec A w)
     (v : frame.Acc w) (s : frame.Acc v.1),
-    necEval (necEval (ops.necDup hF n) v) s = necEval n ⟨s.1, frame.trans hF v.2 s.2⟩
+    necEval (necEval (ops.necDup hF n) v) s = necEval n ⟨s.1, ⟨frame.trans hF v.2.down s.2.down⟩⟩
   /-- ⭐Strong T: every object has *some* possible object whose extent contains the current world,
       with the object as its content there.  This says on its own that `R` is reflexive wherever a
       domain is inhabited.
@@ -180,8 +203,8 @@ structure Model (σ : Signature) where
       cohere, which is what sank the `y.ret` design). -/
   posRet_exists : ∀ {A : VarType} {w : frame.W} (_hT : ModalSys.T = true)
     (_hS : ModalSys.TStrong = true)
-    (a : frame.Dom A w), ∃ (p : frame.Pos A w) (h : frame.R w w)
-      (hm : (⟨w, h⟩ : frame.Acc w) ∈ (posEval p).1), (posEval p).2 ⟨⟨w, h⟩, hm⟩ = a
+    (a : frame.Dom A w), ∃ (p : frame.Pos A w) (hm : frame.reflAcc _hT w ∈ (posEval p).1),
+      (posEval p).2 ⟨frame.reflAcc _hT w, hm⟩ = a
   /-- ⭐Strong D: some possible object has a nonempty extent.  Stated at `𝟙`, where the content
       carries nothing: `strength` then gives, for every necessary object, a possible object with
       the same extent whose content is that object's value — the `Nec → Pos` map, at every type. -/

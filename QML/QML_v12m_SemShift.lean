@@ -20,7 +20,7 @@ variable [ModalSys]
 
 namespace Model
 
-variable {σ : Signature} {M : Model.{u} σ}
+variable {σ : Signature} {M : Model.{u, v} σ}
 
 /-! ## Agreement across a shift -/
 
@@ -157,7 +157,8 @@ theorem Env.ShiftAgree.extend (hag : Env.ShiftAgree h env₁ env₂) {r : Root}
     view through the intermediate world. -/
 theorem Env.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} (env : M.Env Γ w)
     (v : M.frame.Acc w) (s : M.frame.Acc v.1) :
-    Env.ShiftAgree (Ctx.shifts_boxIn_boxIn hF Γ) (env.boxPush ⟨s.1, M.frame.trans hF v.2 s.2⟩)
+    Env.ShiftAgree (Ctx.shifts_boxIn_boxIn hF Γ)
+      (env.boxPush ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩)
       ((env.boxPush v).boxPush s) := by
   refine Env.ShiftAgree.of_raw ?_
   intro x T _ hx
@@ -184,7 +185,7 @@ theorem Env.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} (env : M.En
       change _ = M.necEval (M.ops.necDup hF (M.necEval (M.ops.necDup hF (env.ref u hu)) v)) s
       apply M.nec_inj
       funext t
-      rw [M.necDup_eval, M.necDup_eval, M.necDup_eval]
+      rw [M.necDup_eval, M.necDup_eval, M.necDup_eval, M.frame.trans_assoc hF]
   | .root _ => cases hx
   | .step _ .fst => cases hx
   | .step _ .snd => cases hx
@@ -197,7 +198,7 @@ end Model
 
 namespace Model
 
-variable {σ : Signature} {M : Model.{u} σ}
+variable {σ : Signature} {M : Model.{u, v} σ}
 
 mutual
   theorem interpFunc_shift {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ₂} {w : M.frame.W}
@@ -299,7 +300,7 @@ theorem sat_shift : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ
 theorem sat_shift_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w)
     (hs : Γ.boxIn.SlotsFrom 0) (φ : WFF σ Γ.boxIn 0) (v : M.frame.Acc w) (s : M.frame.Acc v.1) :
     M.sat ((env.boxPush v).boxPush s) (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) hs φ) ↔
-      M.sat (env.boxPush ⟨s.1, M.frame.trans hF v.2 s.2⟩) φ :=
+      M.sat (env.boxPush ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩) φ :=
   sat_shift hs (Env.shiftAgree_twoBox hF env v s) φ
 
 end Model

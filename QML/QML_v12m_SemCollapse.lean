@@ -21,7 +21,7 @@ variable [ModalSys]
 
 namespace Model
 
-variable {σ : Signature} {M : Model.{u} σ}
+variable {σ : Signature} {M : Model.{u, v} σ}
 
 /-! ## Environment helpers -/
 
@@ -53,8 +53,8 @@ theorem Env.ref_inner {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (w' : M.fram
         have hUU : U = .VTypeBox A := Option.some.inj (hU.symm.trans hkeep)
         subst hUU
         change M.necEval (M.necEval (M.ops.necDup hF (env.ref u hu)) w')
-          ⟨w'.1, M.frame.refl hT w'.1⟩ = _
-        rw [M.necDup_eval]
+          ⟨w'.1, ⟨M.frame.refl hT w'.1⟩⟩ = _
+        rw [M.necDup_eval, M.frame.trans_refl hT hF]
       · rename_i hU
         exfalso
         rw [hU] at hkeep
@@ -251,7 +251,7 @@ theorem Env.CollapseAgree.extend (hag : Env.CollapseAgree h env₁ env₂) {r : 
 /-- ⭐Under T, the `□` view at the current world agrees with the environment across the
     collapse. -/
 theorem Env.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} (env : M.Env Γ w) :
-    Env.CollapseAgree (Ctx.collapses_boxIn_self hT Γ) (env.boxPush ⟨w, M.frame.refl hT w⟩)
+    Env.CollapseAgree (Ctx.collapses_boxIn_self hT Γ) (env.boxPush ⟨w, ⟨M.frame.refl hT w⟩⟩)
       env := by
   refine Env.CollapseAgree.of_raw ?_
   intro v T _ hv
@@ -273,10 +273,10 @@ theorem Env.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} (env : M.Env 
   | .step u .keep =>
       obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
       rw [Env.ref_congr env (VarSymb.collapse_keep_zero (v := u)) _ hu]
-      change M.necEval (M.ops.necDup hF (env.ref u hu)) ⟨w, M.frame.refl hT w⟩ = env.ref u hu
+      change M.necEval (M.ops.necDup hF (env.ref u hu)) ⟨w, ⟨M.frame.refl hT w⟩⟩ = env.ref u hu
       apply M.nec_inj
       funext s
-      rw [M.necDup_eval]
+      rw [M.necDup_eval, M.frame.refl_trans hT hF]
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -289,7 +289,7 @@ end Model
 
 namespace Model
 
-variable {σ : Signature} {M : Model.{u} σ}
+variable {σ : Signature} {M : Model.{u, v} σ}
 
 mutual
   theorem interpFunc_collapse {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses k Γ₁ Γ₂} {w : M.frame.W}
@@ -391,7 +391,7 @@ theorem sat_collapse : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses k Γ
 theorem sat_boxHere (hT : ModalSys.T = true) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w)
     (hs : Γ.boxIn.SlotsFrom 0) (φ : WFF σ Γ.boxIn 0) :
     M.sat env (WFF.collapse (Ctx.collapses_boxIn_self hT Γ) hs φ) ↔
-      M.sat (env.boxPush ⟨w, M.frame.refl hT w⟩) φ :=
+      M.sat (env.boxPush ⟨w, ⟨M.frame.refl hT w⟩⟩) φ :=
   sat_collapse hs (Env.collapseAgree_self hT env) φ
 
 end Model

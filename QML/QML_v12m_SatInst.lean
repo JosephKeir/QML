@@ -22,7 +22,7 @@ theorem Ctx.NoProjLast.of_insert {Γ : Ctx} {r : Root} {T : VarType}
 
 namespace Model
 
-variable {σ : Signature} {M : Model.{u} σ}
+variable {σ : Signature} {M : Model.{u, v} σ}
 
 /-- An environment restricted to a smaller context. -/
 def Env.restrict {Γ Γ' : Ctx} (h : Γ.Le Γ') {w : M.frame.W} (env : M.Env Γ' w) : M.Env Γ w :=

@@ -222,7 +222,7 @@ end
 
 namespace Model
 
-variable {σ : Signature} {M : Model.{u} σ}
+variable {σ : Signature} {M : Model.{u, v} σ}
 
 /-- The tuple of a support. -/
 def Env.bundle {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :

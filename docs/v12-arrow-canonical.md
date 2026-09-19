@@ -1,6 +1,7 @@
 # QML v12: an arrow-based canonical model (design draft)
 
-Status: 2026-09-19. **Design; the construction itself is not implemented.** Early checks of its
+Status: 2026-09-19. **Design; the construction itself is not implemented**, but the arrow-indexed
+`Frame` of §4 is (with category laws for T+4 and 4). Early checks of its
 key steps are in Lean (`QML_v12m_ArrowCheck`, and `realise_type` in `QML_v12m_Compactness`); the
 rest is to be settled on paper before the construction is written. Motivation: B and 5, for which
 the current staged canonical model cannot work. Background on the flags is in
@@ -94,6 +95,16 @@ at `⟨s.1, frame.trans hF v.2 s.2⟩`); the others need only existence:
 | 5 | for `a : w → v` and `b : w → s`, some arrow `v → s` | existence |
 
 No category laws are imposed unless a soundness proof turns out to need one.
+
+**Implemented (2026-09-19, `QML_v12m_Model`).** `Frame.R : W → W → Sort v` (a relational frame is
+the `Prop` instance), `Acc w := Σ w', PLift (R w w')`, and `Frame.reflAcc hT w` names the identity
+arrow. Soundness *did* need laws, exactly the category laws, and only where both flags are on:
+`refl_trans`, `trans_refl` (T+4: `SemCollapse`'s `keepOnly` cases compose a `keep` with the
+identity) and `trans_assoc` (4: `SemShift`'s `keep`–`keep` case). Strong T's `posRet_exists` now
+places the possible object at the identity arrow rather than at an arbitrary loop `R w w` — with
+several loops only the identity one is sound for `T_dia`. The canonical model is unchanged: its
+`Succ` is now literally `Σ w', PLift (R w w')` and the laws hold by `rfl`. Soundness, completeness,
+strong completeness and compactness all build sorry-free, axioms `propext`/`choice`/`Quot.sound`.
 
 **⚠ This changes the class of models.** A relational frame is the special case with at most one
 arrow per pair, so every current model is still a model and soundness should survive the
@@ -318,6 +329,36 @@ relationalising B alone (§4). Once B meets 4, relationalising needs every round
 give the same values (§4, open question 1), so the back-and-forth construction must choose the
 reverse arrows of *all* successors of `w` coherently, not one successor at a time.
 
+## 6a. Implemented: weak B without T and 4 (2026-09-19)
+
+**⭐`BArrow.completenessB` (`QML_v12m_BCompleteness`): with `ModalSys.B` and
+`[ModalSys.NoTFour]` (T and 4 off; D and strong D free), a sequent of closed formulas valid in every
+model is provable.** Sorry-free; axioms `propext`, `Classical.choice`, `Quot.sound`. The files, in
+dependency order:
+
+| File | Content |
+|---|---|
+| `BSyntax`, `BAbs` | worlds' contexts `ctxOf l` (own variables `free n` only); arrows as renamings of roots (`arrowS`: `r.q.box ↦ z_r.q`, `z_r : bc(type r)`), witness arrows (`arrowXS`, also `x.dia ↦ cx`); abstraction of finitely many items into a tuple |
+| `BLocal`, `BChild`, `BDia` | the local steps: realising one more variable along an arrow keeps consistency (`realise_consistent`, `realiseX_consistent`); new children for failing `□φ` and true `◇_x φ` (`child_consistent`, `childX_consistent`); weak B enters only here, as closed transfer back to the parent (`closed_back`) |
+| `BNet*`, `BFair` | the network: a tree of nodes, each edge a forward and a back arrow with committed variables; four operations (Henkin witness, new child, extend forward arrow, extend back arrow) on a fair schedule; invariants (`Good`), monotonicity (`Ext`), fairness (`fwd_total`, `back_total`, `henk_ex`, `child_box`, `child_dia`) |
+| `BCanonWorld`, `BCanonDom`, `BCanonFunc`, `BCanonModel` | the model from abstract data `BData`: raw objects, denotations `rden` translating along arrows, the function algebra, definable objects as domains |
+| `BCanonTerm`, `BTruth` | pushing the canonical environment along an arrow *is* the target's canonical environment read through the arrow (`boxPush_canon`, `diaPush_canon`); so the modal cases of the truth lemma are `Model.sat_subst` plus transfer/existence |
+| `BLimitPre`, `BLimit` | `BData` from the chain's limit (`bdata`): worlds are the nodes ever born, stage `i` is round `birth + i`, images are the committed ones, and stage `i` goes to the first target stage where all its variables are committed |
+
+What the design turned out to need, beyond §2–6:
+
+- **No back-and-forth type realisation.** The ω-chain's fairness does the work §6 assigned to
+  back-types: every source variable is eventually committed along each arrow (forward and back),
+  each commitment extends a consistent theory (`realise_consistent`), and arrows are read at a
+  stage of the target by which the source stage is committed. Round-trip coherence is not needed.
+- **Arrows are used through their committed part** (`Transfer.apply`: any suffix of the committed
+  variables, any image map agreeing on them). Along a witness arrow, plain necessities transfer
+  too, by `□ψ ⊢ □_x ψ` (`TransferX.applyBox`).
+- **The canonical model is not staged by depth.** `rden`'s `□` clause is the denotation at the
+  target of the term translated along the arrow, and the truth lemma needs no self or far cases.
+
+Open: presented contexts (not just closed sequents), strong completeness, and B with T or 4.
+
 ## 7. What carries over, and what it costs
 
 - **Kept:** the syntax, the proof system, the substitution library (it becomes the arrow algebra),
@@ -349,11 +390,10 @@ reverse arrows of *all* successors of `w` coherently, not one successor at a tim
    coherence is the shadow of flag closure, so the question is whether adding 5's object-level
    component, `◇□χ(u.keep.box) ⊢ □χ(u.box)`, makes the canonical round trips coherent. If not,
    completeness for those combinations holds only over arrow-frames. (§4)
-2. The back-and-forth invariant for B's reverse arrows, with weak B alone. *Proposed answer*
-   (§6): back-images realise complete back-types; its key step is checked in Lean
-   (`backType_extend`), and so is the realisation step (`realise_type`). Open: the ω-chain
-   itself. For B + 4 and S5 it must also give question 1's
-   agreement across all successors of `w`.
+2. ~~The back-and-forth invariant for B's reverse arrows, with weak B alone.~~ **Answered for weak
+   B without T and 4 (§6a)**: a fair ω-chain committing one variable at a time, no back-types
+   needed. For B + 4 and S5 the chain must also give question 1's agreement across all successors
+   of `w`.
 3. 5's arrows between siblings: the same back-and-forth question with a different target, `v → s`
    for siblings `v`, `s`.
 4. Whether any coherence beyond question 1's is needed for soundness or for strong B. (§6)

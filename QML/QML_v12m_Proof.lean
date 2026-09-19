@@ -75,6 +75,14 @@ def WFF.somePoss {σ : Signature} {Γ : Ctx} : WFF σ Γ 0 :=
   .ex (.VTypeDia .VTypeOne)
     (.dia (.root (.bnd 0)) ⟨.VTypeOne, Ctx.ref_insert_root Γ (.bnd 0) _⟩ .top)
 
+/-- A closed formula, weakened into a context. -/
+abbrev WFF.closed {σ : Signature} {d : ℕ} (Γ : Ctx) (ψ : WFF σ Ctx.empty d) : WFF σ Γ d :=
+  WFF.mono (Ctx.empty_le Γ) ψ
+
+/-- `◇□φ`, with `◇` the dual `¬□¬`: the premise of weak B's rule. -/
+abbrev WFF.diaBox {σ : Signature} {Γ : Ctx} (φ : WFF σ Γ.boxIn.boxIn 0) : WFF σ Γ 0 :=
+  (WFF.box (Γ := Γ) (WFF.box (Γ := Γ.boxIn) φ).neg).neg
+
 inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ Γ 0 → Type where
   -- Structural
   | ax {Γ : Ctx} (φ : WFF σ Γ 0) : Proof σ Γ [φ] φ
@@ -201,6 +209,13 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
           Δ.map (WFF.weaken hc.root (.VTypeDia A)))
           (φ.weaken hc.root (.VTypeDia A)) →
       Proof σ Γ Δ φ
+  -- Weak B
+  /-- What is possibly necessary is true, `◇□ψ ⊢ ψ`, for a closed `ψ`: some accessible world
+      makes `ψ` necessary, and an arrow leads back from it.  `ψ` must be closed because nothing
+      of the origin's context can be read two levels in and back.  The familiar `ψ ⊢ □◇ψ` is
+      derived from it (`Proof.B_box`). -/
+  | B_dia {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hB : ModalSys.B = true) (ψ : WFF σ Ctx.empty 0) :
+      Proof σ Γ Δ (WFF.diaBox (ψ.closed _)) → Proof σ Γ Δ (ψ.closed Γ)
 
 /-! ## Handling hypotheses -/
 
@@ -265,6 +280,37 @@ def D_box_of_dia {Δ : List (WFF σ Γ 0)}
     (.imp_elim (ofSubset (fun _ h => by simp at h) (.imp_intro hdia)) p)
     (ofSubset (fun _ h => by simp at h)
       (Proof.K_box (Δ := []) (.imp_intro (lookup List.mem_cons_self))))
+
+/-- ⭐Weak B in its familiar form, `ψ ⊢ □◇ψ` for a closed `ψ`, with `◇` the dual `¬□¬`.  Its
+    negation `¬□◇ψ` is, as a formula, `◇□¬ψ`, which the rule `B_dia` turns into `¬ψ`. -/
+def B_box (hB : ModalSys.B = true) (ψ : WFF σ Ctx.empty 0) :
+    Proof σ Γ [ψ.closed Γ] (.box (WFF.box (Γ := Γ.boxIn) (ψ.closed _).neg).neg) :=
+  .or_elim (.lem _) (lookup List.mem_cons_self)
+    (.bot_elim _ (.imp_elim (.B_dia hB ψ.neg (lookup List.mem_cons_self))
+      (lookup (List.mem_cons_of_mem _ List.mem_cons_self))))
+
+/-- Conversely the rule is the familiar form at `¬ψ`, read contrapositively: `¬ψ ⊢ □◇¬ψ`, and
+    `□◇¬ψ` gives `□¬□ψ` by K (`□ψ ⊢ □¬¬ψ` inside the `□`), which refutes `◇□ψ` unless `ψ`.  So
+    the two forms of weak B are interderivable in K. -/
+def B_dia_of_box {Δ : List (WFF σ Γ 0)} (ψ : WFF σ Ctx.empty 0)
+    (hbox : Proof σ Γ [ψ.neg.closed Γ]
+      (.box (WFF.box (Γ := Γ.boxIn) (ψ.neg.closed _).neg).neg))
+    (p : Proof σ Γ Δ (WFF.diaBox (ψ.closed _))) : Proof σ Γ Δ (ψ.closed Γ) :=
+  -- Inside the outer `□`: `¬□¬¬ψ ⊢ ¬□ψ`, since `□ψ ⊢ □¬¬ψ`.
+  have hdn : Proof σ Γ.boxIn [.box (ψ.closed _)] (.box (ψ.closed _).neg.neg) :=
+    Proof.K_box (Δ := [ψ.closed _]) (.imp_intro (.imp_elim (lookup List.mem_cons_self)
+      (lookup (List.mem_cons_of_mem _ List.mem_cons_self))))
+  have hin : Proof σ Γ.boxIn [(WFF.box (ψ.closed _).neg.neg).neg] (WFF.box (ψ.closed _)).neg :=
+    .imp_intro (.imp_elim (lookup (List.mem_cons_of_mem _ List.mem_cons_self))
+      (weakenAll [] (ofSubset (fun _ h => by
+        rw [List.mem_singleton.mp h]
+        exact List.mem_cons_self) hdn)))
+  have hk := Proof.K_box (Δ := [(WFF.box (ψ.closed _).neg.neg).neg]) hin
+  .or_elim (.lem _) (lookup List.mem_cons_self)
+    (.bot_elim _ (.imp_elim (weakenAll [_] p)
+      (.imp_elim (ofSubset (fun _ h => by simp at h) (.imp_intro hk))
+        (.imp_elim (ofSubset (fun _ h => by simp at h) (.imp_intro hbox))
+          (lookup List.mem_cons_self)))))
 
 end Proof
 

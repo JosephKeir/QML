@@ -42,9 +42,21 @@ class ModalSys where
   D : Bool
   /-- Strong D: some possible object has a nonempty extent, `⊢ ∃x:◇𝟙. ◇_x ⊤`. -/
   DStrong : Bool
+  /-- Weak B: what is possibly necessary is true, for closed formulas, `◇□ψ ⊢ ψ`. -/
+  B : Bool
 
 /-- The system K. -/
-def ModalSys.K : ModalSys := ⟨false, false, false, false, false⟩
+def ModalSys.K : ModalSys := ⟨false, false, false, false, false, false⟩
+
+/-- The systems without B, for which the staged canonical model is built.  B's accessible worlds
+    lead back to their origin, against the order of construction; its canonical model is to be the
+    arrow-based one of `docs/v12-arrow-canonical.md`. -/
+class ModalSys.NoB [ModalSys] : Prop where
+  noB : ModalSys.B = false
+
+theorem ModalSys.NoB.absurd [ModalSys] [ModalSys.NoB] (hB : ModalSys.B = true) : False := by
+  rw [ModalSys.NoB.noB] at hB
+  cases hB
 
 /-- Under T and 4 a view shows only kept objects: the contents of `u` are `u.keep.here`. -/
 def ModalSys.keepOnly [ModalSys] : Bool := ModalSys.T && ModalSys.Four
@@ -277,6 +289,9 @@ theorem SlotsFrom.rootFresh {Γ : Ctx} {d n : ℕ} (h : Γ.SlotsFrom d) (hn : d 
 def empty : Ctx := fun _ => none
 
 theorem RootFresh.empty (r : Root) : Ctx.empty.RootFresh r := fun _ _ => rfl
+
+/-- The empty context is below every context: closed formulas weaken anywhere. -/
+theorem empty_le (Γ : Ctx) : Ctx.empty.Le Γ := fun _ _ h => nomatch h
 
 /-- No quantifier slot is visible: the contexts proofs live in.  Found by instance search. -/
 class NoSlots (Γ : Ctx) : Prop where

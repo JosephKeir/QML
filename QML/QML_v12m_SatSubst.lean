@@ -24,7 +24,7 @@ theorem Ctx.NoProjLast.insert {Γ : Ctx} (h : Γ.NoProjLast) (r : Root) (T : Var
 
 namespace Model
 
-variable {σ : Signature} {M : Model.{u} σ}
+variable {σ : Signature} {M : Model.{u, v} σ}
 
 theorem Env.agree_extend {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {r : Root}
     (h : Δ (.root r) = none) {T : VarType} (o : M.frame.Dom T w) :

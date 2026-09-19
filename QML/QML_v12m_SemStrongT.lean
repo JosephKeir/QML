@@ -27,7 +27,7 @@ variable [ModalSys]
 
 namespace Model
 
-variable {σ : Signature} {M : Model.{u} σ}
+variable {σ : Signature} {M : Model.{u, v} σ}
 
 /-- The environment pushed into `◇_c` at the world where the witness is realised agrees, on the
     `□` part, with the environment pushed into `□` at the current world. -/
@@ -35,12 +35,12 @@ theorem Env.diaPush_ret {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {c : ℕ}
     (hc : Γ.RootFresh (.free c)) {A : VarType} (p : M.frame.Dom (.VTypeDia A) w)
     (h : M.frame.R w w)
     (hr : (Γ.insert (.free c) (.VTypeDia A)).ref (.root (.free c)) = some (.VTypeDia A))
-    (hmem : (⟨w, h⟩ : M.frame.Acc w) ∈
+    (hmem : (⟨w, ⟨h⟩⟩ : M.frame.Acc w) ∈
       (M.posEval ((env.extend (.free c) p).ref (.root (.free c)) hr)).1) :
     Env.Agree ((Ctx.le_insert hc.root (.VTypeDia A)).boxIn.trans
         (Ctx.le_boxIn_diaIn _ (.root (.free c))))
-      (env.boxPush ⟨w, h⟩)
-      ((env.extend (.free c) p).diaPush (.root (.free c)) hr ⟨⟨w, h⟩, hmem⟩) := by
+      (env.boxPush ⟨w, ⟨h⟩⟩)
+      ((env.extend (.free c) p).diaPush (.root (.free c)) hr ⟨⟨w, ⟨h⟩⟩, hmem⟩) := by
   intro v T hv
   match v with
   | .step u .box =>
@@ -49,8 +49,8 @@ theorem Env.diaPush_ret {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {c : ℕ}
         (Ctx.ref_insert_ne _ (fun he => by
           rw [Ctx.ref_none_of_rootFresh hc u he] at hu
           cases hu)).trans hu
-      change M.necEval (env.ref u hu) ⟨w, h⟩ =
-        M.necEval ((env.extend (.free c) p).ref u hu') ⟨w, h⟩
+      change M.necEval (env.ref u hu) ⟨w, ⟨h⟩⟩ =
+        M.necEval ((env.extend (.free c) p).ref u hu') ⟨w, ⟨h⟩⟩
       rw [Env.ref_extend_ne env p hu' hu (fun he => by
         rw [Ctx.ref_none_of_rootFresh hc u he] at hu
         cases hu)]
@@ -61,9 +61,9 @@ theorem Env.diaPush_ret {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {c : ℕ}
           rw [Ctx.ref_none_of_rootFresh hc u he] at hu
           cases hu)).trans hu
       change M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF ⟨B, rfl⟩) w
-          (env.ref u hu)) ⟨w, h⟩ =
+          (env.ref u hu)) ⟨w, ⟨h⟩⟩ =
         M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF ⟨B, rfl⟩) w
-          ((env.extend (.free c) p).ref u hu')) ⟨w, h⟩
+          ((env.extend (.free c) p).ref u hu')) ⟨w, ⟨h⟩⟩
       rw [Env.ref_extend_ne env p hu' hu (fun he => by
         rw [Ctx.ref_none_of_rootFresh hc u he] at hu
         cases hu)]
@@ -79,15 +79,15 @@ theorem sat_ret (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
     {w : M.frame.W} (env : M.Env Γ w) (hnp : Γ.NoProjLast) {A : VarType} {a : Ann A}
     (t : Term σ Γ A a) (c : ℕ) (hc : Γ.RootFresh (.free c))
     (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) (p : M.frame.Dom (.VTypeDia A) w)
-    (hrefl : M.frame.R w w) (hmem : (⟨w, hrefl⟩ : M.frame.Acc w) ∈ (M.posEval p).1)
-    (hcont : (M.posEval p).2 ⟨⟨w, hrefl⟩, hmem⟩ = interp env t) :
+    (hmem : M.frame.reflAcc hT w ∈ (M.posEval p).1)
+    (hcont : (M.posEval p).2 ⟨M.frame.reflAcc hT w, hmem⟩ = interp env t) :
     M.sat env (WFF.hereRead hT t ψ) →
     M.sat (env.extend (.free c) p)
       (.dia (.root (.free c)) ⟨A, Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)⟩
         (WFF.viewRead c hc A ψ)) := by
   intro hhere
   -- The `↓` side: instantiate, then collapse onto the `□` view at the current world.
-  have hbox : M.sat ((env.boxPush ⟨w, M.frame.refl hT w⟩).extend (.bnd 0) (interp env t)) ψ := by
+  have hbox : M.sat ((env.boxPush ⟨w, ⟨M.frame.refl hT w⟩⟩).extend (.bnd 0) (interp env t)) ψ := by
     have h₁ := (sat_instantiate env hnp Ctx.NoSlots.slots t _).mp hhere
     exact (sat_collapse ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A)
       ((Env.collapseAgree_self hT env).extend
@@ -97,22 +97,23 @@ theorem sat_ret (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
   have hrc : (Γ.insert (.free c) (.VTypeDia A)).ref (.root (.free c)) = some (.VTypeDia A) :=
     Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)
   have hpe : env'.ref (.root (.free c)) hrc = p := Env.extend_root env (.free c) p hrc
-  have hmem' : (⟨w, hrefl⟩ : M.frame.Acc w) ∈ (M.posEval (env'.ref (.root (.free c)) hrc)).1 := by
+  have hmem' : M.frame.reflAcc hT w ∈ (M.posEval (env'.ref (.root (.free c)) hrc)).1 := by
     rw [hpe]
     exact hmem
-  refine ⟨A, hrc, ⟨⟨w, hrefl⟩, hmem'⟩, ?_⟩
+  refine ⟨A, hrc, ⟨M.frame.reflAcc hT w, hmem'⟩, ?_⟩
   -- The `↑` side: the hole takes the witness content, which is `t`'s value.
-  have hval : (env'.diaPush (.root (.free c)) hrc ⟨⟨w, hrefl⟩, hmem'⟩).ref
+  have hval : (env'.diaPush (.root (.free c)) hrc ⟨M.frame.reflAcc hT w, hmem'⟩).ref
       (.step (.root (.free c)) .dia) (Ctx.ref_diaIn_of hrc) = interp env t := by
     rw [Env.ref, dif_neg (by decide : ¬ Step.dia.isProj = true)]
     simp only [Env.diaPush]
-    rw [posEval_snd_congr hpe ⟨⟨w, hrefl⟩, hmem'⟩ hmem]
+    rw [posEval_snd_congr hpe ⟨M.frame.reflAcc hT w, hmem'⟩ hmem]
     exact hcont
   have henvs : Env.restrict ((Ctx.le_insert hc.root (.VTypeDia A)).boxIn.trans
         (Ctx.le_boxIn_diaIn _ (.root (.free c))))
-      (env'.diaPush (.root (.free c)) hrc ⟨⟨w, hrefl⟩, hmem'⟩) = env.boxPush ⟨w, hrefl⟩ := by
+      (env'.diaPush (.root (.free c)) hrc ⟨M.frame.reflAcc hT w, hmem'⟩) =
+        env.boxPush (M.frame.reflAcc hT w) := by
     funext v T hv
-    exact (Env.diaPush_ret env hc p hrefl hrc hmem' v T hv).symm
+    exact (Env.diaPush_ret env hc p (M.frame.refl hT w) hrc hmem' v T hv).symm
   refine (sat_renameRoot _ (Ctx.noProjLast_boxIn Γ) (.bnd 0)
     ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) _ _ _ _ Ctx.NoSlots.slots ψ).mpr ?_
   rw [hval, henvs]
@@ -149,30 +150,31 @@ theorem sat_viewRead_ret (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
     {w : M.frame.W} (env : M.Env Γ w) (hnp : Γ.NoProjLast) {A : VarType} {a : Ann A}
     (t : Term σ Γ A a) (c : ℕ) (hc : Γ.RootFresh (.free c))
     (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) (p : M.frame.Dom (.VTypeDia A) w)
-    (hrefl : M.frame.R w w) (hmem : (⟨w, hrefl⟩ : M.frame.Acc w) ∈ (M.posEval p).1)
-    (hcont : (M.posEval p).2 ⟨⟨w, hrefl⟩, hmem⟩ = interp env t)
-    (hmem' : (⟨w, hrefl⟩ : M.frame.Acc w) ∈
+    (hmem : M.frame.reflAcc hT w ∈ (M.posEval p).1)
+    (hcont : (M.posEval p).2 ⟨M.frame.reflAcc hT w, hmem⟩ = interp env t)
+    (hmem' : M.frame.reflAcc hT w ∈
       (M.posEval ((env.extend (.free c) p).ref (.root (.free c))
         (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)))).1) :
     M.sat ((env.extend (.free c) p).diaPush (.root (.free c))
-        (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)) ⟨⟨w, hrefl⟩, hmem'⟩)
+        (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)) ⟨M.frame.reflAcc hT w, hmem'⟩)
       (WFF.viewRead c hc A ψ) ↔ M.sat env (WFF.hereRead hT t ψ) := by
   have hrc : (Γ.insert (.free c) (.VTypeDia A)).ref (.root (.free c)) = some (.VTypeDia A) :=
     Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)
   have hpe : (env.extend (.free c) p).ref (.root (.free c)) hrc = p :=
     Env.extend_root env (.free c) p hrc
-  have hval : ((env.extend (.free c) p).diaPush (.root (.free c)) hrc ⟨⟨w, hrefl⟩, hmem'⟩).ref
+  have hval : ((env.extend (.free c) p).diaPush (.root (.free c)) hrc
+      ⟨M.frame.reflAcc hT w, hmem'⟩).ref
       (.step (.root (.free c)) .dia) (Ctx.ref_diaIn_of hrc) = interp env t := by
     rw [Env.ref, dif_neg (by decide : ¬ Step.dia.isProj = true)]
     simp only [Env.diaPush]
-    rw [posEval_snd_congr hpe ⟨⟨w, hrefl⟩, hmem'⟩ hmem]
+    rw [posEval_snd_congr hpe ⟨M.frame.reflAcc hT w, hmem'⟩ hmem]
     exact hcont
   have henvs : Env.restrict ((Ctx.le_insert hc.root (.VTypeDia A)).boxIn.trans
         (Ctx.le_boxIn_diaIn _ (.root (.free c))))
-      ((env.extend (.free c) p).diaPush (.root (.free c)) hrc ⟨⟨w, hrefl⟩, hmem'⟩) =
-      env.boxPush ⟨w, hrefl⟩ := by
+      ((env.extend (.free c) p).diaPush (.root (.free c)) hrc ⟨M.frame.reflAcc hT w, hmem'⟩) =
+      env.boxPush (M.frame.reflAcc hT w) := by
     funext v T hv
-    exact (Env.diaPush_ret env hc p hrefl hrc hmem' v T hv).symm
+    exact (Env.diaPush_ret env hc p (M.frame.refl hT w) hrc hmem' v T hv).symm
   refine (sat_renameRoot _ (Ctx.noProjLast_boxIn Γ) (.bnd 0)
     ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) _ _ _ _ Ctx.NoSlots.slots ψ).trans
     ?_
@@ -192,24 +194,25 @@ equation between environments. -/
 
 /-- The environment abstraction induces, at the world where the witness is realised, is the
     environment pushed into its `◇` view there. -/
-theorem Env.substEnv_diaAbs (_hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
+theorem Env.substEnv_diaAbs (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
     (env : M.Env Γ w) {c : ℕ} {A : VarType}
     (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
-    {a₀ : Ann A} (t₀ : Term σ Γ A a₀) (hrefl : M.frame.R w w)
-    (hmem : (⟨w, hrefl⟩ : M.frame.Acc w) ∈ (M.posEval (env.ref (.root (.free c)) hcA)).1)
-    (hcont : (M.posEval (env.ref (.root (.free c)) hcA)).2 ⟨⟨w, hrefl⟩, hmem⟩ = interp env t₀) :
+    {a₀ : Ann A} (t₀ : Term σ Γ A a₀)
+    (hmem : M.frame.reflAcc hT w ∈ (M.posEval (env.ref (.root (.free c)) hcA)).1)
+    (hcont : (M.posEval (env.ref (.root (.free c)) hcA)).2 ⟨M.frame.reflAcc hT w, hmem⟩ =
+      interp env t₀) :
     substEnv (Subst.diaAbs σ (Γ.boxIn.insert (.bnd 0) A) c)
         (Subst.ok_diaAbs hcA hfr ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).root))
         (Ctx.noProjLast_diaIn Γ (.root (.free c)))
-        ((env.boxPush ⟨w, hrefl⟩).extend (.bnd 0) (interp env t₀)) =
-      env.diaPush (.root (.free c)) hcA ⟨⟨w, hrefl⟩, hmem⟩ := by
+        ((env.boxPush (M.frame.reflAcc hT w)).extend (.bnd 0) (interp env t₀)) =
+      env.diaPush (.root (.free c)) hcA ⟨M.frame.reflAcc hT w, hmem⟩ := by
   funext v T hv
   rcases Subst.diaIn_cases hcA hfr hv with ⟨rfl, rfl⟩ | ⟨_, hb, hen, hroot⟩
   · refine (entryVal_congr _ (show Subst.diaAbs σ (Γ.boxIn.insert (.bnd 0) T) c
         (.step (.root (.free c)) .dia) = .ren (.root (.bnd 0)) from if_pos rfl) _
       (Ctx.ref_insert_root _ (.bnd 0) T)).trans ?_
-    refine (Env.extend_root (env.boxPush ⟨w, hrefl⟩) (.bnd 0) (interp env t₀)
+    refine (Env.extend_root (env.boxPush (M.frame.reflAcc hT w)) (.bnd 0) (interp env t₀)
       (by simp [Ctx.insert])).trans ?_
     exact hcont.symm
   · have hbr : (Γ.boxIn.insert (.bnd 0) A) v = some T := by
@@ -219,7 +222,7 @@ theorem Env.substEnv_diaAbs (_hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w
     refine (entryVal_congr _ (hen (Γ.boxIn.insert (.bnd 0) A)) _
       ((Ctx.ref_nonproj _ (Ctx.noProjLast_diaIn Γ (.root (.free c)) v T hv)).trans hbr)).trans ?_
     refine (Env.ref_of_nonproj _ (Ctx.noProjLast_diaIn Γ (.root (.free c)) v T hv) _ hbr).trans ?_
-    refine (Env.extend_ne (env.boxPush ⟨w, hrefl⟩) (.bnd 0) (interp env t₀) hbr
+    refine (Env.extend_ne (env.boxPush (M.frame.reflAcc hT w)) (.bnd 0) (interp env t₀) hbr
       (hroot (.bnd 0)) hb).trans ?_
     match v with
     | .step _ .box => rfl
@@ -236,18 +239,19 @@ theorem interp_realiseAt (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M
     (env : M.Env Γ w) (hnp : Γ.NoProjLast) {c : ℕ} {A : VarType}
     (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
-    {a₀ : Ann A} (t₀ : Term σ Γ A a₀) (hrefl : M.frame.R w w)
-    (hmem : (⟨w, hrefl⟩ : M.frame.Acc w) ∈ (M.posEval (env.ref (.root (.free c)) hcA)).1)
-    (hcont : (M.posEval (env.ref (.root (.free c)) hcA)).2 ⟨⟨w, hrefl⟩, hmem⟩ = interp env t₀)
+    {a₀ : Ann A} (t₀ : Term σ Γ A a₀)
+    (hmem : M.frame.reflAcc hT w ∈ (M.posEval (env.ref (.root (.free c)) hcA)).1)
+    (hcont : (M.posEval (env.ref (.root (.free c)) hcA)).2 ⟨M.frame.reflAcc hT w, hmem⟩ =
+      interp env t₀)
     {T : VarType} {b : Ann T} (t : Term σ (Γ.diaIn (.root (.free c))) T b) :
     interp env (Term.realiseAt hT c hcA hfr t₀ t) =
-      interp (env.diaPush (.root (.free c)) hcA ⟨⟨w, hrefl⟩, hmem⟩) t := by
+      interp (env.diaPush (.root (.free c)) hcA ⟨M.frame.reflAcc hT w, hmem⟩) t := by
   simp only [Term.realiseAt, Term.hereRead, Term.diaAbs]
   rw [interp_subst _ _ _ (hnp.insert (.bnd 0) A) env, substEnv_single_tm env hnp (.bnd 0) t₀,
     interp_collapse ((Env.collapseAgree_self hT env).extend
       ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) (interp env t₀)),
     interp_subst _ _ _ (Ctx.noProjLast_diaIn Γ (.root (.free c))) _,
-    Env.substEnv_diaAbs hT env hcA hfr t₀ hrefl hmem hcont]
+    Env.substEnv_diaAbs hT env hcA hfr t₀ hmem hcont]
 
 /-- ⭐The same for formulas: at the world where the witness is realised, a formula of its `◇` view
     holds exactly when its realisation holds here.  This is what the canonical model's truth lemma
@@ -256,19 +260,20 @@ theorem sat_realiseAt (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.fr
     (env : M.Env Γ w) (hnp : Γ.NoProjLast) {c : ℕ} {A : VarType}
     (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
-    {a₀ : Ann A} (t₀ : Term σ Γ A a₀) (hrefl : M.frame.R w w)
-    (hmem : (⟨w, hrefl⟩ : M.frame.Acc w) ∈ (M.posEval (env.ref (.root (.free c)) hcA)).1)
-    (hcont : (M.posEval (env.ref (.root (.free c)) hcA)).2 ⟨⟨w, hrefl⟩, hmem⟩ = interp env t₀)
+    {a₀ : Ann A} (t₀ : Term σ Γ A a₀)
+    (hmem : M.frame.reflAcc hT w ∈ (M.posEval (env.ref (.root (.free c)) hcA)).1)
+    (hcont : (M.posEval (env.ref (.root (.free c)) hcA)).2 ⟨M.frame.reflAcc hT w, hmem⟩ =
+      interp env t₀)
     (χ : WFF σ (Γ.diaIn (.root (.free c))) 0) :
     M.sat env (WFF.realiseAt hT c hcA hfr t₀ χ) ↔
-      M.sat (env.diaPush (.root (.free c)) hcA ⟨⟨w, hrefl⟩, hmem⟩) χ := by
+      M.sat (env.diaPush (.root (.free c)) hcA ⟨M.frame.reflAcc hT w, hmem⟩) χ := by
   refine (sat_instantiate env hnp Ctx.NoSlots.slots t₀ _).trans ?_
   refine (sat_collapse ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A)
     ((Env.collapseAgree_self hT env).extend
       ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) (interp env t₀)) _).trans ?_
   refine (sat_subst _ _ _ Ctx.NoSlots.slots ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A)
     (Ctx.noProjLast_diaIn Γ (.root (.free c))) _ χ).trans ?_
-  rw [Env.substEnv_diaAbs hT env hcA hfr t₀ hrefl hmem hcont]
+  rw [Env.substEnv_diaAbs hT env hcA hfr t₀ hmem hcont]
 
 /-- ⭐Strong T, with a parameter: a witness realised here with `t`'s value as its content satisfies
     the hypothesis `WFF.retHyp` for every value of the parameter.  The witness is chosen before the
@@ -277,9 +282,9 @@ theorem sat_retHyp (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame
     (env : M.Env Γ w) (hnp : Γ.NoProjLast) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
     (c y : ℕ) (hc : Γ.RootFresh (.free c)) (hy : Γ.RootFresh (.free y)) (hyc : y ≠ c)
     (B : VarType) (ψ : WFF σ ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A) 1)
-    (p : M.frame.Dom (.VTypeDia A) w) (hrefl : M.frame.R w w)
-    (hmem : (⟨w, hrefl⟩ : M.frame.Acc w) ∈ (M.posEval p).1)
-    (hcont : (M.posEval p).2 ⟨⟨w, hrefl⟩, hmem⟩ = interp env t) :
+    (p : M.frame.Dom (.VTypeDia A) w)
+    (hmem : M.frame.reflAcc hT w ∈ (M.posEval p).1)
+    (hcont : (M.posEval p).2 ⟨M.frame.reflAcc hT w, hmem⟩ = interp env t) :
     M.sat (env.extend (.free c) p) (WFF.retHyp hT t c y hc hy hyc B ψ) := by
   have hne : Root.free y ≠ Root.free c := fun h => hyc (Root.free.inj h)
   have hcy : (Γ.insert (.free y) B).RootFresh (.free c) := hc.insert_ne hne B
@@ -290,7 +295,7 @@ theorem sat_retHyp (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame
   intro hhere
   have hhere' := (sat_weaken (env.extend (.free y) b) hcy.root p _).mp hhere
   exact sat_ret hT (env.extend (.free y) b) (hnp.insert _ _) (Term.mono (Ctx.le_insert hy.root B) t)
-    c hcy ψ p hrefl hmem
+    c hcy ψ p hmem
     (hcont.trans (interp_mono (Env.agree_extend env hy.root b) t).symm) hhere'
 
 end Model

@@ -22,7 +22,7 @@ namespace V12M
 
 variable [ModalSys]
 
-universe u
+universe u v
 
 variable {σ : Signature}
 
@@ -32,7 +32,7 @@ def WFF.SetConsistent {Γ : Ctx} (S : Set (WFF σ Γ 0)) : Prop :=
 
 /-- A set of formulas is **satisfiable** when some model, world and environment make it true. -/
 def WFF.SetSatisfiable {Γ : Ctx} (S : Set (WFF σ Γ 0)) : Prop :=
-  ∃ (M : Model.{0} σ) (w : M.frame.W) (env : M.Env Γ w), ∀ ψ ∈ S, M.sat env ψ
+  ∃ (M : Model.{0, 0} σ) (w : M.frame.W) (env : M.Env Γ w), ∀ ψ ∈ S, M.sat env ψ
 
 /-! ## Realising a type by a fresh variable
 
@@ -144,7 +144,7 @@ theorem realise_type {Γ : Ctx} [Γ.NoSlots] {S : Set (WFF σ Γ 0)} (hS : WFF.S
   · rw [WFF.bindFree_openFree]
     exact Proof.ofSubset (fun ψ h => List.mem_append_right _ h) q₁
 
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
+variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB]
 
 /-- ⭐**Model existence.** Every consistent set of formulas in a presented context is satisfiable:
     the canonical model built over it, at its first world, in the canonical environment. -/
@@ -169,7 +169,7 @@ theorem model_existence {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)}
 /-- ⭐**Strong completeness.** If a formula holds in every model, world and environment satisfying a
     set of premises, then it is derivable from finitely many of them. -/
 theorem strong_completeness {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)} {φ : WFF σ Γ 0}
-    (hval : ∀ (M : Model.{0} σ) {w : M.frame.W} (env : M.Env Γ w),
+    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env Γ w),
       (∀ ψ ∈ S, M.sat env ψ) → M.sat env φ) :
     ∃ Δ : List (WFF σ Γ 0), (∀ ψ ∈ Δ, ψ ∈ S) ∧ Provable Δ φ := by
   by_contra hno
@@ -192,7 +192,7 @@ theorem strong_completeness {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)} {�
     subset is — in models of any universe. -/
 theorem compactness {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)}
     (hfin : ∀ Δ : List (WFF σ Γ 0), (∀ ψ ∈ Δ, ψ ∈ S) →
-      ∃ (M : Model.{u} σ) (w : M.frame.W) (env : M.Env Γ w), ∀ ψ ∈ Δ, M.sat env ψ) :
+      ∃ (M : Model.{u, v} σ) (w : M.frame.W) (env : M.Env Γ w), ∀ ψ ∈ Δ, M.sat env ψ) :
     WFF.SetSatisfiable S := by
   refine model_existence fun Δ hΔ ⟨p⟩ => ?_
   obtain ⟨M, w, env, hsat⟩ := hfin Δ hΔ

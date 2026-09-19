@@ -15,13 +15,13 @@ namespace V12M
 
 variable [ModalSys]
 
-universe u
+universe u v
 
 namespace Model
 
 variable {σ : Signature}
 
-theorem hyps_cons {M : Model.{u} σ} {Γ : Ctx} {w : M.frame.W} {env : M.Env Γ w}
+theorem hyps_cons {M : Model.{u, v} σ} {Γ : Ctx} {w : M.frame.W} {env : M.Env Γ w}
     {ψ : WFF σ Γ 0} {Δ : List (WFF σ Γ 0)} (h : M.sat env ψ) (hΔ : ∀ χ ∈ Δ, M.sat env χ) :
     ∀ χ ∈ ψ :: Δ, M.sat env χ := by
   intro χ hχ
@@ -31,7 +31,7 @@ theorem hyps_cons {M : Model.{u} σ} {Γ : Ctx} {w : M.frame.W} {env : M.Env Γ 
 
 /-- Pair elimination's formulas hold in one environment exactly when their premises hold in
     another (the components read by projection). -/
-theorem sat_bindPair {M : Model.{u} σ} {Γ : Ctx} {d : ℕ} {w : M.frame.W} (hnp : Γ.NoProjLast)
+theorem sat_bindPair {M : Model.{u, v} σ} {Γ : Ctx} {d : ℕ} {w : M.frame.W} (hnp : Γ.NoProjLast)
     (u₁ u₂ z : ℕ) (hu : u₁ ≠ u₂) (hz₁ : z ≠ u₁) (hu₁ : Γ.RootFresh (.free u₁))
     (hu₂ : Γ.RootFresh (.free u₂)) (hzf : Γ.RootFresh (.free z)) (hs : Γ.SlotsFrom d)
     (A B : VarType) (envZ : M.Env (Γ.insert (.free z) (.VTypeProd A B)) w) :
@@ -55,9 +55,17 @@ theorem sat_bindPair {M : Model.{u} σ} {Γ : Ctx} {d : ℕ} {w : M.frame.W} (hn
         (Ctx.ref_insert_snd _ _ A B) ((hs.insertFree u₁ A).insertFree u₂ B)
         ((hs.insertFree u₁ A).insertFree z _) φ))
 
+/-- A closed formula's truth depends only on the world. -/
+theorem sat_closed {M : Model.{u, v} σ} {Γ Γ' : Ctx} {w : M.frame.W} (env : M.Env Γ w)
+    (env' : M.Env Γ' w) {d : ℕ} (ψ : WFF σ Ctx.empty d) :
+    M.sat env (ψ.closed Γ) ↔ M.sat env' (ψ.closed Γ') :=
+  have e₀ : M.Env Ctx.empty w := fun _ _ h => nomatch h
+  (sat_mono (env := e₀) (fun _ _ h => nomatch h) ψ).trans
+    (sat_mono (env := e₀) (fun _ _ h => nomatch h) ψ).symm
+
 /-- ⭐**Soundness.** -/
 theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : Proof σ Γ Δ φ) :
-    ∀ (M : Model.{u} σ) {w : M.frame.W} (env : M.Env Γ w), Γ.NoProjLast →
+    ∀ (M : Model.{u, v} σ) {w : M.frame.W} (env : M.Env Γ w), Γ.NoProjLast →
       (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ := by
   induction p with
   | @ax Γ φ =>
@@ -173,8 +181,8 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       exact h
   | @D_box Γ Δ hD p ih =>
       intro M w env hnp hΔ
-      obtain ⟨v, hv⟩ := M.frame.serial hD w
-      exact ih M env hnp hΔ ⟨v, hv⟩
+      obtain ⟨v, ⟨hv⟩⟩ := M.frame.serial hD w
+      exact ih M env hnp hΔ ⟨v, ⟨hv⟩⟩
   | @D_ex Γ Δ hDS =>
       intro M w env _ _
       obtain ⟨p, ⟨v⟩⟩ := M.posSerial hDS w
@@ -185,25 +193,32 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
   | @T_box Γ _ hT Δ φ p ih =>
       intro M w env hnp hΔ
       exact (sat_boxHere hT env Ctx.NoSlots.slots φ).mpr
-        (ih M env hnp hΔ ⟨w, M.frame.refl hT w⟩)
+        (ih M env hnp hΔ ⟨w, ⟨M.frame.refl hT w⟩⟩)
   | @four_box Γ _ hF Δ φ p ih =>
       intro M w env hnp hΔ v s
       exact (sat_shift_twoBox hF env Ctx.NoSlots.slots φ v s).mpr
-        (ih M env hnp hΔ ⟨s.1, M.frame.trans hF v.2 s.2⟩)
+        (ih M env hnp hΔ ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩)
   | @T_dia Γ _ hT hS A a t c y hc hy hyc Δ φ Ψ p ih =>
       -- Interpret the eigenvariable as some possible object realised here.
       intro M w env hnp hΔ
-      obtain ⟨q, hrefl, hmem, hcont⟩ := M.posRet_exists hT hS (interp env t)
+      obtain ⟨q, hmem, hcont⟩ := M.posRet_exists hT hS (interp env t)
       refine (sat_weaken (T := .VTypeDia A) env hc.root q φ).mp
         (ih M (env.extend (T := .VTypeDia A) (.free c) q) (hnp.insert _ _) ?_)
       intro χ hχ
       rcases List.mem_append.mp hχ with h₁ | h₂
       · -- A `Ψ` hypothesis: for every value of its parameter, the `here` reading gives the `◇` one.
         obtain ⟨ψ, _, rfl⟩ := List.mem_map.mp h₁
-        exact sat_retHyp hT env hnp t c y hc hy hyc ψ.1 ψ.2 q hrefl hmem hcont
+        exact sat_retHyp hT env hnp t c y hc hy hyc ψ.1 ψ.2 q hmem hcont
       · -- An old hypothesis, merely weakened by the eigenvariable.
         obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken (T := .VTypeDia A) env hc.root q χ').mpr (hΔ χ' hχ')
+  | @B_dia Γ Δ hB ψ p ih =>
+      -- `◇□ψ`: along some arrow `w → v`, `ψ` holds after every arrow out of `v`; one leads back.
+      intro M w env hnp hΔ
+      by_contra hn
+      refine ih M env hnp hΔ fun v hv => ?_
+      obtain ⟨b⟩ := M.frame.symm hB v.2.down
+      exact hn ((sat_closed _ env ψ).mp (hv ⟨w, ⟨b⟩⟩))
 
 end Model
 

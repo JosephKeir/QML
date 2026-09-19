@@ -86,7 +86,7 @@ theorem Spine.shift_ofFn {σ : Signature} {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx
 
 namespace Model
 
-variable {σ : Signature} {M : Model.{u} σ}
+variable {σ : Signature} {M : Model.{u, v} σ}
 
 theorem interpFunc_fill {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
     ∀ {n : ℕ} (ts : Fin n → Term σ Δ .Var .var) (g : Func σ Δ n),
@@ -527,8 +527,8 @@ noncomputable def rawEval :
   | _, _, .boxUnit, _, _ => fun _ => PUnit.unit
   | _, _, .diaMap f, _, o => ⟨o.1, fun w' => rawEval f w'.1.1 (o.2 w')⟩
   | _, _, .strength _ _, _, o => ⟨o.2.1, fun w' => (o.1 w'.1, o.2.2 w')⟩
-  | _, _, .extract hT, w, o => o ⟨w, R.refl hT w⟩
-  | _, _, .dup hF, _, o => fun v s => o ⟨s.1, R.trans hF v.2 s.2⟩
+  | _, _, .extract hT, w, o => o ⟨w, ⟨R.refl hT w⟩⟩
+  | _, _, .dup hF, _, o => fun v s => o ⟨s.1, ⟨R.trans hF v.2.down s.2.down⟩⟩
 
 /-- A base-typed term with its (only possible) annotation. -/
 def varTerm {Γ : Ctx} : (Σ b : Ann .Var, Term σ Γ .Var b) → Term σ Γ .Var .var
@@ -923,7 +923,7 @@ theorem rden_dup (hF : ModalSys.Four = true) : ∀ (p : ℕ) {A : VarType} {a : 
     (b : Term σ Γ.boxIn A a) (w : World σ N₀) (i : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)) (v : Succ w),
     v.1.depth - w.depth = p → ∀ (s : Succ v.1),
       rden w i e (.boxtm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))) v s =
-        rden w i e (.boxtm b) ⟨s.1, R.trans hF v.2 s.2⟩
+        rden w i e (.boxtm b) ⟨s.1, ⟨R.trans hF v.2.down s.2.down⟩⟩
   | 0, _, _, Γ, b, w, i, e, ⟨v, hv⟩, hp, s => by
       obtain ⟨hT, hw⟩ := Succ.self ⟨v, hv⟩ hp
       change v = w at hw
@@ -941,13 +941,13 @@ theorem rden_dup (hF : ModalSys.Four = true) : ∀ (p : ℕ) {A : VarType} {a : 
         have hs1 : s.1.depth - w.depth = 1 := by
           rw [hsv]
           exact hp
-        rw [rden_boxtm_self _ _ s hq, rden_boxtm_acc e b ⟨s.1, R.trans hF v.2 s.2⟩ hs1]
+        rw [rden_boxtm_self _ _ s hq, rden_boxtm_acc e b ⟨s.1, ⟨R.trans hF v.2.down s.2.down⟩⟩ hs1]
         exact (rden_sigma _ (Term.collapse_shift_same (Ctx.shifts_boxIn_boxIn hF Γ)
           (Ctx.collapses_boxIn_self hT Γ.boxIn) (Ctx.Le.refl _)
           (Ctx.shiftCollapseId_keepOnly hk Γ) b)).trans (rden_mono _ _ _ _ _)
       · have hs2 : s.1.depth - w.depth = q + 1 + 1 := by omega
         exact (rden_boxtm_far _ _ s hq).trans
-          (rden_boxtm_far e b ⟨s.1, R.trans hF v.2 s.2⟩ hs2).symm
+          (rden_boxtm_far e b ⟨s.1, ⟨R.trans hF v.2.down s.2.down⟩⟩ hs2).symm
   | p + 2, _, _, Γ, b, w, i, e, v, hp, s => by
       obtain ⟨u, hu, hr, hd⟩ := v.split hp
       have hne : v.1.depth - u.depth ≠ 0 := by omega
@@ -958,10 +958,11 @@ theorem rden_dup (hF : ModalSys.Four = true) : ∀ (p : ℕ) {A : VarType} {a : 
         (Ctx.shifts_boxIn_boxIn hF Γ.boxIn) (Ctx.shifts_boxIn_boxIn hF Γ).boxIn b
       exact (congrFun (rden_boxtm_step hF e (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))
           v hu hr hne) s).trans
-        ((congrFun (congrFun (rden_sigma _ (sig_boxtm (sig_boxtm hsh.symm))) ⟨v.1, hr⟩) s).trans
+        ((congrFun (congrFun (rden_sigma _ (sig_boxtm (sig_boxtm hsh.symm))) ⟨v.1, ⟨hr⟩⟩) s).trans
           ((rden_dup hF (p + 1) (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b) u (childStage i) _
-              ⟨v.1, hr⟩ hd s).trans
-            (rden_boxtm_step hF e b ⟨s.1, R.trans hF v.2 s.2⟩ hu (R.trans hF hr s.2) hsu).symm))
+              ⟨v.1, ⟨hr⟩⟩ hd s).trans
+            (rden_boxtm_step hF e b ⟨s.1, ⟨R.trans hF v.2.down s.2.down⟩⟩
+              hu (R.trans hF hr s.2.down) hsu).symm))
 
 /-! ### The strong-T gap
 
@@ -1043,7 +1044,7 @@ theorem rden_applyG :
             ((rden_mono _ _ _ _ _).trans
               (rden_boxtm_acc e b w'.1 (extent_dist w'.2 hd)).symm) rfl)
   | _, _, .extract hT, _, _, .boxtm b, w, _, e =>
-      (rden_boxtm_self e b ⟨w, R.refl hT w⟩ (Nat.sub_self _)).symm
+      (rden_boxtm_self e b ⟨w, ⟨R.refl hT w⟩⟩ (Nat.sub_self _)).symm
   | _, _, .dup hF, _, _, .boxtm b, w, i, e =>
       funext fun v => funext fun s => rden_dup hF _ b w i e v rfl s
 
@@ -1109,11 +1110,11 @@ theorem rden_realisedTerm_eta_sigma {w : World σ N₀} {x : VarSymb} (hr : w.Re
 theorem rden_eta_realised {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
     {k : ℕ × ℕ} (hdecl : (w.L.ctx k).ref x = some (.VTypeDia hr.data.A)) :
     (rden w k (Ctx.Le.refl _) (Term.eta x (.VTypeDia hr.data.A) hdecl)).2
-        ⟨⟨w, R.refl hr.T w⟩, self_mem_extent hr⟩ =
+        ⟨⟨w, ⟨R.refl hr.T w⟩⟩, self_mem_extent hr⟩ =
       rden w hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀ :=
   (rden_diatm_self (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩
     (Term.eta (.step x .dia) hr.data.A (Ctx.ref_diaIn_of hdecl))
-    ⟨⟨w, R.refl hr.T w⟩, self_mem_extent hr⟩ (Nat.sub_self _)).trans
+    ⟨⟨w, ⟨R.refl hr.T w⟩⟩, self_mem_extent hr⟩ (Nat.sub_self _)).trans
     (rden_realisedTerm_eta hr (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩ (Ctx.ref_diaIn_of hdecl))
 
 /-- The same for any datum the world's choice is known to be.  Taking the datum as a variable with
@@ -1123,7 +1124,7 @@ theorem rden_eta_realised_of_eq {w : World σ N₀} {c : ℕ} (hr : w.Realised (
     (D : w.RealData (.root (.free c))) (hD : hr.data = D) {k : ℕ × ℕ}
     (hdecl : (w.L.ctx k).ref (.root (.free c)) = some (.VTypeDia D.A)) :
     (rden w k (Ctx.Le.refl _) (Term.eta (.root (.free c)) (.VTypeDia D.A) hdecl)).2
-        ⟨⟨w, R.refl hr.T w⟩, self_mem_extent hr⟩ =
+        ⟨⟨w, ⟨R.refl hr.T w⟩⟩, self_mem_extent hr⟩ =
       rden w D.i₀ (Ctx.Le.refl _) D.t₀ := by
   subst hD
   exact rden_eta_realised hr hdecl
@@ -1134,7 +1135,7 @@ theorem rden_eta_of_real {w : World σ N₀} {c : ℕ} {d : RealDatum σ w.L w.T
     (hsome : w.real c = some d) {k : ℕ × ℕ}
     (hdecl : (w.L.ctx k).ref (.root (.free c)) = some (.VTypeDia d.A)) :
     (rden w k (Ctx.Le.refl _) (Term.eta (.root (.free c)) (.VTypeDia d.A) hdecl)).2
-        ⟨⟨w, R.refl (World.realised_of_real hsome).T w⟩,
+        ⟨⟨w, ⟨R.refl (World.realised_of_real hsome).T w⟩⟩,
           self_mem_extent (World.realised_of_real hsome)⟩ =
       rden w d.i₀ (Ctx.Le.refl _) d.t₀ :=
   rden_eta_realised_of_eq _ ⟨c, rfl, d⟩ (World.data_of_real hsome) hdecl

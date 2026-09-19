@@ -807,6 +807,26 @@ content of a possible object.
 
 ### B (symmetry)
 - Frame: `v R w` for `v ∈ R(w)`.
+- **Weak B: implemented (2026-09-19), sound; complete without T and 4 for closed sequents
+  (2026-09-19, `BArrow.completenessB`, `QML_v12m_BCompleteness`).** Flag `ModalSys.B`; frame
+  condition `Frame.symm` (every arrow `w → v` has *some* arrow `v → w`; existence only). Rule
+  `Proof.B_dia`: `◇□ψ ⊢ ψ` for closed `ψ` (`WFF.closed`, weakened from `Ctx.empty`; `WFF.diaBox`
+  is `¬□¬□`). `Proof.B_box` derives the familiar `ψ ⊢ □◇ψ`, and `Proof.B_dia_of_box` goes back,
+  so the two forms are interderivable in K. The rule's form is the one the canonical check already
+  used (`QML_v12m_ArrowCheck`).
+  - *Substitution*: `ψ` is closed, so it crosses any substitution unchanged
+    (`WFF.subst_mono_empty`, moved from `ArrowCheck` to `ProofSubst`, which now imports
+    `SubstId`); `WFF.diaBox_closed` makes `◇□ψ` itself closed.
+  - *Soundness*: a closed formula's truth depends only on the world (`Model.sat_closed`); `◇□ψ`
+    gives an arrow `w → v` after which `ψ` holds everywhere, and `symm` gives one back to `w`.
+  - *The staged canonical model excludes it*: its frame cannot satisfy `symm`, so `Canon.frame`
+    and everything after it (completeness, strong completeness, compactness) assume
+    `[ModalSys.NoB]` (the pattern `ModalSys.NoTStrong` used before strong T was complete).
+  - *Completeness* comes from the arrow-based canonical model instead
+    (`docs/v12-arrow-canonical.md` §6a), so far with `[ModalSys.NoTFour]` (T and 4 off; D and
+    strong D may be on) and for sequents of closed formulas (`ctxOf []`, which is `Ctx.empty`).
+    Extending it to presented contexts, and to T and 4, is open.
+  - *Not yet*: the two strong Bs below.
 - **Redesigned 2026-09-19** around necessary objects, and sorted by §2a's criterion (weak = no new
   objects, strong = new objects). One weak B and **two** strong Bs. `P` below is a formula closed
   apart from its hole, since it is read both at the origin and two views in; several parameters
@@ -927,12 +947,12 @@ Known edges *(all sketch)*:
 | K | done | done | |
 | KD | done | done | |
 | T | ✓ | ✓ | |
-| KB | ✗ | ✓ | weak B |
+| KB | done (closed) | ✓ | |
 | K4 | ✓ | ✗ | lift |
 | K5 | ✗ | ✗ | 5's box half without 4 |
 | KD4 | done | ✗ | lift |
 | KD5 | ✗ | ✗ | 5's box half without 4 |
-| KDB | ✗ | ✓ | weak B |
+| KDB | done (closed) | ✓ | |
 | KTB | ✗ | ✓ | weak B |
 | S4 | ✓ | ✗ | lift |
 | KB5 (= KB4) | ? | ✓ | weak B's link without T |

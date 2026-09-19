@@ -32,7 +32,7 @@ theorem Ctx.diaIn_step_dia {Γ : Ctx} {x u : VarSymb} {X T : VarType}
 
 namespace Model
 
-variable {σ : Signature} (M : Model.{u} σ)
+variable {σ : Signature} (M : Model.{u, v} σ)
 
 /-- An environment: an object for every visible address. -/
 abbrev Env (Γ : Ctx) (w : M.frame.W) : Type u := ∀ v T, Γ v = some T → M.frame.Dom T w
@@ -43,7 +43,7 @@ def stepObj {w : M.frame.W} {U T : VarType} {s : Step} (hs : s.isProj = true)
   cases U <;> cases s <;> (try cases hs) <;> (try cases h)
   · exact a.1
   · exact a.2
-  · exact (VarType.step_here h).2 ▸ M.necEval a ⟨w, M.frame.refl (VarType.step_here h).1 w⟩
+  · exact (VarType.step_here h).2 ▸ M.necEval a ⟨w, ⟨M.frame.refl (VarType.step_here h).1 w⟩⟩
 
 variable {M}
 

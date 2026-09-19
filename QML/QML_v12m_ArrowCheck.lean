@@ -4,8 +4,9 @@ import QML.QML_v12m_CanonExist
 # QML v12m — early check for the arrow-based canonical model: the finite-piece lemma
 
 An early check for `docs/v12-arrow-canonical.md` §6, written against the *current* canonical
-worlds, without a B flag: weak B enters only as a hypothesis on the source world's theory
-(closure under `◇□ψ ⊢ ψ` for closed `ψ`), and the arrow only as a substitution with necessity
+worlds, which assume `ModalSys.NoB`: weak B (the rule `Proof.B_dia`) enters only as a hypothesis
+on the source world's theory (closure under `◇□ψ ⊢ ψ` for closed `ψ`), and the arrow only as a
+substitution with necessity
 transfer. Nothing imports this file.
 
 ⭐`finite_piece_closed` (and `finite_piece`, along an arrow): if `v` is accessible from `w`,
@@ -45,25 +46,6 @@ variable [ModalSys]
 namespace Canon
 
 variable {σ : Signature} {N₀ : ℕ}
-
-omit [ModalSys] in
-theorem Ctx.empty_le (Γ : Ctx) : Ctx.empty.Le Γ := fun _ _ h => nomatch h
-
-theorem Ctx.ref_empty (v : VarSymb) : Ctx.empty.ref v = none :=
-  Ctx.ref_none_of_rootFresh (fun _ _ => rfl) v rfl
-
-/-- ⭐Substitution fixes closed formulas: a formula of the empty context, weakened into the source,
-    comes out as the same formula weakened into the target. -/
-theorem WFF.subst_mono_empty {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d : ℕ}
-    (h : Ctx.empty.Le Γ) (h' : Ctx.empty.Le Δ) (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
-    (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d)
-    (φ : WFF σ Ctx.empty d) :
-    WFF.subst ι θ hθ hc hΓ hΔ (WFF.mono h φ) = WFF.mono h' φ := by
-  have hE : Ctx.empty.SlotsFrom d := fun _ _ _ _ => rfl
-  have e := WFF.subst_mono_eq h h' (Subst.idS σ Ctx.empty) Subst.ok_idS Subst.coh_idS θ hθ hc
-    hE hΓ hE hΔ (fun v _ hv => by rw [Ctx.ref_empty] at hv; cases hv) φ
-  rw [WFF.subst_id] at e
-  exact e
 
 /-- ⭐**The finite-piece lemma, closed form.** If every closed formula necessary at `w` holds at `v`
     — accessibility seen through closed formulas only — then whatever `v` says necessarily of one of

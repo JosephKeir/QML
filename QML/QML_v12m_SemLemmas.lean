@@ -19,7 +19,7 @@ variable [ModalSys]
 
 namespace Model
 
-variable {σ : Signature} {M : Model.{u} σ}
+variable {σ : Signature} {M : Model.{u, v} σ}
 
 /-! ## Agreeing environments -/
 

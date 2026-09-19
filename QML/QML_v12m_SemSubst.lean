@@ -46,7 +46,7 @@ theorem Ctx.noProjLast_diaIn (Γ : Ctx) (x : VarSymb) : (Γ.diaIn x).NoProjLast 
 
 namespace Model
 
-variable {σ : Signature} {M : Model.{u} σ}
+variable {σ : Signature} {M : Model.{u, v} σ}
 
 /-! ## Entry values and the substituted environment -/
 
@@ -105,7 +105,7 @@ theorem entryVal_proj {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
               subst hAT
               rw [entryVal_congr env (SubE.proj_boxtm_here t hT) _ rfl]
               change interp env (Term.collapse _ t) =
-                M.necEval (interp env (Term.boxtm t)) ⟨w, M.frame.refl hT w⟩
+                M.necEval (interp env (Term.boxtm t)) ⟨w, ⟨M.frame.refl hT w⟩⟩
               rw [interp_collapse (Env.collapseAgree_self hT env), box_beta]
           | _ => cases hst
 

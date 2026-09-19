@@ -17,7 +17,7 @@ variable [ModalSys]
 
 namespace Model
 
-variable {σ : Signature} {M : Model.{u} σ}
+variable {σ : Signature} {M : Model.{u, v} σ}
 
 theorem eval_ofEq {A B : VarType} (h : A = B) {w : M.frame.W} (a : M.frame.Dom A w) :
     GFunc.eval M.ops (GFunc.ofEq (σ := σ) h) w a =

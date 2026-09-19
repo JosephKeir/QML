@@ -133,7 +133,7 @@ theorem WFF.size_realiseAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalS
 
 /-! ## Helpers -/
 
-theorem Model.Env.Agree.refl' {σ : Signature} {M : Model.{u} σ} {Γ : Ctx} {w : M.frame.W}
+theorem Model.Env.Agree.refl' {σ : Signature} {M : Model.{u, v} σ} {Γ : Ctx} {w : M.frame.W}
     (env : M.Env Γ w) : Model.Env.Agree (Ctx.Le.refl Γ) env env :=
   fun _ _ _ => rfl
 
@@ -153,6 +153,7 @@ def Proof.boxx_neg_of_not_dia {σ : Signature} {Γ : Ctx} (x : VarSymb)
 namespace Canon
 
 variable {σ : Signature} {N₀ : ℕ} (w₀ : World σ N₀) [Countable σ.FuncSyms] [Countable σ.RelSyms]
+  [ModalSys.NoB]
 
 /-- The truth lemma for atoms. -/
 theorem relSat_canon : ∀ {Γ : Ctx} {n : ℕ} (ρ : Rel σ Γ n) {w : World σ N₀} {i : ℕ × ℕ}
@@ -189,9 +190,9 @@ theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {c : ℕ} (dat 
     (IH : ∀ ψ : WFF σ (w.L.ctx (i ⊔ dat.i₀)) 0, ψ.size = χ.size →
       ((model w₀).sat (canonEnv w₀ w (i ⊔ dat.i₀)) ψ ↔
         (⟨i ⊔ dat.i₀, ψ⟩ : w.L.sys.Sentence σ) ∈ w.T))
-    (hmem : (⟨w, R.refl dat.hT w⟩ : Succ w) ∈ ((model w₀).posEval ((canonEnv w₀ w i).ref x h)).1)
+    (hmem : (⟨w, ⟨R.refl dat.hT w⟩⟩ : Succ w) ∈ ((model w₀).posEval ((canonEnv w₀ w i).ref x h)).1)
     (hsat : (model w₀).sat
-      ((canonEnv w₀ w i).diaPush x h ⟨⟨w, R.refl dat.hT w⟩, hmem⟩) χ) :
+      ((canonEnv w₀ w i).diaPush x h ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hmem⟩) χ) :
     (⟨i, WFF.dia x hx χ⟩ : w.L.sys.Sentence σ) ∈ w.T := by
   subst hxc
   have hXA : X = dat.A := by
@@ -207,23 +208,25 @@ theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {c : ℕ} (dat 
   have hdecl := dat.hdecl (i ⊔ dat.i₀) hj2
   have hagj : Model.Env.Agree (w.L.ctx_le hj) (canonEnv w₀ w i) (canonEnv w₀ w (i ⊔ dat.i₀)) :=
     canonEnv_le w₀ w hj
-  have hm' : (⟨w, R.refl dat.hT w⟩ : Succ w) ∈
+  have hm' : (⟨w, ⟨R.refl dat.hT w⟩⟩ : Succ w) ∈
       ((model w₀).posEval ((canonEnv w₀ w (i ⊔ dat.i₀)).ref (.root (.free c)) hdecl)).1 := by
     rw [canonEnv_extent]
     exact self_mem_extent (World.realised_of_real hreal)
   have hcont : ((model w₀).posEval
-        ((canonEnv w₀ w (i ⊔ dat.i₀)).ref (.root (.free c)) hdecl)).2 ⟨⟨w, R.refl dat.hT w⟩, hm'⟩ =
+        ((canonEnv w₀ w (i ⊔ dat.i₀)).ref (.root (.free c)) hdecl)).2
+          ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hm'⟩ =
       Model.interp (canonEnv w₀ w (i ⊔ dat.i₀))
         (Term.mono (w.L.ctx_le (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀) := by
     have hpq := canonEnv_ref w₀ w (i ⊔ dat.i₀) (.root (.free c)) hdecl
-    rw [Model.posEval_snd_congr hpq ⟨⟨w, R.refl dat.hT w⟩, hm'⟩ (hpq ▸ hm'),
+    rw [Model.posEval_snd_congr hpq ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hm'⟩ (hpq ▸ hm'),
       Model.interp_mono (canonEnv_le w₀ w (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀,
       interp_canon w₀ dat.t₀ (Model.Env.Agree.refl' _)]
     exact toDom_congr w₀ (rden_eta_of_real hreal hdecl) _ _
   have hsatR := (Model.sat_realiseAt dat.hT (canonEnv w₀ w (i ⊔ dat.i₀)) (w.noProjLast _) hdecl
-    (dat.hfr _) (Term.mono (w.L.ctx_le le_sup_right) dat.t₀) (R.refl dat.hT w) hm' hcont
+    (dat.hfr _) (Term.mono (w.L.ctx_le le_sup_right) dat.t₀) hm' hcont
     (WFF.mono ((w.L.ctx_le hj).diaIn (.root (.free c))) χ)).mpr
-    ((Model.sat_mono (Model.Env.diaPush_agree hagj h ⟨⟨w, R.refl dat.hT w⟩, hmem⟩ hm') χ).mpr hsat)
+    ((Model.sat_mono (Model.Env.diaPush_agree hagj h
+      ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hmem⟩ hm') χ).mpr hsat)
   have hdia := dat.spec (i ⊔ dat.i₀) le_sup_right hj2 _
     ((IH _ (by rw [WFF.size_realiseAt, WFF.size_mono])).mp hsatR)
   have hmem' := World.mem_mono_congr w (Ctx.Le.refl _) (w.L.ctx_le hj)
@@ -367,7 +370,7 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
                 intro w i χ hχs hmem w' hd
                 obtain ⟨u, hu, hr, hd'⟩ := w'.split hd
                 have hF : ModalSys.Four = true := w'.four hd (Nat.succ_ne_zero d)
-                have hu1 : (⟨u, R.of_acc hu⟩ : Succ w).1.depth - w.depth = 1 := by
+                have hu1 : (⟨u, ⟨R.of_acc hu⟩⟩ : Succ w).1.depth - w.depth = 1 := by
                   have := hu.1
                   change u.depth - w.depth = 1
                   omega
@@ -382,11 +385,11 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
                   (WFF.mono (hu.boxIn_le i).boxIn
                     (WFF.shift (Ctx.shifts_boxIn_boxIn hF _) Ctx.NoSlots.slots χ))
                   (by rw [WFF.size_mono, WFF.size_shift]; exact hχs)
-                  (hu.2.2 i _ (childStage i) (hu.boxIn_le i) h4) ⟨w'.1, hr⟩ hd'
+                  (hu.2.2 i _ (childStage i) (hu.boxIn_le i) h4) ⟨w'.1, ⟨hr⟩⟩ hd'
                 have hsat₂ := (Model.sat_mono (Model.Env.boxPush_agree
-                  (boxPush_agree_canon w₀ w i ⟨u, R.of_acc hu⟩ hu1) ⟨w'.1, hr⟩) _).mp hsat
+                  (boxPush_agree_canon w₀ w i ⟨u, ⟨R.of_acc hu⟩⟩ hu1) ⟨w'.1, ⟨hr⟩⟩) _).mp hsat
                 exact (Model.sat_shift_twoBox hF (canonEnv w₀ w i) Ctx.NoSlots.slots χ
-                  ⟨u, R.of_acc hu⟩ ⟨w'.1, hr⟩).mp hsat₂
+                  ⟨u, ⟨R.of_acc hu⟩⟩ ⟨w'.1, ⟨hr⟩⟩).mp hsat₂
           constructor
           · intro hsat
             by_contra hnot
@@ -394,7 +397,7 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
             have hd : w'.depth - w.depth = 1 := by
               have := ha.1
               omega
-            exact hw' ((key ⟨w', R.of_acc ha⟩ hd).mp (hsat ⟨w', R.of_acc ha⟩))
+            exact hw' ((key ⟨w', ⟨R.of_acc ha⟩⟩ hd).mp (hsat ⟨w', ⟨R.of_acc ha⟩⟩))
           · intro hmem w'
             rcases hd : w'.1.depth - w.depth with _ | d
             · obtain ⟨w₁, hw₁⟩ := w'
@@ -459,12 +462,12 @@ end Canon
 
 /-! ## Completeness -/
 
-variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
+variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB]
 
 /-- ⭐**Completeness**: a sequent in a presented context that holds in every model, at every
     world, in every environment, is provable. -/
 theorem completeness {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0}
-    (hval : ∀ (M : Model.{0} σ) {w : M.frame.W} (env : M.Env Γ w), Γ.NoProjLast →
+    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env Γ w), Γ.NoProjLast →
       (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ := by
   by_contra hnp
@@ -497,7 +500,7 @@ theorem completeness {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : W
 /-- ⭐**Soundness and completeness**: over a countable signature, a sequent in a presented context
     is provable exactly when it holds in every model. -/
 theorem provable_iff_valid {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
-    Provable Δ φ ↔ ∀ (M : Model.{0} σ) {w : M.frame.W} (env : M.Env Γ w), Γ.NoProjLast →
+    Provable Δ φ ↔ ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env Γ w), Γ.NoProjLast →
       (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ :=
   ⟨fun ⟨p⟩ => Model.soundness p, completeness⟩
 

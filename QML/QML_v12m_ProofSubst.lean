@@ -1,4 +1,5 @@
 import QML.QML_v12m_Open
+import QML.QML_v12m_SubstId
 
 /-!
 # QML v12m — substitution in proofs
@@ -215,6 +216,28 @@ theorem WFF.subst_mono_eq {ι ι₁ : VarSymb → VarSymb} {Γ Γ₁ Δ Δ₁ : 
     ((WFF.subst_congr θ₁ (θ.mono hle') (hθ₁.restrict hle) (Subst.ok_mono hθ hle')
       (hc₁.restrict hle) (Subst.coh_mono hc hle') hΓ hΔ₁ hs φ).trans
       (WFF.mono_subst hle' θ hθ hc hΓ hΔ hΔ₁ φ).symm)
+
+theorem Ctx.ref_empty (v : VarSymb) : Ctx.empty.ref v = none :=
+  Ctx.ref_none_of_rootFresh (fun _ _ => rfl) v rfl
+
+/-- ⭐Substitution fixes closed formulas: a formula of the empty context, weakened into the source,
+    comes out as the same formula weakened into the target. -/
+theorem WFF.subst_mono_empty {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d : ℕ}
+    (h : Ctx.empty.Le Γ) (h' : Ctx.empty.Le Δ) (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
+    (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d)
+    (φ : WFF σ Ctx.empty d) :
+    WFF.subst ι θ hθ hc hΓ hΔ (WFF.mono h φ) = WFF.mono h' φ := by
+  have hE : Ctx.empty.SlotsFrom d := fun _ _ _ _ => rfl
+  have e := WFF.subst_mono_eq h h' (Subst.idS σ Ctx.empty) Subst.ok_idS Subst.coh_idS θ hθ hc
+    hE hΓ hE hΔ (fun v _ hv => by rw [Ctx.ref_empty] at hv; cases hv) φ
+  rw [WFF.subst_id] at e
+  exact e
+
+/-- `◇□` of a closed formula is closed. -/
+theorem WFF.diaBox_closed (Γ : Ctx) (ψ : WFF σ Ctx.empty 0) :
+    WFF.diaBox (ψ.closed Γ.boxIn.boxIn) =
+      WFF.closed Γ (WFF.diaBox (Γ := Ctx.empty) (ψ.closed _)) := by
+  simp only [WFF.closed, WFF.diaBox, WFF.neg, WFF.mono, WFF.mono_mono]
 
 /-- Substituting into an instantiation. -/
 theorem WFF.subst_instantiate {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
@@ -861,6 +884,15 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
       .dia_bot (ι x) hwx (Proof.subst p θ hθ hc hΓ)
   | _, _, _, .D_box hD p, _, _, _, θ, hθ, hc, hΓ => .D_box hD (Proof.subst p θ hθ hc hΓ)
   | _, _, _, .D_ex hDS, _, _, _, _, _, _, _ => .D_ex hDS
+  | _, _, _, .B_dia hB ψ p, _, _, _, θ, hθ, hc, hΓ =>
+      Proof.conv
+        (WFF.subst_mono_empty (Ctx.empty_le _) (Ctx.empty_le _) θ hθ hc hΓ Ctx.NoSlots.slots
+          ψ).symm
+        (.B_dia hB ψ (Proof.conv
+          ((congrArg (WFF.subst _ θ hθ hc hΓ Ctx.NoSlots.slots) (WFF.diaBox_closed _ ψ)).trans
+            ((WFF.subst_mono_empty _ _ θ hθ hc hΓ Ctx.NoSlots.slots _).trans
+              (WFF.diaBox_closed _ ψ).symm))
+          (Proof.subst p θ hθ hc hΓ)))
   | _, _, _, @Proof.T_box _ _ _ _ hT _ φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       Proof.conv
         (WFF.collapse_subst (Ctx.collapses_boxIn_self hT _) (Ctx.collapses_boxIn_self hT Γ')

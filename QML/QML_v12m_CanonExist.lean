@@ -330,7 +330,7 @@ theorem exists_dia (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
     (hχ : (⟨i, .dia x hx χ⟩ : w.L.sys.Sentence σ) ∈ w.T) :
     ∃ (w' : Succ w) (hw' : w' ∈ extent w x) (hd : w'.1.depth - w.depth ≠ 0),
       (⟨childStage i, WFF.mono (extent_le hw' hd i) χ⟩ : w'.1.L.sys.Sentence σ) ∈ w'.1.T := by
-  have hext : (⟨diaWorld w x hx χ hχ, R.of_acc (diaWorld_acc w x hx χ hχ)⟩ : Succ w) ∈
+  have hext : (⟨diaWorld w x hx χ hχ, ⟨R.of_acc (diaWorld_acc w x hx χ hχ)⟩⟩ : Succ w) ∈
       extent w x := by
     refine Or.inl ⟨rfl, fun _ => rfl, ?_⟩
     intro i' hx' ψ j h hmem
@@ -338,7 +338,7 @@ theorem exists_dia (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
         ((diaLang w x).pre []).Sentence σ) ∈ diaStart w x χ :=
       Or.inl (Or.inr ⟨i', hx', ψ, le_diag_max w i', hmem, rfl⟩)
     exact World.mem_mono_congr (diaWorld w x hx χ hχ) h _ (WorldLang.subset_finalT _ hk)
-  have hdd : ((⟨diaWorld w x hx χ hχ, R.of_acc (diaWorld_acc w x hx χ hχ)⟩ : Succ w)).1.depth -
+  have hdd : ((⟨diaWorld w x hx χ hχ, ⟨R.of_acc (diaWorld_acc w x hx χ hχ)⟩⟩ : Succ w)).1.depth -
       w.depth ≠ 0 := by
     have h1 : (diaWorld w x hx χ hχ).depth = w.depth + 1 := (diaWorld_acc w x hx χ hχ).1
     change (diaWorld w x hx χ hχ).depth - w.depth ≠ 0

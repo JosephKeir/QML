@@ -26,16 +26,20 @@ variable {σ : Signature} {N₀ : ℕ}
 
 -- Seriality under D needs a successor for every world, which is a Henkin construction, so the
 -- canonical frame is built over a countable signature — the setting of completeness anyway.
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
+variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB]
 
 /-- ⭐The canonical frame, pointed at a world. -/
-noncomputable def frame (w₀ : World σ N₀) : Frame.{0} σ where
+noncomputable def frame (w₀ : World σ N₀) : Frame.{0, 0} σ where
   W := World σ N₀
   actual := w₀
   R := Canon.R
   refl := fun hT w => R.refl hT w
   trans := fun hF => R.trans hF
-  serial := fun hD w => (exists_succ hD w).imp fun _ ha => R.of_acc ha
+  serial := fun hD w => (exists_succ hD w).imp fun _ ha => ⟨R.of_acc ha⟩
+  symm := fun hB => (ModalSys.NoB.absurd hB).elim
+  refl_trans := fun _ _ _ _ _ => rfl
+  trans_refl := fun _ _ _ _ _ => rfl
+  trans_assoc := fun _ _ _ _ _ _ _ _ => rfl
   D w := w.D
   Nec A w := {o : RDom (.VTypeBox A) w // Definable (.VTypeBox A) w o}
   Pos A w := {o : RDom (.VTypeDia A) w // Definable (.VTypeDia A) w o}
@@ -188,9 +192,8 @@ theorem posSerial_canon (hDS : ModalSys.DStrong = true) (w : World σ N₀) :
     content there is what the realising term denotes. -/
 theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T = true)
     (hS : ModalSys.TStrong = true) (a : (frame w₀).Dom A w) :
-    ∃ (p : (frame w₀).Pos A w) (h : Canon.R w w)
-      (hm : (⟨w, h⟩ : (frame w₀).Acc w) ∈ (posEval w₀ p).1),
-      (posEval w₀ p).2 ⟨⟨w, h⟩, hm⟩ = a := by
+    ∃ (p : (frame w₀).Pos A w) (hm : (frame w₀).reflAcc hT w ∈ (posEval w₀ p).1),
+      (posEval w₀ p).2 ⟨(frame w₀).reflAcc hT w, hm⟩ = a := by
   obtain ⟨i, a', t, ht⟩ := definable_fromDom w₀ A w a
   obtain ⟨c, i', hle, d, hsome, hfields⟩ := w.realW hT hS i t
   have hA : d.A = A := congrArg (fun z => z.1) hfields
@@ -206,7 +209,7 @@ theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T =
     d.hdecl _ (Nat.lt_succ_self _)
   refine ⟨⟨rden w (d.i₀.1, d.i₀.2 + 1) (Ctx.Le.refl _)
       (Term.eta (.root (.free c)) (.VTypeDia d.A) hdecl), definable_rden _ _⟩,
-    R.refl hr.T w, self_mem_extent hr, ?_⟩
+    self_mem_extent hr, ?_⟩
   refine Eq.trans ?_ (toDom_fromDom w₀ d.A w a)
   refine toDom_congr w₀ ?_ _ _
   rw [← ht]
@@ -216,7 +219,7 @@ theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T =
 
 
 /-- ⭐The canonical model. -/
-noncomputable def model : Model.{0} σ where
+noncomputable def model : Model.{0, 0} σ where
   frame := frame w₀
   necEval := necEval w₀
   nec_inj := fun h => necEval_injective w₀ h

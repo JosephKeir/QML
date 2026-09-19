@@ -20,7 +20,7 @@ namespace V12M
 
 variable [ModalSys]
 
-theorem Model.Env.Agree.trans {σ : Signature} {M : Model.{u} σ} {Γ₁ Γ₂ Γ₃ : Ctx}
+theorem Model.Env.Agree.trans {σ : Signature} {M : Model.{u, v} σ} {Γ₁ Γ₂ Γ₃ : Ctx}
     {h₁ : Γ₁.Le Γ₂} {h₂ : Γ₂.Le Γ₃} {w : M.frame.W} {e₁ : M.Env Γ₁ w} {e₂ : M.Env Γ₂ w}
     {e₃ : M.Env Γ₃ w} (a : Model.Env.Agree h₁ e₁ e₂) (b : Model.Env.Agree h₂ e₂ e₃) :
     Model.Env.Agree (h₁.trans h₂) e₁ e₃ :=
@@ -108,7 +108,7 @@ omit w₀ in
 theorem World.noProjLast (w : World σ N₀) (i : ℕ × ℕ) : (w.L.ctx i).NoProjLast :=
   Ctx.Presented.noProjLast _
 
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
+variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB]
 
 /-- ⭐The canonical environment: every visible address denotes its η-expansion. -/
 noncomputable def canonEnv (w : World σ N₀) (i : ℕ × ℕ) : (model w₀).Env (w.L.ctx i) w :=
@@ -148,7 +148,7 @@ theorem canonEnv_ref (w : World σ N₀) (i : ℕ × ℕ) :
                 (.boxtm (Term.eta v.inner _ (Ctx.ref_inner hU))) ⟨w, _⟩) _ = _
               exact toDom_congr w₀
                 ((rden_boxtm_self (Ctx.Le.refl _) (Term.eta v.inner _ (Ctx.ref_inner hU))
-                  ⟨w, R.refl hT₁ w⟩ (Nat.sub_self _)).trans
+                  ⟨w, ⟨R.refl hT₁ w⟩⟩ (Nat.sub_self _)).trans
                   (rden_sigma _ ((Term.collapse_eta _ _ _ _).trans
                     (Term.eta_congr (VarSymb.inner_collapse_zero v) _ _ _)))) _ _
           | box => cases hs
@@ -269,16 +269,16 @@ theorem interp_box_far (S : ℕ) {A : VarType}
   | d + 1, Γ, _, t, ht, w, i, e, env, hag, w', hd => by
       obtain ⟨u, hu, hr, hd'⟩ := w'.split hd
       have hF : ModalSys.Four = true := w'.four hd (Nat.succ_ne_zero d)
-      have hu1 : (⟨u, R.of_acc hu⟩ : Succ w).1.depth - w.depth = 1 := by
+      have hu1 : (⟨u, ⟨R.of_acc hu⟩⟩ : Succ w).1.depth - w.depth = 1 := by
         have := hu.1
         change u.depth - w.depth = 1
         omega
-      have hag' := (Model.Env.boxPush_agree hag (⟨u, R.of_acc hu⟩ : Succ w)).trans
-        (boxPush_agree_canon w₀ w i ⟨u, R.of_acc hu⟩ hu1)
+      have hag' := (Model.Env.boxPush_agree hag (⟨u, ⟨R.of_acc hu⟩⟩ : Succ w)).trans
+        (boxPush_agree_canon w₀ w i ⟨u, ⟨R.of_acc hu⟩⟩ hu1)
       refine (Model.interp_shift (Model.Env.shiftAgree_twoBox hF env
-        (⟨u, R.of_acc hu⟩ : Succ w) ⟨w'.1, hr⟩) t).symm.trans ?_
+        (⟨u, ⟨R.of_acc hu⟩⟩ : Succ w) ⟨w'.1, ⟨hr⟩⟩) t).symm.trans ?_
       refine (interp_box_far S IH d (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) t)
-        (by rw [Term.size_shift]; exact ht) hag' ⟨w'.1, hr⟩ hd').trans ?_
+        (by rw [Term.size_shift]; exact ht) hag' ⟨w'.1, ⟨hr⟩⟩ hd').trans ?_
       exact toDom_congr w₀ (rden_boxtm_step hF e t w' hu hr (by omega)).symm _ _
 
 /-- The size of a type: the middle component of the truth lemma's measure.  A `◇` term recurses at
@@ -316,9 +316,9 @@ theorem interp_dia_self {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
     (hdecl : (w.L.ctx (i ⊔ dat.i₀)).ref (.root (.free c)) = some (.VTypeDia dat.A))
     (hle : (Γ.diaIn x).Le ((w.L.ctx (i ⊔ dat.i₀)).diaIn (.root (.free c))))
     (hT : ModalSys.T = true)
-    (hmem : (⟨w, R.refl hT w⟩ : Succ w) ∈ ((model w₀).posEval (env.ref x hx)).1)
+    (hmem : (⟨w, ⟨R.refl hT w⟩⟩ : Succ w) ∈ ((model w₀).posEval (env.ref x hx)).1)
     (t : Term σ (Γ.diaIn x) A a) :
-    Model.interp (env.diaPush x hx ⟨⟨w, R.refl hT w⟩, hmem⟩) t =
+    Model.interp (env.diaPush x hx ⟨⟨w, ⟨R.refl hT w⟩⟩, hmem⟩) t =
       toDom w₀ A w (rden w (i ⊔ dat.i₀) (Ctx.Le.refl _)
         (Term.realiseAt hT c hdecl (dat.hfr _) (Term.mono (w.L.ctx_le le_sup_right) dat.t₀)
           (Term.mono hle t))) (definable_rden _ _) := by
@@ -335,23 +335,23 @@ theorem interp_dia_self {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
     omega
   have hagj : Model.Env.Agree (e.trans (w.L.ctx_le hj)) env (canonEnv w₀ w (i ⊔ dat.i₀)) :=
     hag.trans (canonEnv_le w₀ w hj)
-  have hm' : (⟨w, R.refl hT w⟩ : Succ w) ∈
+  have hm' : (⟨w, ⟨R.refl hT w⟩⟩ : Succ w) ∈
       ((model w₀).posEval ((canonEnv w₀ w (i ⊔ dat.i₀)).ref (.root (.free c)) hdecl)).1 := by
     rw [canonEnv_extent]
     exact self_mem_extent (World.realised_of_real hreal)
   have hcont : ((model w₀).posEval
-        ((canonEnv w₀ w (i ⊔ dat.i₀)).ref (.root (.free c)) hdecl)).2 ⟨⟨w, R.refl hT w⟩, hm'⟩ =
+        ((canonEnv w₀ w (i ⊔ dat.i₀)).ref (.root (.free c)) hdecl)).2 ⟨⟨w, ⟨R.refl hT w⟩⟩, hm'⟩ =
       Model.interp (canonEnv w₀ w (i ⊔ dat.i₀))
         (Term.mono (w.L.ctx_le (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀) := by
     have hpq := canonEnv_ref w₀ w (i ⊔ dat.i₀) (.root (.free c)) hdecl
-    rw [Model.posEval_snd_congr hpq ⟨⟨w, R.refl hT w⟩, hm'⟩ (hpq ▸ hm'),
+    rw [Model.posEval_snd_congr hpq ⟨⟨w, ⟨R.refl hT w⟩⟩, hm'⟩ (hpq ▸ hm'),
       Model.interp_mono (canonEnv_le w₀ w (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀,
       IHt₀ dat.t₀ hlt (fun _ _ _ => rfl)]
     exact toDom_congr w₀ (rden_eta_of_real hreal hdecl) _ _
   refine (Model.interp_mono
-    (Model.Env.diaPush_agree hagj hx ⟨⟨w, R.refl hT w⟩, hmem⟩ hm') t).symm.trans ?_
+    (Model.Env.diaPush_agree hagj hx ⟨⟨w, ⟨R.refl hT w⟩⟩, hmem⟩ hm') t).symm.trans ?_
   refine (Model.interp_realiseAt hT (canonEnv w₀ w (i ⊔ dat.i₀)) (w.noProjLast _) hdecl
-    (dat.hfr _) (Term.mono (w.L.ctx_le le_sup_right) dat.t₀) (R.refl hT w) hm' hcont
+    (dat.hfr _) (Term.mono (w.L.ctx_le le_sup_right) dat.t₀) hm' hcont
     _).symm.trans ?_
   exact IH _ hj2 (fun _ _ _ => rfl)
 

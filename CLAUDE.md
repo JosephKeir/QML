@@ -6,9 +6,12 @@ Lean 4 + Mathlib formalisation of a quantified modal logic with first-class poss
 ## Where things are
 
 - **Current development: `QML/QML_v12m_*.lean`, namespace `V12M`.** Generalised over
-  `class ModalSys` (flags `T`, `Four`, `TStrong`; used as `variable [ModalSys]`).
-  Soundness and completeness hold for K, weak T, weak 4 and S4; strong T is sound and closed under
-  substitution, with its canonical model in progress.
+  `class ModalSys` (flags `T`, `Four`, `TStrong`, `D`, `DStrong`, `B`; used as
+  `variable [ModalSys]`). Frames are arrow-indexed (`Frame.R : W → W → Sort v`; relational frames
+  are the `Prop` case). Soundness holds for every flag; completeness, strong completeness and
+  compactness for every flag combination without B (`[ModalSys.NoB]`). Weak B without T and 4
+  (`[ModalSys.NoTFour]`) is complete for closed sequents (`BArrow.completenessB`), via the
+  arrow-based canonical model (`QML_v12m_B*.lean`: network construction, `BData`, truth lemma).
 - `QML/QML_v12_*.lean` (namespace `V12`) is the K-only version, kept untouched until the
   generalised files supersede it.
 - Older files (`QML_Full_v8.lean`, `Soundness2.lean`, `SemanticsGeneral2.lean`, …) are legacy and

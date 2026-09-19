@@ -263,13 +263,13 @@ theorem rden_boxtm_step {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
     {u : World σ N₀} (hu : Acc' w u) (hr : R u w'.1) (hd : w'.1.depth - u.depth ≠ 0) :
     rden w i e (.boxtm t) w' =
       rden u (childStage i) (e.boxIn.trans (hu.boxIn_le i))
-        (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) t)) ⟨w'.1, hr⟩ := by
+        (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) t)) ⟨w'.1, ⟨hr⟩⟩ := by
   obtain ⟨d, hd'⟩ : ∃ d, w'.1.depth - u.depth = d + 1 :=
     ⟨_, (Nat.succ_pred_eq_of_ne_zero hd).symm⟩
   have hw : w'.1.depth - w.depth = d + 1 + 1 := by
     have := hu.1
     omega
-  exact (rden_boxtm_far e t w' hw).trans (rden_boxtm_far _ _ ⟨w'.1, hr⟩ hd').symm
+  exact (rden_boxtm_far e t w' hw).trans (rden_boxtm_far _ _ ⟨w'.1, ⟨hr⟩⟩ hd').symm
 
 /-- At a proper successor, a possible term denotes its body there. -/
 theorem rden_diatm_acc {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}

@@ -349,13 +349,13 @@ theorem R.trans (hF : ModalSys.Four = true) {w v s : World σ N₀} : R w v → 
   | ⟨n, hn, h₀, _⟩, ⟨m, hm, _, _⟩ => ⟨m + n, hn.comp hm, fun h => h₀ (by omega), fun _ => hF⟩
 
 /-- The successors of a world. -/
-abbrev Succ (w : World σ N₀) : Type := {w' : World σ N₀ // R w w'}
+abbrev Succ (w : World σ N₀) : Type := Σ w' : World σ N₀, PLift (R w w')
 
 /-- A successor is reached by a chain as long as the depth difference. -/
 theorem Succ.chain {w : World σ N₀} (w' : Succ w) :
     Chain (w'.1.depth - w.depth) w w'.1 ∧ (w'.1.depth - w.depth = 0 → ModalSys.T = true) ∧
       (2 ≤ w'.1.depth - w.depth → ModalSys.Four = true) := by
-  obtain ⟨n, hn, h₀, h₂⟩ := w'.2
+  obtain ⟨n, hn, h₀, h₂⟩ := w'.2.down
   have e : w'.1.depth - w.depth = n := by
     rw [hn.depth]
     omega
@@ -443,7 +443,7 @@ theorem extent_le {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ 
 
 /-- The world itself is in the extent of a realised address. -/
 theorem self_mem_extent {w : World σ N₀} {x : VarSymb} (h : w.Realised x) :
-    (⟨w, R.refl h.T w⟩ : Succ w) ∈ extent w x :=
+    (⟨w, ⟨R.refl h.T w⟩⟩ : Succ w) ∈ extent w x :=
   Or.inr ⟨rfl, h⟩
 
 end Canon
