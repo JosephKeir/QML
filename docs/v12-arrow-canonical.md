@@ -1,9 +1,10 @@
 # QML v12: an arrow-based canonical model (design draft)
 
-Status: 2026-09-19. **Design only — nothing here is implemented.** It is meant to be settled on
-paper before any Lean is written. Motivation: B and 5, for which the current staged canonical model
-cannot work. Background on the flags is in `v12-modal-extensions.md` (§2a/§2b for the criteria,
-§3 B for the rules).
+Status: 2026-09-19. **Design; the construction itself is not implemented.** Early checks of its
+key steps are in Lean (`QML_v12m_ArrowCheck`, and `realise_type` in `QML_v12m_Compactness`); the
+rest is to be settled on paper before the construction is written. Motivation: B and 5, for which
+the current staged canonical model cannot work. Background on the flags is in
+`v12-modal-extensions.md` (§2a/§2b for the criteria, §3 B for the rules).
 
 ## 1. Why the staged construction cannot give B or 5
 
@@ -72,8 +73,7 @@ consistent theory, and its Henkin witnesses (`exW`, `allW`), and under strong T 
 realisations (`real`) — but loses everything that places it in a tree: its depth, the naming of its
 constants by depth (`hρ`, `hfresh` in their current form), its parent. **Stages stay within a
 world** (the Henkin construction needs them); **there are no stages between worlds**. The canonical
-`W` is
-the type of all such worlds, or of those with some saturation property if one is needed (§6).
+`W` is the type of all such worlds, or of those with some saturation property if one is needed (§6).
 
 ## 4. The frame, indexed by arrows
 
@@ -277,10 +277,34 @@ no reference to "back at the origin" is needed.
   new `□`-items — the K direction, where the same closed-formula argument gives consistency. Each
   world's theory is a chain of complete theories in growing languages, and the limit is complete
   and saturated.
-- *Not yet checked:* the realisation step itself — a finitely satisfiable type is consistent with
-  a fresh constant. It is standard and finitary, the proof-theoretic cousin of the semantic
-  `compactness` now proved in `QML_v12m_Compactness.lean`, but it is not formalised. Nor is the
-  chain's bookkeeping, nor the soundness side of worlds growing by fresh constants.
+- *The realisation step — checked in Lean (2026-09-19):* `realise_type` in
+  `QML_v12m_Compactness.lean`. If a consistent set derives `∃y. χ₁(y) ∧ … ∧ χₙ(y)` for every finite
+  part of a type, it stays consistent when one fresh variable is made to satisfy the whole type. It
+  is proof-theoretic — no completeness, countability or presented context — as it must be, since
+  the construction applies it in the B system, whose completeness is what is being built.
+- **⭐Every local obligation of the chain is now checked in Lean (2026-09-19):**
+
+  | Obligation | What discharges it | Lean |
+  |---|---|---|
+  | a successor's new item needs a back-image at `w` | finite pieces | `finite_piece_closed`, `finite_piece` |
+  | …compatible with back-images already fixed | `∃`-projection onto fixed items | `backType_extend` |
+  | an arrow's images satisfy the forward invariant | substitution commutes with filling a hole | `arrow_realises` (`WFF.subst_fill1`) |
+  | a new `□`-item of `w` needs an image in each successor, compatible with images already fixed | the mirror: `□ψ(old, new)` gives `□∃y.ψ(old, y)` | `forward_extend` |
+  | one fresh variable realises a whole type | compactness, proof-theoretically | `realise_type` |
+
+  `forward_extend` is `backType_extend` with the worlds swapped: `RealisesBackType` states "whatever
+  one world necessitates of an item, the other says of its image", which covers both directions.
+  Two things that could have hidden a problem check out on paper: *joint obligations* (a world
+  realising types for several successors at once, while its own new constants create new forward
+  obligations) use disjoint fresh constants, so their finite pieces combine by conjunction with no
+  cross-constraint; and *the limit* — every formula of the limit language lives at a finite stage,
+  so with a fair enumeration each arrow condition holds eventually, and a union of complete
+  theories is complete. This is the **step-by-step method** of modal logic (Burgess, Gabbay;
+  Blackburn–de Rijke–Venema §4.6), with languages that grow along the chain.
+- *Not yet checked:* the chain's bookkeeping — the fair enumeration of obligations, and Lindenbaum
+  relative to an existing theory. That is the construction itself, not something isolated lemmas
+  can test. `WorldLang` already grows a world's language by stages through a Henkin chain, so one
+  global enumeration of all obligations feeding every world's stages may be enough.
 - *Superseded suspicion (to 2026-09-19):* that stating the invariant needs a way for `v` to refer
   to "back at the origin", and so an origin-pinning device or a necessary-object strong B that
   pins its successor, leaving weak B complete only in a bundle. That assumed the invariant had to
@@ -327,8 +351,8 @@ reverse arrows of *all* successors of `w` coherently, not one successor at a tim
    completeness for those combinations holds only over arrow-frames. (§4)
 2. The back-and-forth invariant for B's reverse arrows, with weak B alone. *Proposed answer*
    (§6): back-images realise complete back-types; its key step is checked in Lean
-   (`backType_extend`). Open: the realisation step (a finitely satisfiable type is consistent with
-   a fresh constant), and the ω-chain itself. For B + 4 and S5 it must also give question 1's
+   (`backType_extend`), and so is the realisation step (`realise_type`). Open: the ω-chain
+   itself. For B + 4 and S5 it must also give question 1's
    agreement across all successors of `w`.
 3. 5's arrows between siblings: the same back-and-forth question with a different target, `v → s`
    for siblings `v`, `s`.

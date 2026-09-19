@@ -22,6 +22,20 @@ plays no part: the finite pieces need only accessibility on closed formulas.
 2. At `w`: `◇□∃x.χ(x)` — otherwise `□¬□∃x.χ(x)` would cross the arrow to `¬□∃x.χ(x)` at `v`.
 3. Weak B: `∃x.χ(x)` at `w`.
 4. The Henkin witness of that `∃` is `t`.
+
+The other local steps of the ω-chain construction (design note §6):
+
+* ⭐`backType_extend`: back-images extend over back-images already fixed, provided those realise
+  complete back-types (`RealisesBackType`, the construction's invariant).
+* ⭐`arrow_realises` and `forward_extend`: the forward mirror. An arrow's images realise complete
+  forward types, because substitution commutes with plugging a term into a formula closed apart
+  from its hole (`WFF.subst_fill1`); and forward images extend over fixed ones. `forward_extend` is
+  `backType_extend` with the worlds swapped — `RealisesBackType` is stated generically enough to
+  cover both directions.
+
+With `realise_type` (`QML_v12m_Compactness`), which realises a finitely satisfiable type by one
+fresh variable, every local obligation of the construction is checked; what remains is its
+bookkeeping.
 -/
 
 namespace V12M
@@ -174,6 +188,60 @@ theorem backType_extend (w v : World σ N₀) {i j : ℕ × ℕ} {A B : VarType}
     (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hs)
     ⟨Proof.K_box (Δ := [WFF.instantiate Ctx.NoSlots.slots s' Φ])
       (Proof.ex_intro A s' (Proof.lookup List.mem_cons_self))⟩
+
+/-- Substitution commutes with plugging a term into a formula closed apart from its hole:
+    `θ(χ(s)) = χ(θ(s))`. -/
+theorem WFF.subst_fill1 {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
+    (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) {B : VarType} {b : Ann B}
+    (s : Term σ Γ B b) (χ : WFF σ (Ctx.empty.insert (.bnd 0) B) 1) :
+    WFF.subst ι θ hθ hc Ctx.NoSlots.slots Ctx.NoSlots.slots (WFF.fill1 s χ) =
+      WFF.fill1 (Term.subst ι θ hθ hc s) χ := by
+  have hE : (Ctx.empty.insert (.bnd 0) B).SlotsFrom 1 :=
+    Ctx.SlotsFrom.insert (Γ := Ctx.empty) (d := 0) (fun _ _ _ _ => rfl) B
+  have hr : Ctx.empty.RootFresh (.bnd 0) := fun _ _ => rfl
+  -- Both sides are one substitution of `χ`: its hole to `θ(s)`.
+  refine ((congrArg (fun φ => WFF.subst ι θ hθ hc Ctx.NoSlots.slots Ctx.NoSlots.slots φ)
+    (WFF.subst_mono _ _ _ _ hE _ _ χ)).trans ?_).trans (WFF.subst_mono _ _ _ _ hE _ _ χ).symm
+  refine WFF.subst_comp _ _ (Subst.single (.bnd 0) (.tm (Term.subst ι θ hθ hc s))) _ _ _ _
+    (Subst.ok_single (Ctx.empty_le _) rfl) (Subst.coh_single hr (Ctx.empty_le _) rfl) hE _ _
+    (Subst.sim_of fun v T _ hv => ?_) χ
+  by_cases hv0 : v = .root (.bnd 0)
+  · subst hv0
+    have hTB : B = T := by simpa [Ctx.insert] using hv
+    subst hTB
+    exact .refl _
+  · have : Ctx.empty v = some T := by simpa [Ctx.insert, hv0] using hv
+    exact nomatch this
+
+/-- ⭐**An arrow's images realise complete forward types**: whatever `w` necessitates of a term
+    `s` of its `□` view, `v` says of `s`'s image under the arrow. This is the forward base case,
+    the mirror of `finite_piece`; with the worlds swapped, `RealisesBackType` states the forward
+    invariant. -/
+theorem arrow_realises (w v : World σ N₀) {i j : ℕ × ℕ} {ι : VarSymb → VarSymb}
+    (θ : Subst σ (v.L.ctx j)) (hθ : Subst.Ok (w.L.ctx i).boxIn θ)
+    (hc : Subst.Coh ι (w.L.ctx i).boxIn θ)
+    (htr : ∀ ψ : WFF σ (w.L.ctx i).boxIn 0, (⟨i, .box ψ⟩ : w.L.sys.Sentence σ) ∈ w.T →
+      (⟨j, WFF.subst ι θ hθ hc Ctx.NoSlots.slots Ctx.NoSlots.slots ψ⟩ :
+        v.L.sys.Sentence σ) ∈ v.T)
+    {B : VarType} {b : Ann B} (s : Term σ (w.L.ctx i).boxIn B b) :
+    RealisesBackType v w j i (Term.subst ι θ hθ hc s) s := fun χ h => by
+  have hv := htr _ h
+  rwa [WFF.subst_fill1] at hv
+
+/-- ⭐**Forward extension over fixed images** — the mirror of `backType_extend`, which it *is*
+    with the worlds swapped. If `r` realises the complete forward type of `w`'s item `s` (for
+    instance its image under an arrow, `arrow_realises`) and `w` necessitates `χ(s, s')` of a new
+    item `s'`, then `∃y. χ(r, y)` holds at `v`: an image for `s'` compatible with `r` exists. -/
+theorem forward_extend (w v : World σ N₀) {i j : ℕ × ℕ} {A B : VarType} {b b' : Ann B}
+    (r : Term σ (v.L.ctx j) B b) (s : Term σ (w.L.ctx i).boxIn B b')
+    (hF : RealisesBackType v w j i r s)
+    (χ : WFF σ ((Ctx.empty.insert (.bnd 0) B).insert (.bnd 1) A) 2)
+    (Φ : WFF σ ((w.L.ctx i).boxIn.insert (.bnd 0) A) 1)
+    (hΦ : WFF.fill1 s (.ex A χ) = .ex A Φ)
+    {a : Ann A} (s' : Term σ (w.L.ctx i).boxIn A a)
+    (hs : (⟨i, .box (WFF.instantiate Ctx.NoSlots.slots s' Φ)⟩ : w.L.sys.Sentence σ) ∈ w.T) :
+    (⟨j, WFF.fill1 r (.ex A χ)⟩ : v.L.sys.Sentence σ) ∈ v.T :=
+  backType_extend v w r s hF χ Φ hΦ s' hs
 
 /-- `hΦ` is satisfiable: the body of `(∃y. χ)(s)` is what substitution produces. -/
 example (v : World σ N₀) {j : ℕ × ℕ} {A B : VarType} {b' : Ann B}
