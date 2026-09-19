@@ -356,6 +356,14 @@ What the design turned out to need, beyond §2–6:
   too, by `□ψ ⊢ □_x ψ` (`TransferX.applyBox`).
 - **The canonical model is not staged by depth.** `rden`'s `□` clause is the denotation at the
   target of the term translated along the arrow, and the truth lemma needs no self or far cases.
+- **⭐The model built is relational, so no unravelling is needed** — §4's open question 1 does not
+  arise for weak B. `BData.R` is `W → W → Prop` and `BData.frame : Frame.{0, 0} σ` (`Sort 0` is
+  `Prop`), with `R` the tree's edges taken both ways, symmetric by construction. Parallel arrows
+  never appear because each world *names* the objects it inherits as fresh roots: the translation
+  lives in the construction's `img`/`stg` data, not in the frame. `completenessB` therefore reads
+  "true in every relational model implies provable", and with soundness (universe-polymorphic) the
+  arrow and relational model classes validate exactly the same sequents. Whether the same trick
+  collapses B + 4 and 5 is open; that is where round-trip coherence would bite.
 
 Open: presented contexts (not just closed sequents), strong completeness, and B with T or 4.
 
