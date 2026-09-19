@@ -221,7 +221,9 @@ content of a possible object.
     | (b) graph `∀u:□A. ∃x:◇A. ◇_x (x.dia = u.box)` | `◇`-free only | (c) at `φ(z) := (z = u.box)`, premise by reflexivity |
     | (c) schema `□φ(u.box) ⊢ ∃x:◇A. ◇_x φ(x.dia)` — *presented* | all | (a) by `Proof.D_schema` |
 
-    (b) is not yet in Lean; (c) is.
+    (a) and (c) are the ones that matter — (a) for the implementation, (c) as the natural rule
+    generalising propositional D to the witnessed case — and both are in Lean. (b) is deliberately
+    not proved (decided 2026-09-19); it is a short `K_dia` + reflexivity argument if ever needed.
   - **(b) needs `◇`-free types.** `eqRec` compares two terms only at the **same annotation**, and
     `Ann.eta` records the witness address at every `◇` in a type, so `x.dia = u.box` typechecks
     exactly when `A` has no `◇` (under `□` and in products included). This is not a technicality:
