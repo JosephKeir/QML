@@ -349,6 +349,27 @@ theorem exists_dia (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
     Or.inr rfl
   exact World.mem_mono_congr (diaWorld w x hx χ hχ) _ _ (WorldLang.subset_finalT _ hk)
 
+/-- A possible formula in the theory has a successor in its witness's extent — stated for any
+    formula that *is* a `◇_z`, so that callers need not name the witness a substitution produced. -/
+theorem exists_extent_of_mem (w : World σ N₀) {i : ℕ × ℕ} (φ : WFF σ (w.L.ctx i) 0)
+    (hφ : (⟨i, φ⟩ : w.L.sys.Sentence σ) ∈ w.T) (hdia : ∃ z hz χ, φ = .dia z hz χ) :
+    ∃ (z : VarSymb) (_ : ∃ X, (w.L.ctx i).ref z = some (.VTypeDia X)) (w' : Succ w),
+      w' ∈ extent w z := by
+  obtain ⟨z, hz, χ, rfl⟩ := hdia
+  obtain ⟨w', hw', -, -⟩ := exists_dia w z hz χ hφ
+  exact ⟨z, hz, w', hw'⟩
+
+/-- ⭐Under strong D every world has a witness with a successor in its extent: the axiom
+    `∃x:◇𝟙. ◇_x ⊤` is in the theory, its Henkin witness gives a `◇_z ⊤`, and that has a
+    successor (`exists_dia`).  This is the canonical model's `posSerial`. -/
+theorem exists_extent (hDS : ModalSys.DStrong = true) (w : World σ N₀) :
+    ∃ (i : ℕ × ℕ) (z : VarSymb) (_ : ∃ X, (w.L.ctx i).ref z = some (.VTypeDia X)) (w' : Succ w),
+      w' ∈ extent w z := by
+  have hax : (⟨(0, 0), WFF.somePoss⟩ : w.L.sys.Sentence σ) ∈ w.T :=
+    World.mem_of_provable (Δ := []) (fun _ h => by simp at h) ⟨Proof.D_ex hDS⟩
+  obtain ⟨i', _, _, _, hmem⟩ := w.exW hax
+  exact ⟨i', exists_extent_of_mem w _ hmem ⟨_, _, _, rfl⟩⟩
+
 end
 
 end Canon

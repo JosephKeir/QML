@@ -860,6 +860,7 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw
       .dia_bot (ι x) hwx (Proof.subst p θ hθ hc hΓ)
   | _, _, _, .D_box hD p, _, _, _, θ, hθ, hc, hΓ => .D_box hD (Proof.subst p θ hθ hc hΓ)
+  | _, _, _, .D_ex hDS, _, _, _, _, _, _, _ => .D_ex hDS
   | _, _, _, @Proof.T_box _ _ _ _ hT _ φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       Proof.conv
         (WFF.collapse_subst (Ctx.collapses_boxIn_self hT _) (Ctx.collapses_boxIn_self hT Γ')

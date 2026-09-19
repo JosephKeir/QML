@@ -182,5 +182,10 @@ structure Model (σ : Signature) where
     (_hS : ModalSys.TStrong = true)
     (a : frame.Dom A w), ∃ (p : frame.Pos A w) (h : frame.R w w)
       (hm : (⟨w, h⟩ : frame.Acc w) ∈ (posEval p).1), (posEval p).2 ⟨⟨w, h⟩, hm⟩ = a
+  /-- ⭐Strong D: some possible object has a nonempty extent.  Stated at `𝟙`, where the content
+      carries nothing: `strength` then gives, for every necessary object, a possible object with
+      the same extent whose content is that object's value — the `Nec → Pos` map, at every type. -/
+  posSerial : ModalSys.DStrong = true → ∀ w : frame.W,
+    ∃ p : frame.Pos .VTypeOne w, Nonempty (posEval p).1
 
 end V12M

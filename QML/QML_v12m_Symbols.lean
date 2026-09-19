@@ -40,9 +40,11 @@ class ModalSys where
   TStrong : Bool
   /-- Weak D: every world has an accessible world. -/
   D : Bool
+  /-- Strong D: some possible object has a nonempty extent, `⊢ ∃x:◇𝟙. ◇_x ⊤`. -/
+  DStrong : Bool
 
 /-- The system K. -/
-def ModalSys.K : ModalSys := ⟨false, false, false, false⟩
+def ModalSys.K : ModalSys := ⟨false, false, false, false, false⟩
 
 /-- Under T and 4 a view shows only kept objects: the contents of `u` are `u.keep.here`. -/
 def ModalSys.keepOnly [ModalSys] : Bool := ModalSys.T && ModalSys.Four

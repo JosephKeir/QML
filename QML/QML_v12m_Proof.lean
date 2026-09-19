@@ -67,6 +67,14 @@ def WFF.retHyp {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true)
         (.dia (.root (.free c)) ⟨A, Ctx.ref_insert_root _ (.free c) (.VTypeDia A)⟩
           (WFF.viewRead c hcy A ψ)))))
 
+/-- Strong D's axiom: some possible object has a nonempty extent, `∃x:◇𝟙. ◇_x ⊤`.  It is closed.
+    Everything else strong D says follows from it in K: re-using the witness with new content
+    (`diatm`, the syntactic side of `strength`) gives `□φ(u.box) ⊢ ∃x:◇A. ◇_x φ(x.dia)` at every
+    type (`Proof.D_schema`). -/
+def WFF.somePoss {σ : Signature} {Γ : Ctx} : WFF σ Γ 0 :=
+  .ex (.VTypeDia .VTypeOne)
+    (.dia (.root (.bnd 0)) ⟨.VTypeOne, Ctx.ref_insert_root Γ (.bnd 0) _⟩ .top)
+
 inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ Γ 0 → Type where
   -- Structural
   | ax {Γ : Ctx} (φ : WFF σ Γ 0) : Proof σ Γ [φ] φ
@@ -159,6 +167,10 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       `□φ ⊢ ◇φ` is derived from it (`Proof.D_dia`). -/
   | D_box {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hD : ModalSys.D = true) :
       Proof σ Γ Δ (.box .bot) → Proof σ Γ Δ .bot
+  -- Strong D
+  /-- Some possible object has a nonempty extent (`WFF.somePoss`). -/
+  | D_ex {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hDS : ModalSys.DStrong = true) :
+      Proof σ Γ Δ WFF.somePoss
   -- Weak T
   /-- What is necessary holds here: the `□` view collapsed onto the current level. -/
   | T_box {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {Δ : List (WFF σ Γ 0)}

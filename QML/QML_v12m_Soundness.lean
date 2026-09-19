@@ -175,6 +175,13 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M w env hnp hΔ
       obtain ⟨v, hv⟩ := M.frame.serial hD w
       exact ih M env hnp hΔ ⟨v, hv⟩
+  | @D_ex Γ Δ hDS =>
+      intro M w env _ _
+      obtain ⟨p, ⟨v⟩⟩ := M.posSerial hDS w
+      have hr : (env.extend (.bnd 0) (T := .VTypeDia .VTypeOne) p).ref (.root (.bnd 0))
+          (Ctx.ref_insert_root Γ (.bnd 0) _) = p := by
+        simp [Model.Env.ref, Model.Env.extend]
+      exact ⟨p, .VTypeOne, Ctx.ref_insert_root Γ (.bnd 0) _, ⟨v.1, by rw [hr]; exact v.2⟩, trivial⟩
   | @T_box Γ _ hT Δ φ p ih =>
       intro M w env hnp hΔ
       exact (sat_boxHere hT env Ctx.NoSlots.slots φ).mpr

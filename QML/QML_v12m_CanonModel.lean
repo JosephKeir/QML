@@ -170,6 +170,16 @@ theorem eval_toDom : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀) 
   | _, _, .extract _, _, _, _ => rfl
   | _, _, .dup _, _, _, _ => rfl
 
+/-! ## Strong D: some possible object has a nonempty extent -/
+
+/-- ⭐Under strong D every world has a possible object of type `𝟙` with a nonempty extent: the
+    witness `z` of `exists_extent`, with the unit as content.  Its raw extent is `extent w z` by
+    `rden`'s definition. -/
+theorem posSerial_canon (hDS : ModalSys.DStrong = true) (w : World σ N₀) :
+    ∃ p : (frame w₀).Pos .VTypeOne w, Nonempty (posEval w₀ p).1 := by
+  obtain ⟨i, z, hz, w', hw'⟩ := exists_extent hDS w
+  exact ⟨⟨rden w i (Ctx.Le.refl _) (Term.diatm z hz .unit), definable_rden _ _⟩, ⟨⟨w', hw'⟩⟩⟩
+
 /-! ## Strong T: every object is the content of a possible object here -/
 
 /-- ⭐Every object of a domain is the content, at the world itself, of a possible object: the
@@ -220,6 +230,7 @@ noncomputable def model : Model.{0} σ where
   necExtract_eval _ _ := rfl
   necDup_eval _ _ _ _ := rfl
   posRet_exists hT hS a := posRet_exists_canon w₀ hT hS a
+  posSerial hDS w := posSerial_canon w₀ hDS w
 
 end Canon
 
