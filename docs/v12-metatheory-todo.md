@@ -7,7 +7,17 @@ be taken at any time; items 4 and 5 are research questions rather than routine j
 
 ## 1. Strong completeness and compactness
 
-**Status: not stated, but the machinery is finitary and already supports it.**
+**Status: ✅ DONE (2026-09-19)** — `QML_v12m_Compactness.lean`: `model_existence` (every
+consistent set of formulas in a presented context is satisfiable), `strong_completeness` (a
+semantic consequence of any set of premises is derivable from finitely many of them) and
+`compactness` (a set is satisfiable if every finite subset is — the finite subsets' models may
+live in any universe). All three hold for every combination of the flags, over a countable
+signature; axioms `propext`, `Classical.choice`, `Quot.sound`. As predicted below, the completeness
+proof went through with `S₀ := {⟨0, ψ⟩ | ψ ∈ S}`, and consistency is stated directly for sets
+(`WFF.SetConsistent`: no finite list drawn from the set derives `⊥`) rather than through
+`Theory.Derives`. The notes below are the plan as it was.
+
+*Plan (to 2026-09-19):* **not stated, but the machinery is finitary and already supports it.**
 
 What exists:
 - `Theory.Derives S φ` = *some finite list* of members of `S` proves `φ`; `Theory.Consistent S` =

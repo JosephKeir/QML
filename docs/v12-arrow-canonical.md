@@ -212,16 +212,41 @@ is total on `w`'s `□` view.
   the item, and makes only decisions at `v` consistent with the back-images chosen so far. The
   finite-piece lemma gives consistency for a single new item.
 
-**Open question 2: the back-and-forth invariant.** State an invariant, about the finite part of
-`v`'s theory built so far together with its back-images, that holds at the start, survives every
-Lindenbaum and Henkin decision at `v`, and implies the reverse arrow in the limit — using weak B
-alone. *Suspicion, not established:* stating it needs a way for `v` to refer to "back at the
-origin", since `v`'s theory has to be constrained by facts about the back-images, which are `w`'s
-base terms and out of scope at `v`. That is exactly what the dropped singleton design provided.
-Strong B in its necessary-object form, `P(a) ⊢ ∃u:□□A. □◇P(u.box.box)`, carries `w`'s terms out as
-round trips, but only reaching *some* successor of `v`, not the origin in particular. If the
-suspicion is right, B needs an origin-pinning device, or a necessary-object strong B that pins its
-successor, and weak B is complete only in a bundle.
+**Open question 2: the back-and-forth invariant — proposed answer (2026-09-19; key step checked
+in Lean).** The invariant:
+
+> **every committed back-image realises its item's complete back-type in the item's own
+> language** (`Canon.RealisesBackType`): every formula closed apart from its hole that `v`
+> necessitates of the item holds of the image at `w`.
+
+It is stated in the metatheory — as the arrow's data — not in the object language, which is why
+no reference to "back at the origin" is needed.
+
+- *Why it survives later decisions (fix-then-extend).* Suppose `c ↦ t_c` is committed and `v`
+  later gains an item `c'` with `□χ(c.box, c'.box)`. `∃`-introduction inside the `□` gives
+  `□∃y. χ(c.box, y)`, a formula about `c` alone. It was decided when `c` was introduced, because
+  `v`'s theory was then complete for `c`'s language, so it is part of `c`'s back-type, and `t_c`
+  realises it: `∃y. χ(t_c, y)` holds at `w`. Finite conjunctions likewise, so the type of `c'` over
+  `t_c` is finitely satisfiable, and a fresh constant realises it. **Checked in Lean:**
+  `Canon.backType_extend` in `QML_v12m_ArrowCheck.lean`. Weak B is not used in this step; it
+  enters only in the base case, the finite-piece lemma.
+- *The construction this suggests: an ω-chain in which every world grows together.* At each step:
+  (1) realise the new back-types of each world's successors, over the images already committed,
+  by fresh constants; (2) complete and Henkin-saturate each world; (3) extend forward arrows to any
+  new `□`-items — the K direction, where the same closed-formula argument gives consistency. Each
+  world's theory is a chain of complete theories in growing languages, and the limit is complete
+  and saturated.
+- *Not yet checked:* the realisation step itself — a finitely satisfiable type is consistent with
+  a fresh constant. It is standard and finitary, the proof-theoretic cousin of the semantic
+  `compactness` now proved in `QML_v12m_Compactness.lean`, but it is not formalised. Nor is the
+  chain's bookkeeping, nor the soundness side of worlds growing by fresh constants.
+- *Superseded suspicion (to 2026-09-19):* that stating the invariant needs a way for `v` to refer
+  to "back at the origin", and so an origin-pinning device or a necessary-object strong B that
+  pins its successor, leaving weak B complete only in a bundle. That assumed the invariant had to
+  be stated in the object language.
+
+Round-trip coherence for B + 4 and S5 (open question 1) is not addressed: the chain chooses each
+world's back-images independently.
 
 **Coherence of reverse arrows.** Weak B's soundness needs only that a reverse exists, and so does
 relationalising B alone (§4). Once B meets 4, relationalising needs every round trip `a ≫ a⁻` to
@@ -258,8 +283,11 @@ reverse arrows of *all* successors of `w` coherently, not one successor at a tim
    constraint — agreement of all round trips `a ≫ a⁻` where 4 meets B or 5. Can the reverse
    arrows be built so that every round trip returns each necessary object's value at `w`? If not,
    completeness for those combinations holds only over arrow-frames. (§4)
-2. The back-and-forth invariant for B's reverse arrows, with weak B alone. For B + 4 and S5 it must
-   also give question 1's agreement across all successors of `w`. (§6)
+2. The back-and-forth invariant for B's reverse arrows, with weak B alone. *Proposed answer*
+   (§6): back-images realise complete back-types; its key step is checked in Lean
+   (`backType_extend`). Open: the realisation step (a finitely satisfiable type is consistent with
+   a fresh constant), and the ω-chain itself. For B + 4 and S5 it must also give question 1's
+   agreement across all successors of `w`.
 3. 5's arrows between siblings: the same back-and-forth question with a different target, `v → s`
    for siblings `v`, `s`.
 4. Whether any coherence beyond question 1's is needed for soundness or for strong B. (§6)

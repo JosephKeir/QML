@@ -131,6 +131,56 @@ theorem finite_piece (w v : World σ N₀) {i j : ℕ × ℕ}
     rw [WFF.subst_mono_empty _ (Ctx.empty_le _)] at hv
     exact hv) χ s hs
 
+/-- `χ(s)` for a formula `χ` closed apart from one hole: `s` plugged into the hole, `χ` weakened
+    into the context of `s`. -/
+abbrev WFF.fill1 {Γ : Ctx} [Γ.NoSlots] {B : VarType} {b : Ann B} (s : Term σ Γ B b)
+    (χ : WFF σ (Ctx.empty.insert (.bnd 0) B) 1) : WFF σ Γ 0 :=
+  WFF.instantiate Ctx.NoSlots.slots s (WFF.mono ((Ctx.empty_le _).insert (.bnd 0) B) χ)
+
+/-- `t` **realises the complete back-type** of `v`'s `□`-view term `s`: every formula closed apart
+    from its hole that `v` necessitates of `s` holds of `t` at `w`. This is the invariant of the
+    back-and-forth construction (`docs/v12-arrow-canonical.md` §6). -/
+def RealisesBackType (w v : World σ N₀) (i j : ℕ × ℕ) {B : VarType} {b b' : Ann B}
+    (t : Term σ (w.L.ctx i) B b) (s : Term σ (v.L.ctx j).boxIn B b') : Prop :=
+  ∀ χ : WFF σ (Ctx.empty.insert (.bnd 0) B) 1,
+    (⟨j, .box (WFF.fill1 s χ)⟩ : v.L.sys.Sentence σ) ∈ v.T →
+    (⟨i, WFF.fill1 t χ⟩ : w.L.sys.Sentence σ) ∈ w.T
+
+/-- ⭐**Back-types extend over fixed realisers.** Suppose `t` realises the complete back-type of
+    `s` (`RealisesBackType`), and `v` necessitates `χ(s, s')` of `s` and a further term `s'`. Then
+    `∃y. χ(t, y)` holds at `w`: a realiser for `s'` compatible with the one already fixed for `s`
+    exists, and by `World.exW` some term of `w` is one.
+
+    This is the step of the back-and-forth construction that seemed to need a way of referring to
+    "back at the origin". It does not: `∃`-introduction inside the `□` at `v` turns `□χ(s, s')` into
+    `□∃y. χ(s, y)`, a formula about `s` alone, which the realisation hypothesis already covers.
+    Weak B is not used here; it enters only through the base case, `finite_piece_closed`.
+
+    `χ` has two holes, `bnd 0 : B` for the fixed item and `bnd 1 : A` for the new one, so
+    `∃y. χ(x, y)` is just `.ex A χ`. The joint formula `χ(s, s')` is given as `Φ` with `s'` in its
+    hole, where `Φ` is the body of `(∃y. χ)(s)` (`hΦ`, which holds by `rfl` for the body). -/
+theorem backType_extend (w v : World σ N₀) {i j : ℕ × ℕ} {A B : VarType} {b b' : Ann B}
+    (t : Term σ (w.L.ctx i) B b) (s : Term σ (v.L.ctx j).boxIn B b')
+    (hR : RealisesBackType w v i j t s)
+    (χ : WFF σ ((Ctx.empty.insert (.bnd 0) B).insert (.bnd 1) A) 2)
+    (Φ : WFF σ ((v.L.ctx j).boxIn.insert (.bnd 0) A) 1)
+    (hΦ : WFF.fill1 s (.ex A χ) = .ex A Φ)
+    {a : Ann A} (s' : Term σ (v.L.ctx j).boxIn A a)
+    (hs : (⟨j, .box (WFF.instantiate Ctx.NoSlots.slots s' Φ)⟩ : v.L.sys.Sentence σ) ∈ v.T) :
+    (⟨i, WFF.fill1 t (.ex A χ)⟩ : w.L.sys.Sentence σ) ∈ w.T := by
+  refine hR (.ex A χ) ?_
+  rw [hΦ]
+  exact World.mem_of_provable (Δ := [.box (WFF.instantiate Ctx.NoSlots.slots s' Φ)])
+    (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hs)
+    ⟨Proof.K_box (Δ := [WFF.instantiate Ctx.NoSlots.slots s' Φ])
+      (Proof.ex_intro A s' (Proof.lookup List.mem_cons_self))⟩
+
+/-- `hΦ` is satisfiable: the body of `(∃y. χ)(s)` is what substitution produces. -/
+example (v : World σ N₀) {j : ℕ × ℕ} {A B : VarType} {b' : Ann B}
+    (s : Term σ (v.L.ctx j).boxIn B b')
+    (χ : WFF σ ((Ctx.empty.insert (.bnd 0) B).insert (.bnd 1) A) 2) :
+    ∃ Φ, WFF.fill1 s (.ex A χ) = .ex A Φ := ⟨_, rfl⟩
+
 end Canon
 
 end V12M
