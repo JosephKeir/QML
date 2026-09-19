@@ -80,25 +80,60 @@ The weak/strong labels of §3 put the `Nec`-side component in *weak* and add the
 component in *strong*. For 4 the weak component is the named one. For B and 5 it is the existential
 one, so the nesting weak ⊂ strong puts the open part inside strong B and strong 5.
 
-**⭐Nameable is not the same as named (2026-09-18, after strong T).** The classification above says
-*where* an object lives, and that does settle whether an existential is **forced**: an object born
-at an inner world cannot be named from outside. It does **not** settle how the carrier map is
-*implemented*. Strong T is the worked case: its object `t` lives at the outer world and is pushed
-inward (to `w` itself), so by the criterion above it is nameable — and it shipped as an
-**existential** anyway, `T_dia` with a Henkin witness and `posRet_exists` as the carrier condition,
-with the canonical model naming the realisation as *data on `World`* (`real`) rather than as a
-syntactic address.
+### 2b. How to state a carrier map *(2026-09-18, after strong T)*
 
-The reason is cost, and it applies to every remaining axiom. A new address former must be stable
-under `mono`, `collapse`, `shift` and `subst`, and must keep view entries independent — weak 4's
-single `keep` step is what forced the whole `keepOnly` redesign. An existential needs no new
-address: it reuses `∃`, a Henkin constant, and a carrier condition of `posRet_exists` shape, all of
-which now have a worked precedent. A new *term* former is dearer still: new cases in `Term.mono`,
-`collapse`, `shift`, `subst`, `rden`, `interp`, `size` and every congruence lemma.
+**Nameable is not the same as named.** The classification above says *where* an object lives, and
+that settles whether an existential is **forced**: an object born at an inner world cannot be named
+from outside. It does **not** settle how the carrier map is *written*. Strong T is the worked case:
+its object `t` lives at the outer world and is pushed inward (to `w` itself), so by the criterion
+above it is nameable — and it shipped as an **existential** anyway, `T_dia` with a Henkin witness
+and `posRet_exists` as the carrier condition, the canonical model naming the realisation as *data
+on `World`* (`real`) rather than as a syntactic address.
 
+That was a cost decision, and the costs apply to every remaining axiom. A new address former must
+be stable under `mono`, `collapse`, `shift` and `subst`, and must keep view entries independent —
+weak 4's single `keep` step is what forced the whole `keepOnly` redesign. An existential needs no
+new address: it reuses `∃`, a Henkin constant, and a carrier condition of `posRet_exists` shape,
+all of which now have a worked precedent. A new *term* former is dearer still: new cases in
+`Term.mono`, `collapse`, `shift`, `subst`, `rden`, `interp`, `size` and every congruence lemma.
 **So the default is: state a carrier map existentially, and let the canonical model name the
-witness as data.** Reach for a named address or a term former only when the existential cannot say
-what is needed. This is what the entries below for B and D have been rewritten to follow.
+witness as data.**
+
+**⭐What decides the form: scope inside the witness's view.** A carrier map relates a source object
+to an asserted target. To state that relation as an **equation** — the strongest and most useful
+form — both sides must be in scope in one context, and for a possible object `x` that context can
+only be `Γ.diaIn x`, since `x.dia` exists nowhere else. What is in scope there is exactly `x.dia`
+together with `Γ.boxIn`, and `Γ.boxIn` consists of exactly `.step u .box` and `.step u .keep`
+(`Ctx.le_boxIn_diaIn`; every root case is absurd). Hence:
+
+> **The equation form is available exactly when the source object is a `□`-item.** Base items of
+> `Γ` do not survive into the view.
+
+Note what the obstruction is *not*. The content of a possible object is perfectly available inside
+the view — it is `x.dia`. The problem is that the thing one wants to compare it against has left
+scope. It is a scope problem, not a missing elimination form. Three routes follow, and the
+criterion says which are *available*, not which is cheapest:
+
+| Route | When | Cost | Instances |
+|---|---|---|---|
+| **Same witness**, nothing to compare | the identical `◇`-object is asserted at the new world | extends the view with `◇`-items — the expensive named route | strong 5 (`◇_x φ ⊢ □◇_x φ`) |
+| **Equation** | source is a `□`-item, so both sides are in scope | cheapest: closed axiom, uniform witness, no new entries | the `Nec→Pos` map of §3 D |
+| **Schematic** (forced) | source is a base object of `Γ`, or a possible object's content | `realiseAt`-style substitution; constrains the content only through view-expressible `φ` | strong T *(done)*, strong B inward, strong 4's lift |
+
+**Two consequences worth acting on.**
+- **Strong B's inward half is schematic, with strong T.** Its source is `a ∈ D(w)`, a base object,
+  and the comparison would sit in `v`'s view two steps out, where `Γ`'s roots are gone. So B
+  inherits not only `realiseAt`'s recipe but its **compensation**: because the syntax
+  underdetermines the content, the canonical world must *name* the realisation as data, a
+  `World.real` analogue. That was the most surprising thing about strong T — it is why
+  `Classical.choice` was not enough for `posRet_exists` — and it is not a T-specific hack but the
+  standing price of the schematic route. Plan for it at the start of B, not at the `posRet_exists`
+  stage.
+- **Strong 4's lift is open for a different reason from "hard".** It is schematic too, but the
+  compensation is unavailable: naming it as data would need `Pos` to hold something it cannot,
+  extents recording nested hop structure. So "schematic, hard, done" (strong T) and "schematic, and
+  the carrier cannot hold the witness" (4's lift) are different failures, recorded as one
+  undifferentiated "no link" in §5. Only the second is evidence that the principle may not exist.
 
 **Components as flags, or bundles.**
 - Semantically the components look independent. For example, 5's `Pos` map does not force euclidean
@@ -179,7 +214,7 @@ content of a possible object.
     T's `t` lives at `Γ` and is invisible in `Γ.diaIn c` — which is exactly why `T_dia` must be
     schematic and go through `realiseAt`'s substitution instead.
   - **Not** as a term former `u ↦ u↓ : □A → ◇A`, which would need new cases in `Term.mono`,
-    `collapse`, `shift`, `subst`, `rden`, `interp`, `size` and every congruence lemma (§2a).
+    `collapse`, `shift`, `subst`, `rden`, `interp`, `size` and every congruence lemma (§2b).
 
 ### T (reflexivity)
 - Frame: `w R w`.
@@ -652,7 +687,7 @@ content of a possible object.
 - Frame: `v R w` for `v ∈ R(w)`.
 - **Strong (inward): `D(w) → Pos(v)`, an object of the origin as a possible object there.**
   - **⭐Design changed 2026-09-18: existential, not singletons.** Following strong T and the
-    "nameable is not named" note in §2a. The earlier design is recorded under *rejected* below.
+    scope criterion of §2b. The earlier design is recorded under *rejected* below.
   - Carrier condition, the `posRet_exists` analogue: for every `v ∈ R(w)` and every `a ∈ Dom A w`
     there is a `p ∈ Pos A v` with `w ∈ ext(p)` and `cont(p)(w) = a`. Note this does **not** demand
     `ext(p) = {w}`; only that the origin is in it with the right content. That weakening is what
