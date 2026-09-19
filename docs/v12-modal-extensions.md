@@ -912,9 +912,9 @@ Known edges *(all sketch)*:
 | strong X ⇒ weak X | by definition | by definition |
 | T ⇒ D (weak and strong) | ✓ | strong: `∃`-intro at `unitT` |
 | T + 5 ⇒ B, 4 (frames) | ✓ | propositional ✓; object level via closure |
-| B + 4 ⇒ 5 (frames) | ✓ | propositional ✓; object level via closure |
+| B + 4 ⇒ 5 (frames) | ✓ | propositional ✓; object level via closure — the component `◇□χ(u.keep.box) ⊢ □χ(u.box)`, valid on B+4 frames but not derivable from closed B + weak 4; conjecturally what makes the canonical round trips coherent (`v12-arrow-canonical.md` §4) |
 | strong T + strong 5 ⇒ strong B, strong 4 | ✓ (symmetry turns 5's inclusion around) | ? |
-| strong B ⇒ ◇-BF | ✓ | parameter-free ✓; parameterised: was "round-trip reduction", now the return path of §3 B |
+| strong B ⇒ ◇-BF | ✓ | parameter-free ✓; parameterised: open (the return-path collapse once proposed here is ill-defined, §3 B) |
 | strong T + strong 4 ⇒ ◇-BF | ✓ | ? |
 | anything ⇒ □-BF | ✗ (countermodel) | ✗ |
 

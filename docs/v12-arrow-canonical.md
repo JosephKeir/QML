@@ -143,6 +143,47 @@ all successors of `w`. That is **open question 1** (§8), and it ties it to open
 plausibly exactly the extra difficulty S5 has over B. If the laws cannot be met, adopting arrows
 for those combinations is a decision about the intended semantics, not only about the proof.
 
+**⭐Coherence is the shadow of flag closure (2026-09-19, paper).** Round-trip agreement has a
+syntactic counterpart. For `u : □A` at `w` and successors `v₁`, `v₂` in a relational B+4 frame,
+`w` is accessible from both, and `u.keep` at either is `u` restricted, so its value at `w` is
+`u(w)` from both sides. Hence
+
+```
+¬(◇□χ(u.keep.box) ∧ ◇□¬χ(u.keep.box))      is valid on B+4 frames.
+```
+
+It is *not* derivable from closed B plus weak 4: it has a parameter, which closed B cannot reach,
+and an arrow model with disagreeing round trips satisfies closed B and weak 4 but refutes it.
+What derives it is
+
+```
+◇□χ(u.keep.box) ⊢ □χ(u.box)
+```
+
+— valid on B+4 frames, since they are euclidean (`R(w) ⊆ R(v)`) — which is **5's
+"possibly necessary ⇒ necessary" half with a kept parameter**, the object-level component that
+modal-extensions §4 records as "B + 4 ⇒ 5: propositional ✓, object level via closure". So the
+conjecture: *round-trip coherence is what the canonical model needs exactly when the flag set must
+be closed under that component, and with the component the logic supplies what makes successors
+agree about `u`'s value at `w`.* Open question 1 becomes "does adding 5's object-level component
+make the canonical round trips coherent?", which ties B + 4 and S5 to the design of 5.
+
+**⭐Direction: construction changes, semantics does not (2026-09-19).** Of the three options —
+(1) arrow semantics for B and 5; (2) arrow-style constructions unravelled into relational models,
+so only the canonical model changes; (3) no arrows at all — the evidence points to **(2)**:
+
+- *B alone:* no coherence law is needed, so if the construction of §6 goes through, its
+  unravelling is an ordinary relational model and completeness holds for the present semantics.
+- *B + 4, S5:* (2) if the coherence conjecture above holds; (1) is the fallback only if coherence
+  fails even with the closure.
+- *(3) in its strong form* — the present tree, identity translations only — is ruled out for B.
+  One could build the unravelled relational model directly, each canonical world carrying the
+  translation it was reached by, with no arrow semantics anywhere; that is (2) with translations as
+  bookkeeping inside a relational construction, not a different option.
+
+So `Frame` keeps a relational `R`, soundness is untouched, and the work is entirely in the
+canonical model.
+
 ## 5. The canonical model on arrows
 
 - **Canonical arrows** `w → v`: pairs `(v, θ)` with `θ` ok, coherent and satisfying necessity
@@ -280,8 +321,9 @@ reverse arrows of *all* successors of `w` coherently, not one successor at a tim
 
 1. **Round-trip coherence.** Relationalising the canonical arrow model needs no laws for T, D or B
    alone, associativity and identity (which look unproblematic) where 4 meets T, and — the real
-   constraint — agreement of all round trips `a ≫ a⁻` where 4 meets B or 5. Can the reverse
-   arrows be built so that every round trip returns each necessary object's value at `w`? If not,
+   constraint — agreement of all round trips `a ≫ a⁻` where 4 meets B or 5. *Conjecture* (§4):
+   coherence is the shadow of flag closure, so the question is whether adding 5's object-level
+   component, `◇□χ(u.keep.box) ⊢ □χ(u.box)`, makes the canonical round trips coherent. If not,
    completeness for those combinations holds only over arrow-frames. (§4)
 2. The back-and-forth invariant for B's reverse arrows, with weak B alone. *Proposed answer*
    (§6): back-images realise complete back-types; its key step is checked in Lean
