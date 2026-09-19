@@ -1,7 +1,8 @@
 # QML v12: modal extensions (design)
 
-Status: 2026-09-19. **Weak D, weak T, weak 4 and strong T are implemented**, with soundness *and*
-completeness for every combination of the flags; files `QML/QML_v12m_*.lean`, namespace `V12M`.
+Status: 2026-09-19. **Weak and strong D, weak and strong T, and weak 4 are implemented**, with
+soundness *and* completeness for every combination of the flags; files `QML/QML_v12m_*.lean`,
+namespace `V12M`.
 `V12M.completeness` and `V12M.provable_iff_valid` now hold under a bare `[ModalSys]`: the scaffold
 `ModalSys.NoTStrong` has been **removed**, and `QML_v12m_*` as a whole contains no `sorry` and
 builds without warnings. Everything else is design. Claims marked *(sketch)* come from paper
@@ -108,8 +109,18 @@ only be `Γ.diaIn x`, since `x.dia` exists nowhere else. What is in scope there 
 together with `Γ.boxIn`, and `Γ.boxIn` consists of exactly `.step u .box` and `.step u .keep`
 (`Ctx.le_boxIn_diaIn`; every root case is absurd). Hence:
 
-> **The equation form is available exactly when the source object is a `□`-item.** Base items of
-> `Γ` do not survive into the view.
+> **The equation form is available exactly when the source object is a `□`-item and its type is
+> `◇`-free.** Base items of `Γ` do not survive into the view; and equality at a `◇`-type compares
+> two possible objects only on one shared witness (`eqRec` needs equal annotations, and `Ann.eta`
+> records the witness), so it cannot compare an object reached through one witness with one reached
+> through another. *(The type condition added 2026-09-19, found implementing strong D.)*
+
+**When the source is in scope, the schema pins its own witness.** A schema
+`□φ(u.box) ⊢ ∃x. ◇_x φ(x.dia)` whose `φ` may mention `u.box` has the instance
+`φ(z) := (z = u.box)`, which is the equation form, and so a witness uniform in every formula and
+parameter. The per-formula weakness of a schema — the reason strong T needed its parameter, its
+Henkin form and the packing — arises only when the source is **out of** scope. *(2026-09-19; an
+earlier note under §3 D rejected D's schema as too weak, wrongly.)*
 
 Note what the obstruction is *not*. The content of a possible object is perfectly available inside
 the view — it is `x.dia`. The problem is that the thing one wants to compare it against has left
@@ -119,7 +130,7 @@ criterion says which are *available*, not which is cheapest:
 | Route | When | Cost | Instances |
 |---|---|---|---|
 | **Same witness**, nothing to compare | the identical `◇`-object is asserted at the new world | extends the view with `◇`-items — the expensive named route | strong 5 (`◇_x φ ⊢ □◇_x φ`) |
-| **Equation** | source is a `□`-item, so both sides are in scope | cheapest: closed axiom, uniform witness, no new entries | the `Nec→Pos` map of §3 D |
+| **Equation** | source is a `□`-item, so both sides are in scope | uniform witness, no new entries | the `Nec→Pos` map of §3 D (derived there from a closed axiom via `strength`) |
 | **Schematic** (forced) | source is a base object of `Γ`, or a possible object's content | `realiseAt`-style substitution; constrains the content only through view-expressible `φ` | strong T *(done)*, strong B inward, strong 4's lift |
 
 **Two consequences worth acting on.**
@@ -175,62 +186,65 @@ content of a possible object.
     condition needs new worlds will too, so this order is the one to keep.
   - Flags stay independent: under T the rule is derivable (`T_box` on `□⊥`), but D is not
     switched on by T.
-- **Strong**: axiom `⊢ ∃x:◇𝟙. ◇_x ⊤`. Carrier condition: some possible object has nonempty extent.
-  Same level, not unique ⇒ existential. A Henkin witness satisfies it directly.
-- **Take the `⊥` forms as the rules and the familiar forms as theorems (2026-09-18).** Both are
-  interderivable in K, both ways short, so state the minimal one and derive the recognisable one —
-  `⊢ ∃x:◇𝟙. ◇_x ⊤` in particular is closed, so closure under substitution is nearly free, which is
-  exactly what cost work for `T_dia`. Present the familiar forms on paper.
-  - `□P ⊢ ◇P` (with `◇φ := ¬□¬φ`, the only unwitnessed `◇` there is) ⟺ `□⊥ ⊢ ⊥`. Forwards at
-    `P := ⊥`, using that `□¬⊥` is a theorem; backwards from `P, ¬P ⊢ ⊥` by `K_box`. Note
-    `WFF.neg φ = imp φ .bot`, so `¬⊥` is `imp ⊥ ⊥`, not `.top`.
-  - `□P ⊢ ∃x:◇𝟙. ◇_x P↑` ⟺ `⊢ ∃x:◇𝟙. ◇_x ⊤`, where `P : WFF σ Γ.boxIn 0` and `P↑` is
-    `WFF.mono (Ctx.le_boxIn_diaIn Γ x) P`. **`K_dia` already gives `◇_x ⊤, □P ⊢ ◇_x P↑`** — take
-    `ψ := ⊤`, `Δ₂ := []`, `Δ₁ := [P]`, whose premise is `⊤, P↑ ⊢ P↑`. So one direction is
-    `ex_elim` + `K_dia` + `ex_intro`, and the other is `P := ⊤` with `□⊤` a theorem.
-  - The witness contributes **nothing** to `P`: `P` lives in the `□` view and is merely weakened
-    into the `◇_x` view, which is what `K_dia`'s two-list split is for. So `x` is a pure
-    world-selector and its type should be `◇𝟙`. At a general `A` the axiom would assert that every
-    type has a possible object with nonempty extent, which entails inhabitation of every domain at
-    some accessible world — a domain-nonemptiness principle, orthogonal to seriality. Keep separate.
-- *Considered: strong D as a map `Nec(w) → Pos(w)`* (2026-09-18) — `u : □A` to the possible object
-  with extent all of `R(w)` and content `v ↦ necEval u v`. It answers §2a's "not unique" (this map
-  *is* canonical, with no choice), and it is attractive: at such an `x` the witnessed modalities
-  collapse to the unwitnessed ones, `□φ(u.box) ⊣⊢ □_x φ(x.dia)` and `◇_x φ(x.dia) ⊣⊢ ◇φ(u.box)`,
-  which is a bridge the link problems could use. But **it is not seriality**: the map is available
-  whether or not `R(w)` is empty, and when it is empty it yields a possible object with empty
-  extent and everything stays consistent. All of D's content sits in the *nonemptiness* of the
-  extent. So the map factors strong D into (i) a comprehension principle on carriers (§8.5 — it is
-  automatic in full models and a real condition otherwise) and (ii) seriality proper; at `A = 𝟙`
-  the content is trivial and (i) collapses, leaving exactly the axiom above. Verdict: keep strong D
-  as the pure existential, and record the map as a **separate candidate flag** on the comprehension
-  axis. If it is taken up, state it as the **graph of the map and nothing else** — no formula
-  parameter and no conjunct:
+- **Strong: implemented (2026-09-19).** Flag `ModalSys.DStrong`. Rule `Proof.D_ex`, the closed
+  axiom `⊢ ∃x:◇𝟙. ◇_x ⊤` (`WFF.somePoss`). Model condition `Model.posSerial`: some possible object
+  of type `𝟙` has a nonempty extent.
+  - *What strong D says* is the map `Nec(w) → Pos(w)`: every necessary object has a possible
+    counterpart whose content is its value. In the syntax that is the schema
+    `□φ(u.box) ⊢ ∃x:◇A. ◇_x φ(x.dia)`, **derived** from the axiom in K and proved in Lean
+    (`Proof.D_schema`, `QML_v12m_StrongD`). The axiom is primitive only because it is cheapest:
+    closed, so substitution leaves it as it is **definitionally** (its `ProofSubst` case is
+    `.D_ex hDS`).
+  - **The map is already in K, given one witness.** Semantically, `posStrength_eval` gives
+    `posMap fst (posStrength n p₀)` the extent of `p₀` and content `necEval n` throughout — so the
+    model condition is stated at `𝟙`, and every model satisfying it has the map at every type, the
+    whole extent included. Syntactically, `diatm z _ (u.box)` puts `u`'s value on an existing
+    witness `z`, legitimately because `u.box` is a `□`-item and so in scope in `z`'s view.
+  - *The derivation.* `ex_elim` on the axiom gives `z` with `◇_z ⊤`; `ex_intro` at
+    `diatm z _ (u.box)`; `K_dia` carries `□φ(u.box)` into `◇_z φ(u.box)`. The one real lemma is
+    `WFF.instantiate_exDia`: instantiating `∃x:◇A. ◇_x φ(x.dia)` at that term is `◇_z` of the
+    premise's body carried into `z`'s view. Its proof is `subst_mono`, then `subst_comp` against
+    the hole's substitution weakened into the view, then `subst_mono_eq`; the pointwise `Sim` is
+    modal β at the witness (`SubE.diaBody_diatm_self`) for the hole and the identity on `□`-items.
+    Binding the axiom's witness for `ex_elim` is not definitional (the renaming's `if` on
+    `free z = free z` is stuck on a variable), hence `WFF.dia_top_congr`. `Proof.D_schema'` picks
+    the eigenvariable for a presented context. No `Classical.choice`.
+  - *Canonically*: the axiom's Henkin witness gives a `◇_z` in the theory — instantiating the
+    witness reduces to it definitionally, so it is never named — and `exists_dia` a successor in
+    `z`'s extent (`Canon.exists_extent`); the possible object is `diatm z _ unit`, whose raw
+    extent is `extent w z` by `rden`'s definition (`posSerial_canon`).
+  - **Three forms, equivalent in K** (2026-09-19; corrects two notes of 2026-09-18, below):
 
-  ```
-  ⊢ ∀u:□A. ∃x:◇A. ◇_x (x.dia = u.box)
-  ```
+    | Form | Types | Derivation |
+    |---|---|---|
+    | (a) `⊢ ∃x:◇𝟙. ◇_x ⊤` — *the rule* | — | (c) at `A = 𝟙`, `φ := ⊤`, with `□⊤` a theorem |
+    | (b) graph `∀u:□A. ∃x:◇A. ◇_x (x.dia = u.box)` | `◇`-free only | (c) at `φ(z) := (z = u.box)`, premise by reflexivity |
+    | (c) schema `□φ(u.box) ⊢ ∃x:◇A. ◇_x φ(x.dia)` — *presented* | all | (a) by `Proof.D_schema` |
 
-  Closed, so substitution-closure is nearly free. Three things follow.
-  - **It degenerates to strong D.** `eqRec` at `VTypeOne` is `.top` (`QML_v12m_WFF`), so at
-    `A = 𝟙` the body *is* `◇_x ⊤` and the axiom is definitionally `⊢ ∃x:◇𝟙. ◇_x ⊤`. The graph of
-    the map at the trivial type is bare seriality — the sense in which "strong D is a `Nec → Pos`
-    map" was right.
-  - **The schematic form is derivable, off one witness.** `K_dia` at `x` with
-    `ψ := (x.dia = u.box)`, `Δ₁ := [φ(u.box)]` has premise `x.dia = u.box, φ(u.box)↑ ⊢ φ(x.dia)`,
-    which is Leibniz at `A` (`QML_v12m_Leibniz*`; vacuous at `𝟙`). So
-    `□φ(u.box) ⊢ ∃x:◇A. ◇_x φ(x.dia)` for **every** `φ`, from the same `x`.
-  - *Rejected: the schematic form as the axiom* (`□φ(u.box) ⊢ ∃x:◇A. ◇_x φ(x.dia)`, the shape
-    `T_dia` has). Strictly weaker: it constrains the content only through view-expressible `φ`, and
-    binds `x` *per formula*, so different `φ` may get different witnesses. That is the "several
-    witnesses cannot be linked jointly" failure mode already recorded for ◇-BF (§3), and it defeats
-    the only reason to want this flag, which is to bridge the link problems. The equation is
-    available here although it is **not** available for strong T: `u.box` lives in
-    `Γ.boxIn ⊆ Γ.diaIn x` (`Ctx.le_boxIn_diaIn`), so it is visible inside the view, whereas strong
-    T's `t` lives at `Γ` and is invisible in `Γ.diaIn c` — which is exactly why `T_dia` must be
-    schematic and go through `realiseAt`'s substitution instead.
-  - **Not** as a term former `u ↦ u↓ : □A → ◇A`, which would need new cases in `Term.mono`,
-    `collapse`, `shift`, `subst`, `rden`, `interp`, `size` and every congruence lemma (§2b).
+    (b) is not yet in Lean; (c) is.
+  - **(b) needs `◇`-free types.** `eqRec` compares two terms only at the **same annotation**, and
+    `Ann.eta` records the witness address at every `◇` in a type, so `x.dia = u.box` typechecks
+    exactly when `A` has no `◇` (under `□` and in products included). This is not a technicality:
+    equality at `◇A` is `□_x` of equality of contents *on one witness*, so equality of possible
+    objects is witness-relative, and two witnesses' extents cannot be compared — an extent is only
+    reached by entering its own `◇`, and inside `◇_{x.dia}` the other object has left scope. At
+    `◇`-types only the schematic form is statable — which, derived from (a), is enough.
+  - *Corrected: "the map is a comprehension principle beside D, not a reading of it."* Wrong: the
+    comprehension half is K's `strength`, and the only new content is seriality with a witness —
+    so the map **is** strong D, as first suggested. The mistake was missing that `diatm` can re-use
+    a witness with new content.
+  - *Corrected: "the schematic form is too weak as an axiom: it binds the witness per formula."*
+    Wrong for D: because `u.box` is in scope in the view, the schema can state the pinning
+    equation as one of its own instances, `φ(z) := (z = u.box)`, and thereby a uniform witness.
+    Per-formula weakness is real only where the source is **out of** scope — strong T, whose `t`
+    is a base object, and which therefore needed the parameter `y`, the Henkin form and the packing.
+    So it is the §2b criterion again. The schema was not made primitive only because, as a rule,
+    it needs a hole read two ways and closure under substitution — the work that cost strong T its
+    packing — whereas (a) is closed.
+  - The witness's content type is `𝟙` in (a) because the axiom's `x` is a pure world-selector; at
+    a general `A` a closed `∃x:◇A. ◇_x ⊤` would add domain non-emptiness, which (a) with strength
+    does *not* give (strength only transports necessary objects' values).
+  - **Not** as a term former `u ↦ u↓ : □A → ◇A` (§2b).
 
 ### T (reflexivity)
 - Frame: `w R w`.
@@ -840,7 +854,7 @@ Known edges *(all sketch)*:
 | System | weak | strong | Obstacle |
 |---|---|---|---|
 | K | done | done | |
-| KD | done | ✓ | |
+| KD | done | done | |
 | T | ✓ | ✓ | |
 | KB | ✗ | ✓ | weak B |
 | K4 | ✓ | ✗ | lift |
