@@ -343,6 +343,7 @@ Sorry-free; axioms `propext`, `Classical.choice`, `Quot.sound`. The files, in de
 | `BNet*`, `BFair` | the network: a tree of nodes, each edge a forward and a back arrow with committed variables; four operations (Henkin witness, new child, extend forward arrow, extend back arrow) on a fair schedule; invariants (`Good`), monotonicity (`Ext`), fairness (`fwd_total`, `back_total`, `henk_ex`, `child_box`, `child_dia`) |
 | `BCanonWorld`, `BCanonDom`, `BCanonFunc`, `BCanonModel` | the model from abstract data `BData`: raw objects, denotations `rden` translating along arrows, the function algebra, definable objects as domains |
 | `BCanonTerm`, `BTruth` | pushing the canonical environment along an arrow *is* the target's canonical environment read through the arrow (`boxPush_canon`, `diaPush_canon`); so the modal cases of the truth lemma are `Model.sat_subst` plus transfer/existence |
+| `BRename` | renaming the declared roots of a context: `renS` with its inverse (`subst_renS_renS`), so completeness transports from a world language `ctxOf l` to any root-only context the user writes (`completenessB_rename`) |
 | `BLimitPre`, `BLimit` | `BData` from the chain's limit (`bdata`): worlds are the nodes ever born, stage `i` is round `birth + i`, images are the committed ones, and stage `i` goes to the first target stage where all its variables are committed |
 
 What the design turned out to need, beyond §2–6:
@@ -366,7 +367,10 @@ What the design turned out to need, beyond §2–6:
   collapses B + 4 and 5 is open; that is where round-trip coherence would bite.
 
 Open: presented contexts built with `boxIn` or `diaIn` (whose variables are view items, not roots;
-the reduction is sketched above), strong completeness, and B with T or 4.
+the reduction is sketched above), strong completeness, and B with T or 4.  Root-only contexts are
+covered whatever their names, by `BRename`; what a caller must still supply there is the renaming
+itself and its inverse, since the combinatorial construction of one from a list of distinct
+declarations is not written.
 
 ## 7. What carries over, and what it costs
 

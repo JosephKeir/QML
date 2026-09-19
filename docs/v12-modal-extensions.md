@@ -824,9 +824,10 @@ content of a possible object.
     `[ModalSys.NoB]` (the pattern `ModalSys.NoTStrong` used before strong T was complete).
   - *Completeness* comes from the arrow-based canonical model instead
     (`docs/v12-arrow-canonical.md` §6a), so far with `[ModalSys.NoTFour]` (T and 4 off; D and
-    strong D may be on) and for contexts of declared variables (`ctxOf l₀`, the root world's
-    starting language; `ctxOf []` is `Ctx.empty`). Extending it to presentations that use `boxIn`
-    or `diaIn`, and to T and 4, is open.
+    strong D may be on) and for contexts of declared variables: a world language `ctxOf l₀`, or
+    any root-only context carried onto one by a renaming of roots (`completenessB_rename`,
+    `QML_v12m_BRename`). Extending it to presentations that use `boxIn` or `diaIn`, and to T and
+    4, is open.
   - *Not yet*: the two strong Bs below.
 - **Redesigned 2026-09-19** around necessary objects, and sorted by §2a's criterion (weak = no new
   objects, strong = new objects). One weak B and **two** strong Bs. `P` below is a formula closed
