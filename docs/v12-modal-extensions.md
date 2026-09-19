@@ -77,9 +77,31 @@ though the restriction map itself is a total function. So every axiom has up to 
 | B | `D(w)→Pos(v)` singletons: `φ(z) ⊢ □◇_{z↑}φ(z↑.dia)` | `Nec(v)→D(w)` value at origin: `◇∃u:□A. □φ(u.box) ⊢ ∃a:A. φ(a)` |
 | 5 | `Pos(w)→Pos(v)`: `◇`-items visible under `□`, `◇_x φ ⊢ □◇_x φ` | `Nec(v)→Nec(w)` restriction: `◇∃c:□B. □χ(c.box) ⊢ ∃c:□B. □χ(c.box)` |
 
-The weak/strong labels of §3 put the `Nec`-side component in *weak* and add the `Pos`-side
-component in *strong*. For 4 the weak component is the named one. For B and 5 it is the existential
-one, so the nesting weak ⊂ strong puts the open part inside strong B and strong 5.
+**⭐Weak and strong: whether new objects are required (2026-09-19).** A **weak** component requires
+no new objects: it is purely propositional, or it uses *determinate maps on existing objects*
+(evaluation here, `u.here`; restriction down chains, `u.keep`; value at the origin). A **strong**
+component asserts that objects exist which no existing object determines — which is why strong
+components come out existential in the syntax.
+
+| Flag | weak (no new objects) | strong (new objects) |
+|---|---|---|
+| D | propositional `□⊥ ⊢ ⊥` | a possible object with nonempty extent |
+| T | evaluation here (`u.here`) | a possible object for each object, realised here (`T_dia`); *also* a necessary object for each object (§3 T, candidate) |
+| 4 | restriction down chains (`u.keep`) | the lift `Pos(v) → Pos(w)`: no determinate join |
+| B | propositional `φ ⊢ □◇φ`, with the value at the origin | two: a `□□`-object with a constant round trip, and possible objects reaching back (§3 B) |
+| 5 | *to be re-sorted*: both components below are determinate maps | ? |
+
+This replaces the earlier rule, "the `Nec`-side component is weak and the `Pos`-side strong". The
+two agree on T, D and 4. For B the new rule makes the outward half and propositional B weak, and
+finds two strong components rather than one. For **5** both components in the components table above
+are determinate — restriction `Nec(v) → Nec(w)`, and re-use of a witness `Pos(w) → Pos(v)` — so by this
+criterion both are *weak*, and a strong 5 would be something else, or nothing. That affects the S5
+plan and has to be settled before 5 is designed.
+
+*Superseded (to 2026-09-18):* the weak/strong labels of §3 put the `Nec`-side component in *weak*
+and add the `Pos`-side component in *strong*. For 4 the weak component is the named one. For B and
+5 it is the existential one, so the nesting weak ⊂ strong puts the open part inside strong B and
+strong 5.
 
 ### 2b. How to state a carrier map *(2026-09-18, after strong T)*
 
@@ -657,6 +679,44 @@ content of a possible object.
     - *Balance.* Extra syntax against the model-side work that was the bulk of steps 3–4:
       comparable at least, possibly cheaper. The same choice will face strong B's inward half,
       which is schematic like T's (§2b): a `World.real` analogue, or this term former.
+  - **Candidate: necessary-object strong T (2026-09-19).** A third T principle, Barcan-like —
+    everything is the here-value of a necessary object:
+
+    ```
+    NecT:   P(a) ⊢ ∃u:□A. P(u.here)
+    ```
+
+    Carrier condition: every `a ∈ D(w)` is `necExtract n` for some `n ∈ Nec A w`. It requires new
+    objects, so it is *strong* by §2a's criterion, and it is independent of `T_dia`: `T_dia`
+    produces possible objects, not necessary ones. Both ends of T's loop are the same world, so `P`
+    may mention anything in scope at `w` — including `a` itself and quantifiers over parameters —
+    and NecT needs no packing. State it schematically, not as the equation `∃u. u.here = a`, which
+    is statable only at `◇`-free types (§2b).
+  - **⭐`T_dia` factorises through NecT (checked on paper, not in Lean).** To derive
+    `∃x:◇A. ∀y. (ψ↓(t,y) → ◇_x ψ(x.dia, y))`:
+    1. NecT at `P(z) := ∀y. (ψ↓(t,y) → ψ↓(z,y))`, whose instance `P(t)` is a tautology, gives
+       `u : □A` with `∀y. (ψ↓(t,y) → ψ↓(u.here,y))`, chosen before `y`.
+    2. `T_dia` at `𝟙` for `χ(y) := ψ(u.box, y)` — a `□`-view formula, since `u.box` is a
+       `□`-item — gives `z : ◇𝟙` with `∀y. (ψ↓(u.here,y) → ◇_z ψ(u.box,y))`; reading here
+       collapses `u.box` to `u.here`.
+    3. Strength: `x := diatm z _ (u.box)` turns `◇_z ψ(u.box,y)` into `◇_x ψ(x.dia,y)` — the
+       `instantiate_exDia` identity of `QML_v12m_StrongD`, under `∀y` and `→`.
+
+    So `T_dia` at `A` ⟸ `T_dia` at `𝟙` + NecT + strength, uniformly in `y`. This is the uniform
+    pattern:
+
+    > A possible-object strong principle at type `A` = its instance at `𝟙` (a bare witness) + its
+    > necessary-object version (which brings the object into scope as a `□`-item) + strength.
+
+    | | witness at `𝟙` | necessary-object version | object already a `□`-item? |
+    |---|---|---|---|
+    | D | `⊢ ∃x:◇𝟙. ◇_x ⊤` | not needed | yes |
+    | T | `T_dia` at `𝟙` | NecT | no |
+    | B | (ii) at `𝟙` (§3 B) | (i) (§3 B) | no |
+
+    Strong T is **not** to be rebuilt this way. On the canonical side the work moves rather than
+    shrinks: `T_dia` at `𝟙` becomes much simpler (unit content, no stage-first measure), but NecT
+    needs its own "the world names its realisations" machinery for `□`-constants read here.
 
 ### 4 (transitivity)
 - Frame: `R(v) ⊆ R(w)` for `v ∈ R(w)`.
@@ -747,56 +807,65 @@ content of a possible object.
 
 ### B (symmetry)
 - Frame: `v R w` for `v ∈ R(w)`.
-- **Strong (inward): `D(w) → Pos(v)`, an object of the origin as a possible object there.**
-  - **⭐Design changed 2026-09-18: existential, not singletons.** Following strong T and the
-    scope criterion of §2b. The earlier design is recorded under *rejected* below.
-  - Carrier condition, the `posRet_exists` analogue: for every `v ∈ R(w)` and every `a ∈ Dom A w`
-    there is a `p ∈ Pos A v` with `w ∈ ext(p)` and `cont(p)(w) = a`. Note this does **not** demand
-    `ext(p) = {w}`; only that the origin is in it with the right content. That weakening is what
-    removes the need for a new address.
-  - Rule, the `T_dia` analogue: `φ↓(t) ⊢ □ ∃x:◇A. ◇_x φ`, where `φ` lives in the witness's view
-    inside the `□` and `φ↓(t)` is that formula read back at the origin with `t` in the hole. The
-    converse direction is the `□_x` form, as for strong T.
-  - **The return path is the piece to design first.** `WFF.realiseAt` is
-    `instantiate ∘ collapse ∘ diaAbs`: abstract the witness, collapse the view, plug the term. For
-    strong T the collapse step is `Collapses 0 Γ.boxIn Γ` — T's "the box view is here". Run the
-    same recipe for B and `diaAbs` lands in `Γ.boxIn.boxIn.insert (.bnd 0) A`, so what is needed is
+- **Redesigned 2026-09-19** around necessary objects, and sorted by §2a's criterion (weak = no new
+  objects, strong = new objects). One weak B and **two** strong Bs. `P` below is a formula closed
+  apart from its hole, since it is read both at the origin and two views in; several parameters
+  are packed into the hole with a tuple, as for strong T.
 
-    ```
-    Γ.boxIn.boxIn ⟶ Γ        -- two box steps cancel
-    ```
+  | | new objects | principle |
+  |---|---|---|
+  | **weak** | none | propositional `φ ⊢ □◇φ` |
+  | **strong, necessary** | a `□□`-object whose round trip `w → v → w` returns `a` from *every* `v` | (i) `P(a) ⊢ ∃u:□□A. □◇P(u.box.box)` |
+  | **strong, possible** | a possible object at each `v` reaching back with content `a` | (ii) `P(a) ⊢ □∃x:◇A. ◇_x P(x.dia)` |
 
-    the syntactic shadow of `w ∈ R(v)` for `v ∈ R(w)`. `Ctx.Collapses` is already indexed by a
-    level count, and `WFF.collapse`/`Term.collapse`/`CollapseAgree`/`size_collapse` are proven, so
-    **the first question is whether B's return is an instance of `Ctx.Collapses` or needs a
-    variant.** Everything else in the recipe transfers.
-  - **Canonical model.** `extent` needs a *parent* disjunct, as strong T needed a self-successor
-    disjunct, with the repairs at the `extent_dist`/`extent_le` sites that went with it. Settle the
-    recursion measure for `interp_canon` **before** fixing the rule (the strong-T lesson): the
-    return goes to a strictly shallower world, so parent-of may serve directly where strong T
-    needed `RealDatum.hstage`'s stage discipline — but it has to be checked, not assumed.
-  - *Rejected: singleton addresses `z↑ : ◇A` with extent `{w}`* (the design to 2026-09-17). It
-    needed a new address former, a context principle putting current items inside every modality,
-    and a **round-trip normalisation** (out along `u↑`, back along `y↑`, reducing to `u.box`) — a
-    confluence problem on addresses that exists only because the addresses do. It would also have
-    met the entry-independence problem that `keep` met, and for the reason predicted below: a
-    singleton view returns to an earlier world, so which entries are redundant depends on the view.
-    The existential design dissolves both.
-- **Weak (outward): value at the origin `Nec(v) → D(w)`.**
-  - Forced by the frame (`necEval` lands in `Dom A w`), so canonical symmetry needs it.
-  - Rule: closed `B` (`ψ ⊢ □◇ψ`). The parameter-free export `◇∃u:□A. □φ(u.box) ⊢ ∃a:A. φ(a)` is
-    derivable from it *(sketch)*. This half is **already existential** and stays as it is. Two
-    things not to get wrong: the object pulled out must be a **necessary** object `u : □A`, since
-    only a necessary object at `v` has a value back at `w` — an `x.dia : A` is an object of the
-    inner world and nothing carries it out; and decorating the premise `◇` with a witness gives a
-    *weaker* rule, not a new one (§2a's decoration table).
-  - **Open alone.** Under the new design its link becomes `∃x:◇A. ◇_x(x.dia = u.box)` — the
-    `posRet_exists` shape — rather than the singleton's `◇_{a↑}(a↑.dia = u.box)`. That does not
-    make it automatic, and weak B remains the smallest instance of the no-link problem (§5), but it
-    is now the one shape with a worked canonical construction behind it.
+  - The outward forms — value at the origin, which is evaluation and so asserts nothing new — are
+    **theorems of weak B**: `◇□P(u.box.box) ⊢ ∃x:A. P(x)` for `u : □□A`, its witnessed variant
+    `◇_y □P(y.dia.box) ⊢ ∃x:A. P(x)` for `y : ◇□A`, and the born-inside export
+    `◇∃c:□A. □P(c.box) ⊢ ∃x:A. P(x)`. Each takes `ψ := ∃x.P(x)`, which is closed, and B's
+    contrapositive `◇□ψ ⊢ ψ`. *(Paper only.)*
+  - (i) is strictly stronger than weak B, which gives only `□◇∃x.P(x)`: it moves the `∃` outside,
+    one `u` for every `v`. For B's full strength the round trip must return `a` from *every*
+    accessible `v`; from only some `v` it would give `φ → ◇◇φ`.
+  - (i) and (ii) look independent. (ii) does not give (i): gathering one possible object per `v`
+    into a single `□□`-object is a `□∃ ⊢ ∃□` step, which is modal choice. (i) does not give (ii):
+    it produces no possible objects. (ii) at type `A` follows from (ii) at `𝟙` plus (i) plus
+    strength — the uniform pattern of §3 T. *(Paper only.)*
+  - (i) is to B what necessary-object strong T (§3 T) is to T, with T's loop `w → w` replaced by
+    the round trip `w → v → w`.
+- **⚠ No return-path collapse.** An earlier note here proposed reading a formula of `Γ.boxIn.boxIn`
+  back at the origin by a collapse `Γ.boxIn.boxIn ⟶ Γ`. That is **ill-defined**: `u.box.box` read
+  at the origin is `u(v)(w)`, which depends on the intermediate `v`, so there is no address at `w`
+  for it. T's collapse works only because its loop is unique. The formulation above never reads a
+  double-box item back at `w`; its two ends meet only through the hole.
+- **Weak B's completeness problem** (2026-09-19). In the Henkin tree, B makes the parent `w`
+  accessible from the child `v` — against the order of construction. Every **modal** object of
+  `v` (its necessary objects, inherited or born, and its possible objects whose extent can reach
+  `w`) then has a value at `w`, which the canonical model must realise by one `w`-term per object,
+  respecting the whole type the child's theory gives it. Weak B realises each *finite* piece of such
+  a type, but nothing pins one term for the whole: from `w` the equation `z = c.box` is out of
+  scope, and from `v` nothing singles out the origin among its successors (which is what the
+  rejected singleton addresses provided). T and 4 never meet this: T's loop returns to the same
+  world, and 4's chains only go down. Propositional B avoids it by having no objects; classical
+  quantified B by constant domains (B + CBF ⊢ BF), which our semantics does not have. Neither
+  strong B addresses it, since both concern objects going *out* from `w`. **The proposed way
+  forward is `docs/v12-arrow-canonical.md`**: a canonical model with no construction order, arrows
+  carrying translations, and B's reverse arrows built back-and-forth.
+- *Superseded: the existential strong-B design of 2026-09-18* (`φ↓(t) ⊢ □∃x:◇A. ◇_x φ`, with a
+  `realiseAt`-style reading at the origin). Its possible-object content survives as (ii); its
+  reading back at the origin relied on the ill-defined collapse above.
+- *Rejected: singleton addresses `z↑ : ◇A` with extent `{w}`* (the design to 2026-09-17). It needed
+  a new address former, a context principle putting current items inside every modality, and a
+  round-trip normalisation (out along `u↑`, back along `y↑`, reducing to `u.box`) — a confluence
+  problem on addresses that exists only because the addresses do — and would have met the
+  entry-independence problem that `keep` met.
 
 ### 5 (euclidean)
 - Frame: `R(w) ⊆ R(v)` for `v ∈ R(w)`.
+- **⚠ To be re-sorted (2026-09-19).** By §2a's new criterion both components below are *weak*: each
+  is a determinate map on existing objects (re-use of a witness, restriction), so neither requires
+  new objects. The labels below are the old ones. What a new-objects strong 5 would be, if any, is
+  open. The canonical model also needs arrows between siblings, which the tree cannot give
+  (`docs/v12-arrow-canonical.md`, open question 3).
 - **Strong (inward, named): `Pos(w) → Pos(v)`.** Context principle: `◇`-items stay visible inside
   `□` (and inside `◇_y`). Rule: `◇_x φ ⊢ □◇_x φ`.
 - **Weak (outward): restriction `Nec(v) → Nec(w)`.** Rule: `◇φ ⊢ □◇φ`; with free `□`-parameters it
@@ -894,6 +963,12 @@ Canonical accessibility is the shared redesign.
 - *For T this was not needed*: the world itself is added to the frame relation beside the proper
   successors (tagged by depth), and denotations at it are computed by collapsing (§3, T). Whether
   4 can use the same trick (adding composites of proper successors) is the next question.
+  *(Answered: it could; 4 is implemented with chains of proper steps.)*
+- **For B and 5 the tree cannot work** (2026-09-19): B makes the parent accessible from the child,
+  against the order of construction, and 5 needs arrows between siblings. The proposed replacement
+  is **`docs/v12-arrow-canonical.md`**: every world at once, with arrows carrying a translation
+  that is a `Subst` from the source's `□` view into the target's context. The tree is the special
+  case `θ = idS`.
 
 ## 7. Implementation plan
 
