@@ -15,6 +15,9 @@ along one.
   `subst_renS_renS` when `ν'` inverts `ν` on the declared roots.
 * ⭐`completenessB_rename`: completeness for any root-only context that a renaming carries onto
   some `ctxOf l`.
+* ⭐`completenessB_ofDecls`: for a context written as `Ctx.ofDecls ds` with distinct names the
+  renaming is read off the declarations (`renOf`, `invOf`), so nothing need be supplied but
+  `Nodup`, which `decide` settles.
 -/
 
 namespace V12M
@@ -194,57 +197,132 @@ theorem completenessB_rename (hB : ModalSys.B = true) {Γ : Ctx} [Γ.Presented] 
   exact ⟨hq⟩
 
 
-/-! ## A worked example
 
-How a user-written context meets `completenessB`: two variables named `7` and `3` become the world
-language's positional `free 1` and `free 0`. -/
+
+/-! ## The renaming of a list of declarations
+
+A context written as `Ctx.ofDecls ds` declares `ds`'s names; the world language `ds.map Prod.snd`
+declares positions.  `renOf` and `invOf` translate between them, by recursion on `ds` rather than
+by searching, so the head's name and the head's position correspond at each step. -/
+
+/-- The position a declared name takes in the world language. -/
+def renOf : List (ℕ × VarType) → ℕ → ℕ
+  | [], r => r
+  | (u, _) :: ds, r => if r = u then ds.length else renOf ds r
+
+/-- The name a position carries. -/
+def invOf : List (ℕ × VarType) → ℕ → ℕ
+  | [], r => r
+  | (u, _) :: ds, r => if r = ds.length then u else invOf ds r
+
+omit [ModalSys] [ModalSys.NoTFour] in
+/-- A declared address has a declared name. -/
+theorem mem_of_decl : ∀ (ds : List (ℕ × VarType)) {r : ℕ} {R : VarType},
+    Ctx.ofDecls ds (.root (.free r)) = some R → r ∈ ds.map Prod.fst
+  | [], _, _, h => by simp [Ctx.ofDecls, Ctx.empty] at h
+  | (u, U) :: ds, r, R, h => by
+      simp only [Ctx.ofDecls, Ctx.insert, VarSymb.root.injEq, Root.free.injEq] at h
+      by_cases hr : r = u
+      · exact hr ▸ List.mem_cons_self
+      · rw [if_neg hr] at h
+        exact List.mem_cons_of_mem _ (mem_of_decl ds h)
+
+omit [ModalSys] [ModalSys.NoTFour] in
+/-- Positions of declared names are positions of the world language. -/
+theorem renOf_lt : ∀ (ds : List (ℕ × VarType)) {r : ℕ} {R : VarType},
+    Ctx.ofDecls ds (.root (.free r)) = some R → renOf ds r < ds.length
+  | [], _, _, h => by simp [Ctx.ofDecls, Ctx.empty] at h
+  | (u, U) :: ds, r, R, h => by
+      simp only [Ctx.ofDecls, Ctx.insert, VarSymb.root.injEq, Root.free.injEq] at h
+      simp only [renOf, List.length_cons]
+      by_cases hr : r = u
+      · rw [if_pos hr]
+        omega
+      · rw [if_neg hr] at h ⊢
+        have := renOf_lt ds h
+        omega
+
+omit [ModalSys] [ModalSys.NoTFour] in
+/-- ⭐A declared name's position carries its type. -/
+theorem ctxOf_renOf : ∀ (ds : List (ℕ × VarType)) {r : ℕ} {R : VarType},
+    Ctx.ofDecls ds (.root (.free r)) = some R →
+      ctxOf (ds.map Prod.snd) (.root (.free (renOf ds r))) = some R
+  | [], _, _, h => by simp [Ctx.ofDecls, Ctx.empty] at h
+  | (u, U) :: ds, r, R, h => by
+      simp only [Ctx.ofDecls, Ctx.insert, VarSymb.root.injEq, Root.free.injEq] at h
+      simp only [renOf, List.map_cons, ctxOf_cons, Ctx.insert, List.length_map,
+        VarSymb.root.injEq, Root.free.injEq]
+      by_cases hr : r = u
+      · rw [if_pos hr] at h ⊢
+        rw [if_pos rfl]
+        exact h
+      · rw [if_neg hr] at h ⊢
+        have hlt := renOf_lt ds h
+        rw [if_neg (by omega : ¬ renOf ds r = ds.length)]
+        exact ctxOf_renOf ds h
+
+omit [ModalSys] [ModalSys.NoTFour] in
+/-- ⭐The position of a declared name carries that name back. -/
+theorem invOf_renOf : ∀ (ds : List (ℕ × VarType)) {r : ℕ} {R : VarType},
+    Ctx.ofDecls ds (.root (.free r)) = some R → invOf ds (renOf ds r) = r
+  | [], _, _, h => by simp [Ctx.ofDecls, Ctx.empty] at h
+  | (u, U) :: ds, r, R, h => by
+      simp only [Ctx.ofDecls, Ctx.insert, VarSymb.root.injEq, Root.free.injEq] at h
+      simp only [renOf, invOf]
+      by_cases hr : r = u
+      · rw [if_pos hr] at h ⊢
+        rw [if_pos rfl, hr]
+      · rw [if_neg hr] at h ⊢
+        have hlt := renOf_lt ds h
+        rw [if_neg (by omega : ¬ renOf ds r = ds.length)]
+        exact invOf_renOf ds h
+
+omit [ModalSys] [ModalSys.NoTFour] in
+/-- ⭐With distinct names, a position's name carries its type, so the renaming is onto. -/
+theorem ofDecls_invOf : ∀ (ds : List (ℕ × VarType)), (ds.map Prod.fst).Nodup →
+    ∀ {r : ℕ} {R : VarType}, ctxOf (ds.map Prod.snd) (.root (.free r)) = some R →
+      Ctx.ofDecls ds (.root (.free (invOf ds r))) = some R
+  | [], _, _, _, h => by simp [ctxOf, decls, Ctx.ofDecls, Ctx.empty] at h
+  | (u, U) :: ds, hnd, r, R, h => by
+      simp only [List.map_cons, ctxOf_cons, Ctx.insert, List.length_map, VarSymb.root.injEq,
+        Root.free.injEq] at h
+      simp only [invOf, Ctx.ofDecls, Ctx.insert, VarSymb.root.injEq, Root.free.injEq]
+      simp only [List.map_cons, List.nodup_cons] at hnd
+      by_cases hlen : r = ds.length
+      · rw [if_pos hlen] at h ⊢
+        rw [if_pos rfl]
+        exact h
+      · rw [if_neg hlen] at h ⊢
+        have hd := ofDecls_invOf ds hnd.2 h
+        rw [if_neg (fun hu : invOf ds r = u => hnd.1 (hu ▸ mem_of_decl ds hd))]
+        exact hd
+
+
+/-- ⭐**Completeness for weak B in a context of declarations with distinct names.**  No renaming
+    need be supplied: `renOf` and `invOf` are read off the declarations. -/
+theorem completenessB_ofDecls (hB : ModalSys.B = true) {ds : List (ℕ × VarType)}
+    (hnd : (ds.map Prod.fst).Nodup) {Δ : List (WFF σ (Ctx.ofDecls ds) 0)}
+    {φ : WFF σ (Ctx.ofDecls ds) 0}
+    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env (Ctx.ofDecls ds) w),
+      (Ctx.ofDecls ds).NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
+    Provable Δ φ :=
+  completenessB_rename hB (rootOnly_ofDecls ds) (fun _ _ h => ctxOf_renOf ds h)
+    (fun _ _ h => ofDecls_invOf ds hnd h) (fun _ _ h => invOf_renOf ds h) hval
+
+/-! ## A worked example -/
 
 namespace RenameExample
 
-/-- A user-written context. -/
+/-- A user-written context: two variables, named `7` and `3`. -/
 abbrev Γ₀ : Ctx := Ctx.ofDecls [(7, VarType.Var), (3, VarType.VTypeOne)]
 
-/-- The matching world language: `free 1 : Var`, `free 0 : 𝟙`. -/
-abbrev l₀ : List VarType := [VarType.Var, VarType.VTypeOne]
-
-def ν₀ : ℕ → ℕ := fun r => if r = 7 then 1 else 0
-def ν₀' : ℕ → ℕ := fun r => if r = 1 then 7 else 3
-
-omit [ModalSys] [ModalSys.NoTFour] [Countable σ.FuncSyms] [Countable σ.RelSyms] in
-theorem hν₀ : ∀ r R, Γ₀ (.root (.free r)) = some R →
-    ctxOf l₀ (.root (.free (ν₀ r))) = some R := by
-  intro r R h
-  simp only [Ctx.ofDecls, Ctx.insert, VarSymb.root.injEq, Root.free.injEq] at h
-  split_ifs at h with h7 h3
-  · cases h; subst h7; rfl
-  · cases h; subst h3; rfl
-  · simp [Ctx.empty] at h
-
-omit [ModalSys] [ModalSys.NoTFour] [Countable σ.FuncSyms] [Countable σ.RelSyms] in
-theorem hν₀' : ∀ r R, ctxOf l₀ (.root (.free r)) = some R →
-    Γ₀ (.root (.free (ν₀' r))) = some R := by
-  intro r R h
-  simp only [ctxOf, decls, Ctx.ofDecls, Ctx.insert, VarSymb.root.injEq, Root.free.injEq] at h
-  split_ifs at h with h1 h0
-  · cases h; subst h1; rfl
-  · cases h; subst h0; rfl
-  · simp [Ctx.empty] at h
-
-omit [ModalSys] [ModalSys.NoTFour] [Countable σ.FuncSyms] [Countable σ.RelSyms] in
-theorem hinv₀ : ∀ r R, Γ₀ (.root (.free r)) = some R → ν₀' (ν₀ r) = r := by
-  intro r R h
-  simp only [Ctx.ofDecls, Ctx.insert, VarSymb.root.injEq, Root.free.injEq] at h
-  split_ifs at h with h7 h3
-  · subst h7; rfl
-  · subst h3; rfl
-  · simp [Ctx.empty] at h
-
-/-- ⭐Completeness in the user's own context, names and all. -/
+/-- ⭐Completeness in it, names and all: the renaming onto the world language `[Var, 𝟙]` is read
+    off the declarations, and distinctness is a decision. -/
 theorem completeness_Γ₀ (hB : ModalSys.B = true) {Δ : List (WFF σ Γ₀ 0)} {φ : WFF σ Γ₀ 0}
     (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env Γ₀ w), Γ₀.NoProjLast →
       (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ :=
-  completenessB_rename hB (rootOnly_ofDecls _) hν₀ hν₀' hinv₀ hval
+  completenessB_ofDecls hB (by decide) hval
 
 end RenameExample
 
