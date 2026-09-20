@@ -369,15 +369,81 @@ What the design turned out to need, beyond §2–6:
 
 Root-only contexts are covered whatever their names (`completenessB_ofDecls`), and so is a single
 `boxIn` or `diaIn` view over a world language (`BFlat`).  So is any stack of `□` views over one (`completenessB_boxInN`).  Both constructions an arbitrary
-presentation needs are now in place — `Pair.box` and `Pair.insertRoot` — but **composing them is
-blocked**: a `Pair` cannot be composed with a `Pair`, because `Subst.Coh` for a composite
-substitution is not available (`SubE.idxAlong_comp` holds only at `◇` types and the empty path;
-`WFF.subst_comp` deliberately takes a third substitution related by `Sim` instead).  So mixing
-declared roots with views, as `insertFree` after `boxIn` does, needs either a general `Coh` for
-composites, or a flattening substitution defined by recursion on the presentation rather than
-assembled from steps.  Note also that `Subst.Sim` is not transitive — at `𝟙` two entries can each
-be similar to a third without being similar to each other — which is why transport composes but
-substitutions do not.  Also open: strong completeness, and B with T or 4.
+presentation needs are in place — `Pair.box` and `Pair.insertRoot` — and what is left is assembling
+them; see the ⭐START HERE block below for why that is not immediate and the four ways round it.
+Also open: strong completeness, and B with T or 4.
+
+
+### ⭐START HERE (next session, 2026-09-20)
+
+**State.** Weak B is complete (`completenessB`) for: a world language `ctxOf l`; any
+`Ctx.ofDecls ds` with distinct names (`completenessB_ofDecls`, nothing to supply); a `□` or `◇_x`
+view over a world language, and `□` views stacked to any depth (`completenessB_boxIn`,
+`completenessB_diaIn`, `completenessB_boxInN`).  **Missing: presentations that mix declared roots
+with views**, e.g. `((ctxOf l).boxIn).insert (.free 7) T`.  Both constructions that case needs are
+already built and checked — `Pair.box` and `Pair.insertRoot` — so what is left is assembly.
+
+**Why assembly is not immediate.** The `CtxExpr` induction wants to chain the pair built so far
+with the next atomic pair, and `Pair` does not compose: `Subst.Coh` for a composite substitution is
+unavailable.  The reason is the **junk convention**: `Ann.idxAt` returns `.root (.free 0)` away
+from `◇`-nodes (`QML_v12m_Symbols`), so a `Coh` index map is pinned to the annotation's junk as
+well as to its real indices — `pullIdx` is *defined* as the tuple annotation's `idxAt`.  For a
+composite the index map would have to send junk positions to junk, not to `ι₂` of junk, so
+`ι₂ ∘ ι₁` is wrong and no generic `ι₃` is available.  That is also why `SubE.idxAlong_comp` is
+stated only at `◇` types and the empty path, and why `WFF.subst_comp` takes a third substitution
+related by `Sim` instead of composing `Coh`.  **Nothing mathematical is in the way**; the split
+between `Pair` (data, boxable) and `Flat` (transport, composable) is one layer short.
+
+**Route 1 — chains of atomic pairs (recommended).**  Never compose substitutions at all.
+
+```lean
+inductive Chain (σ) : Ctx → Ctx → Type
+  | nil  : Chain σ Γ Γ
+  | cons : Pair σ Γ Δ → Chain σ Δ E → Chain σ Γ E
+```
+
+* `Chain.toFlat`: fold with `Flat.comp` (each link through `Pair.toFlat`).
+* `Chain.box`: map `Pair.box` over the links — boxing distributes.
+* `Chain.insertRoot`: map `Pair.insertRoot` over the links.  Each link needs a fresh name on each
+  side, and adjacent links must agree, so name the insertion **per context**, not per link:
+  `Ctx.Presented.bound C` is fresh for `C` by `Ctx.Presented.fresh`.
+* Then the `CtxExpr` induction gives `Chain σ e.denote (ctxOf (lang e))`, and completeness follows
+  by `completenessB_flat`.
+
+Two small things to check first: `Ctx.Presented.bound (ctxOf l) = l.length` (so the last link's
+insertion really lands in `ctxOf (T :: l)`, which is `(ctxOf l).insert (.free l.length) T` by
+`ctxOf_cons`, definitionally); and that `Chain` can carry the `Presented`/`NoSlots` instances its
+intermediate contexts need for `Proof.subst` (either as fields or by requiring presented links).
+Note `CtxExpr.insertFree` permits shadowing, so state the theorem for presentations whose every
+declaration is fresh — `u ≥ (inner).freeBound` is decidable and implies `RootFresh` via
+`CtxExpr.fresh`.
+
+**Route 2 — composite `Coh` for renamings.**  If `θ₁` is a renaming, `Coh (ι₂ ∘ ι₁) Γ (θ₁.comp θ₂)`
+*is* provable in a few lines: the `.tm` case never arises, so the junk problem disappears.  Every
+forward map here is a renaming (`arrowS`, `extS`, `renS`).  The backward maps are not (`pullS`
+sends roots to tuples), so this alone does not compose pairs — but it may support a leaner
+structure in which only the forward substitution is composed and the backward direction is used
+per step, as `Flat.comp` already does for provability.
+
+**Route 3 — one substitution per presentation.**  Define the flattening by recursion on `CtxExpr`,
+with its own index map, `Ok`, `Coh`, inverse and `Sim`, in the style of `arrowS`.  Most work, and
+it discards the atomic pairs, but it yields a single clean arrow.
+
+**Route 4 — general composite `Coh`.**  Would need an index map defined by decomposing an address
+into declared ancestor plus path, which is context-dependent, and the junk convention above must be
+respected.  Not recommended.
+
+**Traps already paid for.** `Subst.Sim` is *not* transitive (at `𝟙`, `Term.eta w 𝟙 h` is `.unit`
+whatever `w` is, so two entries can each be similar to a third without being similar to each
+other); compose transport, not substitutions.  `Pair.box`'s `simId` works only because
+`sim_box_of` proves it pointwise through `Sim.unbox`.  Dot notation on a `Subst` picks
+`Subst.comp`, not `SubE.comp`.  `if_pos`/`if_neg` need the condition stated exactly, since `rt`
+equations do not match syntactically.
+
+**After that, in order.** Strong completeness and compactness for B (cheap — the network makes its
+own names).  Then strong B, whose witnesses fit the network as a fifth scheduled operation.  Then
+5, where the sibling-arrow question decides whether the naming trick collapses it to a relation as
+it did for B.
 
 ## 7. What carries over, and what it costs
 
