@@ -239,7 +239,7 @@ theorem coh_extS {ι : VarSymb → VarSymb} {Γ Δ Δ' : Ctx} {θ : Subst σ Δ}
     have hrt : w.rt ≠ .free u := fun he => by rw [hfr w he] at hw; cases hw
     simp only [extS, extIdx]
     rw [if_neg hrt, if_neg (show ¬ (w.ext p).rt = Root.free u by rw [VarSymb.ext_rt]; exact hrt)]
-    show ((θ w).mono hle).idxAlong p = _
+    change ((θ w).mono hle).idxAlong p = _
     rw [SubE.idxAlong_mono, ← Subst.at_nonproj θ hlp]
     exact hc w U ((Ctx.ref_nonproj Γ hlp).trans hw) p
 
@@ -301,7 +301,7 @@ theorem sim_extS {Γ Δ : Ctx} {ι' : VarSymb → VarSymb} {θ : Subst σ Δ} {�
   have hlv := Ctx.le_insert hv.root T
   by_cases hwu : w = .root (.free u)
   · subst hwu
-    show SubE.Sim U ((extS θ₃ hlu u u) (.root (.free u)))
+    change SubE.Sim U ((extS θ₃ hlu u u) (.root (.free u)))
       (SubE.comp (extS θ' hlu v u) _ _ ((extS θ hlv u v) (.root (.free u))))
     simp only [extS]
     rw [if_pos (show (VarSymb.root (Root.free u)).rt = Root.free u from rfl)]
@@ -318,11 +318,11 @@ theorem sim_extS {Γ Δ : Ctx} {ι' : VarSymb → VarSymb} {θ : Subst σ Δ} {�
     have hs := hsim w U hwr
     rw [Subst.at_nonproj _ hlp, Subst.at_comp hθ θ' hθ' hc' hwr,
       Subst.at_nonproj θ hlp] at hs
-    show SubE.Sim U ((extS θ₃ hlu u u) w) (SubE.comp (extS θ' hlu v u) _ _ ((extS θ hlv u v) w))
+    change SubE.Sim U ((extS θ₃ hlu u u) w) (SubE.comp (extS θ' hlu v u) _ _ ((extS θ hlv u v) w))
     simp only [extS]
     rw [if_neg hrt]
     rw [if_neg hrt]
-    show SubE.Sim U ((θ₃ w).mono hlu) (SubE.comp (extS θ' hlu v u) _ _ ((θ w).mono hlv))
+    change SubE.Sim U ((θ₃ w).mono hlu) (SubE.comp (extS θ' hlu v u) _ _ ((θ w).mono hlv))
     rw [SubE.comp_mono θ' hθ' hc' hlv hlu _ _ _ heq (hθ w U hlp hw)]
     exact hs.mono hlu
 
@@ -344,6 +344,94 @@ def Pair.insertRoot (P : Pair σ Γ Δ) {u v : ℕ} {T : VarType}
   hc₃ := coh_extS P.hθ₃ P.hc₃ _ hu (ref_insert_root Γ (.free u) T)
   sim := sim_extS P.hθ P.hθ' P.hc' hu hv P.sim
   simId := simId_extS hu P.simId
+
+
+/-- The child arrow and its pull-back are similar to the identity, which is what makes them a
+    pair rather than only a cancelling translation. -/
+theorem sim_arrow_pull (l : List VarType) :
+    Subst.Sim (ctxOf l).boxIn (Subst.idS σ (ctxOf l).boxIn)
+      ((arrowS σ (ctxOf (l.map VarType.bc)) id).comp (pullS σ l) (ok_pullS l) (coh_pullS l)) := by
+  refine Subst.sim_of ?_
+  intro v T _ hv
+  obtain ⟨u, rfl, hu⟩ := boxIn_item hv
+  obtain ⟨-, r, hr⟩ := reach_ppath hu
+  change SubE.Sim T (.ren (.step u .box)) ((pullS σ l).at (u.reroot (imgRoot id u.rt)))
+  have e : u.reroot (imgRoot id u.rt) = u := by
+    rw [hr]
+    change u.reroot (.free r) = u
+    rw [← hr]
+    exact reroot_rt_self u
+  rw [e, at_pull_tup hu r hr]
+  exact .ren_eta _ _
+
+/-- ⭐The `□` view of a world language, as a pair — so it can itself be pushed under further
+    views. -/
+def pairBox (l : List VarType) : Pair σ (ctxOf l).boxIn (ctxOf (l.map VarType.bc)) where
+  ι := arrowIdx id
+  ι' := pullIdx l
+  ι₃ := id
+  θ := arrowS σ (ctxOf (l.map VarType.bc)) id
+  θ' := pullS σ l
+  θ₃ := Subst.idS σ (ctxOf l).boxIn
+  hθ := ok_arrowS (childImg l)
+  hc := coh_arrowS (childImg l)
+  hθ' := ok_pullS l
+  hc' := coh_pullS l
+  hθ₃ := Subst.ok_idS
+  hc₃ := Subst.coh_idS
+  sim := sim_arrow_pull l
+  simId := fun _ _ _ => .refl _
+
+/-- Views stacked on a context. -/
+def Ctx.boxInN : ℕ → Ctx → Ctx
+  | 0, Γ => Γ
+  | n + 1, Γ => Ctx.boxInN n Γ.boxIn
+
+/-- The world language after `n` views. -/
+def bcN : ℕ → List VarType → List VarType
+  | 0, l => l
+  | n + 1, l => bcN n (l.map VarType.bc)
+
+/-- A pair pushed under `n` views. -/
+def Pair.boxN : (n : ℕ) → {Γ' Δ' : Ctx} → Pair σ Γ' Δ' →
+    Pair σ (Ctx.boxInN n Γ') (Ctx.boxInN n Δ')
+  | 0, _, _, P => P
+  | n + 1, _, _, P => Pair.boxN n P.box
+
+
+/-- The identity pair. -/
+def Pair.id (Γ : Ctx) : Pair σ Γ Γ where
+  ι := _root_.id
+  ι' := _root_.id
+  ι₃ := _root_.id
+  θ := Subst.idS σ Γ
+  θ' := Subst.idS σ Γ
+  θ₃ := Subst.idS σ Γ
+  hθ := Subst.ok_idS
+  hc := Subst.coh_idS
+  hθ' := Subst.ok_idS
+  hc' := Subst.coh_idS
+  hθ₃ := Subst.ok_idS
+  hc₃ := Subst.coh_idS
+  sim := by
+    intro v T hv
+    rw [Subst.at_comp Subst.ok_idS _ Subst.ok_idS Subst.coh_idS hv, Subst.at_idS]
+    change SubE.Sim T (SubE.ren v) ((Subst.idS σ Γ).at v)
+    rw [Subst.at_idS]
+    exact .refl _
+  simId := fun _ _ _ => .refl _
+
+instance presented_boxInN : ∀ (n : ℕ) {Γ : Ctx} [Γ.Presented], (Ctx.boxInN n Γ).Presented
+  | 0, _, h => h
+  | n + 1, Γ, _ => presented_boxInN n (Γ := Γ.boxIn)
+
+/-- ⭐Any number of `□` views over a world language is flattened into one. -/
+def flatBoxN : (n : ℕ) → (l : List VarType) →
+    Flat σ (Ctx.boxInN n (ctxOf l)) (ctxOf (bcN n l))
+  | 0, l => (Pair.id (ctxOf l)).toFlat (Ctx.Presented.noProjLast _)
+  | n + 1, l =>
+      (((pairBox l).boxN n).toFlat (Ctx.Presented.noProjLast _)).comp
+        (flatBoxN n (l.map VarType.bc))
 
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
@@ -389,6 +477,15 @@ theorem completenessB_diaIn (hB : ModalSys.B = true) {l : List VarType} {x : Var
       ((ctxOf l).diaIn x).NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ :=
   completenessB_flat hB (flatDia l hx) (Ctx.noProjLast_diaIn _ x) hval
+
+
+/-- ⭐Completeness in any number of stacked `□` views over a world language. -/
+theorem completenessB_boxInN (hB : ModalSys.B = true) (n : ℕ) (l : List VarType)
+    {Δ : List (WFF σ (Ctx.boxInN n (ctxOf l)) 0)} {φ : WFF σ (Ctx.boxInN n (ctxOf l)) 0}
+    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env (Ctx.boxInN n (ctxOf l)) w),
+      (Ctx.boxInN n (ctxOf l)).NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
+    Provable Δ φ :=
+  completenessB_flat hB (flatBoxN n l) (Ctx.Presented.noProjLast _) hval
 
 end BArrow
 
