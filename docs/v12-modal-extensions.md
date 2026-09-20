@@ -825,9 +825,10 @@ content of a possible object.
   - *Completeness* comes from the arrow-based canonical model instead
     (`docs/v12-arrow-canonical.md` §6a), so far with `[ModalSys.NoTFour]` (T and 4 off; D and
     strong D may be on) and for contexts of declared variables: a world language `ctxOf l₀`, or
-    any root-only context carried onto one by a renaming of roots (`completenessB_rename`,
-    `QML_v12m_BRename`). Extending it to presentations that use `boxIn` or `diaIn`, and to T and
-    4, is open.
+    any context of declarations with distinct names (`completenessB_ofDecls`,
+    `QML_v12m_BRename`), and a single `boxIn` or `diaIn` view over a world language
+    (`completenessB_boxIn`, `completenessB_diaIn`, `QML_v12m_BFlat`). Extending it to arbitrary
+    presentations (stacked views, a root declared after a view), and to T and 4, is open.
   - *Not yet*: the two strong Bs below.
 - **Redesigned 2026-09-19** around necessary objects, and sorted by §2a's criterion (weak = no new
   objects, strong = new objects). One weak B and **two** strong Bs. `P` below is a formula closed

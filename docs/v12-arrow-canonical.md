@@ -343,7 +343,8 @@ Sorry-free; axioms `propext`, `Classical.choice`, `Quot.sound`. The files, in de
 | `BNet*`, `BFair` | the network: a tree of nodes, each edge a forward and a back arrow with committed variables; four operations (Henkin witness, new child, extend forward arrow, extend back arrow) on a fair schedule; invariants (`Good`), monotonicity (`Ext`), fairness (`fwd_total`, `back_total`, `henk_ex`, `child_box`, `child_dia`) |
 | `BCanonWorld`, `BCanonDom`, `BCanonFunc`, `BCanonModel` | the model from abstract data `BData`: raw objects, denotations `rden` translating along arrows, the function algebra, definable objects as domains |
 | `BCanonTerm`, `BTruth` | pushing the canonical environment along an arrow *is* the target's canonical environment read through the arrow (`boxPush_canon`, `diaPush_canon`); so the modal cases of the truth lemma are `Model.sat_subst` plus transfer/existence |
-| `BRename` | renaming the declared roots of a context: `renS` with its inverse (`subst_renS_renS`), so completeness transports from a world language `ctxOf l` to any root-only context the user writes (`completenessB_rename`) |
+| `BRename` | renaming the declared roots of a context: `renS` with its inverse (`subst_renS_renS`), so completeness transports from a world language `ctxOf l` to any root-only context the user writes (`completenessB_rename`); for `Ctx.ofDecls ds` with distinct names the renaming is read off the declarations (`completenessB_ofDecls`) |
+| `BFlat` | `Flat σ Γ Δ`: provability backwards, truth forwards along a translation, composable; built from a cancelling pair of substitutions (`Flat.ofPair`).  The child arrow is such a pair, so a `□` or `◇_x` view over a world language is flattened (`completenessB_boxIn`, `completenessB_diaIn`) |
 | `BLimitPre`, `BLimit` | `BData` from the chain's limit (`bdata`): worlds are the nodes ever born, stage `i` is round `birth + i`, images are the committed ones, and stage `i` goes to the first target stage where all its variables are committed |
 
 What the design turned out to need, beyond §2–6:
@@ -366,11 +367,12 @@ What the design turned out to need, beyond §2–6:
   arrow and relational model classes validate exactly the same sequents. Whether the same trick
   collapses B + 4 and 5 is open; that is where round-trip coherence would bite.
 
-Open: presented contexts built with `boxIn` or `diaIn` (whose variables are view items, not roots;
-the reduction is sketched above), strong completeness, and B with T or 4.  Root-only contexts are
-covered whatever their names, by `BRename`; what a caller must still supply there is the renaming
-itself and its inverse, since the combinatorial construction of one from a list of distinct
-declarations is not written.
+Root-only contexts are covered whatever their names (`completenessB_ofDecls`), and so is a single
+`boxIn` or `diaIn` view over a world language (`BFlat`).  What is left for arbitrary presentations
+is to compose those: a pair for a root declared after a view, and the push of a pair under a view
+(for which `sim_box_comp` is in place, but note that `Subst.Sim` is not transitive — at `𝟙` two
+entries can each be similar to a third without being similar to each other, so compose transport,
+not substitutions).  Also open: strong completeness, and B with T or 4.
 
 ## 7. What carries over, and what it costs
 
