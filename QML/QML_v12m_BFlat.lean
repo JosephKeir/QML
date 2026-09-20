@@ -156,6 +156,195 @@ def Pair.box (P : Pair σ Γ Δ) : Pair σ Γ.boxIn Δ.boxIn where
   sim := Subst.sim_box_comp P.hθ P.hθ' P.hc' P.sim
   simId := sim_box_of P.simId
 
+
+/-! ## Extending a pair by a declared root -/
+
+omit [ModalSys.NoTFour] in
+/-- Substitutions agreeing on the addresses of a root agree at them. -/
+theorem at_eq_of_agree {Δ : Ctx} {θ₁ θ₂ : Subst σ Δ} {p : Root → Prop}
+    (h : ∀ w : VarSymb, p w.rt → θ₁ w = θ₂ w) :
+    ∀ w : VarSymb, p w.rt → θ₁.at w = θ₂.at w
+  | .root _, hw => h _ hw
+  | .step w s, hw => by
+      simp only [Subst.at]
+      split_ifs with _
+      · rw [at_eq_of_agree h w hw]
+      · exact h _ hw
+
+omit [ModalSys.NoTFour] in
+/-- A reachable address is not rooted at a fresh name. -/
+theorem rt_ne_of_fresh {Δ : Ctx} {r : Root} (hfr : Δ.RootFresh r) :
+    ∀ {w : VarSymb} {T : VarType}, Δ.ref w = some T → w.rt ≠ r
+  | .root r', T, h, he => by
+      change Δ (.root r') = some T at h
+      have hrr : r' = r := he
+      subst hrr
+      rw [hfr.root] at h
+      cases h
+  | .step w s, T, h, he => by
+      simp only [Ctx.ref] at h
+      split_ifs at h with hs
+      · cases hU : Δ.ref w with
+        | none => rw [hU] at h; cases h
+        | some U => exact rt_ne_of_fresh hfr hU he
+      · rw [hfr _ he] at h
+        cases h
+
+/-- A substitution extended by one root, which goes to a root of the target. -/
+def extS {Δ Δ' : Ctx} (θ : Subst σ Δ) (hle : Δ.Le Δ') (u v : ℕ) : Subst σ Δ' :=
+  fun w => if w.rt = .free u then .ren (w.reroot (.free v)) else (θ.mono hle) w
+
+/-- Where it sends annotation indices. -/
+def extIdx (ι : VarSymb → VarSymb) (u v : ℕ) (a : VarSymb) : VarSymb :=
+  if a.rt = .free u then a.reroot (.free v) else ι a
+
+omit [ModalSys.NoTFour] in
+theorem ok_extS {Γ Δ Δ' : Ctx} {θ : Subst σ Δ} (hθ : Subst.Ok Γ θ) (hle : Δ.Le Δ')
+    {u v : ℕ} {T : VarType} (hfr : Γ.RootFresh (.free u))
+    (hv : Δ'.ref (.root (.free v)) = some T) :
+    Subst.Ok (Γ.insert (.free u) T) (extS θ hle u v) := by
+  intro w U hlp hw
+  simp only [Ctx.insert] at hw
+  by_cases hwu : w = .root (.free u)
+  · subst hwu
+    rw [if_pos rfl] at hw
+    cases hw
+    simp only [extS]
+    rw [if_pos (show (VarSymb.root (Root.free u)).rt = Root.free u from rfl)]
+    exact hv
+  · rw [if_neg hwu] at hw
+    have hrt : w.rt ≠ .free u := fun he => by rw [hfr w he] at hw; cases hw
+    simp only [extS]
+    rw [if_neg hrt]
+    exact SubE.okRef_mono hle (hθ w U hlp hw)
+
+omit [ModalSys.NoTFour] in
+theorem coh_extS {ι : VarSymb → VarSymb} {Γ Δ Δ' : Ctx} {θ : Subst σ Δ} (hθ : Subst.Ok Γ θ)
+    (hc : Subst.Coh ι Γ θ) (hle : Δ.Le Δ') {u v : ℕ} {T : VarType}
+    (hfr : Γ.RootFresh (.free u)) (hv : Δ'.ref (.root (.free v)) = some T) :
+    Subst.Coh (extIdx ι u v) (Γ.insert (.free u) T) (extS θ hle u v) := by
+  refine Subst.coh_of (ok_extS hθ hle hfr hv) ?_
+  intro w U hlp hw p
+  simp only [Ctx.insert] at hw
+  by_cases hwu : w = .root (.free u)
+  · subst hwu
+    simp only [extS, extIdx]
+    rw [if_pos (show (VarSymb.root (Root.free u)).rt = Root.free u from rfl),
+      if_pos (show ((VarSymb.root (Root.free u)).ext p).rt = Root.free u by
+        rw [VarSymb.ext_rt]; rfl)]
+    change (VarSymb.root (Root.free v)).ext p = _
+    rw [VarSymb.reroot_eq, VarSymb.ext_path]
+    rfl
+  · rw [if_neg hwu] at hw
+    have hrt : w.rt ≠ .free u := fun he => by rw [hfr w he] at hw; cases hw
+    simp only [extS, extIdx]
+    rw [if_neg hrt, if_neg (show ¬ (w.ext p).rt = Root.free u by rw [VarSymb.ext_rt]; exact hrt)]
+    show ((θ w).mono hle).idxAlong p = _
+    rw [SubE.idxAlong_mono, ← Subst.at_nonproj θ hlp]
+    exact hc w U ((Ctx.ref_nonproj Γ hlp).trans hw) p
+
+
+omit [ModalSys.NoTFour] in
+/-- The extension of a substitution similar to the identity is similar to the identity. -/
+theorem simId_extS {Γ : Ctx} {θ : Subst σ Γ} {u : ℕ} {T : VarType} (hfr : Γ.RootFresh (.free u))
+    (h : Subst.Sim Γ θ (Subst.idS σ Γ)) :
+    Subst.Sim (Γ.insert (.free u) T) (extS θ (Ctx.le_insert hfr.root T) u u)
+      (Subst.idS σ (Γ.insert (.free u) T)) := by
+  refine Subst.sim_of ?_
+  intro w U hlp hw
+  simp only [Ctx.insert] at hw
+  by_cases hwu : w = .root (.free u)
+  · subst hwu
+    simp only [extS]
+    rw [if_pos (show (VarSymb.root (Root.free u)).rt = Root.free u from rfl)]
+    exact .refl _
+  · rw [if_neg hwu] at hw
+    have hrt : w.rt ≠ .free u := fun he => by rw [hfr w he] at hw; cases hw
+    simp only [extS]
+    rw [if_neg hrt]
+    have hs := h w U ((Ctx.ref_nonproj Γ hlp).trans hw)
+    rw [Subst.at_idS, Subst.at_nonproj θ hlp] at hs
+    exact hs.mono (Ctx.le_insert hfr.root T)
+
+
+omit [ModalSys.NoTFour] in
+theorem ref_insert_root (Γ : Ctx) (r : Root) (T : VarType) :
+    (Γ.insert r T).ref (.root r) = some T := by
+  change (Γ.insert r T) (.root r) = some T
+  simp [Ctx.insert]
+
+omit [ModalSys.NoTFour] in
+/-- Away from the new root, the extension is the old substitution. -/
+theorem at_extS_of_ne {Δ Δ' : Ctx} {θ : Subst σ Δ} {hle : Δ.Le Δ'} {u v : ℕ} {y : VarSymb}
+    (hy : y.rt ≠ .free u) : (extS θ hle u v).at y = (θ.at y).mono hle := by
+  rw [at_eq_of_agree (p := fun r => r ≠ Root.free u) (θ₂ := θ.mono hle)
+    (fun z hz => by simp only [extS]; rw [if_neg hz]) y hy, Subst.at_mono]
+
+omit [ModalSys.NoTFour] in
+/-- ⭐Going out and back along extended substitutions is the extended composite. -/
+theorem sim_extS {Γ Δ : Ctx} {ι' : VarSymb → VarSymb} {θ : Subst σ Δ} {θ' : Subst σ Γ}
+    {θ₃ : Subst σ Γ} (hθ : Subst.Ok Γ θ) (hθ' : Subst.Ok Δ θ') (hc' : Subst.Coh ι' Δ θ')
+    {u v : ℕ} {T : VarType} (hu : Γ.RootFresh (.free u)) (hv : Δ.RootFresh (.free v))
+    (hsim : Subst.Sim Γ θ₃ (θ.comp θ' hθ' hc')) :
+    Subst.Sim (Γ.insert (.free u) T) (extS θ₃ (Ctx.le_insert hu.root T) u u)
+      ((extS θ (Ctx.le_insert hv.root T) u v).comp
+        (extS θ' (Ctx.le_insert hu.root T) v u)
+        (ok_extS hθ' (Ctx.le_insert hu.root T) hv (ref_insert_root Γ (.free u) T))
+        (coh_extS hθ' hc' (Ctx.le_insert hu.root T) hv (ref_insert_root Γ (.free u) T))) := by
+  have heq : ∀ (y : VarSymb) (U : VarType), Δ.ref y = some U →
+      (extS θ' (Ctx.le_insert hu.root T) v u).at y = (θ'.at y).mono (Ctx.le_insert hu.root T) :=
+    fun y U hy => at_extS_of_ne (rt_ne_of_fresh hv hy)
+  refine Subst.sim_of ?_
+  intro w U hlp hw
+  simp only [Ctx.insert] at hw
+  have hlu := Ctx.le_insert hu.root T
+  have hlv := Ctx.le_insert hv.root T
+  by_cases hwu : w = .root (.free u)
+  · subst hwu
+    show SubE.Sim U ((extS θ₃ hlu u u) (.root (.free u)))
+      (SubE.comp (extS θ' hlu v u) _ _ ((extS θ hlv u v) (.root (.free u))))
+    simp only [extS]
+    rw [if_pos (show (VarSymb.root (Root.free u)).rt = Root.free u from rfl)]
+    rw [if_pos (show (VarSymb.root (Root.free u)).rt = Root.free u from rfl)]
+    change SubE.Sim U (.ren (VarSymb.root (Root.free u)))
+      (if (VarSymb.root (Root.free v)).rt = Root.free v then
+          SubE.ren ((VarSymb.root (Root.free v)).reroot (Root.free u))
+        else (θ'.mono hlu) (VarSymb.root (Root.free v)))
+    rw [if_pos (show (VarSymb.root (Root.free v)).rt = Root.free v from rfl)]
+    exact .refl _
+  · rw [if_neg hwu] at hw
+    have hrt : w.rt ≠ .free u := fun he => by rw [hu w he] at hw; cases hw
+    have hwr : Γ.ref w = some U := (Ctx.ref_nonproj Γ hlp).trans hw
+    have hs := hsim w U hwr
+    rw [Subst.at_nonproj _ hlp, Subst.at_comp hθ θ' hθ' hc' hwr,
+      Subst.at_nonproj θ hlp] at hs
+    show SubE.Sim U ((extS θ₃ hlu u u) w) (SubE.comp (extS θ' hlu v u) _ _ ((extS θ hlv u v) w))
+    simp only [extS]
+    rw [if_neg hrt]
+    rw [if_neg hrt]
+    show SubE.Sim U ((θ₃ w).mono hlu) (SubE.comp (extS θ' hlu v u) _ _ ((θ w).mono hlv))
+    rw [SubE.comp_mono θ' hθ' hc' hlv hlu _ _ _ heq (hθ w U hlp hw)]
+    exact hs.mono hlu
+
+/-- ⭐A pair extended by a root declared on each side. -/
+def Pair.insertRoot (P : Pair σ Γ Δ) {u v : ℕ} {T : VarType}
+    (hu : Γ.RootFresh (.free u)) (hv : Δ.RootFresh (.free v)) :
+    Pair σ (Γ.insert (.free u) T) (Δ.insert (.free v) T) where
+  ι := extIdx P.ι u v
+  ι' := extIdx P.ι' v u
+  ι₃ := extIdx P.ι₃ u u
+  θ := extS P.θ (Ctx.le_insert hv.root T) u v
+  θ' := extS P.θ' (Ctx.le_insert hu.root T) v u
+  θ₃ := extS P.θ₃ (Ctx.le_insert hu.root T) u u
+  hθ := ok_extS P.hθ _ hu (ref_insert_root Δ (.free v) T)
+  hc := coh_extS P.hθ P.hc _ hu (ref_insert_root Δ (.free v) T)
+  hθ' := ok_extS P.hθ' _ hv (ref_insert_root Γ (.free u) T)
+  hc' := coh_extS P.hθ' P.hc' _ hv (ref_insert_root Γ (.free u) T)
+  hθ₃ := ok_extS P.hθ₃ _ hu (ref_insert_root Γ (.free u) T)
+  hc₃ := coh_extS P.hθ₃ P.hc₃ _ hu (ref_insert_root Γ (.free u) T)
+  sim := sim_extS P.hθ P.hθ' P.hc' hu hv P.sim
+  simId := simId_extS hu P.simId
+
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
 /-- ⭐**Completeness for weak B in any context flattened into a world language.** -/
