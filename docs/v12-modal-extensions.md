@@ -826,9 +826,10 @@ content of a possible object.
     (`docs/v12-arrow-canonical.md` §6a), so far with `[ModalSys.NoTFour]` (T and 4 off; D and
     strong D may be on) and for contexts of declared variables: a world language `ctxOf l₀`, or
     any context of declarations with distinct names (`completenessB_ofDecls`,
-    `QML_v12m_BRename`), and a single `boxIn` or `diaIn` view over a world language
-    (`completenessB_boxIn`, `completenessB_diaIn`, `QML_v12m_BFlat`). Extending it to arbitrary
-    presentations (stacked views, a root declared after a view), and to T and 4, is open.
+    `QML_v12m_BRename`), and `boxIn`/`diaIn` views over a world language, stacked to any depth
+    (`completenessB_boxIn`, `completenessB_diaIn`, `completenessB_boxInN`, `QML_v12m_BFlat`).
+    Open: presentations mixing declared roots with views (blocked on composing pairs — see
+    `v12-arrow-canonical.md` §6a), and T and 4.
   - *Not yet*: the two strong Bs below.
 - **Redesigned 2026-09-19** around necessary objects, and sorted by §2a's criterion (weak = no new
   objects, strong = new objects). One weak B and **two** strong Bs. `P` below is a formula closed
