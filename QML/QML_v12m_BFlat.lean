@@ -611,6 +611,36 @@ def Chain.insertRoot (T : VarType) : {Γ Δ : Ctx} → Chain σ Γ Δ → (u v :
         (C.insertRoot T (Ctx.Presented.bound _) v
           (Ctx.Presented.fresh (Ctx.Presented.bound _) le_rfl) hv)
 
+
+/-- Append a pair at the far end of a chain. -/
+def Chain.snoc : {Γ Δ E : Ctx} → Chain σ Γ Δ → Pair σ Δ E → E.Presented → Chain σ Γ E
+  | _, _, _, .nil hΔ, P, hE => .cons hΔ P (.nil hE)
+  | _, _, _, .cons hΓ Q C, P, hE => .cons hΓ Q (C.snoc P hE)
+
+/-- Where a chain sends a witness. -/
+def Chain.diaIdx : {Γ Δ : Ctx} → Chain σ Γ Δ → VarSymb → VarSymb
+  | _, _, .nil _, x => x
+  | _, _, .cons _ P C, x => C.diaIdx (P.ι x)
+
+omit [ModalSys.NoTFour] [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+/-- A chain sends a witness to a witness. -/
+theorem Chain.witness : {Γ Δ : Ctx} → (C : Chain σ Γ Δ) → {x : VarSymb} → {X : VarType} →
+    Γ.ref x = some (.VTypeDia X) → ∃ Y, Δ.ref (C.diaIdx x) = some (.VTypeDia Y)
+  | _, _, .nil _, _, X, hx => ⟨X, hx⟩
+  | _, _, .cons _ P C, _, _, hx => by
+      obtain ⟨Y, hY⟩ := P.witness hx
+      exact C.witness hY
+
+/-- ⭐A chain pushed under `◇_x`: the witness travels along the links. -/
+noncomputable def Chain.dia : {Γ Δ : Ctx} → (C : Chain σ Γ Δ) → {x : VarSymb} → {X : VarType} →
+    Γ.ref x = some (.VTypeDia X) → Chain σ (Γ.diaIn x) (Δ.diaIn (C.diaIdx x))
+  | _, _, .nil hΓ, _, _, _ =>
+      letI := hΓ
+      .nil inferInstance
+  | _, _, .cons hΓ P C, _, _, hx =>
+      letI := hΓ
+      .cons inferInstance (P.dia hx) (C.dia (P.witness hx).choose_spec)
+
 /-! ## Views over a world language -/
 
 /-- ⭐A `□` view over a world language is flattened by the arrow into a new child. -/
@@ -625,6 +655,54 @@ noncomputable def flatDia (l : List VarType) {x : VarSymb} {X : VarType}
   Flat.ofPair (Ctx.noProjLast_diaIn _ x) _ (pullXS σ l x) (ok_arrowXS (childXImg l X) hx
     (childX_cx l X)) (coh_arrowXS (childXImg l X) hx (childX_cx l X)) (ok_pullXS l hx)
     (coh_pullXS l hx) (subst_pullX_arrowX l hx)
+
+
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+/-- The witness arrow and its pull-back are similar to the identity. -/
+theorem sim_arrowX_pull (l : List VarType) {x : VarSymb} {X : VarType}
+    (hx : (ctxOf l).ref x = some (.VTypeDia X)) :
+    Subst.Sim ((ctxOf l).diaIn x) (Subst.idS σ ((ctxOf l).diaIn x))
+      ((arrowXS σ (ctxOf (X :: l.map VarType.bc)) id x l.length).comp (pullXS σ l x)
+        (ok_pullXS l hx) (coh_pullXS l hx)) := by
+  refine Subst.sim_of ?_
+  intro v T _ hv
+  rcases diaIn_item hv with ⟨u, rfl, hu⟩ | ⟨rfl, _⟩
+  · obtain ⟨-, r, hr⟩ := reach_ppath hu
+    change SubE.Sim T (.ren (.step u .box)) ((pullXS σ l x).at (u.reroot (imgRoot id u.rt)))
+    have e : u.reroot (imgRoot id u.rt) = u := by
+      rw [hr]
+      change u.reroot (.free r) = u
+      rw [← hr]
+      exact reroot_rt_self u
+    rw [e, at_pullX_tup x hu]
+    change SubE.Sim T _ (.tm (Term.mono _ (Term.eta (.step u .box) T _)))
+    rw [Term.mono_eta]
+    exact .ren_eta _ _
+  · change SubE.Sim T (.ren (.step x .dia))
+      ((if x = x then SubE.ren (.root (.free l.length)) else .hide).comp _ _ _)
+    rw [if_pos rfl]
+    change SubE.Sim T _ (pullXS σ l x (.root (.free l.length)))
+    rw [pullX_cx]
+    exact .refl _
+
+/-- ⭐The `◇_x` view of a world language, as a pair. -/
+noncomputable def pairDia (l : List VarType) {x : VarSymb} {X : VarType}
+    (hx : (ctxOf l).ref x = some (.VTypeDia X)) :
+    Pair σ ((ctxOf l).diaIn x) (ctxOf (X :: l.map VarType.bc)) where
+  ι := arrowXIdx id x l.length
+  ι' := pullXIdx l x
+  ι₃ := id
+  θ := arrowXS σ (ctxOf (X :: l.map VarType.bc)) id x l.length
+  θ' := pullXS σ l x
+  θ₃ := Subst.idS σ ((ctxOf l).diaIn x)
+  hθ := ok_arrowXS (childXImg l X) hx (childX_cx l X)
+  hc := coh_arrowXS (childXImg l X) hx (childX_cx l X)
+  hθ' := ok_pullXS l hx
+  hc' := coh_pullXS l hx
+  hθ₃ := Subst.ok_idS
+  hc₃ := Subst.coh_idS
+  sim := sim_arrowX_pull l hx
+  simId := fun _ _ _ => .refl _
 
 /-- ⭐Completeness in the `□` view of a world language. -/
 theorem completenessB_boxIn (hB : ModalSys.B = true) {l : List VarType}
@@ -651,6 +729,45 @@ theorem completenessB_boxInN (hB : ModalSys.B = true) (n : ℕ) (l : List VarTyp
       (Ctx.boxInN n (ctxOf l)).NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ :=
   completenessB_flat hB (flatBoxN n l) (Ctx.Presented.noProjLast _) hval
+
+
+/-! ## Every presentation flattens
+
+`CtxExpr.insertFree` permits shadowing, which a renaming cannot undo, so the statement asks each
+declaration to be fresh in its own prefix — a decidable arithmetic condition (`Fresh`). -/
+
+/-- A presentation declaring each name fresh, and taking views only at witnesses. -/
+def _root_.V12M.CtxExpr.Fresh : CtxExpr → Prop
+  | .empty => True
+  | .insertFree e u _ => e.Fresh ∧ e.freeBound ≤ u
+  | .boxIn e => e.Fresh
+  | .diaIn e x => e.Fresh ∧ ∃ X, e.denote.ref x = some (.VTypeDia X)
+
+/-- ⭐**Every fresh presentation flattens into a world language**, one constructor at a time:
+    a declared root by `Chain.insertRoot`, a `□` view by `Chain.box` then the child arrow, a `◇_x`
+    view by `Chain.dia` then the witness arrow. -/
+noncomputable def _root_.V12M.CtxExpr.chain : (e : CtxExpr) → e.Fresh →
+    Σ l : List VarType, Chain σ e.denote (ctxOf l)
+  | .empty, _ => ⟨[], .nil ⟨.empty, rfl⟩⟩
+  | .insertFree e u T, h =>
+      ⟨T :: (e.chain h.1).1,
+        (e.chain h.1).2.insertRoot T u (e.chain h.1).1.length (CtxExpr.fresh e u h.2)
+          (ctxOf_fresh le_rfl)⟩
+  | .boxIn e, h =>
+      ⟨(e.chain h).1.map VarType.bc, ((e.chain h).2.box).snoc (pairBox _) inferInstance⟩
+  | .diaIn e _, h =>
+      ⟨((e.chain h.1).2.witness h.2.choose_spec).choose :: (e.chain h.1).1.map VarType.bc,
+        ((e.chain h.1).2.dia h.2.choose_spec).snoc
+          (pairDia _ ((e.chain h.1).2.witness h.2.choose_spec).choose_spec) inferInstance⟩
+
+/-- ⭐**Completeness for weak B in every presented context** whose presentation is fresh. -/
+theorem completenessB_presented (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Fresh)
+    {Δ : List (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
+    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env e.denote w),
+      e.denote.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
+    Provable Δ φ :=
+  letI : e.denote.Presented := ⟨e, rfl⟩
+  completenessB_flat hB (e.chain he).2.toFlat (Ctx.Presented.noProjLast _) hval
 
 end BArrow
 
