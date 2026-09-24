@@ -113,6 +113,18 @@ relative to relational frames unless every arrow-model we need can be turned int
 one. Quantified modal logics complete for functor semantics but not for Kripke semantics are known
 to exist (Ghilardi), so this has to be checked, not assumed.
 
+
+**⚠ A principle that may separate the two classes (2026-09-25, paper).**  Everything checked so far
+says arrow models and relational models validate the same sequents: soundness is
+universe-polymorphic, the canonical model for weak B came out relational, and §6a's unravelling was
+not needed.  But 4's `◇`-side map `◇◇A → ◇A` (`v12-modal-extensions.md` §3 4) is sound on arrow
+frames and **not** on arbitrary relational ones: its extent is the set of composites, and where two
+intermediate worlds reach the same world with different contents the value function is not well
+defined, so — `posEval` being injective — no such object exists.  Arrow frames keep the composites
+apart; relational frames need not.  If that flag is ever wanted, the unravelling argument above has to
+be revisited, since the copies it makes are per path and so would validate the join while the frame it
+came from does not.
+
 **Turning an arrow-model into a relational one (2026-09-19, paper).** Copy worlds, and let each
 relational edge take its values from one arrow; a copy then behaves exactly like the world it
 copies, and "copies the same world" is a bisimulation, objects included, so truth is preserved.

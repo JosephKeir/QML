@@ -186,74 +186,74 @@ criterion says which are *available*, not which is cheapest:
 - Plan: keep components as separate flags where the syntax allows it. Treat "which flag sets are
   complete" as a feasibility question beside the closure question of §4, settled case by case.
 
-## 2c. Routes and relations *(2026-09-25, paper)*
+## 2c. From propositional rules to object-level maps *(2026-09-25, paper)*
 
-§3 T's realisation predicate and §3 B's `Back` are the same device twice, and setting them side by
-side says something about how many variants each flag really has.
+The object-level principles are the propositional ones read as **maps between carriers, in the same
+direction as the implication**.  Enumerating them systematically says how many variants a flag has,
+which are free, and — in two cases — why a principle cannot be stated at all.
 
-**The device.** A frame condition names a **route** through the frame.  A modal object at the origin
-has a value along that route.  The projection — evaluating it — is *free*, needing no frame
-condition; the strong principle is that the projection is **surjective**; and a primitive relation
-*names* which local object a modal object returns:
+**Axis 1: duality.**  Each propositional rule can be written two ways (§2a); some are self-dual.
+Each way gives one map:
 
-| Flag | route | relation | strong axiom |
+| Flag | propositional | object-level map | grade and status |
 |---|---|---|---|
-| T | identity loop `w → w` | `Here x t` (§3 T) | `∀a:A. ∃x:◇A. Here x a` |
-| D | one leg `w → v`, no return | — (nothing to relate; see below) | `⊢ ∃x:◇𝟙. ◇_x ⊤` *(done)* |
-| 4 | composite `w → v → s` | — (the value law is definitional) | the lift, open |
-| B | out and back `w → v → w` | `Back u t`, `BackW c t` (§3 B) | `∀a:A. ∃u:□□A. Back u a` |
-| 5 | out and over `w → v`, `w → s`, so `v → s` | source and target both inside modalities | to be re-sorted |
+| T | `□φ → φ` | `□A → A` | function: `necExtract` *(done, weak)* |
+| | `φ → ◇φ` | `A → ◇A` | existence: `posRet_exists` *(done, strong T)*; named: `Here` (§3 T) |
+| D | `□φ → ◇φ` *(self-dual)* | `□A → ◇A` | existence at `𝟙` + strength: `D_ex` *(done, strong D)* |
+| 4 | `□φ → □□φ` | `□A → □□A` | function: `necDup` *(done, weak)* |
+| | `◇◇φ → ◇φ` | `◇◇A → ◇A` | **missing** — the join; see §3 4 |
+| B | `φ → □◇φ` | `A → □◇A` | (ii) gathered, carrier `□◇A` |
+| | `◇□φ → φ` | `◇□A → A` | (i)'s inward dual; named: `Back` (§3 B) |
+| 5 | `◇φ → □◇φ` | `◇A → □◇A` | function (determinate transport) |
+| | `◇□φ → □φ` | `◇□A → □A` | existence: §3 5's carrier principle |
 
-In each case the rules are the same two, with the route's quantifiers: **`∀`-route elimination**
-(`Here x t, □_x φ ⊢ φ(t)`; `Back u t, ◇□φ ⊢ φ(t)`) and **`∃`-route introduction** (`Here x t, φ(t) ⊢
-◇_x φ`; `Back u t, φ(t) ⊢ □◇φ`).  The pairing of quantifiers is forced by soundness, not chosen
-(§3 B).
+So D, being self-dual, has **one** object-level map — which is why it was the cheapest flag. T, 4, B
+and 5 have two each, and they are not interderivable: they concern different carriers.
 
-**⭐When is the pinned form statable?  Exactly when the route returns to the origin.**  The relation's
-two arguments are a modal object and a local object, so both must be in one scope.
+**Axis 2: grade.**  Each map can be asserted at three strengths, and which is appropriate depends on
+whether the value is **canonically determined**:
 
-- **T and B**: the route returns to `w`, so both live at `w` and the relation is statable.  This is
-  why `Here` and `Back` work, and why §3 B's ⚠ note about the ill-defined return-path collapse is not
-  an obstacle for them: the relation never needs an *address* at `w` for the round-trip value, only a
-  formula relating it to one.
-- **D**: the route does not return, but D's whole content is that a route *exists*, so no value
-  relation is wanted.  That is why strong D is so cheap — a witness at `𝟙`, no carrier, no value —
-  and why for D "strong" and "witnessed" coincide: naming the route *is* the new object.
-- **4's restriction (weak)**: the value law along the composite —
-  `necEval (necEval (dup n) v) s = necEval n s` — is **definitional**, built into how `keep`
-  evaluates, because `u.keep` is the same object restricted rather than a new one.  No axiom, hence
-  no relation.
-- **4's lift (strong) and 5**: the source is an object of `v`, the carrier an object of `w`, and
-  **neither scope contains both** — inside `□` the `w`-object is unavailable except as a `□`-item,
-  outside it the `v`-object is invisible.  So the pinned form cannot even be written, and the
-  principle is forced to be schematic.  That is a structural reason for the open status recorded in
-  §2b and §8.1, not just a difficulty of proof.
+| grade | form | when |
+|---|---|---|
+| function | an `Ops` field with an evaluation law | the value is determinate — evaluate at the identity arrow (T), at the composite (4) |
+| relation | a primitive naming the value, choice-free | the value exists but is not canonical: `Here`, `Back` |
+| existence | `∃` in the object language | only that *some* value exists: `D_ex`, `posRet_exists`, 5's carrier principle |
 
-**⭐How many variants has a flag, then?**  §2a's "decorating the operators does not generate new
-principles" holds at the **propositional** level, where the decorated forms follow from the plain
-ones by `□ψ ⊢ □_x ψ` and `◇_x φ ⊢ ◇φ`.  At the **object** level it does not, because the principle
-names a carrier and the carrier's type is part of it.  The axes are:
+This is not a free choice.  `necExtract` and `necDup` are functions because their arrows are
+canonical; strong D, strong T and 5's outward half are existential because theirs are not.  The
+relation grade sits between: it pins one value without choosing a canonical one, which is what makes
+`Here` and `Back` an improvement on their per-formula predecessors (§3 T, §3 B).
 
-1. **What kind of content**: propositional (no objects), route-existence (D), or a value relation
-   (T, B, 4's lift).
-2. **Which legs are witnessed** — `2ⁿ` for an `n`-leg route.  This fixes the carrier type: for B's
-   two legs, `□□A`, `◇□A`, `□◇A`, `◇◇A`.
-3. **The quantifier per leg** — forced once the predicate's quantifiers are fixed, by the soundness
-   pairing.
-4. **Whether the pinned form is available at all** — the returning-route criterion above.
+**Axis 3: witnessed or not.**  Each `◇` in a map may range over all arrows or over a named object's
+extent, so an `n`-diamond map has up to `2ⁿ` variants, with the carrier changing accordingly (§3 B
+tabulates B's four).  §2a's "decorating the operators does not generate new principles" holds
+**propositionally**, where the decorated forms follow by `□ψ ⊢ □_x ψ` and `◇_x φ ⊢ ◇φ`.  At the object
+level it fails, because the carrier's type is part of the principle: witnessing a `∀` leg weakens,
+witnessing an `∃` leg strengthens.
 
-So a one-leg flag with only existence content (D) really does have two variants, weak and strong, and
-they coincide with unwitnessed and witnessed.  A two-leg flag with value content (B) has the four
-carriers, each with a pinned and a per-formula form, and the weak propositional principle besides.
-That is the sense in which there are more than two variants per flag, and the extra ones are not
-notational: witnessing the `∀` leg weakens the principle, witnessing the `∃` leg strengthens it.
+**⭐Axis 4: can it be named at all?  Names travel inward.**  A context principle adds names to
+*inner* contexts (`u.keep` inside `Γ.boxIn`; `x` staying visible under `□`).  Nothing adds an inner
+object's name to the outer context.  So:
+
+| map | direction | statable as |
+|---|---|---|
+| weak 4, `Nec(w) → Nec(v)` | inward | context principle (`keep`) ✓ |
+| 5's `Pos(w) → Pos(v)` | inward | context principle (`◇`-items stay visible) ✓ |
+| T's `A → ◇A`, B's round trip | **returns to the origin** | a relation at `w`, both arguments in scope ✓ |
+| 4's lift `Nec(v) → Nec(w)` | outward, no return | ✗ — forced schematic |
+| 4's `Pos(v) → Pos(w)` | outward, no return | ✗ per arrow; gathering gives the join, at a cost (§3 4) |
+| 5's `Nec(v) → Nec(w)` | outward, no return | ✗ pinned; hence its existential carrier principle |
+
+This subsumes the earlier "the pinned form is statable exactly when the route returns to the origin":
+a returning route is what puts a modal object and a local object in one scope.  It also explains the
+open status of 4's lift and of 5's outward half structurally, rather than as a difficulty of proof.
 
 **A consequence worth following up.** D's rejected graph form
 `∀u:□A. ∃x:◇A. ◇_x(x.dia = u.box)` (§2b) was rejected because object-language equality at `◇`-types
-is witness-relative, so it typechecks only at `◇`-free types.  As a *primitive relation* — "`x`'s
-content along its route is `u`'s value there" — it would escape that restriction exactly as `Here`
-and `Back` do, since the relation's semantics uses equality in the model.  Whether that makes the
-comprehension flag of §8.5 worth revisiting is open.
+is witness-relative, so it typechecks only at `◇`-free types.  At the **relation** grade — "`x`'s
+content along its route is `u`'s value there" — it escapes that, since the relation's semantics uses
+equality in the model, as `Here` and `Back` do.  Whether that makes §8.5's comprehension flag worth
+revisiting is open.
 
 ## 3. The flags
 
@@ -866,6 +866,29 @@ content of a possible object.
   lift's source is an object of `v` and its carrier an object of `w`, and no scope holds both, so its
   pinned form cannot be written at all — a structural reason for its open status, not just a
   difficulty of proof.
+- **⭐The `◇` side of 4, missing until now (2026-09-25, paper).**  §2c reads each propositional rule
+  as two maps; 4's are `□A → □□A` (`necDup`, done) and its dual `◇◇A → ◇A`.  The second was never
+  considered: `Frame.Ops` has `necExtract` for T and `necDup` for 4, and on the `Pos` side only
+  `posMap` and `posStrength` — **no flag-guarded operation at all**.  `GFunc` likewise has `dup` and
+  no dual.
+  - *The per-arrow transport is free.*  For `a : w → v` and `q : Pos A v`, composing `a` with the
+    arrows of `q`'s extent gives a set of arrows out of `w` with the **same values at the same
+    targets**.  So `Pos A v → Pos A w` invents nothing, and along a chain the possible objects can
+    only shrink: each deeper world's appear here as images.  This is the exact dual of weak 4's
+    restriction, and it is **not** the lift — the lift is `Nec(v) → Nec(w)`, which must invent values
+    at the arrows in `R(w) \ R(v)`.
+  - *But it cannot be named per arrow*, since the name would have to mention `v` (§2c, axis 4: names
+    travel inward, and this map goes outward).
+  - *Gathering over the arrows gives the join* `◇◇A → ◇A`, whose extent is the set of composites.
+    **Catch:** two different intermediate worlds may reach the same world with different contents, so
+    the value function need not be well defined — and since `posEval` is injective, an object *is* its
+    extent-and-values, so in that case there is no such object.  In an **arrow** frame composites are
+    distinct arrows and the join exists; in a **relational** frame it may collide.
+  - *Consequences.*  By §2a's criterion the gathered form is **strong**, not weak: where routes
+    collide a value must be chosen, and choosing asserts a new object.  And it would be sound on
+    arrow frames but not on arbitrary relational ones, which makes it the first candidate principle
+    that **separates the two model classes** — see `v12-arrow-canonical.md` §4, whose unravelling
+    argument assumes they do not come apart.  Both points want checking before any flag is added.
 - **Weak (inward, named): restriction `Nec(w) → Nec(v)`.**
   - Context principle: `□`-items stay visible deeper; `Γ.boxIn` also contains `u : □A`.
   - Rule: `□φ ⊢ □□φ`.
