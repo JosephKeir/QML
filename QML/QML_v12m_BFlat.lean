@@ -446,6 +446,171 @@ theorem completenessB_flat (hB : ModalSys.B = true) {Γ : Ctx} {l : List VarType
   rw [F.sat]
   exact hval M _ hnp fun ψ hψ => (F.sat e ψ).mp (hΔ _ (List.mem_map_of_mem hψ))
 
+
+
+/-! ## Pushing a pair under a witness view -/
+
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+/-- A substitution similar to the identity stays so under `◇_x`. -/
+theorem sim_dia_of {Γ : Ctx} {θ : Subst σ Γ} {x : VarSymb} {X : VarType}
+    (hx : Γ.ref x = some (.VTypeDia X)) (hw : (θ.at x).idxAlong [] = x)
+    (h : Subst.Sim Γ θ (Subst.idS σ Γ)) :
+    Subst.Sim (Γ.diaIn x) (θ.dia x x) (Subst.idS σ (Γ.diaIn x)) := by
+  refine Subst.sim_of ?_
+  intro v T _ hv
+  match v with
+  | .step u .dia =>
+      change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T at hv
+      split_ifs at hv with hux
+      · subst hux
+        rw [hx] at hv
+        cases hv
+        have hs := (h u _ hx).diaBody hw
+        rw [Subst.at_idS] at hs
+        change SubE.Sim X (if u = u then (θ.at u).diaBody u else SubE.hide) (.ren (.step u .dia))
+        rw [if_pos rfl]
+        exact hs
+  | .step u .box =>
+      obtain ⟨_, hu⟩ := Ctx.boxIn_box (Γ := Γ) hv
+      have hs := ((h u _ hu).unbox).mono (Ctx.le_boxIn_diaIn Γ x)
+      rw [Subst.at_idS] at hs
+      change SubE.Sim T ((θ.at u).unbox.mono (Ctx.le_boxIn_diaIn Γ x)) (.ren (.step u .box))
+      rw [← VarSymb.inner_box ModalSys.NoTFour.keepOnly]
+      exact hs
+  | .step u .keep =>
+      obtain ⟨hF, _⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+      exact absurd (ModalSys.NoTFour.noFour.symm.trans hF) (by simp)
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .here => cases hv
+
+section
+omit [ModalSys.NoTFour] [Countable σ.FuncSyms] [Countable σ.RelSyms]
+
+variable (P : Pair σ Γ Δ) {x : VarSymb} {X : VarType}
+
+/-- The index of a pair's witness entry. -/
+theorem Pair.hw (hx : Γ.ref x = some (.VTypeDia X)) : (P.θ.at x).idxAlong [] = P.ι x :=
+  P.hc x _ hx []
+
+/-- A pair sends a witness to a witness. -/
+theorem Pair.witness (hx : Γ.ref x = some (.VTypeDia X)) :
+    ∃ Y, Δ.ref (P.ι x) = some (.VTypeDia Y) :=
+  SubE.ref_witness (Subst.okRef_at P.hθ hx) (P.hw hx)
+
+/-- A pair's composite index map fixes a reachable `◇`-address. -/
+theorem Pair.idx_id (hx : Γ.ref x = some (.VTypeDia X)) : P.ι₃ x = x := by
+  have hs := (P.simId x _ hx).idx
+  rw [Subst.at_idS] at hs
+  have e₃ : (P.θ₃.at x).idxAlong [] = P.ι₃ x := P.hc₃ x _ hx []
+  rw [hs] at e₃
+  exact e₃.symm
+
+/-- The index maps of a pair invert each other at a reachable `◇`-address. -/
+theorem Pair.idx_dia (hx : Γ.ref x = some (.VTypeDia X)) : P.ι' (P.ι x) = x :=
+  (Subst.idx_comp P.hθ P.hc P.hθ' P.hc' P.hc₃ P.sim ⟨X, hx⟩).symm.trans (P.idx_id hx)
+
+theorem Pair.hw' (hx : Γ.ref x = some (.VTypeDia X)) : (P.θ'.at (P.ι x)).idxAlong [] = x := by
+  obtain ⟨Y, hY⟩ := P.witness hx
+  have h : (P.θ'.at (P.ι x)).idxAlong [] = P.ι' (P.ι x) := P.hc' (P.ι x) _ hY []
+  rw [h, P.idx_dia hx]
+
+theorem Pair.hw₃ (hx : Γ.ref x = some (.VTypeDia X)) : (P.θ₃.at x).idxAlong [] = x := by
+  have h : (P.θ₃.at x).idxAlong [] = P.ι₃ x := P.hc₃ x _ hx []
+  rw [h, P.idx_id hx]
+
+variable {P}
+
+/-- ⭐A pair pushed under `◇_x`: the witness goes to its image. -/
+def Pair.dia (P : Pair σ Γ Δ) {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) :
+    Pair σ (Γ.diaIn x) (Δ.diaIn (P.ι x)) where
+  ι := P.ι
+  ι' := P.ι'
+  ι₃ := P.ι₃
+  θ := P.θ.dia x (P.ι x)
+  θ' := P.θ'.dia (P.ι x) x
+  θ₃ := P.θ₃.dia x x
+  hθ := Subst.ok_dia P.hθ ⟨X, hx⟩ (P.hw hx)
+  hc := Subst.coh_dia P.hθ P.hc ⟨X, hx⟩
+  hθ' := Subst.ok_dia P.hθ' (P.witness hx) (P.hw' hx)
+  hc' := by
+    have h := Subst.coh_dia P.hθ' P.hc' (P.witness hx)
+    rwa [P.idx_dia hx] at h
+  hθ₃ := Subst.ok_dia P.hθ₃ ⟨X, hx⟩ (P.hw₃ hx)
+  hc₃ := by
+    have h := Subst.coh_dia P.hθ₃ P.hc₃ ⟨X, hx⟩
+    rwa [P.idx_id hx] at h
+  sim := by
+    obtain ⟨Y, hY⟩ := P.witness hx
+    have key : ∀ (w : VarSymb) (_ : P.ι' (P.ι x) = w)
+        (hθw : Subst.Ok (Δ.diaIn (P.ι x)) (P.θ'.dia (P.ι x) w))
+        (hcw : Subst.Coh P.ι' (Δ.diaIn (P.ι x)) (P.θ'.dia (P.ι x) w)),
+        Subst.Sim (Γ.diaIn x) (P.θ₃.dia x w)
+          ((P.θ.dia x (P.ι x)).comp (P.θ'.dia (P.ι x) w) hθw hcw) := by
+      intro w hw hθw hcw
+      subst hw
+      exact Subst.sim_dia_comp P.hθ P.hc P.hθ' P.hc' P.sim ⟨X, hx⟩ ⟨Y, hY⟩
+        (P.hc' (P.ι x) _ hY []) (by rw [P.hw₃ hx, P.idx_dia hx])
+    exact key x (P.idx_dia hx) _ _
+  simId := sim_dia_of hx (P.hw₃ hx) P.simId
+end
+
+/-! ## Chains of pairs
+
+A presentation is flattened one constructor at a time, and each step is a `Pair`.  Pairs cannot be
+composed — `Subst.Coh` for a composite substitution has no generic index map, because `Ann.idxAt`
+returns junk away from `◇`-nodes — so the steps are kept as a **chain** and composed only as
+translations, where `Flat.comp` already works.  Boxing and root-extension distribute over a chain,
+which is what the construction itself does: arrows stay atomic, facts get chained. -/
+
+/-- ⭐A chain of pairs from `Γ` to `Δ`, each context presented. -/
+inductive Chain (σ : Signature) : Ctx → Ctx → Type where
+  | nil {Γ : Ctx} (hΓ : Γ.Presented) : Chain σ Γ Γ
+  | cons {Γ Δ E : Ctx} (hΓ : Γ.Presented) (P : Pair σ Γ Δ) (C : Chain σ Δ E) : Chain σ Γ E
+
+/-- Every context of a chain is presented; here, its source. -/
+def Chain.srcPresented : {Γ Δ : Ctx} → Chain σ Γ Δ → Γ.Presented
+  | _, _, .nil hΓ => hΓ
+  | _, _, .cons hΓ _ _ => hΓ
+
+/-- ⭐A chain is a translation: compose the links. -/
+def Chain.toFlat : {Γ Δ : Ctx} → (C : Chain σ Γ Δ) → Flat σ Γ Δ
+  | _, _, .nil hΓ =>
+      letI := hΓ
+      (Pair.id _).toFlat (Ctx.Presented.noProjLast _)
+  | _, _, .cons hΓ P C =>
+      letI := hΓ
+      letI := C.srcPresented
+      (P.toFlat (Ctx.Presented.noProjLast _)).comp C.toFlat
+
+/-- ⭐A chain pushed under `□`: box every link. -/
+def Chain.box : {Γ Δ : Ctx} → Chain σ Γ Δ → Chain σ Γ.boxIn Δ.boxIn
+  | _, _, .nil hΓ =>
+      letI := hΓ
+      .nil inferInstance
+  | _, _, .cons hΓ P C =>
+      letI := hΓ
+      .cons inferInstance P.box C.box
+
+
+/-- ⭐A chain extended by a declared root: extend every link.  The endpoints' names are given; each
+    intermediate context uses its own presentation's fresh name, so adjacent links agree. -/
+def Chain.insertRoot (T : VarType) : {Γ Δ : Ctx} → Chain σ Γ Δ → (u v : ℕ) →
+    Γ.RootFresh (.free u) → Δ.RootFresh (.free v) →
+    Chain σ (Γ.insert (.free u) T) (Δ.insert (.free v) T)
+  | _, _, .nil hΓ, _, _, hu, hv =>
+      letI := hΓ
+      .cons inferInstance ((Pair.id _).insertRoot hu hv) (.nil inferInstance)
+  | _, _, .cons hΓ P C, _, v, hu, hv =>
+      letI := hΓ
+      letI := C.srcPresented
+      .cons inferInstance
+        (P.insertRoot hu (Ctx.Presented.fresh (Ctx.Presented.bound _) le_rfl))
+        (C.insertRoot T (Ctx.Presented.bound _) v
+          (Ctx.Presented.fresh (Ctx.Presented.bound _) le_rfl) hv)
+
 /-! ## Views over a world language -/
 
 /-- ⭐A `□` view over a world language is flattened by the arrow into a new child. -/
