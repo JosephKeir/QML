@@ -649,6 +649,72 @@ content of a possible object.
     the schema yields the uniform `∃x ∀y` witness, whereas `T_dia`'s hypotheses are bare
     implications and give only `∀y ∃x`. The parameterised rule proposed under "Open problem: later
     constants" restores that strength in Henkin form.
+  - **⭐Kept open, and possibly the *right* shape: strong T inwards, via a realisation predicate
+    (2026-09-24).** What we have is sound and complete, but it states T's `◇` half as an *outward*
+    map — from an object of `A`, a possible object of `◇A` — and per formula. The inward reading
+    may be the better primitive: read off the actual value of a possible object that is instantiated
+    here.
+    - *The inward map is semantically free.* Given `p : Pos A w` with `reflAcc hT w ∈ (posEval p).1`,
+      the value `(posEval p).2 ⟨reflAcc hT w, _⟩ : Dom A w` needs no frame condition.  And
+      `posRet_exists` (`QML_v12m_Model`) says exactly that **this map is surjective**.  So inward and
+      outward are not alternatives: outward = inward + surjectivity.  Replacing one by the other
+      loses the existential content; what changes is where that content sits and how it is stated.
+    - *Name the realisation: a binary primitive.* Make the new formula `Here x t` — "`t` is `x`'s
+      realisation here" — rather than a unary `Actual x`, which is then `∃a:A. Here x a`.  Sketch:
+
+      ```lean
+      | here {Γ : Ctx} {d : ℕ} {A : VarType} (hT : ModalSys.T = true) (x : VarSymb)
+          (hx : Γ.ref x = some (.VTypeDia A)) {a : Ann A} (t : Term σ Γ A a) : WFF σ Γ d
+      ```
+
+      with `sat env (Here x t) := ∃ hm : reflAcc hT w ∈ (posEval (env.ref x hx)).1,
+      (posEval (env.ref x hx)).2 ⟨reflAcc hT w, hm⟩ = interp env t`.  The semantics uses equality in
+      the **model**, not `eqRec`, so the witness-relative equality problem at `◇`-types (§2b) does
+      not arise.  This is what lets one say: `x : ◇Person` is Kripke as a possible object, `Here x k`
+      says `k` is his realisation at the actual world; properties of the possible object go through
+      `◇_x`/`□_x`, properties of the man through `k`.
+    - *Rules.*  With the name, both halves of T are statable, and the right-hand sides already exist:
+      `WFF.realiseAt = hereRead ∘ diaAbs` is literally "abstract the witness, read at `@` with `t`
+      in the slot", so `Model.sat_realiseAt` should give soundness directly.
+
+      ```
+      Here x t,  □_x φ(x.dia)  ⊢  φ(t)          -- instantiate the extent-universal at @
+      Here x t,  φ(t)          ⊢  ◇_x φ(x.dia)  -- @ witnesses the existential
+      ```
+
+      Uniqueness `Here x a, Here x b ⊢ a = b` is sound, statable at `◇`-free `A`; elsewhere use the
+      Leibniz form `Here x a, Here x b, φ(a) ⊢ φ(b)`.
+    - *`Here` must pin the **identity** arrow, not merely some loop.*  The `◇_x` half would survive
+      an arbitrary loop, but the reading of the box-view items would not: `u.box` along a loop is
+      `necEval u loop`, while the rule reads it as `u.here = necEval u (reflAcc)`.  Same point as the
+      note on `posRet_exists`: with several loops only the identity one is sound for `T_dia`.  Hence
+      the `hT` field.
+    - *No new type, no new proof modality.*  A `◇A` object already *is* a witness variable plus
+      content (`Term.diatm x _ body`, which is how `D_schema` builds its `◇A` objects), so
+      "possible-and-actual object" = a `◇A` term whose witness is actual — no `◇⁺A` type former, and
+      so no new cases in `Ann`, `Dom`/`RDom`, `bc`, `step`, `collapse`/`shift`, `rden`.  At the
+      formula level `◇⁺_x ψ` is not a modality either: it is ψ read at `@` (`realiseAt`), so
+      `◇⁺P ⊢ P` is definitional unfolding.  Quantification over actual witnesses comes free, as
+      `∃x:◇A. Actual x ∧ …`.  A K`◇`-shaped introduction rule should come out **admissible** —
+      reading a whole derivation at `@` is a congruence over `realiseAt` — and making it primitive
+      would duplicate weak T.
+    - *Why it might pay.*  The canonical model already carries `World.real : ℕ → Option RealDatum`:
+      per world, which witness constants are realised *there* and by which term.  That is precisely
+      `Here c t` as metatheory.  Internalising it means the theory says it, and the world's separate
+      realisation structure becomes a consequence of MCS closure.  Cheap test before committing: add
+      `Here` and the elimination rule, check soundness falls out of `Model.sat_realiseAt`, and see
+      whether `Canon.dia_mem_of_sat_self` — the messy self case of the truth lemma — collapses.
+    - *Costs.*  One `WFF` constructor, so a case in `mono`, `subst`, `collapse`, `shift`, `size`,
+      `sat`, `DecidableEq`, and the canonical model.  The witness argument follows `dia`'s pattern,
+      the term argument follows `atom`/`eq`'s.  Wrinkle: `WFF` has `deriving DecidableEq` and `Term`
+      is indexed by `Ann T`, so comparing two `Here` formulas needs the indices compared first; if
+      the derive handler balks, store `⟨A, a, t⟩` as a `Σ`, as the codebase does elsewhere.  This is
+      plausibly why `WFF.eq` was kept at base type with the fixed annotation `.var`.
+    - *Still needs the existential.*  `Here` alone is weak (a projection).  The strong content
+      remains "actual witnesses exist carrying any object", which factors as in §2b: the `◇`-side
+      axiom at `𝟙`, plus NecT for arbitrary objects, plus strength.  So the inward reading
+      **relocates** the strong content from the `◇` side to the `□` side — which is the side the
+      Henkin tree already handles with ordinary box children and no extents to realise.
   - **Kept open: a term former `t_dia : ◇A` for `t : A` (2026-09-19).** Not taken, and there is no
     plan to redo strong T this way. It is recorded so that we remember strong T *could* be redone
     if the option starts to look right — for instance if other rules come to want term formers, or
@@ -714,9 +780,11 @@ content of a possible object.
     | T | `T_dia` at `𝟙` | NecT | no |
     | B | (ii) at `𝟙` (§3 B) | (i) (§3 B) | no |
 
-    Strong T is **not** to be rebuilt this way. On the canonical side the work moves rather than
+    Strong T is not being rebuilt this way for now. On the canonical side the work moves rather than
     shrinks: `T_dia` at `𝟙` becomes much simpler (unit content, no stage-first measure), but NecT
-    needs its own "the world names its realisations" machinery for `□`-constants read here.
+    needs its own "the world names its realisations" machinery for `□`-constants read here — which
+    is exactly what the realisation predicate above would internalise, so the two notes should be
+    read together if strong T is ever revisited.
 
 ### 4 (transitivity)
 - Frame: `R(v) ⊆ R(w)` for `v ∈ R(w)`.
