@@ -43,6 +43,8 @@ structure Flat (σ : Signature) (Γ Δ : Ctx) where
   /-- The translation is truth-preserving. -/
   sat : ∀ {M : Model.{0, 0} σ} {w : M.frame.W} (e : M.Env Δ w) (φ : WFF σ Γ 0),
     M.sat e (tr φ) ↔ M.sat (env e) φ
+  /-- It fixes `⊥`, so it carries consistency. -/
+  bot : tr .bot = .bot
 
 /-- Translations compose. -/
 def Flat.comp {Γ Δ E : Ctx} (F : Flat σ Γ Δ) (G : Flat σ Δ E) : Flat σ Γ E where
@@ -50,6 +52,9 @@ def Flat.comp {Γ Δ E : Ctx} (F : Flat σ Γ Δ) (G : Flat σ Δ E) : Flat σ �
   prov {Δs φ} h := F.prov (G.prov (by rw [← List.map_map] at h; exact h))
   env e := F.env (G.env e)
   sat e φ := (G.sat e (F.tr φ)).trans (F.sat (G.env e) φ)
+  bot := by
+    change G.tr (F.tr .bot) = .bot
+    rw [F.bot, G.bot]
 
 /-- ⭐A substitution with an inverse that cancels it is a translation. -/
 def Flat.ofPair {Γ Δ : Ctx} [Γ.Presented] [Δ.NoSlots] (hnp : Γ.NoProjLast)
@@ -69,6 +74,7 @@ def Flat.ofPair {Γ Δ : Ctx} [Γ.Presented] [Δ.NoSlots] (hnp : Γ.NoProjLast)
     exact ⟨hq⟩
   env e := Model.substEnv θ hθ hnp e
   sat e φ := Model.sat_subst θ hθ hc Ctx.NoSlots.slots Ctx.NoSlots.slots hnp e φ
+  bot := rfl
 
 variable [ModalSys.NoTFour]
 
