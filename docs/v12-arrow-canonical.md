@@ -345,6 +345,7 @@ Sorry-free; axioms `propext`, `Classical.choice`, `Quot.sound`. The files, in de
 | `BCanonTerm`, `BTruth` | pushing the canonical environment along an arrow *is* the target's canonical environment read through the arrow (`boxPush_canon`, `diaPush_canon`); so the modal cases of the truth lemma are `Model.sat_subst` plus transfer/existence |
 | `BRename` | renaming the declared roots of a context: `renS` with its inverse (`subst_renS_renS`), so completeness transports from a world language `ctxOf l` to any root-only context the user writes (`completenessB_rename`); for `Ctx.ofDecls ds` with distinct names the renaming is read off the declarations (`completenessB_ofDecls`) |
 | `BFlat` | `Flat σ Γ Δ`: provability backwards, truth forwards along a translation, composable; built from a cancelling pair of substitutions (`Flat.ofPair`).  `Pair` keeps that data so it can be pushed under a view (`Pair.box`, `Pair.dia`) or extended by a declared root (`Pair.insertRoot`).  `Chain` keeps the steps apart so those operations distribute over them, and the `CtxExpr` induction (`CtxExpr.chain`) flattens any fresh presentation — ⭐`completenessB_presented` |
+| `BCompactness` | ⭐`model_existenceB`, `strong_completenessB`, `compactnessB`: consistency travels along a flattening and satisfiability back, so a presented context reduces to a world language, where the canonical model over a maximal consistent extension satisfies the set at its root |
 | `BLimitPre`, `BLimit` | `BData` from the chain's limit (`bdata`): worlds are the nodes ever born, stage `i` is round `birth + i`, images are the committed ones, and stage `i` goes to the first target stage where all its variables are committed |
 
 What the design turned out to need, beyond §2–6:
@@ -412,10 +413,15 @@ survives a view, proved pointwise through `Sim.unbox`/`Sim.diaBody` — needed b
 pair's own data forces `ι' (ι x) = x` at a reachable `◇`-address (via `Subst.idx_comp`), which is
 what lets the back substitution of `Pair.dia` land on `x` rather than on `ι' (ι x)`.
 
-**Next, in order.** Strong completeness and compactness for B (cheap — the network makes its own
-names, so no reserved-name argument is needed).  Then strong B, whose witnesses fit the network as a
-fifth scheduled operation.  Then 5, where the sibling-arrow question decides whether the naming trick
-collapses it to a relation as it did for B.
+**Strong completeness and compactness: done (2026-09-24)**, in `QML_v12m_BCompactness` —
+`model_existenceB`, `strong_completenessB`, `compactnessB`, for every fresh presentation.  They went
+through unchanged from the staged development's shape, and needed no reserved names, since the
+network makes its own; the only new pieces were that a translation fixes `⊥` (a `Flat` field) and
+that a list of images has a list of preimages.
+
+**Next, in order.** Strong B, whose witnesses fit the network as a fifth scheduled operation.  Then
+5, where the sibling-arrow question decides whether the naming trick collapses it to a relation as it
+did for B.
 
 ## 7. What carries over, and what it costs
 

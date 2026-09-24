@@ -896,7 +896,8 @@ content of a possible object.
     ⭐**every presented context** whose presentation is fresh (`completenessB_presented`,
     `QML_v12m_BFlat`), via chains of atomic pairs; the special cases are also stated directly
     (`completenessB_ofDecls`, `completenessB_boxIn`, `completenessB_diaIn`,
-    `completenessB_boxInN`). Open: strong completeness for B, and T and 4.
+    `completenessB_boxInN`). ⭐Strong completeness and compactness too (`strong_completenessB`,
+    `compactnessB`, `model_existenceB`, `QML_v12m_BCompactness`). Open: B with T or 4.
   - *Not yet*: the two strong Bs below.
 - **Redesigned 2026-09-19** around necessary objects, and sorted by §2a's criterion (weak = no new
   objects, strong = new objects). One weak B and **two** strong Bs. `P` below is a formula closed

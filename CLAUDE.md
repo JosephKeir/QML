@@ -11,8 +11,10 @@ Lean 4 + Mathlib formalisation of a quantified modal logic with first-class poss
   are the `Prop` case). Soundness holds for every flag; completeness, strong completeness and
   compactness for every flag combination without B (`[ModalSys.NoB]`). Weak B without T and 4
   (`[ModalSys.NoTFour]`) is complete for **every presented context** with a fresh presentation
-  (`BArrow.completenessB_presented`), via the arrow-based canonical model (`QML_v12m_B*.lean`:
-  network construction, `BData`, truth lemma, and `BFlat` for flattening a presentation).
+  (`BArrow.completenessB_presented`), with strong completeness and compactness
+  (`BArrow.strong_completenessB`, `BArrow.compactnessB`), via the arrow-based canonical model
+  (`QML_v12m_B*.lean`: network construction, `BData`, truth lemma, `BFlat` for flattening a
+  presentation).
 - `QML/QML_v12_*.lean` (namespace `V12`) is the K-only version, kept untouched until the
   generalised files supersede it.
 - Older files (`QML_Full_v8.lean`, `Soundness2.lean`, `SemanticsGeneral2.lean`, …) are legacy and
