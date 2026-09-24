@@ -186,6 +186,75 @@ criterion says which are *available*, not which is cheapest:
 - Plan: keep components as separate flags where the syntax allows it. Treat "which flag sets are
   complete" as a feasibility question beside the closure question of §4, settled case by case.
 
+## 2c. Routes and relations *(2026-09-25, paper)*
+
+§3 T's realisation predicate and §3 B's `Back` are the same device twice, and setting them side by
+side says something about how many variants each flag really has.
+
+**The device.** A frame condition names a **route** through the frame.  A modal object at the origin
+has a value along that route.  The projection — evaluating it — is *free*, needing no frame
+condition; the strong principle is that the projection is **surjective**; and a primitive relation
+*names* which local object a modal object returns:
+
+| Flag | route | relation | strong axiom |
+|---|---|---|---|
+| T | identity loop `w → w` | `Here x t` (§3 T) | `∀a:A. ∃x:◇A. Here x a` |
+| D | one leg `w → v`, no return | — (nothing to relate; see below) | `⊢ ∃x:◇𝟙. ◇_x ⊤` *(done)* |
+| 4 | composite `w → v → s` | — (the value law is definitional) | the lift, open |
+| B | out and back `w → v → w` | `Back u t`, `BackW c t` (§3 B) | `∀a:A. ∃u:□□A. Back u a` |
+| 5 | out and over `w → v`, `w → s`, so `v → s` | source and target both inside modalities | to be re-sorted |
+
+In each case the rules are the same two, with the route's quantifiers: **`∀`-route elimination**
+(`Here x t, □_x φ ⊢ φ(t)`; `Back u t, ◇□φ ⊢ φ(t)`) and **`∃`-route introduction** (`Here x t, φ(t) ⊢
+◇_x φ`; `Back u t, φ(t) ⊢ □◇φ`).  The pairing of quantifiers is forced by soundness, not chosen
+(§3 B).
+
+**⭐When is the pinned form statable?  Exactly when the route returns to the origin.**  The relation's
+two arguments are a modal object and a local object, so both must be in one scope.
+
+- **T and B**: the route returns to `w`, so both live at `w` and the relation is statable.  This is
+  why `Here` and `Back` work, and why §3 B's ⚠ note about the ill-defined return-path collapse is not
+  an obstacle for them: the relation never needs an *address* at `w` for the round-trip value, only a
+  formula relating it to one.
+- **D**: the route does not return, but D's whole content is that a route *exists*, so no value
+  relation is wanted.  That is why strong D is so cheap — a witness at `𝟙`, no carrier, no value —
+  and why for D "strong" and "witnessed" coincide: naming the route *is* the new object.
+- **4's restriction (weak)**: the value law along the composite —
+  `necEval (necEval (dup n) v) s = necEval n s` — is **definitional**, built into how `keep`
+  evaluates, because `u.keep` is the same object restricted rather than a new one.  No axiom, hence
+  no relation.
+- **4's lift (strong) and 5**: the source is an object of `v`, the carrier an object of `w`, and
+  **neither scope contains both** — inside `□` the `w`-object is unavailable except as a `□`-item,
+  outside it the `v`-object is invisible.  So the pinned form cannot even be written, and the
+  principle is forced to be schematic.  That is a structural reason for the open status recorded in
+  §2b and §8.1, not just a difficulty of proof.
+
+**⭐How many variants has a flag, then?**  §2a's "decorating the operators does not generate new
+principles" holds at the **propositional** level, where the decorated forms follow from the plain
+ones by `□ψ ⊢ □_x ψ` and `◇_x φ ⊢ ◇φ`.  At the **object** level it does not, because the principle
+names a carrier and the carrier's type is part of it.  The axes are:
+
+1. **What kind of content**: propositional (no objects), route-existence (D), or a value relation
+   (T, B, 4's lift).
+2. **Which legs are witnessed** — `2ⁿ` for an `n`-leg route.  This fixes the carrier type: for B's
+   two legs, `□□A`, `◇□A`, `□◇A`, `◇◇A`.
+3. **The quantifier per leg** — forced once the predicate's quantifiers are fixed, by the soundness
+   pairing.
+4. **Whether the pinned form is available at all** — the returning-route criterion above.
+
+So a one-leg flag with only existence content (D) really does have two variants, weak and strong, and
+they coincide with unwitnessed and witnessed.  A two-leg flag with value content (B) has the four
+carriers, each with a pinned and a per-formula form, and the weak propositional principle besides.
+That is the sense in which there are more than two variants per flag, and the extra ones are not
+notational: witnessing the `∀` leg weakens the principle, witnessing the `∃` leg strengthens it.
+
+**A consequence worth following up.** D's rejected graph form
+`∀u:□A. ∃x:◇A. ◇_x(x.dia = u.box)` (§2b) was rejected because object-language equality at `◇`-types
+is witness-relative, so it typechecks only at `◇`-free types.  As a *primitive relation* — "`x`'s
+content along its route is `u`'s value there" — it would escape that restriction exactly as `Here`
+and `Back` do, since the relation's semantics uses equality in the model.  Whether that makes the
+comprehension flag of §8.5 worth revisiting is open.
+
 ## 3. The flags
 
 `R` is the accessibility relation. `Nec`/`Pos` are the carriers, `ext`/`cont` the extent and
@@ -193,6 +262,9 @@ content of a possible object.
 
 ### D (seriality)
 - Frame: `R(w)` nonempty.
+- *Route (§2c)*: one leg, no return.  D's content is route-**existence**, so there is no value to
+  relate and no pinned form to want; "strong" and "witnessed" coincide, which is why strong D is a
+  witness at `𝟙` with no carrier.
 - **Weak**: rule `□⊥ ⊢ ⊥`. Canonical seriality is the usual successor for `◇⊤`.
   - *Implemented (2026-09-19).* Flag `ModalSys.D`; frame condition `Frame.serial`; rule
     `Proof.D_box` (`□⊥ ⊢ ⊥`), with `Proof.D_dia` deriving `□φ ⊢ ◇φ` and `Proof.D_box_of_dia` the
@@ -710,7 +782,8 @@ content of a possible object.
       is indexed by `Ann T`, so comparing two `Here` formulas needs the indices compared first; if
       the derive handler balks, store `⟨A, a, t⟩` as a `Σ`, as the codebase does elsewhere.  This is
       plausibly why `WFF.eq` was kept at base type with the fixed annotation `.var`.
-    - *Still needs the existential.*  `Here` alone is weak (a projection).  The strong content
+    - *Still needs the existential.*  `Here` alone is weak (a projection).  See §2c for the route
+      idiom this instantiates, and §3 B for its two-leg counterpart.  The strong content
       remains "actual witnesses exist carrying any object", which factors as in §2b: the `◇`-side
       axiom at `𝟙`, plus NecT for arbitrary objects, plus strength.  So the inward reading
       **relocates** the strong content from the `◇` side to the `□` side — which is the side the
@@ -788,6 +861,11 @@ content of a possible object.
 
 ### 4 (transitivity)
 - Frame: `R(v) ⊆ R(w)` for `v ∈ R(w)`.
+- *Route (§2c)*: the composite `w → v → s`, which does not return.  The restriction's value law is
+  **definitional** (the comonad law, built into how `keep` evaluates), so no axiom states it.  The
+  lift's source is an object of `v` and its carrier an object of `w`, and no scope holds both, so its
+  pinned form cannot be written at all — a structural reason for its open status, not just a
+  difficulty of proof.
 - **Weak (inward, named): restriction `Nec(w) → Nec(v)`.**
   - Context principle: `□`-items stay visible deeper; `Γ.boxIn` also contains `u : □A`.
   - Rule: `□φ ⊢ □□φ`.
@@ -924,6 +1002,86 @@ content of a possible object.
     strength — the uniform pattern of §3 T. *(Paper only.)*
   - (i) is to B what necessary-object strong T (§3 T) is to T, with T's loop `w → w` replaced by
     the round trip `w → v → w`.
+- **⭐The relational form (2026-09-25, paper only).** Both principles above are *outward* and
+  *per-formula*, the shape §3 T's realisation-predicate note criticises — and here the per-formula
+  weakness is forced, not incidental. §2b's pinning trick (take the instance `φ(z) := (z = u.box)`)
+  needs the source in scope; for (i) the source `a` is a base object of `w`, invisible two views in,
+  so `u.box.box = a` is not even a formula and nothing pins `u`.  That is §2b's "object already a
+  `□`-item? — no" row for B.  Consequently (i) as stated is strictly weaker than its own intended
+  reading: "for every `v`, some continuation where `P` holds of the value" only approximates "the
+  round trip returns `a`", since formulas closed apart from their hole cannot express identity with a
+  particular object of `w`.
+
+  **The fix is a primitive relation, as for T.** Where T names the value at its identity loop
+  (`Here x t`), B names the value around its round trip:
+
+  ```
+  Back u t  :=  ∀ (a₁ : w → v),  ∃ (a₂ : v → w),  u(a₁)(a₂) = t
+  ```
+
+  for `u : □□A` and `t : A` at `w` — "from every `v`, *some* homeward arrow returns `t`".  Its
+  semantics uses equality in the model, so nothing needs `eqRec` and `◇`-types are unproblematic.
+
+  **The quantifiers are forced, not chosen.** `φ(t)` is a statement at `w`, so soundness needs one
+  round trip that returns to `w`, carries `t`, and satisfies `φ`; that fixes which predicate pairs
+  with which premise *(paper)*:
+
+  | predicate | premise | sound? | matching introduction gives |
+  |---|---|---|---|
+  | `∃a₁ ∃a₂` returning, value `t` | `□□φ` | ✓ | only `◇◇φ` — too weak (cf. the `φ → ◇◇φ` remark above) |
+  | `∃a₁ ∃a₂` returning, value `t` | `◇□φ` | ✗ the two `∃a₁` need not agree | — |
+  | **`∀a₁ ∃a₂` returning, value `t`** | **`◇□φ`** | **✓** | **`□◇φ`** — exactly (i) |
+  | `∀a₁ ∀a₂` | `□□φ` | ✓ but overkill | `□◇φ` |
+
+  So the predicate is `∀`(out) `∃`(back) — not every round trip, and not merely some — and one
+  predicate serves both directions:
+
+  ```
+  Back u t,  ◇□φ(u.box.box)  ⊢  φ(t)           -- elimination
+  Back u t,  φ(t)            ⊢  □◇φ(u.box.box)  -- introduction
+  ```
+
+  with the strong axiom as surjectivity, `∀a:A. ∃u:□□A. Back u a`.  Then **(i) is derivable**, and
+  the per-formula `P` with its tuple-packing goes away.
+
+  - *This is not §4's round-trip coherence.*  Coherence asks all round trips `a ≫ a⁻` to agree — the
+    hard condition where 4 meets B.  `Back` asks for one homeward route per `v` carrying the same
+    value, leaving the others free.  In the network that is a *per-child* obligation, the shape a
+    scheduled operation already has.
+  - *No D needed.*  With `◇□` the premise supplies the outgoing arrow.  The `□□` variant would need
+    `◇⊤` or D, since at a dead end both premise and predicate are vacuous.
+  - *The `∃`-form is already free.*  The outward bullet above records `◇□P(u.box.box) ⊢ ∃x:A. P(x)`
+    as a theorem of weak B.  So `Back` does for B exactly what `Here` does for T: the projection is
+    free, the **naming** is the new expressive power, and the axiom is its surjectivity.
+
+  **Witnessed variants: one per leg.**  Each leg may quantify over all arrows or over a named
+  extent, which fixes the carrier and the address of the round-trip value *(paper)*:
+
+  | out leg | back leg | carrier | value at | premises |
+  |---|---|---|---|---|
+  | `□` | `□`/`◇` | `□□A` | `u.box.box` | `◇□φ` / `□◇φ` |
+  | `◇_y` (`y : ◇□A`) | `□`/`◇` | `◇□A` | `y.dia.box` | `◇_y □φ` / `□_y ◇φ` |
+  | `□` | `◇_{c.box}` (`c : □◇A`) | `□◇A` | `c.box.dia` | `◇ □_{c.box} φ` / `□ ◇_{c.box} φ` |
+  | `◇_y` | `◇_{y.dia}` | `◇◇A` | `y.dia.dia` | `◇_y □_{y.dia} φ` / `□_y ◇_{y.dia} φ` |
+
+  Since the predicate is `∀`(out) `∃`(back), **witnessing the out leg weakens it** (only a named
+  extent must be covered) and **witnessing the back leg strengthens it** (the homeward arrow must lie
+  in a named extent).  Two of the four are already here: `◇_y □P(y.dia.box)` for `y : ◇□A` appears
+  among the outward theorems of weak B, and (ii) is the witnessed-back form with its witness
+  existentially quantified inside `□` rather than carried by a `□◇`-object — the two differing by the
+  `□∃ ⊢ ∃□` modal-choice step noted above.
+
+  **The witnessed-back variant is the one to look at first for the metatheory.**  Weak B's
+  completeness problem (below) is that "from `v` nothing singles out the origin among its
+  successors"; a witnessed back leg is exactly a name for the route home:
+
+  ```
+  BackW c t  :=  ∀ (a₁ : w → v),  ∃ a₂ ∈ extent (c(a₁)),  a₂ returns to w  ∧  c(a₁)(a₂) = t
+  ```
+
+  reading "every successor has a *named* way home, carrying `t`".  Whether its per-child obligation
+  is schedulable in the network the way weak B's are is open, and is the thing to settle before
+  choosing which variant to build.
 - **⚠ No return-path collapse.** An earlier note here proposed reading a formula of `Γ.boxIn.boxIn`
   back at the origin by a collapse `Γ.boxIn.boxIn ⟶ Γ`. That is **ill-defined**: `u.box.box` read
   at the origin is `u(v)(w)`, which depends on the intermediate `v`, so there is no address at `w`
@@ -953,6 +1111,9 @@ content of a possible object.
 
 ### 5 (euclidean)
 - Frame: `R(w) ⊆ R(v)` for `v ∈ R(w)`.
+- *Route (§2c)*: out and over, `w → v` and `w → s` giving `v → s`.  Like 4's lift and unlike T and
+  B, it does not return to the origin, so no pinned relation is available; both components below are
+  transport maps rather than value statements.
 - **⚠ To be re-sorted (2026-09-19).** By §2a's new criterion both components below are *weak*: each
   is a determinate map on existing objects (re-use of a witness, restriction), so neither requires
   new objects. The labels below are the old ones. What a new-objects strong 5 would be, if any, is
