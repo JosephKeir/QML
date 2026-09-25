@@ -240,13 +240,44 @@ object's name to the outer context.  So:
 | weak 4, `Nec(w) → Nec(v)` | inward | context principle (`keep`) ✓ |
 | 5's `Pos(w) → Pos(v)` | inward | context principle (`◇`-items stay visible) ✓ |
 | T's `A → ◇A`, B's round trip | **returns to the origin** | a relation at `w`, both arguments in scope ✓ |
-| 4's lift `Nec(v) → Nec(w)` | outward, no return | ✗ — forced schematic |
+| 4's lift `Nec(v) → Nec(w)` | outward, no return | ✗ — but by **quantifier order**, not scope: see below |
 | 4's `Pos(v) → Pos(w)` | outward, no return | ✗ per arrow; gathering gives the join, at a cost (§3 4) |
 | 5's `Nec(v) → Nec(w)` | outward, no return | ✗ pinned; hence its existential carrier principle |
 
 This subsumes the earlier "the pinned form is statable exactly when the route returns to the origin":
 a returning route is what puts a modal object and a local object in one scope.  It also explains the
 open status of 4's lift and of 5's outward half structurally, rather than as a difficulty of proof.
+
+**Correction (2026-09-25): 4's lift is blocked by quantifier order, not by scope.**  Inside the view
+`m.keep` names `m`'s restriction and an object `n` of `v` is in scope too, so the relation "`m`
+restricted is `n`" *is* statable there.  What fails is the nesting: `n` ranges inside `□` and `m` must
+be found outside, so the principle needs `∃m` outside a `∀n` inside — the `□∀ ⊢ ∃□` swap, modal
+choice.  One gets either `∃m. □∀n. (…)`, which is far too strong (one `m` for every `v` and every
+`n`), or the schematic form §2b records.  5's outward half is blocked differently, by scope proper.
+So the two open cases are open for different reasons.
+
+**Axis 5: surjectivity or injectivity.**  Each free map has two natural strengthenings, and they are
+two different kinds of principle:
+
+| strengthening | what it asserts | kind |
+|---|---|---|
+| **surjective** | every object at the target comes from one at the source | existence — the **strong** principle |
+| **injective** | the map loses nothing, so the source embeds in the target | no new objects — an **extensionality / converse** principle |
+
+Surjectivity gives the strong flags; injectivity gives the **converse axioms**, with their own frame
+conditions *(paper)*:
+
+| free map | surjective | injective |
+|---|---|---|
+| T's `necExtract : Nec A w → Dom A w` | NecT: every object is some necessary object's value here | `φ → □φ`, i.e. `R(w) ⊆ {w}` — T's converse |
+| 4's restriction `Nec A w → Nec A v` | **the lift = strong 4**: no *new* necessary objects deeper | **density** `□□φ → □φ` (`R ⊆ R∘R`) — 4's converse, and what makes the `□`-domains **grow** |
+| 4's transport `Pos A v → Pos A w` | every possible object here comes from a successor — not wanted | the `◇`-domains **shrink** going deeper; automatic in a relational frame, and in an arrow frame when composition is injective |
+
+So "the `□`-domains grow and the `◇`-domains shrink" is exactly *injectivity* of the two maps of 4 —
+free on the `◇` side, and on the `□` side the extra condition of density.  Note that the lift, being
+surjectivity of the restriction, says the `□`-domains do **not** grow: `Nec A v` is then precisely the
+image.  So the lift and the growth expectation pull in opposite directions, and 4 with both is
+`R = R∘R`.
 
 **A consequence worth following up.** D's rejected graph form
 `∀u:□A. ∃x:◇A. ◇_x(x.dia = u.box)` (§2b) was rejected because object-language equality at `◇`-types
