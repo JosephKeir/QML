@@ -43,20 +43,6 @@ theorem liftT_liftT {i j k : ℕ × ℕ} (h₁ : i ≤ j) (h₂ : j ≤ k) {A : 
     (t : Term σ (w.L.ctx i) A a) : w.liftT h₂ (w.liftT h₁ t) = w.liftT (h₁.trans h₂) t :=
   Term.mono_mono _ _ t
 
-variable {w}
-
-theorem mem_lift {i j : ℕ × ℕ} (h : i ≤ j) {φ : WFF σ (w.L.ctx i) 0} :
-    (⟨i, φ⟩ : w.L.sys.Sentence σ) ∈ w.T ↔
-      (⟨j, WFF.mono (w.L.ctx_le h) φ⟩ : w.L.sys.Sentence σ) ∈ w.T :=
-  (w.mcs.mem_lift_iff h).symm
-
-/-- Membership from a proof at one stage. -/
-theorem mem_of_provable {i : ℕ × ℕ} {Δ : List (WFF σ (w.L.ctx i) 0)} {φ : WFF σ (w.L.ctx i) 0}
-    (hΔ : ∀ ψ ∈ Δ, (⟨i, ψ⟩ : w.L.sys.Sentence σ) ∈ w.T) (p : Provable Δ φ) :
-    (⟨i, φ⟩ : w.L.sys.Sentence σ) ∈ w.T :=
-  w.mcs.closed (StageSys.derives_of_mems hΔ p)
-
-variable (w)
 
 /-- Two base terms are equal in the theory. -/
 def TEq (s t : w.BTerm) : Prop :=
@@ -189,12 +175,14 @@ theorem realisedLt {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : C
     (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) : hr.data.i₀.2 < i.2 :=
   hr.data.hstage i (hx.imp fun _ h => hr.data.hx ▸ e.ref h)
 
-/-- So it is declared at the stage where both it and the term live. -/
+/-- So it is declared at the stage where both it and the term live.  Only the *type* of the
+    declaration is needed, so this goes through `RealDatum.declType` and monotonicity of the stage
+    contexts rather than through the stage order. -/
 theorem realisedDecl {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx} {i : ℕ × ℕ}
     (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
     (w.L.ctx (i ⊔ hr.data.i₀)).ref (.root (.free hr.data.c)) = some (.VTypeDia hr.data.A) :=
-  hr.data.hdecl _ (lt_of_lt_of_le (realisedLt hr e hx) le_sup_left)
-
+  hr.data.declType _ (hx.imp fun _ h =>
+    (w.L.ctx_le (le_sup_left : i ≤ i ⊔ hr.data.i₀)).ref (hr.data.hx ▸ e.ref h))
 noncomputable def realisedTerm (w : World σ N₀) {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
     {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
     {a : Ann A} (t : Term σ (Γ.diaIn x) A a) :

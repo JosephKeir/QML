@@ -1,5 +1,6 @@
 import QML.QML_v12m_SatInst
 import QML.QML_v12m_SemStrongT
+import QML.QML_v12m_SemHere
 
 /-!
 # QML v12m — soundness
@@ -151,6 +152,15 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       refine (sat_instantiate env hnp Ctx.NoSlots.slots s φ).mpr ?_
       rw [← he]
       exact (sat_instantiate env hnp Ctx.NoSlots.slots t φ).mp (ihq M env hnp hΔ)
+  | @diaEq_intro Γ Δ A b s =>
+      intro M w env _ _
+      exact rfl
+  | @diaEq_elim Γ _ Δ A φ b b' s s' p q ihp ihq =>
+      intro M w env hnp hΔ
+      have he : interp env s = interp env s' := ihp M env hnp hΔ
+      refine (sat_instantiate env hnp Ctx.NoSlots.slots s' φ).mpr ?_
+      rw [← he]
+      exact (sat_instantiate env hnp Ctx.NoSlots.slots s φ).mp (ihq M env hnp hΔ)
   | @pair_elim Γ _ A B u₁ u₂ z hu hz₁ hu₁ hu₂ hzf Δ φ p ih =>
       intro M w env hnp hΔ
       have hnpΓ := hnp.of_insert hzf.root
@@ -212,6 +222,19 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       · -- An old hypothesis, merely weakened by the eigenvariable.
         obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken (T := .VTypeDia A) env hc.root q χ').mpr (hΔ χ' hχ')
+  | @here_elim Γ _ Δ hT x hx t bd ψ ph pb ihh ihb =>
+      intro M w env hnp hΔ
+      exact sat_here_elim hT env hnp hx t bd ψ (ihh M env hnp hΔ) (ihb M env hnp hΔ)
+  | @here_intro Γ _ Δ hT x hx t bd ψ ph pr ihh ihr =>
+      intro M w env hnp hΔ
+      exact sat_here_intro hT env hnp hx t bd ψ (ihh M env hnp hΔ) (ihr M env hnp hΔ)
+  | @here_beta Γ _ Δ hT x hx t bd s ph ihh =>
+      intro M w env hnp hΔ
+      obtain ⟨Y, h⟩ := id hx
+      exact sat_here_beta hT env hnp hx h t bd s (ihh M env hnp hΔ)
+  | @here_fun Γ Δ hT b s t t' ph ph' ihh ihh' =>
+      intro M w env hnp hΔ
+      exact sat_here_fun hT env s t t' (ihh M env hnp hΔ) (ihh' M env hnp hΔ)
   | @B_dia Γ Δ hB ψ p ih =>
       -- `◇□ψ`: along some arrow `w → v`, `ψ` holds after every arrow out of `v`; one leads back.
       intro M w env hnp hΔ

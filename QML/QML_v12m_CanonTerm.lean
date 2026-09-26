@@ -160,6 +160,17 @@ theorem canonEnv_ref (w : World σ N₀) (i : ℕ × ℕ) :
       · rw [Model.Env.ref, dif_neg hs]
         rfl
 
+/-- ⭐**The truth lemma for an address, outright.**  `Model.interp_eta` says an address's
+    η-expansion denotes the address, and `canonEnv_ref` says the canonical environment's value there
+    is its denotation — so no induction is needed, at any stage and any type.  This is what lets a
+    realisation *named by an address* be read without the stage-led induction, and hence without any
+    order between the naming and the witness. -/
+theorem interp_canon_eta (w : World σ N₀) (k : ℕ × ℕ) (y : VarSymb) {A : VarType}
+    (hy : (w.L.ctx k).ref y = some A) :
+    Model.interp (canonEnv w₀ w k) (Term.eta y A hy) =
+      toDom w₀ A w (rden w k (Ctx.Le.refl _) (Term.eta y A hy)) (definable_rden _ _) :=
+  (Model.interp_eta (canonEnv w₀ w k) y hy).trans (canonEnv_ref w₀ w k y hy)
+
 theorem canonEnv_extent (w : World σ N₀) (i : ℕ × ℕ) {x : VarSymb} {X : VarType}
     (hr : (w.L.ctx i).ref x = some (.VTypeDia X)) :
     ((model w₀).posEval ((canonEnv w₀ w i).ref x hr)).1 = extent w x := by
@@ -291,14 +302,72 @@ def VarType.tsize : VarType → ℕ
   | .VTypeBox A => VarType.tsize A + 1
   | .VTypeDia A => VarType.tsize A + 1
 
-/-- ⭐The realised case of the truth lemma, with its two recursive calls taken as hypotheses: one
-    at the realising term `dat.t₀`, which lives at a strictly earlier own stage (`IHt₀`), and one
-    at the realisation of the body, which is of the type inside the `◇` at the same own stage
-    (`IH`).  That is exactly why the measure leads with the own stage.
+/-- ⭐The realised case of the truth lemma, with its two recursive calls taken as hypotheses: one at
+    the realising term `dat.t₀` (`hIHt₀`), and one at the realisation of the body, which is of the
+    type inside the `◇` (`IH`).  The stage the body's call is made at is `i ⊔ dat.i₀`, so whatever
+    the induction demands of the stages it recurses at is a parameter here (`StageOK`, `hsup`): a
+    stage-led measure asks for `k.2 ≤ i.2`, and one led by the type asks for nothing.
 
     The realisation is `Term.realiseAt`, whose semantics (`Model.interp_realiseAt`) is to read the
     body in the environment pushed into the witness's view at the world itself; what the witness's
     content is there is what the world names (`rden_eta_of_real`). -/
+theorem interp_dia_self_core {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
+    {c : ℕ} (dat : RealDatum σ w.L w.T c)
+    (hdeclI : (w.L.ctx i).ref (.root (.free c)) = some (.VTypeDia dat.A))
+    (hIHt₀ : Model.interp (canonEnv w₀ w dat.i₀) dat.t₀ =
+      toDom w₀ dat.A w (rden w dat.i₀ (Ctx.Le.refl _) dat.t₀) (definable_rden _ dat.t₀))
+    {StageOK : ℕ × ℕ → Prop} (hsup : StageOK (i ⊔ dat.i₀))
+    (IH : ∀ {Γ' : Ctx} {b : Ann A} (s : Term σ Γ' A b) {k : ℕ × ℕ}, StageOK k →
+      ∀ {e' : Γ'.Le (w.L.ctx k)} {env' : (model w₀).Env Γ' w},
+      Model.Env.Agree e' env' (canonEnv w₀ w k) →
+      Model.interp env' s = toDom w₀ A w (rden w k e' s) (definable_rden e' s))
+    {e : Γ.Le (w.L.ctx i)} {env : (model w₀).Env Γ w}
+    (hag : Model.Env.Agree e env (canonEnv w₀ w i))
+    {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) (hxc : x = .root (.free c))
+    (hreal : w.real c = some dat)
+    (hdecl : (w.L.ctx (i ⊔ dat.i₀)).ref (.root (.free c)) = some (.VTypeDia dat.A))
+    (hle : (Γ.diaIn x).Le ((w.L.ctx (i ⊔ dat.i₀)).diaIn (.root (.free c))))
+    (hT : ModalSys.T = true)
+    (hmem : (⟨w, ⟨R.refl hT w⟩⟩ : Succ w) ∈ ((model w₀).posEval (env.ref x hx)).1)
+    (t : Term σ (Γ.diaIn x) A a) :
+    Model.interp (env.diaPush x hx ⟨⟨w, ⟨R.refl hT w⟩⟩, hmem⟩) t =
+      toDom w₀ A w (rden w (i ⊔ dat.i₀) (Ctx.Le.refl _)
+        (Term.realiseAt hT c hdecl (dat.hfr _) (Term.mono (w.L.ctx_le le_sup_right) dat.t₀)
+          (Term.mono hle t))) (definable_rden _ _) := by
+  subst hxc
+  have hXA : X = dat.A := by
+    have h1 := e.ref hx
+    rw [hdeclI] at h1
+    simp only [Option.some.injEq, VarType.VTypeDia.injEq] at h1
+    exact h1.symm
+  subst hXA
+  have hj : i ≤ i ⊔ dat.i₀ := le_sup_left
+  have hagj : Model.Env.Agree (e.trans (w.L.ctx_le hj)) env (canonEnv w₀ w (i ⊔ dat.i₀)) :=
+    hag.trans (canonEnv_le w₀ w hj)
+  have hm' : (⟨w, ⟨R.refl hT w⟩⟩ : Succ w) ∈
+      ((model w₀).posEval ((canonEnv w₀ w (i ⊔ dat.i₀)).ref (.root (.free c)) hdecl)).1 := by
+    rw [canonEnv_extent]
+    exact self_mem_extent (World.realised_of_real hreal)
+  have hcont : ((model w₀).posEval
+        ((canonEnv w₀ w (i ⊔ dat.i₀)).ref (.root (.free c)) hdecl)).2 ⟨⟨w, ⟨R.refl hT w⟩⟩, hm'⟩ =
+      Model.interp (canonEnv w₀ w (i ⊔ dat.i₀))
+        (Term.mono (w.L.ctx_le (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀) := by
+    have hpq := canonEnv_ref w₀ w (i ⊔ dat.i₀) (.root (.free c)) hdecl
+    rw [Model.posEval_snd_congr hpq ⟨⟨w, ⟨R.refl hT w⟩⟩, hm'⟩ (hpq ▸ hm'),
+      Model.interp_mono (canonEnv_le w₀ w (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀,
+      hIHt₀]
+    exact toDom_congr w₀ (rden_eta_of_real hreal hdecl) _ _
+  refine (Model.interp_mono
+    (Model.Env.diaPush_agree hagj hx ⟨⟨w, ⟨R.refl hT w⟩⟩, hmem⟩ hm') t).symm.trans ?_
+  refine (Model.interp_realiseAt hT (canonEnv w₀ w (i ⊔ dat.i₀)) (w.noProjLast _) hdecl
+    (dat.hfr _) (Term.mono (w.L.ctx_le le_sup_right) dat.t₀) hm' hcont
+    _).symm.trans ?_
+  exact IH _ hsup (fun _ _ _ => rfl)
+
+
+/-- ⭐The realised case as the stage-led induction uses it: the realising term's own value comes from
+    the induction hypothesis at its (strictly earlier) stage.  A datum whose content is base-typed
+    can reach `interp_dia_self_core` without this, through `interp_canon_base`. -/
 theorem interp_dia_self {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
     {c : ℕ} (dat : RealDatum σ w.L w.T c) (hlt : dat.i₀.2 < i.2)
     (IHt₀ : ∀ {Γ' : Ctx} {B : VarType} {b : Ann B} (s : Term σ Γ' B b) {k : ℕ × ℕ}, k.2 < i.2 →
@@ -321,41 +390,23 @@ theorem interp_dia_self {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
     Model.interp (env.diaPush x hx ⟨⟨w, ⟨R.refl hT w⟩⟩, hmem⟩) t =
       toDom w₀ A w (rden w (i ⊔ dat.i₀) (Ctx.Le.refl _)
         (Term.realiseAt hT c hdecl (dat.hfr _) (Term.mono (w.L.ctx_le le_sup_right) dat.t₀)
-          (Term.mono hle t))) (definable_rden _ _) := by
-  subst hxc
-  have hXA : X = dat.A := by
-    have h1 := e.ref hx
-    rw [dat.hdecl i hlt] at h1
-    simp only [Option.some.injEq, VarType.VTypeDia.injEq] at h1
-    exact h1.symm
-  subst hXA
-  have hj : i ≤ i ⊔ dat.i₀ := le_sup_left
-  have hj2 : (i ⊔ dat.i₀).2 ≤ i.2 := by
-    have h2 : (i ⊔ dat.i₀).2 = max i.2 dat.i₀.2 := rfl
-    omega
-  have hagj : Model.Env.Agree (e.trans (w.L.ctx_le hj)) env (canonEnv w₀ w (i ⊔ dat.i₀)) :=
-    hag.trans (canonEnv_le w₀ w hj)
-  have hm' : (⟨w, ⟨R.refl hT w⟩⟩ : Succ w) ∈
-      ((model w₀).posEval ((canonEnv w₀ w (i ⊔ dat.i₀)).ref (.root (.free c)) hdecl)).1 := by
-    rw [canonEnv_extent]
-    exact self_mem_extent (World.realised_of_real hreal)
-  have hcont : ((model w₀).posEval
-        ((canonEnv w₀ w (i ⊔ dat.i₀)).ref (.root (.free c)) hdecl)).2 ⟨⟨w, ⟨R.refl hT w⟩⟩, hm'⟩ =
-      Model.interp (canonEnv w₀ w (i ⊔ dat.i₀))
-        (Term.mono (w.L.ctx_le (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀) := by
-    have hpq := canonEnv_ref w₀ w (i ⊔ dat.i₀) (.root (.free c)) hdecl
-    rw [Model.posEval_snd_congr hpq ⟨⟨w, ⟨R.refl hT w⟩⟩, hm'⟩ (hpq ▸ hm'),
-      Model.interp_mono (canonEnv_le w₀ w (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀,
-      IHt₀ dat.t₀ hlt (fun _ _ _ => rfl)]
-    exact toDom_congr w₀ (rden_eta_of_real hreal hdecl) _ _
-  refine (Model.interp_mono
-    (Model.Env.diaPush_agree hagj hx ⟨⟨w, ⟨R.refl hT w⟩⟩, hmem⟩ hm') t).symm.trans ?_
-  refine (Model.interp_realiseAt hT (canonEnv w₀ w (i ⊔ dat.i₀)) (w.noProjLast _) hdecl
-    (dat.hfr _) (Term.mono (w.L.ctx_le le_sup_right) dat.t₀) hm' hcont
-    _).symm.trans ?_
-  exact IH _ hj2 (fun _ _ _ => rfl)
+          (Term.mono hle t))) (definable_rden _ _) :=
+  interp_dia_self_core w₀ dat (dat.hdecl i hlt)
+    (IHt₀ dat.t₀ hlt (fun _ _ _ => rfl))
+    (StageOK := fun k => k.2 ≤ i.2)
+    (by have h2 : (i ⊔ dat.i₀).2 = max i.2 dat.i₀.2 := rfl
+        omega)
+    IH hag hx hxc hreal hdecl hle hT hmem t
 
-/-! ## The truth lemma for terms -/
+/-! ## The truth lemma for terms
+
+Base terms come first, and on their own: the value of a base term is a class of base terms, and the
+only addresses it can read are the world's own roots, whose canonical values are classes.  So this
+pair recurses on **size alone** — no stage, no type — which is what lets a realisation whose content
+is base-typed be interpreted without the stage ordering `RealDatum.hstage` demands (`interp_canon`
+below leads its measure with the own stage precisely because it interprets a realising term of
+arbitrary type).
+-/
 
 mutual
   theorem interpFunc_canon : ∀ {Γ : Ctx} {n : ℕ} (g : Func σ Γ n) {w : World σ N₀}
@@ -374,27 +425,87 @@ mutual
     | _, _, .eval g t, w, i, e, env, hag, args, ts, hts => by
         change Model.interpFunc env g (Fin.cons (Model.interp env t) args) = _
         have h0 : Model.interp env t = w.cls i (Term.mono e t) :=
-          (interp_canon t hag).trans (rden_var_mono e t)
+          (interp_canon_base t hag).trans (rden_var_mono e t)
         rw [interpFunc_canon g hag (Fin.cons (Model.interp env t) args) (Fin.cons t ts)
           (fun k => by cases k using Fin.cases <;> simp [h0, hts]), Spine.ofFn_cons]
         rfl
-    termination_by _ _ g _ i => (i.2, VarType.tsize .Var, g.size)
+    termination_by _ _ g => g.size
     decreasing_by
-      all_goals simp only [Prod.lex_def, true_and, Func.size, VarType.tsize]
+      all_goals simp only [Func.size]
       all_goals omega
 
+  /-- ⭐**The truth lemma for base terms**: in an environment agreeing with the canonical one, a base
+      term's value is its denotation.  Only `var` and `func` build a base term. -/
+  theorem interp_canon_base : ∀ {Γ : Ctx} (t : Term σ Γ .Var .var) {w : World σ N₀}
+      {i : ℕ × ℕ} {e : Γ.Le (w.L.ctx i)} {env : (model w₀).Env Γ w},
+      Model.Env.Agree e env (canonEnv w₀ w i) →
+      Model.interp env t = toDom w₀ .Var w (rden w i e t) (definable_rden e t)
+    | _, .var v hv, w, i, e, env, hag => by
+        change env.ref v hv = _
+        rw [Model.Env.ref_agree hag v hv, canonEnv_ref]
+        rfl
+    | _, .func f, _, _, _, env, hag => by
+        change Model.interpFunc env f Fin.elim0 = _
+        exact interpFunc_canon f hag Fin.elim0 Fin.elim0 (fun k => k.elim0)
+    termination_by _ t => t.size
+    decreasing_by
+      all_goals simp only [Term.size]
+      all_goals omega
+end
+
+/-! ## The realised case when the content is base-typed
+
+A realised witness whose content is base-typed is interpreted **without any stage ordering**: its
+realising term is a base term, so `interp_canon_base` gives its value outright, and the only call
+left is the body's, which is at the type inside the `◇`.  So a datum of this shape is free of
+`RealDatum.hstage` — which is what the truth lemma for `WFF.here` needs, the realisation predicate
+being base-typed.  (At a compound content type the realising term must instead be an address, and
+then `interp_canon_eta` plays the same role.)
+-/
+
+/-- `interp_canon_base` at a type that is only provably `Var`. -/
+theorem interp_canon_base_of : ∀ {A : VarType}, A = .Var → ∀ {a : Ann A} {Γ : Ctx}
+    (t : Term σ Γ A a) {w : World σ N₀} {i : ℕ × ℕ} {e : Γ.Le (w.L.ctx i)}
+    {env : (model w₀).Env Γ w}, Model.Env.Agree e env (canonEnv w₀ w i) →
+    Model.interp env t = toDom w₀ A w (rden w i e t) (definable_rden e t)
+  | _, rfl, .var, _, t, _, _, _, _, hag => interp_canon_base w₀ t hag
+
+/-- ⭐The realised case at base content: no `IHt₀`, and no condition on the stages the induction
+    recurses at. -/
+theorem interp_dia_self_base {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
+    {c : ℕ} (dat : RealDatum σ w.L w.T c) (hA : dat.A = .Var)
+    (hdeclI : (w.L.ctx i).ref (.root (.free c)) = some (.VTypeDia dat.A))
+    (IH : ∀ {Γ' : Ctx} {b : Ann A} (s : Term σ Γ' A b) {k : ℕ × ℕ},
+      ∀ {e' : Γ'.Le (w.L.ctx k)} {env' : (model w₀).Env Γ' w},
+      Model.Env.Agree e' env' (canonEnv w₀ w k) →
+      Model.interp env' s = toDom w₀ A w (rden w k e' s) (definable_rden e' s))
+    {e : Γ.Le (w.L.ctx i)} {env : (model w₀).Env Γ w}
+    (hag : Model.Env.Agree e env (canonEnv w₀ w i))
+    {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) (hxc : x = .root (.free c))
+    (hreal : w.real c = some dat)
+    (hdecl : (w.L.ctx (i ⊔ dat.i₀)).ref (.root (.free c)) = some (.VTypeDia dat.A))
+    (hle : (Γ.diaIn x).Le ((w.L.ctx (i ⊔ dat.i₀)).diaIn (.root (.free c))))
+    (hT : ModalSys.T = true)
+    (hmem : (⟨w, ⟨R.refl hT w⟩⟩ : Succ w) ∈ ((model w₀).posEval (env.ref x hx)).1)
+    (t : Term σ (Γ.diaIn x) A a) :
+    Model.interp (env.diaPush x hx ⟨⟨w, ⟨R.refl hT w⟩⟩, hmem⟩) t =
+      toDom w₀ A w (rden w (i ⊔ dat.i₀) (Ctx.Le.refl _)
+        (Term.realiseAt hT c hdecl (dat.hfr _) (Term.mono (w.L.ctx_le le_sup_right) dat.t₀)
+          (Term.mono hle t))) (definable_rden _ _) :=
+  interp_dia_self_core w₀ dat hdeclI
+    (interp_canon_base_of w₀ hA dat.t₀ (fun _ _ _ => rfl))
+    (StageOK := fun _ => True) trivial
+    (fun {_Γ'} {_b} s {_k} _ {_e'} {_env'} hag' => IH s hag')
+    hag hx hxc hreal hdecl hle hT hmem t
+
+mutual
   /-- ⭐In an environment agreeing with the canonical one, a term's value is its denotation. -/
   theorem interp_canon : ∀ {Γ : Ctx} {A : VarType} {a : Ann A} (t : Term σ Γ A a)
       {w : World σ N₀} {i : ℕ × ℕ} {e : Γ.Le (w.L.ctx i)} {env : (model w₀).Env Γ w},
       Model.Env.Agree e env (canonEnv w₀ w i) →
       Model.interp env t = toDom w₀ A w (rden w i e t) (definable_rden e t)
-    | _, _, _, .var v hv, w, i, e, env, hag => by
-        change env.ref v hv = _
-        rw [Model.Env.ref_agree hag v hv, canonEnv_ref]
-        rfl
-    | _, _, _, .func f, _, _, _, env, hag => by
-        change Model.interpFunc env f Fin.elim0 = _
-        exact interpFunc_canon f hag Fin.elim0 Fin.elim0 (fun k => k.elim0)
+    | _, _, _, .var v hv, _, _, _, _, hag => interp_canon_base w₀ (Term.var v hv) hag
+    | _, _, _, .func f, _, _, _, _, hag => interp_canon_base w₀ (Term.func f) hag
     | _, _, _, .unit, _, _, _, _, _ => rfl
     | _, _, _, .pair s t, _, _, _, _, hag => Prod.ext (interp_canon s hag) (interp_canon t hag)
     | Γ, _, _, .boxtm t, w, i, e, env, hag => by

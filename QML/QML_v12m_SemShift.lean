@@ -294,6 +294,14 @@ theorem sat_shift : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ
         have href := hag x _ hr
         exact ⟨X, h x _ hr, ⟨w₁.1, by rw [← href]; exact w₁.2⟩,
           (sat_shift (hs.diaIn x) (hag.diaPush hr w₁ _) φ).mpr hsat⟩
+  | _, _, _, _, _, _, _, _, _, hag, .here hT s t => by
+      change Model.Realised hT (interp _ (Term.shift _ s)) (interp _ (Term.shift _ t)) ↔ _
+      rw [interp_shift hag s, interp_shift hag t]
+      exact Iff.rfl
+  | _, _, _, _, _, _, _, _, _, hag, .diaEq s s' => by
+      change interp _ (Term.shift _ s) = interp _ (Term.shift _ s') ↔ _
+      rw [interp_shift hag s, interp_shift hag s']
+      exact Iff.rfl
 
 /-- ⭐The semantic content of the 4 rule: a shifted `□`-body holds two steps in exactly when the
     body holds at the composite step. -/

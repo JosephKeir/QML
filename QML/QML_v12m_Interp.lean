@@ -279,6 +279,13 @@ def relSat {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
     {n : ℕ} → Rel σ Δ n → (Fin n → M.frame.D w) → Prop
   | _, .R r, args => M.frame.relInterp r.1 w (fun i => args (Fin.cast r.2 i))
   | _, .eval ρ t, args => relSat env ρ (Fin.cons (interp env t) args)
+/-- ⭐`p` is **realised here**, with value `o`: the identity arrow lies in `p`'s extent and `p`'s
+    content there is `o`.  Naming it keeps the dependent `∃` out of congruence proofs. -/
+def Realised (hT : ModalSys.T = true) {A : VarType} {w : M.frame.W}
+    (p : M.frame.Dom (.VTypeDia A) w) (o : M.frame.Dom A w) : Prop :=
+  ∃ hm : M.frame.reflAcc hT w ∈ (M.posEval p).1,
+    (M.posEval p).2 ⟨M.frame.reflAcc hT w, hm⟩ = o
+
 
 /-- ⭐Satisfaction. -/
 def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ Γ d → Prop
@@ -295,6 +302,8 @@ def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ
   | Γ, _, _, env, .dia x _ φ =>
       ∃ (X : VarType) (h : Γ.ref x = some (.VTypeDia X)) (w' : (M.posEval (env.ref x h)).1),
         sat (env.diaPush x h w') φ
+  | _, _, _, env, .here hT s t => Realised hT (interp env s) (interp env t)
+  | _, _, _, env, .diaEq s s' => interp env s = interp env s'
 
 end Model
 

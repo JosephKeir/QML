@@ -263,5 +263,16 @@ theorem WFF.subst_id {σ : Signature} : {Δ : Ctx} → {d : ℕ} → (hθ : Subs
       refine (WFF.subst_congr _ (Subst.idS σ (Δ.diaIn x)) _ Subst.ok_idS _ Subst.coh_idS
         (hΔ.diaIn x) (hΔ.diaIn x) (Subst.sim_dia_idS x) _).trans ?_
       exact WFF.subst_id Subst.ok_idS Subst.coh_idS (hΔ.diaIn x) _
+  | Δ, _, hθ, hc, _, .here hT s t =>
+      WFF.here_congr hT
+        ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc s).trans
+          (congrArg (Sigma.mk _) (Term.mono_refl _ s)))
+        ((Term.subst_idS_mono_var (Ctx.Le.refl Δ) hθ hc t).trans (Term.mono_refl _ t))
+  | Δ, _, hθ, hc, _, .diaEq s s' =>
+      WFF.diaEq_congr
+        ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc s).trans
+          (congrArg (Sigma.mk _) (Term.mono_refl _ s)))
+        ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc s').trans
+          (congrArg (Sigma.mk _) (Term.mono_refl _ s')))
 
 end V12M

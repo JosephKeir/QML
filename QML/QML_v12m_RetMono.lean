@@ -76,6 +76,10 @@ theorem WFF.collapse_mono : ∀ {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx} {d :
       simp only [WFF.collapse, WFF.mono]
       rw [WFF.collapse_mono (h.diaIn x) (h'.diaIn x) (l₁.diaIn x) (l₂.diaIn _) (hs.diaIn x)
         (hs'.diaIn x) φ]
+  | _, _, _, _, _, _, h, h', l₁, l₂, _, _, .here hT s t =>
+      WFF.here_congr' hT (Term.collapse_mono h h' l₁ l₂ s) (Term.collapse_mono h h' l₁ l₂ t)
+  | _, _, _, _, _, _, h, h', l₁, l₂, _, _, .diaEq s s' =>
+      WFF.diaEq_congr' (Term.collapse_mono h h' l₁ l₂ s) (Term.collapse_mono h h' l₁ l₂ s')
 
 /-! ## The two readings, and binding, commute with weakening -/
 

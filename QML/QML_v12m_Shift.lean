@@ -294,5 +294,7 @@ def WFF.shift {σ : Signature} : {k : ℕ} → {Γ₁ Γ₂ : Ctx} → {d : ℕ}
   | _, _, _, _, h, hs, .box φ => .box (WFF.shift h.boxIn hs.boxIn φ)
   | k, _, _, _, h, hs, .dia x hx φ =>
       .dia (x.shift k) (hx.imp fun _ hX => h x _ hX) (WFF.shift (h.diaIn x) (hs.diaIn x) φ)
+  | _, _, _, _, h, _, .here hT s t => .here hT (Term.shift h s) (Term.shift h t)
+  | _, _, _, _, h, _, .diaEq s s' => .diaEq (Term.shift h s) (Term.shift h s')
 
 end V12M

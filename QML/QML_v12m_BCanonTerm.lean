@@ -154,7 +154,7 @@ theorem boxPush_canon (s : B.W) (i : ℕ) (a : B.Acc s) :
       some T := by
     rw [arrowIdx_item (reach_ppath hu).1]
     exact hw
-  exact rden_sigma _ (((Canon.Term.subst_sigma (Term.eta_congr (VarSymb.inner_box hk) T _
+  exact rden_sigma _ (((Term.subst_sigma (Term.eta_congr (VarSymb.inner_box hk) T _
     (Ctx.ref_boxIn_of hk hu))).trans (Term.subst_eta_ren _ _ _
       (fun v U hv => hren v U ((Ctx.Le.refl _).ref hv)) T _ (Ctx.ref_boxIn_of hk hu) hw')).trans
     (Term.eta_congr (arrowIdx_item (reach_ppath hu).1) T _ _))

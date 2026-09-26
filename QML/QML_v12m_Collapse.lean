@@ -351,5 +351,7 @@ def WFF.collapse {σ : Signature} : {k : ℕ} → {Γ₁ Γ₂ : Ctx} → {d : �
   | _, _, _, _, h, hs, .box φ => .box (WFF.collapse h.boxIn hs.boxIn φ)
   | k, _, _, _, h, hs, .dia x hx φ =>
       .dia (x.collapse k) (hx.imp fun _ hX => h x _ hX) (WFF.collapse (h.diaIn x) (hs.diaIn x) φ)
+  | _, _, _, _, h, _, .here hT s t => .here hT (Term.collapse h s) (Term.collapse h t)
+  | _, _, _, _, h, _, .diaEq s s' => .diaEq (Term.collapse h s) (Term.collapse h s')
 
 end V12M

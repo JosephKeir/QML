@@ -150,6 +150,47 @@ theorem ctx_only_root (w : World σ N₀) {m j k : ℕ} :
 
 end World
 
+/-- ⭐Wherever the witness is declared, it is declared at `◇A` — `hdecl` with its stage condition
+    discharged by `hstage`.  This is the only thing the canonical domain needs from the two, and
+    unlike `hdecl` it asks for no order between the term's stage and the witness's: a datum whose
+    content is base-typed can supply it directly, since then the realising term is read by
+    `interp_canon_base` rather than by the stage-led induction. -/
+theorem RealDatum.declType {L : WorldLang} {T : Set (L.sys.Sentence σ)} {c : ℕ}
+    (d : RealDatum σ L T c) (i : ℕ × ℕ)
+    (h : ∃ Y, (L.ctx i).ref (.root (.free c)) = some (.VTypeDia Y)) :
+    (L.ctx i).ref (.root (.free c)) = some (.VTypeDia d.A) :=
+  d.hdecl i (d.hstage i h)
+
+
+/-- ⭐**The collapse**: `RealDatum.spec` is a *derivation* as soon as the theory itself says the
+    witness is realised by `t₀`.  `Proof.here_introAt` turns the realisation reading of a view
+    formula into the `◇` one, and a maximal consistent theory is closed under provability — so the
+    field is not data the construction has to arrange, but a consequence of one sentence being in
+    the theory.  Base-typed, as `WFF.here` is. -/
+theorem spec_of_here {L : WorldLang} {T : Set (L.sys.Sentence σ)} (hmcs : StageSys.IsMCS T)
+    (hT : ModalSys.T = true) {c : ℕ} {i₀ : ℕ × ℕ} (t₀ : Term σ (L.ctx i₀) .Var .var)
+    (hdecl : ∀ i : ℕ × ℕ, i₀.2 < i.2 → (L.ctx i).ref (.root (.free c)) = some (.VTypeDia .Var))
+    (hfr : ∀ (i : ℕ × ℕ) (v : VarSymb), v.rt = .free c → v ≠ .root (.free c) → (L.ctx i) v = none)
+    (hhere : ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i) (hlt : i₀.2 < i.2),
+      (⟨i, WFF.hereAt hT (.root (.free c)) (hdecl i hlt) (Term.mono (L.ctx_le hi) t₀)⟩ :
+        L.sys.Sentence σ) ∈ T) :
+    ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i) (hlt : i₀.2 < i.2)
+      (χ : WFF σ ((L.ctx i).diaIn (.root (.free c))) 0),
+      (⟨i, WFF.realiseAt hT c (hdecl i hlt) (hfr i) (Term.mono (L.ctx_le hi) t₀) χ⟩ :
+        L.sys.Sentence σ) ∈ T →
+      (⟨i, .dia (.root (.free c)) ⟨.Var, hdecl i hlt⟩ χ⟩ : L.sys.Sentence σ) ∈ T := by
+  intro i hi hlt χ hr
+  refine hmcs.closed (StageSys.derives_of_mems
+    (Δ := [WFF.hereAt hT (.root (.free c)) (hdecl i hlt) (Term.mono (L.ctx_le hi) t₀),
+      WFF.realiseAt hT c (hdecl i hlt) (hfr i) (Term.mono (L.ctx_le hi) t₀) χ]) ?_ ?_)
+  · intro ψ hψ
+    rcases List.mem_cons.mp hψ with rfl | hψ'
+    · exact hhere i hi hlt
+    · rw [List.mem_singleton.mp hψ']
+      exact hr
+  · exact ⟨Proof.here_introAt hT c (hdecl i hlt) (hfr i) (Term.mono (L.ctx_le hi) t₀) χ
+      (Proof.lookup List.mem_cons_self)
+      (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩
 /-! ## Realised witnesses (strong T) -/
 
 namespace World
@@ -180,6 +221,10 @@ variable {w}
 @[reducible] def RealData.hfr {x : VarSymb} (d : w.RealData x) :
     ∀ (i : ℕ × ℕ) (v : VarSymb), v.rt = .free d.c → v ≠ .root (.free d.c) → (w.L.ctx i) v = none :=
   d.datum.hfr
+@[reducible] def RealData.declType {x : VarSymb} (d : w.RealData x) :
+    ∀ (i : ℕ × ℕ), (∃ Y, (w.L.ctx i).ref (.root (.free d.c)) = some (.VTypeDia Y)) →
+      (w.L.ctx i).ref (.root (.free d.c)) = some (.VTypeDia d.A) :=
+  d.datum.declType
 @[reducible] def RealData.hstage {x : VarSymb} (d : w.RealData x) :
     ∀ i : ℕ × ℕ, (∃ Y, (w.L.ctx i).ref (.root (.free d.c)) = some (.VTypeDia Y)) → d.i₀.2 < i.2 :=
   d.datum.hstage
@@ -246,6 +291,25 @@ theorem real_of_realised {x : VarSymb} (h : w.Realised x) :
   | .root (.bnd _) => exact absurd h (by simp [Realised, realAt])
   | .step _ _ => exact absurd h (by simp [Realised, realAt])
 
+
+/-! ## Theory membership at a stage -/
+
+section Mem
+
+variable {w : World σ N₀}
+
+theorem mem_lift {i j : ℕ × ℕ} (h : i ≤ j) {φ : WFF σ (w.L.ctx i) 0} :
+    (⟨i, φ⟩ : w.L.sys.Sentence σ) ∈ w.T ↔
+      (⟨j, WFF.mono (w.L.ctx_le h) φ⟩ : w.L.sys.Sentence σ) ∈ w.T :=
+  (w.mcs.mem_lift_iff h).symm
+
+/-- Membership from a proof at one stage. -/
+theorem mem_of_provable {i : ℕ × ℕ} {Δ : List (WFF σ (w.L.ctx i) 0)} {φ : WFF σ (w.L.ctx i) 0}
+    (hΔ : ∀ ψ ∈ Δ, (⟨i, ψ⟩ : w.L.sys.Sentence σ) ∈ w.T) (p : Provable Δ φ) :
+    (⟨i, φ⟩ : w.L.sys.Sentence σ) ∈ w.T :=
+  w.mcs.closed (StageSys.derives_of_mems hΔ p)
+
+end Mem
 end World
 
 /-! ## Views and accessibility -/

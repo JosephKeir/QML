@@ -1,4 +1,4 @@
-import QML.QML_v12m_Subst
+import QML.QML_v12m_SubstEta
 import QML.QML_v12m_Presented
 
 /-!
@@ -21,51 +21,6 @@ practice, so the structural rules never need to be applied by hand.
 namespace V12M
 
 variable [ModalSys]
-
-/-! ## Strong T: the two readings of a `□`-view formula with a hole
-
-`ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1` is a formula of the `□` view with a hole for an object.
-It is read either at the current world (`hereRead`, under weak T: the view collapses and the hole
-takes a term) or inside a `◇_c` view (`viewRead`: the hole takes the witness content `c.dia`).
--/
-
-/-- The `□`-view formula `ψ` read at the current world, with `t` in its hole. -/
-def WFF.hereRead {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {A : VarType}
-    {a : Ann A} (t : Term σ Γ A a) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) : WFF σ Γ 0 :=
-  WFF.instantiate Ctx.NoSlots.slots t
-    (WFF.collapse ((Ctx.collapses_boxIn_self hT Γ).insert
-        ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) A)
-      ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A) ψ)
-
-/-- The `□`-view formula `ψ` read inside `◇_c`, with the witness content in its hole. -/
-def WFF.viewRead {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) (hc : Γ.RootFresh (.free c))
-    (A : VarType) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
-    WFF σ ((Γ.insert (.free c) (.VTypeDia A)).diaIn (.root (.free c))) 0 :=
-  WFF.renameRoot (.bnd 0) ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0))
-    ((Ctx.le_insert hc.root (.VTypeDia A)).boxIn.trans
-      (Ctx.le_boxIn_diaIn _ (.root (.free c))))
-    (.step (.root (.free c)) .dia)
-    (Ctx.ref_diaIn_of (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)))
-    ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A) Ctx.NoSlots.slots ψ
-
-/-- One hypothesis of `T_dia`: for every value of the parameter `y : B`, what holds of `t` here
-    holds of the witness content in `◇_c`.  The hole formula `ψ` may mention the parameter's
-    box-components.  The parameter is bound *inside* the scope of `c`, which is what makes the
-    witness uniform in it (`∃x ∀y`, not `∀y ∃x`); `B` = unit gives the unparameterised form. -/
-def WFF.retHyp {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {A : VarType}
-    {a : Ann A} (t : Term σ Γ A a) (c y : ℕ) (hc : Γ.RootFresh (.free c))
-    (hy : Γ.RootFresh (.free y)) (hyc : y ≠ c) (B : VarType)
-    (ψ : WFF σ ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A) 1) :
-    WFF σ (Γ.insert (.free c) (.VTypeDia A)) 0 :=
-  have hne : Root.free y ≠ Root.free c := fun h => hyc (Root.free.inj h)
-  have hcy : (Γ.insert (.free y) B).RootFresh (.free c) := hc.insert_ne hne B
-  WFF.all B (WFF.bindFree y (hy.insert_ne hne.symm (.VTypeDia A)) Ctx.NoSlots.slots B
-    (WFF.mono (Ctx.insert_swap_le hne B (.VTypeDia A))
-      (WFF.imp
-        ((WFF.hereRead hT (Term.mono (Ctx.le_insert hy.root B) t) ψ).weaken hcy.root
-          (.VTypeDia A))
-        (.dia (.root (.free c)) ⟨A, Ctx.ref_insert_root _ (.free c) (.VTypeDia A)⟩
-          (WFF.viewRead c hcy A ψ)))))
 
 /-- Strong D's axiom: some possible object has a nonempty extent, `∃x:◇𝟙. ◇_x ⊤`.  It is closed.
     Everything else strong D says follows from it in K: re-using the witness with new content
@@ -146,6 +101,16 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       (t s : Term σ Γ .Var .var) :
       Proof σ Γ Δ (.eq t s) → Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t φ) →
       Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots s φ)
+  -- ⭐Equality of possible objects (§2d): the `◇`-types' missing equality, primitive because a
+  -- comparison across *annotations* is exactly a comparison across witnesses.  Reflexivity and
+  -- Leibniz, as for `eq`; the slot takes a term of any annotation, which is the whole point.
+  | diaEq_intro {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {A : VarType} {b : Ann (.VTypeDia A)}
+      (s : Term σ Γ (.VTypeDia A) b) : Proof σ Γ Δ (.diaEq s s)
+  | diaEq_elim {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} {A : VarType}
+      {φ : WFF σ (Γ.insert (.bnd 0) (.VTypeDia A)) 1} {b b' : Ann (.VTypeDia A)}
+      (s : Term σ Γ (.VTypeDia A) b) (s' : Term σ Γ (.VTypeDia A) b') :
+      Proof σ Γ Δ (.diaEq s s') → Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots s φ) →
+      Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots s' φ)
   -- ⭐Pairing: the user's components `u₁ u₂` become `z.fst`, `z.snd`.
   | pair_elim {Γ : Ctx} [Γ.NoSlots] (A B : VarType) (u₁ u₂ z : ℕ) (hu : u₁ ≠ u₂) (hz₁ : z ≠ u₁)
       (hu₁ : Γ.RootFresh (.free u₁)) (hu₂ : Γ.RootFresh (.free u₂))
@@ -209,6 +174,50 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
           Δ.map (WFF.weaken hc.root (.VTypeDia A)))
           (φ.weaken hc.root (.VTypeDia A)) →
       Proof σ Γ Δ φ
+  -- Strong T, inwards: the realisation predicate
+  /-- ⭐**Elimination**: if the possible object `◇_x`-with-content-`bd` is realised here by `t`, then
+      what is necessary over `x`'s extent holds of `t` — weak T relativised to the witness.  The
+      premise and the conclusion read one hole formula `ψ` twice: inside the view with `bd` in the
+      hole (`WFF.viewReadTm`), and here with `t` in it (`WFF.hereRead`).
+
+      Stating it at a `◇`-**term** rather than at a bare address is what makes it survive
+      substitution: an entry for a `◇`-typed address is such a term, and its body takes the
+      content's place.  The pinned case `bd = x.dia` is the rule one expects, `Here x t, □_x χ ⊢
+      χ(t)` (`Proof.here_elimAt`), since every view formula is its abstraction read back. -/
+  | here_elim {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) (x : VarSymb)
+      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (t : Term σ Γ .Var .var)
+      (bd : Term σ (Γ.diaIn x) .Var .var)
+      (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) .Var) 1) :
+      Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd) t) →
+      Proof σ Γ Δ (WFF.boxx x hx (WFF.viewReadTm bd ψ)) →
+      Proof σ Γ Δ (WFF.hereRead hT t ψ)
+  /-- ⭐**Introduction**: what holds of the realisation here is possible for the witness, this very
+      world witnessing it.  The converse of `here_elim` across the same two readings, so the pair is
+      one biconditional (`Model.sat_viewReadTm`) split by polarity. -/
+  | here_intro {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) (x : VarSymb)
+      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (t : Term σ Γ .Var .var)
+      (bd : Term σ (Γ.diaIn x) .Var .var)
+      (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) .Var) 1) :
+      Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd) t) →
+      Proof σ Γ Δ (WFF.hereRead hT t ψ) →
+      Proof σ Γ Δ (WFF.dia x hx (WFF.viewReadTm bd ψ))
+  /-- ⭐**β for the realisation predicate**: the realisation of a body read through a hole term is
+      the realisation of the body, read here through the same hole.  This is what lets a witness's
+      own realisation decide every `Here` formula about it: with `bd` the witness content, `s`
+      ranges over the view terms (`Term.diaAbs` abstracts one), and the value on the right is
+      `Term.realiseAt`. -/
+  | here_beta {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) (x : VarSymb)
+      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (t : Term σ Γ .Var .var)
+      (bd : Term σ (Γ.diaIn x) .Var .var)
+      (s : Term σ (Γ.boxIn.insert (.bnd 0) .Var) .Var .var) :
+      Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd) t) →
+      Proof σ Γ Δ (WFF.here hT (Term.diatm x hx (Term.viewReadTm bd s)) (Term.hereRead hT t s))
+  /-- ⭐**Functionality**: a possible object has one realisation here.  At base type this is an
+      equation, which is why `WFF.here` is primitive there. -/
+  | here_fun {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+      {b : Ann (.VTypeDia .Var)} (s : Term σ Γ (.VTypeDia .Var) b)
+      (t t' : Term σ Γ .Var .var) :
+      Proof σ Γ Δ (WFF.here hT s t) → Proof σ Γ Δ (WFF.here hT s t') → Proof σ Γ Δ (.eq t t')
   -- Weak B
   /-- What is possibly necessary is true, `◇□ψ ⊢ ψ`, for a closed `ψ`: some accessible world
       makes `ψ` necessary, and an arrow leads back from it.  `ψ` must be closed because nothing

@@ -86,6 +86,11 @@ theorem WFF.subst_ren {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ :
         exact congrArg (WFF.dia x _)
           (WFF.subst_ren (hle.diaIn x) (θ.dia x x) p q _ _ (Subst.ren_dia hid x) φ)
       exact key (ι x) (Subst.idx_ren hc hid hx).symm _ _ _ _
+  | _, _, _, _, hle, θ, hθ, hc, _, _, hid, .here hT s t =>
+      WFF.here_congr hT (Term.subst_ren hle θ hθ hc hid s)
+        (eq_of_heq (Sigma.mk.inj (Term.subst_ren hle θ hθ hc hid t)).2)
+  | _, _, _, _, hle, θ, hθ, hc, _, _, hid, .diaEq s s' =>
+      WFF.diaEq_congr (Term.subst_ren hle θ hθ hc hid s) (Term.subst_ren hle θ hθ hc hid s')
 
 section Open
 

@@ -1,5 +1,5 @@
 import QML.QML_v12m_SubstId
-import QML.QML_v12m_Proof
+import QML.QML_v12m_Presented
 
 /-!
 # QML v12m — abstracting the content of a `◇` view (strong T)
@@ -28,6 +28,74 @@ at that root (`hcA`, `hfr`), because the contexts of a world are not in `insert`
 namespace V12M
 
 variable [ModalSys]
+
+/-! ## Strong T: the two readings of a `□`-view formula with a hole
+
+`ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1` is a formula of the `□` view with a hole for an object.
+It is read either at the current world (`hereRead`, under weak T: the view collapses and the hole
+takes a term) or inside a `◇_c` view (`viewRead`: the hole takes the witness content `c.dia`).
+-/
+
+/-- The `□`-view formula `ψ` read at the current world, with `t` in its hole. -/
+def WFF.hereRead {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {A : VarType}
+    {a : Ann A} (t : Term σ Γ A a) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) : WFF σ Γ 0 :=
+  WFF.instantiate Ctx.NoSlots.slots t
+    (WFF.collapse ((Ctx.collapses_boxIn_self hT Γ).insert
+        ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) A)
+      ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A) ψ)
+
+/-- The `□`-view formula `ψ` read inside `◇_c`, with the witness content in its hole. -/
+def WFF.viewRead {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) (hc : Γ.RootFresh (.free c))
+    (A : VarType) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
+    WFF σ ((Γ.insert (.free c) (.VTypeDia A)).diaIn (.root (.free c))) 0 :=
+  WFF.renameRoot (.bnd 0) ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0))
+    ((Ctx.le_insert hc.root (.VTypeDia A)).boxIn.trans
+      (Ctx.le_boxIn_diaIn _ (.root (.free c))))
+    (.step (.root (.free c)) .dia)
+    (Ctx.ref_diaIn_of (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A)))
+    ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A) Ctx.NoSlots.slots ψ
+
+/-- ⭐The `□`-view hole formula `ψ` read inside `◇_x`, with the **view term** `b` in its hole.
+    `WFF.viewRead` is the case where `b` is the witness content itself; the general case is what a
+    substitution leaves behind, since the entry for a `◇`-typed address is a `◇`-term whose body
+    takes the content's place.  So this, not `viewRead`, is the form in which the realisation rules
+    state their `□_x` premise. -/
+def WFF.viewReadTm {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {x : VarSymb} {A : VarType} {a : Ann A}
+    (b : Term σ (Γ.diaIn x) A a) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
+    WFF σ (Γ.diaIn x) 0 :=
+  WFF.instantiate (Ctx.NoSlots.slots (Γ := Γ.diaIn x)) b
+    (WFF.mono ((Ctx.le_boxIn_diaIn Γ x).insert (.bnd 0) A) ψ)
+
+/-- ⭐The `□`-view hole **term** `s` read inside `◇_x`, with the view term `bd` in its hole: the term
+    counterpart of `WFF.viewReadTm`, and what the realisation predicate's β-rule reads a body as. -/
+def Term.viewReadTm {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {x : VarSymb} {A : VarType} {a : Ann A}
+    (bd : Term σ (Γ.diaIn x) A a) {B : VarType} {b : Ann B}
+    (s : Term σ (Γ.boxIn.insert (.bnd 0) A) B b) :
+    Term σ (Γ.diaIn x) B (b.mapIdx (Subst.singleIdx (.bnd 0) (.tm bd))) :=
+  Term.subst (Subst.singleIdx (.bnd 0) (.tm bd)) (Subst.single (.bnd 0) (.tm bd))
+    (Subst.ok_single (Ctx.Le.refl (Γ.diaIn x)) rfl)
+    (Subst.coh_single ((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).rootFresh (le_refl 0))
+      (Ctx.Le.refl (Γ.diaIn x)) rfl)
+    (Term.mono ((Ctx.le_boxIn_diaIn Γ x).insert (.bnd 0) A) s)
+
+/-- One hypothesis of `T_dia`: for every value of the parameter `y : B`, what holds of `t` here
+    holds of the witness content in `◇_c`.  The hole formula `ψ` may mention the parameter's
+    box-components.  The parameter is bound *inside* the scope of `c`, which is what makes the
+    witness uniform in it (`∃x ∀y`, not `∀y ∃x`); `B` = unit gives the unparameterised form. -/
+def WFF.retHyp {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {A : VarType}
+    {a : Ann A} (t : Term σ Γ A a) (c y : ℕ) (hc : Γ.RootFresh (.free c))
+    (hy : Γ.RootFresh (.free y)) (hyc : y ≠ c) (B : VarType)
+    (ψ : WFF σ ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A) 1) :
+    WFF σ (Γ.insert (.free c) (.VTypeDia A)) 0 :=
+  have hne : Root.free y ≠ Root.free c := fun h => hyc (Root.free.inj h)
+  have hcy : (Γ.insert (.free y) B).RootFresh (.free c) := hc.insert_ne hne B
+  WFF.all B (WFF.bindFree y (hy.insert_ne hne.symm (.VTypeDia A)) Ctx.NoSlots.slots B
+    (WFF.mono (Ctx.insert_swap_le hne B (.VTypeDia A))
+      (WFF.imp
+        ((WFF.hereRead hT (Term.mono (Ctx.le_insert hy.root B) t) ψ).weaken hcy.root
+          (.VTypeDia A))
+        (.dia (.root (.free c)) ⟨A, Ctx.ref_insert_root _ (.free c) (.VTypeDia A)⟩
+          (WFF.viewRead c hcy A ψ)))))
 
 /-! ## Declaring a `◇`-typed root -/
 
@@ -318,6 +386,14 @@ def WFF.realiseAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = tr
     (χ : WFF σ (Γ.diaIn (.root (.free c))) 0) :
     WFF σ Γ 0 :=
   WFF.hereRead hT t₀ (WFF.diaAbs c hcA hfr χ)
+
+/-- ⭐`Here x t` **pinned at an address**: the possible object named `x` is realised here, with
+    value `t`.  `WFF.here` takes any `◇`-term as its subject (so that substitution can act on it);
+    this is the form in which the rules of strong T state it, and the two readings agree by the
+    η-law `Model.interp_eta`. -/
+abbrev WFF.hereAt {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true) (x : VarSymb)
+    (hx : Γ.ref x = some (.VTypeDia .Var)) (t : Term σ Γ .Var .var) : WFF σ Γ d :=
+  WFF.here hT (Term.eta x (.VTypeDia .Var) hx) t
 
 /-! ## Weakening -/
 

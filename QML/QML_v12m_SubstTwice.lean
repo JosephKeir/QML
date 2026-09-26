@@ -436,31 +436,58 @@ mutual
         change Func.eval (Func.subst ι₂ θ₂ hθ₂ hc₂ (Func.subst ι₁ θ₁ hθ₁ hc₁ g))
           (Term.subst ι₂ θ₂ hθ₂ hc₂ (Term.subst ι₁ θ₁ hθ₁ hc₁ t)) = _
         rw [Func.subst_comp θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs g,
-          eq_of_heq (Term.subst_comp_heq θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t rfl)]
+          eq_of_heq (Sigma.mk.inj (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)).2]
         rfl
     termination_by structural _ f => f
 
-  /-- Stated at arbitrary indices (so the recursion is structural); only `Var` terms qualify. -/
-  theorem Term.subst_comp_heq {σ : Signature} {ι₁ ι₂ ι₃ : VarSymb → VarSymb} {Γ Δ₁ Δ₂ : Ctx}
+  /-- ⭐**Substituting twice, at every type**: the annotation moves with the index maps, so the
+      two sides are equal as annotated terms.  Only the `Var` case needs `Sim`; the structured
+      cases are the recursion, the witness of a `◇`-term travelling by `Subst.idx_comp`. -/
+  theorem Term.subst_comp_sig {σ : Signature} {ι₁ ι₂ ι₃ : VarSymb → VarSymb} {Γ Δ₁ Δ₂ : Ctx}
       (θ₁ : Subst σ Δ₁) (θ₂ θ₃ : Subst σ Δ₂) (hθ₁ : Subst.Ok Γ θ₁) (hc₁ : Subst.Coh ι₁ Γ θ₁)
       (hθ₂ : Subst.Ok Δ₁ θ₂) (hc₂ : Subst.Coh ι₂ Δ₁ θ₂) (hθ₃ : Subst.Ok Γ θ₃)
       (hc₃ : Subst.Coh ι₃ Γ θ₃) (hs : Subst.Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) :
-      {T : VarType} → {a : Ann T} → (t : Term σ Γ T a) → T = .Var →
-      HEq (Term.subst ι₂ θ₂ hθ₂ hc₂ (Term.subst ι₁ θ₁ hθ₁ hc₁ t)) (Term.subst ι₃ θ₃ hθ₃ hc₃ t)
-    | _, _, .var v hv, _ =>
+      {T : VarType} → {a : Ann T} → (t : Term σ Γ T a) →
+      (⟨_, Term.subst ι₂ θ₂ hθ₂ hc₂ (Term.subst ι₁ θ₁ hθ₁ hc₁ t)⟩ : Σ b, Term σ Δ₂ T b) =
+        ⟨_, Term.subst ι₃ θ₃ hθ₃ hc₃ t⟩
+    | _, _, .var v hv =>
         have p₄ := Subst.okRef_at hθ₃ hv
         have p₃ := (hs v _ hv).okRef p₄
-        heq_of_eq ((SubE.toVar_comp θ₂ hθ₂ hc₂ _ (Subst.okRef_at hθ₁ hv)).trans
+        congrArg (Sigma.mk _) ((SubE.toVar_comp θ₂ hθ₂ hc₂ _ (Subst.okRef_at hθ₁ hv)).trans
           ((SubE.toVar_congr (Subst.at_comp hθ₁ θ₂ hθ₂ hc₂ hv).symm _ p₃).trans
             ((hs v _ hv).toVar p₄ p₃).symm))
-    | _, _, .func f, _ => heq_of_eq (by
-        change Term.func (Func.subst ι₂ θ₂ hθ₂ hc₂ (Func.subst ι₁ θ₁ hθ₁ hc₁ f)) = _
+    | _, _, .func f => by
+        change (⟨_, Term.func (Func.subst ι₂ θ₂ hθ₂ hc₂ (Func.subst ι₁ θ₁ hθ₁ hc₁ f))⟩ :
+            Σ b, Term σ Δ₂ .Var b) = ⟨_, Term.func (Func.subst ι₃ θ₃ hθ₃ hc₃ f)⟩
         rw [Func.subst_comp θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs f]
-        rfl)
-    | _, _, .unit, h => nomatch h
-    | _, _, .pair _ _, h => nomatch h
-    | _, _, .boxtm _, h => nomatch h
-    | _, _, .diatm _ _ _, h => nomatch h
+    | _, _, .unit => rfl
+    | _, _, .pair s t =>
+        sig_pair (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs s)
+          (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)
+    | _, _, .boxtm t =>
+        sig_boxtm (Term.subst_comp_sig θ₁.box θ₂.box θ₃.box (Subst.ok_box hθ₁)
+          (Subst.coh_box hθ₁ hc₁) (Subst.ok_box hθ₂) (Subst.coh_box hθ₂ hc₂) (Subst.ok_box hθ₃)
+          (Subst.coh_box hθ₃ hc₃) (Subst.sim_box_comp hθ₁ hθ₂ hc₂ hs) t)
+    | _, _, .diatm x hx t => by
+        have hw₁ : (θ₁.at x).idxAlong [] = ι₁ x := hx.elim fun _ hX => hc₁ x _ hX []
+        have hx₁ : ∃ X, Δ₁.ref (ι₁ x) = some (.VTypeDia X) :=
+          hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ₁ hX) hw₁
+        have hw₂ : (θ₂.at (ι₁ x)).idxAlong [] = ι₂ (ι₁ x) := hx₁.elim fun _ hX => hc₂ _ _ hX []
+        have hι : ι₃ x = ι₂ (ι₁ x) := Subst.idx_comp hθ₁ hc₁ hθ₂ hc₂ hc₃ hs hx
+        have hw₃ : (θ₃.at x).idxAlong [] = ι₂ (ι₁ x) :=
+          (hx.elim fun _ hX => hc₃ x _ hX []).trans hι
+        have key : ∀ (y : VarSymb) (_hy : y = ι₂ (ι₁ x)) (P : ∃ Y, Δ₂.ref y = some (.VTypeDia Y))
+            (p : Subst.Ok (Γ.diaIn x) (θ₃.dia x y)) (q : Subst.Coh ι₃ (Γ.diaIn x) (θ₃.dia x y)),
+            (⟨_, Term.subst ι₂ θ₂ hθ₂ hc₂ (Term.subst ι₁ θ₁ hθ₁ hc₁ (Term.diatm x hx t))⟩ :
+              Σ b, Term σ Δ₂ _ b) =
+              ⟨_, Term.diatm y P (Term.subst ι₃ (θ₃.dia x y) p q t)⟩ := by
+          intro y hy P p q
+          subst hy
+          exact sig_diatm (Term.subst_comp_sig (θ₁.dia x (ι₁ x)) (θ₂.dia (ι₁ x) (ι₂ (ι₁ x)))
+            (θ₃.dia x (ι₂ (ι₁ x))) (Subst.ok_dia hθ₁ hx hw₁) (Subst.coh_dia hθ₁ hc₁ hx)
+            (Subst.ok_dia hθ₂ hx₁ hw₂) (Subst.coh_dia hθ₂ hc₂ hx₁) p q
+            (Subst.sim_dia_comp hθ₁ hc₁ hθ₂ hc₂ hs hx hx₁ hw₂ hw₃) t)
+        exact key (ι₃ x) hι _ _ _
     termination_by structural _ _ t => t
 end
 
@@ -470,7 +497,7 @@ theorem Term.subst_comp {σ : Signature} {ι₁ ι₂ ι₃ : VarSymb → VarSym
     (hc₃ : Subst.Coh ι₃ Γ θ₃) (hs : Subst.Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂))
     (t : Term σ Γ .Var .var) :
     Term.subst ι₂ θ₂ hθ₂ hc₂ (Term.subst ι₁ θ₁ hθ₁ hc₁ t) = Term.subst ι₃ θ₃ hθ₃ hc₃ t :=
-  eq_of_heq (Term.subst_comp_heq θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t rfl)
+  eq_of_heq (Sigma.mk.inj (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)).2
 
 theorem Rel.subst_comp {σ : Signature} {ι₁ ι₂ ι₃ : VarSymb → VarSymb} {Γ Δ₁ Δ₂ : Ctx}
     (θ₁ : Subst σ Δ₁) (θ₂ θ₃ : Subst σ Δ₂) (hθ₁ : Subst.Ok Γ θ₁) (hc₁ : Subst.Coh ι₁ Γ θ₁)
@@ -562,5 +589,13 @@ theorem WFF.subst_comp {σ : Signature} : {ι₁ ι₂ ι₃ : VarSymb → VarSy
           (hΓ.diaIn x) (hΔ₁.diaIn (ι₁ x)) hΔy
           (Subst.sim_dia_comp hθ₁ hc₁ hθ₂ hc₂ hs hx hx₁ hw₂ hw₃) φ)
       exact key (ι₃ x) hι _ _ _ _
+  | _, _, _, _, _, _, _, _, _, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, _, _, _, hs,
+      .here hT s t =>
+      WFF.here_congr hT (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs s)
+        (Term.subst_comp θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)
+  | _, _, _, _, _, _, _, _, _, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, _, _, _, hs,
+      .diaEq s s' =>
+      WFF.diaEq_congr (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs s)
+        (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs s')
 
 end V12M
