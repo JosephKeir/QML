@@ -306,6 +306,7 @@ theorem completenessB_ofDecls (hB : ModalSys.B = true) {ds : List (ℕ × VarTyp
     (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env (Ctx.ofDecls ds) w),
       (Ctx.ofDecls ds).NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ :=
+  letI := Ctx.presentedOfDecls ds hnd
   completenessB_rename hB (rootOnly_ofDecls ds) (fun _ _ h => ctxOf_renOf ds h)
     (fun _ _ h => ofDecls_invOf ds hnd h) (fun _ _ h => invOf_renOf ds h) hval
 

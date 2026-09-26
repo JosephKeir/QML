@@ -151,7 +151,7 @@ variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB]
 theorem model_existence {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)}
     (hS : WFF.SetConsistent S) : WFF.SetSatisfiable S := by
   have hfresh : ∀ d n, Γ.RootFresh (.free (Canon.names (Ctx.Presented.bound Γ) d n)) :=
-    fun _ _ => Ctx.Presented.fresh _ (Nat.le_add_right _ _)
+    fun _ _ => Ctx.Presented.fresh_bound _ (Nat.le_add_right _ _)
   let L₀ : WorldLang := WorldLang.const Γ (fun _ => .VTypeOne)
     (Canon.names (Ctx.Presented.bound Γ) 0) (Canon.names_injective _ _) (hfresh 0)
   let S₀ : Set ((L₀.pre []).Sentence σ) := {s | ∃ ψ ∈ S, s = ⟨0, ψ⟩}
@@ -168,7 +168,8 @@ theorem model_existence {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)}
 
 /-- ⭐**Strong completeness.** If a formula holds in every model, world and environment satisfying a
     set of premises, then it is derivable from finitely many of them. -/
-theorem strong_completeness {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)} {φ : WFF σ Γ 0}
+theorem strong_completeness {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)}
+    {φ : WFF σ Γ 0}
     (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env Γ w),
       (∀ ψ ∈ S, M.sat env ψ) → M.sat env φ) :
     ∃ Δ : List (WFF σ Γ 0), (∀ ψ ∈ Δ, ψ ∈ S) ∧ Provable Δ φ := by

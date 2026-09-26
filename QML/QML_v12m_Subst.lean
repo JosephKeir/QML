@@ -649,4 +649,34 @@ def WFF.bindPair {σ : Signature} {Γ : Ctx} {d : ℕ} (u₁ u₂ z : ℕ) (hu :
     ((hs.insertFree z _).insertFree u₁ A) (hs.insertFree z _)
     (WFF.mono (Ctx.insert_swap_le hne_z₁.symm _ _) φ₁)
 
+/-- ⭐Substitution commutes with equality at every type: `eqRec` is structural, so each clause is
+    the corresponding clause of `WFF.subst`.  Annotation-free on both sides, which is what
+    `Proof.here_fun` at compound content needs (§2d). -/
+theorem WFF.subst_eqRec {σ : Signature} {ι : VarSymb → VarSymb} :
+    {Γ Δ : Ctx} → {d d' : ℕ} → (θ : Subst σ Δ) → (hθ : Subst.Ok Γ θ) → (hc : Subst.Coh ι Γ θ) →
+    (hΓ : Γ.SlotsFrom d) → (hΔ : Δ.SlotsFrom d') → (T : VarType) → {a a' : Ann T} →
+    (t : Term σ Γ T a) → (s : Term σ Γ T a') →
+    WFF.subst ι θ hθ hc hΓ hΔ (eqRec T t s : WFF σ Γ d) =
+      eqRec T (Term.subst ι θ hθ hc t) (Term.subst ι θ hθ hc s)
+  | _, _, _, _, _, _, _, _, _, .Var, .var, .var, t, s => by
+      have e : ∀ {Γ' : Ctx} {e' : ℕ} (u v : Term σ Γ' .Var .var),
+          (eqRec .Var u v : WFF σ Γ' e') = .eq u v := by
+        intro _ _ u v
+        cases u <;> cases v <;> rfl
+      rw [e t s, e _ _]
+      rfl
+  | _, _, _, _, _, _, _, _, _, .VTypeOne, .one, .one, .unit, .unit => rfl
+  | _, _, _, _, θ, hθ, hc, hΓ, hΔ, .VTypeProd A B, .prod _ _, .prod _ _,
+      .pair t₁ t₂, .pair s₁ s₂ => by
+      change WFF.and (WFF.subst ι θ hθ hc hΓ hΔ (eqRec A t₁ s₁))
+        (WFF.subst ι θ hθ hc hΓ hΔ (eqRec B t₂ s₂)) = _
+      rw [WFF.subst_eqRec θ hθ hc hΓ hΔ A t₁ s₁, WFF.subst_eqRec θ hθ hc hΓ hΔ B t₂ s₂]
+      rfl
+  | _, _, _, _, θ, hθ, hc, hΓ, hΔ, .VTypeBox A, .box _, .box _, .boxtm t, .boxtm s => by
+      change WFF.box (WFF.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc)
+        hΓ.boxIn hΔ.boxIn (eqRec A t s)) = _
+      rw [WFF.subst_eqRec θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn hΔ.boxIn A t s]
+      rfl
+  | _, _, _, _, _, _, _, _, _, .VTypeDia _, _, _, .diatm _ _ _, .diatm _ _ _ => rfl
+
 end V12M

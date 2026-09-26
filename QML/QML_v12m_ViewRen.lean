@@ -44,20 +44,10 @@ omit [ModalSys] in
 theorem reView_dia : reView x y (.step x .dia) = .step y .dia := if_pos ⟨rfl, rfl⟩
 
 omit [ModalSys] in
-theorem ext_append : ∀ (v : VarSymb) (p : List Step) (s : Step),
+theorem ext_snoc : ∀ (v : VarSymb) (p : List Step) (s : Step),
     v.ext (p ++ [s]) = .step (v.ext p) s
   | _, [], _ => rfl
-  | v, s' :: p, s => ext_append (.step v s') p s
-
-omit [ModalSys] in
-theorem path_ext : ∀ (v : VarSymb) (p : List Step), (v.ext p).path = v.path ++ p
-  | _, [] => (List.append_nil _).symm
-  | v, s :: p => by
-      change (VarSymb.ext (.step v s) p).path = _
-      rw [path_ext (.step v s) p]
-      change v.path ++ [s] ++ p = _
-      rw [List.append_assoc]
-      rfl
+  | v, s' :: p, s => ext_snoc (.step v s') p s
 
 omit [ModalSys] in
 /-- Below the prefix the map is extension. -/
@@ -93,10 +83,126 @@ theorem reView_eq_self {v : VarSymb} (h : ∀ p, v ≠ (VarSymb.step x .dia).ext
   | root r => rfl
   | step v s ih =>
       have hne : ¬(v = x ∧ s = Step.dia) := fun hc => h [] (by obtain ⟨rfl, rfl⟩ := hc; rfl)
-      rw [reView_step_of_ne hne, ih (fun p hp => h (p ++ [s]) (by rw [ext_append, ← hp]))]
+      rw [reView_step_of_ne hne, ih (fun p hp => h (p ++ [s]) (by rw [ext_snoc, ← hp]))]
 
 end VarSymb
 
+namespace VarSymb
+
+omit [ModalSys] in
+/-- An address is determined by its root and its steps. -/
+theorem eq_of_path : ∀ {v w : VarSymb}, v.rt = w.rt → v.path = w.path → v = w
+  | .root _, .root _, hr, _ => congrArg VarSymb.root hr
+  | .root _, .step w s, _, hp => by simp only [VarSymb.path] at hp; simp at hp
+  | .step v s, .root _, _, hp => by simp only [VarSymb.path] at hp; simp at hp
+  | .step v s, .step w s', hr, hp => by
+      have hp' : v.path ++ [s] = w.path ++ [s'] := hp
+      obtain ⟨hpv, hs⟩ := List.append_inj' hp' rfl
+      have hsv : s = s' := by simpa using hs
+      rw [eq_of_path (v := v) (w := w) hr hpv, hsv]
+
+omit [ModalSys] in
+/-- ⭐Two addresses with a common extension are prefix-comparable. -/
+theorem ext_dichotomy {v w : VarSymb} {p q : List Step} (h : v.ext p = w.ext q) :
+    (∃ r, w = v.ext r) ∨ (∃ r, v = w.ext r) := by
+  have hrt : v.rt = w.rt := by
+    have h₁ : (v.ext p).rt = (w.ext q).rt := by rw [h]
+    rw [ext_rt, ext_rt] at h₁
+    exact h₁
+  have hpath : v.path ++ p = w.path ++ q := by
+    have h₁ : (v.ext p).path = (w.ext q).path := by rw [h]
+    rw [ext_path, ext_path] at h₁
+    exact h₁
+  rcases List.append_eq_append_iff.mp hpath with ⟨a, ha, -⟩ | ⟨a, ha, -⟩
+  · refine Or.inl ⟨a, (eq_of_path (v := v.ext a) (w := w) ?_ ?_).symm⟩
+    · rw [ext_rt]; exact hrt
+    · rw [ext_path]; exact ha.symm
+  · refine Or.inr ⟨a, (eq_of_path (v := w.ext a) (w := v) ?_ ?_).symm⟩
+    · rw [ext_rt]; exact hrt.symm
+    · rw [ext_path]; exact ha.symm
+
+end VarSymb
+
+/-! ## Splitting a path at its last level step -/
+
+/-- Every step of the path is a projection. -/
+def AllProj (p : List Step) : Prop := ∀ s ∈ p, s.isProj = true
+
+omit [ModalSys] in
+theorem AllProj.nil : AllProj [] := fun _ h => absurd h List.not_mem_nil
+
+omit [ModalSys] in
+/-- A path with a level step in it splits at its **last** one. -/
+theorem exists_split_last : ∀ (l : List Step), (∃ s ∈ l, s.isProj = false) →
+    ∃ (q r : List Step) (s' : Step), l = q ++ s' :: r ∧ s'.isProj = false ∧ AllProj r
+  | [], h => by simp at h
+  | s₀ :: l, h => by
+      by_cases hl : ∃ s ∈ l, s.isProj = false
+      · obtain ⟨q, r, s', heq, hs', hr⟩ := exists_split_last l hl
+        exact ⟨s₀ :: q, r, s', by rw [List.cons_append, ← heq], hs', hr⟩
+      · have hall : AllProj l := fun t ht => by
+          by_contra hc
+          exact hl ⟨t, ht, Bool.eq_false_iff.mpr hc⟩
+        have hs₀ : s₀.isProj = false := by
+          obtain ⟨t, ht, htf⟩ := h
+          rcases List.mem_cons.mp ht with rfl | hmem
+          · exact htf
+          · rw [hall t hmem] at htf
+            exact absurd htf (by simp)
+        exact ⟨[], l, s₀, rfl, hs₀, hall⟩
+
+omit [ModalSys] in
+/-- The split at the last level step is unique. -/
+theorem split_unique : ∀ {q q' r r' : List Step} {s s' : Step},
+    q ++ s :: r = q' ++ s' :: r' → s.isProj = false → s'.isProj = false →
+    AllProj r → AllProj r' → q = q' ∧ s = s' ∧ r = r'
+  | [], [], _, _, _, _, h, _, _, _, _ => by
+      obtain ⟨hs, hr⟩ := List.cons_eq_cons.mp h
+      exact ⟨rfl, hs, hr⟩
+  | [], b :: q', r, r', s, s', h, hs, hs', hr, _ => by
+      obtain ⟨hsb, hrest⟩ := List.cons_eq_cons.mp h
+      rw [hrest] at hr
+      rw [hr s' (List.mem_append_right _ List.mem_cons_self)] at hs'
+      exact absurd hs' (by simp)
+  | a :: q, [], r, r', s, s', h, hs, hs', _, hr' => by
+      obtain ⟨hsa, hrest⟩ := List.cons_eq_cons.mp h
+      rw [← hrest] at hr'
+      rw [hr' s (List.mem_append_right _ List.mem_cons_self)] at hs
+      exact absurd hs (by simp)
+  | a :: q, b :: q', r, r', s, s', h, hs, hs', hr, hr' => by
+      obtain ⟨hab, hrest⟩ := List.cons_eq_cons.mp h
+      obtain ⟨hq, hss, hrr⟩ := split_unique hrest hs hs' hr hr'
+      exact ⟨by rw [hab, hq], hss, hrr⟩
+
+namespace VarSymb
+
+omit [ModalSys] in
+theorem ext_ext : ∀ (v : VarSymb) (p q : List Step), (v.ext p).ext q = v.ext (p ++ q)
+  | _, [], _ => rfl
+  | v, s :: p, q => by
+      change (VarSymb.ext (.step v s) p).ext q = VarSymb.ext (.step v s) (p ++ q)
+      rw [ext_ext]
+
+omit [ModalSys] in
+/-- ⭐An address written as a level step followed by projections is written that way only once. -/
+theorem split_eq {w w' : VarSymb} {s s' : Step} {p p' : List Step}
+    (h : (VarSymb.step w s).ext p = (VarSymb.step w' s').ext p')
+    (hs : s.isProj = false) (hs' : s'.isProj = false) (hp : AllProj p) (hp' : AllProj p') :
+    w = w' ∧ s = s' ∧ p = p' := by
+  have hrt : w.rt = w'.rt := by
+    have h₁ : ((VarSymb.step w s).ext p).rt = ((VarSymb.step w' s').ext p').rt := by rw [h]
+    rw [ext_rt, ext_rt] at h₁
+    exact h₁
+  have hpath : w.path ++ s :: p = w'.path ++ s' :: p' := by
+    have h₁ : ((VarSymb.step w s).ext p).path = ((VarSymb.step w' s').ext p').path := by rw [h]
+    rw [ext_path, ext_path] at h₁
+    change w.path ++ [s] ++ p = w'.path ++ [s'] ++ p' at h₁
+    rw [List.append_assoc, List.append_assoc] at h₁
+    exact h₁
+  obtain ⟨hq, hss, hrr⟩ := split_unique hpath hs hs' hp hp'
+  exact ⟨eq_of_path hrt hq, hss, hrr⟩
+
+end VarSymb
 /-! ## The substitution -/
 
 /-- The view's content address is not a symbol the outer context declares below or above: no
@@ -106,6 +212,195 @@ end VarSymb
 def Ctx.ViewClean (Γ : Ctx) (x : VarSymb) : Prop :=
   ∀ (v : VarSymb) (T : VarType), v.lastProj = false → Γ.boxIn v = some T →
     ∀ p q : List Step, v.ext p ≠ (VarSymb.step x .dia).ext q
+
+/-! ## Contexts whose declarations do not nest along level steps -/
+
+/-- ⭐Nothing declared sits strictly below a declared address along a **level** step (`box`, `dia`,
+    `keep`).  A view's entries are one level step below the entries of the context it is a view of,
+    and those are not themselves declared there, so every context of a world language is flat in
+    this sense — which is how `Ctx.ViewClean` gets discharged. -/
+def Ctx.LevelFlat (Γ : Ctx) : Prop :=
+  ∀ (u : VarSymb) (s : Step) (r : List Step), s.isProj = false → Γ.ref u ≠ none →
+    Γ.ref ((VarSymb.step u s).ext r) = none
+
+/-- A box-visible address is a level step below a declared one, and that step is not `dia`. -/
+theorem Ctx.boxIn_shape {Γ : Ctx} {v : VarSymb} {T : VarType} (hlp : v.lastProj = false)
+    (hv : Γ.boxIn v = some T) :
+    ∃ (u : VarSymb) (s : Step), v = .step u s ∧ s.isProj = false ∧ s ≠ Step.dia ∧
+      Γ.ref u ≠ none := by
+  match v with
+  | .root _ => exact absurd hv (by simp [Ctx.boxIn])
+  | .step u .fst => exact absurd hlp (by simp [VarSymb.lastProj, Step.isProj])
+  | .step u .snd => exact absurd hlp (by simp [VarSymb.lastProj, Step.isProj])
+  | .step u .here => exact absurd hlp (by simp [VarSymb.lastProj, Step.isProj])
+  | .step u .dia => exact absurd hv (by simp [Ctx.boxIn])
+  | .step u .box =>
+      exact ⟨u, .box, rfl, rfl, by simp, by rw [(Ctx.boxIn_box hv).2]; simp⟩
+  | .step u .keep =>
+      exact ⟨u, .keep, rfl, rfl, by simp,
+        by rw [(Ctx.boxIn_keep hv).2.1]; simp⟩
+
+/-- ⭐A flat context is clean at every address it declares, so the view renaming is available
+    there. -/
+theorem Ctx.LevelFlat.viewClean {Γ : Ctx} (hfl : Γ.LevelFlat) {x : VarSymb} {A : VarType}
+    (hx : Γ.ref x = some (.VTypeDia A)) : Ctx.ViewClean Γ x := by
+  intro v T hlp hv p q heq
+  obtain ⟨u, s, rfl, hs, hsne, hu⟩ := Ctx.boxIn_shape hlp hv
+  have hxne : Γ.ref x ≠ none := by rw [hx]; simp
+  rcases VarSymb.ext_dichotomy heq with ⟨r, hr⟩ | ⟨r, hr⟩
+  · -- `x.dia` sits at or below the level step `s`, so `x` itself does
+    rcases List.eq_nil_or_concat r with rfl | ⟨r', s₀, rfl⟩
+    · injection hr with _ hstep
+      exact hsne hstep.symm
+    · simp only [List.concat_eq_append] at hr
+      rw [VarSymb.ext_snoc] at hr
+      injection hr with hbase hstep
+      exact hxne (hbase ▸ hfl u s r' hs hu)
+  · -- the declared address under `v` sits at or below `x.dia`, which flatness forbids
+    rcases List.eq_nil_or_concat r with rfl | ⟨r', s₀, rfl⟩
+    · injection hr with hbase hstep
+      exact hsne hstep
+    · simp only [List.concat_eq_append] at hr
+      rw [VarSymb.ext_snoc] at hr
+      injection hr with hbase _
+      exact hu (hbase ▸ hfl x .dia r' rfl hxne)
+
+/-! ## Flatness of the views -/
+
+/-- In a view, every declared address is a level step below something the outer context declares,
+    followed by projections. -/
+theorem Ctx.view_ref_shape {Γ Δ : Ctx}
+    (hstep : ∀ (v : VarSymb) (s : Step), s.isProj = false → Δ (.step v s) ≠ none → Γ.ref v ≠ none)
+    (hroot : ∀ r : Root, Δ (.root r) = none) :
+    ∀ {u : VarSymb}, Δ.ref u ≠ none →
+      ∃ (w : VarSymb) (s : Step) (p : List Step), u = (VarSymb.step w s).ext p ∧
+        s.isProj = false ∧ AllProj p ∧ Γ.ref w ≠ none
+  | .root r, hu => by
+      refine absurd ?_ hu
+      rw [Ctx.ref_nonproj _ (show (VarSymb.root r).lastProj = false from rfl)]
+      exact hroot r
+  | .step u s, hu => by
+      by_cases hs : s.isProj = true
+      · rw [Ctx.ref_step_proj _ _ hs] at hu
+        have hu' : Δ.ref u ≠ none := fun h => hu (by rw [h]; rfl)
+        obtain ⟨w, s', p, rfl, hs', hp, hw⟩ := Ctx.view_ref_shape hstep hroot hu'
+        refine ⟨w, s', p ++ [s], ?_, hs', ?_, hw⟩
+        · rw [VarSymb.ext_snoc]
+        · intro t ht
+          rcases List.mem_append.mp ht with h | h
+          · exact hp t h
+          · rw [List.mem_singleton.mp h]; exact hs
+      · have hsf : s.isProj = false := Bool.eq_false_iff.mpr hs
+        rw [Ctx.ref_nonproj _ (show (VarSymb.step u s).lastProj = false from hsf)] at hu
+        exact ⟨u, s, [], rfl, hsf, AllProj.nil, hstep u s hsf hu⟩
+
+/-- ⭐A view of a flat context is flat. -/
+theorem Ctx.LevelFlat.view {Γ Δ : Ctx} (hfl : Γ.LevelFlat)
+    (hstep : ∀ (v : VarSymb) (s : Step), s.isProj = false → Δ (.step v s) ≠ none → Γ.ref v ≠ none)
+    (hroot : ∀ r : Root, Δ (.root r) = none) : Δ.LevelFlat := by
+  intro u s₀ r hs₀ hu
+  by_contra hc
+  obtain ⟨w, s, p, rfl, hs, hp, hw⟩ := Ctx.view_ref_shape hstep hroot hu
+  obtain ⟨w₂, s₂, p₂, heq₂, hs₂, hp₂, hw₂⟩ := Ctx.view_ref_shape hstep hroot hc
+  obtain ⟨q, P, S, hsplit, hS, hP⟩ := exists_split_last (s₀ :: r) ⟨s₀, List.mem_cons_self, hs₀⟩
+  have hnorm : (VarSymb.step ((VarSymb.step w s).ext p) s₀).ext r =
+      (VarSymb.step (((VarSymb.step w s).ext p).ext q) S).ext P := by
+    change VarSymb.ext ((VarSymb.step w s).ext p) (s₀ :: r) = _
+    rw [hsplit, ← VarSymb.ext_ext]
+    rfl
+  rw [hnorm] at heq₂
+  obtain ⟨hw₂eq, -, -⟩ := VarSymb.split_eq heq₂ hS hs₂ hP hp₂
+  rw [← hw₂eq, VarSymb.ext_ext] at hw₂
+  exact hw₂ (hfl w s (p ++ q) hs hw)
+
+/-- ⭐The `□` view of a flat context is flat. -/
+theorem Ctx.LevelFlat.boxIn {Γ : Ctx} (hfl : Γ.LevelFlat) : Γ.boxIn.LevelFlat := by
+  refine hfl.view ?_ (fun _ => rfl)
+  intro v s hs hne
+  match s with
+  | .fst => exact absurd hs (by simp [Step.isProj])
+  | .snd => exact absurd hs (by simp [Step.isProj])
+  | .here => exact absurd hs (by simp [Step.isProj])
+  | .dia => exact absurd (rfl : Γ.boxIn (.step v .dia) = none) hne
+  | .box =>
+      obtain ⟨T, hT⟩ := Option.ne_none_iff_exists'.mp hne
+      rw [(Ctx.boxIn_box hT).2]
+      simp
+  | .keep =>
+      obtain ⟨T, hT⟩ := Option.ne_none_iff_exists'.mp hne
+      rw [(Ctx.boxIn_keep hT).2.1]
+      simp
+
+/-- ⭐A `◇_x` view of a flat context is flat. -/
+theorem Ctx.LevelFlat.diaIn {Γ : Ctx} (hfl : Γ.LevelFlat) (x : VarSymb) :
+    (Γ.diaIn x).LevelFlat := by
+  refine hfl.view ?_ (fun _ => rfl)
+  intro v s hs hne
+  match s with
+  | .fst => exact absurd hs (by simp [Step.isProj])
+  | .snd => exact absurd hs (by simp [Step.isProj])
+  | .here => exact absurd hs (by simp [Step.isProj])
+  | .box =>
+      obtain ⟨T, hT⟩ := Option.ne_none_iff_exists'.mp hne
+      rw [(Ctx.boxIn_box (Γ := Γ) hT).2]
+      simp
+  | .keep =>
+      obtain ⟨T, hT⟩ := Option.ne_none_iff_exists'.mp hne
+      rw [(Ctx.boxIn_keep (Γ := Γ) hT).2.1]
+      simp
+  | .dia =>
+      obtain ⟨T, hT⟩ := Option.ne_none_iff_exists'.mp hne
+      change (if v = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T at hT
+      split_ifs at hT with hvx
+      · subst hvx
+        cases hX : Γ.ref v with
+        | none => rw [hX] at hT; cases hT
+        | some U => simp
+
+/-- ⭐Declaring a fresh root keeps a context flat: nothing sits below the new root, and nothing else
+    changes. -/
+theorem Ctx.ref_insert_fresh_shape {Γ : Ctx} {r : Root} {T : VarType} (hfr : Γ.RootFresh r) :
+    ∀ {v : VarSymb}, v.rt = r → (Γ.insert r T).ref v ≠ none →
+      ∃ p, AllProj p ∧ v = (VarSymb.root r).ext p
+  | .root r', hrt, _ => ⟨[], AllProj.nil, by subst hrt; rfl⟩
+  | .step v s, hrt, hne => by
+      by_cases hs : s.isProj = true
+      · rw [Ctx.ref_step_proj _ _ hs] at hne
+        have hne' : (Γ.insert r T).ref v ≠ none := fun h => hne (by rw [h]; rfl)
+        obtain ⟨p, hp, rfl⟩ := Ctx.ref_insert_fresh_shape hfr (v := v) hrt hne'
+        refine ⟨p ++ [s], ?_, ?_⟩
+        · intro t ht
+          rcases List.mem_append.mp ht with h | h
+          · exact hp t h
+          · rw [List.mem_singleton.mp h]; exact hs
+        · rw [VarSymb.ext_snoc]
+      · have hsf : s.isProj = false := Bool.eq_false_iff.mpr hs
+        rw [Ctx.ref_nonproj _ (show (VarSymb.step v s).lastProj = false from hsf)] at hne
+        change (if VarSymb.step v s = .root r then some T else Γ (.step v s)) ≠ none at hne
+        rw [if_neg (fun he => by cases he)] at hne
+        exact absurd (hfr _ hrt) hne
+
+/-- ⭐Flatness survives the declaration of a fresh root. -/
+theorem Ctx.LevelFlat.insert {Γ : Ctx} (hfl : Γ.LevelFlat) {r : Root} (hfr : Γ.RootFresh r)
+    (T : VarType) : (Γ.insert r T).LevelFlat := by
+  intro u s₀ r' hs₀ hu
+  by_cases hrt : u.rt = r
+  · by_contra hc
+    have hrt' : ((VarSymb.step u s₀).ext r').rt = r := by rw [VarSymb.ext_rt]; exact hrt
+    obtain ⟨p, hp, heq⟩ := Ctx.ref_insert_fresh_shape hfr hrt' hc
+    have hpath : u.path ++ s₀ :: r' = p := by
+      have h₁ := congrArg VarSymb.path heq
+      rw [VarSymb.ext_path, VarSymb.ext_path] at h₁
+      change u.path ++ [s₀] ++ r' = VarSymb.path (.root r) ++ p at h₁
+      rw [List.append_assoc] at h₁
+      simpa [VarSymb.path] using h₁
+    rw [hp s₀ (hpath ▸ List.mem_append_right _ List.mem_cons_self)] at hs₀
+    exact absurd hs₀ (by simp)
+  · have hrt' : ((VarSymb.step u s₀).ext r').rt ≠ r := by rw [VarSymb.ext_rt]; exact hrt
+    rw [Ctx.ref_insert_ne T hrt']
+    rw [Ctx.ref_insert_ne T hrt] at hu
+    exact hfl u s₀ r' hs₀ hu
 
 theorem Ctx.diaIn_of_ne_dia {Γ : Ctx} {y : VarSymb} :
     ∀ {v : VarSymb}, (∀ u, v ≠ .step u .dia) → Γ.diaIn y v = Γ.boxIn v
@@ -253,5 +548,137 @@ theorem Term.reView_self {σ : Signature} {Γ : Ctx} {x : VarSymb} {A : VarType}
     (⟨_, Term.reView hx hx hcl t⟩ : Σ b, Term σ (Γ.diaIn x) T b) = ⟨a, t⟩ :=
   (Term.subst_ren (Ctx.Le.refl _) _ _ _ (fun _ _ hv => Subst.at_viewRen_self hv) t).trans
     (congrArg (Sigma.mk _) (Term.mono_refl _ t))
+
+
+/-- ⭐The renaming commutes with weakening: every entry is a renaming, so weakening the substitution
+    changes nothing.  This is what makes the canonical model's reading of a `◇`-body independent of
+    the stage it is read at. -/
+theorem Term.reView_mono {σ : Signature} {Γ Γ' : Ctx} (hle : Γ.Le Γ') {x y : VarSymb} {A : VarType}
+    (hx : Γ.ref x = some (.VTypeDia A)) (hy : Γ.ref y = some (.VTypeDia A))
+    (hcl : Ctx.ViewClean Γ x) (hcl' : Ctx.ViewClean Γ' x) {T : VarType} {a : Ann T}
+    (t : Term σ (Γ.diaIn x) T a) :
+    Term.mono (hle.diaIn y) (Term.reView hx hy hcl t) =
+      Term.reView (hle.ref hx) (hle.ref hy) hcl' (Term.mono (hle.diaIn x) t) := by
+  simp only [Term.reView]
+  rw [Term.mono_subst, Term.subst_mono]
+  refine eq_of_heq (Sigma.mk.inj (Term.subst_congr _ _ _ _ _ _ ?_ t)).2
+  refine Subst.sim_of ?_
+  intro v U hlp hv
+  by_cases hd : ∃ u, v = .step u .dia
+  · obtain ⟨u, rfl⟩ := hd
+    change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+      else none) = some U at hv
+    split_ifs at hv with hux
+    · subst hux
+      rw [show ((Subst.viewRen σ Γ u y).mono ((hle.diaIn y))) (.step u .dia) =
+          ((Subst.viewRen σ Γ u y) (.step u .dia)).mono (hle.diaIn y) from rfl,
+        Subst.viewRen_dia, Subst.viewRen_dia]
+      exact SubE.Sim.refl _
+  · have hne : ∀ u, v ≠ .step u .dia := fun u h => hd ⟨u, h⟩
+    rw [show ((Subst.viewRen σ Γ x y).mono (hle.diaIn y)) v =
+        ((Subst.viewRen σ Γ x y) v).mono (hle.diaIn y) from rfl,
+      Subst.viewRen_of_ne_dia hne, Subst.viewRen_of_ne_dia hne]
+    exact SubE.Sim.refl _
+
+/-- The renaming touches only the content address, so it leaves the `□`-part alone. -/
+theorem Subst.at_viewRen_boxIn {σ : Signature} {Γ : Ctx} {x y : VarSymb} :
+    ∀ {v : VarSymb} {T : VarType}, Γ.boxIn.ref v = some T →
+      (Subst.viewRen σ Γ x y).at v = .ren v
+  | .root _, _, hv => by
+      rw [Ctx.ref_nonproj _ (show (VarSymb.root _).lastProj = false from rfl)] at hv
+      exact absurd hv (by simp [Ctx.boxIn])
+  | .step v s, T, hv => by
+      change (if s.isProj then ((Subst.viewRen σ Γ x y).at v).proj s
+        else Subst.viewRen σ Γ x y (.step v s)) = _
+      by_cases hs : s.isProj = true
+      · rw [if_pos hs, Ctx.ref_step_proj _ _ hs] at *
+        obtain ⟨U, hU, -⟩ := Option.bind_eq_some_iff.mp hv
+        rw [Subst.at_viewRen_boxIn hU]
+        rfl
+      · rw [if_neg hs]
+        match s with
+        | .fst => exact absurd rfl hs
+        | .snd => exact absurd rfl hs
+        | .here => exact absurd rfl hs
+        | .box => rfl
+        | .keep => rfl
+        | .dia =>
+            rw [Ctx.ref_nonproj _ (show (VarSymb.step v .dia).lastProj = false from rfl)] at hv
+            exact absurd hv (by simp [Ctx.boxIn])
+
+/-- ⭐A term lifted from the `□`-part of the context is untouched by the renaming. -/
+theorem Term.reView_mono_boxIn {σ : Signature} {Γ : Ctx} {x y : VarSymb} {A : VarType}
+    (hx : Γ.ref x = some (.VTypeDia A)) (hy : Γ.ref y = some (.VTypeDia A))
+    (hcl : Ctx.ViewClean Γ x) {T : VarType} {a : Ann T} (b : Term σ Γ.boxIn T a) :
+    (⟨_, Term.reView hx hy hcl (Term.mono (Ctx.le_boxIn_diaIn Γ x) b)⟩ :
+        Σ c, Term σ (Γ.diaIn y) T c) =
+      ⟨a, Term.mono (Ctx.le_boxIn_diaIn Γ y) b⟩ := by
+  simp only [Term.reView]
+  rw [Term.subst_mono]
+  exact Term.subst_ren (Ctx.le_boxIn_diaIn Γ y) _ _ _
+    (fun _ _ hv => Subst.at_viewRen_boxIn hv) b
+
+
+/-- ⭐The view renaming is a renaming in the sense `Term.subst_eta_ren` wants. -/
+theorem Subst.isRen_viewRen {σ : Signature} {Γ : Ctx} {x y : VarSymb} {A : VarType}
+    (hx : Γ.ref x = some (.VTypeDia A)) (_hy : Γ.ref y = some (.VTypeDia A))
+    (hcl : Ctx.ViewClean Γ x) :
+    Subst.IsRen (VarSymb.reView x y) (Γ.diaIn x) (Subst.viewRen σ Γ x y) := by
+  intro u
+  induction u with
+  | root r =>
+      intro U hu
+      rw [Ctx.ref_nonproj _ (show (VarSymb.root r).lastProj = false from rfl)] at hu
+      exact absurd hu (by simp [Ctx.diaIn, Ctx.boxIn])
+  | step u s ih =>
+      intro U hu
+      by_cases hs : s.isProj = true
+      · rw [Ctx.ref_step_proj _ _ hs] at hu
+        obtain ⟨W, hW, -⟩ := Option.bind_eq_some_iff.mp hu
+        rw [show (Subst.viewRen σ Γ x y).at (.step u s) =
+            ((Subst.viewRen σ Γ x y).at u).proj s from if_pos hs, ih W hW,
+          VarSymb.reView_step_of_ne (fun hc => by
+            rw [hc.2] at hs
+            exact absurd hs (by simp [Step.isProj]))]
+        rfl
+      · have hsf : s.isProj = false := Bool.eq_false_iff.mpr hs
+        rw [Ctx.ref_nonproj _ (show (VarSymb.step u s).lastProj = false from hsf)] at hu
+        match s with
+        | .fst => exact absurd rfl hs
+        | .snd => exact absurd rfl hs
+        | .here => exact absurd rfl hs
+        | .dia =>
+            change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+              else none) = some U at hu
+            split_ifs at hu with hux
+            · subst hux
+              rw [Subst.at_nonproj _ (show (VarSymb.step u .dia).lastProj = false from rfl),
+                Subst.viewRen_dia, VarSymb.reView_dia]
+        | .box =>
+            rw [Subst.at_nonproj _ (show (VarSymb.step u .box).lastProj = false from rfl),
+              Subst.viewRen_of_ne_dia (fun _ h => by cases h),
+              VarSymb.reView_eq_self (x := x) (y := y) (v := .step u .box)
+                (fun q => hcl (.step u .box) U rfl hu [] q)]
+        | .keep =>
+            rw [Subst.at_nonproj _ (show (VarSymb.step u .keep).lastProj = false from rfl),
+              Subst.viewRen_of_ne_dia (fun _ h => by cases h),
+              VarSymb.reView_eq_self (x := x) (y := y) (v := .step u .keep)
+                (fun q => hcl (.step u .keep) U rfl hu [] q)]
+
+/-- ⭐The renaming sends the content address's η-expansion to the tag's. -/
+theorem Term.reView_eta_dia {σ : Signature} {Γ : Ctx} {x y : VarSymb} {A : VarType}
+    (hx : Γ.ref x = some (.VTypeDia A)) (hy : Γ.ref y = some (.VTypeDia A))
+    (hcl : Ctx.ViewClean Γ x) {T : VarType} (hdia : (Γ.diaIn x).ref (.step x .dia) = some T)
+    (hdia' : (Γ.diaIn y).ref (.step y .dia) = some T) :
+    (⟨_, Term.reView hx hy hcl (Term.eta (.step x .dia) T hdia)⟩ :
+        Σ b, Term σ (Γ.diaIn y) T b) = ⟨_, Term.eta (.step y .dia) T hdia'⟩ := by
+  have key : ∀ (z : VarSymb) (hz : (Γ.diaIn y).ref z = some T), z = .step y .dia →
+      (⟨_, Term.eta z T hz⟩ : Σ b, Term σ (Γ.diaIn y) T b) =
+        ⟨_, Term.eta (.step y .dia) T hdia'⟩ := by
+    intro z hz hzy
+    subst hzy
+    rfl
+  exact (Term.subst_eta_ren _ _ _ (Subst.isRen_viewRen hx hy hcl) T (.step x .dia) hdia
+      (by rw [VarSymb.reView_dia]; exact hdia')).trans (key _ _ VarSymb.reView_dia)
 
 end V12M

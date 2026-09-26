@@ -106,11 +106,12 @@ variable (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W} (env :
 omit [Γ.NoSlots] in
 /-- ⭐The pinned form says that the identity arrow lies in the address's extent, and that the
     content there is `t`. -/
-theorem sat_hereAt (hx : Γ.ref x = some (.VTypeDia .Var)) (t : Term σ Γ .Var .var) :
+theorem sat_hereAt {A : VarType} (hx : Γ.ref x = some (.VTypeDia A)) {a : Ann A}
+    (t : Term σ Γ A a) :
     M.sat env (WFF.hereAt hT x hx t : WFF σ Γ 0) ↔
       ∃ hm : M.frame.reflAcc hT w ∈ (M.posEval (env.ref x hx)).1,
         (M.posEval (env.ref x hx)).2 ⟨M.frame.reflAcc hT w, hm⟩ = interp env t := by
-  change Realised hT (interp env (Term.eta x (.VTypeDia .Var) hx)) (interp env t) ↔ _
+  change Realised hT (interp env (Term.eta x (.VTypeDia A) hx)) (interp env t) ↔ _
   rw [interp_eta env x hx]
   exact Iff.rfl
 
@@ -118,8 +119,8 @@ omit [Γ.NoSlots] in
 /-- ⭐What the general form says: the identity arrow lies in the witness's extent, and the body's
     value there is `t`.  By `Model.dia_beta`, a `◇`-term has its witness's extent. -/
 theorem sat_here_diatm (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
-    (h : Γ.ref x = some (.VTypeDia X)) (t : Term σ Γ .Var .var)
-    (bd : Term σ (Γ.diaIn x) .Var .var) :
+    (h : Γ.ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
+    {a₁ : Ann A} (bd : Term σ (Γ.diaIn x) A a₁) :
     M.sat env (WFF.here hT (Term.diatm x hx bd) t : WFF σ Γ 0) ↔
       ∃ hm : M.frame.reflAcc hT w ∈ (M.posEval (env.ref x h)).1,
         interp (env.diaPush x h ⟨M.frame.reflAcc hT w, hm⟩) bd = interp env t := by
@@ -128,16 +129,18 @@ theorem sat_here_diatm (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
   rw [dia_beta env hx h bd]
 
 omit [Γ.NoSlots] in
-/-- ⭐**Functionality** is sound: a possible object has one realisation here, because `Realised`
-    reads its content at one arrow. -/
-theorem sat_here_fun {b : Ann (.VTypeDia .Var)} (s : Term σ Γ (.VTypeDia .Var) b)
-    (t t' : Term σ Γ .Var .var)
+/-- ⭐**Functionality** is sound at **every content type**: a possible object has one realisation
+    here, because `Realised` reads its content at one arrow.  The two values carry unrelated
+    annotations, so the conclusion is the annotation-free `eqRec` of §2d — which is what let the
+    predicate stop being base-typed. -/
+theorem sat_here_fun {A : VarType} {b : Ann (.VTypeDia A)} (s : Term σ Γ (.VTypeDia A) b)
+    {a a₁ : Ann A} (t : Term σ Γ A a) (t' : Term σ Γ A a₁)
     (h : M.sat env (WFF.here hT s t : WFF σ Γ 0))
     (h' : M.sat env (WFF.here hT s t' : WFF σ Γ 0)) :
-    M.sat env (WFF.eq t t' : WFF σ Γ 0) := by
+    M.sat env (eqRec A t t' : WFF σ Γ 0) := by
   obtain ⟨_, hc⟩ := h
   obtain ⟨_, hc'⟩ := h'
-  exact hc.symm.trans hc'
+  exact (sat_eqRec env A t t').mpr (hc.symm.trans hc')
 
 /-! ## The two readings of a hole formula, at the identity arrow -/
 
@@ -207,9 +210,9 @@ include hnp in
     body read here through the same hole (`interp_viewReadTm`), at the one arrow `Here` speaks
     of. -/
 theorem sat_here_beta (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
-    (h : Γ.ref x = some (.VTypeDia X)) (t : Term σ Γ .Var .var)
-    (bd : Term σ (Γ.diaIn x) .Var .var)
-    (s : Term σ (Γ.boxIn.insert (.bnd 0) .Var) .Var .var)
+    (h : Γ.ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
+    {a₁ : Ann A} (bd : Term σ (Γ.diaIn x) A a₁)
+    {B : VarType} {b : Ann B} (s : Term σ (Γ.boxIn.insert (.bnd 0) A) B b)
     (hhere : M.sat env (WFF.here hT (Term.diatm x hx bd) t : WFF σ Γ 0)) :
     M.sat env
       (WFF.here hT (Term.diatm x hx (Term.viewReadTm bd s)) (Term.hereRead hT t s) :
@@ -221,8 +224,8 @@ include hnp in
 /-- ⭐**Elimination** is sound: what is necessary over the witness's extent holds of the realisation
     here.  This is weak T relativised to the witness. -/
 theorem sat_here_elim (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
-    (t : Term σ Γ .Var .var) (bd : Term σ (Γ.diaIn x) .Var .var)
-    (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) .Var) 1)
+    {A : VarType} {a : Ann A} (t : Term σ Γ A a) {a₁ : Ann A} (bd : Term σ (Γ.diaIn x) A a₁)
+    (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1)
     (hhere : M.sat env (WFF.here hT (Term.diatm x hx bd) t : WFF σ Γ 0))
     (hbox : M.sat env (WFF.boxx x hx (WFF.viewReadTm bd ψ))) :
     M.sat env (WFF.hereRead hT t ψ) := by
@@ -236,8 +239,8 @@ include hnp in
 /-- ⭐**Introduction** is sound: what holds of the realisation here is possible for the witness,
     this very world witnessing it. -/
 theorem sat_here_intro (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
-    (t : Term σ Γ .Var .var) (bd : Term σ (Γ.diaIn x) .Var .var)
-    (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) .Var) 1)
+    {A : VarType} {a : Ann A} (t : Term σ Γ A a) {a₁ : Ann A} (bd : Term σ (Γ.diaIn x) A a₁)
+    (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1)
     (hhere : M.sat env (WFF.here hT (Term.diatm x hx bd) t : WFF σ Γ 0))
     (hφ : M.sat env (WFF.hereRead hT t ψ)) :
     M.sat env (WFF.dia x hx (WFF.viewReadTm bd ψ)) := by
@@ -245,6 +248,51 @@ theorem sat_here_intro (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
   obtain ⟨hmem, hval⟩ := (sat_here_diatm hT env ⟨Y, h⟩ h t bd).mp hhere
   exact ⟨Y, h, ⟨M.frame.reflAcc hT w, hmem⟩,
     (sat_viewReadTm hT env hnp h t bd ψ hmem hval).mpr hφ⟩
+
+/-! ## What has to introduce a `Here` -/
+
+omit [Γ.NoSlots] in
+/-- ⭐**Strong T inwards: the existential is valid at every content type.**
+    `Model.posRet_exists` is literally this: every object has a possible object whose extent
+    contains the reflexive arrow and whose content there is that object.  So `∃x:◇A. Here x t`
+    holds in *every* model, at every content type, now that `WFF.here` is general.
+
+    That settles what must put a `Here` into the canonical model's theory.  No rule introduces
+    one: `here_elim`, `here_intro`, `here_beta`, `here_fun` and the pinned forms each consume a
+    `Here` premise, and the outward rule `T_dia` hands the continuation the realisation *schema*
+    (`WFF.retHyp`, which is `here_intro`'s conclusion for each hole formula) rather than the atom
+    — and no finite set of schema instances yields the atom.  Since the model's own datum makes
+    the atom true, a theory lacking it would be maximal consistent while the model satisfied it,
+    so the truth lemma's `here` case would fail.  The chain must therefore witness this
+    existential, which is what "`real` driven by `Here`" means; the present `retHyp` hypotheses
+    are then derivable from the atom by `here_intro`, so that replaces `T_dia`'s hypotheses
+    rather than adding a rule. -/
+theorem sat_hereAt_extend {A : VarType} (r : Root)
+    (hr : Γ.RootFresh r) (p : M.frame.Dom (.VTypeDia A) w) {a : Ann A} (t : Term σ Γ A a) :
+    M.sat (env.extend r p) (WFF.hereAt hT (.root r)
+        (Ctx.ref_insert_root Γ r (.VTypeDia A))
+        (Term.weaken hr.root (.VTypeDia A) t) : WFF σ (Γ.insert r (.VTypeDia A)) 0) ↔
+      Realised hT p (interp env t) := by
+  have hag : Env.Agree (Ctx.le_insert hr.root (.VTypeDia A)) env (env.extend r p) := by
+    intro v U hv
+    have hne : v ≠ .root r := fun hvr => by rw [hvr, hr.root] at hv; cases hv
+    simp only [Env.extend, dif_neg hne]
+  have hslot : (env.extend r p).ref (.root r) (Ctx.ref_insert_root Γ r (.VTypeDia A)) = p :=
+    Env.extend_root env r p (Ctx.ref_insert_root Γ r (.VTypeDia A))
+  change Realised hT (interp (env.extend r p) (Term.eta _ _ _))
+    (interp (env.extend r p) (Term.mono _ t)) ↔ _
+  rw [interp_eta (env.extend r p) (.root r) (Ctx.ref_insert_root Γ r (.VTypeDia A)), hslot,
+    interp_mono hag t]
+
+omit [Γ.NoSlots] in
+/-- The existential, as `WFF.ex` binds it. -/
+theorem sat_here_ex (hS : ModalSys.TStrong = true) {A : VarType}
+    {a : Ann A} (t : Term σ Γ A a) (hr : Γ.RootFresh (.bnd 0)) :
+    M.sat env (WFF.ex (.VTypeDia A)
+      (WFF.hereAt hT (.root (.bnd 0)) (Ctx.ref_insert_root Γ (.bnd 0) (.VTypeDia A))
+        (Term.weaken hr.root (.VTypeDia A) t)) : WFF σ Γ 0) := by
+  obtain ⟨p, hm, hcon⟩ := M.posRet_exists hT hS (interp env t)
+  exact ⟨p, (sat_hereAt_extend hT env (.bnd 0) hr p t).mpr ⟨hm, hcon⟩⟩
 
 end
 end Model

@@ -62,13 +62,15 @@ theorem Ctx.stage_congr {B : Ctx} {τ τ' : ℕ → VarType} {ρ : ℕ → ℕ} 
         (B.stage τ' ρ j).insert (.free (ρ j)) (τ' j)
       rw [Ctx.stage_congr (fun i hi => h i (Nat.lt_succ_of_lt hi)), h j (Nat.lt_succ_self j)]
 
-/-- Every stage over a presented base is presented. -/
-def Ctx.stagePresented {B : Ctx} [B.Presented] (τ : ℕ → VarType) (ρ : ℕ → ℕ) :
+/-- Every stage over a presented base is presented: the own variables are fresh for the base, so
+    each one is a declaration the presentation may make. -/
+def Ctx.stagePresented {B : Ctx} [B.Presented] (τ : ℕ → VarType) {ρ : ℕ → ℕ}
+    (hρ : Function.Injective ρ) (hfr : ∀ n, B.RootFresh (.free (ρ n))) :
     ∀ j, (B.stage τ ρ j).Presented
   | 0 => inferInstanceAs B.Presented
   | j + 1 =>
-      haveI := Ctx.stagePresented (B := B) τ ρ j
-      inferInstanceAs ((B.stage τ ρ j).insert (.free (ρ j)) (τ j)).Presented
+      (Ctx.stagePresented (B := B) τ hρ hfr j).insertFree (ρ j)
+        (Ctx.stage_fresh hρ hfr le_rfl) (τ j)
 
 /-! ## World languages -/
 
@@ -91,7 +93,7 @@ def ctx (i : ℕ × ℕ) : Ctx := (L.base i.1).stage L.τ L.ρ i.2
 
 instance (m : ℕ) : (L.base m).Presented := L.basePres m
 
-instance (i : ℕ × ℕ) : (L.ctx i).Presented := Ctx.stagePresented L.τ L.ρ i.2
+instance (i : ℕ × ℕ) : (L.ctx i).Presented := Ctx.stagePresented L.τ L.ρ_inj (L.fresh i.1) i.2
 
 theorem base_mono {m m' : ℕ} (h : m ≤ m') : (L.base m).Le (L.base m') := by
   induction h with

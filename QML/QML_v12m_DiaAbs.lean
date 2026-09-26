@@ -392,8 +392,9 @@ def WFF.realiseAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = tr
     this is the form in which the rules of strong T state it, and the two readings agree by the
     η-law `Model.interp_eta`. -/
 abbrev WFF.hereAt {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true) (x : VarSymb)
-    (hx : Γ.ref x = some (.VTypeDia .Var)) (t : Term σ Γ .Var .var) : WFF σ Γ d :=
-  WFF.here hT (Term.eta x (.VTypeDia .Var) hx) t
+    {A : VarType} (hx : Γ.ref x = some (.VTypeDia A)) {a : Ann A} (t : Term σ Γ A a) :
+    WFF σ Γ d :=
+  WFF.here hT (Term.eta x (.VTypeDia A) hx) t
 
 /-! ## Weakening -/
 

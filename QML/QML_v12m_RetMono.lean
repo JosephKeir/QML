@@ -189,4 +189,27 @@ theorem WFF.mono_retHyp {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (hT : ModalSys
   refine congrArg (WFF.bindFree y (hy'.insert_ne hne.symm (.VTypeDia A)) Ctx.NoSlots.slots B) ?_
   rw [WFF.mono_mono, ← hbody, WFF.mono_mono]
 
+/-- ⭐Weakening commutes with the `Here` atom, along **any** inclusion that keeps the witness
+    declared: `mono` of `here` is `here` of the two `mono`s, and the subject is an η-expansion
+    (`Term.mono_eta`).  The declarations are propositions, so which proof each side carries does not
+    matter.  This is all `WFF.mono_retHyp` amounted to for the new rule. -/
+theorem WFF.mono_hereAt_of_le {Γ Γ' : Ctx} (hT : ModalSys.T = true) (h : Γ.Le Γ') {A : VarType}
+    (x : VarSymb) (hx : Γ.ref x = some (.VTypeDia A)) (hx' : Γ'.ref x = some (.VTypeDia A))
+    {a : Ann A} (t : Term σ Γ A a) :
+    WFF.mono h (WFF.hereAt hT x hx t : WFF σ Γ 0) = WFF.hereAt hT x hx' (Term.mono h t) :=
+  WFF.here_congr' hT (Term.mono_eta _ _ _ _) rfl
+
+/-- The same at a declaration the inclusion itself makes, as `Proof.T_dia` states it. -/
+theorem WFF.mono_hereAt {Γ Γ' : Ctx} (hT : ModalSys.T = true) (h : Γ.Le Γ') {A : VarType}
+    {a : Ann A} (t : Term σ Γ A a) {c : ℕ} (hc : Γ.RootFresh (.free c))
+    (hc' : Γ'.RootFresh (.free c)) :
+    WFF.mono (h.insert (.free c) (.VTypeDia A))
+        (WFF.hereAt hT (.root (.free c)) (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A))
+          (Term.weaken hc.root (.VTypeDia A) t) : WFF σ (Γ.insert (.free c) (.VTypeDia A)) 0) =
+      WFF.hereAt hT (.root (.free c)) (Ctx.ref_insert_root Γ' (.free c) (.VTypeDia A))
+        (Term.weaken hc'.root (.VTypeDia A) (Term.mono h t)) := by
+  refine WFF.here_congr' hT (Term.mono_eta _ _ _ _) ?_
+  simp only [Term.weaken]
+  rw [Term.mono_mono, Term.mono_mono]
+
 end V12M

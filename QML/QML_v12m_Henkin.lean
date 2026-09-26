@@ -182,7 +182,7 @@ def Proof.byContra {σ : Signature} {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : W
 /-- `¬∀x ψ ⊢ ∃x ¬ψ`. -/
 def Proof.exNeg_of_negAll {σ : Signature} {Γ : Ctx} [Γ.Presented] {A : VarType}
     (ψ : WFF σ (Γ.insert (.bnd 0) A) 1) : Proof σ Γ [(WFF.all A ψ).neg] (WFF.ex A ψ.neg) :=
-  have hu : Γ.RootFresh (.free (Ctx.Presented.bound Γ)) := Ctx.Presented.fresh _ le_rfl
+  have hu : Γ.RootFresh (.free (Ctx.Presented.bound Γ)) := Ctx.Presented.fresh_bound _ le_rfl
   have hs : Γ.SlotsFrom 0 := Ctx.NoSlots.slots
   have inner : Proof σ (Γ.insert (.free (Ctx.Presented.bound Γ)) A)
       [(WFF.openFree _ hu hs ψ).neg, WFF.weaken hu.root A (WFF.ex A ψ.neg).neg,
@@ -230,12 +230,6 @@ def ctxL (m : ℕ) : List VarType → Ctx
   | [] => L.base m
   | A :: l => (ctxL m l).insert (.free (L.ρ l.length)) A
 
-instance presL (m : ℕ) : ∀ l, (L.ctxL m l).Presented
-  | [] => inferInstanceAs (L.base m).Presented
-  | A :: l =>
-      haveI := presL m l
-      inferInstanceAs ((L.ctxL m l).insert (.free (L.ρ l.length)) A).Presented
-
 theorem ctxL_fresh {m n : ℕ} : ∀ {l : List VarType}, l.length ≤ n →
     (L.ctxL m l).RootFresh (.free (L.ρ n))
   | [], _ => L.fresh m n
@@ -244,6 +238,10 @@ theorem ctxL_fresh {m n : ℕ} : ∀ {l : List VarType}, l.length ≤ n →
       exact (ctxL_fresh (Nat.le_of_succ_le h')).insert_ne (fun he => by
         have := L.ρ_inj (Root.free.inj he)
         omega) A
+
+instance presL (m : ℕ) : ∀ l, (L.ctxL m l).Presented
+  | [] => inferInstanceAs (L.base m).Presented
+  | A :: l => (presL m l).insertFree (L.ρ l.length) (L.ctxL_fresh le_rfl) A
 
 theorem ctxL_le_cons (m : ℕ) (A : VarType) (l : List VarType) :
     (L.ctxL m l).Le (L.ctxL m (A :: l)) :=
@@ -372,21 +370,26 @@ theorem ρ_succ_ne (l : List VarType) : L.ρ (l.length + 1) ≠ L.ρ l.length :=
   omega
 
 variable (L) in
-/-- The strong T hypotheses of a witness `ρ l.length : ◇A` for the term `t`: every
-    `WFF.retHyp` at every stage from `m` on, with parameter name `ρ (l.length + 1)`.  All later
-    stages are included because a hole formula there may mention that stage's base constants. -/
+/-- ⭐What the strong T step says about the witness `ρ l.length : ◇A` it declares for the term `t`:
+    the **`Here` atom** — that witness is realised here, by `t` — at every stage from `m` on.  All
+    later stages are included because the sentence has to be available wherever it is used.
+
+    *This used to be the realisation schema* (`WFF.retHyp` at every stage, hole formula and
+    parameter value), mirroring the old `Proof.T_dia`.  The atom is what the canonical model needs:
+    `Here` is then in the theory, so `Canon.spec_of_here` derives `RealDatum.spec` and the truth
+    lemma's `here` case has something to match (§2d; nothing else introduces a `Here`, see
+    `Model.sat_here_ex`). -/
 def retSet (hT : ModalSys.T = true) (l : List VarType) (m : ℕ) {A : VarType} {a : Ann A}
     (t : Term σ (L.ctxL m l) A a) : Set ((L.pre (.VTypeDia A :: l)).Sentence σ) :=
-  {s | ∃ (m' : ℕ) (hm : m ≤ m') (B : VarType)
-      (ψ : WFF σ (((L.ctxL m' l).insert (.free (L.ρ (l.length + 1))) B).boxIn.insert (.bnd 0) A)
-        1),
-      s = ⟨m', WFF.retHyp hT (Term.mono (L.ctxL_base_le hm l) t) (L.ρ l.length)
-        (L.ρ (l.length + 1)) (L.ctxL_fresh le_rfl) (L.ctxL_fresh (Nat.le_succ _))
-        (ρ_succ_ne l) B ψ⟩}
+  {s | ∃ (m' : ℕ) (hm : m ≤ m'),
+      s = ⟨m', WFF.hereAt hT (.root (.free (L.ρ l.length)))
+        (Ctx.ref_insert_root (L.ctxL m' l) (.free (L.ρ l.length)) (.VTypeDia A))
+        (Term.weaken (L.ctxL_fresh (l := l) (n := l.length) le_rfl).root (.VTypeDia A)
+          (Term.mono (L.ctxL_base_le hm l) t))⟩}
 
 /-- ⭐A strong T witness for a term keeps a theory consistent: a derivation of `⊥` uses finitely many
-    of its hypotheses, each lifted to one stage, where they are `WFF.retHyp` instances
-    (`WFF.mono_retHyp`) and `T_dia` discharges the witness. -/
+    of its hypotheses, each lifted to one stage, where they are all the one `Here` atom
+    (`WFF.mono_hereAt`) and `T_dia` discharges the witness. -/
 theorem consistent_grow_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true)
     {l : List VarType} {S : Set ((L.pre l).Sentence σ)} (hS : StageSys.Consistent S) {m : ℕ}
     {A : VarType} {a : Ann A} (t : Term σ (L.ctxL m l) A a) :
@@ -395,30 +398,29 @@ theorem consistent_grow_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = t
       Theory.Consistent (StageSys.atStage (grow l (.VTypeDia A) S ∪ L.retSet hT l m t) M) := by
     rintro M hM ⟨Δ, hΔ, p⟩
     have hc : (L.ctxL M l).RootFresh (.free (L.ρ l.length)) := L.ctxL_fresh le_rfl
-    have hy : (L.ctxL M l).RootFresh (.free (L.ρ (l.length + 1))) := L.ctxL_fresh (Nat.le_succ _)
-    let g : (Σ B : VarType,
-        WFF σ (((L.ctxL M l).insert (.free (L.ρ (l.length + 1))) B).boxIn.insert (.bnd 0) A) 1) →
-        WFF σ (L.ctxL M (.VTypeDia A :: l)) 0 := fun z =>
-      WFF.retHyp hT (Term.mono (L.ctxL_base_le hM l) t) (L.ρ l.length) (L.ρ (l.length + 1)) hc hy
-        (ρ_succ_ne l) z.1 z.2
+    let g : Unit → WFF σ (L.ctxL M (.VTypeDia A :: l)) 0 := fun _ =>
+      WFF.hereAt hT (.root (.free (L.ρ l.length)))
+        (Ctx.ref_insert_root (L.ctxL M l) (.free (L.ρ l.length)) (.VTypeDia A))
+        (Term.weaken hc.root (.VTypeDia A) (Term.mono (L.ctxL_base_le hM l) t))
     have hcases : ∀ δ ∈ Δ, (∃ z, g z = δ) ∨
         ∃ x, x ∈ StageSys.atStage S M ∧ WFF.mono (L.ctxL_le_cons M (.VTypeDia A) l) x = δ := by
       intro δ hδ
       obtain ⟨s, hs, hle, rfl⟩ := hΔ δ hδ
       rcases hs with hs | hs
       · exact Or.inr (mem_atStage_grow ⟨s, hs, hle, rfl⟩)
-      · obtain ⟨m', hm', B, ψ, rfl⟩ := hs
-        refine Or.inl ⟨⟨B, WFF.mono
-          (((L.ctxL_base_le hle l).insert (.free (L.ρ (l.length + 1))) B).boxIn.insert (.bnd 0) A)
-          ψ⟩, ?_⟩
+      · obtain ⟨m', hm', rfl⟩ := hs
+        refine Or.inl ⟨(), ?_⟩
         change _ = WFF.mono ((L.ctxL_base_le hle l).insert (.free (L.ρ l.length)) (.VTypeDia A)) _
-        rw [WFF.mono_retHyp hT (L.ctxL_base_le hle l) _ (L.ctxL_fresh le_rfl) hc
-          (L.ctxL_fresh (Nat.le_succ _)) hy (ρ_succ_ne l) B ψ, Term.mono_mono]
+        rw [WFF.mono_hereAt hT (L.ctxL_base_le hle l) _ (L.ctxL_fresh le_rfl) hc, Term.mono_mono]
     obtain ⟨Ψ, Δ₀, h₀, h₁⟩ := exists_hyps_two (P := fun x => x ∈ StageSys.atStage S M)
       (fun x => WFF.mono (L.ctxL_le_cons M (.VTypeDia A) l) x) g Δ hcases
     obtain ⟨q⟩ := Provable.mono h₁ p
-    exact hS M ⟨Δ₀, h₀, ⟨Proof.T_dia hT hTS A (Term.mono (L.ctxL_base_le hM l) t) _ _ hc hy
-      (ρ_succ_ne l) (φ := .bot) Ψ q⟩⟩
+    refine hS M ⟨Δ₀, h₀, ⟨Proof.T_dia hT hTS A (Term.mono (L.ctxL_base_le hM l) t) _ hc
+      (φ := .bot) (Proof.ofSubset (fun χ hχ => ?_) q)⟩⟩
+    rcases List.mem_append.mp hχ with h | h
+    · obtain ⟨_, _, rfl⟩ := List.mem_map.mp h
+      exact List.mem_cons_self
+    · exact List.mem_cons_of_mem _ h
   intro M
   rcases le_total m M with hM | hM
   · exact key M hM

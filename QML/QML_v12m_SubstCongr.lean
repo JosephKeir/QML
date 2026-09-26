@@ -106,6 +106,15 @@ theorem sig_diatm {Γ : Ctx} {A : VarType} {x : VarSymb}
   cases h
   rfl
 
+/-- Substituting into equal terms, annotations included: the outer annotation follows the inner
+    one, so the equation has to be moved as a `Sigma` rather than rewritten. -/
+theorem sig_subst {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
+    (hc : Subst.Coh ι Γ θ) {T : VarType} {a a' : Ann T} {t : Term σ Γ T a} {t' : Term σ Γ T a'}
+    (h : (⟨a, t⟩ : Σ c, Term σ Γ T c) = ⟨a', t'⟩) :
+    (⟨_, Term.subst ι θ hθ hc t⟩ : Σ c, Term σ Δ T c) = ⟨_, Term.subst ι θ hθ hc t'⟩ := by
+  cases h
+  rfl
+
 theorem SubE.tm_eq_of_sig {Δ : Ctx} {T : VarType} {a a' : Ann T} {t : Term σ Δ T a}
     {t' : Term σ Δ T a'} (h : (⟨a, t⟩ : Σ c, Term σ Δ T c) = ⟨a', t'⟩) :
     SubE.tm t = SubE.tm t' := by
@@ -499,7 +508,7 @@ theorem WFF.subst_congr : {ι ι' : VarSymb → VarSymb} → {Γ Δ : Ctx} → {
       exact key (ι' x) (Subst.idx_eq hc hc' hs hx) _ _ _ _
   | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .here hT s t =>
       WFF.here_congr hT (Term.subst_congr θ θ' hθ hθ' hc hc' hs s)
-        (Term.subst_congr_var θ θ' hθ hθ' hc hc' hs t)
+        (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
   | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .diaEq s s' =>
       WFF.diaEq_congr (Term.subst_congr θ θ' hθ hθ' hc hc' hs s)
         (Term.subst_congr θ θ' hθ hθ' hc hc' hs s')

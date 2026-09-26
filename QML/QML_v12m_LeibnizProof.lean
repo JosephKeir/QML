@@ -59,7 +59,8 @@ def WFF.conjPath {σ : Signature} {Γ : Ctx} : {d : ℕ} → (ψ : WFF σ Γ d) 
       else .right (WFF.conjPath φ₂ ((List.mem_append.mp h).resolve_left h₁))
   | _, .atom _, _, h | _, .eq _ _, _, h | _, .top, _, h | _, .bot, _, h | _, .or _ _, _, h
   | _, .imp _ _, _, h | _, .all _ _, _, h | _, .ex _ _, _, h | _, .box _, _, h
-  | _, .dia _ _ _, _, h => (List.mem_singleton.mp h).symm ▸ .self _
+  | _, .dia _ _ _, _, h | _, .here _ _ _, _, h
+  | _, .diaEq _ _, _, h => (List.mem_singleton.mp h).symm ▸ .self _
 
 def Proof.ofConjPath {σ : Signature} {Γ : Ctx} :
     {ψ c : WFF σ Γ 0} → WFF.ConjPath ψ c → Proof σ Γ [ψ] c
@@ -89,9 +90,6 @@ theorem eqRec_mono {σ : Signature} {d : ℕ} : {Γ Γ' : Ctx} → (h : Γ.Le Γ
       change WFF.box (WFF.mono h.boxIn (eqRec A t s)) = _
       rw [eqRec_mono h.boxIn A]
       rfl
-  | _, _, h, .VTypeDia A, .dia x _, .diatm _ _ t, .diatm _ _ s => by
-      change WFF.imp (WFF.dia x _ (WFF.imp (WFF.mono (h.diaIn x) (eqRec A t s)) .bot)) .bot = _
-      rw [eqRec_mono (h.diaIn x) A]
-      rfl
+  | _, _, _, .VTypeDia _, .dia _ _, .diatm _ _ _, .diatm _ _ _ => rfl
 
 end V12M

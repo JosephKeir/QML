@@ -356,7 +356,7 @@ Sorry-free; axioms `propext`, `Classical.choice`, `Quot.sound`. The files, in de
 | `BCanonWorld`, `BCanonDom`, `BCanonFunc`, `BCanonModel` | the model from abstract data `BData`: raw objects, denotations `rden` translating along arrows, the function algebra, definable objects as domains |
 | `BCanonTerm`, `BTruth` | pushing the canonical environment along an arrow *is* the target's canonical environment read through the arrow (`boxPush_canon`, `diaPush_canon`); so the modal cases of the truth lemma are `Model.sat_subst` plus transfer/existence |
 | `BRename` | renaming the declared roots of a context: `renS` with its inverse (`subst_renS_renS`), so completeness transports from a world language `ctxOf l` to any root-only context the user writes (`completenessB_rename`); for `Ctx.ofDecls ds` with distinct names the renaming is read off the declarations (`completenessB_ofDecls`) |
-| `BFlat` | `Flat σ Γ Δ`: provability backwards, truth forwards along a translation, composable; built from a cancelling pair of substitutions (`Flat.ofPair`).  `Pair` keeps that data so it can be pushed under a view (`Pair.box`, `Pair.dia`) or extended by a declared root (`Pair.insertRoot`).  `Chain` keeps the steps apart so those operations distribute over them, and the `CtxExpr` induction (`CtxExpr.chain`) flattens any fresh presentation — ⭐`completenessB_presented` |
+| `BFlat` | `Flat σ Γ Δ`: provability backwards, truth forwards along a translation, composable; built from a cancelling pair of substitutions (`Flat.ofPair`).  `Pair` keeps that data so it can be pushed under a view (`Pair.box`, `Pair.dia`) or extended by a declared root (`Pair.insertRoot`).  `Chain` keeps the steps apart so those operations distribute over them, and the `CtxExpr` induction (`CtxExpr.chain`) flattens any well-formed presentation (`CtxExpr.Wf`) — ⭐`completenessB_presented` |
 | `BCompactness` | ⭐`model_existenceB`, `strong_completenessB`, `compactnessB`: consistency travels along a flattening and satisfiability back, so a presented context reduces to a world language, where the canonical model over a maximal consistent extension satisfies the set at its root |
 | `BLimitPre`, `BLimit` | `BData` from the chain's limit (`bdata`): worlds are the nodes ever born, stage `i` is round `birth + i`, images are the committed ones, and stage `i` goes to the first target stage where all its variables are committed |
 
@@ -388,10 +388,15 @@ below.  Still open: strong completeness, and B with T or 4.
 
 ### Presented contexts: done (2026-09-24)
 
-⭐`BArrow.completenessB_presented`: **weak B is complete in every presented context** whose
-presentation is fresh (`CtxExpr.Fresh`: each declaration's name unused in its own prefix — needed
-because `CtxExpr.insertFree` permits shadowing, which a renaming cannot undo).  Sorry-free, axioms
-`propext`, `Classical.choice`, `Quot.sound`.
+⭐`BArrow.completenessB_presented`: **weak B is complete in every presented context**.  Sorry-free,
+axioms `propext`, `Classical.choice`, `Quot.sound`.
+
+The hypothesis is `CtxExpr.Wf` (2026-09-26).  Non-shadowing — each declaration's name unused in its
+own prefix, needed because `CtxExpr.insertFree` permits shadowing and a renaming cannot undo it — is
+`CtxExpr.Fresh`, and it is no longer asked for: it is a field of `Ctx.Presented` itself (§2d of
+`v12-modal-extensions.md`).  What is left is `CtxExpr.Views`, the `◇`-rule's own side condition that
+each view be taken at a declared witness, which this track needs because it takes the presentation
+apart constructor by constructor.
 
 **What the earlier note called a blocker was a missing layer, not an obstruction.**  `Pair` cannot be
 composed with `Pair`, because `Subst.Coh` for a composite substitution has no generic index map: the

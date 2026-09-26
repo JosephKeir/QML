@@ -221,14 +221,27 @@ theorem boxPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) (w' : Succ w)
   | .step _ .dia => cases hv
   | .step _ .here => cases hv
 
-/-- Pushing the canonical environment into `◇_x` agrees with the successor's. -/
+/-- ⭐Pushing the canonical environment into `◇_x` agrees with the successor's, **read through the
+    renaming**: a successor's language is the view of its tag `y`, so an `x`-view address is looked
+    up there as its image under `x ↦ y` (`Subst.viewRen`).  This is the semantic side of the tagged
+    reading; `Model.interp_subst` turns it into a statement about terms. -/
 theorem diaPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) {x : VarSymb} {X : VarType}
     (hr : (w.L.ctx i).ref x = some (.VTypeDia X))
     (w' : ((model w₀).posEval ((canonEnv w₀ w i).ref x hr)).1)
-    (hd : w'.1.1.depth - w.depth ≠ 0) :
-    Model.Env.Agree (extent_le (canonEnv_extent w₀ w i hr ▸ w'.2) hd i)
-      ((canonEnv w₀ w i).diaPush x hr w') (canonEnv w₀ w'.1.1 (childStage i)) := by
-  have hw : w'.1 ∈ extent w x := canonEnv_extent w₀ w i hr ▸ w'.2
+    (hd : w'.1.1.depth - w.depth ≠ 0) (hw : w'.1 ∈ extent w x) :
+    Model.Env.Agree
+        ((w.L.ctx_le (le_sup_left : i ≤ i ⊔ (peqw_tagOf hw hd).st)).diaIn x)
+        ((canonEnv w₀ w i).diaPush x hr w')
+        (Model.substEnv
+          ((Subst.viewRen σ (w.L.ctx (i ⊔ (peqw_tagOf hw hd).st)) x (tagOf hw hd)).mono
+            (extent_le (diaView_tagOf hw hd) (i ⊔ (peqw_tagOf hw hd).st)))
+          (Subst.ok_mono (Subst.ok_viewRen
+            ((w.L.ctx_le (le_sup_right : (peqw_tagOf hw hd).st ≤ i ⊔ (peqw_tagOf hw hd).st)).ref
+              (peqw_tagOf hw hd).refX)
+            ((w.L.ctx_le (le_sup_right : (peqw_tagOf hw hd).st ≤ i ⊔ (peqw_tagOf hw hd).st)).ref
+              (peqw_tagOf hw hd).refY)) _)
+          (Ctx.noProjLast_diaIn _ x)
+          (canonEnv w₀ w'.1.1 (childStage (i ⊔ (peqw_tagOf hw hd).st)))) := by
   intro v T hv
   match v with
   | .step u .dia =>
@@ -240,20 +253,59 @@ theorem diaPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) {x : VarSymb} {
       subst hux
       have hTX : X = T := Ctx.diaIn_step_dia hr hv
       subst hTX
+      have hXty : X = (peqw_tagOf hw hd).ty :=
+        World.declType_eq (le_sup_left : i ≤ i ⊔ (peqw_tagOf hw hd).st) hr
+          ((w.L.ctx_le (le_sup_right : (peqw_tagOf hw hd).st ≤ i ⊔ (peqw_tagOf hw hd).st)).ref
+            (peqw_tagOf hw hd).refX)
+      have hdiaY : (SubE.ren (σ := σ)
+          (Δ := w'.1.1.L.ctx (childStage (i ⊔ (peqw_tagOf hw hd).st)))
+          (.step (tagOf hw hd) .dia)).OkRef X :=
+        (extent_le (diaView_tagOf hw hd) (i ⊔ (peqw_tagOf hw hd).st)).ref
+          ((Ctx.ref_diaIn_of
+            ((w.L.ctx_le (le_sup_right : (peqw_tagOf hw hd).st ≤ i ⊔ (peqw_tagOf hw hd).st)).ref
+              (peqw_tagOf hw hd).refY)).trans (congrArg some hXty.symm))
+      have hent : ((Subst.viewRen σ (w.L.ctx (i ⊔ (peqw_tagOf hw hd).st)) u (tagOf hw hd)).mono
+          (extent_le (diaView_tagOf hw hd) (i ⊔ (peqw_tagOf hw hd).st))) (.step u .dia) =
+          SubE.ren (.step (tagOf hw hd) .dia) := by
+        change ((Subst.viewRen σ (w.L.ctx (i ⊔ (peqw_tagOf hw hd).st)) u (tagOf hw hd))
+          (.step u .dia)).mono _ = _
+        rw [Subst.viewRen_dia]
+        rfl
       have hpq := canonEnv_ref w₀ w i u hr
       have hm : w'.1 ∈ ((model w₀).posEval (toDom w₀ (.VTypeDia X) w
           (rden w i (Ctx.Le.refl _) (Term.eta u (.VTypeDia X) hr)) (definable_rden _ _))).1 :=
         hpq ▸ w'.2
       change ((model w₀).posEval ((canonEnv w₀ w i).ref u hr)).2 w' = _
       rw [Model.posEval_snd_congr hpq w' hm]
+      refine Eq.trans ?_ (Model.entryVal_congr _ hent.symm hdiaY _)
+      refine Eq.trans ?_ (canonEnv_ref w₀ w'.1.1 (childStage (i ⊔ (peqw_tagOf hw hd).st))
+        (.step (tagOf hw hd) .dia) hdiaY).symm
       refine toDom_congr w₀ ?_ _ _
-      exact (rden_diatm_acc' (Ctx.Le.refl _) ⟨X, hr⟩
-          (Term.eta (.step u .dia) X (Ctx.ref_diaIn_of hr)) w'.1 hm hd (extent_le hw hd i)).trans
-        (rden_eta_le (extent_le hw hd i) _ _ _ _ _ _)
+      have hdiaYv : ((w.L.ctx (i ⊔ (peqw_tagOf hm hd).st)).diaIn (tagOf hm hd)).ref
+          (.step (tagOf hm hd) .dia) = some X :=
+        (Ctx.ref_diaIn_of
+          ((w.L.ctx_le (le_sup_right : (peqw_tagOf hm hd).st ≤ i ⊔ (peqw_tagOf hm hd).st)).ref
+            (peqw_tagOf hm hd).refY)).trans (congrArg some hXty.symm)
+      have hbody : (⟨_, (tagBody w (Ctx.Le.refl _) (peqw_tagOf hm hd)
+            (Term.eta (.step u .dia) X (Ctx.ref_diaIn_of hr))).2⟩ :
+          Σ b, Term σ ((w.L.ctx (i ⊔ (peqw_tagOf hm hd).st)).diaIn (tagOf hm hd)) X b) =
+          ⟨_, Term.eta (.step (tagOf hm hd) .dia) X hdiaYv⟩ := by
+        simp only [tagBody]
+        rw [Term.mono_eta]
+        exact Term.reView_eta_dia _ _ _ _ hdiaYv
+      refine (rden_diatm_acc' (Ctx.Le.refl _) ⟨X, hr⟩
+          (Term.eta (.step u .dia) X (Ctx.ref_diaIn_of hr)) w'.1 hm hd
+          (extent_le (diaView_tagOf hm hd) (i ⊔ (peqw_tagOf hm hd).st))).trans ?_
+      exact (rden_sigma _ hbody).trans
+        (rden_eta_le (extent_le (diaView_tagOf hm hd) (i ⊔ (peqw_tagOf hm hd).st)) _ _ _ _ _ _)
   | .step u .box =>
-      exact boxPush_agree_canon w₀ w i w'.1 (extent_dist hw hd) (.step u .box) T hv
+      exact ((Model.Env.boxPush_agree
+        (canonEnv_le w₀ w (le_sup_left : i ≤ i ⊔ (peqw_tagOf hw hd).st)) w'.1).trans
+        (boxPush_agree_canon w₀ w _ w'.1 (extent_dist hw hd))) (.step u .box) T hv
   | .step u .keep =>
-      exact boxPush_agree_canon w₀ w i w'.1 (extent_dist hw hd) (.step u .keep) T hv
+      exact ((Model.Env.boxPush_agree
+        (canonEnv_le w₀ w (le_sup_left : i ≤ i ⊔ (peqw_tagOf hw hd).st)) w'.1).trans
+        (boxPush_agree_canon w₀ w _ w'.1 (extent_dist hw hd))) (.step u .keep) T hv
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -536,8 +588,27 @@ mutual
           hpq₀ ▸ w'.2
         by_cases hd : (w'.1.1 : World σ N₀).depth - w.depth ≠ 0
         · simp only [toDom, rden, dif_neg hd]
-          exact interp_canon t ((Model.Env.diaPush_agree hag hr w' hm).trans
-            (diaPush_agree_canon w₀ w i (e.ref hr) ⟨w'.1, hm⟩ hd))
+          have hmem : w'.1 ∈ extent w x := canonEnv_extent w₀ w i (e.ref hr) ▸ hm
+          have hxk := (w.L.ctx_le (le_sup_right :
+            (peqw_tagOf hmem hd).st ≤ i ⊔ (peqw_tagOf hmem hd).st)).ref (peqw_tagOf hmem hd).refX
+          have hyk := (w.L.ctx_le (le_sup_right :
+            (peqw_tagOf hmem hd).st ≤ i ⊔ (peqw_tagOf hmem hd).st)).ref (peqw_tagOf hmem hd).refY
+          have hcl := (w.L.flatCtx (i ⊔ (peqw_tagOf hmem hd).st)).viewClean hxk
+          have hle := extent_le (diaView_tagOf hmem hd) (i ⊔ (peqw_tagOf hmem hd).st)
+          have hag' := (Model.Env.diaPush_agree hag hr w' hm).trans
+            (diaPush_agree_canon w₀ w i (e.ref hr) ⟨w'.1, hm⟩ hd hmem)
+          refine (Model.interp_mono hag' t).symm.trans ?_
+          rw [← Model.interp_subst
+              ((Subst.viewRen σ (w.L.ctx (i ⊔ (peqw_tagOf hmem hd).st)) x
+                (tagOf hmem hd)).mono hle)
+              (Subst.ok_mono (Subst.ok_viewRen hxk hyk) hle)
+              (Subst.coh_mono (Subst.coh_viewRen hxk hyk hcl) hle)
+              (Ctx.noProjLast_diaIn _ x),
+            ← Term.mono_subst hle
+              (Subst.viewRen σ (w.L.ctx (i ⊔ (peqw_tagOf hmem hd).st)) x (tagOf hmem hd))
+              (Subst.ok_viewRen hxk hyk) (Subst.coh_viewRen hxk hyk hcl)]
+          refine (interp_canon _ (fun _ _ _ => rfl)).trans ?_
+          exact toDom_congr w₀ (rden_mono _ _ w'.1.1 _ _) _ _
         · have hd0 : (w'.1.1 : World σ N₀).depth - w.depth = 0 := not_not.mp hd
           obtain ⟨hweq, hrx⟩ := extent_self (canonEnv_extent w₀ w i (e.ref hr) ▸ hm) hd0
           obtain ⟨⟨w₁, hR⟩, hmem⟩ := w'

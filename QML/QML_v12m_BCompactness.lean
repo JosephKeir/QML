@@ -81,17 +81,17 @@ theorem Flat.setSatisfiable {Γ Δ : Ctx} (F : Flat σ Γ Δ) {S : Set (WFF σ �
   exact ⟨M, w, F.env env, fun ψ hψ => (F.sat env ψ).mp (hsat _ ⟨ψ, hψ, rfl⟩)⟩
 
 /-- ⭐**Model existence** in every presented context whose presentation is fresh. -/
-theorem model_existenceB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Fresh)
+theorem model_existenceB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)} (hS : WFF.SetConsistent S) : WFF.SetSatisfiable S :=
-  letI : e.denote.Presented := ⟨e, rfl⟩
-  ((e.chain he).2.toFlat).setSatisfiable
-    (model_existenceB_ctxOf hB (((e.chain he).2.toFlat).setConsistent hS))
+  letI : e.denote.Presented := ⟨e, he.1, rfl⟩
+  ((e.chain he.1 he.2).2.toFlat).setSatisfiable
+    (model_existenceB_ctxOf hB (((e.chain he.1 he.2).2.toFlat).setConsistent hS))
 
 /-! ## Strong completeness and compactness -/
 
 /-- ⭐**Strong completeness for weak B**: a formula true in every model, world and environment
     satisfying a set of premises is derivable from finitely many of them. -/
-theorem strong_completenessB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Fresh)
+theorem strong_completenessB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
     (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env e.denote w),
       (∀ ψ ∈ S, M.sat env ψ) → M.sat env φ) :
@@ -112,12 +112,12 @@ theorem strong_completenessB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Fres
 
 /-- ⭐**Compactness for weak B**: a set of formulas is satisfiable when every finite subset is —
     in models of any universe. -/
-theorem compactnessB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Fresh)
+theorem compactnessB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)}
     (hfin : ∀ Δ : List (WFF σ e.denote 0), (∀ ψ ∈ Δ, ψ ∈ S) →
       ∃ (M : Model.{u, v} σ) (w : M.frame.W) (env : M.Env e.denote w), ∀ ψ ∈ Δ, M.sat env ψ) :
     WFF.SetSatisfiable S := by
-  letI : e.denote.Presented := ⟨e, rfl⟩
+  letI : e.denote.Presented := ⟨e, he.1, rfl⟩
   refine model_existenceB hB e he fun Δ hΔ ⟨p⟩ => ?_
   obtain ⟨M, w, env, hsat⟩ := hfin Δ hΔ
   exact Model.soundness p M env (Ctx.Presented.noProjLast _) hsat

@@ -1,3 +1,4 @@
+import QML.QML_v12m_ViewFlat
 import QML.QML_v12m_HenkinFinal
 import QML.QML_v12m_Soundness
 import QML.QML_v12m_DiaAbs
@@ -166,10 +167,11 @@ theorem RealDatum.declType {L : WorldLang} {T : Set (L.sys.Sentence σ)} {c : �
     witness is realised by `t₀`.  `Proof.here_introAt` turns the realisation reading of a view
     formula into the `◇` one, and a maximal consistent theory is closed under provability — so the
     field is not data the construction has to arrange, but a consequence of one sentence being in
-    the theory.  Base-typed, as `WFF.here` is. -/
+    the theory.  At **every** content type, since `WFF.here` is (§2d). -/
 theorem spec_of_here {L : WorldLang} {T : Set (L.sys.Sentence σ)} (hmcs : StageSys.IsMCS T)
-    (hT : ModalSys.T = true) {c : ℕ} {i₀ : ℕ × ℕ} (t₀ : Term σ (L.ctx i₀) .Var .var)
-    (hdecl : ∀ i : ℕ × ℕ, i₀.2 < i.2 → (L.ctx i).ref (.root (.free c)) = some (.VTypeDia .Var))
+    (hT : ModalSys.T = true) {c : ℕ} {i₀ : ℕ × ℕ} {A : VarType} {a₀ : Ann A}
+    (t₀ : Term σ (L.ctx i₀) A a₀)
+    (hdecl : ∀ i : ℕ × ℕ, i₀.2 < i.2 → (L.ctx i).ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ (i : ℕ × ℕ) (v : VarSymb), v.rt = .free c → v ≠ .root (.free c) → (L.ctx i) v = none)
     (hhere : ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i) (hlt : i₀.2 < i.2),
       (⟨i, WFF.hereAt hT (.root (.free c)) (hdecl i hlt) (Term.mono (L.ctx_le hi) t₀)⟩ :
@@ -178,7 +180,7 @@ theorem spec_of_here {L : WorldLang} {T : Set (L.sys.Sentence σ)} (hmcs : Stage
       (χ : WFF σ ((L.ctx i).diaIn (.root (.free c))) 0),
       (⟨i, WFF.realiseAt hT c (hdecl i hlt) (hfr i) (Term.mono (L.ctx_le hi) t₀) χ⟩ :
         L.sys.Sentence σ) ∈ T →
-      (⟨i, .dia (.root (.free c)) ⟨.Var, hdecl i hlt⟩ χ⟩ : L.sys.Sentence σ) ∈ T := by
+      (⟨i, .dia (.root (.free c)) ⟨A, hdecl i hlt⟩ χ⟩ : L.sys.Sentence σ) ∈ T := by
   intro i hi hlt χ hr
   refine hmcs.closed (StageSys.derives_of_mems
     (Δ := [WFF.hereAt hT (.root (.free c)) (hdecl i hlt) (Term.mono (L.ctx_le hi) t₀),
@@ -461,54 +463,6 @@ theorem Succ.split {w : World σ N₀} (w' : Succ w) {d : ℕ} (h : w'.1.depth -
   refine ⟨u, hu, ⟨d + 1, hc', fun h => absurd h (by omega), fun _ => h₂ (by omega)⟩, ?_⟩
   rw [hc'.depth, hu.1]
   omega
-
-/-- ⭐The extent of the possible object named by `x`: the proper successors with the `◇_x` view
-    that hold everything `□_x`-necessary here and, under strong T, the world itself when `x` is
-    realised. -/
-def extent (w : World σ N₀) (x : VarSymb) : Set (Succ w) :=
-  {w' | (w'.1.depth = w.depth + 1 ∧ DiaView x w w'.1 ∧ BoxxContents x w w'.1) ∨
-    (w'.1 = w ∧ w.Realised x)}
-
-/-- A member of the extent is the world itself or one level deeper. -/
-theorem extent_cases {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x) :
-    (w'.1.depth - w.depth = 1 ∧ DiaView x w w'.1 ∧ BoxxContents x w w'.1) ∨
-      (w'.1.depth - w.depth = 0 ∧ w'.1 = w ∧ w.Realised x) := by
-  rcases hw' with ⟨hd, hv, hb⟩ | ⟨he, hr⟩
-  · exact Or.inl ⟨by omega, hv, hb⟩
-  · exact Or.inr ⟨by rw [he]; omega, he, hr⟩
-
-/-- A member of the extent one level deeper is a proper one. -/
-theorem extent_proper {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
-    (hd : w'.1.depth - w.depth ≠ 0) :
-    w'.1.depth - w.depth = 1 ∧ DiaView x w w'.1 ∧ BoxxContents x w w'.1 := by
-  rcases extent_cases hw' with h | ⟨h, _⟩
-  · exact h
-  · exact absurd h hd
-
-/-- A member of the extent at this depth is the world itself, and then `x` is realised. -/
-theorem extent_self {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
-    (hd : w'.1.depth - w.depth = 0) : w'.1 = w ∧ w.Realised x := by
-  rcases extent_cases hw' with ⟨h, _⟩ | ⟨_, h⟩
-  · omega
-  · exact h
-
-theorem extent_dist {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
-    (hd : w'.1.depth - w.depth ≠ 0) : w'.1.depth - w.depth = 1 :=
-  (extent_proper hw' hd).1
-
-theorem extent_acc {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
-    (hd : w'.1.depth - w.depth ≠ 0) : Acc' w w'.1 :=
-  w'.acc (extent_dist hw' hd)
-
-theorem extent_le {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
-    (hd : w'.1.depth - w.depth ≠ 0) (i : ℕ × ℕ) :
-    ((w.L.ctx i).diaIn x).Le (w'.1.L.ctx (childStage i)) :=
-  (extent_proper hw' hd).2.1.le (le_max_left _ _) (le_max_right _ _) 0
-
-/-- The world itself is in the extent of a realised address. -/
-theorem self_mem_extent {w : World σ N₀} {x : VarSymb} (h : w.Realised x) :
-    (⟨w, ⟨R.refl h.T w⟩⟩ : Succ w) ∈ extent w x :=
-  Or.inr ⟨rfl, h⟩
 
 end Canon
 

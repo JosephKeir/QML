@@ -592,7 +592,7 @@ theorem WFF.subst_comp {σ : Signature} : {ι₁ ι₂ ι₃ : VarSymb → VarSy
   | _, _, _, _, _, _, _, _, _, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, _, _, _, hs,
       .here hT s t =>
       WFF.here_congr hT (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs s)
-        (Term.subst_comp θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)
+        (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)
   | _, _, _, _, _, _, _, _, _, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, _, _, _, hs,
       .diaEq s s' =>
       WFF.diaEq_congr (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs s)

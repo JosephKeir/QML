@@ -149,6 +149,12 @@ theorem ctxOf_fresh {l : List VarType} {n : ℕ} (h : l.length ≤ n) :
       rw [ctxOf_root, List.getElem?_eq_none (by simpa using h)] at hc
       cases hc
 
+/-- The context of a world language is presented: each own variable is declared with a name the
+    ones before it do not use (`ctxOf_fresh`). -/
+instance presented_ctxOf : ∀ l : List VarType, (ctxOf l).Presented
+  | [] => inferInstanceAs Ctx.empty.Presented
+  | A :: l => (presented_ctxOf l).insertFree l.length (ctxOf_fresh le_rfl) A
+
 omit [ModalSys] in
 /-- Declaring more variables, newer ones in front. -/
 theorem ctxOf_le_append : ∀ (l' l : List VarType), (ctxOf l).Le (ctxOf (l' ++ l))

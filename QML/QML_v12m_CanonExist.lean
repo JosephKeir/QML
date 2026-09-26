@@ -161,7 +161,8 @@ variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 noncomputable def boxWorld (w : World σ N₀) {i : ℕ × ℕ} (χ : WFF σ (w.L.ctx i).boxIn 0)
     (hχ : (⟨i, .box χ⟩ : w.L.sys.Sentence σ) ∉ w.T) : World σ N₀ :=
   World.ofHenkin (w.depth + 1) (boxLang w) (fun _ => rfl)
-    (fun m _ n hd => (w.fresh_deeper hd n (m, m)).boxIn) (boxStart w χ)
+    (fun m _ n hd => (w.fresh_deeper hd n (m, m)).boxIn)
+    (boxStart w χ)
     (boxStart_consistent w χ hχ)
 
 theorem boxWorld_acc (w : World σ N₀) {i : ℕ × ℕ} (χ : WFF σ (w.L.ctx i).boxIn 0)
@@ -311,7 +312,8 @@ noncomputable def diaWorld (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
     (hx : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X)) (χ : WFF σ ((w.L.ctx i).diaIn x) 0)
     (hχ : (⟨i, .dia x hx χ⟩ : w.L.sys.Sentence σ) ∈ w.T) : World σ N₀ :=
   World.ofHenkin (w.depth + 1) (diaLang w x) (fun _ => rfl)
-    (fun m _ n hd => (w.fresh_deeper hd n (m, m)).diaIn x) (diaStart w x χ)
+    (fun m _ n hd => (w.fresh_deeper hd n (m, m)).diaIn x)
+    (diaStart w x χ)
     (diaStart_consistent w x hx χ hχ)
 
 theorem diaWorld_acc (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
@@ -324,26 +326,29 @@ theorem diaWorld_acc (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
     Or.inl (Or.inl ⟨i', ψ, le_diag_max w i', hmem, rfl⟩)
   exact World.mem_mono_congr (diaWorld w x hx χ hχ) h _ (WorldLang.subset_finalT _ hk)
 
-/-- ⭐A possible formula holds at some successor in the extent of its witness. -/
+/-- ⭐A possible formula holds at some successor in the extent of its witness — which is tagged by
+    that witness itself, so the body is read there without renaming. -/
 theorem exists_dia (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
     (hx : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X)) (χ : WFF σ ((w.L.ctx i).diaIn x) 0)
     (hχ : (⟨i, .dia x hx χ⟩ : w.L.sys.Sentence σ) ∈ w.T) :
-    ∃ (w' : Succ w) (hw' : w' ∈ extent w x) (hd : w'.1.depth - w.depth ≠ 0),
-      (⟨childStage i, WFF.mono (extent_le hw' hd i) χ⟩ : w'.1.L.sys.Sentence σ) ∈ w'.1.T := by
-  have hext : (⟨diaWorld w x hx χ hχ, ⟨R.of_acc (diaWorld_acc w x hx χ hχ)⟩⟩ : Succ w) ∈
-      extent w x := by
-    refine Or.inl ⟨rfl, fun _ => rfl, ?_⟩
+    ∃ (w' : Succ w) (_ : w' ∈ extent w x) (_ : w'.1.depth - w.depth ≠ 0)
+      (hv : DiaView x w w'.1),
+      (⟨childStage i, WFF.mono (extent_le hv i) χ⟩ : w'.1.L.sys.Sentence σ) ∈ w'.1.T := by
+  have hbx : BoxxContents x w (diaWorld w x hx χ hχ) := by
     intro i' hx' ψ j h hmem
     have hk : (⟨max i'.1 i'.2, WFF.mono ((le_diag_max w i').diaIn x) ψ⟩ :
         ((diaLang w x).pre []).Sentence σ) ∈ diaStart w x χ :=
       Or.inl (Or.inr ⟨i', hx', ψ, le_diag_max w i', hmem, rfl⟩)
     exact World.mem_mono_congr (diaWorld w x hx χ hχ) h _ (WorldLang.subset_finalT _ hk)
+  have hext : (⟨diaWorld w x hx χ hχ, ⟨R.of_acc (diaWorld_acc w x hx χ hχ)⟩⟩ : Succ w) ∈
+      extent w x :=
+    mem_extent_of_tag hx.choose_spec rfl (fun _ => rfl) hbx
   have hdd : ((⟨diaWorld w x hx χ hχ, ⟨R.of_acc (diaWorld_acc w x hx χ hχ)⟩⟩ : Succ w)).1.depth -
       w.depth ≠ 0 := by
     have h1 : (diaWorld w x hx χ hχ).depth = w.depth + 1 := (diaWorld_acc w x hx χ hχ).1
     change (diaWorld w x hx χ hχ).depth - w.depth ≠ 0
     omega
-  refine ⟨_, hext, hdd, ?_⟩
+  refine ⟨_, hext, hdd, fun _ => rfl, ?_⟩
   have hk : (⟨max i.1 i.2, WFF.mono ((le_diag_max w i).diaIn x) χ⟩ :
       ((diaLang w x).pre []).Sentence σ) ∈ diaStart w x χ :=
     Or.inr rfl

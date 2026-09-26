@@ -140,23 +140,26 @@ theorem PEqW.trans (h₁ : w.PEqW x y) (h₂ : w.PEqW y z) : w.PEqW x z := by
   rw [hyy]
   exact PEq.lift (le_sup_right : k ≤ j ⊔ k) hy' hz hyz
 
-/-! ## The extent, up to the identification -/
+/-! ## The transfer, in the theory of a world -/
 
-/-- ⭐The extent of `x` taken up to provable `≐` (§2d): the successors in the extent of any address
-    the theory identifies with `x`.  Under the identity identification this is the old extent
-    (`extent_subset_upTo` one way, `PEqW.refl` the other). -/
-def extentUpTo (w : World σ N₀) (x : VarSymb) : Set (Succ w) :=
-  {w' | ∃ y, w.PEqW x y ∧ w' ∈ extent w y}
-
-theorem extent_subset_upTo (hx : (w.L.ctx i).ref x = some (.VTypeDia A)) {w' : Succ w}
-    (h : w' ∈ extent w x) : w' ∈ w.extentUpTo x :=
-  ⟨x, PEqW.refl hx, h⟩
-
-/-- ⭐The extent is invariant: what the theory identifies has one extent. -/
-theorem extentUpTo_congr (h : w.PEqW x y) : w.extentUpTo x = w.extentUpTo y := by
-  apply Set.eq_of_subset_of_subset
-  · exact fun w' ⟨z, hz, hmem⟩ => ⟨z, PEqW.trans (PEqW.symm h) hz, hmem⟩
-  · exact fun w' ⟨z, hz, hmem⟩ => ⟨z, PEqW.trans h hz, hmem⟩
+/-- ⭐What the world's theory holds `□_x`-necessary it holds `□_z`-necessary of the renamed formula,
+    when it identifies `x` and `z` (`Proof.boxx_reView` plus closure under provability).  This is
+    what lets a child tagged `z` serve as a member of `x`'s extent. -/
+theorem boxx_mem_reView {A : VarType} {x z : VarSymb}
+    (hx : (w.L.ctx i).ref x = some (.VTypeDia A)) (hz : (w.L.ctx i).ref z = some (.VTypeDia A))
+    (hcl : Ctx.ViewClean (w.L.ctx i) x)
+    (hclI : Ctx.ViewClean ((w.L.ctx i).insert (.bnd 0) (.VTypeDia A)) x)
+    (hpe : w.PEq i hx hz) (φ : WFF σ ((w.L.ctx i).diaIn x) 0)
+    (h : (⟨i, WFF.boxx x ⟨A, hx⟩ φ⟩ : w.L.sys.Sentence σ) ∈ w.T) :
+    (⟨i, WFF.boxx z ⟨A, hz⟩ (WFF.reView hx hz hcl φ)⟩ : w.L.sys.Sentence σ) ∈ w.T :=
+  mem_of_provable (Δ := [peqWFF hx hz, WFF.boxx x ⟨A, hx⟩ φ])
+    (fun ψ hψ => by
+      rcases List.mem_cons.mp hψ with rfl | hψ'
+      · exact hpe
+      · rw [List.mem_singleton.mp hψ']
+        exact h)
+    ⟨Proof.boxx_reView hx hz hcl hclI φ⟩
+end World
 
 /-! ## A child has only one tag -/
 
@@ -181,67 +184,206 @@ theorem DiaView.inj {w w' : World σ N₀} {y z : VarSymb} {i : ℕ × ℕ} {A :
   split_ifs at h3 with hyz
   · exact hyz
 
-/-! ## Reading a member of the union -/
 
-/-- A member of the union is the world itself or one level deeper, as before. -/
-theorem extentUpTo_cases {w : World σ N₀} {x : VarSymb} {w' : Succ w}
-    (hw' : w' ∈ w.extentUpTo x) :
+/-! ## The extent, up to the theory's identification -/
+
+/-- ⭐The extent of the possible object named by `x`, with its **proper** part taken up to provable
+    `≐` (§2d): the successors whose language is the view of some address the theory identifies with
+    `x` and which hold everything that address holds `□`-necessarily; and — under strong T — the
+    world itself when `x` is realised.
+
+    A child world is tagged by exactly one witness (`DiaView.inj`), so the union is unambiguous, and
+    identified addresses have one *proper* extent (`extent_congr`).  The **self** part is not
+    unioned: `World.real` is chosen by the Henkin chain's bookkeeping, so realisedness is not yet
+    under `≐` — it becomes so once `real` is driven by the `Here` sentence (§3 T, Stage 3), and only
+    then can the self part join the union.  See the note in §2d. -/
+def extent (w : World σ N₀) (x : VarSymb) : Set (Succ w) :=
+  {w' | (∃ y, w.PEqW x y ∧ w'.1.depth = w.depth + 1 ∧ DiaView y w w'.1 ∧
+      BoxxContents y w w'.1) ∨ (w'.1 = w ∧ w.Realised x)}
+
+/-- A member of the extent is the world itself or one level deeper; a proper one comes with its
+    **tag**. -/
+theorem extent_cases {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x) :
     (w'.1.depth - w.depth = 1 ∧ ∃ y, w.PEqW x y ∧ DiaView y w w'.1 ∧ BoxxContents y w w'.1) ∨
-      (w'.1.depth - w.depth = 0 ∧ w'.1 = w ∧ ∃ y, w.PEqW x y ∧ w.Realised y) := by
-  obtain ⟨y, hxy, hmem⟩ := hw'
-  rcases extent_cases hmem with ⟨hd, hv, hb⟩ | ⟨hd, he, hr⟩
-  · exact Or.inl ⟨hd, y, hxy, hv, hb⟩
-  · exact Or.inr ⟨hd, he, y, hxy, hr⟩
+      (w'.1.depth - w.depth = 0 ∧ w'.1 = w ∧ w.Realised x) := by
+  rcases hw' with ⟨y, hpe, hd, hv, hb⟩ | ⟨he, hr⟩
+  · exact Or.inl ⟨by omega, y, hpe, hv, hb⟩
+  · exact Or.inr ⟨by rw [he]; omega, he, hr⟩
 
-/-- ⭐A proper member comes with its tag. -/
-theorem extentUpTo_proper {w : World σ N₀} {x : VarSymb} {w' : Succ w}
-    (hw' : w' ∈ w.extentUpTo x) (hd : w'.1.depth - w.depth ≠ 0) :
-    w'.1.depth - w.depth = 1 ∧
-      ∃ y, w.PEqW x y ∧ DiaView y w w'.1 ∧ BoxxContents y w w'.1 := by
-  rcases extentUpTo_cases hw' with h | ⟨h, -⟩
+/-- ⭐A member one level deeper is a proper one, with its tag. -/
+theorem extent_proper {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
+    (hd : w'.1.depth - w.depth ≠ 0) :
+    w'.1.depth - w.depth = 1 ∧ ∃ y, w.PEqW x y ∧ DiaView y w w'.1 ∧ BoxxContents y w w'.1 := by
+  rcases extent_cases hw' with h | ⟨h, _⟩
   · exact h
   · exact absurd h hd
 
-/-- ⭐A member at this depth is the world itself, and then some address the theory identifies with
-    `x` is realised. -/
-theorem extentUpTo_self {w : World σ N₀} {x : VarSymb} {w' : Succ w}
-    (hw' : w' ∈ w.extentUpTo x) (hd : w'.1.depth - w.depth = 0) :
-    w'.1 = w ∧ ∃ y, w.PEqW x y ∧ w.Realised y := by
-  rcases extentUpTo_cases hw' with ⟨h, -⟩ | ⟨-, h⟩
+/-- A member at this depth is the world itself, and then `x` is realised. -/
+theorem extent_self {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
+    (hd : w'.1.depth - w.depth = 0) : w'.1 = w ∧ w.Realised x := by
+  rcases extent_cases hw' with ⟨h, -⟩ | ⟨-, h⟩
   · omega
   · exact h
 
-theorem extentUpTo_dist {w : World σ N₀} {x : VarSymb} {w' : Succ w}
-    (hw' : w' ∈ w.extentUpTo x) (hd : w'.1.depth - w.depth ≠ 0) : w'.1.depth - w.depth = 1 :=
-  (extentUpTo_proper hw' hd).1
+theorem extent_dist {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
+    (hd : w'.1.depth - w.depth ≠ 0) : w'.1.depth - w.depth = 1 :=
+  (extent_proper hw' hd).1
 
-/-- ⭐The view of the tag embeds in the child's language, which is what the renamed body is read
-    through. -/
-theorem extentUpTo_le {w : World σ N₀} {y : VarSymb} {w' : Succ w}
-    (hv : DiaView y w w'.1) (i : ℕ × ℕ) :
-    ((w.L.ctx i).diaIn y).Le (w'.1.L.ctx (childStage i)) :=
+theorem extent_acc {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
+    (hd : w'.1.depth - w.depth ≠ 0) : Acc' w w'.1 :=
+  w'.acc (extent_dist hw' hd)
+
+/-- ⭐The view of the **tag** embeds in the child's language; a body written in the `x`-view is read
+    there through the renaming `x ↦ y`. -/
+theorem extent_le {w w₂ : World σ N₀} {y : VarSymb} (hv : DiaView y w w₂) (i : ℕ × ℕ) :
+    ((w.L.ctx i).diaIn y).Le (w₂.L.ctx (childStage i)) :=
   hv.le (le_max_left _ _) (le_max_right _ _) 0
 
-/-! ## The transfer, in the theory of a world -/
+/-- The world itself is in the extent of a realised address. -/
+theorem self_mem_extent {w : World σ N₀} {x : VarSymb} (h : w.Realised x) :
+    (⟨w, ⟨R.refl h.T w⟩⟩ : Succ w) ∈ extent w x :=
+  Or.inr ⟨rfl, h⟩
 
-/-- ⭐What the world's theory holds `□_x`-necessary it holds `□_z`-necessary of the renamed formula,
-    when it identifies `x` and `z` (`Proof.boxx_reView` plus closure under provability).  This is
-    what lets a child tagged `z` serve as a member of `x`'s extent. -/
-theorem boxx_mem_reView {A : VarType} {x z : VarSymb}
-    (hx : (w.L.ctx i).ref x = some (.VTypeDia A)) (hz : (w.L.ctx i).ref z = some (.VTypeDia A))
-    (hcl : Ctx.ViewClean (w.L.ctx i) x)
-    (hclI : Ctx.ViewClean ((w.L.ctx i).insert (.bnd 0) (.VTypeDia A)) x)
-    (hpe : w.PEq i hx hz) (φ : WFF σ ((w.L.ctx i).diaIn x) 0)
-    (h : (⟨i, WFF.boxx x ⟨A, hx⟩ φ⟩ : w.L.sys.Sentence σ) ∈ w.T) :
-    (⟨i, WFF.boxx z ⟨A, hz⟩ (WFF.reView hx hz hcl φ)⟩ : w.L.sys.Sentence σ) ∈ w.T :=
-  mem_of_provable (Δ := [peqWFF hx hz, WFF.boxx x ⟨A, hx⟩ φ])
-    (fun ψ hψ => by
-      rcases List.mem_cons.mp hψ with rfl | hψ'
-      · exact hpe
-      · rw [List.mem_singleton.mp hψ']
-        exact h)
-    ⟨Proof.boxx_reView hx hz hcl hclI φ⟩
+/-- A child tagged by `y` is in the extent of `y` itself. -/
+theorem mem_extent_of_tag {w : World σ N₀} {y : VarSymb} {A : VarType} {i : ℕ × ℕ}
+    (hy : (w.L.ctx i).ref y = some (.VTypeDia A)) {w' : Succ w} (hdep : w'.1.depth = w.depth + 1)
+    (hv : DiaView y w w'.1) (hb : BoxxContents y w w'.1) : w' ∈ extent w y :=
+  Or.inl ⟨y, World.PEqW.refl hy, hdep, hv, hb⟩
+
+/-- ⭐**What the union is for**: addresses the theory identifies have the same extent — given that
+    they agree on being realised, which is what the `Here`-driven `real` of §3 T will supply. -/
+theorem extent_congr {w : World σ N₀} {x y : VarSymb} (h : w.PEqW x y)
+    (hR : w.Realised x ↔ w.Realised y) : extent w x = extent w y := by
+  apply Set.eq_of_subset_of_subset
+  · rintro w' (⟨z, hz, hd, hv, hb⟩ | ⟨he, hr⟩)
+    · exact Or.inl ⟨z, World.PEqW.trans (World.PEqW.symm h) hz, hd, hv, hb⟩
+    · exact Or.inr ⟨he, hR.mp hr⟩
+  · rintro w' (⟨z, hz, hd, hv, hb⟩ | ⟨he, hr⟩)
+    · exact Or.inl ⟨z, World.PEqW.trans h hz, hd, hv, hb⟩
+    · exact Or.inr ⟨he, hR.mpr hr⟩
+
+/-! ## Reading the identification, and the tag of a member -/
+
+namespace World
+
+/-- A stage declaring both addresses of an identification. -/
+noncomputable def PEqW.st {w : World σ N₀} {x y : VarSymb} (h : w.PEqW x y) : ℕ × ℕ := h.choose
+
+/-- Their shared content type there. -/
+noncomputable def PEqW.ty {w : World σ N₀} {x y : VarSymb} (h : w.PEqW x y) : VarType :=
+  h.choose_spec.choose
+
+theorem PEqW.refX {w : World σ N₀} {x y : VarSymb} (h : w.PEqW x y) :
+    (w.L.ctx h.st).ref x = some (.VTypeDia h.ty) :=
+  h.choose_spec.choose_spec.choose
+
+theorem PEqW.refY {w : World σ N₀} {x y : VarSymb} (h : w.PEqW x y) :
+    (w.L.ctx h.st).ref y = some (.VTypeDia h.ty) :=
+  h.choose_spec.choose_spec.choose_spec.choose
+
+theorem PEqW.peq {w : World σ N₀} {x y : VarSymb} (h : w.PEqW x y) :
+    w.PEq h.st h.refX h.refY :=
+  h.choose_spec.choose_spec.choose_spec.choose_spec
+
 end World
+
+/-- ⭐The tag of a proper member of an extent: the witness its language is the view of. -/
+noncomputable def tagOf {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
+    (hd : w'.1.depth - w.depth ≠ 0) : VarSymb :=
+  (extent_proper hw' hd).2.choose
+
+theorem peqw_tagOf {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
+    (hd : w'.1.depth - w.depth ≠ 0) : w.PEqW x (tagOf hw' hd) :=
+  (extent_proper hw' hd).2.choose_spec.1
+
+theorem diaView_tagOf {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
+    (hd : w'.1.depth - w.depth ≠ 0) : DiaView (tagOf hw' hd) w w'.1 :=
+  (extent_proper hw' hd).2.choose_spec.2.1
+
+theorem boxxContents_tagOf {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
+    (hd : w'.1.depth - w.depth ≠ 0) : BoxxContents (tagOf hw' hd) w w'.1 :=
+  (extent_proper hw' hd).2.choose_spec.2.2
+
+
+/-- ⭐The body of a `◇`-term, read in the **tag's** view: moved to a stage declaring both witnesses
+    and renamed along `x ↦ y` there.  Cleanliness comes from the world's flatness, so this needs no
+    side condition. -/
+noncomputable def tagBody (w : World σ N₀) {Γ : Ctx} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i))
+    {x y : VarSymb} (hpe : w.PEqW x y) {A : VarType} {a : Ann A} (t : Term σ (Γ.diaIn x) A a) :
+    Σ b : Ann A, Term σ ((w.L.ctx (i ⊔ hpe.st)).diaIn y) A b :=
+  ⟨_, Term.reView ((w.L.ctx_le (le_sup_right : hpe.st ≤ i ⊔ hpe.st)).ref hpe.refX)
+      ((w.L.ctx_le (le_sup_right : hpe.st ≤ i ⊔ hpe.st)).ref hpe.refY)
+      ((w.L.flatCtx (i ⊔ hpe.st)).viewClean
+        ((w.L.ctx_le (le_sup_right : hpe.st ≤ i ⊔ hpe.st)).ref hpe.refX))
+      (Term.mono ((e.trans (w.L.ctx_le (le_sup_left : i ≤ i ⊔ hpe.st))).diaIn x) t)⟩
+
+/-- The tag is declared at the stage the body is read at. -/
+theorem refY_sup {w : World σ N₀} {i : ℕ × ℕ} {x y : VarSymb} (hpe : w.PEqW x y) :
+    ∃ X, (w.L.ctx (i ⊔ hpe.st)).ref y = some (.VTypeDia X) :=
+  ⟨hpe.ty, (w.L.ctx_le (le_sup_right : hpe.st ≤ i ⊔ hpe.st)).ref hpe.refY⟩
+
+/-- Reading the body in the tag's view absorbs a weakening of the term's context. -/
+theorem tagBody_mono {w : World σ N₀} {Γ Γ' : Ctx} (h : Γ.Le Γ') {i : ℕ × ℕ}
+    (e : Γ'.Le (w.L.ctx i)) {x y : VarSymb} (hpe : w.PEqW x y) {A : VarType} {a : Ann A}
+    (t : Term σ (Γ.diaIn x) A a) :
+    tagBody w e hpe (Term.mono (h.diaIn x) t) = tagBody w (h.trans e) hpe t :=
+  congrArg (Sigma.mk _) (congrArg (Term.reView _ _ _) (Term.mono_mono _ _ t))
+
+
+
+/-- The declarations and cleanliness the tagged reading uses, at the stage it reads at. -/
+theorem World.PEqW.refXs {w : World σ N₀} {x y : VarSymb} (hpe : w.PEqW x y) (i : ℕ × ℕ) :
+    (w.L.ctx (i ⊔ hpe.st)).ref x = some (.VTypeDia hpe.ty) :=
+  (w.L.ctx_le (le_sup_right : hpe.st ≤ i ⊔ hpe.st)).ref hpe.refX
+
+theorem World.PEqW.refYs {w : World σ N₀} {x y : VarSymb} (hpe : w.PEqW x y) (i : ℕ × ℕ) :
+    (w.L.ctx (i ⊔ hpe.st)).ref y = some (.VTypeDia hpe.ty) :=
+  (w.L.ctx_le (le_sup_right : hpe.st ≤ i ⊔ hpe.st)).ref hpe.refY
+
+theorem World.PEqW.clean {w : World σ N₀} {x y : VarSymb} (hpe : w.PEqW x y) (i : ℕ × ℕ) :
+    Ctx.ViewClean (w.L.ctx (i ⊔ hpe.st)) x :=
+  (w.L.flatCtx (i ⊔ hpe.st)).viewClean (hpe.refXs i)
+
+/-- ⭐A view **formula**, read in the tag's view: the formula-level `tagBody`, and what the truth
+    lemma's `◇` case says holds at a tagged successor. -/
+noncomputable def tagWFF (w : World σ N₀) {i : ℕ × ℕ} {x y : VarSymb} (hpe : w.PEqW x y)
+    (χ : WFF σ ((w.L.ctx i).diaIn x) 0) : WFF σ ((w.L.ctx (i ⊔ hpe.st)).diaIn y) 0 :=
+  WFF.reView (hpe.refXs i) (hpe.refYs i) (hpe.clean i)
+    (WFF.mono ((w.L.ctx_le (le_sup_left : i ≤ i ⊔ hpe.st)).diaIn x) χ)
+
+/-- Reading a pair in the tag's view is reading its components there. -/
+theorem tagBody_pair {w : World σ N₀} {Γ : Ctx} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i))
+    {x y : VarSymb} (hpe : w.PEqW x y) {A B : VarType} {a : Ann A} {b : Ann B}
+    (s : Term σ (Γ.diaIn x) A a) (t : Term σ (Γ.diaIn x) B b) :
+    tagBody w e hpe (Term.pair s t) =
+      ⟨_, Term.pair (tagBody w e hpe s).2 (tagBody w e hpe t).2⟩ := rfl
+
+/-- ⭐A body lifted from the `□`-part is read in the tag's view as itself: the renaming touches only
+    the content address. -/
+theorem tagBody_mono_boxIn {w : World σ N₀} {Γ : Ctx} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i))
+    {x y : VarSymb} (hpe : w.PEqW x y) {A : VarType} {a : Ann A} (b : Term σ Γ.boxIn A a) :
+    tagBody w e hpe (Term.mono (Ctx.le_boxIn_diaIn Γ x) b) =
+      ⟨a, Term.mono (Ctx.le_boxIn_diaIn (w.L.ctx (i ⊔ hpe.st)) y)
+        (Term.mono (e.trans (w.L.ctx_le (le_sup_left : i ≤ i ⊔ hpe.st))).boxIn b)⟩ := by
+  have hcomb : Term.mono ((e.trans (w.L.ctx_le (le_sup_left : i ≤ i ⊔ hpe.st))).diaIn x)
+        (Term.mono (Ctx.le_boxIn_diaIn Γ x) b) =
+      Term.mono (Ctx.le_boxIn_diaIn (w.L.ctx (i ⊔ hpe.st)) x)
+        (Term.mono (e.trans (w.L.ctx_le (le_sup_left : i ≤ i ⊔ hpe.st))).boxIn b) := by
+    rw [Term.mono_mono, Term.mono_mono]
+  simp only [tagBody]
+  rw [hcomb]
+  exact Term.reView_mono_boxIn _ _ _ _
+/-- Reading the body in the tag's view commutes with moving to a later stage — this is where
+    `Term.reView_mono` earns its keep, and it is what makes `rden` stage-independent. -/
+theorem tagBody_stage {w : World σ N₀} {Γ : Ctx} {i k : ℕ × ℕ} (hik : i ≤ k)
+    (e : Γ.Le (w.L.ctx i)) {x y : VarSymb} (hpe : w.PEqW x y) {A : VarType} {a : Ann A}
+    (t : Term σ (Γ.diaIn x) A a) :
+    Term.mono ((w.L.ctx_le (sup_le_sup_right hik hpe.st)).diaIn y) (tagBody w e hpe t).2 =
+      (tagBody w (e.trans (w.L.ctx_le hik)) hpe t).2 := by
+  simp only [tagBody]
+  rw [Term.reView_mono (w.L.ctx_le (sup_le_sup_right hik hpe.st))
+    (hcl' := (w.L.flatCtx (k ⊔ hpe.st)).viewClean
+      ((w.L.ctx_le (le_sup_right : hpe.st ≤ k ⊔ hpe.st)).ref hpe.refX)), Term.mono_mono]
 
 end Canon
 

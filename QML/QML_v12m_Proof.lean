@@ -157,20 +157,25 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (.box φ) →
       Proof σ Γ Δ (.box (.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots φ)))
   -- Strong T
-  /-- Every object has a possible object realised here.  The witness `c : ◇A` is fresh, and the
-      subproof may use, for finitely many `□`-view formulas with a hole and a parameter, that for
-      every value of the parameter what holds of `t` here holds of the witness content in `◇_c`
-      (`WFF.retHyp`).  One parameter name `y` serves all the hypotheses; several parameters pack
-      into a product type.  As only that direction is available, `◇_c` is only used positively;
-      on paper this rule is equivalent to the positive-polarity schema
-      `Φ⟨x := t⟩ ⊢ ∃x:◇A. Φ(x)`. -/
+  /-- ⭐**Every object has a possible object realised here**, as an `∃`-elimination: the witness
+      `c : ◇A` is fresh, and the subproof gets the single hypothesis `Here (η c) t`.  Its validity
+      is `Model.posRet_exists`, read as `Model.sat_here_ex`.
+
+      *This used to hand over the realisation schema `WFF.retHyp` instead* — for finitely many
+      `□`-view hole formulas with a parameter, that what holds of `t` here holds of the witness
+      content in `◇_c`.  Each such instance is `here_intro`'s conclusion for its hole formula, so
+      nothing is lost: the schema follows from the atom, not the other way round.  The atom is
+      strictly better: no parameter name, no hole-formula list, `◇_c` usable at either polarity,
+      and — the reason it matters — the canonical model can put the *atom* into its theory, which is
+      what the truth lemma's `here` case needs and what no schema instance supplies (§2d,
+      `Model.sat_here_ex`).  The chain now adds exactly that atom (`WorldLang.retSet`), and
+      `Canon.spec_of_here` derives `RealDatum.spec` from it. -/
   | T_dia {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) (hS : ModalSys.TStrong = true)
-      (A : VarType) {a : Ann A} (t : Term σ Γ A a) (c y : ℕ) (hc : Γ.RootFresh (.free c))
-      (hy : Γ.RootFresh (.free y)) (hyc : y ≠ c)
-      {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0}
-      (Ψ : List (Σ B : VarType, WFF σ ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A) 1)) :
+      (A : VarType) {a : Ann A} (t : Term σ Γ A a) (c : ℕ) (hc : Γ.RootFresh (.free c))
+      {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
       Proof σ (Γ.insert (.free c) (.VTypeDia A))
-        (Ψ.map (fun ψ => WFF.retHyp hT t c y hc hy hyc ψ.1 ψ.2) ++
+        (WFF.hereAt hT (.root (.free c)) (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A))
+            (Term.weaken hc.root (.VTypeDia A) t) ::
           Δ.map (WFF.weaken hc.root (.VTypeDia A)))
           (φ.weaken hc.root (.VTypeDia A)) →
       Proof σ Γ Δ φ
@@ -185,9 +190,9 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       content's place.  The pinned case `bd = x.dia` is the rule one expects, `Here x t, □_x χ ⊢
       χ(t)` (`Proof.here_elimAt`), since every view formula is its abstraction read back. -/
   | here_elim {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) (x : VarSymb)
-      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (t : Term σ Γ .Var .var)
-      (bd : Term σ (Γ.diaIn x) .Var .var)
-      (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) .Var) 1) :
+      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
+      {a' : Ann A} (bd : Term σ (Γ.diaIn x) A a')
+      (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
       Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd) t) →
       Proof σ Γ Δ (WFF.boxx x hx (WFF.viewReadTm bd ψ)) →
       Proof σ Γ Δ (WFF.hereRead hT t ψ)
@@ -195,9 +200,9 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       world witnessing it.  The converse of `here_elim` across the same two readings, so the pair is
       one biconditional (`Model.sat_viewReadTm`) split by polarity. -/
   | here_intro {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) (x : VarSymb)
-      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (t : Term σ Γ .Var .var)
-      (bd : Term σ (Γ.diaIn x) .Var .var)
-      (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) .Var) 1) :
+      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
+      {a' : Ann A} (bd : Term σ (Γ.diaIn x) A a')
+      (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
       Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd) t) →
       Proof σ Γ Δ (WFF.hereRead hT t ψ) →
       Proof σ Γ Δ (WFF.dia x hx (WFF.viewReadTm bd ψ))
@@ -207,17 +212,21 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       ranges over the view terms (`Term.diaAbs` abstracts one), and the value on the right is
       `Term.realiseAt`. -/
   | here_beta {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) (x : VarSymb)
-      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (t : Term σ Γ .Var .var)
-      (bd : Term σ (Γ.diaIn x) .Var .var)
-      (s : Term σ (Γ.boxIn.insert (.bnd 0) .Var) .Var .var) :
+      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
+      {a' : Ann A} (bd : Term σ (Γ.diaIn x) A a')
+      {B : VarType} {b : Ann B} (s : Term σ (Γ.boxIn.insert (.bnd 0) A) B b) :
       Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd) t) →
       Proof σ Γ Δ (WFF.here hT (Term.diatm x hx (Term.viewReadTm bd s)) (Term.hereRead hT t s))
-  /-- ⭐**Functionality**: a possible object has one realisation here.  At base type this is an
-      equation, which is why `WFF.here` is primitive there. -/
-  | here_fun {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
-      {b : Ann (.VTypeDia .Var)} (s : Term σ Γ (.VTypeDia .Var) b)
-      (t t' : Term σ Γ .Var .var) :
-      Proof σ Γ Δ (WFF.here hT s t) → Proof σ Γ Δ (WFF.here hT s t') → Proof σ Γ Δ (.eq t t')
+  /-- ⭐**Functionality**: a possible object has one realisation here.  At base content this is an
+      equation; at every other content type it is `WFF.eqRec`, the annotation-free equality — which
+      is what the `◇`-equality reform provides and why `WFF.here` need no longer be base-typed
+      (§2d).  The two values carry unrelated annotations, which is exactly the comparison that used
+      to be impossible to state. -/
+  | here_fun {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) {A : VarType}
+      {b : Ann (.VTypeDia A)} (s : Term σ Γ (.VTypeDia A) b)
+      {a a' : Ann A} (t : Term σ Γ A a) (t' : Term σ Γ A a') :
+      Proof σ Γ Δ (WFF.here hT s t) → Proof σ Γ Δ (WFF.here hT s t') →
+      Proof σ Γ Δ (eqRec A t t')
   -- Weak B
   /-- What is possibly necessary is true, `◇□ψ ⊢ ψ`, for a closed `ψ`: some accessible world
       makes `ψ` necessary, and an arrow leads back from it.  `ψ` must be closed because nothing
@@ -336,7 +345,7 @@ macro "fresh" : tactic =>
   `(tactic| repeat (first
     | exact Ctx.RootFresh.empty _
     | assumption
-    | exact Ctx.Presented.fresh _ (by decide)
+    | exact Ctx.Presented.fresh_bound _ (by decide)
     | refine Ctx.RootFresh.insert_ne ?_ (by decide) _
     | refine Ctx.RootFresh.boxIn ?_
     | refine Ctx.RootFresh.diaIn ?_ _))

@@ -267,7 +267,8 @@ theorem WFF.subst_id {σ : Signature} : {Δ : Ctx} → {d : ℕ} → (hθ : Subs
       WFF.here_congr hT
         ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc s).trans
           (congrArg (Sigma.mk _) (Term.mono_refl _ s)))
-        ((Term.subst_idS_mono_var (Ctx.Le.refl Δ) hθ hc t).trans (Term.mono_refl _ t))
+        ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc t).trans
+          (congrArg (Sigma.mk _) (Term.mono_refl _ t)))
   | Δ, _, hθ, hc, _, .diaEq s s' =>
       WFF.diaEq_congr
         ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc s).trans

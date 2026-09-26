@@ -1,3 +1,4 @@
+import QML.QML_v12m_CanonDiaEq
 import QML.QML_v12m_CanonWorld
 
 /-!
@@ -209,7 +210,10 @@ noncomputable def rden : {A : VarType} → {a : Ann A} → {Γ : Ctx} → (w : W
           ((extent_self w'.2 hd).1).symm ▸
             rden w (i ⊔ ((extent_self w'.2 hd).2).data.i₀) (Ctx.Le.refl _)
               (realisedTerm w (extent_self w'.2 hd).2 e hx t).2
-        else rden w'.1.1 (childStage i) ((e.diaIn x).trans (extent_le w'.2 hd i)) t⟩
+        else
+          rden w'.1.1 (childStage (i ⊔ (peqw_tagOf w'.2 hd).st))
+            (extent_le (diaView_tagOf w'.2 hd) (i ⊔ (peqw_tagOf w'.2 hd).st))
+            (tagBody w e (peqw_tagOf w'.2 hd) t).2⟩
   termination_by structural A => A
 
 /-- At the world itself, a necessary term denotes its body collapsed. -/
@@ -259,23 +263,30 @@ theorem rden_boxtm_step {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
     omega
   exact (rden_boxtm_far e t w' hw).trans (rden_boxtm_far _ _ ⟨w'.1, ⟨hr⟩⟩ hd').symm
 
-/-- At a proper successor, a possible term denotes its body there. -/
+/-- At a proper successor, a possible term denotes its body read in the successor's **tag**. -/
 theorem rden_diatm_acc {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
     (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
     (t : Term σ (Γ.diaIn x) A a) (w' : (extent w x)) (hd : w'.1.1.depth - w.depth ≠ 0) :
     (rden w i e (.diatm x hx t)).2 w' =
-      rden w'.1.1 (childStage i) ((e.diaIn x).trans (extent_le w'.2 hd i)) t := by
+      rden w'.1.1 (childStage (i ⊔ (peqw_tagOf w'.2 hd).st))
+        (extent_le (diaView_tagOf w'.2 hd) (i ⊔ (peqw_tagOf w'.2 hd).st))
+        (tagBody w e (peqw_tagOf w'.2 hd) t).2 := by
   simp only [rden, dif_neg hd]
 
-/-- The same, for a membership proof given separately and at any embedding of the view. -/
+/-- The same, for a membership proof given separately and at any embedding of the tag's view. -/
 theorem rden_diatm_acc' {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
     (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
     (t : Term σ (Γ.diaIn x) A a) (v : Succ w) (hv : v ∈ (rden w i e (.diatm x hx t)).1)
-    (hd : v.1.depth - w.depth ≠ 0) (le : (Γ.diaIn x).Le (v.1.L.ctx (childStage i))) :
-    (rden w i e (.diatm x hx t)).2 ⟨v, hv⟩ = rden v.1 (childStage i) le t := by
+    (hd : v.1.depth - w.depth ≠ 0)
+    (le : ((w.L.ctx (i ⊔ (peqw_tagOf hv hd).st)).diaIn (tagOf hv hd)).Le
+      (v.1.L.ctx (childStage (i ⊔ (peqw_tagOf hv hd).st)))) :
+    (rden w i e (.diatm x hx t)).2 ⟨v, hv⟩ =
+      rden v.1 (childStage (i ⊔ (peqw_tagOf hv hd).st)) le
+        (tagBody w e (peqw_tagOf hv hd) t).2 := by
   simp only [rden, dif_neg hd]
 
-/-- ⭐At the world itself, a possible term whose witness is realised denotes its body realised. -/
+/-- ⭐At the world itself, a possible term whose witness is identified with a realised one denotes
+    its body, read in that one's view, realised. -/
 theorem rden_diatm_self {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
     (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
     (t : Term σ (Γ.diaIn x) A a) (w' : (extent w x)) (hd : w'.1.1.depth - w.depth = 0) :
@@ -308,6 +319,14 @@ theorem realisedTerm_mono {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) 
     (hr.data.hfr _) (Term.mono (w.L.ctx_le le_sup_right) hr.data.t₀) u⟩ :
       Σ b : Ann A, Term σ (w.L.ctx (i ⊔ hr.data.i₀)) A b)) key
 
+
+/-- The realisation depends on the body only through its packed form. -/
+theorem realisedTerm_sigma {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
+    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
+    {p q : Σ b : Ann A, Term σ (Γ.diaIn x) A b} (h : p = q) :
+    realisedTerm w hr e hx p.2 = realisedTerm w hr e hx q.2 := by
+  subst h
+  rfl
 /-- The denotation commutes with weakening. -/
 theorem rden_mono : ∀ {A : VarType} {a : Ann A} {Γ Γ' : Ctx} (h : Γ.Le Γ') (t : Term σ Γ A a)
     (w : World σ N₀) (i : ℕ × ℕ) (e : Γ'.Le (w.L.ctx i)),
@@ -336,7 +355,7 @@ theorem rden_mono : ∀ {A : VarType} {a : Ann A} {Γ Γ' : Ctx} (h : Γ.Le Γ')
           exact rden_transport_congr _ (rden_sigma _
             (realisedTerm_mono _ h e hx (hx.imp fun _ hh => h.ref hh) t))
         · simp only [dif_neg hd]
-          exact rden_mono (h.diaIn x) t w'.1.1 (childStage i) _)
+          exact rden_sigma _ (tagBody_mono h e (peqw_tagOf w'.2 hd) t))
   termination_by structural A => A
 
 /-- Transporting a pair of raw objects along an equation of worlds is the pair of transports. -/
@@ -351,6 +370,115 @@ theorem rden_transport_pair {w₁ w₂ : World σ N₀} (hw : w₁ = w₂) {A B 
     (hw ▸ ((u, v) : RDom (.VTypeProd A B) w₁) : RDom (.VTypeProd A B) w₂) = (hw ▸ u, hw ▸ v) := by
   cases hw
   rfl
+
+
+/-! ## Stage-independence of the realised and tagged readings
+
+The three steps the `◇` case of `rden_congr` needs, each taking that theorem's induction hypothesis
+at the body's type as a parameter (as `interp_box_far` does in `QML_v12m_CanonTerm`). -/
+
+/-- The induction hypothesis `rden_congr` supplies at the body's type. -/
+abbrev RdenCongrAt (A : VarType) : Prop :=
+  ∀ {a : Ann A} {Γ : Ctx} (u : Term σ Γ A a) (w : World σ N₀) (i j : ℕ × ℕ)
+    (e₁ : Γ.Le (w.L.ctx i)) (e₂ : Γ.Le (w.L.ctx j)), rden w i e₁ u = rden w j e₂ u
+
+/-- A realised reading does not depend on the stage its body is taken at. -/
+theorem rden_realisedTerm_congr {A : VarType} (IH : RdenCongrAt (σ := σ) (N₀ := N₀) A) {a : Ann A}
+    {Γ : Ctx} {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (t : Term σ (Γ.diaIn x) A a) {i j : ℕ × ℕ}
+    (e : Γ.Le (w.L.ctx i)) (e' : Γ.Le (w.L.ctx j)) :
+    rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e hx t).2 =
+      rden w (j ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e' hx t).2 := by
+  have h₁ : (w.L.ctx (i ⊔ hr.data.i₀)).Le
+      (w.L.ctx ((i ⊔ hr.data.i₀) ⊔ (j ⊔ hr.data.i₀))) := w.L.ctx_le le_sup_left
+  have h₂ : (w.L.ctx (j ⊔ hr.data.i₀)).Le
+      (w.L.ctx ((i ⊔ hr.data.i₀) ⊔ (j ⊔ hr.data.i₀))) := w.L.ctx_le le_sup_right
+  have key : Term.mono h₁ (realisedTerm w hr e hx t).2 =
+      Term.mono h₂ (realisedTerm w hr e' hx t).2 := by
+    simp only [realisedTerm]
+    rw [Term.mono_realiseAt hr.data.hT _
+        (hcA' := hr.data.hdecl _ (lt_of_lt_of_le (realisedLt hr e hx)
+          (le_sup_left.trans le_sup_left)))
+        (hfr' := hr.data.hfr _),
+      Term.mono_realiseAt hr.data.hT _
+        (hcA' := hr.data.hdecl _ (lt_of_lt_of_le (realisedLt hr e hx)
+          (le_sup_left.trans le_sup_left)))
+        (hfr' := hr.data.hfr _),
+      Term.mono_mono, Term.mono_mono, Term.mono_mono, Term.mono_mono]
+  calc rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e hx t).2
+      = rden w _ h₁ (realisedTerm w hr e hx t).2 := IH _ w _ _ _ _
+    _ = rden w _ (Ctx.Le.refl _) (Term.mono h₁ (realisedTerm w hr e hx t).2) :=
+        (rden_mono h₁ _ w _ (Ctx.Le.refl _)).symm
+    _ = rden w _ (Ctx.Le.refl _) (Term.mono h₂ (realisedTerm w hr e' hx t).2) := by rw [key]
+    _ = rden w _ h₂ (realisedTerm w hr e' hx t).2 := rden_mono h₂ _ w _ (Ctx.Le.refl _)
+    _ = rden w (j ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e' hx t).2 := IH _ w _ _ _ _
+
+/-- ⭐The tagged reading of a body does not depend on the stage it is read at. -/
+theorem rden_tagBody_congr {A : VarType} (IH : RdenCongrAt (σ := σ) (N₀ := N₀) A) {a : Ann A}
+    {Γ : Ctx} {w : World σ N₀} {x y : VarSymb} (hpe : w.PEqW x y)
+    (t : Term σ (Γ.diaIn x) A a) {i j : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (e' : Γ.Le (w.L.ctx j))
+    {w₂ : World σ N₀} (hv : DiaView y w w₂) {k₁ k₂ : ℕ × ℕ}
+    (le₁ : ((w.L.ctx (i ⊔ hpe.st)).diaIn y).Le (w₂.L.ctx k₁))
+    (le₂ : ((w.L.ctx (j ⊔ hpe.st)).diaIn y).Le (w₂.L.ctx k₂)) :
+    rden w₂ k₁ le₁ (tagBody w e hpe t).2 = rden w₂ k₂ le₂ (tagBody w e' hpe t).2 := by
+  have key : Term.mono ((w.L.ctx_le
+        (sup_le_sup_right (le_sup_left : i ≤ i ⊔ j) hpe.st)).diaIn y) (tagBody w e hpe t).2 =
+      Term.mono ((w.L.ctx_le
+        (sup_le_sup_right (le_sup_right : j ≤ i ⊔ j) hpe.st)).diaIn y) (tagBody w e' hpe t).2 := by
+    rw [tagBody_stage (le_sup_left : i ≤ i ⊔ j) e hpe t,
+      tagBody_stage (le_sup_right : j ≤ i ⊔ j) e' hpe t]
+  have leK : ((w.L.ctx ((i ⊔ j) ⊔ hpe.st)).diaIn y).Le
+      (w₂.L.ctx (childStage ((i ⊔ j) ⊔ hpe.st))) := extent_le hv _
+  calc rden w₂ k₁ le₁ (tagBody w e hpe t).2
+      = rden w₂ (childStage ((i ⊔ j) ⊔ hpe.st))
+          (((w.L.ctx_le (sup_le_sup_right (le_sup_left : i ≤ i ⊔ j) hpe.st)).diaIn y).trans leK)
+          (tagBody w e hpe t).2 := IH _ w₂ _ _ _ _
+    _ = rden w₂ (childStage ((i ⊔ j) ⊔ hpe.st)) leK
+          (Term.mono ((w.L.ctx_le
+            (sup_le_sup_right (le_sup_left : i ≤ i ⊔ j) hpe.st)).diaIn y)
+            (tagBody w e hpe t).2) := (rden_mono _ _ w₂ _ leK).symm
+    _ = rden w₂ (childStage ((i ⊔ j) ⊔ hpe.st)) leK
+          (Term.mono ((w.L.ctx_le
+            (sup_le_sup_right (le_sup_right : j ≤ i ⊔ j) hpe.st)).diaIn y)
+            (tagBody w e' hpe t).2) := by rw [key]
+    _ = rden w₂ (childStage ((i ⊔ j) ⊔ hpe.st))
+          (((w.L.ctx_le (sup_le_sup_right (le_sup_right : j ≤ i ⊔ j) hpe.st)).diaIn y).trans leK)
+          (tagBody w e' hpe t).2 := rden_mono _ _ w₂ _ leK
+    _ = rden w₂ k₂ le₂ (tagBody w e' hpe t).2 := IH _ w₂ _ _ _ _
+
+/-- ⭐And neither does the realised reading of a tagged body — the `◇` case at the world itself. -/
+theorem rden_realisedTagBody_congr {A : VarType} (IH : RdenCongrAt (σ := σ) (N₀ := N₀) A)
+    {a : Ann A} {Γ : Ctx} {w : World σ N₀} {x y : VarSymb} (hpe : w.PEqW x y)
+    (hr : w.Realised y) (t : Term σ (Γ.diaIn x) A a) {i j : ℕ × ℕ} (e : Γ.Le (w.L.ctx i))
+    (e' : Γ.Le (w.L.ctx j)) :
+    rden w ((i ⊔ hpe.st) ⊔ hr.data.i₀) (Ctx.Le.refl _)
+        (realisedTerm w hr (Ctx.Le.refl _) (refY_sup hpe) (tagBody w e hpe t).2).2 =
+      rden w ((j ⊔ hpe.st) ⊔ hr.data.i₀) (Ctx.Le.refl _)
+        (realisedTerm w hr (Ctx.Le.refl _) (refY_sup hpe) (tagBody w e' hpe t).2).2 := by
+  have h₁ := (w.L.ctx_le (sup_le_sup_right (le_sup_left : i ≤ i ⊔ j) hpe.st))
+  have h₂ := (w.L.ctx_le (sup_le_sup_right (le_sup_right : j ≤ i ⊔ j) hpe.st))
+  have key : Term.mono (h₁.diaIn y) (tagBody w e hpe t).2 =
+      Term.mono (h₂.diaIn y) (tagBody w e' hpe t).2 := by
+    rw [tagBody_stage (le_sup_left : i ≤ i ⊔ j) e hpe t,
+      tagBody_stage (le_sup_right : j ≤ i ⊔ j) e' hpe t]
+  calc rden w ((i ⊔ hpe.st) ⊔ hr.data.i₀) (Ctx.Le.refl _)
+        (realisedTerm w hr (Ctx.Le.refl _) (refY_sup hpe) (tagBody w e hpe t).2).2
+      = rden w (((i ⊔ j) ⊔ hpe.st) ⊔ hr.data.i₀) (Ctx.Le.refl _)
+          (realisedTerm w hr h₁ (refY_sup hpe) (tagBody w e hpe t).2).2 :=
+        rden_realisedTerm_congr IH hr (refY_sup hpe) _ (Ctx.Le.refl _) h₁
+    _ = rden w (((i ⊔ j) ⊔ hpe.st) ⊔ hr.data.i₀) (Ctx.Le.refl _)
+          (realisedTerm w hr (Ctx.Le.refl _) (refY_sup hpe)
+            (Term.mono (h₁.diaIn y) (tagBody w e hpe t).2)).2 := by
+        rw [realisedTerm_mono hr h₁ (Ctx.Le.refl _) (refY_sup hpe) (refY_sup hpe)]
+    _ = rden w (((i ⊔ j) ⊔ hpe.st) ⊔ hr.data.i₀) (Ctx.Le.refl _)
+          (realisedTerm w hr (Ctx.Le.refl _) (refY_sup hpe)
+            (Term.mono (h₂.diaIn y) (tagBody w e' hpe t).2)).2 := by rw [key]
+    _ = rden w (((i ⊔ j) ⊔ hpe.st) ⊔ hr.data.i₀) (Ctx.Le.refl _)
+          (realisedTerm w hr h₂ (refY_sup hpe) (tagBody w e' hpe t).2).2 := by
+        rw [realisedTerm_mono hr h₂ (Ctx.Le.refl _) (refY_sup hpe) (refY_sup hpe)]
+    _ = rden w ((j ⊔ hpe.st) ⊔ hr.data.i₀) (Ctx.Le.refl _)
+          (realisedTerm w hr (Ctx.Le.refl _) (refY_sup hpe) (tagBody w e' hpe t).2).2 :=
+        rden_realisedTerm_congr IH hr (refY_sup hpe) _ h₂ (Ctx.Le.refl _)
 
 /-- The denotation does not depend on the stage it is computed at. -/
 theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A a)
@@ -375,35 +503,12 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
       congrArg (Sigma.mk _) (funext fun w' => by
         by_cases hd : w'.1.1.depth - w.depth = 0
         · simp only [dif_pos hd]
-          refine rden_transport_congr _ ?_
-          have hr := (extent_self w'.2 hd).2
-          have h₁ : (w.L.ctx (i ⊔ hr.data.i₀)).Le
-              (w.L.ctx ((i ⊔ hr.data.i₀) ⊔ (j ⊔ hr.data.i₀))) := w.L.ctx_le le_sup_left
-          have h₂ : (w.L.ctx (j ⊔ hr.data.i₀)).Le
-              (w.L.ctx ((i ⊔ hr.data.i₀) ⊔ (j ⊔ hr.data.i₀))) := w.L.ctx_le le_sup_right
-          have key : Term.mono h₁ (realisedTerm w hr e hx t).2 =
-              Term.mono h₂ (realisedTerm w hr e' hx t).2 := by
-            simp only [realisedTerm]
-            rw [Term.mono_realiseAt hr.data.hT _
-                (hcA' := hr.data.hdecl _ (lt_of_lt_of_le (realisedLt hr e hx)
-                  (le_sup_left.trans le_sup_left)))
-                (hfr' := hr.data.hfr _),
-              Term.mono_realiseAt hr.data.hT _
-                (hcA' := hr.data.hdecl _ (lt_of_lt_of_le (realisedLt hr e hx)
-                  (le_sup_left.trans le_sup_left)))
-                (hfr' := hr.data.hfr _),
-              Term.mono_mono, Term.mono_mono, Term.mono_mono, Term.mono_mono]
-          calc rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e hx t).2
-              = rden w _ h₁ (realisedTerm w hr e hx t).2 := rden_congr _ w _ _ _ _
-            _ = rden w _ (Ctx.Le.refl _) (Term.mono h₁ (realisedTerm w hr e hx t).2) :=
-                (rden_mono h₁ _ w _ (Ctx.Le.refl _)).symm
-            _ = rden w _ (Ctx.Le.refl _) (Term.mono h₂ (realisedTerm w hr e' hx t).2) := by
-                rw [key]
-            _ = rden w _ h₂ (realisedTerm w hr e' hx t).2 := rden_mono h₂ _ w _ (Ctx.Le.refl _)
-            _ = rden w (j ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e' hx t).2 :=
-                rden_congr _ w _ _ _ _
+          exact rden_transport_congr _
+            (rden_realisedTerm_congr (fun u w₃ i' j' e₁ e₂ => rden_congr u w₃ i' j' e₁ e₂)
+              (extent_self w'.2 hd).2 hx t e e')
         · simp only [dif_neg hd]
-          exact rden_congr t w'.1.1 (childStage i) (childStage j) _ _)
+          exact rden_tagBody_congr (fun u w₃ i' j' e₁ e₂ => rden_congr u w₃ i' j' e₁ e₂)
+            (peqw_tagOf w'.2 hd) t e e' (diaView_tagOf w'.2 hd) _ _)
   termination_by structural A => A
 
 
@@ -519,7 +624,7 @@ theorem definable_dia_apply {A : VarType} {w : World σ N₀} {o : RDom (.VTypeD
         exact definable_transport _ (definable_rden _ _)
       · change Definable A w'.1.1 (dite _ _ _)
         simp only [dif_neg hd]
-        exact definable_rden _ b
+        exact definable_rden _ (tagBody w _ (peqw_tagOf hmem hd) b).2
 
 end Canon
 

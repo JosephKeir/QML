@@ -185,6 +185,6 @@ def Proof.D_schema (hDS : ModalSys.DStrong = true) {Γ : Ctx} [Γ.NoSlots] {A : 
 def Proof.D_schema' (hDS : ModalSys.DStrong = true) {Γ : Ctx} [Γ.Presented] {A : VarType}
     {u : VarSymb} (hu : Γ.ref u = some (.VTypeBox A)) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
     Proof σ Γ [WFF.boxHole hu ψ] (WFF.exDia A ψ) :=
-  Proof.D_schema hDS hu (Ctx.Presented.bound Γ) (Ctx.Presented.fresh _ le_rfl) ψ
+  Proof.D_schema hDS hu (Ctx.Presented.bound Γ) (Ctx.Presented.fresh_bound _ le_rfl) ψ
 
 end V12M

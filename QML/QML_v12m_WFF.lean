@@ -33,18 +33,33 @@ inductive WFF (σ : Signature) : Ctx → ℕ → Type where
   /-- `◇_x φ`: `x : ◇X` outside, its content `x.dia : X` inside. -/
   | dia {Γ : Ctx} {d : ℕ} (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
       WFF σ (Γ.diaIn x) d → WFF σ Γ d
-  /-- `Here s t`: the possible object `s` is realised at this world, with value `t` (T only).
+  /-- `Here s t`: the possible object `s` is realised at this world, with value `t` (T only).  The
+      content type is **arbitrary**, and the two sides carry unrelated annotations: `s` is annotated
+      by its witness, `t` by whatever built it.
 
-      Two restrictions, each for a reason:
-      * its subject is a **term** of `◇`-type, not a witness address, so that substitution can act
-        on it — sending a witness to a `diatm` term would otherwise break the tie between the
-        term's type and the witness's content type;
-      * it is primitive only at **base type**, as `WFF.eq` is.  The value names the content, so the
-        two carry different annotations, and `eqRec` — equality at every type — compares only terms
-        of the *same* annotation.  So at a compound content type there is no formula saying that the
-        content is `t`, and the canonical model could not decide one. -/
-  | here {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true) {b : Ann (.VTypeDia .Var)}
-      (s : Term σ Γ (.VTypeDia .Var) b) (t : Term σ Γ .Var .var) : WFF σ Γ d
+      Its subject is a **term** of `◇`-type, not a witness address, so that substitution can act on
+      it: sending a witness to a `diatm` term would otherwise break the tie between the term's type
+      and the witness's content type.
+
+      *It used to be base-typed, for two reasons; one is dead and one is now an obligation.*  Dead:
+      the value names the content and so carries an annotation of its own, while equality compared
+      only terms of the same annotation — so at compound content no formula *said* what the content
+      was.  `eqRec` is annotation-free at every type now (§2d), which is exactly what functionality
+      (`Proof.here_fun`) needs in order to be stated at compound content.  Outstanding: *the
+      canonical model must decide these formulas*, i.e. the truth lemma's `here` case holds at every
+      content type.  That is not discharged here — but it is the obligation `WFF.diaEq` already
+      carries, since it too is primitive at every type, so it is no longer a reason to single `here`
+      out.
+
+      The `𝟙` case is why this has to be primitive rather than a recursion on the content type:
+      there the content carries no information, so the clause is the extent condition alone — the
+      **reflexive** arrow lies in the extent — and that is expressible only *relative to a base term
+      of the view* (`∃a. Here (diatm x hx bd) a` for a base-typed body `bd`), which need not exist:
+      the view is the content address plus `Γ.boxIn`, so with no base entry in scope and no constant
+      in the signature there is no such `bd`.  `◇_x ⊤` will not do — it says only that the extent is
+      non-empty. -/
+  | here {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true) {A : VarType} {b : Ann (.VTypeDia A)}
+      {a : Ann A} (s : Term σ Γ (.VTypeDia A) b) (t : Term σ Γ A a) : WFF σ Γ d
   /-- `s ≐ s'`: two `◇`-terms of the same **type** denote the same possible object — their
       annotations may differ, and that is the whole point.  An annotation of a fixed type can vary
       only in its `.dia` witness indices, everything else being forced by the type, so "same type,
@@ -81,16 +96,18 @@ theorem WFF.diaEq_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} {A : VarType}
   rw [h, h']
 /-- Two `Here` formulas agree when their subjects do. -/
 theorem WFF.here_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true)
-    {b : Ann (.VTypeDia .Var)} {s s' : Term σ Γ (.VTypeDia .Var) b}
-    {t t' : Term σ Γ .Var .var} (hs : s = s') (ht : t = t') :
+    {A : VarType} {b : Ann (.VTypeDia A)} {a : Ann A} {s s' : Term σ Γ (.VTypeDia A) b}
+    {t t' : Term σ Γ A a} (hs : s = s') (ht : t = t') :
     (WFF.here hT s t : WFF σ Γ d) = WFF.here hT s' t' := by
   rw [hs, ht]
 
-/-- Two `Here` formulas agree when their subjects do, annotations included. -/
+/-- Two `Here` formulas agree when their subjects do, annotations included on both sides. -/
 theorem WFF.here_congr {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true)
-    {b b' : Ann (.VTypeDia .Var)} {s : Term σ Γ (.VTypeDia .Var) b}
-    {s' : Term σ Γ (.VTypeDia .Var) b'} {t t' : Term σ Γ .Var .var}
-    (hs : (⟨b, s⟩ : Σ b, Term σ Γ (.VTypeDia .Var) b) = ⟨b', s'⟩) (ht : t = t') :
+    {A : VarType} {b b' : Ann (.VTypeDia A)} {a a' : Ann A}
+    {s : Term σ Γ (.VTypeDia A) b} {s' : Term σ Γ (.VTypeDia A) b'}
+    {t : Term σ Γ A a} {t' : Term σ Γ A a'}
+    (hs : (⟨b, s⟩ : Σ b, Term σ Γ (.VTypeDia A) b) = ⟨b', s'⟩)
+    (ht : (⟨a, t⟩ : Σ a, Term σ Γ A a) = ⟨a', t'⟩) :
     (WFF.here hT s t : WFF σ Γ d) = WFF.here hT s' t' := by
   cases hs
   cases ht

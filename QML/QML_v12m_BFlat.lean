@@ -608,14 +608,15 @@ def Chain.insertRoot (T : VarType) : {Γ Δ : Ctx} → Chain σ Γ Δ → (u v :
     Chain σ (Γ.insert (.free u) T) (Δ.insert (.free v) T)
   | _, _, .nil hΓ, _, _, hu, hv =>
       letI := hΓ
-      .cons inferInstance ((Pair.id _).insertRoot hu hv) (.nil inferInstance)
+      .cons (hΓ.insertFree _ hu _) ((Pair.id _).insertRoot hu hv)
+        (.nil (hΓ.insertFree _ hv _))
   | _, _, .cons hΓ P C, _, v, hu, hv =>
       letI := hΓ
       letI := C.srcPresented
-      .cons inferInstance
-        (P.insertRoot hu (Ctx.Presented.fresh (Ctx.Presented.bound _) le_rfl))
+      .cons (hΓ.insertFree _ hu _)
+        (P.insertRoot hu (Ctx.Presented.fresh_bound (Ctx.Presented.bound _) le_rfl))
         (C.insertRoot T (Ctx.Presented.bound _) v
-          (Ctx.Presented.fresh (Ctx.Presented.bound _) le_rfl) hv)
+          (Ctx.Presented.fresh_bound (Ctx.Presented.bound _) le_rfl) hv)
 
 
 /-- Append a pair at the far end of a chain. -/
@@ -739,41 +740,38 @@ theorem completenessB_boxInN (hB : ModalSys.B = true) (n : ℕ) (l : List VarTyp
 
 /-! ## Every presentation flattens
 
-`CtxExpr.insertFree` permits shadowing, which a renaming cannot undo, so the statement asks each
-declaration to be fresh in its own prefix — a decidable arithmetic condition (`Fresh`). -/
+`CtxExpr.insertFree` permits shadowing, which a renaming cannot undo, so the flattening asks each
+declaration to be fresh in its own prefix — `CtxExpr.Fresh`, the one non-shadowing condition, which
+lives with the presentations in `QML_v12m_Presented` and is carried by `Ctx.Presented` itself.  It
+also takes the views apart, so it asks in addition that each be at a declared witness
+(`CtxExpr.Views`); the two together are `CtxExpr.Wf`. -/
 
-/-- A presentation declaring each name fresh, and taking views only at witnesses. -/
-def _root_.V12M.CtxExpr.Fresh : CtxExpr → Prop
-  | .empty => True
-  | .insertFree e u _ => e.Fresh ∧ e.freeBound ≤ u
-  | .boxIn e => e.Fresh
-  | .diaIn e x => e.Fresh ∧ ∃ X, e.denote.ref x = some (.VTypeDia X)
-
-/-- ⭐**Every fresh presentation flattens into a world language**, one constructor at a time:
+/-- ⭐**Every well-formed presentation flattens into a world language**, one constructor at a time:
     a declared root by `Chain.insertRoot`, a `□` view by `Chain.box` then the child arrow, a `◇_x`
     view by `Chain.dia` then the witness arrow. -/
-noncomputable def _root_.V12M.CtxExpr.chain : (e : CtxExpr) → e.Fresh →
+noncomputable def _root_.V12M.CtxExpr.chain : (e : CtxExpr) → e.Fresh → e.Views →
     Σ l : List VarType, Chain σ e.denote (ctxOf l)
-  | .empty, _ => ⟨[], .nil ⟨.empty, rfl⟩⟩
-  | .insertFree e u T, h =>
-      ⟨T :: (e.chain h.1).1,
-        (e.chain h.1).2.insertRoot T u (e.chain h.1).1.length (CtxExpr.fresh e u h.2)
+  | .empty, _, _ => ⟨[], .nil ⟨.empty, trivial, rfl⟩⟩
+  | .insertFree e u T, h, hv =>
+      ⟨T :: (e.chain h.1 hv).1,
+        (e.chain h.1 hv).2.insertRoot T u (e.chain h.1 hv).1.length h.2
           (ctxOf_fresh le_rfl)⟩
-  | .boxIn e, h =>
-      ⟨(e.chain h).1.map VarType.bc, ((e.chain h).2.box).snoc (pairBox _) inferInstance⟩
-  | .diaIn e _, h =>
-      ⟨((e.chain h.1).2.witness h.2.choose_spec).choose :: (e.chain h.1).1.map VarType.bc,
-        ((e.chain h.1).2.dia h.2.choose_spec).snoc
-          (pairDia _ ((e.chain h.1).2.witness h.2.choose_spec).choose_spec) inferInstance⟩
+  | .boxIn e, h, hv =>
+      ⟨(e.chain h hv).1.map VarType.bc, ((e.chain h hv).2.box).snoc (pairBox _) inferInstance⟩
+  | .diaIn e _, h, hv =>
+      ⟨((e.chain h hv.1).2.witness hv.2.choose_spec).choose :: (e.chain h hv.1).1.map VarType.bc,
+        ((e.chain h hv.1).2.dia hv.2.choose_spec).snoc
+          (pairDia _ ((e.chain h hv.1).2.witness hv.2.choose_spec).choose_spec) inferInstance⟩
 
-/-- ⭐**Completeness for weak B in every presented context** whose presentation is fresh. -/
-theorem completenessB_presented (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Fresh)
+/-- ⭐**Completeness for weak B in every presented context** whose views are at declared
+    witnesses. -/
+theorem completenessB_presented (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
     {Δ : List (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
     (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env e.denote w),
       e.denote.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ :=
-  letI : e.denote.Presented := ⟨e, rfl⟩
-  completenessB_flat hB (e.chain he).2.toFlat (Ctx.Presented.noProjLast _) hval
+  letI : e.denote.Presented := ⟨e, he.1, rfl⟩
+  completenessB_flat hB (e.chain he.1 he.2).2.toFlat (Ctx.Presented.noProjLast _) hval
 
 end BArrow
 
