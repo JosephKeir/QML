@@ -539,10 +539,17 @@ and each is now at least *statable*.  They are things to do, in roughly this ord
        canonical model, so a theory that lacked the atom would be maximal consistent while the model
        satisfied it, and the truth lemma's `here` case would fail.  **The chain must witness this
        existential** — which is exactly what "`real` driven by `Here`" (§3 T, Stage 3) requires.
-     * The fix is a *replacement*, not an addition: give `T_dia` the single hypothesis
-       `Here (η c) t` in place of the `retHyp` schema.  Soundness of that form is `sat_here_ex`, and
-       each old `retHyp` instance is derivable from the atom by `here_intro`, so the rule gets
-       simpler and nothing is lost.
+     * ⭐*Done (2026-09-27), as a replacement rather than an addition:* `T_dia` takes the single
+       hypothesis `Here (η c) t` in place of the `retHyp` schema, its soundness being
+       `sat_here_ex`, and each old `retHyp` instance follows from the atom by `here_intro`, so the
+       rule is simpler and nothing is lost.  Substitution needed one new device, `Subst.renameTm`:
+       the eigenvariable now occurs as a *term*, its η-expansion, and sending it to the new
+       eigenvariable's η-expansion makes the entry a **term**, read off pointwise by
+       `Term.subst_eta_tm` — `Subst.rename`'s address entry would have wanted the global
+       `Subst.IsRen`.  The chain follows: `WorldLang.retSet` is that atom, `Canon.spec_of_here` is
+       general in the content type, and ⭐`RealDatum.spec` is a derivation (`retSpec`), which
+       retires `spec_of_retHyps` and its `stageSkip` / `laterList` / `retHole` / `packType`
+       apparatus along with `WFF.retHyp` and its five transports.
    * *The componentwise laws, in that light.*  The `×` clause's **⟹** half is an instance of
      `here_beta`: take the hole term to be the slot's own `.fst` address
      (`Term.eta (.step (.root (.bnd 0)) .fst)`) and it reads `Here (diatm x bd) t` down to its first
@@ -582,8 +589,18 @@ first feared does not happen.  Collisions arise exactly where there are no child
 * **under T, extent = exactly the identity arrow** with a given content — the **point object**, the
   unit `pt : A → ◇A`.  Note `posRet_exists` only asks for an object whose extent *contains* the
   identity, so the point object need not exist even under strong T.
+  * *Two readings to keep apart (asked and answered 2026-09-27).*  The "under T" is **weak** T: it is
+    what puts the arrow there at all (`Frame.refl : ModalSys.T = true → ∀ w, R w w`, packaged as
+    `Frame.reflAcc`), so without T the shape is not even describable.  And this is **not** the extent
+    of a strong T witness: `posRet_exists` asks only `reflAcc ∈ (posEval p).1`, *membership*, and in
+    the canonical model a realised witness also picks up a proper child for each `◇_x χ` the theory
+    asserts.  The point object is the extreme shape where nothing but the identity arrow is in the
+    extent; strong T neither produces one nor needs one.  So the two rows are complementary: empty =
+    no children and not realised, point = realised with no *proper* children.  What they share is
+    that neither has anything to **tag**, which is what otherwise keeps unequal witnesses apart.
 
-**`HereOnly x t`: the predicate-grade point object.**  "Possible *only* here, with value `t`", the
+**`HereOnly x t`: the predicate-grade point object** — ⭐*agreed as the design, 2026-09-27.*
+"Possible *only* here, with value `t`", the
 partner of `Here s t` = "possible here, with value `t`".  A predicate, not a term former, so it
 commits to no existence — the same reason `Here` is a predicate and `t_dia` (§3 T) was not taken, and
 the same reason strong B's route back is a relation.  Avoid calling it *rigid*: rigidity is sameness
@@ -1933,10 +1950,10 @@ what lets `D_schema` re-use a witness with new content.
 * object, `□`-side, inward: `extract : □A → A` ✓ (`necExtract_eval`).
 * object, `□`-side, outward: does not exist and should not — `A → □A` says everything is necessary.
   The asymmetry is real, and it is why T's two sides look so different.
-* object, `◇`-side, outward: `TStrong`, `T_dia`, `posRet_exists` ✓ — but `T_dia` hands over the
-  realisation *schema* (`WFF.retHyp`) and so **never yields a `Here` atom**, while the atom's
-  existential `∃x:◇A. Here x t` is valid (⭐`Model.sat_here_ex`).  Replacing the schema by the atom
-  is the outstanding change; §2d, item 2.
+* object, `◇`-side, outward: `TStrong`, `T_dia`, `posRet_exists` ✓ — and `T_dia` now hands over the
+  **`Here` atom** rather than the realisation schema (2026-09-27).  Nothing else introduces a `Here`,
+  and the atom's existential `∃x:◇A. Here x t` is valid but not derivable (⭐`Model.sat_here_ex`),
+  so handing it over is what lets the canonical model's theory contain one; §2d, item 2.
 * object, `◇`-side, inward: ⭐`WFF.here` at **every content type** — syntax, the four rules,
   soundness and substitution ✓ (Stages 1–2); **the canonical model is Stage 3 and is the one hole in
   the build**.
@@ -2042,79 +2059,64 @@ It is the odd one out, and for a principled reason rather than an accident.
 7. **5**, then the general metatheory of `docs/v12-metatheory-todo.md`: generalisation on constants,
    uniform substitution, cut elimination, Craig interpolation, `T_dia∀ ⇔` positive-Φ.
 
-### ⭐START HERE next session *(rewritten 2026-09-26, late)*
+### ⭐START HERE next session *(rewritten 2026-09-27)*
 
 **State of the build.** **Every `QML_v12m_*` module builds** except `QML_v12m_Completeness.lean`,
-which is missing *only* the two new alternatives, `here` and `diaEq` — the whole `rden` /
-`interp_canon` / truth-lemma stack now runs through the tagged reading.  `Compactness` and the B
-track sit behind that same gap (`BTruth` has the two missing alternatives of its own), but they were
-verified against temporary stubs for both.  No sorries.  Branch `here-experiment`, last commit
-`7c9fe29` — **today's work is uncommitted**.
+which is missing *only* the two alternatives `here` and `diaEq`.  `Compactness` and the B track sit
+behind that same gap (`BTruth` has the two missing alternatives of its own), verified against
+temporary stubs for both.  No sorries.  Branch `here-experiment`, last commit ⭐`1cfe930`
+("`Here` at every content type, and `T_dia` as an ∃-elimination"), which is everything below.
 
-*Two files had been silently broken since the `◇`-equality commit and are now fixed:*
-`QML_v12m_LeibnizProof` (`WFF.conjPath` was missing the `here` and `diaEq` alternatives, and
-`eqRec_mono`'s `◇` case still assumed the old definition — it is now `rfl`) and `QML_v12m_Countable`
-(`WFF.code` had to record `here`'s content type and annotations).  Neither is in `Completeness`'s
-import cone, which is why a targeted build never showed them: **check the whole module list**
-(`lake build $(ls QML/QML_v12m_*.lean | sed 's|QML/|QML.|; s|\.lean$||')`), not just the cone.
+*Build the **whole module list**, not a target:* `QML_v12m_Countable` and `QML_v12m_LeibnizProof`
+had been silently broken since `7c9fe29` because neither is in `Completeness`'s import cone.
+`lake build $(ls QML/QML_v12m_*.lean | sed 's|QML/|QML.|; s|\.lean$||')`.
 
-**Compound `Here` is in the language** (§2d, "what the reform unblocks", item 2).  `WFF.here` is
-primitive at every content type — the `𝟙` clause is why a recursion could not work — and
-⭐`Proof.here_fun` now concludes `eqRec A t t'`, functionality at every content type, sound and
-substitutable.  All four rules are general — `here_beta` in its value type too, through the `Sigma`
-forms of the two term lemmas (`Term.subst_single_tm_sig`, `Term.subst_hereRead_sig`,
-`Term.subst_viewReadTm_sig`, with `sig_subst`).  The componentwise laws are the piece after that,
-and only their **⟹** half follows from `here_beta`.
+**What landed, and what it means for the route**
 
-**Non-shadowing is no longer anyone's hypothesis** (§2d, "Non-shadowing is part of being
-presented").  `Ctx.Presented` carries `CtxExpr.Fresh`; `Ctx.Presented.levelFlat` and
-`WorldLang.flatCtx` give flatness wherever it is needed; `Canon.World.flat` is gone; `completeness`,
-`provable_iff_valid`, `model_existence`, `strong_completeness` and `compactness` ask for nothing but
-`[Γ.Presented]`, and the B statements for `CtxExpr.Wf` (non-shadowing plus views at declared
-witnesses).  `Ctx.Presented.fresh` is the field, so name generation is `Ctx.Presented.fresh_bound`,
-and declaring a variable outside the eigenvariable pattern goes through
-`Ctx.Presented.insertFree`.
+* **Non-shadowing is nobody's hypothesis.**  `Ctx.Presented` carries `CtxExpr.Fresh`;
+  `Ctx.Presented.levelFlat` and `WorldLang.flatCtx` give flatness where it is needed;
+  `Canon.World.flat` is gone; `completeness`, `provable_iff_valid`, `model_existence`,
+  `strong_completeness`, `compactness` ask only `[Γ.Presented]`, and the B statements `CtxExpr.Wf`.
+  `Ctx.Presented.fresh` is the field, so name generation is `fresh_bound`, and declaring a variable
+  off the eigenvariable pattern goes through `Ctx.Presented.insertFree`.
+* **`WFF.here` is primitive at every content type**, with all four rules general and
+  ⭐`Proof.here_fun` concluding `eqRec A t t'` — functionality at every content type, the reform's
+  payoff.  The `𝟙` clause is why a recursion could not have served.
+* ⭐**`Proof.T_dia` is an ∃-elimination** handing over the atom `Here (η c) t`, and the chain adds
+  that atom (`WorldLang.retSet`), so ⭐`RealDatum.spec` is now a *derivation* (`retSpec`).  Dead as
+  a result: `spec_of_retHyps` with `stageSkip`/`laterList`/`retHole`/`packType`, and `WFF.retHyp`
+  with `mono_retHyp`, `subst_retHyp`, `sat_retHyp`, `retHyp_transport`, `retHyp_congr`.
 
 **Where the line now runs.**  The proper part of the extent is unioned over the `≐`-class and
 everything below the truth lemma copes with it (§2d, "The tagged reading is in the model").  The
-**self** part is not unioned, because `World.real` comes from the chain's bookkeeping and so is not
-`≐`-invariant; `extent_congr` therefore takes `w.Realised x ↔ w.Realised y` as a hypothesis.  That
-hypothesis is what a `Here`-driven `real` supplies, which is Stage 3.  So the remaining order is
-fixed:
+**self** part is not, because `World.real` is still the chain's `IsRet` bookkeeping and so is not
+`≐`-invariant; `extent_congr` therefore takes `w.Realised x ↔ w.Realised y` as a hypothesis.
 
-1. ~~**Naming at `◇`-types** first~~ — **the order was wrong (2026-09-26).**  Naming has to keep
-   `posRet_exists_canon` true: for `a = rden t` the chain's witness must have content `a`, so if the
-   datum's realising term becomes `η b` the model needs `rden (η b) = rden t` at *compound* content.
-   That is faithfulness, and faithfulness at `◇`-content needs `extent_congr` without its
-   hypothesis, i.e. the self part already unioned — `Term.eta b (◇B)`'s witness is not a root, so
-   `realAt` never realises it, and the two extents differ by exactly the self point.  So naming
-   comes **after** the self part, not before.  What naming still buys, and only it: `interp_canon`'s
-   call at `dat.t₀` is at the *declaration's* content type, unrelated to the interpreted term's, so
-   only the stage justifies it (`termination_by (i.2, tsize A, t.size)`); an address-named `t₀` is a
-   base case and lets `hstage` and the stage component go.
-2. **`real` driven by `Here`** (§3 T, Stage 3), which now has a definite first move: **replace
-   `T_dia`'s `retHyp` schema by the atom `Here (η c) t`**.  The existential is valid
-   (⭐`Model.sat_here_ex`, from `posRet_exists`) but not derivable, nothing else introduces a `Here`,
-   and without the atom in the theory the `here` case of the truth lemma fails against the model's
-   own datum.  The old `retHyp` instances follow from the atom by `here_intro`, so this simplifies
-   the rule rather than adding one; then `retSet` carries the atom and `Canon.spec_of_here` derives
-   `spec`.  This is also what makes realisedness `≐`-invariant.  The
-   three ways to unblock the self part all end at the same brick — compound `Here`, since
-   `WFF.here` was base-typed and so said nothing at compound content: theory-driven realisedness
-   (`∃a. Here x a`) needs it outright; the union form of the self clause
-   (`∃ y, PEqW x y ∧ Realised y`) needs the content independent of which realised member of the
-   class it is read off, which is `spec` plus functionality; and reading the content off a chosen
-   representative makes `rden` `≐`-invariant by construction but needs the representative's content
-   to be the requested one for `posRet_exists`, which is functionality again.  ⭐`Proof.here_fun` at
-   every content type is now available (item 2 above); what remains is to put it to work.
-3. **The self part of the extent** joins the union; `extent_congr` loses its hypothesis.
-4. **The truth lemma's two cases**: `here` (with `interp_dia_self_base`, `interp_canon_base_of` and
-   `Canon.spec_of_here` waiting) — now to be proven at **every** content type, since `WFF.here` is
-   general; that is the bar the self part needs cleared anyway, and `Canon.spec_of_here` and
-   `RealDatum` stay base-typed until it is — and `diaEq`, whose `⟸` is `extent_congr` and whose `⟹`
-   needs the `¬HereOnly` construction trigger and the two degenerate right-rules of §2d, neither of
-   which is in the language yet.
+**Next, in order.**
 
-**Owed items now done:** the non-shadowing discharge for `Ctx.ofDecls` (`Ctx.presentedOfDecls`, by
-`decide` on distinct names) and for presentations in general (carried by `Ctx.Presented`), so no
-caller of `completeness` proves flatness by hand.
+1. **Realisedness from the theory** — Stage 3 proper, and the critical path.  The atom is now in the
+   theory, so define realisedness as `∃t. Here x t ∈ T`: invariance under `≐` is then Leibniz on
+   `Here` through `diaEq_elim`.  One wrinkle to settle first: an address realised *only* because the
+   theory says so (a context variable with `Here x t ∈ T`) has a content term with no stage order,
+   so interpreting it wants either base-typing or an address — which is where **naming** re-enters.
+2. **The self part** joins the union; `extent_congr` loses its hypothesis.
+3. **The truth lemma's `here` case**, now at every content type (`interp_dia_self_base`,
+   `interp_canon_base_of`, `Canon.spec_of_here` waiting).
+4. **The `diaEq` ⟹ direction**, independent of 1–3 and pickable in parallel: `WFF.hereOnly` with its
+   elimination, the two degenerate right-rules, and the `¬HereOnly` construction trigger — the
+   collision analysis of §2d, agreed as the design (2026-09-27).
+
+*On naming, unchanged from 2026-09-26:* it cannot come first.  Naming has to keep
+`posRet_exists_canon` true, so if the datum's realising term becomes `η b` the model needs
+`rden (η b) = rden t` at *compound* content — faithfulness, which needs `extent_congr` without its
+hypothesis, i.e. the self part already unioned (`Term.eta b (◇B)`'s witness is not a root, so
+`realAt` never realises it, and the two extents differ by exactly the self point).  What naming does
+buy, and only it: `interp_canon`'s call at `dat.t₀` is at the *declaration's* content type, unrelated
+to the interpreted term's, so only the stage justifies it
+(`termination_by (i.2, tsize A, t.size)`); an address-named `t₀` is a base case, and `hstage` and the
+stage component of the measure can go.
+
+**Owed, small:** delete the dead schema machinery listed above (it spans `HenkinRet`, `SemStrongT`,
+`RetUse`, `Pack`, `StageSkip`, `DiaAbs`); the componentwise `Here` laws, whose **⟹** half is an
+instance of `here_beta` at a compound-valued hole term (project the slot's `.fst` address) while the
+**⟸** half is not needed, since the chain supplies a compound `Here` directly.
