@@ -815,24 +815,31 @@ theorem rden_applyG :
   | _, _, .diaMap f, _, _, .diatm x hx c, w, i, e =>
       congrArg (Sigma.mk _) (funext fun w' => by
         by_cases hd : w'.1.1.depth - w.depth = 0
-        · have hr := (extent_self w'.2 hd).2
+        · have hpe := classRep_peq (extent_self w'.2 hd).2
+          have hrep := classRep_realised (extent_self w'.2 hd).2
           rw [rden_diatm_self e hx c w' hd, ← rawEval_transport f _ _]
           simp only [dif_pos hd]
           refine rden_transport_congr _ ?_
-          exact (rden_sigma _ (applyG_realisedTerm f hr e hx c)).trans (rden_applyG f _ w _ _)
+          refine (rden_sigma _ ?_).trans (rden_applyG f _ w _ _)
+          exact (realisedTerm_sigma hrep _ _ (applyG_tagBody f e hpe c).symm).trans
+            (applyG_realisedTerm f hrep _ _ (tagBody w e hpe c).2)
         · simp only [rden, dif_neg hd]
           exact (rden_sigma _ (applyG_tagBody f e (peqw_tagOf w'.2 hd) c)).symm.trans
             (rden_applyG f _ w'.1.1 _ _))
   | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c), w, i, e =>
       congrArg (Sigma.mk _) (funext fun w' => by
         by_cases hd : w'.1.1.depth - w.depth = 0
-        · have hr := (extent_self w'.2 hd).2
+        · have hpe := classRep_peq (extent_self w'.2 hd).2
+          have hrep := classRep_realised (extent_self w'.2 hd).2
           change _ = (rden w i e (Term.boxtm b) w'.1, (rden w i e (Term.diatm x hx c)).2 w')
           rw [rden_diatm_self e hx c w' hd, rden_boxtm_self e b w'.1 hd]
           simp only [dif_pos hd]
-          rw [rden_realisedTerm_pair hr e hx, rden_transport_pair]
+          rw [rden_sigma _ (realisedTerm_sigma hrep (Ctx.Le.refl _) (refY_sup hpe)
+              (tagBody_pair e hpe (Term.mono (Ctx.le_boxIn_diaIn Γ x) b) c)),
+            rden_realisedTerm_pair hrep (Ctx.Le.refl _) (refY_sup hpe), rden_transport_pair]
           refine Prod.ext ?_ rfl
-          refine (rden_transport_congr _ (rden_realisedTerm_mono_boxIn hr e hx b)).trans ?_
+          refine (rden_transport_congr _
+            (rden_realisedTagBody_mono_boxIn e hpe hrep b)).trans ?_
           exact rden_transport_world _ _ _ _
         · simp only [rden, dif_neg hd]
           refine Prod.ext ?_ rfl

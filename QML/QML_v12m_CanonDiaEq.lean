@@ -185,6 +185,65 @@ theorem DiaView.inj {w w' : World σ N₀} {y z : VarSymb} {i : ℕ × ℕ} {A :
   · exact hyz
 
 
+/-! ## The class's realised member
+
+The self part of the extent is unioned over the `≐`-class like the proper part, so the content it
+carries has to come from a member of the class **chosen by the class, not by the address**:
+`Classical.choose` on `∃ y, PEqW x y ∧ Realised y` would depend on `x`, and two identified addresses
+would then get different contents, which is exactly what the union is for.  So take the *least*
+realised root index in the class — a realised address is always a bare free root
+(`World.RealData.hx`), and the predicate's extension depends only on the class, so the least witness
+does too (`classRepIdx_congr`).
+-/
+
+/-- `c` names a realised member of `x`'s class. -/
+def RealHere (w : World σ N₀) (x : VarSymb) (c : ℕ) : Prop :=
+  w.PEqW x (.root (.free c)) ∧ w.Realised (.root (.free c))
+
+theorem exists_realHere {w : World σ N₀} {x : VarSymb}
+    (h : ∃ y, w.PEqW x y ∧ w.Realised y) : ∃ c, RealHere w x c := by
+  obtain ⟨y, hpe, hr⟩ := h
+  exact ⟨hr.data.c, hr.data.hx ▸ hpe, hr.data.hx ▸ hr⟩
+
+open Classical in
+/-- ⭐The class's canonical realised member, as an index. -/
+noncomputable def classRepIdx (w : World σ N₀) (x : VarSymb)
+    (h : ∃ y, w.PEqW x y ∧ w.Realised y) : ℕ :=
+  Nat.find (exists_realHere h)
+
+/-- ⭐The class's canonical realised member. -/
+noncomputable def classRep (w : World σ N₀) (x : VarSymb)
+    (h : ∃ y, w.PEqW x y ∧ w.Realised y) : VarSymb :=
+  .root (.free (classRepIdx w x h))
+
+open Classical in
+theorem classRep_peq {w : World σ N₀} {x : VarSymb} (h : ∃ y, w.PEqW x y ∧ w.Realised y) :
+    w.PEqW x (classRep w x h) :=
+  (Nat.find_spec (exists_realHere h)).1
+
+open Classical in
+theorem classRep_realised {w : World σ N₀} {x : VarSymb} (h : ∃ y, w.PEqW x y ∧ w.Realised y) :
+    w.Realised (classRep w x h) :=
+  (Nat.find_spec (exists_realHere h)).2
+
+open Classical in
+/-- ⭐**The choice is a function of the class**: identified addresses have the same predicate up to
+    `PEqW.trans`, so the same least witness.  This is what makes the self part of the extent, and
+    the content it carries, invariant under the theory's identification. -/
+theorem classRepIdx_congr {w : World σ N₀} {x x' : VarSymb} (hxx : w.PEqW x x')
+    (h : ∃ y, w.PEqW x y ∧ w.Realised y) (h' : ∃ y, w.PEqW x' y ∧ w.Realised y) :
+    classRepIdx w x h = classRepIdx w x' h' := by
+  refine le_antisymm (Nat.find_le ⟨?_, ?_⟩) (Nat.find_le ⟨?_, ?_⟩)
+  · exact hxx.trans (Nat.find_spec (exists_realHere h')).1
+  · exact (Nat.find_spec (exists_realHere h')).2
+  · exact hxx.symm.trans (Nat.find_spec (exists_realHere h)).1
+  · exact (Nat.find_spec (exists_realHere h)).2
+
+theorem classRep_congr {w : World σ N₀} {x x' : VarSymb} (hxx : w.PEqW x x')
+    (h : ∃ y, w.PEqW x y ∧ w.Realised y) (h' : ∃ y, w.PEqW x' y ∧ w.Realised y) :
+    classRep w x h = classRep w x' h' := by
+  rw [classRep, classRep, classRepIdx_congr hxx h h']
+
 /-! ## The extent, up to the theory's identification -/
 
 /-- ⭐The extent of the possible object named by `x`, with its **proper** part taken up to provable
@@ -192,20 +251,23 @@ theorem DiaView.inj {w w' : World σ N₀} {y z : VarSymb} {i : ℕ × ℕ} {A :
     `x` and which hold everything that address holds `□`-necessarily; and — under strong T — the
     world itself when `x` is realised.
 
-    A child world is tagged by exactly one witness (`DiaView.inj`), so the union is unambiguous, and
-    identified addresses have one *proper* extent (`extent_congr`).  The **self** part is not
-    unioned: `World.real` is chosen by the Henkin chain's bookkeeping, so realisedness is not yet
-    under `≐` — it becomes so once `real` is driven by the `Here` sentence (§3 T, Stage 3), and only
-    then can the self part join the union.  See the note in §2d. -/
+    A child world is tagged by exactly one witness (`DiaView.inj`), so the union is unambiguous.
+    ⭐**Both parts are unioned** (2026-09-27): the self clause asks for *some* address the theory
+    identifies with `x` to be realised, not for `x` itself, which is what makes `extent_congr`
+    unconditional.  `World.real` stays the chain's bookkeeping — it need not be `≐`-invariant,
+    because the content read at the self point comes from the **class's** realised member
+    (`classRep`), not from `x`'s own datum, and that choice is a function of the class
+    (`classRep_congr`).  So the realising term is still a chain witness's, with its `hstage`, and
+    `interp_canon`'s induction is untouched. -/
 def extent (w : World σ N₀) (x : VarSymb) : Set (Succ w) :=
   {w' | (∃ y, w.PEqW x y ∧ w'.1.depth = w.depth + 1 ∧ DiaView y w w'.1 ∧
-      BoxxContents y w w'.1) ∨ (w'.1 = w ∧ w.Realised x)}
+      BoxxContents y w w'.1) ∨ (w'.1 = w ∧ ∃ y, w.PEqW x y ∧ w.Realised y)}
 
 /-- A member of the extent is the world itself or one level deeper; a proper one comes with its
     **tag**. -/
 theorem extent_cases {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x) :
     (w'.1.depth - w.depth = 1 ∧ ∃ y, w.PEqW x y ∧ DiaView y w w'.1 ∧ BoxxContents y w w'.1) ∨
-      (w'.1.depth - w.depth = 0 ∧ w'.1 = w ∧ w.Realised x) := by
+      (w'.1.depth - w.depth = 0 ∧ w'.1 = w ∧ ∃ y, w.PEqW x y ∧ w.Realised y) := by
   rcases hw' with ⟨y, hpe, hd, hv, hb⟩ | ⟨he, hr⟩
   · exact Or.inl ⟨by omega, y, hpe, hv, hb⟩
   · exact Or.inr ⟨by rw [he]; omega, he, hr⟩
@@ -218,9 +280,9 @@ theorem extent_proper {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' 
   · exact h
   · exact absurd h hd
 
-/-- A member at this depth is the world itself, and then `x` is realised. -/
+/-- A member at this depth is the world itself, and then some address of the class is realised. -/
 theorem extent_self {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
-    (hd : w'.1.depth - w.depth = 0) : w'.1 = w ∧ w.Realised x := by
+    (hd : w'.1.depth - w.depth = 0) : w'.1 = w ∧ ∃ y, w.PEqW x y ∧ w.Realised y := by
   rcases extent_cases hw' with ⟨h, -⟩ | ⟨-, h⟩
   · omega
   · exact h
@@ -239,10 +301,17 @@ theorem extent_le {w w₂ : World σ N₀} {y : VarSymb} (hv : DiaView y w w₂)
     ((w.L.ctx i).diaIn y).Le (w₂.L.ctx (childStage i)) :=
   hv.le (le_max_left _ _) (le_max_right _ _) 0
 
-/-- The world itself is in the extent of a realised address. -/
+/-- The world itself is in the extent of a realised address — `x` is its own class member, its
+    declaration coming from the datum (`World.Realised.decl`). -/
 theorem self_mem_extent {w : World σ N₀} {x : VarSymb} (h : w.Realised x) :
     (⟨w, ⟨R.refl h.T w⟩⟩ : Succ w) ∈ extent w x :=
-  Or.inr ⟨rfl, h⟩
+  Or.inr ⟨rfl, x, h.decl.elim fun _ h' => h'.elim fun _ hr => World.PEqW.refl hr, h⟩
+
+/-- The same at an address the class's realised member is identified with. -/
+theorem self_mem_extent_of_peq {w : World σ N₀} {x y : VarSymb} (hpe : w.PEqW x y)
+    (h : w.Realised y) :
+    (⟨w, ⟨R.refl h.T w⟩⟩ : Succ w) ∈ extent w x :=
+  Or.inr ⟨rfl, y, hpe, h⟩
 
 /-- A child tagged by `y` is in the extent of `y` itself. -/
 theorem mem_extent_of_tag {w : World σ N₀} {y : VarSymb} {A : VarType} {i : ℕ × ℕ}
@@ -250,17 +319,18 @@ theorem mem_extent_of_tag {w : World σ N₀} {y : VarSymb} {A : VarType} {i : �
     (hv : DiaView y w w'.1) (hb : BoxxContents y w w'.1) : w' ∈ extent w y :=
   Or.inl ⟨y, World.PEqW.refl hy, hdep, hv, hb⟩
 
-/-- ⭐**What the union is for**: addresses the theory identifies have the same extent — given that
-    they agree on being realised, which is what the `Here`-driven `real` of §3 T will supply. -/
-theorem extent_congr {w : World σ N₀} {x y : VarSymb} (h : w.PEqW x y)
-    (hR : w.Realised x ↔ w.Realised y) : extent w x = extent w y := by
+/-- ⭐**What the union is for**: addresses the theory identifies have the same extent, with no side
+    condition (2026-09-27).  Both clauses quantify over the class, so both transport by
+    `PEqW.trans` — the self clause exactly as the proper one does. -/
+theorem extent_congr {w : World σ N₀} {x y : VarSymb} (h : w.PEqW x y) :
+    extent w x = extent w y := by
   apply Set.eq_of_subset_of_subset
-  · rintro w' (⟨z, hz, hd, hv, hb⟩ | ⟨he, hr⟩)
+  · rintro w' (⟨z, hz, hd, hv, hb⟩ | ⟨he, z, hz, hr⟩)
     · exact Or.inl ⟨z, World.PEqW.trans (World.PEqW.symm h) hz, hd, hv, hb⟩
-    · exact Or.inr ⟨he, hR.mp hr⟩
-  · rintro w' (⟨z, hz, hd, hv, hb⟩ | ⟨he, hr⟩)
+    · exact Or.inr ⟨he, z, World.PEqW.trans (World.PEqW.symm h) hz, hr⟩
+  · rintro w' (⟨z, hz, hd, hv, hb⟩ | ⟨he, z, hz, hr⟩)
     · exact Or.inl ⟨z, World.PEqW.trans h hz, hd, hv, hb⟩
-    · exact Or.inr ⟨he, hR.mpr hr⟩
+    · exact Or.inr ⟨he, z, World.PEqW.trans h hz, hr⟩
 
 /-! ## Reading the identification, and the tag of a member -/
 

@@ -279,6 +279,15 @@ theorem data_of_real {c : ℕ} {d : RealDatum σ w.L w.T c} (hsome : w.real c = 
   simp only [realAt_of_real hsome]
   rfl
 
+/-- A realised address is declared at a `◇`-type somewhere: its datum declares it at every own stage
+    past `i₀`.  So being realised carries its own witness that the address *is* a witness, which is
+    what the extent's self clause needs to state itself up to the theory's identification. -/
+theorem Realised.decl {x : VarSymb} (h : w.Realised x) :
+    ∃ A i, (w.L.ctx i).ref x = some (.VTypeDia A) :=
+  ⟨h.data.A, (h.data.i₀.1, h.data.i₀.2 + 1), by
+    have hd := h.data.hdecl (h.data.i₀.1, h.data.i₀.2 + 1) (Nat.lt_succ_self _)
+    rwa [← h.data.hx] at hd⟩
+
 /-- ⭐Conversely, a realised address carries the datum the world names at its root.  This is what
     lets a proof forget the address and work with the world's own naming, where the datum is a
     variable and the equations can be `subst`ed. -/
