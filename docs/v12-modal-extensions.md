@@ -2064,8 +2064,9 @@ It is the odd one out, and for a principled reason rather than an accident.
 **State of the build.** **Every `QML_v12m_*` module builds** except `QML_v12m_Completeness.lean`,
 which is missing *only* the two alternatives `here` and `diaEq`.  `Compactness` and the B track sit
 behind that same gap (`BTruth` has the two missing alternatives of its own), verified against
-temporary stubs for both.  No sorries.  Branch `here-experiment`, last commit ⭐`1cfe930`
-("`Here` at every content type, and `T_dia` as an ∃-elimination"), which is everything below.
+temporary stubs for both.  No sorries.  Branch `here-experiment`, commits ⭐`1cfe930` ("`Here` at
+every content type, and `T_dia` as an ∃-elimination"), `35facf7` (these notes) and `2b9fe84` (the
+sweep).
 
 *Build the **whole module list**, not a target:* `QML_v12m_Countable` and `QML_v12m_LeibnizProof`
 had been silently broken since `7c9fe29` because neither is in `Completeness`'s import cone.
@@ -2116,7 +2117,10 @@ to the interpreted term's, so only the stage justifies it
 (`termination_by (i.2, tsize A, t.size)`); an address-named `t₀` is a base case, and `hstage` and the
 stage component of the measure can go.
 
-**Owed, small:** delete the dead schema machinery listed above (it spans `HenkinRet`, `SemStrongT`,
-`RetUse`, `Pack`, `StageSkip`, `DiaAbs`); the componentwise `Here` laws, whose **⟹** half is an
-instance of `here_beta` at a compound-valued hole term (project the slot's `.fst` address) while the
-**⟸** half is not needed, since the chain supplies a compound `Here` directly.
+**Done since:** the schema machinery is swept (`2b9fe84`) — `Pack`, `RetUse` and `StageSkip` deleted
+with `spec_of_retHyps`, `laterList`, `WFF.retHyp` and its transports, 1007 lines; `Subst.at_single_*`
+kept and moved into `QML_v12m_Subst`.
+
+**Owed, small:** the componentwise `Here` laws, whose **⟹** half is an instance of `here_beta` at a
+compound-valued hole term (project the slot's `.fst` address) while the **⟸** half is not needed,
+since the chain supplies a compound `Here` directly.
