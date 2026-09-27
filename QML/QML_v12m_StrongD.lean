@@ -1,4 +1,5 @@
-import QML.QML_v12m_RetUse
+import QML.QML_v12m_DiaAbs
+import QML.QML_v12m_ProofSubst
 import QML.QML_v12m_SubstTwice
 
 /-!

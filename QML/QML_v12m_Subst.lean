@@ -679,4 +679,30 @@ theorem WFF.subst_eqRec {σ : Signature} {ι : VarSymb → VarSymb} :
       rfl
   | _, _, _, _, _, _, _, _, _, .VTypeDia _, _, _, .diatm _ _ _, .diatm _ _ _ => rfl
 
+
+namespace Subst
+
+/-- Away from the replaced root, a single-root substitution is the identity renaming. -/
+theorem at_single_of_rt_ne {σ : Signature} {Δ : Ctx} {r : Root} {e : SubE σ Δ} :
+    ∀ {v : VarSymb}, v.rt ≠ r → (single r e).at v = .ren v
+  | .root r', h => by
+      change (if (VarSymb.root r') = .root r then e else SubE.ren (.root r')) = _
+      exact if_neg (fun he => h (VarSymb.root.inj he))
+  | .step v s, h => by
+      change (if s.isProj then ((single r e).at v).proj s else single r e (.step v s)) = _
+      by_cases hs : s.isProj = true
+      · rw [if_pos hs, at_single_of_rt_ne (v := v) h]
+        rfl
+      · rw [if_neg hs]
+        change (if (VarSymb.step v s) = .root r then e else SubE.ren (.step v s)) = _
+        exact if_neg (fun he => by cases he)
+
+/-- At the replaced root it is the entry. -/
+theorem at_single_root {σ : Signature} {Δ : Ctx} (r : Root) (e : SubE σ Δ) :
+    (single r e).at (.root r) = e := by
+  change (if (VarSymb.root r) = .root r then e else SubE.ren (.root r)) = _
+  exact if_pos rfl
+
+end Subst
+
 end V12M

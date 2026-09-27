@@ -78,25 +78,6 @@ def Term.viewReadTm {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {x : VarSymb} {A : 
       (Ctx.Le.refl (Γ.diaIn x)) rfl)
     (Term.mono ((Ctx.le_boxIn_diaIn Γ x).insert (.bnd 0) A) s)
 
-/-- One hypothesis of `T_dia`: for every value of the parameter `y : B`, what holds of `t` here
-    holds of the witness content in `◇_c`.  The hole formula `ψ` may mention the parameter's
-    box-components.  The parameter is bound *inside* the scope of `c`, which is what makes the
-    witness uniform in it (`∃x ∀y`, not `∀y ∃x`); `B` = unit gives the unparameterised form. -/
-def WFF.retHyp {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {A : VarType}
-    {a : Ann A} (t : Term σ Γ A a) (c y : ℕ) (hc : Γ.RootFresh (.free c))
-    (hy : Γ.RootFresh (.free y)) (hyc : y ≠ c) (B : VarType)
-    (ψ : WFF σ ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A) 1) :
-    WFF σ (Γ.insert (.free c) (.VTypeDia A)) 0 :=
-  have hne : Root.free y ≠ Root.free c := fun h => hyc (Root.free.inj h)
-  have hcy : (Γ.insert (.free y) B).RootFresh (.free c) := hc.insert_ne hne B
-  WFF.all B (WFF.bindFree y (hy.insert_ne hne.symm (.VTypeDia A)) Ctx.NoSlots.slots B
-    (WFF.mono (Ctx.insert_swap_le hne B (.VTypeDia A))
-      (WFF.imp
-        ((WFF.hereRead hT (Term.mono (Ctx.le_insert hy.root B) t) ψ).weaken hcy.root
-          (.VTypeDia A))
-        (.dia (.root (.free c)) ⟨A, Ctx.ref_insert_root _ (.free c) (.VTypeDia A)⟩
-          (WFF.viewRead c hcy A ψ)))))
-
 /-! ## Declaring a `◇`-typed root -/
 
 namespace Ctx

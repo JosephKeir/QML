@@ -1,5 +1,4 @@
 import QML.QML_v12m_Open
-import QML.QML_v12m_Pack
 
 /-!
 # QML v12m — Leibniz at `◇`-type, and symmetry and transitivity of the defined equality

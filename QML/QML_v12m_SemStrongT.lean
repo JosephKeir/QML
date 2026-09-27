@@ -275,29 +275,6 @@ theorem sat_realiseAt (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.fr
     (Ctx.noProjLast_diaIn Γ (.root (.free c))) _ χ).trans ?_
   rw [Env.substEnv_diaAbs hT env hcA hfr t₀ hmem hcont]
 
-/-- ⭐Strong T, with a parameter: a witness realised here with `t`'s value as its content satisfies
-    the hypothesis `WFF.retHyp` for every value of the parameter.  The witness is chosen before the
-    parameter — it depends only on `t`'s value — which is why the rule's `∃x ∀y` form is sound. -/
-theorem sat_retHyp (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
-    (env : M.Env Γ w) (hnp : Γ.NoProjLast) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
-    (c y : ℕ) (hc : Γ.RootFresh (.free c)) (hy : Γ.RootFresh (.free y)) (hyc : y ≠ c)
-    (B : VarType) (ψ : WFF σ ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A) 1)
-    (p : M.frame.Dom (.VTypeDia A) w)
-    (hmem : M.frame.reflAcc hT w ∈ (M.posEval p).1)
-    (hcont : (M.posEval p).2 ⟨M.frame.reflAcc hT w, hmem⟩ = interp env t) :
-    M.sat (env.extend (.free c) p) (WFF.retHyp hT t c y hc hy hyc B ψ) := by
-  have hne : Root.free y ≠ Root.free c := fun h => hyc (Root.free.inj h)
-  have hcy : (Γ.insert (.free y) B).RootFresh (.free c) := hc.insert_ne hne B
-  intro b
-  refine (sat_bindFree (env.extend (.free c) p) (hnp.insert _ _) y
-    (hy.insert_ne hne.symm (.VTypeDia A)) Ctx.NoSlots.slots B b _).mpr ?_
-  refine (sat_mono (Env.extend_swap_agree env hne b p) _).mpr ?_
-  intro hhere
-  have hhere' := (sat_weaken (env.extend (.free y) b) hcy.root p _).mp hhere
-  exact sat_ret hT (env.extend (.free y) b) (hnp.insert _ _) (Term.mono (Ctx.le_insert hy.root B) t)
-    c hcy ψ p hmem
-    (hcont.trans (interp_mono (Env.agree_extend env hy.root b) t).symm) hhere'
-
 end Model
 
 end V12M

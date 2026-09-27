@@ -1,18 +1,19 @@
 import QML.QML_v12m_ProofSubst
 
 /-!
-# QML v12m — weakening commutes with the strong T hypotheses
+# QML v12m — weakening commutes with the strong T hypothesis
 
-The canonical model for strong T adds, for a term `t`, a fresh witness `c` together with every
-hypothesis `WFF.retHyp` at every later stage.  A derivation at a later stage uses those hypotheses
-*lifted* along stage inclusions, while the rule `T_dia` wants them as `WFF.retHyp` at that stage.
+The canonical model for strong T adds, for a term `t`, a fresh witness `c` together with the `Here`
+atom saying `c` is realised by `t`, at every later stage.  A derivation at a later stage uses that
+sentence *lifted* along stage inclusions, while the rule `T_dia` wants it as the atom at that stage.
 The lemmas here identify the two:
 
 * `WFF.collapse_mono`: collapsing commutes with weakening (the term version is
   `Term.collapse_mono`);
 * `WFF.mono_instantiate`, `WFF.mono_hereRead`: the `here` reading commutes with weakening;
 * `WFF.mono_viewRead`, `WFF.mono_bindFree`: renamings commute with weakening;
-* ⭐`WFF.mono_retHyp`: so does a whole hypothesis.
+* ⭐`WFF.mono_hereAt_of_le` and `WFF.mono_hereAt`: so does the atom, along any inclusion that keeps
+  the witness declared, and along one that declares it.
 -/
 
 namespace V12M
@@ -150,49 +151,10 @@ theorem WFF.mono_bindFree {Γ Γ' : Ctx} (h : Γ.Le Γ') {u : ℕ} (hu : Γ.Root
   · rw [Subst.single_ne _ hvr, Subst.single_ne _ hvr]
     exact .refl _
 
-/-- ⭐Weakening a strong T hypothesis is the hypothesis for the weakened term and hole formula. -/
-theorem WFF.mono_retHyp {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (hT : ModalSys.T = true)
-    (h : Γ.Le Γ') {A : VarType} {a : Ann A} (t : Term σ Γ A a) {c y : ℕ}
-    (hc : Γ.RootFresh (.free c)) (hc' : Γ'.RootFresh (.free c)) (hy : Γ.RootFresh (.free y))
-    (hy' : Γ'.RootFresh (.free y)) (hyc : y ≠ c) (B : VarType)
-    (ψ : WFF σ ((Γ.insert (.free y) B).boxIn.insert (.bnd 0) A) 1) :
-    WFF.mono (h.insert (.free c) (.VTypeDia A)) (WFF.retHyp hT t c y hc hy hyc B ψ) =
-      WFF.retHyp hT (Term.mono h t) c y hc' hy' hyc B
-        (WFF.mono ((h.insert (.free y) B).boxIn.insert (.bnd 0) A) ψ) := by
-  have hne : Root.free y ≠ Root.free c := fun e => hyc (Root.free.inj e)
-  have hcy : (Γ.insert (.free y) B).RootFresh (.free c) := hc.insert_ne hne B
-  have hcy' : (Γ'.insert (.free y) B).RootFresh (.free c) := hc'.insert_ne hne B
-  have ht : Term.mono (Ctx.le_insert hy'.root B) (Term.mono h t) =
-      Term.mono (h.insert (.free y) B) (Term.mono (Ctx.le_insert hy.root B) t) := by
-    rw [Term.mono_mono, Term.mono_mono]
-  have hbody : WFF.mono ((h.insert (.free y) B).insert (.free c) (.VTypeDia A))
-      (WFF.imp ((WFF.hereRead hT (Term.mono (Ctx.le_insert hy.root B) t) ψ).weaken hcy.root
-          (.VTypeDia A))
-        (.dia (.root (.free c)) ⟨A, Ctx.ref_insert_root _ (.free c) (.VTypeDia A)⟩
-          (WFF.viewRead c hcy A ψ))) =
-      WFF.imp ((WFF.hereRead hT (Term.mono (Ctx.le_insert hy'.root B) (Term.mono h t))
-          (WFF.mono ((h.insert (.free y) B).boxIn.insert (.bnd 0) A) ψ)).weaken hcy'.root
-          (.VTypeDia A))
-        (.dia (.root (.free c)) ⟨A, Ctx.ref_insert_root _ (.free c) (.VTypeDia A)⟩
-          (WFF.viewRead c hcy' A
-            (WFF.mono ((h.insert (.free y) B).boxIn.insert (.bnd 0) A) ψ))) := by
-    refine congrArg₂ WFF.imp ?_ ?_
-    · unfold WFF.weaken
-      rw [WFF.mono_mono, ht, ← WFF.mono_hereRead hT (h.insert (.free y) B), WFF.mono_mono]
-    · change WFF.dia _ _ (WFF.mono (((h.insert (.free y) B).insert (.free c) (.VTypeDia A)).diaIn
-        (.root (.free c))) (WFF.viewRead c hcy A ψ)) = _
-      rw [WFF.mono_viewRead (h.insert (.free y) B) hcy hcy' A ψ]
-  unfold WFF.retHyp
-  refine congrArg (WFF.all B) ?_
-  rw [WFF.mono_bindFree (h.insert (.free c) (.VTypeDia A)) (hy.insert_ne hne.symm _)
-    (hy'.insert_ne hne.symm _) Ctx.NoSlots.slots Ctx.NoSlots.slots B]
-  refine congrArg (WFF.bindFree y (hy'.insert_ne hne.symm (.VTypeDia A)) Ctx.NoSlots.slots B) ?_
-  rw [WFF.mono_mono, ← hbody, WFF.mono_mono]
-
 /-- ⭐Weakening commutes with the `Here` atom, along **any** inclusion that keeps the witness
     declared: `mono` of `here` is `here` of the two `mono`s, and the subject is an η-expansion
     (`Term.mono_eta`).  The declarations are propositions, so which proof each side carries does not
-    matter.  This is all `WFF.mono_retHyp` amounted to for the new rule. -/
+    matter.  This is all the old `WFF.mono_retHyp` amounted to, for the new rule. -/
 theorem WFF.mono_hereAt_of_le {Γ Γ' : Ctx} (hT : ModalSys.T = true) (h : Γ.Le Γ') {A : VarType}
     (x : VarSymb) (hx : Γ.ref x = some (.VTypeDia A)) (hx' : Γ'.ref x = some (.VTypeDia A))
     {a : Ann A} (t : Term σ Γ A a) :
