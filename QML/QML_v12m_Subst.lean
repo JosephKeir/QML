@@ -703,6 +703,24 @@ theorem at_single_root {σ : Signature} {Δ : Ctx} (r : Root) (e : SubE σ Δ) :
   change (if (VarSymb.root r) = .root r then e else SubE.ren (.root r)) = _
   exact if_pos rfl
 
+/-- At a projection of the replaced root, a pair entry gives that component.  This is what a hole
+    term built from the slot's own `.fst` / `.snd` address reads off (`Proof.here_fst`). -/
+theorem at_single_fst {σ : Signature} {Δ : Ctx} (r : Root) {A B : VarType} {a : Ann A} {b : Ann B}
+    (s : Term σ Δ A a) (t : Term σ Δ B b) :
+    (single r (.tm (Term.pair s t))).at (.step (.root r) .fst) = .tm s := by
+  change (if Step.fst.isProj then ((single r (SubE.tm (Term.pair s t))).at (.root r)).proj .fst
+    else _) = _
+  rw [if_pos (show Step.fst.isProj = true from rfl), at_single_root]
+  rfl
+
+theorem at_single_snd {σ : Signature} {Δ : Ctx} (r : Root) {A B : VarType} {a : Ann A} {b : Ann B}
+    (s : Term σ Δ A a) (t : Term σ Δ B b) :
+    (single r (.tm (Term.pair s t))).at (.step (.root r) .snd) = .tm t := by
+  change (if Step.snd.isProj then ((single r (SubE.tm (Term.pair s t))).at (.root r)).proj .snd
+    else _) = _
+  rw [if_pos (show Step.snd.isProj = true from rfl), at_single_root]
+  rfl
+
 end Subst
 
 end V12M

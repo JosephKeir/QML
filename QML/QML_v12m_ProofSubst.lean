@@ -992,6 +992,46 @@ def Proof.here_introAt {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : M
     (Proof.here_intro hT (.root (.free c)) ⟨A, hcA⟩ t
       (Term.eta (.step (.root (.free c)) .dia) A (Ctx.ref_diaIn_of hcA))
       (WFF.diaAbs c hcA hfr χ) ph pr)
+
+/-! ## `Here` at a pair content, componentwise -/
+
+/-- ⭐**The `×` clause of compound `Here`, forwards**: if a pair content is realised here by a pair,
+    each component is realised here by its component.  An instance of `here_beta` at the hole term
+    built from the **slot's own `.fst` address** — a hole term of *compound* value type, and so the
+    reason `here_beta` had to be general there (§2d).  The substitution machinery does the work: the
+    entry is a term, and `SubE.proj` takes the pair apart
+    (`Subst.at_single_fst`, `Term.viewReadTm_eta_fst`, `Term.hereRead_eta_fst`).
+
+    There is no converse.  Nothing introduces a `Here` except the outward rule `T_dia`, so two
+    component facts cannot be assembled into one about the pair — and nothing needs them to be: the
+    chain hands over a compound `Here` directly at the witness's full content type. -/
+def Proof.here_fst {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+    (x : VarSymb)
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A B : VarType} {a : Ann A} {b : Ann B}
+    (t₁ : Term σ Γ A a) (t₂ : Term σ Γ B b) {a' : Ann A} {b' : Ann B}
+    (bd₁ : Term σ (Γ.diaIn x) A a') (bd₂ : Term σ (Γ.diaIn x) B b')
+    (p : Proof σ Γ Δ (WFF.here hT (Term.diatm x hx (Term.pair bd₁ bd₂)) (Term.pair t₁ t₂))) :
+    Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd₁) t₁) :=
+  Proof.conv
+    (WFF.here_congr hT (sig_diatm (Term.viewReadTm_eta_fst bd₁ bd₂))
+      (Term.hereRead_eta_fst hT t₁ t₂))
+    (Proof.here_beta hT x hx (Term.pair t₁ t₂) (Term.pair bd₁ bd₂)
+      (Term.eta (.step (.root (.bnd 0)) .fst) A (Ctx.ref_insert_fst Γ.boxIn (.bnd 0) A B)) p)
+
+/-- The second component, by the slot's `.snd` address. -/
+def Proof.here_snd {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+    (x : VarSymb)
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A B : VarType} {a : Ann A} {b : Ann B}
+    (t₁ : Term σ Γ A a) (t₂ : Term σ Γ B b) {a' : Ann A} {b' : Ann B}
+    (bd₁ : Term σ (Γ.diaIn x) A a') (bd₂ : Term σ (Γ.diaIn x) B b')
+    (p : Proof σ Γ Δ (WFF.here hT (Term.diatm x hx (Term.pair bd₁ bd₂)) (Term.pair t₁ t₂))) :
+    Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd₂) t₂) :=
+  Proof.conv
+    (WFF.here_congr hT (sig_diatm (Term.viewReadTm_eta_snd bd₁ bd₂))
+      (Term.hereRead_eta_snd hT t₁ t₂))
+    (Proof.here_beta hT x hx (Term.pair t₁ t₂) (Term.pair bd₁ bd₂)
+      (Term.eta (.step (.root (.bnd 0)) .snd) B (Ctx.ref_insert_snd Γ.boxIn (.bnd 0) A B)) p)
+
 /-- Substituting into a term weakened past a renamed eigenvariable is weakening the substituted
     term.  Stated for dependent pairs: the annotations are built from `renameIdx ι u u'` and `ι`,
     which agree on the term's indices only propositionally. -/

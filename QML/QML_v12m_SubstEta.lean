@@ -230,4 +230,56 @@ theorem Term.subst_eta_tm {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : C
           exact sig_diatm (hx := hy) (hx' := hy) hinner
 
 
+
+/-! ## Reading a pair content componentwise
+
+The hole term built from the **slot's own projection** — `η (slot.fst)` — reads a pair content down
+to its first component, on both sides of `Proof.here_beta`: inside the view (`Term.viewReadTm`) and
+here (`Term.hereRead`).  Both are `Term.subst_eta_tm` at a *term* entry, whose projection
+`SubE.proj` takes apart; the `Sigma` is because substitution moves the annotation.  This is what
+`here_beta`'s value type had to be general for.
+-/
+
+section PairHole
+
+variable {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A B : VarType} {a : Ann A} {b : Ann B}
+
+theorem Term.viewReadTm_eta_fst {x : VarSymb} (bd₁ : Term σ (Γ.diaIn x) A a)
+    (bd₂ : Term σ (Γ.diaIn x) B b) :
+    (⟨_, Term.viewReadTm (Term.pair bd₁ bd₂)
+        (Term.eta (.step (.root (.bnd 0)) .fst) A
+          (Ctx.ref_insert_fst Γ.boxIn (.bnd 0) A B))⟩ : Σ c, Term σ (Γ.diaIn x) A c) =
+      ⟨a, bd₁⟩ := by
+  simp only [Term.viewReadTm]
+  rw [Term.mono_eta]
+  exact Term.subst_eta_tm _ _ _ A _ _ bd₁ (Subst.at_single_fst _ bd₁ bd₂)
+
+theorem Term.viewReadTm_eta_snd {x : VarSymb} (bd₁ : Term σ (Γ.diaIn x) A a)
+    (bd₂ : Term σ (Γ.diaIn x) B b) :
+    (⟨_, Term.viewReadTm (Term.pair bd₁ bd₂)
+        (Term.eta (.step (.root (.bnd 0)) .snd) B
+          (Ctx.ref_insert_snd Γ.boxIn (.bnd 0) A B))⟩ : Σ c, Term σ (Γ.diaIn x) B c) =
+      ⟨b, bd₂⟩ := by
+  simp only [Term.viewReadTm]
+  rw [Term.mono_eta]
+  exact Term.subst_eta_tm _ _ _ B _ _ bd₂ (Subst.at_single_snd _ bd₁ bd₂)
+
+theorem Term.hereRead_eta_fst (hT : ModalSys.T = true) (t₁ : Term σ Γ A a) (t₂ : Term σ Γ B b) :
+    (⟨_, Term.hereRead hT (Term.pair t₁ t₂)
+        (Term.eta (.step (.root (.bnd 0)) .fst) A
+          (Ctx.ref_insert_fst Γ.boxIn (.bnd 0) A B))⟩ : Σ c, Term σ Γ A c) = ⟨a, t₁⟩ := by
+  simp only [Term.hereRead]
+  refine (sig_subst _ _ _ (Term.collapse_eta _ _ A _)).trans ?_
+  exact Term.subst_eta_tm _ _ _ A _ _ t₁ (Subst.at_single_fst _ t₁ t₂)
+
+theorem Term.hereRead_eta_snd (hT : ModalSys.T = true) (t₁ : Term σ Γ A a) (t₂ : Term σ Γ B b) :
+    (⟨_, Term.hereRead hT (Term.pair t₁ t₂)
+        (Term.eta (.step (.root (.bnd 0)) .snd) B
+          (Ctx.ref_insert_snd Γ.boxIn (.bnd 0) A B))⟩ : Σ c, Term σ Γ B c) = ⟨b, t₂⟩ := by
+  simp only [Term.hereRead]
+  refine (sig_subst _ _ _ (Term.collapse_eta _ _ B _)).trans ?_
+  exact Term.subst_eta_tm _ _ _ B _ _ t₂ (Subst.at_single_snd _ t₁ t₂)
+
+end PairHole
+
 end V12M
