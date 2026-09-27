@@ -550,13 +550,23 @@ and each is now at least *statable*.  They are things to do, in roughly this ord
        general in the content type, and ⭐`RealDatum.spec` is a derivation (`retSpec`), which
        retires `spec_of_retHyps` and its `stageSkip` / `laterList` / `retHole` / `packType`
        apparatus along with `WFF.retHyp` and its five transports.
-   * *The componentwise laws, in that light.*  The `×` clause's **⟹** half is an instance of
-     `here_beta`: take the hole term to be the slot's own `.fst` address
-     (`Term.eta (.step (.root (.bnd 0)) .fst)`) and it reads `Here (diatm x bd) t` down to its first
-     component, the substitution machinery projecting the pair entry along `.fst`.  The **⟸** half is
-     not, but with the atom arriving from the existential it need not be: the chain supplies a
-     compound `Here` directly at the witness's full content type, so nothing assembles one from
-     components, and no pairing rule is wanted.
+   * ⭐*The componentwise laws: **⟹** done, **⟸** not wanted (2026-09-27).*  ⭐`Proof.here_fst` and
+     `Proof.here_snd` are instances of `here_beta` at the hole term built from the slot's own `.fst`
+     address (`Term.eta (.step (.root (.bnd 0)) .fst)`), which reads `Here (diatm x bd) t` down to
+     its first component.  The substitution machinery does it, the slot's entry being a *term*:
+     `Subst.at_single_fst` (a pair entry projects by `SubE.proj`), then
+     `Term.viewReadTm_eta_fst` inside the view and `Term.hereRead_eta_fst` here, the latter through
+     `Term.collapse_eta` and `Term.subst_eta_tm`; `WFF.here_congr` with `sig_diatm` absorbs the
+     `Sigma`s.  A hole term of *compound* value type — so this is what generalising `here_beta`'s
+     value type was for.
+     * The **⟸** half is not an instance, and is not wanted: nothing introduces a `Here` except
+       `T_dia`, so component facts cannot be assembled into one about the pair — and nothing needs
+       them to be, since the chain hands over a compound `Here` directly at the witness's full
+       content type.
+     * The `□` clause would go the same way, with `η (slot.here)` as the hole term: `SubE.proj` of a
+       `.tm (.boxtm _)` entry along `.here` is the collapse under T, so the law reads a boxed content
+       down to its value here.  It needs a `ref` lemma for the `.here` step of an inserted
+       `□`-typed slot.
    * Now statable off base type: strong T's inward `∃x:◇A. Here x t`, and the `≐`-invariance of
      realisedness that the self part of the extent needs (below).
 3. **General Leibniz, annotation-free.**  v12m has Leibniz at exactly two places, both primitive
@@ -2065,8 +2075,8 @@ It is the odd one out, and for a principled reason rather than an accident.
 which is missing *only* the two alternatives `here` and `diaEq`.  `Compactness` and the B track sit
 behind that same gap (`BTruth` has the two missing alternatives of its own), verified against
 temporary stubs for both.  No sorries.  Branch `here-experiment`, commits ⭐`1cfe930` ("`Here` at
-every content type, and `T_dia` as an ∃-elimination"), `35facf7` (these notes) and `2b9fe84` (the
-sweep).
+every content type, and `T_dia` as an ∃-elimination"), `2b9fe84` (the sweep), `1ffbcdd` (the
+componentwise laws) and the notes.
 
 *Build the **whole module list**, not a target:* `QML_v12m_Countable` and `QML_v12m_LeibnizProof`
 had been silently broken since `7c9fe29` because neither is in `Completeness`'s import cone.
@@ -2121,6 +2131,7 @@ stage component of the measure can go.
 with `spec_of_retHyps`, `laterList`, `WFF.retHyp` and its transports, 1007 lines; `Subst.at_single_*`
 kept and moved into `QML_v12m_Subst`.
 
-**Owed, small:** the componentwise `Here` laws, whose **⟹** half is an instance of `here_beta` at a
-compound-valued hole term (project the slot's `.fst` address) while the **⟸** half is not needed,
-since the chain supplies a compound `Here` directly.
+**Also done (`1ffbcdd`):** the componentwise `Here` laws at `×` — ⭐`Proof.here_fst` / `here_snd`, the
+**⟹** half, as instances of `here_beta` at the slot's own projection.  The **⟸** half is not wanted
+(nothing introduces a `Here`), and the `□` clause is left, wanting only a `ref` lemma for the `.here`
+step of an inserted `□`-typed slot.
