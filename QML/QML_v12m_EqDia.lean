@@ -53,6 +53,27 @@ theorem WFF.instantiate_diaEq_slot' {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A 
   exact Subst.single_at_ne
     (Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) hv)
 
+/-- ⭐Filling the `◇`-slot of a `Here` formula: the slot's η-expansion becomes the term, and the
+    value, weakened past the slot, comes back unchanged.  The `Here`-shaped hole formula is what
+    Leibniz for `≐` needs in order to transfer a realisation, so this is
+    `instantiate_diaEq_slot`'s partner for the other atom that mentions a `◇`-term. -/
+theorem WFF.instantiate_here_slot {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true)
+    {A : VarType} {b : Ann (.VTypeDia A)} {a : Ann A} (u : Term σ Γ (.VTypeDia A) b)
+    (t : Term σ Γ A a) :
+    WFF.instantiate (d := 0) Ctx.NoSlots.slots u
+        (WFF.here (d := 1) hT (Term.eta (.root (.bnd 0)) (.VTypeDia A)
+            (Ctx.ref_insert_root Γ (.bnd 0) (.VTypeDia A)))
+          (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root (.VTypeDia A)) t)) =
+      WFF.here hT u t := by
+  refine WFF.here_congr hT (Term.subst_eta_tm _ _ _ (.VTypeDia A) (.root (.bnd 0)) _ u
+    (Subst.at_single_root _ _)) ?_
+  refine (congrArg (Sigma.mk _) (Term.subst_mono _ _ _ _ t)).trans ?_
+  refine (Term.subst_ren (Ctx.Le.refl Γ) _ _ _ ?_ t).trans
+    (congrArg (Sigma.mk _) (Term.mono_refl _ t))
+  intro v T hv
+  exact Subst.single_at_ne
+    (Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) hv)
+
 namespace Proof
 
 /-- ⭐Symmetry, at any two annotations. -/
@@ -105,6 +126,24 @@ def eqRec_trans {σ : Signature} : {Γ : Ctx} → [Γ.NoSlots] → {Δ : List (W
           s r (Proof.conv (eqRec_dia s r) q)
           (Proof.conv (WFF.instantiate_diaEq_slot' s t).symm (Proof.conv (eqRec_dia t s) p)))
 
+
+/-- ⭐**Realisation transfers along `≐`**: if the theory identifies two possible objects and one of
+    them is realised by `t` here, so is the other.  Leibniz (`diaEq_elim`) with the hole formula
+    `Here □ t` — the atom takes an arbitrary `◇`-term as its subject, so this hole needs no view
+    renaming, unlike `boxx_reView`'s.  This is the `≐`-invariance that realisedness read off the
+    theory has by construction. -/
+def here_diaEq {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)}
+    (hT : ModalSys.T = true) {A : VarType} {b b' : Ann (.VTypeDia A)} {a : Ann A}
+    (s : Term σ Γ (.VTypeDia A) b) (s' : Term σ Γ (.VTypeDia A) b') (t : Term σ Γ A a) :
+    Proof σ Γ (WFF.diaEq s s' :: WFF.here hT s t :: Δ) (WFF.here hT s' t) :=
+  Proof.conv (WFF.instantiate_here_slot hT s' t)
+    (Proof.diaEq_elim
+      (φ := WFF.here hT (Term.eta (.root (.bnd 0)) (.VTypeDia A)
+          (Ctx.ref_insert_root _ (.bnd 0) (.VTypeDia A)))
+        (Term.mono (Ctx.le_insert Ctx.NoSlots.slots.root (.VTypeDia A)) t))
+      s s' (Proof.lookup List.mem_cons_self)
+      (Proof.conv (WFF.instantiate_here_slot hT s t).symm
+        (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))))
 end Proof
 
 end V12M

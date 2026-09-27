@@ -673,6 +673,117 @@ function is well defined on that union, and add the `¬HereOnly` construction tr
 of `diaChild`**: the earlier estimate of "the size of the B canonical model" assumed a quotient
 inside the construction and was wrong.
 
+
+#### ⭐The extent has to be indexed by the **term**, not by the witness *(2026-09-27, trial concluded)*
+
+The paragraph above is what branch `self-part-union` tried (commit `1423af6`), and the trial settles
+the design — against it.  What it achieved is real: with the self clause written as a *union* too,
+
+```lean
+def extent (w : World σ N₀) (x : VarSymb) : Set (Succ w) :=
+  {w' | (∃ y, w.PEqW x y ∧ w'.1.depth = w.depth + 1 ∧ DiaView y w w'.1 ∧ BoxxContents y w w'.1) ∨
+        (w'.1 = w ∧ ∃ y, w.PEqW x y ∧ w.Realised y)}
+```
+
+`extent_congr` loses its hypothesis outright — both clauses quantify over the `≐`-class, so they are
+invariant by `PEqW.trans` alone, and `World.real` can stay the chain's `IsRet` bookkeeping.  No
+`hstage` change, no change to `interp_canon`'s measure.
+
+**But the set is not the problem; the content function is.**  At the self point the membership
+evidence is only `∃ y, PEqW x y ∧ Realised y`, so producing a content needs a *choice* of realised
+class member — `classRepIdx` by `Nat.find`, invariant because `RealHere w x = RealHere w y` for
+`x ≐ y`.  That makes `rden` well defined, and it breaks `rden_eta_realised`: the content at the world
+itself is now the **representative's** datum, where `posRet_exists_canon` needs the datum of the
+witness it just created.  The gap is exactly
+
+> **faithfulness**: for `x ≐ y` both realised, `rden x.t₀ = rden y.t₀`
+
+which is available from the theory — `Proof.here_diaEq` carries `Here y t_y` to `Here x t_y`, and
+`Proof.here_fun` then gives `eqRec A t_x t_y ∈ T` — so what is needed is that `rden` respects a
+provable `eqRec`.  By induction on the content type that is: base by `World.cls_eq_iff`, `𝟙`
+trivially, `×` componentwise, `□` inside a box (`T_box` at the self successor, `BoxContents` at a
+proper one) — **and `◇` not at all.**
+
+**Why the `◇` case cannot be proved.**  `rden (.diatm x hx t) = ⟨extent w x, …⟩`: the first component
+is the *witness's* class-based extent.  So faithfulness at `◇`-content asks, from
+`diaEq (diatm u b) (diatm v b') ∈ T`, for `extent w u = extent w v`, i.e. for `PEqW u v` — and that
+implication is **unsound**, so no rule of any shape will give it.  A countermodel: `Pos A w` is a
+`Σ` of extent and content with `pos_inj`, so take two possible objects with the *same* extent `E` and
+different contents, and bodies `b = b'` a constant of base type; then `diatm u b` and `diatm v b` are
+the same element of `Pos`, while `η u` and `η v` differ.  Equality of possible objects does not
+recover their witnesses.
+
+The diagnosis is one line: **`≐` is an equality of `◇`-terms, and the canonical extent reads a
+witness.**  Any design that keeps the extent witness-indexed hits this, including *naming* (route γ,
+§2d item 1): naming an object by an address `b` and asserting `η b ≐ diatm u bd` needs the model to
+identify `extent b` with `extent u`, which is the same unsound step — so naming does not escape it
+either, it would have to *build* `b`'s children.
+
+**Two designs rejected on the way (2026-09-27, evening).**  Both are recorded because each fails for
+a reason that pins the eventual design.
+
+* *The extent as the term's own slot-theory* — `w' ∈ extent s` iff `w'` is a `◇`-child and every
+  `ψ` with `instantiate s (□_□ ψ) ∈ T` holds at it, read through the child's own witness.  This is
+  `≐`-invariant by Leibniz alone and reduces to `BoxxContents x` at η-terms through `ViewEq`.  It is
+  **too coarse**: two witnesses with the same `□`-theory — indiscernible but not provably `≐` — get
+  literally the same extent *and* the same contents, so the model identifies `η u` and `η v` while
+  the theory may deny it, and the **`⟹`** half of the truth lemma fails instead of the `⟸` half.
+  Witness-indexing is too fine, theory-indexing too coarse; the tagging of children has to stay.
+* *Unioning over the term's `≐`-class* — `∃ u bd, diaEq s (diatm u bd) ∈ T ∧ DiaView u w w' ∧
+  BoxxContents u w w'`.  Invariant for the same cheap reason, and **wrong**: Leibniz transfers a
+  `□`-fact of `η x` to a class member `diatm u bd` only with the **body substituted** — `□_x χ`
+  becomes `□_u (χ[x.dia ↦ bd])` — so at the children this clause adds, `BoxxContents u` delivers the
+  wrong formula and the `□` truth lemma fails.
+
+**⭐The design: the children are shared.**  The construction must be able to give two witnesses that
+the theory does *not* identify a **common extent**.  A child is then indexed by an extent-class of
+witnesses and carries **one content root per `≐`-class** inside it, so that
+
+* witnesses the theory identifies have the same children *and* the same root — one object;
+* witnesses it merely forces to share an extent have the same children and *different* roots — two
+  objects over one extent, which is exactly what `diatm u b ≐ diatm v b'` asserts;
+* witnesses unrelated by the theory have disjoint children, so nothing is collapsed and the `⟹`
+  half keeps the tagging it needs.
+
+`DiaView` weakens from an equation to an inclusion (the child's base is the box view plus several
+roots), which touches `BoxxContents`, `Succ` and the `□`/`◇` truth-lemma cases; `DiaView.inj` becomes
+"a child determines its *class*".  Note this stays **inside the construction**: `Ctx` and `WFF` keep
+single-rooted views, so the syntax does not grow.  And at a shared child *both* bodies are readable,
+which is what makes comparing them meaningful — the equation does not presuppose an alignment of the
+two fibres, it **asserts** one, and the construction honours it.
+
+**⭐Why the syntax stays as it is: `≗` on variables cannot survive substitution (2026-09-27).**  The
+alternative package was to make equality of `◇`-*variables* primitive and define equality of `◇`-terms
+as "the witnesses are identified, and after transport the bodies are equal".  It is attractive — the
+fibre information is in the annotations already, the transport is `reView`, and the extent of a term
+would then be determined by its witness's class — and it fails on the **substitution lemma**.
+
+With the atom reading the witnesses out of the annotations, instantiate `peq (η (bnd d)) (η y)` at
+`t = diatm u bd`.  `Model.sat_instantiate` demands
+
+```
+sat env (instantiate t φ)  ↔  sat (env.extend (.bnd d) (interp env t)) φ
+```
+
+but the left side now reads `u` — "`env u = env y`" — while the right side binds the slot to
+`interp env t = ⟨extent u, bd⟩`.  Different statements, so `all_elim` / `ex_intro` at `◇`-type would
+be unsound.  The atom is stable only when `◇`-typed substitution entries are *addresses*, i.e. only
+if `◇`-quantifiers may be instantiated at variables alone — which needs every object to have a name,
+i.e. naming at `◇`-content, i.e. the very extent-sharing the route was meant to avoid.  So
+**substitution forces the atom to be a function of its subterms' denotations**, which at `◇`-type is
+extensional equality: `WFF.diaEq` as it stands.  This is §2d's original lesson — "a substitution
+sends a `◇`-typed address to a `◇`-term, so an address-level equality would not survive
+substitution" — in its strongest form.
+
+*What that settles.*  The syntax and proof theory need **no change at all**: `WFF.diaEq` stays
+primitive on terms, `Proof.here_fun` keeps its three-line soundness proof at every content type,
+`sat_eqRec` stays an iff, `pos_inj` and the η-laws stay, and a possible object keeps its clean
+description — some arrows out of the world with an object over each, no tag.  The whole cost is the
+shared children above, and it pays for three things at once: uniform strong T's realisations,
+quantified identity over `◇A`, and **naming at `◇`-content** (route γ), since a witness declared into
+an existing extent-class is exactly what naming needs — so `hstage` and the stage component of
+`interp_canon`'s measure can go after it.
+condition has to sit inside the extent rather than beside it.
 **Rejected for now: separating the point objects in the models.**  Reflexivity and Leibniz force `≐`
 to *be* carrier equality (a reflexive relation inside the diagonal is the diagonal), so separation
 has to change the carrier or the arrows.  Dropping `pos_inj` would do it and costs too much: the
@@ -2069,69 +2180,57 @@ It is the odd one out, and for a principled reason rather than an accident.
 7. **5**, then the general metatheory of `docs/v12-metatheory-todo.md`: generalisation on constants,
    uniform substitution, cut elimination, Craig interpolation, `T_dia∀ ⇔` positive-Φ.
 
-### ⭐START HERE next session *(rewritten 2026-09-27)*
+### ⭐START HERE next session *(rewritten 2026-09-27, late — the design is settled)*
 
-**State of the build.** **Every `QML_v12m_*` module builds** except `QML_v12m_Completeness.lean`,
-which is missing *only* the two alternatives `here` and `diaEq`.  `Compactness` and the B track sit
-behind that same gap (`BTruth` has the two missing alternatives of its own), verified against
-temporary stubs for both.  No sorries.  Branch `here-experiment`, commits ⭐`1cfe930` ("`Here` at
-every content type, and `T_dia` as an ∃-elimination"), `2b9fe84` (the sweep), `1ffbcdd` (the
-componentwise laws) and the notes.
+**State of the build.**  The whole `QML_v12m_*` module list builds with **exactly two errors**, the
+long-standing frontier: `Completeness.lean:279`, alternatives `here` and `diaEq` of the truth lemma.
+No sorries.  Branch `self-part-union`; the union-form trial (`1423af6`) has been **reverted** in
+`CanonDiaEq` / `CanonDom` / `CanonFunc`, since the design that replaces it does not union anything.
 
-*Build the **whole module list**, not a target:* `QML_v12m_Countable` and `QML_v12m_LeibnizProof`
-had been silently broken since `7c9fe29` because neither is in `Completeness`'s import cone.
+*Build the **whole module list**, not a target:*
 `lake build $(ls QML/QML_v12m_*.lean | sed 's|QML/|QML.|; s|\.lean$||')`.
 
-**What landed, and what it means for the route**
+**⭐The decision (§2d, "the children are shared" and "why the syntax stays as it is").**  The
+canonical model must be able to give two witnesses the theory does *not* identify a **common
+extent**; a child is indexed by an extent-class and carries one content root per `≐`-class inside it.
+The syntax and proof theory change **not at all** — the `≗`-on-variables alternative dies on
+`Model.sat_instantiate`, so `WFF.diaEq` stays primitive on terms and `Proof.here_fun` keeps its
+soundness at every content type.  The one capability pays for three things: uniform strong T,
+quantified identity over `◇A`, and naming at `◇`-content, hence retiring `hstage`.
 
-* **Non-shadowing is nobody's hypothesis.**  `Ctx.Presented` carries `CtxExpr.Fresh`;
-  `Ctx.Presented.levelFlat` and `WorldLang.flatCtx` give flatness where it is needed;
-  `Canon.World.flat` is gone; `completeness`, `provable_iff_valid`, `model_existence`,
-  `strong_completeness`, `compactness` ask only `[Γ.Presented]`, and the B statements `CtxExpr.Wf`.
-  `Ctx.Presented.fresh` is the field, so name generation is `fresh_bound`, and declaring a variable
-  off the eigenvariable pattern goes through `Ctx.Presented.insertFree`.
-* **`WFF.here` is primitive at every content type**, with all four rules general and
-  ⭐`Proof.here_fun` concluding `eqRec A t t'` — functionality at every content type, the reform's
-  payoff.  The `𝟙` clause is why a recursion could not have served.
-* ⭐**`Proof.T_dia` is an ∃-elimination** handing over the atom `Here (η c) t`, and the chain adds
-  that atom (`WorldLang.retSet`), so ⭐`RealDatum.spec` is now a *derivation* (`retSpec`).  Dead as
-  a result: `spec_of_retHyps` with `stageSkip`/`laterList`/`retHole`/`packType`, and `WFF.retHyp`
-  with `mono_retHyp`, `subst_retHyp`, `sat_retHyp`, `retHyp_transport`, `retHyp_congr`.
+**Kept from the abandoned trial** (both design-independent and both in the tree):
 
-**Where the line now runs.**  The proper part of the extent is unioned over the `≐`-class and
-everything below the truth lemma copes with it (§2d, "The tagged reading is in the model").  The
-**self** part is not, because `World.real` is still the chain's `IsRet` bookkeeping and so is not
-`≐`-invariant; `extent_congr` therefore takes `w.Realised x ↔ w.Realised y` as a hypothesis.
+* ⭐`RealDatum.hhere` — the datum carries the `Here` atom at every later stage, and `RealDatum.spec` /
+  `RealData.spec` are *derived* from it by `Canon.spec_of_here`.  The realising term is pinned by the
+  theory, which is what comparing `≐`-related witnesses' contents needs.  `HenkinRet.retSpec` retired.
+* ⭐`Proof.here_diaEq` (in `EqDia`, on ⭐`WFF.instantiate_here_slot`) — realisation transfers along
+  `≐`, Leibniz with the hole `Here □ t`.
 
-**Next, in order.**
+**The order of work.**
 
-1. **Realisedness from the theory** — Stage 3 proper, and the critical path.  The atom is now in the
-   theory, so define realisedness as `∃t. Here x t ∈ T`: invariance under `≐` is then Leibniz on
-   `Here` through `diaEq_elim`.  One wrinkle to settle first: an address realised *only* because the
-   theory says so (a context variable with `Here x t ∈ T`) has a content term with no stage order,
-   so interpreting it wants either base-typing or an address — which is where **naming** re-enters.
-2. **The self part** joins the union; `extent_congr` loses its hypothesis.
-3. **The truth lemma's `here` case**, now at every content type (`interp_dia_self_base`,
-   `interp_canon_base_of`, `Canon.spec_of_here` waiting).
-4. **The `diaEq` ⟹ direction**, independent of 1–3 and pickable in parallel: `WFF.hereOnly` with its
-   elimination, the two degenerate right-rules, and the `¬HereOnly` construction trigger — the
-   collision analysis of §2d, agreed as the design (2026-09-27).
+1. **Audit `DiaView.inj`** and every use of it.  Under shared children a child determines its
+   *class*, not its witness, and that lemma is load-bearing in the truth lemma — so this decides how
+   far the change reaches before any of it is written.
+2. **Shared children.**  Extent-classes read off a world's theory (`u ~ v` when the theory forces
+   their extents to coincide: a `diaEq` between presentations over `u` and over `v`, or two
+   realisations of one subject presented over each), children carrying one content root per
+   `≐`-class, `DiaView` weakened to an inclusion, `BoxxContents` per member via `Proof.boxx_reView`,
+   `extent` reading the class.  Include the classes an *input* theory forces, in the initial world's
+   languages: a presented context may assert cross-fibre realisations while denying the
+   identification, and that is consistent.
+3. **The two extensionality right-rules** for the `⟹` half: empty extents are equal, and — since
+   "same extent" is not directly sayable — if some pair of presentations over `u` and `v` coincide
+   and the contents necessarily agree, then `η u ≐ η v`.  Both sound, and they retire `WFF.hereOnly`
+   and the `¬HereOnly` construction trigger.
+4. **The truth lemma's `here` and `diaEq` cases** — the two errors above, with the class machinery
+   underneath them.  This closes completeness for strong T at every content type.
+5. **Naming**: the datum's content becomes `η b` for a witness the chain declares into an existing
+   extent-class, then `hstage` and the stage component of `interp_canon`'s measure go.
 
-*On naming, unchanged from 2026-09-26:* it cannot come first.  Naming has to keep
-`posRet_exists_canon` true, so if the datum's realising term becomes `η b` the model needs
-`rden (η b) = rden t` at *compound* content — faithfulness, which needs `extent_congr` without its
-hypothesis, i.e. the self part already unioned (`Term.eta b (◇B)`'s witness is not a root, so
-`realAt` never realises it, and the two extents differ by exactly the self point).  What naming does
-buy, and only it: `interp_canon`'s call at `dat.t₀` is at the *declaration's* content type, unrelated
-to the interpreted term's, so only the stage justifies it
-(`termination_by (i.2, tsize A, t.size)`); an address-named `t₀` is a base case, and `hstage` and the
-stage component of the measure can go.
+The `BCanon*` mirrors follow step 2 and are the only tail cost; nothing touches `BSyntax`/`BRename`,
+since the syntax is unchanged.
 
-**Done since:** the schema machinery is swept (`2b9fe84`) — `Pack`, `RetUse` and `StageSkip` deleted
-with `spec_of_retHyps`, `laterList`, `WFF.retHyp` and its transports, 1007 lines; `Subst.at_single_*`
-kept and moved into `QML_v12m_Subst`.
-
-**Also done (`1ffbcdd`):** the componentwise `Here` laws at `×` — ⭐`Proof.here_fst` / `here_snd`, the
-**⟹** half, as instances of `here_beta` at the slot's own projection.  The **⟸** half is not wanted
-(nothing introduces a `Here`), and the `□` clause is left, wanting only a `ref` lemma for the `.here`
-step of an inserted `□`-typed slot.
+*Optional, no longer a gate:* a concrete `Model` instance, which would let the load-bearing
+consistency claim of step 2 be checked directly (two possible objects sharing an extent, differing in
+content, with one subject realised over each).  Demoted because shared children are wanted for naming
+regardless — but v12m has no concrete model at all, so it would be an asset in its own right.

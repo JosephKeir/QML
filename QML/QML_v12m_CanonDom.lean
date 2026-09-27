@@ -207,14 +207,9 @@ noncomputable def rden : {A : VarType} → {a : Ann A} → {Γ : Ctx} → (w : W
   | _, _, _, w, i, e, .diatm x hx t =>
       ⟨extent w x, fun w' =>
         if hd : w'.1.1.depth - w.depth = 0 then
-          -- At the world itself the content comes from the **class's** realised member, with the
-          -- body renamed into its view — so identified addresses read the same content.
           ((extent_self w'.2 hd).1).symm ▸
-            rden w ((i ⊔ (classRep_peq (extent_self w'.2 hd).2).st) ⊔
-                (classRep_realised (extent_self w'.2 hd).2).data.i₀) (Ctx.Le.refl _)
-              (realisedTerm w (classRep_realised (extent_self w'.2 hd).2) (Ctx.Le.refl _)
-                  (refY_sup (classRep_peq (extent_self w'.2 hd).2))
-                  (tagBody w e (classRep_peq (extent_self w'.2 hd).2) t).2).2
+            rden w (i ⊔ ((extent_self w'.2 hd).2).data.i₀) (Ctx.Le.refl _)
+              (realisedTerm w (extent_self w'.2 hd).2 e hx t).2
         else
           rden w'.1.1 (childStage (i ⊔ (peqw_tagOf w'.2 hd).st))
             (extent_le (diaView_tagOf w'.2 hd) (i ⊔ (peqw_tagOf w'.2 hd).st))
@@ -291,17 +286,13 @@ theorem rden_diatm_acc' {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
   simp only [rden, dif_neg hd]
 
 /-- ⭐At the world itself, a possible term whose witness is identified with a realised one denotes
-    its body, renamed into the **class representative's** view and realised there. -/
+    its body, read in that one's view, realised. -/
 theorem rden_diatm_self {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
     (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
     (t : Term σ (Γ.diaIn x) A a) (w' : (extent w x)) (hd : w'.1.1.depth - w.depth = 0) :
     (rden w i e (.diatm x hx t)).2 w' =
-      ((extent_self w'.2 hd).1).symm ▸
-        rden w ((i ⊔ (classRep_peq (extent_self w'.2 hd).2).st) ⊔
-            (classRep_realised (extent_self w'.2 hd).2).data.i₀) (Ctx.Le.refl _)
-          (realisedTerm w (classRep_realised (extent_self w'.2 hd).2) (Ctx.Le.refl _)
-              (refY_sup (classRep_peq (extent_self w'.2 hd).2))
-              (tagBody w e (classRep_peq (extent_self w'.2 hd).2) t).2).2 := by
+      ((extent_self w'.2 hd).1).symm ▸ rden w (i ⊔ ((extent_self w'.2 hd).2).data.i₀)
+        (Ctx.Le.refl _) (realisedTerm w (extent_self w'.2 hd).2 e hx t).2 := by
   simp only [rden, dif_pos hd]
 
 theorem rden_sigma {A : VarType} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i))
@@ -362,8 +353,7 @@ theorem rden_mono : ∀ {A : VarType} {a : Ann A} {Γ Γ' : Ctx} (h : Γ.Le Γ')
         by_cases hd : w'.1.1.depth - w.depth = 0
         · simp only [dif_pos hd]
           exact rden_transport_congr _ (rden_sigma _
-            (realisedTerm_sigma _ (Ctx.Le.refl _) _
-              (tagBody_mono h e (classRep_peq (extent_self w'.2 hd).2) t)))
+            (realisedTerm_mono _ h e hx (hx.imp fun _ hh => h.ref hh) t))
         · simp only [dif_neg hd]
           exact rden_sigma _ (tagBody_mono h e (peqw_tagOf w'.2 hd) t))
   termination_by structural A => A
@@ -514,9 +504,8 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
         by_cases hd : w'.1.1.depth - w.depth = 0
         · simp only [dif_pos hd]
           exact rden_transport_congr _
-            (rden_realisedTagBody_congr (fun u w₃ i' j' e₁ e₂ => rden_congr u w₃ i' j' e₁ e₂)
-              (classRep_peq (extent_self w'.2 hd).2)
-              (classRep_realised (extent_self w'.2 hd).2) t e e')
+            (rden_realisedTerm_congr (fun u w₃ i' j' e₁ e₂ => rden_congr u w₃ i' j' e₁ e₂)
+              (extent_self w'.2 hd).2 hx t e e')
         · simp only [dif_neg hd]
           exact rden_tagBody_congr (fun u w₃ i' j' e₁ e₂ => rden_congr u w₃ i' j' e₁ e₂)
             (peqw_tagOf w'.2 hd) t e e' (diaView_tagOf w'.2 hd) _ _)
@@ -554,27 +543,6 @@ theorem rden_realisedTerm_mono_boxIn {w : World σ N₀} {x : VarSymb} (hr : w.R
     Term.collapse_mono (Ctx.collapses_boxIn_self hr.T Γ)
       (Ctx.collapses_boxIn_self hr.data.hT (w.L.ctx (i ⊔ hr.data.i₀))) hle
       (e.trans (w.L.ctx_le le_sup_left)) b,
-    rden_mono]
-  exact rden_congr _ _ _ _ _ _
-
-/-- ⭐The same at the **class representative**, which is how the self part of the extent reads a
-    `□`-view body: renaming into the representative's view leaves a `□`-view body
-    (`tagBody_mono_boxIn`), and realising it collapses it, so neither the witness nor the tag plays
-    any part. -/
-theorem rden_realisedTagBody_mono_boxIn {w : World σ N₀} {Γ : Ctx} {i : ℕ × ℕ}
-    (e : Γ.Le (w.L.ctx i)) {x y : VarSymb} (hpe : w.PEqW x y) (hr : w.Realised y) {A : VarType}
-    {a : Ann A} (b : Term σ Γ.boxIn A a) :
-    rden w ((i ⊔ hpe.st) ⊔ hr.data.i₀) (Ctx.Le.refl _)
-        (realisedTerm w hr (Ctx.Le.refl _) (refY_sup hpe)
-          (tagBody w e hpe (Term.mono (Ctx.le_boxIn_diaIn Γ x) b)).2).2 =
-      rden w i e (Term.collapse (Ctx.collapses_boxIn_self hr.T Γ) b) := by
-  rw [rden_sigma _ (realisedTerm_sigma hr (Ctx.Le.refl _) (refY_sup hpe)
-      (tagBody_mono_boxIn e hpe b)),
-    rden_realisedTerm_mono_boxIn hr (Ctx.Le.refl _) (refY_sup hpe) _,
-    Term.collapse_mono (Ctx.collapses_boxIn_self hr.T Γ)
-      (Ctx.collapses_boxIn_self hr.T (w.L.ctx (i ⊔ hpe.st)))
-      (e.trans (w.L.ctx_le (le_sup_left : i ≤ i ⊔ hpe.st))).boxIn
-      (e.trans (w.L.ctx_le (le_sup_left : i ≤ i ⊔ hpe.st))) b,
     rden_mono]
   exact rden_congr _ _ _ _ _ _
 

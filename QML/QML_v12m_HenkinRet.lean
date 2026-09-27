@@ -6,12 +6,13 @@ import QML.QML_v12m_CanonWorld
 The Henkin chain declares, at a strong T step, a witness `ρ n : ◇A` for the term it enumerated,
 together with the `Here` atom saying that witness is realised by that term (`retSet`).  This file
 turns the atom into a `Canon.RealDatum`: the evidence that makes the witness a **realised** one,
-whose `spec` field must serve formulas of every later stage — and which is now a *derivation*
-(`retSpec`, from `Canon.spec_of_here`) rather than data the construction arranges.
+whose realisation readings at every later stage are now a *derivation*
+(`Canon.RealDatum.spec`, from `Canon.spec_of_here`) rather than data the construction arranges.
 
 * ⭐`hereAt_mem_retSet`, `step_mem`: the atom is in the step's theory, the transport done once;
 * ⭐`hhere_of_isRet`, `hhere_of_isRet_at`: and in the finished one, at every later stage;
-* ⭐`retDatum`, `retSpec`: the datum, with `spec` derived.
+* ⭐`retDatum`: the datum, whose `hhere` field is the atom at every later stage — `spec` is then
+  derived once and for all in `CanonWorld` (`Canon.RealDatum.spec`, from `Canon.spec_of_here`).
 
 *Retired with the schema (2026-09-27):* `spec_of_retHyps` and the packing it needed — `laterList`
 with its side conditions, and the files `QML_v12m_StageSkip`, `QML_v12m_RetUse`, `QML_v12m_Pack`.
@@ -267,33 +268,6 @@ theorem retFr {n : ℕ} (i : ℕ × ℕ) (v : VarSymb) (hv : v.rt = .free (L.ρ 
   obtain ⟨m, j⟩ := i
   exact fr_wit (F := L.final S₀) (n := n) (m := m) (j := j) v hv hne
 
-/-- ⭐**The datum's `spec` is a derivation**: the theory says the witness is realised by the term
-    (`hhere_of_isRet_at`), so `Canon.spec_of_here` turns each realisation reading into the `◇` one.
-    This is what the `Here` atom replacing `WFF.retHyp` in `Proof.T_dia` and in the chain buys —
-    `spec_of_retHyps` and its `stageSkip` / `laterList` / `retHole` apparatus are no longer used. -/
-theorem retSpec (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) {n : ℕ}
-    (hret : IsRet L S₀ n) (hS₀ : StageSys.Consistent S₀) :
-    ∀ (i : ℕ × ℕ) (hi : (decM n, n) ≤ i) (hlt : n < i.2)
-      (χ : WFF σ (((L.final S₀).ctx i).diaIn (.root (.free (L.ρ n)))) 0),
-      (⟨i, WFF.realiseAt hT (L.ρ n) (retDecl hT hTS hret i hlt) (retFr i)
-          (Term.mono ((L.final S₀).ctx_le hi)
-            (Term.mono (Ctx.le_of_eq (ctxL_eq_final S₀ (decM n) n))
-              (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2)) χ⟩ :
-        (L.final S₀).sys.Sentence σ) ∈ L.finalT S₀ →
-      (⟨i, .dia (.root (.free (L.ρ n)))
-          ⟨(L.termQ (σ := σ) n (L.chain S₀ n).l).1, retDecl hT hTS hret i hlt⟩ χ⟩ :
-        (L.final S₀).sys.Sentence σ) ∈ L.finalT S₀ :=
-  fun i hi hlt χ hmem =>
-    Canon.spec_of_here (WorldLang.finalT_isMCS hS₀) hT (c := L.ρ n) (i₀ := (decM n, n))
-      (A := (L.termQ (σ := σ) n (L.chain S₀ n).l).1)
-      (a₀ := (L.termQ (σ := σ) n (L.chain S₀ n).l).2.1)
-      (Term.mono (Ctx.le_of_eq (ctxL_eq_final S₀ (decM n) n))
-        (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2)
-      (retDecl hT hTS hret) (fun i' => retFr i')
-      (fun i' hi' hlt' =>
-        hhere_of_isRet_at hT hTS hret hS₀ i' hi' hlt' (retDecl hT hTS hret i' hlt'))
-      i hi hlt χ hmem
-
 /-- ⭐The witness declared at a strong T step is a realised one: the term it was declared for is
     its realisation. -/
 noncomputable def retDatum (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) {n : ℕ}
@@ -317,8 +291,10 @@ noncomputable def retDatum (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = tr
       exact (L.final S₀).fresh_ctx (Nat.le_of_not_lt hle) _ rfl
     rw [hnone] at hY
     cases hY
-  -- ⭐The theory says the witness is realised, so `spec` is a derivation rather than data.
-  spec := retSpec hT hTS hret hS₀
+  -- ⭐The theory's own word that the witness is realised by the term.  That atom is the field now,
+  -- and the old `spec` follows from it (`RealDatum.spec`, by `Canon.spec_of_here`).
+  hhere := fun i hi hlt =>
+    hhere_of_isRet_at hT hTS hret hS₀ i hi hlt (retDecl hT hTS hret i hlt)
 
 open Classical in
 /-- ⭐The realisation the finished language names at each of its roots: the one the chain's strong

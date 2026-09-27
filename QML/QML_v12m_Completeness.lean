@@ -237,7 +237,7 @@ theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {c : ℕ} (dat 
     (WFF.mono ((w.L.ctx_le hj).diaIn (.root (.free c))) χ)).mpr
     ((Model.sat_mono (Model.Env.diaPush_agree hagj h
       ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hmem⟩ hm') χ).mpr hsat)
-  have hdia := dat.spec (i ⊔ dat.i₀) le_sup_right hj2 _
+  have hdia := dat.spec w.mcs (i ⊔ dat.i₀) le_sup_right hj2 _
     ((IH _ (by rw [WFF.size_realiseAt, WFF.size_mono])).mp hsatR)
   have hmem' := World.mem_mono_congr w (Ctx.Le.refl _) (w.L.ctx_le hj)
     (ψ := WFF.dia (.root (.free c)) hx χ) hdia

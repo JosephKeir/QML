@@ -87,12 +87,15 @@ structure RealDatum (L : WorldLang) (T : Set (L.sys.Sentence σ)) (c : ℕ) wher
       the world itself is read off `t₀`, which therefore belongs to an earlier stage than the term
       being interpreted. -/
   hstage : ∀ i : ℕ × ℕ, (∃ Y, (L.ctx i).ref (.root (.free c)) = some (.VTypeDia Y)) → i₀.2 < i.2
-  /-- Everything `t₀` satisfies at a stage, the witness satisfies in its view. -/
-  spec : ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i) (hlt : i₀.2 < i.2)
-    (χ : WFF σ ((L.ctx i).diaIn (.root (.free c))) 0),
-    (⟨i, WFF.realiseAt hT c (hdecl i hlt) (hfr i) (Term.mono (L.ctx_le hi) t₀) χ⟩ :
-      L.sys.Sentence σ) ∈ T →
-      (⟨i, .dia (.root (.free c)) ⟨A, hdecl i hlt⟩ χ⟩ : L.sys.Sentence σ) ∈ T
+  /-- ⭐**The theory says the witness is realised by `t₀`**, at every stage from `i₀` on.  This is
+      what `Proof.T_dia` hands over and what the chain adds (`WorldLang.retSet`); the older field,
+      `spec` — everything `t₀` satisfies at a stage, the witness satisfies in its view — is now
+      *derived* from it (`RealDatum.spec`, by `spec_of_here`), so the construction arranges one
+      sentence instead of a schema.  It is also what pins the realising term to the theory, which is
+      what identifying `≐`-related witnesses' contents needs. -/
+  hhere : ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i) (hlt : i₀.2 < i.2),
+    (⟨i, WFF.hereAt hT (.root (.free c)) (hdecl i hlt) (Term.mono (L.ctx_le hi) t₀)⟩ :
+      L.sys.Sentence σ) ∈ T
 
 /-- A world of the canonical model. -/
 structure World where
@@ -193,6 +196,19 @@ theorem spec_of_here {L : WorldLang} {T : Set (L.sys.Sentence σ)} (hmcs : Stage
   · exact ⟨Proof.here_introAt hT c (hdecl i hlt) (hfr i) (Term.mono (L.ctx_le hi) t₀) χ
       (Proof.lookup List.mem_cons_self)
       (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩
+
+/-- ⭐What used to be the `spec` field, now **derived** from the `Here` atom the datum carries: a
+    maximal consistent theory closed under provability turns the realisation reading of a view
+    formula into the `◇` one. -/
+theorem RealDatum.spec {L : WorldLang} {T : Set (L.sys.Sentence σ)} {c : ℕ}
+    (d : RealDatum σ L T c) (hmcs : StageSys.IsMCS T) :
+    ∀ (i : ℕ × ℕ) (hi : d.i₀ ≤ i) (hlt : d.i₀.2 < i.2)
+      (χ : WFF σ ((L.ctx i).diaIn (.root (.free c))) 0),
+      (⟨i, WFF.realiseAt d.hT c (d.hdecl i hlt) (d.hfr i)
+          (Term.mono (L.ctx_le hi) d.t₀) χ⟩ : L.sys.Sentence σ) ∈ T →
+        (⟨i, .dia (.root (.free c)) ⟨d.A, d.hdecl i hlt⟩ χ⟩ : L.sys.Sentence σ) ∈ T :=
+  spec_of_here hmcs d.hT d.t₀ d.hdecl d.hfr d.hhere
+
 /-! ## Realised witnesses (strong T) -/
 
 namespace World
@@ -236,7 +252,16 @@ variable {w}
       (⟨i, WFF.realiseAt d.hT d.c (d.hdecl i hlt) (d.hfr i) (Term.mono (w.L.ctx_le hi) d.t₀) χ⟩ :
         w.L.sys.Sentence σ) ∈ w.T →
         (⟨i, .dia (.root (.free d.c)) ⟨d.A, d.hdecl i hlt⟩ χ⟩ : w.L.sys.Sentence σ) ∈ w.T :=
-  d.datum.spec
+  d.datum.spec w.mcs
+
+/-- ⭐The theory's own word that the witness is realised by its realising term.  What makes the
+    content of `≐`-related witnesses comparable: Leibniz moves the atom along the identification and
+    `Proof.here_fun` then equates the two realising terms. -/
+@[reducible] def RealData.hhere {x : VarSymb} (d : w.RealData x) :
+    ∀ (i : ℕ × ℕ) (hi : d.i₀ ≤ i) (hlt : d.i₀.2 < i.2),
+      (⟨i, WFF.hereAt d.hT (.root (.free d.c)) (d.hdecl i hlt)
+          (Term.mono (w.L.ctx_le hi) d.t₀)⟩ : w.L.sys.Sentence σ) ∈ w.T :=
+  d.datum.hhere
 
 variable (w)
 
