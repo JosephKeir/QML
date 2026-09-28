@@ -2216,13 +2216,39 @@ let the chain's `retStep`/`retSet`/`IsRet` apparatus go, and `exW` would have to
 witness's `hfr` as well; 8. the truth lemma's `here` case, which then closes, and with it
 `Compactness` and the B track; 9. the metatheory list (`docs/v12-metatheory-todo.md`).
 
-**⭐Open, and needed for 8**: realisedness at a **non-root** `◇`-typed address.  `WFF.here`'s subject
-is any `◇`-typed term, so the truth lemma's `here` case meets `Term.diatm x …` for an arbitrary
-declared `x`, while a datum is indexed by a *root* — because `Term.realise`, which computes a
-witness's content at the world itself, is keyed to `.root r` and needs `Γ₁.ref (.root r) = none` in
-the view to rule out an inner witness colliding with the realised one.  That hypothesis holds for a
-root and for projections of one (`Ctx.boxIn` is `none` at roots), but **fails** for an address of the
-form `.step u .box`, which a child world's context does declare — the view of such an `x` contains
-`x` itself.  So either `Term.realise` is generalised to addresses invisible in views (with the
-`.diatm` case's `y ≠ x` coming from that invisibility), or the `here` case needs another route at
-box-shaped subjects.  To be decided before 8.
+**⭐Open, and the decision the `here` case now waits on: realisedness at a non-root address.**
+A `RealDatum` is indexed by a **root**, and `World.Realised` is `False` at every other address.  But
+`WFF.here`'s subject is an arbitrary `◇`-typed term, and every such term is `Term.diatm x hx s` for
+some declared address `x` (the constructors give no other way to build one), so the truth lemma's
+`here` case has to say something about each `x` — and the model side of `Here` is membership in
+`extent w x` at the world itself, i.e. exactly `w.Realised x`.
+
+*Why non-root subjects are not avoidable.*  A child world's base is `(w.ctx (m, m)).boxIn`, so its
+context declares addresses of the form `.step u .box`, at `◇A` when `u : □◇A`.  A parent theory may
+contain `□ (Here y t)` for such a `y` — a formula of `(w.ctx i).boxIn`, which is where `□`'s body
+lives — and then the child's theory contains `Here y t` about a box-shaped address.  Nothing
+refutes such an atom, so the `here` case cannot dismiss it.
+
+*Why the machinery stops at roots.*  `Term.realise` — which computes a witness's content at the
+world itself, and which `rden`'s `◇`-at-this-world case goes through (`realisedTerm`,
+`Term.realiseAt`) — is keyed to `.root r` with the hypothesis `Γ₁.ref (.root r) = none` in the view.
+It is used in exactly one place, the `.diatm y hy t` case, to know `y ≠ .root r`; and it is needed,
+because `realiseAddr` matches the *syntactic* address `.step x .dia` and inside the view of an inner
+witness `y = x` that address means the **inner** content.  For a root, and for projections of a root,
+the hypothesis is free (`Ctx.boxIn` is `none` at a root); for `.step u .box` it fails — such an `x`
+is visible in its own view.  Note the *proof system* has no such restriction: `here_elim` and
+`here_intro` are stated at an arbitrary `x` because they read hole formulas (`WFF.viewReadTm`,
+`WFF.hereRead`), not this substitution.  Three routes:
+
+* **shadowing in `Term.realise`**: split the `.diatm y hy t` case on `y = x` and, when they are
+  equal, collapse the body instead of realising it (the outer content is shadowed there, and
+  `Term.collapse` is exactly the rest of the map).  Keeps full generality; costs a case in
+  `Term.realise`, `Ann.realise`, `Ctx.Realises`, `WFF.realiseAt` and their semantic lemmas.
+* **hole formulas in the model too**: define the content at the world itself through
+  `WFF.viewReadTm`/`WFF.hereRead`, as the rules do, instead of through the realise substitution.
+  Uniform with the proof system, but it changes `rden`'s `◇` case, which everything downstream of
+  `CanonDom` is built on.
+* **restrict the subject**: make `WFF.here` take a root (or a projection of one) rather than any
+  `◇`-typed term.  Cheapest, and enough for the metatheory as stated — `Here` is only ever *used*
+  pinned — but it weakens the syntax, and `□ (Here y t)` in a parent would no longer be statable, so
+  the `here` case's non-root problem disappears by construction rather than being solved.
