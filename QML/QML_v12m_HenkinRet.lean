@@ -11,8 +11,14 @@ whose realisation readings at every later stage are now a *derivation*
 
 * ⭐`hereAt_mem_retSet`, `step_mem`: the atom is in the step's theory, the transport done once;
 * ⭐`hhere_of_isRet`, `hhere_of_isRet_at`: and in the finished one, at every later stage;
-* ⭐`retDatum`: the datum, whose `hhere` field is the atom at every later stage — `spec` is then
-  derived once and for all in `CanonWorld` (`Canon.RealDatum.spec`, from `Canon.spec_of_here`).
+* ⭐`retDatum`: the datum, whose `hhere` field is that one atom — the later stages
+  (`Canon.RealDatum.hhereAt`) and `spec` (`Canon.spec_of_here`) follow from it in `CanonWorld`;
+* ⭐`exists_isRet_addr`: every declared address is some step's, which is `World.realW`.
+
+*Nothing here names the world's realisations any more (2026-09-28).* A world realises whatever its
+theory says (`Canon.World.real`, read off `T` by `Nonempty`), so the old `chainReal`,
+`chainReal_ret` and `retDatum_fields` are gone; what the chain still has to provide is that every
+declared address of a `◇`-free type is *some* step's content.
 
 *Retired with the schema (2026-09-27):* `spec_of_retHyps` and the packing it needed — `laterList`
 with its side conditions, and the files `QML_v12m_StageSkip`, `QML_v12m_RetUse`, `QML_v12m_Pack`.
@@ -288,7 +294,9 @@ theorem retFr {n : ℕ} (i : ℕ × ℕ) (v : VarSymb) (hv : v.rt = .free (L.ρ 
   exact fr_wit (F := L.final S₀) (n := n) (m := m) (j := j) v hv hne
 
 /-- ⭐The witness declared at a strong T step is a realised one, and its content is the **address**
-    the step read (§2d, step 3): its η-expansion is the term it was declared for. -/
+    the step read (§2d, step 3): its η-expansion is the term it was declared for.  The datum's one
+    stage is `(decM n, n + 1)` — the first that declares the witness, and where the address the step
+    read is declared too. -/
 noncomputable def retDatum (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) {n : ℕ}
     (hret : IsRet L S₀ n) (hS₀ : StageSys.Consistent S₀) :
     Canon.RealDatum σ (L.final S₀) (L.finalT S₀) (L.ρ n) where
@@ -296,28 +304,21 @@ noncomputable def retDatum (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = tr
   hS := hTS
   A := (addrQ n).1.1
   hA := (addrQ n).1.2
-  i₀ := (decM n, n)
+  i₀ := (decM n, n + 1)
   b₀ := (addrQ n).2
-  hb₀ := (Ctx.le_of_eq (ctxL_eq_final S₀ (decM n) n)).ref hret.2.2
-  hdecl := retDecl hT hTS hret
+  hb₀ := ((L.final S₀).ctx_le (Prod.mk_le_mk.mpr ⟨le_rfl, Nat.le_succ n⟩)).ref
+    ((Ctx.le_of_eq (ctxL_eq_final S₀ (decM n) n)).ref hret.2.2)
+  hd₀ := retDecl hT hTS hret (decM n, n + 1) (Nat.lt_succ_self n)
   hfr := fun i => retFr i
-  -- ⭐The theory's own word that the witness is realised by its content.  That atom is the field,
-  -- and the old `spec` follows from it (`RealDatum.spec`, by `Canon.spec_of_here`).
-  hhere := fun i hi hd => by
-    refine Eq.mp (congrArg (fun φ => (⟨i, φ⟩ : (L.final S₀).sys.Sentence σ) ∈ L.finalT S₀) ?_)
-      (hhere_of_isRet_at hT hTS hret hS₀ i hi (retLt i ⟨_, hd⟩) hd)
+  -- ⭐The theory's own word that the witness is realised by its content — one sentence now, the
+  -- later stages following by `RealDatum.hhereAt` and `spec` by `Canon.spec_of_here`.
+  hhere := by
+    refine Eq.mp (congrArg (fun φ => (⟨(decM n, n + 1), φ⟩ : (L.final S₀).sys.Sentence σ) ∈
+      L.finalT S₀) ?_)
+      (hhere_of_isRet_at hT hTS hret hS₀ (decM n, n + 1)
+        (Prod.mk_le_mk.mpr ⟨le_rfl, Nat.le_succ n⟩) (Nat.lt_succ_self n)
+        (retDecl hT hTS hret (decM n, n + 1) (Nat.lt_succ_self n)))
     exact WFF.here_congr' hT (addrQ n).1.2 rfl (by simp only [retTerm, Term.mono_eta])
-
-open Classical in
-/-- ⭐The realisation the finished language names at each of its roots: the one the chain's strong
-    T step for that constant provides, if it made one.  The name determines the step (`ρ` is
-    injective), so this is a choice in name only. -/
-noncomputable def chainReal (hS₀ : StageSys.Consistent S₀) (c : ℕ) :
-    Option (Canon.RealDatum σ (L.final S₀) (L.finalT S₀) c) :=
-  if h : ∃ n, ((ModalSys.T = true ∧ ModalSys.TStrong = true) ∧ IsRet L S₀ n) ∧ L.ρ n = c then
-    some (h.choose_spec.2 ▸
-      retDatum h.choose_spec.1.1.1 h.choose_spec.1.1.2 h.choose_spec.1.2 hS₀)
-  else none
 
 
 /-! ## Every declared address is realised -/
@@ -360,34 +361,6 @@ theorem exists_isRet_addr (m j : ℕ) {A : VarType} (hA : A.diaFree = true) (v :
   rw [haddr]
   exact (chain_le S₀ (decJ_le n) (decM n)).ref hv
 
-
-/-- The data a strong T step provides, read off under a renaming of its witness.  All three are
-    non-dependent, because the content is an address. -/
-theorem retDatum_fields (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) {n c : ℕ}
-    (hret : IsRet L S₀ n) (hS₀ : StageSys.Consistent S₀) (hc : L.ρ n = c) :
-    ((hc ▸ retDatum hT hTS hret hS₀ :
-            Canon.RealDatum σ (L.final S₀) (L.finalT S₀) c).A,
-        (hc ▸ retDatum hT hTS hret hS₀ :
-            Canon.RealDatum σ (L.final S₀) (L.finalT S₀) c).i₀,
-        (hc ▸ retDatum hT hTS hret hS₀ :
-            Canon.RealDatum σ (L.final S₀) (L.finalT S₀) c).b₀) =
-      ((addrQ n).1.1, (decM n, n), (addrQ n).2) := by
-  subst hc
-  rfl
-
-/-- ⭐What a world names at the witness of a strong T step: that step's own data. -/
-theorem chainReal_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true)
-    (hS₀ : StageSys.Consistent S₀) {n : ℕ} (hret : IsRet L S₀ n) :
-    ∃ d : Canon.RealDatum σ (L.final S₀) (L.finalT S₀) (L.ρ n),
-      L.chainReal hS₀ (L.ρ n) = some d ∧
-      (d.A, d.i₀, d.b₀) = ((addrQ n).1.1, (decM n, n), (addrQ n).2) := by
-  have h : ∃ n', ((ModalSys.T = true ∧ ModalSys.TStrong = true) ∧ IsRet L S₀ n') ∧
-      L.ρ n' = L.ρ n := ⟨n, ⟨⟨hT, hTS⟩, hret⟩, rfl⟩
-  have hch : h.choose = n := L.ρ_inj h.choose_spec.2
-  refine ⟨_, dif_pos h, ?_⟩
-  conv_rhs => rw [← hch]
-  exact retDatum_fields h.choose_spec.1.1.1 h.choose_spec.1.1.2 h.choose_spec.1.2 hS₀
-    h.choose_spec.2
 
 end Chain
 

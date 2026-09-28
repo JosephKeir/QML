@@ -188,31 +188,30 @@ theorem posSerial_canon (hDS : ModalSys.DStrong = true) (w : World σ N₀) :
 
 /-- ⭐Every object of a domain is the content, at the world itself, of a possible object.  Naming
     (`Canon.exists_name`) turns a term denoting the object into a **declared address** denoting it,
-    and the world realises some witness by that address (`World.realW`).  The possible object is
-    that witness's η-expansion; `self_mem_extent` puts the world in its extent and
-    `rden_eta_of_real` says its content there is what the address denotes. -/
+    and the theory realises some witness by that address (`World.realW`).  The possible object is
+    that witness's η-expansion; `self_mem_extent` puts the world in its extent, and
+    `rden_eta_realised_wd` says its content there is what the address denotes — whichever datum the
+    world picks for the witness (§2d, step 4). -/
 theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T = true)
     (hS : ModalSys.TStrong = true) (hA : A.diaFree = true) (a : (frame w₀).Dom A w) :
     ∃ (p : (frame w₀).Pos A w) (hm : (frame w₀).reflAcc hT w ∈ (posEval w₀ p).1),
       (posEval w₀ p).2 ⟨(frame w₀).reflAcc hT w, hm⟩ = a := by
   obtain ⟨i, a', t, ht⟩ := definable_fromDom w₀ A w a
   obtain ⟨i₁, -, c', hc', hname⟩ := exists_name hA t
-  obtain ⟨c, d, hsome, hdA, hdb, hile⟩ := w.realW hT hS i₁ hA (.root (.free c')) hc'
+  obtain ⟨c, d, hdA, hdb, hile⟩ := w.realW hT hS i₁ hA (.root (.free c')) hc'
   subst hdA
-  have hr := World.realised_of_real hsome
-  have hdecl : (w.L.ctx (d.i₀.1, d.i₀.2 + 1)).ref (.root (.free c)) = some (.VTypeDia d.A) :=
-    d.hdecl _ (Nat.lt_succ_self _)
-  refine ⟨⟨rden w (d.i₀.1, d.i₀.2 + 1) (Ctx.Le.refl _)
-      (Term.eta (.root (.free c)) (.VTypeDia d.A) hdecl), definable_rden _ _⟩,
+  have hr : w.Realised (.root (.free c)) := World.realised_of_datum d
+  refine ⟨⟨rden w d.i₀ (Ctx.Le.refl _)
+      (Term.eta (.root (.free c)) (.VTypeDia d.A) d.hd₀), definable_rden _ _⟩,
     self_mem_extent hr, ?_⟩
   refine Eq.trans ?_ (toDom_fromDom w₀ d.A w a)
   refine toDom_congr w₀ ?_ _ _
   rw [← ht]
-  refine (rden_eta_of_real hsome hdecl).trans (Eq.trans ?_ hname)
+  refine (rden_eta_realised_wd hr d.t₀ (rden_data_wd hr.data rfl d) d.hd₀).trans
+    (Eq.trans ?_ hname)
   refine (rden_sigma (Ctx.Le.refl _) (Term.eta_congr hdb d.A d.hb₀ (hdb ▸ d.hb₀))).trans ?_
   exact (rden_eta_le (w.L.ctx_le hile) (Ctx.Le.refl _) (Ctx.Le.refl _)
     (.root (.free c')) d.A hc' ((w.L.ctx_le hile).ref hc')).symm
-
 
 /-- ⭐The canonical model. -/
 noncomputable def model : Model.{0, 0} σ where

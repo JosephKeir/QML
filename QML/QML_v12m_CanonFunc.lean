@@ -927,6 +927,20 @@ theorem rden_eta_of_real {w : World σ N₀} {c : ℕ} {d : RealDatum σ w.L w.T
       rden w d.i₀ (Ctx.Le.refl _) d.t₀ :=
   rden_eta_realised_of_eq _ ⟨c, rfl, d⟩ (World.data_of_real hsome) hdecl
 
+/-- ⭐The content at the world itself of the possible object a realised root denotes, computed from
+    **whatever datum the theory gives** rather than from the world's choice: the two agree by
+    `rden_data_wd`, and the type equality it carries is what this turns into a rewrite. -/
+theorem rden_eta_realised_wd {w : World σ N₀} {c : ℕ} (hr : w.Realised (.root (.free c)))
+    {A : VarType} {i₀ : ℕ × ℕ} {a : Ann A} (t₀ : Term σ (w.L.ctx i₀) A a)
+    (hwd : (⟨hr.data.A, rden w hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀⟩ :
+        Σ B : VarType, RDom B w) = ⟨A, rden w i₀ (Ctx.Le.refl _) t₀⟩)
+    {k : ℕ × ℕ} (hd : (w.L.ctx k).ref (.root (.free c)) = some (.VTypeDia A)) :
+    (rden w k (Ctx.Le.refl _) (Term.eta (.root (.free c)) (.VTypeDia A) hd)).2
+        ⟨⟨w, ⟨R.refl hr.T w⟩⟩, self_mem_extent hr⟩ = rden w i₀ (Ctx.Le.refl _) t₀ := by
+  obtain ⟨hA, hv⟩ := Sigma.mk.inj_iff.mp hwd
+  subst hA
+  exact (rden_eta_realised hr hd).trans (eq_of_heq hv)
+
 end Canon
 
 end V12M

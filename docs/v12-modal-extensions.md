@@ -2195,8 +2195,34 @@ uniform over **`◇`-free** content types (`VarType.diaFree`, `Ann.eq_of_diaFree
      the content by the lookup `interp_canon_eta`, not a recursive call; `dia_mem_of_sat_self` the
      same, through `hdeclOf`.
 
-**Then**: 4. realisedness read off the theory (`∃b. Here (η x) (η b) ∈ T`, invariant because the atom
-is), at any declared `◇`-typed `x` rather than at roots only — `hdeclOf` and the address content are
-what a theory-given datum can supply, so nothing in the `rden`/`interp` layer now stands in the way;
-5. the truth lemma's `here` case, which then closes, and with it `Compactness` and the B track;
-6. the metatheory list (`docs/v12-metatheory-todo.md`).
+6. **⭐Step 4 — realisedness is read off the theory.**  `World` no longer has a `real` field: a
+   `RealDatum` is now exactly one stage's worth of facts about the language and the theory (the root
+   declared at `◇A`, its content address declared at `A`, and the `Here` atom linking them — field
+   `hd₀` and a single-sentence `hhere`, with `hdeclOf` and ⭐`RealDatum.hhereAt` derived), so
+   ⭐`Canon.World.real c` is *defined* as "some datum exists, pick one" and `World.Realised x` means
+   the theory says so.  `World.realised_of_datum` is the only way realisedness is established.
+   * **Why the choice is harmless, and why steps 2–3 had to come first**: ⭐`Canon.rden_here_wd` and
+     ⭐`Canon.rden_datum_wd` — two `Here` atoms about one root have the same content type and their
+     contents *denote alike*, by `Proof.here_fun` (functionality, an equation because the content
+     type is `◇`-free) and `rden_eqRec` (faithfulness).  So the model's pick changes nothing that
+     the model can see.  Bridges: ⭐`rden_data_wd`, ⭐`rden_eta_realised_wd`.
+   * `World.realW` survives as a field, now purely existential (`∃ c d, d.A = A ∧ d.b₀ = v ∧
+     i ≤ d.i₀`); `ofHenkin` supplies it from `exists_isRet_addr` and `retDatum` directly, and
+     `chainReal`, `chainReal_ret`, `retDatum_fields` are deleted.
+
+**Then**: 7. `realW` from the *rule* instead of the chain: `T_dia` gives `⊢ ∃x:◇A. Here x (η v)`, so
+a witnessed MCS contains the atom at a declared root (`World.exW`), which is a datum — that would
+let the chain's `retStep`/`retSet`/`IsRet` apparatus go, and `exW` would have to hand over its
+witness's `hfr` as well; 8. the truth lemma's `here` case, which then closes, and with it
+`Compactness` and the B track; 9. the metatheory list (`docs/v12-metatheory-todo.md`).
+
+**⭐Open, and needed for 8**: realisedness at a **non-root** `◇`-typed address.  `WFF.here`'s subject
+is any `◇`-typed term, so the truth lemma's `here` case meets `Term.diatm x …` for an arbitrary
+declared `x`, while a datum is indexed by a *root* — because `Term.realise`, which computes a
+witness's content at the world itself, is keyed to `.root r` and needs `Γ₁.ref (.root r) = none` in
+the view to rule out an inner witness colliding with the realised one.  That hypothesis holds for a
+root and for projections of one (`Ctx.boxIn` is `none` at roots), but **fails** for an address of the
+form `.step u .box`, which a child world's context does declare — the view of such an `x` contains
+`x` itself.  So either `Term.realise` is generalised to addresses invisible in views (with the
+`.diatm` case's `y ≠ x` coming from that invisibility), or the `here` case needs another route at
+box-shaped subjects.  To be decided before 8.

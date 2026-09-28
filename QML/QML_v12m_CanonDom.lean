@@ -669,6 +669,90 @@ theorem exists_name {w : World σ N₀} {A : VarType} (hA : A.diaFree = true) {i
   rw [rden_castAnn hA _ (Term.mono (w.L.ctx_le hi) t), rden_mono (w.L.ctx_le hi) t w i']
   exact rden_congr t w i' i _ _
 
+/-- ⭐**The theory determines the content**, at one stage: two `Here` atoms about the same root have
+    the same content type, and their contents denote alike.  `Proof.here_fun` makes the two contents
+    provably equal — an equation only because the content type is `◇`-free (§2d) — and faithfulness
+    (`rden_eqRec`) turns that into one denotation. -/
+theorem rden_here_wd {w : World σ N₀} {c : ℕ} (hT : ModalSys.T = true)
+    {A₁ A₂ : VarType} (hA₁ : A₁.diaFree = true) (hA₂ : A₂.diaFree = true)
+    {i : ℕ × ℕ} {b₁ b₂ : VarSymb}
+    (hd₁ : (w.L.ctx i).ref (.root (.free c)) = some (.VTypeDia A₁))
+    (hd₂ : (w.L.ctx i).ref (.root (.free c)) = some (.VTypeDia A₂))
+    (hb₁ : (w.L.ctx i).ref b₁ = some A₁) (hb₂ : (w.L.ctx i).ref b₂ = some A₂)
+    (ha₁ : (⟨i, WFF.hereAt hT (.root (.free c)) hA₁ hd₁ (Term.eta b₁ A₁ hb₁)⟩ :
+      w.L.sys.Sentence σ) ∈ w.T)
+    (ha₂ : (⟨i, WFF.hereAt hT (.root (.free c)) hA₂ hd₂ (Term.eta b₂ A₂ hb₂)⟩ :
+      w.L.sys.Sentence σ) ∈ w.T) :
+    (⟨A₁, rden w i (Ctx.Le.refl _) (Term.eta b₁ A₁ hb₁)⟩ : Σ A : VarType, RDom A w) =
+      ⟨A₂, rden w i (Ctx.Le.refl _) (Term.eta b₂ A₂ hb₂)⟩ := by
+  obtain rfl : A₁ = A₂ := by
+    have h := hd₁.symm.trans hd₂
+    simpa using h
+  refine congrArg (Sigma.mk _) ?_
+  have ha₂' : (⟨i, WFF.hereAt hT (.root (.free c)) hA₁ hd₁
+      (Term.castAnn (a' := Ann.eta b₁ A₁) hA₁ (Term.eta b₂ A₁ hb₂))⟩ :
+      w.L.sys.Sentence σ) ∈ w.T := by
+    refine Eq.mp (congrArg (fun φ => (⟨i, φ⟩ : w.L.sys.Sentence σ) ∈ w.T) ?_) ha₂
+    exact WFF.here_congr hT hA₁ rfl (Term.sigma_castAnn hA₁ (Term.eta b₂ A₁ hb₂))
+  have hmem : (⟨i, eqRec A₁ (Term.eta b₁ A₁ hb₁)
+      (Term.castAnn (a' := Ann.eta b₁ A₁) hA₁ (Term.eta b₂ A₁ hb₂))⟩ : w.L.sys.Sentence σ) ∈ w.T :=
+    World.mem_of_provable
+      (Δ := [WFF.hereAt hT (.root (.free c)) hA₁ hd₁ (Term.eta b₁ A₁ hb₁),
+        WFF.hereAt hT (.root (.free c)) hA₁ hd₁
+          (Term.castAnn (a' := Ann.eta b₁ A₁) hA₁ (Term.eta b₂ A₁ hb₂))])
+      (fun ψ hψ => by
+        rcases List.mem_cons.mp hψ with rfl | hψ'
+        · exact ha₁
+        · rw [List.mem_singleton.mp hψ']
+          exact ha₂')
+      ⟨Proof.here_fun hT hA₁ _ _ _ (Proof.lookup List.mem_cons_self)
+        (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩
+  refine (rden_eqRec A₁ hA₁ (Term.eta b₁ A₁ hb₁)
+      (Term.castAnn (a' := Ann.eta b₁ A₁) hA₁ (Term.eta b₂ A₁ hb₂)) w i
+    (Ctx.Le.refl _) ?_).trans (rden_castAnn hA₁ _ (Term.eta b₂ A₁ hb₂))
+  rwa [Term.mono_refl, Term.mono_refl]
+
+/-- ⭐**So the content of a realised root is the theory's, not the model's choice**: any two data for
+    one root agree on the content type and on what the content denotes.  This is what lets
+    realisedness be *read off the theory* (§2d, step 4) — a world may choose which datum to use, and
+    the value it computes does not depend on the choice. -/
+theorem rden_datum_wd {w : World σ N₀} {c : ℕ} (d₁ d₂ : RealDatum σ w.L w.T c) :
+    (⟨d₁.A, rden w d₁.i₀ (Ctx.Le.refl _) d₁.t₀⟩ : Σ A : VarType, RDom A w) =
+      ⟨d₂.A, rden w d₂.i₀ (Ctx.Le.refl _) d₂.t₀⟩ := by
+  have h₁ : d₁.i₀ ≤ (max d₁.i₀.1 d₂.i₀.1, max d₁.i₀.2 d₂.i₀.2) :=
+    Prod.le_def.mpr ⟨le_max_left _ _, le_max_left _ _⟩
+  have h₂ : d₂.i₀ ≤ (max d₁.i₀.1 d₂.i₀.1, max d₁.i₀.2 d₂.i₀.2) :=
+    Prod.le_def.mpr ⟨le_max_right _ _, le_max_right _ _⟩
+  have hb₁ := (w.L.ctx_le h₁).ref d₁.hb₀
+  have hb₂ := (w.L.ctx_le h₂).ref d₂.hb₀
+  have e₁ : rden w d₁.i₀ (Ctx.Le.refl _) d₁.t₀ =
+      rden w _ (Ctx.Le.refl _) (Term.eta d₁.b₀ d₁.A hb₁) :=
+    rden_eta_le (w.L.ctx_le h₁) _ _ _ _ _ _
+  have e₂ : rden w d₂.i₀ (Ctx.Le.refl _) d₂.t₀ =
+      rden w _ (Ctx.Le.refl _) (Term.eta d₂.b₀ d₂.A hb₂) :=
+    rden_eta_le (w.L.ctx_le h₂) _ _ _ _ _ _
+  rw [e₁, e₂]
+  refine rden_here_wd d₁.hT d₁.hA d₂.hA ((w.L.ctx_le h₁).ref d₁.hd₀)
+    ((w.L.ctx_le h₂).ref d₂.hd₀) hb₁ hb₂ ?_ ?_
+  · exact Eq.mp (congrArg (fun φ => (⟨_, φ⟩ : w.L.sys.Sentence σ) ∈ w.T)
+      (WFF.here_congr' d₁.hT d₁.hA rfl (Term.mono_eta _ _ _ _)))
+      (d₁.hhereAt w.mcs _ h₁ ((w.L.ctx_le h₁).ref d₁.hd₀))
+  · exact Eq.mp (congrArg (fun φ => (⟨_, φ⟩ : w.L.sys.Sentence σ) ∈ w.T)
+      (WFF.here_congr' d₂.hT d₂.hA rfl (Term.mono_eta _ _ _ _)))
+      (d₂.hhereAt w.mcs _ h₂ ((w.L.ctx_le h₂).ref d₂.hd₀))
+
+/-- The same between the data a world *names* at a root and any datum the theory gives for it. -/
+theorem rden_data_wd {w : World σ N₀} {x : VarSymb} (D : w.RealData x) {c : ℕ}
+    (hx : x = .root (.free c)) (d : RealDatum σ w.L w.T c) :
+    (⟨D.A, rden w D.i₀ (Ctx.Le.refl _) D.t₀⟩ : Σ A : VarType, RDom A w) =
+      ⟨d.A, rden w d.i₀ (Ctx.Le.refl _) d.t₀⟩ := by
+  obtain ⟨c', hx', D'⟩ := D
+  subst hx'
+  obtain rfl : c' = c := by
+    injection hx with hroot
+    injection hroot
+  exact rden_datum_wd D' d
+
 end Canon
 
 end V12M
