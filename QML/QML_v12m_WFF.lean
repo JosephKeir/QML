@@ -102,6 +102,13 @@ def eqRec {σ : Signature} {d : ℕ} : {Γ : Ctx} → (T : VarType) → {a : Ann
   | _, .VTypeBox A, .box _, .boxtm t, .boxtm s => .box (eqRec A t s)
   | _, .VTypeDia A, .dia x _, .diatm _ hx t, .diatm _ _ s => .boxx x hx (eqRec A t s)
 
+
+/-- At base type the defined equality is the primitive one: `eqRec`’s `.Var` clause, as a
+    rewrite. -/
+theorem eqRec_Var {σ : Signature} {Γ : Ctx} {d : ℕ} (t s : Term σ Γ .Var .var) :
+    (eqRec .Var t s : WFF σ Γ d) = .eq t s := by
+  cases t <;> cases s <;> rfl
+
 /-! ## Weakening -/
 
 def Rel.mono {σ : Signature} {Γ Γ' : Ctx} (h : Γ.Le Γ') : {n : ℕ} → Rel σ Γ n → Rel σ Γ' n
@@ -126,5 +133,26 @@ def WFF.mono {σ : Signature} : {Γ Γ' : Ctx} → {d : ℕ} → Γ.Le Γ' → W
 def WFF.weaken {σ : Signature} {Γ : Ctx} {d : ℕ} {r : Root} (hr : Γ (.root r) = none)
     (T : VarType) (φ : WFF σ Γ d) : WFF σ (Γ.insert r T) d :=
   WFF.mono (Ctx.le_insert hr T) φ
+
+
+/-- Weakening commutes with equality at every type. -/
+theorem eqRec_mono {σ : Signature} {d : ℕ} : {Γ Γ' : Ctx} → (h : Γ.Le Γ') → (T : VarType) →
+    {a : Ann T} → (t s : Term σ Γ T a) →
+    WFF.mono h (eqRec T t s : WFF σ Γ d) = eqRec T (Term.mono h t) (Term.mono h s)
+  | _, _, h, .Var, .var, t, s =>
+      (congrArg (WFF.mono h) (eqRec_Var t s)).trans (eqRec_Var _ _).symm
+  | _, _, _, .VTypeOne, .one, .unit, .unit => rfl
+  | _, _, h, .VTypeProd A B, .prod _ _, .pair t₁ t₂, .pair s₁ s₂ => by
+      change WFF.and (WFF.mono h (eqRec A t₁ s₁)) (WFF.mono h (eqRec B t₂ s₂)) = _
+      rw [eqRec_mono h A, eqRec_mono h B]
+      rfl
+  | _, _, h, .VTypeBox A, .box _, .boxtm t, .boxtm s => by
+      change WFF.box (WFF.mono h.boxIn (eqRec A t s)) = _
+      rw [eqRec_mono h.boxIn A]
+      rfl
+  | _, _, h, .VTypeDia A, .dia x _, .diatm _ _ t, .diatm _ _ s => by
+      change WFF.imp (WFF.dia x _ (WFF.imp (WFF.mono (h.diaIn x) (eqRec A t s)) .bot)) .bot = _
+      rw [eqRec_mono (h.diaIn x) A]
+      rfl
 
 end V12M

@@ -296,4 +296,28 @@ def WFF.shift {σ : Signature} : {k : ℕ} → {Γ₁ Γ₂ : Ctx} → {d : ℕ}
       .dia (x.shift k) (hx.imp fun _ hX => h x _ hX) (WFF.shift (h.diaIn x) (hs.diaIn x) φ)
   | _, _, _, _, h, _, .here hT hA s t => .here hT hA (Term.shift h s) (Term.shift h t)
 
+
+/-- ⭐Shifting commutes with equality at every type, as `eqRec_collapse` does for collapsing: what a
+    `□`-equation gives at a proper successor, one step in. -/
+theorem eqRec_shift {σ : Signature} {k : ℕ} {d : ℕ} : {Γ₁ Γ₂ : Ctx} →
+    (h : Ctx.Shifts k Γ₁ Γ₂) → (hs : Γ₁.SlotsFrom d) → (T : VarType) → {a : Ann T} →
+    (t s : Term σ Γ₁ T a) →
+    WFF.shift h hs (eqRec T t s : WFF σ Γ₁ d) = eqRec T (Term.shift h t) (Term.shift h s)
+  | _, _, h, hs, .Var, .var, t, s =>
+      (congrArg (WFF.shift h hs) (eqRec_Var t s)).trans (eqRec_Var _ _).symm
+  | _, _, _, _, .VTypeOne, .one, .unit, .unit => rfl
+  | _, _, h, hs, .VTypeProd A B, .prod _ _, .pair t₁ t₂, .pair s₁ s₂ => by
+      change WFF.and (WFF.shift h hs (eqRec A t₁ s₁)) (WFF.shift h hs (eqRec B t₂ s₂)) = _
+      rw [eqRec_shift h hs A, eqRec_shift h hs B]
+      rfl
+  | _, _, h, hs, .VTypeBox A, .box _, .boxtm t, .boxtm s => by
+      change WFF.box (WFF.shift h.boxIn hs.boxIn (eqRec A t s)) = _
+      rw [eqRec_shift h.boxIn hs.boxIn A]
+      rfl
+  | _, _, h, hs, .VTypeDia A, .dia x _, .diatm _ _ t, .diatm _ _ s => by
+      change WFF.imp (WFF.dia _ _ (WFF.imp (WFF.shift (h.diaIn x) (hs.diaIn x)
+        (eqRec A t s)) .bot)) .bot = _
+      rw [eqRec_shift (h.diaIn x) (hs.diaIn x) A]
+      rfl
+
 end V12M

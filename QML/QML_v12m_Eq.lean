@@ -150,10 +150,6 @@ end Base
 
 /-! ## Every type -/
 
-theorem eqRec_Var {σ : Signature} {Γ : Ctx} {d : ℕ} (t s : Term σ Γ .Var .var) :
-    (eqRec .Var t s : WFF σ Γ d) = .eq t s := by
-  cases t <;> cases s <;> rfl
-
 namespace Proof
 
 /-- ⭐Reflexivity. -/

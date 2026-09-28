@@ -74,24 +74,4 @@ def Proof.conjunct {σ : Signature} {Γ : Ctx} {c : WFF σ Γ 0} (ψ : WFF σ Γ
     (h : c ∈ ψ.conjuncts) : Proof σ Γ [ψ] c :=
   Proof.ofConjPath (ψ.conjPath h)
 
-/-- Weakening commutes with equality at every type. -/
-theorem eqRec_mono {σ : Signature} {d : ℕ} : {Γ Γ' : Ctx} → (h : Γ.Le Γ') → (T : VarType) →
-    {a : Ann T} → (t s : Term σ Γ T a) →
-    WFF.mono h (eqRec T t s : WFF σ Γ d) = eqRec T (Term.mono h t) (Term.mono h s)
-  | _, _, h, .Var, .var, t, s =>
-      (congrArg (WFF.mono h) (eqRec_Var t s)).trans (eqRec_Var _ _).symm
-  | _, _, _, .VTypeOne, .one, .unit, .unit => rfl
-  | _, _, h, .VTypeProd A B, .prod _ _, .pair t₁ t₂, .pair s₁ s₂ => by
-      change WFF.and (WFF.mono h (eqRec A t₁ s₁)) (WFF.mono h (eqRec B t₂ s₂)) = _
-      rw [eqRec_mono h A, eqRec_mono h B]
-      rfl
-  | _, _, h, .VTypeBox A, .box _, .boxtm t, .boxtm s => by
-      change WFF.box (WFF.mono h.boxIn (eqRec A t s)) = _
-      rw [eqRec_mono h.boxIn A]
-      rfl
-  | _, _, h, .VTypeDia A, .dia x _, .diatm _ _ t, .diatm _ _ s => by
-      change WFF.imp (WFF.dia x _ (WFF.imp (WFF.mono (h.diaIn x) (eqRec A t s)) .bot)) .bot = _
-      rw [eqRec_mono (h.diaIn x) A]
-      rfl
-
 end V12M

@@ -519,6 +519,107 @@ theorem definable_dia_apply {A : VarType} {w : World σ N₀} {o : RDom (.VTypeD
         simp only [dif_neg hd]
         exact definable_rden _ b
 
+
+/-! ## Faithfulness: the denotation respects a provable equality
+
+At a `◇`-free type, two terms the theory equates denote alike.  This is what naming an object by an
+address buys (§2d): the realising term of a datum may be replaced by `η b` exactly because the two
+denote the same thing.  The `□` case travels to the successors, so it is split off as
+⭐`rden_eqRec_far`, taking the type-level induction hypothesis as a parameter — the same shape as
+`interp_box_far` on the model side. -/
+
+/-- A base term's denotation is its class, at any embedding. -/
+theorem rden_base_cls {w : World σ N₀} {Γ : Ctx} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) :
+    ∀ (t : Term σ Γ .Var .var), rden w i e t = w.cls i (Term.mono e t)
+  | .var _ _ => rfl
+  | .func _ => rfl
+
+/-- ⭐**Faithfulness at a proper successor**: a necessary equation in the theory makes the two
+    necessary terms denote alike `d + 1` steps in.  At `d = 0` this is the first successor's
+    necessary contents; beyond it, `Proof.four_box` pushes the equation one step further each time,
+    as `interp_box_far` does on the model side. -/
+theorem rden_eqRec_far {A : VarType}
+    (IH : ∀ {Γ : Ctx} {a : Ann A} (t s : Term σ Γ A a) {w : World σ N₀} {i : ℕ × ℕ}
+      (e : Γ.Le (w.L.ctx i)),
+      (⟨i, eqRec A (Term.mono e t) (Term.mono e s)⟩ : w.L.sys.Sentence σ) ∈ w.T →
+      rden w i e t = rden w i e s) :
+    ∀ (d : ℕ) {Γ : Ctx} {a : Ann A} (t s : Term σ Γ.boxIn A a) {w : World σ N₀} {i : ℕ × ℕ}
+      (e : Γ.Le (w.L.ctx i)),
+      (⟨i, .box (eqRec A (Term.mono e.boxIn t) (Term.mono e.boxIn s))⟩ :
+        w.L.sys.Sentence σ) ∈ w.T →
+      ∀ (w' : Succ w), w'.1.depth - w.depth = d + 1 →
+        rden w i e (.boxtm t) w' = rden w i e (.boxtm s) w'
+  | 0, _, _, t, s, w, i, e, hmem, w', hd => by
+      rw [rden_boxtm_acc e t w' hd, rden_boxtm_acc e s w' hd]
+      refine IH t s _ ?_
+      have hb := (w'.acc hd).2.2 i (eqRec A (Term.mono e.boxIn t) (Term.mono e.boxIn s))
+        (childStage i) ((w'.acc hd).boxIn_le i) hmem
+      rwa [eqRec_mono, Term.mono_mono, Term.mono_mono] at hb
+  | d + 1, Γ, _, t, s, w, i, e, hmem, w', hd => by
+      obtain ⟨u, hu, hr, hd'⟩ := w'.split hd
+      have hF : ModalSys.Four = true := w'.four hd (Nat.succ_ne_zero d)
+      rw [rden_boxtm_step hF e t w' hu hr (by omega), rden_boxtm_step hF e s w' hu hr (by omega)]
+      refine rden_eqRec_far IH d _ _ (e.boxIn.trans (hu.boxIn_le i)) ?_ ⟨w'.1, ⟨hr⟩⟩ hd'
+      have h4 : (⟨i, .box (.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF _) Ctx.NoSlots.slots
+          (eqRec A (Term.mono e.boxIn t) (Term.mono e.boxIn s))))⟩ :
+          w.L.sys.Sentence σ) ∈ w.T :=
+        World.mem_of_provable (Δ := [.box (eqRec A (Term.mono e.boxIn t) (Term.mono e.boxIn s))])
+          (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hmem)
+          ⟨Proof.four_box hF (Proof.lookup List.mem_cons_self)⟩
+      have hb := hu.2.2 i _ (childStage i) (hu.boxIn_le i) h4
+      simp only [eqRec_shift, WFF.mono, eqRec_mono,
+        Term.shift_mono (Ctx.shifts_boxIn_boxIn hF Γ) (Ctx.shifts_boxIn_boxIn hF (w.L.ctx i))
+          e.boxIn e.boxIn.boxIn, Term.mono_mono] at hb
+      exact hb
+
+
+/-- ⭐**Faithfulness**: at a `◇`-free type, two terms the theory equates denote alike.  Base by
+    `World.cls_eq_iff`, `𝟙` trivially, `×` componentwise, and `□` at each successor — the world
+    itself by `Proof.T_box`, a proper one by `rden_eqRec_far`.  There is no `◇` case, and none is
+    wanted: equality there is a `□_x` inside a witness's own extent, and `Here` — what faithfulness
+    is for — is `◇`-free (§2d). -/
+theorem rden_eqRec : ∀ (A : VarType), A.diaFree = true →
+    ∀ {Γ : Ctx} {a : Ann A} (t s : Term σ Γ A a) (w : World σ N₀) (i : ℕ × ℕ)
+      (e : Γ.Le (w.L.ctx i)),
+      (⟨i, eqRec A (Term.mono e t) (Term.mono e s)⟩ : w.L.sys.Sentence σ) ∈ w.T →
+      rden w i e t = rden w i e s
+  | .Var, _, _, .var, t, s, w, i, e, h => by
+      rw [eqRec_Var] at h
+      rw [rden_base_cls e t, rden_base_cls e s, World.cls_eq_iff (le_refl i) (le_refl i)]
+      change (⟨i, WFF.eq (Term.mono (w.L.ctx_le (le_refl i)) (Term.mono e t))
+        (Term.mono (w.L.ctx_le (le_refl i)) (Term.mono e s))⟩ : w.L.sys.Sentence σ) ∈ w.T
+      rw [Term.mono_mono, Term.mono_mono]
+      exact h
+  | .VTypeOne, _, _, .one, .unit, .unit, _, _, _, _ => rfl
+  | .VTypeProd A B, hAB, _, .prod _ _, .pair t₁ t₂, .pair s₁ s₂, w, i, e, h => by
+      simp only [VarType.diaFree, Bool.and_eq_true] at hAB
+      have h' := (w.mcs.and_mem_iff (φ := eqRec A (Term.mono e t₁) (Term.mono e s₁))
+        (ψ := eqRec B (Term.mono e t₂) (Term.mono e s₂))).mp h
+      exact Prod.ext (rden_eqRec A hAB.1 t₁ s₁ w i e h'.1)
+        (rden_eqRec B hAB.2 t₂ s₂ w i e h'.2)
+  | .VTypeBox A, hA, Γ, .box _, .boxtm t, .boxtm s, w, i, e, h => by
+      funext w'
+      obtain ⟨w₁, hw₁⟩ := w'
+      rcases hd : w₁.depth - w.depth with _ | d
+      · obtain ⟨hT, hw⟩ := Succ.self ⟨w₁, hw₁⟩ hd
+        change w₁ = w at hw
+        subst hw
+        rw [rden_boxtm_self e t ⟨w₁, hw₁⟩ hd, rden_boxtm_self e s ⟨w₁, hw₁⟩ hd]
+        refine rden_eqRec A hA _ _ _ i _ ?_
+        have hb := World.mem_of_provable
+          (Δ := [.box (eqRec A (Term.mono e.boxIn t) (Term.mono e.boxIn s))])
+          (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact h)
+          ⟨Proof.T_box hT (Proof.lookup List.mem_cons_self)⟩
+        rw [eqRec_collapse,
+          Term.collapse_mono (Ctx.collapses_boxIn_self hT Γ)
+            (Ctx.collapses_boxIn_self hT (w₁.L.ctx i)) e.boxIn e,
+          Term.collapse_mono (Ctx.collapses_boxIn_self hT Γ)
+            (Ctx.collapses_boxIn_self hT (w₁.L.ctx i)) e.boxIn e] at hb
+        exact hb
+      · exact rden_eqRec_far
+          (fun {_} {_} t' s' {_} {_} e' h' => rden_eqRec A hA t' s' _ _ e' h') d t s e h
+          ⟨w₁, hw₁⟩ hd
+
 end Canon
 
 end V12M
