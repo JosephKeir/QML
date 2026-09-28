@@ -2329,7 +2329,41 @@ further below the content land inside a `◇`-free type, so they never ask eithe
 `Subst.diaAbs`/`diaAbsIdx` generalise to any `x` whose view has the two properties the experiment
 already used, with `Ctx.DiaFreeBelow` supplying the rest.
 
-*Cost*: `Coh` is mentioned in ~34 `QML_v12m_*` files, almost all of them *proving* a `coh_*` for a
+*⭐Tried, and abandoned — the wall is intrinsic (2026-09-28, fourth pass; branch `coh-weaken`,
+commits `87088c8` and its successor, not merged).*  The weakening itself works: `VarType.stepAny`,
+`VarType.along`, the weakened `Coh`, and `coh_of`/`coh_box`/`coh_dia`/`coh_under`/`coh_single` with
+the `Term.subst`/`WFF.subst` uses and the `coh_*` sites across the tree all build.  But one layer up,
+`Subst.IsRen` — which `Term.subst_eta_ren` needs, and so the round-trip the pinned rules rest on —
+asks the index map to be **structural on visible addresses**, `ι (u.ext p) = (ι u).ext p`, and at a
+shadowed subject `ι (x.ext [.dia]) = slot` while `(ι x).ext [.dia] = x.dia`.  Weakening *that* too
+does not help, because the reason is not infrastructural:
+
+> In the shadow case the view's own copy of `x` is a `◇`-typed entry whose content sits at
+> `.step x .dia` — the very address the abstraction sends to the slot.  So the term `η x` has **no
+> image** in a hole formula over `Γ.boxIn.insert (.bnd 0) A`: that context declares the copy of `x`
+> but not a content address for it, the slot having taken its place.  The view's copy of the witness
+> is *inexpressible* in the hole language.
+
+So no weakening of `Coh`, `IsRen` or `Ctx.Abstracts` — and no level-threaded recursion either — can
+give `realiseAt` at an address that its own view re-exposes.  `WFF.here` at such a subject cannot be
+handled by realisation at all.  Two routes remain, and both are design choices:
+
+* **Let the canonical theories deny it.**  The model side is *already* `False` there (`World.Realised`
+  holds only where a datum exists), so if the construction can consistently add
+  `¬ Here (diatm x bd) t` for every such `x` — and `¬ □ (Here y t)` in the parent, since that is how
+  such an atom reaches a child — then both sides of the `here` case are `False` and it closes.  The
+  syntax is untouched, so `□` still acts on every formula.  The obligation is a proof-theoretic
+  inversion: nothing derives a positive `Here` at a shadowed subject from premises that do not
+  contain one.  Cheapest, if that inversion is provable.
+* **Stop a view re-exposing its own witness.**  `Ctx.diaIn x` inherits `Ctx.boxIn` wholesale, and it
+  is only that inheritance which puts `x` back inside `◇_x` (as `.step u .box` without 4, as
+  `u.keep.here` with it).  Hiding exactly that entry restores the principle the `□` view already
+  obeys — a view exposes the outer objects' *values*, never the outer objects — at the cost of not
+  being able to say, inside `◇_x`, what `u`'s value is at the successor.  Narrow but real, and the
+  same loss already exists for the copy's own content, whose address is taken by the outer content.
+
+*Cost of the weakening, for the record*: `Coh` is mentioned in ~34 `QML_v12m_*` files, almost all
+of them *proving* a `coh_*` for a
 particular substitution; each such proof needs two extra binders and the landing fact, and the five
 places that *use* a `Coh` hypothesis need the same.  Broad but shallow, and it removes the need for
 the level-threaded recursion entirely — `VarSymb.absAddr`, `Ann.abs` and `Ctx.Abstracts` (commits
