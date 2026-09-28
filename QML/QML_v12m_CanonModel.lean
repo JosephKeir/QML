@@ -191,11 +191,11 @@ theorem posSerial_canon (hDS : ModalSys.DStrong = true) (w : World σ N₀) :
     η-expansion; `self_mem_extent` puts the world in its extent and `rden_eta_of_real` says its
     content there is what the realising term denotes. -/
 theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T = true)
-    (hS : ModalSys.TStrong = true) (a : (frame w₀).Dom A w) :
+    (hS : ModalSys.TStrong = true) (hA : A.diaFree = true) (a : (frame w₀).Dom A w) :
     ∃ (p : (frame w₀).Pos A w) (hm : (frame w₀).reflAcc hT w ∈ (posEval w₀ p).1),
       (posEval w₀ p).2 ⟨(frame w₀).reflAcc hT w, hm⟩ = a := by
   obtain ⟨i, a', t, ht⟩ := definable_fromDom w₀ A w a
-  obtain ⟨c, i', hle, d, hsome, hfields⟩ := w.realW hT hS i t
+  obtain ⟨c, i', hle, d, hsome, hfields⟩ := w.realW hT hS i hA t
   have hA : d.A = A := congrArg (fun z => z.1) hfields
   subst hA
   have hi₀ : d.i₀ = i' := congrArg (fun z => z.2.1) hfields
@@ -232,7 +232,7 @@ noncomputable def model : Model.{0, 0} σ where
   posStrength_eval _ _ := rfl
   necExtract_eval _ _ := rfl
   necDup_eval _ _ _ _ := rfl
-  posRet_exists hT hS a := posRet_exists_canon w₀ hT hS a
+  posRet_exists hT hS hA a := posRet_exists_canon w₀ hT hS hA a
   posSerial hDS w := posSerial_canon w₀ hDS w
 
 end Canon

@@ -201,7 +201,7 @@ theorem Ext.henk [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {s : Node} (hs 
     | .imp (.ex _ _) _ => exact Ext.refl N
     | .imp (.box _) _ => exact Ext.refl N
     | .imp (.dia _ _ _) _ => exact Ext.refl N
-    | .imp (.here _ _ _) _ => exact Ext.refl N
+    | .imp (.here _ _ _ _) _ => exact Ext.refl N
     | .imp (.all _ _) (.atom _) => exact Ext.refl N
     | .imp (.all _ _) (.eq _ _) => exact Ext.refl N
     | .imp (.all _ _) .top => exact Ext.refl N
@@ -212,11 +212,11 @@ theorem Ext.henk [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {s : Node} (hs 
     | .imp (.all _ _) (.ex _ _) => exact Ext.refl N
     | .imp (.all _ _) (.box _) => exact Ext.refl N
     | .imp (.all _ _) (.dia _ _ _) => exact Ext.refl N
-    | .imp (.all _ _) (.here _ _ _) => exact Ext.refl N
+    | .imp (.all _ _) (.here _ _ _ _) => exact Ext.refl N
     | .all _ _ => exact Ext.refl N
     | .box _ => exact Ext.refl N
     | .dia _ _ _ => exact Ext.refl N
-    | .here _ _ _ => exact Ext.refl N
+    | .here _ _ _ _ => exact Ext.refl N
   · exact Ext.refl N
 
 theorem Ext.mkChild [ModalSys.NoTFour] {N : NetSt σ} {s : Node} (hs : N.Live s) (o : Obl σ) :
@@ -246,7 +246,7 @@ theorem Ext.mkChild [ModalSys.NoTFour] {N : NetSt σ} {s : Node} (hs : N.Live s)
     | .imp _ _ => exact Ext.refl N
     | .all _ _ => exact Ext.refl N
     | .ex _ _ => exact Ext.refl N
-    | .here _ _ _ => exact Ext.refl N
+    | .here _ _ _ _ => exact Ext.refl N
   · exact Ext.refl N
 
 theorem Ext.applyOp [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) (o : Op σ) :

@@ -246,7 +246,7 @@ theorem WFF.mono_subst {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ 
         (Subst.coh_dia hθ hc hx) (hΓ.diaIn x) (hΔ.diaIn (ι x)) (hΔ'.diaIn (ι x)) φ]
       exact congrArg (WFF.dia (ι x) _) (WFF.subst_congr _ _ _ _ _ _ _ _
         (Subst.sim_dia_mono θ h x (ι x)) φ)
-  | ι, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .here hT s t =>
-      WFF.here_congr' hT (Term.mono_subst h θ hθ hc s) (Term.mono_subst h θ hθ hc t)
+  | ι, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .here hT hA s t =>
+      WFF.here_congr' hT hA (Term.mono_subst h θ hθ hc s) (Term.mono_subst h θ hθ hc t)
 
 end V12M

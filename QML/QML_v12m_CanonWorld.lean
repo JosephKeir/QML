@@ -73,6 +73,8 @@ structure RealDatum (L : WorldLang) (T : Set (L.sys.Sentence σ)) (c : ℕ) wher
   /-- Only strong T realises a witness. -/
   hS : ModalSys.TStrong = true
   A : VarType
+  /-- The content type is `◇`-free, as `WFF.here` is (§2d). -/
+  hA : A.diaFree = true
   i₀ : ℕ × ℕ
   a₀ : Ann A
   t₀ : Term σ (L.ctx i₀) A a₀
@@ -93,7 +95,7 @@ structure RealDatum (L : WorldLang) (T : Set (L.sys.Sentence σ)) (c : ℕ) wher
       sentence instead of a schema.  It is also what pins the realising term to the theory, which is
       what identifying `≐`-related witnesses' contents needs. -/
   hhere : ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i) (hlt : i₀.2 < i.2),
-    (⟨i, WFF.hereAt hT (.root (.free c)) (hdecl i hlt) (Term.mono (L.ctx_le hi) t₀)⟩ :
+    (⟨i, WFF.hereAt hT (.root (.free c)) hA (hdecl i hlt) (Term.mono (L.ctx_le hi) t₀)⟩ :
       L.sys.Sentence σ) ∈ T
 
 /-- A world of the canonical model. -/
@@ -121,8 +123,8 @@ structure World where
   /-- Strong T: every term is the realising term of some root.  This is what `posRet_exists`
       needs — every object of a domain is the content, at the world itself, of a possible
       object. -/
-  realW : ModalSys.T = true → ModalSys.TStrong = true → ∀ (i : ℕ × ℕ) {A : VarType} {a : Ann A}
-      (t : Term σ (L.ctx i) A a),
+  realW : ModalSys.T = true → ModalSys.TStrong = true → ∀ (i : ℕ × ℕ) {A : VarType},
+      A.diaFree = true → ∀ {a : Ann A} (t : Term σ (L.ctx i) A a),
       ∃ (c : ℕ) (i' : ℕ × ℕ) (hle : i ≤ i') (d : RealDatum σ L T c), real c = some d ∧
         (⟨d.A, d.i₀, d.a₀, d.t₀⟩ :
             Σ (A : VarType) (i'' : ℕ × ℕ) (a : Ann A), Term σ (L.ctx i'') A a) =
@@ -173,10 +175,11 @@ theorem RealDatum.declType {L : WorldLang} {T : Set (L.sys.Sentence σ)} {c : �
 theorem spec_of_here {L : WorldLang} {T : Set (L.sys.Sentence σ)} (hmcs : StageSys.IsMCS T)
     (hT : ModalSys.T = true) {c : ℕ} {i₀ : ℕ × ℕ} {A : VarType} {a₀ : Ann A}
     (t₀ : Term σ (L.ctx i₀) A a₀)
+    (hA : A.diaFree = true)
     (hdecl : ∀ i : ℕ × ℕ, i₀.2 < i.2 → (L.ctx i).ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ (i : ℕ × ℕ) (v : VarSymb), v.rt = .free c → v ≠ .root (.free c) → (L.ctx i) v = none)
     (hhere : ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i) (hlt : i₀.2 < i.2),
-      (⟨i, WFF.hereAt hT (.root (.free c)) (hdecl i hlt) (Term.mono (L.ctx_le hi) t₀)⟩ :
+      (⟨i, WFF.hereAt hT (.root (.free c)) hA (hdecl i hlt) (Term.mono (L.ctx_le hi) t₀)⟩ :
         L.sys.Sentence σ) ∈ T) :
     ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i) (hlt : i₀.2 < i.2)
       (χ : WFF σ ((L.ctx i).diaIn (.root (.free c))) 0),
@@ -185,14 +188,14 @@ theorem spec_of_here {L : WorldLang} {T : Set (L.sys.Sentence σ)} (hmcs : Stage
       (⟨i, .dia (.root (.free c)) ⟨A, hdecl i hlt⟩ χ⟩ : L.sys.Sentence σ) ∈ T := by
   intro i hi hlt χ hr
   refine hmcs.closed (StageSys.derives_of_mems
-    (Δ := [WFF.hereAt hT (.root (.free c)) (hdecl i hlt) (Term.mono (L.ctx_le hi) t₀),
+    (Δ := [WFF.hereAt hT (.root (.free c)) hA (hdecl i hlt) (Term.mono (L.ctx_le hi) t₀),
       WFF.realiseAt hT c (hdecl i hlt) (hfr i) (Term.mono (L.ctx_le hi) t₀) χ]) ?_ ?_)
   · intro ψ hψ
     rcases List.mem_cons.mp hψ with rfl | hψ'
     · exact hhere i hi hlt
     · rw [List.mem_singleton.mp hψ']
       exact hr
-  · exact ⟨Proof.here_introAt hT c (hdecl i hlt) (hfr i) (Term.mono (L.ctx_le hi) t₀) χ
+  · exact ⟨Proof.here_introAt hT c hA (hdecl i hlt) (hfr i) (Term.mono (L.ctx_le hi) t₀) χ
       (Proof.lookup List.mem_cons_self)
       (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩
 
@@ -206,7 +209,7 @@ theorem RealDatum.spec {L : WorldLang} {T : Set (L.sys.Sentence σ)} {c : ℕ}
       (⟨i, WFF.realiseAt d.hT c (d.hdecl i hlt) (d.hfr i)
           (Term.mono (L.ctx_le hi) d.t₀) χ⟩ : L.sys.Sentence σ) ∈ T →
         (⟨i, .dia (.root (.free c)) ⟨d.A, d.hdecl i hlt⟩ χ⟩ : L.sys.Sentence σ) ∈ T :=
-  spec_of_here hmcs d.hT d.t₀ d.hdecl d.hfr d.hhere
+  spec_of_here hmcs d.hT d.t₀ d.hA d.hdecl d.hfr d.hhere
 
 /-! ## Realised witnesses (strong T) -/
 
@@ -228,6 +231,8 @@ variable {w}
 @[reducible] def RealData.hS {x : VarSymb} (d : w.RealData x) : ModalSys.TStrong = true :=
   d.datum.hS
 @[reducible] def RealData.A {x : VarSymb} (d : w.RealData x) : VarType := d.datum.A
+@[reducible] def RealData.hA {x : VarSymb} (d : w.RealData x) : d.A.diaFree = true :=
+  d.datum.hA
 @[reducible] def RealData.i₀ {x : VarSymb} (d : w.RealData x) : ℕ × ℕ := d.datum.i₀
 @[reducible] def RealData.a₀ {x : VarSymb} (d : w.RealData x) : Ann d.A := d.datum.a₀
 @[reducible] def RealData.t₀ {x : VarSymb} (d : w.RealData x) :
@@ -258,7 +263,7 @@ variable {w}
     `Proof.here_fun` then equates the two realising terms. -/
 @[reducible] def RealData.hhere {x : VarSymb} (d : w.RealData x) :
     ∀ (i : ℕ × ℕ) (hi : d.i₀ ≤ i) (hlt : d.i₀.2 < i.2),
-      (⟨i, WFF.hereAt d.hT (.root (.free d.c)) (d.hdecl i hlt)
+      (⟨i, WFF.hereAt d.hT (.root (.free d.c)) d.hA (d.hdecl i hlt)
           (Term.mono (w.L.ctx_le hi) d.t₀)⟩ : w.L.sys.Sentence σ) ∈ w.T :=
   d.datum.hhere
 

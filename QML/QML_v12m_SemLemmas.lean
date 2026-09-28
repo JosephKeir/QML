@@ -206,7 +206,7 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
         have href := Env.ref_agree hag x hr
         exact ⟨X, h.ref hr, ⟨w₁.1, by rw [← href]; exact w₁.2⟩,
           (sat_mono (Env.diaPush_agree hag hr w₁ _) φ).mpr hsat⟩
-  | _, _, _, _, _, _, _, hag, .here hT s t => by
+  | _, _, _, _, _, _, _, hag, .here hT hA s t => by
       change Model.Realised hT (interp _ (Term.mono _ s)) (interp _ (Term.mono _ t)) ↔ _
       rw [interp_mono hag s, interp_mono hag t]
       exact Iff.rfl

@@ -34,15 +34,16 @@ end Ctx
 /-- ⭐The same for the `Here` atom the new `Proof.T_dia` hands over: the contexts and the name are
     variables, so the equalities can be `subst`ed away. -/
 theorem WFF.hereAt_transport {σ : Signature} {Γ Γ' Δ : Ctx} (hT : ModalSys.T = true)
-    {A : VarType} {a : Ann A} (t : Term σ Γ A a) {c c' : ℕ} (hΓ : Γ = Γ') (hcc : c = c')
+    {A : VarType} (hA : A.diaFree = true) {a : Ann A} (t : Term σ Γ A a) {c c' : ℕ}
+    (hΓ : Γ = Γ') (hcc : c = c')
     (hc : Γ.RootFresh (.free c)) (hc' : Γ'.RootFresh (.free c'))
     (ht : Term σ Γ' A a) (hteq : ht = Term.mono (Ctx.le_of_eq hΓ) t)
     (hΔ : Γ'.insert (.free c') (.VTypeDia A) = Δ)
     (hle : (Γ.insert (.free c) (.VTypeDia A)).Le Δ) :
-    WFF.mono hle (WFF.hereAt hT (.root (.free c))
+    WFF.mono hle (WFF.hereAt hT (.root (.free c)) hA
         (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A))
         (Term.weaken hc.root (.VTypeDia A) t) : WFF σ (Γ.insert (.free c) (.VTypeDia A)) 0) =
-      WFF.mono (Ctx.le_of_eq hΔ) (WFF.hereAt hT (.root (.free c'))
+      WFF.mono (Ctx.le_of_eq hΔ) (WFF.hereAt hT (.root (.free c')) hA
         (Ctx.ref_insert_root Γ' (.free c') (.VTypeDia A))
         (Term.weaken hc'.root (.VTypeDia A) ht)) := by
   subst hΓ
@@ -115,12 +116,14 @@ theorem finalτ_of_isRet (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true
   rw [witStep_eq_retStep hret,
     show L.retStep (decM n) (L.chain S₀ n).l (L.termQ (σ := σ) n (L.chain S₀ n).l) =
     ⟨.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1,
-      L.retSet hT (L.chain S₀ n).l (decM n) (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2⟩ from
-    dif_pos ⟨hT, hTS⟩]
+      L.retSet hT (L.chain S₀ n).l (decM n) (termQ_diaFree L n (L.chain S₀ n).l)
+        (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2⟩ from
+    dif_pos ⟨hT, hTS, termQ_diaFree L n (L.chain S₀ n).l⟩]
 
 /-- ⭐The `Here` atom the chain added for a strong T witness, as a sentence of the step's set. -/
 theorem hereAt_mem_retSet (hT : ModalSys.T = true) {n : ℕ} (m : ℕ) (hm : decM n ≤ m) :
     (⟨m, WFF.hereAt hT (.root (.free (L.ρ (L.chain S₀ n).l.length)))
+        (termQ_diaFree L n (L.chain S₀ n).l)
         (Ctx.ref_insert_root (L.ctxL m (L.chain S₀ n).l)
           (.free (L.ρ (L.chain S₀ n).l.length))
           (.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1))
@@ -130,7 +133,8 @@ theorem hereAt_mem_retSet (hT : ModalSys.T = true) {n : ℕ} (m : ℕ) (hm : dec
           (Term.mono (L.ctxL_base_le hm (L.chain S₀ n).l)
             (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2))⟩ :
       (L.pre (.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1 :: (L.chain S₀ n).l)).Sentence σ) ∈
-      L.retSet hT (L.chain S₀ n).l (decM n) (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2 :=
+      L.retSet hT (L.chain S₀ n).l (decM n) (termQ_diaFree L n (L.chain S₀ n).l)
+        (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2 :=
   ⟨m, hm, rfl⟩
 
 /-- ⭐At a strong T step, whatever the chain adds for the enumerated term is in the step's theory.
@@ -143,7 +147,8 @@ theorem step_mem (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) {n : �
     (hmem : (⟨m, φ⟩ :
         (L.pre (.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1 ::
           (L.chain S₀ n).l)).Sentence σ) ∈
-      L.retSet hT (L.chain S₀ n).l (decM n) (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2)
+      L.retSet hT (L.chain S₀ n).l (decM n) (termQ_diaFree L n (L.chain S₀ n).l)
+        (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2)
     (hEq : (L.ctxL m (L.chain S₀ n).l).insert (.free (L.ρ (L.chain S₀ n).l.length))
         (.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1) =
       L.ctxL m (L.chain S₀ (n + 1)).l) :
@@ -153,16 +158,17 @@ theorem step_mem (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) {n : �
   have base : ∀ hEq'' : (L.ctxL m (L.chain S₀ n).l).insert (.free (L.ρ (L.chain S₀ n).l.length))
         (.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1) =
       L.ctxL m ((⟨.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1,
-        L.retSet hT (L.chain S₀ n).l (decM n) (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2⟩ :
+        L.retSet hT (L.chain S₀ n).l (decM n) (termQ_diaFree L n (L.chain S₀ n).l)
+        (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2⟩ :
           Σ A : VarType, Set ((L.pre (A :: (L.chain S₀ n).l)).Sentence σ)).1 :: (L.chain S₀ n).l),
       (⟨m, WFF.mono (Ctx.le_of_eq hEq'') φ⟩ :
         (L.pre ((⟨.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1,
-          L.retSet hT (L.chain S₀ n).l (decM n)
+          L.retSet hT (L.chain S₀ n).l (decM n) (termQ_diaFree L n (L.chain S₀ n).l)
             (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2⟩ :
               Σ A : VarType, Set ((L.pre (A :: (L.chain S₀ n).l)).Sentence σ)).1 ::
                 (L.chain S₀ n).l)).Sentence σ) ∈
         (⟨.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1,
-          L.retSet hT (L.chain S₀ n).l (decM n)
+          L.retSet hT (L.chain S₀ n).l (decM n) (termQ_diaFree L n (L.chain S₀ n).l)
             (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2⟩ :
               Σ A : VarType, Set ((L.pre (A :: (L.chain S₀ n).l)).Sentence σ)).2 := by
     intro hEq''
@@ -175,7 +181,7 @@ theorem step_mem (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) {n : �
         L.ctxL m (X.1 :: (L.chain S₀ n).l),
         (⟨m, WFF.mono (Ctx.le_of_eq hEq'') φ⟩ :
           (L.pre (X.1 :: (L.chain S₀ n).l)).Sentence σ) ∈ X.2)
-    ((dif_pos ⟨hT, hTS⟩ : L.retStep (decM n) (L.chain S₀ n).l
+    ((dif_pos ⟨hT, hTS, termQ_diaFree L n (L.chain S₀ n).l⟩ : L.retStep (decM n) (L.chain S₀ n).l
         (L.termQ (σ := σ) n (L.chain S₀ n).l) = ⟨_, _⟩).symm.trans
       (witStep_eq_retStep hret).symm) base hEq
 
@@ -198,7 +204,7 @@ theorem hhere_of_isRet (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) 
     (hret : IsRet L S₀ n) (m : ℕ) (hm : decM n ≤ m) :
     (⟨(m, n + 1), WFF.mono
         (Ctx.le_of_eq (ctx_succ_of_isRet hT hTS hret m))
-        (WFF.hereAt hT (.root (.free (L.ρ n)))
+        (WFF.hereAt hT (.root (.free (L.ρ n))) (termQ_diaFree L n (L.chain S₀ n).l)
           (Ctx.ref_insert_root ((L.final S₀).ctx (m, n)) (.free (L.ρ n))
             (.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1))
           (Term.weaken ((L.final S₀).fresh_ctx (m := m) (j := n) (n := n) le_rfl).root
@@ -218,7 +224,7 @@ theorem hhere_of_isRet (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) 
   refine Eq.mp (congrArg (fun φ => (⟨m, φ⟩ : (L.pre (L.chain S₀ (n + 1)).l).Sentence σ) ∈
     (L.chain S₀ (n + 1)).S) ?_) (step_mem hT hTS hret m _ (hereAt_mem_retSet hT m hm) hEq')
   rw [WFF.mono_mono]
-  refine (WFF.hereAt_transport hT
+  refine (WFF.hereAt_transport hT (termQ_diaFree L n (L.chain S₀ n).l)
     (Term.mono ((L.final S₀).ctx_le (Prod.mk_le_mk.mpr ⟨hm, le_rfl⟩))
       (Term.mono (Ctx.le_of_eq (ctxL_eq_final S₀ (decM n) n))
         (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2))
@@ -237,7 +243,7 @@ theorem hhere_of_isRet_at (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = tru
     (hlt : n < i.2)
     (hd : ((L.final S₀).ctx i).ref (.root (.free (L.ρ n))) =
       some (.VTypeDia (L.termQ (σ := σ) n (L.chain S₀ n).l).1)) :
-    (⟨i, WFF.hereAt hT (.root (.free (L.ρ n))) hd
+    (⟨i, WFF.hereAt hT (.root (.free (L.ρ n))) (termQ_diaFree L n (L.chain S₀ n).l) hd
         (Term.mono ((L.final S₀).ctx_le hi)
           (Term.mono (Ctx.le_of_eq (ctxL_eq_final S₀ (decM n) n))
             (L.termQ (σ := σ) n (L.chain S₀ n).l).2.2))⟩ :
@@ -246,8 +252,10 @@ theorem hhere_of_isRet_at (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = tru
   have hlift : ((m, n + 1) : ℕ × ℕ) ≤ (m, j) := Prod.mk_le_mk.mpr ⟨le_rfl, hlt⟩
   refine Eq.mp (congrArg (fun φ => (⟨(m, j), φ⟩ : (L.final S₀).sys.Sentence σ) ∈ L.finalT S₀) ?_)
     (((WorldLang.finalT_isMCS hS₀).mem_lift_iff hlift).mpr (hhere_of_isRet hT hTS hret m hi.1))
-  rw [StageSys.lift, WFF.mono_mono, WFF.mono_hereAt_of_le hT _ _ _ hd]
-  exact WFF.here_congr' hT rfl (by simp only [Term.weaken, Term.mono_mono])
+  rw [StageSys.lift, WFF.mono_mono,
+    WFF.mono_hereAt_of_le hT _ (termQ_diaFree L n (L.chain S₀ n).l) _ _ hd]
+  exact WFF.here_congr' hT (termQ_diaFree L n (L.chain S₀ n).l) rfl
+    (by simp only [Term.weaken, Term.mono_mono])
 
 /-! ## The realisation a strong T step provides -/
 
@@ -276,6 +284,7 @@ noncomputable def retDatum (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = tr
   hT := hT
   hS := hTS
   A := (L.termQ (σ := σ) n (L.chain S₀ n).l).1
+  hA := termQ_diaFree L n (L.chain S₀ n).l
   i₀ := (decM n, n)
   a₀ := (L.termQ (σ := σ) n (L.chain S₀ n).l).2.1
   t₀ := Term.mono (Ctx.le_of_eq (ctxL_eq_final S₀ (decM n) n))
@@ -350,12 +359,12 @@ theorem isRet_of_top {n : ℕ}
 
 /-- ⭐Every term at every stage is the term some strong T step was declared for: the step that
     enumerates it and reads `⊤`. -/
-theorem exists_isRet_term (m j : ℕ) {A : VarType} {a : Ann A}
+theorem exists_isRet_term (m j : ℕ) {A : VarType} (hA : A.diaFree = true) {a : Ann A}
     (t : Term σ (L.ctxL m (L.chain S₀ j).l) A a) :
     ∃ n, IsRet L S₀ n ∧ decM n = m ∧ decJ n = j ∧
       ∃ hle : (L.ctxL m (L.chain S₀ j).l).Le (L.ctxL (decM n) (L.chain S₀ n).l),
         L.termQ (σ := σ) n (L.chain S₀ n).l = ⟨A, a, Term.mono hle t⟩ := by
-  obtain ⟨k', hk'⟩ := enumT_surjective (σ := σ) (L.ctxL m (L.chain S₀ j).l) ⟨A, a, t⟩
+  obtain ⟨k', hk'⟩ := enumT_surjective (σ := σ) (L.ctxL m (L.chain S₀ j).l) hA t
   obtain ⟨kt, hkt⟩ := enumF_surjective (σ := σ) (L.ctxL m (L.chain S₀ j).l) .top
   obtain ⟨n, hj, hm, hkf, hkT⟩ := exists_decFT m j kt k'
   subst hm

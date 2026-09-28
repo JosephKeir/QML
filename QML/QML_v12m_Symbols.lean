@@ -323,6 +323,17 @@ def VarType.diaFree : VarType → Bool
   | .VTypeBox A => A.diaFree
   | .VTypeDia _ => false
 
+
+/-- `◇`-freeness of a product, from its components. -/
+theorem VarType.diaFree_prod {A B : VarType} (hA : A.diaFree = true) (hB : B.diaFree = true) :
+    (VarType.VTypeProd A B).diaFree = true := by
+  simp only [VarType.diaFree, Bool.and_eq_true]
+  exact ⟨hA, hB⟩
+
+/-- `◇`-freeness under `□`. -/
+theorem VarType.diaFree_box {A : VarType} (hA : A.diaFree = true) :
+    (VarType.VTypeBox A).diaFree = true := hA
+
 inductive Ann : VarType → Type where
   | var : Ann .Var
   | one : Ann .VTypeOne

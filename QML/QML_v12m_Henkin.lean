@@ -210,14 +210,38 @@ theorem enumF_surjective {σ : Signature} [Countable σ.FuncSyms] [Countable σ.
 instance {σ : Signature} {Γ : Ctx} : Nonempty (Σ A : VarType, Σ a : Ann A, Term σ Γ A a) :=
   ⟨⟨.VTypeOne, .one, .unit⟩⟩
 
-/-- A fixed enumeration of the terms over a context, of every type (for strong T witnesses). -/
+instance {σ : Signature} {Γ : Ctx} :
+    Nonempty (Σ A : {A : VarType // A.diaFree = true}, Σ a : Ann A.1, Term σ Γ A.1 a) :=
+  ⟨⟨⟨.VTypeOne, rfl⟩, .one, .unit⟩⟩
+
+/-- A fixed enumeration of the terms over a context at every **`◇`-free** type, which is where
+    `WFF.here` — and so the realisation the chain records — lives (§2d). -/
+noncomputable def enumTF {σ : Signature} [Countable σ.FuncSyms] (Γ : Ctx) :
+    ℕ → Σ A : {A : VarType // A.diaFree = true}, Σ a : Ann A.1, Term σ Γ A.1 a :=
+  Classical.choose
+    (exists_surjective_nat (Σ A : {A : VarType // A.diaFree = true}, Σ a : Ann A.1, Term σ Γ A.1 a))
+
+theorem enumTF_surjective {σ : Signature} [Countable σ.FuncSyms] (Γ : Ctx) :
+    Function.Surjective (enumTF (σ := σ) Γ) :=
+  Classical.choose_spec
+    (exists_surjective_nat (Σ A : {A : VarType // A.diaFree = true}, Σ a : Ann A.1, Term σ Γ A.1 a))
+
+/-- The same enumeration read at the plain sigma, with its `◇`-freeness kept beside it
+    (⭐`enumT_diaFree`), so that nothing downstream has to carry the subtype. -/
 noncomputable def enumT {σ : Signature} [Countable σ.FuncSyms] (Γ : Ctx) :
     ℕ → Σ A : VarType, Σ a : Ann A, Term σ Γ A a :=
-  Classical.choose (exists_surjective_nat (Σ A : VarType, Σ a : Ann A, Term σ Γ A a))
+  fun k => ⟨(enumTF (σ := σ) Γ k).1.1, (enumTF (σ := σ) Γ k).2⟩
 
-theorem enumT_surjective {σ : Signature} [Countable σ.FuncSyms] (Γ : Ctx) :
-    Function.Surjective (enumT (σ := σ) Γ) :=
-  Classical.choose_spec (exists_surjective_nat (Σ A : VarType, Σ a : Ann A, Term σ Γ A a))
+/-- ⭐Every term the enumeration offers has a `◇`-free type. -/
+theorem enumT_diaFree {σ : Signature} [Countable σ.FuncSyms] (Γ : Ctx) (k : ℕ) :
+    (enumT (σ := σ) Γ k).1.diaFree = true := (enumTF (σ := σ) Γ k).1.2
+
+/-- ⭐And every `◇`-free-typed term is offered. -/
+theorem enumT_surjective {σ : Signature} [Countable σ.FuncSyms] (Γ : Ctx) {A : VarType}
+    (hA : A.diaFree = true) {a : Ann A} (t : Term σ Γ A a) :
+    ∃ k, enumT (σ := σ) Γ k = ⟨A, a, t⟩ := by
+  obtain ⟨k, hk⟩ := enumTF_surjective (σ := σ) Γ ⟨⟨A, hA⟩, a, t⟩
+  exact ⟨k, by rw [enumT, hk]⟩
 
 /-! ## Contexts along the construction -/
 
@@ -379,10 +403,11 @@ variable (L) in
     `Here` is then in the theory, so `Canon.spec_of_here` derives `RealDatum.spec` and the truth
     lemma's `here` case has something to match (§2d; nothing else introduces a `Here`, see
     `Model.sat_here_ex`). -/
-def retSet (hT : ModalSys.T = true) (l : List VarType) (m : ℕ) {A : VarType} {a : Ann A}
-    (t : Term σ (L.ctxL m l) A a) : Set ((L.pre (.VTypeDia A :: l)).Sentence σ) :=
+def retSet (hT : ModalSys.T = true) (l : List VarType) (m : ℕ) {A : VarType}
+    (hA : A.diaFree = true) {a : Ann A} (t : Term σ (L.ctxL m l) A a) :
+    Set ((L.pre (.VTypeDia A :: l)).Sentence σ) :=
   {s | ∃ (m' : ℕ) (hm : m ≤ m'),
-      s = ⟨m', WFF.hereAt hT (.root (.free (L.ρ l.length)))
+      s = ⟨m', WFF.hereAt hT (.root (.free (L.ρ l.length))) hA
         (Ctx.ref_insert_root (L.ctxL m' l) (.free (L.ρ l.length)) (.VTypeDia A))
         (Term.weaken (L.ctxL_fresh (l := l) (n := l.length) le_rfl).root (.VTypeDia A)
           (Term.mono (L.ctxL_base_le hm l) t))⟩}
@@ -392,14 +417,14 @@ def retSet (hT : ModalSys.T = true) (l : List VarType) (m : ℕ) {A : VarType} {
     (`WFF.mono_hereAt`) and `T_dia` discharges the witness. -/
 theorem consistent_grow_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true)
     {l : List VarType} {S : Set ((L.pre l).Sentence σ)} (hS : StageSys.Consistent S) {m : ℕ}
-    {A : VarType} {a : Ann A} (t : Term σ (L.ctxL m l) A a) :
-    StageSys.Consistent (grow l (.VTypeDia A) S ∪ L.retSet hT l m t) := by
+    {A : VarType} (hA : A.diaFree = true) {a : Ann A} (t : Term σ (L.ctxL m l) A a) :
+    StageSys.Consistent (grow l (.VTypeDia A) S ∪ L.retSet hT l m hA t) := by
   have key : ∀ M, m ≤ M →
-      Theory.Consistent (StageSys.atStage (grow l (.VTypeDia A) S ∪ L.retSet hT l m t) M) := by
+      Theory.Consistent (StageSys.atStage (grow l (.VTypeDia A) S ∪ L.retSet hT l m hA t) M) := by
     rintro M hM ⟨Δ, hΔ, p⟩
     have hc : (L.ctxL M l).RootFresh (.free (L.ρ l.length)) := L.ctxL_fresh le_rfl
     let g : Unit → WFF σ (L.ctxL M (.VTypeDia A :: l)) 0 := fun _ =>
-      WFF.hereAt hT (.root (.free (L.ρ l.length)))
+      WFF.hereAt hT (.root (.free (L.ρ l.length))) hA
         (Ctx.ref_insert_root (L.ctxL M l) (.free (L.ρ l.length)) (.VTypeDia A))
         (Term.weaken hc.root (.VTypeDia A) (Term.mono (L.ctxL_base_le hM l) t))
     have hcases : ∀ δ ∈ Δ, (∃ z, g z = δ) ∨
@@ -411,11 +436,11 @@ theorem consistent_grow_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = t
       · obtain ⟨m', hm', rfl⟩ := hs
         refine Or.inl ⟨(), ?_⟩
         change _ = WFF.mono ((L.ctxL_base_le hle l).insert (.free (L.ρ l.length)) (.VTypeDia A)) _
-        rw [WFF.mono_hereAt hT (L.ctxL_base_le hle l) _ (L.ctxL_fresh le_rfl) hc, Term.mono_mono]
+        rw [WFF.mono_hereAt hT (L.ctxL_base_le hle l) hA _ (L.ctxL_fresh le_rfl) hc, Term.mono_mono]
     obtain ⟨Ψ, Δ₀, h₀, h₁⟩ := exists_hyps_two (P := fun x => x ∈ StageSys.atStage S M)
       (fun x => WFF.mono (L.ctxL_le_cons M (.VTypeDia A) l) x) g Δ hcases
     obtain ⟨q⟩ := Provable.mono h₁ p
-    refine hS M ⟨Δ₀, h₀, ⟨Proof.T_dia hT hTS A (Term.mono (L.ctxL_base_le hM l) t) _ hc
+    refine hS M ⟨Δ₀, h₀, ⟨Proof.T_dia hT hTS A hA (Term.mono (L.ctxL_base_le hM l) t) _ hc
       (φ := .bot) (Proof.ofSubset (fun χ hχ => ?_) q)⟩⟩
     rcases List.mem_append.mp hχ with h | h
     · obtain ⟨_, _, rfl⟩ := List.mem_map.mp h
@@ -432,18 +457,18 @@ variable (L) in
 noncomputable def retStep (m : ℕ) (l : List VarType)
     (tq : Σ A : VarType, Σ a : Ann A, Term σ (L.ctxL m l) A a) :
     Σ A : VarType, Set ((L.pre (A :: l)).Sentence σ) :=
-  if h : ModalSys.T = true ∧ ModalSys.TStrong = true then
-    ⟨.VTypeDia tq.1, L.retSet h.1 l m tq.2.2⟩
+  if h : ModalSys.T = true ∧ ModalSys.TStrong = true ∧ tq.1.diaFree = true then
+    ⟨.VTypeDia tq.1, L.retSet h.1 l m h.2.2 tq.2.2⟩
   else ⟨.VTypeOne, ∅⟩
 
 theorem consistent_retStep {l : List VarType} {S : Set ((L.pre l).Sentence σ)}
     (hS : StageSys.Consistent S) (m : ℕ)
     (tq : Σ A : VarType, Σ a : Ann A, Term σ (L.ctxL m l) A a) :
     StageSys.Consistent (grow l (L.retStep m l tq).1 S ∪ (L.retStep m l tq).2) := by
-  by_cases h : ModalSys.T = true ∧ ModalSys.TStrong = true
-  · have e : L.retStep m l tq = ⟨.VTypeDia tq.1, L.retSet h.1 l m tq.2.2⟩ := dif_pos h
+  by_cases h : ModalSys.T = true ∧ ModalSys.TStrong = true ∧ tq.1.diaFree = true
+  · have e : L.retStep m l tq = ⟨.VTypeDia tq.1, L.retSet h.1 l m h.2.2 tq.2.2⟩ := dif_pos h
     rw [e]
-    exact consistent_grow_ret h.1 h.2 hS tq.2.2
+    exact consistent_grow_ret h.1 h.2.1 hS h.2.2 tq.2.2
   · have e : L.retStep m l tq = ⟨.VTypeOne, ∅⟩ := dif_neg h
     rw [e]
     exact consistent_grow_unit hS
@@ -494,6 +519,11 @@ noncomputable def termQ (n : ℕ) (l : List VarType) :
     Σ A : VarType, Σ a : Ann A, Term σ (L.ctxL (decM n) l) A a :=
   ⟨_, _, Term.mono (L.ctxL_drop_le _ (n - decJ n) l)
     (enumT (L.ctxL (decM n) (l.drop (n - decJ n))) (decKT n)).2.2⟩
+/-- ⭐The enumerated term's type is `◇`-free, which is what the realisation the chain records
+    needs (`WFF.here`, §2d). -/
+theorem termQ_diaFree {σ : Signature} [Countable σ.FuncSyms] (L : WorldLang) (n : ℕ)
+    (l : List VarType) : (L.termQ (σ := σ) n l).1.diaFree = true :=
+  enumT_diaFree (σ := σ) (L.ctxL (decM n) (l.drop (n - decJ n))) (decKT n)
 
 variable (L) in
 open Classical in

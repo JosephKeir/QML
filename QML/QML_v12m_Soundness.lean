@@ -199,34 +199,34 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M w env hnp hΔ v s
       exact (sat_shift_twoBox hF env Ctx.NoSlots.slots φ v s).mpr
         (ih M env hnp hΔ ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩)
-  | @T_dia Γ _ hT hS A a t c hc Δ φ p ih =>
+  | @T_dia Γ _ hT hS A hA a t c hc Δ φ p ih =>
       -- Interpret the eigenvariable as some possible object realised here — `posRet_exists` says
       -- there is one, and that *is* the hypothesis the subproof gets.
       intro M w env hnp hΔ
-      obtain ⟨q, hmem, hcont⟩ := M.posRet_exists hT hS (interp env t)
+      obtain ⟨q, hmem, hcont⟩ := M.posRet_exists hT hS hA (interp env t)
       refine (sat_weaken (T := .VTypeDia A) env hc.root q φ).mp
         (ih M (env.extend (T := .VTypeDia A) (.free c) q) (hnp.insert _ _) ?_)
       intro χ hχ
       rcases List.mem_cons.mp hχ with h₁ | h₂
       · -- The `Here` hypothesis: the witness is realised here, by `t`.
         subst h₁
-        exact (sat_hereAt_extend hT env (.free c) hc q t).mpr ⟨hmem, hcont⟩
+        exact (sat_hereAt_extend hT env hA (.free c) hc q t).mpr ⟨hmem, hcont⟩
       · -- An old hypothesis, merely weakened by the eigenvariable.
         obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken (T := .VTypeDia A) env hc.root q χ').mpr (hΔ χ' hχ')
-  | @here_elim Γ _ Δ hT x hx A a t a₁ bd ψ ph pb ihh ihb =>
+  | @here_elim Γ _ Δ hT x hx A hA a t a₁ bd ψ ph pb ihh ihb =>
       intro M w env hnp hΔ
-      exact sat_here_elim hT env hnp hx t bd ψ (ihh M env hnp hΔ) (ihb M env hnp hΔ)
-  | @here_intro Γ _ Δ hT x hx A a t a₁ bd ψ ph pr ihh ihr =>
+      exact sat_here_elim hT env hnp hx hA t bd ψ (ihh M env hnp hΔ) (ihb M env hnp hΔ)
+  | @here_intro Γ _ Δ hT x hx A hA a t a₁ bd ψ ph pr ihh ihr =>
       intro M w env hnp hΔ
-      exact sat_here_intro hT env hnp hx t bd ψ (ihh M env hnp hΔ) (ihr M env hnp hΔ)
-  | @here_beta Γ _ Δ hT x hx A a t a₁ bd B b s ph ihh =>
+      exact sat_here_intro hT env hnp hx hA t bd ψ (ihh M env hnp hΔ) (ihr M env hnp hΔ)
+  | @here_beta Γ _ Δ hT x hx A hA a t a₁ bd B hB b s ph ihh =>
       intro M w env hnp hΔ
       obtain ⟨Y, h⟩ := id hx
-      exact sat_here_beta hT env hnp hx h t bd s (ihh M env hnp hΔ)
+      exact sat_here_beta hT env hnp hx h hA t bd hB s (ihh M env hnp hΔ)
   | @here_fun Γ Δ hT A hA b s a t t' ph ph' ihh ihh' =>
       intro M w env hnp hΔ
-      exact sat_here_fun hT env s t t' (ihh M env hnp hΔ) (ihh' M env hnp hΔ)
+      exact sat_here_fun hT env hA s t t' (ihh M env hnp hΔ) (ihh' M env hnp hΔ)
   | @B_dia Γ Δ hB ψ p ih =>
       -- `◇□ψ`: along some arrow `w → v`, `ψ` holds after every arrow out of `v`; one leads back.
       intro M w env hnp hΔ

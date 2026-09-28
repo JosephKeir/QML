@@ -77,8 +77,8 @@ theorem WFF.collapse_mono : ∀ {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx} {d :
       simp only [WFF.collapse, WFF.mono]
       rw [WFF.collapse_mono (h.diaIn x) (h'.diaIn x) (l₁.diaIn x) (l₂.diaIn _) (hs.diaIn x)
         (hs'.diaIn x) φ]
-  | _, _, _, _, _, _, h, h', l₁, l₂, _, _, .here hT s t =>
-      WFF.here_congr' hT (Term.collapse_mono h h' l₁ l₂ s) (Term.collapse_mono h h' l₁ l₂ t)
+  | _, _, _, _, _, _, h, h', l₁, l₂, _, _, .here hT hA s t =>
+      WFF.here_congr' hT hA (Term.collapse_mono h h' l₁ l₂ s) (Term.collapse_mono h h' l₁ l₂ t)
 
 /-! ## The two readings, and binding, commute with weakening -/
 
@@ -154,21 +154,22 @@ theorem WFF.mono_bindFree {Γ Γ' : Ctx} (h : Γ.Le Γ') {u : ℕ} (hu : Γ.Root
     (`Term.mono_eta`).  The declarations are propositions, so which proof each side carries does not
     matter.  This is all the old `WFF.mono_retHyp` amounted to, for the new rule. -/
 theorem WFF.mono_hereAt_of_le {Γ Γ' : Ctx} (hT : ModalSys.T = true) (h : Γ.Le Γ') {A : VarType}
-    (x : VarSymb) (hx : Γ.ref x = some (.VTypeDia A)) (hx' : Γ'.ref x = some (.VTypeDia A))
+    (hA : A.diaFree = true) (x : VarSymb) (hx : Γ.ref x = some (.VTypeDia A))
+    (hx' : Γ'.ref x = some (.VTypeDia A))
     {a : Ann A} (t : Term σ Γ A a) :
-    WFF.mono h (WFF.hereAt hT x hx t : WFF σ Γ 0) = WFF.hereAt hT x hx' (Term.mono h t) :=
-  WFF.here_congr' hT (Term.mono_eta _ _ _ _) rfl
+    WFF.mono h (WFF.hereAt hT x hA hx t : WFF σ Γ 0) = WFF.hereAt hT x hA hx' (Term.mono h t) :=
+  WFF.here_congr' hT hA (Term.mono_eta _ _ _ _) rfl
 
 /-- The same at a declaration the inclusion itself makes, as `Proof.T_dia` states it. -/
 theorem WFF.mono_hereAt {Γ Γ' : Ctx} (hT : ModalSys.T = true) (h : Γ.Le Γ') {A : VarType}
-    {a : Ann A} (t : Term σ Γ A a) {c : ℕ} (hc : Γ.RootFresh (.free c))
+    (hA : A.diaFree = true) {a : Ann A} (t : Term σ Γ A a) {c : ℕ} (hc : Γ.RootFresh (.free c))
     (hc' : Γ'.RootFresh (.free c)) :
     WFF.mono (h.insert (.free c) (.VTypeDia A))
-        (WFF.hereAt hT (.root (.free c)) (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A))
+        (WFF.hereAt hT (.root (.free c)) hA (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A))
           (Term.weaken hc.root (.VTypeDia A) t) : WFF σ (Γ.insert (.free c) (.VTypeDia A)) 0) =
-      WFF.hereAt hT (.root (.free c)) (Ctx.ref_insert_root Γ' (.free c) (.VTypeDia A))
+      WFF.hereAt hT (.root (.free c)) hA (Ctx.ref_insert_root Γ' (.free c) (.VTypeDia A))
         (Term.weaken hc'.root (.VTypeDia A) (Term.mono h t)) := by
-  refine WFF.here_congr' hT (Term.mono_eta _ _ _ _) ?_
+  refine WFF.here_congr' hT hA (Term.mono_eta _ _ _ _) ?_
   simp only [Term.weaken]
   rw [Term.mono_mono, Term.mono_mono]
 

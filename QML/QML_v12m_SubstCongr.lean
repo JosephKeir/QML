@@ -506,8 +506,8 @@ theorem WFF.subst_congr : {ι ι' : VarSymb → VarSymb} → {Γ Δ : Ctx} → {
           (Subst.ok_dia hθ hx hw) p (Subst.coh_dia hθ hc hx) q (hΓ.diaIn x) hΔy
           (Subst.sim_dia hs hw) φ)
       exact key (ι' x) (Subst.idx_eq hc hc' hs hx) _ _ _ _
-  | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .here hT s t =>
-      WFF.here_congr hT (Term.subst_congr θ θ' hθ hθ' hc hc' hs s)
+  | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .here hT hA s t =>
+      WFF.here_congr hT hA (Term.subst_congr θ θ' hθ hθ' hc hc' hs s)
         (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
 
 end Congr

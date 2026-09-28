@@ -61,9 +61,9 @@ noncomputable def ofHenkin (d : ℕ) (L₀ : WorldLang) (hρ : ∀ n, L₀.ρ n 
   allW := WorldLang.finalT_all_witness
   real := L₀.chainReal hS₀
   realW := by
-    intro hTb hTS i A a t
+    intro hTb hTS i A hA a t
     obtain ⟨m, j⟩ := i
-    obtain ⟨n, hret, hm, hj, hlt, hterm⟩ := WorldLang.exists_isRet_term (L := L₀) (S₀ := S₀) m j
+    obtain ⟨n, hret, hm, hj, hlt, hterm⟩ := WorldLang.exists_isRet_term (L := L₀) (S₀ := S₀) m j hA
       (Term.mono (Ctx.le_of_eq (WorldLang.ctxL_eq_final S₀ m j).symm) t)
     obtain ⟨d, hsome, hf⟩ := WorldLang.chainReal_ret hTb hTS hS₀ hret
     refine ⟨L₀.ρ n, (WorldLang.decM n, n), ⟨le_of_eq hm.symm, ?_⟩, d, hsome, ?_⟩

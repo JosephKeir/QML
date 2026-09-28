@@ -202,7 +202,7 @@ structure Model (σ : Signature) where
       canonical model to choose one (and, if naturality were ever wanted, to make the choices
       cohere, which is what sank the `y.ret` design). -/
   posRet_exists : ∀ {A : VarType} {w : frame.W} (_hT : ModalSys.T = true)
-    (_hS : ModalSys.TStrong = true)
+    (_hS : ModalSys.TStrong = true) (_hA : A.diaFree = true)
     (a : frame.Dom A w), ∃ (p : frame.Pos A w) (hm : frame.reflAcc _hT w ∈ (posEval p).1),
       (posEval p).2 ⟨frame.reflAcc _hT w, hm⟩ = a
   /-- ⭐Strong D: some possible object has a nonempty extent.  Stated at `𝟙`, where the content
