@@ -1,6 +1,7 @@
 import QML.QML_v12m_HenkinFinal
 import QML.QML_v12m_Soundness
 import QML.QML_v12m_DiaAbs
+import QML.QML_v12m_ViewFresh
 
 /-!
 # QML v12m — the canonical model: worlds and accessibility
@@ -44,6 +45,15 @@ theorem CtxExpr.noProjLast : ∀ e : CtxExpr, e.denote.NoProjLast
   | .insertFree e _ T => (CtxExpr.noProjLast e).insert _ T
   | .boxIn _ => Ctx.noProjLast_boxIn _
   | .diaIn _ x => Ctx.noProjLast_diaIn _ x
+
+/-- ⭐**Every world context names no address at two view depths, with nothing extra to assume.**  A
+    `WorldLang`'s bases are presented by construction (`WorldLang.basePres`) and the own-variable
+    stages keep that (`Ctx.stagePresented`), so `Ctx.Presented.viewFresh` propagates through the
+    whole canonical construction — children included — by instance resolution.  This is what lets a
+    `◇` view be abstracted at an arbitrary declared address (§2d, §9): the collision that blocked it
+    is ruled out by the naming discipline the presentation already carries. -/
+theorem WorldLang.viewFresh (L : WorldLang) (i : ℕ × ℕ) : (L.ctx i).ViewFresh :=
+  Ctx.Presented.viewFresh inferInstance
 
 /-- Presented contexts have no visible address ending in a projection. -/
 theorem Ctx.Presented.noProjLast (Γ : Ctx) [h : Γ.Presented] : Γ.NoProjLast :=
