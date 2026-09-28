@@ -182,6 +182,18 @@ theorem RealDatum.declType {L : WorldLang} {T : Set (L.sys.Sentence σ)} {c : �
   d.hdecl i (d.hstage i h)
 
 
+
+/-- ⭐The witness is declared at `◇A` **wherever it is declared at a `◇`-type at all**.  This is the
+    form the datum will carry once realisedness is read off the theory (§2d, step 4): a theory-given
+    datum has no stage order, so `hstage` is not available to it, but *this* follows from the
+    declaration's type being fixed across stages.  From the chain's data it is `hstage` then
+    `hdecl`. -/
+theorem RealDatum.hdeclOf {L : WorldLang} {T : Set (L.sys.Sentence σ)} {c : ℕ}
+    (d : RealDatum σ L T c) (i : ℕ × ℕ)
+    (hi : ∃ Y, (L.ctx i).ref (.root (.free c)) = some (.VTypeDia Y)) :
+    (L.ctx i).ref (.root (.free c)) = some (.VTypeDia d.A) :=
+  d.hdecl i (d.hstage i hi)
+
 /-- ⭐**The collapse**: `RealDatum.spec` is a *derivation* as soon as the theory itself says the
     witness is realised by `t₀`.  `Proof.here_introAt` turns the realisation reading of a view
     formula into the `◇` one, and a maximal consistent theory is closed under provability — so the

@@ -2140,59 +2140,60 @@ It is the odd one out, and for a principled reason rather than an accident.
 7. **5**, then the general metatheory of `docs/v12-metatheory-todo.md`: generalisation on constants,
    uniform substitution, cut elimination, Craig interpolation, `T_dia∀ ⇔` positive-Φ.
 
-### ⭐START HERE next session *(rewritten 2026-09-28, after probing the `here` case)*
+### ⭐START HERE next session *(rewritten 2026-09-28, after steps 1–2)*
 
 **State of the build.**  The whole `QML_v12m_*` module list builds with **one error**:
-`Completeness.lean:245`, the truth lemma's `here` alternative.  No sorries, no warnings.
-`Compactness` and the B track import `Completeness`, so they wait on that case.  Commits: `60d160a`,
-⭐`92e3791` (the withdrawal — see §2d's closing subsection before touching any of this).
+`Completeness.lean:275`, the truth lemma's `here` alternative.  No sorries, no warnings.
+`Compactness` and the B track import `Completeness`, so they wait on that case.
 
 *Build the **whole module list**, not a target:*
 `lake build $(ls QML/QML_v12m_*.lean | sed 's|QML/|QML.|; s|\.lean$||')`.
 
-**⭐What the `here` case actually needs (probed 2026-09-28).**  Not just the `◇`-free restriction.
-`sat (here hT (diatm x bd) t)` unfolds, by `extent_self`, to *`w.Realised x`* together with a
-content equation — and `World.Realised` is **chain bookkeeping at free-constant roots**
-(`RealData.hx : x = .root (.free c)`, `w.real c`).  A theory may assert `Here (η x) t` for an `x` the
-chain never realised, or for one that is not a root at all; the sentence is consistent, so a maximal
-theory may contain it, and the model must then satisfy it.  And the MCS is built by **Zorn**
-(`StageSys.lindenbaum`), not by an enumeration, so there is no choice function to bias: the model has
-to follow whatever the theory says, rather than the theory being steered to match the model.
+**The design, settled** (§2d's closing subsection — read it before touching the Canon layer).
+Equality of `◇`-terms lives inside one fibre; to compare two possibilities you **join** them by
+pairing.  `Here`, `Proof.here_fun`, `T_dia`, `RealDatum`, `World.realW` and `Model.posRet_exists` are
+uniform over **`◇`-free** content types (`VarType.diaFree`, `Ann.eq_of_diaFree`).
 
-So realisedness has to be read **off the theory**, and that runs into the wrinkle §3 T recorded:
-`RealDatum.hstage` demands the realising term live at a strictly *earlier* stage than any stage
-declaring the witness, which a theory-given datum cannot satisfy — the atom `Here (η x) t` is a
-sentence of a stage that declares `x` and `t` together.  `hstage` is what makes `interp_canon`'s
-measure `(i.2, tsize A, t.size)` well founded at the `◇`-self branch.
+**Landed since the withdrawal**
 
-**The way through is naming, and the withdrawal *unblocks* it.**  Naming a compound object by an
-address was unavailable at `◇`-content, but at a `◇`-free content type `eqRec A (η b) t` is statable
-(one annotation, since the annotation is unique there) and *faithful*: `rden (η b) = rden t` follows
-from the naming axiom by induction on the type — base by `cls_eq_iff`, `×` componentwise, `□` inside a
-box, and no `◇` case to do.  With the datum's content an address's η-expansion, `rden`'s self branch
-is a **lookup**, so the stage component of the measure and `hstage` both go, and realisedness may then
-be theory-driven.
+1. **Step 1** (`a1599ff`): the `◇`-free restriction, including the chain — `enumTF` enumerates terms
+   at `◇`-free types only, `retStep`'s condition gained that conjunct, `RealDatum` the field `hA`.
+2. **`WFF.size`** (`544e137`): `.here` now has size `A.eqRecSize + 1` (⭐`VarType.eqRecSize`,
+   ⭐`WFF.size_eqRec`), so the truth lemma's `here` case may appeal to **its own** induction
+   hypothesis at the equation `here_fun` concludes — faithfulness for free, inside the induction.
+3. **Faithfulness** (`9687a35`): ⭐`Canon.rden_eqRec` — at a `◇`-free type, two terms the theory
+   equates denote alike.  `□` at a proper successor is ⭐`rden_eqRec_far`, recursing on the distance
+   as `interp_box_far` does.  Transports: ⭐`eqRec_collapse`, ⭐`eqRec_shift`.
+4. **Naming** (`17d53b6`): ⭐`Canon.exists_name` — every `◇`-free-typed term is denoted by some
+   declared root's η-expansion.  No new chain machinery: the equation instantiates a *provable*
+   existential (⭐`Proof.exists_eqRec_eta`, ⭐`WFF.instantiate_eqRec_slot`), and `World.exW` now gives
+   its witness **at a declared root** (the old form is `World.exW_term`).  Annotation bookkeeping:
+   ⭐`Term.castAnn`, ⭐`Term.sigma_castAnn`, ⭐`Canon.rden_castAnn`, ⭐`eqRec_congr`.
+5. **Step 3, begun**: ⭐`RealDatum.hdeclOf` — the witness is declared at `◇A` *wherever it is declared
+   at a `◇`-type at all*.  `realisedDecl` and the two inline declarations in `CanonDom` now go
+   through it, so `realisedLt` (hence `hstage`) is used at exactly **two** sites:
+   `interp_dia_self` (`CanonTerm`) and `dia_mem_of_sat_self` (`Completeness`).
 
-**Next, in order.**
+**⭐What step 3 actually requires (corrected).**  The plan said naming lets `hstage` and the stage
+component of `interp_canon`'s measure go.  Only the second half is right on its own: `hstage` was
+*also* what gave `realisedDecl`, since `hdecl` only declares the witness at stages strictly past `i₀`.
+Hence item 5 above — with `hdeclOf` in place, dropping `hstage` costs only the stage component of the
+measure, which is exactly what the address content replaces.  And the three moves are **coupled**:
+the datum cannot record an address until the chain realises η-expansions, and the measure cannot lose
+its stage until the datum records an address.  Budget them as one change:
 
-1. **Restrict `WFF.here` to `◇`-free content** — `(hA : A.diaFree = true)` on the constructor, then the
-   ~73 sites.  Needed under every version of what follows, and mechanical.
-2. **Naming at `◇`-free content**: the chain declares a fresh address for each realising object with
-   the axiom `eqRec A (η b) t`; `RealDatum`'s content becomes `η b`.  Prove naming faithfulness
-   (`rden (η b) = rden t`) by induction on the `◇`-free type — the linchpin, and the one genuinely new
-   lemma.
-3. **Retire `hstage`** and the stage component of `interp_canon`'s measure.
-4. **Realisedness from the theory**: `Realised x := ∃ b, Here (η x) (η b) ∈ T`, at any declared
-   `◇`-typed `x` rather than at roots only; the extent's self clause reads it, and `rden`'s self
-   content is the named address's denotation.
-5. **The truth lemma's `here` case**: `⟸` realisedness from the atom plus `here_beta` to read the
-   body; `⟹` the converse with the content equation transported by the induction at `◇`-free types
-   (`here_fun` closes it).  Then `Compactness` and the B track follow, and strong T at `◇`-free
-   content is a closed theorem.
-6. Then the metatheory list (`docs/v12-metatheory-todo.md`).
+* `RealDatum`: `a₀`/`t₀` become `b₀ : VarSymb` with `hb₀ : (L.ctx i₀).ref b₀ = some A`, and `t₀` is
+  the derived `Term.eta b₀ A hb₀` (so consumers keep working); `hdecl` becomes `hdeclOf`'s form and
+  `hstage` goes.
+* the chain: `retStep`'s condition gains "the enumerated term is the η-expansion of a declared
+  address" (classically, as a `Sigma` equation), and `retDatum` reads `b₀` off it.  `World.realW`
+  restricts to η-expansion inputs; `posRet_exists_canon` supplies one by `Canon.exists_name`, whose
+  denotational equation is what makes the replacement sound.
+* `interp_dia_self` / `interp_canon`: the content's interpretation becomes the lookup
+  `interp_canon_eta` instead of a recursive call, and the measure drops to
+  `(VarType.tsize A, t.size)`.  `dia_mem_of_sat_self` needs the same treatment.
 
-**Retired with the withdrawal**, should anything reference them: `WFF.diaEq`, `Proof.diaEq_intro`,
-`Proof.diaEq_elim`, `World.PEq`/`PEqW`, the extent up to `≐`, the child tags (`tagOf`, `peqw_tagOf`,
-`tagBody`, `tagWFF`, `applyG_tagBody`), `Proof.boxx_reView`, `WFF.reView`/`Subst.viewRen`,
-`Proof.here_diaEq`, `WFF.instantiate_here_slot`, and the files `QML_v12m_CanonDiaEq`,
-`QML_v12m_ViewEq`, `QML_v12m_EqDia`, `QML_v12m_ViewRen`, `QML_v12m_ViewFlat`.
+**Then**: 4. realisedness read off the theory (`∃b. Here (η x) (η b) ∈ T`, invariant because the atom
+is), at any declared `◇`-typed `x` rather than at roots only; 5. the truth lemma's `here` case, which
+then closes, and with it `Compactness` and the B track; 6. the metatheory list
+(`docs/v12-metatheory-todo.md`).

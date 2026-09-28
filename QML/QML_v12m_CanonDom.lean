@@ -175,11 +175,14 @@ theorem realisedLt {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : C
     (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) : hr.data.i₀.2 < i.2 :=
   hr.data.hstage i (hx.imp fun _ h => hr.data.hx ▸ e.ref h)
 
-/-- So it is declared at the stage where both it and the term live. -/
+/-- So it is declared at the stage where both it and the term live.  Through `RealDatum.hdeclOf`,
+    so that this survives realisedness being read off the theory (§2d, step 4), where the stage
+    order `hstage` gives is not available. -/
 theorem realisedDecl {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx} {i : ℕ × ℕ}
     (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
     (w.L.ctx (i ⊔ hr.data.i₀)).ref (.root (.free hr.data.c)) = some (.VTypeDia hr.data.A) :=
-  hr.data.hdecl _ (lt_of_lt_of_le (realisedLt hr e hx) le_sup_left)
+  hr.data.datum.hdeclOf _
+    (hx.imp fun _ h => (w.L.ctx_le le_sup_left).ref (hr.data.hx ▸ e.ref h))
 
 noncomputable def realisedTerm (w : World σ N₀) {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
     {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
@@ -383,12 +386,12 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
               Term.mono h₂ (realisedTerm w hr e' hx t).2 := by
             simp only [realisedTerm]
             rw [Term.mono_realiseAt hr.data.hT _
-                (hcA' := hr.data.hdecl _ (lt_of_lt_of_le (realisedLt hr e hx)
-                  (le_sup_left.trans le_sup_left)))
+                (hcA' := hr.data.datum.hdeclOf _ (hx.imp fun _ h =>
+                  (w.L.ctx_le (le_sup_left.trans le_sup_left)).ref (hr.data.hx ▸ e.ref h)))
                 (hfr' := hr.data.hfr _),
               Term.mono_realiseAt hr.data.hT _
-                (hcA' := hr.data.hdecl _ (lt_of_lt_of_le (realisedLt hr e hx)
-                  (le_sup_left.trans le_sup_left)))
+                (hcA' := hr.data.datum.hdeclOf _ (hx.imp fun _ h =>
+                  (w.L.ctx_le (le_sup_left.trans le_sup_left)).ref (hr.data.hx ▸ e.ref h)))
                 (hfr' := hr.data.hfr _),
               Term.mono_mono, Term.mono_mono, Term.mono_mono, Term.mono_mono]
           calc rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e hx t).2
