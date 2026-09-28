@@ -106,10 +106,14 @@ structure World where
   hfresh : ∀ m d n, depth ≤ d → (L.base m).RootFresh (.free (names N₀ d n))
   T : Set (L.sys.Sentence σ)
   mcs : StageSys.IsMCS T
+  /-- Henkin witnessing for `∃`, **at a declared root**: the chain witnesses an existential by
+      declaring a fresh constant, and naming a term needs that root rather than a term
+      (§2d).  The term-valued form is `World.exW_term`. -/
   exW : ∀ {i : ℕ × ℕ} {A : VarType} {ψ : WFF σ ((L.ctx i).insert (.bnd 0) A) 1},
     (⟨i, .ex A ψ⟩ : L.sys.Sentence σ) ∈ T →
-    ∃ (i' : ℕ × ℕ) (hi : i ≤ i') (a : Ann A) (t : Term σ (L.ctx i') A a),
-      (⟨i', WFF.instantiate Ctx.NoSlots.slots t
+    ∃ (i' : ℕ × ℕ) (hi : i ≤ i') (c : ℕ)
+      (hc : (L.ctx i').ref (.root (.free c)) = some A),
+      (⟨i', WFF.instantiate Ctx.NoSlots.slots (Term.eta (.root (.free c)) A hc)
         (WFF.mono ((L.ctx_le hi).insert (.bnd 0) A) ψ)⟩ : L.sys.Sentence σ) ∈ T
   allW : ∀ {i : ℕ × ℕ} {A : VarType} {ψ : WFF σ ((L.ctx i).insert (.bnd 0) A) 1},
     (⟨i, .all A ψ⟩ : L.sys.Sentence σ) ∉ T →
@@ -132,6 +136,17 @@ structure World where
 
 variable {σ N₀}
 
+
+/-- The term-valued form of `World.exW`: a declared root's η-expansion is a term.  This is what the
+    truth lemma's `∃` case uses; the root itself is what naming needs. -/
+theorem World.exW_term {w : World σ N₀} {i : ℕ × ℕ} {A : VarType}
+    {ψ : WFF σ ((w.L.ctx i).insert (.bnd 0) A) 1}
+    (h : (⟨i, .ex A ψ⟩ : w.L.sys.Sentence σ) ∈ w.T) :
+    ∃ (i' : ℕ × ℕ) (hi : i ≤ i') (a : Ann A) (t : Term σ (w.L.ctx i') A a),
+      (⟨i', WFF.instantiate Ctx.NoSlots.slots t
+        (WFF.mono ((w.L.ctx_le hi).insert (.bnd 0) A) ψ)⟩ : w.L.sys.Sentence σ) ∈ w.T := by
+  obtain ⟨i', hi, c, hc, hmem⟩ := w.exW h
+  exact ⟨i', hi, _, Term.eta (.root (.free c)) A hc, hmem⟩
 namespace World
 
 /-- Names of deeper worlds are fresh at every stage. -/

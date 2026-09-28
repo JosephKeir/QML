@@ -367,7 +367,7 @@ theorem exists_extent (hDS : ModalSys.DStrong = true) (w : World σ N₀) :
       w' ∈ extent w z := by
   have hax : (⟨(0, 0), WFF.somePoss⟩ : w.L.sys.Sentence σ) ∈ w.T :=
     World.mem_of_provable (Δ := []) (fun _ h => by simp at h) ⟨Proof.D_ex hDS⟩
-  obtain ⟨i', _, _, _, hmem⟩ := w.exW hax
+  obtain ⟨i', _, _, _, hmem⟩ := w.exW_term hax
   exact ⟨i', exists_extent_of_mem w _ hmem ⟨_, _, _, rfl⟩⟩
 
 end

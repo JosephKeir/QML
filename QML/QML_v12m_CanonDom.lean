@@ -620,6 +620,48 @@ theorem rden_eqRec : ∀ (A : VarType), A.diaFree = true →
           (fun {_} {_} t' s' {_} {_} e' h' => rden_eqRec A hA t' s' _ _ e' h') d t s e h
           ⟨w₁, hw₁⟩ hd
 
+
+/-- A term read at another annotation denotes the same: `rden` does not look at the annotation. -/
+theorem rden_castAnn {A : VarType} (hA : A.diaFree = true) {a a' : Ann A} {Γ : Ctx}
+    {w : World σ N₀} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (t : Term σ Γ A a) :
+    rden w i e (Term.castAnn (a' := a') hA t) = rden w i e t := by
+  obtain rfl := Ann.eq_of_diaFree hA a a'
+  rfl
+
+/-- ⭐**Naming**: every term of a `◇`-free type is denoted by some declared root's η-expansion.  The
+    equation `η b = t` for a fresh `b` instantiates a *provable* existential
+    (`Proof.exists_eqRec_eta`), so a witnessed theory contains one at a declared root
+    (`World.exW`), and faithfulness (`rden_eqRec`) turns that equation into the two denoting alike.
+
+    This is what lets a realised witness's content be an **address**: a datum may record `η b` in
+    place of the term it was enumerated for, which is what takes the stage out of `interp_canon`'s
+    measure (§2d, and `RealDatum.hstage`). -/
+theorem exists_name {w : World σ N₀} {A : VarType} (hA : A.diaFree = true) {i : ℕ × ℕ}
+    {a : Ann A} (t : Term σ (w.L.ctx i) A a) :
+    ∃ (i' : ℕ × ℕ) (_ : i ≤ i') (c : ℕ) (hc : (w.L.ctx i').ref (.root (.free c)) = some A),
+      rden w i' (Ctx.Le.refl _) (Term.eta (.root (.free c)) A hc) =
+        rden w i (Ctx.Le.refl _) t := by
+  obtain rfl := Ann.eq_of_diaFree hA a (Ann.eta (.root (.bnd 0)) A)
+  have hex : (⟨i, .ex A (eqRec A
+      (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root (w.L.ctx i) (.bnd 0) A))
+      (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := w.L.ctx i)).root A) t))⟩ :
+      w.L.sys.Sentence σ) ∈ w.T :=
+    World.mem_of_provable (Δ := []) (fun _ h => absurd h List.not_mem_nil)
+      ⟨Proof.exists_eqRec_eta hA t⟩
+  obtain ⟨i', hi, c, hc, hmem⟩ := w.exW hex
+  rw [eqRec_mono, Term.mono_eta, Term.mono_mono] at hmem
+  have hneed : (⟨i', eqRec A (Term.eta (.root (.free c)) A hc)
+      (Term.castAnn hA (Term.mono (w.L.ctx_le hi) t))⟩ : w.L.sys.Sentence σ) ∈ w.T := by
+    rw [← WFF.instantiate_eqRec_slot hA (Term.eta (.root (.free c)) A hc)
+      (Term.mono (w.L.ctx_le hi) t), Term.mono_mono]
+    exact hmem
+  refine ⟨i', hi, c, hc, ?_⟩
+  refine (rden_eqRec A hA (Term.eta (.root (.free c)) A hc)
+    (Term.castAnn hA (Term.mono (w.L.ctx_le hi) t)) w i' (Ctx.Le.refl _) ?_).trans ?_
+  · rwa [Term.mono_refl, Term.mono_refl]
+  rw [rden_castAnn hA _ (Term.mono (w.L.ctx_le hi) t), rden_mono (w.L.ctx_le hi) t w i']
+  exact rden_congr t w i' i _ _
+
 end Canon
 
 end V12M

@@ -1,3 +1,4 @@
+import QML.QML_v12m_Eq
 import QML.QML_v12m_Open
 import QML.QML_v12m_SubstId
 
@@ -1336,5 +1337,39 @@ theorem Provable.monoCtx {σ : Signature} {Γ Γ' : Ctx} [Γ'.Presented] {Δs : 
     {φ : WFF σ Γ 0} (h : Γ.Le Γ') (p : Provable Δs φ) :
     Provable (Δs.map (WFF.mono h)) (WFF.mono h φ) :=
   p.map (Proof.mono h)
+
+
+/-! ## Naming an object by an address -/
+
+/-- ⭐Filling the slot of a naming equation: the slot's η-expansion becomes the term, and the value,
+    weakened past the slot, comes back unchanged.  `◇`-free, which is where `WFF.subst_eqRec` lives
+    and where naming is wanted (§2d). -/
+theorem WFF.instantiate_eqRec_slot {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A : VarType}
+    (hA : A.diaFree = true) {b : Ann A} (u : Term σ Γ A b)
+    (t : Term σ Γ A (Ann.eta (.root (.bnd 0)) A)) :
+    WFF.instantiate (d := 0) Ctx.NoSlots.slots u
+        (eqRec A (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root Γ (.bnd 0) A))
+          (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root A) t)) =
+      eqRec A u (Term.castAnn hA t) := by
+  rw [WFF.instantiate, WFF.substRoot, WFF.subst_eqRec _ _ _ _ _ A hA]
+  refine eqRec_congr (Term.subst_eta_tm _ _ _ A (.root (.bnd 0)) _ u
+    (Subst.at_single_root _ _)) ?_
+  refine (congrArg (Sigma.mk _) (Term.subst_mono _ _ _ _ t)).trans ?_
+  refine ((Term.subst_ren (Ctx.Le.refl Γ) _ _ _ ?_ t).trans
+    (congrArg (Sigma.mk _) (Term.mono_refl _ t))).trans (Term.sigma_castAnn hA t)
+  intro v T hv
+  exact Subst.single_at_ne
+    (Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) hv)
+
+/-- ⭐**Every object has a name**: the equation `η b = t` for a fresh `b` is provable's existential,
+    so a witnessed theory contains an instance of it.  This is the syntactic half of naming; the
+    denotational half is `Canon.exists_name`. -/
+def Proof.exists_eqRec_eta {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)}
+    {A : VarType} (hA : A.diaFree = true) (t : Term σ Γ A (Ann.eta (.root (.bnd 0)) A)) :
+    Proof σ Γ Δ (.ex A (eqRec A (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root Γ (.bnd 0) A))
+      (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root A) t))) :=
+  Proof.ex_intro A t
+    (Proof.conv (WFF.instantiate_eqRec_slot hA t t).symm (Proof.eqRec_refl A t))
+
 
 end V12M

@@ -271,8 +271,9 @@ theorem finalT_isMCS {S₀ : Set ((L.pre []).Sentence σ)} (hS₀ : StageSys.Con
 theorem finalT_ex_witness {S₀ : Set ((L.pre []).Sentence σ)} (hS₀ : StageSys.Consistent S₀)
     {i : ℕ × ℕ} {A : VarType} {ψ : WFF σ (((L.final S₀).ctx i).insert (.bnd 0) A) 1}
     (h : (⟨i, .ex A ψ⟩ : (L.final S₀).sys.Sentence σ) ∈ L.finalT S₀) :
-    ∃ (i' : ℕ × ℕ) (hi : i ≤ i') (a : Ann A) (t : Term σ ((L.final S₀).ctx i') A a),
-      (⟨i', WFF.instantiate Ctx.NoSlots.slots t
+    ∃ (i' : ℕ × ℕ) (hi : i ≤ i') (c : ℕ)
+      (hc : ((L.final S₀).ctx i').ref (.root (.free c)) = some A),
+      (⟨i', WFF.instantiate Ctx.NoSlots.slots (Term.eta (.root (.free c)) A hc)
           (WFF.mono (((L.final S₀).ctx_le hi).insert (.bnd 0) A) ψ)⟩ :
         (L.final S₀).sys.Sentence σ) ∈ L.finalT S₀ := by
   obtain ⟨m, j⟩ := i
@@ -300,7 +301,7 @@ theorem finalT_ex_witness {S₀ : Set ((L.pre []).Sentence σ)} (hS₀ : StageSy
     change (((L.final S₀).ctx (decM n, n)).insert (.free (L.ρ n)) (L.finalτ S₀ n)).ref _ = _
     rw [Ctx.ref_insert_root, hτ]
   have hi : (decM n, decJ n) ≤ (decM n, n + 1) := ⟨le_rfl, (decJ_le n).trans (Nat.le_succ n)⟩
-  refine ⟨(decM n, n + 1), hi, _, Term.eta (.root (.free (L.ρ n))) A href_f, n + 1, le_rfl, ?_⟩
+  refine ⟨(decM n, n + 1), hi, L.ρ n, href_f, n + 1, le_rfl, ?_⟩
   have e : WFF.mono (L.toChain S₀ (m := decM n) (le_refl (n + 1)))
       (WFF.instantiate Ctx.NoSlots.slots (Term.eta (.root (.free (L.ρ n))) A href_f)
         (WFF.mono (((L.final S₀).ctx_le hi).insert (.bnd 0) A) ψ)) =

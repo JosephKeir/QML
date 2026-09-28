@@ -97,7 +97,7 @@ theorem finite_piece_closed (w v : World σ N₀) {i j : ℕ × ℕ}
     rw [WFF.mono_mono] at hv
     exact v.mcs.neg_mem_iff.mp hv h1
   -- 3. Weak B, and 4. the Henkin witness of the `∃`.
-  obtain ⟨i', hi, b, t, hmem⟩ := w.exW (hB _ h2)
+  obtain ⟨i', hi, b, t, hmem⟩ := w.exW_term (hB _ h2)
   rw [WFF.mono_mono] at hmem
   exact ⟨i', hi, b, t, hmem⟩
 

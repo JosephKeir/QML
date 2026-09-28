@@ -109,6 +109,19 @@ theorem eqRec_Var {σ : Signature} {Γ : Ctx} {d : ℕ} (t s : Term σ Γ .Var .
     (eqRec .Var t s : WFF σ Γ d) = .eq t s := by
   cases t <;> cases s <;> rfl
 
+
+/-- Two equalities agree when their sides do, annotations included — the `Sigma` form, since
+    substitution moves annotations.  Both sides must land at one annotation, as `eqRec` compares
+    within a fibre. -/
+theorem eqRec_congr {σ : Signature} {Γ : Ctx} {d : ℕ} {A : VarType} {a a' : Ann A}
+    {t s : Term σ Γ A a} {t' s' : Term σ Γ A a'}
+    (ht : (⟨a, t⟩ : Σ b, Term σ Γ A b) = ⟨a', t'⟩)
+    (hs : (⟨a, s⟩ : Σ b, Term σ Γ A b) = ⟨a', s'⟩) :
+    (eqRec A t s : WFF σ Γ d) = eqRec A t' s' := by
+  cases ht
+  cases hs
+  rfl
+
 /-! ## Weakening -/
 
 def Rel.mono {σ : Signature} {Γ Γ' : Ctx} (h : Γ.Le Γ') : {n : ℕ} → Rel σ Γ n → Rel σ Γ' n

@@ -370,7 +370,7 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
                 exact hmemK)
               ⟨Proof.ex_intro A (w.liftT hK' t') (Proof.lookup List.mem_cons_self)⟩)
           · intro hmem
-            obtain ⟨i', hi, a, t, hmem'⟩ := w.exW hmem
+            obtain ⟨i', hi, a, t, hmem'⟩ := w.exW_term hmem
             refine ⟨Model.interp (canonEnv w₀ w i') t, ?_⟩
             have hs := (truth_lt n w i' _
               (by rw [WFF.size_instantiate, WFF.size_mono]; exact hψ)).mpr hmem'

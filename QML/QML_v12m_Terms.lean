@@ -67,4 +67,21 @@ def Term.weaken {σ : Signature} {Γ : Ctx} {r : Root} (hr : Γ (.root r) = none
     {S : VarType} {a : Ann S} (t : Term σ Γ S a) : Term σ (Γ.insert r T) S a :=
   Term.mono (Ctx.le_insert hr T) t
 
+
+/-- ⭐At a `◇`-free type the annotation is unique (`Ann.eq_of_diaFree`), so a term may be read at any
+    of them.  This is the only bookkeeping `◇`-freeness costs: `eqRec` compares terms at **one**
+    annotation, and two η-expansions of different addresses carry syntactically different ones. -/
+def Term.castAnn {σ : Signature} {Γ : Ctx} {A : VarType} (hA : A.diaFree = true) {a a' : Ann A}
+    (t : Term σ Γ A a) : Term σ Γ A a' :=
+  Ann.eq_of_diaFree hA a a' ▸ t
+
+
+/-- Reading a term at another annotation, as a `Sigma` equation: what the substitution lemmas
+    produce and what `eqRec_congr` consumes. -/
+theorem Term.sigma_castAnn {σ : Signature} {Γ : Ctx} {A : VarType} (hA : A.diaFree = true)
+    {a a' : Ann A} (t : Term σ Γ A a) :
+    (⟨a, t⟩ : Σ b, Term σ Γ A b) = ⟨a', Term.castAnn (a' := a') hA t⟩ := by
+  obtain rfl := Ann.eq_of_diaFree hA a a'
+  rfl
+
 end V12M
