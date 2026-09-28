@@ -753,9 +753,6 @@ theorem WFF.shift_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {Γ �
   | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr, .here hT s t =>
       WFF.here_congr hT (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr s)
         (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr t)
-  | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr, .diaEq s s' =>
-      WFF.diaEq_congr (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr s)
-        (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr s')
 
 end ShiftSubst
 

@@ -210,24 +210,20 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
       change Model.Realised hT (interp _ (Term.mono _ s)) (interp _ (Term.mono _ t)) ↔ _
       rw [interp_mono hag s, interp_mono hag t]
       exact Iff.rfl
-  | _, _, _, _, _, _, _, hag, .diaEq s s' => by
-      change interp _ (Term.mono _ s) = interp _ (Term.mono _ s') ↔ _
-      rw [interp_mono hag s, interp_mono hag s']
-      exact Iff.rfl
 
 /-! ## Equality -/
 
 /-- ⭐The defined equality holds exactly when the values are equal. -/
 theorem sat_eqRec : ∀ {Γ : Ctx} {d : ℕ} {w : M.frame.W} (env : M.Env Γ w) (T : VarType)
-    {a a' : Ann T} (t : Term σ Γ T a) (s : Term σ Γ T a'),
+    {a : Ann T} (t s : Term σ Γ T a),
     M.sat env (eqRec T t s : WFF σ Γ d) ↔ interp env t = interp env s
-  | _, _, _, env, .Var, .var, .var, t, s => iff_of_eq (congrArg (M.sat env) (eqRec_Var t s))
-  | _, _, _, _, .VTypeOne, .one, .one, .unit, .unit => ⟨fun _ => rfl, fun _ => trivial⟩
-  | _, _, _, env, .VTypeProd A B, .prod _ _, .prod _ _, .pair t₁ t₂, .pair s₁ s₂ => by
+  | _, _, _, env, .Var, .var, t, s => iff_of_eq (congrArg (M.sat env) (eqRec_Var t s))
+  | _, _, _, _, .VTypeOne, .one, .unit, .unit => ⟨fun _ => rfl, fun _ => trivial⟩
+  | _, _, _, env, .VTypeProd A B, .prod _ _, .pair t₁ t₂, .pair s₁ s₂ => by
       change M.sat env (eqRec A t₁ s₁) ∧ M.sat env (eqRec B t₂ s₂) ↔
         (interp env t₁, interp env t₂) = (interp env s₁, interp env s₂)
       rw [sat_eqRec env A t₁ s₁, sat_eqRec env B t₂ s₂, Prod.mk.injEq]
-  | _, _, w, env, .VTypeBox A, .box _, .box _, .boxtm t, .boxtm s => by
+  | _, _, w, env, .VTypeBox A, .box _, .boxtm t, .boxtm s => by
       change (∀ w' : M.frame.Acc w, M.sat (env.boxPush w') (eqRec A t s)) ↔ _
       rw [forall_congr' fun w' => sat_eqRec (env.boxPush w') A t s]
       constructor
@@ -238,10 +234,20 @@ theorem sat_eqRec : ∀ {Γ : Ctx} {d : ℕ} {w : M.frame.W} (env : M.Env Γ w) 
         exact hall w'
       · intro heq w'
         rw [← box_beta, ← box_beta, heq]
-  | _, _, _, env, .VTypeDia _, _, _, s, s' => by
-      rw [eqRec_dia s s']
-      exact Iff.rfl
-
+  | _, _, _, env, .VTypeDia A, .dia x _, .diatm _ hx t, .diatm _ _ s => by
+      obtain ⟨X, hr⟩ := hx
+      constructor
+      · intro hno
+        apply M.pos_inj
+        rw [dia_beta env _ hr, dia_beta env _ hr]
+        refine Sigma.ext rfl (heq_of_eq (funext fun w' => ?_))
+        by_contra hne
+        exact hno ⟨X, hr, w', fun hsat => hne ((sat_eqRec _ A t s).mp hsat)⟩
+      · rintro heq ⟨X', hr', w', hneg⟩
+        apply hneg
+        have hpos := congrArg M.posEval heq
+        rw [dia_beta env _ hr', dia_beta env _ hr'] at hpos
+        exact (sat_eqRec _ A t s).mpr (congrFun (eq_of_heq (Sigma.mk.inj hpos).2) w')
 end Model
 
 end V12M

@@ -269,11 +269,5 @@ theorem WFF.subst_id {σ : Signature} : {Δ : Ctx} → {d : ℕ} → (hθ : Subs
           (congrArg (Sigma.mk _) (Term.mono_refl _ s)))
         ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc t).trans
           (congrArg (Sigma.mk _) (Term.mono_refl _ t)))
-  | Δ, _, hθ, hc, _, .diaEq s s' =>
-      WFF.diaEq_congr
-        ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc s).trans
-          (congrArg (Sigma.mk _) (Term.mono_refl _ s)))
-        ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc s').trans
-          (congrArg (Sigma.mk _) (Term.mono_refl _ s')))
 
 end V12M

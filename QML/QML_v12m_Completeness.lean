@@ -36,7 +36,6 @@ def WFF.size {σ : Signature} : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → ℕ
   | _, _, .box φ => φ.size + 1
   | _, _, .dia _ _ φ => φ.size + 1
   | _, _, .here _ _ _ => 0
-  | _, _, .diaEq _ _ => 0
 
 theorem WFF.size_mono {σ : Signature} : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (φ : WFF σ Γ d),
     (WFF.mono h φ).size = φ.size
@@ -52,7 +51,6 @@ theorem WFF.size_mono {σ : Signature} : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le
   | _, _, _, h, .box φ => congrArg (· + 1) (WFF.size_mono h.boxIn φ)
   | _, _, _, h, .dia x _ φ => congrArg (· + 1) (WFF.size_mono (h.diaIn x) φ)
   | _, _, _, _, .here _ _ _ => rfl
-  | _, _, _, _, .diaEq _ _ => rfl
 
 theorem WFF.size_subst {σ : Signature} : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ}
     (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d)
@@ -72,7 +70,6 @@ theorem WFF.size_subst {σ : Signature} : ∀ {ι : VarSymb → VarSymb} {Γ Δ 
   | _, _, _, _, _, _, _, _, _, _, .box φ => congrArg (· + 1) (WFF.size_subst _ _ _ _ _ φ)
   | _, _, _, _, _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_subst _ _ _ _ _ φ)
   | _, _, _, _, _, _, _, _, _, _, .here _ _ _ => rfl
-  | _, _, _, _, _, _, _, _, _, _, .diaEq _ _ => rfl
 
 theorem WFF.size_instantiate {σ : Signature} {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {T : VarType}
     {a : Ann T} (t : Term σ Γ T a) (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) :
@@ -97,7 +94,6 @@ theorem WFF.size_collapse {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {
   | _, _, _, _, _, _, .box φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
   | _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
   | _, _, _, _, _, _, .here _ _ _ => rfl
-  | _, _, _, _, _, _, .diaEq _ _ => rfl
 
 theorem WFF.size_shift {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d : ℕ}
     (h : Ctx.Shifts k Γ₁ Γ₂) (hs : Γ₁.SlotsFrom d) (φ : WFF σ Γ₁ d),
@@ -117,7 +113,6 @@ theorem WFF.size_shift {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d :
   | _, _, _, _, _, _, .box φ => congrArg (· + 1) (WFF.size_shift _ _ φ)
   | _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_shift _ _ φ)
   | _, _, _, _, _, _, .here _ _ _ => rfl
-  | _, _, _, _, _, _, .diaEq _ _ => rfl
 
 /-- Abstracting a witness is a substitution, so it leaves the logical structure alone. -/
 theorem WFF.size_diaAbs {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) {A : VarType}
@@ -242,35 +237,6 @@ theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {c : ℕ} (dat 
   have hmem' := World.mem_mono_congr w (Ctx.Le.refl _) (w.L.ctx_le hj)
     (ψ := WFF.dia (.root (.free c)) hx χ) hdia
   rwa [WFF.mono_refl] at hmem'
-
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB] in
-/-- Reading a formula in the tag's view keeps its size, so the truth lemma's induction is
-    unaffected. -/
-theorem size_tagWFF (w : World σ N₀) {i : ℕ × ℕ} {x y : VarSymb} (hpe : w.PEqW x y)
-    (χ : WFF σ ((w.L.ctx i).diaIn x) 0) : (tagWFF w hpe χ).size = χ.size := by
-  simp only [tagWFF, WFF.reView]
-  rw [WFF.size_subst, WFF.size_mono]
-
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB] in
-/-- ⭐When the tag *is* the witness, the tagged reading is the plain one: the renaming is the
-    identity (`WFF.reView_self`), so only the stage differs (`World.mem_mono_congr`).  This is what
-    the `←` half of the truth lemma's `◇` case needs, the child it builds being tagged by the
-    witness. -/
-theorem mem_tagWFF_of_tag_eq {w w₂ : World σ N₀} {i : ℕ × ℕ} {x y : VarSymb}
-    (hpe : w.PEqW x y) (hv : DiaView y w w₂) (hyx : y = x)
-    (χ : WFF σ ((w.L.ctx i).diaIn x) 0)
-    (le : ((w.L.ctx i).diaIn x).Le (w₂.L.ctx (childStage i)))
-    (hm : (⟨childStage i, WFF.mono le χ⟩ : w₂.L.sys.Sentence σ) ∈ w₂.T) :
-    (⟨childStage (i ⊔ hpe.st), WFF.mono (extent_le hv (i ⊔ hpe.st)) (tagWFF w hpe χ)⟩ :
-      w₂.L.sys.Sentence σ) ∈ w₂.T := by
-  subst hyx
-  have hrs : tagWFF w hpe χ =
-      WFF.mono ((w.L.ctx_le (le_sup_left : i ≤ i ⊔ hpe.st)).diaIn y) χ := by
-    simp only [tagWFF]
-    exact WFF.reView_self _ _ _
-  rw [hrs, WFF.mono_mono]
-  exact World.mem_mono_congr w₂ _ le hm
-
 
 theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF σ (w.L.ctx i) 0), φ.size < n →
     ((model w₀).sat (canonEnv w₀ w i) φ ↔ (⟨i, φ⟩ : w.L.sys.Sentence σ) ∈ w.T)
@@ -458,35 +424,14 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
           change (∃ (X : VarType) (h : (w.L.ctx i).ref x = some (.VTypeDia X))
             (w' : ((model w₀).posEval ((canonEnv w₀ w i).ref x h)).1),
               (model w₀).sat ((canonEnv w₀ w i).diaPush x h w') χ) ↔ _
-          -- At a proper successor the formula is read in that successor's **tag**.
           have key : ∀ {X : VarType} (h : (w.L.ctx i).ref x = some (.VTypeDia X))
               (w' : ((model w₀).posEval ((canonEnv w₀ w i).ref x h)).1)
-              (hd : w'.1.1.depth - w.depth ≠ 0) (hw' : w'.1 ∈ extent w x),
+              (hd : w'.1.1.depth - w.depth ≠ 0),
               (model w₀).sat ((canonEnv w₀ w i).diaPush x h w') χ ↔
-                (⟨childStage (i ⊔ (peqw_tagOf hw' hd).st),
-                  WFF.mono (extent_le (diaView_tagOf hw' hd) (i ⊔ (peqw_tagOf hw' hd).st))
-                    (tagWFF w (peqw_tagOf hw' hd) χ)⟩ : w'.1.1.L.sys.Sentence σ) ∈ w'.1.1.T := by
-            intro X h w' hd hw'
-            have hxk := (peqw_tagOf hw' hd).refXs i
-            have hyk := (peqw_tagOf hw' hd).refYs i
-            have hcl := (peqw_tagOf hw' hd).clean i
-            have hle := extent_le (diaView_tagOf hw' hd) (i ⊔ (peqw_tagOf hw' hd).st)
-            refine Iff.trans (Model.sat_mono (diaPush_agree_canon w₀ w i h w' hd hw') _).symm ?_
-            refine Iff.trans (Model.sat_subst
-              ((Subst.viewRen σ (w.L.ctx (i ⊔ (peqw_tagOf hw' hd).st)) x (tagOf hw' hd)).mono hle)
-              (Subst.ok_mono (Subst.ok_viewRen hxk hyk) hle)
-              (Subst.coh_mono (Subst.coh_viewRen hxk hyk hcl) hle)
-              (Ctx.NoSlots.slots.diaIn x) Ctx.NoSlots.slots (Ctx.noProjLast_diaIn _ x)
-              (canonEnv w₀ w'.1.1 (childStage (i ⊔ (peqw_tagOf hw' hd).st)))
-              (WFF.mono ((w.L.ctx_le (le_sup_left :
-                i ≤ i ⊔ (peqw_tagOf hw' hd).st)).diaIn x) χ)).symm ?_
-            rw [← WFF.mono_subst hle
-              (Subst.viewRen σ (w.L.ctx (i ⊔ (peqw_tagOf hw' hd).st)) x (tagOf hw' hd))
-              (Subst.ok_viewRen hxk hyk) (Subst.coh_viewRen hxk hyk hcl)
-              (Ctx.NoSlots.slots.diaIn x) (Ctx.NoSlots.slots.diaIn (tagOf hw' hd))
-              Ctx.NoSlots.slots]
-            exact truth_lt n w'.1.1 (childStage (i ⊔ (peqw_tagOf hw' hd).st)) _
-              (by rw [WFF.size_mono, WFF.size_subst, WFF.size_mono]; exact hχs)
+                (⟨childStage i, WFF.mono (extent_le (canonEnv_extent w₀ w i h ▸ w'.2) hd i) χ⟩ :
+                  w'.1.1.L.sys.Sentence σ) ∈ w'.1.1.T :=
+            fun h w' hd => (Model.sat_mono (diaPush_agree_canon w₀ w i h w' hd) χ).symm.trans
+              (truth_lt n w'.1.1 (childStage i) _ (by rw [WFF.size_mono]; exact hχs))
           constructor
           · rintro ⟨X, h, w', hsat⟩
             have hw' : w'.1 ∈ extent w x := canonEnv_extent w₀ w i h ▸ w'.2
@@ -498,25 +443,9 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
                     rw [List.mem_singleton.mp hψ]
                     exact w.mcs.neg_mem_iff.mpr hnot)
                   ⟨Proof.boxx_neg_of_not_dia x hx χ⟩
-              have hbxk : (⟨i ⊔ (peqw_tagOf hw' hd).st,
-                  WFF.boxx x ⟨_, (peqw_tagOf hw' hd).refXs i⟩
-                    (WFF.mono ((w.L.ctx_le (le_sup_left :
-                      i ≤ i ⊔ (peqw_tagOf hw' hd).st)).diaIn x) χ.neg)⟩ :
-                  w.L.sys.Sentence σ) ∈ w.T :=
-                (World.mem_lift (le_sup_left : i ≤ i ⊔ (peqw_tagOf hw' hd).st)).mp hbx
-              have htr := World.boxx_mem_reView ((peqw_tagOf hw' hd).refXs i)
-                ((peqw_tagOf hw' hd).refYs i) ((peqw_tagOf hw' hd).clean i)
-                (((w.L.flatCtx (i ⊔ (peqw_tagOf hw' hd).st)).insert
-                    (Ctx.NoSlots.slots.rootFresh (le_refl 0))
-                    (.VTypeDia (peqw_tagOf hw' hd).ty)).viewClean
-                  ((Ctx.le_insert Ctx.NoSlots.slots.root _).ref ((peqw_tagOf hw' hd).refXs i)))
-                (World.PEq.lift (le_sup_right : (peqw_tagOf hw' hd).st ≤ i ⊔ (peqw_tagOf hw' hd).st)
-                  _ _ (peqw_tagOf hw' hd).peq) _ hbxk
-              have hneg := boxxContents_tagOf hw' hd (i ⊔ (peqw_tagOf hw' hd).st)
-                ⟨_, (peqw_tagOf hw' hd).refYs i⟩ _
-                (childStage (i ⊔ (peqw_tagOf hw' hd).st))
-                (extent_le (diaView_tagOf hw' hd) (i ⊔ (peqw_tagOf hw' hd).st)) htr
-              exact (w'.1.1.mcs.neg_mem_iff.mp hneg) ((key h w' hd hw').mp hsat)
+              have hneg := (extent_proper hw' hd).2.2 i hx χ.neg (childStage i)
+                (extent_le hw' hd i) hbx
+              exact (w'.1.1.mcs.neg_mem_iff.mp hneg) ((key h w' hd).mp hsat)
             · obtain ⟨hweq, hrx⟩ := extent_self hw' (not_not.mp hd)
               obtain ⟨⟨w₁, hR⟩, hmem⟩ := w'
               change w₁ = w at hweq
@@ -526,14 +455,8 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
                 (fun ψ hψ => truth_lt n _ _ ψ (by rw [hψ]; exact hχs)) hmem hsat
           · intro hmem
             obtain ⟨X, h⟩ : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X) := hx
-            obtain ⟨w', hw', hd, hv, hmem'⟩ := exists_dia w x ⟨X, h⟩ χ hmem
-            have hw'' : w' ∈ extent w x := hw'
-            refine ⟨X, h, ⟨w', (canonEnv_extent w₀ w i h).symm ▸ hw'⟩, (key h _ hd hw'').mpr ?_⟩
-            exact mem_tagWFF_of_tag_eq _ (diaView_tagOf hw'' hd)
-              (DiaView.inj ((w.L.ctx_le (le_sup_right :
-                (peqw_tagOf hw'' hd).st ≤ i ⊔ (peqw_tagOf hw'' hd).st)).ref
-                  (peqw_tagOf hw'' hd).refY) (diaView_tagOf hw'' hd) hv) χ _ hmem'
-
+            obtain ⟨w', hw', hd, hmem'⟩ := exists_dia w x ⟨X, h⟩ χ hmem
+            exact ⟨X, h, ⟨w', (canonEnv_extent w₀ w i h).symm ▸ hw'⟩, (key h _ hd).mpr hmem'⟩
 
 /-- ⭐**The truth lemma.** -/
 theorem truth (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF σ (w.L.ctx i) 0) :
@@ -545,13 +468,10 @@ end Canon
 /-! ## Completeness -/
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB]
+
 /-- ⭐**Completeness**: a sequent in a presented context that holds in every model, at every
-    world, in every environment, is provable.  Being presented is the whole hypothesis: the
-    canonical model reads a `◇`-body in the view of whatever witness the theory identifies with the
-    one it was written for, and that renaming exists because a presentation declares no name already
-    in scope (`Ctx.Presented.levelFlat`, §2d). -/
-theorem completeness {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
-    {φ : WFF σ Γ 0}
+    world, in every environment, is provable. -/
+theorem completeness {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0}
     (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env Γ w), Γ.NoProjLast →
       (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ := by
@@ -584,8 +504,7 @@ theorem completeness {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
 
 /-- ⭐**Soundness and completeness**: over a countable signature, a sequent in a presented context
     is provable exactly when it holds in every model. -/
-theorem provable_iff_valid {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
-    {φ : WFF σ Γ 0} :
+theorem provable_iff_valid {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
     Provable Δ φ ↔ ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env Γ w), Γ.NoProjLast →
       (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ :=
   ⟨fun ⟨p⟩ => Model.soundness p, completeness⟩

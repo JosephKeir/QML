@@ -389,10 +389,6 @@ theorem sat_collapse : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses k Γ
       change Model.Realised hT (interp _ (Term.collapse _ s)) (interp _ (Term.collapse _ t)) ↔ _
       rw [interp_collapse hag s, interp_collapse hag t]
       exact Iff.rfl
-  | _, _, _, _, _, _, _, _, _, hag, .diaEq s s' => by
-      change interp _ (Term.collapse _ s) = interp _ (Term.collapse _ s') ↔ _
-      rw [interp_collapse hag s, interp_collapse hag s']
-      exact Iff.rfl
 
 /-- ⭐The semantic content of the T rule: a collapsed `□`-body holds exactly when the body holds
     at the current world. -/

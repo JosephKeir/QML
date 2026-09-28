@@ -154,14 +154,6 @@ theorem eqRec_Var {σ : Signature} {Γ : Ctx} {d : ℕ} (t s : Term σ Γ .Var .
     (eqRec .Var t s : WFF σ Γ d) = .eq t s := by
   cases t <;> cases s <;> rfl
 
-/-- At `◇`-type the defined equality *is* the primitive `WFF.diaEq` (§2d). -/
-theorem eqRec_dia {σ : Signature} {Γ : Ctx} {d : ℕ} {A : VarType} {b b' : Ann (.VTypeDia A)}
-    (s : Term σ Γ (.VTypeDia A) b) (s' : Term σ Γ (.VTypeDia A) b') :
-    (eqRec (.VTypeDia A) s s' : WFF σ Γ d) = WFF.diaEq s s' := by
-  cases s
-  cases s'
-  rfl
-
 namespace Proof
 
 /-- ⭐Reflexivity. -/
@@ -174,7 +166,73 @@ def eqRec_refl {σ : Signature} : {Γ : Ctx} → [Γ.NoSlots] → {Δ : List (WF
   | _, _, _, .VTypeBox A, .box _, .boxtm t =>
       Proof.ofSubset (fun _ h => absurd h List.not_mem_nil)
         (Proof.K_box (Δ := []) (eqRec_refl A t))
-  | _, _, _, .VTypeDia _, _, t => Proof.conv (eqRec_dia t t).symm (.diaEq_intro t)
+  | _, _, Δ, .VTypeDia A, .dia x _, .diatm _ hx t =>
+      .imp_intro (Proof.weakenTail Δ
+        (.dia_bot x hx (Proof.K_dia (Δ₁ := []) (Δ₂ := []) (φ := .bot) x hx
+          (.imp_elim (.ax _) (eqRec_refl A t)))))
+
+/-- ⭐Symmetry. -/
+def eqRec_symm {σ : Signature} : {Γ : Ctx} → [Γ.NoSlots] → {Δ : List (WFF σ Γ 0)} →
+    (T : VarType) → {a : Ann T} → {t s : Term σ Γ T a} →
+    Proof σ Γ Δ (eqRec T t s) → Proof σ Γ Δ (eqRec T s t)
+  | _, _, _, .Var, .var, _, _, p =>
+      Proof.conv (eqRec_Var _ _).symm (Proof.eq_symm_base (Proof.conv (eqRec_Var _ _) p))
+  | _, _, _, .VTypeOne, .one, .unit, .unit, _ => .top_intro
+  | _, _, _, .VTypeProd A B, .prod _ _, .pair _ _, .pair _ _, p =>
+      .and_intro (eqRec_symm A (.and_elim_l p)) (eqRec_symm B (.and_elim_r p))
+  | _, _, Δ, .VTypeBox A, .box _, .boxtm t, .boxtm s, p =>
+      Proof.cut (Proof.weakenTail Δ
+        (Proof.K_box (Δ := [eqRec A t s]) (eqRec_symm A (.ax _)))) p
+  | _, _, Δ, .VTypeDia A, .dia x _, .diatm _ hx t, .diatm _ _ s, p =>
+      .imp_intro (.imp_elim (.weak _ p)
+        (Proof.weakenTail Δ
+          (Proof.K_dia (Δ₁ := []) (Δ₂ := []) (ψ := (eqRec A s t).neg)
+            (φ := (eqRec A t s).neg) x hx
+            (.imp_intro (.imp_elim
+              (Proof.lookup (x := (eqRec A s t).neg) (List.mem_cons_of_mem _ List.mem_cons_self))
+              (eqRec_symm A (Proof.lookup (x := eqRec A t s) List.mem_cons_self)))))))
+
+/-- ⭐Transitivity. -/
+def eqRec_trans {σ : Signature} : {Γ : Ctx} → [Γ.NoSlots] → {Δ : List (WFF σ Γ 0)} →
+    (T : VarType) → {a : Ann T} → {t s r : Term σ Γ T a} →
+    Proof σ Γ Δ (eqRec T t s) → Proof σ Γ Δ (eqRec T s r) → Proof σ Γ Δ (eqRec T t r)
+  | _, _, _, .Var, .var, _, _, _, p, q =>
+      Proof.conv (eqRec_Var _ _).symm
+        (Proof.eq_trans_base (Proof.conv (eqRec_Var _ _) p) (Proof.conv (eqRec_Var _ _) q))
+  | _, _, _, .VTypeOne, .one, .unit, .unit, .unit, _, _ => .top_intro
+  | _, _, _, .VTypeProd A B, .prod _ _, .pair _ _, .pair _ _, .pair _ _, p, q =>
+      .and_intro (eqRec_trans A (.and_elim_l p) (.and_elim_l q))
+        (eqRec_trans B (.and_elim_r p) (.and_elim_r q))
+  | Γ, _, Δ, .VTypeBox A, .box _, .boxtm t, .boxtm s, .boxtm r, p, q =>
+      have h₁ : Proof σ Γ (WFF.box (eqRec A t s) :: WFF.box (eqRec A s r) :: Δ)
+          (.box (eqRec A t r)) :=
+        Proof.weakenTail Δ (Proof.K_box (Δ := [eqRec A t s, eqRec A s r])
+          (eqRec_trans A (Proof.lookup (x := eqRec A t s) List.mem_cons_self)
+            (Proof.lookup (x := eqRec A s r) (List.mem_cons_of_mem _ List.mem_cons_self))))
+      Proof.cut (Proof.cut h₁ (.weak _ p)) q
+  | Γ, _, Δ, .VTypeDia A, .dia x _, .diatm _ hx t, .diatm _ _ s, .diatm _ _ r, p, q =>
+      have inner : Proof σ Γ [.dia x hx (eqRec A t r).neg, WFF.boxx x hx (eqRec A t s),
+          WFF.boxx x hx (eqRec A s r)] .bot :=
+        .dia_bot x hx (Proof.K_dia (Δ₁ := []) (Δ₂ := [eqRec A t s, eqRec A s r])
+          (ψ := (eqRec A t r).neg) (φ := .bot) x hx
+          (.imp_elim (Proof.lookup (x := (eqRec A t r).neg) List.mem_cons_self)
+            (eqRec_trans A
+              (Proof.lookup (x := eqRec A t s) (List.mem_cons_of_mem _ List.mem_cons_self))
+              (Proof.lookup (x := eqRec A s r)
+                (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ List.mem_cons_self))))))
+      have h₁ : Proof σ Γ (.dia x hx (eqRec A t r).neg :: WFF.boxx x hx (eqRec A t s) ::
+          WFF.boxx x hx (eqRec A s r) :: Δ) .bot :=
+        Proof.weakenTail Δ inner
+      have h₂ : Proof σ Γ (WFF.boxx x hx (eqRec A t s) :: .dia x hx (eqRec A t r).neg ::
+          WFF.boxx x hx (eqRec A s r) :: Δ) .bot :=
+        Proof.exch [] _ h₁
+      have h₃ : Proof σ Γ (.dia x hx (eqRec A t r).neg :: WFF.boxx x hx (eqRec A s r) :: Δ)
+          .bot :=
+        Proof.cut h₂ (.weak _ (.weak _ p))
+      have h₄ : Proof σ Γ (WFF.boxx x hx (eqRec A s r) :: .dia x hx (eqRec A t r).neg :: Δ)
+          .bot :=
+        Proof.exch [] _ h₃
+      .imp_intro (Proof.cut h₄ (.weak _ q))
 
 end Proof
 

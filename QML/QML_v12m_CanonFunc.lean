@@ -651,13 +651,6 @@ theorem applyG_realiseAt {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} [Γ.NoSlo
   simp only [Term.realiseAt, Term.hereRead, applyG_subst]
   rw [applyG_collapse g _ (Term.diaAbs c hcA hfr t), habs]
 
-/-- ⭐The function algebra commutes with reading a body in the tag's view: both are substitutions. -/
-theorem applyG_tagBody {A B : VarType} (g : GFunc σ A B) {w : World σ N₀} {Γ : Ctx} {i : ℕ × ℕ}
-    (e : Γ.Le (w.L.ctx i)) {x y : VarSymb} (hpe : w.PEqW x y) {a : Ann A}
-    (t : Term σ (Γ.diaIn x) A a) :
-    applyG g (tagBody w e hpe t).2 = ⟨_, (tagBody w e hpe (applyG g t).2).2⟩ := by
-  simp only [tagBody, Term.reView]
-  rw [applyG_subst g _ _ _ _, applyG_mono g _ t]
 
 /-- ⭐Applying a definable map commutes with the realised content of a witness. -/
 theorem applyG_realisedTerm {A B : VarType} (g : GFunc σ A B) {w : World σ N₀} {x : VarSymb}
@@ -821,8 +814,7 @@ theorem rden_applyG :
           refine rden_transport_congr _ ?_
           exact (rden_sigma _ (applyG_realisedTerm f hr e hx c)).trans (rden_applyG f _ w _ _)
         · simp only [rden, dif_neg hd]
-          exact (rden_sigma _ (applyG_tagBody f e (peqw_tagOf w'.2 hd) c)).symm.trans
-            (rden_applyG f _ w'.1.1 _ _))
+          exact rden_applyG f c w'.1.1 (childStage i) _)
   | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c), w, i, e =>
       congrArg (Sigma.mk _) (funext fun w' => by
         by_cases hd : w'.1.1.depth - w.depth = 0
@@ -835,12 +827,9 @@ theorem rden_applyG :
           refine (rden_transport_congr _ (rden_realisedTerm_mono_boxIn hr e hx b)).trans ?_
           exact rden_transport_world _ _ _ _
         · simp only [rden, dif_neg hd]
-          refine Prod.ext ?_ rfl
-          refine (rden_sigma _ (tagBody_mono_boxIn e (peqw_tagOf w'.2 hd) b)).trans ?_
-          refine (rden_mono _ _ w'.1.1 _ _).trans ?_
-          refine (rden_mono _ _ w'.1.1 _ _).trans ?_
-          exact (rden_congr b w'.1.1 _ (childStage i) _ _).trans
-            (rden_boxtm_acc e b w'.1 (extent_dist w'.2 hd)).symm)
+          exact Prod.ext
+            ((rden_mono _ _ _ _ _).trans
+              (rden_boxtm_acc e b w'.1 (extent_dist w'.2 hd)).symm) rfl)
   | _, _, .extract hT, _, _, .boxtm b, w, _, e =>
       (rden_boxtm_self e b ⟨w, ⟨R.refl hT w⟩⟩ (Nat.sub_self _)).symm
   | _, _, .dup hF, _, _, .boxtm b, w, i, e =>

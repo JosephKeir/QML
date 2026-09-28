@@ -101,16 +101,6 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       (t s : Term σ Γ .Var .var) :
       Proof σ Γ Δ (.eq t s) → Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t φ) →
       Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots s φ)
-  -- ⭐Equality of possible objects (§2d): the `◇`-types' missing equality, primitive because a
-  -- comparison across *annotations* is exactly a comparison across witnesses.  Reflexivity and
-  -- Leibniz, as for `eq`; the slot takes a term of any annotation, which is the whole point.
-  | diaEq_intro {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {A : VarType} {b : Ann (.VTypeDia A)}
-      (s : Term σ Γ (.VTypeDia A) b) : Proof σ Γ Δ (.diaEq s s)
-  | diaEq_elim {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} {A : VarType}
-      {φ : WFF σ (Γ.insert (.bnd 0) (.VTypeDia A)) 1} {b b' : Ann (.VTypeDia A)}
-      (s : Term σ Γ (.VTypeDia A) b) (s' : Term σ Γ (.VTypeDia A) b') :
-      Proof σ Γ Δ (.diaEq s s') → Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots s φ) →
-      Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots s' φ)
   -- ⭐Pairing: the user's components `u₁ u₂` become `z.fst`, `z.snd`.
   | pair_elim {Γ : Ctx} [Γ.NoSlots] (A B : VarType) (u₁ u₂ z : ℕ) (hu : u₁ ≠ u₂) (hz₁ : z ≠ u₁)
       (hu₁ : Γ.RootFresh (.free u₁)) (hu₂ : Γ.RootFresh (.free u₂))
@@ -217,14 +207,13 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       {B : VarType} {b : Ann B} (s : Term σ (Γ.boxIn.insert (.bnd 0) A) B b) :
       Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd) t) →
       Proof σ Γ Δ (WFF.here hT (Term.diatm x hx (Term.viewReadTm bd s)) (Term.hereRead hT t s))
-  /-- ⭐**Functionality**: a possible object has one realisation here.  At base content this is an
-      equation; at every other content type it is `WFF.eqRec`, the annotation-free equality — which
-      is what the `◇`-equality reform provides and why `WFF.here` need no longer be base-typed
-      (§2d).  The two values carry unrelated annotations, which is exactly the comparison that used
-      to be impossible to state. -/
+  /-- ⭐**Functionality**: a possible object has one realisation here.  The two values stand at **one
+      annotation**, so the conclusion is `WFF.eqRec` within a single fibre — which is the only
+      comparison there is (§2d), and which is no restriction at all at a `◇`-free content type,
+      where the annotation is unique (`Ann.eq_of_diaFree`). -/
   | here_fun {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) {A : VarType}
-      {b : Ann (.VTypeDia A)} (s : Term σ Γ (.VTypeDia A) b)
-      {a a' : Ann A} (t : Term σ Γ A a) (t' : Term σ Γ A a') :
+      (hA : A.diaFree = true) {b : Ann (.VTypeDia A)} (s : Term σ Γ (.VTypeDia A) b)
+      {a : Ann A} (t t' : Term σ Γ A a) :
       Proof σ Γ Δ (WFF.here hT s t) → Proof σ Γ Δ (WFF.here hT s t') →
       Proof σ Γ Δ (eqRec A t t')
   -- Weak B

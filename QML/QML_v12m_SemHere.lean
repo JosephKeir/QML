@@ -134,7 +134,7 @@ omit [Γ.NoSlots] in
     annotations, so the conclusion is the annotation-free `eqRec` of §2d — which is what let the
     predicate stop being base-typed. -/
 theorem sat_here_fun {A : VarType} {b : Ann (.VTypeDia A)} (s : Term σ Γ (.VTypeDia A) b)
-    {a a₁ : Ann A} (t : Term σ Γ A a) (t' : Term σ Γ A a₁)
+    {a : Ann A} (t t' : Term σ Γ A a)
     (h : M.sat env (WFF.here hT s t : WFF σ Γ 0))
     (h' : M.sat env (WFF.here hT s t' : WFF σ Γ 0)) :
     M.sat env (eqRec A t t' : WFF σ Γ 0) := by

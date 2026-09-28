@@ -33,67 +33,32 @@ inductive WFF (σ : Signature) : Ctx → ℕ → Type where
   /-- `◇_x φ`: `x : ◇X` outside, its content `x.dia : X` inside. -/
   | dia {Γ : Ctx} {d : ℕ} (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
       WFF σ (Γ.diaIn x) d → WFF σ Γ d
-  /-- `Here s t`: the possible object `s` is realised at this world, with value `t` (T only).  The
-      content type is **arbitrary**, and the two sides carry unrelated annotations: `s` is annotated
-      by its witness, `t` by whatever built it.
-
-      Its subject is a **term** of `◇`-type, not a witness address, so that substitution can act on
-      it: sending a witness to a `diatm` term would otherwise break the tie between the term's type
+  /-- `Here s t`: the possible object `s` is realised at this world, with value `t` (T only).  Its
+      subject is a **term** of `◇`-type, not a witness address, so that substitution can act on it:
+      sending a witness to a `diatm` term would otherwise break the tie between the term's type
       and the witness's content type.
 
-      *It used to be base-typed, for two reasons; one is dead and one is now an obligation.*  Dead:
-      the value names the content and so carries an annotation of its own, while equality compared
-      only terms of the same annotation — so at compound content no formula *said* what the content
-      was.  `eqRec` is annotation-free at every type now (§2d), which is exactly what functionality
-      (`Proof.here_fun`) needs in order to be stated at compound content.  Outstanding: *the
-      canonical model must decide these formulas*, i.e. the truth lemma's `here` case holds at every
-      content type.  That is not discharged here — but it is the obligation `WFF.diaEq` already
-      carries, since it too is primitive at every type, so it is no longer a reason to single `here`
-      out.
+      *On the content type.*  The constructor takes any `A`, but functionality — `Proof.here_fun`,
+      the rule that makes `Here` useful — is stated at `◇`-free `A` only, and so is strong T's
+      `posRet_exists`.  The reason is the predicate's, not the equality's: `Here s t` with a
+      possible object as its value asserts that `s`'s content here *is* that object, and two such
+      atoms about one subject, over witnesses nothing has joined, are jointly satisfiable only if
+      those witnesses share an extent — which the construction cannot arrange, and should not,
+      since possibilities combine only when the syntax has joined them (§2d).  At `◇`-free `A` the
+      annotation is unique (`Ann.eq_of_diaFree`), so functionality's `eqRec` needs no side
+      condition there.
 
-      The `𝟙` case is why this has to be primitive rather than a recursion on the content type:
-      there the content carries no information, so the clause is the extent condition alone — the
-      **reflexive** arrow lies in the extent — and that is expressible only *relative to a base term
-      of the view* (`∃a. Here (diatm x hx bd) a` for a base-typed body `bd`), which need not exist:
-      the view is the content address plus `Γ.boxIn`, so with no base entry in scope and no constant
-      in the signature there is no such `bd`.  `◇_x ⊤` will not do — it says only that the extent is
-      non-empty. -/
+      The `𝟙` case is why this is primitive rather than a recursion on the content type: there the
+      content carries no information, so the clause is the extent condition alone — the
+      **reflexive** arrow lies in the extent — and that is expressible only *relative to a base
+      term of the view* (`∃a. Here (diatm x hx bd) a` for a base-typed body `bd`), which need not
+      exist: the view is the content address plus `Γ.boxIn`, so with no base entry in scope and no
+      constant in the signature there is no such `bd`.  `◇_x ⊤` will not do — it says only that the
+      extent is non-empty. -/
   | here {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true) {A : VarType} {b : Ann (.VTypeDia A)}
       {a : Ann A} (s : Term σ Γ (.VTypeDia A) b) (t : Term σ Γ A a) : WFF σ Γ d
-  /-- `s ≐ s'`: two `◇`-terms of the same **type** denote the same possible object — their
-      annotations may differ, and that is the whole point.  An annotation of a fixed type can vary
-      only in its `.dia` witness indices, everything else being forced by the type, so "same type,
-      different annotation" *is* "different witness", and this is exactly the equality the `◇`-types
-      lack (§2d).  Annotation-free equality at the other types is then definable from it: `×`
-      componentwise, `□` inside a `□`, `Var`/`𝟙` as `eqRec` already does.
-
-      Its subjects are **terms**, not addresses, for the reason `WFF.here`'s subject is: a
-      substitution sends a `◇`-typed address to a `◇`-term, so an address-level equality would not
-      survive substitution. -/
-  | diaEq {Γ : Ctx} {d : ℕ} {A : VarType} {b b' : Ann (.VTypeDia A)}
-      (s : Term σ Γ (.VTypeDia A) b) (s' : Term σ Γ (.VTypeDia A) b') : WFF σ Γ d
 deriving DecidableEq
 
-
-
-/-- Two `≐` formulas agree when their terms do, annotations included. -/
-theorem WFF.diaEq_congr {σ : Signature} {Γ : Ctx} {d : ℕ} {A : VarType}
-    {b b' c c' : Ann (.VTypeDia A)} {s : Term σ Γ (.VTypeDia A) b}
-    {s' : Term σ Γ (.VTypeDia A) b'} {u : Term σ Γ (.VTypeDia A) c}
-    {u' : Term σ Γ (.VTypeDia A) c'}
-    (h : (⟨b, s⟩ : Σ e, Term σ Γ (.VTypeDia A) e) = ⟨c, u⟩)
-    (h' : (⟨b', s'⟩ : Σ e, Term σ Γ (.VTypeDia A) e) = ⟨c', u'⟩) :
-    (WFF.diaEq s s' : WFF σ Γ d) = WFF.diaEq u u' := by
-  cases h
-  cases h'
-  rfl
-
-/-- The same at equal annotations. -/
-theorem WFF.diaEq_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} {A : VarType}
-    {b b' : Ann (.VTypeDia A)} {s u : Term σ Γ (.VTypeDia A) b}
-    {s' u' : Term σ Γ (.VTypeDia A) b'} (h : s = u) (h' : s' = u') :
-    (WFF.diaEq s s' : WFF σ Γ d) = WFF.diaEq u u' := by
-  rw [h, h']
 /-- Two `Here` formulas agree when their subjects do. -/
 theorem WFF.here_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true)
     {A : VarType} {b : Ann (.VTypeDia A)} {a : Ann A} {s s' : Term σ Γ (.VTypeDia A) b}
@@ -120,19 +85,22 @@ abbrev WFF.boxx {σ : Signature} {Γ : Ctx} {d : ℕ} (x : VarSymb)
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (φ : WFF σ (Γ.diaIn x) d) : WFF σ Γ d :=
   (WFF.dia x hx φ.neg).neg
 
-/-- ⭐Equality at every type, by extensionality — and **annotation-free**: the two terms need only
-    share their *type*.  At `◇` it is the primitive `WFF.diaEq`, which is exactly the comparison
-    across witnesses that annotations otherwise block (§2d); every other clause is structural, so
-    since an annotation of a fixed type varies only in its `.dia` indices, this is equality at every
-    type between any two terms of that type. -/
-def eqRec {σ : Signature} {d : ℕ} : {Γ : Ctx} → (T : VarType) → {a a' : Ann T} →
-    Term σ Γ T a → Term σ Γ T a' → WFF σ Γ d
-  | _, .Var, .var, .var, t, s => .eq t s
-  | _, .VTypeOne, _, _, _, _ => .top
-  | _, .VTypeProd A B, .prod _ _, .prod _ _, .pair t₁ t₂, .pair s₁ s₂ =>
+/-- ⭐Equality at every type, by extensionality, **within one fibre**: the two terms share their
+    annotation.  An annotation of a fixed type varies only in its `.dia` witness indices, everything
+    else being forced by the type, so sharing it means sharing the witness at every `◇` position —
+    and the `◇` clause is then `□_x`, the equality of the two bodies at every arrow of the one
+    witness's extent.  Terms over *different* witnesses are not compared, and that is the design:
+    possibilities combine only when the syntax has joined them, which for terms is pairing, after
+    which both components stand over the one witness and this equality applies (§2d).  At a `◇`-free
+    type the annotation is unique (`Ann.eq_of_diaFree`), so there the restriction is vacuous. -/
+def eqRec {σ : Signature} {d : ℕ} : {Γ : Ctx} → (T : VarType) → {a : Ann T} →
+    Term σ Γ T a → Term σ Γ T a → WFF σ Γ d
+  | _, .Var, .var, t, s => .eq t s
+  | _, .VTypeOne, _, _, _ => .top
+  | _, .VTypeProd A B, .prod _ _, .pair t₁ t₂, .pair s₁ s₂ =>
       .and (eqRec A t₁ s₁) (eqRec B t₂ s₂)
-  | _, .VTypeBox A, .box _, .box _, .boxtm t, .boxtm s => .box (eqRec A t s)
-  | _, .VTypeDia _, _, _, s, s' => .diaEq s s'
+  | _, .VTypeBox A, .box _, .boxtm t, .boxtm s => .box (eqRec A t s)
+  | _, .VTypeDia A, .dia x _, .diatm _ hx t, .diatm _ _ s => .boxx x hx (eqRec A t s)
 
 /-! ## Weakening -/
 
@@ -153,7 +121,6 @@ def WFF.mono {σ : Signature} : {Γ Γ' : Ctx} → {d : ℕ} → Γ.Le Γ' → W
   | _, _, _, h, .box φ => .box (WFF.mono h.boxIn φ)
   | _, _, _, h, .dia x hx φ => .dia x (hx.imp fun _ hX => h.ref hX) (WFF.mono (h.diaIn x) φ)
   | _, _, _, h, .here hT s t => .here hT (Term.mono h s) (Term.mono h t)
-  | _, _, _, h, .diaEq s s' => .diaEq (Term.mono h s) (Term.mono h s')
 
 /-- Weakening by a fresh root. -/
 def WFF.weaken {σ : Signature} {Γ : Ctx} {d : ℕ} {r : Root} (hr : Γ (.root r) = none)

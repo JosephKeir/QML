@@ -312,6 +312,17 @@ end Ctx
 
 /-! ## Witness annotations -/
 
+/-- ⭐A type with no `◇` in it.  `Ann` branches only at `.dia`, so at such a type the annotation is
+    unique (`Ann.eq_of_diaFree`): a term of it carries no witness information, and equality needs no
+    annotation index.  This is the content type `Here` is restricted to (§2d): a `Here` whose value
+    is a possible object would combine two possibilities that nothing has joined. -/
+def VarType.diaFree : VarType → Bool
+  | .Var => true
+  | .VTypeOne => true
+  | .VTypeProd A B => A.diaFree && B.diaFree
+  | .VTypeBox A => A.diaFree
+  | .VTypeDia _ => false
+
 inductive Ann : VarType → Type where
   | var : Ann .Var
   | one : Ann .VTypeOne
@@ -320,6 +331,17 @@ inductive Ann : VarType → Type where
   | dia {A : VarType} (i : VarSymb) (a : Ann A) : Ann (.VTypeDia A)
 deriving DecidableEq
 
+
+/-- ⭐At a `◇`-free type the annotation is unique, since `Ann` branches only at `.dia`. -/
+theorem Ann.eq_of_diaFree : {T : VarType} → T.diaFree = true → ∀ a a' : Ann T, a = a'
+  | .Var, _, .var, .var => rfl
+  | .VTypeOne, _, .one, .one => rfl
+  | .VTypeProd _ _, h, .prod a b, .prod a' b' => by
+      simp only [VarType.diaFree, Bool.and_eq_true] at h
+      rw [Ann.eq_of_diaFree h.1 a a', Ann.eq_of_diaFree h.2 b b']
+  | .VTypeBox _, h, .box a, .box a' => by
+      simp only [VarType.diaFree] at h
+      rw [Ann.eq_of_diaFree h a a']
 def Ann.mapIdx (f : VarSymb → VarSymb) : {T : VarType} → Ann T → Ann T
   | _, .var => .var
   | _, .one => .one

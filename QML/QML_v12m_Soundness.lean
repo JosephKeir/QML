@@ -152,15 +152,6 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       refine (sat_instantiate env hnp Ctx.NoSlots.slots s φ).mpr ?_
       rw [← he]
       exact (sat_instantiate env hnp Ctx.NoSlots.slots t φ).mp (ihq M env hnp hΔ)
-  | @diaEq_intro Γ Δ A b s =>
-      intro M w env _ _
-      exact rfl
-  | @diaEq_elim Γ _ Δ A φ b b' s s' p q ihp ihq =>
-      intro M w env hnp hΔ
-      have he : interp env s = interp env s' := ihp M env hnp hΔ
-      refine (sat_instantiate env hnp Ctx.NoSlots.slots s' φ).mpr ?_
-      rw [← he]
-      exact (sat_instantiate env hnp Ctx.NoSlots.slots s φ).mp (ihq M env hnp hΔ)
   | @pair_elim Γ _ A B u₁ u₂ z hu hz₁ hu₁ hu₂ hzf Δ φ p ih =>
       intro M w env hnp hΔ
       have hnpΓ := hnp.of_insert hzf.root
@@ -233,7 +224,7 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M w env hnp hΔ
       obtain ⟨Y, h⟩ := id hx
       exact sat_here_beta hT env hnp hx h t bd s (ihh M env hnp hΔ)
-  | @here_fun Γ Δ hT A b s a a₁ t t' ph ph' ihh ihh' =>
+  | @here_fun Γ Δ hT A hA b s a t t' ph ph' ihh ihh' =>
       intro M w env hnp hΔ
       exact sat_here_fun hT env s t t' (ihh M env hnp hΔ) (ihh' M env hnp hΔ)
   | @B_dia Γ Δ hB ψ p ih =>

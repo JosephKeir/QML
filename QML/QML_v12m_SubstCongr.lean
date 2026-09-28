@@ -509,9 +509,6 @@ theorem WFF.subst_congr : {ι ι' : VarSymb → VarSymb} → {Γ Δ : Ctx} → {
   | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .here hT s t =>
       WFF.here_congr hT (Term.subst_congr θ θ' hθ hθ' hc hc' hs s)
         (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
-  | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .diaEq s s' =>
-      WFF.diaEq_congr (Term.subst_congr θ θ' hθ hθ' hc hc' hs s)
-        (Term.subst_congr θ θ' hθ hθ' hc hc' hs s')
 
 end Congr
 

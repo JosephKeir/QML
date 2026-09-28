@@ -650,9 +650,6 @@ theorem WFF.collapse_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {�
   | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr, .here hT s t =>
       WFF.here_congr hT (Term.collapse_subst C D θ hθ hc θ' hθ' hc' hcr s)
         (Term.collapse_subst C D θ hθ hc θ' hθ' hc' hcr t)
-  | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr, .diaEq s s' =>
-      WFF.diaEq_congr (Term.collapse_subst C D θ hθ hc θ' hθ' hc' hcr s)
-        (Term.collapse_subst C D θ hθ hc θ' hθ' hc' hcr s')
 
 end CollapseSubst
 

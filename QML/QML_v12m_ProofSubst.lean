@@ -1179,17 +1179,6 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
             (hΓ.insert .Var) (hΓ'.insert .Var) φ)
           (Term.subst ι θ hθ hc t) (Term.subst ι θ hθ hc s) (Proof.subst p θ hθ hc hΓ)
           (Proof.conv (WFF.subst_instantiate θ hθ hc hΓ hΓ' t φ) (Proof.subst q θ hθ hc hΓ)))
-  | _, _, _, .diaEq_intro _, _, _, _, _, _, _, _ => .diaEq_intro _
-  | _, _, _, @Proof.diaEq_elim _ _ _ _ _ A φ b b' s s' p q, Γ', _, ι, θ, hθ, hc, hΓ =>
-      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
-      Proof.conv (WFF.subst_instantiate θ hθ hc hΓ hΓ' s' φ).symm
-        (Proof.diaEq_elim
-          (φ := WFF.subst (VarSymb.shiftSlot ι 0 0) (θ.under 0 0 (.VTypeDia A) hΓ'.root)
-            (Subst.ok_under hθ (.VTypeDia A) hΓ'.root)
-            (Subst.coh_under hθ hc hΓ (.VTypeDia A) hΓ'.root)
-            (hΓ.insert (.VTypeDia A)) (hΓ'.insert (.VTypeDia A)) φ)
-          (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc s') (Proof.subst p θ hθ hc hΓ)
-          (Proof.conv (WFF.subst_instantiate θ hθ hc hΓ hΓ' s φ) (Proof.subst q θ hθ hc hΓ)))
   | _, _, _, @Proof.pair_elim _ _ Γ₀ _ A B u₁ u₂ z hu hz₁ hu₁ hu₂ hzf _ φ p, Γ', _, ι, θ, hθ,
       hc, hΓ =>
       have hΓ₀ : Γ₀.SlotsFrom 0 := Ctx.NoSlots.slots
@@ -1317,9 +1306,9 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         (Proof.here_beta hT (ι x) hy (Term.subst ι θ hθ hc t)
           (Term.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) bd) _
           (Proof.subst ph θ hθ hc hΓ))
-  | _, _, _, @Proof.here_fun _ _ Γ _ hT A b s a a₁ t t' ph ph', Γ', _, ι, θ, hθ, hc, hΓ =>
-      Proof.conv (WFF.subst_eqRec θ hθ hc hΓ Ctx.NoSlots.slots A t t').symm
-        (Proof.here_fun hT (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
+  | _, _, _, @Proof.here_fun _ _ Γ _ hT A hA b s a t t' ph ph', Γ', _, ι, θ, hθ, hc, hΓ =>
+      Proof.conv (WFF.subst_eqRec θ hθ hc hΓ Ctx.NoSlots.slots A hA t t').symm
+        (Proof.here_fun hT hA (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
           (Term.subst ι θ hθ hc t') (Proof.subst ph θ hθ hc hΓ) (Proof.subst ph' θ hθ hc hΓ))
 
 /-- ⭐**Weakening** along any inclusion of contexts, into a presented context. -/

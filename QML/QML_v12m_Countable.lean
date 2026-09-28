@@ -137,9 +137,6 @@ noncomputable def WFF.code : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → Code
   | _, _, .here _ (A := A) (b := b) (a := a) s t =>
       .node 21 (.node 0 (.leaf (natCode A)) (.node 0 (Ann.code b) (Ann.code a)))
         (.node 0 (Term.code s) (Term.code t))
-  | _, _, .diaEq (A := A) (b := b) s (b' := b') s' =>
-      .node 22 (.node 0 (.leaf (natCode A)) (.node 0 (Ann.code b) (Ann.code b')))
-        (.node 0 (Term.code s) (Term.code s'))
 
 theorem Rel.code_inj : {Γ : Ctx} → {n : ℕ} → (ρ ρ' : Rel σ Γ n) → ρ.code = ρ'.code → ρ = ρ'
   | _, _, .R r, .R r', h => by
@@ -225,15 +222,6 @@ theorem WFF.code_inj {Γ : Ctx} {d : ℕ} (φ ψ : WFF σ Γ d) (h : φ.code = �
       cases Ann.code_injective hb
       cases Ann.code_injective ha
       rw [Term.code_inj s _ hs, Term.code_inj t _ ht]
-  | diaEq s s' =>
-      intro ψ h
-      cases ψ <;> simp only [WFF.code, Code.node.injEq, Code.leaf.injEq, Nat.reduceEqDiff,
-        false_and, true_and] at h
-      obtain ⟨⟨hA, hb, hb'⟩, hs, hs'⟩ := h
-      cases natCode_injective hA
-      cases Ann.code_injective hb
-      cases Ann.code_injective hb'
-      rw [Term.code_inj s _ hs, Term.code_inj s' _ hs']
 
 instance (Γ : Ctx) (d : ℕ) : Countable (WFF σ Γ d) :=
   Function.Injective.countable (f := WFF.code) (fun φ ψ h => WFF.code_inj φ ψ h)

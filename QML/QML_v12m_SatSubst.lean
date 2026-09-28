@@ -130,10 +130,6 @@ theorem sat_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (�
         (interp env (Term.subst _ θ hθ hc t)) ↔ _
       rw [interp_subst θ hθ hc hnp env s, interp_subst θ hθ hc hnp env t]
       exact Iff.rfl
-  | _, _, _, _, _, θ, hθ, hc, _, _, hnp, _, env, .diaEq s s' => by
-      change interp env (Term.subst _ θ hθ hc s) = interp env (Term.subst _ θ hθ hc s') ↔ _
-      rw [interp_subst θ hθ hc hnp env s, interp_subst θ hθ hc hnp env s']
-      exact Iff.rfl
 
 end Model
 

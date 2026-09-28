@@ -338,7 +338,5 @@ theorem WFF.subst_mono {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Γ'
           (hΓ.diaIn x) (hΓ'.diaIn x) (hΔ.diaIn (ι x)) φ)
   | _, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .here hT s t =>
       WFF.here_congr' hT (Term.subst_mono h θ hθ hc s) (Term.subst_mono h θ hθ hc t)
-  | _, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .diaEq s s' =>
-      WFF.diaEq_congr' (Term.subst_mono h θ hθ hc s) (Term.subst_mono h θ hθ hc s')
 
 end V12M
