@@ -170,14 +170,9 @@ theorem realisedLe (w : World σ N₀) {x : VarSymb} (hr : w.Realised x) {Γ : C
   rw [← hr.data.hx]
   exact (e.trans (w.L.ctx_le le_sup_left)).diaIn x
 
-/-- Where the witness is declared, its realising term comes from an earlier own stage. -/
-theorem realisedLt {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx} {i : ℕ × ℕ}
-    (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) : hr.data.i₀.2 < i.2 :=
-  hr.data.hstage i (hx.imp fun _ h => hr.data.hx ▸ e.ref h)
-
 /-- So it is declared at the stage where both it and the term live.  Through `RealDatum.hdeclOf`,
-    so that this survives realisedness being read off the theory (§2d, step 4), where the stage
-    order `hstage` gives is not available. -/
+    so that this survives realisedness being read off the theory (§2d, step 4), where a stage
+    order on the datum is not available. -/
 theorem realisedDecl {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx} {i : ℕ × ℕ}
     (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
     (w.L.ctx (i ⊔ hr.data.i₀)).ref (.root (.free hr.data.c)) = some (.VTypeDia hr.data.A) :=
@@ -407,6 +402,15 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
           exact rden_congr t w'.1.1 (childStage i) (childStage j) _ _)
   termination_by structural A => A
 
+
+/-- The denotations of the η-expansions of an address in two nested contexts agree. -/
+theorem rden_eta_le {Γ₁ Γ₂ : Ctx} (h : Γ₁.Le Γ₂) {w : World σ N₀} {i j : ℕ × ℕ}
+    (e₁ : Γ₁.Le (w.L.ctx i)) (e₂ : Γ₂.Le (w.L.ctx j)) (v : VarSymb) (T : VarType)
+    (p₁ : Γ₁.ref v = some T) (p₂ : Γ₂.ref v = some T) :
+    rden w i e₁ (Term.eta (σ := σ) v T p₁) = rden w j e₂ (Term.eta v T p₂) := by
+  rw [show Term.eta (σ := σ) v T p₂ = Term.mono h (Term.eta v T p₁) from
+    (Term.mono_eta h v T p₁).symm, rden_mono]
+  exact rden_congr _ _ _ _ _ _
 
 /-- The realised content of a pair is the pair of realised contents. -/
 theorem rden_realisedTerm_pair {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
@@ -638,7 +642,7 @@ theorem rden_castAnn {A : VarType} (hA : A.diaFree = true) {a a' : Ann A} {Γ : 
 
     This is what lets a realised witness's content be an **address**: a datum may record `η b` in
     place of the term it was enumerated for, which is what takes the stage out of `interp_canon`'s
-    measure (§2d, and `RealDatum.hstage`). -/
+    measure, in place of the stage order the retired `RealDatum.hstage` gave (§2d). -/
 theorem exists_name {w : World σ N₀} {A : VarType} (hA : A.diaFree = true) {i : ℕ × ℕ}
     {a : Ann A} (t : Term σ (w.L.ctx i) A a) :
     ∃ (i' : ℕ × ℕ) (_ : i ≤ i') (c : ℕ) (hc : (w.L.ctx i').ref (.root (.free c)) = some A),

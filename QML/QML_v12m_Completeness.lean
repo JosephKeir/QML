@@ -218,7 +218,8 @@ theorem relSat_canon : ∀ {Γ : Ctx} {n : ℕ} (ρ : Rel σ Γ n) {w : World σ
     says about the realising term it says about the witness (`RealDatum.spec`).  The induction
     hypothesis is needed only at formulas of the same logical size (`WFF.size_realiseAt`). -/
 theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {c : ℕ} (dat : RealDatum σ w.L w.T c)
-    (hlt : dat.i₀.2 < i.2) (hreal : w.real c = some dat)
+    (hdeclI : (w.L.ctx i).ref (.root (.free c)) = some (.VTypeDia dat.A))
+    (hreal : w.real c = some dat)
     {x : VarSymb} (hxc : x = .root (.free c)) {X : VarType}
     (h : (w.L.ctx i).ref x = some (.VTypeDia X)) (hx : ∃ Y, (w.L.ctx i).ref x = some (.VTypeDia Y))
     (χ : WFF σ ((w.L.ctx i).diaIn x) 0)
@@ -232,15 +233,12 @@ theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {c : ℕ} (dat 
   subst hxc
   have hXA : X = dat.A := by
     have h1 := h
-    rw [dat.hdecl i hlt] at h1
+    rw [hdeclI] at h1
     simp only [Option.some.injEq, VarType.VTypeDia.injEq] at h1
     exact h1.symm
   subst hXA
   have hj : i ≤ i ⊔ dat.i₀ := le_sup_left
-  have hj2 : dat.i₀.2 < (i ⊔ dat.i₀).2 := by
-    have h2 : (i ⊔ dat.i₀).2 = max i.2 dat.i₀.2 := rfl
-    omega
-  have hdecl := dat.hdecl (i ⊔ dat.i₀) hj2
+  have hdecl := dat.hdeclOf (i ⊔ dat.i₀) ⟨dat.A, (w.L.ctx_le hj).ref hdeclI⟩
   have hagj : Model.Env.Agree (w.L.ctx_le hj) (canonEnv w₀ w i) (canonEnv w₀ w (i ⊔ dat.i₀)) :=
     canonEnv_le w₀ w hj
   have hm' : (⟨w, ⟨R.refl dat.hT w⟩⟩ : Succ w) ∈
@@ -262,7 +260,7 @@ theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {c : ℕ} (dat 
     (WFF.mono ((w.L.ctx_le hj).diaIn (.root (.free c))) χ)).mpr
     ((Model.sat_mono (Model.Env.diaPush_agree hagj h
       ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hmem⟩ hm') χ).mpr hsat)
-  have hdia := dat.spec w.mcs (i ⊔ dat.i₀) le_sup_right hj2 _
+  have hdia := dat.spec w.mcs (i ⊔ dat.i₀) le_sup_right hdecl _
     ((IH _ (by rw [WFF.size_realiseAt, WFF.size_mono])).mp hsatR)
   have hmem' := World.mem_mono_congr w (Ctx.Le.refl _) (w.L.ctx_le hj)
     (ψ := WFF.dia (.root (.free c)) hx χ) hdia
@@ -480,7 +478,8 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
               obtain ⟨⟨w₁, hR⟩, hmem⟩ := w'
               change w₁ = w at hweq
               subst hweq
-              exact dia_mem_of_sat_self w₀ hrx.data.datum (realisedLt hrx (Ctx.Le.refl _) hx)
+              exact dia_mem_of_sat_self w₀ hrx.data.datum
+                (hrx.data.declType i ⟨X, hrx.data.hx ▸ h⟩)
                 (World.real_of_realised hrx) hrx.data.hx h hx χ
                 (fun ψ hψ => truth_lt n _ _ ψ (by rw [hψ]; exact hχs)) hmem hsat
           · intro hmem

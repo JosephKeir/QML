@@ -2140,10 +2140,10 @@ It is the odd one out, and for a principled reason rather than an accident.
 7. **5**, then the general metatheory of `docs/v12-metatheory-todo.md`: generalisation on constants,
    uniform substitution, cut elimination, Craig interpolation, `T_dia∀ ⇔` positive-Φ.
 
-### ⭐START HERE next session *(rewritten 2026-09-28, after steps 1–2)*
+### ⭐START HERE next session *(rewritten 2026-09-28, after steps 1–3)*
 
 **State of the build.**  The whole `QML_v12m_*` module list builds with **one error**:
-`Completeness.lean:275`, the truth lemma's `here` alternative.  No sorries, no warnings.
+`Completeness.lean:273`, the truth lemma's `here` alternative.  No sorries, no warnings.
 `Compactness` and the B track import `Completeness`, so they wait on that case.
 
 *Build the **whole module list**, not a target:*
@@ -2156,8 +2156,8 @@ uniform over **`◇`-free** content types (`VarType.diaFree`, `Ann.eq_of_diaFree
 
 **Landed since the withdrawal**
 
-1. **Step 1** (`a1599ff`): the `◇`-free restriction, including the chain — `enumTF` enumerates terms
-   at `◇`-free types only, `retStep`'s condition gained that conjunct, `RealDatum` the field `hA`.
+1. **Step 1** (`a1599ff`): the `◇`-free restriction, including the chain — the term enumeration went
+   `◇`-free, `retStep`'s condition gained that conjunct, `RealDatum` the field `hA`.
 2. **`WFF.size`** (`544e137`): `.here` now has size `A.eqRecSize + 1` (⭐`VarType.eqRecSize`,
    ⭐`WFF.size_eqRec`), so the truth lemma's `here` case may appeal to **its own** induction
    hypothesis at the equation `here_fun` concludes — faithfulness for free, inside the induction.
@@ -2169,31 +2169,34 @@ uniform over **`◇`-free** content types (`VarType.diaFree`, `Ann.eq_of_diaFree
    existential (⭐`Proof.exists_eqRec_eta`, ⭐`WFF.instantiate_eqRec_slot`), and `World.exW` now gives
    its witness **at a declared root** (the old form is `World.exW_term`).  Annotation bookkeeping:
    ⭐`Term.castAnn`, ⭐`Term.sigma_castAnn`, ⭐`Canon.rden_castAnn`, ⭐`eqRec_congr`.
-5. **Step 3, begun**: ⭐`RealDatum.hdeclOf` — the witness is declared at `◇A` *wherever it is declared
-   at a `◇`-type at all*.  `realisedDecl` and the two inline declarations in `CanonDom` now go
-   through it, so `realisedLt` (hence `hstage`) is used at exactly **two** sites:
-   `interp_dia_self` (`CanonTerm`) and `dia_mem_of_sat_self` (`Completeness`).
-
-**⭐What step 3 actually requires (corrected).**  The plan said naming lets `hstage` and the stage
-component of `interp_canon`'s measure go.  Only the second half is right on its own: `hstage` was
-*also* what gave `realisedDecl`, since `hdecl` only declares the witness at stages strictly past `i₀`.
-Hence item 5 above — with `hdeclOf` in place, dropping `hstage` costs only the stage component of the
-measure, which is exactly what the address content replaces.  And the three moves are **coupled**:
-the datum cannot record an address until the chain realises η-expansions, and the measure cannot lose
-its stage until the datum records an address.  Budget them as one change:
-
-* `RealDatum`: `a₀`/`t₀` become `b₀ : VarSymb` with `hb₀ : (L.ctx i₀).ref b₀ = some A`, and `t₀` is
-  the derived `Term.eta b₀ A hb₀` (so consumers keep working); `hdecl` becomes `hdeclOf`'s form and
-  `hstage` goes.
-* the chain: `retStep`'s condition gains "the enumerated term is the η-expansion of a declared
-  address" (classically, as a `Sigma` equation), and `retDatum` reads `b₀` off it.  `World.realW`
-  restricts to η-expansion inputs; `posRet_exists_canon` supplies one by `Canon.exists_name`, whose
-  denotational equation is what makes the replacement sound.
-* `interp_dia_self` / `interp_canon`: the content's interpretation becomes the lookup
-  `interp_canon_eta` instead of a recursive call, and the measure drops to
-  `(VarType.tsize A, t.size)`.  `dia_mem_of_sat_self` needs the same treatment.
+5. **⭐Step 3 — the datum's content is an address, and the measure loses its stage.**  Done as one
+   change, since the three moves are coupled.  What landed:
+   * **The chain reads an address, not a term.**  ⭐`enumAF` enumerates pairs (a `◇`-free type, a
+     `VarSymb`) — no context, so ⭐`WorldLang.addrQ n = enumAF (decKT n)` is a plain function of the
+     step, and `enumT`/`termQ`/`termQ_chain`/`enumT_mono_congr` are gone.  `retStep`'s guard is now
+     "the address is declared at the step's own stage at that type", and the term it declares a
+     witness for is ⭐`WorldLang.retTerm` = that address's η-expansion.  `IsRet` carries the guard as
+     its third conjunct, and ⭐`exists_isRet_addr` replaces `exists_isRet_term`: *every declared
+     address at every stage* is some strong T step's.
+   * **`RealDatum`**: `a₀`/`t₀` are gone as fields — the field is ⭐`b₀ : VarSymb` with
+     `hb₀ : (L.ctx i₀).ref b₀ = some A`, and `a₀`/`t₀` are `@[reducible]` defs (`Ann.eta`,
+     `Term.eta`), so every consumer of `d.t₀` still works.  `hstage` is **deleted**.  `hdecl` stayed
+     in its stage form (`i₀.2 < i.2 → declared at ◇A`) and the *type-uniqueness* form is now the
+     derived ⭐`RealDatum.hdeclOf` (= `declType`): contexts grow, so a declaration at `◇Y` and the one
+     past `i₀` meet at a common stage.  That is the honest reading — `hdecl` has to assert the
+     witness *is* declared somewhere (`posRet_exists_canon` needs a stage where it is), and
+     uniqueness is a consequence, not an extra assumption.  `CanonDom.realisedLt` is deleted.
+   * **`World.realW`** is now: every **declared address** of a `◇`-free type is the content of some
+     realised root — three *non-dependent* equations (`d.A = A`, `d.b₀ = v`, `i ≤ d.i₀`), since the
+     content no longer depends on the stage.  `posRet_exists_canon` brings an arbitrary term into
+     that form with `Canon.exists_name` and `rden_eta_le` (moved to `CanonDom`).
+   * **The measure**: `interp_canon`'s `termination_by` is now `(VarType.tsize A, t.size)` — no
+     stage.  `interp_dia_self` takes the declaration at `i` instead of a stage inequality and reads
+     the content by the lookup `interp_canon_eta`, not a recursive call; `dia_mem_of_sat_self` the
+     same, through `hdeclOf`.
 
 **Then**: 4. realisedness read off the theory (`∃b. Here (η x) (η b) ∈ T`, invariant because the atom
-is), at any declared `◇`-typed `x` rather than at roots only; 5. the truth lemma's `here` case, which
-then closes, and with it `Compactness` and the B track; 6. the metatheory list
-(`docs/v12-metatheory-todo.md`).
+is), at any declared `◇`-typed `x` rather than at roots only — `hdeclOf` and the address content are
+what a theory-given datum can supply, so nothing in the `rden`/`interp` layer now stands in the way;
+5. the truth lemma's `here` case, which then closes, and with it `Compactness` and the B track;
+6. the metatheory list (`docs/v12-metatheory-todo.md`).

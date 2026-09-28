@@ -95,15 +95,6 @@ namespace Canon
 
 variable {σ : Signature} {N₀ : ℕ} (w₀ : World σ N₀)
 
-/-- The denotations of the η-expansions of an address in two nested contexts agree. -/
-theorem rden_eta_le {Γ₁ Γ₂ : Ctx} (h : Γ₁.Le Γ₂) {w : World σ N₀} {i j : ℕ × ℕ}
-    (e₁ : Γ₁.Le (w.L.ctx i)) (e₂ : Γ₂.Le (w.L.ctx j)) (v : VarSymb) (T : VarType)
-    (p₁ : Γ₁.ref v = some T) (p₂ : Γ₂.ref v = some T) :
-    rden w i e₁ (Term.eta (σ := σ) v T p₁) = rden w j e₂ (Term.eta v T p₂) := by
-  rw [show Term.eta (σ := σ) v T p₂ = Term.mono h (Term.eta v T p₁) from
-    (Term.mono_eta h v T p₁).symm, rden_mono]
-  exact rden_congr _ _ _ _ _ _
-
 omit w₀ in
 theorem World.noProjLast (w : World σ N₀) (i : ℕ × ℕ) : (w.L.ctx i).NoProjLast :=
   Ctx.Presented.noProjLast _
@@ -365,16 +356,14 @@ theorem interp_dia_self_core {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ 
   exact IH _ hsup (fun _ _ _ => rfl)
 
 
-/-- ⭐The realised case as the stage-led induction uses it: the realising term's own value comes from
-    the induction hypothesis at its (strictly earlier) stage.  A datum whose content is base-typed
-    can reach `interp_dia_self_core` without this, through `interp_canon_base`. -/
+/-- ⭐The realised case as the induction now uses it.  The realising term is the content
+    **address's** η-expansion, so its own value is read outright (`interp_canon_eta`): there is no
+    recursive call at the content, and hence nothing the induction has to know about the stage the
+    content lives at — which is what takes the stage out of the measure below (§2d, step 3). -/
 theorem interp_dia_self {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
-    {c : ℕ} (dat : RealDatum σ w.L w.T c) (hlt : dat.i₀.2 < i.2)
-    (IHt₀ : ∀ {Γ' : Ctx} {B : VarType} {b : Ann B} (s : Term σ Γ' B b) {k : ℕ × ℕ}, k.2 < i.2 →
-      ∀ {e' : Γ'.Le (w.L.ctx k)} {env' : (model w₀).Env Γ' w},
-      Model.Env.Agree e' env' (canonEnv w₀ w k) →
-      Model.interp env' s = toDom w₀ B w (rden w k e' s) (definable_rden e' s))
-    (IH : ∀ {Γ' : Ctx} {b : Ann A} (s : Term σ Γ' A b) {k : ℕ × ℕ}, k.2 ≤ i.2 →
+    {c : ℕ} (dat : RealDatum σ w.L w.T c)
+    (hdeclI : (w.L.ctx i).ref (.root (.free c)) = some (.VTypeDia dat.A))
+    (IH : ∀ {Γ' : Ctx} {b : Ann A} (s : Term σ Γ' A b) {k : ℕ × ℕ},
       ∀ {e' : Γ'.Le (w.L.ctx k)} {env' : (model w₀).Env Γ' w},
       Model.Env.Agree e' env' (canonEnv w₀ w k) →
       Model.interp env' s = toDom w₀ A w (rden w k e' s) (definable_rden e' s))
@@ -391,21 +380,19 @@ theorem interp_dia_self {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
       toDom w₀ A w (rden w (i ⊔ dat.i₀) (Ctx.Le.refl _)
         (Term.realiseAt hT c hdecl (dat.hfr _) (Term.mono (w.L.ctx_le le_sup_right) dat.t₀)
           (Term.mono hle t))) (definable_rden _ _) :=
-  interp_dia_self_core w₀ dat (dat.hdecl i hlt)
-    (IHt₀ dat.t₀ hlt (fun _ _ _ => rfl))
-    (StageOK := fun k => k.2 ≤ i.2)
-    (by have h2 : (i ⊔ dat.i₀).2 = max i.2 dat.i₀.2 := rfl
-        omega)
-    IH hag hx hxc hreal hdecl hle hT hmem t
+  interp_dia_self_core w₀ dat hdeclI
+    (interp_canon_eta w₀ w dat.i₀ dat.b₀ dat.hb₀)
+    (StageOK := fun _ => True) trivial
+    (fun {_Γ'} {_b} s {_k} _ {_e'} {_env'} hag' => IH s hag')
+    hag hx hxc hreal hdecl hle hT hmem t
 
 /-! ## The truth lemma for terms
 
 Base terms come first, and on their own: the value of a base term is a class of base terms, and the
 only addresses it can read are the world's own roots, whose canonical values are classes.  So this
-pair recurses on **size alone** — no stage, no type — which is what lets a realisation whose content
-is base-typed be interpreted without the stage ordering `RealDatum.hstage` demands (`interp_canon`
-below leads its measure with the own stage precisely because it interprets a realising term of
-arbitrary type).
+pair recurses on **size alone** — no stage, no type.  `interp_canon` below recurses on the type and
+then the size, and on nothing else: a realisation's content is an address, read outright by
+`interp_canon_eta`, so no call is ever made at an unrelated type and no stage order is needed.
 -/
 
 mutual
@@ -455,12 +442,10 @@ end
 
 /-! ## The realised case when the content is base-typed
 
-A realised witness whose content is base-typed is interpreted **without any stage ordering**: its
-realising term is a base term, so `interp_canon_base` gives its value outright, and the only call
-left is the body's, which is at the type inside the `◇`.  So a datum of this shape is free of
-`RealDatum.hstage` — which is what the truth lemma for `WFF.here` needs, the realisation predicate
-being base-typed.  (At a compound content type the realising term must instead be an address, and
-then `interp_canon_eta` plays the same role.)
+The same for a datum whose content happens to be base-typed: its realising term is a base term, so
+`interp_canon_base` gives its value outright, with no call at the content and nothing asked of the
+stages.  Kept alongside the address reading (`interp_dia_self`) because the truth lemma for
+`WFF.here` states the realisation predicate at base type.
 -/
 
 /-- `interp_canon_base` at a type that is only provably `Var`. -/
@@ -548,15 +533,14 @@ mutual
           refine Eq.trans ?_ (toDom_congr w₀
             (rden_diatm_self e ⟨X, hr⟩ t ⟨⟨w₁, hR⟩, hmx⟩ hd0).symm (definable_rden _ _)
             (definable_dia_apply (definable_rden e (Term.diatm x ⟨X, hr⟩ t)) ⟨⟨w₁, hR⟩, hmx⟩))
-          exact interp_dia_self w₀ hrx.data.datum (realisedLt hrx e ⟨X, hr⟩)
-            (fun {_Γ} {_B} {_b} s {_k} _hk {_e} {_env} hag' => interp_canon s hag')
-            (fun {_Γ} {_b} s {_k} _hk {_e} {_env} hag' => interp_canon s hag')
+          exact interp_dia_self w₀ hrx.data.datum
+            (hrx.data.declType i ⟨X, hrx.data.hx ▸ e.ref hr⟩)
+            (fun {_Γ} {_b} s {_k} {_e} {_env} hag' => interp_canon s hag')
             hag hr hrx.data.hx (World.real_of_realised hrx) (realisedDecl hrx e ⟨X, hr⟩)
             (realisedLe w₁ hrx e) hrx.T hmem t
-    termination_by _ A _ t _ i => (i.2, VarType.tsize A, t.size)
+    termination_by _ A _ t => (VarType.tsize A, t.size)
     decreasing_by
-      all_goals simp only [Prod.lex_def, true_and, Term.size, Term.size_collapse, VarType.tsize,
-        childStage]
+      all_goals simp only [Prod.lex_def, Term.size, Term.size_collapse, VarType.tsize]
       all_goals omega
 end
 

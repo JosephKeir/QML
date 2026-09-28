@@ -186,24 +186,19 @@ theorem posSerial_canon (hDS : ModalSys.DStrong = true) (w : World σ N₀) :
 
 /-! ## Strong T: every object is the content of a possible object here -/
 
-/-- ⭐Every object of a domain is the content, at the world itself, of a possible object: the
-    witness the world realises by a term denoting it.  The possible object is that witness's
-    η-expansion; `self_mem_extent` puts the world in its extent and `rden_eta_of_real` says its
-    content there is what the realising term denotes. -/
+/-- ⭐Every object of a domain is the content, at the world itself, of a possible object.  Naming
+    (`Canon.exists_name`) turns a term denoting the object into a **declared address** denoting it,
+    and the world realises some witness by that address (`World.realW`).  The possible object is
+    that witness's η-expansion; `self_mem_extent` puts the world in its extent and
+    `rden_eta_of_real` says its content there is what the address denotes. -/
 theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T = true)
     (hS : ModalSys.TStrong = true) (hA : A.diaFree = true) (a : (frame w₀).Dom A w) :
     ∃ (p : (frame w₀).Pos A w) (hm : (frame w₀).reflAcc hT w ∈ (posEval w₀ p).1),
       (posEval w₀ p).2 ⟨(frame w₀).reflAcc hT w, hm⟩ = a := by
   obtain ⟨i, a', t, ht⟩ := definable_fromDom w₀ A w a
-  obtain ⟨c, i', hle, d, hsome, hfields⟩ := w.realW hT hS i hA t
-  have hA : d.A = A := congrArg (fun z => z.1) hfields
-  subst hA
-  have hi₀ : d.i₀ = i' := congrArg (fun z => z.2.1) hfields
-  subst hi₀
-  obtain ⟨-, h1⟩ := Sigma.mk.inj_iff.mp hfields
-  obtain ⟨-, h2⟩ := Sigma.mk.inj_iff.mp (eq_of_heq h1)
-  have hterm : (⟨d.a₀, d.t₀⟩ : Σ b : Ann d.A, Term σ (w.L.ctx d.i₀) d.A b) =
-    ⟨a', Term.mono (w.L.ctx_le hle) t⟩ := eq_of_heq h2
+  obtain ⟨i₁, -, c', hc', hname⟩ := exists_name hA t
+  obtain ⟨c, d, hsome, hdA, hdb, hile⟩ := w.realW hT hS i₁ hA (.root (.free c')) hc'
+  subst hdA
   have hr := World.realised_of_real hsome
   have hdecl : (w.L.ctx (d.i₀.1, d.i₀.2 + 1)).ref (.root (.free c)) = some (.VTypeDia d.A) :=
     d.hdecl _ (Nat.lt_succ_self _)
@@ -213,9 +208,10 @@ theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T =
   refine Eq.trans ?_ (toDom_fromDom w₀ d.A w a)
   refine toDom_congr w₀ ?_ _ _
   rw [← ht]
-  refine (rden_eta_of_real hsome hdecl).trans ?_
-  rw [rden_sigma (Ctx.Le.refl _) hterm, rden_mono]
-  exact rden_congr _ _ _ _ _ _
+  refine (rden_eta_of_real hsome hdecl).trans (Eq.trans ?_ hname)
+  refine (rden_sigma (Ctx.Le.refl _) (Term.eta_congr hdb d.A d.hb₀ (hdb ▸ d.hb₀))).trans ?_
+  exact (rden_eta_le (w.L.ctx_le hile) (Ctx.Le.refl _) (Ctx.Le.refl _)
+    (.root (.free c')) d.A hc' ((w.L.ctx_le hile).ref hc')).symm
 
 
 /-- ⭐The canonical model. -/

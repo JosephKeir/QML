@@ -57,14 +57,14 @@ theorem step_wit_ex (n : ℕ) (st : HState L σ) {A : VarType}
     (⟨decM n, WFF.instantiate Ctx.NoSlots.slots (Term.eta _ A href) (WFF.mono hle ψ)⟩ :
       (L.pre (L.step n st).l).Sentence σ) ∈ (L.step n st).S := by
   have key : ∀ (χ : WFF σ (L.ctxL (decM n) st.l) 0), χ = .ex A ψ →
-      ∀ (href : (L.ctxL (decM n) ((L.witStep (decM n) st.l (L.termQ n st.l) χ).1 :: st.l)).ref
+      ∀ (href : (L.ctxL (decM n) ((L.witStep (decM n) st.l (addrQ n) χ).1 :: st.l)).ref
           (.root (.free (L.ρ st.l.length))) = some A)
         (hle : ((L.ctxL (decM n) st.l).insert (.bnd 0) A).Le
-          ((L.ctxL (decM n) ((L.witStep (decM n) st.l (L.termQ n st.l) χ).1 :: st.l)).insert
+          ((L.ctxL (decM n) ((L.witStep (decM n) st.l (addrQ n) χ).1 :: st.l)).insert
             (.bnd 0) A)),
       (⟨decM n, WFF.instantiate Ctx.NoSlots.slots (Term.eta _ A href) (WFF.mono hle ψ)⟩ :
-        (L.pre ((L.witStep (decM n) st.l (L.termQ n st.l) χ).1 :: st.l)).Sentence σ) ∈
-        (L.witStep (decM n) st.l (L.termQ n st.l) χ).2 := by
+        (L.pre ((L.witStep (decM n) st.l (addrQ n) χ).1 :: st.l)).Sentence σ) ∈
+        (L.witStep (decM n) st.l (addrQ n) χ).2 := by
     rintro χ rfl href hle
     exact congrArg (Sigma.mk (decM n))
       (WFF.instantiate_eta_openFree _ (L.ctxL_fresh le_rfl) Ctx.NoSlots.slots Ctx.NoSlots.slots ψ)
@@ -80,14 +80,14 @@ theorem step_wit_negAll (n : ℕ) (st : HState L σ) {A : VarType}
     (⟨decM n, (WFF.instantiate Ctx.NoSlots.slots (Term.eta _ A href) (WFF.mono hle ψ)).neg⟩ :
       (L.pre (L.step n st).l).Sentence σ) ∈ (L.step n st).S := by
   have key : ∀ (χ : WFF σ (L.ctxL (decM n) st.l) 0), χ = (WFF.all A ψ).neg →
-      ∀ (href : (L.ctxL (decM n) ((L.witStep (decM n) st.l (L.termQ n st.l) χ).1 :: st.l)).ref
+      ∀ (href : (L.ctxL (decM n) ((L.witStep (decM n) st.l (addrQ n) χ).1 :: st.l)).ref
           (.root (.free (L.ρ st.l.length))) = some A)
         (hle : ((L.ctxL (decM n) st.l).insert (.bnd 0) A).Le
-          ((L.ctxL (decM n) ((L.witStep (decM n) st.l (L.termQ n st.l) χ).1 :: st.l)).insert
+          ((L.ctxL (decM n) ((L.witStep (decM n) st.l (addrQ n) χ).1 :: st.l)).insert
             (.bnd 0) A)),
       (⟨decM n, (WFF.instantiate Ctx.NoSlots.slots (Term.eta _ A href) (WFF.mono hle ψ)).neg⟩ :
-        (L.pre ((L.witStep (decM n) st.l (L.termQ n st.l) χ).1 :: st.l)).Sentence σ) ∈
-        (L.witStep (decM n) st.l (L.termQ n st.l) χ).2 := by
+        (L.pre ((L.witStep (decM n) st.l (addrQ n) χ).1 :: st.l)).Sentence σ) ∈
+        (L.witStep (decM n) st.l (addrQ n) χ).2 := by
     rintro χ rfl href hle
     exact congrArg (Sigma.mk (decM n))
       (WFF.instantiate_eta_openFree _ (L.ctxL_fresh le_rfl) Ctx.NoSlots.slots Ctx.NoSlots.slots
@@ -117,7 +117,7 @@ theorem query_chain (S₀ : Set ((L.pre []).Sentence σ)) (n : ℕ)
 variable (L) in
 /-- The type chosen at step `i`. -/
 noncomputable def finalτ (S₀ : Set ((L.pre []).Sentence σ)) (i : ℕ) : VarType :=
-  (L.witStep (decM i) (L.chain S₀ i).l (L.termQ i (L.chain S₀ i).l) (L.choice i (L.chain S₀ i))).1
+  (L.witStep (decM i) (L.chain S₀ i).l (addrQ i) (L.choice i (L.chain S₀ i))).1
 
 variable (L) in
 /-- The finished language. -/
