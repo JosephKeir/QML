@@ -1991,6 +1991,15 @@ Canonical accessibility is the shared redesign.
 ## 8. Open questions
 
 1. Strong 4 (lift) without strong 5 — and whether it exists at all.
+   - *⭐A lead, not yet acted on (2026-09-28, the user's).*  Composing possibilities may be the same
+     mistake §2d's withdrawal found in compound `Here`: a lift that takes `◇` of something to `◇◇`,
+     or reads a possibility inside a possibility, is **composing two possibilities nothing has
+     joined**.  The rule to look for would therefore take *joint* possibility as its hypothesis —
+     one pair-typed witness whose components are the two possibilities, as pairing already provides
+     — and only then let the composite be made sense of.  That is exactly the shape the `Here`
+     reform failed for, and it is why the base-typed/`◇`-free restriction turned out to be
+     principled rather than a limitation.  See §2d's closing subsection and the memory note
+     "joint possibility goes through pairing".
 2. Weak B without strong B; weak 5 without 4; ◇-BF alone; KB5 weak.
 3. Whether B's return path `Γ.boxIn.boxIn ⟶ Γ` is an instance of `Ctx.Collapses` or needs a
    variant (§3 B). This replaces the old question about singleton addresses and round-trip
@@ -2240,15 +2249,41 @@ is visible in its own view.  Note the *proof system* has no such restriction: `h
 `here_intro` are stated at an arbitrary `x` because they read hole formulas (`WFF.viewReadTm`,
 `WFF.hereRead`), not this substitution.  Three routes:
 
-* **shadowing in `Term.realise`**: split the `.diatm y hy t` case on `y = x` and, when they are
-  equal, collapse the body instead of realising it (the outer content is shadowed there, and
-  `Term.collapse` is exactly the rest of the map).  Keeps full generality; costs a case in
-  `Term.realise`, `Ann.realise`, `Ctx.Realises`, `WFF.realiseAt` and their semantic lemmas.
-* **hole formulas in the model too**: define the content at the world itself through
-  `WFF.viewReadTm`/`WFF.hereRead`, as the rules do, instead of through the realise substitution.
-  Uniform with the proof system, but it changes `rden`'s `◇` case, which everything downstream of
-  `CanonDom` is built on.
-* **restrict the subject**: make `WFF.here` take a root (or a projection of one) rather than any
-  `◇`-typed term.  Cheapest, and enough for the metatheory as stated — `Here` is only ever *used*
-  pinned — but it weakens the syntax, and `□ (Here y t)` in a parent would no longer be statable, so
-  the `here` case's non-root problem disappears by construction rather than being solved.
+*Scoped, with a compiling experiment (2026-09-28).*  Restricting `WFF.here`'s subject to a root is
+**out**: `□` has to act on all formulas, so `□ (Here y t)` must be statable.  Of the other two, the
+"hole formulas in the model" route is not independent — `Term.realiseAt` *is* the hole route already
+(`realiseAt = hereRead ∘ diaAbs`), and `diaAbs` is the root-keyed **substitution**, so it meets the
+same wall.  What the experiment established, by rebuilding `Subst.diaAbs`/`diaAbsIdx` at an arbitrary
+`x` with the `VarSymb.belowDia` API of `QML_v12m_Realise` (which is already stated at an arbitrary
+`x`) and re-proving `Subst.Ok` and `Subst.Coh`:
+
+* **the generalisation is mechanical, with no level threading**, because the index map's "not below
+  `x.dia`" branch is the identity: `diaAbsIdx x v = match belowDia x v with | some p => (bnd 0).ext p
+  | none => v`, `diaAbsIdx_dia` becomes `belowDia_dia_ext`, and `diaAbsIdx_of_rt_ne` becomes
+  "`belowDia x v = none` ⇒ the map fixes `v`".  The two `Coh` cases go through unchanged in shape.
+* **the one new obligation** is: extending a *visible* address that is not below `x.dia` never lands
+  below it.  It fails exactly when some **prefix of `x.dia` is visible in `Γ.diaIn x`** — i.e. when
+  `x` itself is a view entry — because then the single address `x.dia` would need two images (the
+  outer slot, and the inner content of an inner witness `y = x`).  That is the `coh_of` ambiguity
+  `QML_v12m_Realise`'s header already describes, in the abstraction direction.
+
+*And 4 does not avoid it* (the earlier claim here was wrong).  Two corrections.  First, non-rootness
+starts at depth 0 and at every flag setting: a context variable `p : (◇A) × B` makes `p.fst : ◇A`
+(`Ctx.ref` projects through products), and a `◇_z`-child's context declares `.step z .dia : ◇A` when
+`z : ◇◇A`.  Both are *benign* (no prefix of `x.dia` is visible), so the cheap generalisation covers
+them.  Second, the *shadowed* case is not a `¬4` phenomenon either: with 4 the view exposes contents
+as `u.keep.here` (`VarSymb.inner`, `.here` being a projection step with `(□A).step .here = some A`
+under T), so `x = .step (.step u .keep) .here` is `◇`-typed exactly when `u : □◇C` — the same
+two-level stack as `.step u .box` without 4.  Nothing here touches reflexivity; the two settings
+differ only in the *shape* of the exposure.
+
+*So the complete route is the one this file's header prescribes*: realisation and abstraction as
+**dedicated recursions carrying the level `k`**, not substitutions, with the `.diatm y hy t` case
+split on `y = x` and dispatching to `Term.collapse` when they are equal (the outer content is
+shadowed there, and collapse is exactly the rest of the map).  Every piece has a weak-T template:
+`Term.collapse`/`Ann.collapse`/`Ctx.Collapses` for the recursions, `Model.interp_collapse` and
+`Model.Env.collapseAgree_self` for the semantic bridge.  `Term.realise` already exists in that shape
+(root-keyed, typing only).  The sub-question to settle before starting: whether `spec_of_here` and
+the pinned rules `here_elimAt`/`here_introAt` need the abstraction direction as well — they currently
+go through `WFF.diaAbs` and `viewReadAt_diaAbs` ("every view formula is its abstraction read back"),
+and if that is unavoidable the recursion has to be built both ways.
