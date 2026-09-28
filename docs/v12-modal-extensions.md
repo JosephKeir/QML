@@ -2140,44 +2140,59 @@ It is the odd one out, and for a principled reason rather than an accident.
 7. **5**, then the general metatheory of `docs/v12-metatheory-todo.md`: generalisation on constants,
    uniform substitution, cut elimination, Craig interpolation, `T_dia∀ ⇔` positive-Φ.
 
-### ⭐START HERE next session *(rewritten 2026-09-28, after the withdrawal)*
+### ⭐START HERE next session *(rewritten 2026-09-28, after probing the `here` case)*
 
 **State of the build.**  The whole `QML_v12m_*` module list builds with **one error**:
-`Completeness.lean:245`, the truth lemma's `here` alternative.  No sorries, no warnings.  Everything
-behind it — `Compactness` and the B track, which import `Completeness` — waits on that one case.
-The `diaEq` alternative is *gone*, with the atom it belonged to (§2d, "The reform is withdrawn").
+`Completeness.lean:245`, the truth lemma's `here` alternative.  No sorries, no warnings.
+`Compactness` and the B track import `Completeness`, so they wait on that case.  Commits: `60d160a`,
+⭐`92e3791` (the withdrawal — see §2d's closing subsection before touching any of this).
 
 *Build the **whole module list**, not a target:*
 `lake build $(ls QML/QML_v12m_*.lean | sed 's|QML/|QML.|; s|\.lean$||')`.
 
-**The design, settled.**  Equality of `◇`-terms lives **inside one fibre**: `eqRec`'s `◇` clause is
-`□_x (eqRec A b b')` at a single annotation, and an annotation of a fixed type is exactly a witness
-for each `◇` position, so "same annotation" is "same witness".  To compare two possibilities you
-**join** them — one pair-typed witness, both components over the one name — which is what pairing is
-for, and after which the fibre-wise equality applies.  `Here` and strong T's `posRet_exists` are
-uniform over **`◇`-free** content types (`VarType.diaFree`, with `Ann.eq_of_diaFree` making the
-annotation unique there), because a `Here` whose value is a possible object combines two possibilities
-that nothing has joined.  Read §2d's closing subsection before touching any of this.
+**⭐What the `here` case actually needs (probed 2026-09-28).**  Not just the `◇`-free restriction.
+`sat (here hT (diatm x bd) t)` unfolds, by `extent_self`, to *`w.Realised x`* together with a
+content equation — and `World.Realised` is **chain bookkeeping at free-constant roots**
+(`RealData.hx : x = .root (.free c)`, `w.real c`).  A theory may assert `Here (η x) t` for an `x` the
+chain never realised, or for one that is not a root at all; the sentence is consistent, so a maximal
+theory may contain it, and the model must then satisfy it.  And the MCS is built by **Zorn**
+(`StageSys.lindenbaum`), not by an enumeration, so there is no choice function to bias: the model has
+to follow whatever the theory says, rather than the theory being steered to match the model.
+
+So realisedness has to be read **off the theory**, and that runs into the wrinkle §3 T recorded:
+`RealDatum.hstage` demands the realising term live at a strictly *earlier* stage than any stage
+declaring the witness, which a theory-given datum cannot satisfy — the atom `Here (η x) t` is a
+sentence of a stage that declares `x` and `t` together.  `hstage` is what makes `interp_canon`'s
+measure `(i.2, tsize A, t.size)` well founded at the `◇`-self branch.
+
+**The way through is naming, and the withdrawal *unblocks* it.**  Naming a compound object by an
+address was unavailable at `◇`-content, but at a `◇`-free content type `eqRec A (η b) t` is statable
+(one annotation, since the annotation is unique there) and *faithful*: `rden (η b) = rden t` follows
+from the naming axiom by induction on the type — base by `cls_eq_iff`, `×` componentwise, `□` inside a
+box, and no `◇` case to do.  With the datum's content an address's η-expansion, `rden`'s self branch
+is a **lookup**, so the stage component of the measure and `hstage` both go, and realisedness may then
+be theory-driven.
 
 **Next, in order.**
 
-1. **The truth lemma's `here` case**, at `◇`-free content — the one hole, and now the whole of what
-   stands between here and a closed completeness theorem for strong T.  The pieces are in place:
-   `extent_self` gives `w.Realised x`, `rden_diatm_self` the content at the identity arrow,
-   `Canon.spec_of_here` and `RealDatum.hhere` the theory's side, `here_beta` / `here_fun` the two
-   directions.  At base content it is `cls_eq_iff`; at a product it is componentwise; under `□` it is
-   the boxed equation.  `Proof.here_fst` / `here_snd` are the componentwise laws already built.
-2. **Then the metatheory list** (`docs/v12-metatheory-todo.md`): strong completeness and compactness
-   for T, generalisation on constants, uniform substitution, cut elimination, interpolation.
-3. **Optional, once `here` is closed:** revisit what the withdrawal left out — identity between
-   *joined* possibilities is available and worth exercising (uniqueness claims, "exactly one empty
-   possible object" in joined form, which `□_x ⊥ ⊢ □_x ψ` gives outright); naming at `◇`-content and
-   `hstage`'s retirement are **not** available and should be recorded as closed, not deferred.
+1. **Restrict `WFF.here` to `◇`-free content** — `(hA : A.diaFree = true)` on the constructor, then the
+   ~73 sites.  Needed under every version of what follows, and mechanical.
+2. **Naming at `◇`-free content**: the chain declares a fresh address for each realising object with
+   the axiom `eqRec A (η b) t`; `RealDatum`'s content becomes `η b`.  Prove naming faithfulness
+   (`rden (η b) = rden t`) by induction on the `◇`-free type — the linchpin, and the one genuinely new
+   lemma.
+3. **Retire `hstage`** and the stage component of `interp_canon`'s measure.
+4. **Realisedness from the theory**: `Realised x := ∃ b, Here (η x) (η b) ∈ T`, at any declared
+   `◇`-typed `x` rather than at roots only; the extent's self clause reads it, and `rden`'s self
+   content is the named address's denotation.
+5. **The truth lemma's `here` case**: `⟸` realisedness from the atom plus `here_beta` to read the
+   body; `⟹` the converse with the content equation transported by the induction at `◇`-free types
+   (`here_fun` closes it).  Then `Compactness` and the B track follow, and strong T at `◇`-free
+   content is a closed theorem.
+6. Then the metatheory list (`docs/v12-metatheory-todo.md`).
 
 **Retired with the withdrawal**, should anything reference them: `WFF.diaEq`, `Proof.diaEq_intro`,
 `Proof.diaEq_elim`, `World.PEq`/`PEqW`, the extent up to `≐`, the child tags (`tagOf`, `peqw_tagOf`,
-`tagBody`, `tagWFF`, `applyG_tagBody`), `Proof.boxx_reView`, `WFF.reView`/`Subst.viewRen` and the
-files `QML_v12m_CanonDiaEq`, `QML_v12m_ViewEq`, `QML_v12m_EqDia`.  `Proof.here_diaEq` and
-`WFF.instantiate_here_slot` went with them, being Leibniz for the deleted atom.  `QML_v12m_ViewRen`
-and `QML_v12m_ViewFlat`'s `viewClean` survive only as `Ctx.LevelFlat`'s consumers — check whether
-anything still needs them.
+`tagBody`, `tagWFF`, `applyG_tagBody`), `Proof.boxx_reView`, `WFF.reView`/`Subst.viewRen`,
+`Proof.here_diaEq`, `WFF.instantiate_here_slot`, and the files `QML_v12m_CanonDiaEq`,
+`QML_v12m_ViewEq`, `QML_v12m_EqDia`, `QML_v12m_ViewRen`, `QML_v12m_ViewFlat`.
