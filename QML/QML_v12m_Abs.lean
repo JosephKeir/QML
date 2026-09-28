@@ -1,4 +1,5 @@
-import QML.QML_v12m_DiaAbs
+import QML.QML_v12m_SubstEta
+import QML.QML_v12m_SubstCongr
 import QML.QML_v12m_Realise
 import QML.QML_v12m_ViewFresh
 
@@ -606,5 +607,58 @@ def WFF.realiseAtA {σ : Signature} {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T =
     {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) {a₀ : Ann A} (t₀ : Term σ Γ A a₀)
     (χ : WFF σ (Γ.diaIn x) 0) : WFF σ Γ 0 :=
   WFF.hereRead hT t₀ (WFF.diaAbsA x hxA χ)
+
+
+/-! ## The abstraction is a renaming, and realising the content gives the term back -/
+
+omit [ModalSys] in
+/-- The content address itself goes to the hole. -/
+theorem VarSymb.absAddr_dia_self (x : VarSymb) :
+    VarSymb.absAddr x 0 (.step x .dia) = .root (.bnd 0) :=
+  VarSymb.absAddr_dia x 0 [] (Nat.zero_le _)
+
+/-- ⭐The generalised abstraction is a **renaming**: every entry is the index map itself.  This is
+    what the η-expansion lemmas (`Term.subst_eta_ren`) need, and what the canonical model reads a
+    realised witness's content through. -/
+theorem Subst.isRen_diaAbsA {σ : Signature} {Γ : Ctx} {x : VarSymb} {A : VarType}
+    (hxA : Γ.ref x = some (.VTypeDia A))
+    (hnb : ∀ p : List Step, Γ.ref ((VarSymb.step x .dia).ext p) = none)
+    (hvf : Γ.ViewFresh) (h₀ : Γ.boxIn (.root (.bnd 0)) = none) :
+    Subst.IsRen (VarSymb.absAddr x 0) (Γ.diaIn x)
+      (Subst.diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x) := by
+  refine Subst.isRen_of (Subst.coh_diaAbsA hxA hnb hvf h₀) ?_
+  intro u U _ hu
+  rcases Subst.diaIn_casesA (σ := σ) hxA hnb hu with ⟨rfl, _⟩ | ⟨hbl, _, hen, _⟩
+  · change (if x = x then SubE.ren (.root (.bnd 0)) else .hide) = _
+    rw [if_pos rfl, VarSymb.absAddr_dia_self x]
+  · rw [hen (Γ.boxIn.insert (.bnd 0) A), VarSymb.absAddr_of_none 0 hbl]
+
+/-- ⭐Realising the witness's own content gives the realising term back, at an arbitrary declared
+    address: the canonical model reads a realised witness's content off the η-expansion of its
+    address. -/
+theorem Term.realiseAtA_eta {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (hT : ModalSys.T = true)
+    (x : VarSymb) {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) {a₀ : Ann A}
+    (t₀ : Term σ Γ A a₀) :
+    (⟨_, Term.realiseAtA hT x hxA t₀ (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of hxA))⟩ :
+      Σ b, Term σ Γ A b) = ⟨a₀, t₀⟩ := by
+  have h₀ : Γ.boxIn (.root (.bnd 0)) = none := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root
+  have habs : (⟨_, Term.diaAbsA x hxA
+        (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of hxA))⟩ :
+      Σ b, Term σ (Γ.boxIn.insert (.bnd 0) A) A b) =
+      ⟨_, Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root _ (.bnd 0) A)⟩ := by
+    refine (Term.subst_eta_ren _ _ _
+      (Subst.isRen_diaAbsA hxA (hp.not_below hxA rfl) hp.viewFresh h₀) A _
+      (Ctx.ref_diaIn_of hxA)
+      (by rw [VarSymb.absAddr_dia_self x]; exact Ctx.ref_insert_root _ (.bnd 0) A)).trans ?_
+    exact Term.eta_congr (VarSymb.absAddr_dia_self x) A _ _
+  have hrf : Γ.boxIn.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)
+  refine (Term.hereRead_sigma hT t₀ habs).trans ?_
+  simp only [Term.hereRead]
+  refine (Term.subst_sigma (Term.collapse_eta ((Ctx.collapses_boxIn_self hT Γ).insert hrf A)
+    (.root (.bnd 0)) A (Ctx.ref_insert_root _ (.bnd 0) A))).trans ?_
+  refine Term.subst_eta_tm _ _ _ A (.root (.bnd 0)) (Ctx.ref_insert_root _ (.bnd 0) A) t₀ ?_
+  change (if (VarSymb.root (Root.bnd 0)) = .root (.bnd 0) then SubE.tm t₀
+    else SubE.ren (VarSymb.root (Root.bnd 0))) = _
+  rw [if_pos rfl]
 
 end V12M
