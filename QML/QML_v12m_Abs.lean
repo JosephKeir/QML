@@ -61,6 +61,153 @@ theorem absAddr_dia (x : VarSymb) (k : ℕ) (p : List Step) (hk : k ≤ Step.lev
 
 end VarSymb
 
+omit [ModalSys] in
+theorem Step.levels_append : ∀ (p q : List Step),
+    Step.levels (p ++ q) = Step.levels p + Step.levels q
+  | [], q => by simp [Step.levels]
+  | s :: p, q => by
+      change (if s.isProj then 0 else 1) + Step.levels (p ++ q) =
+        ((if s.isProj then 0 else 1) + Step.levels p) + Step.levels q
+      rw [Step.levels_append p q]
+      omega
+
+namespace VarSymb
+
+omit [ModalSys] in
+/-- Abstraction passes through projections: they do not cross a level, so the test is unchanged. -/
+theorem absAddr_proj {x : VarSymb} {k : ℕ} {v : VarSymb} {s : Step} (hs : s.isProj = true) :
+    absAddr x k (.step v s) = .step (absAddr x k v) s := by
+  have hsd : s ≠ .dia := by
+    intro he
+    rw [he] at hs
+    cases hs
+  have hne : (VarSymb.step v s) ≠ .step x .dia := by
+    intro he
+    injection he with _ hs'
+    exact hsd hs'
+  have hb : belowDia x (.step v s) = (belowDia x v).map (fun p => p ++ [s]) := by
+    have he : belowDia x (.step v s) = (if (VarSymb.step v s) = .step x .dia
+      then some ([] : List Step) else (belowDia x v).map (fun p => p ++ [s])) := rfl
+    rw [he, if_neg hne]
+  cases hq : belowDia x v with
+  | none => rw [absAddr_of_none k hq, absAddr_of_none k (by rw [hb, hq]; rfl)]
+  | some q =>
+      have hlev : Step.levels (q ++ [s]) = Step.levels q := by
+        rw [Step.levels_append]
+        simp [Step.levels, hs]
+      by_cases hk : k ≤ Step.levels q
+      · rw [absAddr_of_some hq hk,
+          absAddr_of_some (by rw [hb, hq]; rfl) (by rw [hlev]; exact hk), ext_snoc]
+      · rw [absAddr_of_shadowed hq hk,
+          absAddr_of_shadowed (by rw [hb, hq]; rfl) (by rw [hlev]; exact hk)]
+
+omit [ModalSys] in
+/-- ⭐Abstraction passes through a **level** step, at a level that may drop by one: crossing a level
+    is what escapes a shadow, and that is what makes `Ctx.Abstracts` a *downward-closed family* of
+    levels rather than one level. -/
+theorem absAddr_level {x : VarSymb} {u : VarSymb} {s : Step} (hs : s.isProj = false)
+    (hsd : s ≠ .dia) (k : ℕ) :
+    ∃ j ≤ k, absAddr x k (.step u s) = .step (absAddr x j u) s := by
+  have hne : (VarSymb.step u s) ≠ .step x .dia := by
+    intro he
+    injection he with _ hs'
+    exact hsd hs'
+  have hb : belowDia x (.step u s) = (belowDia x u).map (fun p => p ++ [s]) := by
+    have he : belowDia x (.step u s) = (if (VarSymb.step u s) = .step x .dia
+      then some ([] : List Step) else (belowDia x u).map (fun p => p ++ [s])) := rfl
+    rw [he, if_neg hne]
+  cases hq : belowDia x u with
+  | none =>
+      refine ⟨k, le_rfl, ?_⟩
+      rw [absAddr_of_none k hq, absAddr_of_none k (by rw [hb, hq]; rfl)]
+  | some q =>
+      have hlev : Step.levels (q ++ [s]) = Step.levels q + 1 := by
+        rw [Step.levels_append]
+        simp [Step.levels, hs]
+      by_cases hk : k ≤ Step.levels q
+      · refine ⟨k, le_rfl, ?_⟩
+        rw [absAddr_of_some hq hk,
+          absAddr_of_some (by rw [hb, hq]; rfl) (by rw [hlev]; omega), ext_snoc]
+      · by_cases hk' : k ≤ Step.levels q + 1
+        · refine ⟨Step.levels q, by omega, ?_⟩
+          rw [absAddr_of_some hq le_rfl,
+            absAddr_of_some (by rw [hb, hq]; rfl) (by rw [hlev]; exact hk'), ext_snoc]
+        · refine ⟨k, le_rfl, ?_⟩
+          rw [absAddr_of_shadowed hq hk,
+            absAddr_of_shadowed (by rw [hb, hq]; rfl) (by rw [hlev]; omega)]
+
+end VarSymb
+
+/-- ⭐Abstracting an annotation: the witness indices move by `absAddr`, and entering a **shadowing**
+    `◇_x` — an inner witness that is the abstracted address itself — is what raises the level. -/
+def Ann.abs (x : VarSymb) : ℕ → {T : VarType} → Ann T → Ann T
+  | _, _, .var => .var
+  | _, _, .one => .one
+  | k, _, .prod a b => .prod (Ann.abs x k a) (Ann.abs x k b)
+  | k, _, .box a => .box (Ann.abs x k a)
+  | k, _, .dia i a =>
+      .dia (VarSymb.absAddr x k i) (Ann.abs x (if i = x then k + 1 else k) a)
+
+/-- ⭐`Γ₁` abstracts onto `Γ₂` at level `k`: a **downward-closed family**, because crossing a level
+    step escapes a shadow and so reads an address one level lower (`VarSymb.absAddr_level`). -/
+def Ctx.Abstracts (x : VarSymb) (k : ℕ) (Γ₁ Γ₂ : Ctx) : Prop :=
+  ∀ (j : ℕ), j ≤ k → ∀ v T, Γ₁.ref v = some T → Γ₂.ref (VarSymb.absAddr x j v) = some T
+
+theorem Ctx.Abstracts.mono {x : VarSymb} {k k' : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Abstracts x k Γ₁ Γ₂)
+    (hk : k' ≤ k) : Ctx.Abstracts x k' Γ₁ Γ₂ :=
+  fun j hj => h j (hj.trans hk)
+
+/-- It suffices to check the visible non-projection addresses. -/
+theorem Ctx.Abstracts.of_raw {x : VarSymb} {k : ℕ} {Γ₁ Γ₂ : Ctx}
+    (h : ∀ (j : ℕ), j ≤ k → ∀ v T, v.lastProj = false → Γ₁ v = some T →
+      Γ₂.ref (VarSymb.absAddr x j v) = some T) :
+    Ctx.Abstracts x k Γ₁ Γ₂ := by
+  intro j hj v
+  induction v with
+  | root r => intro T hv; exact h j hj _ _ rfl hv
+  | step v s ih =>
+      intro T hv
+      by_cases hs : s.isProj = true
+      · rw [VarSymb.absAddr_proj hs]
+        have hv' : (Γ₁.ref v).bind (·.step s) = some T := by
+          rw [Ctx.ref] at hv
+          rwa [if_pos hs] at hv
+        cases hU : Γ₁.ref v with
+        | none => rw [hU] at hv'; cases hv'
+        | some U =>
+            rw [hU] at hv'
+            rw [Ctx.ref, if_pos hs, ih U hU]
+            exact hv'
+      · have hlp : (VarSymb.step v s).lastProj = false := by
+          cases s <;> first | rfl | exact absurd rfl hs
+        rw [Ctx.ref, if_neg hs] at hv
+        exact h j hj _ _ hlp hv
+
+/-- ⭐Abstraction descends into the `□` view — at the **same** level, the extra level being part of
+    the address, and using the family's lower members (`VarSymb.absAddr_level`). -/
+theorem Ctx.Abstracts.boxIn {x : VarSymb} {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Abstracts x k Γ₁ Γ₂) :
+    Ctx.Abstracts x k Γ₁.boxIn Γ₂.boxIn := by
+  refine Ctx.Abstracts.of_raw ?_
+  intro j hj v T _ hv
+  match v with
+  | .step u .box =>
+      obtain ⟨hkb, hu⟩ := Ctx.boxIn_box hv
+      obtain ⟨j', hj', he⟩ := VarSymb.absAddr_level (x := x) (u := u) (s := .box) rfl
+        (by decide) j
+      rw [he, Ctx.ref_nonproj _ rfl]
+      exact Ctx.boxIn_box_of hkb (h j' (hj'.trans hj) u _ hu)
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      obtain ⟨j', hj', he⟩ := VarSymb.absAddr_level (x := x) (u := u) (s := .keep) rfl
+        (by decide) j
+      rw [he, Ctx.ref_nonproj _ rfl]
+      exact Ctx.boxIn_keep_of hF (h j' (hj'.trans hj) u _ hu)
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .dia => cases hv
+  | .step _ .here => cases hv
+
 namespace Subst
 
 omit [ModalSys] in
