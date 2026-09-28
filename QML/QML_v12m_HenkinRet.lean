@@ -299,7 +299,7 @@ theorem retFr {n : ℕ} (i : ℕ × ℕ) (v : VarSymb) (hv : v.rt = .free (L.ρ 
     read is declared too. -/
 noncomputable def retDatum (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) {n : ℕ}
     (hret : IsRet L S₀ n) (hS₀ : StageSys.Consistent S₀) :
-    Canon.RealDatum σ (L.final S₀) (L.finalT S₀) (L.ρ n) where
+    Canon.RealDatum σ (L.final S₀) (L.finalT S₀) (.root (.free (L.ρ n))) where
   hT := hT
   hS := hTS
   A := (addrQ n).1.1
@@ -309,7 +309,6 @@ noncomputable def retDatum (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = tr
   hb₀ := ((L.final S₀).ctx_le (Prod.mk_le_mk.mpr ⟨le_rfl, Nat.le_succ n⟩)).ref
     ((Ctx.le_of_eq (ctxL_eq_final S₀ (decM n) n)).ref hret.2.2)
   hd₀ := retDecl hT hTS hret (decM n, n + 1) (Nat.lt_succ_self n)
-  hfr := fun i => retFr i
   -- ⭐The theory's own word that the witness is realised by its content — one sentence now, the
   -- later stages following by `RealDatum.hhereAt` and `spec` by `Canon.spec_of_here`.
   hhere := by

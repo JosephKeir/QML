@@ -661,4 +661,98 @@ theorem Term.realiseAtA_eta {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (hT 
     else SubE.ren (VarSymb.root (Root.bnd 0))) = _
   rw [if_pos rfl]
 
+
+/-! ## Transport lemmas for the abstraction at an address -/
+
+/-- Abstraction commutes with weakening. -/
+theorem Term.mono_diaAbsA {σ : Signature} {Γ Γ' : Ctx} [Γ.Presented] [Γ'.Presented] {x : VarSymb}
+    {A : VarType} (h : Γ.Le Γ')
+    (hcA : Γ.ref x = some (.VTypeDia A))
+    (hcA' : Γ'.ref x = some (.VTypeDia A))
+    {T : VarType} {b : Ann T} (t : Term σ (Γ.diaIn x) T b) :
+    Term.mono (h.boxIn.insert (.bnd 0) A) (Term.diaAbsA x hcA t) =
+      Term.diaAbsA x hcA' (Term.mono (h.diaIn x) t) := by
+  unfold Term.diaAbsA
+  rw [Term.mono_subst, Term.subst_mono]
+  refine eq_of_heq (Sigma.mk.inj (Term.subst_congr _ _ _ _ _ _ ?_ t)).2
+  refine Subst.sim_of ?_
+  intro v U _ _
+  match v with
+  | .step u .dia =>
+      change SubE.Sim U (SubE.mono _ (if u = x then SubE.ren (.root (.bnd 0))
+        else .hide)) (if u = x then SubE.ren (.root (.bnd 0)) else .hide)
+      by_cases hu : u = x
+      · simp only [if_pos hu]
+        exact .refl _
+      · simp only [if_neg hu]
+        exact .refl _
+  | .step _ .box => exact .refl _
+  | .step _ .keep => exact .refl _
+  | .root _ => exact .refl _
+  | .step _ .fst => exact .refl _
+  | .step _ .snd => exact .refl _
+  | .step _ .here => exact .refl _
+
+/-- Realisation commutes with weakening. -/
+theorem Term.mono_realiseAtA {σ : Signature} {Γ Γ' : Ctx} [Γ.Presented] [Γ'.Presented]
+    (hT : ModalSys.T = true) (h : Γ.Le Γ') {x : VarSymb} {A : VarType}
+    (hcA : Γ.ref x = some (.VTypeDia A))
+    (hcA' : Γ'.ref x = some (.VTypeDia A))
+    {a₀ : Ann A} (t₀ : Term σ Γ A a₀) {T : VarType} {b : Ann T}
+    (t : Term σ (Γ.diaIn x) T b) :
+    Term.mono h (Term.realiseAtA hT x hcA t₀ t) =
+      Term.realiseAtA hT x hcA' (Term.mono h t₀) (Term.mono (h.diaIn x) t) := by
+  unfold Term.realiseAtA
+  rw [Term.mono_hereRead hT h t₀ (Term.diaAbsA x hcA t),
+    Term.mono_diaAbsA h hcA hcA' t]
+
+
+/-- Away from the witness content, abstraction is the identity. -/
+theorem Subst.sim_diaAbsA_idS {σ : Signature} {Γ : Ctx} (x : VarSymb) (A : VarType) :
+    Subst.Sim Γ.boxIn (Subst.diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x)
+      (Subst.idS σ (Γ.boxIn.insert (.bnd 0) A)) := by
+  refine Subst.sim_of ?_
+  intro v T _ hv
+  match v with
+  | .step _ .box => exact .refl _
+  | .step _ .keep => exact .refl _
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .dia => cases hv
+  | .step _ .here => cases hv
+
+/-- ⭐Realising a term of the `□` view is collapsing it: the witness content does not occur. -/
+theorem Term.realiseAtA_mono_boxIn {σ : Signature} {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true)
+    (x : VarSymb) {A : VarType} (hcA : Γ.ref x = some (.VTypeDia A))
+    {a₀ : Ann A} (t₀ : Term σ Γ A a₀) {T : VarType} {b : Ann T} (s : Term σ Γ.boxIn T b) :
+    (⟨_, Term.realiseAtA hT x hcA t₀
+        (Term.mono (Ctx.le_boxIn_diaIn Γ x) s)⟩ : Σ d, Term σ Γ T d) =
+      ⟨_, Term.collapse (Ctx.collapses_boxIn_self hT Γ) s⟩ := by
+  have h₀ : Γ.boxIn (.root (.bnd 0)) = none := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root
+  have hrf : Γ.boxIn.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)
+  -- abstraction is a weakening here
+  have habs : (⟨_, Term.diaAbsA x hcA (Term.mono (Ctx.le_boxIn_diaIn Γ x) s)⟩ :
+        Σ d, Term σ (Γ.boxIn.insert (.bnd 0) A) T d) =
+      ⟨_, Term.mono (Ctx.le_insert h₀ A) s⟩ := by
+    simp only [Term.diaAbsA]
+    rw [Term.subst_mono]
+    exact (Term.subst_congr _ (Subst.idS σ (Γ.boxIn.insert (.bnd 0) A)) _
+      (Subst.ok_idS_le (Ctx.le_insert h₀ A)) _ (Subst.coh_idS_le (Ctx.le_insert h₀ A))
+      (Subst.sim_diaAbsA_idS x A) s).trans
+      (Term.subst_idS_mono (Ctx.le_insert h₀ A) _ _ s)
+  -- and then reading here is collapsing
+  refine (Term.hereRead_sigma hT t₀ habs).trans ?_
+  have hl₂ : Γ.Le (Γ.insert (.bnd 0) A) :=
+    Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root A
+  simp only [Term.hereRead]
+  rw [Term.collapse_mono (Ctx.collapses_boxIn_self hT Γ)
+    ((Ctx.collapses_boxIn_self hT Γ).insert hrf A) (Ctx.le_insert h₀ A) hl₂ s, Term.subst_mono]
+  refine ((Term.subst_congr _ (Subst.idS σ Γ) _ Subst.ok_idS _ Subst.coh_idS
+    (Subst.sim_single_idS t₀) _).trans
+    (Term.subst_idS_mono (Ctx.Le.refl Γ) Subst.ok_idS Subst.coh_idS _)).trans ?_
+  exact congrArg (Sigma.mk _) (Term.mono_refl _ _)
+
+
+
 end V12M

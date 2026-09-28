@@ -638,18 +638,17 @@ theorem applyG_mono :
 
 /-- ⭐Applying a definable map commutes with realisation (strong T): realisation is a
     substitution, a collapse and a substitution. -/
-theorem applyG_realiseAt {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} [Γ.NoSlots]
-    (hT : ModalSys.T = true) (c : ℕ) {X : VarType}
-    (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia X))
-    (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
+theorem applyG_realiseAtA {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} [Γ.Presented]
+    (hT : ModalSys.T = true) (x : VarSymb) {X : VarType}
+    (hcA : Γ.ref x = some (.VTypeDia X))
     {a₀ : Ann X} (t₀ : Term σ Γ X a₀) {a : Ann A}
-    (t : Term σ (Γ.diaIn (.root (.free c))) A a) :
-    applyG g (Term.realiseAt hT c hcA hfr t₀ t) =
-      ⟨_, Term.realiseAt hT c hcA hfr t₀ (applyG g t).2⟩ := by
-  have habs : applyG g (Term.diaAbs c hcA hfr t) = ⟨_, Term.diaAbs c hcA hfr (applyG g t).2⟩ := by
-    simp only [Term.diaAbs, applyG_subst]
-  simp only [Term.realiseAt, Term.hereRead, applyG_subst]
-  rw [applyG_collapse g _ (Term.diaAbs c hcA hfr t), habs]
+    (t : Term σ (Γ.diaIn x) A a) :
+    applyG g (Term.realiseAtA hT x hcA t₀ t) =
+      ⟨_, Term.realiseAtA hT x hcA t₀ (applyG g t).2⟩ := by
+  have habs : applyG g (Term.diaAbsA x hcA t) = ⟨_, Term.diaAbsA x hcA (applyG g t).2⟩ := by
+    simp only [Term.diaAbsA, applyG_subst]
+  simp only [Term.realiseAtA, Term.hereRead, applyG_subst]
+  rw [applyG_collapse g _ (Term.diaAbsA x hcA t), habs]
 
 
 /-- ⭐Applying a definable map commutes with the realised content of a witness. -/
@@ -658,7 +657,7 @@ theorem applyG_realisedTerm {A B : VarType} (g : GFunc σ A B) {w : World σ N�
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {a : Ann A} (t : Term σ (Γ.diaIn x) A a) :
     realisedTerm w hr e hx (applyG g t).2 = applyG g (realisedTerm w hr e hx t).2 := by
   simp only [realisedTerm]
-  rw [applyG_realiseAt, applyG_mono]
+  rw [applyG_realiseAtA, applyG_mono]
 
 theorem shiftIter_sigma {n : ℕ} (hF : n ≠ 0 → ModalSys.Four = true) {Γ : Ctx} {A : VarType}
     {p q : Σ b : Ann A, Term σ Γ.boxIn A b} (h : p = q) :
@@ -848,14 +847,13 @@ theorem definable_rawEval {A B : VarType} (g : GFunc σ A B) {w : World σ N₀}
 /-! ### The witness's own content -/
 
 /-- Realisation respects equality of the view term, annotations and all. -/
-theorem Term.realiseAt_sigma {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true)
-    (c : ℕ) {A : VarType} (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
-    (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
+theorem Term.realiseAtA_sigma {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true)
+    (x : VarSymb) {A : VarType} (hcA : Γ.ref x = some (.VTypeDia A))
     {a₀ : Ann A} (t₀ : Term σ Γ A a₀) {T : VarType} {b b' : Ann T}
-    {t : Term σ (Γ.diaIn (.root (.free c))) T b} {t' : Term σ (Γ.diaIn (.root (.free c))) T b'}
-    (h : (⟨b, t⟩ : Σ z : Ann T, Term σ (Γ.diaIn (.root (.free c))) T z) = ⟨b', t'⟩) :
-    (⟨_, Term.realiseAt hT c hcA hfr t₀ t⟩ : Σ z : Ann T, Term σ Γ T z) =
-      ⟨_, Term.realiseAt hT c hcA hfr t₀ t'⟩ := by
+    {t : Term σ (Γ.diaIn x) T b} {t' : Term σ (Γ.diaIn x) T b'}
+    (h : (⟨b, t⟩ : Σ z : Ann T, Term σ (Γ.diaIn x) T z) = ⟨b', t'⟩) :
+    (⟨_, Term.realiseAtA hT x hcA t₀ t⟩ : Σ z : Ann T, Term σ Γ T z) =
+      ⟨_, Term.realiseAtA hT x hcA t₀ t'⟩ := by
   cases h
   rfl
 
@@ -869,16 +867,14 @@ theorem rden_realisedTerm_eta {w : World σ N₀} {x : VarSymb} (hr : w.Realised
       rden w hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀ := by
   have hmono : (⟨_, Term.mono (realisedLe w hr e) (Term.eta (.step x .dia) hr.data.A hdia)⟩ :
       Σ z : Ann hr.data.A,
-        Term σ ((w.L.ctx (i ⊔ hr.data.i₀)).diaIn (.root (.free hr.data.c))) hr.data.A z) =
-      ⟨_, Term.eta (.step (.root (.free hr.data.c)) .dia) hr.data.A
+        Term σ ((w.L.ctx (i ⊔ hr.data.i₀)).diaIn x) hr.data.A z) =
+      ⟨_, Term.eta (.step x .dia) hr.data.A
         (Ctx.ref_diaIn_of (realisedDecl hr e hx))⟩ := by
     rw [Term.mono_eta]
-    exact Term.eta_congr (congrArg (fun v => VarSymb.step v .dia) hr.data.hx) _ _ _
   simp only [realisedTerm]
-  rw [rden_sigma _ (Term.realiseAt_sigma hr.data.hT hr.data.c (realisedDecl hr e hx)
-      (hr.data.hfr _) _ hmono),
-    rden_sigma _ (Term.realiseAt_eta hr.data.hT hr.data.c (realisedDecl hr e hx)
-      (hr.data.hfr _) (Term.mono (w.L.ctx_le le_sup_right) hr.data.t₀)),
+  rw [rden_sigma _ (Term.realiseAtA_sigma hr.data.hT x (realisedDecl hr e hx) _ hmono),
+    rden_sigma _ (Term.realiseAtA_eta hr.data.hT x (realisedDecl hr e hx)
+      (Term.mono (w.L.ctx_le le_sup_right) hr.data.t₀)),
     rden_mono]
   exact rden_congr _ _ _ _ _ _
 
@@ -907,35 +903,35 @@ theorem rden_eta_realised {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
 /-- The same for any datum the world's choice is known to be.  Taking the datum as a variable with
     an equation turns the identification into a `subst`, so callers never have to rewrite under
     `realisedTerm`, where it sits in dependent positions. -/
-theorem rden_eta_realised_of_eq {w : World σ N₀} {c : ℕ} (hr : w.Realised (.root (.free c)))
-    (D : w.RealData (.root (.free c))) (hD : hr.data = D) {k : ℕ × ℕ}
-    (hdecl : (w.L.ctx k).ref (.root (.free c)) = some (.VTypeDia D.A)) :
-    (rden w k (Ctx.Le.refl _) (Term.eta (.root (.free c)) (.VTypeDia D.A) hdecl)).2
+theorem rden_eta_realised_of_eq {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
+    (D : RealDatum σ w.L w.T x) (hD : hr.data = D) {k : ℕ × ℕ}
+    (hdecl : (w.L.ctx k).ref x = some (.VTypeDia D.A)) :
+    (rden w k (Ctx.Le.refl _) (Term.eta x (.VTypeDia D.A) hdecl)).2
         ⟨⟨w, ⟨R.refl hr.T w⟩⟩, self_mem_extent hr⟩ =
       rden w D.i₀ (Ctx.Le.refl _) D.t₀ := by
   subst hD
   exact rden_eta_realised hr hdecl
 
-/-- ⭐What a world names at a root, as the model uses it: the content, at the world itself, of the
-    possible object that root denotes is what the named realising term denotes. -/
-theorem rden_eta_of_real {w : World σ N₀} {c : ℕ} {d : RealDatum σ w.L w.T c}
-    (hsome : w.real c = some d) {k : ℕ × ℕ}
-    (hdecl : (w.L.ctx k).ref (.root (.free c)) = some (.VTypeDia d.A)) :
-    (rden w k (Ctx.Le.refl _) (Term.eta (.root (.free c)) (.VTypeDia d.A) hdecl)).2
+/-- ⭐What a world names at an address, as the model uses it: the content, at the world itself, of
+    the possible object that address denotes is what the named realising term denotes. -/
+theorem rden_eta_of_real {w : World σ N₀} {x : VarSymb} {d : RealDatum σ w.L w.T x}
+    (hsome : w.real x = some d) {k : ℕ × ℕ}
+    (hdecl : (w.L.ctx k).ref x = some (.VTypeDia d.A)) :
+    (rden w k (Ctx.Le.refl _) (Term.eta x (.VTypeDia d.A) hdecl)).2
         ⟨⟨w, ⟨R.refl (World.realised_of_real hsome).T w⟩⟩,
           self_mem_extent (World.realised_of_real hsome)⟩ =
       rden w d.i₀ (Ctx.Le.refl _) d.t₀ :=
-  rden_eta_realised_of_eq _ ⟨c, rfl, d⟩ (World.data_of_real hsome) hdecl
+  rden_eta_realised_of_eq _ d (World.data_of_real hsome) hdecl
 
 /-- ⭐The content at the world itself of the possible object a realised root denotes, computed from
     **whatever datum the theory gives** rather than from the world's choice: the two agree by
     `rden_data_wd`, and the type equality it carries is what this turns into a rewrite. -/
-theorem rden_eta_realised_wd {w : World σ N₀} {c : ℕ} (hr : w.Realised (.root (.free c)))
+theorem rden_eta_realised_wd {w : World σ N₀} {y : VarSymb} (hr : w.Realised y)
     {A : VarType} {i₀ : ℕ × ℕ} {a : Ann A} (t₀ : Term σ (w.L.ctx i₀) A a)
     (hwd : (⟨hr.data.A, rden w hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀⟩ :
         Σ B : VarType, RDom B w) = ⟨A, rden w i₀ (Ctx.Le.refl _) t₀⟩)
-    {k : ℕ × ℕ} (hd : (w.L.ctx k).ref (.root (.free c)) = some (.VTypeDia A)) :
-    (rden w k (Ctx.Le.refl _) (Term.eta (.root (.free c)) (.VTypeDia A) hd)).2
+    {k : ℕ × ℕ} (hd : (w.L.ctx k).ref y = some (.VTypeDia A)) :
+    (rden w k (Ctx.Le.refl _) (Term.eta y (.VTypeDia A) hd)).2
         ⟨⟨w, ⟨R.refl hr.T w⟩⟩, self_mem_extent hr⟩ = rden w i₀ (Ctx.Le.refl _) t₀ := by
   obtain ⟨hA, hv⟩ := Sigma.mk.inj_iff.mp hwd
   subst hA

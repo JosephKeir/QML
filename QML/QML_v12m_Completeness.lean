@@ -166,6 +166,20 @@ theorem WFF.size_realiseAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalS
     (WFF.realiseAt hT c hcA hfr t₀ χ).size = χ.size :=
   (WFF.size_hereRead hT t₀ _).trans (WFF.size_diaAbs c hcA hfr χ)
 
+/-- The same at an arbitrary declared address. -/
+theorem WFF.size_diaAbsA {σ : Signature} {Γ : Ctx} [Γ.Presented] (x : VarSymb) {A : VarType}
+    (hxA : Γ.ref x = some (.VTypeDia A)) (χ : WFF σ (Γ.diaIn x) 0) :
+    (WFF.diaAbsA x hxA χ).size = χ.size :=
+  WFF.size_subst _ _ _ _ _ χ
+
+/-- ⭐And realising at an arbitrary address keeps the logical size, which is what keeps the truth
+    lemma's induction going through the realised case. -/
+theorem WFF.size_realiseAtA {σ : Signature} {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true)
+    (x : VarSymb) {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) {a₀ : Ann A}
+    (t₀ : Term σ Γ A a₀) (χ : WFF σ (Γ.diaIn x) 0) :
+    (WFF.realiseAtA hT x hxA t₀ χ).size = χ.size :=
+  (WFF.size_hereRead hT t₀ _).trans (WFF.size_diaAbsA x hxA χ)
+
 /-! ## Helpers -/
 
 theorem Model.Env.Agree.refl' {σ : Signature} {M : Model.{u, v} σ} {Γ : Ctx} {w : M.frame.W}
@@ -217,10 +231,10 @@ theorem relSat_canon : ∀ {Γ : Ctx} {n : ℕ} (ρ : Rel σ Γ n) {w : World σ
     the witness's view holds of the realising term (`Model.sat_realiseAt`), and what the theory
     says about the realising term it says about the witness (`RealDatum.spec`).  The induction
     hypothesis is needed only at formulas of the same logical size (`WFF.size_realiseAt`). -/
-theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {c : ℕ} (dat : RealDatum σ w.L w.T c)
-    (hdeclI : (w.L.ctx i).ref (.root (.free c)) = some (.VTypeDia dat.A))
-    (hreal : w.real c = some dat)
-    {x : VarSymb} (hxc : x = .root (.free c)) {X : VarType}
+theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {x : VarSymb}
+    (dat : RealDatum σ w.L w.T x)
+    (hdeclI : (w.L.ctx i).ref x = some (.VTypeDia dat.A))
+    (hreal : w.real x = some dat) {X : VarType}
     (h : (w.L.ctx i).ref x = some (.VTypeDia X)) (hx : ∃ Y, (w.L.ctx i).ref x = some (.VTypeDia Y))
     (χ : WFF σ ((w.L.ctx i).diaIn x) 0)
     (IH : ∀ ψ : WFF σ (w.L.ctx (i ⊔ dat.i₀)) 0, ψ.size = χ.size →
@@ -230,7 +244,6 @@ theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {c : ℕ} (dat 
     (hsat : (model w₀).sat
       ((canonEnv w₀ w i).diaPush x h ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hmem⟩) χ) :
     (⟨i, WFF.dia x hx χ⟩ : w.L.sys.Sentence σ) ∈ w.T := by
-  subst hxc
   have hXA : X = dat.A := by
     have h1 := h
     rw [hdeclI] at h1
@@ -242,28 +255,28 @@ theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {c : ℕ} (dat 
   have hagj : Model.Env.Agree (w.L.ctx_le hj) (canonEnv w₀ w i) (canonEnv w₀ w (i ⊔ dat.i₀)) :=
     canonEnv_le w₀ w hj
   have hm' : (⟨w, ⟨R.refl dat.hT w⟩⟩ : Succ w) ∈
-      ((model w₀).posEval ((canonEnv w₀ w (i ⊔ dat.i₀)).ref (.root (.free c)) hdecl)).1 := by
+      ((model w₀).posEval ((canonEnv w₀ w (i ⊔ dat.i₀)).ref x hdecl)).1 := by
     rw [canonEnv_extent]
     exact self_mem_extent (World.realised_of_real hreal)
   have hcont : ((model w₀).posEval
-        ((canonEnv w₀ w (i ⊔ dat.i₀)).ref (.root (.free c)) hdecl)).2
+        ((canonEnv w₀ w (i ⊔ dat.i₀)).ref x hdecl)).2
           ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hm'⟩ =
       Model.interp (canonEnv w₀ w (i ⊔ dat.i₀))
         (Term.mono (w.L.ctx_le (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀) := by
-    have hpq := canonEnv_ref w₀ w (i ⊔ dat.i₀) (.root (.free c)) hdecl
+    have hpq := canonEnv_ref w₀ w (i ⊔ dat.i₀) x hdecl
     rw [Model.posEval_snd_congr hpq ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hm'⟩ (hpq ▸ hm'),
       Model.interp_mono (canonEnv_le w₀ w (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀,
       interp_canon w₀ dat.t₀ (Model.Env.Agree.refl' _)]
     exact toDom_congr w₀ (rden_eta_of_real hreal hdecl) _ _
-  have hsatR := (Model.sat_realiseAt dat.hT (canonEnv w₀ w (i ⊔ dat.i₀)) (w.noProjLast _) hdecl
-    (dat.hfr _) (Term.mono (w.L.ctx_le le_sup_right) dat.t₀) hm' hcont
-    (WFF.mono ((w.L.ctx_le hj).diaIn (.root (.free c))) χ)).mpr
+  have hsatR := (Model.sat_realiseAtA dat.hT (canonEnv w₀ w (i ⊔ dat.i₀)) (w.noProjLast _) hdecl
+    (Term.mono (w.L.ctx_le le_sup_right) dat.t₀) hm' hcont
+    (WFF.mono ((w.L.ctx_le hj).diaIn x) χ)).mpr
     ((Model.sat_mono (Model.Env.diaPush_agree hagj h
       ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hmem⟩ hm') χ).mpr hsat)
   have hdia := dat.spec w.mcs (i ⊔ dat.i₀) le_sup_right hdecl _
-    ((IH _ (by rw [WFF.size_realiseAt, WFF.size_mono])).mp hsatR)
+    ((IH _ (by rw [WFF.size_realiseAtA, WFF.size_mono])).mp hsatR)
   have hmem' := World.mem_mono_congr w (Ctx.Le.refl _) (w.L.ctx_le hj)
-    (ψ := WFF.dia (.root (.free c)) hx χ) hdia
+    (ψ := WFF.dia x hx χ) hdia
   rwa [WFF.mono_refl] at hmem'
 
 theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF σ (w.L.ctx i) 0), φ.size < n →
@@ -478,9 +491,8 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
               obtain ⟨⟨w₁, hR⟩, hmem⟩ := w'
               change w₁ = w at hweq
               subst hweq
-              exact dia_mem_of_sat_self w₀ hrx.data.datum
-                (hrx.data.declType i ⟨X, hrx.data.hx ▸ h⟩)
-                (World.real_of_realised hrx) hrx.data.hx h hx χ
+              exact dia_mem_of_sat_self w₀ hrx.data (hrx.data.declType i ⟨X, h⟩)
+                (World.real_of_realised hrx) h hx χ
                 (fun ψ hψ => truth_lt n _ _ ψ (by rw [hψ]; exact hχs)) hmem hsat
           · intro hmem
             obtain ⟨X, h⟩ : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X) := hx

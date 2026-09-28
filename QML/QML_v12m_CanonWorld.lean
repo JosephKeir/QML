@@ -2,6 +2,7 @@ import QML.QML_v12m_HenkinFinal
 import QML.QML_v12m_Soundness
 import QML.QML_v12m_DiaAbs
 import QML.QML_v12m_ViewFresh
+import QML.QML_v12m_AbsRules
 
 /-!
 # QML v12m — the canonical model: worlds and accessibility
@@ -73,12 +74,18 @@ namespace Canon
 
 variable (σ : Signature) (N₀ : ℕ)
 
-/-- ⭐Strong T: the data making the root `c` a **realised** witness of the language `L` under the
-    theory `T`.  Everything here is one stage's worth: at `i₀` the root is declared at `◇A`, its
+/-- ⭐Strong T: the data making the **address** `x` a realised witness of the language `L` under the
+    theory `T`.  Everything here is one stage's worth: at `i₀` the address is declared at `◇A`, its
     content address `b₀` is declared at `A`, and the theory contains the `Here` atom linking them.
     The readings at other stages (`hdeclOf`, `hhereAt`) and `spec` all follow — so a datum is
-    exactly what the *theory* says at one stage, which is what `Proof.T_dia` puts there. -/
-structure RealDatum (L : WorldLang) (T : Set (L.sys.Sentence σ)) (c : ℕ) where
+    exactly what the *theory* says at one stage, which is what `Proof.T_dia` puts there.
+
+    ⭐It is indexed by an address rather than a root (§2d, §9): `WFF.here`'s subject is any `◇`-typed
+    term, so the truth lemma meets `Term.diatm x hx s` at an arbitrary declared `x`, and the
+    abstraction now works there (`WFF.diaAbsA`).  No freshness field is needed any more — what the
+    root version demanded of its name, `Ctx.ViewFresh` gives for every address of a presented
+    context. -/
+structure RealDatum (L : WorldLang) (T : Set (L.sys.Sentence σ)) (x : VarSymb) where
   hT : ModalSys.T = true
   /-- Only strong T realises a witness. -/
   hS : ModalSys.TStrong = true
@@ -96,25 +103,22 @@ structure RealDatum (L : WorldLang) (T : Set (L.sys.Sentence σ)) (c : ℕ) wher
       Type uniqueness at every stage follows by monotonicity (`RealDatum.hdeclOf`), so the datum
       makes no claim about the stage order at all, which is what lets it be read off the theory
       (§2d, step 4). -/
-  hd₀ : (L.ctx i₀).ref (.root (.free c)) = some (.VTypeDia A)
-  /-- Nothing else is written at its root. -/
-  hfr : ∀ (i : ℕ × ℕ) (v : VarSymb), v.rt = .free c → v ≠ .root (.free c) → (L.ctx i) v = none
+  hd₀ : (L.ctx i₀).ref x = some (.VTypeDia A)
   /-- ⭐**The theory says the witness is realised by its content**: the single sentence at `i₀`,
       which is what `Proof.T_dia` hands over.  The readings at every later stage follow, because the
       atom is invariant (`RealDatum.hhereAt`), and `RealDatum.spec` — everything the content
       satisfies at a stage, the witness satisfies in its view — follows from those
       (`spec_of_here`). -/
-  hhere : (⟨i₀, WFF.hereAt hT (.root (.free c)) hA hd₀ (Term.eta b₀ A hb₀)⟩ :
-    L.sys.Sentence σ) ∈ T
+  hhere : (⟨i₀, WFF.hereAt hT x hA hd₀ (Term.eta b₀ A hb₀)⟩ : L.sys.Sentence σ) ∈ T
 
 /-- The content's annotation, as `Term.eta` builds it. -/
-@[reducible] def RealDatum.a₀ {L : WorldLang} {T : Set (L.sys.Sentence σ)} {c : ℕ}
-    (d : RealDatum σ L T c) : Ann d.A := Ann.eta d.b₀ d.A
+@[reducible] def RealDatum.a₀ {L : WorldLang} {T : Set (L.sys.Sentence σ)} {x : VarSymb}
+    (d : RealDatum σ L T x) : Ann d.A := Ann.eta d.b₀ d.A
 
 /-- ⭐The realising **term**: the content address's η-expansion.  Consumers use this as before; what
     changed is that it is an η-expansion by construction. -/
-@[reducible] def RealDatum.t₀ {L : WorldLang} {T : Set (L.sys.Sentence σ)} {c : ℕ}
-    (d : RealDatum σ L T c) : Term σ (L.ctx d.i₀) d.A d.a₀ := Term.eta d.b₀ d.A d.hb₀
+@[reducible] def RealDatum.t₀ {L : WorldLang} {T : Set (L.sys.Sentence σ)} {x : VarSymb}
+    (d : RealDatum σ L T x) : Term σ (L.ctx d.i₀) d.A d.a₀ := Term.eta d.b₀ d.A d.hb₀
 /-- A world of the canonical model. -/
 structure World where
   depth : ℕ
@@ -146,7 +150,7 @@ structure World where
       (`Canon.rden_datum_wd`, §2d step 4). -/
   realW : ModalSys.T = true → ModalSys.TStrong = true → ∀ (i : ℕ × ℕ) {A : VarType},
       A.diaFree = true → ∀ (v : VarSymb), (L.ctx i).ref v = some A →
-      ∃ (c : ℕ) (d : RealDatum σ L T c), d.A = A ∧ d.b₀ = v ∧ i ≤ d.i₀
+      ∃ (y : VarSymb) (d : RealDatum σ L T y), d.A = A ∧ d.b₀ = v ∧ i ≤ d.i₀
 
 variable {σ N₀}
 
@@ -188,16 +192,14 @@ end World
     all.  Contexts grow, so a declaration at `◇Y` and the one at `◇A` past `i₀` meet at a common
     stage, where they are the same declaration.  This — not the stage order — is what the `rden`
     layer asks of a datum, so that realisedness read off the theory can supply it (§2d, step 4). -/
-theorem RealDatum.hdeclOf {L : WorldLang} {T : Set (L.sys.Sentence σ)} {c : ℕ}
-    (d : RealDatum σ L T c) (i : ℕ × ℕ)
-    (hi : ∃ Y, (L.ctx i).ref (.root (.free c)) = some (.VTypeDia Y)) :
-    (L.ctx i).ref (.root (.free c)) = some (.VTypeDia d.A) := by
+theorem RealDatum.hdeclOf {L : WorldLang} {T : Set (L.sys.Sentence σ)} {x : VarSymb}
+    (d : RealDatum σ L T x) (i : ℕ × ℕ)
+    (hi : ∃ Y, (L.ctx i).ref x = some (.VTypeDia Y)) :
+    (L.ctx i).ref x = some (.VTypeDia d.A) := by
   obtain ⟨Y, hY⟩ := hi
-  have h₁ : (L.ctx (max i.1 d.i₀.1, max i.2 d.i₀.2)).ref (.root (.free c)) =
-      some (.VTypeDia Y) :=
+  have h₁ : (L.ctx (max i.1 d.i₀.1, max i.2 d.i₀.2)).ref x = some (.VTypeDia Y) :=
     (L.ctx_le (Prod.le_def.mpr ⟨le_max_left _ _, le_max_left _ _⟩)).ref hY
-  have h₂ : (L.ctx (max i.1 d.i₀.1, max i.2 d.i₀.2)).ref (.root (.free c)) =
-      some (.VTypeDia d.A) :=
+  have h₂ : (L.ctx (max i.1 d.i₀.1, max i.2 d.i₀.2)).ref x = some (.VTypeDia d.A) :=
     (L.ctx_le (Prod.le_def.mpr ⟨le_max_right _ _, le_max_right _ _⟩)).ref d.hd₀
   have hYA : Y = d.A := by
     have := h₁.symm.trans h₂
@@ -208,20 +210,20 @@ theorem RealDatum.hdeclOf {L : WorldLang} {T : Set (L.sys.Sentence σ)} {c : ℕ
     theory lifts a sentence to any later stage (`StageSys.IsMCS.mem_lift_iff`) and the atom is
     invariant under that lifting (`WFF.mono_hereAt_of_le`).  So "the theory says so at every stage"
     is nothing a datum has to carry. -/
-theorem RealDatum.hhereAt {L : WorldLang} {T : Set (L.sys.Sentence σ)} {c : ℕ}
-    (d : RealDatum σ L T c) (hmcs : StageSys.IsMCS T) (i : ℕ × ℕ) (hi : d.i₀ ≤ i)
-    (hd : (L.ctx i).ref (.root (.free c)) = some (.VTypeDia d.A)) :
-    (⟨i, WFF.hereAt d.hT (.root (.free c)) d.hA hd
+theorem RealDatum.hhereAt {L : WorldLang} {T : Set (L.sys.Sentence σ)} {x : VarSymb}
+    (d : RealDatum σ L T x) (hmcs : StageSys.IsMCS T) (i : ℕ × ℕ) (hi : d.i₀ ≤ i)
+    (hd : (L.ctx i).ref x = some (.VTypeDia d.A)) :
+    (⟨i, WFF.hereAt d.hT x d.hA hd
         (Term.mono (L.ctx_le hi) d.t₀)⟩ : L.sys.Sentence σ) ∈ T := by
   refine Eq.mp (congrArg (fun φ => (⟨i, φ⟩ : L.sys.Sentence σ) ∈ T) ?_)
     ((hmcs.mem_lift_iff hi).mpr d.hhere)
   exact WFF.mono_hereAt_of_le d.hT _ d.hA _ _ hd _
 
 /-- The same, under the name the earlier `hdecl` field went by. -/
-theorem RealDatum.declType {L : WorldLang} {T : Set (L.sys.Sentence σ)} {c : ℕ}
-    (d : RealDatum σ L T c) (i : ℕ × ℕ)
-    (h : ∃ Y, (L.ctx i).ref (.root (.free c)) = some (.VTypeDia Y)) :
-    (L.ctx i).ref (.root (.free c)) = some (.VTypeDia d.A) :=
+theorem RealDatum.declType {L : WorldLang} {T : Set (L.sys.Sentence σ)} {x : VarSymb}
+    (d : RealDatum σ L T x) (i : ℕ × ℕ)
+    (h : ∃ Y, (L.ctx i).ref x = some (.VTypeDia Y)) :
+    (L.ctx i).ref x = some (.VTypeDia d.A) :=
   d.hdeclOf i h
 
 /-- ⭐**The collapse**: `RealDatum.spec` is a *derivation* as soon as the theory itself says the
@@ -230,44 +232,39 @@ theorem RealDatum.declType {L : WorldLang} {T : Set (L.sys.Sentence σ)} {c : �
     field is not data the construction has to arrange, but a consequence of one sentence being in
     the theory.  At every `◇`-free content type, as `WFF.here` is (§2d). -/
 theorem spec_of_here {L : WorldLang} {T : Set (L.sys.Sentence σ)} (hmcs : StageSys.IsMCS T)
-    (hT : ModalSys.T = true) {c : ℕ} {i₀ : ℕ × ℕ} {A : VarType} {a₀ : Ann A}
+    (hT : ModalSys.T = true) {x : VarSymb} {i₀ : ℕ × ℕ} {A : VarType} {a₀ : Ann A}
     (t₀ : Term σ (L.ctx i₀) A a₀)
     (hA : A.diaFree = true)
-    (hfr : ∀ (i : ℕ × ℕ) (v : VarSymb), v.rt = .free c → v ≠ .root (.free c) → (L.ctx i) v = none)
-    (hhere : ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i)
-        (hd : (L.ctx i).ref (.root (.free c)) = some (.VTypeDia A)),
-      (⟨i, WFF.hereAt hT (.root (.free c)) hA hd (Term.mono (L.ctx_le hi) t₀)⟩ :
-        L.sys.Sentence σ) ∈ T) :
-    ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i) (hd : (L.ctx i).ref (.root (.free c)) = some (.VTypeDia A))
-      (χ : WFF σ ((L.ctx i).diaIn (.root (.free c))) 0),
-      (⟨i, WFF.realiseAt hT c hd (hfr i) (Term.mono (L.ctx_le hi) t₀) χ⟩ :
-        L.sys.Sentence σ) ∈ T →
-      (⟨i, .dia (.root (.free c)) ⟨A, hd⟩ χ⟩ : L.sys.Sentence σ) ∈ T := by
+    (hhere : ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i) (hd : (L.ctx i).ref x = some (.VTypeDia A)),
+      (⟨i, WFF.hereAt hT x hA hd (Term.mono (L.ctx_le hi) t₀)⟩ : L.sys.Sentence σ) ∈ T) :
+    ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i) (hd : (L.ctx i).ref x = some (.VTypeDia A))
+      (χ : WFF σ ((L.ctx i).diaIn x) 0),
+      (⟨i, WFF.realiseAtA hT x hd (Term.mono (L.ctx_le hi) t₀) χ⟩ : L.sys.Sentence σ) ∈ T →
+      (⟨i, .dia x ⟨A, hd⟩ χ⟩ : L.sys.Sentence σ) ∈ T := by
   intro i hi hd χ hr
   refine hmcs.closed (StageSys.derives_of_mems
-    (Δ := [WFF.hereAt hT (.root (.free c)) hA hd (Term.mono (L.ctx_le hi) t₀),
-      WFF.realiseAt hT c hd (hfr i) (Term.mono (L.ctx_le hi) t₀) χ]) ?_ ?_)
+    (Δ := [WFF.hereAt hT x hA hd (Term.mono (L.ctx_le hi) t₀),
+      WFF.realiseAtA hT x hd (Term.mono (L.ctx_le hi) t₀) χ]) ?_ ?_)
   · intro ψ hψ
     rcases List.mem_cons.mp hψ with rfl | hψ'
     · exact hhere i hi hd
     · rw [List.mem_singleton.mp hψ']
       exact hr
-  · exact ⟨Proof.here_introAt hT c hA hd (hfr i) (Term.mono (L.ctx_le hi) t₀) χ
+  · exact ⟨Proof.here_introAtA hT x hA hd (Term.mono (L.ctx_le hi) t₀) χ
       (Proof.lookup List.mem_cons_self)
       (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩
 
 /-- ⭐What used to be the `spec` field, now **derived** from the `Here` atom the datum carries: a
     maximal consistent theory closed under provability turns the realisation reading of a view
     formula into the `◇` one. -/
-theorem RealDatum.spec {L : WorldLang} {T : Set (L.sys.Sentence σ)} {c : ℕ}
-    (d : RealDatum σ L T c) (hmcs : StageSys.IsMCS T) :
-    ∀ (i : ℕ × ℕ) (hi : d.i₀ ≤ i)
-      (hd : (L.ctx i).ref (.root (.free c)) = some (.VTypeDia d.A))
-      (χ : WFF σ ((L.ctx i).diaIn (.root (.free c))) 0),
-      (⟨i, WFF.realiseAt d.hT c hd (d.hfr i) (Term.mono (L.ctx_le hi) d.t₀) χ⟩ :
+theorem RealDatum.spec {L : WorldLang} {T : Set (L.sys.Sentence σ)} {x : VarSymb}
+    (d : RealDatum σ L T x) (hmcs : StageSys.IsMCS T) :
+    ∀ (i : ℕ × ℕ) (hi : d.i₀ ≤ i) (hd : (L.ctx i).ref x = some (.VTypeDia d.A))
+      (χ : WFF σ ((L.ctx i).diaIn x) 0),
+      (⟨i, WFF.realiseAtA d.hT x hd (Term.mono (L.ctx_le hi) d.t₀) χ⟩ :
         L.sys.Sentence σ) ∈ T →
-        (⟨i, .dia (.root (.free c)) ⟨d.A, hd⟩ χ⟩ : L.sys.Sentence σ) ∈ T :=
-  spec_of_here hmcs d.hT d.t₀ d.hA d.hfr (d.hhereAt hmcs)
+        (⟨i, .dia x ⟨d.A, hd⟩ χ⟩ : L.sys.Sentence σ) ∈ T :=
+  spec_of_here hmcs d.hT d.t₀ d.hA (d.hhereAt hmcs)
 
 /-! ## Realised witnesses (strong T) -/
 
@@ -275,130 +272,53 @@ namespace World
 
 variable (w : World σ N₀)
 
-/-- ⭐Strong T: the data making the address `x` a **realised** witness — a `RealDatum` of the
-    world's language together with the root it sits at. -/
-structure RealData (x : VarSymb) where
-  c : ℕ
-  hx : x = .root (.free c)
-  datum : RealDatum σ w.L w.T c
-
-variable {w}
-
-/-- The fields of the underlying datum, read off the address. -/
-@[reducible] def RealData.hT {x : VarSymb} (d : w.RealData x) : ModalSys.T = true := d.datum.hT
-@[reducible] def RealData.hS {x : VarSymb} (d : w.RealData x) : ModalSys.TStrong = true :=
-  d.datum.hS
-@[reducible] def RealData.A {x : VarSymb} (d : w.RealData x) : VarType := d.datum.A
-@[reducible] def RealData.hA {x : VarSymb} (d : w.RealData x) : d.A.diaFree = true :=
-  d.datum.hA
-@[reducible] def RealData.i₀ {x : VarSymb} (d : w.RealData x) : ℕ × ℕ := d.datum.i₀
-@[reducible] def RealData.a₀ {x : VarSymb} (d : w.RealData x) : Ann d.A := d.datum.a₀
-@[reducible] def RealData.t₀ {x : VarSymb} (d : w.RealData x) :
-    Term σ (w.L.ctx d.i₀) d.A d.a₀ := d.datum.t₀
-@[reducible] def RealData.b₀ {x : VarSymb} (d : w.RealData x) : VarSymb := d.datum.b₀
-@[reducible] def RealData.hb₀ {x : VarSymb} (d : w.RealData x) :
-    (w.L.ctx d.i₀).ref d.b₀ = some d.A := d.datum.hb₀
-@[reducible] def RealData.hd₀ {x : VarSymb} (d : w.RealData x) :
-    (w.L.ctx d.i₀).ref (.root (.free d.c)) = some (.VTypeDia d.A) :=
-  d.datum.hd₀
-@[reducible] def RealData.hfr {x : VarSymb} (d : w.RealData x) :
-    ∀ (i : ℕ × ℕ) (v : VarSymb), v.rt = .free d.c → v ≠ .root (.free d.c) → (w.L.ctx i) v = none :=
-  d.datum.hfr
-@[reducible] def RealData.declType {x : VarSymb} (d : w.RealData x) :
-    ∀ (i : ℕ × ℕ), (∃ Y, (w.L.ctx i).ref (.root (.free d.c)) = some (.VTypeDia Y)) →
-      (w.L.ctx i).ref (.root (.free d.c)) = some (.VTypeDia d.A) :=
-  d.datum.declType
-@[reducible] def RealData.spec {x : VarSymb} (d : w.RealData x) :
-    ∀ (i : ℕ × ℕ) (hi : d.i₀ ≤ i)
-      (hd : (w.L.ctx i).ref (.root (.free d.c)) = some (.VTypeDia d.A))
-      (χ : WFF σ ((w.L.ctx i).diaIn (.root (.free d.c))) 0),
-      (⟨i, WFF.realiseAt d.hT d.c hd (d.hfr i) (Term.mono (w.L.ctx_le hi) d.t₀) χ⟩ :
-        w.L.sys.Sentence σ) ∈ w.T →
-        (⟨i, .dia (.root (.free d.c)) ⟨d.A, hd⟩ χ⟩ : w.L.sys.Sentence σ) ∈ w.T :=
-  d.datum.spec w.mcs
-
-/-- ⭐The theory's own word that the witness is realised by its content address's η-expansion, at
-    every stage that declares it (`RealDatum.hhereAt`). -/
-@[reducible] def RealData.hhereAt {x : VarSymb} (d : w.RealData x) :
-    ∀ (i : ℕ × ℕ) (hi : d.i₀ ≤ i)
-      (hd : (w.L.ctx i).ref (.root (.free d.c)) = some (.VTypeDia d.A)),
-      (⟨i, WFF.hereAt d.hT (.root (.free d.c)) d.hA hd
-          (Term.mono (w.L.ctx_le hi) d.t₀)⟩ : w.L.sys.Sentence σ) ∈ w.T :=
-  d.datum.hhereAt w.mcs
-
-
-variable (w)
-
 open Classical in
-/-- ⭐**Realisedness is read off the theory** (§2d, step 4).  Every field of a `RealDatum` is a fact
-    about the language and the theory — one stage's declarations and one `Here` atom — so a world
-    realises the root `c` exactly when its theory says so, and nothing has to be *chosen* when the
-    world is built.  A choice is still made *here*, among data the theory allows, and it is
-    immaterial: `Canon.rden_datum_wd` says any two of them give the content the same denotation. -/
-noncomputable def real (c : ℕ) : Option (RealDatum σ w.L w.T c) :=
-  if h : Nonempty (RealDatum σ w.L w.T c) then some h.some else none
+/-- ⭐**Realisedness is read off the theory** (§2d, step 4), and at an **address** rather than a root
+    (§2d, §9).  Every field of a `RealDatum` is a fact about the language and the theory — one
+    stage's declarations and one `Here` atom — so a world realises `x` exactly when its theory says
+    so, and nothing has to be *chosen* when the world is built.  A choice is still made here, among
+    data the theory allows, and it is immaterial: `Canon.rden_datum_wd` says any two of them give
+    the content the same denotation. -/
+noncomputable def real (x : VarSymb) : Option (RealDatum σ w.L w.T x) :=
+  if h : Nonempty (RealDatum σ w.L w.T x) then some h.some else none
 
-/-- The realisation the world names at an address, if any: only a bare free root can carry one. -/
-noncomputable def realAt : ∀ x : VarSymb, Option (w.RealData x)
-  | .root (.free c) => (w.real c).map fun d => ⟨c, rfl, d⟩
-  | .root (.bnd _) => none
-  | .step _ _ => none
-
-/-- ⭐The addresses realised at `w`. -/
-def Realised (x : VarSymb) : Prop := (w.realAt x).isSome
+/-- ⭐The addresses realised at `w`.  No wrapper is needed any more: a datum is indexed by the
+    address itself, so the root and the equation the old `RealData` carried are gone. -/
+def Realised (x : VarSymb) : Prop := (w.real x).isSome
 
 variable {w}
 
-/-- The realisation named at a realised address — determined by the world, not chosen here. -/
-noncomputable def Realised.data {x : VarSymb} (h : w.Realised x) : w.RealData x :=
-  (w.realAt x).get h
+/-- The realisation named at a realised address — determined by the theory, not chosen here. -/
+noncomputable def Realised.data {x : VarSymb} (h : w.Realised x) : RealDatum σ w.L w.T x :=
+  (w.real x).get h
 
 theorem Realised.T {x : VarSymb} (h : w.Realised x) : ModalSys.T = true := h.data.hT
 
 theorem Realised.TStrong {x : VarSymb} (h : w.Realised x) : ModalSys.TStrong = true := h.data.hS
 
-/-- ⭐What the world names at a root is what it realises there. -/
-theorem realAt_of_real {c : ℕ} {d : RealDatum σ w.L w.T c} (hsome : w.real c = some d) :
-    w.realAt (.root (.free c)) = some ⟨c, rfl, d⟩ := by
-  change (w.real c).map (fun d' => (⟨c, rfl, d'⟩ : w.RealData (.root (.free c)))) = _
+/-- What the world names at an address is what it realises there. -/
+theorem realised_of_real {x : VarSymb} {d : RealDatum σ w.L w.T x} (hsome : w.real x = some d) :
+    w.Realised x := by
+  unfold Realised
   rw [hsome]
   rfl
 
-/-- So that root is realised … -/
-theorem realised_of_real {c : ℕ} {d : RealDatum σ w.L w.T c} (hsome : w.real c = some d) :
-    w.Realised (.root (.free c)) := by
-  unfold Realised
-  rw [realAt_of_real hsome]
-  rfl
-
 /-- … by that datum. -/
-theorem data_of_real {c : ℕ} {d : RealDatum σ w.L w.T c} (hsome : w.real c = some d) :
-    (realised_of_real hsome).data = ⟨c, rfl, d⟩ := by
+theorem data_of_real {x : VarSymb} {d : RealDatum σ w.L w.T x} (hsome : w.real x = some d) :
+    (realised_of_real hsome).data = d := by
   unfold Realised.data
-  simp only [realAt_of_real hsome]
+  simp only [hsome]
   rfl
 
-/-- ⭐**What the theory says, the world realises**: a datum for `c` — declarations and the `Here`
-    atom at one stage — makes that root realised.  With `World.real` read off the theory this is
-    immediate, and it is the only way realisedness is ever established. -/
-theorem realised_of_datum {c : ℕ} (d : RealDatum σ w.L w.T c) :
-    w.Realised (.root (.free c)) :=
-  realised_of_real (dif_pos (⟨d⟩ : Nonempty (RealDatum σ w.L w.T c)))
+/-- ⭐**What the theory says, the world realises**: a datum for `x` — declarations and the `Here`
+    atom at one stage — makes that address realised, and it is the only way realisedness is ever
+    established. -/
+theorem realised_of_datum {x : VarSymb} (d : RealDatum σ w.L w.T x) : w.Realised x :=
+  realised_of_real (dif_pos (⟨d⟩ : Nonempty (RealDatum σ w.L w.T x)))
 
-/-- ⭐Conversely, a realised address carries the datum the world names at its root.  This is what
-    lets a proof forget the address and work with the world's own naming, where the datum is a
-    variable and the equations can be `subst`ed. -/
-theorem real_of_realised {x : VarSymb} (h : w.Realised x) :
-    w.real h.data.c = some h.data.datum := by
-  match x with
-  | .root (.free c) =>
-      rcases hc : w.real c with _ | d
-      · exact absurd h (by simp [Realised, realAt, hc])
-      · exact Eq.mpr (congrArg (fun D : w.RealData (.root (.free c)) => w.real D.c = some D.datum)
-          (data_of_real hc)) hc
-  | .root (.bnd _) => exact absurd h (by simp [Realised, realAt])
-  | .step _ _ => exact absurd h (by simp [Realised, realAt])
-
+/-- Conversely, a realised address carries the datum the world names there. -/
+theorem real_of_realised {x : VarSymb} (h : w.Realised x) : w.real x = some h.data :=
+  (Option.some_get h).symm
 
 /-! ## Theory membership at a stage -/
 

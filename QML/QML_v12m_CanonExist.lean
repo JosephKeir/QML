@@ -66,7 +66,7 @@ noncomputable def ofHenkin (d : ℕ) (L₀ : WorldLang) (hρ : ∀ n, L₀.ρ n 
     obtain ⟨m, j⟩ := i
     obtain ⟨n, hret, hm, hj, haddr⟩ := WorldLang.exists_isRet_addr (L := L₀) (S₀ := S₀) m j hA v
       ((Ctx.le_of_eq (WorldLang.ctxL_eq_final S₀ m j).symm).ref hv)
-    refine ⟨L₀.ρ n, WorldLang.retDatum hTb hTS hret hS₀, ?_, ?_, ?_⟩
+    refine ⟨.root (.free (L₀.ρ n)), WorldLang.retDatum hTb hTS hret hS₀, ?_, ?_, ?_⟩
     · change (WorldLang.addrQ n).1.1 = A
       rw [haddr]
     · change (WorldLang.addrQ n).2 = v

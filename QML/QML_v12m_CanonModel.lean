@@ -198,16 +198,16 @@ theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T =
       (posEval w₀ p).2 ⟨(frame w₀).reflAcc hT w, hm⟩ = a := by
   obtain ⟨i, a', t, ht⟩ := definable_fromDom w₀ A w a
   obtain ⟨i₁, -, c', hc', hname⟩ := exists_name hA t
-  obtain ⟨c, d, hdA, hdb, hile⟩ := w.realW hT hS i₁ hA (.root (.free c')) hc'
+  obtain ⟨y, d, hdA, hdb, hile⟩ := w.realW hT hS i₁ hA (.root (.free c')) hc'
   subst hdA
-  have hr : w.Realised (.root (.free c)) := World.realised_of_datum d
+  have hr : w.Realised y := World.realised_of_datum d
   refine ⟨⟨rden w d.i₀ (Ctx.Le.refl _)
-      (Term.eta (.root (.free c)) (.VTypeDia d.A) d.hd₀), definable_rden _ _⟩,
+      (Term.eta y (.VTypeDia d.A) d.hd₀), definable_rden _ _⟩,
     self_mem_extent hr, ?_⟩
   refine Eq.trans ?_ (toDom_fromDom w₀ d.A w a)
   refine toDom_congr w₀ ?_ _ _
   rw [← ht]
-  refine (rden_eta_realised_wd hr d.t₀ (rden_data_wd hr.data rfl d) d.hd₀).trans
+  refine (rden_eta_realised_wd hr d.t₀ (rden_datum_wd hr.data d) d.hd₀).trans
     (Eq.trans ?_ hname)
   refine (rden_sigma (Ctx.Le.refl _) (Term.eta_congr hdb d.A d.hb₀ (hdb ▸ d.hb₀))).trans ?_
   exact (rden_eta_le (w.L.ctx_le hile) (Ctx.Le.refl _) (Ctx.Le.refl _)

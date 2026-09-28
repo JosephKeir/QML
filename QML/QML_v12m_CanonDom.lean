@@ -166,24 +166,22 @@ def RDom : VarType → World σ N₀ → Type
     Both terms are lifted to one stage. -/
 theorem realisedLe (w : World σ N₀) {x : VarSymb} (hr : w.Realised x) {Γ : Ctx} {i : ℕ × ℕ}
     (e : Γ.Le (w.L.ctx i)) :
-    (Γ.diaIn x).Le ((w.L.ctx (i ⊔ hr.data.i₀)).diaIn (.root (.free hr.data.c))) := by
-  rw [← hr.data.hx]
-  exact (e.trans (w.L.ctx_le le_sup_left)).diaIn x
+    (Γ.diaIn x).Le ((w.L.ctx (i ⊔ hr.data.i₀)).diaIn x) :=
+  (e.trans (w.L.ctx_le le_sup_left)).diaIn x
 
 /-- So it is declared at the stage where both it and the term live.  Through `RealDatum.hdeclOf`,
     so that this survives realisedness being read off the theory (§2d, step 4), where a stage
     order on the datum is not available. -/
 theorem realisedDecl {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx} {i : ℕ × ℕ}
     (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
-    (w.L.ctx (i ⊔ hr.data.i₀)).ref (.root (.free hr.data.c)) = some (.VTypeDia hr.data.A) :=
-  hr.data.datum.hdeclOf _
-    (hx.imp fun _ h => (w.L.ctx_le le_sup_left).ref (hr.data.hx ▸ e.ref h))
+    (w.L.ctx (i ⊔ hr.data.i₀)).ref x = some (.VTypeDia hr.data.A) :=
+  hr.data.hdeclOf _ (hx.imp fun _ h => (w.L.ctx_le le_sup_left).ref (e.ref h))
 
 noncomputable def realisedTerm (w : World σ N₀) {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
     {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
     {a : Ann A} (t : Term σ (Γ.diaIn x) A a) :
     Σ b : Ann A, Term σ (w.L.ctx (i ⊔ hr.data.i₀)) A b :=
-  ⟨_, Term.realiseAt hr.data.hT hr.data.c (realisedDecl hr e hx) (hr.data.hfr _)
+  ⟨_, Term.realiseAtA hr.data.hT x (realisedDecl hr e hx)
     (Term.mono (w.L.ctx_le le_sup_right) hr.data.t₀) (Term.mono (realisedLe w hr e) t)⟩
 
 /-- ⭐The denotation of a term at a world, computed at a stage containing its context. -/
@@ -300,8 +298,8 @@ theorem realisedTerm_mono {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) 
   have key : Term.mono (realisedLe w hr e) (Term.mono (h.diaIn x) t) =
       Term.mono (realisedLe w hr (h.trans e)) t := by
     rw [Term.mono_mono]
-  exact congrArg (fun u => (⟨_, Term.realiseAt hr.data.hT hr.data.c (realisedDecl hr e hx')
-    (hr.data.hfr _) (Term.mono (w.L.ctx_le le_sup_right) hr.data.t₀) u⟩ :
+  exact congrArg (fun u => (⟨_, Term.realiseAtA hr.data.hT x (realisedDecl hr e hx')
+    (Term.mono (w.L.ctx_le le_sup_right) hr.data.t₀) u⟩ :
       Σ b : Ann A, Term σ (w.L.ctx (i ⊔ hr.data.i₀)) A b)) key
 
 /-- The denotation commutes with weakening. -/
@@ -380,14 +378,12 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
           have key : Term.mono h₁ (realisedTerm w hr e hx t).2 =
               Term.mono h₂ (realisedTerm w hr e' hx t).2 := by
             simp only [realisedTerm]
-            rw [Term.mono_realiseAt hr.data.hT _
-                (hcA' := hr.data.datum.hdeclOf _ (hx.imp fun _ h =>
-                  (w.L.ctx_le (le_sup_left.trans le_sup_left)).ref (hr.data.hx ▸ e.ref h)))
-                (hfr' := hr.data.hfr _),
-              Term.mono_realiseAt hr.data.hT _
-                (hcA' := hr.data.datum.hdeclOf _ (hx.imp fun _ h =>
-                  (w.L.ctx_le (le_sup_left.trans le_sup_left)).ref (hr.data.hx ▸ e.ref h)))
-                (hfr' := hr.data.hfr _),
+            rw [Term.mono_realiseAtA hr.data.hT _
+                (hcA' := hr.data.hdeclOf _ (hx.imp fun _ h =>
+                  (w.L.ctx_le (le_sup_left.trans le_sup_left)).ref (e.ref h))),
+              Term.mono_realiseAtA hr.data.hT _
+                (hcA' := hr.data.hdeclOf _ (hx.imp fun _ h =>
+                  (w.L.ctx_le (le_sup_left.trans le_sup_left)).ref (e.ref h))),
               Term.mono_mono, Term.mono_mono, Term.mono_mono, Term.mono_mono]
           calc rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e hx t).2
               = rden w _ h₁ (realisedTerm w hr e hx t).2 := rden_congr _ w _ _ _ _
@@ -434,12 +430,11 @@ theorem rden_realisedTerm_mono_boxIn {w : World σ N₀} {x : VarSymb} (hr : w.R
   have hle : Γ.boxIn.Le (w.L.ctx (i ⊔ hr.data.i₀)).boxIn :=
     (e.trans (w.L.ctx_le le_sup_left)).boxIn
   have hcomb : Term.mono (realisedLe w hr e) (Term.mono (Ctx.le_boxIn_diaIn Γ x) b) =
-      Term.mono (Ctx.le_boxIn_diaIn (w.L.ctx (i ⊔ hr.data.i₀)) (.root (.free hr.data.c)))
-        (Term.mono hle b) := by
+      Term.mono (Ctx.le_boxIn_diaIn (w.L.ctx (i ⊔ hr.data.i₀)) x) (Term.mono hle b) := by
     rw [Term.mono_mono, Term.mono_mono]
   simp only [realisedTerm]
-  rw [hcomb, rden_sigma _ (Term.realiseAt_mono_boxIn hr.data.hT hr.data.c
-      (realisedDecl hr e hx) (hr.data.hfr _) _ (Term.mono hle b)),
+  rw [hcomb, rden_sigma _ (Term.realiseAtA_mono_boxIn hr.data.hT x
+      (realisedDecl hr e hx) _ (Term.mono hle b)),
     Term.collapse_mono (Ctx.collapses_boxIn_self hr.T Γ)
       (Ctx.collapses_boxIn_self hr.data.hT (w.L.ctx (i ⊔ hr.data.i₀))) hle
       (e.trans (w.L.ctx_le le_sup_left)) b,
@@ -673,15 +668,15 @@ theorem exists_name {w : World σ N₀} {A : VarType} (hA : A.diaFree = true) {i
     the same content type, and their contents denote alike.  `Proof.here_fun` makes the two contents
     provably equal — an equation only because the content type is `◇`-free (§2d) — and faithfulness
     (`rden_eqRec`) turns that into one denotation. -/
-theorem rden_here_wd {w : World σ N₀} {c : ℕ} (hT : ModalSys.T = true)
+theorem rden_here_wd {w : World σ N₀} {y : VarSymb} (hT : ModalSys.T = true)
     {A₁ A₂ : VarType} (hA₁ : A₁.diaFree = true) (hA₂ : A₂.diaFree = true)
     {i : ℕ × ℕ} {b₁ b₂ : VarSymb}
-    (hd₁ : (w.L.ctx i).ref (.root (.free c)) = some (.VTypeDia A₁))
-    (hd₂ : (w.L.ctx i).ref (.root (.free c)) = some (.VTypeDia A₂))
+    (hd₁ : (w.L.ctx i).ref y = some (.VTypeDia A₁))
+    (hd₂ : (w.L.ctx i).ref y = some (.VTypeDia A₂))
     (hb₁ : (w.L.ctx i).ref b₁ = some A₁) (hb₂ : (w.L.ctx i).ref b₂ = some A₂)
-    (ha₁ : (⟨i, WFF.hereAt hT (.root (.free c)) hA₁ hd₁ (Term.eta b₁ A₁ hb₁)⟩ :
+    (ha₁ : (⟨i, WFF.hereAt hT y hA₁ hd₁ (Term.eta b₁ A₁ hb₁)⟩ :
       w.L.sys.Sentence σ) ∈ w.T)
-    (ha₂ : (⟨i, WFF.hereAt hT (.root (.free c)) hA₂ hd₂ (Term.eta b₂ A₂ hb₂)⟩ :
+    (ha₂ : (⟨i, WFF.hereAt hT y hA₂ hd₂ (Term.eta b₂ A₂ hb₂)⟩ :
       w.L.sys.Sentence σ) ∈ w.T) :
     (⟨A₁, rden w i (Ctx.Le.refl _) (Term.eta b₁ A₁ hb₁)⟩ : Σ A : VarType, RDom A w) =
       ⟨A₂, rden w i (Ctx.Le.refl _) (Term.eta b₂ A₂ hb₂)⟩ := by
@@ -689,7 +684,7 @@ theorem rden_here_wd {w : World σ N₀} {c : ℕ} (hT : ModalSys.T = true)
     have h := hd₁.symm.trans hd₂
     simpa using h
   refine congrArg (Sigma.mk _) ?_
-  have ha₂' : (⟨i, WFF.hereAt hT (.root (.free c)) hA₁ hd₁
+  have ha₂' : (⟨i, WFF.hereAt hT y hA₁ hd₁
       (Term.castAnn (a' := Ann.eta b₁ A₁) hA₁ (Term.eta b₂ A₁ hb₂))⟩ :
       w.L.sys.Sentence σ) ∈ w.T := by
     refine Eq.mp (congrArg (fun φ => (⟨i, φ⟩ : w.L.sys.Sentence σ) ∈ w.T) ?_) ha₂
@@ -697,8 +692,8 @@ theorem rden_here_wd {w : World σ N₀} {c : ℕ} (hT : ModalSys.T = true)
   have hmem : (⟨i, eqRec A₁ (Term.eta b₁ A₁ hb₁)
       (Term.castAnn (a' := Ann.eta b₁ A₁) hA₁ (Term.eta b₂ A₁ hb₂))⟩ : w.L.sys.Sentence σ) ∈ w.T :=
     World.mem_of_provable
-      (Δ := [WFF.hereAt hT (.root (.free c)) hA₁ hd₁ (Term.eta b₁ A₁ hb₁),
-        WFF.hereAt hT (.root (.free c)) hA₁ hd₁
+      (Δ := [WFF.hereAt hT y hA₁ hd₁ (Term.eta b₁ A₁ hb₁),
+        WFF.hereAt hT y hA₁ hd₁
           (Term.castAnn (a' := Ann.eta b₁ A₁) hA₁ (Term.eta b₂ A₁ hb₂))])
       (fun ψ hψ => by
         rcases List.mem_cons.mp hψ with rfl | hψ'
@@ -712,11 +707,11 @@ theorem rden_here_wd {w : World σ N₀} {c : ℕ} (hT : ModalSys.T = true)
     (Ctx.Le.refl _) ?_).trans (rden_castAnn hA₁ _ (Term.eta b₂ A₁ hb₂))
   rwa [Term.mono_refl, Term.mono_refl]
 
-/-- ⭐**So the content of a realised root is the theory's, not the model's choice**: any two data for
-    one root agree on the content type and on what the content denotes.  This is what lets
+/-- ⭐**So the content of a realised address is the theory's, not the model's choice**: any two data
+    for one address agree on the content type and on what the content denotes.  This is what lets
     realisedness be *read off the theory* (§2d, step 4) — a world may choose which datum to use, and
     the value it computes does not depend on the choice. -/
-theorem rden_datum_wd {w : World σ N₀} {c : ℕ} (d₁ d₂ : RealDatum σ w.L w.T c) :
+theorem rden_datum_wd {w : World σ N₀} {x : VarSymb} (d₁ d₂ : RealDatum σ w.L w.T x) :
     (⟨d₁.A, rden w d₁.i₀ (Ctx.Le.refl _) d₁.t₀⟩ : Σ A : VarType, RDom A w) =
       ⟨d₂.A, rden w d₂.i₀ (Ctx.Le.refl _) d₂.t₀⟩ := by
   have h₁ : d₁.i₀ ≤ (max d₁.i₀.1 d₂.i₀.1, max d₁.i₀.2 d₂.i₀.2) :=
@@ -740,18 +735,6 @@ theorem rden_datum_wd {w : World σ N₀} {c : ℕ} (d₁ d₂ : RealDatum σ w.
   · exact Eq.mp (congrArg (fun φ => (⟨_, φ⟩ : w.L.sys.Sentence σ) ∈ w.T)
       (WFF.here_congr' d₂.hT d₂.hA rfl (Term.mono_eta _ _ _ _)))
       (d₂.hhereAt w.mcs _ h₂ ((w.L.ctx_le h₂).ref d₂.hd₀))
-
-/-- The same between the data a world *names* at a root and any datum the theory gives for it. -/
-theorem rden_data_wd {w : World σ N₀} {x : VarSymb} (D : w.RealData x) {c : ℕ}
-    (hx : x = .root (.free c)) (d : RealDatum σ w.L w.T c) :
-    (⟨D.A, rden w D.i₀ (Ctx.Le.refl _) D.t₀⟩ : Σ A : VarType, RDom A w) =
-      ⟨d.A, rden w d.i₀ (Ctx.Le.refl _) d.t₀⟩ := by
-  obtain ⟨c', hx', D'⟩ := D
-  subst hx'
-  obtain rfl : c' = c := by
-    injection hx with hroot
-    injection hroot
-  exact rden_datum_wd D' d
 
 end Canon
 
