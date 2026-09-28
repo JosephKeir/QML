@@ -2304,7 +2304,39 @@ root is never a view entry, so `k` stays `0` and the test always holds.  `QML_v1
 `VarSymb.realiseAddr` has no such test — it is unused so far, and only ever applied at a root, where
 the question does not arise; the level-aware "below" test is new work there too.
 
-*So the complete route is the one this file's header prescribes*: realisation and abstraction as
+*⭐A cheaper route, found while building the recursion (2026-09-28, third pass): `Subst.Coh` is
+stronger than the machinery needs.*  `Coh ι Γ θ` demands `(θ.at v).idxAlong p = ι (v.ext p)` for
+**every** visible `v` and **every** path `p`.  But `Term.subst` consumes it in exactly *one* place —
+the `.diatm x hx t` case, as `hc x _ hX []`, i.e. at a `◇`-**typed** address along the **empty**
+path — and everything else only passes it down, rebuilt by `coh_box`, `coh_dia`, `coh_under`.  The
+output annotation is `a.mapIdx ι`, whose indices are exactly the `◇`-nodes.  So the load-bearing
+statement is
+
+```
+Coh ι Γ θ  :=  ∀ v T, Γ.ref v = some T → ∀ p X, (T along p) = some (◇X) →
+                 (θ.at v).idxAlong p = ι (v.ext p)
+```
+
+— agreement only at paths that **land on a `◇`-type** — which is still preserved by `box`, `dia`,
+`keep` and `under` (each prefixes a step to `p`, and the landing type is unchanged).
+
+Under that reading the abstraction at an **arbitrary** address needs no recursion and no levels at
+all.  The conflict the experiment found was at `v = x`, `p = [.dia]`: the entry for the view's copy of
+`x` sends `x.dia` to `x.dia`, while `ι` sends it to the slot.  That path lands on the *content* type,
+which is `◇`-free (§2d) and so never a `◇`-type — so the weakened `Coh` does not ask about it.  Paths
+further below the content land inside a `◇`-free type, so they never ask either; and a path from a
+*prefix* of `x` that lands on `x`'s own type `◇A` asks only that `ι x = x`, which holds.  So
+`Subst.diaAbs`/`diaAbsIdx` generalise to any `x` whose view has the two properties the experiment
+already used, with `Ctx.DiaFreeBelow` supplying the rest.
+
+*Cost*: `Coh` is mentioned in ~34 `QML_v12m_*` files, almost all of them *proving* a `coh_*` for a
+particular substitution; each such proof needs two extra binders and the landing fact, and the five
+places that *use* a `Coh` hypothesis need the same.  Broad but shallow, and it removes the need for
+the level-threaded recursion entirely — `VarSymb.absAddr`, `Ann.abs` and `Ctx.Abstracts` (commits
+`f1c3c0a`, `0287aad`, `a5e2151`) would become unused, though `Ctx.DiaFreeBelow` is still the reason
+the weakening is sound here.
+
+*The alternative, if that breadth is unwanted*: realisation and abstraction as
 **dedicated recursions carrying the level `k`**, not substitutions, with the `.diatm y hy t` case
 split on `y = x` and dispatching to `Term.collapse` when they are equal (the outer content is
 shadowed there, and collapse is exactly the rest of the map).  Every piece has a weak-T template:
