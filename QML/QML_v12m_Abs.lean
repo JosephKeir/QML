@@ -512,4 +512,99 @@ theorem coh_diaAbsA (hxA : Γ.ref x = some (.VTypeDia A))
 
 end Subst
 
+
+/-! ## The abstraction on terms and formulas, and the round trip -/
+
+/-- ⭐A hole formula read inside `◇_x`, at **any** context declaring `x` at a `◇`-type.  The root
+    case is `WFF.viewReadAt`. -/
+def WFF.viewReadAtA {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (x : VarSymb) {A : VarType}
+    (hxA : Γ.ref x = some (.VTypeDia A))
+    (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) : WFF σ (Γ.diaIn x) 0 :=
+  WFF.renameRoot (.bnd 0) ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0))
+    (Ctx.le_boxIn_diaIn Γ x) (.step x .dia)
+    (Ctx.ref_diaIn_of hxA) ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A) Ctx.NoSlots.slots ψ
+
+/-- ⭐The hole formula a formula of the `◇_x` view is read from, at an arbitrary declared address.
+    The only hypothesis is that `x` is declared at `◇A`: what the root version needed as freshness
+    comes from the presentation (`Ctx.Presented.not_below`, `Ctx.Presented.viewFresh`). -/
+def WFF.diaAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb) {A : VarType}
+    (hxA : Γ.ref x = some (.VTypeDia A)) (χ : WFF σ (Γ.diaIn x) 0) :
+    WFF σ (Γ.boxIn.insert (.bnd 0) A) 1 :=
+  WFF.subst (VarSymb.absAddr x 0) (Subst.diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x)
+    (Subst.ok_diaAbsA hxA (hp.not_below hxA rfl) ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).root))
+    (Subst.coh_diaAbsA hxA (hp.not_below hxA rfl) hp.viewFresh
+      ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).root))
+    Ctx.NoSlots.slots ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A) χ
+
+/-- ⭐The same abstraction on a term of the view. -/
+def Term.diaAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb) {A : VarType}
+    (hxA : Γ.ref x = some (.VTypeDia A)) {T : VarType} {b : Ann T}
+    (t : Term σ (Γ.diaIn x) T b) :
+    Term σ (Γ.boxIn.insert (.bnd 0) A) T (b.mapIdx (VarSymb.absAddr x 0)) :=
+  Term.subst (VarSymb.absAddr x 0) (Subst.diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x)
+    (Subst.ok_diaAbsA hxA (hp.not_below hxA rfl) ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).root))
+    (Subst.coh_diaAbsA hxA (hp.not_below hxA rfl) hp.viewFresh
+      ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).root)) t
+
+/-- Abstracting and then reading back is the identity substitution, at an arbitrary address. -/
+theorem Subst.sim_diaAbsA_viewRead {σ : Signature} {Γ : Ctx} {x : VarSymb} {A : VarType}
+    (hxA : Γ.ref x = some (.VTypeDia A))
+    (hnb : ∀ p : List Step, Γ.ref ((VarSymb.step x .dia).ext p) = none)
+    {ι₂ : VarSymb → VarSymb}
+    (hθ₂ : Subst.Ok (Γ.boxIn.insert (.bnd 0) A)
+      (Subst.single (σ := σ) (Δ := Γ.diaIn x) (.bnd 0) (.ren (.step x .dia))))
+    (hc₂ : Subst.Coh ι₂ (Γ.boxIn.insert (.bnd 0) A)
+      (Subst.single (σ := σ) (Δ := Γ.diaIn x) (.bnd 0) (.ren (.step x .dia)))) :
+    Subst.Sim (Γ.diaIn x) (Subst.idS σ (Γ.diaIn x))
+      ((Subst.diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x).comp
+        (Subst.single (.bnd 0) (.ren (.step x .dia))) hθ₂ hc₂) := by
+  refine Subst.sim_of ?_
+  intro v T hlp hv
+  rcases Subst.diaIn_casesA (σ := σ) hxA hnb hv with ⟨rfl, _⟩ | ⟨_, _, hen, hroot⟩
+  · change SubE.Sim T (.ren (.step x .dia))
+      ((if x = x then SubE.ren (.root (.bnd 0)) else .hide).comp _ hθ₂ hc₂)
+    rw [if_pos rfl]
+    change SubE.Sim T (.ren (.step x .dia))
+      (if (VarSymb.root (Root.bnd 0)) = .root (.bnd 0) then
+        SubE.ren (.step x .dia) else .ren (.root (.bnd 0)))
+    rw [if_pos rfl]
+    exact .refl _
+  · change SubE.Sim T (.ren v) ((Subst.diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x v).comp _ hθ₂ hc₂)
+    rw [hen (Γ.boxIn.insert (.bnd 0) A)]
+    change SubE.Sim T (.ren v)
+      ((Subst.single (.bnd 0) (.ren (.step x .dia))).at v)
+    rw [Subst.at_nonproj _ hlp,
+      show (Subst.single (σ := σ) (Δ := Γ.diaIn x) (.bnd 0)
+        (.ren (.step x .dia))) v = .ren v from if_neg (hroot (.bnd 0))]
+    exact .refl _
+
+/-- ⭐**The round trip at an arbitrary address**: every formula of the `◇_x` view is read from its
+    abstraction.  This is what the pinned realisation rules need in order to present a view formula
+    as a hole formula. -/
+theorem WFF.viewReadAtA_diaAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb)
+    {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) (χ : WFF σ (Γ.diaIn x) 0) :
+    WFF.viewReadAtA x hxA (WFF.diaAbsA x hxA χ) = χ := by
+  have h₀ : Γ.boxIn (.root (.bnd 0)) = none := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root
+  refine (WFF.subst_comp _ _ (Subst.idS σ _)
+    (Subst.ok_diaAbsA hxA (hp.not_below hxA rfl) h₀)
+    (Subst.coh_diaAbsA hxA (hp.not_below hxA rfl) hp.viewFresh h₀) _ _
+    Subst.ok_idS Subst.coh_idS Ctx.NoSlots.slots ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A)
+    Ctx.NoSlots.slots (Subst.sim_diaAbsA_viewRead hxA (hp.not_below hxA rfl) _ _) χ).trans ?_
+  exact WFF.subst_id Subst.ok_idS Subst.coh_idS Ctx.NoSlots.slots χ
+
+/-- ⭐The realisation of a view **term** at an arbitrary declared address. -/
+def Term.realiseAtA {σ : Signature} {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true) (x : VarSymb)
+    {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) {a₀ : Ann A} (t₀ : Term σ Γ A a₀)
+    {T : VarType} {b : Ann T} (t : Term σ (Γ.diaIn x) T b) :
+    Term σ Γ T
+      (((b.mapIdx (VarSymb.absAddr x 0)).collapse 0).mapIdx
+        (Subst.singleIdx (.bnd 0) (.tm t₀))) :=
+  Term.hereRead hT t₀ (Term.diaAbsA x hxA t)
+
+/-- ⭐The realisation of a view **formula** at an arbitrary declared address. -/
+def WFF.realiseAtA {σ : Signature} {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true) (x : VarSymb)
+    {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) {a₀ : Ann A} (t₀ : Term σ Γ A a₀)
+    (χ : WFF σ (Γ.diaIn x) 0) : WFF σ Γ 0 :=
+  WFF.hereRead hT t₀ (WFF.diaAbsA x hxA χ)
+
 end V12M
