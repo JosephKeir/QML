@@ -22,6 +22,19 @@ variable [ModalSys]
 
 /-! ## Size -/
 
+/-- The size of the defined equality at a type.  `eqRec A t s` is assembled from `A` alone — `.eq`
+    at base, `.and` at a product, `.box` under `□`, `□_x` at `◇` — so its size is a function of the
+    type and not of the terms (⭐`WFF.size_eqRec`).  This is what lets `WFF.size` give a `Here`
+    formula room for the equation its functionality concludes, so that the truth lemma's `here` case
+    may appeal to its own induction hypothesis at that equation rather than to a separate
+    faithfulness lemma. -/
+def VarType.eqRecSize : VarType → ℕ
+  | .Var => 0
+  | .VTypeOne => 0
+  | .VTypeProd A B => A.eqRecSize + B.eqRecSize + 1
+  | .VTypeBox A => A.eqRecSize + 1
+  | .VTypeDia A => A.eqRecSize + 3
+
 /-- The size of a formula, ignoring its terms. -/
 def WFF.size {σ : Signature} : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → ℕ
   | _, _, .atom _ => 0
@@ -35,7 +48,24 @@ def WFF.size {σ : Signature} : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → ℕ
   | _, _, .ex _ φ => φ.size + 1
   | _, _, .box φ => φ.size + 1
   | _, _, .dia _ _ φ => φ.size + 1
-  | _, _, .here _ _ _ => 0
+  | _, _, .here (A := A) _ _ _ => A.eqRecSize + 1
+
+/-- ⭐The size of an equality is the size of its type: nothing in `eqRec`'s clauses looks at the
+    terms.  So the `here` clause of `WFF.size` above dominates the equation `Proof.here_fun`
+    concludes. -/
+theorem WFF.size_eqRec {σ : Signature} : {Γ : Ctx} → {d : ℕ} → (A : VarType) → {a : Ann A} →
+    (t s : Term σ Γ A a) → (eqRec A t s : WFF σ Γ d).size = A.eqRecSize
+  | _, _, .Var, .var, t, s => by rw [eqRec_Var t s]; rfl
+  | _, _, .VTypeOne, .one, .unit, .unit => rfl
+  | _, _, .VTypeProd A B, .prod _ _, .pair t₁ t₂, .pair s₁ s₂ => by
+      change (WFF.and (eqRec A t₁ s₁) (eqRec B t₂ s₂)).size = _
+      simp only [WFF.size, WFF.size_eqRec A t₁ s₁, WFF.size_eqRec B t₂ s₂, VarType.eqRecSize]
+  | _, _, .VTypeBox A, .box _, .boxtm t, .boxtm s => by
+      change (WFF.box (eqRec A t s)).size = _
+      simp only [WFF.size, WFF.size_eqRec A t s, VarType.eqRecSize]
+  | _, _, .VTypeDia A, .dia x _, .diatm _ hx t, .diatm _ _ s => by
+      change (WFF.boxx x hx (eqRec A t s)).size = _
+      simp only [WFF.boxx, WFF.neg, WFF.size, WFF.size_eqRec A t s, VarType.eqRecSize]
 
 theorem WFF.size_mono {σ : Signature} : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (φ : WFF σ Γ d),
     (WFF.mono h φ).size = φ.size
