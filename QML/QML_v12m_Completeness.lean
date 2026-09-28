@@ -65,7 +65,7 @@ theorem WFF.size_eqRec {σ : Signature} : {Γ : Ctx} → {d : ℕ} → (A : VarT
       simp only [WFF.size, WFF.size_eqRec A t s, VarType.eqRecSize]
   | _, _, .VTypeDia A, .dia x _, .diatm _ hx t, .diatm _ _ s => by
       change (WFF.boxx x hx (eqRec A t s)).size = _
-      simp only [WFF.boxx, WFF.neg, WFF.size, WFF.size_eqRec A t s, VarType.eqRecSize]
+      simp only [WFF.size, WFF.size_eqRec A t s, VarType.eqRecSize]
 
 theorem WFF.size_mono {σ : Signature} : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (φ : WFF σ Γ d),
     (WFF.mono h φ).size = φ.size
