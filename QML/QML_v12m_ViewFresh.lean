@@ -107,6 +107,29 @@ theorem levelDepth_boxIn {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ) :
           rw [Step.levels_step_of_proj (s := Step.here) rfl]
           exact levelDepth_boxIn h u U hu
 
+/-- ⭐**Nothing below a declared address's level step is declared.**  A level step goes one view in,
+    so everything under it carries more level steps than the context allows.  With `s = .dia` this
+    is what abstracting a `◇` view needs about the content address; with `s = .box` or `.keep` it is
+    `ViewFresh` itself. -/
+theorem LevelDepth.not_below {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ) {x : VarSymb}
+    {X : VarType} (hx : Γ.ref x = some X) {s : Step} (hs : s.isProj = false) (p : List Step) :
+    Γ.ref ((VarSymb.step x s).ext p) = none := by
+  cases hw : Γ.ref ((VarSymb.step x s).ext p) with
+  | none => rfl
+  | some T =>
+      exfalso
+      have h₁ : Step.levels x.path = d x.rt := h x X hx
+      have h₂ : Step.levels ((VarSymb.step x s).ext p).path =
+          d ((VarSymb.step x s).ext p).rt := h _ _ hw
+      have h₃ : ((VarSymb.step x s).ext p).rt = x.rt := by
+        rw [VarSymb.ext_rt]
+        rfl
+      have h₄ : Step.levels (VarSymb.step x s).path ≤
+          Step.levels ((VarSymb.step x s).ext p).path := Step.levels_le_ext _ p
+      rw [Step.levels_step_of_level hs] at h₄
+      rw [h₃] at h₂
+      omega
+
 /-- ⭐And so nothing is visible at two depths: `ViewFresh`. -/
 theorem LevelDepth.viewFresh {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ) : ViewFresh Γ := by
   intro v p hv
@@ -266,6 +289,14 @@ theorem Ctx.Presented.viewFresh {Γ : Ctx} (h : Γ.Presented) : Γ.ViewFresh := 
   exact hd.viewFresh
 
 namespace Ctx
+
+/-- ⭐The same off a presentation: nothing below a declared address's level step is declared. -/
+theorem Presented.not_below {Γ : Ctx} (h : Γ.Presented) {x : VarSymb} {X : VarType}
+    (hx : Γ.ref x = some X) {s : Step} (hs : s.isProj = false) (p : List Step) :
+    Γ.ref ((VarSymb.step x s).ext p) = none := by
+  obtain ⟨d, hd⟩ := h.expr.levelDepth h.fresh
+  rw [← h.denote_eq] at *
+  exact hd.not_below hx hs p
 
 /-- The two readings the generalised abstraction consumes: a declared address is not itself a view
     entry, and no prefix of one is either. -/

@@ -1,5 +1,6 @@
 import QML.QML_v12m_DiaAbs
 import QML.QML_v12m_Realise
+import QML.QML_v12m_ViewFresh
 
 /-!
 # QML v12m — abstracting a `◇` view at an **arbitrary** address (strong T)
@@ -61,15 +62,6 @@ theorem absAddr_dia (x : VarSymb) (k : ℕ) (p : List Step) (hk : k ≤ Step.lev
 
 end VarSymb
 
-omit [ModalSys] in
-theorem Step.levels_append : ∀ (p q : List Step),
-    Step.levels (p ++ q) = Step.levels p + Step.levels q
-  | [], q => by simp [Step.levels]
-  | s :: p, q => by
-      change (if s.isProj then 0 else 1) + Step.levels (p ++ q) =
-        ((if s.isProj then 0 else 1) + Step.levels p) + Step.levels q
-      rw [Step.levels_append p q]
-      omega
 
 namespace VarSymb
 
@@ -336,6 +328,187 @@ theorem absAddr_root_zero (c : ℕ) (v : VarSymb) :
   | none => rw [VarSymb.absAddr_of_none 0 h, diaAbsIdx_of_belowDia_none h]
   | some p =>
       rw [diaAbsIdx_of_belowDia_some h, VarSymb.absAddr_of_some h (Nat.zero_le _)]
+
+end Subst
+
+/-! ## Abstracting a `◇` view at an arbitrary declared address -/
+
+namespace VarSymb
+
+omit [ModalSys] in
+/-- Being below the content is being an extension of it. -/
+theorem belowDia_eq {x : VarSymb} : ∀ {v : VarSymb} {p : List Step},
+    belowDia x v = some p → v = (VarSymb.step x .dia).ext p
+  | .root _, _, h => by cases h
+  | .step u s, p, h => by
+      by_cases he : (VarSymb.step u s) = .step x .dia
+      · have hp : p = [] := by
+          have h' : (if (VarSymb.step u s) = .step x .dia then some ([] : List Step)
+            else (belowDia x u).map (fun q => q ++ [s])) = some p := h
+          rw [if_pos he] at h'
+          exact (Option.some.inj h').symm
+        rw [hp, he]
+        rfl
+      · have h' : (if (VarSymb.step u s) = .step x .dia then some ([] : List Step)
+          else (belowDia x u).map (fun q => q ++ [s])) = some p := h
+        rw [if_neg he] at h'
+        cases hu : belowDia x u with
+        | none => rw [hu] at h'; cases h'
+        | some q =>
+            rw [hu] at h'
+            obtain rfl : p = q ++ [s] := (Option.some.inj h').symm
+            rw [VarSymb.ext_snoc, ← belowDia_eq hu]
+
+omit [ModalSys] in
+/-- ⭐An extension reaches the content only by **passing through** it: if `v` is not below `x.dia`
+    but some extension of it is, then an extension of `v` *is* `x.dia`. -/
+theorem belowDia_ext_of_none {x v : VarSymb} : ∀ (p : List Step) {q : List Step},
+    belowDia x v = none → belowDia x (v.ext p) = some q →
+      ∃ p' : List Step, v.ext p' = VarSymb.step x .dia
+  | [], _, hv, hq => by rw [show VarSymb.ext v [] = v from rfl, hv] at hq; cases hq
+  | s :: p, q, hv, hq => by
+      cases hs : belowDia x (.step v s) with
+      | some r =>
+          refine ⟨[s], ?_⟩
+          have h' : (if (VarSymb.step v s) = .step x .dia then some ([] : List Step)
+            else (belowDia x v).map (fun t => t ++ [s])) = some r := hs
+          rw [hv] at h'
+          by_cases he : (VarSymb.step v s) = .step x .dia
+          · exact he
+          · rw [if_neg he] at h'
+            cases h'
+      | none =>
+          obtain ⟨r, hr⟩ := belowDia_ext_of_none (x := x) (v := .step v s) p hs hq
+          exact ⟨s :: r, hr⟩
+
+end VarSymb
+
+
+namespace Subst
+
+/-- ⭐The abstraction of a `◇_x` view at an **arbitrary** address: the content goes to the hole, the
+    `□`-view entries stay.  `Subst.diaAbs` is the case of a root. -/
+def diaAbsA (σ : Signature) (Δ : Ctx) (x : VarSymb) : Subst σ Δ := fun v =>
+  match v with
+  | .step u .dia => if u = x then .ren (.root (.bnd 0)) else .hide
+  | .step u .box => .ren (.step u .box)
+  | .step u .keep => .ren (.step u .keep)
+  | _ => .hide
+
+variable {Γ : Ctx} {x : VarSymb} {A : VarType}
+
+/-- ⭐The view's entries at an arbitrary witness: the content, or a `□`-view entry not below it.
+    What was the root's freshness `hfr` is now `Ctx.Presented.not_below` — the naming discipline
+    (§2d, §9). -/
+theorem diaIn_casesA (hxA : Γ.ref x = some (.VTypeDia A))
+    (hnb : ∀ p : List Step, Γ.ref ((VarSymb.step x .dia).ext p) = none) :
+    ∀ {v : VarSymb} {T : VarType}, (Γ.diaIn x) v = some T →
+      (v = .step x .dia ∧ T = A) ∨
+        (VarSymb.belowDia x v = none ∧ Γ.boxIn v = some T ∧
+          (∀ Δ : Ctx, diaAbsA σ Δ x v = .ren v) ∧ ∀ r : Root, v ≠ .root r) := by
+  intro v T hv
+  match v with
+  | .step u .dia =>
+      have hu : u = x := by
+        change (if u = x then
+          (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+          else none) = some T at hv
+        split_ifs at hv with hcon
+        exact hcon
+      subst hu
+      refine Or.inl ⟨rfl, ?_⟩
+      change (if u = u then
+        (match Γ.ref u with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T at hv
+      rw [if_pos rfl, hxA] at hv
+      exact (Option.some.inj hv).symm
+  | .step u .box =>
+      refine Or.inr ⟨?_, hv, fun _ => rfl, fun _ h => by cases h⟩
+      cases hb : VarSymb.belowDia x (.step u .box) with
+      | none => rfl
+      | some p =>
+          exfalso
+          obtain ⟨_, hu⟩ := Ctx.boxIn_box (Γ := Γ) hv
+          have hne : (VarSymb.step u .box) ≠ .step x .dia := fun hcon => by cases hcon
+          have hbu : (VarSymb.belowDia x u).map (fun q => q ++ [Step.box]) = some p := by
+            have h' : (if (VarSymb.step u .box) = .step x .dia then some ([] : List Step)
+              else (VarSymb.belowDia x u).map (fun q => q ++ [Step.box])) = some p := hb
+            rwa [if_neg hne] at h'
+          cases hq : VarSymb.belowDia x u with
+          | none => rw [hq] at hbu; cases hbu
+          | some q =>
+              rw [VarSymb.belowDia_eq hq, hnb q] at hu
+              cases hu
+  | .step u .keep =>
+      refine Or.inr ⟨?_, hv, fun _ => rfl, fun _ h => by cases h⟩
+      cases hb : VarSymb.belowDia x (.step u .keep) with
+      | none => rfl
+      | some p =>
+          exfalso
+          obtain ⟨_, hu, _, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+          have hne : (VarSymb.step u .keep) ≠ .step x .dia := fun hcon => by cases hcon
+          have hbu : (VarSymb.belowDia x u).map (fun q => q ++ [Step.keep]) = some p := by
+            have h' : (if (VarSymb.step u .keep) = .step x .dia then some ([] : List Step)
+              else (VarSymb.belowDia x u).map (fun q => q ++ [Step.keep])) = some p := hb
+            rwa [if_neg hne] at h'
+          cases hq : VarSymb.belowDia x u with
+          | none => rw [hq] at hbu; cases hbu
+          | some q =>
+              rw [VarSymb.belowDia_eq hq, hnb q] at hu
+              cases hu
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .here => cases hv
+
+/-- ⭐Well-typedness of the generalised abstraction. -/
+theorem ok_diaAbsA (hxA : Γ.ref x = some (.VTypeDia A))
+    (hnb : ∀ p : List Step, Γ.ref ((VarSymb.step x .dia).ext p) = none)
+    (h₀ : Γ.boxIn (.root (.bnd 0)) = none) :
+    Ok (Γ.diaIn x) (diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x) := by
+  intro v T hlp hv
+  rcases diaIn_casesA (σ := σ) hxA hnb hv with ⟨rfl, rfl⟩ | ⟨_, hb, hen, _⟩
+  · change (if x = x then SubE.ren (.root (.bnd 0)) else .hide).OkRef T
+    rw [if_pos rfl]
+    exact Ctx.ref_insert_root _ (.bnd 0) T
+  · rw [hen (Γ.boxIn.insert (.bnd 0) A)]
+    change (Γ.boxIn.insert (.bnd 0) A).ref v = some T
+    exact (Ctx.ref_nonproj _ hlp).trans (Ctx.le_insert h₀ A v T hb)
+
+/-- ⭐**Coherence at an arbitrary address.**  The one path that would need two images — from `x` by
+    `.dia` — is unavailable: an extension of a view entry reaches the content only by passing
+    through it (`VarSymb.belowDia_ext_of_none`), and `Ctx.ViewFresh` keeps `x` and its prefixes out
+    of the view.  That is the whole of what the naming discipline buys here. -/
+theorem coh_diaAbsA (hxA : Γ.ref x = some (.VTypeDia A))
+    (hnb : ∀ p : List Step, Γ.ref ((VarSymb.step x .dia).ext p) = none)
+    (hvf : Γ.ViewFresh) (h₀ : Γ.boxIn (.root (.bnd 0)) = none) :
+    Coh (VarSymb.absAddr x 0) (Γ.diaIn x) (diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x) := by
+  refine coh_of (ok_diaAbsA hxA hnb h₀) ?_
+  intro v T hlp hv p
+  rcases diaIn_casesA (σ := σ) hxA hnb hv with ⟨rfl, rfl⟩ | ⟨hbl, hb, hen, _⟩
+  · change (if x = x then SubE.ren (.root (.bnd 0)) else .hide).idxAlong p = _
+    rw [if_pos rfl, VarSymb.absAddr_dia x 0 p (Nat.zero_le _)]
+    rfl
+  · have hnone : VarSymb.belowDia x (v.ext p) = none := by
+      cases hq : VarSymb.belowDia x (v.ext p) with
+      | none => rfl
+      | some q =>
+          exfalso
+          obtain ⟨p', hp'⟩ := VarSymb.belowDia_ext_of_none p hbl hq
+          rcases List.eq_nil_or_concat p' with rfl | ⟨p'', s, rfl⟩
+          · rw [show VarSymb.ext v [] = v from rfl] at hp'
+            rw [hp'] at hb
+            cases hb
+          · rw [List.concat_eq_append, VarSymb.ext_snoc] at hp'
+            injection hp' with hvx _
+            have hbv : Γ.boxIn.ref v ≠ none := by
+              rw [Ctx.ref_nonproj _ hlp, hb]
+              exact fun hcon => by cases hcon
+            have hx := hvf v p'' hbv
+            rw [hvx, hxA] at hx
+            cases hx
+    rw [hen (Γ.boxIn.insert (.bnd 0) A), VarSymb.absAddr_of_none 0 hnone]
+    rfl
 
 end Subst
 
