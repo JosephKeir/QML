@@ -2277,6 +2277,33 @@ under T), so `x = .step (.step u .keep) .here` is `◇`-typed exactly when `u : 
 two-level stack as `.step u .box` without 4.  Nothing here touches reflexivity; the two settings
 differ only in the *shape* of the exposure.
 
+*Which direction has to be rebuilt, and what the shadowing actually is (2026-09-28, second pass).*
+Only the **abstraction** does.  `Term.realiseAt = Term.hereRead ∘ Term.diaAbs`, and `hereRead`
+substitutes at the slot **root** `.bnd 0`, which is unambiguous at any `x`; so realisation comes free
+once abstraction does, and the semantic bridges (`Model.sat_realiseAt`, `interp_realiseAt`) keep
+their proofs, needing only the recursion's analogue of `Env.substEnv_diaAbs`.
+
+And the shadowing is *not* "stop recursing".  Inside `◇_x` where `x` is itself a view entry, the view
+`Γ₁.diaIn x` does not conflate — it **shadows**: `x.dia` there is the *inner* content (the `.dia`
+branch of `Ctx.diaIn` wins), while the outer content's readings survive one level in, as `Γ₁.boxIn`
+entries `.step (x.dia) .box` — visible because `Γ₁.ref (x.dia)` is the *outer* content's type.  So
+below `x.dia` the two readings separate by whether the remaining path crosses a **level** step:
+projections stay inner, a level step reads it outside.  Nested `◇_x` views stack this.  Hence the
+address map must count levels, and the shape to build is
+
+```
+absAddr x k v := match belowDia x v with
+  | some p => if k ≤ Step.levels p then (VarSymb.root (.bnd 0)).ext p else v
+  | none   => v
+```
+
+with `k` the number of `◇_x` views entered (incremented only in the `.diatm y` case when `y = x`;
+a `□` view needs no increment, since the level step it crosses is already part of the address and so
+is counted by `Step.levels p`).  At a **root** `x` this degenerates to today's `Subst.diaAbsIdx`: a
+root is never a view entry, so `k` stays `0` and the test always holds.  `QML_v12m_Realise`'s
+`VarSymb.realiseAddr` has no such test — it is unused so far, and only ever applied at a root, where
+the question does not arise; the level-aware "below" test is new work there too.
+
 *So the complete route is the one this file's header prescribes*: realisation and abstraction as
 **dedicated recursions carrying the level `k`**, not substitutions, with the `.diatm y hy t` case
 split on `y = x` and dispatching to `Term.collapse` when they are equal (the outer content is
