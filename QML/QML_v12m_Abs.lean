@@ -106,12 +106,8 @@ omit [ModalSys] in
     is what escapes a shadow, and that is what makes `Ctx.Abstracts` a *downward-closed family* of
     levels rather than one level. -/
 theorem absAddr_level {x : VarSymb} {u : VarSymb} {s : Step} (hs : s.isProj = false)
-    (hsd : s ≠ .dia) (k : ℕ) :
+    (hne : (VarSymb.step u s) ≠ .step x .dia) (k : ℕ) :
     ∃ j ≤ k, absAddr x k (.step u s) = .step (absAddr x j u) s := by
-  have hne : (VarSymb.step u s) ≠ .step x .dia := by
-    intro he
-    injection he with _ hs'
-    exact hsd hs'
   have hb : belowDia x (.step u s) = (belowDia x u).map (fun p => p ++ [s]) := by
     have he : belowDia x (.step u s) = (if (VarSymb.step u s) = .step x .dia
       then some ([] : List Step) else (belowDia x u).map (fun p => p ++ [s])) := rfl
@@ -193,13 +189,13 @@ theorem Ctx.Abstracts.boxIn {x : VarSymb} {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx
   | .step u .box =>
       obtain ⟨hkb, hu⟩ := Ctx.boxIn_box hv
       obtain ⟨j', hj', he⟩ := VarSymb.absAddr_level (x := x) (u := u) (s := .box) rfl
-        (by decide) j
+        (by intro he; injection he with _ hs'; cases hs') j
       rw [he, Ctx.ref_nonproj _ rfl]
       exact Ctx.boxIn_box_of hkb (h j' (hj'.trans hj) u _ hu)
   | .step u .keep =>
       obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
       obtain ⟨j', hj', he⟩ := VarSymb.absAddr_level (x := x) (u := u) (s := .keep) rfl
-        (by decide) j
+        (by intro he; injection he with _ hs'; cases hs') j
       rw [he, Ctx.ref_nonproj _ rfl]
       exact Ctx.boxIn_keep_of hF (h j' (hj'.trans hj) u _ hu)
   | .root _ => cases hv
@@ -208,6 +204,68 @@ theorem Ctx.Abstracts.boxIn {x : VarSymb} {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx
   | .step _ .dia => cases hv
   | .step _ .here => cases hv
 
+
+/-- ⭐**Nothing below the content is `◇`-typed.**  Automatic when the content type is `◇`-free, as
+    `WFF.here` demands (§2d): every address below `x.dia` reads a part of the content, and a
+    `◇`-free type has no `◇` anywhere inside it.  This is what makes abstraction leave every
+    **witness** address alone, so the level bookkeeping never reaches the annotations. -/
+def Ctx.DiaFreeBelow (x : VarSymb) (Γ : Ctx) : Prop :=
+  ∀ (v : VarSymb) (X : VarType), VarSymb.belowDia x v ≠ none → Γ.ref v ≠ some (.VTypeDia X)
+
+/-- ⭐So a witness's address is untouched, at every level. -/
+theorem Ctx.DiaFreeBelow.absAddr_eq {x : VarSymb} {Γ : Ctx} (h : Ctx.DiaFreeBelow x Γ)
+    {y : VarSymb} {X : VarType} (hy : Γ.ref y = some (.VTypeDia X)) (j : ℕ) :
+    VarSymb.absAddr x j y = y := by
+  cases hb : VarSymb.belowDia x y with
+  | none => exact VarSymb.absAddr_of_none j hb
+  | some p => exact absurd hy (h y X (by rw [hb]; exact fun hcon => by cases hcon))
+
+/-- ⭐Abstraction descends into the view of a **different** witness, at the same level.  The witness
+    address itself is untouched (`DiaFreeBelow.absAddr_eq`), which is what lets the target context
+    be stated with one level. -/
+theorem Ctx.Abstracts.diaIn {x : VarSymb} {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Abstracts x k Γ₁ Γ₂)
+    (hdf : Ctx.DiaFreeBelow x Γ₁) {y : VarSymb} {X : VarType}
+    (hy : Γ₁.ref y = some (.VTypeDia X)) (hne : y ≠ x) :
+    Ctx.Abstracts x k (Γ₁.diaIn y) (Γ₂.diaIn y) := by
+  refine Ctx.Abstracts.of_raw ?_
+  intro j hj v T _ hv
+  match v with
+  | .step u .dia =>
+      change (if u = y then
+        (match Γ₁.ref y with | some (.VTypeDia Z) => some Z | _ => none) else none) = some T
+        at hv
+      split_ifs at hv with huy
+      subst huy
+      cases hz : Γ₁.ref u with
+      | none => rw [hz] at hv; cases hv
+      | some U =>
+          rw [hz] at hv
+          obtain ⟨j', hj', he⟩ := VarSymb.absAddr_level (x := x) (u := u) (s := .dia) rfl
+            (by intro he; injection he with hu' _; exact hne hu') j
+          rw [he, hdf.absAddr_eq hy j', Ctx.ref_nonproj _ rfl]
+          change (if u = u then
+            (match Γ₂.ref u with | some (.VTypeDia Z) => some Z | _ => none) else none) = some T
+          have hgt : Γ₂.ref u = some U := by
+            have hju := h j hj u _ hz
+            rwa [hdf.absAddr_eq hy j] at hju
+          rw [if_pos rfl, hgt]
+          exact hv
+  | .step u .box =>
+      obtain ⟨hkb, hu⟩ := Ctx.boxIn_box hv
+      obtain ⟨j', hj', he⟩ := VarSymb.absAddr_level (x := x) (u := u) (s := .box) rfl
+        (by intro he; injection he with _ hs'; cases hs') j
+      rw [he, Ctx.ref_nonproj _ rfl]
+      exact Ctx.boxIn_box_of (Γ := Γ₂) hkb (h j' (hj'.trans hj) u _ hu)
+  | .step u .keep =>
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      obtain ⟨j', hj', he⟩ := VarSymb.absAddr_level (x := x) (u := u) (s := .keep) rfl
+        (by intro he; injection he with _ hs'; cases hs') j
+      rw [he, Ctx.ref_nonproj _ rfl]
+      exact Ctx.boxIn_keep_of hF (h j' (hj'.trans hj) u _ hu)
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .here => cases hv
 namespace Subst
 
 omit [ModalSys] in
