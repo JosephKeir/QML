@@ -3195,3 +3195,68 @@ circular.  That is a small change and it makes the dependency honest.
 **Verdict.**  Worth doing, but after the truth lemma closes.  The primitive count does not drop (six
 either way); what drops is β's strength, and the price is eigenvariable bookkeeping plus another pass
 over `Proof.subst`.  Better spent once the `here` case stands.
+
+### 10.19 Step 3 begun: the relation and the class-keyed extent *(2026-09-29)*
+
+**Landed** (`QML_v12m_CanonInterch.lean`, builds clean):
+
+* ⭐`Canon.Interch w s s'` — two `◇`-terms at one stage and one content type are *interchangeable*
+  when every formula with a slot of that type has the same status at both.  The annotations need not
+  agree, which is the point.  `refl`/`symm`/`trans`.
+* ⭐`Canon.interch_of_coname` — **co-naming implies it**: from `Here p s` and `Here p s'` in the
+  theory, `Proof.here_subst` plus `World.mem_of_provable` gives interchangeability.  This is the only
+  source of the relation, and it is the pairing principle in force (the two possibilities are joined
+  by the address whose content they both are).
+* ⭐`Canon.extentTm w s` — the extent of a `◇`-**term**: proper arrows are the children built for the
+  witness of *any* class member, and the world itself is there when a member's witness is realised.
+  With ⭐`extentTm_congr` (interchangeable terms have **the same set**), `extent_subset_extentTm` and
+  `extentTm_cases`.
+
+`extentTm_congr` is the property the `here` atoms demand: two names of one content must denote
+objects whose first components agree as sets, which address-keyed extents never do.  And the reason
+this does not disturb anything else — the point §10.9 missed — is that a term the theory says nothing
+about has a **singleton class**, hence exactly the arrows `Canon.extent` gives it today, so no
+object's body ever has to be read at another witness's child.
+
+### 10.20 ⭐The remaining design question, answered: the class must be stage-invariant
+
+Found while writing `extentTm`, and it must be settled before `rden` can use it.
+
+`rden` is stage-indexed and `Canon.rden_mono` says the denotation does not depend on the stage a term
+is read at.  So `extentTm` must be stage-invariant.  But `Interch` as defined quantifies over the
+formulas of **one** stage, and a later stage has more of them, so:
+
+* interchangeability at a **larger** stage implies it at a smaller one (lift each test formula by
+  `WFF.mono` and `World.mem_lift`) — the relation is *contravariant* in the stage;
+* therefore the class can **shrink** as the stage grows, and `extentTm` as it stands is not
+  stage-invariant.
+
+The fix is to take the relation at *all* stages from the term's own upwards:
+
+```
+InterchAll w s s'  :=  ∀ j, i ≤ j → Interch w (s lifted to j) (s' lifted to j)
+```
+
+which **is** stage-invariant: `InterchAll` at `j ≥ i` gives every instance at `k ≥ i` by the
+contravariance above, so lifting a term does not change its class.  The members quantified in
+`extentTm` then range over terms at any stage `≥ i`, and lifting `s` leaves the set alone.
+
+So the order of work for the rest of step 3 is:
+
+1. `InterchAll` (stage-invariant) with `refl`/`symm`/`trans`, the contravariance lemma
+   (`Interch` at `j` implies `Interch` at `i`, needing `WFF.mono_instantiate` and `World.mem_lift`),
+   and `interch_of_coname` lifted to it;
+2. `extentTm` restated over `InterchAll` with members at any stage, plus `extentTm_mono` (the
+   stage-invariance) — the lemma `rden_mono` will need;
+3. the `rden` switch: the `.diatm` clause takes `extentTm` for its first component, and its content at
+   an arrow is read from **the member that contributed it** (a choice function, `rden` being already
+   noncomputable), with the self arrow as today through the datum;
+4. the `rden` congruence/monotonicity family in `CanonDom`/`CanonFunc`/`CanonTerm` re-proved against
+   the new clause — the bulk of the work;
+5. faithfulness's `◇` case (`rden_eqRec`'s analogue for `InterchAll`), by the Leibniz trick: the hole
+   formula `eqRec A' (η slot) (b' weakened)` has `b'`-instance reflexivity, hence `b`-instance in the
+   theory, hence equal denotations at the smaller type;
+6. then step 4, the `here` alternative in `truth_lt`.
+
+Nothing above is blocked; item 3 is where the tree goes red for a while, so it wants a session of its
+own.
