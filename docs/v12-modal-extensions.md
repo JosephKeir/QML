@@ -3154,3 +3154,44 @@ truth lemma's `here` alternative — zero warnings, zero sorries.
 
 **Next**: step 3, the Canon layer — indiscernibility classes, `extentTm`, faithfulness's `◇` case —
 then step 4, the `here` alternative in `truth_lt`.
+
+### 10.18 Open: could `here_beta` be narrowed to its pinned instance? *(2026-09-29, user)*
+
+The observation: elsewhere in this development β-reduction is *automatic* rather than a rule.  Why
+not here, and how far could it be pushed?
+
+**Why this β is not a computation.**  Hole-filling is a function (`Term.subst`), so `s[z↦b]` computes;
+the semantic β laws (`Model.dia_beta`, `Model.box_beta`) are theorems; and the term syntax has no
+projection former at all — projections are *addresses* — so there is no projection-β to state.
+`Proof.here_beta` is different in kind: both sides are irreducible **atoms**, and the rule says the
+predicate *commutes* with hole-filling.  Computing the content of `⟨x ; b⟩` at `id_w` would mean
+reading the view back into `Γ`, i.e. `Term.realiseAtA`, which needs a **name** `t₀` for `x`'s content
+(§10.13).  Without one there is nothing to substitute, so the content cannot be calculated from `b` —
+only related to other atoms' contents, which is what β does.
+
+**But given a name, β *is* composition.**  So the primitive could be the pinned instance alone,
+
+```
+Here (η x) t₀  ⊢  Here (diatm x bd) (realiseAtA x t₀ bd)
+```
+
+with the general form derived:
+
+1. `here_name` gives a content name — `∃z. Here (η x) z` — and `ex_elim` a root `z` for it;
+2. pinned-β gives the atom for **every** body, in particular for `bd` and for `viewReadTm bd s`;
+3. `here_subst` interchanges `realiseAtA x z bd` with the given `t`;
+4. and `realiseAtA x z (viewReadTm bd s) = hereRead z (…) = (hereRead t s)` after that interchange,
+   by composition of substitutions — *automatic*, no rule.
+
+The eigenvariable does not occur in the conclusion, so `ex_elim` applies.  `Canon.spec_of_here` is
+already the model-side shadow of this: `RealDatum.spec` is *derived* from one atom rather than
+assumed.
+
+**One ordering detail.**  Today the `𝟙`-atom (realisedness) comes from an arbitrary atom *by* β at
+`s := Term.unit`.  Under the narrowed design that is unavailable before a name exists, so
+`here_name`'s premise must be weakened to an arbitrary atom about `x` — otherwise the two rules are
+circular.  That is a small change and it makes the dependency honest.
+
+**Verdict.**  Worth doing, but after the truth lemma closes.  The primitive count does not drop (six
+either way); what drops is β's strength, and the price is eigenvariable bookkeeping plus another pass
+over `Proof.subst`.  Better spent once the `here` case stands.
