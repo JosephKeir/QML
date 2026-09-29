@@ -40,16 +40,16 @@ end Ctx
 /-- ⭐The same for the `Here` atom the new `Proof.T_dia` hands over: the contexts and the name are
     variables, so the equalities can be `subst`ed away. -/
 theorem WFF.hereAt_transport {σ : Signature} {Γ Γ' Δ : Ctx} (hT : ModalSys.T = true)
-    {A : VarType} (hA : A.diaFree = true) {a : Ann A} (t : Term σ Γ A a) {c c' : ℕ}
+    {A : VarType} {a : Ann A} (t : Term σ Γ A a) {c c' : ℕ}
     (hΓ : Γ = Γ') (hcc : c = c')
     (hc : Γ.RootFresh (.free c)) (hc' : Γ'.RootFresh (.free c'))
     (ht : Term σ Γ' A a) (hteq : ht = Term.mono (Ctx.le_of_eq hΓ) t)
     (hΔ : Γ'.insert (.free c') (.VTypeDia A) = Δ)
     (hle : (Γ.insert (.free c) (.VTypeDia A)).Le Δ) :
-    WFF.mono hle (WFF.hereAt hT (.root (.free c)) hA
+    WFF.mono hle (WFF.hereAt hT (.root (.free c))
         (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A))
         (Term.weaken hc.root (.VTypeDia A) t) : WFF σ (Γ.insert (.free c) (.VTypeDia A)) 0) =
-      WFF.mono (Ctx.le_of_eq hΔ) (WFF.hereAt hT (.root (.free c')) hA
+      WFF.mono (Ctx.le_of_eq hΔ) (WFF.hereAt hT (.root (.free c'))
         (Ctx.ref_insert_root Γ' (.free c') (.VTypeDia A))
         (Term.weaken hc'.root (.VTypeDia A) ht)) := by
   subst hΓ
@@ -136,7 +136,7 @@ theorem finalτ_of_isRet (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true
 /-- ⭐The `Here` atom the chain added for a strong T witness, as a sentence of the step's set. -/
 theorem hereAt_mem_retSet (hT : ModalSys.T = true) {n : ℕ} (hret : IsRet L S₀ n) (m : ℕ)
     (hm : decM n ≤ m) :
-    (⟨m, WFF.hereAt hT (.root (.free (L.ρ (L.chain S₀ n).l.length))) (addrQ n).1.2
+    (⟨m, WFF.hereAt hT (.root (.free (L.ρ (L.chain S₀ n).l.length)))
         (Ctx.ref_insert_root (L.ctxL m (L.chain S₀ n).l)
           (.free (L.ρ (L.chain S₀ n).l.length))
           (.VTypeDia (addrQ n).1.1))
@@ -209,7 +209,7 @@ theorem hhere_of_isRet (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) 
     (hret : IsRet L S₀ n) (m : ℕ) (hm : decM n ≤ m) :
     (⟨(m, n + 1), WFF.mono
         (Ctx.le_of_eq (ctx_succ_of_isRet hT hTS hret m))
-        (WFF.hereAt hT (.root (.free (L.ρ n))) (addrQ n).1.2
+        (WFF.hereAt hT (.root (.free (L.ρ n)))
           (Ctx.ref_insert_root ((L.final S₀).ctx (m, n)) (.free (L.ρ n))
             (.VTypeDia (addrQ n).1.1))
           (Term.weaken ((L.final S₀).fresh_ctx (m := m) (j := n) (n := n) le_rfl).root
@@ -229,7 +229,7 @@ theorem hhere_of_isRet (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) 
   refine Eq.mp (congrArg (fun φ => (⟨m, φ⟩ : (L.pre (L.chain S₀ (n + 1)).l).Sentence σ) ∈
     (L.chain S₀ (n + 1)).S) ?_) (step_mem hT hTS hret m _ (hereAt_mem_retSet hT hret m hm) hEq')
   rw [WFF.mono_mono]
-  refine (WFF.hereAt_transport hT (addrQ n).1.2
+  refine (WFF.hereAt_transport hT
     (Term.mono ((L.final S₀).ctx_le (Prod.mk_le_mk.mpr ⟨hm, le_rfl⟩))
       (Term.mono (Ctx.le_of_eq (ctxL_eq_final S₀ (decM n) n)) (retTerm hret)))
     hctx hname ((L.final S₀).fresh_ctx (m := m) (j := n) (n := n) le_rfl)
@@ -245,7 +245,7 @@ theorem hhere_of_isRet_at (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = tru
     (hlt : n < i.2)
     (hd : ((L.final S₀).ctx i).ref (.root (.free (L.ρ n))) =
       some (.VTypeDia (addrQ n).1.1)) :
-    (⟨i, WFF.hereAt hT (.root (.free (L.ρ n))) (addrQ n).1.2 hd
+    (⟨i, WFF.hereAt hT (.root (.free (L.ρ n))) hd
         (Term.mono ((L.final S₀).ctx_le hi)
           (Term.mono (Ctx.le_of_eq (ctxL_eq_final S₀ (decM n) n)) (retTerm hret)))⟩ :
       (L.final S₀).sys.Sentence σ) ∈ L.finalT S₀ := by
@@ -254,8 +254,8 @@ theorem hhere_of_isRet_at (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = tru
   refine Eq.mp (congrArg (fun φ => (⟨(m, j), φ⟩ : (L.final S₀).sys.Sentence σ) ∈ L.finalT S₀) ?_)
     (((WorldLang.finalT_isMCS hS₀).mem_lift_iff hlift).mpr (hhere_of_isRet hT hTS hret m hi.1))
   rw [StageSys.lift, WFF.mono_mono,
-    WFF.mono_hereAt_of_le hT _ (addrQ n).1.2 _ _ hd]
-  exact WFF.here_congr' hT (addrQ n).1.2 rfl
+    WFF.mono_hereAt_of_le hT _ _ _ hd]
+  exact WFF.here_congr' hT rfl
     (by simp only [Term.weaken, Term.mono_mono])
 
 /-! ## The realisation a strong T step provides -/
@@ -317,7 +317,7 @@ noncomputable def retDatum (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = tr
       (hhere_of_isRet_at hT hTS hret hS₀ (decM n, n + 1)
         (Prod.mk_le_mk.mpr ⟨le_rfl, Nat.le_succ n⟩) (Nat.lt_succ_self n)
         (retDecl hT hTS hret (decM n, n + 1) (Nat.lt_succ_self n)))
-    exact WFF.here_congr' hT (addrQ n).1.2 rfl (by simp only [retTerm, Term.mono_eta])
+    exact WFF.here_congr' hT rfl (by simp only [retTerm, Term.mono_eta])
 
 
 /-! ## Every declared address is realised -/

@@ -385,10 +385,10 @@ variable (L) in
     lemma's `here` case has something to match (§2d; nothing else introduces a `Here`, see
     `Model.sat_here_ex`). -/
 def retSet (hT : ModalSys.T = true) (l : List VarType) (m : ℕ) {A : VarType}
-    (hA : A.diaFree = true) {a : Ann A} (t : Term σ (L.ctxL m l) A a) :
+    (_hA : A.diaFree = true) {a : Ann A} (t : Term σ (L.ctxL m l) A a) :
     Set ((L.pre (.VTypeDia A :: l)).Sentence σ) :=
   {s | ∃ (m' : ℕ) (hm : m ≤ m'),
-      s = ⟨m', WFF.hereAt hT (.root (.free (L.ρ l.length))) hA
+      s = ⟨m', WFF.hereAt hT (.root (.free (L.ρ l.length)))
         (Ctx.ref_insert_root (L.ctxL m' l) (.free (L.ρ l.length)) (.VTypeDia A))
         (Term.weaken (L.ctxL_fresh (l := l) (n := l.length) le_rfl).root (.VTypeDia A)
           (Term.mono (L.ctxL_base_le hm l) t))⟩}
@@ -405,7 +405,7 @@ theorem consistent_grow_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = t
     rintro M hM ⟨Δ, hΔ, p⟩
     have hc : (L.ctxL M l).RootFresh (.free (L.ρ l.length)) := L.ctxL_fresh le_rfl
     let g : Unit → WFF σ (L.ctxL M (.VTypeDia A :: l)) 0 := fun _ =>
-      WFF.hereAt hT (.root (.free (L.ρ l.length))) hA
+      WFF.hereAt hT (.root (.free (L.ρ l.length)))
         (Ctx.ref_insert_root (L.ctxL M l) (.free (L.ρ l.length)) (.VTypeDia A))
         (Term.weaken hc.root (.VTypeDia A) (Term.mono (L.ctxL_base_le hM l) t))
     have hcases : ∀ δ ∈ Δ, (∃ z, g z = δ) ∨
@@ -417,7 +417,7 @@ theorem consistent_grow_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = t
       · obtain ⟨m', hm', rfl⟩ := hs
         refine Or.inl ⟨(), ?_⟩
         change _ = WFF.mono ((L.ctxL_base_le hle l).insert (.free (L.ρ l.length)) (.VTypeDia A)) _
-        rw [WFF.mono_hereAt hT (L.ctxL_base_le hle l) hA _ (L.ctxL_fresh le_rfl) hc, Term.mono_mono]
+        rw [WFF.mono_hereAt hT (L.ctxL_base_le hle l) _ (L.ctxL_fresh le_rfl) hc, Term.mono_mono]
     obtain ⟨Ψ, Δ₀, h₀, h₁⟩ := exists_hyps_two (P := fun x => x ∈ StageSys.atStage S M)
       (fun x => WFF.mono (L.ctxL_le_cons M (.VTypeDia A) l) x) g Δ hcases
     obtain ⟨q⟩ := Provable.mono h₁ p

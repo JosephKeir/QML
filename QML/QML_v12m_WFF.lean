@@ -55,25 +55,25 @@ inductive WFF (σ : Signature) : Ctx → ℕ → Type where
       exist: the view is the content address plus `Γ.boxIn`, so with no base entry in scope and no
       constant in the signature there is no such `bd`.  `◇_x ⊤` will not do — it says only that the
       extent is non-empty. -/
-  | here {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true) {A : VarType} (hA : A.diaFree = true)
+  | here {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true) {A : VarType}
       {b : Ann (.VTypeDia A)} {a : Ann A} (s : Term σ Γ (.VTypeDia A) b) (t : Term σ Γ A a) :
       WFF σ Γ d
 deriving DecidableEq
 /-- Two `Here` formulas agree when their subjects do. -/
 theorem WFF.here_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true)
-    {A : VarType} (hA : A.diaFree = true) {b : Ann (.VTypeDia A)} {a : Ann A}
+    {A : VarType} {b : Ann (.VTypeDia A)} {a : Ann A}
     {s s' : Term σ Γ (.VTypeDia A) b} {t t' : Term σ Γ A a} (hs : s = s') (ht : t = t') :
-    (WFF.here hT hA s t : WFF σ Γ d) = WFF.here hT hA s' t' := by
+    (WFF.here hT s t : WFF σ Γ d) = WFF.here hT s' t' := by
   rw [hs, ht]
 
 /-- Two `Here` formulas agree when their subjects do, annotations included on both sides. -/
 theorem WFF.here_congr {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true)
-    {A : VarType} (hA : A.diaFree = true) {b b' : Ann (.VTypeDia A)} {a a' : Ann A}
+    {A : VarType} {b b' : Ann (.VTypeDia A)} {a a' : Ann A}
     {s : Term σ Γ (.VTypeDia A) b} {s' : Term σ Γ (.VTypeDia A) b'}
     {t : Term σ Γ A a} {t' : Term σ Γ A a'}
     (hs : (⟨b, s⟩ : Σ b, Term σ Γ (.VTypeDia A) b) = ⟨b', s'⟩)
     (ht : (⟨a, t⟩ : Σ a, Term σ Γ A a) = ⟨a', t'⟩) :
-    (WFF.here hT hA s t : WFF σ Γ d) = WFF.here hT hA s' t' := by
+    (WFF.here hT s t : WFF σ Γ d) = WFF.here hT s' t' := by
   cases hs
   cases ht
   rfl
@@ -140,7 +140,7 @@ def WFF.mono {σ : Signature} : {Γ Γ' : Ctx} → {d : ℕ} → Γ.Le Γ' → W
   | _, _, _, h, .ex T φ => .ex T (WFF.mono (h.insert _ T) φ)
   | _, _, _, h, .box φ => .box (WFF.mono h.boxIn φ)
   | _, _, _, h, .dia x hx φ => .dia x (hx.imp fun _ hX => h.ref hX) (WFF.mono (h.diaIn x) φ)
-  | _, _, _, h, .here hT hA s t => .here hT hA (Term.mono h s) (Term.mono h t)
+  | _, _, _, h, .here hT s t => .here hT (Term.mono h s) (Term.mono h t)
 
 /-- Weakening by a fresh root. -/
 def WFF.weaken {σ : Signature} {Γ : Ctx} {d : ℕ} {r : Root} (hr : Γ (.root r) = none)

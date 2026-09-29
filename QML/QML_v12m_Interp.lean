@@ -302,7 +302,7 @@ def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ
   | Γ, _, _, env, .dia x _ φ =>
       ∃ (X : VarType) (h : Γ.ref x = some (.VTypeDia X)) (w' : (M.posEval (env.ref x h)).1),
         sat (env.diaPush x h w') φ
-  | _, _, _, env, .here hT _ s t => Realised hT (interp env s) (interp env t)
+  | _, _, _, env, .here hT s t => Realised hT (interp env s) (interp env t)
 
 end Model
 

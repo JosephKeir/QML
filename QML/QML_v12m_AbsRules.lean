@@ -25,13 +25,13 @@ variable [ModalSys] {σ : Signature}
 
 /-- ⭐**Elimination, pinned at an arbitrary address**: `Here x t, □_x χ ⊢ χ(t)`. -/
 def Proof.here_elimAtA {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
-    (x : VarSymb) {A : VarType} (hA : A.diaFree = true)
+    (x : VarSymb) {A : VarType}
     (hxA : Γ.ref x = some (.VTypeDia A)) {a : Ann A} (t : Term σ Γ A a)
     (χ : WFF σ (Γ.diaIn x) 0)
-    (ph : Proof σ Γ Δ (WFF.hereAt hT x hA hxA t))
+    (ph : Proof σ Γ Δ (WFF.hereAt hT x hxA t))
     (pb : Proof σ Γ Δ (WFF.boxx x ⟨A, hxA⟩ χ)) :
     Proof σ Γ Δ (WFF.realiseAtA hT x hxA t χ) :=
-  Proof.here_elim hT x ⟨A, hxA⟩ hA t
+  Proof.here_elim hT x ⟨A, hxA⟩ t
     (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of hxA))
     (WFF.diaAbsA x hxA χ) ph
     (Proof.conv (congrArg (WFF.boxx x ⟨A, hxA⟩)
@@ -40,16 +40,16 @@ def Proof.here_elimAtA {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} (hT :
 
 /-- ⭐**Introduction, pinned at an arbitrary address**: `Here x t, χ(t) ⊢ ◇_x χ`. -/
 def Proof.here_introAtA {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
-    (x : VarSymb) {A : VarType} (hA : A.diaFree = true)
+    (x : VarSymb) {A : VarType}
     (hxA : Γ.ref x = some (.VTypeDia A)) {a : Ann A} (t : Term σ Γ A a)
     (χ : WFF σ (Γ.diaIn x) 0)
-    (ph : Proof σ Γ Δ (WFF.hereAt hT x hA hxA t))
+    (ph : Proof σ Γ Δ (WFF.hereAt hT x hxA t))
     (pr : Proof σ Γ Δ (WFF.realiseAtA hT x hxA t χ)) :
     Proof σ Γ Δ (WFF.dia x ⟨A, hxA⟩ χ) :=
   Proof.conv (congrArg (WFF.dia x ⟨A, hxA⟩)
       ((WFF.viewReadTm_eta hxA (WFF.diaAbsA x hxA χ)).trans
         (WFF.viewReadAtA_diaAbsA x hxA χ)))
-    (Proof.here_intro hT x ⟨A, hxA⟩ hA t
+    (Proof.here_intro hT x ⟨A, hxA⟩ t
       (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of hxA))
       (WFF.diaAbsA x hxA χ) ph pr)
 

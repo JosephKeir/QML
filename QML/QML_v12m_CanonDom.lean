@@ -674,9 +674,9 @@ theorem rden_here_wd {w : World σ N₀} {y : VarSymb} (hT : ModalSys.T = true)
     (hd₁ : (w.L.ctx i).ref y = some (.VTypeDia A₁))
     (hd₂ : (w.L.ctx i).ref y = some (.VTypeDia A₂))
     (hb₁ : (w.L.ctx i).ref b₁ = some A₁) (hb₂ : (w.L.ctx i).ref b₂ = some A₂)
-    (ha₁ : (⟨i, WFF.hereAt hT y hA₁ hd₁ (Term.eta b₁ A₁ hb₁)⟩ :
+    (ha₁ : (⟨i, WFF.hereAt hT y hd₁ (Term.eta b₁ A₁ hb₁)⟩ :
       w.L.sys.Sentence σ) ∈ w.T)
-    (ha₂ : (⟨i, WFF.hereAt hT y hA₂ hd₂ (Term.eta b₂ A₂ hb₂)⟩ :
+    (ha₂ : (⟨i, WFF.hereAt hT y hd₂ (Term.eta b₂ A₂ hb₂)⟩ :
       w.L.sys.Sentence σ) ∈ w.T) :
     (⟨A₁, rden w i (Ctx.Le.refl _) (Term.eta b₁ A₁ hb₁)⟩ : Σ A : VarType, RDom A w) =
       ⟨A₂, rden w i (Ctx.Le.refl _) (Term.eta b₂ A₂ hb₂)⟩ := by
@@ -684,16 +684,16 @@ theorem rden_here_wd {w : World σ N₀} {y : VarSymb} (hT : ModalSys.T = true)
     have h := hd₁.symm.trans hd₂
     simpa using h
   refine congrArg (Sigma.mk _) ?_
-  have ha₂' : (⟨i, WFF.hereAt hT y hA₁ hd₁
+  have ha₂' : (⟨i, WFF.hereAt hT y hd₁
       (Term.castAnn (a' := Ann.eta b₁ A₁) hA₁ (Term.eta b₂ A₁ hb₂))⟩ :
       w.L.sys.Sentence σ) ∈ w.T := by
     refine Eq.mp (congrArg (fun φ => (⟨i, φ⟩ : w.L.sys.Sentence σ) ∈ w.T) ?_) ha₂
-    exact WFF.here_congr hT hA₁ rfl (Term.sigma_castAnn hA₁ (Term.eta b₂ A₁ hb₂))
+    exact WFF.here_congr hT rfl (Term.sigma_castAnn hA₁ (Term.eta b₂ A₁ hb₂))
   have hmem : (⟨i, eqRec A₁ (Term.eta b₁ A₁ hb₁)
       (Term.castAnn (a' := Ann.eta b₁ A₁) hA₁ (Term.eta b₂ A₁ hb₂))⟩ : w.L.sys.Sentence σ) ∈ w.T :=
     World.mem_of_provable
-      (Δ := [WFF.hereAt hT y hA₁ hd₁ (Term.eta b₁ A₁ hb₁),
-        WFF.hereAt hT y hA₁ hd₁
+      (Δ := [WFF.hereAt hT y hd₁ (Term.eta b₁ A₁ hb₁),
+        WFF.hereAt hT y hd₁
           (Term.castAnn (a' := Ann.eta b₁ A₁) hA₁ (Term.eta b₂ A₁ hb₂))])
       (fun ψ hψ => by
         rcases List.mem_cons.mp hψ with rfl | hψ'
@@ -730,10 +730,10 @@ theorem rden_datum_wd {w : World σ N₀} {x : VarSymb} (d₁ d₂ : RealDatum �
   refine rden_here_wd d₁.hT d₁.hA d₂.hA ((w.L.ctx_le h₁).ref d₁.hd₀)
     ((w.L.ctx_le h₂).ref d₂.hd₀) hb₁ hb₂ ?_ ?_
   · exact Eq.mp (congrArg (fun φ => (⟨_, φ⟩ : w.L.sys.Sentence σ) ∈ w.T)
-      (WFF.here_congr' d₁.hT d₁.hA rfl (Term.mono_eta _ _ _ _)))
+      (WFF.here_congr' d₁.hT rfl (Term.mono_eta _ _ _ _)))
       (d₁.hhereAt w.mcs _ h₁ ((w.L.ctx_le h₁).ref d₁.hd₀))
   · exact Eq.mp (congrArg (fun φ => (⟨_, φ⟩ : w.L.sys.Sentence σ) ∈ w.T)
-      (WFF.here_congr' d₂.hT d₂.hA rfl (Term.mono_eta _ _ _ _)))
+      (WFF.here_congr' d₂.hT rfl (Term.mono_eta _ _ _ _)))
       (d₂.hhereAt w.mcs _ h₂ ((w.L.ctx_le h₂).ref d₂.hd₀))
 
 end Canon

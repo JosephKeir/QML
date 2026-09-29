@@ -48,7 +48,7 @@ def WFF.size {σ : Signature} : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → ℕ
   | _, _, .ex _ φ => φ.size + 1
   | _, _, .box φ => φ.size + 1
   | _, _, .dia _ _ φ => φ.size + 1
-  | _, _, .here (A := A) _ _ _ _ => A.eqRecSize + 1
+  | _, _, .here (A := A) _ _ _ => A.eqRecSize + 1
 
 /-- ⭐The size of an equality is the size of its type: nothing in `eqRec`'s clauses looks at the
     terms.  So the `here` clause of `WFF.size` above dominates the equation `Proof.here_fun`
@@ -80,7 +80,7 @@ theorem WFF.size_mono {σ : Signature} : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le
   | _, _, _, h, .ex T φ => congrArg (· + 1) (WFF.size_mono (h.insert _ T) φ)
   | _, _, _, h, .box φ => congrArg (· + 1) (WFF.size_mono h.boxIn φ)
   | _, _, _, h, .dia x _ φ => congrArg (· + 1) (WFF.size_mono (h.diaIn x) φ)
-  | _, _, _, _, .here _ _ _ _ => rfl
+  | _, _, _, _, .here _ _ _ => rfl
 
 theorem WFF.size_subst {σ : Signature} : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ}
     (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d)
@@ -99,7 +99,7 @@ theorem WFF.size_subst {σ : Signature} : ∀ {ι : VarSymb → VarSymb} {Γ Δ 
   | _, _, _, _, _, _, _, _, _, _, .ex _ φ => congrArg (· + 1) (WFF.size_subst _ _ _ _ _ φ)
   | _, _, _, _, _, _, _, _, _, _, .box φ => congrArg (· + 1) (WFF.size_subst _ _ _ _ _ φ)
   | _, _, _, _, _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_subst _ _ _ _ _ φ)
-  | _, _, _, _, _, _, _, _, _, _, .here _ _ _ _ => rfl
+  | _, _, _, _, _, _, _, _, _, _, .here _ _ _ => rfl
 
 theorem WFF.size_instantiate {σ : Signature} {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {T : VarType}
     {a : Ann T} (t : Term σ Γ T a) (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) :
@@ -123,7 +123,7 @@ theorem WFF.size_collapse {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {
   | _, _, _, _, _, _, .ex _ φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
   | _, _, _, _, _, _, .box φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
   | _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
-  | _, _, _, _, _, _, .here _ _ _ _ => rfl
+  | _, _, _, _, _, _, .here _ _ _ => rfl
 
 theorem WFF.size_shift {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d : ℕ}
     (h : Ctx.Shifts k Γ₁ Γ₂) (hs : Γ₁.SlotsFrom d) (φ : WFF σ Γ₁ d),
@@ -142,7 +142,7 @@ theorem WFF.size_shift {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d :
   | _, _, _, _, _, _, .ex _ φ => congrArg (· + 1) (WFF.size_shift _ _ φ)
   | _, _, _, _, _, _, .box φ => congrArg (· + 1) (WFF.size_shift _ _ φ)
   | _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_shift _ _ φ)
-  | _, _, _, _, _, _, .here _ _ _ _ => rfl
+  | _, _, _, _, _, _, .here _ _ _ => rfl
 
 /-- Abstracting a witness is a substitution, so it leaves the logical structure alone. -/
 theorem WFF.size_diaAbs {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) {A : VarType}

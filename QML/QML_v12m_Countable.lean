@@ -134,7 +134,7 @@ noncomputable def WFF.code : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → Code
   | _, _, .ex T φ => .node 18 (.leaf (natCode T)) (WFF.code φ)
   | _, _, .box φ => .node 19 (WFF.code φ) (.leaf 0)
   | _, _, .dia x _ φ => .node 20 (.leaf (natCode x)) (WFF.code φ)
-  | _, _, .here _ _ (A := A) (b := b) (a := a) s t =>
+  | _, _, .here _ (A := A) (b := b) (a := a) s t =>
       .node 21 (.node 0 (.leaf (natCode A)) (.node 0 (Ann.code b) (Ann.code a)))
         (.node 0 (Term.code s) (Term.code t))
 
@@ -213,7 +213,7 @@ theorem WFF.code_inj {Γ : Ctx} {d : ℕ} (φ ψ : WFF σ Γ d) (h : φ.code = �
       obtain ⟨h₁, h₂⟩ := h
       cases natCode_injective h₁
       rw [ih _ h₂]
-  | here hT hA s t =>
+  | here hT s t =>
       intro ψ h
       cases ψ <;> simp only [WFF.code, Code.node.injEq, Code.leaf.injEq, Nat.reduceEqDiff,
         false_and, true_and] at h

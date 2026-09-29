@@ -2225,6 +2225,13 @@ let the chain's `retStep`/`retSet`/`IsRet` apparatus go, and `exW` would have to
 witness's `hfr` as well; 8. the truth lemma's `here` case, which then closes, and with it
 `Compactness` and the B track; 9. the metatheory list (`docs/v12-metatheory-todo.md`).
 
+**Superseded — the record of the non-root problem and its solution** *(the four passes below are
+history; steps 1–4 of 2026-09-28 solved it: `Ctx.LevelDepth`/`Ctx.ViewFresh` propagate from
+`Ctx.Presented`, so no presented context re-exposes its own witness, and the abstraction, the pinned
+rules, the semantics and the whole model layer now stand at an arbitrary address — `Subst.diaAbsA`,
+`Proof.here_elimAtA`/`here_introAtA`, `Model.sat_realiseAtA`, `Canon.RealDatum` indexed by a
+`VarSymb`.  Read it only for why `coh-weaken` was abandoned.)*
+
 **⭐Open, and the decision the `here` case now waits on: realisedness at a non-root address.**
 A `RealDatum` is indexed by a **root**, and `World.Realised` is `False` at every other address.  But
 `WFF.here`'s subject is an arbitrary `◇`-typed term, and every such term is `Term.diatm x hx s` for
@@ -2380,3 +2387,705 @@ shadowed there, and collapse is exactly the rest of the map).  Every piece has a
 the pinned rules `here_elimAt`/`here_introAt` need the abstraction direction as well — they currently
 go through `WFF.diaAbs` and `viewReadAt_diaAbs` ("every view formula is its abstraction read back"),
 and if that is unavoidable the recursion has to be built both ways.
+
+### ⭐Step 5, scoped: what the truth lemma's `here` case needs *(2026-09-28)*
+
+Steps 1–4 landed, so realisedness, the rules, the semantics and the model layer all stand at an
+arbitrary address (`feba402`).  The remaining error is the `here` alternative itself, and scoping it
+turned up **two obligations that are about the theory, not the machinery**.  Neither is a gap in the
+address generalisation; both were hidden behind it.
+
+The model side of `Here (diatm x hx bd) t` is `Model.sat_here_diatm`: the **self arrow** lies in
+`extent w x`, and the body's value there is `t`'s.  `Canon.extent`'s self case is
+`w'.1 = w ∧ w.Realised x`, and `World.Realised x` means *the theory hands over a `RealDatum` at `x`* —
+a pinned atom `Here (η x) (η b₀)` naming `x`'s content by a declared address.  So the `⟸` direction
+must get that datum out of an arbitrary atom about `x`.
+
+**(1) At a `◇`-free declared content type the pinned atom is not derivable: the logic needs one more
+rule.**  From `Here (diatm x bd) t ∈ T`, `Proof.here_beta` reaches exactly the bodies *built from*
+`bd` (`Term.viewReadTm bd s`), and `η x.dia` is of that form only when `bd` already is it — the β rule
+moves away from the pinned form, never towards it.  `here_elim` with the hole formula
+`∃z. Here (η x.keep) z` would do it, but its premise is `□_x (∃z. Here (η x.keep) z)`, i.e. extent
+reflexivity *inside* the view — the strong 4 difficulty of §8.1, not available.  And `ex_intro` needs a
+term for the content, which is the very thing missing.
+
+The missing principle is valid and independent:
+
+> **A realised possible object's witness has a content here.**
+> `Here (diatm x hx bd) t ⊢ ∃z:X. Here (η x) z`, where `X` is `x`'s **declared** content type
+> (`Γ.ref x = some (◇X)`, `X.diaFree`).
+
+Soundness is immediate and, unlike `T_dia`, needs no `posRet_exists`: by `Model.dia_beta` the subject
+has `x`'s extent, so the premise puts the self arrow there, and the content of `η x` at that arrow
+(`Model.interp_eta`, `Env.ref_dia`) is an element of the domain — which is all the `∃` asks
+(`Model.sat_hereAt_extend` is the shape to instantiate).  And it is exactly what closes the case:
+`World.mem_of_provable` puts the `∃` in the theory, `World.exW` gives its witness **at a declared
+root** with `(L.ctx i').ref (.root (.free c)) = some X` — the datum's `b₀`/`hb₀` — and the
+instantiated body is the `hhere` field.  So a `RealDatum`, hence `World.Realised x`, hence
+self-membership.
+
+*Note what this does to the chain.*  With this rule the datum comes from the theory for **every**
+realised address, so it also subsumes the planned step 7: `retStep`/`retSet`/`IsRet` exist only to
+manufacture `realW`, and `T_dia` + this rule + `exW` give both `realW` and realisedness directly.
+
+**(2) At a non-`◇`-free declared content type a datum cannot exist, so the extent's self condition
+must stop asking for one.**  Nothing restricts the *witness's* declared type: with `x : ◇◇A`,
+`Here (diatm x hx unit) unit` is a formula — the `𝟙` case the `WFF.here` docstring itself describes,
+"the extent condition alone, relative to a base term of the view".  But `RealDatum` carries
+`hA : A.diaFree` (its pinned atom is a `WFF.here` at content type `X`, and that constructor asks for
+`◇`-freeness), so `World.Realised x` is unconditionally `False` there while the theory may assert the
+atom — the truth lemma is false as currently set up.  Restricting `WFF.here`'s witness to a `◇`-free
+declared type is **not** an option: substitution sends `x` to a `◇`-term over another witness, whose
+declared type is unconstrained, so the restriction does not survive it.
+
+The way through is that at such an `x` the content is **invisible to the bodies**: the only address
+`Ctx.ref` reaches below `x` in `Γ.diaIn x` is `x.dia : ◇A'` (`VarType.step (◇A') p = none` for every
+projection, `.here` included), and a `◇`-typed address occurs in a term only as a `diatm` witness,
+which makes that term `◇`-typed — so a body of `◇`-free type cannot mention it at all.  Hence the
+content of `diatm x bd` at the self arrow does not depend on `x`'s content: it is `bd`'s `Γ.boxIn`
+part read here.  So:
+
+* the extent's self condition becomes the theory's own assertion — `Canon.SelfIn w x`, "`w.T`
+  contains some `Here` atom about `x`" — with the datum kept for the content;
+* `rden`'s self case splits on `X.diaFree`: as today (`realiseAtA` at the named content) when it
+  holds, and a **strengthening** when it does not;
+* the one new lemma family is that strengthening: at a `◇`-free type, a term (and a formula) over a
+  context does not use its non-`◇`-free-typed addresses, so it comes from the context without them.
+  By induction — the `diatm` case never arises, since every subterm of a `◇`-free-typed term is
+  `◇`-free-typed — and the same argument gives `here_beta`'s reach in that case, so the theory does
+  decide every body's value there too.
+
+**Order of work.**  (1) first: the rule, its soundness case, and the `here` alternative for a
+`◇`-free declared content type — which is every atom the construction itself produces, so it closes
+the case for the completeness theorem's own contexts as long as they declare no nested `◇`.  Then (2),
+which is what makes the truth lemma hold for an arbitrary presented `Γ`.
+
+## 10. The identification at `◇`-type — design pass *(2026-09-28)*
+
+Written while scoping step 5 (the truth lemma's `here` case).  The question this section settles is
+whether `Here` can drop its `◇`-free side condition on the content type — equivalently whether a
+witness whose *declared* content type is itself `◇`-typed can be handled — and what that costs.
+Nothing here is implemented; the recommendation is at the end.
+
+### 10.1 Why the question arises at all
+
+The model side of `Here (diatm x hx bd) t` (`Model.sat_here_diatm`) puts the **self arrow** in
+`extent w x`; `Canon.extent`'s self case is `w'.1 = w ∧ w.Realised x`, and `World.Realised x` means
+the theory hands over a `RealDatum` — a pinned atom `Here (η x) (η b₀)` naming `x`'s content by a
+declared address.  Two facts then force the question:
+
+* **"`x` is realised here" is expressible at every declared content type**, and derivable from any
+  atom about `x`: `Dom .VTypeOne w = PUnit` (`QML_v12m_Model.lean:84`), so
+  `Here (diatm x hx unit) unit` has a vacuous content clause and says exactly that the reflexive
+  arrow lies in the extent; and `here_beta` at `s := Term.unit` produces it from
+  `Here (diatm x bd) t`.  So an MCS may assert realisedness of an `x : ◇◇A'`, where a pinned atom is
+  not even a formula.
+* **The content is observable at the self arrow even when no term can mention it.**  A `◇`-free-typed
+  *term* over the view cannot mention `x.dia` when `x.dia` is `◇`-typed (the only address `Ctx.ref`
+  reaches below `x` is `x.dia`, `VarType.step (◇A') p = none` for every projection, and a `◇`-typed
+  address occurs in a term only as a `diatm` witness, which makes that term `◇`-typed).  But a
+  *formula* can: `χ = ◇_{x.dia} ψ` is a formula of `Γ.diaIn x`, and the truth lemma's `dia` case at
+  the self arrow realises `χ` by substituting a **term** for `x.dia` (`WFF.realiseAtA`).  So the
+  model needs `x`'s content named whenever the self arrow is in the extent — at every type.
+
+### 10.2 What is already there: within-fibre `◇`-equality
+
+`WFF.eqRec` is defined at **every** type, `◇` included:
+
+```
+eqRec (◇A) (diatm x _ t) (diatm x _ s) = boxx x hx (eqRec A t s)      -- QML_v12m_WFF.lean:103
+```
+
+The shared annotation `.dia x _` forces **one witness**, and the clause then says the bodies agree
+throughout that witness's extent — extensionality, exactly as at `□`.  `eqRec_refl`/`symm`/`trans`
+cover it (`QML_v12m_Eq.lean`), via `K_dia`/`dia_bot`.  So the fibre-internal row is complete.
+
+What the canonical model needs, and what is missing, is the **cross-fibre** case: two names for one
+content over *different* witnesses.
+
+### 10.3 The cross-fibre identification is a rule schema, not a formula
+
+Suppose `Here (η x) (η y)` and `Here (η x) (η y')` with `y ≠ y'`.  Both atoms are at the **self
+arrow**, so they say `x`'s content here *is* `y`'s object and *is* `y'`'s object: an identity of two
+elements of `Dom (◇A') w`, not agreement somewhere.  Equal possible objects have the same extent and
+the same content function, so the identification has two halves, and they are of different kinds:
+
+* **(C1) the extents interchange** — for every `χ`, `◇_y χ ⊢ ◇_{y'} (χ renamed along y.dia ↦ y'.dia)`.
+  A set equality; *schematic*, because "the same extent" quantifies over formulas.  Sound: the two
+  objects are equal, so `Model.sat`'s `dia` clause reads one and the same `posEval`.
+* **(C2) the contents agree** — `⊢ □_y (eqRec A' bd (bd' renamed))` for the two bodies.  A single
+  formula when `A'` is `◇`-free; when `A'` is itself `◇`-typed it unfolds, by 10.2, into a `□_y` of a
+  cross-fibre identification one level in — so (C2) is **recursive in the type**, and at each level
+  its extent half is again schematic.
+
+Hence there is no formula expressing "these two possible objects are equal" across fibres, and none
+can be added without a new formula former: the notion is a rule schema.  This is the precise content
+of §2d's "equality lives inside the fibre", and it is why `WFF.here` carries `hA`.
+
+### 10.4 What the canonical model would need
+
+`RDom (◇A) w = Σ E : Set (Succ w), (w' : E) → RDom A w'.1.1` (`QML_v12m_CanonDom.lean:162`), and
+`rden (diatm y hy bd) = ⟨extent w y, …⟩` — the extent component is **literally the address's**.
+`Dom (◇A) w` is the definable part of that (`Canon.toDom`/`fromDom`), so elements are `rden`s of
+`◇`-terms and distinct witnesses give distinct elements unless both components coincide.  Therefore:
+
+* the theory's chosen name (`World.real`) fixes the model's content; a *second* name in the theory is
+  a second Sigma value, and the truth lemma fails at the atom carrying it;
+* so the domains must be **quotiented** by co-realisation: `extent w ⟦y⟧ = ⋃_{y' ≈ y} extent w y'`,
+  with `≈` the equivalence generated by "some declared `x` has both as its content here";
+* set equality then holds by construction, and (C1) is what makes the union coherent — the extent's
+  conditions are `DiaView`/`BoxxContents`, built from `□_y`/`◇_y` facts;
+* the **content function** must be well defined on the union: for `w'` in `extent y ∩ extent y'` the
+  two candidate values are `bd` and `bd'` pushed to `w'`, and they agree because `BoxxContents`
+  carries (C2)'s `□_y`-equation into `w'.T`, where faithfulness (`rden_eqRec`) applies.  So (C2) is
+  not optional: it is what makes `rden` a function at all under the quotient.
+
+A cheaper-looking variant — keep extents per address, choose a representative, transport the other
+atoms along (C1) — does **not** avoid (C2): the transport has to identify the two Sigma values, and
+their content components differ exactly by (C2).
+
+### 10.5 Naming: what can and cannot be named
+
+This is the part that most constrains the design, and it is worth stating separately.
+
+* **N1 — a `◇`-typed object cannot be named by a fresh root.**  `Canon.exists_name` works by
+  instantiating a *provable* existential `∃z. eqRec T (η z) t` (`Proof.exists_eqRec_eta`).  At `◇`
+  that formula is not formable unless `z`'s annotation already matches `t`'s, i.e. unless the name's
+  witness *is* `t`'s witness.  So "name this possible object" is only ever available as "name the
+  address whose content it is" — which is what `here_name` does, through `Here`, not through `eqRec`.
+  A `◇`-typed name carries a witness, and the witness must already be in the context: forced, not
+  merely natural.
+* **N2 — the Henkin witness of a `◇`-typed `∃` is fine.**  `World.exW` gives a *declared root* `b₀`
+  with `(L.ctx i').ref b₀ = some X` at any `X`, and `η b₀ = diatm b₀ (η b₀.dia)` — witness and body
+  both supplied.  So `here_name`'s conclusion `∃z:X. Here (η x) z` is witnessed without N1.
+* **N3 — a reserved partner does not make the name unique.**  Installing, per address, a fresh
+  `p_x : X` with the conditional `Here (diatm x unit) unit → Here (η x) (η p_x)` (consistent, the
+  standard conditional-Henkin move) gives the model a canonical name, but an MCS may still assert a
+  *second* name over another witness, and nothing derives that the two agree — cross-fibre again.  So
+  naming discipline cannot substitute for the identification.
+* **N4 — strong T's model condition is `◇`-free by design.**  `Model.posRet_exists` carries
+  `_hA : A.diaFree = true` (`QML_v12m_Model.lean:204`), so no model is ever *required* to have a
+  realised witness for a `◇`-typed value, and `World.realW`/`posRet_exists_canon`/`exists_name` stay
+  at `◇`-free types whatever is decided here.  Dropping `hA` from `WFF.here` would therefore widen
+  what theories may *assert* without widening what models must *provide* — which is precisely why
+  the canonical model, and not soundness, is where the cost lands.
+* **N5 — the chain is unaffected.**  `addrQ`/`enumAF` enumerate `{A // A.diaFree} × VarSymb` because
+  `retStep` witnesses `∃x:◇A. Here x (η b)`; that serves `realW`, which by N4 stays `◇`-free.
+
+### 10.6 The measure, for the record
+
+`WFF.size` gives `.here` the budget `A.eqRecSize + 1` so that the truth lemma's `here` case may
+appeal to its own induction hypothesis at the equation `here_fun` concludes.  At a `◇`-typed content
+the conclusion of functionality is not an `eqRec` but (C1)+(C2), whose formula part is a `□_y` of an
+`eqRec` *inside the view* — a formula of a different context, so the budget has to be re-derived
+rather than adjusted.  Secondary to 10.3–10.5, but it should be settled on paper before any code.
+
+### 10.7 Verdict
+
+Filling the `◇` row is coherent and is the principled treatment: co-realisation through a common
+address *is* the join that §2d asks for before two possibilities may be compared, so the
+identification is legitimate exactly where the canonical model needs it.  But it is not a small
+addition: it is a schematic congruence (C1), a type-recursive equation (C2), a quotient of `RDom`,
+`extent` and `rden`, faithfulness at `◇` types, and a new measure — i.e. a restricted reinstatement
+of the withdrawn `◇`-equality-by-extensionality reform (§2d), with the restriction being what makes
+it sound to attempt.
+
+The alternatives keep `hA` and differ only in what completeness claims:
+
+1. **`◇` over `◇`-free types only** (a side condition on the type former, or on `Ctx.Presented`):
+   every declared content type is `◇`-free, `here_name` is unconditional because the condition is
+   vacuous, and step 5 closes with the machinery in hand.  `◇(A × B)` and nested `◇`-*formulas* are
+   unaffected; `◇◇A` as a *type* goes.
+2. **Keep `◇◇A` and restrict the metatheorem**: completeness for presented contexts whose declared
+   types have no nested `◇`.  Nothing in the logic changes, the build goes green, and 10.3–10.6 stay
+   open as the upgrade path.
+
+### 10.8 Solutions to risks 1–3 *(2026-09-29; risk 3 WITHDRAWN — see 10.9)*
+
+Scoped after §10.7, on the ruling that a version of strong T with side conditions is not worth
+having: the earlier `∃`/positive-polarity formulation was already green and unconditional, so the
+`Here` approach has to end up at least as clean.  Each of the three risks has a solution, and
+together they remove `hA` from `WFF.here` entirely.  The shape of all three is the same: **an arrow
+serves a whole co-naming class of witnesses, each member of the class through a renaming of content
+addresses.**
+
+#### The equivalence
+
+`y ≈ y'` at a world `w`: the equivalence generated by "some declared `x` has both as its content
+here", i.e. by `∃ i bd bd', ⟨i, Here (diatm x _ bd) (…)⟩`-style co-naming — concretely, by
+
+```
+∃ x i (s : Term … (◇A) _) (s' : …), ⟨i, Here (η x) s⟩ ∈ w.T ∧ ⟨i, Here (η x) s'⟩ ∈ w.T
+       with s, s' the ◇-terms over y, y'
+```
+
+closed reflexively, symmetrically and transitively.  It is a relation on `VarSymb`, defined from the
+world's own (final) theory, so it is fixed per world and needs no stage bookkeeping.
+
+#### Risk 1 — `rden` on the class, via renaming *(solved, and `DiaView` need not change)*
+
+`DiaView x w w'` is a **literal** equality of contexts, `∀ m, w'.L.base m = (w.L.ctx (m,m)).diaIn x`
+(`CanonWorld.lean:349`), so a child is built for exactly one witness and two witnesses can never
+share one by weakening that equality.  They do not have to: let the child keep its own witness `y''`,
+and let every **other** member of the class reach it through the canonical renaming of content
+addresses, `y.dia ↦ y''.dia` (identity on the `boxIn` part, which the two views share).  Then
+
+* `extent w y := {w' | w' is a child built for some y'' ≈ y, with □_y-contents transported **along
+  that renaming**} ∪ {self, when y is realised}`;
+* `rden (diatm y hy bd)`'s content at such an arrow is `rden` at the child of `bd` renamed to `y''`;
+* for `y ≈ y'` the two extents are the *same set* — the condition quantifies over the class, which is
+  shared — so `rden`'s two Sigma values agree in their first component with no quotient type, no
+  choice of representative, and no merging of worlds;
+* y's own content at an arrow built for `y''` is *defined* as `y''`'s content there, which is exactly
+  how the theory treats it: `BoxxContents` transports `□_y χ` along the same renaming.  Model and
+  theory therefore agree by construction rather than by an extra lemma.
+
+What this costs is uniform and mechanical rather than deep: the consumers of `DiaView` currently take
+a context inclusion (`DiaView.le`, `extent_le`, `Acc'.boxIn_le`) and move formulas with `WFF.mono`;
+they become renamings and move formulas with `WFF.subst` along a `Subst.IsRen`.  `Subst.IsRen`,
+`Term.subst_eta_ren` and the B track's `QML_v12m_BRename.lean` are the templates.  The chain is
+untouched.
+
+#### Risk 2 — faithfulness at `◇`, with no circularity *(solved)*
+
+`rden_eqRec` (`CanonDom.lean:583`) recurses on the **type**, and that is what breaks the apparent
+circularity at the self arrow.  For `eqDia (◇A) s s'` (below) the proof splits by arrow:
+
+* **proper arrows**: the `□_y`-form of the premise is transported into the child by
+  `BoxxContents` (along the renaming of risk 1), and faithfulness **at `A`** — a smaller type —
+  applies there;
+* **the self arrow**: the content is computed through the datum, and the premise is a `□_y`-formula,
+  so `Proof.here_elimAtA` (`Here (η y) t₀, □_y χ ⊢ realiseAtA y t₀ χ`) turns it into an equation
+  *here*, between the two realised bodies; one new transport lemma — realisation commutes with the
+  equality former, the analogue of the existing `eqRec_collapse`/`eqRec_shift` — puts it in the form
+  faithfulness at `A` consumes.
+
+So the datum is used only through `here_elimAtA`, never through faithfulness at `◇A`, and the
+recursion is well founded on the type as it already is.
+
+#### Risk 3 — the content half is a formula; the extent half is a rule, and needs no recursion *(solved)*
+
+Generalise the equality former at `◇` to two annotations, by renaming:
+
+```
+eqDia (◇A) (diatm y _ bd) (diatm y' _ bd') :=
+  boxx y  (eqDia A bd (bd' renamed y'.dia ↦ y.dia))
+∧ boxx y' (eqDia A (bd renamed y.dia ↦ y'.dia) bd')
+```
+
+with the other clauses as in `WFF.eqRec`.  The recursion is on the type and **closes**, because the
+`◇` clause no longer requires the two witnesses to agree — which is exactly why the present `eqRec`
+could not state it (its `◇` clause matches one annotation `.dia x _`, `WFF.lean:103`).  At equal
+annotations it is `eqRec` up to the duplicated conjunct.  Then:
+
+* **functionality** becomes unconditional: `here_fun` concludes `eqDia A t t'` at **every** content
+  type, so `WFF.here` loses `hA`, and with it `RealDatum.hA`, `spec_of_here`'s `hA`, and the
+  `◇`-free conditions on `here_name` and on the chain's enumeration;
+* `eqDia` is what `BoxxContents` transports, so it is the half that has to pass between levels — and
+  it does, being a formula;
+* the **extent half** stays a rule: from the two *pinned* names `Here (η x) (η y)` and
+  `Here (η x) (η y')`, infer `◇_y χ ⊢ ◇_{y'} (χ renamed)`.  Pinnedness is what makes it sound —
+  with general bodies the premises equate the *terms'* contents, not the witnesses' own, and the rule
+  would be false — and pinned names are what `World.exW` produces, so nothing is lost.
+* **the rule needs no recursion**: deeper levels are handled by their own worlds, each with its own
+  theory, its own `≈` and the same rules.  Only `eqDia` crosses levels.
+
+#### What is left uncertain
+
+1. The breadth of the `mono → subst`-along-a-renaming change in the Canon layer (risk 1).  Every
+   `DiaView`-derived inclusion and the `diaPush` agreement lemmas are touched; none of it is deep,
+   but it is the bulk of the work.
+2. `≈` must be shown to be an equivalence whose class is *stable under the stage order* — the theory
+   is fixed per world, so this should be immediate, but the extent's monotonicity lemmas are where it
+   would show up.
+3. Whether the extent-half rule wants a primitive form or can be derived from a `□`-version of
+   itself under `K_dia`; the canonical model only needs the top-level form.
+4. `WFF.size` for `.here` must be re-derived against `eqDia` rather than `eqRec` (§10.6), including
+   `eqDia`'s own size, which contains two `boxx`-copies of the smaller comparison.
+
+#### Verdict, revised
+
+With the above there are **no side conditions**: `Here` at every content type, `here_name`
+unconditional, nested `◇` witnesses handled, functionality total.  The cost is one new formula former
+(`eqDia`, a generalisation of `eqRec`), one new rule (the extent half), one relaxed rule
+(`here_fun`), and a renaming-based rewrite of `extent`/`rden`/`BoxxContents` and their consumers —
+with the chain, the soundness cases for everything else, and the whole `Abs`/`AbsRules`/`SemAbs`
+layer untouched, the last because realisation never needed `◇`-freeness in the first place.
+
+### 10.9 Correction to 10.8: `eqDia` is degenerate, and what that shows *(2026-09-29; its pessimistic verdict is superseded by 10.10)*
+
+**`eqDia` as defined in 10.8 is wrong and is withdrawn.**  Its `◇` clause renames one body into the
+other's view, so on pinned terms it degenerates: for any two witnesses `x`, `y`,
+
+```
+eqDia (◇A) (η x) (η y)
+  = boxx x (eqDia A (η x.dia) ((η y.dia) renamed y.dia ↦ x.dia))  ∧  boxx y (…)
+  = boxx x (eqDia A (η x.dia) (η x.dia))                          ∧  boxx y (…)
+```
+
+— reflexivity twice, provable whatever `x` and `y` are, and in particular with no extent in common.
+The renaming identifies the two content addresses, which is precisely the difference the comparison
+was meant to detect.
+
+**What the failure shows.**  Comparing the contents of two possible objects means evaluating both
+bodies at **one** arrow with **both** content addresses in scope.  No single view has both: `Γ.diaIn y`
+declares `y.dia` only.  So the content half needs a *joint* view — a `◇` over a pair — which is §2d's
+pairing principle, in the one place 10.8 assumed it could be sidestepped.  There is no formula, and
+no renaming trick, that expresses cross-fibre content agreement.
+
+**And it reaches the model as well.**  If the theory forces two witnesses to be co-extensive, every
+arrow of the common extent must carry content addresses for *both*, because both witnesses' `□_·`
+facts have to be evaluable there — and `DiaView` makes a child's base one witness's view
+(`CanonWorld.lean:349`).  Defining one witness's content at another's child by renaming (10.8's
+recipe) is sound only when their **own** contents agree, which co-naming of *terms* over them does not
+give.  So the irreducible requirement is that **an arrow carry content addresses for a set of
+witnesses**, not one — the labelling the B track's network already does (`kd`, `QML_v12m_BNet*`,
+docs/v12-arrow-canonical.md).
+
+**What survives of 10.8.**
+
+* **Risk 2 in full**: faithfulness at `◇` recurses on the type, proper arrows by `BoxxContents`, the
+  self arrow by `Proof.here_elimAtA` plus a realisation/equality transport.  No circularity.  This is
+  independent of the rest.
+* **Risk 1, half**: the extent as a union over the co-naming class removes the need for a quotient
+  type and for merging *worlds*; what it does not survive is the content recipe, per above.
+* **Within-fibre well-definedness needs nothing new**: two names over the *same* witness are compared
+  by the existing `eqRec` (`□_z (eqRec A' bd₁ bd₂)`, one annotation), which `here_fun` already gives
+  and `BoxxContents` already transports.  It is only across witnesses that the wall stands.
+
+**Position for the next session.**  Either (a) `Here` stays `◇`-free in its content type and the
+metatheorem is stated accordingly (§10.7 alternatives 1–2), or (b) strong T with `◇`-typed contents is
+built on an arrow-labelled canonical model where an arrow serves a set of witnesses.  (b) is the
+principled route and now has a definite shape rather than a hope, but it is a new canonical
+construction, not an extension of the tree one.  Nothing in the syntax layer is wrong: `Here`,
+`here_beta`, `here_fun`, `here_name`, the abstraction and the realisation are all type-generic
+already — the obstruction is entirely in how the tree construction builds arrows.
+
+### 10.10 ⭐The resolution: interchangeability, not equality *(2026-09-29, supersedes 10.9's verdict)*
+
+*(The rule named `here_swap` below is superseded by `here_subst` in 10.11 — same purpose, substitutional form, and it also absorbs `here_fun`.)*
+
+Two rulings from the user, and the second one dissolves the obstruction.
+
+**Nested modal types are intended.**  `◇◇A` is the term counterpart of `◇◇φ`: ordinary propositional
+modal logic has nested diamonds and no way to join two diamond formulas into one — to get *joint*
+possibility one first conjoins and then applies `◇`.  Terms are the same, with pairing in place of
+conjunction: `◇(A × B)`, never a join of two separate `◇`s.  So restricting the type former (10.7
+alternative 1) is out, and so is restricting the metatheorem (alternative 2).
+
+**We never needed equality at `◇`-type.**  The rule of 10.8 does not equate anything; it says two
+co-named witnesses *prove the same things, inside a diamond, after substitution*.  That is all the
+canonical model needs, because canonical objects are built out of what the theory proves.
+
+#### The construction
+
+For a `◇`-term `s = diatm y hy bd`, define its **interchangeability class**: `s ≈ s'` iff for every
+hole formula `ψ` over `Γ.boxIn.insert (.bnd 0) A'`,
+
+```
+⟨i, ◇_y  (viewReadTm bd  ψ)⟩ ∈ w.T   ⟺   ⟨i, ◇_{y'} (viewReadTm bd' ψ)⟩ ∈ w.T
+```
+
+(terms lifted to a common stage, as elsewhere).  This is the `here_elim`/`here_intro`/`here_beta`
+idiom — facts about a possible object are hole formulas read with its body — so it needs no new
+machinery.  Then the canonical object of `s` is
+
+* **extent** = the union, over the class members, of **their own** witnesses' children (`DiaView` and
+  `BoxxContents` unchanged, just quantified over the class), plus the self arrow when realised;
+* **content** at an arrow contributed by the member `⟨z, b⟩` = the value of **that member's own body**
+  `b` there.
+
+The content clause is what 10.8/10.9 got wrong: no renaming of one witness's content address into
+another's view is needed, because each part of the extent is read through the term that contributed
+it, and `b` lives in `z`'s view, which already embeds into that child's language.  So the objection of
+10.9 — that an arrow would have to carry content addresses for several witnesses — does not arise, and
+**the tree construction survives untouched**: children stay one-witness, the chain is unchanged.
+
+#### Well-definedness, by Leibniz rather than by equality
+
+Two members over the *same* witness `z` must denote alike at their shared children.  Take the hole
+formula `ψ := eqRec A' (η slot) (b' weakened)`.  Its `b'`-instance is `eqRec A' b' b'`, in the child's
+theory by reflexivity; interchangeability therefore puts its `b`-instance `eqRec A' b b'` there too,
+and faithfulness (`rden_eqRec`) turns that into equal denotations.  At `◇`-free `A'` that is the whole
+argument.  At `◇`-typed `A'` it closes **definitionally**: contraposing the rule at `ψ := ¬ψ₀` (using
+that `viewReadTm` commutes with `¬`) gives the `□`-dual, `BoxxContents` carries it into the child, and
+what arrives there is exactly interchangeability of `b` and `b'` *at the child* — i.e. membership in
+one class there.  The recursion is on the type, as `rden` and `rden_eqRec` already are.
+
+#### The rule, and why it is the load-bearing one
+
+```
+here_swap (hT) (x) (hx : ∃X, Γ.ref x = some (◇X)) {A'} …
+  (y)  (hy)  (bd  : Term σ (Γ.diaIn y)  A' _)
+  (y') (hy') (bd' : Term σ (Γ.diaIn y') A' _)
+  (ψ : hole formula) :
+    Here (η x) (diatm y hy bd) → Here (η x) (diatm y' hy' bd') →
+    ◇_y (viewReadTm bd ψ) → ◇_{y'} (viewReadTm bd' ψ)
+```
+
+Sound: both premises say `x`'s content **here** *is* the respective object, so the objects are equal;
+each conclusion quantifies over that one extent with the hole taking that object's content at the
+arrow.  Note it is stated at *general* bodies and is still sound, because the hole formulas speak of
+the objects' contents, not of the witnesses' own — which is what the 10.8 formulation got wrong when
+it spoke of `◇_y χ` directly.
+
+Its job is to make **co-naming imply interchangeability**, which is what the truth lemma's `here` case
+needs: a second name for `x`'s content must land in the datum's class.  The `dia` case then goes
+through the same relation in the other direction — an arrow contributed by `⟨z,b⟩` gives
+`◇_z (viewReadTm b ψ)` ∈ T by the existing argument, and interchangeability transports it to
+`◇_y χ` ∈ T, with `χ = viewReadTm (η y.dia) ψ` by the abstraction round trip
+(`WFF.viewReadAtA_diaAbsA`).
+
+#### Rule set, and what changes
+
+Rules: the four existing `here_*`, plus `here_name` (§10.8, unconditional), plus `here_swap`.  No
+`eqDia`, no new formula former, no cross-fibre equality, no side conditions — `hA` leaves `WFF.here`,
+`RealDatum`, `spec_of_here` and the chain's enumeration.
+
+Canon layer: `extent` becomes a function of a `◇`-**term** (`extentTm w s`) via the class; `rden`'s
+`.diatm` clause reads the contributing member's body; `canonEnv_extent`, `extent_le`,
+`diaPush_agree_canon`, `dia_mem_of_sat_self` follow the same rewrite.  Faithfulness gains its `◇`
+case (10.8 risk 2, unchanged: recursion on the type, self arrow via `here_elimAtA`).  `WFF.size` for
+`.here` is re-derived against the `◇`-free `eqRec` it already uses, so §10.6 is no longer a worry.
+
+#### Still to check before coding
+
+1. `≈` is an equivalence, and its class is stable under the stage order (the theory is fixed per
+   world, so this should be routine; it shows up in the extent's monotonicity lemmas).
+2. The union's arrows come with the member that contributed them; if one arrow is contributed by two
+   members over *different* witnesses, the contents must agree — same Leibniz argument, but the hole
+   formula lives in two different views, so check whether the pair is possible at all (a child's base
+   fixes its witness, so it should not be).
+3. Soundness of `here_swap` in the `Model` layer: `Model.sat_here_diatm` twice plus `dia_beta`.
+4. Whether `here_name` is still needed once `here_swap` is present (it is: `here_swap` relates two
+   names, `here_name` produces the first one).
+
+### 10.11 The rule set, settled: `here_subst` replaces `here_fun` *(2026-09-29)*
+
+Two corrections to 10.10, both from the user, both simplifications.
+
+**`here_swap` is wrong shape; the rule is substitutional functionality.**  A `◇`-typed term occurs in
+a formula only inside a `here` atom — as its subject, or inside its content term — and `WFF.dia`/`boxx`
+take an *address*, not a term.  So a Leibniz-shaped rule must be stated as substitution for a **slot**,
+and the `◇`-fact transfer of 10.10 is then one of its instances: with `φ := ◇_{.bnd 0} ψ`,
+
+```
+(◇_{.bnd 0} ψ)[.bnd 0 := diatm y hy bd]  =  ◇_y (WFF.viewReadTm bd ψ)
+```
+
+because substituting a `◇`-term for a witness address is exactly `Subst.dia`/`SubE.diaBody` — which is
+also why `here_elim`/`here_intro`/`here_beta` are phrased with `viewReadTm`.  The instances 10.10's
+`here_swap` missed are the **content positions**, e.g. `Here s₀ (pair t₁ s')`: once the model
+identifies `s` with `s'` it satisfies that atom, so the truth lemma's ⟹ direction needs it in the MCS.
+Hence:
+
+```
+here_subst (hT) {A} {b} (s : Term σ Γ (.VTypeDia A) b)
+    {a a' : Ann A} (t : Term σ Γ A a) (t' : Term σ Γ A a')
+    (φ : WFF σ (Γ.insert (.bnd 0) A) 1) :
+  Proof σ Γ Δ (WFF.here hT s t) → Proof σ Γ Δ (WFF.here hT s t') →
+  Proof σ Γ Δ (WFF.instantiate _ t φ) → Proof σ Γ Δ (WFF.instantiate _ t' φ)
+```
+
+— any subject, any content type, **any two annotations**.  Soundness: the premises give
+`interp t = interp t'` (`Model.Realised` reads the content at one arrow — the existing
+`Model.sat_here_fun` proof), then `Model.sat_instantiate` twice.
+
+**`here_fun` becomes derivable, so it stops being primitive.**  Take
+`φ := eqRec A (t weakened) (η slot)`; then `φ[slot := t] = eqRec A t t` is `eqRec_refl`, and
+`φ[slot := t'] = eqRec A t t'` is `here_fun`'s conclusion.  One step, no symmetry.  Existing users
+(`rden_here_wd`, `rden_datum_wd`) keep working against the derived `def`.
+
+*Not recovered, and not needed*: at a `◇`-typed content with a **shared** annotation `eqRec A t t'` is
+formable but not derivable this way — `eqRec A (t weakened) (η slot)` does not typecheck there, since
+`η slot`'s annotation names the slot while `t`'s names its own witness.  §10.10's well-definedness uses
+substitutivity directly, and its `eqRec`-shaped hole formula sits at the *body* type inside the child.
+
+**Primitive set after this**: `T_dia`, `here_elim`, `here_intro`, `here_beta`, `here_subst`,
+`here_name`.  Derived: `here_fun`, `here_elimAtA`, `here_introAtA`, the realisedness atom
+(`here_beta` at `s := Term.unit`).  Dropping `hA` from the `WFF.here` constructor frees `here_elim`,
+`here_intro`, `here_beta` (both `hA` and `hB`) and `here_subst` automatically, since each inherits it
+from the constructor.
+
+### 10.12 Open: should `T_dia` keep `hA`? *(2026-09-29, next question after the `here` case)*
+
+`T_dia`'s `hA` is **not** a syntactic necessity — the rule is formable at any `A` once `WFF.here` loses
+`hA`.  What carries the restriction is the frame condition `Model.posRet_exists`
+(`Model.lean:204`, `_hA : A.diaFree = true`).  Three observations.
+
+1. **Keeping it contradicts the nested-modality reading.**  At base type `T_dia` says an actual object
+   is trivially possible, this world witnessing it; at `◇A'` it is the same principle one level up —
+   the object counterpart of `φ → ◇φ` at every depth.  Keeping `hA` makes the dual of T apply to
+   objects but not to possible objects, the very asymmetry rejected for types in 10.10.
+2. **Soundness is a choice, not a risk.**  The condition stays existential: no operation on
+   `Frame.Ops`, no uniqueness, no naturality — the reasons the `y.ret` design sank are untouched.
+3. **The cost is the naming wall (§10.5 N1).**  `Canon.posRet_exists_canon` routes through
+   `Canon.exists_name`, which has no `◇`-type analogue, since `Proof.exists_eqRec_eta` needs the
+   term's annotation to *be* the slot's.  So the chain would have to witness `∃x:◇A. Here (η x) t` for
+   enumerated **terms** at `◇`-typed `A` instead of enumerated addresses — partially undoing step 3,
+   including the measure argument that motivated it.  Likely shape: the address-indexed step for
+   `◇`-free content, a term-indexed step above it.
+
+**Orthogonal to the `here` case**: the truth lemma's `here` and `dia` cases go through the datum, and
+`World.realW` feeds only `posRet_exists_canon`.  So land the `here` case with `T_dia` as it stands,
+then take this up.
+
+### 10.13 ⭐The diagnosis, stated properly: a naming gap, not a comparison gap *(2026-09-29, user)*
+
+The clearest way to see what all of §10 is about.  `WFF.here` strips the leading `◇`: the subject is
+`s : Term σ Γ (◇A) b` and the content is `t : Term σ Γ A a`.  Take a **nested** subject,
+
+```
+s = diatm x hx (diatm y' hy' bd')  :  ◇(◇A')
+```
+
+The atom must then be completed by some `t : Term σ Γ (◇A')`, and a `◇`-term over `Γ` has its witness
+**declared in `Γ`**.  But what the atom is about is the inner object `diatm y' bd'`, whose witness `y'`
+is an address of the **view** `Γ.diaIn x`.  So there is no candidate `t` until the view-level witness
+is *evaluated at the identity arrow* and named here.  That — not any failure of comparison — is why
+`◇`-typed content types were blocked.
+
+**Evaluating a view witness at the identity arrow is `Term.realiseAtA`, and the cases are exhaustive.**
+`Ctx.diaIn x` is `x.dia` together with `Γ.boxIn`, so a `◇`-typed address of the view is one of:
+
+* `u.box`, or `u.keep.here` under T+4, with `u : □(◇A')` in `Γ` — T's collapse sends it to `u`, a `Γ`
+  address.  `Term.collapse`'s `diatm` clause already does exactly this (`Collapse.lean:328`: the
+  witness goes through `VarSymb.collapse`, the body recurses), and `eqRec_collapse` has its `◇` clause.
+  **No datum needed.**
+* a projection of one of those (`(u.box).fst` when `u : □(◇A' × B)`) — likewise, projections of a
+  collapsed address are `Γ` addresses.
+* `x.dia` itself, when `x : ◇(◇A')` — the only case needing anything, and what it needs is a `Γ`-level
+  `◇`-term naming `x`'s content.  That is exactly **`here_name`**.
+
+So with `here_name` every nested content is nameable, by induction on the nesting, and `here_beta`
+delivers the atom already in the right shape: from the datum `Here (η x) t₀` and the hole term
+abstracting `diatm y' bd'`,
+
+```
+Here (diatm x hx (diatm y' hy' bd'))  (Term.realiseAtA hT x hxA t₀ (diatm y' hy' bd'))
+```
+
+the content's witness being `t₀`'s in the `x.dia` case and the collapsed `u` in the box-image case.
+The cross-fibre business of 10.3–10.10 arose only from the *second* question — what if the theory
+supplies **two** such names — which `here_subst` (10.11) settles without any equality.
+
+**What to build first, therefore.**  Hole terms of `◇` type never arose before (`here_beta` carried
+`hB : B.diaFree = true`), so the untested position is `hereRead`'s *substitution* half: a `◇`-typed
+slot used as a **witness**, which goes through `Subst.dia`/`SubE.diaBody` and is the one place
+`Subst.Coh` does real work.  `here_subst`'s soundness leans on the same mechanism, so a single check
+covers both — do it before anything else.
+
+### 10.14 ✅Checked: realisation at a `◇`-typed content type already works *(2026-09-29)*
+
+The position 10.13 singles out as untested — a `◇`-typed slot used as a **witness** — was checked
+against the built tree, and it is already general.  Two kinds of evidence.
+
+**From the signatures.**  Nothing in the realisation stack constrains the content type:
+`Term/WFF.realiseAtA`, `Term.hereRead`, `Term.viewReadTm`, `Subst.ok_diaAbsA`/`coh_diaAbsA`,
+`Subst.ok_single`/`coh_single`, and on the semantic side `Model.Env.substEnv_diaAbsA`,
+`Model.interp_realiseAtA`, `Model.sat_realiseAtA` (`QML_v12m_SemAbs.lean`) — none takes
+`A.diaFree = true`.  `Term.subst`'s `.diatm` case with a `.tm` entry is `SubE.diaBody`
+(`Subst.lean:70`), whose positive branch (`if h : y = ιx`) is exactly what `Subst.Coh` justifies, and
+⭐`Term.realiseAtA_eta` (`Abs.lean:639`) — the pinned round trip — is *proven* at an arbitrary `A`,
+which at a `◇`-typed `A` means `Term.eta (.root (.bnd 0)) A` is itself a `diatm` with the slot as its
+witness.  So the case is not merely permitted, it is already discharged.
+
+**By a concrete instance** (scratch module, built against `QML.QML_v12m_Abs`, then deleted).  Under
+`ModalSys := ⟨T := true, Four := false, TStrong := true, …⟩`, with `Γ` declaring `x : ◇◇Var`,
+`y : ◇Var` and `u : □◇Var`, all of the following elaborate and hold **by `rfl`**:
+
+| # | statement | outcome |
+|---|---|---|
+| 1 | `Term.realiseAtA rfl x hx t₀ tv` for `tv = diatm (x.dia) ⟨Var,hd⟩ cst` | elaborates |
+| 2 | the resulting annotation is `Ann.dia y .var` | `rfl` |
+| 3 | `realiseAtA … tv = diatm y ⟨Var,hy⟩ cst` — the witness became `t₀`'s | `rfl` |
+| 4 | `realiseAtA … (η x.dia) = t₀` at a `◇`-typed content type | `Term.realiseAtA_eta` |
+| 5 | `Term.hereRead rfl t₀' sbox = diatm (u.here) ⟨Var,huh⟩ cst` for `sbox = diatm (u.box) … cst` | `rfl` |
+
+Rows 3 and 5 are the two branches of 10.13's case analysis, and they compute to exactly "the view
+witness evaluated at the identity arrow": the content address goes to the realising term's witness,
+and a box-image `u.box` goes to `u.here`, `u`'s value here under T (`VarSymb.collapse` at level 0,
+`Collapse.lean:231`).
+
+**Consequence for the build order.**  The feared first step is done; nothing in `Abs`/`SemAbs` needs
+touching.  So start instead at the syntax edge:
+
+1. drop `hA` from the `WFF.here` constructor and let `here_elim`/`here_intro`/`here_beta`
+   (`hA`, `hB`)/`here_subst` follow; fix the fallout in `WFF.size`, `Countable`, `DecidableEq` and the
+   soundness case list;
+2. `here_name` and `here_subst` with soundness (`Model.sat_here_diatm` + `Model.sat_instantiate`);
+   re-derive `here_fun`;
+3. Canon layer: indiscernibility classes, `extentTm`, faithfulness's `◇` case;
+4. the `here` alternative in `truth_lt`.
+
+### 10.15 The two directions, and why `here_name` is existential *(2026-09-29, user's question)*
+
+**`T_dia` does not ask for a witness; it introduces one.**  It is eigenvariable-shaped, like
+`ex_elim`: given `t : Term σ Γ A a` it hands the subproof a fresh root `c : ◇A` with
+`WFF.hereAt hT (.root (.free c)) … t` as a hypothesis, and the conclusion may not mention `c`.  At a
+`◇`-valued `t` (`A = ◇A'`, `c : ◇◇A'`) nothing has to be named: any inner witness is already carried
+by `t`, which is a term the user wrote.  So the two directions never meet —
+
+* **up**: `T_dia`, from a value to a witness realised by it.  No reading of contents, hence no
+  naming; the object comes from `Model.posRet_exists`, which is why generalising it is §10.12.
+* **down**: `here_name` and realisation, from a witness to its content.  This is the direction that
+  needs the view witness *evaluated at the identity arrow* (§10.13, checked in §10.14).
+
+**The existential is usable, by `ex_elim` (`Proof.lean:92`), whose type argument is arbitrary.**
+Eliminating `here_name`'s `∃z:X. Here (η x) z` gives a fresh declared root `z : X` together with
+`Here (η x) (η z)` as a hypothesis, and from there `z` is an honest term: it can be fed to `T_dia`, to
+`Term.realiseAtA`, to `here_beta`.  The eigenvariable restriction — `z` not in the conclusion — is the
+honest reflection of the fact that `x`'s content has no name in `Γ`.  A term former for "the content
+of `x` here" would be the `y.ret` design, rejected for having no uniqueness and no naturality
+(`Model.posRet_exists`'s docstring).
+
+**Why existential rather than eigenvariable is the right primitive.**  In the canonical model the
+theory is a witnessed MCS, so `∃z:X. Here (η x) z ∈ T` plus `World.exW` gives the atom
+`Here (η x) (η b₀)` **at a declared root** — literally the `RealDatum`, with no eigenvariable
+bookkeeping and no chain step.  An eigenvariable-shaped `here_nameE` would be interderivable in the
+proof system but useless to the model: its conclusion is an arbitrary `φ`, so there is no sentence to
+put in `T`.  Same argument as the `T_dia` docstring's, for the atom over the positive-Φ schema
+(`Proof.lean:150–162`).
+
+**Corollary for §10.12.**  If `T_dia` is generalised to `◇`-typed `A`, the chain witnesses
+`∃x:◇A. Here (η x) t` for enumerated **terms** `t`; a writable `◇`-term carries its own witness, so no
+new naming problem arises there either.  N1/N2 again: a possible object is nameable only through an
+address already in the context.
+
+### 10.16 ✅Step 1 landed: `WFF.here` is general in its content type *(2026-09-29)*
+
+`hA` is gone from the `WFF.here` constructor, and with it from `WFF.here_congr`/`here_congr'`,
+`WFF.hereAt`, `Proof.here_elim`, `Proof.here_intro`, `Proof.here_beta` (both `hA` and `hB`), the
+pinned `here_elimAt`/`here_introAt`/`here_elimAtA`/`here_introAtA`, `WFF.mono_hereAt`/
+`mono_hereAt_of_le`, `WFF.hereAt_transport`, `WFF.subst_hereAt_renameTm`, `Proof.here_fst`/
+`here_snd`, and the `Model.sat_hereAt`/`sat_here_diatm`/`sat_here_fun`/`sat_here_beta`/
+`sat_here_elim`/`sat_here_intro`/`sat_hereAt_extend` family.
+
+**`Proof.here_fun` keeps its `hA`, and must.**  Its `Proof.subst` case goes through
+`WFF.subst_eqRec`, which carries `T.diaFree = true` (`Subst.lean:656`) — substitution moves
+annotations, and `eqRec` compares at one annotation.  That is exactly §10.11's reason for making
+functionality *substitutional*: `here_subst` arrives in step 2 and `here_fun` becomes a derived `def`,
+keeping its `◇`-free form where `eqRec` is formable.  Also keeping `hA`, correctly: `T_dia` and
+`Model.sat_here_ex`/`posRet_exists` (the `◇`-free model condition, §10.12), `Canon.exists_name`,
+`rden_castAnn`, `rden_here_wd`, `WFF.instantiate_eqRec_slot`, `Proof.exists_eqRec_eta` (annotation
+uniqueness, §10.5 N1/N4), and `WorldLang.retSet`'s parameter (renamed `_hA`, the chain being
+`◇`-free while `T_dia` is).
+
+**Neither friction predicted for step 1 materialised.**  `WFF.size` needed no redefinition —
+`VarType.eqRecSize` was already total, `.VTypeDia A => A.eqRecSize + 3` — and `Countable` needed none
+either, `WFF.code` already encoding the type and both annotations while ignoring the proof fields.
+Both took only the pattern change (one `_` fewer).
+
+**State of the build**: the whole `QML_v12m_*` list, **one error** —
+`Completeness.lean:286`, `Alternative 'here' has not been provided`, the truth lemma's `here`
+alternative — with **zero warnings and zero sorries**.  That is the same single error as before step 1,
+so the generalisation is regression-free.  (A `declaration uses sorry` warning seen mid-sweep at
+`CanonDom:714` was Lean's error-recovery cascade from a then-broken `rden_here_wd`, not a real
+`sorry`.)
+
+The constructor's docstring already said what is true again — "the constructor takes any `A`, but
+functionality … is stated at `◇`-free `A` only" — so it needed no edit; the pointer to §10.11/§10.13
+rides along with step 2, which touches the file anyway, rather than paying a second full-tree rebuild.
+
+**Next**: step 2 — `here_name` and `here_subst` with their soundness cases
+(`Model.sat_here_diatm` + `Model.sat_instantiate`), then `here_fun` re-derived.

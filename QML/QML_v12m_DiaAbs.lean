@@ -374,10 +374,10 @@ def WFF.realiseAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = tr
     η-law `Model.interp_eta`. -/
 abbrev WFF.hereAt {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true)
     (x : VarSymb)
-    {A : VarType} (hA : A.diaFree = true) (hx : Γ.ref x = some (.VTypeDia A)) {a : Ann A}
+    {A : VarType} (hx : Γ.ref x = some (.VTypeDia A)) {a : Ann A}
     (t : Term σ Γ A a) :
     WFF σ Γ d :=
-  WFF.here hT hA (Term.eta x (.VTypeDia A) hx) t
+  WFF.here hT (Term.eta x (.VTypeDia A) hx) t
 
 /-! ## Weakening -/
 

@@ -125,7 +125,7 @@ theorem sat_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (�
           (env.diaPush (ι x) hr₁ ⟨w₂.1, hE.symm ▸ w₂.2⟩) φ).mpr ?_
         rw [substEnv_dia θ hθ hnp env hx hr hr₁ hw ⟨w₂.1, hE.symm ▸ w₂.2⟩ w₂.2]
         exact hsat
-  | _, _, _, _, _, θ, hθ, hc, _, _, hnp, _, env, .here hT hA s t => by
+  | _, _, _, _, _, θ, hθ, hc, _, _, hnp, _, env, .here hT s t => by
       change Model.Realised hT (interp env (Term.subst _ θ hθ hc s))
         (interp env (Term.subst _ θ hθ hc t)) ↔ _
       rw [interp_subst θ hθ hc hnp env s, interp_subst θ hθ hc hnp env t]

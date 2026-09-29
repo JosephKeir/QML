@@ -109,7 +109,7 @@ structure RealDatum (L : WorldLang) (T : Set (L.sys.Sentence σ)) (x : VarSymb) 
       atom is invariant (`RealDatum.hhereAt`), and `RealDatum.spec` — everything the content
       satisfies at a stage, the witness satisfies in its view — follows from those
       (`spec_of_here`). -/
-  hhere : (⟨i₀, WFF.hereAt hT x hA hd₀ (Term.eta b₀ A hb₀)⟩ : L.sys.Sentence σ) ∈ T
+  hhere : (⟨i₀, WFF.hereAt hT x hd₀ (Term.eta b₀ A hb₀)⟩ : L.sys.Sentence σ) ∈ T
 
 /-- The content's annotation, as `Term.eta` builds it. -/
 @[reducible] def RealDatum.a₀ {L : WorldLang} {T : Set (L.sys.Sentence σ)} {x : VarSymb}
@@ -213,11 +213,11 @@ theorem RealDatum.hdeclOf {L : WorldLang} {T : Set (L.sys.Sentence σ)} {x : Var
 theorem RealDatum.hhereAt {L : WorldLang} {T : Set (L.sys.Sentence σ)} {x : VarSymb}
     (d : RealDatum σ L T x) (hmcs : StageSys.IsMCS T) (i : ℕ × ℕ) (hi : d.i₀ ≤ i)
     (hd : (L.ctx i).ref x = some (.VTypeDia d.A)) :
-    (⟨i, WFF.hereAt d.hT x d.hA hd
+    (⟨i, WFF.hereAt d.hT x hd
         (Term.mono (L.ctx_le hi) d.t₀)⟩ : L.sys.Sentence σ) ∈ T := by
   refine Eq.mp (congrArg (fun φ => (⟨i, φ⟩ : L.sys.Sentence σ) ∈ T) ?_)
     ((hmcs.mem_lift_iff hi).mpr d.hhere)
-  exact WFF.mono_hereAt_of_le d.hT _ d.hA _ _ hd _
+  exact WFF.mono_hereAt_of_le d.hT _ _ _ hd _
 
 /-- The same, under the name the earlier `hdecl` field went by. -/
 theorem RealDatum.declType {L : WorldLang} {T : Set (L.sys.Sentence σ)} {x : VarSymb}
@@ -234,23 +234,22 @@ theorem RealDatum.declType {L : WorldLang} {T : Set (L.sys.Sentence σ)} {x : Va
 theorem spec_of_here {L : WorldLang} {T : Set (L.sys.Sentence σ)} (hmcs : StageSys.IsMCS T)
     (hT : ModalSys.T = true) {x : VarSymb} {i₀ : ℕ × ℕ} {A : VarType} {a₀ : Ann A}
     (t₀ : Term σ (L.ctx i₀) A a₀)
-    (hA : A.diaFree = true)
     (hhere : ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i) (hd : (L.ctx i).ref x = some (.VTypeDia A)),
-      (⟨i, WFF.hereAt hT x hA hd (Term.mono (L.ctx_le hi) t₀)⟩ : L.sys.Sentence σ) ∈ T) :
+      (⟨i, WFF.hereAt hT x hd (Term.mono (L.ctx_le hi) t₀)⟩ : L.sys.Sentence σ) ∈ T) :
     ∀ (i : ℕ × ℕ) (hi : i₀ ≤ i) (hd : (L.ctx i).ref x = some (.VTypeDia A))
       (χ : WFF σ ((L.ctx i).diaIn x) 0),
       (⟨i, WFF.realiseAtA hT x hd (Term.mono (L.ctx_le hi) t₀) χ⟩ : L.sys.Sentence σ) ∈ T →
       (⟨i, .dia x ⟨A, hd⟩ χ⟩ : L.sys.Sentence σ) ∈ T := by
   intro i hi hd χ hr
   refine hmcs.closed (StageSys.derives_of_mems
-    (Δ := [WFF.hereAt hT x hA hd (Term.mono (L.ctx_le hi) t₀),
+    (Δ := [WFF.hereAt hT x hd (Term.mono (L.ctx_le hi) t₀),
       WFF.realiseAtA hT x hd (Term.mono (L.ctx_le hi) t₀) χ]) ?_ ?_)
   · intro ψ hψ
     rcases List.mem_cons.mp hψ with rfl | hψ'
     · exact hhere i hi hd
     · rw [List.mem_singleton.mp hψ']
       exact hr
-  · exact ⟨Proof.here_introAtA hT x hA hd (Term.mono (L.ctx_le hi) t₀) χ
+  · exact ⟨Proof.here_introAtA hT x hd (Term.mono (L.ctx_le hi) t₀) χ
       (Proof.lookup List.mem_cons_self)
       (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩
 
@@ -264,7 +263,7 @@ theorem RealDatum.spec {L : WorldLang} {T : Set (L.sys.Sentence σ)} {x : VarSym
       (⟨i, WFF.realiseAtA d.hT x hd (Term.mono (L.ctx_le hi) d.t₀) χ⟩ :
         L.sys.Sentence σ) ∈ T →
         (⟨i, .dia x ⟨d.A, hd⟩ χ⟩ : L.sys.Sentence σ) ∈ T :=
-  spec_of_here hmcs d.hT d.t₀ d.hA (d.hhereAt hmcs)
+  spec_of_here hmcs d.hT d.t₀ (d.hhereAt hmcs)
 
 /-! ## Realised witnesses (strong T) -/
 

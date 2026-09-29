@@ -165,7 +165,7 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       (hc : Γ.RootFresh (.free c))
       {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
       Proof σ (Γ.insert (.free c) (.VTypeDia A))
-        (WFF.hereAt hT (.root (.free c)) hA (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A))
+        (WFF.hereAt hT (.root (.free c)) (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A))
             (Term.weaken hc.root (.VTypeDia A) t) ::
           Δ.map (WFF.weaken hc.root (.VTypeDia A)))
           (φ.weaken hc.root (.VTypeDia A)) →
@@ -181,22 +181,22 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       content's place.  The pinned case `bd = x.dia` is the rule one expects, `Here x t, □_x χ ⊢
       χ(t)` (`Proof.here_elimAt`), since every view formula is its abstraction read back. -/
   | here_elim {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) (x : VarSymb)
-      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType} (hA : A.diaFree = true)
+      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
       {a : Ann A} (t : Term σ Γ A a)
       {a' : Ann A} (bd : Term σ (Γ.diaIn x) A a')
       (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
-      Proof σ Γ Δ (WFF.here hT hA (Term.diatm x hx bd) t) →
+      Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd) t) →
       Proof σ Γ Δ (WFF.boxx x hx (WFF.viewReadTm bd ψ)) →
       Proof σ Γ Δ (WFF.hereRead hT t ψ)
   /-- ⭐**Introduction**: what holds of the realisation here is possible for the witness, this very
       world witnessing it.  The converse of `here_elim` across the same two readings, so the pair is
       one biconditional (`Model.sat_viewReadTm`) split by polarity. -/
   | here_intro {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) (x : VarSymb)
-      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType} (hA : A.diaFree = true)
+      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
       {a : Ann A} (t : Term σ Γ A a)
       {a' : Ann A} (bd : Term σ (Γ.diaIn x) A a')
       (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
-      Proof σ Γ Δ (WFF.here hT hA (Term.diatm x hx bd) t) →
+      Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd) t) →
       Proof σ Γ Δ (WFF.hereRead hT t ψ) →
       Proof σ Γ Δ (WFF.dia x hx (WFF.viewReadTm bd ψ))
   /-- ⭐**β for the realisation predicate**: the realisation of a body read through a hole term is
@@ -205,14 +205,14 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       ranges over the view terms (`Term.diaAbs` abstracts one), and the value on the right is
       `Term.realiseAt`. -/
   | here_beta {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) (x : VarSymb)
-      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType} (hA : A.diaFree = true)
+      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
       {a : Ann A} (t : Term σ Γ A a)
       {a' : Ann A} (bd : Term σ (Γ.diaIn x) A a')
-      {B : VarType} (hB : B.diaFree = true) {b : Ann B}
+      {B : VarType} {b : Ann B}
       (s : Term σ (Γ.boxIn.insert (.bnd 0) A) B b) :
-      Proof σ Γ Δ (WFF.here hT hA (Term.diatm x hx bd) t) →
+      Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd) t) →
       Proof σ Γ Δ
-        (WFF.here hT hB (Term.diatm x hx (Term.viewReadTm bd s)) (Term.hereRead hT t s))
+        (WFF.here hT (Term.diatm x hx (Term.viewReadTm bd s)) (Term.hereRead hT t s))
   /-- ⭐**Functionality**: a possible object has one realisation here.  The two values stand at **one
       annotation**, so the conclusion is `WFF.eqRec` within a single fibre — which is the only
       comparison there is (§2d), and which is no restriction at all at a `◇`-free content type,
@@ -220,7 +220,7 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
   | here_fun {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) {A : VarType}
       (hA : A.diaFree = true) {b : Ann (.VTypeDia A)} (s : Term σ Γ (.VTypeDia A) b)
       {a : Ann A} (t t' : Term σ Γ A a) :
-      Proof σ Γ Δ (WFF.here hT hA s t) → Proof σ Γ Δ (WFF.here hT hA s t') →
+      Proof σ Γ Δ (WFF.here hT s t) → Proof σ Γ Δ (WFF.here hT s t') →
       Proof σ Γ Δ (eqRec A t t')
   -- Weak B
   /-- What is possibly necessary is true, `◇□ψ ⊢ ψ`, for a closed `ψ`: some accessible world

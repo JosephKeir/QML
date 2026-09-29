@@ -545,8 +545,8 @@ def WFF.subst {σ : Signature} : (ι : VarSymb → VarSymb) → {Γ Δ : Ctx} �
       .dia (ι x) (hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw)
         (WFF.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx)
           (hΓ.diaIn x) (hΔ.diaIn (ι x)) φ)
-  | ι, _, _, _, _, θ, hθ, hc, _, _, .here hT hA s t =>
-      .here hT hA (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
+  | ι, _, _, _, _, θ, hθ, hc, _, _, .here hT s t =>
+      .here hT (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
 
 /-! ## Substituting one root -/
 
