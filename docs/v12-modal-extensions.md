@@ -3260,3 +3260,59 @@ So the order of work for the rest of step 3 is:
 
 Nothing above is blocked; item 3 is where the tree goes red for a while, so it wants a session of its
 own.
+
+### 10.21 Blocker check before the `rden` switch *(2026-09-29)*
+
+Cheap checks on everything the rest of step 3 assumes, plus an honest read on what could still bite.
+
+**Checked, and present in the needed form.**
+
+| assumption | verdict |
+|---|---|
+| `WFF.mono_instantiate` — lifting a test formula (`RetMono:86`) | ✅ exactly the shape §10.20 needs |
+| `World.mem_lift` — stage lifting of membership (`CanonWorld:328`) | ✅ an **iff**, so contravariance goes both ways |
+| `Canon.Definable` = "is the denotation of a term" (`CanonDom:455`) | ✅ trivially preserved by any change to `rden` |
+| `◇`-slot substitution computes (the `here_name`/`dia` idiom) | ✅ verified by `rfl` in §10.14, rows 3 and 5 |
+
+So the contravariance lemma is ~10 lines: `mem_lift` down, `mono_instantiate` across, `Interch`-at-`j`
+at the lifted test formula, back up.
+
+**Missing, and now a definite to-do.**  There is no formula-level lemma for `WFF.instantiate` at a
+`◇`-typed slot used as a **witness** — the identity that turns an `Interch` instance at
+`φ = ◇_{.bnd 0} ψ` into `◇_y (WFF.viewReadTm bd ψ)`.  The term-level analogue computes (§10.14), and
+the proof route is `WFF.subst`'s `.dia` clause with `Subst.single`'s slot entry and `SubE.diaBody`, so
+this is work rather than doubt.  It lands in the truth lemma's `dia` case.
+
+**The risk I would actually bet on: choice-dependence couples items 4 and 5.**  The content of a
+class-keyed object at an arrow is read from *a* contributing member, and the member has to be obtained
+by choice — `RDom (◇A)`'s second component is a function of the subtype `{a // a ∈ E}`, whose elements
+are equal whatever their membership proofs, so the definition cannot read the member off the proof.
+Hence `rden`'s value is choice-dependent, and the equalities `rden_mono`/`rden_congr` will need the
+**well-definedness** lemma — any two members' bodies agree at a shared arrow — which is item 5's
+faithfulness argument.  So the plan should be reordered: prove well-definedness *before* the
+congruence family, not after.
+
+**Scope of the congruence family**, for planning: about twenty lemmas touch `rden` at `.diatm` or
+`extent` — `rden` itself, `rden_diatm_acc`/`acc'`/`self`, `rden_mono`, `rden_congr`,
+`definable_dia_apply`, `rden_eqRec_far` (`CanonDom`); the `applyG_*` and `rden_eta_realised*` family
+(`CanonFunc`); `canonEnv_extent`, `diaPush_agree_canon`, `interp_dia_self*` (`CanonTerm`).
+`rden_mono` and `rden_congr` are the two big recursive ones.
+
+**Confidence.**  Higher than at any earlier point in this work, and for reasons that are specific
+rather than general:
+
+* the two things that killed the earlier attempts are *gone* — the naming gap (closed by `here_name`,
+  now proven sound and substitution-stable) and §10.9's "one arrow would have to carry several
+  witnesses' contents", which dissolved once extents are keyed to term classes: a term the theory says
+  nothing about has a singleton class and keeps exactly today's arrows;
+* every rule the model needs now exists and is sound, so **no further logic-level additions are
+  expected** — what remains is bookkeeping inside one layer, which is a different kind of risk;
+* the design-level question that sank the earlier tries — can the theory force something the model
+  cannot represent — is answered: the only forcing is through `here` atoms, and the class construction
+  represents exactly those.
+
+What could still go wrong is *size*, not soundness: the three risks above (choice-dependence, the
+missing `instantiate`-at-a-`◇`-slot lemma, and the stage bookkeeping of `InterchAll`) are all "more
+Lean than expected" rather than "the design is wrong".  If one of them forces a change it would be
+local — most likely making `rden`'s `◇` clause take the contributing member as data rather than by
+choice, which would mean carrying the class as a structure instead of a relation.
