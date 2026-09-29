@@ -145,6 +145,57 @@ theorem sat_here_fun {A : VarType} {b : Ann (.VTypeDia A)}
   obtain ⟨_, hc'⟩ := h'
   exact (sat_eqRec env A t t').mpr (hc.symm.trans hc')
 
+/-- ⭐**A realised witness has a content, semantically**: a `Pos`-object's content function is total
+    on its extent, so once the reflexive arrow lies there — which is what the `𝟙`-atom says,
+    `Dom 𝟙 w` being a single point — the object's content at that arrow is an element of the
+    domain, and that element is the existential's witness.  No condition on the type: this is the
+    totality half of the pair whose other half, surjectivity, is `Model.posRet_exists` and
+    `Proof.T_dia` (§10.15). -/
+theorem sat_here_name (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
+    (h : Γ.ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B} (bd : Term σ (Γ.diaIn x) B β)
+    (hunit : M.sat env (WFF.here hT (Term.diatm x hx Term.unit) Term.unit : WFF σ Γ 0)) :
+    M.sat env (WFF.hereEx hT (Term.diatm x hx bd)) := by
+  obtain ⟨hm, -⟩ := (sat_here_diatm hT env hx h Term.unit Term.unit).mp hunit
+  have hm' : M.frame.reflAcc hT w ∈ (M.posEval (interp env (Term.diatm x hx bd))).1 := by
+    rw [dia_beta env hx h bd]
+    exact hm
+  have hr : Γ.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)
+  refine ⟨(M.posEval (interp env (Term.diatm x hx bd))).2 ⟨M.frame.reflAcc hT w, hm'⟩, ?_⟩
+  have hag : Env.Agree (Ctx.le_insert hr.root B) env
+      (env.extend (.bnd 0) ((M.posEval (interp env (Term.diatm x hx bd))).2
+        ⟨M.frame.reflAcc hT w, hm'⟩)) := by
+    intro v U hv
+    have hne : v ≠ .root (.bnd 0) := fun hvr => by rw [hvr, hr.root] at hv; cases hv
+    simp only [Env.extend, dif_neg hne]
+  have hslot : (env.extend (.bnd 0)
+        ((M.posEval (interp env (Term.diatm x hx bd))).2 ⟨M.frame.reflAcc hT w, hm'⟩)).ref
+        (.root (.bnd 0)) (Ctx.ref_insert_root Γ (.bnd 0) B) =
+      (M.posEval (interp env (Term.diatm x hx bd))).2 ⟨M.frame.reflAcc hT w, hm'⟩ :=
+    Env.extend_root env (.bnd 0) _ (Ctx.ref_insert_root Γ (.bnd 0) B)
+  change Realised hT (interp _ (Term.mono _ (Term.diatm x hx bd))) (interp _ (Term.eta _ _ _))
+  rw [interp_mono hag (Term.diatm x hx bd),
+    interp_eta _ (.root (.bnd 0)) (Ctx.ref_insert_root Γ (.bnd 0) B), hslot]
+  exact ⟨hm', rfl⟩
+
+include hnp in
+/-- ⭐**Functionality, substitutionally, is sound at every content type**: `Realised` reads a
+    possible object's content at one arrow, so two candidates for it are the same object, and
+    substituting one for the other in any formula preserves truth (`Model.sat_instantiate` twice).
+    This is what makes `Proof.here_subst` sound where no equation is available — the annotations
+    need not agree, since the two instances are simply two formulas (§10.11). -/
+theorem sat_here_subst {A : VarType} {b : Ann (.VTypeDia A)} (s : Term σ Γ (.VTypeDia A) b)
+    {a a' : Ann A} (t : Term σ Γ A a) (t' : Term σ Γ A a')
+    (φ : WFF σ (Γ.insert (.bnd 0) A) 1)
+    (h : M.sat env (WFF.here hT s t : WFF σ Γ 0))
+    (h' : M.sat env (WFF.here hT s t' : WFF σ Γ 0))
+    (hφ : M.sat env (WFF.instantiate Ctx.NoSlots.slots t φ)) :
+    M.sat env (WFF.instantiate Ctx.NoSlots.slots t' φ) := by
+  obtain ⟨_, hc⟩ := h
+  obtain ⟨_, hc'⟩ := h'
+  refine (sat_instantiate env hnp Ctx.NoSlots.slots t' φ).mpr ?_
+  rw [← hc.symm.trans hc']
+  exact (sat_instantiate env hnp Ctx.NoSlots.slots t φ).mp hφ
+
 /-! ## The two readings of a hole formula, at the identity arrow -/
 
 omit [Γ.NoSlots] in

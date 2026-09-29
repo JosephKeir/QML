@@ -3089,3 +3089,68 @@ rides along with step 2, which touches the file anyway, rather than paying a sec
 
 **Next**: step 2 — `here_name` and `here_subst` with their soundness cases
 (`Model.sat_here_diatm` + `Model.sat_instantiate`), then `here_fun` re-derived.
+
+### 10.17 ✅Step 2 landed: `here_name` and `here_subst` *(2026-09-29)*
+
+Both rules are in, with soundness and substitution, and `here_fun` is no longer primitive.
+
+**`Proof.here_subst`** — functionality, substitutionally: at any subject, any content type and **any
+two annotations**,
+
+```
+Here s t → Here s t' → φ[slot := t] → φ[slot := t']
+```
+
+Soundness is ⭐`Model.sat_here_subst`: `Realised` reads the content at one arrow, so `interp t =
+interp t'`, then `Model.sat_instantiate` twice.  Its `Proof.subst` case is `all_elim`'s, through
+`WFF.subst_instantiate`.
+
+**`Proof.here_fun` is now derived** (`ProofSubst`): `here_subst` at the hole formula
+`eqRec A (η slot) t`, whose `t`-instance is `Proof.eqRec_refl` and whose `t'`-instance is the
+equation, read back by `WFF.instantiate_eqRec_slot` and turned round by `Proof.eqRec_symm`.  It keeps
+`hA`, and that is the shape of the statement rather than a restriction — `eqRec` compares at one
+annotation, which `Ann.eq_of_diaFree` makes automatic at a `◇`-free type.  Existing users
+(`Canon.rden_here_wd`) are unchanged.
+
+**`Proof.here_name`** — a realised witness has a content:
+
+```
+Here (diatm x hx unit) unit → WFF.hereEx hT (diatm x hx bd)
+```
+
+with ⭐`WFF.hereEx hT s := ∃z:B. Here s z` (`DiaAbs`), the subject weakened past the slot.  Soundness
+is ⭐`Model.sat_here_name`: a `Pos`-object's content function is total on its extent, so the content at
+the reflexive arrow *is* the witness — the totality half of the pair whose surjectivity half is
+`posRet_exists`/`T_dia` (§10.15).  No condition on the type.
+
+*Why the body is arbitrary.*  At the pinned subject alone the conclusion would not survive
+substitution (§10.11: the pinned form is not substitution-closed).  With `bd` arbitrary the image of
+the conclusion is the rule's own conclusion at the substituted body, so the `Proof.subst` case is a
+constructor application.  The pinned instance `bd := η x.dia` is what the canonical model consumes.
+
+**Two transport lemmas were needed, and both are reusable.**
+
+* ⭐`Term.subst_eta_renAt` (`SubstEta`): the η-expansion of an address whose **entry** is a renaming
+  substitutes to the η-expansion of the renamed address — pointwise, as `Term.subst_eta_tm` is for a
+  term entry.  Unlike `Term.subst_eta_ren` it needs no global `Subst.IsRen`, which is what makes it
+  usable at a slot under `Subst.under`: the entry's shape propagates by itself, to projections by
+  `Subst.at`, to `□` by `SubE.unbox`/`keepE`, to `◇` by `SubE.diaBody`, with the witness index from
+  `Subst.Coh`.
+* ⭐`Term.subst_under_mono` (`ProofSubst`): substituting under a slot, on a term weakened from below
+  it, is the weakening of the substituted term — `Subst.under` agrees with `θ` weakened past the slot
+  on everything `Γ` declares (`Subst.sim_of`, `Term.subst_congr`), and weakening then commutes with
+  substitution (`Term.mono_subst`).
+
+Together they give ⭐`WFF.subst_hereEx`, the conclusion's transport.  For the model side,
+⭐`WFF.instantiate_here_slot` fills the slot back: a witnessed theory containing `WFF.hereEx hT s`
+contains `Here s (η b₀)` at a declared root, which is what `Canon.RealDatum` is made of.
+
+**State of the build**: the whole `QML_v12m_*` list, **one error** — `Completeness.lean:286`, the
+truth lemma's `here` alternative — zero warnings, zero sorries.
+
+**Primitive rule set now**: `T_dia`, `here_elim`, `here_intro`, `here_beta`, `here_name`,
+`here_subst`.  Derived: `here_fun`, `here_elimAtA`/`here_introAtA`, and realisedness itself
+(`here_beta` at `s := Term.unit`).
+
+**Next**: step 3, the Canon layer — indiscernibility classes, `extentTm`, faithfulness's `◇` case —
+then step 4, the `here` alternative in `truth_lt`.

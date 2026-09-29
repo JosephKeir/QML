@@ -213,15 +213,51 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd) t) →
       Proof σ Γ Δ
         (WFF.here hT (Term.diatm x hx (Term.viewReadTm bd s)) (Term.hereRead hT t s))
-  /-- ⭐**Functionality**: a possible object has one realisation here.  The two values stand at **one
-      annotation**, so the conclusion is `WFF.eqRec` within a single fibre — which is the only
-      comparison there is (§2d), and which is no restriction at all at a `◇`-free content type,
-      where the annotation is unique (`Ann.eq_of_diaFree`). -/
-  | here_fun {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) {A : VarType}
-      (hA : A.diaFree = true) {b : Ann (.VTypeDia A)} (s : Term σ Γ (.VTypeDia A) b)
-      {a : Ann A} (t t' : Term σ Γ A a) :
+  /-- ⭐**A realised witness has a content**: if the world itself lies in `x`'s extent, then every
+      possible object over `x` has a value here.  The other half of the pair whose first half is
+      `T_dia`: that says every value has a realised witness, this says every realised witness has a
+      value.  `Model.posRet_exists` is the first; the totality of a `Pos`-object's content function
+      on its extent is the second, so the rule is sound with no condition on the type (§10.15).
+
+      *The premise is realisedness in its minimal expressible form.*  `Dom 𝟙 w` is a single
+      point, so
+      `Here (diatm x hx unit) unit` says exactly that the reflexive arrow lies in `x`'s extent, and
+      `here_beta` at `s := Term.unit` derives it from any atom about `x` — which is why no separate
+      formula for realisedness is needed (§10.14).
+
+      *Why the body is arbitrary.*  Stated at the pinned subject `η x` alone the rule would not
+      survive substitution: an entry sends `x` to a `◇`-term over another witness, and the pinned
+      form is not closed under that — the general form is its closure (§10.11).  With the body
+      arbitrary the image of the conclusion is the rule's own conclusion at the substituted body,
+      and
+      the pinned instance, `bd := η x.dia`, is the one the canonical model consumes. -/
+  | here_name {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) (x : VarSymb)
+      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B}
+      (bd : Term σ (Γ.diaIn x) B β) :
+      Proof σ Γ Δ (WFF.here hT (Term.diatm x hx Term.unit) Term.unit) →
+      Proof σ Γ Δ (WFF.hereEx hT (Term.diatm x hx bd))
+  /-- ⭐**Functionality, substitutionally**: a possible object has one content here, so its two
+      candidates are interchangeable in every formula.  This is the form functionality must take
+      a `◇`-typed content, where no equation is available: `WFF.eqRec` compares terms at **one**
+      annotation, and two names of one content may stand over different witnesses, which no formula
+      can equate (§10.3).  Substitutivity needs no annotation agreement — the two instances are
+      simply two formulas — so the rule is stated at any subject, any content type and **any two
+      annotations**.
+
+      What it subsumes.  The `◇`-free equation is `Proof.here_fun`, the instance at the hole formula
+      `eqRec A (η slot) t` with reflexivity as its minor premise.  The transfer of `◇`-facts between
+      two names is the instance at `φ = ◇_{.bnd 0} ψ`: substituting a `◇`-term for a witness address
+      is `Subst.dia`/`SubE.diaBody`, i.e. `WFF.viewReadTm`, so that instance reads
+      `◇_y (viewReadTm bd ψ) ⊢ ◇_{y'} (viewReadTm bd' ψ)` (§10.11).  A `◇`-typed term occurs in a
+      formula only inside a `Here` atom — as its subject or within its content — so substitution for
+      the slot covers every occurrence there is. -/
+  | here_subst {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+      {A : VarType} {b : Ann (.VTypeDia A)} (s : Term σ Γ (.VTypeDia A) b)
+      {a a' : Ann A} (t : Term σ Γ A a) (t' : Term σ Γ A a')
+      (φ : WFF σ (Γ.insert (.bnd 0) A) 1) :
       Proof σ Γ Δ (WFF.here hT s t) → Proof σ Γ Δ (WFF.here hT s t') →
-      Proof σ Γ Δ (eqRec A t t')
+      Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t φ) →
+      Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t' φ)
   -- Weak B
   /-- What is possibly necessary is true, `◇□ψ ⊢ ψ`, for a closed `ψ`: some accessible world
       makes `ψ` necessary, and an arrow leads back from it.  `ψ` must be closed because nothing

@@ -231,6 +231,66 @@ theorem Term.subst_eta_tm {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : C
 
 
 
+/-- ⭐The η-expansion of an address whose entry is a **renaming** substitutes to the η-expansion of
+    the renamed address.  Pointwise in the entry, as `Term.subst_eta_tm` is for a term entry, and so
+    usable where a substitution is a renaming only *locally* — at a slot under `Subst.under`, where
+    `Subst.IsRen` fails globally and `Term.subst_eta_ren` does not apply.  The entry's shape
+    propagates by itself: to projections by `Subst.at`, to `□` by `SubE.unbox`/`SubE.keepE`, and to
+    `◇` by
+    `SubE.diaBody`, and the witness index is `Subst.Coh`'s. -/
+theorem Term.subst_eta_renAt {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) :
+    ∀ (T : VarType) (v w : VarSymb) (hv : Γ.ref v = some T) (hw : Δ.ref w = some T),
+      θ.at v = .ren w →
+      (⟨_, Term.subst ι θ hθ hc (Term.eta v T hv)⟩ : Σ b, Term σ Δ T b) = ⟨_, Term.eta w T hw⟩
+  | .Var, v, w, hv, hw, hs => by
+      refine congrArg (Sigma.mk _) ?_
+      change (θ.at v).toVar (Subst.okRef_at hθ hv) = Term.var w hw
+      exact SubE.toVar_congr hs _ hw
+  | .VTypeOne, _, _, _, _, _ => rfl
+  | .VTypeProd A B, v, w, hv, hw, hs => by
+      have hfst : θ.at (.step v .fst) = .ren (.step w .fst) := by
+        change (θ.at v).proj .fst = _
+        rw [hs]
+        rfl
+      have hsnd : θ.at (.step v .snd) = .ren (.step w .snd) := by
+        change (θ.at v).proj .snd = _
+        rw [hs]
+        rfl
+      exact sig_pair
+        (Term.subst_eta_renAt θ hθ hc A (.step v .fst) (.step w .fst)
+          (Ctx.ref_fst_of hv) (Ctx.ref_fst_of hw) hfst)
+        (Term.subst_eta_renAt θ hθ hc B (.step v .snd) (.step w .snd)
+          (Ctx.ref_snd_of hv) (Ctx.ref_snd_of hw) hsnd)
+  | .VTypeBox A, v, w, hv, hw, hs => by
+      have hin : (θ.box).at v.inner = .ren w.inner := by
+        by_cases hk : ModalSys.keepOnly = true
+        · rw [VarSymb.inner_keepOnly hk, VarSymb.inner_keepOnly hk]
+          change ((θ.at v).keepE).proj .here = _
+          rw [hs]
+          rfl
+        · rw [VarSymb.inner_box (Bool.eq_false_iff.mpr hk)]
+          change (θ.at v).unbox = _
+          rw [hs]
+          rfl
+      exact sig_boxtm (Term.subst_eta_renAt θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) A
+        v.inner w.inner (Ctx.ref_inner hv) (Ctx.ref_inner hw) hin)
+  | .VTypeDia A, v, w, hv, hw, hs => by
+      have hwit : ι v = w := by
+        have h := hc v _ hv []
+        rw [hs] at h
+        exact h.symm
+      subst hwit
+      have hbody : (θ.dia v (ι v)).at (.step v .dia) = .ren (.step (ι v) .dia) := by
+        change (if v = v then (θ.at v).diaBody (ι v) else .hide) = _
+        rw [if_pos rfl, hs]
+        rfl
+      exact sig_diatm (hx := ⟨A, hw⟩) (hx' := ⟨A, hw⟩)
+        (Term.subst_eta_renAt (θ.dia v (ι v)) (Subst.ok_dia hθ ⟨A, hv⟩ (by rw [hs]; rfl))
+          (Subst.coh_dia hθ hc ⟨A, hv⟩) A (.step v .dia) (.step (ι v) .dia)
+          (Ctx.ref_diaIn_of hv) (Ctx.ref_diaIn_of hw) hbody)
+
+
 /-! ## Reading a pair content componentwise
 
 The hole term built from the **slot's own projection** — `η (slot.fst)` — reads a pair content down

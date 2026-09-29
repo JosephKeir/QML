@@ -379,6 +379,19 @@ abbrev WFF.hereAt {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true)
     WFF σ Γ d :=
   WFF.here hT (Term.eta x (.VTypeDia A) hx) t
 
+/-- ⭐`∃z:B. Here s z`: the possible object `s` has a content here, named by the bound variable.  The
+    subject is weakened past the slot, so that substituting the slot gives the atom back
+    (`WFF.instantiate_here_slot`) — which is how a witnessed theory turns this existential into a
+    `Here` atom at a declared root, and so into `Canon.RealDatum` (§10.13).
+
+    This is `Proof.here_name`'s conclusion.  Its content type is the subject's, so at `s = η x` it
+    names `x`'s own content, and at `s = diatm x bd` the content of that possible object — the form
+    the rule is stated at, being the one substitution preserves. -/
+abbrev WFF.hereEx {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {B : VarType}
+    {b : Ann (.VTypeDia B)} (s : Term σ Γ (.VTypeDia B) b) : WFF σ Γ 0 :=
+  .ex B (WFF.here hT (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root B) s)
+    (Term.eta (.root (.bnd 0)) B (Ctx.ref_insert_root Γ (.bnd 0) B)))
+
 /-! ## Weakening -/
 
 /-- Abstraction commutes with weakening. -/

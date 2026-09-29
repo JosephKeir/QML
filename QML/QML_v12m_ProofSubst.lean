@@ -345,6 +345,34 @@ theorem WFF.subst_instantiate {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Sub
       exact .refl _
 
 
+/-- ⭐Substituting **under a slot**, on a term weakened from below it, is the weakening of the
+    substituted term: on everything `Γ` declares — and `Γ` declares no slot — `Subst.under` is `θ`
+    weakened past the slot (`Subst.sim_of`), and weakening then commutes with substitution
+    (`Term.mono_subst`).  `Sigma`-valued, since substitution moves the annotation.  This is what an
+    existential whose body mentions a `Γ`-term needs, `Proof.here_name`'s being the one. -/
+theorem Term.subst_under_mono {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0) (hΔ : Δ.SlotsFrom 0)
+    (B : VarType) {T : VarType} {a : Ann T} (t : Term σ Γ T a) :
+    (⟨_, Term.subst (VarSymb.shiftSlot ι 0 0) (θ.under 0 0 B hΔ.root)
+        (Subst.ok_under hθ B hΔ.root) (Subst.coh_under hθ hc hΓ B hΔ.root)
+        (Term.mono (Ctx.le_insert hΓ.root B) t)⟩ :
+      Σ b, Term σ (Δ.insert (.bnd 0) B) T b) =
+      ⟨_, Term.mono (Ctx.le_insert hΔ.root B) (Term.subst ι θ hθ hc t)⟩ := by
+  have hsim : Subst.Sim Γ (θ.under 0 0 B hΔ.root) (θ.mono (Ctx.le_insert hΔ.root B)) := by
+    refine Subst.sim_of fun v U _ hv => ?_
+    have hne : v ≠ .root (.bnd 0) := fun hvr => by
+      rw [hvr, hΓ.root] at hv
+      cases hv
+    rw [show θ.under 0 0 B hΔ.root v = (θ v).mono (Ctx.le_insert hΔ.root B) from if_neg hne]
+    exact .refl _
+  rw [Term.subst_mono]
+  refine (Term.subst_congr (θ.under 0 0 B hΔ.root) (θ.mono (Ctx.le_insert hΔ.root B))
+    ((Subst.ok_under hθ B hΔ.root).restrict (Ctx.le_insert hΓ.root B))
+    (Subst.ok_mono hθ (Ctx.le_insert hΔ.root B))
+    ((Subst.coh_under hθ hc hΓ B hΔ.root).restrict (Ctx.le_insert hΓ.root B))
+    (Subst.coh_mono hc (Ctx.le_insert hΔ.root B)) hsim t).trans ?_
+  exact congrArg (Sigma.mk _) (Term.mono_subst (Ctx.le_insert hΔ.root B) θ hθ hc t).symm
+
 /-- ⭐The term counterpart of `WFF.subst_instantiate`, at **every** type: substituting after filling
     the slot with `t` is filling it with `t` substituted.  Annotations move under substitution, so
     at a compound value type the two sides agree as `Sigma`s; `Term.subst_single_tm` is the base
@@ -1093,6 +1121,24 @@ theorem WFF.hereRead_congr {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {A :
   cases h
   rfl
 
+/-- ⭐Substituting the naming existential: the subject travels and the slot stays.  Both halves are
+    known — the subject is weakened past the slot (`Term.subst_under_mono`), and the content is the
+    slot's η-expansion, whose entry under `Subst.under` is a renaming (`Term.subst_eta_renAt`).
+    This is what makes `Proof.here_name`'s conclusion survive substitution, and so why the rule is
+    stated at an arbitrary body (§10.11). -/
+theorem WFF.subst_hereEx {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
+    (hT : ModalSys.T = true) (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ)
+    (hΓ : Γ.SlotsFrom 0) (hΔ : Δ.SlotsFrom 0) {B : VarType} {b : Ann (.VTypeDia B)}
+    (s : Term σ Γ (.VTypeDia B) b) :
+    WFF.subst ι θ hθ hc hΓ hΔ (WFF.hereEx hT s) = WFF.hereEx hT (Term.subst ι θ hθ hc s) := by
+  refine congrArg (WFF.ex B) (WFF.here_congr hT (Term.subst_under_mono θ hθ hc hΓ hΔ B s) ?_)
+  exact Term.subst_eta_renAt (θ.under 0 0 B hΔ.root) (Subst.ok_under hθ B hΔ.root)
+    (Subst.coh_under hθ hc hΓ B hΔ.root) B (.root (.bnd 0)) (.root (.bnd 0))
+    (Ctx.ref_insert_root Γ (.bnd 0) B) (Ctx.ref_insert_root Δ (.bnd 0) B)
+    (by
+      have hslot : (θ.under 0 0 B hΔ.root) (.root (.bnd 0)) = .ren (.root (.bnd 0)) := if_pos rfl
+      exact hslot)
+
 /-- ⭐**Substitution in proofs**: a substitution from the context of a proof into a presented
     context sends the proof to a proof of the substituted sequent. -/
 def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} → {φ : WFF σ Γ 0} →
@@ -1312,10 +1358,21 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         (Proof.here_beta hT (ι x) hy (Term.subst ι θ hθ hc t)
           (Term.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) bd) _
           (Proof.subst ph θ hθ hc hΓ))
-  | _, _, _, @Proof.here_fun _ _ Γ _ hT A hA b s a t t' ph ph', Γ', _, ι, θ, hθ, hc, hΓ =>
-      Proof.conv (WFF.subst_eqRec θ hθ hc hΓ Ctx.NoSlots.slots A hA t t').symm
-        (Proof.here_fun hT hA (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
-          (Term.subst ι θ hθ hc t') (Proof.subst ph θ hθ hc hΓ) (Proof.subst ph' θ hθ hc hΓ))
+  | _, _, _, @Proof.here_name _ _ Γ _ _ hT x hx B β bd p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
+      have hy : ∃ X, Γ'.ref (ι x) = some (.VTypeDia X) :=
+        hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw
+      Proof.conv (WFF.subst_hereEx hT θ hθ hc hΓ hΓ' (Term.diatm x hx bd)).symm
+        (Proof.here_name hT (ι x) hy
+          (Term.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) bd)
+          (Proof.subst p θ hθ hc hΓ))
+  | _, _, _, @Proof.here_subst _ _ Γ _ _ hT A b s a a' t t' φ ph ph' pf, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      Proof.conv (WFF.subst_instantiate θ hθ hc hΓ hΓ' t' φ).symm
+        (Proof.here_subst hT (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
+          (Term.subst ι θ hθ hc t') _ (Proof.subst ph θ hθ hc hΓ) (Proof.subst ph' θ hθ hc hΓ)
+          (Proof.conv (WFF.subst_instantiate θ hθ hc hΓ hΓ' t φ) (Proof.subst pf θ hθ hc hΓ)))
 
 /-- ⭐**Weakening** along any inclusion of contexts, into a presented context. -/
 def Proof.mono {σ : Signature} {Γ Γ' : Ctx} [Γ'.Presented] {Δs : List (WFF σ Γ 0)}
@@ -1367,6 +1424,50 @@ def Proof.exists_eqRec_eta {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {Δ : List (
     Proof σ Γ Δ (.ex A (eqRec A (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root Γ (.bnd 0) A))
       (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root A) t))) :=
   Proof.ex_intro A t
+    (Proof.conv (WFF.instantiate_eqRec_slot hA t t).symm (Proof.eqRec_refl A t))
+
+/-- ⭐Filling the slot of `Proof.here_name`'s existential: the subject, weakened past the slot, comes
+    back unchanged, and the slot's η-expansion becomes the term.  So a witnessed theory containing
+    `WFF.hereEx hT s` contains the atom `Here s (η b₀)` at a declared root — which is what
+    `Canon.RealDatum` is made of (§10.13). -/
+theorem WFF.instantiate_here_slot {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true)
+    {B : VarType} {b : Ann (.VTypeDia B)} (s : Term σ Γ (.VTypeDia B) b) {β : Ann B}
+    (u : Term σ Γ B β) :
+    WFF.instantiate (d := 0) Ctx.NoSlots.slots u
+        (WFF.here hT (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root B) s)
+          (Term.eta (.root (.bnd 0)) B (Ctx.ref_insert_root Γ (.bnd 0) B))) =
+      WFF.here hT s u := by
+  rw [WFF.instantiate, WFF.substRoot]
+  refine WFF.here_congr hT ?_ ?_
+  · refine (congrArg (Sigma.mk _) (Term.subst_mono _ _ _ _ s)).trans ?_
+    refine ((Term.subst_ren (Ctx.Le.refl Γ) _ _ _ ?_ s).trans
+      (congrArg (Sigma.mk _) (Term.mono_refl _ s)))
+    intro v T hv
+    exact Subst.single_at_ne
+      (Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) hv)
+  · exact Term.subst_eta_tm _ _ _ B (.root (.bnd 0)) _ u (Subst.at_single_root _ _)
+
+/-! ## Functionality as an equation, where one is available -/
+
+/-- ⭐**Functionality**: a possible object has one realisation here.  No longer primitive — it is
+    `Proof.here_subst` at the hole formula `eqRec A (η slot) t`, whose `t`-instance is
+    reflexivity and
+    whose `t'`-instance is the equation, read back by `WFF.instantiate_eqRec_slot` and turned
+    round by
+    `Proof.eqRec_symm` (§10.11).
+
+    It stays `◇`-free, and that is not a restriction but the shape of the statement: `WFF.eqRec`
+    compares two terms at **one** annotation, which at a `◇`-free type is automatic
+    (`Ann.eq_of_diaFree`) and at a `◇`-typed one would mean one witness.  Where the annotations may
+    differ, functionality is `here_subst` itself. -/
+def Proof.here_fun {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)}
+    (hT : ModalSys.T = true) {A : VarType} (hA : A.diaFree = true) {b : Ann (.VTypeDia A)}
+    (s : Term σ Γ (.VTypeDia A) b) {a : Ann A} (t t' : Term σ Γ A a)
+    (p : Proof σ Γ Δ (WFF.here hT s t)) (p' : Proof σ Γ Δ (WFF.here hT s t')) :
+    Proof σ Γ Δ (eqRec A t t') := by
+  obtain rfl := Ann.eq_of_diaFree hA a (Ann.eta (.root (.bnd 0)) A)
+  refine Proof.eqRec_symm A (Proof.conv (WFF.instantiate_eqRec_slot hA t' t) ?_)
+  exact Proof.here_subst hT s t t' _ p p'
     (Proof.conv (WFF.instantiate_eqRec_slot hA t t).symm (Proof.eqRec_refl A t))
 
 
