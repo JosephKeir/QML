@@ -3316,3 +3316,51 @@ missing `instantiate`-at-a-`◇`-slot lemma, and the stage bookkeeping of `Inter
 Lean than expected" rather than "the design is wrong".  If one of them forces a change it would be
 local — most likely making `rden`'s `◇` clause take the contributing member as data rather than by
 choice, which would mean carrying the class as a structure instead of a relation.
+
+### 10.22 Step 3, continued: the missing lemma, the stage-free class, and no well-definedness lemma *(2026-10-01)*
+
+**Landed** (builds clean, no warnings):
+
+* ⭐`WFF.diaSlot ψ` and ⭐`WFF.instantiate_diaSlot` (`ProofSubst`) — the lemma §10.21 flagged as
+  missing.  Instantiating the slot of `◇_{bnd 0} (ψ read in the slot's view)` with `diatm y bd` gives
+  `◇_y (WFF.viewReadTm bd ψ)`.  Proof: `WFF.subst_dia` peels the `◇` node (its witness index reduces
+  because the slot is the numeral `bnd 0`), then one `WFF.subst_comp` against `single (bnd 0) (tm bd)`
+  with `WFF.subst_mono` on `viewReadTm`'s side; the `Subst.Sim` is `SubE.diaBody` at the slot and
+  `Subst.dia_eq_box_mono` + `Subst.single_at_ne` on the box part.  Axioms: `propext`, `Quot.sound`.
+* ⭐`Canon.Interch.dia_iff` — **interchangeable terms have the same `◇`-facts**, read at the test
+  formula `WFF.diaSlot ψ`.  This is the end-to-end check that the lemma does the job: it is exactly
+  the transfer the truth lemma's `dia` case needs at an arrow contributed by another class member.
+* ⭐`Canon.Interch.of_lift` — contravariance in the stage (`World.mem_lift` + `WFF.mono_instantiate`).
+* ⭐`Canon.DTerm` (a `◇`-term with its stage) and ⭐`DTerm.Rel` — **interchangeable at every stage
+  both reach**.  An equivalence (`trans` compares at a stage all three reach and descends by
+  `of_lift`); ⭐`rel_lift` — a term and its lift are one class; ⭐`rel_of_coname`.
+* `Canon.extentTm` **restated over `DTerm`**, members at any stage, with `extentTm_congr`,
+  ⭐`extentTm_lift` (the stage-invariance `rden_mono` needs), `extent_subset_extentTm`,
+  `extentTm_cases`.  §10.20's items 1 and 2 are done.
+
+**The design refinement: the content is chosen per class, so no well-definedness lemma is needed.**
+
+§10.21 expected `rden`'s new clause to need a lemma that any two members' bodies agree at a shared
+arrow.  Working it through, that lemma would *not* be provable: two co-named bodies over one witness
+`z` agree at every arrow of `z`'s extent semantically, but the slot formulas `Interch` quantifies over
+cannot say "at the same arrow" across two separately substituted formulas — that needs
+`□_z (b = b')`, i.e. functionality at a `◇`-typed content, which `here_subst` does not give.  So the
+design must not need it, and it doesn't:
+
+1. **Choose by class, not by term.**  The member whose body supplies the content at an arrow is
+   chosen as a function of the term's *class* and the arrow alone.  Related terms have equal classes,
+   so they get **literally the same** content function — equality of the two elements, which is all a
+   pair of `Here` atoms forces, is then automatic.
+2. **Prefer the pinned member.**  At a child of `z`, if `η z` is in the class, choose it.  The only
+   objects whose contents at proper children are *observed* are address objects (`rden (η y)`, via
+   `◇_y`/`□_y`), and for those this makes the content `y`'s own — which is what the theory's `◇_y`
+   facts are about.  A term's object is otherwise observed only at the self arrow (`Here`) or through
+   element equality, and (1) covers both.
+3. **The `dia` case uses the chosen member and `Interch.dia_iff`** — no agreement between members
+   needed: an arrow contributed by `diatm z b` satisfies the pushed formula iff the child's theory
+   contains `viewReadTm b ψ`, iff `◇_z (viewReadTm b ψ) ∈ T`, iff `◇_y χ ∈ T`.
+
+So the order of work is now: the class as a **set** (`cls s`, with `Rel → cls` equal) and the
+per-class selector with its spec; then the `rden` switch; then the congruence family, where
+`rden_mono`/`rden_congr` follow from `extentTm_lift` and class equality rather than from a
+well-definedness argument; then the truth lemma.

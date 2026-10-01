@@ -1447,6 +1447,107 @@ theorem WFF.instantiate_here_slot {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT :
       (Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) hv)
   · exact Term.subst_eta_tm _ _ _ B (.root (.bnd 0)) _ u (Subst.at_single_root _ _)
 
+/-! ## A hole formula read inside `◇` at the slot
+
+The test formula that turns interchangeability of two `◇`-terms into their `◇`-facts.  A `◇`-typed
+term occurs in a formula only inside a `Here` atom, but a `◇`-typed **slot** may also be a witness —
+and substituting a `◇`-term for a witness is `Subst.dia`/`SubE.diaBody`: the new witness is the
+term's, and the body takes the content address's place.  So instantiating the slot of
+`◇_{bnd 0} (ψ read in the slot's view)` with `diatm y bd` gives `◇_y (ψ read with bd in its hole)`,
+which is `WFF.viewReadTm`.  The term-level version of this computes by `rfl` (§10.14). -/
+
+/-- ⭐The hole formula `ψ` read inside `◇` **at the slot** `bnd 0`, the slot's content in its hole:
+    `WFF.viewRead` at the slot rather than at a free root.  Instantiating the slot with a `◇`-term
+    `diatm y bd` reads `ψ` inside `◇_y` with `bd` in its hole (`WFF.instantiate_diaSlot`), so an
+    interchangeability instance at this formula is a transfer of `◇`-facts between two names. -/
+def WFF.diaSlot {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A : VarType}
+    (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) : WFF σ (Γ.insert (.bnd 0) (.VTypeDia A)) 1 :=
+  WFF.dia (.root (.bnd 0)) ⟨A, Ctx.ref_insert_root Γ (.bnd 0) (.VTypeDia A)⟩
+    (WFF.renameRoot (.bnd 0) ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0))
+      ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root (.VTypeDia A)).boxIn.trans
+        (Ctx.le_boxIn_diaIn _ (.root (.bnd 0))))
+      (.step (.root (.bnd 0)) .dia)
+      (Ctx.ref_diaIn_of (Ctx.ref_insert_root Γ (.bnd 0) (.VTypeDia A)))
+      ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A)
+      (((Ctx.NoSlots.slots (Γ := Γ)).insert (.VTypeDia A)).diaIn (.root (.bnd 0))) ψ)
+
+/-- ⭐**Instantiating a `◇`-typed slot used as a witness**: filling the slot of `WFF.diaSlot ψ` with
+    the possible object `diatm y bd` gives `◇_y` of `ψ` read with `bd` in its hole.
+
+    The witness of the `◇` node is the instantiating term's (`WFF.subst_dia`, the index reducing
+    because the slot is the numeral `bnd 0`).  For the body, the slot's renaming to its own content
+    address and then the `◇_y` view of the instantiation compose — `WFF.subst_comp` — to the single
+    substitution of `bd` for the slot that `WFF.viewReadTm` is (`WFF.subst_mono` on that side).  The
+    one `Subst.Sim` obligation: at the slot both sides give `bd`, through `SubE.diaBody` on the
+    instantiating `diatm`; on the box part the instantiation is the identity, which
+    `Subst.dia_eq_box_mono` and `Subst.single_at_ne` show entry by entry. -/
+theorem WFF.instantiate_diaSlot {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A : VarType}
+    (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) {y : VarSymb}
+    (hy : ∃ X, Γ.ref y = some (.VTypeDia X)) {a : Ann A} (bd : Term σ (Γ.diaIn y) A a) :
+    WFF.instantiate Ctx.NoSlots.slots (Term.diatm y hy bd) (WFF.diaSlot ψ) =
+      WFF.dia y hy (WFF.viewReadTm bd ψ) := by
+  have hΓ : Γ.SlotsFrom 0 := Ctx.NoSlots.slots
+  have hr : Γ.RootFresh (.bnd 0) := hΓ.rootFresh le_rfl
+  have hrb : Γ.boxIn.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh le_rfl
+  have hslot : (Γ.insert (.bnd 0) (.VTypeDia A)).ref (.root (.bnd 0)) = some (.VTypeDia A) :=
+    Ctx.ref_insert_root Γ (.bnd 0) (.VTypeDia A)
+  have hθ := Subst.ok_single (σ := σ) (r := .bnd 0) (Ctx.Le.refl Γ)
+    (e := .tm (Term.diatm y hy bd)) (T := .VTypeDia A) rfl
+  have hc := Subst.coh_single (σ := σ) hr (Ctx.Le.refl Γ)
+    (e := .tm (Term.diatm y hy bd)) (T := .VTypeDia A) rfl
+  have hidx : Subst.singleIdx (σ := σ) (.bnd 0) (.tm (Term.diatm y hy bd)) (.root (.bnd 0)) = y :=
+    rfl
+  have hw : ((Subst.single (σ := σ) (.bnd 0) (.tm (Term.diatm y hy bd))).at
+      (.root (.bnd 0))).idxAlong [] = y := rfl
+  unfold WFF.instantiate WFF.substRoot WFF.diaSlot
+  refine (WFF.subst_dia _ hθ hc (hΓ.insert _) hΓ ⟨A, hslot⟩ y hidx hy
+    (Subst.ok_dia hθ ⟨A, hslot⟩ hw) (Subst.coh_dia hθ hc ⟨A, hslot⟩)
+    (hΓ.diaIn y) _).trans ?_
+  refine congrArg (WFF.dia y hy) ?_
+  -- the body: compose the slot's renaming with the `◇_y` view of the instantiation
+  have hθ₃ := Subst.ok_single (σ := σ) (r := .bnd 0) (Ctx.le_boxIn_diaIn Γ y)
+    (e := .tm bd) (T := A) rfl
+  have hc₃ := Subst.coh_single (σ := σ) hrb (Ctx.le_boxIn_diaIn Γ y) (e := .tm bd) (T := A) rfl
+  unfold WFF.renameRoot
+  refine (WFF.subst_comp _ _ _ _ _ _ _ hθ₃ hc₃ _ _ _ ?_ ψ).trans ?_
+  · refine Subst.sim_of fun v U hlp hv => ?_
+    rw [Subst.comp_apply]
+    by_cases hvr : v = .root (.bnd 0)
+    · subst hvr
+      rw [Subst.single_root, Subst.single_root, SubE.comp_ren,
+        Subst.at_nonproj _ (show (VarSymb.step (.root (.bnd 0)) .dia).lastProj = false from rfl)]
+      change SubE.Sim _ (.tm bd)
+        (if (VarSymb.root (.bnd 0)) = .root (.bnd 0) then
+          ((Subst.single (σ := σ) (.bnd 0) (.tm (Term.diatm y hy bd))).at
+            (.root (.bnd 0))).diaBody y
+        else .hide)
+      rw [if_pos rfl]
+      change SubE.Sim _ (.tm bd) (if h : y = y then .tm (Term.mono _ bd) else .hide)
+      rw [dif_pos rfl, Term.mono_refl]
+      exact .refl _
+    · have hv' : Γ.boxIn v = some U := by simpa [Ctx.insert, hvr] using hv
+      have hvr' : Γ.boxIn.ref v = some U := (Ctx.ref_nonproj Γ.boxIn hlp).trans hv'
+      rw [Subst.single_ne _ hvr, Subst.single_ne _ hvr, SubE.comp_ren,
+        Subst.dia_eq_box_mono _ _ y v U hvr', Subst.at_nonproj _ hlp]
+      match v, hv' with
+      | .step u .box, hv' =>
+          obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv'
+          change SubE.Sim _ (.ren (.step u .box))
+            ((((Subst.single (σ := σ) (.bnd 0) (.tm (Term.diatm y hy bd))).at u).unbox).mono _)
+          rw [Subst.single_at_ne (Ctx.ref_rt_ne hr hu)]
+          change SubE.Sim _ (.ren (.step u .box)) (.ren u.inner)
+          rw [VarSymb.inner_box hk]
+          exact .refl _
+      | .step u .keep, hv' =>
+          obtain ⟨_, hu, _⟩ := Ctx.boxIn_keep hv'
+          change SubE.Sim _ (.ren (.step u .keep))
+            ((((Subst.single (σ := σ) (.bnd 0) (.tm (Term.diatm y hy bd))).at u).keepE).mono _)
+          rw [Subst.single_at_ne (Ctx.ref_rt_ne hr hu)]
+          exact .refl _
+  · rw [WFF.viewReadTm, WFF.instantiate, WFF.substRoot,
+      WFF.subst_mono ((Ctx.le_boxIn_diaIn Γ y).insert (.bnd 0) A) _ _ _
+        ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A) _ _ ψ]
+
 /-! ## Functionality as an equation, where one is available -/
 
 /-- ⭐**Functionality**: a possible object has one realisation here.  No longer primitive — it is
