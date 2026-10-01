@@ -3364,3 +3364,344 @@ So the order of work is now: the class as a **set** (`cls s`, with `Rel → cls`
 per-class selector with its spec; then the `rden` switch; then the congruence family, where
 `rden_mono`/`rden_congr` follow from `extentTm_lift` and class equality rather than from a
 well-definedness argument; then the truth lemma.
+
+### 10.23 ⚠️`dia_beta` refutes the class-keyed extent; `Here` at `◇`-content must mean *indistinguishable* *(2026-10-01)*
+
+**The finding.**  `Model.dia_beta` (`InterpLemmas`) holds in every model:
+`posEval ⟦diatm x t⟧ = ⟨ext ⟦x⟧, w' ↦ ⟦t⟧_{x̌ ↦ cont_x w'}⟩` — the body never touches the extent.
+The canonical model must satisfy it (`interp_canon`), so **canonical extents are keyed to the
+witness**, and `extentTm` (§10.10, §10.19–10.22), which gives `diatm x t` the extent of its
+interchangeability class, is not a model.  §10.10 should have been checked against `dia_beta`.
+
+**Why witness-keyed extents bring back §10.9.**  Under the present clause `Here` is *equality of
+elements* (`Model.Realised`: `cont_p(id_w) = ⟦t⟧`).  So `Here(p, ⟨x;b⟩)` and `Here(p, ⟨z;c⟩)` give
+`⟦⟨x;b⟩⟧ = ⟦⟨z;c⟩⟧`, hence equal `posEval`, hence (by `dia_beta`) `ext(x) = ext(z)`.  Pinned co-naming
+is harmless (the witnesses' contents then agree, and `Interch.dia_iff` transfers facts), but
+non-pinned co-naming makes `x` and `z` co-extensive with contents linked only through `b`, `c`: a
+child built for `z` must still give `x` a content satisfying its `□_x`-facts, which that child's
+language (`diaIn z`) cannot name.  `Here`-as-equality at `◇`-content is a **join** of the two
+witnesses' possibilities — a joint possibility that did not come from pairing.
+
+**The decision (user, 2026-10-01): `Here` at `◇`-typed content makes objects *indistinguishable*,
+not identical.**  The syntax cannot identify possible objects over distinct witnesses, even when a
+model happens to make them extensionally equal — `eqRec` compares only terms of one annotation, i.e.
+over one witness (`WFF.lean`) — and the only thing it does with two names of one content is
+substitute one for the other (`here_subst`).  So `Here(p, t)` should read: `id_w ∈ ext p` and
+`cont_p(id_w) ≈ ⟦t⟧`, where `≈` is equality at `◇`-free types.  This is the semantic twin of
+`Canon.Interch`.
+
+**What `≈` should be.**
+
+* *A structural bisimulation* would have to match arrows of `x`'s extent with arrows of `z`'s whose
+  targets are equivalent — an isomorphism with *identical* targets is not enough, because canonically
+  `x`- and `z`-children are different worlds (different base languages).  That is a back-and-forth
+  over (world, object, environment), domains included: heavy.  It is at least *available*: canonical
+  extents are **all** depth-`+1` worlds with `DiaView x`/`BoxxContents x` (`Canon.extent`), not one
+  child per formula, so a `z`-child realising the full type of `b(x̌)` at an `x`-child as the type of
+  `c(ž)` exists by Lindenbaum on a set-valued `diaStart` (finite pieces from `Interch.dia_iff`, and
+  every formula of an `x`-child is `◇_x`-possible by `BoxxContents`).
+* *Model data, Henkin-style* (preferred): the model supplies `Ind` at `◇`-types, reflexive, with
+  the condition that `Ind`-related objects satisfy the same slot formulas.  `here_subst` is then
+  sound outright (reflexivity covers `T_dia`/`here_name`).  Canonically `Ind := DTerm.Rel`, and the
+  truth lemma's `here` case is two lines: `Here(p,s) ∈ T` and `Here(p,s₀) ∈ T` give `Rel s₀ s`
+  (`rel_of_coname`); conversely `Rel s₀ s` applied to the slot formula `Here(p, ·)` gives
+  `Here(p,s) ∈ T`.  The invariance condition is checked after the truth lemma, through it.  No
+  cross-witness children, no bisimulation.
+
+**⚠️The second obstacle: extensional `◇`-carriers.**  `Model.pos_inj` makes a possible object
+*determined* by its extent and content.  Two witnesses with empty extents then denote **the same
+object**, and no clause for `Here` — equality or `Ind` — can tell them apart:
+`□_x⊥ ∧ □_z⊥ ∧ Here(q, η x) → Here(q, η z)` is valid, and (as far as I can see) not derivable,
+since no rule produces a `Here` atom about `z` from these premises.  So the truth lemma fails for
+the consistent theory `{□_x⊥, □_z⊥, Here(q, η x), ¬Here(q, η z)}`.  This was already latent in the
+equality reading.  The principle above has to reach the carriers too:
+
+* **Frame-level possibilities.**  Give the frame a set `Poss w` of possibilities, each with an
+  extent, and make `Pos A w ≅ Σ π : Poss w, (ext π → Dom A)` — extensional *within* a possibility,
+  so `eqRec`/`pos_inj`-style arguments over one witness survive, while distinct possibilities with
+  equal extents stay distinct.  `dia_beta` becomes "the possibility of `⟦⟨x;t⟩⟧` is `x`'s";
+  canonically the possibility is the witness address and `Canon.extent` stays as it is.
+* **Residual vacuous case.**  Over *one* possibility with empty extent, `⟨x;b⟩` and `⟨x;b'⟩` with `b`,
+  `b'` over different inner witnesses still coincide (empty content functions), but `eqRec` cannot
+  compare them (two annotations).  Either carriers are intensional within a fibre too (then the
+  `pos_inj` uses in `SemLemmas`/`SemShift`/`SemSubst`/`SemCollapse`/`SemHere` — `interp_eta`,
+  `interp_mono`, the substitution lemmas — must come from strong-functor laws on `posMap`/
+  `posStrength` instead), or the logic gets the principle that makes the vacuous case derivable (a
+  heterogeneous `eqRec` that is `⊥` at mismatched inner witnesses, and `□_x(…)` over one outer
+  witness — sound under possibility carriers).  Undecided.
+
+**What survives.**  `instantiate_diaSlot`, `Interch` (`dia_iff`, `of_lift`), `DTerm.Rel` and
+`rel_of_coname` are exactly what the `Ind` reading needs canonically.  `extentTm` and its four
+lemmas are now dead and should be removed with the `rden` work; nothing uses them yet.
+
+**Next.**  Settle the carrier question (possibilities, and the vacuous case), then: `Model` gets
+`Ind` and possibilities; `Realised` uses `Ind` at `◇`-content; soundness of the `here_*` rules and
+the lemmas that used `pos_inj`; the B-track canonical model (`BCanonModel`) and the T-track one
+re-proved against the new `Model`; then the truth lemma's `here` case as above.
+
+### 10.24 Weakening `pos_inj` to "one possibility": the laws, the canonical model, and a missing rule *(2026-10-01)*
+
+**The proposal (user).**  Injectivity only where the witness is the same, with no witnesses in the
+semantics.  Read the witness off the object itself: its **underlying possibility** `posMap unit p :
+Pos 𝟙 w`.  Weakened `pos_inj`: `p ↦ (posMap unit p, posEval p)` is injective.  At `𝟙` this is
+vacuous, so pure possibilities have no identity criterion beyond themselves.  A finer variant uses
+the **skeleton** `posMap skel p : Pos (skel A) w` (`skel` keeps `◇`, `□`, `×`, sends `Var` to `𝟙`) —
+the semantic counterpart of an annotation, so identity is exactly what `eqRec` can compare.
+
+**Laws, from the use sites.**  Every `pos_inj` use (`interp_mono`, `interp_collapse`, `interp_shift`,
+`interp_subst`, `interp_eta`, `SemHere`, `sat_eqRec`) compares two `diatm` denotations whose witness
+objects are equal, or (`interp_subst`, `.tm` entry) a witness `⟦y⟧` with `⟦⟨y;d⟩⟧`.
+
+* *Possibility variant*: two laws suffice — `posMap unit (posMap f p) = posMap unit p` and
+  `posMap unit (posStrength n p) = posMap unit p`.  Then the possibility of `⟦⟨x;t⟩⟧` is that of
+  `⟦x⟧`, and the existing proofs go through with the extra conjunct.  Canonically trivial: a carrier
+  is ⟨possibility, content⟩ (possibility = the witness address, or an anonymous extent), `posMap`
+  and `posStrength` act on the content only, and fibrewise injectivity is `Sigma.ext`.
+* *Skeleton variant*: at skeleton types there is no injectivity at all, so e.g. `interp_eta` at
+  `◇◇𝟙` must be proven equationally — functor laws, "`posMap` depends only on the function", strength
+  naturality and unit.  Canonically the carriers must remember the content's annotation even when the
+  extent is empty (a tag), and the "depends only on the function" law is where that can fail.
+  Heavier, unchecked.
+
+**⚠️The check exposed a missing rule, independent of the variant.**  Any injectivity — even within one
+possibility — makes `Here(q, ⟨x;b⟩) ∧ □_x(b = b') → Here(q, ⟨x;b'⟩)` valid.  The rules do not derive
+it: a `Here` atom's content moves only by `here_subst`, which needs a second atom, and `eqRec` has
+`refl`/`symm`/`trans` but no Leibniz beyond base type (`eq_elim`); the Leibniz notes record that under
+T the general principle is not derived and "completeness gives it back" — now circular.  Canonically
+it is `Ind`'s reflexivity: the truth lemma needs *equal denotation ⇒ interchangeable*, and the only
+argument for that runs through the truth lemma at the same `Here` formula.
+
+The gap is not specific to `◇`-content.  `WFF.size` gives `here` at content `A` size
+`A.eqRecSize + 1`, i.e. the truth lemma was meant to decide `Here(s,t)` by recursing on
+`eqRec t₀ t` — which needs `eqRec t₀ t, Here s t₀ ⊢ Here s t`.  At `Var` that is `eq_elim`; at `□B`,
+products or `◇B` no derivation exists.
+
+**Two coherent ways out.**
+
+* **(A) A content-congruence rule** `here_eq`: `Here s t, eqRec t t' ⊢ Here s t'` at any content type.
+  It is Leibniz for `Here`'s content — the `here` component the T-Leibniz bookkeeping lacks (so it may
+  make Leibniz under T derivable; to check).  With it, fibrewise injectivity is sound and complete,
+  and the `here` case runs as the measure intends: `rden u = rden s₀ ⇒ eqRec ∈ T` (smaller) `⇒` the
+  atom transfers.  With the possibility variant, the vacuous case (one witness, empty extent, bodies
+  over different inner witnesses) is still identified and `eqRec` cannot compare it — that needs a
+  heterogeneous `eqRec` (`⊥` at mismatched inner witnesses, sound under fibrewise injectivity, and
+  `□_x⊥` proves it vacuously).  With the skeleton variant it is not identified and `eqRec` is enough.
+* **(B) Fully intensional carriers**: no injectivity, no new rule.  Canonical carriers carry their
+  `Rel`-class, so `Ind` is reflexive by construction and the `here` case is §10.23's two lines.  The
+  cost moves to soundness: every `pos_inj` use becomes an equational argument from strong-functor laws,
+  and "depends only on the function" cannot be stated extensionally (that reintroduces the
+  identification), so it must be a syntactic equational theory on `GFunc` that the canonical model
+  meets on classes.  `eqRec` at `◇` then means extensional equality, and Leibniz into `Here` contents
+  fails semantically — consistent with having no `here_eq`.
+
+### 10.25 Checking `here_eq` *(2026-10-01)*
+
+`here_eq : Here s t, eqRec t t' ⊢ Here s t'`, any content type.  The user's diagnosis of why it was
+missing: without `Here`, a possible object is used only inside a `◇` with its own witness, which is
+what lets equality recurse down to base type; `Here` relates a possible object directly to an object
+one level down, a cross-level relation of the kind K never has, so Leibniz in its K form cannot see
+it.  Strong T's rules mix the levels, and an equality rule for the mixing is the price.
+
+**Soundness.**  Immediate from the `⇒` half of `sat_eqRec` (`eqRec` true ⇒ equal denotations), since
+`Realised`/`Ind` then receives the same object.  At `◇` that half needs the weakened injectivity:
+same skeleton (resp. possibility) and same section.  For the skeleton variant this needs the lemma
+*same annotation ⇒ same skeleton of the denotation*, by induction on the term from `posMap`
+composition, strength naturality and "`posMap` respects pointwise-equal maps".
+
+**Closure under substitution.**  The `Proof.subst` case needs `WFF.subst_eqRec` at `◇` types; today it
+is `◇`-free only (`Subst.lean:654`).  The `◇` clause is `subst (□_x eqRec t s) = □_{ιx} (…)` with the
+body under `θ.dia x (ιx)` — the witness-index bookkeeping `WFF.subst_dia` already does (as in
+`instantiate_diaSlot`).  Work, not doubt.  (With a heterogeneous `eqRec` it can only be an
+implication, `subst (eqHet t t') ⊢ eqHet tθ t'θ`, because substitution can merge two witnesses and
+turn a `⊥` clause into a `□_z(…)`; that is the harmless direction.)
+
+**Leibniz under T becomes derivable, as far as checked.**  The new case is a `Here` atom with the
+equated term inside it.
+* In the content: `here_eq` plus term congruence.
+* In the subject (`Here(⟨x;b₁⟩,u)`, `□_x(b₁ = b₂)` ⊢ `Here(⟨x;b₂⟩,u)`): derived.  `here_beta` turns
+  the atom into realisedness of `x`; `here_name` + `ex_elim` names `x`'s content `c`; `here_beta` gives
+  `Here(⟨x;b_i⟩, b_i[c])`; `here_elim` at the pinned subject turns `□_x(b₁ = b₂)` into
+  `eqRec b₁[c] b₂[c]`; `here_eq` gives `Here(⟨x;b₂⟩, b₁[c])`; `here_subst` against
+  `Here(⟨x;b₁⟩, u)` moves the content to `u`.
+* Still to look at: the necessary-entry `here` component the `LeibnizSpine` note mentions.
+
+**The canonical `here` case**, as the size measure intends.  Canonical `Ind(o,o')` := `o = o'`, or
+`o = rden u`, `o' = rden u'` with `Rel u u'`.  `Here(p,s) ∈ T` ⇒ `Rel s₀ s` (`rel_of_coname`) ⇒ `Ind`.
+Conversely, `rden u = rden s₀` ⇒ `eqRec s₀ u ∈ T` (truth lemma at `eqRec`, size `A.eqRecSize` <
+`A.eqRecSize + 1`) ⇒ `Here(p,u)` by `here_eq`; then `Rel u u'` at `Here(p,·)` gives `Here(p,u')`, and
+`rden u' = rden s` gives `Here(p,s)` by `here_eq` again.  This needs *equal denotation ⇒ same
+annotation* canonically — true by construction with skeleton tags.  With bare possibilities it holds
+because distinct view addresses are distinct possibilities at every proper child, and a realised
+witness always has proper children (`exists_dia` builds one for `◇_x ⊤`); the empty extent is the
+vacuous case, where `□_x⊥` proves the heterogeneous equation.
+
+**Costs found, common to both variants.**
+1. `Ind`'s invariance is a model condition over *all* environments, so the canonical model must
+   verify it beyond `canonEnv`.  Canonical domains are definable (`toDom … Definable`), so the route
+   is: every definable environment is `substEnv θ canonEnv` for a term substitution `θ`, then
+   `sat_subst` + truth lemma + `Rel`.  That lemma is new.
+2. `subst_eqRec` at `◇` (above).
+
+**Specific to the skeleton variant.**  At skeleton types there is no injectivity, so `interp_eta` and
+the substitution lemmas need "`posMap` respects pointwise-equal maps" (or a syntactic equational
+theory on `GFunc` plus `compile` lemmas).  Canonically carriers carry an annotation tag even on an
+empty extent, and the law asks that two maps agreeing on every *definable* object transport tags
+alike.  An empty-extent tag is seen by no evaluation, so this needs an argument, e.g. that tag
+transport is label-parametric and every tag shape is realised.  **This is the open risk.**  The
+possibility variant has no such law (two preservation laws only), at the price of the heterogeneous
+`eqRec`.
+
+**Decision (user, 2026-10-01): no heterogeneous `eqRec`; the skeleton variant.**  Comparing two
+possible objects over different witnesses means comparing bodies that live in different contexts
+(`diaIn y`, `diaIn y'`), and without a map between the contexts that comparison is *ill-defined*,
+not false.  So the syntax has equality only within one annotation, which is `eqRec` as it stands.
+The semantics must match: identity only within one skeleton, the semantic counterpart of an
+annotation.  The possibility variant is out, because it identifies empty-extent objects across
+inner annotations, which only `eqHet` could express.  Plan: weakened `pos_inj` over the skeleton,
+`here_eq` with plain `eqRec`, `Ind` for `Here` at `◇`-content.  Next: settle the skeleton variant's
+open risk (canonical tag transport against the pointwise law).
+
+### 10.26 The skeleton variant's risk, checked: the extensional law fails, the equational one costs the interp layer *(2026-10-01)*
+
+**Canonical carriers.**  A canonical possible object becomes `⟨x, α, c⟩`: witness address `x`, the
+body's annotation `α` (labels are addresses of the view `diaIn x`), and the contents
+`c : extent w x → RDom`.  The canonical operations act on tags by structural recursion on `GFunc`:
+`posMap f ⟨x,α,c⟩ = ⟨x, f_*α, eval f ∘ c⟩`.  Here `f_*` relabels: identity for `fst`/`snd`/`pair`/
+`diaMap`, `.var` for `func`, the T-collapse (`u.box ↦ u.here`) for `extract`, the 4-shift for `dup`.
+`posStrength` pairs in the necessary argument's tag.  Under T that tag is recoverable from the value
+at the reflexive successor, because the collapse is injective on box-view addresses, so `nec_inj` can
+stay.  Skeleton-injectivity holds canonically: `skel_*` keeps every `◇` label, so it is injective on
+tags, and the skeleton carries `x`.
+
+**The extensional law ("`posMap f = posMap g` when `f`, `g` agree pointwise") cannot be established.**
+When `x`'s extent is nonempty, `α` is literally the tag of `c v` at each child (`DiaView` makes the
+child's base the view, address for address), so pointwise agreement there forces `f_*α = g_*α`.  When
+the extent is empty, `α` is seen by no evaluation anywhere: its labels (`x.dia…`) are declared at no
+world.  Pointwise agreement then says nothing about it.  Closing the gap would need a realisability
+argument — tag transport is label-parametric, and every tag *shape* is realised with distinct labels
+by some definable object somewhere — which depends on which witnesses each system's languages
+supply.  Not robust; I would not build on it.
+
+**The equational law works canonically, by inspection.**  State it as: `posMap` respects a syntactic
+equational theory `E` on `GFunc` — category laws, product β/η, terminal η, functoriality of
+`boxMap`/`diaMap`, strength naturality and unit, naturality of `extract`/`dup`.  Each equation
+transports tags alike by inspection, and `eval` respects `E` by induction on depth.
+
+**But soundness then pays.**  At skeleton types there is no injectivity, so every `diatm` case of the
+interp layer needs an *equation*, not an evaluation:
+* the skeleton of `⟦t⟧` is determined by `t`'s annotation — `skel ⟦t⟧ = ⟦annTerm (ann t)⟧`, where
+  `annTerm` is the canonical skeleton-typed term with that annotation;
+* `interp_mono`/`collapse`/`shift`/`subst`/`eta` restricted to skeleton-typed terms, proven as
+  "`compile` commutes with the operation, modulo `E`" plus strength associativity/naturality for
+  bundle alignment.
+
+The skeleton fragment has no function symbols, base variables or `Here`, but it has pairs, `boxtm`,
+`diatm` and variables, so this is most of the `compile` layer redone equationally.  True beyond
+reasonable doubt; large.
+
+**An idea considered and set aside: intension as content off the extent.**  Give a possible object
+contents at *every* accessible arrow, with the extent marking where it really is, and keep full
+`pos_inj` on these total sections.  Then nothing is forced across witnesses or inner annotations — the
+off-extent "junk" can always differ — and no new laws are needed.  But `eqRec` at `◇` (`□_x`, on the
+extent only) stops being identity, so `here_eq` fails at `◇`-content.  And the canonical junk at an
+arrow outside `x`'s extent must be a *definable* object of a world whose language has no `x.dia`,
+which reintroduces tags in a worse place.
+
+### 10.27 ⭐The alternative: the skeleton as data, not as a possible object *(2026-10-02)*
+
+**Why §10.26 needed equations.**  There the skeleton of `p` was `posMap skel p`, itself an element of an
+intensional carrier `Pos (skel A) w`.  Comparing two skeletons was therefore comparing possible objects
+with no injectivity to fall back on, and the only remaining tool was a `GFunc` equational theory.
+
+**The alternative: make the skeleton plain data — a *semantic annotation*.**  Under T the model also
+supplies:
+
+* a set `Root w` of root possibilities, and `base : Pos A w → Root w`;
+* `shape : Pos A w → SemAnn A w`.  This is a tree over `A`'s `◇` positions, like `Ann A`, whose labels
+  are **semantic sources**: either *(root, path)* — the possibility at that path inside a root's
+  content — or the possibility-part of a necessary object (`necMap (diaMap unit ∘ proj) n`, a
+  `Nec (◇𝟙)`-object, compared by `nec_inj`).
+
+The laws are **equalities of data**: `base (posMap f p) = base p`, `base (posStrength n p) = base p`,
+`shape (posMap f p) = f_* (shape p)`, and `shape (posStrength n p) = (leaves of n, shape p)`.  Here
+`f_*` is the fixed label-tree transport defined by recursion on `GFunc` — the same one the canonical
+tags use.  Weakened injectivity: `p ↦ (base p, shape p, posEval p)` is injective.
+
+This is the user's "map into `PosSec` via the witness" made precise.  `posEval` factors through what
+the witness *determines semantically* — its root and the sources at each `◇` position — with no
+variables in the semantics.
+
+**Soundness without an equational layer.**  One lemma by induction on terms:
+`shape ⟦t⟧_env = ⟦ann t⟧_env`, where each annotation label `r.steps` is interpreted through `env`.
+Labels through a `◇`-root are looked up in `shape (env r)`; labels through a `□`-root become the
+possibility-part of `env r`.  Then each `diatm` case of the interp layer gets its shape equality from
+the **annotation identities the syntax already has** (`Term.mono` keeps the annotation; `subst`,
+`collapse` and `shift` have annotation functions in their types).  Leaves are compared by existing
+extensionality: `nec_inj`, and possibility equality (= base equality, by injectivity at `𝟙`).  In
+`interp_subst` a `□`-label `u.box` with `u ↦ boxtm ⟨v.box; d⟩` becomes `v.box`.  The two leaves are
+the possibility-parts of `⟦boxtm ⟨v.box;d⟩⟧` and of `env v`, equal at every successor because
+`posMap` preserves the base.  This is why leaves are possibilities, not possible objects.
+
+**Canonical.**  `Root w` = witness addresses, `base ⟨x,α,c⟩ = x`, and `shape` = the tag `α` with labels
+interpreted.  The laws hold by construction, since canonical `posMap` transports tags by the same
+`f_*`.  Injectivity: `(x, π)` labels determine `x.dia.π`, and a `□`-label's possibility-part
+determines `u` because there is always a successor (T gives the reflexive one), where distinct `u`
+give distinct addresses.
+
+**Gating.**  Shapes and the weakened injectivity are needed only where `Here` exists, i.e. under T.
+Without T the model keeps full `pos_inj`.  The B track (weak B without T) is untouched.
+
+**Risks to check before building.**  (1) Labels under 4 (`keep`/`dup` steps): `f_*` for `dup` and the
+interpretation of keep-labels must agree with `VarSymb.inner`/`keepOnly`.  (2) `SemAnn` is a
+dependent tree over the type, with leaves at different "levels" (paths through boxes).  Defining it so
+that `Ann`-level operations map over cleanly needs care, but it is data design, not proof risk.
+(3) The interp layer's `diatm` cases must thread the shape equality alongside the section equality;
+that adds a conjunct, not a new argument.
+
+### 10.28 Risk 1 checked: 4 (`keep`/`dup`) fits, and the leaves take their final form *(2026-10-02)*
+
+**Two structural facts from the syntax do most of the work.**
+
+1. *Collapse and shift only ever rewrite a label's context prefix.*  A label of a `◇`-node at nesting
+   depth `j` inside a term is an address of a view `j` levels in.  So it is a context address
+   followed by a suffix with exactly `j` level steps.  `Ann.collapse k`/`Ann.shift k` act at `k + j`
+   (`Ann.collapse`'s `.dia`/`.box` clauses), i.e. on the level step with `k + j` level steps after it,
+   which lies in the prefix.  The suffix is never touched.
+2. *Every object has one address per flag combination.*  Under T+4 views show only `u.keep`
+   (`keepOnly`), so `u.box` and `u.keep.here` never both occur.  Without T there is no `here`, and
+   without 4 no `keep`.  So labels need no quotienting.
+
+**Interpreting a label.**  Evaluate the context prefix through the environment (the existing
+`Env.ref`/`CollapseAgree`/`ShiftAgree` machinery), giving a world-`w` object `o`, then follow the
+suffix structurally.  This yields **two kinds of leaf**, as one inductive family over worlds:
+
+```
+Leaf w ::= root (r : Root w) (p : List Step)        -- a root possibility, and a syntactic path in its content
+         | fam  (f : (s : Acc w) → Leaf s.1)         -- one leaf per arrow out of w
+```
+
+* A suffix step `dia` on a possible object `o`: look up `shape o` along the rest of the path.  Inside a
+  possible object's content the leaf stays *syntactic*: `root (base …, path)`.  This is what survives
+  an empty extent.
+* A suffix step `box` on a necessary object `n`: `fam (s ↦ leaf of necEval n s along the rest)`, over
+  *all* arrows out of `w`.  Under T the reflexive arrow keeps it informative.
+* `keep`: `fam` of the kept object, i.e. by `necDup_eval` the family reindexed by composite arrows.
+  `here`: evaluate at the reflexive arrow (`necExtract_eval`).
+
+**Transport `f_*` for the `T`/`4` maps mirrors `Ann.idxAt`.**  For `dup`: `root` leaves get their path
+shifted (`VarSymb.shift`, inserting `keep`), `fam` leaves are reindexed by `trans`.  For `extract`:
+`root` paths are collapsed (`VarSymb.collapse`: `box ↦ here`, `keep` disappears), `fam` leaves are
+evaluated at `refl`.  These are exactly `Ann.idxAt`'s `here`/`keep` clauses, which already describe
+how an address's witness is found through a necessary object.  The semantic and syntactic sides
+agree by the existing laws: `necDup_eval`, `necExtract_eval`, and for "a kept object read where it
+was kept is the object" the frame's T+4 unit law for `trans` with `refl`.
+
+**What is checked by this, and what remains.**
+* `interp_collapse`/`interp_shift`, shape part: immediate by fact 1.  The prefix values agree by the
+  existing agreement lemmas; the suffixes are identical.
+* The `diatm` case of the shape lemma needs "`compile` of an address transports shapes the way
+  `Ann.idxAt` looks them up".  It is a lemma per address form (projections, `here`, `keep`), with the
+  same case split the syntax already does in `SubE.proj_here_eq`/`ref_here_of`.  Work, not risk.
+* Canonical injectivity: `root` leaves carry the witness address; `fam` leaves at the reflexive arrow
+  carry `u.here`'s address, so distinct `u` give distinct leaves.  Holds under T, which is where shapes
+  are required.
