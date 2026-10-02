@@ -173,10 +173,11 @@ variable (M) in
     satisfaction, which is defined from the model.  A model proper satisfies it (docs §10.33).
 
     Stated, as `here_subst` is, for a formula with one slot over a context of a proof: one without
-    slots, finite (`Ctx.Fin`, which every presented context is) and without projections declared.
-    Finiteness is what lets the canonical model name an environment at one stage (§10.38). -/
+    slots, tame (`Ctx.Tame`: finite, one view depth per address — every presented context is) and
+    without projections declared.  That is what lets the canonical model name an environment at
+    one stage, coherently (§10.38, §10.40). -/
 def IndInvariant : Prop :=
-  ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Fin → Γ.NoProjLast → ∀ {w : M.frame.W} (env : M.Env Γ w)
+  ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLast → ∀ {w : M.frame.W} (env : M.Env Γ w)
     {A : VarType} (φ : WFF σ (Γ.insert (.bnd 0) A) 1) (o o' : M.frame.Dom A w),
     M.Ind o o' → (M.sat (env.extend (.bnd 0) o) φ ↔ M.sat (env.extend (.bnd 0) o') φ)
 
@@ -192,7 +193,7 @@ theorem indInvariant_of_eq
 section
 
 variable (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W} (env : M.Env Γ w)
-  (hnp : Γ.NoProjLast) (hfin : Γ.Fin) {x : VarSymb} {X : VarType}
+  (hnp : Γ.NoProjLast) (hfin : Γ.Tame) {x : VarSymb} {X : VarType}
 
 omit [Γ.NoSlots] in
 /-- ⭐The pinned form says that the identity arrow lies in the address's extent, and that the

@@ -167,8 +167,8 @@ theorem completenessB_rename (hB : ModalSys.B = true) {Γ : Ctx} [Γ.Presented] 
     (hν' : ∀ r R, ctxOf l (.root (.free r)) = some R → Γ (.root (.free (ν' r))) = some R)
     (hinv : ∀ r R, Γ (.root (.free r)) = some R → ν' (ν r) = r)
     {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0}
-    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env Γ w), Γ.NoProjLast →
-      (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
+    (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
+      Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ := by
   set tr : WFF σ Γ 0 → WFF σ (ctxOf l) 0 :=
     WFF.subst (renIdx ν) (renS σ (ctxOf l) ν) (ok_renS hΓ hν) (coh_renS hΓ hν)
@@ -178,11 +178,12 @@ theorem completenessB_rename (hB : ModalSys.B = true) {Γ : Ctx} [Γ.Presented] 
       (coh_renS (rootOnly_ctxOf l) hν') Ctx.NoSlots.slots Ctx.NoSlots.slots with htr'
   have hcancel : ∀ ψ : WFF σ Γ 0, tr' (tr ψ) = ψ := fun ψ =>
     subst_renS_renS hΓ (rootOnly_ctxOf l) hν hν' hinv ψ
-  have hvalid : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env (ctxOf l) w),
-      (ctxOf l).NoProjLast → (∀ χ ∈ Δ.map tr, M.sat env χ) → M.sat env (tr φ) := by
-    intro M w env _ hΔ
+  have hvalid : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
+      (env : M.Env (ctxOf l) w), (ctxOf l).NoProjLast → (∀ χ ∈ Δ.map tr, M.sat env χ) →
+        M.sat env (tr φ) := by
+    intro M hM w env _ hΔ
     rw [htr, Model.sat_subst _ _ _ _ _ (Ctx.Presented.noProjLast Γ)]
-    refine hval M _ (Ctx.Presented.noProjLast Γ) fun ψ hψ => ?_
+    refine hval M hM _ (Ctx.Presented.noProjLast Γ) fun ψ hψ => ?_
     have hs := hΔ (tr ψ) (List.mem_map_of_mem hψ)
     rwa [htr, Model.sat_subst _ _ _ _ _ (Ctx.Presented.noProjLast Γ)] at hs
   obtain ⟨p⟩ := completenessB hB hvalid
@@ -303,7 +304,8 @@ theorem ofDecls_invOf : ∀ (ds : List (ℕ × VarType)), (ds.map Prod.fst).Nodu
 theorem completenessB_ofDecls (hB : ModalSys.B = true) {ds : List (ℕ × VarType)}
     (hnd : (ds.map Prod.fst).Nodup) {Δ : List (WFF σ (Ctx.ofDecls ds) 0)}
     {φ : WFF σ (Ctx.ofDecls ds) 0}
-    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env (Ctx.ofDecls ds) w),
+    (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
+      (env : M.Env (Ctx.ofDecls ds) w),
       (Ctx.ofDecls ds).NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ :=
   letI := Ctx.presentedOfDecls ds hnd
@@ -320,7 +322,8 @@ abbrev Γ₀ : Ctx := Ctx.ofDecls [(7, VarType.Var), (3, VarType.VTypeOne)]
 /-- ⭐Completeness in it, names and all: the renaming onto the world language `[Var, 𝟙]` is read
     off the declarations, and distinctness is a decision. -/
 theorem completeness_Γ₀ (hB : ModalSys.B = true) {Δ : List (WFF σ Γ₀ 0)} {φ : WFF σ Γ₀ 0}
-    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env Γ₀ w), Γ₀.NoProjLast →
+    (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ₀ w),
+      Γ₀.NoProjLast →
       (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ :=
   completenessB_ofDecls hB (by decide) hval

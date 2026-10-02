@@ -1,5 +1,6 @@
 import QML.QML_v12m_CanonFunc
 import QML.QML_v12m_CanonExist
+import QML.QML_v12m_CanonInterch
 
 /-!
 # QML v12m — the canonical model
@@ -230,6 +231,18 @@ theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T =
   exact (rden_eta_le (w.L.ctx_le hile) (Ctx.Le.refl _) (Ctx.Le.refl _)
     (.root (.free c')) d.A hc' ((w.L.ctx_le hile).ref hc')).symm
 
+/-- ⭐**Canonical indistinguishability** (docs §10.33): two objects with representatives the theory
+    cannot tell apart (`DTerm.Rel`) — co-named possible objects over different witnesses are
+    related without being equal. -/
+def Ind {A : VarType} {w : World σ N₀} (o o' : (frame w₀).Dom A w) : Prop :=
+  ∃ s s' : DTerm w A, rden w s.i (Ctx.Le.refl _) s.t = fromDom w₀ A w o ∧
+    rden w s'.i (Ctx.Le.refl _) s'.t = fromDom w₀ A w o' ∧ s.Rel s'
+
+/-- Every object is definable, so it is related to itself. -/
+theorem Ind_refl {A : VarType} {w : World σ N₀} (o : (frame w₀).Dom A w) : Ind w₀ o o := by
+  obtain ⟨i, a, t, ht⟩ := definable_fromDom w₀ A w o
+  exact ⟨⟨i, a, t⟩, ⟨i, a, t⟩, ht, ht, DTerm.Rel.refl _⟩
+
 /-- ⭐The canonical model. -/
 noncomputable def model : Model.{0, 0} σ where
   frame := frame w₀
@@ -250,8 +263,8 @@ noncomputable def model : Model.{0, 0} σ where
   necDup_eval _ _ _ _ := rfl
   posRet_exists hT hS hA a := posRet_exists_canon w₀ hT hS hA a
   posSerial hDS w := posSerial_canon w₀ hDS w
-  Ind o o' := o = o'
-  Ind_refl _ := rfl
+  Ind o o' := Ind w₀ o o'
+  Ind_refl o := Ind_refl w₀ o
 
 end Canon
 

@@ -164,7 +164,7 @@ theorem model_existence {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)}
     exact WFF.mono_refl _ _
   let w₀ : Canon.World σ (Ctx.Presented.bound Γ) :=
     Canon.World.ofHenkin 0 L₀ (fun _ => rfl) (fun _ d n _ => hfresh d n) S₀ hS₀
-  exact ⟨Canon.model w₀, Model.indInvariant_of_eq fun _ _ h => h, w₀,
+  exact ⟨Canon.model w₀, Canon.indInvariant w₀, w₀,
     Canon.canonEnv w₀ w₀ (0, 0), fun ψ hψ =>
     (Canon.truth w₀ w₀ (0, 0) ψ).mpr (WorldLang.subset_finalT S₀ ⟨ψ, hψ, rfl⟩)⟩
 
@@ -200,6 +200,6 @@ theorem compactness {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)}
     WFF.SetSatisfiable S := by
   refine model_existence fun Δ hΔ ⟨p⟩ => ?_
   obtain ⟨M, hM, w, env, hsat⟩ := hfin Δ hΔ
-  exact Model.soundness p M hM env (Ctx.Presented.fin Γ) (Ctx.Presented.noProjLast Γ) hsat
+  exact Model.soundness p M hM env (Ctx.Presented.tame Γ) (Ctx.Presented.noProjLast Γ) hsat
 
 end V12M

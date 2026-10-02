@@ -1,4 +1,4 @@
-import QML.QML_v12m_Presented
+import QML.QML_v12m_ViewFresh
 import Mathlib.Data.Set.Finite.List
 
 /-!
@@ -162,5 +162,35 @@ theorem CtxExpr.fin : ∀ e : CtxExpr, e.denote.Fin
 /-- ⭐Every presented context is finite. -/
 theorem Ctx.Presented.fin (Γ : Ctx) [h : Γ.Presented] : Γ.Fin :=
   h.denote_eq ▸ CtxExpr.fin h.expr
+
+/-! ## Tame contexts -/
+
+namespace Ctx
+
+/-- ⭐A context a proof can live in, as models proper see it: finitely many declared addresses, and
+    every address at one view depth (`Ctx.LevelDepth`).  Every presented context is tame
+    (`Ctx.Presented.tame`), and tameness passes to weakenings, fresh insertions and both views.
+    Finiteness lets the canonical model name an environment at one stage; one view depth makes the
+    naming coherent (no declared address extends another). -/
+def Tame (Γ : Ctx) : Prop := Γ.Fin ∧ ∃ d, Γ.LevelDepth d
+
+theorem Tame.mono {Γ Γ' : Ctx} (h : Γ.Le Γ') (h' : Γ'.Tame) : Γ.Tame :=
+  ⟨h'.1.mono h, h'.2.imp fun _ hd v T hv => hd v T (h.ref hv)⟩
+
+theorem Tame.insert {Γ : Ctx} (h : Γ.Tame) {r : Root} (hr : Γ.RootFresh r) (T : VarType) :
+    (Γ.insert r T).Tame :=
+  ⟨h.1.insert r T, h.2.elim fun _ hd => ⟨_, Ctx.levelDepth_insert hd hr T⟩⟩
+
+theorem Tame.boxIn {Γ : Ctx} (h : Γ.Tame) : Γ.boxIn.Tame :=
+  ⟨h.1.boxIn, h.2.elim fun _ hd => ⟨_, Ctx.levelDepth_boxIn hd⟩⟩
+
+theorem Tame.diaIn {Γ : Ctx} (h : Γ.Tame) (x : VarSymb) : (Γ.diaIn x).Tame :=
+  ⟨h.1.diaIn x, h.2.elim fun _ hd => ⟨_, Ctx.levelDepth_diaIn hd x⟩⟩
+
+end Ctx
+
+/-- ⭐Every presented context is tame. -/
+theorem Ctx.Presented.tame (Γ : Ctx) [h : Γ.Presented] : Γ.Tame :=
+  ⟨Ctx.Presented.fin Γ, h.denote_eq ▸ h.expr.levelDepth h.fresh⟩
 
 end V12M

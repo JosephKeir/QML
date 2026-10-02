@@ -1,4 +1,4 @@
-import QML.QML_v12m_CanonTerm
+import QML.QML_v12m_CanonInd
 
 /-!
 # QML v12m — the truth lemma and completeness
@@ -498,11 +498,69 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
             obtain ⟨X, h⟩ : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X) := hx
             obtain ⟨w', hw', hd, hmem'⟩ := exists_dia w x ⟨X, h⟩ χ hmem
             exact ⟨X, h, ⟨w', (canonEnv_extent w₀ w i h).symm ▸ hw'⟩, (key h _ hd).mpr hmem'⟩
+      | here hT s t =>
+          cases s with
+          | diatm x hx bd =>
+              exact here_truth w₀ hT hx bd t (fun K _ u u' => truth_lt n w K _ (by
+                rw [WFF.size_eqRec]; simp only [WFF.size] at hφ; omega))
 
 /-- ⭐**The truth lemma.** -/
 theorem truth (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF σ (w.L.ctx i) 0) :
     (model w₀).sat (canonEnv w₀ w i) φ ↔ (⟨i, φ⟩ : w.L.sys.Sentence σ) ∈ w.T :=
   truth_lt w₀ (φ.size + 1) w i φ (Nat.lt_succ_self _)
+
+/-- ⭐⭐**The canonical model is a model proper** (docs §10.33, item 7 of §10.34).  Over a tame
+    context an environment is the canonical one at a stage, read through a substitution
+    (`substEnv_repSubst`); so a slot formula with an object in its slot is true exactly when the
+    substituted slot formula, instantiated at a representative of the object, is in the theory
+    (`sat_subst`, `sat_instantiate`, the truth lemma).  Related objects have representatives
+    interchangeable in every slot formula (`DTerm.Rel`), so the two memberships agree. -/
+theorem indInvariant : (model w₀).IndInvariant := by
+  intro Γ _ htame hnp w env A φ o o' hInd
+  obtain ⟨hfin, d, hd⟩ := htame
+  have hθ := repSubst_ok w₀ env hfin
+  have hc := repSubst_coh w₀ env hfin hd
+  have h0 : (w.L.ctx (repSup w₀ env hfin)) (.root (.bnd 0)) = none :=
+    (Ctx.NoSlots.slots (Γ := w.L.ctx (repSup w₀ env hfin))).root
+  let φ' : WFF σ ((w.L.ctx (repSup w₀ env hfin)).insert (.bnd 0) A) 1 :=
+    WFF.subst (VarSymb.shiftSlot (repIdx w₀ env hfin) 0 0)
+      ((repSubst w₀ env hfin).under 0 0 A h0) (Subst.ok_under hθ A h0)
+      (Subst.coh_under hθ hc Ctx.NoSlots.slots A h0)
+      (Ctx.NoSlots.slots.insert A) ((Ctx.NoSlots.slots).insert A) φ
+  have key : ∀ (o₁ : (model w₀).frame.Dom A w) (s : DTerm w A),
+      rden w s.i (Ctx.Le.refl _) s.t = fromDom w₀ A w o₁ →
+      ∀ (K' : ℕ × ℕ) (hK : repSup w₀ env hfin ≤ K') (hs : s.i ≤ K'),
+        ((model w₀).sat (env.extend (.bnd 0) o₁) φ ↔
+          (⟨K', WFF.instantiate Ctx.NoSlots.slots (s.lift K' hs)
+            (WFF.mono ((w.L.ctx_le hK).insert (.bnd 0) A) φ')⟩ : w.L.sys.Sentence σ) ∈ w.T) := by
+    intro o₁ s hs₁ K' hK hs
+    have hval : Model.interp (canonEnv w₀ w K') (s.lift K' hs) = o₁ := by
+      rw [interp_canon w₀ _ (fun _ _ _ => rfl)]
+      refine Eq.trans ?_ (toDom_fromDom w₀ A w o₁)
+      exact toDom_congr w₀ ((rden_lift hs s.t).trans hs₁) _ _
+    calc (model w₀).sat (env.extend (.bnd 0) o₁) φ
+        ↔ (model w₀).sat ((Model.substEnv (repSubst w₀ env hfin) hθ hnp
+            (canonEnv w₀ w (repSup w₀ env hfin))).extend (.bnd 0) o₁) φ := by
+          rw [substEnv_repSubst w₀ env hfin hnp]
+      _ ↔ (model w₀).sat (Model.substEnv ((repSubst w₀ env hfin).under 0 0 A h0)
+            (Subst.ok_under hθ A h0) (hnp.insert (.bnd 0) A)
+            ((canonEnv w₀ w (repSup w₀ env hfin)).extend (.bnd 0) o₁)) φ := by
+          rw [Model.substEnv_under]
+      _ ↔ (model w₀).sat ((canonEnv w₀ w (repSup w₀ env hfin)).extend (.bnd 0) o₁) φ' :=
+          (Model.sat_subst _ _ _ _ _ _ _ φ).symm
+      _ ↔ (model w₀).sat ((canonEnv w₀ w K').extend (.bnd 0) o₁)
+            (WFF.mono ((w.L.ctx_le hK).insert (.bnd 0) A) φ') :=
+          (Model.sat_mono (Model.Env.extend_agree (canonEnv_le w₀ w hK) (.bnd 0) o₁) φ').symm
+      _ ↔ (model w₀).sat (canonEnv w₀ w K') (WFF.instantiate Ctx.NoSlots.slots (s.lift K' hs)
+            (WFF.mono ((w.L.ctx_le hK).insert (.bnd 0) A) φ')) := by
+          rw [Model.sat_instantiate (canonEnv w₀ w K') (w.noProjLast K'), hval]
+      _ ↔ _ := truth w₀ w K' _
+  obtain ⟨s, s', hs, hs', hrel⟩ := hInd
+  have hK : repSup w₀ env hfin ≤ repSup w₀ env hfin ⊔ (s.i ⊔ s'.i) := le_sup_left
+  have h₁ : s.i ≤ repSup w₀ env hfin ⊔ (s.i ⊔ s'.i) := le_sup_left.trans le_sup_right
+  have h₂ : s'.i ≤ repSup w₀ env hfin ⊔ (s.i ⊔ s'.i) := le_sup_right.trans le_sup_right
+  rw [key o s hs _ hK h₁, key o' s' hs' _ hK h₂]
+  exact hrel _ h₁ h₂ _
 
 end Canon
 
@@ -535,7 +593,7 @@ theorem completeness {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : W
       exact WFF.mono_refl _ _
   let w₀ : Canon.World σ (Ctx.Presented.bound Γ) :=
     Canon.World.ofHenkin 0 L₀ (fun _ => rfl) (fun _ d n _ => hfresh d n) S₀ hS₀
-  have hsat := hval (Canon.model w₀) (Model.indInvariant_of_eq fun _ _ h => h) (w := w₀)
+  have hsat := hval (Canon.model w₀) (Canon.indInvariant w₀) (w := w₀)
     (Canon.canonEnv w₀ w₀ (0, 0))
     (Ctx.Presented.noProjLast Γ)
     (fun ψ hψ => (Canon.truth w₀ w₀ (0, 0) ψ).mpr
@@ -549,6 +607,6 @@ theorem completeness {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : W
 theorem provable_iff_valid {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
     Provable Δ φ ↔ ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
       Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ :=
-  ⟨fun ⟨p⟩ M hM _ env => Model.soundness p M hM env (Ctx.Presented.fin Γ), completeness⟩
+  ⟨fun ⟨p⟩ M hM _ env => Model.soundness p M hM env (Ctx.Presented.tame Γ), completeness⟩
 
 end V12M

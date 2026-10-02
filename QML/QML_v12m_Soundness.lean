@@ -67,7 +67,7 @@ theorem sat_closed {M : Model.{u, v} σ} {Γ Γ' : Ctx} {w : M.frame.W} (env : M
 /-- ⭐**Soundness.** -/
 theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : Proof σ Γ Δ φ) :
     ∀ (M : Model.{u, v} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
-      Γ.Fin → Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ := by
+      Γ.Tame → Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ := by
   induction p with
   | @ax Γ φ =>
       intro M hM w env hfin _ hΔ
@@ -126,7 +126,7 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
   | @all_intro Γ _ Δ u T hu φ p ih =>
       intro M hM w env hfin hnp hΔ o
       exact (sat_bindFree env hnp u hu Ctx.NoSlots.slots T o φ).mpr
-        (ih M hM (env.extend (.free u) o) (hfin.insert _ T) (hnp.insert _ T) (fun ψ hψ => by
+        (ih M hM (env.extend (.free u) o) (hfin.insert hu T) (hnp.insert _ T) (fun ψ hψ => by
           obtain ⟨χ, hχ, rfl⟩ := List.mem_map.mp hψ
           exact (sat_weaken env hu.root o χ).mpr (hΔ χ hχ)))
   | @all_elim Γ _ Δ T φ a t p ih =>
@@ -142,7 +142,7 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       obtain ⟨o, ho⟩ := ihp M hM env hfin hnp hΔ
       have h₁ := (sat_bindFree env hnp u hu Ctx.NoSlots.slots T o φ).mp ho
       exact (sat_weaken env hu.root o ψ).mp
-        (ihq M hM (env.extend (.free u) o) (hfin.insert _ T) (hnp.insert _ T)
+        (ihq M hM (env.extend (.free u) o) (hfin.insert hu T) (hnp.insert _ T)
           (hyps_cons h₁ (fun χ hχ => by
           obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp hχ
           exact (sat_weaken env hu.root o χ').mpr (hΔ χ' hχ'))))
@@ -160,7 +160,8 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       have hnpΓ := hnp.of_insert hzf.root
       obtain ⟨E, hE⟩ := sat_bindPair hnpΓ u₁ u₂ z hu hz₁ hu₁ hu₂ hzf Ctx.NoSlots.slots A B env
       have hfinΓ := hfin.mono (Ctx.le_insert hzf.root _)
-      exact (hE φ).mpr (ih M hM E ((hfinΓ.insert _ A).insert _ B) ((hnpΓ.insert _ A).insert _ B)
+      exact (hE φ).mpr (ih M hM E ((hfinΓ.insert hu₁ A).insert
+        (hu₂.insert_ne (fun h => hu (Root.free.inj h)) A) B) ((hnpΓ.insert _ A).insert _ B)
         (fun ψ hψ => (hE ψ).mp (hΔ _ (List.mem_map.mpr ⟨ψ, hψ, rfl⟩))))
   | @K_box Γ Δ φ p ih =>
       intro M hM w env hfin _ hΔ w'
@@ -209,7 +210,7 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M hM w env hfin hnp hΔ
       obtain ⟨q, hmem, hcont⟩ := M.posRet_exists hT hS hA (interp env t)
       refine (sat_weaken (T := .VTypeDia A) env hc.root q φ).mp
-        (ih M hM (env.extend (T := .VTypeDia A) (.free c) q) (hfin.insert _ _) (hnp.insert _ _) ?_)
+        (ih M hM (env.extend (T := .VTypeDia A) (.free c) q) (hfin.insert hc _) (hnp.insert _ _) ?_)
       intro χ hχ
       rcases List.mem_cons.mp hχ with h₁ | h₂
       · -- The `Here` hypothesis: the witness is realised here, by `t`.

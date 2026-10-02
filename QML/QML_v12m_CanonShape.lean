@@ -9,7 +9,8 @@ worlds, and the chains between them.  A root possibility is named by its address
 
 * `canonSh w v T`: the shape of what the address `v` names at `w`, by recursion on `T`.  A `◇`
   address is a root possibility: its label is the address itself, and each `◇` position of its
-  content is the address with the path to that position (`rootSh`).  A `□` address has, at each
+  content is the address with the path to that position, written as the address of that position
+  is (`rootSh`, `Step.innerPath`).  A `□` address has, at each
   successor, the shape of its contents' address there (`succAddr`: collapsed at the world itself,
   shifted `d` times `d + 1` levels deeper, as `rden` moves a `□` body).
 * `canonEnvF Γ w f`: the shape environment reading each address `v` as `canonSh w (f v)`.  When
@@ -70,6 +71,10 @@ end VarSymb
 
 variable [ModalSys]
 
+/-- The steps from a necessary address to its contents one view in, as `VarSymb.inner` writes them:
+    `box`, or under T and 4 `keep` then `here`. -/
+def Step.innerPath : List Step := if ModalSys.keepOnly then [.keep, .here] else [.box]
+
 namespace VarSymb
 
 /-- Shifting a contents address keeps contents of kept objects. -/
@@ -79,6 +84,14 @@ theorem shiftIter_inner : ∀ (n : ℕ) (v : VarSymb), shiftIter n v.inner = (ke
       change shiftIter n (v.inner.shift 0) = _
       rw [VarSymb.inner_shift_zero]
       exact shiftIter_inner n (.step v .keep)
+
+/-- The contents of an address extended by a path are the address extended by the path and then
+    `Step.innerPath`. -/
+theorem inner_ext : ∀ (v : VarSymb) (π : List Step), (v.ext π).inner = v.ext (π ++ Step.innerPath)
+  | v, [] => by
+    unfold VarSymb.inner Step.innerPath
+    split_ifs <;> rfl
+  | v, s :: π => inner_ext (.step v s) π
 
 end VarSymb
 
@@ -159,12 +172,14 @@ theorem succAddr_keep (hF : ModalSys.Four = true) {w s t : World σ N₀} (hs : 
 /-! ## Canonical shapes -/
 
 /-- The shape of a root possibility's content at a path: every `◇` position is the root with its
-    path to that position. -/
+    path to that position.  The path is written as the address of that position is (`Ann.eta`):
+    into a `□` by `Step.innerPath`, so `box`, or `keep` then `here` under T and 4 — the leaf
+    records the address cut where it leaves the anchor's level (docs §10.39). -/
 def rootSh (w : World σ N₀) (v : VarSymb) : List Step → (T : VarType) → CShape w T
   | _, .Var => .var
   | _, .VTypeOne => .one
   | π, .VTypeProd A B => .prod (rootSh w v (π ++ [.fst]) A) (rootSh w v (π ++ [.snd]) B)
-  | π, .VTypeBox A => .box (rootSh w v (π ++ [.box]) A)
+  | π, .VTypeBox A => .box (rootSh w v (π ++ Step.innerPath) A)
   | π, .VTypeDia A => .dia (.root v π) (rootSh w v (π ++ [.dia]) A)
 
 /-- ⭐The canonical shape of what an address names: a `◇` address is a root possibility, a `□`

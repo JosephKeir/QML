@@ -3954,8 +3954,8 @@ This covers `ShEnv`, `termShp`, the collapse/shift/mono/subst/η lemmas, `termSh
 **The canonical shapes (`QML_v12m_CanonShape.lean`, new).**
 * `Canon.arrows σ N₀`: worlds and chains.  The canonical frame is `{ toArrows := arrows σ N₀, … }`.
 * `canonSh w v T`, by recursion on `T`.  A `◇` address is a root: label `root v []`, and each `◇`
-  position of its content is `root v π` (`rootSh`; the path steps are the shape's own — `box` at a `□`
-  position, whatever the view addresses are).  A `□` address has, at each successor `s`, the
+  position of its content is `root v π` (`rootSh`; since §10.39 the path is written as the address of
+  the position is, `inner`-style, not with the shape's own `box`).  A `□` address has, at each successor `s`, the
   shape of `succAddr w s v.inner`: collapsed at the world itself, shifted `d` times `d + 1` levels
   deeper, exactly as `rden` moves a `□` body.
 * `canonEnvF Γ w f` reads each address through `f`.  When `f` commutes with projections, every
@@ -4032,3 +4032,126 @@ proper successors.  Every canonical world has one under T (`T_box` refutes `□�
 `exists_box_fail`), but a general T model need not.  A possible simplification: label positions
 inside `◇`-contents by their full address with an empty path, so that `here`/`keep` leave those
 labels alone.  `rawShape_rden` and the laws do not depend on that convention.  Decision pending.
+
+### 10.39 ⭐One labelling convention: a leaf is a label address, cut at the anchor's level *(2026-10-03, user)*
+
+**Why step back.**  §10.38's "tags determine annotations" looked like a separate characterization
+per view, per `here` and per `keep`.  The user's diagnosis: if addresses, roots, paths, families,
+annotations and shapes all follow one convention, it should not bite.  An inventory bore this out:
+one real mismatch and one unstated principle.
+
+**What is written how.**
+* An address is a root and steps, innermost last.  Level steps (`box`, `keep`, `dia`) enter a view;
+  projections (`fst`, `snd`, `here`) stay at their level.  The contents of `u : □A` one view in are
+  `u.inner` (`u.box`, or `u.keep.here` under T+4).
+* An annotation label is the witness address of a `◇` node, a full address in that node's view,
+  `inner`-style (`Ann.eta`).
+* A shape is the type's tree with a leaf at each `◇` node; its positions are tree positions,
+  separate from the labels.
+* Leaves count levels from the anchor, while addresses count them from the label's own view.  This
+  is not a mismatch: both count from the term's context, read from opposite ends, and
+  `Step.collapseAt`/`shiftAt` (keep-absorbing) agree with `VarSymb.collapse`/`shift` on every
+  T+4-normal path.
+
+**The principle, now explicit.**  *A leaf records a label address by cutting it where it leaves the
+anchor's level.*  If the first level step after the cut is a `□` step (`box`/`keep`), that level is
+crossed semantically: a family over the anchor's successors, each entry the leaf of the same
+address seen from that successor (`succAddr`).  If it is `dia`, the rest is kept syntactically, as
+the path from the root possibility.  Families are forced at `□` levels: the strength law puts a
+necessary object's values under one label.  A path is forced inside a content, because the extent
+may be empty.
+
+**The mismatch, fixed.**  `rootSh` wrote a `□` position inside a content as `box`, while every
+address and annotation writes it `inner`, i.e. `keep.here` under T+4.  The leaf operations already
+respect the address convention: shift then collapse (the second counit) on `[dia, keep, here]` gives
+back `[dia, keep, here]`.  Only the canonical starting point broke it.  Now
+`rootSh … (□A) = .box (rootSh … (π ++ Step.innerPath) A)`, with `Step.innerPath` the steps
+`VarSymb.inner` appends (`VarSymb.inner_ext`).  Nothing proved depended on the old choice: the
+whole list builds unchanged.
+
+**What it buys (plan).**  Define `leafOf` (the principle as a function: world, depth, address ↦
+leaf) and `canonSh w v T := Ann.eta v T` with labels read by `leafOf`.  The key lemma then reads:
+*a term's canonical shape is its annotation, relabelled by `leafOf`*.  Its cases are the shape
+layer's, plus `leafOf` commuting with collapse and shift, which is address arithmetic of the
+`succAddr_keep` kind.  "Tags determine annotations" becomes injectivity of `leafOf`.  The decoder,
+its left inverse, follows every family along a proper successor (where `succAddr` is the identity;
+under T every canonical world has one) and reassembles root and path: the label address itself.
+`u.box.here` and `u.here.box` decode to themselves, since the decoder never uses the reflexive
+arrow.
+
+### 10.40 ✅Step 5 done: tags determine annotations, the `here` case, canonical `Ind`, models proper *(2026-10-03)*
+
+The truth lemma's `here` case is closed and the canonical model is a model proper, so the
+semantic-annotation plan is complete.  `completeness`, `provable_iff_valid`, compactness and the
+B track all build, sorry-free with no warnings.  Their statements are unchanged: they have quantified
+over models proper since step 4.  What changed is the canonical witness: `Ind` was equality
+(`indInvariant_of_eq`) and is now related representatives.
+
+**The leaf calculus (`QML_v12m_CanonLeaf.lean`)** carries out §10.39's plan.
+* *Address layer.*
+  * `VarSymb.splitAt` cuts an address where it leaves a given level.
+  * `Step.OK`/`VarSymb.OK`/`Ctx.DeclOK` are the T+4-normal addresses; every presented context is
+    `DeclOK` (`Ctx.Presented.declOK`).
+  * `VarSymb.collapse_agree`/`shift_agree` let front-indexed `collapseAt`/`shiftAt` act on an `OK`
+    address exactly as `collapse`/`shift` do.
+  * `succAddrK` is `succAddr` iterated over a depth.
+* *Leaves.*
+  * `leafOf w m y` is the principle as a function.
+  * `annShp w j a` relabels an annotation by `leafOf`.
+  * `rootSh_eq`/`canonSh_eq` show the canonical shape of a declared address is `annShp` of
+    `Ann.eta`.
+* *The calculus.*
+  * `leafOf_collapse`/`leafOf_shift`: leaves commute with the shape layer's operations.
+  * `Canonical` is the invariant "every leaf is `leafOf` of its label".
+  * ⭐`termShp_canonical`: *a term's canonical shape is its annotation, relabelled*.
+* *The decoder.*
+  * `dec` follows every family along a proper successor (`properSucc`: under T `T_box` refutes
+    `□⊥`, so `exists_box_fail` gives one; `exists_acc`) and reassembles root and path.
+  * `dec_leafOf` makes `dec` a left inverse, so `annShp_injective`.
+  * ⭐`ann_eq_of_rden`: two terms with one denotation (hence one tag, `rawShape_rden`) have one
+    annotation.
+
+**The `here` case (`QML_v12m_CanonHere.lean`).**
+* `realised_of_here`: a `Here` atom in the theory makes its witness realised.  It goes through
+  `here_beta` at unit, `here_name` and `exW`, which gives a `RealDatum`.
+* `mem_here_realised`: the realised body is co-named with the possibility's content.
+* ⭐`here_transfer` is (F) of §10.38.  Equal denotations carry a `Here` atom across: annotations
+  agree by `ann_eq_of_rden`, `eqRec` holds by the truth lemma at a smaller formula
+  (`WFF.size_eqRec`), and `Proof.here_eq` moves the atom.
+* ⭐`here_truth`.  Canonical `Ind` relates two objects when they have representatives `s`, `s'`
+  (`DTerm`s denoting them) with `s.Rel s'`.
+  * *Membership ⇒ truth*: the related representatives are the realised body and `t`
+    (`DTerm.rel_of_coname`).
+  * *Truth ⇒ membership*: carry the atom from the realised body to `u`, across `Rel` to `u'` (at
+    the slot formula `Here(S, ·)`, via `WFF.instantiate_here_slot`), then to `t`.
+  * The `here` alternative of `truth_lt` only dispatches the `diatm` subject to `here_truth`.
+  * The B track's `truth_lt` discharges `here` by `noT`, since `Here` needs T.
+
+**Models proper over tame contexts.**  Representing an environment as a substitution needs
+coherent witness indices.  Each declared address must be the only one that a given address extends
+(`Ctx.decomp_unique`).  That holds when every root has one view depth (`Ctx.LevelDepth`).
+`IndInvariant` therefore now asks for `Ctx.Tame Γ := Γ.Fin ∧ ∃ d, Γ.LevelDepth d` instead of
+`Γ.Fin` (§10.38).  `Tame` is closed under `Le` (downwards), `insert`, `boxIn` and `diaIn`, and every
+presented context is tame (`Ctx.Presented.tame`).  Soundness carries `Γ.Tame` as it carried
+`Γ.Fin`.
+
+**Canonical `IndInvariant` (`QML_v12m_CanonInd.lean`, `Canon.indInvariant` in `Completeness`).**
+1. Every value has a representative term (`rep`, by definability).
+2. Finitely many addresses give one stage above all of them (`repSup`).
+3. The substitution `repSubst` sends each address to its representative there.  It is coherent by
+   `decomp_unique` (`repSubst_coh`).
+4. ⭐`substEnv_repSubst`: the canonical environment read through it is the given environment.
+
+So `sat (env.extend o) φ` becomes membership of the substituted slot formula, instantiated at a
+representative of `o`.  The chain is `substEnv_under`, `sat_subst`, `sat_mono`, `sat_instantiate`
+and then the truth lemma.  `Rel` between the representatives of related objects makes the two
+memberships agree.
+
+**Knock-on changes.**  The B wrappers had not been updated when models proper arrived in step 4
+(`completenessB` took `M.IndInvariant`, its callers did not), so `BRename` and `BFlat` failed to
+build at `17e4035`.  The fixes are signature-only:
+* `completenessB_rename`, `completenessB_ofDecls` and `completenessB_flat`;
+* `completenessB_boxIn`/`diaIn`/`boxInN`/`presented`;
+* the `RenameExample` validity hypotheses, which take `M.IndInvariant`.
+
+Their proofs pass it through.

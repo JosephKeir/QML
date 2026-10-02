@@ -444,13 +444,14 @@ variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 /-- ⭐**Completeness for weak B in any context flattened into a world language.** -/
 theorem completenessB_flat (hB : ModalSys.B = true) {Γ : Ctx} {l : List VarType}
     (F : Flat σ Γ (ctxOf l)) (hnp : Γ.NoProjLast) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0}
-    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env Γ w), Γ.NoProjLast →
+    (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
+      (env : M.Env Γ w), Γ.NoProjLast →
       (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ := by
   refine F.prov (completenessB hB ?_)
-  intro M w e _ hΔ
+  intro M hM w e _ hΔ
   rw [F.sat]
-  exact hval M _ hnp fun ψ hψ => (F.sat e ψ).mp (hΔ _ (List.mem_map_of_mem hψ))
+  exact hval M hM _ hnp fun ψ hψ => (F.sat e ψ).mp (hΔ _ (List.mem_map_of_mem hψ))
 
 
 
@@ -714,7 +715,8 @@ noncomputable def pairDia (l : List VarType) {x : VarSymb} {X : VarType}
 /-- ⭐Completeness in the `□` view of a world language. -/
 theorem completenessB_boxIn (hB : ModalSys.B = true) {l : List VarType}
     {Δ : List (WFF σ (ctxOf l).boxIn 0)} {φ : WFF σ (ctxOf l).boxIn 0}
-    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env (ctxOf l).boxIn w),
+    (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
+      (env : M.Env (ctxOf l).boxIn w),
       (ctxOf l).boxIn.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ :=
   completenessB_flat hB (flatBox l) (Ctx.noProjLast_boxIn _) hval
@@ -723,7 +725,8 @@ theorem completenessB_boxIn (hB : ModalSys.B = true) {l : List VarType}
 theorem completenessB_diaIn (hB : ModalSys.B = true) {l : List VarType} {x : VarSymb}
     {X : VarType} (hx : (ctxOf l).ref x = some (.VTypeDia X))
     {Δ : List (WFF σ ((ctxOf l).diaIn x) 0)} {φ : WFF σ ((ctxOf l).diaIn x) 0}
-    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env ((ctxOf l).diaIn x) w),
+    (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
+      (env : M.Env ((ctxOf l).diaIn x) w),
       ((ctxOf l).diaIn x).NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ :=
   completenessB_flat hB (flatDia l hx) (Ctx.noProjLast_diaIn _ x) hval
@@ -732,7 +735,8 @@ theorem completenessB_diaIn (hB : ModalSys.B = true) {l : List VarType} {x : Var
 /-- ⭐Completeness in any number of stacked `□` views over a world language. -/
 theorem completenessB_boxInN (hB : ModalSys.B = true) (n : ℕ) (l : List VarType)
     {Δ : List (WFF σ (Ctx.boxInN n (ctxOf l)) 0)} {φ : WFF σ (Ctx.boxInN n (ctxOf l)) 0}
-    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env (Ctx.boxInN n (ctxOf l)) w),
+    (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
+      (env : M.Env (Ctx.boxInN n (ctxOf l)) w),
       (Ctx.boxInN n (ctxOf l)).NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ :=
   completenessB_flat hB (flatBoxN n l) (Ctx.Presented.noProjLast _) hval
@@ -767,7 +771,8 @@ noncomputable def _root_.V12M.CtxExpr.chain : (e : CtxExpr) → e.Fresh → e.Vi
     witnesses. -/
 theorem completenessB_presented (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
     {Δ : List (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
-    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env e.denote w),
+    (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
+      (env : M.Env e.denote w),
       e.denote.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ :=
   letI : e.denote.Presented := ⟨e, he.1, rfl⟩

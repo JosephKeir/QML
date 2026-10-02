@@ -78,6 +78,7 @@ theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i
           rw [Term.mono_refl, Term.mono_refl]
       | top => exact ⟨fun _ => ((B.w s).mcs i).top_mem, fun _ => trivial⟩
       | bot => exact ⟨False.elim, fun h => ((B.w s).mcs i).bot_not_mem h⟩
+      | here hT _ _ => exact (noT hT).elim
       | and φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega
