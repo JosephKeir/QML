@@ -3851,3 +3851,90 @@ on indistinguishability, and indistinguishability on truth.
 **Build.**  Same single error (`Completeness.lean:286`) and the same three recorded `CanonModel`
 sorries.  `Compactness` is downstream of `Completeness`, so its edits are checked only once the
 truth lemma closes.
+
+### 10.34 Scoping step 5: the canonical model with shapes and `Ind` *(2026-10-03)*
+
+**What the canonical model owes.**  (1) `RootPoss` and `shape` satisfying `shape_posMap` and
+`shape_posStrength` (the three temporary `sorry`s); (2) weakened `pos_inj`; (3) `Ind := ` the
+interchangeability of representatives; (4) `IndInvariant` — after the truth lemma, since it is no
+longer a field; (5) the truth lemma's `here` case (step 6).
+
+**Why the carriers need tags.**  The carriers are definable raw objects: a possible object is
+`⟨extent, contents⟩`.  The laws demand, e.g., `shape (posStrength n p)` built from the shapes of `n`'s
+values at **all** arrows, while the raw object only remembers `n` on `p`'s extent.  Two different `n`
+agreeing on that extent give one raw object and two demanded shapes, so no shape *function* exists.
+The object must carry its shape.
+
+**The design: store the shape.**
+* `RootPoss w := VarSymb` (the witness addresses).
+* `RDom (◇A) w := (Σ E, contents) × Shp (Leaf w) (◇A)`: the section, and the shape as a tag.
+  `shape p := p.tag`.
+* `rawEval` transports tags exactly as the laws say (`diaMap g`: label kept, body by `g.shp 1`;
+  `strength`: the transposed shapes of the necessary values).  **The laws then hold by
+  definition**, and weakened `pos_inj` is `Prod.ext` — no argument at all.
+* `rden`'s tag for `⟨x; t⟩` is the term's symbolic shape (`termShp`) in the **canonical shape
+  environment**.  ◇-addresses `x` get the identity shape: label `root x []`, and at position `π`
+  of the content `root x (dia :: π)`.  □-addresses get the transposition of their values' shapes at
+  the successors, by recursion on the type.
+
+**Work items.**
+1. *Lift the shape layer from `Model` to `(Frame, RootPoss)`.*  `ShEnv`, `termShp` and S1 use the
+   model only for their types, but the canonical construction needs them before the model exists.
+   Mechanical: re-parameterise the first part of `SemShape`, keeping the `Model` names as
+   specialisations.
+2. *Tags in `RDom`/`rden`/`rawEval`*, and the tag half of the `rden` family (`rden_mono`,
+   `rden_congr`, `rden_eqRec`, …).  The tag of `rden t` is `termShp`, which is stage- and
+   weakening-invariant (`termShp_mono`).
+3. *`definable_rawEval` with tags*: `termShp (applyG g t) = GFunc.shp g j (termShp t)`, by induction
+   on `g` — the `applyG` analogue of S1.
+4. *`interp_canon` with tags*: from S2 (`domSh_interp`) and `termShp_eta`, provided the canonical
+   environment's shapes are the canonical shape environment, which holds by construction.
+5. *`Interch`/`DTerm.Rel` at every type* (now `◇`-typed only), then `Ind o o' := ∃ representatives
+   related by `Rel``.  Reflexive because every canonical object is definable.
+6. *Step 6, the truth lemma's `here` case*: membership ⇒ `Rel` (`rel_of_coname`) ⇒ `Ind`.
+   Conversely, from `Ind`: equal denotations ⇒ same annotation (**tags determine annotations**:
+   root labels carry addresses, family leaves at the reflexive successor carry `u.here`'s address)
+   ⇒ `eqRec` by the truth lemma at a smaller formula ⇒ `here_eq`.  Then `Rel` moves the atom.
+7. *Canonical `IndInvariant`*: every definable environment is a substitution instance of the
+   canonical one, then `sat_subst`, the truth lemma, and `Rel`.
+
+**Risks.**  Item 1 is a refactor of a file that already builds — low risk, some churn.  Items 2–3
+touch the largest canonical files (`CanonDom`, `CanonFunc`).  Their proofs are mostly by `rfl` on
+sections, so the tag halves should follow the same shape, but this is where the size is.  Item 6's
+"tags determine annotations" is the one genuinely new canonical fact.  It needs the reflexive
+successor, so it holds under T, which is the only place `Here` exists.
+
+### 10.35 A possible object is extent + content + shape: one evaluation map *(2026-10-03)*
+
+**The decision (user).**  Mathematically this changes nothing: `posEval` and `shape` were already
+jointly injective.  But the shape now belongs to the evaluation itself, gated by T: a possible
+object *is* its extent, its contents and its shape.
+
+* `Model.posFull : Pos A w → PosSec A w × (T = true → Shp (Leaf RootPoss w) (◇A))`, with
+  `posFull_inj` plain injectivity.
+* The laws `posMap_full` / `posStrength_full` each state the whole evaluation: section and shape.
+* `Model.posEval` and `Model.shape` are now `abbrev`s for the two components.  `Model.pos_inj` (two
+  hypotheses), `posMap_eval`, `posStrength_eval`, `shape_posMap` and `shape_posStrength` are
+  theorems, so no use site changed.
+* Both canonical models give `posFull := (section, shape)`.  The T-track one keeps its recorded
+  temporary `sorry`s, now in the shape component of `posFull` and the shape halves of the two laws,
+  until step 5's tags.
+
+**An example of what the shape adds.**  With `x : ◇(◇Var × ◇Var)`, the terms `⟨x; x.dia.fst⟩` and
+`⟨x; x.dia.snd⟩` have shapes `dia (root r []) (dia (root r [dia, fst]) var)` and
+`dia (root r []) (dia (root r [dia, snd]) var)`.  If `x` is impossible their sections coincide
+(empty extent, vacuous content).  Even with a nonempty extent they coincide whenever the two
+components happen to agree at every arrow.  The shapes keep them apart, matching the syntax, where
+their annotations differ and `eqRec` cannot compare them.
+
+### 10.36 Step 5, item 1: the shape layer at frame level *(2026-10-03)*
+
+`SemShape`'s definitions and lemmas — `Shape`, `ShEnv` and its pushes, `termShp`, S1
+(`termShp_compile`), transposition (T), `termShp_mono`, `termShp_ann`, the map/collapse/shift
+commutations — are now parameterised by a frame and a family of roots, `{F : Frame σ}
+{Root : F.W → Type u}`.  `Shape F Root w T` and `ShEnv F Root Γ w` take them explicitly.  Only the
+model link (S2: `domSh`, `envShape`, `domSh_interp`, and the bundle lemmas) still mentions a
+`Model`; it sits in a `ModelShapes` section at the end.  The model-level files write
+`ShEnv M.frame M.RootPoss`.  Lemma names are unchanged, so no proof changed.  This lets the
+canonical construction compute its tags with `termShp` before the canonical model exists.
+Build unchanged.

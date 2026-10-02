@@ -69,7 +69,8 @@ theorem Env.ref_dia {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {x : VarSymb} 
 /-- Reading a necessary address's contents one view in gives the contents of its shape.  Under T+4
     the contents are `u.keep.here`, a shift followed by a collapse one level further in, and this
     is the second counit (`Frame.Leaf.collapse_shift_succ`). -/
-theorem ShEnv.ref_inner {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (j : ℕ) {u : VarSymb}
+theorem ShEnv.ref_inner {Γ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.RootPoss Γ w) (j : ℕ)
+    {u : VarSymb}
     {A : VarType} (h : Γ.ref u = some (.VTypeBox A)) :
     (ρ.boxPush j).ref (j + 1) u.inner (Ctx.ref_inner h) = (ρ.ref j u h).inner := by
   by_cases hk : ModalSys.keepOnly = true
@@ -93,7 +94,8 @@ theorem ShEnv.ref_inner {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (j : ℕ)
 
 /-- ⭐**η for shapes**: an address's η-expansion has the address's shape. -/
 theorem termShp_eta :
-    ∀ {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (j : ℕ) {T : VarType} (x : VarSymb)
+    ∀ {Γ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.RootPoss Γ w) (j : ℕ) {T : VarType}
+    (x : VarSymb)
       (h : Γ.ref x = some T), termShp ρ j (Term.eta (σ := σ) x T h) = ρ.ref j x h
   | _, _, _, _, .Var, _, _ => shp_var_eq _ _
   | _, _, _, _, .VTypeOne, _, _ => Shp.one_eq _ _

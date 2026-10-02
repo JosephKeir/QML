@@ -218,19 +218,17 @@ noncomputable def model : Model.{0, 0} σ where
   frame := frame w₀
   necEval := necEval w₀
   nec_inj := fun h => necEval_injective w₀ h
-  posEval := posEval w₀
   -- TEMPORARY (docs §10.29): the shapes need the tagged carriers of step 5; until then they are
-  -- `sorry`.  The canonical carriers are still fully extensional, so `pos_inj` holds outright.
+  -- `sorry`.  The canonical carriers are still fully extensional, so injectivity holds outright.
   RootPoss _ := PUnit
-  shape _ := sorry
-  pos_inj := fun h _ => posEval_injective w₀ h
+  posFull p := (posEval w₀ p, fun _ => sorry)
+  posFull_inj := fun h => posEval_injective w₀ (congrArg Prod.fst h)
   ops := ops w₀
   necMap_eval g _ w' := (eval_toDom w₀ g w'.1 _ _).symm
   necPair_eval _ _ _ := rfl
-  posMap_eval g _ := congrArg (Sigma.mk _) (funext fun w' => (eval_toDom w₀ g w'.1.1 _ _).symm)
-  posStrength_eval _ _ := rfl
-  shape_posMap _ _ _ := sorry
-  shape_posStrength _ _ _ := sorry
+  posMap_full g _ := Prod.ext
+    (congrArg (Sigma.mk _) (funext fun w' => (eval_toDom w₀ g w'.1.1 _ _).symm)) sorry
+  posStrength_full _ _ := Prod.ext rfl sorry
   necExtract_eval _ _ := rfl
   necDup_eval _ _ _ _ := rfl
   posRet_exists hT hS hA a := posRet_exists_canon w₀ hT hS hA a

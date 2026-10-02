@@ -285,7 +285,8 @@ theorem Env.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} (env : M.Env 
 
 /-! ## Shapes across a collapse -/
 
-theorem ShEnv.ref_congr {Γ : Ctx} {w' : M.frame.W} (ρ : M.ShEnv Γ w') (j : ℕ) {v v' : VarSymb}
+theorem ShEnv.ref_congr {Γ : Ctx} {w' : M.frame.W} (ρ : ShEnv M.frame M.RootPoss Γ w') (j : ℕ)
+    {v v' : VarSymb}
     (e : v = v') {T : VarType} (hv : Γ.ref v = some T) (hv' : Γ.ref v' = some T) :
     ρ.ref j v hv = ρ.ref j v' hv' := by
   subst e
@@ -293,10 +294,11 @@ theorem ShEnv.ref_congr {Γ : Ctx} {w' : M.frame.W} (ρ : M.ShEnv Γ w') (j : �
 
 /-- Two shape environments agree across a collapse, at one depth. -/
 def ShEnv.CollapseAgree {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Collapses k Γ₁ Γ₂) {w' : M.frame.W}
-    (ρ₁ : M.ShEnv Γ₁ w') (ρ₂ : M.ShEnv Γ₂ w') (j : ℕ) : Prop :=
+    (ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w') (ρ₂ : ShEnv M.frame M.RootPoss Γ₂ w') (j : ℕ) : Prop :=
   ∀ v T (hv : Γ₁.ref v = some T), ρ₁.ref j v hv = ρ₂.ref j (v.collapse k) (h v T hv)
 
-theorem ShEnv.CollapseAgree.of_raw {ρ₁ : M.ShEnv Γ₁ w} {ρ₂ : M.ShEnv Γ₂ w} {j : ℕ}
+theorem ShEnv.CollapseAgree.of_raw {ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w}
+    {ρ₂ : ShEnv M.frame M.RootPoss Γ₂ w} {j : ℕ}
     (hvis : ∀ v T (hlp : v.lastProj = false) (hv : Γ₁ v = some T),
       ρ₁ v T hv = ρ₂.ref j (v.collapse k) (h v T ((Ctx.ref_nonproj Γ₁ hlp).trans hv))) :
     ShEnv.CollapseAgree h ρ₁ ρ₂ j := by
@@ -320,7 +322,8 @@ theorem ShEnv.CollapseAgree.of_raw {ρ₁ : M.ShEnv Γ₁ w} {ρ₂ : M.ShEnv Γ
         rw [ShEnv.ref_nonproj ρ₁ j hs hv]
         exact hvis _ _ hlp _
 
-theorem ShEnv.CollapseAgree.boxPush {ρ₁ : M.ShEnv Γ₁ w} {ρ₂ : M.ShEnv Γ₂ w} {j : ℕ}
+theorem ShEnv.CollapseAgree.boxPush {ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w}
+    {ρ₂ : ShEnv M.frame M.RootPoss Γ₂ w} {j : ℕ}
     (hag : ShEnv.CollapseAgree h ρ₁ ρ₂ j) :
     ShEnv.CollapseAgree h.boxIn (ρ₁.boxPush j) (ρ₂.boxPush j) (j + 1) := by
   refine ShEnv.CollapseAgree.of_raw ?_
@@ -347,7 +350,8 @@ theorem ShEnv.CollapseAgree.boxPush {ρ₁ : M.ShEnv Γ₁ w} {ρ₂ : M.ShEnv �
   | .step _ .dia => cases hv
   | .step _ .here => cases hv
 
-theorem ShEnv.CollapseAgree.diaPush {ρ₁ : M.ShEnv Γ₁ w} {ρ₂ : M.ShEnv Γ₂ w} {j : ℕ}
+theorem ShEnv.CollapseAgree.diaPush {ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w}
+    {ρ₂ : ShEnv M.frame M.RootPoss Γ₂ w} {j : ℕ}
     (hag : ShEnv.CollapseAgree h ρ₁ ρ₂ j) {x : VarSymb} {X : VarType}
     (hr : Γ₁.ref x = some (.VTypeDia X)) :
     ShEnv.CollapseAgree (h.diaIn x) (ρ₁.diaPush j x hr) (ρ₂.diaPush j (x.collapse k) (h x _ hr))
@@ -390,7 +394,7 @@ theorem ShEnv.CollapseAgree.diaPush {ρ₁ : M.ShEnv Γ₁ w} {ρ₂ : M.ShEnv �
 
 /-- ⭐Collapsing does not change shapes. -/
 theorem termShp_collapse {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses k Γ₁ Γ₂} {w : M.frame.W}
-    {ρ₁ : M.ShEnv Γ₁ w} {ρ₂ : M.ShEnv Γ₂ w} {j : ℕ}
+    {ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w} {ρ₂ : ShEnv M.frame M.RootPoss Γ₂ w} {j : ℕ}
     (hag : ShEnv.CollapseAgree h ρ₁ ρ₂ j) :
     ∀ {T : VarType} {a : Ann T} (t : Term σ Γ₁ T a),
       termShp ρ₂ j (Term.collapse h t) = termShp ρ₁ j t

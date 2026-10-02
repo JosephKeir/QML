@@ -196,10 +196,11 @@ theorem Env.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} (env : M.En
 
 /-- Two shape environments agree across a shift, at one depth. -/
 def ShEnv.ShiftAgree {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂) {w' : M.frame.W}
-    (ρ₁ : M.ShEnv Γ₁ w') (ρ₂ : M.ShEnv Γ₂ w') (j : ℕ) : Prop :=
+    (ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w') (ρ₂ : ShEnv M.frame M.RootPoss Γ₂ w') (j : ℕ) : Prop :=
   ∀ v T (hv : Γ₁.ref v = some T), ρ₁.ref j v hv = ρ₂.ref j (v.shift k) (h v T hv)
 
-theorem ShEnv.ShiftAgree.of_raw {ρ₁ : M.ShEnv Γ₁ w} {ρ₂ : M.ShEnv Γ₂ w} {j : ℕ}
+theorem ShEnv.ShiftAgree.of_raw {ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w}
+    {ρ₂ : ShEnv M.frame M.RootPoss Γ₂ w} {j : ℕ}
     (hvis : ∀ v T (hlp : v.lastProj = false) (hv : Γ₁ v = some T),
       ρ₁ v T hv = ρ₂.ref j (v.shift k) (h v T ((Ctx.ref_nonproj Γ₁ hlp).trans hv))) :
     ShEnv.ShiftAgree h ρ₁ ρ₂ j := by
@@ -223,7 +224,8 @@ theorem ShEnv.ShiftAgree.of_raw {ρ₁ : M.ShEnv Γ₁ w} {ρ₂ : M.ShEnv Γ₂
         rw [ShEnv.ref_nonproj ρ₁ j hs hv]
         exact hvis _ _ hlp _
 
-theorem ShEnv.ShiftAgree.boxPush {ρ₁ : M.ShEnv Γ₁ w} {ρ₂ : M.ShEnv Γ₂ w} {j : ℕ}
+theorem ShEnv.ShiftAgree.boxPush {ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w}
+    {ρ₂ : ShEnv M.frame M.RootPoss Γ₂ w} {j : ℕ}
     (hag : ShEnv.ShiftAgree h ρ₁ ρ₂ j) :
     ShEnv.ShiftAgree h.boxIn (ρ₁.boxPush j) (ρ₂.boxPush j) (j + 1) := by
   refine ShEnv.ShiftAgree.of_raw ?_
@@ -250,7 +252,8 @@ theorem ShEnv.ShiftAgree.boxPush {ρ₁ : M.ShEnv Γ₁ w} {ρ₂ : M.ShEnv Γ�
   | .step _ .dia => cases hv
   | .step _ .here => cases hv
 
-theorem ShEnv.ShiftAgree.diaPush {ρ₁ : M.ShEnv Γ₁ w} {ρ₂ : M.ShEnv Γ₂ w} {j : ℕ}
+theorem ShEnv.ShiftAgree.diaPush {ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w}
+    {ρ₂ : ShEnv M.frame M.RootPoss Γ₂ w} {j : ℕ}
     (hag : ShEnv.ShiftAgree h ρ₁ ρ₂ j) {x : VarSymb} {X : VarType}
     (hr : Γ₁.ref x = some (.VTypeDia X)) :
     ShEnv.ShiftAgree (h.diaIn x) (ρ₁.diaPush j x hr) (ρ₂.diaPush j (x.shift k) (h x _ hr))
@@ -293,7 +296,7 @@ theorem ShEnv.ShiftAgree.diaPush {ρ₁ : M.ShEnv Γ₁ w} {ρ₂ : M.ShEnv Γ�
 
 /-- ⭐Shifting does not change shapes. -/
 theorem termShp_shift {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ₂} {w : M.frame.W}
-    {ρ₁ : M.ShEnv Γ₁ w} {ρ₂ : M.ShEnv Γ₂ w} {j : ℕ}
+    {ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w} {ρ₂ : ShEnv M.frame M.RootPoss Γ₂ w} {j : ℕ}
     (hag : ShEnv.ShiftAgree h ρ₁ ρ₂ j) :
     ∀ {T : VarType} {a : Ann T} (t : Term σ Γ₁ T a),
       termShp ρ₂ j (Term.shift h t) = termShp ρ₁ j t

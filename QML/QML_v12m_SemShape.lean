@@ -391,22 +391,22 @@ end Frame.Leaf
 
 namespace Model
 
-variable {σ : Signature} {M : Model.{u, v} σ}
+variable {σ : Signature} {F : Frame.{u, v} σ} {Root : F.W → Type u}
 
-variable (M) in
+variable (F Root) in
 /-- Shapes anchored at a world. -/
-abbrev Shape (w : M.frame.W) (T : VarType) : Type (max u v) :=
-  Shp (M.frame.Leaf M.RootPoss w) T
+abbrev Shape (w : F.W) (T : VarType) : Type (max u v) :=
+  Shp (F.Leaf Root w) T
 
-variable (M) in
+variable (F Root) in
 /-- A shape environment: a shape, anchored at `w`, for every visible address. -/
-abbrev ShEnv (Γ : Ctx) (w : M.frame.W) : Type (max u v) :=
-  ∀ v T, Γ v = some T → M.Shape w T
+abbrev ShEnv (Γ : Ctx) (w : F.W) : Type (max u v) :=
+  ∀ v T, Γ v = some T → Shape F Root w T
 
 /-- The shape at a reachable address: projection components from the parent, moved as the
     projection moves them (`GFunc.proj`, so a `here` step collapses the level `j`). -/
-def ShEnv.ref {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (j : ℕ) :
-    (v : VarSymb) → {T : VarType} → Γ.ref v = some T → M.Shape w T
+def ShEnv.ref {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (j : ℕ) :
+    (v : VarSymb) → {T : VarType} → Γ.ref v = some T → Shape F Root w T
   | .root r, _, h => ρ (.root r) _ h
   | .step v s, T, h =>
       if hs : s.isProj = true then
@@ -418,7 +418,7 @@ def ShEnv.ref {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (j : ℕ) :
       else ρ (.step v s) T (by rw [Ctx.ref_step_nonproj Γ v hs] at h; exact h)
 
 /-- Into a `□`: the shapes of the contents, one level further in. -/
-def ShEnv.boxPush {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (j : ℕ) : M.ShEnv Γ.boxIn w
+def ShEnv.boxPush {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (j : ℕ) : ShEnv F Root Γ.boxIn w
   | .step u .box, _, h => (ρ.ref j u (Ctx.boxIn_step_box h)).inner
   | .step u .keep, _, h =>
       (GFunc.shp (GFunc.keep (σ := σ) (Ctx.boxIn_keep h).1 (Ctx.boxIn_keep h).2.2) j
@@ -430,8 +430,8 @@ def ShEnv.boxPush {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (j : ℕ) : M.S
   | .step _ .here, _, h => False.elim (by cases h)
 
 /-- Into a `◇_x`: the shape of `x`'s content, and the `□` view as for `boxPush`. -/
-def ShEnv.diaPush {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (j : ℕ) (x : VarSymb)
-    {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) : M.ShEnv (Γ.diaIn x) w
+def ShEnv.diaPush {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (j : ℕ) (x : VarSymb)
+    {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) : ShEnv F Root (Γ.diaIn x) w
   | .step _ .dia, _, h => Ctx.diaIn_step_dia hx h ▸ (ρ.ref j x hx).body
   | .step u .box, T, h => ρ.boxPush j (.step u .box) T h
   | .step u .keep, T, h => ρ.boxPush j (.step u .keep) T h
@@ -441,21 +441,21 @@ def ShEnv.diaPush {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (j : ℕ) (x : 
   | .step _ .here, _, h => False.elim (by cases h)
 
 /-- The shape of the tuple of a support. -/
-def ShEnv.bundle {Δ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Δ w) :
-    (L : Supp Δ) → M.Shape w (Supp.ty L)
+def ShEnv.bundle {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) :
+    (L : Supp Δ) → Shape F Root w (Supp.ty L)
   | [] => .one
   | e :: L => .prod (ρ e.1 e.2.1 e.2.2) (ShEnv.bundle ρ L)
 
 mutual
   /-- Function terms carry no shape. -/
-  def funcShp {Δ : Ctx} {w : M.frame.W} (_ρ : M.ShEnv Δ w) (_j : ℕ) :
+  def funcShp {Δ : Ctx} {w : F.W} (_ρ : ShEnv F Root Δ w) (_j : ℕ) :
       {n : ℕ} → Func σ Δ n → PUnit.{1}
     | _, .F _ => PUnit.unit
     | _, .eval _ _ => PUnit.unit
 
   /-- ⭐The shape of a term's value, computed symbolically. -/
-  def termShp {Δ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Δ w) (j : ℕ) :
-      {T : VarType} → {a : Ann T} → Term σ Δ T a → M.Shape w T
+  def termShp {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) :
+      {T : VarType} → {a : Ann T} → Term σ Δ T a → Shape F Root w T
     | _, _, .var _ _ => .var
     | _, _, .func _ => .var
     | _, _, .unit => .one
@@ -494,15 +494,15 @@ omit [ModalSys] in
 @[simp] theorem _root_.V12M.Shp.inner_box {L : Type*} {A : VarType} (a : Shp L A) :
     (Shp.box a).inner = a := rfl
 
-theorem shp_var_eq {w : M.frame.W} : ∀ a b : M.Shape w .Var, a = b
+theorem shp_var_eq {w : F.W} : ∀ a b : Shape F Root w .Var, a = b
   | .var, .var => rfl
 
-theorem shp_ofEq {w : M.frame.W} {A B : VarType} (h : A = B) (j : ℕ) (a : M.Shape w A) :
-    GFunc.shp (GFunc.ofEq (σ := σ) h) j a = cast (congrArg (M.Shape w) h) a := by
+theorem shp_ofEq {w : F.W} {A B : VarType} (h : A = B) (j : ℕ) (a : Shape F Root w A) :
+    GFunc.shp (GFunc.ofEq (σ := σ) h) j a = cast (congrArg (Shape F Root w) h) a := by
   subst h
   rfl
 
-theorem lookup_shp {Δ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Δ w) (j : ℕ) :
+theorem lookup_shp {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) :
     ∀ (L : Supp Δ) (v : VarSymb) {T : VarType} (h : Δ v = some T)
       (hm : v ∈ List.map PSigma.fst L),
       GFunc.shp (Supp.lookup (σ := σ) L v h hm) j (ρ.bundle L) = ρ v T h
@@ -518,7 +518,7 @@ theorem lookup_shp {Δ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Δ w) (j : ℕ) :
         simp only [GFunc.shp, ShEnv.bundle, Shp.snd]
         exact lookup_shp ρ j L v h _
 
-theorem refGF_shp {Δ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Δ w) (j : ℕ) (L : Supp Δ) :
+theorem refGF_shp {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) (L : Supp Δ) :
     ∀ (v : VarSymb) {T : VarType} (h : Δ.ref v = some T)
       (hm : v.base ∈ List.map PSigma.fst L),
       GFunc.shp (Supp.refGF (σ := σ) L v h hm) j (ρ.bundle L) = ρ.ref j v h
@@ -546,7 +546,7 @@ theorem refGF_shp {Δ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Δ w) (j : ℕ) (L : 
       · rw [Supp.refGF, ShEnv.ref, dif_neg hs, dif_neg hs]
         exact lookup_shp ρ j L _ _ _
 
-theorem gatherBox_shp {Δ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Δ w) (j : ℕ) (L : Supp Δ) :
+theorem gatherBox_shp {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) (L : Supp Δ) :
     ∀ (L' : Supp Δ.boxIn) (hL : ∀ e ∈ Supp.outerBox L', e.1 ∈ List.map PSigma.fst L),
       GFunc.shp (Supp.gatherBox (σ := σ) L L' hL) j (ρ.bundle L) =
         .box ((ρ.boxPush j).bundle L')
@@ -564,7 +564,7 @@ theorem gatherBox_shp {Δ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Δ w) (j : ℕ) (
   | ⟨.step _ .snd, _, h⟩ :: _, _ => by cases h
   | ⟨.step _ .dia, _, h⟩ :: _, _ => by cases h
 
-theorem assemble_shp {Δ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Δ w) (j : ℕ) {x : VarSymb}
+theorem assemble_shp {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) {x : VarSymb}
     {X : VarType} (hr : Δ.ref x = some (.VTypeDia X)) :
     ∀ (L : Supp (Δ.diaIn x)),
       GFunc.shp (Supp.assemble (σ := σ) hr L) (j + 1)
@@ -590,7 +590,7 @@ theorem assemble_shp {Δ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Δ w) (j : ℕ) {x
   | ⟨.step _ .snd, _, h⟩ :: _ => by cases h
 
 /-- ⭐**S1**: compilation is faithful to shapes — the counterpart of `Term.compile_eval`. -/
-theorem termShp_compile {Δ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Δ w) (j : ℕ) (L : Supp Δ) :
+theorem termShp_compile {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) (L : Supp Δ) :
     ∀ {T : VarType} {a : Ann T} (t : Term σ Δ T a)
       (hL : ∀ e ∈ Term.bases t, e.1 ∈ List.map PSigma.fst L),
       GFunc.shp (Term.compile L t hL) j (ρ.bundle L) = termShp ρ j t
@@ -679,30 +679,30 @@ omit [ModalSys] in
   | .dia _ _ => rfl
 
 /-- A leaf map that acts on a family member by member passes through transposition. -/
-theorem transpose_map {w : M.frame.W} (F : M.frame.Leaf M.RootPoss w → M.frame.Leaf M.RootPoss w)
-    (G : ∀ s : M.frame.Acc w, M.frame.Leaf M.RootPoss s.1 → M.frame.Leaf M.RootPoss s.1)
-    (hF : ∀ f, F (.fam f) = .fam fun s => G s (f s)) :
-    ∀ {A : VarType} (g : (s : M.frame.Acc w) → M.Shape s.1 A),
-      (Frame.transposeShp g).map F = Frame.transposeShp fun s => (g s).map (G s)
+theorem transpose_map {w : F.W} (Φ : F.Leaf Root w → F.Leaf Root w)
+    (G : ∀ s : F.Acc w, F.Leaf Root s.1 → F.Leaf Root s.1)
+    (hΦ : ∀ f, Φ (.fam f) = .fam fun s => G s (f s)) :
+    ∀ {A : VarType} (g : (s : F.Acc w) → Shape F Root s.1 A),
+      (Frame.transposeShp g).map Φ = Frame.transposeShp fun s => (g s).map (G s)
   | .Var, _ => rfl
   | .VTypeOne, _ => rfl
   | .VTypeProd _ _, g => by
       simp only [Frame.transposeShp, Shp.map]
-      rw [transpose_map F G hF, transpose_map F G hF]
+      rw [transpose_map Φ G hΦ, transpose_map Φ G hΦ]
       simp only [Shp.map_fst, Shp.map_snd]
   | .VTypeBox _, g => by
       simp only [Frame.transposeShp, Shp.map]
-      rw [transpose_map F G hF]
+      rw [transpose_map Φ G hΦ]
       simp only [Shp.map_inner]
   | .VTypeDia _, g => by
       simp only [Frame.transposeShp, Shp.map]
-      rw [transpose_map F G hF, hF]
+      rw [transpose_map Φ G hΦ, hΦ]
       simp only [Shp.map_label, Shp.map_body]
 
 /-- Reading a transposed shape at the identity arrow gives the member there. -/
-theorem transpose_collapse_zero (hT : ModalSys.T = true) {w : M.frame.W} :
-    ∀ {A : VarType} (g : (s : M.frame.Acc w) → M.Shape s.1 A),
-      (Frame.transposeShp g).map (Frame.Leaf.collapse hT 0) = g (M.frame.reflAcc hT w)
+theorem transpose_collapse_zero (hT : ModalSys.T = true) {w : F.W} :
+    ∀ {A : VarType} (g : (s : F.Acc w) → Shape F Root s.1 A),
+      (Frame.transposeShp g).map (Frame.Leaf.collapse hT 0) = g (F.reflAcc hT w)
   | .Var, g => shp_var_eq _ _
   | .VTypeOne, g => Shp.one_eq _ _
   | .VTypeProd _ _, g => by
@@ -719,11 +719,11 @@ theorem transpose_collapse_zero (hT : ModalSys.T = true) {w : M.frame.W} :
       exact (Shp.dia_eta _).symm
 
 /-- Keeping a transposed shape: one family per arrow, of the members at the composite arrows. -/
-theorem transpose_shift_zero (hF : ModalSys.Four = true) {w : M.frame.W} :
-    ∀ {A : VarType} (g : (s : M.frame.Acc w) → M.Shape s.1 A),
+theorem transpose_shift_zero (hF : ModalSys.Four = true) {w : F.W} :
+    ∀ {A : VarType} (g : (s : F.Acc w) → Shape F Root s.1 A),
       (Frame.transposeShp g).map (Frame.Leaf.shift hF 0) =
         Frame.transposeShp fun s => Frame.transposeShp fun t =>
-          g ⟨t.1, ⟨M.frame.trans hF s.2.down t.2.down⟩⟩
+          g ⟨t.1, ⟨F.trans hF s.2.down t.2.down⟩⟩
   | .Var, _ => rfl
   | .VTypeOne, _ => rfl
   | .VTypeProd _ _, g => by
@@ -738,8 +738,8 @@ theorem transpose_shift_zero (hF : ModalSys.Four = true) {w : M.frame.W} :
       rfl
 
 /-- ⭐**Every map's shape transport commutes with transposition**, one level further out. -/
-theorem shp_transpose {w : M.frame.W} :
-    ∀ {A B : VarType} (f : GFunc σ A B) (j : ℕ) (g : (s : M.frame.Acc w) → M.Shape s.1 A),
+theorem shp_transpose {w : F.W} :
+    ∀ {A B : VarType} (f : GFunc σ A B) (j : ℕ) (g : (s : F.Acc w) → Shape F Root s.1 A),
       GFunc.shp f (j + 1) (Frame.transposeShp g) =
         Frame.transposeShp fun s => GFunc.shp f j (g s)
   | _, _, .id _, _, _ => rfl
@@ -778,7 +778,7 @@ theorem shp_transpose {w : M.frame.W} :
 
 /-! ### Unfolding lemmas -/
 
-theorem ShEnv.ref_proj {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (j : ℕ) {v : VarSymb}
+theorem ShEnv.ref_proj {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (j : ℕ) {v : VarSymb}
     {s : Step} (hs : s.isProj = true) {U T : VarType} (hU : Γ.ref v = some U)
     (h : Γ.ref (.step v s) = some T) :
     ρ.ref j (.step v s) h =
@@ -794,12 +794,12 @@ theorem ShEnv.ref_proj {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (j : ℕ) 
     rw [hU] at hU'
     cases hU'
 
-theorem ShEnv.ref_nonproj {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (j : ℕ) {v : VarSymb}
+theorem ShEnv.ref_nonproj {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (j : ℕ) {v : VarSymb}
     {s : Step} (hs : ¬ s.isProj = true) {T : VarType} (h : Γ.ref (.step v s) = some T) :
     ρ.ref j (.step v s) h = ρ (.step v s) T (by rw [Ctx.ref_step_nonproj Γ v hs] at h; exact h) :=
   by rw [ShEnv.ref, dif_neg hs]
 
-theorem termShp_diatm {Δ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Δ w) (j : ℕ) {x : VarSymb}
+theorem termShp_diatm {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) {x : VarSymb}
     {X : VarType} (hr : Δ.ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A}
     (hx : ∃ X, Δ.ref x = some (.VTypeDia X)) (t : Term σ (Δ.diaIn x) A a) :
     termShp ρ j (Term.diatm x hx t) =
@@ -820,8 +820,8 @@ theorem termShp_diatm {Δ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Δ w) (j : ℕ) {
 
 /-! ### Transposing shape environments -/
 
-theorem ShEnv.ref_transpose {Γ : Ctx} {w : M.frame.W} (τ : M.ShEnv Γ w)
-    (ρ : (s : M.frame.Acc w) → M.ShEnv Γ s.1) (j : ℕ)
+theorem ShEnv.ref_transpose {Γ : Ctx} {w : F.W} (τ : ShEnv F Root Γ w)
+    (ρ : (s : F.Acc w) → ShEnv F Root Γ s.1) (j : ℕ)
     (hτ : ∀ v T h, τ v T h = Frame.transposeShp fun s => ρ s v T h) :
     ∀ (v : VarSymb) {T : VarType} (h : Γ.ref v = some T),
       τ.ref (j + 1) v h = Frame.transposeShp fun s => (ρ s).ref j v h
@@ -838,8 +838,8 @@ theorem ShEnv.ref_transpose {Γ : Ctx} {w : M.frame.W} (τ : M.ShEnv Γ w)
       · rw [ShEnv.ref_nonproj τ (j + 1) hs h, hτ]
         exact congrArg _ (funext fun s => (ShEnv.ref_nonproj (ρ s) j hs h).symm)
 
-theorem ShEnv.boxPush_transpose {Γ : Ctx} {w : M.frame.W} (τ : M.ShEnv Γ w)
-    (ρ : (s : M.frame.Acc w) → M.ShEnv Γ s.1) (j : ℕ)
+theorem ShEnv.boxPush_transpose {Γ : Ctx} {w : F.W} (τ : ShEnv F Root Γ w)
+    (ρ : (s : F.Acc w) → ShEnv F Root Γ s.1) (j : ℕ)
     (hτ : ∀ v T h, τ v T h = Frame.transposeShp fun s => ρ s v T h) :
     ∀ v T h, τ.boxPush (j + 1) v T h = Frame.transposeShp fun s => (ρ s).boxPush j v T h
   | .step u .box, _, h => by
@@ -856,8 +856,8 @@ theorem ShEnv.boxPush_transpose {Γ : Ctx} {w : M.frame.W} (τ : M.ShEnv Γ w)
   | .step _ .dia, _, h => by cases h
   | .step _ .here, _, h => by cases h
 
-theorem ShEnv.diaPush_transpose {Γ : Ctx} {w : M.frame.W} (τ : M.ShEnv Γ w)
-    (ρ : (s : M.frame.Acc w) → M.ShEnv Γ s.1) (j : ℕ)
+theorem ShEnv.diaPush_transpose {Γ : Ctx} {w : F.W} (τ : ShEnv F Root Γ w)
+    (ρ : (s : F.Acc w) → ShEnv F Root Γ s.1) (j : ℕ)
     (hτ : ∀ v T h, τ v T h = Frame.transposeShp fun s => ρ s v T h) {x : VarSymb} {X : VarType}
     (hx : Γ.ref x = some (.VTypeDia X)) :
     ∀ v T h, τ.diaPush (j + 1) x hx v T h = Frame.transposeShp fun s => (ρ s).diaPush j x hx v T h
@@ -876,8 +876,8 @@ theorem ShEnv.diaPush_transpose {Γ : Ctx} {w : M.frame.W} (τ : M.ShEnv Γ w)
 
 /-- ⭐**T**: the shape of a term, one level further out, is the transposed family of its shapes —
     when the environment is the transposed family of environments. -/
-theorem termShp_transpose {Δ : Ctx} {w : M.frame.W} (τ : M.ShEnv Δ w)
-    (ρ : (s : M.frame.Acc w) → M.ShEnv Δ s.1) (j : ℕ)
+theorem termShp_transpose {Δ : Ctx} {w : F.W} (τ : ShEnv F Root Δ w)
+    (ρ : (s : F.Acc w) → ShEnv F Root Δ s.1) (j : ℕ)
     (hτ : ∀ v T h, τ v T h = Frame.transposeShp fun s => ρ s v T h) :
     ∀ {T : VarType} {a : Ann T} (t : Term σ Δ T a),
       termShp τ (j + 1) t = Frame.transposeShp fun s => termShp (ρ s) j t
@@ -903,16 +903,380 @@ theorem termShp_transpose {Δ : Ctx} {w : M.frame.W} (τ : M.ShEnv Δ w)
         funext fun s => termShp_diatm (ρ s) j hr hx t]
       rfl
 
+/-! ## Weakening, and the annotation determines the shape -/
+
+/-- Two shape environments agree along an inclusion of contexts. -/
+def ShEnv.Agree {Γ Γ' : Ctx} (h : Γ.Le Γ') {w : F.W} (ρ : ShEnv F Root Γ w)
+    (ρ' : ShEnv F Root Γ' w) : Prop :=
+  ∀ v T (hv : Γ v = some T), ρ v T hv = ρ' v T (h v T hv)
+
+theorem ShEnv.ref_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : F.W} {ρ : ShEnv F Root Γ w}
+    {ρ' : ShEnv F Root Γ' w} (hag : ShEnv.Agree h ρ ρ') (j : ℕ) :
+    ∀ (v : VarSymb) {T : VarType} (hv : Γ.ref v = some T), ρ.ref j v hv = ρ'.ref j v (h.ref hv)
+  | .root r, _, hv => hag (.root r) _ hv
+  | .step v s, T, hv => by
+      by_cases hs : s.isProj = true
+      · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
+          rw [Ctx.ref_step_proj Γ v hs] at hv
+          cases hU : Γ.ref v with
+          | none => rw [hU] at hv; cases hv
+          | some U => exact ⟨U, rfl⟩
+        rw [ShEnv.ref_proj ρ j hs hU hv, ShEnv.ref_proj ρ' j hs (h.ref hU) (h.ref hv),
+          ShEnv.ref_agree hag j v hU]
+      · rw [ShEnv.ref_nonproj ρ j hs hv, ShEnv.ref_nonproj ρ' j hs (h.ref hv)]
+        exact hag _ _ _
+
+theorem ShEnv.boxPush_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : F.W} {ρ : ShEnv F Root Γ w}
+    {ρ' : ShEnv F Root Γ' w} (hag : ShEnv.Agree h ρ ρ') (j : ℕ) :
+    ShEnv.Agree h.boxIn (ρ.boxPush j) (ρ'.boxPush j)
+  | .step u .box, _, hv => by
+      simp only [ShEnv.boxPush]
+      rw [ShEnv.ref_agree hag j u]
+  | .step u .keep, _, hv => by
+      simp only [ShEnv.boxPush]
+      rw [ShEnv.ref_agree hag j u]
+  | .root _, _, hv => by cases hv
+  | .step _ .fst, _, hv => by cases hv
+  | .step _ .snd, _, hv => by cases hv
+  | .step _ .dia, _, hv => by cases hv
+  | .step _ .here, _, hv => by cases hv
+
+theorem ShEnv.diaPush_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : F.W} {ρ : ShEnv F Root Γ w}
+    {ρ' : ShEnv F Root Γ' w} (hag : ShEnv.Agree h ρ ρ') (j : ℕ) {x : VarSymb} {X : VarType}
+    (hx : Γ.ref x = some (.VTypeDia X)) :
+    ShEnv.Agree (h.diaIn x) (ρ.diaPush j x hx) (ρ'.diaPush j x (h.ref hx))
+  | .step _ .dia, _, hv => by
+      have e := Ctx.diaIn_step_dia hx hv
+      subst e
+      simp only [ShEnv.diaPush]
+      rw [ShEnv.ref_agree hag j x hx]
+  | .step u .box, T, hv => ShEnv.boxPush_agree hag j (.step u .box) T hv
+  | .step u .keep, T, hv => ShEnv.boxPush_agree hag j (.step u .keep) T hv
+  | .root _, _, hv => by cases hv
+  | .step _ .fst, _, hv => by cases hv
+  | .step _ .snd, _, hv => by cases hv
+  | .step _ .here, _, hv => by cases hv
+
+/-- ⭐Shapes are unchanged by weakening. -/
+theorem termShp_mono {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : F.W} {ρ : ShEnv F Root Γ w}
+    {ρ' : ShEnv F Root Γ' w} (hag : ShEnv.Agree h ρ ρ') (j : ℕ) :
+    ∀ {T : VarType} {a : Ann T} (t : Term σ Γ T a), termShp ρ' j (Term.mono h t) = termShp ρ j t
+  | _, _, .var _ _ => rfl
+  | _, _, .func _ => rfl
+  | _, _, .unit => rfl
+  | _, _, .pair s t => by
+      change Shp.prod (termShp ρ' j (Term.mono h s)) (termShp ρ' j (Term.mono h t)) = _
+      rw [termShp_mono hag j s, termShp_mono hag j t]
+      rfl
+  | _, _, .boxtm t => by
+      change Shp.box (termShp (ρ'.boxPush j) (j + 1) (Term.mono h.boxIn t)) = _
+      rw [termShp_mono (ShEnv.boxPush_agree hag j) (j + 1) t]
+      rfl
+  | _, _, .diatm x hx t => by
+      obtain ⟨X, hr⟩ := id hx
+      change termShp ρ' j (Term.diatm x _ (Term.mono (h.diaIn x) t)) = _
+      rw [termShp_diatm ρ' j (h.ref hr), termShp_diatm ρ j hr,
+        termShp_mono (ShEnv.diaPush_agree hag j hr) (j + 1) t, ShEnv.ref_agree hag j x hr]
+
+/-- ⭐**The annotation determines the shape**: two terms of one annotated type have the same symbolic
+    shape.  This is the semantic side of `eqRec` comparing only terms of one annotation. -/
+theorem termShp_ann {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) :
+    ∀ {T : VarType} {a : Ann T} (t s : Term σ Δ T a), termShp ρ j t = termShp ρ j s
+  | .Var, _, _, _ => shp_var_eq _ _
+  | .VTypeOne, _, _, _ => Shp.one_eq _ _
+  | _, _, .pair t₁ t₂, .pair s₁ s₂ => by
+      simp only [termShp]
+      rw [termShp_ann ρ j t₁ s₁, termShp_ann ρ j t₂ s₂]
+  | _, _, .boxtm t, .boxtm s => by
+      simp only [termShp]
+      rw [termShp_ann (ρ.boxPush j) (j + 1) t s]
+  | _, _, .diatm x hx t, .diatm _ hx' s => by
+      obtain ⟨X, hr⟩ := id hx
+      rw [termShp_diatm ρ j hr hx, termShp_diatm ρ j hr hx',
+        termShp_ann (ρ.diaPush j x hr) (j + 1) t s]
+
+/-! ## Collapsing or shifting a whole shape environment -/
+
+omit [ModalSys] in
+theorem _root_.V12M.Shp.map_map {L : Type y} (g g' : L → L) :
+    ∀ {A : VarType} (a : Shp L A), (a.map g).map g' = a.map (g' ∘ g)
+  | _, .var => rfl
+  | _, .one => rfl
+  | _, .prod a b => by simp only [Shp.map]; rw [Shp.map_map g g' a, Shp.map_map g g' b]
+  | _, .box a => by simp only [Shp.map]; rw [Shp.map_map g g' a]
+  | _, .dia _ a => by simp only [Shp.map]; rw [Shp.map_map g g' a]; rfl
+
+omit [ModalSys] in
+theorem _root_.V12M.Shp.map_congr {L : Type y} {g g' : L → L} (h : ∀ ℓ, g ℓ = g' ℓ) :
+    ∀ {A : VarType} (a : Shp L A), a.map g = a.map g'
+  | _, .var => rfl
+  | _, .one => rfl
+  | _, .prod a b => by simp only [Shp.map]; rw [Shp.map_congr h a, Shp.map_congr h b]
+  | _, .box a => by simp only [Shp.map]; rw [Shp.map_congr h a]
+  | _, .dia ℓ a => by simp only [Shp.map]; rw [Shp.map_congr h a, h]
+
+omit [ModalSys] in
+theorem _root_.V12M.Shp.map_id {L : Type y} : ∀ {A : VarType} (a : Shp L A), a.map id = a
+  | _, .var => rfl
+  | _, .one => rfl
+  | _, .prod a b => by simp only [Shp.map]; rw [Shp.map_id a, Shp.map_id b]
+  | _, .box a => by simp only [Shp.map]; rw [Shp.map_id a]
+  | _, .dia _ a => by simp only [Shp.map]; rw [Shp.map_id a]; rfl
+
+/-- A collapse at level `j` passes through any map acting at a level below it. -/
+theorem shp_mapCollapse (hT : ModalSys.T = true) (j : ℕ) {w : F.W} :
+    ∀ {A B : VarType} (f : GFunc σ A B) (d : ℕ) (a : Shape F Root w A),
+      GFunc.shp f (j + d) (a.map (Frame.Leaf.collapse hT j)) =
+        (GFunc.shp f (j + d + 1) a).map (Frame.Leaf.collapse hT j)
+  | _, _, .id _, _, _ => rfl
+  | _, _, .comp g f, d, a => by
+      simp only [GFunc.shp]
+      rw [shp_mapCollapse hT j f, shp_mapCollapse hT j g]
+  | _, _, .fst, _, a => Shp.map_fst _ a
+  | _, _, .snd, _, a => Shp.map_snd _ a
+  | _, _, .pair f g, d, a => by
+      simp only [GFunc.shp, Shp.map]
+      rw [shp_mapCollapse hT j f, shp_mapCollapse hT j g]
+  | _, _, .unit _, _, _ => rfl
+  | _, _, .func _ _, _, _ => rfl
+  | _, _, .boxMap f, d, a => by
+      simp only [GFunc.shp, Shp.map, Shp.map_inner]
+      rw [show j + d + 1 = j + (d + 1) from rfl, shp_mapCollapse hT j f (d + 1)]
+  | _, _, .boxPair _ _, _, a => by
+      simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_fst, Shp.map_snd]
+  | _, _, .boxUnit, _, _ => rfl
+  | _, _, .diaMap f, d, a => by
+      simp only [GFunc.shp, Shp.map, Shp.map_label, Shp.map_body]
+      rw [show j + d + 1 = j + (d + 1) from rfl, shp_mapCollapse hT j f (d + 1)]
+  | _, _, .strength _ _, _, a => by
+      simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_fst, Shp.map_snd, Shp.map_label,
+        Shp.map_body]
+  | _, _, .extract hT', d, a => by
+      simp only [GFunc.shp, Shp.map_inner, Shp.map_map]
+      exact Shp.map_congr (fun ℓ => Frame.Leaf.collapse_collapse hT j d ℓ) _
+  | _, _, .dup hF, d, a => by
+      simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_map]
+      congr 2
+      exact Shp.map_congr (fun ℓ => Frame.Leaf.shift_collapse hT hF j d ℓ) _
+
+/-- A shift at level `j` passes through any map acting at a level below it. -/
+theorem shp_mapShift (hF : ModalSys.Four = true) (j : ℕ) {w : F.W} :
+    ∀ {A B : VarType} (f : GFunc σ A B) (d : ℕ) (a : Shape F Root w A),
+      GFunc.shp f (j + d + 2) (a.map (Frame.Leaf.shift hF j)) =
+        (GFunc.shp f (j + d + 1) a).map (Frame.Leaf.shift hF j)
+  | _, _, .id _, _, _ => rfl
+  | _, _, .comp g f, d, a => by
+      simp only [GFunc.shp]
+      rw [shp_mapShift hF j f, shp_mapShift hF j g]
+  | _, _, .fst, _, a => Shp.map_fst _ a
+  | _, _, .snd, _, a => Shp.map_snd _ a
+  | _, _, .pair f g, d, a => by
+      simp only [GFunc.shp, Shp.map]
+      rw [shp_mapShift hF j f, shp_mapShift hF j g]
+  | _, _, .unit _, _, _ => rfl
+  | _, _, .func _ _, _, _ => rfl
+  | _, _, .boxMap f, d, a => by
+      simp only [GFunc.shp, Shp.map, Shp.map_inner]
+      rw [show j + d + 2 + 1 = j + (d + 1) + 2 by omega,
+        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, shp_mapShift hF j f (d + 1)]
+  | _, _, .boxPair _ _, _, a => by
+      simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_fst, Shp.map_snd]
+  | _, _, .boxUnit, _, _ => rfl
+  | _, _, .diaMap f, d, a => by
+      simp only [GFunc.shp, Shp.map, Shp.map_label, Shp.map_body]
+      rw [show j + d + 2 + 1 = j + (d + 1) + 2 by omega,
+        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, shp_mapShift hF j f (d + 1)]
+  | _, _, .strength _ _, _, a => by
+      simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_fst, Shp.map_snd, Shp.map_label,
+        Shp.map_body]
+  | _, _, .extract hT, d, a => by
+      simp only [GFunc.shp, Shp.map_inner, Shp.map_map]
+      exact Shp.map_congr (fun ℓ => Frame.Leaf.collapse_shift hT hF j d ℓ) _
+  | _, _, .dup hF', d, a => by
+      simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_map]
+      congr 2
+      exact Shp.map_congr (fun ℓ => Frame.Leaf.shift_shift hF j d ℓ) _
+
+/-- Apply a leaf map to every shape of an environment. -/
+def ShEnv.mapLeaves {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w)
+    (g : F.Leaf Root w → F.Leaf Root w) : ShEnv F Root Γ w :=
+  fun v T h => (ρ v T h).map g
+
+section MapLeaves
+
+variable {Γ : Ctx} {w : F.W}
+
+theorem ShEnv.ref_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ) :
+    ∀ (v : VarSymb) {T : VarType} (h : Γ.ref v = some T),
+      (ρ.mapLeaves (Frame.Leaf.collapse hT j)).ref (j + d) v h =
+        (ρ.ref (j + d + 1) v h).map (Frame.Leaf.collapse hT j)
+  | .root _, _, _ => rfl
+  | .step v s, T, h => by
+      by_cases hs : s.isProj = true
+      · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
+          rw [Ctx.ref_step_proj Γ v hs] at h
+          cases hU : Γ.ref v with
+          | none => rw [hU] at h; cases h
+          | some U => exact ⟨U, rfl⟩
+        rw [ShEnv.ref_proj _ _ hs hU h, ShEnv.ref_proj _ _ hs hU h,
+          ShEnv.ref_mapCollapse hT j ρ d v hU, shp_mapCollapse]
+      · rw [ShEnv.ref_nonproj _ _ hs h, ShEnv.ref_nonproj _ _ hs h]
+        rfl
+
+theorem ShEnv.ref_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ) :
+    ∀ (v : VarSymb) {T : VarType} (h : Γ.ref v = some T),
+      (ρ.mapLeaves (Frame.Leaf.shift hF j)).ref (j + d + 2) v h =
+        (ρ.ref (j + d + 1) v h).map (Frame.Leaf.shift hF j)
+  | .root _, _, _ => rfl
+  | .step v s, T, h => by
+      by_cases hs : s.isProj = true
+      · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
+          rw [Ctx.ref_step_proj Γ v hs] at h
+          cases hU : Γ.ref v with
+          | none => rw [hU] at h; cases h
+          | some U => exact ⟨U, rfl⟩
+        rw [ShEnv.ref_proj _ _ hs hU h, ShEnv.ref_proj _ _ hs hU h,
+          ShEnv.ref_mapShift hF j ρ d v hU, shp_mapShift]
+      · rw [ShEnv.ref_nonproj _ _ hs h, ShEnv.ref_nonproj _ _ hs h]
+        rfl
+
+theorem ShEnv.boxPush_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ) :
+    (ρ.mapLeaves (Frame.Leaf.collapse hT j)).boxPush (j + d) =
+      (ρ.boxPush (j + d + 1)).mapLeaves (Frame.Leaf.collapse hT j) := by
+  funext v T h
+  match v with
+  | .step u .box =>
+      simp only [ShEnv.boxPush, ShEnv.mapLeaves]
+      rw [ShEnv.ref_mapCollapse hT j ρ d, Shp.map_inner]
+  | .step u .keep =>
+      simp only [ShEnv.boxPush, ShEnv.mapLeaves]
+      rw [ShEnv.ref_mapCollapse hT j ρ d, shp_mapCollapse, Shp.map_inner]
+  | .root _ => cases h
+  | .step _ .fst => cases h
+  | .step _ .snd => cases h
+  | .step _ .dia => cases h
+  | .step _ .here => cases h
+
+theorem ShEnv.boxPush_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ) :
+    (ρ.mapLeaves (Frame.Leaf.shift hF j)).boxPush (j + d + 2) =
+      (ρ.boxPush (j + d + 1)).mapLeaves (Frame.Leaf.shift hF j) := by
+  funext v T h
+  match v with
+  | .step u .box =>
+      simp only [ShEnv.boxPush, ShEnv.mapLeaves]
+      rw [ShEnv.ref_mapShift hF j ρ d, Shp.map_inner]
+  | .step u .keep =>
+      simp only [ShEnv.boxPush, ShEnv.mapLeaves]
+      rw [ShEnv.ref_mapShift hF j ρ d, shp_mapShift, Shp.map_inner]
+  | .root _ => cases h
+  | .step _ .fst => cases h
+  | .step _ .snd => cases h
+  | .step _ .dia => cases h
+  | .step _ .here => cases h
+
+theorem ShEnv.diaPush_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ)
+    {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) :
+    (ρ.mapLeaves (Frame.Leaf.collapse hT j)).diaPush (j + d) x hx =
+      (ρ.diaPush (j + d + 1) x hx).mapLeaves (Frame.Leaf.collapse hT j) := by
+  funext v T h
+  match v with
+  | .step _ .dia =>
+      have e := Ctx.diaIn_step_dia hx h
+      subst e
+      simp only [ShEnv.diaPush, ShEnv.mapLeaves]
+      rw [ShEnv.ref_mapCollapse hT j ρ d, Shp.map_body]
+  | .step u .box =>
+      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapCollapse hT j ρ d) (.step u .box)) T) h
+  | .step u .keep =>
+      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapCollapse hT j ρ d) (.step u .keep)) T) h
+  | .root _ => cases h
+  | .step _ .fst => cases h
+  | .step _ .snd => cases h
+  | .step _ .here => cases h
+
+theorem ShEnv.diaPush_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ)
+    {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) :
+    (ρ.mapLeaves (Frame.Leaf.shift hF j)).diaPush (j + d + 2) x hx =
+      (ρ.diaPush (j + d + 1) x hx).mapLeaves (Frame.Leaf.shift hF j) := by
+  funext v T h
+  match v with
+  | .step _ .dia =>
+      have e := Ctx.diaIn_step_dia hx h
+      subst e
+      simp only [ShEnv.diaPush, ShEnv.mapLeaves]
+      rw [ShEnv.ref_mapShift hF j ρ d, Shp.map_body]
+  | .step u .box =>
+      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapShift hF j ρ d) (.step u .box)) T) h
+  | .step u .keep =>
+      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapShift hF j ρ d) (.step u .keep)) T) h
+  | .root _ => cases h
+  | .step _ .fst => cases h
+  | .step _ .snd => cases h
+  | .step _ .here => cases h
+
+end MapLeaves
+
+/-- ⭐Collapsing a whole environment at level `j` passes through `termShp`. -/
+theorem termShp_mapCollapse (hT : ModalSys.T = true) (j : ℕ) :
+    ∀ {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (d : ℕ) {T : VarType} {a : Ann T}
+      (t : Term σ Γ T a),
+      termShp (ρ.mapLeaves (Frame.Leaf.collapse hT j)) (j + d) t =
+        (termShp ρ (j + d + 1) t).map (Frame.Leaf.collapse hT j)
+  | _, _, _, _, _, _, .var _ _ => rfl
+  | _, _, _, _, _, _, .func _ => rfl
+  | _, _, _, _, _, _, .unit => rfl
+  | _, _, ρ, d, _, _, .pair s t => by
+      simp only [termShp, Shp.map]
+      rw [termShp_mapCollapse hT j ρ d s, termShp_mapCollapse hT j ρ d t]
+  | _, _, ρ, d, _, _, .boxtm t => by
+      simp only [termShp, Shp.map]
+      rw [ShEnv.boxPush_mapCollapse hT j ρ d, show j + d + 1 = j + (d + 1) from rfl,
+        termShp_mapCollapse hT j _ (d + 1) t]
+  | _, _, ρ, d, _, _, .diatm x hx t => by
+      obtain ⟨X, hr⟩ := id hx
+      rw [termShp_diatm _ _ hr, termShp_diatm _ _ hr, ShEnv.ref_mapCollapse hT j ρ d,
+        ShEnv.diaPush_mapCollapse hT j ρ d hr, show j + d + 1 = j + (d + 1) from rfl,
+        termShp_mapCollapse hT j _ (d + 1) t]
+      simp only [Shp.map, Shp.map_label]
+
+/-- ⭐Shifting a whole environment at level `j` passes through `termShp`, one level further in. -/
+theorem termShp_mapShift (hF : ModalSys.Four = true) (j : ℕ) :
+    ∀ {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (d : ℕ) {T : VarType} {a : Ann T}
+      (t : Term σ Γ T a),
+      termShp (ρ.mapLeaves (Frame.Leaf.shift hF j)) (j + d + 2) t =
+        (termShp ρ (j + d + 1) t).map (Frame.Leaf.shift hF j)
+  | _, _, _, _, _, _, .var _ _ => rfl
+  | _, _, _, _, _, _, .func _ => rfl
+  | _, _, _, _, _, _, .unit => rfl
+  | _, _, ρ, d, _, _, .pair s t => by
+      simp only [termShp, Shp.map]
+      rw [termShp_mapShift hF j ρ d s, termShp_mapShift hF j ρ d t]
+  | _, _, ρ, d, _, _, .boxtm t => by
+      simp only [termShp, Shp.map]
+      rw [ShEnv.boxPush_mapShift hF j ρ d, show j + d + 2 + 1 = j + (d + 1) + 2 by omega,
+        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, termShp_mapShift hF j _ (d + 1) t]
+  | _, _, ρ, d, _, _, .diatm x hx t => by
+      obtain ⟨X, hr⟩ := id hx
+      rw [termShp_diatm _ _ hr, termShp_diatm _ _ hr, ShEnv.ref_mapShift hF j ρ d,
+        ShEnv.diaPush_mapShift hF j ρ d hr, show j + d + 2 + 1 = j + (d + 1) + 2 by omega,
+        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, termShp_mapShift hF j _ (d + 1) t]
+      simp only [Shp.map, Shp.map_label]
+
+
+section ModelShapes
+
+variable {M : Model.{u, v} σ}
+
 /-! ## S2: the shape of a value is its symbolic shape -/
 
 /-- The shape of an object, under T. -/
 abbrev domSh (hT : ModalSys.T = true) {A : VarType} {w : M.frame.W} (o : M.frame.Dom A w) :
-    M.Shape w A :=
+    Shape M.frame M.RootPoss w A :=
   Frame.domShape M.necEval (M.shape hT) o
 
 /-- The shapes of an environment's objects. -/
 def envShape (hT : ModalSys.T = true) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
-    M.ShEnv Γ w :=
+    ShEnv M.frame M.RootPoss Γ w :=
   fun v T h => domSh hT (env v T h)
 
 theorem Env.ref_proj' {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {v : VarSymb} {s : Step}
@@ -997,8 +1361,8 @@ theorem domSh_bundle (hT : ModalSys.T = true) {Δ : Ctx} {w : M.frame.W} (env : 
       rw [domSh_bundle hT env L]
       rfl
 
-theorem ShEnv.bundle_transpose {Γ : Ctx} {w : M.frame.W} (τ : M.ShEnv Γ w)
-    (ρ : (s : M.frame.Acc w) → M.ShEnv Γ s.1)
+theorem ShEnv.bundle_transpose {Γ : Ctx} {w : M.frame.W} (τ : ShEnv M.frame M.RootPoss Γ w)
+    (ρ : (s : M.frame.Acc w) → ShEnv M.frame M.RootPoss Γ s.1)
     (hτ : ∀ v T h, τ v T h = Frame.transposeShp fun s => ρ s v T h) :
     ∀ L : Supp Γ, τ.bundle L = Frame.transposeShp fun s => (ρ s).bundle L
   | [] => rfl
@@ -1061,364 +1425,7 @@ theorem domSh_interp (hT : ModalSys.T = true) {Δ : Ctx} {w : M.frame.W} (env : 
       rw [ref_envShape]
       rfl
 
-/-! ## Weakening, and the annotation determines the shape -/
-
-/-- Two shape environments agree along an inclusion of contexts. -/
-def ShEnv.Agree {Γ Γ' : Ctx} (h : Γ.Le Γ') {w : M.frame.W} (ρ : M.ShEnv Γ w)
-    (ρ' : M.ShEnv Γ' w) : Prop :=
-  ∀ v T (hv : Γ v = some T), ρ v T hv = ρ' v T (h v T hv)
-
-theorem ShEnv.ref_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {ρ : M.ShEnv Γ w}
-    {ρ' : M.ShEnv Γ' w} (hag : ShEnv.Agree h ρ ρ') (j : ℕ) :
-    ∀ (v : VarSymb) {T : VarType} (hv : Γ.ref v = some T), ρ.ref j v hv = ρ'.ref j v (h.ref hv)
-  | .root r, _, hv => hag (.root r) _ hv
-  | .step v s, T, hv => by
-      by_cases hs : s.isProj = true
-      · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
-          rw [Ctx.ref_step_proj Γ v hs] at hv
-          cases hU : Γ.ref v with
-          | none => rw [hU] at hv; cases hv
-          | some U => exact ⟨U, rfl⟩
-        rw [ShEnv.ref_proj ρ j hs hU hv, ShEnv.ref_proj ρ' j hs (h.ref hU) (h.ref hv),
-          ShEnv.ref_agree hag j v hU]
-      · rw [ShEnv.ref_nonproj ρ j hs hv, ShEnv.ref_nonproj ρ' j hs (h.ref hv)]
-        exact hag _ _ _
-
-theorem ShEnv.boxPush_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {ρ : M.ShEnv Γ w}
-    {ρ' : M.ShEnv Γ' w} (hag : ShEnv.Agree h ρ ρ') (j : ℕ) :
-    ShEnv.Agree h.boxIn (ρ.boxPush j) (ρ'.boxPush j)
-  | .step u .box, _, hv => by
-      simp only [ShEnv.boxPush]
-      rw [ShEnv.ref_agree hag j u]
-  | .step u .keep, _, hv => by
-      simp only [ShEnv.boxPush]
-      rw [ShEnv.ref_agree hag j u]
-  | .root _, _, hv => by cases hv
-  | .step _ .fst, _, hv => by cases hv
-  | .step _ .snd, _, hv => by cases hv
-  | .step _ .dia, _, hv => by cases hv
-  | .step _ .here, _, hv => by cases hv
-
-theorem ShEnv.diaPush_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {ρ : M.ShEnv Γ w}
-    {ρ' : M.ShEnv Γ' w} (hag : ShEnv.Agree h ρ ρ') (j : ℕ) {x : VarSymb} {X : VarType}
-    (hx : Γ.ref x = some (.VTypeDia X)) :
-    ShEnv.Agree (h.diaIn x) (ρ.diaPush j x hx) (ρ'.diaPush j x (h.ref hx))
-  | .step _ .dia, _, hv => by
-      have e := Ctx.diaIn_step_dia hx hv
-      subst e
-      simp only [ShEnv.diaPush]
-      rw [ShEnv.ref_agree hag j x hx]
-  | .step u .box, T, hv => ShEnv.boxPush_agree hag j (.step u .box) T hv
-  | .step u .keep, T, hv => ShEnv.boxPush_agree hag j (.step u .keep) T hv
-  | .root _, _, hv => by cases hv
-  | .step _ .fst, _, hv => by cases hv
-  | .step _ .snd, _, hv => by cases hv
-  | .step _ .here, _, hv => by cases hv
-
-/-- ⭐Shapes are unchanged by weakening. -/
-theorem termShp_mono {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {ρ : M.ShEnv Γ w}
-    {ρ' : M.ShEnv Γ' w} (hag : ShEnv.Agree h ρ ρ') (j : ℕ) :
-    ∀ {T : VarType} {a : Ann T} (t : Term σ Γ T a), termShp ρ' j (Term.mono h t) = termShp ρ j t
-  | _, _, .var _ _ => rfl
-  | _, _, .func _ => rfl
-  | _, _, .unit => rfl
-  | _, _, .pair s t => by
-      change Shp.prod (termShp ρ' j (Term.mono h s)) (termShp ρ' j (Term.mono h t)) = _
-      rw [termShp_mono hag j s, termShp_mono hag j t]
-      rfl
-  | _, _, .boxtm t => by
-      change Shp.box (termShp (ρ'.boxPush j) (j + 1) (Term.mono h.boxIn t)) = _
-      rw [termShp_mono (ShEnv.boxPush_agree hag j) (j + 1) t]
-      rfl
-  | _, _, .diatm x hx t => by
-      obtain ⟨X, hr⟩ := id hx
-      change termShp ρ' j (Term.diatm x _ (Term.mono (h.diaIn x) t)) = _
-      rw [termShp_diatm ρ' j (h.ref hr), termShp_diatm ρ j hr,
-        termShp_mono (ShEnv.diaPush_agree hag j hr) (j + 1) t, ShEnv.ref_agree hag j x hr]
-
-/-- ⭐**The annotation determines the shape**: two terms of one annotated type have the same symbolic
-    shape.  This is the semantic side of `eqRec` comparing only terms of one annotation. -/
-theorem termShp_ann {Δ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Δ w) (j : ℕ) :
-    ∀ {T : VarType} {a : Ann T} (t s : Term σ Δ T a), termShp ρ j t = termShp ρ j s
-  | .Var, _, _, _ => shp_var_eq _ _
-  | .VTypeOne, _, _, _ => Shp.one_eq _ _
-  | _, _, .pair t₁ t₂, .pair s₁ s₂ => by
-      simp only [termShp]
-      rw [termShp_ann ρ j t₁ s₁, termShp_ann ρ j t₂ s₂]
-  | _, _, .boxtm t, .boxtm s => by
-      simp only [termShp]
-      rw [termShp_ann (ρ.boxPush j) (j + 1) t s]
-  | _, _, .diatm x hx t, .diatm _ hx' s => by
-      obtain ⟨X, hr⟩ := id hx
-      rw [termShp_diatm ρ j hr hx, termShp_diatm ρ j hr hx',
-        termShp_ann (ρ.diaPush j x hr) (j + 1) t s]
-
-/-! ## Collapsing or shifting a whole shape environment -/
-
-omit [ModalSys] in
-theorem _root_.V12M.Shp.map_map {L : Type y} (g g' : L → L) :
-    ∀ {A : VarType} (a : Shp L A), (a.map g).map g' = a.map (g' ∘ g)
-  | _, .var => rfl
-  | _, .one => rfl
-  | _, .prod a b => by simp only [Shp.map]; rw [Shp.map_map g g' a, Shp.map_map g g' b]
-  | _, .box a => by simp only [Shp.map]; rw [Shp.map_map g g' a]
-  | _, .dia _ a => by simp only [Shp.map]; rw [Shp.map_map g g' a]; rfl
-
-omit [ModalSys] in
-theorem _root_.V12M.Shp.map_congr {L : Type y} {g g' : L → L} (h : ∀ ℓ, g ℓ = g' ℓ) :
-    ∀ {A : VarType} (a : Shp L A), a.map g = a.map g'
-  | _, .var => rfl
-  | _, .one => rfl
-  | _, .prod a b => by simp only [Shp.map]; rw [Shp.map_congr h a, Shp.map_congr h b]
-  | _, .box a => by simp only [Shp.map]; rw [Shp.map_congr h a]
-  | _, .dia ℓ a => by simp only [Shp.map]; rw [Shp.map_congr h a, h]
-
-omit [ModalSys] in
-theorem _root_.V12M.Shp.map_id {L : Type y} : ∀ {A : VarType} (a : Shp L A), a.map id = a
-  | _, .var => rfl
-  | _, .one => rfl
-  | _, .prod a b => by simp only [Shp.map]; rw [Shp.map_id a, Shp.map_id b]
-  | _, .box a => by simp only [Shp.map]; rw [Shp.map_id a]
-  | _, .dia _ a => by simp only [Shp.map]; rw [Shp.map_id a]; rfl
-
-/-- A collapse at level `j` passes through any map acting at a level below it. -/
-theorem shp_mapCollapse (hT : ModalSys.T = true) (j : ℕ) {w : M.frame.W} :
-    ∀ {A B : VarType} (f : GFunc σ A B) (d : ℕ) (a : M.Shape w A),
-      GFunc.shp f (j + d) (a.map (Frame.Leaf.collapse hT j)) =
-        (GFunc.shp f (j + d + 1) a).map (Frame.Leaf.collapse hT j)
-  | _, _, .id _, _, _ => rfl
-  | _, _, .comp g f, d, a => by
-      simp only [GFunc.shp]
-      rw [shp_mapCollapse hT j f, shp_mapCollapse hT j g]
-  | _, _, .fst, _, a => Shp.map_fst _ a
-  | _, _, .snd, _, a => Shp.map_snd _ a
-  | _, _, .pair f g, d, a => by
-      simp only [GFunc.shp, Shp.map]
-      rw [shp_mapCollapse hT j f, shp_mapCollapse hT j g]
-  | _, _, .unit _, _, _ => rfl
-  | _, _, .func _ _, _, _ => rfl
-  | _, _, .boxMap f, d, a => by
-      simp only [GFunc.shp, Shp.map, Shp.map_inner]
-      rw [show j + d + 1 = j + (d + 1) from rfl, shp_mapCollapse hT j f (d + 1)]
-  | _, _, .boxPair _ _, _, a => by
-      simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_fst, Shp.map_snd]
-  | _, _, .boxUnit, _, _ => rfl
-  | _, _, .diaMap f, d, a => by
-      simp only [GFunc.shp, Shp.map, Shp.map_label, Shp.map_body]
-      rw [show j + d + 1 = j + (d + 1) from rfl, shp_mapCollapse hT j f (d + 1)]
-  | _, _, .strength _ _, _, a => by
-      simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_fst, Shp.map_snd, Shp.map_label,
-        Shp.map_body]
-  | _, _, .extract hT', d, a => by
-      simp only [GFunc.shp, Shp.map_inner, Shp.map_map]
-      exact Shp.map_congr (fun ℓ => Frame.Leaf.collapse_collapse hT j d ℓ) _
-  | _, _, .dup hF, d, a => by
-      simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_map]
-      congr 2
-      exact Shp.map_congr (fun ℓ => Frame.Leaf.shift_collapse hT hF j d ℓ) _
-
-/-- A shift at level `j` passes through any map acting at a level below it. -/
-theorem shp_mapShift (hF : ModalSys.Four = true) (j : ℕ) {w : M.frame.W} :
-    ∀ {A B : VarType} (f : GFunc σ A B) (d : ℕ) (a : M.Shape w A),
-      GFunc.shp f (j + d + 2) (a.map (Frame.Leaf.shift hF j)) =
-        (GFunc.shp f (j + d + 1) a).map (Frame.Leaf.shift hF j)
-  | _, _, .id _, _, _ => rfl
-  | _, _, .comp g f, d, a => by
-      simp only [GFunc.shp]
-      rw [shp_mapShift hF j f, shp_mapShift hF j g]
-  | _, _, .fst, _, a => Shp.map_fst _ a
-  | _, _, .snd, _, a => Shp.map_snd _ a
-  | _, _, .pair f g, d, a => by
-      simp only [GFunc.shp, Shp.map]
-      rw [shp_mapShift hF j f, shp_mapShift hF j g]
-  | _, _, .unit _, _, _ => rfl
-  | _, _, .func _ _, _, _ => rfl
-  | _, _, .boxMap f, d, a => by
-      simp only [GFunc.shp, Shp.map, Shp.map_inner]
-      rw [show j + d + 2 + 1 = j + (d + 1) + 2 by omega,
-        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, shp_mapShift hF j f (d + 1)]
-  | _, _, .boxPair _ _, _, a => by
-      simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_fst, Shp.map_snd]
-  | _, _, .boxUnit, _, _ => rfl
-  | _, _, .diaMap f, d, a => by
-      simp only [GFunc.shp, Shp.map, Shp.map_label, Shp.map_body]
-      rw [show j + d + 2 + 1 = j + (d + 1) + 2 by omega,
-        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, shp_mapShift hF j f (d + 1)]
-  | _, _, .strength _ _, _, a => by
-      simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_fst, Shp.map_snd, Shp.map_label,
-        Shp.map_body]
-  | _, _, .extract hT, d, a => by
-      simp only [GFunc.shp, Shp.map_inner, Shp.map_map]
-      exact Shp.map_congr (fun ℓ => Frame.Leaf.collapse_shift hT hF j d ℓ) _
-  | _, _, .dup hF', d, a => by
-      simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_map]
-      congr 2
-      exact Shp.map_congr (fun ℓ => Frame.Leaf.shift_shift hF j d ℓ) _
-
-/-- Apply a leaf map to every shape of an environment. -/
-def ShEnv.mapLeaves {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w)
-    (g : M.frame.Leaf M.RootPoss w → M.frame.Leaf M.RootPoss w) : M.ShEnv Γ w :=
-  fun v T h => (ρ v T h).map g
-
-section MapLeaves
-
-variable {Γ : Ctx} {w : M.frame.W}
-
-theorem ShEnv.ref_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : M.ShEnv Γ w) (d : ℕ) :
-    ∀ (v : VarSymb) {T : VarType} (h : Γ.ref v = some T),
-      (ρ.mapLeaves (Frame.Leaf.collapse hT j)).ref (j + d) v h =
-        (ρ.ref (j + d + 1) v h).map (Frame.Leaf.collapse hT j)
-  | .root _, _, _ => rfl
-  | .step v s, T, h => by
-      by_cases hs : s.isProj = true
-      · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
-          rw [Ctx.ref_step_proj Γ v hs] at h
-          cases hU : Γ.ref v with
-          | none => rw [hU] at h; cases h
-          | some U => exact ⟨U, rfl⟩
-        rw [ShEnv.ref_proj _ _ hs hU h, ShEnv.ref_proj _ _ hs hU h,
-          ShEnv.ref_mapCollapse hT j ρ d v hU, shp_mapCollapse]
-      · rw [ShEnv.ref_nonproj _ _ hs h, ShEnv.ref_nonproj _ _ hs h]
-        rfl
-
-theorem ShEnv.ref_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : M.ShEnv Γ w) (d : ℕ) :
-    ∀ (v : VarSymb) {T : VarType} (h : Γ.ref v = some T),
-      (ρ.mapLeaves (Frame.Leaf.shift hF j)).ref (j + d + 2) v h =
-        (ρ.ref (j + d + 1) v h).map (Frame.Leaf.shift hF j)
-  | .root _, _, _ => rfl
-  | .step v s, T, h => by
-      by_cases hs : s.isProj = true
-      · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
-          rw [Ctx.ref_step_proj Γ v hs] at h
-          cases hU : Γ.ref v with
-          | none => rw [hU] at h; cases h
-          | some U => exact ⟨U, rfl⟩
-        rw [ShEnv.ref_proj _ _ hs hU h, ShEnv.ref_proj _ _ hs hU h,
-          ShEnv.ref_mapShift hF j ρ d v hU, shp_mapShift]
-      · rw [ShEnv.ref_nonproj _ _ hs h, ShEnv.ref_nonproj _ _ hs h]
-        rfl
-
-theorem ShEnv.boxPush_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : M.ShEnv Γ w) (d : ℕ) :
-    (ρ.mapLeaves (Frame.Leaf.collapse hT j)).boxPush (j + d) =
-      (ρ.boxPush (j + d + 1)).mapLeaves (Frame.Leaf.collapse hT j) := by
-  funext v T h
-  match v with
-  | .step u .box =>
-      simp only [ShEnv.boxPush, ShEnv.mapLeaves]
-      rw [ShEnv.ref_mapCollapse hT j ρ d, Shp.map_inner]
-  | .step u .keep =>
-      simp only [ShEnv.boxPush, ShEnv.mapLeaves]
-      rw [ShEnv.ref_mapCollapse hT j ρ d, shp_mapCollapse, Shp.map_inner]
-  | .root _ => cases h
-  | .step _ .fst => cases h
-  | .step _ .snd => cases h
-  | .step _ .dia => cases h
-  | .step _ .here => cases h
-
-theorem ShEnv.boxPush_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : M.ShEnv Γ w) (d : ℕ) :
-    (ρ.mapLeaves (Frame.Leaf.shift hF j)).boxPush (j + d + 2) =
-      (ρ.boxPush (j + d + 1)).mapLeaves (Frame.Leaf.shift hF j) := by
-  funext v T h
-  match v with
-  | .step u .box =>
-      simp only [ShEnv.boxPush, ShEnv.mapLeaves]
-      rw [ShEnv.ref_mapShift hF j ρ d, Shp.map_inner]
-  | .step u .keep =>
-      simp only [ShEnv.boxPush, ShEnv.mapLeaves]
-      rw [ShEnv.ref_mapShift hF j ρ d, shp_mapShift, Shp.map_inner]
-  | .root _ => cases h
-  | .step _ .fst => cases h
-  | .step _ .snd => cases h
-  | .step _ .dia => cases h
-  | .step _ .here => cases h
-
-theorem ShEnv.diaPush_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : M.ShEnv Γ w) (d : ℕ)
-    {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) :
-    (ρ.mapLeaves (Frame.Leaf.collapse hT j)).diaPush (j + d) x hx =
-      (ρ.diaPush (j + d + 1) x hx).mapLeaves (Frame.Leaf.collapse hT j) := by
-  funext v T h
-  match v with
-  | .step _ .dia =>
-      have e := Ctx.diaIn_step_dia hx h
-      subst e
-      simp only [ShEnv.diaPush, ShEnv.mapLeaves]
-      rw [ShEnv.ref_mapCollapse hT j ρ d, Shp.map_body]
-  | .step u .box =>
-      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapCollapse hT j ρ d) (.step u .box)) T) h
-  | .step u .keep =>
-      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapCollapse hT j ρ d) (.step u .keep)) T) h
-  | .root _ => cases h
-  | .step _ .fst => cases h
-  | .step _ .snd => cases h
-  | .step _ .here => cases h
-
-theorem ShEnv.diaPush_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : M.ShEnv Γ w) (d : ℕ)
-    {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) :
-    (ρ.mapLeaves (Frame.Leaf.shift hF j)).diaPush (j + d + 2) x hx =
-      (ρ.diaPush (j + d + 1) x hx).mapLeaves (Frame.Leaf.shift hF j) := by
-  funext v T h
-  match v with
-  | .step _ .dia =>
-      have e := Ctx.diaIn_step_dia hx h
-      subst e
-      simp only [ShEnv.diaPush, ShEnv.mapLeaves]
-      rw [ShEnv.ref_mapShift hF j ρ d, Shp.map_body]
-  | .step u .box =>
-      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapShift hF j ρ d) (.step u .box)) T) h
-  | .step u .keep =>
-      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapShift hF j ρ d) (.step u .keep)) T) h
-  | .root _ => cases h
-  | .step _ .fst => cases h
-  | .step _ .snd => cases h
-  | .step _ .here => cases h
-
-end MapLeaves
-
-/-- ⭐Collapsing a whole environment at level `j` passes through `termShp`. -/
-theorem termShp_mapCollapse (hT : ModalSys.T = true) (j : ℕ) :
-    ∀ {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (d : ℕ) {T : VarType} {a : Ann T}
-      (t : Term σ Γ T a),
-      termShp (ρ.mapLeaves (Frame.Leaf.collapse hT j)) (j + d) t =
-        (termShp ρ (j + d + 1) t).map (Frame.Leaf.collapse hT j)
-  | _, _, _, _, _, _, .var _ _ => rfl
-  | _, _, _, _, _, _, .func _ => rfl
-  | _, _, _, _, _, _, .unit => rfl
-  | _, _, ρ, d, _, _, .pair s t => by
-      simp only [termShp, Shp.map]
-      rw [termShp_mapCollapse hT j ρ d s, termShp_mapCollapse hT j ρ d t]
-  | _, _, ρ, d, _, _, .boxtm t => by
-      simp only [termShp, Shp.map]
-      rw [ShEnv.boxPush_mapCollapse hT j ρ d, show j + d + 1 = j + (d + 1) from rfl,
-        termShp_mapCollapse hT j _ (d + 1) t]
-  | _, _, ρ, d, _, _, .diatm x hx t => by
-      obtain ⟨X, hr⟩ := id hx
-      rw [termShp_diatm _ _ hr, termShp_diatm _ _ hr, ShEnv.ref_mapCollapse hT j ρ d,
-        ShEnv.diaPush_mapCollapse hT j ρ d hr, show j + d + 1 = j + (d + 1) from rfl,
-        termShp_mapCollapse hT j _ (d + 1) t]
-      simp only [Shp.map, Shp.map_label]
-
-/-- ⭐Shifting a whole environment at level `j` passes through `termShp`, one level further in. -/
-theorem termShp_mapShift (hF : ModalSys.Four = true) (j : ℕ) :
-    ∀ {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (d : ℕ) {T : VarType} {a : Ann T}
-      (t : Term σ Γ T a),
-      termShp (ρ.mapLeaves (Frame.Leaf.shift hF j)) (j + d + 2) t =
-        (termShp ρ (j + d + 1) t).map (Frame.Leaf.shift hF j)
-  | _, _, _, _, _, _, .var _ _ => rfl
-  | _, _, _, _, _, _, .func _ => rfl
-  | _, _, _, _, _, _, .unit => rfl
-  | _, _, ρ, d, _, _, .pair s t => by
-      simp only [termShp, Shp.map]
-      rw [termShp_mapShift hF j ρ d s, termShp_mapShift hF j ρ d t]
-  | _, _, ρ, d, _, _, .boxtm t => by
-      simp only [termShp, Shp.map]
-      rw [ShEnv.boxPush_mapShift hF j ρ d, show j + d + 2 + 1 = j + (d + 1) + 2 by omega,
-        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, termShp_mapShift hF j _ (d + 1) t]
-  | _, _, ρ, d, _, _, .diatm x hx t => by
-      obtain ⟨X, hr⟩ := id hx
-      rw [termShp_diatm _ _ hr, termShp_diatm _ _ hr, ShEnv.ref_mapShift hF j ρ d,
-        ShEnv.diaPush_mapShift hF j ρ d hr, show j + d + 2 + 1 = j + (d + 1) + 2 by omega,
-        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, termShp_mapShift hF j _ (d + 1) t]
-      simp only [Shp.map, Shp.map_label]
+end ModelShapes
 
 end Model
 
