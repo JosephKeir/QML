@@ -67,105 +67,109 @@ theorem sat_closed {M : Model.{u, v} σ} {Γ Γ' : Ctx} {w : M.frame.W} (env : M
 /-- ⭐**Soundness.** -/
 theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : Proof σ Γ Δ φ) :
     ∀ (M : Model.{u, v} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
-      Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ := by
+      Γ.Fin → Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ := by
   induction p with
   | @ax Γ φ =>
-      intro M hM w env _ hΔ
+      intro M hM w env hfin _ hΔ
       exact hΔ φ List.mem_cons_self
   | @weak Γ Δ φ ψ p ih =>
-      intro M hM w env hnp hΔ
-      exact ih M hM env hnp (fun χ hχ => hΔ χ (List.mem_cons_of_mem _ hχ))
+      intro M hM w env hfin hnp hΔ
+      exact ih M hM env hfin hnp (fun χ hχ => hΔ χ (List.mem_cons_of_mem _ hχ))
   | @contr Γ Δ φ ψ p ih =>
-      intro M hM w env hnp hΔ
-      exact ih M hM env hnp (hyps_cons (hΔ ψ List.mem_cons_self) hΔ)
+      intro M hM w env hfin hnp hΔ
+      exact ih M hM env hfin hnp (hyps_cons (hΔ ψ List.mem_cons_self) hΔ)
   | @exch Γ Δ₁ Δ₂ φ ψ χ p ih =>
-      intro M hM w env hnp hΔ
-      exact ih M hM env hnp (fun θ hθ => hΔ θ (by
+      intro M hM w env hfin hnp hΔ
+      exact ih M hM env hfin hnp (fun θ hθ => hΔ θ (by
         simp only [List.mem_append, List.mem_cons] at hθ ⊢
         tauto))
   | @weak_ctx Γ Δ φ u T hu p ih =>
-      intro M hM w env hnp hΔ
+      intro M hM w env hfin hnp hΔ
       exact (sat_weaken_restrict hu.root env φ).mpr
-        (ih M hM (env.restrict _) (hnp.of_insert hu.root) (fun ψ hψ =>
+        (ih M hM (env.restrict _) (hfin.mono (Ctx.le_insert hu.root T)) (hnp.of_insert hu.root)
+          (fun ψ hψ =>
           (sat_weaken_restrict hu.root env ψ).mp (hΔ _ (List.mem_map.mpr ⟨ψ, hψ, rfl⟩))))
   | @and_intro Γ Δ φ ψ p q ihp ihq =>
-      intro M hM w env hnp hΔ
-      exact ⟨ihp M hM env hnp hΔ, ihq M hM env hnp hΔ⟩
+      intro M hM w env hfin hnp hΔ
+      exact ⟨ihp M hM env hfin hnp hΔ, ihq M hM env hfin hnp hΔ⟩
   | @and_elim_l Γ Δ φ ψ p ih =>
-      intro M hM w env hnp hΔ
-      exact (ih M hM env hnp hΔ).1
+      intro M hM w env hfin hnp hΔ
+      exact (ih M hM env hfin hnp hΔ).1
   | @and_elim_r Γ Δ φ ψ p ih =>
-      intro M hM w env hnp hΔ
-      exact (ih M hM env hnp hΔ).2
+      intro M hM w env hfin hnp hΔ
+      exact (ih M hM env hfin hnp hΔ).2
   | @or_intro_l Γ Δ φ ψ p ih =>
-      intro M hM w env hnp hΔ
-      exact Or.inl (ih M hM env hnp hΔ)
+      intro M hM w env hfin hnp hΔ
+      exact Or.inl (ih M hM env hfin hnp hΔ)
   | @or_intro_r Γ Δ φ ψ p ih =>
-      intro M hM w env hnp hΔ
-      exact Or.inr (ih M hM env hnp hΔ)
+      intro M hM w env hfin hnp hΔ
+      exact Or.inr (ih M hM env hfin hnp hΔ)
   | @or_elim Γ Δ φ ψ χ p q r ihp ihq ihr =>
-      intro M hM w env hnp hΔ
-      exact (ihp M hM env hnp hΔ).elim (fun h => ihq M hM env hnp (hyps_cons h hΔ))
-        (fun h => ihr M hM env hnp (hyps_cons h hΔ))
+      intro M hM w env hfin hnp hΔ
+      exact (ihp M hM env hfin hnp hΔ).elim (fun h => ihq M hM env hfin hnp (hyps_cons h hΔ))
+        (fun h => ihr M hM env hfin hnp (hyps_cons h hΔ))
   | @imp_intro Γ Δ φ ψ p ih =>
-      intro M hM w env hnp hΔ
-      exact fun h => ih M hM env hnp (hyps_cons h hΔ)
+      intro M hM w env hfin hnp hΔ
+      exact fun h => ih M hM env hfin hnp (hyps_cons h hΔ)
   | @imp_elim Γ Δ φ ψ p q ihp ihq =>
-      intro M hM w env hnp hΔ
-      exact ihp M hM env hnp hΔ (ihq M hM env hnp hΔ)
+      intro M hM w env hfin hnp hΔ
+      exact ihp M hM env hfin hnp hΔ (ihq M hM env hfin hnp hΔ)
   | @top_intro Γ Δ =>
-      intro M hM w env _ _
+      intro M hM w env _ _ _
       trivial
   | @bot_elim Γ Δ φ p ih =>
-      intro M hM w env hnp hΔ
-      exact (ih M hM env hnp hΔ).elim
+      intro M hM w env hfin hnp hΔ
+      exact (ih M hM env hfin hnp hΔ).elim
   | @lem Γ Δ φ =>
-      intro M hM w env _ _
+      intro M hM w env _ _ _
       exact Classical.em (M.sat env φ)
   | @all_intro Γ _ Δ u T hu φ p ih =>
-      intro M hM w env hnp hΔ o
+      intro M hM w env hfin hnp hΔ o
       exact (sat_bindFree env hnp u hu Ctx.NoSlots.slots T o φ).mpr
-        (ih M hM (env.extend (.free u) o) (hnp.insert _ T) (fun ψ hψ => by
+        (ih M hM (env.extend (.free u) o) (hfin.insert _ T) (hnp.insert _ T) (fun ψ hψ => by
           obtain ⟨χ, hχ, rfl⟩ := List.mem_map.mp hψ
           exact (sat_weaken env hu.root o χ).mpr (hΔ χ hχ)))
   | @all_elim Γ _ Δ T φ a t p ih =>
-      intro M hM w env hnp hΔ
+      intro M hM w env hfin hnp hΔ
       exact (sat_instantiate env hnp Ctx.NoSlots.slots t φ).mpr
-        (ih M hM env hnp hΔ (interp env t))
+        (ih M hM env hfin hnp hΔ (interp env t))
   | @ex_intro Γ _ Δ T φ a t p ih =>
-      intro M hM w env hnp hΔ
-      exact ⟨interp env t, (sat_instantiate env hnp Ctx.NoSlots.slots t φ).mp (ih M hM env hnp hΔ)⟩
+      intro M hM w env hfin hnp hΔ
+      exact ⟨interp env t,
+        (sat_instantiate env hnp Ctx.NoSlots.slots t φ).mp (ih M hM env hfin hnp hΔ)⟩
   | @ex_elim Γ _ Δ u T hu φ ψ p q ihp ihq =>
-      intro M hM w env hnp hΔ
-      obtain ⟨o, ho⟩ := ihp M hM env hnp hΔ
+      intro M hM w env hfin hnp hΔ
+      obtain ⟨o, ho⟩ := ihp M hM env hfin hnp hΔ
       have h₁ := (sat_bindFree env hnp u hu Ctx.NoSlots.slots T o φ).mp ho
       exact (sat_weaken env hu.root o ψ).mp
-        (ihq M hM (env.extend (.free u) o) (hnp.insert _ T) (hyps_cons h₁ (fun χ hχ => by
+        (ihq M hM (env.extend (.free u) o) (hfin.insert _ T) (hnp.insert _ T)
+          (hyps_cons h₁ (fun χ hχ => by
           obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp hχ
           exact (sat_weaken env hu.root o χ').mpr (hΔ χ' hχ'))))
   | @eq_intro Γ Δ t =>
-      intro M hM w env _ _
+      intro M hM w env _ _ _
       exact rfl
   | @eq_elim Γ _ Δ φ t s p q ihp ihq =>
-      intro M hM w env hnp hΔ
-      have he : interp env t = interp env s := ihp M hM env hnp hΔ
+      intro M hM w env hfin hnp hΔ
+      have he : interp env t = interp env s := ihp M hM env hfin hnp hΔ
       refine (sat_instantiate env hnp Ctx.NoSlots.slots s φ).mpr ?_
       rw [← he]
-      exact (sat_instantiate env hnp Ctx.NoSlots.slots t φ).mp (ihq M hM env hnp hΔ)
+      exact (sat_instantiate env hnp Ctx.NoSlots.slots t φ).mp (ihq M hM env hfin hnp hΔ)
   | @pair_elim Γ _ A B u₁ u₂ z hu hz₁ hu₁ hu₂ hzf Δ φ p ih =>
-      intro M hM w env hnp hΔ
+      intro M hM w env hfin hnp hΔ
       have hnpΓ := hnp.of_insert hzf.root
       obtain ⟨E, hE⟩ := sat_bindPair hnpΓ u₁ u₂ z hu hz₁ hu₁ hu₂ hzf Ctx.NoSlots.slots A B env
-      exact (hE φ).mpr (ih M hM E ((hnpΓ.insert _ A).insert _ B)
+      have hfinΓ := hfin.mono (Ctx.le_insert hzf.root _)
+      exact (hE φ).mpr (ih M hM E ((hfinΓ.insert _ A).insert _ B) ((hnpΓ.insert _ A).insert _ B)
         (fun ψ hψ => (hE ψ).mp (hΔ _ (List.mem_map.mpr ⟨ψ, hψ, rfl⟩))))
   | @K_box Γ Δ φ p ih =>
-      intro M hM w env _ hΔ w'
-      exact ih M hM (env.boxPush w') (Ctx.noProjLast_boxIn Γ)
+      intro M hM w env hfin _ hΔ w'
+      exact ih M hM (env.boxPush w') hfin.boxIn (Ctx.noProjLast_boxIn Γ)
         (fun ψ hψ => hΔ _ (List.mem_map.mpr ⟨ψ, hψ, rfl⟩) w')
   | @K_dia Γ x hx Δ₁ Δ₂ φ ψ p ih =>
-      intro M hM w env _ hΔ
+      intro M hM w env hfin _ hΔ
       obtain ⟨X, hr, w', hψ⟩ := hΔ _ List.mem_cons_self
-      refine ⟨X, hr, w', ih M hM (env.diaPush x hr w') (Ctx.noProjLast_diaIn Γ x)
+      refine ⟨X, hr, w', ih M hM (env.diaPush x hr w') (hfin.diaIn x) (Ctx.noProjLast_diaIn Γ x)
         (hyps_cons hψ (fun χ hχ => ?_))⟩
       rcases List.mem_append.mp hχ with h₂ | h₁
       · have hb := hΔ (WFF.boxx x hx χ)
@@ -177,35 +181,35 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
           (List.mem_cons_of_mem _ (List.mem_append_right _ (List.mem_map.mpr ⟨χ', hχ', rfl⟩)))
         exact (sat_mono (Env.box_dia_agree env hr w') χ').mpr (hb w'.1)
   | @dia_bot Γ Δ x hx p ih =>
-      intro M hM w env hnp hΔ
-      obtain ⟨_, _, _, h⟩ := ih M hM env hnp hΔ
+      intro M hM w env hfin hnp hΔ
+      obtain ⟨_, _, _, h⟩ := ih M hM env hfin hnp hΔ
       exact h
   | @D_box Γ Δ hD p ih =>
-      intro M hM w env hnp hΔ
+      intro M hM w env hfin hnp hΔ
       obtain ⟨v, ⟨hv⟩⟩ := M.frame.serial hD w
-      exact ih M hM env hnp hΔ ⟨v, ⟨hv⟩⟩
+      exact ih M hM env hfin hnp hΔ ⟨v, ⟨hv⟩⟩
   | @D_ex Γ Δ hDS =>
-      intro M hM w env _ _
+      intro M hM w env _ _ _
       obtain ⟨p, ⟨v⟩⟩ := M.posSerial hDS w
       have hr : (env.extend (.bnd 0) (T := .VTypeDia .VTypeOne) p).ref (.root (.bnd 0))
           (Ctx.ref_insert_root Γ (.bnd 0) _) = p := by
         simp [Model.Env.ref, Model.Env.extend]
       exact ⟨p, .VTypeOne, Ctx.ref_insert_root Γ (.bnd 0) _, ⟨v.1, by rw [hr]; exact v.2⟩, trivial⟩
   | @T_box Γ _ hT Δ φ p ih =>
-      intro M hM w env hnp hΔ
+      intro M hM w env hfin hnp hΔ
       exact (sat_boxHere hT env Ctx.NoSlots.slots φ).mpr
-        (ih M hM env hnp hΔ ⟨w, ⟨M.frame.refl hT w⟩⟩)
+        (ih M hM env hfin hnp hΔ ⟨w, ⟨M.frame.refl hT w⟩⟩)
   | @four_box Γ _ hF Δ φ p ih =>
-      intro M hM w env hnp hΔ v s
+      intro M hM w env hfin hnp hΔ v s
       exact (sat_shift_twoBox hF env Ctx.NoSlots.slots φ v s).mpr
-        (ih M hM env hnp hΔ ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩)
+        (ih M hM env hfin hnp hΔ ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩)
   | @T_dia Γ _ hT hS A hA a t c hc Δ φ p ih =>
       -- Interpret the eigenvariable as some possible object realised here — `posRet_exists` says
       -- there is one, and that *is* the hypothesis the subproof gets.
-      intro M hM w env hnp hΔ
+      intro M hM w env hfin hnp hΔ
       obtain ⟨q, hmem, hcont⟩ := M.posRet_exists hT hS hA (interp env t)
       refine (sat_weaken (T := .VTypeDia A) env hc.root q φ).mp
-        (ih M hM (env.extend (T := .VTypeDia A) (.free c) q) (hnp.insert _ _) ?_)
+        (ih M hM (env.extend (T := .VTypeDia A) (.free c) q) (hfin.insert _ _) (hnp.insert _ _) ?_)
       intro χ hχ
       rcases List.mem_cons.mp hχ with h₁ | h₂
       · -- The `Here` hypothesis: the witness is realised here, by `t`.
@@ -217,31 +221,34 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
         obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken (T := .VTypeDia A) env hc.root q χ').mpr (hΔ χ' hχ')
   | @here_elim Γ _ Δ hT x hx A a t a₁ bd ψ ph pb ihh ihb =>
-      intro M hM w env hnp hΔ
-      exact sat_here_elim hT env hnp hM hx t bd ψ (ihh M hM env hnp hΔ) (ihb M hM env hnp hΔ)
+      intro M hM w env hfin hnp hΔ
+      exact sat_here_elim hT env hnp hfin hM hx t bd ψ (ihh M hM env hfin hnp hΔ)
+        (ihb M hM env hfin hnp hΔ)
   | @here_intro Γ _ Δ hT x hx A a t a₁ bd ψ ph pr ihh ihr =>
-      intro M hM w env hnp hΔ
-      exact sat_here_intro hT env hnp hM hx t bd ψ (ihh M hM env hnp hΔ) (ihr M hM env hnp hΔ)
+      intro M hM w env hfin hnp hΔ
+      exact sat_here_intro hT env hnp hfin hM hx t bd ψ (ihh M hM env hfin hnp hΔ)
+        (ihr M hM env hfin hnp hΔ)
   | @here_beta Γ _ Δ hT x hx A a t a₁ bd B b s ph ihh =>
-      intro M hM w env hnp hΔ
+      intro M hM w env hfin hnp hΔ
       obtain ⟨Y, h⟩ := id hx
-      exact sat_here_beta hT env hnp hM hx h t bd s (ihh M hM env hnp hΔ)
+      exact sat_here_beta hT env hnp hfin hM hx h t bd s (ihh M hM env hfin hnp hΔ)
   | @here_name Γ _ Δ hT x hx B β bd p ih =>
-      intro M hM w env hnp hΔ
+      intro M hM w env hfin hnp hΔ
       obtain ⟨Y, h⟩ := id hx
-      exact sat_here_name hT env hx h bd (ih M hM env hnp hΔ)
+      exact sat_here_name hT env hx h bd (ih M hM env hfin hnp hΔ)
   | @here_subst Γ _ Δ hT A b s a a' t t' φ ph ph' pf ihh ihh' ihf =>
-      intro M hM w env hnp hΔ
-      exact sat_here_subst hT env hnp hM s t t' φ (ihh M hM env hnp hΔ) (ihh' M hM env hnp hΔ)
-        (ihf M hM env hnp hΔ)
+      intro M hM w env hfin hnp hΔ
+      exact sat_here_subst hT env hnp hfin hM s t t' φ (ihh M hM env hfin hnp hΔ)
+        (ihh' M hM env hfin hnp hΔ)
+        (ihf M hM env hfin hnp hΔ)
   | @here_eq Γ _ Δ hT A b s a t t' ph pe ihh ihe =>
-      intro M hM w env hnp hΔ
-      exact sat_here_eq hT env s t t' (ihh M hM env hnp hΔ) (ihe M hM env hnp hΔ)
+      intro M hM w env hfin hnp hΔ
+      exact sat_here_eq hT env s t t' (ihh M hM env hfin hnp hΔ) (ihe M hM env hfin hnp hΔ)
   | @B_dia Γ Δ hB ψ p ih =>
       -- `◇□ψ`: along some arrow `w → v`, `ψ` holds after every arrow out of `v`; one leads back.
-      intro M hM w env hnp hΔ
+      intro M hM w env hfin hnp hΔ
       by_contra hn
-      refine ih M hM env hnp hΔ fun v hv => ?_
+      refine ih M hM env hfin hnp hΔ fun v hv => ?_
       obtain ⟨b⟩ := M.frame.symm hB v.2.down
       exact hn ((sat_closed _ env ψ).mp (hv ⟨w, ⟨b⟩⟩))
 

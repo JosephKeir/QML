@@ -224,7 +224,7 @@ theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T =
   refine Eq.trans ?_ (toDom_fromDom w₀ d.A w a)
   refine toDom_congr w₀ ?_ _ _
   rw [← ht]
-  refine (rden_eta_realised_wd hr d.t₀ (rden_datum_wd hr.data d) d.hd₀).trans
+  refine (rden_eta_realised_wd hr d.t₀ (rden_datum_wd hr.data d hA) d.hd₀).trans
     (Eq.trans ?_ hname)
   refine (rden_sigma (Ctx.Le.refl _) (Term.eta_congr hdb d.A d.hb₀ (hdb ▸ d.hb₀))).trans ?_
   exact (rden_eta_le (w.L.ctx_le hile) (Ctx.Le.refl _) (Ctx.Le.refl _)

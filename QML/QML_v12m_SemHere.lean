@@ -1,4 +1,5 @@
 import QML.QML_v12m_SemStrongT
+import QML.QML_v12m_CtxFin
 
 /-!
 # QML v12m — the realisation predicate, and the soundness of its rules
@@ -169,17 +170,21 @@ variable (M) in
 /-- ⭐**`Ind` is indistinguishability**: related objects satisfy the same formulas, whatever the
     rest of the environment.  This is the semantic content of `Proof.here_subst` — co-named objects
     are interchangeable — and it is a condition on models rather than a field because it mentions
-    satisfaction, which is defined from the model.  A model proper satisfies it (docs §10.33). -/
+    satisfaction, which is defined from the model.  A model proper satisfies it (docs §10.33).
+
+    Stated, as `here_subst` is, for a formula with one slot over a context of a proof: one without
+    slots, finite (`Ctx.Fin`, which every presented context is) and without projections declared.
+    Finiteness is what lets the canonical model name an environment at one stage (§10.38). -/
 def IndInvariant : Prop :=
-  ∀ {Γ : Ctx} {d : ℕ} {w : M.frame.W} (env : M.Env Γ w) (r : Root) {A : VarType}
-    (φ : WFF σ (Γ.insert r A) d) (o o' : M.frame.Dom A w),
-    M.Ind o o' → (M.sat (env.extend r o) φ ↔ M.sat (env.extend r o') φ)
+  ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Fin → Γ.NoProjLast → ∀ {w : M.frame.W} (env : M.Env Γ w)
+    {A : VarType} (φ : WFF σ (Γ.insert (.bnd 0) A) 1) (o o' : M.frame.Dom A w),
+    M.Ind o o' → (M.sat (env.extend (.bnd 0) o) φ ↔ M.sat (env.extend (.bnd 0) o') φ)
 
 /-- A model whose `Ind` is equality is a model proper. -/
 theorem indInvariant_of_eq
     (h : ∀ {A : VarType} {w : M.frame.W} (o o' : M.frame.Dom A w), M.Ind o o' → o = o') :
     M.IndInvariant := by
-  intro Γ d w env r A φ o o' hi
+  intro Γ _ _ _ w env A φ o o' hi
   rw [h o o' hi]
 
 /-! ## What the pinned form says -/
@@ -187,7 +192,7 @@ theorem indInvariant_of_eq
 section
 
 variable (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W} (env : M.Env Γ w)
-  (hnp : Γ.NoProjLast) {x : VarSymb} {X : VarType}
+  (hnp : Γ.NoProjLast) (hfin : Γ.Fin) {x : VarSymb} {X : VarType}
 
 omit [Γ.NoSlots] in
 /-- ⭐The pinned form says that the identity arrow lies in the address's extent, and that the
@@ -249,7 +254,7 @@ theorem sat_here_name (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
     interp_eta _ (.root (.bnd 0)) (Ctx.ref_insert_root Γ (.bnd 0) B), hslot]
   exact ⟨hm', M.Ind_refl _⟩
 
-include hnp in
+include hnp hfin in
 /-- ⭐**Functionality, substitutionally, is sound at every content type**: both candidates are
     indistinguishable from the one content, so substituting one for the other in any formula
     preserves truth (`Model.sat_instantiate`, then `IndInvariant` twice).  This is what makes
@@ -266,8 +271,8 @@ theorem sat_here_subst (hM : M.IndInvariant) {A : VarType} {b : Ann (.VTypeDia A
   obtain ⟨_, hc⟩ := h
   obtain ⟨_, hc'⟩ := h'
   refine (sat_instantiate env hnp Ctx.NoSlots.slots t' φ).mpr ?_
-  refine (hM env (.bnd 0) φ _ _ hc').mp ?_
-  exact (hM env (.bnd 0) φ _ _ hc).mpr ((sat_instantiate env hnp Ctx.NoSlots.slots t φ).mp hφ)
+  refine (hM hfin hnp env φ _ _ hc').mp ?_
+  exact (hM hfin hnp env φ _ _ hc).mpr ((sat_instantiate env hnp Ctx.NoSlots.slots t φ).mp hφ)
 
 omit [Γ.NoSlots] in
 /-- ⭐**Leibniz for the content is sound**: the defined equality holds exactly when the two contents
@@ -299,7 +304,7 @@ theorem Env.diaPush_boxIn (h : Γ.ref x = some (.VTypeDia X))
   | .step _ .dia => cases hv
   | .step _ .here => cases hv
 
-include hnp in
+include hnp hfin in
 /-- ⭐**The realisation bridge**: at the identity arrow, a hole formula read inside `◇_x` with the
     body `bd` in its hole holds exactly when it holds here with `t` in its hole, `t` being
     indistinguishable from `bd`'s value there.  The `□` part of the view is read at the identity
@@ -320,7 +325,7 @@ theorem sat_viewReadTm (hM : M.IndInvariant) (h : Γ.ref x = some (.VTypeDia X))
     ((Env.collapseAgree_self hT env).extend
       ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0))
       (interp (env.diaPush x h ⟨M.frame.reflAcc hT w, hmem⟩) bd)) ψ).symm.trans ?_
-  refine (hM env (.bnd 0) _ _ _ hval).trans ?_
+  refine (hM hfin hnp env _ _ _ hval).trans ?_
   exact (sat_instantiate env hnp Ctx.NoSlots.slots t _).symm
 
 /-- The value of a hole term read inside `◇_x` with the body in its hole, at the identity arrow:
@@ -352,7 +357,7 @@ theorem interp_hereRead {A : VarType} {a : Ann A} (t : Term σ Γ A a)
 
 /-! ## The rules are sound -/
 
-include hnp in
+include hnp hfin in
 /-- ⭐**β** is sound.  The new subject `⟨x; viewReadTm bd s⟩` is realised here, its content being
     the hole term `s` read with `bd`'s value `c` in the hole (`interp_viewReadTm`); the claimed
     content is `s` read with `t`'s value in the hole (`interp_hereRead`).  So the atom "`Here`(new
@@ -400,9 +405,9 @@ theorem sat_here_beta (hM : M.IndInvariant) (hx : ∃ Y, Γ.ref x = some (.VType
       refine ⟨hmem, ?_⟩
       dsimp only
       rwa [interp_viewReadTm hT env h bd s hmem]
-  exact (key _).mp ((hM env (.bnd 0) Φ _ _ hval).mp ((key _).mpr (M.Ind_refl _)))
+  exact (key _).mp ((hM hfin hnp env Φ _ _ hval).mp ((key _).mpr (M.Ind_refl _)))
 
-include hnp in
+include hnp hfin in
 /-- ⭐**Elimination** is sound: what is necessary over the witness's extent holds of the realisation
     here.  This is weak T relativised to the witness. -/
 theorem sat_here_elim (hM : M.IndInvariant) (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
@@ -415,9 +420,9 @@ theorem sat_here_elim (hM : M.IndInvariant) (hx : ∃ Y, Γ.ref x = some (.VType
   obtain ⟨hmem, hval⟩ := (sat_here_diatm hT env ⟨Y, h⟩ h t bd).mp hhere
   by_contra hno
   exact hbox ⟨Y, h, ⟨M.frame.reflAcc hT w, hmem⟩, fun hχ =>
-    hno ((sat_viewReadTm hT env hnp hM h t bd ψ hmem hval).mp hχ)⟩
+    hno ((sat_viewReadTm hT env hnp hfin hM h t bd ψ hmem hval).mp hχ)⟩
 
-include hnp in
+include hnp hfin in
 /-- ⭐**Introduction** is sound: what holds of the realisation here is possible for the witness,
     this very world witnessing it. -/
 theorem sat_here_intro (hM : M.IndInvariant) (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
@@ -429,7 +434,7 @@ theorem sat_here_intro (hM : M.IndInvariant) (hx : ∃ Y, Γ.ref x = some (.VTyp
   obtain ⟨Y, h⟩ := hx
   obtain ⟨hmem, hval⟩ := (sat_here_diatm hT env ⟨Y, h⟩ h t bd).mp hhere
   exact ⟨Y, h, ⟨M.frame.reflAcc hT w, hmem⟩,
-    (sat_viewReadTm hT env hnp hM h t bd ψ hmem hval).mpr hφ⟩
+    (sat_viewReadTm hT env hnp hfin hM h t bd ψ hmem hval).mpr hφ⟩
 
 /-! ## What has to introduce a `Here` -/
 

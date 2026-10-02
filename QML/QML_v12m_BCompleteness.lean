@@ -63,7 +63,7 @@ theorem provable_iff_validB (hB : ModalSys.B = true) {l₀ : List VarType}
     Provable Δ φ ↔ ∀ (M : Model.{0, 0} σ), M.IndInvariant →
       ∀ {w : M.frame.W} (env : M.Env (ctxOf l₀) w),
       (ctxOf l₀).NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ :=
-  ⟨fun ⟨p⟩ => Model.soundness p, completenessB hB⟩
+  ⟨fun ⟨p⟩ M hM _ env => Model.soundness p M hM env (Ctx.Presented.fin _), completenessB hB⟩
 
 end BArrow
 

@@ -1,10 +1,12 @@
 import QML.QML_v12m_CanonWorld
 
 /-!
-# QML v12m — interchangeable `◇`-terms (strong T, `◇`-typed contents)
+# QML v12m — interchangeable terms
 
-The canonical model's `◇`-objects have to be indexed by what the theory can *distinguish*, not by
-the witness a term happens to be written over.  Two names for one content may stand over different
+The canonical model's `Ind` (docs §10.33) is read off what the theory can *distinguish*: two
+terms are related when no formula tells them apart.  At a `◇`-free type this is provable
+equality; at a `◇` type it is strictly weaker, because terms over different witnesses are never
+equal yet may be co-named.  Two names for one content may stand over different
 witnesses, and no formula equates them — `WFF.eqRec` compares terms at one annotation, which at a
 `◇` type means one witness (§10.3).  What the theory does give is **indiscernibility**: substituting
 one for the other preserves membership, which is exactly `Proof.here_subst`'s conclusion.
@@ -16,10 +18,8 @@ one for the other preserves membership, which is exactly `Proof.here_subst`'s co
   established, and it is the pairing principle in force: the two possibilities are linked by the
   address whose content they both are (§10.10).
 
-The canonical `◇`-object of a term is then its interchangeability class: the extent is the union of
-the members' own witnesses' children and the content at an arrow is read from the member that
-contributed it (§10.10, §10.17).  That construction is `QML_v12m_CanonDom`'s; this file is only the
-relation.
+The relation is stated at every type, since `Here`'s content may have any type.  It is made
+stage-free (`DTerm.Rel`) so that it can be read off denotations computed at any stage.
 -/
 
 namespace V12M
@@ -32,9 +32,9 @@ variable [ModalSys] {σ : Signature} {N₀ : ℕ}
     both.  Stated at one stage and one content type — the type must agree for the slot to exist, and
     the annotations need not, which is the whole point: `s` and `s'` may stand over different
     witnesses.  Contrast `WFF.eqRec`, which compares within one annotation, so within one fibre. -/
-def Interch (w : World σ N₀) {A : VarType} {i : ℕ × ℕ} {a a' : Ann (.VTypeDia A)}
-    (s : Term σ (w.L.ctx i) (.VTypeDia A) a) (s' : Term σ (w.L.ctx i) (.VTypeDia A) a') : Prop :=
-  ∀ φ : WFF σ ((w.L.ctx i).insert (.bnd 0) (.VTypeDia A)) 1,
+def Interch (w : World σ N₀) {A : VarType} {i : ℕ × ℕ} {a a' : Ann A}
+    (s : Term σ (w.L.ctx i) A a) (s' : Term σ (w.L.ctx i) A a') : Prop :=
+  ∀ φ : WFF σ ((w.L.ctx i).insert (.bnd 0) A) 1,
     (⟨i, WFF.instantiate Ctx.NoSlots.slots s φ⟩ : w.L.sys.Sentence σ) ∈ w.T ↔
       (⟨i, WFF.instantiate Ctx.NoSlots.slots s' φ⟩ : w.L.sys.Sentence σ) ∈ w.T
 
@@ -42,29 +42,28 @@ namespace Interch
 
 variable {w : World σ N₀} {A : VarType} {i : ℕ × ℕ}
 
-theorem refl {a : Ann (.VTypeDia A)} (s : Term σ (w.L.ctx i) (.VTypeDia A) a) :
+theorem refl {a : Ann A} (s : Term σ (w.L.ctx i) A a) :
     Interch w s s := fun _ => Iff.rfl
 
-theorem symm {a a' : Ann (.VTypeDia A)} {s : Term σ (w.L.ctx i) (.VTypeDia A) a}
-    {s' : Term σ (w.L.ctx i) (.VTypeDia A) a'} (h : Interch w s s') : Interch w s' s :=
+theorem symm {a a' : Ann A} {s : Term σ (w.L.ctx i) A a}
+    {s' : Term σ (w.L.ctx i) A a'} (h : Interch w s s') : Interch w s' s :=
   fun φ => (h φ).symm
 
-theorem trans {a a' a'' : Ann (.VTypeDia A)} {s : Term σ (w.L.ctx i) (.VTypeDia A) a}
-    {s' : Term σ (w.L.ctx i) (.VTypeDia A) a'} {s'' : Term σ (w.L.ctx i) (.VTypeDia A) a''}
+theorem trans {a a' a'' : Ann A} {s : Term σ (w.L.ctx i) A a}
+    {s' : Term σ (w.L.ctx i) A a'} {s'' : Term σ (w.L.ctx i) A a''}
     (h : Interch w s s') (h' : Interch w s' s'') : Interch w s s'' :=
   fun φ => (h φ).trans (h' φ)
 
 end Interch
 
-/-- ⭐**Co-naming implies interchangeability**: if the theory says the possible objects `s` and `s'`
-    are both the content of `p` here, then substituting one for the other preserves membership.
-    This is `Proof.here_subst` under the theory's closure, and it is the only source of the
-    relation — the two possibilities are joined by `p`, which is what §2d asks for before they may
-    be compared. -/
+/-- ⭐**Co-naming implies interchangeability**: if the theory says `s` and `s'` are both the
+    content of the possible object `p` here, then substituting one for the other preserves
+    membership.  This is `Proof.here_subst` under the theory's closure, and it is how the relation
+    is established at a `◇` type — the two possibilities are joined by `p`, which is what §2d asks
+    for before they may be compared. -/
 theorem interch_of_coname {w : World σ N₀} (hT : ModalSys.T = true) {A : VarType} {i : ℕ × ℕ}
-    {b : Ann (.VTypeDia A)} {s : Term σ (w.L.ctx i) (.VTypeDia A) b}
-    {b' : Ann (.VTypeDia A)} {s' : Term σ (w.L.ctx i) (.VTypeDia A) b'}
-    {c : Ann (.VTypeDia (.VTypeDia A))} (p : Term σ (w.L.ctx i) (.VTypeDia (.VTypeDia A)) c)
+    {b : Ann A} {s : Term σ (w.L.ctx i) A b} {b' : Ann A} {s' : Term σ (w.L.ctx i) A b'}
+    {c : Ann (.VTypeDia A)} (p : Term σ (w.L.ctx i) (.VTypeDia A) c)
     (h : (⟨i, WFF.here hT p s⟩ : w.L.sys.Sentence σ) ∈ w.T)
     (h' : (⟨i, WFF.here hT p s'⟩ : w.L.sys.Sentence σ) ∈ w.T) :
     Interch w s s' := by
@@ -105,7 +104,7 @@ theorem Interch.dia_iff {w : World σ N₀} {A : VarType} {i : ℕ × ℕ} {y z 
     (hy : ∃ X, (w.L.ctx i).ref y = some (.VTypeDia X))
     (hz : ∃ X, (w.L.ctx i).ref z = some (.VTypeDia X)) {β β' : Ann A}
     {bd : Term σ ((w.L.ctx i).diaIn y) A β} {b : Term σ ((w.L.ctx i).diaIn z) A β'}
-    (h : Interch w (Term.diatm y hy bd) (Term.diatm z hz b))
+    (h : Interch w (A := .VTypeDia A) (Term.diatm y hy bd) (Term.diatm z hz b))
     (ψ : WFF σ ((w.L.ctx i).boxIn.insert (.bnd 0) A) 1) :
     (⟨i, WFF.dia y hy (WFF.viewReadTm bd ψ)⟩ : w.L.sys.Sentence σ) ∈ w.T ↔
       (⟨i, WFF.dia z hz (WFF.viewReadTm b ψ)⟩ : w.L.sys.Sentence σ) ∈ w.T := by
@@ -116,8 +115,7 @@ theorem Interch.dia_iff {w : World σ N₀} {A : VarType} {i : ℕ × ℕ} {y z 
     terms interchangeable when lifted are interchangeable below.  `World.mem_lift` carries
     membership between the stages and `WFF.mono_instantiate` carries the test formula up. -/
 theorem Interch.of_lift {w : World σ N₀} {A : VarType} {i j : ℕ × ℕ} (hij : i ≤ j)
-    {a a' : Ann (.VTypeDia A)} {s : Term σ (w.L.ctx i) (.VTypeDia A) a}
-    {s' : Term σ (w.L.ctx i) (.VTypeDia A) a'}
+    {a a' : Ann A} {s : Term σ (w.L.ctx i) A a} {s' : Term σ (w.L.ctx i) A a'}
     (h : Interch w (Term.mono (w.L.ctx_le hij) s) (Term.mono (w.L.ctx_le hij) s')) :
     Interch w s s' := by
   intro φ
@@ -131,23 +129,23 @@ theorem Interch.of_lift {w : World σ N₀} {A : VarType} {i j : ℕ × ℕ} (hi
 `Interch` compares at one stage, and a later stage has more test formulas, so it is
 *contravariant* in the stage (`Interch.of_lift`): a class read at one stage can shrink at a later
 one.  `rden` reads a term at any stage and must not depend on which (`rden_mono`), so the class has
-to be stage-free.  A `◇`-term is taken together with its stage (`DTerm`), and two are related when
+to be stage-free.  A term is taken together with its stage (`DTerm`), and two are related when
 they are interchangeable at **every** stage both reach (`DTerm.Rel`).  By contravariance that is
 the same as at every sufficiently large stage, which is what makes it transitive, and it makes a
 term and its lift one class (`DTerm.rel_lift`) — §10.20. -/
 
-/-- A `◇`-term of content type `A`, together with the stage of `w`'s language it is written at. -/
+/-- A term of type `A`, together with the stage of `w`'s language it is written at. -/
 structure DTerm (w : World σ N₀) (A : VarType) where
   i : ℕ × ℕ
-  a : Ann (.VTypeDia A)
-  t : Term σ (w.L.ctx i) (.VTypeDia A) a
+  a : Ann A
+  t : Term σ (w.L.ctx i) A a
 
 namespace DTerm
 
 variable {w : World σ N₀} {A : VarType}
 
 /-- The term at a later stage. -/
-abbrev lift (s : DTerm w A) (j : ℕ × ℕ) (h : s.i ≤ j) : Term σ (w.L.ctx j) (.VTypeDia A) s.a :=
+abbrev lift (s : DTerm w A) (j : ℕ × ℕ) (h : s.i ≤ j) : Term σ (w.L.ctx j) A s.a :=
   Term.mono (w.L.ctx_le h) s.t
 
 /-- ⭐**Stage-free interchangeability**: interchangeable at every stage both terms reach. -/
@@ -178,9 +176,9 @@ theorem rel_lift (s : DTerm w A) {k : ℕ × ℕ} (hk : s.i ≤ k) : Rel s ⟨k,
 
 /-- ⭐**Co-naming implies stage-free interchangeability**: the two `Here` atoms lift to every later
     stage (`World.mem_lift`), where `interch_of_coname` applies. -/
-theorem rel_of_coname (hT : ModalSys.T = true) {i : ℕ × ℕ} {b b' : Ann (.VTypeDia A)}
-    {s : Term σ (w.L.ctx i) (.VTypeDia A) b} {s' : Term σ (w.L.ctx i) (.VTypeDia A) b'}
-    {c : Ann (.VTypeDia (.VTypeDia A))} (p : Term σ (w.L.ctx i) (.VTypeDia (.VTypeDia A)) c)
+theorem rel_of_coname (hT : ModalSys.T = true) {i : ℕ × ℕ} {b b' : Ann A}
+    {s : Term σ (w.L.ctx i) A b} {s' : Term σ (w.L.ctx i) A b'}
+    {c : Ann (.VTypeDia A)} (p : Term σ (w.L.ctx i) (.VTypeDia A) c)
     (h : (⟨i, WFF.here hT p s⟩ : w.L.sys.Sentence σ) ∈ w.T)
     (h' : (⟨i, WFF.here hT p s'⟩ : w.L.sys.Sentence σ) ∈ w.T) :
     Rel (⟨i, b, s⟩ : DTerm w A) ⟨i, b', s'⟩ := fun _ hj _ =>
@@ -189,78 +187,6 @@ theorem rel_of_coname (hT : ModalSys.T = true) {i : ℕ × ℕ} {b b' : Ann (.VT
 
 end DTerm
 
-/-! ## The extent of a `◇`-term, read off its class
-
-`Canon.extent` is keyed to an **address**, and that is what fails once the theory can co-name one
-content over two witnesses: the two atoms force the two objects to be *equal elements*, so their
-extents must be equal *as sets*, which address-keyed extents never are (§10.9).  Keying the extent
-to the term's class fixes it, and — the point §10.9 missed — it fixes it without asking anything of
-the other objects over those witnesses: a term the theory says nothing about has a singleton class,
-hence exactly the arrows it has today, so nothing needs its body read at another witness's child
-(§10.10).
--/
-
-/-- ⭐The extent of a `◇`-term, read off its class: the proper arrows are the children built for
-    the witness of *any* member of its stage-free class, and the world itself is there when a
-    member's witness is realised.  A term the theory says nothing about has a singleton class, so
-    this is `Canon.extent` at its witness (`extent_subset_extentTm`); related terms give one and the
-    same set (`extentTm_congr`), which is what the `here` atoms demand; and a term and its lift give
-    the same set (`extentTm_lift`), which is what `rden_mono` needs. -/
-def extentTm (w : World σ N₀) {A : VarType} (s : DTerm w A) : Set (Succ w) :=
-  {w' |
-    (w'.1.depth = w.depth + 1 ∧ ∃ (j : ℕ × ℕ) (z : VarSymb)
-        (hz : ∃ X, (w.L.ctx j).ref z = some (.VTypeDia X)) (β : Ann A)
-        (b : Term σ ((w.L.ctx j).diaIn z) A β),
-        s.Rel ⟨j, _, Term.diatm z hz b⟩ ∧ DiaView z w w'.1 ∧ BoxxContents z w w'.1) ∨
-    (w'.1 = w ∧ ∃ (j : ℕ × ℕ) (z : VarSymb)
-        (hz : ∃ X, (w.L.ctx j).ref z = some (.VTypeDia X)) (β : Ann A)
-        (b : Term σ ((w.L.ctx j).diaIn z) A β),
-        s.Rel ⟨j, _, Term.diatm z hz b⟩ ∧ w.Realised z)}
-
-/-- ⭐**Related terms have the same extent** — by transitivity, since the clauses quantify over the
-    class.  This is the property the `here` atoms need: two names of one content denote objects
-    whose first components agree *as sets*. -/
-theorem extentTm_congr {w : World σ N₀} {A : VarType} {s s' : DTerm w A} (h : s.Rel s') :
-    extentTm w s = extentTm w s' := by
-  have key : ∀ {u u' : DTerm w A}, u.Rel u' → extentTm w u ⊆ extentTm w u' := by
-    intro u u' hu w' hw'
-    rcases hw' with ⟨hd, j, z, hz, β, bb, hi, hv, hb⟩ | ⟨he, j, z, hz, β, bb, hi, hr⟩
-    · exact Or.inl ⟨hd, j, z, hz, β, bb, hu.symm.trans hi, hv, hb⟩
-    · exact Or.inr ⟨he, j, z, hz, β, bb, hu.symm.trans hi, hr⟩
-  exact Set.Subset.antisymm (key h) (key h.symm)
-
-/-- ⭐**The extent does not depend on the stage a term is read at** — the property `rden_mono`
-    needs, and the reason the class is stage-free. -/
-theorem extentTm_lift {w : World σ N₀} {A : VarType} (s : DTerm w A) {k : ℕ × ℕ}
-    (hk : s.i ≤ k) : extentTm w ⟨k, s.a, s.lift k hk⟩ = extentTm w s :=
-  (extentTm_congr (s.rel_lift hk)).symm
-
-/-- A term's own witness contributes its arrows: `Canon.extent` at the witness is contained in the
-    class-keyed extent, by reflexivity. -/
-theorem extent_subset_extentTm {w : World σ N₀} {A : VarType} {j : ℕ × ℕ} {z : VarSymb}
-    (hz : ∃ X, (w.L.ctx j).ref z = some (.VTypeDia X)) {β : Ann A}
-    (b : Term σ ((w.L.ctx j).diaIn z) A β) :
-    extent w z ⊆ extentTm w ⟨j, _, Term.diatm z hz b⟩ := by
-  intro w' hw'
-  rcases hw' with ⟨hd, hv, hb⟩ | ⟨he, hr⟩
-  · exact Or.inl ⟨hd, j, z, hz, β, b, DTerm.Rel.refl _, hv, hb⟩
-  · exact Or.inr ⟨he, j, z, hz, β, b, DTerm.Rel.refl _, hr⟩
-
-/-- A member of the class-keyed extent is the world itself or one level deeper, as for
-    `Canon.extent_cases`. -/
-theorem extentTm_cases {w : World σ N₀} {A : VarType} {s : DTerm w A} {w' : Succ w}
-    (hw' : w' ∈ extentTm w s) :
-    (w'.1.depth - w.depth = 1 ∧ ∃ (j : ℕ × ℕ) (z : VarSymb)
-        (hz : ∃ X, (w.L.ctx j).ref z = some (.VTypeDia X)) (β : Ann A)
-        (b : Term σ ((w.L.ctx j).diaIn z) A β),
-        s.Rel ⟨j, _, Term.diatm z hz b⟩ ∧ DiaView z w w'.1 ∧ BoxxContents z w w'.1) ∨
-      (w'.1.depth - w.depth = 0 ∧ w'.1 = w ∧ ∃ (j : ℕ × ℕ) (z : VarSymb)
-        (hz : ∃ X, (w.L.ctx j).ref z = some (.VTypeDia X)) (β : Ann A)
-        (b : Term σ ((w.L.ctx j).diaIn z) A β),
-        s.Rel ⟨j, _, Term.diatm z hz b⟩ ∧ w.Realised z) := by
-  rcases hw' with ⟨hd, hrest⟩ | ⟨he, hrest⟩
-  · exact Or.inl ⟨by omega, hrest⟩
-  · exact Or.inr ⟨by rw [he]; omega, he, hrest⟩
 
 end Canon
 

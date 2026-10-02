@@ -87,11 +87,9 @@ variable (σ : Signature) (N₀ : ℕ)
     context. -/
 structure RealDatum (L : WorldLang) (T : Set (L.sys.Sentence σ)) (x : VarSymb) where
   hT : ModalSys.T = true
-  /-- Only strong T realises a witness. -/
-  hS : ModalSys.TStrong = true
+  /-- The content type: any type, as `WFF.here`'s is (§10.16).  Weak T realises a witness too,
+      whenever the theory says so; strong T only guarantees that there are enough of them. -/
   A : VarType
-  /-- The content type is `◇`-free, as `WFF.here` is (§2d). -/
-  hA : A.diaFree = true
   i₀ : ℕ × ℕ
   /-- ⭐The content is an **address**, declared at `i₀` — naming (§2d).  Interpreting it is then a
       lookup (`interp_canon_eta`) rather than a recursive call at an unrelated type, which is what
@@ -292,8 +290,6 @@ noncomputable def Realised.data {x : VarSymb} (h : w.Realised x) : RealDatum σ 
   (w.real x).get h
 
 theorem Realised.T {x : VarSymb} (h : w.Realised x) : ModalSys.T = true := h.data.hT
-
-theorem Realised.TStrong {x : VarSymb} (h : w.Realised x) : ModalSys.TStrong = true := h.data.hS
 
 /-- What the world names at an address is what it realises there. -/
 theorem realised_of_real {x : VarSymb} {d : RealDatum σ w.L w.T x} (hsome : w.real x = some d) :

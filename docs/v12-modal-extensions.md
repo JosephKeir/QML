@@ -3993,3 +3993,42 @@ one are `cEnv` (`domShape_toDom`, `rawShape_rden`, `termShp_eta`).
 Remaining in step 5: items 5 and 7 (`Interch`/`DTerm.Rel` at every type, canonical
 `Ind := Rel` of representatives, canonical `IndInvariant`).  The canonical model still has
 `Ind := Eq`.  Then step 6, the truth lemma's `here` case.
+
+### 10.38 Step 5, items 5 and 7 begun: `Rel` at every type, the general datum, models proper over finite contexts *(2026-10-03)*
+
+**Done.**
+* `CanonInterch`: `Interch`, `DTerm`, `DTerm.Rel`, `interch_of_coname` and `rel_of_coname` are now
+  stated at **every** type (they were `◇`-only), since `Here`'s content may have any type.  The
+  `◇` transfer `Interch.dia_iff` is the instance at `◇A`.  The dead `extentTm` section is removed.
+* `RealDatum` drops `hS` and `hA` (§10.10's plan).  A witness is realised whenever the theory says so,
+  under weak T too, at any content type.  Only `rden_here_wd`/`rden_datum_wd`, which are about
+  `◇`-free contents, take `◇`-freeness as a hypothesis.  `Realised.TStrong` is gone.
+* ⭐**Models proper are now required to be invariant only over finite contexts, and only at slot
+  formulas** (user decision, 2026-10-03: presented contexts are the ones proofs use).
+  `Model.IndInvariant` quantifies over `Γ` with `[Γ.NoSlots]`, `Γ.Fin` and `Γ.NoProjLast`, and
+  formulas `WFF σ (Γ.insert (.bnd 0) A) 1` — exactly the shape of `here_subst` and of `Rel`.
+  *Why finite rather than presented*: `Proof.weak_ctx`'s premise lives in the smaller context, and
+  presentedness does not pass downwards; finiteness does.  New file `QML_v12m_CtxFin.lean`:
+  `Ctx.Fin` (finitely many declared addresses), closure under `Le` (downwards), `insert`, `boxIn`,
+  `diaIn`, `Ctx.Fin.reach` (finitely many reachable addresses), and `Ctx.Presented.fin`.
+  `Model.soundness` now takes `Γ.Fin` and carries it like `NoProjLast`, and its presented callers
+  supply `Ctx.Presented.fin`.  The statements of `completeness`/`provable_iff_valid` are unchanged.
+
+**Why finiteness is needed (item 7).**  Canonical `IndInvariant` has to speak about an *arbitrary*
+environment.  The route is to name each of its values by a term at one stage, i.e. to write the
+environment as a substitution of the canonical one, then use the truth lemma and `Rel`.  Over a
+context with infinitely many addresses there may be no common stage.
+
+**Open: "tags determine annotations" (item 6) is a real development.**  The `here` case's
+truth-to-membership direction needs (F): canonical terms with equal denotations carry `Here` facts
+across.  Reflexivity of `Ind` forces (F) for any choice of canonical `Ind`.  The planned route is:
+equal tags ⇒ equal annotations, then `eqRec` (truth lemma at a smaller formula) and `here_eq`.  But
+canonical leaves are root+path inside `◇`-contents and families at `□` positions, and views, `here`
+(collapse) and `keep` (shift) transform them differently, so it needs a full characterization of
+the leaf each view address gets.  Example of what it must see: under T, `u.here.box` and
+`u.box.here` (for `u : □□X`) are different syntax and semantically different in general
+(`n(w)(s)` vs `n(s)(s)`); their canonical shapes agree at the reflexive arrow and differ only at
+proper successors.  Every canonical world has one under T (`T_box` refutes `□⊥`, then
+`exists_box_fail`), but a general T model need not.  A possible simplification: label positions
+inside `◇`-contents by their full address with an empty path, so that `here`/`keep` leave those
+labels alone.  `rawShape_rden` and the laws do not depend on that convention.  Decision pending.

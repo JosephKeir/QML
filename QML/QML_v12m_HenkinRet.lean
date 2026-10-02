@@ -301,9 +301,7 @@ noncomputable def retDatum (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = tr
     (hret : IsRet L S₀ n) (hS₀ : StageSys.Consistent S₀) :
     Canon.RealDatum σ (L.final S₀) (L.finalT S₀) (.root (.free (L.ρ n))) where
   hT := hT
-  hS := hTS
   A := (addrQ n).1.1
-  hA := (addrQ n).1.2
   i₀ := (decM n, n + 1)
   b₀ := (addrQ n).2
   hb₀ := ((L.final S₀).ctx_le (Prod.mk_le_mk.mpr ⟨le_rfl, Nat.le_succ n⟩)).ref

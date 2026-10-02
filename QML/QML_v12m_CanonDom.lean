@@ -790,10 +790,12 @@ theorem rden_here_wd {w : World σ N₀} {y : VarSymb} (hT : ModalSys.T = true)
   rwa [Term.mono_refl, Term.mono_refl]
 
 /-- ⭐**So the content of a realised address is the theory's, not the model's choice**: any two data
-    for one address agree on the content type and on what the content denotes.  This is what lets
+    for one address agree on the content type and, at a `◇`-free one, on what the content
+    denotes.  This is what lets
     realisedness be *read off the theory* (§2d, step 4) — a world may choose which datum to use, and
     the value it computes does not depend on the choice. -/
-theorem rden_datum_wd {w : World σ N₀} {x : VarSymb} (d₁ d₂ : RealDatum σ w.L w.T x) :
+theorem rden_datum_wd {w : World σ N₀} {x : VarSymb} (d₁ d₂ : RealDatum σ w.L w.T x)
+    (hA : d₂.A.diaFree = true) :
     (⟨d₁.A, rden w d₁.i₀ (Ctx.Le.refl _) d₁.t₀⟩ : Σ A : VarType, RDom A w) =
       ⟨d₂.A, rden w d₂.i₀ (Ctx.Le.refl _) d₂.t₀⟩ := by
   have h₁ : d₁.i₀ ≤ (max d₁.i₀.1 d₂.i₀.1, max d₁.i₀.2 d₂.i₀.2) :=
@@ -809,7 +811,11 @@ theorem rden_datum_wd {w : World σ N₀} {x : VarSymb} (d₁ d₂ : RealDatum �
       rden w _ (Ctx.Le.refl _) (Term.eta d₂.b₀ d₂.A hb₂) :=
     rden_eta_le (w.L.ctx_le h₂) _ _ _ _ _ _
   rw [e₁, e₂]
-  refine rden_here_wd d₁.hT d₁.hA d₂.hA ((w.L.ctx_le h₁).ref d₁.hd₀)
+  have hA₁ : d₁.A.diaFree = true := by
+    have h := (d₁.hdeclOf d₂.i₀ ⟨d₂.A, d₂.hd₀⟩).symm.trans d₂.hd₀
+    simp only [Option.some.injEq, VarType.VTypeDia.injEq] at h
+    rwa [h]
+  refine rden_here_wd d₁.hT hA₁ hA ((w.L.ctx_le h₁).ref d₁.hd₀)
     ((w.L.ctx_le h₂).ref d₂.hd₀) hb₁ hb₂ ?_ ?_
   · exact Eq.mp (congrArg (fun φ => (⟨_, φ⟩ : w.L.sys.Sentence σ) ∈ w.T)
       (WFF.here_congr' d₁.hT rfl (Term.mono_eta _ _ _ _)))
