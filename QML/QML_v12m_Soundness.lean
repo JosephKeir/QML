@@ -232,6 +232,9 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M w env hnp hΔ
       exact sat_here_subst hT env hnp s t t' φ (ihh M env hnp hΔ) (ihh' M env hnp hΔ)
         (ihf M env hnp hΔ)
+  | @here_eq Γ _ Δ hT A b s a t t' ph pe ihh ihe =>
+      intro M w env hnp hΔ
+      exact sat_here_eq hT env s t t' (ihh M env hnp hΔ) (ihe M env hnp hΔ)
   | @B_dia Γ Δ hB ψ p ih =>
       -- `◇□ψ`: along some arrow `w → v`, `ψ` holds after every arrow out of `v`; one leads back.
       intro M w env hnp hΔ

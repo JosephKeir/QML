@@ -3799,3 +3799,23 @@ rule, including the `here_*` rules (still read with equality at `◇`-content; `
 
 **Next: step 3**, `here_eq` with its soundness and `subst_eqRec` at `◇`; then step 4, `Here` at
 `◇`-content reads `Ind`; then step 5, the canonical model (tags, laws, removing the `sorry`s).
+
+### 10.32 ✅Step 3 done: `here_eq` *(2026-10-03)*
+
+* `Proof.here_eq : Here s t, eqRec t t' ⊢ Here s t'` — any content type, one annotation (`eqRec`).
+* Soundness `Model.sat_here_eq`: `sat_eqRec` makes the two contents one object.  Under the current
+  `Realised` (equality) this is immediate; under `Ind` (step 4) it stays immediate, since `Ind`
+  receives the same object.
+* `Proof.subst` case via ⭐`WFF.subst_eqRec_gen`: substitution commutes with `eqRec` at **every**
+  type.  At `◇` both sides are `□_{ιx}` of the bodies under `θ.dia x (ιx)`, so the case is the
+  inductive hypothesis; `WFF.subst`'s `.dia` arm builds the node at `ι x` definitionally, so a
+  `congrArg` closes it.  The old `◇`-free `WFF.subst_eqRec` is now a special case (left in place for
+  its callers).
+* No other function recurses over `Proof` exhaustively, so nothing else needed a case.  Whole tree:
+  same single error (`Completeness.lean:286`), same three recorded `CanonModel` sorries.
+
+**Step 4 design note.**  `Ind`'s invariance ("related objects satisfy the same slot formulas")
+mentions `sat`, which is defined *from* the model, so it cannot be a `Model` field.  The plan is a
+field `Ind` with only structural conditions (reflexive, equality at `◇`-free types), plus a
+predicate `Model.IndInvariant` stated after `sat`.  Soundness takes it as a hypothesis, and the
+canonical model proves it.  Validity is then over the models satisfying it.

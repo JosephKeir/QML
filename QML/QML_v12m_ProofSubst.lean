@@ -770,6 +770,40 @@ theorem WFF.subst_dia {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (θ 
   subst hxy
   rfl
 
+/-- ⭐**Substitution commutes with equality at every type.**  At `◇` the equality is
+    `□_x (eqRec A t s)`, and substitution sends both the `□_x` and the two terms to the witness's
+    image `ι x`, with the bodies under `θ.dia x (ι x)` — the same arm on both sides, so the case is
+    the inductive hypothesis there.  (`WFF.subst_eqRec` is the `◇`-free special case.) -/
+theorem WFF.subst_eqRec_gen {ι : VarSymb → VarSymb} :
+    {Γ Δ : Ctx} → {d d' : ℕ} → (θ : Subst σ Δ) → (hθ : Subst.Ok Γ θ) → (hc : Subst.Coh ι Γ θ) →
+    (hΓ : Γ.SlotsFrom d) → (hΔ : Δ.SlotsFrom d') → (T : VarType) → {a : Ann T} →
+    (t : Term σ Γ T a) → (s : Term σ Γ T a) →
+    WFF.subst ι θ hθ hc hΓ hΔ (eqRec T t s : WFF σ Γ d) =
+      eqRec T (Term.subst ι θ hθ hc t) (Term.subst ι θ hθ hc s)
+  | _, _, _, _, _, _, _, _, _, .Var, .var, t, s => by
+      have e : ∀ {Γ' : Ctx} {e' : ℕ} (u v : Term σ Γ' .Var .var),
+          (eqRec .Var u v : WFF σ Γ' e') = .eq u v := by
+        intro _ _ u v
+        cases u <;> cases v <;> rfl
+      rw [e t s, e _ _]
+      rfl
+  | _, _, _, _, _, _, _, _, _, .VTypeOne, .one, .unit, .unit => rfl
+  | _, _, _, _, θ, hθ, hc, hΓ, hΔ, .VTypeProd A B, .prod _ _, .pair t₁ t₂, .pair s₁ s₂ => by
+      change WFF.and (WFF.subst ι θ hθ hc hΓ hΔ (eqRec A t₁ s₁))
+        (WFF.subst ι θ hθ hc hΓ hΔ (eqRec B t₂ s₂)) = _
+      rw [WFF.subst_eqRec_gen θ hθ hc hΓ hΔ A t₁ s₁, WFF.subst_eqRec_gen θ hθ hc hΓ hΔ B t₂ s₂]
+      rfl
+  | _, _, _, _, θ, hθ, hc, hΓ, hΔ, .VTypeBox A, .box _, .boxtm t, .boxtm s => by
+      change WFF.box (WFF.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc)
+        hΓ.boxIn hΔ.boxIn (eqRec A t s)) = _
+      rw [WFF.subst_eqRec_gen θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn hΔ.boxIn A t s]
+      rfl
+  | _, _, _, _, θ, hθ, hc, hΓ, hΔ, .VTypeDia A, .dia x _, .diatm _ hx t, .diatm _ _ s => by
+      obtain ⟨X, hr⟩ := id hx
+      have hw : (θ.at x).idxAlong [] = ι x := hc x _ hr []
+      exact congrArg (WFF.boxx (ι x) (SubE.ref_witness (Subst.okRef_at hθ hr) hw))
+        (WFF.subst_eqRec_gen (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx)
+          (hΓ.diaIn x) (hΔ.diaIn (ι x)) A t s)
 
 /-- ⭐Substituting into the reading of a hole formula inside `◇_x`, with the view term in its hole.
     The witness index is handled by the caller (`WFF.subst_dia`); here the body and the hole formula
@@ -1373,6 +1407,11 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         (Proof.here_subst hT (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
           (Term.subst ι θ hθ hc t') _ (Proof.subst ph θ hθ hc hΓ) (Proof.subst ph' θ hθ hc hΓ)
           (Proof.conv (WFF.subst_instantiate θ hθ hc hΓ hΓ' t φ) (Proof.subst pf θ hθ hc hΓ)))
+  | _, _, _, @Proof.here_eq _ _ Γ _ _ hT A b s a t t' ph pe, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      Proof.here_eq hT (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
+        (Term.subst ι θ hθ hc t') (Proof.subst ph θ hθ hc hΓ)
+        (Proof.conv (WFF.subst_eqRec_gen θ hθ hc hΓ hΓ' A t t') (Proof.subst pe θ hθ hc hΓ))
 
 /-- ⭐**Weakening** along any inclusion of contexts, into a presented context. -/
 def Proof.mono {σ : Signature} {Γ Γ' : Ctx} [Γ'.Presented] {Δs : List (WFF σ Γ 0)}

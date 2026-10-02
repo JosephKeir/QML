@@ -258,6 +258,16 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (WFF.here hT s t) → Proof σ Γ Δ (WFF.here hT s t') →
       Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t φ) →
       Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t' φ)
+  /-- ⭐**Leibniz for the content** (docs §10.24–10.25): a realised possible object's content can be
+      replaced by an equal one.  `Here` relates a possible object directly to an object one level
+      down, a cross-level relation that K's Leibniz cannot see — without `Here`, a possible object
+      is only ever used inside a `◇` with its own witness.  `eqRec` compares terms of one
+      annotation only, so this never relates contents over different witnesses. -/
+  | here_eq {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+      {A : VarType} {b : Ann (.VTypeDia A)} (s : Term σ Γ (.VTypeDia A) b)
+      {a : Ann A} (t t' : Term σ Γ A a) :
+      Proof σ Γ Δ (WFF.here hT s t) → Proof σ Γ Δ (eqRec A t t') →
+      Proof σ Γ Δ (WFF.here hT s t')
   -- Weak B
   /-- What is possibly necessary is true, `◇□ψ ⊢ ψ`, for a closed `ψ`: some accessible world
       makes `ψ` necessary, and an arrow leads back from it.  `ψ` must be closed because nothing

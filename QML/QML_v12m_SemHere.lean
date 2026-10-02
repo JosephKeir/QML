@@ -249,6 +249,18 @@ theorem sat_here_subst {A : VarType} {b : Ann (.VTypeDia A)} (s : Term σ Γ (.V
   rw [← hc.symm.trans hc']
   exact (sat_instantiate env hnp Ctx.NoSlots.slots t φ).mp hφ
 
+omit [Γ.NoSlots] in
+/-- ⭐**Leibniz for the content is sound**: the defined equality holds exactly when the two contents
+    denote one object (`sat_eqRec`), and `Realised` reads the content as an object. -/
+theorem sat_here_eq {A : VarType} {b : Ann (.VTypeDia A)} (s : Term σ Γ (.VTypeDia A) b)
+    {a : Ann A} (t t' : Term σ Γ A a)
+    (h : M.sat env (WFF.here hT s t : WFF σ Γ 0))
+    (he : M.sat env (eqRec A t t' : WFF σ Γ 0)) :
+    M.sat env (WFF.here hT s t' : WFF σ Γ 0) := by
+  change Realised hT (interp env s) (interp env t')
+  rw [← (sat_eqRec env A t t').mp he]
+  exact h
+
 /-! ## The two readings of a hole formula, at the identity arrow -/
 
 omit [Γ.NoSlots] in
