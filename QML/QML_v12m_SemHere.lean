@@ -474,15 +474,13 @@ theorem sat_hereAt_extend {A : VarType} (r : Root)
 
 omit [Γ.NoSlots] in
 /-- The existential, as `WFF.ex` binds it. -/
-theorem sat_here_ex (hS : ModalSys.TStrong = true) {A : VarType} (hA : A.diaFree = true)
-    {a : Ann A} (t : Term σ Γ A a) (hr : Γ.RootFresh (.bnd 0)) :
+theorem sat_here_ex (hS : ModalSys.TStrong = true) {A : VarType} {a : Ann A}
+    (t : Term σ Γ A a) (hr : Γ.RootFresh (.bnd 0)) :
     M.sat env (WFF.ex (.VTypeDia A)
       (WFF.hereAt hT (.root (.bnd 0)) (Ctx.ref_insert_root Γ (.bnd 0) (.VTypeDia A))
         (Term.weaken hr.root (.VTypeDia A) t)) : WFF σ Γ 0) := by
-  obtain ⟨p, hm, hcon⟩ := M.posRet_exists hT hS hA (interp env t)
-  refine ⟨p, (sat_hereAt_extend hT env (.bnd 0) hr p t).mpr ⟨hm, ?_⟩⟩
-  rw [hcon]
-  exact M.Ind_refl _
+  obtain ⟨p, hm, hcon⟩ := M.posRet_exists hT hS (interp env t)
+  exact ⟨p, (sat_hereAt_extend hT env (.bnd 0) hr p t).mpr ⟨hm, hcon⟩⟩
 
 end
 end Model

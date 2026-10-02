@@ -13,9 +13,9 @@ contexts `ctxL m l` (stage `m` of the base, all `n` variables).  Step `n`:
 2. adds it if that keeps the theory consistent, and otherwise adds its negation (`choice`);
 3. declares the next variable `ρ n`: if the added formula is `∃x:A. ψ` or `¬∀x:A. ψ`, at the
    type `A`, with the witness sentence `ψ[ρ n]` or `¬ψ[ρ n]`; otherwise, under strong T, as a
-   witness `ρ n : ◇A` for an enumerated address `v : A` (`addrQ n`) with all its hypotheses
-   `WFF.retHyp` (`retSet`, consistent by `T_dia`); and otherwise at the unit type, which is always
-   inhabited (`witStep`, `retStep`).
+   witness `ρ n : ◇A` for an enumerated term `t : A` (`termQ n`, any type) with the `Here` atom
+   saying it is realised by `t` (`retSet`, consistent by `T_dia`); and otherwise at the unit type,
+   which is always inhabited (`witStep`, `retStep`).
 
 Declaring a variable asserts that its type is inhabited, so the types cannot be fixed in
 advance: they are chosen as the witnesses are needed.  Keeping them as a list, newest first,
@@ -210,20 +210,6 @@ theorem enumF_surjective {σ : Signature} [Countable σ.FuncSyms] [Countable σ.
 instance {σ : Signature} {Γ : Ctx} : Nonempty (Σ A : VarType, Σ a : Ann A, Term σ Γ A a) :=
   ⟨⟨.VTypeOne, .one, .unit⟩⟩
 
-instance : Nonempty ({A : VarType // A.diaFree = true} × VarSymb) :=
-  ⟨⟨⟨.VTypeOne, rfl⟩, .root (.free 0)⟩⟩
-
-/-- ⭐A fixed enumeration of the `◇`-free types paired with addresses.  What a strong T step realises
-    is an **address's η-expansion** — naming (§2d) — so the step reads a type and an address rather
-    than a term, and the datum it builds records the address.  That is what makes interpreting a
-    realisation a lookup, and so what takes the stage out of `interp_canon`'s measure. -/
-noncomputable def enumAF : ℕ → {A : VarType // A.diaFree = true} × VarSymb :=
-  Classical.choose (exists_surjective_nat ({A : VarType // A.diaFree = true} × VarSymb))
-
-omit [ModalSys] in
-theorem enumAF_surjective : Function.Surjective enumAF :=
-  Classical.choose_spec (exists_surjective_nat ({A : VarType // A.diaFree = true} × VarSymb))
-
 /-! ## Contexts along the construction -/
 
 namespace WorldLang
@@ -384,8 +370,8 @@ variable (L) in
     `Here` is then in the theory, so `Canon.spec_of_here` derives `RealDatum.spec` and the truth
     lemma's `here` case has something to match (§2d; nothing else introduces a `Here`, see
     `Model.sat_here_ex`). -/
-def retSet (hT : ModalSys.T = true) (l : List VarType) (m : ℕ) {A : VarType}
-    (_hA : A.diaFree = true) {a : Ann A} (t : Term σ (L.ctxL m l) A a) :
+def retSet (hT : ModalSys.T = true) (l : List VarType) (m : ℕ) {A : VarType} {a : Ann A}
+    (t : Term σ (L.ctxL m l) A a) :
     Set ((L.pre (.VTypeDia A :: l)).Sentence σ) :=
   {s | ∃ (m' : ℕ) (hm : m ≤ m'),
       s = ⟨m', WFF.hereAt hT (.root (.free (L.ρ l.length)))
@@ -398,10 +384,10 @@ def retSet (hT : ModalSys.T = true) (l : List VarType) (m : ℕ) {A : VarType}
     (`WFF.mono_hereAt`) and `T_dia` discharges the witness. -/
 theorem consistent_grow_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true)
     {l : List VarType} {S : Set ((L.pre l).Sentence σ)} (hS : StageSys.Consistent S) {m : ℕ}
-    {A : VarType} (hA : A.diaFree = true) {a : Ann A} (t : Term σ (L.ctxL m l) A a) :
-    StageSys.Consistent (grow l (.VTypeDia A) S ∪ L.retSet hT l m hA t) := by
+    {A : VarType} {a : Ann A} (t : Term σ (L.ctxL m l) A a) :
+    StageSys.Consistent (grow l (.VTypeDia A) S ∪ L.retSet hT l m t) := by
   have key : ∀ M, m ≤ M →
-      Theory.Consistent (StageSys.atStage (grow l (.VTypeDia A) S ∪ L.retSet hT l m hA t) M) := by
+      Theory.Consistent (StageSys.atStage (grow l (.VTypeDia A) S ∪ L.retSet hT l m t) M) := by
     rintro M hM ⟨Δ, hΔ, p⟩
     have hc : (L.ctxL M l).RootFresh (.free (L.ρ l.length)) := L.ctxL_fresh le_rfl
     let g : Unit → WFF σ (L.ctxL M (.VTypeDia A :: l)) 0 := fun _ =>
@@ -421,7 +407,7 @@ theorem consistent_grow_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = t
     obtain ⟨Ψ, Δ₀, h₀, h₁⟩ := exists_hyps_two (P := fun x => x ∈ StageSys.atStage S M)
       (fun x => WFF.mono (L.ctxL_le_cons M (.VTypeDia A) l) x) g Δ hcases
     obtain ⟨q⟩ := Provable.mono h₁ p
-    refine hS M ⟨Δ₀, h₀, ⟨Proof.T_dia hT hTS A hA (Term.mono (L.ctxL_base_le hM l) t) _ hc
+    refine hS M ⟨Δ₀, h₀, ⟨Proof.T_dia hT hTS A (Term.mono (L.ctxL_base_le hM l) t) _ hc
       (φ := .bot) (Proof.ofSubset (fun χ hχ => ?_) q)⟩⟩
     rcases List.mem_append.mp hχ with h | h
     · obtain ⟨_, _, rfl⟩ := List.mem_map.mp h
@@ -433,24 +419,34 @@ theorem consistent_grow_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = t
   · exact StageSys.consistent_of_le (key m le_rfl) hM
 
 variable (L) in
+/-- ⭐What a strong T step realises: a **term**, of any type (`◇` included, §10.41), over stage `m`
+    of the base and some own variables `l'`.  The list is part of the query, so the query does not
+    depend on the construction so far; a step uses it when `l'`'s context is contained in the
+    current one, as it used to use an address when that was declared. -/
+abbrev RetQ (σ : Signature) (m : ℕ) : Type :=
+  Σ l' : List VarType, Σ A : VarType, Σ a : Ann A, Term σ (L.ctxL m l') A a
+
+instance (m : ℕ) : Nonempty (L.RetQ σ m) := ⟨⟨[], .VTypeOne, .one, .unit⟩⟩
+
+variable (L) in
+open Classical in
 /-- The declaration made when no witness is needed: under strong T (with weak T), a witness for
-    the term `t` with all its hypotheses; otherwise a variable of unit type. -/
-noncomputable def retStep (m : ℕ) (l : List VarType)
-    (q : {A : VarType // A.diaFree = true} × VarSymb) :
+    the query's term, with the `Here` atom; otherwise a variable of unit type. -/
+noncomputable def retStep (m : ℕ) (l : List VarType) (q : L.RetQ σ m) :
     Σ A : VarType, Set ((L.pre (A :: l)).Sentence σ) :=
-  if h : ModalSys.T = true ∧ ModalSys.TStrong = true ∧ (L.ctxL m l).ref q.2 = some q.1.1 then
-    ⟨.VTypeDia q.1.1, L.retSet h.1 l m q.1.2 (Term.eta q.2 q.1.1 h.2.2)⟩
+  if h : ModalSys.T = true ∧ ModalSys.TStrong = true ∧ (L.ctxL m q.1).Le (L.ctxL m l) then
+    ⟨.VTypeDia q.2.1, L.retSet h.1 l m (Term.mono h.2.2 q.2.2.2)⟩
   else ⟨.VTypeOne, ∅⟩
 
+open Classical in
 theorem consistent_retStep {l : List VarType} {S : Set ((L.pre l).Sentence σ)}
-    (hS : StageSys.Consistent S) (m : ℕ)
-    (q : {A : VarType // A.diaFree = true} × VarSymb) :
+    (hS : StageSys.Consistent S) (m : ℕ) (q : L.RetQ σ m) :
     StageSys.Consistent (grow l (L.retStep m l q).1 S ∪ (L.retStep m l q).2) := by
-  by_cases h : ModalSys.T = true ∧ ModalSys.TStrong = true ∧ (L.ctxL m l).ref q.2 = some q.1.1
+  by_cases h : ModalSys.T = true ∧ ModalSys.TStrong = true ∧ (L.ctxL m q.1).Le (L.ctxL m l)
   · have e : L.retStep m l q =
-        ⟨.VTypeDia q.1.1, L.retSet h.1 l m q.1.2 (Term.eta (σ := σ) q.2 q.1.1 h.2.2)⟩ := dif_pos h
+        ⟨.VTypeDia q.2.1, L.retSet h.1 l m (Term.mono h.2.2 q.2.2.2)⟩ := dif_pos h
     rw [e]
-    exact consistent_grow_ret h.1 h.2.1 hS q.1.2 (Term.eta (σ := σ) q.2 q.1.1 h.2.2)
+    exact consistent_grow_ret h.1 h.2.1 hS (Term.mono h.2.2 q.2.2.2)
   · have e : L.retStep (σ := σ) m l q = ⟨.VTypeOne, ∅⟩ := dif_neg h
     rw [e]
     exact consistent_grow_unit hS
@@ -458,8 +454,7 @@ theorem consistent_retStep {l : List VarType} {S : Set ((L.pre l).Sentence σ)}
 variable (L) in
 /-- The declaration made after adding `χ`, and its witness sentences: the witness of an
     existential or a negated universal, and otherwise `retStep` for the step's term `tq`. -/
-noncomputable def witStep (m : ℕ) (l : List VarType)
-    (q : {A : VarType // A.diaFree = true} × VarSymb) :
+noncomputable def witStep (m : ℕ) (l : List VarType) (q : L.RetQ σ m) :
     WFF σ (L.ctxL m l) 0 → Σ A : VarType, Set ((L.pre (A :: l)).Sentence σ)
   | .ex A ψ => ⟨A, {⟨m, WFF.openFree (L.ρ l.length) (L.ctxL_fresh le_rfl) Ctx.NoSlots.slots ψ⟩}⟩
   | .imp (.all A ψ) .bot =>
@@ -495,11 +490,19 @@ variable (L) in
 noncomputable def query (n : ℕ) (l : List VarType) : WFF σ (L.ctxL (decM n) l) 0 :=
   WFF.mono (L.ctxL_drop_le _ (n - decJ n) l) (enumF _ (decKF n))
 
-/-- ⭐The `◇`-free type and the address read at step `n`.  Unlike the old term query this does not
-    depend on the own variables so far: an address is a name, not a term over a context, so the
-    step's datum can record it and interpreting a realisation stays a lookup (§2d). -/
-noncomputable def addrQ (n : ℕ) : {A : VarType // A.diaFree = true} × VarSymb :=
-  enumAF (decKT n)
+variable (L) in
+/-- A fixed enumeration of the term queries at a base stage. -/
+noncomputable def enumRQ (m : ℕ) : ℕ → L.RetQ σ m :=
+  Classical.choose (exists_surjective_nat (L.RetQ σ m))
+
+omit [Countable σ.RelSyms] in
+theorem enumRQ_surjective (m : ℕ) : Function.Surjective (L.enumRQ (σ := σ) m) :=
+  Classical.choose_spec (exists_surjective_nat (L.RetQ σ m))
+
+variable (L) in
+/-- ⭐The term query read at step `n`.  Like the formula query it is read at the step's base stage;
+    unlike it, it carries its own variables, so it does not depend on the construction so far. -/
+noncomputable def termQ (n : ℕ) : L.RetQ σ (decM n) := L.enumRQ (decM n) (decKT n)
 
 variable (L) in
 open Classical in
@@ -511,9 +514,9 @@ noncomputable def choice (n : ℕ) (st : HState L σ) : WFF σ (L.ctxL (decM n) 
 variable (L) in
 /-- Step `n` of the construction. -/
 noncomputable def step (n : ℕ) (st : HState L σ) : HState L σ :=
-  ⟨(L.witStep (decM n) st.l (addrQ n) (L.choice n st)).1 :: st.l,
+  ⟨(L.witStep (decM n) st.l (L.termQ n) (L.choice n st)).1 :: st.l,
     grow st.l _ (insert ⟨decM n, L.choice n st⟩ st.S) ∪
-      (L.witStep (decM n) st.l (addrQ n) (L.choice n st)).2⟩
+      (L.witStep (decM n) st.l (L.termQ n) (L.choice n st)).2⟩
 
 variable (L) in
 /-- The construction from a starting theory over the base. -/
@@ -543,7 +546,7 @@ theorem consistent_step (n : ℕ) (st : HState L σ) (hS : StageSys.Consistent s
       insert ⟨decM n, L.choice n st⟩ st.S :=
     Set.mem_insert _ _
   change StageSys.Consistent (grow st.l _ (insert ⟨decM n, L.choice n st⟩ st.S) ∪
-    (L.witStep (decM n) st.l (addrQ n) (L.choice n st)).2)
+    (L.witStep (decM n) st.l (L.termQ n) (L.choice n st)).2)
   generalize L.choice n st = χ at h₁ hmem ⊢
   cases χ with
   | ex A ψ => exact consistent_grow_ex h₁ hmem
@@ -566,7 +569,7 @@ theorem consistent_chain {S₀ : Set ((L.pre []).Sentence σ)} (hS₀ : StageSys
 
 theorem chain_succ_l (S₀ : Set ((L.pre []).Sentence σ)) (n : ℕ) :
     (L.chain S₀ (n + 1)).l =
-      (L.witStep (decM n) (L.chain S₀ n).l (addrQ n) (L.choice n (L.chain S₀ n))).1 ::
+      (L.witStep (decM n) (L.chain S₀ n).l (L.termQ n) (L.choice n (L.chain S₀ n))).1 ::
         (L.chain S₀ n).l :=
   rfl
 
@@ -616,7 +619,7 @@ theorem mem_chain_mono (S₀ : Set ((L.pre []).Sentence σ)) {n N : ℕ} (h : n 
 /-- The formula chosen at step `n` is in the theory from step `n + 1` on. -/
 theorem choice_mem (S₀ : Set ((L.pre []).Sentence σ)) (n : ℕ) :
     (⟨decM n, WFF.mono (L.ctxL_le_cons (decM n)
-        (L.witStep (decM n) (L.chain S₀ n).l (addrQ n) (L.choice n (L.chain S₀ n))).1
+        (L.witStep (decM n) (L.chain S₀ n).l (L.termQ n) (L.choice n (L.chain S₀ n))).1
         (L.chain S₀ n).l)
         (L.choice n (L.chain S₀ n))⟩ :
       (L.pre (L.chain S₀ (n + 1)).l).Sentence σ) ∈ (L.chain S₀ (n + 1)).S :=

@@ -93,8 +93,8 @@ structure RealDatum (L : WorldLang) (T : Set (L.sys.Sentence σ)) (x : VarSymb) 
   i₀ : ℕ × ℕ
   /-- ⭐The content is an **address**, declared at `i₀` — naming (§2d).  Interpreting it is then a
       lookup (`interp_canon_eta`) rather than a recursive call at an unrelated type, which is what
-      took the stage out of `interp_canon`'s measure and let the old `hstage` field go.  Every
-      object has such a name: `Canon.exists_name`. -/
+      took the stage out of `interp_canon`'s measure and let the old `hstage` field go.  Any `Here`
+      atom yields one: `here_name` and the witnessed theory (`Canon.realised_of_here`). -/
   b₀ : VarSymb
   hb₀ : (L.ctx i₀).ref b₀ = some A
   /-- ⭐The witness is declared at `◇A` **at that one stage** — where its content is declared too.
@@ -139,16 +139,15 @@ structure World where
     ∃ (i' : ℕ × ℕ) (hi : i ≤ i') (a : Ann A) (t : Term σ (L.ctx i') A a),
       (⟨i', (WFF.instantiate Ctx.NoSlots.slots t
         (WFF.mono ((L.ctx_le hi).insert (.bnd 0) A) ψ)).neg⟩ : L.sys.Sentence σ) ∈ T
-  /-- ⭐Strong T: every **declared address** is the content of some realised root.  This is what
-      `posRet_exists` needs — every object of a domain is the content, at the world itself, of a
-      possible object — and naming (`Canon.exists_name`) is what brings an arbitrary term into
-      this form.  Mere *existence* of a datum is enough, and all three equations are between
-      non-dependent data, because the content is an address (§2d, step 3) and because what the
-      content denotes does not depend on which datum the world picks
-      (`Canon.rden_datum_wd`, §2d step 4). -/
-  realW : ModalSys.T = true → ModalSys.TStrong = true → ∀ (i : ℕ × ℕ) {A : VarType},
-      A.diaFree = true → ∀ (v : VarSymb), (L.ctx i).ref v = some A →
-      ∃ (y : VarSymb) (d : RealDatum σ L T y), d.A = A ∧ d.b₀ = v ∧ i ≤ d.i₀
+  /-- ⭐Strong T: every term, of **any** type, is the content of some witness by the theory's own
+      word — a `Here` atom about a declared root, at some later stage.  This is what
+      `posRet_exists` needs: the atom makes the witness realised (`Canon.realised_of_here`) and
+      its content indistinguishable from the term's value (`DTerm.rel_of_coname`), so no naming is
+      involved and `◇`-typed contents are covered too (§10.41). -/
+  retW : (hT : ModalSys.T = true) → ModalSys.TStrong = true → ∀ (i : ℕ × ℕ) {A : VarType}
+      {a : Ann A} (t : Term σ (L.ctx i) A a),
+      ∃ (i' : ℕ × ℕ) (hi : i ≤ i') (y : VarSymb) (hy : (L.ctx i').ref y = some (.VTypeDia A)),
+        (⟨i', WFF.hereAt hT y hy (Term.mono (L.ctx_le hi) t)⟩ : L.sys.Sentence σ) ∈ T
 
 variable {σ N₀}
 
@@ -274,8 +273,8 @@ open Classical in
     (§2d, §9).  Every field of a `RealDatum` is a fact about the language and the theory — one
     stage's declarations and one `Here` atom — so a world realises `x` exactly when its theory says
     so, and nothing has to be *chosen* when the world is built.  A choice is still made here, among
-    data the theory allows, and it is immaterial: `Canon.rden_datum_wd` says any two of them give
-    the content the same denotation. -/
+    data the theory allows, and it is immaterial: any two of them give co-named contents, hence
+    related ones (`DTerm.rel_of_coname`), and `Ind` is all that `Here` and strong T read. -/
 noncomputable def real (x : VarSymb) : Option (RealDatum σ w.L w.T x) :=
   if h : Nonempty (RealDatum σ w.L w.T x) then some h.some else none
 

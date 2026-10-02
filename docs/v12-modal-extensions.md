@@ -2032,7 +2032,8 @@ so every "which arrow" or "which witness" question collapses there and nowhere e
 `necPair`, `necUnit`, `posMap`, and the one mixing map `posStrength : □A × ◇B → ◇(A × B)`, which is
 what lets `D_schema` re-use a witness with new content.
 
-**T** — the axiom where the inward reading is now fully instantiated.
+**T** — ✅ **finished** (2026-10-03, §10.41): every cell below is sound and complete, at every
+content type.
 * weak, `□`-side: `T_box` ✓ — open formulas, via the collapse `Ctx.collapses_boxIn_self`.
 * weak, `◇`-side, unwitnessed: derivable in K by duality, **not named** (cheap).
 * weak, `◇`-side, witnessed: `Proof.here_elimAt`, `Here x t, □_x χ ⊢ χ(t)` ✓ — weak T relativised
@@ -2040,15 +2041,17 @@ what lets `D_schema` re-use a witness with new content.
 * object, `□`-side, inward: `extract : □A → A` ✓ (`necExtract_eval`).
 * object, `□`-side, outward: does not exist and should not — `A → □A` says everything is necessary.
   The asymmetry is real, and it is why T's two sides look so different.
-* object, `◇`-side, outward: `TStrong`, `T_dia`, `posRet_exists` ✓ — and `T_dia` now hands over the
-  **`Here` atom** rather than the realisation schema (2026-09-27).  Nothing else introduces a `Here`,
-  and the atom's existential `∃x:◇A. Here x t` is valid but not derivable (⭐`Model.sat_here_ex`),
-  so handing it over is what lets the canonical model's theory contain one; §2d, item 2.
-* object, `◇`-side, inward: ⭐`WFF.here` at **every content type** — syntax, the four rules,
-  soundness and substitution ✓ (Stages 1–2); **the canonical model is Stage 3 and is the one hole in
-  the build**.
-* functionality `Here x a, Here x b ⊢ eqRec A a b`: ⭐`Proof.here_fun`, at every content type ✓.
-  Unwitnessed `Actual s` is `∃a. Here s a`, needing no primitive.
+* object, `◇`-side, outward: `TStrong`, `T_dia`, `posRet_exists` ✓ at **every** content type
+  (§10.41: no `hA`; the frame condition reads `Ind`).  `T_dia` hands over the `Here` atom; the
+  atom's existential `∃x:◇A. Here x t` is valid but not derivable (`Model.sat_here_ex`), so the
+  chain adds it for every term (`World.retW`).
+* object, `◇`-side, inward: `WFF.here` at every content type, read as indistinguishability
+  (`Ind`); rules `here_elim`, `here_intro`, `here_beta`, `here_name`, `here_subst`, `here_eq` ✓;
+  truth lemma `here` case ✓ (§10.40).
+* functionality: `here_subst` at any content type and any two annotations ✓; its equational
+  instance `Proof.here_fun` is `◇`-free, which is the shape of `eqRec` (one annotation), not a gap.
+* tidying left: §10.18 (narrow `here_beta` to its pinned instance).  Combinations: KTB is open
+  only because the B canonical model has no T machinery (see §9 B).
 
 **4** — two open maps, and they are not the same axiom.
 * weak, `□`-side: `four_box` ✓ — open formulas, via the shift `Ctx.shifts_boxIn_boxIn`.
@@ -2907,7 +2910,7 @@ substitutivity directly, and its `eqRec`-shaped hole formula sits at the *body* 
 `here_intro`, `here_beta` (both `hA` and `hB`) and `here_subst` automatically, since each inherits it
 from the constructor.
 
-### 10.12 Open: should `T_dia` keep `hA`? *(2026-09-29, next question after the `here` case)*
+### 10.12 ~~Open~~ Settled (§10.41, `hA` dropped): should `T_dia` keep `hA`? *(2026-09-29)*
 
 `T_dia`'s `hA` is **not** a syntactic necessity — the rule is formable at any `A` once `WFF.here` loses
 `hA`.  What carries the restriction is the frame condition `Model.posRet_exists`
@@ -4155,3 +4158,45 @@ build at `17e4035`.  The fixes are signature-only:
 * the `RenameExample` validity hypotheses, which take `M.IndInvariant`.
 
 Their proofs pass it through.
+
+### 10.41 ✅`T_dia` without `hA`: strong T at every content type, and T is finished *(2026-10-03)*
+
+§10.12's question, settled the way it argued for: `T_dia` is the object counterpart of `φ → ◇φ`
+at every depth, so it now holds at `◇`-typed contents too.  Whole v12m list green, no `sorry`.
+
+**Semantics: the frame condition reads `Ind`.**  `Model.posRet_exists` drops `_hA` and asks for a
+possible object whose content at the world itself is `Ind`-related to the object, not equal to it.
+The field moved below `Ind` (a structure field can only mention earlier ones).  This weakens the
+condition (`Ind_refl` gives the old one) and is exactly what `T_dia`'s soundness uses, since `Here`
+reads `Ind` (§10.33).  `Model.sat_here_ex` loses `hA` likewise.
+
+**Proof theory.**  `Proof.T_dia` drops `(hA : A.diaFree = true)`; its substitution case and the
+chain's consistency lemma (`consistent_grow_ret`, `retSet`) follow.
+
+**The canonical model: no naming.**  The only real use of `hA` was `posRet_exists_canon`, which
+named the object by an address (`exists_name`, `◇`-free only).  Now:
+1. the object is some term `t`'s denotation (definability);
+2. the theory has `Here(η y, t)` for some witness `y` (`World.retW`, below);
+3. that atom makes `y` realised (`realised_of_here`, moved from `CanonHere` into `CanonModel`) —
+   the datum's content is still an **address**, from `here_name` and the witnessed theory, so
+   `interp_canon`'s measure is untouched;
+4. `y`'s η-expansion has the world in its extent with the datum's content there
+   (`rden_eta_realised`), and that content and `t` are co-named — the datum's atom and the
+   chain's, at one stage — so their representatives are related (`DTerm.rel_of_coname`): `Ind`.
+
+**The chain reads terms again.**  `World.realW` (every `◇`-free declared address is some realised
+witness's content) is replaced by `World.retW`: every term, of any type, at every stage, has a
+`Here` atom about some declared witness at a later stage.  The query is
+`WorldLang.RetQ L σ m := Σ l' A a, Term σ (L.ctxL m l') A a` — a term over the base at stage `m`
+and a list of own variables — enumerated by `enumRQ` and read as `termQ n`.  Carrying `l'` makes
+the query independent of the construction so far (as the address was); a step uses it when
+`ctxL m l' ≤ ctxL m l`, the analogue of the old "address declared" guard (`IsRet`).
+`exists_retW` picks the step that enumerates the term and reads `⊤`; `retW_of_step` is stated for
+any query equal to the step's so that the equation can be `subst`ed.
+
+**Removed as dead:** `enumAF`/`addrQ`, `exists_isRet_addr`, `retDatum`, `retLt`, `retFr`,
+`Canon.exists_name`, `rden_castAnn`, `rden_here_wd`, `rden_datum_wd`, `rden_eta_realised_wd`.
+`Proof.exists_eqRec_eta` stays as a derived rule.
+
+**Where T stands** (§9 updated): every cell sound and complete at every content type.  Left:
+§10.18 (narrow `here_beta`, tidying only) and KTB (the B canonical model lacks the T machinery).

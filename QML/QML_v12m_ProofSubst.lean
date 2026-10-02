@@ -1336,14 +1336,14 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
             hΓ.boxIn hΓ.boxIn.boxIn Ctx.NoSlots.slots Ctx.NoSlots.slots
             (Subst.shiftCorr_box_box hF hθ) φ))
         (Proof.four_box hF (Proof.subst p θ hθ hc hΓ))
-  | _, _, _, @Proof.T_dia _ _ _ _ hT hS A hA _ t c hcf _ _ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.T_dia _ _ _ _ hT hS A _ t c hcf _ _ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       have hcf' : Γ'.RootFresh (.free (Ctx.Presented.bound Γ')) :=
         Ctx.Presented.fresh_bound _ le_rfl
       have ih := Proof.subst p (Γ' := Γ'.insert (.free (Ctx.Presented.bound Γ')) (.VTypeDia A))
         (θ.renameTm c _ (.VTypeDia A) hcf'.root) (Subst.ok_renameTm hθ (.VTypeDia A) hcf'.root)
         (Subst.coh_renameTm hθ hc hcf (.VTypeDia A) hcf'.root) (hΓ.insertFree c (.VTypeDia A))
-      Proof.T_dia hT hS A hA (Term.subst ι θ hθ hc t) (Ctx.Presented.bound Γ') hcf'
+      Proof.T_dia hT hS A (Term.subst ι θ hθ hc t) (Ctx.Presented.bound Γ') hcf'
         (Proof.castHyps
           (by
             simp only [List.map_cons, List.map_map, Function.comp_def]
@@ -1456,8 +1456,8 @@ theorem WFF.instantiate_eqRec_slot {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A :
     (Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) hv)
 
 /-- ⭐**Every object has a name**: the equation `η b = t` for a fresh `b` is provable's existential,
-    so a witnessed theory contains an instance of it.  This is the syntactic half of naming; the
-    denotational half is `Canon.exists_name`. -/
+    so a witnessed theory contains an instance of it.  (The canonical model no longer needs naming:
+    strong T reads `Ind` there, §10.41.) -/
 def Proof.exists_eqRec_eta {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)}
     {A : VarType} (hA : A.diaFree = true) (t : Term σ Γ A (Ann.eta (.root (.bnd 0)) A)) :
     Proof σ Γ Δ (.ex A (eqRec A (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root Γ (.bnd 0) A))

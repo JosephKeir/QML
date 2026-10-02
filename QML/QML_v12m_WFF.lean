@@ -38,15 +38,13 @@ inductive WFF (σ : Signature) : Ctx → ℕ → Type where
       sending a witness to a `diatm` term would otherwise break the tie between the term's type
       and the witness's content type.
 
-      *On the content type.*  The constructor takes any `A`, but functionality — `Proof.here_fun`,
-      the rule that makes `Here` useful — is stated at `◇`-free `A` only, and so is strong T's
-      `posRet_exists`.  The reason is the predicate's, not the equality's: `Here s t` with a
-      possible object as its value asserts that `s`'s content here *is* that object, and two such
-      atoms about one subject, over witnesses nothing has joined, are jointly satisfiable only if
-      those witnesses share an extent — which the construction cannot arrange, and should not,
-      since possibilities combine only when the syntax has joined them (§2d).  At `◇`-free `A` the
-      annotation is unique (`Ann.eq_of_diaFree`), so functionality's `eqRec` needs no side
-      condition there.
+      *On the content type.*  Any `A`, and every rule about `Here` — strong T's `T_dia` included
+      (§10.41) — holds at every content type.  At a `◇`-typed content `Here s t` says the content
+      is *indistinguishable* from `t`'s value (the model's `Ind`, §10.33), not identical to it: two
+      names of one content may stand over witnesses nothing has joined, and possibilities combine
+      only when the syntax has joined them (§2d).  So functionality is `here_subst`, at any two
+      annotations; its equational instance `Proof.here_fun` is `◇`-free only because `eqRec`
+      compares at one annotation (`Ann.eq_of_diaFree`).
 
       The `𝟙` case is why this is primitive rather than a recursion on the content type: there the
       content carries no information, so the clause is the extent condition alone — the

@@ -161,7 +161,7 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       `Model.sat_here_ex`).  The chain now adds exactly that atom (`WorldLang.retSet`), and
       `Canon.spec_of_here` derives `RealDatum.spec` from it. -/
   | T_dia {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) (hS : ModalSys.TStrong = true)
-      (A : VarType) (hA : A.diaFree = true) {a : Ann A} (t : Term σ Γ A a) (c : ℕ)
+      (A : VarType) {a : Ann A} (t : Term σ Γ A a) (c : ℕ)
       (hc : Γ.RootFresh (.free c))
       {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
       Proof σ (Γ.insert (.free c) (.VTypeDia A))

@@ -204,20 +204,18 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M hM w env hfin hnp hΔ v s
       exact (sat_shift_twoBox hF env Ctx.NoSlots.slots φ v s).mpr
         (ih M hM env hfin hnp hΔ ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩)
-  | @T_dia Γ _ hT hS A hA a t c hc Δ φ p ih =>
+  | @T_dia Γ _ hT hS A a t c hc Δ φ p ih =>
       -- Interpret the eigenvariable as some possible object realised here — `posRet_exists` says
       -- there is one, and that *is* the hypothesis the subproof gets.
       intro M hM w env hfin hnp hΔ
-      obtain ⟨q, hmem, hcont⟩ := M.posRet_exists hT hS hA (interp env t)
+      obtain ⟨q, hmem, hcont⟩ := M.posRet_exists hT hS (interp env t)
       refine (sat_weaken (T := .VTypeDia A) env hc.root q φ).mp
         (ih M hM (env.extend (T := .VTypeDia A) (.free c) q) (hfin.insert hc _) (hnp.insert _ _) ?_)
       intro χ hχ
       rcases List.mem_cons.mp hχ with h₁ | h₂
       · -- The `Here` hypothesis: the witness is realised here, by `t`.
         subst h₁
-        refine (sat_hereAt_extend hT env (.free c) hc q t).mpr ⟨hmem, ?_⟩
-        rw [hcont]
-        exact M.Ind_refl _
+        refine (sat_hereAt_extend hT env (.free c) hc q t).mpr ⟨hmem, hcont⟩
       · -- An old hypothesis, merely weakened by the eigenvariable.
         obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken (T := .VTypeDia A) env hc.root q χ').mpr (hΔ χ' hχ')

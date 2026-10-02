@@ -385,19 +385,6 @@ structure Model (σ : Signature) where
   necDup_eval : ∀ {A : VarType} {w : frame.W} (hF : ModalSys.Four = true) (n : frame.Nec A w)
     (v : frame.Acc w) (s : frame.Acc v.1),
     necEval (necEval (ops.necDup hF n) v) s = necEval n ⟨s.1, ⟨frame.trans hF v.2.down s.2.down⟩⟩
-  /-- ⭐Strong T: every object has *some* possible object whose extent contains the current world,
-      with the object as its content there.  This says on its own that `R` is reflexive wherever a
-      domain is inhabited.
-
-      Stated existentially rather than as an operation on `Frame.Ops`: strong T adds no term former,
-      so nothing interprets a map from objects to possible objects, and none is intended — in
-      particular there is no uniqueness and no naturality.  Demanding an operation would force the
-      canonical model to choose one (and, if naturality were ever wanted, to make the choices
-      cohere, which is what sank the `y.ret` design). -/
-  posRet_exists : ∀ {A : VarType} {w : frame.W} (_hT : ModalSys.T = true)
-    (_hS : ModalSys.TStrong = true) (_hA : A.diaFree = true)
-    (a : frame.Dom A w), ∃ (p : frame.Pos A w) (hm : frame.reflAcc _hT w ∈ (posFull p).1.1),
-      (posFull p).1.2 ⟨frame.reflAcc _hT w, hm⟩ = a
   /-- ⭐Strong D: some possible object has a nonempty extent.  Stated at `𝟙`, where the content
       carries nothing: `strength` then gives, for every necessary object, a possible object with
       the same extent whose content is that object's value — the `Nec → Pos` map, at every type. -/
@@ -409,6 +396,21 @@ structure Model (σ : Signature) where
       it is the separate condition `Model.IndInvariant` — a model proper is one satisfying it. -/
   Ind : {A : VarType} → {w : frame.W} → frame.Dom A w → frame.Dom A w → Prop
   Ind_refl : ∀ {A : VarType} {w : frame.W} (o : frame.Dom A w), Ind o o
+  /-- ⭐Strong T: every object has *some* possible object whose extent contains the current world,
+      with a content there indistinguishable from the object (`Ind`, which is what `Here` reads,
+      §10.33).  This says on its own that `R` is reflexive wherever a domain is inhabited.  Any
+      content type: the condition asks for no more than `T_dia`'s soundness uses, and with `Ind`
+      in place of equality the canonical model meets it at `◇`-typed contents too (§10.41).
+
+      Stated existentially rather than as an operation on `Frame.Ops`: strong T adds no term former,
+      so nothing interprets a map from objects to possible objects, and none is intended — in
+      particular there is no uniqueness and no naturality.  Demanding an operation would force the
+      canonical model to choose one (and, if naturality were ever wanted, to make the choices
+      cohere, which is what sank the `y.ret` design). -/
+  posRet_exists : ∀ {A : VarType} {w : frame.W} (_hT : ModalSys.T = true)
+    (_hS : ModalSys.TStrong = true) (a : frame.Dom A w),
+    ∃ (p : frame.Pos A w) (hm : frame.reflAcc _hT w ∈ (posFull p).1.1),
+      Ind ((posFull p).1.2 ⟨frame.reflAcc _hT w, hm⟩) a
 
 namespace Model
 

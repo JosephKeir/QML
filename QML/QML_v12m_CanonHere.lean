@@ -10,9 +10,8 @@ The facts about `Here` atoms the truth lemma's `here` case needs, at the level o
   with the content address in the hole gives the term.
 * ⭐`mem_here_realised`: a realised witness's possible object `⟨x; b⟩` has as its content here the
   realisation of `b` — the term the canonical model reads its content off (`interp_dia_self`).
-* ⭐`realised_of_here`: a `Here` atom about `⟨x; b⟩` makes `x` realised: `here_beta` at the unit
-  reduces it to realisedness, `here_name` names the content, and the witnessed theory declares the
-  name — a `RealDatum`.
+* `realised_of_here` (in `CanonModel`, where strong T's frame condition uses it): a `Here` atom
+  about `⟨x; b⟩` makes `x` realised.
 -/
 
 namespace V12M
@@ -78,35 +77,6 @@ theorem mem_here_realised {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) 
       (Term.diaAbsA x hdecl (Term.mono (realisedLe w hr (Ctx.Le.refl _)) bd))
       (Proof.lookup List.mem_cons_self)⟩
   rwa [WFF.here_congr hr.T (sig_diatm (Term.viewReadTm_eta_diaAbsA x hdecl _)) rfl] at hmem
-
-/-- ⭐**A `Here` atom about a possible object makes its witness realised.**  `here_beta` at the unit
-    reduces the atom to realisedness, `here_name` names the witness's content, and the witnessed
-    theory declares the name: a `RealDatum`. -/
-theorem realised_of_here (hT : ModalSys.T = true) {w : World σ N₀} {x : VarSymb} {i : ℕ × ℕ}
-    {X : VarType} (hx : (w.L.ctx i).ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B}
-    (bd : Term σ ((w.L.ctx i).diaIn x) B β) {a : Ann B} (t : Term σ (w.L.ctx i) B a)
-    (h : (⟨i, WFF.here hT (Term.diatm x ⟨X, hx⟩ bd) t⟩ : w.L.sys.Sentence σ) ∈ w.T) :
-    w.Realised x := by
-  have hex := World.mem_of_provable (w := w) (Δ := [_]) (fun ψ hψ => by
-      rw [List.mem_singleton.mp hψ]; exact h)
-    ⟨Proof.here_name hT x ⟨X, hx⟩ (Term.eta (.step x .dia) X (Ctx.ref_diaIn_of hx))
-      (Proof.here_beta hT x ⟨X, hx⟩ t bd (Term.unit) (Proof.lookup List.mem_cons_self))⟩
-  obtain ⟨i', hi, c, hc, hmem⟩ := w.exW hex
-  have e : WFF.mono ((w.L.ctx_le hi).insert (.bnd 0) X)
-      (WFF.here hT (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := w.L.ctx i)).root X)
-          (Term.eta x (.VTypeDia X) hx))
-        (Term.eta (.root (.bnd 0)) X (Ctx.ref_insert_root _ (.bnd 0) X)) : WFF σ _ 1) =
-      WFF.here hT (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := w.L.ctx i')).root X)
-          (Term.eta x (.VTypeDia X) ((w.L.ctx_le hi).ref hx)))
-        (Term.eta (.root (.bnd 0)) X (Ctx.ref_insert_root _ (.bnd 0) X)) := by
-    change WFF.here hT (Term.mono _ (Term.mono _ (Term.eta x (.VTypeDia X) hx)))
-      (Term.mono _ (Term.eta (.root (.bnd 0)) X _)) = _
-    rw [Term.mono_mono, Term.mono_eta, Term.mono_eta, Term.mono_eta]
-  change (⟨i', WFF.instantiate _ _ (WFF.mono _ (WFF.here hT (Term.mono _
-      (Term.eta x (.VTypeDia X) hx)) (Term.eta (.root (.bnd 0)) X _)))⟩ :
-    w.L.sys.Sentence σ) ∈ w.T at hmem
-  rw [e, WFF.instantiate_here_slot] at hmem
-  exact World.realised_of_datum ⟨hT, X, i', .root (.free c), hc, (w.L.ctx_le hi).ref hx, hmem⟩
 
 /-! ## The `here` case of the truth lemma -/
 

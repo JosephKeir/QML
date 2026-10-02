@@ -25,6 +25,35 @@ namespace Canon
 
 variable {σ : Signature} {N₀ : ℕ}
 
+/-- ⭐**A `Here` atom about a possible object makes its witness realised.**  `here_beta` at the unit
+    reduces the atom to realisedness, `here_name` names the witness's content, and the witnessed
+    theory declares the name: a `RealDatum`. -/
+theorem realised_of_here (hT : ModalSys.T = true) {w : World σ N₀} {x : VarSymb} {i : ℕ × ℕ}
+    {X : VarType} (hx : (w.L.ctx i).ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B}
+    (bd : Term σ ((w.L.ctx i).diaIn x) B β) {a : Ann B} (t : Term σ (w.L.ctx i) B a)
+    (h : (⟨i, WFF.here hT (Term.diatm x ⟨X, hx⟩ bd) t⟩ : w.L.sys.Sentence σ) ∈ w.T) :
+    w.Realised x := by
+  have hex := World.mem_of_provable (w := w) (Δ := [_]) (fun ψ hψ => by
+      rw [List.mem_singleton.mp hψ]; exact h)
+    ⟨Proof.here_name hT x ⟨X, hx⟩ (Term.eta (.step x .dia) X (Ctx.ref_diaIn_of hx))
+      (Proof.here_beta hT x ⟨X, hx⟩ t bd (Term.unit) (Proof.lookup List.mem_cons_self))⟩
+  obtain ⟨i', hi, c, hc, hmem⟩ := w.exW hex
+  have e : WFF.mono ((w.L.ctx_le hi).insert (.bnd 0) X)
+      (WFF.here hT (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := w.L.ctx i)).root X)
+          (Term.eta x (.VTypeDia X) hx))
+        (Term.eta (.root (.bnd 0)) X (Ctx.ref_insert_root _ (.bnd 0) X)) : WFF σ _ 1) =
+      WFF.here hT (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := w.L.ctx i')).root X)
+          (Term.eta x (.VTypeDia X) ((w.L.ctx_le hi).ref hx)))
+        (Term.eta (.root (.bnd 0)) X (Ctx.ref_insert_root _ (.bnd 0) X)) := by
+    change WFF.here hT (Term.mono _ (Term.mono _ (Term.eta x (.VTypeDia X) hx)))
+      (Term.mono _ (Term.eta (.root (.bnd 0)) X _)) = _
+    rw [Term.mono_mono, Term.mono_eta, Term.mono_eta, Term.mono_eta]
+  change (⟨i', WFF.instantiate _ _ (WFF.mono _ (WFF.here hT (Term.mono _
+      (Term.eta x (.VTypeDia X) hx)) (Term.eta (.root (.bnd 0)) X _)))⟩ :
+    w.L.sys.Sentence σ) ∈ w.T at hmem
+  rw [e, WFF.instantiate_here_slot] at hmem
+  exact World.realised_of_datum ⟨hT, X, i', .root (.free c), hc, (w.L.ctx_le hi).ref hx, hmem⟩
+
 -- Seriality under D needs a successor for every world, which is a Henkin construction, so the
 -- canonical frame is built over a countable signature — the setting of completeness anyway.
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB]
@@ -204,33 +233,6 @@ theorem posSerial_canon (hDS : ModalSys.DStrong = true) (w : World σ N₀) :
 
 /-! ## Strong T: every object is the content of a possible object here -/
 
-/-- ⭐Every object of a domain is the content, at the world itself, of a possible object.  Naming
-    (`Canon.exists_name`) turns a term denoting the object into a **declared address** denoting it,
-    and the theory realises some witness by that address (`World.realW`).  The possible object is
-    that witness's η-expansion; `self_mem_extent` puts the world in its extent, and
-    `rden_eta_realised_wd` says its content there is what the address denotes — whichever datum the
-    world picks for the witness (§2d, step 4). -/
-theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T = true)
-    (hS : ModalSys.TStrong = true) (hA : A.diaFree = true) (a : (frame w₀).Dom A w) :
-    ∃ (p : (frame w₀).Pos A w) (hm : (frame w₀).reflAcc hT w ∈ (posEval w₀ p).1),
-      (posEval w₀ p).2 ⟨(frame w₀).reflAcc hT w, hm⟩ = a := by
-  obtain ⟨i, a', t, ht⟩ := definable_fromDom w₀ A w a
-  obtain ⟨i₁, -, c', hc', hname⟩ := exists_name hA t
-  obtain ⟨y, d, hdA, hdb, hile⟩ := w.realW hT hS i₁ hA (.root (.free c')) hc'
-  subst hdA
-  have hr : w.Realised y := World.realised_of_datum d
-  refine ⟨⟨rden w d.i₀ (Ctx.Le.refl _)
-      (Term.eta y (.VTypeDia d.A) d.hd₀), definable_rden _ _⟩,
-    self_mem_extent hr, ?_⟩
-  refine Eq.trans ?_ (toDom_fromDom w₀ d.A w a)
-  refine toDom_congr w₀ ?_ _ _
-  rw [← ht]
-  refine (rden_eta_realised_wd hr d.t₀ (rden_datum_wd hr.data d hA) d.hd₀).trans
-    (Eq.trans ?_ hname)
-  refine (rden_sigma (Ctx.Le.refl _) (Term.eta_congr hdb d.A d.hb₀ (hdb ▸ d.hb₀))).trans ?_
-  exact (rden_eta_le (w.L.ctx_le hile) (Ctx.Le.refl _) (Ctx.Le.refl _)
-    (.root (.free c')) d.A hc' ((w.L.ctx_le hile).ref hc')).symm
-
 /-- ⭐**Canonical indistinguishability** (docs §10.33): two objects with representatives the theory
     cannot tell apart (`DTerm.Rel`) — co-named possible objects over different witnesses are
     related without being equal. -/
@@ -242,6 +244,44 @@ def Ind {A : VarType} {w : World σ N₀} (o o' : (frame w₀).Dom A w) : Prop :
 theorem Ind_refl {A : VarType} {w : World σ N₀} (o : (frame w₀).Dom A w) : Ind w₀ o o := by
   obtain ⟨i, a, t, ht⟩ := definable_fromDom w₀ A w o
   exact ⟨⟨i, a, t⟩, ⟨i, a, t⟩, ht, ht, DTerm.Rel.refl _⟩
+
+/-- ⭐**Every object of a domain is, up to `Ind`, the content at the world itself of a possible
+    object** — at every type, `◇` included (§10.41).  The object is some term's denotation; the
+    theory has a `Here` atom for that term about some witness (`World.retW`), which makes the
+    witness realised (`realised_of_here`); the witness's η-expansion has the world in its extent
+    (`self_mem_extent`) with the realised datum's content there (`rden_eta_realised`); and that
+    content is co-named with the term (the datum's own atom and the chain's), so the two have
+    related representatives (`DTerm.rel_of_coname`).  No naming, so no `◇`-freeness. -/
+theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T = true)
+    (hS : ModalSys.TStrong = true) (a : (frame w₀).Dom A w) :
+    ∃ (p : (frame w₀).Pos A w) (hm : (frame w₀).reflAcc hT w ∈ (posEval w₀ p).1),
+      Ind w₀ ((posEval w₀ p).2 ⟨(frame w₀).reflAcc hT w, hm⟩) a := by
+  obtain ⟨i, a', t, ht⟩ := definable_fromDom w₀ A w a
+  obtain ⟨i', hi, y, hy, hmem⟩ := w.retW hT hS i t
+  have hr : w.Realised y :=
+    realised_of_here hT hy (Term.eta (.step y .dia) A (Ctx.ref_diaIn_of hy)) _ hmem
+  obtain rfl : hr.data.A = A := by
+    have := (hr.data.hdeclOf i' ⟨A, hy⟩).symm.trans hy
+    simpa using this
+  -- both atoms at one stage, about one subject
+  set K := hr.data.i₀ ⊔ i'
+  have hdK : (w.L.ctx K).ref y = some (.VTypeDia hr.data.A) :=
+    (w.L.ctx_le (le_sup_right : i' ≤ K)).ref hy
+  have h₁ := hr.data.hhereAt w.mcs K le_sup_left hdK
+  have h₂ := (World.mem_lift (w := w) (le_sup_right : i' ≤ K)).mp hmem
+  rw [WFF.mono_hereAt_of_le hT _ _ _ hdK, Term.mono_mono] at h₂
+  have hrel := DTerm.rel_of_coname hT _ h₁ h₂
+  have hiK : i ≤ K := hi.trans le_sup_right
+  refine ⟨⟨rden w hr.data.i₀ (Ctx.Le.refl _) (Term.eta y (.VTypeDia hr.data.A) hr.data.hd₀),
+      definable_rden _ _⟩, self_mem_extent hr,
+    ⟨hr.data.i₀, _, hr.data.t₀⟩, ⟨i, a', t⟩, ?_, ht, ?_⟩
+  · have hc : toDom w₀ _ w (rden w hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀) (definable_rden _ _) =
+        (posEval w₀ ⟨rden w hr.data.i₀ (Ctx.Le.refl _)
+          (Term.eta y (.VTypeDia hr.data.A) hr.data.hd₀), definable_rden _ _⟩).2
+          ⟨(frame w₀).reflAcc hT w, self_mem_extent hr⟩ :=
+      toDom_congr w₀ (rden_eta_realised hr hr.data.hd₀).symm _ _
+    rw [← hc, fromDom_toDom]
+  · exact (DTerm.rel_lift _ le_sup_left).trans (hrel.trans (DTerm.rel_lift ⟨i, a', t⟩ hiK).symm)
 
 /-- ⭐The canonical model. -/
 noncomputable def model : Model.{0, 0} σ where
@@ -261,7 +301,7 @@ noncomputable def model : Model.{0, 0} σ where
       (domShape_toDom w₀ hT _ s.1 (n.1 s) (definable_box_apply n.2 s)).symm)))
   necExtract_eval _ _ := rfl
   necDup_eval _ _ _ _ := rfl
-  posRet_exists hT hS hA a := posRet_exists_canon w₀ hT hS hA a
+  posRet_exists hT hS a := posRet_exists_canon w₀ hT hS a
   posSerial hDS w := posSerial_canon w₀ hDS w
   Ind o o' := Ind w₀ o o'
   Ind_refl o := Ind_refl w₀ o

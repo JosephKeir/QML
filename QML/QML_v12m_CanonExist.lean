@@ -60,22 +60,10 @@ noncomputable def ofHenkin (d : ℕ) (L₀ : WorldLang) (hρ : ∀ n, L₀.ρ n 
   exW := WorldLang.finalT_ex_witness hS₀
   allW := WorldLang.finalT_all_witness
   -- ⭐No realisation field: the world realises whatever its theory says (`World.real`, §2d step 4).
-  -- What the chain still provides is that *every declared address* is some strong T step's content.
-  realW := by
-    intro hTb hTS i A hA v hv
+  -- What the chain still provides is that *every term* is some strong T step's content.
+  retW := fun hTb hTS i _ _ t => by
     obtain ⟨m, j⟩ := i
-    obtain ⟨n, hret, hm, hj, haddr⟩ := WorldLang.exists_isRet_addr (L := L₀) (S₀ := S₀) m j hA v
-      ((Ctx.le_of_eq (WorldLang.ctxL_eq_final S₀ m j).symm).ref hv)
-    refine ⟨.root (.free (L₀.ρ n)), WorldLang.retDatum hTb hTS hret hS₀, ?_, ?_, ?_⟩
-    · change (WorldLang.addrQ n).1.1 = A
-      rw [haddr]
-    · change (WorldLang.addrQ n).2 = v
-      rw [haddr]
-    · change ((m, j) : ℕ × ℕ) ≤ (WorldLang.decM n, n + 1)
-      rw [hm]
-      refine Prod.mk_le_mk.mpr ⟨le_rfl, ?_⟩
-      rw [← hj]
-      exact (WorldLang.decJ_le n).trans (Nat.le_succ n)
+    exact WorldLang.exists_retW (L := L₀) hTb hTS hS₀ m j t
 
 end World
 
