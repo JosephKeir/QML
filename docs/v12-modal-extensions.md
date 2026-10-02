@@ -2115,6 +2115,9 @@ It is the odd one out, and for a principled reason rather than an accident.
 
 ### Order of work
 
+> **Superseded (2026-10-03)** by `docs/v12-roadmap.md`; this list and the "START HERE" block
+> below predate §10.23–10.41 and describe the retired `◇`-equality package.
+
 1. **Stage 3 for `Here`**, second half: the truth lemma's `here` case.  The rules are in place
    (`here_elim`, `here_intro`, `here_beta`, `here_fun`, all sound and substitutable).  What remains is
    `real` driven by the `Here` sentence (`Canon.spec_of_here` already derives `spec` from it) and the
@@ -3158,7 +3161,7 @@ truth lemma's `here` alternative — zero warnings, zero sorries.
 **Next**: step 3, the Canon layer — indiscernibility classes, `extentTm`, faithfulness's `◇` case —
 then step 4, the `here` alternative in `truth_lt`.
 
-### 10.18 Open: could `here_beta` be narrowed to its pinned instance? *(2026-09-29, user)*
+### 10.18 ~~Open~~ Decided — keep: could `here_beta` be narrowed to its pinned instance? *(2026-09-29, user)*
 
 The observation: elsewhere in this development β-reduction is *automatic* rather than a rule.  Why
 not here, and how far could it be pushed?
@@ -3198,6 +3201,14 @@ circular.  That is a small change and it makes the dependency honest.
 **Verdict.**  Worth doing, but after the truth lemma closes.  The primitive count does not drop (six
 either way); what drops is β's strength, and the price is eigenvariable bookkeeping plus another pass
 over `Proof.subst`.  Better spent once the `here` case stands.
+
+**Decision (2026-10-03, user and Claude): keep `here_beta` as it is.**  Re-examined once the truth
+lemma closed.  No primitive is saved (six either way); the pinned form is not closed under
+substitution (as for `here_name`, §10.11), so `Proof.subst` would have to re-derive the general
+form inside its own case; the pinned rule would need `realiseAtA` and hence `[Γ.Presented]`, where
+the rules otherwise need only `NoSlots`; and soundness and the canonical model already use the
+general form, so nothing downstream gets simpler.  The insight — given a name, β is composition —
+could be recorded as a derivability theorem without changing the system, but is not needed.
 
 ### 10.19 Step 3 begun: the relation and the class-keyed extent *(2026-09-29)*
 

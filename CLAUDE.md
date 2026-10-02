@@ -19,6 +19,7 @@ Lean 4 + Mathlib formalisation of a quantified modal logic with first-class poss
   generalised files supersede it.
 - Older files (`QML_Full_v8.lean`, `Soundness2.lean`, `SemanticsGeneral2.lean`, …) are legacy and
   carry their own sorries and warnings; ignore them unless asked.
+- **Roadmap: `docs/v12-roadmap.md`** — what is done and the order of work; start there.
 - Design notes: `docs/v12-modal-extensions.md` (per-axiom design, status, decisions and rejected
   alternatives — read before changing modal machinery), `docs/v12-arrow-canonical.md` (draft:
   the arrow-based canonical model proposed for B and 5) and `docs/v12-metatheory-todo.md`.
