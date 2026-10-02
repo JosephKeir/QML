@@ -32,134 +32,251 @@ They let a collapse or shift applied to a whole shape environment be moved throu
 namespace Step
 
 omit [ModalSys] in
-theorem collapseAt_proj {s : Step} (hs : s.isProj = true) (i : ℕ) (p : List Step) :
+theorem collapseAt_proj {s : Step} (hs : s.isProj = true) (i : Nat) (p : List Step) :
     collapseAt i (s :: p) = s :: collapseAt i p := by
-  simp only [collapseAt, if_pos hs]
+  conv => lhs; rw [collapseAt.eq_def]
+  simp only [hs, if_true]
 
 omit [ModalSys] in
-theorem shiftAt_proj {s : Step} (hs : s.isProj = true) (i : ℕ) (p : List Step) :
-    shiftAt i (s :: p) = s :: shiftAt i p := by
-  simp only [shiftAt, if_pos hs]
-
-omit [ModalSys] in
-theorem collapseAt_succ {s : Step} (hs : ¬ s.isProj = true) (i : ℕ) (p : List Step) :
-    collapseAt (i + 1) (s :: p) = s :: collapseAt i p := by
-  simp only [collapseAt, if_neg hs]
-
-omit [ModalSys] in
-theorem shiftAt_succ {s : Step} (hs : ¬ s.isProj = true) (i : ℕ) (p : List Step) :
-    shiftAt (i + 1) (s :: p) = s :: shiftAt i p := by
-  simp only [shiftAt, if_neg hs]
-
-omit [ModalSys] in
-theorem collapseAt_zero {s : Step} (hs : ¬ s.isProj = true) (p : List Step) :
+theorem collapseAt_zero {s : Step} (hs : s.isProj = false) (p : List Step) :
     collapseAt 0 (s :: p) = if s = .keep then p else .here :: p := by
-  simp only [collapseAt, if_neg hs]
+  conv => lhs; rw [collapseAt.eq_def]
+  simp only [hs, Bool.false_eq_true, if_false]
 
 omit [ModalSys] in
-theorem shiftAt_zero {s : Step} (hs : ¬ s.isProj = true) (p : List Step) :
+theorem collapseAt_succ {s : Step} (hs : s.isProj = false) (i : Nat) (p : List Step) :
+    collapseAt (i + 1) (s :: p) =
+      if i = 0 ∧ s = .keep ∧ headLvl p = true then p else s :: collapseAt i p := by
+  conv => lhs; rw [collapseAt.eq_def]
+  simp only [hs, Bool.false_eq_true, if_false]
+
+omit [ModalSys] in
+theorem collapseAt_two {s : Step} (hs : s.isProj = false) (i : Nat) (p : List Step) :
+    collapseAt (i + 2) (s :: p) = s :: collapseAt (i + 1) p := by
+  rw [collapseAt_succ hs, if_neg (by omega)]
+
+omit [ModalSys] in
+theorem shiftAt_proj {s : Step} (hs : s.isProj = true) (i : Nat) (p : List Step) :
+    shiftAt i (s :: p) = s :: shiftAt i p := by
+  conv => lhs; rw [shiftAt.eq_def]
+  simp only [hs, if_true]
+
+omit [ModalSys] in
+theorem shiftAt_zero {s : Step} (hs : s.isProj = false) (p : List Step) :
     shiftAt 0 (s :: p) = .keep :: s :: p := by
-  simp only [shiftAt, if_neg hs]
+  conv => lhs; rw [shiftAt.eq_def]
+  simp only [hs, Bool.false_eq_true, if_false]
 
 omit [ModalSys] in
-theorem collapseAt_collapseAt : ∀ (j d : ℕ) (p : List Step),
-    collapseAt (j + d) (collapseAt j p) = collapseAt j (collapseAt (j + d + 1) p)
-  | _, _, [] => rfl
-  | j, d, s :: p => by
-      by_cases hs : s.isProj = true
-      · rw [collapseAt_proj hs, collapseAt_proj hs, collapseAt_proj hs, collapseAt_proj hs,
-          collapseAt_collapseAt j d p]
-      · cases j with
-        | zero =>
-            rw [Nat.zero_add, collapseAt_zero hs, collapseAt_succ hs, collapseAt_zero hs]
-            split_ifs
-            · rfl
-            · rw [collapseAt_proj rfl]
-        | succ j =>
-            rw [collapseAt_succ hs, show j + 1 + d = (j + d) + 1 by omega, collapseAt_succ hs,
-              show j + d + 1 + 1 = (j + d + 1) + 1 by omega, collapseAt_succ hs, collapseAt_succ hs,
-              collapseAt_collapseAt j d p]
+theorem shiftAt_succ {s : Step} (hs : s.isProj = false) (i : Nat) (p : List Step) :
+    shiftAt (i + 1) (s :: p) = s :: shiftAt i p := by
+  conv => lhs; rw [shiftAt.eq_def]
+  simp only [hs, Bool.false_eq_true, if_false]
 
 omit [ModalSys] in
-theorem shiftAt_collapseAt : ∀ (j d : ℕ) (p : List Step),
-    shiftAt (j + d) (collapseAt j p) = collapseAt j (shiftAt (j + d + 1) p)
-  | _, _, [] => rfl
-  | j, d, s :: p => by
-      by_cases hs : s.isProj = true
-      · rw [collapseAt_proj hs, shiftAt_proj hs, shiftAt_proj hs, collapseAt_proj hs,
-          shiftAt_collapseAt j d p]
-      · cases j with
-        | zero =>
-            rw [Nat.zero_add, collapseAt_zero hs, shiftAt_succ hs, collapseAt_zero hs]
-            split_ifs
-            · rfl
-            · rw [shiftAt_proj rfl]
-        | succ j =>
-            rw [collapseAt_succ hs, show j + 1 + d = (j + d) + 1 by omega, shiftAt_succ hs,
-              show j + d + 1 + 1 = (j + d + 1) + 1 by omega, shiftAt_succ hs, collapseAt_succ hs,
-              shiftAt_collapseAt j d p]
-
-omit [ModalSys] in
-theorem collapseAt_shiftAt_self : ∀ (j : ℕ) (p : List Step), collapseAt j (shiftAt j p) = p
-  | _, [] => rfl
+/-- The counit: keeping, then reading the next level where it was kept. -/
+theorem collapseAt_shiftAt_succ :
+    ∀ (j : Nat) (p : List Step), collapseAt (j + 1) (shiftAt j p) = p
+  | _, [] => by simp [shiftAt, collapseAt]
   | j, s :: p => by
-      by_cases hs : s.isProj = true
-      · rw [shiftAt_proj hs, collapseAt_proj hs, collapseAt_shiftAt_self j p]
+      cases hs : s.isProj
       · cases j with
         | zero =>
-            rw [shiftAt_zero hs, collapseAt_zero (by decide : ¬ Step.keep.isProj = true),
-              if_pos rfl]
-        | succ j => rw [shiftAt_succ hs, collapseAt_succ hs, collapseAt_shiftAt_self j p]
-
-omit [ModalSys] in
-theorem collapseAt_shiftAt : ∀ (j d : ℕ) (p : List Step),
-    collapseAt (j + d + 2) (shiftAt j p) = shiftAt j (collapseAt (j + d + 1) p)
-  | _, _, [] => rfl
-  | j, d, s :: p => by
-      by_cases hs : s.isProj = true
-      · rw [shiftAt_proj hs, collapseAt_proj hs, collapseAt_proj hs, shiftAt_proj hs,
-          collapseAt_shiftAt j d p]
-      · have hk : ¬ Step.keep.isProj = true := by decide
-        cases j with
-        | zero =>
-            rw [shiftAt_zero hs, Nat.zero_add, collapseAt_succ hk, collapseAt_succ hs,
-              shiftAt_zero hs]
+            rw [shiftAt_zero hs, collapseAt_succ (by rfl)]
+            simp [headLvl, hs]
         | succ j =>
-            rw [shiftAt_succ hs, show j + 1 + d + 2 = (j + d + 2) + 1 by omega, collapseAt_succ hs,
-              show j + 1 + d + 1 = (j + d + 1) + 1 by omega, collapseAt_succ hs, shiftAt_succ hs,
-              collapseAt_shiftAt j d p]
+            rw [shiftAt_succ hs, collapseAt_two hs, collapseAt_shiftAt_succ j p]
+      · rw [shiftAt_proj hs, collapseAt_proj hs, collapseAt_shiftAt_succ j p]
 
 omit [ModalSys] in
-theorem shiftAt_shiftAt : ∀ (j d : ℕ) (p : List Step),
-    shiftAt (j + d + 2) (shiftAt j p) = shiftAt j (shiftAt (j + d + 1) p)
-  | _, _, [] => rfl
+/-- The other counit: keeping, then reading the kept level at once. -/
+theorem collapseAt_shiftAt_self : ∀ (j : Nat) (p : List Step), collapseAt j (shiftAt j p) = p
+  | _, [] => by simp [shiftAt, collapseAt]
+  | j, s :: p => by
+      cases hs : s.isProj
+      · cases j with
+        | zero => rw [shiftAt_zero hs, collapseAt_zero (by rfl), if_pos rfl]
+        | succ j =>
+            rw [shiftAt_succ hs, collapseAt_succ hs, collapseAt_shiftAt_self j p]
+            by_cases h : j = 0 ∧ s = Step.keep ∧ headLvl (shiftAt j p) = true
+            · rw [if_pos h]
+              obtain ⟨rfl, rfl, hl⟩ := h
+              cases p with
+              | nil => simp [headLvl, shiftAt] at hl
+              | cons t q =>
+                  cases ht : t.isProj
+                  · rw [shiftAt_zero ht]
+                  · rw [shiftAt_proj ht] at hl
+                    simp [headLvl, ht] at hl
+            · rw [if_neg h]
+      · rw [shiftAt_proj hs, collapseAt_proj hs, collapseAt_shiftAt_self j p]
+
+omit [ModalSys] in
+theorem headLvl_collapseAt_succ : ∀ (i : Nat) (p : List Step),
+    headLvl p = true → headLvl (collapseAt (i + 1) p) = true
+  | _, [], h => by simp [headLvl] at h
+  | i, t :: q, h => by
+      have ht : t.isProj = false := by simpa [headLvl] using h
+      rw [collapseAt_succ ht]
+      by_cases hc : i = 0 ∧ t = Step.keep ∧ headLvl q = true
+      · rw [if_pos hc]; exact hc.2.2
+      · rw [if_neg hc]; simp [headLvl, ht]
+
+omit [ModalSys] in
+theorem not_headLvl_collapseAt : ∀ (i : Nat) (p : List Step),
+    headLvl p = false → headLvl (collapseAt i p) = false
+  | _, [], _ => by simp [collapseAt, headLvl]
+  | i, t :: q, h => by
+      have ht : t.isProj = true := by simpa [headLvl] using h
+      rw [collapseAt_proj ht]; simp [headLvl, ht]
+
+omit [ModalSys] in
+theorem headLvl_shiftAt : ∀ (i : Nat) (p : List Step), headLvl (shiftAt i p) = headLvl p
+  | _, [] => by simp [shiftAt, headLvl]
+  | i, t :: q => by
+      cases ht : t.isProj
+      · cases i with
+        | zero => rw [shiftAt_zero ht]; simp [headLvl, ht]; rfl
+        | succ i => rw [shiftAt_succ ht]; rfl
+      · rw [shiftAt_proj ht]; rfl
+
+omit [ModalSys] in
+theorem collapseAt_collapseAt : ∀ (j d : Nat) (p : List Step),
+    collapseAt (j + d) (collapseAt j p) = collapseAt j (collapseAt (j + d + 1) p)
+  | _, _, [] => by simp [collapseAt]
   | j, d, s :: p => by
-      by_cases hs : s.isProj = true
-      · rw [shiftAt_proj hs, shiftAt_proj hs, shiftAt_proj hs, shiftAt_proj hs,
-          shiftAt_shiftAt j d p]
-      · have hk : ¬ Step.keep.isProj = true := by decide
-        cases j with
+      cases hs : s.isProj
+      · match j with
+        | 0 =>
+            rw [Nat.zero_add, collapseAt_zero hs, collapseAt_succ hs]
+            by_cases hk : s = Step.keep
+            · subst hk
+              rw [if_pos rfl]
+              by_cases hc : d = 0 ∧ Step.keep = Step.keep ∧ headLvl p = true
+              · rw [if_pos hc, hc.1]
+              · rw [if_neg hc, collapseAt_zero (by rfl), if_pos rfl]
+            · rw [if_neg hk, if_neg (fun h => hk h.2.1), collapseAt_proj (by rfl),
+                collapseAt_zero hs, if_neg hk]
+        | 1 =>
+            rw [show 1 + d = d + 1 by omega, show d + 1 + 1 = d + 2 by omega, collapseAt_two hs,
+              collapseAt_succ hs, collapseAt_succ hs]
+            by_cases hk : s = Step.keep
+            · subst hk
+              cases hp : headLvl p
+              · rw [if_neg (by simp), if_neg (by simp [not_headLvl_collapseAt _ _ hp]),
+                  collapseAt_succ (by rfl), if_neg (by simp [not_headLvl_collapseAt _ _ hp])]
+                have := collapseAt_collapseAt 0 d p
+                rw [Nat.zero_add] at this
+                rw [this]
+              · rw [if_pos (by simp), if_pos (by simp [headLvl_collapseAt_succ _ _ hp])]
+            · rw [if_neg (fun h => hk h.2.1), if_neg (fun h => hk h.2.1), collapseAt_succ hs,
+                if_neg (fun h => hk h.2.1)]
+              have := collapseAt_collapseAt 0 d p
+              rw [Nat.zero_add] at this
+              rw [this]
+        | j + 2 =>
+            rw [show j + 2 + d = (j + d) + 2 by omega, collapseAt_two hs, collapseAt_two hs,
+              show j + d + 2 + 1 = (j + d + 1) + 2 by omega, collapseAt_two hs, collapseAt_two hs]
+            have := collapseAt_collapseAt (j + 1) d p
+            rw [show j + 1 + d = j + d + 1 by omega] at this
+            rw [this]
+      · simp only [collapseAt_proj hs]
+        rw [collapseAt_collapseAt j d p]
+
+omit [ModalSys] in
+theorem shiftAt_collapseAt : ∀ (j d : Nat) (p : List Step),
+    shiftAt (j + d) (collapseAt j p) = collapseAt j (shiftAt (j + d + 1) p)
+  | _, _, [] => by simp [collapseAt, shiftAt]
+  | j, d, s :: p => by
+      cases hs : s.isProj
+      · match j with
+        | 0 =>
+            rw [Nat.zero_add, collapseAt_zero hs, shiftAt_succ hs, collapseAt_zero hs]
+            by_cases hk : s = Step.keep
+            · rw [if_pos hk, if_pos hk]
+            · rw [if_neg hk, if_neg hk, shiftAt_proj (by rfl)]
+        | 1 =>
+            rw [show 1 + d = d + 1 by omega, show d + 1 + 1 = d + 2 by omega, shiftAt_succ hs,
+              collapseAt_succ hs, collapseAt_succ hs]
+            by_cases hk : s = Step.keep
+            · subst hk
+              cases hp : headLvl p
+              · rw [if_neg (by simp), if_neg (by simp [headLvl_shiftAt, hp]),
+                  shiftAt_succ (by rfl)]
+                have := shiftAt_collapseAt 0 d p
+                rw [Nat.zero_add] at this
+                rw [this]
+              · rw [if_pos (by simp), if_pos (by simp [headLvl_shiftAt, hp])]
+            · rw [if_neg (fun h => hk h.2.1), if_neg (fun h => hk h.2.1), shiftAt_succ hs]
+              have := shiftAt_collapseAt 0 d p
+              rw [Nat.zero_add] at this
+              rw [this]
+        | j + 2 =>
+            rw [show j + 2 + d = (j + d + 1) + 1 by omega, collapseAt_two hs, shiftAt_succ hs,
+              show j + d + 1 + 1 + 1 = (j + d + 2) + 1 by omega, shiftAt_succ hs, collapseAt_two hs]
+            have := shiftAt_collapseAt (j + 1) d p
+            rw [show j + 1 + d = j + d + 1 by omega, show j + d + 1 + 1 = j + d + 2 by omega]
+              at this
+            rw [this]
+      · simp only [collapseAt_proj hs, shiftAt_proj hs]
+        rw [shiftAt_collapseAt j d p]
+
+omit [ModalSys] in
+theorem shiftAt_zero_of_headLvl :
+    ∀ (X : List Step), headLvl X = true → shiftAt 0 X = Step.keep :: X
+  | [], h => by simp [headLvl] at h
+  | t :: q, h => shiftAt_zero (by simpa [headLvl] using h) q
+
+omit [ModalSys] in
+theorem collapseAt_shiftAt : ∀ (j d : Nat) (p : List Step),
+    collapseAt (j + d + 2) (shiftAt j p) = shiftAt j (collapseAt (j + d + 1) p)
+  | _, _, [] => by simp [collapseAt, shiftAt]
+  | j, d, s :: p => by
+      cases hs : s.isProj
+      · cases j with
         | zero =>
-            rw [shiftAt_zero hs, Nat.zero_add, shiftAt_succ hk, shiftAt_succ hs, shiftAt_zero hs]
+            rw [shiftAt_zero hs, Nat.zero_add, collapseAt_two (by rfl)]
+            exact (shiftAt_zero_of_headLvl _
+              (headLvl_collapseAt_succ d (s :: p) (by simp [headLvl, hs]))).symm
+        | succ j =>
+            rw [shiftAt_succ hs, show j + 1 + d + 2 = (j + d + 2) + 1 by omega,
+              collapseAt_succ hs, if_neg (by omega),
+              show j + 1 + d + 1 = (j + d + 1) + 1 by omega, collapseAt_succ hs,
+              if_neg (by omega), shiftAt_succ hs, collapseAt_shiftAt j d p]
+      · simp only [shiftAt_proj hs, collapseAt_proj hs]
+        rw [collapseAt_shiftAt j d p]
+
+omit [ModalSys] in
+theorem shiftAt_shiftAt : ∀ (j d : Nat) (p : List Step),
+    shiftAt (j + d + 2) (shiftAt j p) = shiftAt j (shiftAt (j + d + 1) p)
+  | _, _, [] => by simp [shiftAt]
+  | j, d, s :: p => by
+      cases hs : s.isProj
+      · cases j with
+        | zero =>
+            rw [shiftAt_zero hs, Nat.zero_add, shiftAt_succ (by rfl), shiftAt_succ hs,
+              shiftAt_zero hs]
         | succ j =>
             rw [shiftAt_succ hs, show j + 1 + d + 2 = (j + d + 2) + 1 by omega, shiftAt_succ hs,
               show j + 1 + d + 1 = (j + d + 1) + 1 by omega, shiftAt_succ hs, shiftAt_succ hs,
               shiftAt_shiftAt j d p]
+      · simp only [shiftAt_proj hs]
+        rw [shiftAt_shiftAt j d p]
 
 omit [ModalSys] in
-theorem shiftAt_shiftAt_self : ∀ (j : ℕ) (p : List Step),
-    shiftAt (j + 1) (shiftAt j p) = shiftAt j (shiftAt j p)
-  | _, [] => rfl
+theorem shiftAt_shiftAt_self :
+    ∀ (j : Nat) (p : List Step), shiftAt (j + 1) (shiftAt j p) = shiftAt j (shiftAt j p)
+  | _, [] => by simp [shiftAt]
   | j, s :: p => by
-      by_cases hs : s.isProj = true
-      · simp only [shiftAt_proj hs]
-        rw [shiftAt_shiftAt_self j p]
-      · have hk : ¬ Step.keep.isProj = true := by decide
-        cases j with
-        | zero => rw [shiftAt_zero hs, shiftAt_succ hk, shiftAt_zero hs, shiftAt_zero hk]
+      cases hs : s.isProj
+      · cases j with
+        | zero =>
+            rw [shiftAt_zero hs, shiftAt_succ (by rfl), shiftAt_zero hs, shiftAt_zero (by rfl)]
         | succ j =>
             simp only [shiftAt_succ hs]
             rw [shiftAt_shiftAt_self j p]
+      · simp only [shiftAt_proj hs]
+        rw [shiftAt_shiftAt_self j p]
 
 end Step
 
@@ -212,6 +329,20 @@ theorem collapse_shift_self (hT : ModalSys.T = true) (hF : ModalSys.Four = true)
       rw [F.refl_trans hT hF]
   | j + 1, _, .fam f =>
       congrArg Frame.Leaf.fam (funext fun s => collapse_shift_self hT hF j (f s))
+
+/-- ⭐The second counit: keeping, then reading the next level where it was kept, is the identity
+    — on families by `trans_refl`, on root paths by `Step.collapseAt`'s keep-absorbing case. -/
+theorem collapse_shift_succ (hT : ModalSys.T = true) (hF : ModalSys.Four = true) :
+    ∀ (j : ℕ) {w : F.W} (ℓ : Frame.Leaf F Root w), collapse hT (j + 1) (shift hF j ℓ) = ℓ
+  | j, _, .root r p => by
+      simp only [collapse_root, shift_root]
+      exact congrArg (Frame.Leaf.root r) (Step.collapseAt_shiftAt_succ j p)
+  | 0, w, .fam f => by
+      refine congrArg Frame.Leaf.fam (funext fun s => ?_)
+      change f ⟨s.1, ⟨F.trans hF s.2.down (F.refl hT s.1)⟩⟩ = f s
+      rw [F.trans_refl hT hF]
+  | j + 1, _, .fam f =>
+      congrArg Frame.Leaf.fam (funext fun s => collapse_shift_succ hT hF j (f s))
 
 theorem collapse_shift (hT : ModalSys.T = true) (hF : ModalSys.Four = true) :
     ∀ (j d : ℕ) {w : F.W} (ℓ : Frame.Leaf F Root w),

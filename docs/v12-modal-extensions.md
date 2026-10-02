@@ -3776,3 +3776,26 @@ a proof gap.
 2. *Model condition*: under T+4 every root path is T+4-normal and well-typed for its root.  That
    needs a typing predicate on paths and its preservation; heavier, and it puts syntax-like
    well-formedness into the model.
+
+### 10.31 ✅Step 2 done: option 1 adopted, η restored *(2026-10-03)*
+
+**The rule.**  `Step.collapseAt` collapses a level step that comes right after a `keep` by deleting
+the `keep` ("kept, then read where it was kept, is read"); otherwise it behaves as before.  Checked
+first by brute force (every path of length ≤ 5, all seven identities), then proved:
+`Step.collapseAt_shiftAt_succ` (the second counit, new), `collapseAt_shiftAt_self`,
+`collapseAt_collapseAt`, `shiftAt_collapseAt`, `collapseAt_shiftAt`, `shiftAt_shiftAt`,
+`shiftAt_shiftAt_self`.  The new case only ever fires at index 1 with a `keep` at the head, and closes
+with "a leading level step survives a collapse at a positive index" (`headLvl_collapseAt_succ`).  The
+leaf identities needed no change.  ⭐`Frame.Leaf.collapse_shift_succ` is new: families by
+`trans_refl`, root paths by the list lemma.
+
+**η.**  ⭐`ShEnv.ref_inner` (contents one view in = contents of the shape; under T+4 through
+`u.keep.here`, i.e. the second counit) and ⭐`termShp_eta`.  `interp_eta` has its shape conjunct.
+
+**Build.**  The whole `QML_v12m_*` list builds except `Completeness.lean:286` (the truth lemma's
+`here` alternative, as before), with no new warnings.  The only `sorry`s are the three recorded
+temporary ones in `CanonModel` (§10.29).  So **soundness holds over the new model class**: every
+rule, including the `here_*` rules (still read with equality at `◇`-content; `Ind` is step 4).
+
+**Next: step 3**, `here_eq` with its soundness and `subst_eqRec` at `◇`; then step 4, `Here` at
+`◇`-content reads `Ind`; then step 5, the canonical model (tags, laws, removing the `sorry`s).

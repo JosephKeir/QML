@@ -217,8 +217,19 @@ def map {L' : Type x} (g : L → L') : {A : VarType} → Shp L A → Shp L' A
 
 end Shp
 
+/-- The path starts with a level step. -/
+def Step.headLvl : List Step → Bool
+  | [] => false
+  | t :: _ => !t.isProj
+
 /-- Collapse the level step `i` levels from the front of a path: a `box` becomes `here`, a `keep`
-    disappears — `VarSymb.collapse`, counted from the other end.  (On a `dia` this is junk.) -/
+    disappears — `VarSymb.collapse`, counted from the other end.  (On a `dia` this is junk.)
+
+    ⭐One case differs from `VarSymb.collapse`: a level step right after a `keep` is collapsed by
+    deleting the `keep` — "kept, then read where it was kept, is read" (docs §10.30–10.31).
+    It makes `collapseAt (j + 1) ∘ shiftAt j` the identity on every path, the second counit law of
+    the `□` comonad, and it agrees with `VarSymb.collapse` on every T+4-normal path (no `box`
+    after a `keep`), which is all the syntax produces. -/
 def Step.collapseAt : ℕ → List Step → List Step
   | _, [] => []
   | i, s :: p =>
@@ -226,7 +237,8 @@ def Step.collapseAt : ℕ → List Step → List Step
       else
         match i with
         | 0 => if s = .keep then p else .here :: p
-        | i + 1 => s :: Step.collapseAt i p
+        | i + 1 =>
+            if i = 0 ∧ s = .keep ∧ Step.headLvl p = true then p else s :: Step.collapseAt i p
 
 /-- Insert a `keep` before the level step `i` levels from the front of a path — `VarSymb.shift`,
     counted from the other end. -/

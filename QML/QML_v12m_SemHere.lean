@@ -64,6 +64,55 @@ theorem Env.ref_dia {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {x : VarSymb} 
   rw [Env.ref, dif_neg (by decide : ¬ Step.dia.isProj = true)]
   rfl
 
+/-! ## The η-law for shapes -/
+
+/-- Reading a necessary address's contents one view in gives the contents of its shape.  Under T+4
+    the contents are `u.keep.here`, a shift followed by a collapse one level further in, and this
+    is the second counit (`Frame.Leaf.collapse_shift_succ`). -/
+theorem ShEnv.ref_inner {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (j : ℕ) {u : VarSymb}
+    {A : VarType} (h : Γ.ref u = some (.VTypeBox A)) :
+    (ρ.boxPush j).ref (j + 1) u.inner (Ctx.ref_inner h) = (ρ.ref j u h).inner := by
+  by_cases hk : ModalSys.keepOnly = true
+  · obtain ⟨hT, hF⟩ := ModalSys.keepOnly_flags hk
+    have hkr : Γ.boxIn.ref (.step u .keep) = some (.VTypeBox A) := Ctx.ref_keep_of hF h
+    have hh : Γ.boxIn.ref (.step (.step u .keep) .here) = some A := by
+      rw [← VarSymb.inner_keepOnly hk]
+      exact Ctx.ref_inner h
+    rw [ShEnv.ref_congr _ _ (VarSymb.inner_keepOnly hk) _ hh,
+      ShEnv.ref_proj _ _ (rfl : Step.here.isProj = true) hkr,
+      ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
+    change ((ρ.ref j u h).inner.map (Frame.Leaf.shift hF j)).map
+      (Frame.Leaf.collapse hT (j + 1)) = _
+    rw [Shp.map_map]
+    exact (Shp.map_congr (g := Frame.Leaf.collapse hT (j + 1) ∘ Frame.Leaf.shift hF j)
+      (g' := id) (fun ℓ => Frame.Leaf.collapse_shift_succ hT hF j ℓ) _).trans (Shp.map_id _)
+  · have hk' : ModalSys.keepOnly = false := by simpa using hk
+    rw [ShEnv.ref_congr _ _ (VarSymb.inner_box hk') _ (Ctx.ref_boxIn_of hk' h),
+      ShEnv.ref_nonproj _ _ (by decide : ¬ Step.box.isProj = true)]
+    rfl
+
+/-- ⭐**η for shapes**: an address's η-expansion has the address's shape. -/
+theorem termShp_eta :
+    ∀ {Γ : Ctx} {w : M.frame.W} (ρ : M.ShEnv Γ w) (j : ℕ) {T : VarType} (x : VarSymb)
+      (h : Γ.ref x = some T), termShp ρ j (Term.eta (σ := σ) x T h) = ρ.ref j x h
+  | _, _, _, _, .Var, _, _ => shp_var_eq _ _
+  | _, _, _, _, .VTypeOne, _, _ => Shp.one_eq _ _
+  | _, _, ρ, j, .VTypeProd A B, x, h => by
+      change Shp.prod (termShp ρ j (Term.eta (.step x .fst) A (Ctx.ref_fst_of h)))
+        (termShp ρ j (Term.eta (.step x .snd) B (Ctx.ref_snd_of h))) = _
+      rw [termShp_eta ρ j (.step x .fst), termShp_eta ρ j (.step x .snd),
+        ShEnv.ref_proj ρ j rfl h, ShEnv.ref_proj ρ j rfl h]
+      exact (Shp.prod_eta _).symm
+  | _, _, ρ, j, .VTypeBox A, x, h => by
+      change Shp.box (termShp (ρ.boxPush j) (j + 1) (Term.eta x.inner A (Ctx.ref_inner h))) = _
+      rw [termShp_eta (ρ.boxPush j) (j + 1) x.inner, ShEnv.ref_inner ρ j h]
+      exact (Shp.box_eta _).symm
+  | _, _, ρ, j, .VTypeDia A, x, h => by
+      change termShp ρ j (Term.diatm x ⟨A, h⟩ (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of h))) = _
+      rw [termShp_diatm ρ j h, termShp_eta (ρ.diaPush j x h) (j + 1) (.step x .dia),
+        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.dia.isProj = true)]
+      exact (Shp.dia_eta _).symm
+
 /-! ## The η-law -/
 
 /-- ⭐**η for environments**: an address's η-expansion denotes the address.  At `𝟙` the domain is a
@@ -89,7 +138,11 @@ theorem interp_eta {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
         interp_eta (env.boxPush w') x.inner (Ctx.ref_inner h), Env.ref_inner env w' h]
   | .VTypeDia A, x, h => by
       change interp env (Term.diatm x ⟨A, h⟩ (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of h))) = _
-      refine M.pos_inj ?_
+      refine M.pos_inj ?_ fun hT => ?_
+      swap
+      · change domSh hT (interp env (Term.eta x (.VTypeDia A) h)) = domSh hT (env.ref x h)
+        rw [domSh_interp, ← ref_envShape]
+        exact termShp_eta _ 0 x h
       rw [dia_beta env ⟨A, h⟩ h (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of h))]
       refine Sigma.ext rfl (heq_of_eq (funext fun w' => ?_))
       dsimp only
