@@ -513,8 +513,8 @@ variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalS
 /-- ⭐**Completeness**: a sequent in a presented context that holds in every model, at every
     world, in every environment, is provable. -/
 theorem completeness {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0}
-    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env Γ w), Γ.NoProjLast →
-      (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
+    (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
+      Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ := by
   by_contra hnp
   have hfresh : ∀ d n, Γ.RootFresh (.free (Canon.names (Ctx.Presented.bound Γ) d n)) :=
@@ -535,7 +535,8 @@ theorem completeness {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : W
       exact WFF.mono_refl _ _
   let w₀ : Canon.World σ (Ctx.Presented.bound Γ) :=
     Canon.World.ofHenkin 0 L₀ (fun _ => rfl) (fun _ d n _ => hfresh d n) S₀ hS₀
-  have hsat := hval (Canon.model w₀) (w := w₀) (Canon.canonEnv w₀ w₀ (0, 0))
+  have hsat := hval (Canon.model w₀) (Model.indInvariant_of_eq fun _ _ h => h) (w := w₀)
+    (Canon.canonEnv w₀ w₀ (0, 0))
     (Ctx.Presented.noProjLast Γ)
     (fun ψ hψ => (Canon.truth w₀ w₀ (0, 0) ψ).mpr
       (WorldLang.subset_finalT S₀ (Or.inl ⟨ψ, hψ, rfl⟩)))
@@ -546,8 +547,8 @@ theorem completeness {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : W
 /-- ⭐**Soundness and completeness**: over a countable signature, a sequent in a presented context
     is provable exactly when it holds in every model. -/
 theorem provable_iff_valid {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
-    Provable Δ φ ↔ ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env Γ w), Γ.NoProjLast →
-      (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ :=
+    Provable Δ φ ↔ ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
+      Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ :=
   ⟨fun ⟨p⟩ => Model.soundness p, completeness⟩
 
 end V12M

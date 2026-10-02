@@ -235,6 +235,8 @@ noncomputable def model : Model.{0, 0} σ where
   necDup_eval _ _ _ _ := rfl
   posRet_exists hT hS hA a := posRet_exists_canon w₀ hT hS hA a
   posSerial hDS w := posSerial_canon w₀ hDS w
+  Ind o o' := o = o'
+  Ind_refl _ := rfl
 
 end Canon
 

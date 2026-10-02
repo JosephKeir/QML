@@ -221,6 +221,8 @@ noncomputable def model : Model.{0, 0} σ where
   necDup_eval hF _ _ _ := (noFour hF).elim
   posRet_exists hT _ _ := (noT hT).elim
   posSerial hDS s := B.posSerial_canon hDS s
+  Ind o o' := o = o'
+  Ind_refl _ := rfl
 
 end BData
 

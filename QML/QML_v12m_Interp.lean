@@ -280,11 +280,13 @@ def relSat {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
   | _, .R r, args => M.frame.relInterp r.1 w (fun i => args (Fin.cast r.2 i))
   | _, .eval ρ t, args => relSat env ρ (Fin.cons (interp env t) args)
 /-- ⭐`p` is **realised here**, with value `o`: the identity arrow lies in `p`'s extent and `p`'s
-    content there is `o`.  Naming it keeps the dependent `∃` out of congruence proofs. -/
+    content there is **indistinguishable** from `o` (`Model.Ind`; docs §10.33).  At a `◇`-free type
+    the model's invariance makes this equality.  Naming it keeps the dependent `∃` out of
+    congruence proofs. -/
 def Realised (hT : ModalSys.T = true) {A : VarType} {w : M.frame.W}
     (p : M.frame.Dom (.VTypeDia A) w) (o : M.frame.Dom A w) : Prop :=
   ∃ hm : M.frame.reflAcc hT w ∈ (M.posEval p).1,
-    (M.posEval p).2 ⟨M.frame.reflAcc hT w, hm⟩ = o
+    M.Ind ((M.posEval p).2 ⟨M.frame.reflAcc hT w, hm⟩) o
 
 
 /-- ⭐Satisfaction. -/

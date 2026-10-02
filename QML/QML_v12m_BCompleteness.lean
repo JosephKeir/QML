@@ -27,7 +27,8 @@ variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalS
     every model, at every world, in every environment, is provable. -/
 theorem completenessB (hB : ModalSys.B = true) {l₀ : List VarType} {Δ : List (WFF σ (ctxOf l₀) 0)}
     {φ : WFF σ (ctxOf l₀) 0}
-    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env (ctxOf l₀) w),
+    (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant →
+      ∀ {w : M.frame.W} (env : M.Env (ctxOf l₀) w),
       (ctxOf l₀).NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
     Provable Δ φ := by
   by_contra hnp
@@ -49,7 +50,8 @@ theorem completenessB (hB : ModalSys.B = true) {l₀ : List VarType} {Δ : List 
   have hg := (ext_net hB hM₀ (Nat.zero_le (birth (complete S) s.2 + 0))).grows [] trivial
   have hmem : ∀ ψ ∈ S, WFF.mono hle ψ ∈ (B.w s).M 0 := fun ψ hψ =>
     hg.sub ψ (show ψ ∈ ((net (complete S) 0).st []).M from hSM hψ)
-  have hsat := hval B.model env₀ (Ctx.Presented.noProjLast _) fun ψ hψ =>
+  have hsat := hval B.model (Model.indInvariant_of_eq fun _ _ h => h) env₀
+    (Ctx.Presented.noProjLast _) fun ψ hψ =>
     (Model.sat_mono hag ψ).mp ((BData.truth s 0 _).mpr (hmem ψ (Or.inl hψ)))
   have hφ := (BData.truth s 0 _).mp ((Model.sat_mono hag φ).mpr hsat)
   exact ((B.w s).mcs 0).neg_mem_iff.mp (hmem φ.neg (Or.inr rfl)) hφ
@@ -58,7 +60,8 @@ theorem completenessB (hB : ModalSys.B = true) {l₀ : List VarType} {Δ : List 
 theorem provable_iff_validB (hB : ModalSys.B = true) {l₀ : List VarType}
     {Δ : List (WFF σ (ctxOf l₀) 0)}
     {φ : WFF σ (ctxOf l₀) 0} :
-    Provable Δ φ ↔ ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env (ctxOf l₀) w),
+    Provable Δ φ ↔ ∀ (M : Model.{0, 0} σ), M.IndInvariant →
+      ∀ {w : M.frame.W} (env : M.Env (ctxOf l₀) w),
       (ctxOf l₀).NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ :=
   ⟨fun ⟨p⟩ => Model.soundness p, completenessB hB⟩
 

@@ -3819,3 +3819,35 @@ mentions `sat`, which is defined *from* the model, so it cannot be a `Model` fie
 field `Ind` with only structural conditions (reflexive, equality at `◇`-free types), plus a
 predicate `Model.IndInvariant` stated after `sat`.  Soundness takes it as a hypothesis, and the
 canonical model proves it.  Validity is then over the models satisfying it.
+
+### 10.33 ✅Step 4 done: `Here` reads indistinguishability; models proper *(2026-10-03)*
+
+**The decision (user).**  Not B ("same extent, indistinguishable contents"): indistinguishable does
+not mean sharing worlds — identifying them should be consistent, not forced — and B would break
+"a child's language is read off the parent plus the witness".  Not A (a bisimulation): bisimilarity
+is strictly stronger than indistinguishability outside saturated models, so it says more than the
+syntax.  **C**, read as a two-stage definition: the structure carries `Ind`, satisfaction is defined
+over it, and a **model proper** is one whose `Ind` is invariant.  The condition is exactly the
+semantic content of `here_subst`, and it cannot be a field, because truth depends on `Here`, `Here`
+on indistinguishability, and indistinguishability on truth.
+
+**In the code.**
+* `Model.Ind` (any type) with `Ind_refl`; ⭐`Model.IndInvariant` (in `SemHere`): `Ind`-related
+  objects satisfy the same formulas in any environment (`env.extend r o` vs `env.extend r o'`).
+  `Model.indInvariant_of_eq`: a model whose `Ind` is equality is proper.
+* `Model.Realised` reads `M.Ind (content at the identity arrow) o`.
+* `SemHere`: `sat_here_name`, the strong-T existential and the `T_dia` case construct by `Ind_refl`.
+  `sat_here_subst`, `sat_here_elim`, `sat_here_intro` and `sat_here_beta` consume via
+  `IndInvariant`.  The bridge `sat_viewReadTm` takes `Ind` (not equality) between the body's value
+  and `t`.  ⭐β uses its own new subject: `⟨x; viewReadTm bd s⟩` is realised with content `s`
+  read with `c` in the hole, so the atom "`Here`(that subject, `s` read with the hole)" holds at `c`
+  by reflexivity, and invariance carries it to `t`'s value.  New helpers `interp_viewReadTm`
+  (generalised) and `interp_hereRead`.  `sat_here_fun` is removed (unused; `here_fun` is derived).
+* `Model.soundness` quantifies over models proper (`M.IndInvariant →`).  Validity in `completeness`,
+  `provable_iff_valid`, `strong_completeness`, `compactness`, `WFF.SetSatisfiable` and the B-track
+  counterparts likewise.  Both canonical models have `Ind := Eq` for now, so they are proper by
+  `indInvariant_of_eq`.  The T-track one switches to `DTerm.Rel` in step 5.
+
+**Build.**  Same single error (`Completeness.lean:286`) and the same three recorded `CanonModel`
+sorries.  `Compactness` is downstream of `Completeness`, so its edits are checked only once the
+truth lemma closes.

@@ -390,5 +390,11 @@ structure Model (σ : Signature) where
       the same extent whose content is that object's value — the `Nec → Pos` map, at every type. -/
   posSerial : ModalSys.DStrong = true → ∀ w : frame.W,
     ∃ p : frame.Pos .VTypeOne w, Nonempty (posEval p).1
+  /-- ⭐**Indistinguishability**, which `Here` reads at its content (docs §10.23, §10.33): co-named
+      objects are indistinguishable, not identical.  Only reflexivity is asked here; that related
+      objects satisfy the same formulas mentions satisfaction, which is defined from the model, so
+      it is the separate condition `Model.IndInvariant` — a model proper is one satisfying it. -/
+  Ind : {A : VarType} → {w : frame.W} → frame.Dom A w → frame.Dom A w → Prop
+  Ind_refl : ∀ {A : VarType} {w : frame.W} (o : frame.Dom A w), Ind o o
 
 end V12M

@@ -32,7 +32,8 @@ def WFF.SetConsistent {Γ : Ctx} (S : Set (WFF σ Γ 0)) : Prop :=
 
 /-- A set of formulas is **satisfiable** when some model, world and environment make it true. -/
 def WFF.SetSatisfiable {Γ : Ctx} (S : Set (WFF σ Γ 0)) : Prop :=
-  ∃ (M : Model.{0, 0} σ) (w : M.frame.W) (env : M.Env Γ w), ∀ ψ ∈ S, M.sat env ψ
+  ∃ (M : Model.{0, 0} σ) (_ : M.IndInvariant) (w : M.frame.W) (env : M.Env Γ w),
+    ∀ ψ ∈ S, M.sat env ψ
 
 /-! ## Realising a type by a fresh variable
 
@@ -163,14 +164,15 @@ theorem model_existence {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)}
     exact WFF.mono_refl _ _
   let w₀ : Canon.World σ (Ctx.Presented.bound Γ) :=
     Canon.World.ofHenkin 0 L₀ (fun _ => rfl) (fun _ d n _ => hfresh d n) S₀ hS₀
-  exact ⟨Canon.model w₀, w₀, Canon.canonEnv w₀ w₀ (0, 0), fun ψ hψ =>
+  exact ⟨Canon.model w₀, Model.indInvariant_of_eq fun _ _ h => h, w₀,
+    Canon.canonEnv w₀ w₀ (0, 0), fun ψ hψ =>
     (Canon.truth w₀ w₀ (0, 0) ψ).mpr (WorldLang.subset_finalT S₀ ⟨ψ, hψ, rfl⟩)⟩
 
 /-- ⭐**Strong completeness.** If a formula holds in every model, world and environment satisfying a
     set of premises, then it is derivable from finitely many of them. -/
 theorem strong_completeness {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)}
     {φ : WFF σ Γ 0}
-    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env Γ w),
+    (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
       (∀ ψ ∈ S, M.sat env ψ) → M.sat env φ) :
     ∃ Δ : List (WFF σ Γ 0), (∀ ψ ∈ Δ, ψ ∈ S) ∧ Provable Δ φ := by
   by_contra hno
@@ -185,18 +187,19 @@ theorem strong_completeness {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)}
       · exact h ▸ List.mem_cons_self
       · exact List.mem_cons_of_mem _ (List.mem_filter.mpr ⟨hθ, by simpa using h⟩)
   -- … so they have a model, in which `φ` fails.
-  obtain ⟨M, w, env, hsat⟩ := model_existence hcons
+  obtain ⟨M, hM, w, env, hsat⟩ := model_existence hcons
   exact hsat φ.neg (Set.mem_insert _ _)
-    (hval M env (fun ψ hψ => hsat ψ (Set.mem_insert_of_mem _ hψ)))
+    (hval M hM env (fun ψ hψ => hsat ψ (Set.mem_insert_of_mem _ hψ)))
 
 /-- ⭐**Compactness.** A set of formulas in a presented context is satisfiable if every finite
     subset is — in models of any universe. -/
 theorem compactness {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)}
     (hfin : ∀ Δ : List (WFF σ Γ 0), (∀ ψ ∈ Δ, ψ ∈ S) →
-      ∃ (M : Model.{u, v} σ) (w : M.frame.W) (env : M.Env Γ w), ∀ ψ ∈ Δ, M.sat env ψ) :
+      ∃ (M : Model.{u, v} σ) (_ : M.IndInvariant) (w : M.frame.W) (env : M.Env Γ w),
+        ∀ ψ ∈ Δ, M.sat env ψ) :
     WFF.SetSatisfiable S := by
   refine model_existence fun Δ hΔ ⟨p⟩ => ?_
-  obtain ⟨M, w, env, hsat⟩ := hfin Δ hΔ
-  exact Model.soundness p M env (Ctx.Presented.noProjLast Γ) hsat
+  obtain ⟨M, hM, w, env, hsat⟩ := hfin Δ hΔ
+  exact Model.soundness p M hM env (Ctx.Presented.noProjLast Γ) hsat
 
 end V12M

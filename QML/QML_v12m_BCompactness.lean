@@ -42,7 +42,8 @@ theorem model_existenceB_ctxOf (hB : ModalSys.B = true) {l₀ : List VarType}
   have hag : Model.Env.Agree hle (fun v T hv => B.canonEnv s 0 v T (hle v T hv))
       (B.canonEnv s 0) := fun _ _ _ => rfl
   have hg := (ext_net hB hM₀ (Nat.zero_le (birth (complete S) s.2 + 0))).grows [] trivial
-  refine ⟨B.model, s, fun v T hv => B.canonEnv s 0 v T (hle v T hv), fun ψ hψ => ?_⟩
+  refine ⟨B.model, Model.indInvariant_of_eq fun _ _ h => h, s,
+    fun v T hv => B.canonEnv s 0 v T (hle v T hv), fun ψ hψ => ?_⟩
   refine (Model.sat_mono hag ψ).mp ((BData.truth s 0 _).mpr ?_)
   exact hg.sub ψ (show ψ ∈ ((net (complete S) 0).st []).M from hSM hψ)
 
@@ -77,8 +78,8 @@ omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoTFour] in
 /-- Satisfiability travels back along a translation. -/
 theorem Flat.setSatisfiable {Γ Δ : Ctx} (F : Flat σ Γ Δ) {S : Set (WFF σ Γ 0)}
     (h : WFF.SetSatisfiable (F.tr '' S)) : WFF.SetSatisfiable S := by
-  obtain ⟨M, w, env, hsat⟩ := h
-  exact ⟨M, w, F.env env, fun ψ hψ => (F.sat env ψ).mp (hsat _ ⟨ψ, hψ, rfl⟩)⟩
+  obtain ⟨M, hM, w, env, hsat⟩ := h
+  exact ⟨M, hM, w, F.env env, fun ψ hψ => (F.sat env ψ).mp (hsat _ ⟨ψ, hψ, rfl⟩)⟩
 
 /-- ⭐**Model existence** in every presented context whose presentation is fresh. -/
 theorem model_existenceB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
@@ -93,7 +94,7 @@ theorem model_existenceB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
     satisfying a set of premises is derivable from finitely many of them. -/
 theorem strong_completenessB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
-    (hval : ∀ (M : Model.{0, 0} σ) {w : M.frame.W} (env : M.Env e.denote w),
+    (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env e.denote w),
       (∀ ψ ∈ S, M.sat env ψ) → M.sat env φ) :
     ∃ Δ : List (WFF σ e.denote 0), (∀ ψ ∈ Δ, ψ ∈ S) ∧ Provable Δ φ := by
   by_contra hno
@@ -106,21 +107,22 @@ theorem strong_completenessB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
       by_cases h : θ = φ.neg
       · exact h ▸ List.mem_cons_self
       · exact List.mem_cons_of_mem _ (List.mem_filter.mpr ⟨hθ, by simpa using h⟩)
-  obtain ⟨M, w, env, hsat⟩ := model_existenceB hB e he hcons
+  obtain ⟨M, hM, w, env, hsat⟩ := model_existenceB hB e he hcons
   exact hsat φ.neg (Set.mem_insert _ _)
-    (hval M env fun ψ hψ => hsat ψ (Set.mem_insert_of_mem _ hψ))
+    (hval M hM env fun ψ hψ => hsat ψ (Set.mem_insert_of_mem _ hψ))
 
 /-- ⭐**Compactness for weak B**: a set of formulas is satisfiable when every finite subset is —
     in models of any universe. -/
 theorem compactnessB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)}
     (hfin : ∀ Δ : List (WFF σ e.denote 0), (∀ ψ ∈ Δ, ψ ∈ S) →
-      ∃ (M : Model.{u, v} σ) (w : M.frame.W) (env : M.Env e.denote w), ∀ ψ ∈ Δ, M.sat env ψ) :
+      ∃ (M : Model.{u, v} σ) (_ : M.IndInvariant) (w : M.frame.W) (env : M.Env e.denote w),
+        ∀ ψ ∈ Δ, M.sat env ψ) :
     WFF.SetSatisfiable S := by
   letI : e.denote.Presented := ⟨e, he.1, rfl⟩
   refine model_existenceB hB e he fun Δ hΔ ⟨p⟩ => ?_
-  obtain ⟨M, w, env, hsat⟩ := hfin Δ hΔ
-  exact Model.soundness p M env (Ctx.Presented.noProjLast _) hsat
+  obtain ⟨M, hM, w, env, hsat⟩ := hfin Δ hΔ
+  exact Model.soundness p M hM env (Ctx.Presented.noProjLast _) hsat
 
 end BArrow
 
