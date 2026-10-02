@@ -1,4 +1,4 @@
-import QML.QML_v12m_CanonWorld
+import QML.QML_v12m_CanonShape
 
 /-!
 # QML v12m — the canonical model: domains and denotations
@@ -7,12 +7,15 @@ import QML.QML_v12m_CanonWorld
   theory (`World.D`).
 * **Raw objects** (`RDom`), by recursion on the type: base objects, pairs, a raw object at every
   successor (`□`, the world itself included under T), an extent with a raw object at each of its
-  worlds (`◇`).
+  worlds and a shape (`◇`, `RPos`).  The shape is stored, not computed: the canonical model's
+  shapes have to follow the laws of `Model`, which a raw object's extent and contents do not
+  determine (docs §10.34).  `rawShape` reads the shape of any raw object.
 * The **denotation** of a term (`rden`): a variable or a function term is its class; `□t` gives at
   a successor `d + 1` levels deeper the denotation there of `t` shifted `d` times
   (`rden_boxtm_far`; under 4 this is what `□(shift t)` gives from a proper successor on the way,
   `rden_boxtm_step`), and at the world itself the denotation of `t` collapsed (`rden_boxtm_self`);
-  `◇_x t` has the extent of `x` and at each of its worlds the denotation of `t` there.  Shifting
+  `◇_x t` has the extent of `x`, at each of its worlds the denotation of `t` there, and as shape
+  the term's symbolic shape in the canonical shape environment (`termShp`, `cEnv`).  Shifting
   and collapsing keep the type, so this is a recursion on the type.  It does not depend on the
   stage it is computed at (`rden_congr`) and commutes with weakening (`rden_mono`).
 * **Definable** raw objects are the denotations of terms; they are closed under the components of
@@ -153,14 +156,40 @@ theorem _root_.V12M.Term.shiftIter_mono : ∀ (n : ℕ) (hF : n ≠ 0 → ModalS
 
 /-! ## Raw objects -/
 
+/-- ⭐A raw possible object: an extent, a raw object at each of its worlds, and, under T, its
+    **shape**, which the canonical model stores rather than computes (docs §10.34).  Gated as
+    `Model.posFull` is: without T, objects with one section are one object. -/
+structure RPos (w : World σ N₀) (A : VarType) (C : Succ w → Type) where
+  E : Set (Succ w)
+  c : (w' : E) → C w'.1
+  tag : ModalSys.T = true → CShape w (.VTypeDia A)
+
+theorem RPos.congr_cont {w : World σ N₀} {A : VarType} {C : Succ w → Type} {E : Set (Succ w)}
+    {c c' : (w' : E) → C w'.1} {τ τ' : ModalSys.T = true → CShape w (.VTypeDia A)} (hc : c = c')
+    (hτ : ∀ hT, τ hT = τ' hT) :
+    (⟨E, c, τ⟩ : RPos w A C) = ⟨E, c', τ'⟩ := by
+  subst hc
+  obtain rfl : τ = τ' := funext hτ
+  rfl
+
 /-- Raw objects of a type at a world. -/
 def RDom : VarType → World σ N₀ → Type
   | .Var, w => w.D
   | .VTypeOne, _ => PUnit
   | .VTypeProd A B, w => RDom A w × RDom B w
   | .VTypeBox A, w => (w' : Succ w) → RDom A w'.1
-  | .VTypeDia A, w => Σ E : Set (Succ w), (w' : E) → RDom A w'.1.1
+  | .VTypeDia A, w => RPos w A fun w' => RDom A w'.1
 
+/-- ⭐Under T, the shape of a raw object: the stored shapes of its possible objects, arranged as its
+    type arranges them — `Frame.domShape` for raw objects. -/
+def rawShape (hT : ModalSys.T = true) : {A : VarType} → {w : World σ N₀} → RDom A w → CShape w A
+  | .Var, _, _ => .var
+  | .VTypeOne, _, _ => .one
+  | .VTypeProd _ _, _, o => .prod (rawShape hT o.1) (rawShape hT o.2)
+  | .VTypeBox _, _, o =>
+      .box (Arrows.transposeShp (F := arrows σ N₀) (Root := fun _ => VarSymb) fun s =>
+        rawShape hT (o s))
+  | .VTypeDia _, _, o => o.3 hT
 /-- Under strong T, the view term a realised witness's content is read from at the world itself:
     the view term realised by the chosen term of the realisation (`WFF.realiseAt`'s term form).
     Both terms are lifted to one stage. -/
@@ -197,13 +226,14 @@ noncomputable def rden : {A : VarType} → {a : Ann A} → {Γ : Ctx} → (w : W
           (Term.collapse (Ctx.collapses_boxIn_self (w'.self hd).1 Γ) t)
       | d + 1 =>
           rden w'.1 (childIter (d + 1) i) (w'.chainLe hd e) (Term.shiftIter d (w'.four hd) t)
-  | _, _, _, w, i, e, .diatm x hx t =>
+  | _, _, Γ, w, i, e, .diatm x hx t =>
       ⟨extent w x, fun w' =>
         if hd : w'.1.1.depth - w.depth = 0 then
           ((extent_self w'.2 hd).1).symm ▸
             rden w (i ⊔ ((extent_self w'.2 hd).2).data.i₀) (Ctx.Le.refl _)
               (realisedTerm w (extent_self w'.2 hd).2 e hx t).2
-        else rden w'.1.1 (childStage i) ((e.diaIn x).trans (extent_le w'.2 hd i)) t⟩
+        else rden w'.1.1 (childStage i) ((e.diaIn x).trans (extent_le w'.2 hd i)) t,
+        fun _ => Model.termShp (cEnv Γ w) 0 (.diatm x hx t)⟩
   termination_by structural A => A
 
 /-- At the world itself, a necessary term denotes its body collapsed. -/
@@ -323,14 +353,16 @@ theorem rden_mono : ∀ {A : VarType} {a : Ann A} {Γ Γ' : Ctx} (h : Γ.Le Γ')
       · rw [rden_boxtm_far e _ w' hd, rden_boxtm_far (h.trans e) t w' hd,
           Term.shiftIter_mono d _ h t]
         exact rden_mono _ _ w'.1 _ _
-  | _, _, _, _, h, .diatm x hx t, w, i, e =>
-      congrArg (Sigma.mk _) (funext fun w' => by
+  | _, _, Γ, Γ', h, .diatm x hx t, w, i, e =>
+      RPos.congr_cont (funext fun w' => by
         by_cases hd : w'.1.1.depth - w.depth = 0
         · simp only [dif_pos hd]
           exact rden_transport_congr _ (rden_sigma _
             (realisedTerm_mono _ h e hx (hx.imp fun _ hh => h.ref hh) t))
         · simp only [dif_neg hd]
           exact rden_mono (h.diaIn x) t w'.1.1 (childStage i) _)
+        fun _ => (Model.termShp_mono (h := h) (ρ := cEnv Γ w) (ρ' := cEnv Γ' w) (fun _ _ _ => rfl) 0
+          (.diatm x hx t))
   termination_by structural A => A
 
 /-- Transporting a pair of raw objects along an equation of worlds is the pair of transports. -/
@@ -366,7 +398,7 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
       · rw [rden_boxtm_far e t w' h, rden_boxtm_far e' t w' h]
         exact rden_congr _ w'.1 _ _ _ _
   | _, _, _, .diatm x hx t, w, i, j, e, e' =>
-      congrArg (Sigma.mk _) (funext fun w' => by
+      RPos.congr_cont (funext fun w' => by
         by_cases hd : w'.1.1.depth - w.depth = 0
         · simp only [dif_pos hd]
           refine rden_transport_congr _ ?_
@@ -395,7 +427,7 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
             _ = rden w (j ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e' hx t).2 :=
                 rden_congr _ w _ _ _ _
         · simp only [dif_neg hd]
-          exact rden_congr t w'.1.1 (childStage i) (childStage j) _ _)
+          exact rden_congr t w'.1.1 (childStage i) (childStage j) _ _) fun _ => rfl
   termination_by structural A => A
 
 
@@ -407,6 +439,56 @@ theorem rden_eta_le {Γ₁ Γ₂ : Ctx} (h : Γ₁.Le Γ₂) {w : World σ N₀}
   rw [show Term.eta (σ := σ) v T p₂ = Term.mono h (Term.eta v T p₁) from
     (Term.mono_eta h v T p₁).symm, rden_mono]
   exact rden_congr _ _ _ _ _ _
+
+/-! ## The stored shapes are the symbolic ones -/
+
+/-- `d + 1` levels deeper, a `□` body read through `succAddr` has the shape of its `d`-fold
+    shift. -/
+theorem termShp_shiftIter_cEnv (w : World σ N₀) :
+    ∀ (d : ℕ) (hF : d ≠ 0 → ModalSys.Four = true) {Γ : Ctx} {A : VarType} {a : Ann A}
+      (t : Term σ Γ.boxIn A a),
+      Model.termShp (cEnv (Ctx.boxIter (d + 1) Γ) w) 0 (Term.shiftIter d hF t) =
+        Model.termShp (canonEnvF Γ.boxIn w (VarSymb.shiftIter d)) 0 t
+  | 0, _, _, _, _, _ => rfl
+  | d + 1, hF, Γ, _, _, t => by
+      have hF' := hF (Nat.succ_ne_zero d)
+      refine (termShp_shiftIter_cEnv w d (fun _ => hF') (Γ := Γ.boxIn)
+        (Term.shift (Ctx.shifts_boxIn_boxIn hF' Γ) t)).trans ?_
+      refine Model.termShp_shift ?_ t
+      intro v T hv
+      rw [canonEnvF_ref _ _ (fun v s hs => VarSymb.shiftIter_proj (d + 1) v s hs),
+        canonEnvF_ref _ _ (fun v s hs => VarSymb.shiftIter_proj d v s hs)]
+      rfl
+
+/-- ⭐**The stored shape is the symbolic one**: a term's denotation has the shape `termShp` computes
+    for it in the canonical shape environment.  For a `◇` term this is `rden`'s definition.  A `□`
+    term's values sit at the successors, where the environment pushed into `□` is the successor's
+    own read through `succAddr` (`cEnv_boxPush`) — what collapsing the body (at the world itself)
+    and shifting it (further on) need. -/
+theorem rawShape_rden (hT : ModalSys.T = true) : ∀ {A : VarType} {a : Ann A} {Γ : Ctx}
+    (w : World σ N₀) (i : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)) (t : Term σ Γ A a),
+    rawShape hT (rden w i e t) = Model.termShp (cEnv Γ w) 0 t
+  | _, _, _, _, _, _, .var _ _ => rfl
+  | _, _, _, _, _, _, .func _ => rfl
+  | _, _, _, _, _, _, .unit => rfl
+  | _, _, _, w, i, e, .pair s t => by
+      change Shp.prod (rawShape hT (rden w i e s)) (rawShape hT (rden w i e t)) = _
+      rw [rawShape_rden hT w i e s, rawShape_rden hT w i e t]
+      rfl
+  | _, _, Γ, w, i, e, .boxtm t => by
+      change Shp.box (Arrows.transposeShp (F := arrows σ N₀) (Root := fun _ => VarSymb) fun s =>
+          rawShape hT (rden w i e (.boxtm t) s)) =
+        Shp.box (Model.termShp ((cEnv Γ w).boxPush 0) (0 + 1) t)
+      rw [Model.termShp_transpose ((cEnv Γ w).boxPush 0)
+        (fun s => canonEnvF Γ.boxIn s.1 (succAddr w s.1)) 0 (cEnv_boxPush Γ w) t]
+      refine congrArg Shp.box (congrArg _ (funext fun s => ?_))
+      rcases hd : s.1.depth - w.depth with _ | d
+      · rw [rden_boxtm_self e t s hd, rawShape_rden hT, termShp_collapse_cEnv (Succ.self s hd).1,
+          show succAddr w s.1 = fun v => v.collapse 0 from funext (succAddr_zero hd)]
+      · rw [rden_boxtm_far e t s hd, rawShape_rden hT, termShp_shiftIter_cEnv,
+          show succAddr w s.1 = VarSymb.shiftIter d from funext (succAddr_succ hd)]
+  | _, _, _, _, _, _, .diatm _ _ _ => rfl
+  termination_by structural A => A
 
 /-- The realised content of a pair is the pair of realised contents. -/
 theorem rden_realisedTerm_pair {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}

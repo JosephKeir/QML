@@ -311,8 +311,14 @@ noncomputable def rawEval :
   | _, _, .boxMap f, _, o => fun w' => rawEval f w'.1 (o w')
   | _, _, .boxPair _ _, _, o => fun w' => (o.1 w', o.2 w')
   | _, _, .boxUnit, _, _ => fun _ => PUnit.unit
-  | _, _, .diaMap f, _, o => ⟨o.1, fun w' => rawEval f w'.1.1 (o.2 w')⟩
-  | _, _, .strength _ _, _, o => ⟨o.2.1, fun w' => (o.1 w'.1, o.2.2 w')⟩
+  | _, _, .diaMap f, _, o =>
+      ⟨o.1, fun w' => rawEval f w'.1.1 (o.2 w'),
+        fun hT => .dia (o.3 hT).label (GFunc.shp f 1 (o.3 hT).body)⟩
+  | _, _, .strength _ _, _, o =>
+      ⟨o.2.1, fun w' => (o.1 w'.1, o.2.2 w'),
+        fun hT => .dia (o.2.3 hT).label
+          (.prod (Arrows.transposeShp (F := arrows σ N₀) (Root := fun _ => VarSymb)
+            fun s => rawShape hT (o.1 s)) (o.2.3 hT).body)⟩
   | _, _, .extract hT, w, o => o ⟨w, ⟨R.refl hT w⟩⟩
   | _, _, .dup hF, _, o => fun v s => o ⟨s.1, ⟨R.trans hF v.2.down s.2.down⟩⟩
 
@@ -341,6 +347,49 @@ def applyG :
   | _, _, .extract hT, Γ, _, .boxtm b => ⟨_, Term.collapse (Ctx.collapses_boxIn_self hT Γ) b⟩
   | _, _, .dup hF, Γ, _, .boxtm b =>
       ⟨_, .boxtm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))⟩
+
+/-- ⭐**An applied map has the moved shape**: `applyG` moves a term's symbolic shape as `GFunc.shp`
+    moves shapes — the `applyG` analogue of `termShp_compile`. -/
+theorem termShp_applyG {F : Arrows.{u, v} σ} {Root : F.W → Type u} :
+    ∀ {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} {a : Ann A} (t : Term σ Γ A a) {w : F.W}
+      (ρ : Model.ShEnv F Root Γ w) (j : ℕ),
+      Model.termShp ρ j (applyG g t).2 = GFunc.shp g j (Model.termShp ρ j t)
+  | _, _, .id _, _, _, _, _, _, _ => rfl
+  | _, _, .comp g f, _, _, t, _, ρ, j =>
+      (termShp_applyG g _ ρ j).trans (congrArg (GFunc.shp g j) (termShp_applyG f t ρ j))
+  | _, _, .fst, _, _, .pair _ _, _, _, _ => rfl
+  | _, _, .snd, _, _, .pair _ _, _, _, _ => rfl
+  | _, _, .pair f g, _, _, t, _, ρ, j => by
+      change Shp.prod (Model.termShp ρ j (applyG f t).2) (Model.termShp ρ j (applyG g t).2) = _
+      rw [termShp_applyG f t ρ j, termShp_applyG g t ρ j]
+      rfl
+  | _, _, .unit _, _, _, _, _, _, _ => rfl
+  | _, _, .func _ _, _, _, _, _, _, _ => rfl
+  | _, _, .boxMap f, _, _, .boxtm b, _, ρ, j =>
+      congrArg Shp.box (termShp_applyG f b (ρ.boxPush j) (j + 1))
+  | _, _, .boxPair _ _, _, _, .pair (.boxtm _) (.boxtm _), _, _, _ => rfl
+  | _, _, .boxUnit, _, _, .unit, _, _, _ => rfl
+  | _, _, .diaMap f, _, _, .diatm x hx c, _, ρ, j => by
+      obtain ⟨X, hr⟩ := id hx
+      change Model.termShp ρ j (Term.diatm x hx (applyG f c).2) = _
+      rw [Model.termShp_diatm ρ j hr, Model.termShp_diatm ρ j hr,
+        termShp_applyG f c (ρ.diaPush j x hr) (j + 1)]
+      rfl
+  | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c), _, ρ, j => by
+      obtain ⟨X, hr⟩ := id hx
+      change Model.termShp ρ j
+        (Term.diatm x hx (.pair (Term.mono (Ctx.le_boxIn_diaIn Γ x) b) c)) = _
+      rw [Model.termShp_diatm ρ j hr]
+      change _ = GFunc.shp (GFunc.strength _ _) j
+        (Shp.prod (Shp.box (Model.termShp (ρ.boxPush j) (j + 1) b))
+          (Model.termShp ρ j (Term.diatm x hx c)))
+      rw [Model.termShp_diatm ρ j hr]
+      change _ = Shp.dia _ (Shp.prod (Model.termShp (ρ.boxPush j) (j + 1) b) _)
+      rw [← Model.termShp_mono (Model.ShEnv.box_dia_agree ρ j hr) (j + 1) b]
+      rfl
+  | _, _, .extract hT, _, _, .boxtm b, _, ρ, j => Model.termShp_collapse_self hT ρ j b
+  | _, _, .dup hF, _, _, .boxtm b, _, ρ, j =>
+      congrArg (fun z => Shp.box (Shp.box z)) (Model.termShp_shift_twoBox hF ρ j b)
 
 theorem varTerm_collapse {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Collapses k Γ₁ Γ₂) :
     ∀ p : (Σ b : Ann .Var, Term σ Γ₁ .Var b),
@@ -804,8 +853,8 @@ theorem rden_applyG :
       · rw [rden_boxtm_far e _ w' hd, rden_boxtm_far e b w' hd, rden_boxtm_far e c w' hd]
         exact rden_sigma _ (Term.shiftIter_pair d (w'.four hd) b c)
   | _, _, .boxUnit, _, _, .unit, _, _, _ => rfl
-  | _, _, .diaMap f, _, _, .diatm x hx c, w, i, e =>
-      congrArg (Sigma.mk _) (funext fun w' => by
+  | _, _, .diaMap f, Γ, _, .diatm x hx c, w, i, e =>
+      RPos.congr_cont (funext fun w' => by
         by_cases hd : w'.1.1.depth - w.depth = 0
         · have hr := (extent_self w'.2 hd).2
           rw [rden_diatm_self e hx c w' hd, ← rawEval_transport f _ _]
@@ -814,8 +863,9 @@ theorem rden_applyG :
           exact (rden_sigma _ (applyG_realisedTerm f hr e hx c)).trans (rden_applyG f _ w _ _)
         · simp only [rden, dif_neg hd]
           exact rden_applyG f c w'.1.1 (childStage i) _)
+        fun _ => termShp_applyG (.diaMap f) (.diatm x hx c) (cEnv Γ w) 0
   | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c), w, i, e =>
-      congrArg (Sigma.mk _) (funext fun w' => by
+      RPos.congr_cont (funext fun w' => by
         by_cases hd : w'.1.1.depth - w.depth = 0
         · have hr := (extent_self w'.2 hd).2
           change _ = (rden w i e (Term.boxtm b) w'.1, (rden w i e (Term.diatm x hx c)).2 w')
@@ -829,6 +879,12 @@ theorem rden_applyG :
           exact Prod.ext
             ((rden_mono _ _ _ _ _).trans
               (rden_boxtm_acc e b w'.1 (extent_dist w'.2 hd)).symm) rfl)
+        fun hT =>
+          (termShp_applyG (.strength _ _) (.pair (.boxtm b) (.diatm x hx c)) (cEnv Γ w) 0).trans
+          (by
+            change _ = Shp.dia _ (Shp.prod (rawShape hT (rden w i e (.boxtm b))).inner _)
+            rw [rawShape_rden hT w i e (.boxtm b)]
+            rfl)
   | _, _, .extract hT, _, _, .boxtm b, w, _, e =>
       (rden_boxtm_self e b ⟨w, ⟨R.refl hT w⟩⟩ (Nat.sub_self _)).symm
   | _, _, .dup hF, _, _, .boxtm b, w, i, e =>

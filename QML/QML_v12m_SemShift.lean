@@ -192,15 +192,22 @@ theorem Env.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} (env : M.En
   | .step _ .dia => cases hx
   | .step _ .here => cases hx
 
+end Model
+
+namespace Model
+
+variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
+  {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ₂} {w : F.W}
+
 /-! ## Shapes across a shift -/
 
 /-- Two shape environments agree across a shift, at one depth. -/
-def ShEnv.ShiftAgree {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂) {w' : M.frame.W}
-    (ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w') (ρ₂ : ShEnv M.frame M.RootPoss Γ₂ w') (j : ℕ) : Prop :=
+def ShEnv.ShiftAgree {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂) {w' : F.W}
+    (ρ₁ : ShEnv F Root Γ₁ w') (ρ₂ : ShEnv F Root Γ₂ w') (j : ℕ) : Prop :=
   ∀ v T (hv : Γ₁.ref v = some T), ρ₁.ref j v hv = ρ₂.ref j (v.shift k) (h v T hv)
 
-theorem ShEnv.ShiftAgree.of_raw {ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w}
-    {ρ₂ : ShEnv M.frame M.RootPoss Γ₂ w} {j : ℕ}
+theorem ShEnv.ShiftAgree.of_raw {ρ₁ : ShEnv F Root Γ₁ w}
+    {ρ₂ : ShEnv F Root Γ₂ w} {j : ℕ}
     (hvis : ∀ v T (hlp : v.lastProj = false) (hv : Γ₁ v = some T),
       ρ₁ v T hv = ρ₂.ref j (v.shift k) (h v T ((Ctx.ref_nonproj Γ₁ hlp).trans hv))) :
     ShEnv.ShiftAgree h ρ₁ ρ₂ j := by
@@ -224,8 +231,8 @@ theorem ShEnv.ShiftAgree.of_raw {ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w}
         rw [ShEnv.ref_nonproj ρ₁ j hs hv]
         exact hvis _ _ hlp _
 
-theorem ShEnv.ShiftAgree.boxPush {ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w}
-    {ρ₂ : ShEnv M.frame M.RootPoss Γ₂ w} {j : ℕ}
+theorem ShEnv.ShiftAgree.boxPush {ρ₁ : ShEnv F Root Γ₁ w}
+    {ρ₂ : ShEnv F Root Γ₂ w} {j : ℕ}
     (hag : ShEnv.ShiftAgree h ρ₁ ρ₂ j) :
     ShEnv.ShiftAgree h.boxIn (ρ₁.boxPush j) (ρ₂.boxPush j) (j + 1) := by
   refine ShEnv.ShiftAgree.of_raw ?_
@@ -252,8 +259,8 @@ theorem ShEnv.ShiftAgree.boxPush {ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w}
   | .step _ .dia => cases hv
   | .step _ .here => cases hv
 
-theorem ShEnv.ShiftAgree.diaPush {ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w}
-    {ρ₂ : ShEnv M.frame M.RootPoss Γ₂ w} {j : ℕ}
+theorem ShEnv.ShiftAgree.diaPush {ρ₁ : ShEnv F Root Γ₁ w}
+    {ρ₂ : ShEnv F Root Γ₂ w} {j : ℕ}
     (hag : ShEnv.ShiftAgree h ρ₁ ρ₂ j) {x : VarSymb} {X : VarType}
     (hr : Γ₁.ref x = some (.VTypeDia X)) :
     ShEnv.ShiftAgree (h.diaIn x) (ρ₁.diaPush j x hr) (ρ₂.diaPush j (x.shift k) (h x _ hr))
@@ -295,8 +302,8 @@ theorem ShEnv.ShiftAgree.diaPush {ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w}
   | .step _ .here => cases hv
 
 /-- ⭐Shifting does not change shapes. -/
-theorem termShp_shift {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ₂} {w : M.frame.W}
-    {ρ₁ : ShEnv M.frame M.RootPoss Γ₁ w} {ρ₂ : ShEnv M.frame M.RootPoss Γ₂ w} {j : ℕ}
+theorem termShp_shift {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ₂} {w : F.W}
+    {ρ₁ : ShEnv F Root Γ₁ w} {ρ₂ : ShEnv F Root Γ₂ w} {j : ℕ}
     (hag : ShEnv.ShiftAgree h ρ₁ ρ₂ j) :
     ∀ {T : VarType} {a : Ann T} (t : Term σ Γ₁ T a),
       termShp ρ₂ j (Term.shift h t) = termShp ρ₁ j t
@@ -316,6 +323,14 @@ theorem termShp_shift {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ�
       change termShp ρ₂ j (Term.diatm (x.shift k) _ (Term.shift (h.diaIn x) t)) = _
       rw [termShp_diatm ρ₂ j (h x _ hr), termShp_diatm ρ₁ j hr,
         termShp_shift (hag.diaPush hr) t, hag x _ hr]
+
+end Model
+
+namespace Model
+
+variable {σ : Signature} {M : Model.{u, v} σ}
+  {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ₂} {w : M.frame.W}
+  {env₁ : M.Env Γ₁ w} {env₂ : M.Env Γ₂ w}
 
 /-- Environments agreeing across a shift have shape environments agreeing across it. -/
 theorem Env.ShiftAgree.shape (hag : Env.ShiftAgree h env₁ env₂) (hT : ModalSys.T = true) :

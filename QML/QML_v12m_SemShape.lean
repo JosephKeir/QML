@@ -280,118 +280,118 @@ theorem shiftAt_shiftAt_self :
 
 end Step
 
-namespace Frame.Leaf
+namespace Arrows.Leaf
 
-variable {σ : Signature} {F : Frame.{u, v} σ} {Root : F.W → Type u}
+variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
 
 theorem collapse_root (hT : ModalSys.T = true) (i : ℕ) {w : F.W} (r : Root w) (p : List Step) :
-    collapse hT i (Frame.Leaf.root (F := F) r p) = .root r (Step.collapseAt i p) := by
+    collapse hT i (Arrows.Leaf.root (F := F) r p) = .root r (Step.collapseAt i p) := by
   cases i <;> rfl
 
 theorem shift_root (hF : ModalSys.Four = true) (i : ℕ) {w : F.W} (r : Root w) (p : List Step) :
-    shift hF i (Frame.Leaf.root (F := F) r p) = .root r (Step.shiftAt i p) := by
+    shift hF i (Arrows.Leaf.root (F := F) r p) = .root r (Step.shiftAt i p) := by
   cases i <;> rfl
 
 theorem collapse_collapse (hT : ModalSys.T = true) :
-    ∀ (j d : ℕ) {w : F.W} (ℓ : Frame.Leaf F Root w),
+    ∀ (j d : ℕ) {w : F.W} (ℓ : F.Leaf Root w),
       collapse hT (j + d) (collapse hT j ℓ) = collapse hT j (collapse hT (j + d + 1) ℓ)
   | j, d, _, .root r p => by
       simp only [collapse_root]
-      exact congrArg (Frame.Leaf.root r) (Step.collapseAt_collapseAt j d p)
+      exact congrArg (Arrows.Leaf.root r) (Step.collapseAt_collapseAt j d p)
   | 0, d, w, .fam f => by
       rw [Nat.zero_add]
       rfl
   | j + 1, d, _, .fam f => by
       rw [show j + 1 + d = (j + d) + 1 by omega]
-      exact congrArg Frame.Leaf.fam (funext fun s => collapse_collapse hT j d (f s))
+      exact congrArg Arrows.Leaf.fam (funext fun s => collapse_collapse hT j d (f s))
 
 theorem shift_collapse (hT : ModalSys.T = true) (hF : ModalSys.Four = true) :
-    ∀ (j d : ℕ) {w : F.W} (ℓ : Frame.Leaf F Root w),
+    ∀ (j d : ℕ) {w : F.W} (ℓ : F.Leaf Root w),
       shift hF (j + d) (collapse hT j ℓ) = collapse hT j (shift hF (j + d + 1) ℓ)
   | j, d, _, .root r p => by
       simp only [collapse_root, shift_root]
-      exact congrArg (Frame.Leaf.root r) (Step.shiftAt_collapseAt j d p)
+      exact congrArg (Arrows.Leaf.root r) (Step.shiftAt_collapseAt j d p)
   | 0, d, w, .fam f => by
       rw [Nat.zero_add]
       rfl
   | j + 1, d, _, .fam f => by
       rw [show j + 1 + d = (j + d) + 1 by omega]
-      exact congrArg Frame.Leaf.fam (funext fun s => shift_collapse hT hF j d (f s))
+      exact congrArg Arrows.Leaf.fam (funext fun s => shift_collapse hT hF j d (f s))
 
 theorem collapse_shift_self (hT : ModalSys.T = true) (hF : ModalSys.Four = true) :
-    ∀ (j : ℕ) {w : F.W} (ℓ : Frame.Leaf F Root w), collapse hT j (shift hF j ℓ) = ℓ
+    ∀ (j : ℕ) {w : F.W} (ℓ : F.Leaf Root w), collapse hT j (shift hF j ℓ) = ℓ
   | j, _, .root r p => by
       simp only [collapse_root, shift_root]
-      exact congrArg (Frame.Leaf.root r) (Step.collapseAt_shiftAt_self j p)
+      exact congrArg (Arrows.Leaf.root r) (Step.collapseAt_shiftAt_self j p)
   | 0, w, .fam f => by
-      refine congrArg Frame.Leaf.fam (funext fun t => ?_)
+      refine congrArg Arrows.Leaf.fam (funext fun t => ?_)
       change f ⟨t.1, ⟨F.trans hF (F.refl hT w) t.2.down⟩⟩ = f t
       rw [F.refl_trans hT hF]
   | j + 1, _, .fam f =>
-      congrArg Frame.Leaf.fam (funext fun s => collapse_shift_self hT hF j (f s))
+      congrArg Arrows.Leaf.fam (funext fun s => collapse_shift_self hT hF j (f s))
 
 /-- ⭐The second counit: keeping, then reading the next level where it was kept, is the identity
     — on families by `trans_refl`, on root paths by `Step.collapseAt`'s keep-absorbing case. -/
 theorem collapse_shift_succ (hT : ModalSys.T = true) (hF : ModalSys.Four = true) :
-    ∀ (j : ℕ) {w : F.W} (ℓ : Frame.Leaf F Root w), collapse hT (j + 1) (shift hF j ℓ) = ℓ
+    ∀ (j : ℕ) {w : F.W} (ℓ : F.Leaf Root w), collapse hT (j + 1) (shift hF j ℓ) = ℓ
   | j, _, .root r p => by
       simp only [collapse_root, shift_root]
-      exact congrArg (Frame.Leaf.root r) (Step.collapseAt_shiftAt_succ j p)
+      exact congrArg (Arrows.Leaf.root r) (Step.collapseAt_shiftAt_succ j p)
   | 0, w, .fam f => by
-      refine congrArg Frame.Leaf.fam (funext fun s => ?_)
+      refine congrArg Arrows.Leaf.fam (funext fun s => ?_)
       change f ⟨s.1, ⟨F.trans hF s.2.down (F.refl hT s.1)⟩⟩ = f s
       rw [F.trans_refl hT hF]
   | j + 1, _, .fam f =>
-      congrArg Frame.Leaf.fam (funext fun s => collapse_shift_succ hT hF j (f s))
+      congrArg Arrows.Leaf.fam (funext fun s => collapse_shift_succ hT hF j (f s))
 
 theorem collapse_shift (hT : ModalSys.T = true) (hF : ModalSys.Four = true) :
-    ∀ (j d : ℕ) {w : F.W} (ℓ : Frame.Leaf F Root w),
+    ∀ (j d : ℕ) {w : F.W} (ℓ : F.Leaf Root w),
       collapse hT (j + d + 2) (shift hF j ℓ) = shift hF j (collapse hT (j + d + 1) ℓ)
   | j, d, _, .root r p => by
       simp only [collapse_root, shift_root]
-      exact congrArg (Frame.Leaf.root r) (Step.collapseAt_shiftAt j d p)
+      exact congrArg (Arrows.Leaf.root r) (Step.collapseAt_shiftAt j d p)
   | 0, d, w, .fam f => by
       rw [Nat.zero_add]
       rfl
   | j + 1, d, _, .fam f => by
       rw [show j + 1 + d + 2 = (j + d + 2) + 1 by omega,
         show j + 1 + d + 1 = (j + d + 1) + 1 by omega]
-      exact congrArg Frame.Leaf.fam (funext fun s => collapse_shift hT hF j d (f s))
+      exact congrArg Arrows.Leaf.fam (funext fun s => collapse_shift hT hF j d (f s))
 
 theorem shift_shift (hF : ModalSys.Four = true) :
-    ∀ (j d : ℕ) {w : F.W} (ℓ : Frame.Leaf F Root w),
+    ∀ (j d : ℕ) {w : F.W} (ℓ : F.Leaf Root w),
       shift hF (j + d + 2) (shift hF j ℓ) = shift hF j (shift hF (j + d + 1) ℓ)
   | j, d, _, .root r p => by
       simp only [shift_root]
-      exact congrArg (Frame.Leaf.root r) (Step.shiftAt_shiftAt j d p)
+      exact congrArg (Arrows.Leaf.root r) (Step.shiftAt_shiftAt j d p)
   | 0, d, w, .fam f => by
       rw [Nat.zero_add]
       rfl
   | j + 1, d, _, .fam f => by
       rw [show j + 1 + d + 2 = (j + d + 2) + 1 by omega,
         show j + 1 + d + 1 = (j + d + 1) + 1 by omega]
-      exact congrArg Frame.Leaf.fam (funext fun s => shift_shift hF j d (f s))
+      exact congrArg Arrows.Leaf.fam (funext fun s => shift_shift hF j d (f s))
 
 theorem shift_shift_self (hF : ModalSys.Four = true) :
-    ∀ (j : ℕ) {w : F.W} (ℓ : Frame.Leaf F Root w),
+    ∀ (j : ℕ) {w : F.W} (ℓ : F.Leaf Root w),
       shift hF (j + 1) (shift hF j ℓ) = shift hF j (shift hF j ℓ)
   | j, _, .root r p => by
       simp only [shift_root]
-      exact congrArg (Frame.Leaf.root r) (Step.shiftAt_shiftAt_self j p)
+      exact congrArg (Arrows.Leaf.root r) (Step.shiftAt_shiftAt_self j p)
   | 0, w, .fam f => by
-      refine congrArg Frame.Leaf.fam (funext fun s => congrArg Frame.Leaf.fam
-        (funext fun t => congrArg Frame.Leaf.fam (funext fun t' => ?_)))
+      refine congrArg Arrows.Leaf.fam (funext fun s => congrArg Arrows.Leaf.fam
+        (funext fun t => congrArg Arrows.Leaf.fam (funext fun t' => ?_)))
       change f ⟨t'.1, ⟨F.trans hF s.2.down (F.trans hF t.2.down t'.2.down)⟩⟩ =
         f ⟨t'.1, ⟨F.trans hF (F.trans hF s.2.down t.2.down) t'.2.down⟩⟩
       rw [F.trans_assoc hF]
   | j + 1, _, .fam f =>
-      congrArg Frame.Leaf.fam (funext fun s => shift_shift_self hF j (f s))
+      congrArg Arrows.Leaf.fam (funext fun s => shift_shift_self hF j (f s))
 
-end Frame.Leaf
+end Arrows.Leaf
 
 namespace Model
 
-variable {σ : Signature} {F : Frame.{u, v} σ} {Root : F.W → Type u}
+variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
 
 variable (F Root) in
 /-- Shapes anchored at a world. -/
@@ -683,65 +683,65 @@ theorem transpose_map {w : F.W} (Φ : F.Leaf Root w → F.Leaf Root w)
     (G : ∀ s : F.Acc w, F.Leaf Root s.1 → F.Leaf Root s.1)
     (hΦ : ∀ f, Φ (.fam f) = .fam fun s => G s (f s)) :
     ∀ {A : VarType} (g : (s : F.Acc w) → Shape F Root s.1 A),
-      (Frame.transposeShp g).map Φ = Frame.transposeShp fun s => (g s).map (G s)
+      (Arrows.transposeShp g).map Φ = Arrows.transposeShp fun s => (g s).map (G s)
   | .Var, _ => rfl
   | .VTypeOne, _ => rfl
   | .VTypeProd _ _, g => by
-      simp only [Frame.transposeShp, Shp.map]
+      simp only [Arrows.transposeShp, Shp.map]
       rw [transpose_map Φ G hΦ, transpose_map Φ G hΦ]
       simp only [Shp.map_fst, Shp.map_snd]
   | .VTypeBox _, g => by
-      simp only [Frame.transposeShp, Shp.map]
+      simp only [Arrows.transposeShp, Shp.map]
       rw [transpose_map Φ G hΦ]
       simp only [Shp.map_inner]
   | .VTypeDia _, g => by
-      simp only [Frame.transposeShp, Shp.map]
+      simp only [Arrows.transposeShp, Shp.map]
       rw [transpose_map Φ G hΦ, hΦ]
       simp only [Shp.map_label, Shp.map_body]
 
 /-- Reading a transposed shape at the identity arrow gives the member there. -/
 theorem transpose_collapse_zero (hT : ModalSys.T = true) {w : F.W} :
     ∀ {A : VarType} (g : (s : F.Acc w) → Shape F Root s.1 A),
-      (Frame.transposeShp g).map (Frame.Leaf.collapse hT 0) = g (F.reflAcc hT w)
+      (Arrows.transposeShp g).map (Arrows.Leaf.collapse hT 0) = g (F.reflAcc hT w)
   | .Var, g => shp_var_eq _ _
   | .VTypeOne, g => Shp.one_eq _ _
   | .VTypeProd _ _, g => by
-      simp only [Frame.transposeShp, Shp.map]
+      simp only [Arrows.transposeShp, Shp.map]
       rw [transpose_collapse_zero hT, transpose_collapse_zero hT]
       exact (Shp.prod_eta _).symm
   | .VTypeBox _, g => by
-      simp only [Frame.transposeShp, Shp.map]
+      simp only [Arrows.transposeShp, Shp.map]
       rw [transpose_collapse_zero hT]
       exact (Shp.box_eta _).symm
   | .VTypeDia _, g => by
-      simp only [Frame.transposeShp, Shp.map]
+      simp only [Arrows.transposeShp, Shp.map]
       rw [transpose_collapse_zero hT]
       exact (Shp.dia_eta _).symm
 
 /-- Keeping a transposed shape: one family per arrow, of the members at the composite arrows. -/
 theorem transpose_shift_zero (hF : ModalSys.Four = true) {w : F.W} :
     ∀ {A : VarType} (g : (s : F.Acc w) → Shape F Root s.1 A),
-      (Frame.transposeShp g).map (Frame.Leaf.shift hF 0) =
-        Frame.transposeShp fun s => Frame.transposeShp fun t =>
+      (Arrows.transposeShp g).map (Arrows.Leaf.shift hF 0) =
+        Arrows.transposeShp fun s => Arrows.transposeShp fun t =>
           g ⟨t.1, ⟨F.trans hF s.2.down t.2.down⟩⟩
   | .Var, _ => rfl
   | .VTypeOne, _ => rfl
   | .VTypeProd _ _, g => by
-      simp only [Frame.transposeShp, Shp.map, Shp.fst_prod, Shp.snd_prod]
+      simp only [Arrows.transposeShp, Shp.map, Shp.fst_prod, Shp.snd_prod]
       rw [transpose_shift_zero hF, transpose_shift_zero hF]
   | .VTypeBox _, g => by
-      simp only [Frame.transposeShp, Shp.map, Shp.inner_box]
+      simp only [Arrows.transposeShp, Shp.map, Shp.inner_box]
       rw [transpose_shift_zero hF]
   | .VTypeDia _, g => by
-      simp only [Frame.transposeShp, Shp.map, Shp.label_dia, Shp.body_dia]
+      simp only [Arrows.transposeShp, Shp.map, Shp.label_dia, Shp.body_dia]
       rw [transpose_shift_zero hF]
       rfl
 
 /-- ⭐**Every map's shape transport commutes with transposition**, one level further out. -/
 theorem shp_transpose {w : F.W} :
     ∀ {A B : VarType} (f : GFunc σ A B) (j : ℕ) (g : (s : F.Acc w) → Shape F Root s.1 A),
-      GFunc.shp f (j + 1) (Frame.transposeShp g) =
-        Frame.transposeShp fun s => GFunc.shp f j (g s)
+      GFunc.shp f (j + 1) (Arrows.transposeShp g) =
+        Arrows.transposeShp fun s => GFunc.shp f j (g s)
   | _, _, .id _, _, _ => rfl
   | _, _, .comp g f, j, h => by
       simp only [GFunc.shp]
@@ -756,14 +756,14 @@ theorem shp_transpose {w : F.W} :
   | _, _, .func _ _, _, _ => rfl
   | _, _, .boxMap f, j, h => by
       simp only [GFunc.shp]
-      rw [show (Frame.transposeShp h).inner = Frame.transposeShp fun s => (h s).inner from rfl,
+      rw [show (Arrows.transposeShp h).inner = Arrows.transposeShp fun s => (h s).inner from rfl,
         shp_transpose f]
       rfl
   | _, _, .boxPair _ _, _, _ => rfl
   | _, _, .boxUnit, _, _ => rfl
   | _, _, .diaMap f, j, h => by
       simp only [GFunc.shp]
-      rw [show (Frame.transposeShp h).body = Frame.transposeShp fun s => (h s).body from rfl,
+      rw [show (Arrows.transposeShp h).body = Arrows.transposeShp fun s => (h s).body from rfl,
         shp_transpose f]
       rfl
   | _, _, .strength _ _, _, _ => rfl
@@ -772,7 +772,7 @@ theorem shp_transpose {w : F.W} :
       exact transpose_map _ _ (fun _ => rfl) _
   | _, _, .dup hF, j, h => by
       simp only [GFunc.shp]
-      rw [show (Frame.transposeShp h).inner = Frame.transposeShp fun s => (h s).inner from rfl,
+      rw [show (Arrows.transposeShp h).inner = Arrows.transposeShp fun s => (h s).inner from rfl,
         transpose_map _ _ (fun _ => rfl)]
       rfl
 
@@ -822,9 +822,9 @@ theorem termShp_diatm {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) {x
 
 theorem ShEnv.ref_transpose {Γ : Ctx} {w : F.W} (τ : ShEnv F Root Γ w)
     (ρ : (s : F.Acc w) → ShEnv F Root Γ s.1) (j : ℕ)
-    (hτ : ∀ v T h, τ v T h = Frame.transposeShp fun s => ρ s v T h) :
+    (hτ : ∀ v T h, τ v T h = Arrows.transposeShp fun s => ρ s v T h) :
     ∀ (v : VarSymb) {T : VarType} (h : Γ.ref v = some T),
-      τ.ref (j + 1) v h = Frame.transposeShp fun s => (ρ s).ref j v h
+      τ.ref (j + 1) v h = Arrows.transposeShp fun s => (ρ s).ref j v h
   | .root _, _, h => hτ _ _ h
   | .step v s, T, h => by
       by_cases hs : s.isProj = true
@@ -840,8 +840,8 @@ theorem ShEnv.ref_transpose {Γ : Ctx} {w : F.W} (τ : ShEnv F Root Γ w)
 
 theorem ShEnv.boxPush_transpose {Γ : Ctx} {w : F.W} (τ : ShEnv F Root Γ w)
     (ρ : (s : F.Acc w) → ShEnv F Root Γ s.1) (j : ℕ)
-    (hτ : ∀ v T h, τ v T h = Frame.transposeShp fun s => ρ s v T h) :
-    ∀ v T h, τ.boxPush (j + 1) v T h = Frame.transposeShp fun s => (ρ s).boxPush j v T h
+    (hτ : ∀ v T h, τ v T h = Arrows.transposeShp fun s => ρ s v T h) :
+    ∀ v T h, τ.boxPush (j + 1) v T h = Arrows.transposeShp fun s => (ρ s).boxPush j v T h
   | .step u .box, _, h => by
       simp only [ShEnv.boxPush]
       rw [ShEnv.ref_transpose τ ρ j hτ]
@@ -858,9 +858,9 @@ theorem ShEnv.boxPush_transpose {Γ : Ctx} {w : F.W} (τ : ShEnv F Root Γ w)
 
 theorem ShEnv.diaPush_transpose {Γ : Ctx} {w : F.W} (τ : ShEnv F Root Γ w)
     (ρ : (s : F.Acc w) → ShEnv F Root Γ s.1) (j : ℕ)
-    (hτ : ∀ v T h, τ v T h = Frame.transposeShp fun s => ρ s v T h) {x : VarSymb} {X : VarType}
+    (hτ : ∀ v T h, τ v T h = Arrows.transposeShp fun s => ρ s v T h) {x : VarSymb} {X : VarType}
     (hx : Γ.ref x = some (.VTypeDia X)) :
-    ∀ v T h, τ.diaPush (j + 1) x hx v T h = Frame.transposeShp fun s => (ρ s).diaPush j x hx v T h
+    ∀ v T h, τ.diaPush (j + 1) x hx v T h = Arrows.transposeShp fun s => (ρ s).diaPush j x hx v T h
   | .step _ .dia, _, h => by
       have e := Ctx.diaIn_step_dia hx h
       subst e
@@ -878,9 +878,9 @@ theorem ShEnv.diaPush_transpose {Γ : Ctx} {w : F.W} (τ : ShEnv F Root Γ w)
     when the environment is the transposed family of environments. -/
 theorem termShp_transpose {Δ : Ctx} {w : F.W} (τ : ShEnv F Root Δ w)
     (ρ : (s : F.Acc w) → ShEnv F Root Δ s.1) (j : ℕ)
-    (hτ : ∀ v T h, τ v T h = Frame.transposeShp fun s => ρ s v T h) :
+    (hτ : ∀ v T h, τ v T h = Arrows.transposeShp fun s => ρ s v T h) :
     ∀ {T : VarType} {a : Ann T} (t : Term σ Δ T a),
-      termShp τ (j + 1) t = Frame.transposeShp fun s => termShp (ρ s) j t
+      termShp τ (j + 1) t = Arrows.transposeShp fun s => termShp (ρ s) j t
   | _, _, .var _ _ => rfl
   | _, _, .func _ => rfl
   | _, _, .unit => rfl
@@ -1026,8 +1026,8 @@ theorem _root_.V12M.Shp.map_id {L : Type y} : ∀ {A : VarType} (a : Shp L A), a
 /-- A collapse at level `j` passes through any map acting at a level below it. -/
 theorem shp_mapCollapse (hT : ModalSys.T = true) (j : ℕ) {w : F.W} :
     ∀ {A B : VarType} (f : GFunc σ A B) (d : ℕ) (a : Shape F Root w A),
-      GFunc.shp f (j + d) (a.map (Frame.Leaf.collapse hT j)) =
-        (GFunc.shp f (j + d + 1) a).map (Frame.Leaf.collapse hT j)
+      GFunc.shp f (j + d) (a.map (Arrows.Leaf.collapse hT j)) =
+        (GFunc.shp f (j + d + 1) a).map (Arrows.Leaf.collapse hT j)
   | _, _, .id _, _, _ => rfl
   | _, _, .comp g f, d, a => by
       simp only [GFunc.shp]
@@ -1053,17 +1053,17 @@ theorem shp_mapCollapse (hT : ModalSys.T = true) (j : ℕ) {w : F.W} :
         Shp.map_body]
   | _, _, .extract hT', d, a => by
       simp only [GFunc.shp, Shp.map_inner, Shp.map_map]
-      exact Shp.map_congr (fun ℓ => Frame.Leaf.collapse_collapse hT j d ℓ) _
+      exact Shp.map_congr (fun ℓ => Arrows.Leaf.collapse_collapse hT j d ℓ) _
   | _, _, .dup hF, d, a => by
       simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_map]
       congr 2
-      exact Shp.map_congr (fun ℓ => Frame.Leaf.shift_collapse hT hF j d ℓ) _
+      exact Shp.map_congr (fun ℓ => Arrows.Leaf.shift_collapse hT hF j d ℓ) _
 
 /-- A shift at level `j` passes through any map acting at a level below it. -/
 theorem shp_mapShift (hF : ModalSys.Four = true) (j : ℕ) {w : F.W} :
     ∀ {A B : VarType} (f : GFunc σ A B) (d : ℕ) (a : Shape F Root w A),
-      GFunc.shp f (j + d + 2) (a.map (Frame.Leaf.shift hF j)) =
-        (GFunc.shp f (j + d + 1) a).map (Frame.Leaf.shift hF j)
+      GFunc.shp f (j + d + 2) (a.map (Arrows.Leaf.shift hF j)) =
+        (GFunc.shp f (j + d + 1) a).map (Arrows.Leaf.shift hF j)
   | _, _, .id _, _, _ => rfl
   | _, _, .comp g f, d, a => by
       simp only [GFunc.shp]
@@ -1091,11 +1091,11 @@ theorem shp_mapShift (hF : ModalSys.Four = true) (j : ℕ) {w : F.W} :
         Shp.map_body]
   | _, _, .extract hT, d, a => by
       simp only [GFunc.shp, Shp.map_inner, Shp.map_map]
-      exact Shp.map_congr (fun ℓ => Frame.Leaf.collapse_shift hT hF j d ℓ) _
+      exact Shp.map_congr (fun ℓ => Arrows.Leaf.collapse_shift hT hF j d ℓ) _
   | _, _, .dup hF', d, a => by
       simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_map]
       congr 2
-      exact Shp.map_congr (fun ℓ => Frame.Leaf.shift_shift hF j d ℓ) _
+      exact Shp.map_congr (fun ℓ => Arrows.Leaf.shift_shift hF j d ℓ) _
 
 /-- Apply a leaf map to every shape of an environment. -/
 def ShEnv.mapLeaves {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w)
@@ -1108,8 +1108,8 @@ variable {Γ : Ctx} {w : F.W}
 
 theorem ShEnv.ref_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ) :
     ∀ (v : VarSymb) {T : VarType} (h : Γ.ref v = some T),
-      (ρ.mapLeaves (Frame.Leaf.collapse hT j)).ref (j + d) v h =
-        (ρ.ref (j + d + 1) v h).map (Frame.Leaf.collapse hT j)
+      (ρ.mapLeaves (Arrows.Leaf.collapse hT j)).ref (j + d) v h =
+        (ρ.ref (j + d + 1) v h).map (Arrows.Leaf.collapse hT j)
   | .root _, _, _ => rfl
   | .step v s, T, h => by
       by_cases hs : s.isProj = true
@@ -1125,8 +1125,8 @@ theorem ShEnv.ref_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv F R
 
 theorem ShEnv.ref_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ) :
     ∀ (v : VarSymb) {T : VarType} (h : Γ.ref v = some T),
-      (ρ.mapLeaves (Frame.Leaf.shift hF j)).ref (j + d + 2) v h =
-        (ρ.ref (j + d + 1) v h).map (Frame.Leaf.shift hF j)
+      (ρ.mapLeaves (Arrows.Leaf.shift hF j)).ref (j + d + 2) v h =
+        (ρ.ref (j + d + 1) v h).map (Arrows.Leaf.shift hF j)
   | .root _, _, _ => rfl
   | .step v s, T, h => by
       by_cases hs : s.isProj = true
@@ -1141,8 +1141,8 @@ theorem ShEnv.ref_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : ShEnv F R
         rfl
 
 theorem ShEnv.boxPush_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ) :
-    (ρ.mapLeaves (Frame.Leaf.collapse hT j)).boxPush (j + d) =
-      (ρ.boxPush (j + d + 1)).mapLeaves (Frame.Leaf.collapse hT j) := by
+    (ρ.mapLeaves (Arrows.Leaf.collapse hT j)).boxPush (j + d) =
+      (ρ.boxPush (j + d + 1)).mapLeaves (Arrows.Leaf.collapse hT j) := by
   funext v T h
   match v with
   | .step u .box =>
@@ -1158,8 +1158,8 @@ theorem ShEnv.boxPush_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv
   | .step _ .here => cases h
 
 theorem ShEnv.boxPush_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ) :
-    (ρ.mapLeaves (Frame.Leaf.shift hF j)).boxPush (j + d + 2) =
-      (ρ.boxPush (j + d + 1)).mapLeaves (Frame.Leaf.shift hF j) := by
+    (ρ.mapLeaves (Arrows.Leaf.shift hF j)).boxPush (j + d + 2) =
+      (ρ.boxPush (j + d + 1)).mapLeaves (Arrows.Leaf.shift hF j) := by
   funext v T h
   match v with
   | .step u .box =>
@@ -1176,8 +1176,8 @@ theorem ShEnv.boxPush_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : ShEnv
 
 theorem ShEnv.diaPush_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ)
     {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) :
-    (ρ.mapLeaves (Frame.Leaf.collapse hT j)).diaPush (j + d) x hx =
-      (ρ.diaPush (j + d + 1) x hx).mapLeaves (Frame.Leaf.collapse hT j) := by
+    (ρ.mapLeaves (Arrows.Leaf.collapse hT j)).diaPush (j + d) x hx =
+      (ρ.diaPush (j + d + 1) x hx).mapLeaves (Arrows.Leaf.collapse hT j) := by
   funext v T h
   match v with
   | .step _ .dia =>
@@ -1196,8 +1196,8 @@ theorem ShEnv.diaPush_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv
 
 theorem ShEnv.diaPush_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ)
     {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) :
-    (ρ.mapLeaves (Frame.Leaf.shift hF j)).diaPush (j + d + 2) x hx =
-      (ρ.diaPush (j + d + 1) x hx).mapLeaves (Frame.Leaf.shift hF j) := by
+    (ρ.mapLeaves (Arrows.Leaf.shift hF j)).diaPush (j + d + 2) x hx =
+      (ρ.diaPush (j + d + 1) x hx).mapLeaves (Arrows.Leaf.shift hF j) := by
   funext v T h
   match v with
   | .step _ .dia =>
@@ -1220,8 +1220,8 @@ end MapLeaves
 theorem termShp_mapCollapse (hT : ModalSys.T = true) (j : ℕ) :
     ∀ {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (d : ℕ) {T : VarType} {a : Ann T}
       (t : Term σ Γ T a),
-      termShp (ρ.mapLeaves (Frame.Leaf.collapse hT j)) (j + d) t =
-        (termShp ρ (j + d + 1) t).map (Frame.Leaf.collapse hT j)
+      termShp (ρ.mapLeaves (Arrows.Leaf.collapse hT j)) (j + d) t =
+        (termShp ρ (j + d + 1) t).map (Arrows.Leaf.collapse hT j)
   | _, _, _, _, _, _, .var _ _ => rfl
   | _, _, _, _, _, _, .func _ => rfl
   | _, _, _, _, _, _, .unit => rfl
@@ -1243,8 +1243,8 @@ theorem termShp_mapCollapse (hT : ModalSys.T = true) (j : ℕ) :
 theorem termShp_mapShift (hF : ModalSys.Four = true) (j : ℕ) :
     ∀ {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (d : ℕ) {T : VarType} {a : Ann T}
       (t : Term σ Γ T a),
-      termShp (ρ.mapLeaves (Frame.Leaf.shift hF j)) (j + d + 2) t =
-        (termShp ρ (j + d + 1) t).map (Frame.Leaf.shift hF j)
+      termShp (ρ.mapLeaves (Arrows.Leaf.shift hF j)) (j + d + 2) t =
+        (termShp ρ (j + d + 1) t).map (Arrows.Leaf.shift hF j)
   | _, _, _, _, _, _, .var _ _ => rfl
   | _, _, _, _, _, _, .func _ => rfl
   | _, _, _, _, _, _, .unit => rfl
@@ -1271,12 +1271,12 @@ variable {M : Model.{u, v} σ}
 
 /-- The shape of an object, under T. -/
 abbrev domSh (hT : ModalSys.T = true) {A : VarType} {w : M.frame.W} (o : M.frame.Dom A w) :
-    Shape M.frame M.RootPoss w A :=
+    Shape M.arrows M.RootPoss w A :=
   Frame.domShape M.necEval (M.shape hT) o
 
 /-- The shapes of an environment's objects. -/
 def envShape (hT : ModalSys.T = true) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
-    ShEnv M.frame M.RootPoss Γ w :=
+    ShEnv M.arrows M.RootPoss Γ w :=
   fun v T h => domSh hT (env v T h)
 
 theorem Env.ref_proj' {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {v : VarSymb} {s : Step}
@@ -1307,7 +1307,7 @@ theorem domSh_stepObj (hT : ModalSys.T = true) {w : M.frame.W} {U T : VarType} {
   · rfl
   · obtain ⟨hT', rfl⟩ := VarType.step_here h
     change domSh hT (M.necEval a (M.frame.reflAcc hT' w)) =
-      (Frame.transposeShp fun s => domSh hT (M.necEval a s)).map (Frame.Leaf.collapse hT' 0)
+      (Arrows.transposeShp fun s => domSh hT (M.necEval a s)).map (Arrows.Leaf.collapse hT' 0)
     exact (transpose_collapse_zero hT' fun s => domSh hT (M.necEval a s)).symm
 
 /-- The symbolic shape at an address is the shape of the object there. -/
@@ -1331,7 +1331,7 @@ theorem ref_envShape (hT : ModalSys.T = true) {Γ : Ctx} {w : M.frame.W} (env : 
     environments. -/
 theorem boxPush_envShape (hT : ModalSys.T = true) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
     ∀ v T h, (envShape hT env).boxPush 0 v T h =
-      Frame.transposeShp fun s => envShape hT (env.boxPush s) v T h
+      Arrows.transposeShp fun s => envShape hT (env.boxPush s) v T h
   | .step u .box, _, h => by
       simp only [ShEnv.boxPush]
       rw [ref_envShape]
@@ -1340,10 +1340,10 @@ theorem boxPush_envShape (hT : ModalSys.T = true) {Γ : Ctx} {w : M.frame.W} (en
       obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep h
       simp only [ShEnv.boxPush]
       rw [ref_envShape]
-      change Shp.box ((Frame.transposeShp fun s =>
-          domSh hT (M.necEval (env.ref u hu) s)).map (Frame.Leaf.shift hF 0)) = _
+      change Shp.box ((Arrows.transposeShp fun s =>
+          domSh hT (M.necEval (env.ref u hu) s)).map (Arrows.Leaf.shift hF 0)) = _
       rw [transpose_shift_zero]
-      change _ = Frame.transposeShp fun s => Shp.box (Frame.transposeShp fun t =>
+      change _ = Arrows.transposeShp fun s => Shp.box (Arrows.transposeShp fun t =>
           domSh hT (M.necEval (M.necEval (M.ops.necDup hF (env.ref u hu)) s) t))
       simp only [M.necDup_eval]
       rfl
@@ -1361,10 +1361,10 @@ theorem domSh_bundle (hT : ModalSys.T = true) {Δ : Ctx} {w : M.frame.W} (env : 
       rw [domSh_bundle hT env L]
       rfl
 
-theorem ShEnv.bundle_transpose {Γ : Ctx} {w : M.frame.W} (τ : ShEnv M.frame M.RootPoss Γ w)
-    (ρ : (s : M.frame.Acc w) → ShEnv M.frame M.RootPoss Γ s.1)
-    (hτ : ∀ v T h, τ v T h = Frame.transposeShp fun s => ρ s v T h) :
-    ∀ L : Supp Γ, τ.bundle L = Frame.transposeShp fun s => (ρ s).bundle L
+theorem ShEnv.bundle_transpose {Γ : Ctx} {w : M.frame.W} (τ : ShEnv M.arrows M.RootPoss Γ w)
+    (ρ : (s : M.frame.Acc w) → ShEnv M.arrows M.RootPoss Γ s.1)
+    (hτ : ∀ v T h, τ v T h = Arrows.transposeShp fun s => ρ s v T h) :
+    ∀ L : Supp Γ, τ.bundle L = Arrows.transposeShp fun s => (ρ s).bundle L
   | [] => rfl
   | e :: L => by
       simp only [ShEnv.bundle]
@@ -1404,7 +1404,7 @@ theorem domSh_interp (hT : ModalSys.T = true) {Δ : Ctx} {w : M.frame.W} (env : 
       rw [domSh_interp hT env s, domSh_interp hT env t]
       rfl
   | _, _, .boxtm t => by
-      change Shp.box (Frame.transposeShp fun s =>
+      change Shp.box (Arrows.transposeShp fun s =>
           domSh hT (M.necEval (interp env (Term.boxtm t)) s)) =
         Shp.box (termShp ((envShape hT env).boxPush 0) (0 + 1) t)
       rw [termShp_transpose ((envShape hT env).boxPush 0) (fun s => envShape hT (env.boxPush s)) 0

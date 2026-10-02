@@ -338,14 +338,20 @@ theorem substEnv_dia {Γ Δ : Ctx} {ι : VarSymb → VarSymb} {w : M.frame.W} (�
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
 
+end Model
+
+namespace Model
+
+variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
+
 /-! ## Shapes: reading a `□` view at the current world, and keeping it -/
 
 /-- Under T, the `□` view collapsed at the current level agrees with the environment across the
     collapse — the shape counterpart of `Env.collapseAgree_self`. -/
-theorem ShEnv.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} {w : M.frame.W}
-    (ρ : ShEnv M.frame M.RootPoss Γ w) (j : ℕ) :
+theorem ShEnv.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} {w : F.W}
+    (ρ : ShEnv F Root Γ w) (j : ℕ) :
     ShEnv.CollapseAgree (Ctx.collapses_boxIn_self hT Γ)
-      ((ρ.boxPush j).mapLeaves (Frame.Leaf.collapse hT j)) ρ j := by
+      ((ρ.boxPush j).mapLeaves (Arrows.Leaf.collapse hT j)) ρ j := by
   refine ShEnv.CollapseAgree.of_raw ?_
   intro v T _ hv
   match v with
@@ -357,11 +363,11 @@ theorem ShEnv.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} {w : M.fram
   | .step u .keep =>
       obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
       rw [ShEnv.ref_congr ρ j (VarSymb.collapse_keep_zero (v := u)) _ hu]
-      change Shp.map (Frame.Leaf.collapse hT j)
-          (Shp.box ((ρ.ref j u hu).inner.map (Frame.Leaf.shift hF j))) = ρ.ref j u hu
+      change Shp.map (Arrows.Leaf.collapse hT j)
+          (Shp.box ((ρ.ref j u hu).inner.map (Arrows.Leaf.shift hF j))) = ρ.ref j u hu
       simp only [Shp.map, Shp.map_map]
-      rw [Shp.map_congr (g := Frame.Leaf.collapse hT j ∘ Frame.Leaf.shift hF j) (g' := id)
-        (fun ℓ => Frame.Leaf.collapse_shift_self hT hF j ℓ), Shp.map_id]
+      rw [Shp.map_congr (g := Arrows.Leaf.collapse hT j ∘ Arrows.Leaf.shift hF j) (g' := id)
+        (fun ℓ => Arrows.Leaf.collapse_shift_self hT hF j ℓ), Shp.map_id]
       exact (Shp.box_eta _).symm
   | .root _ => cases hv
   | .step _ .fst => cases hv
@@ -371,10 +377,10 @@ theorem ShEnv.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} {w : M.fram
 
 /-- Under 4, the `□` view kept and pushed once more agrees, across the shift, with the `□` view
     shifted at its level — the shape counterpart of `Env.shiftAgree_twoBox`. -/
-theorem ShEnv.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} {w : M.frame.W}
-    (ρ : ShEnv M.frame M.RootPoss Γ w) (j : ℕ) :
+theorem ShEnv.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} {w : F.W}
+    (ρ : ShEnv F Root Γ w) (j : ℕ) :
     ShEnv.ShiftAgree (Ctx.shifts_boxIn_boxIn hF Γ)
-      ((ρ.boxPush j).mapLeaves (Frame.Leaf.shift hF j)) ((ρ.boxPush j).boxPush (j + 1))
+      ((ρ.boxPush j).mapLeaves (Arrows.Leaf.shift hF j)) ((ρ.boxPush j).boxPush (j + 1))
       (j + 2) := by
   refine ShEnv.ShiftAgree.of_raw ?_
   intro x T _ hx
@@ -384,7 +390,7 @@ theorem ShEnv.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} {w : M.fr
       rw [ShEnv.ref_congr _ _ (VarSymb.shift_level_zero (s := .box) rfl) _
         (Ctx.ref_boxIn_of hk (Ctx.ref_keep_of hF hu)),
         ShEnv.ref_nonproj _ _ (by decide : ¬ Step.box.isProj = true)]
-      change (ρ.ref j u hu).inner.map (Frame.Leaf.shift hF j) =
+      change (ρ.ref j u hu).inner.map (Arrows.Leaf.shift hF j) =
         ((ρ.boxPush j).ref (j + 1) (.step u .keep) (Ctx.ref_keep_of hF hu)).inner
       rw [ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
       rfl
@@ -393,18 +399,18 @@ theorem ShEnv.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} {w : M.fr
       rw [ShEnv.ref_congr _ _ (VarSymb.shift_level_zero (s := .keep) rfl) _
         (Ctx.ref_keep_of hF (Ctx.ref_keep_of hF hu)),
         ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
-      change Shp.map (Frame.Leaf.shift hF j)
-          (Shp.box ((ρ.ref j u hu).inner.map (Frame.Leaf.shift hF j))) =
+      change Shp.map (Arrows.Leaf.shift hF j)
+          (Shp.box ((ρ.ref j u hu).inner.map (Arrows.Leaf.shift hF j))) =
         (GFunc.shp (GFunc.dup (σ := σ) hF) (j + 1)
           ((ρ.boxPush j).ref (j + 1) (.step u .keep) (Ctx.ref_keep_of hF hu))).inner
       rw [ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
-      change Shp.box (((ρ.ref j u hu).inner.map (Frame.Leaf.shift hF j)).map
-          (Frame.Leaf.shift hF j)) =
-        Shp.box (((ρ.ref j u hu).inner.map (Frame.Leaf.shift hF j)).map
-          (Frame.Leaf.shift hF (j + 1)))
+      change Shp.box (((ρ.ref j u hu).inner.map (Arrows.Leaf.shift hF j)).map
+          (Arrows.Leaf.shift hF j)) =
+        Shp.box (((ρ.ref j u hu).inner.map (Arrows.Leaf.shift hF j)).map
+          (Arrows.Leaf.shift hF (j + 1)))
       rw [Shp.map_map, Shp.map_map]
       exact congrArg Shp.box
-        (Shp.map_congr (fun ℓ => (Frame.Leaf.shift_shift_self hF j ℓ).symm) _)
+        (Shp.map_congr (fun ℓ => (Arrows.Leaf.shift_shift_self hF j ℓ).symm) _)
   | .root _ => cases hx
   | .step _ .fst => cases hx
   | .step _ .snd => cases hx
@@ -413,46 +419,46 @@ theorem ShEnv.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} {w : M.fr
 
 /-- ⭐A term read in the `□` view and collapsed to the current level has the view's shape,
     collapsed at the current level. -/
-theorem termShp_collapse_self (hT : ModalSys.T = true) {Γ : Ctx} {w : M.frame.W}
-    (ρ : ShEnv M.frame M.RootPoss Γ w) (j : ℕ) {A : VarType} {a : Ann A} (t : Term σ Γ.boxIn A a) :
+theorem termShp_collapse_self (hT : ModalSys.T = true) {Γ : Ctx} {w : F.W}
+    (ρ : ShEnv F Root Γ w) (j : ℕ) {A : VarType} {a : Ann A} (t : Term σ Γ.boxIn A a) :
     termShp ρ j (Term.collapse (Ctx.collapses_boxIn_self hT Γ) t) =
-      (termShp (ρ.boxPush j) (j + 1) t).map (Frame.Leaf.collapse hT j) := by
+      (termShp (ρ.boxPush j) (j + 1) t).map (Arrows.Leaf.collapse hT j) := by
   rw [termShp_collapse (ShEnv.collapseAgree_self hT ρ j)]
   exact termShp_mapCollapse hT j (ρ.boxPush j) 0 t
 
 /-- ⭐A term of the `□` view, shifted into the `□□` view, has the view's shape shifted at its
     level. -/
-theorem termShp_shift_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} {w : M.frame.W}
-    (ρ : ShEnv M.frame M.RootPoss Γ w) (j : ℕ) {A : VarType} {a : Ann A} (t : Term σ Γ.boxIn A a) :
+theorem termShp_shift_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} {w : F.W}
+    (ρ : ShEnv F Root Γ w) (j : ℕ) {A : VarType} {a : Ann A} (t : Term σ Γ.boxIn A a) :
     termShp ((ρ.boxPush j).boxPush (j + 1)) (j + 2)
         (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) t) =
-      (termShp (ρ.boxPush j) (j + 1) t).map (Frame.Leaf.shift hF j) := by
+      (termShp (ρ.boxPush j) (j + 1) t).map (Arrows.Leaf.shift hF j) := by
   rw [termShp_shift (ShEnv.shiftAgree_twoBox hF ρ j)]
   exact termShp_mapShift hF j (ρ.boxPush j) 0 t
 
 /-! ## Shapes under substitution -/
 
 /-- The shape of a substitution entry. -/
-def entryShp {Δ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.RootPoss Δ w) (j : ℕ) :
-    (e : SubE σ Δ) → {T : VarType} → e.OkRef T → Shape M.frame M.RootPoss w T
+def entryShp {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) :
+    (e : SubE σ Δ) → {T : VarType} → e.OkRef T → Shape F Root w T
   | .ren v, _, h => ρ.ref j v h
   | .tm s, _, h => h ▸ termShp ρ j s
   | .hide, _, h => False.elim h
 
 /-- The shape environment a substitution induces on its source. -/
-def substShEnv {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
-    (hnp : Γ.NoProjLast) (ρ : ShEnv M.frame M.RootPoss Δ w) (j : ℕ)
-    : ShEnv M.frame M.RootPoss Γ w :=
+def substShEnv {Γ Δ : Ctx} {w : F.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
+    (hnp : Γ.NoProjLast) (ρ : ShEnv F Root Δ w) (j : ℕ)
+    : ShEnv F Root Γ w :=
   fun v T hv => entryShp ρ j (θ v) (hθ v T (hnp v T hv) hv)
 
-theorem entryShp_congr {Δ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.RootPoss Δ w) (j : ℕ)
+theorem entryShp_congr {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ)
     {e e' : SubE σ Δ}
     {T : VarType} (he : e = e') (h : e.OkRef T) (h' : e'.OkRef T) :
     entryShp ρ j e h = entryShp ρ j e' h' := by
   subst he
   rfl
 
-theorem entryShp_proj {Δ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.RootPoss Δ w) (j : ℕ) :
+theorem entryShp_proj {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) :
     ∀ {e : SubE σ Δ} {U T : VarType} {s : Step} (he : e.OkRef U) (hs : s.isProj = true)
       (hst : U.step s = some T),
       entryShp ρ j (e.proj s) (SubE.okRef_proj he hs hst) =
@@ -482,13 +488,13 @@ theorem entryShp_proj {Δ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.RootPoss 
               subst hAT
               rw [entryShp_congr ρ j (SubE.proj_boxtm_here t hT) _ rfl]
               change termShp ρ j (Term.collapse _ t) =
-                (termShp (ρ.boxPush j) (j + 1) t).map (Frame.Leaf.collapse hT j)
+                (termShp (ρ.boxPush j) (j + 1) t).map (Arrows.Leaf.collapse hT j)
               exact termShp_collapse_self hT ρ j t
           | _ => cases hst
 
 /-- The substituted shape environment at any reachable address is that address's entry. -/
-theorem substShEnv_ref {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
-    (hnp : Γ.NoProjLast) (ρ : ShEnv M.frame M.RootPoss Δ w) (j : ℕ) :
+theorem substShEnv_ref {Γ Δ : Ctx} {w : F.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
+    (hnp : Γ.NoProjLast) (ρ : ShEnv F Root Δ w) (j : ℕ) :
     ∀ (v : VarSymb) {T : VarType} (hv : Γ.ref v = some T),
       (substShEnv θ hθ hnp ρ j).ref j v hv = entryShp ρ j (θ.at v) (Subst.okRef_at hθ hv)
   | .root _, _, _ => rfl
@@ -512,8 +518,8 @@ theorem substShEnv_ref {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : S
         exact entryShp_congr ρ j (Subst.at_nonproj θ (v := .step v s)
           (show (VarSymb.step v s).lastProj = false from Bool.eq_false_iff.mpr hs)).symm _ _
 
-theorem entryShp_mono {Δ Δ' : Ctx} {h : Δ.Le Δ'} {w : M.frame.W} {ρ : ShEnv M.frame M.RootPoss Δ w}
-    {ρ' : ShEnv M.frame M.RootPoss Δ' w} (hag : ShEnv.Agree h ρ ρ') (j : ℕ) :
+theorem entryShp_mono {Δ Δ' : Ctx} {h : Δ.Le Δ'} {w : F.W} {ρ : ShEnv F Root Δ w}
+    {ρ' : ShEnv F Root Δ' w} (hag : ShEnv.Agree h ρ ρ') (j : ℕ) :
     ∀ (e : SubE σ Δ) {T : VarType} (he : e.OkRef T),
       entryShp ρ' j (e.mono h) (SubE.okRef_mono h he) = entryShp ρ j e he
   | .ren v, _, he => (ShEnv.ref_agree hag j v he).symm
@@ -522,7 +528,7 @@ theorem entryShp_mono {Δ Δ' : Ctx} {h : Δ.Le Δ'} {w : M.frame.W} {ρ : ShEnv
       exact termShp_mono hag j s
   | .hide, _, he => False.elim he
 
-theorem entryShp_unbox {Δ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.RootPoss Δ w) (j : ℕ)
+theorem entryShp_unbox {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ)
     (hk : ModalSys.keepOnly = false) :
     ∀ {e : SubE σ Δ} {A : VarType} (he : e.OkRef (.VTypeBox A)),
       entryShp (ρ.boxPush j) (j + 1) e.unbox (SubE.okRef_unbox he) = (entryShp ρ j e he).inner
@@ -538,7 +544,7 @@ theorem entryShp_unbox {Δ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.RootPoss
       | boxtm t => rfl
   | .hide, _, he => False.elim he
 
-theorem entryShp_keepE {Δ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.RootPoss Δ w) (j : ℕ)
+theorem entryShp_keepE {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ)
     (hF : ModalSys.Four = true) :
     ∀ {e : SubE σ Δ} {A : VarType} (he : e.OkRef (.VTypeBox A)),
       entryShp (ρ.boxPush j) (j + 1) e.keepE (SubE.okRef_keepE hF he) =
@@ -555,12 +561,12 @@ theorem entryShp_keepE {Δ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.RootPoss
           rw [entryShp_congr _ _ (SubE.keepE_tm t hF) _ rfl]
           change Shp.box (termShp ((ρ.boxPush j).boxPush (j + 1)) (j + 2)
               (Term.shift (Ctx.shifts_boxIn_boxIn hF Δ) t)) =
-            Shp.box ((termShp (ρ.boxPush j) (j + 1) t).map (Frame.Leaf.shift hF j))
+            Shp.box ((termShp (ρ.boxPush j) (j + 1) t).map (Arrows.Leaf.shift hF j))
           rw [termShp_shift_twoBox hF ρ j t]
   | .hide, _, he => False.elim he
 
-theorem substShEnv_box {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
-    (hnp : Γ.NoProjLast) (ρ : ShEnv M.frame M.RootPoss Δ w) (j : ℕ) :
+theorem substShEnv_box {Γ Δ : Ctx} {w : F.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
+    (hnp : Γ.NoProjLast) (ρ : ShEnv F Root Δ w) (j : ℕ) :
     substShEnv θ.box (Subst.ok_box hθ) (Ctx.noProjLast_boxIn Γ) (ρ.boxPush j) (j + 1) =
       (substShEnv θ hθ hnp ρ j).boxPush j := by
   funext v T hv
@@ -581,7 +587,7 @@ theorem substShEnv_box {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : S
   | .step _ .dia => cases hv
   | .step _ .here => cases hv
 
-theorem ShEnv.box_dia_agree {Δ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.RootPoss Δ w) (j : ℕ)
+theorem ShEnv.box_dia_agree {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ)
     {x : VarSymb}
     {X : VarType} (hr : Δ.ref x = some (.VTypeDia X)) :
     ShEnv.Agree (Ctx.le_boxIn_diaIn Δ x) (ρ.boxPush j) (ρ.diaPush j x hr) := by
@@ -596,7 +602,7 @@ theorem ShEnv.box_dia_agree {Δ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.Roo
   | .step _ .here => cases hv
 
 /-- A possible entry has the label of the new witness. -/
-theorem entryShp_dia_label {Δ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.RootPoss Δ w) (j : ℕ)
+theorem entryShp_dia_label {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ)
     {ιx : VarSymb}
     {X Y : VarType} :
     ∀ {e : SubE σ Δ} (he : e.OkRef (.VTypeDia X)) (_hw : e.idxAlong [] = ιx)
@@ -626,7 +632,7 @@ theorem entryShp_dia_label {Δ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.Root
   | .hide, he, _, _ => False.elim he
 
 /-- A possible entry's content shape is its body's. -/
-theorem entryShp_dia_body {Δ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.RootPoss Δ w) (j : ℕ)
+theorem entryShp_dia_body {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ)
     {ιx : VarSymb}
     {X Y : VarType} :
     ∀ {e : SubE σ Δ} (he : e.OkRef (.VTypeDia X)) (hw : e.idxAlong [] = ιx)
@@ -657,8 +663,8 @@ theorem entryShp_dia_body {Δ : Ctx} {w : M.frame.W} (ρ : ShEnv M.frame M.RootP
   | .tm (.boxtm _), he, _, _ => nomatch he
   | .hide, he, _, _ => False.elim he
 
-theorem substShEnv_dia {Γ Δ : Ctx} {ι : VarSymb → VarSymb} {w : M.frame.W} (θ : Subst σ Δ)
-    (hθ : Subst.Ok Γ θ) (hnp : Γ.NoProjLast) (ρ : ShEnv M.frame M.RootPoss Δ w) (j : ℕ)
+theorem substShEnv_dia {Γ Δ : Ctx} {ι : VarSymb → VarSymb} {w : F.W} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hnp : Γ.NoProjLast) (ρ : ShEnv F Root Δ w) (j : ℕ)
     {x : VarSymb}
     {X Y : VarType} (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (hr : Γ.ref x = some (.VTypeDia X))
     (hr₁ : Δ.ref (ι x) = some (.VTypeDia Y)) (hw : (θ.at x).idxAlong [] = ι x) :
@@ -703,7 +709,7 @@ theorem substShEnv_dia {Γ Δ : Ctx} {ι : VarSymb → VarSymb} {w : M.frame.W} 
 /-- ⭐**Substitution lemma for shapes.** -/
 theorem termShp_subst {ι : VarSymb → VarSymb} :
     ∀ {Γ Δ : Ctx} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ)
-      (hnp : Γ.NoProjLast) {w : M.frame.W} (ρ : ShEnv M.frame M.RootPoss Δ w) (j : ℕ)
+      (hnp : Γ.NoProjLast) {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ)
       {T : VarType} {a : Ann T} (t : Term σ Γ T a),
       termShp ρ j (Term.subst ι θ hθ hc t) = termShp (substShEnv θ hθ hnp ρ j) j t
   | _, _, _, _, _, _, _, _, _, _, _, .var _ _ => shp_var_eq _ _
@@ -732,6 +738,12 @@ theorem termShp_subst {ι : VarSymb → VarSymb} :
           (Ctx.noProjLast_diaIn Γ x) (ρ.diaPush j (ι x) hr₁) (j + 1) t,
         substShEnv_dia θ hθ hnp ρ j hx hr hr₁ hw, substShEnv_ref θ hθ hnp ρ j x hr,
         entryShp_dia_label ρ j (Subst.okRef_at hθ hr) hw hr₁]
+
+end Model
+
+namespace Model
+
+variable {σ : Signature} {M : Model.{u, v} σ}
 
 /-- The shape of an entry's value is the entry's shape. -/
 theorem domSh_entryVal (hT : ModalSys.T = true) {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :

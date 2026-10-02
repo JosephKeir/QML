@@ -163,6 +163,19 @@ theorem interp_canon_eta (w : World σ N₀) (k : ℕ × ℕ) (y : VarSymb) {A :
       toDom w₀ A w (rden w k (Ctx.Le.refl _) (Term.eta y A hy)) (definable_rden _ _) :=
   (Model.interp_eta (canonEnv w₀ w k) y hy).trans (canonEnv_ref w₀ w k y hy)
 
+/-- Under T, the shapes of an environment agreeing with the canonical one are the canonical
+    shapes: each address's value is its η-expansion's denotation, whose stored shape is the
+    symbolic one (`rawShape_rden`), which for an η-expansion is the address's (`termShp_eta`). -/
+theorem envShape_canon (hT : ModalSys.T = true) {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
+    {e : Γ.Le (w.L.ctx i)} {env : (model w₀).Env Γ w}
+    (hag : Model.Env.Agree e env (canonEnv w₀ w i)) :
+    Model.envShape hT env = cEnv Γ w := by
+  funext v T hv
+  change Model.domSh hT (env v T hv) = canonSh w v T
+  rw [hag v T hv]
+  refine (domShape_toDom w₀ hT T w _ _).trans ?_
+  rw [rawShape_rden, Model.termShp_eta, cEnv_ref]
+
 theorem canonEnv_extent (w : World σ N₀) (i : ℕ × ℕ) {x : VarSymb} {X : VarType}
     (hr : (w.L.ctx i).ref x = some (.VTypeDia X)) :
     ((model w₀).posEval ((canonEnv w₀ w i).ref x hr)).1 = extent w x := by
@@ -511,7 +524,10 @@ mutual
             le_rfl hag w' hd
     | _, _, _, .diatm x hx t, w, i, e, env, hag => by
         obtain ⟨X, hr⟩ := hx
-        refine posEval_injective w₀ (?_ : (model w₀).posEval _ = (model w₀).posEval _)
+        refine (model w₀).pos_inj ?_ fun hT => ?_
+        swap
+        · exact (Model.domSh_interp hT env (.diatm x ⟨X, hr⟩ t)).trans
+            (by rw [envShape_canon w₀ hT hag]; rfl)
         rw [Model.dia_beta env ⟨X, hr⟩ hr t]
         have hpq₀ : env.ref x hr = (canonEnv w₀ w i).ref x (e.ref hr) :=
           Model.Env.ref_agree hag x hr

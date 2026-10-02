@@ -3729,8 +3729,8 @@ Checkpoint before the change: tag `checkpoint-before-semann` (commit `c51d3bd` o
   `Root`.)
 
 **Instances.**  `BCanonModel` (no T): the shape fields are vacuous via `noT`.  `CanonModel` (T track):
-⚠️**TEMPORARY `sorry`** in `shape`, `shape_posMap`, `shape_posStrength`.  These need step 5's tagged
-carriers; the current carriers are fully extensional, so `pos_inj` holds outright.  To be removed in
+~~TEMPORARY `sorry`~~ (✅ removed in §10.37) in `shape`, `shape_posMap`, `shape_posStrength`.  These
+needed step 5's tagged carriers; the current carriers are fully extensional, so `pos_inj` holds outright.  To be removed in
 step 5.  `CanonTerm`/`BCanonTerm` now prove equality of canonical possible objects with the
 canonical `posEval_injective` directly, not `Model.pos_inj`.
 
@@ -3938,3 +3938,58 @@ model link (S2: `domSh`, `envShape`, `domSh_interp`, and the bundle lemmas) stil
 `ShEnv M.frame M.RootPoss`.  Lemma names are unchanged, so no proof changed.  This lets the
 canonical construction compute its tags with `termShp` before the canonical model exists.
 Build unchanged.
+
+### 10.37 ✅Step 5, items 2–4: the canonical tags; the temporary `sorry`s are gone *(2026-10-03)*
+
+**A circularity, and the split that removes it.**  A shape's type, `Shp (Leaf … w) (◇A)`, depended on
+the whole `Frame`.  The canonical frame's `Pos` carriers are built from the tagged raw objects, so the
+tags could not be typed.  A leaf only ever uses worlds, arrows, `refl`, `trans` and their laws.  These
+are now a structure **`Arrows σ`**, and `Frame σ extends Arrows σ`.  The signature is a phantom
+parameter, there so that `GFunc.shp` can read `σ` off the arrows as it read it off the frame.
+`Arrows.Leaf`, `Arrows.transposeShp` and the whole frame-level shape layer take `{F : Arrows σ}`.
+This covers `ShEnv`, `termShp`, the collapse/shift/mono/subst/η lemmas, `termShp_collapse_self` and
+`termShp_shift_twoBox`.  The model-level files write `ShEnv M.arrows M.RootPoss`, with
+`Model.arrows := M.frame.toArrows`.
+
+**The canonical shapes (`QML_v12m_CanonShape.lean`, new).**
+* `Canon.arrows σ N₀`: worlds and chains.  The canonical frame is `{ toArrows := arrows σ N₀, … }`.
+* `canonSh w v T`, by recursion on `T`.  A `◇` address is a root: label `root v []`, and each `◇`
+  position of its content is `root v π` (`rootSh`; the path steps are the shape's own — `box` at a `□`
+  position, whatever the view addresses are).  A `□` address has, at each successor `s`, the
+  shape of `succAddr w s v.inner`: collapsed at the world itself, shifted `d` times `d + 1` levels
+  deeper, exactly as `rden` moves a `□` body.
+* `canonEnvF Γ w f` reads each address through `f`.  When `f` commutes with projections, every
+  reachable address reads canonically (`canonEnvF_ref`).  `cEnv := canonEnvF · · id` does not depend
+  on the context, so stage changes and weakening leave shapes alone.
+* ⭐`cEnv_boxPush`: `cEnv` pushed into `□` is the transposed family `s ↦ canonEnvF Γ.boxIn s
+  (succAddr w s)`.  The `keep` entries need one address identity over composite arrows,
+  `succAddr_keep` (`shiftIter`/`keepIter` arithmetic; under T+4 the `keepOnly` contents `u.keep.here`).
+
+**Tags (`CanonDom`, `CanonFunc`).**
+* `RDom (◇A) w := RPos w A …`, a structure with fields `E`, `c` and `tag : T = true → CShape w (◇A)`.
+  `.1`/`.2` keep their meaning, so most proofs were untouched.  **The tag is gated by T**, as
+  `Model.posFull` is: without T two raw objects with one section must be one object, which an
+  ungated tag would break.
+* `rden`'s tag for `⟨x; t⟩` is `termShp (cEnv Γ w) 0 ⟨x; t⟩`.  Only `rden_mono` (by `termShp_mono`)
+  and `rden_congr` (`rfl`) needed a tag half.
+* `rawShape hT : RDom A w → CShape w A`, the raw `Frame.domShape`.  ⭐`rawShape_rden`: *the stored
+  shape is the symbolic one*.  A `◇` term holds by definition.  A `□` term goes by `cEnv_boxPush` +
+  `termShp_transpose`, then `termShp_collapse_cEnv` at the world itself or `termShp_shiftIter_cEnv`
+  further on.  The recursion is on the type, as `rden`'s is.
+* `rawEval` transports tags as the laws say.  ⭐`termShp_applyG`: `termShp (applyG g t) =
+  g.shp (termShp t)`, for any arrows and any shape environment (the `applyG` analogue of S1).  With
+  `rawShape_rden` for `strength`, it gives the tag halves of `rden_applyG`, so `definable_rawEval`
+  is unchanged.
+
+**The model (`CanonModel`, `CanonTerm`).**  `RootPoss _ := VarSymb` and `posFull p := (posEval p, p.1.3)`.
+`posFull_injective` replaces `posEval_injective`.  `posMap_full`'s shape half is `rfl`, and
+`posStrength_full`'s goes through `domShape_toDom`: a frame object's `domShape` is its raw object's
+`rawShape`.  In `interp_canon`, `◇` now uses `Model.pos_inj`.  The shape half is S2
+(`domSh_interp`) plus `envShape_canon`: the shapes of an environment agreeing with the canonical
+one are `cEnv` (`domShape_toDom`, `rawShape_rden`, `termShp_eta`).
+
+**State.**  The whole list builds with only `Completeness.lean:286` (the `here` alternative).
+`QML_v12m_*` has no `sorry` (source scan); the three temporary ones of §10.29/§10.35 are gone.
+Remaining in step 5: items 5 and 7 (`Interch`/`DTerm.Rel` at every type, canonical
+`Ind := Rel` of representatives, canonical `IndInvariant`).  The canonical model still has
+`Ind := Eq`.  Then step 6, the truth lemma's `here` case.

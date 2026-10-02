@@ -32,10 +32,13 @@ universe u v
 
 variable [ModalSys]
 
-/-- A pointed frame with base domains, modal carriers, and the interpretation of the signature. -/
-structure Frame (σ : Signature) where
+/-- ⭐The **arrows** of a frame: its worlds, the arrows between them and, under T and 4, identities
+    and composition with their laws.  Split off from `Frame` because this is all a shape's leaves
+    see (`Arrows.Leaf`), so shapes can be typed before a frame's carriers are built — the canonical
+    model stores shapes inside its possible objects (docs §10.36).  The signature is not used: it
+    is carried so that the definable maps acting on shapes (`GFunc.shp`) can read it off. -/
+structure Arrows (σ : Signature) where
   W : Type u
-  actual : W
   /-- The **arrows** from one world to another. A `Prop`-valued `R` is an ordinary accessibility
       relation (at most one arrow per pair); a `Type`-valued one lets two arrows between the same
       worlds carry different values, which the canonical construction for B and 5 uses before it
@@ -45,11 +48,6 @@ structure Frame (σ : Signature) where
   refl : ModalSys.T = true → ∀ w, R w w
   /-- Under 4, arrows compose. -/
   trans : ModalSys.Four = true → ∀ {w v s : W}, R w v → R v s → R w s
-  /-- Under D, every world has an arrow out. -/
-  serial : ModalSys.D = true → ∀ w, ∃ v, Nonempty (R w v)
-  /-- Under B, every arrow has some arrow back.  Only existence: which arrow comes back, and
-      whether a round trip agrees with anything, is left open (`docs/v12-arrow-canonical.md` §6). -/
-  symm : ModalSys.B = true → ∀ {w v : W}, R w v → Nonempty (R v w)
   /-- Under T and 4, the identity arrows are units for composition: reading a kept object at the
       world it was kept at is reading the object (`u.keep.here`), and keeping and then reading at
       once is reading. Automatic for a relational frame. -/
@@ -61,6 +59,28 @@ structure Frame (σ : Signature) where
       is merged first. Automatic for a relational frame. -/
   trans_assoc : ∀ (hF : ModalSys.Four = true) {w v s t : W} (a : R w v) (b : R v s)
     (c : R s t), trans hF (trans hF a b) c = trans hF a (trans hF b c)
+
+namespace Arrows
+
+variable {σ : Signature} (F : Arrows.{u, v} σ)
+
+/-- The arrows out of a world, each with its target. For a relational frame this is the set of
+    accessible worlds. -/
+abbrev Acc (w : F.W) : Type (max u v) := Σ w' : F.W, PLift (F.R w w')
+
+/-- The identity arrow at a world, under T: the arrow `T`'s rules read along. -/
+abbrev reflAcc (hT : ModalSys.T = true) (w : F.W) : F.Acc w := ⟨w, ⟨F.refl hT w⟩⟩
+
+end Arrows
+
+/-- A pointed frame with base domains, modal carriers, and the interpretation of the signature. -/
+structure Frame (σ : Signature) extends Arrows.{u, v} σ where
+  actual : W
+  /-- Under D, every world has an arrow out. -/
+  serial : ModalSys.D = true → ∀ w, ∃ v, Nonempty (R w v)
+  /-- Under B, every arrow has some arrow back.  Only existence: which arrow comes back, and
+      whether a round trip agrees with anything, is left open (`docs/v12-arrow-canonical.md` §6). -/
+  symm : ModalSys.B = true → ∀ {w v : W}, R w v → Nonempty (R v w)
   D : W → Type u
   Nec : VarType → W → Type u
   Pos : VarType → W → Type u
@@ -70,13 +90,6 @@ structure Frame (σ : Signature) where
 namespace Frame
 
 variable {σ : Signature} (F : Frame.{u, v} σ)
-
-/-- The arrows out of a world, each with its target. For a relational frame this is the set of
-    accessible worlds. -/
-abbrev Acc (w : F.W) : Type (max u v) := Σ w' : F.W, PLift (F.R w w')
-
-/-- The identity arrow at a world, under T: the arrow `T`'s rules read along. -/
-abbrev reflAcc (hT : ModalSys.T = true) (w : F.W) : F.Acc w := ⟨w, ⟨F.refl hT w⟩⟩
 
 /-- The domain of a type at a world. -/
 def Dom : VarType → F.W → Type u
@@ -174,7 +187,7 @@ and never two objects over different witnesses.
 A shape is a tree over the type, like `Ann`, whose labels are **leaves** anchored at the object's
 world.  A leaf is either a root possibility with a syntactic path into its content, which survives
 an empty extent, or a family with one leaf per arrow, for positions reached through a necessary
-object.  Levels are counted from the anchor (`Frame.Leaf.collapse`, `Frame.Leaf.shift`). -/
+object.  Levels are counted from the anchor (`Arrows.Leaf.collapse`, `Arrows.Leaf.shift`). -/
 
 universe x
 
@@ -253,37 +266,37 @@ def Step.shiftAt : ℕ → List Step → List Step
 
 /-- ⭐A leaf of a semantic annotation, anchored at a world (docs §10.28): a **root** possibility with
     a syntactic path into its content, or a **family** with one leaf at the target of each arrow. -/
-inductive Frame.Leaf {σ : Signature} (F : Frame.{u, v} σ) (Root : F.W → Type u) :
+inductive Arrows.Leaf {σ : Signature} (F : Arrows.{u, v} σ) (Root : F.W → Type u) :
     F.W → Type (max u v)
-  | root {w : F.W} (r : Root w) (p : List Step) : Frame.Leaf F Root w
-  | fam {w : F.W} (f : (s : F.Acc w) → Frame.Leaf F Root s.1) : Frame.Leaf F Root w
+  | root {w : F.W} (r : Root w) (p : List Step) : Arrows.Leaf F Root w
+  | fam {w : F.W} (f : (s : F.Acc w) → Arrows.Leaf F Root s.1) : Arrows.Leaf F Root w
 
-namespace Frame.Leaf
+namespace Arrows.Leaf
 
-variable {σ : Signature} {F : Frame.{u, v} σ} {Root : F.W → Type u}
+variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
 
 /-- Under T, collapse the level `i` steps from the anchor: a family is read at the identity arrow
     there, and a root path loses that level step (`Step.collapseAt`). -/
-def collapse (hT : ModalSys.T = true) : ℕ → {w : F.W} → Frame.Leaf F Root w → Frame.Leaf F Root w
+def collapse (hT : ModalSys.T = true) : ℕ → {w : F.W} → F.Leaf Root w → F.Leaf Root w
   | i, _, .root r p => .root r (Step.collapseAt i p)
   | 0, w, .fam f => f (F.reflAcc hT w)
   | i + 1, _, .fam f => .fam fun s => collapse hT i (f s)
 
 /-- Under 4, insert a level `i` steps from the anchor: a family is reindexed by composite arrows,
     and a root path gains a `keep` (`Step.shiftAt`). -/
-def shift (hF : ModalSys.Four = true) : ℕ → {w : F.W} → Frame.Leaf F Root w → Frame.Leaf F Root w
+def shift (hF : ModalSys.Four = true) : ℕ → {w : F.W} → F.Leaf Root w → F.Leaf Root w
   | i, _, .root r p => .root r (Step.shiftAt i p)
   | 0, _, .fam f => .fam fun s => .fam fun t => f ⟨t.1, ⟨F.trans hF s.2.down t.2.down⟩⟩
   | i + 1, _, .fam f => .fam fun s => shift hF i (f s)
 
-end Frame.Leaf
+end Arrows.Leaf
 
 /-- ⭐How a definable map moves the shape of its argument: positions are rearranged as the map
     rearranges components, labels are kept, and `extract`/`dup` collapse/shift the level they act
     at.  `j` is the number of levels above the current position. -/
-def GFunc.shp {σ : Signature} {F : Frame.{u, v} σ} {Root : F.W → Type u} {w : F.W} :
+def GFunc.shp {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u} {w : F.W} :
     {A B : VarType} → GFunc σ A B → ℕ →
-      Shp (Frame.Leaf F Root w) A → Shp (Frame.Leaf F Root w) B
+      Shp (F.Leaf Root w) A → Shp (F.Leaf Root w) B
   | _, _, .id _, _, a => a
   | _, _, .comp g f, j, a => GFunc.shp g j (GFunc.shp f j a)
   | _, _, .fst, _, a => a.fst
@@ -296,32 +309,32 @@ def GFunc.shp {σ : Signature} {F : Frame.{u, v} σ} {Root : F.W → Type u} {w 
   | _, _, .boxUnit, _, _ => .box .one
   | _, _, .diaMap f, j, a => .dia a.label (GFunc.shp f (j + 1) a.body)
   | _, _, .strength _ _, _, a => .dia a.snd.label (.prod a.fst.inner a.snd.body)
-  | _, _, .extract hT, j, a => a.inner.map (Frame.Leaf.collapse hT j)
-  | _, _, .dup hF, j, a => .box (.box (a.inner.map (Frame.Leaf.shift hF j)))
+  | _, _, .extract hT, j, a => a.inner.map (Arrows.Leaf.collapse hT j)
+  | _, _, .dup hF, j, a => .box (.box (a.inner.map (Arrows.Leaf.shift hF j)))
 
 /-- A family of shapes, one at the target of each arrow, as one shape whose leaves are families. -/
-def Frame.transposeShp {σ : Signature} {F : Frame.{u, v} σ} {Root : F.W → Type u} {w : F.W} :
-    {A : VarType} → ((s : F.Acc w) → Shp (Frame.Leaf F Root s.1) A) →
-      Shp (Frame.Leaf F Root w) A
+def Arrows.transposeShp {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u} {w : F.W} :
+    {A : VarType} → ((s : F.Acc w) → Shp (F.Leaf Root s.1) A) →
+      Shp (F.Leaf Root w) A
   | .Var, _ => .var
   | .VTypeOne, _ => .one
   | .VTypeProd _ _, g =>
-      .prod (Frame.transposeShp fun s => (g s).fst) (Frame.transposeShp fun s => (g s).snd)
-  | .VTypeBox _, g => .box (Frame.transposeShp fun s => (g s).inner)
-  | .VTypeDia _, g => .dia (.fam fun s => (g s).label) (Frame.transposeShp fun s => (g s).body)
+      .prod (Arrows.transposeShp fun s => (g s).fst) (Arrows.transposeShp fun s => (g s).snd)
+  | .VTypeBox _, g => .box (Arrows.transposeShp fun s => (g s).inner)
+  | .VTypeDia _, g => .dia (.fam fun s => (g s).label) (Arrows.transposeShp fun s => (g s).body)
 
 /-- The shape of any object, from the shapes of possible objects: componentwise at a product, and
     at a necessary object the family of its values' shapes. -/
 def Frame.domShape {σ : Signature} {F : Frame.{u, v} σ} {Root : F.W → Type u}
     (necEval : ∀ {A : VarType} {w : F.W}, F.Nec A w → F.NecSec A w)
-    (shape : ∀ {A : VarType} {w : F.W}, F.Pos A w → Shp (Frame.Leaf F Root w) (.VTypeDia A)) :
-    {A : VarType} → {w : F.W} → F.Dom A w → Shp (Frame.Leaf F Root w) A
+    (shape : ∀ {A : VarType} {w : F.W}, F.Pos A w → Shp (F.Leaf Root w) (.VTypeDia A)) :
+    {A : VarType} → {w : F.W} → F.Dom A w → Shp (F.Leaf Root w) A
   | .Var, _, _ => .var
   | .VTypeOne, _, _ => .one
   | .VTypeProd _ _, _, a =>
       .prod (Frame.domShape necEval shape a.1) (Frame.domShape necEval shape a.2)
   | .VTypeBox _, _, n =>
-      .box (Frame.transposeShp fun s => Frame.domShape necEval shape (necEval n s))
+      .box (Arrows.transposeShp fun s => Frame.domShape necEval shape (necEval n s))
   | .VTypeDia _, _, p => shape p
 
 /-! ## Models -/
@@ -364,7 +377,7 @@ structure Model (σ : Signature) where
       (⟨(posFull p).1.1, fun w' =>
           ((necEval n w'.1, (posFull p).1.2 w') : frame.Dom (.VTypeProd A B) w'.1.1)⟩,
         fun hT => .dia ((posFull p).2 hT).label
-          (.prod (Frame.transposeShp fun s =>
+          (.prod (Arrows.transposeShp fun s =>
               Frame.domShape necEval (fun q => (posFull q).2 hT) (necEval n s))
             ((posFull p).2 hT).body))
   necExtract_eval : ∀ {A : VarType} {w : frame.W} (hT : ModalSys.T = true) (n : frame.Nec A w),
@@ -400,6 +413,9 @@ structure Model (σ : Signature) where
 namespace Model
 
 variable {σ : Signature} (M : Model.{u, v} σ)
+
+/-- The model's worlds and arrows, which its shapes are built over. -/
+abbrev arrows : Arrows.{u, v} σ := M.frame.toArrows
 
 /-- The section of a possible object: its extent, and its content at each world of it. -/
 abbrev posEval {A : VarType} {w : M.frame.W} (p : M.frame.Pos A w) : M.frame.PosSec A w :=
@@ -439,7 +455,7 @@ theorem shape_posStrength (hT : ModalSys.T = true) {A B : VarType} {w : M.frame.
     (n : M.frame.Nec A w) (p : M.frame.Pos B w) :
     M.shape hT (M.ops.posStrength n p) =
       .dia (M.shape hT p).label
-        (.prod (Frame.transposeShp fun s => Frame.domShape M.necEval (M.shape hT) (M.necEval n s))
+        (.prod (Arrows.transposeShp fun s => Frame.domShape M.necEval (M.shape hT) (M.necEval n s))
           (M.shape hT p).body) :=
   congrFun (congrArg Prod.snd (M.posStrength_full n p)) hT
 

@@ -30,16 +30,10 @@ variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB]
 
 /-- ⭐The canonical frame, pointed at a world. -/
 noncomputable def frame (w₀ : World σ N₀) : Frame.{0, 0} σ where
-  W := World σ N₀
+  toArrows := arrows σ N₀
   actual := w₀
-  R := Canon.R
-  refl := fun hT w => R.refl hT w
-  trans := fun hF => R.trans hF
   serial := fun hD w => (exists_succ hD w).imp fun _ ha => ⟨R.of_acc ha⟩
   symm := fun hB => (ModalSys.NoB.absurd hB).elim
-  refl_trans := fun _ _ _ _ _ => rfl
-  trans_refl := fun _ _ _ _ _ => rfl
-  trans_assoc := fun _ _ _ _ _ _ _ _ => rfl
   D w := w.D
   Nec A w := {o : RDom (.VTypeBox A) w // Definable (.VTypeBox A) w o}
   Pos A w := {o : RDom (.VTypeDia A) w // Definable (.VTypeDia A) w o}
@@ -127,14 +121,23 @@ theorem necEval_injective {A : VarType} {w : World σ N₀} :
   funext w'
   exact toDom_inj w₀ (congrFun h w')
 
-theorem posEval_injective {A : VarType} {w : World σ N₀} :
-    Function.Injective (posEval w₀ (A := A) (w := w)) := by
-  rintro ⟨⟨E, c⟩, hp⟩ ⟨⟨E', c'⟩, hp'⟩ h
-  simp only [posEval] at h
-  obtain ⟨rfl, hc⟩ := Sigma.mk.inj_iff.mp h
+/-- ⭐Evaluation of possible objects, in full: the section and, under T, the stored shape. -/
+def posFull {A : VarType} {w : World σ N₀} (p : (frame w₀).Pos A w) :
+    (frame w₀).PosSec A w × (ModalSys.T = true → CShape w (.VTypeDia A)) :=
+  (posEval w₀ p, p.1.3)
+
+/-- A possible object is its section and, under T, its shape. -/
+theorem posFull_injective {A : VarType} {w : World σ N₀} :
+    Function.Injective (posFull w₀ (A := A) (w := w)) := by
+  rintro ⟨⟨E, c, τ⟩, hp⟩ ⟨⟨E', c', τ'⟩, hp'⟩ h
+  have h₁ := congrArg Prod.fst h
+  have h₂ := congrArg Prod.snd h
+  simp only [posFull] at h₁ h₂
+  simp only [posEval] at h₁
+  obtain ⟨rfl, hc⟩ := Sigma.mk.inj_iff.mp h₁
   have hc' := eq_of_heq hc
   apply Subtype.ext
-  exact congrArg (Sigma.mk E) (funext fun w' => toDom_inj w₀ (congrFun hc' w'))
+  exact RPos.congr_cont (funext fun w' => toDom_inj w₀ (congrFun hc' w')) (congrFun h₂)
 
 /-- The function algebra on the carriers. -/
 noncomputable def ops : (frame w₀).Ops where
@@ -173,6 +176,20 @@ theorem eval_toDom : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀) 
   | _, _, .strength _ _, _, _, _ => rfl
   | _, _, .extract _, _, _, _ => rfl
   | _, _, .dup _, _, _, _ => rfl
+
+/-- Under T, a frame object's shape is its raw object's. -/
+theorem domShape_toDom (hT : ModalSys.T = true) : ∀ (A : VarType) (w : World σ N₀)
+    (o : RDom A w) (h : Definable A w o),
+    Frame.domShape (necEval w₀) (fun q => (posFull w₀ q).2 hT) (toDom w₀ A w o h) = rawShape hT o
+  | .Var, _, _, _ => rfl
+  | .VTypeOne, _, _, _ => rfl
+  | .VTypeProd A B, w, o, h =>
+      congrArg₂ Shp.prod (domShape_toDom hT A w o.1 (definable_fst h))
+        (domShape_toDom hT B w o.2 (definable_snd h))
+  | .VTypeBox A, _, o, h =>
+      congrArg Shp.box (congrArg Arrows.transposeShp (funext fun s =>
+        domShape_toDom hT A s.1 (o s) (definable_box_apply h s)))
+  | .VTypeDia _, _, _, _ => rfl
 
 /-! ## Strong D: some possible object has a nonempty extent -/
 
@@ -218,17 +235,17 @@ noncomputable def model : Model.{0, 0} σ where
   frame := frame w₀
   necEval := necEval w₀
   nec_inj := fun h => necEval_injective w₀ h
-  -- TEMPORARY (docs §10.29): the shapes need the tagged carriers of step 5; until then they are
-  -- `sorry`.  The canonical carriers are still fully extensional, so injectivity holds outright.
-  RootPoss _ := PUnit
-  posFull p := (posEval w₀ p, fun _ => sorry)
-  posFull_inj := fun h => posEval_injective w₀ (congrArg Prod.fst h)
+  RootPoss _ := VarSymb
+  posFull p := posFull w₀ p
+  posFull_inj := fun h => posFull_injective w₀ h
   ops := ops w₀
   necMap_eval g _ w' := (eval_toDom w₀ g w'.1 _ _).symm
   necPair_eval _ _ _ := rfl
   posMap_full g _ := Prod.ext
-    (congrArg (Sigma.mk _) (funext fun w' => (eval_toDom w₀ g w'.1.1 _ _).symm)) sorry
-  posStrength_full _ _ := Prod.ext rfl sorry
+    (congrArg (Sigma.mk _) (funext fun w' => (eval_toDom w₀ g w'.1.1 _ _).symm)) rfl
+  posStrength_full n _ := Prod.ext rfl (funext fun hT =>
+    congrArg (fun z => Shp.dia _ (Shp.prod z _)) (congrArg Arrows.transposeShp (funext fun s =>
+      (domShape_toDom w₀ hT _ s.1 (n.1 s) (definable_box_apply n.2 s)).symm)))
   necExtract_eval _ _ := rfl
   necDup_eval _ _ _ _ := rfl
   posRet_exists hT hS hA a := posRet_exists_canon w₀ hT hS hA a
