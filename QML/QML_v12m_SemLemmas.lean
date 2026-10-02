@@ -1,4 +1,4 @@
-import QML.QML_v12m_InterpLemmas
+import QML.QML_v12m_SemShape
 import QML.QML_v12m_Eq
 
 /-!
@@ -148,14 +148,18 @@ mutual
         rw [box_beta, box_beta, interp_mono (Env.boxPush_agree hag w') t]
     | _, _, .diatm x hx t => by
         obtain ⟨X, hr⟩ := hx
-        apply M.pos_inj
-        change M.posEval (interp env' (Term.diatm x _ (Term.mono (h.diaIn x) t))) = _
-        rw [dia_beta env' _ (h.ref hr), dia_beta env _ hr]
-        symm
-        exact posSec_ext (Env.ref_agree hag x hr)
-          (fun w₁ => interp (env.diaPush x hr w₁) t)
-          (fun w₂ => interp (env'.diaPush x (h.ref hr) w₂) (Term.mono (h.diaIn x) t))
-          (fun w₁ => (interp_mono (Env.diaPush_agree hag hr w₁ _) t).symm)
+        refine M.pos_inj ?_ fun hT => ?_
+        · change M.posEval (interp env' (Term.diatm x _ (Term.mono (h.diaIn x) t))) = _
+          rw [dia_beta env' _ (h.ref hr), dia_beta env _ hr]
+          symm
+          exact posSec_ext (Env.ref_agree hag x hr)
+            (fun w₁ => interp (env.diaPush x hr w₁) t)
+            (fun w₂ => interp (env'.diaPush x (h.ref hr) w₂) (Term.mono (h.diaIn x) t))
+            (fun w₁ => (interp_mono (Env.diaPush_agree hag hr w₁ _) t).symm)
+        · change domSh hT (interp env' (Term.mono h (Term.diatm x _ t))) =
+            domSh hT (interp env (Term.diatm x _ t))
+          rw [domSh_interp, domSh_interp]
+          exact termShp_mono (fun v T hv => congrArg (domSh hT) (hag v T hv)) 0 _
 end
 
 theorem relSat_mono {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env Γ w}
@@ -238,11 +242,14 @@ theorem sat_eqRec : ∀ {Γ : Ctx} {d : ℕ} {w : M.frame.W} (env : M.Env Γ w) 
       obtain ⟨X, hr⟩ := hx
       constructor
       · intro hno
-        apply M.pos_inj
-        rw [dia_beta env _ hr, dia_beta env _ hr]
-        refine Sigma.ext rfl (heq_of_eq (funext fun w' => ?_))
-        by_contra hne
-        exact hno ⟨X, hr, w', fun hsat => hne ((sat_eqRec _ A t s).mp hsat)⟩
+        refine M.pos_inj ?_ fun hT => ?_
+        · rw [dia_beta env _ hr, dia_beta env _ hr]
+          refine Sigma.ext rfl (heq_of_eq (funext fun w' => ?_))
+          by_contra hne
+          exact hno ⟨X, hr, w', fun hsat => hne ((sat_eqRec _ A t s).mp hsat)⟩
+        · change domSh hT (interp env (Term.diatm x _ t)) = domSh hT (interp env (Term.diatm x _ s))
+          rw [domSh_interp, domSh_interp]
+          exact termShp_ann _ 0 _ _
       · rintro heq ⟨X', hr', w', hneg⟩
         apply hneg
         have hpos := congrArg M.posEval heq

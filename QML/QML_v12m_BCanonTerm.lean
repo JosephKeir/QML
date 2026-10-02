@@ -268,7 +268,7 @@ mutual
         exact interp_canon _ (fun _ _ _ => rfl)
     | _, _, _, .diatm x hx t, s, i, e, env, hag => by
         obtain ⟨X, hr⟩ := hx
-        apply B.model.pos_inj
+        refine B.posEval_injective (?_ : B.model.posEval _ = B.model.posEval _)
         rw [Model.dia_beta env ⟨X, hr⟩ hr t]
         have hpq₀ : env.ref x hr = (B.canonEnv s i).ref x (e.ref hr) :=
           Model.Env.ref_agree hag x hr

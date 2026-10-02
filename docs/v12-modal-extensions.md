@@ -3705,3 +3705,74 @@ was kept is the object" the frame's T+4 unit law for `trans` with `refl`.
 * Canonical injectivity: `root` leaves carry the witness address; `fam` leaves at the reflexive arrow
   carry `u.here`'s address, so distinct `u` give distinct leaves.  Holds under T, which is where shapes
   are required.
+
+### 10.29 Step 1 landed on branch `sem-annotations`: shapes in `Model` *(2026-10-02)*
+
+Checkpoint before the change: tag `checkpoint-before-semann` (commit `c51d3bd` on `self-part-union`).
+
+**In `Model.lean`.**
+* `Shp L A` — an annotation tree over `A` with labels in `L`, the same structure as `Ann`; accessors
+  `fst`/`snd`/`inner`/`label`/`body`, and `map`.
+* ⭐`Frame.Leaf F RootPoss w`: `root (r : RootPoss w) (p : VarSymb)` | `fam (f : (s : Acc w) → Leaf s.1)`.
+  `Frame.Leaf.collapse hT i` / `shift hF i` act on the level `i` steps from the anchor: a family is
+  read at `refl`, or reindexed by `trans`; a root path goes through `VarSymb.collapse`/`shift`.
+* ⭐`GFunc.shp f j` — how a definable map moves a shape.  It rearranges positions as the map
+  rearranges components, keeps labels, and lets `extract`/`dup` collapse/shift the level `j` they act
+  at (§10.28).
+* `Frame.transposeShp` (a family of shapes as one shape with family leaves) and `Frame.domShape`
+  (the shape of any object, from the shapes of possible objects).
+* `Model` fields: `RootPoss` and `shape : T = true → Pos A w → Shp (Leaf RootPoss w) (◇A)`.
+  `pos_inj` is now *same section and, under T, same shape ⇒ equal*.  The laws are `shape_posMap`
+  (label kept, body by `f.shp 1`) and `shape_posStrength` (body paired with the transposed shapes
+  of the necessary object's values).
+* (The field is `RootPoss`, not `Root`: inside `namespace Model` the latter shadows the syntax's
+  `Root`.)
+
+**Instances.**  `BCanonModel` (no T): the shape fields are vacuous via `noT`.  `CanonModel` (T track):
+⚠️**TEMPORARY `sorry`** in `shape`, `shape_posMap`, `shape_posStrength`.  These need step 5's tagged
+carriers; the current carriers are fully extensional, so `pos_inj` holds outright.  To be removed in
+step 5.  `CanonTerm`/`BCanonTerm` now prove equality of canonical possible objects with the
+canonical `posEval_injective` directly, not `Model.pos_inj`.
+
+**Build.**  `Model`, `Env`, `Interp`, `InterpLemmas` build.  `SemLemmas` fails at its two `pos_inj`
+uses (unsolved shape goal), so everything downstream waits for step 2: the shape lemma and the
+shape conjunct in `interp_mono`/`interp_eta`/`sat_eqRec`, then `SemCollapse`/`SemShift`/`SemSubst`/
+`SemHere`.
+
+### 10.30 Step 2: the shape layer, and a T+4 normal-form problem at η *(2026-10-02)*
+
+**Landed (builds, no warnings), new file `QML_v12m_SemShape.lean` plus additions to `SemCollapse`,
+`SemShift`, `SemSubst`, `SemLemmas`.**  Shapes are computed symbolically:
+* `ShEnv` (a shape per visible address, anchored at the current world), `ShEnv.ref`/`boxPush`/
+  `diaPush`, `termShp ρ j t`.
+* ⭐S1 `termShp_compile` (counterpart of `compile_eval`); ⭐`shp_transpose` (every map's transport
+  commutes with transposition); ⭐T `termShp_transpose`; ⭐S2 `domSh_interp`: **the shape of a value is
+  its symbolic shape** — the `◇` case does not even recurse.
+* ⭐`termShp_mono`, ⭐`termShp_ann` (*the annotation determines the shape* — the semantic side of `eqRec`),
+  `termShp_collapse`, `termShp_shift`, ⭐`termShp_subst` (with `entryShp`, `substShEnv`, and the shape
+  counterparts of `collapseAgree_self`/`shiftAgree_twoBox`).
+* Root paths are now `List Step` with front-indexed `Step.collapseAt`/`shiftAt` (not `VarSymb` with
+  `levels - 1 - i`): the simplicial identities between them are clean list inductions
+  (`Step.collapseAt_collapseAt`, …, `Frame.Leaf.collapse_collapse`, …, `shift_shift_self`).
+* `interp_mono`, `sat_eqRec`, `interp_collapse`, `interp_shift`, `interp_subst` have their shape
+  conjuncts.  Build: everything through `SemSubst` green.
+
+**⚠️The problem (at `interp_eta`, `SemHere`).**  Under T+4 the contents of `u : □A` in a view are
+`u.keep.here` (`keepOnly`).  Compiled, that is `dup` then `extract`, so on shapes `collapse (j+1) ∘
+shift j`.  On families this is the identity (`trans_refl`).  On a **root** leaf it is the identity
+only when the path's step at that level is `keep`: for `[…, box, …]` it gives `[…, keep, here, …]`.
+That is the same possibility under T+4 but a different path.  A model may give a possible object of type
+`◇(□◇C)` a shape whose inner leaf has the path `[dia, box]`.  Then `⟦⟨x; η x.dia⟩⟧` has a different
+shape from `⟦x⟧`, so **the η-law is false in such a model**: a genuine gap in the model class, not
+a proof gap.
+
+**Options.**
+1. *Normalise in the operation* (recommended): `Step.collapseAt` at a level step `s ≠ keep` whose
+   immediate predecessor is a `keep` deletes that `keep` and leaves `s`.  This is "kept, then read
+   where kept, is read", which is valid under T+4.  Then `collapse (j+1) ∘ shift j = id` on **every**
+   path.  It agrees with `VarSymb.collapse` on every T+4-normal path (no `box`, no `keep` before a
+   `dia`), so the canonical tags are unaffected.  Cost: re-prove the list identities with the
+   look-behind case (mechanical; spot checks pass).
+2. *Model condition*: under T+4 every root path is T+4-normal and well-typed for its root.  That
+   needs a typing predicate on paths and its preservation; heavier, and it puts syntax-like
+   well-formedness into the model.

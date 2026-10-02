@@ -207,12 +207,16 @@ noncomputable def model : Model.{0, 0} σ where
   necEval := B.necEval
   nec_inj := fun h => B.necEval_injective h
   posEval := B.posEval
-  pos_inj := fun h => B.posEval_injective h
+  RootPoss _ := PUnit
+  shape hT := (noT hT).elim
+  pos_inj := fun h _ => B.posEval_injective h
   ops := B.ops
   necMap_eval g _ a := (B.eval_toDom g a.1 _ _).symm
   necPair_eval _ _ _ := rfl
   posMap_eval g _ := congrArg (Sigma.mk _) (funext fun a => (B.eval_toDom g a.1.1 _ _).symm)
   posStrength_eval _ _ := rfl
+  shape_posMap hT := (noT hT).elim
+  shape_posStrength hT := (noT hT).elim
   necExtract_eval hT _ := (noT hT).elim
   necDup_eval hF _ _ _ := (noFour hF).elim
   posRet_exists hT _ _ := (noT hT).elim

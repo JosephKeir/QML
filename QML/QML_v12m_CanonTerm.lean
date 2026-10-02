@@ -511,7 +511,7 @@ mutual
             le_rfl hag w' hd
     | _, _, _, .diatm x hx t, w, i, e, env, hag => by
         obtain ⟨X, hr⟩ := hx
-        apply (model w₀).pos_inj
+        refine posEval_injective w₀ (?_ : (model w₀).posEval _ = (model w₀).posEval _)
         rw [Model.dia_beta env ⟨X, hr⟩ hr t]
         have hpq₀ : env.ref x hr = (canonEnv w₀ w i).ref x (e.ref hr) :=
           Model.Env.ref_agree hag x hr

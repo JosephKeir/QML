@@ -164,6 +164,154 @@ def GFunc.eval {σ : Signature} {F : Frame.{u, v} σ} (ops : F.Ops) :
   | _, _, .extract hT, _, n => ops.necExtract hT n
   | _, _, .dup hF, _, n => ops.necDup hF n
 
+/-! ## Semantic annotations
+
+Under T a possible object carries, besides its section, a **shape**: the semantic counterpart of a
+term's annotation (docs §10.27–10.28).  Two possible objects are identified only when they have the
+same section *and* the same shape, so the semantics identifies exactly what `eqRec` can compare,
+and never two objects over different witnesses.
+
+A shape is a tree over the type, like `Ann`, whose labels are **leaves** anchored at the object's
+world.  A leaf is either a root possibility with a syntactic path into its content, which survives
+an empty extent, or a family with one leaf per arrow, for positions reached through a necessary
+object.  Levels are counted from the anchor (`Frame.Leaf.collapse`, `Frame.Leaf.shift`). -/
+
+universe x
+
+/-- An annotation tree over a type, with labels of any type at its `◇` nodes.  `Ann` has the same
+    shape with addresses as labels. -/
+inductive Shp (L : Type x) : VarType → Type x
+  | var : Shp L .Var
+  | one : Shp L .VTypeOne
+  | prod {A B : VarType} (a : Shp L A) (b : Shp L B) : Shp L (.VTypeProd A B)
+  | box {A : VarType} (a : Shp L A) : Shp L (.VTypeBox A)
+  | dia {A : VarType} (ℓ : L) (a : Shp L A) : Shp L (.VTypeDia A)
+
+namespace Shp
+
+variable {L : Type x}
+
+def fst {A B : VarType} : Shp L (.VTypeProd A B) → Shp L A
+  | .prod a _ => a
+
+def snd {A B : VarType} : Shp L (.VTypeProd A B) → Shp L B
+  | .prod _ b => b
+
+def inner {A : VarType} : Shp L (.VTypeBox A) → Shp L A
+  | .box a => a
+
+/-- The label of a `◇` node: the possibility itself. -/
+def label {A : VarType} : Shp L (.VTypeDia A) → L
+  | .dia ℓ _ => ℓ
+
+/-- The shape of a possible object's content. -/
+def body {A : VarType} : Shp L (.VTypeDia A) → Shp L A
+  | .dia _ a => a
+
+def map {L' : Type x} (g : L → L') : {A : VarType} → Shp L A → Shp L' A
+  | _, .var => .var
+  | _, .one => .one
+  | _, .prod a b => .prod (a.map g) (b.map g)
+  | _, .box a => .box (a.map g)
+  | _, .dia ℓ a => .dia (g ℓ) (a.map g)
+
+end Shp
+
+/-- Collapse the level step `i` levels from the front of a path: a `box` becomes `here`, a `keep`
+    disappears — `VarSymb.collapse`, counted from the other end.  (On a `dia` this is junk.) -/
+def Step.collapseAt : ℕ → List Step → List Step
+  | _, [] => []
+  | i, s :: p =>
+      if s.isProj then s :: Step.collapseAt i p
+      else
+        match i with
+        | 0 => if s = .keep then p else .here :: p
+        | i + 1 => s :: Step.collapseAt i p
+
+/-- Insert a `keep` before the level step `i` levels from the front of a path — `VarSymb.shift`,
+    counted from the other end. -/
+def Step.shiftAt : ℕ → List Step → List Step
+  | _, [] => []
+  | i, s :: p =>
+      if s.isProj then s :: Step.shiftAt i p
+      else
+        match i with
+        | 0 => .keep :: s :: p
+        | i + 1 => s :: Step.shiftAt i p
+
+/-- ⭐A leaf of a semantic annotation, anchored at a world (docs §10.28): a **root** possibility with
+    a syntactic path into its content, or a **family** with one leaf at the target of each arrow. -/
+inductive Frame.Leaf {σ : Signature} (F : Frame.{u, v} σ) (Root : F.W → Type u) :
+    F.W → Type (max u v)
+  | root {w : F.W} (r : Root w) (p : List Step) : Frame.Leaf F Root w
+  | fam {w : F.W} (f : (s : F.Acc w) → Frame.Leaf F Root s.1) : Frame.Leaf F Root w
+
+namespace Frame.Leaf
+
+variable {σ : Signature} {F : Frame.{u, v} σ} {Root : F.W → Type u}
+
+/-- Under T, collapse the level `i` steps from the anchor: a family is read at the identity arrow
+    there, and a root path loses that level step (`Step.collapseAt`). -/
+def collapse (hT : ModalSys.T = true) : ℕ → {w : F.W} → Frame.Leaf F Root w → Frame.Leaf F Root w
+  | i, _, .root r p => .root r (Step.collapseAt i p)
+  | 0, w, .fam f => f (F.reflAcc hT w)
+  | i + 1, _, .fam f => .fam fun s => collapse hT i (f s)
+
+/-- Under 4, insert a level `i` steps from the anchor: a family is reindexed by composite arrows,
+    and a root path gains a `keep` (`Step.shiftAt`). -/
+def shift (hF : ModalSys.Four = true) : ℕ → {w : F.W} → Frame.Leaf F Root w → Frame.Leaf F Root w
+  | i, _, .root r p => .root r (Step.shiftAt i p)
+  | 0, _, .fam f => .fam fun s => .fam fun t => f ⟨t.1, ⟨F.trans hF s.2.down t.2.down⟩⟩
+  | i + 1, _, .fam f => .fam fun s => shift hF i (f s)
+
+end Frame.Leaf
+
+/-- ⭐How a definable map moves the shape of its argument: positions are rearranged as the map
+    rearranges components, labels are kept, and `extract`/`dup` collapse/shift the level they act
+    at.  `j` is the number of levels above the current position. -/
+def GFunc.shp {σ : Signature} {F : Frame.{u, v} σ} {Root : F.W → Type u} {w : F.W} :
+    {A B : VarType} → GFunc σ A B → ℕ →
+      Shp (Frame.Leaf F Root w) A → Shp (Frame.Leaf F Root w) B
+  | _, _, .id _, _, a => a
+  | _, _, .comp g f, j, a => GFunc.shp g j (GFunc.shp f j a)
+  | _, _, .fst, _, a => a.fst
+  | _, _, .snd, _, a => a.snd
+  | _, _, .pair f g, j, a => .prod (GFunc.shp f j a) (GFunc.shp g j a)
+  | _, _, .unit _, _, _ => .one
+  | _, _, .func _ _, _, _ => .var
+  | _, _, .boxMap f, j, a => .box (GFunc.shp f (j + 1) a.inner)
+  | _, _, .boxPair _ _, _, a => .box (.prod a.fst.inner a.snd.inner)
+  | _, _, .boxUnit, _, _ => .box .one
+  | _, _, .diaMap f, j, a => .dia a.label (GFunc.shp f (j + 1) a.body)
+  | _, _, .strength _ _, _, a => .dia a.snd.label (.prod a.fst.inner a.snd.body)
+  | _, _, .extract hT, j, a => a.inner.map (Frame.Leaf.collapse hT j)
+  | _, _, .dup hF, j, a => .box (.box (a.inner.map (Frame.Leaf.shift hF j)))
+
+/-- A family of shapes, one at the target of each arrow, as one shape whose leaves are families. -/
+def Frame.transposeShp {σ : Signature} {F : Frame.{u, v} σ} {Root : F.W → Type u} {w : F.W} :
+    {A : VarType} → ((s : F.Acc w) → Shp (Frame.Leaf F Root s.1) A) →
+      Shp (Frame.Leaf F Root w) A
+  | .Var, _ => .var
+  | .VTypeOne, _ => .one
+  | .VTypeProd _ _, g =>
+      .prod (Frame.transposeShp fun s => (g s).fst) (Frame.transposeShp fun s => (g s).snd)
+  | .VTypeBox _, g => .box (Frame.transposeShp fun s => (g s).inner)
+  | .VTypeDia _, g => .dia (.fam fun s => (g s).label) (Frame.transposeShp fun s => (g s).body)
+
+/-- The shape of any object, from the shapes of possible objects: componentwise at a product, and
+    at a necessary object the family of its values' shapes. -/
+def Frame.domShape {σ : Signature} {F : Frame.{u, v} σ} {Root : F.W → Type u}
+    (necEval : ∀ {A : VarType} {w : F.W}, F.Nec A w → F.NecSec A w)
+    (shape : ∀ {A : VarType} {w : F.W}, F.Pos A w → Shp (Frame.Leaf F Root w) (.VTypeDia A)) :
+    {A : VarType} → {w : F.W} → F.Dom A w → Shp (Frame.Leaf F Root w) A
+  | .Var, _, _ => .var
+  | .VTypeOne, _, _ => .one
+  | .VTypeProd _ _, _, a =>
+      .prod (Frame.domShape necEval shape a.1) (Frame.domShape necEval shape a.2)
+  | .VTypeBox _, _, n =>
+      .box (Frame.transposeShp fun s => Frame.domShape necEval shape (necEval n s))
+  | .VTypeDia _, _, p => shape p
+
 /-! ## Models -/
 
 /-- ⭐A model: a pointed frame whose carriers evaluate injectively and are closed under the
@@ -173,7 +321,16 @@ structure Model (σ : Signature) where
   necEval : {A : VarType} → {w : frame.W} → frame.Nec A w → frame.NecSec A w
   nec_inj : ∀ {A : VarType} {w : frame.W}, Function.Injective (@necEval A w)
   posEval : {A : VarType} → {w : frame.W} → frame.Pos A w → frame.PosSec A w
-  pos_inj : ∀ {A : VarType} {w : frame.W}, Function.Injective (@posEval A w)
+  /-- Under T, the root possibilities: what a possible object's shape is ultimately built on. -/
+  RootPoss : frame.W → Type u
+  /-- ⭐Under T, the **shape** of a possible object — its semantic annotation (docs §10.27). -/
+  shape : ModalSys.T = true → ∀ {A : VarType} {w : frame.W},
+    frame.Pos A w → Shp (frame.Leaf RootPoss w) (.VTypeDia A)
+  /-- ⭐Possible objects are identified by their section **and**, under T, their shape: never two
+      objects over different witnesses, nor over one witness with differently annotated contents
+      (docs §10.24–10.27).  Without T this is plain injectivity of `posEval`. -/
+  pos_inj : ∀ {A : VarType} {w : frame.W} {p q : frame.Pos A w}, posEval p = posEval q →
+    (∀ hT : ModalSys.T = true, shape hT p = shape hT q) → p = q
   ops : frame.Ops
   necMap_eval : ∀ {A B : VarType} {w : frame.W} (f : GFunc σ A B) (n : frame.Nec A w)
     (w' : frame.Acc w), necEval (ops.necMap f n) w' = GFunc.eval ops f w'.1 (necEval n w')
@@ -187,6 +344,17 @@ structure Model (σ : Signature) where
     posEval (ops.posStrength n p) =
       ⟨(posEval p).1, fun w' =>
         ((necEval n w'.1, (posEval p).2 w') : frame.Dom (.VTypeProd A B) w'.1.1)⟩
+  /-- Mapping keeps the possibility and moves the content's shape as the map moves components. -/
+  shape_posMap : ∀ (hT : ModalSys.T = true) {A B : VarType} {w : frame.W} (f : GFunc σ A B)
+    (p : frame.Pos A w),
+    shape hT (ops.posMap f p) = .dia (shape hT p).label (f.shp 1 (shape hT p).body)
+  /-- A necessary object riding along contributes the family of its values' shapes. -/
+  shape_posStrength : ∀ (hT : ModalSys.T = true) {A B : VarType} {w : frame.W}
+    (n : frame.Nec A w) (p : frame.Pos B w),
+    shape hT (ops.posStrength n p) =
+      .dia (shape hT p).label
+        (.prod (Frame.transposeShp fun s => Frame.domShape necEval (shape hT) (necEval n s))
+          (shape hT p).body)
   necExtract_eval : ∀ {A : VarType} {w : frame.W} (hT : ModalSys.T = true) (n : frame.Nec A w),
     ops.necExtract hT n = necEval n ⟨w, ⟨frame.refl hT w⟩⟩
   necDup_eval : ∀ {A : VarType} {w : frame.W} (hF : ModalSys.Four = true) (n : frame.Nec A w)
