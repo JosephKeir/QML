@@ -29,9 +29,13 @@ structure BWorld (σ : Signature) where
   mcs : ∀ i, Theory.IsMCS (M i)
   sub : ∀ {i j : ℕ} (h : i ≤ j) (φ : WFF σ (ctxOf (l i)) 0), φ ∈ M i →
     WFF.mono (ctxOf_le_of_suffix (suf h)) φ ∈ M j
+  /-- Henkin witnessing at a **declared root** (the network declares a fresh variable), which
+      naming a `Here` atom's content needs (`Canon.RootWitnessed`); `BWorld.exW_term` is the
+      term form. -/
   exW : ∀ {i : ℕ} {A : VarType} {ψ : WFF σ ((ctxOf (l i)).insert (.bnd 0) A) 1},
-    .ex A ψ ∈ M i → ∃ (j : ℕ) (hij : i ≤ j) (a : Ann A) (t : Term σ (ctxOf (l j)) A a),
-      WFF.instantiate Ctx.NoSlots.slots t
+    .ex A ψ ∈ M i → ∃ (j : ℕ) (hij : i ≤ j) (c : ℕ)
+      (hc : (ctxOf (l j)).ref (.root (.free c)) = some A),
+      WFF.instantiate Ctx.NoSlots.slots (Term.eta (.root (.free c)) A hc)
         (WFF.mono ((ctxOf_le_of_suffix (suf hij)).insert _ A) ψ) ∈ M j
   allW : ∀ {i : ℕ} {A : VarType} {ψ : WFF σ ((ctxOf (l i)).insert (.bnd 0) A) 1},
     (WFF.all A ψ).neg ∈ M i → ∃ (j : ℕ) (hij : i ≤ j) (a : Ann A) (t : Term σ (ctxOf (l j)) A a),
@@ -46,6 +50,14 @@ variable (w : BWorld σ)
 abbrev ctx (i : ℕ) : Ctx := ctxOf (w.l i)
 
 theorem le {i j : ℕ} (h : i ≤ j) : (w.ctx i).Le (w.ctx j) := ctxOf_le_of_suffix (w.suf h)
+
+/-- Henkin witnessing with a term: a declared root's η-expansion. -/
+theorem exW_term {i : ℕ} {A : VarType} {ψ : WFF σ ((ctxOf (w.l i)).insert (.bnd 0) A) 1}
+    (h : .ex A ψ ∈ w.M i) : ∃ (j : ℕ) (hij : i ≤ j) (a : Ann A) (t : Term σ (ctxOf (w.l j)) A a),
+      WFF.instantiate Ctx.NoSlots.slots t
+        (WFF.mono ((ctxOf_le_of_suffix (w.suf hij)).insert _ A) ψ) ∈ w.M j := by
+  obtain ⟨j, hij, c, hc, hm⟩ := w.exW h
+  exact ⟨j, hij, _, _, hm⟩
 
 variable {w}
 

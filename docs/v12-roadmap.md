@@ -50,8 +50,8 @@ cost is in the first.
 1. ✅ **Syntax** (2026-10-03, `v12-arrow-canonical.md` §9.5): T-aware `bc` (`bcB`), `itemAt`, `here`
    in projection paths; everything up to `BData` now needs only 4 off (`ModalSys.NoFour`).
    `imgInj` moves to step 4.
-2. **Theory-level `Here` layer over `StageSys`** (refactor on the tree), then the `BWorld` adapter.
-   Independent of step 1.
+2. ✅ **Theory-level `Here` layer over `StageSys`** (2026-10-03, `v12-arrow-canonical.md` §9.6):
+   shared by both models; `BWorld` adapter (`QML_v12m_BStaged`), root-form `BWorld.exW`.
 3. **Model**: the frame's reflexive closure, `rden` at the identity arrow, `extract`; the `□` case.
 4. **Shapes on the network** (leaves by arrow images, the decoder, tags determine annotations);
    the `here` case, `Ind := Rel`, canonical `IndInvariant`.

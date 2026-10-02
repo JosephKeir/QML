@@ -20,57 +20,74 @@ one for the other preserves membership, which is exactly `Proof.here_subst`'s co
 
 The relation is stated at every type, since `Here`'s content may have any type.  It is made
 stage-free (`DTerm.Rel`) so that it can be read off denotations computed at any stage.
+
+Everything here is about a **staged theory** — a stage system `S` and a set `T` of its sentences,
+maximal consistent (`Fact (StageSys.IsMCS T)`) — not about the tree's worlds, so the network model
+for B uses it too (docs/v12-arrow-canonical.md §9.3).  A tree world is `w.L.sys` with `w.T`.
 -/
 
 namespace V12M
 
 namespace Canon
 
-variable [ModalSys] {σ : Signature} {N₀ : ℕ}
+variable [ModalSys] {σ : Signature} {N₀ : ℕ} {I : Type} [Preorder I]
+
+/-- A tree world's theory is maximal consistent, as an instance for the staged-theory lemmas. -/
+instance World.mcsFact (w : World σ N₀) : Fact (StageSys.IsMCS w.T) := ⟨w.mcs⟩
 
 /-- ⭐**Interchangeability**: every formula with a slot of the two terms' type has the same status at
     both.  Stated at one stage and one content type — the type must agree for the slot to exist, and
     the annotations need not, which is the whole point: `s` and `s'` may stand over different
     witnesses.  Contrast `WFF.eqRec`, which compares within one annotation, so within one fibre. -/
-def Interch (w : World σ N₀) {A : VarType} {i : ℕ × ℕ} {a a' : Ann A}
-    (s : Term σ (w.L.ctx i) A a) (s' : Term σ (w.L.ctx i) A a') : Prop :=
-  ∀ φ : WFF σ ((w.L.ctx i).insert (.bnd 0) A) 1,
-    (⟨i, WFF.instantiate Ctx.NoSlots.slots s φ⟩ : w.L.sys.Sentence σ) ∈ w.T ↔
-      (⟨i, WFF.instantiate Ctx.NoSlots.slots s' φ⟩ : w.L.sys.Sentence σ) ∈ w.T
+def Interch {S : StageSys I} (T : Set (S.Sentence σ)) {A : VarType} {i : I} {a a' : Ann A}
+    (s : Term σ (S.ctx i) A a) (s' : Term σ (S.ctx i) A a') : Prop :=
+  ∀ φ : WFF σ ((S.ctx i).insert (.bnd 0) A) 1,
+    (⟨i, WFF.instantiate Ctx.NoSlots.slots s φ⟩ : S.Sentence σ) ∈ T ↔
+      (⟨i, WFF.instantiate Ctx.NoSlots.slots s' φ⟩ : S.Sentence σ) ∈ T
 
 namespace Interch
 
-variable {w : World σ N₀} {A : VarType} {i : ℕ × ℕ}
+variable {S : StageSys I} {T : Set (S.Sentence σ)} {A : VarType} {i : I}
 
-theorem refl {a : Ann A} (s : Term σ (w.L.ctx i) A a) :
-    Interch w s s := fun _ => Iff.rfl
+theorem refl {a : Ann A} (s : Term σ (S.ctx i) A a) :
+    Interch T s s := fun _ => Iff.rfl
 
-theorem symm {a a' : Ann A} {s : Term σ (w.L.ctx i) A a}
-    {s' : Term σ (w.L.ctx i) A a'} (h : Interch w s s') : Interch w s' s :=
+theorem symm {a a' : Ann A} {s : Term σ (S.ctx i) A a}
+    {s' : Term σ (S.ctx i) A a'} (h : Interch T s s') : Interch T s' s :=
   fun φ => (h φ).symm
 
-theorem trans {a a' a'' : Ann A} {s : Term σ (w.L.ctx i) A a}
-    {s' : Term σ (w.L.ctx i) A a'} {s'' : Term σ (w.L.ctx i) A a''}
-    (h : Interch w s s') (h' : Interch w s' s'') : Interch w s s'' :=
+theorem trans {a a' a'' : Ann A} {s : Term σ (S.ctx i) A a}
+    {s' : Term σ (S.ctx i) A a'} {s'' : Term σ (S.ctx i) A a''}
+    (h : Interch T s s') (h' : Interch T s' s'') : Interch T s s'' :=
   fun φ => (h φ).trans (h' φ)
 
 end Interch
+
+section MCS
+
+variable {S : StageSys I} {T : Set (S.Sentence σ)} [hmcs : Fact (StageSys.IsMCS T)]
+
+/-- Membership from a proof at one stage. -/
+theorem mem_of_provable' {i : I} {Δ : List (WFF σ (S.ctx i) 0)} {φ : WFF σ (S.ctx i) 0}
+    (hΔ : ∀ ψ ∈ Δ, (⟨i, ψ⟩ : S.Sentence σ) ∈ T) (p : Provable Δ φ) :
+    (⟨i, φ⟩ : S.Sentence σ) ∈ T :=
+  hmcs.out.closed (StageSys.derives_of_mems hΔ p)
 
 /-- ⭐**Co-naming implies interchangeability**: if the theory says `s` and `s'` are both the
     content of the possible object `p` here, then substituting one for the other preserves
     membership.  This is `Proof.here_subst` under the theory's closure, and it is how the relation
     is established at a `◇` type — the two possibilities are joined by `p`, which is what §2d asks
     for before they may be compared. -/
-theorem interch_of_coname {w : World σ N₀} (hT : ModalSys.T = true) {A : VarType} {i : ℕ × ℕ}
-    {b : Ann A} {s : Term σ (w.L.ctx i) A b} {b' : Ann A} {s' : Term σ (w.L.ctx i) A b'}
-    {c : Ann (.VTypeDia A)} (p : Term σ (w.L.ctx i) (.VTypeDia A) c)
-    (h : (⟨i, WFF.here hT p s⟩ : w.L.sys.Sentence σ) ∈ w.T)
-    (h' : (⟨i, WFF.here hT p s'⟩ : w.L.sys.Sentence σ) ∈ w.T) :
-    Interch w s s' := by
+theorem interch_of_coname (hT : ModalSys.T = true) {A : VarType} {i : I}
+    {b : Ann A} {s : Term σ (S.ctx i) A b} {b' : Ann A} {s' : Term σ (S.ctx i) A b'}
+    {c : Ann (.VTypeDia A)} (p : Term σ (S.ctx i) (.VTypeDia A) c)
+    (h : (⟨i, WFF.here hT p s⟩ : S.Sentence σ) ∈ T)
+    (h' : (⟨i, WFF.here hT p s'⟩ : S.Sentence σ) ∈ T) :
+    Interch T s s' := by
   intro φ
   constructor
   · intro hmem
-    exact World.mem_of_provable
+    exact mem_of_provable'
       (Δ := [WFF.here hT p s, WFF.here hT p s', WFF.instantiate Ctx.NoSlots.slots s φ])
       (fun ψ hψ => by
         rcases List.mem_cons.mp hψ with rfl | hψ₁
@@ -83,7 +100,7 @@ theorem interch_of_coname {w : World σ N₀} (hT : ModalSys.T = true) {A : VarT
         (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
         (Proof.lookup (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ List.mem_cons_self)))⟩
   · intro hmem
-    exact World.mem_of_provable
+    exact mem_of_provable'
       (Δ := [WFF.here hT p s', WFF.here hT p s, WFF.instantiate Ctx.NoSlots.slots s' φ])
       (fun ψ hψ => by
         rcases List.mem_cons.mp hψ with rfl | hψ₁
@@ -96,32 +113,37 @@ theorem interch_of_coname {w : World σ N₀} (hT : ModalSys.T = true) {A : VarT
         (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
         (Proof.lookup (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ List.mem_cons_self)))⟩
 
+end MCS
+
 /-- ⭐**Interchangeable terms have the same `◇`-facts.**  The transfer the truth lemma's `dia` case
     needs when an arrow of a class-keyed extent was contributed by another member: read
     interchangeability at the test formula `WFF.diaSlot ψ`, whose instances are the two `◇`-facts
     (`WFF.instantiate_diaSlot`). -/
-theorem Interch.dia_iff {w : World σ N₀} {A : VarType} {i : ℕ × ℕ} {y z : VarSymb}
-    (hy : ∃ X, (w.L.ctx i).ref y = some (.VTypeDia X))
-    (hz : ∃ X, (w.L.ctx i).ref z = some (.VTypeDia X)) {β β' : Ann A}
-    {bd : Term σ ((w.L.ctx i).diaIn y) A β} {b : Term σ ((w.L.ctx i).diaIn z) A β'}
-    (h : Interch w (A := .VTypeDia A) (Term.diatm y hy bd) (Term.diatm z hz b))
-    (ψ : WFF σ ((w.L.ctx i).boxIn.insert (.bnd 0) A) 1) :
-    (⟨i, WFF.dia y hy (WFF.viewReadTm bd ψ)⟩ : w.L.sys.Sentence σ) ∈ w.T ↔
-      (⟨i, WFF.dia z hz (WFF.viewReadTm b ψ)⟩ : w.L.sys.Sentence σ) ∈ w.T := by
+theorem Interch.dia_iff {S : StageSys I} {T : Set (S.Sentence σ)} {A : VarType} {i : I}
+    {y z : VarSymb} (hy : ∃ X, (S.ctx i).ref y = some (.VTypeDia X))
+    (hz : ∃ X, (S.ctx i).ref z = some (.VTypeDia X)) {β β' : Ann A}
+    {bd : Term σ ((S.ctx i).diaIn y) A β} {b : Term σ ((S.ctx i).diaIn z) A β'}
+    (h : Interch T (A := .VTypeDia A) (Term.diatm y hy bd) (Term.diatm z hz b))
+    (ψ : WFF σ ((S.ctx i).boxIn.insert (.bnd 0) A) 1) :
+    (⟨i, WFF.dia y hy (WFF.viewReadTm bd ψ)⟩ : S.Sentence σ) ∈ T ↔
+      (⟨i, WFF.dia z hz (WFF.viewReadTm b ψ)⟩ : S.Sentence σ) ∈ T := by
   have key := h (WFF.diaSlot ψ)
   rwa [WFF.instantiate_diaSlot, WFF.instantiate_diaSlot] at key
 
 /-- **Interchangeability is contravariant in the stage**: a later stage has more test formulas, so
-    terms interchangeable when lifted are interchangeable below.  `World.mem_lift` carries
+    terms interchangeable when lifted are interchangeable below.  Maximal consistency carries
     membership between the stages and `WFF.mono_instantiate` carries the test formula up. -/
-theorem Interch.of_lift {w : World σ N₀} {A : VarType} {i j : ℕ × ℕ} (hij : i ≤ j)
-    {a a' : Ann A} {s : Term σ (w.L.ctx i) A a} {s' : Term σ (w.L.ctx i) A a'}
-    (h : Interch w (Term.mono (w.L.ctx_le hij) s) (Term.mono (w.L.ctx_le hij) s')) :
-    Interch w s s' := by
+theorem Interch.of_lift [IsDirected I (· ≤ ·)] {S : StageSys I} {T : Set (S.Sentence σ)}
+    [hmcs : Fact (StageSys.IsMCS T)] {A : VarType} {i j : I} (hij : i ≤ j)
+    {a a' : Ann A} {s : Term σ (S.ctx i) A a} {s' : Term σ (S.ctx i) A a'}
+    (h : Interch T (Term.mono (S.le hij) s) (Term.mono (S.le hij) s')) :
+    Interch T s s' := by
   intro φ
-  rw [World.mem_lift hij, World.mem_lift hij (φ := WFF.instantiate _ s' φ),
-    WFF.mono_instantiate (w.L.ctx_le hij) Ctx.NoSlots.slots Ctx.NoSlots.slots s φ,
-    WFF.mono_instantiate (w.L.ctx_le hij) Ctx.NoSlots.slots Ctx.NoSlots.slots s' φ]
+  rw [← hmcs.out.mem_lift_iff hij, ← hmcs.out.mem_lift_iff hij (φ := WFF.instantiate _ s' φ)]
+  change (⟨j, WFF.mono (S.le hij) _⟩ : S.Sentence σ) ∈ T ↔
+    (⟨j, WFF.mono (S.le hij) _⟩ : S.Sentence σ) ∈ T
+  rw [WFF.mono_instantiate (S.le hij) Ctx.NoSlots.slots Ctx.NoSlots.slots s φ,
+    WFF.mono_instantiate (S.le hij) Ctx.NoSlots.slots Ctx.NoSlots.slots s' φ]
   exact h _
 
 /-! ## Stage-free interchangeability
@@ -134,59 +156,171 @@ they are interchangeable at **every** stage both reach (`DTerm.Rel`).  By contra
 the same as at every sufficiently large stage, which is what makes it transitive, and it makes a
 term and its lift one class (`DTerm.rel_lift`) — §10.20. -/
 
-/-- A term of type `A`, together with the stage of `w`'s language it is written at. -/
-structure DTerm (w : World σ N₀) (A : VarType) where
-  i : ℕ × ℕ
+/-- A term of type `A`, together with the stage it is written at.  The theory `T` is a parameter
+    only, so that `DTerm.Rel` can read it off the terms' type. -/
+structure DTerm (S : StageSys I) (_T : Set (S.Sentence σ)) (A : VarType) where
+  i : I
   a : Ann A
-  t : Term σ (w.L.ctx i) A a
+  t : Term σ (S.ctx i) A a
 
 namespace DTerm
 
-variable {w : World σ N₀} {A : VarType}
+variable {S : StageSys I} {T : Set (S.Sentence σ)} {A : VarType}
 
 /-- The term at a later stage. -/
-abbrev lift (s : DTerm w A) (j : ℕ × ℕ) (h : s.i ≤ j) : Term σ (w.L.ctx j) A s.a :=
-  Term.mono (w.L.ctx_le h) s.t
+abbrev lift (s : DTerm S T A) (j : I) (h : s.i ≤ j) : Term σ (S.ctx j) A s.a :=
+  Term.mono (S.le h) s.t
 
 /-- ⭐**Stage-free interchangeability**: interchangeable at every stage both terms reach. -/
-def Rel (s s' : DTerm w A) : Prop :=
-  ∀ (j : ℕ × ℕ) (h : s.i ≤ j) (h' : s'.i ≤ j), Interch w (s.lift j h) (s'.lift j h')
+def Rel (s s' : DTerm S T A) : Prop :=
+  ∀ (j : I) (h : s.i ≤ j) (h' : s'.i ≤ j), Interch T (s.lift j h) (s'.lift j h')
 
-theorem Rel.refl (s : DTerm w A) : Rel s s := fun _ _ _ => Interch.refl _
+theorem Rel.refl (s : DTerm S T A) : Rel s s := fun _ _ _ => Interch.refl _
 
-theorem Rel.symm {s s' : DTerm w A} (h : Rel s s') : Rel s' s :=
+theorem Rel.symm {s s' : DTerm S T A} (h : Rel s s') : Rel s' s :=
   fun j h₁ h₂ => (h j h₂ h₁).symm
 
 /-- Transitive, by comparing at a stage all three terms reach and descending again
     (`Interch.of_lift`). -/
-theorem Rel.trans {s s' s'' : DTerm w A} (h : Rel s s') (h' : Rel s' s'') : Rel s s'' := by
+theorem Rel.trans [IsDirected I (· ≤ ·)] [Fact (StageSys.IsMCS T)] {s s' s'' : DTerm S T A}
+    (h : Rel s s') (h' : Rel s' s'') : Rel s s'' := by
   intro j hj hj''
-  have hm : j ≤ j ⊔ s'.i := le_sup_left
+  obtain ⟨k, hm, hs'⟩ := directed_of (· ≤ ·) j s'.i
   refine Interch.of_lift hm ?_
   rw [Term.mono_mono, Term.mono_mono]
-  exact (h _ (hj.trans hm) le_sup_right).trans (h' _ le_sup_right (hj''.trans hm))
+  exact (h _ (hj.trans hm) hs').trans (h' _ hs' (hj''.trans hm))
 
 /-- ⭐**A term and its lift are one class**, so reading a term at a later stage does not change
     its class: `Term.mono_mono`, then reflexivity. -/
-theorem rel_lift (s : DTerm w A) {k : ℕ × ℕ} (hk : s.i ≤ k) : Rel s ⟨k, s.a, s.lift k hk⟩ := by
+theorem rel_lift (s : DTerm S T A) {k : I} (hk : s.i ≤ k) : Rel s ⟨k, s.a, s.lift k hk⟩ := by
   intro j h₁ h₂
-  change Interch w (Term.mono _ s.t) (Term.mono _ (Term.mono _ s.t))
+  change Interch T (Term.mono _ s.t) (Term.mono _ (Term.mono _ s.t))
   rw [Term.mono_mono]
   exact Interch.refl _
 
 /-- ⭐**Co-naming implies stage-free interchangeability**: the two `Here` atoms lift to every later
-    stage (`World.mem_lift`), where `interch_of_coname` applies. -/
-theorem rel_of_coname (hT : ModalSys.T = true) {i : ℕ × ℕ} {b b' : Ann A}
-    {s : Term σ (w.L.ctx i) A b} {s' : Term σ (w.L.ctx i) A b'}
-    {c : Ann (.VTypeDia A)} (p : Term σ (w.L.ctx i) (.VTypeDia A) c)
-    (h : (⟨i, WFF.here hT p s⟩ : w.L.sys.Sentence σ) ∈ w.T)
-    (h' : (⟨i, WFF.here hT p s'⟩ : w.L.sys.Sentence σ) ∈ w.T) :
-    Rel (⟨i, b, s⟩ : DTerm w A) ⟨i, b', s'⟩ := fun _ hj _ =>
-  interch_of_coname hT (Term.mono (w.L.ctx_le hj) p)
-    ((World.mem_lift hj).mp h) ((World.mem_lift hj).mp h')
+    stage, where `interch_of_coname` applies. -/
+theorem rel_of_coname [IsDirected I (· ≤ ·)] [hmcs : Fact (StageSys.IsMCS T)]
+    (hT : ModalSys.T = true) {i : I} {b b' : Ann A}
+    {s : Term σ (S.ctx i) A b} {s' : Term σ (S.ctx i) A b'}
+    {c : Ann (.VTypeDia A)} (p : Term σ (S.ctx i) (.VTypeDia A) c)
+    (h : (⟨i, WFF.here hT p s⟩ : S.Sentence σ) ∈ T)
+    (h' : (⟨i, WFF.here hT p s'⟩ : S.Sentence σ) ∈ T) :
+    Rel (⟨i, b, s⟩ : DTerm S T A) ⟨i, b', s'⟩ := fun _ hj _ =>
+  interch_of_coname hT (Term.mono (S.le hj) p)
+    ((hmcs.out.mem_lift_iff hj).mpr h) ((hmcs.out.mem_lift_iff hj).mpr h')
 
 end DTerm
 
+end Canon
+
+variable [ModalSys]
+
+
+/-- ⭐**The round trip, for terms**: a term of the `◇_x` view is its abstraction read back with the
+    content address's η-expansion in the hole. -/
+theorem Term.viewReadTm_eta_diaAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb)
+    {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) {T : VarType} {b : Ann T}
+    (t : Term σ (Γ.diaIn x) T b) :
+    (⟨_, Term.viewReadTm (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of hxA))
+        (Term.diaAbsA x hxA t)⟩ : Σ c, Term σ (Γ.diaIn x) T c) = ⟨b, t⟩ := by
+  unfold Term.viewReadTm
+  rw [Term.subst_mono]
+  unfold Term.diaAbsA
+  refine (Term.subst_comp_sig _ _ (Subst.idS σ (Γ.diaIn x)) _ _ _ _ Subst.ok_idS Subst.coh_idS
+    ?_ t).trans ?_
+  · refine Subst.sim_of ?_
+    intro v T' hlp hv
+    rcases Subst.diaIn_casesA (σ := σ) hxA (hp.not_below hxA rfl) hv with
+      ⟨rfl, rfl⟩ | ⟨_, _, hen, hroot⟩
+    · change SubE.Sim _ (.ren (.step x .dia))
+        ((if x = x then SubE.ren (.root (.bnd 0)) else .hide).comp _ _ _)
+      rw [if_pos rfl]
+      change SubE.Sim _ (.ren (.step x .dia))
+        (if (VarSymb.root (Root.bnd 0)) = .root (.bnd 0) then
+          SubE.tm (Term.eta (.step x .dia) T' (Ctx.ref_diaIn_of hxA))
+        else .ren (.root (.bnd 0)))
+      rw [if_pos rfl]
+      exact .ren_eta _ _
+    · change SubE.Sim _ (.ren v) ((Subst.diaAbsA σ _ x v).comp _ _ _)
+      rw [hen _]
+      change SubE.Sim _ (.ren v)
+        ((Subst.single (σ := σ) (Δ := Γ.diaIn x) (.bnd 0)
+          (.tm (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of hxA)))).at v)
+      rw [Subst.at_nonproj _ hlp]
+      change SubE.Sim _ (.ren v) (if v = .root (.bnd 0) then _ else .ren v)
+      rw [if_neg (hroot (.bnd 0))]
+      exact .refl _
+  · exact (Term.subst_idS_mono (Ctx.Le.refl _) _ _ t).trans
+      (congrArg (Sigma.mk _) (Term.mono_refl _ t))
+namespace Canon
+
+variable {σ : Signature} {I : Type} [Preorder I]
+
+/-! ## Realisation read off a staged theory -/
+
+/-- Henkin witnessing at a **declared root**, for a staged theory: what naming a `Here` atom's
+    content needs.  A tree world has it as `World.exW`; the network's worlds witness with a fresh
+    variable too. -/
+def RootWitnessed (S : StageSys I) (T : Set (S.Sentence σ)) : Prop :=
+  ∀ {i : I} {A : VarType} {ψ : WFF σ ((S.ctx i).insert (.bnd 0) A) 1},
+    (⟨i, .ex A ψ⟩ : S.Sentence σ) ∈ T →
+    ∃ (i' : I) (hi : i ≤ i') (c : ℕ) (hc : (S.ctx i').ref (.root (.free c)) = some A),
+      (⟨i', WFF.instantiate Ctx.NoSlots.slots (Term.eta (.root (.free c)) A hc)
+        (WFF.mono ((S.le hi).insert (.bnd 0) A) ψ)⟩ : S.Sentence σ) ∈ T
+
+variable {S : StageSys I} {T : Set (S.Sentence σ)}
+
+/-- ⭐**A `Here` atom about a possible object gives its witness a datum.**  `here_beta` at the unit
+    reduces the atom to realisedness, `here_name` names the witness's content, and root witnessing
+    declares the name. -/
+theorem datum_of_here [Fact (StageSys.IsMCS T)] (hex : RootWitnessed S T)
+    (hT : ModalSys.T = true) {x : VarSymb} {i : I} {X : VarType}
+    (hx : (S.ctx i).ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B}
+    (bd : Term σ ((S.ctx i).diaIn x) B β) {a : Ann B} (t : Term σ (S.ctx i) B a)
+    (h : (⟨i, WFF.here hT (Term.diatm x ⟨X, hx⟩ bd) t⟩ : S.Sentence σ) ∈ T) :
+    Nonempty (RealDatum σ S T x) := by
+  have hex' := mem_of_provable' (T := T) (Δ := [_]) (fun ψ hψ => by
+      rw [List.mem_singleton.mp hψ]; exact h)
+    ⟨Proof.here_name hT x ⟨X, hx⟩ (Term.eta (.step x .dia) X (Ctx.ref_diaIn_of hx))
+      (Proof.here_beta hT x ⟨X, hx⟩ t bd (Term.unit) (Proof.lookup List.mem_cons_self))⟩
+  obtain ⟨i', hi, c, hc, hmem⟩ := hex hex'
+  have e : WFF.mono ((S.le hi).insert (.bnd 0) X)
+      (WFF.here hT (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := S.ctx i)).root X)
+          (Term.eta x (.VTypeDia X) hx))
+        (Term.eta (.root (.bnd 0)) X (Ctx.ref_insert_root _ (.bnd 0) X)) : WFF σ _ 1) =
+      WFF.here hT (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := S.ctx i')).root X)
+          (Term.eta x (.VTypeDia X) ((S.le hi).ref hx)))
+        (Term.eta (.root (.bnd 0)) X (Ctx.ref_insert_root _ (.bnd 0) X)) := by
+    change WFF.here hT (Term.mono _ (Term.mono _ (Term.eta x (.VTypeDia X) hx)))
+      (Term.mono _ (Term.eta (.root (.bnd 0)) X _)) = _
+    rw [Term.mono_mono, Term.mono_eta, Term.mono_eta, Term.mono_eta]
+  change (⟨i', WFF.instantiate _ _ (WFF.mono _ (WFF.here hT (Term.mono _
+      (Term.eta x (.VTypeDia X) hx)) (Term.eta (.root (.bnd 0)) X _)))⟩ :
+    S.Sentence σ) ∈ T at hmem
+  rw [e, WFF.instantiate_here_slot] at hmem
+  exact ⟨⟨hT, X, i', .root (.free c), hc, (S.le hi).ref hx, hmem⟩⟩
+
+/-- ⭐**A datum's possible object has its realisation as content here**: from the datum's atom
+    `Here (η x) t₀`, `here_beta` with the body abstracted, and the round trip — at any stage `k`
+    above both the body's and the datum's. -/
+theorem mem_here_datum [IsDirected I (· ≤ ·)] [hmcs : Fact (StageSys.IsMCS T)] {x : VarSymb}
+    (d : RealDatum σ S T x) {i k : I} (hik : i ≤ k) (hdk : d.i₀ ≤ k) {X : VarType}
+    (hx : (S.ctx i).ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B}
+    (bd : Term σ ((S.ctx i).diaIn x) B β) :
+    (⟨k, WFF.here d.hT (Term.mono (S.le hik) (Term.diatm x ⟨X, hx⟩ bd))
+        (Term.realiseAtA d.hT x (d.hdeclOf k ⟨X, (S.le hik).ref hx⟩)
+          (Term.mono (S.le hdk) d.t₀) (Term.mono ((S.le hik).diaIn x) bd))⟩ :
+      S.Sentence σ) ∈ T := by
+  have hdecl : (S.ctx k).ref x = some (.VTypeDia d.A) := d.hdeclOf k ⟨X, (S.le hik).ref hx⟩
+  have hat := d.hhereAt hmcs.out k hdk hdecl
+  have hmem := mem_of_provable' (T := T) (Δ := [_]) (fun ψ hψ => by
+      rw [List.mem_singleton.mp hψ]; exact hat)
+    ⟨Proof.here_beta d.hT x ⟨_, hdecl⟩ (Term.mono (S.le hdk) d.t₀)
+      (Term.eta (.step x .dia) d.A (Ctx.ref_diaIn_of hdecl))
+      (Term.diaAbsA x hdecl (Term.mono ((S.le hik).diaIn x) bd))
+      (Proof.lookup List.mem_cons_self)⟩
+  rwa [WFF.here_congr d.hT (sig_diatm (Term.viewReadTm_eta_diaAbsA x hdecl _)) rfl] at hmem
 
 end Canon
 

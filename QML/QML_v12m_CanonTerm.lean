@@ -317,7 +317,7 @@ def VarType.tsize : VarType → ℕ
     body in the environment pushed into the witness's view at the world itself; what the witness's
     content is there is what the world names (`rden_eta_of_real`). -/
 theorem interp_dia_self_core {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
-    {x : VarSymb} (dat : RealDatum σ w.L w.T x)
+    {x : VarSymb} (dat : RealDatum σ w.L.sys w.T x)
     (hdeclI : (w.L.ctx i).ref x = some (.VTypeDia dat.A))
     (hIHt₀ : Model.interp (canonEnv w₀ w dat.i₀) dat.t₀ =
       toDom w₀ dat.A w (rden w dat.i₀ (Ctx.Le.refl _) dat.t₀) (definable_rden _ dat.t₀))
@@ -374,7 +374,7 @@ theorem interp_dia_self_core {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ 
     recursive call at the content, and hence nothing the induction has to know about the stage the
     content lives at — which is what takes the stage out of the measure below (§2d, step 3). -/
 theorem interp_dia_self {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
-    {x : VarSymb} (dat : RealDatum σ w.L w.T x)
+    {x : VarSymb} (dat : RealDatum σ w.L.sys w.T x)
     (hdeclI : (w.L.ctx i).ref x = some (.VTypeDia dat.A))
     (IH : ∀ {Γ' : Ctx} {b : Ann A} (s : Term σ Γ' A b) {k : ℕ × ℕ},
       ∀ {e' : Γ'.Le (w.L.ctx k)} {env' : (model w₀).Env Γ' w},
@@ -471,7 +471,7 @@ theorem interp_canon_base_of : ∀ {A : VarType}, A = .Var → ∀ {a : Ann A} {
 /-- ⭐The realised case at base content: no `IHt₀`, and no condition on the stages the induction
     recurses at. -/
 theorem interp_dia_self_base {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
-    {x : VarSymb} (dat : RealDatum σ w.L w.T x) (hA : dat.A = .Var)
+    {x : VarSymb} (dat : RealDatum σ w.L.sys w.T x) (hA : dat.A = .Var)
     (hdeclI : (w.L.ctx i).ref x = some (.VTypeDia dat.A))
     (IH : ∀ {Γ' : Ctx} {b : Ann A} (s : Term σ Γ' A b) {k : ℕ × ℕ},
       ∀ {e' : Γ'.Le (w.L.ctx k)} {env' : (model w₀).Env Γ' w},

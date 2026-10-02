@@ -597,3 +597,29 @@ existing result is unchanged.  Whole v12m list green, no `sorry`, no warnings.
 
 So weak and strong T both reach `BData` with the construction unchanged; what T still needs is
 the canonical model (steps 3–4) and, for strong T, the term query (step 6).
+
+### 9.6 ✅ Step 2 done: the theory-level `Here` layer is shared *(2026-10-03)*
+
+The theory-level `Here` layer is now stated for a **staged theory** — a stage system `S : StageSys I`
+(directed) with a set `T` of its sentences, maximal consistency supplied as an instance
+`[Fact (StageSys.IsMCS T)]` — and both canonical models instantiate it.  Whole v12m list green.
+
+* `Canon.RealDatum σ S T x` with `a₀`, `t₀`, `hdeclOf` (directedness instead of the tree's `max`),
+  `hhereAt`, `declType`, `spec_of_here`, `spec`.
+* `CanonInterch`: `Interch T`, `DTerm S T A` (the theory a parameter only, so `s.Rel s'` reads it off
+  the type), `DTerm.Rel` with `refl`/`symm`/`trans`/`rel_lift`, `interch_of_coname`,
+  `rel_of_coname`, `Interch.of_lift`, `Interch.dia_iff`.
+* New, generic: `RootWitnessed S T` (Henkin witnessing at a declared root); ⭐`datum_of_here` (a
+  `Here` atom gives its witness a datum) and ⭐`mem_here_datum` (a datum's possible object has its
+  realisation as content, at any stage above both) — with `Term.viewReadTm_eta_diaAbsA` moved
+  alongside.  The tree's `realised_of_here` and `mem_here_realised` are now one-line instances.
+* The tree instantiates at `S := w.L.sys`, `T := w.T` (`World.mcsFact`).  Lean accepts
+  `w.L.sys.ctx i` for `w.L.ctx i` by unfolding, so no tree proof needed changing beyond a few
+  `DTerm w.L.sys w.T A` signatures and two type ascriptions.
+* The network: `BWorld.exW` now witnesses at a declared root (the Henkin step always declared a
+  fresh variable; `henk_ex` now says so), with `BWorld.exW_term` the old form.  New file
+  `QML_v12m_BStaged`: `BWorld.sys`, `BWorld.T`, ⭐`BWorld.mcsT` (maximal consistent as a staged
+  theory), `BWorld.rootWitnessed`, and `BWorld.datum_of_here` checking that the generic layer
+  applies.
+* Left world-specific: the classical choice of a datum (`World.real`/`Realised`), a few lines the
+  network's model will define for itself in step 3.

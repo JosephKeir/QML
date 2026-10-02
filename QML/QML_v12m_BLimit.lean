@@ -64,10 +64,10 @@ noncomputable def nodeWorld (k : Node) (hk : Born M₀ k) : BWorld σ where
   sub {i j} h φ hφ := ((ext_net hB hM₀ (by omega : birth M₀ hk + i ≤ birth M₀ hk + j)).grows k
     (live_birth hB hM₀ hk (Nat.le_add_right _ i))).sub φ hφ
   exW {i A ψ} hmem := by
-    obtain ⟨m, hnm, hle, a, t, hm⟩ :=
+    obtain ⟨m, hnm, hle, c, hc, hm⟩ :=
       henk_ex hB hM₀ (live_birth hB hM₀ hk (Nat.le_add_right _ i)) hmem
     obtain ⟨j, rfl⟩ : ∃ j, m = birth M₀ hk + j := ⟨m - birth M₀ hk, by omega⟩
-    exact ⟨j, by omega, a, t, hm⟩
+    exact ⟨j, by omega, c, hc, hm⟩
   allW {i A ψ} hmem := by
     obtain ⟨m, hnm, hle, a, t, hm⟩ :=
       henk_negAll hB hM₀ (live_birth hB hM₀ hk (Nat.le_add_right _ i)) hmem

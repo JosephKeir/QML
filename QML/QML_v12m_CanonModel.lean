@@ -32,27 +32,8 @@ theorem realised_of_here (hT : ModalSys.T = true) {w : World σ N₀} {x : VarSy
     {X : VarType} (hx : (w.L.ctx i).ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B}
     (bd : Term σ ((w.L.ctx i).diaIn x) B β) {a : Ann B} (t : Term σ (w.L.ctx i) B a)
     (h : (⟨i, WFF.here hT (Term.diatm x ⟨X, hx⟩ bd) t⟩ : w.L.sys.Sentence σ) ∈ w.T) :
-    w.Realised x := by
-  have hex := World.mem_of_provable (w := w) (Δ := [_]) (fun ψ hψ => by
-      rw [List.mem_singleton.mp hψ]; exact h)
-    ⟨Proof.here_name hT x ⟨X, hx⟩ (Term.eta (.step x .dia) X (Ctx.ref_diaIn_of hx))
-      (Proof.here_beta hT x ⟨X, hx⟩ t bd (Term.unit) (Proof.lookup List.mem_cons_self))⟩
-  obtain ⟨i', hi, c, hc, hmem⟩ := w.exW hex
-  have e : WFF.mono ((w.L.ctx_le hi).insert (.bnd 0) X)
-      (WFF.here hT (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := w.L.ctx i)).root X)
-          (Term.eta x (.VTypeDia X) hx))
-        (Term.eta (.root (.bnd 0)) X (Ctx.ref_insert_root _ (.bnd 0) X)) : WFF σ _ 1) =
-      WFF.here hT (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := w.L.ctx i')).root X)
-          (Term.eta x (.VTypeDia X) ((w.L.ctx_le hi).ref hx)))
-        (Term.eta (.root (.bnd 0)) X (Ctx.ref_insert_root _ (.bnd 0) X)) := by
-    change WFF.here hT (Term.mono _ (Term.mono _ (Term.eta x (.VTypeDia X) hx)))
-      (Term.mono _ (Term.eta (.root (.bnd 0)) X _)) = _
-    rw [Term.mono_mono, Term.mono_eta, Term.mono_eta, Term.mono_eta]
-  change (⟨i', WFF.instantiate _ _ (WFF.mono _ (WFF.here hT (Term.mono _
-      (Term.eta x (.VTypeDia X) hx)) (Term.eta (.root (.bnd 0)) X _)))⟩ :
-    w.L.sys.Sentence σ) ∈ w.T at hmem
-  rw [e, WFF.instantiate_here_slot] at hmem
-  exact World.realised_of_datum ⟨hT, X, i', .root (.free c), hc, (w.L.ctx_le hi).ref hx, hmem⟩
+    w.Realised x :=
+  w.realised_of_datum (datum_of_here w.exW hT hx bd t h).some
 
 -- Seriality under D needs a successor for every world, which is a Henkin construction, so the
 -- canonical frame is built over a countable signature — the setting of completeness anyway.
@@ -237,7 +218,7 @@ theorem posSerial_canon (hDS : ModalSys.DStrong = true) (w : World σ N₀) :
     cannot tell apart (`DTerm.Rel`) — co-named possible objects over different witnesses are
     related without being equal. -/
 def Ind {A : VarType} {w : World σ N₀} (o o' : (frame w₀).Dom A w) : Prop :=
-  ∃ s s' : DTerm w A, rden w s.i (Ctx.Le.refl _) s.t = fromDom w₀ A w o ∧
+  ∃ s s' : DTerm w.L.sys w.T A, rden w s.i (Ctx.Le.refl _) s.t = fromDom w₀ A w o ∧
     rden w s'.i (Ctx.Le.refl _) s'.t = fromDom w₀ A w o' ∧ s.Rel s'
 
 /-- Every object is definable, so it is related to itself. -/
@@ -281,7 +262,8 @@ theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T =
           ⟨(frame w₀).reflAcc hT w, self_mem_extent hr⟩ :=
       toDom_congr w₀ (rden_eta_realised hr hr.data.hd₀).symm _ _
     rw [← hc, fromDom_toDom]
-  · exact (DTerm.rel_lift _ le_sup_left).trans (hrel.trans (DTerm.rel_lift ⟨i, a', t⟩ hiK).symm)
+  · exact (DTerm.rel_lift _ le_sup_left).trans
+      (hrel.trans (DTerm.rel_lift (⟨i, a', t⟩ : DTerm w.L.sys w.T _) hiK).symm)
 
 /-- ⭐The canonical model. -/
 noncomputable def model : Model.{0, 0} σ where

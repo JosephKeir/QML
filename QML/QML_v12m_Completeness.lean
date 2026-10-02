@@ -232,7 +232,7 @@ theorem relSat_canon : ∀ {Γ : Ctx} {n : ℕ} (ρ : Rel σ Γ n) {w : World σ
     says about the realising term it says about the witness (`RealDatum.spec`).  The induction
     hypothesis is needed only at formulas of the same logical size (`WFF.size_realiseAt`). -/
 theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {x : VarSymb}
-    (dat : RealDatum σ w.L w.T x)
+    (dat : RealDatum σ w.L.sys w.T x)
     (hdeclI : (w.L.ctx i).ref x = some (.VTypeDia dat.A))
     (hreal : w.real x = some dat) {X : VarType}
     (h : (w.L.ctx i).ref x = some (.VTypeDia X)) (hx : ∃ Y, (w.L.ctx i).ref x = some (.VTypeDia Y))
@@ -527,7 +527,7 @@ theorem indInvariant : (model w₀).IndInvariant := by
       ((repSubst w₀ env hfin).under 0 0 A h0) (Subst.ok_under hθ A h0)
       (Subst.coh_under hθ hc Ctx.NoSlots.slots A h0)
       (Ctx.NoSlots.slots.insert A) ((Ctx.NoSlots.slots).insert A) φ
-  have key : ∀ (o₁ : (model w₀).frame.Dom A w) (s : DTerm w A),
+  have key : ∀ (o₁ : (model w₀).frame.Dom A w) (s : DTerm w.L.sys w.T A),
       rden w s.i (Ctx.Le.refl _) s.t = fromDom w₀ A w o₁ →
       ∀ (K' : ℕ × ℕ) (hK : repSup w₀ env hfin ≤ K') (hs : s.i ≤ K'),
         ((model w₀).sat (env.extend (.bnd 0) o₁) φ ↔

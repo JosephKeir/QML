@@ -152,7 +152,7 @@ theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i
                 exact hmemK)
               ⟨Proof.ex_intro A ((B.w s).liftT hK' t') (Proof.lookup List.mem_cons_self)⟩)
           · intro hmem
-            obtain ⟨i', hi, a, t, hmem'⟩ := (B.w s).exW hmem
+            obtain ⟨i', hi, a, t, hmem'⟩ := (B.w s).exW_term hmem
             refine ⟨Model.interp (B.canonEnv s i') t, ?_⟩
             have hs := (truth_lt n s i' _
               (by rw [WFF.size_instantiate, WFF.size_mono]; exact hψ)).mpr hmem'

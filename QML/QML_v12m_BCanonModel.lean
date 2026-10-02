@@ -186,7 +186,7 @@ theorem posSerial_canon (hDS : ModalSys.DStrong = true) (s : B.W) :
     ∃ p : B.frame.Pos .VTypeOne s, Nonempty (B.posEval p).1 := by
   have hax : (WFF.somePoss : WFF σ ((B.w s).ctx 0) 0) ∈ (B.w s).M 0 :=
     BWorld.mem_of_provable (Δ := []) (fun _ h => by simp at h) ⟨Proof.D_ex hDS⟩
-  obtain ⟨j, _, _, t, hmem⟩ := (B.w s).exW hax
+  obtain ⟨j, _, _, t, hmem⟩ := (B.w s).exW_term hax
   match t with
   | .diatm x hx u =>
       obtain ⟨X, hX⟩ := hx

@@ -85,7 +85,8 @@ variable {σ : Signature} {N₀ : ℕ} (w₀ : World σ N₀) [Countable σ.Func
 /-! ## Representatives -/
 
 /-- A representative of an object: a term denoting it, at some stage. -/
-noncomputable def rep {A : VarType} {w : World σ N₀} (o : (frame w₀).Dom A w) : DTerm w A :=
+noncomputable def rep {A : VarType} {w : World σ N₀} (o : (frame w₀).Dom A w) :
+    DTerm w.L.sys w.T A :=
   ⟨(definable_fromDom w₀ A w o).choose, (definable_fromDom w₀ A w o).choose_spec.choose,
     (definable_fromDom w₀ A w o).choose_spec.choose_spec.choose⟩
 

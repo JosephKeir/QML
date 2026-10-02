@@ -960,7 +960,7 @@ theorem rden_eta_realised {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
     an equation turns the identification into a `subst`, so callers never have to rewrite under
     `realisedTerm`, where it sits in dependent positions. -/
 theorem rden_eta_realised_of_eq {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
-    (D : RealDatum σ w.L w.T x) (hD : hr.data = D) {k : ℕ × ℕ}
+    (D : RealDatum σ w.L.sys w.T x) (hD : hr.data = D) {k : ℕ × ℕ}
     (hdecl : (w.L.ctx k).ref x = some (.VTypeDia D.A)) :
     (rden w k (Ctx.Le.refl _) (Term.eta x (.VTypeDia D.A) hdecl)).2
         ⟨⟨w, ⟨R.refl hr.T w⟩⟩, self_mem_extent hr⟩ =
@@ -970,7 +970,7 @@ theorem rden_eta_realised_of_eq {w : World σ N₀} {x : VarSymb} (hr : w.Realis
 
 /-- ⭐What a world names at an address, as the model uses it: the content, at the world itself, of
     the possible object that address denotes is what the named realising term denotes. -/
-theorem rden_eta_of_real {w : World σ N₀} {x : VarSymb} {d : RealDatum σ w.L w.T x}
+theorem rden_eta_of_real {w : World σ N₀} {x : VarSymb} {d : RealDatum σ w.L.sys w.T x}
     (hsome : w.real x = some d) {k : ℕ × ℕ}
     (hdecl : (w.L.ctx k).ref x = some (.VTypeDia d.A)) :
     (rden w k (Ctx.Le.refl _) (Term.eta x (.VTypeDia d.A) hdecl)).2

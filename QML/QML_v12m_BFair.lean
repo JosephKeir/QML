@@ -131,8 +131,9 @@ theorem henk_ex {n : ℕ} {s : Node} (hs : (net M₀ n).Live s) {A : VarType}
     {ψ : WFF σ ((ctxOf ((net M₀ n).st s).l).insert (.bnd 0) A) 1}
     (hmem : WFF.ex A ψ ∈ ((net M₀ n).st s).M) :
     ∃ m, n ≤ m ∧ ∃ (hle : (ctxOf ((net M₀ n).st s).l).Le (ctxOf ((net M₀ m).st s).l))
-      (a : Ann A) (t : Term σ (ctxOf ((net M₀ m).st s).l) A a),
-      WFF.instantiate Ctx.NoSlots.slots t (WFF.mono (hle.insert _ A) ψ) ∈ ((net M₀ m).st s).M := by
+      (c : ℕ) (hc : (ctxOf ((net M₀ m).st s).l).ref (.root (.free c)) = some A),
+      WFF.instantiate Ctx.NoSlots.slots (Term.eta (.root (.free c)) A hc)
+        (WFF.mono (hle.insert _ A) ψ) ∈ ((net M₀ m).st s).M := by
   obtain ⟨m, hnm, hsch⟩ := sched_after (σ := σ) (.inl (s, ⟨((net M₀ n).st s).l, .ex A ψ⟩)) n
   have hlm := live_mono hB hM₀ hnm hs
   have hsuf := lang_suffix hB hM₀ hnm hs
@@ -151,7 +152,7 @@ theorem henk_ex {n : ℕ} {s : Node} (hs : (net M₀ n).Live s) {A : VarType}
   refine ⟨m + 1, by omega, ?_⟩
   rw [hst]
   refine ⟨(ctxOf_le_of_suffix hsuf).trans (ctxOf_le_append [A] _), _,
-    Term.eta (.root (.free ((net M₀ m).st s).l.length)) A (Ctx.ref_insert_root _ _ A), ?_⟩
+    Ctx.ref_insert_root _ _ A, ?_⟩
   refine hS (Or.inr ?_)
   rw [Set.mem_singleton_iff, ← WFF.instantiate_eta_openFree _ (ctxOf_fresh le_rfl)
     Ctx.NoSlots.slots Ctx.NoSlots.slots, WFF.mono_mono]

@@ -18,43 +18,6 @@ namespace V12M
 
 variable [ModalSys]
 
-/-- ⭐**The round trip, for terms**: a term of the `◇_x` view is its abstraction read back with the
-    content address's η-expansion in the hole. -/
-theorem Term.viewReadTm_eta_diaAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb)
-    {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) {T : VarType} {b : Ann T}
-    (t : Term σ (Γ.diaIn x) T b) :
-    (⟨_, Term.viewReadTm (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of hxA))
-        (Term.diaAbsA x hxA t)⟩ : Σ c, Term σ (Γ.diaIn x) T c) = ⟨b, t⟩ := by
-  unfold Term.viewReadTm
-  rw [Term.subst_mono]
-  unfold Term.diaAbsA
-  refine (Term.subst_comp_sig _ _ (Subst.idS σ (Γ.diaIn x)) _ _ _ _ Subst.ok_idS Subst.coh_idS
-    ?_ t).trans ?_
-  · refine Subst.sim_of ?_
-    intro v T' hlp hv
-    rcases Subst.diaIn_casesA (σ := σ) hxA (hp.not_below hxA rfl) hv with
-      ⟨rfl, rfl⟩ | ⟨_, _, hen, hroot⟩
-    · change SubE.Sim _ (.ren (.step x .dia))
-        ((if x = x then SubE.ren (.root (.bnd 0)) else .hide).comp _ _ _)
-      rw [if_pos rfl]
-      change SubE.Sim _ (.ren (.step x .dia))
-        (if (VarSymb.root (Root.bnd 0)) = .root (.bnd 0) then
-          SubE.tm (Term.eta (.step x .dia) T' (Ctx.ref_diaIn_of hxA))
-        else .ren (.root (.bnd 0)))
-      rw [if_pos rfl]
-      exact .ren_eta _ _
-    · change SubE.Sim _ (.ren v) ((Subst.diaAbsA σ _ x v).comp _ _ _)
-      rw [hen _]
-      change SubE.Sim _ (.ren v)
-        ((Subst.single (σ := σ) (Δ := Γ.diaIn x) (.bnd 0)
-          (.tm (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of hxA)))).at v)
-      rw [Subst.at_nonproj _ hlp]
-      change SubE.Sim _ (.ren v) (if v = .root (.bnd 0) then _ else .ren v)
-      rw [if_neg (hroot (.bnd 0))]
-      exact .refl _
-  · exact (Term.subst_idS_mono (Ctx.Le.refl _) _ _ t).trans
-      (congrArg (Sigma.mk _) (Term.mono_refl _ t))
-
 namespace Canon
 
 variable {σ : Signature} {N₀ : ℕ}
@@ -66,17 +29,8 @@ theorem mem_here_realised {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) 
     (bd : Term σ ((w.L.ctx i).diaIn x) B β) :
     (⟨i ⊔ hr.data.i₀, WFF.here hr.T
         (Term.mono (w.L.ctx_le le_sup_left) (Term.diatm x ⟨X, hx⟩ bd))
-        (realisedTerm w hr (Ctx.Le.refl _) ⟨X, hx⟩ bd).2⟩ : w.L.sys.Sentence σ) ∈ w.T := by
-  have hdecl : (w.L.ctx (i ⊔ hr.data.i₀)).ref x = some (.VTypeDia hr.data.A) :=
-    realisedDecl hr (Ctx.Le.refl _) ⟨X, hx⟩
-  have hat := hr.data.hhereAt w.mcs (i ⊔ hr.data.i₀) le_sup_right hdecl
-  have hmem := World.mem_of_provable (w := w) (Δ := [_]) (fun ψ hψ => by
-      rw [List.mem_singleton.mp hψ]; exact hat)
-    ⟨Proof.here_beta hr.T x ⟨_, hdecl⟩ (Term.mono (w.L.ctx_le le_sup_right) hr.data.t₀)
-      (Term.eta (.step x .dia) hr.data.A (Ctx.ref_diaIn_of hdecl))
-      (Term.diaAbsA x hdecl (Term.mono (realisedLe w hr (Ctx.Le.refl _)) bd))
-      (Proof.lookup List.mem_cons_self)⟩
-  rwa [WFF.here_congr hr.T (sig_diatm (Term.viewReadTm_eta_diaAbsA x hdecl _)) rfl] at hmem
+        (realisedTerm w hr (Ctx.Le.refl _) ⟨X, hx⟩ bd).2⟩ : w.L.sys.Sentence σ) ∈ w.T :=
+  mem_here_datum hr.data le_sup_left le_sup_right hx bd
 
 /-! ## The `here` case of the truth lemma -/
 
@@ -199,7 +153,7 @@ theorem here_truth (hT : ModalSys.T = true) {w : World σ N₀} {i : ℕ × ℕ}
           (Term.mono (w.L.ctx_le hk) t)⟩ : w.L.sys.Sentence σ) ∈ w.T :=
         (World.mem_lift hk).mp hmem
       exact (DTerm.rel_of_coname hT _ (mem_here_realised hr h bd) ht).trans
-        (DTerm.rel_lift ⟨i, a, t⟩ hk).symm
+        (DTerm.rel_lift (⟨i, a, t⟩ : DTerm w.L.sys w.T _) hk).symm
 
 end HereCase
 
