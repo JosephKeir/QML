@@ -676,3 +676,25 @@ case, `Ind := Rel` and `IndInvariant`.  4a is done; whole v12m list green, no wa
   `posStrength_full`, `necExtract` by `rawEval`.  The instance is built under the new class
   `ModalSys.NoFourNoTS` (4 off; strong T off whenever T is on — `NoTFour` gives it), with
   `RootPoss := VarSymb` and, for now, `Ind := (· = ·)` (4c replaces it).
+
+### 9.9 ✅ Step 4b: the canonical environment under weak T *(2026-10-03)*
+
+`BCanonTerm` now holds under `ModalSys.NoFourNoTS` (weak T allowed).  Whole v12m list green.
+
+* `canonEnv_ref`'s `here` case: `u.here` reads the value at the own arrow, which is the collapse of
+  `u`'s body (`rden_boxtm_self`, `Term.collapse_eta`, `VarSymb.inner_collapse_zero`).
+* `boxPush_canon`/`diaPush_canon` now take the network-arrow hypothesis (`B.R s a.1`,
+  resp. `∃ X, B.kd s a.1.1 = some (x, X)`); along the own arrow the push is semantic
+  (`Model.Env.collapseAgree_self`, `Model.interp_realiseAtA`), not a substitution.
+* `interp_canon_eta`, `envShape_canon` (an environment agreeing with the canonical one has the
+  canonical shapes), `rden_eta_real` (a realised witness's content along the own arrow is its
+  datum's), `rden_realTerm_eta` (`BCanonDom`).
+* ⭐`interp_dia_self` (the tree's `interp_dia_self`): along the own arrow a possible term's value has
+  the realised body as content.
+* ⭐`interp_canon` under T: `□` along the own arrow via `Model.interp_collapse`; `◇` via
+  `Model.pos_inj` — sections arrow by arrow (network arrows by substitution, the own arrow by
+  `interp_dia_self`) and shapes by `envShape_canon`.
+
+**The truth lemma moves to 4c.**  Its `here` case cannot be discharged under weak T until `Ind` is
+the canonical relation, so `BTruth` (and with it the `□`/`◇` cases along the own arrow, which are
+the tree's: `sat_boxHere` with `T_box`, and `interp_dia_self`) stays under `NoTFour` until then.

@@ -644,6 +644,28 @@ theorem rden_realTerm_mono_boxIn {s t : B.W} {x : VarSymb} (hr : (B.w s).Realise
     rden_mono]
   exact rden_congr _ _ _ _ _ _
 
+/-- ⭐The realised content of the witness's own content address is the datum's content. -/
+theorem rden_realTerm_eta {s t : B.W} {x : VarSymb} (hr : (B.w s).Realised x) {Γ : Ctx} {i : ℕ}
+    (e : Γ.Le ((B.w s).ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    (hdia : (Γ.diaIn x).ref (.step x .dia) = some hr.data.A)
+    (hl : ((B.w s).ctx (max i hr.data.i₀)).Le ((B.w t).ctx (max i hr.data.i₀)))
+    (hl' : ((B.w s).ctx hr.data.i₀).Le ((B.w t).ctx hr.data.i₀)) :
+    B.rden t _ hl (B.realTerm hr e hx (Term.eta (.step x .dia) hr.data.A hdia)).2 =
+      B.rden t hr.data.i₀ hl' hr.data.t₀ := by
+  have hdecl : ((B.w s).ctx (max i hr.data.i₀)).ref x = some (.VTypeDia hr.data.A) :=
+    hr.data.hdeclOf _ (hx.imp fun _ h => ((B.w s).le (le_max_left _ _)).ref (e.ref h))
+  have hmono : (⟨_, Term.mono ((e.trans ((B.w s).le (le_max_left _ _))).diaIn x)
+      (Term.eta (.step x .dia) hr.data.A hdia)⟩ : Σ z : Ann hr.data.A,
+        Term σ (((B.w s).ctx (max i hr.data.i₀)).diaIn x) hr.data.A z) =
+      ⟨_, Term.eta (.step x .dia) hr.data.A (Ctx.ref_diaIn_of hdecl)⟩ := by
+    rw [Term.mono_eta]
+  simp only [realTerm]
+  rw [rden_sigma _ (Canon.Term.realiseAtA_sigma hr.data.hT x hdecl _ hmono),
+    rden_sigma _ (Term.realiseAtA_eta hr.data.hT x hdecl
+      (Term.mono ((B.w s).le (le_max_right _ _)) hr.data.t₀)),
+    rden_mono]
+  exact rden_congr _ _ _ _ _ _
+
 /-! ## Definable objects -/
 
 /-- ⭐The raw objects denoted by terms. -/

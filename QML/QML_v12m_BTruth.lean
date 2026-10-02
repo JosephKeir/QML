@@ -169,7 +169,7 @@ theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i
                 (coh_arrowS (B.imgOk (R_of_RT a.2.down) i))
                 Ctx.NoSlots.slots Ctx.NoSlots.slots χ ∈ (B.w a.1).M (B.stg s a.1 i) := by
             intro a
-            rw [boxPush_canon]
+            rw [boxPush_canon s i a (R_of_RT a.2.down)]
             exact (Model.sat_subst _ _ (coh_arrowS (B.imgOk (R_of_RT a.2.down) i)) Ctx.NoSlots.slots
               Ctx.NoSlots.slots _ _ χ).symm.trans
               (truth_lt n a.1 _ _ (by rw [WFF.size_subst]; exact hχs))
@@ -196,7 +196,7 @@ theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i
                   (coh_arrowXS (B.imgOk (B.kdR hk) i) h (B.hcx hk i))
                   Ctx.NoSlots.slots Ctx.NoSlots.slots χ ∈ (B.w a.1.1).M (B.stg s a.1.1 i) := by
             intro X h a hk
-            rw [diaPush_canon s i h a]
+            rw [diaPush_canon s i h a ⟨_, hk⟩]
             exact (Model.sat_subst _ _ (coh_arrowXS (B.imgOk (B.kdR hk) i) h (B.hcx hk i))
               Ctx.NoSlots.slots Ctx.NoSlots.slots _ _ χ).symm.trans
               (truth_lt n a.1.1 _ _ (by rw [WFF.size_subst]; exact hχs))
