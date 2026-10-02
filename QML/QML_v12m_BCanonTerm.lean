@@ -98,14 +98,15 @@ theorem canonEnv_le (s : B.W) {i j : ℕ} (hij : i ≤ j) :
 
 /-! ## Pushing into views along arrows -/
 
-omit [ModalSys] [ModalSys.NoTFour] in
+omit [ModalSys.NoTFour] in
 theorem arrowIdx_item {img : ℕ → ℕ} {u : VarSymb} (hu : PPath u.path) :
-    arrowIdx img (.step u .box) = u.reroot (imgRoot img u.rt) := by
-  have h := erase_box_item hu []
+    arrowIdx img (.step u .box) = itemAt (imgRoot img u.rt) u := by
+  have h := itemPath_item hu []
   rw [List.append_nil] at h
   unfold arrowIdx
-  change (VarSymb.root (imgRoot img u.rt)).ext (((VarSymb.step u .box).ext []).path.erase .box) = _
-  rw [h, VarSymb.reroot_eq]
+  change (VarSymb.root (imgRoot img u.rt)).ext (itemPath ((VarSymb.step u .box).ext []).path) = _
+  rw [h]
+  rfl
 
 omit [ModalSys.NoTFour] in
 /-- A coherent entry that is an address is the address the index map gives. -/
@@ -142,10 +143,10 @@ theorem boxPush_canon (s : B.W) (i : ℕ) (a : B.Acc s) :
   funext v T hv
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   have hk := ModalSys.NoTFour.keepOnly
-  have hw : ((B.w a.1).ctx (B.stg s a.1 i)).ref (u.reroot (imgRoot (B.img s a.1) u.rt)) =
+  have hw : ((B.w a.1).ctx (B.stg s a.1 i)).ref (itemAt (imgRoot (B.img s a.1) u.rt) u) =
       some T := B.arOk a.2.down i (.step u .box) T rfl hv
   change B.model.necEval ((B.canonEnv s i).ref u (Ctx.boxIn_step_box hv)) a =
-    (B.canonEnv a.1 (B.stg s a.1 i)).ref (u.reroot (imgRoot (B.img s a.1) u.rt)) hw
+    (B.canonEnv a.1 (B.stg s a.1 i)).ref (itemAt (imgRoot (B.img s a.1) u.rt) u) hw
   rw [canonEnv_ref, canonEnv_ref]
   refine toDom_congr ?_ _ _
   change B.rden a.1 _ _ (Term.subst _ _ _ _ (Term.eta u.inner T _)) = _

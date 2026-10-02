@@ -22,7 +22,6 @@ variable {σ : Signature}
 
 /-! ## The child's variables -/
 
-omit [ModalSys] in
 theorem rootTy_map_bc (l : List VarType) (r : ℕ) (h : r < l.length) :
     rootTy (l.map VarType.bc) r = (rootTy l r).bc := by
   unfold rootTy
@@ -39,7 +38,7 @@ theorem childImg (l : List VarType) : ImgOk l (ctxOf (l.map VarType.bc)) id := b
 /-! ## Pulling back -/
 
 /-- Each variable of the child goes back to the tuple of the corresponding variable's items. -/
-def pullS [ModalSys.NoTFour] (σ : Signature) (l : List VarType) : Subst σ (ctxOf l).boxIn :=
+def pullS [ModalSys.NoFour] (σ : Signature) (l : List VarType) : Subst σ (ctxOf l).boxIn :=
   fun v => match v with
   | .root (.free r) =>
       if h : r < l.length then .tm (tup (.root (.free r)) (rootTy l r) (by
@@ -52,12 +51,12 @@ def pullIdx (l : List VarType) (a : VarSymb) : VarSymb :=
   | .free r => if r < l.length then (tupAnn (.root (.free r)) (rootTy l r)).idxAt a.path else a
   | .bnd _ => a
 
-theorem pull_tm [ModalSys.NoTFour] {l : List VarType} {r : ℕ} (h : r < l.length) :
+theorem pull_tm [ModalSys.NoFour] {l : List VarType} {r : ℕ} (h : r < l.length) :
     pullS σ l (.root (.free r)) = .tm (tup (.root (.free r)) (rootTy l r) (by
       rw [Ctx.ref_nonproj _ rfl]; exact ctxOf_root_lt h)) :=
   dif_pos h
 
-theorem ok_pullS [ModalSys.NoTFour] (l : List VarType) :
+theorem ok_pullS [ModalSys.NoFour] (l : List VarType) :
     Subst.Ok (ctxOf (l.map VarType.bc)) (pullS σ l) := by
   intro v T _ hv
   obtain ⟨r, rfl⟩ := ctxOf_decl hv
@@ -70,7 +69,7 @@ theorem ok_pullS [ModalSys.NoTFour] (l : List VarType) :
   rw [pull_tm hr]
   rfl
 
-theorem coh_pullS [ModalSys.NoTFour] (l : List VarType) :
+theorem coh_pullS [ModalSys.NoFour] (l : List VarType) :
     Subst.Coh (pullIdx l) (ctxOf (l.map VarType.bc)) (pullS σ l) := by
   refine Subst.coh_of (ok_pullS l) ?_
   intro v T _ hv p
@@ -87,11 +86,13 @@ theorem coh_pullS [ModalSys.NoTFour] (l : List VarType) :
   rw [VarSymb.ext_path]
   rfl
 
-/-- Pulling back along a projection path reaches the tuple of the component. -/
-theorem at_pull_tup [ModalSys.NoTFour] {l : List VarType} :
+/-- Pulling back along an encoded projection path reaches the tuple of the component. -/
+theorem at_pull_tup [ModalSys.NoFour] {l : List VarType} :
     ∀ {u : VarSymb} {U : VarType} (hu : (ctxOf l).ref u = some U) (r : ℕ), u.rt = .free r →
-      (pullS σ l).at u = .tm (tup u U hu)
+      (pullS σ l).at ((VarSymb.root (.free r)).ext (encPath u.path)) = .tm (tup u U hu)
   | .root (.free r'), U, hu, r, hrt => by
+      change Root.free r' = Root.free r at hrt
+      cases hrt
       obtain ⟨r₀, e, hr', -⟩ := ref_rt hu
       cases e
       have hU := hu
@@ -100,9 +101,7 @@ theorem at_pull_tup [ModalSys.NoTFour] {l : List VarType} :
       exact pull_tm hr'
   | .root (.bnd _), _, hu, _, hrt => by cases hrt
   | .step u s, U, hu, r, hrt => by
-      have hp := (reach_ppath hu).1
-      have hs : s = .fst ∨ s = .snd := hp s (by simp [VarSymb.path])
-      have hproj : s.isProj = true := by rcases hs with rfl | rfl <;> rfl
+      have hproj : s.isProj = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
       have hu' := hu
       simp only [Ctx.ref, if_pos hproj] at hu'
       cases hU : (ctxOf l).ref u with
@@ -110,28 +109,13 @@ theorem at_pull_tup [ModalSys.NoTFour] {l : List VarType} :
       | some U' =>
           rw [hU] at hu'
           have ih := at_pull_tup hU r hrt
-          rw [show (pullS σ l).at (.step u s) = ((pullS σ l).at u).proj s from if_pos hproj, ih]
-          rcases hs with rfl | rfl
-          · cases U' with
-            | VTypeProd X Y =>
-                cases hu'
-                rfl
-            | _ => cases hu'
-          · cases U' with
-            | VTypeProd X Y =>
-                cases hu'
-                rfl
-            | _ => cases hu'
-
-omit [ModalSys] in
-theorem reroot_rt_self : ∀ u : VarSymb, u.reroot u.rt = u
-  | .root _ => rfl
-  | .step u s => by
-      change VarSymb.step (u.reroot u.rt) s = _
-      rw [reroot_rt_self u]
+          change (pullS σ l).at ((VarSymb.root (.free r)).ext (encPath (u.path ++ [s]))) = _
+          rw [show encPath (u.path ++ [s]) = encPath u.path ++ [encStep s] from
+            List.map_append, VarSymb.ext_step, Subst.at_proj _ _ (encStep_proj hproj), ih]
+          exact proj_tupB rfl hU hproj hu' hu
 
 /-- ⭐Pulling back undoes the child's arrow. -/
-theorem subst_pull_arrow [ModalSys.NoTFour] (l : List VarType) (χ : WFF σ (ctxOf l).boxIn 0) :
+theorem subst_pull_arrow [ModalSys.NoFour] (l : List VarType) (χ : WFF σ (ctxOf l).boxIn 0) :
     WFF.subst (pullIdx l) (pullS σ l) (ok_pullS l) (coh_pullS l) Ctx.NoSlots.slots
       Ctx.NoSlots.slots (WFF.subst (arrowIdx id) (arrowS σ (ctxOf (l.map VarType.bc)) id)
         (ok_arrowS (childImg l)) (coh_arrowS (childImg l)) Ctx.NoSlots.slots Ctx.NoSlots.slots
@@ -142,26 +126,22 @@ theorem subst_pull_arrow [ModalSys.NoTFour] (l : List VarType) (χ : WFF σ (ctx
   intro v T _ hv
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   obtain ⟨-, r, hr⟩ := reach_ppath hu
-  change SubE.Sim T (.ren (.step u .box)) ((pullS σ l).at (u.reroot (imgRoot id u.rt)))
-  have e : u.reroot (imgRoot id u.rt) = u := by
-    rw [hr]
-    change u.reroot (.free r) = u
-    rw [← hr]
-    exact reroot_rt_self u
-  rw [e, at_pull_tup hu r hr]
+  change SubE.Sim T (.ren (.step u .box)) ((pullS σ l).at (itemAt (imgRoot id u.rt) u))
+  rw [show imgRoot id u.rt = .free r by rw [hr]; rfl,
+    at_item_of_tupB _ _ hu ModalSys.T rfl (at_pull_tup hu r hr)]
   exact .ren_eta _ _
 
 /-! ## Creating a child -/
 
 /-- The arrow into a new child, applied to a formula of the `□` view. -/
-abbrev childArrow [ModalSys.NoTFour] (l : List VarType) (χ : WFF σ (ctxOf l).boxIn 0) :
+abbrev childArrow [ModalSys.NoFour] (l : List VarType) (χ : WFF σ (ctxOf l).boxIn 0) :
     WFF σ (ctxOf (l.map VarType.bc)) 0 :=
   WFF.subst (arrowIdx id) (arrowS σ (ctxOf (l.map VarType.bc)) id) (ok_arrowS (childImg l))
     (coh_arrowS (childImg l)) Ctx.NoSlots.slots Ctx.NoSlots.slots χ
 
 /-- ⭐**The existence lemma for a child.**  If `□φ` fails, the necessities sent along the child's
     arrow are consistent with the image of `¬φ`. -/
-theorem child_consistent [ModalSys.NoTFour] {l : List VarType} {M : Set (WFF σ (ctxOf l) 0)}
+theorem child_consistent [ModalSys.NoFour] {l : List VarType} {M : Set (WFF σ (ctxOf l) 0)}
     (hM : Theory.IsMCS M) {φ : WFF σ (ctxOf l).boxIn 0} (hφ : .box φ ∉ M) :
     Theory.Consistent ({(childArrow l φ).neg} ∪
       {χ | ∃ ψ, WFF.mono (Ctx.Le.refl _) (.box ψ) ∈ M ∧ χ = childArrow l ψ}) := by
@@ -245,7 +225,7 @@ theorem closed_back (hB : ModalSys.B = true) {Γ Δ : Ctx} [Γ.Presented] [Δ.Pr
   exact hN.neg_mem_iff.mp h2 hψ
 
 /-- An arrow's transfer gives closed transfer. -/
-theorem Transfer.closed [ModalSys.NoTFour] {Γ : Ctx} {M : Set (WFF σ Γ 0)} {ls : List VarType}
+theorem Transfer.closed [ModalSys.NoFour] {Γ : Ctx} {M : Set (WFF σ Γ 0)} {ls : List VarType}
     {hle : (ctxOf ls).Le Γ} {Δ : Ctx} [Δ.NoSlots] {N : Set (WFF σ Δ 0)} {img : ℕ → ℕ}
     {himg : ImgOk ls Δ img} (htr : Transfer M ls hle N img himg) : CTransfer M N := by
   intro χ hχ
@@ -256,7 +236,7 @@ theorem Transfer.closed [ModalSys.NoTFour] {Γ : Ctx} {M : Set (WFF σ Γ 0)} {l
   rwa [WFF.closed, WFF.subst_mono_empty _ (Ctx.empty_le _)] at h
 
 /-- Closed transfer gives the transfer of an arrow with nothing yet given an image. -/
-theorem Transfer.of_closed [ModalSys.NoTFour] {Γ : Ctx} {M : Set (WFF σ Γ 0)}
+theorem Transfer.of_closed [ModalSys.NoFour] {Γ : Ctx} {M : Set (WFF σ Γ 0)}
     {hle : (ctxOf []).Le Γ} {Δ : Ctx} [Δ.NoSlots] {N : Set (WFF σ Δ 0)} {img : ℕ → ℕ}
     (himg : ImgOk [] Δ img) (h : CTransfer M N) : Transfer M [] hle N img himg := by
   intro ψ hψ

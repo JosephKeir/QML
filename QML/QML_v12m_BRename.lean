@@ -51,8 +51,8 @@ theorem rootOnly_ctxOf (l : List VarType) : RootOnly (ctxOf l) := rootOnly_ofDec
 
 variable [ModalSys.NoTFour]
 
-/-- In a context of declared roots, without T and 4, a reachable address is a root followed by
-    projections. -/
+omit [ModalSys.NoTFour] in
+/-- In a context of declared roots a reachable address is a root followed by projections. -/
 theorem ppath_of_rootOnly {Γ : Ctx} (hΓ : RootOnly Γ) :
     ∀ {v : VarSymb} {T : VarType}, Γ.ref v = some T → PPath v.path ∧ ∃ r, v.rt = .free r
   | .root _, _, h => by
@@ -70,17 +70,11 @@ theorem ppath_of_rootOnly {Γ : Ctx} (hΓ : RootOnly Γ) :
             change PPath (v.path ++ [s])
             refine hp.append fun s' hs' => ?_
             rw [List.mem_singleton.mp hs']
-            rw [hU] at h
-            cases s with
-            | fst => exact Or.inl rfl
-            | snd => exact Or.inr rfl
-            | here => cases U <;> simp [VarType.step, ModalSys.NoTFour.noT] at h
-            | box => cases hs
-            | dia => cases hs
-            | keep => cases hs
+            exact hs
       · obtain ⟨r, hr⟩ := hΓ h
         cases hr
 
+omit [ModalSys.NoTFour] in
 /-- Rerooting a reachable address at a root of the same type keeps it reachable, at its type. -/
 theorem ref_reroot {Γ Δ : Ctx} (hΓ : RootOnly Γ) {z : Root} {R : VarType} :
     ∀ {u : VarSymb} {T : VarType}, Γ.ref u = some T → Γ.ref (.root u.rt) = some R →
@@ -91,9 +85,7 @@ theorem ref_reroot {Γ Δ : Ctx} (hΓ : RootOnly Γ) {z : Root} {R : VarType} :
       cases h
       exact hz
   | .step u s, T, h, hR, hz => by
-      have hp := (ppath_of_rootOnly hΓ h).1
-      have hs : s = .fst ∨ s = .snd := hp s (by simp [VarSymb.path])
-      have hproj : s.isProj = true := by rcases hs with rfl | rfl <;> rfl
+      have hproj : s.isProj = true := (ppath_of_rootOnly hΓ h).1 s (by simp [VarSymb.path])
       simp only [Ctx.ref, if_pos hproj] at h
       cases hU : Γ.ref u with
       | none => rw [hU] at h; cases h

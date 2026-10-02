@@ -70,7 +70,7 @@ theorem henkin_consistent {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)}
 
 /-- ⭐The necessity transfer of an arrow from a context `Γ` whose oldest variables `ls` have images
     in `Δ`: whatever the source necessitates about them, the target says of their images. -/
-def Transfer [ModalSys.NoTFour] {Γ : Ctx} (M : Set (WFF σ Γ 0)) (ls : List VarType)
+def Transfer [ModalSys.NoFour] {Γ : Ctx} (M : Set (WFF σ Γ 0)) (ls : List VarType)
     (hle : (ctxOf ls).Le Γ) {Δ : Ctx} [Δ.NoSlots] (N : Set (WFF σ Δ 0)) (img : ℕ → ℕ)
     (himg : ImgOk ls Δ img) : Prop :=
   ∀ ψ : WFF σ (ctxOf ls).boxIn 0, WFF.mono hle (.box ψ) ∈ M →
@@ -126,7 +126,7 @@ theorem box_list {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)} (hM : Theory.
 /-! ## Realising the next variable -/
 
 /-- The arrow extended by the source's next variable. -/
-abbrev extArrow [ModalSys.NoTFour] {A : VarType} {ls lt : List VarType} {img : ℕ → ℕ}
+abbrev extArrow [ModalSys.NoFour] {A : VarType} {ls lt : List VarType} {img : ℕ → ℕ}
     (himg : ImgOk ls (ctxOf lt) img) (ψ : WFF σ (ctxOf (A :: ls)).boxIn 0) :
     WFF σ (ctxOf (A.bc :: lt)) 0 :=
   WFF.subst (arrowIdx (extImg img ls.length lt.length))
@@ -135,7 +135,7 @@ abbrev extArrow [ModalSys.NoTFour] {A : VarType} {ls lt : List VarType} {img : �
     Ctx.NoSlots.slots ψ
 
 /-- One necessity of the source about its next variable is consistent with the target. -/
-theorem realise_one [ModalSys.NoTFour] {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)}
+theorem realise_one [ModalSys.NoFour] {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)}
     (hM : Theory.IsMCS M) {A : VarType} {ls lt : List VarType}
     (hle : (ctxOf (A :: ls)).Le Γ) {N : Set (WFF σ (ctxOf lt) 0)} (hN : Theory.IsMCS N)
     {img : ℕ → ℕ} (himg : ImgOk ls (ctxOf lt) img)
@@ -168,7 +168,7 @@ theorem realise_one [ModalSys.NoTFour] {Γ : Ctx} [Γ.Presented] {M : Set (WFF �
 /-- ⭐**Realising the next variable along an arrow.**  Everything the source necessitates about
     its variables up to the next one is consistent with the target, the next one's items going to
     a fresh variable. -/
-theorem realise_consistent [ModalSys.NoTFour] {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)}
+theorem realise_consistent [ModalSys.NoFour] {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)}
     (hM : Theory.IsMCS M) {A : VarType} {ls lt : List VarType}
     (hle : (ctxOf (A :: ls)).Le Γ) {N : Set (WFF σ (ctxOf lt) 0)} (hN : Theory.IsMCS N)
     {img : ℕ → ℕ} (himg : ImgOk ls (ctxOf lt) img)

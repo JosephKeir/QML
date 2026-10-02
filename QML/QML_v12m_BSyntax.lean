@@ -10,15 +10,19 @@ are linked by **arrows**, which translate the source's `□` view into the targe
 
 An item of the `□` view is `u.box` for a reachable `u : □A`.  In a context of own variables a
 reachable address is a root followed by projections (`reach_ppath`), so the items of one root `r`
-are the `□`-components of its type.  An arrow sends them all to **one** variable of the target, of
-the type `r`'s type has with each `□A` component replaced by `A` and every other leaf by `𝟙`
-(`VarType.bc`): the item `r.q.box` goes to `z.q` (`arrowS`, well typed by `ref_reroot_bc`).  So an
-arrow is an index map on roots.  A `◇_x` arrow, towards a world in the extent of `x`, also sends
-`x.dia` to a variable holding `x`'s content (`arrowXS`).
+are the `□`-components of its type.  An arrow sends them all to **one** variable `z` of the
+target, of the type `r`'s type has with each `□A` component replaced by its box contents and every
+other leaf by `𝟙` (`VarType.bc`), and the item `r.q.box` to the address `itemAt z r.q` in it
+(`arrowS`, well typed by `ref_item`).  So an arrow is an index map on roots.  A `◇_x` arrow,
+towards a world in the extent of `x`, also sends `x.dia` to a variable holding `x`'s content
+(`arrowXS`).
 
-The construction assumes neither T nor 4 (`ModalSys.NoTFour`): views then show exactly the `box`
-items (and `x.dia`).
+Without T, `itemAt z r.q` is `z.q`.  Under T the projection `here` makes `r.here.q.box` an item
+too, so a `□A` component's box contents are `A × bc A` and `itemAt` encodes the path
+(`encPath`, `itemTail`; `docs/v12-arrow-canonical.md` §9.2).  The construction needs 4 off
+(`ModalSys.NoFour`): views then show exactly the `box` items (and `x.dia`).
 -/
+
 
 namespace V12M
 
@@ -28,10 +32,22 @@ class ModalSys.NoTFour [ModalSys] : Prop where
   noT : ModalSys.T = false
   noFour : ModalSys.Four = false
 
+/-- The flag the arrow construction needs once T is admitted (`docs/v12-arrow-canonical.md` §9):
+    4 off, so a view shows `u.box` (and `x.dia`) and never `keep`.  Under T a reachable address
+    may also pass through the projection `here`, which `VarType.bc` and the arrows account for. -/
+class ModalSys.NoFour [ModalSys] : Prop where
+  noFour : ModalSys.Four = false
+
+instance ModalSys.NoTFour.toNoFour [ModalSys] [h : ModalSys.NoTFour] : ModalSys.NoFour :=
+  ⟨h.noFour⟩
+
 variable [ModalSys]
 
 theorem ModalSys.NoTFour.keepOnly [ModalSys.NoTFour] : ModalSys.keepOnly = false := by
   simp [ModalSys.keepOnly, ModalSys.NoTFour.noT]
+
+theorem ModalSys.NoFour.keepOnly [ModalSys.NoFour] : ModalSys.keepOnly = false := by
+  simp [ModalSys.keepOnly, ModalSys.NoFour.noFour]
 
 /-! ## Addresses as paths -/
 
@@ -74,16 +90,16 @@ theorem reroot_path : ∀ (u : VarSymb) (r : Root), (u.reroot r).path = u.path
 
 end VarSymb
 
-/-- A path of projections `fst`/`snd` only. -/
-def PPath (p : List Step) : Prop := ∀ s ∈ p, s = .fst ∨ s = .snd
+/-- A path of projections: `fst`, `snd`, and under T `here`. -/
+def PPath (p : List Step) : Prop := ∀ s ∈ p, s.isProj = true
 
 omit [ModalSys] in
-theorem PPath.box_not_mem {p : List Step} (h : PPath p) : Step.box ∉ p := fun hm => by
-  rcases h _ hm with h' | h' <;> cases h'
+theorem PPath.box_not_mem {p : List Step} (h : PPath p) : Step.box ∉ p := fun hm =>
+  absurd (h _ hm) (by decide)
 
 omit [ModalSys] in
-theorem PPath.dia_not_mem {p : List Step} (h : PPath p) : Step.dia ∉ p := fun hm => by
-  rcases h _ hm with h' | h' <;> cases h'
+theorem PPath.dia_not_mem {p : List Step} (h : PPath p) : Step.dia ∉ p := fun hm =>
+  absurd (h _ hm) (by decide)
 
 omit [ModalSys] in
 theorem PPath.append {p q : List Step} (hp : PPath p) (hq : PPath q) : PPath (p ++ q) :=
@@ -177,9 +193,9 @@ theorem ctxOf_root_lt {l : List VarType} {r : ℕ} (h : r < l.length) :
 
 /-! ## Reachable addresses are projection paths -/
 
-/-- In a context of own variables, without T, a reachable address is a declared root followed by
-    projections. -/
-theorem reach_ppath [ModalSys.NoTFour] {l : List VarType} :
+/-- In a context of own variables a reachable address is a declared root followed by projections
+    (under T possibly `here`). -/
+theorem reach_ppath {l : List VarType} :
     ∀ {v : VarSymb} {T : VarType}, (ctxOf l).ref v = some T →
       PPath v.path ∧ ∃ r, v.rt = .free r
   | .root r, T, h => by
@@ -197,56 +213,173 @@ theorem reach_ppath [ModalSys.NoTFour] {l : List VarType} :
             change PPath (v.path ++ [s])
             refine hp.append fun s' hs' => ?_
             rw [List.mem_singleton.mp hs']
-            rw [hU] at h
-            cases s with
-            | fst => exact Or.inl rfl
-            | snd => exact Or.inr rfl
-            | here =>
-                cases U <;> simp [VarType.step, ModalSys.NoTFour.noT] at h
-            | box => cases hs
-            | dia => cases hs
-            | keep => cases hs
+            exact hs
       · obtain ⟨r, hr⟩ := ctxOf_decl h
         cases hr
 
 /-! ## Box contents -/
 
-/-- ⭐The type of what an arrow gives a variable of type `T` at the target: each `□A` component
-    becomes `A`, every other leaf `𝟙`. -/
-def _root_.V12M.VarType.bc : VarType → VarType
+/-- The box-contents type, for a given value `b` of the T flag (`VarType.bc` takes `ModalSys.T`).
+    Taking the flag as an argument lets terms of this type be built by matching on it, with no
+    casts (`tupB`). -/
+def _root_.V12M.VarType.bcB (b : Bool) : VarType → VarType
   | .Var => .VTypeOne
   | .VTypeOne => .VTypeOne
-  | .VTypeProd A B => .VTypeProd A.bc B.bc
-  | .VTypeBox A => A
+  | .VTypeProd A B => .VTypeProd (VarType.bcB b A) (VarType.bcB b B)
+  | .VTypeBox A => cond b (.VTypeProd A (VarType.bcB b A)) A
   | .VTypeDia _ => .VTypeOne
 
-theorem bc_step {T U : VarType} {s : Step} (hs : s = .fst ∨ s = .snd) (h : T.step s = some U) :
-    T.bc.step s = some U.bc := by
-  rcases hs with rfl | rfl <;> cases T <;> cases h <;> rfl
+/-- ⭐The type of what an arrow gives a variable of type `T` at the target: each `□A` component
+    becomes `A`, every other leaf `𝟙`.  Under T a `□A` component also reaches its value here
+    (`u.here : A`), whose own items an arrow must carry too, so it becomes `A × bc A`: the box
+    contents first, the `here` value's items second (`docs/v12-arrow-canonical.md` §9.2). -/
+abbrev _root_.V12M.VarType.bc (T : VarType) : VarType := VarType.bcB ModalSys.T T
 
-/-- ⭐Rerooting a reachable address at a variable of the `bc` type of its root gives the `bc` type
-    of the address. -/
-theorem ref_reroot_bc [ModalSys.NoTFour] {l : List VarType} {Δ : Ctx} {z : Root} {R : VarType} :
+/-! ## Where an item lands -/
+
+/-- A projection step, read in the `bc` type: under T, `here` is the second component of a `□`
+    component's box contents. -/
+def encStep (s : Step) : Step :=
+  if ModalSys.T then (match s with | .here => .snd | s => s) else s
+
+/-- A projection path, read in the `bc` type. -/
+def encPath (p : List Step) : List Step := p.map encStep
+
+/-- The last step to an item's image: under T the box contents are the first component. -/
+def itemTail : List Step := if ModalSys.T then [.fst] else []
+
+/-- ⭐Where an address of the `□` view lands, relative to its root's image: the projections up to
+    the first `box` encoded, the `box` replaced by `itemTail`, the rest kept. -/
+def itemPath : List Step → List Step
+  | [] => []
+  | .box :: p => itemTail ++ p
+  | s :: p => encStep s :: itemPath p
+
+theorem encStep_noT (hT : ModalSys.T = false) (s : Step) : encStep s = s := by
+  simp [encStep, hT]
+
+theorem encPath_noT (hT : ModalSys.T = false) (p : List Step) : encPath p = p := by
+  rw [encPath, show encStep = id from funext (encStep_noT hT), List.map_id]
+
+theorem itemTail_noT (hT : ModalSys.T = false) : itemTail = [] := by
+  simp [itemTail, hT]
+
+theorem itemPath_cons {s : Step} (hs : s ≠ .box) (p : List Step) :
+    itemPath (s :: p) = encStep s :: itemPath p := by
+  cases s <;> first | rfl | exact absurd rfl hs
+
+theorem itemPath_append_ppath : ∀ {q : List Step}, PPath q → ∀ r : List Step,
+    itemPath (q ++ r) = encPath q ++ itemPath r
+  | [], _, _ => rfl
+  | s :: q, h, r => by
+      have hs : s ≠ .box := fun e => absurd (h s (by simp)) (by rw [e]; decide)
+      rw [List.cons_append, itemPath_cons hs,
+        itemPath_append_ppath (fun s' hs' => h s' (by simp [hs'])) r]
+      rfl
+
+/-- ⭐The image path of an item `u.box`, followed by `p`. -/
+theorem itemPath_item {u : VarSymb} (hu : PPath u.path) (p : List Step) :
+    itemPath ((VarSymb.step u .box).ext p).path = encPath u.path ++ itemTail ++ p := by
+  rw [VarSymb.ext_path]
+  change itemPath ((u.path ++ [Step.box]) ++ p) = _
+  rw [List.append_assoc, itemPath_append_ppath hu, List.append_assoc]
+  rfl
+
+theorem encStep_proj {s : Step} (hs : s.isProj = true) : (encStep s).isProj = true := by
+  unfold encStep
+  split_ifs <;> cases s <;> first | rfl | exact absurd hs (by decide)
+
+/-- One projection step, read in the `bc` type. -/
+theorem bc_encStep {T U : VarType} {s : Step} (hs : s.isProj = true) (h : T.step s = some U) :
+    T.bc.step (encStep s) = some U.bc := by
+  cases s with
+  | fst =>
+      cases T with
+      | VTypeProd A B => cases h; simp [encStep, VarType.bcB, VarType.step]
+      | _ => cases h
+  | snd =>
+      cases T with
+      | VTypeProd A B => cases h; simp [encStep, VarType.bcB, VarType.step]
+      | _ => cases h
+  | here =>
+      cases T with
+      | VTypeBox A =>
+          obtain ⟨hT, rfl⟩ := VarType.step_here h
+          simp [encStep, VarType.bc, VarType.bcB, VarType.step, hT]
+      | _ => cases h
+  | _ => exact absurd hs (by decide)
+
+/-- ⭐A reachable address's projections, encoded and read from a variable of its root's `bc` type,
+    reach the `bc` type of the address. -/
+theorem ref_enc_bc {l : List VarType} {Δ : Ctx} {z : Root} {R : VarType} :
     ∀ {u : VarSymb} {T : VarType}, (ctxOf l).ref u = some T → (ctxOf l).ref (.root u.rt) = some R →
-      Δ.ref (.root z) = some R.bc → Δ.ref (u.reroot z) = some T.bc
+      Δ.ref (.root z) = some R.bc → Δ.ref ((VarSymb.root z).ext (encPath u.path)) = some T.bc
   | .root r, T, h, hR, hz => by
       change (ctxOf l).ref (.root r) = some R at hR
       rw [hR] at h
       cases h
       exact hz
   | .step u s, T, h, hR, hz => by
-      have hp := (reach_ppath h).1
-      have hs : s = .fst ∨ s = .snd := hp s (by simp [VarSymb.path])
-      have hproj : s.isProj = true := by rcases hs with rfl | rfl <;> rfl
+      have hproj : s.isProj = true := (reach_ppath h).1 s (by simp [VarSymb.path])
       simp only [Ctx.ref, if_pos hproj] at h
       cases hU : (ctxOf l).ref u with
       | none => rw [hU] at h; cases h
       | some U =>
           rw [hU] at h
-          have ih := ref_reroot_bc hU hR hz
-          change Δ.ref (.step (u.reroot z) s) = _
-          simp only [Ctx.ref, if_pos hproj, ih, Option.bind_some]
-          exact bc_step hs h
+          have ih := ref_enc_bc hU hR hz
+          change Δ.ref ((VarSymb.root z).ext (encPath (u.path ++ [s]))) = _
+          rw [show encPath (u.path ++ [s]) = encPath u.path ++ [encStep s] from
+            List.map_append, VarSymb.ext_step]
+          simp only [Ctx.ref, if_pos (encStep_proj hproj), ih, Option.bind_some]
+          exact bc_encStep hproj h
+
+/-- ⭐The image of an item `u.box` read from a root `z` holding `u`'s root's box contents: `u`'s
+    projections encoded, then `itemTail`.  Arrows take `z` to be the root's image (`itemImg`),
+    abstraction the slot.  Without T this is `u` rerooted at `z` (`itemAt_noT`). -/
+def itemAt (z : Root) (u : VarSymb) : VarSymb :=
+  (VarSymb.root z).ext (encPath u.path ++ itemTail)
+
+theorem itemAt_noT (hT : ModalSys.T = false) (z : Root) (u : VarSymb) :
+    itemAt z u = u.reroot z := by
+  rw [itemAt, encPath_noT hT, itemTail_noT hT, List.append_nil, VarSymb.reroot_eq]
+
+theorem itemAt_rt (z : Root) (u : VarSymb) : (itemAt z u).rt = z := VarSymb.ext_rt _ _
+
+theorem itemAt_path (z : Root) (u : VarSymb) : (itemAt z u).path = encPath u.path ++ itemTail := by
+  rw [itemAt, VarSymb.ext_path]
+  rfl
+
+theorem PPath.encPath {p : List Step} (h : PPath p) : PPath (encPath p) := fun s hs => by
+  obtain ⟨s', hs', rfl⟩ := List.mem_map.mp hs
+  exact encStep_proj (h s' hs')
+
+theorem PPath.itemTail : PPath itemTail := fun s hs => by
+  unfold V12M.BArrow.itemTail at hs
+  split_ifs at hs
+  · rw [List.mem_singleton.mp hs]
+    rfl
+  · cases hs
+
+/-- The image path of an item is a projection path. -/
+theorem itemAt_ppath {u : VarSymb} (hu : PPath u.path) (z : Root) : PPath (itemAt z u).path := by
+  rw [itemAt_path]
+  exact (PPath.encPath hu).append PPath.itemTail
+
+/-- ⭐An item `u.box`, for `u : □T`, lands at type `T`. -/
+theorem ref_item {l : List VarType} {Δ : Ctx} {z : Root} {R : VarType} {u : VarSymb}
+    {T : VarType} (hu : (ctxOf l).ref u = some (.VTypeBox T))
+    (hR : (ctxOf l).ref (.root u.rt) = some R) (hz : Δ.ref (.root z) = some R.bc) :
+    Δ.ref (itemAt z u) = some T := by
+  have h := ref_enc_bc hu hR hz
+  rw [itemAt, VarSymb.ext_append]
+  unfold itemTail
+  by_cases hT : ModalSys.T = true
+  · rw [if_pos hT]
+    change Δ.ref (.step ((VarSymb.root z).ext (encPath u.path)) .fst) = _
+    simp only [Ctx.ref, Step.isProj, if_true, h, Option.bind_some, VarType.bc, hT, VarType.bcB]
+    rfl
+  · rw [if_neg hT]
+    simpa [VarType.bc, VarType.bcB, hT] using h
 
 /-! ## The renaming of an arrow -/
 
@@ -255,28 +388,32 @@ def imgRoot (img : ℕ → ℕ) : Root → Root
   | .free r => .free (img r)
   | .bnd n => .bnd n
 
-/-- ⭐The renaming of an arrow: the item `u.box` goes to `u` rerooted at its root's image. -/
+/-- The image of an item `u.box`: from its root's image, `u`'s projections encoded, then
+    `itemTail`.  Without T this is `u` rerooted (`itemAt_noT`). -/
+abbrev itemImg (img : ℕ → ℕ) (u : VarSymb) : VarSymb := itemAt (imgRoot img u.rt) u
+
+/-- ⭐The renaming of an arrow: the item `u.box` goes to its image (`itemImg`). -/
 def arrowS (σ : Signature) (Δ : Ctx) (img : ℕ → ℕ) : Subst σ Δ := fun v =>
   match v with
-  | .step u .box => .ren (u.reroot (imgRoot img u.rt))
+  | .step u .box => .ren (itemImg img u)
   | _ => .hide
 
-/-- Where an arrow sends annotation indices: the first `box` is dropped and the root renamed. -/
+/-- Where an arrow sends annotation indices: the root renamed, the path as `itemPath` sends it. -/
 def arrowIdx (img : ℕ → ℕ) (a : VarSymb) : VarSymb :=
-  (VarSymb.root (imgRoot img a.rt)).ext (a.path.erase .box)
+  (VarSymb.root (imgRoot img a.rt)).ext (itemPath a.path)
 
 /-- The images of the variables are declared at the `bc` types. -/
 def ImgOk (l : List VarType) (Δ : Ctx) (img : ℕ → ℕ) : Prop :=
   ∀ r, r < l.length → Δ.ref (.root (.free (img r))) = some (rootTy l r).bc
 
-theorem boxIn_item [ModalSys.NoTFour] {l : List VarType} {v : VarSymb} {T : VarType}
+theorem boxIn_item [ModalSys.NoFour] {l : List VarType} {v : VarSymb} {T : VarType}
     (h : (ctxOf l).boxIn v = some T) :
     ∃ u, v = .step u .box ∧ (ctxOf l).ref u = some (.VTypeBox T) := by
   match v with
   | .step u .box => exact ⟨u, rfl, (Ctx.boxIn_box h).2⟩
   | .step u .keep =>
       obtain ⟨hF, _⟩ := Ctx.boxIn_keep h
-      rw [ModalSys.NoTFour.noFour] at hF
+      rw [ModalSys.NoFour.noFour] at hF
       cases hF
   | .root _ => cases h
   | .step _ .fst => cases h
@@ -285,7 +422,7 @@ theorem boxIn_item [ModalSys.NoTFour] {l : List VarType} {v : VarSymb} {T : VarT
   | .step _ .here => cases h
 
 /-- The root of a reachable address is declared at its own type. -/
-theorem ref_rt [ModalSys.NoTFour] {l : List VarType} {u : VarSymb} {T : VarType}
+theorem ref_rt {l : List VarType} {u : VarSymb} {T : VarType}
     (h : (ctxOf l).ref u = some T) :
     ∃ r, u.rt = .free r ∧ r < l.length ∧ (ctxOf l).ref (.root u.rt) = some (rootTy l r) := by
   obtain ⟨_, r, hr⟩ := reach_ppath h
@@ -313,32 +450,32 @@ theorem ref_rt [ModalSys.NoTFour] {l : List VarType} {u : VarSymb} {T : VarType}
   rw [hr]
   exact ctxOf_root_lt hlt
 
-theorem ok_arrowS [ModalSys.NoTFour] {σ : Signature} {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
+theorem ok_arrowS [ModalSys.NoFour] {σ : Signature} {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
     (himg : ImgOk l Δ img) : Subst.Ok (ctxOf l).boxIn (arrowS σ Δ img) := by
   intro v T _ hv
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   obtain ⟨r, hr, hlt, hR⟩ := ref_rt hu
-  change Δ.ref (u.reroot (imgRoot img u.rt)) = some T
+  change Δ.ref (itemImg img u) = some T
   have hz : Δ.ref (.root (imgRoot img u.rt)) = some (rootTy l r).bc := by
     rw [hr]
     exact himg r hlt
-  exact ref_reroot_bc hu hR hz
+  exact ref_item hu hR hz
 
 omit [ModalSys] in
 /-- Two projection paths, each followed by a level step, agree only if the paths and the steps
     do. -/
 theorem ppath_level : ∀ {p q : List Step} {s t : Step} {k m : List Step}, PPath p → PPath q →
-    ¬ (s = .fst ∨ s = .snd) → ¬ (t = .fst ∨ t = .snd) → p ++ s :: k = q ++ t :: m →
+    s.isProj = false → t.isProj = false → p ++ s :: k = q ++ t :: m →
       p = q ∧ s = t ∧ k = m
   | [], [], _, _, _, _, _, _, _, _, h => by
       simp only [List.nil_append, List.cons.injEq] at h
       exact ⟨rfl, h⟩
   | [], b :: q, _, _, _, _, _, hq, hs, _, h => by
       simp only [List.nil_append, List.cons_append, List.cons.injEq] at h
-      exact absurd (h.1 ▸ hq b (by simp)) hs
+      exact absurd (h.1 ▸ hq b (by simp)) (by rw [hs]; decide)
   | a :: p, [], _, _, _, _, hp, _, _, ht, h => by
       simp only [List.nil_append, List.cons_append, List.cons.injEq] at h
-      exact absurd (h.1 ▸ hp a (by simp)) ht
+      exact absurd (h.1 ▸ hp a (by simp)) (by rw [ht]; decide)
   | a :: p, b :: q, _, _, _, _, hp, hq, hs, ht, h => by
       simp only [List.cons_append, List.cons.injEq] at h
       obtain ⟨hab, h'⟩ := h
@@ -346,22 +483,14 @@ theorem ppath_level : ∀ {p q : List Step} {s t : Step} {k m : List Step}, PPat
         (fun s' hs' => hq s' (by simp [hs'])) hs ht h'
       exact ⟨by rw [hab, e₁], e₂, e₃⟩
 
-omit [ModalSys] in
-theorem erase_box_item {u : VarSymb} (hu : PPath u.path) (p : List Step) :
-    ((VarSymb.step u .box).ext p).path.erase .box = u.path ++ p := by
-  rw [VarSymb.ext_path]
-  change (u.path ++ [Step.box] ++ p).erase .box = u.path ++ p
-  rw [List.append_assoc, List.erase_append_right _ hu.box_not_mem]
-  simp
-
-theorem coh_arrowS [ModalSys.NoTFour] {σ : Signature} {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
+theorem coh_arrowS [ModalSys.NoFour] {σ : Signature} {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
     (himg : ImgOk l Δ img) : Subst.Coh (arrowIdx img) (ctxOf l).boxIn (arrowS σ Δ img) := by
   refine Subst.coh_of (ok_arrowS himg) ?_
   intro v T _ hv p
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
-  change (u.reroot (imgRoot img u.rt)).ext p = (VarSymb.root (imgRoot img _)).ext _
-  rw [erase_box_item (reach_ppath hu).1 p, VarSymb.ext_rt, VarSymb.ext_append,
-    VarSymb.reroot_eq]
+  change (itemImg img u).ext p = (VarSymb.root (imgRoot img _)).ext _
+  rw [itemPath_item (reach_ppath hu).1 p, VarSymb.ext_rt,
+    VarSymb.ext_append (VarSymb.root _) (encPath u.path ++ itemTail) p]
   rfl
 
 /-! ## The renaming of a witness arrow -/
@@ -370,7 +499,7 @@ theorem coh_arrowS [ModalSys.NoTFour] {σ : Signature} {l : List VarType} {Δ : 
     variable `cx` holding `x`'s content. -/
 def arrowXS (σ : Signature) (Δ : Ctx) (img : ℕ → ℕ) (x : VarSymb) (cx : ℕ) : Subst σ Δ := fun v =>
   match v with
-  | .step u .box => .ren (u.reroot (imgRoot img u.rt))
+  | .step u .box => .ren (itemImg img u)
   | .step u .dia => if u = x then .ren (.root (.free cx)) else .hide
   | _ => .hide
 
@@ -381,7 +510,7 @@ noncomputable def arrowXIdx (img : ℕ → ℕ) (x : VarSymb) (cx : ℕ) (a : Va
     (VarSymb.root (.free cx)).ext (a.path.drop (x.path.length + 1))
   else arrowIdx img a
 
-theorem diaIn_item [ModalSys.NoTFour] {l : List VarType} {x v : VarSymb} {T : VarType}
+theorem diaIn_item [ModalSys.NoFour] {l : List VarType} {x v : VarSymb} {T : VarType}
     (h : ((ctxOf l).diaIn x) v = some T) :
     (∃ u, v = .step u .box ∧ (ctxOf l).ref u = some (.VTypeBox T)) ∨
       (v = .step x .dia ∧ (ctxOf l).ref x = some (.VTypeDia T)) := by
@@ -405,21 +534,21 @@ theorem diaIn_item [ModalSys.NoTFour] {l : List VarType} {x v : VarSymb} {T : Va
   | .step u .snd => exact Or.inl (boxIn_item (l := l) h)
   | .step u .here => exact Or.inl (boxIn_item (l := l) h)
 
-theorem ok_arrowXS [ModalSys.NoTFour] {σ : Signature} {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
+theorem ok_arrowXS [ModalSys.NoFour] {σ : Signature} {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
     (himg : ImgOk l Δ img) {x : VarSymb} {X : VarType} (hx : (ctxOf l).ref x = some (.VTypeDia X))
     {cx : ℕ} (hcx : Δ.ref (.root (.free cx)) = some X) :
     Subst.Ok ((ctxOf l).diaIn x) (arrowXS σ Δ img x cx) := by
   intro v T _ hv
   rcases diaIn_item hv with ⟨u, rfl, hu⟩ | ⟨rfl, hxT⟩
   · exact ok_arrowS (σ := σ) himg (.step u .box) T rfl
-      (by rw [Ctx.boxIn_box_of ModalSys.NoTFour.keepOnly hu])
+      (by rw [Ctx.boxIn_box_of ModalSys.NoFour.keepOnly hu])
   · rw [hx] at hxT
     cases hxT
     change (if x = x then SubE.ren (.root (.free cx)) else .hide).OkRef X
     rw [if_pos rfl]
     exact hcx
 
-theorem coh_arrowXS [ModalSys.NoTFour] {σ : Signature} {l : List VarType} {Δ : Ctx}
+theorem coh_arrowXS [ModalSys.NoFour] {σ : Signature} {l : List VarType} {Δ : Ctx}
     {img : ℕ → ℕ} (himg : ImgOk l Δ img) {x : VarSymb} {X : VarType}
     (hx : (ctxOf l).ref x = some (.VTypeDia X)) {cx : ℕ}
     (hcx : Δ.ref (.root (.free cx)) = some X) :
@@ -436,10 +565,10 @@ theorem coh_arrowXS [ModalSys.NoTFour] {σ : Signature} {l : List VarType} {Δ :
       change x.path ++ [Step.dia] ++ k = u.path ++ [Step.box] ++ p at hk
       simp only [List.append_assoc, List.singleton_append] at hk
       -- The first level step of `u.box.p` is the `box` after `u`; of `x.dia.k`, the `dia`.
-      exact absurd (ppath_level hxp hup (by simp) (by simp) hk).2.1 (by simp)
-    change (u.reroot (imgRoot img u.rt)).ext p = arrowXIdx img x cx _
-    rw [arrowXIdx, if_neg hnot, arrowIdx, erase_box_item hup p, VarSymb.ext_rt,
-      VarSymb.ext_append, VarSymb.reroot_eq]
+      exact absurd (ppath_level hxp hup rfl rfl hk).2.1 (by simp)
+    change (itemImg img u).ext p = arrowXIdx img x cx _
+    rw [arrowXIdx, if_neg hnot, arrowIdx, itemPath_item hup p, VarSymb.ext_rt,
+      VarSymb.ext_append (VarSymb.root _) (encPath u.path ++ itemTail) p]
     rfl
   · change (if x = x then SubE.ren (.root (.free cx)) else .hide).idxAlong p = _
     rw [if_pos rfl]

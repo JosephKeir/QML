@@ -37,7 +37,7 @@ theorem ImgOk.congr {l : List VarType} {Δ : Ctx} {img img' : ℕ → ℕ}
     rw [← h r hr]
     exact himg r hr
 
-variable [ModalSys.NoTFour]
+variable [ModalSys.NoFour]
 
 /-- Arrows with images agreeing on a world's variables agree on its `□` view. -/
 theorem sim_arrowS {l : List VarType} {Δ : Ctx} {img img' : ℕ → ℕ}
@@ -46,7 +46,7 @@ theorem sim_arrowS {l : List VarType} {Δ : Ctx} {img img' : ℕ → ℕ}
   Subst.sim_of fun v T _ hv => by
     obtain ⟨u, rfl, hu⟩ := boxIn_item hv
     obtain ⟨r, hr, hlt, _⟩ := ref_rt hu
-    change SubE.Sim T (.ren (u.reroot (imgRoot img u.rt))) (.ren (u.reroot (imgRoot img' u.rt)))
+    change SubE.Sim T (.ren (itemAt (imgRoot img u.rt) u)) (.ren (itemAt (imgRoot img' u.rt) u))
     rw [hr, imgRoot, imgRoot, h r hlt]
     exact .refl _
 
@@ -57,8 +57,8 @@ theorem sim_arrowXS {l : List VarType} {Δ : Ctx} {img img' : ℕ → ℕ} {x : 
   Subst.sim_of fun v T _ hv => by
     rcases diaIn_item hv with ⟨u, rfl, hu⟩ | ⟨rfl, _⟩
     · obtain ⟨r, hr, hlt, _⟩ := ref_rt hu
-      change SubE.Sim T (.ren (u.reroot (imgRoot img u.rt)))
-        (.ren (u.reroot (imgRoot img' u.rt)))
+      change SubE.Sim T (.ren (itemAt (imgRoot img u.rt) u))
+        (.ren (itemAt (imgRoot img' u.rt) u))
       rw [hr, imgRoot, imgRoot, h r hlt]
       exact .refl _
     · exact .refl _
@@ -70,7 +70,7 @@ theorem sim_arrowXS_arrowS {l : List VarType} {Δ : Ctx} {img img' : ℕ → ℕ
   Subst.sim_of fun v T _ hv => by
     obtain ⟨u, rfl, hu⟩ := boxIn_item hv
     obtain ⟨r, hr, hlt, _⟩ := ref_rt hu
-    change SubE.Sim T (.ren (u.reroot (imgRoot img u.rt))) (.ren (u.reroot (imgRoot img' u.rt)))
+    change SubE.Sim T (.ren (itemAt (imgRoot img u.rt) u)) (.ren (itemAt (imgRoot img' u.rt) u))
     rw [hr, imgRoot, imgRoot, h r hlt]
     exact .refl _
 

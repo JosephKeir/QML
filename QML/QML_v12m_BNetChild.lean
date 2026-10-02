@@ -69,7 +69,7 @@ theorem live_newChild {N : NetSt σ} {s : Node} (hs : N.Live s) (kd : Option (Va
           simp only [List.cons.injEq, hps, and_false, or_false]
 
 /-- ⭐A new child with a good forward arrow and a good back arrow keeps the invariants. -/
-theorem Good.newChild [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {s : Node} (hs : N.Live s)
+theorem Good.newChild [ModalSys.NoFour] {N : NetSt σ} (hN : N.Good) {s : Node} (hs : N.Live s)
     {kd : Option (VarSymb × VarType)} {cx : ℕ} {t : NodeSt σ} (ht : Theory.IsMCS t.M)
     (hf : FwdData (N.st s) t kd cx (N.st s).l id) (hb : BackData t (N.st s) [] id) :
     (N.newChild s kd cx t).Good := by
@@ -121,7 +121,7 @@ theorem Good.newChild [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {s : Node}
 open Classical in
 /-- ⭐A new child for a failing `□φ`, or a true `◇_x φ`, of the node `s`'s theory — given as a
     formula over an earlier list of its variables. -/
-noncomputable def mkChild [ModalSys.NoTFour] (N : NetSt σ) (s : Node) :
+noncomputable def mkChild [ModalSys.NoFour] (N : NetSt σ) (s : Node) :
     (Σ l : List VarType, WFF σ (ctxOf l) 0) → NetSt σ
   | ⟨l, φ⟩ =>
       if h : l <:+ (N.st s).l then
@@ -147,7 +147,7 @@ noncomputable def mkChild [ModalSys.NoTFour] (N : NetSt σ) (s : Node) :
       else N
 
 /-- ⭐Creating a child preserves the invariants — using weak B for the back arrow. -/
-theorem Good.mkChild [ModalSys.NoTFour] (hB : ModalSys.B = true) {N : NetSt σ} (hN : N.Good)
+theorem Good.mkChild [ModalSys.NoFour] (hB : ModalSys.B = true) {N : NetSt σ} (hN : N.Good)
     {s : Node} (hs : N.Live s) (o : Σ l : List VarType, WFF σ (ctxOf l) 0) :
     (N.mkChild s o).Good := by
   obtain ⟨l, φ⟩ := o

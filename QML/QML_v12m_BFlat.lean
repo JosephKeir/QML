@@ -361,13 +361,9 @@ theorem sim_arrow_pull (l : List VarType) :
   intro v T _ hv
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   obtain ⟨-, r, hr⟩ := reach_ppath hu
-  change SubE.Sim T (.ren (.step u .box)) ((pullS σ l).at (u.reroot (imgRoot id u.rt)))
-  have e : u.reroot (imgRoot id u.rt) = u := by
-    rw [hr]
-    change u.reroot (.free r) = u
-    rw [← hr]
-    exact reroot_rt_self u
-  rw [e, at_pull_tup hu r hr]
+  change SubE.Sim T (.ren (.step u .box)) ((pullS σ l).at (itemAt (imgRoot id u.rt) u))
+  rw [show imgRoot id u.rt = .free r by rw [hr]; rfl,
+    at_item_of_tupB _ _ hu ModalSys.T rfl (at_pull_tup hu r hr)]
   exact .ren_eta _ _
 
 /-- ⭐The `□` view of a world language, as a pair — so it can itself be pushed under further
@@ -676,15 +672,9 @@ theorem sim_arrowX_pull (l : List VarType) {x : VarSymb} {X : VarType}
   intro v T _ hv
   rcases diaIn_item hv with ⟨u, rfl, hu⟩ | ⟨rfl, _⟩
   · obtain ⟨-, r, hr⟩ := reach_ppath hu
-    change SubE.Sim T (.ren (.step u .box)) ((pullXS σ l x).at (u.reroot (imgRoot id u.rt)))
-    have e : u.reroot (imgRoot id u.rt) = u := by
-      rw [hr]
-      change u.reroot (.free r) = u
-      rw [← hr]
-      exact reroot_rt_self u
-    rw [e, at_pullX_tup x hu]
-    change SubE.Sim T _ (.tm (Term.mono _ (Term.eta (.step u .box) T _)))
-    rw [Term.mono_eta]
+    change SubE.Sim T (.ren (.step u .box)) ((pullXS σ l x).at (itemAt (imgRoot id u.rt) u))
+    rw [show imgRoot id u.rt = u.rt by rw [hr]; rfl,
+      at_item_of_tupB_mono _ _ _ hu ModalSys.T rfl (at_pullX_tup x hu), Term.mono_eta]
     exact .ren_eta _ _
   · change SubE.Sim T (.ren (.step x .dia))
       ((if x = x then SubE.ren (.root (.free l.length)) else .hide).comp _ _ _)

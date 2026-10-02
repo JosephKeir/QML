@@ -18,7 +18,7 @@ variable [ModalSys]
 
 namespace BArrow
 
-variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoTFour]
+variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoFour]
   (hB : ModalSys.B = true) {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
   (hM₀ : Theory.IsMCS M₀)
 
@@ -196,7 +196,7 @@ theorem henk_negAll {n : ℕ} {s : Node} (hs : (net M₀ n).Live s) {A : VarType
 
 /-! ## Children -/
 
-omit hB hM₀ [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoTFour] in
+omit hB hM₀ [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoFour] in
 theorem newChild_st (N : NetSt σ) (s : Node) (kd : Option (VarSymb × VarType)) (cx : ℕ)
     (t : NodeSt σ) : (N.newChild s kd cx t).st (N.nch s :: s) = t :=
   Function.update_self _ _ _

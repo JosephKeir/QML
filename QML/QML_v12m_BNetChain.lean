@@ -50,13 +50,13 @@ namespace NetSt
 
 open Classical in
 /-- Perform one operation, at a live node only. -/
-noncomputable def applyOp [ModalSys.NoTFour] (N : NetSt σ) : Op σ → NetSt σ
+noncomputable def applyOp [ModalSys.NoFour] (N : NetSt σ) : Op σ → NetSt σ
   | .inl (s, o) => if N.Live s then N.henk s o else N
   | .inr (.inl (s, o)) => if N.Live s then N.mkChild s o else N
   | .inr (.inr (.inl k)) => if N.Live k then N.realF k else N
   | .inr (.inr (.inr k)) => if N.Live k then N.realB k else N
 
-theorem Good.applyOp [ModalSys.NoTFour] (hB : ModalSys.B = true) {N : NetSt σ} (hN : N.Good)
+theorem Good.applyOp [ModalSys.NoFour] (hB : ModalSys.B = true) {N : NetSt σ} (hN : N.Good)
     (o : Op σ) : (N.applyOp o).Good := by
   rcases o with ⟨s, o⟩ | ⟨s, o⟩ | k | k
   · simp only [NetSt.applyOp]
@@ -92,7 +92,7 @@ theorem init_live {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} :
   | [], _ => rfl
   | _ :: _, h => absurd h.2 (Nat.not_lt_zero _)
 
-theorem Good.init [ModalSys.NoTFour] {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+theorem Good.init [ModalSys.NoFour] {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
     (h : Theory.IsMCS M₀) :
     (init M₀).Good :=
   ⟨fun _ _ => h, fun _ _ hk => absurd (init_live hk) (by simp),
@@ -102,7 +102,7 @@ end NetSt
 
 section Chain
 
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoTFour]
+variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoFour]
 
 /-- ⭐The chain of networks from a root theory `M₀`. -/
 noncomputable def net {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : ℕ → NetSt σ

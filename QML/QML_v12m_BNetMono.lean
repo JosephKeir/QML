@@ -139,7 +139,7 @@ theorem Ext.newChild {N : NetSt σ} {s : Node} (hs : N.Live s) (kd : Option (Var
 
 /-! ## Each operation extends -/
 
-theorem Ext.realF [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {k : Node} (hk : N.Live k) :
+theorem Ext.realF [ModalSys.NoFour] {N : NetSt σ} (hN : N.Good) {k : Node} (hk : N.Live k) :
     Ext N (N.realF k) := by
   match k with
   | [] => exact Ext.refl N
@@ -150,7 +150,7 @@ theorem Ext.realF [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {k : Node} (hk
         exact (Ext.setSt hg).trans (Ext.setFwd _)
       · exact Ext.refl N
 
-theorem Ext.realB [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {k : Node} (hk : N.Live k) :
+theorem Ext.realB [ModalSys.NoFour] {N : NetSt σ} (hN : N.Good) {k : Node} (hk : N.Live k) :
     Ext N (N.realB k) := by
   match k with
   | [] => exact Ext.refl N
@@ -164,7 +164,7 @@ theorem Ext.realB [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {k : Node} (hk
         exact (Ext.setSt hg).trans (Ext.setBack _)
       · exact Ext.refl N
 
-theorem Ext.henk [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {s : Node} (hs : N.Live s)
+theorem Ext.henk [ModalSys.NoFour] {N : NetSt σ} (hN : N.Good) {s : Node} (hs : N.Live s)
     (o : Obl σ) : Ext N (N.henk s o) := by
   obtain ⟨l, φ⟩ := o
   simp only [NetSt.henk]
@@ -219,7 +219,7 @@ theorem Ext.henk [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {s : Node} (hs 
     | .here _ _ _ => exact Ext.refl N
   · exact Ext.refl N
 
-theorem Ext.mkChild [ModalSys.NoTFour] {N : NetSt σ} {s : Node} (hs : N.Live s) (o : Obl σ) :
+theorem Ext.mkChild [ModalSys.NoFour] {N : NetSt σ} {s : Node} (hs : N.Live s) (o : Obl σ) :
     Ext N (N.mkChild s o) := by
   obtain ⟨l, φ⟩ := o
   simp only [NetSt.mkChild]
@@ -249,7 +249,7 @@ theorem Ext.mkChild [ModalSys.NoTFour] {N : NetSt σ} {s : Node} (hs : N.Live s)
     | .here _ _ _ => exact Ext.refl N
   · exact Ext.refl N
 
-theorem Ext.applyOp [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) (o : Op σ) :
+theorem Ext.applyOp [ModalSys.NoFour] {N : NetSt σ} (hN : N.Good) (o : Op σ) :
     Ext N (N.applyOp o) := by
   rcases o with ⟨s, o⟩ | ⟨s, o⟩ | k | k
   · simp only [NetSt.applyOp]
@@ -273,7 +273,7 @@ end NetSt
 
 section Chain
 
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoTFour]
+variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoFour]
 
 /-- ⭐Along the chain, later networks extend earlier ones. -/
 theorem ext_net (hB : ModalSys.B = true) {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}

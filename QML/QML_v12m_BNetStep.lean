@@ -40,19 +40,19 @@ theorem suffix_next {l ls : List VarType} (h : ls <:+ l) (hlt : ls.length < l.le
 
 /-- What a `□` arrow puts into the target when the source's next variable, of type `A`, is given
     an image. -/
-def realSet [ModalSys.NoTFour] (ts tt : NodeSt σ) (cl : List VarType) (img : ℕ → ℕ)
+def realSet [ModalSys.NoFour] (ts tt : NodeSt σ) (cl : List VarType) (img : ℕ → ℕ)
     (A : VarType) : Set (WFF σ (ctxOf (A.bc :: tt.l)) 0) :=
   {φ | ∃ (hle : (ctxOf (A :: cl)).Le (ctxOf ts.l)) (himg : ImgOk cl (ctxOf tt.l) img)
     (ψ : WFF σ (ctxOf (A :: cl)).boxIn 0), WFF.mono hle (.box ψ) ∈ ts.M ∧ φ = extArrow himg ψ}
 
 /-- The target grown by the image of the source's next variable. -/
-noncomputable def realStep [ModalSys.NoTFour] (ts tt : NodeSt σ) (cl : List VarType)
+noncomputable def realStep [ModalSys.NoFour] (ts tt : NodeSt σ) (cl : List VarType)
     (img : ℕ → ℕ) : NodeSt σ :=
   ⟨(nextTy ts.l cl).bc :: tt.l, complete (WFF.mono (ctxOf_le_append [(nextTy ts.l cl).bc] tt.l) ''
     tt.M ∪ realSet ts tt cl img (nextTy ts.l cl))⟩
 
 /-- ⭐One realisation step along a `□` arrow. -/
-theorem realStep_ok [ModalSys.NoTFour] {ts tt : NodeSt σ} {cl : List VarType} {img : ℕ → ℕ}
+theorem realStep_ok [ModalSys.NoFour] {ts tt : NodeSt σ} {cl : List VarType} {img : ℕ → ℕ}
     (hs : Theory.IsMCS ts.M) (ht : Theory.IsMCS tt.M) (hsuf : cl <:+ ts.l)
     (himg : ImgOk cl (ctxOf tt.l) img)
     (htr : Transfer ts.M cl (ctxOf_le_of_suffix hsuf) tt.M img himg)
@@ -81,7 +81,7 @@ theorem realStep_ok [ModalSys.NoTFour] {ts tt : NodeSt σ} {cl : List VarType} {
 
 /-- What a witness arrow puts into the target when the source's next variable is given an
     image. -/
-def realXSet [ModalSys.NoTFour] (ts tt : NodeSt σ) (x : VarSymb) (X : VarType) (cx : ℕ)
+def realXSet [ModalSys.NoFour] (ts tt : NodeSt σ) (x : VarSymb) (X : VarType) (cx : ℕ)
     (cl : List VarType) (img : ℕ → ℕ) (A : VarType) : Set (WFF σ (ctxOf (A.bc :: tt.l)) 0) :=
   {φ | ∃ (hle : (ctxOf (A :: cl)).Le (ctxOf ts.l)) (himg : ImgOk cl (ctxOf tt.l) img)
     (hx : (ctxOf cl).ref x = some (.VTypeDia X))
@@ -90,13 +90,13 @@ def realXSet [ModalSys.NoTFour] (ts tt : NodeSt σ) (x : VarSymb) (X : VarType) 
     WFF.mono hle (WFF.boxx x ⟨X, ref_old_of_ref hx⟩ ψ) ∈ ts.M ∧ φ = extArrowX himg hx hcx ψ}
 
 /-- The witness child grown by the image of the parent's next variable. -/
-noncomputable def realXStep [ModalSys.NoTFour] (ts tt : NodeSt σ) (x : VarSymb) (X : VarType)
+noncomputable def realXStep [ModalSys.NoFour] (ts tt : NodeSt σ) (x : VarSymb) (X : VarType)
     (cx : ℕ) (cl : List VarType) (img : ℕ → ℕ) : NodeSt σ :=
   ⟨(nextTy ts.l cl).bc :: tt.l, complete (WFF.mono (ctxOf_le_append [(nextTy ts.l cl).bc] tt.l) ''
     tt.M ∪ realXSet ts tt x X cx cl img (nextTy ts.l cl))⟩
 
 /-- ⭐One realisation step along a witness arrow. -/
-theorem realXStep_ok [ModalSys.NoTFour] {ts tt : NodeSt σ} {x : VarSymb} {X : VarType} {cx : ℕ}
+theorem realXStep_ok [ModalSys.NoFour] {ts tt : NodeSt σ} {x : VarSymb} {X : VarType} {cx : ℕ}
     {cl : List VarType} {img : ℕ → ℕ} (hs : Theory.IsMCS ts.M) (ht : Theory.IsMCS tt.M)
     (hsuf : cl <:+ ts.l) (himg : ImgOk cl (ctxOf tt.l) img)
     (hx : (ctxOf cl).ref x = some (.VTypeDia X))

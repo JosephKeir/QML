@@ -48,13 +48,13 @@ theorem live_setBack (N : NetSt σ) (k : Node) (cl : List VarType) (img : ℕ �
 /-! ## Realising forward -/
 
 /-- The child grown by the image of its parent's next variable. -/
-noncomputable def fwdStep [ModalSys.NoTFour] (N : NetSt σ) (k p : Node) : NodeSt σ :=
+noncomputable def fwdStep [ModalSys.NoFour] (N : NetSt σ) (k p : Node) : NodeSt σ :=
   match N.kind k with
   | none => realStep (N.st p) (N.st k) (N.fcl k) (N.fimg k)
   | some (x, X) => realXStep (N.st p) (N.st k) x X (N.cx k) (N.fcl k) (N.fimg k)
 
 /-- ⭐Give the parent's next variable an image in the child `k`. -/
-noncomputable def realF [ModalSys.NoTFour] (N : NetSt σ) : Node → NetSt σ
+noncomputable def realF [ModalSys.NoFour] (N : NetSt σ) : Node → NetSt σ
   | [] => N
   | c :: p =>
       if (N.fcl (c :: p)).length < (N.st p).l.length then
@@ -63,7 +63,7 @@ noncomputable def realF [ModalSys.NoTFour] (N : NetSt σ) : Node → NetSt σ
           (extImg (N.fimg (c :: p)) (N.fcl (c :: p)).length (N.st (c :: p)).l.length)
       else N
 
-theorem fwdStep_ok [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {c : ℕ} {p : Node}
+theorem fwdStep_ok [ModalSys.NoFour] {N : NetSt σ} (hN : N.Good) {c : ℕ} {p : Node}
     (hk : N.Live (c :: p)) (hlt : (N.fcl (c :: p)).length < (N.st p).l.length) :
     Theory.IsMCS (N.fwdStep (c :: p) p).M ∧ Grows (N.st (c :: p)) (N.fwdStep (c :: p) p) ∧
       FwdData (N.st p) (N.fwdStep (c :: p) p) (N.kind (c :: p)) (N.cx (c :: p))
@@ -86,7 +86,7 @@ theorem fwdStep_ok [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {c : ℕ} {p 
       exact ⟨h₁, h₂, hsuf', himg', hx', hcx', htr'⟩
 
 /-- ⭐Realising forward preserves the invariants. -/
-theorem Good.realF [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {k : Node} (hk : N.Live k) :
+theorem Good.realF [ModalSys.NoFour] {N : NetSt σ} (hN : N.Good) {k : Node} (hk : N.Live k) :
     (N.realF k).Good := by
   match k with
   | [] => exact hN
@@ -114,7 +114,7 @@ theorem Good.realF [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {k : Node} (h
 /-! ## Realising back -/
 
 /-- ⭐Give the child `k`'s next variable an image in its parent. -/
-noncomputable def realB [ModalSys.NoTFour] (N : NetSt σ) : Node → NetSt σ
+noncomputable def realB [ModalSys.NoFour] (N : NetSt σ) : Node → NetSt σ
   | [] => N
   | c :: p =>
       if (N.bcl (c :: p)).length < (N.st (c :: p)).l.length then
@@ -124,7 +124,7 @@ noncomputable def realB [ModalSys.NoTFour] (N : NetSt σ) : Node → NetSt σ
       else N
 
 /-- ⭐Realising back preserves the invariants. -/
-theorem Good.realB [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {k : Node} (hk : N.Live k) :
+theorem Good.realB [ModalSys.NoFour] {N : NetSt σ} (hN : N.Good) {k : Node} (hk : N.Live k) :
     (N.realB k).Good := by
   match k with
   | [] => exact hN
@@ -157,7 +157,7 @@ theorem Good.realB [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {k : Node} (h
 open Classical in
 /-- ⭐A Henkin witness for an existential, or a counter-instance for a failing universal, of the
     node `s`'s theory — given as a formula over an earlier list of its variables. -/
-noncomputable def henk [ModalSys.NoTFour] (N : NetSt σ) (s : Node) :
+noncomputable def henk [ModalSys.NoFour] (N : NetSt σ) (s : Node) :
     (Σ l : List VarType, WFF σ (ctxOf l) 0) → NetSt σ
   | ⟨l, φ⟩ =>
       if h : l <:+ (N.st s).l then
@@ -190,7 +190,7 @@ theorem henk_grow {t : NodeSt σ} {A : VarType} (ht : Theory.IsMCS t.M)
   exact ⟨hmcs, ⟨[A], rfl⟩, fun φ hφ => hS (Or.inl ⟨φ, hφ, rfl⟩)⟩
 
 /-- ⭐Henkin witnesses preserve the invariants. -/
-theorem Good.henk [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {s : Node} (hs : N.Live s)
+theorem Good.henk [ModalSys.NoFour] {N : NetSt σ} (hN : N.Good) {s : Node} (hs : N.Live s)
     (o : Σ l : List VarType, WFF σ (ctxOf l) 0) : (N.henk s o).Good := by
   obtain ⟨l, φ⟩ := o
   simp only [NetSt.henk]

@@ -37,27 +37,26 @@ theory, shape tags, `Ind`, models proper.  Strong T then adds one thing: the cha
 (`World.retW`).  Weak and strong T with B are therefore one milestone in two steps, and most of the
 cost is in the first.
 
-**1a. Scoping (do first, short).**  Decide how the `Here` layer reaches the network:
-* *port* it onto `BData` (duplicating `CanonShape`/`CanonLeaf`/`CanonHere`/`CanonInd`, ~2200 lines);
-* *share* it, by stating it over an interface both models satisfy; or
-* *migrate*: run every 4-free system on the network and keep the tree only for 4
-  (`v12-arrow-canonical.md` §8 q. 5).
+**1a. Scoping — done** (`v12-arrow-canonical.md` §9, 2026-10-03).  Findings:
+* the `□` case at the identity arrow is easy (`sat_boxHere`; collapse need not be a substitution);
+* **the real new work is syntactic**: under T, `u.here` is a projection, so a root-only box view
+  contains `r.here.q.box` too, and `VarType.bc`/`arrowS`/`arrowIdx` need a T-aware form
+  (`bc(□A) = A × bc(A)`) across the B syntax layer;
+* `Here` layer: **share** the theory level (restate over `StageSys`, adapter for `BWorld`),
+  **port** the model level (`rden`'s `◇` clause, shapes by arrow images, a decoder that inverts
+  arrows — needs a new `imgInj` from the construction); no migration.
 
-The question that decides it is how much of the leaf calculus is about *addresses* (shared) and
-how much about *the tree's successor addresses* (`succAddrK`, `leafOf`, the decoder, which in the
-network become root renamings).  Also do `v12-arrow-canonical.md` §7 check 2 here: **is
-`WFF.collapse` along `Ctx.collapses_boxIn_self` an instance of `WFF.subst`?**  If so, the identity
-arrow is one more substitution and the `□` case needs no new idea.
-
-**1b. Weak T + B.**
-1. Frame: identity loops in `BData.R` (relational, so one arrow per pair; without 4 no category
-   laws are needed — the coherence table in `v12-arrow-canonical.md` §4 has no conflict for T + B).
-2. Function algebra: `extract`'s canonical denotation; `necExtract_eval`.
-3. Truth lemma `□` case at the identity successor (`T_box`, via the collapse).
-4. The `Here` layer, per 1a: realisation data from atoms (`realised_of_here`), extents with the
-   identity arrow, shape tags and "tags determine annotations", canonical `Ind := Rel`, the `here`
-   case, canonical `IndInvariant` (environment as a substitution of the canonical one).
-5. Statements: replace `NoTFour` by a class with 4 and strong T off.
+**1b. Weak T + B**, in the order of `v12-arrow-canonical.md` §9.4:
+1. ✅ **Syntax** (2026-10-03, `v12-arrow-canonical.md` §9.5): T-aware `bc` (`bcB`), `itemAt`, `here`
+   in projection paths; everything up to `BData` now needs only 4 off (`ModalSys.NoFour`).
+   `imgInj` moves to step 4.
+2. **Theory-level `Here` layer over `StageSys`** (refactor on the tree), then the `BWorld` adapter.
+   Independent of step 1.
+3. **Model**: the frame's reflexive closure, `rden` at the identity arrow, `extract`; the `□` case.
+4. **Shapes on the network** (leaves by arrow images, the decoder, tags determine annotations);
+   the `here` case, `Ind := Rel`, canonical `IndInvariant`.
+5. **Statements**: a flag class "4 off, strong T off" replacing `NoTFour`; completeness, strong
+   completeness, compactness, presented contexts.
 
 **1c. Strong T + B.**  The term query in the network's fair schedule (an extra operation, or folded
 into the Henkin-witness one), giving `retW`; then `posRet_exists` exactly as in §10.41.

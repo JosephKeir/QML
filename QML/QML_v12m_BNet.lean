@@ -96,7 +96,7 @@ theorem ImgOk.mono {l : List VarType} {Δ Δ' : Ctx} (h : Δ.Le Δ') {img : ℕ 
     (himg : ImgOk l Δ img) : ImgOk l Δ' img := fun r hr => h.ref (himg r hr)
 
 /-- A growing target keeps the transfer. -/
-theorem Transfer.mono_tgt [ModalSys.NoTFour] {Γ : Ctx} {M : Set (WFF σ Γ 0)} {ls : List VarType}
+theorem Transfer.mono_tgt [ModalSys.NoFour] {Γ : Ctx} {M : Set (WFF σ Γ 0)} {ls : List VarType}
     {hle : (ctxOf ls).Le Γ} {Δ Δ' : Ctx} [Δ.NoSlots] [Δ'.NoSlots] (h : Δ.Le Δ')
     {N : Set (WFF σ Δ 0)} {N' : Set (WFF σ Δ' 0)} (hN : ∀ φ ∈ N, WFF.mono h φ ∈ N')
     {img : ℕ → ℕ} {himg : ImgOk ls Δ img} (htr : Transfer M ls hle N img himg) :
@@ -108,7 +108,7 @@ theorem Transfer.mono_tgt [ModalSys.NoTFour] {Γ : Ctx} {M : Set (WFF σ Γ 0)} 
     (coh_arrowS (himg.mono h))] at h'
 
 /-- A source growing conservatively keeps the transfer. -/
-theorem Transfer.mono_src [ModalSys.NoTFour] {Γ Γ' : Ctx} (h : Γ.Le Γ') {M : Set (WFF σ Γ 0)}
+theorem Transfer.mono_src [ModalSys.NoFour] {Γ Γ' : Ctx} (h : Γ.Le Γ') {M : Set (WFF σ Γ 0)}
     (hM : Theory.IsMCS M) {M' : Set (WFF σ Γ' 0)} (hM' : Theory.IsMCS M')
     (hsub : ∀ φ ∈ M, WFF.mono h φ ∈ M') {ls : List VarType} {hle : (ctxOf ls).Le Γ} {Δ : Ctx}
     [Δ.NoSlots] {N : Set (WFF σ Δ 0)} {img : ℕ → ℕ} {himg : ImgOk ls Δ img}
@@ -118,7 +118,7 @@ theorem Transfer.mono_src [ModalSys.NoTFour] {Γ Γ' : Ctx} (h : Γ.Le Γ') {M :
   rwa [WFF.mono_mono]
 
 /-- A growing target keeps a witness transfer. -/
-theorem TransferX.mono_tgt [ModalSys.NoTFour] {Γ : Ctx} {M : Set (WFF σ Γ 0)} {ls : List VarType}
+theorem TransferX.mono_tgt [ModalSys.NoFour] {Γ : Ctx} {M : Set (WFF σ Γ 0)} {ls : List VarType}
     {hle : (ctxOf ls).Le Γ} {x : VarSymb} {X : VarType} {hx : (ctxOf ls).ref x = some (.VTypeDia X)}
     {Δ Δ' : Ctx} [Δ.NoSlots] [Δ'.NoSlots] (h : Δ.Le Δ')
     {N : Set (WFF σ Δ 0)} {N' : Set (WFF σ Δ' 0)} (hN : ∀ φ ∈ N, WFF.mono h φ ∈ N')
@@ -132,7 +132,7 @@ theorem TransferX.mono_tgt [ModalSys.NoTFour] {Γ : Ctx} {M : Set (WFF σ Γ 0)}
     _ (coh_arrowXS (himg.mono h) hx (h.ref hcx))] at h'
 
 /-- A source growing conservatively keeps a witness transfer. -/
-theorem TransferX.mono_src [ModalSys.NoTFour] {Γ Γ' : Ctx} (h : Γ.Le Γ') {M : Set (WFF σ Γ 0)}
+theorem TransferX.mono_src [ModalSys.NoFour] {Γ Γ' : Ctx} (h : Γ.Le Γ') {M : Set (WFF σ Γ 0)}
     (hM : Theory.IsMCS M) {M' : Set (WFF σ Γ' 0)} (hM' : Theory.IsMCS M')
     (hsub : ∀ φ ∈ M, WFF.mono h φ ∈ M') {ls : List VarType} {hle : (ctxOf ls).Le Γ}
     {x : VarSymb} {X : VarType} {hx : (ctxOf ls).ref x = some (.VTypeDia X)} {Δ : Ctx}
@@ -173,7 +173,7 @@ structure NetSt (σ : Signature) where
 
 /-- ⭐A forward arrow from `tp` to `tk`: `tp`'s variables `fcl` have images `fimg` in `tk`, with
     necessity transfer, or `□_x` transfer for a child made for `◇_x` (`kind`). -/
-def FwdData [ModalSys.NoTFour] (tp tk : NodeSt σ) (kind : Option (VarSymb × VarType)) (cx : ℕ)
+def FwdData [ModalSys.NoFour] (tp tk : NodeSt σ) (kind : Option (VarSymb × VarType)) (cx : ℕ)
     (fcl : List VarType) (fimg : ℕ → ℕ) : Prop :=
   ∃ (hsuf : fcl <:+ tp.l) (himg : ImgOk fcl (ctxOf tk.l) fimg),
     match kind with
@@ -184,7 +184,7 @@ def FwdData [ModalSys.NoTFour] (tp tk : NodeSt σ) (kind : Option (VarSymb × Va
 
 /-- ⭐A back arrow from `tk` to `tp`: `tk`'s variables `bcl` have images `bimg` in `tp`, with
     necessity transfer. -/
-def BackData [ModalSys.NoTFour] (tk tp : NodeSt σ) (bcl : List VarType) (bimg : ℕ → ℕ) : Prop :=
+def BackData [ModalSys.NoFour] (tk tp : NodeSt σ) (bcl : List VarType) (bimg : ℕ → ℕ) : Prop :=
   ∃ (hsuf : bcl <:+ tk.l) (himg : ImgOk bcl (ctxOf tp.l) bimg),
     Transfer tk.M bcl (ctxOf_le_of_suffix hsuf) tp.M bimg himg
 
@@ -198,15 +198,15 @@ def Live : Node → Prop
   | c :: p => Live p ∧ c < N.nch p
 
 /-- The forward arrow into the child `k` of `p`. -/
-def FwdOk [ModalSys.NoTFour] (k p : Node) : Prop :=
+def FwdOk [ModalSys.NoFour] (k p : Node) : Prop :=
   FwdData (N.st p) (N.st k) (N.kind k) (N.cx k) (N.fcl k) (N.fimg k)
 
 /-- The back arrow from the child `k` to its parent `p`. -/
-def BackOk [ModalSys.NoTFour] (k p : Node) : Prop :=
+def BackOk [ModalSys.NoFour] (k p : Node) : Prop :=
   BackData (N.st k) (N.st p) (N.bcl k) (N.bimg k)
 
 /-- ⭐The invariants of a network. -/
-structure Good [ModalSys.NoTFour] : Prop where
+structure Good [ModalSys.NoFour] : Prop where
   mcs : ∀ s, N.Live s → Theory.IsMCS (N.st s).M
   fwd : ∀ c p, N.Live (c :: p) → N.FwdOk (c :: p) p
   back : ∀ c p, N.Live (c :: p) → N.BackOk (c :: p) p

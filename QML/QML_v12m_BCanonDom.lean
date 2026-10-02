@@ -29,7 +29,7 @@ namespace BArrow
 variable {σ : Signature}
 
 /-- ⭐The data of the canonical model for B. -/
-structure BData [ModalSys.NoTFour] (σ : Signature) where
+structure BData [ModalSys.NoFour] (σ : Signature) where
   W : Type
   actual : W
   w : W → BWorld σ

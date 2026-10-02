@@ -479,3 +479,121 @@ did for B.
    for siblings `v`, `s`.
 4. Whether any coherence beyond question 1's is needed for soundness or for strong B. (§6)
 5. Whether the arrow model simplifies strong T enough to migrate T, D and 4 as well. (§5, §7)
+
+## 9. B with T: scoping *(2026-10-03, roadmap milestone 1a)*
+
+What the network model needs in order to take T as well as B (4 stays off).  Read against the
+code as of `11926df`.
+
+### 9.1 What is easy
+
+* **The `□` case at the identity arrow needs no new idea.**  The semantic lemma `sat_boxHere`
+  (already used for `T_box`'s soundness) says truth at the identity successor is truth of the
+  collapse here; then the truth lemma at the smaller formula (`WFF.size_collapse`) and `T_box`
+  finish it.  So §7's early check 2 (collapse as a substitution) is **not needed**: the identity
+  arrow does not have to be one more substitution.
+* **Frame.**  Keep `BData.R` as the network's edges and let the frame's accessibility be its
+  reflexive closure under T (decided classically, `R s t` or else `s = t`; the network has no
+  loops).  Without 4 there is no composition, so no category law and no coherence.  `rden`'s
+  `□` clause reads the collapse at the identity arrow, as the tree's `rden_boxtm_self` does.
+* **`extract`**: its canonical denotation is the value at the identity arrow; `necExtract_eval`
+  by definition.
+* **Flags.**  Most `NoTFour` uses are really `keepOnly = false`, which holds whenever 4 is off
+  (`keepOnly = T && Four`).  Only eight sites use `noT` (`BCanonFunc`, `BCanonModel`, `BTruth`,
+  and the `here` step in `reach_ppath`, `BRename`, `BCanonTerm`).
+
+### 9.2 What is not: the `here` projection changes the box view
+
+Under T, `u.here : A` is a **projection** of `u : □A` (`VarType.step`).  So in a root-only language
+a root `r : □A` reaches `r.here`, and the box view contains `r.here.q.box` as well as `r.q.box`.
+The B syntax layer assumes projection paths are `fst`/`snd` only (`reach_ppath`, `PPath`) and
+translates an item `r.q.box` to `z.q` by rerooting at one target variable `z : bc(type r)`
+(`arrowS`, `arrowIdx`, `VarType.bc`).  Under T that cannot work: `r.box` at the target is `r(t)`,
+while `r.here.box` is `r(s)` read at `t`, a different object, and both must be images.  The fix is
+a T-aware box-contents type, e.g.
+
+```
+bc(□A) = A × bc(A)      (under T; = A without T)
+```
+
+with `r.box ↦ z.fst'`, `r.here.q.box ↦ z.snd'.q`, and the same for products componentwise.
+Defining `bc` (and `arrowS`/`arrowIdx`) by cases on `ModalSys.T` keeps every current statement
+true by `simp [noT]`.  This touches the whole B syntax layer (`BSyntax`, `BAbs`, `BChild`, `BDia`,
+`BFlat`, `BRename`, ~2,500 lines), mostly path arithmetic.  The consistency arguments (children,
+realisation, closed transfer back) are about `arrowS` abstractly and should carry over.  **This is
+the first real piece of work, and it is independent of `Here`.**
+
+### 9.3 The `Here` layer: share the theory, port the model
+
+Under weak T the network must host all of `Here` (`v12-roadmap.md`, milestone 1): extents containing the identity
+arrow, realisation read off the theory, shape tags, `Ind`, models proper.  Split by what it
+depends on:
+
+* **Theory level — share.**  `RealDatum`, `hdeclOf`, `hhereAt`, `spec_of_here` use only a staged
+  system's `ctx`, `ctx_le` and sentences (`L.sys : StageSys`), not `WorldLang` itself.
+  `realised_of_here`, `mem_here_realised`, `DTerm`/`Interch`/`Rel`/`rel_of_coname` and
+  `here_transfer`'s syntactic half likewise only need a maximal consistent staged theory with
+  witnesses.  Restate them over a `StageSys` (with the `exW` they use), and give `BWorld` an
+  adapter to `StageSys ℕ` (`ctx i := ctxOf (l i)`, sentences `⟨i, φ⟩` with `φ ∈ M i`).  This is a
+  refactor of ~500 lines of the tree's files, verifiable on the tree alone, and it saves
+  maintaining two copies.
+* **Model level — port.**  `rden`'s `◇` clause (the identity arrow in the extent when realised,
+  with the realised content there), `interp_dia_self`, and the shape layer differ in substance:
+  - *shapes*: a canonical leaf for a label address cut at a `□` step is a family over the
+    successors.  In the tree an entry is the leaf of the address the successor sees
+    (`succAddr`, shift arithmetic); in the network it is the leaf of the address's **image under
+    the arrow's renaming** (and the collapse at the identity arrow).  Without 4 there is no shift,
+    so the calculus should be simpler than `CanonLeaf`'s;
+  - *the decoder* follows a proper successor (under T one exists: `T_box` refutes `□⊥`, and `ex`
+    gives a network successor) and must **invert the arrow's renaming**.  `ImgOk` does not make
+    `img` injective.  The network's images are fresh committed variables, so injectivity should
+    be provable and added to `BData` (`imgInj`); this is the one new obligation on the
+    construction found so far;
+  - `Ind := Rel` and canonical `IndInvariant` follow the tree (`CanonInd`): an environment over a
+    tame context is the canonical one read through a substitution, which the network already
+    does for arrows (`boxPush_canon`).
+* **Not migrating.**  Running the 4-free systems on the network would still leave the tree for 4,
+  so two models remain either way; it can be reconsidered once B + 4 is understood (§8 q. 5).
+
+### 9.4 Proposed order
+
+1. **Syntax**: T-aware `bc`/`arrowS`/`arrowIdx`, `here` in projection paths, under 4 off; current
+   B results unchanged.  Then the network construction under weak T (consistency lemmas with the
+   new items), and `imgInj`.
+2. **Theory-level `Here` layer over `StageSys`** (refactor, tree only), then the `BWorld` adapter.
+3. **Model**: reflexive closure, `rden` at the identity arrow (`□` collapse, `◇` realised content),
+   `extract`; the truth lemma's `□` case.
+4. **Shapes on the network**: leaves by arrow images, the decoder, tags determine annotations;
+   then the `here` case, `Ind`, `IndInvariant`.
+5. **Statements**: a flag class "4 off, strong T off" replacing `NoTFour`; completeness, strong
+   completeness, compactness, presented contexts.
+6. **Strong T**: the term query in the network's fair schedule (`retW`), then `posRet_exists`.
+
+Steps 1 and 2 are independent and can go in either order; 3 needs 1; 4 needs 2 and 3.
+
+### 9.5 ✅ Step 1 done: the B syntax layer and the network take T *(2026-10-03)*
+
+Everything up to and including `BData` (`BSyntax` … `BLimit`) now assumes only
+`ModalSys.NoFour` (4 off) instead of `NoTFour`; the canonical model on top (`BCanonWorld`
+onwards), flattening (`BFlat`, `BRename`) and the statements still assume `NoTFour`, and every
+existing result is unchanged.  Whole v12m list green, no `sorry`, no warnings.
+
+* **Box contents with a flag argument.**  `VarType.bcB (b : Bool)` with `bc := bcB ModalSys.T`;
+  `bcB true (□A) = A × bcB true A`, `bcB false (□A) = A` (`cond`, with `b` a fixed parameter so
+  that `bcB b (A × B)` reduces for a variable `b`).  Terms of a `bc` type are built by matching on
+  the flag (`tupB u R b hb h`, `tup := tupB u R ModalSys.T rfl`) — no casts.
+* **Where an item lands.**  `encPath` (projection path, `here ↦ snd` under T), `itemTail` (`[fst]`
+  under T), `itemPath` (up to the first `box` encoded, the `box` replaced by `itemTail`), and
+  ⭐`itemAt z u := z.(encPath u.path ++ itemTail)`, the image of the item `u.box` read from a root
+  `z`.  Arrows use `itemImg img u := itemAt (img u.rt) u`, abstraction `itemAt (bnd 0) u`.
+  Without T, `itemAt z u = u.reroot z` (`itemAt_noT`).  `ref_enc_bc`/`ref_item` type them.
+* **Paths.**  `PPath` is now "every step a projection" (so it admits `here`), and `reach_ppath`
+  needs no flag: a root-only context reaches only projection paths, whatever the flags.
+* **Tuples.**  `proj_tupB` (projecting a tuple along an encoded step gives the tuple of the
+  projected address — under T, a `□` component's second component is its `here` value's tuple),
+  `at_item_of_tupB` (reading a substitution at an item's image gives the item), and their
+  weakened forms; `at_single_tupB`, `at_pull_tup`, `at_pullX_tup` are inductions using them.
+* **Not needed after all** in step 1: `imgInj`.  It belongs to the decoder (step 4).
+
+So weak and strong T both reach `BData` with the construction unchanged; what T still needs is
+the canonical model (steps 3–4) and, for strong T, the term query (step 6).

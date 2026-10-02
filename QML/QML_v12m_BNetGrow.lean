@@ -32,7 +32,7 @@ theorem Grows.trans {t t' t'' : NodeSt σ} (h₁ : Grows t t') (h₂ : Grows t' 
 
 /-! ## Arrows survive growth -/
 
-theorem FwdData.grow_tgt [ModalSys.NoTFour] {tp tk tk' : NodeSt σ}
+theorem FwdData.grow_tgt [ModalSys.NoFour] {tp tk tk' : NodeSt σ}
     {kind : Option (VarSymb × VarType)} {cx : ℕ} {fcl : List VarType} {fimg : ℕ → ℕ}
     (h : FwdData tp tk kind cx fcl fimg) (hg : Grows tk tk') : FwdData tp tk' kind cx fcl fimg := by
   have hle := ctxOf_le_of_suffix hg.suf
@@ -45,7 +45,7 @@ theorem FwdData.grow_tgt [ModalSys.NoTFour] {tp tk tk' : NodeSt σ}
       obtain ⟨hsuf, himg, hx, hcx, htr⟩ := h
       exact ⟨hsuf, himg.mono hle, hx, hle.ref hcx, TransferX.mono_tgt hle hg.sub htr⟩
 
-theorem FwdData.grow_src [ModalSys.NoTFour] {tp tp' tk : NodeSt σ}
+theorem FwdData.grow_src [ModalSys.NoFour] {tp tp' tk : NodeSt σ}
     {kind : Option (VarSymb × VarType)} {cx : ℕ} {fcl : List VarType} {fimg : ℕ → ℕ}
     (hp : Theory.IsMCS tp.M) (hp' : Theory.IsMCS tp'.M)
     (h : FwdData tp tk kind cx fcl fimg) (hg : Grows tp tp') :
@@ -60,14 +60,14 @@ theorem FwdData.grow_src [ModalSys.NoTFour] {tp tp' tk : NodeSt σ}
       obtain ⟨hsuf, himg, hx, hcx, htr⟩ := h
       exact ⟨hsuf.trans hg.suf, himg, hx, hcx, TransferX.mono_src hle hp hp' hg.sub htr⟩
 
-theorem BackData.grow_src [ModalSys.NoTFour] {tk tk' tp : NodeSt σ} {bcl : List VarType}
+theorem BackData.grow_src [ModalSys.NoFour] {tk tk' tp : NodeSt σ} {bcl : List VarType}
     {bimg : ℕ → ℕ} (hk : Theory.IsMCS tk.M) (hk' : Theory.IsMCS tk'.M)
     (h : BackData tk tp bcl bimg) (hg : Grows tk tk') : BackData tk' tp bcl bimg := by
   obtain ⟨hsuf, himg, htr⟩ := h
   exact ⟨hsuf.trans hg.suf, himg,
     Transfer.mono_src (ctxOf_le_of_suffix hg.suf) hk hk' hg.sub htr⟩
 
-theorem BackData.grow_tgt [ModalSys.NoTFour] {tk tp tp' : NodeSt σ} {bcl : List VarType}
+theorem BackData.grow_tgt [ModalSys.NoFour] {tk tp tp' : NodeSt σ} {bcl : List VarType}
     {bimg : ℕ → ℕ} (h : BackData tk tp bcl bimg) (hg : Grows tp tp') :
     BackData tk tp' bcl bimg := by
   obtain ⟨hsuf, himg, htr⟩ := h
@@ -103,7 +103,7 @@ theorem ne_parent (c : ℕ) (p : Node) : (c :: p : Node) ≠ p := by
   simp at this
 
 /-- ⭐Growing one live node conservatively preserves the invariants. -/
-theorem Good.setSt [ModalSys.NoTFour] {N : NetSt σ} (hN : N.Good) {s : Node} {t : NodeSt σ}
+theorem Good.setSt [ModalSys.NoFour] {N : NetSt σ} (hN : N.Good) {s : Node} {t : NodeSt σ}
     (hs : N.Live s) (hg : Grows (N.st s) t) (ht : Theory.IsMCS t.M) : (N.setSt s t).Good := by
   refine ⟨fun k hk => ?_, fun c p hk => ?_, fun c p hk => ?_⟩
   · rw [live_setSt] at hk
