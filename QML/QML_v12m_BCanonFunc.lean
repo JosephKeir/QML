@@ -23,10 +23,6 @@ namespace BData
 
 variable [ModalSys.NoFour] {B : BData σ}
 
-theorem noFour : ModalSys.Four = true → False := fun h => by
-  rw [ModalSys.NoFour.noFour] at h
-  cases h
-
 variable (B)
 
 /-- ⭐The function algebra on raw objects. -/
@@ -42,8 +38,14 @@ noncomputable def rawEval :
   | _, _, .boxMap f, _, o => fun a => rawEval f a.1 (o a)
   | _, _, .boxPair _ _, _, o => fun a => (o.1 a, o.2 a)
   | _, _, .boxUnit, _, _ => fun _ => PUnit.unit
-  | _, _, .diaMap f, _, o => ⟨o.1, fun a => rawEval f a.1.1 (o.2 a)⟩
-  | _, _, .strength _ _, _, o => ⟨o.2.1, fun a => (o.1 a.1, o.2.2 a)⟩
+  | _, _, .diaMap f, _, o =>
+      ⟨o.1, fun a => rawEval f a.1.1 (o.2 a),
+        fun hT => .dia (o.3 hT).label (GFunc.shp f 1 (o.3 hT).body)⟩
+  | _, _, .strength _ _, _, o =>
+      ⟨o.2.1, fun a => (o.1 a.1, o.2.2 a),
+        fun hT => .dia (o.2.3 hT).label
+          (.prod (Arrows.transposeShp (F := B.arrows) (Root := fun _ => VarSymb)
+            fun a => B.rawShape hT (o.1 a)) (o.2.3 hT).body)⟩
   | _, _, .extract hT, s, o => o ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩
   | _, _, .dup hF, _, _ => (noFour hF).elim
 
@@ -129,15 +131,16 @@ theorem rden_applyG :
       · simp only [rden, dif_neg hR]
         rfl
   | _, _, .boxUnit, _, _, .unit, _, _, _ => rfl
-  | _, _, .diaMap f, _, _, .diatm x hx c, s, i, e =>
-      congrArg (Sigma.mk _) (funext fun a => by
+  | _, _, .diaMap f, Γ, _, .diatm x hx c, s, i, e =>
+      RPos.congr_cont (funext fun a => by
         by_cases hk : ∃ X, B.kd s a.1.1 = some (x, X)
         · simp only [rden, dif_pos hk]
           rw [← rden_applyG f _ a.1.1 _ _, Canon.applyG_subst]
         · simp only [rden, dif_neg hk]
           exact (rden_sigma _ (applyG_realTerm f _ e hx c)).trans (rden_applyG f _ a.1.1 _ _))
+        fun _ => Canon.termShp_applyG (.diaMap f) (.diatm x hx c) (B.cEnv Γ s) 0
   | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c), s, i, e =>
-      congrArg (Sigma.mk _) (funext fun a => by
+      RPos.congr_cont (funext fun a => by
         change _ = (B.rden s i e (.boxtm b) a.1, (B.rden s i e (.diatm x hx c)).2 a)
         by_cases hk : ∃ X, B.kd s a.1.1 = some (x, X)
         · have hR : B.R s a.1.1 := B.kdR hk.choose_spec
@@ -149,6 +152,12 @@ theorem rden_applyG :
           rw [rden_realTerm_pair]
           refine Prod.ext ?_ rfl
           exact rden_realTerm_mono_boxIn hr e hx b _ _)
+        fun hT =>
+          (Canon.termShp_applyG (.strength _ _) (.pair (.boxtm b) (.diatm x hx c))
+            (B.cEnv Γ s) 0).trans (by
+            change _ = Shp.dia _ (Shp.prod (B.rawShape hT (B.rden s i e (.boxtm b))).inner _)
+            rw [rawShape_rden hT s i e (.boxtm b)]
+            rfl)
   | _, _, .extract hT, _, _, .boxtm b, s, i, e => by
       change B.rden s i e (Term.collapse _ b) = B.rden s i e (.boxtm b) ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩
       simp only [rden, dif_neg (B.irrefl s)]

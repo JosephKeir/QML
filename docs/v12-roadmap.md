@@ -55,7 +55,9 @@ cost is in the first.
 3. ✅ **Model, below the instance** (2026-10-03, `v12-arrow-canonical.md` §9.7): own arrows (`RT`,
    `irrefl`), extents with the own arrow, `rden` and `extract` there, the frame.  The `□` case moves
    to step 4: the `Model` instance needs shapes under T.
-4. **Shapes on the network** (leaves by arrow images, the decoder, tags determine annotations);
+4. **Shapes on the network** — 4a ✅ (§9.8: shape layer, tags, `Model` instance under weak T);
+   4b the truth lemma's `□`/`◇` cases at the own arrow; 4c (leaves by arrow images, the decoder,
+   tags determine annotations);
    the `Model` instance under T (`posFull` tags, `necExtract`), the truth lemma's `□` (own arrow),
    `◇` (own arrow) and `here` cases, `Ind := Rel`, canonical `IndInvariant`.
 5. **Statements**: a flag class "4 off, strong T off" replacing `NoTFour`; completeness, strong

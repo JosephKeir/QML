@@ -149,6 +149,183 @@ theorem arXCoh {s t : B.W} {x : VarSymb} (hm : ∃ X, B.kd s t = some (x, X)) (i
   subst e
   exact coh_arrowXS (B.imgOk (B.kdR hk) i) hX' (B.hcx hk i)
 
+/-! ## Canonical shapes
+
+As in the tree (`QML_v12m_CanonShape`): a root possibility is named by its address, and a `□`
+address has, along each arrow, the shape of its contents' address there.  Along a network arrow
+that address is the arrow's index map applied (`arrowIdx`, as `rden` translates); along a world's
+own arrow it is collapsed (`succAddr`).  Only the frame's arrows differ from the tree's. -/
+
+theorem noFour : ModalSys.Four = true → False := fun h => by
+  rw [ModalSys.NoFour.noFour] at h
+  cases h
+
+/-- ⭐The network's arrows: its worlds with `RT`.  The frame is built on them, so a canonical shape
+    is a shape of the model. -/
+abbrev arrows : Arrows.{0, 0} σ where
+  W := B.W
+  R := B.RT
+  refl := fun hT _ => Or.inr ⟨hT, rfl⟩
+  trans := fun hF => (noFour hF).elim
+  refl_trans := fun _ hF => (noFour hF).elim
+  trans_refl := fun _ hF => (noFour hF).elim
+  trans_assoc := fun hF => (noFour hF).elim
+
+/-- Shapes on the network: a root possibility is named by its address. -/
+abbrev CShape (s : B.W) (T : VarType) : Type := Model.Shape B.arrows (fun _ => VarSymb) s T
+
+/-- Shape environments on the network. -/
+abbrev CShEnv (Γ : Ctx) (s : B.W) : Type := Model.ShEnv B.arrows (fun _ => VarSymb) Γ s
+
+open Classical in
+/-- ⭐Where an address of the `□` view is read along an arrow: through the arrow's index map along a
+    network arrow, collapsed along the world's own. -/
+noncomputable def succAddr (s : B.W) (a : B.Acc s) (v : VarSymb) : VarSymb :=
+  if B.R s a.1 then arrowIdx (B.img s a.1) v else v.collapse 0
+
+variable {B} in
+theorem succAddr_net {s : B.W} {a : B.Acc s} (h : B.R s a.1) (v : VarSymb) :
+    B.succAddr s a v = arrowIdx (B.img s a.1) v := if_pos h
+
+variable {B} in
+theorem succAddr_self {s : B.W} {a : B.Acc s} (h : ¬ B.R s a.1) (v : VarSymb) :
+    B.succAddr s a v = v.collapse 0 := if_neg h
+
+/-- The shape of a root possibility's content at a path, as in the tree (`Canon.rootSh`). -/
+def rootSh (s : B.W) (v : VarSymb) : List Step → (T : VarType) → B.CShape s T
+  | _, .Var => .var
+  | _, .VTypeOne => .one
+  | π, .VTypeProd A C => .prod (rootSh s v (π ++ [.fst]) A) (rootSh s v (π ++ [.snd]) C)
+  | π, .VTypeBox A => .box (rootSh s v (π ++ Step.innerPath) A)
+  | π, .VTypeDia A => .dia (.root v π) (rootSh s v (π ++ [.dia]) A)
+
+/-- ⭐The canonical shape of what an address names: a `◇` address is a root possibility, a `□`
+    address has along each arrow the shape of its contents' address there. -/
+noncomputable def canonSh : (s : B.W) → VarSymb → (T : VarType) → B.CShape s T
+  | _, _, .Var => .var
+  | _, _, .VTypeOne => .one
+  | s, v, .VTypeProd A C => .prod (canonSh s (.step v .fst) A) (canonSh s (.step v .snd) C)
+  | s, v, .VTypeBox A =>
+      .box (Arrows.transposeShp (F := B.arrows) (Root := fun _ => VarSymb) fun a =>
+        canonSh a.1 (B.succAddr s a v.inner) A)
+  | s, v, .VTypeDia A => .dia (.root v []) (B.rootSh s v [.dia] A)
+
+/-- A projection step moves a canonical shape to the projected address's. -/
+theorem canonSh_proj (s : B.W) (v : VarSymb) {U T : VarType} {st : Step}
+    (hs : st.isProj = true) (h : U.step st = some T) :
+    GFunc.shp (GFunc.proj (σ := σ) hs h) 0 (B.canonSh s v U) = B.canonSh s (.step v st) T := by
+  cases U <;> cases st <;> (try cases hs) <;> (try cases h)
+  · rfl
+  · rfl
+  · obtain ⟨hT, rfl⟩ := VarType.step_here h
+    change (Arrows.transposeShp (F := B.arrows) (Root := fun _ => VarSymb) fun a =>
+        B.canonSh a.1 (B.succAddr s a v.inner) _).map (Arrows.Leaf.collapse hT 0) = _
+    rw [Model.transpose_collapse_zero hT]
+    change B.canonSh s (B.succAddr s ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩ v.inner) _ = _
+    rw [succAddr_self (B.irrefl s), VarSymb.inner_collapse_zero]
+
+/-- The shape environment reading each address through an address map. -/
+noncomputable def canonEnvF (Γ : Ctx) (s : B.W) (f : VarSymb → VarSymb) : B.CShEnv Γ s :=
+  fun v T _ => B.canonSh s (f v) T
+
+/-- ⭐The canonical shape environment. -/
+noncomputable abbrev cEnv (Γ : Ctx) (s : B.W) : B.CShEnv Γ s := B.canonEnvF Γ s id
+
+/-- Through a map commuting with projections on reachable addresses, every reachable address reads
+    canonically. -/
+theorem canonEnvF_ref (Γ : Ctx) (s : B.W) {f : VarSymb → VarSymb}
+    (hf : ∀ v U st, Γ.ref v = some U → st.isProj = true → f (.step v st) = .step (f v) st) :
+    ∀ (v : VarSymb) {T : VarType} (h : Γ.ref v = some T),
+      (B.canonEnvF Γ s f).ref 0 v h = B.canonSh s (f v) T
+  | .root _, _, _ => rfl
+  | .step v st, T, h => by
+      by_cases hs : st.isProj = true
+      · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
+          rw [Ctx.ref_step_proj Γ v hs] at h
+          cases hU : Γ.ref v with
+          | none => rw [hU] at h; cases h
+          | some U => exact ⟨U, rfl⟩
+        rw [Model.ShEnv.ref_proj _ 0 hs hU h, canonEnvF_ref Γ s hf v hU, canonSh_proj,
+          hf v U st hU hs]
+      · rw [Model.ShEnv.ref_nonproj _ 0 hs h]
+        rfl
+
+theorem cEnv_ref (Γ : Ctx) (s : B.W) (v : VarSymb) {T : VarType} (h : Γ.ref v = some T) :
+    (B.cEnv Γ s).ref 0 v h = B.canonSh s v T :=
+  B.canonEnvF_ref Γ s (fun _ _ _ _ _ => rfl) v h
+
+/-- ⭐Pushing the canonical environment into `□` gives, along each arrow, the target's environment
+    read through `succAddr`. -/
+theorem cEnv_boxPush (Γ : Ctx) (s : B.W) :
+    ∀ v T (h : Γ.boxIn v = some T),
+      (B.cEnv Γ s).boxPush 0 v T h =
+        Arrows.transposeShp (F := B.arrows) (Root := fun _ => VarSymb) fun a =>
+          B.canonEnvF Γ.boxIn a.1 (B.succAddr s a) v T h
+  | .step u .box, T, h => by
+      obtain ⟨hk, _⟩ := Ctx.boxIn_box h
+      change ((B.cEnv Γ s).ref 0 u (Ctx.boxIn_step_box h)).inner = _
+      rw [cEnv_ref]
+      change Arrows.transposeShp (F := B.arrows) (Root := fun _ => VarSymb) (fun a =>
+        B.canonSh a.1 (B.succAddr s a u.inner) T) = _
+      rw [VarSymb.inner_box hk]
+      rfl
+  | .step u .keep, _, h => (noFour (Ctx.boxIn_keep h).1).elim
+  | .root _, _, h => by cases h
+  | .step _ .fst, _, h => by cases h
+  | .step _ .snd, _, h => by cases h
+  | .step _ .dia, _, h => by cases h
+  | .step _ .here, _, h => by cases h
+
+/-- Along a world's own arrow, a `□` body read through `succAddr` has the shape of its collapse. -/
+theorem termShp_collapse_cEnv (hT : ModalSys.T = true) {Γ : Ctx} (s : B.W) {A : VarType}
+    {a : Ann A} (t : Term σ Γ.boxIn A a) :
+    Model.termShp (B.cEnv Γ s) 0 (Term.collapse (Ctx.collapses_boxIn_self hT Γ) t) =
+      Model.termShp (B.canonEnvF Γ.boxIn s fun v => v.collapse 0) 0 t := by
+  refine Model.termShp_collapse ?_ t
+  intro v T hv
+  rw [B.canonEnvF_ref _ _ (fun v _ st _ hs => VarSymb.collapse_proj hs), cEnv_ref]
+
+/-- ⭐Along a network arrow, a `□` body translated by the arrow has the shape of the body read
+    through the arrow's index map. -/
+theorem termShp_arrow_cEnv {Γ : Ctx} {s s' : B.W} (h : B.R s s') {i : ℕ}
+    (e : Γ.Le ((B.w s).ctx i)) {A : VarType} {a : Ann A} (b : Term σ Γ.boxIn A a) :
+    Model.termShp (B.cEnv ((B.w s').ctx (B.stg s s' i)) s') 0
+        (Term.subst (arrowIdx (B.img s s')) (arrowS σ _ (B.img s s'))
+          ((B.arOk h i).restrict e.boxIn) ((B.arCoh h i).restrict e.boxIn) b) =
+      Model.termShp (B.canonEnvF Γ.boxIn s' (arrowIdx (B.img s s'))) 0 b := by
+  rw [Model.termShp_subst _ _ _ (Ctx.noProjLast_boxIn Γ)]
+  congr 1
+  funext v T hv
+  obtain ⟨u, rfl, hu⟩ : ∃ u, v = .step u .box ∧ Γ.ref u = some (.VTypeBox T) := by
+    match v, hv with
+    | .step u .box, hv => exact ⟨u, rfl, (Ctx.boxIn_box hv).2⟩
+    | .step u .keep, hv => exact (noFour (Ctx.boxIn_keep hv).1).elim
+    | .root _, hv => cases hv
+    | .step _ .fst, hv => cases hv
+    | .step _ .snd, hv => cases hv
+    | .step _ .dia, hv => cases hv
+    | .step _ .here, hv => cases hv
+  change (B.cEnv _ s').ref 0 (itemImg (B.img s s') u) _ =
+    B.canonSh s' (arrowIdx (B.img s s') (.step u .box)) T
+  rw [cEnv_ref, arrowIdx_item (reach_ppath (e.ref hu)).1]
+
+/-- ⭐A raw possible object: an extent, a raw object along each of its arrows, and, under T, its
+    shape, which the canonical model stores rather than computes — as in the tree (`Canon.RPos`).
+    Without T, objects with one section are one object. -/
+structure RPos (s : B.W) (A : VarType) (C : B.Acc s → Type) where
+  E : Set (B.Acc s)
+  c : (a : E) → C a.1
+  tag : ModalSys.T = true → B.CShape s (.VTypeDia A)
+
+variable {B} in
+theorem RPos.congr_cont {s : B.W} {A : VarType} {C : B.Acc s → Type} {E : Set (B.Acc s)}
+    {c c' : (a : E) → C a.1} {τ τ' : ModalSys.T = true → B.CShape s (.VTypeDia A)} (hc : c = c')
+    (hτ : ∀ hT, τ hT = τ' hT) :
+    (⟨E, c, τ⟩ : B.RPos s A C) = ⟨E, c', τ'⟩ := by
+  subst hc
+  obtain rfl : τ = τ' := funext hτ
+  rfl
+
 /-! ## Raw objects and denotations -/
 
 /-- Raw objects of a type at a world. -/
@@ -157,7 +334,18 @@ def RDom : VarType → B.W → Type
   | .VTypeOne, _ => PUnit
   | .VTypeProd A C, s => RDom A s × RDom C s
   | .VTypeBox A, s => (a : B.Acc s) → RDom A a.1
-  | .VTypeDia A, s => Σ E : Set (B.Acc s), (a : E) → RDom A a.1.1
+  | .VTypeDia A, s => B.RPos s A fun a => RDom A a.1
+
+/-- ⭐Under T, the shape of a raw object: the stored shapes of its possible objects, arranged as its
+    type arranges them — `Frame.domShape` for raw objects. -/
+def rawShape (hT : ModalSys.T = true) : {A : VarType} → {s : B.W} → B.RDom A s → B.CShape s A
+  | .Var, _, _ => .var
+  | .VTypeOne, _, _ => .one
+  | .VTypeProd _ _, _, o => .prod (rawShape hT o.1) (rawShape hT o.2)
+  | .VTypeBox _, _, o =>
+      .box (Arrows.transposeShp (F := B.arrows) (Root := fun _ => VarSymb) fun a =>
+        rawShape hT (o a))
+  | .VTypeDia _, _, o => o.3 hT
 
 open Classical in
 /-- ⭐The denotation of a term at a world, computed at a stage containing its context. -/
@@ -175,7 +363,7 @@ noncomputable def rden : {A : VarType} → {a : Ann A} → {Γ : Ctx} → (s : B
       else
         rden a.1 i (e.trans (B.selfLe (self_of_not_R h).2 i))
           (Term.collapse (Ctx.collapses_boxIn_self (self_of_not_R h).1 Γ) t)
-  | _, _, _, s, i, e, .diatm x hx t =>
+  | _, _, Γ, s, i, e, .diatm x hx t =>
       ⟨B.extent s x, fun a =>
         if hk : ∃ X, B.kd s a.1.1 = some (x, X) then
           rden a.1.1 (B.stg s a.1.1 i) (Ctx.Le.refl _)
@@ -185,7 +373,8 @@ noncomputable def rden : {A : VarType} → {a : Ann A} → {Γ : Ctx} → (s : B
               ((B.arXCoh hk i (hx.imp fun _ h => e.ref h)).restrict (e.diaIn x)) t)
         else
           rden a.1.1 _ (B.selfLe (self_of_not_R (mem_extent_self a.2 hk).1).2 _)
-            (B.realTerm (mem_extent_self a.2 hk).2 e hx t).2⟩
+            (B.realTerm (mem_extent_self a.2 hk).2 e hx t).2,
+        fun _ => Model.termShp (B.cEnv Γ s) 0 (.diatm x hx t)⟩
   termination_by structural A => A
 
 variable {B}
@@ -249,10 +438,12 @@ theorem rden_mono : ∀ {A : VarType} {a : Ann A} {Γ Γ' : Ctx} (h : Γ.Le Γ')
       · simp only [rden, dif_neg hR]
         rw [Term.collapse_mono (Ctx.collapses_boxIn_self (self_of_not_R hR).1 Γ)
           (Ctx.collapses_boxIn_self (self_of_not_R hR).1 Γ') h.boxIn h, rden_mono h _ a.1 i]
-  | _, _, _, _, h, .diatm x hx t, s, i, e => by
+  | _, _, Γ, Γ', h, .diatm x hx t, s, i, e => by
       change B.rden s i e (.diatm x _ (Term.mono (h.diaIn x) t)) = _
       simp only [rden]
-      refine congrArg (Sigma.mk _) (funext fun a => ?_)
+      refine RPos.congr_cont (funext fun a => ?_) fun _ =>
+        Model.termShp_mono (h := h) (ρ := B.cEnv Γ s) (ρ' := B.cEnv Γ' s) (fun _ _ _ => rfl) 0
+          (.diatm x hx t)
       by_cases hk : ∃ X, B.kd s a.1.1 = some (x, X)
       · simp only [dif_pos hk, Term.subst_mono]
       · simp only [dif_neg hk, realTerm, Term.mono_mono]
@@ -326,7 +517,7 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
             (subst_arrow_mono j K (le_max_right _ _) e'.boxIn hθ hc hR t)))
       exact h₁.trans h₂.symm
   | _, _, Γ, .diatm x hx t, s, i, j, e, e' =>
-      congrArg (Sigma.mk _) (funext fun a => by
+      RPos.congr_cont (funext fun a => by
         by_cases hk : ∃ X, B.kd s a.1.1 = some (x, X)
         swap
         · simp only [dif_neg hk]
@@ -384,7 +575,38 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
             (congrArg (B.rden a.1.1 K (Ctx.Le.refl _))
               (subst_arrowX_mono j K (le_max_right _ _) (e'.diaIn x) hθ hc hk
                 (hx.imp fun _ h => e'.ref h) t)))
-        exact h₁.trans h₂.symm)
+        exact h₁.trans h₂.symm) fun _ => rfl
+  termination_by structural A => A
+
+/-- ⭐**The stored shape is the symbolic one**: a term's denotation has the shape `termShp` computes
+    for it in the canonical shape environment.  For a `◇` term this is `rden`'s definition.  A `□`
+    term's values sit along the arrows, where the environment pushed into `□` is the target's own
+    read through `succAddr` (`cEnv_boxPush`) — what translating the body (along a network arrow)
+    and collapsing it (along the world's own) need. -/
+theorem rawShape_rden (hT : ModalSys.T = true) : ∀ {A : VarType} {a : Ann A} {Γ : Ctx}
+    (s : B.W) (i : ℕ) (e : Γ.Le ((B.w s).ctx i)) (t : Term σ Γ A a),
+    B.rawShape hT (B.rden s i e t) = Model.termShp (B.cEnv Γ s) 0 t
+  | _, _, _, _, _, _, .var _ _ => rfl
+  | _, _, _, _, _, _, .func _ => rfl
+  | _, _, _, _, _, _, .unit => rfl
+  | _, _, _, s, i, e, .pair u v => by
+      change Shp.prod (B.rawShape hT (B.rden s i e u)) (B.rawShape hT (B.rden s i e v)) = _
+      rw [rawShape_rden hT s i e u, rawShape_rden hT s i e v]
+      rfl
+  | _, _, Γ, s, i, e, .boxtm t => by
+      change Shp.box (Arrows.transposeShp (F := B.arrows) (Root := fun _ => VarSymb) fun a =>
+          B.rawShape hT (B.rden s i e (.boxtm t) a)) =
+        Shp.box (Model.termShp ((B.cEnv Γ s).boxPush 0) (0 + 1) t)
+      rw [Model.termShp_transpose ((B.cEnv Γ s).boxPush 0)
+        (fun a => B.canonEnvF Γ.boxIn a.1 (B.succAddr s a)) 0 (B.cEnv_boxPush Γ s) t]
+      refine congrArg Shp.box (congrArg _ (funext fun a => ?_))
+      by_cases hR : B.R s a.1
+      · rw [rden_boxtm_net e t a hR, rawShape_rden hT, B.termShp_arrow_cEnv hR e t,
+          show B.succAddr s a = arrowIdx (B.img s a.1) from funext (succAddr_net hR)]
+      · rw [rden_boxtm_self e t a hR, rawShape_rden hT,
+          B.termShp_collapse_cEnv (self_of_not_R hR).1,
+          show B.succAddr s a = fun v => v.collapse 0 from funext (succAddr_self hR)]
+  | _, _, _, _, _, _, .diatm _ _ _ => rfl
   termination_by structural A => A
 
 /-! ## Realised contents -/

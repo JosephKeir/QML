@@ -651,3 +651,28 @@ moves to step 4 with the instance.  Whole v12m list green.
   `Canon.applyG_collapse`).
 * **Frame.**  `R := RT`: reflexive under T by construction, symmetric, serial; the 4 laws are
   vacuous.
+
+### 9.8 ✅ Step 4a: shapes on the network, and the `Model` instance under weak T *(2026-10-03)*
+
+Step 4 is split: **4a** shapes and the instance; **4b** the truth lemma's `□`/`◇` cases at the
+own arrow (`canonEnv`, `boxPush`/`diaPush`, `interp_canon` under T, mirroring the tree's
+`envShape_canon` and `interp_dia_self`); **4c** the decoder, tags determine annotations, the `here`
+case, `Ind := Rel` and `IndInvariant`.  4a is done; whole v12m list green, no warnings.
+
+* **Shape layer** (`BCanonDom`, mirroring `QML_v12m_CanonShape`): `BData.arrows` (the worlds with
+  `RT`; the frame is now built on it, `toArrows := B.arrows`, so canonical shapes are the model's),
+  `CShape`/`CShEnv`, ⭐`succAddr` (through the arrow's index map `arrowIdx` along a network arrow,
+  collapsed along the own arrow), `rootSh`, ⭐`canonSh`, `canonSh_proj`, `canonEnvF`/`cEnv`,
+  `canonEnvF_ref` (projections need only commute on reachable addresses — `arrowIdx` encodes a
+  `here` before the first `box`), `cEnv_boxPush`, `termShp_collapse_cEnv`, ⭐`termShp_arrow_cEnv`
+  (a body translated along a network arrow has the shape of the body read through `arrowIdx`, by
+  `Model.termShp_subst`).  `arrowIdx_item` moved to `BSyntax`.
+* **Tags.**  `RDom (◇A)` is now `RPos` (extent, contents, and under T a stored shape), `rden`'s tag
+  is `termShp (cEnv Γ s) 0 (◇_x t)`, `rawShape`, and ⭐`rawShape_rden` (stored = symbolic).
+* **Function algebra.**  `rawEval` moves tags as `GFunc.shp` does (`diaMap`, `strength` with the
+  necessary object's `rawShape`); `rden_applyG` checks them (`Canon.termShp_applyG`).
+* **Model.**  `posFull` (section and stored shape), `posFull_injective` (replacing
+  `posEval_injective`, which only holds without T), `domShape_toDom`, the laws `posMap_full` and
+  `posStrength_full`, `necExtract` by `rawEval`.  The instance is built under the new class
+  `ModalSys.NoFourNoTS` (4 off; strong T off whenever T is on — `NoTFour` gives it), with
+  `RootPoss := VarSymb` and, for now, `Ind := (· = ·)` (4c replaces it).

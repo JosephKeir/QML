@@ -41,6 +41,15 @@ class ModalSys.NoFour [ModalSys] : Prop where
 instance ModalSys.NoTFour.toNoFour [ModalSys] [h : ModalSys.NoTFour] : ModalSys.NoFour :=
   ⟨h.noFour⟩
 
+/-- The flags the network's canonical `Model` is built for so far: 4 off, and strong T off whenever
+    T is on — strong T's term query in the network is still to come
+    (`docs/v12-roadmap.md`, milestone 1 step 6). -/
+class ModalSys.NoFourNoTS [ModalSys] : Prop extends ModalSys.NoFour where
+  noTS : ModalSys.T = true → ModalSys.TStrong = false
+
+instance ModalSys.NoTFour.toNoFourNoTS [ModalSys] [h : ModalSys.NoTFour] : ModalSys.NoFourNoTS :=
+  { noFour := h.noFour, noTS := fun hT => by rw [h.noT] at hT; cases hT }
+
 variable [ModalSys]
 
 theorem ModalSys.NoTFour.keepOnly [ModalSys.NoTFour] : ModalSys.keepOnly = false := by
@@ -482,6 +491,16 @@ theorem ppath_level : ∀ {p q : List Step} {s t : Step} {k m : List Step}, PPat
       obtain ⟨e₁, e₂, e₃⟩ := ppath_level (fun s' hs' => hp s' (by simp [hs']))
         (fun s' hs' => hq s' (by simp [hs'])) hs ht h'
       exact ⟨by rw [hab, e₁], e₂, e₃⟩
+
+/-- The index map of an arrow at an item is the item's image. -/
+theorem arrowIdx_item {img : ℕ → ℕ} {u : VarSymb} (hu : PPath u.path) :
+    arrowIdx img (.step u .box) = itemAt (imgRoot img u.rt) u := by
+  have h := itemPath_item hu []
+  rw [List.append_nil] at h
+  unfold arrowIdx
+  change (VarSymb.root (imgRoot img u.rt)).ext (itemPath ((VarSymb.step u .box).ext []).path) = _
+  rw [h]
+  rfl
 
 theorem coh_arrowS [ModalSys.NoFour] {σ : Signature} {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
     (himg : ImgOk l Δ img) : Subst.Coh (arrowIdx img) (ctxOf l).boxIn (arrowS σ Δ img) := by

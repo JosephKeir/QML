@@ -38,6 +38,11 @@ theorem noProjLast (s : B.W) (i : ℕ) : ((B.w s).ctx i).NoProjLast :=
 
 variable (B)
 
+/-- Without T a possible object is its section: the stored shape is vacuous. -/
+theorem posEval_injective {A : VarType} {s : B.W} :
+    Function.Injective (B.posEval (A := A) (s := s)) := fun _ _ h =>
+  B.posFull_injective (Prod.ext h (funext fun hT => (noT hT).elim))
+
 /-- ⭐The canonical environment: every visible address denotes its η-expansion. -/
 noncomputable def canonEnv (s : B.W) (i : ℕ) : B.model.Env ((B.w s).ctx i) s :=
   fun v T hv => B.toDom T s
@@ -97,16 +102,6 @@ theorem canonEnv_le (s : B.W) {i j : ℕ} (hij : i ≤ j) :
     exact rden_congr _ _ _ _ _ _) _ _
 
 /-! ## Pushing into views along arrows -/
-
-omit [ModalSys.NoTFour] in
-theorem arrowIdx_item {img : ℕ → ℕ} {u : VarSymb} (hu : PPath u.path) :
-    arrowIdx img (.step u .box) = itemAt (imgRoot img u.rt) u := by
-  have h := itemPath_item hu []
-  rw [List.append_nil] at h
-  unfold arrowIdx
-  change (VarSymb.root (imgRoot img u.rt)).ext (itemPath ((VarSymb.step u .box).ext []).path) = _
-  rw [h]
-  rfl
 
 omit [ModalSys.NoTFour] in
 /-- A coherent entry that is an address is the address the index map gives. -/

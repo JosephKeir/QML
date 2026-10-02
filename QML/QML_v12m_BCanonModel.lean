@@ -22,7 +22,7 @@ variable {σ : Signature}
 
 namespace BData
 
-variable [ModalSys.NoTFour] (B : BData σ)
+variable [ModalSys.NoFourNoTS] (B : BData σ)
 
 /-- Under D every world has an arrow out: `□⊥` fails, since `D_box` refutes it. -/
 theorem serial_canon (hD : ModalSys.D = true) (s : B.W) : ∃ t, Nonempty (B.RT s t) := by
@@ -35,16 +35,10 @@ theorem serial_canon (hD : ModalSys.D = true) (s : B.W) : ∃ t, Nonempty (B.RT 
 
 /-- ⭐The canonical frame. -/
 noncomputable def frame : Frame.{0, 0} σ where
-  W := B.W
+  toArrows := B.arrows
   actual := B.actual
-  R := B.RT
-  refl := fun hT _ => Or.inr ⟨hT, rfl⟩
-  trans := fun hF => (noFour hF).elim
   serial := fun hD s => B.serial_canon hD s
   symm := fun _ {_ _} h => ⟨h.elim (fun h => Or.inl (B.symm h)) fun h => Or.inr ⟨h.1, h.2.symm⟩⟩
-  refl_trans := fun _ hF => (noFour hF).elim
-  trans_refl := fun _ hF => (noFour hF).elim
-  trans_assoc := fun hF => (noFour hF).elim
   D s := (B.w s).D
   Nec A s := {o : B.RDom (.VTypeBox A) s // B.Definable (.VTypeBox A) s o}
   Pos A s := {o : B.RDom (.VTypeDia A) s // B.Definable (.VTypeDia A) s o}
@@ -132,15 +126,6 @@ theorem necEval_injective {A : VarType} {s : B.W} :
   funext a
   exact toDom_inj (congrFun h a)
 
-theorem posEval_injective {A : VarType} {s : B.W} :
-    Function.Injective (B.posEval (A := A) (s := s)) := by
-  rintro ⟨⟨E, c⟩, hp⟩ ⟨⟨E', c'⟩, hp'⟩ h
-  simp only [posEval] at h
-  obtain ⟨rfl, hc⟩ := Sigma.mk.inj_iff.mp h
-  have hc' := eq_of_heq hc
-  apply Subtype.ext
-  exact congrArg (Sigma.mk E) (funext fun a => toDom_inj (congrFun hc' a))
-
 /-- The function algebra on the carriers. -/
 noncomputable def ops : B.frame.Ops where
   necMap g n := ⟨B.rawEval (.boxMap g) _ n.1, definable_rawEval (.boxMap g) n.2⟩
@@ -153,7 +138,8 @@ noncomputable def ops : B.frame.Ops where
   posStrength n p := ⟨B.rawEval (.strength _ _) _
       ((n.1, p.1) : B.RDom (.VTypeProd (.VTypeBox _) (.VTypeDia _)) _),
     definable_rawEval (.strength _ _) (definable_pair n.2 p.2)⟩
-  necExtract hT _ := (noT hT).elim
+  necExtract hT n :=
+    B.toDom _ _ (B.rawEval (.extract hT) _ n.1) (definable_rawEval (.extract hT) n.2)
   necDup hF _ := (noFour hF).elim
 
 /-- ⭐Evaluating a map on a frame object is evaluating it on the raw object. -/
@@ -174,8 +160,40 @@ theorem eval_toDom : ∀ {A C : VarType} (g : GFunc σ A C) (s : B.W) (o : B.RDo
   | _, _, .boxUnit, _, _, _ => rfl
   | _, _, .diaMap _, _, _, _ => rfl
   | _, _, .strength _ _, _, _, _ => rfl
-  | _, _, .extract hT, _, _, _ => (noT hT).elim
+  | _, _, .extract _, _, _, _ => rfl
   | _, _, .dup hF, _, _, _ => (noFour hF).elim
+
+/-- ⭐Evaluation of possible objects, in full: the section and, under T, the stored shape. -/
+def posFull {A : VarType} {s : B.W} (p : B.frame.Pos A s) :
+    B.frame.PosSec A s × (ModalSys.T = true → B.CShape s (.VTypeDia A)) :=
+  (B.posEval p, p.1.3)
+
+/-- A possible object is its section and, under T, its shape. -/
+theorem posFull_injective {A : VarType} {s : B.W} :
+    Function.Injective (B.posFull (A := A) (s := s)) := by
+  rintro ⟨⟨E, c, τ⟩, hp⟩ ⟨⟨E', c', τ'⟩, hp'⟩ h
+  have h₁ := congrArg Prod.fst h
+  have h₂ := congrArg Prod.snd h
+  simp only [posFull] at h₁ h₂
+  simp only [posEval] at h₁
+  obtain ⟨rfl, hc⟩ := Sigma.mk.inj_iff.mp h₁
+  have hc' := eq_of_heq hc
+  apply Subtype.ext
+  exact RPos.congr_cont (funext fun a => toDom_inj (congrFun hc' a)) (congrFun h₂)
+
+/-- Under T, a frame object's shape is its raw object's. -/
+theorem domShape_toDom (hT : ModalSys.T = true) : ∀ (A : VarType) (s : B.W) (o : B.RDom A s)
+    (h : B.Definable A s o),
+    Frame.domShape B.necEval (fun q => (B.posFull q).2 hT) (B.toDom A s o h) = B.rawShape hT o
+  | .Var, _, _, _ => rfl
+  | .VTypeOne, _, _, _ => rfl
+  | .VTypeProd A C, s, o, h =>
+      congrArg₂ Shp.prod (domShape_toDom hT A s o.1 (definable_fst h))
+        (domShape_toDom hT C s o.2 (definable_snd h))
+  | .VTypeBox A, _, o, h =>
+      congrArg Shp.box (congrArg Arrows.transposeShp (funext fun a =>
+        domShape_toDom hT A a.1 (o a) (definable_box_apply h a)))
+  | .VTypeDia _, _, _, _ => rfl
 
 /-! ## Strong D -/
 
@@ -206,19 +224,20 @@ noncomputable def model : Model.{0, 0} σ where
   frame := B.frame
   necEval := B.necEval
   nec_inj := fun h => B.necEval_injective h
-  RootPoss _ := PUnit
-  posFull p := (B.posEval p, fun hT => (noT hT).elim)
-  posFull_inj := fun h => B.posEval_injective (congrArg Prod.fst h)
+  RootPoss _ := VarSymb
+  posFull p := B.posFull p
+  posFull_inj := fun h => B.posFull_injective h
   ops := B.ops
   necMap_eval g _ a := (B.eval_toDom g a.1 _ _).symm
   necPair_eval _ _ _ := rfl
   posMap_full g _ := Prod.ext
-    (congrArg (Sigma.mk _) (funext fun a => (B.eval_toDom g a.1.1 _ _).symm))
-    (funext fun hT => (noT hT).elim)
-  posStrength_full _ _ := Prod.ext rfl (funext fun hT => (noT hT).elim)
-  necExtract_eval hT _ := (noT hT).elim
+    (congrArg (Sigma.mk _) (funext fun a => (B.eval_toDom g a.1.1 _ _).symm)) rfl
+  posStrength_full n _ := Prod.ext rfl (funext fun hT =>
+    congrArg (fun z => Shp.dia _ (Shp.prod z _)) (congrArg Arrows.transposeShp (funext fun s =>
+      (B.domShape_toDom hT _ s.1 (n.1 s) (definable_box_apply n.2 s)).symm)))
+  necExtract_eval _ _ := rfl
   necDup_eval hF _ _ _ := (noFour hF).elim
-  posRet_exists hT _ _ := (noT hT).elim
+  posRet_exists hT hS _ := by rw [ModalSys.NoFourNoTS.noTS hT] at hS; cases hS
   posSerial hDS s := B.posSerial_canon hDS s
   Ind o o' := o = o'
   Ind_refl _ := rfl
