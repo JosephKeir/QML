@@ -86,6 +86,10 @@ def LR (s t : LW M₀) : Prop := (∃ c, t.1 = c :: s.1) ∨ ∃ c, s.1 = c :: t
 
 theorem LR.symm {s t : LW M₀} (h : LR M₀ s t) : LR M₀ t s := Or.symm h
 
+/-- The network has no loops: an edge joins a node to its child. -/
+theorem LR.irrefl (s : LW M₀) : ¬ LR M₀ s s := by
+  rintro (⟨c, h⟩ | ⟨c, h⟩) <;> exact List.cons_ne_self c s.1 h.symm
+
 
 /-- A world's variables at a stage. -/
 noncomputable abbrev lat (s : LW M₀) (i : ℕ) : List VarType :=
@@ -504,6 +508,7 @@ noncomputable def bdata : BData σ where
   w s := nodeWorld hB hM₀ s.1 s.2
   R := LR M₀
   symm := LR.symm
+  irrefl := LR.irrefl
   img := limg M₀
   stg := lstg M₀
   imgOk h i := limgOk hB hM₀ h i

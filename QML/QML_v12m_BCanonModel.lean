@@ -25,25 +25,25 @@ namespace BData
 variable [ModalSys.NoTFour] (B : BData σ)
 
 /-- Under D every world has an arrow out: `□⊥` fails, since `D_box` refutes it. -/
-theorem serial_canon (hD : ModalSys.D = true) (s : B.W) : ∃ t, Nonempty (B.R s t) := by
+theorem serial_canon (hD : ModalSys.D = true) (s : B.W) : ∃ t, Nonempty (B.RT s t) := by
   have hnot : WFF.box (.bot : WFF σ ((B.w s).ctx 0).boxIn 0) ∉ (B.w s).M 0 := fun h =>
     ((B.w s).mcs 0).bot_not_mem (BWorld.mem_of_provable (Δ := [.box .bot])
       (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact h)
       ⟨Proof.D_box hD (Proof.lookup List.mem_cons_self)⟩)
   obtain ⟨t, h, _⟩ := B.ex s 0 .bot hnot
-  exact ⟨t, ⟨h⟩⟩
+  exact ⟨t, ⟨Or.inl h⟩⟩
 
 /-- ⭐The canonical frame. -/
 noncomputable def frame : Frame.{0, 0} σ where
   W := B.W
   actual := B.actual
-  R := B.R
-  refl := fun hT => (noT hT).elim
+  R := B.RT
+  refl := fun hT _ => Or.inr ⟨hT, rfl⟩
   trans := fun hF => (noFour hF).elim
   serial := fun hD s => B.serial_canon hD s
-  symm := fun _ {_ _} h => ⟨B.symm h⟩
-  refl_trans := fun hT => (noT hT).elim
-  trans_refl := fun hT => (noT hT).elim
+  symm := fun _ {_ _} h => ⟨h.elim (fun h => Or.inl (B.symm h)) fun h => Or.inr ⟨h.1, h.2.symm⟩⟩
+  refl_trans := fun _ hF => (noFour hF).elim
+  trans_refl := fun _ hF => (noFour hF).elim
   trans_assoc := fun hF => (noFour hF).elim
   D s := (B.w s).D
   Nec A s := {o : B.RDom (.VTypeBox A) s // B.Definable (.VTypeBox A) s o}
@@ -199,7 +199,7 @@ theorem posSerial_canon (hDS : ModalSys.DStrong = true) (s : B.W) :
         rw [← e]
         exact hmem)
       refine ⟨⟨B.rden s j (Ctx.Le.refl _) (.diatm x ⟨X, hX⟩ u), definable_rden _ _⟩,
-        ⟨⟨⟨t', ⟨B.kdR hk⟩⟩, ⟨X, hk⟩⟩⟩⟩
+        ⟨⟨⟨t', ⟨Or.inl (B.kdR hk)⟩⟩, Or.inl ⟨X, hk⟩⟩⟩⟩
 
 /-- ⭐The canonical model. -/
 noncomputable def model : Model.{0, 0} σ where

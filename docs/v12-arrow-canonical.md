@@ -623,3 +623,31 @@ The theory-level `Here` layer is now stated for a **staged theory** — a stage 
   applies.
 * Left world-specific: the classical choice of a datum (`World.real`/`Realised`), a few lines the
   network's model will define for itself in step 3.
+
+### 9.7 ✅ Step 3 done: the network model's own arrows, below the `Model` instance *(2026-10-03)*
+
+Under T a `Model` must tag every possible object with a shape (`posFull`), and the network has no
+shapes until step 4.  So step 3 makes everything **below** the `Model` instance T-aware, under
+`ModalSys.NoFour`, while the instance itself, the canonical environment lemmas and the truth lemma
+stay under `NoTFour` for now (they reach the new definitions through `R_of_RT` and
+`kd_of_extent`, which hold when T is off).  The truth lemma's `□` case at the own arrow therefore
+moves to step 4 with the instance.  Whole v12m list green.
+
+* **Own arrows.**  `BData` gains `irrefl` (the network has no loops: `LR.irrefl`, an edge joins a
+  node to its child).  The canonical accessibility is `RT s t := R s t ∨ (T ∧ s = t)`; `Acc` is
+  indexed by it; `self_of_not_R` reads an arrow that is not the network's as the world's own.
+* **Extents.**  `extent s x` is the network's witness arrows into `x`'s extent and, when the
+  world's theory realises `x` (`BWorld.Realised`: a datum exists, `QML_v12m_BStaged`), its own
+  arrow (`mem_extent_self`).
+* **`rden`** (now classical): along the own arrow a necessary term denotes its body collapsed;
+  a possible term's content there is the body realised by the datum (`realTerm`, the tree's
+  `realisedTerm`), transported by the context inclusion `selfLe` rather than by casting the raw
+  object.  Equation lemmas `rden_boxtm_net`/`_self`, `rden_diatm_net`/`_self`; `rden_mono` and
+  `rden_congr` cover the new cases (the latter mirroring the tree's via `Term.mono_realiseAtA`);
+  `rden_realTerm_pair`, `rden_realTerm_mono_boxIn` (a `□`-view term's realised content is its
+  collapse).
+* **Function algebra.**  `rawEval (.extract hT) o := o` at the own arrow; `rden_applyG` for every
+  map including `strength` and `extract` at the own arrow (`applyG_realTerm`,
+  `Canon.applyG_collapse`).
+* **Frame.**  `R := RT`: reflexive under T by construction, symmetric, serial; the 4 laws are
+  vacuous.

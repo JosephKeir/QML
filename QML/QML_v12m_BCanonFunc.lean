@@ -3,8 +3,9 @@ import QML.QML_v12m_BCanonDom
 /-!
 # QML v12m — B's canonical model: the function algebra
 
-The function algebra acts on raw objects (`rawEval`) as in the staged model; `extract` and `dup`
-do not arise (no T, no 4).  ⭐`rden_applyG`: denoting a map applied to a term is applying the map to
+The function algebra acts on raw objects (`rawEval`) as in the staged model; `extract` reads a
+necessary object at the world's own arrow (under T), and `dup` does not arise (4 is off).
+⭐`rden_applyG`: denoting a map applied to a term is applying the map to
 the denotation.  Along an arrow this is `applyG_subst` — applying a map commutes with translation —
 and for `strength` the witness arrow agrees with the plain arrow on the `□` view
 (`subst_arrowX_box`).  So definable objects are closed under the algebra (`definable_rawEval`).
@@ -20,14 +21,10 @@ variable {σ : Signature}
 
 namespace BData
 
-variable [ModalSys.NoTFour] {B : BData σ}
-
-theorem noT : ModalSys.T = true → False := fun h => by
-  rw [ModalSys.NoTFour.noT] at h
-  cases h
+variable [ModalSys.NoFour] {B : BData σ}
 
 theorem noFour : ModalSys.Four = true → False := fun h => by
-  rw [ModalSys.NoTFour.noFour] at h
+  rw [ModalSys.NoFour.noFour] at h
   cases h
 
 variable (B)
@@ -47,7 +44,7 @@ noncomputable def rawEval :
   | _, _, .boxUnit, _, _ => fun _ => PUnit.unit
   | _, _, .diaMap f, _, o => ⟨o.1, fun a => rawEval f a.1.1 (o.2 a)⟩
   | _, _, .strength _ _, _, o => ⟨o.2.1, fun a => (o.1 a.1, o.2.2 a)⟩
-  | _, _, .extract hT, _, _ => (noT hT).elim
+  | _, _, .extract hT, s, o => o ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩
   | _, _, .dup hF, _, _ => (noFour hF).elim
 
 variable {B}
@@ -83,6 +80,14 @@ theorem subst_arrowX_box {Γ : Ctx} {Δ : Ctx} {img : ℕ → ℕ} {x : VarSymb}
   | .step _ .dia => cases hv
   | .step _ .here => cases hv
 
+/-- Applying a definable map commutes with realising under a world's own arrow. -/
+theorem applyG_realTerm {A C : VarType} (g : GFunc σ A C) {s : B.W} {x : VarSymb}
+    (hr : (B.w s).Realised x) {Γ : Ctx} {i : ℕ} (e : Γ.Le ((B.w s).ctx i))
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {a : Ann A} (t : Term σ (Γ.diaIn x) A a) :
+    B.realTerm hr e hx (Canon.applyG g t).2 = Canon.applyG g (B.realTerm hr e hx t).2 := by
+  simp only [realTerm]
+  rw [Canon.applyG_realiseAtA, Canon.applyG_mono]
+
 /-- ⭐Denoting a map applied to a term is applying the map to the denotation. -/
 theorem rden_applyG :
     ∀ {A C : VarType} (g : GFunc σ A C) {Γ : Ctx} {a : Ann A} (t : Term σ Γ A a)
@@ -105,25 +110,48 @@ theorem rden_applyG :
         rw [← rden_applyG (args k) t s i e, ← rden_varTerm, rden_var_mono]
       rw [hk, BWorld.canonFunc_cls, rden_var_mono, Term.mono_fill, Spine.mono_ofFn]
       rfl
-  | _, _, .boxMap f, _, _, .boxtm b, s, i, e => funext fun a => by
-      change B.rden a.1 _ _ (Term.subst _ _ _ _ (Canon.applyG f b).2) =
-        B.rawEval f a.1 (B.rden a.1 _ _ (Term.subst _ _ _ _ b))
-      rw [← rden_applyG f _ a.1 _ _, Canon.applyG_subst]
-  | _, _, .boxPair _ _, _, _, .pair (.boxtm b) (.boxtm c), _, _, _ => rfl
+  | _, _, .boxMap f, Γ, _, .boxtm b, s, i, e => funext fun a => by
+      change B.rden s i e (.boxtm (Canon.applyG f b).2) a =
+        B.rawEval f a.1 (B.rden s i e (.boxtm b) a)
+      by_cases hR : B.R s a.1
+      · simp only [rden, dif_pos hR]
+        rw [← rden_applyG f _ a.1 _ _, Canon.applyG_subst]
+      · simp only [rden, dif_neg hR]
+        exact (rden_sigma _ (Canon.applyG_collapse f
+          (Ctx.collapses_boxIn_self (self_of_not_R hR).1 Γ) b)).symm.trans
+          (rden_applyG f _ a.1 i _)
+  | _, _, .boxPair _ _, _, _, .pair (.boxtm b) (.boxtm c), s, i, e => funext fun a => by
+      change B.rden s i e (.boxtm (.pair b c)) a =
+        (B.rden s i e (.boxtm b) a, B.rden s i e (.boxtm c) a)
+      by_cases hR : B.R s a.1
+      · simp only [rden, dif_pos hR]
+        rfl
+      · simp only [rden, dif_neg hR]
+        rfl
   | _, _, .boxUnit, _, _, .unit, _, _, _ => rfl
   | _, _, .diaMap f, _, _, .diatm x hx c, s, i, e =>
       congrArg (Sigma.mk _) (funext fun a => by
-        change B.rden a.1.1 _ _ (Term.subst _ _ _ _ (Canon.applyG f c).2) =
-          B.rawEval f a.1.1 (B.rden a.1.1 _ _ (Term.subst _ _ _ _ c))
-        rw [← rden_applyG f _ a.1.1 _ _, Canon.applyG_subst])
+        by_cases hk : ∃ X, B.kd s a.1.1 = some (x, X)
+        · simp only [rden, dif_pos hk]
+          rw [← rden_applyG f _ a.1.1 _ _, Canon.applyG_subst]
+        · simp only [rden, dif_neg hk]
+          exact (rden_sigma _ (applyG_realTerm f _ e hx c)).trans (rden_applyG f _ a.1.1 _ _))
   | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c), s, i, e =>
       congrArg (Sigma.mk _) (funext fun a => by
-        change (B.rden a.1.1 _ _ (Term.subst _ _ _ _ (Term.mono (Ctx.le_boxIn_diaIn Γ x) b)),
-          B.rden a.1.1 _ _ (Term.subst _ _ _ _ c)) =
-          (B.rden a.1.1 _ _ (Term.subst _ _ _ _ b), B.rden a.1.1 _ _ (Term.subst _ _ _ _ c))
-        refine Prod.ext ?_ rfl
-        exact rden_sigma _ (subst_arrowX_box _ _ _ _ b))
-  | _, _, .extract hT, _, _, _, _, _, _ => (noT hT).elim
+        change _ = (B.rden s i e (.boxtm b) a.1, (B.rden s i e (.diatm x hx c)).2 a)
+        by_cases hk : ∃ X, B.kd s a.1.1 = some (x, X)
+        · have hR : B.R s a.1.1 := B.kdR hk.choose_spec
+          simp only [rden, dif_pos hk, dif_pos hR]
+          refine Prod.ext ?_ rfl
+          exact rden_sigma _ (subst_arrowX_box _ _ _ _ b)
+        · obtain ⟨hnR, hr⟩ := mem_extent_self a.2 hk
+          simp only [rden, dif_neg hk, dif_neg hnR]
+          rw [rden_realTerm_pair]
+          refine Prod.ext ?_ rfl
+          exact rden_realTerm_mono_boxIn hr e hx b _ _)
+  | _, _, .extract hT, _, _, .boxtm b, s, i, e => by
+      change B.rden s i e (Term.collapse _ b) = B.rden s i e (.boxtm b) ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩
+      simp only [rden, dif_neg (B.irrefl s)]
   | _, _, .dup hF, _, _, _, _, _, _ => (noFour hF).elim
 
 /-- ⭐Definable objects are closed under the function algebra. -/
@@ -131,6 +159,28 @@ theorem definable_rawEval {A C : VarType} (g : GFunc σ A C) {s : B.W} {o : B.RD
     (h : B.Definable A s o) : B.Definable C s (B.rawEval g s o) := by
   obtain ⟨i, a, t, rfl⟩ := h
   exact ⟨i, _, (Canon.applyG g t).2, rden_applyG g t s i _⟩
+
+end BData
+
+namespace BData
+
+section NoTFour
+
+variable [ModalSys.NoTFour] {B : BData σ}
+
+theorem noT : ModalSys.T = true → False := fun h => by
+  rw [ModalSys.NoTFour.noT] at h
+  cases h
+
+/-- Without T every arrow is one of the network's. -/
+theorem R_of_RT {s t : B.W} (h : B.RT s t) : B.R s t := h.resolve_right fun h' => noT h'.1
+
+/-- Without T an extent has only the network's arrows. -/
+theorem kd_of_extent {s : B.W} {x : VarSymb} {a : B.Acc s} (h : a ∈ B.extent s x) :
+    ∃ X, B.kd s a.1 = some (x, X) :=
+  h.resolve_right fun h' => noT h'.2.T
+
+end NoTFour
 
 end BData
 

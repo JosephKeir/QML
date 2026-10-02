@@ -165,20 +165,22 @@ theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i
           change (∀ a : B.Acc s, B.model.sat ((B.canonEnv s i).boxPush a) χ) ↔ _
           have key : ∀ a : B.Acc s, B.model.sat ((B.canonEnv s i).boxPush a) χ ↔
               WFF.subst (arrowIdx (B.img s a.1)) (arrowS σ _ (B.img s a.1))
-                (ok_arrowS (B.imgOk a.2.down i)) (coh_arrowS (B.imgOk a.2.down i))
+                (ok_arrowS (B.imgOk (R_of_RT a.2.down) i))
+                (coh_arrowS (B.imgOk (R_of_RT a.2.down) i))
                 Ctx.NoSlots.slots Ctx.NoSlots.slots χ ∈ (B.w a.1).M (B.stg s a.1 i) := by
             intro a
             rw [boxPush_canon]
-            exact (Model.sat_subst _ _ (coh_arrowS (B.imgOk a.2.down i)) Ctx.NoSlots.slots
+            exact (Model.sat_subst _ _ (coh_arrowS (B.imgOk (R_of_RT a.2.down) i)) Ctx.NoSlots.slots
               Ctx.NoSlots.slots _ _ χ).symm.trans
               (truth_lt n a.1 _ _ (by rw [WFF.size_subst]; exact hχs))
           constructor
           · intro hsat
             by_contra hnot
             obtain ⟨t, h, hneg⟩ := B.ex s i χ hnot
-            exact ((B.w t).mcs _).neg_mem_iff.mp hneg ((key ⟨t, ⟨h⟩⟩).mp (hsat ⟨t, ⟨h⟩⟩))
+            exact ((B.w t).mcs _).neg_mem_iff.mp hneg
+              ((key ⟨t, ⟨Or.inl h⟩⟩).mp (hsat ⟨t, ⟨Or.inl h⟩⟩))
           · intro hmem a
-            exact (key a).mpr (B.tr a.2.down i χ hmem)
+            exact (key a).mpr (B.tr (R_of_RT a.2.down) i χ hmem)
       | dia x hx χ =>
           have hχs : χ.size < n := by simp only [WFF.size] at hφ; omega
           change (∃ (X : VarType) (h : ((B.w s).ctx i).ref x = some (.VTypeDia X))
@@ -200,7 +202,7 @@ theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i
               (truth_lt n a.1.1 _ _ (by rw [WFF.size_subst]; exact hχs))
           constructor
           · rintro ⟨X, h, a, hsat⟩
-            obtain ⟨X', hk⟩ : a.1 ∈ B.extent s x := canonEnv_extent s i h ▸ a.2
+            obtain ⟨X', hk⟩ := kd_of_extent (canonEnv_extent s i h ▸ a.2 : a.1 ∈ B.extent s x)
             obtain rfl := B.hxX hk i X h
             by_contra hnot
             have hbx : WFF.boxx x hx χ.neg ∈ (B.w s).M i :=
@@ -214,10 +216,10 @@ theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i
           · intro hmem
             obtain ⟨X, h⟩ : ∃ X, ((B.w s).ctx i).ref x = some (.VTypeDia X) := hx
             obtain ⟨t, hk, hm⟩ := B.exX s i x X h χ hmem
-            have hmt : (⟨t, ⟨B.kdR hk⟩⟩ : B.Acc s) ∈
+            have hmt : (⟨t, ⟨Or.inl (B.kdR hk)⟩⟩ : B.Acc s) ∈
                 (B.model.posEval ((B.canonEnv s i).ref x h)).1 := by
               rw [canonEnv_extent]
-              exact ⟨X, hk⟩
+              exact Or.inl ⟨X, hk⟩
             exact ⟨X, h, ⟨_, hmt⟩, (key h ⟨_, hmt⟩ hk).mpr hm⟩
 
 /-- ⭐**The truth lemma** for B's canonical model. -/

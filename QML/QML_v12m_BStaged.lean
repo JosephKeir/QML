@@ -78,6 +78,27 @@ theorem datum_of_here (hT : ModalSys.T = true) {x : VarSymb} {i : ℕ} {X : VarT
     Nonempty (Canon.RealDatum σ w.sys w.T x) :=
   Canon.datum_of_here w.rootWitnessed hT (S := w.sys) hx bd t h
 
+/-! ## Realised witnesses -/
+
+/-- ⭐A network world **realises** the witness `x` when its theory says so: some datum — the
+    declarations and the `Here` atom at one stage — exists.  As for the tree's worlds
+    (`Canon.World.real`, docs §2d step 4), nothing is chosen when the world is built. -/
+def Realised (x : VarSymb) : Prop := Nonempty (Canon.RealDatum σ w.sys w.T x)
+
+variable {w}
+
+/-- The datum the world reads a realised witness by. -/
+noncomputable def Realised.data {x : VarSymb} (h : w.Realised x) :
+    Canon.RealDatum σ w.sys w.T x := h.some
+
+theorem Realised.T {x : VarSymb} (h : w.Realised x) : ModalSys.T = true := h.data.hT
+
+/-- Without T nothing is realised. -/
+theorem not_realised (hT : ModalSys.T = false) {x : VarSymb} : ¬ w.Realised x := fun h => by
+  have := h.T
+  rw [hT] at this
+  cases this
+
 end BWorld
 
 end BArrow

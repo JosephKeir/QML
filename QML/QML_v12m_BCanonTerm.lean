@@ -139,18 +139,20 @@ theorem isRen_arrowXS {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ} (himg : 
     environment read through the arrow. -/
 theorem boxPush_canon (s : B.W) (i : ℕ) (a : B.Acc s) :
     (B.canonEnv s i).boxPush a = Model.substEnv (arrowS σ _ (B.img s a.1))
-      (B.arOk a.2.down i) (Ctx.noProjLast_boxIn _) (B.canonEnv a.1 (B.stg s a.1 i)) := by
+      (B.arOk (R_of_RT a.2.down) i) (Ctx.noProjLast_boxIn _)
+      (B.canonEnv a.1 (B.stg s a.1 i)) := by
   funext v T hv
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   have hk := ModalSys.NoTFour.keepOnly
   have hw : ((B.w a.1).ctx (B.stg s a.1 i)).ref (itemAt (imgRoot (B.img s a.1) u.rt) u) =
-      some T := B.arOk a.2.down i (.step u .box) T rfl hv
+      some T := B.arOk (R_of_RT a.2.down) i (.step u .box) T rfl hv
   change B.model.necEval ((B.canonEnv s i).ref u (Ctx.boxIn_step_box hv)) a =
     (B.canonEnv a.1 (B.stg s a.1 i)).ref (itemAt (imgRoot (B.img s a.1) u.rt) u) hw
   rw [canonEnv_ref, canonEnv_ref]
   refine toDom_congr ?_ _ _
-  change B.rden a.1 _ _ (Term.subst _ _ _ _ (Term.eta u.inner T _)) = _
-  have hren := isRen_arrowS (σ := σ) (B.imgOk a.2.down i)
+  change B.rden s i _ (.boxtm (Term.eta u.inner T _)) a = _
+  rw [rden_boxtm_net _ _ _ (R_of_RT a.2.down)]
+  have hren := isRen_arrowS (σ := σ) (B.imgOk (R_of_RT a.2.down) i)
   have hw' : ((B.w a.1).ctx (B.stg s a.1 i)).ref (arrowIdx (B.img s a.1) (.step u .box)) =
       some T := by
     rw [arrowIdx_item (reach_ppath hu).1]
@@ -166,11 +168,12 @@ theorem diaPush_canon (s : B.W) (i : ℕ) {x : VarSymb} {X : VarType}
     (hr : ((B.w s).ctx i).ref x = some (.VTypeDia X))
     (a : (B.model.posEval ((B.canonEnv s i).ref x hr)).1) :
     (B.canonEnv s i).diaPush x hr a = Model.substEnv (arrowXS σ _ (B.img s a.1.1) x (B.cx s a.1.1))
-      (B.arXOk (show a.1 ∈ B.extent s x by rw [← canonEnv_extent s i hr]; exact a.2) i ⟨X, hr⟩)
+      (B.arXOk (kd_of_extent (show a.1 ∈ B.extent s x by rw [← canonEnv_extent s i hr]; exact a.2))
+        i ⟨X, hr⟩)
       (Ctx.noProjLast_diaIn _ x)
       (B.canonEnv a.1.1 (B.stg s a.1.1 i)) := by
   have ha : a.1 ∈ B.extent s x := by rw [← canonEnv_extent s i hr]; exact a.2
-  obtain ⟨X', hk⟩ := ha
+  obtain ⟨X', hk⟩ := kd_of_extent ha
   have hXX := B.hxX hk i X hr
   subst hXX
   have hcx := B.hcx hk i
@@ -192,9 +195,9 @@ theorem diaPush_canon (s : B.W) (i : ℕ) {x : VarSymb} {X : VarType}
       (B.canonEnv a.1.1 (B.stg s a.1.1 i)).ref (.root (.free (B.cx s a.1.1))) hcx
     have hpq := canonEnv_ref s i x hr
     rw [Model.posEval_snd_congr hpq a (hpq ▸ a.2)]
-    change B.toDom T a.1.1 (B.rden a.1.1 _ _ (Term.subst _ _ _ _
-      (Term.eta (.step x .dia) T _))) _ = _
     refine toDom_congr ?_ _ _
+    change (B.rden s i _ (Term.diatm x _ (Term.eta (.step x .dia) T _))).2 _ = _
+    rw [rden_diatm_net _ _ _ _ ⟨_, hk⟩]
     have hren := isRen_arrowXS (σ := σ) (B.imgOk (B.kdR hk) i) hr hcx
     have hix : arrowXIdx (B.img s a.1.1) x (B.cx s a.1.1) (.step x .dia) =
         .root (.free (B.cx s a.1.1)) := by
@@ -262,9 +265,10 @@ mutual
         funext a
         rw [Model.box_beta]
         change Model.interp (env.boxPush a) t = B.toDom _ a.1 (B.rden s i e (.boxtm t) a) _
+        rw [toDom_congr (rden_boxtm_net e t a (R_of_RT a.2.down)) _ (definable_rden _ _)]
         have hag' := Model.Env.boxPush_agree hag a
         rw [boxPush_canon] at hag'
-        rw [← Model.interp_mono hag' t, ← Model.interp_subst _ _ (B.arCoh a.2.down i),
+        rw [← Model.interp_mono hag' t, ← Model.interp_subst _ _ (B.arCoh (R_of_RT a.2.down) i),
           Term.subst_mono]
         exact interp_canon _ (fun _ _ _ => rfl)
     | _, _, _, .diatm x hx t, s, i, e, env, hag => by
@@ -280,8 +284,9 @@ mutual
         rw [diaPush_canon] at hag'
         rw [← Model.interp_mono hag' t]
         have hmx : a.1 ∈ B.extent s x := canonEnv_extent s i (e.ref hr) ▸ hm
-        rw [← Model.interp_subst _ _ (B.arXCoh hmx i ⟨X, e.ref hr⟩), Term.subst_mono]
-        exact interp_canon _ (fun _ _ _ => rfl)
+        rw [← Model.interp_subst _ _ (B.arXCoh (kd_of_extent hmx) i ⟨X, e.ref hr⟩), Term.subst_mono]
+        refine (interp_canon _ (fun _ _ _ => rfl)).trans (toDom_congr ?_ _ _)
+        exact (rden_diatm_net e ⟨X, hr⟩ t ⟨a.1, hmx⟩ (kd_of_extent hmx)).symm
     termination_by _ A _ t => (tsz A, t.size)
     decreasing_by
       all_goals simp only [Prod.lex_def, Term.size, tsz, true_and]
