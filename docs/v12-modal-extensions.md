@@ -4543,6 +4543,9 @@ back-transfer, `P` for born items); and its `T_dia∀`-style form with explicit 
 what an implementation would state.
 
 ### 11.9 ⭐Decision: the hybrid — relational where both ends can be named *(2026-10-03, user)*
+> **Revised by §11.14:** born items get a relational form too (the returning possibility
+> `◇[d ↦ t]`), so the line is simply *does the route return?* — all of T and strong B relational, 4's
+> lift and 5 existential.
 
 **The decision.**  Strong principles are **relational** (atoms) where a route returns to the origin
 and both ends can be named there, and **existential** (∃-elimination rules for a manufactured
@@ -4568,6 +4571,8 @@ possible objects (`◇∃d. Φ(d) ⊢ ∃x:◇□A. □_x Φ(x.dia)`, not valid 
 arrow semantics for strong B (§11.6 option 2).
 
 ### 11.10 The born-item rule `B_ret`, checked on paper *(2026-10-03)*
+> **Superseded by §11.14** (`B_ret` replaced by the returning possibility); the soundness, `P` and
+> construction arguments carry over.
 
 **The rule.**  `Φ` a formula of the `□` view with one bound `d : □A` (the child's item); the `χ`s
 closed apart from their holes:
@@ -4748,3 +4753,176 @@ through `Back` (two values returned by one carrier).
 **Order.**  First build: `◇`-free contents, shapes unchanged.  Then, to lift the restriction:
 regate shapes, refine canonical `Ind` (T track and network), the T-free decoder, and `Back` at all
 content types.
+### 11.13 `B_ret` leg-parameterised, and the export over a precise class *(2026-10-03, paper)*
+
+> **`B_ret` superseded by §11.14**; the class `𝒞` and its sufficiency for the construction stand,
+> and the export over `𝒞` now follows from the returning possibility.
+
+**`B_ret`, leg-parameterised.**  The out leg `O` is either plain (`◇`, the child seen in `Γ.boxIn`) or
+witnessed by a possible object `x : ◇Y` of `Γ` (`◇_x`, the child seen in `Γ.diaIn x`).  Write
+`O∃d. Φ(d)` for `◇∃d. Φ(d)` resp. `◇_x ∃d. Φ(d)`, with `d : □A` bound in that view.
+```
+B_ret_O:   Γ ; Δ ⊢ O∃d:□A. Φ(d)
+           Γ, y:A ; H_{χ₁}(y), …, H_{χₙ}(y), Δ ⊢ φ          (y fresh for Γ, Δ, φ)
+           ─────────────────────────────────────────────
+           Γ ; Δ ⊢ φ
+
+H_χ(y)  :=  ∀ū ∀t̄. (Back ū t̄ ∧ χ(y, t̄))  →  O∃d. (Φ(d) ∧ ◇χ(d.box, val ū))
+```
+* `ū` are bound carriers whose values the view can see: row-1 carriers `u : □□B` (value
+  `val u = u.box.box`) for either leg; for the witnessed leg also `x` itself under row 2
+  (`x : ◇□B`, `val x = x.dia.box`), which is the only row-2 carrier whose content is in scope.  Rows
+  3–4 carriers (contents behind their own witness views) are left to the rows-3–4 build; their
+  joint use goes through per-witness components as in `back_joint`.
+* `d` may be a tuple (several born items: pair them, `□A × □A' ≅ □(A × A')`).
+* *Soundness* (relational frames, unique way home, models proper): let the premise be witnessed by
+  an arrow `a₀` (in `ext x` for the witnessed leg), its target `v₀`, `d₀`, and `r : v₀ → w`; set
+  `y := d₀.box` read along `r`.  Every `Back` among the `ū` — row 1 over all out arrows, row 2 over
+  `ext x ∋ a₀` — returns along *some* arrow `v₀ → w`, which is `r`; so `val ū` read along `r` is `Ind`
+  to `t̄`, and `IndInvariant` gives `χ` of the values along `r`.  So `a₀`, `d₀`, `r` witness `H_χ`.
+  The argument is the same for both legs, which is why one rule with a leg parameter suffices.
+* *Substitution:* unchanged from §11.10 (carriers bound in `H_χ`, `χ` closed apart from its holes,
+  `x` substituted by `Subst.dia` as everywhere else).
+
+**The class the construction needs.**  Let `𝒞` (over a view, with committed items `ā` as
+parameters) be the formulas
+```
+Θ  =  ∃d̄. ∀z̄. (ρ̄(z̄) → M)
+```
+* `d̄` one block of born `□`-objects; `z̄` one block of quantifiers over the child's `□`-objects (any
+  `∀z`s of a positive formula can be prenexed past `∧`, `∨` and the `ρ`s);
+* `ρ̄` arbitrary formulas of the view (they are read under `□` at `w`, so no polarity matters);
+* `M` a positive combination (`∧`, `∨`) of atoms `□ψ`, `ψ` a formula of the next view whose free
+  items are `ā.box`, `d̄.box`, `z̄.box` and carriers' `u.box.box`; `ψ` itself is unrestricted (in
+  particular `∃` over base values may sit inside it).
+
+**Home reading on `𝒞`:**
+`Θ↓ := ∃ȳ. ∀ū ∀t̄. (Back ū t̄ ∧ □ρ̄(ū.box) → M↓)`, where `M↓` replaces each `□ψ` by `ψ` with
+`ā.box ↦ ā'`, `d̄.box ↦ ȳ`, `z̄.box ↦ t̄`, a carrier's `u.box.box ↦ t_u` (under its `Back`).
+
+**Export on `𝒞`:** `Γ ; Back hypotheses ⊢ O Θ → Θ↓`.  Proof: `B_ret_O` on the born block gives
+`ȳ`; `∀`-introduce `ū, t̄` with `Back ū t̄` and `□ρ̄(ū.box)`; prove `M↓` by contradiction with
+`χ := ¬M↓` (its holes are `ȳ`, `t̄` and the carriers' values — no carrier quantifier inside): `H_χ`
+gives an `O`-child with `Φ(d̄)` and `◇¬M↓(d̄.box, z̄ := ū.box, …)`, while `Φ` at `z̄ := ū.box`, with
+`ρ̄(ū.box)` from `□ρ̄(ū.box)`, gives `M`, hence `□M↓`-at-the-child (each `□ψ` true, `□` over `∨` is
+`□(ψ₁ ∨ ψ₂)`).  This is §11.10's derivation of `P`, done for the whole class.
+
+**`𝒞` is enough for the construction.**  Its three uses:
+* *the invariant itself*, stated for `𝒞`: along every edge, `Θ ∈ 𝒞` true at the child gives
+  `Θ↓ ∈ M w`;
+* *child creation*: the seed plus `{¬Θ : Θ ∈ 𝒞, ¬Θ↓ ∈ M w}` is consistent by export on `𝒞` (`𝒞` is
+  closed under finite `∨`, which the compactness step forms);
+* *committing an item `b`*: `∃b. ⋀Θ` for finitely many `Θ ∈ 𝒞` about `ā, b` is again in `𝒞` (merge
+  `b` into the born block, prenex the carrier blocks); *committing a carrier at birth* uses
+  `∀z.(ρ_u(z) → □ψ(ā.box, z.box))`, in `𝒞`.
+
+**What `𝒞` deliberately excludes:** a born item **under** a carrier quantifier that shares an outer
+born item — `∃d ∀z ∃d' ∀z' …`, with home reading `∃y ∀u ∃y' ∀u' …`.  Exporting it would need, inside
+`H_χ`, quantifiers over the *successor's* carriers, i.e. the parameterised push
+`∀z.(ρ(z) → □ψ(d.box, z.box)) ⊢ □∀u ∀t.(Back u t ∧ □ρ(u.box) → ψ(d.box, t))` — the parameterised
+Barcan form of §11.7, valid but not derivable.  The construction never forms such formulas: born
+items enter one block at a time, and committed ones become parameters.  (A born item under a carrier
+quantifier *without* an outer born item, `∀z ∃d' …`, is per carrier and is `B_ret` again, with the
+premise instantiated at `z := u.box`.)
+
+**First build: rows 1 and 2.**  Rows 1–2 need neither multi-labelled edges nor per-witness
+components; `B_ret` with both legs covers their born items; the class `𝒞` covers the construction.
+Rows 3–4 follow in the same milestone, with multi-labelled edges and row-3/4 carriers in `H_χ`.
+
+### 11.14 ⭐The returning possibility `◇[d ↦ t] Φ(d)` — replaces `B_ret` *(2026-10-03, user + paper)*
+
+`B_ret` (§11.10, §11.13) manufactured the home value `y` of an item born at a child and then had to
+say, through the hypothesis schema `H_χ`, what `y` was related to — because the born item cannot be
+named at `w`.  But something at `w` *can* stand for it: the **possibility itself**.  Make it the
+subject of a relation, as `Here` makes a possible object the subject.
+
+**The formula former.**  For `t : A` a term of `Γ` and `Φ(d)` a formula of the `□` view with
+`d : □A` bound:
+```
+◇[d ↦ t] Φ(d)     "possibly some necessary object d is such that Φ(d), and its content comes back
+                   here as t"
+```
+Semantics: some out arrow `a : w → v` and `d ∈ Nec_v(A)` with `Φ(d)` at `v`, and `d`'s value along the
+way home `r : v → w` is `Ind` to `t`.  Well defined because the way home is unique (relational
+frames).  Both ends are in scope at `w`: `t` directly, `d` under its binder — `Here`'s shape with a
+possibility as subject instead of a possible object, so **no comprehension principle** is needed.
+`d` may be a tuple `d̄ ↦ t̄` (several items of one child).
+
+**Rules.**
+* **Existence** (the analogue of `here_name`), in extension form — one more item of the same child:
+  ```
+  ◇[ā ↦ ā'] ∃b. Φ(ā, b)   ⊢   ∃t. ◇[ā, b ↦ ā', t] Φ(ā, b)
+  ```
+  (`ā` empty: `◇∃d. Φ(d) ⊢ ∃t. ◇[d ↦ t] Φ(d)`.)  Sound: the premise's child and `b`, `t` := `b`'s
+  value along the same way home.
+* **Elimination** (with carriers; the work-horse):
+  ```
+  ◇[d̄ ↦ ȳ] ∀z̄.(ρ̄(z̄) → □ψ(d̄.box, z̄.box)),   Back ū t̄,   □ρ̄(ū.box)   ⊢   ψ(ȳ, t̄)
+  ```
+  `ψ` closed apart from its holes; no carriers gives `◇[d ↦ y] □ψ(d.box) ⊢ ψ(y)` — "what is necessary
+  of `d` out there holds of its value here".  Sound: take the atom's child and `d̄`, instantiate
+  `z̄ := ū`'s images there (`ρ̄` from `□ρ̄(ū.box)`), read `□ψ` along the way home `r`; each `Back` returns
+  along some arrow home, which is `r`; `IndInvariant`.
+* **β** (terms built from returned items return as the same terms): `◇[d̄ ↦ ȳ] Φ(s(d̄)) ⊢
+  ◇[e ↦ s↓(ȳ)] Φ(e)`, with `s↓` the term `s` read at home (its items `d̄.box ↦ ȳ`).
+* **Monotonicity**: `◇[d̄ ↦ t̄] Φ`, `□∀d̄.(Φ → Φ')` ⊢ `◇[d̄ ↦ t̄] Φ'`; and `◇[d̄ ↦ t̄] Φ ⊢ ◇∃d̄. Φ`.
+* **Leibniz in `t`**, as `here_eq`.
+* **Under T** (the own arrow, whose way home is the identity): `Φ↓(s) ⊢ ◇[d ↦ s.here] Φ(d)`, with
+  `Φ↓` the collapse — the counterpart of `back_here`.
+
+**What it replaces.**  `B_ret` and its `H_χ` are gone.  `P` is existence then elimination, once per
+carrier — one atom, so `∃y ∀u` for free, as `Here` gave T its uniformity.  The export over the class `𝒞`
+of §11.13 follows the same way (a positive matrix `M` gives `□M♭`, `M♭` = `M` with its boxes
+stripped).  No positivity condition anywhere in the rules.
+
+**The dividing line, refined (revises §11.9).**  Relational **exactly when the route returns to the
+origin**, with the subject an object (`Here`: a possible object; `Back`: a carrier) or a possibility
+(`◇[d ↦ t]`); existential only where the route does not return.  That is §2c's axis 4 with no special
+case: all of T and all of strong B are relational; what stays existential is 4's lift and 5.
+*Reminder — 4's lift:* by transitivity, a possible object found at a possible world should give a
+possible object here reaching those worlds directly with the same contents,
+`◇_x ◇_{x.dia} θ ⊢ ∃z:◇A. ◇_z θ(z.dia)` (`Pos(v) → Pos(w)`, §3 4; §2c also uses "lift" for the
+`Nec(v) → Nec(w)` direction, "no new necessary objects deeper") — the route `w → v → s` never comes
+back, so no relation at `w` can hold both ends.
+
+**Check 1: substitution — ✓.**  `t` is a term of `Γ`, substituted as `Here`'s argument is; `Φ` is
+substituted by `θ.box` under the binder for `d̄` (`Subst.under`), as `◇` and `∃` are.  Rules are stated
+at terms, not addresses (§10.11): a carrier is given as its body `s : Term σ Γ.boxIn (□C)` (every
+`□□C` term is `boxtm s`), `z̄ := s` instantiates inside the view, and `z̄.box ↦ s`'s body in the next
+view; a substitution sends an instance to an instance.  Existence and β bind `t`/`e` at `w`
+(`under`), monotonicity and Leibniz are structural.  Nothing beyond what `here_*` and `◇∃` already
+need.
+
+**Check 2: the canonical truth-lemma case — ✓ in outline, and it simplifies the construction.**  The
+extended back-transfer of §11.10–11.13 becomes an **atom invariant**:
+> along every edge `v → w`, for every finite `Θ` true at `v` of the committed items `ā` (images `ā'`):
+> `◇[ā ↦ ā'] Θ(ā) ∈ M w`.
+Everything about home readings and carriers then follows from the atoms by elimination.
+* *Base case* (nothing committed): `◇Θ ∈ M w` for `Θ` true at `v` — forward transfer, as now.
+* *Committing `b`* (born, or an image without a `Back` value): `∃b. ⋀Θ(ā, b)` is true at `v`, so by
+  the invariant `◇[ā ↦ ā'] ∃b. ⋀Θ ∈ M w`, so existence gives `∃t. ◇[ā, b ↦ ā', t] ⋀Θ`; its Henkin
+  witness is `b'`.  Compactness gives all `Θ` at once — **committing a born item is Henkin
+  witnessing**, as `retW` came from `exW` in step 6.
+* *Committing a carrier at birth* (`Back u t₀`): its item's image is `t₀`; the joint obligations are
+  elimination with the carriers in `ū`.
+* *Membership ⇒ truth*: an atom `◇[d ↦ t] Φ ∈ M w` gets a child, as `exX` gives one to `◇_x`: the seed
+  `Φ(d)` with `d` declared fresh in the child and **committed at birth** to `t`; its consistency is
+  elimination (and monotonicity) from the atom — a failure would put some `Θ` with `¬Θ↓(t)` into
+  `□∀d.(Φ → Θ)`, and the atom then yields `Θ↓(t)`.
+* *Truth ⇒ membership*: a child `v` and a canonical object `d = rden s` with `Φ(d)` and home value `Ind`
+  to `t`.  `s` is built from `v`'s committed items `b̄` (fairness), so the invariant gives
+  `◇[b̄ ↦ b̄'] Φ(s(b̄)) ∈ M w`; **β** gives `◇[e ↦ s↓(b̄')] Φ(e)`; `s↓(b̄')` is `d`'s home value, `Ind` to
+  `t`, so Leibniz (through `Ind`) gives the atom.  At the own arrow under T: the T-rule.
+
+**Check 3: is `back_joint` still needed? — yes, in its carrier form, but smaller.**  The elimination
+rule takes several carriers with **separate** `Back` atoms, which covers every joint *use* (`P`, the
+export, commit at birth), so the n-ary `back_joint` is no longer a separate rule.  What remains is
+**`back_pair`** — `Back u t, Back u' t' ⊢ Back ⟨u, u'⟩ ⟨t, t'⟩` — needed by the truth lemma for `Back`
+atoms at compound carriers (a pair of carriers is a term, and the theory must contain its atom).  It
+is about all children at once (∀ over the out leg), which the returning possibility (∃, one child)
+cannot supply.  Rows 3–4's per-witness components carry over to elimination the same way.
+
+**Rule set for strong B now:** `Back` (four rows; first build rows 1–2, `◇`-free contents) with
+`back_elim`, `back_intro`, `back_ne`, `back_beta`, `back_eq`, `back_pair`, `back_here` (T),
+`back_def`, surjectivity per row; the returning possibility `◇[d ↦ t]` with existence, elimination,
+β, monotonicity, Leibniz, and its T-rule.  `back_fun` derived.  Frames: unique ways home.
