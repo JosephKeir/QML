@@ -24,7 +24,7 @@ variable {σ : Signature}
 
 namespace BData
 
-variable [ModalSys.NoFourNoTS] {B : BData σ}
+variable [ModalSys.NoFour] {B : BData σ}
 
 /-- The truth lemma for atoms. -/
 theorem relSat_canon : ∀ {Γ : Ctx} {n : ℕ} (ρ : Rel σ Γ n) {s : B.W} {i : ℕ}

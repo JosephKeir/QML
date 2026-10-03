@@ -24,7 +24,7 @@ variable {σ : Signature}
 
 namespace BData
 
-variable [ModalSys.NoFourNoTS] {B : BData σ}
+variable [ModalSys.NoFour] {B : BData σ}
 
 /-! ## Representatives -/
 

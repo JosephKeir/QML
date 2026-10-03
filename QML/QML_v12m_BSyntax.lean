@@ -26,17 +26,12 @@ too, so a `□A` component's box contents are `A × bc A` and `itemAt` encodes t
 
 namespace V12M
 
-/-- The flag the arrow construction needs (`docs/v12-arrow-canonical.md` §9): 4 off, so a view
-    shows `u.box` (and `x.dia`) and never `keep`.  Under T a reachable address may also pass
-    through the projection `here`, which `VarType.bc` and the arrows account for. -/
+/-- The one flag the arrow construction, and with it B's completeness, needs
+    (`docs/v12-arrow-canonical.md` §9): 4 off, so a view shows `u.box` (and `x.dia`) and never
+    `keep`.  Under T a reachable address may also pass through the projection `here`, which
+    `VarType.bc` and the arrows account for. -/
 class ModalSys.NoFour [ModalSys] : Prop where
   noFour : ModalSys.Four = false
-
-/-- The flags the network's canonical `Model` and B's completeness are stated for: 4 off, and
-    strong T off whenever T is on — strong T's term query in the network is still to come
-    (`docs/v12-roadmap.md`, milestone 1 step 6). -/
-class ModalSys.NoFourNoTS [ModalSys] : Prop extends ModalSys.NoFour where
-  noTS : ModalSys.T = true → ModalSys.TStrong = false
 
 variable [ModalSys]
 

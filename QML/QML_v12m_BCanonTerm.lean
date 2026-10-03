@@ -31,7 +31,7 @@ def tsz : VarType → ℕ
 
 namespace BData
 
-variable [ModalSys.NoFourNoTS] {B : BData σ}
+variable [ModalSys.NoFour] {B : BData σ}
 
 theorem noProjLast (s : B.W) (i : ℕ) : ((B.w s).ctx i).NoProjLast :=
   Ctx.Presented.noProjLast _
@@ -115,17 +115,6 @@ theorem envShape_canon (hT : ModalSys.T = true) {Γ : Ctx} {s : B.W} {i : ℕ}
   refine (B.domShape_toDom hT T s _ _).trans ?_
   rw [rawShape_rden, Model.termShp_eta, cEnv_ref]
 
-/-- ⭐The content, along a world's own arrow, of the possible object a realised witness names:
-    what its datum's content denotes. -/
-theorem rden_eta_real {s : B.W} {x : VarSymb} (hr : (B.w s).Realised x) {k : ℕ}
-    (hdecl : ((B.w s).ctx k).ref x = some (.VTypeDia hr.data.A)) (hm) :
-    (B.rden s k (Ctx.Le.refl _) (Term.eta x (.VTypeDia hr.data.A) hdecl)).2
-        ⟨⟨s, ⟨Or.inr ⟨hr.T, rfl⟩⟩⟩, hm⟩ = B.rden s hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀ :=
-  (rden_diatm_self (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩
-    (Term.eta (.step x .dia) hr.data.A (Ctx.ref_diaIn_of hdecl)) ⟨_, hm⟩
-    (fun ⟨_, hk⟩ => B.irrefl s (B.kdR hk))).trans
-    (rden_realTerm_eta hr (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩ (Ctx.ref_diaIn_of hdecl) _ _)
-
 /-- The canonical environment at a later stage agrees with the one at an earlier stage. -/
 theorem canonEnv_le (s : B.W) {i j : ℕ} (hij : i ≤ j) :
     Model.Env.Agree ((B.w s).le hij) (B.canonEnv s i) (B.canonEnv s j) :=
@@ -136,7 +125,7 @@ theorem canonEnv_le (s : B.W) {i j : ℕ} (hij : i ≤ j) :
 
 /-! ## Pushing into views along arrows -/
 
-omit [ModalSys.NoFourNoTS] in
+omit [ModalSys.NoFour] in
 /-- A coherent entry that is an address is the address the index map gives. -/
 theorem ren_of_coh {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {θ : Subst σ Δ} (hc : Subst.Coh ι Γ θ)
     {v : VarSymb} {U : VarType} (hlp : v.lastProj = false) (hv : Γ v = some U) {w : VarSymb}

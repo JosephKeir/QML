@@ -753,3 +753,16 @@ Flattening already took T since step 1 (`bcB`, `at_item_of_tupB … ModalSys.T`)
 needs only `keepOnly = false` (`ModalSys.NoFour.keepOnly`).  `ModalSys.NoTFour` and its helpers
 (`noT`, `R_of_RT`, `kd_of_extent`) had no uses left and are deleted.  What remains of milestone 1
 is strong T (step 6: the term query in the network, giving `retW` and `posRet_exists`).
+
+### 9.12 ✅ Step 6: strong T + B — milestone 1 done *(2026-10-03)*
+
+No term query was needed in the network.  Strong T's existential is a **theorem**:
+`Proof.retEx : ⊢ ∃y:◇A. Here y t` (`QML_v12m_BStaged`).  `T_dia` at a fresh root `c` leaves
+`Here c t ⊢ ∃y:◇A. Here y t`, which is `∃`-introduction at `c`, via `WFF.instantiate_hereAt_slot`
+(the subject-side counterpart of `instantiate_here_slot`).  So every world's theory contains it, and
+Henkin witnessing (`BWorld.exW`) declares the witness: ⭐`BWorld.retW`.  `posRet_exists_canon`
+(`BCanonModel`) is then the tree's, with `rden_eta_real` moved up from `BCanonTerm`.  The class
+`NoFourNoTS` lost its only use and is gone: the network model and every B theorem assume just
+`ModalSys.NoFour`.  So completeness, strong completeness and compactness hold for weak B with K, T
+and D in every strength, and milestone 1 is finished.  (The tree's dedicated `RetQ`/`termQ` step
+could likewise be replaced by the same theorem; not done.)

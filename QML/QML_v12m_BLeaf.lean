@@ -262,7 +262,7 @@ variable {σ : Signature}
 
 namespace BData
 
-variable [ModalSys.NoFourNoTS] (B : BData σ)
+variable [ModalSys.NoFour] (B : BData σ)
 
 /-! ## Reading a label along an arrow, at any level -/
 
@@ -468,7 +468,7 @@ theorem cut_first {x pre : VarSymb} {m : ℕ} {t : Step} {rest : List Step} (hok
   exact ⟨rfl, levels_eq_zero_iff.mp (show Step.levels pre.path = 0 by
     unfold VarSymb.lv at hlv; omega), rfl, hl⟩
 
-omit [ModalSys] [ModalSys.NoFourNoTS] in
+omit [ModalSys] [ModalSys.NoFour] in
 /-- Collapsing the cut `box` makes it a `here`. -/
 theorem collapse_cut (pre : VarSymb) (rest : List Step) :
     ((VarSymb.step pre .box).ext rest).collapse (Step.levels rest) =
@@ -761,7 +761,7 @@ theorem exists_net (hT : ModalSys.T = true) (s : B.W) : ∃ t, B.R s t := by
   obtain ⟨t, h, _⟩ := B.ex s 0 .bot hnot
   exact ⟨t, h⟩
 
-omit [ModalSys.NoFourNoTS] in
+omit [ModalSys.NoFour] in
 theorem itemTail_T (hT : ModalSys.T = true) : itemTail = [.fst] := by
   simp [itemTail, hT]
 

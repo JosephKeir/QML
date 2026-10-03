@@ -23,7 +23,7 @@ variable {σ : Signature}
 
 namespace BData
 
-variable [ModalSys.NoFourNoTS] {B : BData σ}
+variable [ModalSys.NoFour] {B : BData σ}
 
 /-- ⭐**A realised witness's possible object has its realisation as content here**: from the
     datum's atom, `here_beta` with the body abstracted, and the round trip

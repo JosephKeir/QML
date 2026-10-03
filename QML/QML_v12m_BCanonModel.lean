@@ -22,7 +22,7 @@ variable {σ : Signature}
 
 namespace BData
 
-variable [ModalSys.NoFourNoTS] (B : BData σ)
+variable [ModalSys.NoFour] (B : BData σ)
 
 /-- Under D every world has an arrow out: `□⊥` fails, since `D_box` refutes it. -/
 theorem serial_canon (hD : ModalSys.D = true) (s : B.W) : ∃ t, Nonempty (B.RT s t) := by
@@ -233,6 +233,60 @@ theorem Ind_refl {A : VarType} {s : B.W} (o : B.frame.Dom A s) : B.Ind o o := by
   obtain ⟨i, a, t, ht⟩ := B.definable_fromDom A s o
   exact ⟨⟨i, a, t⟩, ⟨i, a, t⟩, ht, ht, Canon.DTerm.Rel.refl _⟩
 
+/-! ## Strong T: every object is the content of a possible object here -/
+
+variable {B} in
+/-- ⭐The content, along a world's own arrow, of the possible object a realised witness names:
+    what its datum's content denotes. -/
+theorem rden_eta_real {s : B.W} {x : VarSymb} (hr : (B.w s).Realised x) {k : ℕ}
+    (hdecl : ((B.w s).ctx k).ref x = some (.VTypeDia hr.data.A)) (hm) :
+    (B.rden s k (Ctx.Le.refl _) (Term.eta x (.VTypeDia hr.data.A) hdecl)).2
+        ⟨⟨s, ⟨Or.inr ⟨hr.T, rfl⟩⟩⟩, hm⟩ = B.rden s hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀ :=
+  (rden_diatm_self (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩
+    (Term.eta (.step x .dia) hr.data.A (Ctx.ref_diaIn_of hdecl)) ⟨_, hm⟩
+    (fun ⟨_, hk⟩ => B.irrefl s (B.kdR hk))).trans
+    (rden_realTerm_eta hr (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩ (Ctx.ref_diaIn_of hdecl) _ _)
+
+/-- ⭐**Every object of a domain is, up to `Ind`, the content along the world's own arrow of a
+    possible object** — the tree's `Canon.posRet_exists_canon`, at every type.  The object is some
+    term's denotation; the theory has a `Here` atom for that term about some witness
+    (`BWorld.retW`), which makes the witness realised (`BWorld.datum_of_here`); the witness's
+    η-expansion has the own arrow in its extent, with the datum's content there (`rden_eta_real`);
+    and that content is co-named with the term, so the two have related representatives
+    (`DTerm.rel_of_coname`). -/
+theorem posRet_exists_canon {A : VarType} {s : B.W} (hT : ModalSys.T = true)
+    (hS : ModalSys.TStrong = true) (o : B.frame.Dom A s) :
+    ∃ (p : B.frame.Pos A s) (hm : B.frame.reflAcc hT s ∈ (B.posEval p).1),
+      B.Ind ((B.posEval p).2 ⟨B.frame.reflAcc hT s, hm⟩) o := by
+  obtain ⟨i, a', t, ht⟩ := B.definable_fromDom A s o
+  obtain ⟨i', hi, y, hy, hmem⟩ := (B.w s).retW hT hS i t
+  have hr : (B.w s).Realised y :=
+    (B.w s).datum_of_here hT hy (Term.eta (.step y .dia) A (Ctx.ref_diaIn_of hy)) _ hmem
+  obtain rfl : hr.data.A = A := by
+    have := (hr.data.hdeclOf i' ⟨A, hy⟩).symm.trans hy
+    simpa using this
+  -- both atoms at one stage, about one subject
+  set K := max hr.data.i₀ i'
+  have hdK : ((B.w s).ctx K).ref y = some (.VTypeDia hr.data.A) :=
+    ((B.w s).le (le_max_right _ _ : i' ≤ K)).ref hy
+  have h₁ := hr.data.hhereAt (B.w s).mcsT K (le_max_left _ _) hdK
+  have h₂ := (BWorld.mem_lift (w := B.w s) (le_max_right _ _ : i' ≤ K)).mp hmem
+  rw [WFF.mono_hereAt_of_le hT _ _ _ hdK, Term.mono_mono] at h₂
+  have hrel := Canon.DTerm.rel_of_coname hT _ h₁ (BWorld.mem_T.mpr h₂)
+  have hiK : i ≤ K := hi.trans (le_max_right _ _)
+  have hm : B.frame.reflAcc hT s ∈ B.extent s y := Or.inr ⟨B.irrefl s, hr⟩
+  refine ⟨⟨B.rden s hr.data.i₀ (Ctx.Le.refl _) (Term.eta y (.VTypeDia hr.data.A) hr.data.hd₀),
+      definable_rden _ _⟩, hm, ⟨hr.data.i₀, _, hr.data.t₀⟩, ⟨i, a', t⟩, ?_, ht, ?_⟩
+  · have hc : B.toDom _ s (B.rden s hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀) (definable_rden _ _) =
+        (B.posEval ⟨B.rden s hr.data.i₀ (Ctx.Le.refl _)
+          (Term.eta y (.VTypeDia hr.data.A) hr.data.hd₀), definable_rden _ _⟩).2
+          ⟨B.frame.reflAcc hT s, hm⟩ :=
+      toDom_congr (rden_eta_real hr hr.data.hd₀ _).symm _ _
+    rw [← hc, fromDom_toDom]
+  · exact (Canon.DTerm.rel_lift _ (le_max_left _ _)).trans
+      (hrel.trans (Canon.DTerm.rel_lift
+        (⟨i, a', t⟩ : Canon.DTerm (B.w s).sys (B.w s).T _) hiK).symm)
+
 /-- ⭐The canonical model. -/
 noncomputable def model : Model.{0, 0} σ where
   frame := B.frame
@@ -251,7 +305,7 @@ noncomputable def model : Model.{0, 0} σ where
       (B.domShape_toDom hT _ s.1 (n.1 s) (definable_box_apply n.2 s)).symm)))
   necExtract_eval _ _ := rfl
   necDup_eval hF _ _ _ := (noFour hF).elim
-  posRet_exists hT hS _ := by rw [ModalSys.NoFourNoTS.noTS hT] at hS; cases hS
+  posRet_exists hT hS a := B.posRet_exists_canon hT hS a
   posSerial hDS s := B.posSerial_canon hDS s
   Ind o o' := B.Ind o o'
   Ind_refl o := B.Ind_refl o

@@ -10,8 +10,7 @@ package.  Design detail stays in `v12-modal-extensions.md` (per axiom) and `v12-
 | Flags | Sound | Complete | Canonical model |
 |---|---|---|---|
 | K, T (weak, strong), D (weak, strong), 4 (weak), any combination without B | ✓ | ✓ (+ strong completeness, compactness) | the tree (`Canon.*`) |
-| weak B, with D and weak T, without 4 (`NoFourNoTS`) | ✓ | ✓ (every presented context) | the network (`BArrow.*`) |
-| B with strong T | ✓ | **open** (milestone 1 step 6) | — |
+| weak B with any of T, D (both strengths), without 4 (`NoFour`) | ✓ | ✓ (+ strong completeness, compactness; every presented context) | the network (`BArrow.*`) |
 | B with 4, S5 | ✓ | **open** | — |
 | strong B, 5, 4's open maps | not yet stated | — | — |
 
@@ -65,8 +64,12 @@ cost is in the first.
    off) replaces `NoTFour`, which is gone; completeness, strong completeness, compactness, every
    presented context.  Nothing beyond the flag class had to change.
 
-**1c. Strong T + B.**  The term query in the network's fair schedule (an extra operation, or folded
-into the Henkin-witness one), giving `retW`; then `posRet_exists` exactly as in §10.41.
+**1c. ✅ Strong T + B** (2026-10-03, `v12-arrow-canonical.md` §9.12).  No new operation: strong T's
+existential `∃y:◇A. Here y t` is a theorem (`Proof.retEx`, by `T_dia` and `∃`-introduction), so the
+network's Henkin witnessing gives `retW`; `posRet_exists` then as in §10.41.  The flag class is
+just `NoFour`.
+
+**Milestone 1 is done.**
 
 *Done when:* completeness, strong completeness and compactness for every 4-free flag set
 (K, T, D, B, both strengths of T and D).

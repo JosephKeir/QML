@@ -4,8 +4,8 @@ import QML.QML_v12m_BLimit
 /-!
 # QML v12m — completeness for weak B
 
-With 4 off and strong T off (`ModalSys.NoFourNoTS`: weak T allowed, D and strong D free), and with
-the weak B rule: ⭐`completenessB`, a sequent in a context of declared variables (`ctxOf l₀`, the
+With 4 off (`ModalSys.NoFour`: T and D free, each in either strength), and with the weak B
+rule: ⭐`completenessB`, a sequent in a context of declared variables (`ctxOf l₀`, the
 root world's starting language) valid in every model is provable.  Its negation extends to a
 maximal consistent theory `M₀`; the network grown from `M₀` gives the canonical data (`bdata`),
 whose model satisfies at the root exactly the root's theory (`BData.truth`) and is a model proper
@@ -22,7 +22,7 @@ variable [ModalSys]
 
 namespace BArrow
 
-variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoFourNoTS]
+variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoFour]
 
 /-- ⭐**Completeness for weak B**: in a context of declared variables, a sequent that holds in
     every model, at every world, in every environment, is provable. -/
