@@ -219,6 +219,20 @@ theorem posSerial_canon (hDS : ModalSys.DStrong = true) (s : B.W) :
       refine ⟨⟨B.rden s j (Ctx.Le.refl _) (.diatm x ⟨X, hX⟩ u), definable_rden _ _⟩,
         ⟨⟨⟨t', ⟨Or.inl (B.kdR hk)⟩⟩, Or.inl ⟨X, hk⟩⟩⟩⟩
 
+/-! ## Indistinguishability -/
+
+/-- ⭐**Canonical indistinguishability**, as in the tree (`Canon.Ind`, docs §10.33): two objects
+    with representatives the world's theory cannot tell apart (`DTerm.Rel`). -/
+def Ind {A : VarType} {s : B.W} (o o' : B.frame.Dom A s) : Prop :=
+  ∃ u u' : Canon.DTerm (B.w s).sys (B.w s).T A,
+    B.rden s u.i (Ctx.Le.refl _) u.t = B.fromDom A s o ∧
+      B.rden s u'.i (Ctx.Le.refl _) u'.t = B.fromDom A s o' ∧ u.Rel u'
+
+/-- Every object is definable, so it is related to itself. -/
+theorem Ind_refl {A : VarType} {s : B.W} (o : B.frame.Dom A s) : B.Ind o o := by
+  obtain ⟨i, a, t, ht⟩ := B.definable_fromDom A s o
+  exact ⟨⟨i, a, t⟩, ⟨i, a, t⟩, ht, ht, Canon.DTerm.Rel.refl _⟩
+
 /-- ⭐The canonical model. -/
 noncomputable def model : Model.{0, 0} σ where
   frame := B.frame
@@ -239,8 +253,8 @@ noncomputable def model : Model.{0, 0} σ where
   necDup_eval hF _ _ _ := (noFour hF).elim
   posRet_exists hT hS _ := by rw [ModalSys.NoFourNoTS.noTS hT] at hS; cases hS
   posSerial hDS s := B.posSerial_canon hDS s
-  Ind o o' := o = o'
-  Ind_refl _ := rfl
+  Ind o o' := B.Ind o o'
+  Ind_refl o := B.Ind_refl o
 
 end BData
 

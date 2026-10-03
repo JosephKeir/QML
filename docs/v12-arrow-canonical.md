@@ -698,3 +698,48 @@ case, `Ind := Rel` and `IndInvariant`.  4a is done; whole v12m list green, no wa
 **The truth lemma moves to 4c.**  Its `here` case cannot be discharged under weak T until `Ind` is
 the canonical relation, so `BTruth` (and with it the `□`/`◇` cases along the own arrow, which are
 the tree's: `sat_boxHere` with `T_box`, and `interp_dia_self`) stays under `NoTFour` until then.
+
+### 9.10 ✅ Step 4c: leaves, tags, `Ind`, the truth lemma under weak T *(2026-10-03)*
+
+Step 4 is complete: the truth lemma and `IndInvariant` hold under `ModalSys.NoFourNoTS`.  Only the
+statements (step 5) still assume `NoTFour`.  Whole B chain green (through `BCompactness`), no
+sorries.
+
+**The leaf calculus on the network** (`QML_v12m_BLeaf`) is the tree's with two changes.
+* *Exact levels.*  The network's languages declare only roots, so an address reachable after `j`
+  views has exactly `j` levels (`Ctx.Exact`, replacing the tree's `Ctx.Deep`; `Ann.Exact` for
+  labels, `Term.ann_exact`).  A label's cut is therefore its *first* level step, a `box` (4 is off).
+  That is exactly where `arrowIdx` cuts, so `succAddrK s a k` is `arrowIdx` along a network arrow
+  (for every `k`) and `collapse k` along the own arrow.  With this, `annShp_eta_transpose`,
+  `canonSh_eq` (for level-free addresses), `leafOf_collapse`, `annShp_eta_collapse`, `Canonical`
+  and ⭐⭐`termShp_canonical` port line for line.  The new address lemmas are
+  `collapse_ext_indep`/`splitAt_ext_indep` (collapsing and cutting inside a path ignore its
+  prefix) and `arrowIdx_boxExt` (past the first `box`, `arrowIdx` keeps the path).
+* *No one arrow decodes.*  The tree reads a family back along one proper successor, where reading
+  is the identity.  On the network no single arrow is injective on labels.
+  * The own arrow turns the cut `box` into a `here`, so `r.here.box` and `r.box.here` collapse
+    alike.
+  * A network arrow encodes the projections before the cut (`here ↦ snd`), so it identifies
+    `r.here.…` with `r.snd.…`.
+  * The two together do decode (`eq_of_here_enc`): where the paths first differ, one image has the
+    cut's `here` against a projection that would have to encode to `fst`, and nothing does.
+  * So ⭐`leafOf_inj` uses the own arrow (under T) and one network arrow.  `exists_net` gives one:
+    `T_box` refutes `□⊥`, and `ex` builds the arrow.  The `imgInj` that §9 anticipated is not
+    needed.
+
+  Hence ⭐⭐`ann_eq_of_rden` / `ann_eq_of_rden_ctx`: under T, tags determine annotations, in any
+  allowed, level-free context — in particular the worlds' own (`exact_ctxOf`).
+
+**`Ind` and `Here`.**
+* `BData.Ind` is the tree's `Canon.Ind`: related representatives (`DTerm.Rel` over `BWorld.sys`).
+* `QML_v12m_BHere` holds `mem_here_real` (`Canon.mem_here_datum` at the realised term),
+  `here_transfer` and ⭐⭐`here_truth`, all the tree's.
+
+**The truth lemma** (`BTruth`, now under `NoFourNoTS`):
+* `□` at the own arrow: `sat_boxHere` with `T_box`.
+* `◇` at the own arrow, where the witness is realised: `dia_mem_of_sat_self` (`sat_realiseAtA`,
+  `RealDatum.spec`).
+* `here`: `here_truth`.
+
+**Models proper** (`QML_v12m_BInd`): `rep`, `repSubst`, `substEnv_repSubst`, ⭐⭐`indInvariant`,
+as in the tree.  `BCompleteness` and `BCompactness` use it in place of `indInvariant_of_eq`.

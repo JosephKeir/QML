@@ -1,4 +1,4 @@
-import QML.QML_v12m_BTruth
+import QML.QML_v12m_BInd
 import QML.QML_v12m_BLimit
 
 /-!
@@ -50,7 +50,7 @@ theorem completenessB (hB : ModalSys.B = true) {l₀ : List VarType} {Δ : List 
   have hg := (ext_net hB hM₀ (Nat.zero_le (birth (complete S) s.2 + 0))).grows [] trivial
   have hmem : ∀ ψ ∈ S, WFF.mono hle ψ ∈ (B.w s).M 0 := fun ψ hψ =>
     hg.sub ψ (show ψ ∈ ((net (complete S) 0).st []).M from hSM hψ)
-  have hsat := hval B.model (Model.indInvariant_of_eq fun _ _ h => h) env₀
+  have hsat := hval B.model BData.indInvariant env₀
     (Ctx.Presented.noProjLast _) fun ψ hψ =>
     (Model.sat_mono hag ψ).mp ((BData.truth s 0 _).mpr (hmem ψ (Or.inl hψ)))
   have hφ := (BData.truth s 0 _).mp ((Model.sat_mono hag φ).mpr hsat)

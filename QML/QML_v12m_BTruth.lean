@@ -1,4 +1,4 @@
-import QML.QML_v12m_BCanonTerm
+import QML.QML_v12m_BHere
 import QML.QML_v12m_Completeness
 
 /-!
@@ -24,7 +24,7 @@ variable {σ : Signature}
 
 namespace BData
 
-variable [ModalSys.NoTFour] {B : BData σ}
+variable [ModalSys.NoFourNoTS] {B : BData σ}
 
 /-- The truth lemma for atoms. -/
 theorem relSat_canon : ∀ {Γ : Ctx} {n : ℕ} (ρ : Rel σ Γ n) {s : B.W} {i : ℕ}
@@ -58,6 +58,55 @@ theorem interp_lift {A : VarType} {s : B.W} {i i' : ℕ} {a : Ann A}
     ((toDom_congr ((rden_mono _ t' s _ _).trans ((rden_congr t' s _ i' _ _).trans ht')) _
       _).trans (B.toDom_fromDom A s o))
 
+/-- ⭐The realised case of the truth lemma's `◇` step, along a world's own arrow, as in the tree
+    (`Canon.dia_mem_of_sat_self`): a formula holding in the witness's view there holds of the
+    realising term (`Model.sat_realiseAtA`), and what the theory says about the realising term it
+    says about the witness (`RealDatum.spec`).  The induction hypothesis is needed only at formulas
+    of the same logical size (`WFF.size_realiseAtA`). -/
+theorem dia_mem_of_sat_self {s : B.W} {i : ℕ} {x : VarSymb} (hr : (B.w s).Realised x)
+    {X : VarType} (h : ((B.w s).ctx i).ref x = some (.VTypeDia X))
+    (hx : ∃ Y, ((B.w s).ctx i).ref x = some (.VTypeDia Y))
+    (χ : WFF σ (((B.w s).ctx i).diaIn x) 0)
+    (IH : ∀ ψ : WFF σ ((B.w s).ctx (max i hr.data.i₀)) 0, ψ.size = χ.size →
+      (B.model.sat (B.canonEnv s (max i hr.data.i₀)) ψ ↔ ψ ∈ (B.w s).M (max i hr.data.i₀)))
+    (hmem : B.model.frame.reflAcc hr.T s ∈ (B.model.posEval ((B.canonEnv s i).ref x h)).1)
+    (hsat : B.model.sat ((B.canonEnv s i).diaPush x h ⟨B.model.frame.reflAcc hr.T s, hmem⟩) χ) :
+    WFF.dia x hx χ ∈ (B.w s).M i := by
+  have hXA : X = hr.data.A := by
+    have h1 := (hr.data.hdeclOf i ⟨X, h⟩).symm.trans h
+    simp only [Option.some.injEq, VarType.VTypeDia.injEq] at h1
+    exact h1.symm
+  subst hXA
+  set K := max i hr.data.i₀
+  have hj : i ≤ K := le_max_left _ _
+  have hdecl : ((B.w s).ctx K).ref x = some (.VTypeDia hr.data.A) :=
+    hr.data.hdeclOf K ⟨_, ((B.w s).le hj).ref h⟩
+  have hagj : Model.Env.Agree ((B.w s).le hj) (B.canonEnv s i) (B.canonEnv s K) :=
+    canonEnv_le s hj
+  have hm' : B.model.frame.reflAcc hr.T s ∈
+      (B.model.posEval ((B.canonEnv s K).ref x hdecl)).1 := by
+    rw [canonEnv_extent]
+    exact Or.inr ⟨B.irrefl s, hr⟩
+  have hcont : (B.model.posEval ((B.canonEnv s K).ref x hdecl)).2
+        ⟨B.model.frame.reflAcc hr.T s, hm'⟩ =
+      Model.interp (B.canonEnv s K)
+        (Term.mono ((B.w s).le (le_max_right _ _ : hr.data.i₀ ≤ K)) hr.data.t₀) := by
+    have hpq := canonEnv_ref s K x hdecl
+    rw [Model.posEval_snd_congr hpq ⟨B.model.frame.reflAcc hr.T s, hm'⟩ (hpq ▸ hm'),
+      Model.interp_mono (canonEnv_le s (le_max_right _ _ : hr.data.i₀ ≤ K)) hr.data.t₀,
+      interp_canon_eta s hr.data.i₀ hr.data.b₀ hr.data.hb₀]
+    exact toDom_congr (rden_eta_real hr hdecl _) _ _
+  have hsatR := (Model.sat_realiseAtA hr.T (B.canonEnv s K) (noProjLast s K) hdecl
+    (Term.mono ((B.w s).le (le_max_right _ _)) hr.data.t₀) hm' hcont
+    (WFF.mono (((B.w s).le hj).diaIn x) χ)).mpr
+    ((Model.sat_mono (Model.Env.diaPush_agree hagj h
+      ⟨B.model.frame.reflAcc hr.T s, hmem⟩ hm') χ).mpr hsat)
+  have hdia := hr.data.spec (B.w s).mcsT K (le_max_right _ _) hdecl _
+    ((IH _ (by rw [WFF.size_realiseAtA, WFF.size_mono])).mp hsatR)
+  have hmem' := (BWorld.mem_mono_congr (w := B.w s) (Ctx.Le.refl _) ((B.w s).le hj)
+    (φ := WFF.dia x hx χ)).mpr hdia
+  rwa [WFF.mono_refl] at hmem'
+
 theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i) 0), φ.size < n →
     (B.model.sat (B.canonEnv s i) φ ↔ φ ∈ (B.w s).M i)
   | 0, _, _, _, h => absurd h (Nat.not_lt_zero _)
@@ -78,7 +127,11 @@ theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i
           rw [Term.mono_refl, Term.mono_refl]
       | top => exact ⟨fun _ => ((B.w s).mcs i).top_mem, fun _ => trivial⟩
       | bot => exact ⟨False.elim, fun h => ((B.w s).mcs i).bot_not_mem h⟩
-      | here hT _ _ => exact (noT hT).elim
+      | here hT S t =>
+          cases S with
+          | diatm x hx bd =>
+              exact here_truth hT hx bd t (fun K _ u u' => truth_lt n s K _ (by
+                rw [WFF.size_eqRec]; simp only [WFF.size] at hφ; omega))
       | and φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega
@@ -163,14 +216,14 @@ theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i
       | box χ =>
           have hχs : χ.size < n := by simp only [WFF.size] at hφ; omega
           change (∀ a : B.Acc s, B.model.sat ((B.canonEnv s i).boxPush a) χ) ↔ _
-          have key : ∀ a : B.Acc s, B.model.sat ((B.canonEnv s i).boxPush a) χ ↔
-              WFF.subst (arrowIdx (B.img s a.1)) (arrowS σ _ (B.img s a.1))
-                (ok_arrowS (B.imgOk (R_of_RT a.2.down) i))
-                (coh_arrowS (B.imgOk (R_of_RT a.2.down) i))
-                Ctx.NoSlots.slots Ctx.NoSlots.slots χ ∈ (B.w a.1).M (B.stg s a.1 i) := by
-            intro a
-            rw [boxPush_canon s i a (R_of_RT a.2.down)]
-            exact (Model.sat_subst _ _ (coh_arrowS (B.imgOk (R_of_RT a.2.down) i)) Ctx.NoSlots.slots
+          have key : ∀ (a : B.Acc s) (hR : B.R s a.1),
+              B.model.sat ((B.canonEnv s i).boxPush a) χ ↔
+                WFF.subst (arrowIdx (B.img s a.1)) (arrowS σ _ (B.img s a.1))
+                  (ok_arrowS (B.imgOk hR i)) (coh_arrowS (B.imgOk hR i))
+                  Ctx.NoSlots.slots Ctx.NoSlots.slots χ ∈ (B.w a.1).M (B.stg s a.1 i) := by
+            intro a hR
+            rw [boxPush_canon s i a hR]
+            exact (Model.sat_subst _ _ (coh_arrowS (B.imgOk hR i)) Ctx.NoSlots.slots
               Ctx.NoSlots.slots _ _ χ).symm.trans
               (truth_lt n a.1 _ _ (by rw [WFF.size_subst]; exact hχs))
           constructor
@@ -178,9 +231,20 @@ theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i
             by_contra hnot
             obtain ⟨t, h, hneg⟩ := B.ex s i χ hnot
             exact ((B.w t).mcs _).neg_mem_iff.mp hneg
-              ((key ⟨t, ⟨Or.inl h⟩⟩).mp (hsat ⟨t, ⟨Or.inl h⟩⟩))
+              ((key ⟨t, ⟨Or.inl h⟩⟩ h).mp (hsat ⟨t, ⟨Or.inl h⟩⟩))
           · intro hmem a
-            exact (key a).mpr (B.tr (R_of_RT a.2.down) i χ hmem)
+            obtain ⟨t, ⟨ha⟩⟩ := a
+            rcases ha with hR | ⟨hT, hst⟩
+            · exact (key ⟨t, ⟨Or.inl hR⟩⟩ hR).mpr (B.tr hR i χ hmem)
+            · -- the world's own arrow: `T_box`, and the collapse
+              subst hst
+              refine (Model.sat_boxHere hT (B.canonEnv _ i) Ctx.NoSlots.slots χ).mp
+                ((truth_lt n _ i _ (by rw [WFF.size_collapse]; exact hχs)).mpr ?_)
+              exact BWorld.mem_of_provable (Δ := [.box χ])
+                (fun ψ hψ => by
+                  rw [List.mem_singleton.mp hψ]
+                  exact hmem)
+                ⟨Proof.T_box hT (Proof.lookup List.mem_cons_self)⟩
       | dia x hx χ =>
           have hχs : χ.size < n := by simp only [WFF.size] at hφ; omega
           change (∃ (X : VarType) (h : ((B.w s).ctx i).ref x = some (.VTypeDia X))
@@ -202,7 +266,15 @@ theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i
               (truth_lt n a.1.1 _ _ (by rw [WFF.size_subst]; exact hχs))
           constructor
           · rintro ⟨X, h, a, hsat⟩
-            obtain ⟨X', hk⟩ := kd_of_extent (canonEnv_extent s i h ▸ a.2 : a.1 ∈ B.extent s x)
+            rcases (canonEnv_extent s i h ▸ a.2 : a.1 ∈ B.extent s x) with ⟨X', hk⟩ | ⟨hnR, hr⟩
+            swap
+            · -- the world's own arrow: the witness is realised
+              obtain ⟨-, hst⟩ := self_of_not_R hnR
+              obtain ⟨⟨t, ⟨ht⟩⟩, hmem⟩ := a
+              change s = t at hst
+              subst hst
+              exact dia_mem_of_sat_self hr h hx χ
+                (fun ψ hψ => truth_lt n _ _ ψ (by rw [hψ]; exact hχs)) hmem hsat
             obtain rfl := B.hxX hk i X h
             by_contra hnot
             have hbx : WFF.boxx x hx χ.neg ∈ (B.w s).M i :=
