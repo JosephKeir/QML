@@ -35,7 +35,7 @@ Lean 4 + Mathlib formalisation of a quantified modal logic with first-class poss
 - Keep `QML_v12m_*` sorry-free. If a `sorry` is unavoidable mid-task, say so and record it in the
   docs; never leave one unreported.
 - Commit only when asked. Commit messages end with
-  `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
+  `Co-Authored-By: Claude Opus <noreply@anthropic.com>`.
 
 ## Building
 
