@@ -117,8 +117,45 @@ co-returning) and gating shapes by `T ∨ strong B` instead of T, with a T-free 
 are then relational too, so the dividing line is just *does the route return?*: all of T and strong
 B relational, 4's lift and 5 existential.  Checked on paper: substitution, the canonical truth-lemma
 case (the construction's invariant becomes an atom invariant, and committing a born item becomes
-Henkin witnessing), and `back_joint` reduces to `back_pair`.  **Next:** an implementation plan,
-rows 1–2 and `◇`-free contents first.
+Henkin witnessing), and `back_joint` reduces to `back_pair`.
+
+**Implementation plan (2026-10-03, draft).**  Scope of the first build: rows 1–2 (carriers `□□A` and
+`◇□A`; out leg plain or witnessed), `◇`-free contents, frames with unique ways home.  Steps in the
+style of milestone 1, each ending green and committed:
+1. **Flags and frames.**  `ModalSys.BStrong` (requiring `B`); a frame law
+   `homeUnique : BStrong = true → ∀ {v w}, Subsingleton (R v w)`.  Every existing canonical frame is
+   relational (`Prop`-valued), so the law holds by `Subsingleton` of proofs; soundness of existing
+   rules does not use it.
+2. **Syntax.**  Two `WFF` constructors, gated by `BStrong` as `here` is by T:
+   `back (L : Leg) (s : Term σ Γ (L.carrier A) b) (t : Term σ Γ A a)` and
+   `ret (L : Leg) (t : Term σ Γ A a) (Φ : body in the out leg's view with d : □A bound)`, where `Leg`
+   is an inductive with the plain and witnessed out legs (`nec`, `pos x`), to be extended with
+   witnessed back legs for rows 3–4 without touching `WFF` again.  Content type restricted to
+   `◇`-free in the constructors (lifted later, §11.12).  Then the mechanical ripple through every
+   recursion on `WFF` (mono, subst, collapse, shift, size, instantiate, countability, decidable
+   equality, …) — some thirty files, mirroring how `here` threads through them (§10.16).
+3. **Semantics and soundness.**  `sat` clauses (`Back`: out leg nonempty, ∀ out ∃ home, `Ind`;
+   `ret`: ∃ out, ∃ `d`, `Φ(d)`, home value `Ind t`); a `Model` field `backRet_exists` per row
+   (surjectivity, after `Ind`); a `SemBack` file with one soundness lemma per rule, using
+   `homeUnique` and `IndInvariant`.
+4. **Proof rules.**  `back_elim`, `back_intro`, `back_ne`, `back_beta`, `back_eq`, `back_pair`,
+   `back_here` (T), `back_def`, `B_strong` (∃-elimination per row, as `T_dia`); `ret_exists`
+   (extension form), `ret_elim` (with carriers), `ret_beta`, `ret_mono`, `ret_eq`, `ret_here` (T);
+   `Proof.subst` cases; soundness assembled.  `back_fun` as a derived rule.
+5. **The canonical network.**  The hard step:
+   * the **atom invariant** replaces the back arrows' necessity transfer (`Transfer` becomes a
+     consequence), and committing a born item becomes Henkin witnessing of `ret_exists` (in `BLocal`,
+     `BNet*`);
+   * **commit at birth** for `Back`-carriers (`∃t. Back u t` decided at `u`'s stage, image the `exW`
+     root);
+   * a new network operation giving every `ret` atom a child, as `exX` does for `◇_x`, with fairness;
+   * `backRet_exists_canon` by Henkin witnessing (as step 6 of milestone 1); `BTruth`'s `back` and
+     `ret` cases; canonical `Ind` unchanged at `◇`-free types.
+6. **Statements.**  Completeness, strong completeness and compactness for strong B (rows 1–2,
+   `◇`-free contents), under `NoFour`.
+Then rows 3–4 (multi-labelled edges, per-witness components) and `◇`-typed contents (§11.12).
+**Main risks:** step 5's refactor of the back arrows (the invariant changes shape); step 2's ripple
+is large but mechanical.
 
 ## Milestone 3 — B with 4, and S5 (5 itself)
 
