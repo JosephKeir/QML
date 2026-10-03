@@ -264,9 +264,6 @@ namespace BData
 
 variable [ModalSys.NoFourNoTS] (B : BData σ)
 
-theorem keepOnly_false : ModalSys.keepOnly = false := by
-  simp [ModalSys.keepOnly, ModalSys.NoFour.noFour]
-
 /-! ## Reading a label along an arrow, at any level -/
 
 open Classical in
@@ -303,7 +300,8 @@ theorem succAddrK_level {s : B.W} (a : B.Acc s) {k : ℕ} {y : VarSymb} (h : Box
   · rw [succAddrK_net hR, succAddrK_net hR, arrowIdx_step_of_cut h]
   · rw [succAddrK_self hR, succAddrK_self hR, VarSymb.collapse_level_succ hs]
 
-theorem inner_eq (v : VarSymb) : v.inner = .step v .box := VarSymb.inner_box keepOnly_false
+theorem inner_eq (v : VarSymb) : v.inner = .step v .box :=
+  VarSymb.inner_box ModalSys.NoFour.keepOnly
 
 theorem succAddrK_inner {s : B.W} (a : B.Acc s) {k : ℕ} {y : VarSymb} (h : BoxCut y k) :
     B.succAddrK s a (k + 1) y.inner = (B.succAddrK s a k y).inner := by

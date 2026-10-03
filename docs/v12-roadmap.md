@@ -10,8 +10,8 @@ package.  Design detail stays in `v12-modal-extensions.md` (per axiom) and `v12-
 | Flags | Sound | Complete | Canonical model |
 |---|---|---|---|
 | K, T (weak, strong), D (weak, strong), 4 (weak), any combination without B | ✓ | ✓ (+ strong completeness, compactness) | the tree (`Canon.*`) |
-| weak B, with D, without T and 4 (`NoTFour`) | ✓ | ✓ (every presented context) | the network (`BArrow.*`) |
-| B with T | ✓ | **open** | — |
+| weak B, with D and weak T, without 4 (`NoFourNoTS`) | ✓ | ✓ (every presented context) | the network (`BArrow.*`) |
+| B with strong T | ✓ | **open** (milestone 1 step 6) | — |
 | B with 4, S5 | ✓ | **open** | — |
 | strong B, 5, 4's open maps | not yet stated | — | — |
 
@@ -26,7 +26,7 @@ worlds one deeper, and a successor sees `u.box` at an address (`succAddr`).  The
 (`QML_v12m_B*`) is a fair ω-chain of worlds whose languages are root-only (`ctxOf l`); an arrow is a
 renaming of roots (`img`, `stg`), and pushing the canonical environment along an arrow is reading
 the target's canonical environment through a substitution (`boxPush_canon`).  The tree cannot do B
-(no route back); the network has not been asked to do T.
+(no route back); the network now does weak T too (milestone 1).
 
 ## Milestone 1 — B with T (KTB)  ← next
 
@@ -61,8 +61,9 @@ cost is in the first.
    together — no `imgInj` needed — tags determine annotations; `Ind := Rel`; the truth lemma's
    `□`/`◇` (own arrow) and `here` cases; canonical `IndInvariant`).  The truth lemma and models
    proper now hold under `NoFourNoTS`.
-5. **Statements**: a flag class "4 off, strong T off" replacing `NoTFour`; completeness, strong
-   completeness, compactness, presented contexts.
+5. ✅ **Statements** (2026-10-03, `v12-arrow-canonical.md` §9.11): `NoFourNoTS` (4 off, strong T
+   off) replaces `NoTFour`, which is gone; completeness, strong completeness, compactness, every
+   presented context.  Nothing beyond the flag class had to change.
 
 **1c. Strong T + B.**  The term query in the network's fair schedule (an extra operation, or folded
 into the Henkin-witness one), giving `retW`; then `posRet_exists` exactly as in §10.41.

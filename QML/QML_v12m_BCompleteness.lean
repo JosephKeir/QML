@@ -4,15 +4,16 @@ import QML.QML_v12m_BLimit
 /-!
 # QML v12m — completeness for weak B
 
-Without T and 4, and with the weak B rule: ⭐`completenessB`, a sequent in a context of declared
-variables (`ctxOf l₀`, the root world's starting language) valid in every model is provable.  Its
-negation extends to a maximal consistent theory `M₀`; the network grown from `M₀` gives the
-canonical data (`bdata`), whose model satisfies at the root exactly the root's theory
-(`BData.truth`), and the root's theory contains `M₀`.
+With 4 off and strong T off (`ModalSys.NoFourNoTS`: weak T allowed, D and strong D free), and with
+the weak B rule: ⭐`completenessB`, a sequent in a context of declared variables (`ctxOf l₀`, the
+root world's starting language) valid in every model is provable.  Its negation extends to a
+maximal consistent theory `M₀`; the network grown from `M₀` gives the canonical data (`bdata`),
+whose model satisfies at the root exactly the root's theory (`BData.truth`) and is a model proper
+(`BData.indInvariant`), and the root's theory contains `M₀`.
 
-A presented context whose presentation uses `boxIn` or `diaIn` is **not** of this shape: its
-variables are view items, not roots.  Reducing those to this theorem is the remaining step
-(`docs/v12-arrow-canonical.md` §6a).
+A presented context whose presentation uses `boxIn` or `diaIn` is not of this shape: its variables
+are view items, not roots.  `QML_v12m_BRename` and `QML_v12m_BFlat` reduce those to this theorem
+(`completenessB_presented`).
 -/
 
 namespace V12M
@@ -21,7 +22,7 @@ variable [ModalSys]
 
 namespace BArrow
 
-variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoTFour]
+variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoFourNoTS]
 
 /-- ⭐**Completeness for weak B**: in a context of declared variables, a sequent that holds in
     every model, at every world, in every environment, is provable. -/

@@ -49,9 +49,9 @@ theorem rootOnly_ofDecls (ds : List (ℕ × VarType)) : RootOnly (Ctx.ofDecls ds
 omit [ModalSys] in
 theorem rootOnly_ctxOf (l : List VarType) : RootOnly (ctxOf l) := rootOnly_ofDecls _
 
-variable [ModalSys.NoTFour]
+variable [ModalSys.NoFourNoTS]
 
-omit [ModalSys.NoTFour] in
+omit [ModalSys.NoFourNoTS] in
 /-- In a context of declared roots a reachable address is a root followed by projections. -/
 theorem ppath_of_rootOnly {Γ : Ctx} (hΓ : RootOnly Γ) :
     ∀ {v : VarSymb} {T : VarType}, Γ.ref v = some T → PPath v.path ∧ ∃ r, v.rt = .free r
@@ -74,7 +74,7 @@ theorem ppath_of_rootOnly {Γ : Ctx} (hΓ : RootOnly Γ) :
       · obtain ⟨r, hr⟩ := hΓ h
         cases hr
 
-omit [ModalSys.NoTFour] in
+omit [ModalSys.NoFourNoTS] in
 /-- Rerooting a reachable address at a root of the same type keeps it reachable, at its type. -/
 theorem ref_reroot {Γ Δ : Ctx} (hΓ : RootOnly Γ) {z : Root} {R : VarType} :
     ∀ {u : VarSymb} {T : VarType}, Γ.ref u = some T → Γ.ref (.root u.rt) = some R →
@@ -105,7 +105,7 @@ def renS (σ : Signature) (Δ : Ctx) (ν : ℕ → ℕ) : Subst σ Δ :=
 /-- Where it sends annotation indices. -/
 def renIdx (ν : ℕ → ℕ) (a : VarSymb) : VarSymb := a.reroot (imgRoot ν a.rt)
 
-omit [ModalSys.NoTFour] in
+omit [ModalSys.NoFourNoTS] in
 /-- The renaming lands in `Δ` when `Δ` declares every image. -/
 theorem ok_renS {Γ Δ : Ctx} (hΓ : RootOnly Γ) {ν : ℕ → ℕ}
     (hν : ∀ r R, Γ (.root (.free r)) = some R → Δ (.root (.free (ν r))) = some R) :
@@ -115,7 +115,7 @@ theorem ok_renS {Γ Δ : Ctx} (hΓ : RootOnly Γ) {ν : ℕ → ℕ}
   change Δ.ref (.root (.free (ν r))) = some T
   exact hν r T hv
 
-omit [ModalSys.NoTFour] in
+omit [ModalSys.NoFourNoTS] in
 theorem coh_renS {Γ Δ : Ctx} (hΓ : RootOnly Γ) {ν : ℕ → ℕ}
     (hν : ∀ r R, Γ (.root (.free r)) = some R → Δ (.root (.free (ν r))) = some R) :
     Subst.Coh (renIdx ν) Γ (renS σ Δ ν) := by
@@ -127,7 +127,7 @@ theorem coh_renS {Γ Δ : Ctx} (hΓ : RootOnly Γ) {ν : ℕ → ℕ}
   rfl
 
 
-omit [ModalSys.NoTFour] in
+omit [ModalSys.NoFourNoTS] in
 /-- ⭐A renaming and the inverse renaming cancel on formulas of the source. -/
 theorem subst_renS_renS {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots] (hΓ : RootOnly Γ) (hΔ : RootOnly Δ)
     {ν ν' : ℕ → ℕ}
@@ -208,7 +208,7 @@ def invOf : List (ℕ × VarType) → ℕ → ℕ
   | [], r => r
   | (u, _) :: ds, r => if r = ds.length then u else invOf ds r
 
-omit [ModalSys] [ModalSys.NoTFour] in
+omit [ModalSys] [ModalSys.NoFourNoTS] in
 /-- A declared address has a declared name. -/
 theorem mem_of_decl : ∀ (ds : List (ℕ × VarType)) {r : ℕ} {R : VarType},
     Ctx.ofDecls ds (.root (.free r)) = some R → r ∈ ds.map Prod.fst
@@ -220,7 +220,7 @@ theorem mem_of_decl : ∀ (ds : List (ℕ × VarType)) {r : ℕ} {R : VarType},
       · rw [if_neg hr] at h
         exact List.mem_cons_of_mem _ (mem_of_decl ds h)
 
-omit [ModalSys] [ModalSys.NoTFour] in
+omit [ModalSys] [ModalSys.NoFourNoTS] in
 /-- Positions of declared names are positions of the world language. -/
 theorem renOf_lt : ∀ (ds : List (ℕ × VarType)) {r : ℕ} {R : VarType},
     Ctx.ofDecls ds (.root (.free r)) = some R → renOf ds r < ds.length
@@ -235,7 +235,7 @@ theorem renOf_lt : ∀ (ds : List (ℕ × VarType)) {r : ℕ} {R : VarType},
         have := renOf_lt ds h
         omega
 
-omit [ModalSys] [ModalSys.NoTFour] in
+omit [ModalSys] [ModalSys.NoFourNoTS] in
 /-- ⭐A declared name's position carries its type. -/
 theorem ctxOf_renOf : ∀ (ds : List (ℕ × VarType)) {r : ℕ} {R : VarType},
     Ctx.ofDecls ds (.root (.free r)) = some R →
@@ -254,7 +254,7 @@ theorem ctxOf_renOf : ∀ (ds : List (ℕ × VarType)) {r : ℕ} {R : VarType},
         rw [if_neg (by omega : ¬ renOf ds r = ds.length)]
         exact ctxOf_renOf ds h
 
-omit [ModalSys] [ModalSys.NoTFour] in
+omit [ModalSys] [ModalSys.NoFourNoTS] in
 /-- ⭐The position of a declared name carries that name back. -/
 theorem invOf_renOf : ∀ (ds : List (ℕ × VarType)) {r : ℕ} {R : VarType},
     Ctx.ofDecls ds (.root (.free r)) = some R → invOf ds (renOf ds r) = r
@@ -270,7 +270,7 @@ theorem invOf_renOf : ∀ (ds : List (ℕ × VarType)) {r : ℕ} {R : VarType},
         rw [if_neg (by omega : ¬ renOf ds r = ds.length)]
         exact invOf_renOf ds h
 
-omit [ModalSys] [ModalSys.NoTFour] in
+omit [ModalSys] [ModalSys.NoFourNoTS] in
 /-- ⭐With distinct names, a position's name carries its type, so the renaming is onto. -/
 theorem ofDecls_invOf : ∀ (ds : List (ℕ × VarType)), (ds.map Prod.fst).Nodup →
     ∀ {r : ℕ} {R : VarType}, ctxOf (ds.map Prod.snd) (.root (.free r)) = some R →

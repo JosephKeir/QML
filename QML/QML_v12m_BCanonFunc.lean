@@ -171,28 +171,6 @@ theorem definable_rawEval {A C : VarType} (g : GFunc σ A C) {s : B.W} {o : B.RD
 
 end BData
 
-namespace BData
-
-section NoTFour
-
-variable [ModalSys.NoTFour] {B : BData σ}
-
-theorem noT : ModalSys.T = true → False := fun h => by
-  rw [ModalSys.NoTFour.noT] at h
-  cases h
-
-/-- Without T every arrow is one of the network's. -/
-theorem R_of_RT {s t : B.W} (h : B.RT s t) : B.R s t := h.resolve_right fun h' => noT h'.1
-
-/-- Without T an extent has only the network's arrows. -/
-theorem kd_of_extent {s : B.W} {x : VarSymb} {a : B.Acc s} (h : a ∈ B.extent s x) :
-    ∃ X, B.kd s a.1 = some (x, X) :=
-  h.resolve_right fun h' => noT h'.2.T
-
-end NoTFour
-
-end BData
-
 end BArrow
 
 end V12M

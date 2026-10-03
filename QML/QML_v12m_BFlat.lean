@@ -76,14 +76,14 @@ def Flat.ofPair {Γ Δ : Ctx} [Γ.Presented] [Δ.NoSlots] (hnp : Γ.NoProjLast)
   sat e φ := Model.sat_subst θ hθ hc Ctx.NoSlots.slots Ctx.NoSlots.slots hnp e φ
   bot := rfl
 
-variable [ModalSys.NoTFour]
+variable [ModalSys.NoFourNoTS]
 
 /-! ## Pairs of substitutions, and pushing them under a view -/
 
 /-- A substitution similar to the identity stays so under `□`. -/
 theorem sim_box_of {Γ : Ctx} {θ : Subst σ Γ} (h : Subst.Sim Γ θ (Subst.idS σ Γ)) :
     Subst.Sim Γ.boxIn θ.box (Subst.idS σ Γ.boxIn) := by
-  have hk := ModalSys.NoTFour.keepOnly
+  have hk := ModalSys.NoFour.keepOnly
   refine Subst.sim_of ?_
   intro v T _ hv
   match v with
@@ -96,7 +96,7 @@ theorem sim_box_of {Γ : Ctx} {θ : Subst σ Γ} (h : Subst.Sim Γ θ (Subst.idS
       exact hs
   | .step u .keep =>
       obtain ⟨hF, _⟩ := Ctx.boxIn_keep hv
-      exact absurd (ModalSys.NoTFour.noFour.symm.trans hF) (by simp)
+      exact absurd (ModalSys.NoFour.noFour.symm.trans hF) (by simp)
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -131,7 +131,7 @@ structure Pair (σ : Signature) (Γ Δ : Ctx) where
 
 variable {Γ Δ : Ctx}
 
-omit [ModalSys.NoTFour] in
+omit [ModalSys.NoFourNoTS] in
 /-- The two substitutions of a pair cancel. -/
 theorem Pair.cancel [Γ.NoSlots] [Δ.NoSlots] (P : Pair σ Γ Δ) (φ : WFF σ Γ 0) :
     WFF.subst P.ι' P.θ' P.hθ' P.hc' Ctx.NoSlots.slots Ctx.NoSlots.slots
@@ -165,7 +165,7 @@ def Pair.box (P : Pair σ Γ Δ) : Pair σ Γ.boxIn Δ.boxIn where
 
 /-! ## Extending a pair by a declared root -/
 
-omit [ModalSys.NoTFour] in
+omit [ModalSys.NoFourNoTS] in
 /-- Substitutions agreeing on the addresses of a root agree at them. -/
 theorem at_eq_of_agree {Δ : Ctx} {θ₁ θ₂ : Subst σ Δ} {p : Root → Prop}
     (h : ∀ w : VarSymb, p w.rt → θ₁ w = θ₂ w) :
@@ -177,7 +177,7 @@ theorem at_eq_of_agree {Δ : Ctx} {θ₁ θ₂ : Subst σ Δ} {p : Root → Prop
       · rw [at_eq_of_agree h w hw]
       · exact h _ hw
 
-omit [ModalSys.NoTFour] in
+omit [ModalSys.NoFourNoTS] in
 /-- A reachable address is not rooted at a fresh name. -/
 theorem rt_ne_of_fresh {Δ : Ctx} {r : Root} (hfr : Δ.RootFresh r) :
     ∀ {w : VarSymb} {T : VarType}, Δ.ref w = some T → w.rt ≠ r
@@ -204,7 +204,7 @@ def extS {Δ Δ' : Ctx} (θ : Subst σ Δ) (hle : Δ.Le Δ') (u v : ℕ) : Subst
 def extIdx (ι : VarSymb → VarSymb) (u v : ℕ) (a : VarSymb) : VarSymb :=
   if a.rt = .free u then a.reroot (.free v) else ι a
 
-omit [ModalSys.NoTFour] in
+omit [ModalSys.NoFourNoTS] in
 theorem ok_extS {Γ Δ Δ' : Ctx} {θ : Subst σ Δ} (hθ : Subst.Ok Γ θ) (hle : Δ.Le Δ')
     {u v : ℕ} {T : VarType} (hfr : Γ.RootFresh (.free u))
     (hv : Δ'.ref (.root (.free v)) = some T) :
@@ -224,7 +224,7 @@ theorem ok_extS {Γ Δ Δ' : Ctx} {θ : Subst σ Δ} (hθ : Subst.Ok Γ θ) (hle
     rw [if_neg hrt]
     exact SubE.okRef_mono hle (hθ w U hlp hw)
 
-omit [ModalSys.NoTFour] in
+omit [ModalSys.NoFourNoTS] in
 theorem coh_extS {ι : VarSymb → VarSymb} {Γ Δ Δ' : Ctx} {θ : Subst σ Δ} (hθ : Subst.Ok Γ θ)
     (hc : Subst.Coh ι Γ θ) (hle : Δ.Le Δ') {u v : ℕ} {T : VarType}
     (hfr : Γ.RootFresh (.free u)) (hv : Δ'.ref (.root (.free v)) = some T) :
@@ -250,7 +250,7 @@ theorem coh_extS {ι : VarSymb → VarSymb} {Γ Δ Δ' : Ctx} {θ : Subst σ Δ}
     exact hc w U ((Ctx.ref_nonproj Γ hlp).trans hw) p
 
 
-omit [ModalSys.NoTFour] in
+omit [ModalSys.NoFourNoTS] in
 /-- The extension of a substitution similar to the identity is similar to the identity. -/
 theorem simId_extS {Γ : Ctx} {θ : Subst σ Γ} {u : ℕ} {T : VarType} (hfr : Γ.RootFresh (.free u))
     (h : Subst.Sim Γ θ (Subst.idS σ Γ)) :
@@ -273,20 +273,20 @@ theorem simId_extS {Γ : Ctx} {θ : Subst σ Γ} {u : ℕ} {T : VarType} (hfr : 
     exact hs.mono (Ctx.le_insert hfr.root T)
 
 
-omit [ModalSys.NoTFour] in
+omit [ModalSys.NoFourNoTS] in
 theorem ref_insert_root (Γ : Ctx) (r : Root) (T : VarType) :
     (Γ.insert r T).ref (.root r) = some T := by
   change (Γ.insert r T) (.root r) = some T
   simp [Ctx.insert]
 
-omit [ModalSys.NoTFour] in
+omit [ModalSys.NoFourNoTS] in
 /-- Away from the new root, the extension is the old substitution. -/
 theorem at_extS_of_ne {Δ Δ' : Ctx} {θ : Subst σ Δ} {hle : Δ.Le Δ'} {u v : ℕ} {y : VarSymb}
     (hy : y.rt ≠ .free u) : (extS θ hle u v).at y = (θ.at y).mono hle := by
   rw [at_eq_of_agree (p := fun r => r ≠ Root.free u) (θ₂ := θ.mono hle)
     (fun z hz => by simp only [extS]; rw [if_neg hz]) y hy, Subst.at_mono]
 
-omit [ModalSys.NoTFour] in
+omit [ModalSys.NoFourNoTS] in
 /-- ⭐Going out and back along extended substitutions is the extended composite. -/
 theorem sim_extS {Γ Δ : Ctx} {ι' : VarSymb → VarSymb} {θ : Subst σ Δ} {θ' : Subst σ Γ}
     {θ₃ : Subst σ Γ} (hθ : Subst.Ok Γ θ) (hθ' : Subst.Ok Δ θ') (hc' : Subst.Coh ι' Δ θ')
@@ -479,18 +479,18 @@ theorem sim_dia_of {Γ : Ctx} {θ : Subst σ Γ} {x : VarSymb} {X : VarType}
       have hs := ((h u _ hu).unbox).mono (Ctx.le_boxIn_diaIn Γ x)
       rw [Subst.at_idS] at hs
       change SubE.Sim T ((θ.at u).unbox.mono (Ctx.le_boxIn_diaIn Γ x)) (.ren (.step u .box))
-      rw [← VarSymb.inner_box ModalSys.NoTFour.keepOnly]
+      rw [← VarSymb.inner_box ModalSys.NoFour.keepOnly]
       exact hs
   | .step u .keep =>
       obtain ⟨hF, _⟩ := Ctx.boxIn_keep (Γ := Γ) hv
-      exact absurd (ModalSys.NoTFour.noFour.symm.trans hF) (by simp)
+      exact absurd (ModalSys.NoFour.noFour.symm.trans hF) (by simp)
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
   | .step _ .here => cases hv
 
 section
-omit [ModalSys.NoTFour] [Countable σ.FuncSyms] [Countable σ.RelSyms]
+omit [ModalSys.NoFourNoTS] [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
 variable (P : Pair σ Γ Δ) {x : VarSymb} {X : VarType}
 
@@ -626,7 +626,7 @@ def Chain.diaIdx : {Γ Δ : Ctx} → Chain σ Γ Δ → VarSymb → VarSymb
   | _, _, .nil _, x => x
   | _, _, .cons _ P C, x => C.diaIdx (P.ι x)
 
-omit [ModalSys.NoTFour] [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [ModalSys.NoFourNoTS] [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 /-- A chain sends a witness to a witness. -/
 theorem Chain.witness : {Γ Δ : Ctx} → (C : Chain σ Γ Δ) → {x : VarSymb} → {X : VarType} →
     Γ.ref x = some (.VTypeDia X) → ∃ Y, Δ.ref (C.diaIdx x) = some (.VTypeDia Y)

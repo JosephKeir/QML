@@ -1719,8 +1719,8 @@ content of a possible object.
     and everything after it (completeness, strong completeness, compactness) assume
     `[ModalSys.NoB]` (the pattern `ModalSys.NoTStrong` used before strong T was complete).
   - *Completeness* comes from the arrow-based canonical model instead
-    (`docs/v12-arrow-canonical.md` §6a), so far with `[ModalSys.NoTFour]` (T and 4 off; D and
-    strong D may be on) and for contexts of declared variables: a world language `ctxOf l₀`, or
+    (`docs/v12-arrow-canonical.md` §6a), so far with `[ModalSys.NoFourNoTS]` (4 off, strong T
+    off; weak T, D and strong D may be on) and for contexts of declared variables: a world language `ctxOf l₀`, or
     ⭐**every presented context** whose presentation is fresh (`completenessB_presented`,
     `QML_v12m_BFlat`), via chains of atomic pairs; the special cases are also stated directly
     (`completenessB_ofDecls`, `completenessB_boxIn`, `completenessB_diaIn`,
@@ -2077,7 +2077,8 @@ content type.
 * weak, `◇`-side: `B_dia`, `◇□ψ ⊢ ψ` for closed ψ ✓; `□`-side `B_box`, `ψ ⊢ □◇ψ` ✓,
   interderivable ✓.
 * metatheory: complete for every presented context, with strong completeness and compactness, under
-  `NoTFour` ✓ (`BArrow.completenessB_presented`).  **B with T and/or 4 is open.**
+  `NoFourNoTS` (4 off, strong T off — so weak T included) ✓ (`BArrow.completenessB_presented`,
+  2026-10-03).  **B with strong T, and B with 4, are open.**
 * strong B: **open**, and the decision is taken — see below.
 
 **5** — nothing: no flag, no rules, no frame condition, no canonical model.  The arrow canonical

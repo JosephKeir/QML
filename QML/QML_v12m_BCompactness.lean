@@ -4,6 +4,9 @@ import QML.QML_v12m_Compactness
 /-!
 # QML v12m — strong completeness and compactness for weak B
 
+Under `ModalSys.NoFourNoTS` (4 off, strong T off; weak T, D and strong D allowed), as
+`completenessB`.
+
 * ⭐`model_existenceB`: every consistent set of formulas in a presented context is satisfiable.  At a
   world language this is the canonical model over a maximal consistent extension of the set, at its
   root; a presentation is reduced to that case by its flattening, along which consistency and
@@ -21,9 +24,9 @@ variable [ModalSys]
 
 namespace BArrow
 
-variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoTFour]
+variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoFourNoTS]
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoTFour] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoFourNoTS] in
 theorem setConsistent_iff {Γ : Ctx} {S : Set (WFF σ Γ 0)} :
     WFF.SetConsistent S ↔ Theory.Consistent S :=
   ⟨fun h ⟨L, hL, p⟩ => h L hL p, fun h L hL p => h ⟨L, hL, p⟩⟩
@@ -49,7 +52,7 @@ theorem model_existenceB_ctxOf (hB : ModalSys.B = true) {l₀ : List VarType}
 
 /-! ## Along a flattening -/
 
-omit [ModalSys] [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoTFour] in
+omit [ModalSys] [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoFourNoTS] in
 /-- A list of images has a list of preimages. -/
 theorem list_preimage {α β : Type} {f : α → β} {P : Set α} :
     ∀ L : List β, (∀ y ∈ L, ∃ x ∈ P, y = f x) →
@@ -63,7 +66,7 @@ theorem list_preimage {α β : Type} {f : α → β} {P : Set α} :
       · exact hx
       · exact hM z hz
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoTFour] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoFourNoTS] in
 /-- Consistency travels along a translation. -/
 theorem Flat.setConsistent {Γ Δ : Ctx} (F : Flat σ Γ Δ) {S : Set (WFF σ Γ 0)}
     (hS : WFF.SetConsistent S) : WFF.SetConsistent (F.tr '' S) := by
@@ -74,7 +77,7 @@ theorem Flat.setConsistent {Γ Δ : Ctx} (F : Flat σ Γ Δ) {S : Set (WFF σ Γ
   refine hS M hM (F.prov ?_)
   rwa [F.bot]
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoTFour] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoFourNoTS] in
 /-- Satisfiability travels back along a translation. -/
 theorem Flat.setSatisfiable {Γ Δ : Ctx} (F : Flat σ Γ Δ) {S : Set (WFF σ Γ 0)}
     (h : WFF.SetSatisfiable (F.tr '' S)) : WFF.SetSatisfiable S := by

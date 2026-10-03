@@ -26,34 +26,19 @@ too, so a `□A` component's box contents are `A × bc A` and `itemAt` encodes t
 
 namespace V12M
 
-/-- The flags of the arrow construction for B: neither T nor 4, so a view shows only `u.box` (and
-    `x.dia`), and a reachable address of a context of variables is a projection path. -/
-class ModalSys.NoTFour [ModalSys] : Prop where
-  noT : ModalSys.T = false
-  noFour : ModalSys.Four = false
-
-/-- The flag the arrow construction needs once T is admitted (`docs/v12-arrow-canonical.md` §9):
-    4 off, so a view shows `u.box` (and `x.dia`) and never `keep`.  Under T a reachable address
-    may also pass through the projection `here`, which `VarType.bc` and the arrows account for. -/
+/-- The flag the arrow construction needs (`docs/v12-arrow-canonical.md` §9): 4 off, so a view
+    shows `u.box` (and `x.dia`) and never `keep`.  Under T a reachable address may also pass
+    through the projection `here`, which `VarType.bc` and the arrows account for. -/
 class ModalSys.NoFour [ModalSys] : Prop where
   noFour : ModalSys.Four = false
 
-instance ModalSys.NoTFour.toNoFour [ModalSys] [h : ModalSys.NoTFour] : ModalSys.NoFour :=
-  ⟨h.noFour⟩
-
-/-- The flags the network's canonical `Model` is built for so far: 4 off, and strong T off whenever
-    T is on — strong T's term query in the network is still to come
+/-- The flags the network's canonical `Model` and B's completeness are stated for: 4 off, and
+    strong T off whenever T is on — strong T's term query in the network is still to come
     (`docs/v12-roadmap.md`, milestone 1 step 6). -/
 class ModalSys.NoFourNoTS [ModalSys] : Prop extends ModalSys.NoFour where
   noTS : ModalSys.T = true → ModalSys.TStrong = false
 
-instance ModalSys.NoTFour.toNoFourNoTS [ModalSys] [h : ModalSys.NoTFour] : ModalSys.NoFourNoTS :=
-  { noFour := h.noFour, noTS := fun hT => by rw [h.noT] at hT; cases hT }
-
 variable [ModalSys]
-
-theorem ModalSys.NoTFour.keepOnly [ModalSys.NoTFour] : ModalSys.keepOnly = false := by
-  simp [ModalSys.keepOnly, ModalSys.NoTFour.noT]
 
 theorem ModalSys.NoFour.keepOnly [ModalSys.NoFour] : ModalSys.keepOnly = false := by
   simp [ModalSys.keepOnly, ModalSys.NoFour.noFour]

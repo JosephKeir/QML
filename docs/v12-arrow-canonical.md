@@ -743,3 +743,13 @@ sorries.
 
 **Models proper** (`QML_v12m_BInd`): `rep`, `repSubst`, `substEnv_repSubst`, ⭐⭐`indInvariant`,
 as in the tree.  `BCompleteness` and `BCompactness` use it in place of `indInvariant_of_eq`.
+
+### 9.11 ✅ Step 5: the statements under `NoFourNoTS` *(2026-10-03)*
+
+`BCompleteness`, `BRename`, `BFlat` and `BCompactness` now assume `ModalSys.NoFourNoTS` (4 off,
+strong T off), so `completenessB_presented`, `strong_completenessB` and `compactnessB` hold for weak
+B with weak T, D and strong D in any combination.  Nothing but the flag class had to change.
+Flattening already took T since step 1 (`bcB`, `at_item_of_tupB … ModalSys.T`), and `sim_box_of`
+needs only `keepOnly = false` (`ModalSys.NoFour.keepOnly`).  `ModalSys.NoTFour` and its helpers
+(`noT`, `R_of_RT`, `kd_of_extent`) had no uses left and are deleted.  What remains of milestone 1
+is strong T (step 6: the term query in the network, giving `retW` and `posRet_exists`).
