@@ -4212,3 +4212,109 @@ any query equal to the step's so that the equation can be `subst`ed.
 
 **Where T stands** (§9 updated): every cell sound and complete at every content type.  Left:
 §10.18 (narrow `here_beta`, tidying only) and KTB (the B canonical model lacks the T machinery).
+
+## 11. Strong B: the `Back` family — design pass *(2026-10-03, paper only)*
+
+Roadmap milestone 2.  This settles the shape of strong B on top of §3 B ("The relational form",
+"Witnessed variants") and the decision of §9 (relational route), with what `Here` taught (§10).
+Nothing here is implemented yet.
+
+### 11.1 Four predicates, one definition
+
+A round trip `w → v → w` has two legs.  Each leg ranges over all arrows or over a named possible
+object's extent; the witnessing fixes the carrier and where the round-trip value sits:
+
+| row | out leg | back leg | carrier | value at |
+|---|---|---|---|---|
+| 1 | all arrows (`□`) | all arrows home | `□□A` | `u.box.box` |
+| 2 | `y`'s extent, `y : ◇□A` | all arrows home | `◇□A` | `y.dia.box` |
+| 3 | all arrows | `c(a₁)`'s extent, `c : □◇A` | `□◇A` | `c.box.dia` |
+| 4 | `y`'s extent | `y(a₁)`'s extent, `y : ◇◇A` | `◇◇A` | `y.dia.dia` |
+
+**One definition, parameterised by the legs.**  For a carrier object `c` and `t : A` at `w`, with
+`Out` the out leg's arrows and `Home(a₁)` the back leg's arrows from `a₁.1` that end at `w`:
+
+```
+Back c t  :=  (∃ a₁ ∈ Out)  ∧  ∀ a₁ ∈ Out, ∃ a₂ ∈ Home(a₁),  Ind (c(a₁)(a₂)) t
+```
+
+* **∀ out, ∃ back** (§3 B, forced by soundness of elimination and introduction together).
+* **The out leg is nonempty** — *decision 2026-10-03 (user)*: `Back` asserts that its round trip
+  exists, as `Here` asserts that the identity arrow is in the extent.  So a `Back` atom is never
+  vacuously true, and functionality (below) needs no premise; the condition moves to surjectivity.
+* **Up to `Ind`**, as `Here`: the canonical model will only co-name the returned value with `t`.
+* **Not an evaluation map.**  `u(a₁)(a₂)` depends on the intermediate world in general; `Back u t`
+  holds only for carriers whose round trip is the same, `t`, from every out arrow, and for no `t`
+  otherwise.  The dependence on the intermediate world is what the witnessed out leg (rows 2, 4)
+  localises: a named extent stands in for "the chosen world", which the language cannot name.
+
+Row 1 is §3 B's `Back`; row 3 is its `BackW`.  B's two object-level maps (§2c axis 1) sit at
+different rows: `◇□A → A` at row 2, `A → □◇A` at row 3 (whose choice-free existential form is
+§3 B's (ii)).
+
+### 11.2 Rules, stated once for the family
+
+Hole formulas are **closed apart from the hole**: `ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1`,
+weakened wherever it is read.  The round trip carries no addresses — there is no return collapse
+(§3 B) — so the two ends meet only through the hole, as weak B's closedness requires.  Several
+parameters are packed into the hole with a tuple: joint round trips go through pairing.
+
+Subjects are **terms, not addresses** (§10.11): every term of type `□□A` is
+`boxtm (boxtm bd)`, of `◇□A` `diatm y (boxtm bd)`, and so on, so the rules are stated at the body
+`bd` and a substitution's image of a rule instance is an instance.  Below, `ψ⟨bd⟩` is `ψ` read two
+views in with the body in its hole, `ψ(t)` read at the origin; `Out◇`/`Out□` and `Home□`/`Home◇`
+are the leg's modalities (`◇`/`□`, or `◇_y`/`□_y`, `◇_{c.box}`/`□_{c.box}`).
+
+| rule | statement | analogue | soundness *(paper)* |
+|---|---|---|---|
+| `back_elim` | `Back c t`, `Out◇ Home□ ψ⟨bd⟩` ⊢ `ψ(t)` | `here_elim` | the premise picks `a₁ ∈ Out`; `Back` gives `a₂ ∈ Home(a₁)` returning a value `Ind` to `t`; `IndInvariant` |
+| `back_intro` | `Back c t`, `ψ(t)` ⊢ `Out□ Home◇ ψ⟨bd⟩` | `here_intro` | for each `a₁ ∈ Out` the returning `a₂` witnesses `Home◇`; `IndInvariant` |
+| `back_ne` | `Back c t` ⊢ `Out◇ ⊤` | (`here_name`'s premise) | the existence clause |
+| `back_beta` | `Back c t` ⊢ `Back (c mapped by s) (s(t))`, `s` a hole term closed apart from its hole | `here_beta` | as `sat_here_beta`: `IndInvariant` at a `Back` atom with a slot |
+| `back_fun` | `Back c t`, `Back c t'`, `φ(t)` ⊢ `φ(t')` (substitutional) | `here_subst` | **relational return arrows**: the arrow `a₁.1 → w` is unique, so both values are `Ind` to one object; `IndInvariant` twice |
+| `back_eq` | `Back c t`, `t = t'` ⊢ `Back c t'` (one annotation, `eqRec`) | `here_eq` | equality in the model |
+| `B_strong` (row `r`) | `Out◇ ⊤` and, for a fresh carrier variable `c`, `Back (η c) t ⊢ φ`, give `⊢ φ` | `T_dia` | the frame condition below |
+
+`B_strong` in elimination form makes `Out◇ ⊤ ⊢ ∃c. Back c t` a theorem, so the network's Henkin
+witnessing supplies the atoms with no new construction step, exactly as `Proof.retEx` did for strong
+T (`v12-arrow-canonical.md` §9.12).
+
+### 11.3 Semantics
+
+* **No new model data** for the predicate: `Back` is defined from the frame, `necEval`/`posEval`
+  and `Ind`.
+* **Surjectivity**, one existential field per row, gated by its flag and stated after `Ind` (as
+  `posRet_exists`): every object at `w`, where the out leg is nonempty, is returned by some carrier
+  object.
+* **`back_fun` needs unique return arrows.**  `Frame.R : W → W → Sort v` allows several arrows
+  `v → w`, along which one carrier can return different values; then `Back c t` and `Back c t'`
+  both hold.  Option (a) of the discussion, chosen with the user: require `Subsingleton (R v w)`
+  where strong B is on — relational frames, the intended semantics of
+  `v12-arrow-canonical.md` §4 — so the canonical network can stay relational.  (The alternative,
+  non-functional `Back` over arrow frames with several reverse arrows per network edge, is recorded
+  and not pursued.)
+* Under T or D, `Out◇ ⊤` is provable for the unwitnessed out leg, so its premise disappears.
+
+### 11.4 Open, to settle on paper before building
+
+1. **The negative atom in the canonical model — the main risk.**  The truth lemma's `Back` case
+   needs, besides "an atom makes every child's way home return a value co-named with `t`" (a
+   per-child obligation on the reverse translations), the converse: if `¬Back c t ∈ M w` and the out
+   leg is nonempty, then **some child's** way home returns a value *not* related to `t`.  Nothing in
+   §11.2 produces such a child; it is a new existence obligation, like `ex` for `□`, but stated about
+   the reverse edge, whose translation the network chooses.  Whether it is schedulable — and whether
+   a rule is missing that would make it so — decides whether this family is complete.  §3 B already
+   names this ("whether its per-child obligation is schedulable … is the thing to settle"); row 3,
+   whose back leg is a named witness arrow, is the natural first test.
+2. **Which surjectivity axioms imply which.**  Witnessing the out leg weakens the predicate,
+   witnessing the back leg strengthens it, but the carriers differ, so implications between the
+   axioms go through `strength`.  Decide the flags (one per row, or bundles) once known.
+3. **The frame restriction.**  How `Subsingleton (R v w)` enters `Frame` (a field gated by the
+   flags, or a separate predicate on models) and that soundness of everything else is untouched.
+4. **Interaction with T and 4.**  Under T the own arrow is one of the out arrows and of the arrows
+   home.  With 4, `Back` asks one homeward route per child to agree, not all round trips (§4's
+   coherence): strong B does **not** obviously yield 5's object-level component, contrary to a
+   first guess (2026-10-03).
+
+**Proposed order**: (1) on paper for row 3, then for the family; then the predicate, rules and
+soundness for all four rows at once; then the canonical model.

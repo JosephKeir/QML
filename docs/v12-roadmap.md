@@ -93,6 +93,12 @@ The design is decided: **relational**, a predicate `Back u t` — "some round tr
 Start by writing the frame condition and the rules, then check them against the model's β-laws
 before building on them (the lesson of §10.10).
 
+**Design pass done (2026-10-03, `v12-modal-extensions.md` §11):** all four witnessed/unwitnessed
+rows as one leg-parameterised predicate; `Back` asserts its out leg is nonempty (so functionality is
+unconditional and surjectivity takes `◇⊤`); unique return arrows (relational frames) for
+functionality.  **Next: §11.4 item 1** — on paper, whether a negative `Back` atom can be given a
+child in the network (row 3 first).
+
 ## Milestone 3 — B with 4, and S5 (5 itself)
 
 The open question is **round-trip coherence** (`v12-arrow-canonical.md` §4, §8 q. 1): with 4 and B,
