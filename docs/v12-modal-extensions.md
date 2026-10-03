@@ -4638,3 +4638,113 @@ is needed by the construction or only by the truth lemma.
 **Rule set for strong B, as of now:** `Back` (four rows) with `back_elim`, `back_intro`, `back_ne`,
 `back_beta`, `back_eq`, `back_fun`, `back_joint` (or `back_pair` for rows 1–2), `back_here` (T),
 `back_def`, surjectivity `B_strong` per row, and `B_ret`.  Frames: unique ways home.
+
+### 11.11 The unchecked items of §11.10 *(2026-10-03, paper)*
+
+**(a) The home reading, item by item.**  Only what a child's `□` view sees can come home, and only
+under a `□` (the way home is one of the child's successors).  So the positive class is built from
+atoms `□ψ` (and, at a witness, `□_{c.box} ψ`), and `ψ`'s free items are contents of the child's
+`□`-objects (or, for rows 3–4, of its possible objects along their witness arrows).  By kind:
+* *Images of `w`'s carriers with a constant round trip*, `u.box.box` for `u : □□C` with `Back u t`:
+  `↦ t` (row 1).  If `C` is itself modal, `ψ`'s deeper items `u.box.box.box…` follow by `unbox` of
+  the substituted term, so the reading is a substitution of terms of `w` and nothing more.
+* *Images of carriers without a constant round trip*: treated as born items —
+  `◇Θ(u.box) ⊢ ◇∃d. Θ(d)` by `∃`-introduction inside `◇`, then `B_ret`.
+* *Born `□`-objects* (`∃d`): `B_ret`.
+* *Quantifiers over the child's `□`-objects* (`∀z:□C.(ρ(z) → …)`): over `w`'s carriers with `Back`,
+  `ρ` read under `□` at `w`; sound because carriers' images are among the child's `□`-objects.
+* *Contents of possible objects* (rows 3–4): `□_{c.box} χ(c.box.dia) ↦ χ(t)` under row-3
+  `Back c t`; at a witnessed out leg (`◇_x Θ`, rows 2 and 4), `x.dia.box ↦ t` under row-2
+  `Back x t`.  **New requirement:** `B_ret` needs a **witnessed variant** — premise `◇_x ∃d. Φ(d)`,
+  hypotheses with `◇_x ∃d. (Φ(d) ∧ ◇χ(…))` — so that born items under a witnessed out leg come home
+  too.  Best stated leg-parameterised, like `Back`.
+* *Everything else is invisible or not in the class*: base objects of the child (`u.box : C` for base
+  `C`, `x.dia` of non-`□` type) are not under a `□` and have no home value; `w`'s own `◇`-items are not
+  visible in `□` views; a child-level `◇` (not `□`) says nothing about home and is excluded by
+  positivity, which lives only in the construction's invariant, never in a rule.
+
+**(b) The own arrow under T — ✓.**  The own arrow is one of the out arrows, and its way home is the
+identity (relationally the unique arrow `w → w`).
+* Soundness of `B_ret` is unchanged: if the premise is witnessed by `w` itself, `y := d₀` read at the
+  identity, and every `Back` returns along the identity.
+* In the construction the own arrow is not an edge; the invariant's case for it is "positive `Θ`
+  true at `w` as its own successor gives `Θ↓`", which is the collapse — `T_box` for `□ψ ↦ ψ`,
+  `u.box ↦ u.here` — plus **`back_here`** (`Back u t` makes `u.here.here` interchangeable with `t`).
+  Both are rules; nothing new is needed.
+
+**(c) `◇`-typed contents — open; restrict first.**  Positive atoms are fine at every type (`Ind`,
+`IndInvariant`, as for `Here`).  The **negative** atom is the problem: a carrier `u` with no constant
+round trip needs a child whose return is **not related** (`DTerm.Rel`) to a given `t`.  At a
+`◇`-free type "not related" is one formula (`z ≠ t`), so a finite-piece argument works and its failure
+is exactly `back_def`'s premise.  At a `◇`-typed type it is "some slot formula separates them" — an
+infinitary disjunction, and no finitary `Back`-introduction is known that replaces `back_def`.
+**Plan:** state `Back`'s content type `◇`-free (nesting `◇`s inside, per the standing lesson), as
+`T_dia` was until §10.41; revisit with the `Ind` technique that lifted T's restriction.
+
+**(d) `back_fun` — needed, and derivable from `back_joint`.**
+* *Needed by the truth lemma* (and by the theory's coherence): with commit at birth every child
+  returns `t₀` (the `exW` root of `∃t. Back u t`), so `Back u t` is true exactly when `t ~ t₀`; the
+  direction "`Back u t ∈ M` ⇒ `t ~ t₀`" is functionality.  Without it a theory could hold `Back u t`
+  and `Back u t₀` for unrelated `t`, `t₀`, which no relational model satisfies.
+* *Derivable:* `back_joint` on `Back u t`, `Back u t₀` (the pair `⟨u, u⟩`) with the hole formula
+  `φ(z₁) ↔ φ(z₂)`, after packing `φ`'s parameters into the hole through their own carriers
+  (surjectivity), gives `φ(t) ↔ φ(t₀)`; at a `◇`-free type `z₁ = z₂` already gives `t = t₀`.  So
+  `back_fun` can be a derived rule once `back_joint` is in place (under strong B, which supplies the
+  parameters' carriers).
+
+**Rule set after this pass:** `Back` (four rows, `◇`-free contents) with `back_elim`, `back_intro`,
+`back_ne`, `back_beta`, `back_eq`, `back_joint`, `back_here` (T), `back_def`, `B_strong` per row,
+and `B_ret` (leg-parameterised: plain and witnessed out leg).  `back_fun` derived.  Frames: unique
+ways home.
+
+**What remains before Lean:** the leg-parameterised `B_ret` written out with its soundness; the
+export lemma's induction stated precisely over the positive class (the construction's invariant);
+and a decision on how many rows to build first (rows 1–2 still need neither multi-labelled edges nor
+row-3 `Back`).
+
+### 11.12 ⭐Plan for `◇`-typed contents: a finer canonical `Ind`, and shapes under strong B *(2026-10-03, user)*
+
+Settles how §11.11 (c) will be lifted; the first build stays `◇`-free.
+
+**Why "build every consistent world" is not enough on its own.**  For a carrier `u` with no constant
+round trip, the network does build a child whose return is separated from `t` whenever some slot
+formula separates them (this is `back_def`'s compactness argument, phrased as "every consistent child
+gets built").  What remains is the case where **no formula separates** the returns from `t` while
+the theory denies `Back u t`.  Such a theory is satisfiable — models proper need only
+`Ind ⊆ interchangeability`, so distinct, formula-indistinguishable, non-`Ind` returns are allowed —
+but the canonical model with `Ind := DTerm.Rel` (all-formula interchangeability) identifies them and
+cannot satisfy `¬Back u t`.  At `◇`-free types this cannot happen (`=` is a formula; `back_def`).
+
+**Decision 1: canonical `Ind` generated by the atoms.**  Replace `Ind := DTerm.Rel` by the
+equivalence **generated by the atoms**: co-naming through `Here` (`rel_of_coname`) and co-returning
+through `Back` (two values returned by one carrier).
+* Still `IndInvariant`: each generating atom implies interchangeability (`here_subst`, the derived
+  `back_fun`), so the generated `Ind` is contained in `Rel`.
+* T's proofs survive (on paper): `here_truth` and `posRet_exists_canon` use `Ind` only for co-named
+  pairs; `indInvariant` needs only `Ind ⊆ Rel`.
+* The negative `Back` atom becomes automatic: a carrier with no `Back` value has fresh return roots at
+  its children, related to `t` by no atom, so not `Ind` to it.
+
+**Decision 2: shapes gated by `T ∨ strong B`, not by T.**  Possible objects carry their shapes
+(§10.27) whenever T **or** strong B is on.
+* *It removes the coincidences.*  Without shapes, two fresh return roots can denote one possible
+  object (same extent, same sections — e.g. both with empty extent), and equality then forces `Back`,
+  which would need a `back_def` for formula-pinned possible objects.  A root possibility's shape
+  records its root, so distinct roots are distinct objects, as under T.
+* *It is needed anyway.*  The truth lemma's `Back` case at `◇`-contents turns "the return is `Ind` to
+  `t`" into equal denotations, and from there into `eqRec` at one annotation — the step `Here` took
+  with "tags determine annotations" (`ann_eq_of_rden`), which needs the tags.  Shapes are justified by
+  the `◇`-content relations, `Here` under T and `Back` under strong B, not by T as such.
+* *Cost:* every lemma taking `hT : T = true` only to reach the tags (`posFull`, `domShape`,
+  `envShape`, `termShp`, `rawShape`, both canonical shape layers) takes the new condition instead —
+  mechanical but wide.  K's and weak systems' models are unchanged.
+* *The leaf calculus without T.*  The network decoder used the own arrow (roots, cut position)
+  together with one network arrow (§9.10).  Without T it must use network arrows alone: **typed
+  injectivity** of `arrowIdx` (without T it is a root renaming dropping the box; the label's type
+  fixes where the box was), **injective images** (`imgInj`, avoided under T; expected by construction,
+  commitments going to fresh roots), and a network successor — absent only at dead ends, where every
+  `Back` atom is false and nothing needs decoding.
+
+**Order.**  First build: `◇`-free contents, shapes unchanged.  Then, to lift the restriction:
+regate shapes, refine canonical `Ind` (T track and network), the T-free decoder, and `Back` at all
+content types.
