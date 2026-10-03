@@ -140,13 +140,27 @@ style of milestone 1, each ending green and committed:
    `Back x s, ◇_x Θ(x.dia) ⊢ ◇[d ↦ s] Θ(d)` (step 4).  `sat` is in already (`Model.Backs`), so step
    3 is the model law and the soundness lemmas.  `ModalSys.NoB` now also turns strong B off (it
    needs weak B), which dismisses both formers in the tree's truth lemma.  **Temporary:** B's
-   network does not build strong B's worlds until step 5, so `BData.truth`, `indInvariant` and the
-   B completeness, strong completeness and compactness theorems assume `[ModalSys.NoBStrong]`;
-   step 5 removes it.
+   network does not build strong B's worlds until step 5, so for now `ModalSys.NoFour` (which
+   every B completeness theorem assumes) also turns strong B off (`noBStrong`); step 5 removes
+   the field.
 3. **Semantics and soundness.**  `sat` clauses (`Back`: out leg nonempty, ∀ out ∃ home, `Ind`;
    `ret`: ∃ out, ∃ `d`, `Φ(d)`, home value `Ind t`); a `Model` field `backRet_exists` per row
    (surjectivity, after `Ind`); a `SemBack` file with one soundness lemma per rule, using
    `homeUnique` and `IndInvariant`.
+   *Done (2026-10-03), as built:* **one** law, `Model.backRet_exists` (row 1, `◇`-free contents,
+   given a way out); row 2's carriers come from row 1's by strength over a nonempty extent, so it
+   has no field (to be checked when row 2's `B_strong` is stated in step 4).  `QML_v12m_SemBack`
+   proves the rules at the level of values over a generic out leg (`Model.RoundTrip`), to which
+   both rows' carriers unfold (`backs_nec_boxtm`, `backs_pos_diatm`): `ne`, `elim`, `intro`,
+   `of_def` (weak B), `map` (β), `pair` (`homeUnique`), `own` (T), `ret_exists` (weak B),
+   `ret_elim` (no carriers), and surjectivity at a fresh carrier (`sat_back_ex`).  Hole formulas
+   are `WFF.holeRead` / `Model.holeSat`.  **No congruence law on `Ind` is needed:** in a model
+   proper, `Ind` to a *named* object at a `◇`-free type is equality (`Model.eq_of_ind`, the slot
+   formula `z = t`), so β, pairing and the own arrow are equations.  Left to step 4, where the
+   syntax is fixed: the WFF-level forms of each lemma (the readings `◇□ψ⟨bd⟩`, the mapped and
+   paired carriers, `u.here.here` by collapse), `back_eq` (immediate from `sat_eqRec`), and the
+   returning possibility's extension form, carriers in elimination, β, monotonicity, Leibniz and
+   T-rule.
 4. **Proof rules.**  `back_elim`, `back_intro`, `back_ne`, `back_beta`, `back_eq`, `back_pair`,
    `back_here` (T), `back_def`, `B_strong` (∃-elimination per row, as `T_dia`); `ret_exists`
    (extension form), `ret_elim` (with carriers), `ret_beta`, `ret_mono`, `ret_eq`, `ret_here` (T);

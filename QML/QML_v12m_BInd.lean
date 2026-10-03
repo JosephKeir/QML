@@ -139,7 +139,7 @@ end Represent
     substituted slot formula, instantiated at a representative of the object, is in the theory
     (`sat_subst`, `sat_instantiate`, the truth lemma).  Related objects have representatives
     interchangeable in every slot formula (`DTerm.Rel`), so the two memberships agree. -/
-theorem indInvariant [ModalSys.NoBStrong] : B.model.IndInvariant := by
+theorem indInvariant : B.model.IndInvariant := by
   intro Γ _ htame hnp s env A φ o o' hInd
   obtain ⟨hfin, d, hd⟩ := htame
   have hθ := repSubst_ok env hfin

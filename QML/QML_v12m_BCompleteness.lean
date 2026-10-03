@@ -26,8 +26,7 @@ variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalS
 
 /-- ⭐**Completeness for weak B**: in a context of declared variables, a sequent that holds in
     every model, at every world, in every environment, is provable. -/
-theorem completenessB [ModalSys.NoBStrong]
-    (hB : ModalSys.B = true) {l₀ : List VarType} {Δ : List (WFF σ (ctxOf l₀) 0)}
+theorem completenessB (hB : ModalSys.B = true) {l₀ : List VarType} {Δ : List (WFF σ (ctxOf l₀) 0)}
     {φ : WFF σ (ctxOf l₀) 0}
     (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant →
       ∀ {w : M.frame.W} (env : M.Env (ctxOf l₀) w),
@@ -59,7 +58,7 @@ theorem completenessB [ModalSys.NoBStrong]
   exact ((B.w s).mcs 0).neg_mem_iff.mp (hmem φ.neg (Or.inr rfl)) hφ
 
 /-- ⭐**Soundness and completeness for weak B**, in a context of declared variables. -/
-theorem provable_iff_validB [ModalSys.NoBStrong] (hB : ModalSys.B = true) {l₀ : List VarType}
+theorem provable_iff_validB (hB : ModalSys.B = true) {l₀ : List VarType}
     {Δ : List (WFF σ (ctxOf l₀) 0)}
     {φ : WFF σ (ctxOf l₀) 0} :
     Provable Δ φ ↔ ∀ (M : Model.{0, 0} σ), M.IndInvariant →

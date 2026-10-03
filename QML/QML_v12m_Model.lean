@@ -415,6 +415,16 @@ structure Model (σ : Signature) where
     (_hS : ModalSys.TStrong = true) (a : frame.Dom A w),
     ∃ (p : frame.Pos A w) (hm : frame.reflAcc _hT w ∈ (posFull p).1.1),
       Ind ((posFull p).1.2 ⟨frame.reflAcc _hT w, hm⟩) a
+  /-- ⭐Strong B: wherever there is a way out, every object is the round trip of some necessarily
+      necessary carrier — from every accessible world some way home returns a value
+      indistinguishable from it (`Back`, row 1; `Model.Backs`, docs §11.3).  Up to `Ind`, as
+      `posRet_exists`, and existential for the same reason: no term former interprets it.  Only at
+      `◇`-free contents, the types the formers take (§11.11 (c)).  Row 2's carriers come from row
+      1's by strength over a nonempty extent, so it has no field. -/
+  backRet_exists : ∀ {A : VarType} {w : frame.W} (_hS : ModalSys.BStrong = true),
+    A.diaFree = true → Nonempty (frame.Acc w) → ∀ o : frame.Dom A w,
+      ∃ c : frame.Nec (.VTypeBox A) w, ∀ a : frame.Acc w, ∃ r : frame.R a.1 w,
+        Ind (necEval (necEval c a) ⟨w, ⟨r⟩⟩) o
 
 namespace Model
 

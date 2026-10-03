@@ -29,14 +29,25 @@ namespace V12M
 /-- The one flag the arrow construction, and with it B's completeness, needs
     (`docs/v12-arrow-canonical.md` §9): 4 off, so a view shows `u.box` (and `x.dia`) and never
     `keep`.  Under T a reachable address may also pass through the projection `here`, which
-    `VarType.bc` and the arrows account for. -/
+    `VarType.bc` and the arrows account for.
+
+    **Temporarily also strong B off** (`noBStrong`): the network does not yet build strong B's
+    worlds — its `Back` and returning-possibility atoms — so its truth lemma and model law
+    (`Model.backRet_exists`) have no case for them.  Roadmap milestone 2, step 5 removes the
+    field. -/
 class ModalSys.NoFour [ModalSys] : Prop where
   noFour : ModalSys.Four = false
+  noBStrong : ModalSys.BStrong = false
 
 variable [ModalSys]
 
 theorem ModalSys.NoFour.keepOnly [ModalSys.NoFour] : ModalSys.keepOnly = false := by
   simp [ModalSys.keepOnly, ModalSys.NoFour.noFour]
+
+theorem ModalSys.NoFour.absurdStrong [ModalSys.NoFour] (hB : ModalSys.BStrong = true) :
+    False := by
+  rw [ModalSys.NoFour.noBStrong] at hB
+  cases hB
 
 /-! ## Addresses as paths -/
 

@@ -69,19 +69,6 @@ theorem ModalSys.NoB.absurdStrong [ModalSys] [ModalSys.NoB] (hB : ModalSys.BStro
   rw [ModalSys.NoB.noBStrong] at hB
   cases hB
 
-/-- Strong B off.  Temporary: B's canonical model does not yet build strong B's worlds (roadmap
-    milestone 2, step 5), so its truth lemma, and the completeness theorems through it, assume
-    this until then. -/
-class ModalSys.NoBStrong [ModalSys] : Prop where
-  noBStrong : ModalSys.BStrong = false
-
-instance [ModalSys] [ModalSys.NoB] : ModalSys.NoBStrong := ⟨ModalSys.NoB.noBStrong⟩
-
-theorem ModalSys.NoBStrong.absurd [ModalSys] [ModalSys.NoBStrong] (hB : ModalSys.BStrong = true) :
-    False := by
-  rw [ModalSys.NoBStrong.noBStrong] at hB
-  cases hB
-
 /-- Under T and 4 a view shows only kept objects: the contents of `u` are `u.keep.here`. -/
 def ModalSys.keepOnly [ModalSys] : Bool := ModalSys.T && ModalSys.Four
 

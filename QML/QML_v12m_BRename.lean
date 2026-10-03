@@ -153,8 +153,7 @@ variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
 /-- ⭐**Completeness for weak B in any context of declared roots** that a renaming carries onto a
     world language `ctxOf l`. -/
-theorem completenessB_rename [ModalSys.NoBStrong]
-    (hB : ModalSys.B = true) {Γ : Ctx} [Γ.Presented] (hΓ : RootOnly Γ)
+theorem completenessB_rename (hB : ModalSys.B = true) {Γ : Ctx} [Γ.Presented] (hΓ : RootOnly Γ)
     {l : List VarType} {ν ν' : ℕ → ℕ}
     (hν : ∀ r R, Γ (.root (.free r)) = some R → ctxOf l (.root (.free (ν r))) = some R)
     (hν' : ∀ r R, ctxOf l (.root (.free r)) = some R → Γ (.root (.free (ν' r))) = some R)
@@ -294,8 +293,7 @@ theorem ofDecls_invOf : ∀ (ds : List (ℕ × VarType)), (ds.map Prod.fst).Nodu
 
 /-- ⭐**Completeness for weak B in a context of declarations with distinct names.**  No renaming
     need be supplied: `renOf` and `invOf` are read off the declarations. -/
-theorem completenessB_ofDecls [ModalSys.NoBStrong]
-    (hB : ModalSys.B = true) {ds : List (ℕ × VarType)}
+theorem completenessB_ofDecls (hB : ModalSys.B = true) {ds : List (ℕ × VarType)}
     (hnd : (ds.map Prod.fst).Nodup) {Δ : List (WFF σ (Ctx.ofDecls ds) 0)}
     {φ : WFF σ (Ctx.ofDecls ds) 0}
     (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
@@ -315,8 +313,7 @@ abbrev Γ₀ : Ctx := Ctx.ofDecls [(7, VarType.Var), (3, VarType.VTypeOne)]
 
 /-- ⭐Completeness in it, names and all: the renaming onto the world language `[Var, 𝟙]` is read
     off the declarations, and distinctness is a decision. -/
-theorem completeness_Γ₀ [ModalSys.NoBStrong]
-    (hB : ModalSys.B = true) {Δ : List (WFF σ Γ₀ 0)} {φ : WFF σ Γ₀ 0}
+theorem completeness_Γ₀ (hB : ModalSys.B = true) {Δ : List (WFF σ Γ₀ 0)} {φ : WFF σ Γ₀ 0}
     (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ₀ w),
       Γ₀.NoProjLast →
       (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :

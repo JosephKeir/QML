@@ -34,7 +34,7 @@ theorem setConsistent_iff {Γ : Ctx} {S : Set (WFF σ Γ 0)} :
 
 /-- ⭐**Model existence at a world language**: the canonical model over a maximal consistent
     extension satisfies the set at its root. -/
-theorem model_existenceB_ctxOf [ModalSys.NoBStrong] (hB : ModalSys.B = true) {l₀ : List VarType}
+theorem model_existenceB_ctxOf (hB : ModalSys.B = true) {l₀ : List VarType}
     {S : Set (WFF σ (ctxOf l₀) 0)} (hS : WFF.SetConsistent S) : WFF.SetSatisfiable S := by
   obtain ⟨hSM, hM₀⟩ := complete_spec (setConsistent_iff.mp hS)
   let B := bdata hB hM₀
@@ -84,7 +84,7 @@ theorem Flat.setSatisfiable {Γ Δ : Ctx} (F : Flat σ Γ Δ) {S : Set (WFF σ �
   exact ⟨M, hM, w, F.env env, fun ψ hψ => (F.sat env ψ).mp (hsat _ ⟨ψ, hψ, rfl⟩)⟩
 
 /-- ⭐**Model existence** in every presented context whose presentation is fresh. -/
-theorem model_existenceB [ModalSys.NoBStrong] (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
+theorem model_existenceB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)} (hS : WFF.SetConsistent S) : WFF.SetSatisfiable S :=
   letI : e.denote.Presented := ⟨e, he.1, rfl⟩
   ((e.chain he.1 he.2).2.toFlat).setSatisfiable
@@ -94,7 +94,7 @@ theorem model_existenceB [ModalSys.NoBStrong] (hB : ModalSys.B = true) (e : CtxE
 
 /-- ⭐**Strong completeness for weak B**: a formula true in every model, world and environment
     satisfying a set of premises is derivable from finitely many of them. -/
-theorem strong_completenessB [ModalSys.NoBStrong] (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
+theorem strong_completenessB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
     (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env e.denote w),
       (∀ ψ ∈ S, M.sat env ψ) → M.sat env φ) :
@@ -115,7 +115,7 @@ theorem strong_completenessB [ModalSys.NoBStrong] (hB : ModalSys.B = true) (e : 
 
 /-- ⭐**Compactness for weak B**: a set of formulas is satisfiable when every finite subset is —
     in models of any universe. -/
-theorem compactnessB [ModalSys.NoBStrong] (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
+theorem compactnessB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)}
     (hfin : ∀ Δ : List (WFF σ e.denote 0), (∀ ψ ∈ Δ, ψ ∈ S) →
       ∃ (M : Model.{u, v} σ) (_ : M.IndInvariant) (w : M.frame.W) (env : M.Env e.denote w),
