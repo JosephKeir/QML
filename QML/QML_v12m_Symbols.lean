@@ -55,12 +55,31 @@ def ModalSys.K : ModalSys := ⟨false, false, false, false, false, false, false�
 
 /-- The systems without B, for which the staged canonical model is built.  B's accessible worlds
     lead back to their origin, against the order of construction; its canonical model is to be the
-    arrow-based one of `docs/v12-arrow-canonical.md`. -/
+    arrow-based one of `docs/v12-arrow-canonical.md`.  Strong B needs weak B, so it is off too. -/
 class ModalSys.NoB [ModalSys] : Prop where
   noB : ModalSys.B = false
+  noBStrong : ModalSys.BStrong = false
 
 theorem ModalSys.NoB.absurd [ModalSys] [ModalSys.NoB] (hB : ModalSys.B = true) : False := by
   rw [ModalSys.NoB.noB] at hB
+  cases hB
+
+theorem ModalSys.NoB.absurdStrong [ModalSys] [ModalSys.NoB] (hB : ModalSys.BStrong = true) :
+    False := by
+  rw [ModalSys.NoB.noBStrong] at hB
+  cases hB
+
+/-- Strong B off.  Temporary: B's canonical model does not yet build strong B's worlds (roadmap
+    milestone 2, step 5), so its truth lemma, and the completeness theorems through it, assume
+    this until then. -/
+class ModalSys.NoBStrong [ModalSys] : Prop where
+  noBStrong : ModalSys.BStrong = false
+
+instance [ModalSys] [ModalSys.NoB] : ModalSys.NoBStrong := ⟨ModalSys.NoB.noBStrong⟩
+
+theorem ModalSys.NoBStrong.absurd [ModalSys] [ModalSys.NoBStrong] (hB : ModalSys.BStrong = true) :
+    False := by
+  rw [ModalSys.NoBStrong.noBStrong] at hB
   cases hB
 
 /-- Under T and 4 a view shows only kept objects: the contents of `u` are `u.keep.here`. -/

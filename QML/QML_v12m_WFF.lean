@@ -19,6 +19,20 @@ inductive Rel (σ : Signature) : Ctx → ℕ → Type where
   | eval {Γ : Ctx} {n : ℕ} : Rel σ Γ (n + 1) → Term σ Γ .Var .var → Rel σ Γ n
 deriving DecidableEq
 
+/-- The out leg of a `Back` atom (strong B, `docs/v12-modal-extensions.md` §11): every successor
+    (row 1) or the carrier's own extent (row 2).  Rows 3–4, with a witnessed way home, are to extend
+    this type rather than `WFF`. -/
+inductive BLeg where
+  | nec
+  | pos
+deriving DecidableEq
+
+/-- The carrier of a `Back` atom whose round trip returns an `A`: a necessary (row 1) or possible
+    (row 2) object whose contents are necessary objects. -/
+def BLeg.carrier : BLeg → VarType → VarType
+  | .nec, A => .VTypeBox (.VTypeBox A)
+  | .pos, A => .VTypeDia (.VTypeBox A)
+
 inductive WFF (σ : Signature) : Ctx → ℕ → Type where
   | atom {Γ : Ctx} {d : ℕ} : Rel σ Γ 0 → WFF σ Γ d
   | eq {Γ : Ctx} {d : ℕ} : Term σ Γ .Var .var → Term σ Γ .Var .var → WFF σ Γ d
@@ -56,6 +70,21 @@ inductive WFF (σ : Signature) : Ctx → ℕ → Type where
   | here {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true) {A : VarType}
       {b : Ann (.VTypeDia A)} {a : Ann A} (s : Term σ Γ (.VTypeDia A) b) (t : Term σ Γ A a) :
       WFF σ Γ d
+  /-- `Back s t` (strong B): the carrier `s` comes back as `t` — its out leg is nonempty and from
+      every arrow of it the way home returns (a value indistinguishable from) `t`
+      (`docs/v12-modal-extensions.md` §11.1).  The leg `L` fixes the carrier type: `□□A` (row 1,
+      every successor) or `◇□A` (row 2, the carrier's extent).  The content type is `◇`-free for
+      now (§11.12). -/
+  | back {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true) (L : BLeg) {A : VarType}
+      (hA : A.diaFree = true) {b : Ann (L.carrier A)} {a : Ann A}
+      (s : Term σ Γ (L.carrier A) b) (t : Term σ Γ A a) : WFF σ Γ d
+  /-- `◇[e ↦ t] Φ(e)` (strong B), the **returning possibility**: possibly some necessary object
+      `e : □A` is such that `Φ(e)`, and its content comes back here as `t`
+      (`docs/v12-modal-extensions.md` §11.14).  The body is `□∃e:□A. Φ(e)`'s, so every recursion
+      treats it as its `box` case followed by its `ex` case.  `◇`-free contents for now. -/
+  | ret {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true) {A : VarType}
+      (hA : A.diaFree = true) {a : Ann A} (t : Term σ Γ A a)
+      (Φ : WFF σ (Γ.boxIn.insert (.bnd d) (.VTypeBox A)) (d + 1)) : WFF σ Γ d
 deriving DecidableEq
 /-- Two `Here` formulas agree when their subjects do. -/
 theorem WFF.here_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true)
@@ -74,6 +103,42 @@ theorem WFF.here_congr {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = 
     (WFF.here hT s t : WFF σ Γ d) = WFF.here hT s' t' := by
   cases hs
   cases ht
+  rfl
+
+/-- Two `Back` formulas agree when their carriers and values do, annotations included. -/
+theorem WFF.back_congr {σ : Signature} {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true)
+    (L : BLeg) {A : VarType} (hA : A.diaFree = true) {b b' : Ann (L.carrier A)} {a a' : Ann A}
+    {s : Term σ Γ (L.carrier A) b} {s' : Term σ Γ (L.carrier A) b'}
+    {t : Term σ Γ A a} {t' : Term σ Γ A a'}
+    (hs : (⟨b, s⟩ : Σ b, Term σ Γ (L.carrier A) b) = ⟨b', s'⟩)
+    (ht : (⟨a, t⟩ : Σ a, Term σ Γ A a) = ⟨a', t'⟩) :
+    (WFF.back hB L hA s t : WFF σ Γ d) = WFF.back hB L hA s' t' := by
+  cases hs
+  cases ht
+  rfl
+
+/-- Two `Back` formulas agree when their carriers and values do, at one annotation each. -/
+theorem WFF.back_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true)
+    (L : BLeg) {A : VarType} (hA : A.diaFree = true) {b : Ann (L.carrier A)} {a : Ann A}
+    {s s' : Term σ Γ (L.carrier A) b} {t t' : Term σ Γ A a} (hs : s = s') (ht : t = t') :
+    (WFF.back hB L hA s t : WFF σ Γ d) = WFF.back hB L hA s' t' := by
+  rw [hs, ht]
+
+/-- Two returning possibilities agree when their values and bodies do, at one annotation. -/
+theorem WFF.ret_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true)
+    {A : VarType} (hA : A.diaFree = true) {a : Ann A} {t t' : Term σ Γ A a}
+    {Φ Φ' : WFF σ (Γ.boxIn.insert (.bnd d) (.VTypeBox A)) (d + 1)} (ht : t = t') (hΦ : Φ = Φ') :
+    (WFF.ret hB hA t Φ : WFF σ Γ d) = WFF.ret hB hA t' Φ' := by
+  rw [ht, hΦ]
+
+/-- Two returning possibilities agree when their values and bodies do. -/
+theorem WFF.ret_congr {σ : Signature} {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true)
+    {A : VarType} (hA : A.diaFree = true) {a a' : Ann A} {t : Term σ Γ A a} {t' : Term σ Γ A a'}
+    {Φ Φ' : WFF σ (Γ.boxIn.insert (.bnd d) (.VTypeBox A)) (d + 1)}
+    (ht : (⟨a, t⟩ : Σ a, Term σ Γ A a) = ⟨a', t'⟩) (hΦ : Φ = Φ') :
+    (WFF.ret hB hA t Φ : WFF σ Γ d) = WFF.ret hB hA t' Φ' := by
+  cases ht
+  cases hΦ
   rfl
 
 abbrev WFF.neg {σ : Signature} {Γ : Ctx} {d : ℕ} (φ : WFF σ Γ d) : WFF σ Γ d := .imp φ .bot
@@ -139,6 +204,8 @@ def WFF.mono {σ : Signature} : {Γ Γ' : Ctx} → {d : ℕ} → Γ.Le Γ' → W
   | _, _, _, h, .box φ => .box (WFF.mono h.boxIn φ)
   | _, _, _, h, .dia x hx φ => .dia x (hx.imp fun _ hX => h.ref hX) (WFF.mono (h.diaIn x) φ)
   | _, _, _, h, .here hT s t => .here hT (Term.mono h s) (Term.mono h t)
+  | _, _, _, h, .back hB L hA s t => .back hB L hA (Term.mono h s) (Term.mono h t)
+  | _, _, _, h, .ret hB hA t Φ => .ret hB hA (Term.mono h t) (WFF.mono (h.boxIn.insert _ _) Φ)
 
 /-- Weakening by a fresh root. -/
 def WFF.weaken {σ : Signature} {Γ : Ctx} {d : ℕ} {r : Root} (hr : Γ (.root r) = none)

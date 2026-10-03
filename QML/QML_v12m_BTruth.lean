@@ -107,7 +107,8 @@ theorem dia_mem_of_sat_self {s : B.W} {i : ℕ} {x : VarSymb} (hr : (B.w s).Real
     (φ := WFF.dia x hx χ)).mpr hdia
   rwa [WFF.mono_refl] at hmem'
 
-theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i) 0), φ.size < n →
+theorem truth_lt [ModalSys.NoBStrong] :
+    ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i) 0), φ.size < n →
     (B.model.sat (B.canonEnv s i) φ ↔ φ ∈ (B.w s).M i)
   | 0, _, _, _, h => absurd h (Nat.not_lt_zero _)
   | n + 1, s, i, φ, hφ => by
@@ -132,6 +133,8 @@ theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i
           | diatm x hx bd =>
               exact here_truth hT hx bd t (fun K _ u u' => truth_lt n s K _ (by
                 rw [WFF.size_eqRec]; simp only [WFF.size] at hφ; omega))
+      | back hB _ _ _ _ => exact (ModalSys.NoBStrong.absurd hB).elim
+      | ret hB _ _ _ => exact (ModalSys.NoBStrong.absurd hB).elim
       | and φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega
@@ -295,7 +298,7 @@ theorem truth_lt : ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i
             exact ⟨X, h, ⟨_, hmt⟩, (key h ⟨_, hmt⟩ hk).mpr hm⟩
 
 /-- ⭐**The truth lemma** for B's canonical model. -/
-theorem truth (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i) 0) :
+theorem truth [ModalSys.NoBStrong] (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i) 0) :
     B.model.sat (B.canonEnv s i) φ ↔ φ ∈ (B.w s).M i :=
   truth_lt (φ.size + 1) s i φ (Nat.lt_succ_self _)
 

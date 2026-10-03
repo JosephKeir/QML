@@ -269,5 +269,23 @@ theorem WFF.subst_id {σ : Signature} : {Δ : Ctx} → {d : ℕ} → (hθ : Subs
           (congrArg (Sigma.mk _) (Term.mono_refl _ s)))
         ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc t).trans
           (congrArg (Sigma.mk _) (Term.mono_refl _ t)))
+  | Δ, _, hθ, hc, _, .back hB L hA s t =>
+      WFF.back_congr hB L hA
+        ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc s).trans
+          (congrArg (Sigma.mk _) (Term.mono_refl _ s)))
+        ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc t).trans
+          (congrArg (Sigma.mk _) (Term.mono_refl _ t)))
+  | Δ, d, hθ, hc, hΔ, .ret hB hA t Φ => by
+      refine WFF.ret_congr hB hA ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc t).trans
+        (congrArg (Sigma.mk _) (Term.mono_refl _ t))) ?_
+      refine (WFF.subst_congr _ ((Subst.idS σ Δ.boxIn).under d d _ hΔ.boxIn.root) _
+        (Subst.ok_under Subst.ok_idS _ hΔ.boxIn.root) _
+        (Subst.coh_under Subst.ok_idS Subst.coh_idS hΔ.boxIn _ hΔ.boxIn.root)
+        (hΔ.boxIn.insert _) (hΔ.boxIn.insert _)
+        (Subst.sim_under Subst.sim_box_idS _ hΔ.boxIn.root) Φ).trans ?_
+      refine (WFF.subst_congr _ (Subst.idS σ (Δ.boxIn.insert (.bnd d) _)) _ Subst.ok_idS _
+        Subst.coh_idS (hΔ.boxIn.insert _) (hΔ.boxIn.insert _)
+        (Subst.sim_under_idS d _ hΔ.boxIn.root) Φ).trans ?_
+      exact WFF.subst_id Subst.ok_idS Subst.coh_idS (hΔ.boxIn.insert _) Φ
 
 end V12M

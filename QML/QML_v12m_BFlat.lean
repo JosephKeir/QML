@@ -438,7 +438,8 @@ def flatBoxN : (n : ℕ) → (l : List VarType) →
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
 /-- ⭐**Completeness for weak B in any context flattened into a world language.** -/
-theorem completenessB_flat (hB : ModalSys.B = true) {Γ : Ctx} {l : List VarType}
+theorem completenessB_flat [ModalSys.NoBStrong]
+    (hB : ModalSys.B = true) {Γ : Ctx} {l : List VarType}
     (F : Flat σ Γ (ctxOf l)) (hnp : Γ.NoProjLast) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0}
     (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
       (env : M.Env Γ w), Γ.NoProjLast →
@@ -703,7 +704,7 @@ noncomputable def pairDia (l : List VarType) {x : VarSymb} {X : VarType}
   simId := fun _ _ _ => .refl _
 
 /-- ⭐Completeness in the `□` view of a world language. -/
-theorem completenessB_boxIn (hB : ModalSys.B = true) {l : List VarType}
+theorem completenessB_boxIn [ModalSys.NoBStrong] (hB : ModalSys.B = true) {l : List VarType}
     {Δ : List (WFF σ (ctxOf l).boxIn 0)} {φ : WFF σ (ctxOf l).boxIn 0}
     (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
       (env : M.Env (ctxOf l).boxIn w),
@@ -712,7 +713,8 @@ theorem completenessB_boxIn (hB : ModalSys.B = true) {l : List VarType}
   completenessB_flat hB (flatBox l) (Ctx.noProjLast_boxIn _) hval
 
 /-- ⭐Completeness in the `◇_x` view of a world language. -/
-theorem completenessB_diaIn (hB : ModalSys.B = true) {l : List VarType} {x : VarSymb}
+theorem completenessB_diaIn [ModalSys.NoBStrong]
+    (hB : ModalSys.B = true) {l : List VarType} {x : VarSymb}
     {X : VarType} (hx : (ctxOf l).ref x = some (.VTypeDia X))
     {Δ : List (WFF σ ((ctxOf l).diaIn x) 0)} {φ : WFF σ ((ctxOf l).diaIn x) 0}
     (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
@@ -723,7 +725,8 @@ theorem completenessB_diaIn (hB : ModalSys.B = true) {l : List VarType} {x : Var
 
 
 /-- ⭐Completeness in any number of stacked `□` views over a world language. -/
-theorem completenessB_boxInN (hB : ModalSys.B = true) (n : ℕ) (l : List VarType)
+theorem completenessB_boxInN [ModalSys.NoBStrong]
+    (hB : ModalSys.B = true) (n : ℕ) (l : List VarType)
     {Δ : List (WFF σ (Ctx.boxInN n (ctxOf l)) 0)} {φ : WFF σ (Ctx.boxInN n (ctxOf l)) 0}
     (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
       (env : M.Env (Ctx.boxInN n (ctxOf l)) w),
@@ -759,7 +762,8 @@ noncomputable def _root_.V12M.CtxExpr.chain : (e : CtxExpr) → e.Fresh → e.Vi
 
 /-- ⭐**Completeness for weak B in every presented context** whose views are at declared
     witnesses. -/
-theorem completenessB_presented (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
+theorem completenessB_presented [ModalSys.NoBStrong]
+    (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
     {Δ : List (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
     (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
       (env : M.Env e.denote w),

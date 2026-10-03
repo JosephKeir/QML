@@ -134,6 +134,15 @@ style of milestone 1, each ending green and committed:
    `◇`-free in the constructors (lifted later, §11.12).  Then the mechanical ripple through every
    recursion on `WFF` (mono, subst, collapse, shift, size, instantiate, countability, decidable
    equality, …) — some thirty files, mirroring how `here` threads through them (§10.16).
+   *Done (2026-10-03), as built:* `BLeg` is `nec | pos` with `BLeg.carrier` giving `□□A` or
+   `◇□A` (the witnessed leg's witness is the carrier itself, so no variable in the leg); `ret` has
+   no leg — it ranges over every successor, and the witnessed form comes from the bridging rule
+   `Back x s, ◇_x Θ(x.dia) ⊢ ◇[d ↦ s] Θ(d)` (step 4).  `sat` is in already (`Model.Backs`), so step
+   3 is the model law and the soundness lemmas.  `ModalSys.NoB` now also turns strong B off (it
+   needs weak B), which dismisses both formers in the tree's truth lemma.  **Temporary:** B's
+   network does not build strong B's worlds until step 5, so `BData.truth`, `indInvariant` and the
+   B completeness, strong completeness and compactness theorems assume `[ModalSys.NoBStrong]`;
+   step 5 removes it.
 3. **Semantics and soundness.**  `sat` clauses (`Back`: out leg nonempty, ∀ out ∃ home, `Ind`;
    `ret`: ∃ out, ∃ `d`, `Φ(d)`, home value `Ind t`); a `Model` field `backRet_exists` per row
    (surjectivity, after `Ind`); a `SemBack` file with one soundness lemma per rule, using

@@ -288,6 +288,19 @@ def Realised (hT : ModalSys.T = true) {A : VarType} {w : M.frame.W}
   ∃ hm : M.frame.reflAcc hT w ∈ (M.posEval p).1,
     M.Ind ((M.posEval p).2 ⟨M.frame.reflAcc hT w, hm⟩) o
 
+/-- ⭐`c` **comes back as** `o` (strong B, `Back`; docs §11.1): its out leg is nonempty, and from
+    every arrow of it some way home returns a value indistinguishable from `o`.  Row 1 (`nec`): the
+    out leg is every arrow out of `w`; row 2 (`pos`): the carrier's own extent. -/
+def Backs : (L : BLeg) → {A : VarType} → {w : M.frame.W} → M.frame.Dom (L.carrier A) w →
+    M.frame.Dom A w → Prop
+  | .nec, A, w, c, o =>
+      Nonempty (M.frame.Acc w) ∧ ∀ a : M.frame.Acc w, ∃ r : M.frame.R a.1 w,
+        M.Ind (M.necEval (M.necEval (c : M.frame.Nec (.VTypeBox A) w) a) ⟨w, ⟨r⟩⟩) o
+  | .pos, A, w, c, o =>
+      Nonempty (M.posEval (c : M.frame.Pos (.VTypeBox A) w)).1 ∧
+        ∀ a : (M.posEval (c : M.frame.Pos (.VTypeBox A) w)).1, ∃ r : M.frame.R a.1.1 w,
+          M.Ind (M.necEval ((M.posEval (c : M.frame.Pos (.VTypeBox A) w)).2 a) ⟨w, ⟨r⟩⟩) o
+
 
 /-- ⭐Satisfaction. -/
 def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ Γ d → Prop
@@ -305,6 +318,11 @@ def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ
       ∃ (X : VarType) (h : Γ.ref x = some (.VTypeDia X)) (w' : (M.posEval (env.ref x h)).1),
         sat (env.diaPush x h w') φ
   | _, _, _, env, .here hT s t => Realised hT (interp env s) (interp env t)
+  | _, _, _, env, .back _ L _ s t => Backs L (interp env s) (interp env t)
+  | _, d, w, env, @WFF.ret _ _ _ _ _ A _ _ t Φ =>
+      ∃ (a : M.frame.Acc w) (e : M.frame.Dom (.VTypeBox A) a.1),
+        sat ((env.boxPush a).extend (.bnd d) e) Φ ∧
+          ∃ r : M.frame.R a.1 w, M.Ind (M.necEval (e : M.frame.Nec A a.1) ⟨w, ⟨r⟩⟩) (interp env t)
 
 end Model
 

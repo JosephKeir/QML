@@ -547,6 +547,14 @@ def WFF.subst {σ : Signature} : (ι : VarSymb → VarSymb) → {Γ Δ : Ctx} �
           (hΓ.diaIn x) (hΔ.diaIn (ι x)) φ)
   | ι, _, _, _, _, θ, hθ, hc, _, _, .here hT s t =>
       .here hT (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
+  | ι, _, _, _, _, θ, hθ, hc, _, _, .back hB L hA s t =>
+      .back hB L hA (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
+  | ι, _, _, d, d', θ, hθ, hc, hΓ, hΔ, .ret hB hA t Φ =>
+      .ret hB hA (Term.subst ι θ hθ hc t)
+        (WFF.subst (VarSymb.shiftSlot ι d d') (θ.box.under d d' _ hΔ.boxIn.root)
+          (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
+          (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn _ hΔ.boxIn.root)
+          (hΓ.boxIn.insert _) (hΔ.boxIn.insert _) Φ)
 
 /-! ## Substituting one root -/
 

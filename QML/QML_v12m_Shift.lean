@@ -295,6 +295,10 @@ def WFF.shift {σ : Signature} : {k : ℕ} → {Γ₁ Γ₂ : Ctx} → {d : ℕ}
   | k, _, _, _, h, hs, .dia x hx φ =>
       .dia (x.shift k) (hx.imp fun _ hX => h x _ hX) (WFF.shift (h.diaIn x) (hs.diaIn x) φ)
   | _, _, _, _, h, _, .here hT s t => .here hT (Term.shift h s) (Term.shift h t)
+  | _, _, _, _, h, _, .back hB L hA s t => .back hB L hA (Term.shift h s) (Term.shift h t)
+  | _, _, _, _, h, hs, .ret hB hA t Φ =>
+      .ret hB hA (Term.shift h t)
+        (WFF.shift (h.boxIn.insert (hs.boxIn.rootFresh le_rfl) _) (hs.boxIn.insert _) Φ)
 
 
 /-- ⭐Shifting commutes with equality at every type, as `eqRec_collapse` does for collapsing: what a

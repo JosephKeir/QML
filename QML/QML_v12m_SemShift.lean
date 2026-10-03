@@ -449,6 +449,15 @@ theorem sat_shift : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ
       change Model.Realised hT (interp _ (Term.shift _ s)) (interp _ (Term.shift _ t)) ↔ _
       rw [interp_shift hag s, interp_shift hag t]
       exact Iff.rfl
+  | _, _, _, _, _, _, _, _, _, hag, .back hB L hA s t => by
+      change Model.Backs L (interp _ (Term.shift _ s)) (interp _ (Term.shift _ t)) ↔ _
+      rw [interp_shift hag s, interp_shift hag t]
+      exact Iff.rfl
+  | _, _, _, _, _, _, _, _, hs, hag, .ret hB hA t Φ =>
+      exists_congr fun a => exists_congr fun e =>
+        and_congr (sat_shift (hs.boxIn.insert _)
+            ((hag.boxPush a).extend (hs.boxIn.rootFresh le_rfl) e) Φ)
+          (by rw [interp_shift hag t])
 
 /-- ⭐The semantic content of the 4 rule: a shifted `□`-body holds two steps in exactly when the
     body holds at the composite step. -/

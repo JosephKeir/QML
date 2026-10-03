@@ -130,6 +130,24 @@ theorem sat_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (�
         (interp env (Term.subst _ θ hθ hc t)) ↔ _
       rw [interp_subst θ hθ hc hnp env s, interp_subst θ hθ hc hnp env t]
       exact Iff.rfl
+  | _, _, _, _, _, θ, hθ, hc, _, _, hnp, _, env, .back hB L hA s t => by
+      change Model.Backs L (interp env (Term.subst _ θ hθ hc s))
+        (interp env (Term.subst _ θ hθ hc t)) ↔ _
+      rw [interp_subst θ hθ hc hnp env s, interp_subst θ hθ hc hnp env t]
+      exact Iff.rfl
+  | _, Γ, _, d, d', θ, hθ, hc, hΓ, hΔ, hnp, _, env, .ret hB hA t Φ =>
+      exists_congr fun a => exists_congr fun e =>
+        and_congr
+          ((sat_subst (θ.box.under d d' _ hΔ.boxIn.root)
+              (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
+              (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn _ hΔ.boxIn.root)
+              (hΓ.boxIn.insert _) (hΔ.boxIn.insert _) ((Ctx.noProjLast_boxIn Γ).insert (.bnd d) _)
+              ((env.boxPush a).extend (.bnd d') e) Φ).trans
+            (iff_of_eq (congrArg (fun en => M.sat en Φ)
+              ((substEnv_under θ.box (Subst.ok_box hθ) (Ctx.noProjLast_boxIn Γ) (env.boxPush a)
+                  _ hΔ.boxIn.root e).trans
+                (congrArg (fun en => Env.extend en (.bnd d) e) (substEnv_box θ hθ hnp env a))))))
+          (by rw [interp_subst θ hθ hc hnp env t])
 
 end Model
 

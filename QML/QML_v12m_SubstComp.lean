@@ -338,5 +338,13 @@ theorem WFF.subst_mono {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Γ'
           (hΓ.diaIn x) (hΓ'.diaIn x) (hΔ.diaIn (ι x)) φ)
   | _, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .here hT s t =>
       WFF.here_congr' hT (Term.subst_mono h θ hθ hc s) (Term.subst_mono h θ hθ hc t)
+  | _, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .back hB L hA s t =>
+      WFF.back_congr' hB L hA (Term.subst_mono h θ hθ hc s) (Term.subst_mono h θ hθ hc t)
+  | _, _, _, _, d, d', h, θ, hθ, hc, hΓ, hΓ', hΔ, .ret hB hA t Φ =>
+      WFF.ret_congr' hB hA (Term.subst_mono h θ hθ hc t)
+        (WFF.subst_mono (h.boxIn.insert _ _) (θ.box.under d d' _ hΔ.boxIn.root)
+          (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
+          (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ'.boxIn _ hΔ.boxIn.root)
+          (hΓ.boxIn.insert _) (hΓ'.boxIn.insert _) (hΔ.boxIn.insert _) Φ)
 
 end V12M

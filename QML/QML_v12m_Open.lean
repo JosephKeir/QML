@@ -89,6 +89,13 @@ theorem WFF.subst_ren {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ :
   | _, _, _, _, hle, θ, hθ, hc, _, _, hid, .here hT s t =>
       WFF.here_congr hT (Term.subst_ren hle θ hθ hc hid s)
         (Term.subst_ren hle θ hθ hc hid t)
+  | _, _, _, _, hle, θ, hθ, hc, _, _, hid, .back hB L hA s t =>
+      WFF.back_congr hB L hA (Term.subst_ren hle θ hθ hc hid s)
+        (Term.subst_ren hle θ hθ hc hid t)
+  | _, _, _, _, hle, θ, hθ, hc, hΓ, hΔ, hid, .ret hB hA t Φ =>
+      WFF.ret_congr hB hA (Term.subst_ren hle θ hθ hc hid t)
+        (WFF.subst_ren (hle.boxIn.insert _ _) _ _ _ _ _
+          (Subst.ren_under (Subst.ren_box hid) _ hΔ.boxIn.root) Φ)
 
 section Open
 
