@@ -45,6 +45,7 @@ noncomputable def frame (w₀ : World σ N₀) : Frame.{0, 0} σ where
   actual := w₀
   serial := fun hD w => (exists_succ hD w).imp fun _ ha => ⟨R.of_acc ha⟩
   symm := fun hB => (ModalSys.NoB.absurd hB).elim
+  homeUnique := fun _ => ⟨fun _ _ => rfl⟩
   D w := w.D
   Nec A w := {o : RDom (.VTypeBox A) w // Definable (.VTypeBox A) w o}
   Pos A w := {o : RDom (.VTypeDia A) w // Definable (.VTypeDia A) w o}

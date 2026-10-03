@@ -44,9 +44,14 @@ class ModalSys where
   DStrong : Bool
   /-- Weak B: what is possibly necessary is true, for closed formulas, `◇□ψ ⊢ ψ`. -/
   B : Bool
+  /-- Strong B: round trips are named — `Back` (an object comes back as a given value from every
+      successor) and the returning possibility `◇[d ↦ t]` — and every object is the constant round
+      trip of some carrier (`docs/v12-modal-extensions.md` §11).  Needs weak B, which the rules
+      using it require. -/
+  BStrong : Bool
 
 /-- The system K. -/
-def ModalSys.K : ModalSys := ⟨false, false, false, false, false, false⟩
+def ModalSys.K : ModalSys := ⟨false, false, false, false, false, false, false⟩
 
 /-- The systems without B, for which the staged canonical model is built.  B's accessible worlds
     lead back to their origin, against the order of construction; its canonical model is to be the

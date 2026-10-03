@@ -81,6 +81,10 @@ structure Frame (σ : Signature) extends Arrows.{u, v} σ where
   /-- Under B, every arrow has some arrow back.  Only existence: which arrow comes back, and
       whether a round trip agrees with anything, is left open (`docs/v12-arrow-canonical.md` §6). -/
   symm : ModalSys.B = true → ∀ {w v : W}, R w v → Nonempty (R v w)
+  /-- Under strong B, **the way home is unique**: at most one arrow between two worlds, so the value
+      a round trip brings back is determined (`docs/v12-modal-extensions.md` §11.3).  Relational
+      frames satisfy it outright. -/
+  homeUnique : ModalSys.BStrong = true → ∀ {w v : W}, Subsingleton (R w v)
   D : W → Type u
   Nec : VarType → W → Type u
   Pos : VarType → W → Type u

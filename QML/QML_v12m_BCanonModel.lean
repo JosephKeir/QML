@@ -39,6 +39,7 @@ noncomputable def frame : Frame.{0, 0} σ where
   actual := B.actual
   serial := fun hD s => B.serial_canon hD s
   symm := fun _ {_ _} h => ⟨h.elim (fun h => Or.inl (B.symm h)) fun h => Or.inr ⟨h.1, h.2.symm⟩⟩
+  homeUnique := fun _ => ⟨fun _ _ => rfl⟩
   D s := (B.w s).D
   Nec A s := {o : B.RDom (.VTypeBox A) s // B.Definable (.VTypeBox A) s o}
   Pos A s := {o : B.RDom (.VTypeDia A) s // B.Definable (.VTypeDia A) s o}
