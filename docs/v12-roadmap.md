@@ -165,6 +165,15 @@ style of milestone 1, each ending green and committed:
    `back_here` (T), `back_def`, `B_strong` (∃-elimination per row, as `T_dia`); `ret_exists`
    (extension form), `ret_elim` (with carriers), `ret_beta`, `ret_mono`, `ret_eq`, `ret_here` (T);
    `Proof.subst` cases; soundness assembled.  `back_fun` as a derived rule.
+   *`Back` half done (2026-10-04):* the nine `Back` rules are in `Proof`, with `Proof.subst` cases
+   and soundness.  They are stated once over the out leg — `OutLeg` (`QML_v12m_BackSyntax`): `nec`
+   or a witness `pos y`, with its view, `◇`/`□` (`OutLeg.dia`, `OutLeg.box`) and the atom of a
+   carrier given by its body (`OutLeg.back`), all of which substitution acts on definitionally.
+   Hole formulas and terms are `WFF.holeRead`, `Term.holeRead`.  `back_eq` is stated at any carrier
+   term and leg; `back_here` concludes the equation `u.here.here = t` (two collapses, `◇`-free);
+   `back_def` takes its definability premise as one formula `∀z. θ(z) → z = t`; `B_strong` is row 1
+   only, with the premise `◇⊤`.  **Still to do: the returning possibility's rules** (`ret_*` and the
+   bridging rule) and `back_fun` as a derived rule.
 5. **The canonical network.**  The hard step:
    * the **atom invariant** replaces the back arrows' necessity transfer (`Transfer` becomes a
      consequence), and committing a born item becomes Henkin witnessing of `ret_exists` (in `BLocal`,

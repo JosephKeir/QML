@@ -1,5 +1,6 @@
 import QML.QML_v12m_SubstEta
 import QML.QML_v12m_Presented
+import QML.QML_v12m_BackSyntax
 
 /-!
 # QML v12m — the proof system
@@ -275,6 +276,90 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       derived from it (`Proof.B_box`). -/
   | B_dia {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hB : ModalSys.B = true) (ψ : WFF σ Ctx.empty 0) :
       Proof σ Γ Δ (WFF.diaBox (ψ.closed _)) → Proof σ Γ Δ (ψ.closed Γ)
+  -- Strong B: `Back` (docs §11.2, §11.5, §11.14).  Stated once over the out leg (`OutLeg`), at the
+  -- carrier's body, with hole formulas and terms closed apart from the hole.
+  /-- ⭐**`Back`, elimination**: what is necessary at the end of some arrow of the out leg, of the
+      carrier's value there, holds of the value it comes back as — along that arrow's way home. -/
+  | back_elim {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (O : OutLeg Γ) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
+      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a)
+      (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
+      Proof σ Γ Δ (O.back hS hA bd t) →
+      Proof σ Γ Δ (O.dia (WFF.box (WFF.holeRead bd ψ))) →
+      Proof σ Γ Δ (WFF.holeRead t ψ)
+  /-- ⭐**`Back`, introduction**: what holds of the value it comes back as is, from every arrow of
+      the out leg, possible of the carrier's value — the way home witnessing it. -/
+  | back_intro {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (O : OutLeg Γ) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
+      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a)
+      (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
+      Proof σ Γ Δ (O.back hS hA bd t) →
+      Proof σ Γ Δ (WFF.holeRead t ψ) →
+      Proof σ Γ Δ (O.box (WFF.box (WFF.holeRead bd ψ).neg).neg)
+  /-- `Back` asserts that its round trip exists: the out leg is nonempty (§11.1, decision of
+      2026-10-03). -/
+  | back_ne {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (O : OutLeg Γ) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
+      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) :
+      Proof σ Γ Δ (O.back hS hA bd t) → Proof σ Γ Δ (O.dia .top)
+  /-- ⭐**β**: a carrier mapped by a hole term comes back as its value mapped by the same term. -/
+  | back_beta {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (O : OutLeg Γ) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
+      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) {B : VarType}
+      (hB : B.diaFree = true) {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
+      Proof σ Γ Δ (O.back hS hA bd t) →
+      Proof σ Γ Δ (O.back hS hB (Term.holeRead bd s) (Term.holeRead t s))
+  /-- ⭐**Pairing** (§11.14 check 3): two carriers over one out leg come back as the pair of their
+      values — each arrow has one way home, so both are read along it. -/
+  | back_pair {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (O : OutLeg Γ) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
+      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) {B : VarType}
+      (hB : B.diaFree = true) {b₀ : Ann B} (bd' : Term σ O.view.boxIn B b₀) {b : Ann B}
+      (t' : Term σ Γ B b) :
+      Proof σ Γ Δ (O.back hS hA bd t) → Proof σ Γ Δ (O.back hS hB bd' t') →
+      Proof σ Γ Δ (O.back hS (VarType.diaFree_prod hA hB) (Term.pair bd bd') (Term.pair t t'))
+  /-- **Leibniz for the value.** -/
+  | back_eq {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (L : BLeg) {A : VarType} (hA : A.diaFree = true) {b : Ann (L.carrier A)}
+      (s : Term σ Γ (L.carrier A) b) {a : Ann A} (t t' : Term σ Γ A a) :
+      Proof σ Γ Δ (WFF.back hS L hA s t) → Proof σ Γ Δ (eqRec A t t') →
+      Proof σ Γ Δ (WFF.back hS L hA s t')
+  /-- ⭐**The own arrow** (§11.5 (4)): under T the identity is an arrow out, and its only way home
+      is the identity, so the carrier read here twice is its value. -/
+  | back_here {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hT : ModalSys.T = true) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
+      (bd : Term σ Γ.boxIn.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) :
+      Proof σ Γ Δ ((OutLeg.nec : OutLeg Γ).back hS hA bd t) →
+      Proof σ Γ Δ (eqRec A (Term.castAnn hA (Term.collapse (Ctx.collapses_boxIn_self hT Γ)
+        (Term.collapse (Ctx.collapses_boxIn_self hT Γ.boxIn) bd))) t)
+  /-- ⭐**Definition** (§11.5 (3)): if a hole formula holds at the end of every way on from every
+      arrow of a nonempty out leg, and singles out `t` here, the carrier comes back as `t` — weak B
+      gives every arrow a way home, and the return satisfies the formula.  The one rule that makes a
+      `Back` atom about a given carrier; the canonical model's negative atoms need it. -/
+  | back_def {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hB : ModalSys.B = true) (O : OutLeg Γ) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
+      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a)
+      (θ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
+      Proof σ Γ Δ (O.dia .top) →
+      Proof σ Γ Δ (O.box (WFF.box (WFF.holeRead bd θ))) →
+      Proof σ Γ Δ (WFF.all A (WFF.imp (WFF.mono ((Ctx.empty_le Γ).insert (.bnd 0) A) θ)
+        (eqRec A (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root Γ (.bnd 0) A))
+          (Term.castAnn hA (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root A) t))))) →
+      Proof σ Γ Δ (O.back hS hA bd t)
+  /-- ⭐**Every object comes back** (row 1), as an `∃`-elimination like `T_dia`: wherever there is
+      a way out, a fresh carrier `c : □□A` comes back as `t`.  Its validity is
+      `Model.backRet_exists`.  Row 2 needs no rule of its own (`Model.backRet_exists`). -/
+  | B_strong {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) {A : VarType}
+      (hA : A.diaFree = true) {a : Ann A} (t : Term σ Γ A a) (c : ℕ)
+      (hc : Γ.RootFresh (.free c)) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
+      Proof σ Γ Δ ((OutLeg.nec : OutLeg Γ).dia .top) →
+      Proof σ (Γ.insert (.free c) (.VTypeBox (.VTypeBox A)))
+        (WFF.back hS .nec hA (Term.eta (.root (.free c)) _
+            (Ctx.ref_insert_root Γ (.free c) (.VTypeBox (.VTypeBox A))))
+            (Term.weaken hc.root _ t) ::
+          Δ.map (WFF.weaken hc.root (.VTypeBox (.VTypeBox A))))
+        (φ.weaken hc.root (.VTypeBox (.VTypeBox A))) →
+      Proof σ Γ Δ φ
 
 /-! ## Handling hypotheses -/
 

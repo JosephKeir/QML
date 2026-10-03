@@ -1,6 +1,7 @@
 import QML.QML_v12m_SatInst
 import QML.QML_v12m_SemStrongT
 import QML.QML_v12m_SemHere
+import QML.QML_v12m_SemBack
 
 /-!
 # QML v12m — soundness
@@ -250,6 +251,50 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       refine ih M hM env hfin hnp hΔ fun v hv => ?_
       obtain ⟨b⟩ := M.frame.symm hB v.2.down
       exact hn ((sat_closed _ env ψ).mp (hv ⟨w, ⟨b⟩⟩))
+  | @back_elim Γ _ Δ hS O A hA a₀ bd a t ψ pb pd ihb ihd =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_back_elim env hnp hM hS O hA bd t ψ (ihb M hM env hfin hnp hΔ)
+        (ihd M hM env hfin hnp hΔ)
+  | @back_intro Γ _ Δ hS O A hA a₀ bd a t ψ pb pr ihb ihr =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_back_intro env hnp hM hS O hA bd t ψ (ihb M hM env hfin hnp hΔ)
+        (ihr M hM env hfin hnp hΔ)
+  | @back_ne Γ _ Δ hS O A hA a₀ bd a t pb ihb =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_back_ne env hS O hA bd t (ihb M hM env hfin hnp hΔ)
+  | @back_beta Γ _ Δ hS O A hA a₀ bd a t B hB b s pb ihb =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_back_beta env hnp hfin hM hS O hA bd t hB s (ihb M hM env hfin hnp hΔ)
+  | @back_pair Γ _ Δ hS O A hA a₀ bd a t B hB b₀ bd' b t' pb pb' ihb ihb' =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_back_pair env hnp hfin hM hS O hA bd t hB bd' t' (ihb M hM env hfin hnp hΔ)
+        (ihb' M hM env hfin hnp hΔ)
+  | @back_eq Γ _ Δ hS L A hA b s a t t' pb pe ihb ihe =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_back_eq env hS L hA s t t' (ihb M hM env hfin hnp hΔ) (ihe M hM env hfin hnp hΔ)
+  | @back_here Γ _ Δ hS hT A hA a₀ bd a t pb ihb =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_back_here env hnp hfin hM hS hT hA bd t (ihb M hM env hfin hnp hΔ)
+  | @back_def Γ _ Δ hS hB O A hA a₀ bd a t θ pne pall pdef ihne ihall ihdef =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_back_def env hS hB O hA bd t θ (ihne M hM env hfin hnp hΔ)
+        (ihall M hM env hfin hnp hΔ) (ihdef M hM env hfin hnp hΔ)
+  | @B_strong Γ _ hS A hA a t c hc Δ φ pne p ihne ih =>
+      -- Interpret the eigenvariable as a carrier that comes back as `t` — `backRet_exists` says
+      -- there is one wherever there is a way out, and that *is* the hypothesis the subproof gets.
+      intro M hM w env hfin hnp hΔ
+      obtain ⟨i, _⟩ := (OutLeg.sat_dia env .nec _).mp (ihne M hM env hfin hnp hΔ)
+      obtain ⟨c₀, hc₀⟩ := M.backRet_exists hS hA ⟨i⟩ (interp env t)
+      let q : M.frame.Dom (.VTypeBox (.VTypeBox A)) w := c₀
+      refine (sat_weaken (T := .VTypeBox (.VTypeBox A)) env hc.root q φ).mp
+        (ih M hM (env.extend (T := .VTypeBox (.VTypeBox A)) (.free c) q) (hfin.insert hc _)
+          (hnp.insert _ _) ?_)
+      intro χ hχ
+      rcases List.mem_cons.mp hχ with h₁ | h₂
+      · subst h₁
+        exact (sat_back_eta_extend hS env hA (.free c) hc q t).mpr ⟨⟨i⟩, hc₀⟩
+      · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
+        exact (sat_weaken (T := .VTypeBox (.VTypeBox A)) env hc.root q χ').mpr (hΔ χ' hχ')
 
 end Model
 
