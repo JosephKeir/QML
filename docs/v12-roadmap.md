@@ -96,8 +96,15 @@ before building on them (the lesson of §10.10).
 **Design pass done (2026-10-03, `v12-modal-extensions.md` §11):** all four witnessed/unwitnessed
 rows as one leg-parameterised predicate; `Back` asserts its out leg is nonempty (so functionality is
 unconditional and surjectivity takes `◇⊤`); unique return arrows (relational frames) for
-functionality.  **Next: §11.4 item 1** — on paper, whether a negative `Back` atom can be given a
-child in the network (row 3 first).
+functionality.
+
+**Decided (2026-10-03, `v12-modal-extensions.md` §11.9): the hybrid.**  Relational atoms (`Here`,
+`Back`) where both ends of a route can be named at the origin; ∃-elimination rules, with no
+positivity condition, for objects born elsewhere — strong B's `B_ret` for a child's items coming
+home, and later 4's lift and 5's carrier principle.  T stays relational.  `B_ret` checked on paper
+(§11.10): sound on relational frames, closed under substitution, derives `P`, and the canonical
+construction goes through in outline (extended back-transfer, commit at birth).  **Next:** the
+unchecked items listed at the end of §11.10, then implementation, rows 1–2 first.
 
 ## Milestone 3 — B with 4, and S5 (5 itself)
 

@@ -4318,3 +4318,323 @@ T (`v12-arrow-canonical.md` §9.12).
 
 **Proposed order**: (1) on paper for row 3, then for the family; then the predicate, rules and
 soundness for all four rows at once; then the canonical model.
+
+### 11.5 The canonical model's obligations, on paper *(2026-10-03)*
+
+How the B network (`BData`: relational `R`, one reverse edge per edge, a witness label
+`kd s t : Option (VarSymb × VarType)` per directed edge) would satisfy `Back` atoms, and what the
+logic must then prove.  The return of a carrier along a child `v`'s edge home is a `w`-term `r_v`,
+chosen by the construction of the reverse translation; the truth lemma needs
+`Back c t ∈ M w ⟺ every child's r_v is related (DTerm.Rel) to t`.
+
+**(1) Rows 3 and 4: the witnesses share the edge home, and the logic needs an n-ary elimination.**
+A witnessed back leg asks the edge home `v → w` to lie in `c(v)`'s extent.  Relationally there is
+one such edge, so every row-3 atom at `w` claims **the same arrow** for its own witness, and
+surjectivity makes such atoms exist for every `t`.  Relationally valid, therefore:
+```
+Back c₁ t₁, …, Back cₙ tₙ,
+  ◇ ∃d̄. (□_{c₁.box} χ₁(c₁.box.dia, d̄.box) ∧ … ∧ □_{cₙ.box} χₙ(cₙ.box.dia, d̄.box))
+    ⊢ ∃x̄. χ₁(t₁, x̄) ∧ … ∧ χₙ(tₙ, x̄)
+```
+No rule of §11.2 derives it (each elimination takes one atom), and the carriers cannot be paired
+(no term joins possible objects over different witnesses).
+* *Why it is sound — a common translation (user, 2026-10-03).*  At `v` the views `□_{cᵢ(v)}` share
+  everything but their own witness content.  All of them are read at the one edge home, so each
+  translates into `w`'s context — `cᵢ(v).dia ↦ tᵢ`, as its atom says, and `v`'s box items to their
+  values at `w` along that edge, **the same in every translation**.  The `∃x̄` is the image of the
+  shared part, `v`'s born items, which have no name at `w`.  Every `χᵢ` lives in one witness view,
+  so the premise needs no joint view.
+* *Not a breach of the pairing principle.*  The link between the possibilities comes from atoms
+  that each name the same arrow, not from bare `◇`s happening to meet — as `Here x s, Here y s'`
+  combine `□_x φ` and `□_y ψ` at T's identity arrow into `φ(s) ∧ ψ(s')`.  B's version differs by the
+  intermediate world, whose born items are the shared part.
+* *The rule:* `back_joint`, the display above, for a list of atoms of **any** rows (an unwitnessed
+  back leg contributes `□` in place of `□_{cᵢ.box}`).  Sound for unique ways home, as
+  `back_fun`.  Where pairing is available (rows 1–2) it is equivalent to `back_pair` below, so one
+  joint rule could serve the family.
+* *The network:* the edge home must lie in every row-3 carrier's extent at once, so `kd` becomes a
+  **set of labels** per edge, each with its content and its `trX` obligation.  A local change to the
+  weak-B construction; the consistency of a child's joint commitments is what `back_joint` supplies.
+* Rows 1 and 2 need neither: their back leg is "any arrow home", which carries no witness, and
+  `□A × □B ≅ □(A × B)` pairs their carriers.
+
+**(2) Rows 1 and 2, positive atoms: one more rule, `back_pair`.**  Two atoms `Back u t`,
+`Back u' t'` constrain one child jointly (`□χ(u.box.box, u'.box.box)` at `v` must give `χ(t, t')`).
+With unique return arrows the pair returns the pair:
+```
+back_pair:  Back u t, Back u' t'  ⊢  Back ⟨u, u'⟩ ⟨t, t'⟩          (necPair on the carriers)
+```
+sound for relational frames, not derivable from §11.2 (surjectivity's carrier for `⟨t, t'⟩` is
+unrelated to `u`, `u'`).  This is "joint possibility goes through pairing" in its positive form, and
+then every joint obligation is one elimination at a paired carrier.  Born parameters are packed by
+`∃`-introduction inside the view, so hole formulas closed apart from the hole suffice.
+
+**(3) Rows 1 and 2, negative atoms: an introduction rule, `back_def`.**  If `¬Back u t ∈ M w` (and
+`◇⊤`), some child must return a value not related to `t`.  At a base type, with `Θ` the closed hole
+formulas that define `t` uniquely at `w` (`∀z. θ(z) → z = t`), a child containing `◇¬θ(u.box.box)`
+for every `θ ∈ Θ` leaves its return free to differ from `t` (compactness).  Such a child is
+consistent unless `M w ⊢ □(□θ₁(u.bb) ∨ … ∨ □θₙ(u.bb))` for some `θᵢ ∈ Θ`, and then, `θ := ⋁θᵢ`
+also defining `t`, every child returns `t`.  So completeness needs exactly
+```
+back_def:  ◇⊤,  □□θ(u.box.box),  ∀z. θ(z) → z = t  ⊢  Back u t      (θ closed apart from its hole)
+```
+sound (every return satisfies `θ`, hence is `t`).  It is not derivable: nothing else produces a
+`Back` atom about a given `u`.  With positive atoms present the defining formula may use returns
+already known — `θ(z, t')` with `Back u' t'`, i.e. `back_def` at the paired carrier `⟨u, u'⟩` — so
+the rule should be stated with such parameters (or derived from the base form with `back_pair`).
+* Negative atoms are then met by one child each, scheduled like `ex`.
+* **At `◇`-content types** "uniquely defines `t`" has no formula: there is no equality, and
+  interchangeability is a schema.  So `back_def` is stated for `◇`-free `A` first; whether `Ind`
+  (as for `Here`, §10.41) lets the general case through is open.  (Cf. the standing lesson: when an
+  operation strips a `◇`, restrict to `◇`-free and nest.)
+
+**(4) Under T, one more positive obligation: `back_here`.**  The own arrow is an out arrow, and the
+arrow home from `w` is again the identity (relationally unique), so the round trip along it returns
+`u.here.here`:
+```
+back_here (T):  Back u t, φ(t)  ⊢  φ(u.here.here)                  (substitutional, any slot φ)
+```
+sound, not derivable from §11.2 (`back_intro` only yields `◇`-statements).  Row 2 under T meets
+`Here` the same way: if the own arrow is in `y`'s extent, `y`'s content there returns `t`
+(`Back y t, Here y s ⊢` `s.here` interchangeable with `t`).
+
+**Revised proposal.**  All four rows, with §11.2's rules plus `back_joint` (or `back_pair` where
+pairing is available), `back_def` (◇-free contents first) and, under T, `back_here`.  Build rows 1
+and 2 first — no multi-labelled edges, binary pairing — then rows 3 and 4 in the same milestone.
+Still to check on paper: that weak B's reverse-translation construction can absorb the positive
+obligations of all atoms (it commits one variable at a time; `back_joint` should make each
+commitment a finite-piece step) — the analogue of the step-1 finite-piece lemma.
+
+### 11.6 The finite-piece check: an obstacle for the relational design *(2026-10-03, paper)*
+
+**How weak B builds a way home** (`BLocal`, `BNet*`): along the edge `v → w` the child's variables
+are committed **one at a time, in `v`'s declaration order**, each to a **fresh** `w`-variable, a
+Henkin witness of what `v` necessitates about it and the older committed ones
+(`realise_consistent`).  The new image adapts to the old ones; `w` never constrains an image
+beforehand, so nothing can go wrong.
+
+**What `Back` changes.**  A positive atom `Back u t ∈ M w` fixes the return of `u`'s item along
+**every** child: the image of `z.box`, where `z` is `u.box`'s image in `v`, must be (related to) `t`.
+That image can no longer adapt — and it must still agree with the images of the child's other items
+along the same edge.
+
+**The obstacle.**  Let `u : □□Var` with `Back u t₀`, and `v` a child created **before** `u` was
+declared in `w`.  Then `u.box`'s image `z` enters `v` late (the forward arrow commits `w`'s later
+variables later), after some item `d` born at `v`, whose return `d'` is already a fresh `w`-variable.
+If `v` comes to necessitate `□(d.box = z.box)`, then `z` must return `d'` and also `t₀`, so
+`M w` must contain `d' = t₀`.  But nothing in `w`'s language ties `d'` to the child it came from —
+`d'` is "some object with these properties" — so the Lindenbaum steps of `w` may well have put
+`d' ≠ t₀` into `M w` before `u` existed.  Then neither choice for `z`'s image works.
+* `back_pair`/`back_joint` do not help: they combine atoms about `w`'s carriers, and `d` is born at
+  `v`, with no carrier in `w`.
+* Committing out of order cannot help either: `z` exists only after `d` is committed.
+* So this is an obstacle to the **construction**, not (yet) evidence of incompleteness: `w` would
+  need to say "these returns come back along one child", and its language cannot name a child.
+
+**Two ways forward.**
+1. *Relational, with names for round trips.*  Give `w` a handle on each child's round trip — e.g. a
+   possible object declared at the child's creation whose extent is that child, with returns
+   stated relative to it (a witnessed out leg, row 2) — so that `w`'s theory can constrain all of a
+   child's returns jointly.  New construction machinery; unclear yet whether the handle's type can
+   keep up with a child whose items grow.
+2. *Arrow semantics for strong B.*  Let each atom take **its own** way home: every child gets a
+   dedicated back arrow per atom, whose translation fixes that atom's carrier and lets everything
+   else adapt (fresh), exactly as weak B's commitments do.  Joint obligations disappear —
+   `back_fun`, `back_pair`/`back_joint` become unsound and unnecessary, and rows 3–4 no longer need
+   multi-labelled edges (each witness gets its own arrow).  The price: the canonical model is no
+   longer relational, so strong B is complete over arrow frames only — against the 2026-09-19
+   direction (`v12-arrow-canonical.md` §4), though weak B's relational result stands.
+   Negative atoms still need `back_def`-style children (one per `(u, t)`).
+
+Not decided; to be put to the user.
+
+### 11.7 Option 1's crux: the born-item principle `P` *(2026-10-03, paper)*
+
+**Option 1 restated.**  The logic already anticipates future carriers: surjectivity is a theorem
+schema from the start, so `w`'s theory constrains its children by every carrier it could acquire.
+(Example: a child necessitating `∀z:□A. □(d.box = z.box)` is refuted at `w` as soon as `w` has two
+distinct objects — surjectivity, `back_pair`, instantiate `z` at both carriers' items, elimination.)
+The construction would then need (i) **commit at birth**: a `Back`-carrier's item gets its return
+fixed when it enters the child, and (ii) an **extended back-transfer** carrying a child's facts
+quantified over its `□`-objects to `w` as facts quantified over `w`'s carriers:
+```
+v ⊨ ∀z:□A. (χ(z) → □ψ(d.box, z.box))   ⟹   w ⊨ ∀u ∀t. (Back u t ∧ □χ(u.box) → ψ(d', t))
+```
+Committing a born item's return `d'` as a fresh witness then needs, in its consistency step:
+```
+P:  ◇∃d:□A. (□Σ(d.box) ∧ ∀z:□A. (χ(z) → □ψ(d.box, z.box)))
+       ⊢  ∃y. (Σ(y) ∧ ∀u ∀t. (Back u t ∧ □χ(u.box) → ψ(y, t)))
+```
+valid relationally (`y` := `d`'s return along the edge home), **not** valid over arrow frames
+(`d` and the carriers may come home along different arrows).
+
+**The parameter-free core is derivable.**  `◇∀z:□A. □ψ(z.box) ⊢ ∀t. ψ(t)` (`ψ` closed apart from
+its hole): fix `t`; surjectivity gives a fresh `u` with `Back u t`; inside `◇` instantiate `z := u.box`
+to get `◇□ψ(u.box.box)`; `back_elim` gives `ψ(t)`.  This is the Barcan-type consequence of strong B
+recorded in §4 ("strong B ⇒ ◇-BF, parameter-free ✓").
+
+**With the born parameter `d` every route fails at the same point.**  The conclusion needs one `y`
+for **all** carriers (`∃y ∀u`), and `y` must be `d`'s own return; but no rule says anything about the
+return of an item born at the child:
+* *via `y`'s carrier* (surjectivity gives `c` with `Back c y`): elimination at the pair `⟨c, u⟩` needs
+  `□ψ(c(v).box, u(v).box)` at the child, but `c(v)` and `d` agree only along the edge home, so the
+  child's fact about `d` does not transfer to `c(v)`;
+* *via weak B on the refutation* (the negation of `P`'s conclusion is closed, so it holds `□◇` at
+  the child): the successor it lands on is "some successor", and the step back needs the same
+  `c(v)`-versus-`d` link;
+* *via compactness*: it yields `∀u ∃y`, never `∃y ∀u`;
+* *via a new carrier `e` with `e(v) = d`* ("name each born item by a carrier"): the existence of such
+  an `e` is a gluing principle for necessary objects across children, which the general (non-full)
+  models do not satisfy.
+
+Every rule of §11 speaks only of `w`'s carriers and their returns; `P` speaks of a child's own items
+coming home jointly with them.  So the conjecture: **`P` is not derivable from §11's rules**, and
+option 1 needs `P` (or an equivalent) **as an axiom** — a parameterised, Barcan-strength principle,
+relationally valid, characteristic of unique ways home.  This is §4's open "strong B ⇒ ◇-BF,
+parameterised", met from the completeness side.
+
+**Where that leaves the choice.**
+* Option 1 = relational strong B **with `P` (or a cleaner equivalent) added**: completeness looks
+  reachable along the lines above, at the price of a heavy new axiom whose simplest form is not yet
+  known (a parameterised Barcan formula for necessary contents, `∀z:□A. □ψ(z.box, p̄) ⊢ □∀y. ψ(y, p̄)`,
+  is valid relationally but does not obviously give `P`'s conditional form).
+* Option 2 = arrow semantics: no `P`, no joint rules; the dedicated-arrow construction of §11.6.
+
+### 11.8 The strong-T analogy: `P` is strong B's `T_dia∀` *(2026-10-03, paper; user's observation)*
+
+Strong T met the same wall (§3 T, "Open problem: later constants"): the per-formula existential gave
+`∀y ∃c` — a witness per formula — where the canonical model needs one witness for everything,
+`∃c ∀y`.  Two ways out were found: **`T_dia∀`**, ∃-elimination for a manufactured witness whose
+hypotheses carry `∀`-quantified parameters (equivalently the positive-polarity schema "from
+`Φ⟨x := t⟩` infer `∃x. Φ(x)`, `Φ` positive in `x`"), and the **relational `Here` atom**, from which all
+instances follow and which the canonical model reads its datum off.
+
+`P` has exactly `T_dia∀`'s shape: a manufactured value (the return `y` of an item born at a child —
+for T it was a possible object `c` realising `t`) with the uniform quantifier order `∃y ∀u`.  So:
+
+* **The `T_dia∀` route: an export schema.**  Read a child's formula along the way home:
+  ```
+  from ◇Φ infer Φ↓        (Φ positive)
+  ```
+  where `↓` translates the child's formula at the world we return to: `□χ ↦ χ` (home is a
+  successor); an item of `w` read two views in, `u.box.box ↦ t` given `Back u t` (row 3:
+  `□_{c.box} χ(c.box.dia) ↦ χ(t)` given `Back c t`); an item born at the child, `∃d. … d.box …` ↦
+  `∃y. … y …`; a quantifier over the child's `□`-objects `∀z:□A. … z.box …` ↦ a quantifier over `w`'s
+  carriers `∀u ∀t. Back u t → … t …` (their images are among the child's `□`-objects).  Instances:
+  **weak B** (`Φ := □ψ`, `ψ` closed: `◇□ψ ⊢ ψ`), **`back_elim`** (`Φ := □ψ(u.box.box)`),
+  **`back_joint`** (a conjunction of such atoms, read at one home — so the joint rules become
+  instances, not extra principles), and **`P`**.  It is exactly "a child's facts hold along the
+  unique way home", which is what the relational semantics says; positivity is needed for the same
+  reason as for T (`◇` and negation at the child do not speak about home).  Precedent: `T_dia∀` was
+  accepted (2026-09-18) for precisely this reason.
+* **The `Here` route: a relational atom for born items.**  The born item would have to be an
+  argument at `w`, i.e. packed into a possible object `x : ◇□A` (row 2's carrier); then one atom
+  `Back x y` would serve all carriers at once, through cross-row `back_joint`, as `Here` did for T.
+  But packing `◇∃d. Φ(d) ⊢ ∃x:◇□A. ◇_x Φ(x.dia)` is a comprehension principle for possible objects
+  that the general models do not satisfy (it is why strong D is an axiom).  For T the possible object
+  was already the subject; here it is not.  So this route needs an extra axiom too, and a less
+  natural one.
+
+**Proposal.**  Take the export schema as strong B's characteristic rule, with `Back` (the four rows)
+supplying the translation of returning carriers.  To check on paper before building: soundness of
+the schema over relational frames; that `back_fun`, `back_pair` and `back_joint` are instances; that
+the canonical construction of §11.6–11.7 goes through with it (commit at birth, the extended
+back-transfer, `P` for born items); and its `T_dia∀`-style form with explicit hypotheses, which is
+what an implementation would state.
+
+### 11.9 ⭐Decision: the hybrid — relational where both ends can be named *(2026-10-03, user)*
+
+**The decision.**  Strong principles are **relational** (atoms) where a route returns to the origin
+and both ends can be named there, and **existential** (∃-elimination rules for a manufactured
+witness) where an object is born somewhere the origin cannot name.
+
+| relational (atoms, `Here`-style) | existential (∃-elimination, `T_dia∀`-style) |
+|---|---|
+| T: `Here`, with `T_dia` (the witness is introduced at the origin with its atom) — **kept as is** | B: items **born at a child**, coming home (`B_ret`, §11.10) |
+| B: `Back` (all four rows), optionally `Home`, for what the origin can name | 4's lift; 5's carrier principle; `◇-BF` (§3 4, §3 5) |
+
+*Why this line.*  It is §2c's axis 4 ("names travel inward"): a pinned relation needs both arguments
+in one scope, which a returning route gives for the origin's own objects and nothing gives for
+objects born elsewhere.  4 and 5 never return, so a uniformly relational treatment is impossible;
+uniformly schematic would throw away `Here`, which is better for examples and for a philosophical
+audience.  The existential rules carry **no positivity condition**, as `T_dia∀` did not; positivity
+appears only in the metatheory (the construction's invariant, and any equivalence with a one-line
+schema).  Semantically the existential rule asserts only that a value of `w` with certain properties
+exists (the item's return, always there), not that a new possible object exists, so no comprehension
+principle is needed.
+
+**Rejected:** uniform schemas (reverting T to `T_dia∀`); `Home` plus a comprehension principle for
+possible objects (`◇∃d. Φ(d) ⊢ ∃x:◇□A. □_x Φ(x.dia)`, not valid in general models) for born items;
+arrow semantics for strong B (§11.6 option 2).
+
+### 11.10 The born-item rule `B_ret`, checked on paper *(2026-10-03)*
+
+**The rule.**  `Φ` a formula of the `□` view with one bound `d : □A` (the child's item); the `χ`s
+closed apart from their holes:
+```
+B_ret:   Γ ; Δ ⊢ ◇∃d:□A. Φ(d)
+         Γ, y:A ; H_{χ₁}(y), …, H_{χₙ}(y), Δ ⊢ φ          (y fresh for Γ, Δ, φ)
+         ───────────────────────────────────────────
+         Γ ; Δ ⊢ φ
+
+H_χ(y)  :=  ∀ū:□□B̄ ∀t̄:B̄.  (Back ū t̄ ∧ χ(y, t̄))  →  ◇∃d. (Φ(d) ∧ ◇χ(d.box, ū.box.box))
+```
+"Introduce `y`, the value `d` comes home with: whatever holds of it, jointly with returning carriers,
+is possible along a successor of a `Φ`-child."  The carriers `ū` are **bound in the hypothesis**, not
+taken from `Γ`.  The shape is `T_dia∀`'s (`ψ↓(t) → ◇_c ψ↑`): a fact at the origin implies its reading
+possible out there; nothing restricts `χ`'s polarity.
+
+**(1) Soundness — ✓ on relational frames (unique way home), models proper.**  Let `v₀`, `d₀` witness
+the premise, `r` the arrow `v₀ → w`, and `y := d₀.box` read along `r`.  Given `Back ūᵢ tᵢ` and
+`χ(y, t̄)`: each `Back` returns along *some* arrow `v₀ → w`, which is `r`, so `ūᵢ.box.box` read along
+`r` is `Ind` to `tᵢ`; `IndInvariant` turns `χ(y, t̄)` into `χ` of the values along `r`; so `v₀`, `d₀`
+and `r` witness the consequent.  On arrow frames the carriers may come home along other arrows than
+`d₀`'s, and the rule fails — it is the relational content, as expected.
+
+**(2) Substitution — ✓ by construction.**  The `ū`, `t̄` are bound in `H_χ` and the `χ`s are closed
+apart from their holes, so a substitution touches only `Φ` (uniformly, in the premise and in every
+`H_χ`) and renames the fresh `y` as `T_dia∀` renamed `c`.  No case beyond `Subst.under` for the
+binders.
+
+**(3) `P` is derivable.**  Take `Φ(d) := □Σ(d.box) ∧ ∀z:□A.(ρ(z) → □ψ(d.box, z.box))`.  Under
+`B_ret`'s hypotheses: if `¬Σ(y)`, `H_{¬Σ}` gives a `Φ`-child with `◇¬Σ(d.box)`, against
+`□Σ(d.box)`; if `Back u t`, `□ρ(u.box)` and `¬ψ(y, t)`, `H_{¬ψ}` gives a `Φ`-child with
+`◇¬ψ(d.box, u.box.box)`, while `Φ` at `z := u.box` (with `ρ(u.box)` from `□ρ(u.box)`) gives
+`□ψ(d.box, u.box.box)`.  So `Σ(y) ∧ ∀u ∀t. (Back u t ∧ □ρ(u.box) → ψ(y, t))`; `∃`-introduction, and
+`B_ret` discharges `y`.  One `y` serves every `u`: `∃y ∀u`.
+
+**(4) The canonical construction — ✓ in outline.**  The *home reading* `Θ↓` of a **positive** child
+formula `Θ` about an edge's committed items `ā` (images `ā'` in `w`): `□ψ ↦ ψ`; `ā.box ↦ ā'`; a
+carrier's item `u.box.box ↦ t` under `Back u t`; `∀z:□C.(ρ(z) → …z.box…)` ↦
+`∀u ∀t.(Back u t ∧ □ρ(u.box) → …t…)`; `∃d` (born) ↦ `∃x`; `∧`, `∨` homomorphically.
+* **Invariant** (the extended back-transfer): along every edge `v → w`, every positive `Θ` true at `v`
+  has `Θ↓ ∈ M w`.  It quantifies over **all** carriers of `w`, present and future, so late arrivals
+  are covered in advance — this dissolves §11.6's obstacle.
+* **Child creation.**  `v`'s seed plus `{¬Θ : ¬Θ↓ ∈ M w}` is consistent: otherwise the seed derives a
+  positive `Θ`, so `◇Θ ∈ M w`, and the **export** `◇Θ ⊢ Θ↓` refutes `¬Θ↓`.  Export for positive `Θ` is
+  derived by induction on `Θ`: `back_elim`/`back_joint` for `□ψ` atoms with carriers, `B_ret` for a
+  top-level `∃d` (an `∃` below a `∀z` is per carrier and needs only `back_elim` with `∃` in the hole),
+  `◇` distributing over `∨`, weak B for the closed part.
+* **Committing an item `b`** (born, or an image without a `Back` value) to a fresh `b'`: a finite set
+  of positive formulas about `ā, b` true at `v` gives `∃b. ⋀Θ`, positive about `ā`, so the invariant
+  puts `∃x. ⋀Θ↓[x]` into `M w`; a Henkin witness realises the finite piece, and compactness gives the
+  whole type — `realise_consistent` with `↓` in place of plain transfer.
+* **Committing a carrier at birth** (a forward image `z` of `u` with `Back u t₀`, `t₀` the root from
+  `exW`): `z.box ↦ t₀` at once.  `v`'s extension by `z` plus `{¬□ψ(ā.box, z.box) : ¬ψ(ā', t₀) ∈ M w}` is
+  consistent: otherwise `v ⊢ ρ_u(z) → □ψ(ā.box, z.box)` for the forward facts `ρ_u`, with `z` fresh, so
+  the positive `∀z.(ρ_u(z) → □ψ(ā.box, z.box))` holds at `v`; the invariant puts
+  `∀u ∀t.(Back u t ∧ □ρ_u(u.box) → ψ(ā', t))` into `M w`, and `u, t₀` refute `¬ψ(ā', t₀)`.  Joint
+  obligations between carriers are the same argument with several `z`s, which is where `back_joint`
+  is used.
+* **Negative atoms** (`¬Back u t`, `◇⊤`): a child whose return of `u` avoids `t`, by `back_def`'s
+  argument (§11.5 (3)); `back_def` stays a rule (a `Back`-introduction; `◇`-free contents first).
+
+**Still unchecked** (paper, before Lean): the home reading for every kind of item a child's formula
+can mention (forward images of non-carrier items, `◇`-items, rows 3–4's witnessed back legs, where
+`□_{c.box} χ ↦ χ` under a row-3 `Back`); the own arrow under T (the way home is the identity, where
+`back_here` applies); `◇`-typed contents (`back_def` and the `Ind` side of `↓`); whether `back_fun`
+is needed by the construction or only by the truth lemma.
+
+**Rule set for strong B, as of now:** `Back` (four rows) with `back_elim`, `back_intro`, `back_ne`,
+`back_beta`, `back_eq`, `back_fun`, `back_joint` (or `back_pair` for rows 1–2), `back_here` (T),
+`back_def`, surjectivity `B_strong` per row, and `B_ret`.  Frames: unique ways home.
