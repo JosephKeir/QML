@@ -3,8 +3,9 @@ import QML.QML_v12m_BTruth
 /-!
 # QML v12m — B's canonical model is a model proper
 
-The network's `Ind` is the tree's (`BData.Ind`: related representatives), so `IndInvariant` is
-proved as in the tree (`QML_v12m_CanonInd`, `Canon.indInvariant`):
+The network's `Ind` is attested (`BData.Att`, docs §11.16), and attested objects have related
+representatives (`Ind.rel`), so invariance is proved as in the tree (`QML_v12m_CanonInd`,
+`Canon.indInvariant`), and the congruence laws hold by construction:
 
 * over a tame context every environment is the canonical environment at one stage, read through a
   substitution sending each declared address to a representative of its value (`repSubst`,
@@ -137,8 +138,8 @@ end Represent
     tame context an environment is the canonical one at a stage, read through a substitution
     (`substEnv_repSubst`); so a slot formula with an object in its slot is true exactly when the
     substituted slot formula, instantiated at a representative of the object, is in the theory
-    (`sat_subst`, `sat_instantiate`, the truth lemma).  Related objects have representatives
-    interchangeable in every slot formula (`DTerm.Rel`), so the two memberships agree. -/
+    (`sat_subst`, `sat_instantiate`, the truth lemma).  Attested objects have representatives
+    interchangeable in every slot formula (`Ind.rel`, `DTerm.Rel`), so the two memberships agree. -/
 theorem indInvariant_inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLast →
     ∀ {s : B.model.frame.W} (env : B.model.Env Γ s) {A : VarType}
       (φ : WFF σ (Γ.insert (.bnd 0) A) 1) (o o' : B.model.frame.Dom A s), B.model.Ind o o' →
@@ -182,7 +183,7 @@ theorem indInvariant_inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLas
             (WFF.mono (((B.w s).le hK).insert (.bnd 0) A) φ')) := by
           rw [Model.sat_instantiate (B.canonEnv s K') (noProjLast s K'), hval]
       _ ↔ _ := truth s K' _
-  obtain ⟨u, u', hu, hu', hrel⟩ := hInd
+  obtain ⟨u, u', hu, hu', hrel⟩ := hInd.rel
   have hK : repSup env hfin ≤ max (repSup env hfin) (max u.i u'.i) := le_max_left _ _
   have h₁ : u.i ≤ max (repSup env hfin) (max u.i u'.i) :=
     (le_max_left _ _).trans (le_max_right _ _)
@@ -206,19 +207,17 @@ theorem rden_holeAt {s : B.W} {A : VarType} {o : B.model.frame.Dom A s}
   rw [e1, B.fromDom_toDom]
 
 /-- ⭐⭐**B's canonical model is a model proper**: invariance (`indInvariant_inv`) and the
-    congruence laws (§11.15), as the tree's (`Canon.indInvariant`). -/
+    congruence laws (§11.15), which hold by construction: attestation is closed under hole terms
+    and pairing (`Att.holeAt`, `Att.pair`). -/
 theorem indInvariant : B.model.IndInvariant where
   inv := indInvariant_inv
   map := by
-    intro A C c hh s o o' ⟨u, u', hu, hu', hrel⟩
+    intro A C c hh s o o' ⟨u, u', hu, hu', hatt⟩
     exact ⟨⟨u.i, _, Term.holeAt u.t hh⟩, ⟨u'.i, _, Term.holeAt u'.t hh⟩, rden_holeAt u hu hh,
-      rden_holeAt u' hu' hh, hrel.holeAt hh⟩
+      rden_holeAt u' hu' hh, hatt.holeAt hh⟩
   pair := by
     intro A C s a a' b b' ⟨u₁, u₁', h₁, h₁', r₁⟩ ⟨u₂, u₂', h₂, h₂', r₂⟩
-    refine ⟨⟨max u₁.i u₂.i, _, Term.pair (u₁.lift _ (le_max_left _ _))
-        (u₂.lift _ (le_max_right _ _))⟩,
-      ⟨max u₁'.i u₂'.i, _, Term.pair (u₁'.lift _ (le_max_left _ _))
-        (u₂'.lift _ (le_max_right _ _))⟩, ?_, ?_, Canon.DTerm.Rel.pair r₁ r₂ _ _ _ _ _ _⟩
+    refine ⟨_, _, ?_, ?_, Att.pair r₁ r₂⟩
     · exact Prod.ext ((rden_lift (le_max_left u₁.i u₂.i) u₁.t).trans h₁)
         ((rden_lift (le_max_right u₁.i u₂.i) u₂.t).trans h₂)
     · exact Prod.ext ((rden_lift (le_max_left u₁'.i u₂'.i) u₁'.t).trans h₁')

@@ -222,17 +222,58 @@ theorem posSerial_canon (hDS : ModalSys.DStrong = true) (s : B.W) :
 
 /-! ## Indistinguishability -/
 
-/-- ⭐**Canonical indistinguishability**, as in the tree (`Canon.Ind`, docs §10.33): two objects
-    with representatives the world's theory cannot tell apart (`DTerm.Rel`). -/
+/-- ⭐**What the theory attests** (docs §11.16): the pairs of representatives a *single* atom
+    relates — a realised witness's content here (its realisation, `realTerm`) and a term the
+    witness names (`Here`) — closed under hole terms and pairing, the congruences a model proper
+    asks for (§11.15).  Neither symmetric nor transitive: composing two atoms through a middle
+    object would compare terms over different witnesses with no map between their inner contexts,
+    the cross-witness comparison §10.3 rejects. -/
+inductive Att {s : B.W} : {A : VarType} → Canon.DTerm (B.w s).sys (B.w s).T A →
+    Canon.DTerm (B.w s).sys (B.w s).T A → Prop
+  | refl {A : VarType} (u : Canon.DTerm (B.w s).sys (B.w s).T A) : Att u u
+  | here {A : VarType} (hT : ModalSys.T = true) {i : ℕ} {x : VarSymb}
+      (hx : ∃ X, ((B.w s).ctx i).ref x = some (.VTypeDia X)) {β : Ann A}
+      (bd : Term σ (((B.w s).ctx i).diaIn x) A β) {a : Ann A} (t : Term σ ((B.w s).ctx i) A a)
+      (hr : (B.w s).Realised x) (hmem : WFF.here hT (Term.diatm x hx bd) t ∈ (B.w s).M i) :
+      Att ⟨max i hr.data.i₀, _, (B.realTerm hr (Ctx.Le.refl _) hx bd).2⟩ ⟨i, a, t⟩
+  | holeAt {A C : VarType} {u u' : Canon.DTerm (B.w s).sys (B.w s).T A} (h : Att u u')
+      {c : Ann C} (hh : Term σ (Ctx.empty.insert (.bnd 0) A) C c) :
+      Att ⟨u.i, _, Term.holeAt u.t hh⟩ ⟨u'.i, _, Term.holeAt u'.t hh⟩
+  | pair {A C : VarType} {u₁ u₁' : Canon.DTerm (B.w s).sys (B.w s).T A}
+      {u₂ u₂' : Canon.DTerm (B.w s).sys (B.w s).T C} (h₁ : Att u₁ u₁') (h₂ : Att u₂ u₂') :
+      Att ⟨max u₁.i u₂.i, _, Term.pair (u₁.lift _ (le_max_left _ _))
+          (u₂.lift _ (le_max_right _ _))⟩
+        ⟨max u₁'.i u₂'.i, _, Term.pair (u₁'.lift _ (le_max_left _ _))
+          (u₂'.lift _ (le_max_right _ _))⟩
+
+/-- ⭐**Canonical indistinguishability** (docs §11.16): two objects with representatives the
+    world's theory attests (`Att`).  Every attested pair is interchangeable in the theory
+    (`Att.rel`), so the model is a model proper (`BData.indInvariant`), but `Ind` itself is not
+    the equivalence that interchangeability is — the tree's `Canon.Ind`, which `IndRel` repeats. -/
 def Ind {A : VarType} {s : B.W} (o o' : B.frame.Dom A s) : Prop :=
+  ∃ u u' : Canon.DTerm (B.w s).sys (B.w s).T A,
+    B.rden s u.i (Ctx.Le.refl _) u.t = B.fromDom A s o ∧
+      B.rden s u'.i (Ctx.Le.refl _) u'.t = B.fromDom A s o' ∧ B.Att u u'
+
+/-- Objects with related representatives, which the world's theory cannot tell apart
+    (`DTerm.Rel`): what attested objects are (`Att.rel`), and the tree's `Canon.Ind`. -/
+def IndRel {A : VarType} {s : B.W} (o o' : B.frame.Dom A s) : Prop :=
   ∃ u u' : Canon.DTerm (B.w s).sys (B.w s).T A,
     B.rden s u.i (Ctx.Le.refl _) u.t = B.fromDom A s o ∧
       B.rden s u'.i (Ctx.Le.refl _) u'.t = B.fromDom A s o' ∧ u.Rel u'
 
-/-- Every object is definable, so it is related to itself. -/
+/-- Every object is definable, so it is attested to itself. -/
 theorem Ind_refl {A : VarType} {s : B.W} (o : B.frame.Dom A s) : B.Ind o o := by
   obtain ⟨i, a, t, ht⟩ := B.definable_fromDom A s o
-  exact ⟨⟨i, a, t⟩, ⟨i, a, t⟩, ht, ht, Canon.DTerm.Rel.refl _⟩
+  exact ⟨⟨i, a, t⟩, ⟨i, a, t⟩, ht, ht, Att.refl _⟩
+
+variable {B} in
+/-- A term and its lift to a later stage denote alike. -/
+theorem rden_lift {s : B.W} {i K : ℕ} (h : i ≤ K) {A : VarType} {a : Ann A}
+    (t : Term σ ((B.w s).ctx i) A a) :
+    B.rden s K (Ctx.Le.refl _) (Term.mono ((B.w s).le h) t) = B.rden s i (Ctx.Le.refl _) t := by
+  rw [rden_mono]
+  exact rden_congr _ _ _ _ _ _
 
 /-! ## Strong T: every object is the content of a possible object here -/
 
@@ -253,8 +294,7 @@ theorem rden_eta_real {s : B.W} {x : VarSymb} (hr : (B.w s).Realised x) {k : ℕ
     term's denotation; the theory has a `Here` atom for that term about some witness
     (`BWorld.retW`), which makes the witness realised (`BWorld.datum_of_here`); the witness's
     η-expansion has the own arrow in its extent, with the datum's content there (`rden_eta_real`);
-    and that content is co-named with the term, so the two have related representatives
-    (`DTerm.rel_of_coname`). -/
+    and the atom attests that content and the term (`Att.here`), which is what `Ind` asks. -/
 theorem posRet_exists_canon {A : VarType} {s : B.W} (hT : ModalSys.T = true)
     (hS : ModalSys.TStrong = true) (o : B.frame.Dom A s) :
     ∃ (p : B.frame.Pos A s) (hm : B.frame.reflAcc hT s ∈ (B.posEval p).1),
@@ -266,27 +306,18 @@ theorem posRet_exists_canon {A : VarType} {s : B.W} (hT : ModalSys.T = true)
   obtain rfl : hr.data.A = A := by
     have := (hr.data.hdeclOf i' ⟨A, hy⟩).symm.trans hy
     simpa using this
-  -- both atoms at one stage, about one subject
-  set K := max hr.data.i₀ i'
-  have hdK : ((B.w s).ctx K).ref y = some (.VTypeDia hr.data.A) :=
-    ((B.w s).le (le_max_right _ _ : i' ≤ K)).ref hy
-  have h₁ := hr.data.hhereAt (B.w s).mcsT K (le_max_left _ _) hdK
-  have h₂ := (BWorld.mem_lift (w := B.w s) (le_max_right _ _ : i' ≤ K)).mp hmem
-  rw [WFF.mono_hereAt_of_le hT _ _ _ hdK, Term.mono_mono] at h₂
-  have hrel := Canon.DTerm.rel_of_coname hT _ h₁ (BWorld.mem_T.mpr h₂)
-  have hiK : i ≤ K := hi.trans (le_max_right _ _)
   have hm : B.frame.reflAcc hT s ∈ B.extent s y := Or.inr ⟨B.irrefl s, hr⟩
   refine ⟨⟨B.rden s hr.data.i₀ (Ctx.Le.refl _) (Term.eta y (.VTypeDia hr.data.A) hr.data.hd₀),
-      definable_rden _ _⟩, hm, ⟨hr.data.i₀, _, hr.data.t₀⟩, ⟨i, a', t⟩, ?_, ht, ?_⟩
+      definable_rden _ _⟩, hm, _, ⟨i', _, Term.mono ((B.w s).le hi) t⟩, ?_, ?_,
+      Att.here hT ⟨_, hy⟩ (Term.eta (.step y .dia) hr.data.A (Ctx.ref_diaIn_of hy)) _ hr hmem⟩
   · have hc : B.toDom _ s (B.rden s hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀) (definable_rden _ _) =
         (B.posEval ⟨B.rden s hr.data.i₀ (Ctx.Le.refl _)
           (Term.eta y (.VTypeDia hr.data.A) hr.data.hd₀), definable_rden _ _⟩).2
           ⟨B.frame.reflAcc hT s, hm⟩ :=
       toDom_congr (rden_eta_real hr hr.data.hd₀ _).symm _ _
-    rw [← hc, fromDom_toDom]
-  · exact (Canon.DTerm.rel_lift _ (le_max_left _ _)).trans
-      (hrel.trans (Canon.DTerm.rel_lift
-        (⟨i, a', t⟩ : Canon.DTerm (B.w s).sys (B.w s).T _) hiK).symm)
+    rw [rden_realTerm_eta hr (Ctx.Le.refl _) ⟨_, hy⟩ (Ctx.ref_diaIn_of hy) _ _, ← hc,
+      fromDom_toDom]
+  · exact (rden_lift hi t).trans ht
 
 /-- ⭐The canonical model. -/
 noncomputable def model : Model.{0, 0} σ where

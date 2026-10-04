@@ -191,8 +191,9 @@ style of milestone 1, each ending green and committed:
    gains two congruence laws on `Ind`; `back_here` is substitutional; `ret_back` became
    elimination with a carrier, `ret_elimC`; `back_def` stays `◇`-free.  L3's model side is done:
    shapes are gated by `ModalSys.shaped` (`T ∨ strong B`); the network's T-free leaf decoder moved
-   to L4.  Next: L2 (canonical `Ind` attested by single atoms, §11.16), L4 (the network, step 5
-   proper).
+   to L4.  L2 is done: the network's `Ind` is attested by single atoms (`BData.Att`, §11.16),
+   and the tree is unchanged.  Next: L4 (the network, step 5 proper, with `Att`'s `back`
+   constructor and the T-free decoder).
 5. **The canonical network.**  The hard step:
    * the **atom invariant** replaces the back arrows' necessity transfer (`Transfer` becomes a
      consequence), and committing a born item becomes Henkin witnessing of `ret_exists` (in `BLocal`,

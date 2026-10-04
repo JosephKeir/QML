@@ -5063,3 +5063,19 @@ is a relation of *formulas*, not of objects.
    commit-at-birth values may be old roots.  Harmless for positive atoms (one root for all children);
    for injectivity only back-images of carriers *without* a value must be fresh — the realisation step
    already makes them so.
+
+**L2 done (2026-10-05).**  On the network, `BData.Ind o o'` says that `o` and `o'` have
+representatives related by `BData.Att`, an inductive relation on `DTerm`s with four constructors:
+`refl`; `here` (a `Here x c` atom relates `x`'s realisation `realTerm`, read at the stage above
+both, to `c`); `holeAt`; and `pair`.  The old relation is kept as `IndRel` (related
+representatives, the tree's `Canon.Ind`).  `Att.rel` shows that attested representatives are
+interchangeable: `here` by co-naming with the realisation (`mem_here_real`, `rel_of_coname`), the
+congruences by `DTerm.Rel.holeAt`/`pair`.  So `indInvariant`'s `inv` goes through `Ind.rel` and the
+old proof, and `map`/`pair` hold by construction.  Risk 5 turned out smaller than scoped:
+* `posRet_exists_canon` uses `Att.here` directly, on `retW`'s atom (no `Rel.trans`, no stage
+  lifting);
+* `here_truth` takes membership to truth by `Att.here`, and truth to membership through `Att.rel`
+  (the old argument).
+
+The tree is unchanged.  **Left for L4:** a `back` constructor (a `Back u c` atom attests every
+return of `u`'s carrier and `c`), with `Att.rel` from `back_fun`.
