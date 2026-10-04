@@ -360,6 +360,114 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
           Δ.map (WFF.weaken hc.root (.VTypeBox (.VTypeBox A))))
         (φ.weaken hc.root (.VTypeBox (.VTypeBox A))) →
       Proof σ Γ Δ φ
+  -- Strong B: the returning possibility `◇[d ↦ t] Φ(d)` (`WFF.ret`, docs §11.14).  Its body binds
+  -- one necessary object `d : □A` of the far world; several items are packed into one by pairing.
+  /-- ⭐**A new returning possibility** (existence, no items yet), as an `∃`-elimination: if some
+      accessible world has a necessary object with `Φ`, then for a fresh `c` it comes back as `c` —
+      weak B gives the way home. -/
+  | ret_new {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true)
+      {A : VarType} (hA : A.diaFree = true) (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
+      (c : ℕ) (hc : Γ.RootFresh (.free c)) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
+      Proof σ Γ Δ ((OutLeg.nec : OutLeg Γ).dia (WFF.ex (.VTypeBox A) Φ)) →
+      Proof σ (Γ.insert (.free c) A)
+        (WFF.ret hS hA (Term.eta (.root (.free c)) A (Ctx.ref_insert_root Γ (.free c) A))
+            (WFF.mono ((Ctx.le_insert hc.root A).boxIn.insert (.bnd 0) _) Φ) ::
+          Δ.map (WFF.weaken hc.root A))
+        (φ.weaken hc.root A) →
+      Proof σ Γ Δ φ
+  /-- ⭐**One more item of the same child** (existence, extension form): if the returning
+      possibility's object has a companion `b` with `Φ(d, b)`, then for a fresh `c` the pair
+      `⟨d, b⟩` comes back as `⟨t, c⟩` — the body split into the pair's components. -/
+  | ret_ext {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) {A B : VarType}
+      (hA : A.diaFree = true) (hB : B.diaFree = true) {a : Ann A} (t : Term σ Γ A a)
+      (Φ : WFF σ ((Γ.boxIn.insert (.bnd 0) (.VTypeBox A)).insert (.bnd 1) (.VTypeBox B)) 2)
+      (c : ℕ) (hc : Γ.RootFresh (.free c)) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
+      Proof σ Γ Δ (WFF.ret hS hA t (WFF.ex (.VTypeBox B) Φ)) →
+      Proof σ (Γ.insert (.free c) B)
+        (WFF.ret hS (VarType.diaFree_prod hA hB)
+            (Term.pair (Term.weaken hc.root B t)
+              (Term.eta (.root (.free c)) B (Ctx.ref_insert_root Γ (.free c) B)))
+            (WFF.mono ((Ctx.le_insert hc.root B).boxIn.insert (.bnd 0) _) (WFF.bodySplit
+              (Term.boxFst (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox (.VTypeProd A B))))
+              (Term.boxSnd (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox (.VTypeProd A B))))
+              Φ)) ::
+          Δ.map (WFF.weaken hc.root B))
+        (φ.weaken hc.root B) →
+      Proof σ Γ Δ φ
+  /-- ⭐**Elimination**: what is necessary of the object out there holds of the value it comes back
+      as. -/
+  | ret_elim {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      {A : VarType} (hA : A.diaFree = true) {a : Ann A} (t : Term σ Γ A a)
+      (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
+      Proof σ Γ Δ (WFF.ret hS hA t (WFF.box (WFF.holeAt
+        ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert (.VTypeBox A)).boxIn
+        (Term.eta (VarSymb.root (.bnd 0)).inner A
+          (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)))) ψ))) →
+      Proof σ Γ Δ (WFF.holeRead t ψ)
+  /-- ⭐**A carrier joins the item**: from the same arrow out, the carrier's image comes home along
+      the one way back, so the pair of the object and the image comes back as the pair of the
+      values.  With elimination and monotonicity, this is elimination with carriers. -/
+  | ret_back {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      {A C : VarType} (hA : A.diaFree = true) (hC : C.diaFree = true) {a : Ann A}
+      (y : Term σ Γ A a) (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) {c₀ : Ann C}
+      (bd : Term σ Γ.boxIn.boxIn C c₀) {c : Ann C} (t : Term σ Γ C c) :
+      Proof σ Γ Δ (WFF.ret hS hA y Φ) →
+      Proof σ Γ Δ ((OutLeg.nec : OutLeg Γ).back hS hC bd t) →
+      Proof σ Γ Δ (WFF.ret hS (VarType.diaFree_prod hA hC) (Term.pair y t)
+        (WFF.and
+          (WFF.bodyRepl
+            (Term.boxFst (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox (.VTypeProd A C)))) Φ)
+          (eqRec (.VTypeBox C)
+            (Term.boxSnd (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox (.VTypeProd A C))))
+            (Term.castAnn (VarType.diaFree_box hC)
+              (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root _)
+                (Term.boxtm bd))))))
+  /-- **Monotonicity** in the body. -/
+  | ret_mono {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      {A : VarType} (hA : A.diaFree = true) {a : Ann A} (t : Term σ Γ A a)
+      (Φ Φ' : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) :
+      Proof σ Γ Δ (WFF.ret hS hA t Φ) →
+      Proof σ Γ Δ (WFF.box (WFF.all (.VTypeBox A) (WFF.imp Φ Φ'))) →
+      Proof σ Γ Δ (WFF.ret hS hA t Φ')
+  /-- A returning possibility is a possibility. -/
+  | ret_dia {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      {A : VarType} (hA : A.diaFree = true) {a : Ann A} (t : Term σ Γ A a)
+      (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) :
+      Proof σ Γ Δ (WFF.ret hS hA t Φ) →
+      Proof σ Γ Δ ((OutLeg.nec : OutLeg Γ).dia (WFF.ex (.VTypeBox A) Φ))
+  /-- ⭐**β**: an object built from the item by a hole term comes back as the value built by the same
+      term. -/
+  | ret_beta {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      {A B : VarType} (hA : A.diaFree = true) (hB : B.diaFree = true) {a : Ann A}
+      (y : Term σ Γ A a) {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
+      (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox B)) 1) :
+      Proof σ Γ Δ (WFF.ret hS hA y (WFF.bodyRepl
+        (Term.boxtm (Term.holeAt (Term.eta (VarSymb.root (.bnd 0)).inner A
+          (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)))) s)) Φ)) →
+      Proof σ Γ Δ (WFF.ret hS hB (Term.holeRead y s) Φ)
+  /-- **Leibniz for the value.** -/
+  | ret_eq {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      {A : VarType} (hA : A.diaFree = true) {a : Ann A} (t t' : Term σ Γ A a)
+      (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) :
+      Proof σ Γ Δ (WFF.ret hS hA t Φ) → Proof σ Γ Δ (eqRec A t t') →
+      Proof σ Γ Δ (WFF.ret hS hA t' Φ)
+  /-- ⭐**The own arrow** (T): a necessary object here with `Φ` at this very world comes back as its
+      value here — the identity is an arrow out and its own way home. -/
+  | ret_here {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hT : ModalSys.T = true) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
+      (sb : Term σ Γ.boxIn A a₀) (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) :
+      Proof σ Γ Δ (WFF.hereRead hT (Term.boxtm sb) Φ) →
+      Proof σ Γ Δ (WFF.ret hS hA (Term.collapse (Ctx.collapses_boxIn_self hT Γ) sb) Φ)
+  /-- ⭐**Bridging** (§11.14): a carrier that comes back as `t`, possibly with `Φ` of its image out
+      there, is a returning possibility with value `t` — from any arrow of its out leg, plain or
+      witnessed. -/
+  | ret_bridge {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (O : OutLeg Γ) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
+      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a)
+      (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) :
+      Proof σ Γ Δ (O.back hS hA bd t) →
+      Proof σ Γ Δ (O.dia (O.bodyRead (Term.boxtm bd) Φ)) →
+      Proof σ Γ Δ (WFF.ret hS hA t Φ)
 
 /-! ## Handling hypotheses -/
 

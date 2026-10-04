@@ -468,4 +468,393 @@ theorem sat_back_def (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) (O 
 
 end Model
 
+
+/-! ## The returning possibility: its syntax in a model -/
+
+namespace Model
+
+variable {σ : Signature} {M : Model.{u, v} σ}
+
+omit [ModalSys] in
+theorem noProjLast_hole (A : VarType) : (Ctx.empty.insert (.bnd 0) A).NoProjLast :=
+  (show Ctx.empty.NoProjLast from fun _ _ h => by simp [Ctx.empty] at h).insert (.bnd 0) A
+
+/-- On the hole's context, substituting a term is extending the empty environment by its value. -/
+theorem substEnv_hole {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {A : VarType} {a : Ann A}
+    (t : Term σ Γ A a) :
+    substEnv (Subst.single (.bnd 0) (.tm t)) (Subst.ok_single (Ctx.empty_le Γ) rfl)
+      (noProjLast_hole A) env = (Env.empty w).extend (.bnd 0) (interp env t) := by
+  funext v U hv
+  by_cases hvr : v = .root (.bnd 0)
+  · subst hvr
+    have hTU : A = U := by simpa [Ctx.insert] using hv
+    subst hTU
+    exact (entryVal_congr env
+      (show Subst.single (.bnd 0) (.tm t) (.root (.bnd 0)) = .tm t from if_pos rfl) _ rfl).trans
+      (Env.extend_root (Env.empty w) (.bnd 0) _ hv).symm
+  · simp [Ctx.insert, hvr, Ctx.empty] at hv
+
+/-- A hole formula read at any depth says the same of the value in its hole. -/
+theorem sat_holeAt {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {w : M.frame.W} (env : M.Env Γ w)
+    {A : VarType} {a : Ann A} (t : Term σ Γ A a) (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
+    M.sat env (WFF.holeAt hs t ψ) ↔ M.holeSat ψ (interp env t) := by
+  unfold WFF.holeAt
+  rw [sat_subst _ _ _ _ _ (noProjLast_hole A) env ψ, substEnv_hole env t]
+  rfl
+
+/-- A hole term read at any depth is its value at the value in its hole. -/
+theorem interp_holeAt {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {A : VarType} {a : Ann A}
+    (t : Term σ Γ A a) {B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
+    interp env (Term.holeAt t s) = M.holeVal s (interp env t) := by
+  unfold Term.holeAt
+  rw [interp_subst _ _ _ (noProjLast_hole A) env s, substEnv_hole env t]
+  rfl
+
+/-- The first box component of a necessary pair is the necessary object of its first
+    components. -/
+theorem necEval_boxFst {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {x : VarSymb} {A B : VarType}
+    (h : Γ.ref x = some (.VTypeBox (.VTypeProd A B))) (a : M.frame.Acc w) :
+    M.necEval (interp env (Term.boxFst (σ := σ) h) : M.frame.Nec A w) a =
+      (M.necEval (env.ref x h : M.frame.Nec (.VTypeProd A B) w) a).1 := by
+  unfold Term.boxFst
+  rw [box_beta, interp_eta, Env.ref_fst _ (Ctx.ref_inner h), Env.ref_inner env a h]
+
+theorem necEval_boxSnd {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {x : VarSymb} {A B : VarType}
+    (h : Γ.ref x = some (.VTypeBox (.VTypeProd A B))) (a : M.frame.Acc w) :
+    M.necEval (interp env (Term.boxSnd (σ := σ) h) : M.frame.Nec B w) a =
+      (M.necEval (env.ref x h : M.frame.Nec (.VTypeProd A B) w) a).2 := by
+  unfold Term.boxSnd
+  rw [box_beta, interp_eta, Env.ref_snd _ (Ctx.ref_inner h), Env.ref_inner env a h]
+
+/-- The components of a necessary pair of `d` and `b`, read at the item's address, are `d` and
+    `b`. -/
+theorem boxFst_necPair {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {A B : VarType}
+    (d : M.frame.Dom (.VTypeBox A) w) (b : M.frame.Dom (.VTypeBox B) w) :
+    interp (env.extend (T := .VTypeBox (.VTypeProd A B)) (.bnd 0)
+        (M.ops.necPair (d : M.frame.Nec A w) (b : M.frame.Nec B w)))
+      (Term.boxFst (σ := σ) (Ctx.ref_insert_root Γ (.bnd 0) (.VTypeBox (.VTypeProd A B)))) = d ∧
+    interp (env.extend (T := .VTypeBox (.VTypeProd A B)) (.bnd 0)
+        (M.ops.necPair (d : M.frame.Nec A w) (b : M.frame.Nec B w)))
+      (Term.boxSnd (σ := σ) (Ctx.ref_insert_root Γ (.bnd 0) (.VTypeBox (.VTypeProd A B)))) = b := by
+  have hslot : (env.extend (T := .VTypeBox (.VTypeProd A B)) (.bnd 0)
+      (M.ops.necPair (d : M.frame.Nec A w) (b : M.frame.Nec B w))).ref (.root (.bnd 0))
+      (Ctx.ref_insert_root Γ (.bnd 0) (.VTypeBox (.VTypeProd A B))) =
+      M.ops.necPair (d : M.frame.Nec A w) (b : M.frame.Nec B w) :=
+    Env.extend_root env (.bnd 0) _ _
+  constructor
+  · refine M.nec_inj (funext fun a => ?_)
+    rw [necEval_boxFst, hslot, M.necPair_eval]
+  · refine M.nec_inj (funext fun a => ?_)
+    rw [necEval_boxSnd, hslot, M.necPair_eval]
+
+section Body
+
+variable {V : Ctx} [V.NoSlots]
+
+/-- ⭐Replacing the bound item: the body holds of `d` exactly when the old body holds of `X(d)`. -/
+theorem sat_bodyRepl (hnp : V.NoProjLast) {w : M.frame.W} (env : M.Env V w)
+    {A B : VarType} {b : Ann (.VTypeBox B)}
+    (X : Term σ (V.insert (.bnd 0) (.VTypeBox A)) (.VTypeBox B) b)
+    (Φ : WFF σ (V.insert (.bnd 0) (.VTypeBox B)) 1) (d : M.frame.Dom (.VTypeBox A) w) :
+    M.sat (env.extend (.bnd 0) d) (WFF.bodyRepl X Φ) ↔
+      M.sat (env.extend (.bnd 0) (interp (env.extend (.bnd 0) d) X)) Φ := by
+  unfold WFF.bodyRepl
+  rw [sat_subst _ _ _ _ _ (hnp.insert _ _)]
+  refine iff_of_eq (congrArg (fun E => M.sat E Φ) ?_)
+  funext v U hv
+  by_cases hvr : v = .root (.bnd 0)
+  · subst hvr
+    have hTU : (VarType.VTypeBox B) = U := by simpa [Ctx.insert] using hv
+    subst hTU
+    exact (entryVal_congr _
+      (show ((Subst.idS σ _).set (.bnd 0) (.tm X)) (.root (.bnd 0)) = .tm X from if_pos rfl)
+      _ rfl).trans (Env.extend_root _ (.bnd 0) _ hv).symm
+  · have hv' : V v = some U := by simpa [Ctx.insert, hvr] using hv
+    have hlp := hnp v U hv'
+    have hE : (V.insert (.bnd 0) (.VTypeBox A)) v = some U := body_le _ v U hv'
+    refine (entryVal_congr _
+      (show ((Subst.idS σ _).set (.bnd 0) (.tm X)) v = .ren v from if_neg hvr) _
+      ((Ctx.ref_nonproj _ hlp).trans hE)).trans ?_
+    refine (Env.ref_of_nonproj _ hlp _ hE).trans ?_
+    rw [Env.extend_ne env (.bnd 0) d hE hvr hv', Env.extend_ne env (.bnd 0) _ hv hvr hv']
+
+/-- ⭐Splitting a paired item: the body holds of `e` exactly when the old body holds of its two
+    components. -/
+theorem sat_bodySplit (hnp : V.NoProjLast) {w : M.frame.W} (env : M.Env V w)
+    {A B C : VarType} {b₀ : Ann (.VTypeBox A)} {b₁ : Ann (.VTypeBox B)}
+    (X₀ : Term σ (V.insert (.bnd 0) (.VTypeBox C)) (.VTypeBox A) b₀)
+    (X₁ : Term σ (V.insert (.bnd 0) (.VTypeBox C)) (.VTypeBox B) b₁)
+    (Φ : WFF σ ((V.insert (.bnd 0) (.VTypeBox A)).insert (.bnd 1) (.VTypeBox B)) 2)
+    (e : M.frame.Dom (.VTypeBox C) w) :
+    M.sat (env.extend (.bnd 0) e) (WFF.bodySplit X₀ X₁ Φ) ↔
+      M.sat ((env.extend (.bnd 0) (interp (env.extend (.bnd 0) e) X₀)).extend
+        (.bnd 1) (interp (env.extend (.bnd 0) e) X₁)) Φ := by
+  unfold WFF.bodySplit
+  rw [sat_subst _ _ _ _ _ ((hnp.insert _ _).insert _ _)]
+  refine iff_of_eq (congrArg (fun E => M.sat E Φ) ?_)
+  funext v U hv
+  by_cases hv1 : v = .root (.bnd 1)
+  · subst hv1
+    have hTU : (VarType.VTypeBox B) = U := by simpa [Ctx.insert] using hv
+    subst hTU
+    exact (entryVal_congr _
+      (show (((Subst.idS σ _).set (.bnd 0) (.tm X₀)).set (.bnd 1) (.tm X₁)) (.root (.bnd 1)) =
+        .tm X₁ from Subst.set_root _ _ _) _ rfl).trans
+      (Env.extend_root _ (.bnd 1) _ hv).symm
+  · by_cases hv0 : v = .root (.bnd 0)
+    · subst hv0
+      have hv0' : (V.insert (.bnd 0) (.VTypeBox A)) (.root (.bnd 0)) = some U := by
+        simpa [Ctx.insert, hv1] using hv
+      have hTU : (VarType.VTypeBox A) = U := by simpa [Ctx.insert] using hv0'
+      subst hTU
+      refine (entryVal_congr _
+        (show (((Subst.idS σ _).set (.bnd 0) (.tm X₀)).set (.bnd 1) (.tm X₁)) (.root (.bnd 0)) =
+          .tm X₀ from (Subst.set_ne _ _ hv1).trans (Subst.set_root _ _ _)) _ rfl).trans ?_
+      rw [Env.extend_ne _ (.bnd 1) _ hv hv1 hv0', Env.extend_root _ (.bnd 0) _ hv0']
+      rfl
+    · have hv' : V v = some U := by simpa [Ctx.insert, hv0, hv1] using hv
+      have hv0' : (V.insert (.bnd 0) (.VTypeBox A)) v = some U := by
+        simpa [Ctx.insert, hv1] using hv
+      have hlp := hnp v U hv'
+      have hE : (V.insert (.bnd 0) (.VTypeBox C)) v = some U := body_le _ v U hv'
+      refine (entryVal_congr _
+        (show (((Subst.idS σ _).set (.bnd 0) (.tm X₀)).set (.bnd 1) (.tm X₁)) v = .ren v from
+          (Subst.set_ne _ _ hv1).trans (Subst.set_ne _ _ hv0)) _
+        ((Ctx.ref_nonproj _ hlp).trans hE)).trans ?_
+      refine (Env.ref_of_nonproj _ hlp _ hE).trans ?_
+      rw [Env.extend_ne env (.bnd 0) e hE hv0 hv',
+        Env.extend_ne _ (.bnd 1) _ hv hv1 hv0', Env.extend_ne env (.bnd 0) _ hv0' hv0 hv']
+
+end Body
+
+/-- The `□`-view formula read at the current world, with `t` in its hole (T). -/
+theorem sat_hereRead {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) (hnp : Γ.NoProjLast)
+    {w : M.frame.W} (env : M.Env Γ w) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
+    (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
+    M.sat env (WFF.hereRead hT t ψ) ↔
+      M.sat ((env.boxPush (M.frame.reflAcc hT w)).extend (.bnd 0) (interp env t)) ψ :=
+  (sat_instantiate env hnp Ctx.NoSlots.slots t _).trans
+    (sat_collapse ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A)
+      ((Env.collapseAgree_self hT env).extend
+        ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) (interp env t)) ψ)
+
+end Model
+
+namespace OutLeg
+
+variable {σ : Signature} {M : Model.{u, v} σ} {Γ : Ctx}
+
+theorem noProjLast : (O : OutLeg Γ) → O.view.NoProjLast
+  | .nec => Ctx.noProjLast_boxIn Γ
+  | .pos y _ => Ctx.noProjLast_diaIn Γ y
+
+/-- At the far end of an arrow of the leg, the leg's view agrees with the `□` view there. -/
+theorem agree_push {w : M.frame.W} (env : M.Env Γ w) :
+    (O : OutLeg Γ) → (i : O.Arr env) →
+      Model.Env.Agree O.le_view (env.boxPush (O.acc env i)) (O.push env i)
+  | .nec, _ => fun _ _ _ => rfl
+  | .pos _ hy, i => Model.Env.diaPush_boxIn env hy.choose_spec i
+
+/-- The bridge's body read at the far end of an arrow of the leg holds of the carrier's image
+    there. -/
+theorem sat_bodyRead [Γ.NoSlots] {w : M.frame.W} (env : M.Env Γ w) (O : OutLeg Γ)
+    (i : O.Arr env) {A : VarType} {b : Ann (.VTypeBox A)} (c : Term σ O.view (.VTypeBox A) b)
+    (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) :
+    M.sat (O.push env i) (O.bodyRead c Φ) ↔
+      M.sat ((env.boxPush (O.acc env i)).extend (.bnd 0) (Model.interp (O.push env i) c)) Φ := by
+  unfold OutLeg.bodyRead
+  rw [Model.sat_instantiate _ O.noProjLast Ctx.NoSlots.slots c _]
+  exact Model.sat_mono (Model.Env.extend_agree (agree_push env O i) (.bnd 0) _) Φ
+
+end OutLeg
+
+/-! ## The returning possibility's rules are sound -/
+
+namespace Model
+
+variable {σ : Signature} {M : Model.{u, v} σ} {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
+  (env : M.Env Γ w) (hnp : Γ.NoProjLast) (hfin : Γ.Tame) (hM : M.IndInvariant)
+
+omit [Γ.NoSlots] in
+/-- What `ret_new` hands its subproof: the fresh value is the returning possibility's. -/
+theorem sat_ret_fresh (hS : ModalSys.BStrong = true) {A : VarType} (hA : A.diaFree = true)
+    (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) (c : ℕ) (hc : Γ.RootFresh (.free c))
+    (o : M.frame.Dom A w) (a : M.frame.Acc w) (e : M.frame.Dom (.VTypeBox A) a.1)
+    (hΦ : M.sat ((env.boxPush a).extend (.bnd 0) e) Φ) (r : M.frame.R a.1 w)
+    (hr : M.Ind (M.necEval (e : M.frame.Nec A a.1) ⟨w, ⟨r⟩⟩) o) :
+    M.sat (env.extend (.free c) o) (WFF.ret hS hA
+      (Term.eta (.root (.free c)) A (Ctx.ref_insert_root Γ (.free c) A))
+      (WFF.mono ((Ctx.le_insert hc.root A).boxIn.insert (.bnd 0) _) Φ)) := by
+  have hslot : (env.extend (.free c) o).ref (.root (.free c)) (Ctx.ref_insert_root Γ (.free c) A) =
+      o := Env.extend_root env (.free c) o (Ctx.ref_insert_root Γ (.free c) A)
+  refine ⟨a, e, ?_, r, ?_⟩
+  · exact (sat_mono (Env.extend_agree (Env.boxPush_agree (Env.agree_extend env hc.root o) a)
+      (.bnd 0) e) Φ).mpr hΦ
+  · change M.Ind _ (interp (env.extend (.free c) o) (Term.eta _ _ _))
+    rw [interp_eta, hslot]
+    exact hr
+
+include hnp hfin hM in
+/-- What `ret_ext` hands its subproof, from the premise's object, its companion and the way
+    home: the pair comes back as the pair of values. -/
+theorem sat_ret_ext (hS : ModalSys.BStrong = true) {A B : VarType} (hA : A.diaFree = true)
+    (hB : B.diaFree = true) {a : Ann A} (t : Term σ Γ A a)
+    (Φ : WFF σ ((Γ.boxIn.insert (.bnd 0) (.VTypeBox A)).insert (.bnd 1) (.VTypeBox B)) 2)
+    (c : ℕ) (hc : Γ.RootFresh (.free c)) (ac : M.frame.Acc w) (d : M.frame.Dom (.VTypeBox A) ac.1)
+    (b : M.frame.Dom (.VTypeBox B) ac.1)
+    (hΦ : M.sat (((env.boxPush ac).extend (.bnd 0) d).extend (.bnd 1) b) Φ)
+    (r : M.frame.R ac.1 w)
+    (hr : M.Ind (M.necEval (d : M.frame.Nec A ac.1) ⟨w, ⟨r⟩⟩) (interp env t)) :
+    M.sat (env.extend (.free c) (M.necEval (b : M.frame.Nec B ac.1) ⟨w, ⟨r⟩⟩))
+      (WFF.ret hS (VarType.diaFree_prod hA hB)
+        (Term.pair (Term.weaken hc.root B t)
+          (Term.eta (.root (.free c)) B (Ctx.ref_insert_root Γ (.free c) B)))
+        (WFF.mono ((Ctx.le_insert hc.root B).boxIn.insert (.bnd 0) _) (WFF.bodySplit
+          (Term.boxFst (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox (.VTypeProd A B))))
+          (Term.boxSnd (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox (.VTypeProd A B))))
+          Φ))) := by
+  set o := M.necEval (b : M.frame.Nec B ac.1) ⟨w, ⟨r⟩⟩
+  have hag := Env.agree_extend env hc.root o
+  have hslot : (env.extend (.free c) o).ref (.root (.free c)) (Ctx.ref_insert_root Γ (.free c) B) =
+      o := Env.extend_root env (.free c) o (Ctx.ref_insert_root Γ (.free c) B)
+  obtain ⟨hfst, hsnd⟩ := boxFst_necPair (σ := σ) (env.boxPush ac) d b
+  refine ⟨ac, (M.ops.necPair (d : M.frame.Nec A ac.1) (b : M.frame.Nec B ac.1) :
+    M.frame.Dom (.VTypeBox (.VTypeProd A B)) ac.1), ?_, r, ?_⟩
+  · refine (sat_mono (Env.extend_agree (Env.boxPush_agree hag ac) (.bnd 0) _) _).mpr ?_
+    rw [sat_bodySplit (Ctx.noProjLast_boxIn Γ), hfst, hsnd]
+    exact hΦ
+  · have h1 : interp (env.extend (.free c) o) (Term.pair (Term.weaken hc.root B t)
+        (Term.eta (.root (.free c)) B (Ctx.ref_insert_root Γ (.free c) B))) =
+        ((interp env t, o) : M.frame.Dom (.VTypeProd A B) w) :=
+      Prod.ext (interp_mono hag t) ((interp_eta _ _ _).trans hslot)
+    rw [M.necPair_eval, h1, eq_of_ind hM hfin hnp env hA t hr]
+    exact M.Ind_refl _
+
+include hM in
+theorem sat_ret_elim (hS : ModalSys.BStrong = true) {A : VarType} (hA : A.diaFree = true)
+    {a : Ann A} (t : Term σ Γ A a) (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1)
+    (h : M.sat env (WFF.ret hS hA t (WFF.box (WFF.holeAt
+      ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert (.VTypeBox A)).boxIn
+      (Term.eta (VarSymb.root (.bnd 0)).inner A
+        (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)))) ψ)) : WFF σ Γ 0)) :
+    M.holeSat ψ (interp env t) := by
+  obtain ⟨ac, e, hbox, r, hr⟩ := h
+  refine ret_elim hM ψ ⟨ac, e, fun b => ?_, r, hr⟩
+  have hb := (sat_holeAt _ _ _ ψ).mp (hbox b)
+  rwa [interp_eta, Env.ref_inner _ b (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)),
+    show ((env.boxPush ac).extend (.bnd 0) e).ref (.root (.bnd 0))
+      (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)) = e from
+      Env.extend_root _ (.bnd 0) e _] at hb
+
+include hnp hfin hM in
+theorem sat_ret_back (hS : ModalSys.BStrong = true) {A C : VarType} (hA : A.diaFree = true)
+    (hC : C.diaFree = true) {a : Ann A} (y : Term σ Γ A a)
+    (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) {c₀ : Ann C}
+    (bd : Term σ Γ.boxIn.boxIn C c₀) {c : Ann C} (t : Term σ Γ C c)
+    (hret : M.sat env (WFF.ret hS hA y Φ : WFF σ Γ 0))
+    (hb : M.sat env ((OutLeg.nec : OutLeg Γ).back hS hC bd t : WFF σ Γ 0)) :
+    M.sat env (WFF.ret hS (VarType.diaFree_prod hA hC) (Term.pair y t)
+      (WFF.and
+        (WFF.bodyRepl
+          (Term.boxFst (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox (.VTypeProd A C)))) Φ)
+        (eqRec (.VTypeBox C)
+          (Term.boxSnd (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox (.VTypeProd A C))))
+          (Term.castAnn (VarType.diaFree_box hC)
+            (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root _)
+              (Term.boxtm bd))))) : WFF σ Γ 0) := by
+  obtain ⟨ac, e, hΦ, r, hr⟩ := hret
+  obtain ⟨_, hall⟩ := (OutLeg.sat_back hS env .nec hC bd t).mp hb
+  obtain ⟨r', hr'⟩ := hall ac
+  obtain rfl : r' = r := @Subsingleton.elim _ (M.frame.homeUnique hS) r' r
+  set u := interp (env.boxPush ac) (Term.boxtm bd)
+  obtain ⟨hfst, hsnd⟩ := boxFst_necPair (σ := σ) (env.boxPush ac) e u
+  have hag := Env.agree_extend (T := .VTypeBox (.VTypeProd A C)) (env.boxPush ac)
+    (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root
+    (M.ops.necPair (e : M.frame.Nec A ac.1) (u : M.frame.Nec C ac.1) :
+      M.frame.Dom (.VTypeBox (.VTypeProd A C)) ac.1)
+  refine ⟨ac, (M.ops.necPair (e : M.frame.Nec A ac.1) (u : M.frame.Nec C ac.1) :
+    M.frame.Dom (.VTypeBox (.VTypeProd A C)) ac.1), ⟨?_, ?_⟩, r', ?_⟩
+  · rw [sat_bodyRepl (Ctx.noProjLast_boxIn Γ), hfst]
+    exact hΦ
+  · rw [sat_eqRec, hsnd, interp_castAnn, interp_mono hag]
+  · change M.Ind (A := .VTypeProd A C) (w := w)
+      (M.necEval (M.ops.necPair (e : M.frame.Nec A ac.1) (u : M.frame.Nec C ac.1)) ⟨w, ⟨r'⟩⟩)
+      (interp env y, interp env t)
+    have hu : M.necEval (u : M.frame.Nec C ac.1) ⟨w, ⟨r'⟩⟩ = interp env t :=
+      (box_beta _ _ _).trans (eq_of_ind hM hfin hnp env hC t hr')
+    rw [M.necPair_eval, eq_of_ind hM hfin hnp env hA y hr, hu]
+    exact M.Ind_refl _
+
+omit [Γ.NoSlots] in
+theorem sat_ret_mono (hS : ModalSys.BStrong = true) {A : VarType} (hA : A.diaFree = true)
+    {a : Ann A} (t : Term σ Γ A a) (Φ Φ' : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
+    (h : M.sat env (WFF.ret hS hA t Φ : WFF σ Γ 0))
+    (himp : M.sat env (WFF.box (WFF.all (.VTypeBox A) (WFF.imp Φ Φ')) : WFF σ Γ 0)) :
+    M.sat env (WFF.ret hS hA t Φ' : WFF σ Γ 0) := by
+  obtain ⟨ac, e, hΦ, r, hr⟩ := h
+  exact ⟨ac, e, himp ac e hΦ, r, hr⟩
+
+omit [Γ.NoSlots] in
+theorem sat_ret_dia (hS : ModalSys.BStrong = true) {A : VarType} (hA : A.diaFree = true)
+    {a : Ann A} (t : Term σ Γ A a) (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
+    (h : M.sat env (WFF.ret hS hA t Φ : WFF σ Γ 0)) :
+    M.sat env ((OutLeg.nec : OutLeg Γ).dia (WFF.ex (.VTypeBox A) Φ)) := by
+  obtain ⟨ac, e, hΦ, _, _⟩ := h
+  exact (OutLeg.sat_dia env .nec _).mpr ⟨ac, e, hΦ⟩
+
+include hnp hfin hM in
+theorem sat_ret_beta (hS : ModalSys.BStrong = true) {A B : VarType} (hA : A.diaFree = true)
+    (hB : B.diaFree = true) {a : Ann A} (y : Term σ Γ A a) {b : Ann B}
+    (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
+    (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox B)) 1)
+    (h : M.sat env (WFF.ret hS hA y (WFF.bodyRepl
+      (Term.boxtm (Term.holeAt (Term.eta (VarSymb.root (.bnd 0)).inner A
+        (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)))) s)) Φ) :
+      WFF σ Γ 0)) :
+    M.sat env (WFF.ret hS hB (Term.holeRead y s) Φ : WFF σ Γ 0) := by
+  obtain ⟨ac, e, hΦ, r, hr⟩ := h
+  rw [sat_bodyRepl (Ctx.noProjLast_boxIn Γ)] at hΦ
+  refine ⟨ac, _, hΦ, r, ?_⟩
+  rw [box_beta, interp_holeAt, interp_eta,
+    Env.ref_inner _ _ (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)),
+    show ((env.boxPush ac).extend (.bnd 0) e).ref (.root (.bnd 0))
+      (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)) = e from
+      Env.extend_root _ (.bnd 0) e _,
+    interp_holeRead hnp env y s, eq_of_ind hM hfin hnp env hA y hr]
+  exact M.Ind_refl _
+
+omit [Γ.NoSlots] in
+theorem sat_ret_eq (hS : ModalSys.BStrong = true) {A : VarType} (hA : A.diaFree = true)
+    {a : Ann A} (t t' : Term σ Γ A a) (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
+    (h : M.sat env (WFF.ret hS hA t Φ : WFF σ Γ 0)) (he : M.sat env (eqRec A t t' : WFF σ Γ 0)) :
+    M.sat env (WFF.ret hS hA t' Φ : WFF σ Γ 0) := by
+  obtain ⟨ac, e, hΦ, r, hr⟩ := h
+  exact ⟨ac, e, hΦ, r, (sat_eqRec env A t t').mp he ▸ hr⟩
+
+include hnp in
+theorem sat_ret_here (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A : VarType}
+    (hA : A.diaFree = true) {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀)
+    (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
+    (h : M.sat env (WFF.hereRead hT (Term.boxtm sb) Φ)) :
+    M.sat env (WFF.ret hS hA (Term.collapse (Ctx.collapses_boxIn_self hT Γ) sb) Φ :
+      WFF σ Γ 0) := by
+  refine ⟨M.frame.reflAcc hT w, interp env (Term.boxtm sb), (sat_hereRead hT hnp env _ Φ).mp h,
+    M.frame.refl hT w, ?_⟩
+  rw [box_beta, interp_collapse (Env.collapseAgree_self hT env)]
+  exact M.Ind_refl _
+
+theorem sat_ret_bridge (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
+    (hA : A.diaFree = true) {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
+    (t : Term σ Γ A a) (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
+    (hb : M.sat env (O.back hS hA bd t : WFF σ Γ 0))
+    (hd : M.sat env (O.dia (O.bodyRead (Term.boxtm bd) Φ))) :
+    M.sat env (WFF.ret hS hA t Φ : WFF σ Γ 0) := by
+  obtain ⟨i, hi⟩ := (OutLeg.sat_dia env O _).mp hd
+  obtain ⟨r, hr⟩ := ((OutLeg.sat_back hS env O hA bd t).mp hb).2 i
+  refine ⟨O.acc env i, interp (O.push env i) (Term.boxtm bd),
+    (OutLeg.sat_bodyRead env O i _ Φ).mp hi, r, ?_⟩
+  rw [box_beta]
+  exact hr
+
+end Model
 end V12M

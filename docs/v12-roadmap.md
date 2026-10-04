@@ -172,8 +172,19 @@ style of milestone 1, each ending green and committed:
    Hole formulas and terms are `WFF.holeRead`, `Term.holeRead`.  `back_eq` is stated at any carrier
    term and leg; `back_here` concludes the equation `u.here.here = t` (two collapses, `◇`-free);
    `back_def` takes its definability premise as one formula `∀z. θ(z) → z = t`; `B_strong` is row 1
-   only, with the premise `◇⊤`.  **Still to do: the returning possibility's rules** (`ret_*` and the
-   bridging rule) and `back_fun` as a derived rule.
+   only, with the premise `◇⊤`.
+   *Returning-possibility half done (2026-10-04):* ten `ret_*` rules, with `Proof.subst` cases and
+   soundness.  Design (a), chosen with the user: `ret` keeps its **single** binder `d : □A`, several
+   items being one paired item, and two body substitutions move between forms — `WFF.bodyRepl`
+   (the item becomes a term over a new one) and `WFF.bodySplit` (two items become the components
+   `Term.boxFst`/`boxSnd` of one); hole readings inside a body use `WFF.holeAt`/`Term.holeAt`
+   (any depth).  The rules: `ret_new` and `ret_ext` (existence, as `∃`-eliminations with a fresh
+   value; `ret_ext` adds a companion item, its subproof's hypothesis a weakening so `Proof.subst`
+   goes as for `T_dia`), `ret_elim`, `ret_back` (a carrier joins the item — with elimination and
+   monotonicity this is elimination with carriers), `ret_mono`, `ret_dia`, `ret_beta`, `ret_eq`,
+   `ret_here` (T) and `ret_bridge` (a `Back` atom plus a possibility, either out leg).  Each body
+   substitution commutes with an outer substitution by `WFF.subst_comp` (`WFF.subst_bodyRepl`,
+   `subst_bodySplit`).  **Not done:** `back_fun` as a derived rule (needed only in step 5).
 5. **The canonical network.**  The hard step:
    * the **atom invariant** replaces the back arrows' necessity transfer (`Transfer` becomes a
      consequence), and committing a born item becomes Henkin witnessing of `ret_exists` (in `BLocal`,

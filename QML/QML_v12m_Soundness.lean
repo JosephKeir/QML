@@ -295,6 +295,59 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
         exact (sat_back_eta_extend hS env hA (.free c) hc q t).mpr ⟨⟨i⟩, hc₀⟩
       · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken (T := .VTypeBox (.VTypeBox A)) env hc.root q χ').mpr (hΔ χ' hχ')
+  | @ret_new Γ _ hS hB A hA Φ c hc Δ φ pd p ihd ih =>
+      -- Some accessible world has an object with `Φ`; weak B brings it home as some value, which
+      -- interprets the eigenvariable.
+      intro M hM w env hfin hnp hΔ
+      obtain ⟨i, e, hΦ⟩ := (OutLeg.sat_dia env .nec _).mp (ihd M hM env hfin hnp hΔ)
+      obtain ⟨o, ac, e', hΦ', r, hr⟩ :=
+        ret_exists (P := fun a e => M.sat ((env.boxPush a).extend (.bnd 0) e) Φ) hB ⟨i, e, hΦ⟩
+      refine (sat_weaken (T := A) env hc.root o φ).mp
+        (ih M hM (env.extend (T := A) (.free c) o) (hfin.insert hc _) (hnp.insert _ _) ?_)
+      intro χ hχ
+      rcases List.mem_cons.mp hχ with h₁ | h₂
+      · subst h₁
+        exact sat_ret_fresh env hS hA Φ c hc o ac e' hΦ' r hr
+      · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
+        exact (sat_weaken (T := A) env hc.root o χ').mpr (hΔ χ' hχ')
+  | @ret_ext Γ _ hS A B hA hB a t Φ c hc Δ φ pr p ihr ih =>
+      -- The companion's value along the same way home interprets the eigenvariable.
+      intro M hM w env hfin hnp hΔ
+      obtain ⟨ac, d, ⟨b, hΦ⟩, r, hr⟩ := ihr M hM env hfin hnp hΔ
+      refine (sat_weaken (T := B) env hc.root (M.necEval (b : M.frame.Nec B ac.1) ⟨w, ⟨r⟩⟩)
+        φ).mp (ih M hM (env.extend (T := B) (.free c) _) (hfin.insert hc _) (hnp.insert _ _) ?_)
+      intro χ hχ
+      rcases List.mem_cons.mp hχ with h₁ | h₂
+      · subst h₁
+        exact sat_ret_ext env hnp hfin hM hS hA hB t Φ c hc ac d b hΦ r hr
+      · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
+        exact (sat_weaken (T := B) env hc.root _ χ').mpr (hΔ χ' hχ')
+  | @ret_elim Γ _ Δ hS A hA a t ψ p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact (sat_holeRead hnp env t ψ).mpr (sat_ret_elim env hM hS hA t ψ (ih M hM env hfin hnp hΔ))
+  | @ret_back Γ _ Δ hS A C hA hC a y Φ c₀ bd c t pr pb ihr ihb =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_ret_back env hnp hfin hM hS hA hC y Φ bd t (ihr M hM env hfin hnp hΔ)
+        (ihb M hM env hfin hnp hΔ)
+  | @ret_mono Γ _ Δ hS A hA a t Φ Φ' p q ihp ihq =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_ret_mono env hS hA t Φ Φ' (ihp M hM env hfin hnp hΔ) (ihq M hM env hfin hnp hΔ)
+  | @ret_dia Γ _ Δ hS A hA a t Φ p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_ret_dia env hS hA t Φ (ih M hM env hfin hnp hΔ)
+  | @ret_beta Γ _ Δ hS A B hA hB a y b s Φ p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_ret_beta env hnp hfin hM hS hA hB y s Φ (ih M hM env hfin hnp hΔ)
+  | @ret_eq Γ _ Δ hS A hA a t t' Φ p q ihp ihq =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_ret_eq env hS hA t t' Φ (ihp M hM env hfin hnp hΔ) (ihq M hM env hfin hnp hΔ)
+  | @ret_here Γ _ Δ hS hT A hA a₀ sb Φ p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_ret_here env hnp hS hT hA sb Φ (ih M hM env hfin hnp hΔ)
+  | @ret_bridge Γ _ Δ hS O A hA a₀ bd a t Φ pb pd ihb ihd =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_ret_bridge env hS O hA bd t Φ (ihb M hM env hfin hnp hΔ)
+        (ihd M hM env hfin hnp hΔ)
 
 end Model
 
