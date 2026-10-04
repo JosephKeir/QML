@@ -324,4 +324,163 @@ theorem mem_here_datum [IsDirected I (· ≤ ·)] [hmcs : Fact (StageSys.IsMCS T
 
 end Canon
 
+
+/-! ## Interchangeability is a congruence (§11.15)
+
+A model proper needs `Ind` preserved by hole terms and by pairing.  The canonical `Ind` is
+interchangeability, and that is a congruence for any term over a slot: the test formula for
+`X(s)` is the test formula with its slot replaced by `X` (`WFF.bodyRepl`), instantiated at `s`. -/
+
+/-- ⭐**Filling a replaced slot** is filling the original slot with the replacement, filled. -/
+theorem WFF.instantiate_bodyRepl {σ : Signature} {V : Ctx} [V.NoSlots] {A B : VarType}
+    {b : Ann B} (X : Term σ (V.insert (.bnd 0) A) B b) (φ : WFF σ (V.insert (.bnd 0) B) 1)
+    {a : Ann A} (t : Term σ V A a) :
+    WFF.instantiate Ctx.NoSlots.slots t (WFF.bodyRepl X φ) =
+      WFF.instantiate Ctx.NoSlots.slots (Term.subst (Subst.singleIdx (.bnd 0) (.tm t))
+        (Subst.single (.bnd 0) (.tm t)) (Subst.ok_single (Ctx.Le.refl V) rfl)
+        (Subst.coh_single ((Ctx.NoSlots.slots (Γ := V)).rootFresh (le_refl 0)) (Ctx.Le.refl V)
+          rfl) X) φ := by
+  unfold WFF.bodyRepl WFF.instantiate WFF.substRoot
+  refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ (Subst.sim_of fun v U hlp hv => ?_) φ
+  rw [Subst.comp_apply]
+  by_cases hvr : v = .root (.bnd 0)
+  · subst hvr
+    rw [Subst.set_root]
+    change SubE.Sim U (if (VarSymb.root (.bnd 0)) = .root (.bnd 0) then _ else _) _
+    rw [if_pos rfl]
+    exact .refl _
+  · rw [Subst.set_ne _ _ hvr, show (Subst.idS σ (V.insert (.bnd 0) A) v) = .ren v from rfl,
+      SubE.comp_ren, Subst.at_nonproj _ hlp]
+    change SubE.Sim U (if v = .root (.bnd 0) then _ else _) (if v = .root (.bnd 0) then _ else _)
+    rw [if_neg hvr, if_neg hvr]
+    exact .refl _
+
+/-- A term weakened past the slot, the slot then filled, is the term. -/
+theorem Term.subst_single_mono_sig {σ : Signature} {Γ : Ctx} [Γ.NoSlots]
+    {A : VarType} {a : Ann A} (t : Term σ Γ A a) {B : VarType} {b : Ann B} (u : Term σ Γ B b) :
+    (⟨_, Term.subst (Subst.singleIdx (.bnd 0) (.tm t)) (Subst.single (.bnd 0) (.tm t))
+        (Subst.ok_single (Ctx.Le.refl Γ) rfl)
+        (Subst.coh_single ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) (Ctx.Le.refl Γ) rfl)
+        (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root A) u)⟩ :
+        Σ c, Term σ Γ B c) = ⟨b, u⟩ :=
+  (congrArg (Sigma.mk _) (Term.subst_mono _ _ _ _ u)).trans
+    ((Term.subst_ren (Ctx.Le.refl Γ) _ _ _ (fun _ _ hv => Subst.single_at_ne
+      (Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) hv)) u).trans
+      (congrArg (Sigma.mk _) (Term.mono_refl _ u)))
+
+/-- A closed hole term weakened into a context and filled there is the hole term filled. -/
+theorem Term.holeRead_eq_holeAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A : VarType}
+    {a : Ann A} (t : Term σ Γ A a) {B : VarType} {b : Ann B}
+    (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) : Term.holeRead t s = Term.holeAt t s :=
+  Term.subst_mono _ _ _ _ s
+
+/-- Weakening a hole term's filling is filling with the weakened term. -/
+theorem Term.mono_holeAt_sig {σ : Signature} {Γ Γ' : Ctx} (h : Γ.Le Γ') {A : VarType}
+    {a : Ann A} (t : Term σ Γ A a) {B : VarType} {b : Ann B}
+    (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
+    (⟨_, Term.mono h (Term.holeAt t s)⟩ : Σ c, Term σ Γ' B c) =
+      ⟨_, Term.holeAt (Term.mono h t) s⟩ := by
+  unfold Term.holeAt
+  rw [Term.mono_subst]
+  refine Term.subst_congr _ _ _ _ _ _ (Subst.sim_of fun v U _ hv => ?_) s
+  by_cases hvr : v = .root (.bnd 0)
+  · subst hvr
+    change SubE.Sim U (SubE.mono h (if (VarSymb.root (.bnd 0)) = .root (.bnd 0) then _ else _))
+      (if (VarSymb.root (.bnd 0)) = .root (.bnd 0) then _ else _)
+    rw [if_pos rfl, if_pos rfl]
+    exact .refl _
+  · simp [Ctx.insert, hvr, Ctx.empty] at hv
+
+namespace Canon
+
+variable {σ : Signature} {I : Type} [Preorder I]
+
+namespace Interch
+
+variable {S : StageSys I} {T : Set (S.Sentence σ)} {A : VarType} {i : I}
+
+/-- ⭐**Interchangeable terms stay interchangeable in any term over a slot.** -/
+theorem subst_slot {a a' : Ann A} {s : Term σ (S.ctx i) A a} {s' : Term σ (S.ctx i) A a'}
+    (h : Interch T s s') {B : VarType} {b : Ann B}
+    (X : Term σ ((S.ctx i).insert (.bnd 0) A) B b) :
+    Interch T
+      (Term.subst (Subst.singleIdx (.bnd 0) (.tm s)) (Subst.single (.bnd 0) (.tm s))
+        (Subst.ok_single (Ctx.Le.refl _) rfl)
+        (Subst.coh_single ((Ctx.NoSlots.slots (Γ := S.ctx i)).rootFresh (le_refl 0))
+          (Ctx.Le.refl _) rfl) X)
+      (Term.subst (Subst.singleIdx (.bnd 0) (.tm s')) (Subst.single (.bnd 0) (.tm s'))
+        (Subst.ok_single (Ctx.Le.refl _) rfl)
+        (Subst.coh_single ((Ctx.NoSlots.slots (Γ := S.ctx i)).rootFresh (le_refl 0))
+          (Ctx.Le.refl _) rfl) X) := fun φ => by
+  rw [← WFF.instantiate_bodyRepl, ← WFF.instantiate_bodyRepl]
+  exact h _
+
+/-- Interchangeability depends on its terms only as dependent pairs. -/
+theorem of_sig {a₁ a₂ a₁' a₂' : Ann A} {s₁ : Term σ (S.ctx i) A a₁} {s₂ : Term σ (S.ctx i) A a₂}
+    {u₁ : Term σ (S.ctx i) A a₁'} {u₂ : Term σ (S.ctx i) A a₂'}
+    (h₁ : (⟨a₁, s₁⟩ : Σ b, Term σ (S.ctx i) A b) = ⟨a₁', u₁⟩)
+    (h₂ : (⟨a₂, s₂⟩ : Σ b, Term σ (S.ctx i) A b) = ⟨a₂', u₂⟩) (h : Interch T s₁ s₂) :
+    Interch T u₁ u₂ := by
+  cases h₁
+  cases h₂
+  exact h
+
+/-- Under a hole term. -/
+theorem holeAt {a a' : Ann A} {s : Term σ (S.ctx i) A a} {s' : Term σ (S.ctx i) A a'}
+    (h : Interch T s s') {B : VarType} {b : Ann B} (hh : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
+    Interch T (Term.holeAt s hh) (Term.holeAt s' hh) := by
+  rw [← Term.holeRead_eq_holeAt, ← Term.holeRead_eq_holeAt]
+  exact h.subst_slot _
+
+/-- Under pairing. -/
+theorem pair {a₁ a₁' : Ann A} {s₁ : Term σ (S.ctx i) A a₁} {s₁' : Term σ (S.ctx i) A a₁'}
+    (h₁ : Interch T s₁ s₁') {B : VarType} {b₂ b₂' : Ann B} {s₂ : Term σ (S.ctx i) B b₂}
+    {s₂' : Term σ (S.ctx i) B b₂'} (h₂ : Interch T s₂ s₂') :
+    Interch T (Term.pair s₁ s₂) (Term.pair s₁' s₂') := by
+  have hr := Ctx.NoSlots.slots (Γ := S.ctx i)
+  refine trans (s' := Term.pair s₁' s₂) (of_sig ?_ ?_ (h₁.subst_slot (Term.pair
+      (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root _ (.bnd 0) A))
+      (Term.mono (Ctx.le_insert hr.root A) s₂))))
+    (of_sig ?_ ?_ (h₂.subst_slot (Term.pair (Term.mono (Ctx.le_insert hr.root B) s₁')
+      (Term.eta (.root (.bnd 0)) B (Ctx.ref_insert_root _ (.bnd 0) B)))))
+  · exact sig_pair (Term.subst_eta_tm _ _ _ A _ _ s₁ (Subst.at_single_root _ _))
+      (Term.subst_single_mono_sig s₁ s₂)
+  · exact sig_pair (Term.subst_eta_tm _ _ _ A _ _ s₁' (Subst.at_single_root _ _))
+      (Term.subst_single_mono_sig s₁' s₂)
+  · exact sig_pair (Term.subst_single_mono_sig s₂ s₁')
+      (Term.subst_eta_tm _ _ _ B _ _ s₂ (Subst.at_single_root _ _))
+  · exact sig_pair (Term.subst_single_mono_sig s₂' s₁')
+      (Term.subst_eta_tm _ _ _ B _ _ s₂' (Subst.at_single_root _ _))
+
+end Interch
+
+namespace DTerm
+
+variable {S : StageSys I} {T : Set (S.Sentence σ)} {A : VarType}
+
+/-- ⭐Related terms stay related under a hole term. -/
+theorem Rel.holeAt {s s' : DTerm S T A} (h : s.Rel s') {B : VarType} {b : Ann B}
+    (hh : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
+    Rel (⟨s.i, _, Term.holeAt s.t hh⟩ : DTerm S T B) ⟨s'.i, _, Term.holeAt s'.t hh⟩ := by
+  intro j hj hj'
+  exact Interch.of_sig (Term.mono_holeAt_sig _ s.t hh).symm (Term.mono_holeAt_sig _ s'.t hh).symm
+    ((h j hj hj').holeAt hh)
+
+/-- ⭐Related terms stay related under pairing, read at stages above both components. -/
+theorem Rel.pair {s₁ s₁' : DTerm S T A} (h₁ : s₁.Rel s₁') {B : VarType} {s₂ s₂' : DTerm S T B}
+    (h₂ : s₂.Rel s₂') (k : I) (hk₁ : s₁.i ≤ k) (hk₂ : s₂.i ≤ k) (k' : I) (hk₁' : s₁'.i ≤ k')
+    (hk₂' : s₂'.i ≤ k') :
+    Rel (⟨k, _, Term.pair (s₁.lift k hk₁) (s₂.lift k hk₂)⟩ : DTerm S T (.VTypeProd A B))
+      ⟨k', _, Term.pair (s₁'.lift k' hk₁') (s₂'.lift k' hk₂')⟩ := by
+  intro j hj hj'
+  change Interch T (Term.pair (Term.mono (S.le hj) (Term.mono (S.le hk₁) s₁.t))
+      (Term.mono (S.le hj) (Term.mono (S.le hk₂) s₂.t)))
+    (Term.pair (Term.mono (S.le hj') (Term.mono (S.le hk₁') s₁'.t))
+      (Term.mono (S.le hj') (Term.mono (S.le hk₂') s₂'.t)))
+  rw [Term.mono_mono, Term.mono_mono, Term.mono_mono, Term.mono_mono]
+  exact (h₁ j (hk₁.trans hj) (hk₁'.trans hj')).pair (h₂ j (hk₂.trans hj) (hk₂'.trans hj'))
+
+end DTerm
+
+end Canon
 end V12M

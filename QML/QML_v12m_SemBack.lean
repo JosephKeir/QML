@@ -10,13 +10,13 @@ proved at the level of values, once for both rows:
   body (`backs_nec_boxtm`) and a `◇□`-carrier's (`backs_pos_diatm`) both unfold to it.
 * **Hole formulas**, closed apart from the hole (`WFF.holeRead`, `Model.holeSat`): what a round
   trip carries home (§11.2).  `IndInvariant` moves them across `Ind` (`holeSat_ind`).
-* ⭐`Model.eq_of_ind`: in a model proper, at a `◇`-free type, an object indistinguishable from a
-  named one is that one (test with the slot formula `z = t`).  So at the contents `Back` takes,
-  `Ind` costs nothing — β, pairing and the own arrow are equations — and no congruence law is asked
-  of `Ind`.
+* At **every** content type (§11.15): β and pairing return values up to `Ind` because a model
+  proper's `Ind` is a congruence (`IndInvariant.map`, `IndInvariant.pair`), and the own arrow
+  returns a value indistinguishable from the carrier read here twice.  (`Model.eq_of_ind`: at a
+  `◇`-free type, `Ind` to a named object is equality.)
 * The rules' semantics: `RoundTrip.ne`, `.elim`, `.intro`, `.of_def` (weak B's arrows home),
   `.map` (β), `.pair` (unique ways home), `.own` (T); for the returning possibility `ret_exists`
-  (weak B) and `ret_elim`.
+  (weak B), `ret_elim` and elimination with a carrier (`sat_ret_elimC`).
 * ⭐`Model.sat_back_ex`: surjectivity — `∃c:□□A. Back c t` wherever there is a way out, the law
   `Model.backRet_exists` read at a fresh carrier.
 -/
@@ -68,9 +68,6 @@ theorem backs_pos_diatm {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {y : VarSy
 
 /-! ## Hole formulas -/
 
-/-- The environment of the empty context. -/
-def Env.empty (w : M.frame.W) : M.Env Ctx.empty w := fun _ _ h => nomatch h
-
 /-- A hole formula is true of `o`. -/
 def holeSat {A : VarType} (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) {v : M.frame.W}
     (o : M.frame.Dom A v) : Prop :=
@@ -89,7 +86,7 @@ theorem sat_holeRead {Γ : Ctx} [Γ.NoSlots] (hnp : Γ.NoProjLast) {w : M.frame.
 theorem holeSat_ind (hM : M.IndInvariant) {A : VarType}
     (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) {w : M.frame.W} {o o' : M.frame.Dom A w}
     (h : M.Ind o o') : M.holeSat ψ o ↔ M.holeSat ψ o' :=
-  hM (Ctx.Presented.tame _) (fun _ _ h => by simp [Ctx.empty] at h) (Env.empty w) ψ o o' h
+  hM.inv (Ctx.Presented.tame _) (fun _ _ h => by simp [Ctx.empty] at h) (Env.empty w) ψ o o' h
 
 /-- ⭐**At a `◇`-free type, `Ind` to a named object is equality**, in a model proper: the slot
     formula `z = t` holds of `t`'s value, so of everything indistinguishable from it.  This is what
@@ -112,7 +109,7 @@ theorem eq_of_ind (hM : M.IndInvariant) {Γ : Ctx} [Γ.NoSlots] (hfin : Γ.Tame)
     rw [sat_eqRec, interp_eta, interp_mono hag]
     exact iff_of_eq (congrArg (· = interp env t)
       (Env.extend_root env (.bnd 0) o (Ctx.ref_insert_root Γ (.bnd 0) A)))
-  exact (key x).mp ((hM hfin hnp env φ x _ h).mpr ((key _).mpr rfl))
+  exact (key x).mp ((hM.inv hfin hnp env φ x _ h).mpr ((key _).mpr rfl))
 
 /-! ## The rules, at the level of values -/
 
@@ -153,24 +150,20 @@ theorem of_def (hB : ModalSys.B = true) (hne : Nonempty ι)
   rw [hdef _ (hθ i ⟨w, ⟨r⟩⟩)]
   exact M.Ind_refl o
 
-/-- ⭐**β** (`back_beta`): mapping every value by one operation maps the return.  The hypothesis
-    `hEq` — `Ind` to `o` is equality — is `eq_of_ind` when `o` is named at a `◇`-free type. -/
-theorem map (hEq : ∀ x : M.frame.Dom A w, M.Ind x o → x = o) {B : VarType}
-    (F : ∀ v : M.frame.W, M.frame.Dom A v → M.frame.Dom B v) (h : RoundTrip acc val o) :
-    RoundTrip acc (fun i b => F b.1 (val i b)) (F w o) := by
+/-- ⭐**β** (`back_beta`): mapping every value by a hole term maps the return — `Ind` is preserved
+    by the map in a model proper (`IndInvariant.map`). -/
+theorem map (hM : M.IndInvariant) {B : VarType} {b : Ann B}
+    (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) (h : RoundTrip acc val o) :
+    RoundTrip acc (fun i b => M.holeVal s (val i b)) (M.holeVal s o) := by
   refine ⟨h.1, fun i => ?_⟩
   obtain ⟨r, hr⟩ := h.2 i
-  refine ⟨r, ?_⟩
-  change M.Ind (F w (val i ⟨w, ⟨r⟩⟩)) (F w o)
-  rw [hEq _ hr]
-  exact M.Ind_refl _
+  exact ⟨r, hM.map s hr⟩
 
 /-- ⭐**Pairing** (`back_pair`, §11.14 check 3): two carriers over one out leg return their pair —
     because each arrow of the leg has only **one** way home (`Frame.homeUnique`), so the two returns
-    are read along the same arrow. -/
-theorem pair (hS : ModalSys.BStrong = true) (hEq : ∀ x : M.frame.Dom A w, M.Ind x o → x = o)
-    {B : VarType} {val' : ∀ i, ∀ b : M.frame.Acc (acc i).1, M.frame.Dom B b.1}
-    {o' : M.frame.Dom B w} (hEq' : ∀ x : M.frame.Dom B w, M.Ind x o' → x = o')
+    are read along the same arrow, and `Ind` is preserved by pairing (`IndInvariant.pair`). -/
+theorem pair (hM : M.IndInvariant) (hS : ModalSys.BStrong = true) {B : VarType}
+    {val' : ∀ i, ∀ b : M.frame.Acc (acc i).1, M.frame.Dom B b.1} {o' : M.frame.Dom B w}
     (h : RoundTrip acc val o) (h' : RoundTrip acc val' o') :
     RoundTrip (A := .VTypeProd A B) acc
       (fun i b => ((val i b, val' i b) : M.frame.Dom (.VTypeProd A B) b.1))
@@ -179,22 +172,18 @@ theorem pair (hS : ModalSys.BStrong = true) (hEq : ∀ x : M.frame.Dom A w, M.In
   obtain ⟨r, hr⟩ := h.2 i
   obtain ⟨r', hr'⟩ := h'.2 i
   obtain rfl : r' = r := @Subsingleton.elim _ (M.frame.homeUnique hS) r' r
-  refine ⟨r', ?_⟩
-  change M.Ind (A := .VTypeProd A B) (w := w) (val i ⟨w, ⟨r'⟩⟩, val' i ⟨w, ⟨r'⟩⟩) (o, o')
-  rw [hEq _ hr, hEq' _ hr']
-  exact M.Ind_refl _
+  exact ⟨r', hM.pair hr hr'⟩
 
 /-- ⭐**The own arrow** (`back_here`, §11.5 (4)): under T the identity is an arrow of the plain
-    out leg, and its only way home is the identity again, so the round trip along it is the
-    value. -/
+    out leg, and its only way home is the identity again, so the round trip along it is
+    indistinguishable from the value. -/
 theorem own (hT : ModalSys.T = true) (hS : ModalSys.BStrong = true)
     {val : ∀ a : M.frame.Acc w, ∀ b : M.frame.Acc a.1, M.frame.Dom A b.1}
-    (hEq : ∀ x : M.frame.Dom A w, M.Ind x o → x = o)
     (h : RoundTrip (fun a : M.frame.Acc w => a) val o) :
-    val (M.frame.reflAcc hT w) (M.frame.reflAcc hT w) = o := by
+    M.Ind (val (M.frame.reflAcc hT w) (M.frame.reflAcc hT w)) o := by
   obtain ⟨r, hr⟩ := h.2 (M.frame.reflAcc hT w)
   obtain rfl : r = M.frame.refl hT w := @Subsingleton.elim _ (M.frame.homeUnique hS) _ _
-  exact hEq _ hr
+  exact hr
 
 end RoundTrip
 
@@ -226,9 +215,9 @@ theorem ret_elim (hM : M.IndInvariant) {A : VarType} {w : M.frame.W}
 
 /-- A fresh carrier, declared at the root `r`, comes back as `t` exactly when its value does. -/
 theorem sat_back_eta_extend (hS : ModalSys.BStrong = true) {Γ : Ctx} {w : M.frame.W}
-    (env : M.Env Γ w) {A : VarType} (hA : A.diaFree = true) (r : Root) (hr : Γ.RootFresh r)
+    (env : M.Env Γ w) {A : VarType} (r : Root) (hr : Γ.RootFresh r)
     (c : M.frame.Dom (.VTypeBox (.VTypeBox A)) w) {a : Ann A} (t : Term σ Γ A a) :
-    M.sat (env.extend r c) (WFF.back hS .nec hA
+    M.sat (env.extend r c) (WFF.back hS .nec
         (Term.eta (.root r) _ (Ctx.ref_insert_root Γ r (.VTypeBox (.VTypeBox A))))
         (Term.weaken hr.root _ t) : WFF σ (Γ.insert r (.VTypeBox (.VTypeBox A))) 0) ↔
       M.Backs .nec (A := A) c (interp env t) := by
@@ -246,22 +235,17 @@ theorem sat_back_eta_extend (hS : ModalSys.BStrong = true) {Γ : Ctx} {w : M.fra
 /-- ⭐**Every object comes back** (`B_strong`, row 1): wherever there is a way out,
     `∃c:□□A. Back c t` — the law `Model.backRet_exists`, read at a fresh carrier. -/
 theorem sat_back_ex (hS : ModalSys.BStrong = true) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w)
-    {A : VarType} (hA : A.diaFree = true) {a : Ann A} (t : Term σ Γ A a)
+    {A : VarType} {a : Ann A} (t : Term σ Γ A a)
     (hr : Γ.RootFresh (.bnd 0)) (hne : Nonempty (M.frame.Acc w)) :
     M.sat env (WFF.ex (.VTypeBox (.VTypeBox A))
-      (WFF.back hS .nec hA
+      (WFF.back hS .nec
         (Term.eta (.root (.bnd 0)) _ (Ctx.ref_insert_root Γ (.bnd 0) (.VTypeBox (.VTypeBox A))))
         (Term.weaken hr.root _ t)) : WFF σ Γ 0) := by
-  obtain ⟨c₀, hc⟩ := M.backRet_exists hS hA hne (interp env t)
+  obtain ⟨c₀, hc⟩ := M.backRet_exists hS hne (interp env t)
   let c : M.frame.Dom (.VTypeBox (.VTypeBox A)) w := c₀
-  exact ⟨c, (sat_back_eta_extend hS env hA (.bnd 0) hr c t).mpr ⟨hne, hc⟩⟩
+  exact ⟨c, (sat_back_eta_extend hS env (.bnd 0) hr c t).mpr ⟨hne, hc⟩⟩
 
 /-! ## Hole terms and annotations -/
-
-/-- A hole term's value at an object. -/
-def holeVal {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
-    {v : M.frame.W} (o : M.frame.Dom A v) : M.frame.Dom B v :=
-  interp ((Env.empty v).extend (.bnd 0) o) s
 
 /-- A hole term read in a context is its value at the value in its hole. -/
 theorem interp_holeRead {Γ : Ctx} [Γ.NoSlots] (hnp : Γ.NoProjLast) {w : M.frame.W}
@@ -337,9 +321,9 @@ theorem sat_box {d : ℕ} {w : M.frame.W} (env : M.Env Γ w) :
 
 /-- ⭐A `Back` atom is a round trip over its leg. -/
 theorem sat_back {d : ℕ} (hS : ModalSys.BStrong = true) {w : M.frame.W} (env : M.Env Γ w)
-    (O : OutLeg Γ) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
+    (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
     (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) :
-    M.sat env (O.back hS hA bd t : WFF σ Γ d) ↔
+    M.sat env (O.back hS bd t : WFF σ Γ d) ↔
       Model.RoundTrip (O.acc env) (fun i b => Model.interp ((O.push env i).boxPush b) bd)
         (Model.interp env t) := by
   cases O with
@@ -357,42 +341,42 @@ variable {σ : Signature} {M : Model.{u, v} σ} {Γ : Ctx} [Γ.NoSlots] {w : M.f
 
 include hnp hM in
 theorem sat_back_elim (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
-    (hA : A.diaFree = true) {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
+    {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
     (t : Term σ Γ A a) (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1)
-    (hb : M.sat env (O.back hS hA bd t : WFF σ Γ 0))
+    (hb : M.sat env (O.back hS bd t : WFF σ Γ 0))
     (hd : M.sat env (O.dia (WFF.box (WFF.holeRead bd ψ)))) :
     M.sat env (WFF.holeRead t ψ) := by
   rw [sat_holeRead hnp]
   obtain ⟨i, hi⟩ := (OutLeg.sat_dia env O _).mp hd
-  exact ((OutLeg.sat_back hS env O hA bd t).mp hb).elim hM ψ
+  exact ((OutLeg.sat_back hS env O bd t).mp hb).elim hM ψ
     ⟨i, fun b => (sat_holeRead (Ctx.noProjLast_boxIn _) _ bd ψ).mp (hi b)⟩
 
 include hnp hM in
 theorem sat_back_intro (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
-    (hA : A.diaFree = true) {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
+    {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
     (t : Term σ Γ A a) (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1)
-    (hb : M.sat env (O.back hS hA bd t : WFF σ Γ 0)) (hψ : M.sat env (WFF.holeRead t ψ)) :
+    (hb : M.sat env (O.back hS bd t : WFF σ Γ 0)) (hψ : M.sat env (WFF.holeRead t ψ)) :
     M.sat env (O.box (WFF.box (WFF.holeRead bd ψ).neg).neg) := by
   refine (OutLeg.sat_box env O _).mpr fun i hall => ?_
-  obtain ⟨b, hb'⟩ := ((OutLeg.sat_back hS env O hA bd t).mp hb).intro hM ψ
+  obtain ⟨b, hb'⟩ := ((OutLeg.sat_back hS env O bd t).mp hb).intro hM ψ
     ((sat_holeRead hnp env t ψ).mp hψ) i
   exact hall b ((sat_holeRead (Ctx.noProjLast_boxIn _) _ bd ψ).mpr hb')
 
 omit [Γ.NoSlots] in
 theorem sat_back_ne (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
-    (hA : A.diaFree = true) {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
-    (t : Term σ Γ A a) (hb : M.sat env (O.back hS hA bd t : WFF σ Γ 0)) :
+    {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
+    (t : Term σ Γ A a) (hb : M.sat env (O.back hS bd t : WFF σ Γ 0)) :
     M.sat env (O.dia (.top : WFF σ O.view 0)) := by
-  obtain ⟨i⟩ := ((OutLeg.sat_back hS env O hA bd t).mp hb).ne
+  obtain ⟨i⟩ := ((OutLeg.sat_back hS env O bd t).mp hb).ne
   exact (OutLeg.sat_dia env O _).mpr ⟨i, trivial⟩
 
-include hnp hfin hM in
+include hnp hM in
 theorem sat_back_beta (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
-    (hA : A.diaFree = true) {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
-    (t : Term σ Γ A a) {B : VarType} (hB : B.diaFree = true) {b : Ann B}
+    {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
+    (t : Term σ Γ A a) {B : VarType} {b : Ann B}
     (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
-    (hb : M.sat env (O.back hS hA bd t : WFF σ Γ 0)) :
-    M.sat env (O.back hS hB (Term.holeRead bd s) (Term.holeRead t s) : WFF σ Γ 0) := by
+    (hb : M.sat env (O.back hS bd t : WFF σ Γ 0)) :
+    M.sat env (O.back hS (Term.holeRead bd s) (Term.holeRead t s) : WFF σ Γ 0) := by
   rw [OutLeg.sat_back] at hb ⊢
   have hval : (fun i (b : M.frame.Acc (O.acc env i).1) =>
       interp ((O.push env i).boxPush b) (Term.holeRead bd s)) =
@@ -400,41 +384,45 @@ theorem sat_back_beta (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarTyp
     funext i b
     exact interp_holeRead (Ctx.noProjLast_boxIn _) _ bd s
   rw [hval, interp_holeRead hnp env t s]
-  exact hb.map (fun x h => eq_of_ind hM hfin hnp env hA t h) _
+  exact hb.map hM s
 
-include hnp hfin hM in
+omit [Γ.NoSlots] in
+include hM in
 theorem sat_back_pair (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
-    (hA : A.diaFree = true) {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
-    (t : Term σ Γ A a) {B : VarType} (hB : B.diaFree = true) {b₀ : Ann B}
+    {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
+    (t : Term σ Γ A a) {B : VarType} {b₀ : Ann B}
     (bd' : Term σ O.view.boxIn B b₀) {b : Ann B} (t' : Term σ Γ B b)
-    (hb : M.sat env (O.back hS hA bd t : WFF σ Γ 0))
-    (hb' : M.sat env (O.back hS hB bd' t' : WFF σ Γ 0)) :
-    M.sat env (O.back hS (VarType.diaFree_prod hA hB) (Term.pair bd bd') (Term.pair t t') :
+    (hb : M.sat env (O.back hS bd t : WFF σ Γ 0))
+    (hb' : M.sat env (O.back hS bd' t' : WFF σ Γ 0)) :
+    M.sat env (O.back hS (Term.pair bd bd') (Term.pair t t') :
       WFF σ Γ 0) := by
   rw [OutLeg.sat_back] at hb hb' ⊢
-  exact hb.pair hS (fun x h => eq_of_ind hM hfin hnp env hA t h)
-    (fun x h => eq_of_ind hM hfin hnp env hB t' h) hb'
+  exact hb.pair hM hS hb'
 
 omit [Γ.NoSlots] in
 theorem sat_back_eq (hS : ModalSys.BStrong = true) (L : BLeg) {A : VarType}
-    (hA : A.diaFree = true) {b : Ann (L.carrier A)} (s : Term σ Γ (L.carrier A) b) {a : Ann A}
-    (t t' : Term σ Γ A a) (hb : M.sat env (WFF.back hS L hA s t : WFF σ Γ 0))
+    {b : Ann (L.carrier A)} (s : Term σ Γ (L.carrier A) b) {a : Ann A}
+    (t t' : Term σ Γ A a) (hb : M.sat env (WFF.back hS L s t : WFF σ Γ 0))
     (he : M.sat env (eqRec A t t' : WFF σ Γ 0)) :
-    M.sat env (WFF.back hS L hA s t' : WFF σ Γ 0) := by
+    M.sat env (WFF.back hS L s t' : WFF σ Γ 0) := by
   change M.Backs L (interp env s) (interp env t')
   rw [← (sat_eqRec env A t t').mp he]
   exact hb
 
 include hnp hfin hM in
+/-- ⭐The own arrow (T): the carrier read here twice is interchangeable with its value. -/
 theorem sat_back_here (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A : VarType}
-    (hA : A.diaFree = true) {a₀ : Ann A} (bd : Term σ Γ.boxIn.boxIn A a₀) {a : Ann A}
-    (t : Term σ Γ A a) (hb : M.sat env ((OutLeg.nec : OutLeg Γ).back hS hA bd t : WFF σ Γ 0)) :
-    M.sat env (eqRec A (Term.castAnn hA (Term.collapse (Ctx.collapses_boxIn_self hT Γ)
-      (Term.collapse (Ctx.collapses_boxIn_self hT Γ.boxIn) bd))) t : WFF σ Γ 0) := by
-  rw [sat_eqRec, interp_castAnn, interp_collapse (Env.collapseAgree_self hT env),
+    {a₀ : Ann A} (bd : Term σ Γ.boxIn.boxIn A a₀) {a : Ann A}
+    (t : Term σ Γ A a) (φ : WFF σ (Γ.insert (.bnd 0) A) 1)
+    (hb : M.sat env ((OutLeg.nec : OutLeg Γ).back hS bd t : WFF σ Γ 0))
+    (hφ : M.sat env (WFF.instantiate Ctx.NoSlots.slots t φ)) :
+    M.sat env (WFF.instantiate Ctx.NoSlots.slots (Term.collapse (Ctx.collapses_boxIn_self hT Γ)
+      (Term.collapse (Ctx.collapses_boxIn_self hT Γ.boxIn) bd)) φ) := by
+  have hown := ((OutLeg.sat_back hS env .nec bd t).mp hb).own hT hS
+  rw [sat_instantiate env hnp] at hφ ⊢
+  rw [interp_collapse (Env.collapseAgree_self hT env),
     interp_collapse (Env.collapseAgree_self hT (env.boxPush (M.frame.reflAcc hT w)))]
-  exact ((OutLeg.sat_back hS env .nec hA bd t).mp hb).own hT hS
-    (fun x h => eq_of_ind hM hfin hnp env hA t h)
+  exact (hM.inv hfin hnp env φ _ _ hown).mpr hφ
 
 theorem sat_back_def (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) (O : OutLeg Γ)
     {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀)
@@ -445,7 +433,7 @@ theorem sat_back_def (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) (O 
       (eqRec A (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root Γ (.bnd 0) A))
         (Term.castAnn hA (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root A) t))))
       : WFF σ Γ 0)) :
-    M.sat env (O.back hS hA bd t : WFF σ Γ 0) := by
+    M.sat env (O.back hS bd t : WFF σ Γ 0) := by
   rw [OutLeg.sat_back]
   refine RoundTrip.of_def hB ?_ θ ?_ ?_
   · obtain ⟨i, _⟩ := (OutLeg.sat_dia env O _).mp hne
@@ -677,12 +665,12 @@ variable {σ : Signature} {M : Model.{u, v} σ} {Γ : Ctx} [Γ.NoSlots] {w : M.f
 
 omit [Γ.NoSlots] in
 /-- What `ret_new` hands its subproof: the fresh value is the returning possibility's. -/
-theorem sat_ret_fresh (hS : ModalSys.BStrong = true) {A : VarType} (hA : A.diaFree = true)
+theorem sat_ret_fresh (hS : ModalSys.BStrong = true) {A : VarType}
     (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) (c : ℕ) (hc : Γ.RootFresh (.free c))
     (o : M.frame.Dom A w) (a : M.frame.Acc w) (e : M.frame.Dom (.VTypeBox A) a.1)
     (hΦ : M.sat ((env.boxPush a).extend (.bnd 0) e) Φ) (r : M.frame.R a.1 w)
     (hr : M.Ind (M.necEval (e : M.frame.Nec A a.1) ⟨w, ⟨r⟩⟩) o) :
-    M.sat (env.extend (.free c) o) (WFF.ret hS hA
+    M.sat (env.extend (.free c) o) (WFF.ret hS
       (Term.eta (.root (.free c)) A (Ctx.ref_insert_root Γ (.free c) A))
       (WFF.mono ((Ctx.le_insert hc.root A).boxIn.insert (.bnd 0) _) Φ)) := by
   have hslot : (env.extend (.free c) o).ref (.root (.free c)) (Ctx.ref_insert_root Γ (.free c) A) =
@@ -694,11 +682,11 @@ theorem sat_ret_fresh (hS : ModalSys.BStrong = true) {A : VarType} (hA : A.diaFr
     rw [interp_eta, hslot]
     exact hr
 
-include hnp hfin hM in
+include hM in
 /-- What `ret_ext` hands its subproof, from the premise's object, its companion and the way
-    home: the pair comes back as the pair of values. -/
-theorem sat_ret_ext (hS : ModalSys.BStrong = true) {A B : VarType} (hA : A.diaFree = true)
-    (hB : B.diaFree = true) {a : Ann A} (t : Term σ Γ A a)
+    home: the pair comes back as the pair of values — `Ind` is preserved by pairing. -/
+theorem sat_ret_ext (hS : ModalSys.BStrong = true) {A B : VarType} {a : Ann A}
+    (t : Term σ Γ A a)
     (Φ : WFF σ ((Γ.boxIn.insert (.bnd 0) (.VTypeBox A)).insert (.bnd 1) (.VTypeBox B)) 2)
     (c : ℕ) (hc : Γ.RootFresh (.free c)) (ac : M.frame.Acc w) (d : M.frame.Dom (.VTypeBox A) ac.1)
     (b : M.frame.Dom (.VTypeBox B) ac.1)
@@ -706,7 +694,7 @@ theorem sat_ret_ext (hS : ModalSys.BStrong = true) {A B : VarType} (hA : A.diaFr
     (r : M.frame.R ac.1 w)
     (hr : M.Ind (M.necEval (d : M.frame.Nec A ac.1) ⟨w, ⟨r⟩⟩) (interp env t)) :
     M.sat (env.extend (.free c) (M.necEval (b : M.frame.Nec B ac.1) ⟨w, ⟨r⟩⟩))
-      (WFF.ret hS (VarType.diaFree_prod hA hB)
+      (WFF.ret hS
         (Term.pair (Term.weaken hc.root B t)
           (Term.eta (.root (.free c)) B (Ctx.ref_insert_root Γ (.free c) B)))
         (WFF.mono ((Ctx.le_insert hc.root B).boxIn.insert (.bnd 0) _) (WFF.bodySplit
@@ -727,13 +715,13 @@ theorem sat_ret_ext (hS : ModalSys.BStrong = true) {A B : VarType} (hA : A.diaFr
         (Term.eta (.root (.free c)) B (Ctx.ref_insert_root Γ (.free c) B))) =
         ((interp env t, o) : M.frame.Dom (.VTypeProd A B) w) :=
       Prod.ext (interp_mono hag t) ((interp_eta _ _ _).trans hslot)
-    rw [M.necPair_eval, h1, eq_of_ind hM hfin hnp env hA t hr]
-    exact M.Ind_refl _
+    rw [M.necPair_eval, h1]
+    exact hM.pair hr (M.Ind_refl _)
 
 include hM in
-theorem sat_ret_elim (hS : ModalSys.BStrong = true) {A : VarType} (hA : A.diaFree = true)
+theorem sat_ret_elim (hS : ModalSys.BStrong = true) {A : VarType}
     {a : Ann A} (t : Term σ Γ A a) (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1)
-    (h : M.sat env (WFF.ret hS hA t (WFF.box (WFF.holeAt
+    (h : M.sat env (WFF.ret hS t (WFF.box (WFF.holeAt
       ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert (.VTypeBox A)).boxIn
       (Term.eta (VarSymb.root (.bnd 0)).inner A
         (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)))) ψ)) : WFF σ Γ 0)) :
@@ -746,72 +734,66 @@ theorem sat_ret_elim (hS : ModalSys.BStrong = true) {A : VarType} (hA : A.diaFre
       (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)) = e from
       Env.extend_root _ (.bnd 0) e _] at hb
 
-include hnp hfin hM in
-theorem sat_ret_back (hS : ModalSys.BStrong = true) {A C : VarType} (hA : A.diaFree = true)
-    (hC : C.diaFree = true) {a : Ann A} (y : Term σ Γ A a)
-    (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) {c₀ : Ann C}
-    (bd : Term σ Γ.boxIn.boxIn C c₀) {c : Ann C} (t : Term σ Γ C c)
-    (hret : M.sat env (WFF.ret hS hA y Φ : WFF σ Γ 0))
-    (hb : M.sat env ((OutLeg.nec : OutLeg Γ).back hS hC bd t : WFF σ Γ 0)) :
-    M.sat env (WFF.ret hS (VarType.diaFree_prod hA hC) (Term.pair y t)
-      (WFF.and
-        (WFF.bodyRepl
-          (Term.boxFst (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox (.VTypeProd A C)))) Φ)
-        (eqRec (.VTypeBox C)
-          (Term.boxSnd (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox (.VTypeProd A C))))
-          (Term.castAnn (VarType.diaFree_box hC)
-            (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root _)
-              (Term.boxtm bd))))) : WFF σ Γ 0) := by
-  obtain ⟨ac, e, hΦ, r, hr⟩ := hret
-  obtain ⟨_, hall⟩ := (OutLeg.sat_back hS env .nec hC bd t).mp hb
+include hM in
+/-- ⭐**Elimination with a carrier** (§11.14): the object out there and the carrier's image there
+    come home along the one way back, as the returning possibility's value and the carrier's —
+    `Ind` is preserved by pairing. -/
+theorem sat_ret_elimC (hS : ModalSys.BStrong = true) {A C : VarType} {a : Ann A}
+    (y : Term σ Γ A a) {c₀ : Ann C} (bd : Term σ Γ.boxIn.boxIn C c₀) {c : Ann C}
+    (t : Term σ Γ C c) (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd A C)) 1)
+    (hret : M.sat env (WFF.ret hS y (WFF.box (WFF.holeAt
+      ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert (.VTypeBox A)).boxIn
+      (Term.pair (Term.eta (VarSymb.root (.bnd 0)).inner A
+          (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A))))
+        (Term.mono ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root (.VTypeBox A)).boxIn)
+          bd)) ψ)) : WFF σ Γ 0))
+    (hb : M.sat env ((OutLeg.nec : OutLeg Γ).back hS bd t : WFF σ Γ 0)) :
+    M.holeSat ψ ((interp env y, interp env t) : M.frame.Dom (.VTypeProd A C) w) := by
+  obtain ⟨ac, e, hbox, r, hr⟩ := hret
+  obtain ⟨_, hall⟩ := (OutLeg.sat_back hS env .nec bd t).mp hb
   obtain ⟨r', hr'⟩ := hall ac
   obtain rfl : r' = r := @Subsingleton.elim _ (M.frame.homeUnique hS) r' r
-  set u := interp (env.boxPush ac) (Term.boxtm bd)
-  obtain ⟨hfst, hsnd⟩ := boxFst_necPair (σ := σ) (env.boxPush ac) e u
-  have hag := Env.agree_extend (T := .VTypeBox (.VTypeProd A C)) (env.boxPush ac)
-    (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root
-    (M.ops.necPair (e : M.frame.Nec A ac.1) (u : M.frame.Nec C ac.1) :
-      M.frame.Dom (.VTypeBox (.VTypeProd A C)) ac.1)
-  refine ⟨ac, (M.ops.necPair (e : M.frame.Nec A ac.1) (u : M.frame.Nec C ac.1) :
-    M.frame.Dom (.VTypeBox (.VTypeProd A C)) ac.1), ⟨?_, ?_⟩, r', ?_⟩
-  · rw [sat_bodyRepl (Ctx.noProjLast_boxIn Γ), hfst]
-    exact hΦ
-  · rw [sat_eqRec, hsnd, interp_castAnn, interp_mono hag]
-  · change M.Ind (A := .VTypeProd A C) (w := w)
-      (M.necEval (M.ops.necPair (e : M.frame.Nec A ac.1) (u : M.frame.Nec C ac.1)) ⟨w, ⟨r'⟩⟩)
-      (interp env y, interp env t)
-    have hu : M.necEval (u : M.frame.Nec C ac.1) ⟨w, ⟨r'⟩⟩ = interp env t :=
-      (box_beta _ _ _).trans (eq_of_ind hM hfin hnp env hC t hr')
-    rw [M.necPair_eval, eq_of_ind hM hfin hnp env hA y hr, hu]
-    exact M.Ind_refl _
+  have hag := Env.boxPush_agree (Env.agree_extend (env.boxPush ac)
+    (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root e) ⟨w, ⟨r'⟩⟩
+  have hb' := (sat_holeAt _ _ _ ψ).mp (hbox ⟨w, ⟨r'⟩⟩)
+  change M.holeSat ψ ((interp (((env.boxPush ac).extend (.bnd 0) e).boxPush ⟨w, ⟨r'⟩⟩)
+      (Term.eta (VarSymb.root (.bnd 0)).inner A
+        (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)))),
+    interp (((env.boxPush ac).extend (.bnd 0) e).boxPush ⟨w, ⟨r'⟩⟩)
+      (Term.mono ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root (.VTypeBox A)).boxIn)
+        bd)) : M.frame.Dom (.VTypeProd A C) w) at hb'
+  rw [interp_eta, Env.ref_inner _ _ (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)),
+    show ((env.boxPush ac).extend (.bnd 0) e).ref (.root (.bnd 0))
+      (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)) = e from
+      Env.extend_root _ (.bnd 0) e _, interp_mono hag bd] at hb'
+  exact (holeSat_ind hM ψ (hM.pair hr hr')).mp hb'
 
 omit [Γ.NoSlots] in
-theorem sat_ret_mono (hS : ModalSys.BStrong = true) {A : VarType} (hA : A.diaFree = true)
+theorem sat_ret_mono (hS : ModalSys.BStrong = true) {A : VarType}
     {a : Ann A} (t : Term σ Γ A a) (Φ Φ' : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
-    (h : M.sat env (WFF.ret hS hA t Φ : WFF σ Γ 0))
+    (h : M.sat env (WFF.ret hS t Φ : WFF σ Γ 0))
     (himp : M.sat env (WFF.box (WFF.all (.VTypeBox A) (WFF.imp Φ Φ')) : WFF σ Γ 0)) :
-    M.sat env (WFF.ret hS hA t Φ' : WFF σ Γ 0) := by
+    M.sat env (WFF.ret hS t Φ' : WFF σ Γ 0) := by
   obtain ⟨ac, e, hΦ, r, hr⟩ := h
   exact ⟨ac, e, himp ac e hΦ, r, hr⟩
 
 omit [Γ.NoSlots] in
-theorem sat_ret_dia (hS : ModalSys.BStrong = true) {A : VarType} (hA : A.diaFree = true)
+theorem sat_ret_dia (hS : ModalSys.BStrong = true) {A : VarType}
     {a : Ann A} (t : Term σ Γ A a) (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
-    (h : M.sat env (WFF.ret hS hA t Φ : WFF σ Γ 0)) :
+    (h : M.sat env (WFF.ret hS t Φ : WFF σ Γ 0)) :
     M.sat env ((OutLeg.nec : OutLeg Γ).dia (WFF.ex (.VTypeBox A) Φ)) := by
   obtain ⟨ac, e, hΦ, _, _⟩ := h
   exact (OutLeg.sat_dia env .nec _).mpr ⟨ac, e, hΦ⟩
 
-include hnp hfin hM in
-theorem sat_ret_beta (hS : ModalSys.BStrong = true) {A B : VarType} (hA : A.diaFree = true)
-    (hB : B.diaFree = true) {a : Ann A} (y : Term σ Γ A a) {b : Ann B}
-    (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
+include hnp hM in
+theorem sat_ret_beta (hS : ModalSys.BStrong = true) {A B : VarType} {a : Ann A}
+    (y : Term σ Γ A a) {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
     (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox B)) 1)
-    (h : M.sat env (WFF.ret hS hA y (WFF.bodyRepl
+    (h : M.sat env (WFF.ret hS y (WFF.bodyRepl
       (Term.boxtm (Term.holeAt (Term.eta (VarSymb.root (.bnd 0)).inner A
         (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)))) s)) Φ) :
       WFF σ Γ 0)) :
-    M.sat env (WFF.ret hS hB (Term.holeRead y s) Φ : WFF σ Γ 0) := by
+    M.sat env (WFF.ret hS (Term.holeRead y s) Φ : WFF σ Γ 0) := by
   obtain ⟨ac, e, hΦ, r, hr⟩ := h
   rw [sat_bodyRepl (Ctx.noProjLast_boxIn Γ)] at hΦ
   refine ⟨ac, _, hΦ, r, ?_⟩
@@ -820,23 +802,23 @@ theorem sat_ret_beta (hS : ModalSys.BStrong = true) {A B : VarType} (hA : A.diaF
     show ((env.boxPush ac).extend (.bnd 0) e).ref (.root (.bnd 0))
       (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)) = e from
       Env.extend_root _ (.bnd 0) e _,
-    interp_holeRead hnp env y s, eq_of_ind hM hfin hnp env hA y hr]
-  exact M.Ind_refl _
+    interp_holeRead hnp env y s]
+  exact hM.map s hr
 
 omit [Γ.NoSlots] in
-theorem sat_ret_eq (hS : ModalSys.BStrong = true) {A : VarType} (hA : A.diaFree = true)
+theorem sat_ret_eq (hS : ModalSys.BStrong = true) {A : VarType}
     {a : Ann A} (t t' : Term σ Γ A a) (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
-    (h : M.sat env (WFF.ret hS hA t Φ : WFF σ Γ 0)) (he : M.sat env (eqRec A t t' : WFF σ Γ 0)) :
-    M.sat env (WFF.ret hS hA t' Φ : WFF σ Γ 0) := by
+    (h : M.sat env (WFF.ret hS t Φ : WFF σ Γ 0)) (he : M.sat env (eqRec A t t' : WFF σ Γ 0)) :
+    M.sat env (WFF.ret hS t' Φ : WFF σ Γ 0) := by
   obtain ⟨ac, e, hΦ, r, hr⟩ := h
   exact ⟨ac, e, hΦ, r, (sat_eqRec env A t t').mp he ▸ hr⟩
 
 include hnp in
 theorem sat_ret_here (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A : VarType}
-    (hA : A.diaFree = true) {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀)
+    {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀)
     (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
     (h : M.sat env (WFF.hereRead hT (Term.boxtm sb) Φ)) :
-    M.sat env (WFF.ret hS hA (Term.collapse (Ctx.collapses_boxIn_self hT Γ) sb) Φ :
+    M.sat env (WFF.ret hS (Term.collapse (Ctx.collapses_boxIn_self hT Γ) sb) Φ :
       WFF σ Γ 0) := by
   refine ⟨M.frame.reflAcc hT w, interp env (Term.boxtm sb), (sat_hereRead hT hnp env _ Φ).mp h,
     M.frame.refl hT w, ?_⟩
@@ -844,13 +826,13 @@ theorem sat_ret_here (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A 
   exact M.Ind_refl _
 
 theorem sat_ret_bridge (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
-    (hA : A.diaFree = true) {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
+    {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
     (t : Term σ Γ A a) (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
-    (hb : M.sat env (O.back hS hA bd t : WFF σ Γ 0))
+    (hb : M.sat env (O.back hS bd t : WFF σ Γ 0))
     (hd : M.sat env (O.dia (O.bodyRead (Term.boxtm bd) Φ))) :
-    M.sat env (WFF.ret hS hA t Φ : WFF σ Γ 0) := by
+    M.sat env (WFF.ret hS t Φ : WFF σ Γ 0) := by
   obtain ⟨i, hi⟩ := (OutLeg.sat_dia env O _).mp hd
-  obtain ⟨r, hr⟩ := ((OutLeg.sat_back hS env O hA bd t).mp hb).2 i
+  obtain ⟨r, hr⟩ := ((OutLeg.sat_back hS env O bd t).mp hb).2 i
   refine ⟨O.acc env i, interp (O.push env i) (Term.boxtm bd),
     (OutLeg.sat_bodyRead env O i _ Φ).mp hi, r, ?_⟩
   rw [box_beta]

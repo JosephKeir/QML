@@ -269,14 +269,14 @@ theorem WFF.subst_id {σ : Signature} : {Δ : Ctx} → {d : ℕ} → (hθ : Subs
           (congrArg (Sigma.mk _) (Term.mono_refl _ s)))
         ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc t).trans
           (congrArg (Sigma.mk _) (Term.mono_refl _ t)))
-  | Δ, _, hθ, hc, _, .back hB L hA s t =>
-      WFF.back_congr hB L hA
+  | Δ, _, hθ, hc, _, .back hB L s t =>
+      WFF.back_congr hB L
         ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc s).trans
           (congrArg (Sigma.mk _) (Term.mono_refl _ s)))
         ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc t).trans
           (congrArg (Sigma.mk _) (Term.mono_refl _ t)))
-  | Δ, d, hθ, hc, hΔ, .ret hB hA t Φ => by
-      refine WFF.ret_congr hB hA ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc t).trans
+  | Δ, d, hθ, hc, hΔ, .ret hB t Φ => by
+      refine WFF.ret_congr hB ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc t).trans
         (congrArg (Sigma.mk _) (Term.mono_refl _ t))) ?_
       refine (WFF.subst_congr _ ((Subst.idS σ Δ.boxIn).under d d _ hΔ.boxIn.root) _
         (Subst.ok_under Subst.ok_idS _ hΔ.boxIn.root) _

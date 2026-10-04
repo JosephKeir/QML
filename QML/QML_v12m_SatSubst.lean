@@ -130,12 +130,12 @@ theorem sat_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (�
         (interp env (Term.subst _ θ hθ hc t)) ↔ _
       rw [interp_subst θ hθ hc hnp env s, interp_subst θ hθ hc hnp env t]
       exact Iff.rfl
-  | _, _, _, _, _, θ, hθ, hc, _, _, hnp, _, env, .back hB L hA s t => by
+  | _, _, _, _, _, θ, hθ, hc, _, _, hnp, _, env, .back hB L s t => by
       change Model.Backs L (interp env (Term.subst _ θ hθ hc s))
         (interp env (Term.subst _ θ hθ hc t)) ↔ _
       rw [interp_subst θ hθ hc hnp env s, interp_subst θ hθ hc hnp env t]
       exact Iff.rfl
-  | _, Γ, _, d, d', θ, hθ, hc, hΓ, hΔ, hnp, _, env, .ret hB hA t Φ =>
+  | _, Γ, _, d, d', θ, hθ, hc, hΓ, hΔ, hnp, _, env, .ret hB t Φ =>
       exists_congr fun a => exists_congr fun e =>
         and_congr
           ((sat_subst (θ.box.under d d' _ hΔ.boxIn.root)

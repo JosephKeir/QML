@@ -754,12 +754,12 @@ theorem WFF.shift_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {Γ �
       WFF.here_congr hT (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr s)
         (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr t)
   | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr,
-      .back hB L hA s t =>
-      WFF.back_congr hB L hA (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr s)
+      .back hB L s t =>
+      WFF.back_congr hB L (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr s)
         (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr t)
   | _, _, _, _, _, _, _, d, d', C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .ret hB hA t Φ =>
-      WFF.ret_congr hB hA (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr t)
+      .ret hB t Φ =>
+      WFF.ret_congr hB (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr t)
         (WFF.shift_subst (C.boxIn.insert (hΓ.boxIn.rootFresh le_rfl) _)
           (D.boxIn.insert (hΔ.boxIn.rootFresh le_rfl) _) (θ.box.under d d' _ hΔ.boxIn.root)
           (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)

@@ -147,10 +147,10 @@ noncomputable def WFF.code : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → Code
   | _, _, .here _ (A := A) (b := b) (a := a) s t =>
       .node 21 (.node 0 (.leaf (natCode A)) (.node 0 (Ann.code b) (Ann.code a)))
         (.node 0 (Term.code s) (Term.code t))
-  | _, _, @WFF.back _ _ _ _ _ L A _ b a s t =>
+  | _, _, @WFF.back _ _ _ _ _ L A b a s t =>
       .node 22 (.node L.toNat (.leaf (natCode A)) (.node 0 (Ann.code b) (Ann.code a)))
         (.node 0 (Term.code s) (Term.code t))
-  | _, _, @WFF.ret _ _ _ _ _ A _ a t Φ =>
+  | _, _, @WFF.ret _ _ _ _ _ A a t Φ =>
       .node 23 (.node 0 (.leaf (natCode A)) (Ann.code a)) (.node 0 (Term.code t) (WFF.code Φ))
 
 theorem Rel.code_inj : {Γ : Ctx} → {n : ℕ} → (ρ ρ' : Rel σ Γ n) → ρ.code = ρ'.code → ρ = ρ'
@@ -237,7 +237,7 @@ theorem WFF.code_inj {Γ : Ctx} {d : ℕ} (φ ψ : WFF σ Γ d) (h : φ.code = �
       cases Ann.code_injective hb
       cases Ann.code_injective ha
       rw [Term.code_inj s _ hs, Term.code_inj t _ ht]
-  | back hB L hA s t =>
+  | back hB L s t =>
       intro ψ h
       cases ψ <;> simp only [WFF.code, Code.node.injEq, Code.leaf.injEq, Nat.reduceEqDiff,
         false_and, true_and] at h
@@ -247,7 +247,7 @@ theorem WFF.code_inj {Γ : Ctx} {d : ℕ} (φ ψ : WFF σ Γ d) (h : φ.code = �
       cases Ann.code_injective hb
       cases Ann.code_injective ha
       rw [Term.code_inj s _ hs, Term.code_inj t _ ht]
-  | ret hB hA t Φ ih =>
+  | ret hB t Φ ih =>
       intro ψ h
       cases ψ <;> simp only [WFF.code, Code.node.injEq, Code.leaf.injEq, Nat.reduceEqDiff,
         false_and, true_and] at h

@@ -509,11 +509,11 @@ theorem WFF.subst_congr : {ι ι' : VarSymb → VarSymb} → {Γ Δ : Ctx} → {
   | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .here hT s t =>
       WFF.here_congr hT (Term.subst_congr θ θ' hθ hθ' hc hc' hs s)
         (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
-  | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .back hB L hA s t =>
-      WFF.back_congr hB L hA (Term.subst_congr θ θ' hθ hθ' hc hc' hs s)
+  | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .back hB L s t =>
+      WFF.back_congr hB L (Term.subst_congr θ θ' hθ hθ' hc hc' hs s)
         (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
-  | _, _, _, _, d, d', θ, θ', hθ, hθ', hc, hc', hΓ, hΔ, hs, .ret hB hA t Φ =>
-      WFF.ret_congr hB hA (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
+  | _, _, _, _, d, d', θ, θ', hθ, hθ', hc, hc', hΓ, hΔ, hs, .ret hB t Φ =>
+      WFF.ret_congr hB (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
         (WFF.subst_congr (θ.box.under d d' _ hΔ.boxIn.root) (θ'.box.under d d' _ hΔ.boxIn.root)
           (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
           (Subst.ok_under (Subst.ok_box hθ') _ hΔ.boxIn.root)

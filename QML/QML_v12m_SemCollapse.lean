@@ -547,11 +547,11 @@ theorem sat_collapse : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses k Γ
       change Model.Realised hT (interp _ (Term.collapse _ s)) (interp _ (Term.collapse _ t)) ↔ _
       rw [interp_collapse hag s, interp_collapse hag t]
       exact Iff.rfl
-  | _, _, _, _, _, _, _, _, _, hag, .back hB L hA s t => by
+  | _, _, _, _, _, _, _, _, _, hag, .back hB L s t => by
       change Model.Backs L (interp _ (Term.collapse _ s)) (interp _ (Term.collapse _ t)) ↔ _
       rw [interp_collapse hag s, interp_collapse hag t]
       exact Iff.rfl
-  | _, _, _, _, _, _, _, _, hs, hag, .ret hB hA t Φ =>
+  | _, _, _, _, _, _, _, _, hs, hag, .ret hB t Φ =>
       exists_congr fun a => exists_congr fun e =>
         and_congr (sat_collapse (hs.boxIn.insert _)
             ((hag.boxPush a).extend (hs.boxIn.rootFresh le_rfl) e) Φ)

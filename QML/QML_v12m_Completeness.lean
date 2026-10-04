@@ -49,8 +49,8 @@ def WFF.size {σ : Signature} : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → ℕ
   | _, _, .box φ => φ.size + 1
   | _, _, .dia _ _ φ => φ.size + 1
   | _, _, .here (A := A) _ _ _ => A.eqRecSize + 1
-  | _, _, .back _ _ _ _ _ => 0
-  | _, _, .ret _ _ _ Φ => Φ.size + 1
+  | _, _, .back _ _ _ _ => 0
+  | _, _, .ret _ _ Φ => Φ.size + 1
 
 /-- ⭐The size of an equality is the size of its type: nothing in `eqRec`'s clauses looks at the
     terms.  So the `here` clause of `WFF.size` above dominates the equation `Proof.here_fun`
@@ -83,8 +83,8 @@ theorem WFF.size_mono {σ : Signature} : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le
   | _, _, _, h, .box φ => congrArg (· + 1) (WFF.size_mono h.boxIn φ)
   | _, _, _, h, .dia x _ φ => congrArg (· + 1) (WFF.size_mono (h.diaIn x) φ)
   | _, _, _, _, .here _ _ _ => rfl
-  | _, _, _, _, .back _ _ _ _ _ => rfl
-  | _, _, _, h, .ret _ _ _ Φ => congrArg (· + 1) (WFF.size_mono (h.boxIn.insert _ _) Φ)
+  | _, _, _, _, .back _ _ _ _ => rfl
+  | _, _, _, h, .ret _ _ Φ => congrArg (· + 1) (WFF.size_mono (h.boxIn.insert _ _) Φ)
 
 theorem WFF.size_subst {σ : Signature} : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ}
     (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d)
@@ -104,8 +104,8 @@ theorem WFF.size_subst {σ : Signature} : ∀ {ι : VarSymb → VarSymb} {Γ Δ 
   | _, _, _, _, _, _, _, _, _, _, .box φ => congrArg (· + 1) (WFF.size_subst _ _ _ _ _ φ)
   | _, _, _, _, _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_subst _ _ _ _ _ φ)
   | _, _, _, _, _, _, _, _, _, _, .here _ _ _ => rfl
-  | _, _, _, _, _, _, _, _, _, _, .back _ _ _ _ _ => rfl
-  | _, _, _, _, _, _, _, _, _, _, .ret _ _ _ Φ => congrArg (· + 1) (WFF.size_subst _ _ _ _ _ Φ)
+  | _, _, _, _, _, _, _, _, _, _, .back _ _ _ _ => rfl
+  | _, _, _, _, _, _, _, _, _, _, .ret _ _ Φ => congrArg (· + 1) (WFF.size_subst _ _ _ _ _ Φ)
 
 theorem WFF.size_instantiate {σ : Signature} {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {T : VarType}
     {a : Ann T} (t : Term σ Γ T a) (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) :
@@ -130,8 +130,8 @@ theorem WFF.size_collapse {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {
   | _, _, _, _, _, _, .box φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
   | _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
   | _, _, _, _, _, _, .here _ _ _ => rfl
-  | _, _, _, _, _, _, .back _ _ _ _ _ => rfl
-  | _, _, _, _, _, _, .ret _ _ _ Φ => congrArg (· + 1) (WFF.size_collapse _ _ Φ)
+  | _, _, _, _, _, _, .back _ _ _ _ => rfl
+  | _, _, _, _, _, _, .ret _ _ Φ => congrArg (· + 1) (WFF.size_collapse _ _ Φ)
 
 theorem WFF.size_shift {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d : ℕ}
     (h : Ctx.Shifts k Γ₁ Γ₂) (hs : Γ₁.SlotsFrom d) (φ : WFF σ Γ₁ d),
@@ -151,8 +151,8 @@ theorem WFF.size_shift {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d :
   | _, _, _, _, _, _, .box φ => congrArg (· + 1) (WFF.size_shift _ _ φ)
   | _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_shift _ _ φ)
   | _, _, _, _, _, _, .here _ _ _ => rfl
-  | _, _, _, _, _, _, .back _ _ _ _ _ => rfl
-  | _, _, _, _, _, _, .ret _ _ _ Φ => congrArg (· + 1) (WFF.size_shift _ _ Φ)
+  | _, _, _, _, _, _, .back _ _ _ _ => rfl
+  | _, _, _, _, _, _, .ret _ _ Φ => congrArg (· + 1) (WFF.size_shift _ _ Φ)
 
 /-- Abstracting a witness is a substitution, so it leaves the logical structure alone. -/
 theorem WFF.size_diaAbs {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) {A : VarType}
@@ -513,21 +513,24 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
           | diatm x hx bd =>
               exact here_truth w₀ hT hx bd t (fun K _ u u' => truth_lt n w K _ (by
                 rw [WFF.size_eqRec]; simp only [WFF.size] at hφ; omega))
-      | back hB _ _ _ _ => exact (ModalSys.NoB.absurdStrong hB).elim
-      | ret hB _ _ _ => exact (ModalSys.NoB.absurdStrong hB).elim
+      | back hB _ _ _ => exact (ModalSys.NoB.absurdStrong hB).elim
+      | ret hB _ _ => exact (ModalSys.NoB.absurdStrong hB).elim
 
 /-- ⭐**The truth lemma.** -/
 theorem truth (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF σ (w.L.ctx i) 0) :
     (model w₀).sat (canonEnv w₀ w i) φ ↔ (⟨i, φ⟩ : w.L.sys.Sentence σ) ∈ w.T :=
   truth_lt w₀ (φ.size + 1) w i φ (Nat.lt_succ_self _)
 
-/-- ⭐⭐**The canonical model is a model proper** (docs §10.33, item 7 of §10.34).  Over a tame
+/-- Invariance for the canonical model (docs §10.33, item 7 of §10.34).  Over a tame
     context an environment is the canonical one at a stage, read through a substitution
     (`substEnv_repSubst`); so a slot formula with an object in its slot is true exactly when the
     substituted slot formula, instantiated at a representative of the object, is in the theory
     (`sat_subst`, `sat_instantiate`, the truth lemma).  Related objects have representatives
     interchangeable in every slot formula (`DTerm.Rel`), so the two memberships agree. -/
-theorem indInvariant : (model w₀).IndInvariant := by
+theorem indInvariant_inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLast →
+    ∀ {w : (model w₀).frame.W} (env : (model w₀).Env Γ w) {A : VarType}
+      (φ : WFF σ (Γ.insert (.bnd 0) A) 1) (o o' : (model w₀).frame.Dom A w), (model w₀).Ind o o' →
+      ((model w₀).sat (env.extend (.bnd 0) o) φ ↔ (model w₀).sat (env.extend (.bnd 0) o') φ) := by
   intro Γ _ htame hnp w env A φ o o' hInd
   obtain ⟨hfin, d, hd⟩ := htame
   have hθ := repSubst_ok w₀ env hfin
@@ -573,6 +576,39 @@ theorem indInvariant : (model w₀).IndInvariant := by
   have h₂ : s'.i ≤ repSup w₀ env hfin ⊔ (s.i ⊔ s'.i) := le_sup_right.trans le_sup_right
   rw [key o s hs _ hK h₁, key o' s' hs' _ hK h₂]
   exact hrel _ h₁ h₂ _
+
+/-- A representative of an object is one of the value under a hole term, filled. -/
+theorem rden_holeAt {w : World σ N₀} {A : VarType} {o : (model w₀).frame.Dom A w}
+    (s : DTerm w.L.sys w.T A) (hs : rden w s.i (Ctx.Le.refl _) s.t = fromDom w₀ A w o)
+    {B : VarType} {b : Ann B} (hh : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
+    rden w s.i (Ctx.Le.refl _) (Term.holeAt s.t hh) = fromDom w₀ B w ((model w₀).holeVal hh o) := by
+  have e1 := interp_canon w₀ (Term.holeAt s.t hh) (env := canonEnv w₀ w s.i)
+    (e := Ctx.Le.refl _) (fun _ _ _ => rfl)
+  have e2 : Model.interp (canonEnv w₀ w s.i) s.t = o := by
+    rw [interp_canon w₀ s.t (env := canonEnv w₀ w s.i) (e := Ctx.Le.refl _) (fun _ _ _ => rfl)]
+    exact (toDom_congr w₀ hs _ _).trans (toDom_fromDom w₀ A w o)
+  rw [Model.interp_holeAt, e2] at e1
+  rw [e1, fromDom_toDom]
+
+/-- ⭐⭐**The canonical model is a model proper** (docs §10.33, item 7 of §10.34): invariance
+    (`indInvariant_inv`), and the congruence laws (§11.15) — related objects have related
+    representatives, and a hole term or a pair of them is a representative of the mapped or
+    paired object (`DTerm.Rel.holeAt`, `DTerm.Rel.pair`). -/
+theorem indInvariant : (model w₀).IndInvariant where
+  inv := indInvariant_inv w₀
+  map := by
+    intro A B b hh w o o' ⟨s, s', hs, hs', hrel⟩
+    exact ⟨⟨s.i, _, Term.holeAt s.t hh⟩, ⟨s'.i, _, Term.holeAt s'.t hh⟩, rden_holeAt w₀ s hs hh,
+      rden_holeAt w₀ s' hs' hh, hrel.holeAt hh⟩
+  pair := by
+    intro A B w a a' b b' ⟨s₁, s₁', h₁, h₁', r₁⟩ ⟨s₂, s₂', h₂, h₂', r₂⟩
+    refine ⟨⟨s₁.i ⊔ s₂.i, _, Term.pair (s₁.lift _ le_sup_left) (s₂.lift _ le_sup_right)⟩,
+      ⟨s₁'.i ⊔ s₂'.i, _, Term.pair (s₁'.lift _ le_sup_left) (s₂'.lift _ le_sup_right)⟩, ?_, ?_,
+      DTerm.Rel.pair r₁ r₂ _ _ _ _ _ _⟩
+    · exact Prod.ext ((rden_lift (le_sup_left : s₁.i ≤ s₁.i ⊔ s₂.i) s₁.t).trans h₁)
+        ((rden_lift (le_sup_right : s₂.i ≤ s₁.i ⊔ s₂.i) s₂.t).trans h₂)
+    · exact Prod.ext ((rden_lift (le_sup_left : s₁'.i ≤ s₁'.i ⊔ s₂'.i) s₁'.t).trans h₁')
+        ((rden_lift (le_sup_right : s₂'.i ≤ s₁'.i ⊔ s₂'.i) s₂'.t).trans h₂')
 
 end Canon
 

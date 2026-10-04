@@ -594,12 +594,12 @@ theorem WFF.subst_comp {σ : Signature} : {ι₁ ι₂ ι₃ : VarSymb → VarSy
       WFF.here_congr hT (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs s)
         (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)
   | _, _, _, _, _, _, _, _, _, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, _, _, _, hs,
-      .back hB L hA s t =>
-      WFF.back_congr hB L hA (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs s)
+      .back hB L s t =>
+      WFF.back_congr hB L (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs s)
         (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)
   | _, _, _, _, _, _, d, d₁, d₂, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, hΓ, hΔ₁, hΔ₂, hs,
-      .ret hB hA t Φ =>
-      WFF.ret_congr hB hA (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)
+      .ret hB t Φ =>
+      WFF.ret_congr hB (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)
         (WFF.subst_comp (θ₁.box.under d d₁ _ hΔ₁.boxIn.root) (θ₂.box.under d₁ d₂ _ hΔ₂.boxIn.root)
           (θ₃.box.under d d₂ _ hΔ₂.boxIn.root) (Subst.ok_under (Subst.ok_box hθ₁) _ hΔ₁.boxIn.root)
           (Subst.coh_under (Subst.ok_box hθ₁) (Subst.coh_box hθ₁ hc₁) hΓ.boxIn _ hΔ₁.boxIn.root)

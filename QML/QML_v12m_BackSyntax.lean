@@ -91,7 +91,7 @@ def Term.holeRead {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A : VarType} {a : An
 
 /-! ## The returning possibility's syntax (§11.14)
 
-`WFF.ret hS hA t Φ` binds one necessary object `d : □A` of the far world, at the slot of its body
+`WFF.ret hS t Φ` binds one necessary object `d : □A` of the far world, at the slot of its body
 `Φ`.  Several items are packed into one by pairing; the operations below move between the packed
 and unpacked forms, by substitutions of the body's slots. -/
 
@@ -137,11 +137,10 @@ theorem body_le (T : VarType) : V.Le (V.insert (.bnd 0) T) :=
   Ctx.le_insert (Ctx.NoSlots.slots (Γ := V)).root T
 
 /-- ⭐**Replacing the bound item** by a term over a new one: a body about `e : □B` becomes a body
-    about `d : □A`, with `e := X(d)`.  What β moves a returning possibility by, and how a carrier
-    joins its item (`Proof.ret_beta`, `Proof.ret_back`). -/
-def WFF.bodyRepl {A B : VarType} {b : Ann (.VTypeBox B)}
-    (X : Term σ (V.insert (.bnd 0) (.VTypeBox A)) (.VTypeBox B) b)
-    (Φ : WFF σ (V.insert (.bnd 0) (.VTypeBox B)) 1) : WFF σ (V.insert (.bnd 0) (.VTypeBox A)) 1 :=
+    about `d : □A`, with `e := X(d)`.  What β moves a returning possibility by (`Proof.ret_beta`);
+    at any types, interchangeability's congruence uses it too (`Canon.Interch.subst_slot`). -/
+def WFF.bodyRepl {A B : VarType} {b : Ann B} (X : Term σ (V.insert (.bnd 0) A) B b)
+    (Φ : WFF σ (V.insert (.bnd 0) B) 1) : WFF σ (V.insert (.bnd 0) A) 1 :=
   WFF.subst (Subst.setIdx id (.bnd 0) (.tm X)) ((Subst.idS σ _).set (.bnd 0) (.tm X))
     (Subst.ok_set (Subst.ok_idS_le (body_le _)) rfl)
     (Subst.coh_set (Subst.ok_idS_le (body_le _)) (Subst.coh_idS_le (body_le _))
@@ -212,18 +211,18 @@ def box {d : ℕ} : (O : OutLeg Γ) → WFF σ O.view d → WFF σ Γ d
     every term of type `□□A` or `◇□A` has this shape, so the rules are stated at the body and
     survive substitution (§10.11). -/
 def back {d : ℕ} (hS : ModalSys.BStrong = true) : (O : OutLeg Γ) → {A : VarType} →
-    A.diaFree = true → {a₀ : Ann A} → Term σ O.view.boxIn A a₀ → {a : Ann A} → Term σ Γ A a →
+    {a₀ : Ann A} → Term σ O.view.boxIn A a₀ → {a : Ann A} → Term σ Γ A a →
     WFF σ Γ d
-  | .nec, _, hA, _, bd, _, t => WFF.back hS .nec hA (Term.boxtm (Term.boxtm bd)) t
-  | .pos y hy, _, hA, _, bd, _, t => WFF.back hS .pos hA (Term.diatm y hy (Term.boxtm bd)) t
+  | .nec, _, _, bd, _, t => WFF.back hS .nec (Term.boxtm (Term.boxtm bd)) t
+  | .pos y hy, _, _, bd, _, t => WFF.back hS .pos (Term.diatm y hy (Term.boxtm bd)) t
 
 /-- The atom depends on its terms only as dependent pairs. -/
 theorem back_congr {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
-    (hA : A.diaFree = true) {a₁ a₂ : Ann A} {bd₁ : Term σ O.view.boxIn A a₁}
+    {a₁ a₂ : Ann A} {bd₁ : Term σ O.view.boxIn A a₁}
     {bd₂ : Term σ O.view.boxIn A a₂}
     (hbd : (⟨a₁, bd₁⟩ : Σ b, Term σ O.view.boxIn A b) = ⟨a₂, bd₂⟩) {c₁ c₂ : Ann A}
     {t₁ : Term σ Γ A c₁} {t₂ : Term σ Γ A c₂} (ht : (⟨c₁, t₁⟩ : Σ b, Term σ Γ A b) = ⟨c₂, t₂⟩) :
-    (O.back hS hA bd₁ t₁ : WFF σ Γ d) = O.back hS hA bd₂ t₂ := by
+    (O.back hS bd₁ t₁ : WFF σ Γ d) = O.back hS bd₂ t₂ := by
   cases hbd
   cases ht
   rfl
@@ -285,15 +284,15 @@ theorem subst_box {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d') :
 
 theorem subst_back {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
     (hS : ModalSys.BStrong = true) :
-    (O : OutLeg Γ) → {A : VarType} → (hA : A.diaFree = true) → {a₀ : Ann A} →
+    (O : OutLeg Γ) → {A : VarType} → {a₀ : Ann A} →
     (bd : Term σ O.view.boxIn A a₀) → {a : Ann A} → (t : Term σ Γ A a) →
-    WFF.subst ι θ hθ hc hΓ hΔ (O.back hS hA bd t : WFF σ Γ d) =
-      ((O.subst θ hθ hc).back hS hA
+    WFF.subst ι θ hθ hc hΓ hΔ (O.back hS bd t : WFF σ Γ d) =
+      ((O.subst θ hθ hc).back hS
         (Term.subst ι (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
           (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) bd)
         (Term.subst ι θ hθ hc t) : WFF σ Δ d')
-  | .nec, _, _, _, _, _, _ => rfl
-  | .pos _ _, _, _, _, _, _, _ => rfl
+  | .nec, _, _, _, _, _ => rfl
+  | .pos _ _, _, _, _, _, _ => rfl
 
 end Subst
 

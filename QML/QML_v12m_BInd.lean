@@ -133,13 +133,16 @@ theorem substEnv_repSubst (hnp : Γ.NoProjLast) :
 
 end Represent
 
-/-- ⭐⭐**B's canonical model is a model proper**, as the tree's (`Canon.indInvariant`).  Over a
+/-- Invariance for B's canonical model, as the tree's (`Canon.indInvariant_inv`).  Over a
     tame context an environment is the canonical one at a stage, read through a substitution
     (`substEnv_repSubst`); so a slot formula with an object in its slot is true exactly when the
     substituted slot formula, instantiated at a representative of the object, is in the theory
     (`sat_subst`, `sat_instantiate`, the truth lemma).  Related objects have representatives
     interchangeable in every slot formula (`DTerm.Rel`), so the two memberships agree. -/
-theorem indInvariant : B.model.IndInvariant := by
+theorem indInvariant_inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLast →
+    ∀ {s : B.model.frame.W} (env : B.model.Env Γ s) {A : VarType}
+      (φ : WFF σ (Γ.insert (.bnd 0) A) 1) (o o' : B.model.frame.Dom A s), B.model.Ind o o' →
+      (B.model.sat (env.extend (.bnd 0) o) φ ↔ B.model.sat (env.extend (.bnd 0) o') φ) := by
   intro Γ _ htame hnp s env A φ o o' hInd
   obtain ⟨hfin, d, hd⟩ := htame
   have hθ := repSubst_ok env hfin
@@ -187,6 +190,39 @@ theorem indInvariant : B.model.IndInvariant := by
     (le_max_right _ _).trans (le_max_right _ _)
   rw [key o u hu _ hK h₁, key o' u' hu' _ hK h₂]
   exact hrel _ h₁ h₂ _
+
+/-- A representative of an object is one of the value under a hole term, filled. -/
+theorem rden_holeAt {s : B.W} {A : VarType} {o : B.model.frame.Dom A s}
+    (u : Canon.DTerm (B.w s).sys (B.w s).T A)
+    (hu : B.rden s u.i (Ctx.Le.refl _) u.t = B.fromDom A s o)
+    {C : VarType} {c : Ann C} (hh : Term σ (Ctx.empty.insert (.bnd 0) A) C c) :
+    B.rden s u.i (Ctx.Le.refl _) (Term.holeAt u.t hh) = B.fromDom C s (B.model.holeVal hh o) := by
+  have e1 := interp_canon (Term.holeAt u.t hh) (env := B.canonEnv s u.i)
+    (e := Ctx.Le.refl _) (fun _ _ _ => rfl)
+  have e2 : Model.interp (B.canonEnv s u.i) u.t = o := by
+    rw [interp_canon u.t (env := B.canonEnv s u.i) (e := Ctx.Le.refl _) (fun _ _ _ => rfl)]
+    exact (B.toDom_congr hu _ _).trans (B.toDom_fromDom A s o)
+  rw [Model.interp_holeAt, e2] at e1
+  rw [e1, B.fromDom_toDom]
+
+/-- ⭐⭐**B's canonical model is a model proper**: invariance (`indInvariant_inv`) and the
+    congruence laws (§11.15), as the tree's (`Canon.indInvariant`). -/
+theorem indInvariant : B.model.IndInvariant where
+  inv := indInvariant_inv
+  map := by
+    intro A C c hh s o o' ⟨u, u', hu, hu', hrel⟩
+    exact ⟨⟨u.i, _, Term.holeAt u.t hh⟩, ⟨u'.i, _, Term.holeAt u'.t hh⟩, rden_holeAt u hu hh,
+      rden_holeAt u' hu' hh, hrel.holeAt hh⟩
+  pair := by
+    intro A C s a a' b b' ⟨u₁, u₁', h₁, h₁', r₁⟩ ⟨u₂, u₂', h₂, h₂', r₂⟩
+    refine ⟨⟨max u₁.i u₂.i, _, Term.pair (u₁.lift _ (le_max_left _ _))
+        (u₂.lift _ (le_max_right _ _))⟩,
+      ⟨max u₁'.i u₂'.i, _, Term.pair (u₁'.lift _ (le_max_left _ _))
+        (u₂'.lift _ (le_max_right _ _))⟩, ?_, ?_, Canon.DTerm.Rel.pair r₁ r₂ _ _ _ _ _ _⟩
+    · exact Prod.ext ((rden_lift (le_max_left u₁.i u₂.i) u₁.t).trans h₁)
+        ((rden_lift (le_max_right u₁.i u₂.i) u₂.t).trans h₂)
+    · exact Prod.ext ((rden_lift (le_max_left u₁'.i u₂'.i) u₁'.t).trans h₁')
+        ((rden_lift (le_max_right u₁'.i u₂'.i) u₂'.t).trans h₂')
 
 end BData
 

@@ -318,8 +318,8 @@ def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ
       ∃ (X : VarType) (h : Γ.ref x = some (.VTypeDia X)) (w' : (M.posEval (env.ref x h)).1),
         sat (env.diaPush x h w') φ
   | _, _, _, env, .here hT s t => Realised hT (interp env s) (interp env t)
-  | _, _, _, env, .back _ L _ s t => Backs L (interp env s) (interp env t)
-  | _, d, w, env, @WFF.ret _ _ _ _ _ A _ _ t Φ =>
+  | _, _, _, env, .back _ L s t => Backs L (interp env s) (interp env t)
+  | _, d, w, env, @WFF.ret _ _ _ _ _ A _ t Φ =>
       ∃ (a : M.frame.Acc w) (e : M.frame.Dom (.VTypeBox A) a.1),
         sat ((env.boxPush a).extend (.bnd d) e) Φ ∧
           ∃ r : M.frame.R a.1 w, M.Ind (M.necEval (e : M.frame.Nec A a.1) ⟨w, ⟨r⟩⟩) (interp env t)

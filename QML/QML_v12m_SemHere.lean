@@ -166,27 +166,53 @@ theorem interp_eta {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
 
 /-! ## Indistinguishability -/
 
-variable (M) in
-/-- ⭐**`Ind` is indistinguishability**: related objects satisfy the same formulas, whatever the
-    rest of the environment.  This is the semantic content of `Proof.here_subst` — co-named objects
-    are interchangeable — and it is a condition on models rather than a field because it mentions
-    satisfaction, which is defined from the model.  A model proper satisfies it (docs §10.33).
+/-- The environment of the empty context. -/
+def Env.empty (w : M.frame.W) : M.Env Ctx.empty w := fun _ _ h => nomatch h
 
-    Stated, as `here_subst` is, for a formula with one slot over a context of a proof: one without
-    slots, tame (`Ctx.Tame`: finite, one view depth per address — every presented context is) and
-    without projections declared.  That is what lets the canonical model name an environment at
-    one stage, coherently (§10.38, §10.40). -/
-def IndInvariant : Prop :=
-  ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLast → ∀ {w : M.frame.W} (env : M.Env Γ w)
+/-- A hole term's value at an object: a term closed apart from its hole, evaluated with the object
+    in the hole. -/
+def holeVal {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
+    {v : M.frame.W} (o : M.frame.Dom A v) : M.frame.Dom B v :=
+  interp ((Env.empty v).extend (.bnd 0) o) s
+
+variable (M) in
+/-- ⭐**A model proper.**  `Ind` is **indistinguishability**: related objects satisfy the same
+    formulas, whatever the rest of the environment (`inv`).  This is the semantic content of
+    `Proof.here_subst` — co-named objects are interchangeable — and it is a condition on models
+    rather than a field because it mentions satisfaction, which is defined from the model (docs
+    §10.33).  Stated, as `here_subst` is, for a formula with one slot over a context of a proof: one
+    without slots, tame (`Ctx.Tame`: finite, one view depth per address — every presented context
+    is) and without projections declared.  That is what lets the canonical model name an
+    environment at one stage, coherently (§10.38, §10.40).
+
+    And `Ind` is a **congruence** for what strong B builds values with (§11.15): it is preserved by
+    a hole term (`map`, `back_beta`/`ret_beta`) and by pairing (`pair`, `back_pair`/`ret_ext`).  At
+    a `◇`-free type, `Ind` to a named object is equality (`Model.eq_of_ind`) and these are free;
+    at a `◇`-typed content they are what returning a value *up to `Ind`* needs. -/
+structure IndInvariant : Prop where
+  inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLast → ∀ {w : M.frame.W} (env : M.Env Γ w)
     {A : VarType} (φ : WFF σ (Γ.insert (.bnd 0) A) 1) (o o' : M.frame.Dom A w),
     M.Ind o o' → (M.sat (env.extend (.bnd 0) o) φ ↔ M.sat (env.extend (.bnd 0) o') φ)
+  map : ∀ {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
+    {w : M.frame.W} {o o' : M.frame.Dom A w}, M.Ind o o' → M.Ind (M.holeVal s o) (M.holeVal s o')
+  pair : ∀ {A B : VarType} {w : M.frame.W} {a a' : M.frame.Dom A w} {b b' : M.frame.Dom B w},
+    M.Ind a a' → M.Ind b b' → M.Ind (A := .VTypeProd A B) (w := w) (a, b) (a', b')
 
 /-- A model whose `Ind` is equality is a model proper. -/
 theorem indInvariant_of_eq
     (h : ∀ {A : VarType} {w : M.frame.W} (o o' : M.frame.Dom A w), M.Ind o o' → o = o') :
-    M.IndInvariant := by
-  intro Γ _ _ _ w env A φ o o' hi
-  rw [h o o' hi]
+    M.IndInvariant where
+  inv := by
+    intro Γ _ _ _ w env A φ o o' hi
+    rw [h o o' hi]
+  map := by
+    intro _ _ _ s _ _ _ hi
+    rw [h _ _ hi]
+    exact M.Ind_refl _
+  pair := by
+    intro _ _ _ _ _ _ _ ha hb
+    rw [h _ _ ha, h _ _ hb]
+    exact M.Ind_refl _
 
 /-! ## What the pinned form says -/
 
@@ -272,8 +298,8 @@ theorem sat_here_subst (hM : M.IndInvariant) {A : VarType} {b : Ann (.VTypeDia A
   obtain ⟨_, hc⟩ := h
   obtain ⟨_, hc'⟩ := h'
   refine (sat_instantiate env hnp Ctx.NoSlots.slots t' φ).mpr ?_
-  refine (hM hfin hnp env φ _ _ hc').mp ?_
-  exact (hM hfin hnp env φ _ _ hc).mpr ((sat_instantiate env hnp Ctx.NoSlots.slots t φ).mp hφ)
+  refine (hM.inv hfin hnp env φ _ _ hc').mp ?_
+  exact (hM.inv hfin hnp env φ _ _ hc).mpr ((sat_instantiate env hnp Ctx.NoSlots.slots t φ).mp hφ)
 
 omit [Γ.NoSlots] in
 /-- ⭐**Leibniz for the content is sound**: the defined equality holds exactly when the two contents
@@ -326,7 +352,7 @@ theorem sat_viewReadTm (hM : M.IndInvariant) (h : Γ.ref x = some (.VTypeDia X))
     ((Env.collapseAgree_self hT env).extend
       ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0))
       (interp (env.diaPush x h ⟨M.frame.reflAcc hT w, hmem⟩) bd)) ψ).symm.trans ?_
-  refine (hM hfin hnp env _ _ _ hval).trans ?_
+  refine (hM.inv hfin hnp env _ _ _ hval).trans ?_
   exact (sat_instantiate env hnp Ctx.NoSlots.slots t _).symm
 
 /-- The value of a hole term read inside `◇_x` with the body in its hole, at the identity arrow:
@@ -406,7 +432,7 @@ theorem sat_here_beta (hM : M.IndInvariant) (hx : ∃ Y, Γ.ref x = some (.VType
       refine ⟨hmem, ?_⟩
       dsimp only
       rwa [interp_viewReadTm hT env h bd s hmem]
-  exact (key _).mp ((hM hfin hnp env Φ _ _ hval).mp ((key _).mpr (M.Ind_refl _)))
+  exact (key _).mp ((hM.inv hfin hnp env Φ _ _ hval).mp ((key _).mpr (M.Ind_refl _)))
 
 include hnp hfin in
 /-- ⭐**Elimination** is sound: what is necessary over the witness's extent holds of the realisation
