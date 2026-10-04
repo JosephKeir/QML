@@ -153,9 +153,9 @@ theorem interp_eta {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
         interp_eta (env.boxPush w') x.inner (Ctx.ref_inner h), Env.ref_inner env w' h]
   | .VTypeDia A, x, h => by
       change interp env (Term.diatm x ⟨A, h⟩ (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of h))) = _
-      refine M.pos_inj ?_ fun hT => ?_
+      refine M.pos_inj ?_ fun hSh => ?_
       swap
-      · change domSh hT (interp env (Term.eta x (.VTypeDia A) h)) = domSh hT (env.ref x h)
+      · change domSh hSh (interp env (Term.eta x (.VTypeDia A) h)) = domSh hSh (env.ref x h)
         rw [domSh_interp, ← ref_envShape]
         exact termShp_eta _ 0 x h
       rw [dia_beta env ⟨A, h⟩ h (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of h))]

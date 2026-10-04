@@ -105,14 +105,14 @@ theorem interp_canon_eta (s : B.W) (k : ℕ) (y : VarSymb) {A : VarType}
 
 /-- Under T, the shapes of an environment agreeing with the canonical one are the canonical
     shapes (`Canon.envShape_canon`). -/
-theorem envShape_canon (hT : ModalSys.T = true) {Γ : Ctx} {s : B.W} {i : ℕ}
+theorem envShape_canon (hSh : ModalSys.shaped = true) {Γ : Ctx} {s : B.W} {i : ℕ}
     {e : Γ.Le ((B.w s).ctx i)} {env : B.model.Env Γ s}
     (hag : Model.Env.Agree e env (B.canonEnv s i)) :
-    Model.envShape hT env = B.cEnv Γ s := by
+    Model.envShape hSh env = B.cEnv Γ s := by
   funext v T hv
-  change Model.domSh hT (env v T hv) = B.canonSh s v T
+  change Model.domSh hSh (env v T hv) = B.canonSh s v T
   rw [hag v T hv]
-  refine (B.domShape_toDom hT T s _ _).trans ?_
+  refine (B.domShape_toDom (ModalSys.NoFour.T_of_shaped hSh) T s _ _).trans ?_
   rw [rawShape_rden, Model.termShp_eta, cEnv_ref]
 
 /-- The canonical environment at a later stage agrees with the one at an earlier stage. -/
@@ -344,10 +344,10 @@ mutual
             (toDom_congr (rden_boxtm_self e t _ hR).symm _ _)
     | _, _, _, .diatm x hx t, s, i, e, env, hag => by
         obtain ⟨X, hr⟩ := hx
-        refine B.model.pos_inj ?_ fun hT => ?_
+        refine B.model.pos_inj ?_ fun hSh => ?_
         swap
-        · exact (Model.domSh_interp hT env (.diatm x ⟨X, hr⟩ t)).trans
-            (by rw [envShape_canon hT hag]; rfl)
+        · exact (Model.domSh_interp hSh env (.diatm x ⟨X, hr⟩ t)).trans
+            (by rw [envShape_canon hSh hag]; rfl)
         rw [Model.dia_beta env ⟨X, hr⟩ hr t]
         have hpq₀ : env.ref x hr = (B.canonEnv s i).ref x (e.ref hr) :=
           Model.Env.ref_agree hag x hr

@@ -746,21 +746,21 @@ namespace Model
 variable {σ : Signature} {M : Model.{u, v} σ}
 
 /-- The shape of an entry's value is the entry's shape. -/
-theorem domSh_entryVal (hT : ModalSys.T = true) {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
+theorem domSh_entryVal (hSh : ModalSys.shaped = true) {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
     ∀ (e : SubE σ Δ) {T : VarType} (he : e.OkRef T),
-      domSh hT (entryVal env e he) = entryShp (envShape hT env) 0 e he
-  | .ren v, _, he => (ref_envShape hT env v he).symm
+      domSh hSh (entryVal env e he) = entryShp (envShape hSh env) 0 e he
+  | .ren v, _, he => (ref_envShape hSh env v he).symm
   | .tm s, _, he => by
       cases he
-      exact domSh_interp hT env s
+      exact domSh_interp hSh env s
   | .hide, _, he => False.elim he
 
 /-- The shapes of a substituted environment are the substituted shapes. -/
-theorem envShape_substEnv (hT : ModalSys.T = true) {Γ Δ : Ctx} {w : M.frame.W}
+theorem envShape_substEnv (hSh : ModalSys.shaped = true) {Γ Δ : Ctx} {w : M.frame.W}
     (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hnp : Γ.NoProjLast) (env : M.Env Δ w) :
-    envShape hT (substEnv θ hθ hnp env) = substShEnv θ hθ hnp (envShape hT env) 0 := by
+    envShape hSh (substEnv θ hθ hnp env) = substShEnv θ hθ hnp (envShape hSh env) 0 := by
   funext v T hv
-  exact domSh_entryVal hT env (θ v) _
+  exact domSh_entryVal hSh env (θ v) _
 
 /-! ## The substitution lemma for terms -/
 
@@ -806,10 +806,10 @@ mutual
         obtain ⟨X, hr⟩ := hx'
         have hw : (θ.at x).idxAlong [] = ι x := hc x _ hr []
         obtain ⟨Y, hr₁⟩ := SubE.ref_witness (Subst.okRef_at hθ hr) hw
-        refine M.pos_inj ?_ fun hT => ?_
+        refine M.pos_inj ?_ fun hSh => ?_
         swap
-        · change domSh hT (interp env (Term.subst ι θ hθ hc (Term.diatm x hx t))) =
-            domSh hT (interp (substEnv θ hθ hnp env) (Term.diatm x hx t))
+        · change domSh hSh (interp env (Term.subst ι θ hθ hc (Term.diatm x hx t))) =
+            domSh hSh (interp (substEnv θ hθ hnp env) (Term.diatm x hx t))
           rw [domSh_interp, domSh_interp, termShp_subst θ hθ hc hnp, envShape_substEnv]
         change M.posEval (interp env (Term.diatm (ι x) _ (Term.subst ι (θ.dia x (ι x))
           (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) t))) = _

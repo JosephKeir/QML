@@ -3,9 +3,10 @@ import QML.QML_v12m_InterpLemmas
 /-!
 # QML v12m — semantics: the shapes of values
 
-Under T a possible object carries a **shape**, its semantic annotation (docs §10.27–10.28), and
-possible objects are identified only by section *and* shape (`Model.pos_inj`).  So every lemma that
-identifies two values of possible terms needs the two shapes to agree.  This file computes them.
+Under T or strong B (`ModalSys.shaped`) a possible object carries a **shape**, its semantic
+annotation (docs §10.27–10.28), and possible objects are identified only by section *and* shape
+(`Model.pos_inj`).  So every lemma that identifies two values of possible terms needs the two
+shapes to agree.  This file computes them.
 
 The shape of a term's value is computed **symbolically**, by the same recursion as the value but
 with shapes in place of objects:
@@ -1269,15 +1270,15 @@ variable {M : Model.{u, v} σ}
 
 /-! ## S2: the shape of a value is its symbolic shape -/
 
-/-- The shape of an object, under T. -/
-abbrev domSh (hT : ModalSys.T = true) {A : VarType} {w : M.frame.W} (o : M.frame.Dom A w) :
+/-- The shape of an object, when shaped. -/
+abbrev domSh (hSh : ModalSys.shaped = true) {A : VarType} {w : M.frame.W} (o : M.frame.Dom A w) :
     Shape M.arrows M.RootPoss w A :=
-  Frame.domShape M.necEval (M.shape hT) o
+  Frame.domShape M.necEval (M.shape hSh) o
 
 /-- The shapes of an environment's objects. -/
-def envShape (hT : ModalSys.T = true) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
+def envShape (hSh : ModalSys.shaped = true) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
     ShEnv M.arrows M.RootPoss Γ w :=
-  fun v T h => domSh hT (env v T h)
+  fun v T h => domSh hSh (env v T h)
 
 theorem Env.ref_proj' {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {v : VarSymb} {s : Step}
     (hs : s.isProj = true) {U T : VarType} (hU : Γ.ref v = some U)
@@ -1299,21 +1300,21 @@ theorem Env.ref_nonproj' {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {v : VarS
     env.ref (.step v s) h = env (.step v s) T (by rw [Ctx.ref_step_nonproj Γ v hs] at h; exact h) :=
   by rw [Env.ref, dif_neg hs]
 
-theorem domSh_stepObj (hT : ModalSys.T = true) {w : M.frame.W} {U T : VarType} {s : Step}
+theorem domSh_stepObj (hSh : ModalSys.shaped = true) {w : M.frame.W} {U T : VarType} {s : Step}
     (hs : s.isProj = true) (h : U.step s = some T) (a : M.frame.Dom U w) :
-    domSh hT (M.stepObj hs h a) = GFunc.shp (GFunc.proj (σ := σ) hs h) 0 (domSh hT a) := by
+    domSh hSh (M.stepObj hs h a) = GFunc.shp (GFunc.proj (σ := σ) hs h) 0 (domSh hSh a) := by
   cases U <;> cases s <;> (try cases hs) <;> (try cases h)
   · rfl
   · rfl
-  · obtain ⟨hT', rfl⟩ := VarType.step_here h
-    change domSh hT (M.necEval a (M.frame.reflAcc hT' w)) =
-      (Arrows.transposeShp fun s => domSh hT (M.necEval a s)).map (Arrows.Leaf.collapse hT' 0)
-    exact (transpose_collapse_zero hT' fun s => domSh hT (M.necEval a s)).symm
+  · obtain ⟨hT, rfl⟩ := VarType.step_here h
+    change domSh hSh (M.necEval a (M.frame.reflAcc hT w)) =
+      (Arrows.transposeShp fun s => domSh hSh (M.necEval a s)).map (Arrows.Leaf.collapse hT 0)
+    exact (transpose_collapse_zero hT fun s => domSh hSh (M.necEval a s)).symm
 
 /-- The symbolic shape at an address is the shape of the object there. -/
-theorem ref_envShape (hT : ModalSys.T = true) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
+theorem ref_envShape (hSh : ModalSys.shaped = true) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
     ∀ (v : VarSymb) {T : VarType} (h : Γ.ref v = some T),
-      (envShape hT env).ref 0 v h = domSh hT (env.ref v h)
+      (envShape hSh env).ref 0 v h = domSh hSh (env.ref v h)
   | .root _, _, _ => rfl
   | .step v s, T, h => by
       by_cases hs : s.isProj = true
@@ -1322,16 +1323,17 @@ theorem ref_envShape (hT : ModalSys.T = true) {Γ : Ctx} {w : M.frame.W} (env : 
           cases hU : Γ.ref v with
           | none => rw [hU] at h; cases h
           | some U => exact ⟨U, rfl⟩
-        rw [ShEnv.ref_proj _ 0 hs hU h, ref_envShape hT env v hU, Env.ref_proj' env hs hU h,
+        rw [ShEnv.ref_proj _ 0 hs hU h, ref_envShape hSh env v hU, Env.ref_proj' env hs hU h,
           domSh_stepObj]
       · rw [ShEnv.ref_nonproj _ 0 hs h, Env.ref_nonproj' env hs h]
         rfl
 
 /-- Pushing the shapes of an environment into a `□` is transposing the shapes of the pushed
     environments. -/
-theorem boxPush_envShape (hT : ModalSys.T = true) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
-    ∀ v T h, (envShape hT env).boxPush 0 v T h =
-      Arrows.transposeShp fun s => envShape hT (env.boxPush s) v T h
+theorem boxPush_envShape (hSh : ModalSys.shaped = true) {Γ : Ctx} {w : M.frame.W}
+    (env : M.Env Γ w) :
+    ∀ v T h, (envShape hSh env).boxPush 0 v T h =
+      Arrows.transposeShp fun s => envShape hSh (env.boxPush s) v T h
   | .step u .box, _, h => by
       simp only [ShEnv.boxPush]
       rw [ref_envShape]
@@ -1341,10 +1343,10 @@ theorem boxPush_envShape (hT : ModalSys.T = true) {Γ : Ctx} {w : M.frame.W} (en
       simp only [ShEnv.boxPush]
       rw [ref_envShape]
       change Shp.box ((Arrows.transposeShp fun s =>
-          domSh hT (M.necEval (env.ref u hu) s)).map (Arrows.Leaf.shift hF 0)) = _
+          domSh hSh (M.necEval (env.ref u hu) s)).map (Arrows.Leaf.shift hF 0)) = _
       rw [transpose_shift_zero]
       change _ = Arrows.transposeShp fun s => Shp.box (Arrows.transposeShp fun t =>
-          domSh hT (M.necEval (M.necEval (M.ops.necDup hF (env.ref u hu)) s) t))
+          domSh hSh (M.necEval (M.necEval (M.ops.necDup hF (env.ref u hu)) s) t))
       simp only [M.necDup_eval]
       rfl
   | .root _, _, h => by cases h
@@ -1353,12 +1355,12 @@ theorem boxPush_envShape (hT : ModalSys.T = true) {Γ : Ctx} {w : M.frame.W} (en
   | .step _ .dia, _, h => by cases h
   | .step _ .here, _, h => by cases h
 
-theorem domSh_bundle (hT : ModalSys.T = true) {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
-    ∀ L : Supp Δ, domSh hT (env.bundle L) = (envShape hT env).bundle L
+theorem domSh_bundle (hSh : ModalSys.shaped = true) {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
+    ∀ L : Supp Δ, domSh hSh (env.bundle L) = (envShape hSh env).bundle L
   | [] => rfl
   | _ :: L => by
-      change Shp.prod _ (domSh hT (env.bundle L)) = _
-      rw [domSh_bundle hT env L]
+      change Shp.prod _ (domSh hSh (env.bundle L)) = _
+      rw [domSh_bundle hSh env L]
       rfl
 
 theorem ShEnv.bundle_transpose {Γ : Ctx} {w : M.frame.W} (τ : ShEnv M.arrows M.RootPoss Γ w)
@@ -1393,34 +1395,35 @@ theorem interp_diatm {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {x : VarSymb}
     cases heq
 
 /-- ⭐**S2**: the shape of a term's value is its symbolic shape. -/
-theorem domSh_interp (hT : ModalSys.T = true) {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
+theorem domSh_interp (hSh : ModalSys.shaped = true) {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
     ∀ {T : VarType} {a : Ann T} (t : Term σ Δ T a),
-      domSh hT (interp env t) = termShp (envShape hT env) 0 t
+      domSh hSh (interp env t) = termShp (envShape hSh env) 0 t
   | _, _, .var _ _ => shp_var_eq _ _
   | _, _, .func _ => shp_var_eq _ _
   | _, _, .unit => rfl
   | _, _, .pair s t => by
-      change Shp.prod (domSh hT (interp env s)) (domSh hT (interp env t)) = _
-      rw [domSh_interp hT env s, domSh_interp hT env t]
+      change Shp.prod (domSh hSh (interp env s)) (domSh hSh (interp env t)) = _
+      rw [domSh_interp hSh env s, domSh_interp hSh env t]
       rfl
   | _, _, .boxtm t => by
       change Shp.box (Arrows.transposeShp fun s =>
-          domSh hT (M.necEval (interp env (Term.boxtm t)) s)) =
-        Shp.box (termShp ((envShape hT env).boxPush 0) (0 + 1) t)
-      rw [termShp_transpose ((envShape hT env).boxPush 0) (fun s => envShape hT (env.boxPush s)) 0
-        (boxPush_envShape hT env)]
-      simp only [box_beta, domSh_interp hT _ t]
+          domSh hSh (M.necEval (interp env (Term.boxtm t)) s)) =
+        Shp.box (termShp ((envShape hSh env).boxPush 0) (0 + 1) t)
+      rw [termShp_transpose ((envShape hSh env).boxPush 0) (fun s => envShape hSh (env.boxPush s)) 0
+        (boxPush_envShape hSh env)]
+      simp only [box_beta, domSh_interp hSh _ t]
   | _, _, .diatm x hx t => by
       obtain ⟨X, hr⟩ := id hx
       rw [termShp_diatm _ 0 hr, interp_diatm env hr hx t]
-      change M.shape hT _ = _
+      change M.shape hSh _ = _
       simp only [M.shape_posMap, M.shape_posStrength, Shp.label_dia, Shp.body_dia]
       rw [ref_envShape,
-        ← termShp_compile ((envShape hT env).diaPush 0 x hr) (0 + 1) (Term.bases t) t
+        ← termShp_compile ((envShape hSh env).diaPush 0 x hr) (0 + 1) (Term.bases t) t
           (Supp.mem_self _),
-        ← assemble_shp (envShape hT env) 0 hr,
-        ShEnv.bundle_transpose ((envShape hT env).boxPush 0) (fun s => envShape hT (env.boxPush s))
-          (boxPush_envShape hT env)]
+        ← assemble_shp (envShape hSh env) 0 hr,
+        ShEnv.bundle_transpose ((envShape hSh env).boxPush 0)
+          (fun s => envShape hSh (env.boxPush s))
+          (boxPush_envShape hSh env)]
       simp only [necBundle_eval, domSh_bundle]
       rw [ref_envShape]
       rfl

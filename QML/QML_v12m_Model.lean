@@ -183,10 +183,10 @@ def GFunc.eval {σ : Signature} {F : Frame.{u, v} σ} (ops : F.Ops) :
 
 /-! ## Semantic annotations
 
-Under T a possible object carries, besides its section, a **shape**: the semantic counterpart of a
-term's annotation (docs §10.27–10.28).  Two possible objects are identified only when they have the
-same section *and* the same shape, so the semantics identifies exactly what `eqRec` can compare,
-and never two objects over different witnesses.
+Under T or strong B (`ModalSys.shaped`) a possible object carries, besides its section, a
+**shape**: the semantic counterpart of a term's annotation (docs §10.27–10.28).  Two possible
+objects are identified only when they have the same section *and* the same shape, so the semantics
+identifies exactly what `eqRec` can compare, and never two objects over different witnesses.
 
 A shape is a tree over the type, like `Ann`, whose labels are **leaves** anchored at the object's
 world.  A leaf is either a root possibility with a syntactic path into its content, which survives
@@ -349,17 +349,18 @@ structure Model (σ : Signature) where
   frame : Frame.{u, v} σ
   necEval : {A : VarType} → {w : frame.W} → frame.Nec A w → frame.NecSec A w
   nec_inj : ∀ {A : VarType} {w : frame.W}, Function.Injective (@necEval A w)
-  /-- Under T, the root possibilities: what a possible object's shape is ultimately built on. -/
+  /-- Under T or strong B, the root possibilities: what a possible object's shape is ultimately
+      built on. -/
   RootPoss : frame.W → Type u
   /-- ⭐**Evaluation of a possible object** (docs §10.27, §10.35): its **section** — an extent, and
-      one object at each world of it — and, under T, its **shape**, the semantic annotation that
-      records where each possibility inside it comes from.  `Model.posEval` and `Model.shape` are
-      the two components. -/
+      one object at each world of it — and, under T or strong B (`ModalSys.shaped`), its
+      **shape**, the semantic annotation that records where each possibility inside it comes from.
+      `Model.posEval` and `Model.shape` are the two components. -/
   posFull : {A : VarType} → {w : frame.W} → frame.Pos A w →
-    frame.PosSec A w × (ModalSys.T = true → Shp (frame.Leaf RootPoss w) (.VTypeDia A))
-  /-- ⭐A possible object **is** its extent, its contents and (under T) its shape: two objects
+    frame.PosSec A w × (ModalSys.shaped = true → Shp (frame.Leaf RootPoss w) (.VTypeDia A))
+  /-- ⭐A possible object **is** its extent, its contents and (when shaped) its shape: two objects
       agreeing on all three are equal.  So objects over different witnesses, or over one witness
-      with differently annotated contents, are never identified (docs §10.24–10.27); without T
+      with differently annotated contents, are never identified (docs §10.24–10.27); unshaped
       this is plain injectivity of the section. -/
   posFull_inj : ∀ {A : VarType} {w : frame.W}, Function.Injective (@posFull A w)
   ops : frame.Ops
@@ -373,17 +374,17 @@ structure Model (σ : Signature) where
   posMap_full : ∀ {A B : VarType} {w : frame.W} (f : GFunc σ A B) (p : frame.Pos A w),
     posFull (ops.posMap f p) =
       (⟨(posFull p).1.1, fun w' => GFunc.eval ops f w'.1.1 ((posFull p).1.2 w')⟩,
-        fun hT => .dia ((posFull p).2 hT).label (f.shp 1 ((posFull p).2 hT).body))
+        fun hS => .dia ((posFull p).2 hS).label (f.shp 1 ((posFull p).2 hS).body))
   /-- A necessary object riding along keeps the extent, pairs its values into the contents, and
       contributes the family of its values' shapes. -/
   posStrength_full : ∀ {A B : VarType} {w : frame.W} (n : frame.Nec A w) (p : frame.Pos B w),
     posFull (ops.posStrength n p) =
       (⟨(posFull p).1.1, fun w' =>
           ((necEval n w'.1, (posFull p).1.2 w') : frame.Dom (.VTypeProd A B) w'.1.1)⟩,
-        fun hT => .dia ((posFull p).2 hT).label
+        fun hS => .dia ((posFull p).2 hS).label
           (.prod (Arrows.transposeShp fun s =>
-              Frame.domShape necEval (fun q => (posFull q).2 hT) (necEval n s))
-            ((posFull p).2 hT).body))
+              Frame.domShape necEval (fun q => (posFull q).2 hS) (necEval n s))
+            ((posFull p).2 hS).body))
   necExtract_eval : ∀ {A : VarType} {w : frame.W} (hT : ModalSys.T = true) (n : frame.Nec A w),
     ops.necExtract hT n = necEval n ⟨w, ⟨frame.refl hT w⟩⟩
   necDup_eval : ∀ {A : VarType} {w : frame.W} (hF : ModalSys.Four = true) (n : frame.Nec A w)
@@ -437,16 +438,18 @@ abbrev arrows : Arrows.{u, v} σ := M.frame.toArrows
 abbrev posEval {A : VarType} {w : M.frame.W} (p : M.frame.Pos A w) : M.frame.PosSec A w :=
   (M.posFull p).1
 
-/-- ⭐Under T, the **shape** of a possible object — its semantic annotation (docs §10.27). -/
-abbrev shape (hT : ModalSys.T = true) {A : VarType} {w : M.frame.W} (p : M.frame.Pos A w) :
+/-- ⭐Under T or strong B (`ModalSys.shaped`), the **shape** of a possible object — its semantic
+    annotation (docs §10.27). -/
+abbrev shape (hS : ModalSys.shaped = true) {A : VarType} {w : M.frame.W} (p : M.frame.Pos A w) :
     Shp (M.frame.Leaf M.RootPoss w) (.VTypeDia A) :=
-  (M.posFull p).2 hT
+  (M.posFull p).2 hS
 
 variable {M}
 
-/-- Possible objects agreeing on their section and, under T, their shape are equal. -/
+/-- Possible objects agreeing on their section and, when shaped, their shape are equal. -/
 theorem pos_inj {A : VarType} {w : M.frame.W} {p q : M.frame.Pos A w}
-    (h : M.posEval p = M.posEval q) (hs : ∀ hT : ModalSys.T = true, M.shape hT p = M.shape hT q) :
+    (h : M.posEval p = M.posEval q)
+    (hs : ∀ hS : ModalSys.shaped = true, M.shape hS p = M.shape hS q) :
     p = q :=
   M.posFull_inj (Prod.ext h (funext hs))
 
@@ -462,18 +465,18 @@ theorem posStrength_eval {A B : VarType} {w : M.frame.W} (n : M.frame.Nec A w)
         ((M.necEval n w'.1, (M.posEval p).2 w') : M.frame.Dom (.VTypeProd A B) w'.1.1)⟩ :=
   congrArg Prod.fst (M.posStrength_full n p)
 
-theorem shape_posMap (hT : ModalSys.T = true) {A B : VarType} {w : M.frame.W}
+theorem shape_posMap (hS : ModalSys.shaped = true) {A B : VarType} {w : M.frame.W}
     (f : GFunc σ A B) (p : M.frame.Pos A w) :
-    M.shape hT (M.ops.posMap f p) = .dia (M.shape hT p).label (f.shp 1 (M.shape hT p).body) :=
-  congrFun (congrArg Prod.snd (M.posMap_full f p)) hT
+    M.shape hS (M.ops.posMap f p) = .dia (M.shape hS p).label (f.shp 1 (M.shape hS p).body) :=
+  congrFun (congrArg Prod.snd (M.posMap_full f p)) hS
 
-theorem shape_posStrength (hT : ModalSys.T = true) {A B : VarType} {w : M.frame.W}
+theorem shape_posStrength (hS : ModalSys.shaped = true) {A B : VarType} {w : M.frame.W}
     (n : M.frame.Nec A w) (p : M.frame.Pos B w) :
-    M.shape hT (M.ops.posStrength n p) =
-      .dia (M.shape hT p).label
-        (.prod (Arrows.transposeShp fun s => Frame.domShape M.necEval (M.shape hT) (M.necEval n s))
-          (M.shape hT p).body) :=
-  congrFun (congrArg Prod.snd (M.posStrength_full n p)) hT
+    M.shape hS (M.ops.posStrength n p) =
+      .dia (M.shape hS p).label
+        (.prod (Arrows.transposeShp fun s => Frame.domShape M.necEval (M.shape hS) (M.necEval n s))
+          (M.shape hS p).body) :=
+  congrFun (congrArg Prod.snd (M.posStrength_full n p)) hS
 
 end Model
 

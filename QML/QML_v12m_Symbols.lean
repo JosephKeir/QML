@@ -76,6 +76,22 @@ theorem ModalSys.keepOnly_flags [ModalSys] (hk : ModalSys.keepOnly = true) :
     ModalSys.T = true ∧ ModalSys.Four = true := by
   simpa [ModalSys.keepOnly] using hk
 
+/-- Possible objects carry a **shape** (their semantic annotation, docs §10.27) under T or strong B:
+    T's `extract` and strong B's round trips both read a possibility back at its origin, so both
+    need to know where the possibilities inside an object come from (§11.15, phase L3). -/
+def ModalSys.shaped [ModalSys] : Bool := ModalSys.T || ModalSys.BStrong
+
+theorem ModalSys.shaped_of_T [ModalSys] (hT : ModalSys.T = true) : ModalSys.shaped = true := by
+  simp [ModalSys.shaped, hT]
+
+theorem ModalSys.shaped_of_BStrong [ModalSys] (hB : ModalSys.BStrong = true) :
+    ModalSys.shaped = true := by
+  simp [ModalSys.shaped, hB]
+
+theorem ModalSys.NoB.T_of_shaped [ModalSys] [ModalSys.NoB] (h : ModalSys.shaped = true) :
+    ModalSys.T = true := by
+  simpa [ModalSys.shaped, ModalSys.NoB.noBStrong] using h
+
 /-! ## Types and steps -/
 
 inductive VarType where

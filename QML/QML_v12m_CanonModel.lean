@@ -272,16 +272,18 @@ noncomputable def model : Model.{0, 0} σ where
   necEval := necEval w₀
   nec_inj := fun h => necEval_injective w₀ h
   RootPoss _ := VarSymb
-  posFull p := posFull w₀ p
-  posFull_inj := fun h => posFull_injective w₀ h
+  posFull p := ((posFull w₀ p).1, fun hSh => (posFull w₀ p).2 (ModalSys.NoB.T_of_shaped hSh))
+  posFull_inj := fun h => posFull_injective w₀ (Prod.ext (congrArg Prod.fst h :)
+    (funext fun hT => congrFun (congrArg Prod.snd h) (ModalSys.shaped_of_T hT)))
   ops := ops w₀
   necMap_eval g _ w' := (eval_toDom w₀ g w'.1 _ _).symm
   necPair_eval _ _ _ := rfl
   posMap_full g _ := Prod.ext
     (congrArg (Sigma.mk _) (funext fun w' => (eval_toDom w₀ g w'.1.1 _ _).symm)) rfl
-  posStrength_full n _ := Prod.ext rfl (funext fun hT =>
+  posStrength_full n _ := Prod.ext rfl (funext fun hSh =>
     congrArg (fun z => Shp.dia _ (Shp.prod z _)) (congrArg Arrows.transposeShp (funext fun s =>
-      (domShape_toDom w₀ hT _ s.1 (n.1 s) (definable_box_apply n.2 s)).symm)))
+      (domShape_toDom w₀ (ModalSys.NoB.T_of_shaped hSh) _ s.1 (n.1 s)
+        (definable_box_apply n.2 s)).symm)))
   necExtract_eval _ _ := rfl
   necDup_eval _ _ _ _ := rfl
   posRet_exists hT hS a := posRet_exists_canon w₀ hT hS a

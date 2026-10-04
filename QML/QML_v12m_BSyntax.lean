@@ -49,6 +49,10 @@ theorem ModalSys.NoFour.absurdStrong [ModalSys.NoFour] (hB : ModalSys.BStrong = 
   rw [ModalSys.NoFour.noBStrong] at hB
   cases hB
 
+theorem ModalSys.NoFour.T_of_shaped [ModalSys.NoFour] (h : ModalSys.shaped = true) :
+    ModalSys.T = true := by
+  simpa [ModalSys.shaped, ModalSys.NoFour.noBStrong] using h
+
 /-! ## Addresses as paths -/
 
 namespace VarSymb

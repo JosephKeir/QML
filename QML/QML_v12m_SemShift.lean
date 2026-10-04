@@ -333,8 +333,9 @@ variable {σ : Signature} {M : Model.{u, v} σ}
   {env₁ : M.Env Γ₁ w} {env₂ : M.Env Γ₂ w}
 
 /-- Environments agreeing across a shift have shape environments agreeing across it. -/
-theorem Env.ShiftAgree.shape (hag : Env.ShiftAgree h env₁ env₂) (hT : ModalSys.T = true) :
-    ShEnv.ShiftAgree h (envShape hT env₁) (envShape hT env₂) 0 := by
+theorem Env.ShiftAgree.shape (hag : Env.ShiftAgree h env₁ env₂)
+    (hSh : ModalSys.shaped = true) :
+    ShEnv.ShiftAgree h (envShape hSh env₁) (envShape hSh env₂) 0 := by
   intro v T hv
   rw [ref_envShape, ref_envShape, hag v T hv]
 
@@ -377,12 +378,12 @@ mutual
         rw [box_beta, box_beta, interp_shift (hag.boxPush w') t]
     | _, _, .diatm x hx t => by
         obtain ⟨X, hr⟩ := hx
-        refine M.pos_inj ?_ fun hT => ?_
+        refine M.pos_inj ?_ fun hSh => ?_
         swap
-        · change domSh hT (interp env₂ (Term.shift h (Term.diatm x _ t))) =
-            domSh hT (interp env₁ (Term.diatm x _ t))
+        · change domSh hSh (interp env₂ (Term.shift h (Term.diatm x _ t))) =
+            domSh hSh (interp env₁ (Term.diatm x _ t))
           rw [domSh_interp, domSh_interp]
-          exact termShp_shift (hag.shape hT) _
+          exact termShp_shift (hag.shape hSh) _
         change M.posEval (interp env₂
           (Term.diatm (x.shift k) _ (Term.shift (h.diaIn x) t))) = _
         rw [dia_beta env₂ _ (h x _ hr), dia_beta env₁ _ hr]
