@@ -469,7 +469,9 @@ did for B.
    alone, associativity and identity (which look unproblematic) where 4 meets T, and — the real
    constraint — agreement of all round trips `a ≫ a⁻` where 4 meets B or 5. *Conjecture* (§4):
    coherence is the shadow of flag closure, so the question is whether adding 5's object-level
-   component, `◇□χ(u.keep.box) ⊢ □χ(u.box)`, makes the canonical round trips coherent. If not,
+   component, `◇□χ(u.keep.box) ⊢ □χ(u.box)`, makes the canonical round trips coherent. *See
+   `v12-modal-extensions.md` §11.19 (2026-10-05): the law as an atom, `∃t. Back(u.keep) t`, and
+   coherence as equations between arrow operations.* If not,
    completeness for those combinations holds only over arrow-frames. (§4)
 2. ~~The back-and-forth invariant for B's reverse arrows, with weak B alone.~~ **Answered for weak
    B without T and 4 (§6a)**: a fair ω-chain committing one variable at a time, no back-types

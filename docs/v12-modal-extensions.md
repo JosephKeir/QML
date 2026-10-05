@@ -5444,3 +5444,54 @@ arrow operation**, and state the agreement definitionally (a view item) or as an
 * *What coherence becomes:* equations between the arrow operations (composition, ways home, the
   Euclidean assignment).  These are automatic in relational frames and are axioms of arrow frames,
   like the category laws for T+4.  To be tested against milestone 3's original statement.
+
+**Paper check against milestone 3's statement** (`v12-arrow-canonical.md` §4, §8; 2026-10-05):
+
+1. **4 (restriction + `4_lift`) avoids the separation §4 warned of.**  §4 found the uniform join
+   `◇◇A → ◇A` sound on arrow frames but not on relational ones, so adopting it would separate the
+   two model classes.  This design never asserts the uniform join:
+   * `x.keep` is a pullback, defined in both classes;
+   * `4_lift` and the derived join pick one route, so they are sound relationally.
+   ✓
+2. **B+4: `⊢ ∃t. Back(u.keep) t` is §4's round-trip law as an atom.**  `u.keep` at `v`, read home
+   along `a⁻`, is `u` along `a ≫ a⁻`, so the atom says that every round trip returns the same
+   value.  `back_counit` derives §4's validity witness `¬(◇□χ(u.keep.box) ∧ ◇□¬χ(u.keep.box))`.
+   * *Valid relationally:* there is one loop arrow per world.
+   * *On arrow frames:* exactly the round-trip law.
+   * It complements §4's conjecture (coherence from 5's component `◇□χ(u.keep.box) ⊢ □χ(u.box)`)
+     rather than replacing it.  The atom names the common value, which the canonical model can
+     commit at birth (L4's machinery).
+   * *Side finding:* weak B + 4 is complete for relational frames only with *some* open
+     principle, because §4's formula has a parameter that closed B cannot reach.  This is §11.19's
+     two-axis point: B's openness comes only with naming.  ✓
+3. **5's `x.side` needs one law on arrow frames.**  Relationally, distinct home arrows have
+   distinct targets, so the content is well defined.  On arrow frames the Euclidean assignment
+   `e(a, ·)` must be injective, or two arrows `w → u` with different contents land on one `v → u`.
+   ✓ relationally; a law for arrows.
+4. **Strong 5's partial relation is solved by a possible object.**  A home necessary object `m`,
+   seen sideways from `v`, is defined only on the image of `e(a, ·)`, so it is not a necessary
+   object at `v`.  But it *is* a possible object, `m.side : ◇A`, with that image as extent.  The
+   relation "`n` agrees with `m` on `w`'s arrows" is then `□_{m.side} (n.box = m.side.dia)`, using
+   existing formers (`Ind`, through `Here`/attested, at `◇` types).
+   ```
+   5_lift:   ◇∃n:□A. Φ(n)  ⊢  ∃m:□A. ◇∃n. (Φ(n) ∧ □_{m.side} (n.box = m.side.dia))
+   ```
+   This is sound by pullback, `m(c) := n(e(a, c))`, in both classes.  ✓
+5. **Coherence is equations between arrow operations — confirmed and sharpened.**  The laws found:
+   * associativity (4);
+   * identity (T+4);
+   * `a ≫ e(a, c) = c` (4+5), which is what makes 5's component sound
+     (`u(a ≫ e(a,c)) = u(c)`);
+   * injectivity of `e(a, ·)` (5).
+
+   With T and `a⁻ := e(a, id)`, the 4+5 law gives `a ≫ a⁻ = id`, which is §4's round-trip law for
+   B+4+T.  So S5's coherence is one law, not two.  All of these hold automatically in relational
+   frames, and since the semantics stays relational (§4, direction (2)) they constrain only the
+   canonical construction.
+
+**Verdict: promising.**  The plan for milestones 3–4 becomes:
+* weak 4 gains `x.keep` (and possibly weak 5 gains `x.side`/`m.side`) as view items;
+* the strong forms are `4_lift`, `5_lift` and the kept-carrier atom `∃t. Back(u.keep) t`;
+* none of them needs path independence.
+
+To build after strong B (milestone 2).
