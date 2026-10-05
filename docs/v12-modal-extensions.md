@@ -5317,11 +5317,53 @@ original by a bespoke relation (user).  Sorted by route:
 |---|---|---|---|
 | T | yes | `u.here`, `collapse` | `Here`, `T_dia` |
 | 4 | yes | `keep`, `shift` | the witnessed join |
-| D | yes | trivially (outward only) | `D_name` |
+| D | yes | trivially (outward only) | `D_ex`, `D_schema` (Nec → Pos), as built |
 | B | no: closed only (`◇□ψ ⊢ ψ`) | — | `Back`, `◇[d ↦ t]`, which also make it open |
 | 5 | ? (needs coherence) | — | ? |
 
 On this reading, a strong form is a principle for naming routes.  Openness comes from a projection
 or a step of the view, where the system has one; B has none, so its naming principles are also
 what make it open.  So `D_name` is D's strong form in exactly the sense that `Here` and the join
-are T's and 4's.
+are T's and 4's (corrected below: D's naming principle is the existing one).
+
+**Correction (user, 2026-10-05): keep strong D as built.**  Strong D should say that a necessary
+object has a possible counterpart agreeing with it in its values: the object-level form of
+`□φ ⊢ ◇φ`.
+* The present design already gives this.  `Proof.D_schema` (`□φ(u.box) ⊢ ∃x:◇A. ◇_x φ(x.dia)`)
+  derives it from `D_ex`.  The counterpart is the term `diatm z (u.box)` over the axiom's witness,
+  agreeing with `u` by β.  No relation is needed, since the transport is outward.
+* Weak D gives only the formula-level open form `□φ(u.box) ⊢ ◇φ(u.box)`.  Strong D's whole
+  content is that *some* extent is nonempty; each necessary object's counterpart is then a term.
+* In §11.18's table, strong D is the "existence of a subject" row beside `T_dia` and `B_strong`.
+* **`D_name` is withdrawn as a replacement.**  It is a different, stronger covering principle
+  (every route has a name), to be looked at again only beside 4's join (milestone 4).
+
+**The axioms as comonad, monad and adjunction (paper).**  Each nested axiom has two shapes, and
+the direction of transport decides whether a shape needs a relation or only a term:
+
+| | `□` side (comonad) | `◇` side (monad) |
+|---|---|---|
+| T | `extract : □A → A` (term) | return `A → ◇A`: `T_dia` + `Here` (∃ + relation) |
+| 4 | `dup : □A → □□A` (term) | join `◇◇A → ◇A`: **open** |
+| D | `□A → ◇A`: a term over `D_ex`'s witness | |
+| B | unit `ψ ⊢ □◇ψ`: `Back` | counit `◇□ψ ⊢ ψ`: `◇[d ↦ t]` |
+
+The `◇` side cannot be terms: a term over a witness reuses that witness's extent, and a new extent
+comes only from a fresh witness (memory: T's return "can't generate the possible witness object").
+So 4's join should go as T's return did: an `∃`-elimination plus a relation.  With `x : ◇◇A` both
+ends are nameable at home, so it can be a plain atom `Join z x`, with rules mirroring
+`here_elim`/`here_intro`
+```
+Join z x, ◇_x ◇_{x.dia} θ(x.dia.dia) ⊢ ◇_z θ(z.dia)        and the converse; □ forms likewise
+```
+and existence `∃z. Join z x`.
+
+**The obstacle is coherence again.**  `z`'s extent is the composite arrows `a;b`.  A composite can
+split in two ways, `a;b = a';b'` with `a, a'` both in `x`'s extent (in the canonical model for 4,
+arrows are chains and composition is append, so prefixes do this).  The two inner objects may then
+give different contents at one arrow, and `z` has no content there.
+* The per-formula form `◇_x ◇_{x.dia} θ ⊢ ∃z. ◇_z θ(z.dia)` avoids this: it picks one route, so
+  `z` can have a one-route extent.
+* The uniform `Join` needs the contents along different splits to agree.  That is the same kind of
+  condition as B+4's round-trip coherence and 5's two readings.  So strong 4 probably belongs with
+  milestone 3, not milestone 4.
