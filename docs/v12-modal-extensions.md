@@ -5495,3 +5495,38 @@ arrow operation**, and state the agreement definitionally (a view item) or as an
 * none of them needs path independence.
 
 To build after strong B (milestone 2).
+
+**Depth, and the Barcan formula (user question, 2026-10-05; paper sketch).**
+
+*Why D needs no relation.*  The other axioms change modal depth:
+* T: `□φ → φ`, from 1 to 0;
+* 4: `□φ → □□φ`, from 1 to 2;
+* B: `φ → □◇φ`, from 0 to 2;
+* 5: `◇□φ → □φ`, from 2 to 1.
+
+A relation is needed exactly where an object must be related to one at another level.  Outward
+(deeper) transport is a term or view item (`extract`, `dup`/`keep`, `x.keep`, `x.side`); inward
+(towards home) transport is an `∃`-elimination with a relation (`Here`, `Back`/`◇[d ↦ t]`,
+`4_lift`, `5_lift`).  D's `□φ → ◇φ` stays at depth 1, so nothing crosses a level: its
+counterpart is a term (`diatm z (u.box)`), and its only content is that an extent exists.  It is the
+degenerate case of the pattern, not an exception.
+
+*The Barcan formula.*
+* Classical BF on base domains (`∀x□φ → □∀xφ`) stays invalid: domains vary, and necessary objects
+  tie them together without equating them.
+* The possibilist form, `◇∃y:A. φ(y) ⊢ ∃x:◇A. ◇_x φ(x.dia)` ("an object at some successor is the
+  content of a possible object here"), is the inward lift `Dom_v(A) → Pos_w(A)` along one arrow.
+  * It is `T_dia` for an arbitrary arrow in place of the own one.
+  * At type `𝟙` it is exactly `D_name`.
+  * Its model law is that possible objects are full along single routes: valid in full models,
+    not in general ones (as now: the general semantics refutes BF).
+* **Under strong B it reduces to its `𝟙` instance (to verify).**  For `y` at `v` along `a : w → v`:
+  * `B_strong` at `v` gives a carrier `c` with `Back c y`.
+  * `c`'s value at `w` is a necessary object `n`, and `n` read along `a` (the unique way home) is
+    `Ind y`.
+  * Strength of `n` over a possible object whose extent contains `a`, which `D_name` supplies, has
+    content `n(a)`.
+
+  So strong B + `D_name` ⊢ possibilist BF, the analogue of classical B + CBF ⊢ BF, with `D_name`
+  (BF at `𝟙`) in the converse Barcan formula's role.  Whether to adopt `D_name` (a model
+  comprehension principle, not a frame condition) is then the whole Barcan question.
