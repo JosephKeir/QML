@@ -116,6 +116,24 @@ def Term.holeAt {σ : Signature} {Γ : Ctx} {A : VarType} {a : Ann A} (t : Term 
     (Subst.ok_single (Ctx.empty_le Γ) rfl)
     (Subst.coh_single (Ctx.RootFresh.empty _) (Ctx.empty_le Γ) rfl) s
 
+/-- ⭐`ret_unit`'s new conjunct, in the body of `◇[d₁ ↦ y]` (`d₁ : □C` the slot `bnd 0`):
+    `◇[d ↦ sb] θ(d₁.box, d)` — from the far world, back here, a necessary object `d` coming back
+    as `sb` with `θ` of it and of `d₁`'s return (docs §11.17). -/
+def WFF.unitBody {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+    {C A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1) :
+    WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox C)) 1 :=
+  WFF.ret hS (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root (.VTypeBox C)) sb)
+    (WFF.holeAt (((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert (.VTypeBox C)).boxIn.insert
+        (.VTypeBox A))
+      (Term.pair
+        (Term.eta (VarSymb.root (.bnd 0)).inner C
+          ((Ctx.le_insert ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert (.VTypeBox C)).boxIn.root
+            (.VTypeBox A)).ref
+            (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox C)))))
+        (Term.eta (.root (.bnd 1)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 1) _)))
+      θ)
+
 /-- The first component of a necessary pair, as a necessary object: `□(fst v.box)`. -/
 def Term.boxFst {σ : Signature} {Γ : Ctx} {v : VarSymb} {A B : VarType}
     (h : Γ.ref v = some (.VTypeBox (.VTypeProd A B))) :

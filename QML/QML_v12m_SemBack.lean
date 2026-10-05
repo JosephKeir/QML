@@ -768,6 +768,41 @@ theorem sat_ret_counitC (hS : ModalSys.BStrong = true) {A C : VarType} {a : Ann 
       Env.extend_root _ (.bnd 0) e _, interp_mono hag bd] at hb'
   exact (holeSat_ind hM ψ (hM.pair hr hr')).mp hb'
 
+include hM in
+/-- ⭐**The unit** (`ret_unit`): at the far end of the returning possibility the way home `r` is an
+    arrow out, leading here, where `s` is the object; it comes back along the arrow out as `sb`'s
+    value there, and `θ` holds of it and of `d₁`'s return, which is `Ind` to `y`.  No uniqueness of
+    ways home is used: the arrow out is itself a way home for `r`. -/
+theorem sat_ret_unit (hS : ModalSys.BStrong = true) {C A : VarType} {c : Ann C}
+    (y : Term σ Γ C c) (Ψ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox C)) 1) {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1)
+    (hret : M.sat env (WFF.ret hS y Ψ : WFF σ Γ 0))
+    (hθ : M.holeSat θ ((interp env y, interp env (Term.boxtm sb)) :
+      M.frame.Dom (.VTypeProd C (.VTypeBox A)) w)) :
+    M.sat env (WFF.ret hS y (WFF.and Ψ (WFF.unitBody hS sb θ)) : WFF σ Γ 0) := by
+  obtain ⟨ac, e, hΨ, r, hr⟩ := hret
+  refine ⟨ac, e, ⟨hΨ, ?_⟩, r, hr⟩
+  have hu := Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox C)
+  refine ⟨⟨w, ⟨r⟩⟩, interp env (Term.boxtm sb), ?_, ac.2.down, ?_⟩
+  · rw [sat_holeAt]
+    have hag := Env.agree_extend (((env.boxPush ac).extend (.bnd 0) e).boxPush ⟨w, ⟨r⟩⟩)
+      ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert (.VTypeBox C)).boxIn.root
+      (interp env (Term.boxtm sb))
+    change M.holeSat θ (interp _ _, interp _ _)
+    rw [interp_eta, interp_eta, ← Env.ref_agree hag _ (Ctx.ref_inner hu), Env.ref_inner _ _ hu]
+    rw [show ((env.boxPush ac).extend (.bnd 0) e).ref (.root (.bnd 0)) hu = e from
+        Env.extend_root _ (.bnd 0) e _,
+      show ((((env.boxPush ac).extend (.bnd 0) e).boxPush ⟨w, ⟨r⟩⟩).extend (.bnd (0 + 1))
+          (interp env (Term.boxtm sb))).ref (.root (.bnd 1))
+          (Ctx.ref_insert_root _ (.bnd 1) _) = interp env (Term.boxtm sb) from
+        Env.extend_root _ _ _ _]
+    exact (holeSat_ind hM θ (hM.pair hr (M.Ind_refl _))).mpr hθ
+  · rw [interp_mono
+        (Env.agree_extend (env.boxPush ac) (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root e) sb,
+      box_beta]
+    exact M.Ind_refl _
+
 omit [Γ.NoSlots] in
 theorem sat_ret_mono (hS : ModalSys.BStrong = true) {A : VarType}
     {a : Ann A} (t : Term σ Γ A a) (Φ Φ' : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)

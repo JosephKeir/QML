@@ -5147,12 +5147,13 @@ now.
 It is the unit to `ret_counit` (`◇[d ↦ y] □ψ(d.box) ⊢ ψ(y)`), and the general-arrow
 companion of `ret_here`.
 
-**Decision needed (user):** add `ret_unit` as a rule, as above.  Without it the forward arrow
+**Decided (user, 2026-10-05): `ret_unit` is a rule.**  Without it the forward arrow
 cannot commit at birth, and a lazily committed forward arrow loses the child's defining formula
 `¬φ` (which must hold of the images that the commitments later choose).
 
 **L4, in phases (if `ret_unit` is accepted):**
-* **L4a** — `ret_unit`: the rule, `Proof.subst`, soundness.  `back_fun` as a derived rule.
+* **L4a** — `ret_unit`: the rule, `Proof.subst`, soundness (**done**, see below).  `back_fun` as a
+  derived rule.
 * **L4b** — abstraction of a world's committed roots into one bound `d` (the body form of the
   invariant).  It mirrors `absS`/`instantiate_tup_abs`.
 * **L4c** — the invariant (`RetInv`), `RetInv ⇒ Transfer`, and `Good` under strong B.
@@ -5187,7 +5188,7 @@ Their rules sort into the same kinds:
 | kind | `Here` (T) | `Back` | `◇[d ↦ t]` |
 |---|---|---|---|
 | **counit**: `◇□ψ ⊢ ψ`, named | `here_elim` | `back_counit` | `ret_counit`, `ret_counitC` |
-| **unit**: `ψ ⊢ □◇ψ`, named | `here_intro` | `back_unit` | `ret_unit` (§11.17, proposed) |
+| **unit**: `ψ ⊢ □◇ψ`, named | `here_intro` | `back_unit` | `ret_unit` (§11.17) |
 | **existence of a subject**, given a value | `T_dia` | `B_strong` | `ret_new`, `ret_ext` |
 | **existence of a value**, given a subject | `here_name` | `back_def` (conditional, `◇`-free) | `ret_new` |
 | **the route exists** | (semantics) | `back_ne` | `ret_dia` |
@@ -5242,3 +5243,14 @@ does not cover the negative atom when that component has a positive atom:
 
 The full decomposition `¬Back b ⟨t₁,t₂⟩ ⟺ ¬Back(fst b) t₁ ∨ ¬Back(snd b) t₂` may need an
 η-rule for carriers (`b` against `⟨fst b, snd b⟩`), which the rules lack.  To check in L4e.
+
+**`ret_unit` added (2026-10-05).**  The rule is `Proof.ret_unit`.  Its new conjunct is
+`WFF.unitBody hS sb θ`: `◇[d ↦ sb] θ(d₁.box, d)`, one binder deeper than any other rule's
+formula.
+* *Substitution:* `WFF.subst_unitBody`.  The value is weakened past the outer slot
+  (`Term.subst_under_mono`), and both components of the hole are slots' η-expansions that the
+  substitution renames to themselves.  This uses `Subst.at_under_ne`, `Subst.box_at_inner_ren`
+  and the new `Subst.under_at_slot`.
+* *Soundness:* `Model.sat_ret_unit`.  It uses no uniqueness of ways home: the atom's arrow out is
+  itself a way home for its way back.  So `homeUnique` is needed only by the rules that compare two
+  ways home (`back_pair`, `back_here`, `ret_counitC`).

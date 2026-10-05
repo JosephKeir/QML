@@ -1323,6 +1323,13 @@ theorem Subst.under_at_root {Δ : Ctx} (θ : Subst σ Δ) (T : VarType)
   change (θ.under 0 0 T h) (.root (.bnd 0)) = _
   exact if_pos rfl
 
+/-- The same at any slot. -/
+theorem Subst.under_at_slot {Δ : Ctx} (θ : Subst σ Δ) (d d' : ℕ) (T : VarType)
+    (h : Δ (.root (.bnd d')) = none) :
+    (θ.under d d' T h).at (.root (.bnd d)) = .ren (.root (.bnd d')) := by
+  change (θ.under d d' T h) (.root (.bnd d)) = _
+  exact if_pos rfl
+
 /-- ⭐A hole formula read at any depth: substituting into the reading substitutes into the term in
     its hole.  One composition of substitutions. -/
 theorem WFF.subst_holeAt {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (θ : Subst σ Δ)
@@ -1367,6 +1374,35 @@ theorem WFF.holeAt_congr {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {A : VarType
     (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) : WFF.holeAt hs t₁ ψ = WFF.holeAt hs t₂ ψ := by
   cases h
   rfl
+
+theorem VarSymb.inner_rt (u : VarSymb) : u.inner.rt = u.rt := by
+  unfold VarSymb.inner
+  split <;> rfl
+
+/-- Substituting `ret_unit`'s new conjunct: its value is weakened past the outer slot
+    (`Term.subst_under_mono`), and both components of its hole are slots' η-expansions, which the
+    substitution renames to themselves (`Term.subst_eta_renAt`). -/
+theorem WFF.subst_unitBody {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
+    (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0)
+    (hΔ : Δ.SlotsFrom 0) (hS : ModalSys.BStrong = true) {C A : VarType} {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀)
+    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1) :
+    WFF.subst (VarSymb.shiftSlot ι 0 0) (θ.box.under 0 0 (.VTypeBox C) hΔ.boxIn.root)
+        (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
+        (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn _ hΔ.boxIn.root)
+        (hΓ.boxIn.insert _) (hΔ.boxIn.insert _) (WFF.unitBody hS sb ψ) =
+      WFF.unitBody hS (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) sb) ψ := by
+  unfold WFF.unitBody
+  refine WFF.ret_congr hS ?_ ?_
+  · exact Term.subst_under_mono θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn
+      hΔ.boxIn _ sb
+  · refine (WFF.subst_holeAt _ _ _ _ _ _ ψ).trans (WFF.holeAt_congr _ ?_ ψ)
+    refine sig_pair (Term.subst_eta_renAt _ _ _ C _ _ _ _ ?_)
+      (Term.subst_eta_renAt _ _ _ _ _ _ _ _ ?_)
+    · rw [Subst.at_under_ne _ _ _ (by rw [VarSymb.inner_rt]; exact fun h => by cases h),
+        Subst.box_at_inner_ren _ (Subst.under_at_root _ _ _)]
+      rfl
+    · exact Subst.under_at_slot _ (0 + 1) (0 + 1) _ _
 
 theorem WFF.bodyRepl_congr {V : Ctx} [V.NoSlots] {A B : VarType} {b₁ b₂ : Ann (.VTypeBox B)}
     {X₁ : Term σ (V.insert (.bnd 0) (.VTypeBox A)) (.VTypeBox B) b₁}
@@ -2066,6 +2102,19 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
             (Proof.subst pr θ hθ hc hΓ))
           (Proof.conv (OutLeg.subst_back θ hθ hc hΓ hΓ' hS .nec bd t)
             (Proof.subst pb θ hθ hc hΓ)))
+  | _, _, _, @Proof.ret_unit _ _ Γ _ _ hS C A c y Ψ a₀ sb ψ p q, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      Proof.conv (congrArg (fun X => WFF.ret hS (Term.subst ι θ hθ hc y) (WFF.and
+          (WFF.subst (VarSymb.shiftSlot ι 0 0) (θ.box.under 0 0 (.VTypeBox C) hΓ'.boxIn.root)
+            (Subst.ok_under (Subst.ok_box hθ) _ hΓ'.boxIn.root)
+            (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn _ hΓ'.boxIn.root)
+            (hΓ.boxIn.insert _) (hΓ'.boxIn.insert _) Ψ) X))
+          (WFF.subst_unitBody θ hθ hc hΓ hΓ' hS sb ψ)).symm
+        (Proof.ret_unit hS (Term.subst ι θ hθ hc y) _
+          (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) sb) ψ
+          (Proof.subst p θ hθ hc hΓ)
+          (Proof.conv (WFF.subst_holeRead θ hθ hc hΓ hΓ' (Term.pair y (Term.boxtm sb)) ψ)
+            (Proof.subst q θ hθ hc hΓ)))
   | _, _, _, @Proof.ret_mono _ _ Γ _ _ hS A a t Φ Φ' p q, Γ', _, ι, θ, hθ, hc, hΓ =>
       Proof.ret_mono hS (Term.subst ι θ hθ hc t) _ _ (Proof.subst p θ hθ hc hΓ)
         (Proof.subst q θ hθ hc hΓ)

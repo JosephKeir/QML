@@ -427,6 +427,18 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
             bd)) ψ))) →
       Proof σ Γ Δ ((OutLeg.nec : OutLeg Γ).back hS bd t) →
       Proof σ Γ Δ (WFF.holeRead (Term.pair y t) ψ)
+  /-- ⭐**Unit** (weak B's `ψ ⊢ □◇ψ`, named; docs §11.17–11.18): what holds here of the value `y`
+      and of `s = □sb` is, at the far end of `◇[d₁ ↦ y]`, possible looking back — the way home
+      leads here, `s` itself is the object, and it comes back along the arrow out as `sb`.  The
+      body `Ψ` is kept: the new conjunct holds at that far world, not at every successor. -/
+  | ret_unit {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      {C A : VarType} {c : Ann C} (y : Term σ Γ C c)
+      (Ψ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox C)) 1) {a₀ : Ann A}
+      (sb : Term σ Γ.boxIn A a₀)
+      (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1) :
+      Proof σ Γ Δ (WFF.ret hS y Ψ) →
+      Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.boxtm sb)) θ) →
+      Proof σ Γ Δ (WFF.ret hS y (WFF.and Ψ (WFF.unitBody hS sb θ)))
   /-- **Monotonicity** in the body. -/
   | ret_mono {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       {A : VarType} {a : Ann A} (t : Term σ Γ A a)
