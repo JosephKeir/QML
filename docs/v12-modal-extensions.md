@@ -5417,3 +5417,30 @@ along `a` to `y` (`z.keep` read along `a` is `y`).
 * *Canonically:* a child's possible objects must be named at the parent, which is inward transport
   committed by Henkin witnesses.  That is the realisation machinery L4 builds for B (§11.17), so
   strong 4's construction should reuse it.
+
+**The same idea for 5 and B+4 (paper, first pass).**  *Principle:* never require values reached by
+different routes to agree.  Define each transported object by **pulling back along one designated
+arrow operation**, and state the agreement definitionally (a view item) or as an attested atom.
+
+| axiom | arrow operation | pulled-back object |
+|---|---|---|
+| 4 | composition `a;b` | `x.keep` (weak 4), lifted by `4_lift` (strong 4) |
+| 5 | the Euclidean assignment `(a : w→v, c : w→u) ↦ v→u` | `x.side` (below) |
+| B | the way home `a⁻¹` | `Back`, `◇[d ↦ t]` (built) |
+
+* **Weak 5's missing item.**  5 is `◇φ ⊢ □◇φ`, and its object form is that possible objects
+  persist to successors.  Seen from `v`, `x` has extent `{v→u | w→u ∈ ext x}` (along the
+  assignment) and the same content: an item `x.side : ◇A` in the `□` view.  The rule
+  `◇_x θ(x.dia) ⊢ □ ◇_{x.side} θ(x.side.dia)` is open, and no coherence is needed (one assignment
+  per pair of home arrows).
+* **Strong 5, candidate.**  The `□` form `◇□φ ⊢ □φ`: a necessary object found at a successor
+  restricts to a necessary object at home, since `R(w) ⊆ R(v)` along the assignment.  This is
+  inward, so it is an `∃`-elimination like `4_lift`.  The relation is partial ("`m` agrees with
+  `n` on `w`'s arrows"), which may need an atom.  This is the delicate case.
+* **B+4.**  The round-trip coherence becomes a value-existence principle: a *kept* carrier comes
+  back constant, `⊢ ∃t. Back (n.keep) t`.  It is valid relationally (one loop arrow `w → w` per
+  world), and it is the unconditional value existence that `Back` lacks in general (§11.18's
+  `back_def` row).  It is stated as an atom, not as path independence.
+* *What coherence becomes:* equations between the arrow operations (composition, ways home, the
+  Euclidean assignment).  These are automatic in relational frames and are axioms of arrow frames,
+  like the category laws for T+4.  To be tested against milestone 3's original statement.
