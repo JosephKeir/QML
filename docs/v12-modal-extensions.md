@@ -5367,3 +5367,31 @@ give different contents at one arrow, and `z` has no content there.
 * The uniform `Join` needs the contents along different splits to agree.  That is the same kind of
   condition as B+4's round-trip coherence and 5's two readings.  So strong 4 probably belongs with
   milestone 3, not milestone 4.
+
+**Coherence in the other direction: restriction, not join (user, 2026-10-05; paper).**  Start from
+a possible object `x` at home and assert, at a successor along `a : w → v`, a possible object
+coherent with it:
+* its extent is the continuations of `x`'s routes through `v`, `{b | a;b ∈ ext x}`;
+* its content at `b` is `x`'s content at `a;b`.
+
+This **pulls back** along composition, so it is always defined: there is no clash between splits,
+in relational and arrow frames alike.  The join **pushes forward**, which is where coherence
+failed.  It is 4's `keep` extended to possible objects: an item `x.keep : ◇A` in the `□` view,
+coherent with `x` by definition.  No bespoke relation is needed, and the content is `x`'s own
+(equality, not `Ind`).
+* *Rules (open):* `□_x θ(x.dia) ⊢ □ □_{x.keep} θ(x.keep.dia)` and
+  `◇ ◇_{x.keep} θ(x.keep.dia) ⊢ ◇_x θ(x.dia)`.  The second is the join, for a possible object
+  that already exists at home.  The converse needs every arrow of `x`'s extent to factor through
+  a successor (density or T), so it is not 4's.
+* *Model:* a closure condition, `Pos A w → (a : Acc w) → Pos A a.1`.  Under T with 4 the
+  category laws make the identity restriction `x` itself.
+* *Syntax:* `keep` on `◇`-typed addresses, in views and as witnesses (`◇_{x.keep}`).  Views have
+  `keep` only at `□` types now.
+* *Where it sits:* transport by a step of the view, so on §11.19's two-axis reading it is the
+  *open* side of weak 4 for possible objects, which weak 4 now lacks (a home possible object is
+  invisible one level in).
+
+**What it leaves.**  The full join, `Pos(v) → Pos(w)` for possible objects *born* at a
+successor (`◇_x ◇_{x.dia} θ ⊢ ∃z. ◇_z θ(z.dia)`), is genuinely inward, and coherence lives
+there.  This is the same split as B's: home objects travel freely, born objects need `◇[d ↦ t]`.
+Its per-formula existential form (one-route extent) stays the candidate for strong 4.
