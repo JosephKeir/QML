@@ -5254,3 +5254,74 @@ formula.
 * *Soundness:* `Model.sat_ret_unit`.  It uses no uniqueness of ways home: the atom's arrow out is
   itself a way home for its way back.  So `homeUnique` is needed only by the rules that compare two
   ways home (`back_pair`, `back_here`, `ret_counitC`).
+
+### 11.19 Strong D as naming a route; open formulas by route shape *(2026-10-05, user + paper)*
+
+**Strong D, relationally.**  Each strong former relates a route to something at home:
+* `Here` relates the own arrow to a possible object.
+* `◇[d ↦ t]` relates an out-and-back route to a value.
+
+D's route goes out and does not come back, so the only thing at home that can name it is a
+possible object, through its extent.  That relation already exists: it is `◇_x`.  The proposal
+(user: preferred to the current design if it fits the pattern) replaces the strong D axiom
+`⊢ ∃x:◇𝟙. ◇_x ⊤` by
+```
+D_name:   ◇Φ  ⊢  ∃x:◇𝟙. ◇_x Φ          (Φ open in the □ view's items; an ∃-elimination, as ret_new)
+```
+`ret_new` names the *return* of a possibility; `D_name` names the *route*.  In §11.18's table it is
+the "existence of a subject" row of a D column.  D has no unit/counit pair: a route that does not
+return gets only an existential (§11.9).
+
+**Open for free.**  `Φ` mentions home's objects only through `□` items, which `◇_x`'s view also
+shows (`□` gives `□_x`).  So the open form needs no substitute object: transport *outward* goes
+through necessary objects, which already exist.
+
+**Semantics: a covering condition.**  Every arrow out of a world lies in some extent.
+* The current strong D is the instance `Φ = ⊤`, plus seriality: weak D and `D_name` give it, but
+  not conversely.
+* With `D_name`, `◇Φ ↔ ∃x. ◇_x Φ`, so `◇` is definable from `◇_x` (the design's primitives).
+* *Canonically:* a child made for a failing `□φ` becomes a witness child, through the Henkin
+  witness of `∃x. ◇_x ¬φ`.
+* *Open question:* the condition is about the model's possible objects, not the frame.  So
+  `D_name` may belong to no axiom at all, as a naming principle for every system, with strong D
+  then weak D plus `D_name`.  To decide.
+
+**4's witnessed join is `D_name` for a two-step route.**  It packs what the far world's formula
+reads by pairing, as `ret` does:
+```
+◇_x ◇_y φ(x.dia.box, y.dia)  ⊢  ∃z. ◇_z φ(z.dia.snd, z.dia.fst)
+```
+So `D_name` and 4's join should be designed together, possibly as one principle: every route, of
+any length, has a name.
+
+**Open formulas, by the shape of the route.**  The obstacle to open forms is that a rule relates
+objects at different levels, and so needs a substitute object of the right type, related to the
+original by a bespoke relation (user).  Sorted by route:
+* **Out only** (D, 4's join).  Objects go outward as necessary objects (`□` items, `keep` under 4).
+  No substitute is needed beyond pairing.
+* **Out and back** (T's own arrow, B).  Objects come home, so home needs a substitute and a
+  relation:
+  * `Here`: a possible object and its content;
+  * `Back`: a carrier and its value;
+  * `◇[d ↦ t]`: a possibility and its value.
+
+  Each has a unit and a counit to carry open formulas across.
+* **Out, then sideways** (5: from one successor to another, not through home).  Home's objects
+  reach the second successor by two routes, directly and through the first.  The relation needed
+  is that the two readings agree.  This is milestone 3's round-trip coherence, so 5's open form
+  and B+4's coherence are one question.
+
+**Two axes, not one (paper, to confirm).**  Being *open* and *naming routes* come apart:
+
+| axiom | is weak form open? | how | naming principle (strong form) |
+|---|---|---|---|
+| T | yes | `u.here`, `collapse` | `Here`, `T_dia` |
+| 4 | yes | `keep`, `shift` | the witnessed join |
+| D | yes | trivially (outward only) | `D_name` |
+| B | no: closed only (`◇□ψ ⊢ ψ`) | — | `Back`, `◇[d ↦ t]`, which also make it open |
+| 5 | ? (needs coherence) | — | ? |
+
+On this reading, a strong form is a principle for naming routes.  Openness comes from a projection
+or a step of the view, where the system has one; B has none, so its naming principles are also
+what make it open.  So `D_name` is D's strong form in exactly the sense that `Here` and the join
+are T's and 4's.
