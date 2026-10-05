@@ -5395,3 +5395,25 @@ coherent with `x` by definition.  No bespoke relation is needed, and the content
 successor (`◇_x ◇_{x.dia} θ ⊢ ∃z. ◇_z θ(z.dia)`), is genuinely inward, and coherence lives
 there.  This is the same split as B's: home objects travel freely, born objects need `◇[d ↦ t]`.
 Its per-formula existential form (one-route extent) stays the candidate for strong 4.
+
+**Strong 4 as surjective restriction (user, 2026-10-05; paper).**  *Semantics:* for every arrow
+`a : w → v` and every possible object `y` at `v`, some possible object `z` at home restricts
+along `a` to `y` (`z.keep` read along `a` is `y`).
+* *Well defined along one arrow:* take `ext z = {a;b | b ∈ ext y}` and `z(a;b) = y(b)`.  This
+  needs only left cancellation, `a;b = a;b' → b = b'`, which is automatic in relational frames
+  (one arrow per pair) and holds for the canonical chains (append).  Coherence failed only when
+  merging over *many* first arrows; here there is one.
+* *Rule:* an `∃`-elimination, the existence-of-subject row of §11.18 for 4, beside `T_dia`,
+  `B_strong` and `ret_new`:
+  ```
+  4_lift:   ◇∃y:◇A. Φ(y)  ⊢  ∃z:◇A. ◇Φ(z.keep)          (z fresh)
+  ```
+  The relation between `z` and `y` is weak 4's restriction item, so no new atom is needed: this is
+  where the missing weak-4 item pays for itself.  It is open, since `Φ` mentions home's items
+  outward only.
+* *The join follows.* From `◇_x ◇_{x.dia} θ` we get `◇∃y. ◇_y θ(y.dia)` (forget `x`, with
+  `y := x.dia`).  `4_lift` then gives `∃z. ◇◇_{z.keep} θ(z.keep.dia)`, and the restriction rule
+  gives `∃z. ◇_z θ(z.dia)`.
+* *Canonically:* a child's possible objects must be named at the parent, which is inward transport
+  committed by Henkin witnesses.  That is the realisation machinery L4 builds for B (§11.17), so
+  strong 4's construction should reuse it.
