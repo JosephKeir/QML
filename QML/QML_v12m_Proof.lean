@@ -278,18 +278,20 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (WFF.diaBox (ψ.closed _)) → Proof σ Γ Δ (ψ.closed Γ)
   -- Strong B: `Back` (docs §11.2, §11.5, §11.14).  Stated once over the out leg (`OutLeg`), at the
   -- carrier's body, with hole formulas and terms closed apart from the hole.
-  /-- ⭐**`Back`, elimination**: what is necessary at the end of some arrow of the out leg, of the
-      carrier's value there, holds of the value it comes back as — along that arrow's way home. -/
-  | back_elim {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+  /-- ⭐**`Back`, counit** (weak B's `◇□ψ ⊢ ψ`, named): what is necessary at the end of some arrow
+      of the out leg, of the carrier's value there, holds of the value it comes back as — along
+      that arrow's way home. -/
+  | back_counit {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
       (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a)
       (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
       Proof σ Γ Δ (O.back hS bd t) →
       Proof σ Γ Δ (O.dia (WFF.box (WFF.holeRead bd ψ))) →
       Proof σ Γ Δ (WFF.holeRead t ψ)
-  /-- ⭐**`Back`, introduction**: what holds of the value it comes back as is, from every arrow of
-      the out leg, possible of the carrier's value — the way home witnessing it. -/
-  | back_intro {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+  /-- ⭐**`Back`, unit** (weak B's `ψ ⊢ □◇ψ`, named): what holds of the value it comes back as is,
+      from every arrow of the out leg, possible of the carrier's value — the way home witnessing
+      it. -/
+  | back_unit {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
       (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a)
       (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
@@ -336,8 +338,11 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
         (Ctx.collapses_boxIn_self hT Γ) (Term.collapse (Ctx.collapses_boxIn_self hT Γ.boxIn) bd)) φ)
   /-- ⭐**Definition** (§11.5 (3)): if a hole formula holds at the end of every way on from every
       arrow of a nonempty out leg, and singles out `t` here, the carrier comes back as `t` — weak B
-      gives every arrow a way home, and the return satisfies the formula.  The one rule that makes a
-      `Back` atom about a given carrier; the canonical model's negative atoms need it. -/
+      gives every arrow a way home, and the return satisfies the formula.  `Back`'s **existence of a
+      value**, conditional where `here_name` and `ret_new` are not: different arrows may return
+      different values, and at a `◇`-free type a definition is what forces them to agree.  The one
+      rule that makes a `Back` atom about a given carrier; the canonical model's negative atoms at
+      `◇`-free contents need it (docs §11.18). -/
   | back_def {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       (hB : ModalSys.B = true) (O : OutLeg Γ) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
       (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a)
@@ -396,9 +401,9 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
           Δ.map (WFF.weaken hc.root B))
         (φ.weaken hc.root B) →
       Proof σ Γ Δ φ
-  /-- ⭐**Elimination**: what is necessary of the object out there holds of the value it comes back
+  /-- ⭐**Counit**: what is necessary of the object out there holds of the value it comes back
       as. -/
-  | ret_elim {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+  | ret_counit {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       {A : VarType} {a : Ann A} (t : Term σ Γ A a)
       (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
       Proof σ Γ Δ (WFF.ret hS t (WFF.box (WFF.holeAt
@@ -406,11 +411,11 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
         (Term.eta (VarSymb.root (.bnd 0)).inner A
           (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)))) ψ))) →
       Proof σ Γ Δ (WFF.holeRead t ψ)
-  /-- ⭐**Elimination with a carrier** (§11.14): from the arrow out that the returning possibility
+  /-- ⭐**Counit with a carrier** (§11.14): from the arrow out that the returning possibility
       found, the carrier's image comes home along the one way back too, so what is necessary of the
       object and the image together holds of the value and the carrier's value.  Several carriers
       are one by pairing (`back_pair`). -/
-  | ret_elimC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+  | ret_counitC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       {A C : VarType} {a : Ann A} (y : Term σ Γ A a) {c₀ : Ann C}
       (bd : Term σ Γ.boxIn.boxIn C c₀) {c : Ann C} (t : Term σ Γ C c)
       (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd A C)) 1) :

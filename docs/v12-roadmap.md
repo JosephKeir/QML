@@ -153,7 +153,7 @@ style of milestone 1, each ending green and committed:
    proves the rules at the level of values over a generic out leg (`Model.RoundTrip`), to which
    both rows' carriers unfold (`backs_nec_boxtm`, `backs_pos_diatm`): `ne`, `elim`, `intro`,
    `of_def` (weak B), `map` (β), `pair` (`homeUnique`), `own` (T), `ret_exists` (weak B),
-   `ret_elim` (no carriers), and surjectivity at a fresh carrier (`sat_back_ex`).  Hole formulas
+   `ret_counit` (no carriers), and surjectivity at a fresh carrier (`sat_back_ex`).  Hole formulas
    are `WFF.holeRead` / `Model.holeSat`.  **No congruence law on `Ind` is needed:** in a model
    proper, `Ind` to a *named* object at a `◇`-free type is equality (`Model.eq_of_ind`, the slot
    formula `z = t`), so β, pairing and the own arrow are equations.  Left to step 4, where the
@@ -161,9 +161,9 @@ style of milestone 1, each ending green and committed:
    paired carriers, `u.here.here` by collapse), `back_eq` (immediate from `sat_eqRec`), and the
    returning possibility's extension form, carriers in elimination, β, monotonicity, Leibniz and
    T-rule.
-4. **Proof rules.**  `back_elim`, `back_intro`, `back_ne`, `back_beta`, `back_eq`, `back_pair`,
+4. **Proof rules.**  `back_counit`, `back_unit`, `back_ne`, `back_beta`, `back_eq`, `back_pair`,
    `back_here` (T), `back_def`, `B_strong` (∃-elimination per row, as `T_dia`); `ret_exists`
-   (extension form), `ret_elim` (with carriers), `ret_beta`, `ret_mono`, `ret_eq`, `ret_here` (T);
+   (extension form), `ret_counit` (with carriers), `ret_beta`, `ret_mono`, `ret_eq`, `ret_here` (T);
    `Proof.subst` cases; soundness assembled.  `back_fun` as a derived rule.
    *`Back` half done (2026-10-04):* the nine `Back` rules are in `Proof`, with `Proof.subst` cases
    and soundness.  They are stated once over the out leg — `OutLeg` (`QML_v12m_BackSyntax`): `nec`
@@ -180,7 +180,7 @@ style of milestone 1, each ending green and committed:
    `Term.boxFst`/`boxSnd` of one); hole readings inside a body use `WFF.holeAt`/`Term.holeAt`
    (any depth).  The rules: `ret_new` and `ret_ext` (existence, as `∃`-eliminations with a fresh
    value; `ret_ext` adds a companion item, its subproof's hypothesis a weakening so `Proof.subst`
-   goes as for `T_dia`), `ret_elim`, `ret_back` (a carrier joins the item — with elimination and
+   goes as for `T_dia`), `ret_counit`, `ret_back` (a carrier joins the item — with elimination and
    monotonicity this is elimination with carriers), `ret_mono`, `ret_dia`, `ret_beta`, `ret_eq`,
    `ret_here` (T) and `ret_bridge` (a `Back` atom plus a possibility, either out leg).  Each body
    substitution commutes with an outer substitution by `WFF.subst_comp` (`WFF.subst_bodyRepl`,
@@ -189,7 +189,7 @@ style of milestone 1, each ending green and committed:
    found that the network commits items with `◇`-typed contents, so the `◇`-free first build could
    not be finished; with the user's agreement strong B now works at every type.  A model proper
    gains two congruence laws on `Ind`; `back_here` is substitutional; `ret_back` became
-   elimination with a carrier, `ret_elimC`; `back_def` stays `◇`-free.  L3's model side is done:
+   elimination with a carrier, `ret_counitC`; `back_def` stays `◇`-free.  L3's model side is done:
    shapes are gated by `ModalSys.shaped` (`T ∨ strong B`); the network's T-free leaf decoder moved
    to L4.  L2 is done: the network's `Ind` is attested by single atoms (`BData.Att`, §11.16),
    and the tree is unchanged.  Next: L4 (the network, step 5 proper, with `Att`'s `back`

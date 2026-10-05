@@ -4267,8 +4267,8 @@ are the leg's modalities (`◇`/`□`, or `◇_y`/`□_y`, `◇_{c.box}`/`□_{c
 
 | rule | statement | analogue | soundness *(paper)* |
 |---|---|---|---|
-| `back_elim` | `Back c t`, `Out◇ Home□ ψ⟨bd⟩` ⊢ `ψ(t)` | `here_elim` | the premise picks `a₁ ∈ Out`; `Back` gives `a₂ ∈ Home(a₁)` returning a value `Ind` to `t`; `IndInvariant` |
-| `back_intro` | `Back c t`, `ψ(t)` ⊢ `Out□ Home◇ ψ⟨bd⟩` | `here_intro` | for each `a₁ ∈ Out` the returning `a₂` witnesses `Home◇`; `IndInvariant` |
+| `back_counit` | `Back c t`, `Out◇ Home□ ψ⟨bd⟩` ⊢ `ψ(t)` | `here_elim` | the premise picks `a₁ ∈ Out`; `Back` gives `a₂ ∈ Home(a₁)` returning a value `Ind` to `t`; `IndInvariant` |
+| `back_unit` | `Back c t`, `ψ(t)` ⊢ `Out□ Home◇ ψ⟨bd⟩` | `here_intro` | for each `a₁ ∈ Out` the returning `a₂` witnesses `Home◇`; `IndInvariant` |
 | `back_ne` | `Back c t` ⊢ `Out◇ ⊤` | (`here_name`'s premise) | the existence clause |
 | `back_beta` | `Back c t` ⊢ `Back (c mapped by s) (s(t))`, `s` a hole term closed apart from its hole | `here_beta` | as `sat_here_beta`: `IndInvariant` at a `Back` atom with a slot |
 | `back_fun` | `Back c t`, `Back c t'`, `φ(t)` ⊢ `φ(t')` (substitutional) | `here_subst` | **relational return arrows**: the arrow `a₁.1 → w` is unique, so both values are `Ind` to one object; `IndInvariant` twice |
@@ -4394,7 +4394,7 @@ arrow home from `w` is again the identity (relationally unique), so the round tr
 ```
 back_here (T):  Back u t, φ(t)  ⊢  φ(u.here.here)                  (substitutional, any slot φ)
 ```
-sound, not derivable from §11.2 (`back_intro` only yields `◇`-statements).  Row 2 under T meets
+sound, not derivable from §11.2 (`back_unit` only yields `◇`-statements).  Row 2 under T meets
 `Here` the same way: if the own arrow is in `y`'s extent, `y`'s content there returns `t`
 (`Back y t, Here y s ⊢` `s.here` interchangeable with `t`).
 
@@ -4470,7 +4470,7 @@ valid relationally (`y` := `d`'s return along the edge home), **not** valid over
 
 **The parameter-free core is derivable.**  `◇∀z:□A. □ψ(z.box) ⊢ ∀t. ψ(t)` (`ψ` closed apart from
 its hole): fix `t`; surjectivity gives a fresh `u` with `Back u t`; inside `◇` instantiate `z := u.box`
-to get `◇□ψ(u.box.box)`; `back_elim` gives `ψ(t)`.  This is the Barcan-type consequence of strong B
+to get `◇□ψ(u.box.box)`; `back_counit` gives `ψ(t)`.  This is the Barcan-type consequence of strong B
 recorded in §4 ("strong B ⇒ ◇-BF, parameter-free ✓").
 
 **With the born parameter `d` every route fails at the same point.**  The conclusion needs one `y`
@@ -4521,7 +4521,7 @@ for T it was a possible object `c` realising `t`) with the uniform quantifier or
   `□_{c.box} χ(c.box.dia) ↦ χ(t)` given `Back c t`); an item born at the child, `∃d. … d.box …` ↦
   `∃y. … y …`; a quantifier over the child's `□`-objects `∀z:□A. … z.box …` ↦ a quantifier over `w`'s
   carriers `∀u ∀t. Back u t → … t …` (their images are among the child's `□`-objects).  Instances:
-  **weak B** (`Φ := □ψ`, `ψ` closed: `◇□ψ ⊢ ψ`), **`back_elim`** (`Φ := □ψ(u.box.box)`),
+  **weak B** (`Φ := □ψ`, `ψ` closed: `◇□ψ ⊢ ψ`), **`back_counit`** (`Φ := □ψ(u.box.box)`),
   **`back_joint`** (a conjunction of such atoms, read at one home — so the joint rules become
   instances, not extra principles), and **`P`**.  It is exactly "a child's facts hold along the
   unique way home", which is what the relational semantics says; positivity is needed for the same
@@ -4617,8 +4617,8 @@ carrier's item `u.box.box ↦ t` under `Back u t`; `∀z:□C.(ρ(z) → …z.bo
   are covered in advance — this dissolves §11.6's obstacle.
 * **Child creation.**  `v`'s seed plus `{¬Θ : ¬Θ↓ ∈ M w}` is consistent: otherwise the seed derives a
   positive `Θ`, so `◇Θ ∈ M w`, and the **export** `◇Θ ⊢ Θ↓` refutes `¬Θ↓`.  Export for positive `Θ` is
-  derived by induction on `Θ`: `back_elim`/`back_joint` for `□ψ` atoms with carriers, `B_ret` for a
-  top-level `∃d` (an `∃` below a `∀z` is per carrier and needs only `back_elim` with `∃` in the hole),
+  derived by induction on `Θ`: `back_counit`/`back_joint` for `□ψ` atoms with carriers, `B_ret` for a
+  top-level `∃d` (an `∃` below a `∀z` is per carrier and needs only `back_counit` with `∃` in the hole),
   `◇` distributing over `∨`, weak B for the closed part.
 * **Committing an item `b`** (born, or an image without a `Back` value) to a fresh `b'`: a finite set
   of positive formulas about `ā, b` true at `v` gives `∃b. ⋀Θ`, positive about `ā`, so the invariant
@@ -4640,7 +4640,7 @@ can mention (forward images of non-carrier items, `◇`-items, rows 3–4's witn
 `back_here` applies); `◇`-typed contents (`back_def` and the `Ind` side of `↓`); whether `back_fun`
 is needed by the construction or only by the truth lemma.
 
-**Rule set for strong B, as of now:** `Back` (four rows) with `back_elim`, `back_intro`, `back_ne`,
+**Rule set for strong B, as of now:** `Back` (four rows) with `back_counit`, `back_unit`, `back_ne`,
 `back_beta`, `back_eq`, `back_fun`, `back_joint` (or `back_pair` for rows 1–2), `back_here` (T),
 `back_def`, surjectivity `B_strong` per row, and `B_ret`.  Frames: unique ways home.
 
@@ -4697,7 +4697,7 @@ infinitary disjunction, and no finitary `Back`-introduction is known that replac
   `back_fun` can be a derived rule once `back_joint` is in place (under strong B, which supplies the
   parameters' carriers).
 
-**Rule set after this pass:** `Back` (four rows, `◇`-free contents) with `back_elim`, `back_intro`,
+**Rule set after this pass:** `Back` (four rows, `◇`-free contents) with `back_counit`, `back_unit`,
 `back_ne`, `back_beta`, `back_eq`, `back_joint`, `back_here` (T), `back_def`, `B_strong` per row,
 and `B_ret` (leg-parameterised: plain and witnessed out leg).  `back_fun` derived.  Frames: unique
 ways home.
@@ -4923,7 +4923,7 @@ is about all children at once (∀ over the out leg), which the returning possib
 cannot supply.  Rows 3–4's per-witness components carry over to elimination the same way.
 
 **Rule set for strong B now:** `Back` (four rows; first build rows 1–2, `◇`-free contents) with
-`back_elim`, `back_intro`, `back_ne`, `back_beta`, `back_eq`, `back_pair`, `back_here` (T),
+`back_counit`, `back_unit`, `back_ne`, `back_beta`, `back_eq`, `back_pair`, `back_here` (T),
 `back_def`, surjectivity per row; the returning possibility `◇[d ↦ t]` with existence, elimination,
 β, monotonicity, Leibniz, and its T-rule.  `back_fun` derived.  Frames: unique ways home.
 
@@ -4950,7 +4950,7 @@ equality (`Model.eq_of_ind`); at `◇`-typed contents it is not, so:
   (`back_beta`, `ret_beta`) and by pairing (`back_pair`, `ret_ext`, `ret_back`);
 * `back_here` substitutional (`Back u t, φ(t) ⊢ φ(u.here.here)`), as `here_subst`;
 * `back_def` stays `◇`-free — at `◇`-types the negative atom is §11.12's decision 1 instead;
-* everything else (`elim`, `intro`, `ne`, `eq`, `ret_elim`/`mono`/`dia`/`eq`/`here`/`bridge`,
+* everything else (`elim`, `intro`, `ne`, `eq`, `ret_counit`/`mono`/`dia`/`eq`/`here`/`bridge`,
   `B_strong`) goes through at every type as it is.
 
 **Phases.**
@@ -4969,7 +4969,7 @@ equality (`Model.eq_of_ind`); at `◇`-typed contents it is not, so:
 (`Model.IndInvariant`) is now a structure: invariance (`inv`) and the two congruence laws (`map`
 for a closed hole term, `pair`).  Every rule is stated at every type except `back_def`, which stays
 `◇`-free; `back_here` is substitutional; `ret_back` (which needed an equation between the carrier's
-image and a component) is replaced by **elimination with a carrier**, `ret_elimC`:
+image and a component) is replaced by **elimination with a carrier**, `ret_counitC`:
 `◇[d ↦ y] □ψ(d.box, ū), Back u t ⊢ ψ(y, t)`, the body naming the carrier's image `ū` directly — the
 form §11.14's construction uses.  Both canonical models prove the laws from congruence of
 interchangeability: `Canon.Interch.subst_slot` (the test formula with its slot replaced by the term,
@@ -5047,7 +5047,8 @@ is a relation of *formulas*, not of objects.
    equality, and the theory may prove the fresh child's return equal to `t`.  There the negative
    atom still needs `back_def`'s separating child (§11.5 (3)).  Mixed types (`D × ◇E`) are covered by
    the `◇` component's freshness alone; a purely `◇`-free content by `back_def`.  Two mechanisms, to
-   be kept straight in the construction.
+   be kept straight in the construction.  *Corrected in §11.18:* freshness of the `◇` component
+   is not enough when that component has a positive atom.
 3. **The congruence closure must not reach fresh roots.**  A closed hole term of `◇`-type builds its
    possible objects over the *slot's* witness, so `h(a)` carries `a`'s root, never a fresh `c_k` —
    checked on paper for `◇`-typed results; `◇`-free results are risk 2.
@@ -5079,3 +5080,165 @@ old proof, and `map`/`pair` hold by construction.  Risk 5 turned out smaller tha
 
 The tree is unchanged.  **Left for L4:** a `back` constructor (a `Back u c` atom attests every
 return of `u`'s carrier and `c`), with `Att.rel` from `back_fun`.
+
+### 11.17 L4 mapped onto the network: one invariant per arrow, and a missing rule `ret_unit` *(2026-10-05, paper)*
+
+**The network as built** (`BNet`).  Each child `k` of `p` has two arrows, both renamings of roots
+(`arrowS`: a root `r : R` goes to one variable of type `R.bc` holding its box items):
+* **forward** `p → k`: at birth *all* of `p`'s roots are committed, under the same names
+  (`newChild`: `fcl := (st p).l`, `fimg := id`); later roots of `p` are committed one at a time
+  (`realF`);
+* **back** `k → p`: empty at birth, roots committed one at a time (`realB`).
+
+Each arrow carries necessity transfer (`Transfer`; `TransferX` for a witness child).
+
+**The invariant, per arrow** (§11.14's atom invariant, made precise).  For an arrow `v → w` (so
+`w`'s `◇` reaches `v` along the reverse arrow `w → v`): for every body `Φ` over `w`'s `□` view and a
+bound `d : □A`, and every `□A`-term `s` of `v` built from the roots committed along `v → w`,
+```
+Φ↑(s) ∈ M v   ⟹   ◇[d ↦ s↓] Φ(d) ∈ M w
+```
+* `Φ↑` is `Φ` sent to `v` along `w → v`: `w`'s box items become their images.
+* `s↓` is `s`'s body sent to `w` along `v → w`.
+
+This is the form the truth lemma's *truth ⇒ membership* case consumes (§11.14, check 2). It
+**subsumes both transfers**:
+* `Transfer(v → w)` follows by `ret_counit`;
+* with nothing committed it says `Φ↑ ∈ M v ⟹ ◇Φ ∈ M w`, the contrapositive of `Transfer(w → v)`.
+
+So, under strong B, `Good` keeps one invariant per arrow; without strong B it keeps `Transfer` as
+now.
+
+**Where the invariant is established:**
+1. *Committing a root on the arrow itself* (`realF`, `realB`): the image is the Henkin witness of
+   `ret_ext` (compactness over the `Φ`s), as §11.14 says.
+2. *Birth, forward arrow* (`p → k`, everything committed at once): the child's seed needs
+   `◇[d ↦ r̄'] Θ(d)` for every `Θ` of `p` about its roots, so the consistency proof
+   (`child_consistent`) needs, at `p`, `Θ(s) ⊢ □◇[d ↦ sb] Θ(d)` (with `s = boxtm sb`): **the unit
+   of the round trip**, strong B's form of weak B's `ψ ⊢ □◇ψ` (`B_box`).
+3. *Committing on the other arrow* (cross-arrow preservation).  When `realF` commits `b ↦ c`, the
+   back arrow's invariant must cover bodies mentioning `b.box`:
+   * Suppose `Θ'(c, ā) ∈ M k` but `¬◇[d ↦ ā↓] Θ'(b.box, d) ∈ M p`.
+   * The forward invariant puts `◇[(…, b) ↦ (…, c)] (¬◇[d ↦ …] Θ'(d₁.box, d))` into `M k`.
+   * A contradiction needs, at `k`:
+     ```
+     ret_unit:   ◇[d₁ ↦ y] Ψ(d₁),  θ(y, s)  ⊢  ◇[d₁ ↦ y] (Ψ(d₁) ∧ ◇[d ↦ sb] θ(d₁.box, d))
+     ```
+     where `θ` is closed apart from its two holes and `s = boxtm sb`.  Item 2 is its instance with
+     a unit item: `ret_new` turns a failing `□X` into `◇[d₁ ↦ c] ¬X`, and then `Ψ = ¬X`.
+
+**`ret_unit` is sound** (with `homeUnique`; any content type, through `IndInvariant.inv`):
+* The atom's arrow `a : w → v` gives `d₁` with `Ψ(d₁)` and way home `r : v → w`.
+* At `v` the arrow `r` goes out, with `d := s` at `w` and `θ(d₁.box, s)` (where `d₁.box` read
+  along `r` is `Ind y`).
+* `w`'s way home to `v` is `a` (unique), along which `s` reads as `sb`.
+
+**It does not follow from the present rules** (no derivation found):
+* The only rules introducing `◇[d ↦ t]` are:
+  * `ret_new` and `ret_ext`, whose `t` is fresh;
+  * `ret_here` (T's own arrow);
+  * `ret_bridge`, which needs a `Back` atom.
+* The `Back` route fails:
+  * Surjectivity at the far world gives a carrier `x` with `Back x sb`, and `back_unit` gives
+    `◇θ(x.box.box)`.
+  * But `x.box` and `s` are two necessary objects at `w` that agree only along the one arrow, so
+    `θ(s)` says nothing about `x.box`.
+
+It is the unit to `ret_counit` (`◇[d ↦ y] □ψ(d.box) ⊢ ψ(y)`), and the general-arrow
+companion of `ret_here`.
+
+**Decision needed (user):** add `ret_unit` as a rule, as above.  Without it the forward arrow
+cannot commit at birth, and a lazily committed forward arrow loses the child's defining formula
+`¬φ` (which must hold of the images that the commitments later choose).
+
+**L4, in phases (if `ret_unit` is accepted):**
+* **L4a** — `ret_unit`: the rule, `Proof.subst`, soundness.  `back_fun` as a derived rule.
+* **L4b** — abstraction of a world's committed roots into one bound `d` (the body form of the
+  invariant).  It mirrors `absS`/`instantiate_tup_abs`.
+* **L4c** — the invariant (`RetInv`), `RetInv ⇒ Transfer`, and `Good` under strong B.
+* **L4d** — the steps:
+  * birth (`ret_unit`, base form);
+  * `realF`/`realB` (`ret_ext` Henkin witnesses);
+  * cross-arrow preservation (`ret_unit`);
+  * growth (`grow_src`, `grow_tgt`).
+* **L4e** — new operations, with fairness:
+  * a child per `◇[d ↦ t]` atom, committed at birth to `t`;
+  * a fresh child per negative `Back` atom;
+  * `back_def`'s separating child (`◇`-free contents);
+  * commit at birth for `Back` carriers.
+* **L4f** — the limit:
+  * `Att.back`;
+  * `backRet_exists_canon`;
+  * the truth lemma's `back`/`ret` cases;
+  * the T-free leaf decoder (L3);
+  * removing `NoFour.noBStrong`.
+* Then step 6 (statements).
+
+### 11.18 ⭐The rules as a system: unit, counit, existence, equality *(2026-10-05, user + paper)*
+
+Strong B's two formers, and T's `Here`, all relate something reached by a route to a value `t`
+here:
+* **`Here x t`:** the subject is a possible object, and the route is the own arrow.
+* **`Back u t`:** the subject is a carrier, and the route is every arrow of the out leg, out and back.
+* **`◇[d ↦ t] Φ(d)`:** the subject is a possibility, and the route is one arrow, out and back.
+
+Their rules sort into the same kinds:
+
+| kind | `Here` (T) | `Back` | `◇[d ↦ t]` |
+|---|---|---|---|
+| **counit**: `◇□ψ ⊢ ψ`, named | `here_elim` | `back_counit` | `ret_counit`, `ret_counitC` |
+| **unit**: `ψ ⊢ □◇ψ`, named | `here_intro` | `back_unit` | `ret_unit` (§11.17, proposed) |
+| **existence of a subject**, given a value | `T_dia` | `B_strong` | `ret_new`, `ret_ext` |
+| **existence of a value**, given a subject | `here_name` | `back_def` (conditional, `◇`-free) | `ret_new` |
+| **the route exists** | (semantics) | `back_ne` | `ret_dia` |
+| **Leibniz in the value** | `here_eq` | `back_eq` | `ret_eq` |
+| **functionality** | `here_subst` | `back_fun` (to be derived) | none: two atoms may use two arrows |
+| **map (β)** | `here_beta` | `back_beta` | `ret_beta` |
+| **pairing** | through `◇_x` | `back_pair` | inside `ret_ext` |
+| **body monotonicity** | — | — | `ret_mono` |
+| **own arrow (T)** | — | `back_here` | `ret_here` |
+| **links** | — | — | `ret_bridge` (`Back` ⇒ `◇[d ↦ t]`), `ret_counitC` |
+
+**Renamed (user, 2026-10-05)** so that the names follow the pattern:
+
+| old | new |
+|---|---|
+| `back_elim` | `back_counit` |
+| `back_intro` | `back_unit` |
+| `ret_elim` | `ret_counit` |
+| `ret_elimC` | `ret_counitC` |
+
+The `Model.sat_*` lemmas and `Model.RoundTrip.counit`/`unit` follow.  The core of each former is
+weak B's two halves, made open by naming what the route carries.  `◇[d ↦ t]` lacked its unit, which
+is `ret_unit`.
+
+**`back_def` is `Back`'s existence of a value, and it is conditional.**
+* `Here`'s and `◇[d ↦ t]`'s routes are one arrow, so a value always exists (`here_name`,
+  `ret_new`).  `Here`'s definitional introduction is then derivable:
+  * `here_name` gives some `c` with `Here x c`;
+  * `here_elim` gives `θ(c)`;
+  * uniqueness gives `c = t`;
+  * `here_eq` gives `Here x t`.
+* `Back`'s route is every arrow, which may return different values.  A value exists only when
+  something forces the returns to agree, and at a `◇`-free type a definition is what can.
+
+It is sound (`Model.RoundTrip.of_def`).  Attested `Ind` does not replace it: at a `◇`-free type,
+`Ind` to a named object is equality in every model proper (`Model.eq_of_ind`), and the canonical
+base domains are terms up to provable equality.  So when the theory proves `back_def`'s premises,
+every return is `t`, and completeness needs the atom.  Nothing else derives it:
+* `B_strong` makes fresh carriers;
+* `back_beta` and `back_pair` build on existing atoms.
+
+At `◇`-typed contents the rule cannot be stated (no equality), and nothing needs it.  No formula
+forces `Ind` to `t`: invariance runs only one way, and attested `Ind` does not compose through a
+middle object.  So a negative atom is met by a fresh child whose return no atom mentions (§11.16).
+
+**Correction to §11.16, risk 2 (mixed contents).**  Freshness of the `◇` component of `D × ◇E`
+does not cover the negative atom when that component has a positive atom:
+* Suppose `Back(snd b) t₂` but `¬Back b ⟨t₁, t₂⟩`.
+* Commit at birth makes every child return `t₂` in the `◇` component.
+* `back_pair` (with `back_beta`) moves the negative atom to `¬Back(fst b) t₁`, which `back_def`'s
+  separating child meets.
+
+The full decomposition `¬Back b ⟨t₁,t₂⟩ ⟺ ¬Back(fst b) t₁ ∨ ¬Back(snd b) t₂` may need an
+η-rule for carriers (`b` against `⟨fst b, snd b⟩`), which the rules lack.  To check in L4e.

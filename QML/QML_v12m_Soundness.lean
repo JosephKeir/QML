@@ -251,13 +251,13 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       refine ih M hM env hfin hnp hΔ fun v hv => ?_
       obtain ⟨b⟩ := M.frame.symm hB v.2.down
       exact hn ((sat_closed _ env ψ).mp (hv ⟨w, ⟨b⟩⟩))
-  | @back_elim Γ _ Δ hS O A a₀ bd a t ψ pb pd ihb ihd =>
+  | @back_counit Γ _ Δ hS O A a₀ bd a t ψ pb pd ihb ihd =>
       intro M hM w env hfin hnp hΔ
-      exact sat_back_elim env hnp hM hS O bd t ψ (ihb M hM env hfin hnp hΔ)
+      exact sat_back_counit env hnp hM hS O bd t ψ (ihb M hM env hfin hnp hΔ)
         (ihd M hM env hfin hnp hΔ)
-  | @back_intro Γ _ Δ hS O A a₀ bd a t ψ pb pr ihb ihr =>
+  | @back_unit Γ _ Δ hS O A a₀ bd a t ψ pb pr ihb ihr =>
       intro M hM w env hfin hnp hΔ
-      exact sat_back_intro env hnp hM hS O bd t ψ (ihb M hM env hfin hnp hΔ)
+      exact sat_back_unit env hnp hM hS O bd t ψ (ihb M hM env hfin hnp hΔ)
         (ihr M hM env hfin hnp hΔ)
   | @back_ne Γ _ Δ hS O A a₀ bd a t pb ihb =>
       intro M hM w env hfin hnp hΔ
@@ -323,12 +323,12 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
         exact sat_ret_ext env hM hS t Φ c hc ac d b hΦ r hr
       · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken (T := B) env hc.root _ χ').mpr (hΔ χ' hχ')
-  | @ret_elim Γ _ Δ hS A a t ψ p ih =>
+  | @ret_counit Γ _ Δ hS A a t ψ p ih =>
       intro M hM w env hfin hnp hΔ
-      exact (sat_holeRead hnp env t ψ).mpr (sat_ret_elim env hM hS t ψ (ih M hM env hfin hnp hΔ))
-  | @ret_elimC Γ _ Δ hS A C a y c₀ bd c t ψ pr pb ihr ihb =>
+      exact (sat_holeRead hnp env t ψ).mpr (sat_ret_counit env hM hS t ψ (ih M hM env hfin hnp hΔ))
+  | @ret_counitC Γ _ Δ hS A C a y c₀ bd c t ψ pr pb ihr ihb =>
       intro M hM w env hfin hnp hΔ
-      exact (sat_holeRead hnp env _ ψ).mpr (sat_ret_elimC env hM hS y bd t ψ
+      exact (sat_holeRead hnp env _ ψ).mpr (sat_ret_counitC env hM hS y bd t ψ
         (ihr M hM env hfin hnp hΔ) (ihb M hM env hfin hnp hΔ))
   | @ret_mono Γ _ Δ hS A a t Φ Φ' p q ihp ihq =>
       intro M hM w env hfin hnp hΔ

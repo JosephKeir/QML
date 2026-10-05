@@ -1878,10 +1878,10 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
       Proof.here_eq hT (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
         (Term.subst ι θ hθ hc t') (Proof.subst ph θ hθ hc hΓ)
         (Proof.conv (WFF.subst_eqRec_gen θ hθ hc hΓ hΓ' A t t') (Proof.subst pe θ hθ hc hΓ))
-  | _, _, _, @Proof.back_elim _ _ Γ _ _ hS O A a₀ bd a t ψ pb pd, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.back_counit _ _ Γ _ _ hS O A a₀ bd a t ψ pb pd, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       Proof.conv (WFF.subst_holeRead θ hθ hc hΓ hΓ' t ψ).symm
-        (Proof.back_elim hS (O.subst θ hθ hc)
+        (Proof.back_counit hS (O.subst θ hθ hc)
           (Term.subst ι (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
             (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) bd)
           (Term.subst ι θ hθ hc t) ψ
@@ -1891,7 +1891,7 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
                 (WFF.subst_holeRead (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
                   (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) _ _ bd ψ)))
             (Proof.subst pd θ hθ hc hΓ)))
-  | _, _, _, @Proof.back_intro _ _ Γ _ _ hS O A a₀ bd a t ψ pb pr, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.back_unit _ _ Γ _ _ hS O A a₀ bd a t ψ pb pr, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       Proof.conv ((OutLeg.subst_box θ hθ hc hΓ hΓ' O
             ((WFF.box (WFF.holeRead bd ψ).neg).neg)).trans
@@ -1899,7 +1899,7 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
               (O.subst θ hθ hc).box (WFF.box φ.neg).neg)
                 (WFF.subst_holeRead (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
                   (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) _ _ bd ψ))).symm
-        (Proof.back_intro hS (O.subst θ hθ hc)
+        (Proof.back_unit hS (O.subst θ hθ hc)
           (Term.subst ι (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
             (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) bd)
           (Term.subst ι θ hθ hc t) ψ
@@ -2039,19 +2039,19 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
               (List.map_congr_left fun χ _ =>
                 WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' B χ))
           (Proof.conv (WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' B _) ih))
-  | _, _, _, @Proof.ret_elim _ _ Γ _ _ hS A a t ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.ret_counit _ _ Γ _ _ hS A a t ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       Proof.conv (WFF.subst_holeRead θ hθ hc hΓ hΓ' t ψ).symm
-        (Proof.ret_elim hS (Term.subst ι θ hθ hc t) ψ
+        (Proof.ret_counit hS (Term.subst ι θ hθ hc t) ψ
           (Proof.conv (congrArg (fun Ψ => WFF.ret hS (Term.subst ι θ hθ hc t) (WFF.box Ψ))
             ((WFF.subst_holeAt _ _ _ _ _ _ ψ).trans
               (WFF.holeAt_congr _ (Term.subst_eta_renAt _ _ _ A _ _ _ _
                 (Subst.box_at_inner_ren _ (Subst.under_at_root _ _ _))) ψ)))
             (Proof.subst p θ hθ hc hΓ)))
-  | _, _, _, @Proof.ret_elimC _ _ Γ _ _ hS A C a y c₀ bd c t ψ pr pb, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.ret_counitC _ _ Γ _ _ hS A C a y c₀ bd c t ψ pr pb, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       Proof.conv (WFF.subst_holeRead θ hθ hc hΓ hΓ' (Term.pair y t) ψ).symm
-        (Proof.ret_elimC hS (Term.subst ι θ hθ hc y)
+        (Proof.ret_counitC hS (Term.subst ι θ hθ hc y)
           (Term.subst ι θ.box.box (Subst.ok_box (Subst.ok_box hθ))
             (Subst.coh_box (Subst.ok_box hθ) (Subst.coh_box hθ hc)) bd)
           (Term.subst ι θ hθ hc t) ψ
