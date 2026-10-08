@@ -5582,3 +5582,22 @@ growth lemmas (source and target growing, as `Transfer.mono_src`/`mono_tgt`).
   with `RetInv` for `A :: cls` and so (`RetInv.transfer`) transfer.
 
 Then cross-arrow preservation (`ret_unit`) and birth.
+
+**L4d, second part (2026-10-08): the realisation step under strong B** (`QML_v12m_BRet`).
+* `liftBody` is now one substitution (the reverse arrow with the slot set to the committed tuple,
+  `Subst.set`).
+* ⭐`retStep_ok`: committing the source's next root along an arrow whose invariant holds gives a
+  maximal consistent target that extends the old one, with the invariant for one more root, and
+  so (`RetInv.transfer`) transfer.  Proved through `retSet_consistent`:
+  * (a) `retExt_consistent`: `ret_ext`'s fresh witness keeps a theory consistent;
+  * (b) `WFF.pairUp`, `bodySplit_pairUp`, `bodySplit_mono_pairUp`: a body about a paired item is a
+    body about its components, and splitting undoes it (the slot's η-expansion);
+  * (c) `liftBody_ex_pairUp_mem`: at the source, `∃e. pairUp Φ` over the older roots holds at the
+    new root's necessary object whenever `Φ` holds over all of them;
+  * (d) `tupImgT_ext`: the images' tuple after the step is the old one paired with the fresh
+    variable, the value `ret_ext` gives;
+  * (e) `ret_list`: finitely many atoms reduce to one at the conjunction of their bodies (split
+    again by `ret_mono` with `box_all_and_left`/`right`).
+
+*Next:* cross-arrow preservation (`ret_unit`), birth, and wiring `retStep` and `RetInv` into the
+network's operations and `Good`.
