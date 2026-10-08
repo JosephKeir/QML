@@ -5619,3 +5619,31 @@ possibility for a body `Φ` failed at the source.
 
 *Next:* birth (the forward arrow at a child's creation, by `ret_unit`'s base form), then wiring
 `RetInv` and `retStep` into the network (`Good`, `realF`/`realB`, `henk`, `mkChild`).
+
+**L4d, fourth part (2026-10-08): birth** (`QML_v12m_BRet`).  At a child's creation the forward
+arrow commits all of the parent's roots and the back arrow none, and both orientations of the
+invariant hold, from the forward arrow's transfer alone:
+* `RetInv.nil` (child → parent, nothing committed): a body true at the child is `◇∃d. Φ` at the
+  parent, or else `□¬∃d. Φ` would transfer to the child; `ret_new` names the unit return.
+* `RetInv.birth` (parent → child): **`Proof.ret_unit_base`**, `Θ(□sb) ⊢ □◇[d ↦ sb] Θ(d)` for `Θ`
+  closed apart from its hole, derived from `ret_unit`.  If it failed, some successor has a unit
+  `d₁` refuting `unitBody sb (holeSnd Θ)` (whose instance at `d₁` is `◇[d ↦ sb] Θ(d)`);
+  `ret_new` names its return and `ret_unit` asserts what the body refutes.  The parent's body is
+  a hole formula through `pack2 []`; the transfer sends the necessity to the child
+  (`subst_arrow_tupT`, `holeAt_tupT_pack2`).
+* A witness child's `TransferX` gives the plain transfer (`TransferX.applyBox`), so both lemmas
+  apply to every child.
+
+**⚠️Open (2026-10-08): committing along a witness arrow under strong B.**  A witness child's
+forward arrow must keep `TransferX` *and* the ret invariant when `realF` commits the parent's
+next root `b ↦ c`.  The two sets of atoms are consistent separately (`realiseX_consistent`,
+`retSet_consistent`) but jointly need, at the child, `∃c. ψ(c, cx) ∧ ◇[(ā↓, c) ↦ …] Φ`.
+* The ret invariant cannot supply it: its bodies speak of the far world's necessary objects, and a
+  `◇`-typed root (`x`, its content `cx`) has no box items, so `ψ`'s content part is not in the
+  body language.
+* `ret_unit_base` with `□ → □_x` gives `□_x (ψ(b, x.dia) ∧ ◇[(ā, b) ↦ …] Θ)` at the parent, but
+  only for `Θ` closed apart from its hole, while `liftBody Φ` mentions the parent's images of the
+  child's back-committed roots.
+* Candidates: a witnessed returning possibility `◇_x[d ↦ t] Φ` (new syntax), something through
+  `Back` on the leg `.pos x` (which is already a witnessed return of one object), or a derivation
+  not yet found.  To decide before wiring witness children into `Good`.

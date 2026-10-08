@@ -870,6 +870,235 @@ theorem retStep_rev (hS : ModalSys.BStrong = true) {ts tt : NodeSt σ} {cl clt :
   · rw [List.mem_singleton.mp hx]
     exact hΦ
 
+/-! ## Birth: an arrow with nothing committed -/
+
+/-- `liftBody` is the body sent along the reverse arrow under the slot, instantiated at the
+    committed roots' necessary object. -/
+theorem liftBody_eq_instantiate {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt : ℕ → ℕ}
+    (himgt : ImgOk clt (ctxOf lv) imgt) (Φ : WFF σ (bodyCtx cls clt) 1) :
+    liftBody hs himgt Φ = WFF.instantiate Ctx.NoSlots.slots
+      (Term.boxtm (Term.mono (ctxOf_le_of_suffix hs).boxIn (tupT cls).2))
+      (WFF.subst (VarSymb.shiftSlot (arrowIdx imgt) 0 0)
+        ((arrowS σ (ctxOf lv) imgt).under 0 0 _ (Ctx.NoSlots.slots (Γ := ctxOf lv)).root)
+        (Subst.ok_under (ok_arrowS himgt) _ (Ctx.NoSlots.slots (Γ := ctxOf lv)).root)
+        (Subst.coh_under (ok_arrowS himgt) (coh_arrowS himgt) Ctx.NoSlots.slots _
+          (Ctx.NoSlots.slots (Γ := ctxOf lv)).root)
+        ((Ctx.NoSlots.slots (Γ := (ctxOf clt).boxIn)).insert _)
+        ((Ctx.NoSlots.slots (Γ := ctxOf lv)).insert _) Φ) := by
+  unfold WFF.instantiate WFF.substRoot liftBody
+  refine (WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ).symm
+  refine Subst.sim_of fun v T hlp hv => ?_
+  by_cases hvr : v = .root (.bnd 0)
+  · subst hvr
+    dsimp only [Subst.comp, Subst.under]
+    rw [Subst.set_root, if_pos rfl]
+    dsimp only [SubE.comp]
+    change SubE.Sim T _ (Subst.single _ _ (.root (.bnd 0)))
+    rw [show Subst.single (σ := σ) (Δ := ctxOf lv) (.bnd 0)
+      (.tm (Term.boxtm (Term.mono (ctxOf_le_of_suffix hs).boxIn (tupT cls).2)))
+        (.root (.bnd 0)) = _ from if_pos rfl]
+    exact .refl _
+  · obtain ⟨u, rfl, hu⟩ := body_item hlp hv hvr
+    obtain ⟨r, hr, _, _⟩ := ref_rt hu
+    dsimp only [Subst.comp, Subst.under]
+    rw [Subst.set_ne _ _ hvr, if_neg hvr]
+    change SubE.Sim T (.ren (itemImg imgt u)) ((Subst.single _ _).at (itemImg imgt u))
+    rw [Subst.single_at_ne (by rw [itemAt_rt, hr]; exact fun h => by cases h)]
+    exact .refl _
+
+/-- ⭐**An arrow with nothing committed has the invariant**, given the reverse arrow's transfer:
+    a body true at `v`, its item a unit, is `◇∃d. Φ` at `w` — or else `□¬∃d. Φ` at `w` would
+    transfer to `¬∃d. Φ` at `v` — and `ret_new` names the unit return. -/
+theorem RetInv.nil (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) {tv tw : NodeSt σ}
+    {clt : List VarType} {imgs imgt : ℕ → ℕ} (hv : Theory.IsMCS tv.M) (hw : Theory.IsMCS tw.M)
+    (ht : clt <:+ tw.l) (himgt : ImgOk clt (ctxOf tv.l) imgt)
+    (htr : Transfer tw.M clt (ctxOf_le_of_suffix ht) tv.M imgt himgt) :
+    RetInv hS tv tw [] imgs clt imgt := by
+  refine ⟨List.nil_suffix, fun r hr => absurd hr (Nat.not_lt_zero r), ht, himgt,
+    fun Φ hΦ => ?_⟩
+  by_contra hn
+  have hbox : WFF.mono (ctxOf_le_of_suffix ht)
+      (.box (WFF.neg (WFF.ex (.VTypeBox (bcT [])) Φ))) ∈ tw.M := by
+    by_contra hb
+    have hd := hw.neg_mem_iff.mpr hb
+    apply hn
+    refine hw.closed ⟨[_], fun x hx => by rw [List.mem_singleton.mp hx]; exact hd, ⟨?_⟩⟩
+    exact Proof.ret_new hS hB _ tw.l.length (ctxOf_fresh le_rfl)
+      (Proof.lookup List.mem_cons_self) (Proof.lookup List.mem_cons_self)
+  have hneg := htr _ hbox
+  refine hv.1 ⟨[_, _], fun x hx => ?_, ⟨Proof.imp_elim (Proof.lookup List.mem_cons_self)
+    (Proof.ex_intro _ _ (Proof.conv (liftBody_eq_instantiate List.nil_suffix himgt Φ)
+      (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))))⟩⟩
+  rcases List.mem_cons.mp hx with rfl | hx
+  · exact hneg
+  · rw [List.mem_singleton.mp hx]
+    exact hΦ
+
+/-! ## `ret_unit`'s base form -/
+
+omit [ModalSys.NoFour] in
+theorem pairHole_snd_ref {C A : VarType} :
+    (Ctx.empty.insert (.bnd 0) (.VTypeProd C A)).ref (.step (.root (.bnd 0)) .snd) = some A := by
+  simp only [Ctx.ref, Step.isProj, if_true]
+  rfl
+
+omit [ModalSys.NoFour] in
+/-- A hole formula read at the second component of a pair hole. -/
+def WFF.holeSnd {C A : VarType} (θ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
+    WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C A)) 1 :=
+  WFF.holeAt (Ctx.slotsFrom_empty.insert _)
+    (Term.eta (.step (.root (.bnd 0)) .snd) A pairHole_snd_ref) θ
+
+omit [ModalSys.NoFour] in
+/-- `holeSnd θ` read at a pair is `θ` read at its second component. -/
+theorem WFF.holeAt_pair_holeSnd {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {C A : VarType}
+    {c : Ann C} {a : Ann A} (s : Term σ Γ C c) (t : Term σ Γ A a)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
+    WFF.holeAt hs (Term.pair s t) (WFF.holeSnd (C := C) θ) = WFF.holeAt hs t θ := by
+  unfold WFF.holeSnd
+  change WFF.subst _ _ _ _ _ hs (WFF.holeAt (Ctx.slotsFrom_empty.insert _) _ θ) = _
+  rw [WFF.subst_holeAt]
+  refine WFF.holeAt_congr _ ?_ θ
+  refine Term.subst_eta_tm _ _ _ _ _ _ t ?_
+  rw [Subst.at_proj _ _ rfl]
+  change SubE.proj (Subst.single (.bnd 0) _ (.root (.bnd 0))) .snd = _
+  rw [show Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm (Term.pair s t)) (.root (.bnd 0)) =
+    .tm (Term.pair s t) from if_pos rfl]
+  rfl
+
+omit [ModalSys.NoFour] in
+/-- Instantiating the unused slot of `unitBody hS sb (holeSnd θ)` gives `◇[d ↦ sb] θ(d)`. -/
+theorem WFF.instantiate_unitBody_holeSnd {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+    {C A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeBox A)) 1) {c : Ann (.VTypeBox C)}
+    (t : Term σ Γ.boxIn (.VTypeBox C) c) :
+    WFF.instantiate Ctx.NoSlots.slots t (WFF.unitBody hS sb (WFF.holeSnd (C := C) θ)) =
+      WFF.ret hS sb (WFF.holeAt ((Ctx.NoSlots.slots (Γ := Γ.boxIn.boxIn)).insert _)
+        (Term.eta (.root (.bnd 0)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 0) _)) θ) := by
+  unfold WFF.unitBody
+  rw [WFF.holeAt_pair_holeSnd]
+  unfold WFF.instantiate WFF.substRoot
+  refine WFF.ret_congr hS ?_ ?_
+  · rw [Term.subst_mono]
+    refine (Term.subst_congr _ (Subst.idS σ _) _ (Subst.ok_idS_le (Ctx.Le.refl _)) _
+      (Subst.coh_idS_le (Ctx.Le.refl _)) ?_ sb).trans
+      ((Term.subst_idS_mono (Ctx.Le.refl _) _ _ sb).trans (by rw [Term.mono_refl]))
+    refine Subst.sim_of fun v T _ hv => ?_
+    have hvr : v ≠ .root (.bnd 0) := fun h => by
+      subst h
+      rw [(Ctx.NoSlots.slots (Γ := Γ.boxIn)).root] at hv
+      cases hv
+    change SubE.Sim T (if v = .root (.bnd 0) then _ else _) _
+    rw [if_neg hvr]
+    exact .refl _
+  · rw [WFF.subst_holeAt]
+    refine WFF.holeAt_congr _ ?_ θ
+    exact Term.subst_eta_renAt _ _ _ _ _ _ _ _ (Subst.under_at_slot _ _ _ _ _)
+
+omit [ModalSys.NoFour] in
+/-- ⭐**`ret_unit`'s base form**: what holds of `□sb` holds, necessarily, of `sb`'s returns
+    (`◇[d ↦ sb] θ(d)` at every successor). Otherwise some successor has a unit `d₁` refuting the
+    unit conjunct at `holeSnd θ` (J3); `ret_new` names that unit's return `c`, and `ret_unit` at
+    `c` asserts the very conjunct its body refutes. -/
+def Proof.ret_unit_base {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
+    (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) {A : VarType} {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀) (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeBox A)) 1)
+    (p : Proof σ Γ Δ (WFF.holeRead (Term.boxtm sb) θ)) :
+    Proof σ Γ Δ (WFF.box (WFF.ret hS sb
+      (WFF.holeAt ((Ctx.NoSlots.slots (Γ := Γ.boxIn.boxIn)).insert _)
+        (Term.eta (.root (.bnd 0)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 0) _)) θ))) := by
+  refine Proof.byContra ?_
+  have q : Proof σ Γ.boxIn
+      [WFF.neg (WFF.ex (.VTypeBox .VTypeOne)
+        (WFF.neg (WFF.unitBody hS sb (WFF.holeSnd (C := .VTypeOne) θ))))]
+      (WFF.ret hS sb (WFF.holeAt ((Ctx.NoSlots.slots (Γ := Γ.boxIn.boxIn)).insert _)
+        (Term.eta (.root (.bnd 0)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 0) _)) θ)) := by
+    refine Proof.byContra (Proof.imp_elim (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
+      (Proof.ex_intro _ (Term.boxtm Term.unit) (Proof.conv ?_ (Proof.lookup List.mem_cons_self))))
+    exact congrArg WFF.neg
+      (WFF.instantiate_unitBody_holeSnd hS sb θ (Term.boxtm Term.unit)).symm
+  have hd : Proof σ Γ (_ :: Δ) ((OutLeg.nec : OutLeg Γ).dia (WFF.ex (.VTypeBox .VTypeOne)
+      (WFF.neg (WFF.unitBody hS sb (WFF.holeSnd (C := .VTypeOne) θ))))) :=
+    Proof.imp_intro (Proof.imp_elim
+      (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
+      (Proof.ofSubset (fun x hx => by rw [List.mem_singleton.mp hx]; exact List.mem_cons_self)
+        (Proof.K_box q)))
+  refine Proof.ret_new hS hB _ _ (Ctx.Presented.fresh_bound _ le_rfl) hd ?_
+  have hle := Ctx.le_insert (Ctx.Presented.fresh_bound (Γ := Γ) _ le_rfl).root .VTypeOne
+  have r₁ : Proof σ (Γ.insert (.free (Ctx.Presented.bound Γ)) .VTypeOne)
+      [WFF.ret hS (Term.eta (.root (.free (Ctx.Presented.bound Γ))) _ (Ctx.ref_insert_root _ _ _))
+        (WFF.mono (hle.boxIn.insert (.bnd 0) _)
+          (WFF.neg (WFF.unitBody hS sb (WFF.holeSnd (C := .VTypeOne) θ))))]
+      (WFF.ret hS (Term.eta (.root (.free (Ctx.Presented.bound Γ))) _ (Ctx.ref_insert_root _ _ _))
+        (WFF.neg (WFF.unitBody hS (Term.mono hle.boxIn sb) (WFF.holeSnd (C := .VTypeOne) θ)))) := by
+    refine Proof.conv ?_ (Proof.lookup List.mem_cons_self)
+    refine congrArg (WFF.ret hS _) ?_
+    change WFF.imp (WFF.mono _ _) .bot = _
+    rw [WFF.mono_unitBody hle]
+  have r₂ : Proof σ (Γ.insert (.free (Ctx.Presented.bound Γ)) .VTypeOne) (Δ.map (WFF.mono hle))
+      (WFF.holeRead (Term.pair
+          (Term.eta (.root (.free (Ctx.Presented.bound Γ))) _ (Ctx.ref_insert_root _ _ _))
+        (Term.boxtm (Term.mono hle.boxIn sb))) (WFF.holeSnd (C := .VTypeOne) θ)) := by
+    refine Proof.conv ?_ (Proof.mono hle p)
+    rw [WFF.holeRead_eq_holeAt, WFF.holeRead_eq_holeAt, WFF.mono_holeAt _ _ Ctx.NoSlots.slots,
+      WFF.holeAt_pair_holeSnd]
+    rfl
+  exact Proof.ret_absurd hS _ _ (Ctx.Presented.fresh_bound _ le_rfl) (Proof.ret_unit hS _ _ _ _
+    (Proof.ofSubset (fun x hx => by rw [List.mem_singleton.mp hx]; exact List.mem_cons_self) r₁)
+    (Proof.ofSubset (fun x hx => List.mem_cons_of_mem _ (List.mem_cons_of_mem _ hx)) r₂))
+
+omit [ModalSys.NoFour] in
+/-- Reading a hole formula built at `⟨(), d⟩` at `t` reads the original at `⟨(), t⟩`. -/
+theorem WFF.holeAt_holeAt_pairUnit {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {U : VarType}
+    {a : Ann U} (t : Term σ Γ U a)
+    (P : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd .VTypeOne U)) 1) :
+    WFF.holeAt hs t (WFF.holeAt ((Ctx.NoSlots.slots (Γ := Ctx.empty)).insert U)
+      (Term.pair Term.unit (Term.eta (.root (.bnd 0)) U (Ctx.ref_insert_root _ (.bnd 0) U))) P) =
+      WFF.holeAt hs (Term.pair Term.unit t) P := by
+  change WFF.subst _ _ _ _ _ hs (WFF.holeAt ((Ctx.NoSlots.slots (Γ := Ctx.empty)).insert U) _ P) = _
+  rw [WFF.subst_holeAt]
+  refine WFF.holeAt_congr _ (sig_pair rfl ?_) P
+  exact Term.subst_eta_tm _ _ _ _ _ _ t (by
+    change Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm t) (.root (.bnd 0)) = _
+    exact if_pos rfl)
+
+/-- ⭐**The forward arrow at birth has the invariant**: with nothing committed back, a body true
+    at the parent of the committed roots' necessary object is, by `ret_unit_base`, necessarily a
+    returning possibility from their tuple — which the arrow's transfer sends to the child. -/
+theorem RetInv.birth (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) {tv tw : NodeSt σ}
+    {cls : List VarType} {imgs imgt : ℕ → ℕ} (hv : Theory.IsMCS tv.M) (hs : cls <:+ tv.l)
+    (himgs : ImgOk cls (ctxOf tw.l) imgs)
+    (htr : Transfer tv.M cls (ctxOf_le_of_suffix hs) tw.M imgs himgs) :
+    RetInv hS tv tw cls imgs [] imgt := by
+  have himgt : ImgOk [] (ctxOf tv.l) imgt := fun r hr => absurd hr (Nat.not_lt_zero r)
+  refine ⟨hs, himgs, List.nil_suffix, himgt, fun Φ hΦ => ?_⟩
+  have hle := ctxOf_le_of_suffix hs
+  have hread : WFF.holeRead (Term.boxtm (Term.mono hle.boxIn (tupT cls).2))
+      (WFF.holeAt ((Ctx.NoSlots.slots (Γ := Ctx.empty)).insert _)
+        (Term.pair Term.unit (Term.eta (.root (.bnd 0)) _ (Ctx.ref_insert_root _ (.bnd 0) _)))
+        (pack2 [] (.VTypeBox (bcT cls)) Φ)) = liftBody hs himgt Φ := by
+    rw [WFF.holeRead_eq_holeAt, WFF.holeAt_holeAt_pairUnit, ← WFF.holeRead_eq_holeAt]
+    exact holeRead_tupImgT_pack2 himgt _ Φ
+  have hbox := hv.closed ⟨[_], fun x hx => by rw [List.mem_singleton.mp hx]; exact hΦ,
+    ⟨Proof.ret_unit_base hS hB _ _ (Proof.conv hread.symm (Proof.lookup List.mem_cons_self))⟩⟩
+  have hbox' : WFF.mono hle (.box (WFF.ret hS (tupT cls).2
+      (WFF.holeAt ((Ctx.NoSlots.slots (Γ := (ctxOf cls).boxIn.boxIn)).insert _)
+        (Term.eta (.root (.bnd 0)) _ (Ctx.ref_insert_root _ (.bnd 0) _))
+        (WFF.holeAt ((Ctx.NoSlots.slots (Γ := Ctx.empty)).insert _)
+          (Term.pair Term.unit (Term.eta (.root (.bnd 0)) _ (Ctx.ref_insert_root _ (.bnd 0) _)))
+          (pack2 [] (.VTypeBox (bcT cls)) Φ))))) ∈ tv.M := by
+    refine (congrArg (· ∈ tv.M) ?_).mpr hbox
+    change WFF.box (WFF.ret hS (Term.mono _ _) (WFF.mono _ (WFF.holeAt _ _ _))) = _
+    rw [WFF.mono_holeAt _ _ ((Ctx.NoSlots.slots (Γ := (ctxOf tv.l).boxIn.boxIn)).insert _),
+      Term.mono_eta]
+  refine (congrArg (· ∈ tw.M) ?_).mp (htr _ hbox')
+  refine WFF.ret_congr hS (subst_arrow_tupT cls himgs) ?_
+  rw [WFF.subst_holeAt]
+  refine (WFF.holeAt_congr _ (Term.subst_eta_renAt _ _ _ _ _ _ _
+    (Ctx.ref_insert_root _ (.bnd 0) _) (Subst.under_at_slot _ _ _ _ _)) _).trans ?_
+  rw [WFF.holeAt_holeAt_pairUnit]
+  exact holeAt_tupT_pack2 (ctxOf_le_of_suffix (List.nil_suffix (l := tw.l))).boxIn Φ
+
 end BArrow
 
 end V12M
