@@ -5634,16 +5634,136 @@ invariant hold, from the forward arrow's transfer alone:
 * A witness child's `TransferX` gives the plain transfer (`TransferX.applyBox`), so both lemmas
   apply to every child.
 
-**⚠️Open (2026-10-08): committing along a witness arrow under strong B.**  A witness child's
-forward arrow must keep `TransferX` *and* the ret invariant when `realF` commits the parent's
-next root `b ↦ c`.  The two sets of atoms are consistent separately (`realiseX_consistent`,
-`retSet_consistent`) but jointly need, at the child, `∃c. ψ(c, cx) ∧ ◇[(ā↓, c) ↦ …] Φ`.
-* The ret invariant cannot supply it: its bodies speak of the far world's necessary objects, and a
-  `◇`-typed root (`x`, its content `cx`) has no box items, so `ψ`'s content part is not in the
-  body language.
-* `ret_unit_base` with `□ → □_x` gives `□_x (ψ(b, x.dia) ∧ ◇[(ā, b) ↦ …] Θ)` at the parent, but
-  only for `Θ` closed apart from its hole, while `liftBody Φ` mentions the parent's images of the
-  child's back-committed roots.
-* Candidates: a witnessed returning possibility `◇_x[d ↦ t] Φ` (new syntax), something through
-  `Back` on the leg `.pos x` (which is already a witnessed return of one object), or a derivation
-  not yet found.  To decide before wiring witness children into `Good`.
+**⚠️Open (2026-10-08): committing along a witness arrow under strong B.**  Setting: `p` has
+`x : ◇X`, and `◇_x φ ∈ M p` made the witness child `k`, with content `cx`.  The forward arrow
+commits `p`'s roots `ā ↦ ā'`, and the back arrow commits `k`'s own roots `ū ↦ ē` (roots `k` made
+itself, e.g. Henkin witnesses).  `realF` commits `p`'s next root `b ↦ c`, with `c` fresh, and adds
+to `k`:
+* (X), from `TransferX`: `ψ(ā', c, cx)` for each `□_x ψ(ā, b, x.dia) ∈ M p`;
+* (R), from the ret invariant: `◇[d ↦ (ā', c)] Φ(d, ū)` for each `Φ(□(ā, b), ē) ∈ M p`.
+
+By compactness and closure under conjunction, the step is consistent iff
+```
+(★)   ∃c. ψ(ā', c, cx) ∧ ◇[d ↦ (ā', c)] Φ(d, ū)   ∈ M k
+```
+whenever `□_x ψ(ā, b, x.dia)` and `Φ(□(ā, b), ē)` are in `M p`.
+* Each conjunct alone is available, each with its own `c`:
+  * `TransferX` on `∃b'. ψ` gives the first conjunct (`realiseX_consistent`);
+  * `RetInv` on `∃b'. Φ`, then `ret_ext`, gives the second (`retSet_consistent`).
+
+  The first `c` is `b`'s image along `x`'s arrow; the second is what `b'` returns as along the
+  returning possibility's anonymous arrow.  Nothing links them.
+* **If `Φ` does not mention `ū`, (★) is derivable.**  At `p`, `ret_unit_base` gives
+  `□◇[d ↦ (ā, b)] Φ(d)`; then `□ → □_x`, K with `□_x ψ`, and `∃`-introduction give
+  `□_x ∃b'. (ψ(ā, b', x.dia) ∧ ◇[d ↦ (ā, b')] Φ(d))`; `TransferX` sends this to (★).  So `x`'s content
+  is not the obstacle.
+* **With `ū`, no derivation is known.**
+  * Inside `□_x`, `p` can name only its own objects and `x`'s content, not `k`'s born roots `ū`,
+    which it sees only as their returns `ē`.
+  * Packing `ē` into the tuple makes the `p`-side formula derivable, but `TransferX` then delivers
+    `ē`'s forward images, fresh roots of `k`, not `ū`.
+  * The `RetInv` route handles `ū` but cannot carry `ψ`, which is about `x`'s arrow.
+
+  Semantically (★) holds, taking the returning possibility's arrow to be `x`'s way home (unique by
+  `homeUnique`); what the syntax lacks is that link.
+* Precedents:
+  * §11.5 (1): a child's born items have no name at the parent;
+  * the `◇`-equality episode: two unjoined possibilities may only be linked through a paired
+    form;
+  * §11.17: the `Back` route to `ret_unit` failed because two objects agreed only along one
+    arrow.
+* Candidates:
+  * `ret` on the leg `.pos x`, `◇_x[d ↦ t] Φ`, as `Back` already is on every leg; the returning
+    possibility *along* `x` is the paired form;
+  * `Back` carriers on `.pos x` naming `ū` at `p` (`Back_x(ḡ, ē)`, committing `ḡ ↦ ū`), which risks
+    §11.17's obstacle again.
+
+  To decide before wiring witness children into `Good`.
+
+**Paper check (2026-10-09): `ret` on every out leg.**  `O.ret t Φ`, with `Φ` over
+`O.view.insert (bnd 0) (□A)`, as `Back` is already stated for every leg: for `O = .pos x`,
+`◇_x[d ↦ t] Φ(d, x.dia)` says that some arrow in `x`'s extent reaches a world with a necessary
+object `d` satisfying `Φ`, and `d` comes back along that arrow's way home as `t`.  `.nec` is
+today's `ret`.  **Verdict: it closes the gap**, given the rules and the one law below.
+
+*A witness child's invariants.*  Keep the plain `RetInv p k` (atoms at `k`, whose way home is
+anonymous there), and replace the reverse `RetInv k p` by its `x`-form `RetInvX k p`: a body over
+`p`'s committed `x`-view (`ā`, `x.dia`) and `d' : □(ū's tuple)` that is true at `k` (`ā ↦ ā'`,
+`x.dia ↦ cx`, `d' ↦ □ū`) gives `◇_x[d' ↦ ē] Φ'` at `p`.
+* `TransferX` becomes derived, by its contrapositive.  Given `¬ψ(ā', cx) ∈ M k`, `RetInvX` (with a
+  `d'`-free body) gives `◇_x[d' ↦ ē] ¬ψ`, and `ret_dia` along `x` gives `◇_x ¬ψ`.  As for plain
+  arrows, the invariant subsumes the transfer.
+
+*`realF` along a witness arrow* (commit `b ↦ c`).  Add to `k`:
+* (R): the forward ret atoms, as now;
+* (Y): `¬Φ'(□ū, ā', c, cx)` for each `¬◇_x[d' ↦ ē] Φ'(d', ā, b, x.dia) ∈ M p`.  This keeps
+  `RetInvX` over the extended list.
+
+The cross-arrow argument of `retStep_rev` cannot give (Y) at `k`, because the forward bodies cannot
+mention `x`.  So (Y) is put in, and **consistency is argued at `p`, where `x` is nameable**:
+1. Suppose not.  Then `k ⊢ Ξ(□ū)`, where
+   `Ξ(d') := ¬∃c. ψ(ā, c, x.dia) ∧ ◇[d ↦ (ā, c)] Φ(d, d'.box) ∧ ¬Φ'(d', ā, c, x.dia)`.
+2. `RetInvX` (old commitments only) gives `◇_x[d' ↦ ē] Ξ(d')` at `p`.
+3. `ret_unit` along `x`, with `θ(y, s) := Φ(s, y)` (closed apart from its holes, as in
+   `retStep_rev`) and `Φ(□(ā, b), ē) ∈ M p`, gives
+   `◇_x[d' ↦ ē] (Ξ(d') ∧ ◇[d ↦ (ā, b)] Φ(d, d'.box))`.
+4. `ret_mono` along `x`, with `□_x ψ(ā, b, x.dia)`, adds `ψ(ā, b, x.dia)` to the body.
+5. In the body, `c := b` makes `Ξ` give `Φ'(d', ā, b, x.dia)`.  So `◇_x[d' ↦ ē] Φ'(…b…)`,
+   contradicting (Y)'s premise.
+
+The joint obligation (★) is the special case without (Y).  The old forward invariant is not used.
+
+*`realB` along a witness arrow* (commit `u ↦ e`):
+* the new `x`-atoms at `p` are consistent by `ret_ext` along `x`;
+* the forward `RetInv p k` survives as in `retStep_rev`, by `ret_unit` along `x` at `p`.
+
+*Birth:*
+* `RetInv p k` by `RetInv.birth`, using `TransferX.applyBox`;
+* `RetInvX k p` with nothing committed back, as `RetInv.nil`, by `ret_new` along `x` and the
+  seed's `TransferX`.
+
+*Truth lemma:*
+* a plain `ret` true along a witness arrow comes from `RetInvX` by **leg forgetting**,
+  `◇_x[d ↦ t] Φ ⊢ ◇[d ↦ t] Φ` for `x.dia`-free `Φ` (sound: `x`'s arrows are arrows);
+* a new case for `◇_x[d ↦ t]`, with a witness child per atom, committed at birth to `t` (L4e).
+
+*What it costs:*
+* every `ret` rule gains an `O` parameter: `ret_new`, `ret_ext`, `ret_counit`(`C`), `ret_unit`,
+  `ret_mono`, `ret_dia`, `ret_beta`, `ret_eq`; check `ret_here` and `ret_bridge`.  For `ret_unit`,
+  the outer possibility is along `O` and the inner one is plain;
+* leg forgetting;
+* soundness as for `.nec`, with `homeUnique`.
+* **The ∨ law is derivable (paper, 2026-10-09).**  Step 1 merges finitely many (Y) atoms, which
+  needs `◇_x[d ↦ t](A ∨ B) ⊢ ◇_x[d ↦ t] A ∨ ◇_x[d ↦ t] B`.
+  * For `◇`/`◇_x` this comes from duality with a normal `□`/`□_x` (user).  `ret` has no dual box,
+    and `ret_mono`'s premise `□∀d(Φ → Φ')` ignores `t`, so that route is closed.
+  * **B's unit supplies it instead**, as the K-form
+    `◇[d ↦ t] Φ, ¬◇[d ↦ t] Ψ ⊢ ◇[d ↦ t](Φ ∧ ¬Ψ)` (the `□[d ↦ t] := ¬◇[d ↦ t]¬` dual's K-law).
+    The ∨ law follows by `ret_mono` and `ret_absurd`.
+  * Derivation: pack home's `□` items into one tuple `sb_h`, so that `Ψ(e) = Ψ'(e, sb_h)` with
+    `Ψ'` closed.
+    1. At home, `ret_unit` with `θ(y, s) := ¬◇[e ↦ y] Ψ'(e, s.box)`, whose instance
+       `θ(t, □sb_h)` is the premise, gives
+       `◇[d₁ ↦ t](Φ(d₁) ∧ ◇[d ↦ sb_h] ¬◇[e ↦ d₁.inner] Ψ'(e, d.box))`.
+    2. Inside (`ret_mono`), at the far world, assume `Ψ(d₁)` = `θ'(sb_h, □d₁.inner)` for
+       `θ'(y, s) := Ψ'(s, y)`.  `ret_unit` again, now with value `sb_h` (a local object there),
+       gives `◇[d ↦ sb_h](¬◇[e ↦ d₁.inner] Ψ'(e, d.box) ∧ ◇[e ↦ d₁.inner] Ψ'(e, d.box))`, absurd
+       (`ret_absurd`).  So `Φ(d₁) ∧ ¬Ψ(d₁)`.
+  * Along `x` only the first `ret_unit` is along the leg; the second is plain.  So no `ret_or`
+    rule is needed.
+* **Leg forgetting is derivable too (paper, 2026-10-09).**  The same derivation works with the
+  outer possibility along any leg `O` and the negated one plain:
+  `◇_O[d ↦ t] Φ, ¬◇[d ↦ t] Ψ ⊢ ◇_O[d ↦ t](Φ ∧ ¬Ψ)`, for `Ψ` over the `□` view.
+  * Step 1 is `ret_unit` along `O`, whose inner possibility is plain.
+  * Step 2 is plain `ret_unit` at the far world, with value `sb_h`, which is visible there because
+    `Γ.boxIn ≤ O.view`.
+
+  This mixed K-law is sound: the arrow of `x` that the first premise finds is one of the arrows the
+  second premise denies.  Leg forgetting is its instance `Ψ := Φ`: the body becomes `Φ ∧ ¬Φ`, and
+  `ret_absurd` along `O` makes it absurd.  So `◇_x[d ↦ t] Φ, ¬◇[d ↦ t] Φ ⊢ ⊥`.
+* **Decided (user, 2026-10-09): `ret` is leg-indexed** (`O.ret`, as `Back`); every `ret` rule takes
+  `O`.  No new rules otherwise: the ∨ law and leg forgetting are derived.  `ret_here` stays plain,
+  and `ret_bridge` concludes `O.ret`.
+
+*Pairing principle:* `O.ret` is one possibility with its return attached, as `ret` already is.  It
+links `x`'s arrow to its own way home (`homeUnique`), not two unjoined possibilities.
