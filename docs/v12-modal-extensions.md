@@ -5601,3 +5601,21 @@ Then cross-arrow preservation (`ret_unit`) and birth.
 
 *Next:* cross-arrow preservation (`ret_unit`), birth, and wiring `retStep` and `RetInv` into the
 network's operations and `Good`.
+
+**L4d, third part (2026-10-08): cross-arrow preservation** (`retStep_rev`).  Committing the
+source's next root along the forward arrow gives the reverse arrow's invariant over the extended
+list.  It does not use the reverse arrow's old invariant: suppose the reverse arrow's returning
+possibility for a body `Φ` failed at the source.
+* Its negation is `liftBody` of `Ψ := ¬unitBody(tupT clt, pack2 Φ)` over the forward arrow's roots
+  (`liftBody_unitBody`), so the step puts `◇[d ↦ y] Ψ` into the grown target.
+* `Φ`, read in the grown target, is `θ(y, □sb)` for `θ := pack2 Φ` (`holeRead_tupImgT_pack2`).
+* `ret_unit` gives `◇[d ↦ y](¬U ∧ U)`, which is absurd (`Proof.ret_absurd`).
+
+*New machinery:*
+* `pack2`, which packs a body with one slot into a hole over (roots' tuple × slot), with
+  `holeAt_tupT_pack2` and `holeRead_tupImgT_pack2`;
+* `subst_arrow_tupT`: the arrow sends the items' tuple to the images' tuple;
+* `WFF.mono_unitBody`.
+
+*Next:* birth (the forward arrow at a child's creation, by `ret_unit`'s base form), then wiring
+`RetInv` and `retStep` into the network (`Good`, `realF`/`realB`, `henk`, `mkChild`).

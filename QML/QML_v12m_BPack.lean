@@ -422,6 +422,294 @@ theorem holeRead_tupImgT_pack [ModalSys.NoFour] {l : List VarType} {Δ : Ctx} [�
   rw [h1]
   exact .ren_eta _ _
 
+/-! ## Weakened tuples -/
+
+/-- `at_enc_tupB` for a tuple weakened into a larger context. -/
+theorem at_enc_tupB_mono [ModalSys.NoFour] {l : List VarType} {Δ : Ctx}
+    (hle : (ctxOf l).boxIn.Le Δ) (θ : Subst σ Δ) {b : VarSymb} {r : ℕ} {R : VarType} (bb : Bool)
+    (hbb : ModalSys.T = bb) (hR : (ctxOf l).ref (.root (.free r)) = some R)
+    (hb : θ.at b = .tm (Term.mono hle (tupB (σ := σ) (.root (.free r)) R bb hbb hR))) :
+    ∀ {u : VarSymb} {U : VarType} (hu : (ctxOf l).ref u = some U), u.rt = .free r →
+      θ.at (b.ext (encPath u.path)) = .tm (Term.mono hle (tupB u U bb hbb hu))
+  | .root r', U, hu, hrt => by
+      change VarSymb.rt (.root r') = _ at hrt
+      subst hrt
+      obtain rfl : U = R := Option.some.inj (hu.symm.trans hR)
+      exact hb
+  | .step u s, U, hu, hrt => by
+      have hproj : s.isProj = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
+      have hu' := hu
+      simp only [Ctx.ref, if_pos hproj] at hu'
+      cases hU : (ctxOf l).ref u with
+      | none => rw [hU] at hu'; cases hu'
+      | some U' =>
+          rw [hU] at hu'
+          have ih := at_enc_tupB_mono hle θ bb hbb hR hb hU hrt
+          change θ.at (b.ext (encPath (u.path ++ [s]))) = _
+          rw [show encPath (u.path ++ [s]) = encPath u.path ++ [encStep s] from
+            List.map_append, VarSymb.ext_step, Subst.at_proj _ _ (encStep_proj hproj), ih]
+          exact proj_tupB_mono hle hbb hU hproj hu' hu
+
+/-- `at_item_of_tupB_base` for a tuple weakened into a larger context. -/
+theorem at_item_of_tupB_base_mono [ModalSys.NoFour] {Γ Δ : Ctx} (hle : Γ.boxIn.Le Δ)
+    (θ : Subst σ Δ) (b : VarSymb) {u : VarSymb} {T : VarType} (hu : Γ.ref u = some (.VTypeBox T))
+    (bb : Bool) (hbb : ModalSys.T = bb)
+    (h : θ.at (b.ext (encPath u.path)) = .tm (Term.mono hle (tupB u (.VTypeBox T) bb hbb hu))) :
+    θ.at (b.ext (encPath u.path ++ itemTail)) = .tm (Term.mono hle
+      (Term.eta (.step u .box) T (Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly hu))) := by
+  rw [VarSymb.ext_append]
+  cases bb with
+  | true =>
+      rw [show itemTail = [Step.fst] by simp [itemTail, hbb]]
+      change θ.at (.step (b.ext (encPath u.path)) .fst) = _
+      rw [Subst.at_proj _ _ rfl, h]
+      rfl
+  | false =>
+      rw [show itemTail = [] by simp [itemTail, hbb]]
+      exact h
+
+/-! ## Packing a body: the roots and one slot -/
+
+section Pack2
+
+variable [ModalSys.NoFour] (l : List VarType) (U : VarType)
+
+/-- The hole's context for a packed body: the roots' tuple, paired with the body's slot. -/
+abbrev pack2Ctx : Ctx := Ctx.empty.insert (.bnd 0) (.VTypeProd (bcT l) U)
+
+omit [ModalSys.NoFour] in
+theorem pack2Ctx_fst : (pack2Ctx l U).ref (.step (.root (.bnd 0)) .fst) = some (bcT l) := by
+  simp only [Ctx.ref, Step.isProj, if_true]
+  rfl
+
+omit [ModalSys.NoFour] in
+theorem pack2Ctx_snd : (pack2Ctx l U).ref (.step (.root (.bnd 0)) .snd) = some U := by
+  simp only [Ctx.ref, Step.isProj, if_true]
+  rfl
+
+/-- ⭐Packing a body over `l`'s `□` view and a slot `e : U`: the roots' items go to the first
+    component of the hole, as `packS` sends them, and `e` to the second. -/
+def pack2S : Subst σ (pack2Ctx l U) :=
+  (packS σ _ l (.step (.root (.bnd 0)) .fst)).set (.bnd 0) (.ren (.step (.root (.bnd 0)) .snd))
+
+/-- Where `pack2S` sends annotation indices. -/
+def pack2Idx : VarSymb → VarSymb :=
+  Subst.setIdx (packIdx l (.step (.root (.bnd 0)) .fst)) (.bnd 0)
+    (.ren (.step (.root (.bnd 0)) .snd) : SubE σ (pack2Ctx l U))
+
+theorem ok_pack2S : Subst.Ok ((ctxOf l).boxIn.insert (.bnd 0) U) (pack2S (σ := σ) l U) :=
+  Subst.ok_set (ok_packS l (pack2Ctx_fst l U)) (pack2Ctx_snd l U)
+
+theorem coh_pack2S : Subst.Coh (pack2Idx (σ := σ) l U) ((ctxOf l).boxIn.insert (.bnd 0) U)
+    (pack2S (σ := σ) l U) :=
+  Subst.coh_set (ok_packS l (pack2Ctx_fst l U)) (coh_packS l (pack2Ctx_fst l U))
+    ((Ctx.NoSlots.slots (Γ := (ctxOf l).boxIn)).rootFresh (le_refl 0)) (pack2Ctx_snd l U)
+
+/-- ⭐A body packed into a hole formula over the pair of the roots' tuple and its slot. -/
+def pack2 (Φ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) U) 1) : WFF σ (pack2Ctx l U) 1 :=
+  WFF.subst (pack2Idx (σ := σ) l U) (pack2S l U) (ok_pack2S l U) (coh_pack2S l U)
+    ((Ctx.NoSlots.slots (Γ := (ctxOf l).boxIn)).insert U) (Ctx.slotsFrom_empty.insert _) Φ
+
+end Pack2
+
+/-- ⭐A packed body read at the roots' items (weakened) and its slot's η-expansion: the body,
+    weakened. -/
+theorem holeAt_tupT_pack2 [ModalSys.NoFour] {l : List VarType} {U : VarType} {Δ : Ctx}
+    [Δ.NoSlots] (h : (ctxOf l).boxIn.Le Δ) (Φ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) U) 1) :
+    WFF.holeAt ((Ctx.NoSlots.slots (Γ := Δ)).insert U)
+      (Term.pair (Term.mono (h.trans (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Δ)).root U))
+          (tupT l).2)
+        (Term.eta (.root (.bnd 0)) U (Ctx.ref_insert_root Δ (.bnd 0) U)))
+      (pack2 l U Φ) = WFF.mono (h.insert (.bnd 0) U) Φ := by
+  have hle := h.trans (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Δ)).root U)
+  unfold WFF.holeAt pack2
+  refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ (Subst.ok_idS_le (h.insert (.bnd 0) U))
+    (Subst.coh_idS_le (h.insert (.bnd 0) U)) _ _ _ ?_ Φ).trans
+    (WFF.subst_ren (h.insert (.bnd 0) U) _ _ _ _ _ (fun v _ _ => Subst.at_idS v) Φ)
+  refine Subst.sim_of fun v T hlp hv => ?_
+  have h0 : (Subst.single (σ := σ) (Δ := Δ.insert (.bnd 0) U) (.bnd 0)
+      (.tm (Term.pair (Term.mono hle (tupT l).2)
+        (Term.eta (.root (.bnd 0)) U (Ctx.ref_insert_root Δ (.bnd 0) U))))).at
+        (.root (.bnd 0)) = .tm (Term.pair (Term.mono hle (tupT l).2)
+          (Term.eta (.root (.bnd 0)) U (Ctx.ref_insert_root Δ (.bnd 0) U))) := by
+    change Subst.single _ _ (.root (.bnd 0)) = _
+    exact if_pos rfl
+  by_cases hvr : v = .root (.bnd 0)
+  · subst hvr
+    obtain rfl : T = U := by
+      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
+      rw [if_pos rfl] at hv
+      exact (Option.some.inj hv).symm
+    dsimp only [Subst.comp, pack2S]
+    rw [Subst.set_root]
+    dsimp only [SubE.comp]
+    rw [Subst.at_proj _ _ rfl, h0]
+    exact .ren_eta _ _
+  · have hv' : (ctxOf l).boxIn v = some T := by
+      change (if v = VarSymb.root (.bnd 0) then _ else _) = _ at hv
+      rwa [if_neg hvr] at hv
+    obtain ⟨u, rfl, hu⟩ := boxIn_item hv'
+    obtain ⟨r, hr, hlt, _⟩ := ref_rt hu
+    dsimp only [Subst.comp, pack2S]
+    rw [Subst.set_ne _ _ hvr]
+    dsimp only [packS, SubE.comp]
+    rw [hr]
+    change SubE.Sim T _ (Subst.at _
+      (((VarSymb.step (.root (.bnd 0)) .fst).ext (tupPath l r)).ext (encPath u.path ++ itemTail)))
+    have hb : (Subst.single (σ := σ) (Δ := Δ.insert (.bnd 0) U) (.bnd 0)
+        (.tm (Term.pair (Term.mono hle (tupT l).2)
+          (Term.eta (.root (.bnd 0)) U (Ctx.ref_insert_root Δ (.bnd 0) U))))).at
+          (.step (.root (.bnd 0)) .fst) = .tm (Term.mono hle (tupT l).2) := by
+      rw [Subst.at_proj _ _ rfl, h0]
+      rfl
+    obtain ⟨R, hR, h1⟩ := at_tupPath_tupT _ l hle hb hlt
+    have h2 := at_enc_tupB_mono hle _ ModalSys.T rfl hR h1 hu hr
+    rw [at_item_of_tupB_base_mono hle _ _ hu ModalSys.T rfl h2, Term.mono_eta]
+    exact .ren_eta _ _
+
+/-- ⭐A packed body read at the roots' images and a term `X`: the body sent along the arrow, its
+    slot set to `X`. -/
+theorem holeRead_tupImgT_pack2 [ModalSys.NoFour] {l : List VarType} {U : VarType} {Δ : Ctx}
+    [Δ.NoSlots] {img : ℕ → ℕ} (himg : ImgOk l Δ img) {x : Ann U} (X : Term σ Δ U x)
+    (Φ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) U) 1) :
+    WFF.holeRead (Term.pair (tupImgT l img himg).2 X) (pack2 l U Φ) =
+      WFF.subst (Subst.setIdx (arrowIdx img) (.bnd 0) (.tm X))
+        ((arrowS σ Δ img).set (.bnd 0) (.tm X)) (Subst.ok_set (ok_arrowS himg) rfl)
+        (Subst.coh_set (ok_arrowS himg) (coh_arrowS himg)
+          ((Ctx.NoSlots.slots (Γ := (ctxOf l).boxIn)).rootFresh (le_refl 0)) rfl)
+        ((Ctx.NoSlots.slots (Γ := (ctxOf l).boxIn)).insert U) Ctx.NoSlots.slots Φ := by
+  have hs : (Δ.insert (.bnd 0) (.VTypeProd (bcT l) U)).SlotsFrom 1 :=
+    (Ctx.NoSlots.slots (Γ := Δ)).insert _
+  unfold WFF.holeRead WFF.instantiate WFF.substRoot pack2
+  rw [WFF.subst_mono ((Ctx.empty_le _).insert (.bnd 0) _) _ _ _ (Ctx.slotsFrom_empty.insert _) hs]
+  refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
+  refine Subst.sim_of fun v T hlp hv => ?_
+  have h0 : (Subst.single (σ := σ) (Δ := Δ) (.bnd 0)
+      (.tm (Term.pair (tupImgT l img himg).2 X))).at (.root (.bnd 0)) =
+        .tm (Term.pair (tupImgT l img himg).2 X) := by
+    change Subst.single _ _ (.root (.bnd 0)) = _
+    exact if_pos rfl
+  by_cases hvr : v = .root (.bnd 0)
+  · subst hvr
+    dsimp only [Subst.comp, pack2S]
+    rw [Subst.set_root, Subst.set_root]
+    dsimp only [SubE.comp]
+    rw [Subst.at_proj _ _ rfl, h0]
+    exact .refl _
+  · have hv' : (ctxOf l).boxIn v = some T := by
+      change (if v = VarSymb.root (.bnd 0) then _ else _) = _ at hv
+      rwa [if_neg hvr] at hv
+    obtain ⟨u, rfl, hu⟩ := boxIn_item hv'
+    obtain ⟨r, hr, hlt, hR⟩ := ref_rt hu
+    dsimp only [Subst.comp, pack2S]
+    rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
+    dsimp only [packS, SubE.comp]
+    have hz : Δ.ref (.root (imgRoot img u.rt)) = some (rootTy l r).bc := by
+      rw [hr]; exact himg r hlt
+    have hT := ref_item hu hR hz
+    change SubE.Sim T (.ren (itemAt (imgRoot img u.rt) u)) _
+    rw [hr] at hz hT ⊢
+    change SubE.Sim T (.ren ((VarSymb.root (.free (img r))).ext (encPath u.path ++ itemTail)))
+      (Subst.at _
+        (((VarSymb.step (.root (.bnd 0)) .fst).ext (tupPath l r)).ext (encPath u.path ++ itemTail)))
+    have hb : (Subst.single (σ := σ) (Δ := Δ) (.bnd 0)
+        (.tm (Term.pair (tupImgT l img himg).2 X))).at (.step (.root (.bnd 0)) .fst) =
+          .tm (tupImgT l img himg).2 := by
+      rw [Subst.at_proj _ _ rfl, h0]
+      rfl
+    obtain ⟨T', hT', h1⟩ := at_tupPath_tupImgT _ l himg hb hlt
+    refine sim_ren_at_ext _ _ ((PPath.encPath (reach_ppath hu).1).append PPath.itemTail) hT' hT ?_
+    rw [h1]
+    exact .ren_eta _ _
+
+/-! ## The arrow sends the items' tuple to the images' tuple -/
+
+/-- An η-expansion depends only on its address. -/
+theorem eta_addr_congr {Δ : Ctx} {T : VarType} {x y : VarSymb} (h : x = y)
+    (hx : Δ.ref x = some T) (hy : Δ.ref y = some T) :
+    (⟨_, Term.eta (σ := σ) x T hx⟩ : Σ a, Term σ Δ T a) = ⟨_, Term.eta y T hy⟩ := by
+  subst h
+  rfl
+
+theorem ext_enc_step (b u : VarSymb) (s : Step) :
+    b.ext (encPath (VarSymb.step u s).path) = .step (b.ext (encPath u.path)) (encStep s) := by
+  change b.ext (encPath (u.path ++ [s])) = _
+  rw [show encPath (u.path ++ [s]) = encPath u.path ++ [encStep s] from List.map_append,
+    VarSymb.ext_step]
+
+/-- The arrow sends a root's tuple, read along `u`'s projections, to the η-expansion of the matching
+    component of the root's image. -/
+theorem subst_arrow_tupB [ModalSys.NoFour] {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
+    (himg : ImgOk l Δ img) {n : ℕ} :
+    ∀ (bb : Bool) (hbb : ModalSys.T = bb) (u : VarSymb) (U : VarType)
+      (hu : (ctxOf l).ref u = some U), u.rt = .free n →
+      ∀ (h : Δ.ref ((VarSymb.root (.free (img n))).ext (encPath u.path)) = some (U.bcB bb)),
+        (⟨_, Term.subst (arrowIdx img) (arrowS σ Δ img) (ok_arrowS himg) (coh_arrowS himg)
+          (tupB u U bb hbb hu)⟩ : Σ a, Term σ Δ (U.bcB bb) a) =
+          ⟨_, Term.eta ((VarSymb.root (.free (img n))).ext (encPath u.path)) _ h⟩
+  | _, _, _, .Var, _, _, _ => rfl
+  | _, _, _, .VTypeOne, _, _, _ => rfl
+  | _, _, _, .VTypeDia _, _, _, _ => rfl
+  | bb, hbb, u, .VTypeProd A B, hu, hrt, h => by
+      have h₁ : Δ.ref ((VarSymb.root (.free (img n))).ext (encPath (VarSymb.step u .fst).path)) =
+          some (A.bcB bb) := by
+        rw [ext_enc_step, encStep_fst]
+        simp only [Ctx.ref, Step.isProj, if_true, h, Option.bind_some]
+        rfl
+      have h₂ : Δ.ref ((VarSymb.root (.free (img n))).ext (encPath (VarSymb.step u .snd).path)) =
+          some (B.bcB bb) := by
+        rw [ext_enc_step, encStep_snd]
+        simp only [Ctx.ref, Step.isProj, if_true, h, Option.bind_some]
+        rfl
+      exact sig_pair
+        ((subst_arrow_tupB himg bb hbb _ A (Ctx.ref_fst_of hu) hrt h₁).trans
+          (eta_addr_congr (by rw [ext_enc_step, encStep_fst]) _ _))
+        ((subst_arrow_tupB himg bb hbb _ B (Ctx.ref_snd_of hu) hrt h₂).trans
+          (eta_addr_congr (by rw [ext_enc_step, encStep_snd]) _ _))
+  | true, hbb, u, .VTypeBox A, hu, hrt, h => by
+      obtain ⟨r, hr, hlt, hR⟩ := ref_rt hu
+      have hz : Δ.ref (.root (imgRoot img u.rt)) = some (rootTy l r).bc := by
+        rw [hr]; exact himg r hlt
+      have hw := ref_item hu hR hz
+      have hat : (arrowS σ Δ img).at (.step u .box) = .ren (itemImg img u) := by
+        rw [Subst.at_nonproj _ rfl]
+        rfl
+      have h₂ : Δ.ref ((VarSymb.root (.free (img n))).ext (encPath (VarSymb.step u .here).path)) =
+          some (A.bcB true) := by
+        rw [ext_enc_step, encStep_here hbb]
+        simp only [Ctx.ref, Step.isProj, if_true, h, Option.bind_some]
+        rfl
+      refine sig_pair ((Term.subst_eta_renAt _ _ _ A _ _ _ hw hat).trans
+        (eta_addr_congr ?_ _ _))
+        ((subst_arrow_tupB himg true hbb _ A (Ctx.ref_here_of hbb hu) hrt h₂).trans
+          (eta_addr_congr (by rw [ext_enc_step, encStep_here hbb]) _ _))
+      rw [itemAt, hrt, VarSymb.ext_append, show itemTail = [Step.fst] by simp [itemTail, hbb]]
+      rfl
+  | false, hbb, u, .VTypeBox A, hu, hrt, h => by
+      obtain ⟨r, hr, hlt, hR⟩ := ref_rt hu
+      have hz : Δ.ref (.root (imgRoot img u.rt)) = some (rootTy l r).bc := by
+        rw [hr]; exact himg r hlt
+      have hw := ref_item hu hR hz
+      have hat : (arrowS σ Δ img).at (.step u .box) = .ren (itemImg img u) := by
+        rw [Subst.at_nonproj _ rfl]
+        rfl
+      refine (Term.subst_eta_renAt _ _ _ A _ _ _ hw hat).trans (eta_addr_congr ?_ _ _)
+      rw [itemAt, hrt, show itemTail = [] by simp [itemTail, hbb], List.append_nil]
+      rfl
+
+/-- ⭐The arrow sends the tuple of a list's roots' items to the tuple of their images. -/
+theorem subst_arrow_tupT [ModalSys.NoFour] {Δ : Ctx} {img : ℕ → ℕ} :
+    ∀ (l : List VarType) (himg : ImgOk l Δ img),
+      (⟨_, Term.subst (arrowIdx img) (arrowS σ Δ img) (ok_arrowS himg) (coh_arrowS himg)
+        (tupT l).2⟩ : Σ a, Term σ Δ (bcT l) a) = tupImgT l img himg
+  | [], _ => rfl
+  | A :: l, himg => by
+      refine sig_pair ?_
+        (subst_arrow_tupB himg ModalSys.T rfl _ A (ctxOf_ref_new A l) rfl (ImgOk.head himg))
+      change (⟨_, Term.subst _ _ _ _ (Term.mono _ (tupT l).2)⟩ : Σ a, Term σ Δ (bcT l) a) = _
+      rw [Term.subst_mono]
+      exact subst_arrow_tupT l (ImgOk.tail himg)
+
 end BArrow
 
 end V12M

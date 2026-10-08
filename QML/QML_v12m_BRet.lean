@@ -741,6 +741,135 @@ theorem retStep_ok (hs' : (nextTy ts.l cl :: cl) <:+ ts.l)
 
 end Step
 
+/-! ## The reverse arrow: cross-arrow preservation -/
+
+omit [ModalSys.NoFour] in
+/-- A returning possibility whose body refutes itself is absurd: it is a possibility (`ret_dia`)
+    of an existential that nothing satisfies. -/
+def Proof.ret_absurd {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+    {A : VarType} {a : Ann A} (t : Term σ Γ A a)
+    (U : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) {u : ℕ} (hu : Γ.RootFresh (.free u))
+    (p : Proof σ Γ Δ (WFF.ret hS t (WFF.and (WFF.neg U) U))) : Proof σ Γ Δ .bot := by
+  have hd := Proof.ret_dia hS t _ p
+  have q : Proof σ Γ.boxIn [] (WFF.neg (WFF.ex (.VTypeBox A) (WFF.and (WFF.neg U) U))) := by
+    refine Proof.imp_intro (Proof.ex_elim u (.VTypeBox A) hu.boxIn
+      (φ := WFF.openFree u hu.boxIn Ctx.NoSlots.slots (WFF.and (WFF.neg U) U)) (ψ := .bot)
+      (Proof.conv (congrArg (WFF.ex _) (WFF.bindFree_openFree _ _ _ _).symm)
+        (Proof.lookup List.mem_cons_self)) ?_)
+    exact Proof.imp_elim (Proof.and_elim_l (Proof.lookup List.mem_cons_self))
+      (Proof.and_elim_r (Proof.lookup List.mem_cons_self))
+  exact Proof.imp_elim hd
+    (Proof.ofSubset (fun _ h => absurd h List.not_mem_nil) (Proof.K_box (Δ := []) q))
+
+omit [ModalSys.NoFour] in
+/-- Weakening `ret_unit`'s conjunct weakens its object. -/
+theorem WFF.mono_unitBody {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (h : Γ.Le Γ')
+    (hS : ModalSys.BStrong = true) {C A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1) :
+    WFF.mono (h.boxIn.insert (.bnd 0) (.VTypeBox C)) (WFF.unitBody hS sb θ) =
+      WFF.unitBody hS (Term.mono h.boxIn sb) θ := by
+  unfold WFF.unitBody
+  refine WFF.ret_congr' hS ?_ ?_
+  · change Term.mono _ (Term.mono _ sb) = Term.mono _ (Term.mono _ sb)
+    rw [Term.mono_mono, Term.mono_mono]
+  · rw [WFF.mono_holeAt _ _ ((((Ctx.NoSlots.slots (Γ := Γ'.boxIn)).insert _).boxIn).insert _)]
+    change WFF.holeAt _ (Term.pair (Term.mono _ (Term.eta _ _ _)) (Term.mono _ (Term.eta _ _ _)))
+      θ = _
+    rw [Term.mono_eta, Term.mono_eta]
+
+/-- ⭐`ret_unit`'s conjunct at the reverse arrow's items, read at the forward arrow's source, is the
+    reverse arrow's returning possibility: its object is the reverse images' tuple
+    (`subst_arrow_tupT`), and its body is `Φ` (`holeAt_tupT_pack2`). -/
+theorem liftBody_unitBody {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt : ℕ → ℕ}
+    (himgt : ImgOk clt (ctxOf lv) imgt) (hS : ModalSys.BStrong = true)
+    (Φ : WFF σ ((ctxOf cls).boxIn.insert (.bnd 0) (.VTypeBox (bcT clt))) 1) :
+    liftBody hs himgt (WFF.unitBody (Γ := ctxOf clt) hS (tupT clt).2
+        (pack2 cls (.VTypeBox (bcT clt)) Φ)) =
+      WFF.ret hS (tupImgT clt imgt himgt).2
+        (WFF.mono ((ctxOf_le_of_suffix hs).boxIn.insert (.bnd 0) _) Φ) := by
+  unfold liftBody WFF.unitBody
+  refine WFF.ret_congr hS ?_ ?_
+  · rw [Term.subst_mono]
+    refine (Term.subst_congr _ (arrowS σ (ctxOf lv) imgt) _ (ok_arrowS himgt) _
+      (coh_arrowS himgt) ?_ _).trans (subst_arrow_tupT clt himgt)
+    refine Subst.sim_of fun v T _ hv => ?_
+    obtain ⟨u, rfl, _⟩ := boxIn_item hv
+    rw [Subst.set_ne _ _ (fun h => by cases h)]
+    exact .refl _
+  · rw [WFF.subst_holeAt]
+    refine (WFF.holeAt_congr _ ?_ _).trans (holeAt_tupT_pack2 (ctxOf_le_of_suffix hs).boxIn Φ)
+    refine sig_pair ?_ ?_
+    · refine (Term.subst_eta_tm _ _ _ _ _ _
+        (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := (ctxOf lv).boxIn)).root _)
+          (Term.mono (ctxOf_le_of_suffix hs).boxIn (tupT cls).2)) ?_).trans ?_
+      · rw [Subst.at_under_ne _ _ _ (by rw [VarSymb.inner_rt]; exact fun h => by cases h),
+          Subst.box_at_inner_boxtm _ (by
+            change Subst.set _ _ _ (.root (.bnd 0)) = _
+            exact Subst.set_root _ _ _)]
+        rfl
+      · rw [Term.mono_mono]
+    · exact Term.subst_eta_renAt _ _ _ _ _ _ _ _ (Subst.under_at_slot _ _ _ _ _)
+
+/-- ⭐**Cross-arrow preservation**: committing the source's next root along the forward arrow keeps
+    the reverse arrow's invariant, over the extended list.  Were the reverse arrow's returning
+    possibility for `Φ` to fail at the source, its negation would be a body over the forward
+    arrow's roots (`liftBody_unitBody`), so the grown target would have `◇[d ↦ y] ¬U`; `Φ`, read
+    there, is `θ(y, □sb)` (`holeRead_tupImgT_pack2`), and `ret_unit` gives `◇[d ↦ y](¬U ∧ U)`,
+    which is absurd (`Proof.ret_absurd`). -/
+theorem retStep_rev (hS : ModalSys.BStrong = true) {ts tt : NodeSt σ} {cl clt : List VarType}
+    {img imgt : ℕ → ℕ} (hs' : (nextTy ts.l cl :: cl) <:+ ts.l)
+    (himgt : ImgOk clt (ctxOf ts.l) imgt) (himg : ImgOk cl (ctxOf tt.l) img) (ht : clt <:+ tt.l)
+    (hv : Theory.IsMCS ts.M) (hw : Theory.IsMCS tt.M) (hinv : RetInv hS ts tt cl img clt imgt) :
+    RetInv hS (retStep hS hs' himgt himg ht) ts clt imgt (nextTy ts.l cl :: cl)
+      (extImg img cl.length tt.l.length) := by
+  obtain ⟨_, _, _, _, h⟩ := hinv
+  obtain ⟨hsub, hmcs⟩ := complete_spec (retSet_consistent hS hs' himgt himg ht hv hw h)
+  have ht' : clt <:+ (nextTy ts.l cl).bc :: tt.l := ht.trans (List.suffix_cons _ _)
+  refine ⟨ht', himgt, hs', imgOk_ext himg, fun Φ hΦ => ?_⟩
+  by_contra hn
+  have hneg := hv.neg_mem_iff.mpr hn
+  have hΨ : liftBody hs' himgt (WFF.neg (WFF.unitBody (Γ := ctxOf clt) hS (tupT clt).2
+      (pack2 (nextTy ts.l cl :: cl) (.VTypeBox (bcT clt)) Φ))) ∈ ts.M := by
+    change WFF.neg (liftBody hs' himgt _) ∈ ts.M
+    rw [liftBody_unitBody]
+    exact hneg
+  have hret := hsub (Or.inr ⟨_, hΨ, rfl⟩)
+  have p₁ : Proof σ (ctxOf ((nextTy ts.l cl).bc :: tt.l))
+      [retAtom hS himg ht (WFF.neg (WFF.unitBody (Γ := ctxOf clt) hS (tupT clt).2
+        (pack2 (nextTy ts.l cl :: cl) (.VTypeBox (bcT clt)) Φ)))]
+      (WFF.ret hS (tupImgT (nextTy ts.l cl :: cl) (extImg img cl.length tt.l.length)
+          (imgOk_ext himg)).2
+        (WFF.neg (WFF.unitBody hS (Term.mono (ctxOf_le_of_suffix ht').boxIn (tupT clt).2)
+          (pack2 (nextTy ts.l cl :: cl) (.VTypeBox (bcT clt)) Φ)))) := by
+    refine Proof.conv ?_ (Proof.lookup List.mem_cons_self)
+    unfold retAtom
+    refine congrArg (WFF.ret hS _) ?_
+    change WFF.imp (WFF.mono _ _) .bot = _
+    rw [WFF.mono_unitBody (ctxOf_le_of_suffix ht')]
+  have p₂ : Proof σ (ctxOf ((nextTy ts.l cl).bc :: tt.l))
+      [liftBody ht' (imgOk_ext himg) Φ]
+      (WFF.holeRead (Term.pair (tupImgT (nextTy ts.l cl :: cl)
+          (extImg img cl.length tt.l.length) (imgOk_ext himg)).2
+        (Term.boxtm (Term.mono (ctxOf_le_of_suffix ht').boxIn (tupT clt).2)))
+        (pack2 (nextTy ts.l cl :: cl) (.VTypeBox (bcT clt)) Φ)) :=
+    Proof.conv (holeRead_tupImgT_pack2 (imgOk_ext himg) _ Φ).symm
+      (Proof.lookup List.mem_cons_self)
+  have p₃ : Proof σ (ctxOf ((nextTy ts.l cl).bc :: tt.l))
+      [retAtom hS himg ht (WFF.neg (WFF.unitBody (Γ := ctxOf clt) hS (tupT clt).2
+        (pack2 (nextTy ts.l cl :: cl) (.VTypeBox (bcT clt)) Φ))),
+        liftBody ht' (imgOk_ext himg) Φ] .bot :=
+    Proof.ret_absurd hS _ _ (ctxOf_fresh (l := (nextTy ts.l cl).bc :: tt.l) le_rfl)
+    (Proof.ret_unit hS _ _ _ _
+      (Proof.ofSubset (fun x hx => by
+        rw [List.mem_singleton.mp hx]; exact List.mem_cons_self) p₁)
+      (Proof.ofSubset (fun x hx => by
+        rw [List.mem_singleton.mp hx]; exact List.mem_cons_of_mem _ List.mem_cons_self) p₂))
+  refine hmcs.1 ⟨_, fun x hx => ?_, ⟨p₃⟩⟩
+  rcases List.mem_cons.mp hx with rfl | hx
+  · exact hret
+  · rw [List.mem_singleton.mp hx]
+    exact hΦ
+
 end BArrow
 
 end V12M
