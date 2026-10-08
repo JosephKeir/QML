@@ -5532,13 +5532,16 @@ degenerate case of the pattern, not an exception.
   comprehension principle, not a frame condition) is then the whole Barcan question.
 
 **L4b done (2026-10-08): packing a world's roots into one slot** (`QML_v12m_BPack`).
-* `bcN l n` is the type of the tuple of the first `n` roots' box contents (oldest innermost), and
-  `tupPath` is the path to a root's component.
+* `bcT l` is the type of the tuple of `l`'s roots' box contents (oldest innermost), and
+  `tupPath` is the path to a root's component.  *Revised (2026-10-08):* first indexed by "the
+  first `n` roots of `l`", then by recursion on the list, so that committing one more root pairs
+  one more component definitionally: `bcT (A :: l) = bcT l × A.bc`, which is the type `ret_ext`
+  produces.  The tuples `tupT`, `tupImgT` follow the list too.
 * `pack l ψ` turns a formula of the `□` view of `ctxOf l` into a hole formula over that tuple:
   every item of root `r` goes to the matching component of the slot (`packS`; `BAbs.absS` does one
   root).
-* ⭐`holeRead_tupN_pack`: instantiated at the tuple of the roots' items (`tupN`), it is `ψ`.
-* ⭐`holeRead_tupImg_pack`: instantiated at the tuple of their images (`tupImg`), it is `ψ` sent
+* ⭐`holeRead_tupT_pack`: instantiated at the tuple of the roots' items (`tupT`), it is `ψ`.
+* ⭐`holeRead_tupImgT_pack`: instantiated at the tuple of their images (`tupImgT`), it is `ψ` sent
   along the arrow.
 
 So a box-view formula about committed roots becomes a body over the one bound `d` of the network
@@ -5551,14 +5554,31 @@ their carriers (§11.11 (d)), which is this packing.  It moves from L4a to L4f, 
 **L4c, first part (2026-10-08): the invariant and transfer** (`QML_v12m_BRet`).
 * `liftBody` reads a body over an arrow's committed roots at its source `v`: the body's `□` items
   go along the reverse arrow, and its bound object is the necessary object holding the committed
-  roots' items (`tupN`).
+  roots' items (`tupT`).
 * `RetInv hS tv tw cls imgs clt imgt`: every body that `v` makes true when read there is, at `w`,
-  `◇[d ↦ tupImg] Φ`.
+  `◇[d ↦ tupImgT] Φ`.
 * ⭐`RetInv.transfer`: the invariant gives necessity transfer.  A necessity about the committed
   roots is packed into the body `□(pack ψ)(d.inner)` (`liftBody_box_holeAt`,
-  `holeRead_tupN_pack`); `ret_counit` reads it at the images, which is `ψ` sent along the arrow
-  (`holeRead_tupImg_pack`).  So under strong B the network can keep `RetInv` alone.
+  `holeRead_tupT_pack`); `ret_counit` reads it at the images, which is `ψ` sent along the arrow
+  (`holeRead_tupImgT_pack`).  So under strong B the network can keep `RetInv` alone.
 * Helpers: `WFF.holeRead_eq_holeAt`, `WFF.mono_holeAt`, `Subst.box_at_inner_boxtm`.
 
 *Left to L4d, with the steps that preserve it:* `RetInv` in `NetSt.Good` (under strong B), and its
 growth lemmas (source and target growing, as `Transfer.mono_src`/`mono_tgt`).
+
+**L4d, first part (2026-10-08): growth.**  `RetInv.grow_tgt` and `RetInv.grow_src` (with
+`tupImgT_mono` and `liftBody_mono`): the invariant survives either end growing conservatively, as
+`Transfer.mono_tgt`/`mono_src` do.
+
+*The realisation step, planned* (committing the source's next root `c : A` to a fresh `z`):
+* (a) `ret_ext` Henkin witnessing at the target, as `henkin_consistent` does for `∃`.
+* (b) `pairUp Φ`, the body with its slot `d : □(X × Y)` written as `□⟨d₀.box, d₁.box⟩`, and
+  `bodySplit boxFst boxSnd (pairUp Φ) = Φ`: the slot's η-expansion, so a `Sim`.
+* (c) `liftBody cls (∃e. pairUp Φ)` is the `∃`-introduction of `liftBody (A :: cls) Φ` at
+  `e := □(tup c)`, because `tupT (A :: cls) = ⟨tupT cls, tup c⟩`.
+* (d) `tupImgT` depends only on the images below the list's length (`extImg`).
+* (e) Finitely many bodies become one by conjunction, and `ret_mono` splits them again.
+* (f) `retStep`, `retStep_ok`: the target grown by `z`, maximal consistent, extending the old one,
+  with `RetInv` for `A :: cls` and so (`RetInv.transfer`) transfer.
+
+Then cross-arrow preservation (`ret_unit`) and birth.
