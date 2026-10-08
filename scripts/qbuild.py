@@ -25,6 +25,7 @@ def module(name):
 
 
 def main(argv):
+    sys.stdout.reconfigure(encoding="utf-8")
     keep = 8
     if argv[:1] == ["-n"]:
         keep, argv = int(argv[1]), argv[2:]

@@ -5530,3 +5530,20 @@ degenerate case of the pattern, not an exception.
   So strong B + `D_name` ⊢ possibilist BF, the analogue of classical B + CBF ⊢ BF, with `D_name`
   (BF at `𝟙`) in the converse Barcan formula's role.  Whether to adopt `D_name` (a model
   comprehension principle, not a frame condition) is then the whole Barcan question.
+
+**L4b done (2026-10-08): packing a world's roots into one slot** (`QML_v12m_BPack`).
+* `bcN l n` is the type of the tuple of the first `n` roots' box contents (oldest innermost), and
+  `tupPath` is the path to a root's component.
+* `pack l ψ` turns a formula of the `□` view of `ctxOf l` into a hole formula over that tuple:
+  every item of root `r` goes to the matching component of the slot (`packS`; `BAbs.absS` does one
+  root).
+* ⭐`holeRead_tupN_pack`: instantiated at the tuple of the roots' items (`tupN`), it is `ψ`.
+* ⭐`holeRead_tupImg_pack`: instantiated at the tuple of their images (`tupImg`), it is `ψ` sent
+  along the arrow.
+
+So a box-view formula about committed roots becomes a body over the one bound `d` of the network
+invariant (§11.17), which is what `RetInv ⇒ Transfer` and the joint choice of images need.
+
+**`back_fun` stays derived.**  Its derivation packs a formula's parameters into the hole through
+their carriers (§11.11 (d)), which is this packing.  It moves from L4a to L4f, where `Att`'s
+`back` constructor first needs it, so no new rule is added.
