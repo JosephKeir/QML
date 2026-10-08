@@ -5547,3 +5547,18 @@ invariant (§11.17), which is what `RetInv ⇒ Transfer` and the joint choice of
 **`back_fun` stays derived.**  Its derivation packs a formula's parameters into the hole through
 their carriers (§11.11 (d)), which is this packing.  It moves from L4a to L4f, where `Att`'s
 `back` constructor first needs it, so no new rule is added.
+
+**L4c, first part (2026-10-08): the invariant and transfer** (`QML_v12m_BRet`).
+* `liftBody` reads a body over an arrow's committed roots at its source `v`: the body's `□` items
+  go along the reverse arrow, and its bound object is the necessary object holding the committed
+  roots' items (`tupN`).
+* `RetInv hS tv tw cls imgs clt imgt`: every body that `v` makes true when read there is, at `w`,
+  `◇[d ↦ tupImg] Φ`.
+* ⭐`RetInv.transfer`: the invariant gives necessity transfer.  A necessity about the committed
+  roots is packed into the body `□(pack ψ)(d.inner)` (`liftBody_box_holeAt`,
+  `holeRead_tupN_pack`); `ret_counit` reads it at the images, which is `ψ` sent along the arrow
+  (`holeRead_tupImg_pack`).  So under strong B the network can keep `RetInv` alone.
+* Helpers: `WFF.holeRead_eq_holeAt`, `WFF.mono_holeAt`, `Subst.box_at_inner_boxtm`.
+
+*Left to L4d, with the steps that preserve it:* `RetInv` in `NetSt.Good` (under strong B), and its
+growth lemmas (source and target growing, as `Transfer.mono_src`/`mono_tgt`).
