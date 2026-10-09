@@ -160,8 +160,13 @@ structure NetSt (σ : Signature) where
   nch : Node → ℕ
   /-- A child made for `◇_x` records `x` and its content type. -/
   kind : Node → Option (VarSymb × VarType)
-  /-- The variable of a witness child holding the content. -/
+  /-- The variable holding the witness's content: the child's, for a child made for `◇_x`; the
+      parent's, for a back-witness child. -/
   cx : Node → ℕ
+  /-- A **back-witness child**, made for a returning possibility with a possible part
+      `e ⇝ z`, records `e` (a variable of the child) and its content type: its way home lies in
+      `e`'s extent, with content `cx` at the parent. -/
+  bkind : Node → Option (VarSymb × VarType)
   /-- The parent's variables with images in the child, and the images. -/
   fcl : Node → List VarType
   fimg : Node → ℕ → ℕ

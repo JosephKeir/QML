@@ -82,6 +82,7 @@ def init {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : NetSt σ w
   nch := fun _ => 0
   kind := fun _ => none
   cx := fun _ => 0
+  bkind := fun _ => none
   fcl := fun _ => []
   fimg := fun _ => id
   bcl := fun _ => []

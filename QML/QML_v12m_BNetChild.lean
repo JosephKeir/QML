@@ -21,14 +21,16 @@ variable {σ : Signature}
 namespace NetSt
 
 /-- ⭐The network with a new child of `s` in state `t`: `s`'s variables are committed forward
-    under `fimg₀`, and the child's oldest `bcl₀` back under `bimg₀`. -/
+    under `fimg₀`, and the child's oldest `bcl₀` back under `bimg₀`; `bkd₀` is the back arrow's
+    witness, for a back-witness child. -/
 def newChild (N : NetSt σ) (s : Node) (kd : Option (VarSymb × VarType)) (cx : ℕ)
-    (t : NodeSt σ) (fimg₀ : ℕ → ℕ := id) (bcl₀ : List VarType := []) (bimg₀ : ℕ → ℕ := id) :
-    NetSt σ where
+    (t : NodeSt σ) (fimg₀ : ℕ → ℕ := id) (bcl₀ : List VarType := []) (bimg₀ : ℕ → ℕ := id)
+    (bkd₀ : Option (VarSymb × VarType) := none) : NetSt σ where
   st := Function.update N.st (N.nch s :: s) t
   nch := Function.update (Function.update N.nch s (N.nch s + 1)) (N.nch s :: s) 0
   kind := Function.update N.kind (N.nch s :: s) kd
   cx := Function.update N.cx (N.nch s :: s) cx
+  bkind := Function.update N.bkind (N.nch s :: s) bkd₀
   fcl := Function.update N.fcl (N.nch s :: s) (N.st s).l
   fimg := Function.update N.fimg (N.nch s :: s) fimg₀
   bcl := Function.update N.bcl (N.nch s :: s) bcl₀
@@ -42,23 +44,25 @@ theorem not_live_below_new {N : NetSt σ} (s : Node) (d : ℕ) :
 
 /-- The live nodes after adding a child: the old ones and the new one. -/
 theorem live_newChild {N : NetSt σ} {s : Node} {fimg₀ : ℕ → ℕ} {bcl₀ : List VarType}
-    {bimg₀ : ℕ → ℕ} (hs : N.Live s) (kd : Option (VarSymb × VarType)) (cx : ℕ) (t : NodeSt σ) :
-    ∀ k, (N.newChild s kd cx t fimg₀ bcl₀ bimg₀).Live k ↔ N.Live k ∨ k = N.nch s :: s
+    {bimg₀ : ℕ → ℕ} {bkd₀ : Option (VarSymb × VarType)} (hs : N.Live s)
+    (kd : Option (VarSymb × VarType)) (cx : ℕ) (t : NodeSt σ) :
+    ∀ k, (N.newChild s kd cx t fimg₀ bcl₀ bimg₀ bkd₀).Live k ↔ N.Live k ∨ k = N.nch s :: s
   | [] => by simp [Live]
   | d :: p => by
-      have ih := live_newChild (fimg₀ := fimg₀) (bcl₀ := bcl₀) (bimg₀ := bimg₀) hs kd cx t p
-      change (N.newChild s kd cx t fimg₀ bcl₀ bimg₀).Live p ∧
-        d < (N.newChild s kd cx t fimg₀ bcl₀ bimg₀).nch p ↔ _
+      have ih := live_newChild (fimg₀ := fimg₀) (bcl₀ := bcl₀) (bimg₀ := bimg₀) (bkd₀ := bkd₀)
+        hs kd cx t p
+      change (N.newChild s kd cx t fimg₀ bcl₀ bimg₀ bkd₀).Live p ∧
+        d < (N.newChild s kd cx t fimg₀ bcl₀ bimg₀ bkd₀).nch p ↔ _
       by_cases hpk : p = N.nch s :: s
       · subst hpk
-        have e : (N.newChild s kd cx t fimg₀ bcl₀ bimg₀).nch (N.nch s :: s) = 0 :=
+        have e : (N.newChild s kd cx t fimg₀ bcl₀ bimg₀ bkd₀).nch (N.nch s :: s) = 0 :=
           Function.update_self _ _ _
         rw [e]
         simp only [Nat.not_lt_zero, and_false, false_iff, not_or]
         exact ⟨not_live_below_new s d, fun h => by
           have := congrArg List.length h
           simp at this⟩
-      · have hnch : (N.newChild s kd cx t fimg₀ bcl₀ bimg₀).nch p =
+      · have hnch : (N.newChild s kd cx t fimg₀ bcl₀ bimg₀ bkd₀).nch p =
             Function.update N.nch s (N.nch s + 1) p := Function.update_of_ne hpk _ _
         rw [hnch, ih]
         simp only [hpk, or_false]

@@ -6018,7 +6018,7 @@ restriction should not disturb them.
 1. The ∨ law along `x` and along a possible part (for maximality of the second and third kinds of
    returning successor): the §11.17 derivation with `ret_unitW`/`ret_unitD` in place of
    `ret_unit`.  *Along `x`: done (2026-10-09), `Proof.retx_K` — see "L4e, third part".  Along a
-   possible part: still open (back-witness children).*
+   possible part: done (2026-10-09), `Proof.retD_K` — see "L4e, fourth part".*
 2. That the alias operation's fairness (an alias for every term at every node) fits the schedule,
    and that aliases never need to be committed injectively (they are parent roots, not images of a
    child's roots).
@@ -6119,6 +6119,31 @@ restriction should not disturb them.
   `NetSt.mkRetX` with `GoodS.mkRetX`, `Ext.mkRetX`.
 * *Next:* the back-witness child (atoms `◇[d ↦ y; e ⇝ z] Φ`): needs a kind on back arrows and the
   K-law along a possible part; then negative `Back` atoms, the `Op` type with fairness.
+
+**L4e, fourth part: the back-witness child (2026-10-09, T off).**
+* `QML_v12m_RetKD`: ⭐`Proof.retD_K`, `◇[⟨d, e⟩ ↦ t] Φ, ¬◇[⟨d, e⟩ ↦ t] Ψ ⊢ ◇[⟨d, e⟩ ↦ t](Φ ∧ ¬Ψ)`
+  at the witnessed shape; `Proof.retD_K_node` for any body (`pack2`).  `retx_K` with the units
+  swapped, no new rule: `ret_unitD` at home carries the negated premise out along the returned
+  possible part `e₁` (`kThetaD`); at the far world `Ψ(z)` is `ret_unitW`'s premise along `e₁`
+  (`openFree_kPsiD`, `openFree_unitBodyD_kThetaD`), and `retx_absurd` closes.
+* *Network:* a kind on back arrows, `NetSt.bkind` (default `none`; `newChild` takes it as an
+  optional argument, `Ext` keeps it).  `cx` is the content's variable at the parent for a
+  back-witness child.  `RetData` takes `bkind`; the back-witness case is the mirror of the witness
+  child, `RetInvX p k` out along `e` (read at the child) and `RetInvW k p` home.  Every
+  arrow-level lemma applies with the roles swapped: `realFS` uses `retStepX` (+ `retStepX_rev`),
+  `realBS` uses `retStepW` (+ `retStepW_rev`), growth by the four `grow` lemmas.  Weak B's `Good`
+  is untouched: the forward arrow is plain (`RetInvX.transfer`) and the back arrow gives plain
+  transfer by the possible part's counit (new ⭐`RetInvW.transfer`: a necessity packed into a
+  body that ignores the witness is `□_x`-necessary by `box_boxx`, and `ret_counitD` reads it).
+* `QML_v12m_BRetChildD`: layout `l.map bc ++ [◇X, □A]` (`c` root 0, `e` root 1, the parent's
+  roots `+ 2`), back images `c ↦ y`, `e ↦ o` (a unit root: `(◇X).bc = 𝟙`), its own pull-back
+  `retPullD` (`c ↦ □(u.fst.box.fst.snd)`, `e ↦ u.snd`), ⭐`retSeedD_consistent`,
+  ⭐`RetData.retBirthD` (`RetInvX` by `ret_unitD` + `liftBodyW_unitBodyD` +
+  `holeRead_tupImgT_pack2X`; `RetInvW` by the seed), `NetSt.mkRetD`, `GoodS.mkRetD`,
+  `Ext.mkRetD`.  The obligation carries the alias `y`, a unit root `o` and the content `z`.
+* So all three kinds of returning successor are built, T off.  *Next:* negative `Back` atoms
+  (and `back_def`'s separating child), commit at birth for `Back` carriers, the `Op` type with
+  fairness (aliases, the three ret children, `Back` children), then L4f.
 
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`

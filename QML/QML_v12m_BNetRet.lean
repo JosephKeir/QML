@@ -25,38 +25,172 @@ namespace BArrow
 
 variable {σ : Signature} [ModalSys.NoFour]
 
-/-- ⭐The returning-possibility invariants of a child's arrows `p → k` and `k → p`. -/
-def RetData (hS : ModalSys.BStrong = true) (tp tk : NodeSt σ) (kind : Option (VarSymb × VarType))
-    (cx : ℕ) (fcl : List VarType) (fimg : ℕ → ℕ) (bcl : List VarType) (bimg : ℕ → ℕ) : Prop :=
-  match kind with
-  | none => RetInv hS tp tk fcl fimg bcl bimg ∧ RetInv hS tk tp bcl bimg fcl fimg
-  | some (x, X) =>
+/-! ## The way home's necessity transfer along a back witness -/
+
+omit [ModalSys.NoFour] in
+/-- A hole formula reading only the first component, read at a pair. -/
+theorem WFF.holeAt_holeAt_fst {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {U V : VarType}
+    {a : Ann U} {b : Ann V} (s : Term σ Γ U a) (t : Term σ Γ V b)
+    (P : WFF σ (Ctx.empty.insert (.bnd 0) U) 1) :
+    WFF.holeAt hs (Term.pair s t) (WFF.holeAt
+      ((Ctx.NoSlots.slots (Γ := Ctx.empty)).insert (.VTypeProd U V))
+      (Term.eta (.step (.root (.bnd 0)) .fst) U (Ctx.ref_fst_of (Ctx.ref_insert_root _ (.bnd 0) _)))
+      P) = WFF.holeAt hs s P := by
+  change WFF.subst _ _ _ _ _ hs (WFF.holeAt _ _ P) = _
+  rw [WFF.subst_holeAt]
+  refine WFF.holeAt_congr _ ?_ P
+  exact Term.subst_eta_tm _ _ _ _ _ _ s (by
+    rw [Subst.at_proj _ _ rfl]
+    change (Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm (Term.pair s t)) (.root (.bnd 0))).proj
+      .fst = _
+    rw [show Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm (Term.pair s t)) (.root (.bnd 0)) =
+      .tm (Term.pair s t) from if_pos rfl]
+    rfl)
+
+omit [ModalSys.NoFour] in
+/-- Weakening the counit's body of a possible part leaves it alone. -/
+theorem WFF.mono_counitBodyD {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (h : Γ.Le Γ') {C X : VarType}
+    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) 1) :
+    WFF.mono (h.boxIn.insert (.bnd 0) (RShape.wit (.box C) X).ty) (WFF.counitBodyD (Γ := Γ) ψ) =
+      WFF.counitBodyD (Γ := Γ') ψ := by
+  unfold WFF.counitBodyD WFF.boxx
+  change WFF.imp (WFF.dia _ _ (WFF.imp (WFF.mono _ (WFF.holeAt _ _ ψ)) WFF.bot)) WFF.bot = _
+  rw [WFF.mono_holeAt _ _ (((Ctx.NoSlots.slots (Γ := Γ'.boxIn)).insert _).diaIn _)]
+  change WFF.imp (WFF.dia _ _ (WFF.imp (WFF.holeAt _ (Term.pair (Term.mono _ (Term.eta _ _ _))
+    (Term.mono _ (Term.eta _ _ _))) ψ) WFF.bot)) WFF.bot = _
+  rw [Term.mono_eta, Term.mono_eta]
+
+/-- The counit's body of the possible part, read at the source of a witness arrow: `□_x` of the
+    hole formula at the committed roots' items and `x`'s content. -/
+theorem liftBodyW_counitBodyD {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt : ℕ → ℕ}
+    (himgt : ImgOk clt (ctxOf lv) imgt) {x : VarSymb} {X : VarType}
+    (hx : (ctxOf cls).ref x = some (.VTypeDia X))
+    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (bcT cls) X)) 1) :
+    liftBodyW hs himgt hx (WFF.counitBodyD (Γ := ctxOf clt) ψ) =
+      WFF.boxx x ⟨X, (ctxOf_le_of_suffix hs).ref hx⟩ (WFF.holeAt Ctx.NoSlots.slots
+        (Term.pair (Term.mono (Ctx.le_boxIn_diaIn _ x)
+            (Term.mono (ctxOf_le_of_suffix hs).boxIn (tupT cls).2))
+          (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of ((ctxOf_le_of_suffix hs).ref hx)))) ψ) := by
+  have hle := ctxOf_le_of_suffix hs
+  have hu := Ctx.ref_insert_root (ctxOf clt).boxIn (.bnd 0)
+    (RShape.wit (.box (bcT cls)) X).ty
+  have hsnd := Ctx.ref_snd_of hu
+  have hθ : Subst.Ok (bodyCtxW cls clt X)
+      ((arrowS σ (ctxOf lv) imgt).set (.bnd 0) (liftEntryW hs hx)) :=
+    Subst.ok_set (ok_arrowS himgt) rfl
+  have hc : Subst.Coh (Subst.setIdx (arrowIdx imgt) (.bnd 0) (liftEntryW hs hx))
+      (bodyCtxW cls clt X) ((arrowS σ (ctxOf lv) imgt).set (.bnd 0) (liftEntryW hs hx)) :=
+    Subst.coh_set (ok_arrowS himgt) (coh_arrowS himgt)
+      ((Ctx.NoSlots.slots (Γ := (ctxOf clt).boxIn)).rootFresh (le_refl 0)) rfl
+  have hw : (((arrowS σ (ctxOf lv) imgt).set (.bnd 0) (liftEntryW hs hx)).at
+      (.step (.root (.bnd 0)) .snd)).idxAlong [] = x := rfl
+  have hfst : ((arrowS σ (ctxOf lv) imgt).set (.bnd 0) (liftEntryW hs hx)).at
+      (.step (.root (.bnd 0)) .fst) =
+      .tm (Term.boxtm (Term.mono hle.boxIn (tupT cls).2)) := by
+    rw [Subst.at_proj _ _ rfl]
+    change (Subst.set _ _ _ (.root (.bnd 0))).proj .fst = _
+    rw [Subst.set_root]
+    rfl
+  unfold liftBodyW WFF.counitBodyD WFF.boxx
+  change WFF.imp (WFF.subst _ _ _ _ _ _ (WFF.dia _ _ _)) WFF.bot = _
+  rw [WFF.subst_dia_at _ _ _ _ _ _ _ _ x rfl ⟨X, hle.ref hx⟩
+    ((Ctx.NoSlots.slots (Γ := ctxOf lv)).diaIn x) (Subst.ok_dia hθ ⟨X, hsnd⟩ hw)
+    (Subst.coh_dia hθ hc ⟨X, hsnd⟩)]
+  refine congrArg (fun φ => WFF.imp (WFF.dia x _ (WFF.imp φ WFF.bot)) WFF.bot) ?_
+  rw [WFF.subst_holeAt]
+  refine WFF.holeAt_congr _ (sig_pair ?_ ?_) ψ
+  · refine Term.subst_eta_tm _ _ _ _ _ _ _ ?_
+    rw [Subst.dia_eq_box_mono (Δ₁ := (ctxOf clt).boxIn.insert (.bnd 0) _) _ _ x _ _
+        (Ctx.ref_inner (Ctx.ref_fst_of hu)), Subst.box_at_inner_boxtm _ hfst]
+    rfl
+  · refine Term.subst_eta_tm _ _ _ _ _ _ _ ?_
+    rw [Subst.at_nonproj _ rfl]
+    dsimp only [Subst.dia]
+    rw [if_pos rfl, Subst.at_proj _ _ rfl]
+    change SubE.diaBody x ((Subst.set _ _ _ (.root (.bnd 0))).proj .snd) = _
+    rw [Subst.set_root]
+    change SubE.diaBody x (SubE.tm (Term.diatm x _ (Term.eta (x.step .dia) X _))) = _
+    rw [SubE.diaBody_diatm]
+
+/-- ⭐**The witnessed invariant gives necessity transfer**: a necessity about the committed roots,
+    packed into the necessary part of a body that ignores the witness, is `□_x`-necessary
+    (`box_boxx`), so the counit of the possible part (`ret_counitD`) reads it at the images. -/
+theorem RetInvW.transfer {hS : ModalSys.BStrong = true} {tv tw : NodeSt σ}
+    {cls clt : List VarType} {imgs imgt : ℕ → ℕ} {x : VarSymb} {X : VarType} {cx : ℕ}
+    (hv : Theory.IsMCS tv.M) (hw : Theory.IsMCS tw.M)
+    (h : RetInvW hS tv tw cls imgs clt imgt x X cx) :
+    ∃ (hs : cls <:+ tv.l) (himgs : ImgOk cls (ctxOf tw.l) imgs),
+      Transfer tv.M cls (ctxOf_le_of_suffix hs) tw.M imgs himgs := by
+  obtain ⟨hs, himgs, ht, himgt, hx, hcx, hinv⟩ := h
+  refine ⟨hs, himgs, fun ψ hψ => ?_⟩
+  have hle := ctxOf_le_of_suffix hs
+  have hret := hinv (WFF.counitBodyD (WFF.holeAt
+      ((Ctx.NoSlots.slots (Γ := Ctx.empty)).insert (.VTypeProd (bcT cls) X))
+      (Term.eta (.step (.root (.bnd 0)) .fst) (bcT cls)
+        (Ctx.ref_fst_of (Ctx.ref_insert_root _ (.bnd 0) _))) (pack cls ψ))) (by
+    rw [liftBodyW_counitBodyD, WFF.holeAt_holeAt_fst,
+      ← WFF.mono_holeAt _ (Ctx.NoSlots.slots (Γ := (ctxOf tv.l).boxIn)),
+      ← WFF.mono_holeAt _ (Ctx.NoSlots.slots (Γ := (ctxOf cls).boxIn)),
+      ← WFF.holeRead_eq_holeAt, holeRead_tupT_pack]
+    exact hv.closed ⟨[_], fun y hy => by rw [List.mem_singleton.mp hy]; exact hψ,
+      ⟨Proof.box_boxx _ _⟩⟩)
+  rw [WFF.mono_counitBodyD (ctxOf_le_of_suffix ht)] at hret
+  rw [← holeRead_tupImgT_pack himgs ψ]
+  refine hw.closed ⟨[_], fun y hy => by rw [List.mem_singleton.mp hy]; exact hret, ⟨?_⟩⟩
+  refine Proof.conv ?_ (Proof.ret_counitD hS _ _ (Proof.lookup List.mem_cons_self))
+  rw [WFF.holeRead_eq_holeAt]
+  exact (WFF.holeAt_holeAt_fst _ _ _ _).trans (WFF.holeRead_eq_holeAt _ _).symm
+
+/-- ⭐The returning-possibility invariants of a child's arrows `p → k` and `k → p`: `RetInv` both
+    ways for a plain child; `RetInvW` out along `x` and `RetInvX` home for a witness child; and for
+    a back-witness child (`bkd = (e, X)`, its way home in `e`'s extent), the mirror: `RetInvX` out,
+    along `e` read at the child, and `RetInvW` home. -/
+def RetData (hS : ModalSys.BStrong = true) (tp tk : NodeSt σ)
+    (kind bkd : Option (VarSymb × VarType)) (cx : ℕ) (fcl : List VarType) (fimg : ℕ → ℕ)
+    (bcl : List VarType) (bimg : ℕ → ℕ) : Prop :=
+  match kind, bkd with
+  | some (x, X), _ =>
       RetInvW hS tp tk fcl fimg bcl bimg x X cx ∧ RetInvX hS tk tp bcl bimg fcl fimg x X cx
+  | none, none => RetInv hS tp tk fcl fimg bcl bimg ∧ RetInv hS tk tp bcl bimg fcl fimg
+  | none, some (e, X) =>
+      RetInvX hS tp tk fcl fimg bcl bimg e X cx ∧ RetInvW hS tk tp bcl bimg fcl fimg e X cx
 
 namespace RetData
 
-variable {hS : ModalSys.BStrong = true} {tp tk : NodeSt σ} {kind : Option (VarSymb × VarType)}
+variable {hS : ModalSys.BStrong = true} {tp tk : NodeSt σ} {kind bkd : Option (VarSymb × VarType)}
   {cx : ℕ} {fcl : List VarType} {fimg : ℕ → ℕ} {bcl : List VarType} {bimg : ℕ → ℕ}
 
 /-- The forward arrow's transfer. -/
 theorem fwd (hp : Theory.IsMCS tp.M) (hk : Theory.IsMCS tk.M)
-    (h : RetData hS tp tk kind cx fcl fimg bcl bimg) : FwdData tp tk kind cx fcl fimg := by
+    (h : RetData hS tp tk kind bkd cx fcl fimg bcl bimg) : FwdData tp tk kind cx fcl fimg := by
   cases kind with
   | none =>
-      obtain ⟨hs, himgs, htr⟩ := RetInv.transfer hk h.1
-      exact ⟨hs, himgs, htr⟩
+      cases bkd with
+      | none =>
+          obtain ⟨hs, himgs, htr⟩ := RetInv.transfer hk h.1
+          exact ⟨hs, himgs, htr⟩
+      | some eX =>
+          obtain ⟨e, X⟩ := eX
+          obtain ⟨hs, himgs, htr⟩ := RetInvX.transfer hk h.1
+          exact ⟨hs, himgs, htr⟩
   | some xX =>
       obtain ⟨x, X⟩ := xX
       obtain ⟨ht, himgt, hx, hcx, htr⟩ := RetInvX.transferX hS hk hp h.2
       exact ⟨ht, himgt, hx, hcx, htr⟩
 
 /-- The back arrow's transfer. -/
-theorem back (hp : Theory.IsMCS tp.M) (h : RetData hS tp tk kind cx fcl fimg bcl bimg) :
-    BackData tk tp bcl bimg := by
+theorem back (hp : Theory.IsMCS tp.M) (hk : Theory.IsMCS tk.M)
+    (h : RetData hS tp tk kind bkd cx fcl fimg bcl bimg) : BackData tk tp bcl bimg := by
   cases kind with
   | none =>
-      obtain ⟨hs, himgs, htr⟩ := RetInv.transfer hp h.2
-      exact ⟨hs, himgs, htr⟩
+      cases bkd with
+      | none =>
+          obtain ⟨hs, himgs, htr⟩ := RetInv.transfer hp h.2
+          exact ⟨hs, himgs, htr⟩
+      | some eX =>
+          obtain ⟨e, X⟩ := eX
+          obtain ⟨hs, himgs, htr⟩ := RetInvW.transfer hk hp h.2
+          exact ⟨hs, himgs, htr⟩
   | some xX =>
       obtain ⟨x, X⟩ := xX
       obtain ⟨hs, himgs, htr⟩ := RetInvX.transfer hp h.2
@@ -64,20 +198,30 @@ theorem back (hp : Theory.IsMCS tp.M) (h : RetData hS tp tk kind cx fcl fimg bcl
 
 /-- A growing child keeps the invariants. -/
 theorem grow_tgt (hk : Theory.IsMCS tk.M) {tk' : NodeSt σ} (hk' : Theory.IsMCS tk'.M)
-    (h : RetData hS tp tk kind cx fcl fimg bcl bimg) (hg : Grows tk tk') :
-    RetData hS tp tk' kind cx fcl fimg bcl bimg := by
+    (h : RetData hS tp tk kind bkd cx fcl fimg bcl bimg) (hg : Grows tk tk') :
+    RetData hS tp tk' kind bkd cx fcl fimg bcl bimg := by
   cases kind with
-  | none => exact ⟨h.1.grow_tgt hg, h.2.grow_src hk hk' hg⟩
+  | none =>
+      cases bkd with
+      | none => exact ⟨h.1.grow_tgt hg, h.2.grow_src hk hk' hg⟩
+      | some eX =>
+          obtain ⟨e, X⟩ := eX
+          exact ⟨h.1.grow_tgt hg, h.2.grow_src hk hk' hg⟩
   | some xX =>
       obtain ⟨x, X⟩ := xX
       exact ⟨h.1.grow_tgt hg, h.2.grow_src hk hk' hg⟩
 
 /-- A growing parent keeps the invariants. -/
 theorem grow_src (hp : Theory.IsMCS tp.M) {tp' : NodeSt σ} (hp' : Theory.IsMCS tp'.M)
-    (h : RetData hS tp tk kind cx fcl fimg bcl bimg) (hg : Grows tp tp') :
-    RetData hS tp' tk kind cx fcl fimg bcl bimg := by
+    (h : RetData hS tp tk kind bkd cx fcl fimg bcl bimg) (hg : Grows tp tp') :
+    RetData hS tp' tk kind bkd cx fcl fimg bcl bimg := by
   cases kind with
-  | none => exact ⟨h.1.grow_src hp hp' hg, h.2.grow_tgt hg⟩
+  | none =>
+      cases bkd with
+      | none => exact ⟨h.1.grow_src hp hp' hg, h.2.grow_tgt hg⟩
+      | some eX =>
+          obtain ⟨e, X⟩ := eX
+          exact ⟨h.1.grow_src hp hp' hg, h.2.grow_tgt hg⟩
   | some xX =>
       obtain ⟨x, X⟩ := xX
       exact ⟨h.1.grow_src hp hp' hg, h.2.grow_tgt hg⟩
@@ -88,7 +232,8 @@ namespace NetSt
 
 /-- The invariants of the child `k`'s arrows, to and from its parent `p`. -/
 def RetOk (hS : ModalSys.BStrong = true) (N : NetSt σ) (k p : Node) : Prop :=
-  RetData hS (N.st p) (N.st k) (N.kind k) (N.cx k) (N.fcl k) (N.fimg k) (N.bcl k) (N.bimg k)
+  RetData hS (N.st p) (N.st k) (N.kind k) (N.bkind k) (N.cx k) (N.fcl k) (N.fimg k) (N.bcl k)
+    (N.bimg k)
 
 /-- ⭐The invariants of a network under strong B. -/
 structure GoodS (hS : ModalSys.BStrong = true) (N : NetSt σ) : Prop where
@@ -98,7 +243,7 @@ structure GoodS (hS : ModalSys.BStrong = true) (N : NetSt σ) : Prop where
 /-- ⭐Strong B's invariants give weak B's. -/
 theorem GoodS.good {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS hS) : N.Good :=
   ⟨hN.mcs, fun c p hk => (hN.ret c p hk).fwd (hN.mcs p hk.1) (hN.mcs _ hk),
-    fun c p hk => (hN.ret c p hk).back (hN.mcs p hk.1)⟩
+    fun c p hk => (hN.ret c p hk).back (hN.mcs p hk.1) (hN.mcs _ hk)⟩
 
 /-- ⭐Growing one live node conservatively keeps the invariants. -/
 theorem GoodS.setSt {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS hS) {s : Node}
@@ -108,7 +253,7 @@ theorem GoodS.setSt {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS 
   rw [live_setSt] at hk
   have hr := hN.ret c p hk
   unfold RetOk at hr ⊢
-  change RetData hS ((N.setSt s t).st p) ((N.setSt s t).st (c :: p)) _ _ _ _ _ _
+  change RetData hS ((N.setSt s t).st p) ((N.setSt s t).st (c :: p)) _ _ _ _ _ _ _
   by_cases hkp : (c :: p : Node) = s
   · subst hkp
     rw [setSt_ne _ _ (fun h => ne_parent c p h.symm), setSt_self]
@@ -131,12 +276,17 @@ noncomputable def fwdStepS (hS : ModalSys.BStrong = true) (N : NetSt σ) (k p : 
   if h : (N.fcl k).length < (N.st p).l.length ∧ N.fcl k <:+ (N.st p).l ∧
       ImgOk (N.bcl k) (ctxOf (N.st p).l) (N.bimg k) ∧
       ImgOk (N.fcl k) (ctxOf (N.st k).l) (N.fimg k) ∧ N.bcl k <:+ (N.st k).l then
-    match N.kind k with
-    | none => retStep hS (suffix_next h.2.1 h.1) h.2.2.1 h.2.2.2.1 h.2.2.2.2
-    | some (x, X) =>
+    match N.kind k, N.bkind k with
+    | some (x, X), _ =>
         if hX : (ctxOf (N.fcl k)).ref x = some (.VTypeDia X) ∧
             (ctxOf (N.st k).l).ref (.root (.free (N.cx k))) = some X then
           retStepW hS (suffix_next h.2.1 h.1) h.2.2.1 h.2.2.2.1 h.2.2.2.2 hX.1 hX.2
+        else N.st k
+    | none, none => retStep hS (suffix_next h.2.1 h.1) h.2.2.1 h.2.2.2.1 h.2.2.2.2
+    | none, some (e, X) =>
+        if hX : (ctxOf (N.bcl k)).ref e = some (.VTypeDia X) ∧
+            (ctxOf (N.st p).l).ref (.root (.free (N.cx k))) = some X then
+          retStepX hS (suffix_next h.2.1 h.1) h.2.2.1 hX.1 hX.2 h.2.2.2.1 h.2.2.2.2
         else N.st k
   else N.st k
 
@@ -153,7 +303,8 @@ noncomputable def realFS (hS : ModalSys.BStrong = true) (N : NetSt σ) : Node �
 theorem fwdStepS_ok {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS hS) {c : ℕ}
     {p : Node} (hk : N.Live (c :: p)) (hlt : (N.fcl (c :: p)).length < (N.st p).l.length) :
     Theory.IsMCS (N.fwdStepS hS (c :: p) p).M ∧ Grows (N.st (c :: p)) (N.fwdStepS hS (c :: p) p) ∧
-      RetData hS (N.st p) (N.fwdStepS hS (c :: p) p) (N.kind (c :: p)) (N.cx (c :: p))
+      RetData hS (N.st p) (N.fwdStepS hS (c :: p) p) (N.kind (c :: p)) (N.bkind (c :: p))
+        (N.cx (c :: p))
         (nextTy (N.st p).l (N.fcl (c :: p)) :: N.fcl (c :: p))
         (extImg (N.fimg (c :: p)) (N.fcl (c :: p)).length (N.st (c :: p)).l.length)
         (N.bcl (c :: p)) (N.bimg (c :: p)) := by
@@ -163,13 +314,27 @@ theorem fwdStepS_ok {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS 
   unfold RetOk at hr
   unfold fwdStepS
   generalize N.kind (c :: p) = kd at hr ⊢
+  generalize N.bkind (c :: p) = bkd at hr ⊢
   cases kd with
   | none =>
-      obtain ⟨hF, -⟩ := hr
-      obtain ⟨hs, himgs, ht, himgt, -⟩ := id hF
-      rw [dif_pos ⟨hlt, hs, himgt, himgs, ht⟩]
-      obtain ⟨h₁, h₂, h₃⟩ := retStep_ok hS (suffix_next hs hlt) himgt himgs ht hp hkM hF
-      exact ⟨h₁, h₂, h₃, retStep_rev hS (suffix_next hs hlt) himgt himgs ht hp hkM hF⟩
+      cases bkd with
+      | none =>
+          obtain ⟨hF, -⟩ := hr
+          obtain ⟨hs, himgs, ht, himgt, -⟩ := id hF
+          rw [dif_pos ⟨hlt, hs, himgt, himgs, ht⟩]
+          obtain ⟨h₁, h₂, h₃⟩ := retStep_ok hS (suffix_next hs hlt) himgt himgs ht hp hkM hF
+          exact ⟨h₁, h₂, h₃, retStep_rev hS (suffix_next hs hlt) himgt himgs ht hp hkM hF⟩
+      | some eX =>
+          obtain ⟨e, X⟩ := eX
+          obtain ⟨hF, -⟩ := hr
+          obtain ⟨hs, himgs, ht, himgt, hx, hcx, -⟩ := id hF
+          rw [dif_pos ⟨hlt, hs, himgt, himgs, ht⟩]
+          dsimp only
+          rw [dif_pos ⟨hx, hcx⟩]
+          obtain ⟨h₁, h₂, h₃⟩ :=
+            retStepX_ok hS (suffix_next hs hlt) himgt hx hcx himgs ht hp hkM hF
+          exact ⟨h₁, h₂, h₃,
+            retStepX_rev hS (suffix_next hs hlt) himgt hx hcx himgs ht hp hkM hF⟩
   | some xX =>
       obtain ⟨x, X⟩ := xX
       obtain ⟨hW, -⟩ := hr
@@ -216,12 +381,17 @@ noncomputable def backStepS (hS : ModalSys.BStrong = true) (N : NetSt σ) (k p :
   if h : (N.bcl k).length < (N.st k).l.length ∧ N.bcl k <:+ (N.st k).l ∧
       ImgOk (N.fcl k) (ctxOf (N.st k).l) (N.fimg k) ∧
       ImgOk (N.bcl k) (ctxOf (N.st p).l) (N.bimg k) ∧ N.fcl k <:+ (N.st p).l then
-    match N.kind k with
-    | none => retStep hS (suffix_next h.2.1 h.1) h.2.2.1 h.2.2.2.1 h.2.2.2.2
-    | some (x, X) =>
+    match N.kind k, N.bkind k with
+    | some (x, X), _ =>
         if hX : (ctxOf (N.fcl k)).ref x = some (.VTypeDia X) ∧
             (ctxOf (N.st k).l).ref (.root (.free (N.cx k))) = some X then
           retStepX hS (suffix_next h.2.1 h.1) h.2.2.1 hX.1 hX.2 h.2.2.2.1 h.2.2.2.2
+        else N.st p
+    | none, none => retStep hS (suffix_next h.2.1 h.1) h.2.2.1 h.2.2.2.1 h.2.2.2.2
+    | none, some (e, X) =>
+        if hX : (ctxOf (N.bcl k)).ref e = some (.VTypeDia X) ∧
+            (ctxOf (N.st p).l).ref (.root (.free (N.cx k))) = some X then
+          retStepW hS (suffix_next h.2.1 h.1) h.2.2.1 h.2.2.2.1 h.2.2.2.2 hX.1 hX.2
         else N.st p
   else N.st p
 
@@ -239,7 +409,8 @@ theorem backStepS_ok {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS
     {p : Node} (hk : N.Live (c :: p))
     (hlt : (N.bcl (c :: p)).length < (N.st (c :: p)).l.length) :
     Theory.IsMCS (N.backStepS hS (c :: p) p).M ∧ Grows (N.st p) (N.backStepS hS (c :: p) p) ∧
-      RetData hS (N.backStepS hS (c :: p) p) (N.st (c :: p)) (N.kind (c :: p)) (N.cx (c :: p))
+      RetData hS (N.backStepS hS (c :: p) p) (N.st (c :: p)) (N.kind (c :: p))
+        (N.bkind (c :: p)) (N.cx (c :: p))
         (N.fcl (c :: p)) (N.fimg (c :: p))
         (nextTy (N.st (c :: p)).l (N.bcl (c :: p)) :: N.bcl (c :: p))
         (extImg (N.bimg (c :: p)) (N.bcl (c :: p)).length (N.st p).l.length) := by
@@ -249,13 +420,27 @@ theorem backStepS_ok {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS
   unfold RetOk at hr
   unfold backStepS
   generalize N.kind (c :: p) = kd at hr ⊢
+  generalize N.bkind (c :: p) = bkd at hr ⊢
   cases kd with
   | none =>
-      obtain ⟨-, hB⟩ := hr
-      obtain ⟨hs, himgs, ht, himgt, -⟩ := id hB
-      rw [dif_pos ⟨hlt, hs, himgt, himgs, ht⟩]
-      obtain ⟨h₁, h₂, h₃⟩ := retStep_ok hS (suffix_next hs hlt) himgt himgs ht hkM hp hB
-      exact ⟨h₁, h₂, retStep_rev hS (suffix_next hs hlt) himgt himgs ht hkM hp hB, h₃⟩
+      cases bkd with
+      | none =>
+          obtain ⟨-, hB⟩ := hr
+          obtain ⟨hs, himgs, ht, himgt, -⟩ := id hB
+          rw [dif_pos ⟨hlt, hs, himgt, himgs, ht⟩]
+          obtain ⟨h₁, h₂, h₃⟩ := retStep_ok hS (suffix_next hs hlt) himgt himgs ht hkM hp hB
+          exact ⟨h₁, h₂, retStep_rev hS (suffix_next hs hlt) himgt himgs ht hkM hp hB, h₃⟩
+      | some eX =>
+          obtain ⟨e, X⟩ := eX
+          obtain ⟨-, hW⟩ := hr
+          obtain ⟨hs, himgs, ht, himgt, hx, hcx, -⟩ := id hW
+          rw [dif_pos ⟨hlt, hs, himgt, himgs, ht⟩]
+          dsimp only
+          rw [dif_pos ⟨hx, hcx⟩]
+          obtain ⟨h₁, h₂, h₃⟩ :=
+            retStepW_ok hS (suffix_next hs hlt) himgt himgs ht hx hcx hkM hp hW
+          exact ⟨h₁, h₂,
+            retStepW_rev hS (suffix_next hs hlt) himgt himgs ht hx hcx hkM hp hW, h₃⟩
   | some xX =>
       obtain ⟨x, X⟩ := xX
       obtain ⟨-, hX⟩ := hr
@@ -332,7 +517,7 @@ theorem GoodS.henk {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS h
 theorem RetData.birth (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) {tp tk : NodeSt σ}
     {kd : Option (VarSymb × VarType)} {cx : ℕ} (hp : Theory.IsMCS tp.M)
     (hk : Theory.IsMCS tk.M) (hf : FwdData tp tk kd cx tp.l id) :
-    RetData hS tp tk kd cx tp.l id [] id := by
+    RetData hS tp tk kd none cx tp.l id [] id := by
   cases kd with
   | none =>
       obtain ⟨hsuf, himg, htr⟩ := hf
@@ -346,9 +531,9 @@ theorem RetData.birth (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) {t
 /-- A new child whose arrows carry the invariants keeps them. -/
 theorem GoodS.newChild {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS hS) {s : Node}
     (hs : N.Live s) {kd : Option (VarSymb × VarType)} {cx : ℕ} {t : NodeSt σ}
-    {fimg₀ : ℕ → ℕ} {bcl₀ : List VarType} {bimg₀ : ℕ → ℕ} (ht : Theory.IsMCS t.M)
-    (hr : RetData hS (N.st s) t kd cx (N.st s).l fimg₀ bcl₀ bimg₀) :
-    (N.newChild s kd cx t fimg₀ bcl₀ bimg₀).GoodS hS := by
+    {fimg₀ : ℕ → ℕ} {bcl₀ : List VarType} {bimg₀ : ℕ → ℕ} {bkd₀ : Option (VarSymb × VarType)}
+    (ht : Theory.IsMCS t.M) (hr : RetData hS (N.st s) t kd bkd₀ cx (N.st s).l fimg₀ bcl₀ bimg₀) :
+    (N.newChild s kd cx t fimg₀ bcl₀ bimg₀ bkd₀).GoodS hS := by
   have hks : (N.nch s :: s : Node) ≠ s := ne_parent _ s
   have hold : ∀ k, N.Live k → k ≠ N.nch s :: s := fun k hk h => not_live_new s (h ▸ hk)
   refine ⟨fun k hk => ?_, fun c p hk => ?_⟩
@@ -365,7 +550,8 @@ theorem GoodS.newChild {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.Goo
       have := hN.ret c p hk
       unfold RetOk at this ⊢
       change RetData hS (Function.update N.st _ t p) (Function.update N.st _ t (c :: p))
-        (Function.update N.kind _ kd (c :: p)) (Function.update N.cx _ cx (c :: p))
+        (Function.update N.kind _ kd (c :: p)) (Function.update N.bkind _ bkd₀ (c :: p))
+        (Function.update N.cx _ cx (c :: p))
         (Function.update N.fcl _ (N.st s).l (c :: p)) (Function.update N.fimg _ fimg₀ (c :: p))
         (Function.update N.bcl _ bcl₀ (c :: p)) (Function.update N.bimg _ bimg₀ (c :: p))
       simp only [Function.update_of_ne hne, Function.update_of_ne hpne]
@@ -373,7 +559,8 @@ theorem GoodS.newChild {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.Goo
     · obtain ⟨rfl, rfl⟩ := List.cons.inj he
       unfold RetOk
       change RetData hS (Function.update N.st _ t p) (Function.update N.st _ t (N.nch p :: p))
-        (Function.update N.kind _ kd _) (Function.update N.cx _ cx _)
+        (Function.update N.kind _ kd _) (Function.update N.bkind _ bkd₀ _)
+        (Function.update N.cx _ cx _)
         (Function.update N.fcl _ (N.st p).l _) (Function.update N.fimg _ fimg₀ _)
         (Function.update N.bcl _ bcl₀ _) (Function.update N.bimg _ bimg₀ _)
       simp only [Function.update_self, Function.update_of_ne hks.symm]

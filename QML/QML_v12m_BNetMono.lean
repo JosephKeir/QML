@@ -24,13 +24,14 @@ structure Ext (N N' : NetSt σ) : Prop where
   grows : ∀ k, N.Live k → Grows (N.st k) (N'.st k)
   kind : ∀ k, N.Live k → N'.kind k = N.kind k
   cx : ∀ k, N.Live k → N'.cx k = N.cx k
+  bkind : ∀ k, N.Live k → N'.bkind k = N.bkind k
   fcl : ∀ k, N.Live k → N.fcl k <:+ N'.fcl k
   fimg : ∀ k, N.Live k → ∀ r < (N.fcl k).length, N'.fimg k r = N.fimg k r
   bcl : ∀ k, N.Live k → N.bcl k <:+ N'.bcl k
   bimg : ∀ k, N.Live k → ∀ r < (N.bcl k).length, N'.bimg k r = N.bimg k r
 
 theorem Ext.refl (N : NetSt σ) : Ext N N :=
-  ⟨fun _ h => h, fun _ _ => Grows.refl _, fun _ _ => rfl, fun _ _ => rfl,
+  ⟨fun _ h => h, fun _ _ => Grows.refl _, fun _ _ => rfl, fun _ _ => rfl, fun _ _ => rfl,
     fun _ _ => List.suffix_refl _, fun _ _ _ _ => rfl, fun _ _ => List.suffix_refl _,
     fun _ _ _ _ => rfl⟩
 
@@ -39,6 +40,7 @@ theorem Ext.trans {N N' N'' : NetSt σ} (h₁ : Ext N N') (h₂ : Ext N' N'') : 
   grows k hk := (h₁.grows k hk).trans (h₂.grows k (h₁.live k hk))
   kind k hk := (h₂.kind k (h₁.live k hk)).trans (h₁.kind k hk)
   cx k hk := (h₂.cx k (h₁.live k hk)).trans (h₁.cx k hk)
+  bkind k hk := (h₂.bkind k (h₁.live k hk)).trans (h₁.bkind k hk)
   fcl k hk := (h₁.fcl k hk).trans (h₂.fcl k (h₁.live k hk))
   fimg k hk r hr := (h₂.fimg k (h₁.live k hk) r
     (lt_of_lt_of_le hr (h₁.fcl k hk).length_le)).trans (h₁.fimg k hk r hr)
@@ -58,6 +60,7 @@ theorem Ext.setSt {N : NetSt σ} {s : Node} {t : NodeSt σ} (hg : Grows (N.st s)
       exact Grows.refl _
   kind _ _ := rfl
   cx _ _ := rfl
+  bkind _ _ := rfl
   fcl _ _ := List.suffix_refl _
   fimg _ _ _ _ := rfl
   bcl _ _ := List.suffix_refl _
@@ -73,6 +76,7 @@ theorem Ext.setFwd {N : NetSt σ} {k : Node} {A : VarType} (z : ℕ) :
   grows _ _ := Grows.refl _
   kind _ _ := rfl
   cx _ _ := rfl
+  bkind _ _ := rfl
   fcl k' _ := by
     by_cases h : k' = k
     · subst h
@@ -98,6 +102,7 @@ theorem Ext.setBack {N : NetSt σ} {k : Node} {A : VarType} (z : ℕ) :
   grows _ _ := Grows.refl _
   kind _ _ := rfl
   cx _ _ := rfl
+  bkind _ _ := rfl
   fcl _ _ := List.suffix_refl _
   fimg _ _ _ _ := rfl
   bcl k' _ := by
@@ -119,14 +124,16 @@ theorem Ext.setBack {N : NetSt σ} {k : Node} {A : VarType} (z : ℕ) :
 
 theorem Ext.newChild {N : NetSt σ} {s : Node} (hs : N.Live s) (kd : Option (VarSymb × VarType))
     (cx : ℕ) (t : NodeSt σ) (fimg₀ : ℕ → ℕ := id) (bcl₀ : List VarType := [])
-    (bimg₀ : ℕ → ℕ := id) : Ext N (N.newChild s kd cx t fimg₀ bcl₀ bimg₀) := by
+    (bimg₀ : ℕ → ℕ := id) (bkd₀ : Option (VarSymb × VarType) := none) :
+    Ext N (N.newChild s kd cx t fimg₀ bcl₀ bimg₀ bkd₀) := by
   have hold : ∀ k, N.Live k → k ≠ N.nch s :: s := fun k hk h => not_live_new s (h ▸ hk)
   refine ⟨fun k hk => (live_newChild hs kd cx t k).mpr (Or.inl hk), fun k hk => ?_,
-    fun k hk => ?_, fun k hk => ?_, fun k hk => ?_, fun k hk r _ => ?_, fun k hk => ?_,
-    fun k hk r _ => ?_⟩
+    fun k hk => ?_, fun k hk => ?_, fun k hk => ?_, fun k hk => ?_, fun k hk r _ => ?_,
+    fun k hk => ?_, fun k hk r _ => ?_⟩
   · change Grows (N.st k) (Function.update N.st _ t k)
     rw [Function.update_of_ne (hold k hk)]
     exact Grows.refl _
+  · exact Function.update_of_ne (hold k hk) _ _
   · exact Function.update_of_ne (hold k hk) _ _
   · exact Function.update_of_ne (hold k hk) _ _
   · change N.fcl k <:+ Function.update N.fcl _ _ k
