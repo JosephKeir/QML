@@ -302,6 +302,17 @@ def Backs : (L : BLeg) → {A : VarType} → {w : M.frame.W} → M.frame.Dom (L.
           M.Ind (M.necEval ((M.posEval (c : M.frame.Pos (.VTypeBox A) w)).2 a) ⟨w, ⟨r⟩⟩) o
 
 
+/-- ⭐An object of shape `S` at the far end `v` **comes back** along the way home `r` as `o`
+    (strong B, docs §11.17): a necessary part as its reading along `r`, a possible part as its
+    content along `r` (which must lie in its extent), pairs componentwise — up to `Ind`. -/
+def ComesBack : (S : RShape) → {v w : M.frame.W} → M.frame.Dom S.ty v → M.frame.R v w →
+    M.frame.Dom S.flat w → Prop
+  | .box A, v, w, e, r, o => M.Ind (M.necEval (e : M.frame.Nec A v) ⟨w, ⟨r⟩⟩) o
+  | .dia X, v, w, e, r, o =>
+      ∃ h : (⟨w, ⟨r⟩⟩ : M.frame.Acc v) ∈ (M.posEval (e : M.frame.Pos X v)).1,
+        M.Ind ((M.posEval (e : M.frame.Pos X v)).2 ⟨_, h⟩) o
+  | .prod R S, _, _, e, r, o => ComesBack R e.1 r o.1 ∧ ComesBack S e.2 r o.2
+
 /-- ⭐Satisfaction. -/
 def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ Γ d → Prop
   | _, _, _, env, .atom ρ => relSat env ρ Fin.elim0
@@ -319,16 +330,15 @@ def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ
         sat (env.diaPush x h w') φ
   | _, _, _, env, .here hT s t => Realised hT (interp env s) (interp env t)
   | _, _, _, env, .back _ L s t => Backs L (interp env s) (interp env t)
-  | _, d, w, env, @WFF.ret _ _ _ _ _ A _ t Φ =>
-      ∃ (a : M.frame.Acc w) (e : M.frame.Dom (.VTypeBox A) a.1),
+  | _, d, w, env, @WFF.retS _ _ _ _ _ S _ t Φ =>
+      ∃ (a : M.frame.Acc w) (e : M.frame.Dom S.ty a.1),
         sat ((env.boxPush a).extend (.bnd d) e) Φ ∧
-          ∃ r : M.frame.R a.1 w, M.Ind (M.necEval (e : M.frame.Nec A a.1) ⟨w, ⟨r⟩⟩) (interp env t)
-  | Γ, d, w, env, @WFF.retx _ _ _ _ _ y _ A _ t Φ =>
+          ∃ r : M.frame.R a.1 w, ComesBack S e r (interp env t)
+  | Γ, d, w, env, @WFF.retxS _ _ _ _ _ y _ S _ t Φ =>
       ∃ (Y : VarType) (h : Γ.ref y = some (.VTypeDia Y)) (a : (M.posEval (env.ref y h)).1)
-        (e : M.frame.Dom (.VTypeBox A) a.1.1),
+        (e : M.frame.Dom S.ty a.1.1),
         sat ((env.diaPush y h a).extend (.bnd d) e) Φ ∧
-          ∃ r : M.frame.R a.1.1 w,
-            M.Ind (M.necEval (e : M.frame.Nec A a.1.1) ⟨w, ⟨r⟩⟩) (interp env t)
+          ∃ r : M.frame.R a.1.1 w, ComesBack S e r (interp env t)
 
 end Model
 

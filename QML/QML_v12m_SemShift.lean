@@ -454,12 +454,12 @@ theorem sat_shift : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ
       change Model.Backs L (interp _ (Term.shift _ s)) (interp _ (Term.shift _ t)) ↔ _
       rw [interp_shift hag s, interp_shift hag t]
       exact Iff.rfl
-  | _, _, _, _, _, _, _, _, hs, hag, .ret hB t Φ =>
+  | _, _, _, _, _, _, _, _, hs, hag, .retS hB S t Φ =>
       exists_congr fun a => exists_congr fun e =>
         and_congr (sat_shift (hs.boxIn.insert _)
             ((hag.boxPush a).extend (hs.boxIn.rootFresh le_rfl) e) Φ)
           (by rw [interp_shift hag t])
-  | k, _, _, h, _, _, env₁, env₂, hs, hag, .retx hB y hy t Φ => by
+  | k, _, _, h, _, _, env₁, env₂, hs, hag, .retxS hB y hy S t Φ => by
       constructor
       · rintro ⟨Y, h₂, a, e, hsat, hr⟩
         obtain ⟨Y₀, hy₀⟩ := hy

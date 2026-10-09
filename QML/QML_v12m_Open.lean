@@ -92,24 +92,24 @@ theorem WFF.subst_ren {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ :
   | _, _, _, _, hle, θ, hθ, hc, _, _, hid, .back hB L s t =>
       WFF.back_congr hB L (Term.subst_ren hle θ hθ hc hid s)
         (Term.subst_ren hle θ hθ hc hid t)
-  | _, _, _, _, hle, θ, hθ, hc, hΓ, hΔ, hid, .ret hB t Φ =>
-      WFF.ret_congr hB (Term.subst_ren hle θ hθ hc hid t)
+  | _, _, _, _, hle, θ, hθ, hc, hΓ, hΔ, hid, .retS hB S t Φ =>
+      WFF.retS_congr hB S (Term.subst_ren hle θ hθ hc hid t)
         (WFF.subst_ren (hle.boxIn.insert _ _) _ _ _ _ _
           (Subst.ren_under (Subst.ren_box hid) _ hΔ.boxIn.root) Φ)
-  | ι, Γ, Δ, d, hle, θ, hθ, hc, hΓ, hΔ, hid, .retx (A := A) hB y hy t Φ => by
+  | ι, Γ, Δ, d, hle, θ, hθ, hc, hΓ, hΔ, hid, .retxS hB y hy S t Φ => by
       have key : ∀ (z : VarSymb) (_hz : y = z) (P : ∃ Y, Δ.ref z = some (.VTypeDia Y))
           (hΔz : (Δ.diaIn z).SlotsFrom d)
-          (p : Subst.Ok ((Γ.diaIn y).insert (.bnd d) (.VTypeBox A))
+          (p : Subst.Ok ((Γ.diaIn y).insert (.bnd d) S.ty)
             ((θ.dia y z).under d d _ hΔz.root))
-          (q : Subst.Coh (VarSymb.shiftSlot ι d d) ((Γ.diaIn y).insert (.bnd d) (.VTypeBox A))
+          (q : Subst.Coh (VarSymb.shiftSlot ι d d) ((Γ.diaIn y).insert (.bnd d) S.ty)
             ((θ.dia y z).under d d _ hΔz.root)),
-          WFF.retx hB z P (Term.subst ι θ hθ hc t)
+          WFF.retxS hB z P S (Term.subst ι θ hθ hc t)
               (WFF.subst (VarSymb.shiftSlot ι d d) ((θ.dia y z).under d d _ hΔz.root) p q
                 ((hΓ.diaIn y).insert _) (hΔz.insert _) Φ) =
-            WFF.mono hle (WFF.retx hB y hy t Φ) := by
+            WFF.mono hle (WFF.retxS hB y hy S t Φ) := by
         intro z hz P hΔz p q
         subst hz
-        exact WFF.retx_congr hB y _ (Term.subst_ren hle θ hθ hc hid t)
+        exact WFF.retxS_congr hB y _ S (Term.subst_ren hle θ hθ hc hid t)
           (WFF.subst_ren ((hle.diaIn y).insert _ _) _ p q _ _
             (Subst.ren_under (Subst.ren_dia hid y) _ hΔz.root) Φ)
       exact key (ι y) (Subst.idx_ren hc hid hy).symm _ (hΔ.diaIn _) _ _

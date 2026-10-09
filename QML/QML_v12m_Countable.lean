@@ -16,6 +16,7 @@ deriving instance Countable for VarType
 deriving instance Countable for Root
 deriving instance Countable for Step
 deriving instance Countable for VarSymb
+deriving instance Countable for RShape
 
 /-- Codes: binary trees with natural-number tags. -/
 inductive Code where
@@ -150,10 +151,10 @@ noncomputable def WFF.code : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → Code
   | _, _, @WFF.back _ _ _ _ _ L A b a s t =>
       .node 22 (.node L.toNat (.leaf (natCode A)) (.node 0 (Ann.code b) (Ann.code a)))
         (.node 0 (Term.code s) (Term.code t))
-  | _, _, @WFF.ret _ _ _ _ _ A a t Φ =>
-      .node 23 (.node 0 (.leaf (natCode A)) (Ann.code a)) (.node 0 (Term.code t) (WFF.code Φ))
-  | _, _, @WFF.retx _ _ _ _ _ y _ A a t Φ =>
-      .node 24 (.node 0 (.leaf (natCode A)) (.node 0 (.leaf (natCode y)) (Ann.code a)))
+  | _, _, @WFF.retS _ _ _ _ _ S a t Φ =>
+      .node 23 (.node 0 (.leaf (natCode S)) (Ann.code a)) (.node 0 (Term.code t) (WFF.code Φ))
+  | _, _, @WFF.retxS _ _ _ _ _ y _ S a t Φ =>
+      .node 24 (.node 0 (.leaf (natCode S)) (.node 0 (.leaf (natCode y)) (Ann.code a)))
         (.node 0 (Term.code t) (WFF.code Φ))
 
 theorem Rel.code_inj : {Γ : Ctx} → {n : ℕ} → (ρ ρ' : Rel σ Γ n) → ρ.code = ρ'.code → ρ = ρ'
@@ -250,7 +251,7 @@ theorem WFF.code_inj {Γ : Ctx} {d : ℕ} (φ ψ : WFF σ Γ d) (h : φ.code = �
       cases Ann.code_injective hb
       cases Ann.code_injective ha
       rw [Term.code_inj s _ hs, Term.code_inj t _ ht]
-  | ret hB t Φ ih =>
+  | retS hB S t Φ ih =>
       intro ψ h
       cases ψ <;> simp only [WFF.code, Code.node.injEq, Code.leaf.injEq, Nat.reduceEqDiff,
         false_and, true_and] at h
@@ -258,7 +259,7 @@ theorem WFF.code_inj {Γ : Ctx} {d : ℕ} (φ ψ : WFF σ Γ d) (h : φ.code = �
       cases natCode_injective hA'
       cases Ann.code_injective ha
       rw [Term.code_inj t _ ht, ih _ hΦ]
-  | retx hB y hy t Φ ih =>
+  | retxS hB y hy S t Φ ih =>
       intro ψ h
       cases ψ <;> simp only [WFF.code, Code.node.injEq, Code.leaf.injEq, Nat.reduceEqDiff,
         false_and, true_and] at h

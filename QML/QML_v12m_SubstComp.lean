@@ -340,16 +340,16 @@ theorem WFF.subst_mono {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Γ'
       WFF.here_congr' hT (Term.subst_mono h θ hθ hc s) (Term.subst_mono h θ hθ hc t)
   | _, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .back hB L s t =>
       WFF.back_congr' hB L (Term.subst_mono h θ hθ hc s) (Term.subst_mono h θ hθ hc t)
-  | _, _, _, _, d, d', h, θ, hθ, hc, hΓ, hΓ', hΔ, .ret hB t Φ =>
-      WFF.ret_congr' hB (Term.subst_mono h θ hθ hc t)
+  | _, _, _, _, d, d', h, θ, hθ, hc, hΓ, hΓ', hΔ, .retS hB S t Φ =>
+      WFF.retS_congr' hB S (Term.subst_mono h θ hθ hc t)
         (WFF.subst_mono (h.boxIn.insert _ _) (θ.box.under d d' _ hΔ.boxIn.root)
           (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
           (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ'.boxIn _ hΔ.boxIn.root)
           (hΓ.boxIn.insert _) (hΓ'.boxIn.insert _) (hΔ.boxIn.insert _) Φ)
-  | ι, _, Γ', _, d, d', h, θ, hθ, hc, hΓ, hΓ', hΔ, .retx hB y hy t Φ =>
+  | ι, _, Γ', _, d, d', h, θ, hθ, hc, hΓ, hΓ', hΔ, .retxS hB y hy S t Φ =>
       have hy' : ∃ Y, Γ'.ref y = some (.VTypeDia Y) := hy.imp fun _ hY => h.ref hY
       have hw : (θ.at y).idxAlong [] = ι y := hy'.elim fun _ hY => hc y _ hY []
-      WFF.retx_congr' hB _ _ (Term.subst_mono h θ hθ hc t)
+      WFF.retxS_congr' hB _ _ S (Term.subst_mono h θ hθ hc t)
         (WFF.subst_mono ((h.diaIn y).insert _ _)
           ((θ.dia y (ι y)).under d d' _ (hΔ.diaIn (ι y)).root)
           (Subst.ok_under (Subst.ok_dia hθ hy' hw) _ (hΔ.diaIn (ι y)).root)

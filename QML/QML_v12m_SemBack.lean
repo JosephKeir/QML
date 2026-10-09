@@ -853,7 +853,8 @@ theorem sat_ret_unit (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {C A : VarTy
           (Ctx.ref_insert_root _ (.bnd 1) _) = interp env (Term.boxtm sb) from
         Env.extend_root _ _ _ _]
     exact (holeSat_ind hM θ (hM.pair hr (M.Ind_refl _))).mpr hθ
-  · rw [interp_mono
+  · dsimp only [ComesBack]
+    rw [interp_mono
         (Env.agree_extend (env.boxPush (O.acc env i)) (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root e) sb,
       box_beta]
     exact M.Ind_refl _
@@ -913,6 +914,7 @@ theorem sat_ret_here (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A 
       WFF σ Γ 0) := by
   refine ⟨M.frame.reflAcc hT w, interp env (Term.boxtm sb), (sat_hereRead hT hnp env _ Φ).mp h,
     M.frame.refl hT w, ?_⟩
+  dsimp only [ComesBack]
   rw [box_beta, interp_collapse (Env.collapseAgree_self hT env)]
   exact M.Ind_refl _
 
@@ -926,6 +928,7 @@ theorem sat_ret_bridge (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarTy
   obtain ⟨r, hr⟩ := ((OutLeg.sat_back hS env O bd t).mp hb).2 i
   refine ⟨O.acc env i, interp (O.push env i) (Term.boxtm bd),
     (OutLeg.sat_bodyRead env O i _ Φ).mp hi, r, ?_⟩
+  dsimp only [ComesBack]
   rw [box_beta]
   exact hr
 

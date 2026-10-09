@@ -135,7 +135,7 @@ theorem sat_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (�
         (interp env (Term.subst _ θ hθ hc t)) ↔ _
       rw [interp_subst θ hθ hc hnp env s, interp_subst θ hθ hc hnp env t]
       exact Iff.rfl
-  | _, Γ, _, d, d', θ, hθ, hc, hΓ, hΔ, hnp, _, env, .ret hB t Φ =>
+  | _, Γ, _, d, d', θ, hθ, hc, hΓ, hΔ, hnp, _, env, .retS hB S t Φ =>
       exists_congr fun a => exists_congr fun e =>
         and_congr
           ((sat_subst (θ.box.under d d' _ hΔ.boxIn.root)
@@ -148,7 +148,7 @@ theorem sat_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (�
                   _ hΔ.boxIn.root e).trans
                 (congrArg (fun en => Env.extend en (.bnd d) e) (substEnv_box θ hθ hnp env a))))))
           (by rw [interp_subst θ hθ hc hnp env t])
-  | ι, Γ, _, d, d', θ, hθ, hc, hΓ, hΔ, hnp, _, env, .retx hB y hy t Φ => by
+  | ι, Γ, _, d, d', θ, hθ, hc, hΓ, hΔ, hnp, _, env, .retxS hB y hy S t Φ => by
       have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
       have hr₀ := (hΔ.diaIn (ι y)).root
       constructor

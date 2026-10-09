@@ -33,6 +33,29 @@ def BLeg.carrier : BLeg → VarType → VarType
   | .nec, A => .VTypeBox (.VTypeBox A)
   | .pos, A => .VTypeDia (.VTypeBox A)
 
+/-- ⭐A **returnable shape** (strong B, docs §11.17): what a returning possibility binds out there
+    and gets back.  A necessary part `□A` comes back as a value of `A` (its reading along the way
+    home); a possible part `◇X` comes back as a content of `X` (the way home lies in its extent);
+    pairs componentwise.  The possible parts are the witness's share of the round trip, as `K_dia`
+    carries the witness where `K_box` carries only necessary objects. -/
+inductive RShape where
+  | box (A : VarType)
+  | dia (X : VarType)
+  | prod (R S : RShape)
+deriving DecidableEq
+
+/-- The type of the object bound out there. -/
+def RShape.ty : RShape → VarType
+  | .box A => .VTypeBox A
+  | .dia X => .VTypeDia X
+  | .prod R S => .VTypeProd R.ty S.ty
+
+/-- The type of the value it comes back as. -/
+def RShape.flat : RShape → VarType
+  | .box A => A
+  | .dia X => X
+  | .prod R S => .VTypeProd R.flat S.flat
+
 inductive WFF (σ : Signature) : Ctx → ℕ → Type where
   | atom {Γ : Ctx} {d : ℕ} : Rel σ Γ 0 → WFF σ Γ d
   | eq {Γ : Ctx} {d : ℕ} : Term σ Γ .Var .var → Term σ Γ .Var .var → WFF σ Γ d
@@ -77,21 +100,68 @@ inductive WFF (σ : Signature) : Ctx → ℕ → Type where
   | back {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true) (L : BLeg) {A : VarType}
       {b : Ann (L.carrier A)} {a : Ann A}
       (s : Term σ Γ (L.carrier A) b) (t : Term σ Γ A a) : WFF σ Γ d
-  /-- `◇[e ↦ t] Φ(e)` (strong B), the **returning possibility**: possibly some necessary object
-      `e : □A` is such that `Φ(e)`, and its content comes back here as `t`
-      (`docs/v12-modal-extensions.md` §11.14).  The body is `□∃e:□A. Φ(e)`'s, so every recursion
-      treats it as its `box` case followed by its `ex` case.  -/
-  | ret {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true) {A : VarType}
-      {a : Ann A} (t : Term σ Γ A a)
-      (Φ : WFF σ (Γ.boxIn.insert (.bnd d) (.VTypeBox A)) (d + 1)) : WFF σ Γ d
+  /-- `◇[e ↦ t] Φ(e)` (strong B), the **returning possibility**: possibly some object `e` of a
+      returnable shape `S` is such that `Φ(e)`, and it comes back here as `t`
+      (`docs/v12-modal-extensions.md` §11.14, §11.17).  The body is `□∃e:S.ty. Φ(e)`'s, so every
+      recursion treats it as its `box` case followed by its `ex` case.  -/
+  | retS {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true) (S : RShape)
+      {a : Ann S.flat} (t : Term σ Γ S.flat a)
+      (Φ : WFF σ (Γ.boxIn.insert (.bnd d) S.ty) (d + 1)) : WFF σ Γ d
   /-- `◇_y[e ↦ t] Φ(e)` (strong B), the **returning possibility along a witness**: some arrow of
-      `y`'s extent reaches a necessary object `e : □A` with `Φ(e)` (read in `y`'s view, so `Φ` may
-      speak of `y.dia`), and `e`'s content comes back here along that arrow's way home as `t`
-      (`docs/v12-modal-extensions.md` §11.17).  `ret` is the same along every arrow. -/
-  | retx {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true) (y : VarSymb)
-      (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
-      (Φ : WFF σ ((Γ.diaIn y).insert (.bnd d) (.VTypeBox A)) (d + 1)) : WFF σ Γ d
+      `y`'s extent reaches an object `e` of shape `S` with `Φ(e)` (read in `y`'s view, so `Φ` may
+      speak of `y.dia`), and `e` comes back here along that arrow's way home as `t`
+      (`docs/v12-modal-extensions.md` §11.17).  `retS` is the same along every arrow. -/
+  | retxS {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true) (y : VarSymb)
+      (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) (S : RShape) {a : Ann S.flat}
+      (t : Term σ Γ S.flat a) (Φ : WFF σ ((Γ.diaIn y).insert (.bnd d) S.ty) (d + 1)) : WFF σ Γ d
 deriving DecidableEq
+
+/-- The returning possibility of a necessary object. -/
+abbrev WFF.ret {σ : Signature} {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true) {A : VarType}
+    {a : Ann A} (t : Term σ Γ A a) (Φ : WFF σ (Γ.boxIn.insert (.bnd d) (.VTypeBox A)) (d + 1)) :
+    WFF σ Γ d :=
+  .retS hB (.box A) t Φ
+
+/-- The returning possibility of a necessary object along a witness. -/
+abbrev WFF.retx {σ : Signature} {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true) (y : VarSymb)
+    (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
+    (Φ : WFF σ ((Γ.diaIn y).insert (.bnd d) (.VTypeBox A)) (d + 1)) : WFF σ Γ d :=
+  .retxS hB y hy (.box A) t Φ
+
+/-- Two returning possibilities of one shape agree when their values and bodies do. -/
+theorem WFF.retS_congr {σ : Signature} {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true)
+    (S : RShape) {a a' : Ann S.flat} {t : Term σ Γ S.flat a} {t' : Term σ Γ S.flat a'}
+    {Φ Φ' : WFF σ (Γ.boxIn.insert (.bnd d) S.ty) (d + 1)}
+    (ht : (⟨a, t⟩ : Σ a, Term σ Γ S.flat a) = ⟨a', t'⟩) (hΦ : Φ = Φ') :
+    (WFF.retS hB S t Φ : WFF σ Γ d) = WFF.retS hB S t' Φ' := by
+  cases ht
+  cases hΦ
+  rfl
+
+theorem WFF.retS_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true)
+    (S : RShape) {a : Ann S.flat} {t t' : Term σ Γ S.flat a}
+    {Φ Φ' : WFF σ (Γ.boxIn.insert (.bnd d) S.ty) (d + 1)} (ht : t = t') (hΦ : Φ = Φ') :
+    (WFF.retS hB S t Φ : WFF σ Γ d) = WFF.retS hB S t' Φ' := by
+  rw [ht, hΦ]
+
+/-- Two returning possibilities of one shape along a witness agree when their values and bodies
+    do. -/
+theorem WFF.retxS_congr {σ : Signature} {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true)
+    (y : VarSymb) (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) (S : RShape) {a a' : Ann S.flat}
+    {t : Term σ Γ S.flat a} {t' : Term σ Γ S.flat a'}
+    {Φ Φ' : WFF σ ((Γ.diaIn y).insert (.bnd d) S.ty) (d + 1)}
+    (ht : (⟨a, t⟩ : Σ a, Term σ Γ S.flat a) = ⟨a', t'⟩) (hΦ : Φ = Φ') :
+    (WFF.retxS hB y hy S t Φ : WFF σ Γ d) = WFF.retxS hB y hy S t' Φ' := by
+  cases ht
+  cases hΦ
+  rfl
+
+theorem WFF.retxS_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true)
+    (y : VarSymb) (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) (S : RShape) {a : Ann S.flat}
+    {t t' : Term σ Γ S.flat a} {Φ Φ' : WFF σ ((Γ.diaIn y).insert (.bnd d) S.ty) (d + 1)}
+    (ht : t = t') (hΦ : Φ = Φ') :
+    (WFF.retxS hB y hy S t Φ : WFF σ Γ d) = WFF.retxS hB y hy S t' Φ' := by
+  rw [ht, hΦ]
 /-- Two `Here` formulas agree when their subjects do. -/
 theorem WFF.here_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true)
     {A : VarType} {b : Ann (.VTypeDia A)} {a : Ann A}
@@ -231,9 +301,10 @@ def WFF.mono {σ : Signature} : {Γ Γ' : Ctx} → {d : ℕ} → Γ.Le Γ' → W
   | _, _, _, h, .dia x hx φ => .dia x (hx.imp fun _ hX => h.ref hX) (WFF.mono (h.diaIn x) φ)
   | _, _, _, h, .here hT s t => .here hT (Term.mono h s) (Term.mono h t)
   | _, _, _, h, .back hB L s t => .back hB L (Term.mono h s) (Term.mono h t)
-  | _, _, _, h, .ret hB t Φ => .ret hB (Term.mono h t) (WFF.mono (h.boxIn.insert _ _) Φ)
-  | _, _, _, h, .retx hB y hy t Φ =>
-      .retx hB y (hy.imp fun _ hY => h.ref hY) (Term.mono h t) (WFF.mono ((h.diaIn y).insert _ _) Φ)
+  | _, _, _, h, .retS hB S t Φ => .retS hB S (Term.mono h t) (WFF.mono (h.boxIn.insert _ _) Φ)
+  | _, _, _, h, .retxS hB y hy S t Φ =>
+      .retxS hB y (hy.imp fun _ hY => h.ref hY) S (Term.mono h t)
+        (WFF.mono ((h.diaIn y).insert _ _) Φ)
 
 /-- Weakening by a fresh root. -/
 def WFF.weaken {σ : Signature} {Γ : Ctx} {d : ℕ} {r : Root} (hr : Γ (.root r) = none)

@@ -218,11 +218,11 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
       change Model.Backs L (interp _ (Term.mono _ s)) (interp _ (Term.mono _ t)) ↔ _
       rw [interp_mono hag s, interp_mono hag t]
       exact Iff.rfl
-  | _, _, _, d, _, _, _, hag, .ret hB t Φ =>
+  | _, _, _, d, _, _, _, hag, .retS hB S t Φ =>
       exists_congr fun a => exists_congr fun e =>
         and_congr (sat_mono (Env.extend_agree (Env.boxPush_agree hag a) (.bnd d) e) Φ)
           (by rw [interp_mono hag t])
-  | _, _, h, d, _, env, env', hag, .retx hB y hy t Φ => by
+  | _, _, h, d, _, env, env', hag, .retxS hB y hy S t Φ => by
       constructor
       · rintro ⟨Y, h', a, e, hsat, hr⟩
         obtain ⟨Y₀, hy₀⟩ := hy

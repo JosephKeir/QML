@@ -353,11 +353,11 @@ def WFF.collapse {σ : Signature} : {k : ℕ} → {Γ₁ Γ₂ : Ctx} → {d : �
       .dia (x.collapse k) (hx.imp fun _ hX => h x _ hX) (WFF.collapse (h.diaIn x) (hs.diaIn x) φ)
   | _, _, _, _, h, _, .here hT s t => .here hT (Term.collapse h s) (Term.collapse h t)
   | _, _, _, _, h, _, .back hB L s t => .back hB L (Term.collapse h s) (Term.collapse h t)
-  | _, _, _, _, h, hs, .ret hB t Φ =>
-      .ret hB (Term.collapse h t)
+  | _, _, _, _, h, hs, .retS hB S t Φ =>
+      .retS hB S (Term.collapse h t)
         (WFF.collapse (h.boxIn.insert (hs.boxIn.rootFresh le_rfl) _) (hs.boxIn.insert _) Φ)
-  | k, _, _, _, h, hs, .retx hB y hy t Φ =>
-      .retx hB (y.collapse k) (hy.imp fun _ hY => h y _ hY) (Term.collapse h t)
+  | k, _, _, _, h, hs, .retxS hB y hy S t Φ =>
+      .retxS hB (y.collapse k) (hy.imp fun _ hY => h y _ hY) S (Term.collapse h t)
         (WFF.collapse ((h.diaIn y).insert ((hs.diaIn y).rootFresh le_rfl) _)
           ((hs.diaIn y).insert _) Φ)
 
