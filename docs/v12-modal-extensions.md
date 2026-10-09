@@ -5821,9 +5821,21 @@ with soundness (`sat_ret_unitW`, `sat_ret_unitD`, `sat_ret_counitD`) and `Proof.
     hole-term evaluation (`Term.holeAt_holeAt_sig`, `holeAt_pair_fst/snd`, `holeAt_pack`,
     `holeAt_eta_slot`); `repackW_obj`/`repackW_val`.
   * `RetInvX.transferX` (already built) gives the forward `□_x` transfer, so `RetInvW` need not.
-* *Still to build:* cross-arrow preservation both ways (`realF` keeps `RetInvX` via `ret_unitD`;
-  `realB` along `x` keeps `RetInvW` via `ret_unitW`), `realB` along `x` itself (`RetInvX`'s Henkin
-  step, `ret_ext` along `x`), growth for both, and wiring `RetInv`/`RetInvW`/`RetInvX` into `Good`.
+* *Built next (same file):*
+  * `retStepW_rev`: `realF` along a witness arrow keeps `RetInvX` (cross-arrow, `ret_unitD`).  It
+    packs a body over `x`'s view (`packXS`, `pack2X`, readings `holeAt_tupT_pack2X` at the parent
+    and `holeRead_tupImgT_pack2X` at the child), reads the unit along the possible part at the
+    parent as `◇_x[…]` (`liftBodyW_unitBodyD`), and closes with `Proof.retS_absurd`.
+  * `retStepX_ok`: `realB` along `x` (`RetInvX`'s Henkin step, `ret_ext` along `x`), with
+    `retExtO_consistent` (any leg), `liftBodyX_ex_pairUp_mem` and `Proof.boxx_all_and_left/right`.
+  * `retStepX_rev`: `realB` along `x` keeps `RetInvW` (cross-arrow, `ret_unitW`, through
+    `liftBodyX_unitBodyW`).
+  * Growth: `RetInvW.grow_src/grow_tgt`, `RetInvX.grow_src/grow_tgt`.
+
+  So every arrow-level fact for witness children is in: birth, both realisation steps, both
+  cross-arrow preservations, growth, and `□_x` transfer.
+* *Still to build:* wiring `RetInv` (plain children) and `RetInvW`/`RetInvX` (witness children)
+  into `Good` and the network operations (L4c–d), then L4e–f.
 
 **Witness arrows, first part (2026-10-10)** (`QML_v12m_BRetX`).
 * `liftBodyX`, `RetInvX`: the reverse invariant along `x`.
