@@ -118,23 +118,24 @@ def Term.holeAt {σ : Signature} {Γ : Ctx} {A : VarType} {a : Ann A} (t : Term 
 
 /-! ## Maps between returnable shapes -/
 
-/-- ⭐A **structural map between returnable shapes** (docs §11.17): identity, composition,
-    projections and pairing, packing two necessary objects into one, and a hole term acting on a
-    necessary object's item.  Each acts on the object out there (`obj`) and on the value it comes
-    back as (`val`), compatibly, so a returning possibility can be moved along it (`ret_map`):
-    this is β for every shape, and repacking. -/
-inductive ShapeMap (σ : Signature) : RShape → RShape → Type where
-  | id (S : RShape) : ShapeMap σ S S
-  | comp {S T U : RShape} : ShapeMap σ S T → ShapeMap σ T U → ShapeMap σ S U
-  | fst (S T : RShape) : ShapeMap σ (.prod S T) S
-  | snd (S T : RShape) : ShapeMap σ (.prod S T) T
-  | pair {S T U : RShape} : ShapeMap σ S T → ShapeMap σ S U → ShapeMap σ S (.prod T U)
+/-- ⭐A **structural map between shapes of necessary objects** (docs §11.17): identity,
+    composition, projections and pairing, packing two necessary objects into one, and a hole term
+    acting on a necessary object's item.  Each acts on the objects out there (`obj`) and on the
+    values they come back as (`val`), compatibly, so a returning possibility can be moved along it
+    (`ret_map`), its witness, if any, carried unchanged: this is β for every shape, and
+    repacking. -/
+inductive ShapeMap (σ : Signature) : NShape → NShape → Type where
+  | id (S : NShape) : ShapeMap σ S S
+  | comp {S T U : NShape} : ShapeMap σ S T → ShapeMap σ T U → ShapeMap σ S U
+  | fst (S T : NShape) : ShapeMap σ (.prod S T) S
+  | snd (S T : NShape) : ShapeMap σ (.prod S T) T
+  | pair {S T U : NShape} : ShapeMap σ S T → ShapeMap σ S U → ShapeMap σ S (.prod T U)
   | pack (A B : VarType) : ShapeMap σ (.prod (.box A) (.box B)) (.box (.VTypeProd A B))
   | hole {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
       ShapeMap σ (.box A) (.box B)
 
 /-- The map on the object out there, as a hole term. -/
-def ShapeMap.obj {σ : Signature} : {S T : RShape} → ShapeMap σ S T →
+def ShapeMap.obj {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
     Σ b, Term σ (Ctx.empty.insert (.bnd 0) S.ty) T.ty b
   | _, _, .id S => ⟨_, Term.eta (.root (.bnd 0)) S.ty (Ctx.ref_insert_root _ _ _)⟩
   | _, _, .comp F G => ⟨_, Term.holeAt F.obj.2 G.obj.2⟩
@@ -152,7 +153,7 @@ def ShapeMap.obj {σ : Signature} : {S T : RShape} → ShapeMap σ S T →
       (Term.eta (VarSymb.root (.bnd 0)).inner A (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))) s)⟩
 
 /-- The map on the value it comes back as, as a hole term. -/
-def ShapeMap.val {σ : Signature} : {S T : RShape} → ShapeMap σ S T →
+def ShapeMap.val {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
     Σ b, Term σ (Ctx.empty.insert (.bnd 0) S.flat) T.flat b
   | _, _, .id S => ⟨_, Term.eta (.root (.bnd 0)) S.flat (Ctx.ref_insert_root _ _ _)⟩
   | _, _, .comp F G => ⟨_, Term.holeAt F.val.2 G.val.2⟩
@@ -163,6 +164,67 @@ def ShapeMap.val {σ : Signature} : {S T : RShape} → ShapeMap σ S T →
   | _, _, .pair F G => ⟨_, Term.pair F.val.2 G.val.2⟩
   | _, _, .pack A B => ⟨_, Term.eta (.root (.bnd 0)) (.VTypeProd A B) (Ctx.ref_insert_root _ _ _)⟩
   | _, _, .hole s => ⟨_, s⟩
+
+/-- The map on the object out there, at a returnable shape: on the necessary part, the witness
+    carried along. -/
+def ShapeMap.liftObj {σ : Signature} : (S : RShape) → {T : NShape} → ShapeMap σ S.necPart T →
+    Σ b, Term σ (Ctx.empty.insert (.bnd 0) S.ty) (S.withNec T).ty b
+  | .nec _, _, F => F.obj
+  | .wit N X, _, F => ⟨_, Term.pair
+      (Term.holeAt (Term.eta (.step (.root (.bnd 0)) .fst) N.ty
+        (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))) F.obj.2)
+      (Term.eta (.step (.root (.bnd 0)) .snd) (.VTypeDia X)
+        (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)))⟩
+
+/-- The map on the value it comes back as, at a returnable shape. -/
+def ShapeMap.liftVal {σ : Signature} : (S : RShape) → {T : NShape} → ShapeMap σ S.necPart T →
+    Σ b, Term σ (Ctx.empty.insert (.bnd 0) S.flat) (S.withNec T).flat b
+  | .nec _, _, F => F.val
+  | .wit N X, _, F => ⟨_, Term.pair
+      (Term.holeAt (Term.eta (.step (.root (.bnd 0)) .fst) N.flat
+        (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))) F.val.2)
+      (Term.eta (.step (.root (.bnd 0)) .snd) X (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)))⟩
+
+/-! ## A companion -/
+
+/-- In `ret_extS`'s body, the object out there, read from the extended slot. -/
+def RShape.extL {σ : Signature} (V : Ctx) : (S : RShape) → (B : VarType) →
+    Σ a, Term σ (V.insert (.bnd 0) (S.ext B).ty) S.ty a
+  | .nec N, B => ⟨_, Term.eta (.step (.root (.bnd 0)) .fst) N.ty
+      (Ctx.ref_fst_of (Ctx.ref_insert_root V (.bnd 0) (RShape.ext (.nec N) B).ty))⟩
+  | .wit N X, B => ⟨_, Term.pair
+      (Term.eta (.step (.step (.root (.bnd 0)) .fst) .fst) N.ty
+        (Ctx.ref_fst_of (Ctx.ref_fst_of (Ctx.ref_insert_root V (.bnd 0)
+          (RShape.ext (.wit N X) B).ty))))
+      (Term.eta (.step (.root (.bnd 0)) .snd) (.VTypeDia X)
+        (Ctx.ref_snd_of (Ctx.ref_insert_root V (.bnd 0) (RShape.ext (.wit N X) B).ty)))⟩
+
+/-- In `ret_extS`'s body, the companion, read from the extended slot. -/
+def RShape.extR {σ : Signature} (V : Ctx) : (S : RShape) → (B : VarType) →
+    Σ a, Term σ (V.insert (.bnd 0) (S.ext B).ty) (.VTypeBox B) a
+  | .nec N, B => ⟨_, Term.eta (.step (.root (.bnd 0)) .snd) (.VTypeBox B)
+      (Ctx.ref_snd_of (Ctx.ref_insert_root V (.bnd 0) (RShape.ext (.nec N) B).ty))⟩
+  | .wit N X, B => ⟨_, Term.eta (.step (.step (.root (.bnd 0)) .fst) .snd) (.VTypeBox B)
+      (Ctx.ref_snd_of (Ctx.ref_fst_of (Ctx.ref_insert_root V (.bnd 0)
+        (RShape.ext (.wit N X) B).ty)))⟩
+
+/-- In `ret_extS`'s conclusion, the value and the companion's value, arranged as the extended
+    shape's value: the companion joins the necessary part. -/
+def RShape.extTm {σ : Signature} {Γ : Ctx} [Γ.NoSlots] : (S : RShape) → {B : VarType} →
+    {a : Ann S.flat} → Term σ Γ S.flat a → {b : Ann B} → Term σ Γ B b →
+    Σ c, Term σ Γ (S.ext B).flat c
+  | .nec _, _, _, t, _, u => ⟨_, Term.pair t u⟩
+  | .wit N X, B, _, t, _, u => ⟨_, Term.holeRead (Term.pair t u) (Term.pair
+      (Term.pair
+        (Term.eta (.step (.step (.root (.bnd 0)) .fst) .fst) N.flat
+          (Ctx.ref_fst_of (Ctx.ref_fst_of (Ctx.ref_insert_root Ctx.empty (.bnd 0)
+            (.VTypeProd (RShape.wit N X).flat B)))))
+        (Term.eta (.step (.root (.bnd 0)) .snd) B
+          (Ctx.ref_snd_of (Ctx.ref_insert_root Ctx.empty (.bnd 0)
+            (.VTypeProd (RShape.wit N X).flat B)))))
+      (Term.eta (.step (.step (.root (.bnd 0)) .fst) .snd) X
+        (Ctx.ref_snd_of (Ctx.ref_fst_of (Ctx.ref_insert_root Ctx.empty (.bnd 0)
+          (.VTypeProd (RShape.wit N X).flat B))))))⟩
 
 /-- ⭐`ret_unit`'s new conjunct, in the body of `◇[d₁ ↦ y]` (`d₁ : □C` the slot `bnd 0`):
     `◇[d ↦ sb] θ(d₁.box, d)` — from the far world, back here, a necessary object `d` coming back
@@ -189,9 +251,9 @@ def WFF.unitBody {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong
 def WFF.unitBodyW {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
     {x : VarSymb} {C A X : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
     (u : Term σ (Γ.diaIn x) X b₀)
-    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.prod (.box A) (.dia X)).ty)) 1) :
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.wit (.box A) X).ty)) 1) :
     WFF σ ((Γ.diaIn x).insert (.bnd 0) (.VTypeBox C)) 1 :=
-  WFF.retS hS (.prod (.box A) (.dia X))
+  WFF.retS hS (.wit (.box A) X)
     (Term.pair
       (Term.mono ((Ctx.le_boxIn_diaIn Γ x).trans
         (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root (.VTypeBox C))) sb)
@@ -200,7 +262,7 @@ def WFF.unitBodyW {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStron
       (Term.pair
         (Term.eta (VarSymb.root (.bnd 0)).inner C
           ((Ctx.le_insert ((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert (.VTypeBox C)).boxIn.root
-            (RShape.prod (.box A) (.dia X)).ty).ref
+            (RShape.wit (.box A) X).ty).ref
             (Ctx.ref_inner (Ctx.ref_insert_root (Γ.diaIn x) (.bnd 0) (.VTypeBox C)))))
         (Term.eta (.root (.bnd 1)) _ (Ctx.ref_insert_root _ (.bnd 1) _)))
       θ)
@@ -211,7 +273,7 @@ def WFF.unitBodyW {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStron
 def WFF.unitBodyD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
     {C X A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀)
     (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd C X) (.VTypeBox A))) 1) :
-    WFF σ (Γ.boxIn.insert (.bnd 0) (RShape.prod (.box C) (.dia X)).ty) 1 :=
+    WFF σ (Γ.boxIn.insert (.bnd 0) (RShape.wit (.box C) X).ty) 1 :=
   WFF.retxS hS (.step (.root (.bnd 0)) .snd) ⟨X, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩
     (.box A) (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root _) sb)
     (WFF.holeAt ((((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _).insert (.VTypeBox A))
@@ -231,7 +293,7 @@ def WFF.unitBodyD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStron
     `□_e ψ(⟨d.box, e.dia⟩)` — what holds along all of `e`'s arrows, at its content there. -/
 def WFF.counitBodyD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {C X : VarType}
     (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) 1) :
-    WFF σ (Γ.boxIn.insert (.bnd 0) (RShape.prod (.box C) (.dia X)).ty) 1 :=
+    WFF σ (Γ.boxIn.insert (.bnd 0) (RShape.wit (.box C) X).ty) 1 :=
   WFF.boxx (.step (.root (.bnd 0)) .snd) ⟨X, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩
     (WFF.holeAt (((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _)
       (Term.pair

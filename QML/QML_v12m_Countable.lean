@@ -16,6 +16,7 @@ deriving instance Countable for VarType
 deriving instance Countable for Root
 deriving instance Countable for Step
 deriving instance Countable for VarSymb
+deriving instance Countable for NShape
 deriving instance Countable for RShape
 
 /-- Codes: binary trees with natural-number tags. -/

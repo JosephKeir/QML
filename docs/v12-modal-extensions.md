@@ -5816,6 +5816,8 @@ with soundness (`sat_ret_unitW`, `sat_ret_unitD`, `sat_ret_counitD`) and `Proof.
 * `retStepW_ok` (`realF` along a witness arrow): the plain `retStep` argument with the companion
   step `ret_extS` + `ret_map` along `ShapeMap.repackW : ⟨⟨d, e⟩, b⟩ ↦ ⟨□⟨d, b⟩, e⟩`.  There are no
   (Y) atoms and no ∨ law along `x`: the witness rides along as the possible part.
+  * *(Superseded 2026-10-10 by witnessed shapes, §11.20: the companion joins the necessary part,
+    `repackW` and `pairUpW` are gone, replaced by `pairUpS` and `pack` at the witness shape.)*
   * Reusable pieces: `WFF.pairUpW F Φ` (a body over `T` as one over `S` and a companion, through
     any `F : S × □B → T`) with `bodySplit_mono_pairUpW` (its split is `ret_map F`'s premise);
     hole-term evaluation (`Term.holeAt_holeAt_sig`, `holeAt_pair_fst/snd`, `holeAt_pack`,
@@ -5935,3 +5937,113 @@ bodies `Φ(d, e)` can then mention `x` (as `e`).
 
 *Pairing principle:* `O.ret` is one possibility with its return attached, as `ret` already is.  It
 links `x`'s arrow to its own way home (`homeUnique`), not two unjoined possibilities.
+
+### 11.20 Children for returning-possibility atoms: the paper check *(2026-10-10, paper)*
+
+**The question.**  The truth lemma's membership ⇒ truth case for `◇[d ↦ t] Φ ∈ M w` needs a child
+`k`, an object `c` there with `Φ(c)`, and `c`'s return home `Ind` to `t`.  §11.14 said "committed at
+birth to `t`", but the network commits a child's roots to *roots* of the parent (`bimg : ℕ → ℕ`),
+and `t` is any term.  At `◇`-typed contents no formula ties a fresh root to `t` (§11.16).  The user
+chose option 1: let a back arrow commit a root to a term.
+
+**Option 1 at the canonical frame.**  Semantically sound: `rden` along an arrow is already
+`Term.subst` along it, which handles term entries, so `c`'s return would be `rden t` and `Ind` holds
+by reflexivity.  The cost is the frame's representation.
+* `BData.img : W → W → ℕ → ℕ` becomes a substitution with term entries; `arOk`/`arCoh`, `rden`,
+  `rden_congr`/`rden_mono`, `BLimitPre`, `BCanonTerm`'s pushes and the leaf calculus all change.
+* The leaf calculus reads labels through `arrowIdx`, and the T-free decoder that L4f must build
+  (§11.15, L3) needs **injective, root-to-root** images (`annShp_injective`, typed `arrowIdx`
+  injectivity, `imgInj`; §11.16 risk 1).  A root sent to a term sends its labels into `t`'s
+  annotation, which can collide with other roots' labels.  So option 1 makes L4f's largest risk
+  larger.
+
+**A cheaper way to the same effect: definitional aliases.**  A new network operation gives a node
+`p` a fresh root `y` and extends its theory by the **alias set**
+`A_y(t) := {ψ(y) ↔ ψ(t) : ψ a slot formula over p's current context}`.
+* *Consistent:* a derivation of `⊥` from `M ∪ A_y(t)` becomes one from `M` by substituting `t` for
+  the fresh `y` (`Proof.subst`; the alias formulas become `ψ(t) ↔ ψ(t)`).  At `◇` types this is the
+  substitution of a `◇`-root by `diatm x _ u`, which `Subst.dia`/`diaBody_diatm` already handle.
+* *Persistent:* a slot formula over a later stage is reached from one over this stage by `∀`
+  (`∀z.(ψ(y,z) ↔ ψ(t,z))` is in `A_y(t)`), so `y` and `t` stay interchangeable.
+* *Attestation:* a new `BData.Att` constructor, `alias`; `Att.rel` (interchangeable
+  representatives) is immediate, so `IndInvariant` is unchanged.
+* Then `◇[d ↦ t] Φ` gives `◇[d ↦ y] Φ` (an alias instance), and the child commits `c ↦ y`: a root
+  renaming, so the frame and the leaf calculus are untouched.  Commit at birth for `Back` carriers
+  (§11.16) uses the same aliases.
+* *Relation to the rejected `≈`* (§11.16): no formula and no rule is added.  `y` is a
+  construction-level Henkin name, indiscernible from `t` in one theory by fiat, as a Henkin
+  constant is a witness by fiat; no model is asked to identify anything.
+* Recommended over option 1.
+
+**The child: the returning successor.**  For `α = ◇[d ↦ y] Φ ∈ M w` (after aliasing), the child's
+theory is `Γ_k := {Ψ↑(c) : ◇[d ↦ y] Ψ ∈ M w}`.
+* *Consistent:* finitely many `Ψᵢ` combine by the ∨/K-law (§11.17: derived on the plain leg), and
+  `ret_dia`/`ret_absurd` refutes `◇[d ↦ y] ⊥`.
+* *Maximal:* `◇[d ↦ y] ⊤ ∈ M w`, so for each `Θ` the ∨ law puts `◇[d ↦ y] Θ` or `◇[d ↦ y] ¬Θ`
+  into `M w`.  If not every formula of `k`'s language is some `Ψ↑`, Lindenbaum plus the invariant
+  argument of `retSet_consistent` does instead.
+* *Back invariant at birth* (`c ↦ y`): holds by construction.
+* *Forward invariant at birth* (all of `w`'s roots): exactly a unit rule.  `Θ(□ā)` at `w` and the
+  atom give `◇[d ↦ y](Ψ ∧ ◇[e ↦ ā] Θ(e))` (`ret_unit`), so `◇[e ↦ ā] Θ(e)` is in `Γ_k`.
+
+The three unit rules are exactly the births of the three kinds of child:
+
+| atom at `w` | child | forward invariant at birth | back invariant |
+|---|---|---|---|
+| `◇[d ↦ y] Φ` | plain | `RetInv` by `ret_unit` | `RetInv`, by construction |
+| `◇_x[d ↦ y] Φ` | witness child along `x` (`x ⇝ cx`) | `RetInvW` by `ret_unitW` (`u := x.dia`) | `RetInvX`, by construction |
+| `◇[d ↦ y, e ⇝ z] Φ` | **back-witness** child: its root `e`'s extent contains the way home `k → w`, content `z` | `RetInvX w k` along `e`, by `ret_unitD` | `RetInvW k w`, by construction |
+
+**The back-witness child** is the mirror of the witness child: the witness sits at the child, and
+its arrow is the *back* arrow.  `RetInvW` and `RetInvX` are stated for any two nodes, so every
+lemma built for witness children (realisation both ways, cross-arrow preservation, growth,
+transfers) applies with the roles swapped.  New: a kind on back arrows (`NetSt`, and `BData.kd`
+for the pair `(k, w)`), and the frame reading `e`'s extent through it.
+
+**Shapes with two or more possible parts are a joint possibility.**  `◇[e₁ ⇝ z₁, e₂ ⇝ z₂] Φ` puts
+one way home in two extents.
+* The child's back arrow would have to lie in the extents of two roots `e₁`, `e₂`.
+* The forward invariant at birth would need, for `Θ(z₁, z₂)` at `w`, a possibility at `k` along
+  `e₁` and `e₂` at once, which the language cannot state (one witness per `◇`).
+* Pairing them into one possible part `◇(X × Y)` is valid only if models are closed under pairing
+  possible objects that share an arrow, a comprehension we have avoided.
+
+By the pairing principle (joint possibility goes through a paired object, or the design is wrong),
+**a returnable shape should have at most one possible part**, of any type: `◇(X × Y)` is the
+paired form.  This restricts `RShape` as built (§11.17, returnable shapes).  The rules built so far
+use at most one possible part (`ret_unitW`, `ret_unitD`, `ret_counitD`, `repackW`), so the
+restriction should not disturb them.
+
+**Still to check on paper:**
+1. The ∨ law along `x` and along a possible part (for maximality of the second and third kinds of
+   returning successor): the §11.17 derivation with `ret_unitW`/`ret_unitD` in place of
+   `ret_unit`.
+2. That the alias operation's fairness (an alias for every term at every node) fits the schedule,
+   and that aliases never need to be committed injectively (they are parent roots, not images of a
+   child's roots).
+
+**Decided (user, 2026-10-10).**
+* *Aliases*, not term commitments.
+* *Exactly one possible part, and only in a witnessed operator* (stronger than "at most one").
+  As `K_dia` carries necessary objects with exactly one possible object, the witness, a possible
+  part `e ⇝ u` is the **witness of the way home**, in a fixed position, not a component anywhere
+  in a product.  The returning possibility has four forms, by which legs are witnessed:
+  `◇[d̄ ↦ t̄] Φ`, `◇[d̄ ↦ t̄; e ⇝ u] Φ`, `◇_x[d̄ ↦ t̄] Φ`, `◇_x[d̄ ↦ t̄; e ⇝ u] Φ`.
+* *In the code:* `RShape` becomes a necessary shape (`□A`, products) plus an optional witness type;
+  `ShapeMap` and `ret_extS` act on the necessary part and carry the witness unchanged, so
+  `repackW` disappears.  The built rules already have this form.
+
+**Witnessed shapes, built (2026-10-10).**
+* `NShape` (`□A`, products) and `RShape := nec N | wit N X`; `RShape.box A` abbreviates
+  `nec (box A)`.  `NComesBack` for the necessary part; `ComesBack (wit N X)` adds the witness's
+  clause (way home in its extent, content `Ind` to the value).
+* `ShapeMap` acts on `NShape`; `ShapeMap.liftObj`/`liftVal` carry the witness unchanged, and
+  `ret_map` takes `F : ShapeMap S.necPart T` with conclusion shape `S.withNec T`
+  (`ShapeMap.liftComesBack`).
+* `ret_extS` adds the companion to the necessary part: shape `S.ext B`, value `S.extTm t c`
+  (a pair at `nec`, a repacking hole term at `wit`), body `bodySplit (S.extL ·) (S.extR ·)`.
+  Soundness `sat_ret_extS` (now needs `NoProjLast`), substitution `RShape.subst_extTm_sig`,
+  `subst_extL`, `subst_extR`.
+* The witness realisation step is `ret_extS` + `ret_map pack` at the witness shape
+  (`WFF.pairUpS`, `bodySplit_mono_pairUpS`, `ShapeMap.liftObj_pack_wit`/`liftVal_pack_wit`,
+  `RShape.extTm_wit`); `repackW` and `pairUpW` are deleted.

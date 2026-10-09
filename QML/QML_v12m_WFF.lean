@@ -33,28 +33,59 @@ def BLeg.carrier : BLeg → VarType → VarType
   | .nec, A => .VTypeBox (.VTypeBox A)
   | .pos, A => .VTypeDia (.VTypeBox A)
 
-/-- ⭐A **returnable shape** (strong B, docs §11.17): what a returning possibility binds out there
-    and gets back.  A necessary part `□A` comes back as a value of `A` (its reading along the way
-    home); a possible part `◇X` comes back as a content of `X` (the way home lies in its extent);
-    pairs componentwise.  The possible parts are the witness's share of the round trip, as `K_dia`
-    carries the witness where `K_box` carries only necessary objects. -/
-inductive RShape where
+/-- A **shape of necessary objects**: `□A`, and pairs of such. -/
+inductive NShape where
   | box (A : VarType)
-  | dia (X : VarType)
-  | prod (R S : RShape)
+  | prod (R S : NShape)
 deriving DecidableEq
+
+/-- The type of the necessary objects bound out there. -/
+def NShape.ty : NShape → VarType
+  | .box A => .VTypeBox A
+  | .prod R S => .VTypeProd R.ty S.ty
+
+/-- The type of the values they come back as. -/
+def NShape.flat : NShape → VarType
+  | .box A => A
+  | .prod R S => .VTypeProd R.flat S.flat
+
+/-- ⭐A **returnable shape** (strong B, docs §11.17, §11.20): what a returning possibility binds
+    out there and gets back.  Its necessary part (`NShape`) comes back as values (their readings
+    along the way home).  A **witnessed** shape also binds exactly one possible part `◇X`, the
+    **witness of the way home**: the way home lies in its extent, and it comes back as its content
+    there — as `K_dia` carries exactly one possible object, the witness, beside the necessary
+    ones. -/
+inductive RShape where
+  | nec (N : NShape)
+  | wit (N : NShape) (X : VarType)
+deriving DecidableEq
+
+/-- The unwitnessed shape of one necessary object. -/
+abbrev RShape.box (A : VarType) : RShape := .nec (.box A)
+
+/-- The necessary part. -/
+def RShape.necPart : RShape → NShape
+  | .nec N => N
+  | .wit N _ => N
+
+/-- The shape with its necessary part replaced, the witness kept. -/
+def RShape.withNec : RShape → NShape → RShape
+  | .nec _, M => .nec M
+  | .wit _ X, M => .wit M X
+
+/-- The shape with one more necessary companion `□B`, the witness kept. -/
+abbrev RShape.ext (S : RShape) (B : VarType) : RShape :=
+  S.withNec (.prod S.necPart (.box B))
 
 /-- The type of the object bound out there. -/
 def RShape.ty : RShape → VarType
-  | .box A => .VTypeBox A
-  | .dia X => .VTypeDia X
-  | .prod R S => .VTypeProd R.ty S.ty
+  | .nec N => N.ty
+  | .wit N X => .VTypeProd N.ty (.VTypeDia X)
 
 /-- The type of the value it comes back as. -/
 def RShape.flat : RShape → VarType
-  | .box A => A
-  | .dia X => X
-  | .prod R S => .VTypeProd R.flat S.flat
+  | .nec N => N.flat
+  | .wit N X => .VTypeProd N.flat X
 
 inductive WFF (σ : Signature) : Ctx → ℕ → Type where
   | atom {Γ : Ctx} {d : ℕ} : Rel σ Γ 0 → WFF σ Γ d

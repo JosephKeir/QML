@@ -392,15 +392,11 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       (c : ℕ) (hc : Γ.RootFresh (.free c)) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
       Proof σ Γ Δ (O.retS hS S t (WFF.ex (.VTypeBox B) Φ)) →
       Proof σ (Γ.insert (.free c) B)
-        ((O.mono (Ctx.le_insert hc.root B)).retS hS (.prod S (.box B))
-            (Term.pair (Term.weaken hc.root B t)
-              (Term.eta (.root (.free c)) B (Ctx.ref_insert_root Γ (.free c) B)))
-            (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root B)).insert (.bnd 0) _) (WFF.bodySplit
-              (Term.eta (.step (.root (.bnd 0)) .fst) S.ty
-                (Ctx.ref_fst_of (Ctx.ref_insert_root O.view (.bnd 0) (RShape.prod S (.box B)).ty)))
-              (Term.eta (.step (.root (.bnd 0)) .snd) (.VTypeBox B)
-                (Ctx.ref_snd_of (Ctx.ref_insert_root O.view (.bnd 0) (RShape.prod S (.box B)).ty)))
-              Φ)) ::
+        ((O.mono (Ctx.le_insert hc.root B)).retS hS (S.ext B)
+            (S.extTm (Term.weaken hc.root B t)
+              (Term.eta (.root (.free c)) B (Ctx.ref_insert_root Γ (.free c) B))).2
+            (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root B)).insert (.bnd 0) _)
+              (WFF.bodySplit (S.extL O.view B).2 (S.extR O.view B).2 Φ)) ::
           Δ.map (WFF.weaken hc.root B))
         (φ.weaken hc.root B) →
       Proof σ Γ Δ φ
@@ -449,7 +445,7 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       {x : VarSymb} (hx : ∃ X', Γ.ref x = some (.VTypeDia X')) {C A X : VarType}
       {c : Ann C} (y : Term σ Γ C c) (Ψ : WFF σ ((Γ.diaIn x).insert (.bnd 0) (.VTypeBox C)) 1)
       {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X} (u : Term σ (Γ.diaIn x) X b₀)
-      (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.prod (.box A) (.dia X)).ty)) 1) :
+      (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.wit (.box A) X).ty)) 1) :
       Proof σ Γ Δ (WFF.retx hS x hx y Ψ) →
       Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.pair (Term.boxtm sb) (Term.diatm x hx u))) θ) →
       Proof σ Γ Δ (WFF.retx hS x hx y (WFF.and Ψ (WFF.unitBodyW hS sb u θ)))
@@ -457,18 +453,18 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       realised along the way back, home is reached along it. -/
   | ret_unitD {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       {C X A : VarType} {c : Ann (.VTypeProd C X)} (y : Term σ Γ (.VTypeProd C X) c)
-      (Ψ : WFF σ (Γ.boxIn.insert (.bnd 0) (RShape.prod (.box C) (.dia X)).ty) 1) {a₀ : Ann A}
+      (Ψ : WFF σ (Γ.boxIn.insert (.bnd 0) (RShape.wit (.box C) X).ty) 1) {a₀ : Ann A}
       (sb : Term σ Γ.boxIn A a₀)
       (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd C X) (.VTypeBox A))) 1) :
-      Proof σ Γ Δ (WFF.retS hS (.prod (.box C) (.dia X)) y Ψ) →
+      Proof σ Γ Δ (WFF.retS hS (.wit (.box C) X) y Ψ) →
       Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.boxtm sb)) θ) →
-      Proof σ Γ Δ (WFF.retS hS (.prod (.box C) (.dia X)) y (WFF.and Ψ (WFF.unitBodyD hS sb θ)))
+      Proof σ Γ Δ (WFF.retS hS (.wit (.box C) X) y (WFF.and Ψ (WFF.unitBodyD hS sb θ)))
   /-- ⭐**The counit of a possible part**: what holds along all of a possible part's arrows holds,
       at its content along the way home, of the value it comes back as. -/
   | ret_counitD {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       {C X : VarType} {c : Ann (.VTypeProd C X)} (y : Term σ Γ (.VTypeProd C X) c)
       (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) 1) :
-      Proof σ Γ Δ (WFF.retS hS (.prod (.box C) (.dia X)) y (WFF.counitBodyD ψ)) →
+      Proof σ Γ Δ (WFF.retS hS (.wit (.box C) X) y (WFF.counitBodyD ψ)) →
       Proof σ Γ Δ (WFF.holeRead y ψ)
   /-- **Monotonicity** in the body, along any leg, at any shape. -/
   | ret_monoS {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
@@ -487,11 +483,11 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       object with `Φ` coming back as the value's image (`ShapeMap.comesBack`).  Repacking,
       projection and hole terms on items are all instances. -/
   | ret_map {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {S T : RShape} (F : ShapeMap σ S T) {a : Ann S.flat}
-      (y : Term σ Γ S.flat a) (Φ : WFF σ (O.view.insert (.bnd 0) T.ty) 1) :
+      (O : OutLeg Γ) {S : RShape} {T : NShape} (F : ShapeMap σ S.necPart T) {a : Ann S.flat}
+      (y : Term σ Γ S.flat a) (Φ : WFF σ (O.view.insert (.bnd 0) (S.withNec T).ty) 1) :
       Proof σ Γ Δ (O.retS hS S y (WFF.bodyRepl
-        (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) S.ty) F.obj.2) Φ)) →
-      Proof σ Γ Δ (O.retS hS T (Term.holeRead y F.val.2) Φ)
+        (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) S.ty) (ShapeMap.liftObj S F).2) Φ)) →
+      Proof σ Γ Δ (O.retS hS (S.withNec T) (Term.holeRead y (ShapeMap.liftVal S F).2) Φ)
   /-- **Leibniz for the value**, along any leg. -/
   | ret_eq {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       (O : OutLeg Γ) {A : VarType} {a : Ann A} (t t' : Term σ Γ A a)

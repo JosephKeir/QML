@@ -301,17 +301,22 @@ def Backs : (L : BLeg) → {A : VarType} → {w : M.frame.W} → M.frame.Dom (L.
         ∀ a : (M.posEval (c : M.frame.Pos (.VTypeBox A) w)).1, ∃ r : M.frame.R a.1.1 w,
           M.Ind (M.necEval ((M.posEval (c : M.frame.Pos (.VTypeBox A) w)).2 a) ⟨w, ⟨r⟩⟩) o
 
+/-- A necessary object out there **comes back as** `o` along the way home `r`: each necessary part's
+    reading along `r` is `Ind` to its value. -/
+def NComesBack : (N : NShape) → {v w : M.frame.W} → M.frame.Dom N.ty v → M.frame.R v w →
+    M.frame.Dom N.flat w → Prop
+  | .box A, v, w, e, r, o => M.Ind (M.necEval (e : M.frame.Nec A v) ⟨w, ⟨r⟩⟩) o
+  | .prod R S, _, _, e, r, o => NComesBack R e.1 r o.1 ∧ NComesBack S e.2 r o.2
 
-/-- ⭐An object of shape `S` at the far end `v` **comes back** along the way home `r` as `o`
-    (strong B, docs §11.17): a necessary part as its reading along `r`, a possible part as its
-    content along `r` (which must lie in its extent), pairs componentwise — up to `Ind`. -/
+/-- ⭐The object out there **comes back as** `o` along the way home `r` (docs §11.17, §11.20): its
+    necessary part as `NComesBack` says, and a witness's way home lies in its extent, with content
+    there `Ind` to its value. -/
 def ComesBack : (S : RShape) → {v w : M.frame.W} → M.frame.Dom S.ty v → M.frame.R v w →
     M.frame.Dom S.flat w → Prop
-  | .box A, v, w, e, r, o => M.Ind (M.necEval (e : M.frame.Nec A v) ⟨w, ⟨r⟩⟩) o
-  | .dia X, v, w, e, r, o =>
-      ∃ h : (⟨w, ⟨r⟩⟩ : M.frame.Acc v) ∈ (M.posEval (e : M.frame.Pos X v)).1,
-        M.Ind ((M.posEval (e : M.frame.Pos X v)).2 ⟨_, h⟩) o
-  | .prod R S, _, _, e, r, o => ComesBack R e.1 r o.1 ∧ ComesBack S e.2 r o.2
+  | .nec N, _, _, e, r, o => NComesBack N e r o
+  | .wit N X, v, w, e, r, o => NComesBack N e.1 r o.1 ∧
+      ∃ h : (⟨w, ⟨r⟩⟩ : M.frame.Acc v) ∈ (M.posEval (e.2 : M.frame.Pos X v)).1,
+        M.Ind ((M.posEval (e.2 : M.frame.Pos X v)).2 ⟨_, h⟩) o.2
 
 /-- ⭐Satisfaction. -/
 def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ Γ d → Prop

@@ -270,7 +270,7 @@ omit [ModalSys.NoFour] in
 theorem WFF.mono_unitBodyW {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (h : Γ.Le Γ')
     (hS : ModalSys.BStrong = true) {x : VarSymb} {C A X : VarType} {a₀ : Ann A}
     (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X} (u : Term σ (Γ.diaIn x) X b₀)
-    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.prod (.box A) (.dia X)).ty)) 1) :
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.wit (.box A) X).ty)) 1) :
     WFF.mono ((h.diaIn x).insert (.bnd 0) (.VTypeBox C)) (WFF.unitBodyW hS sb u θ) =
       WFF.unitBodyW hS (Term.mono h.boxIn sb) (Term.mono (h.diaIn x) u) θ := by
   unfold WFF.unitBodyW
@@ -288,9 +288,9 @@ omit [ModalSys.NoFour] in
 def WFF.unitBaseW {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) {x : VarSymb}
     {A X : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
     (u : Term σ (Γ.diaIn x) X b₀)
-    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (RShape.prod (.box A) (.dia X)).ty) 1) :
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (RShape.wit (.box A) X).ty) 1) :
     WFF σ (Γ.diaIn x) 0 :=
-  WFF.retS hS (.prod (.box A) (.dia X)) (Term.pair (Term.mono (Ctx.le_boxIn_diaIn Γ x) sb) u)
+  WFF.retS hS (.wit (.box A) X) (Term.pair (Term.mono (Ctx.le_boxIn_diaIn Γ x) sb) u)
     (WFF.holeAt ((Ctx.NoSlots.slots (Γ := (Γ.diaIn x).boxIn)).insert _)
       (Term.eta (.root (.bnd 0)) _ (Ctx.ref_insert_root _ (.bnd 0) _)) θ)
 
@@ -299,7 +299,7 @@ omit [ModalSys.NoFour] in
 theorem WFF.instantiate_unitBodyW_holeSnd {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
     {x : VarSymb} {C A X : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
     (u : Term σ (Γ.diaIn x) X b₀)
-    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (RShape.prod (.box A) (.dia X)).ty) 1)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (RShape.wit (.box A) X).ty) 1)
     {c : Ann (.VTypeBox C)} (t : Term σ (Γ.diaIn x) (.VTypeBox C) c) :
     WFF.instantiate Ctx.NoSlots.slots t (WFF.unitBodyW hS sb u (WFF.holeSnd (C := C) θ)) =
       WFF.unitBaseW hS sb u θ := by
@@ -324,7 +324,7 @@ def Proof.ret_unitW_base {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
     (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) {x : VarSymb}
     (hx : ∃ X', Γ.ref x = some (.VTypeDia X')) {A X : VarType} {a₀ : Ann A}
     (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X} (u : Term σ (Γ.diaIn x) X b₀)
-    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (RShape.prod (.box A) (.dia X)).ty) 1)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (RShape.wit (.box A) X).ty) 1)
     (p : Proof σ Γ Δ (WFF.holeRead (Term.pair (Term.boxtm sb) (Term.diatm x hx u)) θ)) :
     Proof σ Γ Δ (WFF.boxx x hx (WFF.unitBaseW hS sb u θ)) := by
   refine Proof.byContra ?_

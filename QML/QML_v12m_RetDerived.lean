@@ -47,14 +47,14 @@ theorem WFF.bodyRepl_pack_bodySplit {A B : VarType}
         (WFF.bodySplit (Term.boxFst (Ctx.ref_insert_root V (.bnd 0) (.VTypeBox (.VTypeProd A B))))
           (Term.boxSnd (Ctx.ref_insert_root V (.bnd 0) (.VTypeBox (.VTypeProd A B)))) Φ) =
       WFF.bodySplit
-        (Term.eta (.step (.root (.bnd 0)) .fst) (RShape.box A).ty
-          (Ctx.ref_fst_of (Ctx.ref_insert_root V (.bnd 0) (RShape.prod (.box A) (.box B)).ty)))
+        (Term.eta (.step (.root (.bnd 0)) .fst) (NShape.box A).ty
+          (Ctx.ref_fst_of (Ctx.ref_insert_root V (.bnd 0) (NShape.prod (.box A) (.box B)).ty)))
         (Term.eta (.step (.root (.bnd 0)) .snd) (.VTypeBox B)
-          (Ctx.ref_snd_of (Ctx.ref_insert_root V (.bnd 0) (RShape.prod (.box A) (.box B)).ty)))
+          (Ctx.ref_snd_of (Ctx.ref_insert_root V (.bnd 0) (NShape.prod (.box A) (.box B)).ty)))
         Φ := by
   unfold WFF.bodyRepl WFF.bodySplit
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  have hpk : ((Subst.idS σ (V.insert (.bnd 0) (RShape.prod (.box A) (.box B)).ty)).set (.bnd 0)
+  have hpk : ((Subst.idS σ (V.insert (.bnd 0) (NShape.prod (.box A) (.box B)).ty)).set (.bnd 0)
       (.tm (Term.mono ((Ctx.empty_le V).insert (.bnd 0) _) (ShapeMap.pack (σ := σ) A B).obj.2))).at
         (.root (.bnd 0)) = .tm (Term.mono ((Ctx.empty_le V).insert (.bnd 0) _)
           (ShapeMap.pack (σ := σ) A B).obj.2) := Subst.set_root _ _ _
@@ -67,7 +67,7 @@ theorem WFF.bodyRepl_pack_bodySplit {A B : VarType}
     dsimp only [SubE.comp]
     refine SubE.sim_tm_sigma (sig_boxtm ?_)
     refine ((Term.subst_eta_tm _ _ _ _ _ _ (Term.mono
-      (((Ctx.empty_le V).insert (.bnd 0) (RShape.prod (.box A) (.box B)).ty).boxIn)
+      (((Ctx.empty_le V).insert (.bnd 0) (NShape.prod (.box A) (.box B)).ty).boxIn)
       (Term.eta (σ := σ) (VarSymb.step (.root (.bnd 0)) .snd).inner B
         (Ctx.ref_inner (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _))))) ?_).trans ?_).symm
     · rw [Subst.at_proj _ _ rfl, Subst.box_at_inner_boxtm _ hpk]
@@ -82,7 +82,7 @@ theorem WFF.bodyRepl_pack_bodySplit {A B : VarType}
       dsimp only [SubE.comp]
       refine SubE.sim_tm_sigma (sig_boxtm ?_)
       refine ((Term.subst_eta_tm _ _ _ _ _ _ (Term.mono
-        (((Ctx.empty_le V).insert (.bnd 0) (RShape.prod (.box A) (.box B)).ty).boxIn)
+        (((Ctx.empty_le V).insert (.bnd 0) (NShape.prod (.box A) (.box B)).ty).boxIn)
         (Term.eta (σ := σ) (VarSymb.step (.root (.bnd 0)) .fst).inner A
           (Ctx.ref_inner (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))))) ?_).trans ?_).symm
       · rw [Subst.at_proj _ _ rfl, Subst.box_at_inner_boxtm _ hpk]
@@ -165,7 +165,9 @@ def Proof.ret_ext {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (O : Ou
     (Proof.imp_elim (Proof.ofSubset (fun _ hx => List.mem_cons_of_mem _ hx) (Proof.imp_intro q))
       (Proof.conv (OutLeg.retS_congr hS _ (.box (.VTypeProd A B))
           (Term.holeRead_eta_root _) rfl)
-        (Proof.ret_map hS _ (.pack A B) _ _ (Proof.conv (OutLeg.retS_congr' hS _ _ rfl (by
+        (Proof.ret_map hS _ (S := .nec (.prod (.box A) (.box B))) (.pack A B) _ _
+          (Proof.conv (OutLeg.retS_congr' hS _ _ rfl (by
+            dsimp only [RShape.extL, RShape.extR, ShapeMap.liftObj]
             rw [← WFF.bodyRepl_pack_bodySplit, WFF.mono_bodyRepl hle, Term.mono_mono]))
           (Proof.lookup List.mem_cons_self)))))
 

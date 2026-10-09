@@ -25,7 +25,7 @@ variable [ModalSys] {σ : Signature} [ModalSys.NoFour]
 /-- A witness body's context: the reverse arrow's committed roots' `□` view, with the bound object
     of shape `□(roots) × ◇X`. -/
 abbrev bodyCtxW (cls clt : List VarType) (X : VarType) : Ctx :=
-  (ctxOf clt).boxIn.insert (.bnd 0) (RShape.prod (.box (bcT cls)) (.dia X)).ty
+  (ctxOf clt).boxIn.insert (.bnd 0) (RShape.wit (.box (bcT cls)) X).ty
 
 /-- The bound object's entry at the parent: the committed roots' necessary object, paired with
     the witness `x` itself. -/
@@ -58,7 +58,7 @@ def RetInvW (hS : ModalSys.BStrong = true) (tv tw : NodeSt σ) (cls : List VarTy
     (himgt : ImgOk clt (ctxOf tv.l) imgt) (hx : (ctxOf cls).ref x = some (.VTypeDia X))
     (hcx : (ctxOf tw.l).ref (.root (.free cx)) = some X),
     ∀ Φ : WFF σ (bodyCtxW cls clt X) 1, liftBodyW hs himgt hx Φ ∈ tv.M →
-      WFF.retS hS (.prod (.box (bcT cls)) (.dia X))
+      WFF.retS hS (.wit (.box (bcT cls)) X)
         (Term.pair (tupImgT cls imgs himgs).2 (Term.eta (.root (.free cx)) X hcx))
         (WFF.mono ((ctxOf_le_of_suffix ht).boxIn.insert (.bnd 0) _) Φ) ∈ tw.M
 
@@ -69,7 +69,7 @@ omit [ModalSys.NoFour] in
 theorem WFF.mono_unitBaseW {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (h : Γ.Le Γ')
     (hS : ModalSys.BStrong = true) {x : VarSymb} {A X : VarType} {a₀ : Ann A}
     (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X} (u : Term σ (Γ.diaIn x) X b₀)
-    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (RShape.prod (.box A) (.dia X)).ty) 1) :
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (RShape.wit (.box A) X).ty) 1) :
     WFF.mono (h.diaIn x) (WFF.unitBaseW hS sb u θ) =
       WFF.unitBaseW hS (Term.mono h.boxIn sb) (Term.mono (h.diaIn x) u) θ := by
   unfold WFF.unitBaseW
@@ -99,7 +99,7 @@ theorem RetInvW.birth (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true)
       (Term.diatm x hx' (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of (hle.ref hx)))))
       (WFF.holeAt ((Ctx.NoSlots.slots (Γ := Ctx.empty)).insert _)
         (Term.pair Term.unit (Term.eta (.root (.bnd 0)) _ (Ctx.ref_insert_root _ (.bnd 0) _)))
-        (pack2 [] (RShape.prod (.box (bcT cls)) (.dia X)).ty Φ)) = liftBodyW hs himgt hx Φ := by
+        (pack2 [] (RShape.wit (.box (bcT cls)) X).ty Φ)) = liftBodyW hs himgt hx Φ := by
     rw [WFF.holeRead_eq_holeAt, WFF.holeAt_holeAt_pairUnit, ← WFF.holeRead_eq_holeAt]
     exact holeRead_tupImgT_pack2 himgt _ Φ
   have hbox := hv.closed ⟨[_], fun y hy => by rw [List.mem_singleton.mp hy]; exact hΦ,
@@ -109,7 +109,7 @@ theorem RetInvW.birth (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true)
       (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of hx))
       (WFF.holeAt ((Ctx.NoSlots.slots (Γ := Ctx.empty)).insert _)
         (Term.pair Term.unit (Term.eta (.root (.bnd 0)) _ (Ctx.ref_insert_root _ (.bnd 0) _)))
-        (pack2 [] (RShape.prod (.box (bcT cls)) (.dia X)).ty Φ)))) ∈ tv.M := by
+        (pack2 [] (RShape.wit (.box (bcT cls)) X).ty Φ)))) ∈ tv.M := by
     refine (congrArg (· ∈ tv.M) ?_).mpr hbox
     change WFF.boxx x _ (WFF.mono (hle.diaIn x) _) = _
     rw [WFF.mono_unitBaseW hle, Term.mono_eta]
@@ -483,52 +483,77 @@ theorem Term.holeAt_eta_slot {V : Ctx} [V.NoSlots] {A : VarType} {B : VarType} {
   rw [if_pos rfl]
   exact .eta_ren _ _
 
-/-! ## Repacking the witness's shape after a companion -/
-
-/-- ⭐The **witness shape's repacking**: `⟨⟨d, e⟩, b⟩ ↦ ⟨□⟨d, b⟩, e⟩` — a companion necessary
-    object joins the necessary part, and the possible part stays. -/
-def ShapeMap.repackW (C B X : VarType) :
-    ShapeMap σ (.prod (.prod (.box C) (.dia X)) (.box B))
-      (.prod (.box (.VTypeProd C B)) (.dia X)) :=
-  .pair (.comp (.pair (.comp (.fst _ _) (.fst _ _)) (.snd _ _)) (.pack C B))
-    (.comp (.fst _ _) (.snd _ _))
-
-/-- The repacking on the object out there. -/
-theorem ShapeMap.repackW_obj {Γ : Ctx} {C B X : VarType} {c : Ann C} {b : Ann B}
-    {x : Ann (.VTypeDia X)} (s : Term σ Γ.boxIn C c) (e : Term σ Γ (.VTypeDia X) x)
-    (t : Term σ Γ.boxIn B b) :
-    (⟨_, Term.holeAt (Term.pair (Term.pair (Term.boxtm s) e) (Term.boxtm t))
-        (ShapeMap.repackW (σ := σ) C B X).obj.2⟩ :
-        Σ a, Term σ Γ (RShape.prod (.box (.VTypeProd C B)) (.dia X)).ty a) =
-      ⟨_, Term.pair (Term.boxtm (Term.pair s t)) e⟩ := by
-  refine sig_pair ?_ ?_
-  · refine (Term.holeAt_holeAt_sig _ _ _).trans ?_
-    refine (Term.holeAt_congr_sig (sig_pair ((Term.holeAt_holeAt_sig _ _ _).trans
-      ((Term.holeAt_congr_sig (Term.holeAt_pair_fst _ _) _).trans (Term.holeAt_pair_fst _ _)))
-      (Term.holeAt_pair_snd _ _)) _).trans ?_
-    exact Term.holeAt_pack s t
-  · exact (Term.holeAt_holeAt_sig _ _ _).trans
-      ((Term.holeAt_congr_sig (Term.holeAt_pair_fst _ _) _).trans (Term.holeAt_pair_snd _ _))
+/-! ## Packing at the witness shape -/
 
 omit [ModalSys.NoFour] in
-/-- The repacking on the value it comes back as. -/
-theorem ShapeMap.repackW_val {Γ : Ctx} {C B X : VarType} {c : Ann C} {b : Ann B} {x : Ann X}
-    (s : Term σ Γ C c) (e : Term σ Γ X x) (t : Term σ Γ B b) :
-    (⟨_, Term.holeAt (Term.pair (Term.pair s e) t) (ShapeMap.repackW (σ := σ) C B X).val.2⟩ :
-        Σ a, Term σ Γ (RShape.prod (.box (.VTypeProd C B)) (.dia X)).flat a) =
+/-- The first component of a pair's first component, read through the hole. -/
+theorem Term.holeAt_pair_fst_fst {Γ : Ctx} {A B C : VarType} {a : Ann A} {b : Ann B} {c : Ann C}
+    (p : Term σ Γ A a) (q : Term σ Γ B b) (r : Term σ Γ C c) :
+    (⟨_, Term.holeAt (Term.pair (Term.pair p q) r)
+        (Term.eta (.step (.step (.root (.bnd 0)) .fst) .fst) A
+          (Ctx.ref_fst_of (Ctx.ref_fst_of (Ctx.ref_insert_root Ctx.empty (.bnd 0)
+            (.VTypeProd (.VTypeProd A B) C)))))⟩ : Σ e, Term σ Γ A e) = ⟨a, p⟩ :=
+  Term.subst_eta_tm _ _ _ _ _ _ p (by
+    rw [Subst.at_proj _ _ rfl, Subst.at_proj _ _ rfl]
+    change SubE.proj (SubE.proj (Subst.single (.bnd 0) _ (.root (.bnd 0))) .fst) .fst = _
+    rw [show Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm (Term.pair (Term.pair p q) r))
+      (.root (.bnd 0)) = .tm (Term.pair (Term.pair p q) r) from if_pos rfl]
+    rfl)
+
+omit [ModalSys.NoFour] in
+/-- The second component of a pair's first component, read through the hole. -/
+theorem Term.holeAt_pair_fst_snd {Γ : Ctx} {A B C : VarType} {a : Ann A} {b : Ann B} {c : Ann C}
+    (p : Term σ Γ A a) (q : Term σ Γ B b) (r : Term σ Γ C c) :
+    (⟨_, Term.holeAt (Term.pair (Term.pair p q) r)
+        (Term.eta (.step (.step (.root (.bnd 0)) .fst) .snd) B
+          (Ctx.ref_snd_of (Ctx.ref_fst_of (Ctx.ref_insert_root Ctx.empty (.bnd 0)
+            (.VTypeProd (.VTypeProd A B) C)))))⟩ : Σ e, Term σ Γ B e) = ⟨b, q⟩ :=
+  Term.subst_eta_tm _ _ _ _ _ _ q (by
+    rw [Subst.at_proj _ _ rfl, Subst.at_proj _ _ rfl]
+    change SubE.proj (SubE.proj (Subst.single (.bnd 0) _ (.root (.bnd 0))) .fst) .snd = _
+    rw [show Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm (Term.pair (Term.pair p q) r))
+      (.root (.bnd 0)) = .tm (Term.pair (Term.pair p q) r) from if_pos rfl]
+    rfl)
+
+omit [ModalSys.NoFour] in
+/-- The companion step's value at a witnessed shape: `⟨⟨a, x⟩, c⟩ ↦ ⟨⟨a, c⟩, x⟩`. -/
+theorem RShape.extTm_wit {Γ : Ctx} [Γ.NoSlots] {N : NShape} {X B : VarType} {a : Ann N.flat}
+    {x : Ann X} {c : Ann B} (s : Term σ Γ N.flat a) (e : Term σ Γ X x) (t : Term σ Γ B c) :
+    (⟨_, ((RShape.wit N X).extTm (Term.pair s e) t).2⟩ :
+        Σ b, Term σ Γ ((RShape.wit N X).ext B).flat b) =
       ⟨_, Term.pair (Term.pair s t) e⟩ := by
-  refine sig_pair ?_ ?_
-  · refine (Term.holeAt_holeAt_sig _ _ _).trans ?_
-    refine (Term.holeAt_congr_sig (sig_pair ((Term.holeAt_holeAt_sig _ _ _).trans
-      ((Term.holeAt_congr_sig (Term.holeAt_pair_fst _ _) _).trans (Term.holeAt_pair_fst _ _)))
-      (Term.holeAt_pair_snd _ _)) _).trans ?_
-    exact Term.holeAt_eta_root _
-  · exact (Term.holeAt_holeAt_sig _ _ _).trans
-      ((Term.holeAt_congr_sig (Term.holeAt_pair_fst _ _) _).trans (Term.holeAt_pair_snd _ _))
+  dsimp only [RShape.extTm]
+  rw [Term.holeRead_eq_holeAt]
+  exact sig_pair (sig_pair (Term.holeAt_pair_fst_fst _ _ _) (Term.holeAt_pair_snd _ _))
+    (Term.holeAt_pair_fst_snd _ _ _)
+
+/-- Packing at the witness shape, on the object out there: `⟨⟨□s, □t⟩, e⟩ ↦ ⟨□⟨s, t⟩, e⟩`. -/
+theorem ShapeMap.liftObj_pack_wit {Γ : Ctx} {C B X : VarType} {c : Ann C} {b : Ann B}
+    {x : Ann (.VTypeDia X)} (s : Term σ Γ.boxIn C c) (t : Term σ Γ.boxIn B b)
+    (e : Term σ Γ (.VTypeDia X) x) :
+    (⟨_, Term.holeAt (Term.pair (Term.pair (Term.boxtm s) (Term.boxtm t)) e)
+        (ShapeMap.liftObj (σ := σ) (.wit (.prod (.box C) (.box B)) X) (.pack C B)).2⟩ :
+        Σ a, Term σ Γ (RShape.wit (.box (.VTypeProd C B)) X).ty a) =
+      ⟨_, Term.pair (Term.boxtm (Term.pair s t)) e⟩ := by
+  refine sig_pair ?_ (Term.holeAt_pair_snd _ _)
+  exact (Term.holeAt_holeAt_sig _ _ _).trans
+    ((Term.holeAt_congr_sig (Term.holeAt_pair_fst _ _) _).trans (Term.holeAt_pack s t))
+
+omit [ModalSys.NoFour] in
+/-- Packing at the witness shape, on the value: unchanged. -/
+theorem ShapeMap.liftVal_pack_wit {Γ : Ctx} {C B X : VarType} {c : Ann (.VTypeProd C B)}
+    {x : Ann X} (s : Term σ Γ (.VTypeProd C B) c) (e : Term σ Γ X x) :
+    (⟨_, Term.holeAt (Term.pair s e)
+        (ShapeMap.liftVal (σ := σ) (.wit (.prod (.box C) (.box B)) X) (.pack C B)).2⟩ :
+        Σ a, Term σ Γ (RShape.wit (.box (.VTypeProd C B)) X).flat a) =
+      ⟨_, Term.pair s e⟩ := by
+  refine sig_pair ?_ (Term.holeAt_pair_snd _ _)
+  exact (Term.holeAt_holeAt_sig _ _ _).trans
+    ((Term.holeAt_congr_sig (Term.holeAt_pair_fst _ _) _).trans (Term.holeAt_eta_root _))
 
 /-! ## A body over a companion step -/
 
-section PairW
+section PairS
 
 variable {V : Ctx} [V.NoSlots]
 
@@ -539,51 +564,57 @@ theorem pairS_le (T : VarType) (B : VarType) :
   (body_le _).trans (Ctx.le_insert (((Ctx.NoSlots.slots (Γ := V)).insert _).root) _)
 
 omit [ModalSys.NoFour] in
-/-- The object and its companion, paired: `⟨d, b⟩`. -/
-def slotPair (S : RShape) (B : VarType) :
-    Σ a, Term σ ((V.insert (.bnd 0) S.ty).insert (.bnd 1) (.VTypeBox B))
-      (RShape.prod S (.box B)).ty a :=
-  ⟨_, Term.pair
-    (Term.eta (.root (.bnd 0)) S.ty
-      ((Ctx.le_insert (((Ctx.NoSlots.slots (Γ := V)).insert _).root) _).ref
-        (Ctx.ref_insert_root V (.bnd 0) S.ty)))
-    (Term.eta (.root (.bnd 1)) (.VTypeBox B) (Ctx.ref_insert_root _ (.bnd 1) _))⟩
+/-- The object and its companion, arranged as the extended shape: the companion joins the
+    necessary part. -/
+def slotPairS : (S : RShape) → (B : VarType) →
+    Σ a, Term σ ((V.insert (.bnd 0) S.ty).insert (.bnd 1) (.VTypeBox B)) (S.ext B).ty a
+  | .nec N, B => ⟨_, Term.pair
+      (Term.eta (.root (.bnd 0)) N.ty
+        ((Ctx.le_insert (((Ctx.NoSlots.slots (Γ := V)).insert _).root) _).ref
+          (Ctx.ref_insert_root V (.bnd 0) (RShape.nec N).ty)))
+      (Term.eta (.root (.bnd 1)) (.VTypeBox B) (Ctx.ref_insert_root _ (.bnd 1) _))⟩
+  | .wit N X, B => ⟨_, Term.pair
+      (Term.pair
+        (Term.eta (.step (.root (.bnd 0)) .fst) N.ty
+          ((Ctx.le_insert (((Ctx.NoSlots.slots (Γ := V)).insert _).root) _).ref
+            (Ctx.ref_fst_of (Ctx.ref_insert_root V (.bnd 0) (RShape.wit N X).ty))))
+        (Term.eta (.root (.bnd 1)) (.VTypeBox B) (Ctx.ref_insert_root _ (.bnd 1) _)))
+      (Term.eta (.step (.root (.bnd 0)) .snd) (.VTypeDia X)
+        ((Ctx.le_insert (((Ctx.NoSlots.slots (Γ := V)).insert _).root) _).ref
+          (Ctx.ref_snd_of (Ctx.ref_insert_root V (.bnd 0) (RShape.wit N X).ty))))⟩
 
 omit [ModalSys.NoFour] in
-/-- ⭐A body over the shape `T`, as a body over an object of shape `S` and a companion `b : □B`,
-    through a map `F` from `S × □B` to `T`: the body read at `F⟨d, b⟩`.  What `ret_extS` then
-    `ret_map F` turn back into the body. -/
-def WFF.pairUpW {S T : RShape} {B : VarType} (F : ShapeMap σ (.prod S (.box B)) T)
-    (Φ : WFF σ (V.insert (.bnd 0) T.ty) 1) :
+/-- ⭐A body over a shape `T`, as a body over an object of shape `S` and a companion `b : □B`,
+    through a hole term `G` from the extended shape to `T`: the body read at `G(S ⊕ b)`.  What
+    `ret_extS` then `ret_map` turn back into the body. -/
+def WFF.pairUpS (S : RShape) (B : VarType) {T : VarType} {g : Ann T}
+    (G : Term σ (Ctx.empty.insert (.bnd 0) (S.ext B).ty) T g) (Φ : WFF σ (V.insert (.bnd 0) T) 1) :
     WFF σ ((V.insert (.bnd 0) S.ty).insert (.bnd 1) (.VTypeBox B)) 2 :=
-  WFF.subst (Subst.setIdx id (.bnd 0) (.tm (Term.holeAt (slotPair S B).2 F.obj.2)))
-    ((Subst.idS σ _).set (.bnd 0) (.tm (Term.holeAt (slotPair S B).2 F.obj.2)))
+  WFF.subst (Subst.setIdx id (.bnd 0) (.tm (Term.holeAt (slotPairS S B).2 G)))
+    ((Subst.idS σ _).set (.bnd 0) (.tm (Term.holeAt (slotPairS S B).2 G)))
     (Subst.ok_set (Subst.ok_idS_le (pairS_le S.ty B)) rfl)
     (Subst.coh_set (Subst.ok_idS_le (pairS_le S.ty B)) (Subst.coh_idS_le (pairS_le S.ty B))
       ((Ctx.NoSlots.slots (Γ := V)).rootFresh (le_refl 0)) rfl)
     ((Ctx.NoSlots.slots (Γ := V)).insert _) (((Ctx.NoSlots.slots (Γ := V)).insert _).insert _) Φ
 
 omit [ModalSys.NoFour] in
-/-- ⭐Splitting the companion step's pair undoes `pairUpW` up to `F`: the split body is the body
-    with `F`'s object in its slot — `ret_map F`'s premise. -/
-theorem WFF.bodySplit_mono_pairUpW {V' : Ctx} [V'.NoSlots] (h : V.Le V') {S T : RShape}
-    {B : VarType} (F : ShapeMap σ (.prod S (.box B)) T) (Φ : WFF σ (V.insert (.bnd 0) T.ty) 1) :
-    WFF.bodySplit
-      (Term.eta (.step (.root (.bnd 0)) .fst) S.ty
-        (Ctx.ref_fst_of (Ctx.ref_insert_root V' (.bnd 0) (RShape.prod S (.box B)).ty)))
-      (Term.eta (.step (.root (.bnd 0)) .snd) (.VTypeBox B)
-        (Ctx.ref_snd_of (Ctx.ref_insert_root V' (.bnd 0) (RShape.prod S (.box B)).ty)))
-      (WFF.mono ((h.insert (.bnd 0) _).insert (.bnd 1) _) (WFF.pairUpW F Φ)) =
-      WFF.bodyRepl (Term.mono ((Ctx.empty_le V').insert (.bnd 0) _) F.obj.2)
+/-- ⭐Splitting the companion step undoes `pairUpS` up to `G`: the split body is the body with `G`
+    in its slot — `ret_map`'s premise. -/
+theorem WFF.bodySplit_mono_pairUpS {V' : Ctx} [V'.NoSlots] (h : V.Le V') (S : RShape)
+    (B : VarType) {T : VarType} {g : Ann T}
+    (G : Term σ (Ctx.empty.insert (.bnd 0) (S.ext B).ty) T g) (Φ : WFF σ (V.insert (.bnd 0) T) 1) :
+    WFF.bodySplit (S.extL V' B).2 (S.extR V' B).2
+      (WFF.mono ((h.insert (.bnd 0) _).insert (.bnd 1) _) (WFF.pairUpS S B G Φ)) =
+      WFF.bodyRepl (Term.mono ((Ctx.empty_le V').insert (.bnd 0) _) G)
         (WFF.mono (h.insert (.bnd 0) _) Φ) := by
-  unfold WFF.bodySplit WFF.pairUpW WFF.bodyRepl
+  unfold WFF.bodySplit WFF.pairUpS WFF.bodyRepl
   rw [WFF.mono_subst _ _ _ _ _ _ (((Ctx.NoSlots.slots (Γ := V')).insert _).insert _),
     WFF.subst_mono]
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
   refine Subst.sim_of fun v U hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
-    obtain rfl : U = T.ty := by
+    obtain rfl : U = T := by
       change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else V _) = _ at hv
       rw [if_pos rfl] at hv
       exact (Option.some.inj hv).symm
@@ -592,14 +623,29 @@ theorem WFF.bodySplit_mono_pairUpW {V' : Ctx} [V'.NoSlots] (h : V.Le V') {S T : 
     dsimp only [SubE.mono, SubE.comp]
     rw [Term.subst_mono]
     refine SubE.sim_tm_sigma (Eq.symm ((Term.subst_holeAt_sig _ _ _ _ _).trans ?_))
-    refine (Term.holeAt_congr_sig (sig_pair
-      (Term.subst_eta_tm _ _ _ _ _ _ _ (by
-        change (Subst.set _ _ _) (.root (.bnd 0)) = _
-        rw [Subst.set_ne _ _ (fun h => by cases h), Subst.set_root]))
-      (Term.subst_eta_tm _ _ _ _ _ _ _ (by
-        change (Subst.set _ _ _) (.root (.bnd 1)) = _
-        rw [Subst.set_root]))) _).trans ?_
-    exact Term.holeAt_eta_slot _
+    have h0 : ∀ {X₀ : Σ a, Term σ (V'.insert (.bnd 0) (S.ext B).ty) S.ty a}
+        {X₁ : Σ a, Term σ (V'.insert (.bnd 0) (S.ext B).ty) (.VTypeBox B) a},
+        (((Subst.idS σ (V'.insert (.bnd 0) (S.ext B).ty)).set (.bnd 0) (.tm X₀.2)).set (.bnd 1)
+          (.tm X₁.2)).at (.root (.bnd 0)) = .tm X₀.2 := fun {_ _} => by
+      change (Subst.set _ _ _) (.root (.bnd 0)) = _
+      rw [Subst.set_ne _ _ (fun h => by cases h), Subst.set_root]
+    have h1 : ∀ {X₀ : Σ a, Term σ (V'.insert (.bnd 0) (S.ext B).ty) S.ty a}
+        {X₁ : Σ a, Term σ (V'.insert (.bnd 0) (S.ext B).ty) (.VTypeBox B) a},
+        (((Subst.idS σ (V'.insert (.bnd 0) (S.ext B).ty)).set (.bnd 0) (.tm X₀.2)).set (.bnd 1)
+          (.tm X₁.2)).at (.root (.bnd 1)) = .tm X₁.2 := fun {_ _} => by
+      change (Subst.set _ _ _) (.root (.bnd 1)) = _
+      rw [Subst.set_root]
+    refine (Term.holeAt_congr_sig ?_ _).trans (Term.holeAt_eta_slot _)
+    cases S with
+    | nec N =>
+        exact sig_pair (Term.subst_eta_tm _ _ _ _ _ _ _ h0) (Term.subst_eta_tm _ _ _ _ _ _ _ h1)
+    | wit N X =>
+        refine sig_pair (sig_pair (Term.subst_eta_tm _ _ _ _ _ _ _ ?_)
+          (Term.subst_eta_tm _ _ _ _ _ _ _ h1)) (Term.subst_eta_tm _ _ _ _ _ _ _ ?_)
+        · rw [Subst.at_proj _ _ rfl, h0]
+          rfl
+        · rw [Subst.at_proj _ _ rfl, h0]
+          rfl
   · have hv' : V v = some U := by
       change (if v = VarSymb.root (.bnd 0) then _ else V v) = _ at hv
       rwa [if_neg hvr] at hv
@@ -613,7 +659,7 @@ theorem WFF.bodySplit_mono_pairUpW {V' : Ctx} [V'.NoSlots] (h : V.Le V') {S T : 
     rw [Subst.at_nonproj _ hlp, Subst.set_ne _ _ hv1, Subst.set_ne _ _ hvr]
     exact .refl _
 
-end PairW
+end PairS
 
 /-! ## The parent's `∃`-introduction for a new root -/
 
@@ -621,17 +667,25 @@ section NewRootW
 
 variable {lv cls clt : List VarType} {A : VarType} {x : VarSymb} {X : VarType}
 
-/-- The middle term: the older roots' entry and the new root's slot, repacked. -/
+/-- The companion step's packing map at the witness shape. -/
+abbrev packW (C B X : VarType) :
+    Σ a, Term σ (Ctx.empty.insert (.bnd 0) ((RShape.wit (.box C) X).ext B).ty)
+      (RShape.wit (.box (.VTypeProd C B)) X).ty a :=
+  ShapeMap.liftObj (σ := σ) (.wit (.prod (.box C) (.box B)) X) (.pack C B)
+
+/-- The middle term: the older roots' entry with the new root's slot as companion, packed. -/
 def midTermW (hs : cls <:+ lv) (hx : (ctxOf cls).ref x = some (.VTypeDia X)) (A : VarType) :
     Σ a, Term σ ((ctxOf lv).insert (.bnd 0) (.VTypeBox A.bc))
-      (RShape.prod (.box (bcT (A :: cls))) (.dia X)).ty a :=
+      (RShape.wit (.box (bcT (A :: cls))) X).ty a :=
   ⟨_, Term.holeAt
     (Term.pair
+      (Term.pair
+        (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lv)).root _)
+          (Term.boxtm (Term.mono (ctxOf_le_of_suffix hs).boxIn (tupT cls).2)))
+        (Term.eta (.root (.bnd 0)) (.VTypeBox A.bc) (Ctx.ref_insert_root _ (.bnd 0) _)))
       (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lv)).root _)
-        (Term.pair (Term.boxtm (Term.mono (ctxOf_le_of_suffix hs).boxIn (tupT cls).2))
-          (Term.eta x (.VTypeDia X) ((ctxOf_le_of_suffix hs).ref hx))))
-      (Term.eta (.root (.bnd 0)) (.VTypeBox A.bc) (Ctx.ref_insert_root _ (.bnd 0) _)))
-    (ShapeMap.repackW (σ := σ) (bcT cls) A.bc X).obj.2⟩
+        (Term.eta x (.VTypeDia X) ((ctxOf_le_of_suffix hs).ref hx))))
+    (packW (σ := σ) (bcT cls) A.bc X).2⟩
 
 /-- The middle substitution: the reverse arrow, weakened past the `∃`'s slot, with the body's slot
     set to `midTermW`. -/
@@ -661,19 +715,20 @@ theorem bodyW_item {cl clt : List VarType} {X : VarType} {v : VarSymb} {U : VarT
   exact boxIn_item hv
 
 /-- ⭐**A new root's witness body is an `∃`-introduction of the older roots' one.**  Read at the
-    parent, `∃b. pairUpW repackW Φ` over the older roots, at the new root's necessary object, is
-    `Φ` over all of them: the repacking sends `⟨⟨□ā, x⟩, □a⟩` to `⟨□⟨ā, a⟩, x⟩`. -/
-theorem liftBodyW_ex_pairUpW_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.IsMCS M)
+    parent, `∃b. pairUpS packW Φ` over the older roots, at the new root's necessary object, is `Φ`
+    over all of them: packing sends `⟨⟨□ā, □a⟩, x⟩` to `⟨□⟨ā, a⟩, x⟩`. -/
+theorem liftBodyW_ex_pairUpS_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.IsMCS M)
     (hs' : (A :: cls) <:+ lv) {imgt : ℕ → ℕ} (himgt : ImgOk clt (ctxOf lv) imgt)
     (hx : (ctxOf cls).ref x = some (.VTypeDia X)) (Φ : WFF σ (bodyCtxW (A :: cls) clt X) 1)
     (h : liftBodyW hs' himgt (ref_old_of_ref hx) Φ ∈ M) :
     liftBodyW ((List.suffix_cons A cls).trans hs') himgt hx
-      (WFF.ex (.VTypeBox A.bc) (WFF.pairUpW (ShapeMap.repackW (bcT cls) A.bc X) Φ)) ∈ M := by
+      (WFF.ex (.VTypeBox A.bc)
+        (WFF.pairUpS (.wit (.box (bcT cls)) X) A.bc (packW (bcT cls) A.bc X).2 Φ)) ∈ M := by
   have hs : cls <:+ lv := (List.suffix_cons A cls).trans hs'
   refine hM.closed ⟨[_], fun y hy => by rw [List.mem_singleton.mp hy]; exact h, ⟨?_⟩⟩
   refine Proof.ex_intro _ (newItem hs') (Proof.conv ?_ (Proof.lookup List.mem_cons_self))
   refine Eq.symm ?_
-  unfold WFF.instantiate WFF.substRoot WFF.pairUpW
+  unfold WFF.instantiate WFF.substRoot WFF.pairUpS
   have hfr : (ctxOf lv) (.root (.bnd 0)) = none := (Ctx.NoSlots.slots (Γ := ctxOf lv)).root
   rw [WFF.subst_comp _ _ (midSW hs hx A imgt) _ _ _ _ (ok_midSW hs hx himgt)
     (coh_midSW hs hx himgt) _ _ _ ?simA]
@@ -681,7 +736,7 @@ theorem liftBodyW_ex_pairUpW_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.Is
     refine Subst.sim_of fun v U hlp hv => ?_
     by_cases hvr : v = .root (.bnd 0)
     · subst hvr
-      obtain rfl : U = (RShape.prod (.box (bcT (A :: cls))) (.dia X)).ty := by
+      obtain rfl : U = (RShape.wit (.box (bcT (A :: cls))) X).ty := by
         change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
         rw [if_pos rfl] at hv
         exact (Option.some.inj hv).symm
@@ -699,10 +754,11 @@ theorem liftBodyW_ex_pairUpW_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.Is
         rw [Subst.set_root]
         rfl
       refine SubE.sim_tm_sigma (Eq.symm ((Term.subst_holeAt_sig _ _ _ _ _).trans ?_))
-      exact Term.holeAt_congr_sig (sig_pair
-        (Term.subst_eta_tm _ _ _ _ _ _ _ h0)
+      refine Term.holeAt_congr_sig (sig_pair (sig_pair
+        (Term.subst_eta_tm _ _ _ _ _ _ _ (by rw [Subst.at_proj _ _ rfl, h0]; rfl))
         (Term.subst_eta_renAt _ _ _ _ _ _ _ (Ctx.ref_insert_root _ (.bnd 0) _)
-          (Subst.under_at_slot _ (0 + 1) 0 _ hfr))) _
+          (Subst.under_at_slot _ (0 + 1) 0 _ hfr)))
+        (Term.subst_eta_tm _ _ _ _ _ _ _ (by rw [Subst.at_proj _ _ rfl, h0]; rfl))) _
     · obtain ⟨u, rfl, hu⟩ := bodyW_item hv hvr
       dsimp only [Subst.comp]
       rw [show midSW (σ := σ) hs hx A imgt (.step u .box) =
@@ -717,7 +773,7 @@ theorem liftBodyW_ex_pairUpW_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.Is
   refine Subst.sim_of fun v U hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
-    obtain rfl : U = (RShape.prod (.box (bcT (A :: cls))) (.dia X)).ty := by
+    obtain rfl : U = (RShape.wit (.box (bcT (A :: cls))) X).ty := by
       change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
       rw [if_pos rfl] at hv
       exact (Option.some.inj hv).symm
@@ -730,9 +786,9 @@ theorem liftBodyW_ex_pairUpW_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.Is
       change Subst.single (.bnd 0) _ (.root (.bnd 0)) = _
       exact if_pos rfl
     refine SubE.sim_tm_sigma (Eq.symm ((Term.subst_holeAt_sig _ _ _ _ _).trans ?_))
-    refine (Term.holeAt_congr_sig (sig_pair (Term.subst_single_mono_sig _ _)
-      (Term.subst_eta_tm _ _ _ _ _ _ _ hsg)) _).trans ?_
-    refine (ShapeMap.repackW_obj _ _ _).trans ?_
+    refine (Term.holeAt_congr_sig (sig_pair (sig_pair (Term.subst_single_mono_sig _ _)
+      (Term.subst_eta_tm _ _ _ _ _ _ _ hsg)) (Term.subst_single_mono_sig _ _)) _).trans ?_
+    refine (ShapeMap.liftObj_pack_wit _ _ _).trans ?_
     refine congrArg (Sigma.mk _) ?_
     change Term.pair (Term.boxtm (Term.pair _ _)) _ =
       Term.pair (Term.boxtm (Term.pair (Term.mono _ (Term.mono _ _)) (Term.mono _ _))) _
@@ -762,7 +818,7 @@ def retAtomW (himg : ImgOk cl (ctxOf tt.l) img) (ht : clt <:+ tt.l)
     (hcx : (ctxOf tt.l).ref (.root (.free cx)) = some X)
     (Φ : WFF σ (bodyCtxW (nextTy ts.l cl :: cl) clt X) 1) :
     WFF σ (ctxOf ((nextTy ts.l cl).bc :: tt.l)) 0 :=
-  WFF.retS hS (.prod (.box (bcT (nextTy ts.l cl :: cl))) (.dia X))
+  WFF.retS hS (.wit (.box (bcT (nextTy ts.l cl :: cl))) X)
     (Term.pair
       (tupImgT (nextTy ts.l cl :: cl) (extImg img cl.length tt.l.length) (imgOk_ext himg)).2
       (Term.eta (.root (.free cx)) X ((ctxOf_le_append [(nextTy ts.l cl).bc] tt.l).ref hcx)))
@@ -820,11 +876,12 @@ theorem ret_listW (hs' : (nextTy ts.l cl :: cl) <:+ ts.l) (himgt : ImgOk clt (ct
           · rw [Set.mem_singleton_iff.mp hx]; exact h₀
 
 /-- ⭐**The gained atoms are consistent with the child**: finitely many reduce to one body `Φ`
-    (`ret_listW`); the parent has `∃b. pairUpW repackW Φ` at the older roots and `x`
-    (`liftBodyW_ex_pairUpW_mem`), so by the invariant the child has
-    `◇[⟨d, e⟩ ↦ ⟨ā', cx⟩] ∃b. pairUpW repackW Φ`; `ret_extS` names `b` by the fresh variable,
-    and `ret_map` along the repacking turns the result into the atom
-    (`bodySplit_mono_pairUpW`, `repackW_val`). -/
+    (`ret_listW`); the parent has `∃b. pairUpS packW Φ` at the older roots and `x`
+    (`liftBodyW_ex_pairUpS_mem`), so by the invariant the child has
+    `◇[d ↦ ā'; e ⇝ cx] ∃b. pairUpS packW Φ`; `ret_extS` names `b` by the fresh variable, joining
+    the necessary part, and `ret_map` along `pack` turns the result into the atom
+    (`bodySplit_mono_pairUpS`,
+    `RShape.extTm_wit`, `ShapeMap.liftVal_pack_wit`). -/
 theorem retSetW_consistent (hs' : (nextTy ts.l cl :: cl) <:+ ts.l)
     (himgt : ImgOk clt (ctxOf ts.l) imgt) (himg : ImgOk cl (ctxOf tt.l) img) (ht : clt <:+ tt.l)
     (hx : (ctxOf cl).ref x = some (.VTypeDia X))
@@ -832,14 +889,14 @@ theorem retSetW_consistent (hs' : (nextTy ts.l cl :: cl) <:+ ts.l)
     (hv : Theory.IsMCS ts.M) (hw : Theory.IsMCS tt.M)
     (hinv : ∀ Φ : WFF σ (bodyCtxW cl clt X) 1,
       liftBodyW ((List.suffix_cons _ _).trans hs') himgt hx Φ ∈ ts.M →
-        WFF.retS hS (.prod (.box (bcT cl)) (.dia X))
+        WFF.retS hS (.wit (.box (bcT cl)) X)
           (Term.pair (tupImgT cl img himg).2 (Term.eta (.root (.free cx)) X hcx))
           (WFF.mono ((ctxOf_le_of_suffix ht).boxIn.insert (.bnd 0) _) Φ) ∈ tt.M) :
     Theory.Consistent (WFF.mono (ctxOf_le_append [(nextTy ts.l cl).bc] tt.l) '' tt.M ∪
       retSetW hS hs' himgt himg ht hx hcx) := by
   rintro ⟨L, hL, p⟩
   obtain ⟨Φ, hΦ, hder⟩ := ret_listW hS hs' himgt himg ht hx hcx hv _ L hL
-  have h₁ := hinv _ (liftBodyW_ex_pairUpW_mem hv hs' himgt hx Φ hΦ)
+  have h₁ := hinv _ (liftBodyW_ex_pairUpS_mem hv hs' himgt hx Φ hΦ)
   have hu := ctxOf_fresh (l := tt.l) le_rfl
   have hle := ctxOf_le_of_suffix ht
   obtain ⟨Δ, hΔ, hq⟩ : Theory.Derives (WFF.mono (ctxOf_le_append [(nextTy ts.l cl).bc] tt.l) ''
@@ -855,22 +912,27 @@ theorem retSetW_consistent (hs' : (nextTy ts.l cl :: cl) <:+ ts.l)
   obtain ⟨q'⟩ := Provable.mono h₁' hq
   obtain ⟨Δ₁, hΔ₁, ⟨pex⟩⟩ := Theory.Derives.of_mem (S := tt.M) h₁
   refine hw.1 ⟨Δ₁ ++ Δ₀, fun y hy => (List.mem_append.mp hy).elim (hΔ₁ y) (h₀ y), ⟨?_⟩⟩
-  refine Proof.ret_extS hS .nec (S := .prod (.box (bcT cl)) (.dia X)) _
+  refine Proof.ret_extS hS .nec (S := .wit (.box (bcT cl)) X) _
     (WFF.mono ((hle.boxIn.insert (.bnd 0) _).insert (.bnd 1) _)
-      (WFF.pairUpW (ShapeMap.repackW (bcT cl) (nextTy ts.l cl).bc X) Φ))
+      (WFF.pairUpS (.wit (.box (bcT cl)) X) (nextTy ts.l cl).bc
+        (packW (bcT cl) (nextTy ts.l cl).bc X).2 Φ))
     tt.l.length hu (φ := .bot) (Proof.ofSubset (fun y hy => List.mem_append_left _ hy) pex) ?_
   refine Proof.imp_elim (Proof.ofSubset (fun y hy => ?_) (Proof.imp_intro q')) ?_
   · obtain ⟨z, hz, rfl⟩ := List.mem_map.mp hy
     exact List.mem_cons_of_mem _ (List.mem_map_of_mem (List.mem_append_right _ hz))
-  refine Proof.conv ?_ (Proof.ret_map hS .nec (ShapeMap.repackW (bcT cl) (nextTy ts.l cl).bc X) _
+  refine Proof.conv ?_ (Proof.ret_map hS .nec
+    (S := .wit (.prod (.box (bcT cl)) (.box (nextTy ts.l cl).bc)) X)
+    (.pack (bcT cl) (nextTy ts.l cl).bc) _
     (WFF.mono ((ctxOf_le_of_suffix (ht.trans (List.suffix_cons _ _))).boxIn.insert (.bnd 0) _) Φ)
     (Proof.conv (OutLeg.retS_congr' hS _ _ rfl ?_) (Proof.lookup List.mem_cons_self)))
   · refine WFF.retS_congr hS _ ?_ rfl
     rw [Term.holeRead_eq_holeAt]
-    refine (ShapeMap.repackW_val _ _ _).trans
-      (sig_pair (tupImgT_ext himg (imgOk_ext himg)).symm ?_)
+    refine (Term.holeAt_congr_sig (RShape.extTm_wit _ _ _) _).trans
+      ((ShapeMap.liftVal_pack_wit _ _).trans
+        (sig_pair (tupImgT_ext himg (imgOk_ext himg)).symm ?_))
     exact congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _)
-  · rw [WFF.bodySplit_mono_pairUpW hle.boxIn, WFF.mono_bodyRepl (Ctx.le_insert hu.root _).boxIn,
+  · dsimp only [OutLeg.view]
+    rw [WFF.bodySplit_mono_pairUpS hle.boxIn, WFF.mono_bodyRepl (Ctx.le_insert hu.root _).boxIn,
       Term.mono_mono, WFF.mono_mono]
 
 /-- The child grown by the image of the parent's next root, along a witness arrow. -/
@@ -1248,7 +1310,7 @@ omit [ModalSys.NoFour] in
 theorem WFF.mono_unitBodyD {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (h : Γ.Le Γ')
     (hS : ModalSys.BStrong = true) {C X A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀)
     (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd C X) (.VTypeBox A))) 1) :
-    WFF.mono (h.boxIn.insert (.bnd 0) (RShape.prod (.box C) (.dia X)).ty)
+    WFF.mono (h.boxIn.insert (.bnd 0) (RShape.wit (.box C) X).ty)
         (WFF.unitBodyD hS sb θ) = WFF.unitBodyD hS (Term.mono h.boxIn sb) θ := by
   unfold WFF.unitBodyD
   refine WFF.retxS_congr' hS _ _ _ ?_ ?_
@@ -1273,7 +1335,7 @@ theorem liftBodyW_unitBodyD {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt 
         (WFF.mono (((ctxOf_le_of_suffix hs).diaIn x).insert (.bnd 0) _) Φ) := by
   have hle := ctxOf_le_of_suffix hs
   have hu := Ctx.ref_insert_root (ctxOf clt).boxIn (.bnd 0)
-    (RShape.prod (.box (bcT cls)) (.dia X)).ty
+    (RShape.wit (.box (bcT cls)) X).ty
   have hsnd := Ctx.ref_snd_of hu
   have hθ : Subst.Ok (bodyCtxW cls clt X)
       ((arrowS σ (ctxOf lv) imgt).set (.bnd 0) (liftEntryW hs hx)) :=
@@ -1362,7 +1424,7 @@ theorem retStepW_rev (hS : ModalSys.BStrong = true) {ts tt : NodeSt σ} {cl clt 
   have p₁ : Proof σ (ctxOf ((nextTy ts.l cl).bc :: tt.l))
       [retAtomW hS himg ht hcx (WFF.neg (WFF.unitBodyD (Γ := ctxOf clt) hS (tupT clt).2
         (pack2X _ hx' Φ)))]
-      (WFF.retS hS (.prod (.box (bcT (nextTy ts.l cl :: cl))) (.dia X))
+      (WFF.retS hS (.wit (.box (bcT (nextTy ts.l cl :: cl))) X)
         (Term.pair (tupImgT (nextTy ts.l cl :: cl) (extImg img cl.length tt.l.length)
             (imgOk_ext himg)).2 (Term.eta (.root (.free cx)) X hcx'))
         (WFF.neg (WFF.unitBodyD hS (Term.mono (ctxOf_le_of_suffix ht').boxIn (tupT clt).2)
@@ -1406,8 +1468,8 @@ theorem liftBodyX_unitBodyW {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt 
     (Φ : WFF σ (bodyCtxW clt cls X) 1) :
     liftBodyX hs himgt hx hcx (WFF.unitBodyW (Γ := ctxOf clt) hS (tupT clt).2
         (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of hx))
-        (pack2 cls (RShape.prod (.box (bcT clt)) (.dia X)).ty Φ)) =
-      WFF.retS hS (.prod (.box (bcT clt)) (.dia X))
+        (pack2 cls (RShape.wit (.box (bcT clt)) X).ty Φ)) =
+      WFF.retS hS (.wit (.box (bcT clt)) X)
         (Term.pair (tupImgT clt imgt himgt).2 (Term.eta (.root (.free cx)) X hcx))
         (WFF.mono ((ctxOf_le_of_suffix hs).boxIn.insert (.bnd 0) _) Φ) := by
   unfold liftBodyX WFF.unitBodyW
@@ -1463,7 +1525,7 @@ theorem retStepX_rev (hS : ModalSys.BStrong = true) {tk tp : NodeSt σ} {cls clt
   have hneg := hk.neg_mem_iff.mpr hn
   have hΨ : liftBodyX hs' himgt hx hcx (WFF.neg (WFF.unitBodyW (Γ := ctxOf clt) hS (tupT clt).2
       (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of hx))
-      (pack2 (nextTy tk.l cls :: cls) (RShape.prod (.box (bcT clt)) (.dia X)).ty Φ))) ∈
+      (pack2 (nextTy tk.l cls :: cls) (RShape.wit (.box (bcT clt)) X).ty Φ))) ∈
       tk.M := by
     change WFF.neg (liftBodyX hs' himgt hx hcx _) ∈ tk.M
     rw [liftBodyX_unitBodyW]
@@ -1472,13 +1534,13 @@ theorem retStepX_rev (hS : ModalSys.BStrong = true) {tk tp : NodeSt σ} {cls clt
   have p₁ : Proof σ (ctxOf ((nextTy tk.l cls).bc :: tp.l))
       [retAtomX hS himgs ht hx (WFF.neg (WFF.unitBodyW (Γ := ctxOf clt) hS (tupT clt).2
         (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of hx))
-        (pack2 (nextTy tk.l cls :: cls) (RShape.prod (.box (bcT clt)) (.dia X)).ty Φ)))]
+        (pack2 (nextTy tk.l cls :: cls) (RShape.wit (.box (bcT clt)) X).ty Φ)))]
       (WFF.retx hS x hx''
         (tupImgT (nextTy tk.l cls :: cls) (extImg imgs cls.length tp.l.length)
           (imgOk_ext himgs)).2
         (WFF.neg (WFF.unitBodyW hS (Term.mono hle.boxIn (tupT clt).2)
           (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of (hle.ref hx)))
-          (pack2 (nextTy tk.l cls :: cls) (RShape.prod (.box (bcT clt)) (.dia X)).ty Φ)))) := by
+          (pack2 (nextTy tk.l cls :: cls) (RShape.wit (.box (bcT clt)) X).ty Φ)))) := by
     refine Proof.conv ?_ (Proof.lookup List.mem_cons_self)
     unfold retAtomX
     refine congrArg (WFF.retx hS x _ _) ?_
@@ -1490,13 +1552,13 @@ theorem retStepX_rev (hS : ModalSys.BStrong = true) {tk tp : NodeSt σ} {cls clt
           (extImg imgs cls.length tp.l.length) (imgOk_ext himgs)).2
         (Term.pair (Term.boxtm (Term.mono hle.boxIn (tupT clt).2))
           (Term.diatm x hx'' (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of (hle.ref hx))))))
-        (pack2 (nextTy tk.l cls :: cls) (RShape.prod (.box (bcT clt)) (.dia X)).ty Φ)) :=
+        (pack2 (nextTy tk.l cls :: cls) (RShape.wit (.box (bcT clt)) X).ty Φ)) :=
     Proof.conv (holeRead_tupImgT_pack2 (imgOk_ext himgs) _ Φ).symm
       (Proof.lookup List.mem_cons_self)
   have p₃ : Proof σ (ctxOf ((nextTy tk.l cls).bc :: tp.l))
       [retAtomX hS himgs ht hx (WFF.neg (WFF.unitBodyW (Γ := ctxOf clt) hS (tupT clt).2
         (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of hx))
-        (pack2 (nextTy tk.l cls :: cls) (RShape.prod (.box (bcT clt)) (.dia X)).ty Φ))),
+        (pack2 (nextTy tk.l cls :: cls) (RShape.wit (.box (bcT clt)) X).ty Φ))),
         liftBodyW ht' (imgOk_ext himgs) hx Φ] .bot :=
     Proof.retx_absurd hS hx'' _ _ (ctxOf_fresh (l := (nextTy tk.l cls).bc :: tp.l) le_rfl)
       (Proof.ret_unitW hS hx'' _ _ _ _ _

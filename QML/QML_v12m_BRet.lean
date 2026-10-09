@@ -1080,7 +1080,7 @@ theorem RetInv.birth (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) {tv
   rw [WFF.subst_holeAt]
   refine (WFF.holeAt_congr _ (Term.subst_eta_renAt _ _ _ _ _ _ _
     (Ctx.ref_insert_root _ (.bnd 0) _) (Subst.under_at_slot _ _ _ _ _)) _).trans ?_
-  dsimp only [RShape.ty]
+  dsimp only [RShape.ty, NShape.ty]
   rw [WFF.holeAt_holeAt_pairUnit]
   exact holeAt_tupT_pack2 (ctxOf_le_of_suffix (List.nil_suffix (l := tw.l))).boxIn Φ
 
