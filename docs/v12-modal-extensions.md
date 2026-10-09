@@ -6188,6 +6188,12 @@ restriction should not disturb them.
 * *Next:* the `Op` type with fairness (aliases, `mkRet`, `mkRetX`, `mkRetD`, with the existing
   operations), then L4f.
 
+**L4e done (2026-10-09, T off)** (`QML_v12m_BNetS`).  `OpS` = weak B's `Op` + aliases + the three
+ret children, each at a node; `NetSt.applyOpT` performs one at a live node, ⭐`GoodS.applyOpT` (needs
+`B` and `T = false`) and `Ext.applyOpT`; `schedS` is a fair schedule (`schedS_after`), and `netS`
+the chain from a root theory with ⭐`goodS_netS` and `ext_netS`.  The old strong chain in
+`BNetRet` (weak B's operations only) is removed.  *Next:* L4f.
+
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`
   contains `□`.  So for a slot `□A` with `A` box-free the second component has a canonical

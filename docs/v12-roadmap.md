@@ -203,6 +203,16 @@ style of milestone 1, each ending green and committed:
    * a new network operation giving every `ret` atom a child, as `exX` does for `◇_x`, with fairness;
    * `backRet_exists_canon` by Henkin witnessing (as step 6 of milestone 1); `BTruth`'s `back` and
      `ret` cases; canonical `Ind` unchanged at `◇`-free types.
+
+   *Status (2026-10-09), built for strong B **without T** (T is combined afterwards, §11.20):*
+   L4a–e are done (`v12-modal-extensions.md` §11.17, §11.20).  The invariants (`RetInv`,
+   `RetInvW`, `RetInvX`; `RetData`, `GoodS`), the realisation steps, aliases, the three returning
+   successors (`mkRet`, `mkRetX`, `mkRetD`, with the K-laws `ret_K`, `retx_K`, `retD_K` derived) and
+   a kind on back arrows (`bkind`) are in; the chain is `netS` with the fair schedule `schedS`
+   (`QML_v12m_BNetS`: `goodS_netS`, `ext_netS`).  Commit at birth for `Back` carriers turned out
+   unnecessary, and `back_def` was replaced by `back_ret` (user, 2026-10-09; `Back` as the definite
+   description of `ret`).  **Next: L4f**, the limit and the truth lemma (`Att.back`, the `back`/`ret`
+   cases, the T-free decoder, removing `NoFour.noBStrong`), then step 6.
 6. **Statements.**  Completeness, strong completeness and compactness for strong B (rows 1–2,
    `◇`-free contents), under `NoFour`.
 Then rows 3–4 (multi-labelled edges, per-witness components) and `◇`-typed contents (§11.12).

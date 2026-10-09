@@ -14,7 +14,7 @@ Under strong B every child's two arrows carry the returning-possibility invarian
   ⭐`GoodS.realFS`, `GoodS.realBS` by the realisation steps and cross-arrow preservation.
 * `GoodS.henk`, ⭐`GoodS.mkChild`: Henkin steps and children are weak B's; a child is born with
   the invariants (`RetData.birth`).
-* `netS`, ⭐`goodS_netS`, `ext_netS`: the chain under strong B.
+* `applyOpS`: weak B's operations under strong B (the full chain is in `QML_v12m_BNetS`).
 -/
 
 namespace V12M
@@ -681,32 +681,6 @@ theorem GoodS.init (hS : ModalSys.BStrong = true) {l₀ : List VarType}
   ⟨fun _ _ => h, fun _ _ hk => absurd (init_live hk) (by simp)⟩
 
 end NetSt
-
-section ChainS
-
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
-
-/-- ⭐The chain of networks from a root theory `M₀`, under strong B. -/
-noncomputable def netS (hS : ModalSys.BStrong = true) {l₀ : List VarType}
-    (M₀ : Set (WFF σ (ctxOf l₀) 0)) : ℕ → NetSt σ
-  | 0 => NetSt.init M₀
-  | n + 1 => (netS hS M₀ n).applyOpS hS (sched n)
-
-/-- ⭐Every network of the strong chain is good under strong B. -/
-theorem goodS_netS (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) {l₀ : List VarType}
-    {M₀ : Set (WFF σ (ctxOf l₀) 0)} (h : Theory.IsMCS M₀) : ∀ n, (netS hS M₀ n).GoodS hS
-  | 0 => NetSt.GoodS.init hS h
-  | n + 1 => (goodS_netS hS hB h n).applyOpS hB (sched n)
-
-/-- ⭐Along the strong chain, later networks extend earlier ones. -/
-theorem ext_netS (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) {l₀ : List VarType}
-    {M₀ : Set (WFF σ (ctxOf l₀) 0)} (h : Theory.IsMCS M₀) {n m : ℕ} (hnm : n ≤ m) :
-    NetSt.Ext (netS hS M₀ n) (netS hS M₀ m) := by
-  induction hnm with
-  | refl => exact NetSt.Ext.refl _
-  | step _ ih => exact ih.trans (NetSt.Ext.applyOpS (goodS_netS hS hB h _) _)
-
-end ChainS
 
 end BArrow
 
