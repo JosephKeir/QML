@@ -6072,3 +6072,75 @@ restriction should not disturb them.
   read in `RetInv`'s form (slot `□(𝟙 × A)`, value `⟨(), y⟩`, from the atom by `ret_map` along a
   hole term); consistency pulls a refutation back to the parent's `□` view (as `child_consistent`,
   with the slot), then the K-law.
+
+**L4e, second part: the plain ret child (2026-10-09, T off).**  `QML_v12m_BRetChild`:
+* Layout `rcl l A = l.map bc ++ [□A]` (`rclImg`: `r ↦ r + 1`; `retBackImg`: `c ↦ y`).  The
+  obligation is the atom in `RetInv`'s form, `◇[d ↦ ⟨(), y⟩] Φ` with `Φ` over `bodyCtx [□A] l`.
+* Seed `retSeed`: `{Φ↑} ∪ {(¬Θ)↑ : ¬◇[d ↦ y] Θ ∈ M}` (`↑` = `liftBody` into the child) — the
+  negated form, so the back invariant at birth is immediate and only the forward one needs `¬¬`.
+* ⭐`retSeed_consistent`.  `retSeed_list` folds finitely many seed formulas into one `Ξ` with
+  `◇[d ↦ y] Ξ ∈ M`, by `Proof.ret_K_node` (the K-law for any body: `kPsi_pack2`).  A refutation of
+  `Ξ↑` is pulled back by **one** substitution `retPullS` from the child straight into the parent's
+  `□` view with the slot opened at `u` (`pullCtx`): `c ↦ □(u.snd)`, root `r + 1` ↦ the tuple of
+  root `r`'s items; ⭐`subst_retPull_liftBody` shows the result is `Ξ` opened at `u` (the slot case
+  by `subst_retPull_entry`: `□⟨(), c.box⟩` goes to the η-expansion of `u`; T off is used only
+  here, `(□A).bc = A`).  Then `ex_elim`, `K_box` and `ret_dia` (`Proof.ret_refute`).  No root
+  renaming is needed, unlike the plan above.
+* ⭐`RetData.retBirth`: back by the seed; forward as planned (`ret_unit` + `ret_absurd` give
+  `¬◇[d ↦ y]¬U` for `U = unitBody (tupT l) (pack2 [□A] _ Ψ)`, and `liftBody_unitBody` reads `U↑`
+  as the forward returning possibility).
+* Network: `newChild` takes optional arrow data (`fimg₀ bcl₀ bimg₀`, defaults `id [] id`, so the
+  old callers are unchanged); `NetSt.mkRet` with ⭐`GoodS.mkRet` (needs `T = false`) and
+  `Ext.mkRet`.
+* *Next:* witness ret children (`◇_x[d ↦ t]` atoms, the K-law along `x`), back-witness children,
+  negative `Back` atoms, and the `Op` type with fairness; turning a user atom into an obligation
+  (alias, then `ret_map` to `RetInv`'s form) is part of L4f's truth lemma.
+
+**Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
+* *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`
+  contains `□`.  So for a slot `□A` with `A` box-free the second component has a canonical
+  inhabitant (units): alias `y'.fst` to `t`, substitute `y' := ⟨t, ()⟩`, and the T-off
+  construction goes through.  The difficulty is only **nested necessity**, `A ⊇ □B`.
+* *What the second component is.*  An arrow carries a `□A` object's contents and the items of its
+  `here` value.  For the child's birth root `c`, the second component is `c.here` read along the
+  way home: in an arrow frame `d(id_v)(r)` against `t.here = d(r)(id_w)`, which need not agree.  So
+  it is **independent data**, a second returned value that the atom `◇[d ↦ t] Φ` does not mention.
+* *What would supply it.*  An existence rule for a **here-companion**, in the style of `ret_extS`:
+  `◇[d ↦ t] Φ(d) ⊢ (fresh z) ◇[d ↦ t; d.here ↦ z] Φ(d)`, with a shape clause "`d.here` comes back
+  as `z`" (sound by `homeUnique`: the one way home).  Then the alias is `y' := ⟨t, z⟩` with `z` an
+  eigenvariable, so no inhabitant is invented.
+* *Is it admissible?*  Not by `ret_extS`: a companion `b` with `b` "being" `d.here` needs a formula
+  linking two necessary objects, which we do not have (and `ShapeMap` cannot reach `d.here`, which
+  is not a hole term of `d`'s item).  So it looks like a genuine T-specific rule, analogous to how
+  `bc` under T makes the `here` items an arrow-carried companion.  To check: whether returning the
+  full `bc` tuple in `box` shapes under T is the more uniform design than a separate companion.
+
+**T's rules follow the witnessed/unwitnessed pattern (2026-10-11, paper).**
+* *Unwitnessed:* `T_box` (`□φ ⊢ φ↓`) carries necessary objects to the own arrow, as `K_box`
+  carries them into the `□` view.
+* *Witnessed:* `here_elim` (`Here x t, □_x ψ(x.dia) ⊢ ψ(t)`) carries necessary objects together
+  with **exactly one** possible object, the witness `x`, whose content comes back as `t`; its
+  condition is that the own arrow lies in `x`'s extent.  `here_intro` is its dual; `T_dia` and
+  `here_name` are existence (of a witness, of a value), as in §11.18's table.
+* *The difference:* the own arrow is its own way home, so the out leg and the way home are one leg
+  and one witness serves both.  `Here x t` is strong B's `◇_x[ ; e ⇝ t]` with `e = x` along the
+  identity arrow, and the four forms collapse to two.
+
+**Strong B with T: companion, not full tuple (2026-10-11, paper).**
+* *Full tuple rejected:* making `box A` return its whole `bc` tuple under T would change the value
+  type of the user's `◇[d ↦ t]` (to `A × bc A`) and break agreement with the T-off language.
+* *The companion is not admissible by abstraction.*  `◇[d ↦ t] Φ(d) ⊢ ◇[d ↦ t] ∃b. Φ[b/d.here]`
+  holds (∃-intro at `b := d.here`), and `ret_extS` names `b`'s return `z`.  But `b` is then only
+  *some* object behaving like `d.here` in `Φ`: other bodies may distinguish `b` from `d.here`
+  (`◇[⟨d, b⟩ ↦ ⟨t, z⟩](P(d.here) ∧ ¬P(b))` is consistent with the rules), while the child
+  identifies them (`b := c.here`), so its seed can be inconsistent.  The companion must *be*
+  `d.here`.
+* *Design:* a T-only necessary-shape part **`boxH A`**: `d : □A` coming back as `⟨t, z⟩`, `t` its
+  reading along the way home and `z` the `bc`-items of `d.here` along it (unique, `homeUnique`).
+  * Existence rule **`ret_extH`** (T only, a genuine new rule): a `box A` part becomes `boxH A`
+    with a fresh `z`, as `ret_extS` adds a companion.
+  * `ShapeMap.packH : boxH A → box (A × bc A)`, object `□(tup d)` (the `here` items are in the far
+    world's `□` view under T), value the identity — sound by the same reading.  This is exactly the
+    network's `bc` packing, so `RetInv`'s slot `□(bcT cls)` is reached from user atoms by
+    `ret_extH`, `packH` and `pack`.
+  * For box-free `A`, `bc A` is units, so `boxH A` is `box A` and `ret_extH` is trivial.

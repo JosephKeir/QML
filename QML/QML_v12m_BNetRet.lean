@@ -346,8 +346,9 @@ theorem RetData.birth (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) {t
 /-- A new child whose arrows carry the invariants keeps them. -/
 theorem GoodS.newChild {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS hS) {s : Node}
     (hs : N.Live s) {kd : Option (VarSymb × VarType)} {cx : ℕ} {t : NodeSt σ}
-    (ht : Theory.IsMCS t.M) (hr : RetData hS (N.st s) t kd cx (N.st s).l id [] id) :
-    (N.newChild s kd cx t).GoodS hS := by
+    {fimg₀ : ℕ → ℕ} {bcl₀ : List VarType} {bimg₀ : ℕ → ℕ} (ht : Theory.IsMCS t.M)
+    (hr : RetData hS (N.st s) t kd cx (N.st s).l fimg₀ bcl₀ bimg₀) :
+    (N.newChild s kd cx t fimg₀ bcl₀ bimg₀).GoodS hS := by
   have hks : (N.nch s :: s : Node) ≠ s := ne_parent _ s
   have hold : ∀ k, N.Live k → k ≠ N.nch s :: s := fun k hk h => not_live_new s (h ▸ hk)
   refine ⟨fun k hk => ?_, fun c p hk => ?_⟩
@@ -365,16 +366,16 @@ theorem GoodS.newChild {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.Goo
       unfold RetOk at this ⊢
       change RetData hS (Function.update N.st _ t p) (Function.update N.st _ t (c :: p))
         (Function.update N.kind _ kd (c :: p)) (Function.update N.cx _ cx (c :: p))
-        (Function.update N.fcl _ (N.st s).l (c :: p)) (Function.update N.fimg _ id (c :: p))
-        (Function.update N.bcl _ [] (c :: p)) (Function.update N.bimg _ id (c :: p))
+        (Function.update N.fcl _ (N.st s).l (c :: p)) (Function.update N.fimg _ fimg₀ (c :: p))
+        (Function.update N.bcl _ bcl₀ (c :: p)) (Function.update N.bimg _ bimg₀ (c :: p))
       simp only [Function.update_of_ne hne, Function.update_of_ne hpne]
       exact this
     · obtain ⟨rfl, rfl⟩ := List.cons.inj he
       unfold RetOk
       change RetData hS (Function.update N.st _ t p) (Function.update N.st _ t (N.nch p :: p))
         (Function.update N.kind _ kd _) (Function.update N.cx _ cx _)
-        (Function.update N.fcl _ (N.st p).l _) (Function.update N.fimg _ id _)
-        (Function.update N.bcl _ [] _) (Function.update N.bimg _ id _)
+        (Function.update N.fcl _ (N.st p).l _) (Function.update N.fimg _ fimg₀ _)
+        (Function.update N.bcl _ bcl₀ _) (Function.update N.bimg _ bimg₀ _)
       simp only [Function.update_self, Function.update_of_ne hks.symm]
       exact hr
 

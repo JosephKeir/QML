@@ -118,7 +118,8 @@ theorem Ext.setBack {N : NetSt σ} {k : Node} {A : VarType} (z : ℕ) :
       rw [Function.update_of_ne h]
 
 theorem Ext.newChild {N : NetSt σ} {s : Node} (hs : N.Live s) (kd : Option (VarSymb × VarType))
-    (cx : ℕ) (t : NodeSt σ) : Ext N (N.newChild s kd cx t) := by
+    (cx : ℕ) (t : NodeSt σ) (fimg₀ : ℕ → ℕ := id) (bcl₀ : List VarType := [])
+    (bimg₀ : ℕ → ℕ := id) : Ext N (N.newChild s kd cx t fimg₀ bcl₀ bimg₀) := by
   have hold : ∀ k, N.Live k → k ≠ N.nch s :: s := fun k hk h => not_live_new s (h ▸ hk)
   refine ⟨fun k hk => (live_newChild hs kd cx t k).mpr (Or.inl hk), fun k hk => ?_,
     fun k hk => ?_, fun k hk => ?_, fun k hk => ?_, fun k hk r _ => ?_, fun k hk => ?_,

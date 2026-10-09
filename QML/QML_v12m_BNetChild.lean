@@ -4,7 +4,7 @@ import QML.QML_v12m_BNetOps
 # QML v12m — B's arrow model: creating a child in a network
 
 * `newChild`: the node `s` gets a new child `nch s :: s`, with all of `s`'s variables committed
-  forward under the same names (`id`), and nothing yet committed back.
+  forward — by default under the same names (`id`) — and by default nothing yet committed back.
 * ⭐`Good.mkChild`: for a failing `□φ` (or a true `◇_x φ`) of `s`'s theory, the child from
   `child_consistent` (`childX_consistent`) keeps the invariants.  Its back arrow starts from
   closed transfer, which is **weak B** (`closed_back`).
@@ -20,17 +20,19 @@ variable {σ : Signature}
 
 namespace NetSt
 
-/-- ⭐The network with a new child of `s` in state `t`. -/
+/-- ⭐The network with a new child of `s` in state `t`: `s`'s variables are committed forward
+    under `fimg₀`, and the child's oldest `bcl₀` back under `bimg₀`. -/
 def newChild (N : NetSt σ) (s : Node) (kd : Option (VarSymb × VarType)) (cx : ℕ)
-    (t : NodeSt σ) : NetSt σ where
+    (t : NodeSt σ) (fimg₀ : ℕ → ℕ := id) (bcl₀ : List VarType := []) (bimg₀ : ℕ → ℕ := id) :
+    NetSt σ where
   st := Function.update N.st (N.nch s :: s) t
   nch := Function.update (Function.update N.nch s (N.nch s + 1)) (N.nch s :: s) 0
   kind := Function.update N.kind (N.nch s :: s) kd
   cx := Function.update N.cx (N.nch s :: s) cx
   fcl := Function.update N.fcl (N.nch s :: s) (N.st s).l
-  fimg := Function.update N.fimg (N.nch s :: s) id
-  bcl := Function.update N.bcl (N.nch s :: s) []
-  bimg := Function.update N.bimg (N.nch s :: s) id
+  fimg := Function.update N.fimg (N.nch s :: s) fimg₀
+  bcl := Function.update N.bcl (N.nch s :: s) bcl₀
+  bimg := Function.update N.bimg (N.nch s :: s) bimg₀
 
 theorem not_live_new {N : NetSt σ} (s : Node) : ¬ N.Live (N.nch s :: s) :=
   fun h => lt_irrefl _ h.2
@@ -39,22 +41,24 @@ theorem not_live_below_new {N : NetSt σ} (s : Node) (d : ℕ) :
     ¬ N.Live (d :: N.nch s :: s) := fun h => not_live_new s h.1
 
 /-- The live nodes after adding a child: the old ones and the new one. -/
-theorem live_newChild {N : NetSt σ} {s : Node} (hs : N.Live s) (kd : Option (VarSymb × VarType))
-    (cx : ℕ) (t : NodeSt σ) :
-    ∀ k, (N.newChild s kd cx t).Live k ↔ N.Live k ∨ k = N.nch s :: s
+theorem live_newChild {N : NetSt σ} {s : Node} {fimg₀ : ℕ → ℕ} {bcl₀ : List VarType}
+    {bimg₀ : ℕ → ℕ} (hs : N.Live s) (kd : Option (VarSymb × VarType)) (cx : ℕ) (t : NodeSt σ) :
+    ∀ k, (N.newChild s kd cx t fimg₀ bcl₀ bimg₀).Live k ↔ N.Live k ∨ k = N.nch s :: s
   | [] => by simp [Live]
   | d :: p => by
-      have ih := live_newChild hs kd cx t p
-      change (N.newChild s kd cx t).Live p ∧ d < (N.newChild s kd cx t).nch p ↔ _
+      have ih := live_newChild (fimg₀ := fimg₀) (bcl₀ := bcl₀) (bimg₀ := bimg₀) hs kd cx t p
+      change (N.newChild s kd cx t fimg₀ bcl₀ bimg₀).Live p ∧
+        d < (N.newChild s kd cx t fimg₀ bcl₀ bimg₀).nch p ↔ _
       by_cases hpk : p = N.nch s :: s
       · subst hpk
-        have e : (N.newChild s kd cx t).nch (N.nch s :: s) = 0 := Function.update_self _ _ _
+        have e : (N.newChild s kd cx t fimg₀ bcl₀ bimg₀).nch (N.nch s :: s) = 0 :=
+          Function.update_self _ _ _
         rw [e]
         simp only [Nat.not_lt_zero, and_false, false_iff, not_or]
         exact ⟨not_live_below_new s d, fun h => by
           have := congrArg List.length h
           simp at this⟩
-      · have hnch : (N.newChild s kd cx t).nch p =
+      · have hnch : (N.newChild s kd cx t fimg₀ bcl₀ bimg₀).nch p =
             Function.update N.nch s (N.nch s + 1) p := Function.update_of_ne hpk _ _
         rw [hnch, ih]
         simp only [hpk, or_false]
