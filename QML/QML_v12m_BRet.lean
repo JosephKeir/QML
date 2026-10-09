@@ -2,6 +2,7 @@ import QML.QML_v12m_BPack
 import QML.QML_v12m_BNetGrow
 import QML.QML_v12m_BNetStep
 import QML.QML_v12m_RetMono
+import QML.QML_v12m_RetDerived
 
 /-!
 # QML v12m — strong B on the network: the returning-possibility invariant
@@ -56,15 +57,6 @@ theorem WFF.mono_holeAt {Γ Γ' : Ctx} (h : Γ.Le Γ') {d : ℕ} (hs : Γ.SlotsF
     cases hv
 
 variable [ModalSys.NoFour]
-
-/-- The entry of a necessary object's term, one view in: its body. -/
-theorem Subst.box_at_inner_boxtm {Δ : Ctx} (θ : Subst σ Δ) {v : VarSymb} {A : VarType}
-    {a : Ann A} {t : Term σ Δ.boxIn A a} (hs : θ.at v = .tm (.boxtm t)) :
-    θ.box.at v.inner = .tm t := by
-  rw [VarSymb.inner_box ModalSys.NoFour.keepOnly]
-  change (θ.at v).unbox = _
-  rw [hs]
-  rfl
 
 /-! ## The invariant -/
 
@@ -226,7 +218,6 @@ def retExtAtom {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) {A B : Var
       (Term.boxSnd (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox (.VTypeProd A B))))
       Φ))
 
-omit [ModalSys.NoFour] in
 /-- ⭐**A returning possibility's new item is witnessed by a fresh variable** (`ret_ext`), as an
     existential's is (`henkin_consistent`). -/
 theorem retExt_consistent {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)}
@@ -394,14 +385,6 @@ theorem coh_midS (hs : cls <:+ lv) {imgt : ℕ → ℕ} (himgt : ImgOk clt (ctxO
       (bodyCtx (A :: cls) clt) (midS (σ := σ) hs A imgt) :=
   Subst.coh_set (Subst.ok_mono (ok_arrowS himgt) _) (Subst.coh_mono (coh_arrowS himgt) _)
     ((Ctx.NoSlots.slots (Γ := (ctxOf clt).boxIn)).rootFresh (le_refl 0)) rfl
-
-omit [ModalSys.NoFour] in
-/-- Terms equal as dependent pairs are similar entries. -/
-theorem SubE.sim_tm_sigma {Δ : Ctx} {T : VarType} {a b : Ann T} {s : Term σ Δ T a}
-    {t : Term σ Δ T b} (h : (⟨a, s⟩ : Σ c, Term σ Δ T c) = ⟨b, t⟩) :
-    SubE.Sim T (.tm s) (.tm t) := by
-  cases h
-  exact .refl _
 
 /-- A non-slot variable of a body's context is an item of the reverse arrow's view. -/
 theorem body_item {cl clt : List VarType} {v : VarSymb} {U : VarType} (_hlp : v.lastProj = false)

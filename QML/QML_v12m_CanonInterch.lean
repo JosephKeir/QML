@@ -374,23 +374,6 @@ theorem Term.holeRead_eq_holeAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A : Va
     (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) : Term.holeRead t s = Term.holeAt t s :=
   Term.subst_mono _ _ _ _ s
 
-/-- Weakening a hole term's filling is filling with the weakened term. -/
-theorem Term.mono_holeAt_sig {σ : Signature} {Γ Γ' : Ctx} (h : Γ.Le Γ') {A : VarType}
-    {a : Ann A} (t : Term σ Γ A a) {B : VarType} {b : Ann B}
-    (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
-    (⟨_, Term.mono h (Term.holeAt t s)⟩ : Σ c, Term σ Γ' B c) =
-      ⟨_, Term.holeAt (Term.mono h t) s⟩ := by
-  unfold Term.holeAt
-  rw [Term.mono_subst]
-  refine Term.subst_congr _ _ _ _ _ _ (Subst.sim_of fun v U _ hv => ?_) s
-  by_cases hvr : v = .root (.bnd 0)
-  · subst hvr
-    change SubE.Sim U (SubE.mono h (if (VarSymb.root (.bnd 0)) = .root (.bnd 0) then _ else _))
-      (if (VarSymb.root (.bnd 0)) = .root (.bnd 0) then _ else _)
-    rw [if_pos rfl, if_pos rfl]
-    exact .refl _
-  · simp [Ctx.insert, hvr, Ctx.empty] at hv
-
 namespace Canon
 
 variable {σ : Signature} {I : Type} [Preorder I]

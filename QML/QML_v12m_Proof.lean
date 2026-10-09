@@ -383,21 +383,23 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
           Δ.map (WFF.weaken hc.root A))
         (φ.weaken hc.root A) →
       Proof σ Γ Δ φ
-  /-- ⭐**One more item of the same child** (existence, extension form): if the returning
-      possibility's object has a companion `b` with `Φ(d, b)`, then for a fresh `c` the pair
-      `⟨d, b⟩` comes back as `⟨t, c⟩` — the body split into the pair's components. -/
-  | ret_ext {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A B : VarType}
-      {a : Ann A} (t : Term σ Γ A a)
-      (Φ : WFF σ ((O.view.insert (.bnd 0) (.VTypeBox A)).insert (.bnd 1) (.VTypeBox B)) 2)
+  /-- ⭐**A companion, at any shape** (existence, extension form): if the returning possibility's
+      object has a necessary companion `b` with `Φ(d, b)`, then for a fresh `c` the pair `⟨d, b⟩`
+      comes back as `⟨t, c⟩`.  No repacking: that is `ret_map`'s job. -/
+  | ret_extS {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape}
+      {B : VarType} {a : Ann S.flat} (t : Term σ Γ S.flat a)
+      (Φ : WFF σ ((O.view.insert (.bnd 0) S.ty).insert (.bnd 1) (.VTypeBox B)) 2)
       (c : ℕ) (hc : Γ.RootFresh (.free c)) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
-      Proof σ Γ Δ (O.ret hS t (WFF.ex (.VTypeBox B) Φ)) →
+      Proof σ Γ Δ (O.retS hS S t (WFF.ex (.VTypeBox B) Φ)) →
       Proof σ (Γ.insert (.free c) B)
-        ((O.mono (Ctx.le_insert hc.root B)).ret hS
+        ((O.mono (Ctx.le_insert hc.root B)).retS hS (.prod S (.box B))
             (Term.pair (Term.weaken hc.root B t)
               (Term.eta (.root (.free c)) B (Ctx.ref_insert_root Γ (.free c) B)))
             (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root B)).insert (.bnd 0) _) (WFF.bodySplit
-              (Term.boxFst (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox (.VTypeProd A B))))
-              (Term.boxSnd (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox (.VTypeProd A B))))
+              (Term.eta (.step (.root (.bnd 0)) .fst) S.ty
+                (Ctx.ref_fst_of (Ctx.ref_insert_root O.view (.bnd 0) (RShape.prod S (.box B)).ty)))
+              (Term.eta (.step (.root (.bnd 0)) .snd) (.VTypeBox B)
+                (Ctx.ref_snd_of (Ctx.ref_insert_root O.view (.bnd 0) (RShape.prod S (.box B)).ty)))
               Φ)) ::
           Δ.map (WFF.weaken hc.root B))
         (φ.weaken hc.root B) →
@@ -453,16 +455,15 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1) :
       Proof σ Γ Δ (O.ret hS t Φ) →
       Proof σ Γ Δ (O.dia (WFF.ex (.VTypeBox A) Φ))
-  /-- ⭐**β**: an object built from the item by a hole term comes back as the value built by the same
-      term. -/
-  | ret_beta {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {A B : VarType} {a : Ann A}
-      (y : Term σ Γ A a) {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
-      (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox B)) 1) :
-      Proof σ Γ Δ (O.ret hS y (WFF.bodyRepl
-        (Term.boxtm (Term.holeAt (Term.eta (VarSymb.root (.bnd 0)).inner A
-          (Ctx.ref_inner (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox A)))) s)) Φ)) →
-      Proof σ Γ Δ (O.ret hS (Term.holeRead y s) Φ)
+  /-- ⭐**β along a map of shapes**: if the object's image under `F` has `Φ`, then the image is an
+      object with `Φ` coming back as the value's image (`ShapeMap.comesBack`).  Repacking,
+      projection and hole terms on items are all instances. -/
+  | ret_map {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (O : OutLeg Γ) {S T : RShape} (F : ShapeMap σ S T) {a : Ann S.flat}
+      (y : Term σ Γ S.flat a) (Φ : WFF σ (O.view.insert (.bnd 0) T.ty) 1) :
+      Proof σ Γ Δ (O.retS hS S y (WFF.bodyRepl
+        (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) S.ty) F.obj.2) Φ)) →
+      Proof σ Γ Δ (O.retS hS T (Term.holeRead y F.val.2) Φ)
   /-- **Leibniz for the value**, along any leg. -/
   | ret_eq {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       (O : OutLeg Γ) {A : VarType} {a : Ann A} (t t' : Term σ Γ A a)

@@ -311,19 +311,23 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
         exact sat_ret_fresh env hS O Φ c hc o i e hΦ r (M.Ind_refl _)
       · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken (T := A) env hc.root o χ').mpr (hΔ χ' hχ')
-  | @ret_ext Γ _ hS O A B a t Φ c hc Δ φ pr p ihr ih =>
+  | @ret_extS Γ _ hS O S B a t Φ c hc Δ φ pr p ihr ih =>
       -- The companion's value along the same way home interprets the eigenvariable.
       intro M hM w env hfin hnp hΔ
-      obtain ⟨i, d, ⟨b, hΦ⟩, r, hr⟩ := (OutLeg.sat_ret hS env O t _).mp (ihr M hM env hfin hnp hΔ)
+      obtain ⟨i, d, ⟨b, hΦ⟩, r, hr⟩ :=
+        (OutLeg.sat_retS hS env O S t _).mp (ihr M hM env hfin hnp hΔ)
       refine (sat_weaken (T := B) env hc.root
         (M.necEval (b : M.frame.Nec B (O.acc env i).1) ⟨w, ⟨r⟩⟩)
         φ).mp (ih M hM (env.extend (T := B) (.free c) _) (hfin.insert hc _) (hnp.insert _ _) ?_)
       intro χ hχ
       rcases List.mem_cons.mp hχ with h₁ | h₂
       · subst h₁
-        exact sat_ret_ext env hM hS O t Φ c hc i d b hΦ r hr
+        exact sat_ret_extS env hS O t Φ c hc i d b hΦ r hr
       · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken (T := B) env hc.root _ χ').mpr (hΔ χ' hχ')
+  | @ret_map Γ _ Δ hS O S T F a y Φ p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_ret_map env hnp hM hS O F y Φ (ih M hM env hfin hnp hΔ)
   | @ret_counit Γ _ Δ hS O A a t ψ p ih =>
       intro M hM w env hfin hnp hΔ
       exact (sat_holeRead hnp env t ψ).mpr
@@ -342,9 +346,6 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
   | @ret_dia Γ _ Δ hS O A a t Φ p ih =>
       intro M hM w env hfin hnp hΔ
       exact sat_ret_dia env hS O t Φ (ih M hM env hfin hnp hΔ)
-  | @ret_beta Γ _ Δ hS O A B a y b s Φ p ih =>
-      intro M hM w env hfin hnp hΔ
-      exact sat_ret_beta env hnp hM hS O y s Φ (ih M hM env hfin hnp hΔ)
   | @ret_eq Γ _ Δ hS O A a t t' Φ p q ihp ihq =>
       intro M hM w env hfin hnp hΔ
       exact sat_ret_eq env hS O t t' Φ (ihp M hM env hfin hnp hΔ) (ihq M hM env hfin hnp hΔ)

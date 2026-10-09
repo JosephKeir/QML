@@ -137,12 +137,6 @@ noncomputable def abs [ModalSys.NoFour] (A : VarType) (l : List VarType)
 
 /-! ## Instantiating the abstraction at the tuple -/
 
-/-- A substitution read at a projection is its entry projected. -/
-theorem Subst.at_proj {Δ : Ctx} (θ : Subst σ Δ) (v : VarSymb) {s : Step}
-    (hs : s.isProj = true) : θ.at (.step v s) = (θ.at v).proj s := by
-  change (if s.isProj then (θ.at v).proj s else θ (.step v s)) = _
-  rw [if_pos hs]
-
 theorem encStep_fst : encStep .fst = .fst := by unfold encStep; split <;> rfl
 
 theorem encStep_snd : encStep .snd = .snd := by unfold encStep; split <;> rfl

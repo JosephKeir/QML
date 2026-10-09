@@ -116,6 +116,54 @@ def Term.holeAt {σ : Signature} {Γ : Ctx} {A : VarType} {a : Ann A} (t : Term 
     (Subst.ok_single (Ctx.empty_le Γ) rfl)
     (Subst.coh_single (Ctx.RootFresh.empty _) (Ctx.empty_le Γ) rfl) s
 
+/-! ## Maps between returnable shapes -/
+
+/-- ⭐A **structural map between returnable shapes** (docs §11.17): identity, composition,
+    projections and pairing, packing two necessary objects into one, and a hole term acting on a
+    necessary object's item.  Each acts on the object out there (`obj`) and on the value it comes
+    back as (`val`), compatibly, so a returning possibility can be moved along it (`ret_map`):
+    this is β for every shape, and repacking. -/
+inductive ShapeMap (σ : Signature) : RShape → RShape → Type where
+  | id (S : RShape) : ShapeMap σ S S
+  | comp {S T U : RShape} : ShapeMap σ S T → ShapeMap σ T U → ShapeMap σ S U
+  | fst (S T : RShape) : ShapeMap σ (.prod S T) S
+  | snd (S T : RShape) : ShapeMap σ (.prod S T) T
+  | pair {S T U : RShape} : ShapeMap σ S T → ShapeMap σ S U → ShapeMap σ S (.prod T U)
+  | pack (A B : VarType) : ShapeMap σ (.prod (.box A) (.box B)) (.box (.VTypeProd A B))
+  | hole {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
+      ShapeMap σ (.box A) (.box B)
+
+/-- The map on the object out there, as a hole term. -/
+def ShapeMap.obj {σ : Signature} : {S T : RShape} → ShapeMap σ S T →
+    Σ b, Term σ (Ctx.empty.insert (.bnd 0) S.ty) T.ty b
+  | _, _, .id S => ⟨_, Term.eta (.root (.bnd 0)) S.ty (Ctx.ref_insert_root _ _ _)⟩
+  | _, _, .comp F G => ⟨_, Term.holeAt F.obj.2 G.obj.2⟩
+  | _, _, .fst S _ =>
+      ⟨_, Term.eta (.step (.root (.bnd 0)) .fst) S.ty (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))⟩
+  | _, _, .snd _ T =>
+      ⟨_, Term.eta (.step (.root (.bnd 0)) .snd) T.ty (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _))⟩
+  | _, _, .pair F G => ⟨_, Term.pair F.obj.2 G.obj.2⟩
+  | _, _, .pack A B => ⟨_, Term.boxtm (Term.pair
+      (Term.eta (VarSymb.step (.root (.bnd 0)) .fst).inner A
+        (Ctx.ref_inner (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))))
+      (Term.eta (VarSymb.step (.root (.bnd 0)) .snd).inner B
+        (Ctx.ref_inner (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)))))⟩
+  | _, _, .hole (A := A) s => ⟨_, Term.boxtm (Term.holeAt
+      (Term.eta (VarSymb.root (.bnd 0)).inner A (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))) s)⟩
+
+/-- The map on the value it comes back as, as a hole term. -/
+def ShapeMap.val {σ : Signature} : {S T : RShape} → ShapeMap σ S T →
+    Σ b, Term σ (Ctx.empty.insert (.bnd 0) S.flat) T.flat b
+  | _, _, .id S => ⟨_, Term.eta (.root (.bnd 0)) S.flat (Ctx.ref_insert_root _ _ _)⟩
+  | _, _, .comp F G => ⟨_, Term.holeAt F.val.2 G.val.2⟩
+  | _, _, .fst S _ => ⟨_, Term.eta (.step (.root (.bnd 0)) .fst) S.flat
+      (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))⟩
+  | _, _, .snd _ T => ⟨_, Term.eta (.step (.root (.bnd 0)) .snd) T.flat
+      (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _))⟩
+  | _, _, .pair F G => ⟨_, Term.pair F.val.2 G.val.2⟩
+  | _, _, .pack A B => ⟨_, Term.eta (.root (.bnd 0)) (.VTypeProd A B) (Ctx.ref_insert_root _ _ _)⟩
+  | _, _, .hole s => ⟨_, s⟩
+
 /-- ⭐`ret_unit`'s new conjunct, in the body of `◇[d₁ ↦ y]` (`d₁ : □C` the slot `bnd 0`):
     `◇[d ↦ sb] θ(d₁.box, d)` — from the far world, back here, a necessary object `d` coming back
     as `sb` with `θ` of it and of `d₁`'s return (docs §11.17). -/
@@ -168,21 +216,21 @@ def WFF.bodyRepl {A B : VarType} {b : Ann B} (X : Term σ (V.insert (.bnd 0) A) 
 /-- ⭐**Splitting a paired item**: a body about two items `d : □A`, `b : □B` becomes a body about
     one `e : □C`, with `d := X₀(e)`, `b := X₁(e)` — the components `Term.boxFst`, `Term.boxSnd` of
     `e : □(A×B)` in `Proof.ret_ext`.  One more item of the same child, packed with the others. -/
-def WFF.bodySplit {A B C : VarType} {b₀ : Ann (.VTypeBox A)} {b₁ : Ann (.VTypeBox B)}
-    (X₀ : Term σ (V.insert (.bnd 0) (.VTypeBox C)) (.VTypeBox A) b₀)
-    (X₁ : Term σ (V.insert (.bnd 0) (.VTypeBox C)) (.VTypeBox B) b₁)
-    (Φ : WFF σ ((V.insert (.bnd 0) (.VTypeBox A)).insert (.bnd 1) (.VTypeBox B)) 2) :
-    WFF σ (V.insert (.bnd 0) (.VTypeBox C)) 1 :=
-  have h₀ := Subst.ok_set (r := .bnd 0) (T := .VTypeBox A) (e := .tm X₀)
-    (Subst.ok_idS_le (σ := σ) (body_le (V := V) (.VTypeBox C))) rfl
-  have c₀ := Subst.coh_set (r := .bnd 0) (T := .VTypeBox A) (e := .tm X₀)
-    (Subst.ok_idS_le (σ := σ) (body_le (V := V) (.VTypeBox C)))
-    (Subst.coh_idS_le (body_le (V := V) (.VTypeBox C)))
+def WFF.bodySplit {A B C : VarType} {b₀ : Ann A} {b₁ : Ann B}
+    (X₀ : Term σ (V.insert (.bnd 0) C) A b₀)
+    (X₁ : Term σ (V.insert (.bnd 0) C) B b₁)
+    (Φ : WFF σ ((V.insert (.bnd 0) A).insert (.bnd 1) B) 2) :
+    WFF σ (V.insert (.bnd 0) C) 1 :=
+  have h₀ := Subst.ok_set (r := .bnd 0) (T := A) (e := .tm X₀)
+    (Subst.ok_idS_le (σ := σ) (body_le (V := V) C)) rfl
+  have c₀ := Subst.coh_set (r := .bnd 0) (T := A) (e := .tm X₀)
+    (Subst.ok_idS_le (σ := σ) (body_le (V := V) C))
+    (Subst.coh_idS_le (body_le (V := V) C))
     ((Ctx.NoSlots.slots (Γ := V)).rootFresh (le_refl 0)) rfl
   WFF.subst (Subst.setIdx (Subst.setIdx id (.bnd 0) (.tm X₀)) (.bnd 1) (.tm X₁))
     (((Subst.idS σ _).set (.bnd 0) (.tm X₀)).set (.bnd 1) (.tm X₁))
-    (Subst.ok_set (r := .bnd 1) (T := .VTypeBox B) (e := .tm X₁) h₀ rfl)
-    (Subst.coh_set (r := .bnd 1) (T := .VTypeBox B) (e := .tm X₁) h₀ c₀
+    (Subst.ok_set (r := .bnd 1) (T := B) (e := .tm X₁) h₀ rfl)
+    (Subst.coh_set (r := .bnd 1) (T := B) (e := .tm X₁) h₀ c₀
       (((Ctx.NoSlots.slots (Γ := V)).insert _).rootFresh (le_refl 1)) rfl)
     (((Ctx.NoSlots.slots (Γ := V)).insert _).insert _) ((Ctx.NoSlots.slots (Γ := V)).insert _) Φ
 
@@ -259,11 +307,31 @@ def bodyRead [Γ.NoSlots] (O : OutLeg Γ) {A : VarType} {b : Ann (.VTypeBox A)}
 
 /-- ⭐The **returning possibility along the leg** (§11.17): `◇[e ↦ t] Φ` from any arrow, or
     `◇_y[e ↦ t] Φ` from an arrow of `y`'s extent, with `Φ` read in the leg's view. -/
-def ret {d : ℕ} (hS : ModalSys.BStrong = true) : (O : OutLeg Γ) → {A : VarType} →
-    {a : Ann A} → Term σ Γ A a → WFF σ (O.view.insert (.bnd d) (.VTypeBox A)) (d + 1) →
+def retS {d : ℕ} (hS : ModalSys.BStrong = true) : (O : OutLeg Γ) → (S : RShape) →
+    {a : Ann S.flat} → Term σ Γ S.flat a → WFF σ (O.view.insert (.bnd d) S.ty) (d + 1) →
     WFF σ Γ d
-  | .nec, _, _, t, Φ => WFF.ret hS t Φ
-  | .pos y hy, _, _, t, Φ => WFF.retx hS y hy t Φ
+  | .nec, S, _, t, Φ => WFF.retS hS S t Φ
+  | .pos y hy, S, _, t, Φ => WFF.retxS hS y hy S t Φ
+
+/-- The returning possibility of a necessary object along the leg. -/
+abbrev ret {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType} {a : Ann A}
+    (t : Term σ Γ A a) (Φ : WFF σ (O.view.insert (.bnd d) (.VTypeBox A)) (d + 1)) : WFF σ Γ d :=
+  O.retS hS (.box A) t Φ
+
+/-- Two returning possibilities of one shape along a leg agree when their values and bodies do. -/
+theorem retS_congr {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (S : RShape)
+    {a a' : Ann S.flat} {t : Term σ Γ S.flat a} {t' : Term σ Γ S.flat a'}
+    {Φ Φ' : WFF σ (O.view.insert (.bnd d) S.ty) (d + 1)}
+    (ht : (⟨a, t⟩ : Σ a, Term σ Γ S.flat a) = ⟨a', t'⟩) (hΦ : Φ = Φ') :
+    (O.retS hS S t Φ : WFF σ Γ d) = O.retS hS S t' Φ' := by
+  cases ht
+  cases hΦ
+  rfl
+
+theorem retS_congr' {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (S : RShape)
+    {a : Ann S.flat} {t t' : Term σ Γ S.flat a} {Φ Φ' : WFF σ (O.view.insert (.bnd d) S.ty) (d + 1)}
+    (ht : t = t') (hΦ : Φ = Φ') : (O.retS hS S t Φ : WFF σ Γ d) = O.retS hS S t' Φ' := by
+  rw [ht, hΦ]
 
 /-- A body over the `□` view, read in the leg's view (literally itself for `nec`). -/
 def lift {d : ℕ} {T : VarType} : (O : OutLeg Γ) → WFF σ (Γ.boxIn.insert (.bnd d) T) (d + 1) →
@@ -296,6 +364,14 @@ theorem ret_congr' {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A :
     {a : Ann A} {t t' : Term σ Γ A a} {Φ Φ' : WFF σ (O.view.insert (.bnd d) (.VTypeBox A)) (d + 1)}
     (ht : t = t') (hΦ : Φ = Φ') : (O.ret hS t Φ : WFF σ Γ d) = O.ret hS t' Φ' := by
   rw [ht, hΦ]
+
+theorem mono_retS {Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (hS : ModalSys.BStrong = true) :
+    (O : OutLeg Γ) → (S : RShape) → {a : Ann S.flat} → (t : Term σ Γ S.flat a) →
+    (Φ : WFF σ (O.view.insert (.bnd d) S.ty) (d + 1)) →
+    WFF.mono h (O.retS hS S t Φ) =
+      (O.mono h).retS hS S (Term.mono h t) (WFF.mono ((le_view_mono h O).insert _ _) Φ)
+  | .nec, _, _, _, _ => rfl
+  | .pos _ _, _, _, _, _ => rfl
 
 theorem mono_ret {Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (hS : ModalSys.BStrong = true) :
     (O : OutLeg Γ) → {A : VarType} → {a : Ann A} → (t : Term σ Γ A a) →
@@ -359,6 +435,21 @@ theorem subst_back {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
         (Term.subst ι θ hθ hc t) : WFF σ Δ d')
   | .nec, _, _, _, _, _ => rfl
   | .pos _ _, _, _, _, _, _ => rfl
+
+theorem subst_retS {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
+    (hS : ModalSys.BStrong = true) :
+    (O : OutLeg Γ) → (S : RShape) → {a : Ann S.flat} → (t : Term σ Γ S.flat a) →
+    (Φ : WFF σ (O.view.insert (.bnd d) S.ty) (d + 1)) →
+    WFF.subst ι θ hθ hc hΓ hΔ (O.retS hS S t Φ) =
+      (O.subst θ hθ hc).retS hS S (Term.subst ι θ hθ hc t)
+        (WFF.subst (VarSymb.shiftSlot ι d d')
+          ((O.viewSubst θ hθ hc).under d d' _ (slotsFrom hΔ (O.subst θ hθ hc)).root)
+          (Subst.ok_under (O.viewOk θ hθ hc) _ (slotsFrom hΔ (O.subst θ hθ hc)).root)
+          (Subst.coh_under (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) (slotsFrom hΓ O) _
+            (slotsFrom hΔ (O.subst θ hθ hc)).root)
+          ((slotsFrom hΓ O).insert _) ((slotsFrom hΔ (O.subst θ hθ hc)).insert _) Φ)
+  | .nec, _, _, _, _ => rfl
+  | .pos _ _, _, _, _, _ => rfl
 
 theorem subst_ret {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
     (hS : ModalSys.BStrong = true) :
