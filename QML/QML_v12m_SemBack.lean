@@ -138,9 +138,9 @@ theorem unit (hM : M.IndInvariant) (h : RoundTrip acc val o)
   obtain ⟨r, hr⟩ := h.2 i
   exact ⟨_, (holeSat_ind hM ψ hr).mpr hψ⟩
 
-/-- ⭐**Definition** (`back_def`, §11.5 (3)): under weak B every arrow of the out leg has a way
-    home; if a hole formula true at the end of every way on singles out `o` here, every return is
-    `o`. -/
+/-- **Definition** (§11.5 (3)): under weak B every arrow of the out leg has a way home; if a
+    hole formula true at the end of every way on singles out `o` here, every return is `o` — the
+    validity of `back_def`, which `back_ret` subsumes. -/
 theorem of_def (hB : ModalSys.B = true) (hne : Nonempty ι)
     (θ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) (hθ : ∀ i b, M.holeSat θ (val i b))
     (hdef : ∀ z : M.frame.Dom A w, M.holeSat θ z → z = o) : RoundTrip acc val o := by
@@ -423,36 +423,6 @@ theorem sat_back_here (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A
   rw [interp_collapse (Env.collapseAgree_self hT env),
     interp_collapse (Env.collapseAgree_self hT (env.boxPush (M.frame.reflAcc hT w)))]
   exact (hM.inv hfin hnp env φ _ _ hown).mpr hφ
-
-theorem sat_back_def (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) (O : OutLeg Γ)
-    {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀)
-    {a : Ann A} (t : Term σ Γ A a) (θ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1)
-    (hne : M.sat env (O.dia (.top : WFF σ O.view 0)))
-    (hall : M.sat env (O.box (WFF.box (WFF.holeRead bd θ))))
-    (hdef : M.sat env (WFF.all A (WFF.imp (WFF.mono ((Ctx.empty_le Γ).insert (.bnd 0) A) θ)
-      (eqRec A (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root Γ (.bnd 0) A))
-        (Term.castAnn hA (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root A) t))))
-      : WFF σ Γ 0)) :
-    M.sat env (O.back hS bd t : WFF σ Γ 0) := by
-  rw [OutLeg.sat_back]
-  refine RoundTrip.of_def hB ?_ θ ?_ ?_
-  · obtain ⟨i, _⟩ := (OutLeg.sat_dia env O _).mp hne
-    exact ⟨i⟩
-  · intro i b
-    exact (sat_holeRead (Ctx.noProjLast_boxIn _) _ bd θ).mp ((OutLeg.sat_box env O _).mp hall i b)
-  · intro z hz
-    have hr : Γ.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)
-    have hag : Env.Agree (Ctx.le_insert hr.root A) env (env.extend (.bnd 0) z) := by
-      intro v U hv
-      have hne : v ≠ .root (.bnd 0) := fun hvr => by rw [hvr, hr.root] at hv; cases hv
-      simp only [Env.extend, dif_neg hne]
-    have hθ : M.sat (env.extend (.bnd 0) z) (WFF.mono ((Ctx.empty_le Γ).insert (.bnd 0) A) θ) :=
-      (sat_mono (Env.extend_agree (h := Ctx.empty_le Γ) (env := Env.empty w) (env' := env)
-        (fun _ _ h => nomatch h) (.bnd 0) z) θ).mpr hz
-    have he := (sat_eqRec _ A _ _).mp (hdef z hθ)
-    have hslot : (env.extend (.bnd 0) z).ref (.root (.bnd 0)) (Ctx.ref_insert_root Γ (.bnd 0) A) =
-        z := Env.extend_root env (.bnd 0) z (Ctx.ref_insert_root Γ (.bnd 0) A)
-    rwa [interp_eta, interp_castAnn, interp_mono hag, hslot] at he
 
 end Model
 
@@ -770,6 +740,58 @@ theorem sat_ret_fresh (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarTyp
   change M.Ind _ (interp (env.extend (.free c) o) (Term.eta _ _ _))
   rw [interp_eta, hslot]
   exact hr
+
+omit [Γ.NoSlots] in
+/-- `back_ret`'s body holds at the far end of every arrow, of the carrier's object. -/
+theorem sat_backRetBody (hs : Γ.SlotsFrom 0) (O : OutLeg Γ) {A : VarType}
+    (hA : A.diaFree = true) {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) (i : O.Arr env) :
+    M.sat ((O.push env i).extend (.bnd 0) (interp (O.push env i) (Term.boxtm bd)))
+      (WFF.backRetBody (OutLeg.slotsFrom hs O) hA bd) := by
+  unfold WFF.backRetBody
+  have hslot : ((O.push env i).extend (.bnd 0) (interp (O.push env i) (Term.boxtm bd))).ref
+      (.root (.bnd 0)) (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox A)) =
+      interp (O.push env i) (Term.boxtm bd) :=
+    Env.extend_root (O.push env i) (.bnd 0) (interp (O.push env i) (Term.boxtm bd))
+      (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox A))
+  rw [sat_eqRec, interp_castAnn,
+    interp_mono (Env.agree_extend _ (OutLeg.slotsFrom hs O).root _), interp_eta, hslot]
+
+/-- ⭐**`back_ret` is sound**: every arrow of the out leg has a way home (weak B), along which
+    the carrier's object returns some value; that value is one of the returning possibility's, so
+    the subproof makes it `t`. -/
+theorem sat_back_ret (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) (O : OutLeg Γ)
+    {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀)
+    {a : Ann A} (t : Term σ Γ A a) (c : ℕ) (hc : Γ.RootFresh (.free c))
+    (hne : M.sat env (O.dia (.top : WFF σ O.view 0)))
+    (hret : ∀ o : M.frame.Dom A w,
+      M.sat (env.extend (.free c) o) ((O.mono (Ctx.le_insert hc.root A)).ret hS
+        (Term.eta (.root (.free c)) A (Ctx.ref_insert_root Γ (.free c) A))
+        (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root A)).insert (.bnd 0) _)
+          (WFF.backRetBody (OutLeg.slotsFrom Ctx.NoSlots.slots O) hA bd))) →
+      M.sat (env.extend (.free c) o) (eqRec A
+        (Term.eta (.root (.free c)) A (Ctx.ref_insert_root Γ (.free c) A))
+        (Term.castAnn hA (Term.weaken hc.root A t)) : WFF σ (Γ.insert (.free c) A) 0)) :
+    M.sat env (O.back hS bd t : WFF σ Γ 0) := by
+  rw [OutLeg.sat_back]
+  refine ⟨?_, fun i => ?_⟩
+  · obtain ⟨i, _⟩ := (OutLeg.sat_dia env O _).mp hne
+    exact ⟨i⟩
+  · obtain ⟨r⟩ := M.frame.symm hB (O.acc env i).2.down
+    refine ⟨r, ?_⟩
+    have hval : M.necEval (interp (O.push env i) (Term.boxtm bd) : M.frame.Nec A (O.acc env i).1)
+        ⟨w, ⟨r⟩⟩ = interp ((O.push env i).boxPush ⟨w, ⟨r⟩⟩) bd := box_beta _ bd _
+    have h := hret _ (sat_ret_fresh env hS O _ c hc _ i _
+      (sat_backRetBody env Ctx.NoSlots.slots O hA bd i) r (by rw [hval]; exact M.Ind_refl _))
+    have hslot : (env.extend (.free c) (interp ((O.push env i).boxPush ⟨w, ⟨r⟩⟩) bd)).ref
+        (.root (.free c)) (Ctx.ref_insert_root Γ (.free c) A) =
+        interp ((O.push env i).boxPush ⟨w, ⟨r⟩⟩) bd :=
+      Env.extend_root env (.free c)
+        (interp ((O.push env i).boxPush ⟨w, ⟨r⟩⟩) bd) (Ctx.ref_insert_root Γ (.free c) A)
+    rw [sat_eqRec, interp_castAnn, Term.weaken, interp_mono (Env.agree_extend env hc.root _),
+      interp_eta, hslot] at h
+    change M.Ind (interp ((O.push env i).boxPush ⟨w, ⟨r⟩⟩) bd) _
+    rw [h]
+    exact M.Ind_refl _
 
 include hM in
 theorem sat_ret_counit (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}

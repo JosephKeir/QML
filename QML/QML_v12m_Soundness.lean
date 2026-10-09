@@ -276,10 +276,18 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M hM w env hfin hnp hΔ
       exact sat_back_here env hnp hfin hM hS hT bd t φ (ihb M hM env hfin hnp hΔ)
         (ihφ M hM env hfin hnp hΔ)
-  | @back_def Γ _ Δ hS hB O A hA a₀ bd a t θ pne pall pdef ihne ihall ihdef =>
+  | @back_ret Γ _ hS hB O A hA a₀ bd a t c hc Δ pne p ihne ih =>
+      -- Each arrow's return is a value of the carrier's returning possibility, which the
+      -- subproof makes `t`.
       intro M hM w env hfin hnp hΔ
-      exact sat_back_def env hS hB O hA bd t θ (ihne M hM env hfin hnp hΔ)
-        (ihall M hM env hfin hnp hΔ) (ihdef M hM env hfin hnp hΔ)
+      refine sat_back_ret env hS hB O hA bd t c hc (ihne M hM env hfin hnp hΔ) fun o hr => ?_
+      refine ih M hM (env.extend (T := A) (.free c) o) (hfin.insert hc _) (hnp.insert _ _) ?_
+      intro χ hχ
+      rcases List.mem_cons.mp hχ with h₁ | h₂
+      · subst h₁
+        exact hr
+      · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
+        exact (sat_weaken (T := A) env hc.root o χ').mpr (hΔ χ' hχ')
   | @B_strong Γ _ hS A a t c hc Δ φ pne p ihne ih =>
       -- Interpret the eigenvariable as a carrier that comes back as `t` — `backRet_exists` says
       -- there is one wherever there is a way out, and that *is* the hypothesis the subproof gets.

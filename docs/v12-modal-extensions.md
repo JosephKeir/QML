@@ -5190,7 +5190,7 @@ Their rules sort into the same kinds:
 | **counit**: `◇□ψ ⊢ ψ`, named | `here_elim` | `back_counit` | `ret_counit`, `ret_counitC` |
 | **unit**: `ψ ⊢ □◇ψ`, named | `here_intro` | `back_unit` | `ret_unit` (§11.17) |
 | **existence of a subject**, given a value | `T_dia` | `B_strong` | `ret_new`, `ret_ext` |
-| **existence of a value**, given a subject | `here_name` | `back_def` (conditional, `◇`-free) | `ret_new` |
+| **existence of a value**, given a subject | `here_name` | `back_ret` (conditional, `◇`-free; was `back_def`, see below) | `ret_new` |
 | **the route exists** | (semantics) | `back_ne` | `ret_dia` |
 | **Leibniz in the value** | `here_eq` | `back_eq` | `ret_eq` |
 | **functionality** | `here_subst` | `back_fun` (to be derived) | none: two atoms may use two arrows |
@@ -5213,7 +5213,36 @@ The `Model.sat_*` lemmas and `Model.RoundTrip.counit`/`unit` follow.  The core o
 weak B's two halves, made open by naming what the route carries.  `◇[d ↦ t]` lacked its unit, which
 is `ret_unit`.
 
-**`back_def` is `Back`'s existence of a value, and it is conditional.**
+**Superseded (user, 2026-10-09): `back_ret` replaces `back_def`; `Back` is the definite description of
+`ret`.**  Write `Ret_u(c) := ◇[e ↦ c] □(e.box = bd)` (some round trip of `u`'s object returns `c`).
+At `◇`-free types `Back u t ⟺ ◇⊤ ∧ ∀c. (Ret_u(c) → c = t)`: `⇐` is the new rule
+```
+back_ret (◇-free A, any leg):  ◇⊤,  ∀c. (◇_O[e ↦ c] □(e.box = bd) → c = t)  ⊢  Back bd t
+```
+(stated with an eigenvariable `c`, like `ret_new`), and `⇒` is `back_ne` with `ret_counitC`.  Since
+`◇⊤` makes `Ret_u` nonempty (`ret_new`), this says `Ret_u = {t}`: `t` is *the* return.  So `Back`
+is to `◇[d ↦ ·]` what `□_x` is to `◇_x` — the universal, all-arrows form of an existential,
+one-arrow primitive — and the "existence of a value" row reads: one arrow (`here_name`, `ret_new`)
+unconditional; all arrows (`back_ret`) exactly when the one-arrow values agree.
+* *Why `back_def` was not enough* (found while planning L4e): it concludes `Back u t` only when a
+  *closed* formula singles out `t`, so for an undefinable `t` (a free individual) the theory
+  `¬Back u t ∧ ◇⊤ ∧ ∀c(Ret_u(c) → c = t)` is consistent with the old rules, while the network's own
+  `RetInv` atoms are instances of the last conjunct — every child's return would be provably `t`.
+* *`back_ret` subsumes `back_def`*: from `□□θ(bd)`, `ret_mono` turns `◇[e ↦ c] □(e.box = bd)` into
+  `◇[e ↦ c] □θ(e.box)` and `ret_counit` gives `θ(c)`, hence `c = t`.  The step uses Leibniz at `A`
+  under `□`, which v12m does not have yet (open item "General Leibniz, annotation-free"), so
+  `back_def` is **not yet derived**; it is sound (`RoundTrip.of_def`) and, once strong B is
+  complete, admissible.
+* *At `◇`-free types `back_fun`, `back_pair`, `back_beta` also become derivable* (from any `c` with
+  `Ret_u(c)`; through `ret_map`), so there `Back` adds only `back_ret`, `back_counit`/`back_unit`
+  and `B_strong` to `ret`.  At `◇` types `Back` stays primitive (the equivalence would need `Ind`
+  as a formula, rejected in §11.16).
+* *Built (2026-10-09):* `Proof.back_ret` (constructor, replacing `back_def`), `WFF.backRetBody`
+  (`eqRec (□A) e (□bd)`, definitionally `□(e.box = bd)`), `OutLeg.subst_backRetBody`,
+  `WFF.subst_backRet_eq`, the `Proof.subst` case, `Model.sat_backRetBody`, ⭐`Model.sat_back_ret`,
+  and the soundness case.
+
+**(Historical) `back_def` is `Back`'s existence of a value, and it is conditional.**
 * `Here`'s and `◇[d ↦ t]`'s routes are one arrow, so a value always exists (`here_name`,
   `ret_new`).  `Here`'s definitional introduction is then derivable:
   * `here_name` gives some `c` with `Here x c`;
@@ -6144,6 +6173,20 @@ restriction should not disturb them.
 * So all three kinds of returning successor are built, T off.  *Next:* negative `Back` atoms
   (and `back_def`'s separating child), commit at birth for `Back` carriers, the `Op` type with
   fairness (aliases, the three ret children, `Back` children), then L4f.
+
+**L4e, fifth part: `Back` atoms on the network (2026-10-09, paper + `back_ret`).**
+* *Positive atoms need no commit at birth.*  If `Back u t ∈ M p` and a child `k` has its roots
+  committed back, the body `□(h(d.box) = bd)` (`h` the hole term picking `u`'s item out of the
+  committed roots) holds at `k` by reflexivity, so `RetInv` gives `◇[d ↦ V] □(h(d.box) = bd)` at `p`,
+  and `ret_counitC` with `Back u t` gives `h(V) = t`: every return is provably `t`.  §11.17's
+  "commit at birth for `Back` carriers" is dropped.
+* *Negative atoms at `◇`-free types* are met by `back_ret`: `¬Back u t ∧ ◇⊤` gives some `c ≠ t` with
+  `◇[e ↦ c] □(e.box = bd)`, and the plain ret child (`mkRet`, after aliasing `c`) returns `c` —
+  no new operation; turning the atom into the obligation is part of L4f's truth lemma.
+* *Negative atoms at `◇` types*: repeated children (`mkChild` adds a child each time it runs) give
+  fresh returns; whether a fresh return is attested `Ind` to `t` is §11.16's question, for L4f.
+* *Next:* the `Op` type with fairness (aliases, `mkRet`, `mkRetX`, `mkRetD`, with the existing
+  operations), then L4f.
 
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`

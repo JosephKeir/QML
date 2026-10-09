@@ -289,6 +289,14 @@ def WFF.unitBodyD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStron
         (Term.eta (.root (.bnd 1)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 1) _)))
       θ)
 
+/-- `back_ret`'s body (docs §11.18): in the body of `◇[e ↦ c]` along a leg with view `V`, the
+    object out there is the carrier's, `e = □bd`. -/
+def WFF.backRetBody {σ : Signature} {V : Ctx} (hs : V.SlotsFrom 0) {A : VarType}
+    (hA : A.diaFree = true) {a₀ : Ann A} (bd : Term σ V.boxIn A a₀) :
+    WFF σ (V.insert (.bnd 0) (.VTypeBox A)) 1 :=
+  eqRec (.VTypeBox A) (Term.eta (.root (.bnd 0)) (.VTypeBox A) (Ctx.ref_insert_root V (.bnd 0) _))
+    (Term.castAnn (A := .VTypeBox A) hA (Term.mono (Ctx.le_insert hs.root _) (Term.boxtm bd)))
+
 /-- The **counit of a possible part**'s body, for `◇[⟨d, e⟩ ↦ y]` with `e ⇝ y.2`:
     `□_e ψ(⟨d.box, e.dia⟩)` — what holds along all of `e`'s arrows, at its content there. -/
 def WFF.counitBodyD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {C X : VarType}

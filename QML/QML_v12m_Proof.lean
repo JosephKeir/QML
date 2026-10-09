@@ -336,22 +336,25 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t φ) →
       Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots (Term.collapse
         (Ctx.collapses_boxIn_self hT Γ) (Term.collapse (Ctx.collapses_boxIn_self hT Γ.boxIn) bd)) φ)
-  /-- ⭐**Definition** (§11.5 (3)): if a hole formula holds at the end of every way on from every
-      arrow of a nonempty out leg, and singles out `t` here, the carrier comes back as `t` — weak B
-      gives every arrow a way home, and the return satisfies the formula.  `Back`'s **existence of a
-      value**, conditional where `here_name` and `ret_new` are not: different arrows may return
-      different values, and at a `◇`-free type a definition is what forces them to agree.  The one
-      rule that makes a `Back` atom about a given carrier; the canonical model's negative atoms at
-      `◇`-free contents need it (docs §11.18). -/
-  | back_def {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (hB : ModalSys.B = true) (O : OutLeg Γ) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
-      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a)
-      (θ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
+  /-- ⭐**`Back` is the definite description of the returning possibility** (docs §11.18,
+      §11.20): if the carrier's object comes back, along any arrow of a nonempty out leg, only as
+      `t` — every fresh `c` with `◇[e ↦ c] (e = □bd)` is `t` — then the carrier comes back as `t`.
+      `Back`'s **existence of a value**, conditional where `here_name` and `ret_new` are not: the
+      one-arrow values must agree.  At `◇`-free contents (there is no equality at `◇` types); it
+      subsumes the closed-formula definition `back_def` of §11.5 (3). -/
+  | back_ret {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true)
+      (O : OutLeg Γ) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
+      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) (c : ℕ)
+      (hc : Γ.RootFresh (.free c)) {Δ : List (WFF σ Γ 0)} :
       Proof σ Γ Δ (O.dia .top) →
-      Proof σ Γ Δ (O.box (WFF.box (WFF.holeRead bd θ))) →
-      Proof σ Γ Δ (WFF.all A (WFF.imp (WFF.mono ((Ctx.empty_le Γ).insert (.bnd 0) A) θ)
-        (eqRec A (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root Γ (.bnd 0) A))
-          (Term.castAnn hA (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root A) t))))) →
+      Proof σ (Γ.insert (.free c) A)
+        ((O.mono (Ctx.le_insert hc.root A)).ret hS
+            (Term.eta (.root (.free c)) A (Ctx.ref_insert_root Γ (.free c) A))
+            (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root A)).insert (.bnd 0) _)
+              (WFF.backRetBody (OutLeg.slotsFrom Ctx.NoSlots.slots O) hA bd)) ::
+          Δ.map (WFF.weaken hc.root A))
+        (eqRec A (Term.eta (.root (.free c)) A (Ctx.ref_insert_root Γ (.free c) A))
+          (Term.castAnn hA (Term.weaken hc.root A t))) →
       Proof σ Γ Δ (O.back hS bd t)
   /-- ⭐**Every object comes back** (row 1), as an `∃`-elimination like `T_dia`: wherever there is
       a way out, a fresh carrier `c : □□A` comes back as `t`.  Its validity is
