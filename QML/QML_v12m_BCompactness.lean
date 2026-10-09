@@ -37,13 +37,13 @@ theorem setConsistent_iff {Γ : Ctx} {S : Set (WFF σ Γ 0)} :
 theorem model_existenceB_ctxOf (hB : ModalSys.B = true) {l₀ : List VarType}
     {S : Set (WFF σ (ctxOf l₀) 0)} (hS : WFF.SetConsistent S) : WFF.SetSatisfiable S := by
   obtain ⟨hSM, hM₀⟩ := complete_spec (setConsistent_iff.mp hS)
-  let B := bdata hB hM₀
+  let B := bdata (weakChain hB hM₀)
   let s : B.W := B.actual
   have hle : (ctxOf l₀).Le ((B.w s).ctx 0) :=
-    ctxOf_le_of_suffix (lang_suffix hB hM₀ (Nat.zero_le _) trivial)
+    ctxOf_le_of_suffix ((weakChain hB hM₀).lang_suffix (Nat.zero_le _) trivial)
   have hag : Model.Env.Agree hle (fun v T hv => B.canonEnv s 0 v T (hle v T hv))
       (B.canonEnv s 0) := fun _ _ _ => rfl
-  have hg := (ext_net hB hM₀ (Nat.zero_le (birth (complete S) s.2 + 0))).grows [] trivial
+  have hg := (ext_net hB hM₀ (Nat.zero_le (birth (weakChain hB hM₀) s.2 + 0))).grows [] trivial
   refine ⟨B.model, BData.indInvariant, s,
     fun v T hv => B.canonEnv s 0 v T (hle v T hv), fun ψ hψ => ?_⟩
   refine (Model.sat_mono hag ψ).mp ((BData.truth s 0 _).mpr ?_)

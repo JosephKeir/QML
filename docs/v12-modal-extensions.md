@@ -6194,6 +6194,20 @@ ret children, each at a node; `NetSt.applyOpT` performs one at a live node, ⭐`
 the chain from a root theory with ⭐`goodS_netS` and `ext_netS`.  The old strong chain in
 `BNetRet` (weak B's operations only) is removed.  *Next:* L4f.
 
+**L4f, first part: the limit over any fair chain (2026-10-10).**
+* `FairChain M₀` (`QML_v12m_BFair`): what the limit needs of a chain of networks — goodness,
+  extension, forward/back totality, Henkin witnesses, children for failing `□` and true `◇_x`.
+  `BLimit` now builds `bdata C` from any `C : FairChain M₀` (it no longer mentions `net`).
+* `OpChain M₀`: a chain whose rounds perform every Henkin step, child creation and realisation
+  step infinitely often; the six fairness theorems are proved once for it (`OpChain.toFair`).
+  Weak B's chain is `weakChain` (from `sched`), strong B's is `strongChain`
+  (`QML_v12m_BFairS`, from `schedS`, T off).  Weak B's completeness and compactness use
+  `bdata (weakChain hB hM₀)`; nothing else changed.
+* *Remaining in L4f:* strong B's part of the canonical data and model — shapes without T (the
+  T-free decoder), `backRet_exists_canon`, attestation through aliases and `Back` atoms
+  (`Att.alias`, `Att.back`), the truth lemma's `back`/`ret` cases — and removing
+  `NoFour.noBStrong`.
+
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`
   contains `□`.  So for a slot `□A` with `A` box-free the second component has a canonical

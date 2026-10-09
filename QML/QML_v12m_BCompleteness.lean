@@ -42,13 +42,13 @@ theorem completenessB (hB : ModalSys.B = true) {l₀ : List VarType} {Δ : List 
     · rw [Set.mem_singleton_iff.mp h]
       exact List.mem_cons_self
   obtain ⟨hSM, hM₀⟩ := complete_spec hS
-  let B := bdata hB hM₀
+  let B := bdata (weakChain hB hM₀)
   let s : B.W := B.actual
   have hle : (ctxOf l₀).Le ((B.w s).ctx 0) :=
-    ctxOf_le_of_suffix (lang_suffix hB (complete_spec hS).2 (Nat.zero_le _) trivial)
+    ctxOf_le_of_suffix ((weakChain hB hM₀).lang_suffix (Nat.zero_le _) trivial)
   let env₀ : B.model.Env (ctxOf l₀) s := fun v T hv => B.canonEnv s 0 v T (hle v T hv)
   have hag : Model.Env.Agree hle env₀ (B.canonEnv s 0) := fun _ _ _ => rfl
-  have hg := (ext_net hB hM₀ (Nat.zero_le (birth (complete S) s.2 + 0))).grows [] trivial
+  have hg := (ext_net hB hM₀ (Nat.zero_le (birth (weakChain hB hM₀) s.2 + 0))).grows [] trivial
   have hmem : ∀ ψ ∈ S, WFF.mono hle ψ ∈ (B.w s).M 0 := fun ψ hψ =>
     hg.sub ψ (show ψ ∈ ((net (complete S) 0).st []).M from hSM hψ)
   have hsat := hval B.model BData.indInvariant env₀

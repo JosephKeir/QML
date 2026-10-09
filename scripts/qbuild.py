@@ -15,7 +15,7 @@ import re
 import subprocess
 import sys
 
-TOP = ["BCompactness", "Compactness", "StrongD", "LeibnizProof", "ArrowCheck", "BNetS"]
+TOP = ["BCompactness", "Compactness", "StrongD", "LeibnizProof", "ArrowCheck", "BFairS"]
 NOISE = ("✔", "⣿", "info:", "trace:", "Note: This linter")
 HEAD = re.compile(r"^(error|warning): ")
 
