@@ -6047,3 +6047,28 @@ restriction should not disturb them.
 * The witness realisation step is `ret_extS` + `ret_map pack` at the witness shape
   (`WFF.pairUpS`, `bodySplit_mono_pairUpS`, `ShapeMap.liftObj_pack_wit`/`liftVal_pack_wit`,
   `RShape.extTm_wit`); `repackW` and `pairUpW` are deleted.
+
+**Correction and scope (2026-10-10).**
+* *The returning successor needs Lindenbaum and the K-law.*  Two atoms `◇[d ↦ y] Ψᵢ` may use
+  different arrows, so `{Ψ↑ : ◇[d ↦ y] Ψ ∈ M w}` is not closed under `∧`.  The seed is the atom's
+  body with the dual box's contents, `{Φ(c)} ∪ {Θ(c) : ¬◇[d ↦ y] ¬Θ ∈ M w}`, consistent by the
+  K-law `◇[d ↦ y] Φ, ¬◇[d ↦ y] Ψ ⊢ ◇[d ↦ y](Φ ∧ ¬Ψ)`; the back invariant holds at birth (if `Θ`
+  is in the child but `◇[d ↦ y] Θ ∉ M w`, `¬Θ` was in the seed).
+* *T off first (user, 2026-10-10).*  Under T a root's image has type `bc(□A) = A × bc A`, so the
+  birth root's image would alias only its first component, which has no consistency argument yet.
+  L4e–f are built for strong B **without T**; strong B with T is a separate step afterwards.
+
+**L4e, first part (2026-10-10).**
+* `QML_v12m_RetK`: ⭐`Proof.ret_K`, the K-law on the plain leg, for `Ψ = kPsi sb θΨ` (a home
+  necessary object and a hole formula; at a network node `pack2` puts any body in this form).
+  `kTheta θΨ` is the negated premise as a hole formula; `holeAt_kTheta`, `openFree_kPsi`,
+  `openFree_unitBody_kTheta` are the computations; the proof is `ret_unit` at home, `ret_mono`,
+  and `ret_unit` + `ret_absurd` at the far world.
+* `QML_v12m_BAlias`: `aliasFormula`/`aliasSet`, ⭐`alias_consistent` (substitute `t` for the fresh
+  root: old formulas are fixed, alias formulas become `χ ↔ χ`), `aliasStep`/`aliasStep_ok`, and the
+  network operation `mkAlias` with `GoodS.mkAlias`, `Ext.mkAlias`.
+* *Next:* the plain ret child.  Layout `k.l = s.l.map bc ++ [□A]`, so the birth root `c` is the
+  oldest (back commitments go oldest first): forward images `r ↦ r + 1`, back `c ↦ y`.  Its seed is
+  read in `RetInv`'s form (slot `□(𝟙 × A)`, value `⟨(), y⟩`, from the atom by `ret_map` along a
+  hole term); consistency pulls a refutation back to the parent's `□` view (as `child_consistent`,
+  with the slot), then the K-law.
