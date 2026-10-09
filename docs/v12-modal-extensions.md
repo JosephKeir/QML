@@ -6017,7 +6017,8 @@ restriction should not disturb them.
 **Still to check on paper:**
 1. The ∨ law along `x` and along a possible part (for maximality of the second and third kinds of
    returning successor): the §11.17 derivation with `ret_unitW`/`ret_unitD` in place of
-   `ret_unit`.
+   `ret_unit`.  *Along `x`: done (2026-10-09), `Proof.retx_K` — see "L4e, third part".  Along a
+   possible part: still open (back-witness children).*
 2. That the alias operation's fairness (an alias for every term at every node) fits the schedule,
    and that aliases never need to be committed injectively (they are parent roots, not images of a
    child's roots).
@@ -6095,6 +6096,29 @@ restriction should not disturb them.
 * *Next:* witness ret children (`◇_x[d ↦ t]` atoms, the K-law along `x`), back-witness children,
   negative `Back` atoms, and the `Op` type with fairness; turning a user atom into an obligation
   (alias, then `ret_map` to `RetInv`'s form) is part of L4f's truth lemma.
+
+**L4e, third part: the K-law along `x` and the witness ret child (2026-10-09, T off).**
+* `QML_v12m_RetKX`: ⭐`Proof.retx_K`, `◇_x[d ↦ t] Φ, ¬◇_x[d ↦ t] Ψ ⊢ ◇_x[d ↦ t](Φ ∧ ¬Ψ)` for
+  `Ψ = kPsiX sb θΨ` (home necessary object, `x`'s content, slot); `Proof.retx_K_node` for any
+  body at a node (`pack2X`).  The derivation is `ret_K`'s with the witnessed units, and needs no
+  new rule:
+  1. at home, `ret_unitW` with `u := x.dia` carries `¬◇_x[d ↦ y] Ψ` out as the hole formula
+     `kThetaW θΨ = ¬◇_e[d ↦ ·] θΨ(⟨s.box, e.dia⟩, d)`, `x` returning as the possible part `e`
+     (`holeAt_kThetaW`, `holeRead_kThetaW`);
+  2. at the far world, `Ψ(z)` is exactly `ret_unitD`'s premise along `e`
+     (`openFree_kPsiX`, `openFree_unitBodyW_kThetaW`);
+  3. the conjuncts clash by `retS_absurd`.
+* `retPullS` generalised (in `BRetChild`): any parent view `V ⊇` the `□` view, and an entry `e` for
+  the root after the parent's (a witness child's content).  The plain child is `V = □ view`,
+  `e = hide`; `ok_retPullS_X`, `coh_retPullS_of`, `at_retPull_item`, `subst_retPull_entry` are
+  shared.
+* `QML_v12m_BRetChildX`: layout `X :: rcl l A` (`cx = l.length + 1`), seed `retSeedX` (as the
+  plain one, with `liftBodyX`), ⭐`retSeedX_consistent` (K-law along `x`, pull-back into `x`'s view
+  with `cx ↦ x.dia`, `subst_retPull_liftBodyX`, `Proof.retx_refute`), ⭐`RetData.retBirthX`
+  (`RetInvW` forward by `ret_unitW` + `liftBodyX_unitBodyW`; `RetInvX` home by the seed), and
+  `NetSt.mkRetX` with `GoodS.mkRetX`, `Ext.mkRetX`.
+* *Next:* the back-witness child (atoms `◇[d ↦ y; e ⇝ z] Φ`): needs a kind on back arrows and the
+  K-law along a possible part; then negative `Back` atoms, the `Op` type with fairness.
 
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`

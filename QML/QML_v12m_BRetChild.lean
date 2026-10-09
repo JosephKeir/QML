@@ -68,9 +68,10 @@ end Layout
 
 /-! ## Pulling the child back, with the slot opened -/
 
-/-- The parent's `□` view with a body's slot opened at `u = l.length`. -/
-abbrev pullCtx (l : List VarType) (A : VarType) : Ctx :=
-  (ctxOf l).boxIn.insert (.free l.length) (.VTypeBox (bcT [.VTypeBox A]))
+/-- A view `V` of the parent (its `□` view, or a witness's view) with a body's slot opened at
+    `u = l.length`. -/
+abbrev pullCtx (V : Ctx) (l : List VarType) (A : VarType) : Ctx :=
+  V.insert (.free l.length) (.VTypeBox (bcT [.VTypeBox A]))
 
 theorem pullCtx_fresh (l : List VarType) : (ctxOf l).boxIn.RootFresh (.free l.length) :=
   (ctxOf_fresh le_rfl).boxIn
@@ -79,8 +80,8 @@ theorem bc_box_noT (hT : ModalSys.T = false) (A : VarType) : (VarType.VTypeBox A
   simp [VarType.bcB, hT]
 
 /-- The opened slot's second component: the object coming back. -/
-theorem pullCtx_ref_c (l : List VarType) (A : VarType) :
-    (pullCtx l A).boxIn.ref (.step (VarSymb.root (.free l.length)).inner .snd) =
+theorem pullCtx_ref_c (V : Ctx) (l : List VarType) (A : VarType) :
+    (pullCtx V l A).boxIn.ref (.step (VarSymb.root (.free l.length)).inner .snd) =
       some (VarType.VTypeBox A).bc :=
   Ctx.ref_snd_of (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))
 
@@ -92,38 +93,58 @@ theorem subE_tm_sig {Δ : Ctx} {T : VarType} {a a' : Ann T} {s : Term σ Δ T a}
 
 variable [ModalSys.NoFour]
 
-/-- ⭐Pulling the child back into the parent's `□` view with the slot opened at `u`: `c` goes to
-    the necessary object `□(u.snd)`, and root `r + 1` to the tuple of root `r`'s items. -/
-def retPullS (hT : ModalSys.T = false) (σ : Signature) (l : List VarType) (A : VarType) :
-    Subst σ (pullCtx l A) := fun v =>
+/-- ⭐Pulling a child back into a view `V` of the parent containing its `□` view, with the slot
+    opened at `u`: `c` goes to the necessary object `□(u.snd)`, root `r + 1` to the tuple of root
+    `r`'s items, and the root after those (a witness child's content) to `e`. -/
+def retPullS (hT : ModalSys.T = false) (σ : Signature) (l : List VarType) (A : VarType)
+    {V : Ctx} (hV : (ctxOf l).boxIn.Le V) (hu : V.RootFresh (.free l.length))
+    (e : SubE σ (pullCtx V l A)) : Subst σ (pullCtx V l A) := fun v =>
   match v with
   | .root (.free 0) => .tm (Term.boxtm (Term.eta (.step (VarSymb.root (.free l.length)).inner .snd)
-      A ((pullCtx_ref_c l A).trans (congrArg some (bc_box_noT hT A)))))
+      A ((pullCtx_ref_c V l A).trans (congrArg some (bc_box_noT hT A)))))
   | .root (.free (r + 1)) =>
-      if h : r < l.length then .tm (Term.mono (Ctx.le_insert (pullCtx_fresh l).root _)
+      if h : r < l.length then .tm (Term.mono (hV.trans (Ctx.le_insert hu.root _))
         (tup (.root (.free r)) (rootTy l r) (by
           rw [Ctx.ref_nonproj _ rfl]; exact ctxOf_root_lt h)))
-      else .hide
+      else if r = l.length then e else .hide
   | _ => .hide
 
 /-- Where pulling back sends annotation indices: along the entry at the index's root. -/
 def retPullIdx (hT : ModalSys.T = false) (σ : Signature) (l : List VarType) (A : VarType)
-    (a : VarSymb) : VarSymb :=
+    {V : Ctx} (hV : (ctxOf l).boxIn.Le V) (hu : V.RootFresh (.free l.length))
+    (e : SubE σ (pullCtx V l A)) (a : VarSymb) : VarSymb :=
   match a.rt with
-  | .free r => (retPullS hT σ l A (.root (.free r))).idxAlong a.path
+  | .free r => (retPullS hT σ l A hV hu e (.root (.free r))).idxAlong a.path
   | .bnd _ => a
 
 section Pull
 
-variable (hT : ModalSys.T = false) (l : List VarType) (A : VarType)
+variable (hT : ModalSys.T = false) (l : List VarType) (A : VarType) {V : Ctx}
+  (hV : (ctxOf l).boxIn.Le V) (hu : V.RootFresh (.free l.length)) (e : SubE σ (pullCtx V l A))
 
 theorem retPull_succ {r : ℕ} (h : r < l.length) :
-    retPullS hT σ l A (.root (.free (r + 1))) = .tm (Term.mono
-      (Ctx.le_insert (pullCtx_fresh l).root _) (tup (.root (.free r)) (rootTy l r) (by
+    retPullS hT σ l A hV hu e (.root (.free (r + 1))) = .tm (Term.mono
+      (hV.trans (Ctx.le_insert hu.root _)) (tup (.root (.free r)) (rootTy l r) (by
           rw [Ctx.ref_nonproj _ rfl]; exact ctxOf_root_lt h))) :=
   dif_pos h
 
-theorem ok_retPullS : Subst.Ok (ctxOf (rcl l A)) (retPullS hT σ l A) := by
+theorem retPull_last : retPullS hT σ l A hV hu e (.root (.free (l.length + 1))) = e := by
+  change (if h : l.length < l.length then _ else if l.length = l.length then _ else _) = _
+  rw [dif_neg (lt_irrefl _), if_pos rfl]
+
+/-- The entries at the roots of `rcl` are well typed, whatever `e` is. -/
+theorem retPull_okRef {r : ℕ} (hr : r < (rcl l A).length) :
+    (retPullS hT σ l A hV hu e (.root (.free r))).OkRef (rootTy (rcl l A) r) := by
+  cases r with
+  | zero =>
+      rw [rootTy_rcl_zero]
+      rfl
+  | succ r =>
+      have hr' : r < l.length := by rw [length_rcl] at hr; omega
+      rw [rootTy_rcl_succ, rootTy_map_bc l r hr', retPull_succ hT l A hV hu e hr']
+      rfl
+
+theorem ok_retPullS : Subst.Ok (ctxOf (rcl l A)) (retPullS hT σ l A hV hu e) := by
   intro v T _ hv
   obtain ⟨r, rfl⟩ := ctxOf_decl hv
   have hr : r < (rcl l A).length := by
@@ -132,54 +153,77 @@ theorem ok_retPullS : Subst.Ok (ctxOf (rcl l A)) (retPullS hT σ l A) := by
     cases hv
   rw [ctxOf_root_lt hr] at hv
   cases hv
-  cases r with
-  | zero =>
-      rw [rootTy_rcl_zero]
-      rfl
-  | succ r =>
-      have hr' : r < l.length := by rw [length_rcl] at hr; omega
-      rw [rootTy_rcl_succ, rootTy_map_bc l r hr', retPull_succ hT l A hr']
-      rfl
+  exact retPull_okRef hT l A hV hu e hr
 
-theorem coh_retPullS :
-    Subst.Coh (retPullIdx hT σ l A) (ctxOf (rcl l A)) (retPullS hT σ l A) := by
-  refine Subst.coh_of (ok_retPullS hT l A) ?_
+/-- A witness child's content root, after the parent's, is pulled back to `e`, of its type. -/
+theorem ok_retPullS_X {X : VarType} (he : e.OkRef X) :
+    Subst.Ok (ctxOf (X :: rcl l A)) (retPullS hT σ l A hV hu e) := by
+  intro v T _ hv
+  obtain ⟨r, rfl⟩ := ctxOf_decl hv
+  have hr : r < (rcl l A).length + 1 := by
+    by_contra hge
+    rw [(ctxOf_fresh (l := X :: rcl l A) (by simp only [List.length_cons]; omega)) _ rfl] at hv
+    cases hv
+  rw [ctxOf_root_lt (by simp only [List.length_cons]; omega)] at hv
+  cases hv
+  by_cases hlt : r < (rcl l A).length
+  · rw [rootTy_old hlt]
+    exact retPull_okRef hT l A hV hu e hlt
+  · obtain rfl : r = (rcl l A).length := by omega
+    rw [rootTy_new, length_rcl, retPull_last]
+    exact he
+
+theorem coh_retPullS_of {kl : List VarType}
+    (hok : Subst.Ok (ctxOf kl) (retPullS hT σ l A hV hu e)) :
+    Subst.Coh (retPullIdx hT σ l A hV hu e) (ctxOf kl) (retPullS hT σ l A hV hu e) := by
+  refine Subst.coh_of hok ?_
   intro v T _ hv p
   obtain ⟨r, rfl⟩ := ctxOf_decl hv
-  have e : ((VarSymb.root (.free r)).ext p).rt = .free r := VarSymb.ext_rt _ _
-  rw [retPullIdx, e, VarSymb.ext_path]
+  have hrt : ((VarSymb.root (.free r)).ext p).rt = .free r := VarSymb.ext_rt _ _
+  rw [retPullIdx, hrt, VarSymb.ext_path]
   rfl
 
 /-- Pulling back along an encoded projection path from root `r + 1` reaches the tuple of the
     component (`at_pull_tup`, one up and weakened). -/
-theorem at_retPull_tup : ∀ {u : VarSymb} {U : VarType} (hu : (ctxOf l).ref u = some U) (r : ℕ),
+theorem at_retPull_tup : ∀ {u : VarSymb} {U : VarType} (hu' : (ctxOf l).ref u = some U) (r : ℕ),
     u.rt = .free r →
-      (retPullS hT σ l A).at ((VarSymb.root (.free (r + 1))).ext (encPath u.path)) =
-        .tm (Term.mono (Ctx.le_insert (pullCtx_fresh l).root _) (tup u U hu))
-  | .root (.free r'), U, hu, r, hrt => by
+      (retPullS hT σ l A hV hu e).at ((VarSymb.root (.free (r + 1))).ext (encPath u.path)) =
+        .tm (Term.mono (hV.trans (Ctx.le_insert hu.root _)) (tup u U hu'))
+  | .root (.free r'), U, hu', r, hrt => by
       change Root.free r' = Root.free r at hrt
       cases hrt
-      obtain ⟨r₀, e, hr', -⟩ := ref_rt hu
-      cases e
-      have hU := hu
+      obtain ⟨r₀, e', hr', -⟩ := ref_rt hu'
+      cases e'
+      have hU := hu'
       rw [Ctx.ref_nonproj _ rfl, ctxOf_root_lt hr'] at hU
       cases hU
-      exact retPull_succ hT l A hr'
+      exact retPull_succ hT l A hV hu e hr'
   | .root (.bnd _), _, _, _, hrt => by cases hrt
-  | .step u s, U, hu, r, hrt => by
-      have hproj : s.isProj = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
-      have hu' := hu
-      simp only [Ctx.ref, if_pos hproj] at hu'
+  | .step u s, U, hu', r, hrt => by
+      have hproj : s.isProj = true := (reach_ppath hu').1 s (by simp [VarSymb.path])
+      have hu'' := hu'
+      simp only [Ctx.ref, if_pos hproj] at hu''
       cases hU : (ctxOf l).ref u with
-      | none => rw [hU] at hu'; cases hu'
+      | none => rw [hU] at hu''; cases hu''
       | some U' =>
-          rw [hU] at hu'
+          rw [hU] at hu''
           have ih := at_retPull_tup hU r hrt
-          change (retPullS hT σ l A).at
+          change (retPullS hT σ l A hV hu e).at
             ((VarSymb.root (.free (r + 1))).ext (encPath (u.path ++ [s]))) = _
           rw [show encPath (u.path ++ [s]) = encPath u.path ++ [encStep s] from
             List.map_append, VarSymb.ext_step, Subst.at_proj _ _ (encStep_proj hproj), ih]
-          exact proj_tupB_mono _ rfl hU hproj hu' hu
+          exact proj_tupB_mono _ rfl hU hproj hu'' hu'
+
+/-- An item of the parent's `□` view, sent along the child's arrow and pulled back, is itself. -/
+theorem at_retPull_item {w : VarSymb} {T : VarType} (hw : (ctxOf l).ref w = some (.VTypeBox T)) :
+    (retPullS hT σ l A hV hu e).at (itemAt (imgRoot Nat.succ w.rt) w) =
+      .tm (Term.eta (.step w .box) T ((hV.trans (Ctx.le_insert hu.root _)).ref
+        (Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly hw))) := by
+  obtain ⟨r, hr, _, _⟩ := ref_rt hw
+  rw [hr]
+  change (retPullS hT σ l A hV hu e).at (itemAt (.free (r + 1)) w) = _
+  rw [at_item_of_tupB_mono _ _ _ hw ModalSys.T rfl (at_retPull_tup hT l A hV hu e hw r hr),
+    Term.mono_eta]
 
 end Pull
 
@@ -198,32 +242,40 @@ theorem subst_tupB_box_noT (hT : ModalSys.T = false) {Γ Δ : Ctx} {ι : VarSymb
 
 section Pull
 
-variable (hT : ModalSys.T = false) (l : List VarType) (A : VarType)
+variable (hT : ModalSys.T = false) (l : List VarType) (A : VarType) {V : Ctx}
+  (hV : (ctxOf l).boxIn.Le V) (hu : V.RootFresh (.free l.length)) (e : SubE σ (pullCtx V l A))
 
 /-- The necessary object holding `c`'s item, pulled back: the opened slot. -/
-theorem subst_retPull_entry :
-    (⟨_, Term.subst (retPullIdx hT σ l A) (retPullS hT σ l A) (ok_retPullS hT l A)
-        (coh_retPullS hT l A) (Term.boxtm (Term.mono (ctxOf_le_of_suffix (rcl_suffix l A)).boxIn
+theorem subst_retPull_entry {kl : List VarType} (hs : [VarType.VTypeBox A] <:+ kl)
+    (hθ : Subst.Ok (ctxOf kl) (retPullS hT σ l A hV hu e))
+    (hc : Subst.Coh (retPullIdx hT σ l A hV hu e) (ctxOf kl) (retPullS hT σ l A hV hu e)) :
+    (⟨_, Term.subst (retPullIdx hT σ l A hV hu e) (retPullS hT σ l A hV hu e) hθ hc
+        (Term.boxtm (Term.mono (ctxOf_le_of_suffix hs).boxIn
           (tupT (σ := σ) [.VTypeBox A]).2))⟩ :
-        Σ a, Term σ (pullCtx l A) (.VTypeBox (bcT [.VTypeBox A])) a) =
+        Σ a, Term σ (pullCtx V l A) (.VTypeBox (bcT [.VTypeBox A])) a) =
       ⟨_, Term.eta (.root (.free l.length)) _ (Ctx.ref_insert_root _ _ _)⟩ := by
-  have hs := Subst.box_at_inner_boxtm (retPullS hT σ l A) (v := .root (.free 0)) rfl
-  rw [VarSymb.inner_box ModalSys.NoFour.keepOnly] at hs
+  have hs' := Subst.box_at_inner_boxtm (retPullS hT σ l A hV hu e) (v := .root (.free 0)) rfl
+  rw [VarSymb.inner_box ModalSys.NoFour.keepOnly] at hs'
   change (⟨_, Term.boxtm (Term.subst _ _ _ _ (Term.mono _ _))⟩ :
-      Σ a, Term σ (pullCtx l A) (.VTypeBox (bcT [.VTypeBox A])) a) =
+      Σ a, Term σ (pullCtx V l A) (.VTypeBox (bcT [.VTypeBox A])) a) =
     ⟨_, Term.boxtm (Term.pair Term.unit
-      (Term.eta (.step (VarSymb.root (.free l.length)).inner .snd) _ (pullCtx_ref_c l A)))⟩
+      (Term.eta (.step (VarSymb.root (.free l.length)).inner .snd) _ (pullCtx_ref_c V l A)))⟩
   rw [Term.subst_mono]
   exact sig_boxtm (sig_pair rfl (subst_tupB_box_noT hT _ _ _ (ctxOf_ref_new _ []) ModalSys.T rfl
-    (pullCtx_ref_c l A) _ hs))
+    (pullCtx_ref_c V l A) _ hs'))
 
-/-- ⭐**Pulling back opens the slot**: a body read at the child, pulled back, is the body with its
-    slot opened at `u` — its items go back to the parent's items, and the necessary object holding
-    `c`'s item to the slot (`subst_retPull_entry`). -/
-theorem subst_retPull_liftBody (Ξ : WFF σ (bodyCtx [.VTypeBox A] l) 1) :
-    WFF.subst (retPullIdx hT σ l A) (retPullS hT σ l A) (ok_retPullS hT l A)
-        (coh_retPullS hT l A) Ctx.NoSlots.slots Ctx.NoSlots.slots
-        (liftBody (rcl_suffix l A) (rclImg l A) Ξ) =
+end Pull
+
+/-- ⭐**Pulling back opens the slot**: a body read at the child, pulled back into the parent's `□`
+    view, is the body with its slot opened at `u` — its items go back to the parent's items
+    (`at_retPull_item`), and the necessary object holding `c`'s item to the slot
+    (`subst_retPull_entry`). -/
+theorem subst_retPull_liftBody (hT : ModalSys.T = false) (l : List VarType) (A : VarType)
+    (Ξ : WFF σ (bodyCtx [.VTypeBox A] l) 1) :
+    WFF.subst (retPullIdx hT σ l A (Ctx.Le.refl _) (pullCtx_fresh l) .hide)
+        (retPullS hT σ l A (Ctx.Le.refl _) (pullCtx_fresh l) .hide)
+        (ok_retPullS hT l A _ _ _) (coh_retPullS_of hT l A _ _ _ (ok_retPullS hT l A _ _ _))
+        Ctx.NoSlots.slots Ctx.NoSlots.slots (liftBody (rcl_suffix l A) (rclImg l A) Ξ) =
       WFF.openFree l.length (pullCtx_fresh l) Ctx.NoSlots.slots Ξ := by
   unfold liftBody WFF.openFree
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Ξ
@@ -238,23 +290,17 @@ theorem subst_retPull_liftBody (Ξ : WFF σ (bodyCtx [.VTypeBox A] l) 1) :
     dsimp only [Subst.comp]
     rw [Subst.set_root]
     dsimp only [SubE.comp]
-    rw [subE_tm_sig (subst_retPull_entry hT l A)]
+    rw [subE_tm_sig (subst_retPull_entry hT l A _ _ _ (rcl_suffix l A) _ _)]
     exact .ren_eta _ _
   · obtain ⟨w, rfl, hw⟩ := body_item hlp hv hvr
-    obtain ⟨r, hr, _, _⟩ := ref_rt hw
     rw [Subst.toFree_ne _ _ _ _ hvr]
     dsimp only [Subst.comp]
     rw [Subst.set_ne _ _ hvr]
     change SubE.Sim T (((Subst.idRen _) (.step w .box)).mono _)
-      ((retPullS hT σ l A).at (itemAt (imgRoot Nat.succ w.rt) w))
-    rw [hr]
-    change SubE.Sim T (.ren (.step w .box))
-      ((retPullS hT σ l A).at (itemAt (.free (r + 1)) w))
-    rw [at_item_of_tupB_mono _ _ _ hw ModalSys.T rfl (at_retPull_tup hT l A hw r hr),
-      Term.mono_eta]
+      ((retPullS hT σ l A (Ctx.Le.refl _) (pullCtx_fresh l) .hide).at
+        (itemAt (imgRoot Nat.succ w.rt) w))
+    rw [at_retPull_item hT l A _ _ _ hw]
     exact .ren_eta _ _
-
-end Pull
 
 /-! ## The K-law at a node, and refuting a returning possibility -/
 
@@ -354,8 +400,10 @@ theorem retSeed_consistent (hT : ModalSys.T = false) {M : Set (WFF σ (ctxOf l) 
   have p' : Proof σ (ctxOf (rcl l A)) [liftBody (rcl_suffix l A) (rclImg l A) Ξ] .bot :=
     Proof.ofSubset (fun x hx => by
       rw [Set.mem_singleton_iff.mp (hΔ x hx)]; exact List.mem_cons_self) p
-  haveI : (pullCtx l A).Presented := Ctx.Presented.insertFree inferInstance _ (pullCtx_fresh l) _
-  have q := Proof.subst p' (retPullS hT σ l A) (ok_retPullS hT l A) (coh_retPullS hT l A)
+  haveI : (pullCtx (ctxOf l).boxIn l A).Presented :=
+    Ctx.Presented.insertFree inferInstance _ (pullCtx_fresh l) _
+  have q := Proof.subst p' (retPullS hT σ l A (Ctx.Le.refl _) (pullCtx_fresh l) .hide)
+    (ok_retPullS hT l A _ _ _) (coh_retPullS_of hT l A _ _ _ (ok_retPullS hT l A _ _ _))
     Ctx.NoSlots.slots
   simp only [List.map_cons, List.map_nil, subst_retPull_liftBody] at q
   refine hM.1 ⟨[_], fun x hx => by rw [List.mem_singleton.mp hx]; exact hΞ,
