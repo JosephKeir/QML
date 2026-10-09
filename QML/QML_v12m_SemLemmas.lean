@@ -222,6 +222,28 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
       exists_congr fun a => exists_congr fun e =>
         and_congr (sat_mono (Env.extend_agree (Env.boxPush_agree hag a) (.bnd d) e) Φ)
           (by rw [interp_mono hag t])
+  | _, _, h, d, _, env, env', hag, .retx hB y hy t Φ => by
+      constructor
+      · rintro ⟨Y, h', a, e, hsat, hr⟩
+        obtain ⟨Y₀, hy₀⟩ := hy
+        have hYY : Y₀ = Y := by
+          have h₂ := h.ref hy₀
+          rw [h'] at h₂
+          cases h₂
+          rfl
+        subst hYY
+        have href := Env.ref_agree hag y hy₀
+        refine ⟨Y₀, hy₀, ⟨a.1, by rw [href]; exact a.2⟩, e, ?_, ?_⟩
+        · exact (sat_mono (Env.extend_agree (Env.diaPush_agree hag hy₀ ⟨a.1, _⟩ a.2) (.bnd d) e)
+            Φ).mp hsat
+        · rw [interp_mono hag t] at hr
+          exact hr
+      · rintro ⟨Y, hr', a, e, hsat, hr⟩
+        have href := Env.ref_agree hag y hr'
+        refine ⟨Y, h.ref hr', ⟨a.1, by rw [← href]; exact a.2⟩, e,
+          (sat_mono (Env.extend_agree (Env.diaPush_agree hag hr' a _) (.bnd d) e) Φ).mpr hsat, ?_⟩
+        rw [interp_mono hag t]
+        exact hr
 
 /-! ## Equality -/
 

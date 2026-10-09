@@ -557,6 +557,29 @@ theorem sat_collapse : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses k Γ
         and_congr (sat_collapse (hs.boxIn.insert _)
             ((hag.boxPush a).extend (hs.boxIn.rootFresh le_rfl) e) Φ)
           (by rw [interp_collapse hag t])
+  | k, _, _, h, _, _, env₁, env₂, hs, hag, .retx hB y hy t Φ => by
+      constructor
+      · rintro ⟨Y, h₂, a, e, hsat, hr⟩
+        obtain ⟨Y₀, hy₀⟩ := hy
+        have hYY : Y₀ = Y := by
+          have e' := h y _ hy₀
+          rw [h₂] at e'
+          cases e'
+          rfl
+        subst hYY
+        have href := hag y _ hy₀
+        refine ⟨Y₀, hy₀, ⟨a.1, by rw [href]; exact a.2⟩, e, ?_, ?_⟩
+        · exact (sat_collapse ((hs.diaIn y).insert _)
+            ((hag.diaPush hy₀ ⟨a.1, _⟩ a.2).extend ((hs.diaIn y).rootFresh le_rfl) e) Φ).mp hsat
+        · rw [interp_collapse hag t] at hr
+          exact hr
+      · rintro ⟨Y, hr', a, e, hsat, hr⟩
+        have href := hag y _ hr'
+        refine ⟨Y, h y _ hr', ⟨a.1, by rw [← href]; exact a.2⟩, e,
+          (sat_collapse ((hs.diaIn y).insert _)
+            ((hag.diaPush hr' a _).extend ((hs.diaIn y).rootFresh le_rfl) e) Φ).mpr hsat, ?_⟩
+        rw [interp_collapse hag t]
+        exact hr
 
 /-- ⭐The semantic content of the T rule: a collapsed `□`-body holds exactly when the body holds
     at the current world. -/

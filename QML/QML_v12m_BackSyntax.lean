@@ -257,6 +257,54 @@ def bodyRead [Γ.NoSlots] (O : OutLeg Γ) {A : VarType} {b : Ann (.VTypeBox A)}
     WFF σ O.view 0 :=
   WFF.instantiate Ctx.NoSlots.slots c (WFF.mono (O.le_view.insert (.bnd 0) _) Φ)
 
+/-- ⭐The **returning possibility along the leg** (§11.17): `◇[e ↦ t] Φ` from any arrow, or
+    `◇_y[e ↦ t] Φ` from an arrow of `y`'s extent, with `Φ` read in the leg's view. -/
+def ret {d : ℕ} (hS : ModalSys.BStrong = true) : (O : OutLeg Γ) → {A : VarType} →
+    {a : Ann A} → Term σ Γ A a → WFF σ (O.view.insert (.bnd d) (.VTypeBox A)) (d + 1) →
+    WFF σ Γ d
+  | .nec, _, _, t, Φ => WFF.ret hS t Φ
+  | .pos y hy, _, _, t, Φ => WFF.retx hS y hy t Φ
+
+/-- A body over the `□` view, read in the leg's view (literally itself for `nec`). -/
+def lift {d : ℕ} {T : VarType} : (O : OutLeg Γ) → WFF σ (Γ.boxIn.insert (.bnd d) T) (d + 1) →
+    WFF σ (O.view.insert (.bnd d) T) (d + 1)
+  | .nec, φ => φ
+  | .pos y _, φ => WFF.mono ((Ctx.le_boxIn_diaIn Γ y).insert _ _) φ
+
+/-- The leg in a larger context. -/
+def mono {Γ' : Ctx} (h : Γ.Le Γ') : OutLeg Γ → OutLeg Γ'
+  | .nec => .nec
+  | .pos y hy => .pos y (hy.imp fun _ hY => h.ref hY)
+
+theorem le_view_mono {Γ' : Ctx} (h : Γ.Le Γ') : (O : OutLeg Γ) → O.view.Le (O.mono h).view
+  | .nec => h.boxIn
+  | .pos y _ => h.diaIn y
+
+/-- Two returning possibilities along a leg agree when their values and bodies do. -/
+theorem ret_congr {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
+    {a a' : Ann A} {t : Term σ Γ A a} {t' : Term σ Γ A a'}
+    {Φ Φ' : WFF σ (O.view.insert (.bnd d) (.VTypeBox A)) (d + 1)}
+    (ht : (⟨a, t⟩ : Σ a, Term σ Γ A a) = ⟨a', t'⟩) (hΦ : Φ = Φ') :
+    (O.ret hS t Φ : WFF σ Γ d) = O.ret hS t' Φ' := by
+  cases ht
+  cases hΦ
+  rfl
+
+/-- Two returning possibilities along a leg agree when their values and bodies do, at one
+    annotation. -/
+theorem ret_congr' {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
+    {a : Ann A} {t t' : Term σ Γ A a} {Φ Φ' : WFF σ (O.view.insert (.bnd d) (.VTypeBox A)) (d + 1)}
+    (ht : t = t') (hΦ : Φ = Φ') : (O.ret hS t Φ : WFF σ Γ d) = O.ret hS t' Φ' := by
+  rw [ht, hΦ]
+
+theorem mono_ret {Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (hS : ModalSys.BStrong = true) :
+    (O : OutLeg Γ) → {A : VarType} → {a : Ann A} → (t : Term σ Γ A a) →
+    (Φ : WFF σ (O.view.insert (.bnd d) (.VTypeBox A)) (d + 1)) →
+    WFF.mono h (O.ret hS t Φ) =
+      (O.mono h).ret hS (Term.mono h t) (WFF.mono ((le_view_mono h O).insert _ _) Φ)
+  | .nec, _, _, _, _ => rfl
+  | .pos _ _, _, _, _, _ => rfl
+
 /-! ### Substitution -/
 
 section Subst
@@ -311,6 +359,21 @@ theorem subst_back {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
         (Term.subst ι θ hθ hc t) : WFF σ Δ d')
   | .nec, _, _, _, _, _ => rfl
   | .pos _ _, _, _, _, _, _ => rfl
+
+theorem subst_ret {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
+    (hS : ModalSys.BStrong = true) :
+    (O : OutLeg Γ) → {A : VarType} → {a : Ann A} → (t : Term σ Γ A a) →
+    (Φ : WFF σ (O.view.insert (.bnd d) (.VTypeBox A)) (d + 1)) →
+    WFF.subst ι θ hθ hc hΓ hΔ (O.ret hS t Φ) =
+      (O.subst θ hθ hc).ret hS (Term.subst ι θ hθ hc t)
+        (WFF.subst (VarSymb.shiftSlot ι d d')
+          ((O.viewSubst θ hθ hc).under d d' _ (slotsFrom hΔ (O.subst θ hθ hc)).root)
+          (Subst.ok_under (O.viewOk θ hθ hc) _ (slotsFrom hΔ (O.subst θ hθ hc)).root)
+          (Subst.coh_under (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) (slotsFrom hΓ O) _
+            (slotsFrom hΔ (O.subst θ hθ hc)).root)
+          ((slotsFrom hΓ O).insert _) ((slotsFrom hΔ (O.subst θ hθ hc)).insert _) Φ)
+  | .nec, _, _, _, _ => rfl
+  | .pos _ _, _, _, _, _ => rfl
 
 end Subst
 

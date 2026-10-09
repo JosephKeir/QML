@@ -268,5 +268,27 @@ theorem WFF.mono_subst {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ 
         _ _ (Subst.sim_under_mono θ.box h.boxIn _ hΔ.boxIn.root hΔ'.boxIn.root) Φ).trans ?_
       exact WFF.subst_congr _ _ _ _ _ _ _ _
         (Subst.sim_under (Subst.sim_box_mono θ h) _ hΔ'.boxIn.root) Φ
+  | ι, _, _, _, d, d', h, θ, hθ, hc, hΓ, hΔ, hΔ', .retx hB y hy t Φ => by
+      have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
+      have hok₀ := Subst.ok_dia hθ hy hw
+      have hc₀ := Subst.coh_dia hθ hc hy
+      have hr := (hΔ.diaIn (ι y)).root
+      have hr' := (hΔ'.diaIn (ι y)).root
+      change WFF.retx hB (ι y) _ (Term.mono h (Term.subst ι θ hθ hc t))
+        (WFF.mono ((h.diaIn (ι y)).insert _ _) (WFF.subst (VarSymb.shiftSlot ι d d')
+          ((θ.dia y (ι y)).under d d' _ hr) (Subst.ok_under hok₀ _ hr)
+          (Subst.coh_under hok₀ hc₀ (hΓ.diaIn y) _ hr)
+          ((hΓ.diaIn y).insert _) ((hΔ.diaIn (ι y)).insert _) Φ)) = _
+      rw [WFF.mono_subst ((h.diaIn (ι y)).insert _ _) ((θ.dia y (ι y)).under d d' _ hr)
+        (Subst.ok_under hok₀ _ hr) (Subst.coh_under hok₀ hc₀ (hΓ.diaIn y) _ hr)
+        ((hΓ.diaIn y).insert _) ((hΔ.diaIn (ι y)).insert _) ((hΔ'.diaIn (ι y)).insert _) Φ]
+      refine WFF.retx_congr' hB _ _ (Term.mono_subst h θ hθ hc t) ?_
+      have hok := Subst.ok_mono hok₀ (h.diaIn (ι y))
+      have hcoh := Subst.coh_mono hc₀ (h.diaIn (ι y))
+      refine (WFF.subst_congr _ (((θ.dia y (ι y)).mono (h.diaIn (ι y))).under d d' _ hr') _
+        (Subst.ok_under hok _ hr') _ (Subst.coh_under hok hcoh (hΓ.diaIn y) _ hr')
+        _ _ (Subst.sim_under_mono (θ.dia y (ι y)) (h.diaIn (ι y)) _ hr hr') Φ).trans ?_
+      exact WFF.subst_congr _ _ _ _ _ _ _ _
+        (Subst.sim_under (Subst.sim_dia_mono θ h y (ι y)) _ hr') Φ
 
 end V12M

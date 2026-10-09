@@ -323,6 +323,12 @@ def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ
       ∃ (a : M.frame.Acc w) (e : M.frame.Dom (.VTypeBox A) a.1),
         sat ((env.boxPush a).extend (.bnd d) e) Φ ∧
           ∃ r : M.frame.R a.1 w, M.Ind (M.necEval (e : M.frame.Nec A a.1) ⟨w, ⟨r⟩⟩) (interp env t)
+  | Γ, d, w, env, @WFF.retx _ _ _ _ _ y _ A _ t Φ =>
+      ∃ (Y : VarType) (h : Γ.ref y = some (.VTypeDia Y)) (a : (M.posEval (env.ref y h)).1)
+        (e : M.frame.Dom (.VTypeBox A) a.1.1),
+        sat ((env.diaPush y h a).extend (.bnd d) e) Φ ∧
+          ∃ r : M.frame.R a.1.1 w,
+            M.Ind (M.necEval (e : M.frame.Nec A a.1.1) ⟨w, ⟨r⟩⟩) (interp env t)
 
 end Model
 

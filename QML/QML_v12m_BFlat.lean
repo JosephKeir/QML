@@ -180,21 +180,8 @@ theorem at_eq_of_agree {Δ : Ctx} {θ₁ θ₂ : Subst σ Δ} {p : Root → Prop
 omit [ModalSys.NoFour] in
 /-- A reachable address is not rooted at a fresh name. -/
 theorem rt_ne_of_fresh {Δ : Ctx} {r : Root} (hfr : Δ.RootFresh r) :
-    ∀ {w : VarSymb} {T : VarType}, Δ.ref w = some T → w.rt ≠ r
-  | .root r', T, h, he => by
-      change Δ (.root r') = some T at h
-      have hrr : r' = r := he
-      subst hrr
-      rw [hfr.root] at h
-      cases h
-  | .step w s, T, h, he => by
-      simp only [Ctx.ref] at h
-      split_ifs at h with hs
-      · cases hU : Δ.ref w with
-        | none => rw [hU] at h; cases h
-        | some U => exact rt_ne_of_fresh hfr hU he
-      · rw [hfr _ he] at h
-        cases h
+    ∀ {w : VarSymb} {T : VarType}, Δ.ref w = some T → w.rt ≠ r :=
+  Ctx.RootFresh.rt_ne hfr
 
 /-- A substitution extended by one root, which goes to a root of the target. -/
 def extS {Δ Δ' : Ctx} (θ : Subst σ Δ) (hle : Δ.Le Δ') (u v : ℕ) : Subst σ Δ' :=

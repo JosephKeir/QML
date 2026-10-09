@@ -356,6 +356,10 @@ def WFF.collapse {σ : Signature} : {k : ℕ} → {Γ₁ Γ₂ : Ctx} → {d : �
   | _, _, _, _, h, hs, .ret hB t Φ =>
       .ret hB (Term.collapse h t)
         (WFF.collapse (h.boxIn.insert (hs.boxIn.rootFresh le_rfl) _) (hs.boxIn.insert _) Φ)
+  | k, _, _, _, h, hs, .retx hB y hy t Φ =>
+      .retx hB (y.collapse k) (hy.imp fun _ hY => h y _ hY) (Term.collapse h t)
+        (WFF.collapse ((h.diaIn y).insert ((hs.diaIn y).rootFresh le_rfl) _)
+          ((hs.diaIn y).insert _) Φ)
 
 
 /-- ⭐Collapsing commutes with equality at every type — `eqRec` is structural, so each clause is the

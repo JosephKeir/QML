@@ -138,11 +138,12 @@ theorem RetInv.transfer {hS : ModalSys.BStrong = true} {tv tw : NodeSt σ}
     exact hψ)
   rw [← holeRead_tupImgT_pack himgs ψ]
   refine hM.closed ⟨[_], fun x hx => by rw [List.mem_singleton.mp hx]; exact hret, ⟨?_⟩⟩
-  refine Proof.ret_counit hS _ (pack cls ψ)
+  refine Proof.ret_counit hS .nec _ (pack cls ψ)
     (Proof.conv (congrArg (WFF.ret hS _) ?_) (Proof.lookup List.mem_cons_self))
   change WFF.box (WFF.mono _ (WFF.holeAt _ _ (pack cls ψ))) = _
   rw [WFF.mono_holeAt _ _ (((Ctx.NoSlots.slots (Γ := (ctxOf tw.l).boxIn)).insert _).boxIn),
     Term.mono_eta]
+  rfl
 
 /-! ## Growth -/
 
@@ -246,7 +247,7 @@ theorem retExt_consistent {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)}
   obtain ⟨q⟩ := Provable.mono h₁ p
   obtain ⟨Δ₁, hΔ₁, ⟨pex⟩⟩ := hex
   refine hM ⟨Δ₁ ++ Δ₀, fun x hx => (List.mem_append.mp hx).elim (hΔ₁ x) (h₀ x), ⟨?_⟩⟩
-  refine Proof.ret_ext hS t Φ u hu (φ := .bot)
+  refine Proof.ret_ext hS .nec t Φ u hu (φ := .bot)
     (Proof.ofSubset (fun x hx => List.mem_append_left _ hx) pex)
     (Proof.ofSubset (fun x hx => ?_) q)
   rcases List.mem_cons.mp hx with rfl | hx
@@ -670,9 +671,9 @@ theorem ret_list (hs' : (nextTy ts.l cl :: cl) <:+ ts.l) (himgt : ImgOk clt (ctx
             Theory.Derives (S ∪ {retAtom hS himg ht (Φ₀.and Φ₁)}) (retAtom hS himg ht Φ') :=
           fun Φ' p => ⟨[_], fun x hx => by
             rw [List.mem_singleton.mp hx]; exact Or.inr rfl, ⟨p⟩⟩
-        have h₀ := hand Φ₀ (Proof.ret_mono hS _ _ _ (Proof.lookup List.mem_cons_self)
+        have h₀ := hand Φ₀ (Proof.ret_mono hS .nec _ _ _ (Proof.lookup List.mem_cons_self)
           (Proof.box_all_and_left _ _ hu))
-        have h₁ := hand Φ₁ (Proof.ret_mono hS _ _ _ (Proof.lookup List.mem_cons_self)
+        have h₁ := hand Φ₁ (Proof.ret_mono hS .nec _ _ _ (Proof.lookup List.mem_cons_self)
           (Proof.box_all_and_right _ _ hu))
         refine ⟨Φ₀.and Φ₁, hv.closed ⟨[_, _], fun x hx => ?_,
           ⟨Proof.and_intro (Proof.lookup List.mem_cons_self)
@@ -750,7 +751,7 @@ def Proof.ret_absurd {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : Mod
     {A : VarType} {a : Ann A} (t : Term σ Γ A a)
     (U : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) {u : ℕ} (hu : Γ.RootFresh (.free u))
     (p : Proof σ Γ Δ (WFF.ret hS t (WFF.and (WFF.neg U) U))) : Proof σ Γ Δ .bot := by
-  have hd := Proof.ret_dia hS t _ p
+  have hd := Proof.ret_dia hS .nec t _ p
   have q : Proof σ Γ.boxIn [] (WFF.neg (WFF.ex (.VTypeBox A) (WFF.and (WFF.neg U) U))) := by
     refine Proof.imp_intro (Proof.ex_elim u (.VTypeBox A) hu.boxIn
       (φ := WFF.openFree u hu.boxIn Ctx.NoSlots.slots (WFF.and (WFF.neg U) U)) (ψ := .bot)
@@ -859,7 +860,7 @@ theorem retStep_rev (hS : ModalSys.BStrong = true) {ts tt : NodeSt σ} {cl clt :
         (pack2 (nextTy ts.l cl :: cl) (.VTypeBox (bcT clt)) Φ))),
         liftBody ht' (imgOk_ext himg) Φ] .bot :=
     Proof.ret_absurd hS _ _ (ctxOf_fresh (l := (nextTy ts.l cl).bc :: tt.l) le_rfl)
-    (Proof.ret_unit hS _ _ _ _
+    (Proof.ret_unit hS .nec _ _ _ _
       (Proof.ofSubset (fun x hx => by
         rw [List.mem_singleton.mp hx]; exact List.mem_cons_self) p₁)
       (Proof.ofSubset (fun x hx => by
@@ -923,7 +924,7 @@ theorem RetInv.nil (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) {tv t
     have hd := hw.neg_mem_iff.mpr hb
     apply hn
     refine hw.closed ⟨[_], fun x hx => by rw [List.mem_singleton.mp hx]; exact hd, ⟨?_⟩⟩
-    exact Proof.ret_new hS hB _ tw.l.length (ctxOf_fresh le_rfl)
+    exact Proof.ret_new hS hB .nec _ tw.l.length (ctxOf_fresh le_rfl)
       (Proof.lookup List.mem_cons_self) (Proof.lookup List.mem_cons_self)
   have hneg := htr _ hbox
   refine hv.1 ⟨[_, _], fun x hx => ?_, ⟨Proof.imp_elim (Proof.lookup List.mem_cons_self)
@@ -1023,7 +1024,7 @@ def Proof.ret_unit_base {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
       (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
       (Proof.ofSubset (fun x hx => by rw [List.mem_singleton.mp hx]; exact List.mem_cons_self)
         (Proof.K_box q)))
-  refine Proof.ret_new hS hB _ _ (Ctx.Presented.fresh_bound _ le_rfl) hd ?_
+  refine Proof.ret_new hS hB .nec _ _ (Ctx.Presented.fresh_bound _ le_rfl) hd ?_
   have hle := Ctx.le_insert (Ctx.Presented.fresh_bound (Γ := Γ) _ le_rfl).root .VTypeOne
   have r₁ : Proof σ (Γ.insert (.free (Ctx.Presented.bound Γ)) .VTypeOne)
       [WFF.ret hS (Term.eta (.root (.free (Ctx.Presented.bound Γ))) _ (Ctx.ref_insert_root _ _ _))
@@ -1043,7 +1044,7 @@ def Proof.ret_unit_base {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
     rw [WFF.holeRead_eq_holeAt, WFF.holeRead_eq_holeAt, WFF.mono_holeAt _ _ Ctx.NoSlots.slots,
       WFF.holeAt_pair_holeSnd]
     rfl
-  exact Proof.ret_absurd hS _ _ (Ctx.Presented.fresh_bound _ le_rfl) (Proof.ret_unit hS _ _ _ _
+  exact Proof.ret_absurd hS _ _ (Ctx.Presented.fresh_bound _ le_rfl) (Proof.ret_unit hS .nec _ _ _ _
     (Proof.ofSubset (fun x hx => by rw [List.mem_singleton.mp hx]; exact List.mem_cons_self) r₁)
     (Proof.ofSubset (fun x hx => List.mem_cons_of_mem _ (List.mem_cons_of_mem _ hx)) r₂))
 

@@ -52,6 +52,9 @@ theorem WFF.mono_mono {σ : Signature} : ∀ {Γ₁ Γ₂ Γ₃ : Ctx} {d : ℕ}
   | _, _, _, _, h₁, h₂, .ret hB t Φ =>
       WFF.ret_congr' hB (Term.mono_mono h₁ h₂ t)
         (WFF.mono_mono (h₁.boxIn.insert _ _) (h₂.boxIn.insert _ _) Φ)
+  | _, _, _, _, h₁, h₂, .retx hB y _ t Φ =>
+      WFF.retx_congr' hB y _ (Term.mono_mono h₁ h₂ t)
+        (WFF.mono_mono ((h₁.diaIn y).insert _ _) ((h₂.diaIn y).insert _ _) Φ)
 
 theorem Rel.mono_refl {σ : Signature} {Γ : Ctx} (h : Γ.Le Γ) :
     ∀ {n : ℕ} (ρ : Rel σ Γ n), Rel.mono h ρ = ρ
@@ -78,6 +81,8 @@ theorem WFF.mono_refl {σ : Signature} : ∀ {Γ : Ctx} {d : ℕ} (h : Γ.Le Γ)
       WFF.back_congr' hB L (Term.mono_refl h s) (Term.mono_refl h t)
   | _, _, h, .ret hB t Φ =>
       WFF.ret_congr' hB (Term.mono_refl h t) (WFF.mono_refl (h.boxIn.insert _ _) Φ)
+  | _, _, h, .retx hB y hy t Φ =>
+      WFF.retx_congr' hB y hy (Term.mono_refl h t) (WFF.mono_refl ((h.diaIn y).insert _ _) Φ)
 
 /-! ## Stages -/
 

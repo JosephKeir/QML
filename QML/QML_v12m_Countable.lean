@@ -152,6 +152,9 @@ noncomputable def WFF.code : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → Code
         (.node 0 (Term.code s) (Term.code t))
   | _, _, @WFF.ret _ _ _ _ _ A a t Φ =>
       .node 23 (.node 0 (.leaf (natCode A)) (Ann.code a)) (.node 0 (Term.code t) (WFF.code Φ))
+  | _, _, @WFF.retx _ _ _ _ _ y _ A a t Φ =>
+      .node 24 (.node 0 (.leaf (natCode A)) (.node 0 (.leaf (natCode y)) (Ann.code a)))
+        (.node 0 (Term.code t) (WFF.code Φ))
 
 theorem Rel.code_inj : {Γ : Ctx} → {n : ℕ} → (ρ ρ' : Rel σ Γ n) → ρ.code = ρ'.code → ρ = ρ'
   | _, _, .R r, .R r', h => by
@@ -253,6 +256,15 @@ theorem WFF.code_inj {Γ : Ctx} {d : ℕ} (φ ψ : WFF σ Γ d) (h : φ.code = �
         false_and, true_and] at h
       obtain ⟨⟨hA', ha⟩, ht, hΦ⟩ := h
       cases natCode_injective hA'
+      cases Ann.code_injective ha
+      rw [Term.code_inj t _ ht, ih _ hΦ]
+  | retx hB y hy t Φ ih =>
+      intro ψ h
+      cases ψ <;> simp only [WFF.code, Code.node.injEq, Code.leaf.injEq, Nat.reduceEqDiff,
+        false_and, true_and] at h
+      obtain ⟨⟨hA', hy', ha⟩, ht, hΦ⟩ := h
+      cases natCode_injective hA'
+      cases natCode_injective hy'
       cases Ann.code_injective ha
       rw [Term.code_inj t _ ht, ih _ hΦ]
 

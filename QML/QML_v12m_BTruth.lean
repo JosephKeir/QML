@@ -135,6 +135,7 @@ theorem truth_lt :
                 rw [WFF.size_eqRec]; simp only [WFF.size] at hφ; omega))
       | back hB _ _ _ => exact (ModalSys.NoFour.absurdStrong hB).elim
       | ret hB _ _ => exact (ModalSys.NoFour.absurdStrong hB).elim
+      | retx hB _ _ _ _ => exact (ModalSys.NoFour.absurdStrong hB).elim
       | and φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega

@@ -459,6 +459,29 @@ theorem sat_shift : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ
         and_congr (sat_shift (hs.boxIn.insert _)
             ((hag.boxPush a).extend (hs.boxIn.rootFresh le_rfl) e) Φ)
           (by rw [interp_shift hag t])
+  | k, _, _, h, _, _, env₁, env₂, hs, hag, .retx hB y hy t Φ => by
+      constructor
+      · rintro ⟨Y, h₂, a, e, hsat, hr⟩
+        obtain ⟨Y₀, hy₀⟩ := hy
+        have hYY : Y₀ = Y := by
+          have e' := h y _ hy₀
+          rw [h₂] at e'
+          cases e'
+          rfl
+        subst hYY
+        have href := hag y _ hy₀
+        refine ⟨Y₀, hy₀, ⟨a.1, by rw [href]; exact a.2⟩, e, ?_, ?_⟩
+        · exact (sat_shift ((hs.diaIn y).insert _)
+            ((hag.diaPush hy₀ ⟨a.1, _⟩ a.2).extend ((hs.diaIn y).rootFresh le_rfl) e) Φ).mp hsat
+        · rw [interp_shift hag t] at hr
+          exact hr
+      · rintro ⟨Y, hr', a, e, hsat, hr⟩
+        have href := hag y _ hr'
+        refine ⟨Y, h y _ hr', ⟨a.1, by rw [← href]; exact a.2⟩, e,
+          (sat_shift ((hs.diaIn y).insert _)
+            ((hag.diaPush hr' a _).extend ((hs.diaIn y).rootFresh le_rfl) e) Φ).mpr hsat, ?_⟩
+        rw [interp_shift hag t]
+        exact hr
 
 /-- ⭐The semantic content of the 4 rule: a shifted `□`-body holds two steps in exactly when the
     body holds at the composite step. -/

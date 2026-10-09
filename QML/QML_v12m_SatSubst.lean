@@ -148,6 +148,46 @@ theorem sat_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (�
                   _ hΔ.boxIn.root e).trans
                 (congrArg (fun en => Env.extend en (.bnd d) e) (substEnv_box θ hθ hnp env a))))))
           (by rw [interp_subst θ hθ hc hnp env t])
+  | ι, Γ, _, d, d', θ, hθ, hc, hΓ, hΔ, hnp, _, env, .retx hB y hy t Φ => by
+      have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
+      have hr₀ := (hΔ.diaIn (ι y)).root
+      constructor
+      · rintro ⟨Y, hr₁, a, e, hsat, hr⟩
+        obtain ⟨X, hrX⟩ := hy
+        have hE : (M.posEval (env.ref (ι y) hr₁)).1 =
+            (M.posEval ((substEnv θ hθ hnp env).ref y hrX)).1 := by
+          rw [substEnv_ref θ hθ hnp env y hrX, entryVal_dia_ext env _ hw hr₁]
+        refine ⟨X, hrX, ⟨a.1, hE ▸ a.2⟩, e, ?_, ?_⟩
+        · rw [← substEnv_dia θ hθ hnp env ⟨X, hrX⟩ hrX hr₁ hw a _,
+            ← substEnv_under (θ.dia y (ι y)) (Subst.ok_dia hθ ⟨X, hrX⟩ hw)
+              (Ctx.noProjLast_diaIn Γ y) (env.diaPush (ι y) hr₁ a) _ hr₀ e]
+          exact (sat_subst ((θ.dia y (ι y)).under d d' _ hr₀)
+            (Subst.ok_under (Subst.ok_dia hθ ⟨X, hrX⟩ hw) _ hr₀)
+            (Subst.coh_under (Subst.ok_dia hθ ⟨X, hrX⟩ hw) (Subst.coh_dia hθ hc ⟨X, hrX⟩)
+              (hΓ.diaIn y) _ hr₀)
+            ((hΓ.diaIn y).insert _) ((hΔ.diaIn (ι y)).insert _)
+            ((Ctx.noProjLast_diaIn Γ y).insert (.bnd d) _)
+            ((env.diaPush (ι y) hr₁ a).extend (.bnd d') e) Φ).mp hsat
+        · rw [interp_subst θ hθ hc hnp env t] at hr
+          exact hr
+      · rintro ⟨X, hrX, a, e, hsat, hr⟩
+        obtain ⟨Y, hr₁⟩ := SubE.ref_witness (Subst.okRef_at hθ hrX) hw
+        have hE : (M.posEval (env.ref (ι y) hr₁)).1 =
+            (M.posEval ((substEnv θ hθ hnp env).ref y hrX)).1 := by
+          rw [substEnv_ref θ hθ hnp env y hrX, entryVal_dia_ext env _ hw hr₁]
+        refine ⟨Y, hr₁, ⟨a.1, hE.symm ▸ a.2⟩, e, ?_, ?_⟩
+        · refine (sat_subst ((θ.dia y (ι y)).under d d' _ hr₀)
+            (Subst.ok_under (Subst.ok_dia hθ hy hw) _ hr₀)
+            (Subst.coh_under (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) (hΓ.diaIn y) _ hr₀)
+            ((hΓ.diaIn y).insert _) ((hΔ.diaIn (ι y)).insert _)
+            ((Ctx.noProjLast_diaIn Γ y).insert (.bnd d) _)
+            ((env.diaPush (ι y) hr₁ ⟨a.1, hE.symm ▸ a.2⟩).extend (.bnd d') e) Φ).mpr ?_
+          rw [substEnv_under (θ.dia y (ι y)) (Subst.ok_dia hθ hy hw) (Ctx.noProjLast_diaIn Γ y)
+              (env.diaPush (ι y) hr₁ ⟨a.1, hE.symm ▸ a.2⟩) _ hr₀ e,
+            substEnv_dia θ hθ hnp env hy hrX hr₁ hw ⟨a.1, hE.symm ▸ a.2⟩ a.2]
+          exact hsat
+        · rw [interp_subst θ hθ hc hnp env t]
+          exact hr
 
 end Model
 

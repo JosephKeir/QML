@@ -86,6 +86,11 @@ theorem WFF.collapse_mono : ∀ {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx} {d :
         (WFF.collapse_mono (h.boxIn.insert (hs.boxIn.rootFresh le_rfl) _)
           (h'.boxIn.insert (hs'.boxIn.rootFresh le_rfl) _) (l₁.boxIn.insert _ _)
           (l₂.boxIn.insert _ _) (hs.boxIn.insert _) (hs'.boxIn.insert _) Φ)
+  | _, _, _, _, _, _, h, h', l₁, l₂, hs, hs', .retx hB y _ t Φ =>
+      WFF.retx_congr' hB _ _ (Term.collapse_mono h h' l₁ l₂ t)
+        (WFF.collapse_mono ((h.diaIn y).insert ((hs.diaIn y).rootFresh le_rfl) _)
+          ((h'.diaIn y).insert ((hs'.diaIn y).rootFresh le_rfl) _) ((l₁.diaIn y).insert _ _)
+          ((l₂.diaIn _).insert _ _) ((hs.diaIn y).insert _) ((hs'.diaIn y).insert _) Φ)
 
 /-! ## The two readings, and binding, commute with weakening -/
 

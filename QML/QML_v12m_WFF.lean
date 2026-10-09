@@ -84,6 +84,13 @@ inductive WFF (σ : Signature) : Ctx → ℕ → Type where
   | ret {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true) {A : VarType}
       {a : Ann A} (t : Term σ Γ A a)
       (Φ : WFF σ (Γ.boxIn.insert (.bnd d) (.VTypeBox A)) (d + 1)) : WFF σ Γ d
+  /-- `◇_y[e ↦ t] Φ(e)` (strong B), the **returning possibility along a witness**: some arrow of
+      `y`'s extent reaches a necessary object `e : □A` with `Φ(e)` (read in `y`'s view, so `Φ` may
+      speak of `y.dia`), and `e`'s content comes back here along that arrow's way home as `t`
+      (`docs/v12-modal-extensions.md` §11.17).  `ret` is the same along every arrow. -/
+  | retx {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true) (y : VarSymb)
+      (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
+      (Φ : WFF σ ((Γ.diaIn y).insert (.bnd d) (.VTypeBox A)) (d + 1)) : WFF σ Γ d
 deriving DecidableEq
 /-- Two `Here` formulas agree when their subjects do. -/
 theorem WFF.here_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true)
@@ -136,6 +143,26 @@ theorem WFF.ret_congr {σ : Signature} {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStro
     {Φ Φ' : WFF σ (Γ.boxIn.insert (.bnd d) (.VTypeBox A)) (d + 1)}
     (ht : (⟨a, t⟩ : Σ a, Term σ Γ A a) = ⟨a', t'⟩) (hΦ : Φ = Φ') :
     (WFF.ret hB t Φ : WFF σ Γ d) = WFF.ret hB t' Φ' := by
+  cases ht
+  cases hΦ
+  rfl
+
+/-- Two returning possibilities along a witness agree when their values and bodies do, at one
+    annotation. -/
+theorem WFF.retx_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true)
+    (y : VarSymb) (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) {A : VarType} {a : Ann A}
+    {t t' : Term σ Γ A a} {Φ Φ' : WFF σ ((Γ.diaIn y).insert (.bnd d) (.VTypeBox A)) (d + 1)}
+    (ht : t = t') (hΦ : Φ = Φ') :
+    (WFF.retx hB y hy t Φ : WFF σ Γ d) = WFF.retx hB y hy t' Φ' := by
+  rw [ht, hΦ]
+
+/-- Two returning possibilities along a witness agree when their values and bodies do. -/
+theorem WFF.retx_congr {σ : Signature} {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true)
+    (y : VarSymb) (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) {A : VarType} {a a' : Ann A}
+    {t : Term σ Γ A a} {t' : Term σ Γ A a'}
+    {Φ Φ' : WFF σ ((Γ.diaIn y).insert (.bnd d) (.VTypeBox A)) (d + 1)}
+    (ht : (⟨a, t⟩ : Σ a, Term σ Γ A a) = ⟨a', t'⟩) (hΦ : Φ = Φ') :
+    (WFF.retx hB y hy t Φ : WFF σ Γ d) = WFF.retx hB y hy t' Φ' := by
   cases ht
   cases hΦ
   rfl
@@ -205,6 +232,8 @@ def WFF.mono {σ : Signature} : {Γ Γ' : Ctx} → {d : ℕ} → Γ.Le Γ' → W
   | _, _, _, h, .here hT s t => .here hT (Term.mono h s) (Term.mono h t)
   | _, _, _, h, .back hB L s t => .back hB L (Term.mono h s) (Term.mono h t)
   | _, _, _, h, .ret hB t Φ => .ret hB (Term.mono h t) (WFF.mono (h.boxIn.insert _ _) Φ)
+  | _, _, _, h, .retx hB y hy t Φ =>
+      .retx hB y (hy.imp fun _ hY => h.ref hY) (Term.mono h t) (WFF.mono ((h.diaIn y).insert _ _) Φ)
 
 /-- Weakening by a fresh root. -/
 def WFF.weaken {σ : Signature} {Γ : Ctx} {d : ℕ} {r : Root} (hr : Γ (.root r) = none)

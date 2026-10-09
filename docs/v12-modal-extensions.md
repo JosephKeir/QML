@@ -5765,5 +5765,25 @@ The joint obligation (★) is the special case without (Y).  The old forward inv
   `O`.  No new rules otherwise: the ∨ law and leg forgetting are derived.  `ret_here` stays plain,
   and `ret_bridge` concludes `O.ret`.
 
+**Leg-indexed `ret`, built (2026-10-09).**
+* *Syntax.*  A new constructor `WFF.retx hB y hy t Φ` (body over `(Γ.diaIn y).insert`), threaded
+  through every recursion: `mono`, `collapse`, `shift`, `subst`, coding, semantics (`retx`'s clause
+  of `Model.sat`), and their commutation lemmas.
+  * `OutLeg.ret` is `WFF.ret` at `nec` and `WFF.retx` at `pos`, so the plain statements are the
+    `nec` instances definitionally.
+  * `OutLeg.lift` reads a `□`-view body in the leg's view.
+  * `OutLeg.mono` and `le_view_mono` give the leg in a larger context.
+  * `subst_ret`, `subst_lift` and `subst_ret_renameTm` (a witness goes to `ι y`, its root not
+    being the fresh one) give substitution.
+  * `sat_ret`, `sat_lift` and `sat_ret_agree` give the semantics.
+* *Rules.*  Each takes `O`, with `Φ` over `O.view`:
+  * `ret_new`, `ret_ext`, `ret_unit` (its new conjunct lifted), `ret_mono` (premise
+    `O.box ∀d(Φ → Φ')`), `ret_dia`, `ret_beta`, `ret_eq`;
+  * `ret_counit` and `ret_counitC` (body lifted; `counitC`'s carrier stays on the plain leg).
+
+  Soundness and `Proof.subst` are proved once for every leg.
+* *Not yet:* `ret_bridge` keeps its plain conclusion for now; its leg form `O.ret t (O.lift Φ)` is
+  a strengthening for when L4f needs it.  The derived ∨ law and leg forgetting are on paper only.
+
 *Pairing principle:* `O.ret` is one possibility with its return attached, as `ret` already is.  It
 links `x`'s arrow to its own way home (`homeUnique`), not two unjoined possibilities.
