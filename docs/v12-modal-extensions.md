@@ -5834,8 +5834,22 @@ with soundness (`sat_ret_unitW`, `sat_ret_unitD`, `sat_ret_counitD`) and `Proof.
 
   So every arrow-level fact for witness children is in: birth, both realisation steps, both
   cross-arrow preservations, growth, and `□_x` transfer.
-* *Still to build:* wiring `RetInv` (plain children) and `RetInvW`/`RetInvX` (witness children)
-  into `Good` and the network operations (L4c–d), then L4e–f.
+* `RetInvX.transfer`: the way home's necessity transfer along `x` (`ret_counit` along `x`).
+
+**The network under strong B (L4c–d, 2026-10-10)** (`QML_v12m_BNetRet`).
+* `RetData`: a child's two arrows carry `RetInv` both ways (plain child) or `RetInvW` forward and
+  `RetInvX` home (witness child).  `GoodS` = maximal consistency + `RetData` on every arrow.
+  `GoodS.good`: weak B's `Good` follows, every transfer coming from an invariant
+  (`RetInv.transfer`, `RetInvX.transferX`, `RetInvX.transfer`).
+* The weak-B network is untouched.  Strong B has its own realisation operations `realFS`, `realBS`,
+  which grow the target with returning possibilities (`retStep`; `retStepW` forward, `retStepX`
+  home) instead of necessities (`realStep`).  Henkin steps and child creation are weak B's.
+* Preservation: `GoodS.setSt` (growth), `GoodS.realFS`/`realBS` (realisation + cross-arrow),
+  `GoodS.henk`, `GoodS.mkChild` (birth: `RetData.birth` from the seed's transfer).
+* `applyOpS`, `netS`, `goodS_netS`, `ext_netS`: the strong chain, good and extending.
+* *Next:* L4e (new operations with fairness: a child per `◇[d ↦ t]`/`◇_x[d ↦ t]` atom committed
+  at birth, a fresh child per negative `Back` atom, `back_def`'s separating child, commit at birth
+  for `Back` carriers), then L4f (the limit and truth lemma).
 
 **Witness arrows, first part (2026-10-10)** (`QML_v12m_BRetX`).
 * `liftBodyX`, `RetInvX`: the reverse invariant along `x`.

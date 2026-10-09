@@ -1630,6 +1630,54 @@ theorem RetInvX.grow_src {hS : ModalSys.BStrong = true} {tk tk' tp : NodeSt σ}
   rw [liftBodyX_mono hs hg.suf himgt hx hcx Φ]
   exact hΦ
 
+/-! ## The way home's necessity transfer along `x` -/
+
+/-- A `□`-view body, lifted into `x`'s view, read at the child: the plain reading — the witness
+    arrow sends the `□` view's items as the plain arrow does. -/
+theorem liftBodyX_lift {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt : ℕ → ℕ}
+    (himgt : ImgOk clt (ctxOf lv) imgt) {x : VarSymb} {X : VarType}
+    (hx : (ctxOf clt).ref x = some (.VTypeDia X)) {cx : ℕ}
+    (hcx : (ctxOf lv).ref (.root (.free cx)) = some X) (Φ : WFF σ (bodyCtx cls clt) 1) :
+    liftBodyX hs himgt hx hcx (WFF.mono ((Ctx.le_boxIn_diaIn _ x).insert (.bnd 0) _) Φ) =
+      liftBody hs himgt Φ := by
+  unfold liftBodyX liftBody
+  rw [WFF.subst_mono]
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T hlp hv => ?_) Φ
+  by_cases hvr : v = .root (.bnd 0)
+  · subst hvr
+    rw [Subst.set_root, Subst.set_root]
+    exact .refl _
+  · obtain ⟨u, rfl, _⟩ := body_item hlp hv hvr
+    rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
+    exact .refl _
+
+/-- ⭐**The invariant along `x` gives the way home's necessity transfer**: a necessity about the
+    child's committed roots, packed and lifted along `x`, is a body whose returning possibility
+    `ret_counit` reads at the images along `x`. -/
+theorem RetInvX.transfer {hS : ModalSys.BStrong = true} {tk tp : NodeSt σ}
+    {cls clt : List VarType} {imgs imgt : ℕ → ℕ} {x : VarSymb} {X : VarType} {cx : ℕ}
+    (hp : Theory.IsMCS tp.M) (h : RetInvX hS tk tp cls imgs clt imgt x X cx) :
+    ∃ (hs : cls <:+ tk.l) (himgs : ImgOk cls (ctxOf tp.l) imgs),
+      Transfer tk.M cls (ctxOf_le_of_suffix hs) tp.M imgs himgs := by
+  obtain ⟨hs, himgs, ht, himgt, hx, hcx, hinv⟩ := h
+  refine ⟨hs, himgs, fun ψ hψ => ?_⟩
+  have hret := hinv _ (by
+    rw [liftBodyX_lift, liftBody_box_holeAt hs himgt (pack cls ψ),
+      ← WFF.mono_holeAt _ (Ctx.NoSlots.slots (Γ := (ctxOf cls).boxIn)),
+      ← WFF.holeRead_eq_holeAt, holeRead_tupT_pack]
+    exact hψ)
+  rw [← holeRead_tupImgT_pack himgs ψ]
+  refine hp.closed ⟨[_], fun y hy => by rw [List.mem_singleton.mp hy]; exact hret, ⟨?_⟩⟩
+  refine Proof.ret_counit hS (.pos x ⟨X, (ctxOf_le_of_suffix ht).ref hx⟩) _ (pack cls ψ)
+    (Proof.conv (congrArg (WFF.retx hS _ _ _) ?_) (Proof.lookup List.mem_cons_self))
+  rw [WFF.mono_mono]
+  change WFF.box (WFF.mono _ (WFF.holeAt _ _ (pack cls ψ))) =
+    WFF.box (WFF.mono _ (WFF.holeAt _ _ (pack cls ψ)))
+  rw [WFF.mono_holeAt _ _
+      (((Ctx.NoSlots.slots (Γ := (ctxOf tp.l).diaIn x)).insert _).boxIn),
+    WFF.mono_holeAt _ _ (((Ctx.NoSlots.slots (Γ := (ctxOf tp.l).diaIn x)).insert _).boxIn),
+    Term.mono_eta, Term.mono_eta]
+
 end BArrow
 
 end V12M
