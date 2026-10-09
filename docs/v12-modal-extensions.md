@@ -5749,8 +5749,11 @@ The joint obligation (★) is the special case without (Y).  The old forward inv
        `θ'(y, s) := Ψ'(s, y)`.  `ret_unit` again, now with value `sb_h` (a local object there),
        gives `◇[d ↦ sb_h](¬◇[e ↦ d₁.inner] Ψ'(e, d.box) ∧ ◇[e ↦ d₁.inner] Ψ'(e, d.box))`, absurd
        (`ret_absurd`).  So `Φ(d₁) ∧ ¬Ψ(d₁)`.
-  * Along `x` only the first `ret_unit` is along the leg; the second is plain.  So no `ret_or`
-    rule is needed.
+  * **Correction (2026-10-10): this covers the plain leg only.**  Step 1 needs `θ` closed apart
+    from its holes, and the home fact it carries out is the *negated* premise.  Along `x` that
+    premise `¬◇_x[e ↦ t] Ψ` mentions `x` (the leg, and `x.dia` in `Ψ`).  `x` is not a `□` item, so
+    it cannot be packed into `sb_h`.  The ∨ law along a witness leg is **not** derived.
+    * Leg forgetting is unaffected: its negated premise is plain.
 * **Leg forgetting is derivable too (paper, 2026-10-09).**  The same derivation works with the
   outer possibility along any leg `O` and the negated one plain:
   `◇_O[d ↦ t] Φ, ¬◇[d ↦ t] Ψ ⊢ ◇_O[d ↦ t](Φ ∧ ¬Ψ)`, for `Ψ` over the `□` view.
@@ -5764,6 +5767,68 @@ The joint obligation (★) is the special case without (Y).  The old forward inv
 * **Decided (user, 2026-10-09): `ret` is leg-indexed** (`O.ret`, as `Back`); every `ret` rule takes
   `O`.  No new rules otherwise: the ∨ law and leg forgetting are derived.  `ret_here` stays plain,
   and `ret_bridge` concludes `O.ret`.
+
+**Witness arrows, first part (2026-10-10)** (`QML_v12m_BRetX`).
+* `liftBodyX`, `RetInvX`: the reverse invariant along `x`.
+* `RetInvX.transferX`: it gives the forward arrow's `□_x` transfer.
+* `RetInvX.nil`: birth, from the seed's `TransferX` and `ret_new` along `x`.
+* Helpers: `WFF.slotUp` (a depth-0 formula as a body ignoring its slot) and `subst_slotUp`.
+* **Blocked: the witness `realF` step.**  Its (Y) atoms must merge finitely many
+  `¬◇_x[ē] Ψᵢ` into one.  That is the ∨ law along `x`, which is not derived (correction above).
+  The obstacle is intrinsic to the rules: no rule moves a home fact mentioning `x` out along a
+  returning possibility.
+
+**The witness component of the returning possibility (paper, 2026-10-10).**  Following the K
+rules (user):
+* `K_box` carries necessary objects into the `□` view;
+* `K_dia` carries necessary objects **together with the witness's content** into the `◇_x` view.
+
+So unwitnessed round trips should bring back necessary objects, and witnessed ones necessary
+objects together with the witness.  `ret` binds only `d : □A`, so the witness cannot come back.
+That is why the subscripted unit is incomplete, and why the ∨ law fails along `x`.
+
+*Design: returnable binders.*  `ret` binds `d : R` for a returnable type: `□A`, `◇X`, or products
+of these.  The value has type `R♭`, where `(□A)♭ = A`, `(◇X)♭ = X`, `(R × S)♭ = R♭ × S♭`.  The
+object at the far end **comes back as** `t` along the way home `r`:
+* `□A`: its reading along `r` is `Ind` to `t` (as now);
+* `◇X`: `r` lies in its extent, and its content there is `Ind` to `t`;
+* products: componentwise.
+
+Notation `◇[d ↦ t, e ⇝ u] Φ` for a pair binder with a `□` part and a `◇` part.
+
+*Rules, by the K paradigm:*
+* **Unit.**  The home fact `θ(y, □sb, x)` may mention the outer leg's witness `x`, which goes out
+  as `x.dia` and comes back as a possible object:
+  ```
+  ◇_x[d₁ ↦ y] Ψ,  θ(y, □sb, x)  ⊢  ◇_x[d₁ ↦ y](Ψ ∧ ◇[d ↦ sb, e ⇝ x.dia] θ(d₁.box, d, e))
+  ```
+  Dually, if the outer binder has a possible part `e₁ ⇝ u`, the inner possibility may go **along
+  `e₁`**, since `e₁` is realised along the way back.  Sound as the plain unit is: witnessed by
+  `d := s`, `e := x`, along the way home (unique).
+* **Counit for a possible part:** `◇[e ⇝ u] □_e ψ(e.dia) ⊢ ψ(u)`, the mirror of
+  `◇[d ↦ y] □ψ(d.box) ⊢ ψ(y)` (`□ ↔ □_e`, `d.box ↔ e.dia`).
+* **Existence (`ret_new`, `ret_ext`) for `□` parts only.**  Weak B gives a way home, but not one
+  inside an arbitrary possible object's extent.  As with K, a witness is never conjured.
+* `ret_mono`, `ret_dia`, `ret_eq`, `ret_beta`: unchanged in form.
+
+*The ∨ law along `x` becomes derivable.*
+1. The unit along `x` carries the negated premise out, with `x` in `θ`'s hole.
+2. At the far end, the unit along the returned possible part `e` brings `Ψ` back.
+3. The conjuncts clash as on the plain leg.
+
+*Consequence for the network: witness children become plain children with `x` committed.*  The
+witness child's forward invariant commits `x ⇝ cx` at birth, alongside `p`'s roots.  Forward
+bodies `Φ(d, e)` can then mention `x` (as `e`).
+* **`TransferX` is the counit** of the possible part.  `□_x ψ(ā, x.dia)` at `p` is the body
+  `□_e ψ(d.box, e.dia)` at `(□ā, x)`, so `k` gets `◇[d ↦ ā', e ⇝ cx] □_e ψ`, hence `ψ(ā', cx)`.
+  This is exactly how `Transfer` is the `□` counit.
+* **The reverse invariant along `x` is cross-arrow preservation** (`retStep_rev`'s argument).
+  `¬◇_x[d' ↦ ē] Ψ` at `p` is now a forward body about `x`, and the unit along `e` at `k` refutes it.
+* So `realF` along a witness arrow is `retStep`, with no (Y) atoms and no ∨ law.  Birth is the
+  witnessed unit's base form, `Θ(□sb, x) ⊢ □_x ◇[d ↦ sb, e ⇝ x.dia] Θ(d, e)`, transferred by the
+  seed's `□_x` transfer.
+* `RetInvX` (built, `QML_v12m_BRetX`) becomes the cross-arrow lemma's conclusion, not a separately
+  maintained invariant.
 
 **Leg-indexed `ret`, built (2026-10-09).**
 * *Syntax.*  A new constructor `WFF.retx hB y hy t Φ` (body over `(Γ.diaIn y).insert`), threaded

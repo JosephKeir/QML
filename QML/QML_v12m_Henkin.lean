@@ -179,6 +179,19 @@ def Proof.byContra {σ : Signature} {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : W
     (p : Proof σ Γ (φ.neg :: Δ) .bot) : Proof σ Γ Δ φ :=
   .or_elim (.lem φ) (Proof.lookup List.mem_cons_self) (.bot_elim φ p)
 
+/-- `¬◇_x χ ⊢ □_x ¬χ`. -/
+def Proof.boxx_neg_of_not_dia {σ : Signature} {Γ : Ctx} (x : VarSymb)
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (χ : WFF σ (Γ.diaIn x) 0) :
+    Proof σ Γ [(WFF.dia x hx χ).neg] (WFF.boxx x hx χ.neg) :=
+  .imp_intro (.imp_elim (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
+    (Proof.ofSubset (fun y hy => by
+        rcases List.mem_cons.mp hy with rfl | h
+        · exact List.mem_cons_self
+        · simp at h)
+      (Proof.K_dia (Δ₁ := []) (Δ₂ := []) (ψ := χ.neg.neg) (φ := χ) x hx
+        (Proof.byContra (.imp_elim (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
+          (Proof.lookup List.mem_cons_self))))))
+
 /-- `¬∀x ψ ⊢ ∃x ¬ψ`. -/
 def Proof.exNeg_of_negAll {σ : Signature} {Γ : Ctx} [Γ.Presented] {A : VarType}
     (ψ : WFF σ (Γ.insert (.bnd 0) A) 1) : Proof σ Γ [(WFF.all A ψ).neg] (WFF.ex A ψ.neg) :=

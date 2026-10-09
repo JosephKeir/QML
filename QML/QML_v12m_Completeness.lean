@@ -203,19 +203,6 @@ theorem Model.Env.Agree.refl' {σ : Signature} {M : Model.{u, v} σ} {Γ : Ctx} 
     (env : M.Env Γ w) : Model.Env.Agree (Ctx.Le.refl Γ) env env :=
   fun _ _ _ => rfl
 
-/-- `¬◇_x χ ⊢ □_x ¬χ`. -/
-def Proof.boxx_neg_of_not_dia {σ : Signature} {Γ : Ctx} (x : VarSymb)
-    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (χ : WFF σ (Γ.diaIn x) 0) :
-    Proof σ Γ [(WFF.dia x hx χ).neg] (WFF.boxx x hx χ.neg) :=
-  .imp_intro (.imp_elim (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
-    (Proof.ofSubset (fun y hy => by
-        rcases List.mem_cons.mp hy with rfl | h
-        · exact List.mem_cons_self
-        · simp at h)
-      (Proof.K_dia (Δ₁ := []) (Δ₂ := []) (ψ := χ.neg.neg) (φ := χ) x hx
-        (Proof.byContra (.imp_elim (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
-          (Proof.lookup List.mem_cons_self))))))
-
 namespace Canon
 
 variable {σ : Signature} {N₀ : ℕ} (w₀ : World σ N₀) [Countable σ.FuncSyms] [Countable σ.RelSyms]
