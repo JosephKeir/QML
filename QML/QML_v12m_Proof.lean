@@ -442,6 +442,34 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (O.ret hS y Ψ) →
       Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.boxtm sb)) θ) →
       Proof σ Γ Δ (O.ret hS y (WFF.and Ψ (O.lift (WFF.unitBody hS sb θ))))
+  /-- ⭐**The witnessed unit** (docs §11.17): along `x`'s arrow, the way home brings back both the
+      necessary object `□sb` and the witness itself, realised along the way back with content `u`
+      — the witness's share of the round trip, as `K_dia` carries it. -/
+  | ret_unitW {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      {x : VarSymb} (hx : ∃ X', Γ.ref x = some (.VTypeDia X')) {C A X : VarType}
+      {c : Ann C} (y : Term σ Γ C c) (Ψ : WFF σ ((Γ.diaIn x).insert (.bnd 0) (.VTypeBox C)) 1)
+      {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X} (u : Term σ (Γ.diaIn x) X b₀)
+      (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.prod (.box A) (.dia X)).ty)) 1) :
+      Proof σ Γ Δ (WFF.retx hS x hx y Ψ) →
+      Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.pair (Term.boxtm sb) (Term.diatm x hx u))) θ) →
+      Proof σ Γ Δ (WFF.retx hS x hx y (WFF.and Ψ (WFF.unitBodyW hS sb u θ)))
+  /-- ⭐**The unit along a returned possible part**: if the object out there has a possible part
+      realised along the way back, home is reached along it. -/
+  | ret_unitD {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      {C X A : VarType} {c : Ann (.VTypeProd C X)} (y : Term σ Γ (.VTypeProd C X) c)
+      (Ψ : WFF σ (Γ.boxIn.insert (.bnd 0) (RShape.prod (.box C) (.dia X)).ty) 1) {a₀ : Ann A}
+      (sb : Term σ Γ.boxIn A a₀)
+      (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd C X) (.VTypeBox A))) 1) :
+      Proof σ Γ Δ (WFF.retS hS (.prod (.box C) (.dia X)) y Ψ) →
+      Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.boxtm sb)) θ) →
+      Proof σ Γ Δ (WFF.retS hS (.prod (.box C) (.dia X)) y (WFF.and Ψ (WFF.unitBodyD hS sb θ)))
+  /-- ⭐**The counit of a possible part**: what holds along all of a possible part's arrows holds,
+      at its content along the way home, of the value it comes back as. -/
+  | ret_counitD {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      {C X : VarType} {c : Ann (.VTypeProd C X)} (y : Term σ Γ (.VTypeProd C X) c)
+      (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) 1) :
+      Proof σ Γ Δ (WFF.retS hS (.prod (.box C) (.dia X)) y (WFF.counitBodyD ψ)) →
+      Proof σ Γ Δ (WFF.holeRead y ψ)
   /-- **Monotonicity** in the body, along any leg. -/
   | ret_mono {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       (O : OutLeg Γ) {A : VarType} {a : Ann A} (t : Term σ Γ A a)

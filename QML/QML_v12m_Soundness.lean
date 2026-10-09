@@ -340,6 +340,17 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M hM w env hfin hnp hΔ
       exact sat_ret_unit env hM hS O y Ψ sb θ (ihp M hM env hfin hnp hΔ)
         ((sat_holeRead hnp env _ θ).mp (ihq M hM env hfin hnp hΔ))
+  | @ret_unitW Γ _ Δ hS x hx C A X c y Ψ a₀ sb b₀ u θ p q ihp ihq =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_ret_unitW env hM hS hx y Ψ sb u θ (ihp M hM env hfin hnp hΔ)
+        ((sat_holeRead hnp env _ θ).mp (ihq M hM env hfin hnp hΔ))
+  | @ret_unitD Γ _ Δ hS C X A c y Ψ a₀ sb θ p q ihp ihq =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_ret_unitD env hM hS y Ψ sb θ (ihp M hM env hfin hnp hΔ)
+        ((sat_holeRead hnp env _ θ).mp (ihq M hM env hfin hnp hΔ))
+  | @ret_counitD Γ _ Δ hS C X c y ψ p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact (sat_holeRead hnp env y ψ).mpr (sat_ret_counitD env hM hS y ψ (ih M hM env hfin hnp hΔ))
   | @ret_mono Γ _ Δ hS O A a t Φ Φ' p q ihp ihq =>
       intro M hM w env hfin hnp hΔ
       exact sat_ret_mono env hS O t Φ Φ' (ihp M hM env hfin hnp hΔ) (ihq M hM env hfin hnp hΔ)

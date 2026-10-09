@@ -1462,6 +1462,176 @@ theorem WFF.subst_unitBody {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots]
       rfl
     · exact Subst.under_at_slot _ (0 + 1) (0 + 1) _ _
 
+omit [ModalSys] in
+/-- A slot's own address is fixed by shifting slots in place. -/
+theorem VarSymb.shiftSlot_snd (ι : VarSymb → VarSymb) :
+    VarSymb.shiftSlot ι 0 0 (.step (.root (.bnd 0)) .snd) = .step (.root (.bnd 0)) .snd :=
+  if_pos rfl
+
+/-- Substituting `◇_x φ` when the witness's image is known. -/
+theorem WFF.subst_dia_at {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
+    (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (φ : WFF σ (Γ.diaIn x) d)
+    (z : VarSymb) (hz : ι x = z) (P : ∃ Y, Δ.ref z = some (.VTypeDia Y))
+    (hz' : (Δ.diaIn z).SlotsFrom d') (p : Subst.Ok (Γ.diaIn x) (θ.dia x z))
+    (q : Subst.Coh ι (Γ.diaIn x) (θ.dia x z)) :
+    WFF.subst ι θ hθ hc hΓ hΔ (WFF.dia x hx φ) =
+      WFF.dia z P (WFF.subst ι (θ.dia x z) p q (hΓ.diaIn x) hz' φ) := by
+  subst hz
+  rfl
+
+/-- In a witness view, an item's entry is the `□` view's, weakened. -/
+theorem Subst.dia_at_inner_ren {Γ Δ : Ctx} (θ : Subst σ Δ) (x y : VarSymb) {v : VarSymb}
+    {T : VarType} (hv : Γ.boxIn.ref v.inner = some T) (hs : θ.at v = .ren v) :
+    (θ.dia x y).at v.inner = .ren v.inner := by
+  rw [Subst.dia_eq_box_mono (Δ₁ := Γ) θ x y _ _ hv, Subst.box_at_inner_ren _ hs]
+  rfl
+
+/-- Substituting the counit's body of a possible part leaves it alone: both its holes are the
+    slot's own addresses. -/
+theorem WFF.subst_counitBodyD {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
+    (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0)
+    (hΔ : Δ.SlotsFrom 0) {C X : VarType}
+    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) 1) :
+    WFF.subst (VarSymb.shiftSlot ι 0 0)
+        (θ.box.under 0 0 (RShape.prod (.box C) (.dia X)).ty hΔ.boxIn.root)
+        (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
+        (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn _ hΔ.boxIn.root)
+        (hΓ.boxIn.insert _) (hΔ.boxIn.insert _) (WFF.counitBodyD (Γ := Γ) ψ) =
+      WFF.counitBodyD (Γ := Δ) ψ := by
+  have hu := Ctx.ref_insert_root Γ.boxIn (.bnd 0) (RShape.prod (.box C) (.dia X)).ty
+  have hsnd := Ctx.ref_snd_of hu
+  have hθ' := Subst.ok_under (d := 0) (Subst.ok_box hθ) (RShape.prod (.box C) (.dia X)).ty
+    hΔ.boxIn.root
+  have hc' := Subst.coh_under (d := 0) (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn
+    (RShape.prod (.box C) (.dia X)).ty hΔ.boxIn.root
+  have hw : ((θ.box.under 0 0 _ hΔ.boxIn.root).at (.step (.root (.bnd 0)) .snd)).idxAlong [] =
+      .step (.root (.bnd 0)) .snd := (hc' _ _ hsnd []).trans (VarSymb.shiftSlot_snd ι)
+  unfold WFF.counitBodyD WFF.boxx
+  change WFF.imp (WFF.subst _ _ _ _ _ _ (WFF.dia _ _ _)) WFF.bot = _
+  rw [WFF.subst_dia_at _ _ _ _ _ _ _ _ _ (VarSymb.shiftSlot_snd ι) ⟨X, Ctx.ref_snd_of
+      (Ctx.ref_insert_root Δ.boxIn (.bnd 0) (RShape.prod (.box C) (.dia X)).ty)⟩
+    ((hΔ.boxIn.insert _).diaIn _) (Subst.ok_dia hθ' ⟨X, hsnd⟩ hw)
+    (VarSymb.shiftSlot_snd ι ▸ Subst.coh_dia hθ' hc' ⟨X, hsnd⟩)]
+  refine congrArg (fun φ => WFF.imp (WFF.dia _ _ (WFF.imp φ WFF.bot)) WFF.bot) ?_
+  refine (WFF.subst_holeAt _ _ _ _ _ _ ψ).trans (WFF.holeAt_congr _ ?_ ψ)
+  refine sig_pair (Term.subst_eta_renAt _ _ _ C _ _ _ _ ?_)
+    (Term.subst_eta_renAt _ _ _ X _ _ _ _ ?_)
+  · exact Subst.dia_at_inner_ren _ _ _ (Ctx.ref_inner (Ctx.ref_fst_of hu))
+      (by rw [Subst.at_proj _ _ rfl, Subst.under_at_root]; rfl)
+  · rw [Subst.at_nonproj _ rfl]
+    dsimp only [Subst.dia]
+    rw [if_pos rfl, Subst.at_proj _ _ rfl, Subst.under_at_root]
+    rfl
+
+theorem sig_mono {Γ Γ' : Ctx} (h : Γ.Le Γ') {T : VarType} {a a' : Ann T} {t : Term σ Γ T a}
+    {t' : Term σ Γ T a'} (e : (⟨a, t⟩ : Σ b, Term σ Γ T b) = ⟨a', t'⟩) :
+    (⟨_, Term.mono h t⟩ : Σ b, Term σ Γ' T b) = ⟨_, Term.mono h t'⟩ := by
+  cases e
+  rfl
+
+/-- Substituting a `□`-view term moved into a witness view: the witness view sends the `□` view's
+    addresses as the `□` view does (`Subst.dia_eq_box_mono`). -/
+theorem Term.subst_diaIn_mono {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (x z : VarSymb)
+    (hθd : Subst.Ok (Γ.diaIn x) (θ.dia x z)) (hcd : Subst.Coh ι (Γ.diaIn x) (θ.dia x z))
+    {A : VarType} {a : Ann A} (sb : Term σ Γ.boxIn A a) :
+    (⟨_, Term.subst ι (θ.dia x z) hθd hcd (Term.mono (Ctx.le_boxIn_diaIn Γ x) sb)⟩ :
+        Σ b, Term σ (Δ.diaIn z) A b) =
+      ⟨_, Term.mono (Ctx.le_boxIn_diaIn Δ z)
+        (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) sb)⟩ := by
+  rw [Term.subst_mono, Term.mono_subst]
+  exact Term.subst_congr _ _ _ _ _ _ (fun v T hv => by
+    rw [Subst.dia_eq_box_mono θ x z v T hv, Subst.at_mono]
+    exact .refl _) sb
+
+/-- Substituting the witnessed unit's body: the necessary object goes as the `□` view does, the
+    witness's content as the witness view does, and the hole reads slots only. -/
+theorem WFF.subst_unitBodyW {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
+    (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0)
+    (hS : ModalSys.BStrong = true) {x z : VarSymb} (hθd : Subst.Ok (Γ.diaIn x) (θ.dia x z))
+    (hcd : Subst.Coh ι (Γ.diaIn x) (θ.dia x z)) (hsz : (Δ.diaIn z).SlotsFrom 0)
+    {C A X : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
+    (u : Term σ (Γ.diaIn x) X b₀)
+    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.prod (.box A) (.dia X)).ty)) 1) :
+    WFF.subst (VarSymb.shiftSlot ι 0 0) ((θ.dia x z).under 0 0 (.VTypeBox C) hsz.root)
+        (Subst.ok_under hθd _ hsz.root) (Subst.coh_under hθd hcd (hΓ.diaIn x) _ hsz.root)
+        ((hΓ.diaIn x).insert _) (hsz.insert _) (WFF.unitBodyW hS sb u ψ) =
+      WFF.unitBodyW (x := z) hS (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) sb)
+        (Term.subst ι (θ.dia x z) hθd hcd u) ψ := by
+  unfold WFF.unitBodyW
+  refine WFF.retS_congr hS _ (sig_pair ?_ ?_) ?_
+  · rw [← Term.mono_mono (Ctx.le_boxIn_diaIn Γ x) (Ctx.le_insert (hΓ.diaIn x).root _),
+      ← Term.mono_mono (Ctx.le_boxIn_diaIn Δ z) (Ctx.le_insert hsz.root _)]
+    refine (Term.subst_under_mono (θ.dia x z) hθd hcd (hΓ.diaIn x) hsz _ _).trans ?_
+    exact sig_mono _ (Term.subst_diaIn_mono θ hθ hc x z hθd hcd sb)
+  · exact Term.subst_under_mono (θ.dia x z) hθd hcd (hΓ.diaIn x) hsz _ u
+  · refine (WFF.subst_holeAt _ _ _ _ _ _ ψ).trans (WFF.holeAt_congr _ ?_ ψ)
+    refine sig_pair (Term.subst_eta_renAt _ _ _ C _ _ _ _ ?_)
+      (Term.subst_eta_renAt _ _ _ _ _ _ _ _ ?_)
+    · rw [Subst.at_under_ne _ _ _ (by rw [VarSymb.inner_rt]; exact fun h => by cases h),
+        Subst.box_at_inner_ren _ (Subst.under_at_root _ _ _)]
+      rfl
+    · exact Subst.under_at_slot _ (0 + 1) (0 + 1) _ _
+
+/-- Substituting a returning possibility along a witness whose image is known. -/
+theorem WFF.subst_retxS_at {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
+    (hB : ModalSys.BStrong = true) (y : VarSymb) (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y))
+    (S : RShape) {a : Ann S.flat} (t : Term σ Γ S.flat a)
+    (Φ : WFF σ ((Γ.diaIn y).insert (.bnd d) S.ty) (d + 1))
+    (z : VarSymb) (hz : ι y = z) (P : ∃ Y, Δ.ref z = some (.VTypeDia Y))
+    (hz' : (Δ.diaIn z).SlotsFrom d') (p : Subst.Ok (Γ.diaIn y) (θ.dia y z))
+    (q : Subst.Coh ι (Γ.diaIn y) (θ.dia y z)) :
+    WFF.subst ι θ hθ hc hΓ hΔ (WFF.retxS hB y hy S t Φ) =
+      WFF.retxS hB z P S (Term.subst ι θ hθ hc t)
+        (WFF.subst (VarSymb.shiftSlot ι d d') ((θ.dia y z).under d d' _ hz'.root)
+          (Subst.ok_under p _ hz'.root) (Subst.coh_under p q (hΓ.diaIn y) _ hz'.root)
+          ((hΓ.diaIn y).insert _) (hz'.insert _) Φ) := by
+  subst hz
+  rfl
+
+/-- Substituting the unit's body along a returned possible part: the returning possibility is
+    along the slot's own possible part, which substitution fixes. -/
+theorem WFF.subst_unitBodyD {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
+    (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0)
+    (hΔ : Δ.SlotsFrom 0) (hS : ModalSys.BStrong = true) {C X A : VarType} {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀)
+    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd C X) (.VTypeBox A))) 1) :
+    WFF.subst (VarSymb.shiftSlot ι 0 0)
+        (θ.box.under 0 0 (RShape.prod (.box C) (.dia X)).ty hΔ.boxIn.root)
+        (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
+        (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn _ hΔ.boxIn.root)
+        (hΓ.boxIn.insert _) (hΔ.boxIn.insert _) (WFF.unitBodyD hS sb ψ) =
+      WFF.unitBodyD hS (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) sb) ψ := by
+  have hu := Ctx.ref_insert_root Γ.boxIn (.bnd 0) (RShape.prod (.box C) (.dia X)).ty
+  have hsnd := Ctx.ref_snd_of hu
+  have hθ' := Subst.ok_under (d := 0) (Subst.ok_box hθ) (RShape.prod (.box C) (.dia X)).ty
+    hΔ.boxIn.root
+  have hc' := Subst.coh_under (d := 0) (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn
+    (RShape.prod (.box C) (.dia X)).ty hΔ.boxIn.root
+  have hw : ((θ.box.under 0 0 _ hΔ.boxIn.root).at (.step (.root (.bnd 0)) .snd)).idxAlong [] =
+      .step (.root (.bnd 0)) .snd := (hc' _ _ hsnd []).trans (VarSymb.shiftSlot_snd ι)
+  unfold WFF.unitBodyD
+  rw [WFF.subst_retxS_at _ _ _ _ _ _ _ _ _ _ _ _ (VarSymb.shiftSlot_snd ι) ⟨X, Ctx.ref_snd_of
+      (Ctx.ref_insert_root Δ.boxIn (.bnd 0) (RShape.prod (.box C) (.dia X)).ty)⟩
+    ((hΔ.boxIn.insert _).diaIn _) (Subst.ok_dia hθ' ⟨X, hsnd⟩ hw)
+    (VarSymb.shiftSlot_snd ι ▸ Subst.coh_dia hθ' hc' ⟨X, hsnd⟩)]
+  refine WFF.retxS_congr hS _ _ _
+    (Term.subst_under_mono θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn hΔ.boxIn _ sb)
+    ((WFF.subst_holeAt _ _ _ _ _ _ ψ).trans (WFF.holeAt_congr _ ?_ ψ))
+  refine sig_pair (sig_pair (Term.subst_eta_renAt _ _ _ C _ _ _ _ ?_)
+    (Term.subst_eta_renAt _ _ _ X _ _ _ _ ?_)) (Term.subst_eta_renAt _ _ _ _ _ _ _ _ ?_)
+  · rw [Subst.at_under_ne _ _ _ (by rw [VarSymb.inner_rt]; exact fun h => by cases h),
+      Subst.dia_at_inner_ren _ _ _ (Ctx.ref_inner (Ctx.ref_fst_of hu))
+        (by rw [Subst.at_proj _ _ rfl, Subst.under_at_root]; rfl)]
+    rfl
+  · rw [Subst.at_under_ne _ _ _ (fun h => by cases h), Subst.at_nonproj _ rfl]
+    dsimp only [Subst.dia]
+    rw [if_pos rfl, Subst.at_proj _ _ rfl, Subst.under_at_root]
+    rfl
+  · exact Subst.under_at_slot _ (0 + 1) (0 + 1) _ _
+
 /-- Substituting a lifted body is lifting the substituted body: the leg's view sends the `□`
     view's addresses as the `□` view does (`Subst.dia_eq_box_mono`). -/
 theorem OutLeg.subst_lift {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
@@ -2371,6 +2541,37 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
           (Proof.conv (OutLeg.subst_ret θ hθ hc hΓ hΓ' hS O y Ψ) (Proof.subst p θ hθ hc hΓ))
           (Proof.conv (WFF.subst_holeRead θ hθ hc hΓ hΓ' (Term.pair y (Term.boxtm sb)) ψ)
             (Proof.subst q θ hθ hc hΓ)))
+  | _, _, _, @Proof.ret_unitW _ _ Γ _ _ hS x hx C A X c y Ψ a₀ sb b₀ u ψ p q, Γ', _, ι, θ, hθ,
+      hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
+      have hy : ∃ X, Γ'.ref (ι x) = some (.VTypeDia X) :=
+        hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw
+      Proof.conv (WFF.retxS_congr' hS (ι x) hy (.box C) rfl (congrArg (WFF.and _)
+          (WFF.subst_unitBodyW θ hθ hc hΓ hS (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx)
+            (hΓ'.diaIn (ι x)) sb u ψ))).symm
+        (Proof.ret_unitW hS hy (Term.subst ι θ hθ hc y) _
+          (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) sb)
+          (Term.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) u) ψ
+          (Proof.subst p θ hθ hc hΓ)
+          (Proof.conv (WFF.subst_holeRead θ hθ hc hΓ hΓ'
+              (Term.pair y (Term.pair (Term.boxtm sb) (Term.diatm x hx u))) ψ)
+            (Proof.subst q θ hθ hc hΓ)))
+  | _, _, _, @Proof.ret_unitD _ _ Γ _ _ hS C X A c y Ψ a₀ sb ψ p q, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      Proof.conv (WFF.retS_congr' hS _ rfl (congrArg (WFF.and _)
+          (WFF.subst_unitBodyD θ hθ hc hΓ hΓ' hS sb ψ))).symm
+        (Proof.ret_unitD hS (Term.subst ι θ hθ hc y) _
+          (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) sb) ψ
+          (Proof.subst p θ hθ hc hΓ)
+          (Proof.conv (WFF.subst_holeRead θ hθ hc hΓ hΓ' (Term.pair y (Term.boxtm sb)) ψ)
+            (Proof.subst q θ hθ hc hΓ)))
+  | _, _, _, @Proof.ret_counitD _ _ Γ _ _ hS C X c y ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      Proof.conv (WFF.subst_holeRead θ hθ hc hΓ hΓ' y ψ).symm
+        (Proof.ret_counitD hS (Term.subst ι θ hθ hc y) ψ
+          (Proof.conv (WFF.retS_congr' hS _ rfl (WFF.subst_counitBodyD θ hθ hc hΓ hΓ' ψ))
+            (Proof.subst p θ hθ hc hΓ)))
   | _, _, _, @Proof.ret_mono _ _ Γ _ _ hS O A a t Φ Φ' p q, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       Proof.conv (OutLeg.subst_ret θ hθ hc hΓ hΓ' hS O t Φ').symm

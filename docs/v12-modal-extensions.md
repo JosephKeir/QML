@@ -5784,8 +5784,22 @@ The joint obligation (★) is the special case without (Y).  The old forward inv
   `ret_map pack`, via `WFF.bodyRepl_pack_bodySplit`; `Proof.ret_beta` is `ret_map (hole s)`.  Their
   constructors are gone.  With 4 the derivation must be redone, since `VarSymb.inner` is `keep.here`
   there (milestone 3).
-* *Still to build:* the witnessed unit returning the witness, the counit for a possible part, and
-  the network's witness children with `x ⇝ cx` committed.
+* *Still to build:* the network's witness children with `x ⇝ cx` committed.
+
+**The witnessed unit and the possible-part rules, built (2026-10-10).**  Three constructors, each
+with soundness (`sat_ret_unitW`, `sat_ret_unitD`, `sat_ret_counitD`) and `Proof.subst`:
+* `ret_unitW` (bodies `WFF.unitBodyW`):
+  `◇_x[d₁ ↦ y] Ψ,  θ(y, □sb, x⟨u⟩)  ⊢  ◇_x[d₁ ↦ y](Ψ ∧ ◇[d ↦ sb, e ⇝ u] θ(d₁.box, d, e))`.
+  * The returned possible part's content is any term `u` of `x`'s view, not only `x.dia`.  This
+    keeps the rule closed under substitution (`x.dia` would not stay `x.dia` under `θ.dia`).
+  * `x`'s declared content type and `u`'s type are independent (`hx : ∃ X', …`).
+* `ret_unitD` (body `WFF.unitBodyD`): along an outer binder `⟨d₁, e₁⟩ : □C × ◇X`, the inner
+  possibility goes along `e₁` (`retxS` with witness `bnd0.snd`):
+  `◇[⟨d₁, e₁⟩ ↦ y] Ψ,  θ(y, □sb)  ⊢  ◇[…](Ψ ∧ ◇_{e₁}[d ↦ sb] θ(⟨d₁.box, e₁.dia⟩, d))`.
+* `ret_counitD` (body `WFF.counitBodyD`): `◇[⟨d, e⟩ ↦ y] □_e ψ(⟨d.box, e.dia⟩) ⊢ ψ(y)`.
+* Substitution helpers: `WFF.subst_dia_at`/`subst_retxS_at` (a witness whose image is known, here
+  a slot's own `snd`, fixed by `VarSymb.shiftSlot_snd`), `Subst.dia_at_inner_ren`,
+  `Term.subst_diaIn_mono`.
 
 **Witness arrows, first part (2026-10-10)** (`QML_v12m_BRetX`).
 * `liftBodyX`, `RetInvX`: the reverse invariant along `x`.

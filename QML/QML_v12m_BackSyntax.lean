@@ -182,6 +182,66 @@ def WFF.unitBody {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong
         (Term.eta (.root (.bnd 1)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 1) _)))
       θ)
 
+/-- ⭐The **witnessed unit's** new conjunct, in the body of `◇_x[d₁ ↦ y]` (docs §11.17):
+    `◇[d ↦ sb, e ⇝ u] θ(d₁.box, ⟨d, e⟩)`.  Going home from the far end, a necessary object comes
+    back as `sb` and a possible one (`x` itself) is realised along the way back with content `u`,
+    the witness's content there — the witness's share of the round trip, as `K_dia` carries it. -/
+def WFF.unitBodyW {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+    {x : VarSymb} {C A X : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
+    (u : Term σ (Γ.diaIn x) X b₀)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.prod (.box A) (.dia X)).ty)) 1) :
+    WFF σ ((Γ.diaIn x).insert (.bnd 0) (.VTypeBox C)) 1 :=
+  WFF.retS hS (.prod (.box A) (.dia X))
+    (Term.pair
+      (Term.mono ((Ctx.le_boxIn_diaIn Γ x).trans
+        (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root (.VTypeBox C))) sb)
+      (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root (.VTypeBox C)) u))
+    (WFF.holeAt (((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert (.VTypeBox C)).boxIn.insert _)
+      (Term.pair
+        (Term.eta (VarSymb.root (.bnd 0)).inner C
+          ((Ctx.le_insert ((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert (.VTypeBox C)).boxIn.root
+            (RShape.prod (.box A) (.dia X)).ty).ref
+            (Ctx.ref_inner (Ctx.ref_insert_root (Γ.diaIn x) (.bnd 0) (.VTypeBox C)))))
+        (Term.eta (.root (.bnd 1)) _ (Ctx.ref_insert_root _ (.bnd 1) _)))
+      θ)
+
+/-- ⭐The **unit along a returned possible part**, in the body of `◇[⟨d₁, e₁⟩ ↦ y]` with
+    `e₁ ⇝ y.2`: `◇_{e₁}[d ↦ sb] θ(⟨d₁.box, e₁.dia⟩, d)`.  The way back lies in `e₁`'s extent, so
+    from the far end home is reached along `e₁`, where `e₁`'s content is readable. -/
+def WFF.unitBodyD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+    {C X A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd C X) (.VTypeBox A))) 1) :
+    WFF σ (Γ.boxIn.insert (.bnd 0) (RShape.prod (.box C) (.dia X)).ty) 1 :=
+  WFF.retxS hS (.step (.root (.bnd 0)) .snd) ⟨X, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩
+    (.box A) (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root _) sb)
+    (WFF.holeAt ((((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _).insert (.VTypeBox A))
+      (Term.pair
+        (Term.pair
+          (Term.eta (VarSymb.step (.root (.bnd 0)) .fst).inner C
+            ((Ctx.le_insert ((((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _).root)
+              (.VTypeBox A)).ref ((Ctx.le_boxIn_diaIn _ _).ref
+                (Ctx.ref_inner (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))))))
+          (Term.eta (VarSymb.step (.step (.root (.bnd 0)) .snd) .dia) X
+            ((Ctx.le_insert ((((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _).root)
+              (.VTypeBox A)).ref (Ctx.ref_diaIn_of (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _))))))
+        (Term.eta (.root (.bnd 1)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 1) _)))
+      θ)
+
+/-- The **counit of a possible part**'s body, for `◇[⟨d, e⟩ ↦ y]` with `e ⇝ y.2`:
+    `□_e ψ(⟨d.box, e.dia⟩)` — what holds along all of `e`'s arrows, at its content there. -/
+def WFF.counitBodyD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {C X : VarType}
+    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) 1) :
+    WFF σ (Γ.boxIn.insert (.bnd 0) (RShape.prod (.box C) (.dia X)).ty) 1 :=
+  WFF.boxx (.step (.root (.bnd 0)) .snd) ⟨X, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩
+    (WFF.holeAt (((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _)
+      (Term.pair
+        (Term.eta (VarSymb.step (.root (.bnd 0)) .fst).inner C
+          ((Ctx.le_boxIn_diaIn _ _).ref
+            (Ctx.ref_inner (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _)))))
+        (Term.eta (VarSymb.step (.step (.root (.bnd 0)) .snd) .dia) X
+          (Ctx.ref_diaIn_of (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)))))
+      ψ)
+
 /-- The first component of a necessary pair, as a necessary object: `□(fst v.box)`. -/
 def Term.boxFst {σ : Signature} {Γ : Ctx} {v : VarSymb} {A B : VarType}
     (h : Γ.ref v = some (.VTypeBox (.VTypeProd A B))) :

@@ -1054,5 +1054,154 @@ theorem sat_ret_map (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S T : RShape
     (env := Env.empty _) (env' := O.push env i) (fun _ _ h => nomatch h) (.bnd 0) e)]
   exact ShapeMap.comesBack hM F e r _ hr
 
+include hM in
+/-- ⭐**The witnessed unit is sound**: at the far end of `x`'s arrow `a`, the way home `r` goes back
+    here, where `sb`'s object comes back along `a` as `sb` and `x` itself is realised along `a`
+    with content `u`. -/
+theorem sat_ret_unitW (hS : ModalSys.BStrong = true) {x : VarSymb}
+    (hx : ∃ X', Γ.ref x = some (.VTypeDia X')) {C A X : VarType} {c : Ann C} (y : Term σ Γ C c)
+    (Ψ : WFF σ ((Γ.diaIn x).insert (.bnd 0) (.VTypeBox C)) 1) {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X} (u : Term σ (Γ.diaIn x) X b₀)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.prod (.box A) (.dia X)).ty)) 1)
+    (hret : M.sat env (WFF.retx hS x hx y Ψ : WFF σ Γ 0))
+    (hθ : M.holeSat θ ((interp env y, (interp env (Term.boxtm sb),
+      interp env (Term.diatm x hx u))) :
+        M.frame.Dom (.VTypeProd C (RShape.prod (.box A) (.dia X)).ty) w)) :
+    M.sat env (WFF.retx hS x hx y (WFF.and Ψ (WFF.unitBodyW hS sb u θ)) : WFF σ Γ 0) := by
+  obtain ⟨Y, h, a, e, hΨ, r, hr⟩ := hret
+  refine ⟨Y, h, a, e, ⟨hΨ, ?_⟩, r, hr⟩
+  have hu := Ctx.ref_insert_root (Γ.diaIn x) (.bnd 0) (.VTypeBox C)
+  let val : M.frame.Dom (RShape.prod (.box A) (.dia X)).ty w :=
+    (interp env (Term.boxtm sb), interp env (Term.diatm x hx u))
+  refine ⟨⟨w, ⟨r⟩⟩, val, ?_, a.1.2.down, ?_, ?_⟩
+  · rw [sat_holeAt]
+    have hag := Env.agree_extend (T := (RShape.prod (.box A) (.dia X)).ty)
+      (((env.diaPush x h a).extend (.bnd 0) e).boxPush ⟨w, ⟨r⟩⟩)
+      ((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert (.VTypeBox C)).boxIn.root val
+    change M.holeSat θ (interp _ _, interp _ _)
+    rw [interp_eta, interp_eta, ← Env.ref_agree hag _ (Ctx.ref_inner hu), Env.ref_inner _ _ hu]
+    rw [show ((env.diaPush x h a).extend (.bnd 0) e).ref (.root (.bnd 0)) hu = e from
+        Env.extend_root _ (.bnd 0) e _,
+      show ((((env.diaPush x h a).extend (.bnd 0) e).boxPush ⟨w, ⟨r⟩⟩).extend
+          (T := (RShape.prod (.box A) (.dia X)).ty) (.bnd (0 + 1)) val).ref (.root (.bnd 1))
+          (Ctx.ref_insert_root _ (.bnd 1) _) = val from Env.extend_root _ _ _ _]
+    exact (holeSat_ind hM θ (hM.pair hr (M.Ind_refl _))).mpr hθ
+  · change M.Ind (M.necEval (interp env (Term.boxtm sb)) a.1) (interp _ (Term.mono _ sb))
+    rw [← Term.mono_mono (Ctx.le_boxIn_diaIn Γ x)
+        (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root (.VTypeBox C)),
+      interp_mono (Env.agree_extend (env.diaPush x h a)
+        (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root e),
+      interp_mono (Env.diaPush_boxIn env h a), box_beta]
+    exact M.Ind_refl _
+  · change ∃ hm : _ ∈ (M.posEval (interp env (Term.diatm x hx u))).1,
+      M.Ind ((M.posEval (interp env (Term.diatm x hx u))).2 ⟨_, hm⟩)
+        (interp ((env.diaPush x h a).extend (.bnd 0) e) (Term.mono _ u))
+    rw [dia_beta env hx h u]
+    refine ⟨a.2, ?_⟩
+    rw [interp_mono (Env.agree_extend (env.diaPush x h a)
+      (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root e)]
+    exact M.Ind_refl _
+
+include hM in
+/-- ⭐**The unit along a returned possible part is sound**: the way home lies in the possible
+    part's extent, so home is reached along it, where the part's content is the value's second
+    component and `sb`'s object comes back along the arrow out. -/
+theorem sat_ret_unitD (hS : ModalSys.BStrong = true) {C X A : VarType}
+    {c : Ann (.VTypeProd C X)} (y : Term σ Γ (.VTypeProd C X) c)
+    (Ψ : WFF σ (Γ.boxIn.insert (.bnd 0) (RShape.prod (.box C) (.dia X)).ty) 1) {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd C X) (.VTypeBox A))) 1)
+    (hret : M.sat env (WFF.retS hS (.prod (.box C) (.dia X)) y Ψ : WFF σ Γ 0))
+    (hθ : M.holeSat θ ((interp env y, interp env (Term.boxtm sb)) :
+      M.frame.Dom (.VTypeProd (.VTypeProd C X) (.VTypeBox A)) w)) :
+    M.sat env (WFF.retS hS (.prod (.box C) (.dia X)) y (WFF.and Ψ (WFF.unitBodyD hS sb θ)) :
+      WFF σ Γ 0) := by
+  obtain ⟨ac, e, hΨ, r, hr⟩ := hret
+  refine ⟨ac, e, ⟨hΨ, ?_⟩, r, hr⟩
+  obtain ⟨hr1, hm, hr2⟩ := hr
+  have hu := Ctx.ref_insert_root Γ.boxIn (.bnd 0) (RShape.prod (.box C) (.dia X)).ty
+  have hsnd := Ctx.ref_snd_of hu
+  have he2 : ((env.boxPush ac).extend (.bnd 0) e).ref (.step (.root (.bnd 0)) .snd) hsnd = e.2 := by
+    rw [Env.ref_snd _ hu hsnd]
+    exact congrArg Prod.snd (Env.extend_root _ _ _ _)
+  let env₁ := (env.boxPush ac).extend (.bnd 0) e
+  let bb : (M.posEval (env₁.ref (.step (.root (.bnd 0)) .snd) hsnd)).1 := ⟨⟨w, ⟨r⟩⟩, he2 ▸ hm⟩
+  have hcont : (M.posEval (env₁.ref (.step (.root (.bnd 0)) .snd) hsnd)).2 bb =
+      (M.posEval (e.2 : M.frame.Pos X ac.1)).2 ⟨_, hm⟩ := by
+    have key : ∀ (P : M.frame.Pos X ac.1) (hP : P = e.2)
+        (hmP : (⟨w, ⟨r⟩⟩ : M.frame.Acc ac.1) ∈ (M.posEval P).1),
+        (M.posEval P).2 ⟨_, hmP⟩ = (M.posEval (e.2 : M.frame.Pos X ac.1)).2 ⟨_, hm⟩ := by
+      intro P hP hmP
+      subst hP
+      rfl
+    exact key _ he2 _
+  have he1 : env₁.ref (.root (.bnd 0)) hu = e := Env.extend_root (env.boxPush ac) (.bnd 0) e hu
+  refine ⟨X, hsnd, bb, interp env (Term.boxtm sb), ?_, ac.2.down, ?_⟩
+  · rw [sat_holeAt]
+    have hag := Env.agree_extend (env₁.diaPush (.step (.root (.bnd 0)) .snd) hsnd bb)
+      ((((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _).root)
+      (interp env (Term.boxtm sb))
+    have hf : ((Γ.boxIn.insert (.bnd 0) (RShape.prod (.box C) (.dia X)).ty).diaIn
+        (.step (.root (.bnd 0)) .snd)).ref (VarSymb.step (.root (.bnd 0)) .fst).inner = some C :=
+      (Ctx.le_boxIn_diaIn _ _).ref (Ctx.ref_inner (Ctx.ref_fst_of hu))
+    have hd := Ctx.ref_diaIn_of hsnd
+    change M.holeSat θ ((interp _ _, interp _ _), interp _ _)
+    rw [interp_eta, interp_eta, interp_eta, ← Env.ref_agree hag _ hf, ← Env.ref_agree hag _ hd,
+      show (((env₁.diaPush (.step (.root (.bnd 0)) .snd) hsnd bb).extend (.bnd 1)
+          (interp env (Term.boxtm sb))).ref (.root (.bnd 1)) (Ctx.ref_insert_root _ _ _)) =
+          interp env (Term.boxtm sb) from Env.extend_root _ _ _ _,
+      ← Env.ref_agree (Env.diaPush_boxIn env₁ hsnd bb) _ (Ctx.ref_inner (Ctx.ref_fst_of hu)),
+      Env.ref_inner _ _ (Ctx.ref_fst_of hu), Env.ref_fst _ hu, he1, Env.ref_dia env₁ hsnd bb hd,
+      hcont]
+    exact (holeSat_ind hM θ (hM.pair (hM.pair hr1 hr2) (M.Ind_refl _))).mpr hθ
+  · dsimp only [ComesBack]
+    rw [interp_mono (Env.agree_extend (env.boxPush ac) (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root e)
+      sb, box_beta]
+    exact M.Ind_refl _
+
+include hM in
+/-- ⭐**The counit of a possible part is sound**: the way home lies in the possible part's extent,
+    so what holds along all of its arrows holds along the way home, at the values the object comes
+    back as. -/
+theorem sat_ret_counitD (hS : ModalSys.BStrong = true) {C X : VarType}
+    {c : Ann (.VTypeProd C X)} (y : Term σ Γ (.VTypeProd C X) c)
+    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) 1)
+    (h : M.sat env (WFF.retS hS (.prod (.box C) (.dia X)) y (WFF.counitBodyD ψ) : WFF σ Γ 0)) :
+    M.holeSat ψ (interp env y) := by
+  obtain ⟨ac, e, hbox, r, hr1, hm, hr2⟩ := h
+  have hu := Ctx.ref_insert_root Γ.boxIn (.bnd 0) (RShape.prod (.box C) (.dia X)).ty
+  have hsnd := Ctx.ref_snd_of hu
+  let env₁ := (env.boxPush ac).extend (.bnd 0) e
+  have he2 : env₁.ref (.step (.root (.bnd 0)) .snd) hsnd = e.2 := by
+    rw [Env.ref_snd _ hu hsnd]
+    exact congrArg Prod.snd (Env.extend_root (env.boxPush ac) (.bnd 0) e hu)
+  let bb : (M.posEval (env₁.ref (.step (.root (.bnd 0)) .snd) hsnd)).1 := ⟨⟨w, ⟨r⟩⟩, he2 ▸ hm⟩
+  have hcont : (M.posEval (env₁.ref (.step (.root (.bnd 0)) .snd) hsnd)).2 bb =
+      (M.posEval (e.2 : M.frame.Pos X ac.1)).2 ⟨_, hm⟩ := by
+    have key : ∀ (P : M.frame.Pos X ac.1) (hP : P = e.2)
+        (hmP : (⟨w, ⟨r⟩⟩ : M.frame.Acc ac.1) ∈ (M.posEval P).1),
+        (M.posEval P).2 ⟨_, hmP⟩ = (M.posEval (e.2 : M.frame.Pos X ac.1)).2 ⟨_, hm⟩ := by
+      intro P hP hmP
+      subst hP
+      rfl
+    exact key _ he2 _
+  have he1 : env₁.ref (.root (.bnd 0)) hu = e := Env.extend_root (env.boxPush ac) (.bnd 0) e hu
+  have hsat : M.sat (env₁.diaPush (.step (.root (.bnd 0)) .snd) hsnd bb)
+      (WFF.holeAt (((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _)
+        (Term.pair
+          (Term.eta (VarSymb.step (.root (.bnd 0)) .fst).inner C
+            ((Ctx.le_boxIn_diaIn _ _).ref (Ctx.ref_inner (Ctx.ref_fst_of hu))))
+          (Term.eta (VarSymb.step (.step (.root (.bnd 0)) .snd) .dia) X (Ctx.ref_diaIn_of hsnd)))
+        ψ) := by
+    by_contra hn
+    exact hbox ⟨X, hsnd, bb, hn⟩
+  rw [sat_holeAt] at hsat
+  change M.holeSat ψ (interp _ _, interp _ _) at hsat
+  rw [interp_eta, interp_eta,
+    ← Env.ref_agree (Env.diaPush_boxIn env₁ hsnd bb) _ (Ctx.ref_inner (Ctx.ref_fst_of hu)),
+    Env.ref_inner _ _ (Ctx.ref_fst_of hu), Env.ref_fst _ hu, he1,
+    Env.ref_dia env₁ hsnd bb (Ctx.ref_diaIn_of hsnd), hcont] at hsat
+  exact (holeSat_ind hM ψ (hM.pair hr1 hr2)).mp hsat
+
 end Model
 end V12M
