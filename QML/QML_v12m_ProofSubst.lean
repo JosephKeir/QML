@@ -2572,17 +2572,17 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         (Proof.ret_counitD hS (Term.subst ι θ hθ hc y) ψ
           (Proof.conv (WFF.retS_congr' hS _ rfl (WFF.subst_counitBodyD θ hθ hc hΓ hΓ' ψ))
             (Proof.subst p θ hθ hc hΓ)))
-  | _, _, _, @Proof.ret_mono _ _ Γ _ _ hS O A a t Φ Φ' p q, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.ret_monoS _ _ Γ _ _ hS O S a t Φ Φ' p q, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
-      Proof.conv (OutLeg.subst_ret θ hθ hc hΓ hΓ' hS O t Φ').symm
-        (Proof.ret_mono hS (O.subst θ hθ hc) (Term.subst ι θ hθ hc t) _ _
-          (Proof.conv (OutLeg.subst_ret θ hθ hc hΓ hΓ' hS O t Φ) (Proof.subst p θ hθ hc hΓ))
+      Proof.conv (OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O S t Φ').symm
+        (Proof.ret_monoS hS (O.subst θ hθ hc) (Term.subst ι θ hθ hc t) _ _
+          (Proof.conv (OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O S t Φ) (Proof.subst p θ hθ hc hΓ))
           (Proof.conv (OutLeg.subst_box θ hθ hc hΓ hΓ' O _) (Proof.subst q θ hθ hc hΓ)))
-  | _, _, _, @Proof.ret_dia _ _ Γ _ _ hS O A a t Φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.ret_diaS _ _ Γ _ _ hS O S a t Φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       Proof.conv (OutLeg.subst_dia θ hθ hc hΓ hΓ' O _).symm
-        (Proof.ret_dia hS (O.subst θ hθ hc) (Term.subst ι θ hθ hc t) _
-          (Proof.conv (OutLeg.subst_ret θ hθ hc hΓ hΓ' hS O t Φ) (Proof.subst p θ hθ hc hΓ)))
+        (Proof.ret_diaS hS (O.subst θ hθ hc) (Term.subst ι θ hθ hc t) _
+          (Proof.conv (OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O S t Φ) (Proof.subst p θ hθ hc hΓ)))
   | _, _, _, @Proof.ret_eq _ _ Γ _ _ hS O A a t t' Φ p q, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       Proof.conv (OutLeg.subst_ret θ hθ hc hΓ hΓ' hS O t' Φ).symm
@@ -2808,5 +2808,24 @@ def Proof.here_fun {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ �
   exact Proof.here_subst hT s t t' _ p p'
     (Proof.conv (WFF.instantiate_eqRec_slot hA t t).symm (Proof.eqRec_refl A t))
 
+
+/-- A term weakened past the slot, the slot then filled, is the term. -/
+theorem Term.subst_single_mono_sig {σ : Signature} {Γ : Ctx} [Γ.NoSlots]
+    {A : VarType} {a : Ann A} (t : Term σ Γ A a) {B : VarType} {b : Ann B} (u : Term σ Γ B b) :
+    (⟨_, Term.subst (Subst.singleIdx (.bnd 0) (.tm t)) (Subst.single (.bnd 0) (.tm t))
+        (Subst.ok_single (Ctx.Le.refl Γ) rfl)
+        (Subst.coh_single ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) (Ctx.Le.refl Γ) rfl)
+        (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root A) u)⟩ :
+        Σ c, Term σ Γ B c) = ⟨b, u⟩ :=
+  (congrArg (Sigma.mk _) (Term.subst_mono _ _ _ _ u)).trans
+    ((Term.subst_ren (Ctx.Le.refl Γ) _ _ _ (fun _ _ hv => Subst.single_at_ne
+      (Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) hv)) u).trans
+      (congrArg (Sigma.mk _) (Term.mono_refl _ u)))
+
+/-- A closed hole term weakened into a context and filled there is the hole term filled. -/
+theorem Term.holeRead_eq_holeAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A : VarType}
+    {a : Ann A} (t : Term σ Γ A a) {B : VarType} {b : Ann B}
+    (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) : Term.holeRead t s = Term.holeAt t s :=
+  Term.subst_mono _ _ _ _ s
 
 end V12M

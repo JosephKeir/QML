@@ -470,19 +470,19 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) 1) :
       Proof σ Γ Δ (WFF.retS hS (.prod (.box C) (.dia X)) y (WFF.counitBodyD ψ)) →
       Proof σ Γ Δ (WFF.holeRead y ψ)
-  /-- **Monotonicity** in the body, along any leg. -/
-  | ret_mono {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
-      (Φ Φ' : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1) :
-      Proof σ Γ Δ (O.ret hS t Φ) →
-      Proof σ Γ Δ (O.box (WFF.all (.VTypeBox A) (WFF.imp Φ Φ'))) →
-      Proof σ Γ Δ (O.ret hS t Φ')
-  /-- A returning possibility is a possibility, along its leg. -/
-  | ret_dia {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
-      (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1) :
-      Proof σ Γ Δ (O.ret hS t Φ) →
-      Proof σ Γ Δ (O.dia (WFF.ex (.VTypeBox A) Φ))
+  /-- **Monotonicity** in the body, along any leg, at any shape. -/
+  | ret_monoS {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (O : OutLeg Γ) {S : RShape} {a : Ann S.flat} (t : Term σ Γ S.flat a)
+      (Φ Φ' : WFF σ (O.view.insert (.bnd 0) S.ty) 1) :
+      Proof σ Γ Δ (O.retS hS S t Φ) →
+      Proof σ Γ Δ (O.box (WFF.all S.ty (WFF.imp Φ Φ'))) →
+      Proof σ Γ Δ (O.retS hS S t Φ')
+  /-- A returning possibility is a possibility, along its leg, at any shape. -/
+  | ret_diaS {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (O : OutLeg Γ) {S : RShape} {a : Ann S.flat} (t : Term σ Γ S.flat a)
+      (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1) :
+      Proof σ Γ Δ (O.retS hS S t Φ) →
+      Proof σ Γ Δ (O.dia (WFF.ex S.ty Φ))
   /-- ⭐**β along a map of shapes**: if the object's image under `F` has `Φ`, then the image is an
       object with `Φ` coming back as the value's image (`ShapeMap.comesBack`).  Repacking,
       projection and hole terms on items are all instances. -/
@@ -521,6 +521,23 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
 namespace Proof
 
 variable {σ : Signature} {Γ : Ctx}
+
+/-- **Monotonicity** of a returning possibility at a necessary object (`ret_monoS`'s box
+    instance). -/
+def ret_mono {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)}
+    (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
+    (Φ Φ' : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1)
+    (p : Proof σ Γ Δ (O.ret hS t Φ))
+    (q : Proof σ Γ Δ (O.box (WFF.all (.VTypeBox A) (WFF.imp Φ Φ')))) :
+    Proof σ Γ Δ (O.ret hS t Φ') :=
+  Proof.ret_monoS hS O (S := .box A) t Φ Φ' p q
+
+/-- A returning possibility at a necessary object is a possibility (`ret_diaS`'s box instance). -/
+def ret_dia {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)}
+    (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
+    (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1) (p : Proof σ Γ Δ (O.ret hS t Φ)) :
+    Proof σ Γ Δ (O.dia (WFF.ex (.VTypeBox A) Φ)) :=
+  Proof.ret_diaS hS O (S := .box A) t Φ p
 
 /-- Weaken by a whole list at the front. -/
 def weakenAll : (pre : List (WFF σ Γ 0)) → {Δ : List (WFF σ Γ 0)} → {φ : WFF σ Γ 0} →

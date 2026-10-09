@@ -245,6 +245,143 @@ theorem RetInvX.nil (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) {tk 
   · rw [List.mem_singleton.mp hy]
     exact hΦ
 
+/-! ## The witnessed unit's base form -/
+
+omit [ModalSys.NoFour] in
+/-- Some arrow of `x` returns home with `ψ` impossible: `◇_x[t] (¬U ∧ U)` is absurd. -/
+def Proof.retx_absurd {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+    {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A}
+    (t : Term σ Γ A a) (U : WFF σ ((Γ.diaIn x).insert (.bnd 0) (.VTypeBox A)) 1) {u : ℕ}
+    (hu : Γ.RootFresh (.free u)) (p : Proof σ Γ Δ (WFF.retx hS x hx t (WFF.and (WFF.neg U) U))) :
+    Proof σ Γ Δ .bot := by
+  have hd := Proof.ret_dia hS (.pos x hx) t _ p
+  have q : Proof σ (Γ.diaIn x) [WFF.ex (.VTypeBox A) (WFF.and (WFF.neg U) U)] .bot := by
+    refine Proof.ex_elim u (.VTypeBox A) (hu.diaIn x)
+      (φ := WFF.openFree u (hu.diaIn x) Ctx.NoSlots.slots (WFF.and (WFF.neg U) U)) (ψ := .bot)
+      (Proof.conv (congrArg (WFF.ex _) (WFF.bindFree_openFree _ _ _ _).symm)
+        (Proof.lookup List.mem_cons_self)) ?_
+    exact Proof.imp_elim (Proof.and_elim_l (Proof.lookup List.mem_cons_self))
+      (Proof.and_elim_r (Proof.lookup List.mem_cons_self))
+  exact Proof.dia_bot x hx (Proof.imp_elim (Proof.ofSubset (fun _ h => by simp at h)
+    (Proof.imp_intro (Proof.K_dia x hx (Δ₁ := []) (Δ₂ := []) q))) hd)
+
+omit [ModalSys.NoFour] in
+/-- Weakening the witnessed unit's conjunct weakens its terms. -/
+theorem WFF.mono_unitBodyW {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (h : Γ.Le Γ')
+    (hS : ModalSys.BStrong = true) {x : VarSymb} {C A X : VarType} {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X} (u : Term σ (Γ.diaIn x) X b₀)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.prod (.box A) (.dia X)).ty)) 1) :
+    WFF.mono ((h.diaIn x).insert (.bnd 0) (.VTypeBox C)) (WFF.unitBodyW hS sb u θ) =
+      WFF.unitBodyW hS (Term.mono h.boxIn sb) (Term.mono (h.diaIn x) u) θ := by
+  unfold WFF.unitBodyW
+  refine WFF.retS_congr' hS _ ?_ ?_
+  · change Term.pair (Term.mono _ (Term.mono _ sb)) (Term.mono _ (Term.mono _ u)) =
+      Term.pair (Term.mono _ (Term.mono _ sb)) (Term.mono _ (Term.mono _ u))
+    simp only [Term.mono_mono]
+  · rw [WFF.mono_holeAt _ _ ((((Ctx.NoSlots.slots (Γ := Γ'.diaIn x)).insert _).boxIn).insert _)]
+    change WFF.holeAt _ (Term.pair (Term.mono _ (Term.eta _ _ _)) (Term.mono _ (Term.eta _ _ _)))
+      θ = _
+    rw [Term.mono_eta, Term.mono_eta]
+
+omit [ModalSys.NoFour] in
+/-- The witnessed unit's base body, in `x`'s view: `◇[d ↦ sb, e ⇝ u] θ(⟨d, e⟩)`. -/
+def WFF.unitBaseW {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) {x : VarSymb}
+    {A X : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
+    (u : Term σ (Γ.diaIn x) X b₀)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (RShape.prod (.box A) (.dia X)).ty) 1) :
+    WFF σ (Γ.diaIn x) 0 :=
+  WFF.retS hS (.prod (.box A) (.dia X)) (Term.pair (Term.mono (Ctx.le_boxIn_diaIn Γ x) sb) u)
+    (WFF.holeAt ((Ctx.NoSlots.slots (Γ := (Γ.diaIn x).boxIn)).insert _)
+      (Term.eta (.root (.bnd 0)) _ (Ctx.ref_insert_root _ (.bnd 0) _)) θ)
+
+omit [ModalSys.NoFour] in
+/-- Instantiating the unused slot of `unitBodyW hS sb u (holeSnd θ)` gives the base body. -/
+theorem WFF.instantiate_unitBodyW_holeSnd {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+    {x : VarSymb} {C A X : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
+    (u : Term σ (Γ.diaIn x) X b₀)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (RShape.prod (.box A) (.dia X)).ty) 1)
+    {c : Ann (.VTypeBox C)} (t : Term σ (Γ.diaIn x) (.VTypeBox C) c) :
+    WFF.instantiate Ctx.NoSlots.slots t (WFF.unitBodyW hS sb u (WFF.holeSnd (C := C) θ)) =
+      WFF.unitBaseW hS sb u θ := by
+  unfold WFF.unitBodyW WFF.unitBaseW
+  rw [WFF.holeAt_pair_holeSnd]
+  unfold WFF.instantiate WFF.substRoot
+  refine WFF.retS_congr hS _ (sig_pair ?_ ?_) ?_
+  · rw [← Term.mono_mono (Ctx.le_boxIn_diaIn Γ x)
+      (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root _)]
+    exact Term.subst_single_mono_sig t _
+  · exact Term.subst_single_mono_sig t u
+  · rw [WFF.subst_holeAt]
+    refine WFF.holeAt_congr _ ?_ θ
+    exact Term.subst_eta_renAt _ _ _ _ _ _ _ _ (Subst.under_at_slot _ _ _ _ _)
+
+omit [ModalSys.NoFour] in
+/-- ⭐**The witnessed unit's base form**: what holds of `□sb` and the witness holds, along every
+    arrow of `x`, of the way home bringing back `sb` and the witness with content `u`.  As
+    `ret_unit_base`: otherwise some arrow of `x` has a unit refuting the conjunct; `ret_new` along
+    `x` names its return, and `ret_unitW` there asserts the very conjunct its body refutes. -/
+def Proof.ret_unitW_base {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
+    (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) {x : VarSymb}
+    (hx : ∃ X', Γ.ref x = some (.VTypeDia X')) {A X : VarType} {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X} (u : Term σ (Γ.diaIn x) X b₀)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (RShape.prod (.box A) (.dia X)).ty) 1)
+    (p : Proof σ Γ Δ (WFF.holeRead (Term.pair (Term.boxtm sb) (Term.diatm x hx u)) θ)) :
+    Proof σ Γ Δ (WFF.boxx x hx (WFF.unitBaseW hS sb u θ)) := by
+  refine Proof.byContra ?_
+  have qR : Proof σ (Γ.diaIn x)
+      [WFF.neg (WFF.ex (.VTypeBox .VTypeOne)
+        (WFF.neg (WFF.unitBodyW hS sb u (WFF.holeSnd (C := .VTypeOne) θ))))]
+      (WFF.unitBaseW hS sb u θ) := by
+    refine Proof.byContra (Proof.imp_elim (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
+      (Proof.ex_intro _ (Term.boxtm Term.unit) (Proof.conv ?_ (Proof.lookup List.mem_cons_self))))
+    exact congrArg WFF.neg
+      (WFF.instantiate_unitBodyW_holeSnd hS sb u θ (Term.boxtm Term.unit)).symm
+  have q : Proof σ (Γ.diaIn x) [WFF.neg (WFF.unitBaseW hS sb u θ)]
+      (WFF.ex (.VTypeBox .VTypeOne)
+        (WFF.neg (WFF.unitBodyW hS sb u (WFF.holeSnd (C := .VTypeOne) θ)))) :=
+    Proof.byContra (Proof.imp_elim (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
+      (Proof.ofSubset (fun y hy => by rw [List.mem_singleton.mp hy]; exact List.mem_cons_self) qR))
+  have hdn : Proof σ Γ (WFF.neg (WFF.boxx x hx (WFF.unitBaseW hS sb u θ)) :: Δ)
+      (WFF.dia x hx (WFF.neg (WFF.unitBaseW hS sb u θ))) :=
+    Proof.byContra (Proof.imp_elim (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
+      (Proof.lookup List.mem_cons_self))
+  have hd : Proof σ Γ (WFF.neg (WFF.boxx x hx (WFF.unitBaseW hS sb u θ)) :: Δ)
+      ((OutLeg.pos x hx : OutLeg Γ).dia (WFF.ex (.VTypeBox .VTypeOne)
+        (WFF.neg (WFF.unitBodyW hS sb u (WFF.holeSnd (C := .VTypeOne) θ))))) :=
+    Proof.imp_elim (Proof.ofSubset (fun _ h => by simp at h)
+      (Proof.imp_intro (Proof.K_dia x hx (Δ₁ := []) (Δ₂ := []) q))) hdn
+  refine Proof.ret_new hS hB (.pos x hx) _ _ (Ctx.Presented.fresh_bound _ le_rfl) hd ?_
+  have hle := Ctx.le_insert (Ctx.Presented.fresh_bound (Γ := Γ) _ le_rfl).root .VTypeOne
+  have hx' : ∃ X', (Γ.insert (.free (Ctx.Presented.bound Γ)) .VTypeOne).ref x =
+      some (.VTypeDia X') := hx.imp fun _ hX => hle.ref hX
+  have r₁ : Proof σ (Γ.insert (.free (Ctx.Presented.bound Γ)) .VTypeOne)
+      [WFF.retx hS x hx'
+        (Term.eta (.root (.free (Ctx.Presented.bound Γ))) _ (Ctx.ref_insert_root _ _ _))
+        (WFF.mono ((hle.diaIn x).insert (.bnd 0) _)
+          (WFF.neg (WFF.unitBodyW hS sb u (WFF.holeSnd (C := .VTypeOne) θ))))]
+      (WFF.retx hS x hx'
+        (Term.eta (.root (.free (Ctx.Presented.bound Γ))) _ (Ctx.ref_insert_root _ _ _))
+        (WFF.neg (WFF.unitBodyW hS (Term.mono hle.boxIn sb) (Term.mono (hle.diaIn x) u)
+          (WFF.holeSnd (C := .VTypeOne) θ)))) := by
+    refine Proof.conv ?_ (Proof.lookup List.mem_cons_self)
+    refine congrArg (WFF.retx hS x hx' _) ?_
+    change WFF.imp (WFF.mono _ _) .bot = _
+    rw [WFF.mono_unitBodyW hle]
+  have r₂ : Proof σ (Γ.insert (.free (Ctx.Presented.bound Γ)) .VTypeOne) (Δ.map (WFF.mono hle))
+      (WFF.holeRead (Term.pair
+          (Term.eta (.root (.free (Ctx.Presented.bound Γ))) _ (Ctx.ref_insert_root _ _ _))
+          (Term.pair (Term.boxtm (Term.mono hle.boxIn sb))
+            (Term.diatm x hx' (Term.mono (hle.diaIn x) u))))
+        (WFF.holeSnd (C := .VTypeOne) θ)) := by
+    refine Proof.conv ?_ (Proof.mono hle p)
+    rw [WFF.holeRead_eq_holeAt, WFF.holeRead_eq_holeAt, WFF.mono_holeAt _ _ Ctx.NoSlots.slots,
+      WFF.holeAt_pair_holeSnd]
+    rfl
+  exact Proof.retx_absurd hS hx' _ _ (Ctx.Presented.fresh_bound _ le_rfl)
+    (Proof.ret_unitW hS hx' _ _ _ _ _
+      (Proof.ofSubset (fun y hy => by rw [List.mem_singleton.mp hy]; exact List.mem_cons_self) r₁)
+      (Proof.ofSubset (fun y hy => List.mem_cons_of_mem _ (List.mem_cons_of_mem _ hy)) r₂))
+
 end BArrow
 
 end V12M

@@ -5800,6 +5800,30 @@ with soundness (`sat_ret_unitW`, `sat_ret_unitD`, `sat_ret_counitD`) and `Proof.
 * Substitution helpers: `WFF.subst_dia_at`/`subst_retxS_at` (a witness whose image is known, here
   a slot's own `snd`, fixed by `VarSymb.shiftSlot_snd`), `Subst.dia_at_inner_ren`,
   `Term.subst_diaIn_mono`.
+* *Derived* (`QML_v12m_BRetX`): the witnessed unit's **base form**, for birth,
+  `Proof.ret_unitW_base : θ(□sb, x⟨u⟩) ⊢ □_x ◇[d ↦ sb, e ⇝ u] θ(⟨d, e⟩)` (body `WFF.unitBaseW`).
+  It is `ret_unit_base`'s argument along `x`: `K_dia`, `ret_new` along `x`, `ret_unitW` at the
+  fresh return, and `Proof.retx_absurd`.
+
+**Witness children, forward invariant (2026-10-10)** (`QML_v12m_BRetW`).
+* *Rules:* `ret_mono` and `ret_dia` are now stated at every shape (`ret_monoS`, `ret_diaS`), as the
+  returnable-shapes design said ("unchanged in form").  The box forms `Proof.ret_mono`/`ret_dia`
+  are their instances, so no call site changed.  Merging finitely many atoms at the witness shape
+  needs `ret_monoS`.
+* `liftBodyW`, `RetInvW`: the forward invariant of a witness arrow `p → k`, at shape
+  `□(roots) × ◇X`, read at `p` with the slot `⟨□ā, x⟩` and at `k` valued at `⟨ā', cx⟩`.
+* `RetInvW.birth`: from the seed's `TransferX` and `Proof.ret_unitW_base`.
+* `retStepW_ok` (`realF` along a witness arrow): the plain `retStep` argument with the companion
+  step `ret_extS` + `ret_map` along `ShapeMap.repackW : ⟨⟨d, e⟩, b⟩ ↦ ⟨□⟨d, b⟩, e⟩`.  There are no
+  (Y) atoms and no ∨ law along `x`: the witness rides along as the possible part.
+  * Reusable pieces: `WFF.pairUpW F Φ` (a body over `T` as one over `S` and a companion, through
+    any `F : S × □B → T`) with `bodySplit_mono_pairUpW` (its split is `ret_map F`'s premise);
+    hole-term evaluation (`Term.holeAt_holeAt_sig`, `holeAt_pair_fst/snd`, `holeAt_pack`,
+    `holeAt_eta_slot`); `repackW_obj`/`repackW_val`.
+  * `RetInvX.transferX` (already built) gives the forward `□_x` transfer, so `RetInvW` need not.
+* *Still to build:* cross-arrow preservation both ways (`realF` keeps `RetInvX` via `ret_unitD`;
+  `realB` along `x` keeps `RetInvW` via `ret_unitW`), `realB` along `x` itself (`RetInvX`'s Henkin
+  step, `ret_ext` along `x`), growth for both, and wiring `RetInv`/`RetInvW`/`RetInvX` into `Good`.
 
 **Witness arrows, first part (2026-10-10)** (`QML_v12m_BRetX`).
 * `liftBodyX`, `RetInvX`: the reverse invariant along `x`.

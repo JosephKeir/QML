@@ -355,25 +355,6 @@ theorem WFF.instantiate_bodyRepl {σ : Signature} {V : Ctx} [V.NoSlots] {A B : V
     rw [if_neg hvr, if_neg hvr]
     exact .refl _
 
-/-- A term weakened past the slot, the slot then filled, is the term. -/
-theorem Term.subst_single_mono_sig {σ : Signature} {Γ : Ctx} [Γ.NoSlots]
-    {A : VarType} {a : Ann A} (t : Term σ Γ A a) {B : VarType} {b : Ann B} (u : Term σ Γ B b) :
-    (⟨_, Term.subst (Subst.singleIdx (.bnd 0) (.tm t)) (Subst.single (.bnd 0) (.tm t))
-        (Subst.ok_single (Ctx.Le.refl Γ) rfl)
-        (Subst.coh_single ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) (Ctx.Le.refl Γ) rfl)
-        (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root A) u)⟩ :
-        Σ c, Term σ Γ B c) = ⟨b, u⟩ :=
-  (congrArg (Sigma.mk _) (Term.subst_mono _ _ _ _ u)).trans
-    ((Term.subst_ren (Ctx.Le.refl Γ) _ _ _ (fun _ _ hv => Subst.single_at_ne
-      (Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) hv)) u).trans
-      (congrArg (Sigma.mk _) (Term.mono_refl _ u)))
-
-/-- A closed hole term weakened into a context and filled there is the hole term filled. -/
-theorem Term.holeRead_eq_holeAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A : VarType}
-    {a : Ann A} (t : Term σ Γ A a) {B : VarType} {b : Ann B}
-    (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) : Term.holeRead t s = Term.holeAt t s :=
-  Term.subst_mono _ _ _ _ s
-
 namespace Canon
 
 variable {σ : Signature} {I : Type} [Preorder I]
