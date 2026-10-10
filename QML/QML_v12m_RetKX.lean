@@ -251,7 +251,7 @@ def Proof.retx_K {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} (hS : Modal
     (Proof.imp_intro (Proof.and_intro (Proof.and_elim_l (Proof.lookup List.mem_cons_self))
       (Proof.imp_intro ?_)))
   · rwa [WFF.bindFree_openFree] at this
-  exact Proof.retS_absurd hS _ _ _ hu' (Proof.ret_unitD hS _ _ _ θΨ
+  exact Proof.retS_absurd hS _ _ _ hu' (Proof.ret_unitD hS .nec _ _ _ θΨ
     (Proof.conv (openFree_unitBodyW_kThetaW hX hu hS sb θΨ)
       (Proof.and_elim_r (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))))
     (Proof.conv (openFree_kPsiX hX hu sb θΨ) (Proof.lookup List.mem_cons_self)))

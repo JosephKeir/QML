@@ -6720,6 +6720,29 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
   `StrongChain.retXDOp`.
 * So every returning form has a child (T off).  *Next:* E1 step 3.
 
+**Forgetting a witness; `ret_unitD` along any leg (user, 2026-10-10).**
+* *Why.*  The `ret` truth case (truth ⇒ membership) reads, along an edge `s → k`, the invariant from
+  `k` back to `s`.  By the edge's kinds this gives at `s` a plain atom, one along `x`, one with a
+  possible part, or one with both, whatever the form of the atom being proved.  So it needs two
+  forgettings: of the leg's witness, and of a possible part the body ignores.  Both are sound.
+* *Derivability.*  Leg forgetting at `□` shape and possible-part forgetting on the plain leg were
+  derivable (mixed K-laws).  The other two — possible part along a witnessed leg, and the leg at the
+  witnessed shape — each needed the same forgetting one level down.  The cause: `ret_unitD`, the
+  weak unit at the witnessed shape (the inner possibility does not return the leg's witness), was
+  plain-leg only, the one unit rule not taking `O` (against the 2026-10-09 decision that every
+  `ret` rule is leg-indexed).
+* *Decision (user).*  **`ret_unitD` takes any leg `O`** (`O.retS`, new conjunct `O.lift`), as
+  `ret_unit` does; sound by the same argument (`sat_unitBodyD_at` is leg-free).  `ret_unitW` and
+  `ret_unitWD` stay the strong forms.
+* *Built* (`QML_v12m_RetForget`), all derived, each a home unit carrying the negated conclusion
+  out and a far-world unit bringing it back:
+  * `Proof.retx_forget` (leg, `□` shape): `ret_unit` along `x`, then plain `ret_unit`;
+  * `Proof.retD_forget` (part, plain leg): `ret_unitD`, then `retx_forget` along the part;
+  * `Proof.retxS_forget` (leg, witnessed shape): `ret_unitD` along `x`, then `ret_unitW`;
+  * `Proof.retxD_forget` (part, along `x`): `ret_unitWD`, then `ret_unitD` along the part.
+  Node forms (`*_node`, via `pack2`) for the first and third; the others take the body in the form
+  the truth case chooses (`kPsiF`, `kPsiXF`).
+
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`
   contains `□`.  So for a slot `□A` with `A` box-free the second component has a canonical

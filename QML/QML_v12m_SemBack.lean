@@ -1287,21 +1287,17 @@ theorem sat_ret_unitW (hS : ModalSys.BStrong = true) {x : VarSymb}
     exact M.Ind_refl _
 
 include hM in
-/-- ⭐**The unit along a returned possible part is sound**: the way home lies in the possible
-    part's extent, so home is reached along it, where the part's content is the value's second
-    component and `sb`'s object comes back along the arrow out. -/
-theorem sat_ret_unitD (hS : ModalSys.BStrong = true) {C X A : VarType}
-    {c : Ann (.VTypeProd C X)} (y : Term σ Γ (.VTypeProd C X) c)
-    (Ψ : WFF σ (Γ.boxIn.insert (.bnd 0) (RShape.wit (.box C) X).ty) 1) {a₀ : Ann A}
+/-- The unit along a returned possible part, at the far end of an arrow `ac` whose object `e`
+    comes back as `y` along `r`. -/
+theorem sat_unitBodyD_at (hS : ModalSys.BStrong = true) {C X A : VarType}
+    {c : Ann (.VTypeProd C X)} (y : Term σ Γ (.VTypeProd C X) c) {a₀ : Ann A}
     (sb : Term σ Γ.boxIn A a₀)
     (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd C X) (.VTypeBox A))) 1)
-    (hret : M.sat env (WFF.retS hS (.wit (.box C) X) y Ψ : WFF σ Γ 0))
+    (ac : M.frame.Acc w) (e : M.frame.Dom (RShape.wit (.box C) X).ty ac.1)
+    (r : M.frame.R ac.1 w) (hr : M.ComesBack (.wit (.box C) X) e r (interp env y))
     (hθ : M.holeSat θ ((interp env y, interp env (Term.boxtm sb)) :
       M.frame.Dom (.VTypeProd (.VTypeProd C X) (.VTypeBox A)) w)) :
-    M.sat env (WFF.retS hS (.wit (.box C) X) y (WFF.and Ψ (WFF.unitBodyD hS sb θ)) :
-      WFF σ Γ 0) := by
-  obtain ⟨ac, e, hΨ, r, hr⟩ := hret
-  refine ⟨ac, e, ⟨hΨ, ?_⟩, r, hr⟩
+    M.sat ((env.boxPush ac).extend (.bnd 0) e) (WFF.unitBodyD hS sb θ) := by
   obtain ⟨hr1, hm, hr2⟩ := hr
   have hu := Ctx.ref_insert_root Γ.boxIn (.bnd 0) (RShape.wit (.box C) X).ty
   have hsnd := Ctx.ref_snd_of hu
@@ -1342,6 +1338,25 @@ theorem sat_ret_unitD (hS : ModalSys.BStrong = true) {C X A : VarType}
     rw [interp_mono (Env.agree_extend (env.boxPush ac) (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root e)
       sb, box_beta]
     exact M.Ind_refl _
+
+include hM in
+/-- ⭐**The unit along a returned possible part is sound**, along any leg: the way home lies in
+    the possible part's extent, so home is reached along it, where the part's content is the
+    value's second component and `sb`'s object comes back along the arrow out. -/
+theorem sat_ret_unitD (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {C X A : VarType}
+    {c : Ann (.VTypeProd C X)} (y : Term σ Γ (.VTypeProd C X) c)
+    (Ψ : WFF σ (O.view.insert (.bnd 0) (RShape.wit (.box C) X).ty) 1) {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd C X) (.VTypeBox A))) 1)
+    (hret : M.sat env (O.retS hS (.wit (.box C) X) y Ψ : WFF σ Γ 0))
+    (hθ : M.holeSat θ ((interp env y, interp env (Term.boxtm sb)) :
+      M.frame.Dom (.VTypeProd (.VTypeProd C X) (.VTypeBox A)) w)) :
+    M.sat env (O.retS hS (.wit (.box C) X) y (WFF.and Ψ (O.lift (WFF.unitBodyD hS sb θ))) :
+      WFF σ Γ 0) := by
+  obtain ⟨i, e, hΨ, r, hr⟩ := (OutLeg.sat_retS hS env O (.wit (.box C) X) y Ψ).mp hret
+  exact (OutLeg.sat_retS hS env O (.wit (.box C) X) y _).mpr ⟨i, e,
+    ⟨hΨ, (OutLeg.sat_lift env O i e _).mpr (sat_unitBodyD_at env hM hS y sb θ _ e r hr hθ)⟩,
+    r, hr⟩
 
 include hM in
 /-- ⭐**The doubly witnessed unit is sound**: at the far end of `x`'s arrow `a`, the way home `r`

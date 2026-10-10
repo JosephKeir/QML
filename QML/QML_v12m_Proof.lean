@@ -463,13 +463,14 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
   /-- ⭐**The unit along a returned possible part**: if the object out there has a possible part
       realised along the way back, home is reached along it. -/
   | ret_unitD {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      {C X A : VarType} {c : Ann (.VTypeProd C X)} (y : Term σ Γ (.VTypeProd C X) c)
-      (Ψ : WFF σ (Γ.boxIn.insert (.bnd 0) (RShape.wit (.box C) X).ty) 1) {a₀ : Ann A}
+      (O : OutLeg Γ) {C X A : VarType} {c : Ann (.VTypeProd C X)}
+      (y : Term σ Γ (.VTypeProd C X) c)
+      (Ψ : WFF σ (O.view.insert (.bnd 0) (RShape.wit (.box C) X).ty) 1) {a₀ : Ann A}
       (sb : Term σ Γ.boxIn A a₀)
       (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd C X) (.VTypeBox A))) 1) :
-      Proof σ Γ Δ (WFF.retS hS (.wit (.box C) X) y Ψ) →
+      Proof σ Γ Δ (O.retS hS (.wit (.box C) X) y Ψ) →
       Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.boxtm sb)) θ) →
-      Proof σ Γ Δ (WFF.retS hS (.wit (.box C) X) y (WFF.and Ψ (WFF.unitBodyD hS sb θ)))
+      Proof σ Γ Δ (O.retS hS (.wit (.box C) X) y (WFF.and Ψ (O.lift (WFF.unitBodyD hS sb θ))))
   /-- ⭐**The doubly witnessed unit** (docs §11.20): along `x`'s arrow with a returned possible part,
       home is reached along that part, where `sb`'s object comes back and `x` itself is realised
       with content `u` — `ret_unitW` and `ret_unitD` at the form with both witnesses. -/

@@ -448,8 +448,9 @@ theorem retChildD_fwd :
     · rcases List.mem_cons.mp hx with rfl | hx
       · exact hr
       · rw [List.mem_singleton.mp hx]; exact hΨ
-    refine Proof.retS_absurd hS _ _ _ (ctxOf_fresh (l := tp.l) le_rfl) (Proof.conv (by rw [e])
-      (Proof.ret_unitD hS _ _ (Term.mono hle.boxIn (tupT tp.l).2) _
+    refine Proof.retS_absurd hS _ _ _ (ctxOf_fresh (l := tp.l) le_rfl) (Proof.conv
+      (by dsimp only [OutLeg.lift, OutLeg.retS]; rw [e])
+      (Proof.ret_unitD hS .nec _ _ (Term.mono hle.boxIn (tupT tp.l).2) _
         (Proof.lookup List.mem_cons_self) ?_))
     exact Proof.conv (holeRead_tupImgT_pack2X himg (bclD_e A X) hz
       (Term.boxtm (Term.mono hle.boxIn (tupT tp.l).2)) Ψ).symm

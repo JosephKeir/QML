@@ -2693,13 +2693,19 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
           (Proof.conv (WFF.subst_holeRead θ hθ hc hΓ hΓ'
               (Term.pair y (Term.pair (Term.boxtm sb) (Term.diatm x hx u))) ψ)
             (Proof.subst q θ hθ hc hΓ)))
-  | _, _, _, @Proof.ret_unitD _ _ Γ _ _ hS C X A c y Ψ a₀ sb ψ p q, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.ret_unitD _ _ Γ _ _ hS O C X A c y Ψ a₀ sb ψ p q, Γ', _, ι, θ, hθ, hc,
+      hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
-      Proof.conv (WFF.retS_congr' hS _ rfl (congrArg (WFF.and _)
-          (WFF.subst_unitBodyD θ hθ hc hΓ hΓ' hS sb ψ))).symm
-        (Proof.ret_unitD hS (Term.subst ι θ hθ hc y) _
+      Proof.conv (by
+          refine ((OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O (.wit (.box C) X) y _).trans
+            (congrArg ((O.subst θ hθ hc).retS hS (.wit (.box C) X) (Term.subst ι θ hθ hc y))
+              ?_)).symm
+          exact congrArg (WFF.and _) ((OutLeg.subst_lift θ hθ hc hΓ hΓ' O _).trans
+            (congrArg (O.subst θ hθ hc).lift (WFF.subst_unitBodyD θ hθ hc hΓ hΓ' hS sb ψ))))
+        (Proof.ret_unitD hS (O.subst θ hθ hc) (Term.subst ι θ hθ hc y) _
           (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) sb) ψ
-          (Proof.subst p θ hθ hc hΓ)
+          (Proof.conv (OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O (.wit (.box C) X) y Ψ)
+            (Proof.subst p θ hθ hc hΓ))
           (Proof.conv (WFF.subst_holeRead θ hθ hc hΓ hΓ' (Term.pair y (Term.boxtm sb)) ψ)
             (Proof.subst q θ hθ hc hΓ)))
   | _, _, _, @Proof.ret_unitWD _ _ Γ _ _ hS x hx C Xe A X c y Ψ a₀ sb b₀ u ψ p q, Γ', _, ι, θ,

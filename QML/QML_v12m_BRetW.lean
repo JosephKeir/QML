@@ -1447,7 +1447,7 @@ theorem retStepW_rev (hS : ModalSys.BStrong = true) {ts tt : NodeSt σ} {cl clt 
       [retAtomW hS himg ht hcx (WFF.neg (WFF.unitBodyD (Γ := ctxOf clt) hS (tupT clt).2
         (pack2X _ hx' Φ))), liftBodyX ht' (imgOk_ext himg) hx' hcx' Φ] .bot :=
     Proof.retS_absurd hS _ _ _ (ctxOf_fresh (l := (nextTy ts.l cl).bc :: tt.l) le_rfl)
-      (Proof.ret_unitD hS _ _ _ _
+      (Proof.ret_unitD hS .nec _ _ _ _
         (Proof.ofSubset (fun y hy => by
           rw [List.mem_singleton.mp hy]; exact List.mem_cons_self) p₁)
         (Proof.ofSubset (fun y hy => by

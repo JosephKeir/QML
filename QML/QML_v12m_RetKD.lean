@@ -184,7 +184,7 @@ def Proof.retD_K {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} (hS : Modal
     (p : Proof σ Γ Δ (WFF.retS hS (.wit (.box C) X) t Φ))
     (q : Proof σ Γ Δ (WFF.neg (WFF.retS hS (.wit (.box C) X) t (kPsiD sb θΨ)))) :
     Proof σ Γ Δ (WFF.retS hS (.wit (.box C) X) t (WFF.and Φ (WFF.neg (kPsiD sb θΨ)))) := by
-  have P1 := Proof.ret_unitD hS t Φ sb (kThetaD hS θΨ) p
+  have P1 := Proof.ret_unitD hS .nec t Φ sb (kThetaD hS θΨ) p
     (Proof.conv (holeRead_kThetaD hS t sb θΨ).symm q)
   refine Proof.ret_monoS hS .nec (S := .wit (.box C) X) t _ _ P1
     (Proof.ofSubset (fun _ h => absurd h List.not_mem_nil) (Proof.K_box (Δ := []) ?_))
