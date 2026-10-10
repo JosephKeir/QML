@@ -341,6 +341,9 @@ noncomputable def model : Model.{0, 0} σ where
   necDup_eval hF _ _ _ := (noFour hF).elim
   posRet_exists hT hS a := B.posRet_exists_canon hT hS a
   posSerial hDS s := B.posSerial_canon hDS s
+  Ret _ _ _ := False
+  Ret_fwd := by intro _ _ _ _ _ _ h; exact h.elim
+  Ret_conv hS := (ModalSys.NoFour.absurdStrong hS).elim
   backRet_exists hS := (ModalSys.NoFour.absurdStrong hS).elim
   Ind o o' := B.Ind o o'
   Ind_refl o := B.Ind_refl o

@@ -6,8 +6,10 @@ import QML.QML_v12m_SemHere
 Roadmap milestone 2, step 3 (`docs/v12-modal-extensions.md` §11).  What the rules of step 4 need,
 proved at the level of values, once for both rows:
 
-* ⭐`Model.RoundTrip`: `Back`'s truth condition with the out leg a parameter.  A `□□`-carrier's
-  body (`backs_nec_boxtm`) and a `◇□`-carrier's (`backs_pos_diatm`) both unfold to it.
+* ⭐`Model.RoundTrip`: what `Back` implies (`Model.Ret_fwd`), with the out leg a parameter, and
+  at `◇`-free contents what it is (`Model.Ret_conv`; docs §11.20).  A `□□`-carrier's body
+  (`backs_nec_boxtm`) and a `◇□`-carrier's (`backs_pos_diatm`) unfold `Back` to the model's `Ret`
+  at the leg (`OutLeg.sat_back`); `OutLeg.sat_back_rt` and `OutLeg.ret_of_roundTrip` go between.
 * **Hole formulas**, closed apart from the hole (`WFF.holeRead`, `Model.holeSat`): what a round
   trip carries home (§11.2).  `IndInvariant` moves them across `Ind` (`holeSat_ind`).
 * At **every** content type (§11.15): β and pairing return values up to `Ind` because a model
@@ -32,9 +34,9 @@ variable {σ : Signature} {M : Model.{u, v} σ}
 /-! ## Round trips over any out leg -/
 
 /-- ⭐A **round trip** over an out leg indexed by `ι`: each index is an arrow out of `w` (`acc`),
-    and `val i b` is the carrier's value at the end of a further arrow `b`.  It comes back as `o`
-    when the leg is nonempty and from each of its arrows some way home returns a value
-    indistinguishable from `o` — `Model.Backs` with the leg made a parameter. -/
+    and `val i b` is the carrier's value at the end of a further arrow `b`.  It holds of `o` when
+    the leg is nonempty and from each of its arrows some way home returns a value
+    indistinguishable from `o` — what "comes back as" implies (`Model.Ret_fwd`). -/
 def RoundTrip {A : VarType} {w : M.frame.W} {ι : Type*} (acc : ι → M.frame.Acc w)
     (val : ∀ i, ∀ b : M.frame.Acc (acc i).1, M.frame.Dom A b.1) (o : M.frame.Dom A w) : Prop :=
   Nonempty ι ∧ ∀ i, ∃ r : M.frame.R (acc i).1 w, M.Ind (val i ⟨w, ⟨r⟩⟩) o
@@ -43,11 +45,16 @@ def RoundTrip {A : VarType} {w : M.frame.W} {ι : Type*} (acc : ι → M.frame.A
 theorem backs_nec_boxtm {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {A : VarType} {a₀ : Ann A}
     (bd : Term σ Γ.boxIn.boxIn A a₀) (o : M.frame.Dom A w) :
     M.Backs .nec (A := A) (interp env (Term.boxtm (Term.boxtm bd))) o ↔
-      RoundTrip (M := M) (w := w) (fun a : M.frame.Acc w => a)
-        (fun a b => interp ((env.boxPush a).boxPush b) bd) o := by
-  refine and_congr Iff.rfl (forall_congr' fun a => exists_congr fun r => ?_)
-  change M.Ind (M.necEval (M.necEval (interp env (Term.boxtm (Term.boxtm bd))) a) ⟨w, ⟨r⟩⟩) o ↔ _
-  rw [box_beta env (Term.boxtm bd) a, box_beta (env.boxPush a) bd]
+      M.Ret (Set.univ : Set (M.frame.Acc w))
+        (fun a b => interp ((env.boxPush a.1).boxPush b) bd) o := by
+  have h : (fun (a : (Set.univ : Set (M.frame.Acc w))) (b : M.frame.Acc a.1.1) =>
+      M.necEval (M.necEval (interp env (Term.boxtm (Term.boxtm bd)) :
+        M.frame.Nec (.VTypeBox A) w) a.1) b) =
+      fun (a : (Set.univ : Set (M.frame.Acc w))) (b : M.frame.Acc a.1.1) =>
+        interp ((env.boxPush a.1).boxPush b) bd := by
+    funext a b
+    rw [box_beta env (Term.boxtm bd) a.1, box_beta (env.boxPush a.1) bd]
+  exact iff_of_eq (congrArg (fun v => M.Ret _ v o) h)
 
 /-- ⭐Row 2: a `◇□`-carrier comes back through its body, read in its witness's view and one `□`
     view further in; the out leg is the witness's extent. -/
@@ -55,16 +62,19 @@ theorem backs_pos_diatm {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {y : VarSy
     (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) {Y : VarType} (h : Γ.ref y = some (.VTypeDia Y))
     {A : VarType} {a₀ : Ann A} (bd : Term σ (Γ.diaIn y).boxIn A a₀) (o : M.frame.Dom A w) :
     M.Backs .pos (A := A) (interp env (Term.diatm y hy (Term.boxtm bd))) o ↔
-      RoundTrip (M := M) (w := w) (fun a : (M.posEval (env.ref y h)).1 => a.1)
+      M.Ret (M.posEval (env.ref y h)).1
         (fun a b => interp ((env.diaPush y h a).boxPush b) bd) o := by
-  change Nonempty (M.posEval (interp env (Term.diatm y hy (Term.boxtm bd)))).1 ∧
-      (∀ a : (M.posEval (interp env (Term.diatm y hy (Term.boxtm bd)))).1,
-        ∃ r : M.frame.R a.1.1 w, M.Ind (M.necEval
-          ((M.posEval (interp env (Term.diatm y hy (Term.boxtm bd)))).2 a) ⟨w, ⟨r⟩⟩) o) ↔ _
+  change M.Ret (M.posEval (interp env (Term.diatm y hy (Term.boxtm bd)))).1
+      (fun a b => M.necEval ((M.posEval (interp env (Term.diatm y hy (Term.boxtm bd)))).2 a) b)
+      o ↔ _
   rw [dia_beta env hy h (Term.boxtm bd)]
-  refine and_congr Iff.rfl (forall_congr' fun a => exists_congr fun r => ?_)
-  change M.Ind (M.necEval (interp (env.diaPush y h a) (Term.boxtm bd)) ⟨w, ⟨r⟩⟩) o ↔ _
-  rw [box_beta (env.diaPush y h a) bd]
+  have e : (fun (a : (M.posEval (env.ref y h)).1) (b : M.frame.Acc a.1.1) =>
+      M.necEval (interp (env.diaPush y h a) (Term.boxtm bd) : M.frame.Nec A a.1.1) b) =
+      fun (a : (M.posEval (env.ref y h)).1) (b : M.frame.Acc a.1.1) =>
+        interp ((env.diaPush y h a).boxPush b) bd := by
+    funext a b
+    exact box_beta (env.diaPush y h a) bd b
+  exact iff_of_eq (congrArg (fun v => M.Ret _ v o) e)
 
 /-! ## Hole formulas -/
 
@@ -243,7 +253,7 @@ theorem sat_back_ex (hS : ModalSys.BStrong = true) {Γ : Ctx} {w : M.frame.W} (e
         (Term.weaken hr.root _ t)) : WFF σ Γ 0) := by
   obtain ⟨c₀, hc⟩ := M.backRet_exists hS hne (interp env t)
   let c : M.frame.Dom (.VTypeBox (.VTypeBox A)) w := c₀
-  exact ⟨c, (sat_back_eta_extend hS env (.bnd 0) hr c t).mpr ⟨hne, hc⟩⟩
+  exact ⟨c, (sat_back_eta_extend hS env (.bnd 0) hr c t).mpr hc⟩
 
 /-! ## Hole terms and annotations -/
 
@@ -319,16 +329,60 @@ theorem sat_box {d : ℕ} {w : M.frame.W} (env : M.Env Γ w) :
       rw [sat_dia]
       exact not_exists_not
 
-/-- ⭐A `Back` atom is a round trip over its leg. -/
+/-- The out leg's arrows, as a set of arrows out: all of them, or the witness's extent. -/
+noncomputable def legSet {w : M.frame.W} (env : M.Env Γ w) : OutLeg Γ → Set (M.frame.Acc w)
+  | .nec => Set.univ
+  | .pos y hy => (M.posEval (env.ref y hy.choose_spec)).1
+
+/-- The environment of the leg's view at the end of one of its arrows, given as a member of the
+    leg's set. -/
+noncomputable def pushS {w : M.frame.W} (env : M.Env Γ w) :
+    (O : OutLeg Γ) → (a : O.legSet env) → M.Env O.view a.1.1
+  | .nec, a => env.boxPush a.1
+  | .pos y hy, a => env.diaPush y hy.choose_spec a
+
+/-- ⭐A `Back` atom is the model's "comes back as" at its leg (`Model.Ret`, docs §11.20). -/
 theorem sat_back {d : ℕ} (hS : ModalSys.BStrong = true) {w : M.frame.W} (env : M.Env Γ w)
     (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
     (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) :
     M.sat env (O.back hS bd t : WFF σ Γ d) ↔
-      Model.RoundTrip (O.acc env) (fun i b => Model.interp ((O.push env i).boxPush b) bd)
+      M.Ret (O.legSet env) (fun a b => Model.interp ((O.pushS env a).boxPush b) bd)
         (Model.interp env t) := by
   cases O with
   | nec => exact Model.backs_nec_boxtm env bd (Model.interp env t)
   | pos y hy => exact Model.backs_pos_diatm env hy hy.choose_spec bd (Model.interp env t)
+
+/-- What comes back over the leg makes the round trip over its arrows (`Model.Ret_fwd`). -/
+theorem roundTrip_of_ret (hS : ModalSys.BStrong = true) {w : M.frame.W} (env : M.Env Γ w)
+    (O : OutLeg Γ) {A : VarType} {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀)
+    {o : M.frame.Dom A w}
+    (h : M.Ret (O.legSet env) (fun a b => Model.interp ((O.pushS env a).boxPush b) bd) o) :
+    Model.RoundTrip (O.acc env) (fun i b => Model.interp ((O.push env i).boxPush b) bd) o := by
+  obtain ⟨⟨a⟩, h₂⟩ := M.Ret_fwd hS h
+  cases O with
+  | nec => exact ⟨⟨a.1⟩, fun i => h₂ ⟨i, trivial⟩⟩
+  | pos y hy => exact ⟨⟨a⟩, h₂⟩
+
+/-- ⭐At a `◇`-free content the round trip over the leg comes back (`Model.Ret_conv`). -/
+theorem ret_of_roundTrip (hS : ModalSys.BStrong = true) {w : M.frame.W} (env : M.Env Γ w)
+    (O : OutLeg Γ) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
+    (bd : Term σ O.view.boxIn A a₀) {o : M.frame.Dom A w}
+    (h : Model.RoundTrip (O.acc env) (fun i b => Model.interp ((O.push env i).boxPush b) bd) o) :
+    M.Ret (O.legSet env) (fun a b => Model.interp ((O.pushS env a).boxPush b) bd) o := by
+  refine M.Ret_conv hS hA ?_
+  obtain ⟨⟨i⟩, h₂⟩ := h
+  cases O with
+  | nec => exact ⟨⟨⟨i, trivial⟩⟩, fun a => h₂ a.1⟩
+  | pos y hy => exact ⟨⟨i⟩, h₂⟩
+
+/-- A true `Back` atom makes the round trip over its leg. -/
+theorem sat_back_rt {d : ℕ} (hS : ModalSys.BStrong = true) {w : M.frame.W} (env : M.Env Γ w)
+    (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
+    (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a)
+    (hb : M.sat env (O.back hS bd t : WFF σ Γ d)) :
+    Model.RoundTrip (O.acc env) (fun i b => Model.interp ((O.push env i).boxPush b) bd)
+      (Model.interp env t) :=
+  roundTrip_of_ret hS env O bd ((sat_back hS env O bd t).mp hb)
 
 end OutLeg
 
@@ -348,7 +402,7 @@ theorem sat_back_counit (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarT
     M.sat env (WFF.holeRead t ψ) := by
   rw [sat_holeRead hnp]
   obtain ⟨i, hi⟩ := (OutLeg.sat_dia env O _).mp hd
-  exact ((OutLeg.sat_back hS env O bd t).mp hb).counit hM ψ
+  exact (OutLeg.sat_back_rt hS env O bd t hb).counit hM ψ
     ⟨i, fun b => (sat_holeRead (Ctx.noProjLast_boxIn _) _ bd ψ).mp (hi b)⟩
 
 include hnp hM in
@@ -358,7 +412,7 @@ theorem sat_back_unit (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarTyp
     (hb : M.sat env (O.back hS bd t : WFF σ Γ 0)) (hψ : M.sat env (WFF.holeRead t ψ)) :
     M.sat env (O.box (WFF.box (WFF.holeRead bd ψ).neg).neg) := by
   refine (OutLeg.sat_box env O _).mpr fun i hall => ?_
-  obtain ⟨b, hb'⟩ := ((OutLeg.sat_back hS env O bd t).mp hb).unit hM ψ
+  obtain ⟨b, hb'⟩ := (OutLeg.sat_back_rt hS env O bd t hb).unit hM ψ
     ((sat_holeRead hnp env t ψ).mp hψ) i
   exact hall b ((sat_holeRead (Ctx.noProjLast_boxIn _) _ bd ψ).mpr hb')
 
@@ -367,7 +421,7 @@ theorem sat_back_ne (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
     {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
     (t : Term σ Γ A a) (hb : M.sat env (O.back hS bd t : WFF σ Γ 0)) :
     M.sat env (O.dia (.top : WFF σ O.view 0)) := by
-  obtain ⟨i⟩ := ((OutLeg.sat_back hS env O bd t).mp hb).ne
+  obtain ⟨i⟩ := (OutLeg.sat_back_rt hS env O bd t hb).ne
   exact (OutLeg.sat_dia env O _).mpr ⟨i, trivial⟩
 
 include hnp hM in
@@ -378,13 +432,13 @@ theorem sat_back_beta (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarTyp
     (hb : M.sat env (O.back hS bd t : WFF σ Γ 0)) :
     M.sat env (O.back hS (Term.holeRead bd s) (Term.holeRead t s) : WFF σ Γ 0) := by
   rw [OutLeg.sat_back] at hb ⊢
-  have hval : (fun i (b : M.frame.Acc (O.acc env i).1) =>
-      interp ((O.push env i).boxPush b) (Term.holeRead bd s)) =
-      fun i b => M.holeVal s (interp ((O.push env i).boxPush b) bd) := by
+  have hval : (fun (i : O.legSet env) (b : M.frame.Acc i.1.1) =>
+      interp ((O.pushS env i).boxPush b) (Term.holeRead bd s)) =
+      fun i b => M.holeVal s (interp ((O.pushS env i).boxPush b) bd) := by
     funext i b
     exact interp_holeRead (Ctx.noProjLast_boxIn _) _ bd s
   rw [hval, interp_holeRead hnp env t s]
-  exact hb.map hM s
+  exact (hM.ret hS).map s hb
 
 omit [Γ.NoSlots] in
 include hM in
@@ -397,7 +451,7 @@ theorem sat_back_pair (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarTyp
     M.sat env (O.back hS (Term.pair bd bd') (Term.pair t t') :
       WFF σ Γ 0) := by
   rw [OutLeg.sat_back] at hb hb' ⊢
-  exact hb.pair hM hS hb'
+  exact (hM.ret hS).pair hb hb'
 
 omit [Γ.NoSlots] in
 theorem sat_back_eq (hS : ModalSys.BStrong = true) (L : BLeg) {A : VarType}
@@ -409,6 +463,17 @@ theorem sat_back_eq (hS : ModalSys.BStrong = true) (L : BLeg) {A : VarType}
   rw [← (sat_eqRec env A t t').mp he]
   exact hb
 
+omit [Γ.NoSlots] in
+/-- **Leibniz for the carrier**: equal carriers are one object, so they come back alike. -/
+theorem sat_back_eqC (hS : ModalSys.BStrong = true) (L : BLeg) {A : VarType}
+    {b : Ann (L.carrier A)} (s s' : Term σ Γ (L.carrier A) b) {a : Ann A}
+    (t : Term σ Γ A a) (hb : M.sat env (WFF.back hS L s t : WFF σ Γ 0))
+    (he : M.sat env (eqRec (L.carrier A) s s' : WFF σ Γ 0)) :
+    M.sat env (WFF.back hS L s' t : WFF σ Γ 0) := by
+  change M.Backs L (interp env s') (interp env t)
+  rw [← (sat_eqRec env (L.carrier A) s s').mp he]
+  exact hb
+
 include hnp hfin hM in
 /-- ⭐The own arrow (T): the carrier read here twice is interchangeable with its value. -/
 theorem sat_back_here (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A : VarType}
@@ -418,7 +483,7 @@ theorem sat_back_here (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A
     (hφ : M.sat env (WFF.instantiate Ctx.NoSlots.slots t φ)) :
     M.sat env (WFF.instantiate Ctx.NoSlots.slots (Term.collapse (Ctx.collapses_boxIn_self hT Γ)
       (Term.collapse (Ctx.collapses_boxIn_self hT Γ.boxIn) bd)) φ) := by
-  have hown := ((OutLeg.sat_back hS env .nec bd t).mp hb).own hT hS
+  have hown := (OutLeg.sat_back_rt hS env .nec bd t hb).own hT hS
   rw [sat_instantiate env hnp] at hφ ⊢
   rw [interp_collapse (Env.collapseAgree_self hT env),
     interp_collapse (Env.collapseAgree_self hT (env.boxPush (M.frame.reflAcc hT w)))]
@@ -773,7 +838,7 @@ theorem sat_back_ret (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) (O 
         (Term.castAnn hA (Term.weaken hc.root A t)) : WFF σ (Γ.insert (.free c) A) 0)) :
     M.sat env (O.back hS bd t : WFF σ Γ 0) := by
   rw [OutLeg.sat_back]
-  refine ⟨?_, fun i => ?_⟩
+  refine OutLeg.ret_of_roundTrip hS env O hA bd ⟨?_, fun i => ?_⟩
   · obtain ⟨i, _⟩ := (OutLeg.sat_dia env O _).mp hne
     exact ⟨i⟩
   · obtain ⟨r⟩ := M.frame.symm hB (O.acc env i).2.down
@@ -828,7 +893,7 @@ theorem sat_ret_counitC (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A C : Va
     M.holeSat ψ ((interp env y, interp env t) : M.frame.Dom (.VTypeProd A C) w) := by
   obtain ⟨i, e, hbox, r, hr⟩ := (OutLeg.sat_ret hS env O y _).mp hret
   rw [OutLeg.sat_lift] at hbox
-  obtain ⟨_, hall⟩ := (OutLeg.sat_back hS env .nec bd t).mp hb
+  obtain ⟨_, hall⟩ := OutLeg.sat_back_rt hS env .nec bd t hb
   obtain ⟨r', hr'⟩ := hall (O.acc env i)
   obtain rfl : r' = r := @Subsingleton.elim _ (M.frame.homeUnique hS) r' r
   have hag := Env.boxPush_agree (Env.agree_extend (env.boxPush (O.acc env i))
@@ -928,7 +993,7 @@ theorem sat_ret_bridge (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarTy
     (hd : M.sat env (O.dia (O.bodyRead (Term.boxtm bd) Φ))) :
     M.sat env (WFF.ret hS t Φ : WFF σ Γ 0) := by
   obtain ⟨i, hi⟩ := (OutLeg.sat_dia env O _).mp hd
-  obtain ⟨r, hr⟩ := ((OutLeg.sat_back hS env O bd t).mp hb).2 i
+  obtain ⟨r, hr⟩ := (OutLeg.sat_back_rt hS env O bd t hb).2 i
   refine ⟨O.acc env i, interp (O.push env i) (Term.boxtm bd),
     (OutLeg.sat_bodyRead env O i _ Φ).mp hi, r, ?_⟩
   dsimp only [ComesBack, NComesBack]

@@ -272,6 +272,9 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
   | @back_eq Γ _ Δ hS L A b s a t t' pb pe ihb ihe =>
       intro M hM w env hfin hnp hΔ
       exact sat_back_eq env hS L s t t' (ihb M hM env hfin hnp hΔ) (ihe M hM env hfin hnp hΔ)
+  | @back_eqC Γ _ Δ hS L A b s s' a t pb pe ihb ihe =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_back_eqC env hS L s s' t (ihb M hM env hfin hnp hΔ) (ihe M hM env hfin hnp hΔ)
   | @back_here Γ _ Δ hS hT A a₀ bd a t φ pb pφ ihb ihφ =>
       intro M hM w env hfin hnp hΔ
       exact sat_back_here env hnp hfin hM hS hT bd t φ (ihb M hM env hfin hnp hΔ)
@@ -301,7 +304,7 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro χ hχ
       rcases List.mem_cons.mp hχ with h₁ | h₂
       · subst h₁
-        exact (sat_back_eta_extend hS env (.free c) hc q t).mpr ⟨⟨i⟩, hc₀⟩
+        exact (sat_back_eta_extend hS env (.free c) hc q t).mpr hc₀
       · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken (T := .VTypeBox (.VTypeBox A)) env hc.root q χ').mpr (hΔ χ' hχ')
   | @ret_new Γ _ hS hB O A Φ c hc Δ φ pd p ihd ih =>

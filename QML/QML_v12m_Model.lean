@@ -416,16 +416,37 @@ structure Model (σ : Signature) where
     (_hS : ModalSys.TStrong = true) (a : frame.Dom A w),
     ∃ (p : frame.Pos A w) (hm : frame.reflAcc _hT w ∈ (posFull p).1.1),
       Ind ((posFull p).1.2 ⟨frame.reflAcc _hT w, hm⟩) a
-  /-- ⭐Strong B: wherever there is a way out, every object is the round trip of some necessarily
-      necessary carrier — from every accessible world some way home returns a value
-      indistinguishable from it (`Back`, row 1; `Model.Backs`, docs §11.3).  Up to `Ind`, as
-      `posRet_exists`, and existential for the same reason: no term former interprets it.  At every
-      content type (§11.15).  Row 2's carriers come from row 1's by strength over a nonempty
-      extent, so it has no field. -/
+  /-- ⭐Strong B: **comes back as** (docs §11.20), what `Back` reads.  A carrier is given by its
+      round-trip data: an out leg `S` (a set of arrows out), and for each of its arrows `a` the
+      carrier's value at the end of every further arrow `b`.  Like `Ind`, a primitive of the model:
+      at a `◇`-typed content no formula can single out the value a round trip brings back, so
+      "comes back as" is a requirement on models rather than a definition (§11.20, decision of
+      2026-10-10).  It implies the round trip (`Ret_fwd`), and at `◇`-free contents, where `Ind`
+      is equality, it is the round trip (`Ret_conv`).  Its congruences, which mention hole terms,
+      are in `Model.IndInvariant`. -/
+  Ret : {A : VarType} → {w : frame.W} → (S : Set (frame.Acc w)) →
+    ((a : S) → (b : frame.Acc a.1.1) → frame.Dom A b.1) → frame.Dom A w → Prop
+  /-- What comes back as `o` makes the round trip: the leg is nonempty, and from each of its arrows
+      some way home returns a value indistinguishable from `o`. -/
+  Ret_fwd : ∀ {A : VarType} {w : frame.W} (_hS : ModalSys.BStrong = true)
+    {S : Set (frame.Acc w)} {val : (a : S) → (b : frame.Acc a.1.1) → frame.Dom A b.1}
+    {o : frame.Dom A w}, Ret S val o →
+      Nonempty S ∧ ∀ a : S, ∃ r : frame.R a.1.1 w, Ind (val a ⟨w, ⟨r⟩⟩) o
+  /-- At a `◇`-free content the round trip comes back: `Back` is the definite description there
+      (`back_ret`). -/
+  Ret_conv : ∀ {A : VarType} {w : frame.W} (_hS : ModalSys.BStrong = true)
+    (_hA : A.diaFree = true) {S : Set (frame.Acc w)}
+    {val : (a : S) → (b : frame.Acc a.1.1) → frame.Dom A b.1} {o : frame.Dom A w},
+    (Nonempty S ∧ ∀ a : S, ∃ r : frame.R a.1.1 w, Ind (val a ⟨w, ⟨r⟩⟩) o) → Ret S val o
+  /-- ⭐Strong B: wherever there is a way out, every object is what some necessarily necessary
+      carrier comes back as, over every arrow out (`Back`, row 1; `Model.Backs`, docs §11.3).
+      Existential, as `posRet_exists`: no term former interprets it.  At every content type
+      (§11.15).  Row 2's carriers come from row 1's by strength over a nonempty extent, so it has
+      no field. -/
   backRet_exists : ∀ {A : VarType} {w : frame.W} (_hS : ModalSys.BStrong = true),
     Nonempty (frame.Acc w) → ∀ o : frame.Dom A w,
-      ∃ c : frame.Nec (.VTypeBox A) w, ∀ a : frame.Acc w, ∃ r : frame.R a.1 w,
-        Ind (necEval (necEval c a) ⟨w, ⟨r⟩⟩) o
+      ∃ c : frame.Nec (.VTypeBox A) w,
+        Ret (Set.univ : Set (frame.Acc w)) (fun a b => necEval (necEval c a.1) b) o
 
 namespace Model
 

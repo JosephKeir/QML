@@ -222,6 +222,7 @@ theorem indInvariant : B.model.IndInvariant where
         ((rden_lift (le_max_right u₁.i u₂.i) u₂.t).trans h₂)
     · exact Prod.ext ((rden_lift (le_max_left u₁'.i u₂'.i) u₁'.t).trans h₁')
         ((rden_lift (le_max_right u₁'.i u₂'.i) u₂'.t).trans h₂')
+  ret hS := (ModalSys.NoFour.absurdStrong hS).elim
 
 end BData
 

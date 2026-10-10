@@ -211,7 +211,10 @@ style of milestone 1, each ending green and committed:
    a kind on back arrows (`bkind`) are in; the chain is `netS` with the fair schedule `schedS`
    (`QML_v12m_BNetS`: `goodS_netS`, `ext_netS`).  Commit at birth for `Back` carriers turned out
    unnecessary, and `back_def` was replaced by `back_ret` (user, 2026-10-09; `Back` as the definite
-   description of `ret`).  **Next: L4f**, the limit and the truth lemma (`Att.back`, the `back`/`ret`
+   description of `ret`).  **Decided (user, 2026-10-10, §11.20):** at `◇`-typed contents `Back`
+   reads a model primitive `Ret` ("comes back as", keyed on round-trip data, laws in models
+   proper), as `Ind` is; built (semantics, soundness, the rule `back_eqC`).  **Next: L4f**, the
+   limit and the truth lemma (`Att.alias`/`Att.back` via `packW`, canonical `Ret`, the `back`/`ret`
    cases, the T-free decoder, removing `NoFour.noBStrong`), then step 6.
 6. **Statements.**  Completeness, strong completeness and compactness for strong B (rows 1–2,
    `◇`-free contents), under `NoFour`.

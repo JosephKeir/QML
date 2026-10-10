@@ -604,6 +604,7 @@ theorem indInvariant : (model w₀).IndInvariant where
         ((rden_lift (le_sup_right : s₂.i ≤ s₁.i ⊔ s₂.i) s₂.t).trans h₂)
     · exact Prod.ext ((rden_lift (le_sup_left : s₁'.i ≤ s₁'.i ⊔ s₂'.i) s₁'.t).trans h₁')
         ((rden_lift (le_sup_right : s₂'.i ≤ s₁'.i ⊔ s₂'.i) s₂'.t).trans h₂')
+  ret hS := (ModalSys.NoB.absurdStrong hS).elim
 
 end Canon
 

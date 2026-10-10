@@ -2454,6 +2454,12 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
       Proof.back_eq hS L (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
         (Term.subst ι θ hθ hc t') (Proof.subst pb θ hθ hc hΓ)
         (Proof.conv (WFF.subst_eqRec_gen θ hθ hc hΓ hΓ' A t t') (Proof.subst pe θ hθ hc hΓ))
+  | _, _, _, @Proof.back_eqC _ _ Γ _ _ hS L A b s s' a t pb pe, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      Proof.back_eqC hS L (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc s')
+        (Term.subst ι θ hθ hc t) (Proof.subst pb θ hθ hc hΓ)
+        (Proof.conv (WFF.subst_eqRec_gen θ hθ hc hΓ hΓ' (L.carrier A) s s')
+          (Proof.subst pe θ hθ hc hΓ))
   | _, _, _, @Proof.back_here _ _ Γ _ _ hS hT A a₀ bd a t φ pb pφ, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       Proof.conv (WFF.subst_backHere hT θ hθ hc hΓ hΓ' bd φ).symm

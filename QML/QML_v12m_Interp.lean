@@ -288,18 +288,17 @@ def Realised (hT : ModalSys.T = true) {A : VarType} {w : M.frame.W}
   ∃ hm : M.frame.reflAcc hT w ∈ (M.posEval p).1,
     M.Ind ((M.posEval p).2 ⟨M.frame.reflAcc hT w, hm⟩) o
 
-/-- ⭐`c` **comes back as** `o` (strong B, `Back`; docs §11.1): its out leg is nonempty, and from
-    every arrow of it some way home returns a value indistinguishable from `o`.  Row 1 (`nec`): the
-    out leg is every arrow out of `w`; row 2 (`pos`): the carrier's own extent. -/
+/-- ⭐`c` **comes back as** `o` (strong B, `Back`; docs §11.1, §11.20): the model's `Ret` at the
+    carrier's round-trip data.  Row 1 (`nec`): the out leg is every arrow out of `w`; row 2
+    (`pos`): the carrier's own extent; the values are the carrier's contents read one arrow on. -/
 def Backs : (L : BLeg) → {A : VarType} → {w : M.frame.W} → M.frame.Dom (L.carrier A) w →
     M.frame.Dom A w → Prop
   | .nec, A, w, c, o =>
-      Nonempty (M.frame.Acc w) ∧ ∀ a : M.frame.Acc w, ∃ r : M.frame.R a.1 w,
-        M.Ind (M.necEval (M.necEval (c : M.frame.Nec (.VTypeBox A) w) a) ⟨w, ⟨r⟩⟩) o
-  | .pos, A, w, c, o =>
-      Nonempty (M.posEval (c : M.frame.Pos (.VTypeBox A) w)).1 ∧
-        ∀ a : (M.posEval (c : M.frame.Pos (.VTypeBox A) w)).1, ∃ r : M.frame.R a.1.1 w,
-          M.Ind (M.necEval ((M.posEval (c : M.frame.Pos (.VTypeBox A) w)).2 a) ⟨w, ⟨r⟩⟩) o
+      M.Ret (Set.univ : Set (M.frame.Acc w))
+        (fun a b => M.necEval (M.necEval (c : M.frame.Nec (.VTypeBox A) w) a.1) b) o
+  | .pos, A, _, c, o =>
+      M.Ret (M.posEval (c : M.frame.Pos (.VTypeBox A) _)).1
+        (fun a b => M.necEval ((M.posEval (c : M.frame.Pos (.VTypeBox A) _)).2 a) b) o
 
 /-- A necessary object out there **comes back as** `o` along the way home `r`: each necessary part's
     reading along `r` is `Ind` to its value. -/

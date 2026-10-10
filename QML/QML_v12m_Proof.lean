@@ -326,6 +326,14 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       (s : Term σ Γ (L.carrier A) b) {a : Ann A} (t t' : Term σ Γ A a) :
       Proof σ Γ Δ (WFF.back hS L s t) → Proof σ Γ Δ (eqRec A t t') →
       Proof σ Γ Δ (WFF.back hS L s t')
+  /-- **Leibniz for the carrier** (docs §11.20): equal carriers come back alike.  `back_eq`'s
+      twin; needed because "comes back as" is a model primitive at `◇`-typed contents, read off
+      the theory's atoms in the canonical model. -/
+  | back_eqC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (L : BLeg) {A : VarType} {b : Ann (L.carrier A)}
+      (s s' : Term σ Γ (L.carrier A) b) {a : Ann A} (t : Term σ Γ A a) :
+      Proof σ Γ Δ (WFF.back hS L s t) → Proof σ Γ Δ (eqRec (L.carrier A) s s') →
+      Proof σ Γ Δ (WFF.back hS L s' t)
   /-- ⭐**The own arrow** (§11.5 (4)): under T the identity is an arrow out, and its only way home
       is the identity, so the carrier read here twice is interchangeable with its value. -/
   | back_here {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)

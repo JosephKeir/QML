@@ -176,6 +176,24 @@ def holeVal {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) 
   interp ((Env.empty v).extend (.bnd 0) o) s
 
 variable (M) in
+/-- ⭐**"Comes back as" is a congruence** (strong B, docs §11.20): a hole term maps the values
+    and what they come back as (`back_beta`); two carriers over one leg pair (`back_pair`).  Part
+    of a model proper (`IndInvariant.ret`), since it mentions hole terms. -/
+structure RetCongr : Prop where
+  map : ∀ {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
+    {w : M.frame.W} {S : Set (M.frame.Acc w)}
+    {val : (a : S) → (c : M.frame.Acc a.1.1) → M.frame.Dom A c.1} {o : M.frame.Dom A w},
+    M.Ret S val o → M.Ret S (fun a c => M.holeVal s (val a c)) (M.holeVal s o)
+  pair : ∀ {A B : VarType} {w : M.frame.W} {S : Set (M.frame.Acc w)}
+    {val : (a : S) → (c : M.frame.Acc a.1.1) → M.frame.Dom A c.1}
+    {val' : (a : S) → (c : M.frame.Acc a.1.1) → M.frame.Dom B c.1}
+    {o : M.frame.Dom A w} {o' : M.frame.Dom B w},
+    M.Ret S val o → M.Ret S val' o' →
+      M.Ret (A := .VTypeProd A B) S
+        (fun a c => ((val a c, val' a c) : M.frame.Dom (.VTypeProd A B) c.1))
+        ((o, o') : M.frame.Dom (.VTypeProd A B) w)
+
+variable (M) in
 /-- ⭐**A model proper.**  `Ind` is **indistinguishability**: related objects satisfy the same
     formulas, whatever the rest of the environment (`inv`).  This is the semantic content of
     `Proof.here_subst` — co-named objects are interchangeable — and it is a condition on models
@@ -188,7 +206,10 @@ variable (M) in
     And `Ind` is a **congruence** for what strong B builds values with (§11.15): it is preserved by
     a hole term (`map`, `back_beta`/`ret_beta`) and by pairing (`pair`, `back_pair`/`ret_ext`).  At
     a `◇`-free type, `Ind` to a named object is equality (`Model.eq_of_ind`) and these are free;
-    at a `◇`-typed content they are what returning a value *up to `Ind`* needs. -/
+    at a `◇`-typed content they are what returning a value *up to `Ind`* needs.
+
+    Under strong B, "comes back as" (`Model.Ret`) is a congruence for the same two operations
+    (`ret`: `back_beta`, `back_pair`); its invariance under `Ind` is part of `inv`. -/
 structure IndInvariant : Prop where
   inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLast → ∀ {w : M.frame.W} (env : M.Env Γ w)
     {A : VarType} (φ : WFF σ (Γ.insert (.bnd 0) A) 1) (o o' : M.frame.Dom A w),
@@ -197,10 +218,13 @@ structure IndInvariant : Prop where
     {w : M.frame.W} {o o' : M.frame.Dom A w}, M.Ind o o' → M.Ind (M.holeVal s o) (M.holeVal s o')
   pair : ∀ {A B : VarType} {w : M.frame.W} {a a' : M.frame.Dom A w} {b b' : M.frame.Dom B w},
     M.Ind a a' → M.Ind b b' → M.Ind (A := .VTypeProd A B) (w := w) (a, b) (a', b')
+  ret : ModalSys.BStrong = true → M.RetCongr
 
-/-- A model whose `Ind` is equality is a model proper. -/
+/-- A model whose `Ind` is equality is a model proper, given that "comes back as" is a
+    congruence. -/
 theorem indInvariant_of_eq
-    (h : ∀ {A : VarType} {w : M.frame.W} (o o' : M.frame.Dom A w), M.Ind o o' → o = o') :
+    (h : ∀ {A : VarType} {w : M.frame.W} (o o' : M.frame.Dom A w), M.Ind o o' → o = o')
+    (hR : ModalSys.BStrong = true → M.RetCongr) :
     M.IndInvariant where
   inv := by
     intro Γ _ _ _ w env A φ o o' hi
@@ -213,6 +237,7 @@ theorem indInvariant_of_eq
     intro _ _ _ _ _ _ _ ha hb
     rw [h _ _ ha, h _ _ hb]
     exact M.Ind_refl _
+  ret := hR
 
 /-! ## What the pinned form says -/
 

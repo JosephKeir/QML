@@ -6553,6 +6553,27 @@ laws — not `back_cases`.**
 * *Kept from the analysis above:* `Att.alias` and `Att.back` with `packW`; the `ret` truth case;
   the positive and `◇`-free negative `back` cases; the size changes; the decoder.
 
+**`Ret` built (2026-10-10): the semantics only, T off and on alike.**
+* *Keyed on round-trip data, not on carrier objects.*  On objects, row 2's map and pair laws
+  would have needed shape equalities between compiled hole terms (a possible object includes its
+  shape, `posFull_inj`), or laws over every object with a given section, which over-constrain the
+  canonical model.  Keyed on the data (the leg as a set of arrows out, and the carrier's values one
+  arrow on), `Ret` is literally the old `RoundTrip` made primitive, and its laws are the old
+  lemmas.  Canonically, carriers on different legs never share a nonempty extent (each arrow has
+  one kind), so the data identify the leg.
+* *Model* (`QML_v12m_Model`): fields `Ret`, `Ret_fwd` (implies the round trip), `Ret_conv`
+  (the converse at `◇`-free contents), and `backRet_exists` restated with `Ret`.
+* *Models proper* (`QML_v12m_SemHere`): `RetCongr` (map by a hole term, pairing), required under
+  strong B by `IndInvariant.ret`.  Invariance under `Ind` is part of `inv`.
+* *Semantics* (`Interp`, `SemBack`): `Backs` is `Ret` at the carrier's data.
+  `OutLeg.legSet`/`pushS` give the leg as a set; `OutLeg.sat_back` reads a `Back` atom as `Ret`.
+  `sat_back_rt` (forward) and `ret_of_roundTrip` (converse, `◇`-free) go between `Ret` and
+  `RoundTrip`, so the round-trip soundness proofs are unchanged.
+* *New rule* `back_eqC` (Leibniz for the carrier, twin of `back_eq`): `Proof.subst` case and
+  soundness (`sat_back_eqC`, trivial since `eqRec` true means equal objects).
+* Existing canonical models set `Ret := False` with the laws vacuous (strong B is off there).
+* *Next* (L4f): the canonical `Ret` read off the `Back` atoms, with its laws.
+
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`
   contains `□`.  So for a slot `□A` with `A` box-free the second component has a canonical
