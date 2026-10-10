@@ -191,6 +191,58 @@ theorem InjOk.mkChild {N : NetSt σ} (h : N.InjOk) {s : Node} (hs : N.Live s)
     · exact h
   · exact h
 
+/-! ## Weak B records no back witness -/
+
+/-- No node records a back witness. -/
+def NoBk (N : NetSt σ) : Prop := ∀ k, N.bkind k = none
+
+omit [ModalSys.NoFour] in
+theorem NoBk.init {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : (init M₀).NoBk :=
+  fun _ => rfl
+
+omit [ModalSys.NoFour] in
+theorem NoBk.setSt {N : NetSt σ} (h : N.NoBk) (s : Node) (t : NodeSt σ) :
+    (N.setSt s t).NoBk := h
+
+omit [ModalSys.NoFour] in
+theorem NoBk.newChild {N : NetSt σ} (h : N.NoBk) (s : Node) (kd : Option (VarSymb × VarType))
+    (cx : ℕ) (t : NodeSt σ) (fimg₀ : ℕ → ℕ) (bcl₀ : List VarType) (bimg₀ : ℕ → ℕ) :
+    (N.newChild s kd cx t fimg₀ bcl₀ bimg₀ none).NoBk := by
+  intro k
+  change Function.update N.bkind (N.nch s :: s) none k = none
+  by_cases hk : k = N.nch s :: s
+  · rw [hk, Function.update_self]
+  · rw [Function.update_of_ne hk]
+    exact h k
+
+theorem NoBk.applyOp {N : NetSt σ} (h : N.NoBk) (o : Op σ) : (N.applyOp o).NoBk := by
+  rcases o with ⟨s, ⟨l, φ⟩⟩ | ⟨s, ⟨l, φ⟩⟩ | k | k
+  · simp only [NetSt.applyOp, NetSt.henk]
+    split_ifs <;> (try split) <;> (try split_ifs) <;> exact h
+  · simp only [NetSt.applyOp, NetSt.mkChild]
+    split_ifs <;> (try split) <;> (try split_ifs) <;> (try split) <;>
+      first | exact h | exact h.newChild _ _ _ _ _ _ _
+  · simp only [NetSt.applyOp]
+    split_ifs
+    · match k with
+      | [] => exact h
+      | c :: p =>
+          simp only [NetSt.realF]
+          split_ifs
+          · exact h
+          · exact h
+    · exact h
+  · simp only [NetSt.applyOp]
+    split_ifs
+    · match k with
+      | [] => exact h
+      | c :: p =>
+          simp only [NetSt.realB]
+          split_ifs
+          · exact h
+          · exact h
+    · exact h
+
 /-- ⭐Every operation of weak B keeps the images injective. -/
 theorem InjOk.applyOp {N : NetSt σ} (hN : N.Good) (h : N.InjOk) (o : Op σ) :
     (N.applyOp o).InjOk := by

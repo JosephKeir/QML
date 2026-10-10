@@ -25,6 +25,20 @@ namespace BArrow
 
 variable {σ : Signature} [ModalSys.NoFour] {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
 
+/-! ## Back-witness arrows -/
+
+/-- ⭐A back-witness child's back arrow: its variables `bcl` have images `bimg` at the parent, with
+    `□_e` transfer, `e.dia` going to the parent's variable `cx` (docs §11.20).  Nothing for a child
+    with no back witness. -/
+def BackXData [ModalSys.NoFour] (tk tp : NodeSt σ) :
+    Option (VarSymb × VarType) → ℕ → List VarType → (ℕ → ℕ) → Prop
+  | none, _, _, _ => True
+  | some (e, X), cx, bcl, bimg =>
+      ∃ (hsuf : bcl <:+ tk.l) (himg : ImgOk bcl (ctxOf tp.l) bimg)
+        (hx : (ctxOf bcl).ref e = some (.VTypeDia X))
+        (hcx : (ctxOf tp.l).ref (.root (.free cx)) = some X),
+        TransferX tk.M bcl (ctxOf_le_of_suffix hsuf) hx tp.M bimg himg cx hcx
+
 /-! ## Fair chains -/
 
 /-- ⭐**What the limit needs of a chain of networks** from a root theory `M₀`. -/
@@ -34,6 +48,10 @@ structure FairChain (M₀ : Set (WFF σ (ctxOf l₀) 0)) where
   good : ∀ n, (net n).Good
   /-- Every arrow's images are injective (`NetSt.InjOk`): the T-free decoder's `ImgInj`. -/
   inj : ∀ n, (net n).InjOk
+  /-- A back-witness child's back arrow lies in its witness's extent (`BackXData`). -/
+  backX : ∀ n c p, (net n).Live (c :: p) → (net n).kind (c :: p) = none →
+    BackXData ((net n).st (c :: p)) ((net n).st p) ((net n).bkind (c :: p)) ((net n).cx (c :: p))
+      ((net n).bcl (c :: p)) ((net n).bimg (c :: p))
   ext : ∀ {n m : ℕ}, n ≤ m → NetSt.Ext (net n) (net m)
   fwd_total : ∀ {n c : ℕ} {p : Node}, (net n).Live (c :: p) → ∀ {r : ℕ},
     r < ((net n).st p).l.length → ∃ m, n ≤ m ∧ r < ((net m).fcl (c :: p)).length
@@ -132,6 +150,9 @@ structure OpChain (M₀ : Set (WFF σ (ctxOf l₀) 0)) where
   zero : net 0 = NetSt.init M₀
   good : ∀ n, (net n).Good
   inj : ∀ n, (net n).InjOk
+  backX : ∀ n c p, (net n).Live (c :: p) → (net n).kind (c :: p) = none →
+    BackXData ((net n).st (c :: p)) ((net n).st p) ((net n).bkind (c :: p)) ((net n).cx (c :: p))
+      ((net n).bcl (c :: p)) ((net n).bimg (c :: p))
   ext : ∀ {n m : ℕ}, n ≤ m → NetSt.Ext (net n) (net m)
   henk : ∀ (s : Node) (o : Obl σ) (m : ℕ), ∃ n, m ≤ n ∧
     ((net n).Live s → net (n + 1) = (net n).henk s o)
@@ -399,6 +420,7 @@ def toFair : FairChain M₀ where
   zero := C.zero
   good := C.good
   inj := C.inj
+  backX := C.backX
   ext := C.ext
   fwd_total := C.fwd_total
   back_total := C.back_total
@@ -420,6 +442,11 @@ theorem inj_net (hB : ModalSys.B = true) (hM₀ : Theory.IsMCS M₀) : ∀ n, (n
   | 0 => NetSt.InjOk.init M₀
   | n + 1 => (inj_net hB hM₀ n).applyOp (good_net hB hM₀ n) (sched n)
 
+/-- Weak B's chain records no back witness. -/
+theorem noBk_net (M₀ : Set (WFF σ (ctxOf l₀) 0)) : ∀ n, (net M₀ n).NoBk
+  | 0 => NetSt.NoBk.init M₀
+  | n + 1 => (noBk_net M₀ n).applyOp (sched n)
+
 theorem net_succ_of {n : ℕ} {o : Op σ} (h : sched n = o) :
     net M₀ (n + 1) = (net M₀ n).applyOp o := by
   rw [← h]
@@ -431,6 +458,9 @@ noncomputable def weakOpChain (hB : ModalSys.B = true) (hM₀ : Theory.IsMCS M�
   zero := rfl
   good := good_net hB hM₀
   inj := inj_net hB hM₀
+  backX n c p _ _ := by
+    rw [noBk_net M₀ n (c :: p)]
+    trivial
   ext := ext_net hB hM₀
   henk s o m := by
     obtain ⟨n, hmn, hs⟩ := sched_after (σ := σ) (.inl (s, o)) m
