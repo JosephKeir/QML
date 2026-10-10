@@ -6387,6 +6387,172 @@ the negative `Back` atom at `◇`-typed contents.
   * New: the rule `back_cases` (with soundness and `Proof.subst`), the separating-child
     operation with `Sep`, and the key lemma on `Att`.
 
+**`back_cases` simplified, and points 1–2 checked (2026-10-10, paper).**
+* *Simplified rule* (user: "doesn't look too bad as it is"):
+  * `◇⊤` is dropped: with n ≥ 1 it follows from `Back bd'₁ t` (`back_ne`).
+  * Stated over any out leg `O`, as `back_ret` is, so row 2 comes for free.
+  * The premise is the dual of `ret_unit`'s unit body (`O.box ¬unitBody(…)`), so it reuses
+    `WFF.unitBody`:
+
+        Back bd'ᵢ t (1 ≤ i ≤ n)    Φ(ā)    O.box ¬◇[d ↦ ā.box](Φ(d) ∧ ⋀ᵢ ¬eqRec(bd, bd'ᵢ))
+        ──────────────────────────────────────────────────────────────────────────────
+        Back bd t
+
+  * `Φ`/`ā` cannot go: without a description of home, the inner `ret` is `◇` and the rule is
+    the weak `□□(⋁Eᵢ)` form.  The n carriers cannot go either: "agrees with one of them" is a
+    disjunction, and packing them with `back_pair` is only notation.
+  * *To check:* derivability from `back_ret` at `◇`-free types (not on the critical path).
+* *Typing in the network* (T off).  `bc(□□◇X) = □◇X` and `bc(□◇X) = ◇X`.  So a carrier's
+  `◇` parts are `□□`-items of `s`; at the plain child `k*` (`fimg = id`) they are items of
+  `k*`'s `□◇X` roots; and their back images are fresh `◇`-roots `c` of `s`.
+  * `E(u, u') := eqRec(R(u), R(u'))` is `liftBody` of the body `eqRec(bd, bd')` over `k*`'s `□`
+    view: a `RetInv` body with no bound object.
+  * It is stateable at `s` once the roots of `k*` that `bd`, `bd'` read have been committed back.
+* *The invariant.*  `SepInv(s, k*)` is `RetInv(s → k*)` with `σ_I := ⋀_{i ∈ I} ¬eqRec(bd, bd'ᵢ)`
+  conjoined in the `ret` body, for every finite set `I` of attesting carriers over the committed
+  language: `liftBody Φ ∈ M s ⇒ ◇[d' ↦ W](Φ ∧ σ_I) ∈ M k*`.
+* *Birth: checked.*
+  * At birth `clt = []`, so a body is a hole formula of `d'`, and `W` are `s`'s items, so
+    `ā := boxtm (tupT)`.
+  * The seed `{ψ : □ψ ∈ M s} ∪ {◇[d' ↦ W](Φ ∧ σ_I)}` is closed under conjunction of the
+    `Φ`s and union of the `I`s (`ret_monoS`).
+  * A refutation gives `M s ⊢ □¬◇[d' ↦ ā.box](Φ ∧ σ_I)`, and `back_cases` gives `Back u t`: a
+    contradiction.  (`I = ∅`: the formula already follows from `ret_unit_base`.)
+* *Point 1, the back step: checked.*  Committing `k*`'s next root back to a fresh `c`, add
+  `⋀¬E(c)` to the parent's seed.
+  * *Consistent.*  A refutation, closed under conjunction and generalised over `c` by plain
+    `∀`-introduction (`c` is the only fresh name, so no `packW`), gives
+    `F := ∀z (◇[d ↦ ⟨V, z⟩]Θ → ⋁E(z)) ∈ M s`.
+  * `F` is a `RetInv` body: `V` and `z` are back images, so `k*`-view terms.  So `SepInv` gives
+    `◇[d' ↦ W](F ∧ σ) ∈ M k*`.
+  * `ret_unit` at `k*` (`Θ` holds there, and the body is kept) adds
+    `◇[e ↦ ⟨V̂, ẑ⟩]Θ` at that far end.  Instantiating `F` at `z := ẑ` gives `⋁E` against `σ`:
+    absurd.
+  * *`SepInv` is kept.*  `retStep_rev`'s argument goes through with `Φ ∧ σ`, since `σ` read at
+    `s` is now in `M s`.
+* *Fwd steps for old carriers: checked.*  `retStep` with `Φ ∧ σ`: `σ` does not mention the new
+  root, so `∃e (Φ ∧ σ) = (∃e Φ) ∧ σ`, then `ret_extS`.
+* *Other operations: checked.*  They leave the committed languages, and so (by conservativity
+  of MCS extensions) `SepInv`, alone.
+* ⚠️*Point 2 fails as sketched: carriers built from roots born later.*
+  * A root `ρ` born at `s` after `k*` can carry an attesting carrier `u'(ρ)` with
+    `Back u'(ρ) t ∈ M s`, sharing `u`'s witnesses and differing in `◇`-free contents.
+  * `E(u, u'(ρ))` is stateable at `s` only after `ρ` is committed forward to `k*` (as `ρ'`) and
+    `ρ'`'s items are committed back.
+  * At the forward step, `k*` must get `◇[d' ↦ ⟨W, ρ'⟩](Φ ∧ σ ∧ ¬eqRec(bd, bd'(ρ'.box)))`.  Its
+    refutation is a fact of `k*` over its *old* language,
+    `∀z (◇[d' ↦ ⟨W, z⟩](Φ ∧ σ) → ¬◇[d' ↦ ⟨W, z⟩](Φ ∧ σ ∧ ¬eqRec(bd, bd'(z.box))))`.  An earlier
+    completion of `k*` was free to choose it, and `s` cannot contradict it, since it cannot
+    state `E(u, u'(ρ))` yet.
+  * The birth seed cannot anticipate this.  The family `{u'(e)}` would need `back_cases` over
+    families of carriers (`∀e (Ψ(e) → Back u'(e) t)`).  But stating a family member's return
+    along a given arrow needs the reading of a bound object at the far world: the same naming
+    problem as before.
+  * One separating child per stage does not obviously help either: each can be spoiled by a
+    carrier born after it, and no finite set of spoilers contradicts `¬Back u t`.
+  * *Open.*  Candidates:
+    * a family version of `back_cases` with a way to name a member's return;
+    * controlling the completions at `k*` (forbid the `∀z`-agreement facts at birth: the
+      `∃z ◇[d' ↦ ⟨W, z⟩](…)` form is stateable at `k*`, but its consistency needs the family
+      rule);
+    * option (c).
+
+**Point 2 resolved on paper: name the image, not the object (2026-10-10, user + paper).**
+* *The recurring obstacle.*  Each failure needed the return of some home object along a given
+  arrow, and at `◇` types a bound far object cannot be identified with a home object: that would
+  be cross-witness equality, which stays excluded (user).
+* ⭐*The uniform device.*  Never compare across witnesses.  To talk about a home object's return
+  along an arrow, name its **image at the far world**: a given object `ā` has the image `ā.box`;
+  any other object `e` gets a universally quantified image `z` there.  Then go back home with a
+  returning possibility valued at that image: `◇[⟨d, e⟩ ↦ ⟨ā.box, z⟩]`.
+  * Inside that body (at the home-like world, in the far world's `□` view), the carrier `bd` and
+    any carrier read through `z` are terms over the *same* witnesses, so `eqRec` between them is
+    the ordinary same-witness equality.
+  * Facts about home, `Back` atoms included, are said of the bound `⟨d, e⟩` there.
+* ⭐*`back_cases`, family form* (over any out leg `O`; `vᵢ(d, e)` carrier schemes, `bdᵢ` their
+  bodies read at the far world, `d ↦ ā.box`, `e ↦ z`):
+
+      O.dia ⊤    Φ(ā)
+      O.box ∀z ¬◇[⟨d, e⟩ ↦ ⟨ā.box, z⟩](Φ(d) ∧ ⋀ᵢ (Back vᵢ(d, e) t(d) → ¬eqRec(bd, bdᵢ(ā.box, z))))
+      ──────────────────────────────────────────────────────────────────────────────────────
+      Back bd t
+
+  * Fixed carriers are the schemes that do not mention `e`.  `t` is said through `d`, like
+    everything else about home.
+  * A scheme whose witness positions differ from `bd`'s is ill-typed there and is simply left
+    out: its returns have other witnesses, so it cannot attest `u`'s returns anyway.
+  * *Sound.*  Take an arrow `a : s → k` with way home `r`, and any `e` at `s`.  Set `z := e`'s
+    reading at `k`.  The world `s`, via `r`, is a way back from `k` with `⟨ā, e⟩` returning as
+    `⟨ā.box, z⟩` (`Ind` by reflexivity) and with `Φ(ā)`.
+    * So some `i` has `Back vᵢ(ā, e) t` at `s` and `eqRec(bd, bdᵢ)` along `a` then `r`.  So `u`'s
+      return is `vᵢ(ā, e)`'s, which is `Ind t`.
+    * `Back` along `r`'s way home is the arrow `a` itself, so `Back` at `s` covers it.
+    * Uses nonempty domains at `e`'s type; otherwise add a separate `e`-free premise.  To check.
+  * Bound for the far object is a `□` type, so `e` is a necessary object.  The schemes read its
+    items-of-items, and its image `z` exposes `z.box` in the body's view.
+* *The construction: the separating child, with future slots.*
+  * `SepInv'(s, k*)`: for every body `Φ` true at `s`, every finite set of schemes, and every
+    number of future slots `ē`:
+    `∃z̄ ◇[⟨d', ē⟩ ↦ ⟨W, z̄⟩](Φ ∧ ⋀ᵢ (Back vᵢ t → ¬eqRec(bd, bdᵢ))) ∈ M k*`.
+  * *Birth.*  The seed is `□`-contents plus these formulas.  Finite sets reduce to one formula
+    (conjoin the `Φ`s, unite the schemes, pad the slots).  A refutation gives exactly
+    `back_cases`' premise at `s`, hence `Back u t`: a contradiction.  (`◇⊤ ∈ M s`, else
+    `¬Back` holds trivially.)
+  * *Forward step* (`s`'s root `ρ` committed to `k*` as `ρ'`): take `ρ'` as the Henkin witness
+    of the first slot.  The new seed `{∃z̄' ◇[⟨d', e, ē'⟩ ↦ ⟨W, ρ', z̄'⟩](…)}` reduces to one
+    formula and follows from the old one with `z := ρ'`.  So `SepInv'` is kept, for carriers
+    over `ρ` too.  This is what point 2 lacked: `k*` anticipates every later root.
+  * *Back step* (point 1).  Add `¬E(u, w)` for every carrier `w` over the committed language with
+    `Back w t ∈ M s`.  Consistency is as before (∀-introduction gives `F`; `SepInv'` with
+    `Φ := F ∧ ⋀ Back wᵢ t` and no future slots; `ret_unit` at `k*`; instantiate).  `SepInv'` is
+    kept by `retStep_rev`'s argument.
+  * *Other operations* leave the committed languages alone.
+  * *Truth lemma.*  An attestation of `u`'s return along `k*` comes from a carrier `w` with
+    `Back w t` (the key lemma).  `w = v(ā)` for some scheme and roots, all eventually committed
+    both ways, and the back step that completes them puts `¬E(u, w)` into `M s`.  So the
+    denotations differ, `¬Ind`, and the model refutes `Back u t`.
+* *Status: paper.*
+  * Remaining checks: nonempty domains; whether `back_ret` is the `◇`-free special case (a clause
+    `bd ≠ t(d)`, typable only there); and how the future slots are typed in `NetSt`.
+  * New in the build: `back_cases` (family form; soundness, `Proof.subst`), the separating
+    child with `SepInv'`, and the key lemma on `Att`.
+
+⭐**Decision (user, 2026-10-10): `Back` at `◇`-typed contents is a model primitive, constrained by
+laws — not `back_cases`.**
+* *The principle* (user).  When something looks like an equality between `◇`-typed objects
+  without a proper link (a map between their inner contexts), it cannot be expressed in the
+  object language, so it becomes a **requirement on models** instead.
+  * This is how `Ind` was handled (§10.23–10.33, models proper), a route known to work.
+  * The rule-based route keeps meeting the same obstacle (§11.16's `≈`; `back_cases` and its
+    family form above).  Ever more elaborate rules are added until a proper equality seems
+    needed, and such an equality brings insoluble problems of its own (§10.3, §11.16).
+* *The design.*  Each model supplies `Ret(u, t)` ("`u` comes back as `t`"), and `Back u t` is
+  true when `Ret` holds.  A model proper satisfies:
+  1. *forward:* `Ret(u, t)` implies the round trip (leg nonempty, every return `Ind t`): sound
+     `back_ne`, `ret_counitC`, `ret_bridge`;
+  2. *converse at `◇`-free contents only:* there `Ret` is the round trip, so `back_ret` (the
+     definite description) stays sound;
+  3. *closure:* under hole terms, pairs and `eqRec` on the value (`back_beta`, `back_pair`,
+     `back_eq`);
+  4. *existence:* on a nonempty leg every object has a carrier with `Ret` (`B_strong`);
+  5. *invariance:* under `Ind`, carrier and value (part of `IndInvariant`).
+  * So `Back` is defined where equality exists and primitive where it does not, exactly as `Ind`
+    is equality at `◇`-free types and primitive at `◇` types.
+* *Canonically* `Ret` is what the `Back` atoms say, up to representatives:
+  * forward by `Att.back`;
+  * the `◇`-free converse by `back_ret` + `henk_ex`;
+  * closure by the rules;
+  * existence by `B_strong`;
+  * invariance by `Att.rel`.
+  * The negative `◇`-typed case of the truth lemma is then immediate.
+  * Needed: **Leibniz for the carrier** (`eqRec u u' ⊢ Back u t → Back u' t`), twin of
+    `back_eq`; either a case of general Leibniz or a small rule.
+* *Dropped:* `back_cases` (both forms), the separating child, `SepInv'`, and the key lemma on
+  `Att`.  The logic is unchanged; only the class of models widens (no formula valid only by the
+  converse at `◇` types is in the system).
+* *Kept from the analysis above:* `Att.alias` and `Att.back` with `packW`; the `ret` truth case;
+  the positive and `◇`-free negative `back` cases; the size changes; the decoder.
+
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`
   contains `□`.  So for a slot `□A` with `A` box-free the second component has a canonical
