@@ -6660,6 +6660,37 @@ laws — not `back_cases`.**
     determine annotations in the canonical model at every world with an arrow out.
   * `Good`/`GoodS` are untouched: `InjOk` is a separate invariant, used only when T is off.
 
+**The pair law asks for carriers' data (2026-10-10).**  `RetCongr.pair` now takes two carriers'
+data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
+* *Why.*  The canonical model cannot pair arbitrary data.  A `◇`-free component's data need not
+  be any carrier's, so no `Back` atom stands behind it.
+* Soundness only pairs carriers (`back_pair`; `OutLeg.isCarrierData`).
+* The other laws stay general: the canonical `Ret` will be `(◇-free ∧ round trip) ∨ atoms`, and a
+  hole term cannot build a `◇`-typed value from a `◇`-free one.
+
+**Plan for strong B's canonical model (E1, T off).**
+* (a) *Back-witness arrows in extents.*  A `FairChain` field for `TransferX` along a back-witness
+  child's back arrow (vacuous for weak B, from `RetData` for strong).  `lkd` then covers back
+  arrows, and `BData`'s `kd`/`hcx`/`hxX`/`trX` extend.
+* (b) *A strong fair chain.*  `FairChain` plus: `GoodS` at every round; fairness of aliases and of
+  the three returning successors (`child_dia`-style statements).
+* (c) *The returning-possibility invariants at the limit* (`RetInv`, `RetInvW`, `RetInvX`), as
+  `tr`/`trX` are carried from `Transfer`.
+* (d) *The canonical `Ret`* := `(◇`-free ∧ round trip`) ∨` "some carrier term with this data has a
+  `Back` atom".
+  * Laws: `Ret_fwd` (an atom's returns are interchangeable with its value: (c), `ret_counitC`,
+    `packRoots` tail); `Ret_conv` by definition; `backRet_exists` by `B_strong`'s Henkin witness.
+* (e) *Truth lemma cases.*
+  * `ret`/`retx` both ways: (b), (c), aliases (`alias_interch`), the decoder
+    (`bdata_ann_eq_of_rden_noT`).
+  * `back`: `◇`-free by `back_ret` + `henk_ex` + the `ret` case; `◇`-typed by `Ret`'s definition
+    and `back_eqC`/`back_eq`.
+* (f) Then:
+  * `WFF.size` of `retS`/`retxS`/`back` dominates `eqRecSize`;
+  * `RetCongr` in `BInd` (map by `back_beta`, pair by `back_pair` with the `◇`-free truth case);
+  * remove `NoFour.noBStrong`;
+  * the completeness statements.
+
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`
   contains `□`.  So for a slot `□A` with `A` box-free the second component has a canonical

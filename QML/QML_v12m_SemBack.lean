@@ -375,6 +375,25 @@ theorem ret_of_roundTrip (hS : ModalSys.BStrong = true) {w : M.frame.W} (env : M
   | nec => exact ⟨⟨⟨i, trivial⟩⟩, fun a => h₂ a.1⟩
   | pos y hy => exact ⟨⟨i⟩, h₂⟩
 
+/-- A carrier term's data at its leg is its interpretation's (`Model.carrierData`). -/
+theorem isCarrierData {w : M.frame.W} (env : M.Env Γ w) (O : OutLeg Γ) {A : VarType}
+    {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) :
+    M.IsCarrierData (O.legSet env) (fun a b => Model.interp ((O.pushS env a).boxPush b) bd) := by
+  cases O with
+  | nec =>
+      refine ⟨.nec, Model.interp env (Term.boxtm (Term.boxtm bd)), ?_⟩
+      refine Sigma.ext rfl (heq_of_eq (funext fun a => funext fun b => ?_))
+      change M.necEval (M.necEval (Model.interp env (Term.boxtm (Term.boxtm bd)) :
+        M.frame.Nec (.VTypeBox A) w) a.1) b = _
+      rw [Model.box_beta env (Term.boxtm bd) a.1, Model.box_beta (env.boxPush a.1) bd]
+      rfl
+  | pos y hy =>
+      refine ⟨.pos, Model.interp env (Term.diatm y hy (Term.boxtm bd)), ?_⟩
+      dsimp only [Model.carrierData]
+      rw [Model.dia_beta env hy hy.choose_spec (Term.boxtm bd)]
+      refine Sigma.ext rfl (heq_of_eq (funext fun a => funext fun b => ?_))
+      exact Model.box_beta (env.diaPush y hy.choose_spec a) bd b
+
 /-- A true `Back` atom makes the round trip over its leg. -/
 theorem sat_back_rt {d : ℕ} (hS : ModalSys.BStrong = true) {w : M.frame.W} (env : M.Env Γ w)
     (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
@@ -451,7 +470,7 @@ theorem sat_back_pair (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarTyp
     M.sat env (O.back hS (Term.pair bd bd') (Term.pair t t') :
       WFF σ Γ 0) := by
   rw [OutLeg.sat_back] at hb hb' ⊢
-  exact (hM.ret hS).pair hb hb'
+  exact (hM.ret hS).pair (OutLeg.isCarrierData env O bd) (OutLeg.isCarrierData env O bd') hb hb'
 
 omit [Γ.NoSlots] in
 theorem sat_back_eq (hS : ModalSys.BStrong = true) (L : BLeg) {A : VarType}

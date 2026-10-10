@@ -177,8 +177,10 @@ def holeVal {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) 
 
 variable (M) in
 /-- ⭐**"Comes back as" is a congruence** (strong B, docs §11.20): a hole term maps the values
-    and what they come back as (`back_beta`); two carriers over one leg pair (`back_pair`).  Part
-    of a model proper (`IndInvariant.ret`), since it mentions hole terms. -/
+    and what they come back as (`back_beta`); two carriers over one leg pair (`back_pair`) — two
+    carriers' data, as `back_pair` pairs (a `◇`-free component need not be any carrier's, and then
+    no atom stands behind it).  Part of a model proper (`IndInvariant.ret`), since it mentions hole
+    terms. -/
 structure RetCongr : Prop where
   map : ∀ {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
     {w : M.frame.W} {S : Set (M.frame.Acc w)}
@@ -188,7 +190,7 @@ structure RetCongr : Prop where
     {val : (a : S) → (c : M.frame.Acc a.1.1) → M.frame.Dom A c.1}
     {val' : (a : S) → (c : M.frame.Acc a.1.1) → M.frame.Dom B c.1}
     {o : M.frame.Dom A w} {o' : M.frame.Dom B w},
-    M.Ret S val o → M.Ret S val' o' →
+    M.IsCarrierData S val → M.IsCarrierData S val' → M.Ret S val o → M.Ret S val' o' →
       M.Ret (A := .VTypeProd A B) S
         (fun a c => ((val a c, val' a c) : M.frame.Dom (.VTypeProd A B) c.1))
         ((o, o') : M.frame.Dom (.VTypeProd A B) w)
