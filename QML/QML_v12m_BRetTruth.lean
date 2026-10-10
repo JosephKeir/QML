@@ -505,23 +505,23 @@ theorem boxPush_canon_at (s : B.W) (i : ℕ) (a : B.Acc s) (hR : B.R s a.1) {j :
     representatives' interchangeability at the slot formula `◇[d ↦ z] Φ(d)`
     (`WFF.instantiate_retSlot`). -/
 theorem mem_ret_of_ind (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) {s : B.W}
-    (harr : ∃ k, B.R s k) {A : VarType} {i K : ℕ} (hiK : i ≤ K) {bv : Ann A}
-    (v : Term σ ((B.w s).ctx K) A bv) {a : Ann A} (t : Term σ ((B.w s).ctx i) A a)
-    (Φ : WFF σ (((B.w s).ctx i).boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
-    (IH : ∀ (L : ℕ) {c : Ann A} (u u' : Term σ ((B.w s).ctx L) A c),
-      B.model.sat (B.canonEnv s L) (eqRec A u u' : WFF σ _ 0) →
-        (eqRec A u u' : WFF σ _ 0) ∈ (B.w s).M L)
-    (hmem : WFF.ret hS v (WFF.mono (((B.w s).le hiK).boxIn.insert (.bnd 0) _) Φ) ∈ (B.w s).M K)
-    (hind : B.Ind (B.toDom A s (B.rden s K (Ctx.Le.refl _) v) (definable_rden _ _))
-      (B.toDom A s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _))) :
-    WFF.ret hS t Φ ∈ (B.w s).M i := by
+    (harr : ∃ k, B.R s k) {S : RShape} {i K : ℕ} (hiK : i ≤ K) {bv : Ann S.flat}
+    (v : Term σ ((B.w s).ctx K) S.flat bv) {a : Ann S.flat} (t : Term σ ((B.w s).ctx i) S.flat a)
+    (Φ : WFF σ (((B.w s).ctx i).boxIn.insert (.bnd 0) S.ty) 1)
+    (IH : ∀ (L : ℕ) {c : Ann S.flat} (u u' : Term σ ((B.w s).ctx L) S.flat c),
+      B.model.sat (B.canonEnv s L) (eqRec S.flat u u' : WFF σ _ 0) →
+        (eqRec S.flat u u' : WFF σ _ 0) ∈ (B.w s).M L)
+    (hmem : WFF.retS hS S v (WFF.mono (((B.w s).le hiK).boxIn.insert (.bnd 0) _) Φ) ∈ (B.w s).M K)
+    (hind : B.Ind (B.toDom S.flat s (B.rden s K (Ctx.Le.refl _) v) (definable_rden _ _))
+      (B.toDom S.flat s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _))) :
+    WFF.retS hS S t Φ ∈ (B.w s).M i := by
   obtain ⟨⟨i₁, a₁, u₁⟩, ⟨i₂, a₂, u₂⟩, h₁, h₂, hrel⟩ := hind
   rw [fromDom_toDom] at h₁ h₂
-  have e₁ : B.toDom A s (B.rden s K (Ctx.Le.refl _) v) (definable_rden _ _) =
-      B.toDom A s (B.rden s i₁ (Ctx.Le.refl _) u₁) (definable_rden _ _) :=
+  have e₁ : B.toDom S.flat s (B.rden s K (Ctx.Le.refl _) v) (definable_rden _ _) =
+      B.toDom S.flat s (B.rden s i₁ (Ctx.Le.refl _) u₁) (definable_rden _ _) :=
     toDom_congr h₁.symm _ _
-  have e₂ : B.toDom A s (B.rden s i₂ (Ctx.Le.refl _) u₂) (definable_rden _ _) =
-      B.toDom A s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _) :=
+  have e₂ : B.toDom S.flat s (B.rden s i₂ (Ctx.Le.refl _) u₂) (definable_rden _ _) =
+      B.toDom S.flat s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _) :=
     toDom_congr h₂ _ _
   obtain rfl := ann_eq_of_toDom hS hInj harr _ _ e₁
   obtain rfl := ann_eq_of_toDom hS hInj harr _ _ e₂
@@ -532,23 +532,23 @@ theorem mem_ret_of_ind (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) {s : B.W
   have hiL : i ≤ L := hiK.trans hKL
   have hm₁ := (BWorld.mem_lift hKL).mp hmem
   have hq₁ := IH L _ _ (sat_eqRec_lift hKL h₁L _ _ e₁)
-  have hr₁ : WFF.ret hS (Term.mono ((B.w s).le h₁L) u₁)
+  have hr₁ : WFF.retS hS S (Term.mono ((B.w s).le h₁L) u₁)
       (WFF.mono (((B.w s).le hiL).boxIn.insert (.bnd 0) _) Φ) ∈ (B.w s).M L := by
     refine BWorld.mem_of_provable (Δ := [_, _]) (fun ψ hψ => by
       rcases List.mem_cons.mp hψ with rfl | hψ
       · exact hm₁
       · rw [List.mem_singleton.mp hψ]; exact hq₁)
-      ⟨Proof.conv ?_ (Proof.ret_eq hS .nec _ _ _ (Proof.lookup List.mem_cons_self)
+      ⟨Proof.conv ?_ (Proof.ret_eqS hS .nec (S := S) _ _ _ (Proof.lookup List.mem_cons_self)
         (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self)))⟩
     change WFF.retS hS _ _ (WFF.mono _ (WFF.mono _ Φ)) = _
     rw [WFF.mono_mono]
-  have hI₁ := WFF.instantiate_retSlot (Γ := (B.w s).ctx L) hS (.box A)
+  have hI₁ := WFF.instantiate_retSlot (Γ := (B.w s).ctx L) hS S
     (WFF.mono (((B.w s).le hiL).boxIn.insert (.bnd 0) _) Φ) (Term.mono ((B.w s).le h₁L) u₁)
-  have hI₂ := WFF.instantiate_retSlot (Γ := (B.w s).ctx L) hS (.box A)
+  have hI₂ := WFF.instantiate_retSlot (Γ := (B.w s).ctx L) hS S
     (WFF.mono (((B.w s).le hiL).boxIn.insert (.bnd 0) _) Φ) (Term.mono ((B.w s).le h₂L) u₂)
-  have hr₂ : WFF.ret hS (Term.mono ((B.w s).le h₂L) u₂)
+  have hr₂ : WFF.retS hS S (Term.mono ((B.w s).le h₂L) u₂)
       (WFF.mono (((B.w s).le hiL).boxIn.insert (.bnd 0) _) Φ) ∈ (B.w s).M L :=
-    (congrArg (· ∈ (B.w s).M L) hI₂).mp ((hrel L h₁L h₂L (WFF.retSlot hS (.box A)
+    (congrArg (· ∈ (B.w s).M L) hI₂).mp ((hrel L h₁L h₂L (WFF.retSlot hS S
       (WFF.mono (((B.w s).le hiL).boxIn.insert (.bnd 0) _) Φ))).mp
       ((congrArg (· ∈ (B.w s).M L) hI₁).mpr hr₁))
   have hq₂ := IH L _ _ (sat_eqRec_lift h₂L hiL _ _ e₂)
@@ -556,7 +556,7 @@ theorem mem_ret_of_ind (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) {s : B.W
       rcases List.mem_cons.mp hψ with rfl | hψ
       · exact hr₂
       · rw [List.mem_singleton.mp hψ]; exact hq₂)
-    ⟨Proof.ret_eq hS .nec _ _ _ (Proof.lookup List.mem_cons_self)
+    ⟨Proof.ret_eqS hS .nec (S := S) _ _ _ (Proof.lookup List.mem_cons_self)
       (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩)
 
 
@@ -581,26 +581,26 @@ theorem diaPush_canon_at (s : B.W) (i : ℕ) {y : VarSymb} {Y : VarType}
 /-- ⭐**Moving a returning possibility's value along canonical `Ind`, along a witness**: as
     `mem_ret_of_ind`, at the slot formula `◇_y[d ↦ z] Φ(d)` (`WFF.instantiate_retxSlot`). -/
 theorem mem_retx_of_ind (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) {s : B.W}
-    (harr : ∃ k, B.R s k) {A : VarType} {i K : ℕ} (hiK : i ≤ K) {y : VarSymb}
-    (hy : ∃ Y, ((B.w s).ctx i).ref y = some (.VTypeDia Y)) {bv : Ann A}
-    (v : Term σ ((B.w s).ctx K) A bv) {a : Ann A} (t : Term σ ((B.w s).ctx i) A a)
-    (Φ : WFF σ ((((B.w s).ctx i).diaIn y).insert (.bnd 0) (.VTypeBox A)) 1)
-    (IH : ∀ (L : ℕ) {c : Ann A} (u u' : Term σ ((B.w s).ctx L) A c),
-      B.model.sat (B.canonEnv s L) (eqRec A u u' : WFF σ _ 0) →
-        (eqRec A u u' : WFF σ _ 0) ∈ (B.w s).M L)
+    (harr : ∃ k, B.R s k) {S : RShape} {i K : ℕ} (hiK : i ≤ K) {y : VarSymb}
+    (hy : ∃ Y, ((B.w s).ctx i).ref y = some (.VTypeDia Y)) {bv : Ann S.flat}
+    (v : Term σ ((B.w s).ctx K) S.flat bv) {a : Ann S.flat} (t : Term σ ((B.w s).ctx i) S.flat a)
+    (Φ : WFF σ ((((B.w s).ctx i).diaIn y).insert (.bnd 0) S.ty) 1)
+    (IH : ∀ (L : ℕ) {c : Ann S.flat} (u u' : Term σ ((B.w s).ctx L) S.flat c),
+      B.model.sat (B.canonEnv s L) (eqRec S.flat u u' : WFF σ _ 0) →
+        (eqRec S.flat u u' : WFF σ _ 0) ∈ (B.w s).M L)
     (hmem : (OutLeg.pos y (hy.imp fun _ h => ((B.w s).le hiK).ref h) :
-      OutLeg ((B.w s).ctx K)).ret hS v
+      OutLeg ((B.w s).ctx K)).retS hS S v
         (WFF.mono ((((B.w s).le hiK).diaIn y).insert (.bnd 0) _) Φ) ∈ (B.w s).M K)
-    (hind : B.Ind (B.toDom A s (B.rden s K (Ctx.Le.refl _) v) (definable_rden _ _))
-      (B.toDom A s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _))) :
-    (OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).ret hS t Φ ∈ (B.w s).M i := by
+    (hind : B.Ind (B.toDom S.flat s (B.rden s K (Ctx.Le.refl _) v) (definable_rden _ _))
+      (B.toDom S.flat s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _))) :
+    (OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).retS hS S t Φ ∈ (B.w s).M i := by
   obtain ⟨⟨i₁, a₁, u₁⟩, ⟨i₂, a₂, u₂⟩, h₁, h₂, hrel⟩ := hind
   rw [fromDom_toDom] at h₁ h₂
-  have e₁ : B.toDom A s (B.rden s K (Ctx.Le.refl _) v) (definable_rden _ _) =
-      B.toDom A s (B.rden s i₁ (Ctx.Le.refl _) u₁) (definable_rden _ _) :=
+  have e₁ : B.toDom S.flat s (B.rden s K (Ctx.Le.refl _) v) (definable_rden _ _) =
+      B.toDom S.flat s (B.rden s i₁ (Ctx.Le.refl _) u₁) (definable_rden _ _) :=
     toDom_congr h₁.symm _ _
-  have e₂ : B.toDom A s (B.rden s i₂ (Ctx.Le.refl _) u₂) (definable_rden _ _) =
-      B.toDom A s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _) :=
+  have e₂ : B.toDom S.flat s (B.rden s i₂ (Ctx.Le.refl _) u₂) (definable_rden _ _) =
+      B.toDom S.flat s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _) :=
     toDom_congr h₂ _ _
   obtain rfl := ann_eq_of_toDom hS hInj harr _ _ e₁
   obtain rfl := ann_eq_of_toDom hS hInj harr _ _ e₂
@@ -613,26 +613,26 @@ theorem mem_retx_of_ind (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) {s : B.
     hy.imp fun _ h => ((B.w s).le hiL).ref h
   have hm₁ := (BWorld.mem_lift hKL).mp hmem
   have hq₁ := IH L _ _ (sat_eqRec_lift hKL h₁L _ _ e₁)
-  have hr₁ : (OutLeg.pos y hyL : OutLeg ((B.w s).ctx L)).ret hS (Term.mono ((B.w s).le h₁L) u₁)
+  have hr₁ : (OutLeg.pos y hyL : OutLeg ((B.w s).ctx L)).retS hS S (Term.mono ((B.w s).le h₁L) u₁)
       (WFF.mono ((((B.w s).le hiL).diaIn y).insert (.bnd 0) _) Φ) ∈ (B.w s).M L := by
     refine BWorld.mem_of_provable (Δ := [_, _]) (fun ψ hψ => by
       rcases List.mem_cons.mp hψ with rfl | hψ
       · exact hm₁
       · rw [List.mem_singleton.mp hψ]; exact hq₁)
-      ⟨Proof.ret_eq hS (.pos y hyL) _ _
+      ⟨Proof.ret_eqS hS (.pos y hyL) (S := S) _ _
         (WFF.mono ((((B.w s).le hiL).diaIn y).insert (.bnd 0) _) Φ) (Proof.conv ?_
         (Proof.lookup List.mem_cons_self))
         (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩
     change WFF.retxS hS _ _ _ _ (WFF.mono _ (WFF.mono _ Φ)) = _
     rw [WFF.mono_mono]
     rfl
-  have hI₁ := WFF.instantiate_retxSlot (Γ := (B.w s).ctx L) hS y hyL (.box A)
+  have hI₁ := WFF.instantiate_retxSlot (Γ := (B.w s).ctx L) hS y hyL S
     (WFF.mono ((((B.w s).le hiL).diaIn y).insert (.bnd 0) _) Φ) (Term.mono ((B.w s).le h₁L) u₁)
-  have hI₂ := WFF.instantiate_retxSlot (Γ := (B.w s).ctx L) hS y hyL (.box A)
+  have hI₂ := WFF.instantiate_retxSlot (Γ := (B.w s).ctx L) hS y hyL S
     (WFF.mono ((((B.w s).le hiL).diaIn y).insert (.bnd 0) _) Φ) (Term.mono ((B.w s).le h₂L) u₂)
-  have hr₂ : (OutLeg.pos y hyL : OutLeg ((B.w s).ctx L)).ret hS (Term.mono ((B.w s).le h₂L) u₂)
+  have hr₂ : (OutLeg.pos y hyL : OutLeg ((B.w s).ctx L)).retS hS S (Term.mono ((B.w s).le h₂L) u₂)
       (WFF.mono ((((B.w s).le hiL).diaIn y).insert (.bnd 0) _) Φ) ∈ (B.w s).M L :=
-    (congrArg (· ∈ (B.w s).M L) hI₂).mp ((hrel L h₁L h₂L (WFF.retxSlot hS y hyL (.box A)
+    (congrArg (· ∈ (B.w s).M L) hI₂).mp ((hrel L h₁L h₂L (WFF.retxSlot hS y hyL S
       (WFF.mono ((((B.w s).le hiL).diaIn y).insert (.bnd 0) _) Φ))).mp
       ((congrArg (· ∈ (B.w s).M L) hI₁).mpr hr₁))
   have hq₂ := IH L _ _ (sat_eqRec_lift h₂L hiL _ _ e₂)
@@ -640,7 +640,7 @@ theorem mem_retx_of_ind (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) {s : B.
       rcases List.mem_cons.mp hψ with rfl | hψ
       · exact hr₂
       · rw [List.mem_singleton.mp hψ]; exact hq₂)
-    ⟨Proof.ret_eq hS (.pos y hyL) _ _ _ (Proof.lookup List.mem_cons_self)
+    ⟨Proof.ret_eqS hS (.pos y hyL) (S := S) _ _ _ (Proof.lookup List.mem_cons_self)
       (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩)
 end BData
 
@@ -841,8 +841,9 @@ theorem mem_ret_of_sat_nec (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) (hRI
       have hmb := (IH k _ _ (by
         rw [hsz]; unfold readArrow; rw [WFF.size_subst]; omega)).mp hsatb
       obtain ⟨hiK, hret⟩ := hRI hR Φ hj _ hmb
-      refine mem_ret_of_ind hS hInj ⟨k, hR⟩ hiK _ t Φ
-        (fun L _ u u' hs => (IH s L _ (by rw [WFF.size_eqRec, hsz]; omega)).mp hs) hret ?_
+      refine mem_ret_of_ind hS hInj (S := .box A) ⟨k, hR⟩ hiK _ t Φ
+        (fun L _ u u' hs => (IH s L _ (by
+          rw [WFF.size_eqRec, hsz]; exact Nat.lt_succ_of_le (Nat.le_add_left _ _))).mp hs) hret ?_
       have hr' : B.RT k s := r
       change B.Ind _ _ at hInd
       rw [← he, Model.box_beta, boxPush_canon_at k _ ⟨s, ⟨hr'⟩⟩ (B.symm hR) le_rfl,
@@ -907,8 +908,9 @@ theorem mem_retx_of_sat (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
       have hmb := (IH a₁.1.1 _ _ (by
         rw [hsz]; unfold readArrowX; rw [WFF.size_subst]; omega)).mp hsatb
       obtain ⟨hiK, hret⟩ := hRX hk hY Φ hj _ hmb
-      refine mem_retx_of_ind hS hInj ⟨a₁.1.1, hR⟩ hiK hy _ t Φ
-        (fun L _ u u' hs => (IH s L _ (by rw [WFF.size_eqRec, hsz]; omega)).mp hs) hret ?_
+      refine mem_retx_of_ind hS hInj (S := .box A) ⟨a₁.1.1, hR⟩ hiK hy _ t Φ
+        (fun L _ u u' hs => (IH s L _ (by
+          rw [WFF.size_eqRec, hsz]; exact Nat.lt_succ_of_le (Nat.le_add_left _ _))).mp hs) hret ?_
       have hr' : B.RT a₁.1.1 s := r
       change B.Ind _ _ at hInd
       rw [← he, Model.box_beta, boxPush_canon_at a₁.1.1 _ ⟨s, ⟨hr'⟩⟩ (B.symm hR) le_rfl,
