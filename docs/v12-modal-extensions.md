@@ -6953,6 +6953,24 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
     `.pair`) and `sat_ret_mapD`; `Proof.subst` case as `ret_map`'s.  Kept as a sibling
     constructor rather than widening `ShapeMap` (whose maps are between necessary shapes), so
     no `ret_map` call site changed.
+  * *Slice 4, witnessed shapes (built, both legs, `QML_v12m_BRetTruthW`).*  A true atom's object
+    out there is `⟨N, diatm x u⟩` (`exists_wit`); the way home lies in `x`'s extent
+    (`dia_beta`, `canonEnv_extent`), so it is a witness edge of `k` made for `x`.
+    * *At a node* (`ret_of_invW`, `ret_of_invWD` along the leg's witness): the invariant
+      (`RetInvW`; from `RetAt` by `RetAt.toRetInvW`, forgetting the way back's leg with
+      `retxS_forget_node` when it is witnessed; `RetInvWD` directly for the `◇_y` leg) at the body
+      pulled back along both maps; then `ret_mapD` at `u` packed over the roots and `x`'s content
+      (`packXT`, the term version of `pack2X`: `holeAt_packXT`, `holeRead_tupImgT_packXT`), and
+      `ret_map` along `packMap`.  The object computation goes through `diatm`
+      (`holeAt_possObj`, `Term.subst_diatm_sig`); readings: `readArrow(X)_bodyRepl` (via
+      `Term.subst_closed_sig`; `liftBodyW`/`liftBodyWD` are `readArrow`/`readArrowX` at the
+      entry, by `rfl`).
+    * *At the limit*: `BData.RetInW`/`RetInWX`, `bdataS_retInW`/`bdataS_retInWX` (`lretAt` with
+      `lkd k s = some (x, X)`).
+    * *Semantics*: ⭐`BData.mem_ret_of_sat_wit`, ⭐`BData.mem_retx_of_sat_wit` — the content comes
+      home as `u` sent along the witness arrow (`diaPush_canon_at`), paired with the items
+      (`ind_pair`), and the value moves by `mem_ret(x)_of_ind` at `.wit N Z`.
+    So `ret` truth ⇒ membership holds for all four forms.
   * *Audit: necessary vs possible parts (2026-10-10, user: everything doable for necessary parts
     should be doable for the single possible part; what holds of a variable should hold of a term
     with it as witness).*  Rule by rule:
