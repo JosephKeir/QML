@@ -6918,9 +6918,27 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
     (`ind_of_nComesBack`, with `ind_pair` — pairing congruence, as in `BData.indInvariant`), and
     the value moves to `t` by `mem_ret(x)_of_ind` at `.nec N` (`ret_eqS`).
     ⭐`BData.mem_ret_of_sat_nec`, ⭐`BData.mem_retx_of_sat` now take any `N`.
-  * *Left:* witnessed shapes (`wit N X`; the way home is in the witness's extent, so a witness
-    edge, `RetInvW`/`WD`; value moved by `ret_eqS`), and membership ⇒ truth (`retOp`, aliases,
-    the user atom → obligation conversion).
+  * *Slice 4, witnessed shapes `wit N X₀` (analysis, 2026-10-10, open).*  A true atom gives an
+    object `⟨E₁, E₂⟩` at `k`; `E₂ : ◇X₀` is a term `diatm x u` with `x : ◇X'` a root of `k` and
+    `u` **any term of `x`'s view** (`k`'s `□` items and `x.dia`).  The way home `k → s` lies in
+    `x`'s extent, so it is a witness edge of `k` and `lretAt` gives `RetInvW` (or `RetInvWD`).
+    But `RetInvW`'s bound object is `⟨□roots, x⟩` itself, valued at `⟨ā', cx⟩`: its possible
+    part has content `x.dia`, not `u`.  Moving it needs a map on the **possible part**,
+    `⟨d₁, d₂⟩ ↦ ⟨F(d₁), diatm d₂ h(d₁, d₂.dia)⟩`, valued `⟨F(ā'), h(ā', cx)⟩`; `ret_map` carries
+    the possible part unchanged (`ShapeMap.liftObj`), and no other rule changes it:
+    `ret_unitW`/`ret_unitWD` make atoms with any content `u`, in the right direction (object at
+    `k`, value at an `x`-successor), but only at *some* `x`-successor (the outer `◇_x`'s), or
+    under `□_x` with a closed body (`ret_unitW_base`), which cannot mention `s`'s own roots;
+    `ret_unitD`/`ret_counitD` point the other way or yield facts about values only.
+    Two ways on:
+    1. *No new rule:* generalise `RetInvW`/`RetInvWD` to any content term `u` of `x`'s view (slot
+       `⟨□roots, diatm x u⟩`, value `⟨ā', u read along⟩`).  Birth already gives any `u`
+       (`ret_unitW_base`); the steps carry the possible part's value unchanged, and
+       `ret_unitW` takes any `u`.  A refactor of `BRetW`, `BRetWD`, the ret children, `BNetRet`,
+       `BLimitRet`, `BBackTail`.
+    2. *New rule:* `ret_map` with a hole on the possible part's content (sound by `Ind`'s map
+       and pair congruence).
+  * *Left:* membership ⇒ truth (`retOp`, aliases, the user atom → obligation conversion).
   * ⭐**`ret_eq` generalised to every shape (DECIDED, user, 2026-10-10): `Proof.ret_eqS`.**  No
     derivation of Leibniz for a witnessed value was found: the rules that conclude a top-level
     witnessed atom keep its value (`ret_unitD`, `ret_unitWD`, `ret_monoS`) or change only its
