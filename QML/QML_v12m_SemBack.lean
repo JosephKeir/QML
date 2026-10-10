@@ -1344,6 +1344,78 @@ theorem sat_ret_unitD (hS : ModalSys.BStrong = true) {C X A : VarType}
     exact M.Ind_refl _
 
 include hM in
+/-- ⭐**The doubly witnessed unit is sound**: at the far end of `x`'s arrow `a`, the way home `r`
+    lies in the returned possible part's extent; along it `sb`'s object comes back as `sb`, and `x`
+    itself is realised along `a` with content `u` (`sat_ret_unitD`, `sat_ret_unitW`). -/
+theorem sat_ret_unitWD (hS : ModalSys.BStrong = true) {x : VarSymb}
+    (hx : ∃ X', Γ.ref x = some (.VTypeDia X')) {C Xe A X : VarType}
+    {c : Ann (.VTypeProd C Xe)} (y : Term σ Γ (.VTypeProd C Xe) c)
+    (Ψ : WFF σ ((Γ.diaIn x).insert (.bnd 0) (RShape.wit (.box C) Xe).ty) 1) {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X} (u : Term σ (Γ.diaIn x) X b₀)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0)
+      (.VTypeProd (.VTypeProd C Xe) (RShape.wit (.box A) X).ty)) 1)
+    (hret : M.sat env (WFF.retxS hS x hx (.wit (.box C) Xe) y Ψ : WFF σ Γ 0))
+    (hθ : M.holeSat θ ((interp env y, (interp env (Term.boxtm sb),
+      interp env (Term.diatm x hx u))) :
+        M.frame.Dom (.VTypeProd (.VTypeProd C Xe) (RShape.wit (.box A) X).ty) w)) :
+    M.sat env (WFF.retxS hS x hx (.wit (.box C) Xe) y (WFF.and Ψ (WFF.unitBodyWD hS sb u θ)) :
+      WFF σ Γ 0) := by
+  obtain ⟨Y, h, a, e, hΨ, r, hr⟩ := hret
+  refine ⟨Y, h, a, e, ⟨hΨ, ?_⟩, r, hr⟩
+  obtain ⟨hr1, hm, hr2⟩ := hr
+  have hu := Ctx.ref_insert_root (Γ.diaIn x) (.bnd 0) (RShape.wit (.box C) Xe).ty
+  have hsnd := Ctx.ref_snd_of hu
+  let env₁ := (env.diaPush x h a).extend (.bnd 0) e
+  have he2 : env₁.ref (.step (.root (.bnd 0)) .snd) hsnd = e.2 := by
+    rw [Env.ref_snd _ hu hsnd]
+    exact congrArg Prod.snd (Env.extend_root (env.diaPush x h a) (.bnd 0) e hu)
+  let bb : (M.posEval (env₁.ref (.step (.root (.bnd 0)) .snd) hsnd)).1 := ⟨⟨w, ⟨r⟩⟩, he2 ▸ hm⟩
+  have hcont : (M.posEval (env₁.ref (.step (.root (.bnd 0)) .snd) hsnd)).2 bb =
+      (M.posEval (e.2 : M.frame.Pos Xe a.1.1)).2 ⟨_, hm⟩ := by
+    have key : ∀ (P : M.frame.Pos Xe a.1.1) (hP : P = e.2)
+        (hmP : (⟨w, ⟨r⟩⟩ : M.frame.Acc a.1.1) ∈ (M.posEval P).1),
+        (M.posEval P).2 ⟨_, hmP⟩ = (M.posEval (e.2 : M.frame.Pos Xe a.1.1)).2 ⟨_, hm⟩ := by
+      intro P hP hmP
+      subst hP
+      rfl
+    exact key _ he2 _
+  have he1 : env₁.ref (.root (.bnd 0)) hu = e := Env.extend_root (env.diaPush x h a) (.bnd 0) e hu
+  let val : M.frame.Dom (RShape.wit (.box A) X).ty w :=
+    (interp env (Term.boxtm sb), interp env (Term.diatm x hx u))
+  refine ⟨Xe, hsnd, bb, val, ?_, a.1.2.down, ?_, ?_⟩
+  · rw [sat_holeAt]
+    have hag := Env.agree_extend (env₁.diaPush (.step (.root (.bnd 0)) .snd) hsnd bb)
+      ((((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert _).diaIn _).root) val
+    have hf : (((Γ.diaIn x).insert (.bnd 0) (RShape.wit (.box C) Xe).ty).diaIn
+        (.step (.root (.bnd 0)) .snd)).ref (VarSymb.step (.root (.bnd 0)) .fst).inner = some C :=
+      (Ctx.le_boxIn_diaIn _ _).ref (Ctx.ref_inner (Ctx.ref_fst_of hu))
+    have hd := Ctx.ref_diaIn_of hsnd
+    change M.holeSat θ ((interp _ _, interp _ _), interp _ _)
+    rw [interp_eta, interp_eta, interp_eta, ← Env.ref_agree hag _ hf, ← Env.ref_agree hag _ hd,
+      show (((env₁.diaPush (.step (.root (.bnd 0)) .snd) hsnd bb).extend
+          (T := (RShape.wit (.box A) X).ty) (.bnd 1) val).ref (.root (.bnd 1))
+          (Ctx.ref_insert_root _ _ _)) = val from Env.extend_root _ _ _ _,
+      ← Env.ref_agree (Env.diaPush_boxIn env₁ hsnd bb) _ (Ctx.ref_inner (Ctx.ref_fst_of hu)),
+      Env.ref_inner _ _ (Ctx.ref_fst_of hu), Env.ref_fst _ hu, he1, Env.ref_dia env₁ hsnd bb hd,
+      hcont]
+    exact (holeSat_ind hM θ (hM.pair (hM.pair hr1 hr2) (M.Ind_refl _))).mpr hθ
+  · change M.Ind (M.necEval (interp env (Term.boxtm sb)) a.1) (interp env₁ (Term.mono _ sb))
+    rw [← Term.mono_mono (Ctx.le_boxIn_diaIn Γ x)
+        (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root _),
+      interp_mono (Env.agree_extend (env.diaPush x h a)
+        (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root e),
+      interp_mono (Env.diaPush_boxIn env h a), box_beta]
+    exact M.Ind_refl _
+  · change ∃ hm : _ ∈ (M.posEval (interp env (Term.diatm x hx u))).1,
+      M.Ind ((M.posEval (interp env (Term.diatm x hx u))).2 ⟨_, hm⟩)
+        (interp env₁ (Term.mono _ u))
+    rw [dia_beta env hx h u]
+    refine ⟨a.2, ?_⟩
+    rw [interp_mono (Env.agree_extend (env.diaPush x h a)
+      (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root e)]
+    exact M.Ind_refl _
+
+include hM in
 /-- ⭐**The counit of a possible part is sound**: the way home lies in the possible part's extent,
     so what holds along all of its arrows holds along the way home, at the values the object comes
     back as. -/

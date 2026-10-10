@@ -470,6 +470,19 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (WFF.retS hS (.wit (.box C) X) y Ψ) →
       Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.boxtm sb)) θ) →
       Proof σ Γ Δ (WFF.retS hS (.wit (.box C) X) y (WFF.and Ψ (WFF.unitBodyD hS sb θ)))
+  /-- ⭐**The doubly witnessed unit** (docs §11.20): along `x`'s arrow with a returned possible part,
+      home is reached along that part, where `sb`'s object comes back and `x` itself is realised
+      with content `u` — `ret_unitW` and `ret_unitD` at the form with both witnesses. -/
+  | ret_unitWD {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      {x : VarSymb} (hx : ∃ X', Γ.ref x = some (.VTypeDia X')) {C Xe A X : VarType}
+      {c : Ann (.VTypeProd C Xe)} (y : Term σ Γ (.VTypeProd C Xe) c)
+      (Ψ : WFF σ ((Γ.diaIn x).insert (.bnd 0) (RShape.wit (.box C) Xe).ty) 1) {a₀ : Ann A}
+      (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X} (u : Term σ (Γ.diaIn x) X b₀)
+      (θ : WFF σ (Ctx.empty.insert (.bnd 0)
+        (.VTypeProd (.VTypeProd C Xe) (RShape.wit (.box A) X).ty)) 1) :
+      Proof σ Γ Δ (WFF.retxS hS x hx (.wit (.box C) Xe) y Ψ) →
+      Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.pair (Term.boxtm sb) (Term.diatm x hx u))) θ) →
+      Proof σ Γ Δ (WFF.retxS hS x hx (.wit (.box C) Xe) y (WFF.and Ψ (WFF.unitBodyWD hS sb u θ)))
   /-- ⭐**The counit of a possible part**: what holds along all of a possible part's arrows holds,
       at its content along the way home, of the value it comes back as. -/
   | ret_counitD {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)

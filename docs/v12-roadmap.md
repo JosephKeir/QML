@@ -206,16 +206,21 @@ style of milestone 1, each ending green and committed:
 
    *Status (2026-10-09), built for strong B **without T** (T is combined afterwards, §11.20):*
    L4a–e are done (`v12-modal-extensions.md` §11.17, §11.20).  The invariants (`RetInv`,
-   `RetInvW`, `RetInvX`; `RetData`, `GoodS`), the realisation steps, aliases, the three returning
-   successors (`mkRet`, `mkRetX`, `mkRetD`, with the K-laws `ret_K`, `retx_K`, `retD_K` derived) and
-   a kind on back arrows (`bkind`) are in; the chain is `netS` with the fair schedule `schedS`
+   `RetInvW`, `RetInvX`, `RetInvWD`; `RetData`, `GoodS`), the realisation steps, aliases, the four
+   returning successors (`mkRet`, `mkRetX`, `mkRetD`, `mkRetXD`, with the K-laws `ret_K`, `retx_K`,
+   `retD_K`, `retxD_K` derived; the fourth needed the rule `ret_unitWD`) and a kind on back arrows
+   (`bkind`, content `bcx`) are in; the chain is `netS` with the fair schedule `schedS`
    (`QML_v12m_BNetS`: `goodS_netS`, `ext_netS`).  Commit at birth for `Back` carriers turned out
    unnecessary, and `back_def` was replaced by `back_ret` (user, 2026-10-09; `Back` as the definite
    description of `ret`).  **Decided (user, 2026-10-10, §11.20):** at `◇`-typed contents `Back`
    reads a model primitive `Ret` ("comes back as", keyed on round-trip data, laws in models
-   proper), as `Ind` is; built (semantics, soundness, the rule `back_eqC`).  **Next: L4f**, the
-   limit and the truth lemma (`Att.alias`/`Att.back` via `packW`, canonical `Ret`, the `back`/`ret`
-   cases, the T-free decoder, removing `NoFour.noBStrong`), then step 6.
+   proper), as `Ind` is; built (semantics, soundness, the rule `back_eqC`).  **L4f so far:**
+   aliases persist (`packRoots`, `alias_interch`), canonical `Ind` = related representatives, the
+   T-free decoder with injective images (`ImgInj`), the pair law on carriers' data, back-witness
+   arrows in extents and the strong chain (`StrongChain`, E1 steps 1–2), and the fourth returning
+   successor (§11.20).  **Next:** E1 step 3 (the returning invariants at the limit), canonical
+   `Ret` and its laws, the `back`/`ret` truth cases, sizes, removing `NoFour.noBStrong`; then
+   step 6.
 6. **Statements.**  Completeness, strong completeness and compactness for strong B (rows 1–2,
    `◇`-free contents), under `NoFour`.
 Then rows 3–4 (multi-labelled edges, per-witness components) and `◇`-typed contents (§11.12).

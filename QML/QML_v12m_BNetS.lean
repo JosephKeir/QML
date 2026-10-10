@@ -1,4 +1,4 @@
-import QML.QML_v12m_BRetChildD
+import QML.QML_v12m_BRetChildXD
 
 /-!
 # QML v12m — strong B on the network: the operations and the chain (T off)
@@ -7,8 +7,8 @@ All of L4e's operations together (docs §11.17, §11.20):
 * weak B's (Henkin witnesses, children for `□`/`◇_x` formulas) and strong B's realisation steps
   (`applyOpS`);
 * aliases (`mkAlias`);
-* the three returning successors: plain (`mkRet`), along a witness (`mkRetX`), and with a
-  possible part (`mkRetD`).
+* the four returning successors: plain (`mkRet`), along a witness (`mkRetX`), with a possible
+  part (`mkRetD`), and both (`mkRetXD`).
 
 `OpS` is their sum, `schedS` a fair schedule (every operation recurs forever), and `netS` the chain
 from a root theory: ⭐`goodS_netS` (every network keeps strong B's invariants, T off) and `ext_netS`.
@@ -24,10 +24,10 @@ namespace BArrow
 variable {σ : Signature}
 
 /-- ⭐An operation under strong B: weak B's, an alias, or a child for a returning possibility (plain,
-    along a witness, or with a possible part), at a node. -/
+    along a witness, with a possible part, or both), at a node. -/
 abbrev OpS (σ : Signature) :=
   Op σ ⊕ (Node × NetSt.AliasObl σ) ⊕ (Node × NetSt.RetObl σ) ⊕ (Node × NetSt.RetOblX σ) ⊕
-    (Node × NetSt.RetOblD σ)
+    (Node × NetSt.RetOblD σ) ⊕ (Node × NetSt.RetOblXD σ)
 
 instance : Nonempty (OpS σ) := ⟨.inl (.inr (.inr (.inl [])))⟩
 
@@ -65,13 +65,14 @@ noncomputable def applyOpT (hS : ModalSys.BStrong = true) (N : NetSt σ) : OpS �
   | .inr (.inl (s, o)) => if N.Live s then N.mkAlias s o else N
   | .inr (.inr (.inl (s, o))) => if N.Live s then N.mkRet hS s o else N
   | .inr (.inr (.inr (.inl (s, o)))) => if N.Live s then N.mkRetX hS s o else N
-  | .inr (.inr (.inr (.inr (s, o)))) => if N.Live s then N.mkRetD hS s o else N
+  | .inr (.inr (.inr (.inr (.inl (s, o))))) => if N.Live s then N.mkRetD hS s o else N
+  | .inr (.inr (.inr (.inr (.inr (s, o))))) => if N.Live s then N.mkRetXD hS s o else N
 
 /-- ⭐Every operation keeps strong B's invariants (T off). -/
 theorem GoodS.applyOpT {hS : ModalSys.BStrong = true} (hB : ModalSys.B = true)
     (hT : ModalSys.T = false) {N : NetSt σ} (hN : N.GoodS hS) (o : OpS σ) :
     (N.applyOpT hS o).GoodS hS := by
-  rcases o with o | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩
+  rcases o with o | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩
   · exact hN.applyOpS hB o
   all_goals
     simp only [NetSt.applyOpT]
@@ -81,12 +82,13 @@ theorem GoodS.applyOpT {hS : ModalSys.BStrong = true} (hB : ModalSys.B = true)
         | exact hN.mkRet hT h o
         | exact hN.mkRetX hT h o
         | exact hN.mkRetD hT h o
+        | exact hN.mkRetXD hT h o
     · exact hN
 
 /-- Every operation extends the network. -/
 theorem Ext.applyOpT {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS hS)
     (o : OpS σ) : Ext N (N.applyOpT hS o) := by
-  rcases o with o | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩
+  rcases o with o | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩
   · exact Ext.applyOpS hN o
   all_goals
     simp only [NetSt.applyOpT]
@@ -96,6 +98,7 @@ theorem Ext.applyOpT {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS
         | exact Ext.mkRet h o
         | exact Ext.mkRetX h o
         | exact Ext.mkRetD h o
+        | exact Ext.mkRetXD h o
     · exact Ext.refl N
 
 end NetSt

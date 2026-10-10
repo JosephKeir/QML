@@ -6691,6 +6691,35 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
   * remove `NoFour.noBStrong`;
   * the completeness statements.
 
+**The fourth returning form gets a child (2026-10-10, T off).**
+* *The gap.*  Building E1 step 3 showed that an atom `◇_x[d̄ ↦ t̄; e ⇝ u] Φ` (witnessed leg *and*
+  witnessed way home) had no network child: the witness child's way home is unwitnessed, and the
+  back-witness child's leg is.  The limit needs a returning successor for every form.
+* *A new rule* **`ret_unitWD`** (user, 2026-10-10), the unit at the fourth form:
+  `◇_x[d₁ ↦ y] Ψ, θ(y, □sb, x⟨u⟩) ⊢ ◇_x[d₁ ↦ y](Ψ ∧ ◇_{e₁}[d ↦ sb; e ⇝ u] θ(⟨d₁.box, e₁.dia⟩,
+  ⟨d, e⟩))`, at the witnessed shape (`e₁ ⇝ y.2`; body `WFF.unitBodyWD`).  It is `ret_unitW` and
+  `ret_unitD` at once and follows from neither: each brings back only one of the two witnesses.
+  Sound (`sat_ret_unitWD`) and closed under substitution (`WFF.subst_unitBodyWD`).
+* *The K-law* `Proof.retxD_K` (`QML_v12m_RetKXD`).  The form is its own mirror, so `ret_unitWD`
+  serves both ends: at home it carries the negated premise out with `x` as the returning part
+  (`kThetaWD`); at the far world, `Ψ` is `ret_unitWD`'s premise along the returned part, which
+  brings it home to clash (`retxS_absurd`).
+* *One invariant for both arrows* (`QML_v12m_BRetWD`): `RetInvWD` — what the source says of its
+  committed roots and its witness holds at the target as the fourth form along the target's
+  witness.  Transfer back (`transferX`; plain by `TransferX.toTransfer`), growth, the realisation
+  step (`retStepWD_ok`: `ret_extS` and `ret_map` along the target's witness) and cross-arrow
+  preservation (`retStepWD_rev`, by `ret_unitWD`); one step serves both directions.
+* *Network.*  `NetSt.bcx` holds the back witness's content at the parent; the back-witness child
+  moves its content from `cx` to `bcx`, so `cx` is always the forward witness's content at the
+  child.  `RetData`'s new case `(some x, some e)` is `RetInvWD` both ways; `BackXData` and the
+  limit's back edges (`lkd`, `lcx`) now key on `bkind` alone.
+* *The child* (`QML_v12m_BRetChildXD`): layout `X :: rclD l A Xe` (`x`'s content newest, root
+  `l.length + 2`); pull-back `retPullXD` (the back-witness layout, in any view of the parent —
+  here `x`'s); seed consistency by `retxD_K_node`; birth `RetData.retBirthXD`; the operation
+  `mkRetXD` (asks `y ≠ o`) with `GoodS`, `Ext`, `InjOk` and the fairness field
+  `StrongChain.retXDOp`.
+* So every returning form has a child (T off).  *Next:* E1 step 3.
+
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`
   contains `□`.  So for a slot `□A` with `A` box-free the second component has a canonical

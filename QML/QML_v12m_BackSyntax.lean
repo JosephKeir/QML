@@ -289,6 +289,35 @@ def WFF.unitBodyD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStron
         (Term.eta (.root (.bnd 1)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 1) _)))
       θ)
 
+/-- ⭐The **doubly witnessed unit's** new conjunct, in the body of `◇_x[⟨d₁, e₁⟩ ↦ y]` with
+    `e₁ ⇝ y.2` (docs §11.20): `◇_{e₁}[d ↦ sb, e ⇝ u] θ(⟨d₁.box, e₁.dia⟩, ⟨d, e⟩)`.  The way
+    back lies in `e₁`'s extent (`unitBodyD`), and along it a necessary object comes back as `sb`
+    and `x` itself is realised with content `u` (`unitBodyW`). -/
+def WFF.unitBodyWD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+    {x : VarSymb} {C Xe A X : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
+    (u : Term σ (Γ.diaIn x) X b₀)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0)
+      (.VTypeProd (.VTypeProd C Xe) (RShape.wit (.box A) X).ty)) 1) :
+    WFF σ ((Γ.diaIn x).insert (.bnd 0) (RShape.wit (.box C) Xe).ty) 1 :=
+  WFF.retxS hS (.step (.root (.bnd 0)) .snd) ⟨Xe, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩
+    (.wit (.box A) X)
+    (Term.pair
+      (Term.mono ((Ctx.le_boxIn_diaIn Γ x).trans
+        (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root _)) sb)
+      (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root _) u))
+    (WFF.holeAt ((((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert _).diaIn _).insert _)
+      (Term.pair
+        (Term.pair
+          (Term.eta (VarSymb.step (.root (.bnd 0)) .fst).inner C
+            ((Ctx.le_insert ((((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert _).diaIn _).root)
+              _).ref ((Ctx.le_boxIn_diaIn _ _).ref
+                (Ctx.ref_inner (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))))))
+          (Term.eta (VarSymb.step (.step (.root (.bnd 0)) .snd) .dia) Xe
+            ((Ctx.le_insert ((((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert _).diaIn _).root)
+              _).ref (Ctx.ref_diaIn_of (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _))))))
+        (Term.eta (.root (.bnd 1)) _ (Ctx.ref_insert_root _ (.bnd 1) _)))
+      θ)
+
 /-- `back_ret`'s body (docs §11.18): in the body of `◇[e ↦ c]` along a leg with view `V`, the
     object out there is the carrier's, `e = □bd`. -/
 def WFF.backRetBody {σ : Signature} {V : Ctx} (hs : V.SlotsFrom 0) {A : VarType}

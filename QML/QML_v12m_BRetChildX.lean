@@ -321,7 +321,7 @@ theorem retChildX_fwd :
 
 /-- ⭐**The witness child is born with the invariants**: `RetInvW` out along `x`, `RetInvX` home. -/
 theorem RetData.retBirthX : RetData hS tp (retChildX hS hy hX Φ) (some (x, X)) none
-    (tp.l.length + 1) tp.l Nat.succ [.VTypeBox A] (fun _ => y) :=
+    (tp.l.length + 1) 0 tp.l Nat.succ [.VTypeBox A] (fun _ => y) :=
   ⟨retChildX_fwd hS hy hX hT hM hΦ, retChildX_back hS hy hX hT hM hΦ⟩
 
 end Birth

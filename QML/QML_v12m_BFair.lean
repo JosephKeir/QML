@@ -28,7 +28,7 @@ variable {σ : Signature} [ModalSys.NoFour] {l₀ : List VarType} {M₀ : Set (W
 /-! ## Back-witness arrows -/
 
 /-- ⭐A back-witness child's back arrow: its variables `bcl` have images `bimg` at the parent, with
-    `□_e` transfer, `e.dia` going to the parent's variable `cx` (docs §11.20).  Nothing for a child
+    `□_e` transfer, `e.dia` going to the parent's variable `bcx` (docs §11.20).  Nothing for a child
     with no back witness. -/
 def BackXData [ModalSys.NoFour] (tk tp : NodeSt σ) :
     Option (VarSymb × VarType) → ℕ → List VarType → (ℕ → ℕ) → Prop
@@ -49,8 +49,8 @@ structure FairChain (M₀ : Set (WFF σ (ctxOf l₀) 0)) where
   /-- Every arrow's images are injective (`NetSt.InjOk`): the T-free decoder's `ImgInj`. -/
   inj : ∀ n, (net n).InjOk
   /-- A back-witness child's back arrow lies in its witness's extent (`BackXData`). -/
-  backX : ∀ n c p, (net n).Live (c :: p) → (net n).kind (c :: p) = none →
-    BackXData ((net n).st (c :: p)) ((net n).st p) ((net n).bkind (c :: p)) ((net n).cx (c :: p))
+  backX : ∀ n c p, (net n).Live (c :: p) →
+    BackXData ((net n).st (c :: p)) ((net n).st p) ((net n).bkind (c :: p)) ((net n).bcx (c :: p))
       ((net n).bcl (c :: p)) ((net n).bimg (c :: p))
   ext : ∀ {n m : ℕ}, n ≤ m → NetSt.Ext (net n) (net m)
   fwd_total : ∀ {n c : ℕ} {p : Node}, (net n).Live (c :: p) → ∀ {r : ℕ},
@@ -150,8 +150,8 @@ structure OpChain (M₀ : Set (WFF σ (ctxOf l₀) 0)) where
   zero : net 0 = NetSt.init M₀
   good : ∀ n, (net n).Good
   inj : ∀ n, (net n).InjOk
-  backX : ∀ n c p, (net n).Live (c :: p) → (net n).kind (c :: p) = none →
-    BackXData ((net n).st (c :: p)) ((net n).st p) ((net n).bkind (c :: p)) ((net n).cx (c :: p))
+  backX : ∀ n c p, (net n).Live (c :: p) →
+    BackXData ((net n).st (c :: p)) ((net n).st p) ((net n).bkind (c :: p)) ((net n).bcx (c :: p))
       ((net n).bcl (c :: p)) ((net n).bimg (c :: p))
   ext : ∀ {n m : ℕ}, n ≤ m → NetSt.Ext (net n) (net m)
   henk : ∀ (s : Node) (o : Obl σ) (m : ℕ), ∃ n, m ≤ n ∧
@@ -458,7 +458,7 @@ noncomputable def weakOpChain (hB : ModalSys.B = true) (hM₀ : Theory.IsMCS M�
   zero := rfl
   good := good_net hB hM₀
   inj := inj_net hB hM₀
-  backX n c p _ _ := by
+  backX n c p _ := by
     rw [noBk_net M₀ n (c :: p)]
     trivial
   ext := ext_net hB hM₀

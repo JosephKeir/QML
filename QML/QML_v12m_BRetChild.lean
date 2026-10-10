@@ -499,7 +499,7 @@ theorem retChild_fwd :
       (Proof.lookup List.mem_cons_self))⟩⟩
 
 /-- ⭐**The child is born with the invariants** both ways. -/
-theorem RetData.retBirth : RetData hS tp (retChild hS hy Φ) none none 0 tp.l Nat.succ
+theorem RetData.retBirth : RetData hS tp (retChild hS hy Φ) none none 0 0 tp.l Nat.succ
     [.VTypeBox A] (fun _ => y) :=
   ⟨retChild_fwd hS hy hT hM hΦ, retChild_back hS hy hT hM hΦ⟩
 

@@ -320,26 +320,25 @@ open Classical in
     back edge (docs §11.20). -/
 noncomputable def lkd (s t : LW C) : Option (VarSymb × VarType) :=
   if ∃ c, t.1 = c :: s.1 then (C.net (birth C t.2)).kind t.1
-  else if (∃ c, s.1 = c :: t.1) ∧ (C.net (birth C s.2)).kind s.1 = none then
-    (C.net (birth C s.2)).bkind s.1
+  else if ∃ c, s.1 = c :: t.1 then (C.net (birth C s.2)).bkind s.1
   else none
 
 open Classical in
 /-- The content variable of a witness edge: the witness child's, or a back-witness child's
     parent's. -/
 noncomputable def lcx (s t : LW C) : ℕ :=
-  if ∃ c, t.1 = c :: s.1 then (C.net (birth C t.2)).cx t.1 else (C.net (birth C s.2)).cx s.1
+  if ∃ c, t.1 = c :: s.1 then (C.net (birth C t.2)).cx t.1 else (C.net (birth C s.2)).bcx s.1
 
 variable {C} in
 /-- A witness edge is forward into a witness child, or back from a back-witness child. -/
 theorem lkd_cases {s t : LW C} {x : VarSymb} {X : VarType} (hk : lkd C s t = some (x, X)) :
     (∃ c, t.1 = c :: s.1) ∨ ((∃ c, s.1 = c :: t.1) ∧
-      (C.net (birth C s.2)).kind s.1 = none ∧ (C.net (birth C s.2)).bkind s.1 = some (x, X)) := by
+      (C.net (birth C s.2)).bkind s.1 = some (x, X)) := by
   classical
   unfold lkd at hk
   split_ifs at hk with h₁ h₂
   · exact Or.inl h₁
-  · exact Or.inr ⟨h₂.1, h₂.2, hk⟩
+  · exact Or.inr ⟨h₂, hk⟩
 
 variable {C} in
 theorem lkdR {s t : LW C} {x : VarSymb} {X : VarType} (hk : lkd C s t = some (x, X)) :
@@ -357,6 +356,10 @@ theorem cx_at (t : LW C) {m : ℕ} (hm : birth C t.2 ≤ m) :
 theorem bkind_at (t : LW C) {m : ℕ} (hm : birth C t.2 ≤ m) :
     (C.net m).bkind t.1 = (C.net (birth C t.2)).bkind t.1 :=
   (C.ext hm).bkind t.1 (live_birth C t.2 le_rfl)
+
+theorem bcx_at (t : LW C) {m : ℕ} (hm : birth C t.2 ≤ m) :
+    (C.net m).bcx t.1 = (C.net (birth C t.2)).bcx t.1 :=
+  (C.ext hm).bcx t.1 (live_birth C t.2 le_rfl)
 
 /-- Along a forward witness edge, the arrow at a stage is a witness arrow. -/
 theorem fwdX_at {s t : LW C} {x : VarSymb} {X : VarType} (hc : ∃ c, t.1 = c :: s.1)
@@ -383,7 +386,6 @@ theorem fwdX_at {s t : LW C} {x : VarSymb} {X : VarType} (hc : ∃ c, t.1 = c ::
 
 /-- Along a back-witness edge, the arrow at a stage is a back-witness arrow (`BackXData`). -/
 theorem backX_at {s t : LW C} {x : VarSymb} {X : VarType} (hc : ∃ c, s.1 = c :: t.1)
-    (hk₀ : (C.net (birth C s.2)).kind s.1 = none)
     (hbk : (C.net (birth C s.2)).bkind s.1 = some (x, X)) (i : ℕ) :
     lat s i <:+ (C.net (birth C t.2 + lstg C s t i)).bcl s.1 ∧
     (∀ r < (lat s i).length,
@@ -399,8 +401,7 @@ theorem backX_at {s t : LW C} {x : VarSymb} {X : VarType} (hc : ∃ c, s.1 = c :
   have hbs : birth C s.2 ≤ birth C t.2 + lstg C s t i := by omega
   have hsm : (C.net (birth C t.2 + lstg C s t i)).Live s.1 := live_birth C s.2 hbs
   have hd := C.backX (birth C t.2 + lstg C s t i) c t.1 (hc ▸ hsm)
-    (by rw [← hc, kind_at C s hbs, hk₀])
-  rw [← hc, bkind_at C s hbs, hbk, cx_at C s hbs] at hd
+  rw [← hc, bkind_at C s hbs, hbk, bcx_at C s hbs] at hd
   refine ⟨hsuf, hag, ?_⟩
   rw [lcx, if_neg (not_fwd_of_back hc)]
   exact hd
@@ -408,23 +409,23 @@ theorem backX_at {s t : LW C} {x : VarSymb} {X : VarType} (hc : ∃ c, s.1 = c :
 /-- The content variable is declared at the content type. -/
 theorem lhcx {s t : LW C} {x : VarSymb} {X : VarType} (hk : lkd C s t = some (x, X))
     (i : ℕ) : (ctxOf (lat t (lstg C s t i))).ref (.root (.free (lcx C s t))) = some X := by
-  rcases lkd_cases hk with hc | ⟨hc, hk₀, hbk⟩
+  rcases lkd_cases hk with hc | ⟨hc, hbk⟩
   · obtain ⟨_, _, _, _, _, hcx, _⟩ := fwdX_at C hc hk i
     exact hcx
-  · obtain ⟨_, _, hd⟩ := backX_at C hc hk₀ hbk i
+  · obtain ⟨_, _, hd⟩ := backX_at C hc hbk i
     obtain ⟨_, _, _, hcx, _⟩ := hd
     exact hcx
 
 /-- The recorded content type is the witness's. -/
 theorem lhxX {s t : LW C} {x : VarSymb} {X : VarType} (hk : lkd C s t = some (x, X))
     (i : ℕ) (X' : VarType) (h : (ctxOf (lat s i)).ref x = some (.VTypeDia X')) : X' = X := by
-  rcases lkd_cases hk with hc | ⟨hc, hk₀, hbk⟩
+  rcases lkd_cases hk with hc | ⟨hc, hbk⟩
   · obtain ⟨hsuf, _, _, _, hx, _, _⟩ := fwdX_at C hc hk i
     have h1 := (ctxOf_le_of_suffix hsuf).ref h
     rw [hx] at h1
     simp only [Option.some.injEq, VarType.VTypeDia.injEq] at h1
     exact h1.symm
-  · obtain ⟨hsuf, _, hd⟩ := backX_at C hc hk₀ hbk i
+  · obtain ⟨hsuf, _, hd⟩ := backX_at C hc hbk i
     obtain ⟨_, _, hx, _, _⟩ := hd
     have h1 := (ctxOf_le_of_suffix hsuf).ref h
     rw [hx] at h1
@@ -443,10 +444,10 @@ theorem ltrX {s t : LW C} {x : VarSymb} {X : VarType} (hk : lkd C s t = some (x,
       Ctx.NoSlots.slots Ctx.NoSlots.slots ψ ∈
         ((C.net (birth C t.2 + lstg C s t i)).st t.1).M := by
   have hψ' := (grow_stage C s i (lstg_spec C (lkdR hk) i).1).sub _ hψ
-  rcases lkd_cases hk with hc | ⟨hc, hk₀, hbk⟩
+  rcases lkd_cases hk with hc | ⟨hc, hbk⟩
   · obtain ⟨hsuf, hag, _, _, _, _, htr⟩ := fwdX_at C hc hk i
     exact TransferX.apply htr hsuf hag (limgOk C (lkdR hk) i) hx _ ψ hψ'
-  · obtain ⟨hsuf, hag, hd⟩ := backX_at C hc hk₀ hbk i
+  · obtain ⟨hsuf, hag, hd⟩ := backX_at C hc hbk i
     obtain ⟨_, _, _, _, htr⟩ := hd
     exact TransferX.apply htr hsuf hag (limgOk C (lkdR hk) i) hx _ ψ hψ'
 

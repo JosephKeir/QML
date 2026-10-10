@@ -58,19 +58,26 @@ noncomputable def strongOpChain (hS : ModalSys.BStrong = true) (hB : ModalSys.B 
   zero := rfl
   good n := (goodS_netS hS hB hT hM₀ n).good
   inj := inj_netS hS hB hT hM₀
-  backX n c p hl hkd := by
+  backX n c p hl := by
     have hr := (goodS_netS hS hB hT hM₀ n).ret c p hl
     have hp := (goodS_netS hS hB hT hM₀ n).mcs p hl.1
     have hk := (goodS_netS hS hB hT hM₀ n).mcs _ hl
     unfold NetSt.RetOk at hr
-    rw [hkd] at hr
     cases hbk : (netS hS M₀ n).bkind (c :: p) with
     | none => trivial
     | some eX =>
         obtain ⟨e, X⟩ := eX
         rw [hbk] at hr
-        obtain ⟨ht, himgt, hx, hcx, htr⟩ := RetInvX.transferX hS hp hk hr.1
-        exact ⟨ht, himgt, hx, hcx, htr⟩
+        cases hkd : (netS hS M₀ n).kind (c :: p) with
+        | none =>
+            rw [hkd] at hr
+            obtain ⟨ht, himgt, hx, hcx, htr⟩ := RetInvX.transferX hS hp hk hr.1
+            exact ⟨ht, himgt, hx, hcx, htr⟩
+        | some xX =>
+            obtain ⟨x, X'⟩ := xX
+            rw [hkd] at hr
+            obtain ⟨ht, himgt, hx, hcx, htr⟩ := RetInvWD.transferX hS hp hk hr.1
+            exact ⟨ht, himgt, hx, hcx, htr⟩
   ext := ext_netS hS hB hT hM₀
   henk s o m := by
     obtain ⟨n, hmn, hs⟩ := schedS_after (σ := σ) (.inl (.inl (s, o))) m
@@ -116,6 +123,8 @@ structure StrongChain (hS : ModalSys.BStrong = true) (M₀ : Set (WFF σ (ctxOf 
     ((net n).Live s → net (n + 1) = (net n).mkRetX hS s o)
   retDOp : ∀ (s : Node) (o : NetSt.RetOblD σ) (m : ℕ), ∃ n, m ≤ n ∧
     ((net n).Live s → net (n + 1) = (net n).mkRetD hS s o)
+  retXDOp : ∀ (s : Node) (o : NetSt.RetOblXD σ) (m : ℕ), ∃ n, m ≤ n ∧
+    ((net n).Live s → net (n + 1) = (net n).mkRetXD hS s o)
 
 /-- ⭐Strong B's chain is a strong chain (T off). -/
 noncomputable def strongChainS (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true)
@@ -141,7 +150,13 @@ noncomputable def strongChainS (hS : ModalSys.BStrong = true) (hB : ModalSys.B =
       rw [netS_succ_of hs]
       exact if_pos hl⟩
   retDOp s o m := by
-    obtain ⟨n, hmn, hs⟩ := schedS_after (σ := σ) (.inr (.inr (.inr (.inr (s, o))))) m
+    obtain ⟨n, hmn, hs⟩ := schedS_after (σ := σ) (.inr (.inr (.inr (.inr (.inl (s, o)))))) m
+    exact ⟨n, hmn, fun hl => by
+      change netS hS M₀ (n + 1) = _
+      rw [netS_succ_of hs]
+      exact if_pos hl⟩
+  retXDOp s o m := by
+    obtain ⟨n, hmn, hs⟩ := schedS_after (σ := σ) (.inr (.inr (.inr (.inr (.inr (s, o)))))) m
     exact ⟨n, hmn, fun hl => by
       change netS hS M₀ (n + 1) = _
       rw [netS_succ_of hs]

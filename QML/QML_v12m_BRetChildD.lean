@@ -462,7 +462,7 @@ theorem retChildD_fwd :
 /-- ⭐**The back-witness child is born with the invariants**: `RetInvX` out along `e`, `RetInvW`
     home in `e`'s extent. -/
 theorem RetData.retBirthD : RetData hS tp (retChildD hS himg hz Φ) none
-    (some (.root (.free 1), X)) z tp.l (· + 2) (bclD A X) (backImgD y o) :=
+    (some (.root (.free 1), X)) 0 z tp.l (· + 2) (bclD A X) (backImgD y o) :=
   ⟨retChildD_fwd hS himg hz hT hM hΦ, retChildD_back hS himg hz hT hM hΦ⟩
 
 end Birth
@@ -492,10 +492,10 @@ noncomputable def mkRetD (hS : ModalSys.BStrong = true) (N : NetSt σ) (s : Node
                   (Term.eta (.root (.free z)) X hz))
                 (WFF.mono ((ctxOf_le_of_suffix h).boxIn.insert (.bnd 0) _) Φ) ∈ (N.st s).M then
               if y ≠ o then
-                N.newChild s none z
+                N.newChild s none 0
                   (retChildD hS himg hz
                     (WFF.mono ((ctxOf_le_of_suffix h).boxIn.insert (.bnd 0) _) Φ))
-                  (· + 2) (bclD A X) (backImgD y o) (some (.root (.free 1), X))
+                  (· + 2) (bclD A X) (backImgD y o) (some (.root (.free 1), X)) z
               else N
             else N
           else N
@@ -518,7 +518,7 @@ theorem Ext.mkRetD {hS : ModalSys.BStrong = true} {N : NetSt σ} {s : Node} (hs 
   obtain ⟨l, A, X, ⟨y, o, z⟩, Φ⟩ := o
   simp only [NetSt.mkRetD]
   split_ifs
-  · exact Ext.newChild hs _ _ _ _ _ _ _
+  · exact Ext.newChild hs _ _ _ _ _ _ _ _
   all_goals exact Ext.refl N
 
 end NetSt

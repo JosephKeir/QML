@@ -112,9 +112,9 @@ theorem InjOk.setBack {N : NetSt σ} (h : N.InjOk) {k : Node} {cl : List VarType
 
 theorem InjOk.newChild {N : NetSt σ} (h : N.InjOk) {s : Node} (hs : N.Live s)
     {kd : Option (VarSymb × VarType)} {cx : ℕ} {t : NodeSt σ} {fimg₀ : ℕ → ℕ}
-    {bcl₀ : List VarType} {bimg₀ : ℕ → ℕ} {bkd₀ : Option (VarSymb × VarType)}
+    {bcl₀ : List VarType} {bimg₀ : ℕ → ℕ} {bkd₀ : Option (VarSymb × VarType)} {bcx₀ : ℕ}
     (h₁ : InjOn (N.st s).l fimg₀) (h₂ : InjOn bcl₀ bimg₀) :
-    (N.newChild s kd cx t fimg₀ bcl₀ bimg₀ bkd₀).InjOk := by
+    (N.newChild s kd cx t fimg₀ bcl₀ bimg₀ bkd₀ bcx₀).InjOk := by
   intro c p hk
   rw [live_newChild hs] at hk
   by_cases he : (c :: p : Node) = N.nch s :: s
