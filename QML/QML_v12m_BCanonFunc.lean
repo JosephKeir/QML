@@ -40,12 +40,12 @@ noncomputable def rawEval :
   | _, _, .boxUnit, _, _ => fun _ => PUnit.unit
   | _, _, .diaMap f, _, o =>
       ⟨o.1, fun a => rawEval f a.1.1 (o.2 a),
-        fun hT => .dia (o.3 hT).label (GFunc.shp f 1 (o.3 hT).body)⟩
+        fun hSh => .dia (o.3 hSh).label (GFunc.shp f 1 (o.3 hSh).body)⟩
   | _, _, .strength _ _, _, o =>
       ⟨o.2.1, fun a => (o.1 a.1, o.2.2 a),
-        fun hT => .dia (o.2.3 hT).label
+        fun hSh => .dia (o.2.3 hSh).label
           (.prod (Arrows.transposeShp (F := B.arrows) (Root := fun _ => VarSymb)
-            fun a => B.rawShape hT (o.1 a)) (o.2.3 hT).body)⟩
+            fun a => B.rawShape hSh (o.1 a)) (o.2.3 hSh).body)⟩
   | _, _, .extract hT, s, o => o ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩
   | _, _, .dup hF, _, _ => (noFour hF).elim
 
@@ -152,11 +152,11 @@ theorem rden_applyG :
           rw [rden_realTerm_pair]
           refine Prod.ext ?_ rfl
           exact rden_realTerm_mono_boxIn hr e hx b _ _)
-        fun hT =>
+        fun hSh =>
           (Canon.termShp_applyG (.strength _ _) (.pair (.boxtm b) (.diatm x hx c))
             (B.cEnv Γ s) 0).trans (by
-            change _ = Shp.dia _ (Shp.prod (B.rawShape hT (B.rden s i e (.boxtm b))).inner _)
-            rw [rawShape_rden hT s i e (.boxtm b)]
+            change _ = Shp.dia _ (Shp.prod (B.rawShape hSh (B.rden s i e (.boxtm b))).inner _)
+            rw [rawShape_rden hSh s i e (.boxtm b)]
             rfl)
   | _, _, .extract hT, _, _, .boxtm b, s, i, e => by
       change B.rden s i e (Term.collapse _ b) = B.rden s i e (.boxtm b) ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩

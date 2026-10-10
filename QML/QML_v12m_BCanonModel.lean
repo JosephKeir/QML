@@ -164,12 +164,12 @@ theorem eval_toDom : ∀ {A C : VarType} (g : GFunc σ A C) (s : B.W) (o : B.RDo
   | _, _, .extract _, _, _, _ => rfl
   | _, _, .dup hF, _, _, _ => (noFour hF).elim
 
-/-- ⭐Evaluation of possible objects, in full: the section and, under T, the stored shape. -/
+/-- ⭐Evaluation of possible objects, in full: the section and, when shaped, the stored shape. -/
 def posFull {A : VarType} {s : B.W} (p : B.frame.Pos A s) :
-    B.frame.PosSec A s × (ModalSys.T = true → B.CShape s (.VTypeDia A)) :=
+    B.frame.PosSec A s × (ModalSys.shaped = true → B.CShape s (.VTypeDia A)) :=
   (B.posEval p, p.1.3)
 
-/-- A possible object is its section and, under T, its shape. -/
+/-- A possible object is its section and, when shaped, its shape. -/
 theorem posFull_injective {A : VarType} {s : B.W} :
     Function.Injective (B.posFull (A := A) (s := s)) := by
   rintro ⟨⟨E, c, τ⟩, hp⟩ ⟨⟨E', c', τ'⟩, hp'⟩ h
@@ -182,18 +182,18 @@ theorem posFull_injective {A : VarType} {s : B.W} :
   apply Subtype.ext
   exact RPos.congr_cont (funext fun a => toDom_inj (congrFun hc' a)) (congrFun h₂)
 
-/-- Under T, a frame object's shape is its raw object's. -/
-theorem domShape_toDom (hT : ModalSys.T = true) : ∀ (A : VarType) (s : B.W) (o : B.RDom A s)
+/-- When shaped, a frame object's shape is its raw object's. -/
+theorem domShape_toDom (hSh : ModalSys.shaped = true) : ∀ (A : VarType) (s : B.W) (o : B.RDom A s)
     (h : B.Definable A s o),
-    Frame.domShape B.necEval (fun q => (B.posFull q).2 hT) (B.toDom A s o h) = B.rawShape hT o
+    Frame.domShape B.necEval (fun q => (B.posFull q).2 hSh) (B.toDom A s o h) = B.rawShape hSh o
   | .Var, _, _, _ => rfl
   | .VTypeOne, _, _, _ => rfl
   | .VTypeProd A C, s, o, h =>
-      congrArg₂ Shp.prod (domShape_toDom hT A s o.1 (definable_fst h))
-        (domShape_toDom hT C s o.2 (definable_snd h))
+      congrArg₂ Shp.prod (domShape_toDom hSh A s o.1 (definable_fst h))
+        (domShape_toDom hSh C s o.2 (definable_snd h))
   | .VTypeBox A, _, o, h =>
       congrArg Shp.box (congrArg Arrows.transposeShp (funext fun a =>
-        domShape_toDom hT A a.1 (o a) (definable_box_apply h a)))
+        domShape_toDom hSh A a.1 (o a) (definable_box_apply h a)))
   | .VTypeDia _, _, _, _ => rfl
 
 /-! ## Strong D -/
@@ -324,9 +324,9 @@ noncomputable def model : Model.{0, 0} σ where
   necEval := B.necEval
   nec_inj := fun h => B.necEval_injective h
   RootPoss _ := VarSymb
-  posFull p := ((B.posFull p).1, fun hSh => (B.posFull p).2 (ModalSys.NoFour.T_of_shaped hSh))
+  posFull p := B.posFull p
   posFull_inj := fun h => B.posFull_injective (Prod.ext (congrArg Prod.fst h :)
-    (funext fun hT => congrFun (congrArg Prod.snd h) (ModalSys.shaped_of_T hT)))
+    (funext fun hSh => congrFun (congrArg Prod.snd h) hSh))
   ops := B.ops
   necMap_eval g _ a := (B.eval_toDom g a.1 _ _).symm
   necPair_eval _ _ _ := rfl
@@ -334,7 +334,7 @@ noncomputable def model : Model.{0, 0} σ where
     (congrArg (Sigma.mk _) (funext fun a => (B.eval_toDom g a.1.1 _ _).symm)) rfl
   posStrength_full n _ := Prod.ext rfl (funext fun hSh =>
     congrArg (fun z => Shp.dia _ (Shp.prod z _)) (congrArg Arrows.transposeShp (funext fun s =>
-      (B.domShape_toDom (ModalSys.NoFour.T_of_shaped hSh) _ s.1 (n.1 s)
+      (B.domShape_toDom hSh _ s.1 (n.1 s)
         (definable_box_apply n.2 s)).symm)))
   necExtract_eval _ _ := rfl
   necDup_eval hF _ _ _ := (noFour hF).elim

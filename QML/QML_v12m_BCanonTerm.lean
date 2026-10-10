@@ -103,7 +103,7 @@ theorem interp_canon_eta (s : B.W) (k : ℕ) (y : VarSymb) {A : VarType}
       B.toDom A s (B.rden s k (Ctx.Le.refl _) (Term.eta y A hy)) (definable_rden _ _) :=
   (Model.interp_eta (B.canonEnv s k) y hy).trans (canonEnv_ref s k y hy)
 
-/-- Under T, the shapes of an environment agreeing with the canonical one are the canonical
+/-- When shaped, the shapes of an environment agreeing with the canonical one are the canonical
     shapes (`Canon.envShape_canon`). -/
 theorem envShape_canon (hSh : ModalSys.shaped = true) {Γ : Ctx} {s : B.W} {i : ℕ}
     {e : Γ.Le ((B.w s).ctx i)} {env : B.model.Env Γ s}
@@ -112,7 +112,7 @@ theorem envShape_canon (hSh : ModalSys.shaped = true) {Γ : Ctx} {s : B.W} {i : 
   funext v T hv
   change Model.domSh hSh (env v T hv) = B.canonSh s v T
   rw [hag v T hv]
-  refine (B.domShape_toDom (ModalSys.NoFour.T_of_shaped hSh) T s _ _).trans ?_
+  refine (B.domShape_toDom hSh T s _ _).trans ?_
   rw [rawShape_rden, Model.termShp_eta, cEnv_ref]
 
 /-- The canonical environment at a later stage agrees with the one at an earlier stage. -/

@@ -27,6 +27,10 @@ namespace V12M
 
 variable [ModalSys]
 
+omit [ModalSys] in
+/-- Without 4 (B's network throughout). -/
+theorem noFour' [ModalSys] [ModalSys.NoFour] : ModalSys.Four = false := ModalSys.NoFour.noFour
+
 /-! ## Levels of addresses -/
 
 omit [ModalSys] in
@@ -116,17 +120,17 @@ def Ann.Exact : ℕ → {A : VarType} → Ann A → Prop
   | j, _, .dia x a => x.OK ∧ x.lv = j ∧ Ann.Exact (j + 1) a
 
 /-- A term's labels are its context's addresses, so they have its exact levels. -/
-theorem Term.ann_exact (hT : ModalSys.T = true) {σ : Signature} :
+theorem Term.ann_exact [ModalSys.NoFour] {σ : Signature} :
     ∀ {Δ : Ctx}, Δ.DeclOK → ∀ {j : ℕ}, Δ.Exact j → ∀ {A : VarType} {a : Ann A},
       Term σ Δ A a → a.Exact j
   | _, _, _, _, _, _, .var _ _ => trivial
   | _, _, _, _, _, _, .func _ => trivial
   | _, _, _, _, _, _, .unit => trivial
-  | _, hok, _, hex, _, _, .pair s t => ⟨Term.ann_exact hT hok hex s, Term.ann_exact hT hok hex t⟩
-  | _, hok, _, hex, _, _, .boxtm t => Term.ann_exact hT (hok.boxIn hT) hex.boxIn t
+  | _, hok, _, hex, _, _, .pair s t => ⟨Term.ann_exact hok hex s, Term.ann_exact hok hex t⟩
+  | _, hok, _, hex, _, _, .boxtm t => Term.ann_exact (hok.boxIn_of (.inr noFour')) hex.boxIn t
   | _, hok, _, hex, _, _, .diatm x hx t => by
       obtain ⟨X, h⟩ := hx
-      exact ⟨hok.ref x h, hex x _ h, Term.ann_exact hT (hok.diaIn hT x) (hex.diaIn x) t⟩
+      exact ⟨hok.ref x h, hex x _ h, Term.ann_exact (hok.diaIn_of (.inr noFour') x) (hex.diaIn x) t⟩
 
 namespace BArrow
 
@@ -668,10 +672,10 @@ theorem Canonical.of_decl {Δ : Ctx} (hok : Δ.DeclOK) {j : ℕ} (hex : Δ.Exact
         exact h _ T _
 
 /-- ⭐Pushing a canonical environment into `□` gives a canonical one, one level deeper. -/
-theorem Canonical.boxPush (hT : ModalSys.T = true) {Δ : Ctx} (hok : Δ.DeclOK) {j : ℕ}
+theorem Canonical.boxPush {Δ : Ctx} (hok : Δ.DeclOK) {j : ℕ}
     (hex : Δ.Exact j) {s : B.W} {ρ : B.CShEnv Δ s} (hρ : B.Canonical ρ j) :
     B.Canonical (ρ.boxPush j) (j + 1) := by
-  refine Canonical.of_decl (hok.boxIn hT) hex.boxIn fun v T hv => ?_
+  refine Canonical.of_decl (hok.boxIn_of (.inr noFour')) hex.boxIn fun v T hv => ?_
   match v, hv with
   | .step u .box, hv =>
       obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv
@@ -687,11 +691,11 @@ theorem Canonical.boxPush (hT : ModalSys.T = true) {Δ : Ctx} (hok : Δ.DeclOK) 
   | .step _ .here, hv => cases hv
 
 /-- ⭐Pushing a canonical environment into `◇_x` gives a canonical one, one level deeper. -/
-theorem Canonical.diaPush (hT : ModalSys.T = true) {Δ : Ctx} (hok : Δ.DeclOK) {j : ℕ}
+theorem Canonical.diaPush {Δ : Ctx} (hok : Δ.DeclOK) {j : ℕ}
     (hex : Δ.Exact j) {s : B.W} {ρ : B.CShEnv Δ s} (hρ : B.Canonical ρ j) {x : VarSymb}
     {X : VarType} (hx : Δ.ref x = some (.VTypeDia X)) :
     B.Canonical (ρ.diaPush j x hx) (j + 1) := by
-  refine Canonical.of_decl (hok.diaIn hT x) (hex.diaIn x) fun v T hv => ?_
+  refine Canonical.of_decl (hok.diaIn_of (.inr noFour') x) (hex.diaIn x) fun v T hv => ?_
   match v, hv with
   | .step u .dia, hv =>
       have hux : u = x := by
@@ -707,13 +711,13 @@ theorem Canonical.diaPush (hT : ModalSys.T = true) {Δ : Ctx} (hok : Δ.DeclOK) 
   | .step u .box, hv =>
       have hb : Δ.boxIn.ref (.step u .box) = some T :=
         (Ctx.ref_nonproj _ (show (VarSymb.step u .box).lastProj = false from rfl)).trans hv
-      have hc := (hρ.boxPush hT hok hex) _ _ hb
+      have hc := (hρ.boxPush hok hex) _ _ hb
       rw [Model.ShEnv.ref_nonproj _ _ (by decide) hb] at hc
       exact hc
   | .step u .keep, hv =>
       have hb : Δ.boxIn.ref (.step u .keep) = some T :=
         (Ctx.ref_nonproj _ (show (VarSymb.step u .keep).lastProj = false from rfl)).trans hv
-      have hc := (hρ.boxPush hT hok hex) _ _ hb
+      have hc := (hρ.boxPush hok hex) _ _ hb
       rw [Model.ShEnv.ref_nonproj _ _ (by decide) hb] at hc
       exact hc
   | .root _, hv => cases hv
@@ -723,7 +727,7 @@ theorem Canonical.diaPush (hT : ModalSys.T = true) {Δ : Ctx} (hok : Δ.DeclOK) 
 
 /-- ⭐⭐**The relabelling theorem**: in a canonical environment, a term's shape is its annotation
     read canonically. -/
-theorem termShp_canonical (hT : ModalSys.T = true) {s : B.W} :
+theorem termShp_canonical {s : B.W} :
     ∀ {Δ : Ctx}, Δ.DeclOK → ∀ {j : ℕ}, Δ.Exact j → ∀ {ρ : B.CShEnv Δ s},
       B.Canonical ρ j → ∀ {A : VarType} {a : Ann A} (t : Term σ Δ A a),
         Model.termShp ρ j t = B.annShp s j a
@@ -732,16 +736,16 @@ theorem termShp_canonical (hT : ModalSys.T = true) {s : B.W} :
   | _, _, _, _, _, _, _, _, .unit => rfl
   | _, hok, _, hex, _, hρ, _, _, .pair u t => by
       change Shp.prod (Model.termShp _ _ u) (Model.termShp _ _ t) = _
-      rw [termShp_canonical hT hok hex hρ u, termShp_canonical hT hok hex hρ t]
+      rw [termShp_canonical hok hex hρ u, termShp_canonical hok hex hρ t]
       rfl
   | _, hok, j, hex, ρ, hρ, _, _, .boxtm t => by
       change Shp.box (Model.termShp (ρ.boxPush j) (j + 1) t) = _
-      rw [termShp_canonical hT (hok.boxIn hT) hex.boxIn (hρ.boxPush hT hok hex) t]
+      rw [termShp_canonical (hok.boxIn_of (.inr noFour')) hex.boxIn (hρ.boxPush hok hex) t]
       rfl
   | _, hok, j, hex, ρ, hρ, _, _, .diatm x hx t => by
       obtain ⟨X, hr⟩ := id hx
       rw [Model.termShp_diatm ρ j hr hx,
-        termShp_canonical hT (hok.diaIn hT x) (hex.diaIn x) (hρ.diaPush hT hok hex hr) t,
+        termShp_canonical (hok.diaIn_of (.inr noFour') x) (hex.diaIn x) (hρ.diaPush hok hex hr) t,
         hρ x _ hr]
       rfl
 
@@ -850,17 +854,18 @@ theorem annShp_injective (hT : ModalSys.T = true) (s : B.W) :
 theorem ann_eq_of_termShp (hT : ModalSys.T = true) {Γ : Ctx} (hok : Γ.DeclOK) (hex : Γ.Exact 0)
     (s : B.W) {A : VarType} {a a' : Ann A} (t : Term σ Γ A a) (t' : Term σ Γ A a')
     (h : Model.termShp (B.cEnv Γ s) 0 t = Model.termShp (B.cEnv Γ s) 0 t') : a = a' := by
-  refine annShp_injective hT s 0 a a' (Term.ann_exact hT hok hex t)
-    (Term.ann_exact hT hok hex t') ?_
-  rw [← termShp_canonical hT hok hex (cEnv_canonical hex s) t,
-    ← termShp_canonical hT hok hex (cEnv_canonical hex s) t', h]
+  refine annShp_injective hT s 0 a a' (Term.ann_exact hok hex t)
+    (Term.ann_exact hok hex t') ?_
+  rw [← termShp_canonical hok hex (cEnv_canonical hex s) t,
+    ← termShp_canonical hok hex (cEnv_canonical hex s) t', h]
 
 /-- ⭐⭐**Tags determine annotations**: two terms with one denotation have one annotation. -/
 theorem ann_eq_of_rden (hT : ModalSys.T = true) {Γ : Ctx} (hok : Γ.DeclOK) (hex : Γ.Exact 0)
     {s : B.W} {i : ℕ} (e : Γ.Le ((B.w s).ctx i)) {A : VarType} {a a' : Ann A}
     (t : Term σ Γ A a) (t' : Term σ Γ A a') (h : B.rden s i e t = B.rden s i e t') : a = a' :=
   ann_eq_of_termShp hT hok hex s t t'
-    (by rw [← B.rawShape_rden hT s i e t, ← B.rawShape_rden hT s i e t', h])
+    (by rw [← B.rawShape_rden (ModalSys.shaped_of_T hT) s i e t,
+      ← B.rawShape_rden (ModalSys.shaped_of_T hT) s i e t', h])
 
 /-- Tags determine annotations, for terms of a world's language. -/
 theorem ann_eq_of_rden_ctx (hT : ModalSys.T = true) {s : B.W} {i : ℕ} {A : VarType}

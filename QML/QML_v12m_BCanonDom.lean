@@ -315,11 +315,12 @@ theorem termShp_arrow_cEnv {Γ : Ctx} {s s' : B.W} (h : B.R s s') {i : ℕ}
 structure RPos (s : B.W) (A : VarType) (C : B.Acc s → Type) where
   E : Set (B.Acc s)
   c : (a : E) → C a.1
-  tag : ModalSys.T = true → B.CShape s (.VTypeDia A)
+  tag : ModalSys.shaped = true → B.CShape s (.VTypeDia A)
 
 variable {B} in
 theorem RPos.congr_cont {s : B.W} {A : VarType} {C : B.Acc s → Type} {E : Set (B.Acc s)}
-    {c c' : (a : E) → C a.1} {τ τ' : ModalSys.T = true → B.CShape s (.VTypeDia A)} (hc : c = c')
+    {c c' : (a : E) → C a.1} {τ τ' : ModalSys.shaped = true → B.CShape s (.VTypeDia A)}
+    (hc : c = c')
     (hτ : ∀ hT, τ hT = τ' hT) :
     (⟨E, c, τ⟩ : B.RPos s A C) = ⟨E, c', τ'⟩ := by
   subst hc
@@ -336,16 +337,16 @@ def RDom : VarType → B.W → Type
   | .VTypeBox A, s => (a : B.Acc s) → RDom A a.1
   | .VTypeDia A, s => B.RPos s A fun a => RDom A a.1
 
-/-- ⭐Under T, the shape of a raw object: the stored shapes of its possible objects, arranged as its
-    type arranges them — `Frame.domShape` for raw objects. -/
-def rawShape (hT : ModalSys.T = true) : {A : VarType} → {s : B.W} → B.RDom A s → B.CShape s A
+/-- ⭐Under T or strong B (`shaped`), the shape of a raw object: the stored shapes of its possible
+    objects, arranged as its type arranges them — `Frame.domShape` for raw objects. -/
+def rawShape (hSh : ModalSys.shaped = true) : {A : VarType} → {s : B.W} → B.RDom A s → B.CShape s A
   | .Var, _, _ => .var
   | .VTypeOne, _, _ => .one
-  | .VTypeProd _ _, _, o => .prod (rawShape hT o.1) (rawShape hT o.2)
+  | .VTypeProd _ _, _, o => .prod (rawShape hSh o.1) (rawShape hSh o.2)
   | .VTypeBox _, _, o =>
       .box (Arrows.transposeShp (F := B.arrows) (Root := fun _ => VarSymb) fun a =>
-        rawShape hT (o a))
-  | .VTypeDia _, _, o => o.3 hT
+        rawShape hSh (o a))
+  | .VTypeDia _, _, o => o.3 hSh
 
 open Classical in
 /-- ⭐The denotation of a term at a world, computed at a stage containing its context. -/
@@ -583,27 +584,27 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
     term's values sit along the arrows, where the environment pushed into `□` is the target's own
     read through `succAddr` (`cEnv_boxPush`) — what translating the body (along a network arrow)
     and collapsing it (along the world's own) need. -/
-theorem rawShape_rden (hT : ModalSys.T = true) : ∀ {A : VarType} {a : Ann A} {Γ : Ctx}
+theorem rawShape_rden (hSh : ModalSys.shaped = true) : ∀ {A : VarType} {a : Ann A} {Γ : Ctx}
     (s : B.W) (i : ℕ) (e : Γ.Le ((B.w s).ctx i)) (t : Term σ Γ A a),
-    B.rawShape hT (B.rden s i e t) = Model.termShp (B.cEnv Γ s) 0 t
+    B.rawShape hSh (B.rden s i e t) = Model.termShp (B.cEnv Γ s) 0 t
   | _, _, _, _, _, _, .var _ _ => rfl
   | _, _, _, _, _, _, .func _ => rfl
   | _, _, _, _, _, _, .unit => rfl
   | _, _, _, s, i, e, .pair u v => by
-      change Shp.prod (B.rawShape hT (B.rden s i e u)) (B.rawShape hT (B.rden s i e v)) = _
-      rw [rawShape_rden hT s i e u, rawShape_rden hT s i e v]
+      change Shp.prod (B.rawShape hSh (B.rden s i e u)) (B.rawShape hSh (B.rden s i e v)) = _
+      rw [rawShape_rden hSh s i e u, rawShape_rden hSh s i e v]
       rfl
   | _, _, Γ, s, i, e, .boxtm t => by
       change Shp.box (Arrows.transposeShp (F := B.arrows) (Root := fun _ => VarSymb) fun a =>
-          B.rawShape hT (B.rden s i e (.boxtm t) a)) =
+          B.rawShape hSh (B.rden s i e (.boxtm t) a)) =
         Shp.box (Model.termShp ((B.cEnv Γ s).boxPush 0) (0 + 1) t)
       rw [Model.termShp_transpose ((B.cEnv Γ s).boxPush 0)
         (fun a => B.canonEnvF Γ.boxIn a.1 (B.succAddr s a)) 0 (B.cEnv_boxPush Γ s) t]
       refine congrArg Shp.box (congrArg _ (funext fun a => ?_))
       by_cases hR : B.R s a.1
-      · rw [rden_boxtm_net e t a hR, rawShape_rden hT, B.termShp_arrow_cEnv hR e t,
+      · rw [rden_boxtm_net e t a hR, rawShape_rden hSh, B.termShp_arrow_cEnv hR e t,
           show B.succAddr s a = arrowIdx (B.img s a.1) from funext (succAddr_net hR)]
-      · rw [rden_boxtm_self e t a hR, rawShape_rden hT,
+      · rw [rden_boxtm_self e t a hR, rawShape_rden hSh,
           B.termShp_collapse_cEnv (self_of_not_R hR).1,
           show B.succAddr s a = fun v => v.collapse 0 from funext (succAddr_self hR)]
   | _, _, _, _, _, _, .diatm _ _ _ => rfl

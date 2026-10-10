@@ -6632,6 +6632,24 @@ laws — not `back_cases`.**
   case split.  With T the existing two-arrow proof applies unchanged; it uses the own arrow, not
   `ImgInj`.  Without T the one-arrow proof applies.  Shapes gated by `shaped` cover T with
   strong B too.  `ImgInj` is used only when T is off, so T's operations need not keep it.
+* *Built (2026-10-10): D1, D2, D4.*
+  * *D1.*  Canonical shapes are stored under `ModalSys.shaped` (`RPos.tag`, `rawShape`,
+    `rawShape_rden`, `posFull`, `domShape_toDom`).  The tag never used T; the model no longer goes
+    through `T_of_shaped`.
+  * *D2.*  The relabelling chain (`Term.ann_exact`, `Canonical.boxPush`/`diaPush`,
+    `termShp_canonical`) is T-free in B's files.  The only use of T was that a `box` step is
+    allowed, which "no 4" gives as well: new `Ctx.DeclOK.boxIn_of`/`diaIn_of`,
+    `Ctx.Presented.declOK_of` (T or no 4), with the T forms kept as wrappers.
+  * *D4* (`QML_v12m_BDecode`):
+    * `VarType.walk`, ⭐`cut_unique`, ⭐`walk_bc`;
+    * typed labels `BData.LabelTy`, transported along an arrow (`labelTy_arrow`);
+    * ⭐⭐`leafOf_inj_noT` (one network arrow, `ImgInj` as a hypothesis, the arrow back for
+      deeper worlds);
+    * `Ctx.Walks` (view contexts walk from their roots), `AnnTy`, `annShp_injective_noT`;
+    * ⭐⭐`ann_eq_of_rden_noT` / `ann_eq_of_rden_ctx_noT` (an anchor with an arrow).
+  * *Left:* D3, `ImgInj` as a network invariant: index maps are set in `BNetChain`, `BNetChild`,
+    `BNetGrow`, `BNetMono`, `BNetOps`, `BNetRet`, `BNetStep`, `BRet` and `BRetW`.  It is added
+    to `Good` and carried into `BData` through the limit.
 
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`

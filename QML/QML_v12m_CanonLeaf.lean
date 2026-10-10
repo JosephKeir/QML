@@ -147,13 +147,18 @@ theorem Ctx.DeclOK.insert {Γ : Ctx} (h : Γ.DeclOK) (r : Root) (T : VarType) :
     cases hs
   · exact h v U hv
 
-theorem Ctx.DeclOK.boxIn (hT : ModalSys.T = true) {Γ : Ctx} (h : Γ.DeclOK) : Γ.boxIn.DeclOK := by
+/-- The `□` view reaches only allowed addresses, under T or without 4: either way a `box` step is
+    produced only without 4. -/
+theorem Ctx.DeclOK.boxIn_of (hTF : ModalSys.T = true ∨ ModalSys.Four = false) {Γ : Ctx}
+    (h : Γ.DeclOK) : Γ.boxIn.DeclOK := by
   intro v U hv
   match v, hv with
   | .step u .box, hv =>
       obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv
       refine VarSymb.ok_step.mpr ⟨h.ref u hu, fun _ => ?_, nofun⟩
-      simpa [ModalSys.keepOnly, hT] using hk
+      rcases hTF with hT | hF
+      · simpa [ModalSys.keepOnly, hT] using hk
+      · exact hF
   | .step u .keep, hv =>
       obtain ⟨hF, hu, -⟩ := Ctx.boxIn_keep hv
       exact VarSymb.ok_step.mpr ⟨h.ref u hu, nofun, fun _ => hF⟩
@@ -163,8 +168,11 @@ theorem Ctx.DeclOK.boxIn (hT : ModalSys.T = true) {Γ : Ctx} (h : Γ.DeclOK) : �
   | .step _ .dia, hv => cases hv
   | .step _ .here, hv => cases hv
 
-theorem Ctx.DeclOK.diaIn (hT : ModalSys.T = true) {Γ : Ctx} (h : Γ.DeclOK) (x : VarSymb) :
-    (Γ.diaIn x).DeclOK := by
+theorem Ctx.DeclOK.boxIn (hT : ModalSys.T = true) {Γ : Ctx} (h : Γ.DeclOK) : Γ.boxIn.DeclOK :=
+  h.boxIn_of (.inl hT)
+
+theorem Ctx.DeclOK.diaIn_of (hTF : ModalSys.T = true ∨ ModalSys.Four = false) {Γ : Ctx}
+    (h : Γ.DeclOK) (x : VarSymb) : (Γ.diaIn x).DeclOK := by
   intro v U hv
   match v, hv with
   | .step u .dia, hv =>
@@ -175,22 +183,32 @@ theorem Ctx.DeclOK.diaIn (hT : ModalSys.T = true) {Γ : Ctx} (h : Γ.DeclOK) (x 
       cases hx : Γ.ref u with
       | none => rw [hx] at hv; cases hv
       | some X => exact VarSymb.ok_step.mpr ⟨h.ref u hx, Step.ok_dia⟩
-  | .step u .box, hv => exact (h.boxIn hT) _ U hv
-  | .step u .keep, hv => exact (h.boxIn hT) _ U hv
+  | .step u .box, hv => exact (h.boxIn_of hTF) _ U hv
+  | .step u .keep, hv => exact (h.boxIn_of hTF) _ U hv
   | .root _, hv => cases hv
   | .step _ .fst, hv => cases hv
   | .step _ .snd, hv => cases hv
   | .step _ .here, hv => cases hv
 
-theorem CtxExpr.declOK (hT : ModalSys.T = true) : ∀ e : CtxExpr, e.denote.DeclOK
+theorem Ctx.DeclOK.diaIn (hT : ModalSys.T = true) {Γ : Ctx} (h : Γ.DeclOK) (x : VarSymb) :
+    (Γ.diaIn x).DeclOK :=
+  h.diaIn_of (.inl hT) x
+
+theorem CtxExpr.declOK_of (hTF : ModalSys.T = true ∨ ModalSys.Four = false) :
+    ∀ e : CtxExpr, e.denote.DeclOK
   | .empty => fun _ _ h => by cases h
-  | .insertFree e u T => (CtxExpr.declOK hT e).insert (.free u) T
-  | .boxIn e => (CtxExpr.declOK hT e).boxIn hT
-  | .diaIn e x => (CtxExpr.declOK hT e).diaIn hT x
+  | .insertFree e u T => (CtxExpr.declOK_of hTF e).insert (.free u) T
+  | .boxIn e => (CtxExpr.declOK_of hTF e).boxIn_of hTF
+  | .diaIn e x => (CtxExpr.declOK_of hTF e).diaIn_of hTF x
+
+/-- ⭐Under T or without 4, a presented context reaches only allowed addresses. -/
+theorem Ctx.Presented.declOK_of (hTF : ModalSys.T = true ∨ ModalSys.Four = false) (Γ : Ctx)
+    [h : Γ.Presented] : Γ.DeclOK :=
+  h.denote_eq ▸ CtxExpr.declOK_of hTF h.expr
 
 /-- ⭐Under T, a presented context reaches only allowed addresses. -/
-theorem Ctx.Presented.declOK (hT : ModalSys.T = true) (Γ : Ctx) [h : Γ.Presented] : Γ.DeclOK :=
-  h.denote_eq ▸ CtxExpr.declOK hT h.expr
+theorem Ctx.Presented.declOK (hT : ModalSys.T = true) (Γ : Ctx) [Γ.Presented] : Γ.DeclOK :=
+  Ctx.Presented.declOK_of (.inl hT) Γ
 
 /-! ## Collapse and shift on paths agree with collapse and shift on addresses -/
 
