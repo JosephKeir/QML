@@ -1,6 +1,6 @@
 ---
 name: project-qml-current-position
-description: "⭐WHERE WE ARE in QML (2026-10-10): strong B (milestone 2, T off) — step 4 committed 007882b; step 5 begun cf562dd (sizes, sat_back_of_mem, plan in docs §11.20); next: back converse, ret cases"
+description: "⭐WHERE WE ARE in QML (2026-10-10): strong B (milestone 2, T off) — step 5 in progress: back truth⇒membership at ◇-free contents DONE (QML_v12m_BBackTruth); next: back at ◇-typed contents (atom disjunct), ret cases"
 metadata:
   node_type: memory
   type: project
@@ -21,7 +21,8 @@ metadata:
 - Committed 51c5b44 (ret_unitD along O, RetForget).  Then (uncommitted at time of writing): E1 step 3 DONE in QML_v12m_BLimitRet (RetAt by edge witnesses lkd/lcx, RetData.retAt_fwd/back, RetAt.restrict, lretAt).
 - Committed baf4314 (step 3).  Then (uncommitted at time of writing): DECIDED (user) `ret_counitC` takes the leg O (body over O.view, `O.back bd t`); step 4a in BCanonModel (cData, canonical `Ret` = round trip at ◇-free OR a Back atom with exact denotations; Ret_fwd via new BData fields backRel/backRelX + noT_of_strong; backRet_exists via Proof.backEx); step 4b in new `QML_v12m_BBackTail` (RetAt.toRetInv/toRetInvX via node forgetting lemmas; back_tail/back_tailX via ret_counitC at ψ = pack2 (tailBody bdk H); lbackRel/lbackRelX at the limit with H = packRoots χ + interch_of_tailK; `bdataS C hT`).  qbuild TOP ends with BBackTail.  Docs §11.20 + roadmap updated.
 - Committed 007882b (step 4) and cf562dd (step 5 begun: WFF.size of back/retS/retxS enlarged; BData.sat_back_of_mem in BTruth; step-5 plan in docs §11.20 "Step 5 begun").  Branch sem-annotations has NO upstream on origin yet.
-- NEXT: back truth⇒membership (leg identification needs a BData field "unlabelled arrow"; ◇□ carriers need shapes fixed by annotations — the open lemma; decoder needs B.ImgInj), then ret/retx both directions (new BData fields per returning form from StrongChain ret*Op fairness), then step 6.
+- Cloud session 2026-10-10 (branch claude/zen-gauss-szc89i, based on sem-annotations cf562dd/8ba1c0d): NEW `QML_v12m_BBackTruth` (in qbuild TOP): `WFF.openFree_bindFree`, `WFF.backRetImp`/`backRetAll`, `Proof.back_of_all` (∀c(ret c → c = t), ◇⊤ ⊢ Back via back_ret), `OutLeg.ret_of_sat_agree` (converse of sat_ret_agree), `BData.ind_eq_of_diaFree` (canonical Ind = equality at ◇-free types via DTerm.Rel at an eqRec slot + IH; can't use BData.indInvariant, which is proved FROM the truth lemma), size lemmas, ⭐`BData.mem_back_of_sat_diaFree` (back truth⇒membership at ◇-free A, takes the IH as a hypothesis like here_truth; no split on Ret's disjuncts — Ret_fwd gives the round trip either way).  Docs §11.20 'Step 5 begun' + roadmap updated.  Not yet wired into BTruth.truth_lt (the back case there is still `absurdStrong` under NoFour; wiring happens when noBStrong is removed, step 6).
+- NEXT: back truth⇒membership at ◇-typed contents = atom disjunct (leg identification needs a BData field "unlabelled arrow"; ◇□ carriers need shapes fixed by annotations — the open lemma; decoder needs B.ImgInj), then ret/retx both directions (new BData fields per returning form from StrongChain ret*Op fairness), then step 6.
 
 ## History (former description)
 

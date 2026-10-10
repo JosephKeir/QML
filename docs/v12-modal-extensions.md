@@ -6809,11 +6809,28 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
   (`2·A.eqRecSize + 2`).  The size lemmas follow; nothing else used the old clauses.
 * *`back`, membership ⇒ truth (built,* `BData.sat_back_of_mem`*).*  The atom is its own witness in
   the canonical `Ret`'s atom disjunct.
-* *`back`, truth ⇒ membership (plan).*  The canonical `Ret` holds of the carrier's data and the
+* *`back`, truth ⇒ membership.*  The canonical `Ret` holds of the carrier's data and the
   value's denotation.
-  * `◇`-free disjunct: `back_ret` + `henk_ex` + the IH at the `ret` instance and at `eqRec` (as on
-    paper above).  `Ind` at `◇`-free values gives equality by interchange at an `eqRec` slot.
-  * Atom disjunct, `Back ct' t' ∈ M` with the same data and `den t' = den t`:
+  * *`◇`-free contents (built, 2026-10-10,* `QML_v12m_BBackTruth`*,*
+    ⭐`BData.mem_back_of_sat_diaFree`*).*  No case split on `Ret`'s disjuncts: at a `◇`-free
+    content any true `Back` makes the round trip (`Ret_fwd`, via `sat_back_rt`), and that is all
+    the argument reads.
+    * Suppose the atom is not in `M s i`.  `Proof.back_of_all` (`back_ret`, its subproof
+      instantiating a universal at the fresh value) shows the universal
+      `WFF.backRetAll = ∀c (◇[e ↦ c] □(e.box = bd) → c = t)` is not in `M` either (`◇⊤` is in `M`
+      by the IH, the leg being nonempty).  `allW` names a counter-instance `g` at a stage `j`.
+    * The IH at that instance (size `3·A.eqRecSize + 3`, below `Back`'s `≥ 3·A.eqRecSize + 5`,
+      `size_back_ge`) makes it false in the model: some arrow of the leg has `e = □bd` there
+      (`backRetBody`) and brings `e` home `Ind` to `den g` (`OutLeg.ret_of_sat_agree`, the converse
+      of `sat_ret_agree`), and `den g ≠ den t`.
+    * The round trip gives the same arrow bringing the carrier's object home `Ind` to `den t`.
+    * `ind_eq_of_diaFree`: at a `◇`-free type canonical `Ind` is equality — related
+      representatives are interchangeable at the slot formula `z = u'`, whose `u'`-instance is
+      provable, and the IH at `eqRec` reads the `u`-instance.  It cannot use `BData.indInvariant`,
+      which is proved from the truth lemma.  So `den g = den t`, a contradiction.
+    * Syntactic support: `WFF.openFree_bindFree` (opening a bound body at its own eigenvariable
+      gives it back; `bindFree_openFree`'s converse, by `WFF.subst_comp` and `WFF.subst_ren`).
+  * Atom disjunct at `◇`-typed contents, `Back ct' t' ∈ M` with the same data and `den t' = den t`:
     1. *The data identify the leg.*  Two witnesses' extents are disjoint (`kd` is a function).
        A plain leg's set is every arrow, so it needs an unlabelled arrow whenever there is an arrow.
        `lex` at `⊥` gives one (`child_box` makes a child of kind `none`).  This needs a new
