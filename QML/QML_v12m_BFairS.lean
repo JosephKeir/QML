@@ -1,4 +1,4 @@
-import QML.QML_v12m_BNetS
+import QML.QML_v12m_BNetInjS
 import QML.QML_v12m_BFair
 
 /-!
@@ -40,6 +40,12 @@ theorem realBS_bcl (hS : ModalSys.BStrong = true) (N : NetSt σ) (c : ℕ) (p : 
 
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
+/-- Every network of strong B's chain has injective images (T off). -/
+theorem inj_netS (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) (hT : ModalSys.T = false)
+    (hM₀ : Theory.IsMCS M₀) : ∀ n, (netS hS M₀ n).InjOk
+  | 0 => NetSt.InjOk.init M₀
+  | n + 1 => (inj_netS hS hB hT hM₀ n).applyOpT (goodS_netS hS hB hT hM₀ n) (schedS n)
+
 theorem netS_succ_of {hS : ModalSys.BStrong = true} {n : ℕ} {o : OpS σ} (h : schedS n = o) :
     netS hS M₀ (n + 1) = (netS hS M₀ n).applyOpT hS o := by
   rw [← h]
@@ -51,6 +57,7 @@ noncomputable def strongOpChain (hS : ModalSys.BStrong = true) (hB : ModalSys.B 
   net := netS hS M₀
   zero := rfl
   good n := (goodS_netS hS hB hT hM₀ n).good
+  inj := inj_netS hS hB hT hM₀
   ext := ext_netS hS hB hT hM₀
   henk s o m := by
     obtain ⟨n, hmn, hs⟩ := schedS_after (σ := σ) (.inl (.inl (s, o))) m

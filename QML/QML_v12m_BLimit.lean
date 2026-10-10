@@ -246,6 +246,27 @@ theorem back_at {s t : LW C} {c : ℕ} (hc : s.1 = c :: t.1) (i : ℕ) :
   refine ⟨List.suffix_of_suffix_length_le hls hsuf hlen, fun r hr => ?_, hback⟩
   rw [limg, if_neg (not_fwd_of_back hc), bimgL_eq C hsm (by omega)]
 
+/-- ⭐**The limit's images are injective** on a stage's variables: at the round where they are
+    committed the network's map is, and agrees with the limit's (`NetSt.InjOk`). -/
+theorem limg_inj {s t : LW C} (h : LR C s t) (i : ℕ) {r r' : ℕ} (hr : r < (lat s i).length)
+    (hr' : r' < (lat s i).length) (e : limg C s t r = limg C s t r') : r = r' := by
+  classical
+  rcases h with ⟨c, hc⟩ | ⟨c, hc⟩
+  · obtain ⟨hsuf, hag, -⟩ := fwd_at C hc i
+    have htm : (C.net (birth C t.2 + lstg C s t i)).Live t.1 :=
+      live_birth C t.2 (Nat.le_add_right _ _)
+    have hinj := ((C.inj (birth C t.2 + lstg C s t i)) c s.1 (hc ▸ htm)).1
+    rw [← hc] at hinj
+    refine hinj r r' (lt_of_lt_of_le hr hsuf.length_le) (lt_of_lt_of_le hr' hsuf.length_le) ?_
+    rw [hag r hr, hag r' hr', e]
+  · obtain ⟨hle, -⟩ := lstg_spec C (Or.inr ⟨c, hc⟩) i
+    obtain ⟨hsuf, hag, -⟩ := back_at C hc i
+    have hsm : (C.net (birth C t.2 + lstg C s t i)).Live s.1 := live_birth C s.2 (by omega)
+    have hinj := ((C.inj (birth C t.2 + lstg C s t i)) c t.1 (hc ▸ hsm)).2
+    rw [← hc] at hinj
+    refine hinj r r' (lt_of_lt_of_le hr hsuf.length_le) (lt_of_lt_of_le hr' hsuf.length_le) ?_
+    rw [hag r hr, hag r' hr', e]
+
 /-- ⭐The images of a stage's variables are declared at the target's stage. -/
 theorem limgOk {s t : LW C} (h : LR C s t) (i : ℕ) :
     ImgOk (lat s i) (ctxOf (lat t (lstg C s t i))) (limg C s t) := by

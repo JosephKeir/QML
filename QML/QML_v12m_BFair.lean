@@ -1,4 +1,4 @@
-import QML.QML_v12m_BNetMono
+import QML.QML_v12m_BNetInj
 
 /-!
 # QML v12m — B's arrow model: fairness
@@ -32,6 +32,8 @@ structure FairChain (M₀ : Set (WFF σ (ctxOf l₀) 0)) where
   net : ℕ → NetSt σ
   zero : net 0 = NetSt.init M₀
   good : ∀ n, (net n).Good
+  /-- Every arrow's images are injective (`NetSt.InjOk`): the T-free decoder's `ImgInj`. -/
+  inj : ∀ n, (net n).InjOk
   ext : ∀ {n m : ℕ}, n ≤ m → NetSt.Ext (net n) (net m)
   fwd_total : ∀ {n c : ℕ} {p : Node}, (net n).Live (c :: p) → ∀ {r : ℕ},
     r < ((net n).st p).l.length → ∃ m, n ≤ m ∧ r < ((net m).fcl (c :: p)).length
@@ -129,6 +131,7 @@ structure OpChain (M₀ : Set (WFF σ (ctxOf l₀) 0)) where
   net : ℕ → NetSt σ
   zero : net 0 = NetSt.init M₀
   good : ∀ n, (net n).Good
+  inj : ∀ n, (net n).InjOk
   ext : ∀ {n m : ℕ}, n ≤ m → NetSt.Ext (net n) (net m)
   henk : ∀ (s : Node) (o : Obl σ) (m : ℕ), ∃ n, m ≤ n ∧
     ((net n).Live s → net (n + 1) = (net n).henk s o)
@@ -395,6 +398,7 @@ def toFair : FairChain M₀ where
   net := C.net
   zero := C.zero
   good := C.good
+  inj := C.inj
   ext := C.ext
   fwd_total := C.fwd_total
   back_total := C.back_total
@@ -411,6 +415,11 @@ section Weak
 
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
+/-- Every network of weak B's chain has injective images. -/
+theorem inj_net (hB : ModalSys.B = true) (hM₀ : Theory.IsMCS M₀) : ∀ n, (net M₀ n).InjOk
+  | 0 => NetSt.InjOk.init M₀
+  | n + 1 => (inj_net hB hM₀ n).applyOp (good_net hB hM₀ n) (sched n)
+
 theorem net_succ_of {n : ℕ} {o : Op σ} (h : sched n = o) :
     net M₀ (n + 1) = (net M₀ n).applyOp o := by
   rw [← h]
@@ -421,6 +430,7 @@ noncomputable def weakOpChain (hB : ModalSys.B = true) (hM₀ : Theory.IsMCS M�
   net := net M₀
   zero := rfl
   good := good_net hB hM₀
+  inj := inj_net hB hM₀
   ext := ext_net hB hM₀
   henk s o m := by
     obtain ⟨n, hmn, hs⟩ := sched_after (σ := σ) (.inl (s, o)) m

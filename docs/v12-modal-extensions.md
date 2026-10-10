@@ -6647,9 +6647,18 @@ laws — not `back_cases`.**
       deeper worlds);
     * `Ctx.Walks` (view contexts walk from their roots), `AnnTy`, `annShp_injective_noT`;
     * ⭐⭐`ann_eq_of_rden_noT` / `ann_eq_of_rden_ctx_noT` (an anchor with an arrow).
-  * *Left:* D3, `ImgInj` as a network invariant: index maps are set in `BNetChain`, `BNetChild`,
-    `BNetGrow`, `BNetMono`, `BNetOps`, `BNetRet`, `BNetStep`, `BRet` and `BRetW`.  It is added
-    to `Good` and carried into `BData` through the limit.
+* *D3 built (2026-10-10).*  `ImgInj` holds in the canonical model.
+  * `QML_v12m_BNetInj`: `InjOn`, ⭐`InjOn.ext` (committing to a value above every older image),
+    `ImgOk.lt` (declared images lie below the target's length), and the invariant
+    `NetSt.InjOk`, kept by every weak operation (`InjOk.applyOp`).
+  * `QML_v12m_BNetInjS`: the same for strong B (`InjOk.applyOpT`).  `mkRetD` now also asks
+    `y ≠ o`, so its two born roots go back to distinct roots; the truth lemma can always pick a
+    unit root other than the alias.
+  * `FairChain`/`OpChain` gain `inj`, supplied by `inj_net` (weak) and `inj_netS` (strong).
+  * `limg_inj` (`BLimit`): the limit's images agree with a network's where committed.
+  * `QML_v12m_BDecodeLimit`: ⭐`bdata_imgInj` and ⭐⭐`bdata_ann_eq_of_rden_noT`.  Without T, tags
+    determine annotations in the canonical model at every world with an arrow out.
+  * `Good`/`GoodS` are untouched: `InjOk` is a separate invariant, used only when T is off.
 
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`

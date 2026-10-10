@@ -478,7 +478,9 @@ abbrev RetOblD (σ : Signature) :=
     (ℕ × ℕ × ℕ) × WFF σ (bodyCtxW (bclD A X) l X) 1
 
 open Classical in
-/-- ⭐Give the node `s` the back-witness child of its atom `◇[d ↦ y; e ⇝ z] Φ`, if it has it. -/
+/-- ⭐Give the node `s` the back-witness child of its atom `◇[d ↦ y; e ⇝ z] Φ`, if it has it.  The
+    two born roots go back to distinct roots (`y ≠ o`), so the back arrow's images are injective
+    (docs §11.20, `ImgInj`). -/
 noncomputable def mkRetD (hS : ModalSys.BStrong = true) (N : NetSt σ) (s : Node) :
     RetOblD σ → NetSt σ
   | ⟨l, A, X, (y, o, z), Φ⟩ =>
@@ -489,9 +491,12 @@ noncomputable def mkRetD (hS : ModalSys.BStrong = true) (N : NetSt σ) (s : Node
                 (Term.pair (tupImgT (bclD A X) (backImgD y o) himg).2
                   (Term.eta (.root (.free z)) X hz))
                 (WFF.mono ((ctxOf_le_of_suffix h).boxIn.insert (.bnd 0) _) Φ) ∈ (N.st s).M then
-              N.newChild s none z
-                (retChildD hS himg hz (WFF.mono ((ctxOf_le_of_suffix h).boxIn.insert (.bnd 0) _) Φ))
-                (· + 2) (bclD A X) (backImgD y o) (some (.root (.free 1), X))
+              if y ≠ o then
+                N.newChild s none z
+                  (retChildD hS himg hz
+                    (WFF.mono ((ctxOf_le_of_suffix h).boxIn.insert (.bnd 0) _) Φ))
+                  (· + 2) (bclD A X) (backImgD y o) (some (.root (.free 1), X))
+              else N
             else N
           else N
         else N
@@ -503,7 +508,7 @@ theorem GoodS.mkRetD {hS : ModalSys.BStrong = true} (hT : ModalSys.T = false) {N
     (N.mkRetD hS s o).GoodS hS := by
   obtain ⟨l, A, X, ⟨y, o, z⟩, Φ⟩ := o
   simp only [NetSt.mkRetD]
-  split_ifs with h himg hz hΦ
+  split_ifs with h himg hz hΦ hyo
   · exact hN.newChild hs (retChildD_spec hS himg hz hT (hN.mcs s hs) hΦ).2
       (RetData.retBirthD hS himg hz hT (hN.mcs s hs) hΦ)
   all_goals exact hN
