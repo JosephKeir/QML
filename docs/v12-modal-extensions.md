@@ -6596,6 +6596,43 @@ laws — not `back_cases`.**
     `Back` atoms the `ret_counitC` argument with the same packing (next, with strong B's canonical
     data).
 
+**The T-free decoder, on paper (2026-10-10).**  "Tags determine annotations"
+(`ann_eq_of_rden`) needs T in one place only: `leafOf_inj`.
+* *Why T is used.*  A family leaf (a label cut at a `box`) is read back along two arrows: the
+  world's own arrow, which turns the cut `box` into a `here`, and a network arrow, which encodes the
+  projections before it.  Two are needed because T's box contents carry `here` components
+  (`bc(□A) = A × bc A`, `encStep here = snd`, `itemTail = [fst]`), which one arrow's encoding
+  confuses with product steps (`eq_of_here_enc`).
+* *Without T, one network arrow suffices.*  There `bc(□A) = A`, `encStep` is the identity and
+  `itemTail = []`, so a network arrow reads `r.p.box.q` as `(img r).(p ++ q)`.  Recovering the
+  label needs two things:
+  * **injective images**: each arrow's index map is injective on the roots it commits (a new
+    network invariant, `ImgInj`, the "`imgInj`" of §11.16 risk 1);
+  * **the cut's position**, which typing gives: without T a projection cannot step past a `□`, so
+    two labels on one root, reachable in one context, have their first `box` in the same place.
+    (`r.box.fst` and `r.fst.box` have one image, but no root's type admits both.)
+* *The anchor needs an arrow.*  At a world with no arrow out every family is empty, so `□`-typed
+  objects with different annotations have one denotation.  Deeper worlds always have one (their
+  way home), so the condition is only at the anchor.  Every use under strong B is at a world with
+  an arrow:
+  * the `ret` truth case reads along an arrow out;
+  * the canonical `Ret` needs `◇⊤`, by `back_ne`;
+  * `Ret_conv` (`◇`-free) and invariance need no decoder.
+* *The rest is gating.*  Canonical shapes are stored under T only (`RPos.tag`, `rawShape`,
+  `domShape_toDom`, `posFull`); they must be stored under `ModalSys.shaped` (T or strong B).  The
+  relabelling theorem (`termShp_canonical`) takes `hT` only through T-only facts (collapse at the
+  own arrow, `DeclOK.boxIn`), whose cases vanish without T.
+* *Plan:*
+  * D1: shapes gated by `shaped`;
+  * D2: T-free relabelling;
+  * D3: `ImgInj` as a network invariant, kept by every operation and carried into `BData`;
+  * D4: `leafOf_inj`/`annShp_injective`/`ann_eq_of_rden` without T, for an anchor with an arrow,
+    taking `ImgInj` as a hypothesis first.
+* *T combined later (user: no design that is hard to recombine with T).*  The decoder becomes a
+  case split.  With T the existing two-arrow proof applies unchanged; it uses the own arrow, not
+  `ImgInj`.  Without T the one-arrow proof applies.  Shapes gated by `shaped` cover T with
+  strong B too.  `ImgInj` is used only when T is off, so T's operations need not keep it.
+
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`
   contains `□`.  So for a slot `□A` with `A` box-free the second component has a canonical
