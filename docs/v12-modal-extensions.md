@@ -6802,6 +6802,50 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
 * *Next:* the truth cases (step 5), then step 6 (sizes, `RetCongr` in `BInd`, removing
   `NoFour.noBStrong`, statements).
 
+**Step 5 begun: sizes, the easy `back` direction, and the plan (2026-10-10, T off).**
+* *Sizes (built).*  `WFF.size` of `retS`/`retxS` is `Φ.size + S.flat.eqRecSize + 1` (moving a
+  value across `eqRec`).  `back` is `carrier.eqRecSize + 2·A.eqRecSize + 3`, which dominates the
+  carrier's and value's `eqRec`, `◇⊤`, and `back_ret`'s inner `◇[e ↦ c] □(e.box = bd)`
+  (`2·A.eqRecSize + 2`).  The size lemmas follow; nothing else used the old clauses.
+* *`back`, membership ⇒ truth (built,* `BData.sat_back_of_mem`*).*  The atom is its own witness in
+  the canonical `Ret`'s atom disjunct.
+* *`back`, truth ⇒ membership (plan).*  The canonical `Ret` holds of the carrier's data and the
+  value's denotation.
+  * `◇`-free disjunct: `back_ret` + `henk_ex` + the IH at the `ret` instance and at `eqRec` (as on
+    paper above).  `Ind` at `◇`-free values gives equality by interchange at an `eqRec` slot.
+  * Atom disjunct, `Back ct' t' ∈ M` with the same data and `den t' = den t`:
+    1. *The data identify the leg.*  Two witnesses' extents are disjoint (`kd` is a function).
+       A plain leg's set is every arrow, so it needs an unlabelled arrow whenever there is an arrow.
+       `lex` at `⊥` gives one (`child_box` makes a child of kind `none`).  This needs a new
+       `BData` field.
+    2. *The data identify the carrier's denotation.*  For `□□A`, `nec_inj` twice.  For `◇_y□A`,
+       sections agree.  ⚠️The shape (tag) is `termShp` of the term, `.dia ℓ_y (termShp bd)`, and
+       is not obviously fixed by the values.  Route: a far world on the leg has an arrow, so the
+       decoder there gives equal annotations of the images of `bd` and `bd'`.  `ImgInj` then gives
+       equal annotations at `s`, and the shapes follow if `termShp` depends only on the
+       annotation.  To check, and the main new lemma.
+    3. *Annotations, then Leibniz.*  `s` has an arrow (nonempty data), so the decoder
+       (`ann_eq_of_rden_ctx_noT`, needs `B.ImgInj`) gives the carriers' and values' annotations
+       equal (at a common stage).  The IH at `eqRec` puts `eqRec c ct'` and `eqRec t' t` in `M`;
+       `back_eqC` and `back_eq` give `Back c t`.
+* *`ret`/`retx`, membership ⇒ truth (plan).*  A `BData` field per form, from the strong chain's
+  fairness (`retOp`, `retXOp`, `retDOp`, `retXDOp`) and the returning successor's birth state.
+  For an atom at `s`: an arrow `s → k` of the leg and a born root `c` of shape `S.ty` with
+  `Φ(c) ∈ M k`.  Its return along `k → s` is the alias `y`, interchangeable with `t`
+  (`alias_interch`), so `DTerm.Rel`, i.e. canonical `Ind`.  The witnessed shapes' possible part
+  returns with the edge's content (`lcx`).
+* *`ret`/`retx`, truth ⇒ membership (plan).*  Sat gives `s → k`, `e = den g` with `Φ(g) ∈ M k`
+  (IH), and `e` comes back as `den t`.
+  * `lretAt` along `k → s` gives `RetAt`.  `RetAt.toRetInv`/`toRetInvX` (built) reduce it for the
+    `box` shape.  The witnessed shape's possible part has its extent through `k → s`, so the edge
+    is a witness edge and `RetInvW`/`WD` apply directly.
+  * The body is `Φ` at a hole term picking `g` from the tuple; `ret_map` values the atom at
+    `g`'s return.
+  * Then `Ind` (`DTerm.Rel` of representatives), the decoder and the IH at `eqRec` move the value
+    to `t` (`ret_eq`).
+* *New `BData` data:* `ImgInj` (have it: `bdata_imgInj`), an unlabelled arrow, the four returning
+  existence fields; all filled in `bdataS`.
+
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`
   contains `□`.  So for a slot `□A` with `A` box-free the second component has a canonical

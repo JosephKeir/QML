@@ -107,6 +107,16 @@ theorem dia_mem_of_sat_self {s : B.W} {i : ℕ} {x : VarSymb} (hr : (B.w s).Real
     (φ := WFF.dia x hx χ)).mpr hdia
   rwa [WFF.mono_refl] at hmem'
 
+/-- ⭐**A `Back` atom of the theory is true** (strong B): the canonical `Ret` is read off the
+    atoms, so the atom is its own witness. -/
+theorem sat_back_of_mem (hB : ModalSys.BStrong = true) {s : B.W} {i : ℕ} {L : BLeg}
+    {A : VarType} {b : Ann (L.carrier A)} {a : Ann A} (c : Term σ ((B.w s).ctx i) (L.carrier A) b)
+    (t : Term σ ((B.w s).ctx i) A a) (h : WFF.back hB L c t ∈ (B.w s).M i) :
+    B.model.sat (B.canonEnv s i) (WFF.back hB L c t : WFF σ _ 0) := by
+  change B.Ret _ _ _
+  rw [interp_canon c (Model.Env.Agree.refl' _), interp_canon t (Model.Env.Agree.refl' _)]
+  exact Or.inr ⟨hB, i, L, b, c, a, t, h, by cases L <;> rfl, rfl⟩
+
 theorem truth_lt :
     ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i) 0), φ.size < n →
     (B.model.sat (B.canonEnv s i) φ ↔ φ ∈ (B.w s).M i)
