@@ -1,0 +1,21 @@
+# Memory Index
+
+- [QML legacy tracks](project_qml_legacy_tracks.md) — superseded v8–v10 / GModel / RModel / old canonical / eq-by-ext memories, and a stale tooling note; open only if asked about legacy work
+- [QML roadmap + modal-operator notation](project_qml_roadmap.md) — Vision (syntax✓→soundness→completeness→T/S4/S5 ext→papers); primitives = `dia_x`+`box`, derivatives = `box_x`(=¬◇_x¬)+`dia`(=¬□¬)
+- [QML: mirror Term work for WFF](feedback_qml_mirror_terms.md) — When building WFF machinery, closely follow the Term equivalent's structure to avoid re-discovering the same termination/elaboration issues
+- [QML ◇-witness not ctx_ext-form](reference_qml_dia_witness_ctxext.md) — ◇_x φ genuinely depends on witness var x (□/◇=∀/∃ asymmetry); existential CBF needs an extra ∃-intro to rebind the witness before ex_elim — correct, not a bug
+- [Don't poll build status](feedback_polling.md) — Wait for monitor notifications instead of checking `tasklist`/`wc` every few seconds
+- [Olean corruption crash diagnosis](feedback_olean_corruption_crash.md) — Exit 3221225477 (0xC0000005) is usually a corrupt mathlib olean, not your code; fix ladder + verify build TIME (instant=cached false positive)
+- [Perl UTF-8 double-encoding trap](feedback_perl_utf8_corruption.md) — never use `\x{NNNN}` wide escapes in perl in-place edits; they silently double-encode the whole file. Python 3.14 now installed — prefer it for scripted edits
+- [QML v12 semantics design](project_qml_v12_semantics.md) — carriers + injective eval, pointed models; V12M (`ModalSys`) sound for every flag, complete for every combination without B and for weak B (+T, D) without 4 (arrow-indexed frames); S4 naming: views expose only keep under T+4
+- [QML: presented contexts are the real ones](feedback_qml_presented_contexts.md) — state metatheorems (weakening, completeness) for `Ctx.Presented`; non-presentable generality is only a bonus
+- [QML: joint possibility goes through pairing](feedback_qml_joint_possibility_pairing.md) — anything asking to link two possibilities must take a PAIRED one as hypothesis; if pairing can’t do it the design is wrong
+- [QML: type-generality is not automatic](feedback_qml_type_generality.md) — equality is base-type-only and better for it; when an operation strips a ◇, restrict to ◇-free and NEST instead
+- [QML: the user's only freshness obligation](feedback_qml_locally_nameless_obligations.md) — declared free names must be new; every other freshness condition belongs to the machinery (make it structural)
+- [⭐QML: where we are (all levels)](project_qml_current_position.md) — READ FIRST (2026-10-10): step 4 committed; step 5 begun (cf562dd); next back converse + ret truth cases
+- [QML: lake and the working directory](feedback_qml_lake_cwd.md) — workspace is now the repo, so plain `lake` works; never `lake --dir` (elan takes the toolchain from cwd)
+- [QML metatheory to do](project_qml_metatheory_todo.md) — after completeness: strong completeness/compactness, generalisation on constants, uniform substitution, cut elimination, Craig interpolation, T_dia∀ ⇔ positive-Φ rule (notes in docs/v12-metatheory-todo.md)
+- [QML: cube vs Barcan](feedback_qml_cube_vs_barcan.md) — modal axioms: accessibility first, object existence only in strong forms; Barcan/comprehension (D_name) kept separate from the cube
+- [QML: witnessed rules follow the K paradigm](feedback_qml_witness_k_paradigm.md) — subscripted rules = plain ones + witness carried along (K_box vs K_dia); also the pattern for 4 and 5
+- [QML: principled over minimal](feedback_qml_principled_over_minimal.md) — when reusable/generalisable, prefer the principled design to the smaller patch
+- [QML: unlinked ◇-equality → model law](feedback_qml_unlinked_equality_model_law.md) — equality-like relations between ◇ objects with no link become model primitives with laws (as Ind), never new object-language rules

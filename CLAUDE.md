@@ -24,6 +24,20 @@ Lean 4 + Mathlib formalisation of a quantified modal logic with first-class poss
 - Design notes: `docs/v12-modal-extensions.md` (per-axiom design, status, decisions and rejected
   alternatives — read before changing modal machinery), `docs/v12-arrow-canonical.md` (draft:
   the arrow-based canonical model proposed for B and 5) and `docs/v12-metatheory-todo.md`.
+- **Working notes: `docs/claude-memory/`** — a copy of the local Claude sessions' memory (index
+  `MEMORY.md`; read `project_qml_current_position.md` first, then the `feedback_*` notes, which
+  record the user's design preferences).  Notes about Windows tooling (perl, olean crashes,
+  `lake` and the working directory) don't apply in the cloud.
+
+## Cloud sessions (Claude Code on the web)
+
+- The environment's setup script installs elan in `/opt/elan` and warms `/opt/qml-warm` with
+  Mathlib's cache; `scripts/cloud_session_start.sh` (a SessionStart hook) copies the packages into
+  the fresh clone.  The project's own modules still compile on first use, so build only the
+  modules you need.
+- The Lean LSP tools aren't available; use `python3 scripts/qbuild.py`.
+- Auto-memory doesn't survive a cloud VM.  Record status in `docs/claude-memory/` instead
+  (above all `project_qml_current_position.md`), and say so when reporting back.
 
 ## Standing constraints
 
