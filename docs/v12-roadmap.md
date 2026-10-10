@@ -221,8 +221,10 @@ style of milestone 1, each ending green and committed:
    successor (§11.20), the returning invariants at the limit (E1 step 3, `lretAt`), and canonical
    `Ret` with its laws (step 4; `ret_counitC` now leg-indexed; `Ret_fwd` from `bdataS`'s
    `backRel`/`backRelX`, `QML_v12m_BBackTail`).  Step 5 begun: sizes, `back` membership ⇒ truth,
-   `back` truth ⇒ membership at `◇`-free contents (`QML_v12m_BBackTruth`), plan in §11.20.
-   **Next:** `back` truth ⇒ membership at `◇`-typed contents (atom disjunct), the rest of the `back`/`ret` truth cases, removing
+   `back` truth ⇒ membership at `◇`-free contents and for row 1 at every content type
+   (`QML_v12m_BBackTruth`; new `BData` field `unl`), plan in §11.20.
+   **Next:** `back` truth ⇒ membership for row 2 at `◇`-typed contents (annotation injectivity
+   along a witness arrow), the rest of the `back`/`ret` truth cases, removing
    `NoFour.noBStrong`; then step 6.
 6. **Statements.**  Completeness, strong completeness and compactness for strong B (rows 1–2,
    `◇`-free contents), under `NoFour`.

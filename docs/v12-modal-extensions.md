@@ -6830,7 +6830,22 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
       which is proved from the truth lemma.  So `den g = den t`, a contradiction.
     * Syntactic support: `WFF.openFree_bindFree` (opening a bound body at its own eigenvariable
       gives it back; `bindFree_openFree`'s converse, by `WFF.subst_comp` and `WFF.subst_ren`).
-  * Atom disjunct at `◇`-typed contents, `Back ct' t' ∈ M` with the same data and `den t' = den t`:
+  * *Row 1 at every content type (built,* ⭐`BData.mem_back_of_sat_nec`*).*  At a `◇`-typed
+    content the canonical `Ret` is an atom `Back ct' t' ∈ M` with our data and `den t' = den t`.
+    The leg is every arrow, never a witness's extent (`univ_ne_extent`, by the new `BData` field
+    `unl`: every world with an arrow has one of kind `none`, from `child_box`, `BLimit.lunl`), so
+    `ct'` is row 1 too.  Its values one arrow on are ours, so `nec_inj` twice makes the carriers'
+    denotations equal; the decoder at `s` (`ann_eq_of_toDom`, taking `B.ImgInj` as a hypothesis,
+    which `bdata_imgInj` supplies) makes carriers' and values' annotations equal at a common
+    stage; the IH at the two `eqRec`s, `back_eqC` and `back_eq` finish.
+  * Atom disjunct at `◇`-typed contents, row 2 (still open).  The notes below; step 1 is done for
+    a row-1 atom against a row-2 carrier (`univ_ne_extent`), and two row-2 legs' extents share an
+    arrow, so one witness.  What is left is step 2 for `◇_y□`: the far world's decoder gives the
+    images of `bd` and `bd'` equal annotations (`a.mapIdx (arrowXIdx img y cx)`), and that map
+    must be injective on the `◇_y` view's annotations — `img` injective (`ImgInj`) **and** the
+    content root `cx` outside `img`'s range on committed roots (a new network invariant, to
+    check).  Then `sat_eqRec` at `◇` (shapes follow annotations, `termShp_ann`) and the IH give
+    `eqRec ct ct'`.  The original plan:
     1. *The data identify the leg.*  Two witnesses' extents are disjoint (`kd` is a function).
        A plain leg's set is every arrow, so it needs an unlabelled arrow whenever there is an arrow.
        `lex` at `⊥` gives one (`child_box` makes a child of kind `none`).  This needs a new

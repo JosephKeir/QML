@@ -545,6 +545,21 @@ theorem lexX (s : LW C) (i : ℕ) (x : VarSymb) (X : VarType)
   rw [← e]
   exact hm
 
+/-- ⭐Every world with an arrow out has an **unlabelled** arrow out: `□⊥` fails there (`ltr`),
+    so `child_box` gives it a child, of kind `none`. -/
+theorem lunl {s t : LW C} (h : LR C s t) : ∃ t', LR C s t' ∧ lkd C s t' = none := by
+  classical
+  have hψ : WFF.box (.bot : WFF σ (ctxOf (lat s 0)).boxIn 0) ∉
+      ((C.net (birth C s.2 + 0)).st s.1).M := fun hb =>
+    ((nodeWorld C t.1 t.2).mcs _).bot_not_mem (ltr C h 0 .bot hb)
+  obtain ⟨m, _, _, _, _, hlive, _, hkind, _⟩ :=
+    C.child_box (live_birth C s.2 (Nat.le_add_right _ 0)) hψ
+  let t' : LW C := ⟨(C.net m).nch s.1 :: s.1, m + 1, hlive⟩
+  refine ⟨t', Or.inl ⟨_, rfl⟩, ?_⟩
+  unfold lkd
+  rw [if_pos ⟨_, rfl⟩, ← kind_at C t' (birth_le t'.2 hlive)]
+  exact hkind
+
 /-! ## The canonical data -/
 
 /-- ⭐**The data of B's canonical model**, from the limit of the network. -/
@@ -567,6 +582,7 @@ noncomputable def bdata : BData σ where
   hxX hk i X' h := lhxX C hk i X' h
   trX hk i hx ψ hψ := ltrX C hk i hx ψ hψ
   exX s i x X hx ψ hψ := lexX C s i x X hx ψ hψ
+  unl h := lunl C h
   noT_of_strong hS := (ModalSys.NoFour.absurdStrong hS).elim
   backRel hS := (ModalSys.NoFour.absurdStrong hS).elim
   backRelX hS := (ModalSys.NoFour.absurdStrong hS).elim

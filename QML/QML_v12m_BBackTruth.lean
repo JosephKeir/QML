@@ -1,4 +1,5 @@
 import QML.QML_v12m_BTruth
+import QML.QML_v12m_BDecode
 
 /-!
 # QML v12m — B's canonical model: `Back`, truth ⇒ membership (strong B, T off)
@@ -268,6 +269,127 @@ theorem mem_back_of_sat_diaFree (hS : ModalSys.BStrong = true) (hB : ModalSys.B 
   rw [Model.sat_eqRec, Model.interp_castAnn, Term.weaken,
     Model.interp_mono (Model.Env.agree_extend _ hc.root _), Model.interp_eta, hslot]
   exact h₁.symm.trans h₂
+
+/-- ⭐**A plain leg is no witness's extent**: wherever there is an arrow there is an unlabelled
+    one (`unl`), and without T a witness's extent holds only arrows labelled with it. -/
+theorem univ_ne_extent {s : B.W} (harr : ∃ k, B.R s k)
+    (y : VarSymb) : (Set.univ : Set (B.frame.Acc s)) ≠ B.extent s y := by
+  intro h
+  obtain ⟨k, hk⟩ := harr
+  obtain ⟨t₀, hR, hkd⟩ := B.unl hk
+  have hm : (⟨t₀, ⟨Or.inl hR⟩⟩ : B.Acc s) ∈ B.extent s y := h ▸ Set.mem_univ _
+  rcases hm with ⟨X, hX⟩ | ⟨hnR, -⟩
+  · rw [hkd] at hX
+    cases hX
+  · exact hnR hR
+
+/-- A true atom's out leg has an arrow, so its world does. -/
+theorem exists_R_of_arr {s : B.W} {i : ℕ} (hS : ModalSys.BStrong = true)
+    {O : OutLeg ((B.w s).ctx i)} (a : O.Arr (B.canonEnv s i)) : ∃ k, B.R s k :=
+  ⟨(O.acc (B.canonEnv s i) a).1, R_of_RT_strong hS (O.acc (B.canonEnv s i) a).2.down⟩
+
+/-- Two terms of a world's language with one denotation, lifted to a common stage, have one
+    annotation there (the T-free decoder, `ann_eq_of_rden_ctx_noT`). -/
+theorem ann_eq_of_toDom (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) {s : B.W}
+    (harr : ∃ k, B.R s k) {A : VarType} {i i' : ℕ} {a a' : Ann A}
+    (t : Term σ ((B.w s).ctx i) A a) (t' : Term σ ((B.w s).ctx i') A a')
+    (h : B.toDom A s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _) =
+      B.toDom A s (B.rden s i' (Ctx.Le.refl _) t') (definable_rden _ _)) : a = a' := by
+  have hK : i ≤ max i i' := le_max_left _ _
+  have hK' : i' ≤ max i i' := le_max_right _ _
+  refine ann_eq_of_rden_ctx_noT (B.noT_of_strong hS) (by simp [ModalSys.shaped, hS]) hInj harr
+    (Term.mono ((B.w s).le hK) t) (Term.mono ((B.w s).le hK') t') ?_
+  rw [rden_lift hK t, rden_lift hK' t']
+  exact toDom_inj h
+
+/-- Denotations equal at a common stage make the equation true there. -/
+theorem sat_eqRec_lift {s : B.W} {A : VarType} {i i' K : ℕ} (hK : i ≤ K) (hK' : i' ≤ K)
+    {a : Ann A} (t : Term σ ((B.w s).ctx i) A a) (t' : Term σ ((B.w s).ctx i') A a)
+    (h : B.toDom A s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _) =
+      B.toDom A s (B.rden s i' (Ctx.Le.refl _) t') (definable_rden _ _)) :
+    B.model.sat (B.canonEnv s K)
+      (eqRec A (Term.mono ((B.w s).le hK) t) (Term.mono ((B.w s).le hK') t') : WFF σ _ 0) := by
+  rw [Model.sat_eqRec, interp_canon _ (Model.Env.Agree.refl' _),
+    interp_canon _ (Model.Env.Agree.refl' _)]
+  exact toDom_congr ((rden_lift hK t).trans ((toDom_inj h).trans (rden_lift hK' t').symm)) _ _
+
+/-- ⭐⭐**`Back`, truth ⇒ membership, row 1** (a plain leg, carrier `□□A`), at every content
+    type (strong B, T off; docs §11.20).  At a `◇`-free content, `mem_back_of_sat_diaFree`.
+    Otherwise the canonical `Ret` is an atom `Back ct' t'` of the theory with the same round-trip
+    data and `den t' = den t`.  The data's leg is every arrow, which no witness's extent is
+    (`univ_ne_extent`), so the atom is row 1 too, and its carrier's values one arrow on and home
+    again are ours: `nec_inj` twice makes the carriers' denotations equal.  The decoder makes the
+    annotations equal (`ann_eq_of_toDom`, at a world with an arrow), the induction hypothesis puts
+    `eqRec` of the carriers and of the values in the theory, and `back_eqC`, `back_eq` move the
+    atom to ours. -/
+theorem mem_back_of_sat_nec (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true)
+    (hInj : B.ImgInj) {s : B.W} {i : ℕ} {A : VarType} {a₀ : Ann A}
+    (bd : Term σ ((B.w s).ctx i).boxIn.boxIn A a₀) {a : Ann A} (t : Term σ ((B.w s).ctx i) A a)
+    (IH : ∀ (K : ℕ) (φ : WFF σ ((B.w s).ctx K) 0),
+      φ.size < ((OutLeg.nec : OutLeg ((B.w s).ctx i)).back hS bd t : WFF σ _ 0).size →
+        (B.model.sat (B.canonEnv s K) φ ↔ φ ∈ (B.w s).M K))
+    (h : B.model.sat (B.canonEnv s i)
+      ((OutLeg.nec : OutLeg ((B.w s).ctx i)).back hS bd t : WFF σ _ 0)) :
+    ((OutLeg.nec : OutLeg ((B.w s).ctx i)).back hS bd t : WFF σ _ 0) ∈ (B.w s).M i := by
+  by_cases hA : A.diaFree = true
+  · exact mem_back_of_sat_diaFree hS hB .nec hA bd t IH h
+  have hsz := size_back_ge hS .nec bd t
+  obtain ⟨⟨i₀⟩, -⟩ := OutLeg.sat_back_rt hS (B.canonEnv s i) .nec bd t h
+  have harr := exists_R_of_arr (O := .nec) hS i₀
+  change B.Ret _ _ _ at h
+  rcases h with ⟨hA', -⟩ | ⟨hS', i', L, c, ct, a', t', hmem, hdata, hval⟩
+  · exact absurd hA' hA
+  revert c ct hmem hdata
+  cases L with
+  | pos =>
+      intro c ct
+      cases ct with
+      | diatm y hy u =>
+          intro _ hdata
+          have hfst := congrArg Sigma.fst hdata
+          change B.extent s y = Set.univ at hfst
+          exact (univ_ne_extent harr y hfst.symm).elim
+  | nec =>
+      intro c ct
+      cases ct with
+      | boxtm u =>
+          cases u with
+          | boxtm bd' =>
+              intro hmem hdata
+              obtain ⟨-, hval'⟩ := Sigma.mk.inj_iff.mp hdata
+              have hfun := eq_of_heq hval'
+              -- the carriers denote alike
+              have hc : B.toDom _ s (B.rden s i' (Ctx.Le.refl _) (Term.boxtm (Term.boxtm bd')))
+                    (definable_rden _ _) =
+                  B.toDom _ s (B.rden s i (Ctx.Le.refl _) (Term.boxtm (Term.boxtm bd)))
+                    (definable_rden _ _) := by
+                rw [← interp_canon (Term.boxtm (Term.boxtm bd)) (Model.Env.Agree.refl' _)]
+                exact B.model.nec_inj (funext fun a₁ => B.model.nec_inj (funext fun b =>
+                  congrFun (congrFun hfun ⟨a₁, Set.mem_univ _⟩) b))
+              have hv : B.toDom A s (B.rden s i' (Ctx.Le.refl _) t') (definable_rden _ _) =
+                  B.toDom A s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _) := by
+                rw [hval, interp_canon t (Model.Env.Agree.refl' _)]
+              obtain ⟨⟨⟩⟩ := ann_eq_of_toDom hS hInj harr _ _ hc
+              obtain rfl := ann_eq_of_toDom hS hInj harr _ _ hv
+              have hK : i ≤ max i i' := le_max_left _ _
+              have hK' : i' ≤ max i i' := le_max_right _ _
+              have hmc := (IH _ _ (by
+                rw [WFF.size_eqRec]; simp only [VarType.eqRecSize] at hsz ⊢; omega)).mp
+                (sat_eqRec_lift hK' hK _ _ hc)
+              have hmv := (IH _ _ (by rw [WFF.size_eqRec]; omega)).mp
+                (sat_eqRec_lift hK' hK _ _ hv)
+              refine (BWorld.mem_lift hK).mpr (BWorld.mem_of_provable (Δ := [_, _, _])
+                (fun ψ hψ => by
+                  rcases List.mem_cons.mp hψ with rfl | hψ
+                  · exact (BWorld.mem_lift hK').mp hmem
+                  rcases List.mem_cons.mp hψ with rfl | hψ
+                  · exact hmc
+                  · rw [List.mem_singleton.mp hψ]; exact hmv)
+                ⟨Proof.back_eq hS .nec _ _ _ (Proof.back_eqC hS .nec _ _ _
+                  (Proof.lookup List.mem_cons_self)
+                  (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self)))
+                  (Proof.lookup (List.mem_cons_of_mem _
+                    (List.mem_cons_of_mem _ List.mem_cons_self)))⟩)
 
 end BData
 
