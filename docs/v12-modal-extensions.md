@@ -6947,6 +6947,33 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
     form: at shape `wit (□C) X`, a hole term `h` over `C × X`; object
     `⟨d₁, d₂⟩ ↦ ⟨d₁, diatm d₂ h(d₁.box, d₂.dia)⟩`, value `y ↦ ⟨y.fst, h(y)⟩`; general `N` by
     `ret_map` (`packMap`).  Awaiting the user's decision.
+  * *Audit: necessary vs possible parts (2026-10-10, user: everything doable for necessary parts
+    should be doable for the single possible part; what holds of a variable should hold of a term
+    with it as witness).*  Rule by rule:
+    * *Any shape already:* `ret_monoS`, `ret_diaS`, `ret_eqS`, `ret_extS` (companions join the
+      necessary part at any shape), the K-laws (`ret_K`, `retD_K`, `retx_K`, `retxD_K`), leg
+      forgetting (`retx_forget`, `retxS_forget`) and part forgetting (`retD_forget`,
+      `retxD_forget`).
+    * *Units:* complete as a matrix.  Outer leg (plain / `◇_x`) × outer shape (`□C` / witnessed):
+      `ret_unit`, `ret_unitW`, `ret_unitD`, `ret_unitWD`.  The inner atom has a possible part
+      exactly when its way home is the outer leg's witness (`x`), and that part's content is any
+      term `u` of `x`'s view, so the units respect the variable/term principle.
+    * *Counits:* `ret_counit` (any leg) ↔ `ret_counitD` (plain leg only); along `x` it is derived
+      at nodes by `retxS_forget_node`, since its body is over the `□` view.  `ret_counitC` (with a
+      carrier) has no witnessed-shape form (`□_e ψ(⟨d.box, e.dia⟩, bd)`); it is valid and not
+      derivable by forgetting (the body mentions `e`), but nothing needs it yet.
+    * *Existence:* `ret_new`/`ret_extS` have no possible-part form, and that is intrinsic: a
+      necessary object always comes back (B), a possible one only when the way home lies in its
+      extent, which only the units establish (the witness itself, `ret_unitW`/`WD`).
+    * ⚠️*Maps:* `ret_map` acts on the necessary part only (`ShapeMap.liftObj` carries the
+      possible part unchanged).  Missing: **β for the possible part**, a hole on its content
+      (`e ↦ diatm e h(d.box, e.dia)`, value `y ↦ ⟨y.1, h(y)⟩`), the possible-part counterpart of
+      `ShapeMap.hole`.  This is the slice-4 gap, and the only map missing: projections and pairing
+      have no possible-part counterpart (one part), and possible → necessary is ill-typed.
+    * *Deferred by design:* `ret_bridge`, `back_*`, `B_strong` (rows 3–4, possible carriers) and
+      `ret_here` (T).
+    * *Legs* are variables (`OutLeg.pos y`); a leg `◇_t` with `t = diatm x u` is `◇_x` with
+      `t.dia := u`, so the principle holds there by substitution.
   * *Left:* membership ⇒ truth (`retOp`, aliases, the user atom → obligation conversion).
   * ⭐**`ret_eq` generalised to every shape (DECIDED, user, 2026-10-10): `Proof.ret_eqS`.**  No
     derivation of Leibniz for a witnessed value was found: the rules that conclude a top-level
