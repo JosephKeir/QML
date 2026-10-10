@@ -1221,6 +1221,87 @@ theorem sat_ret_extS (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape}
         rw [hv]
         exact ⟨⟨hr.1, hcv⟩, hr.2⟩
 
+omit [Γ.NoSlots] in
+include hM in
+/-- ⭐**β on the possible part preserves coming back**: the mapped possible part has the same
+    worlds, so the way home still lies in its extent, and its content there is `h` of things `Ind`
+    to the value's components. -/
+theorem ShapeMap.possComesBack {C X Z : VarType} {b : Ann Z}
+    (h : Term σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) Z b) {v w : M.frame.W}
+    (e : M.frame.Dom (RShape.wit (.box C) X).ty v) (r : M.frame.R v w)
+    (o : M.frame.Dom (RShape.wit (.box C) X).flat w)
+    (hcb : M.ComesBack (.wit (.box C) X) e r o) :
+    M.ComesBack (.wit (.box C) Z) (M.holeVal (ShapeMap.possObj h).2 e) r
+      (M.holeVal (ShapeMap.possVal h).2 o) := by
+  obtain ⟨h₁, hm, h₂⟩ := hcb
+  have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (RShape.wit (.box C) X).ty
+  have hsnd := Ctx.ref_snd_of hu
+  set env₁ := (Env.empty v).extend (.bnd 0) e
+  have he1 : env₁.ref (.root (.bnd 0)) hu = e := Env.extend_root _ _ _ hu
+  have he2 : env₁.ref (.step (.root (.bnd 0)) .snd) hsnd = e.2 := by
+    rw [Env.ref_snd _ hu hsnd]
+    exact congrArg Prod.snd he1
+  refine ⟨?_, ?_⟩
+  · change M.NComesBack (.box C) (interp env₁ (Term.eta _ _ _)) r
+      (interp ((Env.empty w).extend (.bnd 0) o) (Term.eta _ _ _))
+    rw [interp_eta_slot_fst, interp_eta_slot_fst]
+    exact h₁
+  · let tin : Term σ ((Ctx.empty.insert (.bnd 0) (RShape.wit (.box C) X).ty).diaIn
+        (.step (.root (.bnd 0)) .snd)) Z _ :=
+      Term.holeAt
+        (Term.pair
+          (Term.eta (VarSymb.step (.root (.bnd 0)) .fst).inner C
+            ((Ctx.le_boxIn_diaIn _ _).ref (Ctx.ref_inner (Ctx.ref_fst_of hu))))
+          (Term.eta (VarSymb.step (.step (.root (.bnd 0)) .snd) .dia) X
+            (Ctx.ref_diaIn_of hsnd)))
+        h
+    have hD : M.posEval ((M.holeVal (ShapeMap.possObj h).2 e).2 : M.frame.Pos Z v) =
+        ⟨(M.posEval (env₁.ref _ hsnd)).1, fun w' => interp (env₁.diaPush _ hsnd w') tin⟩ :=
+      dia_beta env₁ ⟨X, hsnd⟩ hsnd tin
+    let bb : (M.posEval (env₁.ref (.step (.root (.bnd 0)) .snd) hsnd)).1 := ⟨⟨w, ⟨r⟩⟩, he2 ▸ hm⟩
+    have hcont : (M.posEval (env₁.ref (.step (.root (.bnd 0)) .snd) hsnd)).2 bb =
+        (M.posEval (e.2 : M.frame.Pos X v)).2 ⟨_, hm⟩ := by
+      have key : ∀ (P : M.frame.Pos X v) (hP : P = e.2)
+          (hmP : (⟨w, ⟨r⟩⟩ : M.frame.Acc v) ∈ (M.posEval P).1),
+          (M.posEval P).2 ⟨_, hmP⟩ = (M.posEval (e.2 : M.frame.Pos X v)).2 ⟨_, hm⟩ := by
+        intro P hP hmP
+        subst hP
+        rfl
+      exact key _ he2 _
+    have hv : (M.holeVal (ShapeMap.possVal h).2 o).2 =
+        interp ((Env.empty w).extend (.bnd 0) o) h := rfl
+    rw [hv]
+    generalize hQ : M.posEval ((M.holeVal (ShapeMap.possObj h).2 e).2 : M.frame.Pos Z v) = Q
+    obtain rfl := hQ.symm.trans hD
+    refine ⟨bb.2, ?_⟩
+    change M.Ind (interp (env₁.diaPush _ hsnd bb) tin) _
+    rw [interp_holeAt]
+    change M.Ind (M.holeVal h (interp _ _, interp _ _)) _
+    rw [interp_eta, interp_eta,
+      ← Env.ref_agree (Env.diaPush_boxIn env₁ hsnd bb) _ (Ctx.ref_inner (Ctx.ref_fst_of hu)),
+      Env.ref_inner _ _ (Ctx.ref_fst_of hu), Env.ref_fst _ hu, he1,
+      Env.ref_dia env₁ hsnd bb (Ctx.ref_diaIn_of hsnd), hcont]
+    exact hM.map h (hM.pair h₁ h₂)
+
+include hnp hM in
+/-- ⭐`ret_mapD` is sound: the mapped object has the body, and comes back with the content
+    mapped. -/
+theorem sat_ret_mapD (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {C X Z : VarType}
+    {b : Ann Z} (h : Term σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) Z b)
+    {a : Ann (RShape.wit (.box C) X).flat} (y : Term σ Γ (RShape.wit (.box C) X).flat a)
+    (Φ : WFF σ (O.view.insert (.bnd 0) (RShape.wit (.box C) Z).ty) 1)
+    (hs : M.sat env (O.retS hS (.wit (.box C) X) y (WFF.bodyRepl
+      (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) _) (ShapeMap.possObj h).2) Φ) :
+        WFF σ Γ 0)) :
+    M.sat env (O.retS hS (.wit (.box C) Z) (Term.holeRead y (ShapeMap.possVal h).2) Φ :
+      WFF σ Γ 0) := by
+  obtain ⟨i, e, hΦ, r, hr⟩ := (OutLeg.sat_retS hS env O _ y _).mp hs
+  rw [sat_bodyRepl O.noProjLast] at hΦ
+  refine (OutLeg.sat_retS hS env O (.wit (.box C) Z) _ Φ).mpr ⟨i, _, hΦ, r, ?_⟩
+  rw [interp_holeRead hnp env y, interp_mono (Env.extend_agree (h := Ctx.empty_le O.view)
+    (env := Env.empty _) (env' := O.push env i) (fun _ _ h => nomatch h) (.bnd 0) e)]
+  exact ShapeMap.possComesBack hM h e r _ hr
+
 include hnp hM in
 /-- ⭐`ret_map` is sound: the image of the object out there has the body, and comes back as the
     image of the value. -/

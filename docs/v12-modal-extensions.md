@@ -6943,10 +6943,16 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
     (`retSetW_consistent`) merges finitely many gained atoms into one (`ret_listW`, by
     `ret_monoS`, which needs one value).  With general contents, atoms at `u₁` and `u₂` merge
     only through the paired content `⟨u₁, u₂⟩`, and recovering each from the merged atom is a
-    content projection, the same missing map.  So option 2 is the candidate, in its smallest
-    form: at shape `wit (□C) X`, a hole term `h` over `C × X`; object
+    content projection, the same missing map.  So option 2, in its smallest form: at shape
+    `wit (□C) X`, a hole term `h` over `C × X`; object
     `⟨d₁, d₂⟩ ↦ ⟨d₁, diatm d₂ h(d₁.box, d₂.dia)⟩`, value `y ↦ ⟨y.fst, h(y)⟩`; general `N` by
-    `ret_map` (`packMap`).  Awaiting the user's decision.
+    `ret_map` (`packMap`).
+  * ⭐**β on the possible part, BUILT (DECIDED, user, 2026-10-10, after the audit below):
+    `Proof.ret_mapD`**, any leg, with `ShapeMap.possObj`/`possVal` (`QML_v12m_BackSyntax`).
+    Sound by `ShapeMap.possComesBack` (same extent; content `Ind` by `IndInvariant.map` and
+    `.pair`) and `sat_ret_mapD`; `Proof.subst` case as `ret_map`'s.  Kept as a sibling
+    constructor rather than widening `ShapeMap` (whose maps are between necessary shapes), so
+    no `ret_map` call site changed.
   * *Audit: necessary vs possible parts (2026-10-10, user: everything doable for necessary parts
     should be doable for the single possible part; what holds of a variable should hold of a term
     with it as witness).*  Rule by rule:

@@ -185,6 +185,36 @@ def ShapeMap.liftVal {σ : Signature} : (S : RShape) → {T : NShape} → ShapeM
         (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))) F.val.2)
       (Term.eta (.step (.root (.bnd 0)) .snd) X (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)))⟩
 
+/-- ⭐**β on the possible part** (docs §11.20, the audit): the map on the object out there.  The
+    necessary part `d` is kept; the possible part `e` becomes the possible object with `e`'s
+    worlds whose content is `h` of `d`'s contents and `e`'s — `diatm e h(d.box, e.dia)`, any term
+    with `e` as its witness. -/
+def ShapeMap.possObj {σ : Signature} {C X Z : VarType} {b : Ann Z}
+    (h : Term σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) Z b) :
+    Σ a, Term σ (Ctx.empty.insert (.bnd 0) (RShape.wit (.box C) X).ty)
+      (RShape.wit (.box C) Z).ty a :=
+  ⟨_, Term.pair
+    (Term.eta (.step (.root (.bnd 0)) .fst) (.VTypeBox C)
+      (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _)))
+    (Term.diatm (.step (.root (.bnd 0)) .snd) ⟨X, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩
+      (Term.holeAt
+        (Term.pair
+          (Term.eta (VarSymb.step (.root (.bnd 0)) .fst).inner C
+            ((Ctx.le_boxIn_diaIn _ _).ref
+              (Ctx.ref_inner (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _)))))
+          (Term.eta (VarSymb.step (.step (.root (.bnd 0)) .snd) .dia) X
+            (Ctx.ref_diaIn_of (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)))))
+        h))⟩
+
+/-- β on the possible part, on the value: the necessary part's value kept, the content's mapped
+    by `h`. -/
+def ShapeMap.possVal {σ : Signature} {C X Z : VarType} {b : Ann Z}
+    (h : Term σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) Z b) :
+    Σ a, Term σ (Ctx.empty.insert (.bnd 0) (RShape.wit (.box C) X).flat)
+      (RShape.wit (.box C) Z).flat a :=
+  ⟨_, Term.pair
+    (Term.eta (.step (.root (.bnd 0)) .fst) C (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))) h⟩
+
 /-! ## A companion -/
 
 /-- In `ret_extS`'s body, the object out there, read from the extended slot. -/

@@ -513,6 +513,18 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (O.retS hS S y (WFF.bodyRepl
         (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) S.ty) (ShapeMap.liftObj S F).2) Φ)) →
       Proof σ Γ Δ (O.retS hS (S.withNec T) (Term.holeRead y (ShapeMap.liftVal S F).2) Φ)
+  /-- ⭐**β on the possible part** (docs §11.20, the audit), `ret_map`'s counterpart for the one
+      possible part: if the object whose possible part is `diatm e h(d.box, e.dia)` has `Φ`, then
+      it is an object with `Φ` coming back with content the image of the value under `h` — what
+      holds of the witness `e` holds of any term with `e` as its witness. -/
+  | ret_mapD {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (O : OutLeg Γ) {C X Z : VarType} {b : Ann Z}
+      (h : Term σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) Z b)
+      {a : Ann (RShape.wit (.box C) X).flat} (y : Term σ Γ (RShape.wit (.box C) X).flat a)
+      (Φ : WFF σ (O.view.insert (.bnd 0) (RShape.wit (.box C) Z).ty) 1) :
+      Proof σ Γ Δ (O.retS hS (.wit (.box C) X) y (WFF.bodyRepl
+        (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) _) (ShapeMap.possObj h).2) Φ)) →
+      Proof σ Γ Δ (O.retS hS (.wit (.box C) Z) (Term.holeRead y (ShapeMap.possVal h).2) Φ)
   /-- **Leibniz for the value**, along any leg, at any shape (docs §11.20: generalised from the
       `□` shape, which is derived, `Proof.ret_eq`, as `ret_monoS` generalised `ret_mono`). -/
   | ret_eqS {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
