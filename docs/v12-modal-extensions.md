@@ -6938,6 +6938,15 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
        `BLimitRet`, `BBackTail`.
     2. *New rule:* `ret_map` with a hole on the possible part's content (sound by `Ind`'s map
        and pair congruence).
+
+    *Correction (same day):* option 1 is **not** rule-free.  A realisation step
+    (`retSetW_consistent`) merges finitely many gained atoms into one (`ret_listW`, by
+    `ret_monoS`, which needs one value).  With general contents, atoms at `u₁` and `u₂` merge
+    only through the paired content `⟨u₁, u₂⟩`, and recovering each from the merged atom is a
+    content projection, the same missing map.  So option 2 is the candidate, in its smallest
+    form: at shape `wit (□C) X`, a hole term `h` over `C × X`; object
+    `⟨d₁, d₂⟩ ↦ ⟨d₁, diatm d₂ h(d₁.box, d₂.dia)⟩`, value `y ↦ ⟨y.fst, h(y)⟩`; general `N` by
+    `ret_map` (`packMap`).  Awaiting the user's decision.
   * *Left:* membership ⇒ truth (`retOp`, aliases, the user atom → obligation conversion).
   * ⭐**`ret_eq` generalised to every shape (DECIDED, user, 2026-10-10): `Proof.ret_eqS`.**  No
     derivation of Leibniz for a witnessed value was found: the rules that conclude a top-level
