@@ -7,7 +7,6 @@ The truth lemma's `here` case on the network, as in the tree (`QML_v12m_CanonHer
 theory-level facts are shared (`Canon.mem_here_datum`, `Canon.DTerm.rel_of_coname`), and a `Here`
 atom is read along a world's own arrow.
 
-* `mem_here_real`: a realised witness's possible object has its realisation as content here.
 * ⭐`here_transfer`: equal denotations carry `Here` facts — tags determine annotations
   (`ann_eq_of_rden_ctx`), so the two contents can be equated.
 * ⭐⭐`here_truth`: the `here` case of the truth lemma.
@@ -24,41 +23,6 @@ variable {σ : Signature}
 namespace BData
 
 variable [ModalSys.NoFour] {B : BData σ}
-
-/-- ⭐**A realised witness's possible object has its realisation as content here**: from the
-    datum's atom, `here_beta` with the body abstracted, and the round trip
-    (`Canon.mem_here_datum`). -/
-theorem mem_here_real {s : B.W} {x : VarSymb} (hr : (B.w s).Realised x) {i : ℕ}
-    {X : VarType} (hx : ((B.w s).ctx i).ref x = some (.VTypeDia X)) {A : VarType} {β : Ann A}
-    (bd : Term σ (((B.w s).ctx i).diaIn x) A β) :
-    WFF.here hr.T (Term.mono ((B.w s).le (le_max_left i hr.data.i₀)) (Term.diatm x ⟨X, hx⟩ bd))
-        (B.realTerm hr (Ctx.Le.refl _) ⟨X, hx⟩ bd).2 ∈ (B.w s).M (max i hr.data.i₀) :=
-  Canon.mem_here_datum hr.data (le_max_left _ _) (le_max_right _ _) hx bd
-
-/-- ⭐**What the theory attests is interchangeable in it** (docs §11.16): a `Here` atom co-names
-    its term with the witness's realisation (`mem_here_real`, `DTerm.rel_of_coname`), and the
-    congruences carry interchangeability (`DTerm.Rel.holeAt`, `DTerm.Rel.pair`). -/
-theorem Att.rel {s : B.W} {A : VarType} {u u' : Canon.DTerm (B.w s).sys (B.w s).T A}
-    (h : B.Att u u') : u.Rel u' := by
-  induction h with
-  | refl u => exact Canon.DTerm.Rel.refl _
-  | @here A hT i x hx β bd a t hr hmem =>
-      obtain ⟨X, hx'⟩ := id hx
-      have hk : i ≤ max i hr.data.i₀ := le_max_left _ _
-      have ht : WFF.here hT (Term.mono ((B.w s).le hk) (Term.diatm x hx bd))
-          (Term.mono ((B.w s).le hk) t) ∈ (B.w s).M (max i hr.data.i₀) :=
-        (BWorld.mem_lift hk).mp hmem
-      exact (Canon.DTerm.rel_of_coname hT _ (BWorld.mem_T.mpr (mem_here_real hr hx' bd))
-        (BWorld.mem_T.mpr ht)).trans
-        (Canon.DTerm.rel_lift (⟨i, a, t⟩ : Canon.DTerm (B.w s).sys (B.w s).T _) hk).symm
-  | holeAt _ hh ih => exact ih.holeAt hh
-  | pair _ _ ih₁ ih₂ => exact Canon.DTerm.Rel.pair ih₁ ih₂ _ _ _ _ _ _
-
-/-- Attested objects are related: they have interchangeable representatives. -/
-theorem Ind.rel {s : B.W} {A : VarType} {o o' : B.frame.Dom A s} (h : B.Ind o o') :
-    B.IndRel o o' := by
-  obtain ⟨u, u', hu, hu', hatt⟩ := h
-  exact ⟨u, u', hu, hu', hatt.rel⟩
 
 variable (B) in
 /-- The truth lemma at the equations of one type: what the `here` case receives from the
@@ -92,12 +56,12 @@ theorem here_transfer (hT : ModalSys.T = true) {s : B.W} {A : VarType}
     exact heq
 
 /-- ⭐⭐**The truth lemma's `here` case**, as in the tree (`Canon.here_truth`).  Satisfaction says
-    the witness is realised and the content along the world's own arrow is attested to be
-    indistinguishable from `t`'s value; membership says the theory co-names them.
-    *Membership ⇒ truth*: the atom makes the witness realised (`BWorld.datum_of_here`) and attests
-    its realisation and `t` (`Att.here`).  *Truth ⇒ membership*: attested representatives are
-    related (`Att.rel`), and carry the atom from the realised body to `t`, one equal denotation at
-    a time (`here_transfer`) and across the relation once. -/
+    the witness is realised and the content along the world's own arrow is indistinguishable from
+    `t`'s value; membership says the theory co-names them.
+    *Membership ⇒ truth*: the atom makes the witness realised (`BWorld.datum_of_here`) and relates
+    its realisation and `t` (`rel_here`).  *Truth ⇒ membership*: related representatives carry
+    the atom from the realised body to `t`, one equal denotation at a time (`here_transfer`) and
+    across the relation once. -/
 theorem here_truth (hT : ModalSys.T = true) {s : B.W} {i : ℕ} {x : VarSymb}
     (hx : ∃ X, ((B.w s).ctx i).ref x = some (.VTypeDia X)) {A : VarType} {β : Ann A}
     (bd : Term σ (((B.w s).ctx i).diaIn x) A β) {a : Ann A} (t : Term σ ((B.w s).ctx i) A a)
@@ -118,8 +82,7 @@ theorem here_truth (hT : ModalSys.T = true) {s : B.W} {i : ℕ} {x : VarSymb}
       (fun {_Γ'} {_b} u {_k} {_e'} {_env'} hag' => interp_canon u hag')
       (fun _ _ _ => rfl) h hT hm bd
   constructor
-  · rintro ⟨hm, u, u', hu, hu', hatt⟩
-    have hrel := hatt.rel
+  · rintro ⟨hm, u, u', hu, hu', hrel⟩
     have hm' : B.model.frame.reflAcc hT s ∈ B.extent s x := canonEnv_extent s i h ▸ hm
     have hr : (B.w s).Realised x :=
       (mem_extent_self hm' fun ⟨_, hk⟩ => B.irrefl s (B.kdR hk)).2
@@ -159,7 +122,7 @@ theorem here_truth (hT : ModalSys.T = true) {s : B.W} {i : ℕ} {x : VarSymb}
     have hm : B.model.frame.reflAcc hT s ∈ (B.model.posEval ((B.canonEnv s i).ref x h)).1 := by
       rw [canonEnv_extent]
       exact Or.inr ⟨B.irrefl s, hr⟩
-    refine ⟨hm, _, ⟨i, a, t⟩, ?_, ?_, Att.here hT hx bd t hr hmem⟩
+    refine ⟨hm, _, ⟨i, a, t⟩, ?_, ?_, rel_here hT hx bd t hr hmem⟩
     · rw [hC hr hm, fromDom_toDom]
     · rw [hD, fromDom_toDom]
 

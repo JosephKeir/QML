@@ -6574,6 +6574,28 @@ laws — not `back_cases`.**
 * Existing canonical models set `Ret := False` with the laws vacuous (strong B is off there).
 * *Next* (L4f): the canonical `Ret` read off the `Back` atoms, with its laws.
 
+**Aliases persist; canonical `Ind` is interchangeability again (2026-10-10, user).**
+* `QML_v12m_BPackW`: `packRoots` packs a slot formula over a stage into a closed hole formula over
+  the slot and the tuple of the roots (`tyT`, `tupW`); ⭐`holeAt_pair_tupW_packRoots`.
+* `QML_v12m_BAliasW`: ⭐⭐`alias_interch`.  If a stage's theory has an alias's formulas (carried
+  there by `mono`), the alias root and its term satisfy the same slot formulas there, roots born
+  since included.
+  * The tail formula is `K(⟨v, w⟩) := ∀z (H(⟨v, z⟩) ↔ H(⟨w, z⟩))` (`tailK`), with `H` the packed
+    formula.  It holds of every diagonal pair (`provable_tailK_diag`).
+  * The alias formula of `ψ(v) := K(⟨v, t⟩)` (`tailψ`) then gives `K(⟨y, t⟩)`, and
+    `∀`-elimination at the tuple gives the result.
+  * The alias set is unchanged.
+* ⭐*Decision (user):* **canonical `Ind` is `DTerm.Rel`** (related representatives, the tree's),
+  replacing §11.16's attested `Ind`.
+  * §11.16 needed a smaller relation only for the negative `Back` atom at `◇`-typed contents,
+    which `Ret` now handles.  Every remaining use of `Ind` asks only that related objects be
+    interchangeable.
+  * `BData.Att`, the attested `Ind` and `Ind.rel` are removed.  The `Here` case is the lemma
+    `rel_here` (moved ahead of the model), and `BInd`'s congruences use `DTerm.Rel.holeAt`/`pair`.
+  * `Att.alias` and `Att.back` become lemmas giving `DTerm.Rel`: `alias_interch` (done), and for
+    `Back` atoms the `ret_counitC` argument with the same packing (next, with strong B's canonical
+    data).
+
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`
   contains `□`.  So for a slot `□A` with `A` box-free the second component has a canonical
