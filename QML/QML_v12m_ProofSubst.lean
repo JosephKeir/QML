@@ -2648,22 +2648,22 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       Proof.conv (WFF.subst_holeRead θ hθ hc hΓ hΓ' (Term.pair y t) ψ).symm
         (Proof.ret_counitC hS (O.subst θ hθ hc) (Term.subst ι θ hθ hc y)
-          (Term.subst ι θ.box.box (Subst.ok_box (Subst.ok_box hθ))
-            (Subst.coh_box (Subst.ok_box hθ) (Subst.coh_box hθ hc)) bd)
+          (Term.subst ι (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
+            (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) bd)
           (Term.subst ι θ hθ hc t) ψ
           (Proof.conv (by
               refine (OutLeg.subst_ret θ hθ hc hΓ hΓ' hS O y _).trans
                 (congrArg ((O.subst θ hθ hc).ret hS (Term.subst ι θ hθ hc y))
-                  ((OutLeg.subst_lift θ hθ hc hΓ hΓ' O _).trans
-                    (congrArg (O.subst θ hθ hc).lift (congrArg WFF.box ?_))))
+                  (congrArg WFF.box ?_))
               refine (WFF.subst_holeAt _ _ _ _ _ _ ψ).trans (WFF.holeAt_congr _ ?_ ψ)
               exact sig_pair
                 (Term.subst_eta_renAt _ _ _ A _ _ _ _
                   (Subst.box_at_inner_ren _ (Subst.under_at_root _ _ _)))
-                (Term.subst_box_under_mono θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc)
-                  hΓ.boxIn hΓ'.boxIn _ bd))
+                (Term.subst_box_under_mono (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc)
+                  (O.viewCoh θ hθ hc) (OutLeg.slotsFrom hΓ O)
+                  (OutLeg.slotsFrom hΓ' (O.subst θ hθ hc)) _ bd))
             (Proof.subst pr θ hθ hc hΓ))
-          (Proof.conv (OutLeg.subst_back θ hθ hc hΓ hΓ' hS .nec bd t)
+          (Proof.conv (OutLeg.subst_back θ hθ hc hΓ hΓ' hS O bd t)
             (Proof.subst pb θ hθ hc hΓ)))
   | _, _, _, @Proof.ret_unit _ _ Γ _ _ hS O C A c y Ψ a₀ sb ψ p q, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots

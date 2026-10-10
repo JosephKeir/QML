@@ -6760,6 +6760,48 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
 * *Next:* step 4 (canonical `Ret` and its laws), then the truth cases (step 5), which use
   `lretAt`, `RetAt.restrict` and the forgetting lemmas.
 
+**`ret_counitC` along the ret's leg; E1 step 4: canonical `Ret` and its forward law
+(2026-10-10, T off).**
+* *Rule change (user).*  `Att.back`'s row 2 (a carrier `◇_y□bd`) gets its invariant along `y`, so
+  the counit must read a `ret` along `y`.  **`ret_counitC` takes the leg `O`**: from
+  `O.ret y (□ψ(⟨d.inner, bd⟩))` (body over `O.view`) and `O.back bd t` (`bd : O.view.boxIn`) it
+  gives `ψ(⟨y, t⟩)`.  This follows the 2026-10-09 decision that every `ret` rule is leg-indexed.
+  It is sound by the same argument; `Proof`, `ProofSubst` and `SemBack` are updated.
+* *Step 4a* (`QML_v12m_BCanonModel`): `cData` is a carrier's round-trip data on the canonical
+  frame.  ⭐`Ret S val o` holds in two cases:
+  * at a `◇`-free content, the round trip itself;
+  * a `Back` atom of the theory whose carrier's data are `⟨S, val⟩` and whose value denotes `o`.
+
+  The atom case uses exact denotation, not `Ind`, because canonical `Ind` is not known to be
+  transitive.  The laws:
+  * `Ret_conv` is immediate.
+  * `backRet_exists` follows from `Proof.backEx` (`B_strong` then `∃`-introduction at the fresh
+    carrier) and Henkin naming.
+  * `Ret_fwd`'s atom case reads two new `BData` fields, `backRel` and `backRelX` (rows 1 and 2),
+    with `noT_of_strong`.
+
+  A carrier term is syntactic (`boxtm (boxtm bd)` or `diatm y (boxtm bd)`), so the atom gives the
+  leg's body directly.  `bdata` fills the fields vacuously while `NoFour` excludes strong B.
+* *Step 4b* (`QML_v12m_BBackTail`), ⭐⭐`backRel`/`backRelX` at the limit of a strong chain:
+  * *The invariant, reduced.*  Along the way home `k → s` the edge carries `RetAt` of any form.
+    `RetAt.toRetInv` reduces every form to the plain one, and `RetAt.toRetInvX` reduces to the form
+    along `y` when the way back lies in `y`'s extent.  Both use the forgetting lemmas at a node,
+    now four node forms: `retx_forget_node`, `retD_forget_node` (`kPsiF_pack2`),
+    `retxS_forget_node` and `retxD_forget_node` (`kPsiXF_pack2X`).  Supporting lemmas:
+    `holeAt_tupT_pack2_repl` and `holeAt_tupT_pack2X_repl` (packing at any slot term),
+    `liftBody*_repl` and `liftBodyWD_replX`.
+  * *At a node* (`back_tail`, `back_tailX`).  Take `ψ := pack2 cls A (tailBody bdk H)`, the tail
+    formula `K(⟨bdk, ·⟩)` over the far end's roots.  The counit's body `counitBodyC bd ψ` (over
+    any view) reads at `k` as `□K(⟨u, u⟩)` for the carrier's image `u = bdk`, which is a theorem
+    (`mem_box_counit_tail`).  So the invariant gives the `ret` at `s`, and `ret_counitC` gives
+    `K(⟨bdk sent home, t⟩)` at `s` (`subst_tailBody`).
+  * *At the limit* (`lbackRel`, `lbackRelX`).  `lretAt` at the stage where `s`'s stage `i` is
+    committed to `k`, and back.  At a common stage `j`, take `H := packRoots (lat s j) χ` and
+    apply `interch_of_tailK` (`all_elim` at `tupW`).  Images agreeing on committed roots act alike
+    (`sim_arrowS`, `Subst.sim_box`, `arrowS_mono`).  ⭐`bdataS C hT` is a strong chain's `BData`.
+* *Next:* the truth cases (step 5), then step 6 (sizes, `RetCongr` in `BInd`, removing
+  `NoFour.noBStrong`, statements).
+
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`
   contains `□`.  So for a slot `□A` with `A` box-free the second component has a canonical

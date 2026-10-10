@@ -274,6 +274,175 @@ theorem rden_lift {s : B.W} {i K : ℕ} (h : i ≤ K) {A : VarType} {a : Ann A}
   rw [rden_mono]
   exact rden_congr _ _ _ _ _ _
 
+/-! ## Strong B: "comes back as" -/
+
+/-- A carrier's round-trip data on the canonical frame (`Model.carrierData`). -/
+def cData : (L : BLeg) → {A : VarType} → {s : B.W} → B.frame.Dom (L.carrier A) s →
+    Σ S : Set (B.frame.Acc s), (a : S) → (b : B.frame.Acc a.1.1) → B.frame.Dom A b.1
+  | .nec, A, s, c =>
+      ⟨Set.univ, fun a b => B.necEval (B.necEval (c : B.frame.Nec (.VTypeBox A) s) a.1) b⟩
+  | .pos, A, _, c =>
+      ⟨(B.posEval (c : B.frame.Pos (.VTypeBox A) _)).1,
+        fun a b => B.necEval ((B.posEval (c : B.frame.Pos (.VTypeBox A) _)).2 a) b⟩
+
+/-- ⭐**Canonical "comes back as"** (docs §11.20): at a `◇`-free content, the round trip; and
+    what a `Back` atom of the theory says — round-trip data that are a carrier term's, and the
+    value term's denotation. -/
+def Ret {A : VarType} {s : B.W} (S : Set (B.frame.Acc s))
+    (val : (a : S) → (b : B.frame.Acc a.1.1) → B.frame.Dom A b.1) (o : B.frame.Dom A s) :
+    Prop :=
+  (A.diaFree = true ∧ Nonempty S ∧ ∀ a : S, ∃ r : B.RT a.1.1 s, B.Ind (val a ⟨s, ⟨r⟩⟩) o) ∨
+  ∃ (hS : ModalSys.BStrong = true) (i : ℕ) (L : BLeg) (c : Ann (L.carrier A))
+    (ct : Term σ ((B.w s).ctx i) (L.carrier A) c) (a : Ann A) (t : Term σ ((B.w s).ctx i) A a),
+    WFF.back hS L ct t ∈ (B.w s).M i ∧
+    B.cData L (B.toDom _ s (B.rden s i (Ctx.Le.refl _) ct) (definable_rden _ _)) = ⟨S, val⟩ ∧
+    B.toDom A s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _) = o
+
+variable {B} in
+/-- Under strong B every arrow of the frame is the network's (strong B is built with T off). -/
+theorem R_of_RT_strong (hS : ModalSys.BStrong = true) {s k : B.W} (h : B.RT s k) : B.R s k :=
+  h.resolve_right fun h' => absurd (h'.1.symm.trans (B.noT_of_strong hS)) (by decide)
+
+variable {B} in
+/-- A `Back` atom's leg is nonempty along the plain leg: `back_ne` gives `◇⊤`, and `ex` an arrow. -/
+theorem exists_R_of_dia_top {s : B.W} {i : ℕ}
+    (h : (OutLeg.nec : OutLeg ((B.w s).ctx i)).dia (.top : WFF σ _ 0) ∈ (B.w s).M i) :
+    ∃ k, B.R s k := by
+  obtain ⟨k, hk, _⟩ := B.ex s i (WFF.neg .top) (((B.w s).mcs i).neg_mem_iff.mp h)
+  exact ⟨k, hk⟩
+
+/-- ⭐**What comes back makes the round trip** (`Model.Ret_fwd`): an atom's leg is nonempty
+    (`back_ne`), and along each of its arrows the carrier read out and home again is related to the
+    value (`backRel`, `backRelX`). -/
+theorem ret_fwd (_hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set (B.frame.Acc s)}
+    {val : (a : S) → (b : B.frame.Acc a.1.1) → B.frame.Dom A b.1} {o : B.frame.Dom A s}
+    (h : B.Ret S val o) :
+    Nonempty S ∧ ∀ a : S, ∃ r : B.RT a.1.1 s, B.Ind (val a ⟨s, ⟨r⟩⟩) o := by
+  rcases h with ⟨-, h⟩ | ⟨hS', i, L, c, ct, a, t, hmem, hdata, rfl⟩
+  · exact h
+  revert c ct hmem hdata
+  cases L with
+  | nec =>
+      intro c ct
+      cases ct with
+      | boxtm u =>
+          cases u with
+          | boxtm bd =>
+              intro hmem hdata
+              cases hdata
+              have hdia : (OutLeg.nec : OutLeg ((B.w s).ctx i)).dia (.top : WFF σ _ 0) ∈
+                  (B.w s).M i :=
+                BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by
+                  rw [List.mem_singleton.mp hψ]; exact hmem)
+                  ⟨Proof.back_ne hS' .nec bd t (Proof.lookup List.mem_cons_self)⟩
+              obtain ⟨k, hk⟩ := exists_R_of_dia_top hdia
+              refine ⟨⟨⟨⟨k, ⟨Or.inl hk⟩⟩, Set.mem_univ _⟩⟩, fun ⟨⟨k, ⟨rk⟩⟩, _⟩ => ?_⟩
+              have hk := R_of_RT_strong hS' rk
+              refine ⟨Or.inl (B.symm hk), _, ⟨i, a, t⟩, ?_, (fromDom_toDom _ _ _ _ _).symm,
+                B.backRel hS' bd t hmem hk⟩
+              change _ = B.fromDom A s (B.toDom A s ((B.rden s i (Ctx.Le.refl _)
+                (Term.boxtm (Term.boxtm bd))) ⟨k, ⟨rk⟩⟩ ⟨s, ⟨Or.inl (B.symm hk)⟩⟩) _)
+              rw [fromDom_toDom, rden_boxtm_net _ _ _ hk]
+              exact (rden_boxtm_net _ _ _ (B.symm hk)).symm
+  | pos =>
+      intro c ct
+      cases ct with
+      | diatm y hy u =>
+          cases u with
+          | boxtm bd =>
+              intro hmem hdata
+              cases hdata
+              obtain ⟨Y, hY⟩ := hy
+              have hdia : WFF.dia y ⟨Y, hY⟩ (.top : WFF σ _ 0) ∈ (B.w s).M i :=
+                BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by
+                  rw [List.mem_singleton.mp hψ]; exact hmem)
+                  ⟨Proof.back_ne hS' (.pos y ⟨Y, hY⟩) bd t (Proof.lookup List.mem_cons_self)⟩
+              obtain ⟨k, hk, _⟩ := B.exX s i y Y hY .top hdia
+              refine ⟨⟨⟨⟨k, ⟨Or.inl (B.kdR hk)⟩⟩, Or.inl ⟨Y, hk⟩⟩⟩, fun ⟨⟨k, ⟨rk⟩⟩, hm⟩ => ?_⟩
+              have hR := R_of_RT_strong hS' rk
+              have hk : ∃ X, B.kd s k = some (y, X) := by
+                rcases hm with hm | hm
+                · exact hm
+                · exact absurd hR hm.1
+              obtain ⟨X, hkX⟩ := hk
+              obtain rfl := B.hxX hkX i Y hY
+              refine ⟨Or.inl (B.symm hR), _, ⟨i, a, t⟩, ?_, (fromDom_toDom _ _ _ _ _).symm,
+                B.backRelX hS' hY bd t hmem hkX⟩
+              change _ = B.fromDom A s (B.toDom A s (((B.rden s i (Ctx.Le.refl _)
+                (Term.diatm y ⟨_, hY⟩ (Term.boxtm bd))).2 ⟨⟨k, ⟨rk⟩⟩, hm⟩)
+                ⟨s, ⟨Or.inl (B.symm hR)⟩⟩) _)
+              rw [fromDom_toDom, rden_diatm_net _ _ _ ⟨⟨k, ⟨rk⟩⟩, hm⟩ ⟨_, hkX⟩]
+              exact (rden_boxtm_net _ _ _ (B.symm hR)).symm
+
+omit [ModalSys.NoFour] in
+/-- Filling the carrier slot of a row-1 `Back` atom. -/
+theorem WFF.instantiate_backAt_slot {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+    {A : VarType} {a : Ann A} (t : Term σ Γ A a) {b : Ann (.VTypeBox (.VTypeBox A))}
+    (u : Term σ Γ (.VTypeBox (.VTypeBox A)) b) :
+    WFF.instantiate (d := 0) Ctx.NoSlots.slots u
+        (WFF.back hS .nec (Term.eta (.root (.bnd 0)) (.VTypeBox (.VTypeBox A))
+            (Ctx.ref_insert_root Γ (.bnd 0) (.VTypeBox (.VTypeBox A))))
+          (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root _) t)) =
+      WFF.back hS .nec u t := by
+  rw [WFF.instantiate, WFF.substRoot]
+  refine WFF.back_congr hS .nec ?_ ?_
+  · exact Term.subst_eta_tm _ _ _ (.VTypeBox (.VTypeBox A)) (.root (.bnd 0)) _ u
+      (Subst.at_single_root _ _)
+  · refine (congrArg (Sigma.mk _) (Term.subst_mono _ _ _ _ t)).trans ?_
+    refine ((Term.subst_ren (Ctx.Le.refl Γ) _ _ _ ?_ t).trans
+      (congrArg (Sigma.mk _) (Term.mono_refl _ t)))
+    intro v T hv
+    exact Subst.single_at_ne
+      (Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) hv)
+
+/-- `∃c:□□A. Back c t`: some carrier comes back as `t` (`B_strong`'s formula). -/
+abbrev WFF.backEx {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) {A : VarType}
+    {a : Ann A} (t : Term σ Γ A a) : WFF σ Γ 0 :=
+  .ex (.VTypeBox (.VTypeBox A)) (WFF.back hS .nec
+    (Term.eta (.root (.bnd 0)) (.VTypeBox (.VTypeBox A))
+      (Ctx.ref_insert_root Γ (.bnd 0) (.VTypeBox (.VTypeBox A))))
+    (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root _) t))
+
+omit [ModalSys.NoFour] in
+/-- ⭐`◇⊤ ⊢ ∃c:□□A. Back c t`, from `B_strong` by `∃`-introduction at its fresh carrier. -/
+def Proof.backEx {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+    {A : VarType} {a : Ann A} (t : Term σ Γ A a) (c : ℕ) (hc : Γ.RootFresh (.free c))
+    (h : Proof σ Γ Δ ((OutLeg.nec : OutLeg Γ).dia .top)) : Proof σ Γ Δ (WFF.backEx hS t) := by
+  refine Proof.B_strong hS t c hc h ?_
+  refine Proof.ex_intro (.VTypeBox (.VTypeBox A))
+    (Term.eta (.root (.free c)) _ (Ctx.ref_insert_root Γ (.free c) _)) ?_
+  refine Proof.conv ?_ (Proof.lookup List.mem_cons_self)
+  refine Eq.symm ((congrArg (WFF.instantiate _ _) ?_).trans
+    (WFF.instantiate_backAt_slot hS (Term.weaken hc.root _ t) _))
+  refine WFF.back_congr' hS .nec (Term.mono_eta _ _ _ _) ?_
+  simp only [Term.weaken, Term.mono_mono]
+
+/-- ⭐**Every object comes back** (`Model.backRet_exists`): on a way out the theory has `◇⊤`, so
+    `∃c. Back c t` (`Proof.backEx`); Henkin witnessing names the carrier. -/
+theorem backRet_exists_canon (hS : ModalSys.BStrong = true) {A : VarType} {s : B.W}
+    (hne : Nonempty (B.frame.Acc s)) (o : B.frame.Dom A s) :
+    ∃ c : B.frame.Nec (.VTypeBox A) s,
+      B.Ret (Set.univ : Set (B.frame.Acc s)) (fun a b => B.necEval (B.necEval c a.1) b) o := by
+  obtain ⟨i, a, t, ht⟩ := B.definable_fromDom A s o
+  obtain ⟨⟨k, ⟨rk⟩⟩⟩ := hne
+  have hk := R_of_RT_strong hS rk
+  have hdia : (OutLeg.nec : OutLeg ((B.w s).ctx i)).dia (.top : WFF σ _ 0) ∈ (B.w s).M i := by
+    refine ((B.w s).mcs i).neg_mem_iff.mpr fun hbox => ?_
+    exact ((B.w k).mcs _).neg_mem_iff.mp (B.tr hk i _ hbox) ((B.w k).mcs _).top_mem
+  have hex : WFF.backEx hS t ∈ (B.w s).M i :=
+    BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hdia)
+      ⟨Proof.backEx hS t _ (ctxOf_fresh le_rfl) (Proof.lookup List.mem_cons_self)⟩
+  obtain ⟨j, hij, cb, c, hm⟩ := (B.w s).exW_term hex
+  have hm' : WFF.back hS .nec c (Term.mono ((B.w s).le hij) t) ∈ (B.w s).M j := by
+    convert hm using 1
+    refine Eq.symm ((congrArg (WFF.instantiate _ _) ?_).trans
+      (WFF.instantiate_backAt_slot hS (Term.mono ((B.w s).le hij) t) _))
+    refine WFF.back_congr' hS .nec (Term.mono_eta _ _ _ _) ?_
+    simp only [Term.mono_mono]
+  refine ⟨⟨B.rden s j (Ctx.Le.refl _) c, definable_rden _ _⟩,
+    Or.inr ⟨hS, j, .nec, cb, c, a, Term.mono ((B.w s).le hij) t, hm', rfl, ?_⟩⟩
+  exact (toDom_congr ((rden_lift hij t).trans ht) _ _).trans (B.toDom_fromDom A s o)
+
 /-! ## Strong T: every object is the content of a possible object here -/
 
 variable {B} in
@@ -340,10 +509,10 @@ noncomputable def model : Model.{0, 0} σ where
   necDup_eval hF _ _ _ := (noFour hF).elim
   posRet_exists hT hS a := B.posRet_exists_canon hT hS a
   posSerial hDS s := B.posSerial_canon hDS s
-  Ret _ _ _ := False
-  Ret_fwd := by intro _ _ _ _ _ _ h; exact h.elim
-  Ret_conv hS := (ModalSys.NoFour.absurdStrong hS).elim
-  backRet_exists hS := (ModalSys.NoFour.absurdStrong hS).elim
+  Ret S val o := B.Ret S val o
+  Ret_fwd := by intro _ _ hS _ _ _ h; exact B.ret_fwd hS h
+  Ret_conv := by intro _ _ _ hA _ _ _ h; exact Or.inl ⟨hA, h⟩
+  backRet_exists hS hne o := B.backRet_exists_canon hS hne o
   Ind o o' := B.Ind o o'
   Ind_refl o := B.Ind_refl o
 

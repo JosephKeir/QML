@@ -75,6 +75,36 @@ structure BData [ModalSys.NoFour] (σ : Signature) where
         (ok_arrowXS (imgOk (kdR hk) i) hx (hcx hk i))
         (coh_arrowXS (imgOk (kdR hk) i) hx (hcx hk i)) Ctx.NoSlots.slots Ctx.NoSlots.slots ψ ∈
           (w t).M (stg s t i)
+  /-- Strong B is built with T off for now (docs §11.20). -/
+  noT_of_strong : ModalSys.BStrong = true → ModalSys.T = false
+  /-- ⭐Strong B, row 1: a `Back` atom's carrier, read out along an arrow and home again, is
+      interchangeable with the atom's value (`Att.back`, from the network's invariants). -/
+  backRel : ∀ (hS : ModalSys.BStrong = true) {s : W} {i : ℕ} {A : VarType} {a₀ : Ann A}
+    (bd : Term σ ((w s).ctx i).boxIn.boxIn A a₀) {a : Ann A} (t : Term σ ((w s).ctx i) A a),
+    WFF.back hS .nec (Term.boxtm (Term.boxtm bd)) t ∈ (w s).M i →
+    ∀ {k : W} (h : R s k),
+      Canon.DTerm.Rel (S := (w s).sys) (T := (w s).T)
+        ⟨stg k s (stg s k i), _, Term.subst (arrowIdx (img k s)) (arrowS σ _ (img k s))
+          (ok_arrowS (imgOk (symm h) (stg s k i))) (coh_arrowS (imgOk (symm h) (stg s k i)))
+          (Term.subst (arrowIdx (img s k)) (arrowS σ _ (img s k)).box
+            (Subst.ok_box (ok_arrowS (imgOk h i)))
+            (Subst.coh_box (ok_arrowS (imgOk h i)) (coh_arrowS (imgOk h i))) bd)⟩
+        ⟨i, a, t⟩
+  /-- ⭐Strong B, row 2: the same along the arrows of the carrier's witness `y`. -/
+  backRelX : ∀ (hS : ModalSys.BStrong = true) {s : W} {i : ℕ} {A : VarType} {a₀ : Ann A}
+    {y : VarSymb} {Y : VarType} (hy : ((w s).ctx i).ref y = some (.VTypeDia Y))
+    (bd : Term σ (((w s).ctx i).diaIn y).boxIn A a₀) {a : Ann A} (t : Term σ ((w s).ctx i) A a),
+    WFF.back hS .pos (Term.diatm y ⟨Y, hy⟩ (Term.boxtm bd)) t ∈ (w s).M i →
+    ∀ {k : W} (hk : kd s k = some (y, Y)),
+      Canon.DTerm.Rel (S := (w s).sys) (T := (w s).T)
+        ⟨stg k s (stg s k i), _, Term.subst (arrowIdx (img k s)) (arrowS σ _ (img k s))
+          (ok_arrowS (imgOk (symm (kdR hk)) (stg s k i)))
+          (coh_arrowS (imgOk (symm (kdR hk)) (stg s k i)))
+          (Term.subst (arrowXIdx (img s k) y (cx s k)) (arrowXS σ _ (img s k) y (cx s k)).box
+            (Subst.ok_box (ok_arrowXS (imgOk (kdR hk) i) hy (hcx hk i)))
+            (Subst.coh_box (ok_arrowXS (imgOk (kdR hk) i) hy (hcx hk i))
+              (coh_arrowXS (imgOk (kdR hk) i) hy (hcx hk i))) bd)⟩
+        ⟨i, a, t⟩
 
 namespace BData
 

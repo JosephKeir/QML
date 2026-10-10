@@ -567,6 +567,9 @@ noncomputable def bdata : BData σ where
   hxX hk i X' h := lhxX C hk i X' h
   trX hk i hx ψ hψ := ltrX C hk i hx ψ hψ
   exX s i x X hx ψ hψ := lexX C s i x X hx ψ hψ
+  noT_of_strong hS := (ModalSys.NoFour.absurdStrong hS).elim
+  backRel hS := (ModalSys.NoFour.absurdStrong hS).elim
+  backRelX hS := (ModalSys.NoFour.absurdStrong hS).elim
 
 end BArrow
 

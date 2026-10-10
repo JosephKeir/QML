@@ -427,15 +427,15 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       are one by pairing (`back_pair`). -/
   | ret_counitC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       (O : OutLeg Γ) {A C : VarType} {a : Ann A} (y : Term σ Γ A a) {c₀ : Ann C}
-      (bd : Term σ Γ.boxIn.boxIn C c₀) {c : Ann C} (t : Term σ Γ C c)
+      (bd : Term σ O.view.boxIn C c₀) {c : Ann C} (t : Term σ Γ C c)
       (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd A C)) 1) :
-      Proof σ Γ Δ (O.ret hS y (O.lift (WFF.box (WFF.holeAt
-        ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert (.VTypeBox A)).boxIn
+      Proof σ Γ Δ (O.ret hS y (WFF.box (WFF.holeAt
+        ((Ctx.NoSlots.slots (Γ := O.view)).insert (.VTypeBox A)).boxIn
         (Term.pair (Term.eta (VarSymb.root (.bnd 0)).inner A
-            (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A))))
-          (Term.mono ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root (.VTypeBox A)).boxIn)
-            bd)) ψ)))) →
-      Proof σ Γ Δ ((OutLeg.nec : OutLeg Γ).back hS bd t) →
+            (Ctx.ref_inner (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox A))))
+          (Term.mono ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := O.view)).root (.VTypeBox A)).boxIn)
+            bd)) ψ))) →
+      Proof σ Γ Δ (O.back hS bd t) →
       Proof σ Γ Δ (WFF.holeRead (Term.pair y t) ψ)
   /-- ⭐**Unit** (weak B's `ψ ⊢ □◇ψ`, named; docs §11.17–11.18): what holds here of the value `y`
       and of `s = □sb` is, at the far end of `◇[d₁ ↦ y]`, possible looking back — the way home

@@ -900,33 +900,32 @@ include hM in
     come home along the one way back, as the returning possibility's value and the carrier's —
     `Ind` is preserved by pairing. -/
 theorem sat_ret_counitC (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A C : VarType}
-    {a : Ann A} (y : Term σ Γ A a) {c₀ : Ann C} (bd : Term σ Γ.boxIn.boxIn C c₀) {c : Ann C}
+    {a : Ann A} (y : Term σ Γ A a) {c₀ : Ann C} (bd : Term σ O.view.boxIn C c₀) {c : Ann C}
     (t : Term σ Γ C c) (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd A C)) 1)
-    (hret : M.sat env (O.ret hS y (O.lift (WFF.box (WFF.holeAt
-      ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert (.VTypeBox A)).boxIn
+    (hret : M.sat env (O.ret hS y (WFF.box (WFF.holeAt
+      ((Ctx.NoSlots.slots (Γ := O.view)).insert (.VTypeBox A)).boxIn
       (Term.pair (Term.eta (VarSymb.root (.bnd 0)).inner A
-          (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A))))
-        (Term.mono ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root (.VTypeBox A)).boxIn)
-          bd)) ψ))) : WFF σ Γ 0))
-    (hb : M.sat env ((OutLeg.nec : OutLeg Γ).back hS bd t : WFF σ Γ 0)) :
+          (Ctx.ref_inner (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox A))))
+        (Term.mono ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := O.view)).root (.VTypeBox A)).boxIn)
+          bd)) ψ)) : WFF σ Γ 0))
+    (hb : M.sat env (O.back hS bd t : WFF σ Γ 0)) :
     M.holeSat ψ ((interp env y, interp env t) : M.frame.Dom (.VTypeProd A C) w) := by
   obtain ⟨i, e, hbox, r, hr⟩ := (OutLeg.sat_ret hS env O y _).mp hret
-  rw [OutLeg.sat_lift] at hbox
-  obtain ⟨_, hall⟩ := OutLeg.sat_back_rt hS env .nec bd t hb
-  obtain ⟨r', hr'⟩ := hall (O.acc env i)
+  obtain ⟨_, hall⟩ := OutLeg.sat_back_rt hS env O bd t hb
+  obtain ⟨r', hr'⟩ := hall i
   obtain rfl : r' = r := @Subsingleton.elim _ (M.frame.homeUnique hS) r' r
-  have hag := Env.boxPush_agree (Env.agree_extend (env.boxPush (O.acc env i))
-    (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root e) ⟨w, ⟨r'⟩⟩
+  have hag := Env.boxPush_agree (Env.agree_extend (O.push env i)
+    (Ctx.NoSlots.slots (Γ := O.view)).root e) ⟨w, ⟨r'⟩⟩
   have hb' := (sat_holeAt _ _ _ ψ).mp (hbox ⟨w, ⟨r'⟩⟩)
-  change M.holeSat ψ ((interp (((env.boxPush (O.acc env i)).extend (.bnd 0) e).boxPush ⟨w, ⟨r'⟩⟩)
+  change M.holeSat ψ ((interp (((O.push env i).extend (.bnd 0) e).boxPush ⟨w, ⟨r'⟩⟩)
       (Term.eta (VarSymb.root (.bnd 0)).inner A
-        (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)))),
-    interp (((env.boxPush (O.acc env i)).extend (.bnd 0) e).boxPush ⟨w, ⟨r'⟩⟩)
-      (Term.mono ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root (.VTypeBox A)).boxIn)
+        (Ctx.ref_inner (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox A)))),
+    interp (((O.push env i).extend (.bnd 0) e).boxPush ⟨w, ⟨r'⟩⟩)
+      (Term.mono ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := O.view)).root (.VTypeBox A)).boxIn)
         bd)) : M.frame.Dom (.VTypeProd A C) w) at hb'
-  rw [interp_eta, Env.ref_inner _ _ (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)),
-    show ((env.boxPush (O.acc env i)).extend (.bnd 0) e).ref (.root (.bnd 0))
-      (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox A)) = e from
+  rw [interp_eta, Env.ref_inner _ _ (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox A)),
+    show ((O.push env i).extend (.bnd 0) e).ref (.root (.bnd 0))
+      (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox A)) = e from
       Env.extend_root _ (.bnd 0) e _, interp_mono hag bd] at hb'
   exact (holeSat_ind hM ψ (hM.pair hr hr')).mp hb'
 

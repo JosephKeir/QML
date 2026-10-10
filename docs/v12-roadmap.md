@@ -218,9 +218,10 @@ style of milestone 1, each ending green and committed:
    aliases persist (`packRoots`, `alias_interch`), canonical `Ind` = related representatives, the
    T-free decoder with injective images (`ImgInj`), the pair law on carriers' data, back-witness
    arrows in extents and the strong chain (`StrongChain`, E1 steps 1–2), and the fourth returning
-   successor (§11.20).  **Next:** E1 step 3 (the returning invariants at the limit), canonical
-   `Ret` and its laws, the `back`/`ret` truth cases, sizes, removing `NoFour.noBStrong`; then
-   step 6.
+   successor (§11.20), the returning invariants at the limit (E1 step 3, `lretAt`), and canonical
+   `Ret` with its laws (step 4; `ret_counitC` now leg-indexed; `Ret_fwd` from `bdataS`'s
+   `backRel`/`backRelX`, `QML_v12m_BBackTail`).  **Next:** the `back`/`ret` truth cases, sizes,
+   removing `NoFour.noBStrong`; then step 6.
 6. **Statements.**  Completeness, strong completeness and compactness for strong B (rows 1–2,
    `◇`-free contents), under `NoFour`.
 Then rows 3–4 (multi-labelled edges, per-witness components) and `◇`-typed contents (§11.12).
