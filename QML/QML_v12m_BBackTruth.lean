@@ -145,6 +145,282 @@ theorem OutLeg.ret_of_sat_agree {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env Γ 
 
 end Agree
 
+/-! ## Reading annotations back along a witness arrow -/
+
+section AnnInj
+
+/-- Every label of an annotation satisfies `P`. -/
+def Ann.All (P : VarSymb → Prop) : {A : VarType} → Ann A → Prop
+  | _, .var => True
+  | _, .one => True
+  | _, .prod a b => Ann.All P a ∧ Ann.All P b
+  | _, .box a => Ann.All P a
+  | _, .dia x a => P x ∧ Ann.All P a
+
+omit [ModalSys] in
+theorem Ann.All.and {P Q : VarSymb → Prop} :
+    ∀ {A : VarType} {a : Ann A}, a.All P → a.All Q → a.All fun x => P x ∧ Q x
+  | _, .var, _, _ => trivial
+  | _, .one, _, _ => trivial
+  | _, .prod _ _, h, h' =>
+      And.intro (Ann.All.and (And.left h) (And.left h')) (Ann.All.and (And.right h) (And.right h'))
+  | _, .box a, h, h' => Ann.All.and (a := a) h h'
+  | _, .dia _ _, h, h' =>
+      And.intro (And.intro (And.left h) (And.left h')) (Ann.All.and (And.right h) (And.right h'))
+
+omit [ModalSys] in
+/-- ⭐Renaming labels is injective on annotations whose labels it renames injectively. -/
+theorem Ann.mapIdx_inj {P : VarSymb → Prop} {f : VarSymb → VarSymb}
+    (hf : ∀ x x', P x → P x' → f x = f x' → x = x') :
+    ∀ {A : VarType} (a a' : Ann A), a.All P → a'.All P → a.mapIdx f = a'.mapIdx f → a = a'
+  | _, .var, .var, _, _, _ => rfl
+  | _, .one, .one, _, _, _ => rfl
+  | _, .prod a b, .prod a' b', hab, hab', h => by
+      simp only [Ann.mapIdx, Ann.prod.injEq] at h
+      rw [Ann.mapIdx_inj hf a a' (And.left hab) (And.left hab') h.1,
+        Ann.mapIdx_inj hf b b' (And.right hab) (And.right hab') h.2]
+  | _, .box a, .box a', ha, ha', h => by
+      simp only [Ann.mapIdx, Ann.box.injEq] at h
+      rw [Ann.mapIdx_inj hf a a' ha ha' h]
+  | _, .dia x a, .dia x' a', hxa, hxa', h => by
+      simp only [Ann.mapIdx, Ann.dia.injEq] at h
+      rw [hf x x' (And.left hxa) (And.left hxa') h.1,
+        Ann.mapIdx_inj hf a a' (And.right hxa) (And.right hxa') h.2]
+
+/-- A context whose addresses all satisfy `Q`. -/
+def Ctx.Under (Q : VarSymb → Prop) (Δ : Ctx) : Prop := ∀ v T, Δ.ref v = some T → Q v
+
+section Under
+
+variable {Q : VarSymb → Prop} (hQ : ∀ v st, Q v → Q (.step v st))
+include hQ
+
+/-- It suffices that the declared addresses satisfy `Q`, when `Q` is closed under steps. -/
+theorem Ctx.Under.of_decl {Δ : Ctx} (h : ∀ v T, Δ v = some T → Q v) : Δ.Under Q := by
+  intro v
+  induction v with
+  | root r => intro T hv; exact h _ T hv
+  | step v s ih =>
+      intro T hv
+      by_cases hs : s.isProj = true
+      · change (if s.isProj then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hv
+        rw [if_pos hs] at hv
+        cases hU : Δ.ref v with
+        | none => rw [hU] at hv; cases hv
+        | some U => exact hQ v s (ih U hU)
+      · change (if s.isProj then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hv
+        rw [if_neg hs] at hv
+        exact h _ T hv
+
+theorem Ctx.Under.boxIn [ModalSys.NoFour] {Δ : Ctx} (h : Δ.Under Q) : Δ.boxIn.Under Q := by
+  refine Ctx.Under.of_decl hQ fun y T hy => ?_
+  match y, hy with
+  | .step u .box, hy => exact hQ u .box (h u _ (Ctx.boxIn_box hy).2)
+  | .step u .keep, hy => exact absurd (Ctx.boxIn_keep hy).1 (by simp [ModalSys.NoFour.noFour])
+  | .root _, hy => cases hy
+  | .step _ .fst, hy => cases hy
+  | .step _ .snd, hy => cases hy
+  | .step _ .dia, hy => cases hy
+  | .step _ .here, hy => cases hy
+
+theorem Ctx.Under.diaIn [ModalSys.NoFour] {Δ : Ctx} (h : Δ.Under Q) (x : VarSymb) :
+    (Δ.diaIn x).Under Q := by
+  refine Ctx.Under.of_decl hQ fun y T hy => ?_
+  match y, hy with
+  | .step u .dia, hy =>
+      change (if u = x then (match Δ.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T at hy
+      split_ifs at hy with hux
+      subst hux
+      cases hx : Δ.ref u with
+      | none => rw [hx] at hy; cases hy
+      | some X => exact hQ u .dia (h u X hx)
+  | .step u .box, hy => exact h.boxIn hQ _ _ ((Ctx.ref_nonproj _ rfl).trans hy)
+  | .step u .keep, hy => exact h.boxIn hQ _ _ ((Ctx.ref_nonproj _ rfl).trans hy)
+  | .root _, hy => cases hy
+  | .step _ .fst, hy => cases hy
+  | .step _ .snd, hy => cases hy
+  | .step _ .here, hy => cases hy
+
+/-- A term's labels are addresses of its contexts, so they satisfy `Q`. -/
+theorem Term.annAll [ModalSys.NoFour] {σ : Signature} :
+    ∀ {Δ : Ctx}, Δ.Under Q → ∀ {A : VarType} {a : Ann A}, Term σ Δ A a → a.All Q
+  | _, _, _, _, .var _ _ => trivial
+  | _, _, _, _, .func _ => trivial
+  | _, _, _, _, .unit => trivial
+  | _, hU, _, _, .pair u t => And.intro (Term.annAll hU u :) (Term.annAll hU t :)
+  | _, hU, _, _, .boxtm t => (Term.annAll (hU.boxIn hQ) t :)
+  | _, hU, _, _, .diatm x hx t => by
+      obtain ⟨X, h⟩ := hx
+      exact And.intro (hU x _ h) (Term.annAll (hU.diaIn hQ x) t :)
+
+end Under
+
+namespace BArrow
+
+/-- An address of a world's language is a declared root and projections. -/
+theorem ctxOf_addr {l : List VarType} :
+    ∀ {u : VarSymb} {T : VarType}, (ctxOf l).ref u = some T →
+      PPath u.path ∧ ∃ n R, u.rt = .free n ∧ n < l.length ∧
+        (ctxOf l).ref (.root (.free n)) = some R
+  | .root r, T, h => by
+      obtain ⟨n, rfl, hn⟩ := BData.root_of_ctxOf h
+      exact ⟨fun _ hs => by simp [VarSymb.path] at hs, n, T, rfl, hn, h⟩
+  | .step v s, T, h => by
+      by_cases hs : s.isProj = true
+      · change (if s.isProj then ((ctxOf l).ref v).bind (·.step s) else
+          ctxOf l (.step v s)) = some T at h
+        rw [if_pos hs] at h
+        cases hU : (ctxOf l).ref v with
+        | none => rw [hU] at h; cases h
+        | some U =>
+            obtain ⟨hp, n, R, hrt, hn, hR⟩ := ctxOf_addr hU
+            refine ⟨fun t ht => ?_, n, R, hrt, hn, hR⟩
+            simp only [VarSymb.path, List.mem_append, List.mem_singleton] at ht
+            rcases ht with ht | rfl
+            · exact hp t ht
+            · exact hs
+      · change (if s.isProj then ((ctxOf l).ref v).bind (·.step s) else
+          ctxOf l (.step v s)) = some T at h
+        rw [if_neg hs] at h
+        obtain ⟨r, hr⟩ := ctxOf_decl h
+        cases hr
+
+omit [ModalSys] in
+/-- The first level step after a run of projections is where it is. -/
+theorem ppath_split {p p' : List Step} {s s' : Step} {t t' : List Step} (hp : PPath p)
+    (hp' : PPath p') (hs : s.isProj = false) (hs' : s'.isProj = false)
+    (h : p ++ s :: t = p' ++ s' :: t') : p = p' ∧ s = s' ∧ t = t' := by
+  induction p generalizing p' with
+  | nil =>
+      cases p' with
+      | nil => simpa using h
+      | cons a p' =>
+          simp only [List.nil_append, List.cons_append, List.cons.injEq] at h
+          have := hp' a List.mem_cons_self
+          rw [← h.1] at this
+          rw [this] at hs
+          cases hs
+  | cons a p ih =>
+      cases p' with
+      | nil =>
+          simp only [List.nil_append, List.cons_append, List.cons.injEq] at h
+          have := hp a List.mem_cons_self
+          rw [h.1] at this
+          rw [this] at hs'
+          cases hs'
+      | cons a' p' =>
+          simp only [List.cons_append, List.cons.injEq] at h
+          obtain ⟨rfl, h⟩ := h
+          obtain ⟨rfl, rfl, rfl⟩ := ih (fun x hx => hp x (List.mem_cons_of_mem _ hx))
+            (fun x hx => hp' x (List.mem_cons_of_mem _ hx)) h
+          exact ⟨rfl, rfl, rfl⟩
+
+/-- The labels a term in `y`'s `◇` view can carry: through `y`'s content, or through a necessary
+    variable's `□` view. -/
+def ViewLabel (l : List VarType) (y : VarSymb) (ℓ : VarSymb) : Prop :=
+  (∃ q, ℓ = (VarSymb.step y .dia).ext q) ∨
+    ∃ (u : VarSymb) (q : List Step) (T : VarType),
+      (ctxOf l).ref u = some (.VTypeBox T) ∧ ℓ = (VarSymb.step u .box).ext q
+
+theorem ViewLabel.step {l : List VarType} {y : VarSymb} {ℓ : VarSymb} (st : Step)
+    (h : ViewLabel l y ℓ) : ViewLabel l y (.step ℓ st) := by
+  rcases h with ⟨q, rfl⟩ | ⟨u, q, T, hu, rfl⟩
+  · exact Or.inl ⟨q ++ [st], by rw [VarSymb.ext_append]; rfl⟩
+  · exact Or.inr ⟨u, q ++ [st], T, hu, by rw [VarSymb.ext_append]; rfl⟩
+
+/-- `y`'s `◇` view has only such labels. -/
+theorem under_diaIn [ModalSys.NoFour] (l : List VarType) (y : VarSymb) :
+    ((ctxOf l).diaIn y).Under (ViewLabel l y) := by
+  refine Ctx.Under.of_decl (fun _ st h => h.step st) fun v T hv => ?_
+  rcases diaIn_item hv with ⟨u, rfl, hu⟩ | ⟨rfl, _⟩
+  · exact Or.inr ⟨u, [], T, hu, rfl⟩
+  · exact Or.inl ⟨[], rfl⟩
+
+/-- ⭐**Along a witness arrow, labels of `y`'s `◇` view are read back injectively**, given
+    injective images and a content variable outside them: a label through `y`'s content goes to
+    the content variable, one through a `□` view to its root's image, cut at its `box`
+    (`arrowIdx_cut_noT`, `cut_unique`). -/
+theorem arrowXIdx_inj (hT : ModalSys.T = false) {l : List VarType} {img : ℕ → ℕ} {cx : ℕ}
+    {y : VarSymb} {Y : VarType} (hy : (ctxOf l).ref y = some (.VTypeDia Y))
+    (hInj : ∀ r r', r < l.length → r' < l.length → img r = img r' → r = r')
+    (hcx : ∀ r < l.length, img r ≠ cx) {ℓ ℓ' : VarSymb} (hℓ : ViewLabel l y ℓ)
+    (hℓ' : ViewLabel l y ℓ')
+    (hw : ∀ R, (ctxOf l).ref (.root ℓ.rt) = some R → R.walk ℓ.path ≠ none)
+    (hw' : ∀ R, (ctxOf l).ref (.root ℓ'.rt) = some R → R.walk ℓ'.path ≠ none)
+    (e : arrowXIdx img y cx ℓ = arrowXIdx img y cx ℓ') : ℓ = ℓ' := by
+  obtain ⟨hpy, -⟩ := ctxOf_addr hy
+  -- the two kinds of label, read along the arrow
+  have hY : ∀ q, arrowXIdx img y cx ((VarSymb.step y .dia).ext q) =
+      (VarSymb.root (.free cx)).ext q := by
+    intro q
+    unfold arrowXIdx
+    rw [if_pos ⟨by rw [VarSymb.ext_rt]; rfl, by
+      rw [VarSymb.ext_path]; exact List.prefix_append _ _⟩, VarSymb.ext_path]
+    congr 1
+    simp [VarSymb.path]
+  have hBx : ∀ u q T, (ctxOf l).ref u = some (.VTypeBox T) →
+      arrowXIdx img y cx ((VarSymb.step u .box).ext q) =
+        (VarSymb.root (imgRoot img u.rt)).ext (u.path ++ q) := by
+    intro u q T hu
+    obtain ⟨hpu, -⟩ := ctxOf_addr hu
+    unfold arrowXIdx
+    rw [if_neg, BData.arrowIdx_cut_noT hT img hpu]
+    rintro ⟨-, t, ht⟩
+    rw [VarSymb.ext_path] at ht
+    change y.path ++ [Step.dia] ++ t = u.path ++ [Step.box] ++ q at ht
+    simp only [List.append_assoc, List.singleton_append] at ht
+    exact absurd (ppath_split hpy hpu rfl rfl ht).2.1 (by decide)
+  have hext : ∀ {a b : Root} {p p' : List Step},
+      (VarSymb.root a).ext p = (VarSymb.root b).ext p' → a = b ∧ p = p' := by
+    intro a b p p' h
+    have h₁ := congrArg VarSymb.rt h
+    have h₂ := congrArg VarSymb.path h
+    rw [VarSymb.ext_rt, VarSymb.ext_rt] at h₁
+    rw [VarSymb.ext_path, VarSymb.ext_path] at h₂
+    exact ⟨h₁, by simpa [VarSymb.path] using h₂⟩
+  rcases hℓ with ⟨q, rfl⟩ | ⟨u, q, T, hu, rfl⟩ <;>
+    rcases hℓ' with ⟨q', rfl⟩ | ⟨u', q', T', hu', rfl⟩
+  · rw [hY, hY] at e
+    rw [(hext e).2]
+  · rw [hY, hBx u' q' T' hu'] at e
+    obtain ⟨hpu', n', R', hrt', hn', -⟩ := ctxOf_addr hu'
+    rw [hrt'] at e
+    exact absurd (Root.free.inj (hext e).1).symm (hcx n' hn')
+  · rw [hBx u q T hu, hY] at e
+    obtain ⟨hpu, n, R, hrt, hn, -⟩ := ctxOf_addr hu
+    rw [hrt] at e
+    exact absurd (Root.free.inj (hext e).1) (hcx n hn)
+  · rw [hBx u q T hu, hBx u' q' T' hu'] at e
+    obtain ⟨hpu, n, R, hrt, hn, hR⟩ := ctxOf_addr hu
+    obtain ⟨hpu', n', R', hrt', hn', hR'⟩ := ctxOf_addr hu'
+    rw [hrt, hrt'] at e
+    obtain ⟨e₁, e₂⟩ := hext e
+    obtain rfl := hInj n n' hn hn' (Root.free.inj e₁)
+    obtain rfl : R = R' := Option.some.inj (hR.symm.trans hR')
+    have hr₁ : (ctxOf l).ref (.root ((VarSymb.step u .box).ext q).rt) = some R := by
+      rw [VarSymb.ext_rt]
+      change (ctxOf l).ref (.root u.rt) = _
+      rw [hrt]
+      exact hR
+    have hr₂ : (ctxOf l).ref (.root ((VarSymb.step u' .box).ext q').rt) = some R := by
+      rw [VarSymb.ext_rt]
+      change (ctxOf l).ref (.root u'.rt) = _
+      rw [hrt']
+      exact hR'
+    have hw₁ := hw R hr₁
+    have hw₂ := hw' R hr₂
+    rw [VarSymb.ext_path] at hw₁ hw₂
+    change R.walk (u.path ++ [Step.box] ++ q) ≠ none at hw₁
+    change R.walk (u'.path ++ [Step.box] ++ q') ≠ none at hw₂
+    simp only [List.append_assoc, List.singleton_append] at hw₁ hw₂
+    obtain ⟨hp, rfl⟩ := cut_unique hT hpu hpu' hw₁ hw₂ e₂
+    rw [VarSymb.eq_of_rt_path (hrt.trans hrt'.symm) hp]
+
+end BArrow
+
+end AnnInj
+
 namespace BArrow
 
 variable {σ : Signature}
@@ -390,6 +666,189 @@ theorem mem_back_of_sat_nec (hS : ModalSys.BStrong = true) (hB : ModalSys.B = tr
                   (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self)))
                   (Proof.lookup (List.mem_cons_of_mem _
                     (List.mem_cons_of_mem _ List.mem_cons_self)))⟩)
+
+variable (B) in
+/-- ⭐**Fresh witness arrows**: a true `◇_y ⊤` at a stage has an arrow of `y`'s extent whose
+    content variable is no image of that stage's variables.  The limit's witness children have it
+    (`bdata_cxFresh`): a child made for the formula sees the stage's variables under the identity,
+    its content variable past them. -/
+def CxFresh : Prop :=
+  ∀ {s : B.W} {i : ℕ} {y : VarSymb} {Y : VarType} (hy : ((B.w s).ctx i).ref y = some (.VTypeDia Y)),
+    WFF.dia y ⟨Y, hy⟩ (.top : WFF σ _ 0) ∈ (B.w s).M i →
+      ∃ k, B.kd s k = some (y, Y) ∧ ∀ r < ((B.w s).l i).length, B.img s k r ≠ B.cx s k
+
+omit [ModalSys] in
+/-- Two equal dependent pairs over sets agree at a common member. -/
+theorem sigma_snd_apply {α : Type*} {β : α → Type*} {D₁ D₂ : Σ S : Set α, (a : S) → β a.1}
+    (h : D₁ = D₂) (a : α) (h₁ : a ∈ D₁.1) (h₂ : a ∈ D₂.1) : D₁.2 ⟨a, h₁⟩ = D₂.2 ⟨a, h₂⟩ := by
+  subst h
+  rfl
+
+/-- Typed annotations have typed labels. -/
+theorem annTy_all {s : B.W} : ∀ {A : VarType} {a : Ann A}, B.AnnTy s a → a.All (B.LabelTy s)
+  | _, .var, _ => trivial
+  | _, .one, _ => trivial
+  | _, .prod _ _, h => And.intro (annTy_all h.1) (annTy_all h.2)
+  | _, .box a, h => annTy_all (a := a) h
+  | _, .dia _ _, h => And.intro h.1 (annTy_all h.2)
+
+/-- A typed label walks from its root's type at any stage declaring the root. -/
+theorem labelTy_walk {s : B.W} {ℓ : VarSymb} (h : B.LabelTy s ℓ) {K : ℕ} {R : VarType}
+    (hR : ((B.w s).ctx K).ref (.root ℓ.rt) = some R) : R.walk ℓ.path ≠ none := by
+  obtain ⟨j, R', hR', hw⟩ := h
+  have e₁ := ((B.w s).le (le_max_left j K)).ref hR'
+  have e₂ := ((B.w s).le (le_max_right j K)).ref hR
+  obtain rfl : R' = R := Option.some.inj (e₁.symm.trans e₂)
+  exact hw
+
+/-- ⭐⭐**`Back`, truth ⇒ membership, row 2** (a witness's leg, carrier `◇_y□A`), at every content
+    type (strong B, T off; docs §11.20).  At a `◇`-free content, `mem_back_of_sat_diaFree`.
+    Otherwise the canonical `Ret` is an atom `Back ct' t'` of the theory with the same round-trip
+    data and `den t' = den t`.  Its leg is no plain leg (`univ_ne_extent`) and shares an arrow
+    with `y`'s extent, so it is `y`'s.  Its contents along every arrow of the extent are ours.  At
+    a fresh witness arrow (`CxFresh`) the decoder there gives the two contents' images one
+    annotation, and the arrow reads the annotations of `y`'s view back injectively
+    (`arrowXIdx_inj`), so the carriers have one annotation; their shapes follow
+    (`termShp_ann`), so one denotation.  The induction hypothesis at the two `eqRec`s,
+    `back_eqC` and `back_eq` finish, as in row 1. -/
+theorem mem_back_of_sat_pos (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true)
+    (hInj : B.ImgInj) (hCx : B.CxFresh) {s : B.W} {i : ℕ} {y : VarSymb}
+    (hy : ∃ Y, ((B.w s).ctx i).ref y = some (.VTypeDia Y)) {A : VarType} {a₀ : Ann A}
+    (bd : Term σ (((B.w s).ctx i).diaIn y).boxIn A a₀) {a : Ann A}
+    (t : Term σ ((B.w s).ctx i) A a)
+    (IH : ∀ (K : ℕ) (φ : WFF σ ((B.w s).ctx K) 0),
+      φ.size < ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).back hS bd t : WFF σ _ 0).size →
+        (B.model.sat (B.canonEnv s K) φ ↔ φ ∈ (B.w s).M K))
+    (h : B.model.sat (B.canonEnv s i)
+      ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).back hS bd t : WFF σ _ 0)) :
+    ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).back hS bd t : WFF σ _ 0) ∈ (B.w s).M i := by
+  by_cases hA : A.diaFree = true
+  · exact mem_back_of_sat_diaFree hS hB (.pos y hy) hA bd t IH h
+  have hT := B.noT_of_strong hS
+  have hsz := size_back_ge hS (.pos y hy) bd t
+  obtain ⟨⟨i₀⟩, -⟩ := OutLeg.sat_back_rt hS (B.canonEnv s i) (.pos y hy) bd t h
+  have harr := exists_R_of_arr (O := .pos y hy) hS i₀
+  have hdia : (OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).dia (.top : WFF σ _ 0) ∈ (B.w s).M i :=
+    (IH i _ (by have := size_dia_top (σ := σ) (OutLeg.pos y hy); omega)).mp
+      ((OutLeg.sat_dia (B.canonEnv s i) (.pos y hy) _).mpr ⟨i₀, trivial⟩)
+  obtain ⟨Y, hY⟩ := hy
+  change B.Ret _ _ _ at h
+  rcases h with ⟨hA', -⟩ | ⟨hS', i', L, c, ct, a', t', hmem, hdata, hval⟩
+  · exact absurd hA' hA
+  have hK : i ≤ max i i' := le_max_left _ _
+  have hK' : i' ≤ max i i' := le_max_right _ _
+  have hyK : ((B.w s).ctx (max i i')).ref y = some (.VTypeDia Y) := ((B.w s).le hK).ref hY
+  obtain ⟨k, hkk, hfresh⟩ := hCx hyK ((BWorld.mem_lift hK).mp hdia)
+  have hkR := B.kdR hkk
+  have hD : B.model.carrierData .pos
+      (Model.interp (B.canonEnv s i) (Term.diatm y ⟨Y, hY⟩ (Term.boxtm bd))) =
+      B.cData .pos (B.toDom _ s (B.rden s i (Ctx.Le.refl _) (Term.diatm y ⟨Y, hY⟩ (Term.boxtm bd)))
+        (definable_rden _ _)) := by
+    rw [interp_canon _ (Model.Env.Agree.refl' _)]
+    rfl
+  revert c ct hmem hdata
+  cases L with
+  | nec =>
+      intro c ct
+      cases ct with
+      | boxtm u =>
+          intro _ hdata
+          have hfst := congrArg Sigma.fst (hdata.trans hD)
+          change Set.univ = B.extent s y at hfst
+          exact (univ_ne_extent harr y hfst).elim
+  | pos =>
+      intro c ct
+      cases ct with
+      | diatm y' hy' u =>
+          cases u with
+          | boxtm bd' =>
+              intro hmem hdata
+              have hdata' := hdata.trans hD
+              have hfst := congrArg Sigma.fst hdata'
+              change B.extent s y' = B.extent s y at hfst
+              have hmk : (⟨k, ⟨Or.inl hkR⟩⟩ : B.Acc s) ∈ B.extent s y := Or.inl ⟨Y, hkk⟩
+              rw [← hfst] at hmk
+              obtain rfl : y = y' := by
+                rcases hmk with ⟨X', hX'⟩ | ⟨hnR, -⟩
+                · rw [hkk] at hX'
+                  exact (Prod.mk.inj (Option.some.inj hX')).1
+                · exact absurd hkR hnR
+              -- the contents agree along every arrow of the extent
+              have hcont : ∀ (a₁ : B.Acc s) (m : a₁ ∈ B.extent s y),
+                  (B.rden s i' (Ctx.Le.refl _) (Term.diatm y hy' (Term.boxtm bd'))).2 ⟨a₁, m⟩ =
+                    (B.rden s i (Ctx.Le.refl _) (Term.diatm y ⟨Y, hY⟩ (Term.boxtm bd))).2
+                      ⟨a₁, m⟩ := by
+                intro a₁ m
+                have e := sigma_snd_apply
+                  (β := fun a₂ : B.frame.Acc s => (b : B.frame.Acc a₂.1) → B.frame.Dom A b.1)
+                  hdata' a₁ m m
+                exact toDom_inj (B.model.nec_inj e)
+              -- one annotation, read back along the fresh witness arrow `s → k`
+              have hm₀ : (⟨k, ⟨Or.inl hkR⟩⟩ : B.Acc s) ∈ B.extent s y := Or.inl ⟨Y, hkk⟩
+              have hck := hcont _ hm₀
+              rw [rden_diatm_net _ _ _ ⟨_, hm₀⟩ ⟨Y, hkk⟩,
+                rden_diatm_net _ _ _ ⟨_, hm₀⟩ ⟨Y, hkk⟩] at hck
+              have hann := ann_eq_of_toDom hS hInj ⟨s, B.symm hkR⟩ _ _ (toDom_congr hck _ _)
+              have hQ : ∀ (j : ℕ) (hj : j ≤ max i i') {b : Ann (.VTypeBox A)}
+                  (u : Term σ (((B.w s).ctx j).diaIn y) (.VTypeBox A) b),
+                  b.All fun ℓ => ViewLabel ((B.w s).l (max i i')) y ℓ ∧ B.LabelTy s ℓ := by
+                intro j hj b u
+                exact (Term.annAll (fun _ st h => h.step st) (under_diaIn _ y)
+                  (Term.mono (((B.w s).le hj).diaIn y) u)).and
+                  (annTy_all (Term.annTy ((walks_ctxOf _).diaIn y)
+                    (Term.mono (((B.w s).le hj).diaIn y) u)))
+              have hb := Ann.mapIdx_inj (fun ℓ ℓ' hℓ hℓ' e => arrowXIdx_inj hT hyK
+                (fun r r' hr hr' e => hInj hkR _ r r' hr hr' e) hfresh hℓ.1 hℓ'.1
+                (fun _ hR => labelTy_walk hℓ.2 hR) (fun _ hR => labelTy_walk hℓ'.2 hR) e)
+                _ _ (hQ i' hK' (Term.boxtm bd')) (hQ i hK (Term.boxtm bd)) hann
+              obtain rfl := Ann.box.inj hb
+              -- the carriers denote alike
+              have hc : B.rden s i' (Ctx.Le.refl _) (Term.diatm y hy' (Term.boxtm bd')) =
+                  B.rden s i (Ctx.Le.refl _) (Term.diatm y ⟨Y, hY⟩ (Term.boxtm bd)) := by
+                refine RPos.congr_cont (funext fun a₁ => hcont a₁.1 a₁.2) fun hSh => ?_
+                have e₁ := congrArg (fun x => x.3 hSh)
+                  (rden_lift hK' (Term.diatm y hy' (Term.boxtm bd')))
+                have e₂ := congrArg (fun x => x.3 hSh)
+                  (rden_lift hK (Term.diatm y ⟨Y, hY⟩ (Term.boxtm bd)))
+                exact e₁.symm.trans ((Model.termShp_ann _ 0 _ _).trans e₂)
+              have hv : B.toDom A s (B.rden s i' (Ctx.Le.refl _) t') (definable_rden _ _) =
+                  B.toDom A s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _) := by
+                rw [hval, interp_canon t (Model.Env.Agree.refl' _)]
+              obtain rfl := ann_eq_of_toDom hS hInj harr _ _ hv
+              have hmc := (IH _ _ (by
+                rw [WFF.size_eqRec]; simp only [VarType.eqRecSize] at hsz ⊢; omega)).mp
+                (sat_eqRec_lift hK' hK _ _ (toDom_congr hc _ _))
+              have hmv := (IH _ _ (by rw [WFF.size_eqRec]; omega)).mp
+                (sat_eqRec_lift hK' hK _ _ hv)
+              refine (BWorld.mem_lift hK).mpr (BWorld.mem_of_provable (Δ := [_, _, _])
+                (fun ψ hψ => by
+                  rcases List.mem_cons.mp hψ with rfl | hψ
+                  · exact (BWorld.mem_lift hK').mp hmem
+                  rcases List.mem_cons.mp hψ with rfl | hψ
+                  · exact hmc
+                  · rw [List.mem_singleton.mp hψ]; exact hmv)
+                ⟨Proof.back_eq hS .pos _ _ _ (Proof.back_eqC hS .pos _ _ _
+                  (Proof.lookup List.mem_cons_self)
+                  (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self)))
+                  (Proof.lookup (List.mem_cons_of_mem _
+                    (List.mem_cons_of_mem _ List.mem_cons_self)))⟩)
+
+/-- ⭐⭐**`Back`, truth ⇒ membership** (strong B, T off), along either leg and at every content
+    type: the truth lemma's `back` case in the direction the canonical `Ret` does not give for
+    free (`mem_back_of_sat_nec`, `mem_back_of_sat_pos`).  It asks injective images (`ImgInj`) and
+    fresh witness arrows (`CxFresh`), which the limit of a chain has. -/
+theorem mem_back_of_sat (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true)
+    (hInj : B.ImgInj) (hCx : B.CxFresh) {s : B.W} {i : ℕ} (O : OutLeg ((B.w s).ctx i))
+    {A : VarType} {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
+    (t : Term σ ((B.w s).ctx i) A a)
+    (IH : ∀ (K : ℕ) (φ : WFF σ ((B.w s).ctx K) 0),
+      φ.size < (O.back hS bd t : WFF σ _ 0).size →
+        (B.model.sat (B.canonEnv s K) φ ↔ φ ∈ (B.w s).M K))
+    (h : B.model.sat (B.canonEnv s i) (O.back hS bd t : WFF σ _ 0)) :
+    (O.back hS bd t : WFF σ _ 0) ∈ (B.w s).M i := by
+  cases O with
+  | nec => exact mem_back_of_sat_nec hS hB hInj bd t IH h
+  | pos y hy => exact mem_back_of_sat_pos hS hB hInj hCx hy bd t IH h
 
 end BData
 

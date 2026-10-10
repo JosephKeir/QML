@@ -6838,14 +6838,31 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
     denotations equal; the decoder at `s` (`ann_eq_of_toDom`, taking `B.ImgInj` as a hypothesis,
     which `bdata_imgInj` supplies) makes carriers' and values' annotations equal at a common
     stage; the IH at the two `eqRec`s, `back_eqC` and `back_eq` finish.
-  * Atom disjunct at `◇`-typed contents, row 2 (still open).  The notes below; step 1 is done for
-    a row-1 atom against a row-2 carrier (`univ_ne_extent`), and two row-2 legs' extents share an
-    arrow, so one witness.  What is left is step 2 for `◇_y□`: the far world's decoder gives the
-    images of `bd` and `bd'` equal annotations (`a.mapIdx (arrowXIdx img y cx)`), and that map
-    must be injective on the `◇_y` view's annotations — `img` injective (`ImgInj`) **and** the
-    content root `cx` outside `img`'s range on committed roots (a new network invariant, to
-    check).  Then `sat_eqRec` at `◇` (shapes follow annotations, `termShp_ann`) and the IH give
-    `eqRec ct ct'`.  The original plan:
+  * *Row 2 at every content type (built,* ⭐`BData.mem_back_of_sat_pos`*; both legs:*
+    ⭐`BData.mem_back_of_sat`*).*
+    * Legs: a row-1 atom has every arrow as its leg, which no witness's extent is
+      (`univ_ne_extent`); a row-2 atom's extent shares a fresh arrow with `y`'s, so it is `y`'s.
+    * Contents: equal data give, along every arrow of the extent, equal contents (`nec_inj`).
+    * Annotations: at a **fresh witness arrow** `s → k` the decoder at `k` (which has the arrow
+      back) gives the two contents' images one annotation, `a.mapIdx (arrowXIdx img y cx)`.  That
+      renaming is injective on the labels of `y`'s view (`arrowXIdx_inj`): a label through `y`'s
+      content goes to `cx`, one through a `□` view (`u.box.q`, `u` a declared root and projections)
+      to its root's image cut at its `box`, injective by `ImgInj` and `cut_unique`; the two kinds
+      differ because `cx` is no image of the stage's roots.  Labels of a term in `y`'s view are of
+      these two kinds (`ViewLabel`, `under_diaIn`, `Term.annAll`), and typed (`annTy_all`).
+      Then `Ann.mapIdx_inj`.
+    * Shapes: a carrier's tag is `termShp` of its annotation (`termShp_ann`, at a common stage),
+      so the carriers' denotations are equal (`RPos.congr_cont`); `eqRec`, `back_eqC`, `back_eq`.
+    * *Fresh witness arrows* (`BData.CxFresh`): a true `◇_y ⊤` at stage `i` has an arrow of `y`'s
+      extent whose content variable is no image of stage `i`'s roots.  **No network invariant is
+      needed**: the child `child_dia` makes for that formula is born after stage `i`'s roots are
+      committed, under the identity, with `cx` the parent's length then (`lexX_fresh`,
+      `bdata_cxFresh`, `bdataS_cxFresh` in `QML_v12m_BBackLimit`; also `bdataS_imgInj`).  A
+      general invariant "`cx` is no committed image" (holding for every forward witness edge,
+      kept by every operation) was built first and dropped as unneeded.
+    * So `back` truth ⇒ membership is done (T off).  It is not yet wired into `BTruth.truth_lt`,
+      whose `back` case is still `absurdStrong` under `NoFour.noBStrong` (step 6).
+  * The original plan for the atom disjunct:
     1. *The data identify the leg.*  Two witnesses' extents are disjoint (`kd` is a function).
        A plain leg's set is every arrow, so it needs an unlabelled arrow whenever there is an arrow.
        `lex` at `⊥` gives one (`child_box` makes a child of kind `none`).  This needs a new
