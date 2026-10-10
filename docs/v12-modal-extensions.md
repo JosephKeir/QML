@@ -6906,10 +6906,21 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
     `mem_retx_of_ind`.  The slot formula `WFF.retxSlot` needs substitution through `retxS` with the
     witness fixed (`WFF.subst_retxS_fix`: the renamed witness `ι y` is quantified away inside the
     lemma, then substituted).
-  * *Left:* shapes `nec N` with products (via `ShapeMap.pair` of holes; the value is a tuple, so
-    `ret_eq` at a product type) and witnessed shapes (`wit N X`; the value has a `◇` part and there
-    is no `ret_eq` there — move it by `Rel` at `retSlot` only, or a witnessed `ret_eq`), and
-    membership ⇒ truth (`retOp`, aliases, the user atom → obligation conversion).
+  * *Slice 3, necessary shapes `nec N` with products (built, both legs).*  Slices 1–2 are
+    generalised in place: a `□A` object `□u` becomes the **items of a necessary shape**
+    (`NTerms N`: a term per `□`, paired), the object they make `n.obj` (`boxtm`, `pair`) and the
+    value they make along the way home `n.subst` (each item sent along, paired).  Every term of
+    type `N.ty` is some items' object (`NTerms.exists_obj`; product-typed terms are pairs).  The
+    hole becomes the **packing map** `packMap` (`ShapeMap.hole (packT u)` at each `□`,
+    `ShapeMap.pair`); `subst_packMap_obj` and `holeRead_tupImgT_packMap` lift the `□` lemmas
+    componentwise, so `liftBody(X)_bodyRepl_packMap`, `ret(x)_of_inv`, `RetIn`/`RetInX` and
+    `bdataS_retIn(X)` are stated for any `N`.  Semantically, `NComesBack` is componentwise `Ind`
+    (`ind_of_nComesBack`, with `ind_pair` — pairing congruence, as in `BData.indInvariant`), and
+    the value moves to `t` by `mem_ret(x)_of_ind` at `.nec N` (`ret_eqS`).
+    ⭐`BData.mem_ret_of_sat_nec`, ⭐`BData.mem_retx_of_sat` now take any `N`.
+  * *Left:* witnessed shapes (`wit N X`; the way home is in the witness's extent, so a witness
+    edge, `RetInvW`/`WD`; value moved by `ret_eqS`), and membership ⇒ truth (`retOp`, aliases,
+    the user atom → obligation conversion).
   * ⭐**`ret_eq` generalised to every shape (DECIDED, user, 2026-10-10): `Proof.ret_eqS`.**  No
     derivation of Leibniz for a witnessed value was found: the rules that conclude a top-level
     witnessed atom keep its value (`ret_unitD`, `ret_unitWD`, `ret_monoS`) or change only its
