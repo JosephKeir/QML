@@ -6743,6 +6743,23 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
   Node forms (`*_node`, via `pack2`) for the first and third; the others take the body in the form
   the truth case chooses (`kPsiF`, `kPsiXF`).
 
+**E1 step 3 built: the invariant along an edge of the limit (2026-10-10, T off).**
+* *One predicate.*  Along an edge `v → w` the invariant's form is fixed by two pieces of edge data:
+  `lkd v w`, the source's witness, which comes back as a possible part (content `lcx v w` at `w`),
+  and `lkd w v`, the target's leg witness (content `lcx w v` at `v`).  `RetAt` cases on them
+  (`RetInv`, `RetInvW`, `RetInvX`, `RetInvWD`); a child's `RetData` is `RetAt` forward and back
+  (`RetData.retAt_fwd`, `retAt_back`).
+* *Restriction.*  `RetAt.restrict`: a body over a suffix of the target's committed list is weakened
+  into one over the whole (`liftBody*_restrict`), with images changed to agreeing ones; the leg
+  witness must stay in the suffix.  Restricting the *source's* list is not needed: the truth case
+  builds its body over the full tuple, by a hole term picking the term it wants.
+* *At the limit* (`QML_v12m_BLimitRet`, ⭐`lretAt`): for an edge `v → w`, a stage `J` of `v` and a
+  stage `i` of `w` with `lstg w v i ≤ J`, at the round where `J` is committed to `w` the edge
+  carries `RetAt` with committed lists containing `lat v J` and `lat w i`, images agreeing with
+  `limg`.
+* *Next:* step 4 (canonical `Ret` and its laws), then the truth cases (step 5), which use
+  `lretAt`, `RetAt.restrict` and the forgetting lemmas.
+
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`
   contains `□`.  So for a slot `□A` with `A` box-free the second component has a canonical
