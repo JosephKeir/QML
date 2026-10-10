@@ -5192,7 +5192,7 @@ Their rules sort into the same kinds:
 | **existence of a subject**, given a value | `T_dia` | `B_strong` | `ret_new`, `ret_ext` |
 | **existence of a value**, given a subject | `here_name` | `back_ret` (conditional, `◇`-free; was `back_def`, see below) | `ret_new` |
 | **the route exists** | (semantics) | `back_ne` | `ret_dia` |
-| **Leibniz in the value** | `here_eq` | `back_eq` | `ret_eq` |
+| **Leibniz in the value** | `here_eq` | `back_eq` | `ret_eqS` (every shape; `ret_eq` its `□` instance, 2026-10-10) |
 | **functionality** | `here_subst` | `back_fun` (to be derived) | none: two atoms may use two arrows |
 | **map (β)** | `here_beta` | `back_beta` | `ret_beta` |
 | **pairing** | through `◇_x` | `back_pair` | inside `ret_ext` |
@@ -6910,6 +6910,20 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
     `ret_eq` at a product type) and witnessed shapes (`wit N X`; the value has a `◇` part and there
     is no `ret_eq` there — move it by `Rel` at `retSlot` only, or a witnessed `ret_eq`), and
     membership ⇒ truth (`retOp`, aliases, the user atom → obligation conversion).
+  * ⭐**`ret_eq` generalised to every shape (DECIDED, user, 2026-10-10): `Proof.ret_eqS`.**  No
+    derivation of Leibniz for a witnessed value was found: the rules that conclude a top-level
+    witnessed atom keep its value (`ret_unitD`, `ret_unitWD`, `ret_monoS`) or change only its
+    necessary part (`ret_map`, `ret_extS`); witnessed atoms are otherwise made only inside bodies,
+    with their premises' values; the unit/counit pair moves information about the value, but
+    nothing turns "comes back as `y'`" into an atom valued at `y'` (`ret_new` is `□`-shape only and
+    gives a fresh value); and general Leibniz is not proved in v12m (its `retS` case would need
+    exactly this).  `eq_elim` moves base-type parts only.  The table above has a primitive
+    "Leibniz in the value" per atom, and `ret_eq` predates returnable shapes, which generalised
+    `ret_mono`/`ret_dia` to `ret_monoS`/`ret_diaS` but not `ret_eq`.  So `ret_eq` is replaced by
+    `ret_eqS` (any leg, any shape: `◇_O[… ↦ t]Φ, t = t' ⊢ ◇_O[… ↦ t']Φ`, `eqRec` at `S.flat`), the
+    `□` form derived (`Proof.ret_eq`).  Sound by `sat_ret_eqS` (`eqRec` is equality, so
+    `ComesBack` is unchanged); `Proof.subst` case via `OutLeg.subst_retS` and
+    `WFF.subst_eqRec_gen`.  No independence proof was attempted.
 * *`ret`/`retx`, truth ⇒ membership (original plan).*  Sat gives `s → k`, `e = den g` with `Φ(g) ∈ M k`
   (IH), and `e` comes back as `den t`.
   * `lretAt` along `k → s` gives `RetAt`.  `RetAt.toRetInv`/`toRetInvX` (built) reduce it for the

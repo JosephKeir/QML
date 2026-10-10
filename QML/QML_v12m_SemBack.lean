@@ -984,12 +984,14 @@ theorem sat_ret_dia (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape}
   exact (OutLeg.sat_dia env O _).mpr ⟨i, e, hΦ⟩
 
 omit [Γ.NoSlots] in
-theorem sat_ret_eq (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
-    {a : Ann A} (t t' : Term σ Γ A a) (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1)
-    (h : M.sat env (O.ret hS t Φ : WFF σ Γ 0)) (he : M.sat env (eqRec A t t' : WFF σ Γ 0)) :
-    M.sat env (O.ret hS t' Φ : WFF σ Γ 0) := by
-  obtain ⟨i, e, hΦ, r, hr⟩ := (OutLeg.sat_ret hS env O t Φ).mp h
-  exact (OutLeg.sat_ret hS env O t' Φ).mpr ⟨i, e, hΦ, r, (sat_eqRec env A t t').mp he ▸ hr⟩
+theorem sat_ret_eqS (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape}
+    {a : Ann S.flat} (t t' : Term σ Γ S.flat a) (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1)
+    (h : M.sat env (O.retS hS S t Φ : WFF σ Γ 0))
+    (he : M.sat env (eqRec S.flat t t' : WFF σ Γ 0)) :
+    M.sat env (O.retS hS S t' Φ : WFF σ Γ 0) := by
+  obtain ⟨i, e, hΦ, r, hr⟩ := (OutLeg.sat_retS hS env O S t Φ).mp h
+  exact (OutLeg.sat_retS hS env O S t' Φ).mpr
+    ⟨i, e, hΦ, r, (sat_eqRec env S.flat t t').mp he ▸ hr⟩
 
 include hnp in
 theorem sat_ret_here (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A : VarType}

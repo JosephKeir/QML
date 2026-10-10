@@ -372,9 +372,9 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
   | @ret_diaS Γ _ Δ hS O S a t Φ p ih =>
       intro M hM w env hfin hnp hΔ
       exact sat_ret_dia env hS O t Φ (ih M hM env hfin hnp hΔ)
-  | @ret_eq Γ _ Δ hS O A a t t' Φ p q ihp ihq =>
+  | @ret_eqS Γ _ Δ hS O S a t t' Φ p q ihp ihq =>
       intro M hM w env hfin hnp hΔ
-      exact sat_ret_eq env hS O t t' Φ (ihp M hM env hfin hnp hΔ) (ihq M hM env hfin hnp hΔ)
+      exact sat_ret_eqS env hS O t t' Φ (ihp M hM env hfin hnp hΔ) (ihq M hM env hfin hnp hΔ)
   | @ret_here Γ _ Δ hS hT A a₀ sb Φ p ih =>
       intro M hM w env hfin hnp hΔ
       exact sat_ret_here env hnp hS hT sb Φ (ih M hM env hfin hnp hΔ)

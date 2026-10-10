@@ -2741,12 +2741,13 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
       Proof.conv (OutLeg.subst_dia θ hθ hc hΓ hΓ' O _).symm
         (Proof.ret_diaS hS (O.subst θ hθ hc) (Term.subst ι θ hθ hc t) _
           (Proof.conv (OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O S t Φ) (Proof.subst p θ hθ hc hΓ)))
-  | _, _, _, @Proof.ret_eq _ _ Γ _ _ hS O A a t t' Φ p q, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.ret_eqS _ _ Γ _ _ hS O S a t t' Φ p q, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
-      Proof.conv (OutLeg.subst_ret θ hθ hc hΓ hΓ' hS O t' Φ).symm
-        (Proof.ret_eq hS (O.subst θ hθ hc) (Term.subst ι θ hθ hc t) (Term.subst ι θ hθ hc t') _
-          (Proof.conv (OutLeg.subst_ret θ hθ hc hΓ hΓ' hS O t Φ) (Proof.subst p θ hθ hc hΓ))
-          (Proof.conv (WFF.subst_eqRec_gen θ hθ hc hΓ hΓ' A t t') (Proof.subst q θ hθ hc hΓ)))
+      Proof.conv (OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O S t' Φ).symm
+        (Proof.ret_eqS hS (O.subst θ hθ hc) (Term.subst ι θ hθ hc t) (Term.subst ι θ hθ hc t') _
+          (Proof.conv (OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O S t Φ) (Proof.subst p θ hθ hc hΓ))
+          (Proof.conv (WFF.subst_eqRec_gen θ hθ hc hΓ hΓ' S.flat t t')
+            (Proof.subst q θ hθ hc hΓ)))
   | _, _, _, @Proof.ret_here _ _ Γ _ _ hS hT A a₀ sb Φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       Proof.conv (WFF.ret_congr hS (Term.collapse_subst (Ctx.collapses_boxIn_self hT Γ)

@@ -513,12 +513,13 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (O.retS hS S y (WFF.bodyRepl
         (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) S.ty) (ShapeMap.liftObj S F).2) Φ)) →
       Proof σ Γ Δ (O.retS hS (S.withNec T) (Term.holeRead y (ShapeMap.liftVal S F).2) Φ)
-  /-- **Leibniz for the value**, along any leg. -/
-  | ret_eq {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {A : VarType} {a : Ann A} (t t' : Term σ Γ A a)
-      (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1) :
-      Proof σ Γ Δ (O.ret hS t Φ) → Proof σ Γ Δ (eqRec A t t') →
-      Proof σ Γ Δ (O.ret hS t' Φ)
+  /-- **Leibniz for the value**, along any leg, at any shape (docs §11.20: generalised from the
+      `□` shape, which is derived, `Proof.ret_eq`, as `ret_monoS` generalised `ret_mono`). -/
+  | ret_eqS {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (O : OutLeg Γ) {S : RShape} {a : Ann S.flat} (t t' : Term σ Γ S.flat a)
+      (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1) :
+      Proof σ Γ Δ (O.retS hS S t Φ) → Proof σ Γ Δ (eqRec S.flat t t') →
+      Proof σ Γ Δ (O.retS hS S t' Φ)
   /-- ⭐**The own arrow** (T): a necessary object here with `Φ` at this very world comes back as its
       value here — the identity is an arrow out and its own way home. -/
   | ret_here {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
@@ -552,6 +553,14 @@ def ret_mono {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)}
     (q : Proof σ Γ Δ (O.box (WFF.all (.VTypeBox A) (WFF.imp Φ Φ')))) :
     Proof σ Γ Δ (O.ret hS t Φ') :=
   Proof.ret_monoS hS O (S := .box A) t Φ Φ' p q
+
+/-- **Leibniz for the value** at a necessary object (`ret_eqS`'s box instance). -/
+def ret_eq {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+    (O : OutLeg Γ) {A : VarType} {a : Ann A} (t t' : Term σ Γ A a)
+    (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1)
+    (p : Proof σ Γ Δ (O.ret hS t Φ)) (q : Proof σ Γ Δ (eqRec A t t')) :
+    Proof σ Γ Δ (O.ret hS t' Φ) :=
+  Proof.ret_eqS hS O (S := .box A) t t' Φ p q
 
 /-- A returning possibility at a necessary object is a possibility (`ret_diaS`'s box instance). -/
 def ret_dia {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)}
