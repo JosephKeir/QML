@@ -6208,6 +6208,185 @@ the chain from a root theory with ⭐`goodS_netS` and `ext_netS`.  The old stron
   (`Att.alias`, `Att.back`), the truth lemma's `back`/`ret` cases — and removing
   `NoFour.noBStrong`.
 
+**L4f: the paper check of attestation and the `ret`/`back` truth cases (2026-10-10, paper, T off).**
+Items 3–4 of the plan.  Outcome: `Att.alias`, `Att.back`, the `ret` case and the positive and
+`◇`-free negative `back` cases go through, given the infrastructure listed below.  **One gap:**
+the negative `Back` atom at `◇`-typed contents.
+* *`Att.alias` (`Att ⟨y⟩ ⟨t⟩` for an alias root `y` of `t`), and its `rel`.*  `DTerm.Rel` asks
+  for interchangeability at **every** later stage, but the alias set only speaks of the alias
+  stage.  It persists with no change to the alias set, by a quantified tail.
+  * Let `χ` be a slot formula over a later stage `j`.  Pack all of `j`'s roots into one slot:
+    `χ(v) = H(⟨v, tup_j⟩)`, with `H` a *hole formula* (over `Ctx.empty`).
+  * `ψ(v) := ∀z (H(⟨v, z⟩) ↔ H(⟨t, z⟩))` is a slot formula over the old context.  Its body is
+    `holeAt` of a closed `H`, so no lower slot is ever instantiated.
+  * `ψ(t)` is provable, so the alias set puts `ψ(y)` into the theory.  `∀`-elimination at
+    `z := tup_j` (after `mono`) gives `χ(y) ↔ χ(t)`.  The roots after the alias stage, `y`
+    included, all sit in `z`.
+  * Needed: **`packW`**, the world-level analogue of `BPack.pack` (roots instead of box items),
+    with `holeRead (pair s tup) (packW χ) = instantiate s χ`.  This is a form of generalisation on
+    constants (metatheory to-do), so it can be reused.
+  * At `◇`-free types `Att.alias` is not needed: the alias set gives `y = t`, so `Att.refl`.
+* *`Att.back` (a `Back bd t` atom attests the return term along each arrow of its leg to `t`),
+  and its `rel`.*
+  * Define the return term syntactically: `h(V)`, with `V` the images along the way home of
+    the far node's roots and `h` the hole term picking the carrier's reading out of them.  So
+    `rel` needs no Leibniz for den-equal terms.
+  * `rel` by `ret_counitC` with the hole formula `ψ(⟨a, b⟩) := ∀z (H(⟨h(a), z⟩) ↔ H(⟨b, z⟩))`.
+    At the far node `h(d.box)` *is* the carrier's reading, so the body `□ψ(⟨d.inner, bd⟩)` is
+    `□∀z(χ ↔ χ)` there.  `RetInv` carries it home as `◇[d ↦ V] …`, and `ret_counitC` with the
+    atom gives `∀z (H(⟨h(V), z⟩) ↔ H(⟨t, z⟩))`, at every stage.  The same `packW` serves both.
+  * **Row 2** (pos leg, carrier `◇□A`) has no counit with a carrier: `ret_counitC` takes a row-1
+    `Back` only.  We need its witnessed form (K paradigm: `ret_counitC` along `x`, from `retx`
+    and a row-2 `Back`), or a reduction to row 1.
+* *`ret`, membership ⇒ truth* (`◇[d ↦ t] Φ ∈ M s`):
+  * The alias `y` of `t` carries the atom: `ψ(v) := ◇[d ↦ v] Φ` is a slot formula.
+  * `mkRet` (or `mkRetX` / `mkRetD`) makes a child `k` with `Φ(c)`.  The IH at `k` gives `Φ` of
+    `den c`.
+  * `c` returns along the back arrow as `y`, and `Att.alias` gives `Ind (den y) (den t)`.
+  * Needed in `FairChain`: `alias_total`, and fields for the three ret children, as `child_dia`.
+    Back-witness children also need back kinds (`bkind`) in `BData` and in the frame's extents.
+* *`ret`, truth ⇒ membership*, as `here_truth`:
+  * Truth gives an arrow `s → k` and `e = den g` with `Φ(e)`.  The IH puts `Φ(g)` into `M k`.
+    `RetInv` for that arrow and `ret_map` (the hole term `h` with `h(V) = g`'s return) give
+    `◇[d ↦ h(V)] Φ ∈ M s`.
+  * `Ind (den h(V)) (den t)` gives representatives `u ~Att u'`.  Move the atom along
+    `h(V) = u` (`ret_eq`), across `Att.rel` (the slot formula above), then along `u' = t`
+    (`ret_eq`).
+  * Each `ret_eq` needs `eqRec` between den-equal terms: **equal annotations** (the T-free
+    decoder, at `◇`-typed values only) and the IH at `eqRec`.  So `WFF.size` of `retS`/`retxS`
+    must dominate `S.flat.eqRecSize`; currently it is `Φ.size + 1`.
+* *`back`, membership ⇒ truth.*  `back_ne` gives `◇⊤`, so the leg is nonempty.  Along every
+  arrow, the parent's included (`RetData`'s back direction), `Att.back` attests the return.
+* *`back`, truth ⇒ membership, `◇`-free contents.*  From `¬Back bd t` and `◇⊤`, `back_ret` puts
+  `∃c (◇[e ↦ c] □(e.box = bd) ∧ c ≠ t)` into `M s`.
+  * Assume not.  Then `∀c (ret c body → c = t)`, and `back_ret` gives `Back bd t`.
+  * `henk_ex` names `c`, and the `ret` case gives an arrow whose return is `den c ≠ den t`.
+  * At `◇`-free types `Ind` is equality: `Att.rel` and the IH at `eqRec`.  So the model
+    refutes `Back`; no new operation is needed.
+  * `WFF.size` of `back` (now `0`) must become about `A.eqRecSize + 3`, to dominate the `ret` and
+    `eqRec` atoms used.
+* ⚠️**The gap: `¬Back u t` at `◇`-typed contents.**
+  * *Why §11.16's argument falls short.*  It says a fresh return is "related to `t` by no
+    single atom", and fresh witnesses rule out `Att.refl` and `Att.alias`, since annotations
+    carry witness addresses.  But a second carrier `u'` whose body has the *same witness
+    addresses* has its returns over the same fresh witnesses.  So `eqRec(R(u), R(u'))` is
+    well-typed, and the Lindenbaum completion at back-realisation may make it true at every
+    child.  Then `Back u' t ∈ M` attests every return of `u` (`Att.back` through den-equal
+    representatives), and the model says `Back u t` against `¬Back u t ∈ M`.
+  * *Reduction.*  `◇`-free components are settled by `back_ret`: a failing `◇`-free component
+    gives an arrow where `u`'s return differs from every attesting carrier's, uniformly.  The
+    gap is only for carriers whose bodies share all witness addresses and differ in contents.
+  * *Why the rules don't close it.*  `Back u'ᵢ t` for every `i`, and every return of `u` equals
+    some `u'ᵢ`'s, together imply `Back u t` semantically.  At `◇`-free types `back_ret` derives
+    this.  At `◇` types it has no rule: `back_ret`'s body `□(e.box = bd)` is ill-typed there,
+    because the slot's annotation is not `bd`'s.  For one carrier (`□□(bd = bd')`) general
+    Leibniz would do; for two or more it would not.
+  * Choosing the completion "generically" (returns distinct unless forced) needs a consistency
+    argument.  It looks like that argument needs the missing rule, or a way to make the way home
+    the separating arrow.
+  * *Options:*
+    * (a) a definite-description rule for `Back` at `◇` types, which must say "the object out
+      there is `□bd`" without cross-witness equality (e.g. through packing the far world's
+      roots);
+    * (b) a construction-side argument (generic back-realisation);
+    * (c) restrict `Back` (and with it `B_strong`, `ret_counitC`, `ret_bridge`) to `◇`-free
+      contents, as `back_ret` already is.  `ret` keeps all types (it needs only aliases), so (c)
+      removes `Att.back` and the gap, but changes the language.
+* *Infrastructure, in order:*
+  * `packW` + `∀`-tail persistence (`Att.alias.rel`, `Att.back.rel`);
+  * `FairChain` fields (aliases, the three ret children);
+  * back kinds in `BData`;
+  * the size changes;
+  * the T-free decoder (equal annotations at `◇`-typed values);
+  * row 2's counit;
+  * then the truth cases.
+  * The gap needs a decision first, since (c) changes the language and (a) adds a rule.
+
+**The gap, option (a): `Back` by cases, and a separating child (2026-10-10, user + paper).**
+* *What the gap is.*  An objection (user): carriers with the same witnesses can be equated, and
+  equal carriers come back alike by Leibniz.  True, but `Back` reads a `□□`-carrier only along
+  an arrow out and *its* way home.  `u ≠ u'` (they disagree along some `k → m`) can still agree
+  along every way home `k → s`.  Then `Back u' t` forces `Back u t` semantically, with no carrier
+  equality for Leibniz to use.  At `◇`-free types `back_ret` derives it; at `◇` types nothing
+  does.
+* *Why a rule of this shape.*  At `◇` types a return can never be compared with `t`, because
+  the witnesses differ.  The only evidence that a return is `Ind t` is a `Back` atom of a carrier
+  with the same return along that arrow, where the common witnesses make `eqRec` well-typed.  So
+  `Back u t` at `◇` types can only be concluded from other carriers' `Back` atoms, arrow by arrow:
+  a definite description *relative to carriers already known to return `t`*.  `back_ret` is the
+  `◇`-free case, where `t` can be compared directly.
+* *First form* (sound, but too weak, see below):
+  `◇⊤, Back bd'ᵢ t (i ≤ n), □(⋁ᵢ □(bd = bd'ᵢ)) ⊢ Back bd t`.
+  With n = 1 this is Leibniz in the carrier.  The `bd'ᵢ` cover the out leg: each arrow goes to a
+  world where `bd` coincides with one of them.  Unrelated `bd'ᵢ` are harmless, since every
+  `Back bd'ᵢ t` is a premise.  Infinitely many worlds need no `∃`: the canonical argument is
+  compact.  An `∀ arrow ∃ carrier` form cannot be stated anyway, because `Back c' t` is a
+  statement at `s`.
+* *Why it is too weak.*  It asks the child to agree along *all* its arrows.  But the child can
+  force agreement along its way home alone: strong B can describe the way home.  `M k` may
+  contain `¬◇[d' ↦ W](Φ_s(d') ∧ ¬(bd = bd'))`, where `W` are the images of `s`'s roots and
+  `Φ_s ∈ M s`.  That forces the two returns to agree at `s` (`retStep_rev`'s argument), with
+  `¬□(bd = bd')` at `k`.  So a child that is merely `□`-unequal does not separate.
+* ⭐*The precise form, `back_cases`* (row 1; row 2 likewise along `y`):
+
+      Γ ⊢ ◇⊤    Γ ⊢ Back bd'ᵢ t  (i ≤ n)    Γ ⊢ Φ(ā)
+      Γ ⊢ □ ¬◇[d ↦ ā.box] (Φ(d) ∧ ⋀ᵢ ¬eqRec(bd, bd'ᵢ))
+      ───────────────────────────────────────────────
+      Γ ⊢ Back bd t
+
+  Here `ā : □B` is a term of `Γ`, `Φ` a hole formula, and the inner `ret` runs at the far world,
+  with body in the `□□` view, where `bd`, `bd'ᵢ` live.
+  * *Sound:* take an arrow `a : s → k` and its way home `r`.  At `s`, `ā` comes back to `k` along
+    `a` as `ā.box` (`Ind` by reflexivity) and has `Φ`.  So the premise fails the conjunction
+    there: some `eqRec(bd, bd'ᵢ)` holds along `a` then `r`.  So `u`'s return is `u'ᵢ`'s, which is
+    `Ind t`.
+  * The first form follows from it (`□Eᵢ` at `k` gives `Eᵢ` along every arrow).  At `◇`-free
+    types it should be derivable from `back_ret` (to check).
+* *Nesting: by recursion, no new shapes.*
+  * Products split: `¬Back u t` gives a failing component (`back_beta`/`back_pair`/`back_eq`),
+    and `Ind` is closed under projections (`Att.holeAt`).  A `◇`-free component goes by
+    `back_ret`, any other by `back_cases`.
+  * `□` and `◇` inside are handled by `eqRec`'s own recursion.
+  * The key lemma, by induction on `Att`: every attestation of a fresh return `R_a(u)` comes from
+    some carrier `v` with `Back v t'` and `den R_a(v) = den R_a(u)`.
+    * `back`: the atom itself.
+    * `holeAt h`: returns commute with hole terms, so `R_a(holeRead v h)`, with `back_beta`.
+    * `pair`: by `back_pair`.
+    * `refl`/`alias`: impossible at fresh witnesses (annotations carry witness addresses); at
+      `◇`-free parts a carrier comes from `B_strong` (`∃c Back c x`, named by `henk_ex`).
+  * Needs the T-free decoder for **full annotation trees** (equal denotations ⇒ equal
+    annotations at every depth).
+* ⭐*The construction: a separating child per negative atom* (`¬Back u t`, `◇` contents).
+  * *Birth.*  The child `k*` gets the seed
+    `{ψ : □ψ ∈ M s} ∪ {◇[d' ↦ W](Φ ∧ ⋀ᵢ ¬eqRec(bd, bd'ᵢ)) : Φ ∈ M s, Back u'ᵢ t ∈ M s}`.
+    Consistency is compactness plus `back_cases`, applied contrapositively, with `ā` the packed
+    `□`-items of `s`'s roots (`boxtm tupT`) and `Φ` a finite part of `M s`.
+  * *Point 1: returns made distinct at the parent.*  When `k*`'s roots are realised back as fresh
+    `c̄`, add `⋀ᵢ ¬eqRec(R(u), R(u'ᵢ))` to the parent's seed.
+    * The reverse invariant needs nothing more: `retStep_rev` derives it from `ret_unit` whatever
+      the parent's completion is.
+    * Consistency is by contradiction.  A refutation gives, by generalisation on constants,
+      `∀c (◇[d ↦ ⟨V, c⟩]Θ → ⋁ᵢ E(c)) ∈ M s`.  Through `RetInv(k* → s)` it holds at the far end of
+      `k*`'s separating `◇[d' ↦ W](Φ ∧ ⋀¬E)`, with `Φ` including it.
+    * There `ret_unit` at `k*` (`Θ` holds at `k*`) supplies the instance
+      `c := k*`'s items read there.  That gives `⋁ E` against `⋀ ¬E`: `retStep_rev`'s pattern.
+  * *Point 2: carriers born later.*  A carrier's attestation at `k*` involves only roots
+    committed between `s` and `k*`.  Over a fixed committed language the attesting carriers are
+    fixed, because MCS extensions are conservative.  New carriers arrive only with new
+    commitments, at `k*`'s own realisation steps (`realFS`/`realBS`).
+    * So keep an invariant `Sep(s, k*, u, t)` at those steps only: the forward seed adds the
+      `◇[d' ↦ W](Φ ∧ ⋀¬E)` facts for the new carriers (consistent by `back_cases` again), and
+      the back seed adds the `¬E`s (as point 1).
+    * Other operations at `s` touch neither side.
+  * *Truth lemma, negative `◇` case.*  Any attestation of `u`'s return along `k*` comes from a
+    carrier `v` with `Back v t` (the key lemma and `back_eq`), so `E(u, v)` holds at `s`, against
+    `Sep`.  So `¬Ind`, and the model refutes `Back u t`.
+* *Status: paper only.*
+  * Points 1–2 are sketched, not checked in detail; the "generalisation on constants" step needs
+    the same `packW` infrastructure as `Att.alias`.
+  * New: the rule `back_cases` (with soundness and `Proof.subst`), the separating-child
+    operation with `Sep`, and the key lemma on `Att`.
+
 **Strong B with T: first thoughts (2026-10-10, paper, for discussion).**
 * *Where the problem is.*  Under T, `bc(□A) = A × bc A`, and `bc A` is a tuple of units unless `A`
   contains `□`.  So for a slot `□A` with `A` box-free the second component has a canonical
