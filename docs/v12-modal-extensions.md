@@ -6899,9 +6899,17 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
   * *Semantics*: a true atom gives `□u` at `k` (`definable_fromDom`; box-typed terms are `boxtm`),
     the body by the IH (`sat_readArrow`, `boxPush_canon_at`), and the object read home is `u`
     sent home (`box_beta`, `boxPush_canon_at`, `interp_subst`).
-  * *Left:* the leg along a witness (`retx`, needs `retxSlot` and the `RetAt.toRetInvX` reading),
-    shapes `nec N` with products (via `ShapeMap.pair` of holes) and witnessed shapes (`wit N X`;
-    no `ret_eq` there), and membership ⇒ truth.
+  * *Slice 2, along a witness (built,* ⭐`BData.mem_retx_of_sat`*).*  The same along an arrow of
+    `y`'s extent (a forward witness arrow, T off): `readArrowX`, `liftBodyX_bodyRepl_hole`,
+    `retx_of_inv` (the invariant along `y`, `RetInvX`, which `RetAt.toRetInvX` gives on the way
+    home since `lkd s k = some (y, Y)`), `BData.RetInX`/`bdataS_retInX`, `diaPush_canon_at`,
+    `mem_retx_of_ind`.  The slot formula `WFF.retxSlot` needs substitution through `retxS` with the
+    witness fixed (`WFF.subst_retxS_fix`: the renamed witness `ι y` is quantified away inside the
+    lemma, then substituted).
+  * *Left:* shapes `nec N` with products (via `ShapeMap.pair` of holes; the value is a tuple, so
+    `ret_eq` at a product type) and witnessed shapes (`wit N X`; the value has a `◇` part and there
+    is no `ret_eq` there — move it by `Rel` at `retSlot` only, or a witnessed `ret_eq`), and
+    membership ⇒ truth (`retOp`, aliases, the user atom → obligation conversion).
 * *`ret`/`retx`, truth ⇒ membership (original plan).*  Sat gives `s → k`, `e = den g` with `Φ(g) ∈ M k`
   (IH), and `e` comes back as `den t`.
   * `lretAt` along `k → s` gives `RetAt`.  `RetAt.toRetInv`/`toRetInvX` (built) reduce it for the

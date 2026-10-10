@@ -217,6 +217,143 @@ theorem WFF.instantiate_retSlot (hS : ModalSys.BStrong = true) (S : RShape)
 
 end RetSlot
 
+/-! ## Along a witness: the slot formula -/
+
+section RetxSlot
+
+omit [ModalSys.NoFour] in
+/-- ⭐**Substituting through a returning possibility along a witness the substitution fixes**: the
+    witness stays, and the body goes under the witness's view. -/
+theorem WFF.subst_retxS_fix {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
+    (hS : ModalSys.BStrong = true) {y : VarSymb} (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y))
+    {S : RShape} {a : Ann S.flat} (t : Term σ Γ S.flat a)
+    (Φ : WFF σ ((Γ.diaIn y).insert (.bnd d) S.ty) (d + 1)) (hιy : ι y = y)
+    (hy' : ∃ Y, Δ.ref y = some (.VTypeDia Y))
+    (hok : Subst.Ok ((Γ.diaIn y).insert (.bnd d) S.ty)
+      ((θ.dia y y).under d d' S.ty (hΔ.diaIn y).root))
+    (hcoh : Subst.Coh (VarSymb.shiftSlot ι d d') ((Γ.diaIn y).insert (.bnd d) S.ty)
+      ((θ.dia y y).under d d' S.ty (hΔ.diaIn y).root)) :
+    WFF.subst ι θ hθ hc hΓ hΔ (WFF.retxS hS y hy S t Φ) =
+      WFF.retxS hS y hy' S (Term.subst ι θ hθ hc t)
+        (WFF.subst (VarSymb.shiftSlot ι d d') ((θ.dia y y).under d d' S.ty (hΔ.diaIn y).root)
+          hok hcoh ((hΓ.diaIn y).insert _) ((hΔ.diaIn y).insert _) Φ) := by
+  have aux : ∀ (y₁ : VarSymb) (_e : y₁ = y) (P₁ : ∃ Y, Δ.ref y₁ = some (.VTypeDia Y))
+      (OK₁ : Subst.Ok ((Γ.diaIn y).insert (.bnd d) S.ty)
+        ((θ.dia y y₁).under d d' S.ty (hΔ.diaIn y₁).root))
+      (COH₁ : Subst.Coh (VarSymb.shiftSlot ι d d') ((Γ.diaIn y).insert (.bnd d) S.ty)
+        ((θ.dia y y₁).under d d' S.ty (hΔ.diaIn y₁).root)),
+      WFF.retxS hS y₁ P₁ S (Term.subst ι θ hθ hc t)
+        (WFF.subst (VarSymb.shiftSlot ι d d') ((θ.dia y y₁).under d d' S.ty (hΔ.diaIn y₁).root)
+          OK₁ COH₁ ((hΓ.diaIn y).insert _) ((hΔ.diaIn y₁).insert _) Φ) =
+      WFF.retxS hS y hy' S (Term.subst ι θ hθ hc t)
+        (WFF.subst (VarSymb.shiftSlot ι d d') ((θ.dia y y).under d d' S.ty (hΔ.diaIn y).root)
+          hok hcoh ((hΓ.diaIn y).insert _) ((hΔ.diaIn y).insert _) Φ) := by
+    intro y₁ e _ _ _
+    subst e
+    rfl
+  exact aux (ι y) hιy _ _ _
+
+variable {Γ : Ctx} [Γ.NoSlots]
+
+/-- The body of a returning possibility along `y`, its slot moved one binder out. -/
+def bodyUpX {T : VarType} (y : VarSymb) (S : RShape)
+    (Φ : WFF σ ((Γ.diaIn y).insert (.bnd 0) S.ty) 1) :
+    WFF σ (((Γ.insert (.bnd 0) T).diaIn y).insert (.bnd 1) S.ty) 2 :=
+  WFF.subst (VarSymb.shiftSlot id 0 1)
+    ((Subst.idS σ ((Γ.insert (.bnd 0) T).diaIn y)).under 0 1 S.ty
+      (((Ctx.NoSlots.slots (Γ := Γ)).insert T).diaIn y).root)
+    (Subst.ok_under (Subst.ok_idS_le ((Ctx.le_insert
+      (Ctx.NoSlots.slots (Γ := Γ)).root T).diaIn y)) _ _)
+    (Subst.coh_under (Subst.ok_idS_le ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root T).diaIn y))
+      (Subst.coh_idS_le ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root T).diaIn y))
+      ((Ctx.NoSlots.slots (Γ := Γ)).diaIn y) _ _)
+    (((Ctx.NoSlots.slots (Γ := Γ)).diaIn y).insert _)
+    ((((Ctx.NoSlots.slots (Γ := Γ)).insert T).diaIn y).insert _) Φ
+
+/-- ⭐`◇_y[d ↦ z] Φ(d)` with the value `z` a slot. -/
+def WFF.retxSlot (hS : ModalSys.BStrong = true) (y : VarSymb)
+    (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) (S : RShape)
+    (Φ : WFF σ ((Γ.diaIn y).insert (.bnd 0) S.ty) 1) : WFF σ (Γ.insert (.bnd 0) S.flat) 1 :=
+  WFF.retxS hS y (hy.imp fun _ h => (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root _).ref h) S
+    (Term.eta (.root (.bnd 0)) S.flat (Ctx.ref_insert_root Γ (.bnd 0) S.flat)) (bodyUpX y S Φ)
+
+/-- ⭐Instantiating the slot formula of a returning possibility along `y` gives it. -/
+theorem WFF.instantiate_retxSlot (hS : ModalSys.BStrong = true) (y : VarSymb)
+    (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) (S : RShape)
+    (Φ : WFF σ ((Γ.diaIn y).insert (.bnd 0) S.ty) 1) {a : Ann S.flat} (z : Term σ Γ S.flat a) :
+    WFF.instantiate Ctx.NoSlots.slots z (WFF.retxSlot hS y hy S Φ) = WFF.retxS hS y hy S z Φ := by
+  have hy0 : y.rt ≠ .bnd 0 := hy.elim fun _ h =>
+    Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) h
+  have hιy : Subst.singleIdx (σ := σ) (Δ := Γ) (.bnd 0) (.tm z) y = y := if_neg hy0
+  have hw : ((Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm z)).at y).idxAlong [] = y := by
+    rw [Subst.single_at_ne hy0]
+    rfl
+  have hyS : ∃ Y, (Γ.insert (.bnd 0) S.flat).ref y = some (.VTypeDia Y) :=
+    hy.imp fun _ h => (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root _).ref h
+  have hθ := Subst.ok_single (σ := σ) (r := .bnd 0) (Ctx.Le.refl Γ) (e := .tm z) (T := S.flat) rfl
+  have hc := Subst.coh_single (σ := σ) ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0))
+    (Ctx.Le.refl Γ) (e := .tm z) (T := S.flat) rfl
+  have hcoh := Subst.coh_under (Subst.ok_dia hθ hyS (hc y _ hyS.choose_spec []))
+    (Subst.coh_dia hθ hc hyS)
+    (((Ctx.NoSlots.slots (Γ := Γ)).insert S.flat).diaIn y) S.ty
+    ((Ctx.NoSlots.slots (Γ := Γ)).diaIn (Subst.singleIdx (.bnd 0) (.tm z) y)).root
+  simp only [VarSymb.ext_nil] at hcoh
+  rw [hιy] at hcoh
+  unfold WFF.instantiate WFF.substRoot WFF.retxSlot
+  rw [WFF.subst_retxS_fix _ _ _ _ _ hS hyS _ _ hιy hy (Subst.ok_under (Subst.ok_dia hθ hyS hw) _ _)
+    hcoh]
+  refine OutLeg.retS_congr (O := .pos y hy) hS S
+    (Term.subst_eta_tm _ _ _ _ _ _ z (Subst.at_single_root _ _)) ?_
+  unfold bodyUpX
+  refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS _ _ _ ?_ Φ).trans
+    (WFF.subst_id _ _ _ Φ)
+  refine Subst.sim_of fun v U hlp hv => ?_
+  by_cases hvr : v = .root (.bnd 0)
+  · subst hvr
+    change SubE.Sim U (Subst.idS σ _ (.root (.bnd 0)))
+      ((Subst.under _ 0 1 _ _ (.root (.bnd 0))).comp _ _ _)
+    rw [show ∀ θ h, Subst.under (σ := σ) (Δ := (Γ.insert (.bnd 0) S.flat).diaIn y) θ 0 1 S.ty h
+      (.root (.bnd 0)) = .ren (.root (.bnd 1)) from fun _ _ => if_pos rfl]
+    dsimp only [SubE.comp]
+    change SubE.Sim U _ (Subst.under _ 1 0 _ _ (.root (.bnd 1)))
+    rw [show ∀ θ h, Subst.under (σ := σ) (Δ := Γ.diaIn y) θ 1 0 S.ty h (.root (.bnd 1)) =
+      .ren (.root (.bnd 0)) from fun _ _ => if_pos rfl]
+    exact .refl _
+  · have hv' : (Γ.diaIn y) v = some U := by simpa [Ctx.insert, hvr] using hv
+    have hrt : v.rt ≠ .bnd 0 := Ctx.ref_rt_ne
+      ((Ctx.NoSlots.slots (Γ := Γ)).diaIn y |>.rootFresh (le_refl 0))
+      ((Ctx.ref_nonproj _ hlp).trans hv')
+    change SubE.Sim U (Subst.idS σ _ v) ((Subst.under _ 0 1 _ _ v).comp _ _ _)
+    rw [show ∀ θ h, Subst.under (σ := σ) (Δ := (Γ.insert (.bnd 0) S.flat).diaIn y) θ 0 1 S.ty h
+      v = (θ v).mono (Ctx.le_insert h S.ty) from fun _ _ => if_neg hvr]
+    dsimp only [Subst.idS, SubE.mono, SubE.comp]
+    rw [Subst.at_nonproj _ hlp]
+    rw [show ∀ θ h, Subst.under (σ := σ) (Δ := Γ.diaIn y) θ 1 0 S.ty h v =
+      (θ v).mono (Ctx.le_insert h S.ty) from fun _ _ => if_neg (fun e => by
+        rw [e, (((Ctx.NoSlots.slots (Γ := Γ)).diaIn y).rootFresh (Nat.zero_le 1)).root] at hv'
+        cases hv')]
+    match v, hv' with
+    | .step u .dia, hv' =>
+        change (if u = y then _ else none) = _ at hv'
+        split_ifs at hv' with huy
+        subst huy
+        change SubE.Sim U _ (SubE.mono _ (if u = u then _ else _))
+        rw [if_pos rfl, Subst.single_at_ne hy0]
+        exact .refl _
+    | .step u .box, hv' =>
+        have hu0 : u.rt ≠ .bnd 0 := hrt
+        change SubE.Sim U _ (SubE.mono _ (SubE.mono _ (Subst.at _ u).unbox))
+        rw [Subst.single_at_ne hu0]
+        change SubE.Sim U (.ren (.step u .box)) (.ren u.inner)
+        rw [VarSymb.inner_box ModalSys.NoFour.keepOnly]
+        exact .refl _
+    | .step u .keep, hv' =>
+        exact absurd (Ctx.boxIn_keep ((Ctx.ref_nonproj _ rfl).trans hv')).1
+          (by simp [ModalSys.NoFour.noFour])
+
+end RetxSlot
+
 /-! ## A body read along an arrow, its slot filled -/
 
 /-- ⭐A body over the `□` view of `l` with a slot, read along an arrow (`img`) into `Δ`, its slot
@@ -422,7 +559,231 @@ theorem mem_ret_of_ind (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) {s : B.W
     ⟨Proof.ret_eq hS .nec _ _ _ (Proof.lookup List.mem_cons_self)
       (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩)
 
+
+/-- Pushing the canonical environment along a witness arrow is the arrow's substituted
+    environment of the target's canonical environment at any later stage. -/
+theorem diaPush_canon_at (s : B.W) (i : ℕ) {y : VarSymb} {Y : VarType}
+    (hr : ((B.w s).ctx i).ref y = some (.VTypeDia Y))
+    (a : (B.model.posEval ((B.canonEnv s i).ref y hr)).1) (hk : B.kd s a.1.1 = some (y, Y))
+    {j : ℕ} (hj : B.stg s a.1.1 i ≤ j) :
+    (B.canonEnv s i).diaPush y hr a = Model.substEnv (arrowXS σ ((B.w a.1.1).ctx j)
+      (B.img s a.1.1) y (B.cx s a.1.1))
+      (ok_arrowXS ((B.imgOk (B.kdR hk) i).mono ((B.w a.1.1).le hj)) hr
+        (((B.w a.1.1).le hj).ref (B.hcx hk i)))
+      (Ctx.noProjLast_diaIn _ y) (B.canonEnv a.1.1 j) := by
+  rw [diaPush_canon s i hr a ⟨Y, hk⟩]
+  funext v T hv
+  rcases diaIn_item hv with ⟨w, rfl, hw⟩ | ⟨rfl, _⟩
+  · exact Model.Env.ref_agree (canonEnv_le a.1.1 hj) _ _
+  · simp only [Model.substEnv, arrowXS]
+    exact Model.Env.ref_agree (canonEnv_le a.1.1 hj) _ _
+
+/-- ⭐**Moving a returning possibility's value along canonical `Ind`, along a witness**: as
+    `mem_ret_of_ind`, at the slot formula `◇_y[d ↦ z] Φ(d)` (`WFF.instantiate_retxSlot`). -/
+theorem mem_retx_of_ind (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) {s : B.W}
+    (harr : ∃ k, B.R s k) {A : VarType} {i K : ℕ} (hiK : i ≤ K) {y : VarSymb}
+    (hy : ∃ Y, ((B.w s).ctx i).ref y = some (.VTypeDia Y)) {bv : Ann A}
+    (v : Term σ ((B.w s).ctx K) A bv) {a : Ann A} (t : Term σ ((B.w s).ctx i) A a)
+    (Φ : WFF σ ((((B.w s).ctx i).diaIn y).insert (.bnd 0) (.VTypeBox A)) 1)
+    (IH : ∀ (L : ℕ) {c : Ann A} (u u' : Term σ ((B.w s).ctx L) A c),
+      B.model.sat (B.canonEnv s L) (eqRec A u u' : WFF σ _ 0) →
+        (eqRec A u u' : WFF σ _ 0) ∈ (B.w s).M L)
+    (hmem : (OutLeg.pos y (hy.imp fun _ h => ((B.w s).le hiK).ref h) :
+      OutLeg ((B.w s).ctx K)).ret hS v
+        (WFF.mono ((((B.w s).le hiK).diaIn y).insert (.bnd 0) _) Φ) ∈ (B.w s).M K)
+    (hind : B.Ind (B.toDom A s (B.rden s K (Ctx.Le.refl _) v) (definable_rden _ _))
+      (B.toDom A s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _))) :
+    (OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).ret hS t Φ ∈ (B.w s).M i := by
+  obtain ⟨⟨i₁, a₁, u₁⟩, ⟨i₂, a₂, u₂⟩, h₁, h₂, hrel⟩ := hind
+  rw [fromDom_toDom] at h₁ h₂
+  have e₁ : B.toDom A s (B.rden s K (Ctx.Le.refl _) v) (definable_rden _ _) =
+      B.toDom A s (B.rden s i₁ (Ctx.Le.refl _) u₁) (definable_rden _ _) :=
+    toDom_congr h₁.symm _ _
+  have e₂ : B.toDom A s (B.rden s i₂ (Ctx.Le.refl _) u₂) (definable_rden _ _) =
+      B.toDom A s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _) :=
+    toDom_congr h₂ _ _
+  obtain rfl := ann_eq_of_toDom hS hInj harr _ _ e₁
+  obtain rfl := ann_eq_of_toDom hS hInj harr _ _ e₂
+  set L := max (max K i₁) i₂
+  have hKL : K ≤ L := le_max_of_le_left (le_max_left _ _)
+  have h₁L : i₁ ≤ L := le_max_of_le_left (le_max_right _ _)
+  have h₂L : i₂ ≤ L := le_max_right _ _
+  have hiL : i ≤ L := hiK.trans hKL
+  have hyL : ∃ Y, ((B.w s).ctx L).ref y = some (.VTypeDia Y) :=
+    hy.imp fun _ h => ((B.w s).le hiL).ref h
+  have hm₁ := (BWorld.mem_lift hKL).mp hmem
+  have hq₁ := IH L _ _ (sat_eqRec_lift hKL h₁L _ _ e₁)
+  have hr₁ : (OutLeg.pos y hyL : OutLeg ((B.w s).ctx L)).ret hS (Term.mono ((B.w s).le h₁L) u₁)
+      (WFF.mono ((((B.w s).le hiL).diaIn y).insert (.bnd 0) _) Φ) ∈ (B.w s).M L := by
+    refine BWorld.mem_of_provable (Δ := [_, _]) (fun ψ hψ => by
+      rcases List.mem_cons.mp hψ with rfl | hψ
+      · exact hm₁
+      · rw [List.mem_singleton.mp hψ]; exact hq₁)
+      ⟨Proof.ret_eq hS (.pos y hyL) _ _
+        (WFF.mono ((((B.w s).le hiL).diaIn y).insert (.bnd 0) _) Φ) (Proof.conv ?_
+        (Proof.lookup List.mem_cons_self))
+        (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩
+    change WFF.retxS hS _ _ _ _ (WFF.mono _ (WFF.mono _ Φ)) = _
+    rw [WFF.mono_mono]
+    rfl
+  have hI₁ := WFF.instantiate_retxSlot (Γ := (B.w s).ctx L) hS y hyL (.box A)
+    (WFF.mono ((((B.w s).le hiL).diaIn y).insert (.bnd 0) _) Φ) (Term.mono ((B.w s).le h₁L) u₁)
+  have hI₂ := WFF.instantiate_retxSlot (Γ := (B.w s).ctx L) hS y hyL (.box A)
+    (WFF.mono ((((B.w s).le hiL).diaIn y).insert (.bnd 0) _) Φ) (Term.mono ((B.w s).le h₂L) u₂)
+  have hr₂ : (OutLeg.pos y hyL : OutLeg ((B.w s).ctx L)).ret hS (Term.mono ((B.w s).le h₂L) u₂)
+      (WFF.mono ((((B.w s).le hiL).diaIn y).insert (.bnd 0) _) Φ) ∈ (B.w s).M L :=
+    (congrArg (· ∈ (B.w s).M L) hI₂).mp ((hrel L h₁L h₂L (WFF.retxSlot hS y hyL (.box A)
+      (WFF.mono ((((B.w s).le hiL).diaIn y).insert (.bnd 0) _) Φ))).mp
+      ((congrArg (· ∈ (B.w s).M L) hI₁).mpr hr₁))
+  have hq₂ := IH L _ _ (sat_eqRec_lift h₂L hiL _ _ e₂)
+  refine (BWorld.mem_lift hiL).mpr (BWorld.mem_of_provable (Δ := [_, _]) (fun ψ hψ => by
+      rcases List.mem_cons.mp hψ with rfl | hψ
+      · exact hr₂
+      · rw [List.mem_singleton.mp hψ]; exact hq₂)
+    ⟨Proof.ret_eq hS (.pos y hyL) _ _ _ (Proof.lookup List.mem_cons_self)
+      (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩)
 end BData
+
+/-! ## Along a witness: reading, the invariant, the limit -/
+
+/-- ⭐A body over a witness's view with a slot, read along a witness arrow into `Δ` (`x`'s content
+    to `cx`), its slot filled by `g`. -/
+noncomputable def readArrowX {l : List VarType} {Δ : Ctx} [Δ.NoSlots] {img : ℕ → ℕ}
+    (himg : ImgOk l Δ img) {x : VarSymb} {X : VarType} (hx : (ctxOf l).ref x = some (.VTypeDia X))
+    {cx : ℕ} (hcx : Δ.ref (.root (.free cx)) = some X) {B : VarType} {c : Ann B}
+    (g : Term σ Δ B c) (Φ : WFF σ (((ctxOf l).diaIn x).insert (.bnd 0) B) 1) : WFF σ Δ 0 :=
+  WFF.subst (Subst.setIdx (arrowXIdx img x cx) (.bnd 0) (.tm g))
+    ((arrowXS σ Δ img x cx).set (.bnd 0) (.tm g))
+    (Subst.ok_set (ok_arrowXS himg hx hcx) rfl)
+    (Subst.coh_set (ok_arrowXS himg hx hcx) (coh_arrowXS himg hx hcx)
+      ((Ctx.NoSlots.slots (Γ := (ctxOf l).diaIn x)).rootFresh (le_refl 0)) rfl)
+    ((Ctx.NoSlots.slots (Γ := (ctxOf l).diaIn x)).insert _) Ctx.NoSlots.slots Φ
+
+theorem sat_readArrowX {M : Model σ} {l : List VarType} {Δ : Ctx} [Δ.NoSlots] {img : ℕ → ℕ}
+    (himg : ImgOk l Δ img) {x : VarSymb} {X : VarType} (hx : (ctxOf l).ref x = some (.VTypeDia X))
+    {cx : ℕ} (hcx : Δ.ref (.root (.free cx)) = some X) {w : M.frame.W} (env : M.Env Δ w)
+    {B : VarType} {c : Ann B} (g : Term σ Δ B c)
+    (Φ : WFF σ (((ctxOf l).diaIn x).insert (.bnd 0) B) 1) :
+    M.sat env (readArrowX himg hx hcx g Φ) ↔
+      M.sat ((Model.substEnv (arrowXS σ Δ img x cx) (ok_arrowXS himg hx hcx)
+        (Ctx.noProjLast_diaIn _ x) env).extend (.bnd 0) (Model.interp env g)) Φ := by
+  unfold readArrowX
+  rw [Model.sat_subst _ _ _ _ _ ((Ctx.noProjLast_diaIn _ x).insert (.bnd 0) B),
+    Model.substEnv_set_tm]
+
+theorem readArrowX_mono_congr {l l' : List VarType} (hl : l <:+ l') {Δ Δ' : Ctx} [Δ.NoSlots]
+    [Δ'.NoSlots] (hΔ : Δ.Le Δ') {img img' : ℕ → ℕ} (himg : ImgOk l Δ img)
+    (himg' : ImgOk l' Δ' img') (hag : ∀ r < l.length, img r = img' r) {x : VarSymb}
+    {X : VarType} (hx : (ctxOf l).ref x = some (.VTypeDia X))
+    (hx' : (ctxOf l').ref x = some (.VTypeDia X)) {cx : ℕ}
+    (hcx : Δ.ref (.root (.free cx)) = some X) (hcx' : Δ'.ref (.root (.free cx)) = some X)
+    {B : VarType} {c : Ann B} (g : Term σ Δ B c)
+    (Φ : WFF σ (((ctxOf l).diaIn x).insert (.bnd 0) B) 1) :
+    WFF.mono hΔ (readArrowX himg hx hcx g Φ) =
+      readArrowX himg' hx' hcx' (Term.mono hΔ g)
+        (WFF.mono (((ctxOf_le_of_suffix hl).diaIn x).insert (.bnd 0) B) Φ) := by
+  unfold readArrowX
+  rw [WFF.mono_subst, WFF.subst_mono]
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) Φ
+  by_cases hvr : v = .root (.bnd 0)
+  · subst hvr
+    change SubE.Sim T (SubE.mono hΔ (Subst.set _ _ _ (.root (.bnd 0))))
+      (Subst.set _ _ _ (.root (.bnd 0)))
+    rw [Subst.set_root, Subst.set_root]
+    exact .refl _
+  · have hv' : ((ctxOf l).diaIn x) v = some T := by
+      change (if v = VarSymb.root (.bnd 0) then _ else _) = _ at hv
+      rwa [if_neg hvr] at hv
+    change SubE.Sim T (SubE.mono hΔ (Subst.set _ _ _ v)) (Subst.set _ _ _ v)
+    rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
+    rcases diaIn_item hv' with ⟨w, rfl, hw⟩ | ⟨rfl, _⟩
+    · obtain ⟨r, hr, hlt, _⟩ := ref_rt hw
+      change SubE.Sim T (.ren (itemAt (imgRoot img w.rt) w)) (.ren (itemAt (imgRoot img' w.rt) w))
+      rw [hr, imgRoot, imgRoot, hag r hlt]
+      exact .refl _
+    · change SubE.Sim T (SubE.mono hΔ (if x = x then _ else _)) (if x = x then _ else _)
+      rw [if_pos rfl, if_pos rfl]
+      exact .refl _
+
+/-- ⭐The body `Φ(□u[D])` over a witness's view, read at the witness child, is `Φ(□u)` read along
+    the witness arrow. -/
+theorem liftBodyX_bodyRepl_hole {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt : ℕ → ℕ}
+    (himgt : ImgOk clt (ctxOf lv) imgt) {x : VarSymb} {X : VarType}
+    (hx : (ctxOf clt).ref x = some (.VTypeDia X)) {cx : ℕ}
+    (hcx : (ctxOf lv).ref (.root (.free cx)) = some X) {A : VarType} {b : Ann A}
+    (u : Term σ (ctxOf cls).boxIn A b)
+    (Φ : WFF σ (((ctxOf clt).diaIn x).insert (.bnd 0) (.VTypeBox A)) 1) :
+    liftBodyX hs himgt hx hcx (WFF.bodyRepl
+        (Term.mono ((Ctx.empty_le _).insert (.bnd 0) _) (ShapeMap.hole (packT cls u)).obj.2) Φ) =
+      readArrowX himgt hx hcx (Term.boxtm (Term.mono (ctxOf_le_of_suffix hs).boxIn u)) Φ := by
+  unfold liftBodyX WFF.bodyRepl readArrowX
+  refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
+  refine Subst.sim_of fun v T hlp hv => ?_
+  by_cases hvr : v = .root (.bnd 0)
+  · subst hvr
+    obtain rfl : T = .VTypeBox A := by
+      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
+      rw [if_pos rfl] at hv
+      exact (Option.some.inj hv).symm
+    change SubE.Sim _ ((arrowXS σ (ctxOf lv) imgt x cx).set (.bnd 0) _ (.root (.bnd 0)))
+      ((((Subst.idS σ _).set (.bnd 0) _) (.root (.bnd 0))).comp _ _ _)
+    rw [Subst.set_root, Subst.set_root]
+    dsimp only [SubE.comp]
+    refine SubE.sim_tm_sigma (Eq.symm ?_)
+    rw [Term.subst_mono]
+    change (⟨_, Term.boxtm (Term.subst _ _ _ _ (Term.holeAt _ (packT cls u)))⟩ :
+      Σ c, Term σ (ctxOf lv) (.VTypeBox A) c) = _
+    refine sig_boxtm ?_
+    refine (Term.subst_holeAt_sig _ _ _ _ _).trans ?_
+    refine (sig_holeAt (Term.subst_eta_tm _ _ _ _ _ _ _ (Subst.box_at_inner_boxtm _ (by
+      change Subst.set _ _ _ (.root (.bnd 0)) = _
+      exact Subst.set_root _ _ _))) _).trans ?_
+    exact holeAt_tupT_packT_mono _ u
+  · have hv' : ((ctxOf clt).diaIn x) v = some T := by
+      change (if v = VarSymb.root (.bnd 0) then _ else _) = _ at hv
+      rwa [if_neg hvr] at hv
+    change SubE.Sim T ((arrowXS σ (ctxOf lv) imgt x cx).set (.bnd 0) _ v)
+      ((((Subst.idS σ _).set (.bnd 0) _) v).comp _ _ _)
+    rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
+    change SubE.Sim T _ ((Subst.set _ _ _).at v)
+    rw [Subst.at_set_of_rt_ne _ _ (Ctx.ref_rt_ne
+      ((Ctx.NoSlots.slots (Γ := (ctxOf clt).diaIn x)).rootFresh (le_refl 0))
+      ((Ctx.ref_nonproj _ hlp).trans hv')), Subst.at_nonproj _ hlp]
+    exact .refl _
+
+/-- ⭐⭐**A returning possibility along a witness from its far end, at a node**: along a witness
+    arrow's way home with the invariant along the witness, `Φ(□u)` at the far end is
+    `◇_x[d ↦ u sent home] Φ(d)` at home. -/
+theorem retx_of_inv {hS : ModalSys.BStrong = true} {tk ts : NodeSt σ} (hsM : Theory.IsMCS ts.M)
+    {cls clt : List VarType} {imgs imgt : ℕ → ℕ} {x : VarSymb} {X : VarType} {cx : ℕ}
+    (h : RetInvX hS tk ts cls imgs clt imgt x X cx) {A : VarType} {b : Ann A}
+    (u : Term σ (ctxOf cls).boxIn A b)
+    (Φ : WFF σ (((ctxOf clt).diaIn x).insert (.bnd 0) (.VTypeBox A)) 1)
+    (hmem : ∃ (hs : cls <:+ tk.l) (himgt : ImgOk clt (ctxOf tk.l) imgt)
+      (hx : (ctxOf clt).ref x = some (.VTypeDia X))
+      (hcx : (ctxOf tk.l).ref (.root (.free cx)) = some X),
+      readArrowX himgt hx hcx (Term.boxtm (Term.mono (ctxOf_le_of_suffix hs).boxIn u)) Φ ∈
+        tk.M) :
+    ∃ (himgs : ImgOk cls (ctxOf ts.l) imgs) (ht : clt <:+ ts.l)
+      (hx' : (ctxOf ts.l).ref x = some (.VTypeDia X)),
+      (OutLeg.pos x ⟨X, hx'⟩ : OutLeg (ctxOf ts.l)).ret hS
+        (Term.subst (arrowIdx imgs) (arrowS σ (ctxOf ts.l) imgs) (ok_arrowS himgs)
+          (coh_arrowS himgs) u)
+        (WFF.mono (((ctxOf_le_of_suffix ht).diaIn x).insert (.bnd 0) _) Φ) ∈ ts.M := by
+  obtain ⟨hs, himgs, ht, himgt, hx, hcx, hinv⟩ := h
+  obtain ⟨hs', himgt', hx'', hcx', hm⟩ := hmem
+  refine ⟨himgs, ht, (ctxOf_le_of_suffix ht).ref hx, ?_⟩
+  have hr := hinv (WFF.bodyRepl
+    (Term.mono ((Ctx.empty_le _).insert (.bnd 0) _) (ShapeMap.hole (packT cls u)).obj.2) Φ)
+    (by rw [liftBodyX_bodyRepl_hole]; exact hm)
+  rw [WFF.mono_bodyRepl ((ctxOf_le_of_suffix ht).diaIn x), Term.mono_mono] at hr
+  have hc := hsM.closed ⟨[_], fun y hy => by rw [List.mem_singleton.mp hy]; exact hr,
+    ⟨Proof.ret_map hS (.pos x ⟨X, (ctxOf_le_of_suffix ht).ref hx⟩) (S := .nec (.box (bcT cls)))
+      (ShapeMap.hole (packT cls u)) (tupImgT cls imgs himgs).2
+      (WFF.mono (((ctxOf_le_of_suffix ht).diaIn x).insert (.bnd 0) _) Φ)
+      (Proof.lookup List.mem_cons_self)⟩⟩
+  exact (congrArg (· ∈ ts.M) (OutLeg.retS_congr hS _ (.box A)
+    (holeRead_tupImgT_packT himgs u) rfl)).mp hc
 
 namespace BData
 
@@ -489,6 +850,72 @@ theorem mem_ret_of_sat_nec (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) (hRI
         interp_canon t (Model.Env.Agree.refl' _)] at hInd
       exact hInd
 
+/-- ⭐**Returning possibilities along a witness from the far end** (`□` shape): along an arrow
+    `s → k` of `y`'s extent, `Φ(□u)` at `k` (read along the witness arrow) is
+    `◇_y[d ↦ u sent home] Φ(d)` at `s`.  The limit of a strong chain has it (`bdataS_retInX`). -/
+def RetInX (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
+  ∀ {s k : B.W} {y : VarSymb} {Y : VarType} (hk : B.kd s k = some (y, Y)) {i : ℕ}
+    (hy : ((B.w s).ctx i).ref y = some (.VTypeDia Y)) {A : VarType}
+    (Φ : WFF σ ((((B.w s).ctx i).diaIn y).insert (.bnd 0) (.VTypeBox A)) 1) {j : ℕ}
+    (hj : B.stg s k i ≤ j) {b : Ann A} (u : Term σ ((B.w k).ctx j).boxIn A b),
+    readArrowX ((B.imgOk (B.kdR hk) i).mono ((B.w k).le hj)) hy (((B.w k).le hj).ref (B.hcx hk i))
+      (Term.boxtm u) Φ ∈ (B.w k).M j →
+      ∃ hiK : i ≤ B.stg k s j,
+        (OutLeg.pos y ⟨Y, ((B.w s).le hiK).ref hy⟩ : OutLeg ((B.w s).ctx (B.stg k s j))).ret hS
+          (Term.subst (arrowIdx (B.img k s)) (arrowS σ _ (B.img k s))
+            (ok_arrowS (B.imgOk (B.symm (B.kdR hk)) j))
+            (coh_arrowS (B.imgOk (B.symm (B.kdR hk)) j)) u)
+          (WFF.mono ((((B.w s).le hiK).diaIn y).insert (.bnd 0) _) Φ) ∈ (B.w s).M (B.stg k s j)
+
+/-- ⭐⭐**`ret` along a witness, truth ⇒ membership** (`□` shape; strong B, T off): as
+    `mem_ret_of_sat_nec`, along an arrow of `y`'s extent (a witness arrow, T being off) with the
+    invariant along `y` (`RetInX`, `diaPush_canon_at`, `mem_retx_of_ind`). -/
+theorem mem_retx_of_sat (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
+    (hRX : B.RetInX hS) {s : B.W} {i : ℕ} {y : VarSymb}
+    (hy : ∃ Y, ((B.w s).ctx i).ref y = some (.VTypeDia Y)) {A : VarType} {a : Ann A}
+    (t : Term σ ((B.w s).ctx i) A a)
+    (Φ : WFF σ ((((B.w s).ctx i).diaIn y).insert (.bnd 0) (.VTypeBox A)) 1)
+    (IH : ∀ (s' : B.W) (K : ℕ) (φ : WFF σ ((B.w s').ctx K) 0),
+      φ.size < ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).ret hS t Φ : WFF σ _ 0).size →
+        (B.model.sat (B.canonEnv s' K) φ ↔ φ ∈ (B.w s').M K))
+    (h : B.model.sat (B.canonEnv s i)
+      ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).ret hS t Φ : WFF σ _ 0)) :
+    ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).ret hS t Φ : WFF σ _ 0) ∈ (B.w s).M i := by
+  have hsz : ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).ret hS t Φ : WFF σ _ 0).size =
+      Φ.size + A.eqRecSize + 1 := rfl
+  obtain ⟨Y, hY, a₁, e, hΦ, r, hInd⟩ := h
+  have hext : a₁.1 ∈ B.extent s y := canonEnv_extent s i hY ▸ a₁.2
+  rcases hext with ⟨X', hk⟩ | ⟨hnR, -⟩
+  swap
+  · exact absurd (R_of_RT_strong hS a₁.1.2.down) hnR
+  obtain rfl := B.hxX hk i Y hY
+  have hR := B.kdR hk
+  obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom (.VTypeBox A) a₁.1.1 e
+  cases g with
+  | boxtm u =>
+      have hj₀ : j₀ ≤ max j₀ (B.stg s a₁.1.1 i) := le_max_left _ _
+      have hj : B.stg s a₁.1.1 i ≤ max j₀ (B.stg s a₁.1.1 i) := le_max_right _ _
+      have he : Model.interp (B.canonEnv a₁.1.1 (max j₀ (B.stg s a₁.1.1 i)))
+          (Term.boxtm (Term.mono ((B.w a₁.1.1).le hj₀).boxIn u)) = e :=
+        interp_lift hg hj₀
+      have hsatb : B.model.sat (B.canonEnv a₁.1.1 (max j₀ (B.stg s a₁.1.1 i)))
+          (readArrowX ((B.imgOk hR i).mono ((B.w a₁.1.1).le hj)) hY
+            (((B.w a₁.1.1).le hj).ref (B.hcx hk i))
+            (Term.boxtm (Term.mono ((B.w a₁.1.1).le hj₀).boxIn u)) Φ) := by
+        rw [sat_readArrowX, he, ← diaPush_canon_at s i hY a₁ hk hj]
+        exact hΦ
+      have hmb := (IH a₁.1.1 _ _ (by
+        rw [hsz]; unfold readArrowX; rw [WFF.size_subst]; omega)).mp hsatb
+      obtain ⟨hiK, hret⟩ := hRX hk hY Φ hj _ hmb
+      refine mem_retx_of_ind hS hInj ⟨a₁.1.1, hR⟩ hiK hy _ t Φ
+        (fun L _ u u' hs => (IH s L _ (by rw [WFF.size_eqRec, hsz]; omega)).mp hs) hret ?_
+      have hr' : B.RT a₁.1.1 s := r
+      change B.Ind _ _ at hInd
+      rw [← he, Model.box_beta, boxPush_canon_at a₁.1.1 _ ⟨s, ⟨hr'⟩⟩ (B.symm hR) le_rfl,
+        ← Model.interp_subst, interp_canon _ (Model.Env.Agree.refl' _),
+        interp_canon t (Model.Env.Agree.refl' _)] at hInd
+      exact hInd
+
 end BData
 
 section Limit
@@ -524,6 +951,40 @@ theorem bdataS_retIn (hT : ModalSys.T = false) : (bdataS C hT).RetIn hS := by
       change _ = Term.boxtm (Term.mono _ u)
       rw [Term.mono_mono]⟩
   refine ⟨hiK, (congrArg (· ∈ _) (OutLeg.retS_congr hS .nec (.box A) ?_ ?_)).mp hr⟩
+  · rw [Term.subst_mono]
+    exact Term.subst_congr _ _ _ _ _ _ (sim_arrowS hJag) _
+  · rw [WFF.mono_mono]
+
+/-- ⭐⭐**The limit has returning possibilities along a witness from the far end**: the way home's
+    invariant along the witness (`lretAt`, `RetAt.toRetInvX`), at a node (`retx_of_inv`). -/
+theorem bdataS_retInX (hT : ModalSys.T = false) : (bdataS C hT).RetInX hS := by
+  classical
+  intro s k y Y hk i hy A Φ j hj b u hm
+  have h : LR C.toFairChain s k := lkdR hk
+  obtain ⟨cls, imgs, clt, imgt, hJs, hJag, his, hiag, hret⟩ := lretAt C h.symm j i hj
+  have hsp := (lstg_spec C.toFairChain h i).1
+  have hkp := (lstg_spec C.toFairChain h.symm j).1
+  have hiK : i ≤ lstg C.toFairChain k s j := by
+    change lstg C.toFairChain s k i ≤ j at hj
+    omega
+  have hsl : (C.net (birth C.toFairChain s.2 + lstg C.toFairChain k s j)).Live s.1 :=
+    live_birth C.toFairChain s.2 (Nat.le_add_right _ _)
+  have hsM := (C.good _).mcs s.1 hsl
+  have hk' : lkd C.toFairChain s k = some (y, Y) := hk
+  rw [hk'] at hret
+  have hinv := RetAt.toRetInvX hsM hret
+  obtain ⟨hcs, -, ht, himgt, hxc, hcxc, -⟩ := id hinv
+  have hg := grow_stage C.toFairChain k j (m := birth C.toFairChain s.2 +
+    lstg C.toFairChain k s j) hkp
+  have hm' := hg.sub _ hm
+  rw [readArrowX_mono_congr his _ _ himgt (fun r hr => (hiag r hr).symm) _ hxc _ hcxc] at hm'
+  obtain ⟨himgs, ht', hx', hr⟩ := retx_of_inv hsM hinv
+    (Term.mono (ctxOf_le_of_suffix hJs).boxIn u) _
+    ⟨hcs, himgt, hxc, hcxc, by
+      convert hm' using 2
+      change _ = Term.boxtm (Term.mono _ u)
+      rw [Term.mono_mono]⟩
+  refine ⟨hiK, (congrArg (· ∈ _) (OutLeg.retS_congr hS _ (.box A) ?_ ?_)).mp hr⟩
   · rw [Term.subst_mono]
     exact Term.subst_congr _ _ _ _ _ _ (sim_arrowS hJag) _
   · rw [WFF.mono_mono]
