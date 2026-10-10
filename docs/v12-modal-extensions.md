@@ -6883,7 +6883,26 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
   `Φ(c) ∈ M k`.  Its return along `k → s` is the alias `y`, interchangeable with `t`
   (`alias_interch`), so `DTerm.Rel`, i.e. canonical `Ind`.  The witnessed shapes' possible part
   returns with the edge's content (`lcx`).
-* *`ret`/`retx`, truth ⇒ membership (plan).*  Sat gives `s → k`, `e = den g` with `Φ(g) ∈ M k`
+* *`ret`, truth ⇒ membership, plain leg and `□` shape (built, 2026-10-10,* `QML_v12m_BRetTruth`*,*
+  ⭐`BData.mem_ret_of_sat_nec`*).*  Slice 1 of the `ret` cases.
+  * *At a node* (`ret_of_inv`): along `k → s` with the invariant, `Φ(□u)` at `k` gives
+    `◇[d ↦ u sent home] Φ(d)` at `s`.  The body is `Φ(□u[D])`, with `u` packed over the committed
+    tuple (`packT`, the term version of `pack`); read at the far end it is `Φ(□u)`
+    (`liftBody_bodyRepl_hole`, read along the arrow with its slot filled: `readArrow`); then
+    `ret_map` along `ShapeMap.hole` of the packed `u` (`holeRead_tupImgT_packT`).
+  * *At the limit* (`BData.RetIn`, `bdataS_retIn`): `lretAt` on the way home, `RetAt.toRetInv`,
+    images agreeing (`readArrow_mono_congr`); the home stage is at least `i` (`lstg_spec`).
+  * *Value along `Ind`* (`mem_ret_of_ind`): decoder + IH at `eqRec` + `ret_eq` to and from the
+    representatives, and their interchangeability at the **slot formula of a returning
+    possibility** `WFF.retSlot` (body moved one binder out, `bodyUp`;
+    `WFF.instantiate_retSlot`).
+  * *Semantics*: a true atom gives `□u` at `k` (`definable_fromDom`; box-typed terms are `boxtm`),
+    the body by the IH (`sat_readArrow`, `boxPush_canon_at`), and the object read home is `u`
+    sent home (`box_beta`, `boxPush_canon_at`, `interp_subst`).
+  * *Left:* the leg along a witness (`retx`, needs `retxSlot` and the `RetAt.toRetInvX` reading),
+    shapes `nec N` with products (via `ShapeMap.pair` of holes) and witnessed shapes (`wit N X`;
+    no `ret_eq` there), and membership ⇒ truth.
+* *`ret`/`retx`, truth ⇒ membership (original plan).*  Sat gives `s → k`, `e = den g` with `Φ(g) ∈ M k`
   (IH), and `e` comes back as `den t`.
   * `lretAt` along `k → s` gives `RetAt`.  `RetAt.toRetInv`/`toRetInvX` (built) reduce it for the
     `box` shape.  The witnessed shape's possible part has its extent through `k → s`, so the edge

@@ -223,7 +223,9 @@ style of milestone 1, each ending green and committed:
    `backRel`/`backRelX`, `QML_v12m_BBackTail`).  Step 5 begun: sizes, `back` membership ⇒ truth,
    `back` truth ⇒ membership on both legs at every content type (`QML_v12m_BBackTruth`,
    `QML_v12m_BBackLimit`; new `BData` field `unl`), plan in §11.20.
-   **Next:** the `ret` truth cases, the rest of the `back`/`ret` truth cases, removing
+   `ret` truth ⇒ membership for the plain leg at `□` shape (`QML_v12m_BRetTruth`).
+   **Next:** the remaining `ret` truth cases (leg along a witness, product and witnessed shapes,
+   membership ⇒ truth), the rest of the `back`/`ret` truth cases, removing
    `NoFour.noBStrong`; then step 6.
 6. **Statements.**  Completeness, strong completeness and compactness for strong B (rows 1–2,
    `◇`-free contents), under `NoFour`.
