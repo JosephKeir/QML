@@ -7130,3 +7130,91 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
     network's `bc` packing, so `RetInv`'s slot `□(bcT cls)` is reached from user atoms by
     `ret_extH`, `packH` and `pack`.
   * For box-free `A`, `bc A` is units, so `boxH A` is `box A` and `ret_extH` is trivial.
+
+### 11.21 Strong B with T: the plan and the paper pass *(2026-10-11, paper)*
+
+Strong B is complete with T off (§11.20, roadmap milestone 2).  This section plans combining it
+with T and works the risks on paper first.
+
+**What already holds under T.**  Syntax, rules and soundness are proved for every flag, including
+the own-arrow rules `back_here` and `ret_here`.  The canonical `Ret` is T-neutral.  Weak B with T
+is complete, so forward commitments under T exist (`bcB b`, `tupB` matching on the flag).  Shapes
+are gated by `shaped`, and the decoder is a case split whose T half (the two-arrow proof) exists.
+
+**Where T off is used.**  About twenty files take `hT : T = false` or `bc_box_noT`.  They fall
+into four groups:
+* *back commitments* of the returning children (obligations, pull-backs, births);
+* *the own arrow*, excluded in about fifteen limit proofs by `R_of_RT_strong`;
+* *the decoder's T-free half* and `ImgInj`;
+* threading `hT` through `GoodS`, `netS`, the strong chain and the statements.
+
+**Risk 1: back commitments under T.  Resolved on paper, no new rule.**
+* *The problem.*  Strong B's children are the first to commit roots *back*; weak B's back list is
+  `[]`.  Under T a born root `c : □A` has image type `bc(□A) = A × bc A`: the contents first, then
+  the items of `c.here`, the child's own value.  The user atom `◇[d ↦ t] Φ(d)` fixes only the
+  first component.  `ret_map` cannot supply the second: it needs a value map, and the return of
+  `d.here`'s items is no function of `t`.
+* *The fix: name the second component by existence for a `□` part* (as §11.18 asks).
+  1. Inside the atom, `d.here` is reachable under T, and its items form a necessary object
+     `b := □(items of d.here)` (`tupB` at the flag).  `bc A` is `◇`-free (`bc` sends `◇X` to
+     `𝟙`), so `□(bc A)` is too, and `eqRec` is available.  By `ret_monoS` and `∃`-introduction:
+     `◇[d ↦ t] ∃b. (Φ(d) ∧ b = □(items of d.here))`.
+  2. `ret_extS` gives, for a fresh `z`, `◇[⟨d, b⟩ ↦ ⟨t, z⟩] (Φ(d) ∧ b = …)`.  In a theory this
+     is an `∃`: `ex_intro` at `z` gives `∃z. ◇[⟨d, b⟩ ↦ ⟨t, z⟩] …`, and the network's existing
+     Henkin step (`henk`) names `z` as a root.  No new network operation is needed.
+  3. Alias the pair: one root `w` for `⟨t, z⟩ : bc(□A)`.  An image is a single root of the
+     image type, so `w` replaces T-off's alias `y`.
+  4. `ret_map` packs `⟨d, b⟩` into `□(1 × bc(□A))`.  The obligation is `◇[e ↦ ⟨(), w⟩] Φ'(e)`,
+     with `Φ'` reading `Φ` at `□(e.box.snd.fst)` and keeping the equation on `e.box.snd.snd`.
+* *At the child.*  The object out there is `□(tup)`, whose second component is `c.here`'s items
+  by `tupB`'s definition under T.  So the equation holds there by `T`'s collapse
+  (`(□g).here = g`), and the back image `0 ↦ w` is well typed.
+* *Seed consistency.*  The pull-back sends `c` to `□(u.box.snd.fst)`, as T-off sends it to
+  `□(u.box.snd)`.  Under T, `c.here` collapses to `u.here.snd.fst`, which exists under T.  The
+  K-law argument is unchanged; the substitution and its lemmas become flag-aware (`Term.collapse`,
+  `Ctx.collapses_boxIn_self`).  To be checked in detail when building, for all four children.
+
+**Risk 2: the own arrow in the truth cases.  Likely new rules; for the user.**  Under T the
+frame's arrows include each world's own arrow, with the identity as its way home.  The table:
+* *`ret`, plain leg, shape `□A`.*  Given by `ret_here`: from `hereRead (□sb) Φ`, conclude
+  `◇[d ↦ collapse sb] Φ`; then move the value along `Ind` (`mem_ret_of_ind`, with the T decoder).
+* *`ret`, plain leg, products.*  Probably derivable: `ret_here` at `□(N.flat)`, then `ret_map`
+  along an unpacking.  To confirm that unpacking is a `ShapeMap`.
+* *`ret`, plain leg, witnessed shapes `□C × ◇Z`.*  The own arrow is in the possible part's extent
+  exactly when that part is realised here, with its content given by a `Here` atom.  No rule
+  concludes a witnessed `ret` from here.  Candidate: `ret_here` at every shape,
+  `Here(p, u), hereRead(⟨□sb, p⟩) Φ ⊢ ◇[⟨d, e⟩ ↦ ⟨collapse sb, u⟩] Φ`, as `ret_eq` became
+  `ret_eqS`.
+* *`ret` along `◇_x` (both shapes).*  The own arrow is in `x`'s extent when `x` is realised.
+  `here_intro` gives `◇_x` of a reading, not a `retx`.  Candidate: the same rule on the leg `O`.
+* *`Back`.*  The canonical `Ret_fwd` at the own arrow: row 1 by `back_here`; row 2 (carrier
+  `◇_y □bd`, `y` realised) has no rule.  Candidate: `back_here` on the leg `O`.
+* *Next.*  Before proposing rules, check derivability: the units `ret_unitW`/`ret_unitD` with
+  `here_intro`/`here_elim`, and the `Here` reading of the witnessed unit.
+
+**Risk 3: one name per leg under T.  Resolved on paper.**  The pair law of `RetCongr` and the
+`back` cases use `leg_unique`/`univ_ne_extent`.  Under T a witness's extent may hold the own arrow.
+* *Every arrow out vs. a witness's extent.*  `unl` still gives an unlabelled network arrow, and
+  a world has one under T (`T_box` refutes `□⊥`).
+* *Two witnesses' extents.*  Suppose a nonempty extent holds only the own arrow.  Then its
+  witness is realised: a `Here` atom (`RealDatum`, to check).  `here_intro` at `ψ = ⊤` gives
+  `◇_y ⊤`, and `exX` gives a network arrow labelled `y`, a contradiction.  So a nonempty extent
+  holds a network arrow, which has one label.
+
+**Lesser risks.**
+* *Decoder*: the case split as planned.  `ImgInj` is needed only with T off; to check that no
+  chain lemma asks for it under T.
+* *Strong T with strong B*: realised witnesses meet `Back` atoms through `back_here`; not yet
+  exercised.
+* *Sizes*: `ret_here`'s premise `hereRead (□sb) Φ` must be smaller than the `ret`.  Expected,
+  since `retS`'s size is `Φ.size + eqRecSize + 1`.
+
+**Order.**
+1. Finish this paper pass: the derivability check for risk 2's table, then the rule decisions,
+   for the user.
+2. Commitments: make the obligation maps (`oblS/oblB/oblSD/oblBD`), the pull-backs
+   (`retPullS/D/X/XD`) and the births flag-generic by mirroring the forward `tupB`, never by cast.
+   Add the `ret_extS` + `henk` step of risk 1 and redo the four seed-consistency proofs.
+3. Network: drop `hT` from `GoodS.mk*`, `applyOpT`, `netS` and `strongChainS`.
+4. Limit: the own-arrow cases of risk 2, `leg_unique` per risk 3, the decoder split.
+5. Statements: drop `NoFour.noTStrong`, so `NoFour` is 4 off only; `exists_canonB` loses `hT`.

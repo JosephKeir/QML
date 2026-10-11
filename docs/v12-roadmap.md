@@ -233,6 +233,14 @@ style of milestone 1, each ending green and committed:
    T off, for now); `exists_canonB` picks the strong limit under strong B, so completeness
    (every presented context), strong completeness and compactness hold for strong B with T off,
    rows 1–2, at every content type.
+7. **Strong B with T** (`v12-modal-extensions.md` §11.21, planned 2026-10-11).
+   * *Back commitments under T*: the born root's `here` items, named by `ret_extS` and the Henkin
+     step.  Resolved on paper, no new rule.
+   * *The own arrow in the truth cases*: probably new rules (`ret_here` at every shape and leg,
+     `back_here` on the leg); derivability to check first, then the user decides.
+   * *One name per leg under T*: resolved on paper (`here_intro` at `⊤`).
+   * *Then*: flag-generic obligations, pull-backs and births; `hT` dropped from the network and
+     the limit; `NoFour.noTStrong` removed.
 Then rows 3–4 (multi-labelled edges, per-witness components) and `◇`-typed contents (§11.12).
 **Main risks:** step 5's refactor of the back arrows (the invariant changes shape); step 2's ripple
 is large but mechanical.
