@@ -6998,7 +6998,25 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
       `ret_here` (T).
     * *Legs* are variables (`OutLeg.pos y`); a leg `◇_t` with `t = diatm x u` is `◇_x` with
       `t.dia := u`, so the principle holds there by substitution.
-  * *Left:* membership ⇒ truth (`retOp`, aliases, the user atom → obligation conversion).
+  * *`ret` membership ⇒ truth, necessary shapes, both legs (built, `QML_v12m_BRetOut`).*
+    * *Conversion at a node.*  The value moves to a fresh **alias** `y` (`ret_alias`,
+      `ret_aliasX`: the alias formula at `retSlot`/`retxSlot`, via `alias_interch`), then becomes
+      `mkRet`'s obligation `◇[e ↦ ⟨(), y⟩] Φ(□(e.box.snd))` (`ret_obl`, any leg: `ret_map` along
+      `z ↦ ⟨(), z⟩`; the two hole maps compose to the identity, `holeAt_hole_oblB`, with
+      `WFF.bodyRepl_bodyRepl`/`bodyRepl_eta`).  The obligation's root type is `(□A).bc`, equal to
+      `A` only propositionally (T off): the gap is bridged by η at a provably equal type
+      (`Term.subst_eta_eta`) and a Σ-valued cast (`Term.castTy`), never by a cast on a user term.
+    * *Products* are packed into one `□` (`packN` by `ret_map`, `retS_packN`) and read back
+      through the unpacking (`unpackN`; `holeAt_packN_unpackN`); semantically unpacking comes
+      back componentwise (`ncb_unpackN`, with `ind_map`, canonical `Ind` under hole terms).
+    * *The chain and the limit*: `StrongChain.alias_at`/`lalias` (the alias set at every later
+      stage), `StrongChain.ret_child(X)`/`lret(X)` (the returning child, its body, its back image
+      `0 ↦ y`), `lstg_mono`.
+    * *At the limit*: `BData.RetOut`/`RetOutX`, ⭐`bdataS_retOut`, ⭐`bdataS_retOutX`: the child's
+      object comes home as the alias (`oblRead`, `home_oblRead` via `subst_arrow_tupB`), `Ind` to
+      the value (`lalias_ind`).
+    * *Semantics*: ⭐`BData.sat_ret_of_mem`, ⭐`sat_retS_nec_of_mem`, ⭐`sat_retxS_nec_of_mem`.
+  * *Left:* membership ⇒ truth at witnessed shapes (`mkRetD`, `mkRetXD`).
   * ⭐**`ret_eq` generalised to every shape (DECIDED, user, 2026-10-10): `Proof.ret_eqS`.**  No
     derivation of Leibniz for a witnessed value was found: the rules that conclude a top-level
     witnessed atom keep its value (`ret_unitD`, `ret_unitWD`, `ret_monoS`) or change only its

@@ -226,7 +226,8 @@ style of milestone 1, each ending green and committed:
    `ret` truth ⇒ membership for all four forms (both legs, every shape;
    `QML_v12m_BRetTruth`, `QML_v12m_BRetTruthW`; `ret_eq` generalised to `ret_eqS`, and β on
    the possible part `ret_mapD` added after an audit of necessary vs possible parts, §11.20).
-   **Next:** `ret` membership ⇒ truth, the rest of the `back`/`ret` truth cases, removing
+   `ret` membership ⇒ truth on both legs at necessary shapes (`QML_v12m_BRetOut`).
+   **Next:** `ret` membership ⇒ truth at witnessed shapes, the rest of the `back`/`ret` truth cases, removing
    `NoFour.noBStrong`; then step 6.
 6. **Statements.**  Completeness, strong completeness and compactness for strong B (rows 1–2,
    `◇`-free contents), under `NoFour`.
