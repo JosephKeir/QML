@@ -7148,31 +7148,83 @@ into four groups:
 * *the decoder's T-free half* and `ImgInj`;
 * threading `hT` through `GoodS`, `netS`, the strong chain and the statements.
 
-**Risk 1: back commitments under T.  Resolved on paper, no new rule.**
-* *The problem.*  Strong B's children are the first to commit roots *back*; weak B's back list is
-  `[]`.  Under T a born root `c : □A` has image type `bc(□A) = A × bc A`: the contents first, then
-  the items of `c.here`, the child's own value.  The user atom `◇[d ↦ t] Φ(d)` fixes only the
-  first component.  `ret_map` cannot supply the second: it needs a value map, and the return of
-  `d.here`'s items is no function of `t`.
-* *The fix: name the second component by existence for a `□` part* (as §11.18 asks).
-  1. Inside the atom, `d.here` is reachable under T, and its items form a necessary object
-     `b := □(items of d.here)` (`tupB` at the flag).  `bc A` is `◇`-free (`bc` sends `◇X` to
-     `𝟙`), so `□(bc A)` is too, and `eqRec` is available.  By `ret_monoS` and `∃`-introduction:
-     `◇[d ↦ t] ∃b. (Φ(d) ∧ b = □(items of d.here))`.
-  2. `ret_extS` gives, for a fresh `z`, `◇[⟨d, b⟩ ↦ ⟨t, z⟩] (Φ(d) ∧ b = …)`.  In a theory this
-     is an `∃`: `ex_intro` at `z` gives `∃z. ◇[⟨d, b⟩ ↦ ⟨t, z⟩] …`, and the network's existing
-     Henkin step (`henk`) names `z` as a root.  No new network operation is needed.
-  3. Alias the pair: one root `w` for `⟨t, z⟩ : bc(□A)`.  An image is a single root of the
-     image type, so `w` replaces T-off's alias `y`.
-  4. `ret_map` packs `⟨d, b⟩` into `□(1 × bc(□A))`.  The obligation is `◇[e ↦ ⟨(), w⟩] Φ'(e)`,
-     with `Φ'` reading `Φ` at `□(e.box.snd.fst)` and keeping the equation on `e.box.snd.snd`.
-* *At the child.*  The object out there is `□(tup)`, whose second component is `c.here`'s items
-  by `tupB`'s definition under T.  So the equation holds there by `T`'s collapse
-  (`(□g).here = g`), and the back image `0 ↦ w` is well typed.
-* *Seed consistency.*  The pull-back sends `c` to `□(u.box.snd.fst)`, as T-off sends it to
-  `□(u.box.snd)`.  Under T, `c.here` collapses to `u.here.snd.fst`, which exists under T.  The
-  K-law argument is unchanged; the substitution and its lemmas become flag-aware (`Term.collapse`,
-  `Ctx.collapses_boxIn_self`).  To be checked in detail when building, for all four children.
+**Risk 1: back commitments under T.  Open: needs a new returnable shape and an existence rule,
+or a content restriction (paper check, 2026-10-11).**
+
+*What `bc` is.*  An arrow `s → t` commits each root `r : R` of `s` to one root of `t` of type
+`bc R`: the packed `□`-view of `r`, which the arrow uses to read `s`'s `□` view in `t`'s language
+(`arrowS`, `itemImg`, `ImgOk`, `tupT`/`tupB`, and `RetInv`'s shape `□(bcT cls)`).
+* `bc` of `Var`, `𝟙` or `◇X` is `𝟙`: nothing of it is seen from the far side.
+* `bc` of a product is the product of `bc`s.
+* `bc(□A)` is the contents `A` with T off, and `A × bc A` with T on: the contents and the items
+  of the value here, `r.here : A`.
+* *Correction.*  `bc A` is **not** always `◇`-free: contents are kept whole, so
+  `bc(□◇X) = ◇X` (T off) or `◇X × 𝟙` (T on).  `bc A` is `◇`-free exactly when every `□`
+  component of `A` has `◇`-free contents.  The first version of this section relied on the
+  wrong claim; the "fix" it gave works only for those `A`.
+
+*The problem, exactly.*
+* A born root `c : □A` of a returning child `k` is committed home to one root `w : bc(□A)`.
+  Under T, `w.snd` is the image of `c.here`'s items along the way home `r : k → s`.
+* *Not determined by the value.*  The user atom `◇[d ↦ t] Φ(d)` fixes only `w.fst ~ t`.  In a
+  T-model without 4, `necEval d r` (`d`'s contents at `s`) and `necEval (necEval d refl_k) r`
+  (the contents at `s` of `d`'s value at `k`) are independent: two models differing only in the
+  latter satisfy the same atom.  So the construction must *name* the second component.
+* *Why it must be tied to the object.*  The image is needed for real, not just for typing.
+  * `RetIn` (truth ⇒ membership) reads an object built from `c.here`'s items, e.g.
+    `□(c.here.box)` when `A = □B`, home through `w.snd`.
+  * The seed-consistency pull-back sends `c ↦ □(u.box.snd.fst)`.  Then `c.here` collapses to
+    `u.here.snd.fst`, and the address `c.here.box` (a sub-address of `c.here`) goes to the items
+    of `u.here.snd.fst`, not to the slot's second component `u.box.snd.snd`.  So the obligation's
+    object must satisfy: *its second component is the items of its first component's value
+    here*.  This is the coherence condition "this pair is one `□A` object's view".
+  * Two born roots (`c` and a companion `b`) do not help: `c`'s own image needs its here-items
+    again.
+* *The equation version fails beyond `◇`-free contents.*  With `ret_monoS`, `∃`-introduction,
+  `ret_extS` and `henk`, the coherence condition can be written as `eqRec` at `□(bc A)`.  That
+  works exactly when `bc A` is `◇`-free.  At `◇`-typed items there is no equation, and none is
+  wanted (no cross-witness equality).
+
+*Option checked: a returnable shape whose value is the whole image.*
+* *Not by changing `.box`.*  Making `NShape.flat (.box A)` `bc(□A)` would make T off differ
+  definitionally: `bc(□A) = A` holds only propositionally (`bc_box_noT`), so every T-off proof
+  would need casts.
+* *A new shape constructor* `boxT A`, used under T only.  The object is `□A`; the value is
+  `A × bcB true A`, definitionally.  "Comes back as `⟨o₁, o₂⟩`": the contents along the way
+  home `Ind o₁`, and the image of the value here along it `Ind o₂`.  The image is the semantic
+  `img_A : Dom A k → R k s → Dom (bc A) s`, by recursion on `A`, with
+  `img_{□A'}(o, r) = ⟨necEval o r, img_{A'}(necEval o refl, r)⟩`, which needs T's own arrow.
+  Coherence then holds by definition: the object stays `d : □A`, and no relation is stated at
+  any type.
+* *Rules.*
+  * **Existence (new rule):** `◇_O[d ↦ t] Φ ⊢ ◇_O^{boxT}[d ↦ ⟨t, z⟩] Φ` for a fresh `z`, as an
+    `∃`-elimination like `ret_extS`.  Sound by `z := img(d.here, r)`.  It is an existence rule
+    for a `□` part (the here-items are box contents), as §11.18's discipline allows.  It is not
+    derivable: no current rule names the return of `d.here`'s items.
+  * **Packing (new `ShapeMap` constructor `packT`):**
+    `boxT A → box(bc(□A))`, with object `d ↦ □(d.box, items(d.here))` (`tupB` at `true`) and
+    value the identity.  It is not a contents hole, since `d.here` is outside the contents, so
+    `hole` does not cover it.  Its `comesBack` proof is `img`'s definition.
+  * **Forgetting `boxT → box`** (value `.fst`), a `ShapeMap`: derivable or one more constructor.
+* *Use in the construction.*
+  1. Existence: get `z`, then alias `w` for `⟨t, z⟩`.
+  2. `ret_map` along `packT`, and `ret_obl`'s hole `x ↦ ⟨(), x⟩`, to the obligation at
+     `□(1 × bc(□A))` valued at `⟨(), w⟩`.
+  3. At the child, `□(tup)` is `packT` of `c` by `tupB`'s definition, so the seed's pull-back
+     matches the slot.
+  4. Truth cases for user atoms at `boxT`: membership ⇒ truth through `packT`.  Truth ⇒
+     membership through `RetIn`: an object `□g'` at `k` has here-items `items(collapse g')`,
+     which are terms over the committed tuple, so a value map exists.  Plausible, unchecked.
+* *Cost.*  One new rule, one shape constructor (every match on `NShape` gains a case: syntax,
+  semantics, soundness, substitution, the truth cases), one or two `ShapeMap` constructors and
+  the semantic `img`.  T-off definitions and proofs are unchanged except for the new cases.
+
+*Option checked: a content restriction.*  Under T, restrict strong B's contents so that `□`
+components carry `◇`-free contents.  The `eqRec` version then works with no new rule.  But this
+reintroduces a content restriction, against §11.15's decision ("`◇`-typed contents cannot wait").
+
+*Recommendation, for the user.*  The `boxT` shape: it is the only option found that is coherent at
+every content type, and its new rule is an existence rule for a `□` part.
 
 **Risk 2: the own arrow in the truth cases.  Likely new rules; for the user.**  Under T the
 frame's arrows include each world's own arrow, with the identity as its way home.  The table:
@@ -7238,11 +7290,13 @@ frame's arrows include each world's own arrow, with the identity as its way home
   since `retS`'s size is `Φ.size + eqRecSize + 1`.
 
 **Order.**
-1. The rule decision for risk 2 (`ret_hereS`, `back_here` on the leg), by the user; then the
-   two rules with soundness and `Proof.subst`.
+1. The decisions, by the user:
+   * risk 1: `boxT` with its existence rule, or the content restriction;
+   * risk 2: `ret_hereS` and `back_here` on the leg.
+   Then the rules with soundness and `Proof.subst`.
 2. Commitments: make the obligation maps (`oblS/oblB/oblSD/oblBD`), the pull-backs
    (`retPullS/D/X/XD`) and the births flag-generic by mirroring the forward `tupB`, never by cast.
-   Add the `ret_extS` + `henk` step of risk 1 and redo the four seed-consistency proofs.
+   Add risk 1's existence step (`boxT`, `packT`) and redo the four seed-consistency proofs.
 3. Network: drop `hT` from `GoodS.mk*`, `applyOpT`, `netS` and `strongChainS`.
 4. Limit: the own-arrow cases of risk 2, `leg_unique` per risk 3, the decoder split.
 5. Statements: drop `NoFour.noTStrong`, so `NoFour` is 4 off only; `exists_canonB` loses `hT`.

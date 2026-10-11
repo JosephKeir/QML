@@ -234,8 +234,10 @@ style of milestone 1, each ending green and committed:
    (every presented context), strong completeness and compactness hold for strong B with T off,
    rows 1–2, at every content type.
 7. **Strong B with T** (`v12-modal-extensions.md` §11.21, planned 2026-10-11).
-   * *Back commitments under T*: the born root's `here` items, named by `ret_extS` and the Henkin
-     step.  Resolved on paper, no new rule.
+   * *Back commitments under T*: a born root's `here` items must come back, coherently with the
+     object.  An equation works only when `□` contents are `◇`-free.  In general: a new shape
+     `boxT` (value = the whole image `bc(□A)`), an existence rule and a `ShapeMap` `packT`;
+     the user decides.
    * *The own arrow in the truth cases*: products are derivable; witnessed shapes, the `◇_x` leg
      and `Back` row 2 are not.  Proposed: `ret_hereS` (every shape and leg) and `back_here` on
      the leg; the user decides.
