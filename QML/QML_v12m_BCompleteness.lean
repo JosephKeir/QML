@@ -43,6 +43,8 @@ theorem completenessB (hB : ModalSys.B = true) {l₀ : List VarType} {Δ : List 
       exact List.mem_cons_self
   obtain ⟨hSM, hM₀⟩ := complete_spec hS
   let B := bdata (weakChain hB hM₀)
+  have hST : ∀ hS : ModalSys.BStrong = true, B.StrongTruth hS :=
+    fun hS => (ModalSys.NoFour.absurdStrong hS).elim
   let s : B.W := B.actual
   have hle : (ctxOf l₀).Le ((B.w s).ctx 0) :=
     ctxOf_le_of_suffix ((weakChain hB hM₀).lang_suffix (Nat.zero_le _) trivial)
@@ -51,10 +53,10 @@ theorem completenessB (hB : ModalSys.B = true) {l₀ : List VarType} {Δ : List 
   have hg := (ext_net hB hM₀ (Nat.zero_le (birth (weakChain hB hM₀) s.2 + 0))).grows [] trivial
   have hmem : ∀ ψ ∈ S, WFF.mono hle ψ ∈ (B.w s).M 0 := fun ψ hψ =>
     hg.sub ψ (show ψ ∈ ((net (complete S) 0).st []).M from hSM hψ)
-  have hsat := hval B.model BData.indInvariant env₀
+  have hsat := hval B.model (BData.indInvariant hST) env₀
     (Ctx.Presented.noProjLast _) fun ψ hψ =>
-    (Model.sat_mono hag ψ).mp ((BData.truth s 0 _).mpr (hmem ψ (Or.inl hψ)))
-  have hφ := (BData.truth s 0 _).mp ((Model.sat_mono hag φ).mpr hsat)
+    (Model.sat_mono hag ψ).mp ((BData.truth hST s 0 _).mpr (hmem ψ (Or.inl hψ)))
+  have hφ := (BData.truth hST s 0 _).mp ((Model.sat_mono hag φ).mpr hsat)
   exact ((B.w s).mcs 0).neg_mem_iff.mp (hmem φ.neg (Or.inr rfl)) hφ
 
 /-- ⭐**Soundness and completeness for weak B**, in a context of declared variables. -/

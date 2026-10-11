@@ -134,6 +134,8 @@ theorem substEnv_repSubst (hnp : Γ.NoProjLast) :
 
 end Represent
 
+variable (hST : ∀ hS : ModalSys.BStrong = true, B.StrongTruth hS)
+include hST in
 /-- Invariance for B's canonical model, as the tree's (`Canon.indInvariant_inv`).  Over a
     tame context an environment is the canonical one at a stage, read through a substitution
     (`substEnv_repSubst`); so a slot formula with an object in its slot is true exactly when the
@@ -182,7 +184,7 @@ theorem indInvariant_inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLas
       _ ↔ B.model.sat (B.canonEnv s K') (WFF.instantiate Ctx.NoSlots.slots (u.lift K' hu)
             (WFF.mono (((B.w s).le hK).insert (.bnd 0) A) φ')) := by
           rw [Model.sat_instantiate (B.canonEnv s K') (noProjLast s K'), hval]
-      _ ↔ _ := truth s K' _
+      _ ↔ _ := truth hST s K' _
   obtain ⟨u, u', hu, hu', hrel⟩ := hInd
   have hK : repSup env hfin ≤ max (repSup env hfin) (max u.i u'.i) := le_max_left _ _
   have h₁ : u.i ≤ max (repSup env hfin) (max u.i u'.i) :=
@@ -206,11 +208,12 @@ theorem rden_holeAt {s : B.W} {A : VarType} {o : B.model.frame.Dom A s}
   rw [Model.interp_holeAt, e2] at e1
   rw [e1, B.fromDom_toDom]
 
+include hST in
 /-- ⭐⭐**B's canonical model is a model proper**: invariance (`indInvariant_inv`) and the
     congruence laws (§11.15): related representatives stay related under hole terms and pairing
     (`DTerm.Rel.holeAt`, `DTerm.Rel.pair`). -/
 theorem indInvariant : B.model.IndInvariant where
-  inv := indInvariant_inv
+  inv := indInvariant_inv hST
   map := by
     intro A C c hh s o o' ⟨u, u', hu, hu', hrel⟩
     exact ⟨⟨u.i, _, Term.holeAt u.t hh⟩, ⟨u'.i, _, Term.holeAt u'.t hh⟩, rden_holeAt u hu hh,

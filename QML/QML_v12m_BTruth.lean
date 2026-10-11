@@ -117,6 +117,37 @@ theorem sat_back_of_mem (hB : ModalSys.BStrong = true) {s : B.W} {i : ℕ} {L : 
   rw [interp_canon c (Model.Env.Agree.refl' _), interp_canon t (Model.Env.Agree.refl' _)]
   exact Or.inr ⟨hB, i, L, b, c, a, t, h, by cases L <;> rfl, rfl⟩
 
+variable (B) in
+/-- What the truth lemma's induction step needs at the size of `φ`: the lemma below it. -/
+def TruthBelow {s : B.W} {i : ℕ} (φ : WFF σ ((B.w s).ctx i) 0) : Prop :=
+  ∀ (s' : B.W) (K : ℕ) (ψ : WFF σ ((B.w s').ctx K) 0), ψ.size < φ.size →
+    (B.model.sat (B.canonEnv s' K) ψ ↔ ψ ∈ (B.w s').M K)
+
+variable (B) in
+/-- ⭐**The truth lemma's strong B cases** (`Back` and the returning possibilities), given the
+    lemma below them.  Abstracted so that the truth lemma stays here; the limit of a strong
+    chain has them (`bdataS_strongTruth`). -/
+structure StrongTruth (hS : ModalSys.BStrong = true) : Prop where
+  back : ∀ {s : B.W} {i : ℕ} {L : BLeg} {A : VarType} {b : Ann (L.carrier A)} {a : Ann A}
+    (c : Term σ ((B.w s).ctx i) (L.carrier A) b) (t : Term σ ((B.w s).ctx i) A a),
+    B.TruthBelow (WFF.back hS L c t : WFF σ _ 0) →
+      (B.model.sat (B.canonEnv s i) (WFF.back hS L c t : WFF σ _ 0) ↔
+        (WFF.back hS L c t : WFF σ _ 0) ∈ (B.w s).M i)
+  retS : ∀ {s : B.W} {i : ℕ} {S : RShape} {a : Ann S.flat} (t : Term σ ((B.w s).ctx i) S.flat a)
+    (Φ : WFF σ (((B.w s).ctx i).boxIn.insert (.bnd 0) S.ty) 1),
+    B.TruthBelow (WFF.retS hS S t Φ : WFF σ _ 0) →
+      (B.model.sat (B.canonEnv s i) (WFF.retS hS S t Φ : WFF σ _ 0) ↔
+        (WFF.retS hS S t Φ : WFF σ _ 0) ∈ (B.w s).M i)
+  retxS : ∀ {s : B.W} {i : ℕ} {y : VarSymb} (hy : ∃ Y, ((B.w s).ctx i).ref y = some (.VTypeDia Y))
+    {S : RShape} {a : Ann S.flat} (t : Term σ ((B.w s).ctx i) S.flat a)
+    (Φ : WFF σ ((((B.w s).ctx i).diaIn y).insert (.bnd 0) S.ty) 1),
+    B.TruthBelow (WFF.retxS hS y hy S t Φ : WFF σ _ 0) →
+      (B.model.sat (B.canonEnv s i) (WFF.retxS hS y hy S t Φ : WFF σ _ 0) ↔
+        (WFF.retxS hS y hy S t Φ : WFF σ _ 0) ∈ (B.w s).M i)
+
+variable (hST : ∀ hS : ModalSys.BStrong = true, B.StrongTruth hS)
+include hST
+
 theorem truth_lt :
     ∀ (n : ℕ) (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i) 0), φ.size < n →
     (B.model.sat (B.canonEnv s i) φ ↔ φ ∈ (B.w s).M i)
@@ -143,9 +174,12 @@ theorem truth_lt :
           | diatm x hx bd =>
               exact here_truth hT hx bd t (fun K _ u u' => truth_lt n s K _ (by
                 rw [WFF.size_eqRec]; simp only [WFF.size] at hφ; omega))
-      | back hB _ _ _ => exact (ModalSys.NoFour.absurdStrong hB).elim
-      | retS hB _ _ _ => exact (ModalSys.NoFour.absurdStrong hB).elim
-      | retxS hB _ _ _ _ _ => exact (ModalSys.NoFour.absurdStrong hB).elim
+      | back hB L c t =>
+          exact (hST hB).back c t fun s' K ψ h => truth_lt n s' K ψ (by omega)
+      | retS hB S t Φ =>
+          exact (hST hB).retS t Φ fun s' K ψ h => truth_lt n s' K ψ (by omega)
+      | retxS hB y hy S t Φ =>
+          exact (hST hB).retxS hy t Φ fun s' K ψ h => truth_lt n s' K ψ (by omega)
       | and φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega
@@ -311,7 +345,7 @@ theorem truth_lt :
 /-- ⭐**The truth lemma** for B's canonical model. -/
 theorem truth (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i) 0) :
     B.model.sat (B.canonEnv s i) φ ↔ φ ∈ (B.w s).M i :=
-  truth_lt (φ.size + 1) s i φ (Nat.lt_succ_self _)
+  truth_lt hST (φ.size + 1) s i φ (Nat.lt_succ_self _)
 
 end BData
 
