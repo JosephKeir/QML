@@ -7189,8 +7189,34 @@ frame's arrows include each world's own arrow, with the identity as its way home
   `here_intro` gives `◇_x` of a reading, not a `retx`.  Candidate: the same rule on the leg `O`.
 * *`Back`.*  The canonical `Ret_fwd` at the own arrow: row 1 by `back_here`; row 2 (carrier
   `◇_y □bd`, `y` realised) has no rule.  Candidate: `back_here` on the leg `O`.
-* *Next.*  Before proposing rules, check derivability: the units `ret_unitW`/`ret_unitD` with
-  `here_intro`/`here_elim`, and the `Here` reading of the witnessed unit.
+* *Derivability check (2026-10-11, paper).*
+  * *Products: derivable.*  Use `ret_here` at `□(N.flat)`, then `ret_map` along the unpacking
+    `pair (hole fst) (hole snd)` (recursively), whose value map is the identity on `N.flat`.
+  * *Witnessed shapes: not derivable.*  A `ret` atom never fixes its arrow.  So no rule can add
+    "the arrow found is in `p`'s extent" to an atom: `ret_extS` adds necessary companions only,
+    and the units (`ret_unitW`, `ret_unitD`, `ret_unitWD`) add nested bodies, not a possible part
+    of the value.  `ret_here` is the only rule that fixes the arrow (to the own one), and it is
+    `□`-shaped.
+  * *The `◇_x` leg: not derivable.*  Forgetting goes from `retx` to `ret`
+    (`retxS_forget_node`), never back: nothing places the arrow in `x`'s extent.  `here_intro`
+    gives `◇_x` of a reading, not a `retx`.
+  * *`Back` row 2 at the own arrow: not derivable.*  One direction of interchangeability
+    suffices for `Ind`: take `χ` and `¬χ`.  `back_counit` gives the direction from the carrier to
+    `t` only if `◇_y □χ(bd)`.  Getting that from `χ` of the realised content needs
+    `χ ⊢ □χ'`, which is necessitation of an open formula and is not available.  `back_here` has
+    only the plain leg.
+* *Proposal, for the user.*  Two rules, both generalising existing own-arrow rules over shape and
+  leg (as `ret_eq` became `ret_eqS`, and every `ret` rule took a leg `O`):
+  * **`ret_hereS`** (any leg `O`, any shape `S`).  The own arrow is an arrow of the leg, and its
+    way home is the identity.  From `hereRead` of the object (`⟨□sb, p⟩` at a witnessed shape),
+    with the leg's witness realised (`Here` for `x` when `O = pos x`) and the possible part
+    realised (`Here(p, u)` at a witnessed shape), conclude
+    `◇_O[⟨d, e⟩ ↦ ⟨collapse sb, u⟩] Φ`.  `ret_here` is its plain `□` instance.
+  * **`back_here` on the leg `O`.**  Row 2: with `y` realised, the realised content's body read
+    twice at the own arrow is interchangeable with `t`.
+  * Both are sound by the own arrow (reflexive under T, the identity its way home), as the
+    current two are.  Their exact form, especially the reading of `x`'s view at the own arrow
+    (`viewReadTm`, as in `here_elim`), is to be written when building.
 
 **Risk 3: one name per leg under T.  Resolved on paper.**  The pair law of `RetCongr` and the
 `back` cases use `leg_unique`/`univ_ne_extent`.  Under T a witness's extent may hold the own arrow.
@@ -7202,16 +7228,18 @@ frame's arrows include each world's own arrow, with the identity as its way home
   holds a network arrow, which has one label.
 
 **Lesser risks.**
-* *Decoder*: the case split as planned.  `ImgInj` is needed only with T off; to check that no
-  chain lemma asks for it under T.
+* *Decoder*: the case split as planned.  `ImgInj` is needed only with T off, but
+  `mem_ret_of_ind`, `mem_ret_of_sat_*` and `mem_back_of_sat_*` take it as a hypothesis.  Under T
+  they should take the T decoder (`ann_eq_of_rden`) instead: a disjunction, or a field of
+  `StrongTruth`'s inputs.
 * *Strong T with strong B*: realised witnesses meet `Back` atoms through `back_here`; not yet
   exercised.
 * *Sizes*: `ret_here`'s premise `hereRead (□sb) Φ` must be smaller than the `ret`.  Expected,
   since `retS`'s size is `Φ.size + eqRecSize + 1`.
 
 **Order.**
-1. Finish this paper pass: the derivability check for risk 2's table, then the rule decisions,
-   for the user.
+1. The rule decision for risk 2 (`ret_hereS`, `back_here` on the leg), by the user; then the
+   two rules with soundness and `Proof.subst`.
 2. Commitments: make the obligation maps (`oblS/oblB/oblSD/oblBD`), the pull-backs
    (`retPullS/D/X/XD`) and the births flag-generic by mirroring the forward `tupB`, never by cast.
    Add the `ret_extS` + `henk` step of risk 1 and redo the four seed-consistency proofs.
