@@ -292,6 +292,126 @@ theorem home_oblRead {lk : List VarType} (hcl : [VarType.VTypeBox A] <:+ lk) {Δ
   change VarSymb.root (.free (img 0)) = _
   rw [hy0]
 
+/-! ### At a witnessed shape -/
+
+section Wit
+
+variable (Z : VarType)
+
+/-- The object's map into the witnessed obligation: `z ↦ ⟨⟨(), z⟩, ()⟩`. -/
+def oblSD : Term σ (Ctx.empty.insert (.bnd 0) A) (bcT (bclD A Z))
+    (.prod (.prod .one (Ann.eta (.root (.bnd 0)) (VarType.VTypeBox A).bc)) .one) :=
+  Term.pair (Term.pair .unit (Term.eta (.root (.bnd 0)) _ (oblS_ref hT A))) .unit
+
+omit [ModalSys.NoFour] in
+theorem oblBD_ref :
+    ((Ctx.empty.insert (.bnd 0) (RShape.wit (.box (bcT (bclD A Z))) Z).ty).boxIn).ref
+      (.step (.step (VarSymb.step (.root (.bnd 0)) .fst).inner .fst) .snd) = some A :=
+  (Ctx.ref_snd_of (Ctx.ref_fst_of (Ctx.ref_inner (Ctx.ref_fst_of
+    (Ctx.ref_insert_root _ _ _))))).trans (congrArg some (bc_box_noT hT A))
+
+/-- The body's map back at the witnessed shape: `⟨d, e⟩ ↦ ⟨□(d.box.fst.snd), e⟩`. -/
+def oblBD : Term σ (Ctx.empty.insert (.bnd 0) (RShape.wit (.box (bcT (bclD A Z))) Z).ty)
+    (RShape.wit (.box A) Z).ty
+    (.prod (.box (Ann.eta (.step (.step (VarSymb.step (.root (.bnd 0)) .fst).inner .fst) .snd)
+      A)) (Ann.eta (.step (.root (.bnd 0)) .snd) (.VTypeDia Z))) :=
+  Term.pair
+    (Term.boxtm (Term.eta (.step (.step (VarSymb.step (.root (.bnd 0)) .fst).inner .fst) .snd) A
+      (oblBD_ref hT A Z)))
+    (Term.eta (.step (.root (.bnd 0)) .snd) (.VTypeDia Z)
+      (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)))
+
+/-- ⭐The witnessed maps compose to the identity on the object. -/
+theorem holeAt_hole_oblBD :
+    (⟨_, Term.holeAt (ShapeMap.liftObj (σ := σ) (.wit (.box A) Z) (.hole (oblSD hT A Z))).2
+      (oblBD hT A Z)⟩ :
+      Σ c, Term σ (Ctx.empty.insert (.bnd 0) (RShape.wit (.box A) Z).ty)
+        (RShape.wit (.box A) Z).ty c) =
+      ⟨_, Term.eta (.root (.bnd 0)) (RShape.wit (.box A) Z).ty (Ctx.ref_insert_root _ _ _)⟩ := by
+  have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (RShape.wit (.box A) Z).ty
+  have hin : ((Ctx.empty.insert (.bnd 0) (.VTypeBox A)).boxIn).ref (VarSymb.root (.bnd 0)).inner =
+      some A := Ctx.ref_inner (Ctx.ref_insert_root _ _ _)
+  -- the hole term at the slot's own item
+  have hH : (⟨_, Term.holeAt (Term.eta (VarSymb.root (.bnd 0)).inner A hin) (oblSD hT A Z)⟩ :
+      Σ c, Term σ _ (bcT (bclD A Z)) c) =
+      ⟨_, Term.pair (Term.pair .unit (Term.eta (VarSymb.root (.bnd 0)).inner
+        (VarType.VTypeBox A).bc (hin.trans (congrArg some (bc_box_noT hT A).symm)))) .unit⟩ := by
+    unfold Term.holeAt oblSD
+    refine sig_pair (sig_pair rfl (Term.subst_eta_eta _ _ _ (bc_box_noT hT A).symm _ hin ?_)) rfl
+    change Subst.single _ _ (.root (.bnd 0)) = _
+    exact if_pos rfl
+  have hfi : (RShape.wit (.box A) Z).ty.step .fst = some (.VTypeBox A) := rfl
+  have hfin : ((Ctx.empty.insert (.bnd 0) (RShape.wit (.box A) Z).ty).boxIn).ref
+      (VarSymb.step (.root (.bnd 0)) .fst).inner = some A :=
+    Ctx.ref_inner (Ctx.ref_fst_of hu)
+  -- the necessary part's image under the hole map, at the slot's first component
+  have hP : (⟨_, Term.holeAt (Term.eta (.step (.root (.bnd 0)) .fst) (.VTypeBox A)
+      (Ctx.ref_fst_of hu)) (ShapeMap.hole (σ := σ) (oblSD hT A Z)).obj.2⟩ :
+      Σ c, Term σ _ (.VTypeBox (bcT (bclD A Z))) c) =
+      ⟨_, Term.boxtm (Term.pair (Term.pair .unit
+        (Term.eta (VarSymb.step (.root (.bnd 0)) .fst).inner (VarType.VTypeBox A).bc
+          (hfin.trans (congrArg some (bc_box_noT hT A).symm)))) .unit)⟩ := by
+    unfold Term.holeAt
+    refine sig_boxtm ((Term.subst_sig_congr _ _ _ hH).trans ?_)
+    refine sig_pair (sig_pair rfl (Term.subst_eta_eta _ _ _ (bc_box_noT hT A).symm _ hfin ?_)) rfl
+    exact Subst.box_at_inner_boxtm _ (by
+      change Subst.single _ _ (.root (.bnd 0)) = _
+      exact if_pos rfl)
+  dsimp only [ShapeMap.liftObj]
+  refine (Term.holeAt_congr_sig (sig_pair hP rfl) _).trans ?_
+  unfold Term.holeAt oblBD
+  refine sig_pair (sig_boxtm (Term.subst_eta_eta _ _ _ (bc_box_noT hT A) _
+    (hfin.trans (congrArg some (bc_box_noT hT A).symm)) ?_)) (Term.subst_eta_tm _ _ _ _ _ _ _ ?_)
+  · rw [Subst.at_proj _ _ rfl, Subst.at_proj _ _ rfl, Subst.box_at_inner_boxtm _ (by
+      rw [Subst.at_proj _ _ rfl]
+      change SubE.proj (Subst.single _ _ (.root (.bnd 0))) .fst = _
+      rw [show Subst.single (σ := σ) (Δ := Ctx.empty.insert (.bnd 0) (RShape.wit (.box A) Z).ty)
+        (.bnd 0) (.tm (Term.pair _ _)) (.root (.bnd 0)) = .tm (Term.pair _ _) from if_pos rfl]
+      rfl)]
+    rfl
+  · rw [Subst.at_proj _ _ rfl]
+    change SubE.proj (Subst.single _ _ (.root (.bnd 0))) .snd = _
+    rw [show Subst.single (σ := σ) (Δ := Ctx.empty.insert (.bnd 0) (RShape.wit (.box A) Z).ty)
+      (.bnd 0) (.tm (Term.pair _ _)) (.root (.bnd 0)) = .tm (Term.pair _ _) from if_pos rfl]
+    rfl
+
+/-- ⭐⭐**A witnessed returning possibility at aliases becomes the witnessed obligation**:
+    `◇_O[⟨d, e⟩ ↦ ⟨y, z⟩] Φ` gives `◇_O[⟨d', e⟩ ↦ ⟨⟨⟨(), y⟩, o⟩, z⟩] Φ(⟨□(d'.box.fst.snd), e⟩)`
+    for any unit root `o` — `ret_map` along `z ↦ ⟨⟨(), z⟩, ()⟩` (`holeAt_hole_oblBD`). -/
+theorem ret_oblD (hS : ModalSys.BStrong = true) {l : List VarType} (O : OutLeg (ctxOf l))
+    {M : Set (WFF σ (ctxOf l) 0)} (hM : Theory.IsMCS M) {y z o : ℕ}
+    (hy : (ctxOf l).ref (.root (.free y)) = some A)
+    (hz : (ctxOf l).ref (.root (.free z)) = some Z)
+    (ho : (ctxOf l).ref (.root (.free o)) = some .VTypeOne)
+    (Φ : WFF σ (O.view.insert (.bnd 0) (RShape.wit (.box A) Z).ty) 1)
+    (h : O.retS hS (.wit (.box A) Z)
+      (Term.pair (Term.eta (.root (.free y)) A hy) (Term.eta (.root (.free z)) Z hz)) Φ ∈ M) :
+    O.retS hS (.wit (.box (bcT (bclD A Z))) Z)
+      (Term.pair (tupImgT (bclD A Z) (backImgD y o)
+          (backImgD_ok l A Z (hy.trans (congrArg some (bc_box_noT hT A).symm)) ho)).2
+        (Term.eta (.root (.free z)) Z hz))
+      (WFF.bodyRepl (Term.mono ((Ctx.empty_le _).insert (.bnd 0) _) (oblBD hT A Z)) Φ) ∈ M := by
+  refine hM.closed ⟨[_], fun x hx => by rw [List.mem_singleton.mp hx]; exact h, ⟨?_⟩⟩
+  refine Proof.conv ?_ (Proof.ret_map hS O (S := .wit (.box A) Z) (.hole (oblSD hT A Z))
+    (Term.pair (Term.eta (.root (.free y)) A hy) (Term.eta (.root (.free z)) Z hz))
+    (WFF.bodyRepl (Term.mono ((Ctx.empty_le _).insert (.bnd 0) _) (oblBD hT A Z)) Φ)
+    (Proof.conv ?_ (Proof.lookup List.mem_cons_self)))
+  · refine OutLeg.retS_congr hS O (.wit (.box (bcT (bclD A Z))) Z) ?_ rfl
+    rw [Term.holeRead_eq_holeAt]
+    refine (holeAt_liftVal_wit (ShapeMap.hole (oblSD hT A Z)) (Term.eta (.root (.free y)) A hy)
+      (Term.eta (.root (.free z)) Z hz)).trans ?_
+    refine sig_pair ?_ rfl
+    dsimp only [ShapeMap.val]
+    unfold Term.holeAt oblSD
+    refine sig_pair (sig_pair rfl (Term.subst_eta_eta _ _ _ (bc_box_noT hT A).symm _ hy ?_)) rfl
+    change Subst.single _ _ (.root (.bnd 0)) = _
+    exact if_pos rfl
+  · change O.retS hS _ _ Φ = O.retS hS _ _ (WFF.bodyRepl _ (WFF.bodyRepl _ Φ))
+    rw [WFF.bodyRepl_bodyRepl, WFF.bodyRepl_congr (sig_mono _ (holeAt_hole_oblBD hT A Z))]
+    exact congrArg (O.retS hS _ _) (WFF.bodyRepl_eta Φ).symm
+
+end Wit
+
 end Obl
 
 /-- ⭐**A returning possibility moves to an alias**: the alias formulas at the atom's slot formula
@@ -899,6 +1019,40 @@ def retS_packN (hS : ModalSys.BStrong = true) {Γ : Ctx} [Γ.NoSlots] (O : OutLe
   dsimp only [ShapeMap.liftObj]
   rw [WFF.bodyRepl_congr (sig_mono _ (holeAt_packN_unpackN_slot N))]
   exact congrArg (O.retS hS (.nec N) t) (WFF.bodyRepl_eta Φ).symm
+
+/-- The unpacking at a witnessed shape: the necessary part unpacked, the possible part kept. -/
+def unpackW (N : NShape) (Z : VarType) :
+    Σ b, Term σ (Ctx.empty.insert (.bnd 0) (RShape.wit (.box N.flat) Z).ty) (RShape.wit N Z).ty b :=
+  ⟨_, Term.pair (Term.holeAt (Term.eta (.step (.root (.bnd 0)) .fst) (.VTypeBox N.flat)
+      (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))) (unpackN N).2)
+    (Term.eta (.step (.root (.bnd 0)) .snd) (.VTypeDia Z)
+      (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)))⟩
+
+/-- Packing then unpacking at a witnessed shape, on the slot. -/
+theorem holeAt_packN_unpackW (N : NShape) (Z : VarType) :
+    (⟨_, Term.holeAt (ShapeMap.liftObj (σ := σ) (.wit N Z) (packN N)).2 (unpackW N Z).2⟩ :
+      Σ e, Term σ (Ctx.empty.insert (.bnd 0) (RShape.wit N Z).ty) (RShape.wit N Z).ty e) =
+      ⟨_, Term.eta (.root (.bnd 0)) (RShape.wit N Z).ty (Ctx.ref_insert_root _ _ _)⟩ := by
+  dsimp only [ShapeMap.liftObj, unpackW]
+  refine sig_pair ?_ (Term.holeAt_pair_snd _ _)
+  refine (Term.holeAt_holeAt_sig _ _ _).trans ((Term.holeAt_congr_sig
+    (Term.holeAt_pair_fst _ _) _).trans ?_)
+  exact holeAt_packN_unpackN N _
+
+/-- ⭐A returning possibility at a witnessed shape is one at `□ × ◇`: `ret_map` along the packing
+    map, the body read back through the unpacking. -/
+def retS_packNW (hS : ModalSys.BStrong = true) {Γ : Ctx} [Γ.NoSlots] (O : OutLeg Γ)
+    {Δ : List (WFF σ Γ 0)} {N : NShape} {Z : VarType} {a : Ann (RShape.wit N Z).flat}
+    (t : Term σ Γ (RShape.wit N Z).flat a)
+    (Φ : WFF σ (O.view.insert (.bnd 0) (RShape.wit N Z).ty) 1)
+    (p : Proof σ Γ Δ (O.retS hS (.wit N Z) t Φ)) :
+    Proof σ Γ Δ (O.retS hS (.wit (.box N.flat) Z)
+      (Term.holeRead t (ShapeMap.liftVal (.wit N Z) (packN N)).2)
+      (WFF.bodyRepl (Term.mono ((Ctx.empty_le _).insert (.bnd 0) _) (unpackW N Z).2) Φ)) := by
+  refine Proof.ret_map hS O (S := .wit N Z) (packN N) t _ (Proof.conv ?_ p)
+  change O.retS hS (.wit N Z) t Φ = O.retS hS (.wit N Z) t (WFF.bodyRepl _ (WFF.bodyRepl _ Φ))
+  rw [WFF.bodyRepl_bodyRepl, WFF.bodyRepl_congr (sig_mono _ (holeAt_packN_unpackW N Z))]
+  exact congrArg (O.retS hS (.wit N Z) t) (WFF.bodyRepl_eta Φ).symm
 
 end Products
 
