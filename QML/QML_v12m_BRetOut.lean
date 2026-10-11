@@ -410,6 +410,71 @@ theorem ret_oblD (hS : ModalSys.BStrong = true) {l : List VarType} (O : OutLeg (
     rw [WFF.bodyRepl_bodyRepl, WFF.bodyRepl_congr (sig_mono _ (holeAt_hole_oblBD hT A Z))]
     exact congrArg (O.retS hS _ _) (WFF.bodyRepl_eta Φ).symm
 
+/-- The back-witness child's object at its committed roots: `⟨□(the roots' tuple), e⟩`. -/
+def oblObjD {lk : List VarType} (hcl : bclD A Z <:+ lk) :
+    Σ b, Term σ (ctxOf lk) (RShape.wit (.box (bcT (bclD A Z))) Z).ty b :=
+  ⟨_, Term.pair (Term.boxtm (Term.mono (ctxOf_le_of_suffix hcl).boxIn (tupT (bclD A Z)).2))
+    (Term.eta (.root (.free 1)) (.VTypeDia Z) ((ctxOf_le_of_suffix hcl).ref (bclD_e A Z)))⟩
+
+/-- The witnessed obligation's body read at the child: the necessary part's item, `c`'s item read
+    at `A`. -/
+def oblReadD {lk : List VarType} (hcl : bclD A Z <:+ lk) : Σ b, Term σ (ctxOf lk).boxIn A b :=
+  ⟨_, Term.subst _ (Subst.single (.bnd 0) (.tm (oblObjD (σ := σ) A Z hcl).2)).box
+    (Subst.ok_box (Subst.ok_single (Ctx.empty_le _) rfl))
+    (Subst.coh_box (Subst.ok_single (Ctx.empty_le _) rfl)
+      (Subst.coh_single (Ctx.RootFresh.empty _) (Ctx.empty_le _) rfl))
+    (Term.eta (.step (.step (VarSymb.step (.root (.bnd 0)) .fst).inner .fst) .snd) A
+      (oblBD_ref hT A Z))⟩
+
+/-- The witnessed obligation's body at the child's object: `⟨□g, e⟩`. -/
+theorem holeAt_oblBD {lk : List VarType} (hcl : bclD A Z <:+ lk) :
+    (⟨_, Term.holeAt (oblObjD (σ := σ) A Z hcl).2 (oblBD hT A Z)⟩ :
+      Σ c, Term σ (ctxOf lk) (RShape.wit (.box A) Z).ty c) =
+      ⟨_, Term.pair (Term.boxtm (oblReadD hT A Z hcl).2)
+        (Term.eta (.root (.free 1)) (.VTypeDia Z)
+          ((ctxOf_le_of_suffix hcl).ref (bclD_e A Z)))⟩ := by
+  unfold Term.holeAt oblBD
+  refine sig_pair rfl (Term.subst_eta_tm _ _ _ _ _ _ _ ?_)
+  rw [Subst.at_proj _ _ rfl]
+  change SubE.proj (Subst.single _ _ (.root (.bnd 0))) .snd = _
+  rw [show Subst.single (σ := σ) (Δ := ctxOf lk) (.bnd 0) (.tm (oblObjD A Z hcl).2)
+    (.root (.bnd 0)) = .tm (oblObjD A Z hcl).2 from if_pos rfl]
+  rfl
+
+/-- ⭐**The back-witness child's object comes home as the alias** (as `home_oblRead`). -/
+theorem home_oblReadD {lk : List VarType} (hcl : bclD A Z <:+ lk) {Δ : Ctx}
+    [Δ.NoSlots] {img : ℕ → ℕ} (himg : ImgOk lk Δ img) {y : ℕ} (hy0 : img 0 = y)
+    (hyΔ : Δ.ref (.root (.free y)) = some A) :
+    (⟨_, Term.subst (arrowIdx img) (arrowS σ Δ img) (ok_arrowS himg) (coh_arrowS himg)
+        (oblReadD hT A Z hcl).2⟩ : Σ b, Term σ Δ A b) =
+      ⟨_, Term.eta (.root (.free y)) A hyΔ⟩ := by
+  have hu : (ctxOf [VarType.VTypeBox A]).ref (.root (.free 0)) = some (.VTypeBox A) :=
+    ctxOf_ref_new _ []
+  have hcl₀ : [VarType.VTypeBox A] <:+ lk := (List.suffix_cons _ _).trans hcl
+  have k1 : oblReadD (σ := σ) hT A Z hcl = Term.castTy (bc_box_noT hT A)
+      (Term.mono (ctxOf_le_of_suffix hcl₀).boxIn (tup (.root (.free 0)) (.VTypeBox A) hu)) := by
+    refine Term.subst_eta_cast _ _ _ (bc_box_noT hT A) _ ?_
+    rw [Subst.at_proj _ _ rfl, Subst.at_proj _ _ rfl, Subst.box_at_inner_boxtm _ (by
+      rw [Subst.at_proj _ _ rfl]
+      change SubE.proj (Subst.single _ _ (.root (.bnd 0))) .fst = _
+      rw [show Subst.single (σ := σ) (Δ := ctxOf lk) (.bnd 0) (.tm (oblObjD A Z hcl).2)
+        (.root (.bnd 0)) = .tm (oblObjD A Z hcl).2 from if_pos rfl]
+      rfl)]
+    change SubE.tm (Term.mono _ (Term.mono _ (tup (.root (.free 0)) (.VTypeBox A) _))) = _
+    rw [Term.mono_mono]
+  have hh : Δ.ref ((VarSymb.root (.free (img 0))).ext
+      (encPath (VarSymb.root (.free 0)).path)) = some (VarType.VTypeBox A).bc := by
+    change Δ.ref (.root (.free (img 0))) = _
+    rw [hy0]
+    exact hyΔ.trans (congrArg some (bc_box_noT hT A).symm)
+  rw [k1]
+  refine (Term.subst_castTy _ _ _ _ _).trans ?_
+  rw [Term.subst_mono]
+  refine (Term.castTy_sig _ (subst_arrow_tupB (himg.suffix hcl₀) ModalSys.T rfl _ (.VTypeBox A)
+    hu rfl hh)).trans ((Term.castTy_eta _ _).trans (eta_addr_congr ?_ _ _))
+  change VarSymb.root (.free (img 0)) = _
+  rw [hy0]
+
 end Wit
 
 end Obl
@@ -752,6 +817,136 @@ theorem lretX (hT : ModalSys.T = false) (s : LW C.toFairChain) (i : ℕ) {A : Va
     change (⟨_, Term.boxtm (Term.mono _ (Term.mono _ _))⟩ : Σ c, Term σ _ _ c) = _
     rw [Term.mono_mono]
 
+omit [ModalSys.NoFour] in
+/-- The witnessed obligation atom, weakened. -/
+theorem mono_retD_obl {l l' : List VarType} (hsuf : l <:+ l') {A X : VarType} {y o z : ℕ}
+    (himg : ImgOk (bclD A X) (ctxOf l) (backImgD y o))
+    (hz : (ctxOf l).ref (.root (.free z)) = some X) (Φ : WFF σ (bodyCtxW (bclD A X) l X) 1) :
+    WFF.mono (ctxOf_le_of_suffix hsuf) (WFF.retS hS (.wit (.box (bcT (bclD A X))) X)
+        (Term.pair (tupImgT (bclD A X) (backImgD y o) himg).2
+          (Term.eta (.root (.free z)) X hz)) Φ) =
+      WFF.retS hS (.wit (.box (bcT (bclD A X))) X)
+        (Term.pair (tupImgT (bclD A X) (backImgD y o) (himg.mono (ctxOf_le_of_suffix hsuf))).2
+          (Term.eta (.root (.free z)) X ((ctxOf_le_of_suffix hsuf).ref hz)))
+        (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) _) Φ) := by
+  change WFF.retS hS (.wit (.box (bcT (bclD A X))) X) (Term.pair (Term.mono _ _) (Term.mono _ _))
+    _ = _
+  exact OutLeg.retS_congr hS .nec _ (sig_pair (tupImgT_mono _ _ _ _) (by rw [Term.mono_eta]))
+    rfl
+
+/-- ⭐**Every witnessed obligation eventually has its back-witness child** (T off). -/
+theorem StrongChain.ret_childD (hT : ModalSys.T = false) {n : ℕ} {s : Node}
+    (hs : (C.net n).Live s) {A X : VarType} {y o z : ℕ}
+    (himg : ImgOk (bclD A X) (ctxOf ((C.net n).st s).l) (backImgD y o))
+    (hz : (ctxOf ((C.net n).st s).l).ref (.root (.free z)) = some X) (hyo : y ≠ o)
+    (Φ : WFF σ (bodyCtxW (bclD A X) ((C.net n).st s).l X) 1)
+    (h : WFF.retS hS (.wit (.box (bcT (bclD A X))) X)
+      (Term.pair (tupImgT (bclD A X) (backImgD y o) himg).2 (Term.eta (.root (.free z)) X hz))
+      Φ ∈ ((C.net n).st s).M) :
+    ∃ m, n ≤ m ∧ ∃ hsuf : ((C.net n).st s).l <:+ ((C.net m).st s).l,
+      ¬ (C.net m).Live ((C.net m).nch s :: s) ∧
+      (C.net (m + 1)).Live ((C.net m).nch s :: s) ∧
+      (C.net (m + 1)).st ((C.net m).nch s :: s) =
+        retChildD hS (himg.mono (ctxOf_le_of_suffix hsuf)) ((ctxOf_le_of_suffix hsuf).ref hz)
+          (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) _) Φ) ∧
+      (C.net (m + 1)).bkind ((C.net m).nch s :: s) = some (.root (.free 1), X) ∧
+      (C.net (m + 1)).bcx ((C.net m).nch s :: s) = z ∧
+      (C.net (m + 1)).fcl ((C.net m).nch s :: s) = ((C.net m).st s).l ∧
+      (C.net (m + 1)).fimg ((C.net m).nch s :: s) = (· + 2) ∧
+      (C.net (m + 1)).bcl ((C.net m).nch s :: s) = bclD A X ∧
+      (C.net (m + 1)).bimg ((C.net m).nch s :: s) = backImgD y o ∧
+      liftBodyW (rclD_suffix ((C.net m).st s).l A X) (rclDImg ((C.net m).st s).l A X)
+        (bclD_e A X) (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) _) Φ) ∈
+          (retChildD hS (himg.mono (ctxOf_le_of_suffix hsuf)) ((ctxOf_le_of_suffix hsuf).ref hz)
+            (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) _) Φ)).M := by
+  obtain ⟨m, hnm, hstep⟩ := C.retDOp s ⟨_, A, X, (y, o, z), Φ⟩ n
+  have hlm := C.live_mono hnm hs
+  have hsuf := C.lang_suffix hnm hs
+  have hg := (C.ext hnm).grows s hs
+  have hM := (C.good m).mcs s hlm
+  have himg' := himg.mono (ctxOf_le_of_suffix hsuf)
+  have hz' := (ctxOf_le_of_suffix hsuf).ref hz
+  have hin : WFF.retS hS (.wit (.box (bcT (bclD A X))) X)
+      (Term.pair (tupImgT (bclD A X) (backImgD y o) himg').2 (Term.eta (.root (.free z)) X hz'))
+      (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) _) Φ) ∈
+        ((C.net m).st s).M := by
+    rw [← mono_retD_obl hsuf himg hz Φ]
+    exact hg.sub _ h
+  have hst : C.net (m + 1) = (C.net m).newChild s none 0
+      (retChildD hS himg' hz' (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) _) Φ))
+      (· + 2) (bclD A X) (backImgD y o) (some (.root (.free 1), X)) z := by
+    rw [hstep hlm]
+    simp only [NetSt.mkRetD, dif_pos hsuf, dif_pos himg', dif_pos hz', if_pos hin, if_pos hyo]
+  refine ⟨m, hnm, hsuf, NetSt.not_live_new s, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · rw [hst]
+    exact (NetSt.live_newChild hlm _ _ _ _).mpr (Or.inr rfl)
+  all_goals first
+    | (rw [hst]; exact Function.update_self _ _ _)
+    | skip
+  exact (retChildD_spec hS himg' hz' hT hM hin).1 (Or.inl rfl)
+
+/-- ⭐⭐**A back-witness child at the limit**: a witnessed obligation at a stage of `s` has a
+    forward edge `s → t` whose way home is a witness edge for `t`'s root `e`, sending `t`'s root
+    `c` to `y`, with content `z`, and the atom's body read along the edge at the child's object
+    (`StrongChain.ret_childD`). -/
+theorem lretD (hT : ModalSys.T = false) (s : LW C.toFairChain) (i : ℕ) {A X : VarType}
+    {y o z : ℕ} (himg : ImgOk (bclD A X) (ctxOf (lat s i)) (backImgD y o))
+    (hz : (ctxOf (lat s i)).ref (.root (.free z)) = some X) (hyo : y ≠ o)
+    (Φ : WFF σ (bodyCtxW (bclD A X) (lat s i) X) 1)
+    (h : WFF.retS hS (.wit (.box (bcT (bclD A X))) X)
+      (Term.pair (tupImgT (bclD A X) (backImgD y o) himg).2 (Term.eta (.root (.free z)) X hz))
+      Φ ∈ ((C.net (birth C.toFairChain s.2 + i)).st s.1).M) :
+    ∃ (t : LW C.toFairChain) (hst : LR C.toFairChain s t)
+      (_ : lkd C.toFairChain t s = some (.root (.free 1), X))
+      (hcl : bclD A X <:+ lat t (lstg C.toFairChain s t i)),
+      limg C.toFairChain t s 0 = y ∧ lcx C.toFairChain t s = z ∧
+      readArrow (limgOk C.toFairChain hst i) (oblObjD A X hcl).2 Φ ∈
+          ((C.net (birth C.toFairChain t.2 + lstg C.toFairChain s t i)).st t.1).M := by
+  classical
+  obtain ⟨m, _, hsuf, hnot, hlive, hst, hbk, hbcx, hfcl, hfimg, hbcl, hbimg, hmem⟩ :=
+    C.ret_childD hT (live_birth C.toFairChain s.2 (Nat.le_add_right _ i)) himg hz hyo Φ h
+  let t : LW C.toFairChain := ⟨(C.net m).nch s.1 :: s.1, m + 1, hlive⟩
+  have hc : t.1 = (C.net m).nch s.1 :: s.1 := rfl
+  have h' : LR C.toFairChain s t := Or.inl ⟨_, hc⟩
+  have hbt : m < birth C.toFairChain t.2 := le_birth C.toFairChain t.2 hnot
+  have hbt' : birth C.toFairChain t.2 ≤ m + 1 := birth_le t.2 hlive
+  have hnb : ¬ ∃ c, s.1 = c :: t.1 := not_fwd_of_back (C := C.toFairChain) (t := s) hc
+  have hkd : lkd C.toFairChain t s = some (.root (.free 1), X) := by
+    rw [lkd, if_neg hnb, if_pos ⟨_, hc⟩, ← bkind_at C.toFairChain t hbt']
+    exact hbk
+  have hlcx : lcx C.toFairChain t s = z := by
+    rw [lcx, if_neg hnb]
+    exact (bcx_at C.toFairChain t hbt').symm.trans hbcx
+  have hg : Grows ((C.net (m + 1)).st ((C.net m).nch s.1 :: s.1))
+      ((C.net (birth C.toFairChain t.2 + lstg C.toFairChain s t i)).st t.1) :=
+    (C.ext (by omega)).grows t.1 hlive
+  rw [hst] at hg
+  have hcl : bclD A X <:+ lat t (lstg C.toFairChain s t i) :=
+    (rclD_suffix _ A X).trans hg.suf
+  refine ⟨t, h', hkd, hcl, ?_, hlcx, ?_⟩
+  · rw [limg, if_neg hnb, bimgL_eq C.toFairChain hlive (by rw [hbcl]; simp), hbimg]
+    rfl
+  · have hm := hg.sub _ hmem
+    have hag : ∀ r < (lat s i).length, r + 2 = limg C.toFairChain s t r := fun r hr => by
+      have hlen : r < ((C.net (m + 1)).fcl t.1).length := by
+        rw [hc, hfcl]
+        exact lt_of_lt_of_le hr hsuf.length_le
+      rw [limg, if_pos ⟨_, hc⟩, fimgL_eq C.toFairChain hlive hlen, hfimg]
+    have himg₀ : ImgOk (lat s i) (ctxOf (rclD ((C.net m).st s.1).l A X)) (· + 2) :=
+      (rclDImg ((C.net m).st s.1).l A X).suffix hsuf
+    have e1 := readArrow_mono_congr hsuf (Ctx.Le.refl _) himg₀ (rclDImg _ A X)
+      (fun r _ => rfl) (oblObjD (σ := σ) A X (rclD_suffix _ A X)).2 Φ
+    rw [Term.mono_refl] at e1
+    change WFF.mono _ (readArrow (rclDImg _ A X) (oblObjD A X (rclD_suffix _ A X)).2 _) ∈ _
+      at hm
+    rw [← e1, WFF.mono_mono, readArrow_mono_congr (List.suffix_refl _) _ himg₀
+      (limgOk C.toFairChain h' i) hag, WFF.mono_refl] at hm
+    refine (congrArg (· ∈ _) (readArrow_sig _ ?_ Φ)).mp hm
+    change (⟨_, Term.pair (Term.boxtm (Term.mono _ (Term.mono _ _)))
+      (Term.mono _ (Term.eta _ _ _))⟩ : Σ c, Term σ _ _ c) = _
+    rw [Term.mono_mono, Term.mono_eta]
+    rfl
+
 end Chain
 
 /-! ## Membership ⇒ truth -/
@@ -1054,6 +1249,15 @@ def retS_packNW (hS : ModalSys.BStrong = true) {Γ : Ctx} [Γ.NoSlots] (O : OutL
   rw [WFF.bodyRepl_bodyRepl, WFF.bodyRepl_congr (sig_mono _ (holeAt_packN_unpackW N Z))]
   exact congrArg (O.retS hS (.wit N Z) t) (WFF.bodyRepl_eta Φ).symm
 
+omit [ModalSys.NoFour] in
+/-- Every term of a product type is a pair. -/
+theorem Term.exists_pair {Γ : Ctx} {A B : VarType} {c : Ann (.VTypeProd A B)}
+    (g : Term σ Γ (.VTypeProd A B) c) :
+    ∃ (a : Ann A) (b : Ann B) (t₁ : Term σ Γ A a) (t₂ : Term σ Γ B b),
+      (⟨c, g⟩ : Σ e, Term σ Γ (.VTypeProd A B) e) = ⟨_, Term.pair t₁ t₂⟩ := by
+  match g with
+  | .pair t₁ t₂ => exact ⟨_, _, t₁, t₂, rfl⟩
+
 end Products
 
 /-! ## Products, semantically -/
@@ -1254,6 +1458,136 @@ theorem sat_retxS_nec_of_mem (hS : ModalSys.BStrong = true) (hRX : B.RetOutX hS)
     ← Model.interp_subst, interp_canon _ (Model.Env.Agree.refl' _),
     ← Model.interp_holeRead (noProjLast s i), interp_canon _ (Model.Env.Agree.refl' _)]
   exact hInd
+
+/-- ⭐**Returning successors at a witnessed shape** (plain leg, `□ × ◇`): a returning possibility
+    valued at a pair has an arrow `s → k`, a term `g` of `k`'s `□` view and a witness `e` of `k`
+    whose way home is the witness edge back, with `Φ(⟨□g, e⟩)` at `k` (read along the arrow); `g`
+    read home is `Ind` to the first value and `e`'s content there to the second.  The limit of a
+    strong chain has it (`bdataS_retOutD`). -/
+def RetOutD (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
+  ∀ {s : B.W} {i : ℕ} {A Z : VarType} {a₁ : Ann A} {a₂ : Ann Z}
+    (t₁ : Term σ ((B.w s).ctx i) A a₁) (t₂ : Term σ ((B.w s).ctx i) Z a₂)
+    (Φ : WFF σ (((B.w s).ctx i).boxIn.insert (.bnd 0) (RShape.wit (.box A) Z).ty) 1),
+    WFF.retS hS (.wit (.box A) Z) (Term.pair t₁ t₂) Φ ∈ (B.w s).M i →
+      ∃ (k : B.W) (h : B.R s k) (j : ℕ) (hj : B.stg s k i ≤ j) (b : Ann A)
+        (g : Term σ ((B.w k).ctx j).boxIn A b) (e : VarSymb)
+        (he : ((B.w k).ctx j).ref e = some (.VTypeDia Z)) (hk : B.kd k s = some (e, Z)),
+        readArrow ((B.imgOk h i).mono ((B.w k).le hj))
+          (Term.pair (Term.boxtm g) (Term.eta e (.VTypeDia Z) he)) Φ ∈ (B.w k).M j ∧
+        B.Ind (B.toDom A s (B.rden s (B.stg k s j) (Ctx.Le.refl _)
+            (Term.subst (arrowIdx (B.img k s)) (arrowS σ _ (B.img k s))
+              (ok_arrowS (B.imgOk (B.symm h) j)) (coh_arrowS (B.imgOk (B.symm h) j)) g))
+            (definable_rden _ _))
+          (B.toDom A s (B.rden s i (Ctx.Le.refl _) t₁) (definable_rden _ _)) ∧
+        B.Ind (B.toDom Z s (B.rden s (B.stg k s j) (Ctx.Le.refl _)
+            (Term.eta (.root (.free (B.cx k s))) Z (B.hcx hk j))) (definable_rden _ _))
+          (B.toDom Z s (B.rden s i (Ctx.Le.refl _) t₂) (definable_rden _ _))
+
+/-- The unpacking at a witnessed shape, semantically. -/
+theorem holeVal_unpackW {k : B.W} (N : NShape) (Z : VarType)
+    (E : B.model.frame.Dom (RShape.wit (.box N.flat) Z).ty k) :
+    B.model.holeVal (unpackW (σ := σ) N Z).2 E =
+      (B.model.holeVal (unpackN (σ := σ) N).2 E.1, E.2) := by
+  unfold Model.holeVal
+  change (Model.interp _ (Term.holeAt _ _), Model.interp _ (Term.eta _ _ _)) = _
+  rw [Model.interp_holeAt, Model.interp_eta_slot_snd]
+  unfold Model.holeVal
+  erw [Model.interp_eta_slot_fst]
+
+/-- The packing's value at a witnessed shape, semantically. -/
+theorem holeVal_liftVal_packN {s : B.W} (N : NShape) (Z : VarType)
+    (o : B.model.frame.Dom (RShape.wit N Z).flat s) :
+    B.model.holeVal (ShapeMap.liftVal (σ := σ) (.wit N Z) (packN N)).2 o =
+      (B.model.holeVal (packN (σ := σ) N).val.2 o.1, o.2) := by
+  unfold Model.holeVal
+  change (Model.interp _ (Term.holeAt _ _), Model.interp _ (Term.eta _ _ _)) = _
+  rw [Model.interp_holeAt, Model.interp_eta_slot_snd]
+  unfold Model.holeVal
+  rw [Model.interp_eta_slot_fst]
+
+/-- ⭐**A canonical witness variable's possible object comes back** along the witness edge home:
+    the way home is in its extent, with content the edge's content variable (`dia_beta`,
+    `diaPush_canon_at`). -/
+theorem posEval_eta_home {k s : B.W} {j : ℕ} {e : VarSymb} {Z : VarType}
+    (he : ((B.w k).ctx j).ref e = some (.VTypeDia Z)) (hk : B.kd k s = some (e, Z))
+    {o : B.model.frame.Dom Z s}
+    (hI : B.Ind (B.toDom Z s (B.rden s (B.stg k s j) (Ctx.Le.refl _)
+      (Term.eta (.root (.free (B.cx k s))) Z (B.hcx hk j))) (definable_rden _ _)) o) :
+    ∃ h : (⟨s, ⟨Or.inl (B.kdR hk)⟩⟩ : B.model.frame.Acc k) ∈ (B.model.posEval
+        (Model.interp (B.canonEnv k j) (Term.eta e (.VTypeDia Z) he) :
+          B.model.frame.Pos Z k)).1,
+      B.Ind ((B.model.posEval (Model.interp (B.canonEnv k j) (Term.eta e (.VTypeDia Z) he) :
+        B.model.frame.Pos Z k)).2 ⟨_, h⟩) o := by
+  have hD : B.model.posEval (Model.interp (B.canonEnv k j) (Term.eta e (.VTypeDia Z) he) :
+      B.model.frame.Pos Z k) = ⟨_, fun w' => Model.interp ((B.canonEnv k j).diaPush e he w')
+        (Term.eta (σ := σ) (.step e .dia) Z (Ctx.ref_diaIn_of he))⟩ :=
+    Model.dia_beta _ ⟨Z, he⟩ he _
+  generalize B.model.posEval (Model.interp (B.canonEnv k j) (Term.eta e (.VTypeDia Z) he) :
+      B.model.frame.Pos Z k) = Q at hD ⊢
+  subst hD
+  have hmem : (⟨s, ⟨Or.inl (B.kdR hk)⟩⟩ : B.Acc k) ∈
+      (B.model.posEval ((B.canonEnv k j).ref e he)).1 := by
+    rw [canonEnv_extent k j he]
+    exact Or.inl ⟨Z, hk⟩
+  refine ⟨hmem, ?_⟩
+  dsimp only
+  rw [diaPush_canon_at k j he ⟨_, hmem⟩ hk le_rfl,
+    ← Model.interp_subst (ι := arrowXIdx (B.img k s) e (B.cx k s)) _ _
+      (coh_arrowXS ((B.imgOk (B.kdR hk) j).mono ((B.w s).le le_rfl)) he
+        (((B.w s).le le_rfl).ref (B.hcx hk j)))]
+  rw [← interp_canon_eta] at hI
+  refine (congrArg (fun x => B.Ind x o) ?_).mpr hI
+  refine congrArg (fun p : Σ b, Term σ ((B.w s).ctx (B.stg k s j)) Z b =>
+    Model.interp (B.canonEnv s (B.stg k s j)) p.2) (Term.subst_eta_renAt _ _ _ Z _ _ _ _ ?_)
+  change (if Step.isProj .dia then _ else _) = _
+  rw [if_neg (by decide)]
+  change (if e = e then _ else _) = _
+  exact if_pos rfl
+
+/-- ⭐⭐**`ret`, membership ⇒ truth at every witnessed shape** (plain leg): pack the necessary
+    part into one `□` (`retS_packNW`), take the returning successor (`RetOutD`), unpack its
+    object (`ncb_unpackN`), and its witness comes home along the witness edge
+    (`posEval_eta_home`). -/
+theorem sat_retS_wit_of_mem (hS : ModalSys.BStrong = true) (hRO : B.RetOutD hS) {s : B.W}
+    {i : ℕ} {N : NShape} {Z : VarType} {a : Ann (RShape.wit N Z).flat}
+    (t : Term σ ((B.w s).ctx i) (RShape.wit N Z).flat a)
+    (Φ : WFF σ (((B.w s).ctx i).boxIn.insert (.bnd 0) (RShape.wit N Z).ty) 1)
+    (IH : ∀ (s' : B.W) (K : ℕ) (φ : WFF σ ((B.w s').ctx K) 0),
+      φ.size < (WFF.retS hS (.wit N Z) t Φ : WFF σ _ 0).size →
+        (B.model.sat (B.canonEnv s' K) φ ↔ φ ∈ (B.w s').M K))
+    (h : (WFF.retS hS (.wit N Z) t Φ : WFF σ _ 0) ∈ (B.w s).M i) :
+    B.model.sat (B.canonEnv s i) (WFF.retS hS (.wit N Z) t Φ : WFF σ _ 0) := by
+  have hsz : (WFF.retS hS (.wit N Z) t Φ : WFF σ _ 0).size =
+      Φ.size + (RShape.wit N Z).flat.eqRecSize + 1 := rfl
+  have hp := BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by
+    rw [List.mem_singleton.mp hψ]; exact h)
+    ⟨retS_packNW hS .nec t Φ (Proof.lookup List.mem_cons_self)⟩
+  obtain ⟨_, _, t₁, t₂, ht⟩ := Term.exists_pair
+    (Term.holeRead t (ShapeMap.liftVal (σ := σ) (.wit N Z) (packN N)).2)
+  have hp' := (congrArg (· ∈ (B.w s).M i)
+    (OutLeg.retS_congr hS .nec (.wit (.box N.flat) Z) ht rfl)).mp hp
+  obtain ⟨k, hR, j, hj, b, g, e, he, hk, hmem, hInd₁, hInd₂⟩ := hRO t₁ t₂ _ hp'
+  rw [readArrow_bodyRepl] at hmem
+  have hsat := (IH k j _ (by
+    rw [hsz]; unfold readArrow; rw [WFF.size_subst]; omega)).mpr hmem
+  rw [sat_readArrow, ← boxPush_canon_at s i ⟨k, ⟨Or.inl hR⟩⟩ hR hj] at hsat
+  refine ⟨⟨k, ⟨Or.inl hR⟩⟩, _, hsat, Or.inl (B.symm hR), ?_⟩
+  have hv := congrArg (fun p : Σ c, Term σ ((B.w s).ctx i) (RShape.wit (.box N.flat) Z).flat c =>
+    Model.interp (B.canonEnv s i) p.2) ht
+  simp only [Model.interp_holeRead (noProjLast s i), holeVal_liftVal_packN] at hv
+  change B.model.ComesBack (.wit N Z) (Model.interp _ (Term.holeAt _ _)) _ _
+  rw [Model.interp_holeAt, holeVal_unpackW]
+  refine ⟨ncb_unpackN (Or.inl (B.symm hR)) N _ _ ?_, ?_⟩
+  · rw [show B.model.holeVal (packN (σ := σ) N).val.2 (Model.interp (B.canonEnv s i) t).1 =
+      Model.interp (B.canonEnv s i) t₁ from congrArg Prod.fst hv]
+    change B.Ind (B.model.necEval (Model.interp _ (Term.boxtm g)) _) _
+    rw [Model.box_beta, boxPush_canon_at k j ⟨s, ⟨Or.inl (B.symm hR)⟩⟩ (B.symm hR) le_rfl,
+      ← Model.interp_subst, interp_canon _ (Model.Env.Agree.refl' _),
+      interp_canon t₁ (Model.Env.Agree.refl' _)]
+    exact hInd₁
+  · rw [show (Model.interp (B.canonEnv s i) t).2 = Model.interp (B.canonEnv s i) t₂ from
+      congrArg Prod.snd hv, interp_canon t₂ (Model.Env.Agree.refl' _)]
+    exact posEval_eta_home he hk hInd₂
 
 end BData
 
