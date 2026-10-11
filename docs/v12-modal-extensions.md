@@ -7016,7 +7016,29 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
       object comes home as the alias (`oblRead`, `home_oblRead` via `subst_arrow_tupB`), `Ind` to
       the value (`lalias_ind`).
     * *Semantics*: ⭐`BData.sat_ret_of_mem`, ⭐`sat_retS_nec_of_mem`, ⭐`sat_retxS_nec_of_mem`.
-  * *Left:* membership ⇒ truth at witnessed shapes (`mkRetD`, `mkRetXD`).
+  * *`ret` membership ⇒ truth, witnessed shapes, both legs (built, `QML_v12m_BRetOut`).*  So
+    `ret` membership ⇒ truth holds for all four forms.
+    * *Conversion at a node.*  The necessary part is packed into one `□` (`retS_packNW`:
+      `ret_map` along `packN` at `wit N Z`, read back through `unpackW`), so the value is a pair
+      `⟨t₁, t₂⟩` (`Term.exists_pair`).  Each item moves to its own alias, `y` for `t₁` and `z`
+      for `t₂`, by the alias formula at the slot formula with the other item fixed
+      (`WFF.instantiate_pairFst`/`Snd` with `retSlot`/`retxSlot`).  A unit alias `o`, made after
+      `y` so that `y ≠ o` as `mkRetD`/`mkRetXD` ask, fills the back image of `e`.  Then
+      `ret_oblD` (any leg: `ret_map` along `z ↦ ⟨⟨(), z⟩, ()⟩`, `holeAt_hole_oblBD`) gives the
+      obligation `◇[⟨d, e⟩ ↦ ⟨⟨⟨(), y⟩, o⟩, z⟩] Φ(⟨□(d.box.fst.snd), e⟩)`.
+    * *The chain and the limit*: `StrongChain.ret_childD`/`ret_childXD` and `lretD`/`lretXD`.
+      These give the child, the forward edge (a witness edge for `x` on the `◇_x` leg), the back
+      edge (a witness edge for the child's root `e`, with content `z`, from `bkind`/`bcx`), the
+      back image `0 ↦ y`, and the body read at the child's object `⟨□tup, e⟩` (`oblObjD`).
+    * *At the limit*: `BData.RetOutD`/`RetOutXD`, ⭐`bdataS_retOutD`, ⭐`bdataS_retOutXD`.  The
+      object's necessary part comes home as `y` (`oblReadD`, `home_oblReadD`), and `e`'s content
+      along the back edge is `z`.  Each is `Ind` to its item (`lalias_ind`).
+    * *Semantics*: `posEval_eta_home` says a canonical witness variable's possible object comes
+      back along its witness edge home, with that edge's content (`dia_beta`,
+      `diaPush_canon_at`).  The theorems are ⭐`BData.sat_retS_wit_of_mem` and
+      ⭐`sat_retxS_wit_of_mem`.
+  * *Left for step 5:* wiring the `back`/`ret` cases into the truth lemma (`BTruth.truth_lt`) and
+    removing `NoFour.noBStrong`.
   * ⭐**`ret_eq` generalised to every shape (DECIDED, user, 2026-10-10): `Proof.ret_eqS`.**  No
     derivation of Leibniz for a witnessed value was found: the rules that conclude a top-level
     witnessed atom keep its value (`ret_unitD`, `ret_unitWD`, `ret_monoS`) or change only its
