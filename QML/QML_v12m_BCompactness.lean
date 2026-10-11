@@ -46,7 +46,8 @@ theorem model_existenceB_ctxOf (hB : ModalSys.B = true) {l₀ : List VarType}
   have hag : Model.Env.Agree hle (fun v T hv => B.canonEnv s 0 v T (hle v T hv))
       (B.canonEnv s 0) := fun _ _ _ => rfl
   have hg := (ext_net hB hM₀ (Nat.zero_le (birth (weakChain hB hM₀) s.2 + 0))).grows [] trivial
-  refine ⟨B.model, (BData.indInvariant hST), s,
+  refine ⟨B.model, (BData.indInvariant hST
+    fun hS => (ModalSys.NoFour.absurdStrong hS).elim), s,
     fun v T hv => B.canonEnv s 0 v T (hle v T hv), fun ψ hψ => ?_⟩
   refine (Model.sat_mono hag ψ).mp ((BData.truth hST s 0 _).mpr ?_)
   exact hg.sub ψ (show ψ ∈ ((net (complete S) 0).st []).M from hSM hψ)

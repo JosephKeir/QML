@@ -211,8 +211,10 @@ theorem rden_holeAt {s : B.W} {A : VarType} {o : B.model.frame.Dom A s}
 include hST in
 /-- ⭐⭐**B's canonical model is a model proper**: invariance (`indInvariant_inv`) and the
     congruence laws (§11.15): related representatives stay related under hole terms and pairing
-    (`DTerm.Rel.holeAt`, `DTerm.Rel.pair`). -/
-theorem indInvariant : B.model.IndInvariant where
+    (`DTerm.Rel.holeAt`, `DTerm.Rel.pair`).  Under strong B, "comes back as" is a congruence too
+    (`hRC`; `BData.retCongr`). -/
+theorem indInvariant (hRC : ModalSys.BStrong = true → B.model.RetCongr) :
+    B.model.IndInvariant where
   inv := indInvariant_inv hST
   map := by
     intro A C c hh s o o' ⟨u, u', hu, hu', hrel⟩
@@ -228,7 +230,7 @@ theorem indInvariant : B.model.IndInvariant where
         ((rden_lift (le_max_right u₁.i u₂.i) u₂.t).trans h₂)
     · exact Prod.ext ((rden_lift (le_max_left u₁'.i u₂'.i) u₁'.t).trans h₁')
         ((rden_lift (le_max_right u₁'.i u₂'.i) u₂'.t).trans h₂')
-  ret hS := (ModalSys.NoFour.absurdStrong hS).elim
+  ret := hRC
 
 end BData
 
