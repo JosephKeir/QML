@@ -612,6 +612,274 @@ theorem bdataS_retOut (hT : ModalSys.T = false) : (bdataS C hT).RetOut hS := by
 
 end LimitOut
 
+/-! ## Products: packing a necessary shape into one `□` -/
+
+section Products
+
+/-- ⭐The **packing map** of a necessary shape: its items into one necessary object. -/
+def packN : (N : NShape) → ShapeMap σ N (.box N.flat)
+  | .box A => .id (.box A)
+  | .prod R S => .comp (.pair (.comp (.fst R S) (packN R)) (.comp (.snd R S) (packN S)))
+      (.pack R.flat S.flat)
+
+omit [ModalSys.NoFour] in
+theorem unpack_ref_fst (R S : NShape) :
+    ((Ctx.empty.insert (.bnd 0) (.VTypeBox (.VTypeProd R.flat S.flat))).boxIn).ref
+      (.step (VarSymb.root (.bnd 0)).inner .fst) = some R.flat :=
+  Ctx.ref_fst_of (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))
+
+omit [ModalSys.NoFour] in
+theorem unpack_ref_snd (R S : NShape) :
+    ((Ctx.empty.insert (.bnd 0) (.VTypeBox (.VTypeProd R.flat S.flat))).boxIn).ref
+      (.step (VarSymb.root (.bnd 0)).inner .snd) = some S.flat :=
+  Ctx.ref_snd_of (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))
+
+/-- ⭐The **unpacking** of one necessary object into a necessary shape's object: `□⟨a, b⟩ ↦
+    ⟨□a, □b⟩`, recursively. -/
+def unpackN : (N : NShape) → Σ b, Term σ (Ctx.empty.insert (.bnd 0) (.VTypeBox N.flat)) N.ty b
+  | .box A => ⟨_, Term.eta (.root (.bnd 0)) (.VTypeBox A) (Ctx.ref_insert_root _ _ _)⟩
+  | .prod R S => ⟨_, Term.pair
+      (Term.holeAt (Term.boxtm (Term.eta (.step (VarSymb.root (.bnd 0)).inner .fst) R.flat
+        (unpack_ref_fst R S))) (unpackN R).2)
+      (Term.holeAt (Term.boxtm (Term.eta (.step (VarSymb.root (.bnd 0)).inner .snd) S.flat
+        (unpack_ref_snd R S))) (unpackN S).2)⟩
+
+omit [ModalSys.NoFour] in
+theorem exists_boxtm {Γ : Ctx} {A : VarType} {c : Ann (.VTypeBox A)}
+    (x : Term σ Γ (.VTypeBox A) c) :
+    ∃ (b : Ann A) (s : Term σ Γ.boxIn A b), (⟨c, x⟩ : Σ e, Term σ Γ (.VTypeBox A) e) =
+      ⟨_, Term.boxtm s⟩ := by
+  cases x with
+  | boxtm s => exact ⟨_, s, rfl⟩
+
+/-- Reading a necessary pair's first item. -/
+theorem holeAt_box_fst {Γ : Ctx} {A B : VarType} {a : Ann A} {b : Ann B}
+    (s : Term σ Γ.boxIn A a) (t : Term σ Γ.boxIn B b) (h : _) :
+    (⟨_, Term.holeAt (Term.boxtm (Term.pair s t))
+        (Term.boxtm (Term.eta (.step (VarSymb.root (.bnd 0)).inner .fst) A h))⟩ :
+      Σ e, Term σ Γ (.VTypeBox A) e) = ⟨_, Term.boxtm s⟩ := by
+  refine sig_boxtm (Term.subst_eta_tm _ _ _ _ _ _ s ?_)
+  rw [Subst.at_proj _ _ rfl, Subst.box_at_inner_boxtm _ (by
+    change Subst.single _ _ (.root (.bnd 0)) = _
+    exact if_pos rfl)]
+  rfl
+
+/-- Reading a necessary pair's second item. -/
+theorem holeAt_box_snd {Γ : Ctx} {A B : VarType} {a : Ann A} {b : Ann B}
+    (s : Term σ Γ.boxIn A a) (t : Term σ Γ.boxIn B b) (h : _) :
+    (⟨_, Term.holeAt (Term.boxtm (Term.pair s t))
+        (Term.boxtm (Term.eta (.step (VarSymb.root (.bnd 0)).inner .snd) B h))⟩ :
+      Σ e, Term σ Γ (.VTypeBox B) e) = ⟨_, Term.boxtm t⟩ := by
+  refine sig_boxtm (Term.subst_eta_tm _ _ _ _ _ _ t ?_)
+  rw [Subst.at_proj _ _ rfl, Subst.box_at_inner_boxtm _ (by
+    change Subst.single _ _ (.root (.bnd 0)) = _
+    exact if_pos rfl)]
+  rfl
+
+/-- ⭐**Packing then unpacking is the identity** on objects of a necessary shape. -/
+theorem holeAt_packN_unpackN : (N : NShape) → {Γ : Ctx} → {c : Ann N.ty} →
+    (x : Term σ Γ N.ty c) →
+    (⟨_, Term.holeAt (Term.holeAt x (packN (σ := σ) N).obj.2) (unpackN N).2⟩ :
+      Σ e, Term σ Γ N.ty e) = ⟨c, x⟩
+  | .box A, Γ, c, x => by
+      exact (Term.holeAt_congr_sig (Term.holeAt_eta_root x) _).trans (Term.holeAt_eta_root x)
+  | .prod R S, Γ, _, .pair x₁ x₂ => by
+      obtain ⟨_, s₁, h₁⟩ := exists_boxtm (Term.holeAt x₁ (packN (σ := σ) R).obj.2)
+      obtain ⟨_, s₂, h₂⟩ := exists_boxtm (Term.holeAt x₂ (packN (σ := σ) S).obj.2)
+      have hP : (⟨_, Term.holeAt (Term.pair x₁ x₂) (packN (σ := σ) (.prod R S)).obj.2⟩ :
+          Σ e, Term σ Γ (.VTypeBox (.VTypeProd R.flat S.flat)) e) =
+          ⟨_, Term.boxtm (Term.pair s₁ s₂)⟩ := by
+        change (⟨_, Term.holeAt (Term.pair x₁ x₂) (Term.holeAt (Term.pair
+          (Term.holeAt _ (packN (σ := σ) R).obj.2) (Term.holeAt _ (packN (σ := σ) S).obj.2))
+          (ShapeMap.pack (σ := σ) R.flat S.flat).obj.2)⟩ : Σ e, Term σ Γ _ e) = _
+        refine (Term.holeAt_holeAt_sig _ _ _).trans ?_
+        refine (Term.holeAt_congr_sig (sig_pair
+          ((Term.holeAt_holeAt_sig _ _ _).trans ((Term.holeAt_congr_sig
+            (Term.holeAt_pair_fst x₁ x₂) _).trans h₁))
+          ((Term.holeAt_holeAt_sig _ _ _).trans ((Term.holeAt_congr_sig
+            (Term.holeAt_pair_snd x₁ x₂) _).trans h₂))) _).trans ?_
+        exact Term.holeAt_pack s₁ s₂
+      refine (Term.holeAt_congr_sig hP _).trans ?_
+      change (⟨_, Term.pair (Term.holeAt _ (Term.holeAt _ (unpackN (σ := σ) R).2))
+        (Term.holeAt _ (Term.holeAt _ (unpackN (σ := σ) S).2))⟩ : Σ e, Term σ Γ _ e) = _
+      refine sig_pair ?_ ?_
+      · refine (Term.holeAt_holeAt_sig _ _ _).trans ((Term.holeAt_congr_sig
+          ((holeAt_box_fst s₁ s₂ _).trans h₁.symm) _).trans ?_)
+        exact holeAt_packN_unpackN R x₁
+      · refine (Term.holeAt_holeAt_sig _ _ _).trans ((Term.holeAt_congr_sig
+          ((holeAt_box_snd s₁ s₂ _).trans h₂.symm) _).trans ?_)
+        exact holeAt_packN_unpackN S x₂
+
+/-- Packing then unpacking, on the slot. -/
+theorem holeAt_packN_unpackN_slot (N : NShape) :
+    (⟨_, Term.holeAt (packN (σ := σ) N).obj.2 (unpackN N).2⟩ :
+      Σ e, Term σ (Ctx.empty.insert (.bnd 0) N.ty) N.ty e) =
+      ⟨_, Term.eta (.root (.bnd 0)) N.ty (Ctx.ref_insert_root _ _ _)⟩ := by
+  have h := holeAt_packN_unpackN N (σ := σ)
+    (Term.eta (.root (.bnd 0)) N.ty (Ctx.ref_insert_root Ctx.empty (.bnd 0) N.ty))
+  rw [Term.holeAt_congr_sig (Term.holeAt_eta_slot (V := Ctx.empty) _) _, Term.mono_refl] at h
+  exact h
+
+/-- ⭐**A returning possibility at a necessary shape is one at `□`**: `ret_map` along the packing
+    map, the body read back through the unpacking. -/
+def retS_packN (hS : ModalSys.BStrong = true) {Γ : Ctx} [Γ.NoSlots]
+    {Δ : List (WFF σ Γ 0)} {N : NShape} {a : Ann N.flat} (t : Term σ Γ N.flat a)
+    (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) N.ty) 1)
+    (p : Proof σ Γ Δ (WFF.retS hS (.nec N) t Φ)) :
+    Proof σ Γ Δ (WFF.ret hS (Term.holeRead t (packN N).val.2)
+      (WFF.bodyRepl (Term.mono ((Ctx.empty_le _).insert (.bnd 0) _) (unpackN N).2) Φ)) := by
+  refine Proof.ret_map hS .nec (S := .nec N) (packN N) t _ (Proof.conv ?_ p)
+  change WFF.retS hS (.nec N) t Φ = WFF.retS hS (.nec N) t (WFF.bodyRepl _ (WFF.bodyRepl _ Φ))
+  rw [WFF.bodyRepl_bodyRepl]
+  dsimp only [ShapeMap.liftObj]
+  rw [WFF.bodyRepl_congr (sig_mono _ (holeAt_packN_unpackN_slot N))]
+  exact congrArg (WFF.retS hS (.nec N) t) (WFF.bodyRepl_eta Φ).symm
+
+end Products
+
+/-! ## Products, semantically -/
+
+namespace BData
+
+variable {B : BData σ}
+
+/-- A representative of an object is one of the value under a hole term, filled (as
+    `BData.rden_holeAt`). -/
+theorem rden_holeAt_ret {s : B.W} {A : VarType} {o : B.model.frame.Dom A s}
+    (u : Canon.DTerm (B.w s).sys (B.w s).T A)
+    (hu : B.rden s u.i (Ctx.Le.refl _) u.t = B.fromDom A s o)
+    {C : VarType} {c : Ann C} (hh : Term σ (Ctx.empty.insert (.bnd 0) A) C c) :
+    B.rden s u.i (Ctx.Le.refl _) (Term.holeAt u.t hh) = B.fromDom C s (B.model.holeVal hh o) := by
+  have e1 := interp_canon (Term.holeAt u.t hh) (env := B.canonEnv s u.i)
+    (e := Ctx.Le.refl _) (fun _ _ _ => rfl)
+  have e2 : Model.interp (B.canonEnv s u.i) u.t = o := by
+    rw [interp_canon u.t (env := B.canonEnv s u.i) (e := Ctx.Le.refl _) (fun _ _ _ => rfl)]
+    exact (B.toDom_congr hu _ _).trans (B.toDom_fromDom A s o)
+  rw [Model.interp_holeAt, e2] at e1
+  rw [e1, B.fromDom_toDom]
+
+/-- Canonical `Ind` is a congruence for hole terms (as `BData.indInvariant`'s `map`). -/
+theorem ind_map {s : B.W} {A C : VarType} {c : Ann C}
+    (hh : Term σ (Ctx.empty.insert (.bnd 0) A) C c) {o o' : B.frame.Dom A s}
+    (h : B.Ind o o') : B.Ind (B.model.holeVal hh o) (B.model.holeVal hh o') := by
+  obtain ⟨u, u', hu, hu', hrel⟩ := h
+  exact ⟨⟨u.i, _, Term.holeAt u.t hh⟩, ⟨u'.i, _, Term.holeAt u'.t hh⟩, rden_holeAt_ret u hu hh,
+    rden_holeAt_ret u' hu' hh, hrel.holeAt hh⟩
+
+/-- A necessary pair's first item, read along an arrow. -/
+theorem necEval_boxFst {k : B.W} {X Y : VarType}
+    (E : B.model.frame.Dom (.VTypeBox (.VTypeProd X Y)) k) (acc : B.model.frame.Acc k) (h : _) :
+    B.model.necEval (B.model.holeVal (Term.boxtm (Term.eta (σ := σ)
+        (.step (VarSymb.root (.bnd 0)).inner .fst) X h)) E : B.model.frame.Nec X k) acc =
+      (B.model.necEval (E : B.model.frame.Nec (.VTypeProd X Y) k) acc).1 := by
+  have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeBox (.VTypeProd X Y))
+  unfold Model.holeVal
+  rw [Model.box_beta, Model.interp_eta, Model.Env.ref_fst _ (Ctx.ref_inner hu) h,
+    Model.Env.ref_inner _ _ hu]
+  have he : ((Model.Env.empty (M := B.model) k).extend (.bnd 0) E).ref (.root (.bnd 0)) hu = E :=
+    Model.Env.extend_root _ _ _ _
+  rw [he]
+
+/-- A necessary pair's second item, read along an arrow. -/
+theorem necEval_boxSnd {k : B.W} {X Y : VarType}
+    (E : B.model.frame.Dom (.VTypeBox (.VTypeProd X Y)) k) (acc : B.model.frame.Acc k) (h : _) :
+    B.model.necEval (B.model.holeVal (Term.boxtm (Term.eta (σ := σ)
+        (.step (VarSymb.root (.bnd 0)).inner .snd) Y h)) E : B.model.frame.Nec Y k) acc =
+      (B.model.necEval (E : B.model.frame.Nec (.VTypeProd X Y) k) acc).2 := by
+  have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeBox (.VTypeProd X Y))
+  unfold Model.holeVal
+  rw [Model.box_beta, Model.interp_eta, Model.Env.ref_snd _ (Ctx.ref_inner hu) h,
+    Model.Env.ref_inner _ _ hu]
+  have he : ((Model.Env.empty (M := B.model) k).extend (.bnd 0) E).ref (.root (.bnd 0)) hu = E :=
+    Model.Env.extend_root _ _ _ _
+  rw [he]
+
+/-- ⭐**Unpacking comes back**: if a packed object comes back `Ind` to a packed value, its unpacking
+    comes back as the value, componentwise (`ind_map` at the projections). -/
+theorem ncb_unpackN {s k : B.W} (r : B.RT k s) : ∀ (N : NShape)
+    (E : B.model.frame.Dom (.VTypeBox N.flat) k) (o : B.model.frame.Dom N.flat s),
+    B.Ind (B.model.necEval (E : B.model.frame.Nec N.flat k) ⟨s, ⟨r⟩⟩)
+      (B.model.holeVal (packN (σ := σ) N).val.2 o) →
+      B.model.NComesBack N (B.model.holeVal (unpackN (σ := σ) N).2 E) r o
+  | .box A, E, o, h => by
+      have h₁ : B.model.holeVal (unpackN (σ := σ) (.box A)).2 E = E :=
+        Model.interp_eta_slot _ _ (Ctx.ref_insert_root _ _ _)
+      have h₂ : B.model.holeVal (packN (σ := σ) (.box A)).val.2 o = o :=
+        Model.interp_eta_slot _ _ (Ctx.ref_insert_root _ _ _)
+      rw [h₂] at h
+      rw [h₁]
+      exact h
+  | .prod R S, E, o, h => by
+      have hv : B.model.holeVal (packN (σ := σ) (.prod R S)).val.2 o =
+          (B.model.holeVal (packN (σ := σ) R).val.2 o.1,
+            B.model.holeVal (packN (σ := σ) S).val.2 o.2) := by
+        unfold Model.holeVal
+        change Model.interp _ (Term.holeAt _ _) = _
+        rw [Model.interp_holeAt]
+        unfold Model.holeVal
+        rw [show (ShapeMap.pack (σ := σ) R.flat S.flat).val.2 = Term.eta (.root (.bnd 0)) _
+          (Ctx.ref_insert_root _ _ _) from rfl, Model.interp_eta_slot]
+        change (Model.interp _ (Term.holeAt _ _), Model.interp _ (Term.holeAt _ _)) = _
+        rw [Model.interp_holeAt, Model.interp_holeAt]
+        have e₁ : Model.interp ((Model.Env.empty (M := B.model) s).extend (.bnd 0) o)
+            (ShapeMap.fst (σ := σ) R S).val.2 = o.1 := Model.interp_eta_slot_fst _ _ _
+        have e₂ : Model.interp ((Model.Env.empty (M := B.model) s).extend (.bnd 0) o)
+            (ShapeMap.snd (σ := σ) R S).val.2 = o.2 := Model.interp_eta_slot_snd _ _ _
+        rw [e₁, e₂]
+        rfl
+      rw [hv] at h
+      refine ⟨?_, ?_⟩
+      · have h₁ := ind_map (Term.eta (.step (.root (.bnd 0)) .fst) R.flat
+          (Ctx.ref_fst_of (Ctx.ref_insert_root Ctx.empty (.bnd 0)
+            (.VTypeProd R.flat S.flat)))) h
+        unfold Model.holeVal at h₁
+        rw [Model.interp_eta_slot_fst] at h₁
+        erw [Model.interp_eta_slot_fst] at h₁
+        change B.model.NComesBack R (Model.interp _ (Term.holeAt _ _)) r o.1
+        rw [Model.interp_holeAt]
+        refine ncb_unpackN r R _ o.1 ?_
+        exact (congrArg (fun x => B.Ind x _) (necEval_boxFst E _ _)).mpr h₁
+      · have h₂ := ind_map (Term.eta (.step (.root (.bnd 0)) .snd) S.flat
+          (Ctx.ref_snd_of (Ctx.ref_insert_root Ctx.empty (.bnd 0)
+            (.VTypeProd R.flat S.flat)))) h
+        unfold Model.holeVal at h₂
+        rw [Model.interp_eta_slot_snd] at h₂
+        erw [Model.interp_eta_slot_snd] at h₂
+        change B.model.NComesBack S (Model.interp _ (Term.holeAt _ _)) r o.2
+        rw [Model.interp_holeAt]
+        refine ncb_unpackN r S _ o.2 ?_
+        exact (congrArg (fun x => B.Ind x _) (necEval_boxSnd E _ _)).mpr h₂
+
+/-- ⭐⭐**`ret`, membership ⇒ truth at every necessary shape** (plain leg): pack the shape into one
+    `□` (`retS_packN`), take the returning successor (`RetOut`), and unpack its object
+    (`readArrow_bodyRepl`, `ncb_unpackN`). -/
+theorem sat_retS_nec_of_mem (hS : ModalSys.BStrong = true) (hRO : B.RetOut hS) {s : B.W}
+    {i : ℕ} {N : NShape} {a : Ann N.flat} (t : Term σ ((B.w s).ctx i) N.flat a)
+    (Φ : WFF σ (((B.w s).ctx i).boxIn.insert (.bnd 0) N.ty) 1)
+    (IH : ∀ (s' : B.W) (K : ℕ) (φ : WFF σ ((B.w s').ctx K) 0),
+      φ.size < (WFF.retS hS (.nec N) t Φ : WFF σ _ 0).size →
+        (B.model.sat (B.canonEnv s' K) φ ↔ φ ∈ (B.w s').M K))
+    (h : (WFF.retS hS (.nec N) t Φ : WFF σ _ 0) ∈ (B.w s).M i) :
+    B.model.sat (B.canonEnv s i) (WFF.retS hS (.nec N) t Φ : WFF σ _ 0) := by
+  have hsz : (WFF.retS hS (.nec N) t Φ : WFF σ _ 0).size = Φ.size + N.flat.eqRecSize + 1 := rfl
+  have hp := BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by
+    rw [List.mem_singleton.mp hψ]; exact h) ⟨retS_packN hS t Φ (Proof.lookup List.mem_cons_self)⟩
+  obtain ⟨k, hR, j, hj, b, g, hmem, hInd⟩ := hRO _ _ hp
+  rw [readArrow_bodyRepl] at hmem
+  have hsat := (IH k j _ (by
+    rw [hsz]; unfold readArrow; rw [WFF.size_subst]; omega)).mpr hmem
+  rw [sat_readArrow, ← boxPush_canon_at s i ⟨k, ⟨Or.inl hR⟩⟩ hR hj] at hsat
+  refine ⟨⟨k, ⟨Or.inl hR⟩⟩, _, hsat, Or.inl (B.symm hR), ?_⟩
+  change B.model.NComesBack N (Model.interp _ (Term.holeAt _ _)) _ _
+  rw [Model.interp_holeAt]
+  refine ncb_unpackN (Or.inl (B.symm hR)) N _ _ ?_
+  rw [Model.box_beta, boxPush_canon_at k j ⟨s, ⟨Or.inl (B.symm hR)⟩⟩ (B.symm hR) le_rfl,
+    ← Model.interp_subst, interp_canon _ (Model.Env.Agree.refl' _),
+    ← Model.interp_holeRead (noProjLast s i), interp_canon _ (Model.Env.Agree.refl' _)]
+  exact hInd
+
+end BData
+
 end BArrow
 
 end V12M
