@@ -58,7 +58,8 @@ theorem lexX_fresh (s : LW C) (i : ℕ) (x : VarSymb) (X : VarType)
   exact Nat.ne_of_lt hr'
 
 /-- ⭐The limit of a fair chain has fresh witness arrows. -/
-theorem bdata_cxFresh : (bdata C).CxFresh := fun hy h => lexX_fresh C _ _ _ _ hy h
+theorem bdata_cxFresh (hW : ModalSys.BStrong = false) : (bdata C hW).CxFresh :=
+  fun hy h => lexX_fresh C _ _ _ _ hy h
 
 end Fair
 
@@ -68,11 +69,11 @@ variable {hS : ModalSys.BStrong = true} (C : StrongChain hS M₀)
 
 /-- Strong B's canonical data has fresh witness arrows. -/
 theorem bdataS_cxFresh (hT : ModalSys.T = false) : (bdataS C hT).CxFresh :=
-  bdata_cxFresh C.toFairChain
+  fun hy h => lexX_fresh C.toFairChain _ _ _ _ hy h
 
 /-- Strong B's canonical data has injective images. -/
 theorem bdataS_imgInj (hT : ModalSys.T = false) : (bdataS C hT).ImgInj :=
-  bdata_imgInj C.toFairChain
+  fun h i _ _ hr hr' e => limg_inj C.toFairChain h i hr hr' e
 
 end Strong
 

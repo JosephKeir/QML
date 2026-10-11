@@ -141,8 +141,8 @@ style of milestone 1, each ending green and committed:
    3 is the model law and the soundness lemmas.  `ModalSys.NoB` now also turns strong B off (it
    needs weak B), which dismisses both formers in the tree's truth lemma.  **Temporary:** B's
    network does not build strong B's worlds until step 5, so for now `ModalSys.NoFour` (which
-   every B completeness theorem assumes) also turns strong B off (`noBStrong`); step 5 removes
-   the field.
+   every B completeness theorem assumes) also turned strong B off (`noBStrong`); step 6 replaced
+   it by `noTStrong` (strong B ⇒ T off).
 3. **Semantics and soundness.**  `sat` clauses (`Back`: out leg nonempty, ∀ out ∃ home, `Ind`;
    `ret`: ∃ out, ∃ `d`, `Φ(d)`, home value `Ind t`); a `Model` field `backRet_exists` per row
    (surjectivity, after `Ind`); a `SemBack` file with one soundness lemma per rule, using
@@ -227,10 +227,12 @@ style of milestone 1, each ending green and committed:
    `QML_v12m_BRetTruth`, `QML_v12m_BRetTruthW`; `ret_eq` generalised to `ret_eqS`, and β on
    the possible part `ret_mapD` added after an audit of necessary vs possible parts, §11.20).
    `ret` membership ⇒ truth for all four forms (both legs, every shape; `QML_v12m_BRetOut`).
-   **Next:** wire the `back`/`ret` truth cases into the truth lemma and remove
-   `NoFour.noBStrong`; then step 6.
-6. **Statements.**  Completeness, strong completeness and compactness for strong B (rows 1–2,
-   `◇`-free contents), under `NoFour`.
+   The cases are wired into the truth lemma (`BData.StrongTruth`, `bdataS_strongTruth`), and
+   the canonical `Ret` is a congruence (`BData.retCongr`, `bdataS_indInvariant`).  **Done.**
+6. **Statements (done, 2026-10-11).**  `NoFour.noBStrong` is replaced by `noTStrong` (strong B ⇒
+   T off, for now); `exists_canonB` picks the strong limit under strong B, so completeness
+   (every presented context), strong completeness and compactness hold for strong B with T off,
+   rows 1–2, at every content type.
 Then rows 3–4 (multi-labelled edges, per-witness components) and `◇`-typed contents (§11.12).
 **Main risks:** step 5's refactor of the back arrows (the invariant changes shape); step 2's ripple
 is large but mechanical.

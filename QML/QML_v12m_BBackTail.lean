@@ -858,11 +858,29 @@ theorem lbackRelX {s k : LW C.toFairChain} {i : ℕ} {A : VarType} {a₀ : Ann A
 
 /-- ⭐⭐**Strong B's canonical data** (T off): the limit of a strong chain, its `Back` atoms'
     returns interchangeable with their values (`lbackRel`, `lbackRelX`). -/
-noncomputable def bdataS (hT : ModalSys.T = false) : BData σ :=
-  { bdata C.toFairChain with
-    noT_of_strong := fun _ => hT
-    backRel := fun _ _ _ _ _ bd _ t hmem _ hk => lbackRel C hk bd t hmem
-    backRelX := fun _ _ _ _ _ _ _ hy bd _ t hmem _ hk => lbackRelX C hy bd t hmem hk }
+noncomputable def bdataS (hT : ModalSys.T = false) : BData σ where
+  W := LW C.toFairChain
+  actual := ⟨[], 0, trivial⟩
+  w s := nodeWorld C.toFairChain s.1 s.2
+  R := LR C.toFairChain
+  symm := LR.symm
+  irrefl := LR.irrefl
+  img := limg C.toFairChain
+  stg := lstg C.toFairChain
+  imgOk h i := limgOk C.toFairChain h i
+  tr h i ψ hψ := ltr C.toFairChain h i ψ hψ
+  ex s i ψ hψ := lex C.toFairChain s i ψ hψ
+  kd := lkd C.toFairChain
+  cx := lcx C.toFairChain
+  kdR := lkdR
+  hcx hk i := lhcx C.toFairChain hk i
+  hxX hk i X' h := lhxX C.toFairChain hk i X' h
+  trX hk i hx ψ hψ := ltrX C.toFairChain hk i hx ψ hψ
+  exX s i x X hx ψ hψ := lexX C.toFairChain s i x X hx ψ hψ
+  unl h := lunl C.toFairChain h
+  noT_of_strong _ := hT
+  backRel _ _ _ _ _ bd _ t hmem _ hk := lbackRel C hk bd t hmem
+  backRelX _ _ _ _ _ _ _ hy bd _ t hmem _ hk := lbackRelX C hy bd t hmem hk
 
 end Limit
 

@@ -151,7 +151,7 @@ theorem subst_renS_renS {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots] (hΓ : RootOnly 
 
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
-/-- ⭐**Completeness for weak B in any context of declared roots** that a renaming carries onto a
+/-- ⭐**Completeness for B in any context of declared roots** that a renaming carries onto a
     world language `ctxOf l`. -/
 theorem completenessB_rename (hB : ModalSys.B = true) {Γ : Ctx} [Γ.Presented] (hΓ : RootOnly Γ)
     {l : List VarType} {ν ν' : ℕ → ℕ}
@@ -291,7 +291,7 @@ theorem ofDecls_invOf : ∀ (ds : List (ℕ × VarType)), (ds.map Prod.fst).Nodu
         exact hd
 
 
-/-- ⭐**Completeness for weak B in a context of declarations with distinct names.**  No renaming
+/-- ⭐**Completeness for B in a context of declarations with distinct names.**  No renaming
     need be supplied: `renOf` and `invOf` are read off the declarations. -/
 theorem completenessB_ofDecls (hB : ModalSys.B = true) {ds : List (ℕ × VarType)}
     (hnd : (ds.map Prod.fst).Nodup) {Δ : List (WFF σ (Ctx.ofDecls ds) 0)}

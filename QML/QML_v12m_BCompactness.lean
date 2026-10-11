@@ -2,9 +2,10 @@ import QML.QML_v12m_BFlat
 import QML.QML_v12m_Compactness
 
 /-!
-# QML v12m — strong completeness and compactness for weak B
+# QML v12m — strong completeness and compactness for B
 
-Under `ModalSys.NoFour` (4 off; T, D and both strengths of each allowed), as `completenessB`.
+Under `ModalSys.NoFour` (4 off; T, D and both strengths of each allowed; strong B with T off), as
+`completenessB`.
 
 * ⭐`model_existenceB`: every consistent set of formulas in a presented context is satisfiable.  At a
   world language this is the canonical model over a maximal consistent extension of the set, at its
@@ -37,20 +38,11 @@ theorem setConsistent_iff {Γ : Ctx} {S : Set (WFF σ Γ 0)} :
 theorem model_existenceB_ctxOf (hB : ModalSys.B = true) {l₀ : List VarType}
     {S : Set (WFF σ (ctxOf l₀) 0)} (hS : WFF.SetConsistent S) : WFF.SetSatisfiable S := by
   obtain ⟨hSM, hM₀⟩ := complete_spec (setConsistent_iff.mp hS)
-  let B := bdata (weakChain hB hM₀)
-  have hST : ∀ hS : ModalSys.BStrong = true, B.StrongTruth hS :=
-    fun hS => (ModalSys.NoFour.absurdStrong hS).elim
-  let s : B.W := B.actual
-  have hle : (ctxOf l₀).Le ((B.w s).ctx 0) :=
-    ctxOf_le_of_suffix ((weakChain hB hM₀).lang_suffix (Nat.zero_le _) trivial)
+  obtain ⟨B, s, hle, hInv, htruth, hmem₀⟩ := exists_canonB hB hM₀
   have hag : Model.Env.Agree hle (fun v T hv => B.canonEnv s 0 v T (hle v T hv))
       (B.canonEnv s 0) := fun _ _ _ => rfl
-  have hg := (ext_net hB hM₀ (Nat.zero_le (birth (weakChain hB hM₀) s.2 + 0))).grows [] trivial
-  refine ⟨B.model, (BData.indInvariant hST
-    fun hS => (ModalSys.NoFour.absurdStrong hS).elim), s,
-    fun v T hv => B.canonEnv s 0 v T (hle v T hv), fun ψ hψ => ?_⟩
-  refine (Model.sat_mono hag ψ).mp ((BData.truth hST s 0 _).mpr ?_)
-  exact hg.sub ψ (show ψ ∈ ((net (complete S) 0).st []).M from hSM hψ)
+  exact ⟨B.model, hInv, s, fun v T hv => B.canonEnv s 0 v T (hle v T hv),
+    fun ψ hψ => (Model.sat_mono hag ψ).mp ((htruth _).mpr (hmem₀ ψ (hSM hψ)))⟩
 
 /-! ## Along a flattening -/
 
@@ -95,7 +87,7 @@ theorem model_existenceB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
 
 /-! ## Strong completeness and compactness -/
 
-/-- ⭐**Strong completeness for weak B**: a formula true in every model, world and environment
+/-- ⭐**Strong completeness for B**: a formula true in every model, world and environment
     satisfying a set of premises is derivable from finitely many of them. -/
 theorem strong_completenessB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
@@ -116,7 +108,7 @@ theorem strong_completenessB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
   exact hsat φ.neg (Set.mem_insert _ _)
     (hval M hM env fun ψ hψ => hsat ψ (Set.mem_insert_of_mem _ hψ))
 
-/-- ⭐**Compactness for weak B**: a set of formulas is satisfiable when every finite subset is —
+/-- ⭐**Compactness for B**: a set of formulas is satisfiable when every finite subset is —
     in models of any universe. -/
 theorem compactnessB (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)}

@@ -424,7 +424,7 @@ def flatBoxN : (n : ℕ) → (l : List VarType) →
 
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
-/-- ⭐**Completeness for weak B in any context flattened into a world language.** -/
+/-- ⭐**Completeness for B in any context flattened into a world language.** -/
 theorem completenessB_flat (hB : ModalSys.B = true) {Γ : Ctx} {l : List VarType}
     (F : Flat σ Γ (ctxOf l)) (hnp : Γ.NoProjLast) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0}
     (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
@@ -744,7 +744,7 @@ noncomputable def _root_.V12M.CtxExpr.chain : (e : CtxExpr) → e.Fresh → e.Vi
         ((e.chain h hv.1).2.dia hv.2.choose_spec).snoc
           (pairDia _ ((e.chain h hv.1).2.witness hv.2.choose_spec).choose_spec) inferInstance⟩
 
-/-- ⭐**Completeness for weak B in every presented context** whose views are at declared
+/-- ⭐**Completeness for B in every presented context** whose views are at declared
     witnesses. -/
 theorem completenessB_presented (hB : ModalSys.B = true) (e : CtxExpr) (he : e.Wf)
     {Δ : List (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}

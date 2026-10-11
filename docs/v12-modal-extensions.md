@@ -7037,8 +7037,25 @@ data (`Model.IsCarrierData`; `Backs` reads `Ret` at `Model.carrierData`).
       back along its witness edge home, with that edge's content (`dia_beta`,
       `diaPush_canon_at`).  The theorems are ⭐`BData.sat_retS_wit_of_mem` and
       ⭐`sat_retxS_wit_of_mem`.
-  * *Left for step 5:* wiring the `back`/`ret` cases into the truth lemma (`BTruth.truth_lt`) and
-    removing `NoFour.noBStrong`.
+  * *Wired (2026-10-11).*  The truth lemma takes its strong cases as a hypothesis
+    (`BData.StrongTruth`: `back`, `retS`, `retxS`, each given the lemma below the formula), so
+    `BTruth` keeps its place in the imports; ⭐`bdataS_strongTruth` (`QML_v12m_BTruthS`) supplies
+    them for the strong limit from the theorems above.  `indInvariant` takes the same hypothesis
+    and `RetCongr`.
+  * *`RetCongr` for the canonical `Ret` (built, `QML_v12m_BRetCongr`).*
+    * `map`: a round trip stays one (`ind_map`; a hole term over a `◇`-free slot has a `◇`-free
+      type, `Term.diaFree_hole` via `Ctx.DiaFree`); an atom by `back_beta`, the new atom true by
+      the truth lemma, its data the mapped data (`atom_data`, `OutLeg.sat_back`,
+      `interp_holeRead`).
+    * `pair`: both components become atoms (`toAtom`: a carrier's `◇`-free round trip makes its
+      atom true, so in the theory), lifted to a common stage; a nonempty leg has one name
+      (`leg_unique`: `univ_ne_extent`, one label per arrow), so `back_pair` applies.
+    * ⭐`bdataS_indInvariant`: the strong limit is a model proper.
+  * *`noBStrong` removed (2026-10-11).*  `NoFour` now asks `noTStrong : BStrong → T = false`
+    instead (strong B is built with T off; to be combined with T later).  `bdata` takes
+    `BStrong = false`; `bdataS` lists its own fields.  ⭐`exists_canonB` (`QML_v12m_BCompleteness`)
+    picks the weak or the strong limit, so `completenessB`, `completenessB_presented`,
+    `strong_completenessB`, `compactnessB` now hold for strong B (T off) as well.
   * ⭐**`ret_eq` generalised to every shape (DECIDED, user, 2026-10-10): `Proof.ret_eqS`.**  No
     derivation of Leibniz for a witnessed value was found: the rules that conclude a top-level
     witnessed atom keep its value (`ret_unitD`, `ret_unitWD`, `ret_monoS`) or change only its

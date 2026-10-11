@@ -31,27 +31,16 @@ namespace V12M
     `keep`.  Under T a reachable address may also pass through the projection `here`, which
     `VarType.bc` and the arrows account for.
 
-    **Temporarily also strong B off** (`noBStrong`): the network does not yet build strong B's
-    worlds — its `Back` and returning-possibility atoms — so its truth lemma and model law
-    (`Model.backRet_exists`) have no case for them.  Roadmap milestone 2, step 5 removes the
-    field. -/
+    **Temporarily also T off under strong B** (`noTStrong`): strong B's network is built without
+    T for now (docs §11.20), and is to be combined with T later. -/
 class ModalSys.NoFour [ModalSys] : Prop where
   noFour : ModalSys.Four = false
-  noBStrong : ModalSys.BStrong = false
+  noTStrong : ModalSys.BStrong = true → ModalSys.T = false
 
 variable [ModalSys]
 
 theorem ModalSys.NoFour.keepOnly [ModalSys.NoFour] : ModalSys.keepOnly = false := by
   simp [ModalSys.keepOnly, ModalSys.NoFour.noFour]
-
-theorem ModalSys.NoFour.absurdStrong [ModalSys.NoFour] (hB : ModalSys.BStrong = true) :
-    False := by
-  rw [ModalSys.NoFour.noBStrong] at hB
-  cases hB
-
-theorem ModalSys.NoFour.T_of_shaped [ModalSys.NoFour] (h : ModalSys.shaped = true) :
-    ModalSys.T = true := by
-  simpa [ModalSys.shaped, ModalSys.NoFour.noBStrong] using h
 
 /-! ## Addresses as paths -/
 

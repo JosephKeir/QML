@@ -562,8 +562,9 @@ theorem lunl {s t : LW C} (h : LR C s t) : ∃ t', LR C s t' ∧ lkd C s t' = no
 
 /-! ## The canonical data -/
 
-/-- ⭐**The data of B's canonical model**, from the limit of the network. -/
-noncomputable def bdata : BData σ where
+/-- ⭐**The data of B's canonical model**, from the limit of the network, with strong B off (strong
+    B's limit, with its own fields, is `bdataS`). -/
+noncomputable def bdata (hW : ModalSys.BStrong = false) : BData σ where
   W := LW C
   actual := ⟨[], 0, trivial⟩
   w s := nodeWorld C s.1 s.2
@@ -583,9 +584,9 @@ noncomputable def bdata : BData σ where
   trX hk i hx ψ hψ := ltrX C hk i hx ψ hψ
   exX s i x X hx ψ hψ := lexX C s i x X hx ψ hψ
   unl h := lunl C h
-  noT_of_strong hS := (ModalSys.NoFour.absurdStrong hS).elim
-  backRel hS := (ModalSys.NoFour.absurdStrong hS).elim
-  backRelX hS := (ModalSys.NoFour.absurdStrong hS).elim
+  noT_of_strong hS := absurd (hW.symm.trans hS) (by decide)
+  backRel hS := absurd (hW.symm.trans hS) (by decide)
+  backRelX hS := absurd (hW.symm.trans hS) (by decide)
 
 end BArrow
 
