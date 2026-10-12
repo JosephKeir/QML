@@ -7289,6 +7289,42 @@ frame's arrows include each world's own arrow, with the identity as its way home
 * *Sizes*: `ret_here`'s premise `hereRead (□sb) Φ` must be smaller than the `ret`.  Expected,
   since `retS`'s size is `Φ.size + eqRecSize + 1`.
 
+**Paper checks of the `boxT` plan (2026-10-12).**  Both pass in outline, with three additions.
+* *Check 1: a user atom `◇^{boxT}[d ↦ ⟨t₁, t₂⟩] Φ(d)`, membership ⇒ truth.*
+  * Under T, `d` is recoverable from `packT d = □⟨d.box, items(d.here)⟩` as `□(e.box.fst)`,
+    since the own arrow reads `d.here` from it.  So `Φ(d) = Φ'(packT d)` with
+    `Φ'(e) := Φ(□(e.box.fst))`, a body rewrite like `holeAt_hole_oblB`.  `ret_map` along `packT`
+    then gives a `□`-shape atom at `□(A × bc A)`.
+  * *No regress.*  `mkRet`'s obligation lives at the network's tuple shape `□(𝟙 × bc(□A))`, and
+    its child is born with a root `c : □A`.  The tuple's object is `packT c` (`tupB` at `true`:
+    to confirm as a term identity), so the existence rule is needed once per user atom, not
+    again for the obligation.
+  * At the limit, `c`'s here-items come home as `w.snd`.  This needs a canonical lemma: the
+    semantic `img` of a root's value here is its committed image along the arrow (`img_canon`).
+* *Check 1, truth ⇒ membership.*  Truth gives `g = □u` at `k` and an arrow `k → s`.
+  * *A network arrow.*  `RetInv` gives the tuple atom.  The plan's "value map exists" needs a
+    **third `ShapeMap` into `boxT`**: object `D ↦ □u[D]`, value
+    `V ↦ ⟨u[V], items(collapse u)[V]⟩`.  The second component is well formed because, under T,
+    the committed tuple contains every root's here-items (`bc(□R) = R × bc R`), and
+    `collapse u` mentions only those (`r.here.q.box`).  It is sound by a semantic lemma: `img` of
+    a value read at the own arrow is `items ∘ collapse` read along `r` (`img_collapse`).
+  * It cannot be composed from existing maps: `hole` reaches `packT(□u)` at `box`, but its inverse
+    `unpack : box(A × bc A) → boxT A` is **not** a `ShapeMap`.  An arbitrary `□(A × bc A)`
+    object's second part need not be the items of its first part's value here.
+  * *The own arrow.*  `ret_hereS` (risk 2) must cover `boxT`, with value
+    `⟨collapse sb, collapse(items(collapse sb))⟩`.
+* *Check 2: `packT` keeps `boxT` out of the derived families.*  Yes.
+  * Positive user atoms reach the network only as obligations at the tuple shape.  Realisation
+    steps, `RetInv` and the returning children work only at `box` shapes.
+  * Negative user atoms need no `boxT` version of the K-laws.  The third map derives the `boxT`
+    atom from the tuple atom, so by contraposition an MCS with `¬boxT` already holds `¬tuple`,
+    which the existing seeds use.
+  * The cost is the rules stated "at any shape" (`ret_monoS`, `ret_diaS`, `ret_eqS`, `ret_extS`,
+    `ret_mapD`, the units): each gains a `boxT` case in soundness and `Proof.subst`, through
+    `ComesBack`'s `Ind`-invariance at `boxT`.  No new derived family.
+* *Remaining to confirm when building:* `packT(□u) = □⟨u, items(collapse u)⟩` (β and collapse
+  commuting with `items`), and `tupB` at `true` on `[□A]` being `packT c`.
+
 **Order.**
 1. The decisions, by the user:
    * risk 1: `boxT` with its existence rule, or the content restriction;
