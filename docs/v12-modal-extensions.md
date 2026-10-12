@@ -7336,3 +7336,76 @@ frame's arrows include each world's own arrow, with the identity as its way home
 3. Network: drop `hT` from `GoodS.mk*`, `applyOpT`, `netS` and `strongChainS`.
 4. Limit: the own-arrow cases of risk 2, `leg_unique` per risk 3, the decoder split.
 5. Statements: drop `NoFour.noTStrong`, so `NoFour` is 4 off only; `exists_canonB` loses `hT`.
+
+### 11.22 Rows 3–4 revisited against the current design *(2026-10-12, paper)*
+
+Rows 3 (carrier `□◇A`, value `c.box.dia`) and 4 (`◇◇A`) have a **witnessed back leg**: the way
+home from each arrow of the out leg lies in the extent of the carrier's value there.  §11.5 found
+two obstacles: several carriers claim the one way home, and no rule joins them; and the network
+needs a set of labels per edge.  Since then, returning possibilities (§11.14 on), witnessed
+shapes, back-witness arrows and the term principle for contents (§11.20) have been built.
+
+**What is now better.**
+* *The back leg is already in the language.*  A witnessed shape `wit N X` is exactly "the way home
+  lies in a possible object's extent, and its content comes home as the value".  Row 3's `Back` can
+  be the definite description of a witnessed-shape `ret`, as rows 1–2 are of a `box` one
+  (`back_ret`).  At `◇`-typed contents it can read the primitive `Ret` as now, keyed on round-trip
+  data.  The data would need the back leg too: for each out arrow, the possible part's extent and
+  content.
+* *One witness serves every value.*  §11.5's count of labels came from `B_strong`: a row-3 carrier
+  for every `t`.  A possible object at the far world `k` is `diatm z u` with `u` **any term of
+  `z`'s view** (§11.20), so one witness `z` labelling `k → s` gives contents for every value.  So
+  "a label per value" is gone.
+* *The network has witnessed ways home* (`bkind`, `bcx`, `RetInvW`/`WD`, the back-witness and
+  doubly witnessed children), and the T-off truth cases cover witnessed shapes on both legs.
+
+**What remains.**
+1. *Several labels per edge, now for a sharper reason.*  A row-3 carrier is
+   `boxtm (diatm r.box u)` for a root `r : □◇X` of `s`.  At a successor `k`, `r.box` is
+   committed to a root `w_r` of `k` (`bc(□◇X) = ◇X`).  A `Back` atom on `r` needs `w_r`'s extent
+   to contain the way home `k → s`.  Distinct roots `r ≠ r'` have distinct images (`ImgInj`, and
+   the theory can tell them apart at `k`), so the one edge `k → s` needs one label per row-3
+   carrier root.
+   * *Parallel arrows don't help.*  Strong B's frames have one arrow between two worlds
+     (`homeUnique`, which `RoundTrip.pair`, `own` and `sat_ret_counitC` rely on).  Extents are
+     not labels semantically, so the obstacle is the canonical network's alone.
+2. *Labels added late.*  When `s` gains a row-3 carrier root `r` (Henkin, `B_strong`), every
+   **existing** child `k` must label `k → s` with `w_r` once `r.box` is committed to `k`.  It then
+   needs that label's back invariant (`RetInvW`, along `w_r`) from that round on.
+   * The new label's invariant must hold of `k`'s theory as it already is.  Plain `RetInv` gives
+     `◇[D ↦ V] Φ(D)` at `s`, but `w_r`'s content is not in the committed tuple (`bc(◇X) = 𝟙`).
+     So turning it into the witnessed form `◇[⟨D, e⟩ ↦ ⟨V, t⟩] Φ(D, e)` with `e` the value of
+     `r.box` needs a **row-3 counit**:
+     `Back₃ c t, ◇[D ↦ V] Φ(D, c.box) ⊢ ◇[⟨D, e⟩ ↦ ⟨V, t⟩] Φ(D, e)`.  It is sound by
+     `homeUnique` (the one way home lies in `c`'s value's extent and returns `t`).  It does not
+     look derivable: no current rule makes the possible part an item of the body, only the bound
+     witness (`ret_unitW`).  This is §11.6's "late item" problem in a sharper form, now with a
+     candidate fix.
+3. *Leg identification* (`leg_unique`, `univ_ne_extent`, `CxFresh`, the `back` and `RetCongr`
+   cases) uses "`kd` is a function, so two witnesses' extents are disjoint".  With several labels
+   per edge, extents overlap.  The proofs need only *distinct* extents, which each witness's own
+   child for `◇_z ⊤` (`exX`) should supply, as a new network invariant.
+4. *Every invariant per label.*  `kd`/`lkd`/`lcx` become finite maps from labels to contents.
+   `arrowXS` sends several witnesses' contents at once.  `RetAt`'s four forms are indexed by a
+   pair of labels (one each way, or none), and the realisation steps keep each.  The kind of
+   argument is the same; there are more cases.
+5. *Row 4* is row 2's out leg with row 3's back leg; it adds nothing beyond the two.
+6. *Under T*, the own arrow is in `r.here`'s extent exactly when `r.here` is realised: one more
+   own-arrow rule, as `back_here` on the leg.
+
+**Assessment.**  Better than §11.5–11.6 found:
+* the reason for "a label per value" is gone;
+* the witnessed-way-home machinery exists;
+* the remaining logical gap has a candidate rule (the row-3 counit).
+
+But rows 3–4 change the network's spine: labels per edge, labels added late, and per-label
+invariants.  The T-off proof leans on one label per edge throughout.  The open question is item 2:
+whether the row-3 counit suffices for a late label's invariant, at every content type.
+
+**Order.**  Strong B with T first.  Its plan is checked (§11.21), and it reuses the T-off
+construction.  Rows 3–4 refactor that construction's labels, so doing them first would mean doing
+T over a moving base.  While building T, don't add new single-label assumptions; for instance,
+keep risk 3's "one name per leg" argument to distinct extents, not disjoint ones.  Before
+building rows 3–4, check item 2 on paper: the late label's invariant via the row-3 counit,
+including its interaction with the realisation steps (`ret_listW` merges over one content).
+
