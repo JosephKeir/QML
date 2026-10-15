@@ -642,7 +642,8 @@ end Limit
 omit [ModalSys.NoFour] in
 /-- ⭐Every term of a witnessed shape's type is a pair of some items' object and a possible term:
     `⟨N, diatm x u⟩`. -/
-theorem exists_wit {Γ : Ctx} (N : NShape) (Z : VarType) {c : Ann (RShape.wit N Z).ty}
+theorem exists_wit {Γ : Ctx} (hT : ModalSys.T = false) (N : NShape) (Z : VarType)
+    {c : Ann (RShape.wit N Z).ty}
     (g : Term σ Γ (RShape.wit N Z).ty c) :
     ∃ (n : NTerms σ Γ.boxIn N) (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
       (c' : Ann Z) (u : Term σ (Γ.diaIn x) Z c'),
@@ -650,7 +651,7 @@ theorem exists_wit {Γ : Ctx} (N : NShape) (Z : VarType) {c : Ann (RShape.wit N 
         ⟨_, Term.pair n.obj.2 (Term.diatm x hx u)⟩ := by
   match g with
   | .pair g₁ (.diatm x hx u) =>
-      obtain ⟨n, hn⟩ := NTerms.exists_obj N g₁
+      obtain ⟨n, hn⟩ := NTerms.exists_obj hT N g₁
       exact ⟨n, x, hx, _, u, sig_pair hn.symm rfl⟩
 
 namespace BData
@@ -679,7 +680,7 @@ theorem mem_ret_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   have hR := R_of_RT_strong hS rk
   have hr' : B.RT k s := r
   obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom (RShape.wit N Z).ty k e
-  obtain ⟨n, x, ⟨X, hX⟩, c', u, hgeq⟩ := exists_wit N Z g
+  obtain ⟨n, x, ⟨X, hX⟩, c', u, hgeq⟩ := exists_wit (B.noT_of_strong hS) N Z g
   have hj₀ : j₀ ≤ max j₀ (B.stg s k i) := le_max_left _ _
   have hj : B.stg s k i ≤ max j₀ (B.stg s k i) := le_max_right _ _
   set J := max j₀ (B.stg s k i)
@@ -763,7 +764,7 @@ theorem mem_retx_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   have hR := B.kdR hky
   have hr' : B.RT k s := r
   obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom (RShape.wit N Z).ty k e
-  obtain ⟨n, x, ⟨X, hX⟩, c', u, hgeq⟩ := exists_wit N Z g
+  obtain ⟨n, x, ⟨X, hX⟩, c', u, hgeq⟩ := exists_wit (B.noT_of_strong hS) N Z g
   have hj₀ : j₀ ≤ max j₀ (B.stg s k i) := le_max_left _ _
   have hj : B.stg s k i ≤ max j₀ (B.stg s k i) := le_max_right _ _
   set J := max j₀ (B.stg s k i)

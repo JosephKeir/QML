@@ -116,6 +116,51 @@ def Term.holeAt {σ : Signature} {Γ : Ctx} {A : VarType} {a : Ann A} (t : Term 
     (Subst.ok_single (Ctx.empty_le Γ) rfl)
     (Subst.coh_single (Ctx.RootFresh.empty _) (Ctx.empty_le Γ) rfl) s
 
+/-! ## Companions -/
+
+/-- Under T, a companion path into a value of type `A` at address `w` reaches the necessary object
+    `w.ext p : □C`. -/
+theorem Ctx.ref_compAt {Γ : Ctx} (hT : ModalSys.T = true) (p : List Step) :
+    ∀ {w : VarSymb} {A C : VarType}, Γ.ref w = some A → A.compAt p = some C →
+      Γ.ref (w.ext p) = some (.VTypeBox C) := by
+  induction p with
+  | nil =>
+      intro w A C hw hp
+      cases A <;> simp only [VarType.compAt, reduceCtorEq, Option.some.injEq] at hp
+      subst hp
+      exact hw
+  | cons s p ih =>
+      intro w A C hw hp
+      cases A <;> cases s <;> simp only [VarType.compAt, reduceCtorEq] at hp
+      · exact ih (Ctx.ref_fst_of hw) hp
+      · exact ih (Ctx.ref_snd_of hw) hp
+      · exact ih (Ctx.ref_here_of hT hw) hp
+
+/-- A valid companion list stays valid without its head. -/
+theorem VarType.CompOk.tail {A : VarType} {p : List Step} {ps : List (List Step)}
+    (h : A.CompOk (p :: ps)) : A.CompOk ps :=
+  Or.inr ⟨(h.resolve_left (List.cons_ne_nil _ _)).1,
+    fun q hq => (h.resolve_left (List.cons_ne_nil _ _)).2 q (List.mem_cons_of_mem _ hq)⟩
+
+/-- The head companion of a valid list is a necessary object of the bound one. -/
+theorem VarType.CompOk.ref_head {Γ : Ctx} {u : VarSymb} {A : VarType} {p : List Step}
+    {ps : List (List Step)} (h : A.CompOk (p :: ps)) (hu : Γ.ref u = some (.VTypeBox A)) :
+    Γ.ref ((VarSymb.step u .here).ext p) = some (.VTypeBox ((A.compAt p).getD .VTypeOne)) := by
+  obtain ⟨hT, hall⟩ := h.resolve_left (List.cons_ne_nil _ _)
+  obtain ⟨C, hC⟩ := Option.isSome_iff_exists.mp (hall p List.mem_cons_self)
+  rw [hC]
+  exact Ctx.ref_compAt hT p (Ctx.ref_here_of hT hu) hC
+
+/-- The contents of a `□A` object and of its companions, as one term of its `□` view (the
+    companions' contents last). -/
+def compsBody {σ : Signature} (A : VarType) : (cs : List (List Step)) → A.CompOk cs →
+    Σ b, Term σ (Ctx.empty.insert (.bnd 0) (.VTypeBox A)).boxIn (A.compsFlat cs) b
+  | [], _ => ⟨_, Term.eta (VarSymb.root (.bnd 0)).inner A
+      (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))⟩
+  | p :: ps, h => ⟨_, Term.pair (compsBody A ps h.tail).2
+      (Term.eta ((VarSymb.step (.root (.bnd 0)) .here).ext p).inner ((A.compAt p).getD .VTypeOne)
+        (Ctx.ref_inner (h.ref_head (Ctx.ref_insert_root _ _ _))))⟩
+
 /-! ## Maps between returnable shapes -/
 
 /-- ⭐A **structural map between shapes of necessary objects** (docs §11.17): identity,
@@ -133,6 +178,9 @@ inductive ShapeMap (σ : Signature) : NShape → NShape → Type where
   | pack (A B : VarType) : ShapeMap σ (.prod (.box A) (.box B)) (.box (.VTypeProd A B))
   | hole {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
       ShapeMap σ (.box A) (.box B)
+  /-- Packing a `□A` object and its companions into one necessary object (docs §11.21). -/
+  | packC (A : VarType) (cs : List (List Step)) (h : A.CompOk cs) :
+      ShapeMap σ (.boxC A cs h) (.box (A.compsFlat cs))
 
 /-- The map on the object out there, as a hole term. -/
 def ShapeMap.obj {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
@@ -151,6 +199,7 @@ def ShapeMap.obj {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
         (Ctx.ref_inner (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)))))⟩
   | _, _, .hole (A := A) s => ⟨_, Term.boxtm (Term.holeAt
       (Term.eta (VarSymb.root (.bnd 0)).inner A (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))) s)⟩
+  | _, _, .packC A cs h => ⟨_, Term.boxtm (compsBody A cs h).2⟩
 
 /-- The map on the value it comes back as, as a hole term. -/
 def ShapeMap.val {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
@@ -164,6 +213,8 @@ def ShapeMap.val {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
   | _, _, .pair F G => ⟨_, Term.pair F.val.2 G.val.2⟩
   | _, _, .pack A B => ⟨_, Term.eta (.root (.bnd 0)) (.VTypeProd A B) (Ctx.ref_insert_root _ _ _)⟩
   | _, _, .hole s => ⟨_, s⟩
+  | _, _, .packC A cs _ =>
+      ⟨_, Term.eta (.root (.bnd 0)) (A.compsFlat cs) (Ctx.ref_insert_root _ _ _)⟩
 
 /-- The map on the object out there, at a returnable shape: on the necessary part, the witness
     carried along. -/

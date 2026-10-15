@@ -7417,6 +7417,23 @@ finitely many by type depth).  With T off the list is empty, so nothing changes 
 **To confirm when building:** the companion transform as a term function; the `κ` projections
 for `tupB` at `true`; the merge step (`ret_listW`) at `boxH`, which should be unaffected.
 
+**Built (2026-10-16): companion lists on `box` (step 1 of the uniform design).**
+* `NShape.boxC A cs h`: `□A` with companions `cs` (here/projection paths into the value here,
+  `VarType.compAt`), valid by `h : A.CompOk cs` (empty, or under T every path reaches a `□`).
+  `NShape.box A` is a `match_pattern` abbreviation for `boxC A [] _`, so existing code is
+  unchanged.  `flat (box A) = A` definitionally (`VarType.compsFlat`).
+* Semantics: `compsBack`/`compBack` (`Interp`): each companion's contents read home are `Ind` to
+  its value part.
+* `ShapeMap.packC` (pack a `□A` object and its companions into one `□`; `compsBody`,
+  `Ctx.ref_compAt`), sound by `compsBody_ind`/`compBack_ind` (`SemBack`, with `Env.ref_here`).
+* T-off code: `NTerms` is empty at companion shapes; `exists_obj`/`exists_wit` take `T = false`.
+  **Scaffolding to replace under T:** `holeAt_packN_unpackN` and `ncb_unpackN` (`BRetOut`)
+  dismiss companion shapes by `T = false`.  The latter is false for arbitrary packed objects with
+  companions (the coherence issue), so under T it must be restricted to coherent objects or
+  avoided.
+* Next: the existence rule, the units at companion shapes, `holeH`, risk 2's rules, then the
+  commitments.
+
 **Order.**
 1. The decisions, by the user:
    * risk 1: `boxT` with its existence rule, or the content restriction;

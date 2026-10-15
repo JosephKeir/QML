@@ -33,20 +33,46 @@ def BLeg.carrier : BLeg → VarType → VarType
   | .nec, A => .VTypeBox (.VTypeBox A)
   | .pos, A => .VTypeDia (.VTypeBox A)
 
-/-- A **shape of necessary objects**: `□A`, and pairs of such. -/
+/-- Under T, the contents type of a **companion** of a necessary object `d : □A`: the necessary
+    object `d.here.p` (`p` a path of projections and `here` steps into `d`'s value here, of type
+    `A`) is `□C` when this is `some C` (docs §11.21). -/
+def VarType.compAt : VarType → List Step → Option VarType
+  | .VTypeBox C, [] => some C
+  | .VTypeBox C, .here :: p => VarType.compAt C p
+  | .VTypeProd X _, .fst :: p => VarType.compAt X p
+  | .VTypeProd _ Y, .snd :: p => VarType.compAt Y p
+  | _, _ => none
+
+/-- A companion list for `□A` is valid: empty, or (under T) every path reaches a necessary
+    component of the value here.  With T off only the empty list is valid. -/
+def VarType.CompOk (A : VarType) (cs : List (List Step)) : Prop :=
+  cs = [] ∨ (ModalSys.T = true ∧ ∀ p ∈ cs, (A.compAt p).isSome = true)
+
+/-- The type a `□A` object and its companions `cs` come back as: `A`, then each companion's
+    contents (`A` itself when there are none). -/
+def VarType.compsFlat (A : VarType) : List (List Step) → VarType
+  | [] => A
+  | p :: ps => .VTypeProd (VarType.compsFlat A ps) ((A.compAt p).getD .VTypeOne)
+
+/-- A **shape of necessary objects**: `□A` with companions, and pairs of such. -/
 inductive NShape where
-  | box (A : VarType)
+  /-- `d : □A` out there, with the necessary objects `d.here.p` for `p ∈ cs` (its
+      **companions**, under T): each comes back too (docs §11.21). -/
+  | boxC (A : VarType) (cs : List (List Step)) (h : A.CompOk cs)
   | prod (R S : NShape)
 deriving DecidableEq
 
+/-- `□A` with no companions: the shape of one necessary object. -/
+@[match_pattern] abbrev NShape.box (A : VarType) : NShape := .boxC A [] (Or.inl rfl)
+
 /-- The type of the necessary objects bound out there. -/
 def NShape.ty : NShape → VarType
-  | .box A => .VTypeBox A
+  | .boxC A _ _ => .VTypeBox A
   | .prod R S => .VTypeProd R.ty S.ty
 
 /-- The type of the values they come back as. -/
 def NShape.flat : NShape → VarType
-  | .box A => A
+  | .boxC A cs _ => A.compsFlat cs
   | .prod R S => .VTypeProd R.flat S.flat
 
 /-- ⭐A **returnable shape** (strong B, docs §11.17, §11.20): what a returning possibility binds

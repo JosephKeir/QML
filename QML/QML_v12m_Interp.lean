@@ -309,11 +309,47 @@ def Backs (L : BLeg) {A : VarType} {w : M.frame.W} (c : M.frame.Dom (L.carrier A
     (o : M.frame.Dom A w) : Prop :=
   M.Ret (M.carrierData L c).1 (M.carrierData L c).2 o
 
+/-- Under T, a **companion** of a value `x : A` at `v`, the necessary object at the path `p` into
+    it, comes back as `o` along the way home `r` (`True` at a path reaching no necessary
+    object, which a valid companion list never has). -/
+def compBack : (A : VarType) → (p : List Step) → {v w : M.frame.W} → M.frame.Dom A v →
+    M.frame.R v w → M.frame.Dom ((A.compAt p).getD .VTypeOne) w → Prop
+  | .VTypeBox C, [], _, w, x, r, o => M.Ind (M.necEval (x : M.frame.Nec C _) ⟨w, ⟨r⟩⟩) o
+  | .VTypeBox C, .here :: p, v, _, x, r, o =>
+      if hT : ModalSys.T = true then
+        compBack C p (M.necEval (x : M.frame.Nec C v) (M.frame.reflAcc hT v)) r o
+      else True
+  | .VTypeProd X _, .fst :: p, _, _, x, r, o => compBack X p x.1 r o
+  | .VTypeProd _ Y, .snd :: p, _, _, x, r, o => compBack Y p x.2 r o
+  | .Var, _, _, _, _, _, _ => True
+  | .VTypeOne, _, _, _, _, _, _ => True
+  | .VTypeDia _, _, _, _, _, _, _ => True
+  | .VTypeBox _, .fst :: _, _, _, _, _, _ => True
+  | .VTypeBox _, .snd :: _, _, _, _, _, _ => True
+  | .VTypeBox _, .box :: _, _, _, _, _, _ => True
+  | .VTypeBox _, .dia :: _, _, _, _, _, _ => True
+  | .VTypeBox _, .keep :: _, _, _, _, _, _ => True
+  | .VTypeProd _ _, [], _, _, _, _, _ => True
+  | .VTypeProd _ _, .box :: _, _, _, _, _, _ => True
+  | .VTypeProd _ _, .dia :: _, _, _, _, _, _ => True
+  | .VTypeProd _ _, .here :: _, _, _, _, _, _ => True
+  | .VTypeProd _ _, .keep :: _, _, _, _, _, _ => True
+
+/-- A necessary object `e : □A` and its companions `cs` come back as `o` along `r`: `e`'s reading
+    along `r`, and each companion of `e`'s value here (`compBack`). -/
+def compsBack (A : VarType) : (cs : List (List Step)) → {v w : M.frame.W} →
+    M.frame.Dom (.VTypeBox A) v → M.frame.R v w → M.frame.Dom (A.compsFlat cs) w → Prop
+  | [], v, w, e, r, o => M.Ind (M.necEval (e : M.frame.Nec A v) ⟨w, ⟨r⟩⟩) o
+  | p :: ps, v, _, e, r, o => compsBack A ps e r o.1 ∧
+      (if hT : ModalSys.T = true then
+        compBack (.VTypeBox A) (.here :: p) e r (by exact o.2)
+      else True)
+
 /-- A necessary object out there **comes back as** `o` along the way home `r`: each necessary part's
-    reading along `r` is `Ind` to its value. -/
+    reading along `r` is `Ind` to its value, and so is each companion's (`compsBack`). -/
 def NComesBack : (N : NShape) → {v w : M.frame.W} → M.frame.Dom N.ty v → M.frame.R v w →
     M.frame.Dom N.flat w → Prop
-  | .box A, v, w, e, r, o => M.Ind (M.necEval (e : M.frame.Nec A v) ⟨w, ⟨r⟩⟩) o
+  | .boxC A cs _, _, _, e, r, o => compsBack A cs e r o
   | .prod R S, _, _, e, r, o => NComesBack R e.1 r o.1 ∧ NComesBack S e.2 r o.2
 
 /-- ⭐The object out there **comes back as** `o` along the way home `r` (docs §11.17, §11.20): its

@@ -150,6 +150,7 @@ theorem sig_holeAt {Γ : Ctx} {A : VarType} {a a' : Ann A} {t : Term σ Γ A a} 
 /-- ⭐The **items of a necessary shape** over a `□` view `V`: one term of `V` for each `□`. -/
 def NTerms (σ : Signature) (V : Ctx) : NShape → Type
   | .box A => Σ b, Term σ V A b
+  | .boxC _ (_ :: _) _ => PEmpty
   | .prod R S => NTerms σ V R × NTerms σ V S
 
 namespace NTerms
@@ -159,33 +160,39 @@ variable {V V' : Ctx}
 /-- Weakening the items. -/
 def mono (h : V.Le V') : {N : NShape} → NTerms σ V N → NTerms σ V' N
   | .box _, ⟨_, u⟩ => ⟨_, Term.mono h u⟩
+  | .boxC _ (_ :: _) _, n => PEmpty.elim n
   | .prod _ _, (n₁, n₂) => (mono h n₁, mono h n₂)
 
 /-- ⭐The necessary object they make: `□u` for each item, paired. -/
 def obj {Γ : Ctx} : {N : NShape} → NTerms σ Γ.boxIn N → Σ c, Term σ Γ N.ty c
   | .box _, ⟨_, u⟩ => ⟨_, Term.boxtm u⟩
+  | .boxC _ (_ :: _) _, n => PEmpty.elim n
   | .prod _ _, (n₁, n₂) => ⟨_, Term.pair (obj n₁).2 (obj n₂).2⟩
 
 /-- ⭐The value they make along a substitution (the way home): each item sent along it, paired. -/
 def subst (ι : VarSymb → VarSymb) {Δ : Ctx} (θ : Subst σ Δ) (hθ : Subst.Ok V θ)
     (hc : Subst.Coh ι V θ) : {N : NShape} → NTerms σ V N → Σ c, Term σ Δ N.flat c
   | .box _, ⟨_, u⟩ => ⟨_, Term.subst ι θ hθ hc u⟩
+  | .boxC _ (_ :: _) _, n => PEmpty.elim n
   | .prod _ _, (n₁, n₂) => ⟨_, Term.pair (subst ι θ hθ hc n₁).2 (subst ι θ hθ hc n₂).2⟩
 
 omit [ModalSys.NoFour] in
-/-- ⭐Every term of a necessary shape's type is the object of its items. -/
-theorem exists_obj {Γ : Ctx} : (N : NShape) → {c : Ann N.ty} → (g : Term σ Γ N.ty c) →
-    ∃ n : NTerms σ Γ.boxIn N, n.obj = ⟨c, g⟩
+/-- ⭐Every term of a necessary shape's type is the object of its items (T off: no companions). -/
+theorem exists_obj {Γ : Ctx} (hT : ModalSys.T = false) : (N : NShape) → {c : Ann N.ty} →
+    (g : Term σ Γ N.ty c) → ∃ n : NTerms σ Γ.boxIn N, n.obj = ⟨c, g⟩
   | .box _, _, .boxtm u => ⟨⟨_, u⟩, rfl⟩
+  | .boxC _ (_ :: _) h, _, _ =>
+      absurd ((h.resolve_left (List.cons_ne_nil _ _)).1.symm.trans hT) (by decide)
   | .prod R S, _, .pair g₁ g₂ => by
-      obtain ⟨n₁, h₁⟩ := exists_obj R g₁
-      obtain ⟨n₂, h₂⟩ := exists_obj S g₂
+      obtain ⟨n₁, h₁⟩ := exists_obj hT R g₁
+      obtain ⟨n₂, h₂⟩ := exists_obj hT S g₂
       exact ⟨(n₁, n₂), sig_pair h₁ h₂⟩
 
 omit [ModalSys.NoFour] in
 theorem obj_mono {Γ Γ' : Ctx} (h : Γ.Le Γ') : {N : NShape} → (n : NTerms σ Γ.boxIn N) →
     (n.mono h.boxIn).obj = ⟨_, Term.mono h n.obj.2⟩
   | .box _, ⟨_, _⟩ => rfl
+  | .boxC _ (_ :: _) _, n => PEmpty.elim n
   | .prod _ _, (n₁, n₂) => sig_pair (obj_mono h n₁) (obj_mono h n₂)
 
 omit [ModalSys.NoFour] in
@@ -194,6 +201,7 @@ theorem mono_mono {V'' : Ctx} (h : V.Le V') (h' : V'.Le V'') : {N : NShape} →
   | .box _, ⟨_, u⟩ => by
       change (⟨_, Term.mono h' (Term.mono h u)⟩ : Σ b, Term σ V'' _ b) = ⟨_, _⟩
       rw [Term.mono_mono]
+  | .boxC _ (_ :: _) _, n => PEmpty.elim n
   | .prod _ _, (n₁, n₂) => Prod.ext (mono_mono h h' n₁) (mono_mono h h' n₂)
 
 omit [ModalSys.NoFour] in
@@ -203,6 +211,7 @@ theorem subst_mono {ι : VarSymb → VarSymb} {Δ : Ctx} (h : V.Le V') (θ : Sub
   | .box _, ⟨_, u⟩ => by
       change (⟨_, Term.subst ι θ hθ hc (Term.mono h u)⟩ : Σ b, Term σ Δ _ b) = ⟨_, _⟩
       rw [Term.subst_mono]
+  | .boxC _ (_ :: _) _, n => PEmpty.elim n
   | .prod _ _, (n₁, n₂) => sig_pair (subst_mono h θ hθ hc n₁) (subst_mono h θ hθ hc n₂)
 
 omit [ModalSys.NoFour] in
@@ -211,6 +220,7 @@ theorem subst_congr {ι ι' : VarSymb → VarSymb} {Δ : Ctx} (θ θ' : Subst σ
     (hs : Subst.Sim V θ θ') : {N : NShape} → (n : NTerms σ V N) →
     n.subst ι θ hθ hc = n.subst ι' θ' hθ' hc'
   | .box _, ⟨_, u⟩ => Term.subst_congr θ θ' hθ hθ' hc hc' hs u
+  | .boxC _ (_ :: _) _, n => PEmpty.elim n
   | .prod _ _, (n₁, n₂) =>
       sig_pair (subst_congr θ θ' hθ hθ' hc hc' hs n₁) (subst_congr θ θ' hθ hθ' hc hc' hs n₂)
 
@@ -221,6 +231,7 @@ end NTerms
 def packMap (cls : List VarType) : {N : NShape} → NTerms σ (ctxOf cls).boxIn N →
     ShapeMap σ (.box (bcT cls)) N
   | .box _, ⟨_, u⟩ => .hole (packT cls u)
+  | .boxC _ (_ :: _) _, n => PEmpty.elim n
   | .prod _ _, (n₁, n₂) => .pair (packMap cls n₁) (packMap cls n₂)
 
 /-- ⭐The packing map's object, read where the bound object is the roots' items: the object the
@@ -240,6 +251,7 @@ theorem subst_packMap_obj {cls : List VarType} {ι : VarSymb → VarSymb} {Δ : 
       refine (sig_holeAt (Term.subst_eta_tm _ _ _ _ _ _ _
         (Subst.box_at_inner_boxtm _ h0)) _).trans ?_
       exact holeAt_tupT_packT_mono _ u
+  | .boxC _ (_ :: _) _, n => PEmpty.elim n
   | .prod _ _, (n₁, n₂) =>
       sig_pair (subst_packMap_obj θ hθ hc hle h0 n₁) (subst_packMap_obj θ hθ hc hle h0 n₂)
 
@@ -251,6 +263,7 @@ theorem holeRead_tupImgT_packMap {cls : List VarType} {Δ : Ctx} [Δ.NoSlots] {i
       Σ c, Term σ Δ N.flat c) =
       n.subst (arrowIdx img) (arrowS σ Δ img) (ok_arrowS himg) (coh_arrowS himg)
   | .box _, ⟨_, u⟩ => holeRead_tupImgT_packT himg u
+  | .boxC _ (_ :: _) _, n => PEmpty.elim n
   | .prod _ _, (n₁, n₂) =>
       sig_pair (holeRead_tupImgT_packMap himg n₁) (holeRead_tupImgT_packMap himg n₂)
 
@@ -950,7 +963,10 @@ theorem ind_of_nComesBack {s k : B.W} (hR : B.R s k) (r : B.RT k s) {j : ℕ} {N
       (n.subst (arrowIdx (B.img k s)) (arrowS σ _ (B.img k s))
         (ok_arrowS (B.imgOk (B.symm hR) j)) (coh_arrowS (B.imgOk (B.symm hR) j))).2) o := by
   induction N with
-  | box A =>
+  | boxC A cs _ =>
+      rcases cs with _ | ⟨_, _⟩
+      swap
+      · exact PEmpty.elim n
       obtain ⟨_, u⟩ := n
       change B.Ind (B.model.necEval (Model.interp _ (Term.boxtm u)) ⟨s, ⟨r⟩⟩) o at h
       rw [Model.box_beta, boxPush_canon_at k _ ⟨s, ⟨r⟩⟩ (B.symm hR) le_rfl,
@@ -979,7 +995,7 @@ theorem mem_ret_of_sat_nec (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) (hRI
   obtain ⟨⟨k, ⟨rk⟩⟩, e, hΦ, r, hInd⟩ := h
   have hR := R_of_RT_strong hS rk
   obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom N.ty k e
-  obtain ⟨n, hn⟩ := NTerms.exists_obj N g
+  obtain ⟨n, hn⟩ := NTerms.exists_obj (B.noT_of_strong hS) N g
   have hj₀ : j₀ ≤ max j₀ (B.stg s k i) := le_max_left _ _
   have hj : B.stg s k i ≤ max j₀ (B.stg s k i) := le_max_right _ _
   have he : Model.interp (B.canonEnv k (max j₀ (B.stg s k i)))
@@ -1051,7 +1067,7 @@ theorem mem_retx_of_sat (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   obtain rfl := B.hxX hk i Y hY
   have hR := B.kdR hk
   obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom N.ty a₁.1.1 e
-  obtain ⟨n, hn⟩ := NTerms.exists_obj N g
+  obtain ⟨n, hn⟩ := NTerms.exists_obj (B.noT_of_strong hS) N g
   have hj₀ : j₀ ≤ max j₀ (B.stg s a₁.1.1 i) := le_max_left _ _
   have hj : B.stg s a₁.1.1 i ≤ max j₀ (B.stg s a₁.1.1 i) := le_max_right _ _
   have he : Model.interp (B.canonEnv a₁.1.1 (max j₀ (B.stg s a₁.1.1 i)))
