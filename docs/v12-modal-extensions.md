@@ -7325,6 +7325,98 @@ frame's arrows include each world's own arrow, with the identity as its way home
 * *Remaining to confirm when building:* `packT(□u) = □⟨u, items(collapse u)⟩` (β and collapse
   commuting with `items`), and `tupB` at `true` on `[□A]` being `packT c`.
 
+**Correction to the paper checks (2026-10-15).**  The "third map" of check 1 is unsound as
+stated, so check 2's conclusion fails.
+* *Why.*  A map `box B → boxT A` (object `d ↦ □s[d.box]`) must return the image along `r` of
+  `s[d.here]`'s here-items.  A `box`-shape return fixes only `d`'s contents along `r`.  In a
+  T-model without 4 these are independent (§11.21, risk 1).  Counterexample: `B = □C`, `s` the
+  hole: `necEval (d.here) r` is not fixed by `necEval d r`.
+* *What is sound:* `holeT s : boxT B → boxT A`.  `img_A(s[x], r)` is a fixed term transform `s♯`
+  of `img_B(x, r)`, by induction on the closed hole term `s` (its `□` subterms read only `x`'s
+  components and their here-chains).  So the source must already return here-items.
+* *Consequence.*  Truth ⇒ membership for a user's `boxT` atom needs the invariant at a
+  `boxT`-style shape.  Under T, `RetInv` and its forms would bind the tuple at `boxT (bcT cls)`,
+  valued `⟨tupImgT, κ(tupImgT)⟩`.  The network's tuple object is closed under here-chains (`tupB`
+  contains every `r.here…q.box`), so its here-items' image is a projection `κ` of `tupImgT`; that
+  is a fact about this object, not a sound rule.  Then the units (`ret_unit`, `W`, `D`, `WD`),
+  which give births and realisation steps, are needed at `boxT` too.  The K-laws and forgetting
+  are stated at any shape and should carry over.
+* *Options.*
+  (a) A flag-generic tuple shape (`box` with T off, `boxT` with T on) for the invariants, with
+  the units generalised to it.  This means more new rules, or one generalisation of the unit rules'
+  inner shape.
+  (b) The content restriction (`◇`-free here-items), which needs no `boxT`; against §11.15.
+  To decide before building further.
+
+**Paper check of `ret_extH` (2026-10-15, user: `boxT` is not uniform).**  Proposal:
+`◇[d ↦ t] Φ(⟨d, h(d)⟩) ⊢ ∃z. ◇[⟨d, e⟩ ↦ ⟨t, z⟩] Φ(⟨d, e⟩)` for a hole term `h : □A → □C`
+(`ret_extS` with a companion defined from the bound object), with no new shape.  **Outcome: not
+enough on its own.**
+* *Sound*: take `z` to be the companion's reading along the way home.
+* *Why it fails.*  The conclusion binds `⟨d, e⟩` freely: `e = h(d)` is used to rewrite the body,
+  then forgotten.  The returning child's seed is pulled back with its born root `c : □A` sent to
+  the obligation's bound object (`retPullS`).  The back arrow sends `c.here.q.box` to the named
+  returns `z`.  So the pull-back must send `c.here.q.box` to the slot's companion part.  That holds
+  only if the bound object's companion is its own `d.here.q`, which is the tie the conclusion
+  dropped.  No choice of term `c ↦ □X` repairs it: `□X`'s here-items are `X`'s own-arrow reading,
+  so the slot's coherence would be needed again (risk 1).
+* *What keeps the tie, uniformly:* bind **`d` alone** and put the companions' returns in the value.
+  This is a shape **`boxH A h̄`**, "a necessary object with necessary objects defined from it":
+  * `h̄` is a list of hole terms `hᵢ : □A → □Cᵢ`;
+  * the value is `⟨t, z̄⟩`;
+  * it comes back when `d` does and each `hᵢ(d)` comes back as `zᵢ`.
+
+  It is flag-free.  With T off a definable `□C` term of `d` is `□f(d.box)`, so `boxH` reduces to
+  products by `ret_map`.  Under T, `h̄` is `d`'s here-components; with the empty list it is
+  `box A`, so T off is the special case.  The existence rule becomes
+  `◇[d ↦ t] Φ(d) ⊢ ∃z̄. ◇^{boxH}[d ↦ ⟨t, z̄⟩] Φ(d)`: object and body unchanged, values named.
+  It is sound for the same reason.  The pull-back sends `c ↦ d`, coherent by construction.
+* *Still open (as with `boxT`): truth ⇒ membership for user atoms at `boxH`.*  A map from the
+  network's tuple shape (`box`) into `boxH` is unsound for arbitrary objects (the counterexample
+  above).  So either the invariants bind the tuple at `boxH` (and the units are needed there), or
+  another route is found.  This is the question to settle next, with the realisation steps.
+
+**Paper check: invariants at `boxH` under T (2026-10-15).**  **Passes in outline.**  Under T,
+every returning invariant binds the network's tuple at `boxH (bcT cls) (here cls)`, where
+`here cls` lists the tuple's **here-chain components** (`d.here.q`, `d.here.q.here.p`, …,
+finitely many by type depth).  With T off the list is empty, so nothing changes there.
+* *The tuple is closed under here-chains.*  `bc(□R) = R × bc R` puts every `r.here…q.box` of a
+  root into the tuple.  So the tuple's companions come back as **projections** `κ` of its
+  contents' returns: the invariant's value is `⟨tupImgT, κ(tupImgT)⟩`, a term.  It is true in the
+  canonical model, because each companion's return is the image of a tuple component.
+* *Births* (`retSeed_consistent`): as now, at `boxH`.  The seed keeps `¬Θ` for each
+  `¬◇^{boxH}[e ↦ ⟨v, κv⟩] Θ`; consistency is the K-law at `boxH`.  The obligation comes from a
+  user atom by the existence rule (name the returns of `d`'s here-chain), then a packing map to
+  the single root's tuple.  `κ` picks out the named `z̄`, so the pull-back (`c ↦ □(u.box.snd.fst)`)
+  is coherent: `u.here.snd.fst.q` is a companion of the slot, and its named return is the back
+  image of `c.here.q.box`.
+* *Committing a new root* (`retStep`/`retSet_consistent`): its image is a fresh root of type
+  `bc(□R)`, here-part included.  `ret_new`/`ret_extS` name the contents part, and the existence
+  rule at `boxH` names the here-part.
+* *The reverse invariant* (`retStep_rev`): `ret_unit` with object `□sb`, `sb` the target's tuple.
+  The round-trip worry (2026-10-15) does not arise.  `□sb` lives at the *home* side, so each
+  companion `(□sb).here.q` is a term over the home world, and its reading along the arrow out is
+  the term `((collapse sb).q).box`.  So **the units at `boxH` take definable values**, sound for
+  every `sb`, with no fresh names.
+* *Truth ⇒ membership for user atoms at `boxH`*: the network's invariant now returns the tuple's
+  here-chain, so a map `holeH u : boxH B ĥ → boxH A h̄` is sound.  The object is `□u[D]`.  Each
+  companion `hᵢ(□u[D])` is syntactically `□vᵢ[D]`, with `vᵢ` over `D`'s contents and here-chain,
+  so its value is `vᵢ` of the source's value.  For plain `box` atoms, forget the companions.
+
+**What this needs.**
+* The shape `boxH`, with semantics, soundness at every rule stated "at any shape", and
+  `Proof.subst`.  Alternatively, give `box` itself a companion list (empty with T off), which keeps
+  one constructor.
+* The existence rule (name companions' returns).
+* **The four units generalised to a `boxH` inner object** (definable values), as `ret_eq` became
+  `ret_eqS`.  The K-laws and forgetting are derived from the units, so they follow at `boxH`.
+* `ShapeMap`s: forget, `holeH` (with the syntactic companion transform `hᵢ(□u[x]) = □vᵢ[x]`),
+  packing to the single root's tuple.
+* Risk 2's `ret_hereS`/`back_here` on the leg, without a `boxT` case.
+
+**To confirm when building:** the companion transform as a term function; the `κ` projections
+for `tupB` at `true`; the merge step (`ret_listW`) at `boxH`, which should be unaffected.
+
 **Order.**
 1. The decisions, by the user:
    * risk 1: `boxT` with its existence rule, or the content restriction;
