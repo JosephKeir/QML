@@ -1594,6 +1594,56 @@ theorem tupC_back (A : VarType) (hb : ModalSys.T = true) {v w : M.frame.W}
         exact key _ (VarType.bcDec_box A p' hp₀) _
 
 include hM in
+/-- A padded object comes back with its companions when the object does. -/
+theorem padC_back (Z : VarType) (hb : ModalSys.T = true) {v w : M.frame.W}
+    (e : M.frame.Dom (.VTypeBox Z) v) (r : M.frame.R v w)
+    (o : M.frame.Dom (Z.compsFlat Z.hereChains) w) (h : M.compsBack Z Z.hereChains e r o) :
+    ∀ (cs : List (List Step)) (hcs : ∀ p ∈ cs, p ∈ (VarType.VTypeProd Z .VTypeOne).hereChains),
+      M.compsBack (.VTypeProd Z .VTypeOne) cs
+        (M.holeVal (ShapeMap.padC (σ := σ) Z true hb).obj.2 e) r
+        (M.holeVal (padCVal (σ := σ) Z cs hcs).2 o)
+  | [], _ => by
+      have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (VarType.VTypeBox Z)
+      have hw := Ctx.ref_insert_root Ctx.empty (.bnd 0) (Z.compsFlat Z.hereChains)
+      change M.Ind (M.necEval (interp ((Env.empty v).extend (.bnd 0) e) (Term.boxtm _)) ⟨w, ⟨r⟩⟩)
+        (interp ((Env.empty w).extend (.bnd 0) o) _)
+      rw [box_beta]
+      refine hM.pair ?_ (M.Ind_refl _)
+      change M.Ind (interp _ (Term.eta (σ := σ) (VarSymb.root (.bnd 0)).inner Z _))
+        (interp _ (Term.eta (σ := σ) _ Z _))
+      rw [interp_eta, interp_eta, Env.ref_inner _ _ hu, Env.ref_compsFst _ _ hw,
+        show ((Env.empty v).extend (.bnd 0) e).ref (.root (.bnd 0)) hu = e from
+          Env.extend_root _ _ _ _,
+        show ((Env.empty w).extend (.bnd 0) o).ref (.root (.bnd 0)) hw = o from
+          Env.extend_root _ _ _ _]
+      exact compsBack_proj e r _ o h
+  | p :: ps, hcs => by
+      have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (VarType.VTypeBox Z)
+      have hw := Ctx.ref_insert_root Ctx.empty (.bnd 0) (Z.compsFlat Z.hereChains)
+      refine ⟨padC_back Z hb e r o h ps _, ?_⟩
+      rw [dif_pos hb]
+      obtain ⟨hp, hq⟩ := padC_mem (hcs p List.mem_cons_self)
+      generalize hq' : p.tail = q at hq hp
+      subst hp
+      change (if hT' : ModalSys.T = true then M.compBack (.VTypeProd Z .VTypeOne) (.fst :: q)
+        (M.necEval (M.holeVal (ShapeMap.padC (σ := σ) Z true hb).obj.2 e :
+          M.frame.Nec (.VTypeProd Z .VTypeOne) v) (M.frame.reflAcc hT' v)) r
+        (interp ((Env.empty w).extend (.bnd 0) o) (Term.eta (σ := σ) _ _ _)) else True)
+      rw [dif_pos hb, interp_eta]
+      unfold holeVal
+      dsimp only [ShapeMap.obj]
+      rw [box_beta]
+      change M.compBack Z q (interp _ (Term.eta (σ := σ) (VarSymb.root (.bnd 0)).inner Z _)) r _
+      rw [interp_eta, Env.ref_inner _ _ hu,
+        show ((Env.empty v).extend (.bnd 0) e).ref (.root (.bnd 0)) hu = e from
+          Env.extend_root _ _ _ _]
+      have key := compsBack_at hb e r _ _ hw
+        (by rw [show ((Env.empty w).extend (.bnd 0) o).ref (.root (.bnd 0)) hw = o from
+          Env.extend_root _ _ _ _]; exact h) q hq
+        (Ctx.ref_compsIdx _ q hq hw)
+      exact (iff_of_eq (dif_pos hb)).mp key
+
+include hM in
 /-- ⭐**A map between shapes preserves coming back**: if the object comes back as `o`, its image
     comes back as the value's image. -/
 theorem ShapeMap.comesBack : ∀ {S T : NShape} (F : ShapeMap σ S T) {v w : M.frame.W}
@@ -1692,6 +1742,19 @@ theorem ShapeMap.comesBack : ∀ {S T : NShape} (F : ShapeMap σ S T) {v w : M.f
           Env.extend_root _ _ _ _]
       exact h
   | _, _, .tupC A true hb, v, w, e, r, o, h => tupC_back hM A hb e r o h _ _
+  | _, _, .padC Z false hb, v, w, e, r, o, h => by
+      have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (VarType.VTypeBox Z)
+      change M.Ind (M.necEval (interp ((Env.empty v).extend (.bnd 0) e) (Term.boxtm _)) ⟨w, ⟨r⟩⟩)
+        (interp ((Env.empty w).extend (.bnd 0) o) _)
+      rw [box_beta]
+      refine hM.pair ?_ (M.Ind_refl _)
+      change M.Ind (interp _ (Term.eta (σ := σ) (VarSymb.root (.bnd 0)).inner Z _))
+        (interp _ (Term.eta (σ := σ) _ Z _))
+      erw [interp_eta, interp_eta_slot, Env.ref_inner _ _ hu,
+        show ((Env.empty v).extend (.bnd 0) e).ref (.root (.bnd 0)) hu = e from
+          Env.extend_root _ _ _ _]
+      exact h
+  | _, _, .padC Z true hb, v, w, e, r, o, h => padC_back hM Z hb e r o h _ _
 
 omit [Γ.NoSlots] in
 theorem interp_eta_slot_fst_fst {Δ : Ctx} {v : M.frame.W} (en : M.Env Δ v) {A B C : VarType}

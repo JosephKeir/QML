@@ -7656,6 +7656,36 @@ T-off `BRetChild`, to replace it when the network switches; for either value of 
 * *Next:* the generic witness, back-witness and doubly witnessed children; then the network's
   switch (obligations at `S_A`, `RetData` on `RetInvB`, the chain, `BRetOut`).
 
+**Built (2026-10-17): stage 3c, all four generic children.**  The three remaining children
+mirror `BRetChildC`, each beside its T-off original; no sorries, full build green
+(`scripts/qbuild.py`'s default targets now include `BRetChildXDC`, which imports the other three).
+* *Witness child* (`QML_v12m_BRetChildXC`): obligation `◇_x^{S_A}[u ↦ unarrT y] Ξ`.
+  `RetInvXB`/`RetInvWB` are `RetInvX`/`RetInvW` with the tuple's companions (definitionally the
+  old ones at `false`).  The back birth goes along `tupC` (`liftBodyXR_tupC`), the forward birth
+  by `ret_unitWC` with `thetaG` (`thetaF` for any rest of the hole).
+* *Padding* (`ShapeMap.padC`, user-approved): `□Z ↦ □⟨Z, ()⟩`, with companions `fst :: q`
+  (`padCVal`, `padC_back` for `comesBack`).  The two witnessed-way-home children commit
+  `[◇X, □A]`, so their tuple is the born root's padded: `mapD = tupC ; padC`.
+  Term identities: `holeAt_compsVal_padC`, `compVal_padC`, `mono_compsVal`, `subst_arrow_mono`,
+  `tupCompsImg_padC`.
+* *Back-witness child* (`QML_v12m_BRetChildDC`): obligation
+  `◇^{S_A × ◇X}[⟨u, e⟩ ↦ ⟨unarrT y, z⟩] Ξ` (`unarrDT`).  At the child the slot is `⟨c, e⟩`
+  (`entryD`, a `.tm` entry).  The pull-back sends `c ↦ u.fst`, `e ↦ u.snd` (`retPullDC`, no
+  `bc` fact).  Consistency by `retD_KC_node`.  ⭐`retChildDC_back` (`RetInvWB`) by `ret_map`
+  along `mapD`: P2 `liftBodyDR_mapD` (via `subst_liftObj_mapD`, any substitution with slot
+  `⟨c, e⟩`) and P3 `holeRead_unarrDT_mapD`.  ⭐`retChildDC_fwd` (`RetInvXB` along `e`) by
+  `ret_unitDC` with `thetaD`, F1 `holeRead_thetaD` and F2 `liftBodyDR_unitBodyDC_thetaD`.
+  F2 needs `Term.subst_compsSlot_tm`, `subst_compsSlot` for an object sent to an η-expanded term.
+* *Doubly witnessed child* (`QML_v12m_BRetChildXDC`): the same along `x` (`X :: rclD`,
+  `liftBodyXDR`, `retPullXDC` with the content root to `x.dia`, `retxD_KC_node`).
+  `RetInvWDB` is `RetInvWD` with companions.  Births by `ret_map` along `mapD` and by
+  `ret_unitWDC` (F2 `liftBodyXDR_unitBodyWDC_thetaD`).
+* The births take the alias `y` and a unit root `o` separately (`backImgD_ok`), as the T-off
+  obligations do.
+* *Next:* the network's switch: obligations at the born shapes (production via `ret_compS` and
+  the aliases), `RetData`/`GoodS` on the companion invariants, `mkRet*` on the generic children;
+  then delete the T-off births.
+
 **Order.**
 1. The decisions, by the user:
    * risk 1: `boxT` with its existence rule, or the content restriction;
