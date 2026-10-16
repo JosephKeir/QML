@@ -7637,6 +7637,25 @@ the pull-back `c ↦ u`, and consistency.
 * *Next:* the generic births (stage 3c): the seed at `S_A`, the pull-back `c ↦ u`, consistency
   by the K-laws, and the birth of the child's invariants (`tupC`, the units).
 
+**Built (2026-10-17): stage 3c, the generic plain child (`QML_v12m_BRetChildC`).**  Alongside the
+T-off `BRetChild`, to replace it when the network switches; for either value of T, no casts.
+* Obligation `◇^{S_A}[u ↦ unarrT y] Ξ` (`bornShape A`, `unarrT`: `compsSlot c` sent along the back
+  arrow); reading at the child `liftBodyR` (slot ↦ `c`); seed `retSeedC`; flag-free pull-back
+  `retPullC` (`c ↦ u`), `subst_retPullC_liftBodyR`; ⭐`retSeedC_consistent` (by `ret_KC_node`,
+  `ret_refuteS`).
+* ⭐`retChildC_back` (`RetInvB` child → parent) by `ret_map` along `tupC`, contraposed:
+  **P2** `liftBodyR_tupC` (the object read at `c` is `□tupT [□A]`) and **P3**
+  `holeRead_unarrT_tupC` (the value read at `unarrT y` is `tupCompsImg [□A] y`).  Both come
+  from the flag-generic **P3′** `holeRead_compsSlot_tupC`, `subst_arrow_compsVal` and the companion
+  computation ⭐`Subst.at_ext_collapse_tupB`/`compVal_tup1` (a tuple's companion `p` is its
+  root's companion `bcDec p`: the term counterpart of `compBack_itemsTree`).
+* ⭐`retChildC_fwd` (`RetInvB` parent → child) by the companion unit (`ret_unitC`, outer `co`,
+  inner the parent's tuple with companions), the hole formula `thetaF` (the parent's body read
+  through `arrT` = `tupC`'s value, companions forgotten), **F1** `holeRead_thetaF`, **F2**
+  `liftBodyR_unitBodyC_thetaF`, and `ret_absurdS`.
+* *Next:* the generic witness, back-witness and doubly witnessed children; then the network's
+  switch (obligations at `S_A`, `RetData` on `RetInvB`, the chain, `BRetOut`).
+
 **Order.**
 1. The decisions, by the user:
    * risk 1: `boxT` with its existence rule, or the content restriction;
