@@ -559,11 +559,66 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (O.retS hS S t' Φ)
   /-- ⭐**The own arrow** (T): a necessary object here with `Φ` at this very world comes back as its
       value here — the identity is an arrow out and its own way home. -/
-  | ret_here {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+  | ret_hereC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       (hT : ModalSys.T = true) {A : VarType} {a₀ : Ann A}
-      (sb : Term σ Γ.boxIn A a₀) (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) :
+      (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
+      (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) :
       Proof σ Γ Δ (WFF.hereRead hT (Term.boxtm sb) Φ) →
-      Proof σ Γ Δ (WFF.ret hS (Term.collapse (Ctx.collapses_boxIn_self hT Γ) sb) Φ)
+      Proof σ Γ Δ (WFF.retS hS (.nec (.boxC A cs h))
+        (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2) Φ)
+  /-- ⭐**The own arrow, witnessed** (§11.21, risk 2): the possible part realised here by `u`
+      (`Here(p, u)`) is `ComesBack`'s witness clause at the identity. -/
+  | ret_hereWC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hT : ModalSys.T = true) {A Y : VarType} {a₀ : Ann A}
+      (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
+      {b : Ann (.VTypeDia Y)} (p : Term σ Γ (.VTypeDia Y) b) {c : Ann Y} (u : Term σ Γ Y c)
+      (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd (.VTypeBox A) (.VTypeDia Y))) 1) :
+      Proof σ Γ Δ (WFF.here hT p u) →
+      Proof σ Γ Δ (WFF.hereRead hT (Term.pair (Term.boxtm sb) p) Φ) →
+      Proof σ Γ Δ (WFF.retS hS (.wit (.boxC A cs h) Y)
+        (Term.pair (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2) u) Φ)
+  /-- ⭐**The own arrow along `◇_x`** (§11.21, risk 2): with the identity in `x`'s extent
+      (`Here(◇_x bd, t₀)`), what holds here of `t₀` and the object holds out there, at the
+      identity, of the content `bd` and the object — stated at a hole formula, as `here_intro`
+      is. -/
+  | ret_hereXC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hT : ModalSys.T = true) (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+      {X A : VarType} {a₁ : Ann X} (bd : Term σ (Γ.diaIn x) X a₁) {a' : Ann X}
+      (t₀ : Term σ Γ X a') {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step))
+      (h : A.CompOk cs) (χ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd X (.VTypeBox A))) 1) :
+      Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd) t₀) →
+      Proof σ Γ Δ (WFF.hereRead hT (Term.pair t₀ (Term.boxtm sb)) χ) →
+      Proof σ Γ Δ (WFF.retxS hS x hx (.nec (.boxC A cs h))
+        (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2)
+        (WFF.viewBody hx bd χ))
+  /-- ⭐**The own arrow along `◇_x`, witnessed**: `ret_hereXC` with the possible part realised
+      here by `u`. -/
+  | ret_hereXWC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hT : ModalSys.T = true) (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+      {X A Y : VarType} {a₁ : Ann X} (bd : Term σ (Γ.diaIn x) X a₁) {a' : Ann X}
+      (t₀ : Term σ Γ X a') {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step))
+      (h : A.CompOk cs) {b : Ann (.VTypeDia Y)} (p : Term σ Γ (.VTypeDia Y) b) {c : Ann Y}
+      (u : Term σ Γ Y c)
+      (χ : WFF σ (Γ.boxIn.insert (.bnd 0)
+        (.VTypeProd X (.VTypeProd (.VTypeBox A) (.VTypeDia Y)))) 1) :
+      Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd) t₀) →
+      Proof σ Γ Δ (WFF.here hT p u) →
+      Proof σ Γ Δ (WFF.hereRead hT (Term.pair t₀ (Term.pair (Term.boxtm sb) p)) χ) →
+      Proof σ Γ Δ (WFF.retxS hS x hx (.wit (.boxC A cs h) Y)
+        (Term.pair (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2) u)
+        (WFF.viewBody hx bd χ))
+  /-- ⭐**`Back` at the own arrow, along `◇_y`** (§11.21, risk 2): with the identity in `y`'s
+      extent, the carrier's body read twice there (named by the `Here` atom) is interchangeable
+      with its value. -/
+  | back_hereX {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hT : ModalSys.T = true) (y : VarSymb) (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y))
+      {A : VarType} {a₀ : Ann A} (bd : Term σ (Γ.diaIn y).boxIn A a₀) {a : Ann A}
+      (t : Term σ Γ A a) {a' : Ann A} (t₀ : Term σ Γ A a') (φ : WFF σ (Γ.insert (.bnd 0) A) 1) :
+      Proof σ Γ Δ ((OutLeg.pos y hy : OutLeg Γ).back hS bd t) →
+      Proof σ Γ Δ (WFF.here hT
+        (Term.diatm y hy (Term.collapse (Ctx.collapses_boxIn_self hT (Γ.diaIn y)) bd)) t₀) →
+      Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t φ) →
+      Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t₀ φ)
   /-- ⭐**Bridging** (§11.14): a carrier that comes back as `t`, possibly with `Φ` of its image out
       there, is a returning possibility with value `t` — from any arrow of its out leg, plain or
       witnessed. -/
@@ -639,6 +694,14 @@ def ret_unitWD {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.
       θ)) :
     Proof σ Γ Δ (WFF.retxS hS x hx (.wit (.box C) Xe) y (WFF.and Ψ (WFF.unitBodyWD hS sb u θ))) :=
   Proof.ret_unitWDC hS hx y Ψ sb u [] (Or.inl rfl) θ p q
+
+/-- ⭐**The own arrow** at an object without companions (`ret_hereC` at `[]`). -/
+def ret_here {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+    (hT : ModalSys.T = true) {A : VarType} {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀) (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
+    (p : Proof σ Γ Δ (WFF.hereRead hT (Term.boxtm sb) Φ)) :
+    Proof σ Γ Δ (WFF.ret hS (Term.collapse (Ctx.collapses_boxIn_self hT Γ) sb) Φ) :=
+  Proof.ret_hereC hS hT sb [] (Or.inl rfl) Φ p
 
 /-- **Leibniz for the value** at a necessary object (`ret_eqS`'s box instance). -/
 def ret_eq {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)

@@ -508,6 +508,26 @@ theorem sat_back_here (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A
     interp_collapse (Env.collapseAgree_self hT (env.boxPush (M.frame.reflAcc hT w)))]
   exact (hM.inv hfin hnp env φ _ _ hown).mpr hφ
 
+include hnp hfin hM in
+/-- ⭐The own arrow along `◇_y` (T): with the identity in `y`'s extent, both the value and the
+    `Here` atom's term are indistinguishable from the carrier's body read twice there. -/
+theorem sat_back_hereX (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) (y : VarSymb)
+    (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) {A : VarType} {a₀ : Ann A}
+    (bd : Term σ (Γ.diaIn y).boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) {a' : Ann A}
+    (t₀ : Term σ Γ A a') (φ : WFF σ (Γ.insert (.bnd 0) A) 1)
+    (hb : M.sat env ((OutLeg.pos y hy : OutLeg Γ).back hS bd t : WFF σ Γ 0))
+    (hh : M.sat env (WFF.here hT
+      (Term.diatm y hy (Term.collapse (Ctx.collapses_boxIn_self hT (Γ.diaIn y)) bd)) t₀ :
+        WFF σ Γ 0))
+    (hφ : M.sat env (WFF.instantiate Ctx.NoSlots.slots t φ)) :
+    M.sat env (WFF.instantiate Ctx.NoSlots.slots t₀ φ) := by
+  obtain ⟨hm, hval⟩ := (sat_here_diatm hT env hy hy.choose_spec t₀ _).mp hh
+  rw [interp_collapse (Env.collapseAgree_self hT _)] at hval
+  obtain ⟨r, hr⟩ := (OutLeg.sat_back_rt hS env (.pos y hy) bd t hb).2 ⟨M.frame.reflAcc hT w, hm⟩
+  obtain rfl : r = M.frame.refl hT w := @Subsingleton.elim _ (M.frame.homeUnique hS) _ _
+  rw [sat_instantiate env hnp] at hφ ⊢
+  exact (hM.inv hfin hnp env φ _ _ hval).mp ((hM.inv hfin hnp env φ _ _ hr).mpr hφ)
+
 end Model
 
 
@@ -1086,17 +1106,124 @@ theorem sat_ret_eqS (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape}
     ⟨i, e, hΦ, r, (sat_eqRec env S.flat t t').mp he ▸ hr⟩
 
 include hnp in
-theorem sat_ret_here (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A : VarType}
-    {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀)
+theorem sat_ret_hereWC (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A Y : VarType}
+    {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (hcs : A.CompOk cs)
+    {b : Ann (.VTypeDia Y)} (p : Term σ Γ (.VTypeDia Y) b) {c : Ann Y} (u : Term σ Γ Y c)
+    (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd (.VTypeBox A) (.VTypeDia Y))) 1)
+    (hh : M.sat env (WFF.here hT p u : WFF σ Γ 0))
+    (h : M.sat env (WFF.hereRead hT (Term.pair (Term.boxtm sb) p) Φ)) :
+    M.sat env (WFF.retS hS (.wit (.boxC A cs hcs) Y)
+      (Term.pair (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs hcs).2) u) Φ :
+        WFF σ Γ 0) := by
+  refine ⟨M.frame.reflAcc hT w, interp env (Term.pair (Term.boxtm sb) p),
+    (sat_hereRead hT hnp env _ Φ).mp h, M.frame.refl hT w, ?_, hh⟩
+  change M.compsBack A cs (interp env (Term.boxtm sb)) (M.frame.refl hT w)
+    (interp env (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs hcs).2))
+  rw [interp_collapse (Env.collapseAgree_self hT env)]
+  exact compsBack_compsVal env sb (M.frame.reflAcc hT w) cs hcs
+
+/-- A body along `◇_x` given by a hole formula, at the identity in `x`'s extent: the hole formula
+    read in the `□` view there, with the content's value and the object in its hole. -/
+theorem sat_viewBody_here (hT : ModalSys.T = true) {x : VarSymb}
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {X T : VarType} {a₁ : Ann X}
+    (bd : Term σ (Γ.diaIn x) X a₁) (χ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd X T)) 1)
+    (hm : M.frame.reflAcc hT w ∈ (M.posEval (env.ref x hx.choose_spec)).1)
+    (e : M.frame.Dom T w) :
+    M.sat ((env.diaPush x hx.choose_spec ⟨M.frame.reflAcc hT w, hm⟩).extend (.bnd 0) e)
+        (WFF.viewBody hx bd χ) ↔
+      M.sat ((env.boxPush (M.frame.reflAcc hT w)).extend (T := .VTypeProd X T) (.bnd 0)
+        (interp (env.diaPush x hx.choose_spec ⟨M.frame.reflAcc hT w, hm⟩) bd, e)) χ := by
+  set en := env.diaPush x hx.choose_spec ⟨M.frame.reflAcc hT w, hm⟩
+  unfold WFF.viewBody
+  rw [sat_bodyRepl (Ctx.noProjLast_diaIn Γ x)]
+  have hpair : interp (en.extend (.bnd 0) e)
+      (Term.pair (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root T) bd)
+        (Term.eta (.root (.bnd 0)) T (Ctx.ref_insert_root (Γ.diaIn x) (.bnd 0) T))) =
+      ((interp en bd, e) : M.frame.Dom (.VTypeProd X T) w) := by
+    change (interp _ (Term.mono _ bd), interp _ (Term.eta _ _ _)) = _
+    rw [interp_mono (Env.agree_extend en (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root e),
+      interp_eta]
+    exact congrArg _ (Env.extend_root _ _ _ _)
+  rw [hpair]
+  exact sat_mono (Env.extend_agree (Env.diaPush_boxIn env hx.choose_spec
+    ⟨M.frame.reflAcc hT w, hm⟩) (.bnd 0) _) χ
+
+include hnp hfin hM in
+/-- The `◇_x` reading of a hole formula at the identity, moved from the content's value to `t₀`
+    (`Ind`, from a `Here` atom), the object kept: `sat_viewReadTm` at a pair. -/
+theorem sat_viewBody_of_here (hT : ModalSys.T = true) {x : VarSymb}
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {X T : VarType} {a₁ : Ann X}
+    (bd : Term σ (Γ.diaIn x) X a₁) {a' : Ann X} (t₀ : Term σ Γ X a')
+    (χ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd X T)) 1)
+    (hm : M.frame.reflAcc hT w ∈ (M.posEval (env.ref x hx.choose_spec)).1)
+    (hval : M.Ind (interp (env.diaPush x hx.choose_spec ⟨M.frame.reflAcc hT w, hm⟩) bd)
+      (interp env t₀))
+    {b : Ann T} (e₀ : Term σ Γ T b)
+    (h : M.sat env (WFF.hereRead hT (Term.pair t₀ e₀) χ)) :
+    M.sat ((env.diaPush x hx.choose_spec ⟨M.frame.reflAcc hT w, hm⟩).extend (.bnd 0)
+      (interp env e₀)) (WFF.viewBody hx bd χ) := by
+  refine (sat_viewBody_here env hT hx bd χ hm _).mpr ?_
+  have hag := fun o => (Env.collapseAgree_self hT env).extend
+    ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) (T := .VTypeProd X T) o
+  refine (sat_collapse ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _) (hag _) χ).mp ?_
+  refine (hM.inv hfin hnp env _ _ _ (hM.pair hval (M.Ind_refl _))).mpr ?_
+  exact (sat_collapse ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _) (hag _) χ).mpr
+    ((sat_hereRead hT hnp env _ χ).mp h)
+
+include hnp hfin hM in
+theorem sat_ret_hereXC (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) (x : VarSymb)
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {X A : VarType} {a₁ : Ann X}
+    (bd : Term σ (Γ.diaIn x) X a₁) {a' : Ann X} (t₀ : Term σ Γ X a') {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (hcs : A.CompOk cs)
+    (χ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd X (.VTypeBox A))) 1)
+    (hh : M.sat env (WFF.here hT (Term.diatm x hx bd) t₀ : WFF σ Γ 0))
+    (h : M.sat env (WFF.hereRead hT (Term.pair t₀ (Term.boxtm sb)) χ)) :
+    M.sat env (WFF.retxS hS x hx (.nec (.boxC A cs hcs))
+      (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs hcs).2)
+      (WFF.viewBody hx bd χ) : WFF σ Γ 0) := by
+  obtain ⟨hm, hval⟩ := (sat_here_diatm hT env hx hx.choose_spec t₀ bd).mp hh
+  refine ⟨_, hx.choose_spec, ⟨M.frame.reflAcc hT w, hm⟩, interp env (Term.boxtm sb),
+    sat_viewBody_of_here env hnp hfin hM hT hx bd t₀ χ hm hval _ h, M.frame.refl hT w, ?_⟩
+  change M.compsBack A cs (interp env (Term.boxtm sb)) (M.frame.refl hT w)
+    (interp env (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs hcs).2))
+  rw [interp_collapse (Env.collapseAgree_self hT env)]
+  exact compsBack_compsVal env sb (M.frame.reflAcc hT w) cs hcs
+
+include hnp hfin hM in
+theorem sat_ret_hereXWC (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) (x : VarSymb)
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {X A Y : VarType} {a₁ : Ann X}
+    (bd : Term σ (Γ.diaIn x) X a₁) {a' : Ann X} (t₀ : Term σ Γ X a') {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (hcs : A.CompOk cs)
+    {b : Ann (.VTypeDia Y)} (p : Term σ Γ (.VTypeDia Y) b) {c : Ann Y} (u : Term σ Γ Y c)
+    (χ : WFF σ (Γ.boxIn.insert (.bnd 0)
+      (.VTypeProd X (.VTypeProd (.VTypeBox A) (.VTypeDia Y)))) 1)
+    (hh : M.sat env (WFF.here hT (Term.diatm x hx bd) t₀ : WFF σ Γ 0))
+    (hhp : M.sat env (WFF.here hT p u : WFF σ Γ 0))
+    (h : M.sat env (WFF.hereRead hT (Term.pair t₀ (Term.pair (Term.boxtm sb) p)) χ)) :
+    M.sat env (WFF.retxS hS x hx (.wit (.boxC A cs hcs) Y)
+      (Term.pair (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs hcs).2) u)
+      (WFF.viewBody hx bd χ) : WFF σ Γ 0) := by
+  obtain ⟨hm, hval⟩ := (sat_here_diatm hT env hx hx.choose_spec t₀ bd).mp hh
+  refine ⟨_, hx.choose_spec, ⟨M.frame.reflAcc hT w, hm⟩,
+    interp env (Term.pair (Term.boxtm sb) p),
+    sat_viewBody_of_here env hnp hfin hM hT hx bd t₀ χ hm hval _ h, M.frame.refl hT w, ?_, hhp⟩
+  change M.compsBack A cs (interp env (Term.boxtm sb)) (M.frame.refl hT w)
+    (interp env (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs hcs).2))
+  rw [interp_collapse (Env.collapseAgree_self hT env)]
+  exact compsBack_compsVal env sb (M.frame.reflAcc hT w) cs hcs
+
+include hnp in
+theorem sat_ret_hereC (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A : VarType}
+    {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (hcs : A.CompOk cs)
     (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
     (h : M.sat env (WFF.hereRead hT (Term.boxtm sb) Φ)) :
-    M.sat env (WFF.ret hS (Term.collapse (Ctx.collapses_boxIn_self hT Γ) sb) Φ :
-      WFF σ Γ 0) := by
+    M.sat env (WFF.retS hS (.nec (.boxC A cs hcs))
+      (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs hcs).2) Φ : WFF σ Γ 0) := by
   refine ⟨M.frame.reflAcc hT w, interp env (Term.boxtm sb), (sat_hereRead hT hnp env _ Φ).mp h,
     M.frame.refl hT w, ?_⟩
-  dsimp only [ComesBack, NComesBack, compsBack]
-  rw [box_beta, interp_collapse (Env.collapseAgree_self hT env)]
-  exact M.Ind_refl _
+  dsimp only [ComesBack, NComesBack]
+  rw [interp_collapse (Env.collapseAgree_self hT env)]
+  exact compsBack_compsVal env sb (M.frame.reflAcc hT w) cs hcs
 
 theorem sat_ret_bridge (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
     {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}

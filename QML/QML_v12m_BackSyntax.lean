@@ -865,4 +865,17 @@ end Subst
 
 end OutLeg
 
+/-- ⭐A returning possibility's body along `◇_x`, given as a hole formula `χ` about `x`'s content
+    and the bound object together, with the view term `bd` for the content: `χ⟨bd, e⟩`.  The
+    leg's counterpart of `WFF.viewReadTm`, and the form in which the own-arrow rules along a
+    witness state their body (`Proof.ret_hereXC`, §11.21). -/
+def WFF.viewBody {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {x : VarSymb}
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {X T : VarType} {a : Ann X}
+    (bd : Term σ (Γ.diaIn x) X a) (χ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd X T)) 1) :
+    WFF σ ((Γ.diaIn x).insert (.bnd 0) T) 1 :=
+  WFF.bodyRepl
+    (Term.pair (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root T) bd)
+      (Term.eta (.root (.bnd 0)) T (Ctx.ref_insert_root (Γ.diaIn x) (.bnd 0) T)))
+    ((OutLeg.pos x hx : OutLeg Γ).lift χ)
+
 end V12M

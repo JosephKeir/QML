@@ -7462,6 +7462,44 @@ for `tupB` at `true`; the merge step (`ret_listW`) at `boxH`, which should be un
 * Soundness: `compsBack_compsVal` (`□sb` and its companions come back as `compsVal`, by
   `compBack_ref`, `necEval_unboxtm` and `Env.ref_here`), then `sat_ret_unit*C`.
 * *Next:* `holeH` (maps between companion shapes), risk 2's rules, then the commitments.
+  `holeH` is deferred to the truth cases under T: it needs the side condition that the image's
+  companions use only the source's named ones, best fixed where it is used.
+
+**Risk 2's rules: the exact forms (2026-10-17, paper; built as below).**  At the own arrow the
+leg's arrow is the identity, its way home is the identity, and everything bound out there is read
+here.  So each rule takes its object here and reads the body here.  As with the units, there is one
+rule per shape, with companions throughout.
+* *Plain leg, `□A` with companions* (`ret_hereC`, built): `hereRead(□sb) Φ ⊢
+  ◇[e ↦ collapse(compsVal sb cs)] Φ`.  `ret_here` is its `[]` instance, definitionally.
+* *Plain leg, witnessed* (`ret_hereWC`): `Here(p, u), hereRead(⟨□sb, p⟩) Φ ⊢
+  ◇[⟨d, e⟩ ↦ ⟨collapse(compsVal sb cs), u⟩] Φ`.  `p` is any `◇Y`-term.  `Here(p, u)` is
+  `ComesBack`'s witness clause at the identity, so the rule adds nothing to `Here`.
+* *Leg `◇_x`* (`ret_hereXC`, `ret_hereXWC`): stated as `here_intro` is, at the `◇`-term
+  `diatm x bd` with a hole formula, because substitution sends `x` to `ι x` and `x.dia` to a body.
+  The body sees both `x`'s content and the bound object, so the hole formula
+  `χ : WFF (Γ.boxIn.insert 0 (X × S.ty)) 1` takes their pair:
+  `Here(◇_x bd, t₀), [Here(p, u),] hereRead(⟨t₀, e₀⟩) χ ⊢ ◇_x[e ↦ v] χ⟨bd, e⟩`.  Here `e₀` is
+  `□sb` or `⟨□sb, p⟩`, `v` is as above, and `χ⟨bd, e⟩` is `WFF.bodyRepl (pair bd e) χ`.
+  Soundness is `sat_viewReadTm`'s argument at the pair: `IndInvariant.pair` with `Ind_refl` at
+  `e`.  The pinned form (any body, `Here x t₀`) follows by `diaAbsA`, as `here_introAtA` does.
+* *`Back` on the leg `◇_y`* (`back_hereX`): `Back(◇_y □bd, t), Here(◇_y collapse(bd), t₀),
+  φ(t) ⊢ φ(t₀)`.  The second reading at the own arrow is not a term here, because the first arrow
+  is `y`'s, so the `Here` atom names it.  Sound because the round trip at the identity (in `y`'s
+  extent by the atom) returns along the identity (`homeUnique`).  Both `t` and `t₀` are then `Ind`
+  to one value, and `IndInvariant` is applied twice, as in `sat_here_subst`; no symmetry of `Ind`
+  is needed.  `back_here` stays as the plain leg's rule: there the reading is a term.
+
+**Built (2026-10-17): risk 2's own-arrow rules.**
+* Constructors `ret_hereC` (`ret_here` derived at `[]`), `ret_hereWC`, `ret_hereXC`,
+  `ret_hereXWC` and `back_hereX`, each with its `Proof.subst` case and soundness.
+* The body along `◇_x` is `WFF.viewBody hx bd χ` (`BackSyntax`):
+  `bodyRepl ⟨mono bd, e⟩ ((pos x).lift χ)`.  Its substitution lemma `WFF.subst_viewBody` is
+  `subst_bodyRepl`, `subst_under_mono` and `OutLeg.subst_lift`; its semantics at the identity
+  are `sat_viewBody_here` and `sat_viewBody_of_here` (`sat_viewReadTm` at a pair).
+* New helper: `sig_collapse` (ProofSubst).
+* *Next:* the commitment refactor for T (pull-backs and births mirroring `tupB`), then the
+  network's `hT`, the truth cases under T (where these rules and `holeH` are used), and dropping
+  `NoFour.noTStrong`.
 
 **Order.**
 1. The decisions, by the user:
