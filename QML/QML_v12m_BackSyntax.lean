@@ -339,6 +339,28 @@ def RShape.compTm {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (A : VarType) (cs : L
         (Ctx.ref_snd_of (Ctx.ref_fst_of (Ctx.ref_insert_root Ctx.empty (.bnd 0)
           (.VTypeProd (RShape.wit (.boxC A cs h) X).flat ((A.compAt p).getD .VTypeOne)))))))⟩
 
+/-- The contents of a necessary term. -/
+def Term.unboxtm {σ : Signature} {Γ : Ctx} {A : VarType} {a : Ann (.VTypeBox A)} :
+    Term σ Γ (.VTypeBox A) a → Σ b, Term σ Γ.boxIn A b
+  | .boxtm t => ⟨_, t⟩
+
+/-- Under T, the contents of `□sb`'s companion at the path `p`: `□sb` put into the hole of the
+    companion's contents address `d.here.p.box`, read by substitution (`SubE.proj` reads `here` of
+    `□v` as `collapse v`, and projections of pairs as components). -/
+def compVal {σ : Signature} {Γ : Ctx} {A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀)
+    (p : List Step) {ps : List (List Step)} (h : A.CompOk (p :: ps)) :
+    Σ b, Term σ Γ.boxIn ((A.compAt p).getD .VTypeOne) b :=
+  Term.unboxtm (Term.holeAt (Term.boxtm sb) (Term.boxtm
+    (Term.eta ((VarSymb.step (.root (.bnd 0)) .here).ext p).inner ((A.compAt p).getD .VTypeOne)
+      (Ctx.ref_inner (h.ref_head (Ctx.ref_insert_root _ _ _))))))
+
+/-- The value `□sb` and its companions come back as along the arrow out: `sb`, then each
+    companion's contents (`compVal`); `sb` itself when there are none. -/
+def compsVal {σ : Signature} {Γ : Ctx} {A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) :
+    (cs : List (List Step)) → A.CompOk cs → Σ b, Term σ Γ.boxIn (A.compsFlat cs) b
+  | [], _ => ⟨_, sb⟩
+  | p :: ps, h => ⟨_, Term.pair (compsVal sb ps h.tail).2 (compVal sb p h).2⟩
+
 /-- ⭐`ret_unit`'s new conjunct, in the body of `◇[d₁ ↦ y]` (`d₁ : □C` the slot `bnd 0`):
     `◇[d ↦ sb] θ(d₁.box, d)` — from the far world, back here, a necessary object `d` coming back
     as `sb` with `θ` of it and of `d₁`'s return (docs §11.17). -/
@@ -356,6 +378,32 @@ def WFF.unitBody {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong
             (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox C)))))
         (Term.eta (.root (.bnd 1)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 1) _)))
       θ)
+
+/-- `ret_unit`'s new conjunct at an inner object with companions `cs` (docs §11.21): the
+    companions of `□sb` come back too, each as its contents read along the way (`compsVal`).  At no
+    companions this is `WFF.unitBody`. -/
+def WFF.unitBodyC {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+    {C A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step))
+    (h : A.CompOk cs)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1) :
+    WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox C)) 1 :=
+  WFF.retS hS (.nec (.boxC A cs h))
+    (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root (.VTypeBox C))
+      (compsVal sb cs h).2)
+    (WFF.holeAt (((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert (.VTypeBox C)).boxIn.insert
+        (.VTypeBox A))
+      (Term.pair
+        (Term.eta (VarSymb.root (.bnd 0)).inner C
+          ((Ctx.le_insert ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert (.VTypeBox C)).boxIn.root
+            (.VTypeBox A)).ref
+            (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox C)))))
+        (Term.eta (.root (.bnd 1)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 1) _)))
+      θ)
+
+theorem WFF.unitBodyC_nil {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+    {C A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) (h : A.CompOk [])
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1) :
+    WFF.unitBodyC hS sb [] h θ = WFF.unitBody hS sb θ := rfl
 
 /-- ⭐The **witnessed unit's** new conjunct, in the body of `◇_x[d₁ ↦ y]` (docs §11.17):
     `◇[d ↦ sb, e ⇝ u] θ(d₁.box, ⟨d, e⟩)`.  Going home from the far end, a necessary object comes
@@ -380,6 +428,33 @@ def WFF.unitBodyW {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStron
         (Term.eta (.root (.bnd 1)) _ (Ctx.ref_insert_root _ (.bnd 1) _)))
       θ)
 
+/-- The witnessed unit's conjunct at an inner object with companions (`WFF.unitBodyW` at `cs`). -/
+def WFF.unitBodyWC {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+    {x : VarSymb} {C A X : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
+    (u : Term σ (Γ.diaIn x) X b₀) (cs : List (List Step)) (h : A.CompOk cs)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.wit (.box A) X).ty)) 1) :
+    WFF σ ((Γ.diaIn x).insert (.bnd 0) (.VTypeBox C)) 1 :=
+  WFF.retS hS (.wit (.boxC A cs h) X)
+    (Term.pair
+      (Term.mono ((Ctx.le_boxIn_diaIn Γ x).trans
+        (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root (.VTypeBox C)))
+        (compsVal sb cs h).2)
+      (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root (.VTypeBox C)) u))
+    (WFF.holeAt (((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert (.VTypeBox C)).boxIn.insert _)
+      (Term.pair
+        (Term.eta (VarSymb.root (.bnd 0)).inner C
+          ((Ctx.le_insert ((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert (.VTypeBox C)).boxIn.root
+            (RShape.wit (.box A) X).ty).ref
+            (Ctx.ref_inner (Ctx.ref_insert_root (Γ.diaIn x) (.bnd 0) (.VTypeBox C)))))
+        (Term.eta (.root (.bnd 1)) _ (Ctx.ref_insert_root _ (.bnd 1) _)))
+      θ)
+
+theorem WFF.unitBodyWC_nil {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+    {x : VarSymb} {C A X : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
+    (u : Term σ (Γ.diaIn x) X b₀) (h : A.CompOk [])
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.wit (.box A) X).ty)) 1) :
+    WFF.unitBodyWC hS sb u [] h θ = WFF.unitBodyW hS sb u θ := rfl
+
 /-- ⭐The **unit along a returned possible part**, in the body of `◇[⟨d₁, e₁⟩ ↦ y]` with
     `e₁ ⇝ y.2`: `◇_{e₁}[d ↦ sb] θ(⟨d₁.box, e₁.dia⟩, d)`.  The way back lies in `e₁`'s extent, so
     from the far end home is reached along `e₁`, where `e₁`'s content is readable. -/
@@ -389,6 +464,28 @@ def WFF.unitBodyD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStron
     WFF σ (Γ.boxIn.insert (.bnd 0) (RShape.wit (.box C) X).ty) 1 :=
   WFF.retxS hS (.step (.root (.bnd 0)) .snd) ⟨X, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩
     (.box A) (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root _) sb)
+    (WFF.holeAt ((((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _).insert (.VTypeBox A))
+      (Term.pair
+        (Term.pair
+          (Term.eta (VarSymb.step (.root (.bnd 0)) .fst).inner C
+            ((Ctx.le_insert ((((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _).root)
+              (.VTypeBox A)).ref ((Ctx.le_boxIn_diaIn _ _).ref
+                (Ctx.ref_inner (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))))))
+          (Term.eta (VarSymb.step (.step (.root (.bnd 0)) .snd) .dia) X
+            ((Ctx.le_insert ((((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _).root)
+              (.VTypeBox A)).ref (Ctx.ref_diaIn_of (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _))))))
+        (Term.eta (.root (.bnd 1)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 1) _)))
+      θ)
+
+/-- `WFF.unitBodyD` at an inner object with companions `cs`. -/
+def WFF.unitBodyDC {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+    {C X A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step))
+    (h : A.CompOk cs)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd C X) (.VTypeBox A))) 1) :
+    WFF σ (Γ.boxIn.insert (.bnd 0) (RShape.wit (.box C) X).ty) 1 :=
+  WFF.retxS hS (.step (.root (.bnd 0)) .snd) ⟨X, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩
+    (.nec (.boxC A cs h))
+    (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root _) (compsVal sb cs h).2)
     (WFF.holeAt ((((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _).insert (.VTypeBox A))
       (Term.pair
         (Term.pair
@@ -417,6 +514,32 @@ def WFF.unitBodyWD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStro
     (Term.pair
       (Term.mono ((Ctx.le_boxIn_diaIn Γ x).trans
         (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root _)) sb)
+      (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root _) u))
+    (WFF.holeAt ((((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert _).diaIn _).insert _)
+      (Term.pair
+        (Term.pair
+          (Term.eta (VarSymb.step (.root (.bnd 0)) .fst).inner C
+            ((Ctx.le_insert ((((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert _).diaIn _).root)
+              _).ref ((Ctx.le_boxIn_diaIn _ _).ref
+                (Ctx.ref_inner (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))))))
+          (Term.eta (VarSymb.step (.step (.root (.bnd 0)) .snd) .dia) Xe
+            ((Ctx.le_insert ((((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert _).diaIn _).root)
+              _).ref (Ctx.ref_diaIn_of (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _))))))
+        (Term.eta (.root (.bnd 1)) _ (Ctx.ref_insert_root _ (.bnd 1) _)))
+      θ)
+
+/-- `WFF.unitBodyWD` at an inner object with companions `cs`. -/
+def WFF.unitBodyWDC {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+    {x : VarSymb} {C Xe A X : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
+    (u : Term σ (Γ.diaIn x) X b₀) (cs : List (List Step)) (h : A.CompOk cs)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0)
+      (.VTypeProd (.VTypeProd C Xe) (RShape.wit (.box A) X).ty)) 1) :
+    WFF σ ((Γ.diaIn x).insert (.bnd 0) (RShape.wit (.box C) Xe).ty) 1 :=
+  WFF.retxS hS (.step (.root (.bnd 0)) .snd) ⟨Xe, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩
+    (.wit (.boxC A cs h) X)
+    (Term.pair
+      (Term.mono ((Ctx.le_boxIn_diaIn Γ x).trans
+        (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root _)) (compsVal sb cs h).2)
       (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root _) u))
     (WFF.holeAt ((((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert _).diaIn _).insert _)
       (Term.pair

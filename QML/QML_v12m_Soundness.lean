@@ -364,21 +364,21 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M hM w env hfin hnp hΔ
       exact (sat_holeRead hnp env _ ψ).mpr (sat_ret_counitC env hM hS O y bd t ψ
         (ihr M hM env hfin hnp hΔ) (ihb M hM env hfin hnp hΔ))
-  | @ret_unit Γ _ Δ hS O C A c y Ψ a₀ sb θ p q ihp ihq =>
+  | @ret_unitC Γ _ Δ hS O C A c y Ψ a₀ sb cs h θ p q ihp ihq =>
       intro M hM w env hfin hnp hΔ
-      exact sat_ret_unit env hM hS O y Ψ sb θ (ihp M hM env hfin hnp hΔ)
+      exact sat_ret_unitC env hM hS O y Ψ sb cs h θ (ihp M hM env hfin hnp hΔ)
         ((sat_holeRead hnp env _ θ).mp (ihq M hM env hfin hnp hΔ))
-  | @ret_unitW Γ _ Δ hS x hx C A X c y Ψ a₀ sb b₀ u θ p q ihp ihq =>
+  | @ret_unitWC Γ _ Δ hS x hx C A X c y Ψ a₀ sb b₀ u cs h θ p q ihp ihq =>
       intro M hM w env hfin hnp hΔ
-      exact sat_ret_unitW env hM hS hx y Ψ sb u θ (ihp M hM env hfin hnp hΔ)
+      exact sat_ret_unitWC env hM hS hx y Ψ sb u cs h θ (ihp M hM env hfin hnp hΔ)
         ((sat_holeRead hnp env _ θ).mp (ihq M hM env hfin hnp hΔ))
-  | @ret_unitD Γ _ Δ hS O C X A c y Ψ a₀ sb θ p q ihp ihq =>
+  | @ret_unitDC Γ _ Δ hS O C X A c y Ψ a₀ sb cs h θ p q ihp ihq =>
       intro M hM w env hfin hnp hΔ
-      exact sat_ret_unitD env hM hS O y Ψ sb θ (ihp M hM env hfin hnp hΔ)
+      exact sat_ret_unitDC env hM hS O y Ψ sb cs h θ (ihp M hM env hfin hnp hΔ)
         ((sat_holeRead hnp env _ θ).mp (ihq M hM env hfin hnp hΔ))
-  | @ret_unitWD Γ _ Δ hS x hx C Xe A X c y Ψ a₀ sb b₀ u θ p q ihp ihq =>
+  | @ret_unitWDC Γ _ Δ hS x hx C Xe A X c y Ψ a₀ sb b₀ u cs h θ p q ihp ihq =>
       intro M hM w env hfin hnp hΔ
-      exact sat_ret_unitWD env hM hS hx y Ψ sb u θ (ihp M hM env hfin hnp hΔ)
+      exact sat_ret_unitWDC env hM hS hx y Ψ sb u cs h θ (ihp M hM env hfin hnp hΔ)
         ((sat_holeRead hnp env _ θ).mp (ihq M hM env hfin hnp hΔ))
   | @ret_counitD Γ _ Δ hS C X c y ψ p ih =>
       intro M hM w env hfin hnp hΔ

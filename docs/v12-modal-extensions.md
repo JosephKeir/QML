@@ -7449,6 +7449,20 @@ for `tupB` at `true`; the merge step (`ret_listW`) at `boxH`, which should be un
   `pair`, and `here` of `boxtm v` is `collapse v`.  It supplies the definable values of the
   units at companion shapes and of `holeH`.
 
+**Built (2026-10-17): the four units at inner objects with companions.**
+* `ret_unitC`, `ret_unitWC`, `ret_unitDC`, `ret_unitWDC` replace the four unit constructors; each
+  takes a companion list `cs` for the inner object `□sb`.  The old rules are derived at `[]`
+  (`Proof.ret_unit`, …), definitionally, so no call site changed (`WFF.unitBody*C_nil`).
+* Companion values: `compVal sb p` is `□sb` put into the hole of the companion's contents address
+  `d.here.p.box` and unboxed (`Term.unboxtm`).  Substitution resolves `here` of `□v` as
+  `collapse v` (`SubE.proj`), so no new term function was needed.  `compsVal` pairs them, `sb`
+  first, and is literally `sb` at `[]`.
+* `Proof.subst`: `subst_compVal_sig`, `subst_compsVal_sig` (via `Term.subst_unboxtm_sig`,
+  `Term.subst_holeAt_sig`), and `WFF.subst_unitBody*C`.
+* Soundness: `compsBack_compsVal` (`□sb` and its companions come back as `compsVal`, by
+  `compBack_ref`, `necEval_unboxtm` and `Env.ref_here`), then `sat_ret_unit*C`.
+* *Next:* `holeH` (maps between companion shapes), risk 2's rules, then the commitments.
+
 **Order.**
 1. The decisions, by the user:
    * risk 1: `boxT` with its existence rule, or the content restriction;
