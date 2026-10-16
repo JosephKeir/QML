@@ -91,6 +91,117 @@ def RetInv (hS : ModalSys.BStrong = true) (tv tw : NodeSt σ) (cls : List VarTyp
       WFF.ret hS (tupImgT cls imgs himgs).2
         (WFF.mono ((ctxOf_le_of_suffix ht).boxIn.insert (.bnd 0) _) Φ) ∈ tw.M
 
+omit [ModalSys.NoFour] in
+/-- Replacing a body's slot by its own η-expansion leaves it alone. -/
+theorem WFF.bodyRepl_eta {V : Ctx} [V.NoSlots] {A : VarType} (Φ : WFF σ (V.insert (.bnd 0) A) 1) :
+    WFF.bodyRepl (Term.mono ((Ctx.empty_le V).insert (.bnd 0) A)
+      (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root _ _ _))) Φ = Φ := by
+  unfold WFF.bodyRepl
+  refine (WFF.subst_congr _ (Subst.idS σ _) _ (Subst.ok_idS_le (Ctx.Le.refl _)) _
+    (Subst.coh_idS_le (Ctx.Le.refl _)) _ _ ?_ Φ).trans
+    ((WFF.subst_ren (Ctx.Le.refl _) _ _ _ _ _ (fun v _ _ => Subst.at_idS v) Φ).trans
+      (WFF.mono_refl _ Φ))
+  refine Subst.sim_of fun v T _ hv => ?_
+  by_cases hvr : v = .root (.bnd 0)
+  · subst hvr
+    obtain rfl : T = A := by
+      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
+      rw [if_pos rfl] at hv
+      exact (Option.some.inj hv).symm
+    change SubE.Sim _ (((Subst.idS σ _).set (.bnd 0) _) (.root (.bnd 0))) (.ren _)
+    rw [Subst.set_root, Term.mono_eta]
+    exact .eta_ren _ _
+  · change SubE.Sim T (((Subst.idS σ _).set (.bnd 0) _) v) (.ren v)
+    rw [Subst.set_ne _ _ hvr]
+    exact .refl _
+
+/-! ## The invariant with the tuple's companions (T)
+
+Under T the tuple object `□(tupT cls)` has companions, and they come back too (docs §11.21, the
+commitment refactor): each companion's contents (`compVal`) sent along the arrow, as the tuple's
+own value `tupImgT` is `tupT` sent along it (`subst_arrow_tupT`).  Everything takes the flag `b`
+as an argument, so that at `false` it is `RetInv` definitionally. -/
+
+/-- The tuple's value and its companions' values at the far end: `tupImgT`, then each companion's
+    contents sent along the arrow. -/
+def tupCompsImg {Δ : Ctx} (cls : List VarType) (img : ℕ → ℕ) (himg : ImgOk cls Δ img) :
+    (cs : List (List Step)) → (bcT cls).CompOk cs →
+    Σ a : Ann ((bcT cls).compsFlat cs), Term σ Δ ((bcT cls).compsFlat cs) a
+  | [], _ => tupImgT cls img himg
+  | p :: ps, h => ⟨_, Term.pair (tupCompsImg cls img himg ps h.tail).2
+      (Term.subst (arrowIdx img) (arrowS σ Δ img) (ok_arrowS himg) (coh_arrowS himg)
+        (compVal (tupT cls).2 p h).2)⟩
+
+/-- The tuple's shape: `□(bcT cls)` with all its companions (none with T off). -/
+abbrev tupShape (b : Bool) (hb : ModalSys.T = b) (cls : List VarType) : NShape :=
+  .boxC (bcT cls) ((bcT cls).compsAllB b) (VarType.compOk_compsAllB b hb _)
+
+/-- ⭐**The returning-possibility invariant with companions**: `RetInv`, with the tuple bound at
+    `tupShape` and its companions coming back as `tupCompsImg`.  At `b = false` this is `RetInv`
+    (`retInvB_false`). -/
+def RetInvB (hS : ModalSys.BStrong = true) (b : Bool) (hb : ModalSys.T = b) (tv tw : NodeSt σ)
+    (cls : List VarType) (imgs : ℕ → ℕ) (clt : List VarType) (imgt : ℕ → ℕ) : Prop :=
+  ∃ (hs : cls <:+ tv.l) (himgs : ImgOk cls (ctxOf tw.l) imgs) (ht : clt <:+ tw.l)
+    (himgt : ImgOk clt (ctxOf tv.l) imgt),
+    ∀ Φ : WFF σ (bodyCtx cls clt) 1, liftBody hs himgt Φ ∈ tv.M →
+      WFF.retS hS (.nec (tupShape b hb cls))
+        (tupCompsImg cls imgs himgs _ (VarType.compOk_compsAllB b hb _)).2
+        (WFF.mono ((ctxOf_le_of_suffix ht).boxIn.insert (.bnd 0) _) Φ) ∈ tw.M
+
+/-- With T off the invariant with companions is the invariant. -/
+theorem retInvB_false {hS : ModalSys.BStrong = true} (hT : ModalSys.T = false)
+    {tv tw : NodeSt σ} {cls clt : List VarType} {imgs imgt : ℕ → ℕ} :
+    RetInvB hS false hT tv tw cls imgs clt imgt ↔ RetInv hS tv tw cls imgs clt imgt :=
+  Iff.rfl
+
+/-- The flag can be taken to be T itself. -/
+theorem retInvB_flag {hS : ModalSys.BStrong = true} {b : Bool} (hb : ModalSys.T = b)
+    {tv tw : NodeSt σ} {cls clt : List VarType} {imgs imgt : ℕ → ℕ} :
+    RetInvB hS ModalSys.T rfl tv tw cls imgs clt imgt ↔
+      RetInvB hS b hb tv tw cls imgs clt imgt := by
+  cases hb
+  exact Iff.rfl
+
+/-- Reading the value with companions along the first components: the tuple's value. -/
+theorem at_compsFst_tupCompsImg {Δ : Ctx} (cls : List VarType) (img : ℕ → ℕ)
+    (himg : ImgOk cls Δ img) (θ : Subst σ Δ) :
+    ∀ (cs : List (List Step)) (h : (bcT cls).CompOk cs) (u : VarSymb),
+      θ.at u = .tm (tupCompsImg cls img himg cs h).2 →
+      θ.at (u.ext (compsFst cs)) = .tm (tupImgT cls img himg).2
+  | [], _, _, hu => hu
+  | _ :: ps, h, u, hu => by
+      change θ.at ((VarSymb.step u .fst).ext (compsFst ps)) = _
+      refine at_compsFst_tupCompsImg cls img himg θ ps h.tail _ ?_
+      rw [Subst.at_proj θ u rfl, hu]
+      rfl
+
+theorem holeRead_forgetC_tupCompsImg {Δ : Ctx} [Δ.NoSlots] (cls : List VarType) (img : ℕ → ℕ)
+    (himg : ImgOk cls Δ img) (cs : List (List Step)) (h : (bcT cls).CompOk cs) :
+    (⟨_, Term.holeRead (tupCompsImg cls img himg cs h).2
+        (ShapeMap.forgetC (σ := σ) (bcT cls) cs h).val.2⟩ : Σ a, Term σ Δ (bcT cls) a) =
+      tupImgT cls img himg := by
+  unfold Term.holeRead
+  dsimp only [ShapeMap.val]
+  rw [Term.subst_mono]
+  refine Term.subst_eta_tm _ _ _ _ _ _ _
+    (at_compsFst_tupCompsImg cls img himg _ cs h _ ?_)
+  rw [Subst.at_nonproj _ rfl, Subst.single_root]
+
+/-- ⭐**Forgetting the companions**: the invariant with companions gives the invariant
+    (`ShapeMap.forgetC`), so its T-generic consequences (`transfer`, growth) carry over. -/
+theorem RetInvB.forget {hS : ModalSys.BStrong = true} {b : Bool} {hb : ModalSys.T = b}
+    {tv tw : NodeSt σ} {cls clt : List VarType} {imgs imgt : ℕ → ℕ} (hM : Theory.IsMCS tw.M)
+    (h : RetInvB hS b hb tv tw cls imgs clt imgt) : RetInv hS tv tw cls imgs clt imgt := by
+  obtain ⟨hs, himgs, ht, himgt, hinv⟩ := h
+  refine ⟨hs, himgs, ht, himgt, fun Φ hΦ => ?_⟩
+  have hret := hinv Φ hΦ
+  refine hM.closed ⟨[_], fun x hx => by rw [List.mem_singleton.mp hx]; exact hret, ⟨?_⟩⟩
+  refine Proof.conv (WFF.retS_congr hS _ (holeRead_forgetC_tupCompsImg cls imgs himgs _ _) rfl)
+    (Proof.ret_map hS .nec (S := .nec (tupShape b hb cls))
+      (ShapeMap.forgetC (bcT cls) _ (VarType.compOk_compsAllB b hb _)) _ _ ?_)
+  exact Proof.conv (congrArg (WFF.retS hS _ _) (WFF.bodyRepl_eta _).symm)
+    (Proof.lookup List.mem_cons_self)
+
 /-! ## Transfer from the invariant -/
 
 /-- A packed necessity of the bound object, read at `v`: the packed formula, necessarily, at the

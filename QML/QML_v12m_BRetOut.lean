@@ -141,30 +141,6 @@ theorem WFF.bodyRepl_bodyRepl {A B C : VarType} {b : Ann B} {c : Ann C}
       ((Ctx.ref_nonproj _ hlp).trans hv')), Subst.at_idS]
     exact .refl _
 
-omit [ModalSys.NoFour] in
-/-- Replacing a body's slot by its own η-expansion leaves it alone. -/
-theorem WFF.bodyRepl_eta {A : VarType} (Φ : WFF σ (V.insert (.bnd 0) A) 1) :
-    WFF.bodyRepl (Term.mono ((Ctx.empty_le V).insert (.bnd 0) A)
-      (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root _ _ _))) Φ = Φ := by
-  unfold WFF.bodyRepl
-  refine (WFF.subst_congr _ (Subst.idS σ _) _ (Subst.ok_idS_le (Ctx.Le.refl _)) _
-    (Subst.coh_idS_le (Ctx.Le.refl _)) _ _ ?_ Φ).trans
-    ((WFF.subst_ren (Ctx.Le.refl _) _ _ _ _ _ (fun v _ _ => Subst.at_idS v) Φ).trans
-      (WFF.mono_refl _ Φ))
-  refine Subst.sim_of fun v T _ hv => ?_
-  by_cases hvr : v = .root (.bnd 0)
-  · subst hvr
-    obtain rfl : T = A := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
-      exact (Option.some.inj hv).symm
-    change SubE.Sim _ (((Subst.idS σ _).set (.bnd 0) _) (.root (.bnd 0))) (.ren _)
-    rw [Subst.set_root, Term.mono_eta]
-    exact .eta_ren _ _
-  · change SubE.Sim T (((Subst.idS σ _).set (.bnd 0) _) v) (.ren v)
-    rw [Subst.set_ne _ _ hvr]
-    exact .refl _
-
 end Body
 
 section Pair

@@ -212,22 +212,6 @@ theorem reach_ppath {l : List VarType} :
 
 /-! ## Box contents -/
 
-/-- The box-contents type, for a given value `b` of the T flag (`VarType.bc` takes `ModalSys.T`).
-    Taking the flag as an argument lets terms of this type be built by matching on it, with no
-    casts (`tupB`). -/
-def _root_.V12M.VarType.bcB (b : Bool) : VarType → VarType
-  | .Var => .VTypeOne
-  | .VTypeOne => .VTypeOne
-  | .VTypeProd A B => .VTypeProd (VarType.bcB b A) (VarType.bcB b B)
-  | .VTypeBox A => cond b (.VTypeProd A (VarType.bcB b A)) A
-  | .VTypeDia _ => .VTypeOne
-
-/-- ⭐The type of what an arrow gives a variable of type `T` at the target: each `□A` component
-    becomes `A`, every other leaf `𝟙`.  Under T a `□A` component also reaches its value here
-    (`u.here : A`), whose own items an arrow must carry too, so it becomes `A × bc A`: the box
-    contents first, the `here` value's items second (`docs/v12-arrow-canonical.md` §9.2). -/
-abbrev _root_.V12M.VarType.bc (T : VarType) : VarType := VarType.bcB ModalSys.T T
-
 /-! ## Where an item lands -/
 
 /-- A projection step, read in the `bc` type: under T, `here` is the second component of a `□`

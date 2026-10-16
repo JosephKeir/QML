@@ -54,6 +54,121 @@ def VarType.compsFlat (A : VarType) : List (List Step) → VarType
   | [] => A
   | p :: ps => .VTypeProd (VarType.compsFlat A ps) ((A.compAt p).getD .VTypeOne)
 
+/-- **All the companions** of a `□A` object: every path from its value here to a necessary
+    component, through projections and `here` steps (docs §11.21, the commitment refactor). -/
+def VarType.hereChains : VarType → List (List Step)
+  | .VTypeBox C => [] :: (VarType.hereChains C).map (Step.here :: ·)
+  | .VTypeProd X Y =>
+      (VarType.hereChains X).map (Step.fst :: ·) ++ (VarType.hereChains Y).map (Step.snd :: ·)
+  | _ => []
+
+omit [ModalSys] in
+theorem VarType.compAt_hereChains : ∀ (A : VarType) (p : List Step), p ∈ A.hereChains →
+    (A.compAt p).isSome = true
+  | .VTypeBox C, p, hp => by
+      rcases List.mem_cons.mp hp with rfl | hp
+      · rfl
+      · obtain ⟨q, hq, rfl⟩ := List.mem_map.mp hp
+        exact VarType.compAt_hereChains C q hq
+  | .VTypeProd X Y, p, hp => by
+      rcases List.mem_append.mp hp with hp | hp
+      · obtain ⟨q, hq, rfl⟩ := List.mem_map.mp hp
+        exact VarType.compAt_hereChains X q hq
+      · obtain ⟨q, hq, rfl⟩ := List.mem_map.mp hp
+        exact VarType.compAt_hereChains Y q hq
+  | .Var, _, hp => by cases hp
+  | .VTypeOne, _, hp => by cases hp
+  | .VTypeDia _, _, hp => by cases hp
+
+/-- All the companions for a value `b` of the T flag: none with T off.  The flag is an argument,
+    as in `tupB`, so that at `false` this is `[]` definitionally. -/
+def VarType.compsAllB : Bool → VarType → List (List Step)
+  | false, _ => []
+  | true, A => A.hereChains
+
+theorem VarType.compOk_compsAllB : ∀ (b : Bool), ModalSys.T = b → (A : VarType) →
+    A.CompOk (A.compsAllB b)
+  | false, _, _ => Or.inl rfl
+  | true, hb, A => Or.inr ⟨hb, A.compAt_hereChains⟩
+
+/-- The box-contents type, for a given value `b` of the T flag (`VarType.bc` takes `ModalSys.T`).
+    Taking the flag as an argument lets terms of this type be built by matching on it, with no
+    casts (`tupB`). -/
+def VarType.bcB (b : Bool) : VarType → VarType
+  | .Var => .VTypeOne
+  | .VTypeOne => .VTypeOne
+  | .VTypeProd A B => .VTypeProd (VarType.bcB b A) (VarType.bcB b B)
+  | .VTypeBox A => cond b (.VTypeProd A (VarType.bcB b A)) A
+  | .VTypeDia _ => .VTypeOne
+
+/-- ⭐The type of what an arrow gives a variable of type `T` at the target: each `□A` component
+    becomes `A`, every other leaf `𝟙`.  Under T a `□A` component also reaches its value here
+    (`u.here : A`), whose own items an arrow must carry too, so it becomes `A × bc A`: the box
+    contents first, the `here` value's items second (`docs/v12-arrow-canonical.md` §9.2). -/
+abbrev VarType.bc (T : VarType) : VarType := VarType.bcB ModalSys.T T
+
+/-- Under T, a companion path of a tuple of items (`bcB true R`), read as a path into `R`'s value:
+    a `□C` component's contents (`fst`) and its value's items (`snd`) are both reached through
+    `here`, projections are kept.  This is how a tuple's companions are its root's (docs §11.21,
+    stage 3). -/
+def VarType.bcDec : VarType → List Step → List Step
+  | .VTypeBox _, .fst :: q => .here :: q
+  | .VTypeBox C, .snd :: q => .here :: VarType.bcDec C q
+  | .VTypeProd X _, .fst :: q => .fst :: VarType.bcDec X q
+  | .VTypeProd _ Y, .snd :: q => .snd :: VarType.bcDec Y q
+  | _, q => q
+
+omit [ModalSys] in
+/-- A tuple's companion has the contents of the root's companion it decodes to. -/
+theorem VarType.compAt_bcDec : ∀ (R : VarType) (q : List Step),
+    q ∈ (R.bcB true).hereChains → (R.bcB true).compAt q = R.compAt (R.bcDec q)
+  | .VTypeBox C, q, hq => by
+      rcases List.mem_append.mp hq with hq | hq
+      · obtain ⟨q₀, -, rfl⟩ := List.mem_map.mp hq
+        rfl
+      · obtain ⟨q₀, hq₀, rfl⟩ := List.mem_map.mp hq
+        exact VarType.compAt_bcDec C q₀ hq₀
+  | .VTypeProd X Y, q, hq => by
+      rcases List.mem_append.mp hq with hq | hq
+      · obtain ⟨q₀, hq₀, rfl⟩ := List.mem_map.mp hq
+        exact VarType.compAt_bcDec X q₀ hq₀
+      · obtain ⟨q₀, hq₀, rfl⟩ := List.mem_map.mp hq
+        exact VarType.compAt_bcDec Y q₀ hq₀
+  | .Var, _, hq => by cases hq
+  | .VTypeOne, _, hq => by cases hq
+  | .VTypeDia _, _, hq => by cases hq
+
+omit [ModalSys] in
+/-- A tuple's companion decodes to a companion of the root. -/
+theorem VarType.bcDec_mem : ∀ (R : VarType) (q : List Step),
+    q ∈ (R.bcB true).hereChains → R.bcDec q ∈ R.hereChains
+  | .VTypeBox C, q, hq => by
+      rcases List.mem_append.mp hq with hq | hq
+      · obtain ⟨q₀, hq₀, rfl⟩ := List.mem_map.mp hq
+        exact List.mem_cons_of_mem _ (List.mem_map_of_mem hq₀)
+      · obtain ⟨q₀, hq₀, rfl⟩ := List.mem_map.mp hq
+        exact List.mem_cons_of_mem _ (List.mem_map_of_mem (VarType.bcDec_mem C q₀ hq₀))
+  | .VTypeProd X Y, q, hq => by
+      rcases List.mem_append.mp hq with hq | hq
+      · obtain ⟨q₀, hq₀, rfl⟩ := List.mem_map.mp hq
+        exact List.mem_append_left _ (List.mem_map_of_mem (VarType.bcDec_mem X q₀ hq₀))
+      · obtain ⟨q₀, hq₀, rfl⟩ := List.mem_map.mp hq
+        exact List.mem_append_right _ (List.mem_map_of_mem (VarType.bcDec_mem Y q₀ hq₀))
+  | .Var, _, hq => by cases hq
+  | .VTypeOne, _, hq => by cases hq
+  | .VTypeDia _, _, hq => by cases hq
+
+omit [ModalSys] in
+/-- At a `□A` root a tuple's companion decodes through `here` first. -/
+theorem VarType.bcDec_box (A : VarType) (q : List Step)
+    (hq : q ∈ ((VarType.VTypeBox A).bcB true).hereChains) :
+    (VarType.VTypeBox A).bcDec q = .here :: ((VarType.VTypeBox A).bcDec q).tail := by
+  rcases List.mem_append.mp hq with hq | hq
+  · obtain ⟨q₀, -, rfl⟩ := List.mem_map.mp hq
+    rfl
+  · obtain ⟨q₀, -, rfl⟩ := List.mem_map.mp hq
+    rfl
+
 /-- A **shape of necessary objects**: `□A` with companions, and pairs of such. -/
 inductive NShape where
   /-- `d : □A` out there, with the necessary objects `d.here.p` for `p ∈ cs` (its

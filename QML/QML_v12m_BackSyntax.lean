@@ -161,6 +161,118 @@ def compsBody {σ : Signature} (A : VarType) : (cs : List (List Step)) → A.Com
       (Term.eta ((VarSymb.step (.root (.bnd 0)) .here).ext p).inner ((A.compAt p).getD .VTypeOne)
         (Ctx.ref_inner (h.ref_head (Ctx.ref_insert_root _ _ _))))⟩
 
+/-- The path from a `□A` object's value with companions to its own value: the first component,
+    once per companion. -/
+def compsFst : List (List Step) → List Step
+  | [] => []
+  | _ :: ps => .fst :: compsFst ps
+
+theorem Ctx.ref_compsFst {Γ : Ctx} {A : VarType} : ∀ (cs : List (List Step)) {u : VarSymb},
+    Γ.ref u = some (A.compsFlat cs) → Γ.ref (u.ext (compsFst cs)) = some A
+  | [], _, h => h
+  | _ :: ps, _, h => Ctx.ref_compsFst ps (Ctx.ref_fst_of h)
+
+/-- Under T, a companion in the full list is a necessary object of the bound one. -/
+theorem Ctx.ref_compMem {Γ : Ctx} (hT : ModalSys.T = true) {u : VarSymb} {A : VarType}
+    {q : List Step} (hq : q ∈ A.hereChains) (hu : Γ.ref u = some (.VTypeBox A)) :
+    Γ.ref ((VarSymb.step u .here).ext q) = some (.VTypeBox ((A.compAt q).getD .VTypeOne)) := by
+  obtain ⟨C, hC⟩ := Option.isSome_iff_exists.mp (VarType.compAt_hereChains A q hq)
+  rw [hC]
+  exact Ctx.ref_compAt hT q (Ctx.ref_here_of hT hu) hC
+
+/-- Where the companion `q` sits in a value with companions `cs`: under the first components
+    of the companions after it, the second component. -/
+def compsIdx : List (List Step) → List Step → List Step
+  | [], _ => []
+  | p :: ps, q => if q = p then [.snd] else .fst :: compsIdx ps q
+
+theorem Ctx.ref_compsIdx {Γ : Ctx} {A : VarType} : ∀ (cs : List (List Step)) {u : VarSymb}
+    (q : List Step), q ∈ cs → Γ.ref u = some (A.compsFlat cs) →
+      Γ.ref (u.ext (compsIdx cs q)) = some ((A.compAt q).getD .VTypeOne)
+  | [], _, _, hq, _ => absurd hq List.not_mem_nil
+  | p :: ps, u, q, hq, hu => by
+      unfold compsIdx
+      split_ifs with h
+      · subst h
+        exact Ctx.ref_snd_of hu
+      · exact Ctx.ref_compsIdx ps q ((List.mem_cons.mp hq).resolve_left h) (Ctx.ref_fst_of hu)
+
+/-- ⭐**The tree of a value's items** under T (`bcB true Z`), with its leaf at each companion path
+    `q` given by `get`: the contents of a `□C` component, then its value's items; pairs for
+    products; `()` elsewhere.  The network's tuple `tupB` is this tree with the items `u.q.box`
+    as leaves; the map `ShapeMap.tupC` fills it with a born root's here-items, or with its
+    companions' values (docs §11.21, stage 3). -/
+def bcTree {σ : Signature} {Γ : Ctx} : (Z : VarType) →
+    (∀ q, q ∈ Z.hereChains → Σ c, Term σ Γ ((Z.compAt q).getD .VTypeOne) c) →
+    Σ c, Term σ Γ (Z.bcB true) c
+  | .VTypeBox C, get => ⟨_, Term.pair (get [] List.mem_cons_self).2
+      (bcTree C (fun q hq => get (.here :: q)
+        (List.mem_cons_of_mem _ (List.mem_map_of_mem hq)))).2⟩
+  | .VTypeProd X Y, get => ⟨_, Term.pair
+      (bcTree X (fun q hq => get (.fst :: q) (List.mem_append_left _ (List.mem_map_of_mem hq)))).2
+      (bcTree Y (fun q hq => get (.snd :: q)
+        (List.mem_append_right _ (List.mem_map_of_mem hq)))).2⟩
+  | .Var, _ => ⟨_, .unit⟩
+  | .VTypeOne, _ => ⟨_, .unit⟩
+  | .VTypeDia _, _ => ⟨_, .unit⟩
+
+/-- Under T, the items of `u : R` as one tree of its `□` view: the leaf at each companion path
+    `q` is the item `(u.q).inner`.  This is `tupB u R true`, with `inner` for `box`. -/
+def itemsTree {σ : Signature} {Γ : Ctx} (hT : ModalSys.T = true) (u : VarSymb) (R : VarType)
+    (hu : Γ.ref u = some R) : Σ c, Term σ Γ.boxIn (R.bcB true) c :=
+  bcTree R fun q hq => ⟨_, Term.eta (u.ext q).inner _ (Ctx.ref_inner (by
+    obtain ⟨C, hC⟩ := Option.isSome_iff_exists.mp (VarType.compAt_hereChains R q hq)
+    rw [hC]
+    exact Ctx.ref_compAt hT q hu hC))⟩
+
+/-- The tuple of one born root `□A` under T, as a type: `𝟙 × (A × bc A)`. -/
+abbrev tupOneTy (A : VarType) (b : Bool) : VarType :=
+  .VTypeProd .VTypeOne ((VarType.VTypeBox A).bcB b)
+
+/-- The born root's companion that a companion of its tuple is. -/
+def tupCompOf (A : VarType) (p : List Step) : List Step :=
+  ((VarType.VTypeBox A).bcDec p.tail).tail
+
+omit [ModalSys] in
+theorem tupCompOf_spec (A : VarType) (p : List Step) (hp : p ∈ (tupOneTy A true).hereChains) :
+    tupCompOf A p ∈ A.hereChains ∧
+      (tupOneTy A true).compAt p = A.compAt (tupCompOf A p) := by
+  rcases List.mem_append.mp hp with hp | hp
+  · obtain ⟨_, hq, _⟩ := List.mem_map.mp hp
+    cases hq
+  · obtain ⟨p', hp', rfl⟩ := List.mem_map.mp hp
+    have hbox := VarType.bcDec_box A p' hp'
+    have hmem := VarType.bcDec_mem (.VTypeBox A) p' hp'
+    rw [hbox] at hmem
+    refine ⟨?_, ?_⟩
+    · rcases List.mem_cons.mp hmem with h | h
+      · cases h
+      · obtain ⟨q, hq, hqe⟩ := List.mem_map.mp h
+        cases hqe
+        exact hq
+    · change ((VarType.VTypeBox A).bcB true).compAt p' = _
+      rw [VarType.compAt_bcDec (.VTypeBox A) p' hp', hbox]
+      rfl
+
+/-- The value of the tuple of one born root and its companions, read off the root's value with
+    companions `w` (`bnd 0`): `⟨(), ⟨w's own value, the tree of its companions' values⟩⟩`, then
+    each companion of the tuple as the root's companion it is (`tupCompOf`). -/
+def tupCVal {σ : Signature} (A : VarType) (hT : ModalSys.T = true) :
+    (cs : List (List Step)) → (∀ p ∈ cs, p ∈ (tupOneTy A true).hereChains) →
+    Σ c, Term σ (Ctx.empty.insert (.bnd 0) (A.compsFlat A.hereChains))
+      ((tupOneTy A true).compsFlat cs) c
+  | [], _ => ⟨_, Term.pair Term.unit (Term.pair
+      (Term.eta ((VarSymb.root (.bnd 0)).ext (compsFst A.hereChains)) A
+        (Ctx.ref_compsFst _ (Ctx.ref_insert_root _ _ _)))
+      (bcTree A (fun q hq => ⟨_, Term.eta ((VarSymb.root (.bnd 0)).ext (compsIdx A.hereChains q)) _
+        (Ctx.ref_compsIdx _ q hq (Ctx.ref_insert_root _ _ _))⟩)).2)⟩
+  | p :: ps, h => ⟨_, Term.pair (tupCVal A hT ps fun p' hp' => h p' (List.mem_cons_of_mem _ hp')).2
+      (Term.eta ((VarSymb.root (.bnd 0)).ext (compsIdx A.hereChains (tupCompOf A p)))
+        (((tupOneTy A true).compAt p).getD .VTypeOne) (by
+          rw [(tupCompOf_spec A p (h p List.mem_cons_self)).2]
+          exact Ctx.ref_compsIdx _ _ (tupCompOf_spec A p (h p List.mem_cons_self)).1
+            (Ctx.ref_insert_root _ _ _)))⟩
+
 /-! ## Maps between returnable shapes -/
 
 /-- ⭐A **structural map between shapes of necessary objects** (docs §11.17): identity,
@@ -181,6 +293,17 @@ inductive ShapeMap (σ : Signature) : NShape → NShape → Type where
   /-- Packing a `□A` object and its companions into one necessary object (docs §11.21). -/
   | packC (A : VarType) (cs : List (List Step)) (h : A.CompOk cs) :
       ShapeMap σ (.boxC A cs h) (.box (A.compsFlat cs))
+  /-- Forgetting a `□A` object's companions (docs §11.21): the object kept, its own value
+      taken from the value with companions. -/
+  | forgetC (A : VarType) (cs : List (List Step)) (h : A.CompOk cs) :
+      ShapeMap σ (.boxC A cs h) (.box A)
+  /-- ⭐**A born root's tuple** (docs §11.21, stage 3): the necessary object `□⟨(), items u⟩` of
+      a `□A` object `u`'s items (its contents and, under T, its value's items).  Its companions
+      are `u`'s own, so they come back as `u`'s do: a sound map into a companion shape, because
+      the object is coherent by construction. -/
+  | tupC (A : VarType) (b : Bool) (hb : ModalSys.T = b) :
+      ShapeMap σ (.boxC A (A.compsAllB b) (VarType.compOk_compsAllB b hb A))
+        (.boxC (tupOneTy A b) ((tupOneTy A b).compsAllB b) (VarType.compOk_compsAllB b hb _))
 
 /-- The map on the object out there, as a hole term. -/
 def ShapeMap.obj {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
@@ -200,6 +323,11 @@ def ShapeMap.obj {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
   | _, _, .hole (A := A) s => ⟨_, Term.boxtm (Term.holeAt
       (Term.eta (VarSymb.root (.bnd 0)).inner A (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))) s)⟩
   | _, _, .packC A cs h => ⟨_, Term.boxtm (compsBody A cs h).2⟩
+  | _, _, .forgetC A _ _ => ⟨_, Term.eta (.root (.bnd 0)) (.VTypeBox A) (Ctx.ref_insert_root _ _ _)⟩
+  | _, _, .tupC A false _ => ⟨_, Term.boxtm (Term.pair Term.unit
+      (Term.eta (VarSymb.root (.bnd 0)).inner A (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))))⟩
+  | _, _, .tupC A true hb => ⟨_, Term.boxtm (Term.pair Term.unit
+      (itemsTree hb (.root (.bnd 0)) (.VTypeBox A) (Ctx.ref_insert_root _ _ _)).2)⟩
 
 /-- The map on the value it comes back as, as a hole term. -/
 def ShapeMap.val {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
@@ -215,6 +343,11 @@ def ShapeMap.val {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
   | _, _, .hole s => ⟨_, s⟩
   | _, _, .packC A cs _ =>
       ⟨_, Term.eta (.root (.bnd 0)) (A.compsFlat cs) (Ctx.ref_insert_root _ _ _)⟩
+  | _, _, .forgetC A cs _ => ⟨_, Term.eta ((VarSymb.root (.bnd 0)).ext (compsFst cs)) A
+      (Ctx.ref_compsFst cs (Ctx.ref_insert_root _ _ _))⟩
+  | _, _, .tupC A false _ =>
+      ⟨_, Term.pair Term.unit (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root _ _ _))⟩
+  | _, _, .tupC A true hb => tupCVal A hb _ fun _ hp => hp
 
 /-- The map on the object out there, at a returnable shape: on the necessary part, the witness
     carried along. -/
@@ -379,13 +512,24 @@ def WFF.unitBody {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong
         (Term.eta (.root (.bnd 1)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 1) _)))
       θ)
 
+/-- The value with companions `cs` of the necessary object at `u`, read in a view `Δ'` containing
+    `u`'s `□` view: its contents, then each companion's contents.  At no companions it is
+    `u.inner` (docs §11.21: the units at an outer object with companions). -/
+def compsSlot {σ : Signature} {Δ Δ' : Ctx} {u : VarSymb} {C : VarType}
+    (hu : Δ.ref u = some (.VTypeBox C)) (hle : Δ.boxIn.Le Δ') :
+    (cs : List (List Step)) → C.CompOk cs → Σ c, Term σ Δ' (C.compsFlat cs) c
+  | [], _ => ⟨_, Term.eta u.inner C (hle.ref (Ctx.ref_inner hu))⟩
+  | p :: ps, h => ⟨_, Term.pair (compsSlot hu hle ps h.tail).2
+      (Term.eta ((VarSymb.step u .here).ext p).inner ((C.compAt p).getD .VTypeOne)
+        (hle.ref (Ctx.ref_inner (h.ref_head hu))))⟩
+
 /-- `ret_unit`'s new conjunct at an inner object with companions `cs` (docs §11.21): the
     companions of `□sb` come back too, each as its contents read along the way (`compsVal`).  At no
     companions this is `WFF.unitBody`. -/
 def WFF.unitBodyC {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
-    {C A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step))
-    (h : A.CompOk cs)
-    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1) :
+    {C A : VarType} (co : List (List Step)) (ho : C.CompOk co) {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (C.compsFlat co) (.VTypeBox A))) 1) :
     WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox C)) 1 :=
   WFF.retS hS (.nec (.boxC A cs h))
     (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root (.VTypeBox C))
@@ -393,17 +537,16 @@ def WFF.unitBodyC {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStron
     (WFF.holeAt (((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert (.VTypeBox C)).boxIn.insert
         (.VTypeBox A))
       (Term.pair
-        (Term.eta (VarSymb.root (.bnd 0)).inner C
-          ((Ctx.le_insert ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert (.VTypeBox C)).boxIn.root
-            (.VTypeBox A)).ref
-            (Ctx.ref_inner (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox C)))))
+        (compsSlot (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox C))
+          (Ctx.le_insert ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert (.VTypeBox C)).boxIn.root
+            (.VTypeBox A)) co ho).2
         (Term.eta (.root (.bnd 1)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 1) _)))
       θ)
 
 theorem WFF.unitBodyC_nil {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
     {C A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) (h : A.CompOk [])
     (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1) :
-    WFF.unitBodyC hS sb [] h θ = WFF.unitBody hS sb θ := rfl
+    WFF.unitBodyC hS (C := C) [] (Or.inl rfl) sb [] h θ = WFF.unitBody hS sb θ := rfl
 
 /-- ⭐The **witnessed unit's** new conjunct, in the body of `◇_x[d₁ ↦ y]` (docs §11.17):
     `◇[d ↦ sb, e ⇝ u] θ(d₁.box, ⟨d, e⟩)`.  Going home from the far end, a necessary object comes
@@ -430,9 +573,11 @@ def WFF.unitBodyW {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStron
 
 /-- The witnessed unit's conjunct at an inner object with companions (`WFF.unitBodyW` at `cs`). -/
 def WFF.unitBodyWC {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
-    {x : VarSymb} {C A X : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
+    {x : VarSymb} {C A X : VarType} (co : List (List Step)) (ho : C.CompOk co) {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
     (u : Term σ (Γ.diaIn x) X b₀) (cs : List (List Step)) (h : A.CompOk cs)
-    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.wit (.box A) X).ty)) 1) :
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0)
+      (.VTypeProd (C.compsFlat co) (RShape.wit (.box A) X).ty)) 1) :
     WFF σ ((Γ.diaIn x).insert (.bnd 0) (.VTypeBox C)) 1 :=
   WFF.retS hS (.wit (.boxC A cs h) X)
     (Term.pair
@@ -442,10 +587,9 @@ def WFF.unitBodyWC {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStro
       (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.diaIn x)).root (.VTypeBox C)) u))
     (WFF.holeAt (((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert (.VTypeBox C)).boxIn.insert _)
       (Term.pair
-        (Term.eta (VarSymb.root (.bnd 0)).inner C
-          ((Ctx.le_insert ((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert (.VTypeBox C)).boxIn.root
-            (RShape.wit (.box A) X).ty).ref
-            (Ctx.ref_inner (Ctx.ref_insert_root (Γ.diaIn x) (.bnd 0) (.VTypeBox C)))))
+        (compsSlot (Ctx.ref_insert_root (Γ.diaIn x) (.bnd 0) (.VTypeBox C))
+          (Ctx.le_insert ((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert (.VTypeBox C)).boxIn.root
+            (RShape.wit (.box A) X).ty) co ho).2
         (Term.eta (.root (.bnd 1)) _ (Ctx.ref_insert_root _ (.bnd 1) _)))
       θ)
 
@@ -453,7 +597,7 @@ theorem WFF.unitBodyWC_nil {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalS
     {x : VarSymb} {C A X : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
     (u : Term σ (Γ.diaIn x) X b₀) (h : A.CompOk [])
     (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.wit (.box A) X).ty)) 1) :
-    WFF.unitBodyWC hS sb u [] h θ = WFF.unitBodyW hS sb u θ := rfl
+    WFF.unitBodyWC hS (C := C) [] (Or.inl rfl) sb u [] h θ = WFF.unitBodyW hS sb u θ := rfl
 
 /-- ⭐The **unit along a returned possible part**, in the body of `◇[⟨d₁, e₁⟩ ↦ y]` with
     `e₁ ⇝ y.2`: `◇_{e₁}[d ↦ sb] θ(⟨d₁.box, e₁.dia⟩, d)`.  The way back lies in `e₁`'s extent, so
@@ -479,9 +623,10 @@ def WFF.unitBodyD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStron
 
 /-- `WFF.unitBodyD` at an inner object with companions `cs`. -/
 def WFF.unitBodyDC {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
-    {C X A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step))
-    (h : A.CompOk cs)
-    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd C X) (.VTypeBox A))) 1) :
+    {C X A : VarType} (co : List (List Step)) (ho : C.CompOk co) {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
+    (θ : WFF σ (Ctx.empty.insert (.bnd 0)
+      (.VTypeProd (.VTypeProd (C.compsFlat co) X) (.VTypeBox A))) 1) :
     WFF σ (Γ.boxIn.insert (.bnd 0) (RShape.wit (.box C) X).ty) 1 :=
   WFF.retxS hS (.step (.root (.bnd 0)) .snd) ⟨X, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩
     (.nec (.boxC A cs h))
@@ -489,10 +634,10 @@ def WFF.unitBodyDC {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStro
     (WFF.holeAt ((((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _).insert (.VTypeBox A))
       (Term.pair
         (Term.pair
-          (Term.eta (VarSymb.step (.root (.bnd 0)) .fst).inner C
-            ((Ctx.le_insert ((((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _).root)
-              (.VTypeBox A)).ref ((Ctx.le_boxIn_diaIn _ _).ref
-                (Ctx.ref_inner (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))))))
+          (compsSlot (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))
+            ((Ctx.le_boxIn_diaIn _ _).trans
+              (Ctx.le_insert ((((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _).root)
+                (.VTypeBox A))) co ho).2
           (Term.eta (VarSymb.step (.step (.root (.bnd 0)) .snd) .dia) X
             ((Ctx.le_insert ((((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert _).diaIn _).root)
               (.VTypeBox A)).ref (Ctx.ref_diaIn_of (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _))))))
@@ -530,10 +675,11 @@ def WFF.unitBodyWD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStro
 
 /-- `WFF.unitBodyWD` at an inner object with companions `cs`. -/
 def WFF.unitBodyWDC {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
-    {x : VarSymb} {C Xe A X : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
+    {x : VarSymb} {C Xe A X : VarType} (co : List (List Step)) (ho : C.CompOk co) {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X}
     (u : Term σ (Γ.diaIn x) X b₀) (cs : List (List Step)) (h : A.CompOk cs)
     (θ : WFF σ (Ctx.empty.insert (.bnd 0)
-      (.VTypeProd (.VTypeProd C Xe) (RShape.wit (.box A) X).ty)) 1) :
+      (.VTypeProd (.VTypeProd (C.compsFlat co) Xe) (RShape.wit (.box A) X).ty)) 1) :
     WFF σ ((Γ.diaIn x).insert (.bnd 0) (RShape.wit (.box C) Xe).ty) 1 :=
   WFF.retxS hS (.step (.root (.bnd 0)) .snd) ⟨Xe, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩
     (.wit (.boxC A cs h) X)
@@ -544,10 +690,10 @@ def WFF.unitBodyWDC {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStr
     (WFF.holeAt ((((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert _).diaIn _).insert _)
       (Term.pair
         (Term.pair
-          (Term.eta (VarSymb.step (.root (.bnd 0)) .fst).inner C
-            ((Ctx.le_insert ((((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert _).diaIn _).root)
-              _).ref ((Ctx.le_boxIn_diaIn _ _).ref
-                (Ctx.ref_inner (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))))))
+          (compsSlot (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))
+            ((Ctx.le_boxIn_diaIn _ _).trans
+              (Ctx.le_insert ((((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert _).diaIn _).root)
+                _)) co ho).2
           (Term.eta (VarSymb.step (.step (.root (.bnd 0)) .snd) .dia) Xe
             ((Ctx.le_insert ((((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insert _).diaIn _).root)
               _).ref (Ctx.ref_diaIn_of (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _))))))

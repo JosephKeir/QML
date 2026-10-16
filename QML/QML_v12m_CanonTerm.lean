@@ -21,12 +21,6 @@ namespace V12M
 
 variable [ModalSys]
 
-theorem Model.Env.Agree.trans {σ : Signature} {M : Model.{u, v} σ} {Γ₁ Γ₂ Γ₃ : Ctx}
-    {h₁ : Γ₁.Le Γ₂} {h₂ : Γ₂.Le Γ₃} {w : M.frame.W} {e₁ : M.Env Γ₁ w} {e₂ : M.Env Γ₂ w}
-    {e₃ : M.Env Γ₃ w} (a : Model.Env.Agree h₁ e₁ e₂) (b : Model.Env.Agree h₂ e₂ e₃) :
-    Model.Env.Agree (h₁.trans h₂) e₁ e₃ :=
-  fun v T hv => (a v T hv).trans (b v T (h₁ v T hv))
-
 theorem Spine.ofFn_cons {σ : Signature} {Δ : Ctx} {n : ℕ} (t : Term σ Δ .Var .var)
     (ts : Fin n → Term σ Δ .Var .var) :
     Spine.ofFn (Fin.cons t ts : Fin (n + 1) → Term σ Δ .Var .var) = .cons t (Spine.ofFn ts) := by

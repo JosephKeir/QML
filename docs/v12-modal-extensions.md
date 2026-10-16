@@ -7501,6 +7501,142 @@ rule per shape, with companions throughout.
   network's `hT`, the truth cases under T (where these rules and `holeH` are used), and dropping
   `NoFour.noTStrong`.
 
+**The commitment refactor: the plan (2026-10-17).**  Under T every returning invariant binds the
+network's tuple with **all** its companions, and every birth binds the born root with all of its
+companions.  Everything takes the flag as an argument, as `tupB` does, so that at `false` it is
+today's definition *definitionally* and the T-off proofs stand unchanged.
+* *All companions.*  `VarType.hereChains A`: every path from `□A`'s value here to a `□`
+  component, through projections and `here` (`[]` for `□C` itself, then `here :: q` inside it).
+  The list is finite by type depth.  `compsAllB b A` is `[]` at `false` and `hereChains A` at
+  `true`.  The shape `boxC A (compsAllB b A)` is valid for `b = T`.
+* *The tuple's companions come back as their contents carried along the arrow.*  A companion of
+  the tuple object `□(tupT cls)` is `d.here.p`, and its contents are `compVal (tupT cls) p`, a
+  term of the `□` view.  Its value at the far end is that term sent along the arrow
+  (`arrowS`), just as `tupImgT` is `tupT` sent along it (`subst_arrow_tupT`).  So the invariant's
+  value pairs `tupImgT` with the arrow images of the `compVal`s, and is `tupImgT` itself at `[]`.
+  No aliases are needed for companions: the far end's image roots already hold every
+  here-chain item (`bc(□R) = R × bc R`).
+* *`RetInvB b hb`*: `RetInv` at the shape `boxC (bcT cls) (compsAllB b (bcT cls))` with that
+  value.  `RetInvB false hT` is `RetInv`, by `rfl`.  The network will carry `RetInvB T rfl`
+  (equivalent to `RetInvB b hb` by `cases hb`).  The witnessed and leg variants follow.
+* *Forgetting companions*, a new `ShapeMap` `forgetC : boxC A cs → box A` (object `d`, value
+  the first component): it carries the companion invariant down to the `box` one.  So the
+  T-generic consequences (`transfer`, `grow_*`) are reused, not reproved.
+* *Births* bind the born root `c : □A` at `boxC A (compsAllB b A)`.  The obligation is a user
+  atom with its companions named by `ret_compS`, and the pull-back sends `c` to the slot `u : □A`
+  itself, which is coherent by construction (§11.21, `ret_extH` check).  The child's tuple
+  invariant follows by a map from the born root's shape to the tuple's shape (object
+  `u ↦ □(tupB u)`), whose companions are `u`'s own.  This is the coherent instance of `holeH`.
+* *Steps*: committing a new root (`retStep`) names its companions' returns by `ret_compS`.  The
+  reverse step (`retStep_rev`) uses the units at companion shapes, with definable values.
+* *Order of building:* (1) `hereChains`, `compsAllB`, `forgetC`; (2) the value and `RetInvB`, with
+  the T-off equivalence and the forgetting lemma; (3) births; (4) steps; (5) the witnessed and leg
+  variants; (6) `GoodS`/`netS` without `hT`.
+
+**Built (2026-10-17): stages 1–2.**  `VarType.hereChains`, `compsAllB`, `compOk_compsAllB`
+(`WFF`); `ShapeMap.forgetC` with `compsFst`, sound by `compsBack_proj` (`SemBack`);
+`tupCompsImg`, `tupShape`, `RetInvB`, `retInvB_false` (`Iff.rfl`), `retInvB_flag`,
+⭐`RetInvB.forget` (`BRet`; `WFF.bodyRepl_eta` moved there from `BRetOut`).
+
+**Stage 3, births under T: the paper check (2026-10-17).**  **Passes**, with one new kind of
+term: the two arrangements between a root's value with companions and its tuple.
+* *Why the seed must bind the born root itself.*  The child's tuple object is `□⟨(), tup c⟩`,
+  with `tup c = ⟨c.box, tup(c.here)⟩` under T.  No substitution `c ↦ X` turns it into an
+  arbitrary slot `u : □(bcT [□A])`, since `tup(c.here)` goes to `X`'s own here-items, not to
+  `u.box.snd.snd` (risk 1 again).  So the obligation, and the negative atoms the seed reads, are
+  taken at the born root's own shape `S_A = boxC A (compsAllB b A)`, with bound `u : □A`.  The
+  pull-back sends `c ↦ u` and is the identity on the slot.  Consistency is then the K-law at
+  `S_A` and `ret_dia`, as now.
+* *From `S_A` to the tuple: a sound map `tupC A : S_A → tupShape [□A]`.*  The object is
+  `u ↦ □⟨(), tup u⟩` (`tupB` at the flag).  Its companions are `u`'s own here-chain companions,
+  read through `collapse`: the `[snd, fst] ++ q` ones are `u.here.q`, and the `[snd, snd] ++ q'`
+  ones are deeper here-chains of `u`.  So they come back exactly when `u`'s do.  Its value takes
+  `w : A.compsFlat (hereChains A)` to `⟨⟨(), arr w⟩, κ(arr w)⟩`.
+  * `arr w : bc(□A) = A × bc A` is the tree of `w`'s components: `A`'s own value, then at each
+    leaf of `bc A` the companion whose contents sit there.  `bcPath A q` locates companion `q`'s
+    contents in `bc A`: `[fst]` at a `□`, `snd ::` for each `here`, and projections kept.
+  * `κ` takes each companion of the tuple to the projection of `arr w` at that path.  The same
+    paths give the companions' values in `tupCompsImg`: `compVal` sends `c.here.q.box` along the
+    arrow to `y.snd.(enc q).fst`, since `encStep here = snd` and `itemTail = [fst]` under T.
+  * `unarr y` is the converse: the value with companions read off `y`'s components (pure
+    projections).  `holeRead (unarr y) arr` is `η y` syntactically: `arr` rebuilds exactly the
+    η-long tree of `y`.
+  * Soundness: `obj(u)`'s contents along `r` are `⟨(), ⟨u's contents, u.here's items read
+    there⟩⟩`, so `IndInvariant.pair` and `Ind_refl` apply leaf by leaf, from `u`'s companions.
+* *The obligation.*  Starting from a user atom `◇[d ↦ t] Φ`, `ret_compS` names each companion's
+  return (fresh `z̄`), an alias `y` is taken for `arr⟨t, z̄⟩`, and the value is moved to
+  `unarr y`.  `unarr(arr W)` is `W` syntactically (projections of pairs), and the alias moves
+  `arr W` to `y` (`retSlot`).  The obligation is `◇^{S_A}[u ↦ unarr y] Ξ(u)`.
+* *The child's back invariant (`RetInvB` birth).*  Take `Φ` with `liftBody Φ = Φ(□tupT[c])` in
+  the child, and suppose `¬◇^{tup}[d ↦ V] Φ` holds in the parent.  Then `ret_map` along `tupC`
+  (contrapositive) gives `¬◇^{S_A}[u ↦ unarr y] Φ(□⟨(), tup u⟩)`, whose body read at `c` is
+  `liftBody Φ`.  That is in the seed negated, a contradiction.  The forward invariant at birth
+  uses the units at companion shapes (stage 4's `retStep_rev`).
+* *At `b = false`* everything degenerates: `S_A = box A`, `arr`/`unarr` are the identity on
+  `y : A`, and `tupC` is `ShapeMap.hole` with `w ↦ ⟨(), w⟩`.  So the generic births can replace the
+  T-off ones, at the cost of re-proving the four children (`BRetChild*`) against the new seed.
+  **Decided (user, 2026-10-17): generic births, replacing the T-off ones.**
+
+**Built (2026-10-17): stage 3a, the map `tupC` and its soundness.**  In the event `arr` needed no
+index arithmetic.  Under T the tuple of `u : R` is one tree, `bcTree R get` (`BackSyntax`): the
+contents of a `□C` component, then its value's items; pairs for products; `()` elsewhere.  Its
+leaf at each companion path `q` comes from an accessor `get q`.  Three accessors give the three
+trees needed:
+* `itemsTree u R`: leaves `(u.q).inner`.  This is `tupB u R true`, with `inner` for `box`.
+* `tupC`'s object: `□⟨(), itemsTree u (□A)⟩`.
+* `tupC`'s value (`tupCVal`): leaves the components of the bound value with companions
+  (`compsIdx`), then each tuple companion as the root companion it decodes to (`tupCompOf`, from
+  `VarType.bcDec` with `compAt_bcDec`, `bcDec_mem`, `bcDec_box`).
+`VarType.bcB`/`bc` moved to `WFF`.  Soundness (`SemBack`): `compBack_iff_ind`, `compsBack_at`,
+`bcTree_ind`, ⭐`compBack_itemsTree` (a tuple companion comes back as its root's; the same entry
+typed both ways, so no cast) and ⭐`tupC_back`; `ShapeMap.comesBack` gains both `tupC` cases.
+Full build green.  *Next (3b):* the object read at the child is `□tupT [□A]` (`itemsTree` vs
+`tupB`, `inner` vs `box`); the value read at `unarr y` is `tupCompsImg [□A] y`; then the seed,
+the pull-back `c ↦ u`, and consistency.
+
+**Stage 3b found: consistency needs the K-law at a companion shape (2026-10-17, paper).**
+* *The pull-back gets simpler.*  `c ↦ u` is a renaming of the born root to the opened slot
+  `u : □A`; the parent's roots go to their tuples as now.  It needs no `bc_box_noT`, so it is
+  the same for both values of the flag.
+* *But consistency needs* `◇^S[d ↦ W] Φ, ¬◇^S[d ↦ W] Θ ⊢ ◇^S[d ↦ W](Φ ∧ ¬Θ)` at
+  `S = boxC A cs`.  `Proof.ret_K` derives the K-law from two units, and the first unit's **outer**
+  returning possibility is the K-law's own.  All four units have outer shape `□C`; stage 3 of
+  the companion plan generalised only their *inner* object.
+* *Not derivable.*  Forgetting the companions (`forgetC`), applying a unit, and re-adding them
+  is a joint possibility of two atoms, which needs pairing.  Packing (`packC`) needs the body
+  already in packed form, and the seed's negative atoms have arbitrary bodies.
+* *Proposal: the units at a companion outer object.*  Each unit's outer object `d₁ : □C` takes a
+  companion list `cs'`.  The hole formula `θ` then sees `d₁`'s value with companions, read at
+  the far end of the inner arrow: `compsBody d₁` in place of `d₁.inner`.
+  * Sound for the same reason as now.  At the far world the way home is the inner arrow, and
+    `ComesBack (boxC C cs')` makes `d₁`'s contents and each companion's contents read along it
+    `Ind` to `y`'s components (`compsBody_ind`).
+  * At `cs' = []` it is today's unit definitionally, since `compsBody _ []` is `d₁.inner`.
+  * The K-laws then follow at companion shapes by the same derivations (`ret_K`, `retx_K`,
+    `retD_K`, `retxD_K`).
+  **Decided (user, 2026-10-17): generalise.**
+
+**Built (2026-10-17): the units at an outer object with companions, and the plain K-law there.**
+* `compsSlot hu hle cs h` (`BackSyntax`): the value with companions of the object at `u`, read in
+  a view containing `u`'s `□` view.  The four unit bodies take the outer list `co`/`ho` and read
+  `θ`'s first slot through it; at `[]` it is `u.inner`, so `unitBody*C_nil` stay `rfl` and the
+  derived `ret_unit*` are unchanged.
+* The four constructors take `co`/`ho`, with outer shape `boxC C co` (`wit (boxC C co) X` for D).
+* `Proof.subst`: `VarType.compAt_isProj`, `Subst.at_ext_ren`, `Term.subst_compsSlot`.
+  Soundness: `compsSlot_ind` (the slot read along the way home is `Ind` to the value with
+  companions); `Env.Agree.trans` moved to `SemBack`.
+* `RetK`: `Subst.at_ext_eta`, `compVal_eta`/`compsVal_eta` (an η-expanded object's companion
+  contents are its companions' items, the term identity the two units meet at), `mono_compsSlot`,
+  `kThetaC`, `holeAt_kThetaC`, `holeRead_kThetaC`, `openFree_unitBodyC_kThetaC`,
+  ⭐`Proof.ret_KC`.  The old `kTheta`/`ret_K` are their `[]` instances definitionally; folding
+  them in is left for a clean-up.
+* **All four K-laws at companion shapes built** (`Proof.ret_KC`, `retx_KC`, `retD_KC`,
+  `retxD_KC`, with node forms `retx_KC_node`, `retD_KC_node`, `retxD_KC_node`): each mirrors its
+  `[]` derivation, the home unit taking the companions on its outer object and the far unit on
+  its inner one.  Full build green.
+* *Next:* the generic births (stage 3c): the seed at `S_A`, the pull-back `c ↦ u`, consistency
+  by the K-laws, and the birth of the child's invariants (`tupC`, the units).
+
 **Order.**
 1. The decisions, by the user:
    * risk 1: `boxT` with its existence rule, or the content restriction;
