@@ -307,6 +307,38 @@ def RShape.extTm {σ : Signature} {Γ : Ctx} [Γ.NoSlots] : (S : RShape) → {B 
         (Ctx.ref_snd_of (Ctx.ref_fst_of (Ctx.ref_insert_root Ctx.empty (.bnd 0)
           (.VTypeProd (RShape.wit N X).flat B))))))⟩
 
+/-! ## A named companion -/
+
+/-- In `ret_compS`'s body, the object out there, read from the shape with one more companion: the
+    object itself (a companion leaves the object's type alone). -/
+def RShape.compL {σ : Signature} (V : Ctx) (A : VarType) (cs : List (List Step))
+    (h : A.CompOk cs) (p : List Step) (h' : A.CompOk (p :: cs)) : (S : RShape) →
+    Σ a, Term σ (V.insert (.bnd 0) (S.withNec (.boxC A (p :: cs) h')).ty)
+      (S.withNec (.boxC A cs h)).ty a
+  | .nec _ => ⟨_, Term.eta (.root (.bnd 0)) (.VTypeBox A) (Ctx.ref_insert_root V (.bnd 0) _)⟩
+  | .wit _ X => ⟨_, Term.eta (.root (.bnd 0)) (.VTypeProd (.VTypeBox A) (.VTypeDia X))
+      (Ctx.ref_insert_root V (.bnd 0) _)⟩
+
+/-- In `ret_compS`'s conclusion, the value and the new companion's value, arranged as the value of
+    the shape with one more companion. -/
+def RShape.compTm {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (A : VarType) (cs : List (List Step))
+    (h : A.CompOk cs) (p : List Step) (h' : A.CompOk (p :: cs)) : (S : RShape) →
+    {a : Ann (S.withNec (.boxC A cs h)).flat} → Term σ Γ (S.withNec (.boxC A cs h)).flat a →
+    {b : Ann ((A.compAt p).getD .VTypeOne)} → Term σ Γ ((A.compAt p).getD .VTypeOne) b →
+    Σ c, Term σ Γ (S.withNec (.boxC A (p :: cs) h')).flat c
+  | .nec _, _, t, _, u => ⟨_, Term.pair t u⟩
+  | .wit _ X, _, t, _, u => ⟨_, Term.holeRead (Term.pair t u) (Term.pair
+      (Term.pair
+        (Term.eta (.step (.step (.root (.bnd 0)) .fst) .fst) (A.compsFlat cs)
+          (Ctx.ref_fst_of (Ctx.ref_fst_of (Ctx.ref_insert_root Ctx.empty (.bnd 0)
+            (.VTypeProd (RShape.wit (.boxC A cs h) X).flat ((A.compAt p).getD .VTypeOne))))))
+        (Term.eta (.step (.root (.bnd 0)) .snd) ((A.compAt p).getD .VTypeOne)
+          (Ctx.ref_snd_of (Ctx.ref_insert_root Ctx.empty (.bnd 0)
+            (.VTypeProd (RShape.wit (.boxC A cs h) X).flat ((A.compAt p).getD .VTypeOne))))))
+      (Term.eta (.step (.step (.root (.bnd 0)) .fst) .snd) X
+        (Ctx.ref_snd_of (Ctx.ref_fst_of (Ctx.ref_insert_root Ctx.empty (.bnd 0)
+          (.VTypeProd (RShape.wit (.boxC A cs h) X).flat ((A.compAt p).getD .VTypeOne)))))))⟩
+
 /-- ⭐`ret_unit`'s new conjunct, in the body of `◇[d₁ ↦ y]` (`d₁ : □C` the slot `bnd 0`):
     `◇[d ↦ sb] θ(d₁.box, d)` — from the far world, back here, a necessary object `d` coming back
     as `sb` with `θ` of it and of `d₁`'s return (docs §11.17). -/

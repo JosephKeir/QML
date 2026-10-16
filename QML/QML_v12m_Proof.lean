@@ -411,6 +411,26 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
           Δ.map (WFF.weaken hc.root B))
         (φ.weaken hc.root B) →
       Proof σ Γ Δ φ
+  /-- ⭐**Naming a companion's return** (docs §11.21): the necessary object at the path `p` into
+      the bound object's value here comes back too, as something; name it by a fresh root.  An
+      existence rule for a necessary part, as `ret_extS`; under T, what lets the network commit a
+      root's here-items. -/
+  | ret_compS {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (S : RShape)
+      {A : VarType} {cs : List (List Step)} {h : A.CompOk cs} (p : List Step)
+      (h' : A.CompOk (p :: cs)) {a : Ann (S.withNec (.boxC A cs h)).flat}
+      (t : Term σ Γ (S.withNec (.boxC A cs h)).flat a)
+      (Φ : WFF σ (O.view.insert (.bnd 0) (S.withNec (.boxC A cs h)).ty) 1)
+      (c : ℕ) (hc : Γ.RootFresh (.free c)) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
+      Proof σ Γ Δ (O.retS hS (S.withNec (.boxC A cs h)) t Φ) →
+      Proof σ (Γ.insert (.free c) ((A.compAt p).getD .VTypeOne))
+        ((O.mono (Ctx.le_insert hc.root _)).retS hS (S.withNec (.boxC A (p :: cs) h'))
+            (RShape.compTm A cs h p h' S (Term.weaken hc.root _ t)
+              (Term.eta (.root (.free c)) _ (Ctx.ref_insert_root Γ (.free c) _))).2
+            (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root _)).insert (.bnd 0) _)
+              (WFF.bodyRepl (RShape.compL O.view A cs h p h' S).2 Φ)) ::
+          Δ.map (WFF.weaken hc.root _))
+        (φ.weaken hc.root _) →
+      Proof σ Γ Δ φ
   /-- ⭐**Counit**: what is necessary of the object out there holds of the value it comes back
       as. -/
   | ret_counit {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)

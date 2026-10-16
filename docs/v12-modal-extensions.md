@@ -7434,6 +7434,21 @@ for `tupB` at `true`; the merge step (`ret_listW`) at `boxH`, which should be un
 * Next: the existence rule, the units at companion shapes, `holeH`, risk 2's rules, then the
   commitments.
 
+**Built (2026-10-17): the existence rule `Proof.ret_compS`.**
+* `◇_O^S[d ↦ t] Φ ⊢ (fresh c) ◇_O^{S'}[d ↦ ⟨t, c⟩] Φ`, an `∃`-elimination like `ret_extS`.
+  `S` is any shape whose necessary part is one `boxC A cs h` (plain or witnessed), and `S'` adds
+  the companion `p`.  The body is re-read by a substitution (`RShape.compL`, an identity `η`),
+  and the value is arranged by `RShape.compTm`; no casts.
+* `Proof.subst` case (`RShape.subst_compTm_sig`, `RShape.subst_compL`).
+* Soundness: `c` is the companion's reading along the way home (`Model.compRead`, which needs
+  T; `compBack_compRead`), via `sat_ret_compS`.
+* Products are reached by packing first (`packN`, `packC`): a component's companions are
+  companions of the packed object.
+* *Next:* the **companion transform**, a term function giving the contents of `□sb`'s companion
+  at `p`.  It reads off `sb`'s structure: every `□` term is `boxtm`, every product term a
+  `pair`, and `here` of `boxtm v` is `collapse v`.  It supplies the definable values of the
+  units at companion shapes and of `holeH`.
+
 **Order.**
 1. The decisions, by the user:
    * risk 1: `boxT` with its existence rule, or the content restriction;

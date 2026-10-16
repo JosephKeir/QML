@@ -335,6 +335,54 @@ def compBack : (A : VarType) → (p : List Step) → {v w : M.frame.W} → M.fra
   | .VTypeProd _ _, .here :: _, _, _, _, _, _ => True
   | .VTypeProd _ _, .keep :: _, _, _, _, _, _ => True
 
+/-- Under T, the reading along the way home `r` of the companion of a value `x : A` at the path
+    `p` (the unit value at a path reaching no necessary object). -/
+def compRead (hT : ModalSys.T = true) : (A : VarType) → (p : List Step) → {v w : M.frame.W} →
+    M.frame.Dom A v → M.frame.R v w → M.frame.Dom ((A.compAt p).getD .VTypeOne) w
+  | .VTypeBox C, [], _, w, x, r => M.necEval (x : M.frame.Nec C _) ⟨w, ⟨r⟩⟩
+  | .VTypeBox C, .here :: p, v, _, x, r =>
+      compRead hT C p (M.necEval (x : M.frame.Nec C v) (M.frame.reflAcc hT v)) r
+  | .VTypeProd X _, .fst :: p, _, _, x, r => compRead hT X p x.1 r
+  | .VTypeProd _ Y, .snd :: p, _, _, x, r => compRead hT Y p x.2 r
+  | .Var, _, _, _, _, _ => PUnit.unit
+  | .VTypeOne, _, _, _, _, _ => PUnit.unit
+  | .VTypeDia _, _, _, _, _, _ => PUnit.unit
+  | .VTypeBox _, .fst :: _, _, _, _, _ => PUnit.unit
+  | .VTypeBox _, .snd :: _, _, _, _, _ => PUnit.unit
+  | .VTypeBox _, .box :: _, _, _, _, _ => PUnit.unit
+  | .VTypeBox _, .dia :: _, _, _, _, _ => PUnit.unit
+  | .VTypeBox _, .keep :: _, _, _, _, _ => PUnit.unit
+  | .VTypeProd _ _, [], _, _, _, _ => PUnit.unit
+  | .VTypeProd _ _, .box :: _, _, _, _, _ => PUnit.unit
+  | .VTypeProd _ _, .dia :: _, _, _, _, _ => PUnit.unit
+  | .VTypeProd _ _, .here :: _, _, _, _, _ => PUnit.unit
+  | .VTypeProd _ _, .keep :: _, _, _, _, _ => PUnit.unit
+
+/-- A companion comes back as its own reading along the way home. -/
+theorem compBack_compRead (hT : ModalSys.T = true) : ∀ (A : VarType) (p : List Step)
+    {v w : M.frame.W} (x : M.frame.Dom A v) (r : M.frame.R v w),
+    M.compBack A p x r (M.compRead hT A p x r)
+  | .VTypeBox C, [], _, _, x, r => M.Ind_refl _
+  | .VTypeBox C, .here :: p, v, _, x, r => by
+      change (if hT' : ModalSys.T = true then _ else True)
+      rw [dif_pos hT]
+      exact compBack_compRead hT C p _ r
+  | .VTypeProd X _, .fst :: p, _, _, x, r => compBack_compRead hT X p x.1 r
+  | .VTypeProd _ Y, .snd :: p, _, _, x, r => compBack_compRead hT Y p x.2 r
+  | .Var, _, _, _, _, _ => trivial
+  | .VTypeOne, _, _, _, _, _ => trivial
+  | .VTypeDia _, _, _, _, _, _ => trivial
+  | .VTypeBox _, .fst :: _, _, _, _, _ => trivial
+  | .VTypeBox _, .snd :: _, _, _, _, _ => trivial
+  | .VTypeBox _, .box :: _, _, _, _, _ => trivial
+  | .VTypeBox _, .dia :: _, _, _, _, _ => trivial
+  | .VTypeBox _, .keep :: _, _, _, _, _ => trivial
+  | .VTypeProd _ _, [], _, _, _, _ => trivial
+  | .VTypeProd _ _, .box :: _, _, _, _, _ => trivial
+  | .VTypeProd _ _, .dia :: _, _, _, _, _ => trivial
+  | .VTypeProd _ _, .here :: _, _, _, _, _ => trivial
+  | .VTypeProd _ _, .keep :: _, _, _, _, _ => trivial
+
 /-- A necessary object `e : □A` and its companions `cs` come back as `o` along `r`: `e`'s reading
     along `r`, and each companion of `e`'s value here (`compBack`). -/
 def compsBack (A : VarType) : (cs : List (List Step)) → {v w : M.frame.W} →

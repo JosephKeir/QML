@@ -1714,6 +1714,47 @@ theorem RShape.subst_extR {ι : VarSymb → VarSymb} {V W : Ctx} [V.NoSlots] [W.
         rw [Subst.at_proj _ _ rfl, Subst.at_proj _ _ rfl, Subst.under_at_root]
         rfl)
 
+/-- Substituting the companion-naming step's value substitutes its parts. -/
+theorem RShape.subst_compTm_sig {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
+    (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (A : VarType)
+    (cs : List (List Step)) (h : A.CompOk cs) (p : List Step) (h' : A.CompOk (p :: cs))
+    (S : RShape) {a : Ann (S.withNec (.boxC A cs h)).flat}
+    (t : Term σ Γ (S.withNec (.boxC A cs h)).flat a) {b : Ann ((A.compAt p).getD .VTypeOne)}
+    (u : Term σ Γ ((A.compAt p).getD .VTypeOne) b) {a' : Ann (S.withNec (.boxC A cs h)).flat}
+    {t' : Term σ Δ (S.withNec (.boxC A cs h)).flat a'} {b' : Ann ((A.compAt p).getD .VTypeOne)}
+    {u' : Term σ Δ ((A.compAt p).getD .VTypeOne) b'}
+    (ht : (⟨_, Term.subst ι θ hθ hc t⟩ : Σ c, Term σ Δ (S.withNec (.boxC A cs h)).flat c) =
+      ⟨a', t'⟩)
+    (hu : (⟨_, Term.subst ι θ hθ hc u⟩ : Σ c, Term σ Δ ((A.compAt p).getD .VTypeOne) c) =
+      ⟨b', u'⟩) :
+    (⟨_, Term.subst ι θ hθ hc (RShape.compTm A cs h p h' S t u).2⟩ :
+        Σ c, Term σ Δ (S.withNec (.boxC A (p :: cs) h')).flat c) =
+      ⟨_, (RShape.compTm A cs h p h' S t' u').2⟩ := by
+  cases S with
+  | nec N => exact sig_pair ht hu
+  | wit N X =>
+      exact (Term.subst_holeRead_sig θ hθ hc _ _).trans
+        (Term.holeRead_congr_sig (sig_pair ht hu) _)
+
+/-- Substituting under the slot leaves the companion-naming step's object term alone. -/
+theorem RShape.subst_compL {ι : VarSymb → VarSymb} {V W : Ctx} [V.NoSlots] [W.NoSlots]
+    (θ : Subst σ W) (hθ : Subst.Ok V θ) (hc : Subst.Coh ι V θ) (A : VarType)
+    (cs : List (List Step)) (h : A.CompOk cs) (p : List Step) (h' : A.CompOk (p :: cs))
+    (S : RShape) :
+    (⟨_, Term.subst (VarSymb.shiftSlot ι 0 0)
+        (θ.under 0 0 (S.withNec (.boxC A (p :: cs) h')).ty (Ctx.NoSlots.slots (Γ := W)).root)
+        (Subst.ok_under hθ _ _) (Subst.coh_under hθ hc Ctx.NoSlots.slots _ _)
+        (RShape.compL V A cs h p h' S).2⟩ :
+        Σ a, Term σ (W.insert (.bnd 0) (S.withNec (.boxC A (p :: cs) h')).ty)
+          (S.withNec (.boxC A cs h)).ty a) = ⟨_, (RShape.compL W A cs h p h' S).2⟩ := by
+  cases S with
+  | nec N =>
+      exact Term.subst_eta_renAt _ _ _ _ _ _ (Ctx.ref_insert_root V (.bnd 0) _)
+        (Ctx.ref_insert_root W (.bnd 0) _) (by rw [Subst.under_at_root])
+  | wit N X =>
+      exact Term.subst_eta_renAt _ _ _ _ _ _ (Ctx.ref_insert_root V (.bnd 0) _)
+        (Ctx.ref_insert_root W (.bnd 0) _) (by rw [Subst.under_at_root])
+
 /-- Substituting a lifted body is lifting the substituted body: the leg's view sends the `□`
     view's addresses as the `□` view does (`Subst.dia_eq_box_mono`). -/
 theorem OutLeg.subst_lift {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
@@ -2616,6 +2657,39 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
               (List.map_congr_left fun χ _ =>
                 WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' B χ))
           (Proof.conv (WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' B _) ih))
+  | _, _, _, @Proof.ret_compS _ _ Γ _ hS O S A cs h p h' a t Φ c hcf _ _ pr pf, Γ', _, ι, θ,
+      hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      have hcf' : Γ'.RootFresh (.free (Ctx.Presented.bound Γ')) :=
+        Ctx.Presented.fresh_bound _ le_rfl
+      have ih := Proof.subst pf
+        (Γ' := Γ'.insert (.free (Ctx.Presented.bound Γ')) ((A.compAt p).getD .VTypeOne))
+        (θ.renameTm c _ _ hcf'.root) (Subst.ok_renameTm hθ _ hcf'.root)
+        (Subst.coh_renameTm hθ hc hcf _ hcf'.root) (hΓ.insertFree c _)
+      Proof.ret_compS hS (O.subst θ hθ hc) S p h' (Term.subst ι θ hθ hc t) _
+        (Ctx.Presented.bound Γ') hcf'
+        (Proof.conv (OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O _ t _) (Proof.subst pr θ hθ hc hΓ))
+        (Proof.castHyps
+          (by
+            simp only [List.map_cons, List.map_map, Function.comp_def]
+            exact congrArg₂ List.cons
+              ((OutLeg.subst_retS_renameTm θ hθ hc hΓ hΓ' hcf hcf' _ hS O
+                (S.withNec (.boxC A (p :: cs) h')) _
+                (RShape.compTm A cs h p h' S (Term.weaken hcf.root _ t)
+                  (Term.eta (.root (.free c)) _ (Ctx.ref_insert_root Γ (.free c) _))).2 _
+                (RShape.subst_compTm_sig _ _ _ A cs h p h' S _ _
+                  (Term.subst_mono_renameTm_sigma θ hθ hc hcf hcf' _ t)
+                  (Term.subst_eta_tm _ _ _ _ (.root (.free c)) (Ctx.ref_insert_root Γ (.free c) _)
+                    _ (Subst.at_renameTm_root θ c _ _ hcf'.root)))).trans
+                (OutLeg.retS_congr' hS _ _ rfl (congrArg (WFF.mono _)
+                  ((WFF.subst_bodyRepl (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc)
+                      (O.viewCoh θ hθ hc) _ Φ).trans
+                    (WFF.bodyRepl_congr
+                      (RShape.subst_compL (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc)
+                        (O.viewCoh θ hθ hc) A cs h p h' S) _)))))
+              (List.map_congr_left fun χ _ =>
+                WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' _ χ))
+          (Proof.conv (WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' _ _) ih))
   | _, _, _, @Proof.ret_map _ _ Γ _ _ hS O S T F a y Φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       Proof.conv ((OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O (S.withNec T) _ Φ).trans

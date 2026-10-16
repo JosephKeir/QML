@@ -336,6 +336,20 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
         exact sat_ret_extS env hnp hS O t Φ c hc i d b hΦ r hr
       · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken (T := B) env hc.root _ χ').mpr (hΔ χ' hχ')
+  | @ret_compS Γ _ hS O S A cs h p h' a t Φ c hc Δ φ pr pf ihr ih =>
+      -- The companion's reading along the same way home interprets the eigenvariable.
+      intro M hM w env hfin hnp hΔ
+      obtain ⟨i, d, hΦ, r, hr⟩ :=
+        (OutLeg.sat_retS hS env O _ t _).mp (ihr M hM env hfin hnp hΔ)
+      obtain ⟨o, ho⟩ := sat_ret_compS env hnp hS O S p h' t Φ c hc i d hΦ r hr
+      refine (sat_weaken env hc.root o φ).mp
+        (ih M hM (env.extend (.free c) o) (hfin.insert hc _) (hnp.insert _ _) ?_)
+      intro χ hχ
+      rcases List.mem_cons.mp hχ with h₁ | h₂
+      · subst h₁
+        exact ho
+      · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
+        exact (sat_weaken env hc.root _ χ').mpr (hΔ χ' hχ')
   | @ret_map Γ _ Δ hS O S T F a y Φ p ih =>
       intro M hM w env hfin hnp hΔ
       exact sat_ret_map env hnp hM hS O F y Φ (ih M hM env hfin hnp hΔ)

@@ -1310,6 +1310,80 @@ theorem sat_ret_extS (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape}
         rw [hv]
         exact ⟨⟨hr.1, hcv⟩, hr.2⟩
 
+include hnp in
+/-- What `ret_compS` hands its subproof: the object comes back with its new companion's reading
+    along the same way home as the companion's value. -/
+theorem sat_ret_compS (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (S : RShape) {A : VarType}
+    {cs : List (List Step)} {h : A.CompOk cs} (p : List Step) (h' : A.CompOk (p :: cs))
+    {a : Ann (S.withNec (.boxC A cs h)).flat} (t : Term σ Γ (S.withNec (.boxC A cs h)).flat a)
+    (Φ : WFF σ (O.view.insert (.bnd 0) (S.withNec (.boxC A cs h)).ty) 1)
+    (c : ℕ) (hc : Γ.RootFresh (.free c)) (i : O.Arr env)
+    (d : M.frame.Dom (S.withNec (.boxC A cs h)).ty (O.acc env i).1)
+    (hΦ : M.sat ((O.push env i).extend (.bnd 0) d) Φ) (r : M.frame.R (O.acc env i).1 w)
+    (hr : M.ComesBack (S.withNec (.boxC A cs h)) d r (interp env t)) :
+    ∃ o : M.frame.Dom ((A.compAt p).getD .VTypeOne) w,
+      M.sat (env.extend (.free c) o)
+        ((O.mono (Ctx.le_insert hc.root _)).retS hS (S.withNec (.boxC A (p :: cs) h'))
+          (RShape.compTm A cs h p h' S (Term.weaken hc.root _ t)
+            (Term.eta (.root (.free c)) _ (Ctx.ref_insert_root Γ (.free c) _))).2
+          (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root _)).insert (.bnd 0) _)
+            (WFF.bodyRepl (RShape.compL O.view A cs h p h' S).2 Φ))) := by
+  have hT := (h'.resolve_left (List.cons_ne_nil _ _)).1
+  have ip : ∀ {Δ : Ctx} {v : M.frame.W} (en : M.Env Δ v) {A C : VarType} {a : Ann A}
+      {c : Ann C} (s : Term σ Δ A a) (u : Term σ Δ C c),
+      interp en (Term.pair s u) = (interp en s, interp en u) := by intros; rfl
+  cases S with
+  | nec N =>
+      refine ⟨M.compRead hT (.VTypeBox A) (.here :: p) d r, ?_⟩
+      set o := M.compRead hT (.VTypeBox A) (.here :: p) d r
+      have hag := Env.agree_extend env hc.root o
+      have hslot : (env.extend (.free c) o).ref (.root (.free c))
+          (Ctx.ref_insert_root Γ (.free c) _) = o := Env.extend_root env (.free c) o _
+      refine OutLeg.sat_retS_agree hag hS O _ _ _ i d ?_ r ?_
+      · rw [sat_bodyRepl O.noProjLast]
+        dsimp only [RShape.compL]
+        convert hΦ using 2
+        exact interp_eta_slot _ _ _
+      · change M.compsBack A (p :: cs) d r (interp _ (Term.pair _ _))
+        rw [ip]
+        refine ⟨?_, ?_⟩
+        · dsimp only
+          erw [interp_mono hag t]
+          exact hr
+        · rw [dif_pos hT]
+          change M.compBack (.VTypeBox A) (.here :: p) d r (interp _ (Term.eta _ _ _))
+          rw [interp_eta, hslot]
+          exact M.compBack_compRead hT _ _ d r
+  | wit N X =>
+      refine ⟨M.compRead hT (.VTypeBox A) (.here :: p) d.1 r, ?_⟩
+      set o := M.compRead hT (.VTypeBox A) (.here :: p) d.1 r
+      have hag := Env.agree_extend env hc.root o
+      have hslot : (env.extend (.free c) o).ref (.root (.free c))
+          (Ctx.ref_insert_root Γ (.free c) _) = o := Env.extend_root env (.free c) o _
+      refine OutLeg.sat_retS_agree hag hS O _ _ _ i d ?_ r ?_
+      · rw [sat_bodyRepl O.noProjLast]
+        dsimp only [RShape.compL]
+        convert hΦ using 2
+        exact interp_eta_slot _ _ _
+      · have hv : interp (env.extend (.free c) o) (RShape.compTm A cs h p h' (.wit N X)
+            (Term.weaken hc.root _ t)
+            (Term.eta (.root (.free c)) _ (Ctx.ref_insert_root Γ (.free c) _))).2 =
+            (((interp env t).1, o), (interp env t).2) := by
+          dsimp only [RShape.compTm]
+          rw [interp_holeRead (hnp.insert (.free c) _), ip]
+          unfold holeVal
+          rw [ip, ip]
+          erw [interp_eta_slot_fst_fst, interp_eta_slot_snd, interp_eta_slot_fst_snd]
+          rw [interp_eta, hslot]
+          have hw : interp (env.extend (.free c) o) (Term.weaken hc.root _ t) = interp env t :=
+            interp_mono hag t
+          dsimp only
+          exact congrArg (fun z => ((z.1, o), z.2)) hw
+        rw [hv]
+        refine ⟨⟨hr.1, ?_⟩, hr.2⟩
+        rw [dif_pos hT]
+        exact M.compBack_compRead hT _ _ d.1 r
+
 omit [Γ.NoSlots] in
 include hM in
 /-- ⭐**β on the possible part preserves coming back**: the mapped possible part has the same
