@@ -176,26 +176,6 @@ noncomputable def mkAlias (N : NetSt σ) (s : Node) : AliasObl σ → NetSt σ
         N.setSt s (aliasStep (N.st s) (Term.mono (ctxOf_le_of_suffix h) tm))
       else N
 
-variable [ModalSys.NoFour]
-
-/-- ⭐Aliases preserve the invariants under strong B. -/
-theorem GoodS.mkAlias {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS hS) {s : Node}
-    (hs : N.Live s) (o : AliasObl σ) : (N.mkAlias s o).GoodS hS := by
-  obtain ⟨l, A, a, tm⟩ := o
-  simp only [NetSt.mkAlias]
-  split_ifs with h
-  · obtain ⟨h₁, h₂, -⟩ := aliasStep_ok (hN.mcs s hs) (Term.mono (ctxOf_le_of_suffix h) tm)
-    exact hN.setSt hs h₂ h₁
-  · exact hN
-
-theorem Ext.mkAlias {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS hS) {s : Node}
-    (hs : N.Live s) (o : AliasObl σ) : Ext N (N.mkAlias s o) := by
-  obtain ⟨l, A, a, tm⟩ := o
-  simp only [NetSt.mkAlias]
-  split_ifs with h
-  · exact Ext.setSt (aliasStep_ok (hN.mcs s hs) (Term.mono (ctxOf_le_of_suffix h) tm)).2.1
-  · exact Ext.refl N
-
 end NetSt
 
 end BArrow

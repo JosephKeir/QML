@@ -356,22 +356,6 @@ noncomputable def mkRetX (hS : ModalSys.BStrong = true) (N : NetSt σ) (s : Node
         else N
       else N
 
-/-- ⭐The witness child of a returning possibility along `x` keeps the invariants (T off). -/
-theorem GoodS.mkRetX {hS : ModalSys.BStrong = true} (hT : ModalSys.T = false) {N : NetSt σ}
-    (hN : N.GoodS hS) {s : Node} (hs : N.Live s) (o : RetOblX σ) :
-    (N.mkRetX hS s o).GoodS hS := by
-  obtain ⟨l, A, x, y, Φ⟩ := o
-  simp only [NetSt.mkRetX]
-  split_ifs with h hy
-  · split
-    · rename_i X hX
-      split_ifs with hΦ
-      · exact hN.newChild hs (retChildX_spec hS hy hX hT (hN.mcs s hs) hΦ).2
-          (RetData.retBirthX hS hy hX hT (hN.mcs s hs) hΦ)
-      · exact hN
-    · exact hN
-  all_goals exact hN
-
 theorem Ext.mkRetX {hS : ModalSys.BStrong = true} {N : NetSt σ} {s : Node} (hs : N.Live s)
     (o : RetOblX σ) : Ext N (N.mkRetX hS s o) := by
   obtain ⟨l, A, x, y, Φ⟩ := o

@@ -1,18 +1,18 @@
-import QML.QML_v12m_BRetChildXD
+import QML.QML_v12m_BRetOpsC
 
 /-!
-# QML v12m — strong B on the network: the operations and the chain (T off)
+# QML v12m — strong B on the network: the operations and the chain
 
 All of L4e's operations together (docs §11.17, §11.20):
 * weak B's (Henkin witnesses, children for `□`/`◇_x` formulas) and strong B's realisation steps
   (`applyOpS`);
 * aliases (`mkAlias`);
-* the four returning successors: plain (`mkRet`), along a witness (`mkRetX`), with a possible
-  part (`mkRetD`), and both (`mkRetXD`).
+* the four returning successors, on the generic children: plain (`mkRetC`), along a witness
+  (`mkRetXC`), with a possible part (`mkRetDC`), and both (`mkRetXDC`).
 
 `OpS` is their sum, `schedS` a fair schedule (every operation recurs forever), and `netS` the chain
-from a root theory: ⭐`goodS_netS` (every network keeps strong B's invariants, T off) and `ext_netS`.
-`Back` atoms need no operation of their own (§11.20, "L4e, fifth part").
+from a root theory: ⭐`goodS_netS` (every network keeps strong B's invariants, for either T) and
+`ext_netS`.  `Back` atoms need no operation of their own (§11.20, "L4e, fifth part").
 -/
 
 namespace V12M
@@ -26,8 +26,8 @@ variable {σ : Signature}
 /-- ⭐An operation under strong B: weak B's, an alias, or a child for a returning possibility (plain,
     along a witness, with a possible part, or both), at a node. -/
 abbrev OpS (σ : Signature) :=
-  Op σ ⊕ (Node × NetSt.AliasObl σ) ⊕ (Node × NetSt.RetObl σ) ⊕ (Node × NetSt.RetOblX σ) ⊕
-    (Node × NetSt.RetOblD σ) ⊕ (Node × NetSt.RetOblXD σ)
+  Op σ ⊕ (Node × NetSt.AliasObl σ) ⊕ (Node × NetSt.RetOblC σ) ⊕ (Node × NetSt.RetOblXC σ) ⊕
+    (Node × NetSt.RetOblDC σ) ⊕ (Node × NetSt.RetOblXDC σ)
 
 instance : Nonempty (OpS σ) := ⟨.inl (.inr (.inr (.inl [])))⟩
 
@@ -63,14 +63,14 @@ open Classical in
 noncomputable def applyOpT (hS : ModalSys.BStrong = true) (N : NetSt σ) : OpS σ → NetSt σ
   | .inl o => N.applyOpS hS o
   | .inr (.inl (s, o)) => if N.Live s then N.mkAlias s o else N
-  | .inr (.inr (.inl (s, o))) => if N.Live s then N.mkRet hS s o else N
-  | .inr (.inr (.inr (.inl (s, o)))) => if N.Live s then N.mkRetX hS s o else N
-  | .inr (.inr (.inr (.inr (.inl (s, o))))) => if N.Live s then N.mkRetD hS s o else N
-  | .inr (.inr (.inr (.inr (.inr (s, o))))) => if N.Live s then N.mkRetXD hS s o else N
+  | .inr (.inr (.inl (s, o))) => if N.Live s then N.mkRetC hS s o else N
+  | .inr (.inr (.inr (.inl (s, o)))) => if N.Live s then N.mkRetXC hS s o else N
+  | .inr (.inr (.inr (.inr (.inl (s, o))))) => if N.Live s then N.mkRetDC hS s o else N
+  | .inr (.inr (.inr (.inr (.inr (s, o))))) => if N.Live s then N.mkRetXDC hS s o else N
 
-/-- ⭐Every operation keeps strong B's invariants (T off). -/
+/-- ⭐Every operation keeps strong B's invariants. -/
 theorem GoodS.applyOpT {hS : ModalSys.BStrong = true} (hB : ModalSys.B = true)
-    (hT : ModalSys.T = false) {N : NetSt σ} (hN : N.GoodS hS) (o : OpS σ) :
+    {N : NetSt σ} (hN : N.GoodS hS) (o : OpS σ) :
     (N.applyOpT hS o).GoodS hS := by
   rcases o with o | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩
   · exact hN.applyOpS hB o
@@ -79,10 +79,10 @@ theorem GoodS.applyOpT {hS : ModalSys.BStrong = true} (hB : ModalSys.B = true)
     split_ifs with h
     · first
         | exact hN.mkAlias h o
-        | exact hN.mkRet hT h o
-        | exact hN.mkRetX hT h o
-        | exact hN.mkRetD hT h o
-        | exact hN.mkRetXD hT h o
+        | exact hN.mkRetC h o
+        | exact hN.mkRetXC h o
+        | exact hN.mkRetDC h o
+        | exact hN.mkRetXDC h o
     · exact hN
 
 /-- Every operation extends the network. -/
@@ -95,10 +95,10 @@ theorem Ext.applyOpT {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS
     split_ifs with h
     · first
         | exact Ext.mkAlias hN h o
-        | exact Ext.mkRet h o
-        | exact Ext.mkRetX h o
-        | exact Ext.mkRetD h o
-        | exact Ext.mkRetXD h o
+        | exact Ext.mkRetC h o
+        | exact Ext.mkRetXC h o
+        | exact Ext.mkRetDC h o
+        | exact Ext.mkRetXDC h o
     · exact Ext.refl N
 
 end NetSt
@@ -113,21 +113,20 @@ noncomputable def netS (hS : ModalSys.BStrong = true) {l₀ : List VarType}
   | 0 => NetSt.init M₀
   | n + 1 => (netS hS M₀ n).applyOpT hS (schedS n)
 
-/-- ⭐Every network of the strong chain keeps strong B's invariants (T off). -/
+/-- ⭐Every network of the strong chain keeps strong B's invariants. -/
 theorem goodS_netS (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true)
-    (hT : ModalSys.T = false) {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+    {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
     (h : Theory.IsMCS M₀) : ∀ n, (netS hS M₀ n).GoodS hS
   | 0 => NetSt.GoodS.init hS h
-  | n + 1 => (goodS_netS hS hB hT h n).applyOpT hB hT (schedS n)
+  | n + 1 => (goodS_netS hS hB h n).applyOpT hB (schedS n)
 
 /-- ⭐Along the strong chain, later networks extend earlier ones. -/
-theorem ext_netS (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true)
-    (hT : ModalSys.T = false) {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
-    (h : Theory.IsMCS M₀) {n m : ℕ} (hnm : n ≤ m) :
+theorem ext_netS (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) {l₀ : List VarType}
+    {M₀ : Set (WFF σ (ctxOf l₀) 0)} (h : Theory.IsMCS M₀) {n m : ℕ} (hnm : n ≤ m) :
     NetSt.Ext (netS hS M₀ n) (netS hS M₀ m) := by
   induction hnm with
   | refl => exact NetSt.Ext.refl _
-  | step _ ih => exact ih.trans (NetSt.Ext.applyOpT (goodS_netS hS hB hT h _) _)
+  | step _ ih => exact ih.trans (NetSt.Ext.applyOpT (goodS_netS hS hB h _) _)
 
 /-- A step of the strong chain performs the scheduled operation. -/
 theorem netS_succ (hS : ModalSys.BStrong = true) {l₀ : List VarType}

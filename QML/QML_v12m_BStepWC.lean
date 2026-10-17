@@ -368,7 +368,7 @@ theorem chainBW_consistent {lt cl : List VarType} {img : ℕ → ℕ} (A : VarTy
     refine (subst_single_retS hS (stepLe lt cl A) O _ _
       (.wit (tupShape ModalSys.T rfl (A :: cl)) X) _ hV Φ).trans ?_
     have hval := (sig_pair (stepV₅_eq A himg)
-      ((subst_single_mono_tm (stepLe lt cl A) (e := .tm (stepARR A himg).2)
+      ((subst_single_free_mono_tm (stepLe lt cl A) (e := .tm (stepARR A himg).2)
         (Subst.ok_single (stepLe lt cl A) rfl)
         (Subst.coh_single (ctxOf_fresh le_rfl) (stepLe lt cl A) rfl)
         (ctxOf_le_append [A.bc] lt) c).trans

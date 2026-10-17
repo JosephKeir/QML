@@ -7772,6 +7772,61 @@ sorry-free).
 * *Next:* the network switch (`RetData`/`GoodS` on the companion invariants, the steps and the
   generic children in the ops, the born shapes' obligations), then drop `hT`.
 
+**Built (2026-10-17): the network on the invariants with companions** (first half of the network
+switch; `QML_v12m_BRetBirthC`, `QML_v12m_BNetRetC`; sorry-free, full build green).
+* *Arrow level* (`BRetBirthC`).  Births with companions: `Proof.ret_unit_baseC` (a new tuple's
+  companion unit, by `ret_new`, `ret_unitC` and `ret_absurd`), ⭐`RetInvB.birth`; at the witnessed
+  shape `WFF.unitBaseWC`, `Proof.ret_unitW_baseC`, ⭐`RetInvWB.birth`.  Nothing committed:
+  `RetInvB.nil`, `RetInvXB.nil` (for either flag; the tuple of no roots has no companions).
+  Growth at both ends for all four (`tupCompsImg_mono`, `grow_src`, `grow_tgt`), and `forget`
+  for X, W and WD (`holeRead_forgetC_wit`, `WFF.bodyRepl_liftObj_wit_forgetC`).
+* *The network* (`BNetRetC`, below `BRetBirthC`).  ⭐`RetDataB` is `RetData` with the four
+  invariants with companions; at T off it is `RetData` (`retDataB_false`, by cases and
+  `Iff.rfl`), and `RetDataB.forget` gives `RetData` for every T.  `GoodS` now holds `RetOkB`
+  (field `retB`); ⭐`GoodS.ret` (forgetting) keeps the old `RetOk` for the consumers
+  (`BFairS`, `BLimitRet`), and `GoodS.good` goes through it.  The realisation steps are the
+  steps with companions (`retStep*B`, `_ok`/`_rev`), and births are `RetDataB.birth`.
+  `BNetRet` keeps only `RetData`, its transfers and `NetSt.RetOk`; `GoodS.mkAlias`/`Ext.mkAlias`
+  (from `BAlias`) and the T-off `GoodS.mkRet*` (from the four `BRetChild*`, now converting their
+  births by `RetDataB.ofK hT`) moved to `BNetRetC`.  `BNetS` imports `BNetRetC`.
+* Two name clashes surfaced when the chains met: `BStepC`'s `subst_single_mono_tm` is now
+  `subst_single_free_mono_tm`; `BRetTruth`'s copy of `sig_holeAt` (identical to `BRetChildC`'s)
+  is gone.
+* *Next (N3):* the returning successors on the generic children (`mkRetC`, …, obligations at the
+  born shapes, no `hT`), the strong chain's operations, and `BRetOut`'s chain (`ret_child*`,
+  `lret*`).  The production of obligations from user atoms is the T-generic one of stage 3:
+  `ret_compS` names each companion — as `∃z. …`, whose witness the network's Henkin step already
+  makes, so no new operation — then an alias `y` of `arr⟨t, z̄⟩`, and the value moved to `unarr y`.
+  Then N4: `hT` off the network (`applyOpT`, `netS`, `strongChainS`).
+
+**Built (2026-10-17): the network switch, second half** (N3 and N4; `QML_v12m_BRetOpsC`,
+`BNetS`, `BNetInjS`, `BFairS`, `BRetOut`; sorry-free, full build green).
+* *The returning successors on the generic children* (`BRetOpsC`): `mkRetC`, `mkRetXC`,
+  `mkRetDC`, `mkRetXDC`, their obligations at the born shapes (`RetOblC` …: the body over
+  `u : □A`, or `□A × ◇X`, the alias `y : (□A).bc`, and for D a unit root `o` and content `z`), each
+  child born with `RetDataB` from `retChild*C_fwd`/`_back`.  ⭐`GoodS.mkRetC` … need no `hT`;
+  `Ext.mkRetC` …, `InjOk.mkRetC` … (`BNetInjS`).
+* *N4.*  `OpS`, `applyOpT`, `GoodS.applyOpT`, `goodS_netS`, `ext_netS`, `inj_netS`,
+  `strongOpChain`, `strongChain`, `StrongChain` (its `ret*Op` fields now name the generic
+  operations) and `strongChainS` have no `hT`.  `bdataS` still takes it, for
+  `BData.noT_of_strong` only.  The T-off `GoodS.mkRet*` are gone; the T-off `mkRet*` operations
+  and children (`BRetChild*`) are no longer used by the network.
+* *`BRetOut`'s chain* is T-generic: `StrongChain.ret_childC`/`XC`/`DC`/`XDC` and `lretC`/`XC`/
+  `DC`/`XDC` (the obligation's body read along the edge at the born root `c`, or `⟨c, e⟩`;
+  `liftBodyR_eq_readArrow`, `liftBodyXR_eq_readArrowX`; `liftBodyDR`/`liftBodyXDR` are
+  `readArrow`/`readArrowX` at `⟨c, e⟩` definitionally; `mono_unarrT`, `mono_ret*_oblC`).  The
+  child's object is `c = □(c.inner)`, and `c.inner` comes home as `itemImg` of the back image
+  (`subst_arrow_eta_inner`), so no obligation hole maps are needed: the old `oblS`/`oblB`/
+  `ret_obl`/`oblRead`/`home_oblRead` and their D versions are deleted.
+* *Production, T off for now.*  `ret_oblC_noT`/`ret_oblDC_noT`: with no companions (`bornComps_noT`,
+  by generalising the companion list, so no cast) the atom at the aliases *is* the obligation.
+  This is the one step the truth cases under T replace, by naming the companions (`ret_compS` as
+  an `∃`, the Henkin step's witness) and aliasing `arr⟨t, z̄⟩`.  The rest of `BRetOut`'s `hT` is
+  the products scaffolding already listed (`holeAt_packN_unpackN`, `ncb_unpackN`).
+* *Next:* the truth cases under T (§11.21 Order, step 4): the companion naming in the producers,
+  the products with companions, the own-arrow cases, `leg_unique`, the decoder split, and
+  `BData.noT_of_strong` gone; then drop `NoFour.noTStrong`.
+
 **Order.**
 1. The decisions, by the user:
    * risk 1: `boxT` with its existence rule, or the content restriction;

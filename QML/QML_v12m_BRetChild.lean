@@ -531,16 +531,6 @@ noncomputable def mkRet (hS : ModalSys.BStrong = true) (N : NetSt σ) (s : Node)
         else N
       else N
 
-/-- ⭐The child of a returning possibility keeps the invariants (T off): it is born with them. -/
-theorem GoodS.mkRet {hS : ModalSys.BStrong = true} (hT : ModalSys.T = false) {N : NetSt σ}
-    (hN : N.GoodS hS) {s : Node} (hs : N.Live s) (o : RetObl σ) : (N.mkRet hS s o).GoodS hS := by
-  obtain ⟨l, A, y, Φ⟩ := o
-  simp only [NetSt.mkRet]
-  split_ifs with h hy hΦ
-  · exact hN.newChild hs (retChild_spec hS hy hT (hN.mcs s hs) hΦ).2
-      (RetData.retBirth hS hy hT (hN.mcs s hs) hΦ)
-  all_goals exact hN
-
 theorem Ext.mkRet {hS : ModalSys.BStrong = true} {N : NetSt σ} {s : Node} (hs : N.Live s)
     (o : RetObl σ) : Ext N (N.mkRet hS s o) := by
   obtain ⟨l, A, y, Φ⟩ := o

@@ -554,22 +554,6 @@ noncomputable def mkRetXD (hS : ModalSys.BStrong = true) (N : NetSt σ) (s : Nod
         else N
       else N
 
-/-- ⭐The doubly witnessed child keeps the invariants (T off). -/
-theorem GoodS.mkRetXD {hS : ModalSys.BStrong = true} (hT : ModalSys.T = false) {N : NetSt σ}
-    (hN : N.GoodS hS) {s : Node} (hs : N.Live s) (o : RetOblXD σ) :
-    (N.mkRetXD hS s o).GoodS hS := by
-  obtain ⟨l, A, Xe, x, ⟨y, o, z⟩, Φ⟩ := o
-  simp only [NetSt.mkRetXD]
-  split_ifs with h himg hz hyo
-  · split
-    · rename_i X hX
-      split_ifs with hΦ
-      · exact hN.newChild hs (retChildXD_spec hS himg hz hX hT (hN.mcs s hs) hΦ).2
-          (RetData.retBirthXD hS himg hz hX hT (hN.mcs s hs) hΦ)
-      · exact hN
-    · exact hN
-  all_goals exact hN
-
 theorem Ext.mkRetXD {hS : ModalSys.BStrong = true} {N : NetSt σ} {s : Node} (hs : N.Live s)
     (o : RetOblXD σ) : Ext N (N.mkRetXD hS s o) := by
   obtain ⟨l, A, Xe, x, ⟨y, o, z⟩, Φ⟩ := o

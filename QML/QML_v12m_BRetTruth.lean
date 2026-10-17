@@ -137,14 +137,6 @@ theorem holeAt_tupT_packT_mono {l : List VarType} {Δ : Ctx} (hle : (ctxOf l).bo
   rw [at_item_of_tupB_base_mono hle _ _ hw ModalSys.T rfl h2, Term.mono_eta]
   exact .ren_eta _ _
 
-omit [ModalSys.NoFour] in
-theorem sig_holeAt {Γ : Ctx} {A : VarType} {a a' : Ann A} {t : Term σ Γ A a} {t' : Term σ Γ A a'}
-    (h : (⟨a, t⟩ : Σ c, Term σ Γ A c) = ⟨a', t'⟩) {B : VarType} {b : Ann B}
-    (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
-    (⟨_, Term.holeAt t s⟩ : Σ c, Term σ Γ B c) = ⟨_, Term.holeAt t' s⟩ := by
-  cases h
-  rfl
-
 /-! ## Items of a necessary shape -/
 
 /-- ⭐The **items of a necessary shape** over a `□` view `V`: one term of `V` for each `□`. -/

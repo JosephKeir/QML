@@ -503,17 +503,6 @@ noncomputable def mkRetD (hS : ModalSys.BStrong = true) (N : NetSt σ) (s : Node
         else N
       else N
 
-/-- ⭐The back-witness child keeps the invariants (T off). -/
-theorem GoodS.mkRetD {hS : ModalSys.BStrong = true} (hT : ModalSys.T = false) {N : NetSt σ}
-    (hN : N.GoodS hS) {s : Node} (hs : N.Live s) (o : RetOblD σ) :
-    (N.mkRetD hS s o).GoodS hS := by
-  obtain ⟨l, A, X, ⟨y, o, z⟩, Φ⟩ := o
-  simp only [NetSt.mkRetD]
-  split_ifs with h himg hz hΦ hyo
-  · exact hN.newChild hs (retChildD_spec hS himg hz hT (hN.mcs s hs) hΦ).2
-      (RetData.retBirthD hS himg hz hT (hN.mcs s hs) hΦ)
-  all_goals exact hN
-
 theorem Ext.mkRetD {hS : ModalSys.BStrong = true} {N : NetSt σ} {s : Node} (hs : N.Live s)
     (o : RetOblD σ) : Ext N (N.mkRetD hS s o) := by
   obtain ⟨l, A, X, ⟨y, o, z⟩, Φ⟩ := o

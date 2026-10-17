@@ -48,10 +48,10 @@ theorem exists_canonB (hB : ModalSys.B = true) {l₀ : List VarType}
         BData.truth hST s 0, fun ψ hψ => hg.sub ψ (show ψ ∈ ((net M₀ 0).st []).M from hψ)⟩
   | true =>
       have hT := ModalSys.NoFour.noTStrong hBS
-      let C := strongChainS hBS hB hT hM₀
+      let C := strongChainS hBS hB hM₀
       let B := bdataS C hT
       let s : B.W := B.actual
-      have hg := (ext_netS hBS hB hT hM₀
+      have hg := (ext_netS hBS hB hM₀
         (Nat.zero_le (birth C.toFairChain s.2 + 0))).grows [] trivial
       exact ⟨B, s, ctxOf_le_of_suffix (C.lang_suffix (Nat.zero_le _) trivial),
         bdataS_indInvariant C hT hB, BData.truth (bdataS_strongTruth C hT hB) s 0,

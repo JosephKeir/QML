@@ -2073,7 +2073,7 @@ theorem subst_arrow_eta_inner {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
 
 omit [ModalSys.NoFour] in
 /-- Substituting a fresh root's value in a term from before it: the term, weakened. -/
-theorem subst_single_mono_tm {lt bigl : List VarType} (hle : (ctxOf lt).Le (ctxOf bigl))
+theorem subst_single_free_mono_tm {lt bigl : List VarType} (hle : (ctxOf lt).Le (ctxOf bigl))
     {B : VarType} {e : SubE σ (ctxOf bigl)}
     (hθ : Subst.Ok (ctxOf (B :: lt)) (Subst.single (.free lt.length) e))
     (hc : Subst.Coh (Subst.singleIdx (.free lt.length) e) (ctxOf (B :: lt))
@@ -2160,7 +2160,7 @@ theorem stepV₅_eq :
   · refine Eq.trans ?_ hm'.symm
     refine (getP_subst _ _ _ _ _ (tupCompsImg_read_fst _ _ _ _ _)).trans (some_of_sig ?_)
     rw [tupImgT_ext himg (imgOk_ext himg)]
-    exact sig_pair ((subst_single_mono_tm (stepLe lt cl A) _ _ _ _).trans e1)
+    exact sig_pair ((subst_single_free_mono_tm (stepLe lt cl A) _ _ _ _).trans e1)
       ((Term.subst_eta_tm _ _ _ _ _ _ _ (Subst.at_single_root _ _)).trans hA)
   · intro p hp
     have hT : ModalSys.T = true := by
@@ -2210,7 +2210,7 @@ theorem stepV₅_eq :
         ((subst_arrow_mono (ctxOf_le_append [A] cl) (himg.mono (ctxOf_le_append [A.bc] lt))
           (imgOk_ext himg) (fun r hr => if_neg (Nat.ne_of_lt hr)) _).trans
           (subst_arrow_tgt_mono (ctxOf_le_append [A.bc] lt) himg _)))).trans ?_
-      refine (subst_single_mono_tm (stepLe lt cl A) _ _ _ _).trans ?_
+      refine (subst_single_free_mono_tm (stepLe lt cl A) _ _ _ _).trans ?_
       unfold Term.weaken
       rw [Term.mono_mono]
     · generalize p.tail = q at e hq
