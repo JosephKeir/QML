@@ -311,6 +311,31 @@ theorem exists_R_of_dia_top {s : B.W} {i : ℕ}
   obtain ⟨k, hk, _⟩ := B.ex s i (WFF.neg .top) (((B.w s).mcs i).neg_mem_iff.mp h)
   exact ⟨k, hk⟩
 
+variable {B} in
+/-- Under T a world has a network arrow: `◇⊤` holds by `T`, and `ex` gives an arrow. -/
+theorem exists_R_of_T (hT : ModalSys.T = true) (s : B.W) : ∃ k, B.R s k := by
+  have hdia : (OutLeg.nec : OutLeg ((B.w s).ctx 0)).dia (.top : WFF σ _ 0) ∈ (B.w s).M 0 :=
+    BWorld.mem_of_provable (Δ := []) (fun _ h => absurd h List.not_mem_nil)
+      ⟨Proof.imp_intro (Proof.imp_elim (Proof.T_box hT (Proof.lookup List.mem_cons_self))
+        Proof.top_intro)⟩
+  exact exists_R_of_dia_top hdia
+
+variable {B} in
+/-- Under T a realised witness labels a network arrow: its `Here` atom (`mem_here_real`) gives
+    `◇_y ⊤` (`here_intro`), and `exX` an arrow labelled `y` (§11.21, risk 3). -/
+theorem exists_kd_of_realised {s : B.W} {y : VarSymb} (hr : (B.w s).Realised y) {i : ℕ}
+    {Y : VarType} (hy : ((B.w s).ctx i).ref y = some (.VTypeDia Y)) :
+    ∃ k, B.kd s k = some (y, Y) := by
+  have hyK : ((B.w s).ctx (max i hr.data.i₀)).ref y = some (.VTypeDia Y) :=
+    ((B.w s).le (le_max_left _ _)).ref hy
+  have hh := mem_here_real hr hy (Term.unit : Term σ (((B.w s).ctx i).diaIn y) .VTypeOne _)
+  have hdia : WFF.dia y ⟨Y, hyK⟩ (.top : WFF σ _ 0) ∈ (B.w s).M (max i hr.data.i₀) :=
+    BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hh)
+      ⟨Proof.here_intro hr.T y ⟨Y, hyK⟩ _ Term.unit .top (Proof.lookup List.mem_cons_self)
+        Proof.top_intro⟩
+  obtain ⟨k, hk, _⟩ := B.exX s _ y Y hyK .top hdia
+  exact ⟨k, hk⟩
+
 /-- ⭐**What comes back makes the round trip** (`Model.Ret_fwd`): an atom's leg is nonempty
     (`back_ne`), and along each of its arrows the carrier read out and home again is related to the
     value (`backRel`, `backRelX`). -/

@@ -26,21 +26,6 @@ variable [ModalSys]
 
 /-! ## Walking a path through a type -/
 
-/-- The type reached from `T` along a path, if every step applies. -/
-def VarType.walk : VarType → List Step → Option VarType
-  | T, [] => some T
-  | T, s :: p => (T.step s).bind fun U => U.walk p
-
-theorem VarType.walk_append (T : VarType) (p q : List Step) :
-    T.walk (p ++ q) = (T.walk p).bind fun U => U.walk q := by
-  induction p generalizing T with
-  | nil => rfl
-  | cons s p ih =>
-      simp only [List.cons_append, VarType.walk]
-      cases T.step s with
-      | none => rfl
-      | some U => exact ih U
-
 /-- ⭐**The cut is where the type is a box**: without T a projection cannot step past a `□`, so two
     typed paths that differ only in where their first `box` sits are one path. -/
 theorem cut_unique (hT : ModalSys.T = false) :

@@ -1809,13 +1809,6 @@ theorem compsAllB_prod (b : Bool) (X Y : VarType) :
   cases b <;> rfl
 
 omit [ModalSys.NoFour] in
-theorem VarType.CompOk.single {A : VarType} {cs : List (List Step)} (h : A.CompOk cs)
-    {p : List Step} (hp : p ∈ cs) : A.CompOk [p] := by
-  rcases h with rfl | ⟨hT, hall⟩
-  · exact absurd hp List.not_mem_nil
-  · exact Or.inr ⟨hT, fun p' hp' => by rw [List.mem_singleton.mp hp']; exact hall p hp⟩
-
-omit [ModalSys.NoFour] in
 theorem getP_holeRead {Γ : Ctx} [Γ.NoSlots] {A : VarType} {a : Ann A} (t : Term σ Γ A a)
     {B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) (π : List Step) :
     (Term.holeRead t s).getP π = (Term.holeAt t s).getP π := by

@@ -148,13 +148,17 @@ theorem atom_data (hS : ModalSys.BStrong = true) {s : B.W} {i : ℕ} {L : BLeg} 
           exact Model.box_beta (M := B.model) _ bd z
 
 /-- ⭐**A nonempty leg has one name**: every arrow out is never a witness's extent
-    (`univ_ne_extent`), and two witnesses' extents meet only if the witnesses are one (an arrow
-    has one label, and without T every arrow is the network's). -/
-theorem leg_unique (hS : ModalSys.BStrong = true) {s : B.W} {i : ℕ}
+    (`univ_ne_extent`; a world with an arrow has a network one, by `T` at the own arrow), and two
+    witnesses' extents meet only if the witnesses are one: they share a network arrow (a realised
+    witness labels one, `exists_kd_of_realised`), which has one label. -/
+theorem leg_unique {s : B.W} {i : ℕ}
     {O O' : OutLeg ((B.w s).ctx i)} (hne : Nonempty (O.legSet (B.canonEnv s i)))
     (h : O.legSet (B.canonEnv s i) = O'.legSet (B.canonEnv s i)) : O = O' := by
   obtain ⟨⟨a, ha⟩⟩ := hne
-  have harr : ∃ k, B.R s k := ⟨a.1, R_of_RT_strong hS a.2.down⟩
+  have harr : ∃ k, B.R s k := by
+    rcases a.2.down with hR | ⟨hT, -⟩
+    · exact ⟨a.1, hR⟩
+    · exact exists_R_of_T hT s
   cases O with
   | nec =>
       cases O' with
@@ -167,16 +171,22 @@ theorem leg_unique (hS : ModalSys.BStrong = true) {s : B.W} {i : ℕ}
           exact absurd ((h.symm.trans (canonEnv_extent s i hy.choose_spec)))
             (univ_ne_extent harr y)
       | pos y' hy' =>
+          have hext : B.extent s y = B.extent s y' :=
+            (canonEnv_extent s i hy.choose_spec).symm.trans
+              (h.trans (canonEnv_extent s i hy'.choose_spec))
           have h₁ : a ∈ B.extent s y := canonEnv_extent s i hy.choose_spec ▸ ha
-          have h₂ : a ∈ B.extent s y' :=
-            canonEnv_extent s i hy'.choose_spec ▸ (h ▸ ha : a ∈ (OutLeg.pos y' hy').legSet _)
-          rcases h₁ with ⟨X, hX⟩ | ⟨hnR, -⟩
-          · rcases h₂ with ⟨X', hX'⟩ | ⟨hnR, -⟩
-            · rw [hX] at hX'
-              obtain ⟨rfl, -⟩ := Prod.mk.inj (Option.some.inj hX')
-              rfl
-            · exact absurd (R_of_RT_strong hS a.2.down) hnR
-          · exact absurd (R_of_RT_strong hS a.2.down) hnR
+          obtain ⟨t₀, X, hX⟩ : ∃ t₀ X, B.kd s t₀ = some (y, X) := by
+            rcases h₁ with ⟨X, hX⟩ | ⟨-, hr⟩
+            · exact ⟨a.1, X, hX⟩
+            · obtain ⟨t₀, ht₀⟩ := exists_kd_of_realised hr hy.choose_spec
+              exact ⟨t₀, _, ht₀⟩
+          have hm : (⟨t₀, ⟨Or.inl (B.kdR hX)⟩⟩ : B.Acc s) ∈ B.extent s y' :=
+            hext ▸ (Or.inl ⟨X, hX⟩ : (⟨t₀, ⟨Or.inl (B.kdR hX)⟩⟩ : B.Acc s) ∈ B.extent s y)
+          rcases hm with ⟨X', hX'⟩ | ⟨hnR, -⟩
+          · rw [hX] at hX'
+            obtain ⟨rfl, -⟩ := Prod.mk.inj (Option.some.inj hX')
+            rfl
+          · exact absurd (B.kdR hX) hnR
 
 section Congr
 
@@ -273,7 +283,7 @@ theorem ret_pair (hS : ModalSys.BStrong = true) {A C : VarType} {s : B.W}
   obtain ⟨O', a₀', bd', hO', hSV'⟩ := atom_data hS _ (Term.mono ((B.w s).le hK') t') hdK'
   have hlS : S = O.legSet (B.canonEnv s (max i i')) := congrArg Sigma.fst hSV
   have hlS' : S = O'.legSet (B.canonEnv s (max i i')) := congrArg Sigma.fst hSV'
-  obtain rfl : O = O' := leg_unique hS (hlS ▸ hne) (hlS.symm.trans hlS')
+  obtain rfl : O = O' := leg_unique (hlS ▸ hne) (hlS.symm.trans hlS')
   rw [hO] at hmK
   rw [hO'] at hmK'
   have hm2 : (O.back hS (Term.pair bd bd')

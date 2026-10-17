@@ -7827,6 +7827,96 @@ switch; `QML_v12m_BRetBirthC`, `QML_v12m_BNetRetC`; sorry-free, full build green
   the products with companions, the own-arrow cases, `leg_unique`, the decoder split, and
   `BData.noT_of_strong` gone; then drop `NoFour.noTStrong`.
 
+**Step 8, the truth cases under T: the plan (2026-10-18, paper).**  The network and the chain no
+longer assume T off.  What still does is the limit and the truth lemma, through one field,
+`BData.noT_of_strong`, and the T-off scaffolding in the producers.  Its uses, by kind:
+* *The own arrow excluded* (`R_of_RT_strong`): `mem_ret_of_sat_nec`, `mem_retx_of_sat`
+  (`BRetTruth`); the witnessed four (`BRetTruthW`); `leg_unique` (`BRetCongr`); the `Back`
+  cases (`exists_R_of_arr`, `BBackTruth`; `BCanonModel` 340, 362, 428).
+* *Objects at companion shapes*: `NTerms` is empty at `boxC A (p :: ps)`, so `exists_obj` and
+  `exists_wit` take `T = false`.
+* *Products*: `ncb_unpackN`, `holeAt_packN_unpackN` (`BRetOut`).
+* *The decoder*: `ann_eq_of_rden_ctx_noT` with `ImgInj` (`BBackTruth`).
+* *Production*: `ret_oblC_noT`, `ret_oblDC_noT`, and `lalias_ind`'s T-off home reading.
+
+**The work, in building order.**
+1. *Objects at companion shapes.*  `NTerms` at `boxC A cs` is the item `u : A` (as at `box`), its
+   object `□u`, and its value `compsVal u cs`: the companions are definable from the object
+   (`compVal`).  `ind_of_nComesBack` gains the companion clauses, from the canonical reading of
+   `compsVal` (as `compsBack_compsVal`, at the canonical environment).  `exists_obj`/`exists_wit`
+   lose `T = false`.
+2. *The limit's invariants with companions.*  `RetAt` (`BLimitRet`) is built on the forgotten
+   forms (`GoodS.ret`).  Under T, `RetIn` needs the tuple's companions, so `RetAt`/`lretAt` move
+   to `RetDataB`'s forms (`GoodS.retB`; restriction and growth as now, via the `B` lemmas).
+3. *The hole map with companions* (`holeH` of §11.21, its coherent instance; **new `ShapeMap`
+   constructor, for the user**):
+   `holeC u : boxC B (compsAllB b B) → boxC A cs`, for a contents hole `u : B ⊢ A`.
+   * Object `d ↦ □u[d.inner]`, as `hole`.
+   * Value: `W ↦ ⟨u[W₀], …, κ_p(W), …⟩`, where `κ_p` is `compVal (u[d.inner]) p` with each address
+     of `d`'s here-chain, `d.here.q.box`, sent to `W`'s component for `q`, and `d.inner` to `W₀`.
+     The source binds **all** of `d`'s companions, so every address `compVal` can mention is
+     named: this is the side condition `holeH` was deferred for, met structurally.
+   * Sound: `□u[d]`'s companion `p` comes back as `compVal`'s reading along the way home, which
+     is `κ_p` of `d`'s companions' returns (`compBack_compRead`, `compsBack_at`).
+   * With T off, `compsAllB false = []` and `cs = []`: `holeC u` is `hole u` definitionally.
+   * Uses: `RetIn` under T (the tuple `tupShape cls` to the user's shape, `u` the object's items
+     over the tuple), and products (the born root `□(N.flat)` with all companions, unpacked to
+     the components with theirs), replacing `ncb_unpackN`/`holeAt_packN_unpackN`.
+4. *Truth ⇒ membership at network arrows* (`RetIn`, `RetInX`, `RetInW`, `RetInWX`): the
+   invariant with companions, then `ret_map` along `holeC`.
+5. *Truth ⇒ membership at the own arrow*: the risk-2 rules (`ret_hereC`, `ret_hereWC`,
+   `ret_hereXC`, `ret_hereXWC`) with the object definable here, then the value moved along `Ind`
+   (`mem_ret_of_ind`).
+6. *Membership ⇒ truth*: name the companions (`ret_compS` as `∃z. …`, the Henkin witness
+   `lex`), alias `arr⟨t, z̄⟩`, move the value to `unarr y` (`retSlot`), replacing
+   `ret_oblC_noT`/`ret_oblDC_noT`; the home reading `Ind` through the alias's components.
+   Products through `holeC` from the packed born root.
+7. *`Back`, `leg_unique` and the decoder*: the own arrow by `back_here`/`back_hereX`;
+   `leg_unique` by risk 3's argument (a nonempty extent holds a network arrow); the decoder's T
+   half (`ann_eq_of_rden`) where `ImgInj` is used.
+8. *Drop `BData.noT_of_strong`*, `bdataS`'s `hT`, and then `NoFour.noTStrong` (step 9).
+
+Items 1, 2, 5 and 7 need no new construction; 3 is the one decision; 4 and 6 follow from 3.
+* *Found when starting item 1:* `packMap` (the tuple's object to the user's object, `RetIn`'s
+  map) needs a companion-shape case too, and that case is `holeC` at the tuple.  So items 1, 3
+  and 4 hang on the one decision.
+
+**Decided (user, 2026-10-18): build `holeC`** as sketched in item 3.
+
+**Built (2026-10-18): step 8, the parts needing no decision.**
+* *Item 2* (`BLimitRet`): ⭐`RetAtB` (`RetAt` with companions), `RetDataB.retAtB_fwd`/`_back`,
+  `RetAtB.forget`, `tupCompsImg_congr`, restriction for all four forms (`RetInvB.restrict` …,
+  ⭐`RetAtB.restrict`), and ⭐`lretAtB` from `GoodS.retB`.
+* *Item 7, part* (`BCanonModel`, `BBackTruth`, `BRetCongr`): `exists_R_of_T` (under T a world
+  has a network arrow: `◇⊤` by `T_box`, then `ex`), `exists_kd_of_realised` (risk 3: a realised
+  witness's `Here` atom gives `◇_y ⊤` by `here_intro`, then `exX` an arrow labelled `y`);
+  `exists_R_of_arr` and ⭐`leg_unique` hold for every T (no `hS`); `ann_eq_of_toDom` splits on
+  T (`ann_eq_of_rden_ctx` under T).
+* *Still T-off in item 7:* `mem_back_of_sat_pos` at `◇`-typed contents uses `arrowXIdx_inj`
+  (annotation indices injective along a witness arrow, T off): the decoder split proper; and the
+  canonical `Ret` at the own arrow (`BCanonModel`'s `R_of_RT_strong` uses, by `back_here`/
+  `back_hereX`).
+
+**Built (2026-10-18): item 3, `ShapeMap.holeC`** (`BackSyntax`, `SemBack`; full build green).
+* *Syntax.*  `holeC s b hb hF cs h : boxC A (compsAllB b A) → boxC B cs` (`hF : Four = false`:
+  under 4 the view also has `keep` items).  Object as `hole`; value `holeCVal`: `s` at the
+  source's contents, and each companion `q` of `□s[d.inner]` as `compVal` renamed by
+  ⭐`compsRen` (`d.box ↦` contents, `d.here.p.box ↦` companion `p`; index map `compsRenIdx`, cut
+  at the first `box`).  `ok_compsRen`/`coh_compsRen` rest on `Ctx.ref_insert_box` (the one-root
+  view's items are `d` and `d.here.p` with `A.compAt p` a `□`) and ⭐`VarType.mem_hereChains`
+  (every such path is a companion): the side condition holds structurally.  `VarType.walk` moved
+  up from `BDecode`, `CompOk.single` from `BStepC`, `compVal`/`Term.unboxtm` above `ShapeMap`.
+* *Soundness* (⭐`holeC_back`): contents by `hole`'s argument (`compsBack_main`); each companion's
+  reading is `compVal` read along the way home (`interp_compVal`), which is the renaming read at
+  `d`'s value with companions there (⭐`agree_compsRen`, `interp_subst`), `Ind` to the source's
+  value (`compsSlot_ind`) and so mapped (`hM.map`).
+* *Next, items 1 and 4, by values rather than a syntactic identity.*  `NTerms` takes the item at
+  every companion shape.  `RetIn` will conclude membership at the value `ret_map` along
+  `packMap` (now `holeC` at the tuple shape) produces, with `Ind` to any value the object comes
+  back as: that value denotes exactly the object's readings (the tuple's canonical comeback is an
+  equality, and `holeC`'s value at the readings is the image's readings), so `compsSlot_ind`
+  gives `Ind` with no transitivity of `Ind` (which the canonical `Ind` is not known to have).
+
 **Order.**
 1. The decisions, by the user:
    * risk 1: `boxT` with its existence rule, or the content restriction;

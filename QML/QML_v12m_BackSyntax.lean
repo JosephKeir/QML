@@ -362,6 +362,249 @@ theorem pairCompAddr_ref {X Y : VarType} {csX csY : List (List Step)} {p : List 
     subst e
     exact Ctx.ref_compsIdx csY q hq (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _))
 
+/-! ## The companion renaming of a necessary object's view (`holeC`) -/
+
+/-- The contents of a necessary term. -/
+def Term.unboxtm {σ : Signature} {Γ : Ctx} {A : VarType} {a : Ann (.VTypeBox A)} :
+    Term σ Γ (.VTypeBox A) a → Σ b, Term σ Γ.boxIn A b
+  | .boxtm t => ⟨_, t⟩
+
+/-- Under T, the contents of `□sb`'s companion at the path `p`: `□sb` put into the hole of the
+    companion's contents address `d.here.p.box`, read by substitution (`SubE.proj` reads `here` of
+    `□v` as `collapse v`, and projections of pairs as components). -/
+def compVal {σ : Signature} {Γ : Ctx} {A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀)
+    (p : List Step) {ps : List (List Step)} (h : A.CompOk (p :: ps)) :
+    Σ b, Term σ Γ.boxIn ((A.compAt p).getD .VTypeOne) b :=
+  Term.unboxtm (Term.holeAt (Term.boxtm sb) (Term.boxtm
+    (Term.eta ((VarSymb.step (.root (.bnd 0)) .here).ext p).inner ((A.compAt p).getD .VTypeOne)
+      (Ctx.ref_inner (h.ref_head (Ctx.ref_insert_root _ _ _))))))
+
+/-- The type reached from `T` along a path, if every step applies. -/
+def VarType.walk : VarType → List Step → Option VarType
+  | T, [] => some T
+  | T, s :: p => (T.step s).bind fun U => U.walk p
+
+theorem VarType.walk_append (T : VarType) (p q : List Step) :
+    T.walk (p ++ q) = (T.walk p).bind fun U => U.walk q := by
+  induction p generalizing T with
+  | nil => rfl
+  | cons s p ih =>
+      simp only [List.cons_append, VarType.walk]
+      cases T.step s with
+      | none => rfl
+      | some U => exact ih U
+
+/-- The addresses of a context with one root: the root along projection steps, at the type the
+    path walks to. -/
+theorem Ctx.ref_insert_one {r : Root} {R : VarType} : ∀ (u : VarSymb) {U : VarType},
+    (Ctx.empty.insert r R).ref u = some U →
+      u.rt = r ∧ (∀ s ∈ u.path, s.isProj = true) ∧ R.walk u.path = some U
+  | .root r', U, h => by
+      change (if VarSymb.root r' = .root r then some R else Ctx.empty (.root r')) = some U at h
+      split_ifs at h with he
+      · cases he
+        exact ⟨rfl, fun _ hs => absurd hs List.not_mem_nil, h⟩
+      · cases h
+  | .step v s, U, h => by
+      simp only [Ctx.ref] at h
+      split_ifs at h with hs
+      · obtain ⟨V, hv, hst⟩ := Option.bind_eq_some_iff.mp h
+        obtain ⟨hrt, hp, hw⟩ := Ctx.ref_insert_one v hv
+        refine ⟨hrt, fun t ht => ?_, ?_⟩
+        · rcases List.mem_append.mp ht with ht | ht
+          · exact hp t ht
+          · rw [List.mem_singleton.mp ht]; exact hs
+        · change R.walk (v.path ++ [s]) = some U
+          rw [VarType.walk_append, hw]
+          simpa [VarType.walk] using hst
+      · change (if VarSymb.step v s = .root r then some R else Ctx.empty (.step v s)) = some U at h
+        rw [if_neg (by simp)] at h
+        cases h
+
+/-- A path walking a type to a necessary type reaches a companion there. -/
+theorem VarType.compAt_of_walk : ∀ (A : VarType) (p : List Step) {C : VarType},
+    (∀ s ∈ p, s.isProj = true) → A.walk p = some (.VTypeBox C) → A.compAt p = some C
+  | A, [], C, _, h => by
+      cases A <;> simp only [VarType.walk, Option.some.injEq, reduceCtorEq] at h
+      rw [VarType.VTypeBox.inj h]
+      rfl
+  | A, s :: p, C, hp, h => by
+      have hs := hp s List.mem_cons_self
+      have hp' : ∀ t ∈ p, t.isProj = true := fun t ht => hp t (List.mem_cons_of_mem _ ht)
+      cases A <;> cases s <;> simp only [Step.isProj, Bool.false_eq_true] at hs <;>
+        simp only [VarType.walk, VarType.step, Option.bind_none, Option.bind_some,
+          reduceCtorEq] at h
+      · exact VarType.compAt_of_walk _ p hp' h
+      · exact VarType.compAt_of_walk _ p hp' h
+      · rename_i A'
+        by_cases hT : ModalSys.T = true
+        · rw [if_pos hT, Option.bind_some] at h
+          exact VarType.compAt_of_walk A' p hp' h
+        · rw [if_neg hT, Option.bind_none] at h
+          cases h
+
+omit [ModalSys] in
+/-- Every path to a necessary component is one of the companions. -/
+theorem VarType.mem_hereChains : ∀ (A : VarType) (p : List Step) {C : VarType},
+    A.compAt p = some C → p ∈ A.hereChains
+  | .VTypeBox C', [], _, _ => List.mem_cons_self
+  | .VTypeBox C', .here :: q, C, h =>
+      List.mem_cons_of_mem _ (List.mem_map_of_mem (VarType.mem_hereChains C' q h))
+  | .VTypeProd X _, .fst :: q, C, h =>
+      List.mem_append_left _ (List.mem_map_of_mem (VarType.mem_hereChains X q h))
+  | .VTypeProd _ Y, .snd :: q, C, h =>
+      List.mem_append_right _ (List.mem_map_of_mem (VarType.mem_hereChains Y q h))
+  | .Var, _, _, h => by simp [VarType.compAt] at h
+  | .VTypeOne, _, _, h => by simp [VarType.compAt] at h
+  | .VTypeDia _, _, _, h => by simp [VarType.compAt] at h
+  | .VTypeBox _, .fst :: _, _, h => by simp [VarType.compAt] at h
+  | .VTypeBox _, .snd :: _, _, h => by simp [VarType.compAt] at h
+  | .VTypeBox _, .box :: _, _, h => by simp [VarType.compAt] at h
+  | .VTypeBox _, .dia :: _, _, h => by simp [VarType.compAt] at h
+  | .VTypeBox _, .keep :: _, _, h => by simp [VarType.compAt] at h
+  | .VTypeProd _ _, [], _, h => by simp [VarType.compAt] at h
+  | .VTypeProd _ _, .box :: _, _, h => by simp [VarType.compAt] at h
+  | .VTypeProd _ _, .dia :: _, _, h => by simp [VarType.compAt] at h
+  | .VTypeProd _ _, .here :: _, _, h => by simp [VarType.compAt] at h
+  | .VTypeProd _ _, .keep :: _, _, h => by simp [VarType.compAt] at h
+
+/-- A necessary item of the one-root view of `d : □A`: `d` itself, or under T a companion
+    `d.here.p` (`p` among all of `A`'s companions). -/
+theorem Ctx.ref_insert_box {A : VarType} {u : VarSymb} {T : VarType}
+    (hu : (Ctx.empty.insert (.bnd 0) (.VTypeBox A)).ref u = some (.VTypeBox T)) :
+    u.rt = .bnd 0 ∧ (∀ s ∈ u.path, s.isProj = true) ∧
+      ((u.path = [] ∧ T = A) ∨
+        (ModalSys.T = true ∧ ∃ p, u.path = .here :: p ∧ A.compAt p = some T)) := by
+  obtain ⟨hrt, hp, hw⟩ := Ctx.ref_insert_one u hu
+  refine ⟨hrt, hp, ?_⟩
+  revert hp hw
+  cases u.path with
+  | nil =>
+      intro _ hw
+      simp only [VarType.walk, Option.some.injEq] at hw
+      exact Or.inl ⟨rfl, (VarType.VTypeBox.inj hw).symm⟩
+  | cons s p =>
+      intro hp hw
+      have hs := hp s List.mem_cons_self
+      have hp' : ∀ t ∈ p, t.isProj = true := fun t ht => hp t (List.mem_cons_of_mem _ ht)
+      cases s <;> simp only [Step.isProj, Bool.false_eq_true] at hs <;>
+        simp only [VarType.walk, VarType.step, Option.bind_none, reduceCtorEq] at hw
+      by_cases hT : ModalSys.T = true
+      · rw [if_pos hT, Option.bind_some] at hw
+        exact Or.inr ⟨hT, p, rfl, VarType.compAt_of_walk A p hp' hw⟩
+      · rw [if_neg hT, Option.bind_none] at hw
+        cases hw
+
+omit [ModalSys] in
+/-- A path cut at its first `box`. -/
+def cutBox : List Step → Option (List Step × List Step)
+  | [] => none
+  | .box :: q => some ([], q)
+  | s :: q => (cutBox q).map fun pq => (s :: pq.1, pq.2)
+
+omit [ModalSys] in
+theorem cutBox_proj : ∀ (p : List Step) (q : List Step), (∀ s ∈ p, s.isProj = true) →
+    cutBox (p ++ .box :: q) = some (p, q)
+  | [], q, _ => rfl
+  | s :: p, q, hp => by
+      have hs := hp s List.mem_cons_self
+      have ih := cutBox_proj p q (fun t ht => hp t (List.mem_cons_of_mem _ ht))
+      cases s <;> simp [Step.isProj] at hs <;> simp [cutBox, ih]
+
+/-- Where an item of `d`'s view lands in `d`'s value with companions `cs`: `d.box` at the
+    contents, `d.here.p.box` at companion `p`. -/
+def compsItemAddr (cs : List (List Step)) : List Step → VarSymb
+  | [] => (VarSymb.root (.bnd 0)).ext (compsFst cs)
+  | .here :: p => (VarSymb.root (.bnd 0)).ext (compsIdx cs p)
+  | _ => .root (.bnd 0)
+
+/-- ⭐**The companion renaming**: the view of a necessary object `d` (the slot `bnd 0`) read off
+    its value with companions `cs`, each item to its component (`compsItemAddr`). -/
+def compsRen (σ : Signature) (Δ : Ctx) (cs : List (List Step)) : Subst σ Δ := fun v =>
+  match v with
+  | .step u .box => if u.rt = .bnd 0 then .ren (compsItemAddr cs u.path) else .hide
+  | _ => .hide
+
+/-- Where the companion renaming sends annotation indices: below an item, below its image. -/
+def compsRenIdx (cs : List (List Step)) (a : VarSymb) : VarSymb :=
+  match cutBox a.path with
+  | some (p, q) => (compsItemAddr cs p).ext q
+  | none => a
+
+theorem ok_compsRen {σ : Signature} (hF : ModalSys.Four = false) (A : VarType) (b : Bool)
+    (hb : ModalSys.T = b) :
+    Subst.Ok (Ctx.empty.insert (.bnd 0) (.VTypeBox A)).boxIn
+      (compsRen σ (Ctx.empty.insert (.bnd 0) (A.compsFlat (A.compsAllB b))) (A.compsAllB b)) := by
+  intro v T _ hv
+  match v with
+  | .step u .box =>
+      obtain ⟨-, hu⟩ := Ctx.boxIn_box hv
+      obtain ⟨hrt, -, hc⟩ := Ctx.ref_insert_box hu
+      dsimp only [compsRen]
+      rw [if_pos hrt]
+      change Ctx.ref _ (compsItemAddr _ u.path) = some T
+      rcases hc with ⟨hpath, rfl⟩ | ⟨hT, p, hpath, hp⟩
+      · rw [hpath]
+        exact Ctx.ref_compsFst _ (Ctx.ref_insert_root _ _ _)
+      · rw [hpath]
+        subst hb
+        rw [hT] at *
+        have hm : p ∈ A.compsAllB true := VarType.mem_hereChains A p hp
+        have := Ctx.ref_compsIdx _ p hm (Ctx.ref_insert_root Ctx.empty (.bnd 0)
+          (A.compsFlat (A.compsAllB true)))
+        rw [hp] at this
+        exact this
+  | .step u .keep => exact absurd ((Ctx.boxIn_keep hv).1.symm.trans hF) (by decide)
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .dia => cases hv
+  | .step _ .here => cases hv
+
+theorem coh_compsRen {σ : Signature} (hF : ModalSys.Four = false) (A : VarType) (b : Bool)
+    (hb : ModalSys.T = b) :
+    Subst.Coh (compsRenIdx (A.compsAllB b)) (Ctx.empty.insert (.bnd 0) (.VTypeBox A)).boxIn
+      (compsRen σ (Ctx.empty.insert (.bnd 0) (A.compsFlat (A.compsAllB b))) (A.compsAllB b)) := by
+  refine Subst.coh_of (ok_compsRen hF A b hb) ?_
+  intro v T _ hv q
+  match v with
+  | .step u .box =>
+      obtain ⟨-, hu⟩ := Ctx.boxIn_box hv
+      obtain ⟨hrt, hproj, -⟩ := Ctx.ref_insert_box hu
+      dsimp only [compsRen]
+      rw [if_pos hrt]
+      change (compsItemAddr _ u.path).ext q = compsRenIdx _ ((VarSymb.step u .box).ext q)
+      unfold compsRenIdx
+      rw [VarSymb.ext_path, show (VarSymb.step u .box).path = u.path ++ [.box] from rfl,
+        List.append_assoc, List.singleton_append, cutBox_proj u.path q hproj]
+  | .step u .keep => exact absurd ((Ctx.boxIn_keep hv).1.symm.trans hF) (by decide)
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .dia => cases hv
+  | .step _ .here => cases hv
+
+theorem VarType.CompOk.single {A : VarType} {cs : List (List Step)} (h : A.CompOk cs)
+    {p : List Step} (hp : p ∈ cs) : A.CompOk [p] := by
+  rcases h with rfl | ⟨hT, hall⟩
+  · exact absurd hp List.not_mem_nil
+  · exact Or.inr ⟨hT, fun p' hp' => by rw [List.mem_singleton.mp hp']; exact hall p hp⟩
+
+/-- ⭐**`holeC`'s value**: the contents `s` of the source's contents, and each companion of
+    `□s[d.inner]` as its contents (`compVal`) read off the source's value with **all** its
+    companions (`compsRen`). -/
+def holeCVal {σ : Signature} {A B : VarType} {bB : Ann B}
+    (s : Term σ (Ctx.empty.insert (.bnd 0) A) B bB) (b : Bool) (hb : ModalSys.T = b)
+    (hF : ModalSys.Four = false) (cs : List (List Step)) (h : B.CompOk cs) :
+    Σ c, Term σ (Ctx.empty.insert (.bnd 0) (A.compsFlat (A.compsAllB b))) (B.compsFlat cs) c :=
+  compsBuild B ⟨_, Term.holeAt (Term.eta ((VarSymb.root (.bnd 0)).ext (compsFst (A.compsAllB b)))
+      A (Ctx.ref_compsFst _ (Ctx.ref_insert_root _ _ _))) s⟩ cs
+    fun q hq => ⟨_, Term.subst (compsRenIdx (A.compsAllB b))
+      (compsRen σ _ (A.compsAllB b)) (ok_compsRen hF A b hb) (coh_compsRen hF A b hb)
+      (compVal (Γ := Ctx.empty.insert (.bnd 0) (.VTypeBox A))
+        (Term.holeAt (Term.eta (VarSymb.root (.bnd 0)).inner A
+          (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))) s) q (h.single hq)).2⟩
+
 /-! ## Maps between returnable shapes -/
 
 /-- ⭐A **structural map between shapes of necessary objects** (docs §11.17): identity,
@@ -420,6 +663,15 @@ inductive ShapeMap (σ : Signature) : NShape → NShape → Type where
   | tupC (A : VarType) (b : Bool) (hb : ModalSys.T = b) :
       ShapeMap σ (.boxC A (A.compsAllB b) (VarType.compOk_compsAllB b hb A))
         (.boxC (tupOneTy A b) ((tupOneTy A b).compsAllB b) (VarType.compOk_compsAllB b hb _))
+  /-- ⭐**A hole map with companions** (docs §11.21, step 8): a `□A` object `d` with **all** its
+      companions to `□s[d.inner]` with companions `cs`.  Each companion of `□s[d.inner]` has as
+      contents a term of `d`'s view (`compVal`), and every item of that view, `d.box` or
+      `d.here.p.box`, is named by the source (`compsRen`), so the map is sound with no side
+      condition: the coherent instance of `holeH`.  With T off it is `hole s` up to `η`. -/
+  | holeC {A B : VarType} {bB : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B bB)
+      (b : Bool) (hb : ModalSys.T = b) (hF : ModalSys.Four = false) (cs : List (List Step))
+      (h : B.CompOk cs) :
+      ShapeMap σ (.boxC A (A.compsAllB b) (VarType.compOk_compsAllB b hb A)) (.boxC B cs h)
 
 /-- The map on the object out there, as a hole term. -/
 def ShapeMap.obj {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
@@ -460,6 +712,8 @@ def ShapeMap.obj {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
       (Term.eta (VarSymb.root (.bnd 0)).inner A (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))))⟩
   | _, _, .tupC A true hb => ⟨_, Term.boxtm (Term.pair Term.unit
       (itemsTree hb (.root (.bnd 0)) (.VTypeBox A) (Ctx.ref_insert_root _ _ _)).2)⟩
+  | _, _, .holeC (A := A) s _ _ _ _ _ => ⟨_, Term.boxtm (Term.holeAt
+      (Term.eta (VarSymb.root (.bnd 0)).inner A (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))) s)⟩
 
 /-- The map on the value it comes back as, as a hole term. -/
 def ShapeMap.val {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
@@ -510,6 +764,7 @@ def ShapeMap.val {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
   | _, _, .tupC A false _ =>
       ⟨_, Term.pair Term.unit (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root _ _ _))⟩
   | _, _, .tupC A true hb => tupCVal A hb _ fun _ hp => hp
+  | _, _, .holeC s b hb hF cs h => holeCVal s b hb hF cs h
 
 /-- The map on the object out there, at a returnable shape: on the necessary part, the witness
     carried along. -/
@@ -633,21 +888,6 @@ def RShape.compTm {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (A : VarType) (cs : L
       (Term.eta (.step (.step (.root (.bnd 0)) .fst) .snd) X
         (Ctx.ref_snd_of (Ctx.ref_fst_of (Ctx.ref_insert_root Ctx.empty (.bnd 0)
           (.VTypeProd (RShape.wit (.boxC A cs h) X).flat ((A.compAt p).getD .VTypeOne)))))))⟩
-
-/-- The contents of a necessary term. -/
-def Term.unboxtm {σ : Signature} {Γ : Ctx} {A : VarType} {a : Ann (.VTypeBox A)} :
-    Term σ Γ (.VTypeBox A) a → Σ b, Term σ Γ.boxIn A b
-  | .boxtm t => ⟨_, t⟩
-
-/-- Under T, the contents of `□sb`'s companion at the path `p`: `□sb` put into the hole of the
-    companion's contents address `d.here.p.box`, read by substitution (`SubE.proj` reads `here` of
-    `□v` as `collapse v`, and projections of pairs as components). -/
-def compVal {σ : Signature} {Γ : Ctx} {A : VarType} {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀)
-    (p : List Step) {ps : List (List Step)} (h : A.CompOk (p :: ps)) :
-    Σ b, Term σ Γ.boxIn ((A.compAt p).getD .VTypeOne) b :=
-  Term.unboxtm (Term.holeAt (Term.boxtm sb) (Term.boxtm
-    (Term.eta ((VarSymb.step (.root (.bnd 0)) .here).ext p).inner ((A.compAt p).getD .VTypeOne)
-      (Ctx.ref_inner (h.ref_head (Ctx.ref_insert_root _ _ _))))))
 
 /-- The value `□sb` and its companions come back as along the arrow out: `sb`, then each
     companion's contents (`compVal`); `sb` itself when there are none. -/

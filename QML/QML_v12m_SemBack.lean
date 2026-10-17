@@ -1674,6 +1674,222 @@ theorem compsBack_build {A : VarType} {v w : M.frame.W} (e : M.frame.Dom (.VType
       · rw [dif_neg hT]
         trivial
 
+/-! ### The hole map with companions -/
+
+omit [Γ.NoSlots] in
+/-- A value with companions that comes back gives its own value's component. -/
+theorem compsBack_main {A : VarType} {v w : M.frame.W} (e : M.frame.Dom (.VTypeBox A) v)
+    (r : M.frame.R v w) :
+    ∀ (cs : List (List Step)) {Δ' : Ctx} (env' : M.Env Δ' w) {a : VarSymb}
+      (ha : Δ'.ref a = some (A.compsFlat cs)), M.compsBack A cs e r (env'.ref a ha) →
+      ∀ h, M.Ind (M.necEval (e : M.frame.Nec A v) ⟨w, ⟨r⟩⟩) (env'.ref (a.ext (compsFst cs)) h)
+  | [], _, _, _, _, hb, _ => hb
+  | _ :: ps, _, env', _, ha, hb, h => by
+      refine compsBack_main e r ps env' (Ctx.ref_fst_of ha) ?_ h
+      rw [Env.ref_fst env' ha]
+      exact hb.1
+
+omit [Γ.NoSlots] in
+/-- The value with companions read through the view, at its own value's component: the
+    contents. -/
+theorem ref_compsFst_compsSlot {Δ Δ' : Ctx} {u : VarSymb} {C : VarType}
+    (hu : Δ.ref u = some (.VTypeBox C)) (hle : Δ.boxIn.Le Δ') {w : M.frame.W} (E : M.Env Δ' w) :
+    ∀ (cs : List (List Step)) (h : C.CompOk cs) {Δ'' : Ctx} (E' : M.Env Δ'' w) {a : VarSymb}
+      (ha : Δ''.ref a = some (C.compsFlat cs)),
+      E'.ref a ha = interp E (compsSlot (σ := σ) hu hle cs h).2 →
+      ∀ h', E'.ref (a.ext (compsFst cs)) h' = E.ref u.inner (hle.ref (Ctx.ref_inner hu))
+  | [], _, _, E', _, ha, he, h' => by
+      rw [show E'.ref _ h' = E'.ref _ ha from rfl, he]
+      exact interp_eta E _ _
+  | _ :: ps, h, _, E', _, ha, he, h' => by
+      refine ref_compsFst_compsSlot hu hle E ps h.tail E' (Ctx.ref_fst_of ha) ?_ h'
+      rw [Env.ref_fst E' ha, he]
+      rfl
+
+omit [Γ.NoSlots] in
+/-- The value with companions read through the view, at a companion's component: that
+    companion's contents. -/
+theorem ref_compsIdx_compsSlot {Δ Δ' : Ctx} {u : VarSymb} {C : VarType}
+    (hu : Δ.ref u = some (.VTypeBox C)) (hle : Δ.boxIn.Le Δ') {w : M.frame.W} (E : M.Env Δ' w) :
+    ∀ (cs : List (List Step)) (h : C.CompOk cs) {Δ'' : Ctx} (E' : M.Env Δ'' w) {a : VarSymb}
+      (ha : Δ''.ref a = some (C.compsFlat cs)),
+      E'.ref a ha = interp E (compsSlot (σ := σ) hu hle cs h).2 →
+      ∀ q, q ∈ cs → ∀ {T : VarType} (h' : Δ''.ref (a.ext (compsIdx cs q)) = some T)
+        (h'' : Δ'.ref ((VarSymb.step u .here).ext q).inner = some T),
+        E'.ref (a.ext (compsIdx cs q)) h' = E.ref ((VarSymb.step u .here).ext q).inner h''
+  | [], _, _, _, _, _, _, q, hq, _, _, _ => absurd hq List.not_mem_nil
+  | p :: ps, h, Δ'', E', a, ha, he, q, hq, T, h', h'' => by
+      obtain rfl : T = (C.compAt q).getD .VTypeOne :=
+        Option.some.inj (h'.symm.trans (Ctx.ref_compsIdx _ q hq ha))
+      by_cases hqp : q = p
+      · subst hqp
+        have key : ∀ (a' : VarSymb) (k : Δ''.ref a' = some ((C.compAt q).getD .VTypeOne)),
+            a' = .step a .snd → E'.ref a' k = (E'.ref a ha).2 := by
+          rintro _ k rfl
+          exact Env.ref_snd E' ha k
+        rw [key _ h' (by simp [compsIdx, VarSymb.ext]), he]
+        exact interp_eta E _ _
+      · have hq' : q ∈ ps := (List.mem_cons.mp hq).resolve_left hqp
+        have key : ∀ (k : Δ''.ref ((VarSymb.step a .fst).ext (compsIdx ps q)) =
+              some ((C.compAt q).getD .VTypeOne)) (a' : VarSymb)
+            (k' : Δ''.ref a' = some ((C.compAt q).getD .VTypeOne)),
+            a' = (VarSymb.step a .fst).ext (compsIdx ps q) → E'.ref a' k' = E'.ref _ k := by
+          rintro _ _ _ rfl
+          rfl
+        rw [key (Ctx.ref_compsIdx ps q hq' (Ctx.ref_fst_of ha)) _ h'
+          (by simp [compsIdx, hqp, VarSymb.ext])]
+        refine ref_compsIdx_compsSlot hu hle E ps h.tail E' (Ctx.ref_fst_of ha) ?_ q hq' _ h''
+        rw [Env.ref_fst E' ha, he]
+        rfl
+
+omit [ModalSys] [Γ.NoSlots] in
+theorem VarSymb.ext_snoc : ∀ (v : VarSymb) (p : List Step) (s : Step),
+    v.ext (p ++ [s]) = .step (v.ext p) s
+  | _, [], _ => rfl
+  | v, t :: p, s => VarSymb.ext_snoc (.step v t) p s
+
+omit [ModalSys] [Γ.NoSlots] in
+/-- An address is its root along its path. -/
+theorem VarSymb.eq_root_ext : ∀ (u : VarSymb), (VarSymb.root u.rt).ext u.path = u
+  | .root _ => rfl
+  | .step u s => by
+      change (VarSymb.root u.rt).ext (u.path ++ [s]) = _
+      rw [VarSymb.ext_snoc, VarSymb.eq_root_ext u]
+
+omit [Γ.NoSlots] in
+/-- ⭐**The companion renaming, semantically**: `d`'s view read along an arrow is the renaming
+    read at `d`'s value with companions there. -/
+theorem agree_compsRen (hF : ModalSys.Four = false) (A : VarType) (b : Bool)
+    (hb : ModalSys.T = b) {w : M.frame.W}
+    (E : M.Env (Ctx.empty.insert (.bnd 0) (.VTypeBox A)).boxIn w) :
+    Env.Agree (Ctx.Le.refl _)
+      (substEnv (compsRen σ _ (A.compsAllB b)) (ok_compsRen hF A b hb) (Ctx.noProjLast_boxIn _)
+        ((Env.empty w).extend (.bnd 0) (interp E (compsSlot (Ctx.ref_insert_root Ctx.empty (.bnd 0)
+          (.VTypeBox A)) (Ctx.Le.refl _) (A.compsAllB b)
+          (VarType.compOk_compsAllB b hb A)).2))) E := by
+  have hk : ModalSys.keepOnly = false := by simp [ModalSys.keepOnly, hF]
+  have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeBox A)
+  have hE₁ : ((Env.empty w).extend (.bnd 0) (interp E (compsSlot (σ := σ) hu (Ctx.Le.refl _)
+      (A.compsAllB b) (VarType.compOk_compsAllB b hb A)).2)).ref (.root (.bnd 0))
+      (Ctx.ref_insert_root _ _ _) = interp E (compsSlot (σ := σ) hu (Ctx.Le.refl _)
+      (A.compsAllB b) (VarType.compOk_compsAllB b hb A)).2 := Env.extend_root _ _ _ _
+  -- an address's reading depends on it only up to equality
+  have ref_eq : ∀ {Δ : Ctx} (env : M.Env Δ w) (a a' : VarSymb) {T : VarType}
+      (k : Δ.ref a = some T) (k' : Δ.ref a' = some T), a = a' → env.ref a k = env.ref a' k' := by
+    rintro _ _ _ _ _ _ _ rfl
+    rfl
+  intro v T hv
+  match v with
+  | .step u .box =>
+      obtain ⟨-, hu'⟩ := Ctx.boxIn_box hv
+      obtain ⟨hrt, -, hc⟩ := Ctx.ref_insert_box hu'
+      have hθ : compsRen σ (Ctx.empty.insert (.bnd 0) (A.compsFlat (A.compsAllB b)))
+          (A.compsAllB b) (.step u .box) = .ren (compsItemAddr (A.compsAllB b) u.path) := by
+        dsimp only [compsRen]
+        rw [if_pos hrt]
+      change entryVal _ _ _ = E.ref (.step u .box) hv
+      rw [entryVal_congr _ hθ _ (by rw [← hθ]; exact ok_compsRen hF A b hb _ _ rfl hv)]
+      change Env.ref _ (compsItemAddr _ u.path) _ = _
+      have hu₀ := VarSymb.eq_root_ext u
+      rcases hc with ⟨hpath, rfl⟩ | ⟨hT, p, hpath, hp⟩
+      · rw [hrt, hpath] at hu₀
+        obtain rfl : u = .root (.bnd 0) := hu₀.symm
+        refine (ref_eq _ (compsItemAddr _ (VarSymb.root (.bnd 0)).path) _ _
+          (Ctx.ref_compsFst _ (Ctx.ref_insert_root _ _ _)) rfl).trans ?_
+        refine (ref_compsFst_compsSlot hu (Ctx.Le.refl _) E _ _ _ _ hE₁ _).trans ?_
+        exact ref_eq _ _ _ _ _ (VarSymb.inner_box hk)
+      · rw [hrt, hpath] at hu₀
+        subst hu₀
+        have hm : p ∈ A.compsAllB b := by
+          rw [← hb, hT]
+          exact VarType.mem_hereChains A p hp
+        have hk₁ : (Ctx.empty.insert (.bnd 0) (A.compsFlat (A.compsAllB b))).ref
+            ((VarSymb.root (.bnd 0)).ext (compsIdx (A.compsAllB b) p)) = some T := by
+          have := Ctx.ref_compsIdx _ p hm (Ctx.ref_insert_root Ctx.empty (.bnd 0)
+            (A.compsFlat (A.compsAllB b)))
+          rwa [hp] at this
+        refine (ref_eq _ (compsItemAddr _ ((VarSymb.root (.bnd 0)).ext (.here :: p)).path) _ _
+          hk₁ (by rw [VarSymb.ext_path]; rfl)).trans ?_
+        refine (ref_compsIdx_compsSlot hu (Ctx.Le.refl _) E _ _ _ _ hE₁ p hm _
+          (by rw [VarSymb.inner_box hk]; exact hv)).trans ?_
+        exact ref_eq _ _ _ _ _ (VarSymb.inner_box hk)
+  | .step u .keep => exact absurd ((Ctx.boxIn_keep hv).1.symm.trans hF) (by decide)
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .dia => cases hv
+  | .step _ .here => cases hv
+
+omit [Γ.NoSlots] in
+/-- The contents of `□sb`'s companion, read along an arrow out: the companion's own reading. -/
+theorem interp_compVal {Δ : Ctx} {v : M.frame.W} (env : M.Env Δ v) {A : VarType}
+    {a₀ : Ann A} (sb : Term σ Δ.boxIn A a₀) (ac : M.frame.Acc v) (p : List Step)
+    {ps : List (List Step)} (h : A.CompOk (p :: ps)) :
+    interp (env.boxPush ac) (compVal sb p h).2 =
+      M.necEval (((Env.empty v).extend (.bnd 0) (interp env (Term.boxtm sb))).ref _
+        (h.ref_head (Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeBox A))) :
+        M.frame.Nec _ v) ac := by
+  unfold compVal
+  rw [necEval_unboxtm, interp_holeAt]
+  unfold holeVal
+  rw [box_beta, interp_eta, Env.ref_inner _ _ (h.ref_head (Ctx.ref_insert_root _ _ _))]
+
+include hM in
+omit [Γ.NoSlots] in
+/-- ⭐**The hole map with companions preserves coming back**: its contents by `hole`'s argument,
+    and each companion of `□s[d.inner]` as `compVal` read along the way home, which is the
+    renaming read at `d`'s value with companions there (`agree_compsRen`), `Ind` to the source's
+    value (`compsSlot_ind`) and so, mapped, to `holeC`'s. -/
+theorem holeC_back {A B : VarType} {bB : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B bB)
+    (b : Bool) (hb : ModalSys.T = b) (hF : ModalSys.Four = false) (cs : List (List Step))
+    (h : B.CompOk cs) {v w : M.frame.W} (e : M.frame.Dom (.VTypeBox A) v) (r : M.frame.R v w)
+    (o : M.frame.Dom (A.compsFlat (A.compsAllB b)) w)
+    (hback : M.compsBack A (A.compsAllB b) e r o) :
+    M.compsBack B cs (M.holeVal (ShapeMap.holeC s b hb hF cs h).obj.2 e) r
+      (M.holeVal (ShapeMap.holeC s b hb hF cs h).val.2 o) := by
+  have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeBox A)
+  have he₀ : ((Env.empty v).extend (.bnd 0) e).ref (.root (.bnd 0)) hu = e :=
+    Env.extend_root _ _ _ _
+  set env₀ : M.Env (Ctx.empty.insert (.bnd 0) (.VTypeBox A)) v := (Env.empty v).extend (.bnd 0) e
+  set E := env₀.boxPush ⟨w, ⟨r⟩⟩
+  have he₁ : ((Env.empty w).extend (.bnd 0) o).ref (.root (.bnd 0))
+      (Ctx.ref_insert_root Ctx.empty (.bnd 0) (A.compsFlat (A.compsAllB b))) = o :=
+    Env.extend_root _ _ _ _
+  set env₁ : M.Env (Ctx.empty.insert (.bnd 0) (A.compsFlat (A.compsAllB b))) w :=
+    (Env.empty w).extend (.bnd 0) o
+  set R := interp E (compsSlot (σ := σ) hu (Ctx.Le.refl _) (A.compsAllB b)
+    (VarType.compOk_compsAllB b hb A)).2
+  have hR : M.Ind R o := compsSlot_ind hM hu (Ctx.Le.refl _) env₀ r E
+    (fun _ _ _ => rfl) _ _ o (by rw [he₀]; exact hback)
+  set sb : Term σ (Ctx.empty.insert (.bnd 0) (.VTypeBox A)).boxIn B _ :=
+    Term.holeAt (Term.eta (VarSymb.root (.bnd 0)).inner A (Ctx.ref_inner hu)) s
+  change M.compsBack B cs (interp env₀ (Term.boxtm sb)) r (interp env₁ (holeCVal s b hb hF cs h).2)
+  refine compsBack_build _ r env₁ _ cs _ ?_ ?_
+  · -- the contents, as for `hole`
+    rw [box_beta, interp_holeAt, interp_holeAt]
+    refine hM.map s ?_
+    rw [interp_eta, interp_eta, Env.ref_inner _ _ hu, he₀]
+    exact compsBack_main e r _ env₁ _ (by rw [he₁]; exact hback) _
+  · -- each companion, through the renaming
+    intro q hq hT
+    have hq1 := h.single hq
+    obtain ⟨-, hall⟩ := hq1.resolve_left (List.cons_ne_nil _ _)
+    have hp := hq1.ref_head (Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeBox B))
+    refine (compBack_iff_ind hT ((Env.empty v).extend (.bnd 0) (interp env₀ (Term.boxtm sb)))
+      r (.here :: q) (Ctx.ref_insert_root _ _ _) hp (hall q List.mem_cons_self) _).mpr ?_
+    change M.Ind (M.necEval (Env.ref ((Env.empty v).extend (.bnd 0) (interp env₀ (Term.boxtm sb)))
+      ((VarSymb.step (.root (.bnd 0)) .here).ext q) hp : M.frame.Nec _ v) _) _
+    rw [← interp_compVal env₀ sb ⟨w, ⟨r⟩⟩ q hq1]
+    change M.Ind _ (interp env₁ (Term.subst _ _ (ok_compsRen hF A b hb) (coh_compsRen hF A b hb)
+      (compVal sb q hq1).2))
+    have e₀ : interp E (compVal sb q hq1).2 = M.holeVal (Term.subst _ _ (ok_compsRen (σ := σ) hF
+        A b hb) (coh_compsRen hF A b hb) (compVal sb q hq1).2) R := by
+      unfold holeVal
+      rw [interp_subst _ _ _ (Ctx.noProjLast_boxIn _),
+        ← interp_mono (agree_compsRen hF A b hb E) (compVal sb q hq1).2, Term.mono_refl]
+    rw [e₀]
+    exact hM.map _ hR
+
 include hM in
 /-- ⭐**A map between shapes preserves coming back**: if the object comes back as `o`, its image
     comes back as the value's image. -/
@@ -1773,6 +1989,7 @@ theorem ShapeMap.comesBack : ∀ {S T : NShape} (F : ShapeMap σ S T) {v w : M.f
           Env.extend_root _ _ _ _]
       exact h
   | _, _, .tupC A true hb, v, w, e, r, o, h => tupC_back hM A hb e r o h _ _
+  | _, _, .holeC s b hb hF cs hc, _, _, e, r, o, h => holeC_back hM s b hb hF cs hc e r o h
   | _, _, .padC Z false hb, v, w, e, r, o, h => by
       have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (VarType.VTypeBox Z)
       change M.Ind (M.necEval (interp ((Env.empty v).extend (.bnd 0) e) (Term.boxtm _)) ⟨w, ⟨r⟩⟩)

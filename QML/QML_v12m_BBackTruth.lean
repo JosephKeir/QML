@@ -560,13 +560,15 @@ theorem univ_ne_extent {s : B.W} (harr : ∃ k, B.R s k)
     cases hX
   · exact hnR hR
 
-/-- A true atom's out leg has an arrow, so its world does. -/
-theorem exists_R_of_arr {s : B.W} {i : ℕ} (hS : ModalSys.BStrong = true)
-    {O : OutLeg ((B.w s).ctx i)} (a : O.Arr (B.canonEnv s i)) : ∃ k, B.R s k :=
-  ⟨(O.acc (B.canonEnv s i) a).1, R_of_RT_strong hS (O.acc (B.canonEnv s i) a).2.down⟩
+/-- A true atom's out leg has an arrow, so its world has a network one (under T by `T`). -/
+theorem exists_R_of_arr {s : B.W} {i : ℕ} {O : OutLeg ((B.w s).ctx i)}
+    (a : O.Arr (B.canonEnv s i)) : ∃ k, B.R s k := by
+  rcases (O.acc (B.canonEnv s i) a).2.down with hR | ⟨hT, -⟩
+  · exact ⟨_, hR⟩
+  · exact exists_R_of_T hT s
 
 /-- Two terms of a world's language with one denotation, lifted to a common stage, have one
-    annotation there (the T-free decoder, `ann_eq_of_rden_ctx_noT`). -/
+    annotation there (the decoder: `ann_eq_of_rden_ctx` under T, `ann_eq_of_rden_ctx_noT` off). -/
 theorem ann_eq_of_toDom (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) {s : B.W}
     (harr : ∃ k, B.R s k) {A : VarType} {i i' : ℕ} {a a' : Ann A}
     (t : Term σ ((B.w s).ctx i) A a) (t' : Term σ ((B.w s).ctx i') A a')
@@ -574,10 +576,14 @@ theorem ann_eq_of_toDom (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) {s : B.
       B.toDom A s (B.rden s i' (Ctx.Le.refl _) t') (definable_rden _ _)) : a = a' := by
   have hK : i ≤ max i i' := le_max_left _ _
   have hK' : i' ≤ max i i' := le_max_right _ _
-  refine ann_eq_of_rden_ctx_noT (B.noT_of_strong hS) (by simp [ModalSys.shaped, hS]) hInj harr
-    (Term.mono ((B.w s).le hK) t) (Term.mono ((B.w s).le hK') t') ?_
-  rw [rden_lift hK t, rden_lift hK' t']
-  exact toDom_inj h
+  have e : B.rden s (max i i') (Ctx.Le.refl _) (Term.mono ((B.w s).le hK) t) =
+      B.rden s (max i i') (Ctx.Le.refl _) (Term.mono ((B.w s).le hK') t') := by
+    rw [rden_lift hK t, rden_lift hK' t']
+    exact toDom_inj h
+  by_cases hT : ModalSys.T = true
+  · exact ann_eq_of_rden_ctx hT _ _ e
+  · exact ann_eq_of_rden_ctx_noT (Bool.eq_false_iff.mpr hT) (by simp [ModalSys.shaped, hS])
+      hInj harr _ _ e
 
 /-- Denotations equal at a common stage make the equation true there. -/
 theorem sat_eqRec_lift {s : B.W} {A : VarType} {i i' K : ℕ} (hK : i ≤ K) (hK' : i' ≤ K)
@@ -612,7 +618,7 @@ theorem mem_back_of_sat_nec (hS : ModalSys.BStrong = true) (hB : ModalSys.B = tr
   · exact mem_back_of_sat_diaFree hS hB .nec hA bd t IH h
   have hsz := size_back_ge hS .nec bd t
   obtain ⟨⟨i₀⟩, -⟩ := OutLeg.sat_back_rt hS (B.canonEnv s i) .nec bd t h
-  have harr := exists_R_of_arr (O := .nec) hS i₀
+  have harr := exists_R_of_arr (O := .nec) i₀
   change B.Ret _ _ _ at h
   rcases h with ⟨hA', -⟩ | ⟨hS', i', L, c, ct, a', t', hmem, hdata, hval⟩
   · exact absurd hA' hA
@@ -728,7 +734,7 @@ theorem mem_back_of_sat_pos (hS : ModalSys.BStrong = true) (hB : ModalSys.B = tr
   have hT := B.noT_of_strong hS
   have hsz := size_back_ge hS (.pos y hy) bd t
   obtain ⟨⟨i₀⟩, -⟩ := OutLeg.sat_back_rt hS (B.canonEnv s i) (.pos y hy) bd t h
-  have harr := exists_R_of_arr (O := .pos y hy) hS i₀
+  have harr := exists_R_of_arr (O := .pos y hy) i₀
   have hdia : (OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).dia (.top : WFF σ _ 0) ∈ (B.w s).M i :=
     (IH i _ (by have := size_dia_top (σ := σ) (OutLeg.pos y hy); omega)).mp
       ((OutLeg.sat_dia (B.canonEnv s i) (.pos y hy) _).mpr ⟨i₀, trivial⟩)
