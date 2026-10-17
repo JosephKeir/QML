@@ -338,8 +338,8 @@ end Names
 
 /-- A body read at the far end `v` with its bound object any necessary term `X` of `v`. -/
 def liftBodyAt {lv clt : List VarType} {imgt : ℕ → ℕ} (himgt : ImgOk clt (ctxOf lv) imgt)
-    {Z : VarType} {x : Ann (.VTypeBox Z)} (X : Term σ (ctxOf lv) (.VTypeBox Z) x)
-    (Φ : WFF σ ((ctxOf clt).boxIn.insert (.bnd 0) (.VTypeBox Z)) 1) : WFF σ (ctxOf lv) 0 :=
+    {Z : VarType} {x : Ann Z} (X : Term σ (ctxOf lv) Z x)
+    (Φ : WFF σ ((ctxOf clt).boxIn.insert (.bnd 0) Z) 1) : WFF σ (ctxOf lv) 0 :=
   WFF.subst (Subst.setIdx (arrowIdx imgt) (.bnd 0) (.tm X))
     ((arrowS σ (ctxOf lv) imgt).set (.bnd 0) (.tm X))
     (Subst.ok_set (ok_arrowS himgt) rfl)
@@ -353,21 +353,28 @@ theorem liftBody_eq_liftBodyAt {lv cls clt : List VarType} (hs : cls <:+ lv) {im
       (Term.boxtm (Term.mono (ctxOf_le_of_suffix hs).boxIn (tupT (σ := σ) cls).2)) Φ :=
   rfl
 
-/-- ⭐**A body read at a re-read slot**: re-reading the slot through a hole term `O`, then
-    reading at `X`, is reading at `O(X)`. -/
-theorem liftBodyAt_bodyRepl {lv clt : List VarType} {imgt : ℕ → ℕ}
-    (himgt : ImgOk clt (ctxOf lv) imgt) {Z Z' : VarType} {x : Ann (.VTypeBox Z)}
-    (X : Term σ (ctxOf lv) (.VTypeBox Z) x) {o : Ann (.VTypeBox Z')}
-    (O : Term σ (Ctx.empty.insert (.bnd 0) (.VTypeBox Z)) (.VTypeBox Z') o)
-    (Φ : WFF σ ((ctxOf clt).boxIn.insert (.bnd 0) (.VTypeBox Z')) 1) :
-    liftBodyAt himgt X (WFF.bodyRepl (Term.mono ((Ctx.empty_le _).insert (.bnd 0) _) O) Φ) =
-      liftBodyAt himgt (Term.holeAt X O) Φ := by
-  unfold liftBodyAt WFF.bodyRepl
+omit [ModalSys.NoFour] in
+/-- ⭐**A body read at a re-read slot**, for any substitution of the view: re-reading the slot
+    through a hole term `O`, then setting the slot to `X`, is setting it to `O(X)`. -/
+theorem subst_set_bodyRepl {V Δ : Ctx} [V.NoSlots] {ι : VarSymb → VarSymb} (α : Subst σ Δ)
+    (hα : Subst.Ok V α) (hcα : Subst.Coh ι V α) (hΔ : Δ.SlotsFrom 0) {Z Z' : VarType}
+    {x : Ann Z} (X : Term σ Δ Z x) {o : Ann Z'}
+    (O : Term σ (Ctx.empty.insert (.bnd 0) Z) Z' o)
+    (Φ : WFF σ (V.insert (.bnd 0) Z') 1) :
+    WFF.subst (Subst.setIdx ι (.bnd 0) (.tm X)) (α.set (.bnd 0) (.tm X)) (Subst.ok_set hα rfl)
+        (Subst.coh_set hα hcα ((Ctx.NoSlots.slots (Γ := V)).rootFresh (le_refl 0)) rfl)
+        ((Ctx.NoSlots.slots (Γ := V)).insert _) hΔ
+        (WFF.bodyRepl (Term.mono ((Ctx.empty_le _).insert (.bnd 0) _) O) Φ) =
+      WFF.subst (Subst.setIdx ι (.bnd 0) (.tm (Term.holeAt X O)))
+        (α.set (.bnd 0) (.tm (Term.holeAt X O))) (Subst.ok_set hα rfl)
+        (Subst.coh_set hα hcα ((Ctx.NoSlots.slots (Γ := V)).rootFresh (le_refl 0)) rfl)
+        ((Ctx.NoSlots.slots (Γ := V)).insert _) hΔ Φ := by
+  unfold WFF.bodyRepl
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
   refine Subst.sim_of fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
-    obtain rfl : T = .VTypeBox Z' := by
+    obtain rfl : T = Z' := by
       change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
       rw [if_pos rfl] at hv
       exact (Option.some.inj hv).symm
@@ -381,7 +388,7 @@ theorem liftBodyAt_bodyRepl {lv clt : List VarType} {imgt : ℕ → ℕ}
     by_cases hwr : w = .root (.bnd 0)
     · subst hwr
       rw [Subst.set_root]
-      rw [show Subst.single (σ := σ) (Δ := ctxOf lv) (.bnd 0) (.tm X) (.root (.bnd 0)) = .tm X
+      rw [show Subst.single (σ := σ) (Δ := Δ) (.bnd 0) (.tm X) (.root (.bnd 0)) = .tm X
         from if_pos rfl]
       exact .refl _
     · change (if w = VarSymb.root (.bnd 0) then _ else Ctx.empty w) = _ at hw
@@ -391,6 +398,16 @@ theorem liftBodyAt_bodyRepl {lv clt : List VarType} {imgt : ℕ → ℕ}
     rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr, show (Subst.idS σ _ v) = .ren v from rfl,
       SubE.comp_ren, Subst.at_nonproj _ hlp, Subst.set_ne _ _ hvr]
     exact .refl _
+
+/-- A body read at a re-read slot, at the far end of an arrow. -/
+theorem liftBodyAt_bodyRepl {lv clt : List VarType} {imgt : ℕ → ℕ}
+    (himgt : ImgOk clt (ctxOf lv) imgt) {Z Z' : VarType} {x : Ann Z}
+    (X : Term σ (ctxOf lv) Z x) {o : Ann Z'}
+    (O : Term σ (Ctx.empty.insert (.bnd 0) Z) Z' o)
+    (Φ : WFF σ ((ctxOf clt).boxIn.insert (.bnd 0) Z') 1) :
+    liftBodyAt himgt X (WFF.bodyRepl (Term.mono ((Ctx.empty_le _).insert (.bnd 0) _) O) Φ) =
+      liftBodyAt himgt (Term.holeAt X O) Φ :=
+  subst_set_bodyRepl _ (ok_arrowS himgt) (coh_arrowS himgt) _ X O Φ
 
 section FlatRoot
 
@@ -538,18 +555,18 @@ end FlatRoot
 
 /-- `liftBodyAt` depends on its object only as a dependent pair. -/
 theorem liftBodyAt_congr {lv clt : List VarType} {imgt : ℕ → ℕ}
-    (himgt : ImgOk clt (ctxOf lv) imgt) {Z : VarType} {x x' : Ann (.VTypeBox Z)}
-    {X : Term σ (ctxOf lv) (.VTypeBox Z) x} {X' : Term σ (ctxOf lv) (.VTypeBox Z) x'}
-    (h : (⟨x, X⟩ : Σ c, Term σ (ctxOf lv) (.VTypeBox Z) c) = ⟨x', X'⟩)
-    (Φ : WFF σ ((ctxOf clt).boxIn.insert (.bnd 0) (.VTypeBox Z)) 1) :
+    (himgt : ImgOk clt (ctxOf lv) imgt) {Z : VarType} {x x' : Ann Z}
+    {X : Term σ (ctxOf lv) Z x} {X' : Term σ (ctxOf lv) Z x'}
+    (h : (⟨x, X⟩ : Σ c, Term σ (ctxOf lv) Z c) = ⟨x', X'⟩)
+    (Φ : WFF σ ((ctxOf clt).boxIn.insert (.bnd 0) Z) 1) :
     liftBodyAt himgt X Φ = liftBodyAt himgt X' Φ := by
   cases h
   rfl
 
 /-- The source's next root's tuple, from its flat contents (`tupCG`'s object). -/
-abbrev flatBody {cl clt : List VarType} (A : VarType)
-    (Φ : WFF σ (bodyCtx (A :: cl) clt) 1) :
-    WFF σ ((ctxOf clt).boxIn.insert (.bnd 0) (.VTypeBox (.VTypeProd (bcT cl) (A.bcB false)))) 1 :=
+abbrev flatBody {V : Ctx} [V.NoSlots] {cl : List VarType} (A : VarType)
+    (Φ : WFF σ (V.insert (.bnd 0) (.VTypeBox (bcT (A :: cl)))) 1) :
+    WFF σ (V.insert (.bnd 0) (.VTypeBox (.VTypeProd (bcT cl) (A.bcB false)))) 1 :=
   WFF.bodyRepl (Term.mono ((Ctx.empty_le _).insert (.bnd 0) _)
     (tupCG (σ := σ) (bcT cl) A ModalSys.T rfl).obj.2) Φ
 
@@ -792,30 +809,38 @@ theorem consistent_of_subst {Γ Γ' : Ctx} [Γ'.Presented] {M : Set (WFF σ Γ 0
     exact hsub y (hL y hy), ⟨Proof.subst p θ hθ hc hΓ⟩⟩
 
 omit [ModalSys.NoFour] in
-/-- ⭐**Naming a list of companions along the plain leg keeps a theory consistent**, the body
-    only weakened (`compL` is the slot's η there). -/
-theorem compsS_consistent_nec (hS : ModalSys.BStrong = true) (N : NShape) (A : VarType)
-    (cs : List (List Step)) (h : A.CompOk cs) {l : List VarType}
+/-- ⭐**Naming a list of companions along a leg keeps a theory consistent**, at a necessary shape
+    the body only weakened (`compL` is the slot's η there). -/
+theorem compsS_consistent_leg (hS : ModalSys.BStrong = true) (N : NShape) (A : VarType)
+    (cs : List (List Step)) (h : A.CompOk cs) {l : List VarType} (O : OutLeg (ctxOf l))
     {a : Ann ((RShape.nec N).withNec (.boxC A cs h)).flat}
     (t : Term σ (ctxOf l) ((RShape.nec N).withNec (.boxC A cs h)).flat a)
-    (Φ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
+    (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1)
     {M : Set (WFF σ (ctxOf l) 0)} (hM : Theory.Consistent M)
-    (hex : Theory.Derives M (WFF.retS hS (.nec (.boxC A cs h)) t Φ)) :
+    (hex : Theory.Derives M (O.retS hS (.nec (.boxC A cs h)) t Φ)) :
     ∀ (Q : List (List Step)) (hQ : A.CompOk (Q ++ cs)),
       Theory.Consistent (WFF.mono (legQ_le A Q) '' M ∪
-        {WFF.retS hS (.nec (.boxC A (Q ++ cs) hQ)) (valQ (.nec N) A cs h t Q hQ).2
-          (WFF.mono ((legQ_le A Q).boxIn.insert (.bnd 0) _) Φ)})
-  | [], _ => by
+        {(O.mono (legQ_le A Q)).retS hS (.nec (.boxC A (Q ++ cs) hQ))
+          (valQ (.nec N) A cs h t Q hQ).2
+          (WFF.mono ((O.le_view_mono (legQ_le A Q)).insert (.bnd 0) _) Φ)})
+  | [], hQ => by
       rw [show WFF.mono (legQ_le A (l := l) []) '' M = M from by
         ext x
         simp only [Set.mem_image]
         exact ⟨fun ⟨y, hy, e⟩ => by rw [← e, WFF.mono_refl]; exact hy,
-          fun hx => ⟨x, hx, WFF.mono_refl _ _⟩⟩, WFF.mono_refl]
+          fun hx => ⟨x, hx, WFF.mono_refl _ _⟩⟩]
+      have e : (O.mono (legQ_le A (l := l) [])).retS hS (.nec (.boxC A ([] ++ cs) hQ))
+          (valQ (.nec N) A cs h t [] hQ).2
+          (WFF.mono ((O.le_view_mono (legQ_le A (l := l) [])).insert (.bnd 0) _) Φ) =
+          O.retS hS (.nec (.boxC A cs h)) t Φ := by
+        cases O <;> exact congrArg _ (WFF.mono_refl _ _)
+      rw [e]
       exact consistent_union_derives hM hex
   | q :: Q, hQ => by
-      have ih := compsS_consistent_nec hS N A cs h t Φ hM hex Q hQ.tail
-      have hc := compS_consistent ih hS .nec (.nec N) q hQ (valQ (.nec N) A cs h t Q hQ.tail).2
-        (WFF.mono ((legQ_le A Q).boxIn.insert (.bnd 0) _) Φ)
+      have ih := compsS_consistent_leg hS N A cs h O t Φ hM hex Q hQ.tail
+      have hc := compS_consistent ih hS (O.mono (legQ_le A Q)) (.nec N) q hQ
+        (valQ (.nec N) A cs h t Q hQ.tail).2
+        (WFF.mono ((O.le_view_mono (legQ_le A Q)).insert (.bnd 0) _) Φ)
         (Theory.Derives.of_mem (Or.inr rfl)) (ctxOf_fresh (l := compsTys A Q ++ l) le_rfl)
       refine consistent_mono hc (Set.union_subset_union ?_ ?_)
       · rintro _ ⟨x, hx, rfl⟩
@@ -824,11 +849,19 @@ theorem compsS_consistent_nec (hS : ModalSys.BStrong = true) (N : NShape) (A : V
       · intro x hx
         rw [Set.mem_singleton_iff.mp hx]
         refine Set.mem_singleton_iff.mpr ?_
-        change WFF.retS hS _ _ _ = WFF.retS hS _ _ (WFF.mono _ (WFF.bodyRepl
-          (Term.eta (.root (.bnd 0)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 0) _))
-          (WFF.mono _ Φ)))
-        rw [WFF.bodyRepl_eta', WFF.mono_mono]
-        rfl
+        cases O with
+        | nec =>
+            change WFF.retS hS _ _ _ = WFF.retS hS _ _ (WFF.mono _ (WFF.bodyRepl
+              (Term.eta (.root (.bnd 0)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 0) _))
+              (WFF.mono _ Φ)))
+            rw [WFF.bodyRepl_eta', WFF.mono_mono]
+            rfl
+        | pos y hy =>
+            change WFF.retxS hS _ _ _ _ _ = WFF.retxS hS _ _ _ _ (WFF.mono _ (WFF.bodyRepl
+              (Term.eta (.root (.bnd 0)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 0) _))
+              (WFF.mono _ Φ)))
+            rw [WFF.bodyRepl_eta', WFF.mono_mono]
+            rfl
 
 /-- A fresh root's value, substituted into a body over older roots' `□` view, renames every
     variable of the body to itself. -/
@@ -878,6 +911,63 @@ theorem single_box_under_ren {l lt : List VarType} {Δ : Ctx} (hl : l.length ≤
         change SubE.mono _ (SubE.ren w.inner) = _
         rw [VarSymb.inner_box ModalSys.NoFour.keepOnly]
         rfl
+
+/-- A fresh root's value, substituted into a body over older roots' `◇_y` view, renames every
+    variable of the body to itself. -/
+theorem single_dia_under_ren {l lt : List VarType} (hl : l.length ≤ lt.length) {Δ : Ctx}
+    {e : SubE σ Δ} {T : VarType} {y : VarSymb} (h : (Δ.diaIn y) (.root (.bnd 0)) = none) :
+    ∀ (v : VarSymb) (U : VarType), (((ctxOf l).diaIn y).insert (.bnd 0) T).ref v = some U →
+      (((Subst.single (.free lt.length) e).dia y y).under 0 0 T h).at v = .ren v
+  | .root r, U, hv => by
+      by_cases hr : r = .bnd 0
+      · subst hr
+        exact Subst.under_at_slot _ 0 0 T h
+      · exfalso
+        change (if VarSymb.root r = .root (.bnd 0) then _ else (ctxOf l).diaIn y (.root r)) = _
+          at hv
+        rw [if_neg (fun he => hr (by cases he; rfl))] at hv
+        cases hv
+  | .step w s, U, hv => by
+      by_cases hs : s.isProj = true
+      · cases hw : (((ctxOf l).diaIn y).insert (.bnd 0) T).ref w with
+        | none =>
+            change (if s.isProj then (Ctx.ref _ w).bind (·.step s) else _) = _ at hv
+            rw [if_pos hs, hw] at hv
+            cases hv
+        | some U' =>
+            rw [Subst.at_proj _ w hs, single_dia_under_ren hl h w U' hw]
+            rfl
+      · have hv' : (((ctxOf l).diaIn y).insert (.bnd 0) T) (.step w s) = some U := by
+          change (if s.isProj then _ else _) = _ at hv
+          rwa [if_neg hs] at hv
+        change (if VarSymb.step w s = VarSymb.root (.bnd 0) then _ else _) = _ at hv'
+        rw [if_neg (fun he => by cases he)] at hv'
+        rcases diaIn_item hv' with ⟨u, he, hu⟩ | ⟨he, hyr⟩
+        · cases he
+          obtain ⟨r, hr, hlt, -⟩ := ref_rt hu
+          rw [Subst.at_under_ne _ _ _ (by
+            change w.rt ≠ _
+            rw [hr]
+            exact fun h => by cases h)]
+          change SubE.mono _ ((((Subst.single (.free lt.length) e).at w).unbox).mono _) = _
+          rw [Subst.single_at_ne (by
+            rw [hr]
+            exact fun h => absurd (Root.free.inj h) (by omega))]
+          change SubE.mono _ (SubE.mono _ (SubE.ren w.inner)) = _
+          rw [VarSymb.inner_box ModalSys.NoFour.keepOnly]
+          rfl
+        · cases he
+          obtain ⟨r, hr, hlt, -⟩ := ref_rt hyr
+          rw [Subst.at_under_ne _ _ _ (by
+            change y.rt ≠ _
+            rw [hr]
+            exact fun h => by cases h)]
+          change SubE.mono _ (if y = y then ((Subst.single (.free lt.length) e).at y).diaBody y
+            else .hide) = _
+          rw [if_pos rfl, Subst.single_at_ne (by
+            rw [hr]
+            exact fun h => absurd (Root.free.inj h) (by omega))]
+          rfl
 
 /-! ## Reading a term along `fst`/`snd` steps
 
@@ -2162,6 +2252,146 @@ end StepB
 
 variable (hS : ModalSys.BStrong = true)
 
+/-! ## The chain of a step, along any leg -/
+
+/-- ⭐Substituting a fresh root's value in a returning possibility along a leg whose body is from
+    before the root: the value substituted, the body weakened. -/
+theorem subst_single_retS {lt bigl : List VarType} (hle : (ctxOf lt).Le (ctxOf bigl))
+    (O : OutLeg (ctxOf lt)) {B : VarType} {e : SubE σ (ctxOf bigl)}
+    (hθ : Subst.Ok (ctxOf (B :: lt)) (Subst.single (.free lt.length) e))
+    (hc : Subst.Coh (Subst.singleIdx (.free lt.length) e) (ctxOf (B :: lt))
+      (Subst.single (.free lt.length) e))
+    (S : RShape) {a : Ann S.flat} (t : Term σ (ctxOf (B :: lt)) S.flat a) {V₀ : Ctx}
+    [V₀.NoSlots] (hV : V₀.Le O.view) (Φ : WFF σ (V₀.insert (.bnd 0) S.ty) 1) :
+    WFF.subst (Subst.singleIdx (.free lt.length) e) (Subst.single (.free lt.length) e) hθ hc
+        Ctx.NoSlots.slots Ctx.NoSlots.slots
+        ((O.mono (ctxOf_le_append [B] lt)).retS hS S t
+          (WFF.mono ((hV.trans (O.le_view_mono (ctxOf_le_append [B] lt))).insert (.bnd 0) _) Φ)) =
+      (O.mono hle).retS hS S (Term.subst _ _ hθ hc t)
+        (WFF.mono ((hV.trans (O.le_view_mono hle)).insert (.bnd 0) _) Φ) := by
+  cases O with
+  | nec =>
+      change WFF.retS hS S (Term.subst _ _ _ _ _) (WFF.subst _ _ _ _ _ _ _) = _
+      refine WFF.retS_congr' hS S rfl ?_
+      rw [WFF.subst_mono _ _ _ _ ((Ctx.NoSlots.slots (Γ := V₀)).insert _)]
+      exact WFF.subst_ren _ _ _ _ _ _
+        (fun v U hv => single_box_under_ren le_rfl _ v U ((hV.insert (.bnd 0) _).ref hv)) Φ
+  | pos y hy =>
+      have hyr : y.rt ≠ .free lt.length := by
+        obtain ⟨Y, hY⟩ := hy
+        obtain ⟨r, hr, hlt, -⟩ := ref_rt hY
+        rw [hr]
+        exact fun h => absurd (Root.free.inj h) (Nat.ne_of_lt hlt)
+      have key : ∀ (z : VarSymb) (_hz : y = z)
+          (P : ∃ Y, (ctxOf bigl).ref z = some (.VTypeDia Y))
+          (hΔz : ((ctxOf bigl).diaIn z).SlotsFrom 0)
+          (p : Subst.Ok (((ctxOf (B :: lt)).diaIn y).insert (.bnd 0) S.ty)
+            (((Subst.single (.free lt.length) e).dia y z).under 0 0 _ hΔz.root))
+          (q : Subst.Coh (VarSymb.shiftSlot (Subst.singleIdx (.free lt.length) e) 0 0)
+            (((ctxOf (B :: lt)).diaIn y).insert (.bnd 0) S.ty)
+            (((Subst.single (.free lt.length) e).dia y z).under 0 0 _ hΔz.root)),
+          WFF.retxS hS z P S (Term.subst _ _ hθ hc t)
+              (WFF.subst (VarSymb.shiftSlot (Subst.singleIdx (.free lt.length) e) 0 0)
+                (((Subst.single (.free lt.length) e).dia y z).under 0 0 _ hΔz.root) p q
+                (((Ctx.NoSlots.slots (Γ := ctxOf (B :: lt))).diaIn y).insert _) (hΔz.insert _)
+                (WFF.mono ((hV.trans (OutLeg.le_view_mono (ctxOf_le_append [B] lt)
+                  (.pos y hy))).insert (.bnd 0) _) Φ)) =
+            ((OutLeg.pos y hy).mono hle).retS hS S (Term.subst _ _ hθ hc t)
+              (WFF.mono ((hV.trans (OutLeg.le_view_mono hle (.pos y hy))).insert (.bnd 0) _)
+                Φ) := by
+        intro z hz P hΔz p q
+        subst hz
+        refine WFF.retxS_congr hS y _ S rfl ?_
+        rw [WFF.subst_mono _ _ _ _ ((Ctx.NoSlots.slots (Γ := V₀)).insert _)]
+        exact WFF.subst_ren _ _ _ _ _ _
+          (fun v U hv => single_dia_under_ren le_rfl _ v U ((hV.insert (.bnd 0) _).ref hv)) Φ
+      exact key (Subst.singleIdx (.free lt.length) e y) (if_neg hyr).symm _
+        ((Ctx.NoSlots.slots (Γ := ctxOf bigl)).diaIn _) _ _
+
+/-- ⭐**The chain of a step, along any leg**: a target with the old tuple's returning possibility
+    of `∃e. pairUp (flatBody Φ)` along `O` stays consistent with the grown tuple's returning
+    possibility of `Φ` at the image root.  Existence (`ret_extS`), packing (`packCC`), naming the
+    companions (`ret_compS`), selecting them (`subC`) and `tupCG` give the atom at the chain's
+    value; the substitution of `stepARR` for the image root sends the target atom there
+    (`stepV₅_eq`, `subst_single_retS`). -/
+theorem chainB_consistent {lt cl : List VarType} {img : ℕ → ℕ} (A : VarType)
+    (himg : ImgOk cl (ctxOf lt) img) (O : OutLeg (ctxOf lt)) {V₀ : Ctx} [V₀.NoSlots]
+    (hV : V₀.Le O.view) (Φ : WFF σ (V₀.insert (.bnd 0) (.VTypeBox (bcT (A :: cl)))) 1)
+    {M : Set (WFF σ (ctxOf lt) 0)} (hM : Theory.Consistent M)
+    (hex : Theory.Derives M (O.retS hS (.nec (tupShape ModalSys.T rfl cl))
+      (tupCompsImg cl img himg _ (VarType.compOk_compsAllB _ rfl _)).2
+      (WFF.mono (hV.insert (.bnd 0) _)
+        (WFF.ex (.VTypeBox (A.bcB false)) (WFF.pairUp (flatBody A Φ)))))) :
+    Theory.Consistent (WFF.mono (ctxOf_le_append [A.bc] lt) '' M ∪
+      {(O.mono (ctxOf_le_append [A.bc] lt)).retS hS (.nec (tupShape ModalSys.T rfl (A :: cl)))
+        (tupCompsImg (A :: cl) (extImg img cl.length lt.length) (imgOk_ext himg) _
+          (VarType.compOk_compsAllB _ rfl _)).2
+        (WFF.mono ((hV.trans (O.le_view_mono (ctxOf_le_append [A.bc] lt))).insert (.bnd 0) _)
+          Φ)}) := by
+  have hu : (ctxOf lt).RootFresh (.free lt.length) := ctxOf_fresh le_rfl
+  have hc₁ := retExtS_consistent hM hS O (.nec (tupShape ModalSys.T rfl cl)) _
+    (WFF.mono ((hV.insert (.bnd 0) _).insert (.bnd 1) _) (WFF.pairUp (flatBody A Φ))) hex hu
+  have hc₂ := consistent_step hc₁ (Proof.ret_map hS (O.mono (ctxOf_le_append [A.bcB false] lt))
+    (S := (RShape.nec (tupShape ModalSys.T rfl cl)).ext (A.bcB false))
+    (ShapeMap.packCC (σ := σ) (bcT cl) (A.bcB false) _ [] (VarType.compOk_compsAllB _ rfl _)
+      (Or.inl rfl)) (stepV₁ A himg).2
+    (WFF.mono ((O.le_view_mono (ctxOf_le_append [A.bcB false] lt)).insert (.bnd 0) _)
+      (WFF.mono (hV.insert (.bnd 0) _) (flatBody A Φ)))
+    (Proof.conv (by
+      refine OutLeg.retS_congr hS _ _ rfl ?_
+      dsimp only [RShape.extL, RShape.extR, ShapeMap.liftObj]
+      erw [WFF.bodySplit_mono_pairUp_packCC (hX := VarType.compOk_compsAllB _ rfl _) hV
+        (flatBody A Φ)]
+      rw [WFF.mono_bodyRepl, Term.mono_mono]
+      · try rw [WFF.mono_mono]
+        rfl
+      · exact O.le_view_mono _) (Proof.lookup List.mem_cons_self)))
+  have hc₃ := compsS_consistent_leg hS (tupShape ModalSys.T rfl cl)
+    (VarType.VTypeProd (bcT cl) (A.bcB false)) (pairComps ((bcT cl).compsAllB ModalSys.T) [])
+    (VarType.compOk_pairComps (VarType.compOk_compsAllB _ rfl _) (Or.inl rfl))
+    (O.mono (ctxOf_le_append [A.bcB false] lt)) (stepV₂ A himg).2
+    (WFF.mono ((O.le_view_mono (ctxOf_le_append [A.bcB false] lt)).insert (.bnd 0) _)
+      (WFF.mono (hV.insert (.bnd 0) _) (flatBody A Φ))) hc₂
+    (Theory.Derives.of_mem (Or.inr rfl)) (stepQ A) (stepQ_ok cl A)
+  have hc₄ := consistent_step hc₃ (Proof.ret_map hS
+    ((O.mono (ctxOf_le_append [A.bcB false] lt)).mono (legQ_le _ (stepQ A)))
+    (S := .nec (.boxC (VarType.VTypeProd (bcT cl) (A.bcB false))
+      (stepQ A ++ pairComps ((bcT cl).compsAllB ModalSys.T) []) (stepQ_ok cl A)))
+    (ShapeMap.subC (σ := σ) (VarType.VTypeProd (bcT cl) (A.bcB false)) _
+      ((VarType.VTypeProd (bcT cl) (A.bcB false)).compsAllB ModalSys.T) (stepQ_ok cl A)
+      (VarType.compOk_compsAllB _ rfl _) (stepQ_sub cl A)) _ _
+    (Proof.conv (OutLeg.retS_congr hS _ _ rfl (WFF.bodyRepl_eta _).symm)
+      (Proof.lookup List.mem_cons_self)))
+  have hle₂ : V₀.Le ((O.mono (ctxOf_le_append [A.bcB false] lt)).mono
+      (legQ_le (VarType.VTypeProd (bcT cl) (A.bcB false)) (stepQ A))).view :=
+    hV.trans ((O.le_view_mono _).trans ((O.mono _).le_view_mono _))
+  have hc₅ := consistent_step hc₄ (Proof.ret_map hS
+    ((O.mono (ctxOf_le_append [A.bcB false] lt)).mono (legQ_le _ (stepQ A)))
+    (S := .nec (.boxC (VarType.VTypeProd (bcT cl) (A.bcB false))
+      ((VarType.VTypeProd (bcT cl) (A.bcB false)).compsAllB ModalSys.T)
+      (VarType.compOk_compsAllB _ rfl _)))
+    (tupCG (σ := σ) (bcT cl) A ModalSys.T rfl) _
+    (WFF.mono (hle₂.insert (.bnd 0) _) Φ)
+    (Proof.conv (by
+      refine OutLeg.retS_congr hS _ _ rfl ?_
+      dsimp only [flatBody, ShapeMap.liftObj]
+      rw [WFF.mono_mono, WFF.mono_mono, WFF.mono_bodyRepl, Term.mono_mono]
+      exact hle₂) (Proof.lookup List.mem_cons_self)))
+  refine consistent_of_subst hc₅ (Subst.single (.free lt.length) (.tm (stepARR A himg).2))
+    (Subst.ok_single (stepLe lt cl A) rfl)
+    (Subst.coh_single (ctxOf_fresh le_rfl) (stepLe lt cl A) rfl) Ctx.NoSlots.slots ?_
+  rintro x (⟨y, hy, rfl⟩ | hx)
+  · erw [subst_single_mono (stepLe lt cl A)]
+    exact Or.inl (Or.inl (Or.inl ⟨_, Or.inl (Or.inl ⟨y, hy, rfl⟩), by rw [WFF.mono_mono]⟩))
+  · rw [Set.mem_singleton_iff.mp hx]
+    refine Or.inr (Set.mem_singleton_iff.mpr ?_)
+    refine (subst_single_retS hS (stepLe lt cl A) O _ _
+      (.nec (tupShape ModalSys.T rfl (A :: cl))) _ hV Φ).trans ?_
+    clear hc₁ hc₂ hc₃ hc₄ hc₅ hex
+    cases O with
+    | nec => exact WFF.retS_congr hS _ (stepV₅_eq A himg) rfl
+    | pos y hy => exact WFF.retxS_congr hS y _ _ (stepV₅_eq A himg) rfl
+
 /-- The returning possibility a body over the roots committed so far with `A` becomes in the
     grown target, with companions. -/
 def retAtomB {tt : NodeSt σ} {A : VarType} {cl clt : List VarType} {img : ℕ → ℕ}
@@ -2188,66 +2418,9 @@ theorem retAtomB_consistent {ts tt : NodeSt σ} {A : VarType} {cl clt : List Var
           (WFF.mono ((ctxOf_le_of_suffix ht).boxIn.insert (.bnd 0) _) Ψ) ∈ tt.M)
     (Φ : WFF σ (bodyCtx (A :: cl) clt) 1) (hΦ : liftBody hs' himgt Φ ∈ ts.M) :
     Theory.Consistent (WFF.mono (ctxOf_le_append [A.bc] tt.l) '' tt.M ∪
-      {retAtomB hS himg ht Φ}) := by
-  have hb := ctxOf_le_of_suffix ht
-  have hu : (ctxOf tt.l).RootFresh (.free tt.l.length) := ctxOf_fresh le_rfl
-  have h₂ := hinv _ (liftBody_ex_flat_mem hv hs' himgt Φ hΦ)
-  have hc₁ := retExtS_consistent hw.1 hS .nec (.nec (tupShape ModalSys.T rfl cl)) _
-    (WFF.mono ((hb.boxIn.insert (.bnd 0) _).insert (.bnd 1) _) (WFF.pairUp (flatBody A Φ)))
-    (Theory.Derives.of_mem h₂) hu
-  have hc₂ := consistent_step hc₁ (Proof.ret_map hS .nec
-    (S := (RShape.nec (tupShape ModalSys.T rfl cl)).ext (A.bcB false))
-    (ShapeMap.packCC (σ := σ) (bcT cl) (A.bcB false) _ [] (VarType.compOk_compsAllB _ rfl _)
-      (Or.inl rfl)) (stepV₁ A himg).2
-    (WFF.mono (((ctxOf_le_append [A.bcB false] tt.l).boxIn.insert (.bnd 0) _))
-      (WFF.mono (hb.boxIn.insert (.bnd 0) _) (flatBody A Φ)))
-    (Proof.conv (by
-      refine OutLeg.retS_congr hS .nec _ rfl ?_
-      dsimp only [RShape.extL, RShape.extR, ShapeMap.liftObj]
-      erw [WFF.bodySplit_mono_pairUp_packCC (hX := VarType.compOk_compsAllB _ rfl _) hb.boxIn
-        (flatBody A Φ)]
-      rw [WFF.mono_bodyRepl, Term.mono_mono]
-      · try rw [WFF.mono_mono]
-        rfl
-      · exact (ctxOf_le_append [A.bcB false] tt.l).boxIn) (Proof.lookup List.mem_cons_self)))
-  have hc₃ := compsS_consistent_nec hS (tupShape ModalSys.T rfl cl)
-    (VarType.VTypeProd (bcT cl) (A.bcB false)) (pairComps ((bcT cl).compsAllB ModalSys.T) [])
-    (VarType.compOk_pairComps (VarType.compOk_compsAllB _ rfl _) (Or.inl rfl)) (stepV₂ A himg).2
-    (WFF.mono (((ctxOf_le_append [A.bcB false] tt.l).boxIn.insert (.bnd 0) _))
-      (WFF.mono (hb.boxIn.insert (.bnd 0) _) (flatBody A Φ))) hc₂
-    (Theory.Derives.of_mem (Or.inr rfl)) (stepQ A) (stepQ_ok cl A)
-  have hc₄ := consistent_step hc₃ (Proof.ret_map hS .nec
-    (S := .nec (.boxC (VarType.VTypeProd (bcT cl) (A.bcB false))
-      (stepQ A ++ pairComps ((bcT cl).compsAllB ModalSys.T) []) (stepQ_ok cl A)))
-    (ShapeMap.subC (σ := σ) (VarType.VTypeProd (bcT cl) (A.bcB false)) _
-      ((VarType.VTypeProd (bcT cl) (A.bcB false)).compsAllB ModalSys.T) (stepQ_ok cl A)
-      (VarType.compOk_compsAllB _ rfl _) (stepQ_sub cl A)) _ _
-    (Proof.conv (OutLeg.retS_congr hS .nec _ rfl (WFF.bodyRepl_eta _).symm)
-      (Proof.lookup List.mem_cons_self)))
-  have hc₅ := consistent_step hc₄ (Proof.ret_map hS .nec
-    (S := .nec (.boxC (VarType.VTypeProd (bcT cl) (A.bcB false))
-      ((VarType.VTypeProd (bcT cl) (A.bcB false)).compsAllB ModalSys.T)
-      (VarType.compOk_compsAllB _ rfl _)))
-    (tupCG (σ := σ) (bcT cl) A ModalSys.T rfl) _
-    (WFF.mono ((hb.trans (stepLe tt.l cl A)).boxIn.insert (.bnd 0) _) Φ)
-    (Proof.conv (by
-      refine OutLeg.retS_congr hS .nec _ rfl ?_
-      dsimp only [flatBody, ShapeMap.liftObj]
-      rw [WFF.mono_mono, WFF.mono_mono, WFF.mono_bodyRepl, Term.mono_mono]
-      exact (hb.trans (stepLe tt.l cl A)).boxIn) (Proof.lookup List.mem_cons_self)))
-  refine consistent_of_subst hc₅ (Subst.single (.free tt.l.length) (.tm (stepARR A himg).2))
-    (Subst.ok_single (stepLe tt.l cl A) rfl)
-    (Subst.coh_single (ctxOf_fresh le_rfl) (stepLe tt.l cl A) rfl) Ctx.NoSlots.slots ?_
-  rintro x (⟨y, hy, rfl⟩ | hx)
-  · erw [subst_single_mono (stepLe tt.l cl A)]
-    exact Or.inl (Or.inl (Or.inl ⟨_, Or.inl (Or.inl ⟨y, hy, rfl⟩), by rw [WFF.mono_mono]⟩))
-  · rw [Set.mem_singleton_iff.mp hx]
-    refine Or.inr (Set.mem_singleton_iff.mpr ?_)
-    unfold retAtomB
-    change WFF.retS hS _ (Term.subst _ _ _ _ _) (WFF.subst _ _ _ _ _ _ _) = _
-    refine WFF.retS_congr hS _ (stepV₅_eq A himg) ?_
-    rw [WFF.subst_mono _ _ _ _ ((Ctx.NoSlots.slots (Γ := (ctxOf clt).boxIn)).insert _)]
-    exact WFF.subst_ren _ _ _ _ _ _ (single_box_under_ren ht.length_le _) Φ
+      {retAtomB hS himg ht Φ}) :=
+  chainB_consistent hS A himg .nec (ctxOf_le_of_suffix ht).boxIn Φ hw.1
+    (Theory.Derives.of_mem (hinv _ (liftBody_ex_flat_mem hv hs' himgt Φ hΦ)))
 
 /-! ## The plain step under T: the gained atoms and the grown target -/
 

@@ -7750,6 +7750,28 @@ names its companions' returns by `ret_compS`") is not enough.
   `pack2` with the tuple read off its value with companions; `liftBody_unitBodyC`).
 * *Next:* the witnessed steps (`retStepW/X/WD` with companions), then the network switch.
 
+**Built (2026-10-17): the witnessed steps under T** (`QML_v12m_BStepXC`, `BStepWC`, `BStepWDC`;
+sorry-free).
+* *One chain per shape, along any leg.*  The plain chain is stated for any leg
+  (`chainB_consistent`; `compsS_consistent_leg`, and `subst_single_retS` with
+  `single_dia_under_ren` for the fresh root's substitution along `.pos y`).  The witnessed chain
+  (`chainBW_consistent`) is the same at `.wit (tupShape cl) X`: every value is the plain one
+  paired with the witness's content (`stepW₅_eq`, from `liftVal_wit_pair`, `compTm_wit_pair`,
+  `valQ_wit`), and the bodies go through `pairUpS` with `packCC` lifted to `.wit` (`packCCW`;
+  `bodySplit_mono_pairUpS` is already shape-generic).  So the X step is the plain chain at
+  `.pos x`, W the witnessed chain at `.nec`, WD the witnessed chain at `.pos e`.
+* *The sources' `∃`-introductions* mirror the T-off ones for any new component `□w`
+  (`liftBodyX_ex_pairUpS_memB`, `liftBodyW_ex_pairUpS_memB`, `liftBodyWD_ex_pairUpS_memB`),
+  witnessed by the root's flat contents (`liftBody*_ex_flat_mem`).  `liftBodyAt`/`liftBodyXAt`
+  now take any slot type, and the body re-reading lemma is generic in the arrow substitution
+  (`subst_set_bodyRepl`).
+* *The steps and their reverses.*  ⭐`retStepXB_ok`/`retStepXB_rev` (reverse `RetInvWB` by
+  `ret_unitWC`), ⭐`retStepWB_ok`/`retStepWB_rev` (reverse `RetInvXB` by `ret_unitDC`, the body
+  packed by `packC2X` = `pack2X` with the tuple read off its value with companions),
+  ⭐`retStepWDB_ok`/`retStepWDB_rev` (reverse `RetInvWDB` by `ret_unitWDC`).
+* *Next:* the network switch (`RetData`/`GoodS` on the companion invariants, the steps and the
+  generic children in the ops, the born shapes' obligations), then drop `hT`.
+
 **Order.**
 1. The decisions, by the user:
    * risk 1: `boxT` with its existence rule, or the content restriction;
