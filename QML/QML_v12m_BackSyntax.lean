@@ -301,6 +301,67 @@ def padCVal {σ : Signature} (Z : VarType) :
           rw [e]
           exact Ctx.ref_compsIdx _ _ hq (Ctx.ref_insert_root _ _ _)))⟩
 
+/-- The companions of a pair: the first half's under `fst`, the second's under `snd`.  A pair's
+    full companion list is this (`hereChains` of a product). -/
+abbrev pairComps (csX csY : List (List Step)) : List (List Step) :=
+  csX.map (Step.fst :: ·) ++ csY.map (Step.snd :: ·)
+
+omit [ModalSys] in
+theorem pairComps_mem {csX csY : List (List Step)} {p : List Step}
+    (hp : p ∈ pairComps csX csY) :
+    (p = .fst :: p.tail ∧ p.tail ∈ csX) ∨ (p = .snd :: p.tail ∧ p.tail ∈ csY) := by
+  rcases List.mem_append.mp hp with hp | hp
+  · obtain ⟨q, hq, rfl⟩ := List.mem_map.mp hp
+    exact Or.inl ⟨rfl, hq⟩
+  · obtain ⟨q, hq, rfl⟩ := List.mem_map.mp hp
+    exact Or.inr ⟨rfl, hq⟩
+
+theorem VarType.compOk_pairComps {X Y : VarType} {csX csY : List (List Step)}
+    (hX : X.CompOk csX) (hY : Y.CompOk csY) :
+    (VarType.VTypeProd X Y).CompOk (pairComps csX csY) := by
+  rcases hX with rfl | ⟨hT, hx⟩
+  · rcases hY with rfl | ⟨hT, hy⟩
+    · exact Or.inl rfl
+    · refine Or.inr ⟨hT, fun p hp => ?_⟩
+      rcases pairComps_mem hp with ⟨-, hq⟩ | ⟨e, hq⟩
+      · cases hq
+      · rw [e]
+        exact hy _ hq
+  · refine Or.inr ⟨hT, fun p hp => ?_⟩
+    rcases pairComps_mem hp with ⟨e, hq⟩ | ⟨e, hq⟩
+    · rw [e]
+      exact hx _ hq
+    · rcases hY with rfl | ⟨-, hy⟩
+      · cases hq
+      · rw [e]
+        exact hy _ hq
+
+/-- A value with companions built from its own value and each companion's. -/
+def compsBuild {σ : Signature} {Γ : Ctx} (A : VarType) (main : Σ a, Term σ Γ A a) :
+    (cs : List (List Step)) → (∀ p ∈ cs, Σ c, Term σ Γ ((A.compAt p).getD .VTypeOne) c) →
+    Σ c, Term σ Γ (A.compsFlat cs) c
+  | [], _ => main
+  | p :: ps, get => ⟨_, Term.pair
+      (compsBuild A main ps fun p' hp' => get p' (List.mem_cons_of_mem _ hp')).2
+      (get p List.mem_cons_self).2⟩
+
+/-- Where a pair's companion `p` sits in the two halves' values with companions. -/
+def pairCompAddr (csX csY : List (List Step)) (p : List Step) : VarSymb :=
+  if p.head? = some .fst then (VarSymb.step (.root (.bnd 0)) .fst).ext (compsIdx csX p.tail)
+  else (VarSymb.step (.root (.bnd 0)) .snd).ext (compsIdx csY p.tail)
+
+theorem pairCompAddr_ref {X Y : VarType} {csX csY : List (List Step)} {p : List Step}
+    (hp : p ∈ pairComps csX csY) :
+    (Ctx.empty.insert (.bnd 0) (.VTypeProd (X.compsFlat csX) (Y.compsFlat csY))).ref
+      (pairCompAddr csX csY p) = some (((VarType.VTypeProd X Y).compAt p).getD .VTypeOne) := by
+  rcases pairComps_mem hp with ⟨e, hq⟩ | ⟨e, hq⟩
+  · generalize p.tail = q at e hq
+    subst e
+    exact Ctx.ref_compsIdx csX q hq (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))
+  · generalize p.tail = q at e hq
+    subst e
+    exact Ctx.ref_compsIdx csY q hq (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _))
+
 /-! ## Maps between returnable shapes -/
 
 /-- ⭐A **structural map between shapes of necessary objects** (docs §11.17): identity,
@@ -331,6 +392,27 @@ inductive ShapeMap (σ : Signature) : NShape → NShape → Type where
       ShapeMap σ (.boxC Z (Z.compsAllB b) (VarType.compOk_compsAllB b hb Z))
         (.boxC (.VTypeProd Z .VTypeOne) ((VarType.VTypeProd Z .VTypeOne).compsAllB b)
           (VarType.compOk_compsAllB b hb _))
+  /-- **Packing with companions** (docs §11.21, stage 4): two necessary objects into one,
+      `□⟨d₀.inner, d₁.inner⟩`, whose companions are theirs under `fst` and `snd`. -/
+  | packCC (X Y : VarType) (csX csY : List (List Step)) (hX : X.CompOk csX)
+      (hY : Y.CompOk csY) :
+      ShapeMap σ (.prod (.boxC X csX hX) (.boxC Y csY hY))
+        (.boxC (.VTypeProd X Y) (pairComps csX csY) (VarType.compOk_pairComps hX hY))
+  /-- **The first half with its companions**: `□(d.inner.fst)`, whose companions are `d`'s under
+      `fst`. -/
+  | fstC (X Y : VarType) (csX csY : List (List Step)) (hX : X.CompOk csX)
+      (hY : Y.CompOk csY) :
+      ShapeMap σ (.boxC (.VTypeProd X Y) (pairComps csX csY) (VarType.compOk_pairComps hX hY))
+        (.boxC X csX hX)
+  /-- **The second half with its companions.** -/
+  | sndC (X Y : VarType) (csX csY : List (List Step)) (hX : X.CompOk csX)
+      (hY : Y.CompOk csY) :
+      ShapeMap σ (.boxC (.VTypeProd X Y) (pairComps csX csY) (VarType.compOk_pairComps hX hY))
+        (.boxC Y csY hY)
+  /-- **Selecting companions**: the object kept, some of its companions (any order). -/
+  | subC (A : VarType) (cs cs' : List (List Step)) (h : A.CompOk cs) (h' : A.CompOk cs')
+      (hsub : ∀ p ∈ cs', p ∈ cs) :
+      ShapeMap σ (.boxC A cs h) (.boxC A cs' h')
   /-- ⭐**A born root's tuple** (docs §11.21, stage 3): the necessary object `□⟨(), items u⟩` of
       a `□A` object `u`'s items (its contents and, under T, its value's items).  Its companions
       are `u`'s own, so they come back as `u`'s do: a sound map into a companion shape, because
@@ -361,6 +443,19 @@ def ShapeMap.obj {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
   | _, _, .padC Z _ _ => ⟨_, Term.boxtm (Term.pair
       (Term.eta (VarSymb.root (.bnd 0)).inner Z (Ctx.ref_inner (Ctx.ref_insert_root _ _ _)))
       Term.unit)⟩
+  | _, _, .packCC X Y _ _ _ _ => ⟨_, Term.boxtm (Term.pair
+      (Term.eta (VarSymb.step (.root (.bnd 0)) .fst).inner X
+        (Ctx.ref_inner (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))))
+      (Term.eta (VarSymb.step (.root (.bnd 0)) .snd).inner Y
+        (Ctx.ref_inner (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)))))⟩
+  | _, _, .fstC X _ _ _ _ _ => ⟨_, Term.boxtm (Term.eta
+      (VarSymb.step (VarSymb.root (.bnd 0)).inner .fst) X
+      (Ctx.ref_fst_of (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))))⟩
+  | _, _, .sndC _ Y _ _ _ _ => ⟨_, Term.boxtm (Term.eta
+      (VarSymb.step (VarSymb.root (.bnd 0)).inner .snd) Y
+      (Ctx.ref_snd_of (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))))⟩
+  | _, _, .subC A _ _ _ _ _ =>
+      ⟨_, Term.eta (.root (.bnd 0)) (.VTypeBox A) (Ctx.ref_insert_root _ _ _)⟩
   | _, _, .tupC A false _ => ⟨_, Term.boxtm (Term.pair Term.unit
       (Term.eta (VarSymb.root (.bnd 0)).inner A (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))))⟩
   | _, _, .tupC A true hb => ⟨_, Term.boxtm (Term.pair Term.unit
@@ -385,6 +480,33 @@ def ShapeMap.val {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
   | _, _, .padC Z false _ =>
       ⟨_, Term.pair (Term.eta (.root (.bnd 0)) Z (Ctx.ref_insert_root _ _ _)) Term.unit⟩
   | _, _, .padC Z true _ => padCVal Z _ fun _ hp => hp
+  | _, _, .packCC X Y csX csY _ _ => compsBuild (.VTypeProd X Y)
+      ⟨_, Term.pair
+        (Term.eta ((VarSymb.step (.root (.bnd 0)) .fst).ext (compsFst csX)) X
+          (Ctx.ref_compsFst csX (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))))
+        (Term.eta ((VarSymb.step (.root (.bnd 0)) .snd).ext (compsFst csY)) Y
+          (Ctx.ref_compsFst csY (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _))))⟩
+      (pairComps csX csY) fun p hp =>
+        ⟨_, Term.eta (pairCompAddr csX csY p) _ (pairCompAddr_ref hp)⟩
+  | _, _, .fstC X _ csX csY _ _ => compsBuild X
+      ⟨_, Term.eta (VarSymb.step ((VarSymb.root (.bnd 0)).ext (compsFst (pairComps csX csY)))
+        .fst) X (Ctx.ref_fst_of (Ctx.ref_compsFst _ (Ctx.ref_insert_root _ _ _)))⟩
+      csX fun q hq => ⟨_, Term.eta ((VarSymb.root (.bnd 0)).ext
+        (compsIdx (pairComps csX csY) (.fst :: q))) _
+        (Ctx.ref_compsIdx _ (.fst :: q) (List.mem_append_left _ (List.mem_map_of_mem hq))
+          (Ctx.ref_insert_root _ _ _))⟩
+  | _, _, .sndC _ Y csX csY _ _ => compsBuild Y
+      ⟨_, Term.eta (VarSymb.step ((VarSymb.root (.bnd 0)).ext (compsFst (pairComps csX csY)))
+        .snd) Y (Ctx.ref_snd_of (Ctx.ref_compsFst _ (Ctx.ref_insert_root _ _ _)))⟩
+      csY fun q hq => ⟨_, Term.eta ((VarSymb.root (.bnd 0)).ext
+        (compsIdx (pairComps csX csY) (.snd :: q))) _
+        (Ctx.ref_compsIdx _ (.snd :: q) (List.mem_append_right _ (List.mem_map_of_mem hq))
+          (Ctx.ref_insert_root _ _ _))⟩
+  | _, _, .subC A cs cs' _ _ hsub => compsBuild A
+      ⟨_, Term.eta ((VarSymb.root (.bnd 0)).ext (compsFst cs)) A
+        (Ctx.ref_compsFst cs (Ctx.ref_insert_root _ _ _))⟩
+      cs' fun q hq => ⟨_, Term.eta ((VarSymb.root (.bnd 0)).ext (compsIdx cs q)) _
+        (Ctx.ref_compsIdx cs q (hsub q hq) (Ctx.ref_insert_root _ _ _))⟩
   | _, _, .tupC A false _ =>
       ⟨_, Term.pair Term.unit (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root _ _ _))⟩
   | _, _, .tupC A true hb => tupCVal A hb _ fun _ hp => hp

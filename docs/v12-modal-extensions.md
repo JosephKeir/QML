@@ -7686,6 +7686,70 @@ mirror `BRetChildC`, each beside its T-off original; no sorries, full build gree
   the aliases), `RetData`/`GoodS` on the companion invariants, `mkRet*` on the generic children;
   then delete the T-off births.
 
+**Stage 4, the steps under T: the paper check (2026-10-17).**  The plan's one line ("`retStep`
+names its companions' returns by `ret_compS`") is not enough.
+* *What the step must give.*  Committing the source's root `r : A` to a fresh target root
+  `z : bc A`, the target needs `◇^{tupShape (A :: cls)}[d ↦ tupCompsImg (A :: cls)] Φ`.  The new
+  component's companions come back as **projections of `z`**, since `compVal` of `tup r` sent
+  along the arrow is a projection of `r`'s image.
+* *Why `ret_extS` + `ret_compS` fails.*  Today the source has `∃e. Φ(⟨T, e⟩)` (witness
+  `□(tup r)`), and `ret_extS` names `e`'s return.  But `e` is arbitrary out there, and an
+  arbitrary `□(bc A)` object's companions `e.here.q` return independently of its contents.  Fresh
+  names for them can never be shown equal to `z`'s projections.  Only a *coherent* `e`, the item
+  tuple of something, has that property.  This is risk 1 again, now at the step.
+* *The coherent route (mirrors the births).*
+  1. At the source, quantify over `r`'s top-level □ components:
+     `∃ū. Φ(⟨T, □ items(ū)⟩)`, witnessed by `ū := r.π`.  `items(ū)` is `tup r` (`itemsTree`).
+  2. At the target, by `RetInvB` for `cls`, the obligation, then existence for each `u_π : □C_π`
+     (`ret_extS`) and for each of its companions (`ret_compS`).
+  3. Then a map, like `tupC`, from the components with their companions to the tuple shape.  The
+     value becomes `⟨V, arr(z̄)⟩`, with companions `κ`.
+  4. One image root: the consistency set with a single fresh `z : bc A` follows from the one with
+     the fresh `z̄`.  An inconsistency in `z` would give one in `arr(z̄)` by `Proof.subst`
+     (`z ↦ arr(z̄)`).  So no aliases are needed, and the target still gains one root.
+* *The gap.*  `ret_compS` names a companion only when the whole necessary part is one `boxC`.
+  After `ret_extS` the new object sits in a product, `prod (tupShape cls) (box C)`.
+  * *Option 1 (no new rule).*  A map `packC2 : prod (boxC P cs) (box C) → boxC (P × C) (cs under
+    fst)`.  The packed object `□⟨d₀.box, u.box⟩` has value `⟨d₀.here, u.here⟩` (collapse), so its
+    companions at `snd :: q` *are* `u`'s.  Then `ret_compS` names them at a single `boxC`.  `tupC`
+    is generalised under a prefix and over a root of any type (`tupCX X A`: object
+    `d ↦ □⟨d.inner.fst, items(d.here.snd)⟩`).  The cost is new `ShapeMap` constructors, sound
+    like `tupC` (coherent by construction), plus the identities.
+  * *Option 2 (one rule).*  `ret_compS` at any `boxC` component of the necessary part (a
+    position in the `NShape` tree).  Fewer maps, but a rule generalisation.
+  * *Option 3 (one rule).*  A derived-looking but primitive existence rule for a root's items
+    with companions.  Shortest, but against admissibility.
+  Recommended: Option 1.
+* `retStep_rev` is unaffected in kind: the companion units (`ret_unitC`, outer `co` = the forward
+  tuple's companions) do it, as `retChildC_fwd`.  The witnessed variants (`retStepW/X/WD`) follow
+  the same pattern.
+
+**Built (2026-10-17): stage 4's plain step** (Option 1; `QML_v12m_BStepC.lean`, sorry-free).
+* *Maps.*  `ShapeMap.packCC`, `fstC`, `sndC`, `subC` (new constructors, sound in `SemBack`), and,
+  as compositions needing no new soundness, `tupCRT` (a root's flat contents to its tuple, under
+  T) and `tupCG` (the same under a prefix, the identity with T off).
+* *The chain.*  The source has `∃e. pairUp (flatBody Φ)`, witnessed by the root's flat contents
+  `□(flatB r A)`.  At the target: the invariant, `ret_extS`, `ret_map packCC`, `ret_compS` for
+  each companion of the flat contents (`compsS_consistent_nec`), `ret_map subC`, `ret_map tupCG`.
+  Then the substitution `z ↦ stepARR` (the tuple component of the chain's value) sends the atom
+  at the image root to the chain's atom (`consistent_of_subst`).  So `retAtomB_consistent`.
+* *The value identity* (P3, `stepV₅_eq`), proved companion by companion (`compsFlat_ext`, reading
+  terms along `fst`/`snd` paths with `Term.getP`):
+  * the tuple's own value and the older roots' companions come down the chain from the old
+    invariant's value (the per-map reads `packCC_read_*`, `fstC_read_*`, `subC_read_*`,
+    `valQ_read_*`, `tupCG_read_main`/`_fst`; `compVal_pair_fst`, `subst_arrow_mono`);
+  * the new root's companion `snd :: q` sits in the chain's value at the encoded path of its
+    item (`tupCG_coh`, from `tupC_coh` and `bcTree_read`), which is where the arrow sends the
+    item `compVal (tup r) q` (`compVal_tupB`, generic in the flag).  So the named companions'
+    values never need computing.
+  Facts about maps that match on the flag are stated for every `b` with `hb : T = b` and used at
+  `T rfl`.
+* *The step.*  `retSetB`, `ret_listB`, `retSetB_consistent`, `retStepB`, ⭐`retStepB_ok`
+  (`RetInvB` for one more root) and ⭐`retStepB_rev` (the reverse invariant with companions, by
+  `ret_unitC` with outer companions `co` = the forward tuple's; the body packed by `packC2`,
+  `pack2` with the tuple read off its value with companions; `liftBody_unitBodyC`).
+* *Next:* the witnessed steps (`retStepW/X/WD` with companions), then the network switch.
+
 **Order.**
 1. The decisions, by the user:
    * risk 1: `boxT` with its existence rule, or the content restriction;

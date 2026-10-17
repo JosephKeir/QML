@@ -1643,6 +1643,37 @@ theorem padC_back (Z : VarType) (hb : ModalSys.T = true) {v w : M.frame.W}
         (Ctx.ref_compsIdx _ q hq hw)
       exact (iff_of_eq (dif_pos hb)).mp key
 
+omit [Γ.NoSlots] in
+/-- A companion of a necessary object, read through `here`. -/
+theorem compBack_here (hT : ModalSys.T = true) (C : VarType) (p : List Step) {v w : M.frame.W}
+    (x : M.frame.Dom (.VTypeBox C) v) (r : M.frame.R v w)
+    (o : M.frame.Dom ((C.compAt p).getD .VTypeOne) w) :
+    M.compBack (.VTypeBox C) (.here :: p) x r o ↔
+      M.compBack C p (M.necEval (x : M.frame.Nec C v) (M.frame.reflAcc hT v)) r o := by
+  change (if hT' : ModalSys.T = true then
+    M.compBack C p (M.necEval (x : M.frame.Nec C v) (M.frame.reflAcc hT' v)) r o else True) ↔ _
+  rw [dif_pos hT]
+
+omit [Γ.NoSlots] in
+/-- A value with companions built from parts comes back when its own value and each companion
+    do. -/
+theorem compsBack_build {A : VarType} {v w : M.frame.W} (e : M.frame.Dom (.VTypeBox A) v)
+    (r : M.frame.R v w) {Δ : Ctx} (env : M.Env Δ w) (main : Σ a, Term σ Δ A a) :
+    ∀ (cs : List (List Step)) (get : ∀ p ∈ cs, Σ c, Term σ Δ ((A.compAt p).getD .VTypeOne) c),
+      M.Ind (M.necEval (e : M.frame.Nec A v) ⟨w, ⟨r⟩⟩) (interp env main.2) →
+      (∀ (p : List Step) (hp : p ∈ cs), ModalSys.T = true →
+        M.compBack (.VTypeBox A) (.here :: p) e r (interp env (get p hp).2)) →
+      M.compsBack A cs e r (interp env (compsBuild A main cs get).2)
+  | [], _, hm, _ => hm
+  | p :: ps, get, hm, hc => by
+      refine ⟨compsBack_build e r env main ps _ hm
+        (fun p' hp' hT => hc p' (List.mem_cons_of_mem _ hp') hT), ?_⟩
+      by_cases hT : ModalSys.T = true
+      · rw [dif_pos hT]
+        exact hc p List.mem_cons_self hT
+      · rw [dif_neg hT]
+        trivial
+
 include hM in
 /-- ⭐**A map between shapes preserves coming back**: if the object comes back as `o`, its image
     comes back as the value's image. -/
@@ -1755,6 +1786,167 @@ theorem ShapeMap.comesBack : ∀ {S T : NShape} (F : ShapeMap σ S T) {v w : M.f
           Env.extend_root _ _ _ _]
       exact h
   | _, _, .padC Z true hb, v, w, e, r, o, h => padC_back hM Z hb e r o h _ _
+  | _, _, .packCC X Y csX csY hX hY, v, w, e, r, o, h => by
+      have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0)
+        (VarType.VTypeProd (.VTypeBox X) (.VTypeBox Y))
+      have hw := Ctx.ref_insert_root Ctx.empty (.bnd 0)
+        (VarType.VTypeProd (X.compsFlat csX) (Y.compsFlat csY))
+      have ho : ((Env.empty w).extend (.bnd 0) o).ref (.root (.bnd 0)) hw = o :=
+        Env.extend_root _ _ _ _
+      have hD : ∀ a, M.necEval (M.holeVal (ShapeMap.packCC (σ := σ) X Y csX csY hX hY).obj.2 e :
+          M.frame.Nec (.VTypeProd X Y) v) a =
+          (M.necEval (e.1 : M.frame.Nec X v) a, M.necEval (e.2 : M.frame.Nec Y v) a) := by
+        intro a
+        unfold holeVal
+        dsimp only [ShapeMap.obj]
+        rw [box_beta]
+        change (interp _ (Term.eta (σ := σ) (VarSymb.step (.root (.bnd 0)) .fst).inner X _),
+          interp _ (Term.eta (σ := σ) (VarSymb.step (.root (.bnd 0)) .snd).inner Y _)) = _
+        rw [interp_eta, interp_eta, Env.ref_inner _ _ (Ctx.ref_fst_of hu),
+          Env.ref_inner _ _ (Ctx.ref_snd_of hu), Env.ref_fst _ hu, Env.ref_snd _ hu,
+          show ((Env.empty v).extend (.bnd 0) e).ref (.root (.bnd 0)) hu = e from
+            Env.extend_root _ _ _ _]
+      change M.compsBack (.VTypeProd X Y) (pairComps csX csY) _ r
+        (interp ((Env.empty w).extend (.bnd 0) o)
+          (ShapeMap.packCC (σ := σ) X Y csX csY hX hY).val.2)
+      dsimp only [ShapeMap.val]
+      refine compsBack_build _ r _ _ _ _ ?_ (fun p hp hT => ?_)
+      · rw [hD]
+        refine hM.pair ?_ ?_
+        · change M.Ind _ (interp _ (Term.eta (σ := σ) _ X _))
+          rw [interp_eta, Env.ref_compsFst _ csX (Ctx.ref_fst_of hw), Env.ref_fst _ hw, ho]
+          exact compsBack_proj e.1 r csX o.1 h.1
+        · change M.Ind _ (interp _ (Term.eta (σ := σ) _ Y _))
+          rw [interp_eta, Env.ref_compsFst _ csY (Ctx.ref_snd_of hw), Env.ref_snd _ hw, ho]
+          exact compsBack_proj e.2 r csY o.2 h.2
+      · rcases pairComps_mem hp with ⟨e', hq⟩ | ⟨e', hq⟩
+        · generalize p.tail = q at e' hq
+          subst e'
+          rw [compBack_here hT, hD]
+          dsimp only
+          erw [interp_eta]
+          have key : ∀ (a' : VarSymb) (h' : _ = some ((X.compAt q).getD .VTypeOne)),
+              a' = (VarSymb.step (.root (.bnd 0)) .fst).ext (compsIdx csX q) →
+              ((Env.empty w).extend (.bnd 0) o).ref a' h' =
+                ((Env.empty w).extend (.bnd 0) o).ref _
+                  (Ctx.ref_compsIdx csX q hq (Ctx.ref_fst_of hw)) := by
+            rintro _ _ rfl
+            rfl
+          rw [key _ _ (by simp [pairCompAddr])]
+          exact (compBack_here hT X q e.1 r _).mp (compsBack_at hT e.1 r csX _
+            (Ctx.ref_fst_of hw) (by rw [Env.ref_fst _ hw, ho]; exact h.1) q hq _)
+        · generalize p.tail = q at e' hq
+          subst e'
+          rw [compBack_here hT, hD]
+          dsimp only
+          erw [interp_eta]
+          have key : ∀ (a' : VarSymb) (h' : _ = some ((Y.compAt q).getD .VTypeOne)),
+              a' = (VarSymb.step (.root (.bnd 0)) .snd).ext (compsIdx csY q) →
+              ((Env.empty w).extend (.bnd 0) o).ref a' h' =
+                ((Env.empty w).extend (.bnd 0) o).ref _
+                  (Ctx.ref_compsIdx csY q hq (Ctx.ref_snd_of hw)) := by
+            rintro _ _ rfl
+            rfl
+          rw [key _ _ (by simp [pairCompAddr])]
+          exact (compBack_here hT Y q e.2 r _).mp (compsBack_at hT e.2 r csY _
+            (Ctx.ref_snd_of hw) (by rw [Env.ref_snd _ hw, ho]; exact h.2) q hq _)
+  | _, _, .fstC X Y csX csY hX hY, v, w, e, r, o, h => by
+      have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (VarType.VTypeBox (.VTypeProd X Y))
+      have hw := Ctx.ref_insert_root Ctx.empty (.bnd 0)
+        ((VarType.VTypeProd X Y).compsFlat (pairComps csX csY))
+      have ho : ((Env.empty w).extend (.bnd 0) o).ref (.root (.bnd 0)) hw = o :=
+        Env.extend_root _ _ _ _
+      have hD : ∀ a, M.necEval (M.holeVal (ShapeMap.fstC (σ := σ) X Y csX csY hX hY).obj.2 e :
+          M.frame.Nec X v) a = (M.necEval (e : M.frame.Nec (.VTypeProd X Y) v) a).1 := by
+        intro a
+        unfold holeVal
+        dsimp only [ShapeMap.obj]
+        rw [box_beta, interp_eta, Env.ref_fst _ (Ctx.ref_inner hu), Env.ref_inner _ _ hu,
+          show ((Env.empty v).extend (.bnd 0) e).ref (.root (.bnd 0)) hu = e from
+            Env.extend_root _ _ _ _]
+      have hs : ∀ x : M.frame.Dom (.VTypeProd X Y) w, M.holeVal (σ := σ)
+          (Term.eta (.step (.root (.bnd 0)) .fst) X
+            (Ctx.ref_fst_of (Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeProd X Y)))) x =
+          x.1 := by
+        intro x
+        unfold holeVal
+        rw [interp_eta, Env.ref_fst _ (Ctx.ref_insert_root _ _ _)]
+        exact congrArg Prod.fst (Env.extend_root _ _ _ _)
+      change M.compsBack X csX _ r (interp ((Env.empty w).extend (.bnd 0) o)
+        (ShapeMap.fstC (σ := σ) X Y csX csY hX hY).val.2)
+      dsimp only [ShapeMap.val]
+      refine compsBack_build _ r _ _ _ _ ?_ (fun q hq hT => ?_)
+      · rw [hD]
+        change M.Ind _ (interp _ (Term.eta (σ := σ) _ X _))
+        rw [interp_eta, Env.ref_fst _ (Ctx.ref_compsFst _ hw), Env.ref_compsFst _ _ hw, ho]
+        have := hM.map (Term.eta (σ := σ) (.step (.root (.bnd 0)) .fst) X
+          (Ctx.ref_fst_of (Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeProd X Y))))
+          (compsBack_proj e r _ o h)
+        rwa [hs, hs] at this
+      · rw [compBack_here hT, hD]
+        dsimp only
+        erw [interp_eta]
+        exact (compBack_here hT (.VTypeProd X Y) (.fst :: q) e r _).mp (compsBack_at hT e r _ _
+          hw (by rw [ho]; exact h) (.fst :: q)
+          (List.mem_append_left _ (List.mem_map_of_mem hq)) _)
+  | _, _, .sndC X Y csX csY hX hY, v, w, e, r, o, h => by
+      have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (VarType.VTypeBox (.VTypeProd X Y))
+      have hw := Ctx.ref_insert_root Ctx.empty (.bnd 0)
+        ((VarType.VTypeProd X Y).compsFlat (pairComps csX csY))
+      have ho : ((Env.empty w).extend (.bnd 0) o).ref (.root (.bnd 0)) hw = o :=
+        Env.extend_root _ _ _ _
+      have hD : ∀ a, M.necEval (M.holeVal (ShapeMap.sndC (σ := σ) X Y csX csY hX hY).obj.2 e :
+          M.frame.Nec Y v) a = (M.necEval (e : M.frame.Nec (.VTypeProd X Y) v) a).2 := by
+        intro a
+        unfold holeVal
+        dsimp only [ShapeMap.obj]
+        rw [box_beta, interp_eta, Env.ref_snd _ (Ctx.ref_inner hu), Env.ref_inner _ _ hu,
+          show ((Env.empty v).extend (.bnd 0) e).ref (.root (.bnd 0)) hu = e from
+            Env.extend_root _ _ _ _]
+      have hs : ∀ x : M.frame.Dom (.VTypeProd X Y) w, M.holeVal (σ := σ)
+          (Term.eta (.step (.root (.bnd 0)) .snd) Y
+            (Ctx.ref_snd_of (Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeProd X Y)))) x =
+          x.2 := by
+        intro x
+        unfold holeVal
+        rw [interp_eta, Env.ref_snd _ (Ctx.ref_insert_root _ _ _)]
+        exact congrArg Prod.snd (Env.extend_root _ _ _ _)
+      change M.compsBack Y csY _ r (interp ((Env.empty w).extend (.bnd 0) o)
+        (ShapeMap.sndC (σ := σ) X Y csX csY hX hY).val.2)
+      dsimp only [ShapeMap.val]
+      refine compsBack_build _ r _ _ _ _ ?_ (fun q hq hT => ?_)
+      · rw [hD]
+        change M.Ind _ (interp _ (Term.eta (σ := σ) _ Y _))
+        rw [interp_eta, Env.ref_snd _ (Ctx.ref_compsFst _ hw), Env.ref_compsFst _ _ hw, ho]
+        have := hM.map (Term.eta (σ := σ) (.step (.root (.bnd 0)) .snd) Y
+          (Ctx.ref_snd_of (Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeProd X Y))))
+          (compsBack_proj e r _ o h)
+        rwa [hs, hs] at this
+      · rw [compBack_here hT, hD]
+        dsimp only
+        erw [interp_eta]
+        exact (compBack_here hT (.VTypeProd X Y) (.snd :: q) e r _).mp (compsBack_at hT e r _ _
+          hw (by rw [ho]; exact h) (.snd :: q)
+          (List.mem_append_right _ (List.mem_map_of_mem hq)) _)
+  | _, _, .subC A cs cs' hcs hcs' hsub, v, w, e, r, o, h => by
+      have hw := Ctx.ref_insert_root Ctx.empty (.bnd 0) (A.compsFlat cs)
+      have ho : ((Env.empty w).extend (.bnd 0) o).ref (.root (.bnd 0)) hw = o :=
+        Env.extend_root _ _ _ _
+      have he : M.holeVal (ShapeMap.subC (σ := σ) A cs cs' hcs hcs' hsub).obj.2 e = e := by
+        unfold holeVal
+        dsimp only [ShapeMap.obj]
+        exact interp_eta_slot _ _ _
+      change M.compsBack A cs' _ r (interp ((Env.empty w).extend (.bnd 0) o)
+        (ShapeMap.subC (σ := σ) A cs cs' hcs hcs' hsub).val.2)
+      rw [he]
+      dsimp only [ShapeMap.val]
+      refine compsBack_build e r _ _ cs' _ ?_ (fun q hq hT => ?_)
+      · change M.Ind _ (interp _ (Term.eta (σ := σ) _ A _))
+        rw [interp_eta, Env.ref_compsFst _ cs hw, ho]
+        exact compsBack_proj e r cs o h
+      · dsimp only
+        erw [interp_eta]
+        exact compsBack_at hT e r cs _ hw (by rw [ho]; exact h) q (hsub q hq) _
 
 omit [Γ.NoSlots] in
 theorem interp_eta_slot_fst_fst {Δ : Ctx} {v : M.frame.W} (en : M.Env Δ v) {A B C : VarType}
