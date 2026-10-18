@@ -517,7 +517,7 @@ theorem liftBodyXDR_unitBodyWDC_thetaD (hS : ModalSys.BStrong = true) (l : List 
         rw [Subst.dia_eq_box_mono (Δ₁ := ((ctxOf l).diaIn x).insert (.bnd 0) _) _ _ _ _ _
           (Ctx.ref_inner (Ctx.ref_fst_of hu)), Subst.box_at_inner_boxtm _ hfst]
         exact congrArg SubE.tm ((Term.mono_mono _ _ _).trans (Term.mono_eta _ _ _ _))
-      · obtain ⟨hT, hall⟩ := (bornComps_ok A).resolve_left (List.ne_nil_of_mem hp)
+      · obtain ⟨hT, hall, -⟩ := (bornComps_ok A).resolve_left (List.ne_nil_of_mem hp)
         have hC : (VarType.VTypeBox A).compAt (.here :: p) =
             some ((A.compAt p).getD .VTypeOne) := by
           obtain ⟨C, hC⟩ := Option.isSome_iff_exists.mp (hall p hp)

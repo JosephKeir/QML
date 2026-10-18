@@ -220,7 +220,7 @@ theorem compVal_eta {Γ : Ctx} {u : VarSymb} {A : VarType} (hu : Γ.ref u = some
     compVal (σ := σ) (Term.eta u.inner A (Ctx.ref_inner hu)) p h =
       ⟨_, Term.eta ((VarSymb.step u .here).ext p).inner ((A.compAt p).getD .VTypeOne)
         (Ctx.ref_inner (h.ref_head hu))⟩ := by
-  obtain ⟨hT, hall⟩ := h.resolve_left (List.cons_ne_nil _ _)
+  obtain ⟨hT, hall, -⟩ := h.resolve_left (List.cons_ne_nil _ _)
   have hC : A.compAt p = some ((A.compAt p).getD .VTypeOne) := by
     obtain ⟨C, hC⟩ := Option.isSome_iff_exists.mp (hall p List.mem_cons_self)
     rw [hC]

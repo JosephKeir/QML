@@ -827,6 +827,7 @@ namespace Model
 
 variable {σ : Signature} {M : Model.{u, v} σ} {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
   (env : M.Env Γ w) (hnp : Γ.NoProjLast) (hfin : Γ.Tame) (hM : M.IndInvariant)
+  (hC : M.IndCongr)
 
 omit [Γ.NoSlots] in
 /-- What `ret_new` hands its subproof: the fresh value is the returning possibility's. -/
@@ -1062,7 +1063,7 @@ theorem compsBack_at (hT : ModalSys.T = true) {A : VarType} {v w : M.frame.W}
         rw [Env.ref_fst env' ha ha']
         exact hb.1
 
-include hM in
+include hC in
 omit [Γ.NoSlots] in
 /-- Two trees of items are `Ind` when their leaves are. -/
 theorem bcTree_ind : ∀ (Z : VarType) {Γ₁ Γ₂ : Ctx} {w : M.frame.W} (env₁ : M.Env Γ₁ w)
@@ -1072,9 +1073,9 @@ theorem bcTree_ind : ∀ (Z : VarType) {Γ₁ Γ₂ : Ctx} {w : M.frame.W} (env�
     (∀ q hq, M.Ind (interp env₁ (get₁ q hq).2) (interp env₂ (get₂ q hq).2)) →
     M.Ind (interp env₁ (bcTree Z get₁).2) (interp env₂ (bcTree Z get₂).2)
   | .VTypeBox C, _, _, _, env₁, env₂, _, _, h =>
-      hM.pair (h [] _) (bcTree_ind C env₁ env₂ _ _ fun q _ => h (.here :: q) _)
+      hC.pair (h [] _) (bcTree_ind C env₁ env₂ _ _ fun q _ => h (.here :: q) _)
   | .VTypeProd X Y, _, _, _, env₁, env₂, _, _, h =>
-      hM.pair (bcTree_ind X env₁ env₂ _ _ fun q _ => h (.fst :: q) _)
+      hC.pair (bcTree_ind X env₁ env₂ _ _ fun q _ => h (.fst :: q) _)
         (bcTree_ind Y env₁ env₂ _ _ fun q _ => h (.snd :: q) _)
   | .Var, _, _, _, _, _, _, _, _ => M.Ind_refl _
   | .VTypeOne, _, _, _, _, _, _, _, _ => M.Ind_refl _
@@ -1147,7 +1148,7 @@ theorem compsBack_compsVal {Δ : Ctx} {v : M.frame.W} (env : M.Env Δ v) {A : Va
       rw [box_beta]
       exact M.Ind_refl _
   | p :: ps, h => by
-      obtain ⟨hT, hall⟩ := h.resolve_left (List.cons_ne_nil _ _)
+      obtain ⟨hT, hall, -⟩ := h.resolve_left (List.cons_ne_nil _ _)
       refine ⟨compsBack_compsVal env sb ac ps h.tail, ?_⟩
       rw [dif_pos hT]
       have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeBox A)
@@ -1174,7 +1175,7 @@ theorem Env.Agree.trans {Γ₁ Γ₂ Γ₃ : Ctx} {h₁ : Γ₁.Le Γ₂} {h₂ 
     (a₂ : Env.Agree h₂ env₂ env₃) : Env.Agree (h₁.trans h₂) env₁ env₃ :=
   fun x T hx => (a₁ x T hx).trans (a₂ x T (h₁ x T hx))
 
-include hM in
+include hC in
 omit [Γ.NoSlots] in
 /-- ⭐A value with companions read at a slot whose object comes back with them is `Ind` to the
     value it comes back as: its contents and each companion's contents, read along the way home. -/
@@ -1190,9 +1191,9 @@ theorem compsSlot_ind {Δ Δ' : Ctx} {u : VarSymb} {C : VarType}
       rw [interp_eta, ← Env.ref_agree hag _ (Ctx.ref_inner hu), Env.ref_inner _ _ hu]
       exact hb
   | p :: ps, h, o, hb => by
-      obtain ⟨hT, hall⟩ := h.resolve_left (List.cons_ne_nil _ _)
+      obtain ⟨hT, hall, -⟩ := h.resolve_left (List.cons_ne_nil _ _)
       have hp := h.ref_head hu
-      refine hM.pair (compsSlot_ind hu hle env₁ r env' hag ps h.tail o.1 hb.1) ?_
+      refine hC.pair (compsSlot_ind hu hle env₁ r env' hag ps h.tail o.1 hb.1) ?_
       change M.Ind (interp env' (Term.eta (σ := σ) ((VarSymb.step u .here).ext p).inner _ _)) o.2
       rw [interp_eta, ← Env.ref_agree hag _ (Ctx.ref_inner hp), Env.ref_inner _ _ hp]
       exact (compBack_iff_ind hT env₁ r (.here :: p) hu hp (hall p List.mem_cons_self) o.2).mp
@@ -1233,7 +1234,7 @@ theorem sat_ret_unitC (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {C A : VarT
       rw [show ((env.boxPush (O.acc env i)).extend (.bnd 0) e).ref (.root (.bnd 0)) hu = e from
         Env.extend_root _ (.bnd 0) e _]
       exact hr
-    exact (holeSat_ind hM θ (hM.pair (compsSlot_ind hM hu _ _ r _ hag co ho _ hr')
+    exact (holeSat_ind hM θ (hM.pair (compsSlot_ind hM.toIndCongr hu _ _ r _ hag co ho _ hr')
       (M.Ind_refl _))).mpr hθ
   · dsimp only [ComesBack, NComesBack]
     rw [interp_mono
@@ -1486,7 +1487,7 @@ theorem compsBack_proj {A : VarType} {v w : M.frame.W} (e : M.frame.Dom (.VTypeB
   | [], _, h => h
   | _ :: ps, o, h => compsBack_proj e r ps o.1 h.1
 
-include hM in
+include hC in
 /-- A `□A` object and its companions that come back make a packed body (`compsBody`) whose
     reading along the way home is `Ind` to the value. -/
 theorem compsBody_ind {A : VarType} {v w : M.frame.W} (e : M.frame.Dom (.VTypeBox A) v)
@@ -1503,8 +1504,8 @@ theorem compsBody_ind {A : VarType} {v w : M.frame.W} (e : M.frame.Dom (.VTypeBo
       exact h
   | p :: ps, hcs, o, h => by
       have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeBox A)
-      obtain ⟨hT, hall⟩ := hcs.resolve_left (List.cons_ne_nil _ _)
-      refine hM.pair (compsBody_ind e r ps hcs.tail o.1 h.1) ?_
+      obtain ⟨hT, hall, -⟩ := hcs.resolve_left (List.cons_ne_nil _ _)
+      refine hC.pair (compsBody_ind e r ps hcs.tail o.1 h.1) ?_
       have h₂ : M.compBack (.VTypeBox A) (.here :: p) e r o.2 := by
         have e' := h.2
         rw [dif_pos hT] at e'
@@ -1517,8 +1518,7 @@ theorem compsBody_ind {A : VarType} {v w : M.frame.W} (e : M.frame.Dom (.VTypeBo
         (hall p List.mem_cons_self) (by rw [hee]; exact h₂)
 
 omit [Γ.NoSlots] in
-include hM in
-include hM in
+include hC in
 /-- ⭐**A born root's tuple comes back with its companions** (T), when the root does: the tuple's
     contents leaf by leaf (`bcTree_ind`), each companion as the root's companion it decodes to
     (`compBack_itemsTree`, `compsBack_at`). -/
@@ -1538,12 +1538,12 @@ theorem tupC_back (A : VarType) (hb : ModalSys.T = true) {v w : M.frame.W}
       change M.Ind (M.necEval (interp ((Env.empty v).extend (.bnd 0) e) (Term.boxtm _)) ⟨w, ⟨r⟩⟩)
         (interp ((Env.empty w).extend (.bnd 0) o) _)
       rw [box_beta]
-      refine hM.pair (M.Ind_refl _) (hM.pair ?_ ?_)
+      refine hC.pair (M.Ind_refl _) (hC.pair ?_ ?_)
       · change M.Ind (interp _ (Term.eta (σ := σ) (VarSymb.root (.bnd 0)).inner A _))
           (interp _ (Term.eta (σ := σ) _ A _))
         rw [interp_eta, interp_eta, Env.ref_inner _ _ hu, Env.ref_compsFst _ _ hw, he, ho]
         exact compsBack_proj e r _ o h
-      · refine bcTree_ind hM A _ _ _ _ fun q hq => ?_
+      · refine bcTree_ind hC A _ _ _ _ fun q hq => ?_
         have hp : (Ctx.empty.insert (.bnd 0) (VarType.VTypeBox A)).ref
             ((VarSymb.root (.bnd 0)).ext (.here :: q)) =
             some (.VTypeBox ((A.compAt q).getD .VTypeOne)) := Ctx.ref_compMem hb hq hu
@@ -1593,7 +1593,7 @@ theorem tupC_back (A : VarType) (hb : ModalSys.T = true) {v w : M.frame.W}
       · rw [he]
         exact key _ (VarType.bcDec_box A p' hp₀) _
 
-include hM in
+include hC in
 /-- A padded object comes back with its companions when the object does. -/
 theorem padC_back (Z : VarType) (hb : ModalSys.T = true) {v w : M.frame.W}
     (e : M.frame.Dom (.VTypeBox Z) v) (r : M.frame.R v w)
@@ -1608,7 +1608,7 @@ theorem padC_back (Z : VarType) (hb : ModalSys.T = true) {v w : M.frame.W}
       change M.Ind (M.necEval (interp ((Env.empty v).extend (.bnd 0) e) (Term.boxtm _)) ⟨w, ⟨r⟩⟩)
         (interp ((Env.empty w).extend (.bnd 0) o) _)
       rw [box_beta]
-      refine hM.pair ?_ (M.Ind_refl _)
+      refine hC.pair ?_ (M.Ind_refl _)
       change M.Ind (interp _ (Term.eta (σ := σ) (VarSymb.root (.bnd 0)).inner Z _))
         (interp _ (Term.eta (σ := σ) _ Z _))
       rw [interp_eta, interp_eta, Env.ref_inner _ _ hu, Env.ref_compsFst _ _ hw,
@@ -1820,7 +1820,7 @@ theorem interp_compVal {Δ : Ctx} {v : M.frame.W} (env : M.Env Δ v) {A : VarTyp
   unfold holeVal
   rw [box_beta, interp_eta, Env.ref_inner _ _ (h.ref_head (Ctx.ref_insert_root _ _ _))]
 
-include hM in
+include hC in
 omit [Γ.NoSlots] in
 /-- ⭐**The hole map with companions preserves coming back**: its contents by `hole`'s argument,
     and each companion of `□s[d.inner]` as `compVal` read along the way home, which is the
@@ -1845,7 +1845,7 @@ theorem holeC_back {A B : VarType} {bB : Ann B} (s : Term σ (Ctx.empty.insert (
     (Env.empty w).extend (.bnd 0) o
   set R := interp E (compsSlot (σ := σ) hu (Ctx.Le.refl _) (A.compsAllB b)
     (VarType.compOk_compsAllB b hb A)).2
-  have hR : M.Ind R o := compsSlot_ind hM hu (Ctx.Le.refl _) env₀ r E
+  have hR : M.Ind R o := compsSlot_ind hC hu (Ctx.Le.refl _) env₀ r E
     (fun _ _ _ => rfl) _ _ o (by rw [he₀]; exact hback)
   set sb : Term σ (Ctx.empty.insert (.bnd 0) (.VTypeBox A)).boxIn B _ :=
     Term.holeAt (Term.eta (VarSymb.root (.bnd 0)).inner A (Ctx.ref_inner hu)) s
@@ -1853,13 +1853,13 @@ theorem holeC_back {A B : VarType} {bB : Ann B} (s : Term σ (Ctx.empty.insert (
   refine compsBack_build _ r env₁ _ cs _ ?_ ?_
   · -- the contents, as for `hole`
     rw [box_beta, interp_holeAt, interp_holeAt]
-    refine hM.map s ?_
+    refine hC.map s ?_
     rw [interp_eta, interp_eta, Env.ref_inner _ _ hu, he₀]
     exact compsBack_main e r _ env₁ _ (by rw [he₁]; exact hback) _
   · -- each companion, through the renaming
     intro q hq hT
     have hq1 := h.single hq
-    obtain ⟨-, hall⟩ := hq1.resolve_left (List.cons_ne_nil _ _)
+    obtain ⟨-, hall, -⟩ := hq1.resolve_left (List.cons_ne_nil _ _)
     have hp := hq1.ref_head (Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeBox B))
     refine (compBack_iff_ind hT ((Env.empty v).extend (.bnd 0) (interp env₀ (Term.boxtm sb)))
       r (.here :: q) (Ctx.ref_insert_root _ _ _) hp (hall q List.mem_cons_self) _).mpr ?_
@@ -1874,7 +1874,7 @@ theorem holeC_back {A B : VarType} {bB : Ann B} (s : Term σ (Ctx.empty.insert (
       rw [interp_subst _ _ _ (Ctx.noProjLast_boxIn _),
         ← interp_mono (agree_compsRen hF A b hb E) (compVal sb q hq1).2, Term.mono_refl]
     rw [e₀]
-    exact hM.map _ hR
+    exact hC.map _ hR
 
 /-! ### Readings home, with companions -/
 
@@ -1952,7 +1952,7 @@ theorem ind_compsRead
       M.compsBack A cs e r o → M.Ind (M.compsRead A cs h e r) o
   | [], _, _, hb => hb
   | p :: ps, h, o, hb => by
-      obtain ⟨hT, hall⟩ := h.resolve_left (List.cons_ne_nil _ _)
+      obtain ⟨hT, hall, -⟩ := h.resolve_left (List.cons_ne_nil _ _)
       exact hpair (ind_compsRead hpair A e r ps h.tail o.1 hb.1)
         (ind_compRead hT (.VTypeBox A) (.here :: p) e r o.2 (hall p List.mem_cons_self)
           ((iff_of_eq (dif_pos hT)).mp hb.2))
@@ -1983,7 +1983,7 @@ theorem interp_compsSlot {Δ Δ' : Ctx} {u : VarSymb} {C : VarType}
       rw [interp_eta, ← Env.ref_agree hag _ (Ctx.ref_inner hu), Env.ref_inner _ _ hu]
       rfl
   | p :: ps, h => by
-      obtain ⟨hT, hall⟩ := h.resolve_left (List.cons_ne_nil _ _)
+      obtain ⟨hT, hall, -⟩ := h.resolve_left (List.cons_ne_nil _ _)
       have hp := h.ref_head hu
       change (interp env' (compsSlot hu hle ps h.tail).2,
         interp env' (Term.eta (σ := σ) ((VarSymb.step u .here).ext p).inner _ _)) = _
@@ -2001,7 +2001,7 @@ theorem interp_compsVal {Δ : Ctx} {v : M.frame.W} (env : M.Env Δ v) {A : VarTy
         M.compsRead A cs h (interp env (Term.boxtm sb)) r
   | [], _ => (box_beta env sb _).symm
   | p :: ps, h => by
-      obtain ⟨hT, hall⟩ := h.resolve_left (List.cons_ne_nil _ _)
+      obtain ⟨hT, hall, -⟩ := h.resolve_left (List.cons_ne_nil _ _)
       change (interp _ (compsVal sb ps h.tail).2, interp _ (compVal sb p h).2) = _
       rw [interp_compsVal env sb w r ps h.tail, interp_compVal env sb ⟨w, ⟨r⟩⟩ p h]
       have h2 := necEval_ref_compRead hT ((Env.empty v).extend (.bnd 0)
@@ -2065,7 +2065,7 @@ theorem holeC_compsRead {A B : VarType} {bB : Ann B}
     exact ref_compsFst_compsSlot hu (Ctx.Le.refl _) E _ _ _ _ hE₁ _
   · intro q hq hT
     have hq1 := h.single hq
-    obtain ⟨-, hall⟩ := hq1.resolve_left (List.cons_ne_nil _ _)
+    obtain ⟨-, hall, -⟩ := hq1.resolve_left (List.cons_ne_nil _ _)
     have hp := hq1.ref_head (Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeBox B))
     change interp _ (Term.subst _ _ (ok_compsRen hF A b hb) (coh_compsRen hF A b hb)
       (compVal sb q hq1).2) = _
@@ -2079,7 +2079,7 @@ theorem holeC_compsRead {A B : VarType} {bB : Ann B}
       at h2
     exact h2
 
-include hM in
+include hC in
 /-- ⭐**A map between shapes preserves coming back**: if the object comes back as `o`, its image
     comes back as the value's image. -/
 theorem ShapeMap.comesBack : ∀ {S T : NShape} (F : ShapeMap σ S T) {v w : M.frame.W}
@@ -2131,7 +2131,7 @@ theorem ShapeMap.comesBack : ∀ {S T : NShape} (F : ShapeMap σ S T) {v w : M.f
         exact Prod.ext h1 h2
       change M.Ind (M.necEval _ _) _
       rw [ho, hv]
-      exact hM.pair h.1 h.2
+      exact hC.pair h.1 h.2
   | _, _, .hole (A := A) s, v, w, e, r, o, h => by
       change M.Ind (M.necEval (interp ((Env.empty v).extend (.bnd 0) e) (Term.boxtm _)) ⟨w, ⟨r⟩⟩)
         (M.holeVal s o)
@@ -2139,7 +2139,7 @@ theorem ShapeMap.comesBack : ∀ {S T : NShape} (F : ShapeMap σ S T) {v w : M.f
         Env.ref_inner _ _ (Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeBox A)),
         show ((Env.empty v).extend (.bnd 0) e).ref (.root (.bnd 0))
           (Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeBox A)) = e from Env.extend_root _ _ _ _]
-      exact hM.map s h
+      exact hC.map s h
   | _, _, .packC A cs hcs, v, w, e, r, o, h => by
       have hv : M.holeVal (ShapeMap.packC (σ := σ) A cs hcs).val.2 o = o := by
         unfold holeVal
@@ -2149,7 +2149,7 @@ theorem ShapeMap.comesBack : ∀ {S T : NShape} (F : ShapeMap σ S T) {v w : M.f
         (Term.boxtm (compsBody A cs hcs).2)) ⟨w, ⟨r⟩⟩)
         (M.holeVal (ShapeMap.packC (σ := σ) A cs hcs).val.2 o)
       rw [box_beta, hv]
-      exact compsBody_ind hM e r cs hcs o h
+      exact compsBody_ind hC e r cs hcs o h
   | _, _, .forgetC A cs hcs, v, w, e, r, o, h => by
       have he : M.holeVal (ShapeMap.forgetC (σ := σ) A cs hcs).obj.2 e = e := by
         unfold holeVal
@@ -2170,28 +2170,28 @@ theorem ShapeMap.comesBack : ∀ {S T : NShape} (F : ShapeMap σ S T) {v w : M.f
       change M.Ind (M.necEval (interp ((Env.empty v).extend (.bnd 0) e) (Term.boxtm _)) ⟨w, ⟨r⟩⟩)
         (interp ((Env.empty w).extend (.bnd 0) o) _)
       rw [box_beta]
-      refine hM.pair (M.Ind_refl _) ?_
+      refine hC.pair (M.Ind_refl _) ?_
       change M.Ind (interp _ (Term.eta (σ := σ) (VarSymb.root (.bnd 0)).inner A _))
         (interp _ (Term.eta (σ := σ) _ A _))
       erw [interp_eta, interp_eta_slot, Env.ref_inner _ _ hu,
         show ((Env.empty v).extend (.bnd 0) e).ref (.root (.bnd 0)) hu = e from
           Env.extend_root _ _ _ _]
       exact h
-  | _, _, .tupC A true hb, v, w, e, r, o, h => tupC_back hM A hb e r o h _ _
-  | _, _, .holeC s b hb hF cs hc, _, _, e, r, o, h => holeC_back hM s b hb hF cs hc e r o h
+  | _, _, .tupC A true hb, v, w, e, r, o, h => tupC_back hC A hb e r o h _ _
+  | _, _, .holeC s b hb hF cs hc, _, _, e, r, o, h => holeC_back hC s b hb hF cs hc e r o h
   | _, _, .padC Z false hb, v, w, e, r, o, h => by
       have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (VarType.VTypeBox Z)
       change M.Ind (M.necEval (interp ((Env.empty v).extend (.bnd 0) e) (Term.boxtm _)) ⟨w, ⟨r⟩⟩)
         (interp ((Env.empty w).extend (.bnd 0) o) _)
       rw [box_beta]
-      refine hM.pair ?_ (M.Ind_refl _)
+      refine hC.pair ?_ (M.Ind_refl _)
       change M.Ind (interp _ (Term.eta (σ := σ) (VarSymb.root (.bnd 0)).inner Z _))
         (interp _ (Term.eta (σ := σ) _ Z _))
       erw [interp_eta, interp_eta_slot, Env.ref_inner _ _ hu,
         show ((Env.empty v).extend (.bnd 0) e).ref (.root (.bnd 0)) hu = e from
           Env.extend_root _ _ _ _]
       exact h
-  | _, _, .padC Z true hb, v, w, e, r, o, h => padC_back hM Z hb e r o h _ _
+  | _, _, .padC Z true hb, v, w, e, r, o, h => padC_back hC Z hb e r o h _ _
   | _, _, .packCC X Y csX csY hX hY, v, w, e, r, o, h => by
       have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0)
         (VarType.VTypeProd (.VTypeBox X) (.VTypeBox Y))
@@ -2218,7 +2218,7 @@ theorem ShapeMap.comesBack : ∀ {S T : NShape} (F : ShapeMap σ S T) {v w : M.f
       dsimp only [ShapeMap.val]
       refine compsBack_build _ r _ _ _ _ ?_ (fun p hp hT => ?_)
       · rw [hD]
-        refine hM.pair ?_ ?_
+        refine hC.pair ?_ ?_
         · change M.Ind _ (interp _ (Term.eta (σ := σ) _ X _))
           rw [interp_eta, Env.ref_compsFst _ csX (Ctx.ref_fst_of hw), Env.ref_fst _ hw, ho]
           exact compsBack_proj e.1 r csX o.1 h.1
@@ -2285,7 +2285,7 @@ theorem ShapeMap.comesBack : ∀ {S T : NShape} (F : ShapeMap σ S T) {v w : M.f
       · rw [hD]
         change M.Ind _ (interp _ (Term.eta (σ := σ) _ X _))
         rw [interp_eta, Env.ref_fst _ (Ctx.ref_compsFst _ hw), Env.ref_compsFst _ _ hw, ho]
-        have := hM.map (Term.eta (σ := σ) (.step (.root (.bnd 0)) .fst) X
+        have := hC.map (Term.eta (σ := σ) (.step (.root (.bnd 0)) .fst) X
           (Ctx.ref_fst_of (Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeProd X Y))))
           (compsBack_proj e r _ o h)
         rwa [hs, hs] at this
@@ -2324,7 +2324,7 @@ theorem ShapeMap.comesBack : ∀ {S T : NShape} (F : ShapeMap σ S T) {v w : M.f
       · rw [hD]
         change M.Ind _ (interp _ (Term.eta (σ := σ) _ Y _))
         rw [interp_eta, Env.ref_snd _ (Ctx.ref_compsFst _ hw), Env.ref_compsFst _ _ hw, ho]
-        have := hM.map (Term.eta (σ := σ) (.step (.root (.bnd 0)) .snd) Y
+        have := hC.map (Term.eta (σ := σ) (.step (.root (.bnd 0)) .snd) Y
           (Ctx.ref_snd_of (Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeProd X Y))))
           (compsBack_proj e r _ o h)
         rwa [hs, hs] at this
@@ -2377,7 +2377,7 @@ theorem interp_eta_slot_fst_snd {Δ : Ctx} {v : M.frame.W} (en : M.Env Δ v) {A 
   rw [interp_eta, Env.ref_snd _ (Ctx.ref_fst_of hu) h, Env.ref_fst _ hu (Ctx.ref_fst_of hu), e]
 
 omit [Γ.NoSlots] in
-include hM in
+include hC in
 /-- A map on the necessary part preserves coming back at a returnable shape: the witness, carried
     along, comes back as before. -/
 theorem ShapeMap.liftComesBack : ∀ (S : RShape) {T : NShape} (F : ShapeMap σ S.necPart T)
@@ -2385,14 +2385,14 @@ theorem ShapeMap.liftComesBack : ∀ (S : RShape) {T : NShape} (F : ShapeMap σ 
     M.ComesBack S e r o →
       M.ComesBack (S.withNec T) (M.holeVal (ShapeMap.liftObj S F).2 e) r
         (M.holeVal (ShapeMap.liftVal S F).2 o)
-  | .nec _, _, F, _, _, e, r, o, h => ShapeMap.comesBack hM F e r o h
+  | .nec _, _, F, _, _, e, r, o, h => ShapeMap.comesBack hC F e r o h
   | .wit N X, _, F, v, w, e, r, o, h => by
       obtain ⟨h₁, h₂⟩ := h
       refine ⟨?_, ?_⟩
       · change M.NComesBack _ (interp ((Env.empty v).extend (.bnd 0) e) (Term.holeAt _ _)) r
           (interp ((Env.empty w).extend (.bnd 0) o) (Term.holeAt _ _))
         rw [interp_holeAt, interp_holeAt, interp_eta_slot_fst, interp_eta_slot_fst]
-        exact ShapeMap.comesBack hM F e.1 r o.1 h₁
+        exact ShapeMap.comesBack hC F e.1 r o.1 h₁
       · have key : ∀ (p : M.frame.Pos X v) (q : M.frame.Dom X w), p = e.2 → q = o.2 →
             ∃ h : (⟨w, ⟨r⟩⟩ : M.frame.Acc v) ∈ (M.posEval p).1,
             M.Ind ((M.posEval p).2 ⟨_, h⟩) q := by
@@ -2694,7 +2694,7 @@ theorem sat_ret_mapD (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {C X Z : Var
     (env := Env.empty _) (env' := O.push env i) (fun _ _ h => nomatch h) (.bnd 0) e)]
   exact ShapeMap.possComesBack hM h cs hcs e r _ hr
 
-include hnp hM in
+include hnp hC in
 /-- ⭐`ret_map` is sound: the image of the object out there has the body, and comes back as the
     image of the value. -/
 theorem sat_ret_map (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape} {T : NShape}
@@ -2710,7 +2710,7 @@ theorem sat_ret_map (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape} 
   refine (OutLeg.sat_retS hS env O (S.withNec T) _ Φ).mpr ⟨i, _, hΦ, r, ?_⟩
   rw [interp_holeRead hnp env y, interp_mono (Env.extend_agree (h := Ctx.empty_le O.view)
     (env := Env.empty _) (env' := O.push env i) (fun _ _ h => nomatch h) (.bnd 0) e)]
-  exact ShapeMap.liftComesBack hM S F e r _ hr
+  exact ShapeMap.liftComesBack hC S F e r _ hr
 
 include hM in
 /-- ⭐**The witnessed unit is sound**: at the far end of `x`'s arrow `a`, the way home `r` goes back
@@ -2750,7 +2750,7 @@ theorem sat_ret_unitWC (hS : ModalSys.BStrong = true) {x : VarSymb}
       rw [show ((env.diaPush x h a).extend (.bnd 0) e).ref (.root (.bnd 0)) hu = e from
         Env.extend_root _ (.bnd 0) e _]
       exact hr
-    exact (holeSat_ind hM θ (hM.pair (compsSlot_ind hM hu _ _ r _ hag co ho _ hr')
+    exact (holeSat_ind hM θ (hM.pair (compsSlot_ind hM.toIndCongr hu _ _ r _ hag co ho _ hr')
       (M.Ind_refl _))).mpr hθ
   · change M.compsBack A cs (interp env (Term.boxtm sb)) a.1.2.down
       (interp _ (Term.mono _ (compsVal sb cs hcs).2))
@@ -2819,7 +2819,7 @@ theorem sat_unitBodyDC_at (hS : ModalSys.BStrong = true) {C X A : VarType}
     have hr1' : M.compsBack C co (env₁.ref _ (Ctx.ref_fst_of hu)) r (interp env y).1 := by
       rw [Env.ref_fst _ hu, he1]
       exact hr1
-    have hslot := compsSlot_ind hM (Ctx.ref_fst_of hu) _ env₁ r _
+    have hslot := compsSlot_ind hM.toIndCongr (Ctx.ref_fst_of hu) _ env₁ r _
       ((Env.diaPush_boxIn env₁ hsnd bb).trans hag) co ho _ hr1'
     exact (holeSat_ind hM θ (hM.pair (hM.pair hslot hr2) (M.Ind_refl _))).mpr hθ
   · dsimp only [ComesBack, NComesBack]
@@ -2908,7 +2908,7 @@ theorem sat_ret_unitWDC (hS : ModalSys.BStrong = true) {x : VarSymb}
     have hr1' : M.compsBack C co (env₁.ref _ (Ctx.ref_fst_of hu)) r (interp env y).1 := by
       rw [Env.ref_fst _ hu, he1]
       exact hr1
-    have hslot := compsSlot_ind hM (Ctx.ref_fst_of hu) _ env₁ r _
+    have hslot := compsSlot_ind hM.toIndCongr (Ctx.ref_fst_of hu) _ env₁ r _
       ((Env.diaPush_boxIn env₁ hsnd bb).trans hag) co ho _ hr1'
     exact (holeSat_ind hM θ (hM.pair (hM.pair hslot hr2) (M.Ind_refl _))).mpr hθ
   · change M.compsBack A cs (interp env (Term.boxtm sb)) a.1.2.down

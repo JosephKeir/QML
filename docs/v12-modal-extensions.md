@@ -7983,6 +7983,108 @@ full build green).
   `holeAt_packN_unpackN`, `lalias_ind`), item 7 (`Back` at `◇`-typed contents along a witness,
   `arrowXIdx_inj`; the canonical `Ret` at the own arrow), item 8.
 
+**Item 6, membership ⇒ truth under T: the plan (2026-10-18, paper).**  No new rule.
+* *Why `RetOut` changes.*  `RetOut` hands back a `□A` object and its contents' reading only, and
+  products reach it through `packN : N → □(N.flat)`.  Under T that loses the companions: the
+  user's value carries companion values `t_q`, the packed object's contents carry them as data,
+  but the unpacked object's companions are the child's own here-items, whose returns are
+  independent (risk 1 again).  So the interface moves to companion shapes:
+  * `RetOutC`: from `◇^{boxC A cs}[d ↦ V] Φ(d)` (any valid `cs`), an arrow `s → k` and a term `g`
+    of `k`'s `□` view with `Φ(□g)` there, whose readings home **with companions**
+    (`compsVal g cs` sent home) are `Ind` to `V`.  At `cs = []` this is `RetOut`.
+  * Products by `packCC` (a sound map `N → boxC N.packTy cs_N`, keeping every companion of every
+    component, under `fst`/`snd`) and back by `fstC`/`sndC` (their soundness gives the
+    components' comebacks from the packed one's); the values compose to the identity (`getP`
+    reads, as in stage 4).
+* *The production at the limit* (`bdataS`), from `◇^{boxC A cs}[d ↦ V] Φ` at `s`:
+  1. *Name the missing companions*: `ret_compS` as an existential (`∃z. ◇^{boxC A (p :: cs)}…`,
+     by `ex_intro` at the fresh root), witnessed at the limit (`exW`), one companion at a time,
+     then `subC` to the born order `bornComps A`.
+  2. *Alias* `y` for `arr W` (the value's tuple, `arrT`), and move the value to `unarrT y` at the
+     slot formula `◇^{S_A}[u ↦ unarr(z)] Φ'` (`unarr` = `unarrT` with its root replaced by the slot):
+     `unarr(η y) = unarrT y` and `unarr(arr W) = W` (the arrangement identity).
+  3. *The child* (`lretC`): the body holds at the born root `c`, and `c`'s value with companions
+     comes home as `unarrT y` (the back arrow `c ↦ y`), so its readings are `Ind` to `W` by the
+     alias (`lalias_ind`, `ind_map` at `unarr`), and to `V` by selecting `cs` (`ind_map` at
+     `subC`'s value).
+* *Witnessed shapes and the leg along a witness* follow the same steps on the witnessed children
+  (`lretDC`, `lretXC`, `lretXDC`).
+* *Order:* (a) the arrangement identity; (b) naming companions at the limit; (c) `RetOutC` at the
+  limit, plain leg; (d) the `BData` truth lemma at every necessary shape via `packCC`/`fstC`/`sndC`;
+  (e) the witnessed and leg variants; then drop `ret_oblC_noT`, `ret_oblDC_noT`, `packN`/`unpackN`.
+
+**Built (2026-10-18): item 6 (a)–(b), and `RetOutC` with its truth lemma** (uncommitted).
+* (a) `BArr`: ⭐`unarrAt` (`unarrT` with its root replaced by a term), ⭐`unarrAt_eta`
+  (`unarr(η y) = unarrT y`), ⭐`unarrAt_arrB` (`unarr(arr W) = W`, by `compsFlat_ext` and `getP`
+  reads through `tupC`'s value at either flag, `getP_arrTB_main`/`_comp`, and `bcTree`).
+* (b) `BCompNamed`: `WFF.mono_retSlot`, `compSlot` (the slot formula `◇[d ↦ ⟨V, z⟩] Φ`),
+  ⭐`BWorld.ret_comp_named` (one companion named: `ret_compS` at a fresh root as `∃`, `ex_intro`,
+  witnessed by `exW_term`), ⭐`BWorld.ret_comps_named` (a list, the value kept in front).
+* (c), first half (`BRetOutC`): `Model.compBack_of_ind` (the converse of `ind_compRead`),
+  `BData.ind_fst`/`ind_snd`, ⭐`BData.compsBack_of_ind`, ⭐`BData.RetOutC`,
+  ⭐`BData.sat_retC_of_mem` (membership ⇒ truth at `boxC A cs` on the plain leg, given `RetOutC`).
+* **Found: duplicate companions.**  `CompOk` lets a companion list repeat a path.  At `cs = [q, q]`
+  the value carries two claimed returns `t₁`, `t₂` of the one companion, and truth needs the
+  child's one reading `Ind` to both.  The production can make the reading `Ind` to one of them
+  (`subC` and `compsIdx` read first occurrences); getting the other needs `Ind` transitivity,
+  which the canonical `Ind` is not known to have and the soundness models do not require.
+  Decision needed: forbid duplicates (`CompOk` with `Nodup`), or keep them with a new idea.
+* *Why canonical `Ind` is existential over representatives* (discussed with the user, 2026-10-18):
+  the universal form (every pair of representatives interchangeable) would be transitive, but its
+  reflexivity is "terms of one denotation are interchangeable", a consequence of the truth lemma,
+  not available inside it.  A duplicate could be met by giving the child's reading two
+  representatives (copies), as products do, but only with a positional map.
+* **Decided (user, 2026-10-18): companion lists are duplicate-free.**  `VarType.CompOk` asks
+  `cs.Nodup` (`CompOk.nodup`); a repeated companion says what a product of two equal copies says.
+  `hereChains_nodup`, `compsAllB_nodup` moved to `WFF`, `pairComps_nodup` (`BackSyntax`); the
+  rest was mechanical (destructurings gain a `Nodup` field).  Full build green.
+
+**Built (2026-10-18): item 6 (c)–(d), the plain leg for every T** (uncommitted).
+* (c) ⭐`bdataS_retOutC` (`BRetOutC`): the limit has `RetOutC`.  Name the missing companions
+  (`ret_comps_named` with `missComps`), reorder to the born order (`ret_map` along `subC`), alias
+  the value's tuple `arrB W` (`lalias`), move the value to `unarrT y` (`alias_interch` at
+  `unarr`'s slot formula, `WFF.instantiate_compSlot`, `unarrAt_eta`, `unarrAt_arrB`), take the
+  obligation's child (`lretC`).  The born root's readings home are `unarrT y` with `cs` selected
+  (`subst_arrow_compsSlot_born`), `Ind` to `V` by the alias mapped (`lalias_ind`, `ind_map`) and
+  selecting back (`holeAt_subC_sel`).  It needs `hT` only because `bdataS` does.
+* *`Ind` as a congruence, split off.*  `ShapeMap.comesBack` needed a model proper
+  (`IndInvariant`), which the canonical model has only from its truth lemma.  It uses only the
+  congruence laws, so they are now their own structure, `Model.IndCongr` (`map`, `pair`), which
+  `IndInvariant` extends; `comesBack`, its helpers (`bcTree_ind`, `compsSlot_ind`,
+  `compsBody_ind`, `tupC_back`, `padC_back`, `holeC_back`, `liftComesBack`) and `sat_ret_map`
+  take `hC : M.IndCongr`, and the canonical model has it before the truth lemma
+  (`BData.indCongr`, from `ind_map`, `ind_pair`).
+* (d) Packing with companions: `NShape.packComps`, `packOk`, `packed`; ⭐`packG : N → N.packed`
+  (`packCC` over the tree), ⭐`unpackG : N.packed → N` (`fstC`/`sndC`), the identity on objects
+  (`holeAt_packG_unpackG`, as `holeAt_packN_unpackN`) and on values
+  (`holeAt_packG_unpackG_val`, from `packCC_fstC_val`/`packCC_sndC_val` by `compsFlat_ext`);
+  `retS_packG`.  ⭐`BData.sat_retS_nec_of_memC`: membership ⇒ truth at every necessary shape on
+  the plain leg — pack, `sat_retC_of_mem`, then `sat_ret_map` along `unpackG` with `indCongr`.
+* `BTruthS` now uses `RetOutC`/`sat_retS_nec_of_memC`/`bdataS_retOutC` on the plain leg; the old
+  `RetOut`, `sat_ret_of_mem`, `bdataS_retOut`, `sat_retS_nec_of_mem` are removed.  The other legs
+  (`X`, `D`, `XD`) still go through `packN`/`ncb_unpackN` and `ret_oblC_noT`/`ret_oblDC_noT`:
+  item 6 (e) is next.
+* (e), the leg along a witness, necessary shapes: built.  The slot formula along a leg
+  (`OutLeg.retSlot`: `retSlot`/`retxSlot`, with `instantiate_retSlot`, `mono_retSlot`,
+  `instantiate_compSlot`; `WFF.mono_retxSlot`), so `compSlot`, `ret_comp_named` and
+  `ret_comps_named` take any leg.  `BData.RetOutXC`, `sat_retxC_of_mem`,
+  ⭐`sat_retxS_nec_of_memC` (pack, then `sat_ret_map` along `unpackG` on the leg) and
+  ⭐`bdataS_retOutXC` (as `bdataS_retOutC`, with `lretXC`).  `BTruthS` uses them; the old
+  `RetOutX`, `sat_retxS_nec_of_mem`, `bdataS_retOutX` are removed.
+* (e), the witnessed shapes, both legs: built (`BRetOutDC`).  Naming at a witnessed shape
+  (`compTm_wit`, `compSlotW`, `BWorld.ret_comp_namedW`, `ret_comps_namedW`, any leg); packing
+  with the possible part carried along (`holeAt_packG_unpackGW_slot`/`_val`, `retS_packGW`,
+  `liftObj_subC_wit`); `BData.RetOutDC`/`RetOutXDC`, `sat_retDC_of_mem`/`sat_retxDC_of_mem`,
+  ⭐`sat_retS_wit_of_memC`, ⭐`sat_retxS_wit_of_memC`; ⭐`bdataS_retOutDC`, ⭐`bdataS_retOutXDC`
+  (the alias of `arrB W` for the necessary part, one for the possible part's value and a unit
+  after the first, as at T off; the value moved item by item; the children `lretDC`/`lretXDC`).
+  `BTruthS` now uses the companion route on all four legs.
+* **Item 6 is done.**  The old T-off route is removed from `BRetOut` (`RetOutD`/`RetOutXD`, their
+  truth lemmas and producers, `packN`/`unpackN`/`ncb_unpackN`, `retS_packN`/`retS_packNW`,
+  `ret_alias`/`ret_aliasX`, `ret_oblC_noT`/`ret_oblDC_noT`, the `castTy` helpers, about 820 lines);
+  `BRetOut` keeps the children at the limit, `lalias`, `lalias_ind` and term helpers.  The
+  producers still take `hT` only through `bdataS` and `lalias_ind` (item 8 / step 9).
+
 **Order.**
 1. The decisions, by the user:
    * risk 1: `boxT` with its existence rule, or the content restriction;

@@ -1582,7 +1582,7 @@ theorem Term.subst_compsSlot {ι : VarSymb → VarSymb} {Δ₀ Δ₀' Δ₁ Δ�
   | [], _ => Term.subst_eta_renAt _ _ _ C _ _ _ _
       (hat [] C (fun _ hs => absurd hs List.not_mem_nil) hu₁)
   | p :: ps, h => by
-      have hp := (h.resolve_left (List.cons_ne_nil _ _)).2 p List.mem_cons_self
+      have hp := (h.resolve_left (List.cons_ne_nil _ _)).2.1 p List.mem_cons_self
       exact sig_pair (Term.subst_compsSlot hu₁ hle₁ hu₂ hle₂ θ hθ hc hat ps h.tail)
         (Term.subst_eta_renAt _ _ _ _ _ _ _ _ (hat (.here :: p) _ (by
           intro s hs

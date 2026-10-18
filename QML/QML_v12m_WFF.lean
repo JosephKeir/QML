@@ -44,9 +44,12 @@ def VarType.compAt : VarType → List Step → Option VarType
   | _, _ => none
 
 /-- A companion list for `□A` is valid: empty, or (under T) every path reaches a necessary
-    component of the value here.  With T off only the empty list is valid. -/
+    component of the value here, each named once.  With T off only the empty list is valid.
+    Naming a companion twice would claim two returns for it, which one child's reading cannot
+    meet without `Ind` composing; a product of two equal copies says the same (docs §11.21,
+    item 6). -/
 def VarType.CompOk (A : VarType) (cs : List (List Step)) : Prop :=
-  cs = [] ∨ (ModalSys.T = true ∧ ∀ p ∈ cs, (A.compAt p).isSome = true)
+  cs = [] ∨ (ModalSys.T = true ∧ (∀ p ∈ cs, (A.compAt p).isSome = true) ∧ cs.Nodup)
 
 /-- The type a `□A` object and its companions `cs` come back as: `A`, then each companion's
     contents (`A` itself when there are none). -/
@@ -80,16 +83,41 @@ theorem VarType.compAt_hereChains : ∀ (A : VarType) (p : List Step), p ∈ A.h
   | .VTypeOne, _, hp => by cases hp
   | .VTypeDia _, _, hp => by cases hp
 
+omit [ModalSys] in
+theorem hereChains_nodup : ∀ A : VarType, A.hereChains.Nodup
+  | .VTypeBox C => List.nodup_cons.mpr ⟨by simp, (hereChains_nodup C).map
+      (fun _ _ h => List.cons.inj h |>.2)⟩
+  | .VTypeProd X Y => List.Nodup.append
+      ((hereChains_nodup X).map (fun _ _ h => List.cons.inj h |>.2))
+      ((hereChains_nodup Y).map (fun _ _ h => List.cons.inj h |>.2))
+      (by simp [List.Disjoint])
+  | .Var => List.nodup_nil
+  | .VTypeOne => List.nodup_nil
+  | .VTypeDia _ => List.nodup_nil
+
 /-- All the companions for a value `b` of the T flag: none with T off.  The flag is an argument,
     as in `tupB`, so that at `false` this is `[]` definitionally. -/
 def VarType.compsAllB : Bool → VarType → List (List Step)
   | false, _ => []
   | true, A => A.hereChains
 
+omit [ModalSys] in
+theorem compsAllB_nodup (b : Bool) (A : VarType) : (A.compsAllB b).Nodup := by
+  cases b
+  · exact List.nodup_nil
+  · exact hereChains_nodup A
+
 theorem VarType.compOk_compsAllB : ∀ (b : Bool), ModalSys.T = b → (A : VarType) →
     A.CompOk (A.compsAllB b)
   | false, _, _ => Or.inl rfl
-  | true, hb, A => Or.inr ⟨hb, A.compAt_hereChains⟩
+  | true, hb, A => Or.inr ⟨hb, A.compAt_hereChains, hereChains_nodup A⟩
+
+/-- A valid companion list names each companion once. -/
+theorem VarType.CompOk.nodup {A : VarType} {cs : List (List Step)} (h : A.CompOk cs) :
+    cs.Nodup := by
+  rcases h with rfl | ⟨-, -, hnd⟩
+  · exact List.nodup_nil
+  · exact hnd
 
 /-- The box-contents type, for a given value `b` of the T flag (`VarType.bc` takes `ModalSys.T`).
     Taking the flag as an argument lets terms of this type be built by matching on it, with no

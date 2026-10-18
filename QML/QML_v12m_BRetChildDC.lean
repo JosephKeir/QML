@@ -363,7 +363,7 @@ theorem compVal_padC {Γ : Ctx} {Z : VarType} {a₀ : Ann Z} (sb : Term σ Γ.bo
     (h : (VarType.VTypeProd Z .VTypeOne).CompOk ((.fst :: q) :: ps))
     (hq : Z.CompOk (q :: ps')) :
     compVal (σ := σ) (Term.pair sb Term.unit) (.fst :: q) h = compVal sb q hq := by
-  obtain ⟨hT, hall⟩ := hq.resolve_left (List.cons_ne_nil _ _)
+  obtain ⟨hT, hall, -⟩ := hq.resolve_left (List.cons_ne_nil _ _)
   have hC : Z.compAt q = some ((Z.compAt q).getD .VTypeOne) := by
     obtain ⟨C, hC⟩ := Option.isSome_iff_exists.mp (hall q List.mem_cons_self)
     rw [hC]
@@ -432,11 +432,11 @@ theorem holeAt_padCVal_compsVal {Γ : Ctx} {Z : VarType} {a₀ : Ann Z} (sb : Te
       rcases p with _ | ⟨s, q⟩
       · cases hp
       cases hp
-      obtain ⟨hT, -⟩ := h.resolve_left (List.cons_ne_nil _ _)
+      obtain ⟨hT, -, -⟩ := h.resolve_left (List.cons_ne_nil _ _)
       have hq₁ : Z.CompOk [q] :=
         Or.inr ⟨hT, fun p' hp' => by
           rw [List.mem_singleton.mp hp']
-          exact VarType.compAt_hereChains _ q hq⟩
+          exact VarType.compAt_hereChains _ q hq, List.nodup_singleton q⟩
       exact (Term.subst_eta_tm _ _ _ _ _ _ _ (at_compsIdx_compsVal _ sb _ hZ q hq hq₁ _
         (Subst.at_single_root _ _))).trans (compVal_padC sb q h hq₁).symm
 
@@ -838,7 +838,7 @@ theorem liftBodyDR_unitBodyDC_thetaD (hS : ModalSys.BStrong = true) (l : List Va
         rw [Subst.dia_eq_box_mono (Δ₁ := (ctxOf l).boxIn.insert (.bnd 0) _) _ _ _ _ _
           (Ctx.ref_inner (Ctx.ref_fst_of hu)), Subst.box_at_inner_boxtm _ hfst]
         exact congrArg SubE.tm ((Term.mono_mono _ _ _).trans (Term.mono_eta _ _ _ _))
-      · obtain ⟨hT, hall⟩ := (bornComps_ok A).resolve_left (List.ne_nil_of_mem hp)
+      · obtain ⟨hT, hall, -⟩ := (bornComps_ok A).resolve_left (List.ne_nil_of_mem hp)
         have hC : (VarType.VTypeBox A).compAt (.here :: p) =
             some ((A.compAt p).getD .VTypeOne) := by
           obtain ⟨C, hC⟩ := Option.isSome_iff_exists.mp (hall p hp)

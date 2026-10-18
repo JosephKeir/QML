@@ -196,6 +196,18 @@ structure RetCongr : Prop where
         ((o, o') : M.frame.Dom (.VTypeProd A B) w)
 
 variable (M) in
+/-- `Ind` is a **congruence** for what strong B builds values with (§11.15): it is preserved by a
+    hole term (`map`, `back_beta`/`ret_beta`) and by pairing (`pair`, `back_pair`/`ret_ext`).  At
+    a `◇`-free type, `Ind` to a named object is equality (`Model.eq_of_ind`) and these are free;
+    at a `◇`-typed content they are what returning a value *up to `Ind`* needs.  Split off from
+    `IndInvariant` because, unlike `inv`, it doesn't mention satisfaction: the canonical model has
+    it before its truth lemma, which uses it (`ShapeMap.comesBack`). -/
+structure IndCongr : Prop where
+  map : ∀ {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
+    {w : M.frame.W} {o o' : M.frame.Dom A w}, M.Ind o o' → M.Ind (M.holeVal s o) (M.holeVal s o')
+  pair : ∀ {A B : VarType} {w : M.frame.W} {a a' : M.frame.Dom A w} {b b' : M.frame.Dom B w},
+    M.Ind a a' → M.Ind b b' → M.Ind (A := .VTypeProd A B) (w := w) (a, b) (a', b')
+
 /-- ⭐**A model proper.**  `Ind` is **indistinguishability**: related objects satisfy the same
     formulas, whatever the rest of the environment (`inv`).  This is the semantic content of
     `Proof.here_subst` — co-named objects are interchangeable — and it is a condition on models
@@ -205,21 +217,14 @@ variable (M) in
     is) and without projections declared.  That is what lets the canonical model name an
     environment at one stage, coherently (§10.38, §10.40).
 
-    And `Ind` is a **congruence** for what strong B builds values with (§11.15): it is preserved by
-    a hole term (`map`, `back_beta`/`ret_beta`) and by pairing (`pair`, `back_pair`/`ret_ext`).  At
-    a `◇`-free type, `Ind` to a named object is equality (`Model.eq_of_ind`) and these are free;
-    at a `◇`-typed content they are what returning a value *up to `Ind`* needs.
+    And `Ind` is a congruence (`IndCongr`: `map`, `pair`).
 
     Under strong B, "comes back as" (`Model.Ret`) is a congruence for the same two operations
     (`ret`: `back_beta`, `back_pair`); its invariance under `Ind` is part of `inv`. -/
-structure IndInvariant : Prop where
+structure IndInvariant : Prop extends M.IndCongr where
   inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLast → ∀ {w : M.frame.W} (env : M.Env Γ w)
     {A : VarType} (φ : WFF σ (Γ.insert (.bnd 0) A) 1) (o o' : M.frame.Dom A w),
     M.Ind o o' → (M.sat (env.extend (.bnd 0) o) φ ↔ M.sat (env.extend (.bnd 0) o') φ)
-  map : ∀ {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
-    {w : M.frame.W} {o o' : M.frame.Dom A w}, M.Ind o o' → M.Ind (M.holeVal s o) (M.holeVal s o')
-  pair : ∀ {A B : VarType} {w : M.frame.W} {a a' : M.frame.Dom A w} {b b' : M.frame.Dom B w},
-    M.Ind a a' → M.Ind b b' → M.Ind (A := .VTypeProd A B) (w := w) (a, b) (a', b')
   ret : ModalSys.BStrong = true → M.RetCongr
 
 /-- A model whose `Ind` is equality is a model proper, given that "comes back as" is a

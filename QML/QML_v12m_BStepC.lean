@@ -728,7 +728,9 @@ theorem stepQ_ok (cl : List VarType) (A : VarType) :
       left
       simp [stepQ, VarType.compsAllB, pairComps, hT]
   | true =>
-      refine Or.inr ⟨hT, fun p hp => ?_⟩
+      refine Or.inr ⟨hT, fun p hp => ?_, List.Nodup.append
+        ((compsAllB_nodup _ _).map (fun _ _ h => (List.cons.inj h).2))
+        (pairComps_nodup (compsAllB_nodup _ _) List.nodup_nil) (by simp [List.Disjoint])⟩
       rcases List.mem_append.mp hp with hp | hp
       · obtain ⟨q, hq, rfl⟩ := List.mem_map.mp hp
         rw [hT] at hq
@@ -1089,24 +1091,6 @@ theorem getP_compsBuild_idx {Γ : Ctx} (A : VarType) (main : Σ a, Term σ Γ A 
         exact getP_compsBuild_idx A main ps _ q hq'
 
 /-! ## Extensionality for values with companions -/
-
-omit [ModalSys] in
-theorem hereChains_nodup : ∀ A : VarType, A.hereChains.Nodup
-  | .VTypeBox C => List.nodup_cons.mpr ⟨by simp, (hereChains_nodup C).map
-      (fun _ _ h => List.cons.inj h |>.2)⟩
-  | .VTypeProd X Y => List.Nodup.append
-      ((hereChains_nodup X).map (fun _ _ h => List.cons.inj h |>.2))
-      ((hereChains_nodup Y).map (fun _ _ h => List.cons.inj h |>.2))
-      (by simp [List.Disjoint])
-  | .Var => List.nodup_nil
-  | .VTypeOne => List.nodup_nil
-  | .VTypeDia _ => List.nodup_nil
-
-omit [ModalSys] [ModalSys.NoFour] in
-theorem compsAllB_nodup (b : Bool) (A : VarType) : (A.compsAllB b).Nodup := by
-  cases b
-  · exact List.nodup_nil
-  · exact hereChains_nodup A
 
 omit [ModalSys.NoFour] in
 /-- ⭐**Two values with companions agree** when their own values and each companion's do. -/
@@ -1885,7 +1869,7 @@ theorem compVal_pair_fst {Γ : Ctx} {X Y : VarType} {a₀ : Ann X} {b₀ : Ann Y
     {ps ps' : List (List Step)} (h : (VarType.VTypeProd X Y).CompOk ((.fst :: q) :: ps))
     (hq : X.CompOk (q :: ps')) :
     compVal (σ := σ) (Term.pair s t) (.fst :: q) h = compVal s q hq := by
-  obtain ⟨hT, hall⟩ := hq.resolve_left (List.cons_ne_nil _ _)
+  obtain ⟨hT, hall, -⟩ := hq.resolve_left (List.cons_ne_nil _ _)
   have hC : X.compAt q = some ((X.compAt q).getD .VTypeOne) := by
     obtain ⟨C, hC⟩ := Option.isSome_iff_exists.mp (hall q List.mem_cons_self)
     rw [hC]
@@ -1944,7 +1928,7 @@ theorem compVal_pair_snd {Γ : Ctx} {X Y : VarType} {a₀ : Ann X} {b₀ : Ann Y
     {ps ps' : List (List Step)} (h : (VarType.VTypeProd X Y).CompOk ((.snd :: q) :: ps))
     (hq : Y.CompOk (q :: ps')) :
     compVal (σ := σ) (Term.pair s t) (.snd :: q) h = compVal t q hq := by
-  obtain ⟨hT, hall⟩ := hq.resolve_left (List.cons_ne_nil _ _)
+  obtain ⟨hT, hall, -⟩ := hq.resolve_left (List.cons_ne_nil _ _)
   have hC : Y.compAt q = some ((Y.compAt q).getD .VTypeOne) := by
     obtain ⟨C, hC⟩ := Option.isSome_iff_exists.mp (hall q List.mem_cons_self)
     rw [hC]

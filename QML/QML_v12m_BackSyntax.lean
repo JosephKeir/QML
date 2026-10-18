@@ -140,13 +140,14 @@ theorem Ctx.ref_compAt {Γ : Ctx} (hT : ModalSys.T = true) (p : List Step) :
 theorem VarType.CompOk.tail {A : VarType} {p : List Step} {ps : List (List Step)}
     (h : A.CompOk (p :: ps)) : A.CompOk ps :=
   Or.inr ⟨(h.resolve_left (List.cons_ne_nil _ _)).1,
-    fun q hq => (h.resolve_left (List.cons_ne_nil _ _)).2 q (List.mem_cons_of_mem _ hq)⟩
+    fun q hq => (h.resolve_left (List.cons_ne_nil _ _)).2.1 q (List.mem_cons_of_mem _ hq),
+    (List.nodup_cons.mp (h.resolve_left (List.cons_ne_nil _ _)).2.2).2⟩
 
 /-- The head companion of a valid list is a necessary object of the bound one. -/
 theorem VarType.CompOk.ref_head {Γ : Ctx} {u : VarSymb} {A : VarType} {p : List Step}
     {ps : List (List Step)} (h : A.CompOk (p :: ps)) (hu : Γ.ref u = some (.VTypeBox A)) :
     Γ.ref ((VarSymb.step u .here).ext p) = some (.VTypeBox ((A.compAt p).getD .VTypeOne)) := by
-  obtain ⟨hT, hall⟩ := h.resolve_left (List.cons_ne_nil _ _)
+  obtain ⟨hT, hall, -⟩ := h.resolve_left (List.cons_ne_nil _ _)
   obtain ⟨C, hC⟩ := Option.isSome_iff_exists.mp (hall p List.mem_cons_self)
   rw [hC]
   exact Ctx.ref_compAt hT p (Ctx.ref_here_of hT hu) hC
@@ -316,22 +317,30 @@ theorem pairComps_mem {csX csY : List (List Step)} {p : List Step}
   · obtain ⟨q, hq, rfl⟩ := List.mem_map.mp hp
     exact Or.inr ⟨rfl, hq⟩
 
+omit [ModalSys] in
+/-- A pair's companions, from duplicate-free halves, are duplicate-free. -/
+theorem pairComps_nodup {csX csY : List (List Step)} (hX : csX.Nodup) (hY : csY.Nodup) :
+    (pairComps csX csY).Nodup :=
+  List.Nodup.append (hX.map (fun _ _ h => (List.cons.inj h).2))
+    (hY.map (fun _ _ h => (List.cons.inj h).2)) (by simp [List.Disjoint])
+
 theorem VarType.compOk_pairComps {X Y : VarType} {csX csY : List (List Step)}
     (hX : X.CompOk csX) (hY : Y.CompOk csY) :
     (VarType.VTypeProd X Y).CompOk (pairComps csX csY) := by
-  rcases hX with rfl | ⟨hT, hx⟩
-  · rcases hY with rfl | ⟨hT, hy⟩
+  have hnd := pairComps_nodup hX.nodup hY.nodup
+  rcases hX with rfl | ⟨hT, hx, -⟩
+  · rcases hY with rfl | ⟨hT, hy, -⟩
     · exact Or.inl rfl
-    · refine Or.inr ⟨hT, fun p hp => ?_⟩
+    · refine Or.inr ⟨hT, fun p hp => ?_, hnd⟩
       rcases pairComps_mem hp with ⟨-, hq⟩ | ⟨e, hq⟩
       · cases hq
       · rw [e]
         exact hy _ hq
-  · refine Or.inr ⟨hT, fun p hp => ?_⟩
+  · refine Or.inr ⟨hT, fun p hp => ?_, hnd⟩
     rcases pairComps_mem hp with ⟨e, hq⟩ | ⟨e, hq⟩
     · rw [e]
       exact hx _ hq
-    · rcases hY with rfl | ⟨-, hy⟩
+    · rcases hY with rfl | ⟨-, hy, -⟩
       · cases hq
       · rw [e]
         exact hy _ hq
@@ -600,9 +609,10 @@ theorem coh_compsRen {σ : Signature} (hF : ModalSys.Four = false) (A : VarType)
 
 theorem VarType.CompOk.single {A : VarType} {cs : List (List Step)} (h : A.CompOk cs)
     {p : List Step} (hp : p ∈ cs) : A.CompOk [p] := by
-  rcases h with rfl | ⟨hT, hall⟩
+  rcases h with rfl | ⟨hT, hall, -⟩
   · exact absurd hp List.not_mem_nil
-  · exact Or.inr ⟨hT, fun p' hp' => by rw [List.mem_singleton.mp hp']; exact hall p hp⟩
+  · exact Or.inr ⟨hT, fun p' hp' => by rw [List.mem_singleton.mp hp']; exact hall p hp,
+      List.nodup_singleton p⟩
 
 /-- ⭐**`holeC`'s value**: the contents `s` of the source's contents, and each companion of
     `□s[d.inner]` as its contents (`compVal`) read off the source's value with **all** its

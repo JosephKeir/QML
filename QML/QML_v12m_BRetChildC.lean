@@ -406,7 +406,7 @@ omit [ModalSys.NoFour] in
 theorem VarType.CompOk.ref_mem {Γ : Ctx} {u : VarSymb} {A : VarType} {cs : List (List Step)}
     (h : A.CompOk cs) {q : List Step} (hq : q ∈ cs) (hu : Γ.ref u = some (.VTypeBox A)) :
     Γ.ref ((VarSymb.step u .here).ext q) = some (.VTypeBox ((A.compAt q).getD .VTypeOne)) := by
-  obtain ⟨hT, hall⟩ := h.resolve_left (List.ne_nil_of_mem hq)
+  obtain ⟨hT, hall, -⟩ := h.resolve_left (List.ne_nil_of_mem hq)
   obtain ⟨C, hC⟩ := Option.isSome_iff_exists.mp (hall q hq)
   rw [hC]
   exact Ctx.ref_compAt hT q (Ctx.ref_here_of hT hu) hC

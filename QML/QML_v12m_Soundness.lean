@@ -352,7 +352,7 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
         exact (sat_weaken env hc.root _ χ').mpr (hΔ χ' hχ')
   | @ret_map Γ _ Δ hS O S T F a y Φ p ih =>
       intro M hM w env hfin hnp hΔ
-      exact sat_ret_map env hnp hM hS O F y Φ (ih M hM env hfin hnp hΔ)
+      exact sat_ret_map env hnp hM.toIndCongr hS O F y Φ (ih M hM env hfin hnp hΔ)
   | @ret_mapD Γ _ Δ hS O C X Z cs hcs b h a y Φ p ih =>
       intro M hM w env hfin hnp hΔ
       exact sat_ret_mapD env hnp hM hS O h y Φ (ih M hM env hfin hnp hΔ)
