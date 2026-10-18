@@ -7910,12 +7910,78 @@ Items 1, 2, 5 and 7 need no new construction; 3 is the one decision; 4 and 6 fol
   reading is `compVal` read along the way home (`interp_compVal`), which is the renaming read at
   `d`'s value with companions there (⭐`agree_compsRen`, `interp_subst`), `Ind` to the source's
   value (`compsSlot_ind`) and so mapped (`hM.map`).
-* *Next, items 1 and 4, by values rather than a syntactic identity.*  `NTerms` takes the item at
+* *Found, then decided (user, 2026-10-18): generalise `ret_mapD`* to `.wit (.boxC C cs h) X →
+  .wit (.boxC C cs h) Z` (necessary part and its companions kept, the possible part's content
+  mapped; the old rule its `[]` instance).  Witnessed truth ⇒ membership under T must change the
+  possible part of an invariant binding the tuple with all its companions, and `ret_mapD` exists
+  only at `.box`; packing the companions in loses what `holeC` needs, and unpacking is unsound.
+* *Revised for items 1 and 4: a syntactic identity after all.*  The value route below needs the
+  tuple's canonical value over the whole committed list, with stage bookkeeping `lretAt` does not
+  export; the identity `holeRead (tupCompsImg) (packMapC n).val = n.subst` (the items sent home
+  with their companions) is local: two composed substitutions compared item by item, as in
+  `agree_compsRen`.
+* *(Superseded) items 1 and 4, by values rather than a syntactic identity.*  `NTerms` takes the item at
   every companion shape.  `RetIn` will conclude membership at the value `ret_map` along
   `packMap` (now `holeC` at the tuple shape) produces, with `Ind` to any value the object comes
   back as: that value denotes exactly the object's readings (the tuple's canonical comeback is an
   equality, and `holeC`'s value at the readings is the image's readings), so `compsSlot_ind`
   gives `Ind` with no transitivity of `Ind` (which the canonical `Ind` is not known to have).
+
+**Built (2026-10-18): items 1 and 4, plain leg and along a witness** (`BRetTruth`, `SemBack`;
+full build green).
+* ⭐`holeAt_tupCompsImg_holeCVal`: `holeC` at the tuple's value with companions is the items sent
+  home with theirs.  Both sides are substitutions of `compVal` over the bound object's view (the
+  renaming then the value; the tuple object then the arrow), made one-stage by
+  `Term.subst_comp_sig` with the general item index map ⭐`itemIdx`/`coh_itemIdx`, and compared item
+  by item (`sim_tm_subst_eta_comp`, `at_compsIdx_tupCompsImg`).
+* ⭐`NItems` (an item at every companion shape; `exists_obj` for every T), `packMapC`
+  (`holeC` of `packT`), `holeRead_tupCompsImg_packMapC`, `liftBody(X)_bodyRepl_packMapC`,
+  ⭐`ret_of_invB`/`retx_of_invB` on `RetInvB`/`RetInvXB`.
+* `RetIn`/`RetInX` on `NItems`; `ind_of_nComesBack` at companion shapes (the arrow image of
+  `compsVal` is the object's readings: `boxPush_canon_at`, ⭐`interp_compsVal`, `ind_compsRead`);
+  `mem_ret_of_sat_nec`/`mem_retx_of_sat` no longer use `exists_obj`'s `T = false`.
+  `bdataS_retIn(X)` (still T off) convert the T-off invariant (`retInvB_flag`, new
+  `retInvXB_flag`).  The companion-free `NTerms`/`packMap`/`ind_of_nComesBackT` remain for
+  `BRetTruthW` until the witnessed cases move.
+* `SemBack`: `compsRead`/`NRead`, `necEval_ref_compRead`, `ind_compRead`, `ind_compsRead`,
+  `ind_NRead`, `interp_compsSlot`, `interp_compsBuild_compsRead`, `holeC_compsRead`.
+* *Left in `BRetTruth`:* the own arrow (`R_of_RT_strong` in `mem_ret_of_sat_nec`,
+  `mem_retx_of_sat`; item 5).  Single companion shapes by `ret_hereC`; products need an unpacking
+  map out of the packed object with all companions (a `holeC` per component).
+* *Next:* `ret_mapD` at companion shapes (approved), the witnessed `RetInW`/`RetInWX` on it, then
+  item 5.
+
+**Built (2026-10-18): `ret_mapD` at companion shapes, the witnessed cases, and item 5.**
+* *`ret_mapD`* now maps `.wit (.boxC C cs h) X → .wit (.boxC C cs h) Z`, its value
+  `ShapeMap.possValC` (the old rule its `[]` instance definitionally); soundness by
+  `possComesBack` (the `[]` case the old argument, the rest `compsBack_main`).
+* *Witnessed truth ⇒ membership* (`BRetTruthW`): `RetInW`/`RetInWX` on `NItems`, `ret_of_invW(D)`
+  on `RetInvWB`/`RetInvWDB` (`holeAt_possValC`; T-off producers convert by `retInvWB_flag`,
+  `retInvWDB_flag`), `exists_wit` for every T.  The companion-free `NTerms`, `packMap`,
+  `ret(x)_of_inv`, `ind_of_nComesBackT` are gone.
+* *Item 5, the own arrow* (`BItems`, `BodyAbs`, `BRetTruth`, `BRetTruthW`).  Under T the canonical
+  frame's own arrow is never a network arrow (`B.irrefl`).
+  * The object's items are packed into one `□P` (`NShape.packTy`, `NItems.pack`); ⭐`unpackAt`
+    maps `□P` with **all** its companions back to the shape, `holeC` at each `□` (products by
+    `pair`): at the packed object it gives the items' object (`holeAt_unpackAt_obj`), at the
+    packed object's readings the readings of its object (`holeVal_unpackAt_compsRead`).
+  * So `ret_hereC`/`ret_hereWC` at the packed object, then `ret_map` along `unpackAt`, give a
+    value denoting **exactly** the object's readings home (`interp_compsVal`), `Ind` to the
+    true value by `ind_NRead`: no transitivity of canonical `Ind` is needed.
+  * A witnessed shape's possible part: at the identity, `ComesBack`'s witness clause *is*
+    `Here(p, t₂)`, in the theory by the induction hypothesis (`Here`'s size is below `retS`'s).
+  * Along a witness `y`: the identity lies in `y`'s extent only for a realised `y`, whose `Here`
+    atom is in the theory (`mem_here_real`; not by the induction hypothesis, since its size is
+    `y`'s type's), with a value denoting the content there (`interp_dia_self`).  `ret_hereXC`/
+    `ret_hereXWC` conclude at a view body, so ⭐`WFF.bodyAbsA` (new, `BodyAbs`) abstracts a body
+    along `◇_y` as `diaAbsA` does a formula (`y.dia ↦ d.fst`, `d ↦ d.snd`), with the round trip
+    ⭐`WFF.viewBody_bodyAbsA` and `sat_viewBody_here'` (at an explicit declaration).
+  * `mem_ret_of_sat_here`, `mem_retx_of_sat_here`, `mem_ret_of_sat_here_wit`,
+    `mem_retx_of_sat_here_wit`; the four `mem_*_of_sat*` dispatch on the arrow.  `ret`'s truth ⇒
+    membership no longer assumes T off at the `BData` level.
+* *Next:* item 6 (membership ⇒ truth under T: `BRetOut`'s producers, `ncb_unpackN`,
+  `holeAt_packN_unpackN`, `lalias_ind`), item 7 (`Back` at `◇`-typed contents along a witness,
+  `arrowXIdx_inj`; the canonical `Ret` at the own arrow), item 8.
 
 **Order.**
 1. The decisions, by the user:

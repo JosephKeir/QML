@@ -2971,14 +2971,14 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
                   (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) (OutLeg.slotsFrom hΓ O)
                   (OutLeg.slotsFrom hΓ' _) (ShapeMap.liftObj S F).2) _))))
             (Proof.subst p θ hθ hc hΓ)))
-  | _, _, _, @Proof.ret_mapD _ _ Γ _ _ hS O C X Z b h a y Φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.ret_mapD _ _ Γ _ _ hS O C X Z cs hcs b h a y Φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
-      Proof.conv ((OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O (.wit (.box C) Z) _ Φ).trans
-          (OutLeg.retS_congr hS _ (.wit (.box C) Z)
-            (Term.subst_holeRead_sig θ hθ hc y (ShapeMap.possVal h).2) rfl)).symm
+      Proof.conv ((OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O (.wit (.boxC C cs hcs) Z) _ Φ).trans
+          (OutLeg.retS_congr hS _ (.wit (.boxC C cs hcs) Z)
+            (Term.subst_holeRead_sig θ hθ hc y (ShapeMap.possValC h cs hcs).2) rfl)).symm
         (Proof.ret_mapD hS (O.subst θ hθ hc) h (Term.subst ι θ hθ hc y) _
-          (Proof.conv ((OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O (.wit (.box C) X) y _).trans
-            (OutLeg.retS_congr' hS _ (.wit (.box C) X) rfl
+          (Proof.conv ((OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O (.wit (.boxC C cs hcs) X) y _).trans
+            (OutLeg.retS_congr' hS _ (.wit (.boxC C cs hcs) X) rfl
               ((WFF.subst_bodyRepl (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)
                   _ Φ).trans
                 (WFF.bodyRepl_congr (Term.subst_under_closed (O.viewSubst θ hθ hc)

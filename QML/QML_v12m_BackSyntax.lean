@@ -496,6 +496,20 @@ theorem Ctx.ref_insert_box {A : VarType} {u : VarSymb} {T : VarType}
         cases hw
 
 omit [ModalSys] in
+omit [ModalSys] in
+theorem VarSymb.ext_append_single : ∀ (v : VarSymb) (p : List Step) (s : Step),
+    v.ext (p ++ [s]) = .step (v.ext p) s
+  | _, [], _ => rfl
+  | v, t :: p, s => VarSymb.ext_append_single (.step v t) p s
+
+omit [ModalSys] in
+/-- An address is its root along its path. -/
+theorem VarSymb.root_ext_path : ∀ (u : VarSymb), (VarSymb.root u.rt).ext u.path = u
+  | .root _ => rfl
+  | .step u s => by
+      change (VarSymb.root u.rt).ext (u.path ++ [s]) = _
+      rw [VarSymb.ext_append_single, VarSymb.root_ext_path u]
+
 /-- A path cut at its first `box`. -/
 def cutBox : List Step → Option (List Step × List Step)
   | [] => none
@@ -815,6 +829,24 @@ def ShapeMap.possVal {σ : Signature} {C X Z : VarType} {b : Ann Z}
       (RShape.wit (.box C) Z).flat a :=
   ⟨_, Term.pair
     (Term.eta (.step (.root (.bnd 0)) .fst) C (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))) h⟩
+
+/-- β on the possible part, on the value, at a necessary part with companions (docs §11.21,
+    step 8): the necessary part's value with companions kept, the content's mapped by `h` of its
+    contents and the content; `possVal` itself when there are none. -/
+def ShapeMap.possValC {σ : Signature} {C X Z : VarType} {b : Ann Z}
+    (h : Term σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) Z b) :
+    (cs : List (List Step)) → (hcs : C.CompOk cs) →
+    Σ a, Term σ (Ctx.empty.insert (.bnd 0) (RShape.wit (.boxC C cs hcs) X).flat)
+      (RShape.wit (.boxC C cs hcs) Z).flat a
+  | [], _ => ShapeMap.possVal h
+  | p :: ps, _ => ⟨_, Term.pair
+      (Term.eta (.step (.root (.bnd 0)) .fst) (C.compsFlat (p :: ps))
+        (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _)))
+      (Term.holeAt (Term.pair
+          (Term.eta ((VarSymb.step (.root (.bnd 0)) .fst).ext (compsFst (p :: ps))) C
+            (Ctx.ref_compsFst _ (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))))
+          (Term.eta (.step (.root (.bnd 0)) .snd) X (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _))))
+        h)⟩
 
 /-! ## A companion -/
 

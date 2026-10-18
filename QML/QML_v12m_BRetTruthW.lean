@@ -307,21 +307,44 @@ theorem holeAt_possVal {Γ : Ctx} {C X Z : VarType} {b : Ann Z}
     Σ e, Term σ Γ (RShape.wit (.box C) Z).flat e) = _
   exact sig_pair (Term.holeAt_pair_fst p q) rfl
 
+omit [ModalSys.NoFour] in
+/-- β on the possible part with companions, on a pair of values: the necessary part's value
+    kept, the content's mapped at its contents (read along the first components) and the
+    content. -/
+theorem holeAt_possValC {Γ : Ctx} {C X Z : VarType} {b : Ann Z}
+    (h : Term σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) Z b) :
+    ∀ (cs : List (List Step)) (hcs : C.CompOk cs) {c : Ann (C.compsFlat cs)}
+      (p : Term σ Γ (C.compsFlat cs) c) {d : Ann X} (q : Term σ Γ X d),
+      (⟨_, Term.holeAt (Term.pair p q) (ShapeMap.possValC h cs hcs).2⟩ :
+        Σ e, Term σ Γ (RShape.wit (.boxC C cs hcs) Z).flat e) =
+        ⟨_, Term.pair p (Term.holeAt (Term.pair (Term.holeAt (Term.pair p q)
+          (Term.eta ((VarSymb.step (.root (.bnd 0)) .fst).ext (compsFst cs)) C
+            (Ctx.ref_compsFst cs (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))))) q) h)⟩
+  | [], _, _, p, _, q => (holeAt_possVal h p q).trans
+      (sig_pair rfl (Term.holeAt_congr_sig (sig_pair (Term.holeAt_pair_fst p q).symm rfl) h))
+  | _ :: _, _, _, p, _, q => by
+      change (⟨_, Term.pair (Term.holeAt (Term.pair p q) (Term.eta _ _ _))
+        (Term.holeAt (Term.pair p q) (Term.holeAt (Term.pair (Term.eta _ _ _)
+          (Term.eta _ _ _)) h))⟩ : Σ e, Term σ Γ _ e) = _
+      exact sig_pair (Term.holeAt_pair_fst p q) ((Term.holeAt_holeAt_sig _ _ _).trans
+        (Term.holeAt_congr_sig (sig_pair rfl (Term.holeAt_pair_snd p q)) h))
+
 /-- ⭐⭐**A witnessed returning possibility from its far end, at a node**: along a witness arrow
     `k → s` made for `x`, with its forward invariant, `Φ(⟨N, diatm x u⟩)` at `k` (read along the
     reverse arrow), for the object `N` some items make and any term `u` of `x`'s view, is
     `◇[d ↦ the items sent home; e ⇝ u sent home] Φ(d, e)` at `s`.  The invariant at the body
     pulled back along both maps; then β on the possible part at `u` packed (`ret_mapD`,
     `packXT`), and `ret_map` along the packing map. -/
-theorem ret_of_invW {hS : ModalSys.BStrong = true} {tk ts : NodeSt σ} (hsM : Theory.IsMCS ts.M)
+theorem ret_of_invW {bb : Bool} {hbb : ModalSys.T = bb}
+    {hS : ModalSys.BStrong = true} {tk ts : NodeSt σ} (hsM : Theory.IsMCS ts.M)
     {cls clt : List VarType} {imgs imgt : ℕ → ℕ} {x : VarSymb} {X : VarType} {cx : ℕ}
-    (h : RetInvW hS tk ts cls imgs clt imgt x X cx) {N : NShape}
-    (n : NTerms σ (ctxOf cls).boxIn N) {Z : VarType} {c : Ann Z}
+    (h : RetInvWB hS bb hbb tk ts cls imgs clt imgt x X cx) {N : NShape}
+    (n : NItems σ (ctxOf cls).boxIn N) {Z : VarType} {c : Ann Z}
     (u : Term σ ((ctxOf cls).diaIn x) Z c)
     (Φ : WFF σ ((ctxOf clt).boxIn.insert (.bnd 0) (RShape.wit N Z).ty) 1)
     (hmem : ∃ (hs : cls <:+ tk.l) (himgt : ImgOk clt (ctxOf tk.l) imgt)
       (hx : (ctxOf cls).ref x = some (.VTypeDia X)),
-      readArrow himgt (Term.pair (n.mono (ctxOf_le_of_suffix hs).boxIn).obj.2
+      readArrow himgt (Term.pair (n.mono (ctxOf_le_of_suffix hs)).obj.2
         (Term.diatm x ⟨X, (ctxOf_le_of_suffix hs).ref hx⟩
           (Term.mono ((ctxOf_le_of_suffix hs).diaIn x) u))) Φ ∈ tk.M) :
     ∃ (himgs : ImgOk cls (ctxOf ts.l) imgs) (ht : clt <:+ ts.l)
@@ -337,8 +360,8 @@ theorem ret_of_invW {hS : ModalSys.BStrong = true} {tk ts : NodeSt σ} (hsM : Th
   obtain ⟨hs', himgt', hx', hm⟩ := hmem
   refine ⟨himgs, ht, hx, hcx, ?_⟩
   have hle := ctxOf_le_of_suffix hs
-  set F := packMap cls n
-  set S₀ : RShape := .wit (.box (bcT cls)) Z
+  set F := packMapC bb hbb cls n
+  set S₀ : RShape := .wit (tupShape bb hbb cls) Z
   set hU := packXT cls hx u
   have hr := hinv (WFF.bodyRepl
     (Term.mono ((Ctx.empty_le _).insert (.bnd 0) _) (ShapeMap.possObj hU).2)
@@ -350,7 +373,7 @@ theorem ret_of_invW {hS : ModalSys.BStrong = true} {tk ts : NodeSt σ} (hsM : Th
       refine (congrArg (· ∈ tk.M) (readArrow_sig himgt ?_ Φ)).mpr hm
       refine (Term.holeAt_congr_sig (holeAt_possObj hU _ (hle.ref hx)) _).trans
         ((holeAt_liftObj_wit F _ _).trans (sig_pair ?_ (sig_diatm ?_)))
-      · exact subst_packMap_obj _ _ _ hle.boxIn (by
+      · exact subst_packMapC_obj _ _ _ hle (by
           change Subst.single _ _ (.root (.bnd 0)) = _
           exact if_pos rfl) n
       · refine (Term.holeAt_congr_sig (sig_pair (by rw [Term.mono_mono]) rfl) hU).trans ?_
@@ -362,11 +385,15 @@ theorem ret_of_invW {hS : ModalSys.BStrong = true} {tk ts : NodeSt σ} (hsM : Th
       (Proof.ret_mapD hS .nec hU _ _ (Proof.lookup List.mem_cons_self))⟩⟩
   refine (congrArg (· ∈ ts.M) (OutLeg.retS_congr hS .nec (.wit N Z) ?_ rfl)).mp hc
   rw [Term.holeRead_eq_holeAt, Term.holeRead_eq_holeAt]
-  refine (Term.holeAt_congr_sig (holeAt_possVal hU _ _) _).trans
+  refine (Term.holeAt_congr_sig (holeAt_possValC hU _ _ _ _) _).trans
     ((holeAt_liftVal_wit F _ _).trans (sig_pair ?_ ?_))
   · rw [← Term.holeRead_eq_holeAt]
-    exact holeRead_tupImgT_packMap himgs n
-  · rw [← Term.holeRead_eq_holeAt]
+    exact holeRead_tupCompsImg_packMapC himgs bb hbb n
+  · refine (Term.holeAt_congr_sig (sig_pair (Term.subst_eta_tm _ _ _ _ _ _ _
+      (at_compsFst_tupCompsImg cls imgs himgs _ _ _ _ (by
+        rw [Subst.at_proj _ _ rfl, Subst.at_nonproj _ rfl, Subst.single_root]; rfl))) rfl) hU).trans
+      ?_
+    rw [← Term.holeRead_eq_holeAt]
     exact holeRead_tupImgT_packXT himgs hx hcx u
 
 /-- A body with its slot replaced by a hole term, read along a witness arrow with the slot
@@ -408,17 +435,18 @@ theorem readArrowX_bodyRepl {l : List VarType} {Δ : Ctx} [Δ.NoSlots] {img : �
 /-- ⭐⭐**A doubly witnessed returning possibility from its far end, at a node**: as `ret_of_invW`,
     with the source's way out along the target's witness `e` (`RetInvWD`, read along the witness
     arrow, `readArrowX_bodyRepl`). -/
-theorem ret_of_invWD {hS : ModalSys.BStrong = true} {tk ts : NodeSt σ} (hsM : Theory.IsMCS ts.M)
+theorem ret_of_invWD {bb : Bool} {hbb : ModalSys.T = bb}
+    {hS : ModalSys.BStrong = true} {tk ts : NodeSt σ} (hsM : Theory.IsMCS ts.M)
     {cls clt : List VarType} {imgs imgt : ℕ → ℕ} {x : VarSymb} {X : VarType} {cxw : ℕ}
     {e : VarSymb} {E : VarType} {cxv : ℕ}
-    (h : RetInvWD hS tk ts cls imgs clt imgt x X cxw e E cxv) {N : NShape}
-    (n : NTerms σ (ctxOf cls).boxIn N) {Z : VarType} {c : Ann Z}
+    (h : RetInvWDB hS bb hbb tk ts cls imgs clt imgt x X cxw e E cxv) {N : NShape}
+    (n : NItems σ (ctxOf cls).boxIn N) {Z : VarType} {c : Ann Z}
     (u : Term σ ((ctxOf cls).diaIn x) Z c)
     (Φ : WFF σ (((ctxOf clt).diaIn e).insert (.bnd 0) (RShape.wit N Z).ty) 1)
     (hmem : ∃ (hs : cls <:+ tk.l) (himgt : ImgOk clt (ctxOf tk.l) imgt)
       (hx : (ctxOf cls).ref x = some (.VTypeDia X)) (he : (ctxOf clt).ref e = some (.VTypeDia E))
       (hcxv : (ctxOf tk.l).ref (.root (.free cxv)) = some E),
-      readArrowX himgt he hcxv (Term.pair (n.mono (ctxOf_le_of_suffix hs).boxIn).obj.2
+      readArrowX himgt he hcxv (Term.pair (n.mono (ctxOf_le_of_suffix hs)).obj.2
         (Term.diatm x ⟨X, (ctxOf_le_of_suffix hs).ref hx⟩
           (Term.mono ((ctxOf_le_of_suffix hs).diaIn x) u))) Φ ∈ tk.M) :
     ∃ (himgs : ImgOk cls (ctxOf ts.l) imgs) (ht : clt <:+ ts.l)
@@ -435,8 +463,8 @@ theorem ret_of_invWD {hS : ModalSys.BStrong = true} {tk ts : NodeSt σ} (hsM : T
   obtain ⟨hs', himgt', hx', he'', hcxv', hm⟩ := hmem
   refine ⟨himgs, ht, hx, hcxw, (ctxOf_le_of_suffix ht).ref he, ?_⟩
   have hle := ctxOf_le_of_suffix hs
-  set F := packMap cls n
-  set S₀ : RShape := .wit (.box (bcT cls)) Z
+  set F := packMapC bb hbb cls n
+  set S₀ : RShape := .wit (tupShape bb hbb cls) Z
   set hU := packXT cls hx u
   have hr := hinv (WFF.bodyRepl
     (Term.mono ((Ctx.empty_le _).insert (.bnd 0) _) (ShapeMap.possObj hU).2)
@@ -448,7 +476,7 @@ theorem ret_of_invWD {hS : ModalSys.BStrong = true} {tk ts : NodeSt σ} (hsM : T
       refine (congrArg (· ∈ tk.M) (readArrowX_sig himgt he hcxv ?_ Φ)).mpr hm
       refine (Term.holeAt_congr_sig (holeAt_possObj hU _ (hle.ref hx)) _).trans
         ((holeAt_liftObj_wit F _ _).trans (sig_pair ?_ (sig_diatm ?_)))
-      · exact subst_packMap_obj _ _ _ hle.boxIn (by
+      · exact subst_packMapC_obj _ _ _ hle (by
           change Subst.single _ _ (.root (.bnd 0)) = _
           exact if_pos rfl) n
       · refine (Term.holeAt_congr_sig (sig_pair (by rw [Term.mono_mono]) rfl) hU).trans ?_
@@ -461,11 +489,15 @@ theorem ret_of_invWD {hS : ModalSys.BStrong = true} {tk ts : NodeSt σ} (hsM : T
         (Proof.lookup List.mem_cons_self))⟩⟩
   refine (congrArg (· ∈ ts.M) (OutLeg.retS_congr hS _ (.wit N Z) ?_ rfl)).mp hc
   rw [Term.holeRead_eq_holeAt, Term.holeRead_eq_holeAt]
-  refine (Term.holeAt_congr_sig (holeAt_possVal hU _ _) _).trans
+  refine (Term.holeAt_congr_sig (holeAt_possValC hU _ _ _ _) _).trans
     ((holeAt_liftVal_wit F _ _).trans (sig_pair ?_ ?_))
   · rw [← Term.holeRead_eq_holeAt]
-    exact holeRead_tupImgT_packMap himgs n
-  · rw [← Term.holeRead_eq_holeAt]
+    exact holeRead_tupCompsImg_packMapC himgs bb hbb n
+  · refine (Term.holeAt_congr_sig (sig_pair (Term.subst_eta_tm _ _ _ _ _ _ _
+      (at_compsFst_tupCompsImg cls imgs himgs _ _ _ _ (by
+        rw [Subst.at_proj _ _ rfl, Subst.at_nonproj _ rfl, Subst.single_root]; rfl))) rfl) hU).trans
+      ?_
+    rw [← Term.holeRead_eq_holeAt]
     exact holeRead_tupImgT_packXT himgs hx hcxw u
 
 /-! ## The invariant at the limit -/
@@ -518,7 +550,7 @@ def RetInW (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
   ∀ {s k : B.W} (h : B.R s k) {x : VarSymb} {X : VarType} (hk : B.kd k s = some (x, X)) {i : ℕ}
     {N : NShape} {Z : VarType} (Φ : WFF σ (((B.w s).ctx i).boxIn.insert (.bnd 0)
       (RShape.wit N Z).ty) 1) {j : ℕ} (hj : B.stg s k i ≤ j)
-    (hx : ((B.w k).ctx j).ref x = some (.VTypeDia X)) (n : NTerms σ ((B.w k).ctx j).boxIn N)
+    (hx : ((B.w k).ctx j).ref x = some (.VTypeDia X)) (n : NItems σ ((B.w k).ctx j).boxIn N)
     {c : Ann Z} (u : Term σ (((B.w k).ctx j).diaIn x) Z c),
     readArrow ((B.imgOk h i).mono ((B.w k).le hj)) (Term.pair n.obj.2 (Term.diatm x ⟨X, hx⟩ u))
       Φ ∈ (B.w k).M j →
@@ -539,7 +571,7 @@ def RetInWX (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
     (hy : ((B.w s).ctx i).ref y = some (.VTypeDia Y)) {N : NShape} {Z : VarType}
     (Φ : WFF σ ((((B.w s).ctx i).diaIn y).insert (.bnd 0) (RShape.wit N Z).ty) 1) {j : ℕ}
     (hj : B.stg s k i ≤ j) (hx : ((B.w k).ctx j).ref x = some (.VTypeDia X))
-    (n : NTerms σ ((B.w k).ctx j).boxIn N) {c : Ann Z} (u : Term σ (((B.w k).ctx j).diaIn x) Z c),
+    (n : NItems σ ((B.w k).ctx j).boxIn N) {c : Ann Z} (u : Term σ (((B.w k).ctx j).diaIn x) Z c),
     readArrowX ((B.imgOk (B.kdR hky) i).mono ((B.w k).le hj)) hy
         (((B.w k).le hj).ref (B.hcx hky i)) (Term.pair n.obj.2 (Term.diatm x ⟨X, hx⟩ u)) Φ ∈
       (B.w k).M j →
@@ -577,23 +609,23 @@ theorem bdataS_retInW (hT : ModalSys.T = false) : (bdataS C hT).RetInW hS := by
   have hsM := (C.good _).mcs s.1 hsl
   have hk' : lkd C.toFairChain k s = some (x, X) := hk
   rw [hk'] at hret
-  have hinv := RetAt.toRetInvW hsM hret
+  have hinv := (retInvWB_flag hT).mpr ((retInvWB_false hT).mpr (RetAt.toRetInvW hsM hret))
   obtain ⟨hcs, -, ht, himgt, -⟩ := id hinv
   have hg := grow_stage C.toFairChain k j (m := birth C.toFairChain s.2 +
     lstg C.toFairChain k s j) hkp
   have hm' := hg.sub _ hm
   rw [readArrow_mono_congr his _ _ himgt (fun r hr => (hiag r hr).symm)] at hm'
   obtain ⟨himgs, ht', hx', hcx, hr⟩ := ret_of_invW hsM hinv
-    (n.mono (ctxOf_le_of_suffix hJs).boxIn) (Term.mono ((ctxOf_le_of_suffix hJs).diaIn x) u) _
+    (n.mono (ctxOf_le_of_suffix hJs)) (Term.mono ((ctxOf_le_of_suffix hJs).diaIn x) u) _
     ⟨hcs, himgt, (ctxOf_le_of_suffix hJs).ref hx, by
       refine (congrArg (· ∈ _) (readArrow_sig _ ?_ _)).mp hm'
       refine sig_pair ?_ (sig_diatm ?_)
-      · rw [NTerms.mono_mono, NTerms.obj_mono]
+      · rw [NItems.mono_mono, NItems.obj_mono]
       · rw [Term.mono_mono]⟩
   refine ⟨hiK, (congrArg (· ∈ _) (OutLeg.retS_congr hS .nec (.wit N Z) ?_ ?_)).mp hr⟩
   · refine sig_pair ?_ ?_
-    · rw [NTerms.subst_mono]
-      exact NTerms.subst_congr _ _ _ _ _ _ (sim_arrowS hJag) _
+    · rw [NItems.subst_mono]
+      exact NItems.subst_congr _ _ _ _ _ _ (sim_arrowS hJag) _
     · rw [Term.subst_mono]
       exact Term.subst_congr _ _ _ _ _ _ (sim_arrowXS hJag) _
   · rw [WFF.mono_mono]
@@ -616,23 +648,24 @@ theorem bdataS_retInWX (hT : ModalSys.T = false) : (bdataS C hT).RetInWX hS := b
   have hky' : lkd C.toFairChain s k = some (y, Y) := hky
   have hkx' : lkd C.toFairChain k s = some (x, X) := hkx
   rw [hky', hkx'] at hret
-  have hinv : RetInvWD hS _ _ cls imgs clt imgt x X _ y Y _ := hret
+  have hinv₀ : RetInvWD hS _ _ cls imgs clt imgt x X _ y Y _ := hret
+  have hinv := (retInvWDB_flag hT).mpr ((retInvWDB_false hT).mpr hinv₀)
   obtain ⟨hcs, -, ht, himgt, -, -, hyc, hcyc, -⟩ := id hinv
   have hg := grow_stage C.toFairChain k j (m := birth C.toFairChain s.2 +
     lstg C.toFairChain k s j) hkp
   have hm' := hg.sub _ hm
   rw [readArrowX_mono_congr his _ _ himgt (fun r hr => (hiag r hr).symm) _ hyc _ hcyc] at hm'
   obtain ⟨himgs, ht', hx', hcx, hy', hr⟩ := ret_of_invWD hsM hinv
-    (n.mono (ctxOf_le_of_suffix hJs).boxIn) (Term.mono ((ctxOf_le_of_suffix hJs).diaIn x) u) _
+    (n.mono (ctxOf_le_of_suffix hJs)) (Term.mono ((ctxOf_le_of_suffix hJs).diaIn x) u) _
     ⟨hcs, himgt, (ctxOf_le_of_suffix hJs).ref hx, hyc, hcyc, by
       refine (congrArg (· ∈ _) (readArrowX_sig _ _ _ ?_ _)).mp hm'
       refine sig_pair ?_ (sig_diatm ?_)
-      · rw [NTerms.mono_mono, NTerms.obj_mono]
+      · rw [NItems.mono_mono, NItems.obj_mono]
       · rw [Term.mono_mono]⟩
   refine ⟨hiK, (congrArg (· ∈ _) (OutLeg.retS_congr hS _ (.wit N Z) ?_ ?_)).mp hr⟩
   · refine sig_pair ?_ ?_
-    · rw [NTerms.subst_mono]
-      exact NTerms.subst_congr _ _ _ _ _ _ (sim_arrowS hJag) _
+    · rw [NItems.subst_mono]
+      exact NItems.subst_congr _ _ _ _ _ _ (sim_arrowS hJag) _
     · rw [Term.subst_mono]
       exact Term.subst_congr _ _ _ _ _ _ (sim_arrowXS hJag) _
   · rw [WFF.mono_mono]
@@ -642,29 +675,166 @@ end Limit
 omit [ModalSys.NoFour] in
 /-- ⭐Every term of a witnessed shape's type is a pair of some items' object and a possible term:
     `⟨N, diatm x u⟩`. -/
-theorem exists_wit {Γ : Ctx} (hT : ModalSys.T = false) (N : NShape) (Z : VarType)
+theorem exists_wit {Γ : Ctx} (N : NShape) (Z : VarType)
     {c : Ann (RShape.wit N Z).ty}
     (g : Term σ Γ (RShape.wit N Z).ty c) :
-    ∃ (n : NTerms σ Γ.boxIn N) (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    ∃ (n : NItems σ Γ.boxIn N) (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
       (c' : Ann Z) (u : Term σ (Γ.diaIn x) Z c'),
       (⟨c, g⟩ : Σ e, Term σ Γ (RShape.wit N Z).ty e) =
         ⟨_, Term.pair n.obj.2 (Term.diatm x hx u)⟩ := by
   match g with
   | .pair g₁ (.diatm x hx u) =>
-      obtain ⟨n, hn⟩ := NTerms.exists_obj hT N g₁
+      obtain ⟨n, hn⟩ := NItems.exists_obj N g₁
       exact ⟨n, x, hx, _, u, sig_pair hn.symm rfl⟩
 
 namespace BData
 
 variable {B : BData σ}
 
-/-- ⭐⭐**`ret` at a witnessed shape, truth ⇒ membership** (plain leg; strong B, T off).  A true
-    `◇[⟨d, e⟩ ↦ t] Φ(d, e)` has an arrow `s → k` and an object there, `⟨N, diatm x u⟩` for some
-    items and a term `u` of `x`'s view (`exists_wit`), with `Φ`.  The way home lies in `x`'s
-    extent, so it is a witness edge of `k` made for `x` (`canonEnv_extent`, `dia_beta`); the body
-    at `k` is in the theory by the induction hypothesis; the way home gives the atom valued at the
-    items and `u` sent home (`RetInW`); and those are `Ind` to `t` (`ind_of_nComesBack`,
-    `diaPush_canon_at`, `ind_pair`), so the value moves to `t` (`mem_ret_of_ind`). -/
+/-- ⭐⭐**`ret` at a witnessed shape at the own arrow, truth ⇒ membership** (T; plain leg).  The
+    object here is a pair of some items' object and a possible object `p`, both definable; the way
+    home being the identity, `ComesBack`'s witness clause is `Here(p, t₂)` (`Model.Realised`), in
+    the theory by the induction hypothesis.  As `mem_ret_of_sat_here`, through the packed
+    object, now by `ret_hereWC` and `ret_map` along the unpacking map with the possible part
+    carried (`holeAt_liftObj_wit`, `holeAt_liftVal_wit`). -/
+theorem mem_ret_of_sat_here_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
+    (hT : ModalSys.T = true) {s : B.W} {i : ℕ} {N : NShape} {Z : VarType}
+    {a : Ann (RShape.wit N Z).flat} (t : Term σ ((B.w s).ctx i) (RShape.wit N Z).flat a)
+    (Φ : WFF σ (((B.w s).ctx i).boxIn.insert (.bnd 0) (RShape.wit N Z).ty) 1)
+    (IH : ∀ (s' : B.W) (K : ℕ) (φ : WFF σ ((B.w s').ctx K) 0),
+      φ.size < (WFF.retS hS (.wit N Z) t Φ : WFF σ _ 0).size →
+        (B.model.sat (B.canonEnv s' K) φ ↔ φ ∈ (B.w s').M K))
+    (e : B.frame.Dom (RShape.wit N Z).ty s)
+    (hΦ : B.model.sat (((B.canonEnv s i).boxPush (B.model.frame.reflAcc hT s)).extend (.bnd 0) e)
+      Φ)
+    (hcb : B.model.ComesBack (.wit N Z) e (B.model.frame.refl hT s)
+      (Model.interp (B.canonEnv s i) t)) :
+    (WFF.retS hS (.wit N Z) t Φ : WFF σ _ 0) ∈ (B.w s).M i := by
+  have hsz : (WFF.retS hS (.wit N Z) t Φ : WFF σ _ 0).size =
+      Φ.size + (RShape.wit N Z).flat.eqRecSize + 1 := rfl
+  obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom (RShape.wit N Z).ty s e
+  obtain ⟨_, g₁, _, g₂, hgp⟩ := getP_prod_some g
+  obtain ⟨n, hn⟩ := NItems.exists_obj N g₁
+  obtain ⟨_, t₁, _, t₂, ht⟩ := getP_prod_some t
+  set J := max j₀ i
+  have hj₀ : j₀ ≤ J := le_max_left _ _
+  have hiJ : i ≤ J := le_max_right _ _
+  set n' := n.mono ((B.w s).le hj₀)
+  set p := (B.w s).liftT hj₀ g₂
+  set u := Term.mono ((B.w s).le hiJ) t₂
+  have hE : Model.interp (B.canonEnv s J)
+      (Term.pair ((B.w s).liftT hj₀ g₁) ((B.w s).liftT hj₀ g₂)) = e := by
+    rw [← interp_lift hg hj₀]
+    exact congrArg (fun x => Model.interp (B.canonEnv s J) ((B.w s).liftT hj₀ x.2)) hgp.symm
+  have he₁ : Model.interp (B.canonEnv s J) n'.obj.2 = e.1 := by
+    have hn' : n'.obj = ⟨_, (B.w s).liftT hj₀ g₁⟩ := by
+      rw [NItems.obj_mono, hn]
+      rfl
+    have hE₁ : Model.interp (B.canonEnv s J) ((B.w s).liftT hj₀ g₁) = e.1 := congrArg Prod.fst hE
+    exact (congrArg (fun x : Σ c, Term σ ((B.w s).ctx J) N.ty c =>
+      Model.interp (B.canonEnv s J) x.2) hn').trans hE₁
+  have he₂ : Model.interp (B.canonEnv s J) p = e.2 := congrArg Prod.snd hE
+  have hu : Model.interp (B.canonEnv s J) u = (Model.interp (B.canonEnv s i) t).2 :=
+    (Model.interp_mono (canonEnv_le s hiJ) t₂).trans
+      (congrArg (fun x : Σ c, Term σ ((B.w s).ctx i) (RShape.wit N Z).flat c =>
+        (Model.interp (B.canonEnv s i) x.2).2) ht).symm
+  -- the witness is realised here
+  have hhere : WFF.here hT p u ∈ (B.w s).M J := by
+    refine (IH s J _ (by
+      rw [hsz]
+      change Z.eqRecSize + 1 < Φ.size + (N.flat.eqRecSize + Z.eqRecSize + 1) + 1
+      omega)).mp ?_
+    change Model.Realised hT (Model.interp _ p) (Model.interp _ u)
+    rw [he₂, hu]
+    exact hcb.2
+  -- the packed object, and the unpacking map
+  set sb := n'.pack.2
+  set F := unpackAt (σ := σ) hT N
+    (Term.eta (.root (.bnd 0)) N.packTy (Ctx.ref_insert_root _ _ _))
+  have hobj : (⟨_, Term.holeAt (Term.boxtm sb) F.obj.2⟩ : Σ c, Term σ ((B.w s).ctx J) N.ty c) =
+      n'.obj :=
+    holeAt_unpackAt_obj hT sb N _ n' (Term.holeAt_eta_root sb)
+  have hFe₁ : B.model.holeVal F.obj.2 (Model.interp (B.canonEnv s J) (Term.boxtm sb)) = e.1 := by
+    rw [← Model.interp_holeAt]
+    exact (congrArg (fun x => Model.interp (B.canonEnv s J) x.2) hobj).trans he₁
+  set S₀ : RShape := .wit (.boxC N.packTy _ (VarType.compOk_compsAllB true hT N.packTy)) Z
+  have hFe : B.model.holeVal (ShapeMap.liftObj S₀ F).2
+      (Model.interp (B.canonEnv s J) (Term.pair (Term.boxtm sb) p)) = e := by
+    have h1 : Model.interp (B.canonEnv s J) (Term.holeAt (Term.boxtm sb) F.obj.2) = e.1 := by
+      rw [Model.interp_holeAt]; exact hFe₁
+    rw [← Model.interp_holeAt]
+    refine (congrArg (fun x => Model.interp (B.canonEnv s J) x.2)
+      (holeAt_liftObj_wit F (Term.boxtm sb) p)).trans ?_
+    exact Prod.ext h1 he₂
+  -- the body at the packed object
+  set Φ' := WFF.mono (((B.w s).le hiJ).boxIn.insert (.bnd 0) _) Φ with hΦ'
+  set Ψ := WFF.bodyRepl (Term.mono ((Ctx.empty_le _).insert (.bnd 0) _)
+    (ShapeMap.liftObj S₀ F).2) Φ' with hΨ
+  have hsat : B.model.sat (B.canonEnv s J)
+      (WFF.hereRead hT (Term.pair (Term.boxtm sb) p) Ψ) := by
+    rw [Model.sat_hereRead hT (B.noProjLast s J)]
+    refine (Model.sat_bodyRepl (Ctx.noProjLast_boxIn _) _ _ Φ' _).mpr ?_
+    rw [Model.interp_mono (Model.Env.extend_agree (h := Ctx.empty_le _)
+      (env := Model.Env.empty _) (fun _ _ h => nomatch h) (.bnd 0) _)]
+    have hFe' : Model.interp ((Model.Env.empty (M := B.model) s).extend (.bnd 0)
+        (Model.interp (B.canonEnv s J) (Term.pair (Term.boxtm sb) p)))
+        (ShapeMap.liftObj S₀ F).2 = e := hFe
+    rw [hFe']
+    exact (Model.sat_mono (Model.Env.extend_agree
+      (Model.Env.boxPush_agree (canonEnv_le s hiJ) (B.model.frame.reflAcc hT s)) (.bnd 0) e)
+      Φ).mpr hΦ
+  have hmb := (IH s J _ (by
+    rw [WFF.size_hereRead, hsz, hΨ, hΦ']
+    unfold WFF.bodyRepl
+    rw [WFF.size_subst, WFF.size_mono]
+    omega)).mp hsat
+  -- the own arrow's rule at the packed object, then the unpacking map
+  set V := Term.collapse (Ctx.collapses_boxIn_self hT ((B.w s).ctx J))
+    (compsVal sb (N.packTy.compsAllB true) (VarType.compOk_compsAllB true hT _)).2
+  have hmem : WFF.retS hS (.wit N Z) (Term.holeRead (Term.pair V u)
+      (ShapeMap.liftVal S₀ F).2) Φ' ∈ (B.w s).M J :=
+    BWorld.mem_of_provable (Δ := [_, _]) (fun ψ hψ => by
+        rcases List.mem_cons.mp hψ with rfl | hψ
+        · exact hhere
+        · rw [List.mem_singleton.mp hψ]; exact hmb)
+      ⟨Proof.ret_map hS .nec (S := S₀) F _ Φ'
+        (Proof.ret_hereWC hS hT sb _ _ p u Ψ (Proof.lookup List.mem_cons_self)
+          (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self)))⟩
+  refine mem_ret_of_ind hS hInj (B.exists_R_of_T hT s) (S := .wit N Z) hiJ _ t Φ
+    (fun L _ u u' hs => (IH s L _ (by
+      rw [WFF.size_eqRec, hsz]; exact Nat.lt_succ_of_le (Nat.le_add_left _ _))).mp hs) hmem ?_
+  -- the value denotes the object's readings home, and the content's value
+  have hv : Model.interp (B.canonEnv s J) (Term.holeRead (Term.pair V u)
+      (ShapeMap.liftVal S₀ F).2) =
+      (B.model.NRead N e.1 (B.model.frame.refl hT s), Model.interp (B.canonEnv s J) u) := by
+    rw [Term.holeRead_eq_holeAt]
+    refine (congrArg (fun x => Model.interp (B.canonEnv s J) x.2)
+      (holeAt_liftVal_wit F V u)).trans ?_
+    refine Prod.ext ?_ rfl
+    change Model.interp _ (Term.holeAt V F.val.2) = _
+    rw [Model.interp_holeAt, Model.interp_collapse (Model.Env.collapseAgree_self hT _)]
+    refine (congrArg (B.model.holeVal F.val.2)
+      (Model.interp_compsVal (M := B.model) (B.canonEnv s J) sb s (B.model.frame.refl hT s)
+        (N.packTy.compsAllB true) (VarType.compOk_compsAllB true hT _))).trans ?_
+    rw [holeVal_unpackAt_compsRead hT, hFe₁]
+  have hI : B.Ind (Model.interp (B.canonEnv s J) (Term.holeRead (Term.pair V u)
+      (ShapeMap.liftVal S₀ F).2)) (Model.interp (B.canonEnv s i) t) := by
+    rw [hv, hu]
+    exact ind_pair
+      (Model.ind_NRead (M := B.model) (fun h₁ h₂ => ind_pair h₁ h₂) N e.1 _ _ hcb.1)
+      (B.Ind_refl _)
+  rw [interp_canon _ (Model.Env.Agree.refl' _),
+    interp_canon t (Model.Env.Agree.refl' _)] at hI
+  exact hI
+
+/-- ⭐⭐**`ret` at a witnessed shape, truth ⇒ membership** (plain leg; strong B).  A true
+    `◇[⟨d, e⟩ ↦ t] Φ(d, e)` has an arrow `s → k` (the own arrow: `mem_ret_of_sat_here_wit`)
+    and an object there, `⟨N, diatm x u⟩` for some items and a term `u` of `x`'s view
+    (`exists_wit`), with `Φ`.  The way home lies in `x`'s extent, so it is a witness edge of `k`
+    made for `x` (`canonEnv_extent`, `dia_beta`); the body at `k` is in the theory by the
+    induction hypothesis; the way home gives the atom valued at the items and `u` sent home
+    (`RetInW`); and those are `Ind` to `t` (`ind_of_nComesBack`, `diaPush_canon_at`,
+    `ind_pair`), so the value moves to `t` (`mem_ret_of_ind`). -/
 theorem mem_ret_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
     (hRW : B.RetInW hS) {s : B.W} {i : ℕ} {N : NShape} {Z : VarType}
     {a : Ann (RShape.wit N Z).flat} (t : Term σ ((B.w s).ctx i) (RShape.wit N Z).flat a)
@@ -677,15 +847,17 @@ theorem mem_ret_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   have hsz : (WFF.retS hS (.wit N Z) t Φ : WFF σ _ 0).size =
       Φ.size + (RShape.wit N Z).flat.eqRecSize + 1 := rfl
   obtain ⟨⟨k, ⟨rk⟩⟩, e, hΦ, r, hcb⟩ := h
-  have hR := R_of_RT_strong hS rk
+  rcases rk with hR | ⟨hT, rfl⟩
+  swap
+  · exact mem_ret_of_sat_here_wit hS hInj hT t Φ IH e hΦ hcb
   have hr' : B.RT k s := r
   obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom (RShape.wit N Z).ty k e
-  obtain ⟨n, x, ⟨X, hX⟩, c', u, hgeq⟩ := exists_wit (B.noT_of_strong hS) N Z g
+  obtain ⟨n, x, ⟨X, hX⟩, c', u, hgeq⟩ := exists_wit N Z g
   have hj₀ : j₀ ≤ max j₀ (B.stg s k i) := le_max_left _ _
   have hj : B.stg s k i ≤ max j₀ (B.stg s k i) := le_max_right _ _
   set J := max j₀ (B.stg s k i)
   have hX' : ((B.w k).ctx J).ref x = some (.VTypeDia X) := ((B.w k).le hj₀).ref hX
-  set n' := n.mono ((B.w k).le hj₀).boxIn
+  set n' := n.mono ((B.w k).le hj₀)
   set u' := Term.mono (((B.w k).le hj₀).diaIn x) u
   have he : Model.interp (B.canonEnv k J)
       (Term.pair n'.obj.2 (Term.diatm x ⟨X, hX'⟩ u')) = e := by
@@ -694,12 +866,12 @@ theorem mem_ret_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
       Model.interp (B.canonEnv k J) ((B.w k).liftT hj₀ p.2)) hgeq
     refine Eq.trans ?_ e1.symm
     have e2 := congrArg (fun p : Σ c, Term σ ((B.w k).ctx J) N.ty c =>
-      Model.interp (B.canonEnv k J) p.2) (NTerms.obj_mono ((B.w k).le hj₀) n)
+      Model.interp (B.canonEnv k J) p.2) (NItems.obj_mono ((B.w k).le hj₀) n)
     exact Prod.ext e2 rfl
   have hsatb : B.model.sat (B.canonEnv k J)
       (readArrow ((B.imgOk hR i).mono ((B.w k).le hj))
         (Term.pair n'.obj.2 (Term.diatm x ⟨X, hX'⟩ u')) Φ) := by
-    rw [sat_readArrow, he, ← boxPush_canon_at s i ⟨k, ⟨rk⟩⟩ hR hj]
+    rw [sat_readArrow, he, ← boxPush_canon_at s i ⟨k, ⟨Or.inl hR⟩⟩ hR hj]
     exact hΦ
   have hmb := (IH k _ _ (by
     rw [hsz]; unfold readArrow; rw [WFF.size_subst]; omega)).mp hsatb
@@ -717,7 +889,7 @@ theorem mem_ret_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   have hext : (⟨s, ⟨r⟩⟩ : B.Acc k) ∈ B.extent k x := canonEnv_extent k J hX' ▸ hmem
   rcases hext with ⟨X₁, hk⟩ | ⟨hnR, -⟩
   swap
-  · exact absurd (R_of_RT_strong hS hr') hnR
+  · exact absurd (B.symm hR) hnR
   obtain rfl := B.hxX hk J X hX'
   obtain ⟨hiK, hret⟩ := hRW hR hk Φ hj hX' n' u' hmb
   refine mem_ret_of_ind hS hInj (S := .wit N Z) ⟨k, hR⟩ hiK _ t Φ
@@ -737,8 +909,197 @@ theorem mem_ret_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
     ← interp_canon t (Model.Env.Agree.refl' (B.canonEnv s i))]
   exact hI
 
-/-- ⭐⭐**`ret` along a witness at a witnessed shape, truth ⇒ membership** (strong B, T off): as
-    `mem_ret_of_sat_wit`, along an arrow of `y`'s extent (`RetInWX`, `diaPush_canon_at`,
+/-- ⭐⭐**`ret` along a witness at a witnessed shape at the own arrow, truth ⇒ membership** (T): as
+    `mem_retx_of_sat_here` (the realised witness `y`, the body abstracted), with the possible
+    part's `Here(p, t₂)` as in `mem_ret_of_sat_here_wit`, by `ret_hereXWC`. -/
+theorem mem_retx_of_sat_here_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
+    (hT : ModalSys.T = true) {s : B.W} {i : ℕ} {y : VarSymb}
+    (hy : ∃ Y, ((B.w s).ctx i).ref y = some (.VTypeDia Y)) {N : NShape} {Z : VarType}
+    {a : Ann (RShape.wit N Z).flat} (t : Term σ ((B.w s).ctx i) (RShape.wit N Z).flat a)
+    (Φ : WFF σ ((((B.w s).ctx i).diaIn y).insert (.bnd 0) (RShape.wit N Z).ty) 1)
+    (IH : ∀ (s' : B.W) (K : ℕ) (φ : WFF σ ((B.w s').ctx K) 0),
+      φ.size < ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).retS hS (.wit N Z) t Φ :
+        WFF σ _ 0).size → (B.model.sat (B.canonEnv s' K) φ ↔ φ ∈ (B.w s').M K))
+    {Y : VarType} (hY : ((B.w s).ctx i).ref y = some (.VTypeDia Y))
+    (hm : B.model.frame.reflAcc hT s ∈ (B.model.posEval ((B.canonEnv s i).ref y hY)).1)
+    (e : B.frame.Dom (RShape.wit N Z).ty s)
+    (hΦ : B.model.sat (((B.canonEnv s i).diaPush y hY ⟨_, hm⟩).extend (.bnd 0) e) Φ)
+    (hcb : B.model.ComesBack (.wit N Z) e (B.model.frame.refl hT s)
+      (Model.interp (B.canonEnv s i) t)) :
+    ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).retS hS (.wit N Z) t Φ : WFF σ _ 0) ∈
+      (B.w s).M i := by
+  have hsz : ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).retS hS (.wit N Z) t Φ :
+      WFF σ _ 0).size = Φ.size + (RShape.wit N Z).flat.eqRecSize + 1 := rfl
+  have hr : (B.w s).Realised y :=
+    (mem_extent_self (canonEnv_extent s i hY ▸ hm) fun ⟨_, hk⟩ => B.irrefl s (B.kdR hk)).2
+  obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom (RShape.wit N Z).ty s e
+  obtain ⟨_, g₁, _, g₂, hgp⟩ := getP_prod_some g
+  obtain ⟨n, hn⟩ := NItems.exists_obj N g₁
+  obtain ⟨_, t₁, _, t₂, ht⟩ := getP_prod_some t
+  set J := max j₀ i
+  set J' := max J hr.data.i₀
+  have hJJ' : J ≤ J' := le_max_left _ _
+  have hj₀ : j₀ ≤ J' := (le_max_left _ _).trans hJJ'
+  have hiJ : i ≤ J := le_max_right _ _
+  have hiJ' : i ≤ J' := hiJ.trans hJJ'
+  have hYJ : ((B.w s).ctx J).ref y = some (.VTypeDia Y) := ((B.w s).le hiJ).ref hY
+  have hYJ' : ((B.w s).ctx J').ref y = some (.VTypeDia Y) := ((B.w s).le hJJ').ref hYJ
+  have hyJ' : ∃ Y, ((B.w s).ctx J').ref y = some (.VTypeDia Y) := ⟨Y, hYJ'⟩
+  have hmJ : B.model.frame.reflAcc hT s ∈ (B.model.posEval ((B.canonEnv s J).ref y hYJ)).1 := by
+    rw [canonEnv_extent] at hm ⊢
+    exact hm
+  have hmJ' : B.model.frame.reflAcc hT s ∈
+      (B.model.posEval ((B.canonEnv s J').ref y hYJ')).1 := by
+    rw [canonEnv_extent] at hm ⊢
+    exact hm
+  -- the witness `y`'s realisation here, and its value
+  set bdJ := Term.eta (σ := σ) (.step y .dia) Y (Ctx.ref_diaIn_of hYJ)
+  set bd := Term.eta (σ := σ) (.step y .dia) Y (Ctx.ref_diaIn_of hYJ')
+  set t₀ := (B.realTerm hr (Ctx.Le.refl _) ⟨Y, hYJ⟩ bdJ).2
+  have hh : WFF.here hT (Term.diatm y hyJ' bd) t₀ ∈ (B.w s).M J' := by
+    have h := mem_here_real hr hYJ bdJ
+    change WFF.here _ (Term.diatm y _ (Term.mono _ (Term.eta _ _ _))) _ ∈ _ at h
+    rwa [Term.mono_eta] at h
+  have hcont : Model.interp ((B.canonEnv s J').diaPush y hYJ' ⟨_, hmJ'⟩) bd =
+      Model.interp (B.canonEnv s J') t₀ := by
+    rw [show bd = Term.mono (((B.w s).le hJJ').diaIn y) bdJ from (Term.mono_eta _ _ _ _).symm,
+      Model.interp_mono (Model.Env.diaPush_agree (canonEnv_le s hJJ') hYJ ⟨_, hmJ⟩ hmJ'),
+      interp_dia_self hr (fun {_Γ'} {_b} u {_k} {_e'} {_env'} hag' => interp_canon u hag')
+        (fun _ _ _ => rfl) hYJ hT hmJ bdJ]
+    exact (interp_canon t₀ (fun _ _ _ => rfl)).symm
+  -- the object's parts, and the content's value
+  set n' := n.mono ((B.w s).le hj₀)
+  set p := (B.w s).liftT hj₀ g₂
+  set u := Term.mono ((B.w s).le hiJ') t₂
+  have hE : Model.interp (B.canonEnv s J')
+      (Term.pair ((B.w s).liftT hj₀ g₁) ((B.w s).liftT hj₀ g₂)) = e := by
+    rw [← interp_lift hg hj₀]
+    exact congrArg (fun x => Model.interp (B.canonEnv s J') ((B.w s).liftT hj₀ x.2)) hgp.symm
+  have he₁ : Model.interp (B.canonEnv s J') n'.obj.2 = e.1 := by
+    have hn' : n'.obj = ⟨_, (B.w s).liftT hj₀ g₁⟩ := by
+      rw [NItems.obj_mono, hn]
+      rfl
+    have hE₁ : Model.interp (B.canonEnv s J') ((B.w s).liftT hj₀ g₁) = e.1 := congrArg Prod.fst hE
+    exact (congrArg (fun x : Σ c, Term σ ((B.w s).ctx J') N.ty c =>
+      Model.interp (B.canonEnv s J') x.2) hn').trans hE₁
+  have he₂ : Model.interp (B.canonEnv s J') p = e.2 := congrArg Prod.snd hE
+  have hu : Model.interp (B.canonEnv s J') u = (Model.interp (B.canonEnv s i) t).2 :=
+    (Model.interp_mono (canonEnv_le s hiJ') t₂).trans
+      (congrArg (fun x : Σ c, Term σ ((B.w s).ctx i) (RShape.wit N Z).flat c =>
+        (Model.interp (B.canonEnv s i) x.2).2) ht).symm
+  -- the possible part is realised here
+  have hhere : WFF.here hT p u ∈ (B.w s).M J' := by
+    refine (IH s J' _ (by
+      rw [hsz]
+      change Z.eqRecSize + 1 < Φ.size + (N.flat.eqRecSize + Z.eqRecSize + 1) + 1
+      omega)).mp ?_
+    change Model.Realised hT (Model.interp _ p) (Model.interp _ u)
+    rw [he₂, hu]
+    exact hcb.2
+  -- the packed object, and the unpacking map
+  set sb := n'.pack.2
+  set F := unpackAt (σ := σ) hT N
+    (Term.eta (.root (.bnd 0)) N.packTy (Ctx.ref_insert_root _ _ _))
+  have hobj : (⟨_, Term.holeAt (Term.boxtm sb) F.obj.2⟩ : Σ c, Term σ ((B.w s).ctx J') N.ty c) =
+      n'.obj :=
+    holeAt_unpackAt_obj hT sb N _ n' (Term.holeAt_eta_root sb)
+  have hFe₁ : B.model.holeVal F.obj.2 (Model.interp (B.canonEnv s J') (Term.boxtm sb)) = e.1 := by
+    rw [← Model.interp_holeAt]
+    exact (congrArg (fun x => Model.interp (B.canonEnv s J') x.2) hobj).trans he₁
+  set S₀ : RShape := .wit (.boxC N.packTy _ (VarType.compOk_compsAllB true hT N.packTy)) Z
+  have hFe : B.model.holeVal (ShapeMap.liftObj S₀ F).2
+      (Model.interp (B.canonEnv s J') (Term.pair (Term.boxtm sb) p)) = e := by
+    have h1 : Model.interp (B.canonEnv s J') (Term.holeAt (Term.boxtm sb) F.obj.2) = e.1 := by
+      rw [Model.interp_holeAt]; exact hFe₁
+    rw [← Model.interp_holeAt]
+    refine (congrArg (fun x => Model.interp (B.canonEnv s J') x.2)
+      (holeAt_liftObj_wit F (Term.boxtm sb) p)).trans ?_
+    exact Prod.ext h1 he₂
+  -- the body at the packed object, abstracted
+  set Φ' := WFF.mono ((((B.w s).le hiJ').diaIn y).insert (.bnd 0) _) Φ with hΦ'
+  set Ψ := WFF.bodyRepl (Term.mono ((Ctx.empty_le _).insert (.bnd 0) _)
+    (ShapeMap.liftObj S₀ F).2) Φ' with hΨ
+  set χ := WFF.bodyAbsA y hYJ' Ψ with hχ
+  have hsat : B.model.sat (B.canonEnv s J')
+      (WFF.hereRead hT (Term.pair t₀ (Term.pair (Term.boxtm sb) p)) χ) := by
+    rw [Model.sat_hereRead hT (B.noProjLast s J')]
+    have hpp : Model.interp (B.canonEnv s J') (Term.pair t₀ (Term.pair (Term.boxtm sb) p)) =
+        (Model.interp ((B.canonEnv s J').diaPush y hYJ' ⟨_, hmJ'⟩) bd,
+          Model.interp (B.canonEnv s J') (Term.pair (Term.boxtm sb) p)) :=
+      Prod.ext hcont.symm rfl
+    rw [hpp]
+    refine (Model.sat_viewBody_here' (B.canonEnv s J') hT hyJ' hYJ' bd χ hmJ' _).mp ?_
+    rw [hχ, WFF.viewBody_bodyAbsA]
+    refine (Model.sat_bodyRepl (Ctx.noProjLast_diaIn _ y) _ _ Φ' _).mpr ?_
+    rw [Model.interp_mono (Model.Env.extend_agree (h := Ctx.empty_le _)
+      (env := Model.Env.empty _) (fun _ _ h => nomatch h) (.bnd 0) _)]
+    have hFe' : Model.interp ((Model.Env.empty (M := B.model) s).extend (.bnd 0)
+        (Model.interp (B.canonEnv s J') (Term.pair (Term.boxtm sb) p)))
+        (ShapeMap.liftObj S₀ F).2 = e := hFe
+    rw [hFe']
+    exact (Model.sat_mono (Model.Env.extend_agree
+      (Model.Env.diaPush_agree (canonEnv_le s hiJ') hY ⟨_, hm⟩ hmJ') (.bnd 0) e) Φ).mpr hΦ
+  have hmb := (IH s J' _ (by
+    rw [WFF.size_hereRead, hsz, hχ]
+    unfold WFF.bodyAbsA
+    rw [WFF.size_subst, hΨ]
+    unfold WFF.bodyRepl
+    rw [WFF.size_subst, hΦ', WFF.size_mono]
+    omega)).mp hsat
+  -- the own arrow's rule along `y` at the packed object, then the unpacking map
+  set V := Term.collapse (Ctx.collapses_boxIn_self hT ((B.w s).ctx J'))
+    (compsVal sb (N.packTy.compsAllB true) (VarType.compOk_compsAllB true hT _)).2
+  have hpf : Proof σ ((B.w s).ctx J')
+      [WFF.here hT (Term.diatm y hyJ' bd) t₀, WFF.here hT p u,
+        WFF.hereRead hT (Term.pair t₀ (Term.pair (Term.boxtm sb) p)) χ]
+      ((OutLeg.pos y hyJ' : OutLeg ((B.w s).ctx J')).retS hS S₀ (Term.pair V u) Ψ) := by
+    have h := Proof.ret_hereXWC (Δ := [WFF.here hT (Term.diatm y hyJ' bd) t₀, WFF.here hT p u,
+      WFF.hereRead hT (Term.pair t₀ (Term.pair (Term.boxtm sb) p)) χ]) hS hT y hyJ' bd t₀ sb
+      (N.packTy.compsAllB true) (VarType.compOk_compsAllB true hT N.packTy) p u χ
+      (Proof.lookup List.mem_cons_self)
+      (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
+      (Proof.lookup (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ List.mem_cons_self)))
+    rw [hχ, WFF.viewBody_bodyAbsA] at h
+    exact h
+  have hmem : (OutLeg.pos y hyJ' : OutLeg ((B.w s).ctx J')).retS hS (.wit N Z)
+      (Term.holeRead (Term.pair V u) (ShapeMap.liftVal S₀ F).2) Φ' ∈ (B.w s).M J' :=
+    BWorld.mem_of_provable (fun ψ hψ => by
+        rcases List.mem_cons.mp hψ with rfl | hψ
+        · exact hh
+        rcases List.mem_cons.mp hψ with rfl | hψ
+        · exact hhere
+        · rw [List.mem_singleton.mp hψ]; exact hmb)
+      ⟨Proof.ret_map hS (.pos y hyJ') (S := S₀) F _ Φ' hpf⟩
+  refine mem_retx_of_ind hS hInj (B.exists_R_of_T hT s) (S := .wit N Z) hiJ' hy _ t Φ
+    (fun L _ u u' hs => (IH s L _ (by
+      rw [WFF.size_eqRec, hsz]; exact Nat.lt_succ_of_le (Nat.le_add_left _ _))).mp hs) hmem ?_
+  -- the value denotes the object's readings home, and the content's value
+  have hv : Model.interp (B.canonEnv s J') (Term.holeRead (Term.pair V u)
+      (ShapeMap.liftVal S₀ F).2) =
+      (B.model.NRead N e.1 (B.model.frame.refl hT s), Model.interp (B.canonEnv s J') u) := by
+    rw [Term.holeRead_eq_holeAt]
+    refine (congrArg (fun x => Model.interp (B.canonEnv s J') x.2)
+      (holeAt_liftVal_wit F V u)).trans ?_
+    refine Prod.ext ?_ rfl
+    change Model.interp _ (Term.holeAt V F.val.2) = _
+    rw [Model.interp_holeAt, Model.interp_collapse (Model.Env.collapseAgree_self hT _)]
+    refine (congrArg (B.model.holeVal F.val.2)
+      (Model.interp_compsVal (M := B.model) (B.canonEnv s J') sb s (B.model.frame.refl hT s)
+        (N.packTy.compsAllB true) (VarType.compOk_compsAllB true hT _))).trans ?_
+    rw [holeVal_unpackAt_compsRead hT, hFe₁]
+  have hI : B.Ind (Model.interp (B.canonEnv s J') (Term.holeRead (Term.pair V u)
+      (ShapeMap.liftVal S₀ F).2)) (Model.interp (B.canonEnv s i) t) := by
+    rw [hv, hu]
+    exact ind_pair
+      (Model.ind_NRead (M := B.model) (fun h₁ h₂ => ind_pair h₁ h₂) N e.1 _ _ hcb.1)
+      (B.Ind_refl _)
+  rw [interp_canon _ (Model.Env.Agree.refl' _),
+    interp_canon t (Model.Env.Agree.refl' _)] at hI
+  exact hI
+
+/-- ⭐⭐**`ret` along a witness at a witnessed shape, truth ⇒ membership** (strong B): as
+    `mem_ret_of_sat_wit`, along an arrow of `y`'s extent (the own arrow:
+    `mem_retx_of_sat_here_wit`) (`RetInWX`, `diaPush_canon_at`,
     `mem_retx_of_ind`). -/
 theorem mem_retx_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
     (hRWX : B.RetInWX hS) {s : B.W} {i : ℕ} {y : VarSymb}
@@ -759,17 +1120,19 @@ theorem mem_retx_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   have hext : (⟨k, ⟨rk⟩⟩ : B.Acc s) ∈ B.extent s y := canonEnv_extent s i hY ▸ ha
   rcases hext with ⟨Y', hky⟩ | ⟨hnR, -⟩
   swap
-  · exact absurd (R_of_RT_strong hS rk) hnR
+  · rcases rk with hR | ⟨hT, rfl⟩
+    · exact absurd hR hnR
+    · exact mem_retx_of_sat_here_wit hS hInj hT hy t Φ IH hY ha e hΦ hcb
   obtain rfl := B.hxX hky i Y hY
   have hR := B.kdR hky
   have hr' : B.RT k s := r
   obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom (RShape.wit N Z).ty k e
-  obtain ⟨n, x, ⟨X, hX⟩, c', u, hgeq⟩ := exists_wit (B.noT_of_strong hS) N Z g
+  obtain ⟨n, x, ⟨X, hX⟩, c', u, hgeq⟩ := exists_wit N Z g
   have hj₀ : j₀ ≤ max j₀ (B.stg s k i) := le_max_left _ _
   have hj : B.stg s k i ≤ max j₀ (B.stg s k i) := le_max_right _ _
   set J := max j₀ (B.stg s k i)
   have hX' : ((B.w k).ctx J).ref x = some (.VTypeDia X) := ((B.w k).le hj₀).ref hX
-  set n' := n.mono ((B.w k).le hj₀).boxIn
+  set n' := n.mono ((B.w k).le hj₀)
   set u' := Term.mono (((B.w k).le hj₀).diaIn x) u
   have he : Model.interp (B.canonEnv k J)
       (Term.pair n'.obj.2 (Term.diatm x ⟨X, hX'⟩ u')) = e := by
@@ -778,7 +1141,7 @@ theorem mem_retx_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
       Model.interp (B.canonEnv k J) ((B.w k).liftT hj₀ p.2)) hgeq
     refine Eq.trans ?_ e1.symm
     have e2 := congrArg (fun p : Σ c, Term σ ((B.w k).ctx J) N.ty c =>
-      Model.interp (B.canonEnv k J) p.2) (NTerms.obj_mono ((B.w k).le hj₀) n)
+      Model.interp (B.canonEnv k J) p.2) (NItems.obj_mono ((B.w k).le hj₀) n)
     exact Prod.ext e2 rfl
   have hsatb : B.model.sat (B.canonEnv k J)
       (readArrowX ((B.imgOk hR i).mono ((B.w k).le hj)) hY ((B.w k).le hj |>.ref (B.hcx hky i))
@@ -801,7 +1164,7 @@ theorem mem_retx_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   have hext' : (⟨s, ⟨r⟩⟩ : B.Acc k) ∈ B.extent k x := canonEnv_extent k J hX' ▸ hmem
   rcases hext' with ⟨X₁, hkx⟩ | ⟨hnR, -⟩
   swap
-  · exact absurd (R_of_RT_strong hS hr') hnR
+  · exact absurd (B.symm hR) hnR
   obtain rfl := B.hxX hkx J X hX'
   obtain ⟨hiK, hret⟩ := hRWX hky hkx hY Φ hj hX' n' u' hmb
   refine mem_retx_of_ind hS hInj (S := .wit N Z) ⟨k, hR⟩ hiK hy _ t Φ

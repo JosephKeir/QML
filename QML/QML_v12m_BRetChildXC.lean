@@ -39,6 +39,15 @@ theorem retInvXB_false {hS : ModalSys.BStrong = true} (hT : ModalSys.T = false)
       RetInvX hS tk tp cls imgs clt imgt x X cx :=
   Iff.rfl
 
+/-- The flag can be taken to be T itself. -/
+theorem retInvXB_flag {hS : ModalSys.BStrong = true} {b : Bool} (hb : ModalSys.T = b)
+    {tk tp : NodeSt σ} {cls clt : List VarType} {imgs imgt : ℕ → ℕ} {x : VarSymb} {X : VarType}
+    {cx : ℕ} :
+    RetInvXB hS ModalSys.T rfl tk tp cls imgs clt imgt x X cx ↔
+      RetInvXB hS b hb tk tp cls imgs clt imgt x X cx := by
+  cases hb
+  exact Iff.rfl
+
 /-- `RetInvW` with the tuple's companions; `RetInvW` at `false`. -/
 def RetInvWB (hS : ModalSys.BStrong = true) (b : Bool) (hb : ModalSys.T = b) (tv tw : NodeSt σ)
     (cls : List VarType) (imgs : ℕ → ℕ) (clt : List VarType) (imgt : ℕ → ℕ) (x : VarSymb)
@@ -58,6 +67,15 @@ theorem retInvWB_false {hS : ModalSys.BStrong = true} (hT : ModalSys.T = false)
     RetInvWB hS false hT tv tw cls imgs clt imgt x X cx ↔
       RetInvW hS tv tw cls imgs clt imgt x X cx :=
   Iff.rfl
+
+/-- The flag can be taken to be T itself. -/
+theorem retInvWB_flag {hS : ModalSys.BStrong = true} {b : Bool} (hb : ModalSys.T = b)
+    {tv tw : NodeSt σ} {cls clt : List VarType} {imgs imgt : ℕ → ℕ} {x : VarSymb} {X : VarType}
+    {cx : ℕ} :
+    RetInvWB hS ModalSys.T rfl tv tw cls imgs clt imgt x X cx ↔
+      RetInvWB hS b hb tv tw cls imgs clt imgt x X cx := by
+  cases hb
+  exact Iff.rfl
 
 /-! ## Reading a body along `x` over the born root at the witness child -/
 

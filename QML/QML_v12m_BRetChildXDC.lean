@@ -51,6 +51,15 @@ theorem retInvWDB_false {hS : ModalSys.BStrong = true} (hT : ModalSys.T = false)
       RetInvWD hS tv tw cls imgs clt imgt x X cxw e E cxv :=
   Iff.rfl
 
+/-- The flag can be taken to be T itself. -/
+theorem retInvWDB_flag {hS : ModalSys.BStrong = true} {b : Bool} (hb : ModalSys.T = b)
+    {tv tw : NodeSt σ} {cls clt : List VarType} {imgs imgt : ℕ → ℕ} {x e : VarSymb}
+    {X E : VarType} {cxw cxv : ℕ} :
+    RetInvWDB hS ModalSys.T rfl tv tw cls imgs clt imgt x X cxw e E cxv ↔
+      RetInvWDB hS b hb tv tw cls imgs clt imgt x X cxw e E cxv := by
+  cases hb
+  exact Iff.rfl
+
 /-! ## The doubly witnessed child's roots -/
 
 section Layout

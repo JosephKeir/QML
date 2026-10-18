@@ -162,6 +162,28 @@ theorem retInvB_flag {hS : ModalSys.BStrong = true} {b : Bool} (hb : ModalSys.T 
   cases hb
   exact Iff.rfl
 
+/-- Reading the value with companions at a companion: that companion's contents sent along the
+    arrow. -/
+theorem at_compsIdx_tupCompsImg {Δ : Ctx} (cls : List VarType) (img : ℕ → ℕ)
+    (himg : ImgOk cls Δ img) (θ : Subst σ Δ) :
+    ∀ (cs : List (List Step)) (h : (bcT cls).CompOk cs) (u : VarSymb),
+      θ.at u = .tm (tupCompsImg cls img himg cs h).2 → ∀ (q : List Step) (hq : q ∈ cs),
+      θ.at (u.ext (compsIdx cs q)) = .tm (Term.subst (arrowIdx img) (arrowS σ Δ img)
+        (ok_arrowS himg) (coh_arrowS himg) (compVal (tupT cls).2 q (h.single hq)).2)
+  | [], _, _, _, q, hq => absurd hq List.not_mem_nil
+  | p :: ps, h, u, hu, q, hq => by
+      unfold compsIdx
+      split_ifs with hqp
+      · subst hqp
+        change θ.at (.step u .snd) = _
+        rw [Subst.at_proj θ u rfl, hu]
+        rfl
+      · change θ.at ((VarSymb.step u .fst).ext (compsIdx ps q)) = _
+        refine at_compsIdx_tupCompsImg cls img himg θ ps h.tail _ ?_ q
+          ((List.mem_cons.mp hq).resolve_left hqp)
+        rw [Subst.at_proj θ u rfl, hu]
+        rfl
+
 /-- Reading the value with companions along the first components: the tuple's value. -/
 theorem at_compsFst_tupCompsImg {Δ : Ctx} (cls : List VarType) (img : ℕ → ℕ)
     (himg : ImgOk cls Δ img) (θ : Subst σ Δ) :
