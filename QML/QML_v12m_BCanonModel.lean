@@ -20,6 +20,49 @@ namespace BArrow
 
 variable {σ : Signature}
 
+/-! ## Realising a necessary term -/
+
+/-- ⭐**Realising a necessary term, read at the world itself**: the realisation of `□s` is a
+    necessary term `□W`, and `W` collapsed is the realisation of `s` collapsed — collapsing
+    commutes with the realisation's two substitutions (`Subst.corr_box_self`), and the two
+    collapses of `s`'s levels commute (`Term.collapse_collapse`). -/
+theorem _root_.V12M.Term.realiseAtA_boxtm {Γ : Ctx} [hp : Γ.Presented] (hT : ModalSys.T = true)
+    (x : VarSymb) {A : VarType} (hcA : Γ.ref x = some (.VTypeDia A)) {a₀ : Ann A}
+    (t₀ : Term σ Γ A a₀) {T : VarType} {b : Ann T} (s : Term σ (Γ.diaIn x).boxIn T b) :
+    ∃ (c : Ann T) (W : Term σ Γ.boxIn T c),
+      (⟨_, Term.realiseAtA hT x hcA t₀ (Term.boxtm s)⟩ : Σ d, Term σ Γ (.VTypeBox T) d) =
+        ⟨_, Term.boxtm W⟩ ∧
+      (⟨_, Term.collapse (Ctx.collapses_boxIn_self hT Γ) W⟩ : Σ d, Term σ Γ T d) =
+        ⟨_, Term.realiseAtA hT x hcA t₀
+          (Term.collapse (Ctx.collapses_boxIn_self hT (Γ.diaIn x)) s)⟩ := by
+  have h₀ : Γ.boxIn (.root (.bnd 0)) = none := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root
+  have hrf : Γ.boxIn.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)
+  refine ⟨_, _, rfl, ?_⟩
+  have hok := Subst.ok_single (σ := σ) (r := .bnd 0) (Ctx.Le.refl Γ) (e := .tm t₀) (T := A) rfl
+  have hcoh := Subst.coh_single (σ := σ) ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0))
+    (Ctx.Le.refl Γ) (e := .tm t₀) (T := A) rfl
+  have hokA := Subst.ok_diaAbsA (σ := σ) hcA (hp.not_below hcA rfl)
+    ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).root)
+  have hcohA := Subst.coh_diaAbsA (σ := σ) hcA (hp.not_below hcA rfl)
+    hp.viewFresh ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).root)
+  have hcol : ∀ {a a' : Ann T} {u : Term σ (Γ.boxIn.insert (.bnd 0) A) T a}
+      {u' : Term σ (Γ.boxIn.insert (.bnd 0) A) T a'},
+      (⟨a, u⟩ : Σ d, Term σ _ T d) = ⟨a', u'⟩ →
+      (⟨_, Term.collapse ((Ctx.collapses_boxIn_self hT Γ).insert hrf A) u⟩ :
+        Σ d, Term σ (Γ.insert (.bnd 0) A) T d) =
+        ⟨_, Term.collapse ((Ctx.collapses_boxIn_self hT Γ).insert hrf A) u'⟩ := by
+    intro _ _ _ _ h
+    cases h
+    rfl
+  refine (Term.collapse_subst (Ctx.collapses_boxIn_self hT (Γ.insert (.bnd 0) A))
+    (Ctx.collapses_boxIn_self hT Γ) _ _ _ _ hok hcoh (Subst.corr_box_self hT hok) _).trans ?_
+  refine sig_subst _ hok hcoh ((Term.collapse_collapse (k := 0) (m := 0) _ _
+    (Ctx.collapses_boxIn_self hT (Γ.boxIn.insert (.bnd 0) A))
+    ((Ctx.collapses_boxIn_self hT Γ).insert hrf A) _).trans (hcol ?_))
+  exact Term.collapse_subst (Ctx.collapses_boxIn_self hT (Γ.diaIn x))
+    (Ctx.collapses_boxIn_self hT (Γ.boxIn.insert (.bnd 0) A)) _ _ _ _ hokA hcohA
+    (Subst.corr_box_self hT hokA) s
+
 namespace BData
 
 variable [ModalSys.NoFour] (B : BData σ)
@@ -299,11 +342,6 @@ def Ret {A : VarType} {s : B.W} (S : Set (B.frame.Acc s))
     B.toDom A s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _) = o
 
 variable {B} in
-/-- Under strong B every arrow of the frame is the network's (strong B is built with T off). -/
-theorem R_of_RT_strong (hS : ModalSys.BStrong = true) {s k : B.W} (h : B.RT s k) : B.R s k :=
-  h.resolve_right fun h' => absurd (h'.1.symm.trans (B.noT_of_strong hS)) (by decide)
-
-variable {B} in
 /-- A `Back` atom's leg is nonempty along the plain leg: `back_ne` gives `◇⊤`, and `ex` an arrow. -/
 theorem exists_R_of_dia_top {s : B.W} {i : ℕ}
     (h : (OutLeg.nec : OutLeg ((B.w s).ctx i)).dia (.top : WFF σ _ 0) ∈ (B.w s).M i) :
@@ -336,6 +374,124 @@ theorem exists_kd_of_realised {s : B.W} {y : VarSymb} (hr : (B.w s).Realised y) 
   obtain ⟨k, hk, _⟩ := B.exX s _ y Y hyK .top hdia
   exact ⟨k, hk⟩
 
+variable {B} in
+/-- ⭐**`Back` at the own arrow** (`back_here`): under T a row-1 carrier read here twice is
+    interchangeable with its value, at every later stage (`¬φ` gives the converse). -/
+theorem back_here_rel (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {s : B.W}
+    {i : ℕ} {A : VarType} {a₀ : Ann A} (bd : Term σ ((B.w s).ctx i).boxIn.boxIn A a₀)
+    {a : Ann A} (t : Term σ ((B.w s).ctx i) A a)
+    (hmem : WFF.back hS .nec (Term.boxtm (Term.boxtm bd)) t ∈ (B.w s).M i) :
+    Canon.DTerm.Rel (S := (B.w s).sys) (T := (B.w s).T)
+      ⟨i, _, Term.collapse (Ctx.collapses_boxIn_self hT _)
+        (Term.collapse (Ctx.collapses_boxIn_self hT _) bd)⟩ ⟨i, a, t⟩ := by
+  intro j hj hj' χ
+  have hm := (B.w s).sub hj _ hmem
+  have key : ∀ φ : WFF σ (((B.w s).ctx j).insert (.bnd 0) A) 1,
+      WFF.instantiate Ctx.NoSlots.slots (Term.mono ((B.w s).le hj) t) φ ∈ (B.w s).M j →
+      WFF.instantiate Ctx.NoSlots.slots (Term.mono ((B.w s).le hj)
+        (Term.collapse (Ctx.collapses_boxIn_self hT _)
+          (Term.collapse (Ctx.collapses_boxIn_self hT _) bd))) φ ∈ (B.w s).M j := by
+    intro φ hφ
+    have h := BWorld.mem_of_provable (Δ := [_, _]) (fun ψ hψ => by
+        rcases List.mem_cons.mp hψ with rfl | hψ
+        · exact hm
+        · rw [List.mem_singleton.mp hψ]; exact hφ)
+      ⟨Proof.back_here hS hT (Term.mono ((B.w s).le hj).boxIn.boxIn bd)
+        (Term.mono ((B.w s).le hj) t) φ (Proof.lookup List.mem_cons_self)
+        (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩
+    rwa [Term.collapse_mono (Ctx.collapses_boxIn_self hT ((B.w s).ctx i).boxIn)
+        (Ctx.collapses_boxIn_self hT ((B.w s).ctx j).boxIn) ((B.w s).le hj).boxIn.boxIn
+        ((B.w s).le hj).boxIn,
+      Term.collapse_mono (Ctx.collapses_boxIn_self hT ((B.w s).ctx i))
+        (Ctx.collapses_boxIn_self hT ((B.w s).ctx j)) ((B.w s).le hj).boxIn
+        ((B.w s).le hj)] at h
+  change WFF.instantiate _ (Term.mono ((B.w s).le hj) _) χ ∈ (B.w s).M j ↔
+    WFF.instantiate _ (Term.mono ((B.w s).le hj') t) χ ∈ (B.w s).M j
+  refine ⟨fun h => ?_, key χ⟩
+  by_contra hn
+  exact ((B.w s).mcs j).neg_mem_iff.mp (key χ.neg (((B.w s).mcs j).neg_mem_iff.mpr hn)) h
+
+variable {B} in
+/-- ⭐**`Back` at the own arrow, along `◇_y`** (`back_hereX`): under T, with `y` realised, the
+    realisation of a row-2 carrier's body collapsed (its `Here` atom, `mem_here_real`) is
+    interchangeable with the value, at every later stage. -/
+theorem back_hereX_rel (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {s : B.W}
+    {i : ℕ} {y : VarSymb} {Y : VarType} (hY : ((B.w s).ctx i).ref y = some (.VTypeDia Y))
+    {A : VarType} {a₀ : Ann A} (bd : Term σ (((B.w s).ctx i).diaIn y).boxIn A a₀) {a : Ann A}
+    (t : Term σ ((B.w s).ctx i) A a)
+    (hmem : WFF.back hS .pos (Term.diatm y ⟨Y, hY⟩ (Term.boxtm bd)) t ∈ (B.w s).M i)
+    (hr : (B.w s).Realised y) :
+    Canon.DTerm.Rel (S := (B.w s).sys) (T := (B.w s).T)
+      ⟨max i hr.data.i₀, _, (B.realTerm hr (Ctx.Le.refl _) ⟨Y, hY⟩
+        (Term.collapse (Ctx.collapses_boxIn_self hT _) bd)).2⟩ ⟨i, a, t⟩ := by
+  set K := max i hr.data.i₀
+  have hh := mem_here_real hr hY (Term.collapse (Ctx.collapses_boxIn_self hT _) bd)
+  intro j hj hj' χ
+  have hm := (B.w s).sub hj' _ hmem
+  have hhj := (B.w s).sub hj _ hh
+  have hyj : ((B.w s).ctx j).ref y = some (.VTypeDia Y) := ((B.w s).le hj').ref hY
+  have key : ∀ φ : WFF σ (((B.w s).ctx j).insert (.bnd 0) A) 1,
+      WFF.instantiate Ctx.NoSlots.slots (Term.mono ((B.w s).le hj') t) φ ∈ (B.w s).M j →
+      WFF.instantiate Ctx.NoSlots.slots (Term.mono ((B.w s).le hj)
+        (B.realTerm hr (Ctx.Le.refl _) ⟨Y, hY⟩
+          (Term.collapse (Ctx.collapses_boxIn_self hT _) bd)).2) φ ∈ (B.w s).M j := by
+    intro φ hφ
+    have hhere : WFF.here hT (Term.diatm y ⟨Y, hyj⟩
+        (Term.collapse (Ctx.collapses_boxIn_self hT (((B.w s).ctx j).diaIn y))
+          (Term.mono (((B.w s).le hj').diaIn y).boxIn bd)))
+        (Term.mono ((B.w s).le hj) (B.realTerm hr (Ctx.Le.refl _) ⟨Y, hY⟩
+          (Term.collapse (Ctx.collapses_boxIn_self hT _) bd)).2) ∈ (B.w s).M j := by
+      rw [Term.collapse_mono (Ctx.collapses_boxIn_self hT (((B.w s).ctx i).diaIn y))
+        (Ctx.collapses_boxIn_self hT (((B.w s).ctx j).diaIn y)) (((B.w s).le hj').diaIn y).boxIn
+        (((B.w s).le hj').diaIn y)]
+      have hhj' : WFF.here hT (Term.mono ((B.w s).le hj) (Term.mono ((B.w s).le
+          (le_max_left i hr.data.i₀)) (Term.diatm y ⟨Y, hY⟩
+            (Term.collapse (Ctx.collapses_boxIn_self hT _) bd))))
+          (Term.mono ((B.w s).le hj) (B.realTerm hr (Ctx.Le.refl _) ⟨Y, hY⟩
+            (Term.collapse (Ctx.collapses_boxIn_self hT _) bd)).2) ∈ (B.w s).M j := hhj
+      rw [Term.mono_mono] at hhj'
+      exact hhj'
+    exact BWorld.mem_of_provable (Δ := [_, _, _]) (fun ψ hψ => by
+        rcases List.mem_cons.mp hψ with rfl | hψ
+        · exact hm
+        rcases List.mem_cons.mp hψ with rfl | hψ
+        · exact hhere
+        · rw [List.mem_singleton.mp hψ]; exact hφ)
+      ⟨Proof.back_hereX hS hT y ⟨Y, hyj⟩ (Term.mono (((B.w s).le hj').diaIn y).boxIn bd)
+        (Term.mono ((B.w s).le hj') t) _ φ (Proof.lookup List.mem_cons_self)
+        (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
+        (Proof.lookup (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ List.mem_cons_self)))⟩
+  change WFF.instantiate _ (Term.mono ((B.w s).le hj) _) χ ∈ (B.w s).M j ↔
+    WFF.instantiate _ (Term.mono ((B.w s).le hj') t) χ ∈ (B.w s).M j
+  refine ⟨fun h => ?_, key χ⟩
+  by_contra hn
+  exact ((B.w s).mcs j).neg_mem_iff.mp (key χ.neg (((B.w s).mcs j).neg_mem_iff.mpr hn)) h
+
+variable {B} in
+/-- ⭐**The realised content of a necessary term, read along the world's own arrow**: the
+    realisation of its body collapsed (`Term.realiseAtA_boxtm`, `rden_boxtm_self`). -/
+theorem rden_realTerm_boxtm_self {s : B.W} {x : VarSymb} (hr : (B.w s).Realised x) {Γ : Ctx}
+    {i : ℕ} (e : Γ.Le ((B.w s).ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
+    {a : Ann A} (bd : Term σ (Γ.diaIn x).boxIn A a) (rk : B.RT s s) (hb : ¬ B.R s s) :
+    B.rden s _ (Ctx.Le.refl _) (B.realTerm hr e hx (Term.boxtm bd)).2 ⟨s, ⟨rk⟩⟩ =
+      B.rden s _ (Ctx.Le.refl _) (B.realTerm hr e hx
+        (Term.collapse (Ctx.collapses_boxIn_self hr.T _) bd)).2 := by
+  have hle := (e.trans ((B.w s).le (le_max_left i hr.data.i₀))).diaIn x
+  have hdecl : ((B.w s).ctx (max i hr.data.i₀)).ref x = some (.VTypeDia hr.data.A) :=
+    hr.data.hdeclOf _ (hx.imp fun _ h => ((B.w s).le (le_max_left _ _)).ref (e.ref h))
+  obtain ⟨c, W, h1, h2⟩ := Term.realiseAtA_boxtm hr.data.hT x hdecl
+    (Term.mono ((B.w s).le (le_max_right _ _)) hr.data.t₀) (Term.mono hle.boxIn bd)
+  change B.rden s _ (Ctx.Le.refl _) (⟨_, Term.realiseAtA hr.data.hT x hdecl _
+    (Term.boxtm (Term.mono hle.boxIn bd))⟩ : Σ d, Term σ _ (.VTypeBox A) d).2 ⟨s, ⟨rk⟩⟩ =
+    B.rden s _ (Ctx.Le.refl _) (⟨_, Term.realiseAtA hr.data.hT x hdecl _
+      (Term.mono hle (Term.collapse (Ctx.collapses_boxIn_self hr.T _) bd))⟩ :
+        Σ d, Term σ _ A d).2
+  rw [rden_sigma _ h1, rden_boxtm_self _ _ ⟨s, ⟨rk⟩⟩ hb]
+  refine (rden_congr _ _ _ _ _ (Ctx.Le.refl _)).trans ((rden_sigma _ h2).trans ?_)
+  refine rden_sigma _ (Canon.Term.realiseAtA_sigma hr.data.hT x hdecl _ ?_)
+  exact congrArg (Sigma.mk _) (Term.collapse_mono (Ctx.collapses_boxIn_self hr.T (Γ.diaIn x))
+    (Ctx.collapses_boxIn_self hr.data.hT _) hle.boxIn hle bd)
+
 /-- ⭐**What comes back makes the round trip** (`Model.Ret_fwd`): an atom's leg is nonempty
     (`back_ne`), and along each of its arrows the carrier read out and home again is related to the
     value (`backRel`, `backRelX`). -/
@@ -362,7 +518,18 @@ theorem ret_fwd (_hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set
                   ⟨Proof.back_ne hS' .nec bd t (Proof.lookup List.mem_cons_self)⟩
               obtain ⟨k, hk⟩ := exists_R_of_dia_top hdia
               refine ⟨⟨⟨⟨k, ⟨Or.inl hk⟩⟩, Set.mem_univ _⟩⟩, fun ⟨⟨k, ⟨rk⟩⟩, _⟩ => ?_⟩
-              have hk := R_of_RT_strong hS' rk
+              by_cases hk : B.R s k
+              swap
+              · -- the own arrow (`back_here`)
+                obtain ⟨hT, rfl⟩ := self_of_not_R (a := ⟨k, ⟨rk⟩⟩) hk
+                refine ⟨rk, _, ⟨i, a, t⟩, ?_, (fromDom_toDom _ _ _ _ _).symm,
+                  back_here_rel hS' hT bd t hmem⟩
+                change _ = B.fromDom A s (B.toDom A s ((B.rden s i (Ctx.Le.refl _)
+                  (Term.boxtm (Term.boxtm bd))) ⟨s, ⟨rk⟩⟩ ⟨s, ⟨rk⟩⟩) _)
+                rw [fromDom_toDom, rden_boxtm_self _ _ ⟨s, ⟨rk⟩⟩ hk]
+                erw [rden_boxtm_self _ _ ⟨s, ⟨rk⟩⟩ hk]
+                exact (rden_congr _ _ _ _ _ _).trans
+                  (rden_sigma _ (Term.collapse_collapse (k := 0) (m := 0) _ _ _ _ bd)).symm
               refine ⟨Or.inl (B.symm hk), _, ⟨i, a, t⟩, ?_, (fromDom_toDom _ _ _ _ _).symm,
                 B.backRel hS' bd t hmem hk⟩
               change _ = B.fromDom A s (B.toDom A s ((B.rden s i (Ctx.Le.refl _)
@@ -384,7 +551,21 @@ theorem ret_fwd (_hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set
                   ⟨Proof.back_ne hS' (.pos y ⟨Y, hY⟩) bd t (Proof.lookup List.mem_cons_self)⟩
               obtain ⟨k, hk, _⟩ := B.exX s i y Y hY .top hdia
               refine ⟨⟨⟨⟨k, ⟨Or.inl (B.kdR hk)⟩⟩, Or.inl ⟨Y, hk⟩⟩⟩, fun ⟨⟨k, ⟨rk⟩⟩, hm⟩ => ?_⟩
-              have hR := R_of_RT_strong hS' rk
+              by_cases hR : B.R s k
+              swap
+              · -- the own arrow, `y` realised (`back_hereX`)
+                obtain ⟨hT, rfl⟩ := self_of_not_R (a := ⟨k, ⟨rk⟩⟩) hR
+                have hr : (B.w s).Realised y :=
+                  (mem_extent_self (x := y) (a := ⟨s, ⟨rk⟩⟩) hm
+                    (fun ⟨_, hX⟩ => hR (B.kdR hX))).2
+                refine ⟨rk, ⟨max i hr.data.i₀, _, (B.realTerm hr (Ctx.Le.refl _) ⟨Y, hY⟩
+                  (Term.collapse (Ctx.collapses_boxIn_self hT _) bd)).2⟩, ⟨i, a, t⟩, ?_,
+                  (fromDom_toDom _ _ _ _ _).symm, back_hereX_rel hS' hT hY bd t hmem hr⟩
+                change _ = B.fromDom A s (B.toDom A s (((B.rden s i (Ctx.Le.refl _)
+                  (Term.diatm y ⟨_, hY⟩ (Term.boxtm bd))).2 ⟨⟨s, ⟨rk⟩⟩, hm⟩) ⟨s, ⟨rk⟩⟩) _)
+                rw [fromDom_toDom, rden_diatm_self _ _ _ ⟨⟨s, ⟨rk⟩⟩, hm⟩
+                  (fun ⟨_, hX⟩ => hR (B.kdR hX))]
+                exact (rden_realTerm_boxtm_self hr _ _ bd rk hR).symm
               have hk : ∃ X, B.kd s k = some (y, X) := by
                 rcases hm with hm | hm
                 · exact hm
@@ -449,8 +630,11 @@ theorem backRet_exists_canon (hS : ModalSys.BStrong = true) {A : VarType} {s : B
     ∃ c : B.frame.Nec (.VTypeBox A) s,
       B.Ret (Set.univ : Set (B.frame.Acc s)) (fun a b => B.necEval (B.necEval c a.1) b) o := by
   obtain ⟨i, a, t, ht⟩ := B.definable_fromDom A s o
-  obtain ⟨⟨k, ⟨rk⟩⟩⟩ := hne
-  have hk := R_of_RT_strong hS rk
+  obtain ⟨k, hk⟩ : ∃ k, B.R s k := by
+    obtain ⟨⟨k, ⟨rk⟩⟩⟩ := hne
+    rcases rk with hk | ⟨hT, -⟩
+    · exact ⟨k, hk⟩
+    · exact exists_R_of_T hT s
   have hdia : (OutLeg.nec : OutLeg ((B.w s).ctx i)).dia (.top : WFF σ _ 0) ∈ (B.w s).M i := by
     refine ((B.w s).mcs i).neg_mem_iff.mpr fun hbox => ?_
     exact ((B.w k).mcs _).neg_mem_iff.mp (B.tr hk i _ hbox) ((B.w k).mcs _).top_mem

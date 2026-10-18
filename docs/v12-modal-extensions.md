@@ -8085,6 +8085,31 @@ full build green).
   `BRetOut` keeps the children at the limit, `lalias`, `lalias_ind` and term helpers.  The
   producers still take `hT` only through `bdataS` and `lalias_ind` (item 8 / step 9).
 
+**Built (2026-10-18): item 7, `Back` and canonical `Ret` for every T** (uncommitted).
+* *The decoder's T half* (`BDecode`, `BBackTruth`): ⭐`cut_unique_T`, under T an item's image path
+  is `encPath p ++ fst :: q` and `encStep` reads `here` as `snd`, so two typed paths with one
+  encoding are one path (`here` steps only at `□`, `snd` only at products).  `arrowXIdx_inj` now
+  holds for every T (the item image by `arrowIdx_boxExt`, the cut by `cut_unique` or
+  `cut_unique_T`), so `mem_back_of_sat_pos` (row 2, `◇`-typed contents) no longer uses
+  `noT_of_strong`.
+* *The own arrow in canonical `Ret`* (`BCanonModel`, `ret_fwd`): on the plain leg, ⭐`back_here_rel`
+  (`back_here` and `¬φ`: the carrier read here twice is interchangeable with the value), with
+  `rden_boxtm_self` twice and `Term.collapse_collapse`.  Along `◇_y`, with `y` realised,
+  ⭐`back_hereX_rel` (`back_hereX` at the `Here` atom of the realisation of the collapsed body,
+  `mem_here_real`) and ⭐`rden_realTerm_boxtm_self` (the realised `□bd` read at the own arrow
+  denotes the realisation of `bd` collapsed), from ⭐`Term.realiseAtA_boxtm` (collapsing commutes
+  with the realisation's two substitutions, `Subst.corr_box_self`, and the two collapses commute).
+  `backRet_exists_canon` takes a network arrow under T (`exists_R_of_T`).  `R_of_RT_strong` is
+  removed; `noT_of_strong` is no longer used anywhere.
+* **Item 8 tried, blocked.**  Dropping the field and `bdataS`'s `hT` leaves one real T-off use:
+  `bdataS_retIn`/`bdataS_retInX` read the limit's invariant in its forgotten form (`lretAt`,
+  `RetAt.toRetInv`, then `retInvB_false hT`).  Under T they need `lretAtB` and a companion form of
+  `RetAt.toRetInv`: forgetting a witness (and a possible part) while keeping the companions.  The
+  forgetting family (`RetForget`: `retx_forget`, `retD_forget`, `retxS_forget`, `retxD_forget`) is
+  derived only at companion-free shapes, as mixed K-laws through the units; the companion units
+  (`ret_unitC`/`WC`/`DC`/`WDC`, with outer companions) should let it be re-derived at
+  `tupShape b hb cls`.  The item-8 edits were reverted to keep the build green.
+
 **Order.**
 1. The decisions, by the user:
    * risk 1: `boxT` with its existence rule, or the content restriction;

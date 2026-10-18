@@ -2,7 +2,7 @@ import QML.QML_v12m_BTruth
 import QML.QML_v12m_BDecode
 
 /-!
-# QML v12m — B's canonical model: `Back`, truth ⇒ membership (strong B, T off)
+# QML v12m — B's canonical model: `Back`, truth ⇒ membership (strong B)
 
 The truth lemma's `back` case in the direction the canonical `Ret` does not give for free
 (docs §11.20, "Step 5 begun").
@@ -340,8 +340,8 @@ theorem under_diaIn [ModalSys.NoFour] (l : List VarType) (y : VarSymb) :
 /-- ⭐**Along a witness arrow, labels of `y`'s `◇` view are read back injectively**, given
     injective images and a content variable outside them: a label through `y`'s content goes to
     the content variable, one through a `□` view to its root's image, cut at its `box`
-    (`arrowIdx_cut_noT`, `cut_unique`). -/
-theorem arrowXIdx_inj (hT : ModalSys.T = false) {l : List VarType} {img : ℕ → ℕ} {cx : ℕ}
+    (`arrowIdx_boxExt`; `cut_unique` without T, `cut_unique_T` with it). -/
+theorem arrowXIdx_inj {l : List VarType} {img : ℕ → ℕ} {cx : ℕ}
     {y : VarSymb} {Y : VarType} (hy : (ctxOf l).ref y = some (.VTypeDia Y))
     (hInj : ∀ r r', r < l.length → r' < l.length → img r = img r' → r = r')
     (hcx : ∀ r < l.length, img r ≠ cx) {ℓ ℓ' : VarSymb} (hℓ : ViewLabel l y ℓ)
@@ -361,11 +361,12 @@ theorem arrowXIdx_inj (hT : ModalSys.T = false) {l : List VarType} {img : ℕ �
     simp [VarSymb.path]
   have hBx : ∀ u q T, (ctxOf l).ref u = some (.VTypeBox T) →
       arrowXIdx img y cx ((VarSymb.step u .box).ext q) =
-        (VarSymb.root (imgRoot img u.rt)).ext (u.path ++ q) := by
+        (VarSymb.root (imgRoot img u.rt)).ext (encPath u.path ++ itemTail ++ q) := by
     intro u q T hu
     obtain ⟨hpu, -⟩ := ctxOf_addr hu
     unfold arrowXIdx
-    rw [if_neg, BData.arrowIdx_cut_noT hT img hpu]
+    rw [if_neg, arrowIdx_boxExt img hpu, itemImg, itemAt]
+    · simp only [VarSymb.ext_append]
     rintro ⟨-, t, ht⟩
     rw [VarSymb.ext_path] at ht
     change y.path ++ [Step.dia] ++ t = u.path ++ [Step.box] ++ q at ht
@@ -414,7 +415,15 @@ theorem arrowXIdx_inj (hT : ModalSys.T = false) {l : List VarType} {img : ℕ �
     change R.walk (u.path ++ [Step.box] ++ q) ≠ none at hw₁
     change R.walk (u'.path ++ [Step.box] ++ q') ≠ none at hw₂
     simp only [List.append_assoc, List.singleton_append] at hw₁ hw₂
-    obtain ⟨hp, rfl⟩ := cut_unique hT hpu hpu' hw₁ hw₂ e₂
+    have hcut : u.path = u'.path ∧ q = q' := by
+      cases hT : ModalSys.T
+      · rw [encPath_noT hT, encPath_noT hT, itemTail_noT hT, List.append_nil,
+          List.append_nil] at e₂
+        exact cut_unique hT hpu hpu' hw₁ hw₂ e₂
+      · rw [show itemTail = [Step.fst] by simp [itemTail, hT], List.append_assoc,
+          List.append_assoc, List.singleton_append, List.singleton_append] at e₂
+        exact cut_unique_T hT hpu hpu' hw₁ hw₂ e₂
+    obtain ⟨hp, rfl⟩ := hcut
     rw [VarSymb.eq_of_rt_path (hrt.trans hrt'.symm) hp]
 
 end BArrow
@@ -548,7 +557,8 @@ theorem mem_back_of_sat_diaFree (hS : ModalSys.BStrong = true) (hB : ModalSys.B 
   exact h₁.symm.trans h₂
 
 /-- ⭐**A plain leg is no witness's extent**: wherever there is an arrow there is an unlabelled
-    one (`unl`), and without T a witness's extent holds only arrows labelled with it. -/
+    one (`unl`), and a witness's extent holds only arrows labelled with it and (under T) the
+    world's own. -/
 theorem univ_ne_extent {s : B.W} (harr : ∃ k, B.R s k)
     (y : VarSymb) : (Set.univ : Set (B.frame.Acc s)) ≠ B.extent s y := by
   intro h
@@ -597,7 +607,7 @@ theorem sat_eqRec_lift {s : B.W} {A : VarType} {i i' K : ℕ} (hK : i ≤ K) (hK
   exact toDom_congr ((rden_lift hK t).trans ((toDom_inj h).trans (rden_lift hK' t').symm)) _ _
 
 /-- ⭐⭐**`Back`, truth ⇒ membership, row 1** (a plain leg, carrier `□□A`), at every content
-    type (strong B, T off; docs §11.20).  At a `◇`-free content, `mem_back_of_sat_diaFree`.
+    type (strong B, any T; docs §11.20).  At a `◇`-free content, `mem_back_of_sat_diaFree`.
     Otherwise the canonical `Ret` is an atom `Back ct' t'` of the theory with the same round-trip
     data and `den t' = den t`.  The data's leg is every arrow, which no witness's extent is
     (`univ_ne_extent`), so the atom is row 1 too, and its carrier's values one arrow on and home
@@ -709,7 +719,7 @@ theorem labelTy_walk {s : B.W} {ℓ : VarSymb} (h : B.LabelTy s ℓ) {K : ℕ} {
   exact hw
 
 /-- ⭐⭐**`Back`, truth ⇒ membership, row 2** (a witness's leg, carrier `◇_y□A`), at every content
-    type (strong B, T off; docs §11.20).  At a `◇`-free content, `mem_back_of_sat_diaFree`.
+    type (strong B, any T; docs §11.20).  At a `◇`-free content, `mem_back_of_sat_diaFree`.
     Otherwise the canonical `Ret` is an atom `Back ct' t'` of the theory with the same round-trip
     data and `den t' = den t`.  Its leg is no plain leg (`univ_ne_extent`) and shares an arrow
     with `y`'s extent, so it is `y`'s.  Its contents along every arrow of the extent are ours.  At
@@ -731,7 +741,6 @@ theorem mem_back_of_sat_pos (hS : ModalSys.BStrong = true) (hB : ModalSys.B = tr
     ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).back hS bd t : WFF σ _ 0) ∈ (B.w s).M i := by
   by_cases hA : A.diaFree = true
   · exact mem_back_of_sat_diaFree hS hB (.pos y hy) hA bd t IH h
-  have hT := B.noT_of_strong hS
   have hsz := size_back_ge hS (.pos y hy) bd t
   obtain ⟨⟨i₀⟩, -⟩ := OutLeg.sat_back_rt hS (B.canonEnv s i) (.pos y hy) bd t h
   have harr := exists_R_of_arr (O := .pos y hy) i₀
@@ -804,7 +813,7 @@ theorem mem_back_of_sat_pos (hS : ModalSys.BStrong = true) (hB : ModalSys.B = tr
                   (Term.mono (((B.w s).le hj).diaIn y) u)).and
                   (annTy_all (Term.annTy ((walks_ctxOf _).diaIn y)
                     (Term.mono (((B.w s).le hj).diaIn y) u)))
-              have hb := Ann.mapIdx_inj (fun ℓ ℓ' hℓ hℓ' e => arrowXIdx_inj hT hyK
+              have hb := Ann.mapIdx_inj (fun ℓ ℓ' hℓ hℓ' e => arrowXIdx_inj hyK
                 (fun r r' hr hr' e => hInj hkR _ r r' hr hr' e) hfresh hℓ.1 hℓ'.1
                 (fun _ hR => labelTy_walk hℓ.2 hR) (fun _ hR => labelTy_walk hℓ'.2 hR) e)
                 _ _ (hQ i' hK' (Term.boxtm bd')) (hQ i hK (Term.boxtm bd)) hann
@@ -840,7 +849,7 @@ theorem mem_back_of_sat_pos (hS : ModalSys.BStrong = true) (hB : ModalSys.B = tr
                   (Proof.lookup (List.mem_cons_of_mem _
                     (List.mem_cons_of_mem _ List.mem_cons_self)))⟩)
 
-/-- ⭐⭐**`Back`, truth ⇒ membership** (strong B, T off), along either leg and at every content
+/-- ⭐⭐**`Back`, truth ⇒ membership** (strong B, any T), along either leg and at every content
     type: the truth lemma's `back` case in the direction the canonical `Ret` does not give for
     free (`mem_back_of_sat_nec`, `mem_back_of_sat_pos`).  It asks injective images (`ImgInj`) and
     fresh witness arrows (`CxFresh`), which the limit of a chain has. -/

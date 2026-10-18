@@ -53,6 +53,43 @@ theorem cut_unique (hT : ModalSys.T = false) :
             (fun t ht => hp' t (List.mem_cons_of_mem _ ht)) hw hw' h
           exact ⟨rfl, rfl⟩
 
+/-- ⭐**The cut is where the type is a box**, under T: an item's image path encodes the
+    projections before its `box` (`encPath`, `here` read as `snd`) and puts `fst` for the `box`.
+    `here` steps only at a `□` and `snd` only at a product, so two typed paths with one encoding
+    are one path. -/
+theorem cut_unique_T (hT : ModalSys.T = true) :
+    ∀ {R : VarType} {p p' q q' : List Step}, PPath p → PPath p' →
+      R.walk (p ++ .box :: q) ≠ none → R.walk (p' ++ .box :: q') ≠ none →
+      BArrow.encPath p ++ .fst :: q = BArrow.encPath p' ++ .fst :: q' → p = p' ∧ q = q'
+  | _, [], [], _, _, _, _, _, _, h => ⟨rfl, List.cons.inj h |>.2⟩
+  | R, [], s' :: p', q, q', _, hp', hw, hw', h => by
+      exfalso
+      have hs' : s'.isProj = true := hp' s' List.mem_cons_self
+      cases R <;> cases s' <;>
+        simp_all [VarType.walk, VarType.step, Step.isProj, BArrow.encPath, BArrow.encStep]
+  | R, s :: p, [], q, q', hp, _, hw, hw', h => by
+      exfalso
+      have hs : s.isProj = true := hp s List.mem_cons_self
+      cases R <;> cases s <;>
+        simp_all [VarType.walk, VarType.step, Step.isProj, BArrow.encPath, BArrow.encStep]
+  | R, s :: p, s' :: p', q, q', hp, hp', hw, hw', h => by
+      have hs : s.isProj = true := hp s List.mem_cons_self
+      have hs' : s'.isProj = true := hp' s' List.mem_cons_self
+      change BArrow.encStep s :: (BArrow.encPath p ++ .fst :: q) =
+        BArrow.encStep s' :: (BArrow.encPath p' ++ .fst :: q') at h
+      obtain ⟨hss, htl⟩ := List.cons.inj h
+      simp only [List.cons_append, VarType.walk] at hw hw'
+      obtain rfl : s = s' := by
+        cases R <;> cases s <;> cases s' <;>
+          simp_all [VarType.step, Step.isProj, BArrow.encStep]
+      cases hU : R.step s with
+      | none => rw [hU] at hw; exact absurd rfl hw
+      | some U =>
+          rw [hU] at hw hw'
+          obtain ⟨rfl, rfl⟩ := cut_unique_T hT (fun t ht => hp t (List.mem_cons_of_mem _ ht))
+            (fun t ht => hp' t (List.mem_cons_of_mem _ ht)) hw hw' htl
+          exact ⟨rfl, rfl⟩
+
 /-- ⭐**Box contents commute with projections**, without T: walking the box-contents type along a
     projection path and then on is walking the type along it, into its `□`, and on. -/
 theorem walk_bc (hT : ModalSys.T = false) :
