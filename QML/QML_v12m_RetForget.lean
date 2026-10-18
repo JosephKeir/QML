@@ -658,6 +658,66 @@ def Proof.retxD_forget {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
   exact Proof.retxS_refute hS ⟨X, hX⟩ (.wit (.box C) Xe) _ _
     (Proof.kThetaWF_refute hS hX sb θΨ) P1
 
+
+/-! ## Leg forgetting at an object with companions -/
+
+/-- The companion K-law's far world, in the `□` view: `Ψ ∧ unitBodyC(kThetaC)` has no instance
+    (as `Proof.kTheta_refute`, with the inner unit `ret_unitC`). -/
+def Proof.kThetaC_refute {Γ : Ctx} [Γ.Presented] (hS : ModalSys.BStrong = true)
+    {A C : VarType} (co : List (List Step)) (ho : A.CompOk co) {c : Ann C}
+    (sb : Term σ Γ.boxIn C c)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1) :
+    Proof σ Γ.boxIn [WFF.ex (.VTypeBox A)
+      (WFF.and (kPsi sb θΨ) (WFF.unitBodyC hS co ho sb [] (Or.inl rfl)
+        (kThetaC hS co ho θΨ)))] .bot := by
+  have hu : Γ.boxIn.RootFresh (.free (Ctx.Presented.bound Γ)) :=
+    (Ctx.Presented.fresh_bound _ le_rfl).boxIn
+  have hu' : (Γ.boxIn.insert (.free (Ctx.Presented.bound Γ)) (.VTypeBox A)).RootFresh
+      (.free (Ctx.Presented.bound Γ + 1)) :=
+    ((Ctx.Presented.fresh_bound _ (Nat.le_succ _)).boxIn).insert_ne
+      (fun h => absurd (Root.free.inj h) (by omega)) _
+  refine Proof.ex_elim _ (.VTypeBox A) hu
+    (φ := WFF.openFree _ hu Ctx.NoSlots.slots
+      (WFF.and (kPsi sb θΨ) (WFF.unitBodyC hS co ho sb [] (Or.inl rfl)
+        (kThetaC hS co ho θΨ)))) (ψ := .bot)
+    (Proof.conv (congrArg (WFF.ex _) (WFF.bindFree_openFree _ _ _ _).symm)
+      (Proof.lookup List.mem_cons_self)) ?_
+  exact Proof.ret_absurd hS _ _ hu' (Proof.ret_unitC hS .nec [] (Or.inl rfl) _ _ _ co ho θΨ
+    (Proof.conv (openFree_unitBodyC_kThetaC hu hS co ho sb θΨ)
+      (Proof.and_elim_r (φ := WFF.openFree _ hu Ctx.NoSlots.slots (kPsi sb θΨ))
+        (Proof.lookup List.mem_cons_self)))
+    (Proof.conv (openFree_kPsi hu sb θΨ)
+      (Proof.and_elim_l (Proof.lookup List.mem_cons_self))))
+
+/-- ⭐**Leg forgetting at an object with companions**: `◇_x^{co}[d ↦ t] Φ ⊢ ◇^{co}[d ↦ t] Φ` for a
+    body over the `□` view, as `Proof.retx_forget` with the companion units. -/
+def Proof.retx_forgetC {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
+    (hS : ModalSys.BStrong = true) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    {A C : VarType} (co : List (List Step)) (ho : A.CompOk co) {a : Ann (A.compsFlat co)}
+    (t : Term σ Γ (A.compsFlat co) a) {c : Ann C} (sb : Term σ Γ.boxIn C c)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1)
+    (p : Proof σ Γ Δ (WFF.retxS hS x hx (.nec (.boxC A co ho)) t
+      ((OutLeg.pos x hx).lift (kPsi sb θΨ)))) :
+    Proof σ Γ Δ (WFF.retS hS (.nec (.boxC A co ho)) t (kPsi sb θΨ)) := by
+  refine Proof.byContra ?_
+  have P1 := Proof.ret_unitC hS (.pos x hx) co ho t _ sb [] (Or.inl rfl) (kThetaC hS co ho θΨ)
+    (Proof.ofSubset (fun _ h => List.mem_cons_of_mem _ h) p)
+    (Proof.conv (holeRead_kThetaC hS co ho t sb θΨ).symm (Proof.lookup List.mem_cons_self))
+  exact Proof.retS_refute_lift hS (.pos x hx) (.nec (.boxC A co ho)) t _
+    (Proof.kThetaC_refute hS co ho sb θΨ) P1
+
+/-- ⭐**Leg forgetting at a node, with companions**, for any body over the `□` view. -/
+noncomputable def Proof.retx_forgetC_node (hS : ModalSys.BStrong = true) {l : List VarType}
+    {Δ : List (WFF σ (ctxOf l) 0)} {x : VarSymb} (hx : ∃ X, (ctxOf l).ref x = some (.VTypeDia X))
+    {B : VarType} (co : List (List Step)) (ho : B.CompOk co) {b : Ann (B.compsFlat co)}
+    (t : Term σ (ctxOf l) (B.compsFlat co) b)
+    (Φ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) (.VTypeBox B)) 1)
+    (p : Proof σ (ctxOf l) Δ (WFF.retxS hS x hx (.nec (.boxC B co ho)) t
+      ((OutLeg.pos x hx).lift Φ))) :
+    Proof σ (ctxOf l) Δ (WFF.retS hS (.nec (.boxC B co ho)) t Φ) :=
+  Proof.conv (by rw [kPsi_pack2]) (Proof.retx_forgetC hS hx co ho t (tupT l).2
+    (pack2 l (.VTypeBox B) Φ) (Proof.conv (by rw [kPsi_pack2]) p))
+
 end BArrow
 
 end V12M
