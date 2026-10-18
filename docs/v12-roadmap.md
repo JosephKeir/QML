@@ -1,4 +1,4 @@
-# QML v12m: roadmap *(2026-10-03)*
+# QML v12m: roadmap *(2026-10-03; status table 2026-10-18)*
 
 This supersedes the "Order of work" and "START HERE" blocks of `v12-modal-extensions.md` §9, which
 predate the semantic-annotation work (§10.23–10.41) and still describe the retired `◇`-equality
@@ -11,8 +11,11 @@ package.  Design detail stays in `v12-modal-extensions.md` (per axiom) and `v12-
 |---|---|---|---|
 | K, T (weak, strong), D (weak, strong), 4 (weak), any combination without B | ✓ | ✓ (+ strong completeness, compactness) | the tree (`Canon.*`) |
 | weak B with any of T, D (both strengths), without 4 (`NoFour`) | ✓ | ✓ (+ strong completeness, compactness; every presented context) | the network (`BArrow.*`) |
+| strong B, rows 1–2 (carriers `□□A`, `◇_y□A`), T off, 4 off | ✓ | ✓ (+ strong completeness, compactness) | the network, strong chain (`bdataS`) |
+| strong B with T (4 off) | ✓ | **nearly**: step 8 items 1–7 done; item 8 (forgetting rules at companion shapes, then drop `noT_of_strong`) and step 9 (drop `NoFour.noTStrong`) left (`v12-modal-extensions.md` §11.21) | the network |
+| strong B, rows 3–4 (carriers `□◇A`, `◇◇A`) | not yet stated | — (§11.22: several labels per edge) | — |
 | B with 4, S5 | ✓ | **open** | — |
-| strong B, 5, 4's open maps | not yet stated | — | — |
+| 5, 4's open maps | not yet stated | — | — |
 
 `here_beta` stays general: §10.18 is decided (keep).
 
