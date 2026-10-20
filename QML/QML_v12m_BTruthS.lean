@@ -1,7 +1,7 @@
 import QML.QML_v12m_BRetOutDC
 
 /-!
-# QML v12m — B's canonical model: the strong B cases of the truth lemma (T off)
+# QML v12m — B's canonical model: the strong B cases of the truth lemma
 
 The truth lemma (`BData.truth`) takes its `Back` and returning-possibility cases as a hypothesis
 (`BData.StrongTruth`).  Here they are assembled from both directions of each case:
@@ -65,12 +65,12 @@ end BData
 variable {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} {hS : ModalSys.BStrong = true}
   (C : StrongChain hS M₀)
 
-/-- ⭐⭐**The limit of a strong chain has the strong B cases of the truth lemma** (T off). -/
-theorem bdataS_strongTruth (hT : ModalSys.T = false) (hB : ModalSys.B = true) :
-    ∀ hS' : ModalSys.BStrong = true, (bdataS C hT).StrongTruth hS' := fun _ =>
-  BData.strongTruth_of hS hB (bdataS_imgInj C hT) (bdataS_cxFresh C hT) (bdataS_retIn C hT)
-    (bdataS_retInX C hT) (bdataS_retInW C hT) (bdataS_retInWX C hT) (bdataS_retOutC C hT)
-    (bdataS_retOutXC C hT) (bdataS_retOutDC C hT) (bdataS_retOutXDC C hT)
+/-- ⭐⭐**The limit of a strong chain has the strong B cases of the truth lemma**. -/
+theorem bdataS_strongTruth (hB : ModalSys.B = true) :
+    ∀ hS' : ModalSys.BStrong = true, (bdataS C).StrongTruth hS' := fun _ =>
+  BData.strongTruth_of hS hB (bdataS_imgInj C) (bdataS_cxFresh C) (bdataS_retIn C)
+    (bdataS_retInX C) (bdataS_retInW C) (bdataS_retInWX C) (bdataS_retOutC C)
+    (bdataS_retOutXC C) (bdataS_retOutDC C) (bdataS_retOutXDC C)
 
 end BArrow
 

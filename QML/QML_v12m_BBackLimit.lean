@@ -68,11 +68,11 @@ section Strong
 variable {hS : ModalSys.BStrong = true} (C : StrongChain hS M₀)
 
 /-- Strong B's canonical data has fresh witness arrows. -/
-theorem bdataS_cxFresh (hT : ModalSys.T = false) : (bdataS C hT).CxFresh :=
+theorem bdataS_cxFresh : (bdataS C).CxFresh :=
   fun hy h => lexX_fresh C.toFairChain _ _ _ _ hy h
 
 /-- Strong B's canonical data has injective images. -/
-theorem bdataS_imgInj (hT : ModalSys.T = false) : (bdataS C hT).ImgInj :=
+theorem bdataS_imgInj : (bdataS C).ImgInj :=
   fun h i _ _ hr hr' e => limg_inj C.toFairChain h i hr hr' e
 
 end Strong

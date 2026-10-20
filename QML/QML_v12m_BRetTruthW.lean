@@ -539,6 +539,24 @@ theorem RetAt.toRetInvW {hS : ModalSys.BStrong = true} {tv tw : NodeSt σ}
       (Proof.conv ?_ (Proof.lookup List.mem_cons_self))
     simp only [OutLeg.lift, WFF.mono_mono]
 
+/-- ⭐**The invariant with companions of a witness edge gives the forward witness one** (as
+    `RetAt.toRetInvW`, by `retxS_forgetC_node`). -/
+theorem RetAtB.toRetInvWB {hS : ModalSys.BStrong = true} {b : Bool} {hb : ModalSys.T = b}
+    {tv tw : NodeSt σ} (hw : Theory.IsMCS tw.M) {x : VarSymb} {X : VarType}
+    {kw : Option (VarSymb × VarType)} {cv cw : ℕ} {cls : List VarType} {imgs : ℕ → ℕ}
+    {clt : List VarType} {imgt : ℕ → ℕ}
+    (h : RetAtB hS b hb tv tw (some (x, X)) kw cv cw cls imgs clt imgt) :
+    RetInvWB hS b hb tv tw cls imgs clt imgt x X cv := by
+  rcases kw with _ | ⟨e, E⟩
+  · exact h
+  · obtain ⟨hs, himgs, ht, himgt, hx, hcxw, he, hcxv, hinv⟩ := h
+    refine ⟨hs, himgs, ht, himgt, hx, hcxw, fun Φ hΦ => ?_⟩
+    have hr := hinv _ (by rw [liftBodyWD_lift]; exact hΦ)
+    refine hw.closed ⟨[_], fun y hy => by rw [List.mem_singleton.mp hy]; exact hr, ⟨?_⟩⟩
+    refine Proof.retxS_forgetC_node hS ⟨E, (ctxOf_le_of_suffix ht).ref he⟩ _
+      (VarType.compOk_compsAllB b hb _) _ _ (Proof.conv ?_ (Proof.lookup List.mem_cons_self))
+    simp only [OutLeg.lift, WFF.mono_mono]
+
 namespace BData
 
 /-- ⭐**Witnessed returning possibilities from the far end** (plain leg): along an arrow `s → k`
@@ -594,11 +612,11 @@ variable {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} {hS : ModalS
   (C : StrongChain hS M₀)
 
 /-- ⭐⭐**The limit has witnessed returning possibilities from the far end**: the way home's
-    invariant (`lretAt`), a witness edge's (`RetAt.toRetInvW`), at a node (`ret_of_invW`). -/
-theorem bdataS_retInW (hT : ModalSys.T = false) : (bdataS C hT).RetInW hS := by
+    invariant (`lretAtB`), a witness edge's (`RetAtB.toRetInvWB`), at a node (`ret_of_invW`). -/
+theorem bdataS_retInW : (bdataS C).RetInW hS := by
   classical
   intro s k h x X hk i N Z Φ j hj hx n c u hm
-  obtain ⟨cls, imgs, clt, imgt, hJs, hJag, his, hiag, hret⟩ := lretAt C h.symm j i hj
+  obtain ⟨cls, imgs, clt, imgt, hJs, hJag, his, hiag, hret⟩ := lretAtB C h.symm j i hj
   have hsp := (lstg_spec C.toFairChain h i).1
   have hkp := (lstg_spec C.toFairChain h.symm j).1
   have hiK : i ≤ lstg C.toFairChain k s j := by
@@ -609,7 +627,7 @@ theorem bdataS_retInW (hT : ModalSys.T = false) : (bdataS C hT).RetInW hS := by
   have hsM := (C.good _).mcs s.1 hsl
   have hk' : lkd C.toFairChain k s = some (x, X) := hk
   rw [hk'] at hret
-  have hinv := (retInvWB_flag hT).mpr ((retInvWB_false hT).mpr (RetAt.toRetInvW hsM hret))
+  have hinv := RetAtB.toRetInvWB hsM hret
   obtain ⟨hcs, -, ht, himgt, -⟩ := id hinv
   have hg := grow_stage C.toFairChain k j (m := birth C.toFairChain s.2 +
     lstg C.toFairChain k s j) hkp
@@ -631,12 +649,12 @@ theorem bdataS_retInW (hT : ModalSys.T = false) : (bdataS C hT).RetInW hS := by
   · rw [WFF.mono_mono]
 
 /-- ⭐⭐**The limit has doubly witnessed returning possibilities from the far end**: the way
-    home's invariant is the doubly witnessed one (`lretAt`), at a node (`ret_of_invWD`). -/
-theorem bdataS_retInWX (hT : ModalSys.T = false) : (bdataS C hT).RetInWX hS := by
+    home's invariant is the doubly witnessed one (`lretAtB`), at a node (`ret_of_invWD`). -/
+theorem bdataS_retInWX : (bdataS C).RetInWX hS := by
   classical
   intro s k y Y hky x X hkx i hy N Z Φ j hj hx n c u hm
   have h : LR C.toFairChain s k := lkdR hky
-  obtain ⟨cls, imgs, clt, imgt, hJs, hJag, his, hiag, hret⟩ := lretAt C h.symm j i hj
+  obtain ⟨cls, imgs, clt, imgt, hJs, hJag, his, hiag, hret⟩ := lretAtB C h.symm j i hj
   have hsp := (lstg_spec C.toFairChain h i).1
   have hkp := (lstg_spec C.toFairChain h.symm j).1
   have hiK : i ≤ lstg C.toFairChain k s j := by
@@ -648,8 +666,7 @@ theorem bdataS_retInWX (hT : ModalSys.T = false) : (bdataS C hT).RetInWX hS := b
   have hky' : lkd C.toFairChain s k = some (y, Y) := hky
   have hkx' : lkd C.toFairChain k s = some (x, X) := hkx
   rw [hky', hkx'] at hret
-  have hinv₀ : RetInvWD hS _ _ cls imgs clt imgt x X _ y Y _ := hret
-  have hinv := (retInvWDB_flag hT).mpr ((retInvWDB_false hT).mpr hinv₀)
+  have hinv : RetInvWDB hS ModalSys.T rfl _ _ cls imgs clt imgt x X _ y Y _ := hret
   obtain ⟨hcs, -, ht, himgt, -, -, hyc, hcyc, -⟩ := id hinv
   have hg := grow_stage C.toFairChain k j (m := birth C.toFairChain s.2 +
     lstg C.toFairChain k s j) hkp

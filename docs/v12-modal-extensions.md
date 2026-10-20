@@ -8110,21 +8110,34 @@ full build green).
   (`ret_unitC`/`WC`/`DC`/`WDC`, with outer companions) should let it be re-derived at
   `tupShape b hb cls`.  The item-8 edits were reverted to keep the build green.
 
-**Item 8, the forgetting rules at companion shapes: begun (2026-10-18).**
-* *Built* (`RetForget`): (a) ⭐`Proof.retx_forgetC`, `retx_forgetC_node` (leg forgetting at
-  `boxC A co`, as `retx_forget` with `ret_unitC` along `x` and inside), with
-  `Proof.kThetaC_refute` (the far world, from `ret_KC`'s core: `openFree_unitBodyC_kThetaC`).
-* *Left, in order*, each mirroring its companion-free twin with the companion units:
-  * (b) `retD_forgetC` (forget the possible part on the plain leg): `kThetaFC` (= `kThetaF` with
-    `compsFlat co` as the value's first component and `ret_unitDC`), `holeRead_kThetaFC`,
-    `openFree_unitBodyDC_kThetaFC` (as `openFree_unitBodyC_kThetaC`), `kThetaFC_refute`
-    (`retx_forgetC` at the far world, as `kThetaF_refute` uses `retx_forget`);
-  * (c) `retxS_forgetC` (leg forgetting at the witnessed companion shape, `ret_unitWDC`/`ret_unitWC`);
-  * (d) `retxD_forgetC` (forget the possible part along `x`).
-  * Then `RetAtB.toRetInvB` (the four cases of `RetAt.toRetInv` with (a)–(c)) and
-    `RetAtB.toRetInvXB` (with (d)), `bdataS_retIn`/`RetInX` on `lretAtB`, and the mechanical item 8
-    (drop `noT_of_strong`, `bdataS`'s `hT`, `R`-free call sites; a script did it in one pass,
-    reverted only because of `bdataS_retIn`), then step 9 (`NoFour.noTStrong`, no instances).
+**Item 8, the forgetting rules at companion shapes: begun (2026-10-18), done (2026-10-20).**
+* (a) ⭐`Proof.retx_forgetC`, `retx_forgetC_node` (leg forgetting at `boxC A co`, as `retx_forget`
+  with `ret_unitC` along `x` and inside), with `Proof.kThetaC_refute` (the far world, from
+  `ret_KC`'s core: `openFree_unitBodyC_kThetaC`).
+* (b) ⭐`Proof.retD_forgetC` (forget the possible part on the plain leg): `kThetaFC`,
+  `holeAt_kThetaFC`, `holeRead_kThetaFC`, `kPsi_kThetaC` (`kPsi` at `kThetaC`, read at a value
+  with companions, is the negated companion unit), `openFree_unitBodyDC_kThetaFC` (the companions
+  read as in `openFree_unitBodyDC_kThetaDC`), `Proof.kThetaFC_refute` (`retx_forget` along the
+  part, then `ret_unitC` at the far world).
+* (c) ⭐`Proof.retxS_forgetC`, `retxS_forgetC_node` (leg forgetting at the witnessed companion
+  shape): `ret_unitDC` along `x`, and `Proof.kThetaDC_refute`, the far world of `retD_KC`.
+* (d) ⭐`Proof.retxD_forgetC` (forget the possible part along `x`): `kThetaWFC`,
+  `holeAt_kThetaWFC`, `holeRead_kThetaWFC`, `openFree_unitBodyWDC_kThetaWFC`,
+  `Proof.kThetaWFC_refute` (`ret_unitWDC` at home, `ret_unitDC` along the part at the far world).
+  All four in `RetForget`; no new rules.
+* `BBackTail`: `retD_forgetC_node`, `retxD_forgetC_node`, ⭐`RetAtB.toRetInvB` (the four cases
+  of `RetAt.toRetInv` at `tupShape`), ⭐`RetAtB.toRetInvXB`.  `BRetTruthW`: ⭐`RetAtB.toRetInvWB`.
+  `bdataS_retIn`/`RetInX` (`BRetTruth`) and `bdataS_retInW`/`RetInWX` (`BRetTruthW`, which the
+  first attempt had missed) read the limit's invariant by `lretAtB`, with no T-off conversion.
+* The mechanical part: `BData.noT_of_strong` removed; `bdataS`, its `bdataS_*` lemmas and
+  `lalias_ind` take no `hT`.
+* **Step 9 done:** `ModalSys.NoFour` is `noFour` only (`noTStrong` removed; it had no instances).
+  So `exists_canonB`, `completenessB`, `completenessB_presented`, `strong_completenessB` and
+  `compactnessB` hold for strong B with T (and D in either strength), 4 off.  Full build green,
+  no `sorry`.
+* Left over: the T-off children (`retSeed*_consistent` in `BRetChild*`, `RetDataB.ofK`,
+  `retInvB_false` and similar) are no longer used outside their own files; the companion files
+  still import helpers from those files, so a cleanup has to keep the helpers.
 
 **Order.**
 1. The decisions, by the user:

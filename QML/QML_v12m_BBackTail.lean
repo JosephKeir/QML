@@ -3,7 +3,7 @@ import QML.QML_v12m_RetForget
 import QML.QML_v12m_BAliasW
 
 /-!
-# QML v12m — strong B: a `Back` atom's returns are interchangeable with its value (T off)
+# QML v12m — strong B: a `Back` atom's returns are interchangeable with its value
 
 The forward law of the canonical "comes back as" (`BData.backRel`, `backRelX`; docs §11.20
 `Att.back`): along an edge `s → k`, a `Back` carrier read out at `k` and home again is
@@ -600,6 +600,93 @@ theorem RetAt.toRetInvX {hS : ModalSys.BStrong = true} {tv tw : NodeSt σ}
       (Proof.conv ?_ (Proof.lookup List.mem_cons_self))
     rw [WFF.mono_bodyRepl ((ctxOf_le_of_suffix ht).diaIn e), Term.mono_eta]
 
+/-! ## Every invariant with companions gives the plain one with companions -/
+
+/-- ⭐**Forgetting a possible part at a node, with companions**, for any body over the `□`
+    view. -/
+def Proof.retD_forgetC_node (hS : ModalSys.BStrong = true) {l : List VarType}
+    {Δ : List (WFF σ (ctxOf l) 0)} {A X : VarType} (co : List (List Step)) (ho : A.CompOk co)
+    {a : Ann (A.compsFlat co)} (y : Term σ (ctxOf l) (A.compsFlat co) a) {b : Ann X}
+    (z : Term σ (ctxOf l) X b) (Φ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
+    (p : Proof σ (ctxOf l) Δ (WFF.retS hS (.wit (.boxC A co ho) X) (Term.pair y z)
+      (WFF.bodyRepl (fstEta A X) Φ))) :
+    Proof σ (ctxOf l) Δ (WFF.retS hS (.nec (.boxC A co ho)) y Φ) :=
+  Proof.conv (by rw [kPsi_pack2]) (Proof.retD_forgetC hS co ho y z (tupT l).2
+    (pack2 l (.VTypeBox A) Φ) (Proof.conv (by rw [kPsiF_pack2]) p))
+
+/-- ⭐**Forgetting a possible part along a witness at a node, with companions**, for any body over
+    its view. -/
+noncomputable def Proof.retxD_forgetC_node (hS : ModalSys.BStrong = true) {l : List VarType}
+    {Δ : List (WFF σ (ctxOf l) 0)} {x : VarSymb} {X C Xe : VarType}
+    (hX : (ctxOf l).ref x = some (.VTypeDia X)) (co : List (List Step)) (ho : C.CompOk co)
+    {c : Ann (C.compsFlat co)} (y : Term σ (ctxOf l) (C.compsFlat co) c) {b : Ann Xe}
+    (z : Term σ (ctxOf l) Xe b)
+    (Φ : WFF σ (((ctxOf l).diaIn x).insert (.bnd 0) (.VTypeBox C)) 1)
+    (p : Proof σ (ctxOf l) Δ (WFF.retxS hS x ⟨X, hX⟩ (.wit (.boxC C co ho) Xe) (Term.pair y z)
+      (WFF.bodyRepl (fstEta C Xe) Φ))) :
+    Proof σ (ctxOf l) Δ (WFF.retxS hS x ⟨X, hX⟩ (.nec (.boxC C co ho)) y Φ) :=
+  Proof.conv (by rw [kPsiX_pack2X]) (Proof.retxD_forgetC hS hX co ho y z (tupT l).2
+    (pack2X (.VTypeBox C) hX Φ) (Proof.conv (by rw [kPsiXF_pack2X]) p))
+
+/-- ⭐**Every form of the invariant with companions gives the plain one with companions**
+    (`RetAt.toRetInv` at `tupShape`): the witnessed forms by forgetting the leg
+    (`retx_forgetC`, `retxS_forgetC`) and the possible part (`retD_forgetC`), keeping the tuple's
+    companions. -/
+theorem RetAtB.toRetInvB {hS : ModalSys.BStrong = true} {b : Bool} {hb : ModalSys.T = b}
+    {tv tw : NodeSt σ} (hw : Theory.IsMCS tw.M) {kv kw : Option (VarSymb × VarType)} {cv cw : ℕ}
+    {cls : List VarType} {imgs : ℕ → ℕ} {clt : List VarType} {imgt : ℕ → ℕ}
+    (h : RetAtB hS b hb tv tw kv kw cv cw cls imgs clt imgt) :
+    RetInvB hS b hb tv tw cls imgs clt imgt := by
+  rcases kv with _ | ⟨x, X⟩ <;> rcases kw with _ | ⟨e, E⟩
+  · exact h
+  · obtain ⟨hs, himgs, ht, himgt, he, hcx, hinv⟩ := h
+    refine ⟨hs, himgs, ht, himgt, fun Φ hΦ => ?_⟩
+    have hr := hinv _ (by rw [liftBodyX_lift]; exact hΦ)
+    refine hw.closed ⟨[_], fun y hy => by rw [List.mem_singleton.mp hy]; exact hr, ⟨?_⟩⟩
+    refine Proof.retx_forgetC_node hS ⟨E, (ctxOf_le_of_suffix ht).ref he⟩ _ _ _ _
+      (Proof.conv ?_ (Proof.lookup List.mem_cons_self))
+    simp only [OutLeg.retS, OutLeg.lift, WFF.mono_mono]
+  · obtain ⟨hs, himgs, ht, himgt, hx, hcx, hinv⟩ := h
+    refine ⟨hs, himgs, ht, himgt, fun Φ hΦ => ?_⟩
+    have hr := hinv _ (by rw [liftBodyW_repl]; exact hΦ)
+    rw [WFF.mono_bodyRepl (ctxOf_le_of_suffix ht).boxIn, Term.mono_eta] at hr
+    exact hw.closed ⟨[_], fun y hy => by rw [List.mem_singleton.mp hy]; exact hr,
+      ⟨Proof.retD_forgetC_node hS _ _ _ _ _ (Proof.lookup List.mem_cons_self)⟩⟩
+  · obtain ⟨hs, himgs, ht, himgt, hx, hcxw, he, hcxv, hinv⟩ := h
+    refine ⟨hs, himgs, ht, himgt, fun Φ hΦ => ?_⟩
+    have hr := hinv _ (by rw [liftBodyWD_repl]; exact hΦ)
+    refine hw.closed ⟨[_], fun y hy => by rw [List.mem_singleton.mp hy]; exact hr, ⟨?_⟩⟩
+    refine Proof.retD_forgetC_node hS _ (VarType.compOk_compsAllB b hb _)
+      (tupCompsImg cls imgs himgs _ (VarType.compOk_compsAllB b hb _)).2
+      (Term.eta (.root (.free cv)) X hcxw) _ (Proof.conv ?_
+        (Proof.retxS_forgetC_node hS ⟨E, (ctxOf_le_of_suffix ht).ref he⟩ _
+          (VarType.compOk_compsAllB b hb _)
+          (Term.pair (tupCompsImg cls imgs himgs _ (VarType.compOk_compsAllB b hb _)).2
+            (Term.eta (.root (.free cv)) X hcxw))
+          (WFF.mono ((ctxOf_le_of_suffix ht).boxIn.insert (.bnd 0) _)
+            (WFF.bodyRepl (fstEta (bcT cls) X) Φ))
+          (Proof.conv ?_ (Proof.lookup List.mem_cons_self))))
+    · rw [WFF.mono_bodyRepl (ctxOf_le_of_suffix ht).boxIn, Term.mono_eta]
+    · simp only [OutLeg.lift, WFF.mono_mono]
+
+/-- ⭐**An invariant with companions whose way back lies in a witness's extent gives the one along
+    it** (`RetAt.toRetInvX` at `tupShape`, by `retxD_forgetC`). -/
+theorem RetAtB.toRetInvXB {hS : ModalSys.BStrong = true} {b : Bool} {hb : ModalSys.T = b}
+    {tv tw : NodeSt σ} (hw : Theory.IsMCS tw.M) {kv : Option (VarSymb × VarType)} {e : VarSymb}
+    {E : VarType} {cv cw : ℕ} {cls : List VarType} {imgs : ℕ → ℕ} {clt : List VarType}
+    {imgt : ℕ → ℕ} (h : RetAtB hS b hb tv tw kv (some (e, E)) cv cw cls imgs clt imgt) :
+    RetInvXB hS b hb tv tw cls imgs clt imgt e E cw := by
+  rcases kv with _ | ⟨x, X⟩
+  · exact h
+  · obtain ⟨hs, himgs, ht, himgt, hx, hcxw, he, hcxv, hinv⟩ := h
+    refine ⟨hs, himgs, ht, himgt, he, hcxv, fun Φ hΦ => ?_⟩
+    have hr := hinv _ (by rw [liftBodyWD_replX]; exact hΦ)
+    refine hw.closed ⟨[_], fun y hy => by rw [List.mem_singleton.mp hy]; exact hr, ⟨?_⟩⟩
+    refine Proof.retxD_forgetC_node hS ((ctxOf_le_of_suffix ht).ref he) _ _
+      (tupCompsImg cls imgs himgs _ (VarType.compOk_compsAllB b hb _)).2
+      (Term.eta (.root (.free cv)) X hcxw) _ (Proof.conv ?_ (Proof.lookup List.mem_cons_self))
+    rw [WFF.mono_bodyRepl ((ctxOf_le_of_suffix ht).diaIn e), Term.mono_eta]
+
 /-- The counit's body over a witness's view, read at the witness child: `ψ` of the committed
     roots' items and the carrier's image along the witness arrow, necessarily. -/
 theorem liftBodyX_counitBodyC {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt : ℕ → ℕ}
@@ -856,9 +943,9 @@ theorem lbackRelX {s k : LW C.toFairChain} {i : ℕ} {A : VarType} {a₀ : Ann A
     exact Term.subst_congr _ _ _ _ _ _ (sim_arrowS hJag) _
   · rw [Term.mono_mono]
 
-/-- ⭐⭐**Strong B's canonical data** (T off): the limit of a strong chain, its `Back` atoms'
+/-- ⭐⭐**Strong B's canonical data**: the limit of a strong chain, its `Back` atoms'
     returns interchangeable with their values (`lbackRel`, `lbackRelX`). -/
-noncomputable def bdataS (hT : ModalSys.T = false) : BData σ where
+noncomputable def bdataS : BData σ where
   W := LW C.toFairChain
   actual := ⟨[], 0, trivial⟩
   w s := nodeWorld C.toFairChain s.1 s.2
@@ -878,7 +965,6 @@ noncomputable def bdataS (hT : ModalSys.T = false) : BData σ where
   trX hk i hx ψ hψ := ltrX C.toFairChain hk i hx ψ hψ
   exX s i x X hx ψ hψ := lexX C.toFairChain s i x X hx ψ hψ
   unl h := lunl C.toFairChain h
-  noT_of_strong _ := hT
   backRel _ _ _ _ _ bd _ t hmem _ hk := lbackRel C hk bd t hmem
   backRelX _ _ _ _ _ _ _ hy bd _ t hmem _ hk := lbackRelX C hy bd t hmem hk
 

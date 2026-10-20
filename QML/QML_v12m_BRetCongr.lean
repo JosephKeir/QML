@@ -2,7 +2,7 @@ import QML.QML_v12m_BTruthS
 import QML.QML_v12m_BInd
 
 /-!
-# QML v12m — B's canonical model: "comes back as" is a congruence (strong B, T off)
+# QML v12m — B's canonical model: "comes back as" is a congruence (strong B)
 
 `Model.IndInvariant.ret` asks the canonical `Ret` to be preserved by a hole term (`map`) and by
 pairing two carriers' data (`pair`).  The canonical `Ret` (`BData.Ret`) is a round trip at a
@@ -315,7 +315,7 @@ theorem ret_pair (hS : ModalSys.BStrong = true) {A C : VarType} {s : B.W}
 
 end Congr
 
-/-- ⭐⭐**Canonical "comes back as" is a congruence** (strong B, T off): `Model.RetCongr`. -/
+/-- ⭐⭐**Canonical "comes back as" is a congruence** (strong B): `Model.RetCongr`. -/
 theorem retCongr (hS : ModalSys.BStrong = true)
     (hST : ∀ hS : ModalSys.BStrong = true, B.StrongTruth hS) : B.model.RetCongr where
   map := by
@@ -332,11 +332,11 @@ section Limit
 variable {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} {hS : ModalSys.BStrong = true}
   (C : StrongChain hS M₀)
 
-/-- ⭐⭐**The limit of a strong chain is a model proper** (T off). -/
-theorem bdataS_indInvariant (hT : ModalSys.T = false) (hB : ModalSys.B = true) :
-    (bdataS C hT).model.IndInvariant :=
-  BData.indInvariant (bdataS_strongTruth C hT hB)
-    fun hS' => BData.retCongr hS' (bdataS_strongTruth C hT hB)
+/-- ⭐⭐**The limit of a strong chain is a model proper**. -/
+theorem bdataS_indInvariant (hB : ModalSys.B = true) :
+    (bdataS C).model.IndInvariant :=
+  BData.indInvariant (bdataS_strongTruth C hB)
+    fun hS' => BData.retCongr hS' (bdataS_strongTruth C hB)
 
 end Limit
 

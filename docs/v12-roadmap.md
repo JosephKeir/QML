@@ -11,8 +11,7 @@ package.  Design detail stays in `v12-modal-extensions.md` (per axiom) and `v12-
 |---|---|---|---|
 | K, T (weak, strong), D (weak, strong), 4 (weak), any combination without B | ✓ | ✓ (+ strong completeness, compactness) | the tree (`Canon.*`) |
 | weak B with any of T, D (both strengths), without 4 (`NoFour`) | ✓ | ✓ (+ strong completeness, compactness; every presented context) | the network (`BArrow.*`) |
-| strong B, rows 1–2 (carriers `□□A`, `◇_y□A`), T off, 4 off | ✓ | ✓ (+ strong completeness, compactness) | the network, strong chain (`bdataS`) |
-| strong B with T (4 off) | ✓ | **nearly**: step 8 items 1–7 done; item 8 (forgetting rules at companion shapes, then drop `noT_of_strong`) and step 9 (drop `NoFour.noTStrong`) left (`v12-modal-extensions.md` §11.21) | the network |
+| strong B, rows 1–2 (carriers `□□A`, `◇_y□A`), with T and D in either strength, 4 off | ✓ | ✓ (+ strong completeness, compactness; every presented context; T added 2026-10-20, `v12-modal-extensions.md` §11.21) | the network, strong chain (`bdataS`) |
 | strong B, rows 3–4 (carriers `□◇A`, `◇◇A`) | not yet stated | — (§11.22: several labels per edge) | — |
 | B with 4, S5 | ✓ | **open** | — |
 | 5, 4's open maps | not yet stated | — | — |
@@ -247,6 +246,8 @@ style of milestone 1, each ending green and committed:
    * *One name per leg under T*: resolved on paper (`here_intro` at `⊤`).
    * *Then*: flag-generic obligations, pull-backs and births; `hT` dropped from the network and
      the limit; `NoFour.noTStrong` removed.
+   * **Done (2026-10-20).**  `NoFour` is 4 off only; `bdataS` takes no `hT`, and completeness,
+     strong completeness and compactness hold for strong B with T.
 Then rows 3–4 (multi-labelled edges, per-witness components) and `◇`-typed contents (§11.12).
 **Main risks:** step 5's refactor of the back arrows (the invariant changes shape); step 2's ripple
 is large but mechanical.

@@ -5,7 +5,7 @@ import QML.QML_v12m_BRetCongr
 /-!
 # QML v12m — completeness for B
 
-With 4 off (`ModalSys.NoFour`: T and D free, each in either strength; strong B with T off), and
+With 4 off (`ModalSys.NoFour`: T and D free, each in either strength, weak or strong B), and
 with the weak B rule: ⭐`completenessB`, a sequent in a context of declared variables (`ctxOf l₀`,
 the root world's starting language) valid in every model is provable.  Its negation extends to a
 maximal consistent theory `M₀`; the network grown from `M₀` gives the canonical data — weak B's
@@ -28,7 +28,7 @@ variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalS
 
 /-- ⭐⭐**B's canonical model over a maximal consistent theory**: a model proper whose root
     satisfies, at its first stage, exactly its theory, which contains `M₀`.  Weak B's network
-    (`bdata`), or strong B's (`bdataS`, T off by `NoFour`) with its truth cases
+    (`bdata`), or strong B's (`bdataS`) with its truth cases
     (`bdataS_strongTruth`) and congruence (`BData.retCongr`). -/
 theorem exists_canonB (hB : ModalSys.B = true) {l₀ : List VarType}
     {M₀ : Set (WFF σ (ctxOf l₀) 0)} (hM₀ : Theory.IsMCS M₀) :
@@ -47,17 +47,16 @@ theorem exists_canonB (hB : ModalSys.B = true) {l₀ : List VarType}
         BData.indInvariant hST fun hS => absurd (hBS.symm.trans hS) (by decide),
         BData.truth hST s 0, fun ψ hψ => hg.sub ψ (show ψ ∈ ((net M₀ 0).st []).M from hψ)⟩
   | true =>
-      have hT := ModalSys.NoFour.noTStrong hBS
       let C := strongChainS hBS hB hM₀
-      let B := bdataS C hT
+      let B := bdataS C
       let s : B.W := B.actual
       have hg := (ext_netS hBS hB hM₀
         (Nat.zero_le (birth C.toFairChain s.2 + 0))).grows [] trivial
       exact ⟨B, s, ctxOf_le_of_suffix (C.lang_suffix (Nat.zero_le _) trivial),
-        bdataS_indInvariant C hT hB, BData.truth (bdataS_strongTruth C hT hB) s 0,
+        bdataS_indInvariant C hB, BData.truth (bdataS_strongTruth C hB) s 0,
         fun ψ hψ => hg.sub ψ (show ψ ∈ ((netS hBS M₀ 0).st []).M from hψ)⟩
 
-/-- ⭐**Completeness for B** (weak, or strong with T off): in a context of declared variables, a
+/-- ⭐**Completeness for B** (weak or strong): in a context of declared variables, a
     sequent that holds in every model, at every world, in every environment, is provable. -/
 theorem completenessB (hB : ModalSys.B = true) {l₀ : List VarType} {Δ : List (WFF σ (ctxOf l₀) 0)}
     {φ : WFF σ (ctxOf l₀) 0}

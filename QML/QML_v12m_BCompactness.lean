@@ -4,7 +4,7 @@ import QML.QML_v12m_Compactness
 /-!
 # QML v12m — strong completeness and compactness for B
 
-Under `ModalSys.NoFour` (4 off; T, D and both strengths of each allowed; strong B with T off), as
+Under `ModalSys.NoFour` (4 off; T, D and B, each in either strength), as
 `completenessB`.
 
 * ⭐`model_existenceB`: every consistent set of formulas in a presented context is satisfiable.  At a

@@ -584,7 +584,6 @@ noncomputable def bdata (hW : ModalSys.BStrong = false) : BData σ where
   trX hk i hx ψ hψ := ltrX C hk i hx ψ hψ
   exX s i x X hx ψ hψ := lexX C s i x X hx ψ hψ
   unl h := lunl C h
-  noT_of_strong hS := absurd (hW.symm.trans hS) (by decide)
   backRel hS := absurd (hW.symm.trans hS) (by decide)
   backRelX hS := absurd (hW.symm.trans hS) (by decide)
 

@@ -1,7 +1,7 @@
 import QML.QML_v12m_BItems
 
 /-!
-# QML v12m — B's canonical model: the returning possibility's truth cases (strong B, T off)
+# QML v12m — B's canonical model: the returning possibility's truth cases (strong B)
 
 The truth lemma's `ret` cases (docs §11.20, "Step 5 begun"), built a slice at a time.
 
@@ -1433,7 +1433,7 @@ theorem mem_retx_of_sat_here (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
     interp_canon t (Model.Env.Agree.refl' _)] at hI
   exact hI
 
-/-- ⭐⭐**`ret` along a witness, truth ⇒ membership** (necessary shapes; strong B, T off): as
+/-- ⭐⭐**`ret` along a witness, truth ⇒ membership** (necessary shapes; strong B): as
     `mem_ret_of_sat_nec`, along an arrow of `y`'s extent (a witness arrow, T being off) with the
     invariant along `y` (`RetInX`, `diaPush_canon_at`, `mem_retx_of_ind`). -/
 theorem mem_retx_of_sat (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
@@ -1499,11 +1499,11 @@ variable {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} {hS : ModalS
   (C : StrongChain hS M₀)
 
 /-- ⭐⭐**The limit has returning possibilities from the far end**: the invariant of the way home
-    `k → s` (`lretAt`, reduced by `RetAt.toRetInv`), at a node (`ret_of_invB`). -/
-theorem bdataS_retIn (hT : ModalSys.T = false) : (bdataS C hT).RetIn hS := by
+    `k → s` (`lretAtB`, reduced by `RetAtB.toRetInvB`), at a node (`ret_of_invB`). -/
+theorem bdataS_retIn : (bdataS C).RetIn hS := by
   classical
   intro s k h i N Φ j hj n hm
-  obtain ⟨cls, imgs, clt, imgt, hJs, hJag, his, hiag, hret⟩ := lretAt C h.symm j i hj
+  obtain ⟨cls, imgs, clt, imgt, hJs, hJag, his, hiag, hret⟩ := lretAtB C h.symm j i hj
   have hsp := (lstg_spec C.toFairChain h i).1
   have hkp := (lstg_spec C.toFairChain h.symm j).1
   have hiK : i ≤ lstg C.toFairChain k s j := by
@@ -1512,7 +1512,7 @@ theorem bdataS_retIn (hT : ModalSys.T = false) : (bdataS C hT).RetIn hS := by
   have hsl : (C.net (birth C.toFairChain s.2 + lstg C.toFairChain k s j)).Live s.1 :=
     live_birth C.toFairChain s.2 (Nat.le_add_right _ _)
   have hsM := (C.good _).mcs s.1 hsl
-  have hinv := (retInvB_flag hT).mpr ((retInvB_false hT).mpr (RetAt.toRetInv hsM hret))
+  have hinv := RetAtB.toRetInvB hsM hret
   obtain ⟨hcs, -, ht, himgt, -⟩ := id hinv
   -- what `k` has at stage `j`, grown to the round of the invariant
   have hg := grow_stage C.toFairChain k j (m := birth C.toFairChain s.2 +
@@ -1530,12 +1530,12 @@ theorem bdataS_retIn (hT : ModalSys.T = false) : (bdataS C hT).RetIn hS := by
   · rw [WFF.mono_mono]
 
 /-- ⭐⭐**The limit has returning possibilities along a witness from the far end**: the way home's
-    invariant along the witness (`lretAt`, `RetAt.toRetInvX`), at a node (`retx_of_invB`). -/
-theorem bdataS_retInX (hT : ModalSys.T = false) : (bdataS C hT).RetInX hS := by
+    invariant along the witness (`lretAtB`, `RetAtB.toRetInvXB`), at a node (`retx_of_invB`). -/
+theorem bdataS_retInX : (bdataS C).RetInX hS := by
   classical
   intro s k y Y hk i hy N Φ j hj n hm
   have h : LR C.toFairChain s k := lkdR hk
-  obtain ⟨cls, imgs, clt, imgt, hJs, hJag, his, hiag, hret⟩ := lretAt C h.symm j i hj
+  obtain ⟨cls, imgs, clt, imgt, hJs, hJag, his, hiag, hret⟩ := lretAtB C h.symm j i hj
   have hsp := (lstg_spec C.toFairChain h i).1
   have hkp := (lstg_spec C.toFairChain h.symm j).1
   have hiK : i ≤ lstg C.toFairChain k s j := by
@@ -1546,8 +1546,7 @@ theorem bdataS_retInX (hT : ModalSys.T = false) : (bdataS C hT).RetInX hS := by
   have hsM := (C.good _).mcs s.1 hsl
   have hk' : lkd C.toFairChain s k = some (y, Y) := hk
   rw [hk'] at hret
-  have hinv₀ := RetAt.toRetInvX hsM hret
-  have hinv := (retInvXB_flag hT).mpr ((retInvXB_false hT).mpr hinv₀)
+  have hinv := RetAtB.toRetInvXB hsM hret
   obtain ⟨hcs, -, ht, himgt, hxc, hcxc, -⟩ := id hinv
   have hg := grow_stage C.toFairChain k j (m := birth C.toFairChain s.2 +
     lstg C.toFairChain k s j) hkp

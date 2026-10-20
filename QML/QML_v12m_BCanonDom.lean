@@ -79,8 +79,6 @@ structure BData [ModalSys.NoFour] (σ : Signature) where
       of kind `none`): a plain leg's arrows are never one witness's extent, which strong B's
       `back` case reads to tell the legs apart (docs §11.20). -/
   unl : ∀ {s t}, R s t → ∃ t', R s t' ∧ kd s t' = none
-  /-- Strong B is built with T off for now (docs §11.20). -/
-  noT_of_strong : ModalSys.BStrong = true → ModalSys.T = false
   /-- ⭐Strong B, row 1: a `Back` atom's carrier, read out along an arrow and home again, is
       interchangeable with the atom's value (`Att.back`, from the network's invariants). -/
   backRel : ∀ (hS : ModalSys.BStrong = true) {s : W} {i : ℕ} {A : VarType} {a₀ : Ann A}

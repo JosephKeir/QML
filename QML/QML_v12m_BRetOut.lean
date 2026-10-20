@@ -744,17 +744,17 @@ theorem lstg_mono {s t : LW C.toFairChain} (h : LR C.toFairChain s t) {i i' : �
 
 /-- ⭐**An alias is `Ind` to its term**: its alias formulas at every later stage make the two
     interchangeable there (`alias_interch`), so `DTerm.Rel`. -/
-theorem lalias_ind (hT : ModalSys.T = false) (s : LW C.toFairChain) {i i₁ : ℕ}
+theorem lalias_ind (s : LW C.toFairChain) {i i₁ : ℕ}
     {A : VarType} {a : Ann A} (t : Term σ (ctxOf (lat s i)) A a) {l : List VarType}
     (hl : lat s i <:+ l)
     (hal : ∀ j, i₁ ≤ j → ∃ hsuf : (A :: l) <:+ lat s j, ∀ ψ,
       WFF.mono (ctxOf_le_of_suffix hsuf) (aliasFormula (Term.mono (ctxOf_le_of_suffix hl) t) ψ)
         ∈ ((C.net (birth C.toFairChain s.2 + j)).st s.1).M)
     (hy₁ : (ctxOf (lat s i₁)).ref (.root (.free l.length)) = some A) :
-    (bdataS C hT).Ind
-      ((bdataS C hT).toDom A s ((bdataS C hT).rden s i₁ (Ctx.Le.refl _)
+    (bdataS C).Ind
+      ((bdataS C).toDom A s ((bdataS C).rden s i₁ (Ctx.Le.refl _)
         (Term.eta (.root (.free l.length)) A hy₁)) (BData.definable_rden _ _))
-      ((bdataS C hT).toDom A s ((bdataS C hT).rden s i (Ctx.Le.refl _) t)
+      ((bdataS C).toDom A s ((bdataS C).rden s i (Ctx.Le.refl _) t)
         (BData.definable_rden _ _)) := by
   refine ⟨⟨i₁, _, Term.eta (.root (.free l.length)) A hy₁⟩, ⟨i, a, t⟩,
     (BData.fromDom_toDom _ _ _ _ _).symm, (BData.fromDom_toDom _ _ _ _ _).symm, fun j h h' φ => ?_⟩

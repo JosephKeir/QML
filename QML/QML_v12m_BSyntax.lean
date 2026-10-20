@@ -29,13 +29,9 @@ namespace V12M
 /-- The one flag the arrow construction, and with it B's completeness, needs
     (`docs/v12-arrow-canonical.md` §9): 4 off, so a view shows `u.box` (and `x.dia`) and never
     `keep`.  Under T a reachable address may also pass through the projection `here`, which
-    `VarType.bc` and the arrows account for.
-
-    **Temporarily also T off under strong B** (`noTStrong`): strong B's network is built without
-    T for now (docs §11.20), and is to be combined with T later. -/
+    `VarType.bc` and the arrows account for. -/
 class ModalSys.NoFour [ModalSys] : Prop where
   noFour : ModalSys.Four = false
-  noTStrong : ModalSys.BStrong = true → ModalSys.T = false
 
 variable [ModalSys]
 

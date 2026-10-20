@@ -718,6 +718,524 @@ noncomputable def Proof.retx_forgetC_node (hS : ModalSys.BStrong = true) {l : Li
   Proof.conv (by rw [kPsi_pack2]) (Proof.retx_forgetC hS hx co ho t (tupT l).2
     (pack2 l (.VTypeBox B) Φ) (Proof.conv (by rw [kPsi_pack2]) p))
 
+/-! ## Forgetting a possible part, at an object with companions -/
+
+/-- `kThetaF` at an object with companions: `¬◇^{co}[e ↦ y] θΨ(s.box, e)` at a witnessed value's
+    necessary part. -/
+def kThetaFC (hS : ModalSys.BStrong = true) {A C : VarType} (co : List (List Step))
+    (ho : A.CompOk co) (X : VarType)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1) :
+    WFF σ (Ctx.empty.insert (.bnd 0)
+      (.VTypeProd (.VTypeProd (A.compsFlat co) X) (.VTypeBox C))) 1 :=
+  WFF.neg (WFF.retS hS (.nec (.boxC A co ho))
+    (Term.eta (.step (.step (.root (.bnd 0)) .fst) .fst) (A.compsFlat co)
+      (Ctx.ref_fst_of (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))))
+    (WFF.holeAt (((Ctx.slotsFrom_empty.insert _).boxIn).insert (.VTypeBox A))
+      (Term.pair
+        (Term.eta (VarSymb.step (.root (.bnd 0)) .snd).inner C
+          ((Ctx.le_insert ((Ctx.slotsFrom_empty.insert _).boxIn.root) (.VTypeBox A)).ref
+            (Ctx.ref_inner (Ctx.ref_snd_of (Ctx.ref_insert_root Ctx.empty (.bnd 0)
+              (.VTypeProd (.VTypeProd (A.compsFlat co) X) (.VTypeBox C)))))))
+        (Term.eta (.root (.bnd 1)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 1) _)))
+      θΨ))
+
+theorem holeAt_kThetaFC {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys.BStrong = true)
+    {A C X : VarType} (co : List (List Step)) (ho : A.CompOk co) {a : Ann (A.compsFlat co)}
+    (y : Term σ Δ (A.compsFlat co) a) {b : Ann X} (z : Term σ Δ X b) {c : Ann C}
+    (s : Term σ Δ.boxIn C c)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1) :
+    WFF.holeAt hs (Term.pair (Term.pair y z) (Term.boxtm s)) (kThetaFC hS co ho X θΨ) =
+      WFF.neg (WFF.retS hS (.nec (.boxC A co ho)) y (WFF.holeAt (hs.boxIn.insert _)
+        (Term.pair (Term.mono (Ctx.le_insert hs.boxIn.root _) s)
+          (Term.eta (.root (.bnd d)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd d) _)))
+        θΨ)) := by
+  unfold WFF.holeAt kThetaFC
+  have h0 : (Subst.single (σ := σ) (Δ := Δ) (.bnd 0)
+      (.tm (Term.pair (Term.pair y z) (Term.boxtm s)))).at (.root (.bnd 0)) =
+      .tm (Term.pair (Term.pair y z) (Term.boxtm s)) := by
+    change Subst.single _ _ (.root (.bnd 0)) = _
+    exact if_pos rfl
+  refine congrArg (fun φ => WFF.imp φ WFF.bot) (WFF.retS_congr hS _ ?_ ?_)
+  · exact Term.subst_eta_tm _ _ _ _ _ _ y
+      (by rw [Subst.at_proj _ _ rfl, Subst.at_proj _ _ rfl, h0]; rfl)
+  · rw [WFF.subst_holeAt]
+    refine WFF.holeAt_congr _ (sig_pair ?_ ?_) θΨ
+    · refine Term.subst_eta_tm _ _ _ _ _ _ _ ?_
+      rw [Subst.at_under_ne _ _ _ (by rw [VarSymb.inner_rt]; exact fun h => by cases h),
+        Subst.box_at_inner_boxtm _ (by rw [Subst.at_proj _ _ rfl, h0]; rfl)]
+      rfl
+    · exact Term.subst_eta_renAt _ _ _ _ _ _ _ _ (Subst.under_at_slot _ (0 + 1) d _ _)
+
+theorem holeRead_kThetaFC {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+    {A C X : VarType} (co : List (List Step)) (ho : A.CompOk co) {a : Ann (A.compsFlat co)}
+    (y : Term σ Γ (A.compsFlat co) a) {b : Ann X} (z : Term σ Γ X b) {c : Ann C}
+    (sb : Term σ Γ.boxIn C c)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1) :
+    WFF.holeRead (Term.pair (Term.pair y z) (Term.boxtm sb)) (kThetaFC hS co ho X θΨ) =
+      WFF.neg (WFF.retS hS (.nec (.boxC A co ho)) y (kPsi sb θΨ)) := by
+  rw [WFF.holeRead_eq_holeAt, holeAt_kThetaFC]
+  rfl
+
+/-- `kPsi` at `kThetaC`, read at an object's value with companions, is the negated companion
+    unit. -/
+theorem kPsi_kThetaC {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) {A C : VarType}
+    (co : List (List Step)) (ho : A.CompOk co) {a : Ann A} (s : Term σ Γ.boxIn A a)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1) :
+    kPsi (compsVal s co ho).2 (kThetaC hS co ho θΨ) =
+      WFF.neg (WFF.unitBodyC hS (C := C) [] (Or.inl rfl) s co ho θΨ) := by
+  unfold kPsi
+  refine (holeAt_kThetaC _ hS co ho _ (Term.eta (VarSymb.root (.bnd 0)).inner C
+    (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))) θΨ).trans ?_
+  unfold WFF.unitBodyC
+  refine congrArg WFF.neg (WFF.retS_congr hS _ rfl ?_)
+  refine WFF.holeAt_congr _ (sig_pair ?_ rfl) θΨ
+  exact congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _)
+
+section OpenFC
+
+variable {Γ : Ctx} [Γ.NoSlots] {u : ℕ} (hu : Γ.boxIn.RootFresh (.free u))
+
+/-- Opening the companion unit along the possible part, carrying `kThetaFC`: a returning
+    possibility along `u`'s possible part whose body is, lifted, the negated companion unit at
+    `u`'s necessary part (as `openFree_unitBodyD_kThetaF`, the companions read as in
+    `openFree_unitBodyDC_kThetaDC`). -/
+theorem openFree_unitBodyDC_kThetaFC (hS : ModalSys.BStrong = true) {A C X : VarType}
+    (co : List (List Step)) (ho : A.CompOk co) {c : Ann C} (sb : Term σ Γ.boxIn C c)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1) :
+    WFF.openFree u hu Ctx.NoSlots.slots
+        (WFF.unitBodyDC (Γ := Γ) hS co ho sb [] (Or.inl rfl) (kThetaFC hS co ho X θΨ)) =
+      WFF.retx hS (.step (.root (.free u)) .snd) ⟨X, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩
+        (Term.mono (Ctx.le_insert hu.root _) sb)
+        ((OutLeg.pos (.step (.root (.free u)) .snd)
+            ⟨X, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩).lift
+          (kPsi (Γ := Γ.boxIn.insert (.free u) (RShape.wit (.box A) X).ty)
+            (compsVal (Term.eta (VarSymb.step (.root (.free u)) .fst).inner A
+              (Ctx.ref_inner (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _)))) co ho).2
+            (kThetaC hS co ho θΨ))) := by
+  have hu0 := Ctx.ref_insert_root Γ.boxIn (.bnd 0) (RShape.wit (.box A) X).ty
+  have hsnd := Ctx.ref_snd_of hu0
+  have hθ := Subst.ok_toFree (σ := σ) (d := 0) (Subst.ok_idRen (Δ := Γ.boxIn))
+    (RShape.wit (.box A) X).ty hu.root
+  have hc := Subst.coh_toFree (σ := σ) (d := 0) (Subst.ok_idRen (Δ := Γ.boxIn)) Subst.coh_idRen
+    (Ctx.NoSlots.slots (Γ := Γ.boxIn)) (RShape.wit (.box A) X).ty hu.root
+  have h0 : ((Subst.idRen (σ := σ) Γ.boxIn).toFree 0 u (RShape.wit (.box A) X).ty hu.root).at
+      (.root (.bnd 0)) = .ren (.root (.free u)) := by
+    rw [Subst.at_nonproj _ rfl]
+    exact Subst.toFree_root _ _ _ _ _
+  have hw : (((Subst.idRen (σ := σ) Γ.boxIn).toFree 0 u (RShape.wit (.box A) X).ty
+      hu.root).at (.step (.root (.bnd 0)) .snd)).idxAlong [] = .step (.root (.free u)) .snd := by
+    rw [Subst.at_proj _ _ rfl, h0]
+    rfl
+  have hsl := ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insertFree u
+    (RShape.wit (.box A) X).ty).diaIn (.step (.root (.free u)) .snd)
+  unfold WFF.openFree WFF.unitBodyDC
+  rw [WFF.subst_retxS_at _ _ _ _ _ _ _ _ _ _ _ (.step (.root (.free u)) .snd) rfl
+    ⟨X, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩ hsl (Subst.ok_dia hθ ⟨X, hsnd⟩ hw)
+    (Subst.coh_dia hθ hc ⟨X, hsnd⟩)]
+  refine WFF.retxS_congr hS _ _ _ (subst_toFree_mono_sig hu sb) ?_
+  rw [WFF.subst_holeAt]
+  have hT := Ctx.ref_insert_root Γ.boxIn (.free u) (RShape.wit (.box A) X).ty
+  refine (WFF.holeAt_congr _ (sig_pair (sig_pair
+    (Term.subst_compsSlot _ _ (Ctx.ref_fst_of hT)
+      ((Ctx.le_boxIn_diaIn _ _).trans (Ctx.le_insert hsl.root (.VTypeBox C))) _ _ _
+      (fun q _ hq hr => ?_) co ho)
+    (Term.subst_eta_renAt _ _ _ X _ (.step (.step (.root (.free u)) .snd) .dia) _
+      ((Ctx.le_insert hsl.root (.VTypeBox C)).ref (Ctx.ref_diaIn_of (Ctx.ref_snd_of hT))) ?_))
+    (Term.subst_eta_renAt _ _ _ _ _ (.root (.bnd 0)) _ (Ctx.ref_insert_root _ (.bnd 0) _)
+      (Subst.under_at_slot _ (0 + 1) 0 _ _))) _).trans ?_
+  · rw [Subst.at_under_ne _ _ _ (by
+        rw [VarSymb.inner_rt, VarSymb.ext_rt]; exact fun h => by cases h),
+      Subst.dia_eq_box_mono (Δ₁ := Γ.boxIn.insert (.bnd 0) (RShape.wit (.box A) X).ty) _ _ _ _ _
+        (Ctx.ref_inner hr),
+      Subst.box_at_inner_ren _ (Subst.at_ext_ren _ q (by rw [Subst.at_proj _ _ rfl, h0]; rfl) hq)]
+    rfl
+  · rw [Subst.at_under_ne _ _ _ (fun h => by cases h), Subst.at_nonproj _ rfl]
+    dsimp only [Subst.dia]
+    rw [if_pos rfl, Subst.at_proj _ _ rfl, h0]
+    rfl
+  · refine (holeAt_kThetaFC _ hS co ho _ _ (Term.eta (VarSymb.root (.bnd 0)).inner C
+      (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))) θΨ).trans ?_
+    rw [kPsi_kThetaC]
+    change _ = WFF.neg (WFF.mono _ (WFF.unitBodyC hS (C := C) [] (Or.inl rfl) _ co ho θΨ))
+    unfold WFF.unitBodyC
+    change _ = WFF.neg (WFF.retS hS _ (Term.mono _ (Term.mono _ _))
+      (WFF.mono _ (WFF.holeAt _ _ θΨ)))
+    rw [WFF.mono_holeAt _ _ (((Ctx.NoSlots.slots (Γ := (Γ.boxIn.insert (.free u)
+      (RShape.wit (.box A) X).ty).diaIn (.step (.root (.free u)) .snd))).insert _).boxIn.insert _)]
+    refine congrArg WFF.neg (WFF.retS_congr hS _ ?_ ?_)
+    · rw [Term.mono_mono]
+      exact (mono_compsSlot (Ctx.ref_fst_of hT) (Ctx.Le.refl _) _ co ho).symm.trans
+        (sig_mono _ (compsVal_eta (Ctx.ref_fst_of hT) co ho).symm)
+    · refine WFF.holeAt_congr _ (sig_pair ?_ ?_) θΨ
+      · exact congrArg (Sigma.mk _) (by rw [Term.mono_eta]; exact (Term.mono_eta _ _ _ _).symm)
+      · exact congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _).symm
+
+end OpenFC
+
+/-- The far world of possible-part forgetting with companions, in the `□` view (as
+    `Proof.kThetaF_refute`, with leg forgetting and the far unit at the companions). -/
+def Proof.kThetaFC_refute {Γ : Ctx} [Γ.Presented] (hS : ModalSys.BStrong = true)
+    {A C X : VarType} (co : List (List Step)) (ho : A.CompOk co) {c : Ann C}
+    (sb : Term σ Γ.boxIn C c)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1) :
+    Proof σ Γ.boxIn [WFF.ex (RShape.wit (.box A) X).ty
+      (WFF.and (kPsiF X sb θΨ)
+        (WFF.unitBodyDC hS co ho sb [] (Or.inl rfl) (kThetaFC hS co ho X θΨ)))] .bot := by
+  have hu : Γ.boxIn.RootFresh (.free (Ctx.Presented.bound Γ.boxIn)) :=
+    Ctx.Presented.fresh_bound _ le_rfl
+  have hu' : (Γ.boxIn.insert (.free (Ctx.Presented.bound Γ.boxIn))
+      (RShape.wit (.box A) X).ty).RootFresh (.free (Ctx.Presented.bound Γ.boxIn + 1)) :=
+    (Ctx.Presented.fresh_bound _ (Nat.le_succ _)).insert_ne
+      (fun h => absurd (Root.free.inj h) (by omega)) _
+  refine Proof.ex_elim _ (RShape.wit (.box A) X).ty hu
+    (φ := WFF.openFree _ hu Ctx.NoSlots.slots
+      (WFF.and (kPsiF X sb θΨ)
+        (WFF.unitBodyDC hS co ho sb [] (Or.inl rfl) (kThetaFC hS co ho X θΨ)))) (ψ := .bot)
+    (Proof.conv (congrArg (WFF.ex _) (WFF.bindFree_openFree _ _ _ _).symm)
+      (Proof.lookup List.mem_cons_self)) ?_
+  exact Proof.ret_absurd hS _ _ hu' (Proof.ret_unitC hS .nec [] (Or.inl rfl) _ _ _ co ho θΨ
+    (Proof.conv (by rw [kPsi_kThetaC]; rfl) (Proof.retx_forget hS _ _ _ (kThetaC hS co ho θΨ)
+      (Proof.conv (openFree_unitBodyDC_kThetaFC hu hS co ho sb θΨ)
+        (Proof.and_elim_r (φ := WFF.openFree _ hu Ctx.NoSlots.slots (kPsiF X sb θΨ))
+          (Proof.lookup List.mem_cons_self)))))
+    (Proof.conv (openFree_kPsiF hu sb θΨ) (Proof.and_elim_l (Proof.lookup List.mem_cons_self))))
+
+/-- ⭐**Forgetting a possible part at an object with companions**:
+    `◇^{co}[⟨d, e⟩ ↦ ⟨y, z⟩] Φ(d) ⊢ ◇^{co}[d ↦ y] Φ(d)`, as `Proof.retD_forget` with the companion
+    units (`ret_unitDC` at home, `ret_unitC` at the far world). -/
+def Proof.retD_forgetC {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
+    (hS : ModalSys.BStrong = true) {A C X : VarType} (co : List (List Step)) (ho : A.CompOk co)
+    {a : Ann (A.compsFlat co)} (y : Term σ Γ (A.compsFlat co) a) {b : Ann X}
+    (z : Term σ Γ X b) {c : Ann C} (sb : Term σ Γ.boxIn C c)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C (.VTypeBox A))) 1)
+    (p : Proof σ Γ Δ (WFF.retS hS (.wit (.boxC A co ho) X) (Term.pair y z) (kPsiF X sb θΨ))) :
+    Proof σ Γ Δ (WFF.retS hS (.nec (.boxC A co ho)) y (kPsi sb θΨ)) := by
+  refine Proof.byContra ?_
+  have P1 := Proof.ret_unitDC hS .nec co ho (Term.pair y z) _ sb [] (Or.inl rfl)
+    (kThetaFC hS co ho X θΨ) (Proof.ofSubset (fun _ h => List.mem_cons_of_mem _ h) p)
+    (Proof.conv (holeRead_kThetaFC hS co ho y z sb θΨ).symm (Proof.lookup List.mem_cons_self))
+  exact Proof.retS_refute_lift hS .nec (.wit (.boxC A co ho) X) _ _
+    (Proof.kThetaFC_refute hS co ho sb θΨ) P1
+
+/-! ## Leg forgetting at the witnessed shape, with companions -/
+
+/-- The K-law with a possible part at an object with companions, its far world in the `□` view
+    (as `Proof.kThetaD_refute`, with `ret_unitWC`; the core of `Proof.retD_KC`). -/
+def Proof.kThetaDC_refute {Γ : Ctx} [Γ.Presented] (hS : ModalSys.BStrong = true)
+    {A C X : VarType} (co : List (List Step)) (ho : C.CompOk co) {a : Ann A}
+    (sb : Term σ Γ.boxIn A a)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd A (RShape.wit (.box C) X).ty)) 1) :
+    Proof σ Γ.boxIn [WFF.ex (RShape.wit (.box C) X).ty
+      (WFF.and (kPsiD sb θΨ)
+        (WFF.unitBodyDC hS co ho sb [] (Or.inl rfl) (kThetaDC hS co ho θΨ)))] .bot := by
+  have hu : Γ.boxIn.RootFresh (.free (Ctx.Presented.bound Γ.boxIn)) :=
+    Ctx.Presented.fresh_bound _ le_rfl
+  have hu' : (Γ.boxIn.insert (.free (Ctx.Presented.bound Γ.boxIn))
+      (RShape.wit (.box C) X).ty).RootFresh (.free (Ctx.Presented.bound Γ.boxIn + 1)) :=
+    (Ctx.Presented.fresh_bound _ (Nat.le_succ _)).insert_ne
+      (fun h => absurd (Root.free.inj h) (by omega)) _
+  refine Proof.ex_elim _ (RShape.wit (.box C) X).ty hu
+    (φ := WFF.openFree _ hu Ctx.NoSlots.slots
+      (WFF.and (kPsiD sb θΨ)
+        (WFF.unitBodyDC hS co ho sb [] (Or.inl rfl) (kThetaDC hS co ho θΨ)))) (ψ := .bot)
+    (Proof.conv (congrArg (WFF.ex _) (WFF.bindFree_openFree _ _ _ _).symm)
+      (Proof.lookup List.mem_cons_self)) ?_
+  exact Proof.retx_absurd hS _ _ _ hu' (Proof.ret_unitWC hS _ [] (Or.inl rfl) _ _ _ _ co ho θΨ
+    (Proof.conv (openFree_unitBodyDC_kThetaDC hu hS co ho sb θΨ)
+      (Proof.and_elim_r (φ := WFF.openFree _ hu Ctx.NoSlots.slots (kPsiD sb θΨ))
+        (Proof.lookup List.mem_cons_self)))
+    (Proof.conv (openFree_kPsiD hu sb θΨ) (Proof.and_elim_l (Proof.lookup List.mem_cons_self))))
+
+/-- ⭐**Leg forgetting at the witnessed shape, with companions**:
+    `◇_x^{co}[⟨d, e⟩ ↦ t] Φ ⊢ ◇^{co}[⟨d, e⟩ ↦ t] Φ` for `Φ` over the `□` view, as
+    `Proof.retxS_forget` with `ret_unitDC` along `x` and `ret_unitWC` at the far world. -/
+def Proof.retxS_forgetC {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
+    (hS : ModalSys.BStrong = true) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    {A C X : VarType} (co : List (List Step)) (ho : C.CompOk co)
+    {c : Ann (.VTypeProd (C.compsFlat co) X)} (t : Term σ Γ (.VTypeProd (C.compsFlat co) X) c)
+    {a : Ann A} (sb : Term σ Γ.boxIn A a)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd A (RShape.wit (.box C) X).ty)) 1)
+    (p : Proof σ Γ Δ (WFF.retxS hS x hx (.wit (.boxC C co ho) X) t
+      ((OutLeg.pos x hx).lift (kPsiD sb θΨ)))) :
+    Proof σ Γ Δ (WFF.retS hS (.wit (.boxC C co ho) X) t (kPsiD sb θΨ)) := by
+  refine Proof.byContra ?_
+  have P1 := Proof.ret_unitDC hS (.pos x hx) co ho t _ sb [] (Or.inl rfl) (kThetaDC hS co ho θΨ)
+    (Proof.ofSubset (fun _ h => List.mem_cons_of_mem _ h) p)
+    (Proof.conv (holeRead_kThetaDC hS co ho t sb θΨ).symm (Proof.lookup List.mem_cons_self))
+  exact Proof.retS_refute_lift hS (.pos x hx) (.wit (.boxC C co ho) X) t _
+    (Proof.kThetaDC_refute hS co ho sb θΨ) P1
+
+/-- ⭐**Leg forgetting at the witnessed shape with companions, at a node**, for any body over the
+    `□` view. -/
+def Proof.retxS_forgetC_node (hS : ModalSys.BStrong = true) {l : List VarType}
+    {Δ : List (WFF σ (ctxOf l) 0)} {x : VarSymb} (hx : ∃ X, (ctxOf l).ref x = some (.VTypeDia X))
+    {C X : VarType} (co : List (List Step)) (ho : C.CompOk co)
+    {c : Ann (.VTypeProd (C.compsFlat co) X)}
+    (t : Term σ (ctxOf l) (.VTypeProd (C.compsFlat co) X) c)
+    (Φ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) (RShape.wit (.box C) X).ty) 1)
+    (p : Proof σ (ctxOf l) Δ (WFF.retxS hS x hx (.wit (.boxC C co ho) X) t
+      ((OutLeg.pos x hx).lift Φ))) :
+    Proof σ (ctxOf l) Δ (WFF.retS hS (.wit (.boxC C co ho) X) t Φ) :=
+  Proof.conv (by rw [kPsiD_pack2]) (Proof.retxS_forgetC hS hx co ho t (tupT l).2
+    (pack2 l (RShape.wit (.box C) X).ty Φ) (Proof.conv (by rw [kPsiD_pack2]) p))
+
+/-! ## Forgetting a possible part along a witness, at an object with companions -/
+
+/-- `kThetaWF` at an object with companions: `¬◇_e^{co}[d ↦ y] θΨ(⟨s.box, e.dia⟩, d)` at a
+    witnessed value's necessary part. -/
+def kThetaWFC (hS : ModalSys.BStrong = true) {A C X : VarType} (co : List (List Step))
+    (ho : C.CompOk co) (Xe : VarType)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd A X) (.VTypeBox C))) 1) :
+    WFF σ (Ctx.empty.insert (.bnd 0)
+      (.VTypeProd (.VTypeProd (C.compsFlat co) Xe) (RShape.wit (.box A) X).ty)) 1 :=
+  WFF.neg (WFF.retxS hS (.step (.step (.root (.bnd 0)) .snd) .snd) ⟨X, kThetaW_ref⟩
+    (.nec (.boxC C co ho))
+    (Term.eta (.step (.step (.root (.bnd 0)) .fst) .fst) (C.compsFlat co)
+      (Ctx.ref_fst_of (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))))
+    (WFF.holeAt (((Ctx.slotsFrom_empty.insert _).diaIn _).insert (.VTypeBox C))
+      (Term.pair
+        (Term.pair
+          (Term.eta (VarSymb.step (.step (.root (.bnd 0)) .snd) .fst).inner A
+            ((Ctx.le_insert (((Ctx.slotsFrom_empty.insert _).diaIn _).root) (.VTypeBox C)).ref
+              ((Ctx.le_boxIn_diaIn _ _).ref (Ctx.ref_inner (Ctx.ref_fst_of (Ctx.ref_snd_of
+                (Ctx.ref_insert_root Ctx.empty (.bnd 0)
+                  (.VTypeProd (.VTypeProd (C.compsFlat co) Xe)
+                    (RShape.wit (.box A) X).ty))))))))
+          (Term.eta (.step (.step (.step (.root (.bnd 0)) .snd) .snd) .dia) X
+            ((Ctx.le_insert (((Ctx.slotsFrom_empty.insert _).diaIn _).root) (.VTypeBox C)).ref
+              (Ctx.ref_diaIn_of kThetaW_ref))))
+        (Term.eta (.root (.bnd 1)) (.VTypeBox C) (Ctx.ref_insert_root _ (.bnd 1) _)))
+      θΨ))
+
+theorem holeAt_kThetaWFC {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys.BStrong = true)
+    {A C X Xe : VarType} (co : List (List Step)) (ho : C.CompOk co) {c : Ann (C.compsFlat co)}
+    (y : Term σ Δ (C.compsFlat co) c) {b : Ann Xe} (z : Term σ Δ Xe b)
+    {a : Ann A} (s : Term σ Δ.boxIn A a) {v : VarSymb} (hv : Δ.ref v = some (.VTypeDia X))
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd A X) (.VTypeBox C))) 1) :
+    WFF.holeAt hs (Term.pair (Term.pair y z) (Term.pair (Term.boxtm s)
+        (Term.diatm v ⟨X, hv⟩ (Term.eta (v.step .dia) X (Ctx.ref_diaIn_of hv)))))
+        (kThetaWFC hS co ho Xe θΨ) =
+      WFF.neg (WFF.retxS hS v ⟨X, hv⟩ (.nec (.boxC C co ho)) y
+        (WFF.holeAt ((hs.diaIn v).insert _)
+        (Term.pair
+          (Term.pair (Term.mono ((Ctx.le_boxIn_diaIn Δ v).trans
+              (Ctx.le_insert (hs.diaIn v).root _)) s)
+            (Term.eta (v.step .dia) X
+              ((Ctx.le_insert (hs.diaIn v).root _).ref (Ctx.ref_diaIn_of hv))))
+          (Term.eta (.root (.bnd d)) (.VTypeBox C) (Ctx.ref_insert_root _ (.bnd d) _)))
+        θΨ)) := by
+  unfold WFF.holeAt kThetaWFC
+  have h0 : (Subst.single (σ := σ) (Δ := Δ) (.bnd 0) (.tm (Term.pair (Term.pair y z)
+      (Term.pair (Term.boxtm s)
+        (Term.diatm v ⟨X, hv⟩ (Term.eta (v.step .dia) X (Ctx.ref_diaIn_of hv))))))).at
+      (.root (.bnd 0)) = .tm (Term.pair (Term.pair y z) (Term.pair (Term.boxtm s)
+        (Term.diatm v ⟨X, hv⟩ (Term.eta (v.step .dia) X (Ctx.ref_diaIn_of hv))))) := by
+    change Subst.single _ _ (.root (.bnd 0)) = _
+    exact if_pos rfl
+  have hθ : Subst.Ok (Ctx.empty.insert (.bnd 0)
+      (.VTypeProd (.VTypeProd (C.compsFlat co) Xe) (RShape.wit (.box A) X).ty))
+      (Subst.single (σ := σ) (Δ := Δ) (.bnd 0) (.tm (Term.pair (Term.pair y z)
+        (Term.pair (Term.boxtm s)
+          (Term.diatm v ⟨X, hv⟩ (Term.eta (v.step .dia) X (Ctx.ref_diaIn_of hv))))))) :=
+    Subst.ok_single (Ctx.empty_le Δ) rfl
+  have hc := Subst.coh_single (σ := σ) (r := .bnd 0)
+    (T := .VTypeProd (.VTypeProd (C.compsFlat co) Xe) (RShape.wit (.box A) X).ty)
+    (Ctx.RootFresh.empty _) (Ctx.empty_le Δ)
+    (e := .tm (Term.pair (Term.pair y z) (Term.pair (Term.boxtm s)
+        (Term.diatm v ⟨X, hv⟩ (Term.eta (v.step .dia) X (Ctx.ref_diaIn_of hv)))))) rfl
+  have hw : ((Subst.single (σ := σ) (Δ := Δ) (.bnd 0) (.tm (Term.pair (Term.pair y z)
+      (Term.pair (Term.boxtm s)
+        (Term.diatm v ⟨X, hv⟩ (Term.eta (v.step .dia) X (Ctx.ref_diaIn_of hv))))))).at
+      (.step (.step (.root (.bnd 0)) .snd) .snd)).idxAlong [] = v := by
+    rw [Subst.at_proj _ _ rfl, Subst.at_proj _ _ rfl, h0]
+    rfl
+  refine congrArg (fun φ => WFF.imp φ WFF.bot) ?_
+  rw [WFF.subst_retxS_at _ _ _ _ _ _ _ _ _ _ _ v rfl ⟨X, hv⟩ (hs.diaIn v)
+    (Subst.ok_dia hθ ⟨X, kThetaW_ref⟩ hw) (Subst.coh_dia hθ hc ⟨X, kThetaW_ref⟩)]
+  refine WFF.retxS_congr hS _ _ _ ?_ ?_
+  · exact Term.subst_eta_tm _ _ _ _ _ _ y
+      (by rw [Subst.at_proj _ _ rfl, Subst.at_proj _ _ rfl, h0]; rfl)
+  · rw [WFF.subst_holeAt]
+    refine WFF.holeAt_congr _ (sig_pair (sig_pair ?_ ?_) ?_) θΨ
+    · refine (Term.subst_eta_tm _ _ _ _ _ _ (Term.mono (Ctx.le_insert (hs.diaIn v).root _)
+        (Term.mono (Ctx.le_boxIn_diaIn Δ v) s)) ?_).trans ?_
+      · rw [Subst.at_under_ne _ _ _ (by rw [VarSymb.inner_rt]; exact fun h => by cases h),
+          Subst.dia_eq_box_mono (Δ₁ := Ctx.empty.insert (.bnd 0) _) _ _ v _ _
+            (Ctx.ref_inner (Ctx.ref_fst_of (Ctx.ref_snd_of (Ctx.ref_insert_root Ctx.empty
+              (.bnd 0) (.VTypeProd (.VTypeProd (C.compsFlat co) Xe)
+                (RShape.wit (.box A) X).ty))))),
+          Subst.box_at_inner_boxtm _ (by
+            rw [Subst.at_proj _ _ rfl, Subst.at_proj _ _ rfl, h0]; rfl)]
+        rfl
+      · exact congrArg (Sigma.mk _) (by rw [Term.mono_mono])
+    · refine (Term.subst_eta_tm _ _ _ _ _ _ (Term.mono (Ctx.le_insert (hs.diaIn v).root _)
+        (Term.eta (v.step .dia) X (Ctx.ref_diaIn_of hv))) ?_).trans ?_
+      · rw [Subst.at_under_ne _ _ _ (fun h => by cases h), Subst.at_nonproj _ rfl]
+        dsimp only [Subst.dia]
+        rw [if_pos rfl, Subst.at_proj _ _ rfl, Subst.at_proj _ _ rfl, h0]
+        change SubE.mono _ (SubE.diaBody v (SubE.tm (Term.diatm v _
+          (Term.eta (v.step .dia) X _)))) = _
+        rw [SubE.diaBody_diatm]
+        rfl
+      · exact congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _)
+    · exact Term.subst_eta_renAt _ _ _ _ _ _ _ _ (Subst.under_at_slot _ (0 + 1) d _ _)
+
+theorem holeRead_kThetaWFC {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) {x : VarSymb}
+    {X A C Xe : VarType} (hX : Γ.ref x = some (.VTypeDia X)) (co : List (List Step))
+    (ho : C.CompOk co) {c : Ann (C.compsFlat co)} (y : Term σ Γ (C.compsFlat co) c)
+    {b : Ann Xe} (z : Term σ Γ Xe b) {a : Ann A} (sb : Term σ Γ.boxIn A a)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd A X) (.VTypeBox C))) 1) :
+    WFF.holeRead (Term.pair (Term.pair y z) (Term.pair (Term.boxtm sb)
+        (Term.diatm x ⟨X, hX⟩ (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of hX)))))
+        (kThetaWFC hS co ho Xe θΨ) =
+      WFF.neg (WFF.retxS hS x ⟨X, hX⟩ (.nec (.boxC C co ho)) y (kPsiX hX sb θΨ)) := by
+  rw [WFF.holeRead_eq_holeAt, holeAt_kThetaWFC _ hS co ho y z sb hX]
+  rfl
+
+section OpenXFC
+
+variable {Γ : Ctx} [Γ.NoSlots] {x : VarSymb} {X A C Xe : VarType}
+  (hX : Γ.ref x = some (.VTypeDia X)) {u : ℕ} (hu : (Γ.diaIn x).RootFresh (.free u))
+
+/-- Opening the doubly witnessed companion unit carrying `kThetaWFC`: a returning possibility
+    along `u`'s possible part, with `x` returned, whose body is, lifted, the negated companion
+    unit along the possible part at `u`'s necessary part. -/
+theorem openFree_unitBodyWDC_kThetaWFC (hS : ModalSys.BStrong = true) (co : List (List Step))
+    (ho : C.CompOk co) {a : Ann A} (sb : Term σ Γ.boxIn A a)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd A X) (.VTypeBox C))) 1) :
+    WFF.openFree u hu Ctx.NoSlots.slots (WFF.unitBodyWDC (Γ := Γ) hS co ho sb
+        (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of hX)) [] (Or.inl rfl)
+        (kThetaWFC hS co ho Xe θΨ)) =
+      WFF.retxS hS (.step (.root (.free u)) .snd)
+        ⟨Xe, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩ (.wit (.box A) X)
+        (Term.pair (Term.mono (Ctx.le_insert hu.root _) (Term.mono (Ctx.le_boxIn_diaIn Γ x) sb))
+          (Term.mono (Ctx.le_insert hu.root _) (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of hX))))
+        ((OutLeg.pos (.step (.root (.free u)) .snd)
+            ⟨Xe, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩).lift
+          (WFF.neg (WFF.unitBodyDC
+            (Γ := (Γ.diaIn x).insert (.free u) (RShape.wit (.box C) Xe).ty) hS (C := A) (X := X)
+            [] (Or.inl rfl)
+            (Term.eta (VarSymb.step (.root (.free u)) .fst).inner C
+              (Ctx.ref_inner (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _))))
+            co ho θΨ))) := by
+  have hu0 := Ctx.ref_insert_root (Γ.diaIn x) (.bnd 0) (RShape.wit (.box C) Xe).ty
+  have hsnd := Ctx.ref_snd_of hu0
+  have hθ := Subst.ok_toFree (σ := σ) (d := 0) (Subst.ok_idRen (Δ := Γ.diaIn x))
+    (RShape.wit (.box C) Xe).ty hu.root
+  have hc := Subst.coh_toFree (σ := σ) (d := 0) (Subst.ok_idRen (Δ := Γ.diaIn x))
+    Subst.coh_idRen (Ctx.NoSlots.slots (Γ := Γ.diaIn x)) (RShape.wit (.box C) Xe).ty hu.root
+  have h0 : ((Subst.idRen (σ := σ) (Γ.diaIn x)).toFree 0 u (RShape.wit (.box C) Xe).ty
+      hu.root).at (.root (.bnd 0)) = .ren (.root (.free u)) := by
+    rw [Subst.at_nonproj _ rfl]
+    exact Subst.toFree_root _ _ _ _ _
+  have hw : (((Subst.idRen (σ := σ) (Γ.diaIn x)).toFree 0 u (RShape.wit (.box C) Xe).ty
+      hu.root).at (.step (.root (.bnd 0)) .snd)).idxAlong [] = .step (.root (.free u)) .snd := by
+    rw [Subst.at_proj _ _ rfl, h0]
+    rfl
+  have hsl := ((Ctx.NoSlots.slots (Γ := Γ.diaIn x)).insertFree u
+    (RShape.wit (.box C) Xe).ty).diaIn (.step (.root (.free u)) .snd)
+  unfold WFF.openFree WFF.unitBodyWDC
+  rw [WFF.subst_retxS_at _ _ _ _ _ _ _ _ _ _ _ (.step (.root (.free u)) .snd) rfl
+    ⟨Xe, Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)⟩ hsl (Subst.ok_dia hθ ⟨Xe, hsnd⟩ hw)
+    (Subst.coh_dia hθ hc ⟨Xe, hsnd⟩)]
+  refine WFF.retxS_congr hS _ _ _ (sig_pair ?_ (subst_toFree_mono_sig hu _)) ?_
+  · rw [← Term.mono_mono]
+    exact subst_toFree_mono_sig hu (Term.mono (Ctx.le_boxIn_diaIn Γ x) sb)
+  rw [WFF.subst_holeAt]
+  have hT := Ctx.ref_insert_root (Γ.diaIn x) (.free u) (RShape.wit (.box C) Xe).ty
+  have hT' := Ctx.ref_insert_root
+    ((((Γ.diaIn x).insert (.free u) (RShape.wit (.box C) Xe).ty).diaIn
+      (.step (.root (.free u)) .snd))) (.bnd 0) (RShape.wit (.box A) X).ty
+  refine (WFF.holeAt_congr _ (sig_pair (sig_pair
+    (Term.subst_compsSlot _ _ (Ctx.ref_fst_of hT)
+      ((Ctx.le_boxIn_diaIn _ _).trans (Ctx.le_insert hsl.root (RShape.wit (.box A) X).ty)) _ _ _
+      (fun q _ hq hr => ?_) co ho)
+    (Term.subst_eta_renAt _ _ _ Xe _ (.step (.step (.root (.free u)) .snd) .dia) _
+      ((Ctx.le_insert hsl.root (RShape.wit (.box A) X).ty).ref
+        (Ctx.ref_diaIn_of (Ctx.ref_snd_of hT))) ?_))
+    (Term.subst_eta_renAt _ _ _ _ _ (.root (.bnd 0)) _ (Ctx.ref_insert_root _ (.bnd 0) _)
+      (Subst.under_at_slot _ (0 + 1) 0 _ _))) _).trans ?_
+  · rw [Subst.at_under_ne _ _ _ (by
+        rw [VarSymb.inner_rt, VarSymb.ext_rt]; exact fun h => by cases h),
+      Subst.dia_eq_box_mono (Δ₁ := (Γ.diaIn x).insert (.bnd 0) (RShape.wit (.box C) Xe).ty)
+        _ _ _ _ _ (Ctx.ref_inner hr),
+      Subst.box_at_inner_ren _ (Subst.at_ext_ren _ q (by rw [Subst.at_proj _ _ rfl, h0]; rfl) hq)]
+    rfl
+  · rw [Subst.at_under_ne _ _ _ (fun h => by cases h), Subst.at_nonproj _ rfl]
+    dsimp only [Subst.dia]
+    rw [if_pos rfl, Subst.at_proj _ _ rfl, h0]
+    rfl
+  · refine (holeAt_kThetaWFC _ hS co ho _ _ (Term.eta (VarSymb.step (.root (.bnd 0)) .fst).inner A
+      (Ctx.ref_inner (Ctx.ref_fst_of hT'))) (Ctx.ref_snd_of hT') θΨ).trans ?_
+    change _ = WFF.neg (WFF.mono _ (WFF.unitBodyDC hS (C := A) (X := X) [] (Or.inl rfl) _ co ho θΨ))
+    unfold WFF.unitBodyDC
+    change _ = WFF.neg (WFF.retxS hS _ _ (.nec (.boxC C co ho)) (Term.mono _ (Term.mono _ _))
+      (WFF.mono _ (WFF.holeAt _ _ θΨ)))
+    rw [WFF.mono_holeAt _ _ ((((Ctx.NoSlots.slots (Γ := (((Γ.diaIn x).insert (.free u)
+      (RShape.wit (.box C) Xe).ty).diaIn (.step (.root (.free u)) .snd)))).insert _).diaIn
+      _).insert _)]
+    refine congrArg WFF.neg (WFF.retxS_congr hS _ _ _ ?_ ?_)
+    · rw [Term.mono_mono]
+      exact (mono_compsSlot (Ctx.ref_fst_of hT) (Ctx.Le.refl _) _ co ho).symm.trans
+        (sig_mono _ (compsVal_eta (Ctx.ref_fst_of hT) co ho).symm)
+    · refine WFF.holeAt_congr _ (sig_pair (sig_pair ?_ ?_) ?_) θΨ
+      · exact (congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _)).trans
+          (congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _)).symm
+      · exact congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _).symm
+      · exact congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _).symm
+
+end OpenXFC
+
+/-- The far world of possible-part forgetting along `x` with companions, in `x`'s view (as
+    `Proof.kThetaWF_refute`, with `ret_unitDC` along the possible part at the companions). -/
+def Proof.kThetaWFC_refute {Γ : Ctx} [Γ.Presented] (hS : ModalSys.BStrong = true)
+    {x : VarSymb} {X A C Xe : VarType} (hX : Γ.ref x = some (.VTypeDia X))
+    (co : List (List Step)) (ho : C.CompOk co) {a : Ann A} (sb : Term σ Γ.boxIn A a)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd A X) (.VTypeBox C))) 1) :
+    Proof σ (Γ.diaIn x) [WFF.ex (RShape.wit (.box C) Xe).ty
+      (WFF.and (kPsiXF Xe hX sb θΨ) (WFF.unitBodyWDC hS co ho sb
+        (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of hX)) [] (Or.inl rfl)
+        (kThetaWFC hS co ho Xe θΨ)))] .bot := by
+  have hu : (Γ.diaIn x).RootFresh (.free (Ctx.Presented.bound (Γ.diaIn x))) :=
+    Ctx.Presented.fresh_bound _ le_rfl
+  have hu' : ((Γ.diaIn x).insert (.free (Ctx.Presented.bound (Γ.diaIn x)))
+      (RShape.wit (.box C) Xe).ty).RootFresh (.free (Ctx.Presented.bound (Γ.diaIn x) + 1)) :=
+    (Ctx.Presented.fresh_bound _ (Nat.le_succ _)).insert_ne
+      (fun h => absurd (Root.free.inj h) (by omega)) _
+  refine Proof.ex_elim _ (RShape.wit (.box C) Xe).ty hu
+    (φ := WFF.openFree _ hu Ctx.NoSlots.slots
+      (WFF.and (kPsiXF Xe hX sb θΨ) (WFF.unitBodyWDC hS co ho sb
+        (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of hX)) [] (Or.inl rfl)
+        (kThetaWFC hS co ho Xe θΨ)))) (ψ := .bot)
+    (Proof.conv (congrArg (WFF.ex _) (WFF.bindFree_openFree _ _ _ _).symm)
+      (Proof.lookup List.mem_cons_self)) ?_
+  exact Proof.retxS_absurd hS _ _ _ _ hu' (Proof.ret_unitDC hS (.pos _ _) [] (Or.inl rfl)
+    _ _ _ co ho θΨ
+    (Proof.conv (openFree_unitBodyWDC_kThetaWFC hX hu hS co ho sb θΨ)
+      (Proof.and_elim_r (φ := WFF.openFree _ hu Ctx.NoSlots.slots (kPsiXF Xe hX sb θΨ))
+        (Proof.lookup List.mem_cons_self)))
+    (Proof.conv (openFree_kPsiXF hX hu sb θΨ) (Proof.and_elim_l (Proof.lookup List.mem_cons_self))))
+
+/-- ⭐**Forgetting a possible part along a witness, at an object with companions**:
+    `◇_x^{co}[⟨d, e⟩ ↦ ⟨y, z⟩] Φ(d) ⊢ ◇_x^{co}[d ↦ y] Φ(d)`, as `Proof.retxD_forget` with the
+    companion units (`ret_unitWDC` at home, `ret_unitDC` along the part at the far world). -/
+def Proof.retxD_forgetC {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
+    (hS : ModalSys.BStrong = true) {x : VarSymb} {X A C Xe : VarType}
+    (hX : Γ.ref x = some (.VTypeDia X)) (co : List (List Step)) (ho : C.CompOk co)
+    {c : Ann (C.compsFlat co)} (y : Term σ Γ (C.compsFlat co) c) {b : Ann Xe}
+    (z : Term σ Γ Xe b) {a : Ann A} (sb : Term σ Γ.boxIn A a)
+    (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd A X) (.VTypeBox C))) 1)
+    (p : Proof σ Γ Δ (WFF.retxS hS x ⟨X, hX⟩ (.wit (.boxC C co ho) Xe) (Term.pair y z)
+      (kPsiXF Xe hX sb θΨ))) :
+    Proof σ Γ Δ (WFF.retxS hS x ⟨X, hX⟩ (.nec (.boxC C co ho)) y (kPsiX hX sb θΨ)) := by
+  refine Proof.byContra ?_
+  have P1 := Proof.ret_unitWDC hS ⟨X, hX⟩ co ho (Term.pair y z) _ sb
+    (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of hX)) [] (Or.inl rfl) (kThetaWFC hS co ho Xe θΨ)
+    (Proof.ofSubset (fun _ h => List.mem_cons_of_mem _ h) p)
+    (Proof.conv (holeRead_kThetaWFC hS hX co ho y z sb θΨ).symm (Proof.lookup List.mem_cons_self))
+  exact Proof.retxS_refute hS ⟨X, hX⟩ (.wit (.boxC C co ho) Xe) _ _
+    (Proof.kThetaWFC_refute hS hX co ho sb θΨ) P1
+
 end BArrow
 
 end V12M

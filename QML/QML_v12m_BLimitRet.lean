@@ -2,7 +2,7 @@ import QML.QML_v12m_BLimit
 import QML.QML_v12m_BFairS
 
 /-!
-# QML v12m — strong B's limit: the returning-possibility invariant along an edge (T off)
+# QML v12m — strong B's limit: the returning-possibility invariant along an edge
 
 Along an edge `v → w` of the limit, the network's invariant from `v` to `w` has one of four
 forms, fixed by two pieces of the edge's data (docs §11.20, E1 step 3):
