@@ -400,17 +400,18 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
   | @ret_counitD Γ _ Δ hS C X c y ψ p ih =>
       intro M hM w env hfin hnp hΔ
       exact (sat_holeRead hnp env y ψ).mpr (sat_ret_counitD env hM hS y ψ (ih M hM env hfin hnp hΔ))
-  | @ret_forgetW Γ _ Δ hS O S Z Zs hZs b pw ws a t c u us Φ p ih =>
+  | @ret_selectW Γ _ Δ hS O S Zs Zs' hZs hZs' ws ws' a t us us' Φ hsel p ih =>
       intro M hM w env hfin hnp hΔ
-      obtain ⟨i, e, hΦ, r, hr, hh, _⟩ :=
-        (OutLeg.sat_retSH hS env O S t Φ).mp (ih M hM env hfin hnp hΔ)
-      exact (OutLeg.sat_retSH hS env O S t Φ).mpr ⟨i, e, hΦ, r, hr, hh⟩
-  | @ret_homeN Γ _ hS O S Z C Zs hZs ws a t us Φ z hz hW b wz c₀ u c₁ t' c hc Δ φ pr pb p ihr
-      ihb ih =>
-      -- The named witness's content along the way home interprets the eigenvariable.
+      exact sat_ret_selectW env hS O hZs hZs' ws ws' t us us' Φ hsel (ih M hM env hfin hnp hΔ)
+  | @ret_backN Γ _ Δ hS O S Zs hZs ws a t us Φ z hz hW C c₀ u c₁ t' pr pb ihr ihb =>
       intro M hM w env hfin hnp hΔ
-      obtain ⟨o, ho⟩ := sat_ret_homeN env hS O hZs ws t us Φ hz hW wz u t' c hc
-        (ihr M hM env hfin hnp hΔ) (ihb M hM env hfin hnp hΔ)
+      exact sat_ret_backN env hS O hZs ws t us Φ hz hW u t' (ihr M hM env hfin hnp hΔ)
+        (ihb M hM env hfin hnp hΔ)
+  | @ret_nameN Γ _ hS O S Z₀ Z Zs hZs z hz b₀ w₀ ws a t cz c₀ us Φ b wz c hc Δ φ pr p ihr ih =>
+      -- The new body's content along the way home interprets the eigenvariable.
+      intro M hM w env hfin hnp hΔ
+      obtain ⟨o, ho⟩ := sat_ret_nameN env hS O hZs hz w₀ ws t c₀ us Φ wz c hc
+        (ihr M hM env hfin hnp hΔ)
       refine (sat_weaken env hc.root o φ).mp
         (ih M hM (env.extend (.free c) o) (hfin.insert hc _) (hnp.insert _ _) ?_)
       intro χ hχ
@@ -419,10 +420,18 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
         exact ho
       · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken env hc.root _ χ').mpr (hΔ χ' hχ')
-  | @ret_counitN Γ _ Δ hS hW O A Z C Zs hZs z hz b wz ws a y cz c us c₀ u ct t ψ pr pb ihr ihb =>
+  | @ret_pairN Γ _ Δ hS O S Z₁ Z₂ Zs hZs z hz b₁ w₁ b₂ w₂ ws a t e₁ c₁ e₂ c₂ us Φ p ih =>
       intro M hM w env hfin hnp hΔ
-      exact (sat_holeRead hnp env _ ψ).mpr (sat_ret_counitN env hM hS hW O hZs hz wz ws y c us
-        u t ψ (ihr M hM env hfin hnp hΔ) (ihb M hM env hfin hnp hΔ))
+      exact sat_ret_pairN env hM.toIndCongr hS O hZs hz w₁ w₂ ws t c₁ c₂ us Φ
+        (ih M hM env hfin hnp hΔ)
+  | @ret_mapN Γ _ Δ hS O S Z Z' Zs hZs z hz b wz ws a t e c us Φ b' h p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_ret_mapN env hnp hM.toIndCongr hS O hZs hz wz ws t c us Φ h
+        (ih M hM env hfin hnp hΔ)
+  | @ret_counitN₀ Γ _ Δ hS O A Z Zs hZs z hz b wz ws a y cz c us ψ p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact (sat_holeRead hnp env _ ψ).mpr (sat_ret_counitN₀ env hM hS O hZs hz wz ws y c us ψ
+        (ih M hM env hfin hnp hΔ))
   | @ret_monoSH Γ _ Δ hS O S Zs hZs ws a t us Φ Φ' p q ihp ihq =>
       intro M hM w env hfin hnp hΔ
       exact sat_ret_mono env hS O t Φ Φ' (ihp M hM env hfin hnp hΔ) (ihq M hM env hfin hnp hΔ)

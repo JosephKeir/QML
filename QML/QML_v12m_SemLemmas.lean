@@ -252,6 +252,27 @@ theorem homeBack_monoH {V Γ Γ' : Ctx} {h : Γ.Le Γ'} {v w : M.frame.W} (envF 
     (fun c => interp_mono hag c) ws cs
   rwa [TmList.map_id] at e
 
+/-- A pair of the list comes home as the list's part says. -/
+theorem homeBack_mem {V Γ : Ctx} {v w : M.frame.W} {envF : M.Env V v} {envH : M.Env Γ w}
+    {r : M.frame.R v w} (q : HomePair σ V Γ) :
+    {Zs : List VarType} → (ws : HomeWs σ V Zs) → (us : HomeTms σ Γ Zs) →
+    M.HomeBack envF envH r ws us → HomeMem q ws us →
+    ∃ h : (⟨w, ⟨r⟩⟩ : M.frame.Acc v) ∈ (M.posEval (interp envF q.2.1.2)).1,
+      M.Ind ((M.posEval (interp envF q.2.1.2)).2 ⟨_, h⟩) (interp envH q.2.2.2)
+  | [], .nil, .nil, _, h => h.elim
+  | _ :: _, .cons _ ps, .cons _ cs, hb, hm =>
+      Or.elim hm (fun e => by subst e; exact And.right hb)
+        (fun hm' => homeBack_mem q ps cs (And.left hb) hm')
+
+/-- ⭐**Selection is sound**: a sublist of named back witnesses comes home with the list. -/
+theorem homeBack_of_sub {V Γ : Ctx} {v w : M.frame.W} {envF : M.Env V v} {envH : M.Env Γ w}
+    {r : M.frame.R v w} {Zs : List VarType} {ws : HomeWs σ V Zs} {us : HomeTms σ Γ Zs} :
+    {Zs' : List VarType} → (ws' : HomeWs σ V Zs') → (us' : HomeTms σ Γ Zs') →
+    M.HomeBack envF envH r ws us → HomeSub ws us ws' us' → M.HomeBack envF envH r ws' us'
+  | [], .nil, .nil, _, _ => trivial
+  | _ :: _, .cons _ ps, .cons _ cs, hb, hs =>
+      And.intro (homeBack_of_sub ps cs hb (And.right hs)) (homeBack_mem _ ws us hb (And.left hs))
+
 /-- Coming home with named back witnesses is coming home, plus the witnesses' part. -/
 theorem comesBackH_iff {V Γ : Ctx} {v w : M.frame.W} (envF : M.Env V v) (envH : M.Env Γ w)
     (S : RShape) (e : M.frame.Dom S.ty v) (r : M.frame.R v w) (o : M.frame.Dom S.flat w) :

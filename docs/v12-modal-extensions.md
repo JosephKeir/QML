@@ -8668,4 +8668,279 @@ Under T the identity is an arrow out and its own way home (`homeUnique`).
   USER DECIDED (2026-10-21): wait until the truth cases show the form the extra list needs.
 * **Scope as before.**  Row 4's `Back` at the own arrow (both legs witnessed) waits for row 4.
 
-Next: the network refactor (label sets, late labels, content roots), then the truth cases.
+#### P3 on paper: the truth cases (2026-10-21, preliminary; finds a gap)
+
+§11.23's order put P3 before the network refactor.  It is **not** "rows 1–2 with more cases".
+
+* **Fine as expected.**
+  * *`Back₃`, truth ⇒ membership.*  The canonical `Ret` reads the atoms (D2 (a)), so this is
+    `mem_back_of_sat`'s argument.  A row-3 home set (`ofPos`) is not `univ`, by the per-root
+    `unl` (P2).  Two witnesses with the same extents at every child are one, by `leg_unique`
+    from birth order (P2) and image injectivity.  The bodies go by the decoder, as now.
+  * *`Back₃`, membership ⇒ truth.*  The atom's disjunct of the canonical `Ret`, as now.
+    `Ret_fwd` is the network's job: late labels, P1.
+  * *The own arrow under T.*  `back_realW` and `back_hereW` cover row 3.  For a returning
+    possibility along `◇_x` with named witnesses, the canonical reading of a witness at the own
+    arrow is a canonical object, so the decoder names it.  That is exactly the extra list `qs`
+    of the `◇_x` form (`Here(◇_x p, q)`, `Here(q, c)`).  So the deferred form is the one the
+    truth case wants.
+* **New, needed whatever else: selecting named witnesses.**  Truth ⇒ membership of
+  `◇[d ↦ t; ws ⇝ us] Φ` gets the returning possibility from the edge invariant, with the edge's
+  labels in the network's order.  `ws` may list any of them, in any order, with repeats.
+  `ret_forgetW` only drops the head.  So a structural rule is needed, giving
+  `◇[…; ws' ⇝ us'] Φ` whenever every pair of `(ws', us')` is a pair of `(ws, us)`.  It covers
+  weakening, exchange and contraction, and is sound since `HomeBack` is a conjunction.  It is a
+  new rule (not derivable: nothing else rearranges the list).
+* **The gap: witness bodies that mention the out view's items.**  Truth ⇒ membership of a
+  witness `diatm z w ⇝ u`: the semantics says the way home lies in `z`'s extent and that `w`,
+  read along it, is `Ind` to `u`.
+  * `w` may mention `s`'s `□` items besides `z.dia`.  Read along the round trip, those are the
+    items' round-trip values, which are not `s`-terms in general.  That is the content-counit
+    paper pass's "`u` is never read home as a term".
+  * The edge invariant provides the label's own witness, `diatm z (z.dia) ⇝ c`.  No rule gets
+    from it to `diatm z w ⇝ u` for a general `w`.
+  * Rows 1–2 avoided this, because a bound possible part's content map is a hole term over the
+    *bound object*, `h(d.box, e.dia)`, moved by `ret_mapD`.  Named witnesses were put in the
+    out view, so they cannot mention `d`.
+* **Options, for the user.**
+  * *(a) Witnesses may mention the bound object*: `ws : HomeWs σ (O.view.insert d S.ty) Zs`.
+    A named witness `diatm z h(d.box, z.dia)` then returns `h(y, c)`, by a β rule like
+    `ret_mapD` (`ret_mapN`).  The truth case writes `w`'s items through `d`'s components when
+    they are committed items, which still has to be checked against the network's commitments.
+    It changes stage 1's placement of the witnesses (the rules' statements move under the
+    slot).
+  * *(b) Keep out-view witnesses and restrict which atoms the truth lemma must handle.*  This
+    is not available as it stands: substitution sends a pinned witness `diatm z (z.dia)` to
+    `diatm y u` with `u` arbitrary.
+  * *(c) Make the named-witness clause a model primitive*, as `Ret` is for `Back` (D2 (a)).
+    The canonical model would read it off the theory's returning possibilities.  That moves the
+    burden to the network invariants, in the way `Ret_fwd` does for `Back`.
+  * My first estimate is that (a) is the principled form, by analogy with the possible part
+    (`K_dia`'s witness carried along, `feedback_qml_witness_k_paradigm`).  But it needs its own
+    paper check against the network's commitments before anything is built.
+
+The network refactor (label sets, late labels, content roots) waits for this decision, since its
+invariants depend on where the witnesses live.
+
+#### Option (a) on paper: witnesses that mention the bound object *(2026-10-21)*
+
+**The example.**  Let `s` have roots `r : □□N` (`N` a base type) and `r' : □◇X`.
+* `s`'s `□` view (the out view) has `r.box : □N` and `r'.box : ◇X`.
+* `r'.box`'s view has `r'.box.dia : X` and `r.box.box : N`.
+
+Take the witness `p := diatm (r'.box) ⟨r'.box.dia, r.box.box⟩ : ◇(X × N)` and the formula
+`◇[d ↦ y; p ⇝ u] Φ(d)` at `s`.  It is true when some arrow `s → k` has `d` with `Φ`, and along
+the way home `k → s`:
+* the way home lies in `r'.box`'s extent at `k`;
+* `p`'s content there, `⟨r'.box.dia, r.box.box⟩` read along it, is `Ind` to `u`.
+
+The first component is the label's content root `c` (P1).  The second is `r.box` sent to `k`
+(the necessary object `m = img r`) and then home: **`r`'s round trip through `k`**.  `s` has no
+term for it in general, since `r.box.box` only means something two arrows away.  So the
+membership proof must show `◇[d ↦ y; p ⇝ u] Φ ∈ M_s` with `u` matching a value `s` cannot name.
+
+**What (a) changes, and why it is not enough.**
+* Under (a) a witness may be written over `d`, as `diatm z h(d.box, z.dia)`, and a β rule
+  returns its content as `h(y, c)`.  That handles items that are **components of `d`**.
+* But the formula's witness mentions `r.box.box`, not a component of `d`.  To use β the proof
+  must know that, at the far end, `r.box.box` *is* a component of `d`.
+  * The network makes it so: once `m` is committed back, `d`'s tuple contains `m`, and after
+    the lift `r.box.box` and `d.box.j` are the same term at `k`.
+  * The language can say so only by an equation, `□_z (r.box.box = d.box.j)`, and equations
+    exist only at `◇`-free types.  At `N = ◇Y` nothing states it.
+* So (a) moves the witnesses but leaves the gap where it was.  Even at `◇`-free types it adds
+  nothing: the equation can sit in the body with the witnesses left in the out view.
+
+**What does close it: name the round trip by a `Back` atom, as rows 1–2 do.**  Rows 1–2 never
+read an out-view item home as a term.  They name round trips with `Back` atoms (`Back(r, t)`:
+`r` comes back as `t`) and meet them along the one way home (`ret_counitC`, `back_tail`).  The
+named-witness counterpart is one rule, a **witness content map by a carrier**:
+
+```
+◇[d ↦ y; diatm z w₀ ⇝ c, ws ⇝ us] Φ ,  Back(O) bd t
+  ⊢  ◇[d ↦ y; diatm z h(w₀, bd) ⇝ h(c, t), ws ⇝ us] Φ
+```
+
+Here `bd` is a term of the out view's `□` view (a carrier's body), and `h` is a closed hole
+term.
+* *Sound at every type:* along the way home, `w₀` comes back as `c` (the witness), `bd` as `t`
+  (the atom with `homeUnique`, as in `ret_counitC`), and `Ind`'s `map`/`pair` congruences give
+  `h(…)`.  No equation is used.
+* *Closed under substitution:* `z ↦ ι z`, `w₀` and `bd` substituted, `h` unchanged.
+* *It covers every witness:* a term `w` of `z`'s view uses only `z.dia` and items of the `□`
+  view's `□` view, so `w = h(z.dia, bd)` with `bd` pairing those items.  The truth case starts
+  from the label's witness `diatm z (z.dia) ⇝ c`.
+* *Witnesses stay in the out view*; stage 1 is unchanged.
+
+**What is left to check.**  The truth case needs a `Back(bd, t) ∈ M_s` naming each round trip it
+meets.  For `bd` built from committed roots, the round trip is a root of `s` (the image sent
+back, `bimg (fimg r)`).  The open question is whether the network puts the matching atom into
+`s`'s theory.  Rows 1–2's `back_tail` and `lbackRel` work from atoms already present, and
+`B_strong` only gives atoms for fresh carriers.  So the check is:
+* either the network adds `Back(r, bimg(fimg r))` when `m` is committed back (a new op, with
+  consistency from `back_unit`/`back_ne`);
+* or the truth case can choose a carrier that already has an atom.
+
+**Verdict.**
+* (a) is not needed and does not close the gap.
+* The carrier-based witness map closes the derivation at every type, with witnesses in the out
+  view.
+* It rests on one network fact still to check: atoms naming committed round trips.
+
+#### The remaining check: it fails *(2026-10-21)*
+
+**The rule is sound and has a clean description.**  It is the pairing law of "comes back as":
+two things that come back along the one way home, here a named witness's content and a
+carrier's body, come back as the pair, and so as any hole term of the pair.  `back_pair`
+(`RetCongr.pair`) and `ret_counitC` express the same law.
+
+**But the truth case cannot use it.**
+* `Back(bd, t)` says `bd` comes back as `t` along **every** arrow out of `s` (its out leg is
+  `□`).
+* The truth case meets the round trip along **one** arrow, the one the returning possibility
+  found.
+* In the canonical network, `r`'s round trip through a child `k` is `bimg_k (img_k r)`, a root of
+  `s` chosen by that child.  Different children give different roots, and nothing makes them
+  interchangeable.  Indeed, at a `◇`-free type, if every round trip agreed with some `t`,
+  `Ret_conv` would make `Back(r, t)` true.  So when no atom exists, the round trips disagree
+  somewhere, and the atom the rule needs is simply false.
+* Rows 1–2 never needed this.  They use an atom only when it is already in the theory
+  (`backRel`: atom ⇒ round trip).  The only one-arrow round trip they name is the bound
+  object's (`D ↦ V`).
+
+**What the truth case really needs**: `r`'s round trip **along the returning possibility's own
+arrow**.  Only the bound object can name that.
+* Once `img_k r` is committed back, it is a component `d.box.j` of the tuple, and its round trip
+  is the value's component `V_j`.
+* What links the witness's `r.box.box` to `d.box.j` is a syntactic identity at `k` after the
+  lift.  The language states it only as an equation, `□_z (r.box.box = d.box.j)`.
+* *At `◇`-free item types* that suffices.  A witness β rule with the equation in the body,
+  ```
+  ◇[d ↦ y; diatm z w₀ ⇝ c, …] □_z (bd = k(d.box))  ⊢  ◇[d ↦ y; diatm z h(w₀, bd) ⇝ h(c, k(y)), …]
+  ```
+  is sound (the way home is in `z`'s extent; `w₀ ↦ c`, `d.box ↦ y`, then `Ind`'s
+  congruences).  Its description is `ret_mapD`'s: β, or naturality, for named witnesses.  Its
+  premise is true at `k` by reflexivity after the lift, so the invariant supplies it, and the
+  witnesses stay in the out view.
+* *At `◇`-typed item types* (`r : □□◇Y`) nothing states the identity.  This is the core of the
+  gap, and it is a genuine design question.
+
+**Options for the `◇`-typed items, for the user.**
+* *(c) A model primitive for named witnesses' contents*, read off the theory as `Ret` is for
+  `Back` (D2 (a)).  It is uniform, and it moves the burden into the network invariants.
+* *A primitive only where equations fail*: the equation rule for `◇`-free items, and a model law
+  for the `◇`-typed parts.  It is narrower, but mixed.
+* *Look for an atom that identifies an out-view possible object with a possible component of
+  the bound object along one arrow*, as `Here` does for T's own arrow.  This would be a new
+  former.
+
+Nothing is to be built until this is decided.
+
+#### The `back_tail` pattern for named witnesses, on paper *(2026-10-21)*
+
+**The idea.**  `back_tail` already relates a round trip to `s`'s theory at every type, without
+equations:
+* a body `K(⟨bd lifted, bd over D⟩)` is trivially true at `k`, since after the lift the two are
+  one term;
+* the edge invariant brings it home;
+* a counit turns it into `K(⟨round trip, t⟩)` at `s`, where `K` tests interchangeability.
+
+The same steps give the truth case for a named witness `diatm z w ⇝ u` whose `w` mentions
+out-view items.  The semantics stays concrete: no new model primitive (so not option (c)).
+
+**The truth case, step by step.**  Hypotheses: an arrow `s → k`, the body at `k`, the way home in
+`z`'s extent, and `w`'s canonical content there (`w↓`, `w` sent out and home) `Rel` to `u`.
+1. *A content root for `w`.*  The network adds, for each label `z` of `k → s` and each body `w`
+   on `z`, a fresh root `c'` of `s`, together with
+   `{◇[D ↦ V; diatm z ⟨z.dia, w⟩ ⇝ c', L] Φ(D) : k makes Φ true}`.
+2. *`c'` is `w↓`.*  The body `□_z K(⟨w, h(d.box, z.dia)⟩)` is trivially true at `k`.  Here `h`
+   writes `w`'s out-view items as components of `d`; after the lift and β they are one term.
+   Pairing `c'` with the label's own witness `z.dia ⇝ c_z` and applying the counit gives
+   `K(⟨c'.2, h(V, c'.1)⟩)` and `K(⟨c'.1, c_z⟩)` at `s`.  So `c'.2` and `w↓ = h(V, c_z)` are
+   `Rel`, at every type.
+3. *Move to `u`.*  `Rel(w↓, u)` holds by hypothesis, so `Rel(c'.2, u)`.  The witness clause moves
+   from `c'.2` to `u` through a content-slot formula, as `mem_ret_of_ind` moves a value.
+
+**The three points.**
+* *Consistency of the content roots: holds.*  This is P1 step 2's argument.
+  * The set for one fresh `c'` is closed under conjunction, by `ret_monoSH`.
+  * If it were inconsistent with `s`, a single body `Φ` would give `s ⊢ ∀c. ¬◇[…; z ⇝ c] Φ`.
+    The existence rule (below) refutes that from the invariant's own `◇[D ↦ V; L] Φ`, whose
+    `L` contains a witness on `z`.
+  * The op is mkAlias's: a fresh root with an infinite set.  Invariants into `s` only gain
+    formulas, and those out of `s` see `c'` only once it is committed.
+* *Under T: holds, through existing machinery.*  The trivially-true body is written over the
+  tuple by `pack2`, as `tailBody` is.  Under T the tuple has companions; item 8's forgetting
+  rules (`RetAtB.toRetInvB`) take the invariant to the plain shape first, as for `back_tail`
+  under T.  Those derived rules must now carry the witnesses (mechanical, after stage 2).
+  The own arrow is covered separately (`ret_hereCH`, `hereList`).
+* *Stages and annotations: hold.*
+  * Step 2 needs every item of `w` committed both ways, which fairness gives at a stage.  From
+    then on the invariant holds at every later stage with `c'` fixed.  So `Rel` (every stage
+    both reach) follows stage by stage, as `lbackRel` does.
+  * The content-slot formula is `◇[d ↦ t; diatm z w ⇝ slot, …] Φ`.  Instantiating the slot
+    commutes with the former (`subst_retSH`).  It takes contents of any annotation, so `c'.2`
+    and `u` need not share one.
+
+**The rules this needs, with their descriptions.**
+* `ret_nameN`, **existence**: an extent gives every body a content.
+  `◇[…; diatm z w₀ ⇝ c₀, …] Φ`, fresh `c` ⊢ `◇[…; diatm z w ⇝ c, diatm z w₀ ⇝ c₀, …] Φ`.  It
+  is `here_name`'s counterpart (a realised witness has a content for every body).
+* `ret_mapN`, **the pairing/map law on one extent**:
+  `diatm z w₁ ⇝ c₁, diatm z w₂ ⇝ c₂` ⊢ `diatm z h(w₁, w₂) ⇝ h(c₁, c₂)`, `h` closed.  It is
+  `back_pair`'s and `ret_mapD`'s law (`IndCongr.pair`, `.map`).
+* `ret_counitN₀`, **the counit**, carrier-free:
+  `◇[d ↦ y; diatm z w ⇝ c, …] □_z ψ(⟨d.box, w⟩)` ⊢ `ψ(⟨y, c⟩)`.
+* **Selection** (P3): any list drawn from the witnesses, in any order, with repeats.
+
+**A simplification found on the way.**  With one more rule, `ret_backN`,
+`Back(O, pos z) u t`, `◇[…] Φ` along `O` ⊢ `◇[diatm z u ⇝ t, …] Φ`, the stage-3 rules become
+derived:
+* `ret_homeN` is `ret_backN` then `ret_nameN`;
+* `ret_counitN` is `ret_backN`, `ret_mapN` (pairing `w` with `u`), then `ret_counitN₀` (a body
+  reassociation by `ret_monoS`).
+
+`ret_backN` reads: a `Back` atom along a leg is a named witness of every returning possibility
+along that leg, since its round trip is part of every return (`homeUnique`).  The resulting
+basis is: existence (`ret_nameN`), carrier (`ret_backN`), map/pairing (`ret_mapN`), counit
+(`ret_counitN₀`) and selection.  Each has a one-line description, and the existing ones are
+instances.
+
+**Cost.**  The main new technical piece is `pack2`/`tailBody` in the witness view
+`(O.view.insert d).diaIn z` rather than the `□` view (`holeRead_tupImgT_pack2`'s counterpart).
+Then: the witness-carrying forgetting rules, the content-slot formula, and the network op for
+content roots.
+
+**Verdict: the pattern holds on paper.**  It closes P3's gap at every type with concrete
+semantics, at the cost of the rules above.  Not built.
+
+**Decided (user, 2026-10-21):** the basis and the simplification are approved.
+
+#### Built: the named back witnesses' basis *(2026-10-21)*
+
+* **Constructors** (`Proof`), each with soundness (`sat_ret_*`) and its `Proof.subst` case:
+  * `ret_selectW`, selection, by `HomeSub`.  `HomePair`/`HomeMem`/`HomeSub` live in `WFF`,
+    with `of_mem`, `map`, `tail`, `drop₂` and `swap`.  Soundness is `homeBack_of_sub`.
+  * `ret_backN`: a `Back` atom is a named witness of every returning possibility along its
+    leg.
+  * `ret_nameN`: an extent gives every body a content, with a fresh root.
+  * `ret_pairN` and `ret_mapN`: pairing on one extent, and a map by a closed hole term
+    (`IndCongr.pair`, `.map`).  The approved `ret_mapN` with a binary `h` is these two
+    composed.
+  * `ret_counitN₀`: the counit, with body `WFF.counitBodyN₀ hz w ψ = □_z ψ(⟨d.box, w⟩)`.
+* **Derived** (no longer constructors):
+  * `ret_forgetW` is selection of the tail;
+  * `ret_homeN` is `ret_backN`, `ret_nameN`, then selection dropping the atom's witness;
+  * `ret_counitN` is `ret_backN`, selection (swap), `ret_pairN`, then `ret_counitN₀`.
+* **One change of statement.**  `ret_counitN`'s body is now the counit's body at the witness
+  `⟨w, u⟩`: `WFF.counitBodyN hz w u ψ = counitBodyN₀ hz ⟨w, u⟩ ψ`, with
+  `ψ : A × (Z × C)` and conclusion `ψ(⟨y, ⟨c, t⟩⟩)`.  With the earlier `((A × Z) × C)` form,
+  the derivation would need reassociation lemmas between hole formulas; nothing used the old
+  form.
+* **Removed:** `sat_ret_homeN` and `sat_ret_counitN` (now derived), and the `Proof.subst` cases of
+  the three old constructors.  `WFF.subst_counitBodyN` became `WFF.subst_counitBodyN₀`.
+* **Helpers:** `VarType.HomeOk.cons'`, `homeBack_mem`, `homeBack_head_mem` (the way home lies in
+  the head witness's extent).
+
+Next: the network refactor (label sets, late labels, content roots per label and per body), now
+with the truth case's form known.

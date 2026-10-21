@@ -335,6 +335,89 @@ theorem VarType.HomeOk.tail {Z : VarType} {Zs : List VarType} (h : VarType.HomeO
     VarType.HomeOk Zs :=
   Or.inr (h.resolve_left (List.cons_ne_nil _ _))
 
+/-- One more named back witness keeps them allowed. -/
+theorem VarType.HomeOk.cons' {Z Z₀ : VarType} {Zs : List VarType}
+    (h : VarType.HomeOk (Z₀ :: Zs)) : VarType.HomeOk (Z :: Z₀ :: Zs) :=
+  Or.inr (h.resolve_left (List.cons_ne_nil _ _))
+
+/-- A named back witness paired with its content (docs §11.23). -/
+abbrev HomePair (σ : Signature) (V Γ : Ctx) : Type :=
+  Σ Z : VarType, (Σ a : Ann (.VTypeDia Z), Term σ V (.VTypeDia Z) a) × (Σ b : Ann Z, Term σ Γ Z b)
+
+/-- A witness and content pair is one of a list's. -/
+def HomeMem {σ : Signature} {V Γ : Ctx} (q : HomePair σ V Γ) :
+    {Zs : List VarType} → HomeWs σ V Zs → HomeTms σ Γ Zs → Prop
+  | [], .nil, .nil => False
+  | Z :: _, .cons p ps, .cons c cs => q = ⟨Z, ⟨_, p⟩, ⟨_, c⟩⟩ ∨ HomeMem q ps cs
+
+/-- ⭐**Selection** (docs §11.23): every pair of the second list is one of the first's — any
+    sublist, in any order, with repeats. -/
+def HomeSub {σ : Signature} {V Γ : Ctx} {Zs : List VarType} (ws : HomeWs σ V Zs)
+    (us : HomeTms σ Γ Zs) : {Zs' : List VarType} → HomeWs σ V Zs' → HomeTms σ Γ Zs' → Prop
+  | [], .nil, .nil => True
+  | Z :: _, .cons p ps, .cons c cs => HomeMem ⟨Z, ⟨_, p⟩, ⟨_, c⟩⟩ ws us ∧ HomeSub ws us ps cs
+
+theorem HomeSub.of_mem {σ : Signature} {V Γ : Ctx} {Zs : List VarType} {ws : HomeWs σ V Zs}
+    {us : HomeTms σ Γ Zs} :
+    {Zs' : List VarType} → (ws' : HomeWs σ V Zs') → (us' : HomeTms σ Γ Zs') →
+    (∀ q, HomeMem q ws' us' → HomeMem q ws us) → HomeSub ws us ws' us'
+  | [], .nil, .nil, _ => trivial
+  | _ :: _, .cons _ ps, .cons _ cs, h =>
+      ⟨h _ (Or.inl rfl), HomeSub.of_mem ps cs fun q hq => h q (Or.inr hq)⟩
+
+theorem HomeSub.tail {σ : Signature} {V Γ : Ctx} {Z : VarType} {Zs : List VarType}
+    {a : Ann (.VTypeDia Z)} (p : Term σ V (.VTypeDia Z) a) (ws : HomeWs σ V Zs) {b : Ann Z}
+    (c : Term σ Γ Z b) (us : HomeTms σ Γ Zs) : HomeSub (.cons p ws) (.cons c us) ws us :=
+  HomeSub.of_mem ws us fun _ hq => Or.inr hq
+
+theorem HomeSub.drop₂ {σ : Signature} {V Γ : Ctx} {Z₁ Z₂ : VarType} {Zs : List VarType}
+    {a₁ : Ann (.VTypeDia Z₁)} (p₁ : Term σ V (.VTypeDia Z₁) a₁) {a₂ : Ann (.VTypeDia Z₂)}
+    (p₂ : Term σ V (.VTypeDia Z₂) a₂) (ws : HomeWs σ V Zs) {b₁ : Ann Z₁} (c₁ : Term σ Γ Z₁ b₁)
+    {b₂ : Ann Z₂} (c₂ : Term σ Γ Z₂ b₂) (us : HomeTms σ Γ Zs) :
+    HomeSub (.cons p₁ (.cons p₂ ws)) (.cons c₁ (.cons c₂ us)) (.cons p₁ ws) (.cons c₁ us) :=
+  HomeSub.of_mem (.cons p₁ ws) (.cons c₁ us) fun _ hq =>
+    Or.elim hq (fun h => Or.inl h) (fun h => Or.inr (Or.inr h))
+
+theorem HomeSub.swap {σ : Signature} {V Γ : Ctx} {Z₁ Z₂ : VarType} {Zs : List VarType}
+    {a₁ : Ann (.VTypeDia Z₁)} (p₁ : Term σ V (.VTypeDia Z₁) a₁) {a₂ : Ann (.VTypeDia Z₂)}
+    (p₂ : Term σ V (.VTypeDia Z₂) a₂) (ws : HomeWs σ V Zs) {b₁ : Ann Z₁} (c₁ : Term σ Γ Z₁ b₁)
+    {b₂ : Ann Z₂} (c₂ : Term σ Γ Z₂ b₂) (us : HomeTms σ Γ Zs) :
+    HomeSub (.cons p₁ (.cons p₂ ws)) (.cons c₁ (.cons c₂ us))
+      (.cons p₂ (.cons p₁ ws)) (.cons c₂ (.cons c₁ us)) :=
+  HomeSub.of_mem (.cons p₂ (.cons p₁ ws)) (.cons c₂ (.cons c₁ us)) fun _ hq =>
+    Or.elim hq (fun h => Or.inr (Or.inl h))
+      (fun h => Or.elim h (fun h' => Or.inl h') (fun h' => Or.inr (Or.inr h')))
+
+/-- A pair under maps of the witnesses and of the contents. -/
+def HomePair.map {σ : Signature} {V V' Γ Γ' : Ctx}
+    (f : ∀ {Z : VarType} {a : Ann (.VTypeDia Z)}, Term σ V (.VTypeDia Z) a →
+      Σ b, Term σ V' (.VTypeDia Z) b)
+    (g : ∀ {Z : VarType} {a : Ann (id Z)}, Term σ Γ (id Z) a → Σ b, Term σ Γ' (id Z) b) :
+    HomePair σ V Γ → HomePair σ V' Γ'
+  | ⟨Z, ⟨_, p⟩, ⟨_, c⟩⟩ => ⟨Z, f p, g c⟩
+
+theorem HomeMem.map {σ : Signature} {V V' Γ Γ' : Ctx}
+    (f : ∀ {Z : VarType} {a : Ann (.VTypeDia Z)}, Term σ V (.VTypeDia Z) a →
+      Σ b, Term σ V' (.VTypeDia Z) b)
+    (g : ∀ {Z : VarType} {a : Ann (id Z)}, Term σ Γ (id Z) a → Σ b, Term σ Γ' (id Z) b)
+    (q : HomePair σ V Γ) :
+    {Zs : List VarType} → (ws : HomeWs σ V Zs) → (us : HomeTms σ Γ Zs) → HomeMem q ws us →
+    HomeMem (q.map f g) (ws.map f) (us.map g)
+  | [], .nil, .nil, h => h
+  | _ :: _, .cons _ ps, .cons _ cs, h =>
+      h.elim (fun e => Or.inl (by subst e; rfl)) (fun h' => Or.inr (HomeMem.map f g q ps cs h'))
+
+theorem HomeSub.map {σ : Signature} {V V' Γ Γ' : Ctx}
+    (f : ∀ {Z : VarType} {a : Ann (.VTypeDia Z)}, Term σ V (.VTypeDia Z) a →
+      Σ b, Term σ V' (.VTypeDia Z) b)
+    (g : ∀ {Z : VarType} {a : Ann (id Z)}, Term σ Γ (id Z) a → Σ b, Term σ Γ' (id Z) b)
+    {Zs : List VarType} {ws : HomeWs σ V Zs} {us : HomeTms σ Γ Zs} :
+    {Zs' : List VarType} → (ws' : HomeWs σ V Zs') → (us' : HomeTms σ Γ Zs') →
+    HomeSub ws us ws' us' → HomeSub (ws.map f) (us.map g) (ws'.map f) (us'.map g)
+  | [], .nil, .nil, h => h
+  | _ :: _, .cons p ps, .cons c cs, h =>
+      ⟨HomeMem.map f g ⟨_, ⟨_, p⟩, ⟨_, c⟩⟩ ws us h.1, HomeSub.map f g ps cs h.2⟩
+
 inductive WFF (σ : Signature) : Ctx → ℕ → Type where
   | atom {Γ : Ctx} {d : ℕ} : Rel σ Γ 0 → WFF σ Γ d
   | eq {Γ : Ctx} {d : ℕ} : Term σ Γ .Var .var → Term σ Γ .Var .var → WFF σ Γ d
