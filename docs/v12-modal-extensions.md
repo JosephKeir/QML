@@ -8505,7 +8505,7 @@ extent.
 `back_eq` and `back_eqC` already range over every leg.  The own-arrow rule under T (`back_hereW`)
 and the returning possibility with named back witnesses come next, with the canonical model.
 
-#### The content counit, and the shape of named back witnesses, on paper *(2026-10-22)*
+#### The content counit, and the shape of named back witnesses, on paper *(2026-10-21)*
 
 **Why it was open.**  A `Back₃` atom at `s`, `Back (nec, pos z) u t`, has its body `u` in `z`'s view
 at the far end, `(Γ.boxIn).diaIn z`.  Besides `z.dia`, `u` may mention `Γ`'s items two `□`-views in
@@ -8613,5 +8613,34 @@ stages 1–3 stands.  Stage 3 is these two rules (and their T own-arrow forms la
   witness part is the term-level chain `subst_mono`, `subst_congr` (via `sim_renameTm_mono`
   boxed or along the witness), `sim_box_mono`/`sim_dia_mono`, `mono_subst`, mapped over the list.
 
-Next: stage 3's two rules (`ret_homeN`, `ret_counitN`), with the witness taken as `diatm z w` for
-any `w` in `z`'s view.
+#### Stage 3 built: the row-3 rules *(2026-10-21)*
+
+Both rules take the named witness as `diatm z w`: `z` a possible object of the out view, `w` any
+term of `z`'s view.  This form is closed under substitution: `z ↦ ι z`, `w` substituted in `z`'s
+view, as the `Back` atom's home leg `pos z ↦ pos (ι z)`.
+
+* **`Proof.ret_homeN`**, an existence rule in `ret_extS`'s style.  `◇[d ↦ t; ws ⇝ us] Φ` along
+  `O` and `Back (O, pos z) u t'`, with `c` fresh, let the subproof assume
+  `◇[d ↦ t; diatm z w ⇝ c, ws ⇝ us] Φ`.  Sound (`sat_ret_homeN`): the atom puts every way home
+  in `z`'s extent; `c` is `w` read there.  Only the atom's extent is used.
+* **`Proof.ret_counitN`**, the content counit.  Its body is `WFF.counitBodyN`,
+  `□_z ψ(⟨⟨d.box, w⟩, u⟩)`.  `◇[d ↦ y; diatm z w ⇝ c, …] □_z ψ(⟨⟨d.box, w⟩, u⟩)` and
+  `Back (O, pos z) u t` give `ψ(⟨⟨y, c⟩, t⟩)`.  Sound (`sat_ret_counitN`): along the way home,
+  `d.box ↦ y` by `ComesBack`, `w ↦ c` by the named witness, `u ↦ t` by the atom; then `Ind`'s
+  pair congruence.  The carrier-free case is the plain counit of a named witness.
+* **The bridge** `OutLeg.sat_backP_pos`: a true `Back (O, pos z) u t` puts each arrow's unique
+  way home in `z`'s extent, with `u` there `Ind` to `t` (`Ret_fwd` and `homeUnique`).  Both
+  soundness proofs go through it.
+* **Substitution.**  The fresh-root rule uses `OutLeg.subst_retSH_renameTmH`, the renaming lemma
+  at any content lists, with `TmList.subst_mono_renameTm` for the weakened ones.  The counit
+  uses `WFF.subst_counitBodyN`, through `Term.subst_dia_under_mono`, the witness-view form of
+  `Term.subst_box_under_mono`.
+* **Scope.**
+  * The `Back` atom's out leg is the returning possibility's own.  That covers row 3 for a
+    returning possibility along `□`, and row 4.  The paper's other case, a `nec` atom for a
+    returning possibility along a witness, needs `u` lifted from `Γ.boxIn`'s witness view into
+    `O`'s.  It is deferred until the network shows it is needed.
+  * The counit reads the newest witness only.  Older ones would need an exchange rule.
+
+Next: the T own-arrow forms (`back_hereW`, the `ret_here` family with named witnesses), then the
+network refactor (label sets, late labels, content roots).

@@ -314,6 +314,14 @@ theorem TmList.map_id {σ : Signature} {V : Ctx} {F : VarType → VarType} :
       change TmList.cons p (ps.map _) = _
       rw [TmList.map_id ps]
 
+theorem TmList.cons_congr {σ : Signature} {V : Ctx} {F : VarType → VarType} {Z : VarType}
+    {Zs : List VarType} {a a' : Ann (F Z)} {p : Term σ V (F Z) a} {p' : Term σ V (F Z) a'}
+    {ps ps' : TmList σ V F Zs} (hp : (⟨a, p⟩ : Σ b, Term σ V (F Z) b) = ⟨a', p'⟩)
+    (hps : ps = ps') : TmList.cons p ps = TmList.cons p' ps' := by
+  cases hp
+  cases hps
+  rfl
+
 /-- A list of terms in a larger context. -/
 abbrev TmList.mono {σ : Signature} {V V' : Ctx} {F : VarType → VarType} (h : V.Le V')
     {Zs : List VarType} (ws : TmList σ V F Zs) : TmList σ V' F Zs :=

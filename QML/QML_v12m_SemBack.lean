@@ -510,6 +510,29 @@ theorem isCarrierData_backP {w : M.frame.W} (env : M.Env Γ w) (O : OutLeg Γ) (
       | nec => exact isCarrierData env (.pos y hy) bd
       | pos z hz => exact ⟨.posW hP, _, Model.carrierData_posW env hP hy hz bd⟩
 
+/-- ⭐A true `Back` atom out along `O` and home along a witness `z` of the out view: along each
+    arrow of the leg, its (unique) way home lies in `z`'s extent, where the body comes back as
+    the value (`Model.Ret_fwd`, `Frame.homeUnique`). -/
+theorem sat_backP_pos {d : ℕ} (hS : ModalSys.BStrong = true) {w : M.frame.W} (env : M.Env Γ w)
+    (O : OutLeg Γ) {z : VarSymb} (hz : ∃ X, O.view.ref z = some (.VTypeDia X))
+    (hW : ModalSys.BStrongW = true) {C : VarType} {c₀ : Ann C} (u : Term σ (O.view.diaIn z) C c₀)
+    {c : Ann C} (t : Term σ Γ C c) (hb : M.sat env (O.backP hS (.pos z hz) hW u t : WFF σ Γ d))
+    (i : O.Arr env) (r : M.frame.R (O.acc env i).1 w) :
+    ∃ hm : (⟨w, ⟨r⟩⟩ : M.frame.Acc (O.acc env i).1) ∈
+        (M.posEval ((O.push env i).ref z hz.choose_spec)).1,
+      M.Ind (Model.interp ((O.push env i).diaPush z hz.choose_spec ⟨_, hm⟩) u)
+        (Model.interp env t) := by
+  obtain ⟨_, hall⟩ := M.Ret_fwd hS ((sat_backP hS env O (.pos z hz) hW u t).mp hb)
+  cases O with
+  | nec =>
+      obtain ⟨r', hm, hI⟩ := hall ⟨i, trivial⟩
+      obtain rfl : r' = r := @Subsingleton.elim _ (M.frame.homeUnique hS) r' r
+      exact ⟨hm, hI⟩
+  | pos y hy =>
+      obtain ⟨r', hm, hI⟩ := hall i
+      obtain rfl : r' = r := @Subsingleton.elim _ (M.frame.homeUnique hS) r' r
+      exact ⟨hm, hI⟩
+
 /-- The leg's view has no projection declared last. -/
 theorem noProjLast_view (O : OutLeg Γ) : O.view.NoProjLast := by
   cases O with
@@ -928,6 +951,31 @@ theorem sat_ret {d : ℕ} (hS : ModalSys.BStrong = true) {w : M.frame.W} (env : 
 /-- A returning possibility with named back witnesses along the leg, weakened, holds in an
     agreeing environment of the larger context when the old leg has an arrow with the body, a
     way home to the new value, and the witnesses home along it. -/
+theorem sat_retSH_agreeH {Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env Γ w}
+    {env' : M.Env Γ' w} (hag : Model.Env.Agree h env env') (hS : ModalSys.BStrong = true)
+    (O : OutLeg Γ) (S : RShape) {Zs : List VarType} (hZs : VarType.HomeOk Zs)
+    (ws : HomeWs σ O.view Zs) {a : Ann S.flat} (t' : Term σ Γ' S.flat a)
+    (us' : HomeTms σ Γ' Zs) (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1) (i : O.Arr env)
+    (e : M.frame.Dom S.ty (O.acc env i).1)
+    (hΦ : M.sat ((O.push env i).extend (.bnd 0) e) Φ) (r : M.frame.R (O.acc env i).1 w)
+    (hr : M.ComesBack S e r (Model.interp env' t'))
+    (hh : M.HomeBack (O.push env i) env' r ws us') :
+    M.sat env' ((O.mono h).retSH hS S Zs hZs (ws.mono (O.le_view_mono h)) t' us'
+      (WFF.mono ((O.le_view_mono h).insert (.bnd 0) _) Φ)) := by
+  cases O with
+  | nec =>
+      exact ⟨i, e, (Model.sat_mono (Model.Env.extend_agree (Model.Env.boxPush_agree hag i)
+        (.bnd 0) e) Φ).mpr hΦ, r, (Model.comesBackH_iff _ _ S e r _ _ _).mpr
+          ⟨hr, (Model.homeBack_monoF (Model.Env.boxPush_agree hag i) env' r ws us').mpr hh⟩⟩
+  | pos y hy =>
+      have href := Model.Env.ref_agree hag y hy.choose_spec
+      exact ⟨_, h.ref hy.choose_spec, ⟨i.1, by rw [← href]; exact i.2⟩, e,
+        (Model.sat_mono (Model.Env.extend_agree
+          (Model.Env.diaPush_agree hag hy.choose_spec i _) (.bnd 0) e) Φ).mpr hΦ, r,
+        (Model.comesBackH_iff _ _ S e r _ _ _).mpr ⟨hr, (Model.homeBack_monoF
+          (Model.Env.diaPush_agree hag hy.choose_spec i _) env' r ws us').mpr hh⟩⟩
+
+/-- The same with the contents weakened too. -/
 theorem sat_retSH_agree {Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env Γ w}
     {env' : M.Env Γ' w} (hag : Model.Env.Agree h env env') (hS : ModalSys.BStrong = true)
     (O : OutLeg Γ) (S : RShape) {Zs : List VarType} (hZs : VarType.HomeOk Zs)
@@ -938,19 +986,9 @@ theorem sat_retSH_agree {Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env
     (hr : M.ComesBack S e r (Model.interp env' t'))
     (hh : M.HomeBack (O.push env i) env r ws us) :
     M.sat env' ((O.mono h).retSH hS S Zs hZs (ws.mono (O.le_view_mono h)) t' (us.mono h)
-      (WFF.mono ((O.le_view_mono h).insert (.bnd 0) _) Φ)) := by
-  cases O with
-  | nec =>
-      exact ⟨i, e, (Model.sat_mono (Model.Env.extend_agree (Model.Env.boxPush_agree hag i)
-        (.bnd 0) e) Φ).mpr hΦ, r, (Model.comesBackH_iff _ _ S e r _ _ _).mpr
-          ⟨hr, (Model.homeBack_mono (Model.Env.boxPush_agree hag i) hag r ws us).mpr hh⟩⟩
-  | pos y hy =>
-      have href := Model.Env.ref_agree hag y hy.choose_spec
-      exact ⟨_, h.ref hy.choose_spec, ⟨i.1, by rw [← href]; exact i.2⟩, e,
-        (Model.sat_mono (Model.Env.extend_agree
-          (Model.Env.diaPush_agree hag hy.choose_spec i _) (.bnd 0) e) Φ).mpr hΦ, r,
-        (Model.comesBackH_iff _ _ S e r _ _ _).mpr ⟨hr, (Model.homeBack_mono
-          (Model.Env.diaPush_agree hag hy.choose_spec i _) hag r ws us).mpr hh⟩⟩
+      (WFF.mono ((O.le_view_mono h).insert (.bnd 0) _) Φ)) :=
+  sat_retSH_agreeH hag hS O S hZs ws t' (us.mono h) Φ i e hΦ r hr
+    ((Model.homeBack_monoH _ hag r ws us).mpr hh)
 
 /-- A returning possibility along the leg, weakened, holds in an agreeing environment of the
     larger context when the old leg has an arrow with the body and a way home to the new value. -/
@@ -3171,6 +3209,104 @@ theorem sat_ret_counitD (hS : ModalSys.BStrong = true) {C X : VarType}
     Env.ref_inner _ _ (Ctx.ref_fst_of hu), Env.ref_fst _ hu, he1,
     Env.ref_dia env₁ hsnd bb (Ctx.ref_diaIn_of hsnd), hcont] at hsat
   exact (holeSat_ind hM ψ (hM.pair hr1 hr2)).mp hsat
+
+omit [Γ.NoSlots] in
+/-- ⭐What `ret_homeN` hands its subproof: along the arrow out and the way home that the
+    returning possibility found, the `Back` atom puts the way home in `z`'s extent; the witness
+    `diatm z w`'s content there is the fresh content root's value. -/
+theorem sat_ret_homeN (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape} {Z C : VarType}
+    {Zs : List VarType} (hZs : VarType.HomeOk Zs) (ws : HomeWs σ O.view Zs) {a : Ann S.flat}
+    (t : Term σ Γ S.flat a) (us : HomeTms σ Γ Zs) (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1)
+    {z : VarSymb} (hz : ∃ X, O.view.ref z = some (.VTypeDia X)) (hW : ModalSys.BStrongW = true)
+    {b : Ann Z} (wz : Term σ (O.view.diaIn z) Z b) {c₀ : Ann C}
+    (u : Term σ (O.view.diaIn z) C c₀) {c₁ : Ann C} (t' : Term σ Γ C c₁) (c : ℕ)
+    (hc : Γ.RootFresh (.free c)) (hret : M.sat env (O.retSH hS S Zs hZs ws t us Φ : WFF σ Γ 0))
+    (hb : M.sat env (O.backP hS (.pos z hz) hW u t' : WFF σ Γ 0)) :
+    ∃ o : M.frame.Dom Z w, M.sat (env.extend (.free c) o)
+      ((O.mono (Ctx.le_insert hc.root Z)).retSH hS S (Z :: Zs) (Or.inr hW)
+        ((TmList.cons (Term.diatm z hz wz) ws).mono (O.le_view_mono (Ctx.le_insert hc.root Z)))
+        (Term.weaken hc.root Z t)
+        (.cons (Term.eta (.root (.free c)) Z (Ctx.ref_insert_root Γ (.free c) Z))
+          (us.mono (Ctx.le_insert hc.root Z)))
+        (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root Z)).insert (.bnd 0) _) Φ)) := by
+  obtain ⟨i, e, hΦ, r, hr, hh⟩ := (OutLeg.sat_retSH hS env O S t Φ).mp hret
+  obtain ⟨hm, -⟩ := OutLeg.sat_backP_pos hS env O hz hW u t' hb i r
+  refine ⟨interp ((O.push env i).diaPush z hz.choose_spec ⟨_, hm⟩) wz, ?_⟩
+  have hag := Env.agree_extend env hc.root
+    (interp ((O.push env i).diaPush z hz.choose_spec ⟨_, hm⟩) wz)
+  refine OutLeg.sat_retSH_agreeH hag hS O S (Or.inr hW) _ _ _ Φ i e hΦ r ?_ ?_
+  · have hw : interp (env.extend (.free c) _) (Term.weaken hc.root Z t) = interp env t :=
+      interp_mono hag t
+    rw [hw]
+    exact hr
+  · refine And.intro ((homeBack_monoH _ hag r ws us).mpr hh) ?_
+    change ∃ h : _ ∈ (M.posEval (interp (O.push env i) (Term.diatm z hz wz))).1,
+      M.Ind _ (interp (env.extend (.free c) _) (Term.eta _ _ _))
+    rw [dia_beta (O.push env i) hz hz.choose_spec wz, interp_eta,
+      show (env.extend (.free c) (interp ((O.push env i).diaPush z hz.choose_spec ⟨_, hm⟩) wz)).ref
+          (.root (.free c)) (Ctx.ref_insert_root Γ (.free c) Z) = _ from
+        Env.extend_root env (.free c) _ (Ctx.ref_insert_root Γ (.free c) Z)]
+    exact ⟨hm, M.Ind_refl _⟩
+
+include hM in
+/-- ⭐**The content counit is sound** (`ret_counitN`, docs §11.23): along the arrow out and the
+    way home that the returning possibility found, the way home lies in `z`'s extent; there the
+    object's contents come back as `y`, the named witness's content as `c` and, by the `Back`
+    atom, the carrier's body as `t`. -/
+theorem sat_ret_counitN (hS : ModalSys.BStrong = true) (hW : ModalSys.BStrongW = true)
+    (O : OutLeg Γ) {A Z C : VarType} {Zs : List VarType} (hZs : VarType.HomeOk (Z :: Zs))
+    {z : VarSymb} (hz : ∃ X, O.view.ref z = some (.VTypeDia X)) {b : Ann Z}
+    (wz : Term σ (O.view.diaIn z) Z b) (ws : HomeWs σ O.view Zs) {a : Ann A} (y : Term σ Γ A a)
+    {cz : Ann Z} (c : Term σ Γ Z cz) (us : HomeTms σ Γ Zs) {c₀ : Ann C}
+    (u : Term σ (O.view.diaIn z) C c₀) {ct : Ann C} (t : Term σ Γ C ct)
+    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd A Z) C)) 1)
+    (hret : M.sat env (O.retSH hS (.box A) (Z :: Zs) hZs (.cons (Term.diatm z hz wz) ws) y
+      (.cons c us) (WFF.counitBodyN hz wz u ψ) : WFF σ Γ 0))
+    (hb : M.sat env (O.backP hS (.pos z hz) hW u t : WFF σ Γ 0)) :
+    M.holeSat ψ (((interp env y, interp env c), interp env t) :
+      M.frame.Dom (.VTypeProd (.VTypeProd A Z) C) w) := by
+  obtain ⟨i, e, hbody, r, hr, -, hm₀, hI₀⟩ := (OutLeg.sat_retSH hS env O (.box A) y _).mp hret
+  obtain ⟨hm, hU⟩ := OutLeg.sat_backP_pos hS env O hz hW u t hb i r
+  have hIw : ∃ hm' : (⟨w, ⟨r⟩⟩ : M.frame.Acc (O.acc env i).1) ∈
+      (M.posEval ((O.push env i).ref z hz.choose_spec)).1,
+      M.Ind (interp ((O.push env i).diaPush z hz.choose_spec ⟨_, hm'⟩) wz) (interp env c) := by
+    have key : ∃ h : (⟨w, ⟨r⟩⟩ : M.frame.Acc (O.acc env i).1) ∈
+        (M.posEval (interp (O.push env i) (Term.diatm z hz wz))).1,
+        M.Ind ((M.posEval (interp (O.push env i) (Term.diatm z hz wz))).2 ⟨_, h⟩)
+          (interp env c) := ⟨hm₀, hI₀⟩
+    rw [dia_beta (O.push env i) hz hz.choose_spec wz] at key
+    exact key
+  obtain ⟨_, hIw⟩ := hIw
+  have hslot := (Ctx.NoSlots.slots (Γ := O.view)).root
+  have hag₁ := Env.agree_extend (O.push env i) hslot e
+  have hI' := (Ctx.le_insert hslot (.VTypeBox A)).ref hz.choose_spec
+  have hm₁ : (⟨w, ⟨r⟩⟩ : M.frame.Acc (O.acc env i).1) ∈
+      (M.posEval (((O.push env i).extend (.bnd 0) e).ref z hI')).1 := by
+    rw [← Env.ref_agree hag₁ z hz.choose_spec]
+    exact hm
+  have hagd := Env.diaPush_agree hag₁ hz.choose_spec ⟨_, hm⟩ hm₁
+  have hφ : M.sat (((O.push env i).extend (.bnd 0) e).diaPush z hI' ⟨_, hm₁⟩)
+      (WFF.holeAt (((Ctx.NoSlots.slots (Γ := O.view)).insert _).diaIn z)
+        (Term.pair
+          (Term.pair
+            (Term.eta (VarSymb.root (.bnd 0)).inner A
+              ((Ctx.le_boxIn_diaIn _ z).ref
+                (Ctx.ref_inner (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox A)))))
+            (Term.mono ((Ctx.le_insert hslot (.VTypeBox A)).diaIn z) wz))
+          (Term.mono ((Ctx.le_insert hslot (.VTypeBox A)).diaIn z) u)) ψ) := by
+    by_contra hn
+    exact hbody ⟨_, hI', ⟨_, hm₁⟩, hn⟩
+  rw [sat_holeAt] at hφ
+  change M.holeSat ψ ((interp _ (Term.eta _ _ _), interp _ (Term.mono _ wz)),
+    interp _ (Term.mono _ u)) at hφ
+  rw [interp_mono hagd wz, interp_mono hagd u, interp_eta,
+    ← Env.ref_agree (Env.diaPush_boxIn ((O.push env i).extend (.bnd 0) e) hI' ⟨_, hm₁⟩) _
+      (Ctx.ref_inner (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox A))),
+    Env.ref_inner _ _ (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox A)),
+    show ((O.push env i).extend (.bnd 0) e).ref (.root (.bnd 0))
+      (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox A)) = e from
+      Env.extend_root _ (.bnd 0) e _] at hφ
+  exact (holeSat_ind hM ψ (hM.pair (hM.pair hr hIw) hU)).mp hφ
 
 end Model
 end V12M

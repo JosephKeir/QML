@@ -1244,6 +1244,39 @@ theorem Term.subst_box_under_mono {ι : VarSymb → VarSymb} {V W : Ctx} (θ : S
       (Subst.coh_mono hc (Ctx.le_insert hW.root T))) (Subst.sim_box hsim) bd).trans ?_
   exact (Term.subst_congr _ _ _ _ _ _ (Subst.sim_box_mono θ (Ctx.le_insert hW.root T)) bd).symm
 
+/-- `Term.subst_box_under_mono` in a witness's view. -/
+theorem Term.subst_dia_under_mono {ι : VarSymb → VarSymb} {V W : Ctx} (θ : Subst σ W)
+    (hθ : Subst.Ok V θ) (hc : Subst.Coh ι V θ) (hV : V.SlotsFrom 0) (hW : W.SlotsFrom 0)
+    (T : VarType) {z : VarSymb} (hz : ∃ X, V.ref z = some (.VTypeDia X))
+    (p : Subst.Ok ((V.insert (.bnd 0) T).diaIn z) ((θ.under 0 0 T hW.root).dia z (ι z)))
+    (q : Subst.Coh (VarSymb.shiftSlot ι 0 0) ((V.insert (.bnd 0) T).diaIn z)
+      ((θ.under 0 0 T hW.root).dia z (ι z)))
+    (okd : Subst.Ok (V.diaIn z) (θ.dia z (ι z))) (cohd : Subst.Coh ι (V.diaIn z) (θ.dia z (ι z)))
+    {C : VarType} {c : Ann C} (t : Term σ (V.diaIn z) C c) :
+    (⟨_, Term.subst (VarSymb.shiftSlot ι 0 0) ((θ.under 0 0 T hW.root).dia z (ι z)) p q
+        (Term.mono ((Ctx.le_insert hV.root T).diaIn z) t)⟩ :
+        Σ b, Term σ ((W.insert (.bnd 0) T).diaIn (ι z)) C b) =
+      ⟨_, Term.mono ((Ctx.le_insert hW.root T).diaIn (ι z))
+        (Term.subst ι (θ.dia z (ι z)) okd cohd t)⟩ := by
+  have hle := Ctx.le_insert hW.root T
+  have hsim : Subst.Sim V (θ.under 0 0 T hW.root) (θ.mono hle) := by
+    refine Subst.sim_of fun v U _ hv => ?_
+    have hne : v ≠ .root (.bnd 0) := fun hvr => by rw [hvr, hV.root] at hv; cases hv
+    rw [show θ.under 0 0 T hW.root v = (θ v).mono hle from if_neg hne]
+    exact .refl _
+  have hw' : ((θ.under 0 0 T hW.root).at z).idxAlong [] = ι z :=
+    hz.elim fun _ hX => ((Subst.coh_under hθ hc hV T hW.root) z _
+      ((Ctx.le_insert hV.root T).ref hX) []).trans
+      (if_neg (Ctx.RootFresh.rt_ne (hV.rootFresh le_rfl) hX))
+  have hwm : ((θ.mono hle).at z).idxAlong [] = ι z :=
+    hz.elim fun _ hX => Subst.coh_mono hc hle z _ hX []
+  rw [Term.subst_mono, Term.mono_subst]
+  refine (Term.subst_congr _ ((θ.mono hle).dia z (ι z)) _
+    (Subst.ok_dia (Subst.ok_mono hθ hle) hz hwm) _
+    (Subst.coh_dia (Subst.ok_mono hθ hle) (Subst.coh_mono hc hle) hz)
+    (Subst.sim_dia hsim hw') t).trans ?_
+  exact (Term.subst_congr _ _ _ _ _ _ (Subst.sim_dia_mono θ hle z (ι z)) t).symm
+
 /-- Substituting the `Back` atom of `Proof.B_strong`: the eigenvariable's η-expansion goes to the
     new eigenvariable's, as in `WFF.subst_hereAt_renameTm`. -/
 theorem WFF.subst_backEta_renameTm {ι : VarSymb → VarSymb} {Γ Δ : Ctx}
@@ -1520,6 +1553,43 @@ theorem WFF.subst_counitBodyD {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlo
     dsimp only [Subst.dia]
     rw [if_pos rfl, Subst.at_proj _ _ rfl, Subst.under_at_root]
     rfl
+
+/-- Substituting the content counit's body: the witness `z` goes to `ι z`, and the content and
+    carrier terms are substituted in its view (`Term.subst_dia_under_mono`). -/
+theorem WFF.subst_counitBodyN {ι : VarSymb → VarSymb} {V W : Ctx} [V.NoSlots] [W.NoSlots]
+    (θ : Subst σ W) (hθ : Subst.Ok V θ) (hc : Subst.Coh ι V θ) (hV : V.SlotsFrom 0)
+    (hW : W.SlotsFrom 0) {A Z C : VarType} {z : VarSymb} (hz : ∃ X, V.ref z = some (.VTypeDia X))
+    (hz' : ∃ X, W.ref (ι z) = some (.VTypeDia X))
+    (okd : Subst.Ok (V.diaIn z) (θ.dia z (ι z))) (cohd : Subst.Coh ι (V.diaIn z) (θ.dia z (ι z)))
+    {b : Ann Z} (wz : Term σ (V.diaIn z) Z b) {c₀ : Ann C} (u : Term σ (V.diaIn z) C c₀)
+    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd A Z) C)) 1) :
+    WFF.subst (VarSymb.shiftSlot ι 0 0) (θ.under 0 0 (.VTypeBox A) hW.root)
+        (Subst.ok_under hθ _ hW.root) (Subst.coh_under hθ hc hV _ hW.root)
+        (hV.insert _) (hW.insert _) (WFF.counitBodyN hz wz u ψ) =
+      WFF.counitBodyN hz' (Term.subst ι (θ.dia z (ι z)) okd cohd wz)
+        (Term.subst ι (θ.dia z (ι z)) okd cohd u) ψ := by
+  have hθ' := Subst.ok_under (d := 0) hθ (.VTypeBox A) hW.root
+  have hc' := Subst.coh_under (d := 0) hθ hc hV (.VTypeBox A) hW.root
+  have hzI : ∃ X, (V.insert (.bnd 0) (.VTypeBox A)).ref z = some (.VTypeDia X) :=
+    hz.imp fun _ h => (Ctx.le_insert hV.root _).ref h
+  have hι : VarSymb.shiftSlot ι 0 0 z = ι z :=
+    hz.elim fun _ hX => if_neg (Ctx.RootFresh.rt_ne (hV.rootFresh le_rfl) hX)
+  have hw' : ((θ.under 0 0 _ hW.root).at z).idxAlong [] = ι z :=
+    hzI.elim fun _ hX => (hc' z _ hX []).trans hι
+  have p := Subst.ok_dia hθ' hzI hw'
+  have q : Subst.Coh (VarSymb.shiftSlot ι 0 0) ((V.insert (.bnd 0) (.VTypeBox A)).diaIn z)
+      ((θ.under 0 0 _ hW.root).dia z (ι z)) := hι ▸ Subst.coh_dia hθ' hc' hzI
+  unfold WFF.counitBodyN WFF.boxx
+  change WFF.imp (WFF.subst _ _ _ _ _ _ (WFF.dia _ _ _)) WFF.bot = _
+  rw [WFF.subst_dia_at _ _ _ _ _ _ _ _ _ hι (hz'.imp fun _ h => (Ctx.le_insert hW.root _).ref h)
+    ((hW.insert _).diaIn _) p q]
+  refine congrArg (fun φ => WFF.imp (WFF.dia _ _ (WFF.imp φ WFF.bot)) WFF.bot) ?_
+  refine (WFF.subst_holeAt _ _ _ _ _ _ ψ).trans (WFF.holeAt_congr _ ?_ ψ)
+  refine sig_pair (sig_pair (Term.subst_eta_renAt _ _ _ A _ _ _ _ ?_)
+    (Term.subst_dia_under_mono θ hθ hc hV hW _ hz p q okd cohd wz))
+    (Term.subst_dia_under_mono θ hθ hc hV hW _ hz p q okd cohd u)
+  exact Subst.dia_at_inner_ren _ _ _
+    (Ctx.ref_inner (Ctx.ref_insert_root V (.bnd 0) (.VTypeBox A))) (Subst.under_at_root _ _ _)
 
 theorem sig_mono {Γ Γ' : Ctx} (h : Γ.Le Γ') {T : VarType} {a a' : Ann T} {t : Term σ Γ T a}
     {t' : Term σ Γ T a'} (e : (⟨a, t⟩ : Σ b, Term σ Γ T b) = ⟨a', t'⟩) :
@@ -2350,15 +2420,32 @@ theorem WFF.subst_viewBody {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots]
       (Ctx.ref_insert_root (Δ.diaIn (ι x)) (.bnd 0) _) (by rw [Subst.under_at_root]))) _).trans ?_
   exact congrArg _ (OutLeg.subst_lift θ hθ hc hΓ hΔ (.pos x hx) χ)
 
+/-- A list of terms weakened past a fresh eigenvariable, substituted with the eigenvariable
+    renamed: the weakening of the substituted list. -/
+theorem TmList.subst_mono_renameTm {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) {u u' : ℕ} (hu : Γ.RootFresh (.free u))
+    (hu' : Δ.RootFresh (.free u')) (T : VarType) {Zs : List VarType} (us : HomeTms σ Γ Zs) :
+    TmList.subst (Subst.renameTmIdx σ ι u u' T hu'.root) (θ.renameTm u u' T hu'.root)
+      (Subst.ok_renameTm hθ T hu'.root) (Subst.coh_renameTm hθ hc hu T hu'.root)
+      (us.mono (Ctx.le_insert hu.root T)) =
+      (TmList.subst ι θ hθ hc us).mono (Ctx.le_insert hu'.root T) :=
+  (TmList.map_map _ _ us).trans ((TmList.map_congr
+    (fun p => Term.subst_mono_renameTm_sigma θ hθ hc hu hu' T p) us).trans
+    (TmList.map_map (fun p => ⟨_, Term.subst ι θ hθ hc p⟩)
+      (fun p => ⟨_, Term.mono (Ctx.le_insert hu'.root T) p⟩) us).symm)
+
 /-- ⭐Substituting the returning possibility that a fresh-value rule hands its subproof: the leg
     and the body are weakened past the fresh root, so they go as the old substitution sends them;
-    only the value is new.  Along a witness the witness goes to `ι y` (the fresh root is not its
-    root). -/
-theorem OutLeg.subst_retSH_renameTm {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    the value and the contents are given (`hs`, `hus`).  Along a witness the witness goes to
+    `ι y` (the fresh root is not its root). -/
+theorem OutLeg.subst_retSH_renameTmH {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
     (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0) (hΔ : Δ.SlotsFrom 0)
     {u u' : ℕ} (hu : Γ.RootFresh (.free u)) (hu' : Δ.RootFresh (.free u')) (T : VarType)
     (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (S : RShape) {Zs : List VarType}
-    (hZs : VarType.HomeOk Zs) (ws : HomeWs σ O.view Zs) (us : HomeTms σ Γ Zs)
+    (hZs : VarType.HomeOk Zs) (ws : HomeWs σ O.view Zs)
+    (us₁ : HomeTms σ (Γ.insert (.free u) T) Zs) (us₂ : HomeTms σ (Δ.insert (.free u') T) Zs)
+    (hus : TmList.subst (Subst.renameTmIdx σ ι u u' T hu'.root) (θ.renameTm u u' T hu'.root)
+      (Subst.ok_renameTm hθ T hu'.root) (Subst.coh_renameTm hθ hc hu T hu'.root) us₁ = us₂)
     (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1) {a a' : Ann S.flat}
     (s : Term σ (Γ.insert (.free u) T) S.flat a)
     (s' : Term σ (Δ.insert (.free u') T) S.flat a')
@@ -2369,23 +2456,14 @@ theorem OutLeg.subst_retSH_renameTm {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ
         (Subst.ok_renameTm hθ T hu'.root) (Subst.coh_renameTm hθ hc hu T hu'.root)
         (hΓ.insertFree u T) (hΔ.insertFree u' T)
         ((O.mono (Ctx.le_insert hu.root T)).retSH hS S Zs hZs
-          (ws.mono (O.le_view_mono (Ctx.le_insert hu.root T))) s
-          (us.mono (Ctx.le_insert hu.root T))
+          (ws.mono (O.le_view_mono (Ctx.le_insert hu.root T))) s us₁
           (WFF.mono ((O.le_view_mono (Ctx.le_insert hu.root T)).insert (.bnd 0) _) Φ)) =
       ((O.subst θ hθ hc).mono (Ctx.le_insert hu'.root T)).retSH hS S Zs hZs
         ((TmList.subst ι (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) ws).mono
           ((O.subst θ hθ hc).le_view_mono (Ctx.le_insert hu'.root T)))
-        s' ((TmList.subst ι θ hθ hc us).mono (Ctx.le_insert hu'.root T))
+        s' us₂
         (WFF.mono (((O.subst θ hθ hc).le_view_mono (Ctx.le_insert hu'.root T)).insert (.bnd 0) _)
           (OutLeg.bodySubst θ hθ hc hΓ hΔ O Φ)) := by
-  have hus : TmList.subst (Subst.renameTmIdx σ ι u u' T hu'.root) (θ.renameTm u u' T hu'.root)
-      (Subst.ok_renameTm hθ T hu'.root) (Subst.coh_renameTm hθ hc hu T hu'.root)
-      (us.mono (Ctx.le_insert hu.root T)) =
-      (TmList.subst ι θ hθ hc us).mono (Ctx.le_insert hu'.root T) :=
-    (TmList.map_map _ _ us).trans ((TmList.map_congr
-      (fun p => Term.subst_mono_renameTm_sigma θ hθ hc hu hu' T p) us).trans
-      (TmList.map_map (fun p => ⟨_, Term.subst ι θ hθ hc p⟩)
-        (fun p => ⟨_, Term.mono (Ctx.le_insert hu'.root T) p⟩) us).symm)
   cases O with
   | nec =>
       have hle' := Ctx.le_insert hu'.root T
@@ -2438,10 +2516,10 @@ theorem OutLeg.subst_retSH_renameTm {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ
             (((θ.renameTm u u' T hu'.root).dia y z).under 0 0 _ hz'.root)),
           WFF.subst (Subst.renameTmIdx σ ι u u' T hu'.root) (θ.renameTm u u' T hu'.root) okr cohr
               (hΓ.insertFree u T) hΔ'
-              (WFF.retxSH hS y hyΓ S Zs hZs (ws.mono (hle.diaIn y)) s (us.mono hle)
+              (WFF.retxSH hS y hyΓ S Zs hZs (ws.mono (hle.diaIn y)) s us₁
                 (WFF.mono ((hle.diaIn y).insert (.bnd 0) _) Φ)) =
             WFF.retxSH hS z P S Zs hZs (TmList.subst _ _ pw qw (ws.mono (hle.diaIn y)))
-              (Term.subst _ _ okr cohr s) (TmList.subst _ _ okr cohr (us.mono hle))
+              (Term.subst _ _ okr cohr s) (TmList.subst _ _ okr cohr us₁)
               (WFF.subst (VarSymb.shiftSlot (Subst.renameTmIdx σ ι u u' T hu'.root) 0 0)
                 (((θ.renameTm u u' T hu'.root).dia y z).under 0 0 _ hz'.root) p q
                 (((hΓ.insertFree u T).diaIn y).insert _) (hz'.insert _)
@@ -2488,6 +2566,37 @@ theorem OutLeg.subst_retSH_renameTm {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ
       exact (WFF.mono_subst ((hle'.diaIn (ι y)).insert _ _) _ (Subst.ok_under ok0 _ hr0)
         (Subst.coh_under ok0 coh0 (hΓ.diaIn y) _ hr0) ((hΓ.diaIn y).insert _)
         ((hΔ.diaIn (ι y)).insert _) ((hΔ'.diaIn (ι y)).insert _) Φ).symm
+
+/-- ⭐Substituting the returning possibility that a fresh-value rule hands its subproof: the leg
+    and the body are weakened past the fresh root, so they go as the old substitution sends them;
+    only the value is new.  Along a witness the witness goes to `ι y` (the fresh root is not its
+    root). -/
+theorem OutLeg.subst_retSH_renameTm {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0) (hΔ : Δ.SlotsFrom 0)
+    {u u' : ℕ} (hu : Γ.RootFresh (.free u)) (hu' : Δ.RootFresh (.free u')) (T : VarType)
+    (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (S : RShape) {Zs : List VarType}
+    (hZs : VarType.HomeOk Zs) (ws : HomeWs σ O.view Zs) (us : HomeTms σ Γ Zs)
+    (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1) {a a' : Ann S.flat}
+    (s : Term σ (Γ.insert (.free u) T) S.flat a)
+    (s' : Term σ (Δ.insert (.free u') T) S.flat a')
+    (hs : (⟨_, Term.subst (Subst.renameTmIdx σ ι u u' T hu'.root) (θ.renameTm u u' T hu'.root)
+        (Subst.ok_renameTm hθ T hu'.root) (Subst.coh_renameTm hθ hc hu T hu'.root) s⟩ :
+        Σ b, Term σ (Δ.insert (.free u') T) S.flat b) = ⟨_, s'⟩) :
+    WFF.subst (Subst.renameTmIdx σ ι u u' T hu'.root) (θ.renameTm u u' T hu'.root)
+        (Subst.ok_renameTm hθ T hu'.root) (Subst.coh_renameTm hθ hc hu T hu'.root)
+        (hΓ.insertFree u T) (hΔ.insertFree u' T)
+        ((O.mono (Ctx.le_insert hu.root T)).retSH hS S Zs hZs
+          (ws.mono (O.le_view_mono (Ctx.le_insert hu.root T))) s
+          (us.mono (Ctx.le_insert hu.root T))
+          (WFF.mono ((O.le_view_mono (Ctx.le_insert hu.root T)).insert (.bnd 0) _) Φ)) =
+      ((O.subst θ hθ hc).mono (Ctx.le_insert hu'.root T)).retSH hS S Zs hZs
+        ((TmList.subst ι (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) ws).mono
+          ((O.subst θ hθ hc).le_view_mono (Ctx.le_insert hu'.root T)))
+        s' ((TmList.subst ι θ hθ hc us).mono (Ctx.le_insert hu'.root T))
+        (WFF.mono (((O.subst θ hθ hc).le_view_mono (Ctx.le_insert hu'.root T)).insert (.bnd 0) _)
+          (OutLeg.bodySubst θ hθ hc hΓ hΔ O Φ)) :=
+  OutLeg.subst_retSH_renameTmH θ hθ hc hΓ hΔ hu hu' T hS O S hZs ws _ _
+    (TmList.subst_mono_renameTm θ hθ hc hu hu' T us) Φ s s' hs
 
 theorem OutLeg.subst_retS_renameTm {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
     (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0) (hΔ : Δ.SlotsFrom 0)
@@ -3260,6 +3369,72 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         (Proof.ret_counitD hS (Term.subst ι θ hθ hc y) ψ
           (Proof.conv (WFF.retS_congr' hS _ rfl (WFF.subst_counitBodyD θ hθ hc hΓ hΓ' ψ))
             (Proof.subst p θ hθ hc hΓ)))
+  | _, _, _, @Proof.ret_homeN _ _ Γ _ hS O S Z C Zs hZs ws a t us Φ z hz hW b wz c₀ u c₁ t' c
+      hcf _ _ pr pb p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      have hcf' : Γ'.RootFresh (.free (Ctx.Presented.bound Γ')) :=
+        Ctx.Presented.fresh_bound _ le_rfl
+      have ih := Proof.subst p (Γ' := Γ'.insert (.free (Ctx.Presented.bound Γ')) Z)
+        (θ.renameTm c _ Z hcf'.root) (Subst.ok_renameTm hθ Z hcf'.root)
+        (Subst.coh_renameTm hθ hc hcf Z hcf'.root) (hΓ.insertFree c Z)
+      have hwz : ((O.viewSubst θ hθ hc).at z).idxAlong [] = ι z :=
+        hz.elim fun _ hX => O.viewCoh θ hθ hc z _ hX []
+      have hz' : ∃ X, (O.subst θ hθ hc).view.ref (ι z) = some (.VTypeDia X) :=
+        hz.elim fun _ hX => SubE.ref_witness (Subst.okRef_at (O.viewOk θ hθ hc) hX) hwz
+      have okd := Subst.ok_dia (O.viewOk θ hθ hc) hz hwz
+      have cohd := Subst.coh_dia (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) hz
+      Proof.ret_homeN hS (O.subst θ hθ hc) hZs
+        (TmList.subst ι (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) ws)
+        (Term.subst ι θ hθ hc t) (TmList.subst ι θ hθ hc us) _ (ι z) hz' hW
+        (Term.subst ι ((O.viewSubst θ hθ hc).dia z (ι z)) okd cohd wz)
+        (Term.subst ι ((O.viewSubst θ hθ hc).dia z (ι z)) okd cohd u) (Term.subst ι θ hθ hc t')
+        (Ctx.Presented.bound Γ') hcf'
+        (Proof.conv (OutLeg.subst_retSH θ hθ hc hΓ hΓ' hS O S Zs hZs ws t us _)
+          (Proof.subst pr θ hθ hc hΓ))
+        (Proof.conv (OutLeg.subst_backP θ hθ hc hΓ hΓ' hS O (.pos z hz) hW u t')
+          (Proof.subst pb θ hθ hc hΓ))
+        (Proof.castHyps
+          (by
+            simp only [List.map_cons, List.map_map, Function.comp_def]
+            exact congrArg₂ List.cons
+              (OutLeg.subst_retSH_renameTmH θ hθ hc hΓ hΓ' hcf hcf' Z hS O S (Or.inr hW)
+                (.cons (Term.diatm z hz wz) ws)
+                (.cons (Term.eta (.root (.free c)) Z (Ctx.ref_insert_root Γ (.free c) Z))
+                  (us.mono (Ctx.le_insert hcf.root Z)))
+                (.cons (Term.eta (.root (.free (Ctx.Presented.bound Γ'))) Z
+                    (Ctx.ref_insert_root Γ' (.free (Ctx.Presented.bound Γ')) Z))
+                  ((TmList.subst ι θ hθ hc us).mono (Ctx.le_insert hcf'.root Z)))
+                (TmList.cons_congr
+                  (Term.subst_eta_tm _ _ _ Z (.root (.free c)) (Ctx.ref_insert_root Γ (.free c) Z)
+                    _ (Subst.at_renameTm_root θ c _ Z hcf'.root))
+                  (TmList.subst_mono_renameTm θ hθ hc hcf hcf' Z us)) Φ _ _
+                (Term.subst_mono_renameTm_sigma θ hθ hc hcf hcf' Z t))
+              (List.map_congr_left fun χ _ =>
+                WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' Z χ))
+          (Proof.conv (WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' Z _) ih))
+  | _, _, _, @Proof.ret_counitN _ _ Γ _ _ hS hW O A Z C Zs hZs z hz b wz ws a y cz c us c₀ u ct t
+      ψ pr pb, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      have hwz : ((O.viewSubst θ hθ hc).at z).idxAlong [] = ι z :=
+        hz.elim fun _ hX => O.viewCoh θ hθ hc z _ hX []
+      have hz' : ∃ X, (O.subst θ hθ hc).view.ref (ι z) = some (.VTypeDia X) :=
+        hz.elim fun _ hX => SubE.ref_witness (Subst.okRef_at (O.viewOk θ hθ hc) hX) hwz
+      have okd := Subst.ok_dia (O.viewOk θ hθ hc) hz hwz
+      have cohd := Subst.coh_dia (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) hz
+      Proof.conv (WFF.subst_holeRead θ hθ hc hΓ hΓ' (Term.pair (Term.pair y c) t) ψ).symm
+        (Proof.ret_counitN hS hW (O.subst θ hθ hc) hZs (ι z) hz'
+          (Term.subst ι ((O.viewSubst θ hθ hc).dia z (ι z)) okd cohd wz)
+          (TmList.subst ι (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) ws)
+          (Term.subst ι θ hθ hc y) (Term.subst ι θ hθ hc c) (TmList.subst ι θ hθ hc us)
+          (Term.subst ι ((O.viewSubst θ hθ hc).dia z (ι z)) okd cohd u) (Term.subst ι θ hθ hc t) ψ
+          (Proof.conv ((OutLeg.subst_retSH θ hθ hc hΓ hΓ' hS O (.box A) (Z :: Zs) hZs
+              (.cons (Term.diatm z hz wz) ws) y (.cons c us) _).trans
+            (OutLeg.retSH_congr hS _ _ _ _ rfl rfl rfl
+              (WFF.subst_counitBodyN (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)
+                (OutLeg.slotsFrom hΓ O) (OutLeg.slotsFrom hΓ' _) hz hz' okd cohd wz u ψ)))
+            (Proof.subst pr θ hθ hc hΓ))
+          (Proof.conv (OutLeg.subst_backP θ hθ hc hΓ hΓ' hS O (.pos z hz) hW u t)
+            (Proof.subst pb θ hθ hc hΓ)))
   | _, _, _, @Proof.ret_forgetW _ _ Γ _ _ hS O S Z Zs hZs b pw ws a t c u us Φ p, Γ', _, ι, θ,
       hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots

@@ -232,6 +232,26 @@ theorem homeBack_mono {V V' Γ Γ' : Ctx} {h : V.Le V'} {h' : Γ.Le Γ'} {v w : 
     M.HomeBack envF' envH' r (ws.mono h) (cs.mono h') ↔ M.HomeBack envF envH r ws cs :=
   homeBack_map r (fun p => interp_mono hag p) (fun c => interp_mono hag' c) ws cs
 
+/-- The named back witnesses' part, the witnesses weakened. -/
+theorem homeBack_monoF {V V' Γ : Ctx} {h : V.Le V'} {v w : M.frame.W} {envF : M.Env V v}
+    {envF' : M.Env V' v} (hag : Env.Agree h envF envF') (envH : M.Env Γ w) (r : M.frame.R v w)
+    {Zs : List VarType} (ws : HomeWs σ V Zs) (cs : HomeTms σ Γ Zs) :
+    M.HomeBack envF' envH r (ws.mono h) cs ↔ M.HomeBack envF envH r ws cs := by
+  have e := homeBack_map (envH := envH) (envH' := envH) r
+    (f := fun p => ⟨_, Term.mono h p⟩) (g := fun c => ⟨_, c⟩) (fun p => interp_mono hag p)
+    (fun _ => rfl) ws cs
+  rwa [TmList.map_id] at e
+
+/-- The named back witnesses' part, the contents weakened. -/
+theorem homeBack_monoH {V Γ Γ' : Ctx} {h : Γ.Le Γ'} {v w : M.frame.W} (envF : M.Env V v)
+    {envH : M.Env Γ w} {envH' : M.Env Γ' w} (hag : Env.Agree h envH envH') (r : M.frame.R v w)
+    {Zs : List VarType} (ws : HomeWs σ V Zs) (cs : HomeTms σ Γ Zs) :
+    M.HomeBack envF envH' r ws (cs.mono h) ↔ M.HomeBack envF envH r ws cs := by
+  have e := homeBack_map (envF := envF) (envF' := envF) r
+    (f := fun p => ⟨_, p⟩) (g := fun c => ⟨_, Term.mono h c⟩) (fun _ => rfl)
+    (fun c => interp_mono hag c) ws cs
+  rwa [TmList.map_id] at e
+
 /-- Coming home with named back witnesses is coming home, plus the witnesses' part. -/
 theorem comesBackH_iff {V Γ : Ctx} {v w : M.frame.W} (envF : M.Env V v) (envH : M.Env Γ w)
     (S : RShape) (e : M.frame.Dom S.ty v) (r : M.frame.R v w) (o : M.frame.Dom S.flat w) :

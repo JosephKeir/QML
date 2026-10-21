@@ -1167,6 +1167,26 @@ def WFF.counitBodyD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {C X : VarType}
           (Ctx.ref_diaIn_of (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)))))
       ψ)
 
+/-- The **content counit**'s body (docs §11.23), for `◇[d ↦ y; diatm z w ⇝ c, …]` with `z` a
+    possible object of the view `V`: `□_z ψ(⟨⟨d.box, w⟩, u⟩)` — what holds along all of `z`'s
+    arrows of the object's contents, the named witness's content `w` and the carrier's body `u`
+    there. -/
+def WFF.counitBodyN {σ : Signature} {V : Ctx} [V.NoSlots] {A Z C : VarType} {z : VarSymb}
+    (hz : ∃ X, V.ref z = some (.VTypeDia X)) {b : Ann Z} (w : Term σ (V.diaIn z) Z b)
+    {c₀ : Ann C} (u : Term σ (V.diaIn z) C c₀)
+    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd A Z) C)) 1) :
+    WFF σ (V.insert (.bnd 0) (.VTypeBox A)) 1 :=
+  WFF.boxx z (hz.imp fun _ h => (Ctx.le_insert (Ctx.NoSlots.slots (Γ := V)).root _).ref h)
+    (WFF.holeAt (((Ctx.NoSlots.slots (Γ := V)).insert _).diaIn z)
+      (Term.pair
+        (Term.pair
+          (Term.eta (VarSymb.root (.bnd 0)).inner A
+            ((Ctx.le_boxIn_diaIn _ z).ref
+              (Ctx.ref_inner (Ctx.ref_insert_root V (.bnd 0) (.VTypeBox A)))))
+          (Term.mono ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := V)).root (.VTypeBox A)).diaIn z) w))
+        (Term.mono ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := V)).root (.VTypeBox A)).diaIn z) u))
+      ψ)
+
 /-- The first component of a necessary pair, as a necessary object: `□(fst v.box)`. -/
 def Term.boxFst {σ : Signature} {Γ : Ctx} {v : VarSymb} {A B : VarType}
     (h : Γ.ref v = some (.VTypeBox (.VTypeProd A B))) :

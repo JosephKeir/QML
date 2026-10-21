@@ -405,6 +405,24 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       obtain ⟨i, e, hΦ, r, hr, hh, _⟩ :=
         (OutLeg.sat_retSH hS env O S t Φ).mp (ih M hM env hfin hnp hΔ)
       exact (OutLeg.sat_retSH hS env O S t Φ).mpr ⟨i, e, hΦ, r, hr, hh⟩
+  | @ret_homeN Γ _ hS O S Z C Zs hZs ws a t us Φ z hz hW b wz c₀ u c₁ t' c hc Δ φ pr pb p ihr
+      ihb ih =>
+      -- The named witness's content along the way home interprets the eigenvariable.
+      intro M hM w env hfin hnp hΔ
+      obtain ⟨o, ho⟩ := sat_ret_homeN env hS O hZs ws t us Φ hz hW wz u t' c hc
+        (ihr M hM env hfin hnp hΔ) (ihb M hM env hfin hnp hΔ)
+      refine (sat_weaken env hc.root o φ).mp
+        (ih M hM (env.extend (.free c) o) (hfin.insert hc _) (hnp.insert _ _) ?_)
+      intro χ hχ
+      rcases List.mem_cons.mp hχ with h₁ | h₂
+      · subst h₁
+        exact ho
+      · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
+        exact (sat_weaken env hc.root _ χ').mpr (hΔ χ' hχ')
+  | @ret_counitN Γ _ Δ hS hW O A Z C Zs hZs z hz b wz ws a y cz c us c₀ u ct t ψ pr pb ihr ihb =>
+      intro M hM w env hfin hnp hΔ
+      exact (sat_holeRead hnp env _ ψ).mpr (sat_ret_counitN env hM hS hW O hZs hz wz ws y c us
+        u t ψ (ihr M hM env hfin hnp hΔ) (ihb M hM env hfin hnp hΔ))
   | @ret_monoSH Γ _ Δ hS O S Zs hZs ws a t us Φ Φ' p q ihp ihq =>
       intro M hM w env hfin hnp hΔ
       exact sat_ret_mono env hS O t Φ Φ' (ihp M hM env hfin hnp hΔ) (ihq M hM env hfin hnp hΔ)
