@@ -660,6 +660,46 @@ theorem sat_back_here (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A
     interp_collapse (Env.collapseAgree_self hT (env.boxPush (M.frame.reflAcc hT w)))]
   exact (hM.inv hfin hnp env φ _ _ hown).mpr hφ
 
+omit [Γ.NoSlots] in
+/-- ⭐A row-3 `Back` at the own arrow (T): the identity's only way home is the identity, so it lies
+    in `z`'s extent there. -/
+theorem sat_back_realW (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) (z : VarSymb)
+    (hz : ∃ X, Γ.boxIn.ref z = some (.VTypeDia X)) (hW : ModalSys.BStrongW = true) {C : VarType}
+    {c₀ : Ann C} (u : Term σ (Γ.boxIn.diaIn z) C c₀) {a : Ann C} (t : Term σ Γ C a)
+    (hb : M.sat env ((OutLeg.nec : OutLeg Γ).backP hS (.pos z hz) hW u t : WFF σ Γ 0)) :
+    M.sat env (WFF.here hT
+      (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (Term.diatm z hz Term.unit)) Term.unit :
+        WFF σ Γ 0) := by
+  obtain ⟨hm, -⟩ := OutLeg.sat_backP_pos hS env .nec hz hW u t hb (M.frame.reflAcc hT w)
+    (M.frame.refl hT w)
+  change Realised hT (interp env (Term.collapse _ _)) (interp env Term.unit)
+  rw [interp_collapse (Env.collapseAgree_self hT env)]
+  change ∃ h : _ ∈ (M.posEval (interp _ (Term.diatm z hz Term.unit))).1, M.Ind _ _
+  rw [dia_beta _ hz hz.choose_spec Term.unit]
+  exact ⟨hm, M.Ind_refl _⟩
+
+include hnp hfin hM in
+/-- ⭐A row-3 `Back` at the own arrow (T): both the value and the `Here` atom's term are
+    indistinguishable from the carrier's body read at the identity and then along `z` there. -/
+theorem sat_back_hereW (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) (z : VarSymb)
+    (hz : ∃ X, Γ.boxIn.ref z = some (.VTypeDia X)) (hW : ModalSys.BStrongW = true) {A : VarType}
+    {a₀ : Ann A} (u : Term σ (Γ.boxIn.diaIn z) A a₀) {a : Ann A} (t : Term σ Γ A a)
+    {a' : Ann A} (t₀ : Term σ Γ A a') (φ : WFF σ (Γ.insert (.bnd 0) A) 1)
+    (hb : M.sat env ((OutLeg.nec : OutLeg Γ).backP hS (.pos z hz) hW u t : WFF σ Γ 0))
+    (hh : M.sat env (WFF.here hT
+      (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (Term.diatm z hz u)) t₀ : WFF σ Γ 0))
+    (hφ : M.sat env (WFF.instantiate Ctx.NoSlots.slots t φ)) :
+    M.sat env (WFF.instantiate Ctx.NoSlots.slots t₀ φ) := by
+  obtain ⟨_, hU⟩ := OutLeg.sat_backP_pos hS env .nec hz hW u t hb (M.frame.reflAcc hT w)
+    (M.frame.refl hT w)
+  change Realised hT (interp env (Term.collapse _ _)) (interp env t₀) at hh
+  rw [interp_collapse (Env.collapseAgree_self hT env)] at hh
+  change ∃ h : _ ∈ (M.posEval (interp _ (Term.diatm z hz u))).1, M.Ind _ _ at hh
+  rw [dia_beta _ hz hz.choose_spec u] at hh
+  obtain ⟨_, hval⟩ := hh
+  rw [sat_instantiate env hnp] at hφ ⊢
+  exact (hM.inv hfin hnp env φ _ _ hval).mp ((hM.inv hfin hnp env φ _ _ hU).mpr hφ)
+
 include hnp hfin hM in
 /-- ⭐The own arrow along `◇_y` (T): with the identity in `y`'s extent, both the value and the
     `Here` atom's term are indistinguishable from the carrier's body read twice there. -/
@@ -1488,18 +1528,36 @@ theorem sat_ret_eqS (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape}
   exact (OutLeg.sat_retSH hS env O S t' Φ).mpr
     ⟨i, e, hΦ, r, (sat_eqRec env S.flat t t').mp he ▸ hr, hh⟩
 
+omit [Γ.NoSlots] in
+/-- Named back witnesses at the own arrow: each realised here with its content, read at the
+    identity. -/
+theorem sat_hereList (hT : ModalSys.T = true) :
+    {Zs : List VarType} → (ws : HomeWs σ Γ.boxIn Zs) → (us : HomeTms σ Γ Zs) →
+    (M.sat env (WFF.hereList hT ws us) ↔
+      M.HomeBack (env.boxPush (M.frame.reflAcc hT w)) env (M.frame.refl hT w) ws us)
+  | [], .nil, .nil => Iff.rfl
+  | _ :: _, .cons p ps, .cons c cs => by
+      change Realised hT (interp env (Term.collapse _ p)) (interp env c) ∧
+        M.sat env (WFF.hereList hT ps cs) ↔ M.HomeBack _ env _ ps cs ∧ _
+      rw [interp_collapse (Env.collapseAgree_self hT env), sat_hereList hT ps cs, and_comm]
+      rfl
+
 include hnp in
 theorem sat_ret_hereWC (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A Y : VarType}
+    {Zs : List VarType} {hZs : VarType.HomeOk Zs} {ws : HomeWs σ Γ.boxIn Zs}
+    {us : HomeTms σ Γ Zs}
     {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (hcs : A.CompOk cs)
     {b : Ann (.VTypeDia Y)} (p : Term σ Γ (.VTypeDia Y) b) {c : Ann Y} (u : Term σ Γ Y c)
     (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd (.VTypeBox A) (.VTypeDia Y))) 1)
+    (hl : M.sat env (WFF.hereList hT ws us))
     (hh : M.sat env (WFF.here hT p u : WFF σ Γ 0))
     (h : M.sat env (WFF.hereRead hT (Term.pair (Term.boxtm sb) p) Φ)) :
-    M.sat env (WFF.retS hS (.wit (.boxC A cs hcs) Y)
-      (Term.pair (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs hcs).2) u) Φ :
+    M.sat env (WFF.retSH hS (.wit (.boxC A cs hcs) Y) Zs hZs ws
+      (Term.pair (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs hcs).2) u) us Φ :
         WFF σ Γ 0) := by
   refine ⟨M.frame.reflAcc hT w, interp env (Term.pair (Term.boxtm sb) p),
-    (sat_hereRead hT hnp env _ Φ).mp h, M.frame.refl hT w, ?_, hh⟩
+    (sat_hereRead hT hnp env _ Φ).mp h, M.frame.refl hT w,
+    (comesBackH_iff _ env _ _ _ _ ws us).mpr ⟨⟨?_, hh⟩, (sat_hereList env hT ws us).mp hl⟩⟩
   change M.compsBack A cs (interp env (Term.boxtm sb)) (M.frame.refl hT w)
     (interp env (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs hcs).2))
   rw [interp_collapse (Env.collapseAgree_self hT env)]
@@ -1597,14 +1655,19 @@ theorem sat_ret_hereXWC (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) 
 
 include hnp in
 theorem sat_ret_hereC (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A : VarType}
+    {Zs : List VarType} {hZs : VarType.HomeOk Zs} {ws : HomeWs σ Γ.boxIn Zs}
+    {us : HomeTms σ Γ Zs}
     {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (hcs : A.CompOk cs)
     (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
+    (hl : M.sat env (WFF.hereList hT ws us))
     (h : M.sat env (WFF.hereRead hT (Term.boxtm sb) Φ)) :
-    M.sat env (WFF.retS hS (.nec (.boxC A cs hcs))
-      (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs hcs).2) Φ : WFF σ Γ 0) := by
+    M.sat env (WFF.retSH hS (.nec (.boxC A cs hcs)) Zs hZs ws
+      (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs hcs).2) us Φ :
+        WFF σ Γ 0) := by
   refine ⟨M.frame.reflAcc hT w, interp env (Term.boxtm sb), (sat_hereRead hT hnp env _ Φ).mp h,
-    M.frame.refl hT w, ?_⟩
-  dsimp only [ComesBackH, ComesBack, NComesBack]
+    M.frame.refl hT w, (comesBackH_iff _ env _ _ _ _ ws us).mpr
+      ⟨?_, (sat_hereList env hT ws us).mp hl⟩⟩
+  dsimp only [ComesBack, NComesBack]
   rw [interp_collapse (Env.collapseAgree_self hT env)]
   exact compsBack_compsVal env sb (M.frame.reflAcc hT w) cs hcs
 

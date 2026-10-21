@@ -8642,5 +8642,30 @@ view, as the `Back` atom's home leg `pos z ↦ pos (ι z)`.
     `O`'s.  It is deferred until the network shows it is needed.
   * The counit reads the newest witness only.  Older ones would need an exchange rule.
 
-Next: the T own-arrow forms (`back_hereW`, the `ret_here` family with named witnesses), then the
-network refactor (label sets, late labels, content roots).
+#### The own arrow under T, with named witnesses: built for the plain leg *(2026-10-21)*
+
+Under T the identity is an arrow out and its own way home (`homeUnique`).
+
+* **A row-3 `Back` at the own arrow.**  Unlike row 2, the atom alone puts the identity in `z`'s
+  extent, since the identity is a `□`-arrow out.  Two rules:
+  * `Proof.back_realW`: `Back(□◇_z u, t) ⊢ Here(collapse(◇_z ()), ())`, realisedness in its
+    minimal form, so `here_name` gives a content for any body;
+  * `Proof.back_hereW`: `Back(□◇_z u, t), Here(collapse(◇_z u), t₀), φ(t) ⊢ φ(t₀)`, `back_hereX`
+    with the legs swapped.  It is sound because `t` and `t₀` are both `Ind` to `u` read at the
+    identity, then along `z` there (`IndInvariant.inv` twice).
+* **Named witnesses at the own arrow, plain leg.**  The witnesses' clause at the identity is,
+  witness by witness, `Here(p↓, c)` with `↓` the collapse of the `□` view
+  (`WFF.hereList hT ws us`, `sat_hereList`).  So `ret_hereC` and `ret_hereWC` become
+  `ret_hereCH` and `ret_hereWCH`, with `hereList` as one more premise.  The old names are
+  derived at `[]` (`hereList [] [] = ⊤`).  The substitution lemma is `WFF.subst_hereList`
+  (`Term.collapse_subst` witness by witness).
+* **Open, for the user: named witnesses along `◇_x` at the own arrow** (`ret_hereXC`,
+  `ret_hereXWC`).  A witness `p` lives in `x`'s view.  At the own arrow it is read with `x`'s
+  content there, so its reading is a `◇`-typed object, which no `□`-view collapse names.  A
+  form that works, on paper: per witness, `Here(◇_x p, q)` (`q` names the reading, a `◇`-term
+  here) and `Here(q, c)`.  `IndInvariant.inv` at the formula `Here(slot, c)` then carries
+  realisedness and content from `q` to the reading.  That costs one extra list of names `qs`.
+  USER DECIDED (2026-10-21): wait until the truth cases show the form the extra list needs.
+* **Scope as before.**  Row 4's `Back` at the own arrow (both legs witnessed) waits for row 4.
+
+Next: the network refactor (label sets, late labels, content roots), then the truth cases.

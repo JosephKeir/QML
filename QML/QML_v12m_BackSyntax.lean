@@ -1167,6 +1167,16 @@ def WFF.counitBodyD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {C X : VarType}
           (Ctx.ref_diaIn_of (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)))))
       ψ)
 
+/-- Under T, **named back witnesses at the own arrow**: each witness of the `□` view, read at
+    the identity, is realised here with content its returning content —
+    `Here(p₁↓, c₁) ∧ … ∧ ⊤`, `↓` the collapse of the `□` view at the identity. -/
+def WFF.hereList {σ : Signature} {Γ : Ctx} (hT : ModalSys.T = true) :
+    {Zs : List VarType} → HomeWs σ Γ.boxIn Zs → HomeTms σ Γ Zs → WFF σ Γ 0
+  | [], .nil, .nil => .top
+  | _ :: _, .cons p ps, .cons c cs =>
+      .and (WFF.here hT (Term.collapse (Ctx.collapses_boxIn_self hT Γ) p) c)
+        (WFF.hereList hT ps cs)
+
 /-- The **content counit**'s body (docs §11.23), for `◇[d ↦ y; diatm z w ⇝ c, …]` with `z` a
     possible object of the view `V`: `□_z ψ(⟨⟨d.box, w⟩, u⟩)` — what holds along all of `z`'s
     arrows of the object's contents, the named witness's content `w` and the carrier's body `u`

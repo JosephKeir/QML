@@ -658,25 +658,31 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (O.retSH hS S Zs hZs ws t us Φ) → Proof σ Γ Δ (eqRec S.flat t t') →
       Proof σ Γ Δ (O.retSH hS S Zs hZs ws t' us Φ)
   /-- ⭐**The own arrow** (T): a necessary object here with `Φ` at this very world comes back as its
-      value here — the identity is an arrow out and its own way home. -/
-  | ret_hereC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (hT : ModalSys.T = true) {A : VarType} {a₀ : Ann A}
+      value here — the identity is an arrow out and its own way home.  Named back witnesses come
+      home there when each is realised here with its content (`WFF.hereList`, docs §11.23). -/
+  | ret_hereCH {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hT : ModalSys.T = true) {A : VarType} {Zs : List VarType} (hZs : VarType.HomeOk Zs)
+      (ws : HomeWs σ Γ.boxIn Zs) (us : HomeTms σ Γ Zs) {a₀ : Ann A}
       (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
       (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) :
+      Proof σ Γ Δ (WFF.hereList hT ws us) →
       Proof σ Γ Δ (WFF.hereRead hT (Term.boxtm sb) Φ) →
-      Proof σ Γ Δ (WFF.retS hS (.nec (.boxC A cs h))
-        (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2) Φ)
+      Proof σ Γ Δ (WFF.retSH hS (.nec (.boxC A cs h)) Zs hZs ws
+        (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2) us Φ)
   /-- ⭐**The own arrow, witnessed** (§11.21, risk 2): the possible part realised here by `u`
-      (`Here(p, u)`) is `ComesBack`'s witness clause at the identity. -/
-  | ret_hereWC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (hT : ModalSys.T = true) {A Y : VarType} {a₀ : Ann A}
+      (`Here(p, u)`) is `ComesBack`'s witness clause at the identity; named back witnesses as in
+      `ret_hereCH`. -/
+  | ret_hereWCH {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hT : ModalSys.T = true) {A Y : VarType} {Zs : List VarType} (hZs : VarType.HomeOk Zs)
+      (ws : HomeWs σ Γ.boxIn Zs) (us : HomeTms σ Γ Zs) {a₀ : Ann A}
       (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
       {b : Ann (.VTypeDia Y)} (p : Term σ Γ (.VTypeDia Y) b) {c : Ann Y} (u : Term σ Γ Y c)
       (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd (.VTypeBox A) (.VTypeDia Y))) 1) :
+      Proof σ Γ Δ (WFF.hereList hT ws us) →
       Proof σ Γ Δ (WFF.here hT p u) →
       Proof σ Γ Δ (WFF.hereRead hT (Term.pair (Term.boxtm sb) p) Φ) →
-      Proof σ Γ Δ (WFF.retS hS (.wit (.boxC A cs h) Y)
-        (Term.pair (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2) u) Φ)
+      Proof σ Γ Δ (WFF.retSH hS (.wit (.boxC A cs h) Y) Zs hZs ws
+        (Term.pair (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2) u) us Φ)
   /-- ⭐**The own arrow along `◇_x`** (§11.21, risk 2): with the identity in `x`'s extent
       (`Here(◇_x bd, t₀)`), what holds here of `t₀` and the object holds out there, at the
       identity, of the content `bd` and the object — stated at a hole formula, as `here_intro`
@@ -717,6 +723,30 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ ((OutLeg.pos y hy : OutLeg Γ).back hS bd t) →
       Proof σ Γ Δ (WFF.here hT
         (Term.diatm y hy (Term.collapse (Ctx.collapses_boxIn_self hT (Γ.diaIn y)) bd)) t₀) →
+      Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t φ) →
+      Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t₀ φ)
+  /-- ⭐**A row-3 `Back` at the own arrow is realised** (T, docs §11.23): the identity is an arrow
+      out, its only way home is the identity, and the atom puts that in `z`'s extent there — so
+      `z` read at the identity is realised here (`here_name` then gives it a content).  Unlike
+      row 2, the atom alone gives this. -/
+  | back_realW {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hT : ModalSys.T = true) (z : VarSymb) (hz : ∃ X, Γ.boxIn.ref z = some (.VTypeDia X))
+      (hW : ModalSys.BStrongW = true) {C : VarType} {c₀ : Ann C} (u : Term σ (Γ.boxIn.diaIn z) C c₀)
+      {a : Ann C} (t : Term σ Γ C a) :
+      Proof σ Γ Δ ((OutLeg.nec : OutLeg Γ).backP hS (.pos z hz) hW u t) →
+      Proof σ Γ Δ (WFF.here hT
+        (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (Term.diatm z hz Term.unit)) Term.unit)
+  /-- ⭐**A row-3 `Back` at the own arrow** (T, docs §11.23), `back_hereX` with the legs swapped:
+      the carrier's body read at the identity and then along `z` there (named by the `Here` atom)
+      is interchangeable with its value. -/
+  | back_hereW {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hT : ModalSys.T = true) (z : VarSymb) (hz : ∃ X, Γ.boxIn.ref z = some (.VTypeDia X))
+      (hW : ModalSys.BStrongW = true) {A : VarType} {a₀ : Ann A} (u : Term σ (Γ.boxIn.diaIn z) A a₀)
+      {a : Ann A} (t : Term σ Γ A a) {a' : Ann A} (t₀ : Term σ Γ A a')
+      (φ : WFF σ (Γ.insert (.bnd 0) A) 1) :
+      Proof σ Γ Δ ((OutLeg.nec : OutLeg Γ).backP hS (.pos z hz) hW u t) →
+      Proof σ Γ Δ (WFF.here hT
+        (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (Term.diatm z hz u)) t₀) →
       Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t φ) →
       Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t₀ φ)
   /-- ⭐**Bridging** (§11.14): a carrier that comes back as `t`, possibly with `Φ` of its image out
@@ -875,6 +905,28 @@ def ret_eqS {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BSt
     (pr₁ : Proof σ Γ Δ (O.retS hS S t Φ)) (pr₂ : Proof σ Γ Δ (eqRec S.flat t t')) :
     Proof σ Γ Δ (O.retS hS S t' Φ) :=
   Proof.ret_eqSH hS O (Or.inl rfl) .nil t t' .nil Φ pr₁ pr₂
+
+/-- ⭐**The own arrow** without named back witnesses (`ret_hereCH` at `[]`). -/
+def ret_hereC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+    (hT : ModalSys.T = true) {A : VarType} {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
+    (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
+    (pr : Proof σ Γ Δ (WFF.hereRead hT (Term.boxtm sb) Φ)) :
+    Proof σ Γ Δ (WFF.retS hS (.nec (.boxC A cs h))
+      (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2) Φ) :=
+  Proof.ret_hereCH hS hT (Or.inl rfl) .nil .nil sb cs h Φ Proof.top_intro pr
+
+/-- ⭐**The own arrow, witnessed**, without named back witnesses (`ret_hereWCH` at `[]`). -/
+def ret_hereWC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+    (hT : ModalSys.T = true) {A Y : VarType} {a₀ : Ann A}
+    (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
+    {b : Ann (.VTypeDia Y)} (p : Term σ Γ (.VTypeDia Y) b) {c : Ann Y} (u : Term σ Γ Y c)
+    (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd (.VTypeBox A) (.VTypeDia Y))) 1)
+    (pr₁ : Proof σ Γ Δ (WFF.here hT p u))
+    (pr₂ : Proof σ Γ Δ (WFF.hereRead hT (Term.pair (Term.boxtm sb) p) Φ)) :
+    Proof σ Γ Δ (WFF.retS hS (.wit (.boxC A cs h) Y)
+      (Term.pair (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2) u) Φ) :=
+  Proof.ret_hereWCH hS hT (Or.inl rfl) .nil .nil sb cs h p u Φ Proof.top_intro pr₁ pr₂
 
 /-- **Monotonicity** of a returning possibility at a necessary object (`ret_monoS`'s box
     instance). -/

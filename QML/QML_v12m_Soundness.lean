@@ -432,13 +432,14 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
   | @ret_eqSH Γ _ Δ hS O S Zs hZs ws a t t' us Φ p q ihp ihq =>
       intro M hM w env hfin hnp hΔ
       exact sat_ret_eqS env hS O t t' Φ (ihp M hM env hfin hnp hΔ) (ihq M hM env hfin hnp hΔ)
-  | @ret_hereC Γ _ Δ hS hT A a₀ sb cs h Φ p ih =>
+  | @ret_hereCH Γ _ Δ hS hT A Zs hZs ws us a₀ sb cs h Φ pl p ihl ih =>
       intro M hM w env hfin hnp hΔ
-      exact sat_ret_hereC env hnp hS hT sb cs h Φ (ih M hM env hfin hnp hΔ)
-  | @ret_hereWC Γ _ Δ hS hT A Y a₀ sb cs h b pt c u Φ ph p ihh ih =>
-      intro M hM w env hfin hnp hΔ
-      exact sat_ret_hereWC env hnp hS hT sb cs h pt u Φ (ihh M hM env hfin hnp hΔ)
+      exact sat_ret_hereC env hnp hS hT sb cs h Φ (ihl M hM env hfin hnp hΔ)
         (ih M hM env hfin hnp hΔ)
+  | @ret_hereWCH Γ _ Δ hS hT A Y Zs hZs ws us a₀ sb cs h b pt c u Φ pl ph p ihl ihh ih =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_ret_hereWC env hnp hS hT sb cs h pt u Φ (ihl M hM env hfin hnp hΔ)
+        (ihh M hM env hfin hnp hΔ) (ih M hM env hfin hnp hΔ)
   | @ret_hereXC Γ _ Δ hS hT x hx X A a₁ bd a' t₀ a₀ sb cs h χ ph p ihh ih =>
       intro M hM w env hfin hnp hΔ
       exact sat_ret_hereXC env hnp hfin hM hS hT x hx bd t₀ sb cs h χ
@@ -447,6 +448,13 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M hM w env hfin hnp hΔ
       exact sat_ret_hereXWC env hnp hfin hM hS hT x hx bd t₀ sb cs h pt u χ
         (ihh M hM env hfin hnp hΔ) (ihp M hM env hfin hnp hΔ) (ih M hM env hfin hnp hΔ)
+  | @back_realW Γ _ Δ hS hT z hz hW C c₀ u a t pb ihb =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_back_realW env hS hT z hz hW u t (ihb M hM env hfin hnp hΔ)
+  | @back_hereW Γ _ Δ hS hT z hz hW A a₀ u a t a' t₀ φ pb ph pφ ihb ihh ihφ =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_back_hereW env hnp hfin hM hS hT z hz hW u t t₀ φ (ihb M hM env hfin hnp hΔ)
+        (ihh M hM env hfin hnp hΔ) (ihφ M hM env hfin hnp hΔ)
   | @back_hereX Γ _ Δ hS hT y hy A a₀ bd a t a' t₀ φ pb ph pφ ihb ihh ihφ =>
       intro M hM w env hfin hnp hΔ
       exact sat_back_hereX env hnp hfin hM hS hT y hy bd t t₀ φ (ihb M hM env hfin hnp hΔ)

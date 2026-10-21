@@ -1591,6 +1591,23 @@ theorem WFF.subst_counitBodyN {ι : VarSymb → VarSymb} {V W : Ctx} [V.NoSlots]
   exact Subst.dia_at_inner_ren _ _ _
     (Ctx.ref_inner (Ctx.ref_insert_root V (.bnd 0) (.VTypeBox A))) (Subst.under_at_root _ _ _)
 
+/-- Substituting named back witnesses at the own arrow: the witnesses go as the `□` view's terms,
+    their collapses as `Term.collapse_subst` says. -/
+theorem WFF.subst_hereList {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (hT : ModalSys.T = true)
+    (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0)
+    (hΔ : Δ.SlotsFrom 0) :
+    {Zs : List VarType} → (ws : HomeWs σ Γ.boxIn Zs) → (us : HomeTms σ Γ Zs) →
+    WFF.subst ι θ hθ hc hΓ hΔ (WFF.hereList hT ws us) =
+      WFF.hereList hT (TmList.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) ws)
+        (TmList.subst ι θ hθ hc us)
+  | [], .nil, .nil => rfl
+  | _ :: _, .cons q qs, .cons _ cs =>
+      congrArg₂ WFF.and
+        (WFF.here_congr hT (Term.collapse_subst (Ctx.collapses_boxIn_self hT Γ)
+          (Ctx.collapses_boxIn_self hT Δ) θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) θ hθ hc
+          (Subst.corr_box_self hT hθ) q).symm rfl)
+        (WFF.subst_hereList hT θ hθ hc hΓ hΔ qs cs)
+
 theorem sig_mono {Γ Γ' : Ctx} (h : Γ.Le Γ') {T : VarType} {a a' : Ann T} {t : Term σ Γ T a}
     {t' : Term σ Γ T a'} (e : (⟨a, t⟩ : Σ b, Term σ Γ T b) = ⟨a', t'⟩) :
     (⟨_, Term.mono h t⟩ : Σ b, Term σ Γ' T b) = ⟨_, Term.mono h t'⟩ := by
@@ -3472,28 +3489,39 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
             (Proof.subst p θ hθ hc hΓ))
           (Proof.conv (WFF.subst_eqRec_gen θ hθ hc hΓ hΓ' S.flat t t')
             (Proof.subst q θ hθ hc hΓ)))
-  | _, _, _, @Proof.ret_hereC _ _ Γ _ _ hS hT A a₀ sb cs h Φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
-      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
-      Proof.conv (WFF.retS_congr hS _ ((sig_collapse (Ctx.collapses_boxIn_self hT Γ')
-          (subst_compsVal_sig θ hθ hc sb cs h).symm).trans
-          (Term.collapse_subst (Ctx.collapses_boxIn_self hT Γ)
-          (Ctx.collapses_boxIn_self hT Γ') θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) θ hθ hc
-          (Subst.corr_box_self hT hθ) (compsVal sb cs h).2)) rfl)
-        (Proof.ret_hereC hS hT (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) sb) cs h
-          (WFF.bodySubst θ hθ hc hΓ hΓ' Φ)
-          (Proof.conv (WFF.subst_hereRead hT θ hθ hc hΓ hΓ' (Term.boxtm sb) Φ)
-            (Proof.subst p θ hθ hc hΓ)))
-  | _, _, _, @Proof.ret_hereWC _ _ Γ _ _ hS hT A Y a₀ sb cs h b pt c u Φ ph p, Γ', _, ι, θ, hθ,
+  | _, _, _, @Proof.ret_hereCH _ _ Γ _ _ hS hT A Zs hZs ws us a₀ sb cs h Φ pl p, Γ', _, ι, θ, hθ,
       hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
-      Proof.conv (WFF.retS_congr hS _ (sig_pair ((sig_collapse (Ctx.collapses_boxIn_self hT Γ')
+      Proof.conv (WFF.retSH_congr hS _ Zs hZs rfl ((sig_collapse (Ctx.collapses_boxIn_self hT Γ')
           (subst_compsVal_sig θ hθ hc sb cs h).symm).trans
           (Term.collapse_subst (Ctx.collapses_boxIn_self hT Γ)
           (Ctx.collapses_boxIn_self hT Γ') θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) θ hθ hc
-          (Subst.corr_box_self hT hθ) (compsVal sb cs h).2)) rfl) rfl)
-        (Proof.ret_hereWC hS hT (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) sb)
+          (Subst.corr_box_self hT hθ) (compsVal sb cs h).2)) rfl rfl)
+        (Proof.ret_hereCH hS hT hZs
+          (TmList.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) ws)
+          (TmList.subst ι θ hθ hc us)
+          (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) sb) cs h
+          (WFF.bodySubst θ hθ hc hΓ hΓ' Φ)
+          (Proof.conv (WFF.subst_hereList hT θ hθ hc hΓ hΓ' ws us) (Proof.subst pl θ hθ hc hΓ))
+          (Proof.conv (WFF.subst_hereRead hT θ hθ hc hΓ hΓ' (Term.boxtm sb) Φ)
+            (Proof.subst p θ hθ hc hΓ)))
+  | _, _, _, @Proof.ret_hereWCH _ _ Γ _ _ hS hT A Y Zs hZs ws us a₀ sb cs h b pt c u Φ pl ph p,
+      Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      Proof.conv (WFF.retSH_congr hS _ Zs hZs rfl
+          (sig_pair ((sig_collapse (Ctx.collapses_boxIn_self hT Γ')
+          (subst_compsVal_sig θ hθ hc sb cs h).symm).trans
+          (Term.collapse_subst (Ctx.collapses_boxIn_self hT Γ)
+          (Ctx.collapses_boxIn_self hT Γ') θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) θ hθ hc
+          (Subst.corr_box_self hT hθ) (compsVal sb cs h).2)) rfl) rfl rfl)
+        (Proof.ret_hereWCH hS hT hZs
+          (TmList.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) ws)
+          (TmList.subst ι θ hθ hc us)
+          (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) sb)
           cs h (Term.subst ι θ hθ hc pt) (Term.subst ι θ hθ hc u)
-          (WFF.bodySubst θ hθ hc hΓ hΓ' Φ) (Proof.subst ph θ hθ hc hΓ)
+          (WFF.bodySubst θ hθ hc hΓ hΓ' Φ)
+          (Proof.conv (WFF.subst_hereList hT θ hθ hc hΓ hΓ' ws us) (Proof.subst pl θ hθ hc hΓ))
+          (Proof.subst ph θ hθ hc hΓ)
           (Proof.conv (WFF.subst_hereRead hT θ hθ hc hΓ hΓ' (Term.pair (Term.boxtm sb) pt) Φ)
             (Proof.subst p θ hθ hc hΓ)))
   | _, _, _, @Proof.ret_hereXC _ _ Γ _ _ hS hT x hx X A a₁ bd a' t₀ a₀ sb cs h χ ph p, Γ', _, ι,
@@ -3538,6 +3566,44 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
           (Proof.conv (WFF.subst_hereRead hT θ hθ hc hΓ hΓ'
               (Term.pair t₀ (Term.pair (Term.boxtm sb) pt)) χ)
             (Proof.subst p θ hθ hc hΓ)))
+  | _, _, _, @Proof.back_realW _ _ Γ _ _ hS hT z hz hW C c₀ u a t pb, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      have hwz : (θ.box.at z).idxAlong [] = ι z :=
+        hz.elim fun _ hX => Subst.coh_box hθ hc z _ hX []
+      have hz' : ∃ X, Γ'.boxIn.ref (ι z) = some (.VTypeDia X) :=
+        hz.elim fun _ hX => SubE.ref_witness (Subst.okRef_at (Subst.ok_box hθ) hX) hwz
+      Proof.conv (WFF.here_congr hT
+          (Term.collapse_subst (Ctx.collapses_boxIn_self hT Γ)
+                (Ctx.collapses_boxIn_self hT Γ') θ.box
+              (Subst.ok_box hθ) (Subst.coh_box hθ hc) θ hθ hc (Subst.corr_box_self hT hθ)
+            (Term.diatm z hz Term.unit)) rfl)
+        (Proof.back_realW hS hT (ι z) hz' hW
+          (Term.subst ι (θ.box.dia z (ι z)) (Subst.ok_dia (Subst.ok_box hθ) hz hwz)
+            (Subst.coh_dia (Subst.ok_box hθ) (Subst.coh_box hθ hc) hz) u)
+          (Term.subst ι θ hθ hc t)
+          (Proof.conv (OutLeg.subst_backP θ hθ hc hΓ hΓ' hS .nec (.pos z hz) hW u t)
+            (Proof.subst pb θ hθ hc hΓ)))
+  | _, _, _, @Proof.back_hereW _ _ Γ _ _ hS hT z hz hW A a₀ u a t a' t₀ φ pb ph pφ, Γ', _, ι, θ,
+      hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      have hwz : (θ.box.at z).idxAlong [] = ι z :=
+        hz.elim fun _ hX => Subst.coh_box hθ hc z _ hX []
+      have hz' : ∃ X, Γ'.boxIn.ref (ι z) = some (.VTypeDia X) :=
+        hz.elim fun _ hX => SubE.ref_witness (Subst.okRef_at (Subst.ok_box hθ) hX) hwz
+      Proof.conv (WFF.subst_instantiate θ hθ hc hΓ hΓ' t₀ φ).symm
+        (Proof.back_hereW hS hT (ι z) hz' hW
+          (Term.subst ι (θ.box.dia z (ι z)) (Subst.ok_dia (Subst.ok_box hθ) hz hwz)
+            (Subst.coh_dia (Subst.ok_box hθ) (Subst.coh_box hθ hc) hz) u)
+          (Term.subst ι θ hθ hc t) (Term.subst ι θ hθ hc t₀) _
+          (Proof.conv (OutLeg.subst_backP θ hθ hc hΓ hΓ' hS .nec (.pos z hz) hW u t)
+            (Proof.subst pb θ hθ hc hΓ))
+          (Proof.conv (WFF.here_congr hT
+              (Term.collapse_subst (Ctx.collapses_boxIn_self hT Γ)
+                (Ctx.collapses_boxIn_self hT Γ') θ.box
+              (Subst.ok_box hθ) (Subst.coh_box hθ hc) θ hθ hc (Subst.corr_box_self hT hθ)
+                (Term.diatm z hz u)).symm rfl)
+            (Proof.subst ph θ hθ hc hΓ))
+          (Proof.conv (WFF.subst_instantiate θ hθ hc hΓ hΓ' t φ) (Proof.subst pφ θ hθ hc hΓ)))
   | _, _, _, @Proof.back_hereX _ _ Γ _ _ hS hT y hy A a₀ bd a t a' t₀ φ pb ph pφ, Γ', _, ι, θ,
       hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
