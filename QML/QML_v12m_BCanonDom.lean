@@ -34,6 +34,25 @@ namespace BArrow
 
 variable {σ : Signature}
 
+/-- A network that labels each arrow once, by its kind: its label map. -/
+def lbOfKd {W : Type} (kd : W → W → Option (VarSymb × VarType)) (s t : W) (x : VarSymb) :
+    Option VarType :=
+  match kd s t with
+  | some (y, X) => if y = x then some X else none
+  | none => none
+
+omit [ModalSys] in
+theorem lbOfKd_eq {W : Type} {kd : W → W → Option (VarSymb × VarType)} {s t : W} {x : VarSymb}
+    {X : VarType} : lbOfKd kd s t x = some X ↔ kd s t = some (x, X) := by
+  cases hk : kd s t with
+  | none => simp [lbOfKd, hk]
+  | some p =>
+      obtain ⟨y, Y⟩ := p
+      by_cases hy : y = x
+      · subst hy
+        simp [lbOfKd, hk]
+      · simp [lbOfKd, hk, hy]
+
 /-- ⭐The data of the canonical model for B. -/
 structure BData [ModalSys.NoFour] (σ : Signature) where
   W : Type
@@ -53,28 +72,37 @@ structure BData [ModalSys.NoFour] (σ : Signature) where
     ∃ (t : W) (h : R s t), (WFF.subst (arrowIdx (img s t)) (arrowS σ _ (img s t))
       (ok_arrowS (imgOk h i)) (coh_arrowS (imgOk h i)) Ctx.NoSlots.slots Ctx.NoSlots.slots
         ψ).neg ∈ (w t).M (stg s t i)
-  kd : W → W → Option (VarSymb × VarType)
-  cx : W → W → ℕ
-  kdR : ∀ {s t x X}, kd s t = some (x, X) → R s t
-  hcx : ∀ {s t x X}, kd s t = some (x, X) → ∀ i,
-    ((w t).ctx (stg s t i)).ref (.root (.free (cx s t))) = some X
-  hxX : ∀ {s t x X}, kd s t = some (x, X) → ∀ i X',
+  /-- ⭐The arrows' **labels** (docs §11.23): `lb s t x = some X` when the arrow `s → t` lies in
+      the extent of `x : ◇X`, its content there the root `cx s t x` of `t`.  Each arrow is
+      labelled by its kind (`kd_lb`), and under row 3 by late labels too. -/
+  lb : W → W → VarSymb → Option VarType
+  cx : W → W → VarSymb → ℕ
+  lbR : ∀ {s t x X}, lb s t x = some X → R s t
+  lb_hcx : ∀ {s t x X}, lb s t x = some X → ∀ i,
+    ((w t).ctx (stg s t i)).ref (.root (.free (cx s t x))) = some X
+  lb_hxX : ∀ {s t x X}, lb s t x = some X → ∀ i X',
     ((w s).ctx i).ref x = some (.VTypeDia X') → X' = X
-  trX : ∀ {s t x X} (hk : kd s t = some (x, X)) (i : ℕ)
+  lb_trX : ∀ {s t x X} (hk : lb s t x = some X) (i : ℕ)
     (hx : ((w s).ctx i).ref x = some (.VTypeDia X)) (ψ : WFF σ (((w s).ctx i).diaIn x) 0),
     WFF.boxx x ⟨X, hx⟩ ψ ∈ (w s).M i →
-    WFF.subst (arrowXIdx (img s t) x (cx s t)) (arrowXS σ _ (img s t) x (cx s t))
-      (ok_arrowXS (imgOk (kdR hk) i) hx (hcx hk i))
-      (coh_arrowXS (imgOk (kdR hk) i) hx (hcx hk i)) Ctx.NoSlots.slots Ctx.NoSlots.slots ψ ∈
+    WFF.subst (arrowXIdx (img s t) x (cx s t x)) (arrowXS σ _ (img s t) x (cx s t x))
+      (ok_arrowXS (imgOk (lbR hk) i) hx (lb_hcx hk i))
+      (coh_arrowXS (imgOk (lbR hk) i) hx (lb_hcx hk i)) Ctx.NoSlots.slots Ctx.NoSlots.slots ψ ∈
         (w t).M (stg s t i)
+  /-- The arrow's **kind**: the witness it was made for (`exX`), one of its labels. -/
+  kd : W → W → Option (VarSymb × VarType)
+  kd_lb : ∀ {s t x X}, kd s t = some (x, X) → lb s t x = some X
+  /-- *Temporary, rows 1–2*: every label is the kind.  Row 3's late labels drop it; its uses mark
+      what they must supply (docs §11.23, the network refactor). -/
+  lb_kd : ∀ {s t x X}, lb s t x = some X → kd s t = some (x, X)
   exX : ∀ (s : W) (i : ℕ) (x : VarSymb) (X : VarType)
     (hx : ((w s).ctx i).ref x = some (.VTypeDia X)) (ψ : WFF σ (((w s).ctx i).diaIn x) 0),
     WFF.dia x ⟨X, hx⟩ ψ ∈ (w s).M i →
     ∃ (t : W) (hk : kd s t = some (x, X)),
-      WFF.subst (arrowXIdx (img s t) x (cx s t)) (arrowXS σ _ (img s t) x (cx s t))
-        (ok_arrowXS (imgOk (kdR hk) i) hx (hcx hk i))
-        (coh_arrowXS (imgOk (kdR hk) i) hx (hcx hk i)) Ctx.NoSlots.slots Ctx.NoSlots.slots ψ ∈
-          (w t).M (stg s t i)
+      WFF.subst (arrowXIdx (img s t) x (cx s t x)) (arrowXS σ _ (img s t) x (cx s t x))
+        (ok_arrowXS (imgOk (lbR (kd_lb hk)) i) hx (lb_hcx (kd_lb hk) i))
+        (coh_arrowXS (imgOk (lbR (kd_lb hk)) i) hx (lb_hcx (kd_lb hk) i)) Ctx.NoSlots.slots
+          Ctx.NoSlots.slots ψ ∈ (w t).M (stg s t i)
   /-- ⭐Wherever there is an arrow out there is an **unlabelled** one (`ex` at `□⊥` makes a child
       of kind `none`): a plain leg's arrows are never one witness's extent, which strong B's
       `back` case reads to tell the legs apart (docs §11.20). -/
@@ -100,17 +128,39 @@ structure BData [ModalSys.NoFour] (σ : Signature) where
     ∀ {k : W} (hk : kd s k = some (y, Y)),
       Canon.DTerm.Rel (S := (w s).sys) (T := (w s).T)
         ⟨stg k s (stg s k i), _, Term.subst (arrowIdx (img k s)) (arrowS σ _ (img k s))
-          (ok_arrowS (imgOk (symm (kdR hk)) (stg s k i)))
-          (coh_arrowS (imgOk (symm (kdR hk)) (stg s k i)))
-          (Term.subst (arrowXIdx (img s k) y (cx s k)) (arrowXS σ _ (img s k) y (cx s k)).box
-            (Subst.ok_box (ok_arrowXS (imgOk (kdR hk) i) hy (hcx hk i)))
-            (Subst.coh_box (ok_arrowXS (imgOk (kdR hk) i) hy (hcx hk i))
-              (coh_arrowXS (imgOk (kdR hk) i) hy (hcx hk i))) bd)⟩
+          (ok_arrowS (imgOk (symm (lbR (kd_lb hk))) (stg s k i)))
+          (coh_arrowS (imgOk (symm (lbR (kd_lb hk))) (stg s k i)))
+          (Term.subst (arrowXIdx (img s k) y (cx s k y)) (arrowXS σ _ (img s k) y (cx s k y)).box
+            (Subst.ok_box (ok_arrowXS (imgOk (lbR (kd_lb hk)) i) hy (lb_hcx (kd_lb hk) i)))
+            (Subst.coh_box (ok_arrowXS (imgOk (lbR (kd_lb hk)) i) hy (lb_hcx (kd_lb hk) i))
+              (coh_arrowXS (imgOk (lbR (kd_lb hk)) i) hy (lb_hcx (kd_lb hk) i))) bd)⟩
         ⟨i, a, t⟩
 
 namespace BData
 
 variable [ModalSys.NoFour] (B : BData σ)
+
+/-! ### The kind label -/
+
+theorem kdR {s t : B.W} {x : VarSymb} {X : VarType} (hk : B.kd s t = some (x, X)) : B.R s t :=
+  B.lbR (B.kd_lb hk)
+
+theorem hcx {s t : B.W} {x : VarSymb} {X : VarType} (hk : B.kd s t = some (x, X)) (i : ℕ) :
+    ((B.w t).ctx (B.stg s t i)).ref (.root (.free (B.cx s t x))) = some X :=
+  B.lb_hcx (B.kd_lb hk) i
+
+theorem hxX {s t : B.W} {x : VarSymb} {X : VarType} (hk : B.kd s t = some (x, X)) (i : ℕ)
+    (X' : VarType) (h : ((B.w s).ctx i).ref x = some (.VTypeDia X')) : X' = X :=
+  B.lb_hxX (B.kd_lb hk) i X' h
+
+theorem trX {s t : B.W} {x : VarSymb} {X : VarType} (hk : B.kd s t = some (x, X)) (i : ℕ)
+    (hx : ((B.w s).ctx i).ref x = some (.VTypeDia X)) (ψ : WFF σ (((B.w s).ctx i).diaIn x) 0)
+    (h : WFF.boxx x ⟨X, hx⟩ ψ ∈ (B.w s).M i) :
+    WFF.subst (arrowXIdx (B.img s t) x (B.cx s t x)) (arrowXS σ _ (B.img s t) x (B.cx s t x))
+      (ok_arrowXS (B.imgOk (B.kdR hk) i) hx (B.hcx hk i))
+      (coh_arrowXS (B.imgOk (B.kdR hk) i) hx (B.hcx hk i)) Ctx.NoSlots.slots Ctx.NoSlots.slots ψ ∈
+        (B.w t).M (B.stg s t i) :=
+  B.lb_trX (B.kd_lb hk) i hx ψ h
 
 /-- ⭐The canonical accessibility: the network's arrows and, under T, each world's own. -/
 def RT (s t : B.W) : Prop := B.R s t ∨ (ModalSys.T = true ∧ s = t)
@@ -131,11 +181,11 @@ theorem selfLe {s t : B.W} (h : s = t) (i : ℕ) : ((B.w s).ctx i).Le ((B.w t).c
 /-- ⭐The extent of the witness `x` at `s`: the network's arrows into its extent, and the world's
     own arrow when its theory realises `x`. -/
 def extent (s : B.W) (x : VarSymb) : Set (B.Acc s) :=
-  {a | (∃ X, B.kd s a.1 = some (x, X)) ∨ (¬ B.R s a.1 ∧ (B.w s).Realised x)}
+  {a | (∃ X, B.lb s a.1 x = some X) ∨ (¬ B.R s a.1 ∧ (B.w s).Realised x)}
 
 variable {B} in
 theorem mem_extent_self {s : B.W} {x : VarSymb} {a : B.Acc s} (h : a ∈ B.extent s x)
-    (hk : ¬ ∃ X, B.kd s a.1 = some (x, X)) : ¬ B.R s a.1 ∧ (B.w s).Realised x :=
+    (hk : ¬ ∃ X, B.lb s a.1 x = some X) : ¬ B.R s a.1 ∧ (B.w s).Realised x :=
   h.resolve_left hk
 
 /-- Under a world's own arrow, the content of a realised witness's possible object `⟨x; t⟩`: the
@@ -161,25 +211,25 @@ theorem arCoh {s t : B.W} (h : B.R s t) (i : ℕ) :
   coh_arrowS (B.imgOk h i)
 
 /-- A witness arrow's renaming is well typed at a stage where the witness is visible. -/
-theorem arXOk {s t : B.W} {x : VarSymb} (hm : ∃ X, B.kd s t = some (x, X)) (i : ℕ)
+theorem arXOk {s t : B.W} {x : VarSymb} (hm : ∃ X, B.lb s t x = some X) (i : ℕ)
     (hx : ∃ X, ((B.w s).ctx i).ref x = some (.VTypeDia X)) :
     Subst.Ok (((B.w s).ctx i).diaIn x)
-      (arrowXS σ ((B.w t).ctx (B.stg s t i)) (B.img s t) x (B.cx s t)) := by
+      (arrowXS σ ((B.w t).ctx (B.stg s t i)) (B.img s t) x (B.cx s t x)) := by
   obtain ⟨X, hk⟩ := hm
   obtain ⟨X', hX'⟩ := hx
-  have e := B.hxX hk i X' hX'
+  have e := B.lb_hxX hk i X' hX'
   subst e
-  exact ok_arrowXS (B.imgOk (B.kdR hk) i) hX' (B.hcx hk i)
+  exact ok_arrowXS (B.imgOk (B.lbR hk) i) hX' (B.lb_hcx hk i)
 
-theorem arXCoh {s t : B.W} {x : VarSymb} (hm : ∃ X, B.kd s t = some (x, X)) (i : ℕ)
+theorem arXCoh {s t : B.W} {x : VarSymb} (hm : ∃ X, B.lb s t x = some X) (i : ℕ)
     (hx : ∃ X, ((B.w s).ctx i).ref x = some (.VTypeDia X)) :
-    Subst.Coh (arrowXIdx (B.img s t) x (B.cx s t)) (((B.w s).ctx i).diaIn x)
-      (arrowXS σ ((B.w t).ctx (B.stg s t i)) (B.img s t) x (B.cx s t)) := by
+    Subst.Coh (arrowXIdx (B.img s t) x (B.cx s t x)) (((B.w s).ctx i).diaIn x)
+      (arrowXS σ ((B.w t).ctx (B.stg s t i)) (B.img s t) x (B.cx s t x)) := by
   obtain ⟨X, hk⟩ := hm
   obtain ⟨X', hX'⟩ := hx
-  have e := B.hxX hk i X' hX'
+  have e := B.lb_hxX hk i X' hX'
   subst e
-  exact coh_arrowXS (B.imgOk (B.kdR hk) i) hX' (B.hcx hk i)
+  exact coh_arrowXS (B.imgOk (B.lbR hk) i) hX' (B.lb_hcx hk i)
 
 /-! ## Canonical shapes
 
@@ -398,10 +448,10 @@ noncomputable def rden : {A : VarType} → {a : Ann A} → {Γ : Ctx} → (s : B
           (Term.collapse (Ctx.collapses_boxIn_self (self_of_not_R h).1 Γ) t)
   | _, _, Γ, s, i, e, .diatm x hx t =>
       ⟨B.extent s x, fun a =>
-        if hk : ∃ X, B.kd s a.1.1 = some (x, X) then
+        if hk : ∃ X, B.lb s a.1.1 x = some X then
           rden a.1.1 (B.stg s a.1.1 i) (Ctx.Le.refl _)
-            (Term.subst (arrowXIdx (B.img s a.1.1) x (B.cx s a.1.1))
-              (arrowXS σ _ (B.img s a.1.1) x (B.cx s a.1.1))
+            (Term.subst (arrowXIdx (B.img s a.1.1) x (B.cx s a.1.1 x))
+              (arrowXS σ _ (B.img s a.1.1) x (B.cx s a.1.1 x))
               ((B.arXOk hk i (hx.imp fun _ h => e.ref h)).restrict (e.diaIn x))
               ((B.arXCoh hk i (hx.imp fun _ h => e.ref h)).restrict (e.diaIn x)) t)
         else
@@ -435,10 +485,10 @@ theorem rden_boxtm_self {A : VarType} {a : Ann A} {Γ : Ctx} {s : B.W} {i : ℕ}
 /-- Along a witness arrow a possible term's content is its body translated. -/
 theorem rden_diatm_net {A : VarType} {a : Ann A} {Γ : Ctx} {s : B.W} {i : ℕ} {x : VarSymb}
     (e : Γ.Le ((B.w s).ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
-    (t : Term σ (Γ.diaIn x) A a) (a' : B.extent s x) (hk : ∃ X, B.kd s a'.1.1 = some (x, X)) :
+    (t : Term σ (Γ.diaIn x) A a) (a' : B.extent s x) (hk : ∃ X, B.lb s a'.1.1 x = some X) :
     (B.rden s i e (.diatm x hx t)).2 a' = B.rden a'.1.1 (B.stg s a'.1.1 i) (Ctx.Le.refl _)
-      (Term.subst (arrowXIdx (B.img s a'.1.1) x (B.cx s a'.1.1))
-        (arrowXS σ _ (B.img s a'.1.1) x (B.cx s a'.1.1))
+      (Term.subst (arrowXIdx (B.img s a'.1.1) x (B.cx s a'.1.1 x))
+        (arrowXS σ _ (B.img s a'.1.1) x (B.cx s a'.1.1 x))
         ((B.arXOk hk i (hx.imp fun _ h => e.ref h)).restrict (e.diaIn x))
         ((B.arXCoh hk i (hx.imp fun _ h => e.ref h)).restrict (e.diaIn x)) t) := by
   simp only [rden, dif_pos hk]
@@ -446,7 +496,7 @@ theorem rden_diatm_net {A : VarType} {a : Ann A} {Γ : Ctx} {s : B.W} {i : ℕ} 
 /-- Along the world's own arrow a possible term's content is its body realised. -/
 theorem rden_diatm_self {A : VarType} {a : Ann A} {Γ : Ctx} {s : B.W} {i : ℕ} {x : VarSymb}
     (e : Γ.Le ((B.w s).ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
-    (t : Term σ (Γ.diaIn x) A a) (a' : B.extent s x) (hk : ¬ ∃ X, B.kd s a'.1.1 = some (x, X)) :
+    (t : Term σ (Γ.diaIn x) A a) (a' : B.extent s x) (hk : ¬ ∃ X, B.lb s a'.1.1 x = some X) :
     (B.rden s i e (.diatm x hx t)).2 a' =
       B.rden a'.1.1 _ (B.selfLe (self_of_not_R (mem_extent_self a'.2 hk).1).2 _)
         (B.realTerm (mem_extent_self a'.2 hk).2 e hx t).2 := by
@@ -477,7 +527,7 @@ theorem rden_mono : ∀ {A : VarType} {a : Ann A} {Γ Γ' : Ctx} (h : Γ.Le Γ')
       refine RPos.congr_cont (funext fun a => ?_) fun _ =>
         Model.termShp_mono (h := h) (ρ := B.cEnv Γ s) (ρ' := B.cEnv Γ' s) (fun _ _ _ => rfl) 0
           (.diatm x hx t)
-      by_cases hk : ∃ X, B.kd s a.1.1 = some (x, X)
+      by_cases hk : ∃ X, B.lb s a.1.1 x = some X
       · simp only [dif_pos hk, Term.subst_mono]
       · simp only [dif_neg hk, realTerm, Term.mono_mono]
   termination_by structural A => A
@@ -497,16 +547,16 @@ theorem subst_arrow_mono {s t : B.W} {Γ : Ctx} (i : ℕ) (j : ℕ) (hij : B.stg
 /-- Substituting along a witness arrow into a later stage of the target is weakening. -/
 theorem subst_arrowX_mono {s t : B.W} {Γ : Ctx} {x : VarSymb} (i : ℕ) (j : ℕ)
     (hij : B.stg s t i ≤ j) (e : Γ.Le (((B.w s).ctx i).diaIn x))
-    (hθ : Subst.Ok Γ (arrowXS σ ((B.w t).ctx j) (B.img s t) x (B.cx s t)))
-    (hc : Subst.Coh (arrowXIdx (B.img s t) x (B.cx s t)) Γ
-      (arrowXS σ ((B.w t).ctx j) (B.img s t) x (B.cx s t)))
-    (hm : ∃ X, B.kd s t = some (x, X)) (hx : ∃ X, ((B.w s).ctx i).ref x = some (.VTypeDia X))
+    (hθ : Subst.Ok Γ (arrowXS σ ((B.w t).ctx j) (B.img s t) x (B.cx s t x)))
+    (hc : Subst.Coh (arrowXIdx (B.img s t) x (B.cx s t x)) Γ
+      (arrowXS σ ((B.w t).ctx j) (B.img s t) x (B.cx s t x)))
+    (hm : ∃ X, B.lb s t x = some X) (hx : ∃ X, ((B.w s).ctx i).ref x = some (.VTypeDia X))
     {A : VarType} {a : Ann A} (u : Term σ Γ A a) :
-    Term.mono ((B.w t).le hij) (Term.subst (arrowXIdx (B.img s t) x (B.cx s t))
-        (arrowXS σ _ (B.img s t) x (B.cx s t))
+    Term.mono ((B.w t).le hij) (Term.subst (arrowXIdx (B.img s t) x (B.cx s t x))
+        (arrowXS σ _ (B.img s t) x (B.cx s t x))
         ((B.arXOk hm i hx).restrict e) ((B.arXCoh hm i hx).restrict e) u) =
-      Term.subst (arrowXIdx (B.img s t) x (B.cx s t))
-        (arrowXS σ ((B.w t).ctx j) (B.img s t) x (B.cx s t)) hθ hc u := by
+      Term.subst (arrowXIdx (B.img s t) x (B.cx s t x))
+        (arrowXS σ ((B.w t).ctx j) (B.img s t) x (B.cx s t x)) hθ hc u := by
   rw [Term.mono_subst]
   exact eq_of_heq (Sigma.mk.inj (Term.subst_congr _ _ _ _ _ _ (fun v T hv => by
     rw [arrowXS_mono]; exact .refl _) u)).2
@@ -551,7 +601,7 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
       exact h₁.trans h₂.symm
   | _, _, Γ, .diatm x hx t, s, i, j, e, e' =>
       RPos.congr_cont (funext fun a => by
-        by_cases hk : ∃ X, B.kd s a.1.1 = some (x, X)
+        by_cases hk : ∃ X, B.lb s a.1.1 x = some X
         swap
         · simp only [dif_neg hk]
           obtain ⟨hnR, hr⟩ := mem_extent_self a.2 hk
@@ -582,21 +632,21 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
         set K := max (B.stg s a.1.1 i) (B.stg s a.1.1 j)
         have hxi : ∃ X, ((B.w s).ctx i).ref x = some (.VTypeDia X) := hx.imp fun _ h => e.ref h
         have hθ : Subst.Ok (Γ.diaIn x)
-            (arrowXS σ ((B.w a.1.1).ctx K) (B.img s a.1.1) x (B.cx s a.1.1)) := by
+            (arrowXS σ ((B.w a.1.1).ctx K) (B.img s a.1.1) x (B.cx s a.1.1 x)) := by
           obtain ⟨X, hk⟩ := hk
           obtain ⟨X', hX'⟩ := hxi
-          have ee := B.hxX hk i X' hX'
+          have ee := B.lb_hxX hk i X' hX'
           subst ee
-          exact (ok_arrowXS ((B.imgOk (B.kdR hk) i).mono ((B.w a.1.1).le (le_max_left _ _))) hX'
-            (((B.w a.1.1).le (le_max_left _ _)).ref (B.hcx hk i))).restrict (e.diaIn x)
-        have hc : Subst.Coh (arrowXIdx (B.img s a.1.1) x (B.cx s a.1.1)) (Γ.diaIn x)
-            (arrowXS σ ((B.w a.1.1).ctx K) (B.img s a.1.1) x (B.cx s a.1.1)) := by
+          exact (ok_arrowXS ((B.imgOk (B.lbR hk) i).mono ((B.w a.1.1).le (le_max_left _ _))) hX'
+            (((B.w a.1.1).le (le_max_left _ _)).ref (B.lb_hcx hk i))).restrict (e.diaIn x)
+        have hc : Subst.Coh (arrowXIdx (B.img s a.1.1) x (B.cx s a.1.1 x)) (Γ.diaIn x)
+            (arrowXS σ ((B.w a.1.1).ctx K) (B.img s a.1.1) x (B.cx s a.1.1 x)) := by
           obtain ⟨X, hk⟩ := hk
           obtain ⟨X', hX'⟩ := hxi
-          have ee := B.hxX hk i X' hX'
+          have ee := B.lb_hxX hk i X' hX'
           subst ee
-          exact (coh_arrowXS ((B.imgOk (B.kdR hk) i).mono ((B.w a.1.1).le (le_max_left _ _)))
-            hX' (((B.w a.1.1).le (le_max_left _ _)).ref (B.hcx hk i))).restrict (e.diaIn x)
+          exact (coh_arrowXS ((B.imgOk (B.lbR hk) i).mono ((B.w a.1.1).le (le_max_left _ _)))
+            hX' (((B.w a.1.1).le (le_max_left _ _)).ref (B.lb_hcx hk i))).restrict (e.diaIn x)
         have h₁ := (rden_congr _ a.1.1 (B.stg s a.1.1 i) K (Ctx.Le.refl _)
           ((B.w a.1.1).le (le_max_left _ _))).trans
           ((rden_mono ((B.w a.1.1).le (le_max_left _ _)) _ a.1.1 K (Ctx.Le.refl _)).symm.trans

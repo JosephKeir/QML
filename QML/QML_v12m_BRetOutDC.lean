@@ -100,7 +100,7 @@ def RetOutDC (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
               (compsVal g cs h).2)) (definable_rden _ _))
           (B.toDom (A.compsFlat cs) s (B.rden s i (Ctx.Le.refl _) t₁) (definable_rden _ _)) ∧
         B.Ind (B.toDom Z s (B.rden s (B.stg k s j) (Ctx.Le.refl _)
-            (Term.eta (.root (.free (B.cx k s))) Z (B.hcx hk j))) (definable_rden _ _))
+            (Term.eta (.root (.free (B.cx k s e))) Z (B.hcx hk j))) (definable_rden _ _))
           (B.toDom Z s (B.rden s i (Ctx.Le.refl _) t₂) (definable_rden _ _))
 
 /-- ⭐⭐**`ret` at a witnessed companion shape, membership ⇒ truth** (plain leg): the necessary
@@ -187,7 +187,7 @@ def RetOutXDC (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
             (definable_rden _ _))
           (B.toDom (A.compsFlat cs) s (B.rden s i (Ctx.Le.refl _) t₁) (definable_rden _ _)) ∧
         B.Ind (B.toDom Z s (B.rden s (B.stg k s j) (Ctx.Le.refl _)
-            (Term.eta (.root (.free (B.cx k s))) Z (B.hcx hke j))) (definable_rden _ _))
+            (Term.eta (.root (.free (B.cx k s e))) Z (B.hcx hke j))) (definable_rden _ _))
           (B.toDom Z s (B.rden s i (Ctx.Le.refl _) t₂) (definable_rden _ _))
 
 /-- ⭐⭐**`ret` along a witness at a witnessed companion shape, membership ⇒ truth**: as
@@ -211,7 +211,7 @@ theorem sat_retxDC_of_mem (hS : ModalSys.BStrong = true) (hRX : B.RetOutXDC hS) 
   have ha : (⟨k, ⟨Or.inl hR⟩⟩ : B.Acc s) ∈
       (B.model.posEval ((B.canonEnv s i).ref y hY)).1 := by
     rw [canonEnv_extent s i hY]
-    exact Or.inl ⟨Y, hk⟩
+    exact Or.inl ⟨Y, B.kd_lb hk⟩
   rw [sat_readArrowX, ← diaPush_canon_at s i hY ⟨⟨k, ⟨Or.inl hR⟩⟩, ha⟩ hk hj] at hsat
   refine ⟨Y, hY, ⟨⟨k, ⟨Or.inl hR⟩⟩, ha⟩, _, hsat, Or.inl (B.symm hR), ?_, ?_⟩
   · change B.model.compsBack A cs (Model.interp (B.canonEnv k j) (Term.boxtm g)) _ _

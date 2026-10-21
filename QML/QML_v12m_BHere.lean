@@ -85,7 +85,7 @@ theorem here_truth (hT : ModalSys.T = true) {s : B.W} {i : ℕ} {x : VarSymb}
   · rintro ⟨hm, u, u', hu, hu', hrel⟩
     have hm' : B.model.frame.reflAcc hT s ∈ B.extent s x := canonEnv_extent s i h ▸ hm
     have hr : (B.w s).Realised x :=
-      (mem_extent_self hm' fun ⟨_, hk⟩ => B.irrefl s (B.kdR hk)).2
+      (mem_extent_self hm' fun ⟨_, hk⟩ => B.irrefl s (B.lbR hk)).2
     rw [hC hr hm, fromDom_toDom] at hu
     rw [hD, fromDom_toDom] at hu'
     -- one stage for everything

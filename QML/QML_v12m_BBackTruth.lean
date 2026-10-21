@@ -567,8 +567,9 @@ theorem univ_ne_extent {s : B.W} (harr : ∃ k, B.R s k)
   obtain ⟨t₀, hR, hkd⟩ := B.unl hk
   have hm : (⟨t₀, ⟨Or.inl hR⟩⟩ : B.Acc s) ∈ B.extent s y := h ▸ Set.mem_univ _
   rcases hm with ⟨X, hX⟩ | ⟨hnR, -⟩
-  · rw [hkd] at hX
-    cases hX
+  · have h' := B.lb_kd hX
+    rw [hkd] at h'
+    cases h'
   · exact hnR hR
 
 /-- A true atom's out leg has an arrow, so its world has a network one (under T by `T`). -/
@@ -696,7 +697,7 @@ variable (B) in
 def CxFresh : Prop :=
   ∀ {s : B.W} {i : ℕ} {y : VarSymb} {Y : VarType} (hy : ((B.w s).ctx i).ref y = some (.VTypeDia Y)),
     WFF.dia y ⟨Y, hy⟩ (.top : WFF σ _ 0) ∈ (B.w s).M i →
-      ∃ k, B.kd s k = some (y, Y) ∧ ∀ r < ((B.w s).l i).length, B.img s k r ≠ B.cx s k
+      ∃ k, B.kd s k = some (y, Y) ∧ ∀ r < ((B.w s).l i).length, B.img s k r ≠ B.cx s k y
 
 omit [ModalSys] in
 /-- Two equal dependent pairs over sets agree at a common member. -/
@@ -788,12 +789,14 @@ theorem mem_back_of_sat_pos (hS : ModalSys.BStrong = true) (hB : ModalSys.B = tr
               have hdata' := hdata.trans hD
               have hfst := congrArg Sigma.fst hdata'
               change B.extent s y' = B.extent s y at hfst
-              have hmk : (⟨k, ⟨Or.inl hkR⟩⟩ : B.Acc s) ∈ B.extent s y := Or.inl ⟨Y, hkk⟩
+              have hmk : (⟨k, ⟨Or.inl hkR⟩⟩ : B.Acc s) ∈ B.extent s y :=
+                Or.inl ⟨Y, B.kd_lb hkk⟩
               rw [← hfst] at hmk
               obtain rfl : y = y' := by
                 rcases hmk with ⟨X', hX'⟩ | ⟨hnR, -⟩
-                · rw [hkk] at hX'
-                  exact (Prod.mk.inj (Option.some.inj hX')).1
+                · have h' := B.lb_kd hX'
+                  rw [hkk] at h'
+                  exact (Prod.mk.inj (Option.some.inj h')).1
                 · exact absurd hkR hnR
               -- the contents agree along every arrow of the extent
               have hcont : ∀ (a₁ : B.Acc s) (m : a₁ ∈ B.extent s y),
@@ -806,10 +809,11 @@ theorem mem_back_of_sat_pos (hS : ModalSys.BStrong = true) (hB : ModalSys.B = tr
                   hdata' a₁ m m
                 exact toDom_inj (B.model.nec_inj e)
               -- one annotation, read back along the fresh witness arrow `s → k`
-              have hm₀ : (⟨k, ⟨Or.inl hkR⟩⟩ : B.Acc s) ∈ B.extent s y := Or.inl ⟨Y, hkk⟩
+              have hm₀ : (⟨k, ⟨Or.inl hkR⟩⟩ : B.Acc s) ∈ B.extent s y :=
+                Or.inl ⟨Y, B.kd_lb hkk⟩
               have hck := hcont _ hm₀
-              rw [rden_diatm_net _ _ _ ⟨_, hm₀⟩ ⟨Y, hkk⟩,
-                rden_diatm_net _ _ _ ⟨_, hm₀⟩ ⟨Y, hkk⟩] at hck
+              rw [rden_diatm_net _ _ _ ⟨_, hm₀⟩ ⟨Y, B.kd_lb hkk⟩,
+                rden_diatm_net _ _ _ ⟨_, hm₀⟩ ⟨Y, B.kd_lb hkk⟩] at hck
               have hann := ann_eq_of_toDom hS hInj ⟨s, B.symm hkR⟩ _ _ (toDom_congr hck _ _)
               have hQ : ∀ (j : ℕ) (hj : j ≤ max i i') {b : Ann (.VTypeBox A)}
                   (u : Term σ (((B.w s).ctx j).diaIn y) (.VTypeBox A) b),

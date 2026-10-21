@@ -576,7 +576,8 @@ def RetInW (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
         WFF.retS hS (.wit N Z)
           (Term.pair (n.subst (arrowIdx (B.img k s)) (arrowS σ _ (B.img k s))
               (ok_arrowS (B.imgOk (B.symm h) j)) (coh_arrowS (B.imgOk (B.symm h) j))).2
-            (Term.subst (arrowXIdx (B.img k s) x (B.cx k s)) (arrowXS σ _ (B.img k s) x (B.cx k s))
+            (Term.subst (arrowXIdx (B.img k s) x (B.cx k s x))
+              (arrowXS σ _ (B.img k s) x (B.cx k s x))
               (ok_arrowXS (B.imgOk (B.symm h) j) hx (B.hcx hk j))
               (coh_arrowXS (B.imgOk (B.symm h) j) hx (B.hcx hk j)) u))
           (WFF.mono (((B.w s).le hiK).boxIn.insert (.bnd 0) _) Φ) ∈ (B.w s).M (B.stg k s j)
@@ -599,7 +600,8 @@ def RetInWX (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
           (Term.pair (n.subst (arrowIdx (B.img k s)) (arrowS σ _ (B.img k s))
               (ok_arrowS (B.imgOk (B.symm (B.kdR hky)) j))
               (coh_arrowS (B.imgOk (B.symm (B.kdR hky)) j))).2
-            (Term.subst (arrowXIdx (B.img k s) x (B.cx k s)) (arrowXS σ _ (B.img k s) x (B.cx k s))
+            (Term.subst (arrowXIdx (B.img k s) x (B.cx k s x))
+              (arrowXS σ _ (B.img k s) x (B.cx k s x))
               (ok_arrowXS (B.imgOk (B.symm (B.kdR hky)) j) hx (B.hcx hkx j))
               (coh_arrowXS (B.imgOk (B.symm (B.kdR hky)) j) hx (B.hcx hkx j)) u))
           (WFF.mono ((((B.w s).le hiK).diaIn y).insert (.bnd 0) _) Φ) ∈ (B.w s).M (B.stg k s j)
@@ -907,13 +909,14 @@ theorem mem_ret_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   rcases hext with ⟨X₁, hk⟩ | ⟨hnR, -⟩
   swap
   · exact absurd (B.symm hR) hnR
+  replace hk := B.lb_kd hk
   obtain rfl := B.hxX hk J X hX'
   obtain ⟨hiK, hret⟩ := hRW hR hk Φ hj hX' n' u' hmb
   refine mem_ret_of_ind hS hInj (S := .wit N Z) ⟨k, hR⟩ hiK _ t Φ
     (fun L _ u u' hs => (IH s L _ (by
       rw [WFF.size_eqRec, hsz]; exact Nat.lt_succ_of_le (Nat.le_add_left _ _))).mp hs) hret ?_
   have hcont' : B.Ind (Model.interp (B.canonEnv s (B.stg k s J))
-      (Term.subst (arrowXIdx (B.img k s) x (B.cx k s)) (arrowXS σ _ (B.img k s) x (B.cx k s))
+      (Term.subst (arrowXIdx (B.img k s) x (B.cx k s x)) (arrowXS σ _ (B.img k s) x (B.cx k s x))
         (ok_arrowXS (B.imgOk (B.symm hR) J) hX' (B.hcx hk J))
         (coh_arrowXS (B.imgOk (B.symm hR) J) hX' (B.hcx hk J)) u'))
       (Model.interp (B.canonEnv s i) t).2 := by
@@ -948,7 +951,7 @@ theorem mem_retx_of_sat_here_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj
   have hsz : ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).retS hS (.wit N Z) t Φ :
       WFF σ _ 0).size = Φ.size + (RShape.wit N Z).flat.eqRecSize + 1 := rfl
   have hr : (B.w s).Realised y :=
-    (mem_extent_self (canonEnv_extent s i hY ▸ hm) fun ⟨_, hk⟩ => B.irrefl s (B.kdR hk)).2
+    (mem_extent_self (canonEnv_extent s i hY ▸ hm) fun ⟨_, hk⟩ => B.irrefl s (B.lbR hk)).2
   obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom (RShape.wit N Z).ty s e
   obtain ⟨_, g₁, _, g₂, hgp⟩ := getP_prod_some g
   obtain ⟨n, hn⟩ := NItems.exists_obj N g₁
@@ -1140,6 +1143,7 @@ theorem mem_retx_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   · rcases rk with hR | ⟨hT, rfl⟩
     · exact absurd hR hnR
     · exact mem_retx_of_sat_here_wit hS hInj hT hy t Φ IH hY ha e hΦ hcb
+  replace hky := B.lb_kd hky
   obtain rfl := B.hxX hky i Y hY
   have hR := B.kdR hky
   have hr' : B.RT k s := r
@@ -1182,13 +1186,14 @@ theorem mem_retx_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   rcases hext' with ⟨X₁, hkx⟩ | ⟨hnR, -⟩
   swap
   · exact absurd (B.symm hR) hnR
+  replace hkx := B.lb_kd hkx
   obtain rfl := B.hxX hkx J X hX'
   obtain ⟨hiK, hret⟩ := hRWX hky hkx hY Φ hj hX' n' u' hmb
   refine mem_retx_of_ind hS hInj (S := .wit N Z) ⟨k, hR⟩ hiK hy _ t Φ
     (fun L _ u u' hs => (IH s L _ (by
       rw [WFF.size_eqRec, hsz]; exact Nat.lt_succ_of_le (Nat.le_add_left _ _))).mp hs) hret ?_
   have hcont' : B.Ind (Model.interp (B.canonEnv s (B.stg k s J))
-      (Term.subst (arrowXIdx (B.img k s) x (B.cx k s)) (arrowXS σ _ (B.img k s) x (B.cx k s))
+      (Term.subst (arrowXIdx (B.img k s) x (B.cx k s x)) (arrowXS σ _ (B.img k s) x (B.cx k s x))
         (ok_arrowXS (B.imgOk (B.symm hR) J) hX' (B.hcx hkx J))
         (coh_arrowXS (B.imgOk (B.symm hR) J) hX' (B.hcx hkx J)) u'))
       (Model.interp (B.canonEnv s i) t).2 := by

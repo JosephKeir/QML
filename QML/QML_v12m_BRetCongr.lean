@@ -182,14 +182,16 @@ theorem leg_unique {s : B.W} {i : ℕ}
           have h₁ : a ∈ B.extent s y := canonEnv_extent s i hy.choose_spec ▸ ha
           obtain ⟨t₀, X, hX⟩ : ∃ t₀ X, B.kd s t₀ = some (y, X) := by
             rcases h₁ with ⟨X, hX⟩ | ⟨-, hr⟩
-            · exact ⟨a.1, X, hX⟩
+            · exact ⟨a.1, X, B.lb_kd hX⟩
             · obtain ⟨t₀, ht₀⟩ := exists_kd_of_realised hr hy.choose_spec
               exact ⟨t₀, _, ht₀⟩
           have hm : (⟨t₀, ⟨Or.inl (B.kdR hX)⟩⟩ : B.Acc s) ∈ B.extent s y' :=
-            hext ▸ (Or.inl ⟨X, hX⟩ : (⟨t₀, ⟨Or.inl (B.kdR hX)⟩⟩ : B.Acc s) ∈ B.extent s y)
+            hext ▸ (Or.inl ⟨X, B.kd_lb hX⟩ :
+              (⟨t₀, ⟨Or.inl (B.kdR hX)⟩⟩ : B.Acc s) ∈ B.extent s y)
           rcases hm with ⟨X', hX'⟩ | ⟨hnR, -⟩
-          · rw [hX] at hX'
-            obtain ⟨rfl, -⟩ := Prod.mk.inj (Option.some.inj hX')
+          · have h' := B.lb_kd hX'
+            rw [hX] at h'
+            obtain ⟨rfl, -⟩ := Prod.mk.inj (Option.some.inj h')
             rfl
           · exact absurd (B.kdR hX) hnR
 

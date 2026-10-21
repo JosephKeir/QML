@@ -133,7 +133,7 @@ theorem rden_applyG :
   | _, _, .boxUnit, _, _, .unit, _, _, _ => rfl
   | _, _, .diaMap f, Γ, _, .diatm x hx c, s, i, e =>
       RPos.congr_cont (funext fun a => by
-        by_cases hk : ∃ X, B.kd s a.1.1 = some (x, X)
+        by_cases hk : ∃ X, B.lb s a.1.1 x = some X
         · simp only [rden, dif_pos hk]
           rw [← rden_applyG f _ a.1.1 _ _, Canon.applyG_subst]
         · simp only [rden, dif_neg hk]
@@ -142,8 +142,8 @@ theorem rden_applyG :
   | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c), s, i, e =>
       RPos.congr_cont (funext fun a => by
         change _ = (B.rden s i e (.boxtm b) a.1, (B.rden s i e (.diatm x hx c)).2 a)
-        by_cases hk : ∃ X, B.kd s a.1.1 = some (x, X)
-        · have hR : B.R s a.1.1 := B.kdR hk.choose_spec
+        by_cases hk : ∃ X, B.lb s a.1.1 x = some X
+        · have hR : B.R s a.1.1 := B.lbR hk.choose_spec
           simp only [rden, dif_pos hk, dif_pos hR]
           refine Prod.ext ?_ rfl
           exact rden_sigma _ (subst_arrowX_box _ _ _ _ b)

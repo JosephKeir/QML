@@ -184,48 +184,49 @@ theorem boxPush_canon (s : B.W) (i : ℕ) (a : B.Acc s) (hR : B.R s a.1) :
 theorem diaPush_canon (s : B.W) (i : ℕ) {x : VarSymb} {X : VarType}
     (hr : ((B.w s).ctx i).ref x = some (.VTypeDia X))
     (a : (B.model.posEval ((B.canonEnv s i).ref x hr)).1)
-    (hk₀ : ∃ X', B.kd s a.1.1 = some (x, X')) :
-    (B.canonEnv s i).diaPush x hr a = Model.substEnv (arrowXS σ _ (B.img s a.1.1) x (B.cx s a.1.1))
+    (hk₀ : ∃ X', B.lb s a.1.1 x = some X') :
+    (B.canonEnv s i).diaPush x hr a =
+      Model.substEnv (arrowXS σ _ (B.img s a.1.1) x (B.cx s a.1.1 x))
       (B.arXOk hk₀ i ⟨X, hr⟩)
       (Ctx.noProjLast_diaIn _ x)
       (B.canonEnv a.1.1 (B.stg s a.1.1 i)) := by
   obtain ⟨X', hk⟩ := hk₀
-  have hXX := B.hxX hk i X hr
+  have hXX := B.lb_hxX hk i X hr
   subst hXX
-  have hcx := B.hcx hk i
+  have hcx := B.lb_hcx hk i
   funext v T hv
   rcases diaIn_item hv with ⟨u, rfl, hu⟩ | ⟨rfl, hxT⟩
   · have hv' : ((B.w s).ctx i).boxIn (.step u .box) = some T := hv
-    exact congrFun (congrFun (congrFun (boxPush_canon s i a.1 (B.kdR hk)) (.step u .box)) T) hv'
+    exact congrFun (congrFun (congrFun (boxPush_canon s i a.1 (B.lbR hk)) (.step u .box)) T) hv'
   · have hTX : T = X := by
       rw [hr] at hxT
       cases hxT
       rfl
     subst hTX
-    have he : arrowXS σ ((B.w a.1.1).ctx (B.stg s a.1.1 i)) (B.img s a.1.1) x (B.cx s a.1.1)
-        (.step x .dia) = .ren (.root (.free (B.cx s a.1.1))) := by
-      change (if x = x then SubE.ren (.root (.free (B.cx s a.1.1))) else .hide) = _
+    have he : arrowXS σ ((B.w a.1.1).ctx (B.stg s a.1.1 i)) (B.img s a.1.1) x (B.cx s a.1.1 x)
+        (.step x .dia) = .ren (.root (.free (B.cx s a.1.1 x))) := by
+      change (if x = x then SubE.ren (.root (.free (B.cx s a.1.1 x))) else .hide) = _
       rw [if_pos rfl]
     refine Eq.trans ?_ (Model.entryVal_congr _ he.symm (T := T) hcx _)
     change (B.model.posEval ((B.canonEnv s i).ref x hr)).2 a =
-      (B.canonEnv a.1.1 (B.stg s a.1.1 i)).ref (.root (.free (B.cx s a.1.1))) hcx
+      (B.canonEnv a.1.1 (B.stg s a.1.1 i)).ref (.root (.free (B.cx s a.1.1 x))) hcx
     have hpq := canonEnv_ref s i x hr
     rw [Model.posEval_snd_congr hpq a (hpq ▸ a.2)]
     refine toDom_congr ?_ _ _
     change (B.rden s i _ (Term.diatm x _ (Term.eta (.step x .dia) T _))).2 _ = _
     rw [rden_diatm_net _ _ _ _ ⟨_, hk⟩]
-    have hren := isRen_arrowXS (σ := σ) (B.imgOk (B.kdR hk) i) hr hcx
-    have hix : arrowXIdx (B.img s a.1.1) x (B.cx s a.1.1) (.step x .dia) =
-        .root (.free (B.cx s a.1.1)) := by
-      have := coh_arrowXS (σ := σ) (B.imgOk (B.kdR hk) i) hr hcx (.step x .dia) T
+    have hren := isRen_arrowXS (σ := σ) (B.imgOk (B.lbR hk) i) hr hcx
+    have hix : arrowXIdx (B.img s a.1.1) x (B.cx s a.1.1 x) (.step x .dia) =
+        .root (.free (B.cx s a.1.1 x)) := by
+      have := coh_arrowXS (σ := σ) (B.imgOk (B.lbR hk) i) hr hcx (.step x .dia) T
         (Ctx.ref_diaIn_of hr) []
       rw [Subst.at_nonproj _ rfl] at this
-      change (if x = x then SubE.ren (.root (.free (B.cx s a.1.1))) else .hide).idxAlong [] = _
+      change (if x = x then SubE.ren (.root (.free (B.cx s a.1.1 x))) else .hide).idxAlong [] = _
         at this
       rw [if_pos rfl] at this
       exact this.symm
     have hw' : ((B.w a.1.1).ctx (B.stg s a.1.1 i)).ref
-        (arrowXIdx (B.img s a.1.1) x (B.cx s a.1.1) (.step x .dia)) = some T := by
+        (arrowXIdx (B.img s a.1.1) x (B.cx s a.1.1 x) (.step x .dia)) = some T := by
       rw [hix]
       exact hcx
     exact rden_sigma _ ((Term.subst_eta_ren _ _ _
@@ -355,7 +356,7 @@ mutual
         refine Model.posSec_ext hpq _ _ fun a => ?_
         have hm : a.1 ∈ (B.model.posEval ((B.canonEnv s i).ref x (e.ref hr))).1 := hpq₀ ▸ a.2
         have hmx : a.1 ∈ B.extent s x := canonEnv_extent s i (e.ref hr) ▸ hm
-        by_cases hk : ∃ X', B.kd s a.1.1 = some (x, X')
+        by_cases hk : ∃ X', B.lb s a.1.1 x = some X'
         · have hag' := Model.Env.diaPush_agree hag hr a hm
           rw [diaPush_canon s i (e.ref hr) ⟨a.1, hm⟩ hk] at hag'
           rw [← Model.interp_mono hag' t]

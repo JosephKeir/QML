@@ -311,16 +311,16 @@ theorem truth_lt :
               B.model.sat ((B.canonEnv s i).diaPush x h a) χ) ↔ _
           have key : ∀ {X : VarType} (h : ((B.w s).ctx i).ref x = some (.VTypeDia X))
               (a : (B.model.posEval ((B.canonEnv s i).ref x h)).1)
-              (hk : B.kd s a.1.1 = some (x, X)),
+              (hk : B.lb s a.1.1 x = some X),
               B.model.sat ((B.canonEnv s i).diaPush x h a) χ ↔
-                WFF.subst (arrowXIdx (B.img s a.1.1) x (B.cx s a.1.1))
-                  (arrowXS σ _ (B.img s a.1.1) x (B.cx s a.1.1))
-                  (ok_arrowXS (B.imgOk (B.kdR hk) i) h (B.hcx hk i))
-                  (coh_arrowXS (B.imgOk (B.kdR hk) i) h (B.hcx hk i))
+                WFF.subst (arrowXIdx (B.img s a.1.1) x (B.cx s a.1.1 x))
+                  (arrowXS σ _ (B.img s a.1.1) x (B.cx s a.1.1 x))
+                  (ok_arrowXS (B.imgOk (B.lbR hk) i) h (B.lb_hcx hk i))
+                  (coh_arrowXS (B.imgOk (B.lbR hk) i) h (B.lb_hcx hk i))
                   Ctx.NoSlots.slots Ctx.NoSlots.slots χ ∈ (B.w a.1.1).M (B.stg s a.1.1 i) := by
             intro X h a hk
             rw [diaPush_canon s i h a ⟨_, hk⟩]
-            exact (Model.sat_subst _ _ (coh_arrowXS (B.imgOk (B.kdR hk) i) h (B.hcx hk i))
+            exact (Model.sat_subst _ _ (coh_arrowXS (B.imgOk (B.lbR hk) i) h (B.lb_hcx hk i))
               Ctx.NoSlots.slots Ctx.NoSlots.slots _ _ χ).symm.trans
               (truth_lt n a.1.1 _ _ (by rw [WFF.size_subst]; exact hχs))
           constructor
@@ -334,7 +334,7 @@ theorem truth_lt :
               subst hst
               exact dia_mem_of_sat_self hr h hx χ
                 (fun ψ hψ => truth_lt n _ _ ψ (by rw [hψ]; exact hχs)) hmem hsat
-            obtain rfl := B.hxX hk i X h
+            obtain rfl := B.lb_hxX hk i X h
             by_contra hnot
             have hbx : WFF.boxx x hx χ.neg ∈ (B.w s).M i :=
               BWorld.mem_of_provable (Δ := [(WFF.dia x hx χ).neg])
@@ -342,7 +342,7 @@ theorem truth_lt :
                   rw [List.mem_singleton.mp hψ]
                   exact ((B.w s).mcs i).neg_mem_iff.mpr hnot)
                 ⟨Proof.boxx_neg_of_not_dia x hx χ⟩
-            have hneg := B.trX hk i h χ.neg hbx
+            have hneg := B.lb_trX hk i h χ.neg hbx
             exact ((B.w a.1.1).mcs _).neg_mem_iff.mp hneg ((key h a hk).mp hsat)
           · intro hmem
             obtain ⟨X, h⟩ : ∃ X, ((B.w s).ctx i).ref x = some (.VTypeDia X) := hx
@@ -350,8 +350,8 @@ theorem truth_lt :
             have hmt : (⟨t, ⟨Or.inl (B.kdR hk)⟩⟩ : B.Acc s) ∈
                 (B.model.posEval ((B.canonEnv s i).ref x h)).1 := by
               rw [canonEnv_extent]
-              exact Or.inl ⟨X, hk⟩
-            exact ⟨X, h, ⟨_, hmt⟩, (key h ⟨_, hmt⟩ hk).mpr hm⟩
+              exact Or.inl ⟨X, B.kd_lb hk⟩
+            exact ⟨X, h, ⟨_, hmt⟩, (key h ⟨_, hmt⟩ (B.kd_lb hk)).mpr hm⟩
 
 /-- ⭐**The truth lemma** for B's canonical model. -/
 theorem truth (s : B.W) (i : ℕ) (φ : WFF σ ((B.w s).ctx i) 0) :

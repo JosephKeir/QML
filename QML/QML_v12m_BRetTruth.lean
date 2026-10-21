@@ -845,11 +845,11 @@ theorem diaPush_canon_at (s : B.W) (i : ℕ) {y : VarSymb} {Y : VarType}
     (a : (B.model.posEval ((B.canonEnv s i).ref y hr)).1) (hk : B.kd s a.1.1 = some (y, Y))
     {j : ℕ} (hj : B.stg s a.1.1 i ≤ j) :
     (B.canonEnv s i).diaPush y hr a = Model.substEnv (arrowXS σ ((B.w a.1.1).ctx j)
-      (B.img s a.1.1) y (B.cx s a.1.1))
+      (B.img s a.1.1) y (B.cx s a.1.1 y))
       (ok_arrowXS ((B.imgOk (B.kdR hk) i).mono ((B.w a.1.1).le hj)) hr
         (((B.w a.1.1).le hj).ref (B.hcx hk i)))
       (Ctx.noProjLast_diaIn _ y) (B.canonEnv a.1.1 j) := by
-  rw [diaPush_canon s i hr a ⟨Y, hk⟩]
+  rw [diaPush_canon s i hr a ⟨Y, B.kd_lb hk⟩]
   funext v T hv
   rcases diaIn_item hv with ⟨w, rfl, hw⟩ | ⟨rfl, _⟩
   · exact Model.Env.ref_agree (canonEnv_le a.1.1 hj) _ _
@@ -1313,7 +1313,7 @@ theorem mem_retx_of_sat_here (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   have hsz : ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).retS hS (.nec N) t Φ :
       WFF σ _ 0).size = Φ.size + N.flat.eqRecSize + 1 := rfl
   have hr : (B.w s).Realised y :=
-    (mem_extent_self (canonEnv_extent s i hY ▸ hm) fun ⟨_, hk⟩ => B.irrefl s (B.kdR hk)).2
+    (mem_extent_self (canonEnv_extent s i hY ▸ hm) fun ⟨_, hk⟩ => B.irrefl s (B.lbR hk)).2
   obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom N.ty s e
   obtain ⟨n, hn⟩ := NItems.exists_obj N g
   set J := max j₀ i
@@ -1458,6 +1458,7 @@ theorem mem_retx_of_sat (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
     rcases rk with hR | ⟨hT, rfl⟩
     · exact absurd hR hnR
     · exact mem_retx_of_sat_here hS hInj hT hy t Φ IH hY ha e hΦ hInd
+  replace hk := B.lb_kd hk
   obtain rfl := B.hxX hk i Y hY
   have hR := B.kdR hk
   obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom N.ty a₁.1.1 e

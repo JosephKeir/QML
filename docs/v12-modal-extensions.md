@@ -8942,5 +8942,33 @@ semantics, at the cost of the rules above.  Not built.
 * **Helpers:** `VarType.HomeOk.cons'`, `homeBack_mem`, `homeBack_head_mem` (the way home lies in
   the head witness's extent).
 
-Next: the network refactor (label sets, late labels, content roots per label and per body), now
-with the truth case's form known.
+#### The network refactor, step A: the canonical model reads labels *(2026-10-22)*
+
+The refactor's first step changes `BData`, the interface between the network's limit and the
+canonical model, from one label per arrow to label sets.  Rows 1–2 stay green throughout.
+* **Labels.**
+  * `lb s t x : Option VarType` is the label `x` of the arrow `s → t` with its content type.
+  * `cx s t x` is its content root (`cx` now takes the label).
+  * Each label has `lbR`, `lb_hcx`, `lb_hxX` and `lb_trX` (`□_x` transfer).
+* **The kind.**  `kd s t` is the witness the arrow was made for, kept for existence (`exX`); it
+  is a label (`kd_lb`).  `kdR`, `hcx`, `hxX` and `trX` are now theorems, derived through it, so
+  their call sites are unchanged.
+* **Extents and denotations read labels.**  `extent s x` is the arrows labelled `x`, plus the own
+  arrow when `x` is realised.  `rden`'s `◇` case, `arXOk`/`arXCoh`, `rden_diatm_net`/`_self`,
+  `rden_congr` and `rden_mono` all go through `lb`.  BTruth's `◇_x` case is label-general
+  already: transfer by `lb_trX`, existence by the kind.
+* **Today's network** labels each arrow once, by its kind.  `lbOfKd` (with `lbOfKd_eq`) builds its
+  label map, and both instances (`bdata`, `bdataS`) supply the new fields through it.
+* **A temporary field `lb_kd`**: every label is the kind.  Its nine uses are what the network
+  must supply before late labels can exist:
+  1. *Leg identification* (P2): `univ_ne_extent` and the row-2 `Back` truth case in
+     `BBackTruth`, and `leg_unique` in `BRetCongr`.  These need the birth-order separation and
+     the per-root `unl`.
+  2. *The canonical `Back` model's round trip along a labelled arrow*: `BCanonModel`, through the
+     kind-keyed `backRelX`.  Late labels need their own `backRel` (P1).
+  3. *The returning possibility's truth cases along a labelled arrow*: `BRetTruth` and
+     `BRetTruthW`, through the kind-keyed edge invariants (`RetInX`, `RetInW`).  These need
+     label-keyed invariants carrying named witnesses.
+
+Next, step B: the network itself (label sets on its edges, late labels, content roots per label
+and per body), discharging the three groups above.

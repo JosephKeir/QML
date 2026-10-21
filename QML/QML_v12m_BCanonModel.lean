@@ -261,7 +261,7 @@ theorem posSerial_canon (hDS : ModalSys.DStrong = true) (s : B.W) :
         rw [← e]
         exact hmem)
       refine ⟨⟨B.rden s j (Ctx.Le.refl _) (.diatm x ⟨X, hX⟩ u), definable_rden _ _⟩,
-        ⟨⟨⟨t', ⟨Or.inl (B.kdR hk)⟩⟩, Or.inl ⟨X, hk⟩⟩⟩⟩
+        ⟨⟨⟨t', ⟨Or.inl (B.kdR hk)⟩⟩, Or.inl ⟨X, B.kd_lb hk⟩⟩⟩⟩
 
 /-! ## Indistinguishability -/
 
@@ -571,25 +571,27 @@ theorem ret_fwd (_hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set
                   ⟨Proof.back_ne hS' (.pos y ⟨Y, hY⟩) .nec trivial bd t
                     (Proof.lookup List.mem_cons_self)⟩
               obtain ⟨k, hk, _⟩ := B.exX s i y Y hY .top hdia
-              refine ⟨⟨⟨⟨k, ⟨Or.inl (B.kdR hk)⟩⟩, Or.inl ⟨Y, hk⟩⟩⟩, fun ⟨⟨k, ⟨rk⟩⟩, hm⟩ => ?_⟩
+              refine ⟨⟨⟨⟨k, ⟨Or.inl (B.kdR hk)⟩⟩, Or.inl ⟨Y, B.kd_lb hk⟩⟩⟩,
+                fun ⟨⟨k, ⟨rk⟩⟩, hm⟩ => ?_⟩
               by_cases hR : B.R s k
               swap
               · -- the own arrow, `y` realised (`back_hereX`)
                 obtain ⟨hT, rfl⟩ := self_of_not_R (a := ⟨k, ⟨rk⟩⟩) hR
                 have hr : (B.w s).Realised y :=
                   (mem_extent_self (x := y) (a := ⟨s, ⟨rk⟩⟩) hm
-                    (fun ⟨_, hX⟩ => hR (B.kdR hX))).2
+                    (fun ⟨_, hX⟩ => hR (B.lbR hX))).2
                 refine ⟨rk, ⟨max i hr.data.i₀, _, (B.realTerm hr (Ctx.Le.refl _) ⟨Y, hY⟩
                   (Term.collapse (Ctx.collapses_boxIn_self hT _) bd)).2⟩, ⟨i, a, t⟩, ?_,
                   (fromDom_toDom _ _ _ _ _).symm, back_hereX_rel hS' hT hY bd t hmem hr⟩
                 change _ = B.fromDom A s (B.toDom A s (((B.rden s i (Ctx.Le.refl _)
                   (Term.diatm y ⟨_, hY⟩ (Term.boxtm bd))).2 ⟨⟨s, ⟨rk⟩⟩, hm⟩) ⟨s, ⟨rk⟩⟩) _)
                 rw [fromDom_toDom, rden_diatm_self _ _ _ ⟨⟨s, ⟨rk⟩⟩, hm⟩
-                  (fun ⟨_, hX⟩ => hR (B.kdR hX))]
+                  (fun ⟨_, hX⟩ => hR (B.lbR hX))]
                 exact (rden_realTerm_boxtm_self hr _ _ bd rk hR).symm
               have hk : ∃ X, B.kd s k = some (y, X) := by
                 rcases hm with hm | hm
-                · exact hm
+                · obtain ⟨X, hX⟩ := hm
+                  exact ⟨X, B.lb_kd hX⟩
                 · exact absurd hR hm.1
               obtain ⟨X, hkX⟩ := hk
               obtain rfl := B.hxX hkX i Y hY
@@ -598,7 +600,7 @@ theorem ret_fwd (_hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set
               change _ = B.fromDom A s (B.toDom A s (((B.rden s i (Ctx.Le.refl _)
                 (Term.diatm y ⟨_, hY⟩ (Term.boxtm bd))).2 ⟨⟨k, ⟨rk⟩⟩, hm⟩)
                 ⟨s, ⟨Or.inl (B.symm hR)⟩⟩) _)
-              rw [fromDom_toDom, rden_diatm_net _ _ _ ⟨⟨k, ⟨rk⟩⟩, hm⟩ ⟨_, hkX⟩]
+              rw [fromDom_toDom, rden_diatm_net _ _ _ ⟨⟨k, ⟨rk⟩⟩, hm⟩ ⟨_, B.kd_lb hkX⟩]
               exact (rden_boxtm_net _ _ _ (B.symm hR)).symm
 
 omit [ModalSys.NoFour] in
@@ -684,7 +686,7 @@ theorem rden_eta_real {s : B.W} {x : VarSymb} (hr : (B.w s).Realised x) {k : ℕ
         ⟨⟨s, ⟨Or.inr ⟨hr.T, rfl⟩⟩⟩, hm⟩ = B.rden s hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀ :=
   (rden_diatm_self (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩
     (Term.eta (.step x .dia) hr.data.A (Ctx.ref_diaIn_of hdecl)) ⟨_, hm⟩
-    (fun ⟨_, hk⟩ => B.irrefl s (B.kdR hk))).trans
+    (fun ⟨_, hk⟩ => B.irrefl s (B.lbR hk))).trans
     (rden_realTerm_eta hr (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩ (Ctx.ref_diaIn_of hdecl) _ _)
 
 /-- ⭐**Every object of a domain is, up to `Ind`, the content along the world's own arrow of a

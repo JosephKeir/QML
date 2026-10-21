@@ -882,7 +882,7 @@ theorem posEval_eta_home {k s : B.W} {j : ℕ} {e : VarSymb} {Z : VarType}
     (he : ((B.w k).ctx j).ref e = some (.VTypeDia Z)) (hk : B.kd k s = some (e, Z))
     {o : B.model.frame.Dom Z s}
     (hI : B.Ind (B.toDom Z s (B.rden s (B.stg k s j) (Ctx.Le.refl _)
-      (Term.eta (.root (.free (B.cx k s))) Z (B.hcx hk j))) (definable_rden _ _)) o) :
+      (Term.eta (.root (.free (B.cx k s e))) Z (B.hcx hk j))) (definable_rden _ _)) o) :
     ∃ h : (⟨s, ⟨Or.inl (B.kdR hk)⟩⟩ : B.model.frame.Acc k) ∈ (B.model.posEval
         (Model.interp (B.canonEnv k j) (Term.eta e (.VTypeDia Z) he) :
           B.model.frame.Pos Z k)).1,
@@ -898,11 +898,11 @@ theorem posEval_eta_home {k s : B.W} {j : ℕ} {e : VarSymb} {Z : VarType}
   have hmem : (⟨s, ⟨Or.inl (B.kdR hk)⟩⟩ : B.Acc k) ∈
       (B.model.posEval ((B.canonEnv k j).ref e he)).1 := by
     rw [canonEnv_extent k j he]
-    exact Or.inl ⟨Z, hk⟩
+    exact Or.inl ⟨Z, B.kd_lb hk⟩
   refine ⟨hmem, ?_⟩
   dsimp only
   rw [diaPush_canon_at k j he ⟨_, hmem⟩ hk le_rfl,
-    ← Model.interp_subst (ι := arrowXIdx (B.img k s) e (B.cx k s)) _ _
+    ← Model.interp_subst (ι := arrowXIdx (B.img k s) e (B.cx k s e)) _ _
       (coh_arrowXS ((B.imgOk (B.kdR hk) j).mono ((B.w s).le le_rfl)) he
         (((B.w s).le le_rfl).ref (B.hcx hk j)))]
   rw [← interp_canon_eta] at hI
