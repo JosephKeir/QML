@@ -564,12 +564,11 @@ theorem univ_ne_extent {s : B.W} (harr : ∃ k, B.R s k)
     (y : VarSymb) : (Set.univ : Set (B.frame.Acc s)) ≠ B.extent s y := by
   intro h
   obtain ⟨k, hk⟩ := harr
-  obtain ⟨t₀, hR, hkd⟩ := B.unl hk
+  obtain ⟨t₀, hR, hkd⟩ := B.unl y hk
   have hm : (⟨t₀, ⟨Or.inl hR⟩⟩ : B.Acc s) ∈ B.extent s y := h ▸ Set.mem_univ _
   rcases hm with ⟨X, hX⟩ | ⟨hnR, -⟩
-  · have h' := B.lb_kd hX
-    rw [hkd] at h'
-    cases h'
+  · rw [hkd] at hX
+    cases hX
   · exact hnR hR
 
 /-- A true atom's out leg has an arrow, so its world has a network one (under T by `T`). -/
@@ -789,15 +788,7 @@ theorem mem_back_of_sat_pos (hS : ModalSys.BStrong = true) (hB : ModalSys.B = tr
               have hdata' := hdata.trans hD
               have hfst := congrArg Sigma.fst hdata'
               change B.extent s y' = B.extent s y at hfst
-              have hmk : (⟨k, ⟨Or.inl hkR⟩⟩ : B.Acc s) ∈ B.extent s y :=
-                Or.inl ⟨Y, B.kd_lb hkk⟩
-              rw [← hfst] at hmk
-              obtain rfl : y = y' := by
-                rcases hmk with ⟨X', hX'⟩ | ⟨hnR, -⟩
-                · have h' := B.lb_kd hX'
-                  rw [hkk] at h'
-                  exact (Prod.mk.inj (Option.some.inj h')).1
-                · exact absurd hkR hnR
+              obtain rfl : y = y' := eq_of_extent_eq (B.kd_lb hkk) hfst.symm
               -- the contents agree along every arrow of the extent
               have hcont : ∀ (a₁ : B.Acc s) (m : a₁ ∈ B.extent s y),
                   (B.rden s i' (Ctx.Le.refl _) (Term.diatm y hy' (Term.boxtm bd'))).2 ⟨a₁, m⟩ =

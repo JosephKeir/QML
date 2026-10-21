@@ -842,14 +842,14 @@ theorem mem_ret_of_ind (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) {s : B.W
     environment of the target's canonical environment at any later stage. -/
 theorem diaPush_canon_at (s : B.W) (i : ℕ) {y : VarSymb} {Y : VarType}
     (hr : ((B.w s).ctx i).ref y = some (.VTypeDia Y))
-    (a : (B.model.posEval ((B.canonEnv s i).ref y hr)).1) (hk : B.kd s a.1.1 = some (y, Y))
+    (a : (B.model.posEval ((B.canonEnv s i).ref y hr)).1) (hk : B.lb s a.1.1 y = some Y)
     {j : ℕ} (hj : B.stg s a.1.1 i ≤ j) :
     (B.canonEnv s i).diaPush y hr a = Model.substEnv (arrowXS σ ((B.w a.1.1).ctx j)
       (B.img s a.1.1) y (B.cx s a.1.1 y))
-      (ok_arrowXS ((B.imgOk (B.kdR hk) i).mono ((B.w a.1.1).le hj)) hr
-        (((B.w a.1.1).le hj).ref (B.hcx hk i)))
+      (ok_arrowXS ((B.imgOk (B.lbR hk) i).mono ((B.w a.1.1).le hj)) hr
+        (((B.w a.1.1).le hj).ref (B.lb_hcx hk i)))
       (Ctx.noProjLast_diaIn _ y) (B.canonEnv a.1.1 j) := by
-  rw [diaPush_canon s i hr a ⟨Y, B.kd_lb hk⟩]
+  rw [diaPush_canon s i hr a ⟨Y, hk⟩]
   funext v T hv
   rcases diaIn_item hv with ⟨w, rfl, hw⟩ | ⟨rfl, _⟩
   · exact Model.Env.ref_agree (canonEnv_le a.1.1 hj) _ _
@@ -1276,17 +1276,18 @@ theorem mem_ret_of_sat_nec (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) (hRI
     `N` some items make, is `◇_y[d ↦ the items sent home] Φ(d)` at `s`.  The limit of a strong
     chain has it (`bdataS_retInX`). -/
 def RetInX (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
-  ∀ {s k : B.W} {y : VarSymb} {Y : VarType} (hk : B.kd s k = some (y, Y)) {i : ℕ}
+  ∀ {s k : B.W} {y : VarSymb} {Y : VarType} (hk : B.lb s k y = some Y) {i : ℕ}
     (hy : ((B.w s).ctx i).ref y = some (.VTypeDia Y)) {N : NShape}
     (Φ : WFF σ ((((B.w s).ctx i).diaIn y).insert (.bnd 0) N.ty) 1) {j : ℕ}
     (hj : B.stg s k i ≤ j) (n : NItems σ ((B.w k).ctx j).boxIn N),
-    readArrowX ((B.imgOk (B.kdR hk) i).mono ((B.w k).le hj)) hy (((B.w k).le hj).ref (B.hcx hk i))
+    readArrowX ((B.imgOk (B.lbR hk) i).mono ((B.w k).le hj)) hy
+      (((B.w k).le hj).ref (B.lb_hcx hk i))
       n.obj.2 Φ ∈ (B.w k).M j →
       ∃ hiK : i ≤ B.stg k s j,
         (OutLeg.pos y ⟨Y, ((B.w s).le hiK).ref hy⟩ : OutLeg ((B.w s).ctx (B.stg k s j))).retS hS
           (.nec N) (n.subst (arrowIdx (B.img k s)) (arrowS σ _ (B.img k s))
-            (ok_arrowS (B.imgOk (B.symm (B.kdR hk)) j))
-            (coh_arrowS (B.imgOk (B.symm (B.kdR hk)) j))).2
+            (ok_arrowS (B.imgOk (B.symm (B.lbR hk)) j))
+            (coh_arrowS (B.imgOk (B.symm (B.lbR hk)) j))).2
           (WFF.mono ((((B.w s).le hiK).diaIn y).insert (.bnd 0) _) Φ) ∈ (B.w s).M (B.stg k s j)
 
 /-- ⭐⭐**`ret` along a witness at the own arrow, truth ⇒ membership** (T; necessary shapes).  The
@@ -1458,9 +1459,8 @@ theorem mem_retx_of_sat (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
     rcases rk with hR | ⟨hT, rfl⟩
     · exact absurd hR hnR
     · exact mem_retx_of_sat_here hS hInj hT hy t Φ IH hY ha e hΦ hInd
-  replace hk := B.lb_kd hk
-  obtain rfl := B.hxX hk i Y hY
-  have hR := B.kdR hk
+  obtain rfl := B.lb_hxX hk i Y hY
+  have hR := B.lbR hk
   obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom N.ty a₁.1.1 e
   obtain ⟨n, hn⟩ := NItems.exists_obj N g
   have hj₀ : j₀ ≤ max j₀ (B.stg s a₁.1.1 i) := le_max_left _ _
@@ -1474,7 +1474,7 @@ theorem mem_retx_of_sat (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
     exact congrArg (fun x => Model.interp (B.canonEnv a₁.1.1 (max j₀ (B.stg s a₁.1.1 i))) x.2) hn'
   have hsatb : B.model.sat (B.canonEnv a₁.1.1 (max j₀ (B.stg s a₁.1.1 i)))
       (readArrowX ((B.imgOk hR i).mono ((B.w a₁.1.1).le hj)) hY
-        (((B.w a₁.1.1).le hj).ref (B.hcx hk i))
+        (((B.w a₁.1.1).le hj).ref (B.lb_hcx hk i))
         (n.mono ((B.w a₁.1.1).le hj₀)).obj.2 Φ) := by
     rw [sat_readArrowX, he, ← diaPush_canon_at s i hY a₁ hk hj]
     exact hΦ
@@ -1535,6 +1535,7 @@ theorem bdataS_retIn : (bdataS C).RetIn hS := by
 theorem bdataS_retInX : (bdataS C).RetInX hS := by
   classical
   intro s k y Y hk i hy N Φ j hj n hm
+  replace hk := lbOfKd_eq.mp hk
   have h : LR C.toFairChain s k := lkdR hk
   obtain ⟨cls, imgs, clt, imgt, hJs, hJag, his, hiag, hret⟩ := lretAtB C h.symm j i hj
   have hsp := (lstg_spec C.toFairChain h i).1

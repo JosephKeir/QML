@@ -8970,5 +8970,28 @@ canonical model, from one label per arrow to label sets.  Rows 1–2 stay green 
      `BRetTruthW`, through the kind-keyed edge invariants (`RetInX`, `RetInW`).  These need
      label-keyed invariants carrying named witnesses.
 
-Next, step B: the network itself (label sets on its edges, late labels, content roots per label
-and per body), discharging the three groups above.
+#### Step B1: the canonical model is label-general *(2026-10-22)*
+
+`lb_kd` is gone.  Every consumer of `BData` now works for arbitrary label sets.  What the
+canonical model asks of the network is stated per label, and today's single-label network meets it
+through `lbOfKd`.
+* **Telling witnesses apart** (P2) is two `BData` fields:
+  * `unl y`: wherever there is an arrow, some arrow is not labelled `y` (the per-root form);
+  * `sep`: a witness labelling some arrow is determined by the arrows it labels.
+  Derived from them: `lb_iff_of_extent_eq` (equal extents label the same network arrows) and
+  `eq_of_extent_eq` (two witnesses with one extent, labelling an arrow, are one).
+  `univ_ne_extent`, the row-2 `Back` truth case and `leg_unique` use only these.  For one label
+  per arrow, `lbOfKd_none` and `lbOfKd_sep` prove them.
+* **`backRelX`** (the canonical row-2 `Back`'s round trip) is keyed on a label.
+* **The returning possibility's edge invariants `RetInX`, `RetInW` and `RetInWX`**, and
+  `diaPush_canon_at`, are keyed on labels.  Their limit proofs (`bdataS_retInX`, `_retInW`,
+  `_retInWX`, `lbackRelX`) convert by `lbOfKd_eq`: that is where the network's single label is
+  used now.
+* **So step B is entirely on the network's side.**  Give its edges label sets: kinds, late labels
+  and birth labels for returning possibilities with named witnesses, each with a content root,
+  plus content roots per body.  Then prove the per-label obligations:
+  * `lb_trX`: for late labels, by the counit (P1);
+  * `unl` and `sep`: by birth order (P2);
+  * `backRelX` and `RetInX`/`RetInW`/`RetInWX`: the edge invariants, with named witnesses.
+
+  Then come the row-3 truth cases, and dropping `NoFour.noBStrongW`.

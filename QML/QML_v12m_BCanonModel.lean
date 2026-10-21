@@ -588,19 +588,18 @@ theorem ret_fwd (_hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set
                 rw [fromDom_toDom, rden_diatm_self _ _ _ ⟨⟨s, ⟨rk⟩⟩, hm⟩
                   (fun ⟨_, hX⟩ => hR (B.lbR hX))]
                 exact (rden_realTerm_boxtm_self hr _ _ bd rk hR).symm
-              have hk : ∃ X, B.kd s k = some (y, X) := by
+              have hk : ∃ X, B.lb s k y = some X := by
                 rcases hm with hm | hm
-                · obtain ⟨X, hX⟩ := hm
-                  exact ⟨X, B.lb_kd hX⟩
+                · exact hm
                 · exact absurd hR hm.1
               obtain ⟨X, hkX⟩ := hk
-              obtain rfl := B.hxX hkX i Y hY
+              obtain rfl := B.lb_hxX hkX i Y hY
               refine ⟨Or.inl (B.symm hR), _, ⟨i, a, t⟩, ?_, (fromDom_toDom _ _ _ _ _).symm,
                 B.backRelX hS' hY bd t hmem hkX⟩
               change _ = B.fromDom A s (B.toDom A s (((B.rden s i (Ctx.Le.refl _)
                 (Term.diatm y ⟨_, hY⟩ (Term.boxtm bd))).2 ⟨⟨k, ⟨rk⟩⟩, hm⟩)
                 ⟨s, ⟨Or.inl (B.symm hR)⟩⟩) _)
-              rw [fromDom_toDom, rden_diatm_net _ _ _ ⟨⟨k, ⟨rk⟩⟩, hm⟩ ⟨_, B.kd_lb hkX⟩]
+              rw [fromDom_toDom, rden_diatm_net _ _ _ ⟨⟨k, ⟨rk⟩⟩, hm⟩ ⟨_, hkX⟩]
               exact (rden_boxtm_net _ _ _ (B.symm hR)).symm
 
 omit [ModalSys.NoFour] in

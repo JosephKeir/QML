@@ -584,9 +584,9 @@ noncomputable def bdata (hW : ModalSys.BStrong = false) : BData σ where
   lb_trX h i hx ψ hψ := ltrX C (lbOfKd_eq.mp h) i hx ψ hψ
   kd := lkd C
   kd_lb h := lbOfKd_eq.mpr h
-  lb_kd h := lbOfKd_eq.mp h
   exX s i x X hx ψ hψ := lexX C s i x X hx ψ hψ
-  unl h := lunl C h
+  unl y h := let ⟨t', hR, hk⟩ := lunl C h; ⟨t', hR, lbOfKd_none hk y⟩
+  sep hk h := lbOfKd_sep hk h
   backRel hS := absurd (hW.symm.trans hS) (by decide)
   backRelX hS := absurd (hW.symm.trans hS) (by decide)
 

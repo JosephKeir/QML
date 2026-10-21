@@ -53,6 +53,20 @@ theorem lbOfKd_eq {W : Type} {kd : W → W → Option (VarSymb × VarType)} {s t
         simp [lbOfKd, hk]
       · simp [lbOfKd, hk, hy]
 
+omit [ModalSys] in
+theorem lbOfKd_none {W : Type} {kd : W → W → Option (VarSymb × VarType)} {s t : W}
+    (h : kd s t = none) (x : VarSymb) : lbOfKd kd s t x = none := by
+  unfold lbOfKd
+  rw [h]
+
+omit [ModalSys] in
+/-- One label per arrow separates witnesses: one labelling an arrow is the only label there. -/
+theorem lbOfKd_sep {W : Type} {kd : W → W → Option (VarSymb × VarType)} {s k : W}
+    {y y' : VarSymb} {Y : VarType} (hk : lbOfKd kd s k y = some Y)
+    (h : ∀ t, (∃ X, lbOfKd kd s t y = some X) ↔ (∃ X, lbOfKd kd s t y' = some X)) : y = y' := by
+  obtain ⟨X, hX⟩ := (h k).mp ⟨Y, hk⟩
+  exact (Prod.mk.inj (Option.some.inj ((lbOfKd_eq.mp hk).symm.trans (lbOfKd_eq.mp hX)))).1
+
 /-- ⭐The data of the canonical model for B. -/
 structure BData [ModalSys.NoFour] (σ : Signature) where
   W : Type
@@ -92,9 +106,6 @@ structure BData [ModalSys.NoFour] (σ : Signature) where
   /-- The arrow's **kind**: the witness it was made for (`exX`), one of its labels. -/
   kd : W → W → Option (VarSymb × VarType)
   kd_lb : ∀ {s t x X}, kd s t = some (x, X) → lb s t x = some X
-  /-- *Temporary, rows 1–2*: every label is the kind.  Row 3's late labels drop it; its uses mark
-      what they must supply (docs §11.23, the network refactor). -/
-  lb_kd : ∀ {s t x X}, lb s t x = some X → kd s t = some (x, X)
   exX : ∀ (s : W) (i : ℕ) (x : VarSymb) (X : VarType)
     (hx : ((w s).ctx i).ref x = some (.VTypeDia X)) (ψ : WFF σ (((w s).ctx i).diaIn x) 0),
     WFF.dia x ⟨X, hx⟩ ψ ∈ (w s).M i →
@@ -103,10 +114,14 @@ structure BData [ModalSys.NoFour] (σ : Signature) where
         (ok_arrowXS (imgOk (lbR (kd_lb hk)) i) hx (lb_hcx (kd_lb hk) i))
         (coh_arrowXS (imgOk (lbR (kd_lb hk)) i) hx (lb_hcx (kd_lb hk) i)) Ctx.NoSlots.slots
           Ctx.NoSlots.slots ψ ∈ (w t).M (stg s t i)
-  /-- ⭐Wherever there is an arrow out there is an **unlabelled** one (`ex` at `□⊥` makes a child
-      of kind `none`): a plain leg's arrows are never one witness's extent, which strong B's
-      `back` case reads to tell the legs apart (docs §11.20). -/
-  unl : ∀ {s t}, R s t → ∃ t', R s t' ∧ kd s t' = none
+  /-- ⭐Wherever there is an arrow out there is one **not labelled** `y`, for each `y` (docs §11.23,
+      P2): a plain leg's arrows are never one witness's extent, which strong B's `back` case reads
+      to tell the legs apart. -/
+  unl : ∀ {s t} (y : VarSymb), R s t → ∃ t', R s t' ∧ lb s t' y = none
+  /-- ⭐**Labels separate witnesses** (docs §11.23, P2): a witness labelling some arrow is
+      determined by the arrows it labels. -/
+  sep : ∀ {s k y y' Y}, lb s k y = some Y →
+    (∀ t, (∃ X, lb s t y = some X) ↔ (∃ X, lb s t y' = some X)) → y = y'
   /-- ⭐Strong B, row 1: a `Back` atom's carrier, read out along an arrow and home again, is
       interchangeable with the atom's value (`Att.back`, from the network's invariants). -/
   backRel : ∀ (hS : ModalSys.BStrong = true) {s : W} {i : ℕ} {A : VarType} {a₀ : Ann A}
@@ -125,15 +140,15 @@ structure BData [ModalSys.NoFour] (σ : Signature) where
     {y : VarSymb} {Y : VarType} (hy : ((w s).ctx i).ref y = some (.VTypeDia Y))
     (bd : Term σ (((w s).ctx i).diaIn y).boxIn A a₀) {a : Ann A} (t : Term σ ((w s).ctx i) A a),
     WFF.back hS .pos (Term.diatm y ⟨Y, hy⟩ (Term.boxtm bd)) t ∈ (w s).M i →
-    ∀ {k : W} (hk : kd s k = some (y, Y)),
+    ∀ {k : W} (hk : lb s k y = some Y),
       Canon.DTerm.Rel (S := (w s).sys) (T := (w s).T)
         ⟨stg k s (stg s k i), _, Term.subst (arrowIdx (img k s)) (arrowS σ _ (img k s))
-          (ok_arrowS (imgOk (symm (lbR (kd_lb hk))) (stg s k i)))
-          (coh_arrowS (imgOk (symm (lbR (kd_lb hk))) (stg s k i)))
+          (ok_arrowS (imgOk (symm (lbR hk)) (stg s k i)))
+          (coh_arrowS (imgOk (symm (lbR hk)) (stg s k i)))
           (Term.subst (arrowXIdx (img s k) y (cx s k y)) (arrowXS σ _ (img s k) y (cx s k y)).box
-            (Subst.ok_box (ok_arrowXS (imgOk (lbR (kd_lb hk)) i) hy (lb_hcx (kd_lb hk) i)))
-            (Subst.coh_box (ok_arrowXS (imgOk (lbR (kd_lb hk)) i) hy (lb_hcx (kd_lb hk) i))
-              (coh_arrowXS (imgOk (lbR (kd_lb hk)) i) hy (lb_hcx (kd_lb hk) i))) bd)⟩
+            (Subst.ok_box (ok_arrowXS (imgOk (lbR hk) i) hy (lb_hcx hk i)))
+            (Subst.coh_box (ok_arrowXS (imgOk (lbR hk) i) hy (lb_hcx hk i))
+              (coh_arrowXS (imgOk (lbR hk) i) hy (lb_hcx hk i))) bd)⟩
         ⟨i, a, t⟩
 
 namespace BData
@@ -187,6 +202,30 @@ variable {B} in
 theorem mem_extent_self {s : B.W} {x : VarSymb} {a : B.Acc s} (h : a ∈ B.extent s x)
     (hk : ¬ ∃ X, B.lb s a.1 x = some X) : ¬ B.R s a.1 ∧ (B.w s).Realised x :=
   h.resolve_left hk
+
+variable {B} in
+/-- Equal extents label the same network arrows. -/
+theorem lb_iff_of_extent_eq {s : B.W} {y y' : VarSymb} (h : B.extent s y = B.extent s y')
+    (t : B.W) : (∃ X, B.lb s t y = some X) ↔ (∃ X, B.lb s t y' = some X) := by
+  by_cases hR : B.R s t
+  · have e : (⟨t, ⟨Or.inl hR⟩⟩ : B.Acc s) ∈ B.extent s y ↔
+        (⟨t, ⟨Or.inl hR⟩⟩ : B.Acc s) ∈ B.extent s y' := by rw [h]
+    constructor
+    · intro hl
+      rcases e.mp (Or.inl hl) with h' | ⟨hn, -⟩
+      · exact h'
+      · exact absurd hR hn
+    · intro hl
+      rcases e.mpr (Or.inl hl) with h' | ⟨hn, -⟩
+      · exact h'
+      · exact absurd hR hn
+  · constructor <;> rintro ⟨X, hX⟩ <;> exact absurd (B.lbR hX) hR
+
+variable {B} in
+/-- ⭐Two witnesses with one extent, labelling some arrow, are one (`sep`). -/
+theorem eq_of_extent_eq {s k : B.W} {y y' : VarSymb} {Y : VarType}
+    (hk : B.lb s k y = some Y) (h : B.extent s y = B.extent s y') : y = y' :=
+  B.sep hk (lb_iff_of_extent_eq h)
 
 /-- Under a world's own arrow, the content of a realised witness's possible object `⟨x; t⟩`: the
     body realised by the datum's content, at a stage above both (`Term.realiseAtA`) — the tree's

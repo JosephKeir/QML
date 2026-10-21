@@ -565,7 +565,7 @@ namespace BData
     `◇[d ↦ the items sent home; e ⇝ u sent home] Φ(d, e)` at `s`.  The limit of a strong chain
     has it (`bdataS_retInW`). -/
 def RetInW (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
-  ∀ {s k : B.W} (h : B.R s k) {x : VarSymb} {X : VarType} (hk : B.kd k s = some (x, X)) {i : ℕ}
+  ∀ {s k : B.W} (h : B.R s k) {x : VarSymb} {X : VarType} (hk : B.lb k s x = some X) {i : ℕ}
     {N : NShape} {Z : VarType} (Φ : WFF σ (((B.w s).ctx i).boxIn.insert (.bnd 0)
       (RShape.wit N Z).ty) 1) {j : ℕ} (hj : B.stg s k i ≤ j)
     (hx : ((B.w k).ctx j).ref x = some (.VTypeDia X)) (n : NItems σ ((B.w k).ctx j).boxIn N)
@@ -578,32 +578,32 @@ def RetInW (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
               (ok_arrowS (B.imgOk (B.symm h) j)) (coh_arrowS (B.imgOk (B.symm h) j))).2
             (Term.subst (arrowXIdx (B.img k s) x (B.cx k s x))
               (arrowXS σ _ (B.img k s) x (B.cx k s x))
-              (ok_arrowXS (B.imgOk (B.symm h) j) hx (B.hcx hk j))
-              (coh_arrowXS (B.imgOk (B.symm h) j) hx (B.hcx hk j)) u))
+              (ok_arrowXS (B.imgOk (B.symm h) j) hx (B.lb_hcx hk j))
+              (coh_arrowXS (B.imgOk (B.symm h) j) hx (B.lb_hcx hk j)) u))
           (WFF.mono (((B.w s).le hiK).boxIn.insert (.bnd 0) _) Φ) ∈ (B.w s).M (B.stg k s j)
 
 /-- ⭐**Doubly witnessed returning possibilities from the far end**: as `RetInW`, along an arrow
     `s → k` of `y`'s extent (the leg's witness). -/
 def RetInWX (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
-  ∀ {s k : B.W} {y : VarSymb} {Y : VarType} (hky : B.kd s k = some (y, Y)) {x : VarSymb}
-    {X : VarType} (hkx : B.kd k s = some (x, X)) {i : ℕ}
+  ∀ {s k : B.W} {y : VarSymb} {Y : VarType} (hky : B.lb s k y = some Y) {x : VarSymb}
+    {X : VarType} (hkx : B.lb k s x = some X) {i : ℕ}
     (hy : ((B.w s).ctx i).ref y = some (.VTypeDia Y)) {N : NShape} {Z : VarType}
     (Φ : WFF σ ((((B.w s).ctx i).diaIn y).insert (.bnd 0) (RShape.wit N Z).ty) 1) {j : ℕ}
     (hj : B.stg s k i ≤ j) (hx : ((B.w k).ctx j).ref x = some (.VTypeDia X))
     (n : NItems σ ((B.w k).ctx j).boxIn N) {c : Ann Z} (u : Term σ (((B.w k).ctx j).diaIn x) Z c),
-    readArrowX ((B.imgOk (B.kdR hky) i).mono ((B.w k).le hj)) hy
-        (((B.w k).le hj).ref (B.hcx hky i)) (Term.pair n.obj.2 (Term.diatm x ⟨X, hx⟩ u)) Φ ∈
+    readArrowX ((B.imgOk (B.lbR hky) i).mono ((B.w k).le hj)) hy
+        (((B.w k).le hj).ref (B.lb_hcx hky i)) (Term.pair n.obj.2 (Term.diatm x ⟨X, hx⟩ u)) Φ ∈
       (B.w k).M j →
       ∃ hiK : i ≤ B.stg k s j,
         (OutLeg.pos y ⟨Y, ((B.w s).le hiK).ref hy⟩ : OutLeg ((B.w s).ctx (B.stg k s j))).retS hS
           (.wit N Z)
           (Term.pair (n.subst (arrowIdx (B.img k s)) (arrowS σ _ (B.img k s))
-              (ok_arrowS (B.imgOk (B.symm (B.kdR hky)) j))
-              (coh_arrowS (B.imgOk (B.symm (B.kdR hky)) j))).2
+              (ok_arrowS (B.imgOk (B.symm (B.lbR hky)) j))
+              (coh_arrowS (B.imgOk (B.symm (B.lbR hky)) j))).2
             (Term.subst (arrowXIdx (B.img k s) x (B.cx k s x))
               (arrowXS σ _ (B.img k s) x (B.cx k s x))
-              (ok_arrowXS (B.imgOk (B.symm (B.kdR hky)) j) hx (B.hcx hkx j))
-              (coh_arrowXS (B.imgOk (B.symm (B.kdR hky)) j) hx (B.hcx hkx j)) u))
+              (ok_arrowXS (B.imgOk (B.symm (B.lbR hky)) j) hx (B.lb_hcx hkx j))
+              (coh_arrowXS (B.imgOk (B.symm (B.lbR hky)) j) hx (B.lb_hcx hkx j)) u))
           (WFF.mono ((((B.w s).le hiK).diaIn y).insert (.bnd 0) _) Φ) ∈ (B.w s).M (B.stg k s j)
 
 end BData
@@ -618,6 +618,7 @@ variable {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} {hS : ModalS
 theorem bdataS_retInW : (bdataS C).RetInW hS := by
   classical
   intro s k h x X hk i N Z Φ j hj hx n c u hm
+  replace hk := lbOfKd_eq.mp hk
   obtain ⟨cls, imgs, clt, imgt, hJs, hJag, his, hiag, hret⟩ := lretAtB C h.symm j i hj
   have hsp := (lstg_spec C.toFairChain h i).1
   have hkp := (lstg_spec C.toFairChain h.symm j).1
@@ -655,6 +656,8 @@ theorem bdataS_retInW : (bdataS C).RetInW hS := by
 theorem bdataS_retInWX : (bdataS C).RetInWX hS := by
   classical
   intro s k y Y hky x X hkx i hy N Z Φ j hj hx n c u hm
+  replace hky := lbOfKd_eq.mp hky
+  replace hkx := lbOfKd_eq.mp hkx
   have h : LR C.toFairChain s k := lkdR hky
   obtain ⟨cls, imgs, clt, imgt, hJs, hJag, his, hiag, hret⟩ := lretAtB C h.symm j i hj
   have hsp := (lstg_spec C.toFairChain h i).1
@@ -909,16 +912,15 @@ theorem mem_ret_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   rcases hext with ⟨X₁, hk⟩ | ⟨hnR, -⟩
   swap
   · exact absurd (B.symm hR) hnR
-  replace hk := B.lb_kd hk
-  obtain rfl := B.hxX hk J X hX'
+  obtain rfl := B.lb_hxX hk J X hX'
   obtain ⟨hiK, hret⟩ := hRW hR hk Φ hj hX' n' u' hmb
   refine mem_ret_of_ind hS hInj (S := .wit N Z) ⟨k, hR⟩ hiK _ t Φ
     (fun L _ u u' hs => (IH s L _ (by
       rw [WFF.size_eqRec, hsz]; exact Nat.lt_succ_of_le (Nat.le_add_left _ _))).mp hs) hret ?_
   have hcont' : B.Ind (Model.interp (B.canonEnv s (B.stg k s J))
       (Term.subst (arrowXIdx (B.img k s) x (B.cx k s x)) (arrowXS σ _ (B.img k s) x (B.cx k s x))
-        (ok_arrowXS (B.imgOk (B.symm hR) J) hX' (B.hcx hk J))
-        (coh_arrowXS (B.imgOk (B.symm hR) J) hX' (B.hcx hk J)) u'))
+        (ok_arrowXS (B.imgOk (B.symm hR) J) hX' (B.lb_hcx hk J))
+        (coh_arrowXS (B.imgOk (B.symm hR) J) hX' (B.lb_hcx hk J)) u'))
       (Model.interp (B.canonEnv s i) t).2 := by
     rw [Model.interp_subst _ _ _ (Ctx.noProjLast_diaIn _ x)]
     dsimp only at hcont
@@ -1143,9 +1145,8 @@ theorem mem_retx_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   · rcases rk with hR | ⟨hT, rfl⟩
     · exact absurd hR hnR
     · exact mem_retx_of_sat_here_wit hS hInj hT hy t Φ IH hY ha e hΦ hcb
-  replace hky := B.lb_kd hky
-  obtain rfl := B.hxX hky i Y hY
-  have hR := B.kdR hky
+  obtain rfl := B.lb_hxX hky i Y hY
+  have hR := B.lbR hky
   have hr' : B.RT k s := r
   obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom (RShape.wit N Z).ty k e
   obtain ⟨n, x, ⟨X, hX⟩, c', u, hgeq⟩ := exists_wit N Z g
@@ -1165,7 +1166,7 @@ theorem mem_retx_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
       Model.interp (B.canonEnv k J) p.2) (NItems.obj_mono ((B.w k).le hj₀) n)
     exact Prod.ext e2 rfl
   have hsatb : B.model.sat (B.canonEnv k J)
-      (readArrowX ((B.imgOk hR i).mono ((B.w k).le hj)) hY ((B.w k).le hj |>.ref (B.hcx hky i))
+      (readArrowX ((B.imgOk hR i).mono ((B.w k).le hj)) hY ((B.w k).le hj |>.ref (B.lb_hcx hky i))
         (Term.pair n'.obj.2 (Term.diatm x ⟨X, hX'⟩ u')) Φ) := by
     rw [sat_readArrowX, he, ← diaPush_canon_at s i hY ⟨⟨k, ⟨rk⟩⟩, ha⟩ hky hj]
     exact hΦ
@@ -1186,16 +1187,15 @@ theorem mem_retx_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   rcases hext' with ⟨X₁, hkx⟩ | ⟨hnR, -⟩
   swap
   · exact absurd (B.symm hR) hnR
-  replace hkx := B.lb_kd hkx
-  obtain rfl := B.hxX hkx J X hX'
+  obtain rfl := B.lb_hxX hkx J X hX'
   obtain ⟨hiK, hret⟩ := hRWX hky hkx hY Φ hj hX' n' u' hmb
   refine mem_retx_of_ind hS hInj (S := .wit N Z) ⟨k, hR⟩ hiK hy _ t Φ
     (fun L _ u u' hs => (IH s L _ (by
       rw [WFF.size_eqRec, hsz]; exact Nat.lt_succ_of_le (Nat.le_add_left _ _))).mp hs) hret ?_
   have hcont' : B.Ind (Model.interp (B.canonEnv s (B.stg k s J))
       (Term.subst (arrowXIdx (B.img k s) x (B.cx k s x)) (arrowXS σ _ (B.img k s) x (B.cx k s x))
-        (ok_arrowXS (B.imgOk (B.symm hR) J) hX' (B.hcx hkx J))
-        (coh_arrowXS (B.imgOk (B.symm hR) J) hX' (B.hcx hkx J)) u'))
+        (ok_arrowXS (B.imgOk (B.symm hR) J) hX' (B.lb_hcx hkx J))
+        (coh_arrowXS (B.imgOk (B.symm hR) J) hX' (B.lb_hcx hkx J)) u'))
       (Model.interp (B.canonEnv s i) t).2 := by
     rw [Model.interp_subst _ _ _ (Ctx.noProjLast_diaIn _ x)]
     dsimp only at hcont

@@ -901,7 +901,7 @@ theorem posEval_eta_home {k s : B.W} {j : ℕ} {e : VarSymb} {Z : VarType}
     exact Or.inl ⟨Z, B.kd_lb hk⟩
   refine ⟨hmem, ?_⟩
   dsimp only
-  rw [diaPush_canon_at k j he ⟨_, hmem⟩ hk le_rfl,
+  rw [diaPush_canon_at k j he ⟨_, hmem⟩ (B.kd_lb hk) le_rfl,
     ← Model.interp_subst (ι := arrowXIdx (B.img k s) e (B.cx k s e)) _ _
       (coh_arrowXS ((B.imgOk (B.kdR hk) j).mono ((B.w s).le le_rfl)) he
         (((B.w s).le le_rfl).ref (B.hcx hk j)))]

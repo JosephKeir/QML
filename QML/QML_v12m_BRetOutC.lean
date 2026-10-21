@@ -369,7 +369,8 @@ theorem sat_retxC_of_mem (hS : ModalSys.BStrong = true) (hRX : B.RetOutXC hS) {s
       (B.model.posEval ((B.canonEnv s i).ref y hY)).1 := by
     rw [canonEnv_extent s i hY]
     exact Or.inl ⟨Y, B.kd_lb hk⟩
-  rw [sat_readArrowX, ← diaPush_canon_at s i hY ⟨⟨k, ⟨Or.inl hR⟩⟩, ha⟩ hk hj] at hsat
+  rw [sat_readArrowX, ← diaPush_canon_at s i hY ⟨⟨k, ⟨Or.inl hR⟩⟩, ha⟩ (B.kd_lb hk) hj]
+    at hsat
   refine ⟨Y, hY, ⟨⟨k, ⟨Or.inl hR⟩⟩, ha⟩, _, hsat, Or.inl (B.symm hR), ?_⟩
   change B.model.compsBack A cs (Model.interp (B.canonEnv k j) (Term.boxtm g)) _ _
   refine compsBack_of_ind A _ _ cs h _ ?_

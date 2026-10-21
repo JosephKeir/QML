@@ -965,11 +965,11 @@ noncomputable def bdataS : BData σ where
   lb_trX h i hx ψ hψ := ltrX C.toFairChain (lbOfKd_eq.mp h) i hx ψ hψ
   kd := lkd C.toFairChain
   kd_lb h := lbOfKd_eq.mpr h
-  lb_kd h := lbOfKd_eq.mp h
   exX s i x X hx ψ hψ := lexX C.toFairChain s i x X hx ψ hψ
-  unl h := lunl C.toFairChain h
+  unl y h := let ⟨t', hR, hk⟩ := lunl C.toFairChain h; ⟨t', hR, lbOfKd_none hk y⟩
+  sep hk h := lbOfKd_sep hk h
   backRel _ _ _ _ _ bd _ t hmem _ hk := lbackRel C hk bd t hmem
-  backRelX _ _ _ _ _ _ _ hy bd _ t hmem _ hk := lbackRelX C hy bd t hmem hk
+  backRelX _ _ _ _ _ _ _ hy bd _ t hmem _ hk := lbackRelX C hy bd t hmem (lbOfKd_eq.mp hk)
 
 end Limit
 
