@@ -173,6 +173,31 @@ theorem relSat_mono {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env 
       rw [interp_mono hag t]
       exact relSat_mono hag ρ _
 
+/-- ⭐Named back witnesses moved by a map that keeps each one's value come home alike: every
+    operation on formulas (weakening, substitution, collapsing, shifting) acts on them so. -/
+theorem comesBackH_map {V V' : Ctx} {v w : M.frame.W} {env : M.Env V v} {env' : M.Env V' v}
+    (S : RShape) (e : M.frame.Dom S.ty v) (r : M.frame.R v w)
+    {f : ∀ {Z : VarType} {a : Ann (.VTypeDia Z)}, Term σ V (.VTypeDia Z) a →
+      Σ b, Term σ V' (.VTypeDia Z) b}
+    (hf : ∀ {Z : VarType} {a : Ann (.VTypeDia Z)} (p : Term σ V (.VTypeDia Z) a),
+      interp env' (f p).2 = interp env p) :
+    {Zs : List VarType} → (ws : HomeWs σ V Zs) → (o : M.frame.Dom (S.flat.homeFlat Zs) w) →
+    (M.ComesBackH S env' e r (ws.map f) o ↔ M.ComesBackH S env e r ws o)
+  | [], .nil, _ => Iff.rfl
+  | _ :: _, .cons p ps, o => by
+      refine and_congr (comesBackH_map S e r hf ps o.1) ?_
+      change (∃ hm : _ ∈ (M.posEval (interp env' (f p).2)).1, _) ↔
+        ∃ hm : _ ∈ (M.posEval (interp env p)).1, _
+      rw [hf p]
+
+/-- Named back witnesses come home alike, weakened. -/
+theorem comesBackH_mono {V V' : Ctx} {h : V.Le V'} {v w : M.frame.W} {env : M.Env V v}
+    {env' : M.Env V' v} (hag : Env.Agree h env env') (S : RShape) (e : M.frame.Dom S.ty v)
+    (r : M.frame.R v w) {Zs : List VarType} (ws : HomeWs σ V Zs)
+    (o : M.frame.Dom (S.flat.homeFlat Zs) w) :
+    M.ComesBackH S env' e r (ws.mono h) o ↔ M.ComesBackH S env e r ws o :=
+  comesBackH_map S e r (fun p => interp_mono hag p) ws o
+
 /-- ⭐Satisfaction is unchanged by weakening. -/
 theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} {env : M.Env Γ w}
     {env' : M.Env Γ' w}, Env.Agree h env env' → (φ : WFF σ Γ d) →
@@ -218,11 +243,13 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
       change Model.Backs L (interp _ (Term.mono _ s)) (interp _ (Term.mono _ t)) ↔ _
       rw [interp_mono hag s, interp_mono hag t]
       exact Iff.rfl
-  | _, _, _, d, _, _, _, hag, .retS hB S t Φ =>
+  | _, _, _, d, _, _, _, hag, .retSH hB S Zs hZs ws t Φ =>
       exists_congr fun a => exists_congr fun e =>
         and_congr (sat_mono (Env.extend_agree (Env.boxPush_agree hag a) (.bnd d) e) Φ)
-          (by rw [interp_mono hag t])
-  | _, _, h, d, _, env, env', hag, .retxS hB y hy S t Φ => by
+          (exists_congr fun r => by
+            rw [interp_mono hag t]
+            exact comesBackH_mono (Env.boxPush_agree hag a) S e r ws _)
+  | _, _, h, d, _, env, env', hag, .retxSH hB y hy S Zs hZs ws t Φ => by
       constructor
       · rintro ⟨Y, h', a, e, hsat, hr⟩
         obtain ⟨Y₀, hy₀⟩ := hy
@@ -237,13 +264,15 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
         · exact (sat_mono (Env.extend_agree (Env.diaPush_agree hag hy₀ ⟨a.1, _⟩ a.2) (.bnd d) e)
             Φ).mp hsat
         · rw [interp_mono hag t] at hr
-          exact hr
+          exact (exists_congr fun r => comesBackH_mono
+            (Env.diaPush_agree hag hy₀ ⟨a.1, _⟩ a.2) S e r ws _).mp hr
       · rintro ⟨Y, hr', a, e, hsat, hr⟩
         have href := Env.ref_agree hag y hr'
         refine ⟨Y, h.ref hr', ⟨a.1, by rw [← href]; exact a.2⟩, e,
           (sat_mono (Env.extend_agree (Env.diaPush_agree hag hr' a _) (.bnd d) e) Φ).mpr hsat, ?_⟩
         rw [interp_mono hag t]
-        exact hr
+        exact (exists_congr fun r => comesBackH_mono
+          (Env.diaPush_agree hag hr' a _) S e r ws _).mpr hr
 
 /-! ## Equality -/
 

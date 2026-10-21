@@ -8504,3 +8504,86 @@ extent.
 
 `back_eq` and `back_eqC` already range over every leg.  The own-arrow rule under T (`back_hereW`)
 and the returning possibility with named back witnesses come next, with the canonical model.
+
+#### The content counit, and the shape of named back witnesses, on paper *(2026-10-22)*
+
+**Why it was open.**  A `Back₃` atom at `s`, `Back (nec, pos z) u t`, has its body `u` in `z`'s view
+at the far end, `(Γ.boxIn).diaIn z`.  Besides `z.dia`, `u` may mention `Γ`'s items two `□`-views in
+(`r'.box.box`).  Read home along a child `k`, those are round trips of `s`'s items through `k`.
+That is the composite of the forward and back commitments, not a term of `s` in general.  So a
+rule that reads "`u` read home" as a term of `s` cannot be stated.
+
+**Resolution: `u` is never read home as a term.**  As for rows 1–2 (`ret_counitC`, `back_tail`),
+the Back atom's body stays inside a returning possibility's body at the far end, and the two meet
+along the one way home.
+
+**The rules, with named back witnesses** (D1: `◇[d ↦ y; z₁ ⇝ c₁, …] Φ(d)`, each `zᵢ` a `◇`-address of
+the out view; the way home lies in every `zᵢ`'s extent, and `zᵢ`'s content returns as `cᵢ`):
+1. **Content counit with a carrier** (`ret_counitN`), the row-3 `ret_counitC`:
+   `◇[d ↦ y; …, z ⇝ c, …] □_z ψ(⟨⟨d.box, z.dia⟩, u⟩)` and `Back (O, pos z) u t` give
+   `ψ(⟨⟨y, c⟩, t⟩)`.
+   * Sound: the returning possibility picks a successor `v` and its way home `r`, which lies in
+     `z`'s extent there.  `□_z ψ` holds along `r`.  Along `r`, `d.box` comes back as `y`, `z.dia`
+     as `c`, and, by the atom and `homeUnique`, `u` as `t`.  `Ind`'s pair congruence and invariance
+     finish.
+   * Without the carrier (`ψ` ignoring `u`), it is the plain counit of a named witness,
+     `◇[d ↦ y; z ⇝ c] □_z ψ(d.box, z.dia) ⊢ ψ(y, c)`.  That is what a label's transfer needs
+     (`□_{w_r} χ` at `k` gives `χ(c)` at `s`).
+2. **Adding a back witness, with its content** (`ret_homeN`, merging P1's row-3 counit and
+   content-existence rule), in elimination form:
+   `Back (O', pos z) u t` and `◇[d ↦ y; ws ⇝ cs] Φ`, with `c` fresh and
+   `◇[d ↦ y; ws ⇝ cs, z ⇝ c] Φ ⊢ φ`, give `⊢ φ`.
+   * Sound: the atom puts every way home from the out leg in `z`'s extent; `c` is `z`'s content
+     along the way home that the returning possibility found.
+   * `O'` is the returning possibility's own out leg `O`, or `nec`, since a plain out leg covers
+     every successor.  `z` is an address of `O'`'s view, read in `O`'s.
+   * Its `∃` form, `⊢ ∃c. ◇[…; z ⇝ c] Φ`, is the one P1's content root uses.
+
+**How the network discharges `Back₃` (`Ret_fwd` at a child `k`).**  As `back_tail` does:
+* at `k`, the body `□_{z_k} K(⟨u_k, u_k⟩)` holds trivially, where `u_k` is `u` sent along `s → k`;
+* the label's invariant brings it to `s` as
+  `◇[D ↦ V; z ⇝ c_k] □_z K(⟨u_k(D.box, z.dia), u⟩)`;
+* `ret_counitN` with the atom gives `K(⟨u_k(V, c_k), t⟩)`.
+
+`u_k(V, c_k)` is "`u` sent home along `k`": `u` sent to `k`, then home with `z_k.dia ↦ c_k`, by
+`arrowXS` at the witness `z_k`, as row 2 already does.  So the content counit is all the
+interchangeability needs.
+
+**What this fixes about the shape of named back witnesses.**
+* Every named witness carries its content's return: the transfer (rule 1, without the carrier)
+  and the late label's growth both need the content as a fixed root.  So a back-witness list is
+  `ws : List (VarSymb × VarType)` (address, content type), and the value has one component per
+  witness after the shape's own: `T` for `[]`, `T × Z` for `[(z, Z)]`, and so on.
+* Named witnesses live in the out view.  For a returning possibility along `e` (`RetInvX`) they
+  are `□`-view addresses lifted into `e`'s view.  So the list belongs to the returning
+  possibility's out leg, as stage 1 planned.
+* Nothing else needs to read a body home, so the existing rules carry the list along unchanged
+  (stage 2).  The own-arrow rules under T need named forms too (`back_hereW`, and the `ret_here`
+  family with named witnesses).  As for rows 1–2, they belong to the truth-lemma phase.
+
+**Verdict.**  The content counit is stated, sound, and needs no new term machinery.  The design of
+stages 1–3 stands.  Stage 3 is these two rules (and their T own-arrow forms later), not three.
+
+#### Stage 1 built: named back witnesses in the syntax and semantics *(2026-10-22)*
+
+* **Witnesses are terms, not addresses.**  The first attempt (a list of `◇`-addresses) broke
+  under substitution: an address `z : ◇Z` can be sent to `diatm y u`, whose witness and content
+  type differ.  So a named back witness is a possible-object term of the out view, every one of
+  which is `diatm z w`: extent `z`'s, content `w`.  This matches `Back₃`'s carrier `(z, u)`.
+* `HomeWs σ V Zs`: a list of possible-object terms of `V`, indexed by their content types, with
+  one generic `HomeWs.map` (and `map_congr`, `map_map`, `map_id`).  `mono`, `subst`, `collapse`
+  and `shift` act on it through `map`.  `VarType.homeFlat T Zs` is the value type (`T` at `[]`),
+  and `VarType.HomeOk Zs` is the gate (`Zs = []` or `BStrongW`).
+* Constructors `WFF.retSH`/`retxSH` carry `Zs`, the gate and the witnesses.  `WFF.retS`/`retxS`
+  are `@[match_pattern]` abbreviations at `[]`, so every existing formula and rule is unchanged.
+* Semantics: `Model.ComesBackH`.  At `[]` it is definitionally `ComesBack`; otherwise, in
+  addition, the way home lies in each witness's extent, its content there `Ind` to the value's
+  component.
+* Every recursion over formulas takes the general case.  The proofs about them (substitution
+  laws, collapse/shift commutation, `sat_mono`, `sat_subst`, `sat_collapse`, `sat_shift`, the
+  encoding) do the witnesses by `map_map`/`map_congr` with the term-level lemma, and
+  `comesBackH_map` for satisfaction.  The B truth lemma dismisses non-empty lists by
+  `NoFour.absurdW`.
+
+Next: stage 2, the rules carrying the witnesses; then stage 3's two rules, with the witness taken
+as `diatm z w` for any `w` in `z`'s view.

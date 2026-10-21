@@ -512,8 +512,11 @@ theorem WFF.subst_congr : {ι ι' : VarSymb → VarSymb} → {Γ Δ : Ctx} → {
   | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .back hB L s t =>
       WFF.back_congr hB L (Term.subst_congr θ θ' hθ hθ' hc hc' hs s)
         (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
-  | _, _, _, _, d, d', θ, θ', hθ, hθ', hc, hc', hΓ, hΔ, hs, .retS hB S t Φ =>
-      WFF.retS_congr hB S (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
+  | _, _, _, _, d, d', θ, θ', hθ, hθ', hc, hc', hΓ, hΔ, hs, .retSH hB S Zs hZs ws t Φ =>
+      WFF.retSH_congr hB S Zs hZs
+        (HomeWs.map_congr (fun p => Term.subst_congr θ.box θ'.box (Subst.ok_box hθ)
+          (Subst.ok_box hθ') (Subst.coh_box hθ hc) (Subst.coh_box hθ' hc') (Subst.sim_box hs) p) ws)
+        (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
         (WFF.subst_congr (θ.box.under d d' _ hΔ.boxIn.root) (θ'.box.under d d' _ hΔ.boxIn.root)
           (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
           (Subst.ok_under (Subst.ok_box hθ') _ hΔ.boxIn.root)
@@ -522,26 +525,31 @@ theorem WFF.subst_congr : {ι ι' : VarSymb → VarSymb} → {Γ Δ : Ctx} → {
           (hΓ.boxIn.insert _) (hΔ.boxIn.insert _)
           (Subst.sim_under (Subst.sim_box hs) _ hΔ.boxIn.root)
           Φ)
-  | ι, ι', Γ, Δ, d, d', θ, θ', hθ, hθ', hc, hc', hΓ, hΔ, hs, .retxS hB y hy S t Φ => by
+  | ι, ι', Γ, Δ, d, d', θ, θ', hθ, hθ', hc, hc', hΓ, hΔ, hs, .retxSH hB y hy S Zs hZs ws t Φ => by
       have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
       have key : ∀ (z : VarSymb) (_hz : z = ι y) (P : ∃ Y, Δ.ref z = some (.VTypeDia Y))
           (hΔz : (Δ.diaIn z).SlotsFrom d')
+          (p₀ : Subst.Ok (Γ.diaIn y) (θ'.dia y z)) (q₀ : Subst.Coh ι' (Γ.diaIn y) (θ'.dia y z))
           (p : Subst.Ok ((Γ.diaIn y).insert (.bnd d) S.ty)
             ((θ'.dia y z).under d d' _ hΔz.root))
           (q : Subst.Coh (VarSymb.shiftSlot ι' d d') ((Γ.diaIn y).insert (.bnd d) S.ty)
             ((θ'.dia y z).under d d' _ hΔz.root)),
-          WFF.subst ι θ hθ hc hΓ hΔ (.retxS hB y hy S t Φ) =
-            .retxS hB z P S (Term.subst ι' θ' hθ' hc' t)
+          WFF.subst ι θ hθ hc hΓ hΔ (.retxSH hB y hy S Zs hZs ws t Φ) =
+            .retxSH hB z P S Zs hZs (HomeWs.subst ι' (θ'.dia y z) p₀ q₀ ws)
+              (Term.subst ι' θ' hθ' hc' t)
               (WFF.subst (VarSymb.shiftSlot ι' d d') ((θ'.dia y z).under d d' _ hΔz.root) p q
                 ((hΓ.diaIn y).insert _) (hΔz.insert _) Φ) := by
-        intro z hz P hΔz p q
+        intro z hz P hΔz p₀ q₀ p q
         subst hz
-        exact WFF.retxS_congr hB _ _ S (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
+        exact WFF.retxSH_congr hB _ _ S Zs hZs
+          (HomeWs.map_congr (fun p' => Term.subst_congr _ _ (Subst.ok_dia hθ hy hw) p₀
+            (Subst.coh_dia hθ hc hy) q₀ (Subst.sim_dia hs hw) p') ws)
+          (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
           (WFF.subst_congr _ _ (Subst.ok_under (Subst.ok_dia hθ hy hw) _ hΔz.root) p
             (Subst.coh_under (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) (hΓ.diaIn y) _
               hΔz.root) q ((hΓ.diaIn y).insert _) (hΔz.insert _)
             (Subst.sim_under (Subst.sim_dia hs hw) _ hΔz.root) Φ)
-      exact key (ι' y) (Subst.idx_eq hc hc' hs hy) _ (hΔ.diaIn _) _ _
+      exact key (ι' y) (Subst.idx_eq hc hc' hs hy) _ (hΔ.diaIn _) _ _ _ _
 
 end Congr
 

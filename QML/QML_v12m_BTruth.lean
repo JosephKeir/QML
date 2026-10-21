@@ -177,10 +177,18 @@ theorem truth_lt :
                 rw [WFF.size_eqRec]; simp only [WFF.size] at hφ; omega))
       | back hB L c t =>
           exact (hST hB).back c t fun s' K ψ h => truth_lt n s' K ψ (by omega)
-      | retS hB S t Φ =>
-          exact (hST hB).retS t Φ fun s' K ψ h => truth_lt n s' K ψ (by omega)
-      | retxS hB y hy S t Φ =>
-          exact (hST hB).retxS hy t Φ fun s' K ψ h => truth_lt n s' K ψ (by omega)
+      | retSH hB S Zs hZs ws t Φ =>
+          rcases hZs with rfl | hW
+          · cases ws
+            exact (hST hB).retS t Φ fun s' K ψ h =>
+              truth_lt n s' K ψ (lt_of_lt_of_le h (Nat.lt_succ_iff.mp hφ))
+          · exact (ModalSys.NoFour.absurdW hW).elim
+      | retxSH hB y hy S Zs hZs ws t Φ =>
+          rcases hZs with rfl | hW
+          · cases ws
+            exact (hST hB).retxS hy t Φ fun s' K ψ h =>
+              truth_lt n s' K ψ (lt_of_lt_of_le h (Nat.lt_succ_iff.mp hφ))
+          · exact (ModalSys.NoFour.absurdW hW).elim
       | and φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega

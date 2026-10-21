@@ -81,13 +81,23 @@ theorem WFF.collapse_mono : ∀ {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx} {d :
       WFF.here_congr' hT (Term.collapse_mono h h' l₁ l₂ s) (Term.collapse_mono h h' l₁ l₂ t)
   | _, _, _, _, _, _, h, h', l₁, l₂, _, _, .back hB L s t =>
       WFF.back_congr' hB L (Term.collapse_mono h h' l₁ l₂ s) (Term.collapse_mono h h' l₁ l₂ t)
-  | _, _, _, _, _, _, h, h', l₁, l₂, hs, hs', .retS hB S t Φ =>
-      WFF.retS_congr' hB S (Term.collapse_mono h h' l₁ l₂ t)
+  | _, _, _, _, _, _, h, h', l₁, l₂, hs, hs', .retSH hB S Zs hZs ws t Φ =>
+      WFF.retSH_congr' hB S Zs hZs ((HomeWs.map_map _ _ ws).trans
+          ((HomeWs.map_congr (fun p => congrArg (Sigma.mk _)
+            (Term.collapse_mono h.boxIn h'.boxIn l₁.boxIn l₂.boxIn p)) ws).trans
+            (HomeWs.map_map (fun p => ⟨_, Term.collapse h.boxIn p⟩)
+              (fun p => ⟨_, Term.mono l₂.boxIn p⟩) ws).symm))
+        (Term.collapse_mono h h' l₁ l₂ t)
         (WFF.collapse_mono (h.boxIn.insert (hs.boxIn.rootFresh le_rfl) _)
           (h'.boxIn.insert (hs'.boxIn.rootFresh le_rfl) _) (l₁.boxIn.insert _ _)
           (l₂.boxIn.insert _ _) (hs.boxIn.insert _) (hs'.boxIn.insert _) Φ)
-  | _, _, _, _, _, _, h, h', l₁, l₂, hs, hs', .retxS hB y _ S t Φ =>
-      WFF.retxS_congr' hB _ _ S (Term.collapse_mono h h' l₁ l₂ t)
+  | _, _, _, _, _, _, h, h', l₁, l₂, hs, hs', .retxSH hB y _ S Zs hZs ws t Φ =>
+      WFF.retxSH_congr' hB _ _ S Zs hZs ((HomeWs.map_map _ _ ws).trans
+          ((HomeWs.map_congr (fun p => congrArg (Sigma.mk _)
+            (Term.collapse_mono (h.diaIn y) (h'.diaIn y) (l₁.diaIn y) (l₂.diaIn _) p)) ws).trans
+            (HomeWs.map_map (fun p => ⟨_, Term.collapse (h.diaIn y) p⟩)
+              (fun p => ⟨_, Term.mono (l₂.diaIn _) p⟩) ws).symm))
+        (Term.collapse_mono h h' l₁ l₂ t)
         (WFF.collapse_mono ((h.diaIn y).insert ((hs.diaIn y).rootFresh le_rfl) _)
           ((h'.diaIn y).insert ((hs'.diaIn y).rootFresh le_rfl) _) ((l₁.diaIn y).insert _ _)
           ((l₂.diaIn _).insert _ _) ((hs.diaIn y).insert _) ((hs'.diaIn y).insert _) Φ)

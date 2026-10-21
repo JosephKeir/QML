@@ -598,8 +598,12 @@ theorem WFF.subst_comp {σ : Signature} : {ι₁ ι₂ ι₃ : VarSymb → VarSy
       WFF.back_congr hB L (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs s)
         (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)
   | _, _, _, _, _, _, d, d₁, d₂, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, hΓ, hΔ₁, hΔ₂, hs,
-      .retS hB S t Φ =>
-      WFF.retS_congr hB S (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)
+      .retSH hB S Zs hZs ws t Φ =>
+      WFF.retSH_congr hB S Zs hZs ((HomeWs.map_map _ _ ws).trans
+          (HomeWs.map_congr (fun p => Term.subst_comp_sig θ₁.box θ₂.box θ₃.box (Subst.ok_box hθ₁)
+            (Subst.coh_box hθ₁ hc₁) (Subst.ok_box hθ₂) (Subst.coh_box hθ₂ hc₂) (Subst.ok_box hθ₃)
+            (Subst.coh_box hθ₃ hc₃) (Subst.sim_box_comp hθ₁ hθ₂ hc₂ hs) p) ws))
+        (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)
         (WFF.subst_comp (θ₁.box.under d d₁ _ hΔ₁.boxIn.root) (θ₂.box.under d₁ d₂ _ hΔ₂.boxIn.root)
           (θ₃.box.under d d₂ _ hΔ₂.boxIn.root) (Subst.ok_under (Subst.ok_box hθ₁) _ hΔ₁.boxIn.root)
           (Subst.coh_under (Subst.ok_box hθ₁) (Subst.coh_box hθ₁ hc₁) hΓ.boxIn _ hΔ₁.boxIn.root)
@@ -611,7 +615,7 @@ theorem WFF.subst_comp {σ : Signature} : {ι₁ ι₂ ι₃ : VarSymb → VarSy
           (Subst.sim_under_comp (Subst.ok_box hθ₁) (Subst.ok_box hθ₂) (Subst.coh_box hθ₂ hc₂)
             (Subst.sim_box_comp hθ₁ hθ₂ hc₂ hs) hΔ₁.boxIn _ hΔ₁.boxIn.root hΔ₂.boxIn.root) Φ)
   | ι₁, ι₂, ι₃, Γ, Δ₁, Δ₂, d, d₁, d₂, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, hΓ, hΔ₁, hΔ₂,
-      hs, .retxS hB y hy S t Φ => by
+      hs, .retxSH hB y hy S Zs hZs ws t Φ => by
       have hw₁ : (θ₁.at y).idxAlong [] = ι₁ y := hy.elim fun _ hY => hc₁ y _ hY []
       have hy₁ : ∃ Y, Δ₁.ref (ι₁ y) = some (.VTypeDia Y) :=
         hy.elim fun _ hY => SubE.ref_witness (Subst.okRef_at hθ₁ hY) hw₁
@@ -622,17 +626,24 @@ theorem WFF.subst_comp {σ : Signature} : {ι₁ ι₂ ι₃ : VarSymb → VarSy
       have hr₁ := (hΔ₁.diaIn (ι₁ y)).root
       have key : ∀ (z : VarSymb) (_hz : z = ι₂ (ι₁ y)) (P : ∃ Y, Δ₂.ref z = some (.VTypeDia Y))
           (hΔz : (Δ₂.diaIn z).SlotsFrom d₂)
+          (p₀ : Subst.Ok (Γ.diaIn y) (θ₃.dia y z)) (q₀ : Subst.Coh ι₃ (Γ.diaIn y) (θ₃.dia y z))
           (p : Subst.Ok ((Γ.diaIn y).insert (.bnd d) S.ty)
             ((θ₃.dia y z).under d d₂ _ hΔz.root))
           (q : Subst.Coh (VarSymb.shiftSlot ι₃ d d₂) ((Γ.diaIn y).insert (.bnd d) S.ty)
             ((θ₃.dia y z).under d d₂ _ hΔz.root)),
-          WFF.subst ι₂ θ₂ hθ₂ hc₂ hΔ₁ hΔ₂ (WFF.subst ι₁ θ₁ hθ₁ hc₁ hΓ hΔ₁ (.retxS hB y hy S t Φ)) =
-            .retxS hB z P S (Term.subst ι₃ θ₃ hθ₃ hc₃ t)
+          WFF.subst ι₂ θ₂ hθ₂ hc₂ hΔ₁ hΔ₂
+              (WFF.subst ι₁ θ₁ hθ₁ hc₁ hΓ hΔ₁ (.retxSH hB y hy S Zs hZs ws t Φ)) =
+            .retxSH hB z P S Zs hZs (HomeWs.subst ι₃ (θ₃.dia y z) p₀ q₀ ws)
+              (Term.subst ι₃ θ₃ hθ₃ hc₃ t)
               (WFF.subst (VarSymb.shiftSlot ι₃ d d₂) ((θ₃.dia y z).under d d₂ _ hΔz.root) p q
                 ((hΓ.diaIn y).insert _) (hΔz.insert _) Φ) := by
-        intro z hz P hΔz p q
+        intro z hz P hΔz p₀ q₀ p q
         subst hz
-        exact WFF.retxS_congr hB _ _ S
+        exact WFF.retxSH_congr hB _ _ S Zs hZs ((HomeWs.map_map _ _ ws).trans
+            (HomeWs.map_congr (fun p' => Term.subst_comp_sig (θ₁.dia y (ι₁ y))
+              (θ₂.dia (ι₁ y) (ι₂ (ι₁ y))) _ (Subst.ok_dia hθ₁ hy hw₁) (Subst.coh_dia hθ₁ hc₁ hy)
+              (Subst.ok_dia hθ₂ hy₁ hw₂) (Subst.coh_dia hθ₂ hc₂ hy₁) p₀ q₀
+              (Subst.sim_dia_comp hθ₁ hc₁ hθ₂ hc₂ hs hy hy₁ hw₂ hw₃) p') ws))
           (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)
           (WFF.subst_comp ((θ₁.dia y (ι₁ y)).under d d₁ _ hr₁)
             ((θ₂.dia (ι₁ y) (ι₂ (ι₁ y))).under d₁ d₂ _ hΔz.root) _
@@ -646,6 +657,6 @@ theorem WFF.subst_comp {σ : Signature} : {ι₁ ι₂ ι₃ : VarSymb → VarSy
             (Subst.sim_under_comp (Subst.ok_dia hθ₁ hy hw₁) (Subst.ok_dia hθ₂ hy₁ hw₂)
               (Subst.coh_dia hθ₂ hc₂ hy₁) (Subst.sim_dia_comp hθ₁ hc₁ hθ₂ hc₂ hs hy hy₁ hw₂ hw₃)
               (hΔ₁.diaIn (ι₁ y)) _ hr₁ hΔz.root) Φ)
-      exact key (ι₃ y) hι _ (hΔ₂.diaIn _) _ _
+      exact key (ι₃ y) hι _ (hΔ₂.diaIn _) _ _ _ _
 
 end V12M

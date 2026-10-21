@@ -275,8 +275,13 @@ theorem WFF.subst_id {σ : Signature} : {Δ : Ctx} → {d : ℕ} → (hθ : Subs
           (congrArg (Sigma.mk _) (Term.mono_refl _ s)))
         ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc t).trans
           (congrArg (Sigma.mk _) (Term.mono_refl _ t)))
-  | Δ, d, hθ, hc, hΔ, .retS hB S t Φ => by
-      refine WFF.retS_congr hB S ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc t).trans
+  | Δ, d, hθ, hc, hΔ, .retSH hB S Zs hZs ws t Φ => by
+      refine WFF.retSH_congr hB S Zs hZs ((HomeWs.map_congr (fun p =>
+          (Term.subst_congr (Subst.idS σ Δ).box (Subst.idS σ Δ.boxIn) (Subst.ok_box hθ)
+            Subst.ok_idS (Subst.coh_box hθ hc) Subst.coh_idS Subst.sim_box_idS p).trans
+          ((Term.subst_idS_mono (Ctx.Le.refl _) _ _ p).trans
+            (congrArg (Sigma.mk _) (Term.mono_refl _ p)))) ws).trans (HomeWs.map_id ws))
+        ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc t).trans
         (congrArg (Sigma.mk _) (Term.mono_refl _ t))) ?_
       refine (WFF.subst_congr _ ((Subst.idS σ Δ.boxIn).under d d _ hΔ.boxIn.root) _
         (Subst.ok_under Subst.ok_idS _ hΔ.boxIn.root) _
@@ -287,9 +292,16 @@ theorem WFF.subst_id {σ : Signature} : {Δ : Ctx} → {d : ℕ} → (hθ : Subs
         Subst.coh_idS (hΔ.boxIn.insert _) (hΔ.boxIn.insert _)
         (Subst.sim_under_idS d _ hΔ.boxIn.root) Φ).trans ?_
       exact WFF.subst_id Subst.ok_idS Subst.coh_idS (hΔ.boxIn.insert _) Φ
-  | Δ, d, hθ, hc, hΔ, .retxS hB y _ S t Φ => by
+  | Δ, d, hθ, hc, hΔ, .retxSH hB y hy S Zs hZs ws t Φ => by
       have hr := (hΔ.diaIn y).root
-      refine WFF.retxS_congr hB y _ S ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc t).trans
+      have hw : ((Subst.idS σ Δ).at y).idxAlong [] = id y := hy.elim fun _ hY => hc y _ hY []
+      refine WFF.retxSH_congr hB y _ S Zs hZs ((HomeWs.map_congr (fun p =>
+          (Term.subst_congr ((Subst.idS σ Δ).dia y y) (Subst.idS σ (Δ.diaIn y))
+            (Subst.ok_dia hθ hy hw) Subst.ok_idS (Subst.coh_dia hθ hc hy) Subst.coh_idS
+            (Subst.sim_dia_idS y) p).trans
+          ((Term.subst_idS_mono (Ctx.Le.refl _) _ _ p).trans
+            (congrArg (Sigma.mk _) (Term.mono_refl _ p)))) ws).trans (HomeWs.map_id ws))
+        ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc t).trans
         (congrArg (Sigma.mk _) (Term.mono_refl _ t))) ?_
       refine (WFF.subst_congr _ ((Subst.idS σ (Δ.diaIn y)).under d d _ hr) _
         (Subst.ok_under Subst.ok_idS _ hr) _

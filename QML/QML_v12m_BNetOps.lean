@@ -231,8 +231,8 @@ theorem Good.henk [ModalSys.NoFour] {N : NetSt σ} (hN : N.Good) {s : Node} (hs 
     | .imp (.dia _ _ _) _ => exact hN
     | .imp (.here _ _ _) _ => exact hN
     | .imp (.back _ _ _ _) _ => exact hN
-    | .imp (.retS _ _ _ _) _ => exact hN
-    | .imp (.retxS _ _ _ _ _ _) _ => exact hN
+    | .imp (.retSH _ _ _ _ _ _ _) _ => exact hN
+    | .imp (.retxSH _ _ _ _ _ _ _ _ _) _ => exact hN
     | .imp (.all _ _) (.atom _) => exact hN
     | .imp (.all _ _) (.eq _ _) => exact hN
     | .imp (.all _ _) .top => exact hN
@@ -245,15 +245,15 @@ theorem Good.henk [ModalSys.NoFour] {N : NetSt σ} (hN : N.Good) {s : Node} (hs 
     | .imp (.all _ _) (.dia _ _ _) => exact hN
     | .imp (.all _ _) (.here _ _ _) => exact hN
     | .imp (.all _ _) (.back _ _ _ _) => exact hN
-    | .imp (.all _ _) (.retS _ _ _ _) => exact hN
-    | .imp (.all _ _) (.retxS _ _ _ _ _ _) => exact hN
+    | .imp (.all _ _) (.retSH _ _ _ _ _ _ _) => exact hN
+    | .imp (.all _ _) (.retxSH _ _ _ _ _ _ _ _ _) => exact hN
     | .all _ _ => exact hN
     | .box _ => exact hN
     | .dia _ _ _ => exact hN
     | .here _ _ _ => exact hN
     | .back _ _ _ _ => exact hN
-    | .retS _ _ _ _ => exact hN
-    | .retxS _ _ _ _ _ _ => exact hN
+    | .retSH _ _ _ _ _ _ _ => exact hN
+    | .retxSH _ _ _ _ _ _ _ _ _ => exact hN
   · exact hN
 
 end NetSt

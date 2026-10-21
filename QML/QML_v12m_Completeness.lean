@@ -50,8 +50,8 @@ def WFF.size {σ : Signature} : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → ℕ
   | _, _, .dia _ _ φ => φ.size + 1
   | _, _, .here (A := A) _ _ _ => A.eqRecSize + 1
   | _, _, .back (A := A) _ L _ _ => (L.carrier A).eqRecSize + 2 * A.eqRecSize + 3
-  | _, _, .retS _ S _ Φ => Φ.size + S.flat.eqRecSize + 1
-  | _, _, .retxS _ _ _ S _ Φ => Φ.size + S.flat.eqRecSize + 1
+  | _, _, .retSH _ S Zs _ _ _ Φ => Φ.size + (S.flat.homeFlat Zs).eqRecSize + 1
+  | _, _, .retxSH _ _ _ S Zs _ _ _ Φ => Φ.size + (S.flat.homeFlat Zs).eqRecSize + 1
 
 /-- ⭐The size of an equality is the size of its type: nothing in `eqRec`'s clauses looks at the
     terms.  So the `here` clause of `WFF.size` above dominates the equation `Proof.here_fun`
@@ -85,10 +85,10 @@ theorem WFF.size_mono {σ : Signature} : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le
   | _, _, _, h, .dia x _ φ => congrArg (· + 1) (WFF.size_mono (h.diaIn x) φ)
   | _, _, _, _, .here _ _ _ => rfl
   | _, _, _, _, .back _ _ _ _ => rfl
-  | _, _, _, h, .retS _ S _ Φ =>
-      congrArg (· + S.flat.eqRecSize + 1) (WFF.size_mono (h.boxIn.insert _ _) Φ)
-  | _, _, _, h, .retxS _ y _ S _ Φ =>
-      congrArg (· + S.flat.eqRecSize + 1) (WFF.size_mono ((h.diaIn y).insert _ _) Φ)
+  | _, _, _, h, .retSH _ S Zs _ _ _ Φ =>
+      congrArg (· + (S.flat.homeFlat Zs).eqRecSize + 1) (WFF.size_mono (h.boxIn.insert _ _) Φ)
+  | _, _, _, h, .retxSH _ y _ S Zs _ _ _ Φ =>
+      congrArg (· + (S.flat.homeFlat Zs).eqRecSize + 1) (WFF.size_mono ((h.diaIn y).insert _ _) Φ)
 
 theorem WFF.size_subst {σ : Signature} : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ}
     (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d)
@@ -109,10 +109,10 @@ theorem WFF.size_subst {σ : Signature} : ∀ {ι : VarSymb → VarSymb} {Γ Δ 
   | _, _, _, _, _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_subst _ _ _ _ _ φ)
   | _, _, _, _, _, _, _, _, _, _, .here _ _ _ => rfl
   | _, _, _, _, _, _, _, _, _, _, .back _ _ _ _ => rfl
-  | _, _, _, _, _, _, _, _, _, _, .retS _ S _ Φ =>
-      congrArg (· + S.flat.eqRecSize + 1) (WFF.size_subst _ _ _ _ _ Φ)
-  | _, _, _, _, _, _, _, _, _, _, .retxS _ _ _ S _ Φ =>
-      congrArg (· + S.flat.eqRecSize + 1) (WFF.size_subst _ _ _ _ _ Φ)
+  | _, _, _, _, _, _, _, _, _, _, .retSH _ S Zs _ _ _ Φ =>
+      congrArg (· + (S.flat.homeFlat Zs).eqRecSize + 1) (WFF.size_subst _ _ _ _ _ Φ)
+  | _, _, _, _, _, _, _, _, _, _, .retxSH _ _ _ S Zs _ _ _ Φ =>
+      congrArg (· + (S.flat.homeFlat Zs).eqRecSize + 1) (WFF.size_subst _ _ _ _ _ Φ)
 
 theorem WFF.size_instantiate {σ : Signature} {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {T : VarType}
     {a : Ann T} (t : Term σ Γ T a) (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) :
@@ -138,10 +138,10 @@ theorem WFF.size_collapse {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {
   | _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
   | _, _, _, _, _, _, .here _ _ _ => rfl
   | _, _, _, _, _, _, .back _ _ _ _ => rfl
-  | _, _, _, _, _, _, .retS _ S _ Φ =>
-      congrArg (· + S.flat.eqRecSize + 1) (WFF.size_collapse _ _ Φ)
-  | _, _, _, _, _, _, .retxS _ _ _ S _ Φ =>
-      congrArg (· + S.flat.eqRecSize + 1) (WFF.size_collapse _ _ Φ)
+  | _, _, _, _, _, _, .retSH _ S Zs _ _ _ Φ =>
+      congrArg (· + (S.flat.homeFlat Zs).eqRecSize + 1) (WFF.size_collapse _ _ Φ)
+  | _, _, _, _, _, _, .retxSH _ _ _ S Zs _ _ _ Φ =>
+      congrArg (· + (S.flat.homeFlat Zs).eqRecSize + 1) (WFF.size_collapse _ _ Φ)
 
 theorem WFF.size_shift {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d : ℕ}
     (h : Ctx.Shifts k Γ₁ Γ₂) (hs : Γ₁.SlotsFrom d) (φ : WFF σ Γ₁ d),
@@ -162,10 +162,10 @@ theorem WFF.size_shift {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d :
   | _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_shift _ _ φ)
   | _, _, _, _, _, _, .here _ _ _ => rfl
   | _, _, _, _, _, _, .back _ _ _ _ => rfl
-  | _, _, _, _, _, _, .retS _ S _ Φ =>
-      congrArg (· + S.flat.eqRecSize + 1) (WFF.size_shift _ _ Φ)
-  | _, _, _, _, _, _, .retxS _ _ _ S _ Φ =>
-      congrArg (· + S.flat.eqRecSize + 1) (WFF.size_shift _ _ Φ)
+  | _, _, _, _, _, _, .retSH _ S Zs _ _ _ Φ =>
+      congrArg (· + (S.flat.homeFlat Zs).eqRecSize + 1) (WFF.size_shift _ _ Φ)
+  | _, _, _, _, _, _, .retxSH _ _ _ S Zs _ _ _ Φ =>
+      congrArg (· + (S.flat.homeFlat Zs).eqRecSize + 1) (WFF.size_shift _ _ Φ)
 
 /-- Abstracting a witness is a substitution, so it leaves the logical structure alone. -/
 theorem WFF.size_diaAbs {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) {A : VarType}
@@ -514,8 +514,8 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
               exact here_truth w₀ hT hx bd t (fun K _ u u' => truth_lt n w K _ (by
                 rw [WFF.size_eqRec]; simp only [WFF.size] at hφ; omega))
       | back hB _ _ _ => exact (ModalSys.NoB.absurdStrong hB).elim
-      | retS hB _ _ _ => exact (ModalSys.NoB.absurdStrong hB).elim
-      | retxS hB _ _ _ _ _ => exact (ModalSys.NoB.absurdStrong hB).elim
+      | retSH hB _ _ _ _ _ _ => exact (ModalSys.NoB.absurdStrong hB).elim
+      | retxSH hB _ _ _ _ _ _ _ _ => exact (ModalSys.NoB.absurdStrong hB).elim
 
 /-- ⭐**The truth lemma.** -/
 theorem truth (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF σ (w.L.ctx i) 0) :
