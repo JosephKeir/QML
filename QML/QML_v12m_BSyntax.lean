@@ -29,11 +29,19 @@ namespace V12M
 /-- The one flag the arrow construction, and with it B's completeness, needs
     (`docs/v12-arrow-canonical.md` §9): 4 off, so a view shows `u.box` (and `x.dia`) and never
     `keep`.  Under T a reachable address may also pass through the projection `here`, which
-    `VarType.bc` and the arrows account for. -/
+    `VarType.bc` and the arrows account for.
+
+    **Temporarily also strong B's witnessed ways home off** (`noBStrongW`): rows 3–4 are being
+    built (docs §11.23), and the network's label sets come after their syntax and rules. -/
 class ModalSys.NoFour [ModalSys] : Prop where
   noFour : ModalSys.Four = false
+  noBStrongW : ModalSys.BStrongW = false
 
 variable [ModalSys]
+
+theorem ModalSys.NoFour.absurdW [ModalSys.NoFour] (hW : ModalSys.BStrongW = true) : False := by
+  rw [ModalSys.NoFour.noBStrongW] at hW
+  cases hW
 
 theorem ModalSys.NoFour.keepOnly [ModalSys.NoFour] : ModalSys.keepOnly = false := by
   simp [ModalSys.keepOnly, ModalSys.NoFour.noFour]

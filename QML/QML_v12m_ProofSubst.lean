@@ -1268,6 +1268,30 @@ theorem WFF.subst_backEta_renameTm {ι : VarSymb → VarSymb} {Γ Δ : Ctx}
       (Subst.at_renameTm_root θ u u' (.VTypeBox (.VTypeBox A)) hu'.root))
     (Term.subst_mono_renameTm_sigma θ hθ hc hu hu' (.VTypeBox (.VTypeBox A)) t)
 
+/-- Substituting the `Back` atom of `Proof.B_strongW`, at any leg, as
+    `WFF.subst_backEta_renameTm`. -/
+theorem WFF.subst_backEta_renameTmL {ι : VarSymb → VarSymb} {Γ Δ : Ctx}
+    (hS : ModalSys.BStrong = true) (L : BLeg) (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
+    (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0) (hΔ : Δ.SlotsFrom 0) {u u' : ℕ}
+    (hu : Γ.RootFresh (.free u)) (hu' : Δ.RootFresh (.free u')) {A : VarType} {a : Ann A}
+    (t : Term σ Γ A a) :
+    WFF.subst (Subst.renameTmIdx σ ι u u' (L.carrier A) hu'.root)
+        (θ.renameTm u u' (L.carrier A) hu'.root)
+        (Subst.ok_renameTm hθ (L.carrier A) hu'.root)
+        (Subst.coh_renameTm hθ hc hu (L.carrier A) hu'.root)
+        (hΓ.insertFree u (L.carrier A)) (hΔ.insertFree u' (L.carrier A))
+        (WFF.back hS L (Term.eta (.root (.free u)) _
+            (Ctx.ref_insert_root Γ (.free u) (L.carrier A)))
+          (Term.weaken hu.root _ t) : WFF σ (Γ.insert (.free u) (L.carrier A)) 0) =
+      WFF.back hS L (Term.eta (.root (.free u')) _
+          (Ctx.ref_insert_root Δ (.free u') (L.carrier A)))
+        (Term.weaken hu'.root _ (Term.subst ι θ hθ hc t)) :=
+  WFF.back_congr hS L
+    (Term.subst_eta_tm _ _ _ (L.carrier A) (.root (.free u))
+      (Ctx.ref_insert_root Γ (.free u) (L.carrier A)) _
+      (Subst.at_renameTm_root θ u u' (L.carrier A) hu'.root))
+    (Term.subst_mono_renameTm_sigma θ hθ hc hu hu' (L.carrier A) t)
+
 /-! ### Strong B: substituting what the returning possibility's rules read -/
 
 /-- A renamed address's contents are renamed with it. -/
@@ -2741,68 +2765,93 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
       Proof.here_eq hT (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
         (Term.subst ι θ hθ hc t') (Proof.subst ph θ hθ hc hΓ)
         (Proof.conv (WFF.subst_eqRec_gen θ hθ hc hΓ hΓ' A t t') (Proof.subst pe θ hθ hc hΓ))
-  | _, _, _, @Proof.back_counit _ _ Γ _ _ hS O A a₀ bd a t ψ pb pd, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.back_counit _ _ Γ _ _ hS O P hP A a₀ bd a t ψ pb pd, Γ', _, ι, θ, hθ, hc,
+      hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       Proof.conv (WFF.subst_holeRead θ hθ hc hΓ hΓ' t ψ).symm
         (Proof.back_counit hS (O.subst θ hθ hc)
-          (Term.subst ι (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
-            (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) bd)
+          (P.subst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc))
+          (OutLeg.home_subst _ _ _ P hP)
+          (Term.subst ι (P.viewSubst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc))
+            (P.viewOk _ _ _) (P.viewCoh _ _ _) bd)
           (Term.subst ι θ hθ hc t) ψ
-          (Proof.conv (OutLeg.subst_back θ hθ hc hΓ hΓ' hS O bd t) (Proof.subst pb θ hθ hc hΓ))
-          (Proof.conv ((OutLeg.subst_dia θ hθ hc hΓ hΓ' O (WFF.box (WFF.holeRead bd ψ))).trans
-              (congrArg (fun φ => (O.subst θ hθ hc).dia (WFF.box φ))
-                (WFF.subst_holeRead (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
-                  (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) _ _ bd ψ)))
+          (Proof.conv (OutLeg.subst_backP θ hθ hc hΓ hΓ' hS O P hP bd t)
+            (Proof.subst pb θ hθ hc hΓ))
+          (Proof.conv ((OutLeg.subst_dia θ hθ hc hΓ hΓ' O (P.box (WFF.holeRead bd ψ))).trans
+              (congrArg (fun φ => (O.subst θ hθ hc).dia φ)
+                ((OutLeg.subst_box (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)
+                  (OutLeg.slotsFrom hΓ O) (OutLeg.slotsFrom hΓ' _) P (WFF.holeRead bd ψ)).trans
+                  (congrArg (P.subst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc)
+                      (O.viewCoh θ hθ hc)).box
+                    (WFF.subst_holeRead (P.viewSubst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc)
+                        (O.viewCoh θ hθ hc))
+                      (P.viewOk _ _ _) (P.viewCoh _ _ _) _ _ bd ψ)))))
             (Proof.subst pd θ hθ hc hΓ)))
-  | _, _, _, @Proof.back_unit _ _ Γ _ _ hS O A a₀ bd a t ψ pb pr, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.back_unit _ _ Γ _ _ hS O P hP A a₀ bd a t ψ pb pr, Γ', _, ι, θ, hθ, hc,
+      hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
-      Proof.conv ((OutLeg.subst_box θ hθ hc hΓ hΓ' O
-            ((WFF.box (WFF.holeRead bd ψ).neg).neg)).trans
-          (congrArg (fun φ : WFF σ (O.subst θ hθ hc).view.boxIn 0 =>
-              (O.subst θ hθ hc).box (WFF.box φ.neg).neg)
-                (WFF.subst_holeRead (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
-                  (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) _ _ bd ψ))).symm
+      Proof.conv ((OutLeg.subst_box θ hθ hc hΓ hΓ' O (P.dia (WFF.holeRead bd ψ))).trans
+          (congrArg (fun φ => (O.subst θ hθ hc).box φ)
+            ((OutLeg.subst_dia (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)
+              (OutLeg.slotsFrom hΓ O) (OutLeg.slotsFrom hΓ' _) P (WFF.holeRead bd ψ)).trans
+              (congrArg (P.subst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc)
+                  (O.viewCoh θ hθ hc)).dia
+                (WFF.subst_holeRead (P.viewSubst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc)
+                    (O.viewCoh θ hθ hc))
+                  (P.viewOk _ _ _) (P.viewCoh _ _ _) _ _ bd ψ))))).symm
         (Proof.back_unit hS (O.subst θ hθ hc)
-          (Term.subst ι (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
-            (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) bd)
+          (P.subst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc))
+          (OutLeg.home_subst _ _ _ P hP)
+          (Term.subst ι (P.viewSubst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc))
+            (P.viewOk _ _ _) (P.viewCoh _ _ _) bd)
           (Term.subst ι θ hθ hc t) ψ
-          (Proof.conv (OutLeg.subst_back θ hθ hc hΓ hΓ' hS O bd t) (Proof.subst pb θ hθ hc hΓ))
+          (Proof.conv (OutLeg.subst_backP θ hθ hc hΓ hΓ' hS O P hP bd t)
+            (Proof.subst pb θ hθ hc hΓ))
           (Proof.conv (WFF.subst_holeRead θ hθ hc hΓ hΓ' t ψ) (Proof.subst pr θ hθ hc hΓ)))
-  | _, _, _, @Proof.back_ne _ _ Γ _ _ hS O A a₀ bd a t pb, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.back_ne _ _ Γ _ _ hS O P hP A a₀ bd a t pb, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       Proof.conv (OutLeg.subst_dia θ hθ hc hΓ hΓ' O .top).symm
         (Proof.back_ne hS (O.subst θ hθ hc)
-          (Term.subst ι (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
-            (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) bd)
+          (P.subst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc))
+          (OutLeg.home_subst _ _ _ P hP)
+          (Term.subst ι (P.viewSubst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc))
+            (P.viewOk _ _ _) (P.viewCoh _ _ _) bd)
           (Term.subst ι θ hθ hc t)
-          (Proof.conv (OutLeg.subst_back θ hθ hc hΓ hΓ' hS O bd t) (Proof.subst pb θ hθ hc hΓ)))
-  | _, _, _, @Proof.back_beta _ _ Γ _ _ hS O A a₀ bd a t B b s pb, Γ', _, ι, θ, hθ, hc,
+          (Proof.conv (OutLeg.subst_backP θ hθ hc hΓ hΓ' hS O P hP bd t)
+            (Proof.subst pb θ hθ hc hΓ)))
+  | _, _, _, @Proof.back_beta _ _ Γ _ _ hS O P hP A a₀ bd a t B b s pb, Γ', _, ι, θ, hθ, hc,
       hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
-      Proof.conv ((OutLeg.subst_back θ hθ hc hΓ hΓ' hS O (Term.holeRead bd s)
+      Proof.conv ((OutLeg.subst_backP θ hθ hc hΓ hΓ' hS O P hP (Term.holeRead bd s)
             (Term.holeRead t s)).trans
-          (OutLeg.back_congr hS _ (Term.subst_holeRead_sig _ _ _ bd s)
+          (OutLeg.backP_congr hS _ _ _ (Term.subst_holeRead_sig _ _ _ bd s)
             (Term.subst_holeRead_sig θ hθ hc t s))).symm
         (Proof.back_beta hS (O.subst θ hθ hc)
-          (Term.subst ι (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
-            (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) bd)
+          (P.subst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc))
+          (OutLeg.home_subst _ _ _ P hP)
+          (Term.subst ι (P.viewSubst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc))
+            (P.viewOk _ _ _) (P.viewCoh _ _ _) bd)
           (Term.subst ι θ hθ hc t) s
-          (Proof.conv (OutLeg.subst_back θ hθ hc hΓ hΓ' hS O bd t) (Proof.subst pb θ hθ hc hΓ)))
-  | _, _, _, @Proof.back_pair _ _ Γ _ _ hS O A a₀ bd a t B b₀ bd' b t' pb pb', Γ', _, ι, θ,
-      hθ, hc, hΓ =>
+          (Proof.conv (OutLeg.subst_backP θ hθ hc hΓ hΓ' hS O P hP bd t)
+            (Proof.subst pb θ hθ hc hΓ)))
+  | _, _, _, @Proof.back_pair _ _ Γ _ _ hS O P hP A a₀ bd a t B b₀ bd' b t' pb pb', Γ', _, ι,
+      θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
-      Proof.conv (OutLeg.subst_back θ hθ hc hΓ hΓ' hS O
+      Proof.conv (OutLeg.subst_backP θ hθ hc hΓ hΓ' hS O P hP
           (Term.pair bd bd')
           (Term.pair t t')).symm
         (Proof.back_pair hS (O.subst θ hθ hc)
-          (Term.subst ι (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
-            (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) bd)
+          (P.subst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc))
+          (OutLeg.home_subst _ _ _ P hP)
+          (Term.subst ι (P.viewSubst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc))
+            (P.viewOk _ _ _) (P.viewCoh _ _ _) bd)
           (Term.subst ι θ hθ hc t)
-          (Term.subst ι (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
-            (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) bd')
+          (Term.subst ι (P.viewSubst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc))
+            (P.viewOk _ _ _) (P.viewCoh _ _ _) bd')
           (Term.subst ι θ hθ hc t')
-          (Proof.conv (OutLeg.subst_back θ hθ hc hΓ hΓ' hS O bd t) (Proof.subst pb θ hθ hc hΓ))
-          (Proof.conv (OutLeg.subst_back θ hθ hc hΓ hΓ' hS O bd' t')
+          (Proof.conv (OutLeg.subst_backP θ hθ hc hΓ hΓ' hS O P hP bd t)
+            (Proof.subst pb θ hθ hc hΓ))
+          (Proof.conv (OutLeg.subst_backP θ hθ hc hΓ hΓ' hS O P hP bd' t')
             (Proof.subst pb' θ hθ hc hΓ)))
   | _, _, _, @Proof.back_eq _ _ Γ _ _ hS L A b s a t t' pb pe, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
@@ -2872,6 +2921,27 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
                 WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' (.VTypeBox (.VTypeBox A)) χ))
           (Proof.conv
             (WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' (.VTypeBox (.VTypeBox A)) _) ih))
+  | _, _, _, @Proof.B_strongW _ _ _ _ hS hW A _ t c hcf _ _ pne p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      have hcf' : Γ'.RootFresh (.free (Ctx.Presented.bound Γ')) :=
+        Ctx.Presented.fresh_bound _ le_rfl
+      have ih := Proof.subst p
+        (Γ' := Γ'.insert (.free (Ctx.Presented.bound Γ')) (.VTypeBox (.VTypeDia A)))
+        (θ.renameTm c _ (.VTypeBox (.VTypeDia A)) hcf'.root)
+        (Subst.ok_renameTm hθ (.VTypeBox (.VTypeDia A)) hcf'.root)
+        (Subst.coh_renameTm hθ hc hcf (.VTypeBox (.VTypeDia A)) hcf'.root)
+        (hΓ.insertFree c (.VTypeBox (.VTypeDia A)))
+      Proof.B_strongW hS hW (Term.subst ι θ hθ hc t) (Ctx.Presented.bound Γ') hcf'
+        (Proof.conv (OutLeg.subst_dia θ hθ hc hΓ hΓ' .nec .top) (Proof.subst pne θ hθ hc hΓ))
+        (Proof.castHyps
+          (by
+            simp only [List.map_cons, List.map_map, Function.comp_def]
+            exact congrArg₂ List.cons
+              (WFF.subst_backEta_renameTmL hS (.necW hW) θ hθ hc hΓ hΓ' hcf hcf' t)
+              (List.map_congr_left fun χ _ =>
+                WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' (.VTypeBox (.VTypeDia A)) χ))
+          (Proof.conv
+            (WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' (.VTypeBox (.VTypeDia A)) _) ih))
   | _, _, _, @Proof.ret_new _ _ Γ _ hS hB O A Φ c hcf _ _ pd p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       have hcf' : Γ'.RootFresh (.free (Ctx.Presented.bound Γ')) :=

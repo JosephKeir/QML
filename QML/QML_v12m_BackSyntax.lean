@@ -1258,14 +1258,42 @@ def box {d : ℕ} : (O : OutLeg Γ) → WFF σ O.view d → WFF σ Γ d
   | .nec, φ => WFF.box φ
   | .pos y hy, φ => WFF.boxx y hy φ
 
-/-- ⭐The `Back` atom of the carrier with body `bd` — `boxtm (boxtm bd)` or `diatm y (boxtm bd)`:
-    every term of type `□□A` or `◇□A` has this shape, so the rules are stated at the body and
-    survive substitution (§10.11). -/
-def back {d : ℕ} (hS : ModalSys.BStrong = true) : (O : OutLeg Γ) → {A : VarType} →
-    {a₀ : Ann A} → Term σ O.view.boxIn A a₀ → {a : Ann A} → Term σ Γ A a →
+/-- A leg may be a **way home** (§11.23): every arrow, always; a witness's extent at the far end
+    under `BStrongW` (rows 3–4). -/
+def Home : OutLeg Γ → Prop
+  | .nec => True
+  | .pos _ _ => ModalSys.BStrongW = true
+
+/-- ⭐The `Back` atom of the carrier with body `bd`, out along `O` and home along `P` (§11.23):
+    `boxtm (boxtm bd)`, `diatm y (boxtm bd)`, `boxtm (diatm z bd)` or `diatm y (diatm z bd)`.
+    Every term of a carrier type has one of these shapes, so the rules are stated at the body
+    and survive substitution (§10.11). -/
+def backP {d : ℕ} (hS : ModalSys.BStrong = true) : (O : OutLeg Γ) → (P : OutLeg O.view) →
+    P.Home → {A : VarType} → {a₀ : Ann A} → Term σ P.view A a₀ → {a : Ann A} → Term σ Γ A a →
     WFF σ Γ d
-  | .nec, _, _, bd, _, t => WFF.back hS .nec (Term.boxtm (Term.boxtm bd)) t
-  | .pos y hy, _, _, bd, _, t => WFF.back hS .pos (Term.diatm y hy (Term.boxtm bd)) t
+  | .nec, .nec, _, _, _, bd, _, t => WFF.back hS .nec (Term.boxtm (Term.boxtm bd)) t
+  | .pos y hy, .nec, _, _, _, bd, _, t => WFF.back hS .pos (Term.diatm y hy (Term.boxtm bd)) t
+  | .nec, .pos z hz, hW, _, _, bd, _, t =>
+      WFF.back hS (.necW hW) (Term.boxtm (Term.diatm z hz bd)) t
+  | .pos y hy, .pos z hz, hW, _, _, bd, _, t =>
+      WFF.back hS (.posW hW) (Term.diatm y hy (Term.diatm z hz bd)) t
+
+/-- The atom depends on its terms only as dependent pairs. -/
+theorem backP_congr {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (P : OutLeg O.view)
+    (hP : P.Home) {A : VarType} {a₁ a₂ : Ann A} {bd₁ : Term σ P.view A a₁}
+    {bd₂ : Term σ P.view A a₂} (hbd : (⟨a₁, bd₁⟩ : Σ b, Term σ P.view A b) = ⟨a₂, bd₂⟩)
+    {c₁ c₂ : Ann A} {t₁ : Term σ Γ A c₁} {t₂ : Term σ Γ A c₂}
+    (ht : (⟨c₁, t₁⟩ : Σ b, Term σ Γ A b) = ⟨c₂, t₂⟩) :
+    (O.backP hS P hP bd₁ t₁ : WFF σ Γ d) = O.backP hS P hP bd₂ t₂ := by
+  cases hbd
+  cases ht
+  rfl
+
+/-- ⭐The `Back` atom of rows 1–2, home along every arrow: `boxtm (boxtm bd)` or
+    `diatm y (boxtm bd)`. -/
+abbrev back {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
+    (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) : WFF σ Γ d :=
+  O.backP hS .nec trivial bd t
 
 /-- The atom depends on its terms only as dependent pairs. -/
 theorem back_congr {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
@@ -1420,6 +1448,27 @@ theorem subst_back {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
         (Term.subst ι θ hθ hc t) : WFF σ Δ d')
   | .nec, _, _, _, _, _ => rfl
   | .pos _ _, _, _, _, _, _ => rfl
+
+/-- A substitution sends a way home to a way home. -/
+theorem home_subst : (O : OutLeg Γ) → O.Home → (O.subst θ hθ hc).Home
+  | .nec, _ => trivial
+  | .pos _ _, h => h
+
+theorem subst_backP {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
+    (hS : ModalSys.BStrong = true) :
+    (O : OutLeg Γ) → (P : OutLeg O.view) → (hP : P.Home) → {A : VarType} → {a₀ : Ann A} →
+    (bd : Term σ P.view A a₀) → {a : Ann A} → (t : Term σ Γ A a) →
+    WFF.subst ι θ hθ hc hΓ hΔ (O.backP hS P hP bd t : WFF σ Γ d) =
+      ((O.subst θ hθ hc).backP hS
+        (P.subst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc))
+        (home_subst _ _ _ P hP)
+        (Term.subst ι (P.viewSubst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc))
+          (P.viewOk _ _ _) (P.viewCoh _ _ _) bd)
+        (Term.subst ι θ hθ hc t) : WFF σ Δ d')
+  | .nec, .nec, _, _, _, _, _, _ => rfl
+  | .nec, .pos _ _, _, _, _, _, _, _ => rfl
+  | .pos _ _, .nec, _, _, _, _, _, _ => rfl
+  | .pos _ _, .pos _ _, _, _, _, _, _, _ => rfl
 
 theorem subst_retS {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
     (hS : ModalSys.BStrong = true) :

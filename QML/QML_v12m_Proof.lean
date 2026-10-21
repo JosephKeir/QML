@@ -280,46 +280,47 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
   -- carrier's body, with hole formulas and terms closed apart from the hole.
   /-- ⭐**`Back`, counit** (weak B's `◇□ψ ⊢ ψ`, named): what is necessary at the end of some arrow
       of the out leg, of the carrier's value there, holds of the value it comes back as — along
-      that arrow's way home. -/
+      that arrow's way home.  Home along every arrow (`P = nec`, `□`) or along a witness's extent
+      at the far end (`P = pos z`, `□_z`, rows 3–4, docs §11.23). -/
   | back_counit {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
-      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a)
+      (O : OutLeg Γ) (P : OutLeg O.view) (hP : P.Home) {A : VarType} {a₀ : Ann A}
+      (bd : Term σ P.view A a₀) {a : Ann A} (t : Term σ Γ A a)
       (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
-      Proof σ Γ Δ (O.back hS bd t) →
-      Proof σ Γ Δ (O.dia (WFF.box (WFF.holeRead bd ψ))) →
+      Proof σ Γ Δ (O.backP hS P hP bd t) →
+      Proof σ Γ Δ (O.dia (P.box (WFF.holeRead bd ψ))) →
       Proof σ Γ Δ (WFF.holeRead t ψ)
   /-- ⭐**`Back`, unit** (weak B's `ψ ⊢ □◇ψ`, named): what holds of the value it comes back as is,
       from every arrow of the out leg, possible of the carrier's value — the way home witnessing
       it. -/
   | back_unit {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
-      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a)
+      (O : OutLeg Γ) (P : OutLeg O.view) (hP : P.Home) {A : VarType} {a₀ : Ann A}
+      (bd : Term σ P.view A a₀) {a : Ann A} (t : Term σ Γ A a)
       (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
-      Proof σ Γ Δ (O.back hS bd t) →
+      Proof σ Γ Δ (O.backP hS P hP bd t) →
       Proof σ Γ Δ (WFF.holeRead t ψ) →
-      Proof σ Γ Δ (O.box (WFF.box (WFF.holeRead bd ψ).neg).neg)
+      Proof σ Γ Δ (O.box (P.dia (WFF.holeRead bd ψ)))
   /-- `Back` asserts that its round trip exists: the out leg is nonempty (§11.1, decision of
       2026-10-03). -/
   | back_ne {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
-      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) :
-      Proof σ Γ Δ (O.back hS bd t) → Proof σ Γ Δ (O.dia .top)
+      (O : OutLeg Γ) (P : OutLeg O.view) (hP : P.Home) {A : VarType} {a₀ : Ann A}
+      (bd : Term σ P.view A a₀) {a : Ann A} (t : Term σ Γ A a) :
+      Proof σ Γ Δ (O.backP hS P hP bd t) → Proof σ Γ Δ (O.dia .top)
   /-- ⭐**β**: a carrier mapped by a hole term comes back as its value mapped by the same term. -/
   | back_beta {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
-      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) {B : VarType}
+      (O : OutLeg Γ) (P : OutLeg O.view) (hP : P.Home) {A : VarType} {a₀ : Ann A}
+      (bd : Term σ P.view A a₀) {a : Ann A} (t : Term σ Γ A a) {B : VarType}
       {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
-      Proof σ Γ Δ (O.back hS bd t) →
-      Proof σ Γ Δ (O.back hS (Term.holeRead bd s) (Term.holeRead t s))
-  /-- ⭐**Pairing** (§11.14 check 3): two carriers over one out leg come back as the pair of their
-      values — each arrow has one way home, so both are read along it. -/
+      Proof σ Γ Δ (O.backP hS P hP bd t) →
+      Proof σ Γ Δ (O.backP hS P hP (Term.holeRead bd s) (Term.holeRead t s))
+  /-- ⭐**Pairing** (§11.14 check 3): two carriers over one out leg and one way home come back as
+      the pair of their values — each arrow has one way home, so both are read along it. -/
   | back_pair {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
-      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) {B : VarType}
-      {b₀ : Ann B} (bd' : Term σ O.view.boxIn B b₀) {b : Ann B}
+      (O : OutLeg Γ) (P : OutLeg O.view) (hP : P.Home) {A : VarType} {a₀ : Ann A}
+      (bd : Term σ P.view A a₀) {a : Ann A} (t : Term σ Γ A a) {B : VarType}
+      {b₀ : Ann B} (bd' : Term σ P.view B b₀) {b : Ann B}
       (t' : Term σ Γ B b) :
-      Proof σ Γ Δ (O.back hS bd t) → Proof σ Γ Δ (O.back hS bd' t') →
-      Proof σ Γ Δ (O.back hS (Term.pair bd bd') (Term.pair t t'))
+      Proof σ Γ Δ (O.backP hS P hP bd t) → Proof σ Γ Δ (O.backP hS P hP bd' t') →
+      Proof σ Γ Δ (O.backP hS P hP (Term.pair bd bd') (Term.pair t t'))
   /-- **Leibniz for the value.** -/
   | back_eq {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       (L : BLeg) {A : VarType} {b : Ann (L.carrier A)}
@@ -377,6 +378,21 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
             (Term.weaken hc.root _ t) ::
           Δ.map (WFF.weaken hc.root (.VTypeBox (.VTypeBox A))))
         (φ.weaken hc.root (.VTypeBox (.VTypeBox A))) →
+      Proof σ Γ Δ φ
+  /-- ⭐**Every object comes back home along a possible object's extent** (row 3, docs §11.23),
+      as an `∃`-elimination like `B_strong`: wherever there is a way out, a fresh carrier
+      `c : □◇A` comes back as `t` — B's unit `A → □◇A`, as an existence rule.  Its validity is
+      `Model.backRet_existsW`. -/
+  | B_strongW {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+      (hW : ModalSys.BStrongW = true) {A : VarType} {a : Ann A} (t : Term σ Γ A a) (c : ℕ)
+      (hc : Γ.RootFresh (.free c)) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
+      Proof σ Γ Δ ((OutLeg.nec : OutLeg Γ).dia .top) →
+      Proof σ (Γ.insert (.free c) (.VTypeBox (.VTypeDia A)))
+        (WFF.back hS (.necW hW) (Term.eta (.root (.free c)) _
+            (Ctx.ref_insert_root Γ (.free c) (.VTypeBox (.VTypeDia A))))
+            (Term.weaken hc.root _ t) ::
+          Δ.map (WFF.weaken hc.root (.VTypeBox (.VTypeDia A))))
+        (φ.weaken hc.root (.VTypeBox (.VTypeDia A))) →
       Proof σ Γ Δ φ
   -- Strong B: the returning possibility `◇[d ↦ t] Φ(d)` (`WFF.ret`, docs §11.14).  Its body binds
   -- one necessary object `d : □A` of the far world; several items are packed into one by pairing.

@@ -19,19 +19,25 @@ inductive Rel (σ : Signature) : Ctx → ℕ → Type where
   | eval {Γ : Ctx} {n : ℕ} : Rel σ Γ (n + 1) → Term σ Γ .Var .var → Rel σ Γ n
 deriving DecidableEq
 
-/-- The out leg of a `Back` atom (strong B, `docs/v12-modal-extensions.md` §11): every successor
-    (row 1) or the carrier's own extent (row 2).  Rows 3–4, with a witnessed way home, are to extend
-    this type rather than `WFF`. -/
+/-- The legs of a `Back` atom (strong B, `docs/v12-modal-extensions.md` §11): the out leg is every
+    successor (rows 1, 3) or the carrier's own extent (row 2), and the way home is every arrow
+    (rows 1–2) or a possible object's extent at the far end (rows 3–4, under `BStrongW`,
+    §11.23). -/
 inductive BLeg where
   | nec
   | pos
+  | necW (hW : ModalSys.BStrongW = true)
+  | posW (hW : ModalSys.BStrongW = true)
 deriving DecidableEq
 
 /-- The carrier of a `Back` atom whose round trip returns an `A`: a necessary (row 1) or possible
-    (row 2) object whose contents are necessary objects. -/
+    (row 2) object whose contents are necessary objects, or a necessary object whose contents are
+    possible objects (row 3), or a possible object whose contents are possible objects (row 4). -/
 def BLeg.carrier : BLeg → VarType → VarType
   | .nec, A => .VTypeBox (.VTypeBox A)
   | .pos, A => .VTypeDia (.VTypeBox A)
+  | .necW _, A => .VTypeBox (.VTypeDia A)
+  | .posW _, A => .VTypeDia (.VTypeDia A)
 
 /-- Under T, the contents type of a **companion** of a necessary object `d : □A`: the necessary
     object `d.here.p` (`p` a path of projections and `here` steps into `d`'s value here, of type

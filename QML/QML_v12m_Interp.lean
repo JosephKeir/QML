@@ -288,26 +288,34 @@ def Realised (hT : ModalSys.T = true) {A : VarType} {w : M.frame.W}
   ∃ hm : M.frame.reflAcc hT w ∈ (M.posEval p).1,
     M.Ind ((M.posEval p).2 ⟨M.frame.reflAcc hT w, hm⟩) o
 
-/-- ⭐A carrier's **round-trip data**: its out leg, as a set of arrows out, and its values one
-    arrow on.  Row 1 (`nec`): every arrow out of `w`; row 2 (`pos`): the carrier's own extent. -/
+/-- ⭐A carrier's **round-trip data** (`Frame.RTData`): its out leg, the ways home, and its values
+    one arrow on.  Row 1 (`nec`): every arrow out of `w`; row 2 (`pos`): the carrier's own extent;
+    every way home in both.  Rows 3–4 (`necW`, `posW`): out as rows 1–2, and home along the extent
+    of the carrier's possible object at the far end, its content the value. -/
 def carrierData : (L : BLeg) → {A : VarType} → {w : M.frame.W} → M.frame.Dom (L.carrier A) w →
-    Σ S : Set (M.frame.Acc w), (a : S) → (b : M.frame.Acc a.1.1) → M.frame.Dom A b.1
+    M.frame.RTData A w
   | .nec, A, w, c =>
-      ⟨Set.univ, fun a b => M.necEval (M.necEval (c : M.frame.Nec (.VTypeBox A) w) a.1) b⟩
+      .all Set.univ fun a b => M.necEval (M.necEval (c : M.frame.Nec (.VTypeBox A) w) a.1) b
   | .pos, A, _, c =>
-      ⟨(M.posEval (c : M.frame.Pos (.VTypeBox A) _)).1,
-        fun a b => M.necEval ((M.posEval (c : M.frame.Pos (.VTypeBox A) _)).2 a) b⟩
+      .all (M.posEval (c : M.frame.Pos (.VTypeBox A) _)).1
+        fun a b => M.necEval ((M.posEval (c : M.frame.Pos (.VTypeBox A) _)).2 a) b
+  | .necW _, A, w, c =>
+      ⟨Set.univ, fun a => (M.posEval (M.necEval (c : M.frame.Nec (.VTypeDia A) w) a.1)).1,
+        fun a b => (M.posEval (M.necEval (c : M.frame.Nec (.VTypeDia A) w) a.1)).2 b⟩
+  | .posW _, A, _, c =>
+      ⟨(M.posEval (c : M.frame.Pos (.VTypeDia A) _)).1,
+        fun a => (M.posEval ((M.posEval (c : M.frame.Pos (.VTypeDia A) _)).2 a)).1,
+        fun a b => (M.posEval ((M.posEval (c : M.frame.Pos (.VTypeDia A) _)).2 a)).2 b⟩
 
 /-- Round-trip data that is some carrier's. -/
-def IsCarrierData {A : VarType} {w : M.frame.W} (S : Set (M.frame.Acc w))
-    (val : (a : S) → (b : M.frame.Acc a.1.1) → M.frame.Dom A b.1) : Prop :=
-  ∃ (L : BLeg) (c : M.frame.Dom (L.carrier A) w), M.carrierData L c = ⟨S, val⟩
+def IsCarrierData {A : VarType} {w : M.frame.W} (D : M.frame.RTData A w) : Prop :=
+  ∃ (L : BLeg) (c : M.frame.Dom (L.carrier A) w), M.carrierData L c = D
 
 /-- ⭐`c` **comes back as** `o` (strong B, `Back`; docs §11.1, §11.20): the model's `Ret` at the
     carrier's round-trip data (`carrierData`). -/
 def Backs (L : BLeg) {A : VarType} {w : M.frame.W} (c : M.frame.Dom (L.carrier A) w)
     (o : M.frame.Dom A w) : Prop :=
-  M.Ret (M.carrierData L c).1 (M.carrierData L c).2 o
+  M.Ret (M.carrierData L c) o
 
 /-- Under T, a **companion** of a value `x : A` at `v`, the necessary object at the path `p` into
     it, comes back as `o` along the way home `r` (`True` at a path reaching no necessary

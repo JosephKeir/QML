@@ -251,23 +251,23 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       refine ih M hM env hfin hnp hΔ fun v hv => ?_
       obtain ⟨b⟩ := M.frame.symm hB v.2.down
       exact hn ((sat_closed _ env ψ).mp (hv ⟨w, ⟨b⟩⟩))
-  | @back_counit Γ _ Δ hS O A a₀ bd a t ψ pb pd ihb ihd =>
+  | @back_counit Γ _ Δ hS O P hP A a₀ bd a t ψ pb pd ihb ihd =>
       intro M hM w env hfin hnp hΔ
-      exact sat_back_counit env hnp hM hS O bd t ψ (ihb M hM env hfin hnp hΔ)
+      exact sat_back_counit env hnp hM hS O P hP bd t ψ (ihb M hM env hfin hnp hΔ)
         (ihd M hM env hfin hnp hΔ)
-  | @back_unit Γ _ Δ hS O A a₀ bd a t ψ pb pr ihb ihr =>
+  | @back_unit Γ _ Δ hS O P hP A a₀ bd a t ψ pb pr ihb ihr =>
       intro M hM w env hfin hnp hΔ
-      exact sat_back_unit env hnp hM hS O bd t ψ (ihb M hM env hfin hnp hΔ)
+      exact sat_back_unit env hnp hM hS O P hP bd t ψ (ihb M hM env hfin hnp hΔ)
         (ihr M hM env hfin hnp hΔ)
-  | @back_ne Γ _ Δ hS O A a₀ bd a t pb ihb =>
+  | @back_ne Γ _ Δ hS O P hP A a₀ bd a t pb ihb =>
       intro M hM w env hfin hnp hΔ
-      exact sat_back_ne env hS O bd t (ihb M hM env hfin hnp hΔ)
-  | @back_beta Γ _ Δ hS O A a₀ bd a t B b s pb ihb =>
+      exact sat_back_ne env hS O P hP bd t (ihb M hM env hfin hnp hΔ)
+  | @back_beta Γ _ Δ hS O P hP A a₀ bd a t B b s pb ihb =>
       intro M hM w env hfin hnp hΔ
-      exact sat_back_beta env hnp hM hS O bd t s (ihb M hM env hfin hnp hΔ)
-  | @back_pair Γ _ Δ hS O A a₀ bd a t B b₀ bd' b t' pb pb' ihb ihb' =>
+      exact sat_back_beta env hnp hM hS O P hP bd t s (ihb M hM env hfin hnp hΔ)
+  | @back_pair Γ _ Δ hS O P hP A a₀ bd a t B b₀ bd' b t' pb pb' ihb ihb' =>
       intro M hM w env hfin hnp hΔ
-      exact sat_back_pair env hM hS O bd t bd' t' (ihb M hM env hfin hnp hΔ)
+      exact sat_back_pair env hM hS O P hP bd t bd' t' (ihb M hM env hfin hnp hΔ)
         (ihb' M hM env hfin hnp hΔ)
   | @back_eq Γ _ Δ hS L A b s a t t' pb pe ihb ihe =>
       intro M hM w env hfin hnp hΔ
@@ -307,6 +307,21 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
         exact (sat_back_eta_extend hS env (.free c) hc q t).mpr hc₀
       · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken (T := .VTypeBox (.VTypeBox A)) env hc.root q χ').mpr (hΔ χ' hχ')
+  | @B_strongW Γ _ hS hW A a t c hc Δ φ pne p ihne ih =>
+      -- As `B_strong`, with `backRet_existsW`'s carrier of possible objects.
+      intro M hM w env hfin hnp hΔ
+      obtain ⟨i, _⟩ := (OutLeg.sat_dia env .nec _).mp (ihne M hM env hfin hnp hΔ)
+      obtain ⟨c₀, hc₀⟩ := M.backRet_existsW hS hW ⟨i⟩ (interp env t)
+      let q : M.frame.Dom (.VTypeBox (.VTypeDia A)) w := c₀
+      refine (sat_weaken (T := .VTypeBox (.VTypeDia A)) env hc.root q φ).mp
+        (ih M hM (env.extend (T := .VTypeBox (.VTypeDia A)) (.free c) q) (hfin.insert hc _)
+          (hnp.insert _ _) ?_)
+      intro χ hχ
+      rcases List.mem_cons.mp hχ with h₁ | h₂
+      · subst h₁
+        exact (sat_back_eta_extendL hS (.necW hW) env (.free c) hc q t).mpr hc₀
+      · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
+        exact (sat_weaken (T := .VTypeBox (.VTypeDia A)) env hc.root q χ').mpr (hΔ χ' hχ')
   | @ret_new Γ _ hS hB O A Φ c hc Δ φ pd p ihd ih =>
       -- Some arrow of the leg reaches an object with `Φ`; weak B brings it home as some value,
       -- which interprets the eigenvariable.

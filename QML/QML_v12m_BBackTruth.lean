@@ -475,7 +475,8 @@ omit [ModalSys.NoFour] in
 theorem size_back_ge {Γ : Ctx} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
     {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) :
     3 * A.eqRecSize + 5 ≤ (O.back hS bd t : WFF σ Γ 0).size := by
-  cases O <;> simp only [OutLeg.back, WFF.size, BLeg.carrier, VarType.eqRecSize] <;> omega
+  cases O <;> simp only [OutLeg.back, OutLeg.backP, WFF.size, BLeg.carrier, VarType.eqRecSize] <;>
+    omega
 
 omit [ModalSys.NoFour] in
 theorem size_backRetImp {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (O : OutLeg Γ)
@@ -629,11 +630,14 @@ theorem mem_back_of_sat_nec (hS : ModalSys.BStrong = true) (hB : ModalSys.B = tr
   have hsz := size_back_ge hS .nec bd t
   obtain ⟨⟨i₀⟩, -⟩ := OutLeg.sat_back_rt hS (B.canonEnv s i) .nec bd t h
   have harr := exists_R_of_arr (O := .nec) i₀
-  change B.Ret _ _ _ at h
+  change B.model.Backs _ _ _ at h
+  rw [backs_iff] at h
   rcases h with ⟨hA', -⟩ | ⟨hS', i', L, c, ct, a', t', hmem, hdata, hval⟩
   · exact absurd hA' hA
   revert c ct hmem hdata
   cases L with
+  | necW hW => exact (ModalSys.NoFour.absurdW hW).elim
+  | posW hW => exact (ModalSys.NoFour.absurdW hW).elim
   | pos =>
       intro c ct
       cases ct with
@@ -748,7 +752,8 @@ theorem mem_back_of_sat_pos (hS : ModalSys.BStrong = true) (hB : ModalSys.B = tr
     (IH i _ (by have := size_dia_top (σ := σ) (OutLeg.pos y hy); omega)).mp
       ((OutLeg.sat_dia (B.canonEnv s i) (.pos y hy) _).mpr ⟨i₀, trivial⟩)
   obtain ⟨Y, hY⟩ := hy
-  change B.Ret _ _ _ at h
+  change B.model.Backs _ _ _ at h
+  rw [backs_iff] at h
   rcases h with ⟨hA', -⟩ | ⟨hS', i', L, c, ct, a', t', hmem, hdata, hval⟩
   · exact absurd hA' hA
   have hK : i ≤ max i i' := le_max_left _ _
@@ -756,14 +761,15 @@ theorem mem_back_of_sat_pos (hS : ModalSys.BStrong = true) (hB : ModalSys.B = tr
   have hyK : ((B.w s).ctx (max i i')).ref y = some (.VTypeDia Y) := ((B.w s).le hK).ref hY
   obtain ⟨k, hkk, hfresh⟩ := hCx hyK ((BWorld.mem_lift hK).mp hdia)
   have hkR := B.kdR hkk
-  have hD : B.model.carrierData .pos
+  have hD : B.cData .pos
       (Model.interp (B.canonEnv s i) (Term.diatm y ⟨Y, hY⟩ (Term.boxtm bd))) =
       B.cData .pos (B.toDom _ s (B.rden s i (Ctx.Le.refl _) (Term.diatm y ⟨Y, hY⟩ (Term.boxtm bd)))
         (definable_rden _ _)) := by
     rw [interp_canon _ (Model.Env.Agree.refl' _)]
-    rfl
   revert c ct hmem hdata
   cases L with
+  | necW hW => exact (ModalSys.NoFour.absurdW hW).elim
+  | posW hW => exact (ModalSys.NoFour.absurdW hW).elim
   | nec =>
       intro c ct
       cases ct with

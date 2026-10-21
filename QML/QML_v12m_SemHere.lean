@@ -183,16 +183,17 @@ variable (M) in
     terms. -/
 structure RetCongr : Prop where
   map : ∀ {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
-    {w : M.frame.W} {S : Set (M.frame.Acc w)}
-    {val : (a : S) → (c : M.frame.Acc a.1.1) → M.frame.Dom A c.1} {o : M.frame.Dom A w},
-    M.Ret S val o → M.Ret S (fun a c => M.holeVal s (val a c)) (M.holeVal s o)
+    {w : M.frame.W} {D : M.frame.RTData A w} {o : M.frame.Dom A w},
+    M.Ret D o → M.Ret ⟨D.out, D.home, fun a c => M.holeVal s (D.val a c)⟩ (M.holeVal s o)
   pair : ∀ {A B : VarType} {w : M.frame.W} {S : Set (M.frame.Acc w)}
-    {val : (a : S) → (c : M.frame.Acc a.1.1) → M.frame.Dom A c.1}
-    {val' : (a : S) → (c : M.frame.Acc a.1.1) → M.frame.Dom B c.1}
+    {H : (a : S) → Set (M.frame.Acc a.1.1)}
+    {val : (a : S) → (c : H a) → M.frame.Dom A c.1.1}
+    {val' : (a : S) → (c : H a) → M.frame.Dom B c.1.1}
     {o : M.frame.Dom A w} {o' : M.frame.Dom B w},
-    M.IsCarrierData S val → M.IsCarrierData S val' → M.Ret S val o → M.Ret S val' o' →
-      M.Ret (A := .VTypeProd A B) S
-        (fun a c => ((val a c, val' a c) : M.frame.Dom (.VTypeProd A B) c.1))
+    M.IsCarrierData ⟨S, H, val⟩ → M.IsCarrierData ⟨S, H, val'⟩ → M.Ret ⟨S, H, val⟩ o →
+      M.Ret ⟨S, H, val'⟩ o' →
+      M.Ret (A := .VTypeProd A B)
+        ⟨S, H, fun a c => ((val a c, val' a c) : M.frame.Dom (.VTypeProd A B) c.1.1)⟩
         ((o, o') : M.frame.Dom (.VTypeProd A B) w)
 
 variable (M) in

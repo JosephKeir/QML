@@ -327,6 +327,8 @@ def cData : (L : BLeg) → {A : VarType} → {s : B.W} → B.frame.Dom (L.carrie
   | .pos, A, _, c =>
       ⟨(B.posEval (c : B.frame.Pos (.VTypeBox A) _)).1,
         fun a b => B.necEval ((B.posEval (c : B.frame.Pos (.VTypeBox A) _)).2 a) b⟩
+  | .necW hW, _, _, _ => (ModalSys.NoFour.absurdW hW).elim
+  | .posW hW, _, _, _ => (ModalSys.NoFour.absurdW hW).elim
 
 /-- ⭐**Canonical "comes back as"** (docs §11.20): at a `◇`-free content, the round trip; and
     what a `Back` atom of the theory says — round-trip data that are a carrier term's, and the
@@ -340,6 +342,22 @@ def Ret {A : VarType} {s : B.W} (S : Set (B.frame.Acc s))
     WFF.back hS L ct t ∈ (B.w s).M i ∧
     B.cData L (B.toDom _ s (B.rden s i (Ctx.Le.refl _) ct) (definable_rden _ _)) = ⟨S, val⟩ ∧
     B.toDom A s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _) = o
+
+/-- Canonical "comes back as" on round-trip data (`Model.Ret`): data with every way home whose
+    canonical `Ret` holds. -/
+def RetD {A : VarType} {s : B.W} (D : B.frame.RTData A s) (o : B.frame.Dom A s) : Prop :=
+  ∃ (S : Set (B.frame.Acc s)) (val : (a : S) → (b : B.frame.Acc a.1.1) → B.frame.Dom A b.1),
+    D = .all S val ∧ B.Ret S val o
+
+variable {B} in
+theorem retD_all {A : VarType} {s : B.W} {S : Set (B.frame.Acc s)}
+    {val : (a : S) → (b : B.frame.Acc a.1.1) → B.frame.Dom A b.1} {o : B.frame.Dom A s} :
+    B.RetD (.all S val) o ↔ B.Ret S val o := by
+  constructor
+  · rintro ⟨S', val', e, h⟩
+    cases Frame.RTData.all_inj e
+    exact h
+  · exact fun h => ⟨S, val, rfl, h⟩
 
 variable {B} in
 /-- A `Back` atom's leg is nonempty along the plain leg: `back_ne` gives `◇⊤`, and `ex` an arrow. -/
@@ -503,6 +521,8 @@ theorem ret_fwd (_hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set
   · exact h
   revert c ct hmem hdata
   cases L with
+  | necW hW => exact (ModalSys.NoFour.absurdW hW).elim
+  | posW hW => exact (ModalSys.NoFour.absurdW hW).elim
   | nec =>
       intro c ct
       cases ct with
@@ -515,7 +535,7 @@ theorem ret_fwd (_hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set
                   (B.w s).M i :=
                 BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by
                   rw [List.mem_singleton.mp hψ]; exact hmem)
-                  ⟨Proof.back_ne hS' .nec bd t (Proof.lookup List.mem_cons_self)⟩
+                  ⟨Proof.back_ne hS' .nec .nec trivial bd t (Proof.lookup List.mem_cons_self)⟩
               obtain ⟨k, hk⟩ := exists_R_of_dia_top hdia
               refine ⟨⟨⟨⟨k, ⟨Or.inl hk⟩⟩, Set.mem_univ _⟩⟩, fun ⟨⟨k, ⟨rk⟩⟩, _⟩ => ?_⟩
               by_cases hk : B.R s k
@@ -548,7 +568,8 @@ theorem ret_fwd (_hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set
               have hdia : WFF.dia y ⟨Y, hY⟩ (.top : WFF σ _ 0) ∈ (B.w s).M i :=
                 BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by
                   rw [List.mem_singleton.mp hψ]; exact hmem)
-                  ⟨Proof.back_ne hS' (.pos y ⟨Y, hY⟩) bd t (Proof.lookup List.mem_cons_self)⟩
+                  ⟨Proof.back_ne hS' (.pos y ⟨Y, hY⟩) .nec trivial bd t
+                    (Proof.lookup List.mem_cons_self)⟩
               obtain ⟨k, hk, _⟩ := B.exX s i y Y hY .top hdia
               refine ⟨⟨⟨⟨k, ⟨Or.inl (B.kdR hk)⟩⟩, Or.inl ⟨Y, hk⟩⟩⟩, fun ⟨⟨k, ⟨rk⟩⟩, hm⟩ => ?_⟩
               by_cases hR : B.R s k
@@ -718,12 +739,25 @@ noncomputable def model : Model.{0, 0} σ where
   necDup_eval hF _ _ _ := (noFour hF).elim
   posRet_exists hT hS a := B.posRet_exists_canon hT hS a
   posSerial hDS s := B.posSerial_canon hDS s
-  Ret S val o := B.Ret S val o
-  Ret_fwd := by intro _ _ hS _ _ _ h; exact B.ret_fwd hS h
-  Ret_conv := by intro _ _ _ hA _ _ _ h; exact Or.inl ⟨hA, h⟩
-  backRet_exists hS hne o := B.backRet_exists_canon hS hne o
+  Ret D o := B.RetD D o
+  Ret_fwd := by
+    rintro _ _ hS _ _ ⟨S, val, rfl, h⟩
+    obtain ⟨hne, h₂⟩ := B.ret_fwd hS h
+    exact ⟨hne, fun a => (h₂ a).imp fun _ hr => ⟨Set.mem_univ _, hr⟩⟩
+  Ret_conv := by intro _ _ _ hA _ _ _ h; exact ⟨_, _, rfl, Or.inl ⟨hA, h⟩⟩
+  backRet_exists hS hne o := (B.backRet_exists_canon hS hne o).imp fun _ h => ⟨_, _, rfl, h⟩
+  backRet_existsW _ hW := (ModalSys.NoFour.absurdW hW).elim
   Ind o o' := B.Ind o o'
   Ind_refl o := B.Ind_refl o
+
+/-- ⭐A carrier comes back in the canonical model as its canonical `Ret` says (`retD_all`). -/
+theorem backs_iff (L : BLeg) {A : VarType} {s : B.W} (c : B.frame.Dom (L.carrier A) s)
+    (o : B.frame.Dom A s) :
+    B.model.Backs L c o ↔ B.Ret (B.cData L c).1 (B.cData L c).2 o := by
+  cases L with
+  | necW hW => exact (ModalSys.NoFour.absurdW hW).elim
+  | posW hW => exact (ModalSys.NoFour.absurdW hW).elim
+  | _ => exact retD_all
 
 end BData
 

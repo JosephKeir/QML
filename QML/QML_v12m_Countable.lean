@@ -128,8 +128,9 @@ noncomputable def Rel.code : {Γ : Ctx} → {n : ℕ} → Rel σ Γ n → Code
 def BLeg.toNat : BLeg → ℕ
   | .nec => 0
   | .pos => 1
+  | .necW _ => 2
+  | .posW _ => 3
 
-omit [ModalSys] in
 theorem BLeg.toNat_injective : Function.Injective BLeg.toNat := by
   intro L L' h
   cases L <;> cases L' <;> first | rfl | cases h
