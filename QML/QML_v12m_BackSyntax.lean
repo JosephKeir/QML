@@ -1318,13 +1318,38 @@ def bodyRead [Γ.NoSlots] (O : OutLeg Γ) {A : VarType} {b : Ann (.VTypeBox A)}
     WFF σ O.view 0 :=
   WFF.instantiate Ctx.NoSlots.slots c (WFF.mono (O.le_view.insert (.bnd 0) _) Φ)
 
-/-- ⭐The **returning possibility along the leg** (§11.17): `◇[e ↦ t] Φ` from any arrow, or
-    `◇_y[e ↦ t] Φ` from an arrow of `y`'s extent, with `Φ` read in the leg's view. -/
-def retS {d : ℕ} (hS : ModalSys.BStrong = true) : (O : OutLeg Γ) → (S : RShape) →
-    {a : Ann S.flat} → Term σ Γ S.flat a → WFF σ (O.view.insert (.bnd d) S.ty) (d + 1) →
+/-- ⭐The **returning possibility along the leg with named back witnesses** `ws` (possible objects
+    of the leg's view) whose contents come back as `us` (docs §11.23): `◇[e ↦ t; ws ⇝ us] Φ` from
+    any arrow, or `◇_y[e ↦ t; ws ⇝ us] Φ` from an arrow of `y`'s extent, with `Φ` read in the
+    leg's view. -/
+def retSH {d : ℕ} (hS : ModalSys.BStrong = true) : (O : OutLeg Γ) → (S : RShape) →
+    (Zs : List VarType) → VarType.HomeOk Zs → HomeWs σ O.view Zs → {a : Ann S.flat} →
+    Term σ Γ S.flat a → HomeTms σ Γ Zs → WFF σ (O.view.insert (.bnd d) S.ty) (d + 1) →
     WFF σ Γ d
-  | .nec, S, _, t, Φ => WFF.retS hS S t Φ
-  | .pos y hy, S, _, t, Φ => WFF.retxS hS y hy S t Φ
+  | .nec, S, Zs, hZs, ws, _, t, us, Φ => WFF.retSH hS S Zs hZs ws t us Φ
+  | .pos y hy, S, Zs, hZs, ws, _, t, us, Φ => WFF.retxSH hS y hy S Zs hZs ws t us Φ
+
+/-- ⭐The **returning possibility along the leg** (§11.17), without named back witnesses:
+    `◇[e ↦ t] Φ` from any arrow, or `◇_y[e ↦ t] Φ` from an arrow of `y`'s extent. -/
+abbrev retS {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (S : RShape)
+    {a : Ann S.flat} (t : Term σ Γ S.flat a) (Φ : WFF σ (O.view.insert (.bnd d) S.ty) (d + 1)) :
+    WFF σ Γ d :=
+  O.retSH hS S [] (Or.inl rfl) .nil t .nil Φ
+
+/-- Two returning possibilities with named back witnesses along a leg agree when their parts
+    do. -/
+theorem retSH_congr {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (S : RShape)
+    (Zs : List VarType) (hZs : VarType.HomeOk Zs) {ws ws' : HomeWs σ O.view Zs}
+    {a a' : Ann S.flat} {t : Term σ Γ S.flat a} {t' : Term σ Γ S.flat a'}
+    {us us' : HomeTms σ Γ Zs} {Φ Φ' : WFF σ (O.view.insert (.bnd d) S.ty) (d + 1)}
+    (hw : ws = ws') (ht : (⟨a, t⟩ : Σ a, Term σ Γ S.flat a) = ⟨a', t'⟩) (hu : us = us')
+    (hΦ : Φ = Φ') :
+    (O.retSH hS S Zs hZs ws t us Φ : WFF σ Γ d) = O.retSH hS S Zs hZs ws' t' us' Φ' := by
+  cases hw
+  cases ht
+  cases hu
+  cases hΦ
+  rfl
 
 /-- The returning possibility of a necessary object along the leg. -/
 abbrev ret {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType} {a : Ann A}
@@ -1385,6 +1410,16 @@ theorem mono_retS {Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (hS : ModalSys.BStrong =
       (O.mono h).retS hS S (Term.mono h t) (WFF.mono ((le_view_mono h O).insert _ _) Φ)
   | .nec, _, _, _, _ => rfl
   | .pos _ _, _, _, _, _ => rfl
+
+theorem mono_retSH {Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (hS : ModalSys.BStrong = true) :
+    (O : OutLeg Γ) → (S : RShape) → (Zs : List VarType) → (hZs : VarType.HomeOk Zs) →
+    (ws : HomeWs σ O.view Zs) → {a : Ann S.flat} → (t : Term σ Γ S.flat a) →
+    (us : HomeTms σ Γ Zs) → (Φ : WFF σ (O.view.insert (.bnd d) S.ty) (d + 1)) →
+    WFF.mono h (O.retSH hS S Zs hZs ws t us Φ) =
+      (O.mono h).retSH hS S Zs hZs (ws.mono (le_view_mono h O)) (Term.mono h t) (us.mono h)
+        (WFF.mono ((le_view_mono h O).insert _ _) Φ)
+  | .nec, _, _, _, _, _, _, _, _ => rfl
+  | .pos _ _, _, _, _, _, _, _, _, _ => rfl
 
 theorem mono_ret {Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (hS : ModalSys.BStrong = true) :
     (O : OutLeg Γ) → {A : VarType} → {a : Ann A} → (t : Term σ Γ A a) →
@@ -1484,6 +1519,24 @@ theorem subst_retS {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
           ((slotsFrom hΓ O).insert _) ((slotsFrom hΔ (O.subst θ hθ hc)).insert _) Φ)
   | .nec, _, _, _, _ => rfl
   | .pos _ _, _, _, _, _ => rfl
+
+theorem subst_retSH {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
+    (hS : ModalSys.BStrong = true) :
+    (O : OutLeg Γ) → (S : RShape) → (Zs : List VarType) → (hZs : VarType.HomeOk Zs) →
+    (ws : HomeWs σ O.view Zs) → {a : Ann S.flat} → (t : Term σ Γ S.flat a) →
+    (us : HomeTms σ Γ Zs) → (Φ : WFF σ (O.view.insert (.bnd d) S.ty) (d + 1)) →
+    WFF.subst ι θ hθ hc hΓ hΔ (O.retSH hS S Zs hZs ws t us Φ) =
+      (O.subst θ hθ hc).retSH hS S Zs hZs
+        (TmList.subst ι (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) ws)
+        (Term.subst ι θ hθ hc t) (TmList.subst ι θ hθ hc us)
+        (WFF.subst (VarSymb.shiftSlot ι d d')
+          ((O.viewSubst θ hθ hc).under d d' _ (slotsFrom hΔ (O.subst θ hθ hc)).root)
+          (Subst.ok_under (O.viewOk θ hθ hc) _ (slotsFrom hΔ (O.subst θ hθ hc)).root)
+          (Subst.coh_under (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) (slotsFrom hΓ O) _
+            (slotsFrom hΔ (O.subst θ hθ hc)).root)
+          ((slotsFrom hΓ O).insert _) ((slotsFrom hΔ (O.subst θ hθ hc)).insert _) Φ)
+  | .nec, _, _, _, _, _, _, _, _ => rfl
+  | .pos _ _, _, _, _, _, _, _, _, _ => rfl
 
 theorem subst_ret {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
     (hS : ModalSys.BStrong = true) :

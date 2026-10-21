@@ -484,9 +484,9 @@ theorem size_backRetImp {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (
     {a : Ann A} (t : Term σ Γ A a) (c : ℕ) (hc : Γ.RootFresh (.free c)) :
     (WFF.backRetImp hS O hA bd t c hc).size = 3 * A.eqRecSize + 3 := by
   cases O <;>
-  simp only [WFF.backRetImp, OutLeg.ret, OutLeg.retS, OutLeg.mono, WFF.size, WFF.size_mono,
-    WFF.backRetBody, WFF.size_eqRec, RShape.flat, NShape.flat, VarType.compsFlat,
-    VarType.homeFlat, VarType.eqRecSize] <;> omega
+  simp only [WFF.backRetImp, OutLeg.ret, OutLeg.retS, OutLeg.retSH, OutLeg.mono, WFF.size,
+    WFF.size_mono, WFF.backRetBody, WFF.size_eqRec, RShape.flat, NShape.flat, VarType.compsFlat,
+    VarType.eqRecSize] <;> omega
 
 omit [ModalSys.NoFour] in
 theorem size_dia_top {Γ : Ctx} (O : OutLeg Γ) : (O.dia (.top : WFF σ O.view 0)).size ≤ 3 := by

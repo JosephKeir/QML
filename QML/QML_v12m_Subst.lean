@@ -516,9 +516,9 @@ def Rel.subst {σ : Signature} (ι : VarSymb → VarSymb) {Γ Δ : Ctx} (θ : Su
   | _, .eval ρ t => .eval (Rel.subst ι θ hθ hc ρ) (Term.subst ι θ hθ hc t)
 
 /-- Substitution in named back witnesses: each witness's term. -/
-abbrev HomeWs.subst {σ : Signature} (ι : VarSymb → VarSymb) {Γ Δ : Ctx} (θ : Subst σ Δ)
-    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) {Zs : List VarType} (ws : HomeWs σ Γ Zs) :
-    HomeWs σ Δ Zs :=
+abbrev TmList.subst {σ : Signature} (ι : VarSymb → VarSymb) {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) {F : VarType → VarType} {Zs : List VarType}
+    (ws : TmList σ Γ F Zs) : TmList σ Δ F Zs :=
   ws.map fun p => ⟨_, Term.subst ι θ hθ hc p⟩
 
 /-- ⭐Substitution in formulas. -/
@@ -555,18 +555,18 @@ def WFF.subst {σ : Signature} : (ι : VarSymb → VarSymb) → {Γ Δ : Ctx} �
       .here hT (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
   | ι, _, _, _, _, θ, hθ, hc, _, _, .back hB L s t =>
       .back hB L (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
-  | ι, _, _, d, d', θ, hθ, hc, hΓ, hΔ, .retSH hB S Zs hZs ws t Φ =>
-      .retSH hB S Zs hZs (HomeWs.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) ws)
-        (Term.subst ι θ hθ hc t)
+  | ι, _, _, d, d', θ, hθ, hc, hΓ, hΔ, .retSH hB S Zs hZs ws t cs Φ =>
+      .retSH hB S Zs hZs (TmList.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) ws)
+        (Term.subst ι θ hθ hc t) (TmList.subst ι θ hθ hc cs)
         (WFF.subst (VarSymb.shiftSlot ι d d') (θ.box.under d d' _ hΔ.boxIn.root)
           (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
           (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn _ hΔ.boxIn.root)
           (hΓ.boxIn.insert _) (hΔ.boxIn.insert _) Φ)
-  | ι, _, _, d, d', θ, hθ, hc, hΓ, hΔ, .retxSH hB y hy S Zs hZs ws t Φ =>
+  | ι, _, _, d, d', θ, hθ, hc, hΓ, hΔ, .retxSH hB y hy S Zs hZs ws t cs Φ =>
       have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
       .retxSH hB (ι y) (hy.elim fun _ hY => SubE.ref_witness (Subst.okRef_at hθ hY) hw) S Zs hZs
-        (HomeWs.subst ι (θ.dia y (ι y)) (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) ws)
-        (Term.subst ι θ hθ hc t)
+        (TmList.subst ι (θ.dia y (ι y)) (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) ws)
+        (Term.subst ι θ hθ hc t) (TmList.subst ι θ hθ hc cs)
         (WFF.subst (VarSymb.shiftSlot ι d d') ((θ.dia y (ι y)).under d d' _ (hΔ.diaIn (ι y)).root)
           (Subst.ok_under (Subst.ok_dia hθ hy hw) _ (hΔ.diaIn (ι y)).root)
           (Subst.coh_under (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) (hΓ.diaIn y) _

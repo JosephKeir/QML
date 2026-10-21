@@ -92,13 +92,14 @@ theorem WFF.subst_ren {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ :
   | _, _, _, _, hle, θ, hθ, hc, _, _, hid, .back hB L s t =>
       WFF.back_congr hB L (Term.subst_ren hle θ hθ hc hid s)
         (Term.subst_ren hle θ hθ hc hid t)
-  | _, _, _, _, hle, θ, hθ, hc, hΓ, hΔ, hid, .retSH hB S Zs hZs ws t Φ =>
-      WFF.retSH_congr hB S Zs hZs (HomeWs.map_congr (fun p => Term.subst_ren hle.boxIn θ.box
+  | _, _, _, _, hle, θ, hθ, hc, hΓ, hΔ, hid, .retSH hB S Zs hZs ws t cs Φ =>
+      WFF.retSH_congr hB S Zs hZs (TmList.map_congr (fun p => Term.subst_ren hle.boxIn θ.box
           (Subst.ok_box hθ) (Subst.coh_box hθ hc) (Subst.ren_box hid) p) ws)
         (Term.subst_ren hle θ hθ hc hid t)
+        (TmList.map_congr (fun p => Term.subst_ren hle θ hθ hc hid p) cs)
         (WFF.subst_ren (hle.boxIn.insert _ _) _ _ _ _ _
           (Subst.ren_under (Subst.ren_box hid) _ hΔ.boxIn.root) Φ)
-  | ι, Γ, Δ, d, hle, θ, hθ, hc, hΓ, hΔ, hid, .retxSH hB y hy S Zs hZs ws t Φ => by
+  | ι, Γ, Δ, d, hle, θ, hθ, hc, hΓ, hΔ, hid, .retxSH hB y hy S Zs hZs ws t cs Φ => by
       have key : ∀ (z : VarSymb) (_hz : y = z) (P : ∃ Y, Δ.ref z = some (.VTypeDia Y))
           (hΔz : (Δ.diaIn z).SlotsFrom d)
           (p₀ : Subst.Ok (Γ.diaIn y) (θ.dia y z)) (q₀ : Subst.Coh ι (Γ.diaIn y) (θ.dia y z))
@@ -106,16 +107,17 @@ theorem WFF.subst_ren {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ :
             ((θ.dia y z).under d d _ hΔz.root))
           (q : Subst.Coh (VarSymb.shiftSlot ι d d) ((Γ.diaIn y).insert (.bnd d) S.ty)
             ((θ.dia y z).under d d _ hΔz.root)),
-          WFF.retxSH hB z P S Zs hZs (HomeWs.subst ι (θ.dia y z) p₀ q₀ ws)
-              (Term.subst ι θ hθ hc t)
+          WFF.retxSH hB z P S Zs hZs (TmList.subst ι (θ.dia y z) p₀ q₀ ws)
+              (Term.subst ι θ hθ hc t) (TmList.subst ι θ hθ hc cs)
               (WFF.subst (VarSymb.shiftSlot ι d d) ((θ.dia y z).under d d _ hΔz.root) p q
                 ((hΓ.diaIn y).insert _) (hΔz.insert _) Φ) =
-            WFF.mono hle (WFF.retxSH hB y hy S Zs hZs ws t Φ) := by
+            WFF.mono hle (WFF.retxSH hB y hy S Zs hZs ws t cs Φ) := by
         intro z hz P hΔz p₀ q₀ p q
         subst hz
-        exact WFF.retxSH_congr hB y _ S Zs hZs (HomeWs.map_congr (fun p' =>
+        exact WFF.retxSH_congr hB y _ S Zs hZs (TmList.map_congr (fun p' =>
             Term.subst_ren (hle.diaIn y) (θ.dia y y) p₀ q₀ (Subst.ren_dia hid y) p') ws)
           (Term.subst_ren hle θ hθ hc hid t)
+          (TmList.map_congr (fun p' => Term.subst_ren hle θ hθ hc hid p') cs)
           (WFF.subst_ren ((hle.diaIn y).insert _ _) _ p q _ _
             (Subst.ren_under (Subst.ren_dia hid y) _ hΔz.root) Φ)
       exact key (ι y) (Subst.idx_ren hc hid hy).symm _ (hΔ.diaIn _) _ _ _ _

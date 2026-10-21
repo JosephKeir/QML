@@ -12,7 +12,7 @@ package.  Design detail stays in `v12-modal-extensions.md` (per axiom) and `v12-
 | K, T (weak, strong), D (weak, strong), 4 (weak), any combination without B | ✓ | ✓ (+ strong completeness, compactness) | the tree (`Canon.*`) |
 | weak B with any of T, D (both strengths), without 4 (`NoFour`) | ✓ | ✓ (+ strong completeness, compactness; every presented context) | the network (`BArrow.*`) |
 | strong B, rows 1–2 (carriers `□□A`, `◇_y□A`), with T and D in either strength, 4 off | ✓ | ✓ (+ strong completeness, compactness; every presented context; T added 2026-10-20, `v12-modal-extensions.md` §11.21) | the network, strong chain (`bdataS`) |
-| strong B, rows 3–4 (carriers `□◇A`, `◇◇A`) | not yet stated | — (scoped in §11.23: decisions D1–D3, then paper checks P1–P2) | — |
+| strong B, rows 3–4 (carriers `□◇A`, `◇◇A`) | not yet stated | — (§11.23: decided, paper-checked; row 3 under way: flag `BStrongW`, two-leg `Back`, named back witnesses in the returning possibility and its rules (stages 1–2); next the row-3 counit rules (stage 3), then the network) | — |
 | B with 4, S5 | ✓ | **open** | — |
 | 5, 4's open maps | not yet stated | — | — |
 

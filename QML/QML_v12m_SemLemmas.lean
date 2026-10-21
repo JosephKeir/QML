@@ -173,30 +173,76 @@ theorem relSat_mono {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env 
       rw [interp_mono hag t]
       exact relSat_mono hag ρ _
 
-/-- ⭐Named back witnesses moved by a map that keeps each one's value come home alike: every
-    operation on formulas (weakening, substitution, collapsing, shifting) acts on them so. -/
-theorem comesBackH_map {V V' : Ctx} {v w : M.frame.W} {env : M.Env V v} {env' : M.Env V' v}
-    (S : RShape) (e : M.frame.Dom S.ty v) (r : M.frame.R v w)
+/-- ⭐Named back witnesses, and what they come back as, moved by maps that keep each term's value
+    come home alike: every operation on formulas (weakening, substitution, collapsing, shifting)
+    acts on them so. -/
+theorem comesBackH_map {V V' Γ Γ' : Ctx} {v w : M.frame.W} {envF : M.Env V v}
+    {envF' : M.Env V' v} {envH : M.Env Γ w} {envH' : M.Env Γ' w}
+    (S : RShape) (e : M.frame.Dom S.ty v) (r : M.frame.R v w) (o : M.frame.Dom S.flat w)
     {f : ∀ {Z : VarType} {a : Ann (.VTypeDia Z)}, Term σ V (.VTypeDia Z) a →
       Σ b, Term σ V' (.VTypeDia Z) b}
     (hf : ∀ {Z : VarType} {a : Ann (.VTypeDia Z)} (p : Term σ V (.VTypeDia Z) a),
-      interp env' (f p).2 = interp env p) :
-    {Zs : List VarType} → (ws : HomeWs σ V Zs) → (o : M.frame.Dom (S.flat.homeFlat Zs) w) →
-    (M.ComesBackH S env' e r (ws.map f) o ↔ M.ComesBackH S env e r ws o)
-  | [], .nil, _ => Iff.rfl
-  | _ :: _, .cons p ps, o => by
-      refine and_congr (comesBackH_map S e r hf ps o.1) ?_
-      change (∃ hm : _ ∈ (M.posEval (interp env' (f p).2)).1, _) ↔
-        ∃ hm : _ ∈ (M.posEval (interp env p)).1, _
-      rw [hf p]
+      interp envF' (f p).2 = interp envF p)
+    {g : ∀ {Z : VarType} {a : Ann (id Z)}, Term σ Γ (id Z) a → Σ b, Term σ Γ' (id Z) b}
+    (hg : ∀ {Z : VarType} {a : Ann (id Z)} (c : Term σ Γ (id Z) a),
+      interp envH' (g c).2 = interp envH c) :
+    {Zs : List VarType} → (ws : HomeWs σ V Zs) → (cs : HomeTms σ Γ Zs) →
+    (M.ComesBackH S envF' envH' e r o (ws.map f) (cs.map g) ↔ M.ComesBackH S envF envH e r o ws cs)
+  | [], .nil, .nil => Iff.rfl
+  | _ :: _, .cons p ps, .cons c cs => by
+      refine and_congr (comesBackH_map S e r o hf hg ps cs) ?_
+      change (∃ hm : _ ∈ (M.posEval (interp envF' (f p).2)).1, M.Ind _ (interp envH' (g c).2)) ↔
+        ∃ hm : _ ∈ (M.posEval (interp envF p)).1, M.Ind _ (interp envH c)
+      rw [hf p, hg c]
 
 /-- Named back witnesses come home alike, weakened. -/
-theorem comesBackH_mono {V V' : Ctx} {h : V.Le V'} {v w : M.frame.W} {env : M.Env V v}
-    {env' : M.Env V' v} (hag : Env.Agree h env env') (S : RShape) (e : M.frame.Dom S.ty v)
-    (r : M.frame.R v w) {Zs : List VarType} (ws : HomeWs σ V Zs)
-    (o : M.frame.Dom (S.flat.homeFlat Zs) w) :
-    M.ComesBackH S env' e r (ws.mono h) o ↔ M.ComesBackH S env e r ws o :=
-  comesBackH_map S e r (fun p => interp_mono hag p) ws o
+theorem comesBackH_mono {V V' Γ Γ' : Ctx} {h : V.Le V'} {h' : Γ.Le Γ'} {v w : M.frame.W}
+    {envF : M.Env V v} {envF' : M.Env V' v} {envH : M.Env Γ w} {envH' : M.Env Γ' w}
+    (hag : Env.Agree h envF envF') (hag' : Env.Agree h' envH envH') (S : RShape)
+    (e : M.frame.Dom S.ty v) (r : M.frame.R v w) (o : M.frame.Dom S.flat w)
+    {Zs : List VarType} (ws : HomeWs σ V Zs) (cs : HomeTms σ Γ Zs) :
+    M.ComesBackH S envF' envH' e r o (ws.mono h) (cs.mono h') ↔
+      M.ComesBackH S envF envH e r o ws cs :=
+  comesBackH_map S e r o (fun p => interp_mono hag p) (fun c => interp_mono hag' c) ws cs
+
+/-- The named back witnesses' part, read through maps that keep values. -/
+theorem homeBack_map {V V' Γ Γ' : Ctx} {v w : M.frame.W} {envF : M.Env V v}
+    {envF' : M.Env V' v} {envH : M.Env Γ w} {envH' : M.Env Γ' w} (r : M.frame.R v w)
+    {f : ∀ {Z : VarType} {a : Ann (.VTypeDia Z)}, Term σ V (.VTypeDia Z) a →
+      Σ b, Term σ V' (.VTypeDia Z) b}
+    (hf : ∀ {Z : VarType} {a : Ann (.VTypeDia Z)} (p : Term σ V (.VTypeDia Z) a),
+      interp envF' (f p).2 = interp envF p)
+    {g : ∀ {Z : VarType} {a : Ann (id Z)}, Term σ Γ (id Z) a → Σ b, Term σ Γ' (id Z) b}
+    (hg : ∀ {Z : VarType} {a : Ann (id Z)} (c : Term σ Γ (id Z) a),
+      interp envH' (g c).2 = interp envH c) :
+    {Zs : List VarType} → (ws : HomeWs σ V Zs) → (cs : HomeTms σ Γ Zs) →
+    (M.HomeBack envF' envH' r (ws.map f) (cs.map g) ↔ M.HomeBack envF envH r ws cs)
+  | [], .nil, .nil => Iff.rfl
+  | _ :: _, .cons p ps, .cons c cs => by
+      refine and_congr (homeBack_map r hf hg ps cs) ?_
+      change (∃ hm : _ ∈ (M.posEval (interp envF' (f p).2)).1, M.Ind _ (interp envH' (g c).2)) ↔
+        ∃ hm : _ ∈ (M.posEval (interp envF p)).1, M.Ind _ (interp envH c)
+      rw [hf p, hg c]
+
+/-- The named back witnesses' part, weakened. -/
+theorem homeBack_mono {V V' Γ Γ' : Ctx} {h : V.Le V'} {h' : Γ.Le Γ'} {v w : M.frame.W}
+    {envF : M.Env V v} {envF' : M.Env V' v} {envH : M.Env Γ w} {envH' : M.Env Γ' w}
+    (hag : Env.Agree h envF envF') (hag' : Env.Agree h' envH envH') (r : M.frame.R v w)
+    {Zs : List VarType} (ws : HomeWs σ V Zs) (cs : HomeTms σ Γ Zs) :
+    M.HomeBack envF' envH' r (ws.mono h) (cs.mono h') ↔ M.HomeBack envF envH r ws cs :=
+  homeBack_map r (fun p => interp_mono hag p) (fun c => interp_mono hag' c) ws cs
+
+/-- Coming home with named back witnesses is coming home, plus the witnesses' part. -/
+theorem comesBackH_iff {V Γ : Ctx} {v w : M.frame.W} (envF : M.Env V v) (envH : M.Env Γ w)
+    (S : RShape) (e : M.frame.Dom S.ty v) (r : M.frame.R v w) (o : M.frame.Dom S.flat w) :
+    {Zs : List VarType} → (ws : HomeWs σ V Zs) → (cs : HomeTms σ Γ Zs) →
+    (M.ComesBackH S envF envH e r o ws cs ↔
+      M.ComesBack S e r o ∧ M.HomeBack envF envH r ws cs)
+  | [], .nil, .nil => (and_iff_left trivial).symm
+  | _ :: _, .cons p ps, .cons c cs => by
+      change M.ComesBackH S envF envH e r o ps cs ∧ _ ↔
+        M.ComesBack S e r o ∧ (M.HomeBack envF envH r ps cs ∧ _)
+      rw [comesBackH_iff envF envH S e r o ps cs, and_assoc]
 
 /-- ⭐Satisfaction is unchanged by weakening. -/
 theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} {env : M.Env Γ w}
@@ -243,13 +289,13 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
       change Model.Backs L (interp _ (Term.mono _ s)) (interp _ (Term.mono _ t)) ↔ _
       rw [interp_mono hag s, interp_mono hag t]
       exact Iff.rfl
-  | _, _, _, d, _, _, _, hag, .retSH hB S Zs hZs ws t Φ =>
+  | _, _, _, d, _, _, _, hag, .retSH hB S Zs hZs ws t cs Φ =>
       exists_congr fun a => exists_congr fun e =>
         and_congr (sat_mono (Env.extend_agree (Env.boxPush_agree hag a) (.bnd d) e) Φ)
           (exists_congr fun r => by
             rw [interp_mono hag t]
-            exact comesBackH_mono (Env.boxPush_agree hag a) S e r ws _)
-  | _, _, h, d, _, env, env', hag, .retxSH hB y hy S Zs hZs ws t Φ => by
+            exact comesBackH_mono (Env.boxPush_agree hag a) hag S e r _ ws cs)
+  | _, _, h, d, _, env, env', hag, .retxSH hB y hy S Zs hZs ws t cs Φ => by
       constructor
       · rintro ⟨Y, h', a, e, hsat, hr⟩
         obtain ⟨Y₀, hy₀⟩ := hy
@@ -265,14 +311,14 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
             Φ).mp hsat
         · rw [interp_mono hag t] at hr
           exact (exists_congr fun r => comesBackH_mono
-            (Env.diaPush_agree hag hy₀ ⟨a.1, _⟩ a.2) S e r ws _).mp hr
+            (Env.diaPush_agree hag hy₀ ⟨a.1, _⟩ a.2) hag S e r _ ws cs).mp hr
       · rintro ⟨Y, hr', a, e, hsat, hr⟩
         have href := Env.ref_agree hag y hr'
         refine ⟨Y, h.ref hr', ⟨a.1, by rw [← href]; exact a.2⟩, e,
           (sat_mono (Env.extend_agree (Env.diaPush_agree hag hr' a _) (.bnd d) e) Φ).mpr hsat, ?_⟩
         rw [interp_mono hag t]
         exact (exists_congr fun r => comesBackH_mono
-          (Env.diaPush_agree hag hr' a _) S e r ws _).mpr hr
+          (Env.diaPush_agree hag hr' a _) hag S e r _ ws cs).mpr hr
 
 /-! ## Equality -/
 

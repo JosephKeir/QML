@@ -287,7 +287,7 @@ theorem RetAt.toRetInv {hS : ModalSys.BStrong = true} {tv tw : NodeSt σ}
     refine hw.closed ⟨[_], fun y hy => by rw [List.mem_singleton.mp hy]; exact hr, ⟨?_⟩⟩
     refine Proof.retx_forget_node hS ⟨E, (ctxOf_le_of_suffix ht).ref he⟩ _ _
       (Proof.conv ?_ (Proof.lookup List.mem_cons_self))
-    simp only [OutLeg.ret, OutLeg.retS, OutLeg.lift, WFF.mono_mono]
+    simp only [OutLeg.ret, OutLeg.retS, OutLeg.retSH, OutLeg.lift, WFF.mono_mono]
   · obtain ⟨hs, himgs, ht, himgt, hx, hcx, hinv⟩ := h
     refine ⟨hs, himgs, ht, himgt, fun Φ hΦ => ?_⟩
     have hr := hinv _ (by rw [liftBodyW_repl]; exact hΦ)
@@ -645,7 +645,7 @@ theorem RetAtB.toRetInvB {hS : ModalSys.BStrong = true} {b : Bool} {hb : ModalSy
     refine hw.closed ⟨[_], fun y hy => by rw [List.mem_singleton.mp hy]; exact hr, ⟨?_⟩⟩
     refine Proof.retx_forgetC_node hS ⟨E, (ctxOf_le_of_suffix ht).ref he⟩ _ _ _ _
       (Proof.conv ?_ (Proof.lookup List.mem_cons_self))
-    simp only [OutLeg.retS, OutLeg.lift, WFF.mono_mono]
+    simp only [OutLeg.retS, OutLeg.retSH, OutLeg.lift, WFF.mono_mono]
   · obtain ⟨hs, himgs, ht, himgt, hx, hcx, hinv⟩ := h
     refine ⟨hs, himgs, ht, himgt, fun Φ hΦ => ?_⟩
     have hr := hinv _ (by rw [liftBodyW_repl]; exact hΦ)

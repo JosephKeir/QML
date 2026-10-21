@@ -419,16 +419,25 @@ def ComesBack : (S : RShape) → {v w : M.frame.W} → M.frame.Dom S.ty v → M.
         M.Ind ((M.posEval (e.2 : M.frame.Pos X v)).2 ⟨_, h⟩) o.2
 
 /-- ⭐The object out there **comes back as** `o` along the way home `r`, with **named back
-    witnesses** (docs §11.23): the shape's part as `ComesBack` says, and the way home lies in each
-    witness's extent, its content there `Ind` to the value's component.  With none, `ComesBack`
-    itself. -/
-def ComesBackH (S : RShape) {V : Ctx} {v w : M.frame.W} (env : M.Env V v)
-    (e : M.frame.Dom S.ty v) (r : M.frame.R v w) :
-    {Zs : List VarType} → HomeWs σ V Zs → M.frame.Dom (S.flat.homeFlat Zs) w → Prop
-  | [], .nil, o => ComesBack S e r o
-  | _ :: _, .cons p ps, o => ComesBackH S env e r ps o.1 ∧
-      ∃ h : (⟨w, ⟨r⟩⟩ : M.frame.Acc v) ∈ (M.posEval (interp env p)).1,
-        M.Ind ((M.posEval (interp env p)).2 ⟨_, h⟩) o.2
+    witnesses** `ws` (docs §11.23): the shape's part as `ComesBack` says, and the way home lies in
+    each witness's extent, its content there `Ind` to the matching term of `cs` read here.  With
+    none, `ComesBack` itself. -/
+def ComesBackH (S : RShape) {V Γ : Ctx} {v w : M.frame.W} (envF : M.Env V v) (envH : M.Env Γ w)
+    (e : M.frame.Dom S.ty v) (r : M.frame.R v w) (o : M.frame.Dom S.flat w) :
+    {Zs : List VarType} → HomeWs σ V Zs → HomeTms σ Γ Zs → Prop
+  | [], .nil, .nil => ComesBack S e r o
+  | _ :: _, .cons p ps, .cons c cs => ComesBackH S envF envH e r o ps cs ∧
+      ∃ h : (⟨w, ⟨r⟩⟩ : M.frame.Acc v) ∈ (M.posEval (interp envF p)).1,
+        M.Ind ((M.posEval (interp envF p)).2 ⟨_, h⟩) (interp envH c)
+
+/-- The **named back witnesses' part** of `ComesBackH`: the way home lies in each witness's
+    extent, its content there `Ind` to the matching term of `cs` (`comesBackH_iff`). -/
+def HomeBack {V Γ : Ctx} {v w : M.frame.W} (envF : M.Env V v) (envH : M.Env Γ w)
+    (r : M.frame.R v w) : {Zs : List VarType} → HomeWs σ V Zs → HomeTms σ Γ Zs → Prop
+  | [], .nil, .nil => True
+  | _ :: _, .cons p ps, .cons c cs => HomeBack envF envH r ps cs ∧
+      ∃ h : (⟨w, ⟨r⟩⟩ : M.frame.Acc v) ∈ (M.posEval (interp envF p)).1,
+        M.Ind ((M.posEval (interp envF p)).2 ⟨_, h⟩) (interp envH c)
 
 /-- ⭐Satisfaction. -/
 def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ Γ d → Prop
@@ -447,15 +456,16 @@ def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ
         sat (env.diaPush x h w') φ
   | _, _, _, env, .here hT s t => Realised hT (interp env s) (interp env t)
   | _, _, _, env, .back _ L s t => Backs L (interp env s) (interp env t)
-  | _, d, w, env, @WFF.retSH _ _ _ _ _ S _ _ ws _ t Φ =>
+  | _, d, w, env, @WFF.retSH _ _ _ _ _ S _ _ ws _ t cs Φ =>
       ∃ (a : M.frame.Acc w) (e : M.frame.Dom S.ty a.1),
         sat ((env.boxPush a).extend (.bnd d) e) Φ ∧
-          ∃ r : M.frame.R a.1 w, ComesBackH S (env.boxPush a) e r ws (interp env t)
-  | Γ, d, w, env, @WFF.retxSH _ _ _ _ _ y _ S _ _ ws _ t Φ =>
+          ∃ r : M.frame.R a.1 w, ComesBackH S (env.boxPush a) env e r (interp env t) ws cs
+  | Γ, d, w, env, @WFF.retxSH _ _ _ _ _ y _ S _ _ ws _ t cs Φ =>
       ∃ (Y : VarType) (h : Γ.ref y = some (.VTypeDia Y)) (a : (M.posEval (env.ref y h)).1)
         (e : M.frame.Dom S.ty a.1.1),
         sat ((env.diaPush y h a).extend (.bnd d) e) Φ ∧
-          ∃ r : M.frame.R a.1.1 w, ComesBackH S (env.diaPush y h a) e r ws (interp env t)
+          ∃ r : M.frame.R a.1.1 w,
+            ComesBackH S (env.diaPush y h a) env e r (interp env t) ws cs
 
 end Model
 

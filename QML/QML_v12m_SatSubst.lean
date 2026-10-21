@@ -135,7 +135,7 @@ theorem sat_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (�
         (interp env (Term.subst _ θ hθ hc t)) ↔ _
       rw [interp_subst θ hθ hc hnp env s, interp_subst θ hθ hc hnp env t]
       exact Iff.rfl
-  | _, Γ, _, d, d', θ, hθ, hc, hΓ, hΔ, hnp, _, env, .retSH hB S Zs hZs ws t Φ =>
+  | _, Γ, _, d, d', θ, hθ, hc, hΓ, hΔ, hnp, _, env, .retSH hB S Zs hZs ws t cs Φ =>
       exists_congr fun a => exists_congr fun e =>
         and_congr
           ((sat_subst (θ.box.under d d' _ hΔ.boxIn.root)
@@ -149,10 +149,11 @@ theorem sat_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (�
                 (congrArg (fun en => Env.extend en (.bnd d) e) (substEnv_box θ hθ hnp env a))))))
           (exists_congr fun r => by
             rw [interp_subst θ hθ hc hnp env t]
-            exact comesBackH_map S e r (fun p => (interp_subst θ.box (Subst.ok_box hθ)
+            exact comesBackH_map S e r _ (fun p => (interp_subst θ.box (Subst.ok_box hθ)
               (Subst.coh_box hθ hc) (Ctx.noProjLast_boxIn Γ) (env.boxPush a) p).trans
-              (congrArg (fun en => interp en p) (substEnv_box θ hθ hnp env a))) ws _)
-  | ι, Γ, _, d, d', θ, hθ, hc, hΓ, hΔ, hnp, _, env, .retxSH hB y hy S Zs hZs ws t Φ => by
+              (congrArg (fun en => interp en p) (substEnv_box θ hθ hnp env a)))
+                (fun c => interp_subst θ hθ hc hnp env c) ws cs)
+  | ι, Γ, _, d, d', θ, hθ, hc, hΓ, hΔ, hnp, _, env, .retxSH hB y hy S Zs hZs ws t cs Φ => by
       have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
       have hr₀ := (hΔ.diaIn (ι y)).root
       constructor
@@ -173,11 +174,12 @@ theorem sat_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (�
             ((Ctx.noProjLast_diaIn Γ y).insert (.bnd d) _)
             ((env.diaPush (ι y) hr₁ a).extend (.bnd d') e) Φ).mp hsat
         · rw [interp_subst θ hθ hc hnp env t] at hr
-          exact (exists_congr fun r => comesBackH_map S e r (fun p =>
+          exact (exists_congr fun r => comesBackH_map S e r _ (fun p =>
             (interp_subst (θ.dia y (ι y)) (Subst.ok_dia hθ ⟨X, hrX⟩ hw)
               (Subst.coh_dia hθ hc ⟨X, hrX⟩) (Ctx.noProjLast_diaIn Γ y)
               (env.diaPush (ι y) hr₁ a) p).trans (congrArg (fun en => interp en p)
-              (substEnv_dia θ hθ hnp env ⟨X, hrX⟩ hrX hr₁ hw a (hE ▸ a.2)))) ws _).mp hr
+              (substEnv_dia θ hθ hnp env ⟨X, hrX⟩ hrX hr₁ hw a (hE ▸ a.2))))
+                (fun c => interp_subst θ hθ hc hnp env c) ws cs).mp hr
       · rintro ⟨X, hrX, a, e, hsat, hr⟩
         obtain ⟨Y, hr₁⟩ := SubE.ref_witness (Subst.okRef_at hθ hrX) hw
         have hE : (M.posEval (env.ref (ι y) hr₁)).1 =
@@ -195,11 +197,12 @@ theorem sat_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (�
             substEnv_dia θ hθ hnp env hy hrX hr₁ hw ⟨a.1, hE.symm ▸ a.2⟩ a.2]
           exact hsat
         · rw [interp_subst θ hθ hc hnp env t]
-          exact (exists_congr fun r => comesBackH_map S e r (fun p =>
+          exact (exists_congr fun r => comesBackH_map S e r _ (fun p =>
             (interp_subst (θ.dia y (ι y)) (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy)
               (Ctx.noProjLast_diaIn Γ y) (env.diaPush (ι y) hr₁ ⟨a.1, hE.symm ▸ a.2⟩) p).trans
               (congrArg (fun en => interp en p)
-              (substEnv_dia θ hθ hnp env hy hrX hr₁ hw ⟨a.1, hE.symm ▸ a.2⟩ a.2))) ws _).mpr hr
+              (substEnv_dia θ hθ hnp env hy hrX hr₁ hw ⟨a.1, hE.symm ▸ a.2⟩ a.2)))
+                (fun c => interp_subst θ hθ hc hnp env c) ws cs).mpr hr
 
 end Model
 

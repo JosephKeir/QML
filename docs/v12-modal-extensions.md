@@ -8564,26 +8564,54 @@ interchangeability needs.
 **Verdict.**  The content counit is stated, sound, and needs no new term machinery.  The design of
 stages 1–3 stands.  Stage 3 is these two rules (and their T own-arrow forms later), not three.
 
-#### Stage 1 built: named back witnesses in the syntax and semantics *(2026-10-22)*
+#### Stage 1 built: named back witnesses in the syntax and semantics *(2026-10-21)*
 
 * **Witnesses are terms, not addresses.**  The first attempt (a list of `◇`-addresses) broke
   under substitution: an address `z : ◇Z` can be sent to `diatm y u`, whose witness and content
   type differ.  So a named back witness is a possible-object term of the out view, every one of
   which is `diatm z w`: extent `z`'s, content `w`.  This matches `Back₃`'s carrier `(z, u)`.
-* `HomeWs σ V Zs`: a list of possible-object terms of `V`, indexed by their content types, with
-  one generic `HomeWs.map` (and `map_congr`, `map_map`, `map_id`).  `mono`, `subst`, `collapse`
-  and `shift` act on it through `map`.  `VarType.homeFlat T Zs` is the value type (`T` at `[]`),
-  and `VarType.HomeOk Zs` is the gate (`Zs = []` or `BStrongW`).
-* Constructors `WFF.retSH`/`retxSH` carry `Zs`, the gate and the witnesses.  `WFF.retS`/`retxS`
-  are `@[match_pattern]` abbreviations at `[]`, so every existing formula and rule is unchanged.
+* **The contents are a list of their own.**  A first version folded the contents into the value
+  (`homeFlat`); the stage-2 rules would then have had to take values apart.  Now a generic
+  `TmList σ V F Zs` (with `map`, `map_congr`, `map_map`, `map_id`, `mono`) gives both
+  `HomeWs σ V Zs` (witnesses, type `◇Z`, in the out view) and `HomeTms σ Γ Zs` (contents, type
+  `Z`, here).  `mono`, `subst`, `collapse`, `shift` and the encoding act through `map`.
+  `VarType.HomeOk Zs` is the gate (`Zs = []` or `BStrongW`).
+* Constructors `WFF.retSH`/`retxSH` carry `Zs`, the gate, the witnesses `ws`, the value `t` and
+  the contents `cs`.  `WFF.retS`/`retxS` are `@[match_pattern]` abbreviations at `[]`, so every
+  existing formula and rule is unchanged.
 * Semantics: `Model.ComesBackH`.  At `[]` it is definitionally `ComesBack`; otherwise, in
-  addition, the way home lies in each witness's extent, its content there `Ind` to the value's
-  component.
+  addition, the way home lies in each witness's extent, its content there `Ind` to the matching
+  term of `cs`.
 * Every recursion over formulas takes the general case.  The proofs about them (substitution
   laws, collapse/shift commutation, `sat_mono`, `sat_subst`, `sat_collapse`, `sat_shift`, the
-  encoding) do the witnesses by `map_map`/`map_congr` with the term-level lemma, and
+  encoding) do the lists by `map_map`/`map_congr` with the term-level lemma, and
   `comesBackH_map` for satisfaction.  The B truth lemma dismisses non-empty lists by
   `NoFour.absurdW`.
 
-Next: stage 2, the rules carrying the witnesses; then stage 3's two rules, with the witness taken
-as `diatm z w` for any `w` in `z`'s view.
+#### Stage 2 built: the rules carry the witnesses *(2026-10-21)*
+
+* **Along a leg.**  `OutLeg.retSH` is the returning possibility with witnesses along any leg, and
+  `OutLeg.retS` is now an abbreviation of it at `[]` (so `O.retS ⋯` *is* `O.retSH ⋯ [] ⋯`; the
+  old rules are definitional instances of the new).  `subst_retSH`, `mono_retSH`, `retSH_congr`.
+* **Semantics split.**  `Model.HomeBack envF envH r ws cs` is the witnesses' part alone, and
+  `comesBackH_iff : ComesBackH ⋯ ↔ ComesBack ⋯ ∧ HomeBack ⋯`.  `OutLeg.sat_retSH` reads a
+  returning possibility as before plus `HomeBack` along the same way home.  A rule that keeps the
+  arrow out and the way home therefore carries `HomeBack` through untouched; that is the whole of
+  each soundness proof's extra work.  `homeBack_map`/`homeBack_mono`, `sat_retSH_agree` (the
+  weakening form the fresh-value rules use).
+* **New rule: `Proof.ret_forgetW`** drops the newest witness (`HomeOk.tail` keeps the gate).
+  Rules that only *read* a returning possibility (counits, `ret_diaS`, own-arrow and bridging
+  rules) are not generalised: forget the witnesses first.  Only dropping the head is primitive;
+  dropping all of them is iteration.  An exchange rule, if ever needed, is separate.
+* **Generalised constructors**, each with its old name kept as a derived rule at `[]`:
+  `ret_extSH`, `ret_compSH` (fresh value: witnesses and contents weakened past the new root),
+  `ret_unitCH`, `ret_unitWCH`, `ret_unitDCH`, `ret_unitWDCH`, `ret_monoSH`, `ret_mapH`,
+  `ret_mapDH`, `ret_eqSH`.  Their soundness lemmas (`sat_ret_*`) take the witnesses implicitly,
+  so every existing caller is unchanged.
+* **Substitution.**  Each `Proof.subst` case maps the witnesses by the leg's view substitution
+  and the contents by `θ`.  The fresh-value rules need `OutLeg.subst_retSH_renameTm`; its
+  witness part is the term-level chain `subst_mono`, `subst_congr` (via `sim_renameTm_mono`
+  boxed or along the witness), `sim_box_mono`/`sim_dia_mono`, `mono_subst`, mapped over the list.
+
+Next: stage 3's two rules (`ret_homeN`, `ret_counitN`), with the witness taken as `diatm z w` for
+any `w` in `z`'s view.
