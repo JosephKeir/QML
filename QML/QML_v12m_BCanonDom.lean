@@ -79,6 +79,8 @@ structure BData [ModalSys.NoFour] (σ : Signature) where
   img : W → W → ℕ → ℕ
   stg : W → W → ℕ → ℕ
   imgOk : ∀ {s t}, R s t → ∀ i, ImgOk ((w s).l i) ((w t).ctx (stg s t i)) (img s t)
+  /-- A later stage is sent along an arrow to a later stage. -/
+  stg_mono : ∀ {s t}, R s t → ∀ {i i' : ℕ}, i ≤ i' → stg s t i ≤ stg s t i'
   tr : ∀ {s t} (h : R s t) (i : ℕ) (ψ : WFF σ ((w s).ctx i).boxIn 0), .box ψ ∈ (w s).M i →
     WFF.subst (arrowIdx (img s t)) (arrowS σ _ (img s t)) (ok_arrowS (imgOk h i))
       (coh_arrowS (imgOk h i)) Ctx.NoSlots.slots Ctx.NoSlots.slots ψ ∈ (w t).M (stg s t i)
@@ -122,6 +124,11 @@ structure BData [ModalSys.NoFour] (σ : Signature) where
       determined by the arrows it labels. -/
   sep : ∀ {s k y y' Y}, lb s k y = some Y →
     (∀ t, (∃ X, lb s t y = some X) ↔ (∃ X, lb s t y' = some X)) → y = y'
+  /-- ⭐Rows 3–4 (docs §11.23): **every arrow is labelled**, by a witness declared at some stage
+      — what `Model.posBack_exists` reads. -/
+  lab : ModalSys.BStrong = true → ModalSys.BStrongW = true → ∀ {s t}, R s t →
+    ∃ (x : VarSymb) (X : VarType), lb s t x = some X ∧
+      ∃ i, ((w s).ctx i).ref x = some (.VTypeDia X)
   /-- ⭐Strong B, row 1: a `Back` atom's carrier, read out along an arrow and home again, is
       interchangeable with the atom's value (`Att.back`, from the network's invariants). -/
   backRel : ∀ (hS : ModalSys.BStrong = true) {s : W} {i : ℕ} {A : VarType} {a₀ : Ann A}

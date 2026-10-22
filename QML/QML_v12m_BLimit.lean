@@ -452,6 +452,17 @@ theorem ltrX {s t : LW C} {x : VarSymb} {X : VarType} (hk : lkd C s t = some (x,
     exact TransferX.apply htr hsuf hag (limgOk C (lkdR hk) i) hx _ ψ hψ'
 
 
+/-- The stage an edge commits a stage at grows with it. -/
+theorem lstg_monotone {s t : LW C} (h : LR C s t) {i i' : ℕ} (hii : i ≤ i') :
+    lstg C s t i ≤ lstg C s t i' := by
+  classical
+  have hP := lstg_spec C h i'
+  have hP' : StgP C s t i (lstg C s t i') :=
+    ⟨by have := hP.1; omega, le_trans (C.lang_suffix (by omega)
+      (live_birth C s.2 (Nat.le_add_right _ i))).length_le hP.2⟩
+  rw [lstg, dif_pos ⟨_, hP'⟩]
+  exact Nat.find_min' _ hP'
+
 /-! ## Existence -/
 
 /-- ⭐A failing necessity has a child where its translation fails. -/
@@ -641,6 +652,7 @@ noncomputable def bdata (hc : Children C.net) (hW : ModalSys.BStrong = false) : 
   img := limg C
   stg := lstg C
   imgOk h i := limgOk C h i
+  stg_mono h _ _ hii := lstg_monotone C h hii
   tr h i ψ hψ := ltr C h i ψ hψ
   ex s i ψ hψ := lex C hc s i ψ hψ
   lb := lbOfKd (lkd C)
@@ -654,6 +666,7 @@ noncomputable def bdata (hc : Children C.net) (hW : ModalSys.BStrong = false) : 
   exX s i x X hx ψ hψ := lexX C hc s i x X hx ψ hψ
   unl y h := let ⟨t', hR, hk⟩ := lunl C hc h; ⟨t', hR, lbOfKd_none hk y⟩
   sep hk h := lbOfKd_sep hk h
+  lab hS := absurd (hW.symm.trans hS) (by decide)
   backRel hS := absurd (hW.symm.trans hS) (by decide)
   backRelX hS := absurd (hW.symm.trans hS) (by decide)
 

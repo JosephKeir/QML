@@ -697,6 +697,90 @@ theorem posRet_exists_canon {A : VarType} {s : B.W} (hT : ModalSys.T = true)
       fromDom_toDom]
   · exact (rden_lift hi t).trans ht
 
+/-! ## Rows 3–4: every object is the content of a possible object along the way back -/
+
+/-- A denoting term depends on its term only as a dependent pair. -/
+theorem dterm_congr {s : B.W} {i : ℕ} {A : VarType} {a a' : Ann A}
+    {t : Term σ ((B.w s).ctx i) A a} {t' : Term σ ((B.w s).ctx i) A a'}
+    (h : (⟨a, t⟩ : Σ b, Term σ ((B.w s).ctx i) A b) = ⟨a', t'⟩) :
+    (⟨i, a, t⟩ : Canon.DTerm (B.w s).sys (B.w s).T A) = ⟨i, a', t'⟩ := by
+  cases h
+  rfl
+
+/-- ⭐⭐**Rows 3–4: along any arrow, every object at its target is, up to `Ind`, the content of a
+    possible object at its source** (`Model.posBack_exists`; docs §11.23, paper check 2).  Along
+    the world's own arrow it is strong T's `posRet_exists` (`ModalSys.WCoh`).  Along a network
+    arrow `v → w`: the object is a term `t` at `w`; `w` has a carrier `c` with `Back(c, t)`
+    (`Proof.backEx`, Henkin witnessing); the arrow is labelled by a witness `ω` (`BData.lab`); the
+    possible object `◇_ω (c's image).box` has the arrow in its extent, and its content there is
+    `c`'s round trip, which is `t`'s class (`BData.backRel`). -/
+theorem posBack_exists_canon [ModalSys.WCoh] (hS : ModalSys.BStrong = true)
+    (hW : ModalSys.BStrongW = true) {A : VarType} {w v : B.W} (b : B.frame.R v w)
+    (o : B.frame.Dom A w) :
+    ∃ (p : B.frame.Pos A v) (hm : (⟨w, ⟨b⟩⟩ : B.frame.Acc v) ∈ (B.posEval p).1),
+      B.Ind ((B.posEval p).2 ⟨⟨w, ⟨b⟩⟩, hm⟩) o := by
+  rcases b with hR | ⟨hT, rfl⟩
+  swap
+  · exact B.posRet_exists_canon hT (ModalSys.WCoh.strongT hW hT) o
+  -- the object, and its carrier at `w`
+  obtain ⟨i, a, t, ht⟩ := B.definable_fromDom A w o
+  have hdia : (OutLeg.nec : OutLeg ((B.w w).ctx i)).dia (.top : WFF σ _ 0) ∈ (B.w w).M i := by
+    refine ((B.w w).mcs i).neg_mem_iff.mpr fun hbox => ?_
+    exact ((B.w v).mcs _).neg_mem_iff.mp (B.tr (B.symm hR) i _ hbox) ((B.w v).mcs _).top_mem
+  have hex : WFF.backEx hS t ∈ (B.w w).M i :=
+    BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hdia)
+      ⟨Proof.backEx hS t _ (ctxOf_fresh le_rfl) (Proof.lookup List.mem_cons_self)⟩
+  obtain ⟨j, hij, c, hc, hm⟩ := (B.w w).exW hex
+  have hm' : WFF.back hS .nec (Term.eta (.root (.free c)) (.VTypeBox (.VTypeBox A)) hc)
+      (Term.mono ((B.w w).le hij) t) ∈ (B.w w).M j := by
+    convert hm using 1
+    refine Eq.symm ((congrArg (WFF.instantiate _ _) ?_).trans
+      (WFF.instantiate_backAt_slot hS (Term.mono ((B.w w).le hij) t) _))
+    refine WFF.back_congr' hS .nec (Term.mono_eta _ _ _ _) ?_
+    simp only [Term.mono_mono]
+  have hrel := B.backRel hS
+    (Term.eta ((VarSymb.root (.free c)).inner).inner A (Ctx.ref_inner (Ctx.ref_inner hc)))
+    (Term.mono ((B.w w).le hij) t) hm' (B.symm hR)
+  -- the label of the arrow, and the possible object
+  obtain ⟨ω, Ω, hlb, i₀, hω⟩ := B.lab hS hW hR
+  set K := max i₀ (B.stg w v j) with hK
+  have hK₀ : B.stg w v j ≤ K := le_max_right _ _
+  have hωK : ((B.w v).ctx K).ref ω = some (.VTypeDia Ω) := ((B.w v).le (le_max_left _ _)).ref hω
+  have hstg := B.stg_mono hR hK₀
+  have hmem : (⟨w, ⟨Or.inl hR⟩⟩ : B.frame.Acc v) ∈ B.extent v ω := Or.inl ⟨Ω, hlb⟩
+  -- the carrier's image at `v`, and the possible object's body
+  set u₀ : Term σ ((B.w v).ctx (B.stg w v j)).boxIn A _ :=
+    Term.subst (arrowIdx (B.img w v)) (arrowS σ _ (B.img w v)).box
+      (Subst.ok_box (ok_arrowS (B.imgOk (B.symm hR) j)))
+      (Subst.coh_box (ok_arrowS (B.imgOk (B.symm hR) j)) (coh_arrowS (B.imgOk (B.symm hR) j)))
+      (Term.eta ((VarSymb.root (.free c)).inner).inner A (Ctx.ref_inner (Ctx.ref_inner hc)))
+    with hu₀
+  have hL : ((B.w v).ctx (B.stg w v j)).boxIn.Le (((B.w v).ctx K).diaIn ω) :=
+    ((B.w v).le hK₀).boxIn.trans (Ctx.le_boxIn_diaIn _ ω)
+  -- its content along the arrow is the carrier's round trip, lifted
+  have e : (⟨_, Term.subst (arrowXIdx (B.img v w) ω (B.cx v w ω))
+        (arrowXS σ ((B.w w).ctx (B.stg v w K)) (B.img v w) ω (B.cx v w ω))
+        (B.arXOk ⟨Ω, hlb⟩ K ⟨Ω, hωK⟩) (B.arXCoh ⟨Ω, hlb⟩ K ⟨Ω, hωK⟩) (Term.mono hL u₀)⟩ :
+        Σ b, Term σ ((B.w w).ctx (B.stg v w K)) A b) =
+      ⟨_, Term.mono ((B.w w).le hstg) (Term.subst (arrowIdx (B.img v w))
+        (arrowS σ ((B.w w).ctx (B.stg v w (B.stg w v j))) (B.img v w))
+        (ok_arrowS (B.imgOk hR (B.stg w v j))) (coh_arrowS (B.imgOk hR (B.stg w v j))) u₀)⟩ := by
+    rw [Term.subst_mono, Term.mono_subst]
+    refine Term.subst_congr _ _ _ _ _ _ ?_ u₀
+    rw [arrowS_mono]
+    exact sim_arrowXS_arrowS (fun _ _ => rfl)
+  refine ⟨⟨B.rden v K (Ctx.Le.refl _) (Term.diatm ω ⟨Ω, hωK⟩ (Term.mono hL u₀)),
+      definable_rden _ _⟩, hmem,
+    ⟨B.stg v w K, _, Term.subst (arrowXIdx (B.img v w) ω (B.cx v w ω))
+      (arrowXS σ _ (B.img v w) ω (B.cx v w ω)) (B.arXOk ⟨Ω, hlb⟩ K ⟨Ω, hωK⟩)
+      (B.arXCoh ⟨Ω, hlb⟩ K ⟨Ω, hωK⟩) (Term.mono hL u₀)⟩, ⟨i, a, t⟩, ?_, ht, ?_⟩
+  · change _ = B.fromDom A w (B.toDom A w _ _)
+    rw [fromDom_toDom]
+    exact (rden_diatm_net _ _ _ ⟨⟨w, ⟨Or.inl hR⟩⟩, hmem⟩ ⟨Ω, hlb⟩).symm
+  · rw [B.dterm_congr e]
+    exact ((Canon.DTerm.rel_lift _ hstg).symm.trans hrel).trans
+      (Canon.DTerm.rel_lift (⟨i, a, t⟩ : Canon.DTerm (B.w w).sys (B.w w).T A) hij).symm
+
 /-- ⭐The canonical model. -/
 noncomputable def model : Model.{0, 0} σ where
   frame := B.frame
@@ -723,7 +807,7 @@ noncomputable def model : Model.{0, 0} σ where
   Ret_fwd := by intro _ _ hS _ _ _ h; exact B.ret_fwd hS h
   Ret_conv := by intro _ _ _ hA _ _ _ h; exact Or.inl ⟨hA, h⟩
   backRet_exists hS hne o := B.backRet_exists_canon hS hne o
-  posBack_exists _ hW := (ModalSys.NoFour.absurdW hW).elim
+  posBack_exists hS hW b o := B.posBack_exists_canon hS hW b o
   Ind o o' := B.Ind o o'
   Ind_refl o := B.Ind_refl o
 

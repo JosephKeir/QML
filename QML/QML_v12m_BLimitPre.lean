@@ -63,17 +63,6 @@ theorem sim_arrowXS {l : List VarType} {Δ : Ctx} {img img' : ℕ → ℕ} {x : 
       exact .refl _
     · exact .refl _
 
-/-- On the `□` view a witness arrow is the plain arrow. -/
-theorem sim_arrowXS_arrowS {l : List VarType} {Δ : Ctx} {img img' : ℕ → ℕ} {x : VarSymb}
-    {cx : ℕ} (h : ∀ r < l.length, img r = img' r) :
-    Subst.Sim (ctxOf l).boxIn (arrowXS σ Δ img x cx) (arrowS σ Δ img') :=
-  Subst.sim_of fun v T _ hv => by
-    obtain ⟨u, rfl, hu⟩ := boxIn_item hv
-    obtain ⟨r, hr, hlt, _⟩ := ref_rt hu
-    change SubE.Sim T (.ren (itemAt (imgRoot img u.rt) u)) (.ren (itemAt (imgRoot img' u.rt) u))
-    rw [hr, imgRoot, imgRoot, h r hlt]
-    exact .refl _
-
 /-- ⭐A transfer serves any suffix of its variables, with any images agreeing on them. -/
 theorem Transfer.apply {Γ : Ctx} {M : Set (WFF σ Γ 0)} {ls : List VarType}
     {hle : (ctxOf ls).Le Γ} {Δ : Ctx} [Δ.NoSlots] {N : Set (WFF σ Δ 0)} {img : ℕ → ℕ}

@@ -9611,6 +9611,28 @@ Agreed (user): option (ii), the chain's child fields split off.  Built in four p
 * `lretOutXDC` copies the first half of `bdataS_retOutXDC` (about 110 lines); factoring the two
   would need the second half's alias data exported.
 
+#### Build step 5: the canonical model meets the law *(2026-10-22)*
+
+Paper check 2, built.  ⭐`BData.posBack_exists_canon`: along an arrow `b : R v w`, every object
+`o` at `w` is, up to `Ind`, the content along `b` of a possible object at `v`.
+* **Own arrow** (under T): strong T's `posRet_exists_canon`; strong T holds by `ModalSys.WCoh`.
+* **Network arrow `v → w`**: `o` is a term `t` at a stage of `w`; `◇⊤` holds there (the arrow
+  back), so `∃c. Back(c, t)` (`Proof.backEx`) and a Henkin root `c : □□A`.  The arrow is
+  labelled by a declared witness `ω` (new `BData` field `lab`).  The possible object is
+  `◇_ω (c's image at v).box`: the arrow is in `ω`'s extent, and its content there
+  (`rden_diatm_net`) is `c`'s round trip lifted to a later stage (`stg_mono`,
+  `sim_arrowXS_arrowS`), which `backRel` (row 1) relates to `t`; `DTerm.rel_lift` twice.
+* New `BData` fields: `lab` (under `BStrong`, `BStrongW`: every arrow has a label declared at
+  some stage) and `stg_mono` (stages along an arrow are monotone; the limit's
+  `lstg_monotone`, now in `BLimit`).
+* The network keeps every child labelled both ways under `BStrongW` (new file
+  `QML_v12m_BNetLab.lean`: `NetSt.Labelled`, kept by every operation, `labelled_netS`;
+  `StrongChain.labelled`), and the limit reads it (`llab`, in `BBackTail`: forward, the kind,
+  declared in the parent's language by `fwdX_at`; back, the back kind, declared in the child's
+  by `FairChain.backX`).
+* `sim_arrowXS_arrowS` moved from `BLimitPre` to `BNet`, so that the canonical model can use it.
+* The only remaining temporary use of `NoFour.noBStrongW` is `NoFour` itself (step 6).
+
 #### Note for the write-up: possible objects and the category of elements *(2026-10-22)*
 
 At each world the definable maps (`GFunc`, strength included) act on possible objects

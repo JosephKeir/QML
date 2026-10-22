@@ -943,6 +943,49 @@ theorem lbackRelX {s k : LW C.toFairChain} {i : ℕ} {A : VarType} {a₀ : Ann A
     exact Term.subst_congr _ _ _ _ _ _ (sim_arrowS hJag) _
   · rw [Term.mono_mono]
 
+/-- ⭐**Rows 3–4: every edge of the limit is labelled**, by a declared witness: forward, the
+    child's kind, declared in its parent's language (`fwdX_at`); back, its back kind, declared in
+    its own (`FairChain.backX`). -/
+theorem llab (hW : ModalSys.BStrongW = true) {s t : LW C.toFairChain} (h : LR C.toFairChain s t) :
+    ∃ (x : VarSymb) (X : VarType), lbOfKd (lkd C.toFairChain) s t x = some X ∧
+      ∃ i, (ctxOf (lat s i)).ref x = some (.VTypeDia X) := by
+  classical
+  rcases h with ⟨c, hc⟩ | ⟨c, hc⟩
+  · have hl : (C.net (birth C.toFairChain t.2)).Live (c :: s.1) :=
+      hc ▸ live_birth C.toFairChain t.2 le_rfl
+    obtain ⟨⟨x, X⟩, hkx⟩ := Option.ne_none_iff_exists'.mp
+      ((C.labelled hW _ c s.1 hl).1)
+    have hk : lkd C.toFairChain s t = some (x, X) := by
+      rw [lkd, if_pos ⟨c, hc⟩]
+      exact (congrArg (C.net (birth C.toFairChain t.2)).kind hc).trans hkx
+    refine ⟨x, X, lbOfKd_eq.mpr hk, ?_⟩
+    obtain ⟨-, -, hfwd⟩ := fwdX_at C.toFairChain ⟨c, hc⟩ hk 0
+    obtain ⟨hsuf, -, hx, -, -⟩ := hfwd
+    set n := birth C.toFairChain t.2 + lstg C.toFairChain s t 0
+    have hsl : (C.net n).Live s.1 :=
+      (hc ▸ live_birth C.toFairChain t.2 (Nat.le_add_right _ _) :
+        (C.net n).Live (c :: s.1)).1
+    have hle := birth_le s.2 hsl
+    refine ⟨n - birth C.toFairChain s.2, ?_⟩
+    change (ctxOf ((C.net (birth C.toFairChain s.2 + (n - birth C.toFairChain s.2))).st
+      s.1).l).ref x = _
+    rw [Nat.add_sub_cancel' hle]
+    exact (ctxOf_le_of_suffix hsuf).ref hx
+  · have hl : (C.net (birth C.toFairChain s.2)).Live (c :: t.1) :=
+      hc ▸ live_birth C.toFairChain s.2 le_rfl
+    obtain ⟨⟨x, X⟩, hbx⟩ := Option.ne_none_iff_exists'.mp
+      ((C.labelled hW _ c t.1 hl).2)
+    have hk : lkd C.toFairChain s t = some (x, X) := by
+      rw [lkd, if_neg (not_fwd_of_back hc), if_pos ⟨c, hc⟩]
+      exact (congrArg (C.net (birth C.toFairChain s.2)).bkind hc).trans hbx
+    refine ⟨x, X, lbOfKd_eq.mpr hk, 0, ?_⟩
+    have hb := C.backX _ c t.1 hl
+    rw [hbx] at hb
+    obtain ⟨hsuf, -, hx, -, -⟩ := hb
+    change (ctxOf ((C.net (birth C.toFairChain s.2)).st s.1).l).ref x = _
+    rw [congrArg (C.net (birth C.toFairChain s.2)).st hc]
+    exact (ctxOf_le_of_suffix hsuf).ref hx
+
 /-- ⭐⭐**Strong B's canonical data**: the limit of a strong chain, its `Back` atoms'
     returns interchangeable with their values (`lbackRel`, `lbackRelX`), with existence in the
     limit given (`LimitEx`: from the chain's children for rows 1–2, otherwise for rows 3–4). -/
@@ -956,6 +999,7 @@ noncomputable def bdataS (E : LimitEx C.toFairChain) : BData σ where
   img := limg C.toFairChain
   stg := lstg C.toFairChain
   imgOk h i := limgOk C.toFairChain h i
+  stg_mono h _ _ hii := lstg_monotone C.toFairChain h hii
   tr h i ψ hψ := ltr C.toFairChain h i ψ hψ
   ex s i ψ hψ := E.ex s i ψ hψ
   lb := lbOfKd (lkd C.toFairChain)
@@ -969,6 +1013,7 @@ noncomputable def bdataS (E : LimitEx C.toFairChain) : BData σ where
   exX s i x X hx ψ hψ := E.exX s i x X hx ψ hψ
   unl y h := E.unl y h
   sep hk h := lbOfKd_sep hk h
+  lab _ hW _ _ h := llab C hW h
   backRel _ _ _ _ _ bd _ t hmem _ hk := lbackRel C hk bd t hmem
   backRelX _ _ _ _ _ _ _ hy bd _ t hmem _ hk := lbackRelX C hy bd t hmem (lbOfKd_eq.mp hk)
 

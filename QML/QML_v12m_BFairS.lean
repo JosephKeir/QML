@@ -1,4 +1,5 @@
 import QML.QML_v12m_BNetInjS
+import QML.QML_v12m_BNetLab
 import QML.QML_v12m_BFair
 
 /-!
@@ -138,6 +139,8 @@ structure StrongChain (hS : ModalSys.BStrong = true) (M₀ : Set (WFF σ (ctxOf 
     ((net n).Live s → net (n + 1) = (net n).mkRetDC hS s o)
   retXDOp : ∀ (s : Node) (o : NetSt.RetOblXDC σ) (m : ℕ), ∃ n, m ≤ n ∧
     ((net n).Live s → net (n + 1) = (net n).mkRetXDC hS s o)
+  /-- Under rows 3–4 every child has a kind and a back kind (`NetSt.Labelled`). -/
+  labelled : ModalSys.BStrongW = true → ∀ n, (net n).Labelled
   /-- Under rows 3–4 every returning possibility along `□` has its route named. -/
   routeOp : ModalSys.BStrongW = true → ∀ (s : Node) (o : NetSt.RouteObl σ) (m : ℕ),
     ∃ n, m ≤ n ∧ ((net n).Live s → net (n + 1) = (net n).mkRoute hS s o)
@@ -148,6 +151,7 @@ noncomputable def strongChainS (hS : ModalSys.BStrong = true) (hB : ModalSys.B =
   toFairChain := strongChain hS hB hM₀
   goodS := goodS_netS hS hB hM₀
   children hW := strongChain_children hS hB hM₀ hW
+  labelled hW := labelled_netS hS hW M₀
   aliasOp s o m := by
     obtain ⟨n, hmn, hs⟩ := schedS_after (σ := σ) (.inr (.inl (s, o))) m
     exact ⟨n, hmn, fun hl => by

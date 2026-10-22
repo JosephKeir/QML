@@ -90,6 +90,17 @@ theorem arrowXS_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') (img : ℕ → ℕ) (x : Var
   | .step _ .here => rfl
   | .step _ .keep => rfl
 
+/-- On the `□` view a witness arrow is the plain arrow. -/
+theorem sim_arrowXS_arrowS [ModalSys.NoFour] {l : List VarType} {Δ : Ctx}
+    {img img' : ℕ → ℕ} {x : VarSymb} {cx : ℕ} (h : ∀ r < l.length, img r = img' r) :
+    Subst.Sim (ctxOf l).boxIn (arrowXS σ Δ img x cx) (arrowS σ Δ img') :=
+  Subst.sim_of fun v T _ hv => by
+    obtain ⟨u, rfl, hu⟩ := boxIn_item hv
+    obtain ⟨r, hr, hlt, _⟩ := ref_rt hu
+    change SubE.Sim T (.ren (itemAt (imgRoot img u.rt) u)) (.ren (itemAt (imgRoot img' u.rt) u))
+    rw [hr, imgRoot, imgRoot, h r hlt]
+    exact .refl _
+
 /-! ## Transfers survive growth -/
 
 theorem ImgOk.mono {l : List VarType} {Δ Δ' : Ctx} (h : Δ.Le Δ') {img : ℕ → ℕ}

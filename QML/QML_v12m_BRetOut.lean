@@ -792,14 +792,8 @@ variable {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} {hS : ModalS
 
 /-- The stage an edge commits a stage at grows with it. -/
 theorem lstg_mono {s t : LW C.toFairChain} (h : LR C.toFairChain s t) {i i' : ℕ}
-    (hii : i ≤ i') : lstg C.toFairChain s t i ≤ lstg C.toFairChain s t i' := by
-  classical
-  have hP := lstg_spec C.toFairChain h i'
-  have hP' : StgP C.toFairChain s t i (lstg C.toFairChain s t i') :=
-    ⟨by have := hP.1; omega, le_trans (C.lang_suffix (by omega)
-      (live_birth C.toFairChain s.2 (Nat.le_add_right _ i))).length_le hP.2⟩
-  rw [lstg, dif_pos ⟨_, hP'⟩]
-  exact Nat.find_min' _ hP'
+    (hii : i ≤ i') : lstg C.toFairChain s t i ≤ lstg C.toFairChain s t i' :=
+  lstg_monotone C.toFairChain h hii
 
 /-- ⭐**An alias is `Ind` to its term**: its alias formulas at every later stage make the two
     interchangeable there (`alias_interch`), so `DTerm.Rel`. -/
