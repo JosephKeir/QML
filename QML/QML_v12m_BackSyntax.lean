@@ -1167,42 +1167,6 @@ def WFF.counitBodyD {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {C X : VarType}
           (Ctx.ref_diaIn_of (Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)))))
       ψ)
 
-/-- Under T, **named back witnesses at the own arrow**: each witness of the `□` view, read at
-    the identity, is realised here with content its returning content —
-    `Here(p₁↓, c₁) ∧ … ∧ ⊤`, `↓` the collapse of the `□` view at the identity. -/
-def WFF.hereList {σ : Signature} {Γ : Ctx} (hT : ModalSys.T = true) :
-    {Zs : List VarType} → HomeWs σ Γ.boxIn Zs → HomeTms σ Γ Zs → WFF σ Γ 0
-  | [], .nil, .nil => .top
-  | _ :: _, .cons p ps, .cons c cs =>
-      .and (WFF.here hT (Term.collapse (Ctx.collapses_boxIn_self hT Γ) p) c)
-        (WFF.hereList hT ps cs)
-
-/-- ⭐The **counit**'s body for a named back witness (docs §11.23), for
-    `◇[d ↦ y; diatm z w ⇝ c, …]` with `z` a possible object of the view `V`: `□_z ψ(⟨d.box, w⟩)`
-    — what holds along all of `z`'s arrows of the object's contents and the witness's content
-    there. -/
-def WFF.counitBodyN₀ {σ : Signature} {V : Ctx} [V.NoSlots] {A Z : VarType} {z : VarSymb}
-    (hz : ∃ X, V.ref z = some (.VTypeDia X)) {b : Ann Z} (w : Term σ (V.diaIn z) Z b)
-    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd A Z)) 1) :
-    WFF σ (V.insert (.bnd 0) (.VTypeBox A)) 1 :=
-  WFF.boxx z (hz.imp fun _ h => (Ctx.le_insert (Ctx.NoSlots.slots (Γ := V)).root _).ref h)
-    (WFF.holeAt (((Ctx.NoSlots.slots (Γ := V)).insert _).diaIn z)
-      (Term.pair
-        (Term.eta (VarSymb.root (.bnd 0)).inner A
-          ((Ctx.le_boxIn_diaIn _ z).ref
-            (Ctx.ref_inner (Ctx.ref_insert_root V (.bnd 0) (.VTypeBox A)))))
-        (Term.mono ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := V)).root (.VTypeBox A)).diaIn z) w))
-      ψ)
-
-/-- The **content counit**'s body with a carrier: `□_z ψ(⟨d.box, ⟨w, u⟩⟩)`, the counit's body at
-    the witness `diatm z ⟨w, u⟩`. -/
-abbrev WFF.counitBodyN {σ : Signature} {V : Ctx} [V.NoSlots] {A Z C : VarType} {z : VarSymb}
-    (hz : ∃ X, V.ref z = some (.VTypeDia X)) {b : Ann Z} (w : Term σ (V.diaIn z) Z b)
-    {c₀ : Ann C} (u : Term σ (V.diaIn z) C c₀)
-    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd A (.VTypeProd Z C))) 1) :
-    WFF σ (V.insert (.bnd 0) (.VTypeBox A)) 1 :=
-  WFF.counitBodyN₀ hz (Term.pair w u) ψ
-
 /-- The first component of a necessary pair, as a necessary object: `□(fst v.box)`. -/
 def Term.boxFst {σ : Signature} {Γ : Ctx} {v : VarSymb} {A B : VarType}
     (h : Γ.ref v = some (.VTypeBox (.VTypeProd A B))) :
@@ -1294,42 +1258,14 @@ def box {d : ℕ} : (O : OutLeg Γ) → WFF σ O.view d → WFF σ Γ d
   | .nec, φ => WFF.box φ
   | .pos y hy, φ => WFF.boxx y hy φ
 
-/-- A leg may be a **way home** (§11.23): every arrow, always; a witness's extent at the far end
-    under `BStrongW` (rows 3–4). -/
-def Home : OutLeg Γ → Prop
-  | .nec => True
-  | .pos _ _ => ModalSys.BStrongW = true
-
-/-- ⭐The `Back` atom of the carrier with body `bd`, out along `O` and home along `P` (§11.23):
-    `boxtm (boxtm bd)`, `diatm y (boxtm bd)`, `boxtm (diatm z bd)` or `diatm y (diatm z bd)`.
-    Every term of a carrier type has one of these shapes, so the rules are stated at the body
-    and survive substitution (§10.11). -/
-def backP {d : ℕ} (hS : ModalSys.BStrong = true) : (O : OutLeg Γ) → (P : OutLeg O.view) →
-    P.Home → {A : VarType} → {a₀ : Ann A} → Term σ P.view A a₀ → {a : Ann A} → Term σ Γ A a →
+/-- ⭐The `Back` atom of the carrier with body `bd` — `boxtm (boxtm bd)` or `diatm y (boxtm bd)`:
+    every term of type `□□A` or `◇□A` has this shape, so the rules are stated at the body and
+    survive substitution (§10.11). -/
+def back {d : ℕ} (hS : ModalSys.BStrong = true) : (O : OutLeg Γ) → {A : VarType} →
+    {a₀ : Ann A} → Term σ O.view.boxIn A a₀ → {a : Ann A} → Term σ Γ A a →
     WFF σ Γ d
-  | .nec, .nec, _, _, _, bd, _, t => WFF.back hS .nec (Term.boxtm (Term.boxtm bd)) t
-  | .pos y hy, .nec, _, _, _, bd, _, t => WFF.back hS .pos (Term.diatm y hy (Term.boxtm bd)) t
-  | .nec, .pos z hz, hW, _, _, bd, _, t =>
-      WFF.back hS (.necW hW) (Term.boxtm (Term.diatm z hz bd)) t
-  | .pos y hy, .pos z hz, hW, _, _, bd, _, t =>
-      WFF.back hS (.posW hW) (Term.diatm y hy (Term.diatm z hz bd)) t
-
-/-- The atom depends on its terms only as dependent pairs. -/
-theorem backP_congr {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (P : OutLeg O.view)
-    (hP : P.Home) {A : VarType} {a₁ a₂ : Ann A} {bd₁ : Term σ P.view A a₁}
-    {bd₂ : Term σ P.view A a₂} (hbd : (⟨a₁, bd₁⟩ : Σ b, Term σ P.view A b) = ⟨a₂, bd₂⟩)
-    {c₁ c₂ : Ann A} {t₁ : Term σ Γ A c₁} {t₂ : Term σ Γ A c₂}
-    (ht : (⟨c₁, t₁⟩ : Σ b, Term σ Γ A b) = ⟨c₂, t₂⟩) :
-    (O.backP hS P hP bd₁ t₁ : WFF σ Γ d) = O.backP hS P hP bd₂ t₂ := by
-  cases hbd
-  cases ht
-  rfl
-
-/-- ⭐The `Back` atom of rows 1–2, home along every arrow: `boxtm (boxtm bd)` or
-    `diatm y (boxtm bd)`. -/
-abbrev back {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
-    (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) : WFF σ Γ d :=
-  O.backP hS .nec trivial bd t
+  | .nec, _, _, bd, _, t => WFF.back hS .nec (Term.boxtm (Term.boxtm bd)) t
+  | .pos y hy, _, _, bd, _, t => WFF.back hS .pos (Term.diatm y hy (Term.boxtm bd)) t
 
 /-- The atom depends on its terms only as dependent pairs. -/
 theorem back_congr {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
@@ -1354,38 +1290,13 @@ def bodyRead [Γ.NoSlots] (O : OutLeg Γ) {A : VarType} {b : Ann (.VTypeBox A)}
     WFF σ O.view 0 :=
   WFF.instantiate Ctx.NoSlots.slots c (WFF.mono (O.le_view.insert (.bnd 0) _) Φ)
 
-/-- ⭐The **returning possibility along the leg with named back witnesses** `ws` (possible objects
-    of the leg's view) whose contents come back as `us` (docs §11.23): `◇[e ↦ t; ws ⇝ us] Φ` from
-    any arrow, or `◇_y[e ↦ t; ws ⇝ us] Φ` from an arrow of `y`'s extent, with `Φ` read in the
-    leg's view. -/
-def retSH {d : ℕ} (hS : ModalSys.BStrong = true) : (O : OutLeg Γ) → (S : RShape) →
-    (Zs : List VarType) → VarType.HomeOk Zs → HomeWs σ O.view Zs → {a : Ann S.flat} →
-    Term σ Γ S.flat a → HomeTms σ Γ Zs → WFF σ (O.view.insert (.bnd d) S.ty) (d + 1) →
+/-- ⭐The **returning possibility along the leg** (§11.17): `◇[e ↦ t] Φ` from any arrow, or
+    `◇_y[e ↦ t] Φ` from an arrow of `y`'s extent, with `Φ` read in the leg's view. -/
+def retS {d : ℕ} (hS : ModalSys.BStrong = true) : (O : OutLeg Γ) → (S : RShape) →
+    {a : Ann S.flat} → Term σ Γ S.flat a → WFF σ (O.view.insert (.bnd d) S.ty) (d + 1) →
     WFF σ Γ d
-  | .nec, S, Zs, hZs, ws, _, t, us, Φ => WFF.retSH hS S Zs hZs ws t us Φ
-  | .pos y hy, S, Zs, hZs, ws, _, t, us, Φ => WFF.retxSH hS y hy S Zs hZs ws t us Φ
-
-/-- ⭐The **returning possibility along the leg** (§11.17), without named back witnesses:
-    `◇[e ↦ t] Φ` from any arrow, or `◇_y[e ↦ t] Φ` from an arrow of `y`'s extent. -/
-abbrev retS {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (S : RShape)
-    {a : Ann S.flat} (t : Term σ Γ S.flat a) (Φ : WFF σ (O.view.insert (.bnd d) S.ty) (d + 1)) :
-    WFF σ Γ d :=
-  O.retSH hS S [] (Or.inl rfl) .nil t .nil Φ
-
-/-- Two returning possibilities with named back witnesses along a leg agree when their parts
-    do. -/
-theorem retSH_congr {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (S : RShape)
-    (Zs : List VarType) (hZs : VarType.HomeOk Zs) {ws ws' : HomeWs σ O.view Zs}
-    {a a' : Ann S.flat} {t : Term σ Γ S.flat a} {t' : Term σ Γ S.flat a'}
-    {us us' : HomeTms σ Γ Zs} {Φ Φ' : WFF σ (O.view.insert (.bnd d) S.ty) (d + 1)}
-    (hw : ws = ws') (ht : (⟨a, t⟩ : Σ a, Term σ Γ S.flat a) = ⟨a', t'⟩) (hu : us = us')
-    (hΦ : Φ = Φ') :
-    (O.retSH hS S Zs hZs ws t us Φ : WFF σ Γ d) = O.retSH hS S Zs hZs ws' t' us' Φ' := by
-  cases hw
-  cases ht
-  cases hu
-  cases hΦ
-  rfl
+  | .nec, S, _, t, Φ => WFF.retS hS S t Φ
+  | .pos y hy, S, _, t, Φ => WFF.retxS hS y hy S t Φ
 
 /-- The returning possibility of a necessary object along the leg. -/
 abbrev ret {d : ℕ} (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType} {a : Ann A}
@@ -1446,16 +1357,6 @@ theorem mono_retS {Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (hS : ModalSys.BStrong =
       (O.mono h).retS hS S (Term.mono h t) (WFF.mono ((le_view_mono h O).insert _ _) Φ)
   | .nec, _, _, _, _ => rfl
   | .pos _ _, _, _, _, _ => rfl
-
-theorem mono_retSH {Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (hS : ModalSys.BStrong = true) :
-    (O : OutLeg Γ) → (S : RShape) → (Zs : List VarType) → (hZs : VarType.HomeOk Zs) →
-    (ws : HomeWs σ O.view Zs) → {a : Ann S.flat} → (t : Term σ Γ S.flat a) →
-    (us : HomeTms σ Γ Zs) → (Φ : WFF σ (O.view.insert (.bnd d) S.ty) (d + 1)) →
-    WFF.mono h (O.retSH hS S Zs hZs ws t us Φ) =
-      (O.mono h).retSH hS S Zs hZs (ws.mono (le_view_mono h O)) (Term.mono h t) (us.mono h)
-        (WFF.mono ((le_view_mono h O).insert _ _) Φ)
-  | .nec, _, _, _, _, _, _, _, _ => rfl
-  | .pos _ _, _, _, _, _, _, _, _, _ => rfl
 
 theorem mono_ret {Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (hS : ModalSys.BStrong = true) :
     (O : OutLeg Γ) → {A : VarType} → {a : Ann A} → (t : Term σ Γ A a) →
@@ -1520,27 +1421,6 @@ theorem subst_back {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
   | .nec, _, _, _, _, _ => rfl
   | .pos _ _, _, _, _, _, _ => rfl
 
-/-- A substitution sends a way home to a way home. -/
-theorem home_subst : (O : OutLeg Γ) → O.Home → (O.subst θ hθ hc).Home
-  | .nec, _ => trivial
-  | .pos _ _, h => h
-
-theorem subst_backP {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
-    (hS : ModalSys.BStrong = true) :
-    (O : OutLeg Γ) → (P : OutLeg O.view) → (hP : P.Home) → {A : VarType} → {a₀ : Ann A} →
-    (bd : Term σ P.view A a₀) → {a : Ann A} → (t : Term σ Γ A a) →
-    WFF.subst ι θ hθ hc hΓ hΔ (O.backP hS P hP bd t : WFF σ Γ d) =
-      ((O.subst θ hθ hc).backP hS
-        (P.subst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc))
-        (home_subst _ _ _ P hP)
-        (Term.subst ι (P.viewSubst (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc))
-          (P.viewOk _ _ _) (P.viewCoh _ _ _) bd)
-        (Term.subst ι θ hθ hc t) : WFF σ Δ d')
-  | .nec, .nec, _, _, _, _, _, _ => rfl
-  | .nec, .pos _ _, _, _, _, _, _, _ => rfl
-  | .pos _ _, .nec, _, _, _, _, _, _ => rfl
-  | .pos _ _, .pos _ _, _, _, _, _, _, _ => rfl
-
 theorem subst_retS {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
     (hS : ModalSys.BStrong = true) :
     (O : OutLeg Γ) → (S : RShape) → {a : Ann S.flat} → (t : Term σ Γ S.flat a) →
@@ -1555,24 +1435,6 @@ theorem subst_retS {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
           ((slotsFrom hΓ O).insert _) ((slotsFrom hΔ (O.subst θ hθ hc)).insert _) Φ)
   | .nec, _, _, _, _ => rfl
   | .pos _ _, _, _, _, _ => rfl
-
-theorem subst_retSH {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
-    (hS : ModalSys.BStrong = true) :
-    (O : OutLeg Γ) → (S : RShape) → (Zs : List VarType) → (hZs : VarType.HomeOk Zs) →
-    (ws : HomeWs σ O.view Zs) → {a : Ann S.flat} → (t : Term σ Γ S.flat a) →
-    (us : HomeTms σ Γ Zs) → (Φ : WFF σ (O.view.insert (.bnd d) S.ty) (d + 1)) →
-    WFF.subst ι θ hθ hc hΓ hΔ (O.retSH hS S Zs hZs ws t us Φ) =
-      (O.subst θ hθ hc).retSH hS S Zs hZs
-        (TmList.subst ι (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) ws)
-        (Term.subst ι θ hθ hc t) (TmList.subst ι θ hθ hc us)
-        (WFF.subst (VarSymb.shiftSlot ι d d')
-          ((O.viewSubst θ hθ hc).under d d' _ (slotsFrom hΔ (O.subst θ hθ hc)).root)
-          (Subst.ok_under (O.viewOk θ hθ hc) _ (slotsFrom hΔ (O.subst θ hθ hc)).root)
-          (Subst.coh_under (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) (slotsFrom hΓ O) _
-            (slotsFrom hΔ (O.subst θ hθ hc)).root)
-          ((slotsFrom hΓ O).insert _) ((slotsFrom hΔ (O.subst θ hθ hc)).insert _) Φ)
-  | .nec, _, _, _, _, _, _, _, _ => rfl
-  | .pos _ _, _, _, _, _, _, _, _, _ => rfl
 
 theorem subst_ret {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
     (hS : ModalSys.BStrong = true) :

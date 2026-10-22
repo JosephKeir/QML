@@ -288,11 +288,10 @@ noncomputable def model : Model.{0, 0} σ where
   necDup_eval _ _ _ _ := rfl
   posRet_exists hT hS a := posRet_exists_canon w₀ hT hS a
   posSerial hDS w := posSerial_canon w₀ hDS w
-  Ret _ _ := False
-  Ret_fwd := by intro _ _ _ _ _ h; exact h.elim
+  Ret _ _ _ := False
+  Ret_fwd := by intro _ _ _ _ _ _ h; exact h.elim
   Ret_conv hS := (ModalSys.NoB.absurdStrong hS).elim
   backRet_exists hS := (ModalSys.NoB.absurdStrong hS).elim
-  backRet_existsW hS := (ModalSys.NoB.absurdStrong hS).elim
   Ind o o' := Ind w₀ o o'
   Ind_refl o := Ind_refl w₀ o
 

@@ -925,7 +925,7 @@ theorem retChildDC_fwd {o : ℕ} (ho : (ctxOf tp.l).ref (.root (.free o)) = some
       · exact hr
       · rw [List.mem_singleton.mp hx]; exact hΨ
     refine Proof.ret_absurdS hS _ _ _ (ctxOf_fresh (l := tp.l) le_rfl)
-      (Proof.conv (by dsimp only [OutLeg.lift, OutLeg.retS, OutLeg.retSH]; rw [e])
+      (Proof.conv (by dsimp only [OutLeg.lift, OutLeg.retS]; rw [e])
       (Proof.ret_unitDC hS .nec (bornComps A) (bornComps_ok A) _ _
         (Term.mono hle.boxIn (tupT tp.l).2) _ (VarType.compOk_compsAllB _ rfl (bcT tp.l)) _
         (Proof.lookup List.mem_cons_self) ?_))

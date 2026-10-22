@@ -110,41 +110,6 @@ abbrev NecSec (A : VarType) (w : F.W) : Type (max u v) := (w' : F.Acc w) → F.D
 abbrev PosSec (A : VarType) (w : F.W) : Type (max u v) :=
   Σ E : Set (F.Acc w), (w' : E) → F.Dom A w'.1.1
 
-/-- ⭐A carrier's **round-trip data** (strong B, docs §11.20, §11.23): its out leg, a set of arrows
-    out; for each of them the ways home it allows, a set of arrows on (all of them, or a possible
-    object's extent there); and the carrier's value at the end of each. -/
-structure RTData (A : VarType) (w : F.W) : Type (max u v) where
-  out : Set (F.Acc w)
-  home : (a : out) → Set (F.Acc a.1.1)
-  val : (a : out) → (b : home a) → F.Dom A b.1.1
-
-variable {F} in
-/-- Round-trip data whose ways home are every arrow on (rows 1–2). -/
-abbrev RTData.all {A : VarType} {w : F.W} (S : Set (F.Acc w))
-    (val : (a : S) → (b : F.Acc a.1.1) → F.Dom A b.1) : F.RTData A w :=
-  ⟨S, fun _ => Set.univ, fun a b => val a b.1⟩
-
-variable {F} in
-/-- Round-trip data from a possible object at the far end of each arrow out (rows 3–4): home
-    along its extent, its content the value. -/
-abbrev RTData.ofPos {A : VarType} {w : F.W} (S : Set (F.Acc w))
-    (g : (a : S) → F.PosSec A a.1.1) : F.RTData A w :=
-  ⟨S, fun a => (g a).1, fun a b => (g a).2 b⟩
-
-variable {F} in
-/-- Data with every way home determine their out leg and values. -/
-theorem RTData.all_inj {A : VarType} {w : F.W} {S S' : Set (F.Acc w)}
-    {val : (a : S) → (b : F.Acc a.1.1) → F.Dom A b.1}
-    {val' : (a : S') → (b : F.Acc a.1.1) → F.Dom A b.1}
-    (h : RTData.all S val = RTData.all S' val') :
-    (⟨S, val⟩ : Σ S : Set (F.Acc w), (a : S) → (b : F.Acc a.1.1) → F.Dom A b.1) = ⟨S', val'⟩ := by
-  injection h with h₁ _ h₃
-  subst h₁
-  have h₄ := eq_of_heq h₃
-  have e : val = val' :=
-    funext fun a => funext fun b => congrFun (congrFun h₄ a) ⟨b, Set.mem_univ _⟩
-  rw [e]
-
 end Frame
 
 /-! ## The function algebra -/
@@ -452,27 +417,27 @@ structure Model (σ : Signature) where
     ∃ (p : frame.Pos A w) (hm : frame.reflAcc _hT w ∈ (posFull p).1.1),
       Ind ((posFull p).1.2 ⟨frame.reflAcc _hT w, hm⟩) a
   /-- ⭐Strong B: **comes back as** (docs §11.20), what `Back` reads.  A carrier is given by its
-      round-trip data (`Frame.RTData`): an out leg, the ways home each of its arrows allows, and
-      the carrier's value at the end of each.  Like `Ind`, a primitive of the model:
+      round-trip data: an out leg `S` (a set of arrows out), and for each of its arrows `a` the
+      carrier's value at the end of every further arrow `b`.  Like `Ind`, a primitive of the model:
       at a `◇`-typed content no formula can single out the value a round trip brings back, so
       "comes back as" is a requirement on models rather than a definition (§11.20, decision of
       2026-10-10).  It implies the round trip (`Ret_fwd`), and at `◇`-free contents, where `Ind`
       is equality, it is the round trip (`Ret_conv`).  Its congruences, which mention hole terms,
       are in `Model.IndInvariant`. -/
-  Ret : {A : VarType} → {w : frame.W} → frame.RTData A w → frame.Dom A w → Prop
+  Ret : {A : VarType} → {w : frame.W} → (S : Set (frame.Acc w)) →
+    ((a : S) → (b : frame.Acc a.1.1) → frame.Dom A b.1) → frame.Dom A w → Prop
   /-- What comes back as `o` makes the round trip: the leg is nonempty, and from each of its arrows
-      some way home it allows returns a value indistinguishable from `o`. -/
+      some way home returns a value indistinguishable from `o`. -/
   Ret_fwd : ∀ {A : VarType} {w : frame.W} (_hS : ModalSys.BStrong = true)
-    {D : frame.RTData A w} {o : frame.Dom A w}, Ret D o →
-      Nonempty D.out ∧ ∀ a : D.out, ∃ (r : frame.R a.1.1 w) (h : ⟨w, ⟨r⟩⟩ ∈ D.home a),
-        Ind (D.val a ⟨_, h⟩) o
-  /-- At a `◇`-free content, and ways home unrestricted, the round trip comes back: `Back` is the
-      definite description there (`back_ret`).  Not for a witnessed back leg (docs §11.23, D2). -/
+    {S : Set (frame.Acc w)} {val : (a : S) → (b : frame.Acc a.1.1) → frame.Dom A b.1}
+    {o : frame.Dom A w}, Ret S val o →
+      Nonempty S ∧ ∀ a : S, ∃ r : frame.R a.1.1 w, Ind (val a ⟨w, ⟨r⟩⟩) o
+  /-- At a `◇`-free content the round trip comes back: `Back` is the definite description there
+      (`back_ret`). -/
   Ret_conv : ∀ {A : VarType} {w : frame.W} (_hS : ModalSys.BStrong = true)
     (_hA : A.diaFree = true) {S : Set (frame.Acc w)}
     {val : (a : S) → (b : frame.Acc a.1.1) → frame.Dom A b.1} {o : frame.Dom A w},
-    (Nonempty S ∧ ∀ a : S, ∃ r : frame.R a.1.1 w, Ind (val a ⟨w, ⟨r⟩⟩) o) →
-      Ret (Frame.RTData.all S val) o
+    (Nonempty S ∧ ∀ a : S, ∃ r : frame.R a.1.1 w, Ind (val a ⟨w, ⟨r⟩⟩) o) → Ret S val o
   /-- ⭐Strong B: wherever there is a way out, every object is what some necessarily necessary
       carrier comes back as, over every arrow out (`Back`, row 1; `Model.Backs`, docs §11.3).
       Existential, as `posRet_exists`: no term former interprets it.  At every content type
@@ -481,17 +446,7 @@ structure Model (σ : Signature) where
   backRet_exists : ∀ {A : VarType} {w : frame.W} (_hS : ModalSys.BStrong = true),
     Nonempty (frame.Acc w) → ∀ o : frame.Dom A w,
       ∃ c : frame.Nec (.VTypeBox A) w,
-        Ret (Frame.RTData.all (Set.univ : Set (frame.Acc w))
-          fun a b => necEval (necEval c a.1) b) o
-  /-- ⭐Strong B with witnessed ways home (row 3, docs §11.23): wherever there is a way out, every
-      object is what some necessary carrier of possible objects comes back as — home along the
-      extent of its possible object at the far end, its content the value (B's unit
-      `A → □◇A`, as an existence statement). -/
-  backRet_existsW : ∀ {A : VarType} {w : frame.W} (_hS : ModalSys.BStrong = true)
-    (_hW : ModalSys.BStrongW = true), Nonempty (frame.Acc w) → ∀ o : frame.Dom A w,
-      ∃ c : frame.Nec (.VTypeDia A) w,
-        Ret (Frame.RTData.ofPos (Set.univ : Set (frame.Acc w))
-          fun a => (posFull (necEval c a.1 : frame.Pos A a.1.1)).1) o
+        Ret (Set.univ : Set (frame.Acc w)) (fun a b => necEval (necEval c a.1) b) o
 
 namespace Model
 

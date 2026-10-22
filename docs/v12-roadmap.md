@@ -12,7 +12,7 @@ package.  Design detail stays in `v12-modal-extensions.md` (per axiom) and `v12-
 | K, T (weak, strong), D (weak, strong), 4 (weak), any combination without B | ✓ | ✓ (+ strong completeness, compactness) | the tree (`Canon.*`) |
 | weak B with any of T, D (both strengths), without 4 (`NoFour`) | ✓ | ✓ (+ strong completeness, compactness; every presented context) | the network (`BArrow.*`) |
 | strong B, rows 1–2 (carriers `□□A`, `◇_y□A`), with T and D in either strength, 4 off | ✓ | ✓ (+ strong completeness, compactness; every presented context; T added 2026-10-20, `v12-modal-extensions.md` §11.21) | the network, strong chain (`bdataS`) |
-| strong B, rows 3–4 (carriers `□◇A`, `◇◇A`) | not yet stated | — (§11.23: decided, paper-checked; row 3 under way: flag `BStrongW`, two-leg `Back`, named back witnesses in the returning possibility and its rules (stages 1–2), the row-3 rules `ret_homeN` and `ret_counitN` (stage 3); next the T own-arrow forms, then the network) | — |
+| strong B, rows 3–4 (row 3: B's unit `A → □◇A` read per arrow; row 4 the same along `◇_y`) | not yet stated | — (§11.23, 2026-10-22: the uniform-carrier design with named back witnesses was abandoned (a structural jointness; record branch `record/b2-named-witnesses`) and removed; redesigned as the per-arrow reading: model law `posBack_exists`, rules `ret_realise` and `ret_route`, every edge doubly witnessed; paper checks 1–4 pass; build under way) | — |
 | B with 4, S5 | ✓ | **open** | — |
 | 5, 4's open maps | not yet stated | — | — |
 

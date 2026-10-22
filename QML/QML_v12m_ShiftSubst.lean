@@ -758,18 +758,8 @@ theorem WFF.shift_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {Γ �
       WFF.back_congr hB L (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr s)
         (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr t)
   | _, _, _, _, _, _, _, d, d', C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .retSH hB S Zs hZs ws t cs Φ =>
-      WFF.retSH_congr hB S Zs hZs ((TmList.map_map _ _ ws).trans
-          ((TmList.map_congr (fun p => Term.shift_subst C.boxIn D.boxIn θ.box (Subst.ok_box hθ)
-            (Subst.coh_box hθ hc) θ'.box (Subst.ok_box hθ') (Subst.coh_box hθ' hc')
-            (Subst.shiftCorr_box hθ hcr) p) ws).trans (TmList.map_map
-              (fun p => ⟨_, Term.shift C.boxIn p⟩)
-              (fun p => ⟨_, Term.subst _ θ'.box (Subst.ok_box hθ') (Subst.coh_box hθ' hc') p⟩)
-              ws).symm))
-        (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr t)
-        ((TmList.map_map _ _ cs).trans ((TmList.map_congr (fun p =>
-          Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr p) cs).trans (TmList.map_map
-            (fun p => ⟨_, Term.shift C p⟩) (fun p => ⟨_, Term.subst _ θ' hθ' hc' p⟩) cs).symm))
+      .retS hB S t Φ =>
+      WFF.retS_congr hB S (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr t)
         (WFF.shift_subst (C.boxIn.insert (hΓ.boxIn.rootFresh le_rfl) _)
           (D.boxIn.insert (hΔ.boxIn.rootFresh le_rfl) _) (θ.box.under d d' _ hΔ.boxIn.root)
           (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
@@ -780,7 +770,7 @@ theorem WFF.shift_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {Γ �
           (Subst.shiftCorr_under (Subst.ok_box hθ) (Subst.shiftCorr_box hθ hcr) hΓ.boxIn _
             hΔ.boxIn.root hΔ'.boxIn.root (hΔ.boxIn.rootFresh le_rfl)) Φ)
   | k, ι, ι', Γ, Γ', Δ, Δ', d, d', C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .retxSH hB y hy S Zs hZs ws t cs Φ => by
+      .retxS hB y hy S t Φ => by
       have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
       have hwι : ι' (y.shift k) = (ι y).shift k := hy.elim fun _ hY => by
         have h₁ := hc' (y.shift k) _ (C y _ hY) []
@@ -792,37 +782,21 @@ theorem WFF.shift_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {Γ �
       have hr := (hΔ.diaIn (ι y)).root
       have key : ∀ (z : VarSymb) (_hz : z = (ι y).shift k)
           (P : ∃ Y, Δ'.ref z = some (.VTypeDia Y)) (hΔz : (Δ'.diaIn z).SlotsFrom d')
-          (p₀ : Subst.Ok (Γ'.diaIn (y.shift k)) (θ'.dia (y.shift k) z))
-          (q₀ : Subst.Coh ι' (Γ'.diaIn (y.shift k)) (θ'.dia (y.shift k) z))
           (p : Subst.Ok ((Γ'.diaIn (y.shift k)).insert (.bnd d) S.ty)
             ((θ'.dia (y.shift k) z).under d d' _ hΔz.root))
           (q : Subst.Coh (VarSymb.shiftSlot ι' d d')
             ((Γ'.diaIn (y.shift k)).insert (.bnd d) S.ty)
             ((θ'.dia (y.shift k) z).under d d' _ hΔz.root)),
-          WFF.shift D hΔ (WFF.subst ι θ hθ hc hΓ hΔ (.retxSH hB y hy S Zs hZs ws t cs Φ)) =
-            .retxSH hB z P S Zs hZs
-              (TmList.subst ι' (θ'.dia (y.shift k) z) p₀ q₀
-                (ws.map fun p => ⟨_, Term.shift (C.diaIn y) p⟩))
-              (Term.subst ι' θ' hθ' hc' (Term.shift C t))
-              (TmList.subst ι' θ' hθ' hc' (cs.map fun p => ⟨_, Term.shift C p⟩))
+          WFF.shift D hΔ (WFF.subst ι θ hθ hc hΓ hΔ (.retxS hB y hy S t Φ)) =
+            .retxS hB z P S (Term.subst ι' θ' hθ' hc' (Term.shift C t))
               (WFF.subst (VarSymb.shiftSlot ι' d d')
                 ((θ'.dia (y.shift k) z).under d d' _ hΔz.root) p q
                 ((hΓ'.diaIn (y.shift k)).insert _) (hΔz.insert _)
                 (WFF.shift ((C.diaIn y).insert ((hΓ.diaIn y).rootFresh le_rfl) _)
                   ((hΓ.diaIn y).insert _) Φ)) := by
-        intro z hz P hΔz p₀ q₀ p q
+        intro z hz P hΔz p q
         subst hz
-        exact WFF.retxSH_congr hB _ _ S Zs hZs ((TmList.map_map _ _ ws).trans
-            ((TmList.map_congr (fun p' => Term.shift_subst (C.diaIn y) (D.diaIn (ι y))
-              (θ.dia y (ι y)) (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) _ p₀ q₀
-              (Subst.shiftCorr_dia hθ hcr hy hw hw') p') ws).trans (TmList.map_map
-                (fun p => ⟨_, Term.shift (C.diaIn y) p⟩)
-                (fun p => ⟨_, Term.subst ι' (θ'.dia (y.shift k) _) p₀ q₀ p⟩) ws).symm))
-          (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr t)
-          ((TmList.map_map _ _ cs).trans ((TmList.map_congr (fun p =>
-            Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr p) cs).trans (TmList.map_map
-              (fun p => ⟨_, Term.shift C p⟩) (fun p => ⟨_, Term.subst ι' θ' hθ' hc' p⟩)
-              cs).symm))
+        exact WFF.retxS_congr hB _ _ S (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr t)
           (WFF.shift_subst ((C.diaIn y).insert ((hΓ.diaIn y).rootFresh le_rfl) _)
             ((D.diaIn (ι y)).insert ((hΔ.diaIn (ι y)).rootFresh le_rfl) _)
             ((θ.dia y (ι y)).under d d' _ hr) (Subst.ok_under (Subst.ok_dia hθ hy hw) _ hr)
@@ -831,7 +805,7 @@ theorem WFF.shift_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {Γ �
             ((hΔ.diaIn (ι y)).insert _) (hΔz.insert _)
             (Subst.shiftCorr_under (Subst.ok_dia hθ hy hw) (Subst.shiftCorr_dia hθ hcr hy hw hw')
               (hΓ.diaIn y) _ hr hΔz.root ((hΔ.diaIn (ι y)).rootFresh le_rfl)) Φ)
-      exact key _ hwι _ (hΔ'.diaIn _) _ _ _ _
+      exact key _ hwι _ (hΔ'.diaIn _) _ _
 end ShiftSubst
 
 end V12M

@@ -113,10 +113,9 @@ theorem sat_back_of_mem (hB : ModalSys.BStrong = true) {s : B.W} {i : ℕ} {L : 
     {A : VarType} {b : Ann (L.carrier A)} {a : Ann A} (c : Term σ ((B.w s).ctx i) (L.carrier A) b)
     (t : Term σ ((B.w s).ctx i) A a) (h : WFF.back hB L c t ∈ (B.w s).M i) :
     B.model.sat (B.canonEnv s i) (WFF.back hB L c t : WFF σ _ 0) := by
-  change B.model.Backs L _ _
-  rw [backs_iff, interp_canon c (Model.Env.Agree.refl' _),
-    interp_canon t (Model.Env.Agree.refl' _)]
-  exact Or.inr ⟨hB, i, L, b, c, a, t, h, rfl, rfl⟩
+  change B.Ret _ _ _
+  rw [interp_canon c (Model.Env.Agree.refl' _), interp_canon t (Model.Env.Agree.refl' _)]
+  exact Or.inr ⟨hB, i, L, b, c, a, t, h, by cases L <;> rfl, rfl⟩
 
 variable (B) in
 /-- What the truth lemma's induction step needs at the size of `φ`: the lemma below it. -/
@@ -177,20 +176,10 @@ theorem truth_lt :
                 rw [WFF.size_eqRec]; simp only [WFF.size] at hφ; omega))
       | back hB L c t =>
           exact (hST hB).back c t fun s' K ψ h => truth_lt n s' K ψ (by omega)
-      | retSH hB S Zs hZs ws t cs Φ =>
-          rcases hZs with rfl | hW
-          · cases ws
-            cases cs
-            exact (hST hB).retS t Φ fun s' K ψ h =>
-              truth_lt n s' K ψ (lt_of_lt_of_le h (Nat.lt_succ_iff.mp hφ))
-          · exact (ModalSys.NoFour.absurdW hW).elim
-      | retxSH hB y hy S Zs hZs ws t cs Φ =>
-          rcases hZs with rfl | hW
-          · cases ws
-            cases cs
-            exact (hST hB).retxS hy t Φ fun s' K ψ h =>
-              truth_lt n s' K ψ (lt_of_lt_of_le h (Nat.lt_succ_iff.mp hφ))
-          · exact (ModalSys.NoFour.absurdW hW).elim
+      | retS hB S t Φ =>
+          exact (hST hB).retS t Φ fun s' K ψ h => truth_lt n s' K ψ (by omega)
+      | retxS hB y hy S t Φ =>
+          exact (hST hB).retxS hy t Φ fun s' K ψ h => truth_lt n s' K ψ (by omega)
       | and φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega

@@ -49,14 +49,9 @@ class ModalSys where
       trip of some carrier (`docs/v12-modal-extensions.md` §11).  Needs weak B, which the rules
       using it require. -/
   BStrong : Bool
-  /-- Strong B with **witnessed ways home** (rows 3–4, `docs/v12-modal-extensions.md` §11.23):
-      `Back` along a possible object's extent at the far end (carrier `□◇A`), and every object is
-      the constant return of such a carrier — B's unit `A → □◇A`, as an existence statement.
-      Needs strong B, which the rules using it require. -/
-  BStrongW : Bool
 
 /-- The system K. -/
-def ModalSys.K : ModalSys := ⟨false, false, false, false, false, false, false, false⟩
+def ModalSys.K : ModalSys := ⟨false, false, false, false, false, false, false⟩
 
 /-- The systems without B, for which the staged canonical model is built.  B's accessible worlds
     lead back to their origin, against the order of construction; its canonical model is to be the

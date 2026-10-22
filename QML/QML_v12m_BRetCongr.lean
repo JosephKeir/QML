@@ -127,8 +127,6 @@ theorem atom_data (hS : ModalSys.BStrong = true) {s : B.W} {i : ℕ} {L : BLeg} 
           fun x y => Model.interp ((O.pushS (B.canonEnv s i) x).boxPush y) bd⟩ := by
   rw [← interp_canon ct (Model.Env.Agree.refl' _)] at hdata
   cases L with
-  | necW hW => exact (ModalSys.NoFour.absurdW hW).elim
-  | posW hW => exact (ModalSys.NoFour.absurdW hW).elim
   | nec =>
       match ct, hdata with
       | .boxtm (.boxtm bd), hdata =>
@@ -143,11 +141,8 @@ theorem atom_data (hS : ModalSys.BStrong = true) {s : B.W} {i : ℕ} {L : BLeg} 
       match ct, hdata with
       | .diatm y hy (.boxtm bd), hdata =>
           refine ⟨.pos y hy, _, bd, rfl, hdata.symm.trans ?_⟩
-          change (⟨(B.model.posEval
-              (Model.interp (B.canonEnv s i) (Term.diatm y hy (Term.boxtm bd)))).1,
-            fun x z => B.model.necEval ((B.model.posEval
-              (Model.interp (B.canonEnv s i) (Term.diatm y hy (Term.boxtm bd)))).2 x) z⟩ :
-              Σ S : Set (B.frame.Acc s), (x : S) → (y : B.frame.Acc x.1.1) → B.frame.Dom A y.1) = _
+          change B.model.carrierData .pos _ = _
+          dsimp only [Model.carrierData]
           rw [Model.dia_beta (M := B.model) (B.canonEnv s i) hy hy.choose_spec (Term.boxtm bd)]
           refine Sigma.ext rfl (heq_of_eq (funext fun x => funext fun z => ?_))
           exact Model.box_beta (M := B.model) _ bd z
@@ -209,8 +204,8 @@ theorem ret_map {A C : VarType} {b : Ann C}
   have hm2 : (O.back hS' (Term.holeRead bd sh) (Term.holeRead t sh) : WFF σ _ 0) ∈
       (B.w s).M i :=
     BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hmem)
-      ⟨Proof.back_beta hS' O .nec trivial bd t sh (Proof.lookup List.mem_cons_self)⟩
-  have hsat := retD_all.mp ((OutLeg.sat_back hS' _ O _ _).mp ((truth hST s i _).mpr hm2))
+      ⟨Proof.back_beta hS' O bd t sh (Proof.lookup List.mem_cons_self)⟩
+  have hsat := (OutLeg.sat_back hS' _ O _ _).mp ((truth hST s i _).mpr hm2)
   have hval : (fun (x : O.legSet (B.canonEnv s i)) (y : B.model.frame.Acc x.1.1) =>
       Model.interp ((O.pushS (B.canonEnv s i) x).boxPush y) (Term.holeRead bd sh)) =
       fun x y => B.model.holeVal sh (Model.interp ((O.pushS (B.canonEnv s i) x).boxPush y) bd) := by
@@ -225,7 +220,7 @@ theorem ret_map {A C : VarType} {b : Ann C}
     theory (the truth lemma). -/
 theorem toAtom (hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set (B.frame.Acc s)}
     {val : (x : S) → (y : B.frame.Acc x.1.1) → B.frame.Dom A y.1} {o : B.frame.Dom A s}
-    (hc : B.model.IsCarrierData (.all S val)) (h : B.Ret S val o) :
+    (hc : B.model.IsCarrierData S val) (h : B.Ret S val o) :
     ∃ (i : ℕ) (L : BLeg) (c : Ann (L.carrier A)) (ct : Term σ ((B.w s).ctx i) (L.carrier A) c)
       (a : Ann A) (t : Term σ ((B.w s).ctx i) A a),
       WFF.back hS L ct t ∈ (B.w s).M i ∧
@@ -243,16 +238,12 @@ theorem toAtom (hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set (
     have et : B.toDom _ s (B.rden s _ (Ctx.Le.refl _) (Term.mono ((B.w s).le h₂) t))
         (definable_rden _ _) = o :=
       (toDom_congr ((rden_lift h₂ t).trans ht) _ _).trans (B.toDom_fromDom _ s o)
-    have hcd' : B.cData L c = ⟨S, val⟩ := by
-      cases L with
-      | necW hW => exact (ModalSys.NoFour.absurdW hW).elim
-      | posW hW => exact (ModalSys.NoFour.absurdW hW).elim
-      | _ => exact Frame.RTData.all_inj hcd
+    have hcd' : B.cData L c = ⟨S, val⟩ := by cases L <;> exact hcd
     refine ⟨max i₁ i₂, L, c₁, Term.mono ((B.w s).le h₁) ct, a₂, Term.mono ((B.w s).le h₂) t,
       (truth hST s _ _).mp ?_, by rw [ec, hcd'], et⟩
-    change B.model.Backs L _ _
-    rw [backs_iff, interp_canon _ (Model.Env.Agree.refl' _),
-      interp_canon _ (Model.Env.Agree.refl' _), ec, et, hcd']
+    change B.Ret _ _ _
+    rw [interp_canon _ (Model.Env.Agree.refl' _), interp_canon _ (Model.Env.Agree.refl' _), ec,
+      et, hcd]
     exact Or.inl h₀
   · exact h
 
@@ -262,8 +253,7 @@ theorem toAtom (hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set (
 theorem ret_pair (hS : ModalSys.BStrong = true) {A C : VarType} {s : B.W}
     {S : Set (B.frame.Acc s)} {val : (x : S) → (y : B.frame.Acc x.1.1) → B.frame.Dom A y.1}
     {val' : (x : S) → (y : B.frame.Acc x.1.1) → B.frame.Dom C y.1} {o : B.frame.Dom A s}
-    {o' : B.frame.Dom C s} (hc : B.model.IsCarrierData (.all S val))
-    (hc' : B.model.IsCarrierData (.all S val'))
+    {o' : B.frame.Dom C s} (hc : B.model.IsCarrierData S val) (hc' : B.model.IsCarrierData S val')
     (h : B.Ret S val o) (h' : B.Ret S val' o') :
     B.Ret (A := .VTypeProd A C) S (fun x y => ((val x y, val' x y) :
       B.frame.Dom (.VTypeProd A C) y.1)) ((o, o') : B.frame.Dom (.VTypeProd A C) s) := by
@@ -298,9 +288,9 @@ theorem ret_pair (hS : ModalSys.BStrong = true) {A C : VarType} {s : B.W}
       rcases List.mem_pair.mp hψ with rfl | rfl
       · exact hmK
       · exact hmK')
-      ⟨Proof.back_pair hS O .nec trivial bd _ bd' _ (Proof.lookup List.mem_cons_self)
+      ⟨Proof.back_pair hS O bd _ bd' _ (Proof.lookup List.mem_cons_self)
         (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩
-  have hsat := retD_all.mp ((OutLeg.sat_back hS _ O _ _).mp ((truth hST s _ _).mpr hm2))
+  have hsat := (OutLeg.sat_back hS _ O _ _).mp ((truth hST s _ _).mpr hm2)
   cases hSV
   obtain ⟨-, hv'⟩ := Sigma.mk.inj hSV'
   cases eq_of_heq hv'
@@ -324,13 +314,11 @@ end Congr
 theorem retCongr (hS : ModalSys.BStrong = true)
     (hST : ∀ hS : ModalSys.BStrong = true, B.StrongTruth hS) : B.model.RetCongr where
   map := by
-    rintro _ _ _ sh _ _ _ ⟨S, val, rfl, h⟩
-    exact ⟨S, _, rfl, ret_map hST sh h⟩
+    intro _ _ _ sh _ _ _ _ h
+    exact ret_map hST sh h
   pair := by
-    rintro _ _ _ _ _ _ _ _ _ hc hc' ⟨S, val, e, h⟩ ⟨S', val', e', h'⟩
-    cases e
-    cases e'
-    exact ⟨_, _, rfl, ret_pair hST hS hc hc' h h'⟩
+    intro _ _ _ _ _ _ _ _ hc hc' h h'
+    exact ret_pair hST hS hc hc' h h'
 
 end BData
 

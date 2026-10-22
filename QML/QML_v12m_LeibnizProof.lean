@@ -60,8 +60,7 @@ def WFF.conjPath {σ : Signature} {Γ : Ctx} : {d : ℕ} → (ψ : WFF σ Γ d) 
   | _, .atom _, _, h | _, .eq _ _, _, h | _, .top, _, h | _, .bot, _, h | _, .or _ _, _, h
   | _, .imp _ _, _, h | _, .all _ _, _, h | _, .ex _ _, _, h | _, .box _, _, h
   | _, .dia _ _ _, _, h | _, .here _ _ _, _, h | _, .back _ _ _ _, _, h
-  | _, .retSH _ _ _ _ _ _ _ _, _, h | _, .retxSH _ _ _ _ _ _ _ _ _ _, _, h =>
-      (List.mem_singleton.mp h).symm ▸ .self _
+  | _, .retS _ _ _ _, _, h | _, .retxS _ _ _ _ _ _, _, h => (List.mem_singleton.mp h).symm ▸ .self _
 
 def Proof.ofConjPath {σ : Signature} {Γ : Ctx} :
     {ψ c : WFF σ Γ 0} → WFF.ConjPath ψ c → Proof σ Γ [ψ] c

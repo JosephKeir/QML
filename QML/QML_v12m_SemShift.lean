@@ -454,15 +454,12 @@ theorem sat_shift : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ
       change Model.Backs L (interp _ (Term.shift _ s)) (interp _ (Term.shift _ t)) ↔ _
       rw [interp_shift hag s, interp_shift hag t]
       exact Iff.rfl
-  | _, _, _, _, _, _, _, _, hs, hag, .retSH hB S Zs hZs ws t cs Φ =>
+  | _, _, _, _, _, _, _, _, hs, hag, .retS hB S t Φ =>
       exists_congr fun a => exists_congr fun e =>
         and_congr (sat_shift (hs.boxIn.insert _)
             ((hag.boxPush a).extend (hs.boxIn.rootFresh le_rfl) e) Φ)
-          (exists_congr fun r => by
-            rw [interp_shift hag t]
-            exact comesBackH_map S e r _ (fun p => interp_shift (hag.boxPush a) p)
-              (fun c => interp_shift hag c) ws cs)
-  | k, _, _, h, _, _, env₁, env₂, hs, hag, .retxSH hB y hy S Zs hZs ws t cs Φ => by
+          (by rw [interp_shift hag t])
+  | k, _, _, h, _, _, env₁, env₂, hs, hag, .retxS hB y hy S t Φ => by
       constructor
       · rintro ⟨Y, h₂, a, e, hsat, hr⟩
         obtain ⟨Y₀, hy₀⟩ := hy
@@ -477,18 +474,14 @@ theorem sat_shift : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ
         · exact (sat_shift ((hs.diaIn y).insert _)
             ((hag.diaPush hy₀ ⟨a.1, _⟩ a.2).extend ((hs.diaIn y).rootFresh le_rfl) e) Φ).mp hsat
         · rw [interp_shift hag t] at hr
-          exact (exists_congr fun r => comesBackH_map S e r _
-            (fun p => interp_shift (hag.diaPush hy₀ ⟨a.1, _⟩ a.2) p)
-              (fun c => interp_shift hag c) ws cs).mp hr
+          exact hr
       · rintro ⟨Y, hr', a, e, hsat, hr⟩
         have href := hag y _ hr'
         refine ⟨Y, h y _ hr', ⟨a.1, by rw [← href]; exact a.2⟩, e,
           (sat_shift ((hs.diaIn y).insert _)
             ((hag.diaPush hr' a _).extend ((hs.diaIn y).rootFresh le_rfl) e) Φ).mpr hsat, ?_⟩
         rw [interp_shift hag t]
-        exact (exists_congr fun r => comesBackH_map S e r _
-          (fun p => interp_shift (hag.diaPush hr' a _) p)
-            (fun c => interp_shift hag c) ws cs).mpr hr
+        exact hr
 
 /-- ⭐The semantic content of the 4 rule: a shifted `□`-body holds two steps in exactly when the
     body holds at the composite step. -/

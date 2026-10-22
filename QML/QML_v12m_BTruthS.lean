@@ -37,8 +37,6 @@ theorem strongTruth_of (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true)
     intro s i L A b a c t IH
     refine ⟨fun h => ?_, sat_back_of_mem hS c t⟩
     cases L with
-    | necW hW => exact (ModalSys.NoFour.absurdW hW).elim
-    | posW hW => exact (ModalSys.NoFour.absurdW hW).elim
     | nec =>
         match c with
         | .boxtm (.boxtm bd) =>

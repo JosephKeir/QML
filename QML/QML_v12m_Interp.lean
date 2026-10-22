@@ -288,34 +288,26 @@ def Realised (hT : ModalSys.T = true) {A : VarType} {w : M.frame.W}
   ∃ hm : M.frame.reflAcc hT w ∈ (M.posEval p).1,
     M.Ind ((M.posEval p).2 ⟨M.frame.reflAcc hT w, hm⟩) o
 
-/-- ⭐A carrier's **round-trip data** (`Frame.RTData`): its out leg, the ways home, and its values
-    one arrow on.  Row 1 (`nec`): every arrow out of `w`; row 2 (`pos`): the carrier's own extent;
-    every way home in both.  Rows 3–4 (`necW`, `posW`): out as rows 1–2, and home along the extent
-    of the carrier's possible object at the far end, its content the value. -/
+/-- ⭐A carrier's **round-trip data**: its out leg, as a set of arrows out, and its values one
+    arrow on.  Row 1 (`nec`): every arrow out of `w`; row 2 (`pos`): the carrier's own extent. -/
 def carrierData : (L : BLeg) → {A : VarType} → {w : M.frame.W} → M.frame.Dom (L.carrier A) w →
-    M.frame.RTData A w
+    Σ S : Set (M.frame.Acc w), (a : S) → (b : M.frame.Acc a.1.1) → M.frame.Dom A b.1
   | .nec, A, w, c =>
-      .all Set.univ fun a b => M.necEval (M.necEval (c : M.frame.Nec (.VTypeBox A) w) a.1) b
+      ⟨Set.univ, fun a b => M.necEval (M.necEval (c : M.frame.Nec (.VTypeBox A) w) a.1) b⟩
   | .pos, A, _, c =>
-      .all (M.posEval (c : M.frame.Pos (.VTypeBox A) _)).1
-        fun a b => M.necEval ((M.posEval (c : M.frame.Pos (.VTypeBox A) _)).2 a) b
-  | .necW _, A, w, c =>
-      ⟨Set.univ, fun a => (M.posEval (M.necEval (c : M.frame.Nec (.VTypeDia A) w) a.1)).1,
-        fun a b => (M.posEval (M.necEval (c : M.frame.Nec (.VTypeDia A) w) a.1)).2 b⟩
-  | .posW _, A, _, c =>
-      ⟨(M.posEval (c : M.frame.Pos (.VTypeDia A) _)).1,
-        fun a => (M.posEval ((M.posEval (c : M.frame.Pos (.VTypeDia A) _)).2 a)).1,
-        fun a b => (M.posEval ((M.posEval (c : M.frame.Pos (.VTypeDia A) _)).2 a)).2 b⟩
+      ⟨(M.posEval (c : M.frame.Pos (.VTypeBox A) _)).1,
+        fun a b => M.necEval ((M.posEval (c : M.frame.Pos (.VTypeBox A) _)).2 a) b⟩
 
 /-- Round-trip data that is some carrier's. -/
-def IsCarrierData {A : VarType} {w : M.frame.W} (D : M.frame.RTData A w) : Prop :=
-  ∃ (L : BLeg) (c : M.frame.Dom (L.carrier A) w), M.carrierData L c = D
+def IsCarrierData {A : VarType} {w : M.frame.W} (S : Set (M.frame.Acc w))
+    (val : (a : S) → (b : M.frame.Acc a.1.1) → M.frame.Dom A b.1) : Prop :=
+  ∃ (L : BLeg) (c : M.frame.Dom (L.carrier A) w), M.carrierData L c = ⟨S, val⟩
 
 /-- ⭐`c` **comes back as** `o` (strong B, `Back`; docs §11.1, §11.20): the model's `Ret` at the
     carrier's round-trip data (`carrierData`). -/
 def Backs (L : BLeg) {A : VarType} {w : M.frame.W} (c : M.frame.Dom (L.carrier A) w)
     (o : M.frame.Dom A w) : Prop :=
-  M.Ret (M.carrierData L c) o
+  M.Ret (M.carrierData L c).1 (M.carrierData L c).2 o
 
 /-- Under T, a **companion** of a value `x : A` at `v`, the necessary object at the path `p` into
     it, comes back as `o` along the way home `r` (`True` at a path reaching no necessary
@@ -418,27 +410,6 @@ def ComesBack : (S : RShape) → {v w : M.frame.W} → M.frame.Dom S.ty v → M.
       ∃ h : (⟨w, ⟨r⟩⟩ : M.frame.Acc v) ∈ (M.posEval (e.2 : M.frame.Pos X v)).1,
         M.Ind ((M.posEval (e.2 : M.frame.Pos X v)).2 ⟨_, h⟩) o.2
 
-/-- ⭐The object out there **comes back as** `o` along the way home `r`, with **named back
-    witnesses** `ws` (docs §11.23): the shape's part as `ComesBack` says, and the way home lies in
-    each witness's extent, its content there `Ind` to the matching term of `cs` read here.  With
-    none, `ComesBack` itself. -/
-def ComesBackH (S : RShape) {V Γ : Ctx} {v w : M.frame.W} (envF : M.Env V v) (envH : M.Env Γ w)
-    (e : M.frame.Dom S.ty v) (r : M.frame.R v w) (o : M.frame.Dom S.flat w) :
-    {Zs : List VarType} → HomeWs σ V Zs → HomeTms σ Γ Zs → Prop
-  | [], .nil, .nil => ComesBack S e r o
-  | _ :: _, .cons p ps, .cons c cs => ComesBackH S envF envH e r o ps cs ∧
-      ∃ h : (⟨w, ⟨r⟩⟩ : M.frame.Acc v) ∈ (M.posEval (interp envF p)).1,
-        M.Ind ((M.posEval (interp envF p)).2 ⟨_, h⟩) (interp envH c)
-
-/-- The **named back witnesses' part** of `ComesBackH`: the way home lies in each witness's
-    extent, its content there `Ind` to the matching term of `cs` (`comesBackH_iff`). -/
-def HomeBack {V Γ : Ctx} {v w : M.frame.W} (envF : M.Env V v) (envH : M.Env Γ w)
-    (r : M.frame.R v w) : {Zs : List VarType} → HomeWs σ V Zs → HomeTms σ Γ Zs → Prop
-  | [], .nil, .nil => True
-  | _ :: _, .cons p ps, .cons c cs => HomeBack envF envH r ps cs ∧
-      ∃ h : (⟨w, ⟨r⟩⟩ : M.frame.Acc v) ∈ (M.posEval (interp envF p)).1,
-        M.Ind ((M.posEval (interp envF p)).2 ⟨_, h⟩) (interp envH c)
-
 /-- ⭐Satisfaction. -/
 def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ Γ d → Prop
   | _, _, _, env, .atom ρ => relSat env ρ Fin.elim0
@@ -456,16 +427,15 @@ def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ
         sat (env.diaPush x h w') φ
   | _, _, _, env, .here hT s t => Realised hT (interp env s) (interp env t)
   | _, _, _, env, .back _ L s t => Backs L (interp env s) (interp env t)
-  | _, d, w, env, @WFF.retSH _ _ _ _ _ S _ _ ws _ t cs Φ =>
+  | _, d, w, env, @WFF.retS _ _ _ _ _ S _ t Φ =>
       ∃ (a : M.frame.Acc w) (e : M.frame.Dom S.ty a.1),
         sat ((env.boxPush a).extend (.bnd d) e) Φ ∧
-          ∃ r : M.frame.R a.1 w, ComesBackH S (env.boxPush a) env e r (interp env t) ws cs
-  | Γ, d, w, env, @WFF.retxSH _ _ _ _ _ y _ S _ _ ws _ t cs Φ =>
+          ∃ r : M.frame.R a.1 w, ComesBack S e r (interp env t)
+  | Γ, d, w, env, @WFF.retxS _ _ _ _ _ y _ S _ t Φ =>
       ∃ (Y : VarType) (h : Γ.ref y = some (.VTypeDia Y)) (a : (M.posEval (env.ref y h)).1)
         (e : M.frame.Dom S.ty a.1.1),
         sat ((env.diaPush y h a).extend (.bnd d) e) Φ ∧
-          ∃ r : M.frame.R a.1.1 w,
-            ComesBackH S (env.diaPush y h a) env e r (interp env t) ws cs
+          ∃ r : M.frame.R a.1.1 w, ComesBack S e r (interp env t)
 
 end Model
 

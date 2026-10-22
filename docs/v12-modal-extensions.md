@@ -8995,3 +8995,541 @@ through `lbOfKd`.
   * `backRelX` and `RetInX`/`RetInW`/`RetInWX`: the edge invariants, with named witnesses.
 
   Then come the row-3 truth cases, and dropping `NoFour.noBStrongW`.
+
+#### Step B2 on paper: the network's label data, invariants and operations *(2026-10-22)*
+
+**Today.**
+* A child `c` of `p` records its edge's two labels: `kind c` on `p → c` (a witness of `p`, content
+  root `cx c` at `c`) and `bkind c` on `c → p` (a root of `c`, content root `bcx c` at `p`).
+* The edge carries two returning-possibility invariants, one per direction (`RetDataB`, four
+  cases by the two labels):
+  * the forward one takes `c`'s facts home to `p`;
+  * the back one takes `p`'s facts home to `c`.
+* In each, the **out arrow's** label gives the returning possibility's out leg (`RetInvX…`).  The
+  **way home's** label gives the bound object's possible part (`RetInvW…`, the shape `wit`).
+* Operations (`OpS`): weak B's ops, aliases and the four returning children, scheduled fairly
+  (`schedS`, `StrongChain`).
+
+**What row 3 adds, by direction.**  Take the invariant carrying `t`'s facts home to `s` along an
+edge, with out arrow `s → t` and way home `t → s`.
+* Its **named back witnesses** are possible objects of `s`'s out view whose image along `s → t`
+  labels `t → s`.  So the way home's extra labels are exactly the images of named witnesses.
+* Its **out legs**: the out arrow's labels.  A returning possibility along any of them (kind or
+  late) must be available, since `RetInX` is now asked at every label.
+
+**D-B1 (recommended): one list of named-witness entries per direction, each an entry
+`(z, w, u)`.**
+* `z` is a `◇`-address of the home world's out view.  `w` is a body on `z` (a term of `z`'s
+  view).  `u` is the content term at home: the named witness `diatm z w ⇝ u`.
+* The way home's labels are the images of the `z`s (`arrowIdx` along the out arrow).  A label's
+  content root (`BData.cx`) is the `u` of its pinned entry (`w = z.dia`), which is always a fresh
+  root.
+* One list covers all three kinds of named witness:
+  * *late labels* (P1: a positive `Back₃` atom on `z` at home);
+  * *birth labels* (a child made for `◇[d ↦ y; ws ⇝ us] Φ` is born with `ws ⇝ us`);
+  * *per-body content roots* (the `back_tail` pattern: `(z, w, c')` with `c'` fresh).
+* Fields: `bn c` for the forward invariant (home `p`, entries in `p`'s out view) and `fn c` for
+  the back invariant (home `c`).
+
+**D-B2: the invariants take the lists.**
+* Each of `RetDataB`'s forms states its returning possibilities with the direction's whole
+  witness list (stage 2's `retSH`), and does so for every out leg among the out arrow's labels
+  (`nec`, the kind, and the late labels).
+* The four forms stay: the kind and `bkind` remain as they are.  The lists add named witnesses
+  (and out legs for late labels) on top.  At empty lists every form is today's,
+  **definitionally**, as stage 2 arranged (`retS` is `retSH` at `[]`).  So rows 1–2's proofs
+  stand while the lists are threaded through.
+
+**D-B3: birth order (P2), only where P2 needs it.**  `sep` and `unl` are proved from the
+witness children (`exX`, kind `x`) and the non-witness children (`ex`, kind `none`).  Both are
+made by `mkChild` with nothing committed back at birth.
+* Invariant: for a child made by `mkChild`, every extra label of `p → c` is a root of `p` created
+  after `c`'s birth.  Late forward labels are images under `bimg`, and `realBS` creates each
+  image fresh, so this holds.  Record `born c` (the parent's length at birth).
+* Returning children are born with back images onto old roots, but P2 never uses their edges.
+
+**D-B4: the operations** (each scheduled fairly as the others: new `OpS` summands and
+`StrongChain` fields).
+1. *Late label* (P1).  A positive `Back₃` atom at the home world on `z`, with `z`'s root
+   committed along the out arrow.  Add the entry `(z, z.dia, c)` for a fresh root `c` at home.
+   * Home gains `c` with `{◇_O[D ↦ V; L, diatm z z.dia ⇝ c] Φ(D) : the far world makes Φ true,
+     O an out leg}`.
+   * Consistency is P1 step 2's argument, with `ret_homeN` as the existence rule.
+2. *Per-body content root* (the `back_tail` pattern).  For an entry on `z` and a body `w`, add
+   `(z, w, c')` with `c'` fresh, by `ret_nameN`.  Same consistency argument.
+3. *Births with named witnesses.*  The returning children (`mkRet…C`) are born for formulas with
+   `ws ⇝ us`, with those entries.  Their pinned content roots then come from op 2.
+4. *Realisation steps* (`realFS`, `realBS`) and Henkin steps keep the lists, carried by stage 2's
+   generalised rules.  New roots at a node are invisible to the edges until committed.
+
+**D-B5: the limit's obligations**, by step B1's fields.
+* `lb`: kind ∪ the images of the entries' `z`s.  `cx`: the pinned entry's root.
+* `unl` and `sep`: by D-B3.
+* `lb_trX` for an entry's label: the counit `ret_counitN₀` applied to the invariant at the body
+  `□_z χ` (P1's "label transfer").
+* `backRelX` along a late label: `back_tail`'s argument with the named witness carried along.
+* `RetInX`/`RetInW`/`RetInWX` at every label: the invariants' out legs and lists.
+
+**Order of building.**
+1. `NetSt` fields (`bn`, `fn`, `born`) and every op copying them (empty at birth, as now).  This
+   is mechanical.
+2. `RetDataB` with the lists and out legs, empty-list instances `rfl`.  Thread through births,
+   steps and aliases; rows 1–2 stay green throughout.
+3. The new ops, with consistency and preservation.
+4. The limit's obligations (D-B5); `lbOfKd` is retired.
+5. The row-3 truth cases (`Back₃`, returning possibilities with named witnesses, the own arrow).
+   Then drop `NoFour.noBStrongW`.
+
+**Size.**  Steps 1–2 touch every network file and every invariant form (birth, steps, children:
+about 15 files).  Most of it is threading empty lists.  Step 3 is new mathematics, at P1's scale.
+Steps 4–5 mirror rows 1–2's limit and truth work.
+
+#### Step B2's reverse step, on paper: a gap in named witnesses' contents *(2026-10-22)*
+
+**Where it shows.**  A realisation step commits a root `A` of the source `c` into the target `p`.
+The forward invariant (`c`'s facts home to `p`, list `bn` at `p`) is carried by the chain with the
+list; that is built (`chainBH_consistent`).  The reverse invariant (`p`'s facts home to `c`, list
+`fn` at `c`) is re-proved from scratch by the unit (`retStepB_rev`).  With named witnesses it has to
+hold, for the new bodies `Φ(A.box)`, *with* the list's contents.  No argument gives that.
+
+**Option (a) is unsound.**  The unit produces the inner returning possibility's possible part as
+the out-leg label `x` (the image `w_q` of `q.box`).  Turning that into the named witness `q.box`
+needs the way home in `q.box`'s extent read at `p`.  The premises link `q.box` read at `p` to `w_q`
+only by `Ind` (comes back as).  `Ind` at `◇` types preserves formulas, not a given arrow's place in
+an extent: two arrows to indistinguishable worlds, `extent(p₁) = {a}`, `extent(p₂) = {a'}`,
+`Ind p₁ p₂`.  So bound possible parts can never be read as named witnesses.  (The converse, a
+named home object with a `Back₃` atom as a bound part, is sound: §11.22's row-3 counit.)
+
+**What does carry over to the reverse step.**
+* *Presence.*  A label of the reverse way home comes from a `Back₃` atom at the reverse home.
+  `ret_backN` puts it on every returning possibility there, even inside the unit's body.  No step
+  work, no jointness issue.
+* *Contents pinned by atoms* (`u ⇝ t` for `Back₃(z, u) t`), for the same reason.
+* *Contents of out-leg labels*, as rows 1–2 do for the kind: the forward invariant along `◇_x`
+  lifts `x.dia` to the content root, and `ret_unitWCH` returns it as the possible part's content.
+  This is why rows 1–2 close.  But it gives the bound-part form, not the named one.
+
+**What does not: a named witness's content along one arrow.**  The pinned content `z.dia ⇝ c_q` is
+a per-edge fact about a *home* object.  It is made by existence (`ret_nameN`) and lives only in the
+edge invariant.
+* For bodies over newly committed home items it can be extended only by the unit (bound-part
+  form, see above) or by Leibniz for the new item (absent at `◇` types by design).
+* So when `c`'s theory is completed after `c_q` is made, it may decide
+  `¬◇[d ↦ y; q.box ⇝ c_q] Φ(A.box)` for a body `p` later makes true when `A` is committed.  The
+  two-sided step (target respecting those negations) need not be consistent: the premises are
+  jointly satisfiable in a model where `q.box`'s content along the arrow differs from `c_q`.
+* Rows 1–2 never have a per-edge fact about a home object: their per-edge data is the bound object
+  and the legs' labels, which both units carry.
+
+**Bound possible parts instead (D1 (b)) do not close it either.**  They are closed under the
+units, and they would also remove P3's gap (a bound part's content map is a hole term over `d`).
+But several labels on one arrow would need the forward invariant along a *joint* out leg (the out
+arrow in several `p`-objects' extents at once).  That is a joint view, against the one-formula
+rule.  And the truth lemma's formulas name home objects, which bound parts cannot become.
+
+**Verdict.**  No placement of the labels closes the reverse step.  The obstruction is that row 3's
+named witnesses carry per-arrow facts about home objects, which the language can create (by
+existence) but not extend along an arrow.  Candidate ways out, all for the user:
+* a model law making `Ind` at `◇` types preserve extent and content (makes (a) sound; doubtful:
+  the canonical `Ind` is interchangeability, and distinct interchangeable witnesses can have
+  distinct label sets);
+* an atom identifying a home object's reading with a bound possible part along one arrow, as
+  `Here` does at the own arrow (a new former, §P3's third option);
+* restricting named witnesses' contents to atom-pinned ones (changes the logic; the truth lemma
+  would then never need per-edge contents);
+* a construction in which no home root is committed along an edge after a named content on that
+  edge is fixed (no obvious way, since roots keep arriving).
+
+
+#### Option 2 scoped: the round trip's own identification *(2026-10-22, paper)*
+
+**What is missing, precisely.**  In the reverse step the unit runs along the forward invariant's
+out leg `◇_{w_q}` (`w_q` the image of the carrier `q` at `p`).  The inner returning possibility
+needs the way home in the extent of `q.box` read at `p`, with content `w_q`'s.  The forward
+invariant's own data has `q`'s reading home only `Ind` to `w_q` (comes back as).  Canonically the
+reading *is* `w_q` (`BCanonModel.necEval` reads the raw object of the image root), so the fact is
+true there; the language just cannot state it.
+
+**The clause.**  Along a witness leg `◇_x`, a named `◇`-typed component `π` of the bound
+necessary part **comes home as `x` along this round trip**, written `◇_x[d ↦ y; …; π ≡ x] Φ`:
+* the trip's own arrow out (in `x`'s extent, by the leg) lies in the extent of `d.π` read home,
+  with content there `Ind` to `x`'s;
+* it speaks about one arrow, the one the formula has already chosen, as `Here` speaks about the
+  identity arrow under T.  It links two possible objects only through that arrow (joined, not
+  the withdrawn unlinked `diaEq`);
+* it is tied to the leg's witness *address*, so substitution treats it as it treats the leg
+  (`x ↦ ι x`).  Tying it to a value term instead would make the truth lemma's children come home
+  onto arbitrary terms.
+
+**Its rules.**
+* *Producer (from a far-side atom).*  `◇[d ↦ y] (Φ(d) ∧ Back₃(d.π.box, u) t)`, with `c` fresh,
+  lets the subproof assume `◇_c[d ↦ y; π ≡ c] Φ`.  Sound: at the far end the atom puts the way
+  home of its arrow (`homeUnique`: the trip's out arrow) in `d.π`'s reading's extent; `c` names
+  that reading.  This is also the **late out-label** rule the network needs anyway (D-B2's "every
+  out leg among the out arrow's labels" had no derivation yet).
+* *Consumer (the named witnessed unit).*  `ret_unitWCH` with the clause: from
+  `◇_x[d ↦ y; π ≡ x] Ψ` and its `θ` premise, the inner returning possibility at the far end gets
+  the named witness `diatm (d.box.π) w ⇝ w`, contents read through `x`'s view.  Sound: the inner
+  way home is the outer arrow out, which the clause puts in `d.π`'s reading's extent.
+* *Carriers.*  `mono`, selection, `ret_monoSH`, and the maps (`ret_mapH` etc.) with `π`
+  transported through the shape maps (`packCC`, `subC`, `tupCG` rearrange the tuple).
+
+**What it closes.**  When a realisation step commits `q` to `p` (making `w_q`), the producer gives
+the forward invariant along `◇_{w_q}` with `π_q ≡ w_q`; the chain carries it from then on
+(producers and carriers only).  The reverse step's unit along `◇_{w_q}` then gives, after the lift
+`d.box.π_q ↦ q.box`, the named witness `q.box` with content `c_q`: the reverse invariant with its
+list.  On paper that is the gap closed.
+
+**Open (to check before anything is built).**
+1. *Truth ⇒ membership when the component reads home as a different label.*  A true
+   `◇_x[d ↦ y; π ≡ x] Φ` on an edge where `d.π` reads home as another label `w'` of the same
+   arrow (contents `Rel`) needs membership; the invariant only has `≡` for `x`'s own preimage.
+   Whether the far side's facts (atoms, the reverse invariant's contents) reach it without a
+   joint leg is the main risk.
+2. *Membership ⇒ truth.*  The returning child for the formula: its `π` root comes back onto a
+   fresh alias of `y.π`, labelling the child's arrow with `x`'s content root.  Check that this
+   respects P2's birth order (as `bkind` does) and the alias op's consistency.
+3. *Path bookkeeping* through the shape maps, and the four reverse-step forms (nec, X, W, WD).
+
+**Size, if it holds.**  Syntax, semantics and every recursion (a third list on `retSH`, as stage 1
+did): moderate.  Producer, consumer, carriers, soundness, `Proof.subst`: at stage 2–3's scale.
+Network: the clause threaded through every invariant (with the named-witness lists), the
+late out-label op, and the four reverse steps.  Truth cases for the clause.  Roughly
+stages 1–3 plus B2 again.
+
+
+#### Open point 1 on paper: two labels on one arrow *(2026-10-22)*
+
+**The case.**  `◇_x[d ↦ y; π ≡ x] Φ` true on an edge `s → k` (arrow `a`), where `d.π` reads home
+as a possible object `R` whose label on `a` is `ℓ ≠ x`.  (`R`'s extent is its witness root's, so it
+is `ℓ`'s.)  The one-arrow clause is then true when `a` carries both labels and their contents along
+`a` (content roots `cx_x`, `cx_ℓ` at `k`) are `Rel`.
+
+**Presence is fine.**  `R`'s label comes from a far-side atom on the carrier.  A far-side `Back₃`
+atom covers the way home of *every* arrow out of `k`, so "the trip's out arrow lies in `R`'s
+extent" follows along **any** leg (a presence-only producer).  Also, presence is decided when the
+carrier is committed: every atom on `q.box` implies `Back₃(q.box, ()) ()` (`back_betaW` to `𝟙`),
+whose vocabulary is `q` alone.  So "atoms arriving late" (P1) only ever add contents, and the image
+`w_q` can be made exact at commit time (the fresh image *is* the reading).
+
+**Content fails.**  The clause asks for `ℓ`'s content along `a` while running along `◇_x`.
+* That content is per-arrow data.  It is available along `ℓ`'s own leg (`π_ℓ ≡ ℓ` lifts `ℓ.dia` to
+  `cx_ℓ`) and in the reverse invariant at `k` (named witness `q.box ⇝ cx_ℓ`).
+* Along `◇_x` neither can be joined to the trip: the reverse invariant's formulas are `◇`s over
+  arrows from `k`, and two legs cannot be combined.
+* So membership is not derivable, while the formula is canonically true.  **The one-arrow clause
+  fails open point 1.**
+
+**A global clause passes it.**  Read `π ≡ x` as: `d.π` read home **is** `x`, as a possible object:
+the same extent, contents `Ind` (and the same shape when shaped).
+* *The failing case becomes false canonically.*  Two distinct roots with nonempty extents have
+  distinct extents (P2), so `R ≡ x` with `ℓ ≠ x` is false.  Truth then forces `R`'s witness to be
+  `x`: the invariant's own clause `π_q ≡ w_q` (with `x = w_q`), moved by the decoder's map.
+* *Still sound where used.*  Produced only by the fresh-value rules (the fresh image is the
+  reading: identity).  The consumer (the named witnessed unit) uses only its one-arrow
+  consequence.  The leg `◇_{w_q}` comes from the presence producer.
+* *Membership ⇒ truth.*  The returning child brings its `π` root home onto `x` itself (a back
+  image onto an old root), so the clause holds by identity.  `ComesBack` then needs `x Rel y.π`,
+  which a Leibniz-style rule gives from the clause (`R` is `x` and `R` is `Ind` to `y.π`).
+* *Two extra rules for the truth case.*  Empty extents (`□_x ⊥`, `□_{x'} ⊥`, `π ≡ x ⊢ π ≡ x'`), and
+  content correction (`π ≡ x` with `□_x K(b(x.dia), x.dia)` ⊢ the clause for `b` applied to `π`).
+
+**The cost of the global form, for the user.**  It states that two possible objects (the reading
+home and `x`) are co-extensive.  `feedback_qml_joint_possibility_pairing` warns against a
+co-extensivity predicate.  This one is restricted: one side is always the reading home of a bound
+component, defined by the round trip, and the clause is produced only by naming that reading.  It is
+"comes back as" strengthened at possible components, from `Ind` to "is".  Whether that is within
+the principle is the user's call.
+
+**Sub-checks if accepted.**
+* That `IndP` (same extent, `Ind` contents, same shape) objects satisfy the same formulas: likely
+  a model condition next to `IndInvariant`.
+* The chain's substitution sends the newest image root to a term (`stepARR`).  A clause on that
+  root must be produced after the substitution, or the chain must keep the root.
+* Image injectivity (`ImgInj`) if a child has two components `≡ x`.
+
+
+#### Stepping back: jointness, and "some arrow back" for row 3 *(2026-10-22, paper)*
+
+**User (2026-10-22):** the global co-extensivity clause is the wrong kind of design; step back.
+
+**Diagnosis.**  With `homeUnique` every row-3 carrier with an atom claims *the* way home, so the
+semantics validates §11.5(1)'s `back_joint`, about possible objects on *different* witnesses, which
+pairing cannot express.  By `feedback_qml_joint_possibility_pairing` that marks the design, not the
+mechanism.  Named back witnesses, several bound parts, joint out legs and co-extensivity clauses are
+all ways of stating that joint principle; each broke a principle or the construction.  Named back
+witnesses were a device for the completeness proof; the axioms (`Back₃`'s rules, `B_strongW`) never
+needed them.  Rows 1–2 escape because their carriers pair (`□A × □B ≅ □(A × B)`, `back_pair`).
+
+**The proposed semantics.**
+* *Rows 1–2 and returning possibilities* read along a **designated way home**: an involution `δ`
+  on arrows (each arrow paired with its reverse), replacing `homeUnique`.  Relational frames have
+  it outright, so nothing changes for them.
+* *Rows 3–4's witnessed back leg* is **existential**: from each arrow out, *some* arrow back lies in
+  the carrier's value's extent, with content `Ind` to the value.  It is the term-level reading of
+  B's unit `A → □◇A`: at each successor, possibly back.
+* The carrier's type says which: the outer modality is the out leg, the inner the back leg; `□`
+  back is the designated return, `◇_z` back is some return in `z`'s extent.
+
+**Rule audit** (`homeUnique` is used in `SemBack` by `back_pair`, the own-arrow lemma, `back_here`,
+`ret_counitC`, `sat_backP_pos`):
+* `back_pair`, `back_here`, `ret_counitC`, the `ret_unit` family: sound with `δ` (both returns are
+  read along `δ a`; `δ (refl) = refl`; `δ δ a = a` for the unit).
+* `back_counitW`, `back_unitW`, `back_neW`, `back_betaW`, `B_strongW`: sound with the existential
+  back leg (each uses one atom's arrow back).
+* `back_pairW` (two atoms on one `z` ⊢ the paired atom): **unsound** (two atoms may use different
+  arrows back).  By the pairing principle this is right: the paired atom is taken as a hypothesis.
+* `back_realW`, `back_hereW` (row 3 at T's own arrow): **unsound** (some loop, not necessarily the
+  identity, lies in the extent).  They go.
+* The named-witness rules: `ret_backN` (and so `ret_homeN`, `ret_counitN`) **unsound** (the atom's
+  arrow back need not be the returning possibility's).  The named-witness machinery would go.
+
+**Relational or arrow semantics.**  For rows 3–4 arrow semantics is **forced** by the pairing
+principle: on relational frames "some arrow back" is "the arrow back", and `back_joint` is valid
+again.  Unravelling does not rescue it: B's returns must land at the *same* world (the content is
+compared with an object there), and a symmetric unravelling gives each copy of a successor one
+arrow back to its parent.  Everything without `BStrongW` stays relational (its canonical model is).
+
+**The construction: still the crux.**  For each arrow out `a : s → k` and each positive atom
+`Back₃(r.box, u) t` at `s`, the network needs an arrow back `b : k → s` in the extent of `r.box`'s
+image under `a`, with `u`'s round trip `a ; b` returning `t`.  Two natural constructions fail:
+* *`b` shares the edge's translation* (a copy of `δ a` with one more label).  Then the realisation
+  steps are shared, and the target's new root must satisfy the edge's invariant and every copy's
+  label invariant at once: rets with different ways home, constraining one fresh root jointly.  The
+  logic cannot show that consistent (the jointness reappears at the steps).
+* *`b` has its own translation* (an independent edge).  Then `u`'s round trip `a ; b` mixes two
+  translations, and the row-3 counit can no longer meet the atom along the returning possibility's
+  designated way home.
+* What is left: returning possibilities whose way home is *not* designated (the `wit` shape read
+  existentially: out along `a`, home along some arrow in the possible part's extent), used only for
+  row-3 labels.  Whether that gives the label invariants without jointness is unchecked.
+
+**Verdict so far.**  The semantics and rule audit are clean and keep the principles.  The
+construction is not yet found; the remaining candidate is above.
+
+
+#### The last candidate on paper: a free way back for the label *(2026-10-22)*
+
+**The candidate, made precise.**  The label's possible part returns along *some* arrow back in its
+own extent, while the necessary part keeps the designated way home: "out along `a`; `D` comes back
+as `V` along `δ a`; the possible part `e` has an arrow back in its extent with content `c`".
+* It is sound to produce from an atom (the row-3 counit with `e` the reading itself), with no `Ind`
+  gap.
+* With `Back₃` read as "some arrow back in the extent, and every such arrow returns the value", it
+  meets the atom (the atom applies along the label's arrow), and `back_pairW` is sound again
+  (pairing on one witness).
+* Several labels are several bound possible parts, each with its *own* arrow back: a product of
+  `◇` components, not a joint possibility.
+
+**Where it fails.**
+1. *Its content cannot be kept.*  At the reverse step it must be re-derived, and the unit that would
+   give it runs along the label's own arrow `b`, not along `δ a`: the new form ties two arrows out
+   of `k` (`δ a` for `D`, `b` for the label) into one statement.  The atom gives only the presence
+   and the atom-pinned contents; the label's own content is per-arrow, as before.
+2. *The label's arrow is a full arrow.*  Every arrow has a designated reverse (`δ` is total, since
+   `k`'s rows-1–2 atoms read along it, and an involution, for the unit).  So `b` lies in two round
+   trips, `(a, b)` for the label and `(δ b, b)` its own, which share `b`'s translation.  A
+   realisation step along `b` must then satisfy both invariants with one fresh root: returning
+   possibilities with two different out arrows, which no single formula joins.
+   * Sharing all translations with the edge (a full copy) is the first failed construction again.
+   * Letting `b`'s translation be independent makes the existence step fail: the atom gives *some*
+     arrow back, unrelated to the edge's values, so the label's invariant (with the edge's values)
+     cannot be shown consistent.
+   * Re-pairing `δ` around `b`, or relaxing it to a set of ways home, breaks the unit or
+     `back_pair` for rows 1–2.
+
+**Verdict: the candidate fails, and the failure looks structural.**  When an out arrow has two
+row-3 carriers, at least one carrier's arrow back is not the designated return.  That arrow is then
+the return of two round trips, and the steps along it constrain both at once.  With `homeUnique`
+the jointness shows as several labels on one arrow; without it, as several round trips through one
+arrow.  It is the same jointness, displaced.  No network construction found so far escapes it.
+
+
+#### The existential reading of row 3 *(2026-10-22, user's proposal; paper)*
+
+**The reading.**  "For each `a`, a carrier `c : □◇A` whose value at **some** successor is a
+possible object whose extent contains a way back, with content `a`."  The carrier is still
+necessary (a value at every successor); only the return is claimed at some successor.  So
+`Back₃∃(z, u) t`: some arrow out, along whose way back (in `z`'s extent) `u` returns `t`.
+
+**Why it dissolves the jointness.**  No atom constrains every successor, so no existing edge ever
+needs a row-3 label.  Each positive atom gets its **own** child, born for it.  An arrow then carries
+at most the kind and one back label, exactly rows 1–2's structure.  `homeUnique` stays, and the
+semantics stays **relational**: `back_joint`'s premise (a successor shared by several atoms) no
+longer follows.  No named back witnesses are needed: by D2 (a) the canonical `Ret` reads the
+atoms, so negative atoms impose nothing, and positive ones need only `Ret_fwd∃` at their child.
+
+**The rules.**
+* Sound: `back_neW`, `back_betaW`; the counit as `Back₃∃(z, u) t, □□_z ψ(u) ⊢ ψ(t)` (the `□` covers
+  the atom's arrow); the unit as `Back₃∃(z, u) t, ψ(t) ⊢ ◇◇_z ψ(u)`; `B_strongW` with
+  `backRet_existsW` weakened to "some arrow".
+* Unsound, and dropped: the `◇□_z` counit, `back_pairW` (two atoms may use different successors;
+  the pair is taken as a hypothesis, as the pairing principle asks), `back_realW`/`back_hereW`,
+  and the named-witness machinery.  `RetCongr.pair` is kept for rows 1–2's data only.
+* New: an **existence form of the bridge**.  From `Back₃∃(z, u) t` and `s`'s `□`-facts about `z`
+  and the committed roots, with `c`, `ȳ` fresh: a witnessed returning possibility whose possible
+  part is `z`'s reading, whose content returns as `c`, whose bound tuple (the readings of `s`'s
+  committed roots) returns as `ȳ`, and `K(⟨u(c, ȳ), t⟩)` at home.  It is sound: take the atom's
+  arrows, and name the returns.
+
+**The construction, sketched.**  For a positive atom, `s` gains fresh `c`, `ȳ` with that set
+(consistency as P1's content root: closure under conjunction plus the bridge).  Then a returning
+child is born for it:
+* its arrow out has no kind;
+* its way back is labelled by the child's root for the possible part (`bkind`), with content root
+  `c`;
+* `s`'s committed prefix is committed at birth: the carrier `r` goes onto that root and `u`'s items
+  onto the tuple's roots, with back images `ȳ`.
+
+`u`'s content along the way back is then `u(c, ȳ)`, `Rel` to `t` by the home fact, so `Ret_fwd∃`
+holds once and for all (later commitments do not change it).  From there the edge is a rows-1–2 edge
+(`bkind` with `bcx = c`), kept by the existing four forms.
+
+**The cost: meaning.**  The `∀` reading's counit `◇□_z ψ(u) ⊢ ψ(t)` has B as its shadow
+(`◇□ψ → ψ`).  The `∃` reading's counit `□□_z ψ(u) ⊢ ψ(t)` has `□□ψ → ψ` (equivalently
+`ψ → ◇◇ψ`) as its shadow.  It is weaker, though still a genuine existence principle: possible
+objects that realise a return are not given by rows 1–2.  Propositional B itself is already weak
+B's.  So row 3 would state the term-level recovery of objects along *some* round trip, not every
+one.
+
+**Still to check before building.**
+* The bridge's exact statement and the commitment of a whole prefix at birth (the network commits
+  in declaration order).
+* Truth ⇒ membership for the atoms when two `(z, u)` have equal canonical data: by the dedicated
+  children's labels (P2-like) and `back_eq`.
+* Row 4 analogously (out leg `◇_y`, its witness children).
+
+
+#### Row 3 as strong T along the way back *(2026-10-22, user's question; paper)*
+
+**The analogy.**  Strong T wants `A → ◇A`, and states it from the possible object's side
+(`posRet_exists`): each object has *some* possible object realising it at the identity arrow,
+related by `Here`.  The doc's own reason: no operation, "no uniqueness and no naturality", since
+an operation would force the canonical model to make choices cohere (what sank `y.ret`).  The
+current row 3 (`B_strongW`: one carrier `c : □◇A` realising `a` at *every* successor) is the
+operation-like, uniform version: one named home object whose readings must all reach back.  That
+uniformity is exactly what produced the jointness (named carriers on one way home).
+
+**The per-arrow reading.**  For each arrow `a : w → v` and each object `o` at `w`, *some* possible
+object at `v` has the way back `δ a` in its extent, with content `Ind o`.
+* It keeps the `∀` over successors (the `□` of `□◇A`), unlike the existential reading, but drops
+  the uniform carrier.
+* *The relation* is the one the language already has: a witnessed returning possibility relates a
+  possible part at the far end to a value at home (`◇[⟨d, e⟩ ↦ ⟨y, c⟩]`).  It starts from `◇A` at
+  the far world and relates it to `A` at home, as `Here` starts from `◇A` and relates it to `A`.
+* *The rule* (`ret_realise`): `◇[d ↦ y] Φ ⊢ ◇[⟨d, e⟩ ↦ ⟨y, c⟩] Φ` for any home term `c`, along any
+  leg.  It is sound by the model law.  Joint realisation goes through pairing: realise
+  `⟨c₁, c₂⟩` at once.  Extending an existing possible part is not available, correctly, since
+  that would join two possibilities.
+* Applied from the far end, the law also names every arrow *out* by a possible object at its
+  source (a route-naming rule, compare §11.19's strong D).
+* Necessary objects may be uniform (rows 1–2's carriers pair); possible ones only per arrow.  That
+  is the pairing principle's line.
+
+**Why the jointness goes.**  No named home carrier is required to reach back, so no formula
+forces several possible objects onto one way home.  The two-leg `Back` with a witnessed back leg
+(rows 3–4's atoms), `B_strongW`'s carrier form and the named-witness machinery leave the language.
+`homeUnique` stays, so the semantics stays **relational**.
+
+**The canonical model, sketched.**  Every edge carries one label each way: the kind at the source
+(the witness for a witness child, else a fresh root named by the route rule) and the back label at
+the target (born with the child by `ret_realise`).  Both have trivial content.  Every realisation
+along the edge is a possible object **on that label's witness**, `diatm ω u`, with content given by
+a body over the images of rows-1–2 carriers (`c_o` with `Back(c_o, o)`: its reading comes back as
+`o`).  So one witness per way back, everything else by pairing and bodies on it, which is rows
+1–2's `(kind, bkind)` structure with `ret_mapD` for the bodies.
+
+**To check before building.**
+1. The exact rules: `ret_realise` along legs; the route-naming rule (or whether it is derivable from
+   `ret_realise` and the units); their `Proof.subst`.
+2. The model law's statement, and that the canonical model meets it at every content type.
+3. The network: every child born with both labels; the route-naming op at the source for children
+   without a kind; consistency of each.
+4. The truth cases for witnessed returning possibilities whose possible part is any object on the
+   back label, via `ret_mapD` and the rows-1–2 carriers' returns.
+5. That nothing the user wants from the uniform row 3 is lost: the named-carrier `Back₃` atoms and
+   `B_strongW` go.
+
+
+#### The per-arrow reading: paper checks 1–4 *(2026-10-22)*
+
+**Decided (user, 2026-10-22):** the per-arrow, strong-T-style reading is preferred; check it.
+
+**The model law** (`posBack_exists`, under `BStrongW`): for arrows `r : R w v`, `b : R v w` and
+every `o : Dom A w`, some `p : Pos A v` has `⟨w, b⟩` in its extent with content there `Ind o`.
+(`homeUnique` makes `b` *the* way back; relational frames as before.)
+
+**1. The rules.**
+* `ret_realise`: `◇_O[d ↦ y] Φ(d) ⊢ ◇_O[⟨d, e⟩ ↦ ⟨y, c⟩] Φ(d)` (shape `nec N` to `wit N X`; `c`
+  any home term; the body through the projection, as `ret_map` does).  Sound: the premise's arrow
+  `r` and way home `b`; the law gives `p` with `b` in its extent and content `Ind c`; the
+  necessary part's return is unchanged.  Only from `nec` shapes: joint realisation is by pairing
+  the contents.  `Proof.subst`: `c` substituted, the body as `ret_map`'s.
+* Route naming, `ret_route` (elimination form, as `ret_extS`): from `◇_O[d ↦ y] Φ`, with `κ` fresh,
+  the subproof may assume `◇_κ[d ↦ y] Φ` (`κ : ◇𝟙`).  Sound: the law at the far end, for the arrow
+  back and `o := ()`, gives a possible object at home whose extent holds the arrow out.  Whether it
+  is derivable from `ret_realise` inside the unit's body and a possible-part counit is open; if
+  not, it is primitive, with the same justification.
+
+**2. The canonical model meets the law.**  Every edge `p → k` carries a kind (a root of `p` on
+`p → k`, content `cx`) and a back label `ω` (a root of `k` on `k → p`, content `bcx`).  For `o`
+the denotation of a `p`-term `t`:
+* rows 1–2 give a carrier `c_t` with `Back(c_t, t)` (`B_strong`), which the network returns as `t`
+  along every edge;
+* once `c_t` is committed to `k`, `diatm ω (img c_t).box` is a possible object at `k` whose extent
+  holds `k → p`, with content there the round trip of `c_t`, `Rel t`.
+
+The arrow `k → p` is symmetric (the kind and the child's carriers committed back).  Every content
+type is covered, since rows 1–2's carriers are.  **Under T** the identity arrow is its own way back,
+so the law there *is* strong T's `posRet_exists`: `BStrongW ∧ T` implies strong T.  Likewise
+`ret_route` gives `◇⊤ ⊢ ∃κ. ◇_κ ⊤`, strong D's `posSerial`, so `BStrongW ∧ D` implies strong D.
+These are flag implications to record (strong T is row 3 at the own arrow; strong D's route naming
+is row 3 seen from the far end).
+
+**3. The network.**  Under `BStrongW` every child is **doubly witnessed**: kind and back label,
+the existing `(some, some)` case (`RetInvWDB` both ways; `mkRetXDC`, `retStepWDB`).
+* A Henkin `◇_x φ`: `ret_new` at `𝟙` gives `◇_x[() ↦ ()] φ`, `ret_realise` the back label's part,
+  and `mkRetXDC` is born for that.
+* A plain `◇ φ`: first `ret_route`, so the parent gains a fresh `κ` with one formula (consistent by
+  the rule, as `mkAlias`), then as above.
+* No label is ever added to an existing edge; no named witnesses; one label per arrow each way,
+  so `kd` is a function again.  The per-root `unl` (step B1) still holds: a root labels only its
+  own children's arrows, and later children have fresh kinds.
+
+**4. The truth cases.**  The only possible objects at `k` with `k → p` in their extent are those on
+`ω`: `diatm ω u`.
+* *Truth ⇒ membership* of `◇[⟨d, e⟩ ↦ ⟨y, c⟩] Φ`: decode `u` over the tuple once its items are
+  committed, so `e = diatm ω h(d.box, ω.dia)`.  `RetInvWDB` with `ret_mapD` gives the formula at
+  the canonical value; move to `c` by `Rel`.  This is rows 1–2's back-witness case, now at every
+  edge.
+* *Membership ⇒ truth*: the returning doubly witnessed child, as now.
+* Plain returning possibilities, legs, rows 1–2's `Back` atoms and the own arrow (`ret_hereWC`
+  under T): unchanged.
+
+**Verdict: checks 1–4 pass on paper.**  Row 3 becomes rows 1–2's machinery with a label on every
+arrow, plus two rules and a model law.  Row 4 is `ret_realise` along a `◇_y` leg.
+
+**Open details.**
+* Whether `ret_route` is derivable.
+* `mkRetXDC`'s interface for a content given by a term (`bcx` is a root): alias it, or allow a
+  term.
+* The flag implications (`BStrongW ∧ T → TStrong`, `BStrongW ∧ D → DStrong`): as `ModalSys`
+  constraints, or derived.
+* What goes: rows 3–4's witnessed back legs of `Back`, `B_strongW`'s carrier form, and the
+  named-back-witness machinery (stages 1–3, the basis, the own-arrow named forms).  Step B1's
+  label-general canonical model can stay (one label per arrow is a case of it).
+
+
+#### Build step 1: the abandoned design removed *(2026-10-22)*
+
+* The uncommitted step B2 work (named-witness lists in the network, the invariants with lists,
+  the plain step's chain with named witnesses) is kept on the branch `record/b2-named-witnesses`.
+* Reverted on `main`: `4fcea86` (the `BStrongW` flag, round-trip data with a back leg, the
+  witnessed back legs of `Back`, `B_strongW` and `backRet_existsW`), stages 1–3 (`54c6daf`,
+  `e5692fe`, `7393ba4`), the own-arrow named forms (`7d5f033`) and the basis (`6a42c22`).
+  About 2,900 lines in 43 files; the design notes are kept.
+* Steps A and B1 (the label-general canonical model) stay: they do not depend on the reverted
+  work, and one label per arrow is a case of them.
+* All 18 v12m targets build, no `sorry`.  The flag returns in step 2, with `posBack_exists`,
+  `ret_realise` and `ret_route`.
+

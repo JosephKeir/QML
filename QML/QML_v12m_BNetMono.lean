@@ -217,8 +217,8 @@ theorem Ext.henk [ModalSys.NoFour] {N : NetSt σ} (hN : N.Good) {s : Node} (hs :
     | .imp (.dia _ _ _) _ => exact Ext.refl N
     | .imp (.here _ _ _) _ => exact Ext.refl N
     | .imp (.back _ _ _ _) _ => exact Ext.refl N
-    | .imp (.retSH _ _ _ _ _ _ _ _) _ => exact Ext.refl N
-    | .imp (.retxSH _ _ _ _ _ _ _ _ _ _) _ => exact Ext.refl N
+    | .imp (.retS _ _ _ _) _ => exact Ext.refl N
+    | .imp (.retxS _ _ _ _ _ _) _ => exact Ext.refl N
     | .imp (.all _ _) (.atom _) => exact Ext.refl N
     | .imp (.all _ _) (.eq _ _) => exact Ext.refl N
     | .imp (.all _ _) .top => exact Ext.refl N
@@ -231,15 +231,15 @@ theorem Ext.henk [ModalSys.NoFour] {N : NetSt σ} (hN : N.Good) {s : Node} (hs :
     | .imp (.all _ _) (.dia _ _ _) => exact Ext.refl N
     | .imp (.all _ _) (.here _ _ _) => exact Ext.refl N
     | .imp (.all _ _) (.back _ _ _ _) => exact Ext.refl N
-    | .imp (.all _ _) (.retSH _ _ _ _ _ _ _ _) => exact Ext.refl N
-    | .imp (.all _ _) (.retxSH _ _ _ _ _ _ _ _ _ _) => exact Ext.refl N
+    | .imp (.all _ _) (.retS _ _ _ _) => exact Ext.refl N
+    | .imp (.all _ _) (.retxS _ _ _ _ _ _) => exact Ext.refl N
     | .all _ _ => exact Ext.refl N
     | .box _ => exact Ext.refl N
     | .dia _ _ _ => exact Ext.refl N
     | .here _ _ _ => exact Ext.refl N
     | .back _ _ _ _ => exact Ext.refl N
-    | .retSH _ _ _ _ _ _ _ _ => exact Ext.refl N
-    | .retxSH _ _ _ _ _ _ _ _ _ _ => exact Ext.refl N
+    | .retS _ _ _ _ => exact Ext.refl N
+    | .retxS _ _ _ _ _ _ => exact Ext.refl N
   · exact Ext.refl N
 
 theorem Ext.mkChild [ModalSys.NoFour] {N : NetSt σ} {s : Node} (hs : N.Live s) (o : Obl σ) :
@@ -271,8 +271,8 @@ theorem Ext.mkChild [ModalSys.NoFour] {N : NetSt σ} {s : Node} (hs : N.Live s) 
     | .ex _ _ => exact Ext.refl N
     | .here _ _ _ => exact Ext.refl N
     | .back _ _ _ _ => exact Ext.refl N
-    | .retSH _ _ _ _ _ _ _ _ => exact Ext.refl N
-    | .retxSH _ _ _ _ _ _ _ _ _ _ => exact Ext.refl N
+    | .retS _ _ _ _ => exact Ext.refl N
+    | .retxS _ _ _ _ _ _ => exact Ext.refl N
   · exact Ext.refl N
 
 theorem Ext.applyOp [ModalSys.NoFour] {N : NetSt σ} (hN : N.Good) (o : Op σ) :

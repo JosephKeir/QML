@@ -296,14 +296,11 @@ def WFF.shift {σ : Signature} : {k : ℕ} → {Γ₁ Γ₂ : Ctx} → {d : ℕ}
       .dia (x.shift k) (hx.imp fun _ hX => h x _ hX) (WFF.shift (h.diaIn x) (hs.diaIn x) φ)
   | _, _, _, _, h, _, .here hT s t => .here hT (Term.shift h s) (Term.shift h t)
   | _, _, _, _, h, _, .back hB L s t => .back hB L (Term.shift h s) (Term.shift h t)
-  | _, _, _, _, h, hs, .retSH hB S Zs hZs ws t cs Φ =>
-      .retSH hB S Zs hZs (ws.map fun p => ⟨_, Term.shift h.boxIn p⟩) (Term.shift h t)
-        (cs.map fun p => ⟨_, Term.shift h p⟩)
+  | _, _, _, _, h, hs, .retS hB S t Φ =>
+      .retS hB S (Term.shift h t)
         (WFF.shift (h.boxIn.insert (hs.boxIn.rootFresh le_rfl) _) (hs.boxIn.insert _) Φ)
-  | k, _, _, _, h, hs, .retxSH hB y hy S Zs hZs ws t cs Φ =>
-      .retxSH hB (y.shift k) (hy.imp fun _ hY => h y _ hY) S Zs hZs
-        (ws.map fun p => ⟨_, Term.shift (h.diaIn y) p⟩) (Term.shift h t)
-        (cs.map fun p => ⟨_, Term.shift h p⟩)
+  | k, _, _, _, h, hs, .retxS hB y hy S t Φ =>
+      .retxS hB (y.shift k) (hy.imp fun _ hY => h y _ hY) S (Term.shift h t)
         (WFF.shift ((h.diaIn y).insert ((hs.diaIn y).rootFresh le_rfl) _)
           ((hs.diaIn y).insert _) Φ)
 

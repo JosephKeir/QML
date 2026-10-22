@@ -280,47 +280,46 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
   -- carrier's body, with hole formulas and terms closed apart from the hole.
   /-- ⭐**`Back`, counit** (weak B's `◇□ψ ⊢ ψ`, named): what is necessary at the end of some arrow
       of the out leg, of the carrier's value there, holds of the value it comes back as — along
-      that arrow's way home.  Home along every arrow (`P = nec`, `□`) or along a witness's extent
-      at the far end (`P = pos z`, `□_z`, rows 3–4, docs §11.23). -/
+      that arrow's way home. -/
   | back_counit {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) (P : OutLeg O.view) (hP : P.Home) {A : VarType} {a₀ : Ann A}
-      (bd : Term σ P.view A a₀) {a : Ann A} (t : Term σ Γ A a)
+      (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
+      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a)
       (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
-      Proof σ Γ Δ (O.backP hS P hP bd t) →
-      Proof σ Γ Δ (O.dia (P.box (WFF.holeRead bd ψ))) →
+      Proof σ Γ Δ (O.back hS bd t) →
+      Proof σ Γ Δ (O.dia (WFF.box (WFF.holeRead bd ψ))) →
       Proof σ Γ Δ (WFF.holeRead t ψ)
   /-- ⭐**`Back`, unit** (weak B's `ψ ⊢ □◇ψ`, named): what holds of the value it comes back as is,
       from every arrow of the out leg, possible of the carrier's value — the way home witnessing
       it. -/
   | back_unit {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) (P : OutLeg O.view) (hP : P.Home) {A : VarType} {a₀ : Ann A}
-      (bd : Term σ P.view A a₀) {a : Ann A} (t : Term σ Γ A a)
+      (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
+      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a)
       (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
-      Proof σ Γ Δ (O.backP hS P hP bd t) →
+      Proof σ Γ Δ (O.back hS bd t) →
       Proof σ Γ Δ (WFF.holeRead t ψ) →
-      Proof σ Γ Δ (O.box (P.dia (WFF.holeRead bd ψ)))
+      Proof σ Γ Δ (O.box (WFF.box (WFF.holeRead bd ψ).neg).neg)
   /-- `Back` asserts that its round trip exists: the out leg is nonempty (§11.1, decision of
       2026-10-03). -/
   | back_ne {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) (P : OutLeg O.view) (hP : P.Home) {A : VarType} {a₀ : Ann A}
-      (bd : Term σ P.view A a₀) {a : Ann A} (t : Term σ Γ A a) :
-      Proof σ Γ Δ (O.backP hS P hP bd t) → Proof σ Γ Δ (O.dia .top)
+      (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
+      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) :
+      Proof σ Γ Δ (O.back hS bd t) → Proof σ Γ Δ (O.dia .top)
   /-- ⭐**β**: a carrier mapped by a hole term comes back as its value mapped by the same term. -/
   | back_beta {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) (P : OutLeg O.view) (hP : P.Home) {A : VarType} {a₀ : Ann A}
-      (bd : Term σ P.view A a₀) {a : Ann A} (t : Term σ Γ A a) {B : VarType}
+      (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
+      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) {B : VarType}
       {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
-      Proof σ Γ Δ (O.backP hS P hP bd t) →
-      Proof σ Γ Δ (O.backP hS P hP (Term.holeRead bd s) (Term.holeRead t s))
-  /-- ⭐**Pairing** (§11.14 check 3): two carriers over one out leg and one way home come back as
-      the pair of their values — each arrow has one way home, so both are read along it. -/
+      Proof σ Γ Δ (O.back hS bd t) →
+      Proof σ Γ Δ (O.back hS (Term.holeRead bd s) (Term.holeRead t s))
+  /-- ⭐**Pairing** (§11.14 check 3): two carriers over one out leg come back as the pair of their
+      values — each arrow has one way home, so both are read along it. -/
   | back_pair {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) (P : OutLeg O.view) (hP : P.Home) {A : VarType} {a₀ : Ann A}
-      (bd : Term σ P.view A a₀) {a : Ann A} (t : Term σ Γ A a) {B : VarType}
-      {b₀ : Ann B} (bd' : Term σ P.view B b₀) {b : Ann B}
+      (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
+      (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) {B : VarType}
+      {b₀ : Ann B} (bd' : Term σ O.view.boxIn B b₀) {b : Ann B}
       (t' : Term σ Γ B b) :
-      Proof σ Γ Δ (O.backP hS P hP bd t) → Proof σ Γ Δ (O.backP hS P hP bd' t') →
-      Proof σ Γ Δ (O.backP hS P hP (Term.pair bd bd') (Term.pair t t'))
+      Proof σ Γ Δ (O.back hS bd t) → Proof σ Γ Δ (O.back hS bd' t') →
+      Proof σ Γ Δ (O.back hS (Term.pair bd bd') (Term.pair t t'))
   /-- **Leibniz for the value.** -/
   | back_eq {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       (L : BLeg) {A : VarType} {b : Ann (L.carrier A)}
@@ -379,21 +378,6 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
           Δ.map (WFF.weaken hc.root (.VTypeBox (.VTypeBox A))))
         (φ.weaken hc.root (.VTypeBox (.VTypeBox A))) →
       Proof σ Γ Δ φ
-  /-- ⭐**Every object comes back home along a possible object's extent** (row 3, docs §11.23),
-      as an `∃`-elimination like `B_strong`: wherever there is a way out, a fresh carrier
-      `c : □◇A` comes back as `t` — B's unit `A → □◇A`, as an existence rule.  Its validity is
-      `Model.backRet_existsW`. -/
-  | B_strongW {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
-      (hW : ModalSys.BStrongW = true) {A : VarType} {a : Ann A} (t : Term σ Γ A a) (c : ℕ)
-      (hc : Γ.RootFresh (.free c)) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
-      Proof σ Γ Δ ((OutLeg.nec : OutLeg Γ).dia .top) →
-      Proof σ (Γ.insert (.free c) (.VTypeBox (.VTypeDia A)))
-        (WFF.back hS (.necW hW) (Term.eta (.root (.free c)) _
-            (Ctx.ref_insert_root Γ (.free c) (.VTypeBox (.VTypeDia A))))
-            (Term.weaken hc.root _ t) ::
-          Δ.map (WFF.weaken hc.root (.VTypeBox (.VTypeDia A))))
-        (φ.weaken hc.root (.VTypeBox (.VTypeDia A))) →
-      Proof σ Γ Δ φ
   -- Strong B: the returning possibility `◇[d ↦ t] Φ(d)` (`WFF.ret`, docs §11.14).  Its body binds
   -- one necessary object `d : □A` of the far world; several items are packed into one by pairing.
   /-- ⭐**A new returning possibility** (existence, no items yet), as an `∃`-elimination: if some
@@ -413,18 +397,15 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
   /-- ⭐**A companion, at any shape** (existence, extension form): if the returning possibility's
       object has a necessary companion `b` with `Φ(d, b)`, then for a fresh `c` the pair `⟨d, b⟩`
       comes back as `⟨t, c⟩`.  No repacking: that is `ret_map`'s job. -/
-  | ret_extSH {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape}
-      {B : VarType} {Zs : List VarType} (hZs : VarType.HomeOk Zs) (ws : HomeWs σ O.view Zs)
-      {a : Ann S.flat} (t : Term σ Γ S.flat a) (us : HomeTms σ Γ Zs)
+  | ret_extS {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape}
+      {B : VarType} {a : Ann S.flat} (t : Term σ Γ S.flat a)
       (Φ : WFF σ ((O.view.insert (.bnd 0) S.ty).insert (.bnd 1) (.VTypeBox B)) 2)
       (c : ℕ) (hc : Γ.RootFresh (.free c)) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
-      Proof σ Γ Δ (O.retSH hS S Zs hZs ws t us (WFF.ex (.VTypeBox B) Φ)) →
+      Proof σ Γ Δ (O.retS hS S t (WFF.ex (.VTypeBox B) Φ)) →
       Proof σ (Γ.insert (.free c) B)
-        ((O.mono (Ctx.le_insert hc.root B)).retSH hS (S.ext B) Zs hZs
-            (ws.mono (O.le_view_mono (Ctx.le_insert hc.root B)))
+        ((O.mono (Ctx.le_insert hc.root B)).retS hS (S.ext B)
             (S.extTm (Term.weaken hc.root B t)
               (Term.eta (.root (.free c)) B (Ctx.ref_insert_root Γ (.free c) B))).2
-            (us.mono (Ctx.le_insert hc.root B))
             (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root B)).insert (.bnd 0) _)
               (WFF.bodySplit (S.extL O.view B).2 (S.extR O.view B).2 Φ)) ::
           Δ.map (WFF.weaken hc.root B))
@@ -434,21 +415,17 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       the bound object's value here comes back too, as something; name it by a fresh root.  An
       existence rule for a necessary part, as `ret_extS`; under T, what lets the network commit a
       root's here-items. -/
-  | ret_compSH {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (S : RShape)
+  | ret_compS {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (S : RShape)
       {A : VarType} {cs : List (List Step)} {h : A.CompOk cs} (p : List Step)
-      (h' : A.CompOk (p :: cs))
-      {Zs : List VarType} (hZs : VarType.HomeOk Zs) (ws : HomeWs σ O.view Zs)
-      {a : Ann (S.withNec (.boxC A cs h)).flat}
-      (t : Term σ Γ (S.withNec (.boxC A cs h)).flat a) (us : HomeTms σ Γ Zs)
+      (h' : A.CompOk (p :: cs)) {a : Ann (S.withNec (.boxC A cs h)).flat}
+      (t : Term σ Γ (S.withNec (.boxC A cs h)).flat a)
       (Φ : WFF σ (O.view.insert (.bnd 0) (S.withNec (.boxC A cs h)).ty) 1)
       (c : ℕ) (hc : Γ.RootFresh (.free c)) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
-      Proof σ Γ Δ (O.retSH hS (S.withNec (.boxC A cs h)) Zs hZs ws t us Φ) →
+      Proof σ Γ Δ (O.retS hS (S.withNec (.boxC A cs h)) t Φ) →
       Proof σ (Γ.insert (.free c) ((A.compAt p).getD .VTypeOne))
-        ((O.mono (Ctx.le_insert hc.root _)).retSH hS (S.withNec (.boxC A (p :: cs) h')) Zs hZs
-            (ws.mono (O.le_view_mono (Ctx.le_insert hc.root _)))
+        ((O.mono (Ctx.le_insert hc.root _)).retS hS (S.withNec (.boxC A (p :: cs) h'))
             (RShape.compTm A cs h p h' S (Term.weaken hc.root _ t)
               (Term.eta (.root (.free c)) _ (Ctx.ref_insert_root Γ (.free c) _))).2
-            (us.mono (Ctx.le_insert hc.root _))
             (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root _)).insert (.bnd 0) _)
               (WFF.bodyRepl (RShape.compL O.view A cs h p h' S).2 Φ)) ::
           Δ.map (WFF.weaken hc.root _))
@@ -486,66 +463,61 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       body `Ψ` is kept: the new conjunct holds at that far world, not at every successor.  With
       companions `cs` (under T), `s`'s companions come back too, as their contents read along the
       arrow out (`WFF.unitBodyC`, docs §11.21); `Proof.ret_unit` is the case without. -/
-  | ret_unitCH {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+  | ret_unitC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       (O : OutLeg Γ) {C A : VarType} (co : List (List Step)) (ho : C.CompOk co)
-      {Zs : List VarType} (hZs : VarType.HomeOk Zs) (ws : HomeWs σ O.view Zs)
-      {c : Ann (C.compsFlat co)} (y : Term σ Γ (C.compsFlat co) c) (us : HomeTms σ Γ Zs)
+      {c : Ann (C.compsFlat co)} (y : Term σ Γ (C.compsFlat co) c)
       (Ψ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox C)) 1) {a₀ : Ann A}
       (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
       (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (C.compsFlat co) (.VTypeBox A))) 1) :
-      Proof σ Γ Δ (O.retSH hS (.nec (.boxC C co ho)) Zs hZs ws y us Ψ) →
+      Proof σ Γ Δ (O.retS hS (.nec (.boxC C co ho)) y Ψ) →
       Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.boxtm sb)) θ) →
-      Proof σ Γ Δ (O.retSH hS (.nec (.boxC C co ho)) Zs hZs ws y us
+      Proof σ Γ Δ (O.retS hS (.nec (.boxC C co ho)) y
         (WFF.and Ψ (O.lift (WFF.unitBodyC hS co ho sb cs h θ))))
   /-- ⭐**The witnessed unit** (docs §11.17): along `x`'s arrow, the way home brings back both the
       necessary object `□sb` and the witness itself, realised along the way back with content `u`
       — the witness's share of the round trip, as `K_dia` carries it. -/
-  | ret_unitWCH {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+  | ret_unitWC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       {x : VarSymb} (hx : ∃ X', Γ.ref x = some (.VTypeDia X')) {C A X : VarType}
       (co : List (List Step)) (ho : C.CompOk co)
-      {Zs : List VarType} (hZs : VarType.HomeOk Zs) (ws : HomeWs σ (Γ.diaIn x) Zs)
-      {c : Ann (C.compsFlat co)} (y : Term σ Γ (C.compsFlat co) c) (us : HomeTms σ Γ Zs)
+      {c : Ann (C.compsFlat co)} (y : Term σ Γ (C.compsFlat co) c)
       (Ψ : WFF σ ((Γ.diaIn x).insert (.bnd 0) (.VTypeBox C)) 1)
       {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X} (u : Term σ (Γ.diaIn x) X b₀)
       (cs : List (List Step)) (h : A.CompOk cs)
       (θ : WFF σ (Ctx.empty.insert (.bnd 0)
         (.VTypeProd (C.compsFlat co) (RShape.wit (.box A) X).ty)) 1) :
-      Proof σ Γ Δ (WFF.retxSH hS x hx (.nec (.boxC C co ho)) Zs hZs ws y us Ψ) →
+      Proof σ Γ Δ (WFF.retxS hS x hx (.nec (.boxC C co ho)) y Ψ) →
       Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.pair (Term.boxtm sb) (Term.diatm x hx u))) θ) →
-      Proof σ Γ Δ (WFF.retxSH hS x hx (.nec (.boxC C co ho)) Zs hZs ws y us
+      Proof σ Γ Δ (WFF.retxS hS x hx (.nec (.boxC C co ho)) y
         (WFF.and Ψ (WFF.unitBodyWC hS co ho sb u cs h θ)))
   /-- ⭐**The unit along a returned possible part**: if the object out there has a possible part
       realised along the way back, home is reached along it. -/
-  | ret_unitDCH {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+  | ret_unitDC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       (O : OutLeg Γ) {C X A : VarType} (co : List (List Step)) (ho : C.CompOk co)
-      {Zs : List VarType} (hZs : VarType.HomeOk Zs) (ws : HomeWs σ O.view Zs)
       {c : Ann (.VTypeProd (C.compsFlat co) X)} (y : Term σ Γ (.VTypeProd (C.compsFlat co) X) c)
-      (us : HomeTms σ Γ Zs)
       (Ψ : WFF σ (O.view.insert (.bnd 0) (RShape.wit (.box C) X).ty) 1) {a₀ : Ann A}
       (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
       (θ : WFF σ (Ctx.empty.insert (.bnd 0)
         (.VTypeProd (.VTypeProd (C.compsFlat co) X) (.VTypeBox A))) 1) :
-      Proof σ Γ Δ (O.retSH hS (.wit (.boxC C co ho) X) Zs hZs ws y us Ψ) →
+      Proof σ Γ Δ (O.retS hS (.wit (.boxC C co ho) X) y Ψ) →
       Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.boxtm sb)) θ) →
-      Proof σ Γ Δ (O.retSH hS (.wit (.boxC C co ho) X) Zs hZs ws y us
+      Proof σ Γ Δ (O.retS hS (.wit (.boxC C co ho) X) y
         (WFF.and Ψ (O.lift (WFF.unitBodyDC hS co ho sb cs h θ))))
   /-- ⭐**The doubly witnessed unit** (docs §11.20): along `x`'s arrow with a returned possible part,
       home is reached along that part, where `sb`'s object comes back and `x` itself is realised
       with content `u` — `ret_unitW` and `ret_unitD` at the form with both witnesses. -/
-  | ret_unitWDCH {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+  | ret_unitWDC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       {x : VarSymb} (hx : ∃ X', Γ.ref x = some (.VTypeDia X')) {C Xe A X : VarType}
       (co : List (List Step)) (ho : C.CompOk co)
-      {Zs : List VarType} (hZs : VarType.HomeOk Zs) (ws : HomeWs σ (Γ.diaIn x) Zs)
       {c : Ann (.VTypeProd (C.compsFlat co) Xe)}
-      (y : Term σ Γ (.VTypeProd (C.compsFlat co) Xe) c) (us : HomeTms σ Γ Zs)
+      (y : Term σ Γ (.VTypeProd (C.compsFlat co) Xe) c)
       (Ψ : WFF σ ((Γ.diaIn x).insert (.bnd 0) (RShape.wit (.box C) Xe).ty) 1) {a₀ : Ann A}
       (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X} (u : Term σ (Γ.diaIn x) X b₀)
       (cs : List (List Step)) (h : A.CompOk cs)
       (θ : WFF σ (Ctx.empty.insert (.bnd 0)
         (.VTypeProd (.VTypeProd (C.compsFlat co) Xe) (RShape.wit (.box A) X).ty)) 1) :
-      Proof σ Γ Δ (WFF.retxSH hS x hx (.wit (.boxC C co ho) Xe) Zs hZs ws y us Ψ) →
+      Proof σ Γ Δ (WFF.retxS hS x hx (.wit (.boxC C co ho) Xe) y Ψ) →
       Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.pair (Term.boxtm sb) (Term.diatm x hx u))) θ) →
-      Proof σ Γ Δ (WFF.retxSH hS x hx (.wit (.boxC C co ho) Xe) Zs hZs ws y us
+      Proof σ Γ Δ (WFF.retxS hS x hx (.wit (.boxC C co ho) Xe) y
         (WFF.and Ψ (WFF.unitBodyWDC hS co ho sb u cs h θ)))
   /-- ⭐**The counit of a possible part**: what holds along all of a possible part's arrows holds,
       at its content along the way home, of the value it comes back as. -/
@@ -554,103 +526,13 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) 1) :
       Proof σ Γ Δ (WFF.retS hS (.wit (.box C) X) y (WFF.counitBodyD ψ)) →
       Proof σ Γ Δ (WFF.holeRead y ψ)
-  -- Strong B, rows 3–4: the named back witnesses' basis (docs §11.23).
-  /-- ⭐**Selection**: any list drawn from the named back witnesses, in any order, with repeats
-      (`HomeSub`).  Forgetting a witness is an instance (`Proof.ret_forgetW`). -/
-  | ret_selectW {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {S : RShape} {Zs Zs' : List VarType} (hZs : VarType.HomeOk Zs)
-      (hZs' : VarType.HomeOk Zs') (ws : HomeWs σ O.view Zs) (ws' : HomeWs σ O.view Zs')
-      {a : Ann S.flat} (t : Term σ Γ S.flat a) (us : HomeTms σ Γ Zs) (us' : HomeTms σ Γ Zs')
-      (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1) (hsel : HomeSub ws us ws' us') :
-      Proof σ Γ Δ (O.retSH hS S Zs hZs ws t us Φ) →
-      Proof σ Γ Δ (O.retSH hS S Zs' hZs' ws' t us' Φ)
-  /-- ⭐**A `Back` atom is a named back witness**: along its leg, every returning possibility's
-      way home lies in `z`'s extent, and the carrier's body there comes back as the atom's value
-      (`homeUnique`). -/
-  | ret_backN {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {S : RShape} {Zs : List VarType} (hZs : VarType.HomeOk Zs)
-      (ws : HomeWs σ O.view Zs) {a : Ann S.flat} (t : Term σ Γ S.flat a) (us : HomeTms σ Γ Zs)
-      (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1) (z : VarSymb)
-      (hz : ∃ X, O.view.ref z = some (.VTypeDia X)) (hW : ModalSys.BStrongW = true)
-      {C : VarType} {c₀ : Ann C} (u : Term σ (O.view.diaIn z) C c₀) {c₁ : Ann C}
-      (t' : Term σ Γ C c₁) :
-      Proof σ Γ Δ (O.retSH hS S Zs hZs ws t us Φ) →
-      Proof σ Γ Δ (O.backP hS (.pos z hz) hW u t') →
-      Proof σ Γ Δ (O.retSH hS S (C :: Zs) (Or.inr hW) (.cons (Term.diatm z hz u) ws) t
-        (.cons t' us) Φ)
-  /-- ⭐**An extent gives every body a content** (existence, as `ret_extS`): with the way home in
-      `z`'s extent (the head witness), any body `w` on `z` has a content there, named by a fresh
-      root — `here_name`'s counterpart. -/
-  | ret_nameN {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape}
-      {Z₀ Z : VarType} {Zs : List VarType} (hZs : VarType.HomeOk (Z₀ :: Zs)) (z : VarSymb)
-      (hz : ∃ X, O.view.ref z = some (.VTypeDia X)) {b₀ : Ann Z₀}
-      (w₀ : Term σ (O.view.diaIn z) Z₀ b₀) (ws : HomeWs σ O.view Zs) {a : Ann S.flat}
-      (t : Term σ Γ S.flat a) {cz : Ann Z₀} (c₀ : Term σ Γ Z₀ cz) (us : HomeTms σ Γ Zs)
-      (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1) {b : Ann Z} (w : Term σ (O.view.diaIn z) Z b)
-      (c : ℕ) (hc : Γ.RootFresh (.free c)) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
-      Proof σ Γ Δ (O.retSH hS S (Z₀ :: Zs) hZs (.cons (Term.diatm z hz w₀) ws) t (.cons c₀ us) Φ) →
-      Proof σ (Γ.insert (.free c) Z)
-        ((O.mono (Ctx.le_insert hc.root Z)).retSH hS S (Z :: Z₀ :: Zs) hZs.cons'
-            ((TmList.cons (Term.diatm z hz w) (.cons (Term.diatm z hz w₀) ws)).mono
-              (O.le_view_mono (Ctx.le_insert hc.root Z)))
-            (Term.weaken hc.root Z t)
-            (.cons (Term.eta (.root (.free c)) Z (Ctx.ref_insert_root Γ (.free c) Z))
-              ((TmList.cons c₀ us).mono (Ctx.le_insert hc.root Z)))
-            (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root Z)).insert (.bnd 0) _) Φ) ::
-          Δ.map (WFF.weaken hc.root Z))
-        (φ.weaken hc.root Z) →
-      Proof σ Γ Δ φ
-  /-- ⭐**Pairing on one extent** (`back_pair`'s law): two named witnesses on `z` give their pair,
-      coming home as the pair of their contents. -/
-  | ret_pairN {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {S : RShape} {Z₁ Z₂ : VarType} {Zs : List VarType}
-      (hZs : VarType.HomeOk (Z₁ :: Z₂ :: Zs)) (z : VarSymb)
-      (hz : ∃ X, O.view.ref z = some (.VTypeDia X)) {b₁ : Ann Z₁}
-      (w₁ : Term σ (O.view.diaIn z) Z₁ b₁) {b₂ : Ann Z₂} (w₂ : Term σ (O.view.diaIn z) Z₂ b₂)
-      (ws : HomeWs σ O.view Zs) {a : Ann S.flat} (t : Term σ Γ S.flat a) {e₁ : Ann Z₁}
-      (c₁ : Term σ Γ Z₁ e₁) {e₂ : Ann Z₂} (c₂ : Term σ Γ Z₂ e₂) (us : HomeTms σ Γ Zs)
-      (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1) :
-      Proof σ Γ Δ (O.retSH hS S (Z₁ :: Z₂ :: Zs) hZs
-        (.cons (Term.diatm z hz w₁) (.cons (Term.diatm z hz w₂) ws)) t (.cons c₁ (.cons c₂ us))
-        Φ) →
-      Proof σ Γ Δ (O.retSH hS S (.VTypeProd Z₁ Z₂ :: Z₁ :: Z₂ :: Zs) hZs.cons'
-        (.cons (Term.diatm z hz (Term.pair w₁ w₂))
-          (.cons (Term.diatm z hz w₁) (.cons (Term.diatm z hz w₂) ws)))
-        t (.cons (Term.pair c₁ c₂) (.cons c₁ (.cons c₂ us))) Φ)
-  /-- ⭐**A map on a named witness's content** (`ret_mapD`'s law): its image under a closed hole
-      term comes home as the image of its return. -/
-  | ret_mapN {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {S : RShape} {Z Z' : VarType} {Zs : List VarType}
-      (hZs : VarType.HomeOk (Z :: Zs)) (z : VarSymb) (hz : ∃ X, O.view.ref z = some (.VTypeDia X))
-      {b : Ann Z} (w : Term σ (O.view.diaIn z) Z b) (ws : HomeWs σ O.view Zs) {a : Ann S.flat}
-      (t : Term σ Γ S.flat a) {e : Ann Z} (c : Term σ Γ Z e) (us : HomeTms σ Γ Zs)
-      (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1) {b' : Ann Z'}
-      (h : Term σ (Ctx.empty.insert (.bnd 0) Z) Z' b') :
-      Proof σ Γ Δ (O.retSH hS S (Z :: Zs) hZs (.cons (Term.diatm z hz w) ws) t (.cons c us) Φ) →
-      Proof σ Γ Δ (O.retSH hS S (Z' :: Z :: Zs) hZs.cons'
-        (.cons (Term.diatm z hz (Term.holeRead w h)) (.cons (Term.diatm z hz w) ws))
-        t (.cons (Term.holeRead c h) (.cons c us)) Φ)
-  /-- ⭐**The counit of a named back witness**: what holds along all of `z`'s arrows at the far
-      end, of the object's contents and the witness's content there, holds of the value and the
-      content's return. -/
-  | ret_counitN₀ {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {A Z : VarType} {Zs : List VarType} (hZs : VarType.HomeOk (Z :: Zs))
-      (z : VarSymb) (hz : ∃ X, O.view.ref z = some (.VTypeDia X)) {b : Ann Z}
-      (w : Term σ (O.view.diaIn z) Z b) (ws : HomeWs σ O.view Zs) {a : Ann A}
-      (y : Term σ Γ A a) {cz : Ann Z} (c : Term σ Γ Z cz) (us : HomeTms σ Γ Zs)
-      (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd A Z)) 1) :
-      Proof σ Γ Δ (O.retSH hS (.box A) (Z :: Zs) hZs (.cons (Term.diatm z hz w) ws) y
-        (.cons c us) (WFF.counitBodyN₀ hz w ψ)) →
-      Proof σ Γ Δ (WFF.holeRead (Term.pair y c) ψ)
   /-- **Monotonicity** in the body, along any leg, at any shape. -/
-  | ret_monoSH {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {S : RShape}
-      {Zs : List VarType} (hZs : VarType.HomeOk Zs) (ws : HomeWs σ O.view Zs)
-      {a : Ann S.flat} (t : Term σ Γ S.flat a) (us : HomeTms σ Γ Zs)
+  | ret_monoS {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (O : OutLeg Γ) {S : RShape} {a : Ann S.flat} (t : Term σ Γ S.flat a)
       (Φ Φ' : WFF σ (O.view.insert (.bnd 0) S.ty) 1) :
-      Proof σ Γ Δ (O.retSH hS S Zs hZs ws t us Φ) →
+      Proof σ Γ Δ (O.retS hS S t Φ) →
       Proof σ Γ Δ (O.box (WFF.all S.ty (WFF.imp Φ Φ'))) →
-      Proof σ Γ Δ (O.retSH hS S Zs hZs ws t us Φ')
+      Proof σ Γ Δ (O.retS hS S t Φ')
   /-- A returning possibility is a possibility, along its leg, at any shape. -/
   | ret_diaS {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       (O : OutLeg Γ) {S : RShape} {a : Ann S.flat} (t : Term σ Γ S.flat a)
@@ -660,66 +542,54 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
   /-- ⭐**β along a map of shapes**: if the object's image under `F` has `Φ`, then the image is an
       object with `Φ` coming back as the value's image (`ShapeMap.comesBack`).  Repacking,
       projection and hole terms on items are all instances. -/
-  | ret_mapH {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {S : RShape} {T : NShape} (F : ShapeMap σ S.necPart T)
-      {Zs : List VarType} (hZs : VarType.HomeOk Zs) (ws : HomeWs σ O.view Zs)
-      {a : Ann S.flat} (y : Term σ Γ S.flat a) (us : HomeTms σ Γ Zs)
-      (Φ : WFF σ (O.view.insert (.bnd 0) (S.withNec T).ty) 1) :
-      Proof σ Γ Δ (O.retSH hS S Zs hZs ws y us (WFF.bodyRepl
+  | ret_map {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (O : OutLeg Γ) {S : RShape} {T : NShape} (F : ShapeMap σ S.necPart T) {a : Ann S.flat}
+      (y : Term σ Γ S.flat a) (Φ : WFF σ (O.view.insert (.bnd 0) (S.withNec T).ty) 1) :
+      Proof σ Γ Δ (O.retS hS S y (WFF.bodyRepl
         (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) S.ty) (ShapeMap.liftObj S F).2) Φ)) →
-      Proof σ Γ Δ (O.retSH hS (S.withNec T) Zs hZs ws (Term.holeRead y (ShapeMap.liftVal S F).2)
-        us Φ)
+      Proof σ Γ Δ (O.retS hS (S.withNec T) (Term.holeRead y (ShapeMap.liftVal S F).2) Φ)
   /-- ⭐**β on the possible part** (docs §11.20, the audit), `ret_map`'s counterpart for the one
       possible part: if the object whose possible part is `diatm e h(d.box, e.dia)` has `Φ`, then
       it is an object with `Φ` coming back with content the image of the value under `h` — what
       holds of the witness `e` holds of any term with `e` as its witness.  The necessary part may
       carry companions (§11.21, step 8), kept as they are; `h` reads its contents. -/
-  | ret_mapDH {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+  | ret_mapD {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       (O : OutLeg Γ) {C X Z : VarType} {cs : List (List Step)} {hcs : C.CompOk cs} {b : Ann Z}
       (h : Term σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) Z b)
-      {Zs : List VarType} (hZs : VarType.HomeOk Zs) (ws : HomeWs σ O.view Zs)
       {a : Ann (RShape.wit (.boxC C cs hcs) X).flat}
-      (y : Term σ Γ (RShape.wit (.boxC C cs hcs) X).flat a) (us : HomeTms σ Γ Zs)
+      (y : Term σ Γ (RShape.wit (.boxC C cs hcs) X).flat a)
       (Φ : WFF σ (O.view.insert (.bnd 0) (RShape.wit (.boxC C cs hcs) Z).ty) 1) :
-      Proof σ Γ Δ (O.retSH hS (.wit (.boxC C cs hcs) X) Zs hZs ws y us (WFF.bodyRepl
+      Proof σ Γ Δ (O.retS hS (.wit (.boxC C cs hcs) X) y (WFF.bodyRepl
         (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) _) (ShapeMap.possObj h).2) Φ)) →
-      Proof σ Γ Δ (O.retSH hS (.wit (.boxC C cs hcs) Z) Zs hZs ws
-        (Term.holeRead y (ShapeMap.possValC h cs hcs).2) us Φ)
+      Proof σ Γ Δ (O.retS hS (.wit (.boxC C cs hcs) Z)
+        (Term.holeRead y (ShapeMap.possValC h cs hcs).2) Φ)
   /-- **Leibniz for the value**, along any leg, at any shape (docs §11.20: generalised from the
       `□` shape, which is derived, `Proof.ret_eq`, as `ret_monoS` generalised `ret_mono`). -/
-  | ret_eqSH {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (O : OutLeg Γ) {S : RShape}
-      {Zs : List VarType} (hZs : VarType.HomeOk Zs) (ws : HomeWs σ O.view Zs)
-      {a : Ann S.flat} (t t' : Term σ Γ S.flat a) (us : HomeTms σ Γ Zs)
+  | ret_eqS {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (O : OutLeg Γ) {S : RShape} {a : Ann S.flat} (t t' : Term σ Γ S.flat a)
       (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1) :
-      Proof σ Γ Δ (O.retSH hS S Zs hZs ws t us Φ) → Proof σ Γ Δ (eqRec S.flat t t') →
-      Proof σ Γ Δ (O.retSH hS S Zs hZs ws t' us Φ)
+      Proof σ Γ Δ (O.retS hS S t Φ) → Proof σ Γ Δ (eqRec S.flat t t') →
+      Proof σ Γ Δ (O.retS hS S t' Φ)
   /-- ⭐**The own arrow** (T): a necessary object here with `Φ` at this very world comes back as its
-      value here — the identity is an arrow out and its own way home.  Named back witnesses come
-      home there when each is realised here with its content (`WFF.hereList`, docs §11.23). -/
-  | ret_hereCH {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (hT : ModalSys.T = true) {A : VarType} {Zs : List VarType} (hZs : VarType.HomeOk Zs)
-      (ws : HomeWs σ Γ.boxIn Zs) (us : HomeTms σ Γ Zs) {a₀ : Ann A}
+      value here — the identity is an arrow out and its own way home. -/
+  | ret_hereC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hT : ModalSys.T = true) {A : VarType} {a₀ : Ann A}
       (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
       (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) :
-      Proof σ Γ Δ (WFF.hereList hT ws us) →
       Proof σ Γ Δ (WFF.hereRead hT (Term.boxtm sb) Φ) →
-      Proof σ Γ Δ (WFF.retSH hS (.nec (.boxC A cs h)) Zs hZs ws
-        (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2) us Φ)
+      Proof σ Γ Δ (WFF.retS hS (.nec (.boxC A cs h))
+        (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2) Φ)
   /-- ⭐**The own arrow, witnessed** (§11.21, risk 2): the possible part realised here by `u`
-      (`Here(p, u)`) is `ComesBack`'s witness clause at the identity; named back witnesses as in
-      `ret_hereCH`. -/
-  | ret_hereWCH {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (hT : ModalSys.T = true) {A Y : VarType} {Zs : List VarType} (hZs : VarType.HomeOk Zs)
-      (ws : HomeWs σ Γ.boxIn Zs) (us : HomeTms σ Γ Zs) {a₀ : Ann A}
+      (`Here(p, u)`) is `ComesBack`'s witness clause at the identity. -/
+  | ret_hereWC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hT : ModalSys.T = true) {A Y : VarType} {a₀ : Ann A}
       (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
       {b : Ann (.VTypeDia Y)} (p : Term σ Γ (.VTypeDia Y) b) {c : Ann Y} (u : Term σ Γ Y c)
       (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd (.VTypeBox A) (.VTypeDia Y))) 1) :
-      Proof σ Γ Δ (WFF.hereList hT ws us) →
       Proof σ Γ Δ (WFF.here hT p u) →
       Proof σ Γ Δ (WFF.hereRead hT (Term.pair (Term.boxtm sb) p) Φ) →
-      Proof σ Γ Δ (WFF.retSH hS (.wit (.boxC A cs h) Y) Zs hZs ws
-        (Term.pair (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2) u) us Φ)
+      Proof σ Γ Δ (WFF.retS hS (.wit (.boxC A cs h) Y)
+        (Term.pair (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2) u) Φ)
   /-- ⭐**The own arrow along `◇_x`** (§11.21, risk 2): with the identity in `x`'s extent
       (`Here(◇_x bd, t₀)`), what holds here of `t₀` and the object holds out there, at the
       identity, of the content `bd` and the object — stated at a hole formula, as `here_intro`
@@ -762,30 +632,6 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
         (Term.diatm y hy (Term.collapse (Ctx.collapses_boxIn_self hT (Γ.diaIn y)) bd)) t₀) →
       Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t φ) →
       Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t₀ φ)
-  /-- ⭐**A row-3 `Back` at the own arrow is realised** (T, docs §11.23): the identity is an arrow
-      out, its only way home is the identity, and the atom puts that in `z`'s extent there — so
-      `z` read at the identity is realised here (`here_name` then gives it a content).  Unlike
-      row 2, the atom alone gives this. -/
-  | back_realW {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (hT : ModalSys.T = true) (z : VarSymb) (hz : ∃ X, Γ.boxIn.ref z = some (.VTypeDia X))
-      (hW : ModalSys.BStrongW = true) {C : VarType} {c₀ : Ann C} (u : Term σ (Γ.boxIn.diaIn z) C c₀)
-      {a : Ann C} (t : Term σ Γ C a) :
-      Proof σ Γ Δ ((OutLeg.nec : OutLeg Γ).backP hS (.pos z hz) hW u t) →
-      Proof σ Γ Δ (WFF.here hT
-        (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (Term.diatm z hz Term.unit)) Term.unit)
-  /-- ⭐**A row-3 `Back` at the own arrow** (T, docs §11.23), `back_hereX` with the legs swapped:
-      the carrier's body read at the identity and then along `z` there (named by the `Here` atom)
-      is interchangeable with its value. -/
-  | back_hereW {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-      (hT : ModalSys.T = true) (z : VarSymb) (hz : ∃ X, Γ.boxIn.ref z = some (.VTypeDia X))
-      (hW : ModalSys.BStrongW = true) {A : VarType} {a₀ : Ann A} (u : Term σ (Γ.boxIn.diaIn z) A a₀)
-      {a : Ann A} (t : Term σ Γ A a) {a' : Ann A} (t₀ : Term σ Γ A a')
-      (φ : WFF σ (Γ.insert (.bnd 0) A) 1) :
-      Proof σ Γ Δ ((OutLeg.nec : OutLeg Γ).backP hS (.pos z hz) hW u t) →
-      Proof σ Γ Δ (WFF.here hT
-        (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (Term.diatm z hz u)) t₀) →
-      Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t φ) →
-      Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t₀ φ)
   /-- ⭐**Bridging** (§11.14): a carrier that comes back as `t`, possibly with `Φ` of its image out
       there, is a returning possibility with value `t` — from any arrow of its out leg, plain or
       witnessed. -/
@@ -802,168 +648,6 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
 namespace Proof
 
 variable {σ : Signature} {Γ : Ctx}
-
-/-! ### Strong B: the returning possibility's rules without named back witnesses -/
-
-/-- ⭐**A companion** (`ret_extSH` without named back witnesses). -/
-def ret_extS {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape}
-    {B : VarType} {a : Ann S.flat} (t : Term σ Γ S.flat a)
-    (Φ : WFF σ ((O.view.insert (.bnd 0) S.ty).insert (.bnd 1) (.VTypeBox B)) 2)
-    (c : ℕ) (hc : Γ.RootFresh (.free c)) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0}
-    (pr₁ : Proof σ Γ Δ (O.retS hS S t (WFF.ex (.VTypeBox B) Φ)))
-    (pr₂ : Proof σ (Γ.insert (.free c) B)
-        ((O.mono (Ctx.le_insert hc.root B)).retS hS (S.ext B)
-            (S.extTm (Term.weaken hc.root B t)
-              (Term.eta (.root (.free c)) B (Ctx.ref_insert_root Γ (.free c) B))).2
-            (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root B)).insert (.bnd 0) _)
-              (WFF.bodySplit (S.extL O.view B).2 (S.extR O.view B).2 Φ)) ::
-          Δ.map (WFF.weaken hc.root B))
-        (φ.weaken hc.root B)) :
-    Proof σ Γ Δ φ :=
-  Proof.ret_extSH hS O (Or.inl rfl) .nil t .nil Φ c hc pr₁ pr₂
-
-/-- ⭐**Naming a companion's return** (`ret_compSH` without named back witnesses). -/
-def ret_compS {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (S : RShape)
-    {A : VarType} {cs : List (List Step)} {h : A.CompOk cs} (p : List Step)
-    (h' : A.CompOk (p :: cs)) {a : Ann (S.withNec (.boxC A cs h)).flat}
-    (t : Term σ Γ (S.withNec (.boxC A cs h)).flat a)
-    (Φ : WFF σ (O.view.insert (.bnd 0) (S.withNec (.boxC A cs h)).ty) 1)
-    (c : ℕ) (hc : Γ.RootFresh (.free c)) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0}
-    (pr₁ : Proof σ Γ Δ (O.retS hS (S.withNec (.boxC A cs h)) t Φ))
-    (pr₂ : Proof σ (Γ.insert (.free c) ((A.compAt p).getD .VTypeOne))
-        ((O.mono (Ctx.le_insert hc.root _)).retS hS (S.withNec (.boxC A (p :: cs) h'))
-            (RShape.compTm A cs h p h' S (Term.weaken hc.root _ t)
-              (Term.eta (.root (.free c)) _ (Ctx.ref_insert_root Γ (.free c) _))).2
-            (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root _)).insert (.bnd 0) _)
-              (WFF.bodyRepl (RShape.compL O.view A cs h p h' S).2 Φ)) ::
-          Δ.map (WFF.weaken hc.root _))
-        (φ.weaken hc.root _)) :
-    Proof σ Γ Δ φ :=
-  Proof.ret_compSH hS O S p h' (Or.inl rfl) .nil t .nil Φ c hc pr₁ pr₂
-
-/-- ⭐**Unit** with companions (`ret_unitCH` without named back witnesses). -/
-def ret_unitC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-    (O : OutLeg Γ) {C A : VarType} (co : List (List Step)) (ho : C.CompOk co)
-    {c : Ann (C.compsFlat co)} (y : Term σ Γ (C.compsFlat co) c)
-    (Ψ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox C)) 1) {a₀ : Ann A}
-    (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
-    (θ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd (C.compsFlat co) (.VTypeBox A))) 1)
-    (pr₁ : Proof σ Γ Δ (O.retS hS (.nec (.boxC C co ho)) y Ψ))
-    (pr₂ : Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.boxtm sb)) θ)) :
-    Proof σ Γ Δ (O.retS hS (.nec (.boxC C co ho)) y
-        (WFF.and Ψ (O.lift (WFF.unitBodyC hS co ho sb cs h θ)))) :=
-  Proof.ret_unitCH hS O co ho (Or.inl rfl) .nil y .nil Ψ sb cs h θ pr₁ pr₂
-
-/-- ⭐**The witnessed unit** (`ret_unitWCH` without named back witnesses). -/
-def ret_unitWC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-    {x : VarSymb} (hx : ∃ X', Γ.ref x = some (.VTypeDia X')) {C A X : VarType}
-    (co : List (List Step)) (ho : C.CompOk co)
-    {c : Ann (C.compsFlat co)} (y : Term σ Γ (C.compsFlat co) c)
-    (Ψ : WFF σ ((Γ.diaIn x).insert (.bnd 0) (.VTypeBox C)) 1)
-    {a₀ : Ann A} (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X} (u : Term σ (Γ.diaIn x) X b₀)
-    (cs : List (List Step)) (h : A.CompOk cs)
-    (θ : WFF σ (Ctx.empty.insert (.bnd 0)
-      (.VTypeProd (C.compsFlat co) (RShape.wit (.box A) X).ty)) 1)
-    (pr₁ : Proof σ Γ Δ (WFF.retxS hS x hx (.nec (.boxC C co ho)) y Ψ))
-    (pr₂ : Proof σ Γ Δ (WFF.holeRead
-      (Term.pair y (Term.pair (Term.boxtm sb) (Term.diatm x hx u))) θ)) :
-    Proof σ Γ Δ (WFF.retxS hS x hx (.nec (.boxC C co ho)) y
-        (WFF.and Ψ (WFF.unitBodyWC hS co ho sb u cs h θ))) :=
-  Proof.ret_unitWCH hS hx co ho (Or.inl rfl) .nil y .nil Ψ sb u cs h θ pr₁ pr₂
-
-/-- ⭐**The unit along a returned possible part** (`ret_unitDCH` without named back
-    witnesses). -/
-def ret_unitDC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-    (O : OutLeg Γ) {C X A : VarType} (co : List (List Step)) (ho : C.CompOk co)
-    {c : Ann (.VTypeProd (C.compsFlat co) X)} (y : Term σ Γ (.VTypeProd (C.compsFlat co) X) c)
-    (Ψ : WFF σ (O.view.insert (.bnd 0) (RShape.wit (.box C) X).ty) 1) {a₀ : Ann A}
-    (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
-    (θ : WFF σ (Ctx.empty.insert (.bnd 0)
-      (.VTypeProd (.VTypeProd (C.compsFlat co) X) (.VTypeBox A))) 1)
-    (pr₁ : Proof σ Γ Δ (O.retS hS (.wit (.boxC C co ho) X) y Ψ))
-    (pr₂ : Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.boxtm sb)) θ)) :
-    Proof σ Γ Δ (O.retS hS (.wit (.boxC C co ho) X) y
-        (WFF.and Ψ (O.lift (WFF.unitBodyDC hS co ho sb cs h θ)))) :=
-  Proof.ret_unitDCH hS O co ho (Or.inl rfl) .nil y .nil Ψ sb cs h θ pr₁ pr₂
-
-/-- ⭐**The doubly witnessed unit** (`ret_unitWDCH` without named back witnesses). -/
-def ret_unitWDC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-    {x : VarSymb} (hx : ∃ X', Γ.ref x = some (.VTypeDia X')) {C Xe A X : VarType}
-    (co : List (List Step)) (ho : C.CompOk co)
-    {c : Ann (.VTypeProd (C.compsFlat co) Xe)}
-    (y : Term σ Γ (.VTypeProd (C.compsFlat co) Xe) c)
-    (Ψ : WFF σ ((Γ.diaIn x).insert (.bnd 0) (RShape.wit (.box C) Xe).ty) 1) {a₀ : Ann A}
-    (sb : Term σ Γ.boxIn A a₀) {b₀ : Ann X} (u : Term σ (Γ.diaIn x) X b₀)
-    (cs : List (List Step)) (h : A.CompOk cs)
-    (θ : WFF σ (Ctx.empty.insert (.bnd 0)
-      (.VTypeProd (.VTypeProd (C.compsFlat co) Xe) (RShape.wit (.box A) X).ty)) 1)
-    (pr₁ : Proof σ Γ Δ (WFF.retxS hS x hx (.wit (.boxC C co ho) Xe) y Ψ))
-    (pr₂ : Proof σ Γ Δ (WFF.holeRead
-      (Term.pair y (Term.pair (Term.boxtm sb) (Term.diatm x hx u))) θ)) :
-    Proof σ Γ Δ (WFF.retxS hS x hx (.wit (.boxC C co ho) Xe) y
-        (WFF.and Ψ (WFF.unitBodyWDC hS co ho sb u cs h θ))) :=
-  Proof.ret_unitWDCH hS hx co ho (Or.inl rfl) .nil y .nil Ψ sb u cs h θ pr₁ pr₂
-
-/-- **Monotonicity** in the body (`ret_monoSH` without named back witnesses). -/
-def ret_monoS {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-    (O : OutLeg Γ) {S : RShape} {a : Ann S.flat} (t : Term σ Γ S.flat a)
-    (Φ Φ' : WFF σ (O.view.insert (.bnd 0) S.ty) 1)
-    (pr₁ : Proof σ Γ Δ (O.retS hS S t Φ))
-    (pr₂ : Proof σ Γ Δ (O.box (WFF.all S.ty (WFF.imp Φ Φ')))) :
-    Proof σ Γ Δ (O.retS hS S t Φ') :=
-  Proof.ret_monoSH hS O (Or.inl rfl) .nil t .nil Φ Φ' pr₁ pr₂
-
-/-- ⭐**β along a map of shapes** (`ret_mapH` without named back witnesses). -/
-def ret_map {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-    (O : OutLeg Γ) {S : RShape} {T : NShape} (F : ShapeMap σ S.necPart T) {a : Ann S.flat}
-    (y : Term σ Γ S.flat a) (Φ : WFF σ (O.view.insert (.bnd 0) (S.withNec T).ty) 1)
-    (pr₁ : Proof σ Γ Δ (O.retS hS S y (WFF.bodyRepl
-        (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) S.ty) (ShapeMap.liftObj S F).2) Φ))) :
-    Proof σ Γ Δ (O.retS hS (S.withNec T) (Term.holeRead y (ShapeMap.liftVal S F).2) Φ) :=
-  Proof.ret_mapH hS O F (Or.inl rfl) .nil y .nil Φ pr₁
-
-/-- ⭐**β on the possible part** (`ret_mapDH` without named back witnesses). -/
-def ret_mapD {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-    (O : OutLeg Γ) {C X Z : VarType} {cs : List (List Step)} {hcs : C.CompOk cs} {b : Ann Z}
-    (h : Term σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C X)) Z b)
-    {a : Ann (RShape.wit (.boxC C cs hcs) X).flat}
-    (y : Term σ Γ (RShape.wit (.boxC C cs hcs) X).flat a)
-    (Φ : WFF σ (O.view.insert (.bnd 0) (RShape.wit (.boxC C cs hcs) Z).ty) 1)
-    (pr₁ : Proof σ Γ Δ (O.retS hS (.wit (.boxC C cs hcs) X) y (WFF.bodyRepl
-        (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) _) (ShapeMap.possObj h).2) Φ))) :
-    Proof σ Γ Δ (O.retS hS (.wit (.boxC C cs hcs) Z)
-        (Term.holeRead y (ShapeMap.possValC h cs hcs).2) Φ) :=
-  Proof.ret_mapDH hS O h (Or.inl rfl) .nil y .nil Φ pr₁
-
-/-- **Leibniz for the value** (`ret_eqSH` without named back witnesses). -/
-def ret_eqS {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-    (O : OutLeg Γ) {S : RShape} {a : Ann S.flat} (t t' : Term σ Γ S.flat a)
-    (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1)
-    (pr₁ : Proof σ Γ Δ (O.retS hS S t Φ)) (pr₂ : Proof σ Γ Δ (eqRec S.flat t t')) :
-    Proof σ Γ Δ (O.retS hS S t' Φ) :=
-  Proof.ret_eqSH hS O (Or.inl rfl) .nil t t' .nil Φ pr₁ pr₂
-
-/-- ⭐**The own arrow** without named back witnesses (`ret_hereCH` at `[]`). -/
-def ret_hereC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-    (hT : ModalSys.T = true) {A : VarType} {a₀ : Ann A}
-    (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
-    (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
-    (pr : Proof σ Γ Δ (WFF.hereRead hT (Term.boxtm sb) Φ)) :
-    Proof σ Γ Δ (WFF.retS hS (.nec (.boxC A cs h))
-      (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2) Φ) :=
-  Proof.ret_hereCH hS hT (Or.inl rfl) .nil .nil sb cs h Φ Proof.top_intro pr
-
-/-- ⭐**The own arrow, witnessed**, without named back witnesses (`ret_hereWCH` at `[]`). -/
-def ret_hereWC {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-    (hT : ModalSys.T = true) {A Y : VarType} {a₀ : Ann A}
-    (sb : Term σ Γ.boxIn A a₀) (cs : List (List Step)) (h : A.CompOk cs)
-    {b : Ann (.VTypeDia Y)} (p : Term σ Γ (.VTypeDia Y) b) {c : Ann Y} (u : Term σ Γ Y c)
-    (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd (.VTypeBox A) (.VTypeDia Y))) 1)
-    (pr₁ : Proof σ Γ Δ (WFF.here hT p u))
-    (pr₂ : Proof σ Γ Δ (WFF.hereRead hT (Term.pair (Term.boxtm sb) p) Φ)) :
-    Proof σ Γ Δ (WFF.retS hS (.wit (.boxC A cs h) Y)
-      (Term.pair (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs h).2) u) Φ) :=
-  Proof.ret_hereWCH hS hT (Or.inl rfl) .nil .nil sb cs h p u Φ Proof.top_intro pr₁ pr₂
 
 /-- **Monotonicity** of a returning possibility at a necessary object (`ret_monoS`'s box
     instance). -/
@@ -1087,73 +771,6 @@ def ofSubset : {Δ Δ' : List (WFF σ Γ 0)} → {φ : WFF σ Γ 0} → (∀ ψ 
   | x :: Δ, _, _, h, p =>
       Proof.imp_elim (ofSubset (fun ψ hψ => h ψ (List.mem_cons_of_mem x hψ)) (Proof.imp_intro p))
         (lookup (h x List.mem_cons_self))
-
-/-! ### Strong B, rows 3–4: rules derived from the named back witnesses' basis -/
-
-/-- ⭐**Forgetting a named back witness**: selecting the rest. -/
-def ret_forgetW {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-    (O : OutLeg Γ) {S : RShape} {Z : VarType} {Zs : List VarType}
-    (hZs : VarType.HomeOk (Z :: Zs)) {b : Ann (.VTypeDia Z)} (pw : Term σ O.view (.VTypeDia Z) b)
-    (ws : HomeWs σ O.view Zs) {a : Ann S.flat} (t : Term σ Γ S.flat a) {c : Ann Z}
-    (u : Term σ Γ Z c) (us : HomeTms σ Γ Zs) (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1)
-    (pr : Proof σ Γ Δ (O.retSH hS S (Z :: Zs) hZs (.cons pw ws) t (.cons u us) Φ)) :
-    Proof σ Γ Δ (O.retSH hS S Zs hZs.tail ws t us Φ) :=
-  Proof.ret_selectW hS O hZs hZs.tail (.cons pw ws) ws t (.cons u us) us Φ
-    (HomeSub.tail pw ws u us) pr
-
-/-- ⭐**Adding a named back witness** (docs §11.23), an existence rule: a `Back` atom home along
-    `z` makes `diatm z w` a named witness, its content a fresh root.  `ret_backN`, then
-    `ret_nameN`, forgetting the atom's own witness. -/
-def ret_homeN {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape}
-    {Z C : VarType} {Zs : List VarType} (hZs : VarType.HomeOk Zs) (ws : HomeWs σ O.view Zs)
-    {a : Ann S.flat} (t : Term σ Γ S.flat a) (us : HomeTms σ Γ Zs)
-    (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1) (z : VarSymb)
-    (hz : ∃ X, O.view.ref z = some (.VTypeDia X)) (hW : ModalSys.BStrongW = true)
-    {b : Ann Z} (w : Term σ (O.view.diaIn z) Z b) {c₀ : Ann C}
-    (u : Term σ (O.view.diaIn z) C c₀) {c₁ : Ann C} (t' : Term σ Γ C c₁) (c : ℕ)
-    (hc : Γ.RootFresh (.free c)) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0}
-    (pr : Proof σ Γ Δ (O.retSH hS S Zs hZs ws t us Φ))
-    (pb : Proof σ Γ Δ (O.backP hS (.pos z hz) hW u t'))
-    (p : Proof σ (Γ.insert (.free c) Z)
-      ((O.mono (Ctx.le_insert hc.root Z)).retSH hS S (Z :: Zs) (Or.inr hW)
-          ((TmList.cons (Term.diatm z hz w) ws).mono
-            (O.le_view_mono (Ctx.le_insert hc.root Z)))
-          (Term.weaken hc.root Z t)
-          (.cons (Term.eta (.root (.free c)) Z (Ctx.ref_insert_root Γ (.free c) Z))
-            (us.mono (Ctx.le_insert hc.root Z)))
-          (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root Z)).insert (.bnd 0) _) Φ) ::
-        Δ.map (WFF.weaken hc.root Z))
-      (φ.weaken hc.root Z)) :
-    Proof σ Γ Δ φ :=
-  Proof.ret_nameN hS O (Or.inr hW) z hz u ws t t' us Φ w c hc
-    (Proof.ret_backN hS O hZs ws t us Φ z hz hW u t' pr pb)
-    (Proof.imp_elim (Proof.weak _ (Proof.imp_intro p))
-      (Proof.ret_selectW hS _ _ _ _ _ _ _ _ _
-        (HomeSub.drop₂ _ _ _ _ _ _)
-        (Proof.lookup List.mem_cons_self)))
-
-/-- ⭐**The content counit with a carrier** (docs §11.23), `ret_counitC` for a named back
-    witness: the carrier's body read along `z` there comes home as the atom's value.
-    `ret_backN`, then pairing, then the counit. -/
-def ret_counitN {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
-    (hW : ModalSys.BStrongW = true) (O : OutLeg Γ) {A Z C : VarType} {Zs : List VarType}
-    (hZs : VarType.HomeOk (Z :: Zs)) (z : VarSymb) (hz : ∃ X, O.view.ref z = some (.VTypeDia X))
-    {b : Ann Z} (w : Term σ (O.view.diaIn z) Z b) (ws : HomeWs σ O.view Zs) {a : Ann A}
-    (y : Term σ Γ A a) {cz : Ann Z} (c : Term σ Γ Z cz) (us : HomeTms σ Γ Zs) {c₀ : Ann C}
-    (u : Term σ (O.view.diaIn z) C c₀) {ct : Ann C} (t : Term σ Γ C ct)
-    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd A (.VTypeProd Z C))) 1)
-    (pr : Proof σ Γ Δ (O.retSH hS (.box A) (Z :: Zs) hZs (.cons (Term.diatm z hz w) ws) y
-      (.cons c us) (WFF.counitBodyN hz w u ψ)))
-    (pb : Proof σ Γ Δ (O.backP hS (.pos z hz) hW u t)) :
-    Proof σ Γ Δ (WFF.holeRead (Term.pair y (Term.pair c t)) ψ) :=
-  Proof.ret_counitN₀ hS O (Or.inr hW) z hz (Term.pair w u)
-    (.cons (Term.diatm z hz w) (.cons (Term.diatm z hz u) ws)) y (Term.pair c t)
-    (.cons c (.cons t us)) ψ
-    (Proof.ret_pairN hS O (S := .box A) (Or.inr hW) z hz w u ws y c t us _
-      (Proof.ret_selectW hS O (S := .box A) (Or.inr hW) (Or.inr hW) _ _ y _ _ _
-        (HomeSub.swap _ _ _ _ _ _)
-        (Proof.ret_backN hS O (S := .box A) hZs (.cons (Term.diatm z hz w) ws) y
-          (.cons c us) _ z hz hW u t pr pb)))
 
 /-- ⭐Weak D in its familiar form, `□φ ⊢ ◇φ`, with `◇φ` the dual `¬□¬φ`: from `□¬φ` and `□φ`,
     `K_box` gives `□⊥`, which the rule `D_box` refutes. -/
