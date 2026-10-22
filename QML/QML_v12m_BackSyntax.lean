@@ -881,6 +881,12 @@ def RShape.extR {σ : Signature} (V : Ctx) : (S : RShape) → (B : VarType) →
       (Ctx.ref_snd_of (Ctx.ref_fst_of (Ctx.ref_insert_root V (.bnd 0)
         (RShape.ext (.wit N X) B).ty)))⟩
 
+/-- In `ret_realise`'s body, the necessary part, read from the witnessed slot. -/
+def RShape.realL {σ : Signature} (V : Ctx) (N : NShape) (X : VarType) :
+    Σ a, Term σ (V.insert (.bnd 0) (RShape.wit N X).ty) N.ty a :=
+  ⟨_, Term.eta (.step (.root (.bnd 0)) .fst) N.ty
+    (Ctx.ref_fst_of (Ctx.ref_insert_root V (.bnd 0) (RShape.wit N X).ty))⟩
+
 /-- In `ret_extS`'s conclusion, the value and the companion's value, arranged as the extended
     shape's value: the companion joins the necessary part. -/
 def RShape.extTm {σ : Signature} {Γ : Ctx} [Γ.NoSlots] : (S : RShape) → {B : VarType} →

@@ -49,9 +49,15 @@ class ModalSys where
       trip of some carrier (`docs/v12-modal-extensions.md` §11).  Needs weak B, which the rules
       using it require. -/
   BStrong : Bool
+  /-- Strong B with **witnessed ways home** (rows 3–4, `docs/v12-modal-extensions.md` §11.23):
+      along any arrow, some possible object at its source has the arrow in its extent, with any
+      given content at its target.  Read at a returning possibility's way home it is B's unit
+      `A → □◇A` per arrow (`Proof.ret_realise`); read at its arrow out it names the route
+      (`Proof.ret_route`).  Needs strong B, which the rules using it require. -/
+  BStrongW : Bool
 
 /-- The system K. -/
-def ModalSys.K : ModalSys := ⟨false, false, false, false, false, false, false⟩
+def ModalSys.K : ModalSys := ⟨false, false, false, false, false, false, false, false⟩
 
 /-- The systems without B, for which the staged canonical model is built.  B's accessible worlds
     lead back to their origin, against the order of construction; its canonical model is to be the

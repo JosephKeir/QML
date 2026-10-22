@@ -292,6 +292,7 @@ noncomputable def model : Model.{0, 0} σ where
   Ret_fwd := by intro _ _ _ _ _ _ h; exact h.elim
   Ret_conv hS := (ModalSys.NoB.absurdStrong hS).elim
   backRet_exists hS := (ModalSys.NoB.absurdStrong hS).elim
+  posBack_exists hS := (ModalSys.NoB.absurdStrong hS).elim
   Ind o o' := Ind w₀ o o'
   Ind_refl o := Ind_refl w₀ o
 

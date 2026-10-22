@@ -9533,3 +9533,24 @@ arrow, plus two rules and a model law.  Row 4 is `ret_realise` along a `◇_y` l
 * All 18 v12m targets build, no `sorry`.  The flag returns in step 2, with `posBack_exists`,
   `ret_realise` and `ret_route`.
 
+
+#### Build step 2: the flag, the law and the two rules *(2026-10-22)*
+
+* **Flag** `ModalSys.BStrongW` (needs strong B, which the rules require).  `NoFour` asks it off
+  for now (`noBStrongW`, `absurdW`), so every completeness result stands until the network is
+  done (build steps 4–6).
+* **Model law** `Model.posBack_exists` (under `BStrong`, `BStrongW`): for an arrow `b : R v w` and
+  an object `o` at `w`, some `p : Pos A v` has `b` in its extent with content there `Ind o`.  The
+  tree model meets it vacuously (no B); the network's canonical model, for now, by `absurdW`.
+* **`Proof.ret_realise`**: `◇_O[d ↦ y] Φ ⊢ ◇_O[⟨d, e⟩ ↦ ⟨y, c⟩] Φ` from a necessary shape to the
+  witnessed one, the body through `RShape.realL` (the slot's first projection).  Sound by
+  `Model.sat_ret_realise` (the law at the premise's way home); `Proof.subst` by
+  `RShape.subst_realL`.
+* **`Proof.ret_route`** (elimination form, a fresh `κ : ◇𝟙`): `◇[d ↦ y] Φ` along `□` lets the
+  subproof assume `◇_κ[d ↦ y] Φ`, the body moved into `κ`'s view.  Sound by
+  `Model.sat_ret_route` (the law at the arrow out, `o := ()`; `Env.diaPush_fresh`, strong T's
+  `Env.diaPush_ret` at any arrow).  `Proof.subst` by `WFF.subst_route_renameTm`.  Stated along
+  `□` only: along `◇_y` the body could still mention `y`'s content, and the route's leg would
+  then have to carry both, a joint view.  The network needs it only for plain children.
+* New file `QML_v12m_SemRealise.lean`; `Soundness` imports it.
+

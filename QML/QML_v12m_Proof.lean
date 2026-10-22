@@ -563,6 +563,36 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
         (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) _) (ShapeMap.possObj h).2) Φ)) →
       Proof σ Γ Δ (O.retS hS (.wit (.boxC C cs hcs) Z)
         (Term.holeRead y (ShapeMap.possValC h cs hcs).2) Φ)
+  -- Strong B with witnessed ways home (rows 3–4, docs §11.23): `Model.posBack_exists`, read at
+  -- a returning possibility's way home and at its arrow out.
+  /-- ⭐**Realising along the way home**: a returning possibility's way home lies in the extent of
+      some possible object at the far end, with any given content here — B's unit `A → □◇A`,
+      per arrow, as strong T's `T_dia` is `A → ◇A` at the identity arrow.  Only from a
+      necessary shape: two contents are realised together by pairing them, never by joining two
+      possible parts. -/
+  | ret_realise {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hW : ModalSys.BStrongW = true) (O : OutLeg Γ) (N : NShape) {X : VarType}
+      {a : Ann N.flat} (y : Term σ Γ N.flat a) {c₀ : Ann X} (c : Term σ Γ X c₀)
+      (Φ : WFF σ (O.view.insert (.bnd 0) N.ty) 1) :
+      Proof σ Γ Δ (O.retS hS (.nec N) y Φ) →
+      Proof σ Γ Δ (O.retS hS (.wit N X) (Term.pair y c)
+        (WFF.bodyRepl (RShape.realL O.view N X).2 Φ))
+  /-- ⭐**Naming the route** (existence, as `ret_extS`): a returning possibility's arrow out lies
+      in the extent of some possible object here — `Model.posBack_exists` from the far end —
+      named by a fresh `κ : ◇𝟙`; the returning possibility then runs along `κ`. -/
+  | ret_route {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+      (hW : ModalSys.BStrongW = true) {S : RShape} {a : Ann S.flat} (t : Term σ Γ S.flat a)
+      (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) S.ty) 1) (κ : ℕ) (hκ : Γ.RootFresh (.free κ))
+      {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
+      Proof σ Γ Δ (WFF.retS hS S t Φ) →
+      Proof σ (Γ.insert (.free κ) (.VTypeDia .VTypeOne))
+        (WFF.retxS hS (.root (.free κ)) ⟨.VTypeOne, Ctx.ref_insert_root Γ (.free κ) _⟩ S
+            (Term.weaken hκ.root _ t)
+            (WFF.mono (((Ctx.le_insert hκ.root _).boxIn.trans
+              (Ctx.le_boxIn_diaIn _ (.root (.free κ)))).insert (.bnd 0) S.ty) Φ) ::
+          Δ.map (WFF.weaken hκ.root _))
+        (φ.weaken hκ.root _) →
+      Proof σ Γ Δ φ
   /-- **Leibniz for the value**, along any leg, at any shape (docs §11.20: generalised from the
       `□` shape, which is derived, `Proof.ret_eq`, as `ret_monoS` generalised `ret_mono`). -/
   | ret_eqS {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)

@@ -723,6 +723,7 @@ noncomputable def model : Model.{0, 0} σ where
   Ret_fwd := by intro _ _ hS _ _ _ h; exact B.ret_fwd hS h
   Ret_conv := by intro _ _ _ hA _ _ _ h; exact Or.inl ⟨hA, h⟩
   backRet_exists hS hne o := B.backRet_exists_canon hS hne o
+  posBack_exists _ hW := (ModalSys.NoFour.absurdW hW).elim
   Ind o o' := B.Ind o o'
   Ind_refl o := B.Ind_refl o
 

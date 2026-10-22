@@ -447,6 +447,18 @@ structure Model (σ : Signature) where
     Nonempty (frame.Acc w) → ∀ o : frame.Dom A w,
       ∃ c : frame.Nec (.VTypeBox A) w,
         Ret (Set.univ : Set (frame.Acc w)) (fun a b => necEval (necEval c a.1) b) o
+  /-- ⭐Strong B with **witnessed ways home** (rows 3–4, docs §11.23): along any arrow `b`, some
+      possible object at its source has `b` in its extent, with content there indistinguishable
+      from any given object at its target.  At a returning possibility's way home it is B's unit
+      `A → □◇A` read per arrow (`Proof.ret_realise`); at its arrow out it names the route by a
+      possible object here (`Proof.ret_route`); at T's identity arrow it is `posRet_exists`.
+      Existential, as `posRet_exists`: per arrow, with no uniform carrier and no naturality —
+      a carrier realising an object at every successor at once is what forced several possible
+      objects onto one way home. -/
+  posBack_exists : ∀ {A : VarType} {w v : frame.W} (_hS : ModalSys.BStrong = true)
+    (_hW : ModalSys.BStrongW = true) (b : frame.R v w) (o : frame.Dom A w),
+    ∃ (p : frame.Pos A v) (hm : (⟨w, ⟨b⟩⟩ : frame.Acc v) ∈ (posFull p).1.1),
+      Ind ((posFull p).1.2 ⟨⟨w, ⟨b⟩⟩, hm⟩) o
 
 namespace Model
 
