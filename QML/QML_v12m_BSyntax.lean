@@ -43,6 +43,11 @@ theorem ModalSys.NoFour.absurdW [ModalSys.NoFour] (hW : ModalSys.BStrongW = true
   rw [ModalSys.NoFour.noBStrongW] at hW
   cases hW
 
+/-- While `NoFour` asks the witnessed ways home off, the strong forms cohere vacuously. -/
+instance ModalSys.NoFour.wCoh [ModalSys.NoFour] : ModalSys.WCoh where
+  strongT hW := (ModalSys.NoFour.absurdW hW).elim
+  strongD hW := (ModalSys.NoFour.absurdW hW).elim
+
 theorem ModalSys.NoFour.keepOnly [ModalSys.NoFour] : ModalSys.keepOnly = false := by
   simp [ModalSys.keepOnly, ModalSys.NoFour.noFour]
 

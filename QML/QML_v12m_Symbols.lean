@@ -75,6 +75,14 @@ theorem ModalSys.NoB.absurdStrong [ModalSys] [ModalSys.NoB] (hB : ModalSys.BStro
   rw [ModalSys.NoB.noBStrong] at hB
   cases hB
 
+/-- ⭐**The strong forms cohere** (`docs/v12-modal-extensions.md` §11.23): strong B with witnessed
+    ways home contains strong T at the own arrow (`Model.posRet_of_posBack`) and strong D seen from
+    the far end (`Model.posSerial_of_posBack`).  So a system with it and T (or D) has the strong
+    form of T (or D) too; completeness under `BStrongW` asks for this. -/
+class ModalSys.WCoh [ModalSys] : Prop where
+  strongT : ModalSys.BStrongW = true → ModalSys.T = true → ModalSys.TStrong = true
+  strongD : ModalSys.BStrongW = true → ModalSys.D = true → ModalSys.DStrong = true
+
 /-- Under T and 4 a view shows only kept objects: the contents of `u` are `u.keep.here`. -/
 def ModalSys.keepOnly [ModalSys] : Bool := ModalSys.T && ModalSys.Four
 

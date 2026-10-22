@@ -9554,3 +9554,33 @@ arrow, plus two rules and a model law.  Row 4 is `ret_realise` along a `◇_y` l
   then have to carry both, a joint view.  The network needs it only for plain children.
 * New file `QML_v12m_SemRealise.lean`; `Soundness` imports it.
 
+
+#### Build step 3: the strong forms cohere *(2026-10-22)*
+
+* ⭐`Model.posRet_of_posBack`: under T the identity arrow is its own way back, and the law there
+  *is* strong T's `posRet_exists`.  **Strong T is row 3 at the own arrow.**
+* ⭐`Model.posSerial_of_posBack`: under D an arrow out lies in some possible object's extent (the
+  law at that arrow, content `()`), which is strong D's `posSerial`.  **Strong D is row 3 seen
+  from the far end** (§11.19's route naming).
+* So a system with `BStrongW` and T (or D) should have the strong form of T (or D) too: class
+  `ModalSys.WCoh` (`strongT`, `strongD`), which completeness under `BStrongW` will ask for (step
+  6).  While `NoFour` asks `BStrongW` off it holds vacuously (`ModalSys.NoFour.wCoh`).
+
+#### Note for the write-up: possible objects and the category of elements *(2026-10-22)*
+
+At each world the definable maps (`GFunc`, strength included) act on possible objects
+(`posMap`, `posStrength`), on sections (extent and contents, pointwise) and on shapes
+(`GFunc.shp`, compositional by definition).  `posMap_full`/`posStrength_full` say that evaluation
+and shape are natural transformations out of `Pos`, and `posFull_inj` that together they are
+monic.  So `Pos(−, w)` is a subfunctor of `PosSec(−, w) × Shp(−, w)`, and, `shape` being natural,
+equivalently a functor on the category of elements `∫Shp`: a type with a shape goes to the possible
+objects of that shape, each fibre embedded in the type's sections.  *A possible object is a section
+over an element of the category of elements of the shape functor; the two determine it.*
+Unshaped, `Shp` is trivial and `Pos ⊆ PosSec`.
+* It is not an associated bundle: the maps form a category of non-invertible maps, not a group;
+  `Pos` is a subobject of a product, not a quotient (the shape records provenance, not a choice of
+  coordinates); and a model chooses which compatible pairs exist.
+* Refinements: the action is strong (a riding necessary object contributes its values' shapes as
+  family leaves), and leaves move along arrows by collapse and shift, so globally the construction
+  is indexed over worlds and arrows as well as types.
+

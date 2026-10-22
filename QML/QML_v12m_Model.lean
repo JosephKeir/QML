@@ -479,6 +479,25 @@ abbrev shape (hS : ModalSys.shaped = true) {A : VarType} {w : M.frame.W} (p : M.
 
 variable {M}
 
+/-- ⭐**Strong T is row 3 at the own arrow** (docs §11.23): under T the identity is its own way
+    back, and `posBack_exists` there is `posRet_exists`.  So a model of strong B with witnessed
+    ways home and T meets strong T's law. -/
+theorem posRet_of_posBack (hT : ModalSys.T = true) (hS : ModalSys.BStrong = true)
+    (hW : ModalSys.BStrongW = true) {A : VarType} {w : M.frame.W} (a : M.frame.Dom A w) :
+    ∃ (p : M.frame.Pos A w) (hm : M.frame.reflAcc hT w ∈ (M.posFull p).1.1),
+      M.Ind ((M.posFull p).1.2 ⟨M.frame.reflAcc hT w, hm⟩) a :=
+  M.posBack_exists hS hW (M.frame.refl hT w) a
+
+/-- ⭐**Strong D is row 3 seen from the far end** (docs §11.23): an arrow out lies in the extent
+    of some possible object here (`posBack_exists` at that arrow, content `()`), so under D some
+    possible object has a nonempty extent, strong D's law. -/
+theorem posSerial_of_posBack (hD : ModalSys.D = true) (hS : ModalSys.BStrong = true)
+    (hW : ModalSys.BStrongW = true) (w : M.frame.W) :
+    ∃ p : M.frame.Pos .VTypeOne w, Nonempty (M.posFull p).1.1 := by
+  obtain ⟨v, ⟨b⟩⟩ := M.frame.serial hD w
+  obtain ⟨p, hm, -⟩ := M.posBack_exists (A := .VTypeOne) hS hW b PUnit.unit
+  exact ⟨p, ⟨⟨_, hm⟩⟩⟩
+
 /-- Possible objects agreeing on their section and, when shaped, their shape are equal. -/
 theorem pos_inj {A : VarType} {w : M.frame.W} {p q : M.frame.Pos A w}
     (h : M.posEval p = M.posEval q)
