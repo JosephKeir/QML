@@ -9637,7 +9637,7 @@ Paper check 2, built.  ⭐`BData.posBack_exists_canon`: along an arrow `b : R v 
 
 * `NoFour.noBStrongW`, `NoFour.absurdW` and the vacuous instance `NoFour.wCoh` are gone.
   **`NoFour` now extends `ModalSys.WCoh`** (strong T and strong D whenever `BStrongW` with T,
-  resp. D).  This is how "completeness under `BStrongW` asks for `WCoh`" is realised: every B
+  resp. D; the D half was dropped later, see below).  This is how "completeness under `BStrongW` asks for `WCoh`" is realised: every B
   completeness result already takes `[NoFour]`, and threading a separate `[WCoh]` through the
   fifteen files that use the canonical model would have put an unused instance into most of
   their declarations.  `NoFour` carried such a coherence field before (`noTStrong`, removed
@@ -9650,6 +9650,58 @@ Paper check 2, built.  ⭐`BData.posBack_exists_canon`: along an arrow `b : R v 
   rows 3–4's (the model law gives their laws, so completeness says the rules are admissible
   where the strong flags are on; with them off the systems are excluded); rows 3–4 along
   `◇_y` legs of `ret_route` (stated along `□` only).
+
+#### `WCoh` and the derivability of `ret_route`, on paper *(2026-10-22)*
+
+**`WCoh` loses its D half (built).**  `WCoh.strongD` was never used: the canonical model is asked
+for strong D's law `posSerial` only under `DStrong`, and with rows 3–4 its formula is derivable —
+`D_box` gives `◇⊤`, `ret_new` at the unit `◇[() ↦ ()]⊤`, `ret_route` `◇_κ[() ↦ ()]⊤`, `ret_diaS`
+and `K_dia` `◇_κ⊤`, `∃`-introduction `somePoss`.  `WCoh` is now `strongT` alone.
+
+**The T half is a genuine requirement.**  Only `T_dia` concludes a `Here` atom; every other rule
+mentioning `Here` (`here_elim`, `here_intro`, `here_beta`, `here_name`, `here_subst`, `here_eq`,
+`ret_hereWC`, `ret_hereXC`, `ret_hereXWC`, `back_hereX`) has it only as a premise.  Reading `Here`
+as false keeps all of them sound, but `T_dia` gives `∃c. Here(c, t)`, which is then false; so
+`T_dia` is not derivable from the rest.  Yet every model of rows 3–4 with T validates
+`∃c. Here(c, t)` (`posRet_of_posBack`; `Here` is `Realised`, the own arrow in the extent with
+content `Ind t`).  So rows 3–4 with T but without strong T would be incomplete.
+
+**`ret_route` is derivable, on paper.**  The derivation is a refutation, so it gives
+`◇[d ↦ y] Φ ⊢ ∃κ:◇𝟙. ◇_κ[d ↦ y] Φ`, and `ex_elim` then gives `ret_route`'s elimination form.
+Suppose `◇[d ↦ y] Φ` (along `□`, arrow `a : w → k`) and `θ := ∀κ. ¬◇_κ[d ↦ y] Φ` at `w`.
+
+*Necessary shape `boxC C co`.*
+1. **Unit** (`ret_unitC`, at `θ` as a hole formula over `⟨y, □sb⟩`, `sb` the tuple of the □-items
+   `Φ` reads, by `pack2`): at `k`, inside the body, `◇[s ↦ sb] θ(⟨d read there, s⟩)` — some arrow
+   `k → v`, an object `s` at `v` coming back to `k` as `sb`, and at `v`:
+   `∀κ. ¬◇_κ[d' ↦ d's contents read at v] Φ(d', items := s.box)`.
+2. **Realise** (`ret_realise` at `k`, content `()`): the same with a possible part `p` at `v`
+   whose extent holds `v → k`.
+3. **Possible-part unit** (`ret_unitDC` at `k` on the realised one, `sb' := d.box`, its hole
+   formula `θ' := Φ(slot, items := hole.1.1)`, true at `k` because the outer body is `Φ(d)`): at
+   `v`, `◇_p[s'' ↦ d's contents read at v] Φ(s'', items := s.box)` — `unitBodyDC`'s value is
+   `compsVal (d.box) co`, the unit's is `compsSlot d co`, equal by `compsVal_eta`; both read
+   the items as `s.box` in `p`'s view.
+4. **Clash** at `v`: instantiate `κ := p` in step 1's universal (`WFF.subst` on `retxS` sends the
+   leg through the substitution's index map, as `◇` does in `WFF.instantiate_diaSlot`).  So the
+   realised body is `⊥`, the inner returning possibility is refuted (`ret_diaS`, `K`), the outer
+   body is `⊥` (`ret_monoS`), and `w` is inconsistent.
+
+*Witnessed shape `wit (boxC C co) X`* (bound `⟨d, e⟩`): the same with the units one level up —
+`ret_unitDC` at `w` (the inner returning possibility runs along `e` and the hole holds `e.dia`),
+`ret_realise` along `e`, and `ret_unitWDC` at `k` (along `e`, `sb' := d.box`, `u := e.dia`), whose
+returning possibility along `p` is at the witnessed shape with value
+`⟨d's contents, e's content⟩` read at `v`, as step 1's universal asks.
+
+*Other shapes* by packing (`retS_packG`, `retS_packGW`, `ret_map` back).  Nothing needs `v = w`:
+the clash happens at whatever world the inner returning possibility reaches.  The derivation uses
+`pack2`, so it is for world languages (presented contexts), which is where `ret_route` is used.
+
+**Cost of building it.**  An instantiation lemma for a `◇`-slot used as a `retxS` leg, `θ` and
+`θ'` as packed hole formulas (`pack2` inside a returning possibility), the value identity, and the
+nesting through `ret_monoS` twice, for two shapes plus packing.  Then `Proof.ret_route`, its
+soundness (`sat_ret_route`, `Env.diaPush_fresh`) and its substitution case
+(`WFF.subst_route_renameTm`) can go; `route_consistent` would use the derived rule.
 
 #### Note for the write-up: possible objects and the category of elements *(2026-10-22)*
 

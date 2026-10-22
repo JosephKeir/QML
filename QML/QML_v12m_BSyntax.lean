@@ -32,8 +32,8 @@ namespace V12M
     `VarType.bc` and the arrows account for.
 
     And the strong forms coherent (`ModalSys.WCoh`): with strong B's witnessed ways home
-    (`BStrongW`), T and D come in their strong forms, which the model law gives them
-    (`Model.posRet_of_posBack`, `Model.posSerial_of_posBack`; docs §11.23, build step 3). -/
+    (`BStrongW`), T comes in its strong form, which the model law gives it
+    (`Model.posRet_of_posBack`; docs §11.23, build steps 3 and 6). -/
 class ModalSys.NoFour [ModalSys] : Prop extends ModalSys.WCoh where
   noFour : ModalSys.Four = false
 
