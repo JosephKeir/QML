@@ -1814,6 +1814,128 @@ frames** — the network with paths as arrows (composition is concatenation, the
 free), where only the `keep` entries in root-only languages are new — leaving coherence, and with
 it relational completeness and strong B + 4, to the 5 design.
 
+#### Weak `◇` (`x.keep`): build scoping *(2026-10-22, against the code)*
+
+**Syntax and semantics: smaller than feared.**  `GFunc.keep` already takes a hypothesis on the
+type and dispatches to `dup`; `Env.boxPush`, `Interp` and `ShEnv.boxPush` read `u.keep` only
+through it.  So:
+* `VarType.keepable` (`□` or `◇`); `Ctx.boxIn`'s `keep` branch admits `◇A`; `Ctx.boxIn_keep`
+  returns `keepable` in place of `∃ A, T = □A` (≈100 uses in 40 files; the B files only take its
+  `Four` component, against `NoFour`);
+* `GFunc.dkeep hF : ◇A → □◇A`, evaluated by `Ops.posKeep : Pos A w → Nec (◇A) w`, its law
+  giving the section of `necEval (posKeep x) a` as `x`'s pulled back along `a`;
+* `shift` is address arithmetic and already sends `x.dia ↦ x.keep.dia`, so `four_dia`'s shift
+  needs only a `Ctx.Shifts` instance from `Γ.diaIn x` to `Γ.boxIn.diaIn x.keep`.
+
+**Finding 1 — shapes need arrows to act on roots.**  Shape environments compute `x.keep`'s shape
+symbolically, `(GFunc.shp (GFunc.keep …) j ρx).inner`, and it must equal the transposed shapes of
+the objects `posKeep x a`, anchored at each `a`'s target.  A root leaf of `x` is anchored at `w`,
+so its restriction needs a root at the target: an action `Root w → (a : Acc w) → Root a.1`,
+functorial (`trans`, and `refl` under T), passed to `GFunc.shp` as a typeclass on `Root`.  With
+it `posKeep`'s section and shape are both specified, so associativity, the identity under T and
+naturality in `posMap`/`posStrength` follow from `posFull_inj`.
+
+**Finding 2 — T + 4 needs one new rule.**  For `c` in `x`'s extent, `posKeep x c` has the own
+arrow in its extent (`c ; id = c`), with content `x`'s content at `c`.  So under T + 4,
+`□_x Here(x.keep, x.dia)` is valid.  It is not derivable: only `T_dia` concludes a `Here` atom, and
+reading `Here` as false keeps every other rule sound, `four_dia` included.  The canonical model
+needs it (the extent law at the own arrow makes `x.keep` realised at each `◇_x` child).  Rule
+`here_keep` (T, 4): `□_x Here(x.keep, x.dia)`.  It is the `◇` counterpart of the coincidence
+`u.keep.here = u.box` that `keepOnly` resolved by notation; for `◇` there is no term for "the
+content here", so it is a rule rather than notation.
+
+**Finding 3 — the tree's arrows have to become paths.**  The tree's `R w w'` is "some chain", a
+`Prop`, and a world does not record its parent.  The law
+`ext (posKeep x a) = {b | a ; b ∈ ext x}` then fails: `w'` can be reached through two
+intermediate worlds `v`, `v'` with the same language, and lie in `ext_{v'}(x.keep)` but not in
+`ext_v(x.keep)`, since `v`'s theory may have more `□_{x.keep}` contents than `w`'s `□_x` ones
+give.  This is the collision of §3 4 / `v12-arrow-canonical.md` §4, now forced by the *weak* form.
+Making arrows chains as data (a `Type`-valued `Chain`; `x`'s extent the chains whose last step is
+an `x.keep^k`-child, or that end at a world where it is realised) makes the law hold by
+decomposing the chain.  Values of necessary objects depend only on the endpoint and the depth
+(`rden`), so they are unaffected.  The alternative, worlds recording their history (a genuine
+tree), is the same change seen from the worlds.  Completeness is already stated over arrow models
+(`Model`'s frames are arrow-indexed), so the theorem is unchanged; what changes is that the
+canonical model stops being relational for 4, and relational completeness of `four_dia` would
+need unravelling (`v12-arrow-canonical.md` §4).
+
+**Does unravelling recover relational completeness?  Expected yes, for every flag set without B
+*(paper, 2026-10-22)*.**  From an arrow model `M` build `M'`: worlds the finite paths of arrows
+from the actual world; `p R' q` iff `q` extends `p` (by one step without 4, by any number of
+steps ≥ 1 with 4, and also `q = p` under T); the edge `p → q` takes the composite arrow
+`arr(p, q)` of the extension (the identity for `q = p`).  `R'` is a `Prop`, and at most one edge
+joins two paths, since an extension is determined by its endpoints.
+* *Carriers.*  `Nec' A p := Nec A (end p)`, `Pos' A p := Pos A (end p)`; values and extents go
+  through `arr`: `necEval' n (p, q) := necEval n (arr(p, q))`, and `x`'s extent is the edges whose
+  arrow lies in `x`'s.  Every arrow `a` out of `end p` is the arrow of the one-step edge to `p·a`,
+  so extents and families are recovered from their translations, and `nec_inj`/`posFull_inj`
+  carry over.  Leaves: roots unchanged; `fam f ↦ fam fun e => f (arr e)`; the root action along
+  `e` is `M`'s along `arr e`.
+* *Composites agree.*  `arr(p, q') = arr(p, q) ; arr(q, q')` along a chain of extensions, by
+  `trans_assoc`, and identity edges compose by `refl_trans`/`trans_refl`.  These are exactly the
+  frame laws `Arrows` already demands under 4 and T + 4, and they are what the closure step of §4's
+  table needs ("4: associativity; T + 4: identity").  They also give the restriction law in `M'`:
+  `ext (posKeep' x (p, q)) = {(q, q') | arr(p, q) ; arr(q, q') ∈ ext x}
+  = {(q, q') | (p, q') ∈ ext' x}`, which is the relational reading of `x.keep`.  So `x.keep` adds
+  no new condition: the collision of Finding 3 is a property of the *canonical* relational frame,
+  not of relational frames.
+* *Truth.*  The pushed environments along `(p, q)` in `M'` are `M`'s along `arr(p, q)`, and every
+  arrow of `M` is hit, so each clause (`□`, `◇_x`, `keep`, `Here`, the per-arrow laws of T, D and
+  4's strong forms) reads the same.  So `p` satisfies what `end p` does, `IndInvariant` included.
+* *Where it fails* is only where two edges would need different values on one pair: B + 4 and S5,
+  where out-and-back routes through different successors land on one path
+  (`v12-arrow-canonical.md` §4, §8 q. 1), and strong B's `homeUnique`.  Neither is in milestone
+  2a's flag sets.
+* *Technicalities.*  Paths live in `Type (max u v)`, so `M'`'s carriers need `ULift`; the truth
+  lemma follows the full syntax (views, shapes, `Here`).  Formalising it would give relational
+  completeness for every B-free system at once, as a corollary of arrow completeness.
+
+**Finding 4 (building, 2026-10-22) — under T + 4 the shape lemmas need the labelling convention
+as an invariant.**  `GFunc.shp dkeep j a := .box (a.map (Leaf.dk j))`.  At the anchor's level
+`dk 0` must be semantic, a family of restrictions (`fam s ↦ keepAlong s ℓ`, root by the root
+action): the necessary object `posKeep x` has as shape the transposition of the shapes of its
+values, whose leaves are families by construction (`Frame.domShape`), and `posStrength` reads
+exactly that.  Below a `◇` it must be syntactic (`Step.keepAt`, a `keep` after the level step),
+to match the canonical labels.  The generic shape lemmas — a collapse at level `j` passes through
+any map at a deeper level (`shp_mapCollapse`), and through `termShp` (`termShp_collapse_self`,
+used by `T_box`'s and substitution's shape lemmas) — then fail on *junk* leaves: a root leaf at a
+position under a box at the anchor's level (`dk 0 ∘ collapse 0 ≠ collapse 0 ∘ dk 1` on roots),
+and more generally a root leaf whose path has fewer levels than its position.  The existing
+operations (`collapse`, `shift`) are path insertions/deletions at an index, so their simplicial
+identities hold on every path, junk included; `dk` is the first operation that is semantic at
+level 0 and appends at the end, so junk breaks it.  Semantically the junk never occurs: §10.39's
+convention (a leaf under a box crossed at the anchor's level is a family; a root's path spells the
+levels of its position) holds for every semantic shape (transposition) and every canonical one
+(`leafOf`).  So the fix is to **state the convention as a well-formedness invariant** on shapes
+(by the level word of each position) and thread it through the collapse lemmas, proving it for
+semantic and canonical shape environments.  The shift lemmas need nothing (there `dk` never acts
+at level 0), and without T there are no collapse lemmas: **K4, D4 (and strong D) are unaffected.**
+
+**Staged (user, 2026-10-22: option A).**  Possible objects are kept only in **unshaped** systems
+for now — `VarType.keepable (◇A) := !ModalSys.shaped`, so `x.keep` exists under 4 when neither T
+nor strong B is on (K4, D4, either strength of D).  Strong B is complete only with 4 off, so
+nothing complete is lost by excluding it too, and in an unshaped system every shape obligation of
+`x.keep` is vacuous.  `here_keep` (T + 4) is deferred with T + 4.  The symbolic shape lemmas that
+meet a kept entry take `ModalSys.NoDiaKeep` (4 off, or shaped).  Removing the gate is the T + 4
+step: the labelling invariant of Finding 4, `here_keep`, and the root action's laws in the
+generic shape lemmas (`dk (j+1) ∘ dk j = shift j ∘ dk j` needs `keepAlong` composition).
+
+**Step 1 built (2026-10-22).**  Syntax (`VarType.keepable`, `Ctx.boxIn` keeps `x.keep`,
+`boxIn_keep`/`boxIn_keep_of'`/`boxIn_keep_nd`/`boxIn_keep_T`, `Ann.idxAt` through a kept `◇`),
+shifting (`Ctx.shifts_diaIn_keep`, `Ctx.exists_keep_dia`), substitution (`SubE.keepE` at
+`diatm`: `◇_{y.keep}(shift t)`; `keepE_mono`/`_collapse'`/`_shift'`/`_keepE'`/`_comp'`,
+`Subst.shiftCorr_dia_keep`, `Subst.coh_keep_dia`), the rule `four_dia` and its substitution
+case, models (`GFunc.dkeep`, `Ops.posKeep`, `Model.posKeep_full`, the root action
+`Model.rootKeep` with its laws, `Arrows.RootKeep`, `Leaf.keepAlong`/`Leaf.dk`, `GFunc.shp`'s
+`dkeep` case), semantics (`posKeep_posKeep`, `Env.shiftAgree_diaKeep`, `entryVal_keepE_dia`,
+`boxPush_envShape` at `x.keep`), and `four_dia`'s soundness.  `Soundness` builds, no `sorry`.
+Step 2 (the tree with path arrows) is next; the completeness files do not build until then.
+
+**Steps.**  (1) Syntax, models, environments, substitution (`keepE` at `◇`: restriction commutes
+with `posMap` and `posStrength`), `four_dia`, `here_keep`, soundness.  (2) The tree with path
+arrows, `x`'s extents, `rden` and shapes for `x.keep`, the truth lemma's deep `◇_x` case
+(`four_dia`) and the own-arrow case (`here_keep`).
+
 ### B (symmetry)
 - Frame: `v R w` for `v ∈ R(w)`.
 - **Weak B: implemented (2026-09-19), sound; complete without T and 4 for contexts of declared

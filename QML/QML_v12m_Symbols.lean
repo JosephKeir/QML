@@ -429,12 +429,35 @@ def Ann.idxAt : {T : VarType} → Ann T → List Step → VarSymb
   | _, .box a, .box :: p => a.idxAt p
   | _, .box a, .here :: p => (a.idxAt p).collapse (Step.levels p)
   | _, .box a, .keep :: p => (Ann.box (a.shift 0)).idxAt p
+  | _, .dia i a, .keep :: p => (Ann.dia (.step i .keep) (a.shift 0)).idxAt p
   | _, .dia _ a, .dia :: p => a.idxAt p
   | _, _, _ => .root (.free 0)
 
 /-! ## The system-dependent part: reaching addresses and modal views -/
 
 variable [ModalSys]
+
+/-- No possible object is kept: 4 off, or a shaped system (staged, docs §3 4, Finding 4).  The
+    symbolic shape lemmas that meet a kept entry assume it. -/
+abbrev ModalSys.NoDiaKeep : Prop := ModalSys.Four = false ∨ ModalSys.shaped = true
+
+/-- The types whose objects 4 keeps one view further in: necessary objects (`u.keep`, the
+    restriction of `u`) and possible objects (`x.keep`, `x`'s extent pulled back along the
+    arrow).  *Staged:* possible objects are kept only in unshaped systems for now (neither T nor
+    strong B) — under T + 4 the shape lemmas need the labelling convention as an invariant first
+    (docs §3 4, Finding 4), and strong B is complete only with 4 off. -/
+def VarType.keepable : VarType → Bool
+  | .VTypeBox _ => true
+  | .VTypeDia _ => !ModalSys.shaped
+  | _ => false
+
+theorem VarType.keepable_dia {A : VarType} (hnS : ModalSys.shaped = false) :
+    (VarType.VTypeDia A).keepable = true := by
+  simp [VarType.keepable, hnS]
+
+theorem VarType.noShaped_of_keepable_dia {A : VarType}
+    (h : (VarType.VTypeDia A).keepable = true) : ModalSys.shaped = false := by
+  simpa [VarType.keepable] using h
 
 def VarType.step : VarType → Step → Option VarType
   | .VTypeProd A _, .fst => some A
@@ -469,8 +492,9 @@ def ref (Γ : Ctx) : VarSymb → Option VarType
   | .root r => Γ (.root r)
   | .step v s => if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)
 
-/-- Inside `□`: `v.box : A` exactly when `v : □A` is reachable, and under 4 also `v.keep : □A`.
-    Under T and 4 only `v.keep`: `v.box` would be `v.keep.here`. -/
+/-- Inside `□`: `v.box : A` exactly when `v : □A` is reachable, and under 4 also `v.keep : □A`
+    and, for `v : ◇A`, `v.keep : ◇A`.  Under T and 4 only `v.keep`: `v.box` would be
+    `v.keep.here`. -/
 def boxIn (Γ : Ctx) : Ctx := fun v =>
   match v with
   | .step u .box =>
@@ -483,6 +507,7 @@ def boxIn (Γ : Ctx) : Ctx := fun v =>
       if ModalSys.Four then
         match Γ.ref u with
         | some (.VTypeBox A) => some (.VTypeBox A)
+        | some (.VTypeDia A) => if ModalSys.shaped then none else some (.VTypeDia A)
         | _ => none
       else none
   | _ => none
@@ -500,29 +525,80 @@ def diaIn (Γ : Ctx) (x : VarSymb) : Ctx := fun v =>
 
 theorem boxIn_keep {Γ : Ctx} {u : VarSymb} {T : VarType}
     (h : Γ.boxIn (.step u .keep) = some T) :
-    ModalSys.Four = true ∧ Γ.ref u = some T ∧ ∃ A, T = .VTypeBox A := by
+    ModalSys.Four = true ∧ Γ.ref u = some T ∧ T.keepable = true := by
   change (if ModalSys.Four = true then
-    (match Γ.ref u with | some (.VTypeBox A) => some (.VTypeBox A) | _ => none) else none) =
-      some T at h
-  split_ifs at h with hF
+    (match Γ.ref u with
+      | some (.VTypeBox A) => some (.VTypeBox A)
+      | some (.VTypeDia A) => if ModalSys.shaped then none else some (.VTypeDia A)
+      | _ => none) else none) = some T at h
+  by_cases hF : ModalSys.Four = true
+  swap
+  · rw [if_neg hF] at h; cases h
+  rw [if_pos hF] at h
   refine ⟨hF, ?_⟩
   cases hu : Γ.ref u with
   | none => rw [hu] at h; cases h
   | some U =>
       rw [hu] at h
-      cases U <;> first | (cases h; done) | (cases h; exact ⟨rfl, _, rfl⟩)
+      cases U with
+      | VTypeBox A => cases h; exact ⟨rfl, rfl⟩
+      | VTypeDia A =>
+          change (if ModalSys.shaped = true then none else some _) = _ at h
+          by_cases hT : ModalSys.shaped = true
+          · rw [if_pos hT] at h; cases h
+          · rw [if_neg hT] at h
+            cases h
+            exact ⟨rfl, VarType.keepable_dia (Bool.eq_false_iff.mpr hT)⟩
+      | _ => cases h
+
+/-- Where no possible object is kept — 4 off, or a shaped system (staged, docs §3 4,
+    Finding 4) — every kept entry is a necessary one. -/
+theorem boxIn_keep_nd (hnd : ModalSys.NoDiaKeep) {Γ : Ctx}
+    {u : VarSymb} {T : VarType} (h : Γ.boxIn (.step u .keep) = some T) :
+    ModalSys.Four = true ∧ Γ.ref u = some T ∧ ∃ A, T = .VTypeBox A := by
+  obtain ⟨hF, hu, hk⟩ := boxIn_keep h
+  refine ⟨hF, hu, ?_⟩
+  cases T with
+  | VTypeBox A => exact ⟨A, rfl⟩
+  | VTypeDia A =>
+      have := VarType.noShaped_of_keepable_dia hk
+      rcases hnd with h₁ | h₁
+      · rw [hF] at h₁; cases h₁
+      · rw [h₁] at this; cases this
+  | _ => cases hk
+
+/-- Under T only necessary objects are kept (staged, docs §3 4, Finding 4). -/
+theorem boxIn_keep_T (hT : ModalSys.T = true) {Γ : Ctx} {u : VarSymb} {T : VarType}
+    (h : Γ.boxIn (.step u .keep) = some T) :
+    ModalSys.Four = true ∧ Γ.ref u = some T ∧ ∃ A, T = .VTypeBox A :=
+  boxIn_keep_nd (Or.inr (ModalSys.shaped_of_T hT)) h
+
+theorem boxIn_keep_of' {Γ : Ctx} {u : VarSymb} {T : VarType} (hF : ModalSys.Four = true)
+    (hu : Γ.ref u = some T) (hk : T.keepable = true) : Γ.boxIn (.step u .keep) = some T := by
+  change (if ModalSys.Four = true then
+    (match Γ.ref u with
+      | some (.VTypeBox B) => some (.VTypeBox B)
+      | some (.VTypeDia B) => if ModalSys.shaped then none else some (.VTypeDia B)
+      | _ => none) else none) = some T
+  rw [if_pos hF, hu]
+  cases T with
+  | VTypeBox A => rfl
+  | VTypeDia A =>
+      change (if ModalSys.shaped = true then none else some (VarType.VTypeDia A)) = _
+      rw [if_neg (by simp [VarType.noShaped_of_keepable_dia hk])]
+  | _ => cases hk
 
 theorem boxIn_keep_of {Γ : Ctx} {u : VarSymb} {A : VarType} (hF : ModalSys.Four = true)
-    (hu : Γ.ref u = some (.VTypeBox A)) : Γ.boxIn (.step u .keep) = some (.VTypeBox A) := by
-  change (if ModalSys.Four = true then
-    (match Γ.ref u with | some (.VTypeBox B) => some (.VTypeBox B) | _ => none) else none) =
-      some (VarType.VTypeBox A)
-  rw [if_pos hF, hu]
+    (hu : Γ.ref u = some (.VTypeBox A)) : Γ.boxIn (.step u .keep) = some (.VTypeBox A) :=
+  boxIn_keep_of' hF hu rfl
 
 theorem boxIn_keep_none {Γ : Ctx} {u : VarSymb} (hu : Γ.ref u = none) :
     Γ.boxIn (.step u .keep) = none := by
   change (if ModalSys.Four = true then
-    (match Γ.ref u with | some (.VTypeBox B) => some (.VTypeBox B) | _ => none) else none) =
+    (match Γ.ref u with
+      | some (.VTypeBox B) => some (.VTypeBox B)
+      | some (.VTypeDia B) => if ModalSys.shaped then none else some (.VTypeDia B)
+      | _ => none) else none) =
       (none : Option VarType)
   rw [hu]
   split_ifs <;> rfl
@@ -612,8 +688,8 @@ theorem Le.boxIn {Γ Γ' : Ctx} (h : Γ.Le Γ') : Γ.boxIn.Le Γ'.boxIn := by
       obtain ⟨hk, hu⟩ := boxIn_box hv
       exact boxIn_box_of hk (h.ref hu)
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := boxIn_keep hv
-      exact boxIn_keep_of hF (h.ref hu)
+      obtain ⟨hF, hu, hk⟩ := boxIn_keep hv
+      exact boxIn_keep_of' hF (h.ref hu) hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

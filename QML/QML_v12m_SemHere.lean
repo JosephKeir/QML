@@ -70,6 +70,7 @@ end Model
 namespace Model
 
 variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
+  [Arrows.RootKeep F Root]
 
 /-! ## The η-law for shapes -/
 

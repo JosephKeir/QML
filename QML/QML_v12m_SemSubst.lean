@@ -192,26 +192,6 @@ theorem entryVal_keepE {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (w' : M.fra
           exact interp_shift (Env.shiftAgree_twoBox hF env w' s) t
   | .hide, _, he => False.elim he
 
-theorem substEnv_box {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
-    (hnp : Γ.NoProjLast) (env : M.Env Δ w) (w' : M.frame.Acc w) :
-    substEnv θ.box (Subst.ok_box hθ) (Ctx.noProjLast_boxIn Γ) (env.boxPush w') =
-      (substEnv θ hθ hnp env).boxPush w' := by
-  funext v T hv
-  match v with
-  | .step u .box =>
-      change entryVal (env.boxPush w') ((θ.at u).unbox) _ =
-        M.necEval ((substEnv θ hθ hnp env).ref u (Ctx.boxIn_step_box hv)) w'
-      rw [substEnv_ref, entryVal_unbox env w' (Subst.okRef_at hθ (Ctx.boxIn_step_box hv))]
-  | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
-      change entryVal (env.boxPush w') ((θ.at u).keepE) _ =
-        M.necEval (M.ops.necDup hF ((substEnv θ hθ hnp env).ref u hu)) w'
-      rw [substEnv_ref, entryVal_keepE env w' hF (Subst.okRef_at hθ hu)]
-  | .root _ => cases hv
-  | .step _ .fst => cases hv
-  | .step _ .snd => cases hv
-  | .step _ .dia => cases hv
-
 /-! ## The `◇` view -/
 
 theorem sec_apply {A : VarType} {w : M.frame.W} {S : M.frame.PosSec A w}
@@ -226,6 +206,117 @@ theorem posSec_ext_set {A : VarType} {w : M.frame.W} {E₁ E₂ : Set (M.frame.A
     (⟨E₁, f⟩ : M.frame.PosSec A w) = ⟨E₂, g⟩ := by
   subst hE
   exact congrArg (Sigma.mk _) (funext hfg)
+
+/-- ⭐Under 4, the `◇_y` view at the end of a composite arrow agrees, across the shift, with
+    the `◇_{y.keep}` view through the intermediate world: `y.dia` is the content of `y`'s
+    restriction there (`Model.posKeep_full`), and the `□` part is `Env.shiftAgree_twoBox`. -/
+theorem Env.shiftAgree_diaKeep (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false)
+    {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {y : VarSymb} {Y : VarType}
+    (hy : Γ.ref y = some (.VTypeDia Y)) (v : M.frame.Acc w) (b : M.frame.Acc v.1)
+    (hb : (⟨b.1, ⟨M.frame.trans hF v.2.down b.2.down⟩⟩ : M.frame.Acc w) ∈
+      (M.posEval (env.ref y hy)).1)
+    (hyk : Γ.boxIn.ref (.step y .keep) = some (.VTypeDia Y))
+    (hb' : b ∈ (M.posEval ((env.boxPush v).ref (.step y .keep) hyk)).1) :
+    Env.ShiftAgree (Ctx.shifts_diaIn_keep hF hnS Γ y)
+      (env.diaPush y hy ⟨_, hb⟩) ((env.boxPush v).diaPush (.step y .keep) hyk ⟨b, hb'⟩) := by
+  refine Env.ShiftAgree.of_raw ?_
+  intro x T hlp hx
+  match x with
+  | .step u .dia =>
+      have hu : u = y := by
+        change (if u = y then _ else none) = some T at hx
+        split_ifs at hx with h
+        exact h
+      subst hu
+      have hXT := Ctx.diaIn_step_dia hy hx
+      subst hXT
+      rw [Env.ref_congr _ (VarSymb.shift_level_zero (s := .dia) rfl) _ (Ctx.ref_diaIn_of hyk),
+        Env.ref, dif_neg (by decide : ¬ Step.dia.isProj = true)]
+      simp only [Env.diaPush]
+      have H := congrArg Prod.fst (M.posKeep_full hF hnS (env.ref u hy) v)
+      exact (sec_apply H ⟨b, hb'⟩ hb).symm
+  | .step u .box =>
+      exact Env.shiftAgree_twoBox hF env v b (.step u .box) T ((Ctx.ref_nonproj _ hlp).trans hx)
+  | .step u .keep =>
+      exact Env.shiftAgree_twoBox hF env v b (.step u .keep) T ((Ctx.ref_nonproj _ hlp).trans hx)
+  | .root _ => cases hx
+  | .step _ .fst => cases hx
+  | .step _ .snd => cases hx
+  | .step _ .here => cases hx
+
+/-- ⭐**Substituting a kept possible entry** (unshaped, docs §3 4): the entry's restriction along
+    the arrow — for a term `◇_y t`, the term `◇_{y.keep}(shift t)` denotes it. -/
+theorem entryVal_keepE_dia {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (w' : M.frame.Acc w)
+    (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false) :
+    ∀ {e : SubE σ Δ} {X : VarType} (he : e.OkRef (.VTypeDia X)),
+      entryVal (env.boxPush w') e.keepE
+          (SubE.okRef_keepE' hF (VarType.keepable_dia hnS) he) =
+        M.necEval (M.ops.posKeep hF hnS (entryVal env e he)) w'
+  | .ren _, _, _ => rfl
+  | .tm (T := U) s, X, he => by
+      have hU : U = .VTypeDia X := he
+      subst hU
+      cases s with
+      | diatm y hy t =>
+          have hy' := hy
+          obtain ⟨Y, hr⟩ := hy'
+          have hyk : Δ.boxIn.ref (.step y .keep) = some (.VTypeDia Y) :=
+            Ctx.ref_keep_of' hF hr (VarType.keepable_dia hnS)
+          rw [entryVal_congr _ (SubE.keepE_dia y hy t hF hnS) _ rfl]
+          change interp (env.boxPush w') (Term.diatm (.step y .keep) _
+              (Term.shift (Ctx.shifts_diaIn_keep hF hnS Δ y) t)) =
+            M.necEval (M.ops.posKeep hF hnS (interp env (Term.diatm y hy t))) w'
+          refine M.pos_inj ?_ fun hSh => absurd hSh (by rw [hnS]; decide)
+          have H₁ : M.posEval (M.necEval (M.ops.posKeep hF hnS (env.ref y hr)) w') = _ :=
+            congrArg Prod.fst (M.posKeep_full hF hnS (env.ref y hr) w')
+          have H₂ : M.posEval (M.necEval (M.ops.posKeep hF hnS
+              (interp env (Term.diatm y hy t))) w') = _ :=
+            congrArg Prod.fst (M.posKeep_full hF hnS (interp env (Term.diatm y hy t)) w')
+          dsimp only at H₁ H₂
+          have H₃ := dia_beta env hy hr t
+          rw [dia_beta (env.boxPush w') _ hyk]
+          change (⟨(M.posEval (M.necEval (M.ops.posKeep hF hnS (env.ref y hr)) w')).1, _⟩ :
+            M.frame.PosSec _ _) = _
+          rw [H₂]
+          have hE : (M.posEval (M.necEval (M.ops.posKeep hF hnS (env.ref y hr)) w')).1 =
+              {b : M.frame.Acc w'.1 | (⟨b.1, ⟨M.frame.trans hF w'.2.down b.2.down⟩⟩ :
+                M.frame.Acc w) ∈ (M.posEval (interp env (Term.diatm y hy t))).1} := by
+            rw [H₁, H₃]
+          refine posSec_ext_set hE _ _ (fun b => ?_)
+          have hm : (⟨b.1.1, ⟨M.frame.trans hF w'.2.down b.1.2.down⟩⟩ : M.frame.Acc w) ∈
+              (M.posEval (env.ref y hr)).1 :=
+            (congrArg (fun S : M.frame.PosSec _ _ => (b.1 : M.frame.Acc w'.1) ∈ S.1) H₁).mp b.2
+          rw [sec_apply H₃ _ hm]
+          exact interp_shift (Env.shiftAgree_diaKeep hF hnS env hr w' b.1 hm hyk b.2) t
+  | .hide, _, he => False.elim he
+
+theorem substEnv_box {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
+    (hnp : Γ.NoProjLast) (env : M.Env Δ w) (w' : M.frame.Acc w) :
+    substEnv θ.box (Subst.ok_box hθ) (Ctx.noProjLast_boxIn Γ) (env.boxPush w') =
+      (substEnv θ hθ hnp env).boxPush w' := by
+  funext v T hv
+  match v with
+  | .step u .box =>
+      change entryVal (env.boxPush w') ((θ.at u).unbox) _ =
+        M.necEval ((substEnv θ hθ hnp env).ref u (Ctx.boxIn_step_box hv)) w'
+      rw [substEnv_ref, entryVal_unbox env w' (Subst.okRef_at hθ (Ctx.boxIn_step_box hv))]
+  | .step u .keep =>
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
+      cases T with
+      | VTypeBox A =>
+          change entryVal (env.boxPush w') ((θ.at u).keepE) _ =
+            M.necEval (M.ops.necDup hF ((substEnv θ hθ hnp env).ref u hu)) w'
+          rw [substEnv_ref, entryVal_keepE env w' hF (Subst.okRef_at hθ hu)]
+      | VTypeDia A =>
+          have hnS := VarType.noShaped_of_keepable_dia hk
+          change entryVal (env.boxPush w') ((θ.at u).keepE) _ =
+            M.necEval (M.ops.posKeep hF hnS ((substEnv θ hθ hnp env).ref u hu)) w'
+          rw [substEnv_ref, entryVal_keepE_dia env w' hF hnS (Subst.okRef_at hθ hu)]
+      | _ => cases hk
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .dia => cases hv
 
 theorem Env.box_dia_agree {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {x : VarSymb}
     {X : VarType} (hr : Δ.ref x = some (.VTypeDia X)) (w' : (M.posEval (env.ref x hr)).1) :
@@ -328,12 +419,22 @@ theorem substEnv_dia {Γ Δ : Ctx} {ι : VarSymb → VarSymb} {w : M.frame.W} (�
           (SubE.okRef_unbox (Subst.okRef_at hθ (Ctx.boxIn_step_box hv))),
         entryVal_unbox, substEnv_ref]
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
-      change entryVal (env.diaPush (ι x) hr₁ w') (((θ.at u).keepE).mono _) _ =
-        M.necEval (M.ops.necDup hF ((substEnv θ hθ hnp env).ref u hu)) w'.1
-      rw [entryVal_mono (Env.box_dia_agree env hr₁ w') _
-          (SubE.okRef_keepE hF (Subst.okRef_at hθ hu)),
-        entryVal_keepE, substEnv_ref]
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+      cases T with
+      | VTypeBox A =>
+          change entryVal (env.diaPush (ι x) hr₁ w') (((θ.at u).keepE).mono _) _ =
+            M.necEval (M.ops.necDup hF ((substEnv θ hθ hnp env).ref u hu)) w'.1
+          rw [entryVal_mono (Env.box_dia_agree env hr₁ w') _
+              (SubE.okRef_keepE hF (Subst.okRef_at hθ hu)),
+            entryVal_keepE, substEnv_ref]
+      | VTypeDia A =>
+          have hnS := VarType.noShaped_of_keepable_dia hk
+          change entryVal (env.diaPush (ι x) hr₁ w') (((θ.at u).keepE).mono _) _ =
+            M.necEval (M.ops.posKeep hF hnS ((substEnv θ hθ hnp env).ref u hu)) w'.1
+          rw [entryVal_mono (Env.box_dia_agree env hr₁ w') _
+              (SubE.okRef_keepE' hF hk (Subst.okRef_at hθ hu)),
+            entryVal_keepE_dia env w'.1 hF hnS, substEnv_ref]
+      | _ => cases hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -343,6 +444,7 @@ end Model
 namespace Model
 
 variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
+  [Arrows.RootKeep F Root]
 
 /-! ## Shapes: reading a `□` view at the current world, and keeping it -/
 
@@ -361,7 +463,7 @@ theorem ShEnv.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} {w : F.W}
         (Ctx.ref_here_of hT hu), ShEnv.ref_proj ρ j (rfl : Step.here.isProj = true) hu]
       rfl
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep_T hT hv
       rw [ShEnv.ref_congr ρ j (VarSymb.collapse_keep_zero (v := u)) _ hu]
       change Shp.map (Arrows.Leaf.collapse hT j)
           (Shp.box ((ρ.ref j u hu).inner.map (Arrows.Leaf.shift hF j))) = ρ.ref j u hu
@@ -377,7 +479,8 @@ theorem ShEnv.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} {w : F.W}
 
 /-- Under 4, the `□` view kept and pushed once more agrees, across the shift, with the `□` view
     shifted at its level — the shape counterpart of `Env.shiftAgree_twoBox`. -/
-theorem ShEnv.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} {w : F.W}
+theorem ShEnv.shiftAgree_twoBox (hF : ModalSys.Four = true) (hnd : ModalSys.NoDiaKeep)
+    {Γ : Ctx} {w : F.W}
     (ρ : ShEnv F Root Γ w) (j : ℕ) :
     ShEnv.ShiftAgree (Ctx.shifts_boxIn_boxIn hF Γ)
       ((ρ.boxPush j).mapLeaves (Arrows.Leaf.shift hF j)) ((ρ.boxPush j).boxPush (j + 1))
@@ -395,7 +498,7 @@ theorem ShEnv.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} {w : F.W}
       rw [ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
       rfl
   | .step u .keep =>
-      obtain ⟨_, hu, A, rfl⟩ := Ctx.boxIn_keep hx
+      obtain ⟨_, hu, A, rfl⟩ := Ctx.boxIn_keep_nd hnd hx
       rw [ShEnv.ref_congr _ _ (VarSymb.shift_level_zero (s := .keep) rfl) _
         (Ctx.ref_keep_of hF (Ctx.ref_keep_of hF hu)),
         ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
@@ -428,12 +531,13 @@ theorem termShp_collapse_self (hT : ModalSys.T = true) {Γ : Ctx} {w : F.W}
 
 /-- ⭐A term of the `□` view, shifted into the `□□` view, has the view's shape shifted at its
     level. -/
-theorem termShp_shift_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} {w : F.W}
+theorem termShp_shift_twoBox (hF : ModalSys.Four = true) (hnd : ModalSys.NoDiaKeep)
+    {Γ : Ctx} {w : F.W}
     (ρ : ShEnv F Root Γ w) (j : ℕ) {A : VarType} {a : Ann A} (t : Term σ Γ.boxIn A a) :
     termShp ((ρ.boxPush j).boxPush (j + 1)) (j + 2)
         (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) t) =
       (termShp (ρ.boxPush j) (j + 1) t).map (Arrows.Leaf.shift hF j) := by
-  rw [termShp_shift (ShEnv.shiftAgree_twoBox hF ρ j)]
+  rw [termShp_shift (ShEnv.shiftAgree_twoBox hF hnd ρ j)]
   exact termShp_mapShift hF j (ρ.boxPush j) 0 t
 
 /-! ## Shapes under substitution -/
@@ -545,7 +649,7 @@ theorem entryShp_unbox {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ)
   | .hide, _, he => False.elim he
 
 theorem entryShp_keepE {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ)
-    (hF : ModalSys.Four = true) :
+    (hF : ModalSys.Four = true) (hnd : ModalSys.NoDiaKeep) :
     ∀ {e : SubE σ Δ} {A : VarType} (he : e.OkRef (.VTypeBox A)),
       entryShp (ρ.boxPush j) (j + 1) e.keepE (SubE.okRef_keepE hF he) =
         (GFunc.shp (GFunc.dup (σ := σ) hF) j (entryShp ρ j e he)).inner
@@ -562,11 +666,11 @@ theorem entryShp_keepE {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ)
           change Shp.box (termShp ((ρ.boxPush j).boxPush (j + 1)) (j + 2)
               (Term.shift (Ctx.shifts_boxIn_boxIn hF Δ) t)) =
             Shp.box ((termShp (ρ.boxPush j) (j + 1) t).map (Arrows.Leaf.shift hF j))
-          rw [termShp_shift_twoBox hF ρ j t]
+          rw [termShp_shift_twoBox hF hnd ρ j t]
   | .hide, _, he => False.elim he
 
 theorem substShEnv_box {Γ Δ : Ctx} {w : F.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
-    (hnp : Γ.NoProjLast) (ρ : ShEnv F Root Δ w) (j : ℕ) :
+    (hnp : Γ.NoProjLast) (ρ : ShEnv F Root Δ w) (j : ℕ) (hnd : ModalSys.NoDiaKeep) :
     substShEnv θ.box (Subst.ok_box hθ) (Ctx.noProjLast_boxIn Γ) (ρ.boxPush j) (j + 1) =
       (substShEnv θ hθ hnp ρ j).boxPush j := by
   funext v T hv
@@ -577,10 +681,10 @@ theorem substShEnv_box {Γ Δ : Ctx} {w : F.W} (θ : Subst σ Δ) (hθ : Subst.O
         ((substShEnv θ hθ hnp ρ j).ref j u (Ctx.boxIn_step_box hv)).inner
       rw [substShEnv_ref, entryShp_unbox ρ j hk (Subst.okRef_at hθ (Ctx.boxIn_step_box hv))]
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep_nd hnd hv
       change entryShp (ρ.boxPush j) (j + 1) ((θ.at u).keepE) _ =
         (GFunc.shp (GFunc.dup (σ := σ) hF) j ((substShEnv θ hθ hnp ρ j).ref j u hu)).inner
-      rw [substShEnv_ref, entryShp_keepE ρ j hF (Subst.okRef_at hθ hu)]
+      rw [substShEnv_ref, entryShp_keepE ρ j hF hnd (Subst.okRef_at hθ hu)]
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -665,6 +769,7 @@ theorem entryShp_dia_body {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ
 
 theorem substShEnv_dia {Γ Δ : Ctx} {ι : VarSymb → VarSymb} {w : F.W} (θ : Subst σ Δ)
     (hθ : Subst.Ok Γ θ) (hnp : Γ.NoProjLast) (ρ : ShEnv F Root Δ w) (j : ℕ)
+    (hnd : ModalSys.NoDiaKeep)
     {x : VarSymb}
     {X Y : VarType} (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (hr : Γ.ref x = some (.VTypeDia X))
     (hr₁ : Δ.ref (ι x) = some (.VTypeDia Y)) (hw : (θ.at x).idxAlong [] = ι x) :
@@ -695,19 +800,19 @@ theorem substShEnv_dia {Γ Δ : Ctx} {ι : VarSymb → VarSymb} {w : F.W} (θ : 
           (SubE.okRef_unbox (Subst.okRef_at hθ (Ctx.boxIn_step_box hv))),
         entryShp_unbox ρ j hk, substShEnv_ref]
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep_nd hnd (Γ := Γ) hv
       change entryShp (ρ.diaPush j (ι x) hr₁) (j + 1) (((θ.at u).keepE).mono _) _ =
         (GFunc.shp (GFunc.dup (σ := σ) hF) j ((substShEnv θ hθ hnp ρ j).ref j u hu)).inner
       rw [entryShp_mono (ShEnv.box_dia_agree ρ j hr₁) _ _
           (SubE.okRef_keepE hF (Subst.okRef_at hθ hu)),
-        entryShp_keepE ρ j hF, substShEnv_ref]
+        entryShp_keepE ρ j hF hnd, substShEnv_ref]
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
   | .step _ .here => cases hv
 
 /-- ⭐**Substitution lemma for shapes.** -/
-theorem termShp_subst {ι : VarSymb → VarSymb} :
+theorem termShp_subst {ι : VarSymb → VarSymb} (hnd : ModalSys.NoDiaKeep) :
     ∀ {Γ Δ : Ctx} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ)
       (hnp : Γ.NoProjLast) {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ)
       {T : VarType} {a : Ann T} (t : Term σ Γ T a),
@@ -718,13 +823,13 @@ theorem termShp_subst {ι : VarSymb → VarSymb} :
   | _, _, θ, hθ, hc, hnp, _, ρ, j, _, _, .pair s t => by
       change Shp.prod (termShp ρ j (Term.subst ι θ hθ hc s))
           (termShp ρ j (Term.subst ι θ hθ hc t)) = _
-      rw [termShp_subst θ hθ hc hnp ρ j s, termShp_subst θ hθ hc hnp ρ j t]
+      rw [termShp_subst hnd θ hθ hc hnp ρ j s, termShp_subst hnd θ hθ hc hnp ρ j t]
       rfl
   | Γ, _, θ, hθ, hc, hnp, _, ρ, j, _, _, .boxtm t => by
       change Shp.box (termShp (ρ.boxPush j) (j + 1)
           (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) t)) = _
-      rw [termShp_subst θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) (Ctx.noProjLast_boxIn Γ)
-          (ρ.boxPush j) (j + 1) t, substShEnv_box θ hθ hnp ρ j]
+      rw [termShp_subst hnd θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc)
+          (Ctx.noProjLast_boxIn Γ) (ρ.boxPush j) (j + 1) t, substShEnv_box θ hθ hnp ρ j hnd]
       rfl
   | Γ, _, θ, hθ, hc, hnp, _, ρ, j, _, _, .diatm x hx t => by
       have hx' := hx
@@ -734,9 +839,9 @@ theorem termShp_subst {ι : VarSymb → VarSymb} :
       change termShp ρ j (Term.diatm (ι x) _ (Term.subst ι (θ.dia x (ι x))
         (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) t)) = _
       rw [termShp_diatm ρ j hr₁, termShp_diatm _ j hr,
-        termShp_subst (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx)
+        termShp_subst hnd (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx)
           (Ctx.noProjLast_diaIn Γ x) (ρ.diaPush j (ι x) hr₁) (j + 1) t,
-        substShEnv_dia θ hθ hnp ρ j hx hr hr₁ hw, substShEnv_ref θ hθ hnp ρ j x hr,
+        substShEnv_dia θ hθ hnp ρ j hnd hx hr hr₁ hw, substShEnv_ref θ hθ hnp ρ j x hr,
         entryShp_dia_label ρ j (Subst.okRef_at hθ hr) hw hr₁]
 
 end Model
@@ -810,7 +915,8 @@ mutual
         swap
         · change domSh hSh (interp env (Term.subst ι θ hθ hc (Term.diatm x hx t))) =
             domSh hSh (interp (substEnv θ hθ hnp env) (Term.diatm x hx t))
-          rw [domSh_interp, domSh_interp, termShp_subst θ hθ hc hnp, envShape_substEnv]
+          rw [domSh_interp, domSh_interp, termShp_subst (Or.inr hSh) θ hθ hc hnp,
+            envShape_substEnv]
         change M.posEval (interp env (Term.diatm (ι x) _ (Term.subst ι (θ.dia x (ι x))
           (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) t))) = _
         rw [dia_beta env _ hr₁, dia_beta (substEnv θ hθ hnp env) hx hr]

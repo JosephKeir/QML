@@ -213,6 +213,15 @@ theorem keepE_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') :
                 dif_neg hF,
               show (SubE.tm (Term.boxtm t) : SubE σ Δ).keepE = .hide from dif_neg hF]
             rfl
+      | diatm y hy t =>
+          change (SubE.tm (Term.diatm y _ (Term.mono (h.diaIn y) t))).keepE =
+            ((SubE.tm (Term.diatm y hy t)).keepE).mono h.boxIn
+          by_cases hK : ModalSys.Four = true ∧ ModalSys.shaped = false
+          · rw [keepE_dia _ _ _ hK.1 hK.2, keepE_dia _ _ _ hK.1 hK.2]
+            exact congrArg (fun s => SubE.tm (Term.diatm _ _ s))
+              (Term.shift_mono _ _ (h.diaIn y) (h.boxIn.diaIn _) t)
+          · rw [keepE_dia_off _ _ _ hK, keepE_dia_off _ _ _ hK]
+            rfl
       | _ => rfl
 
 theorem diaBody_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') (ιx : VarSymb) :

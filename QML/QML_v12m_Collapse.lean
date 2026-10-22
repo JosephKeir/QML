@@ -162,7 +162,14 @@ theorem Ann.idxAt_collapse : ∀ {T : VarType} (a : Ann T) (k : ℕ) (p : List S
   | _, .dia _ _, _, .snd :: _ => rfl
   | _, .dia _ _, _, .box :: _ => rfl
   | _, .dia _ _, _, .here :: _ => rfl
-  | _, .dia _ _, _, .keep :: _ => rfl
+  | _, .dia i a, k, .keep :: p => by
+      change (Ann.dia (.step (i.collapse k) .keep) ((a.collapse (k + 1)).shift 0)).idxAt p =
+        ((Ann.dia (.step i .keep) (a.shift 0)).idxAt p).collapse (k + (1 + Step.levels p))
+      rw [← Nat.add_assoc, ← Ann.idxAt_collapse (Ann.dia (.step i .keep) (a.shift 0)) (k + 1) p]
+      change (Ann.dia (.step (i.collapse k) .keep) ((a.collapse (k + 1 + 0)).shift 0)).idxAt p =
+        (Ann.dia ((VarSymb.step i .keep).collapse (k + 1))
+          ((a.shift 0).collapse (k + 2 + 0))).idxAt p
+      rw [Ann.collapse_shift a k 0, VarSymb.collapse_level_succ (s := .keep) rfl]
 
 variable [ModalSys]
 
@@ -251,9 +258,9 @@ theorem Collapses.boxIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ�
       rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
       exact boxIn_box_of hk (h u _ hu)
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := boxIn_keep hv
+      obtain ⟨hF, hu, hk⟩ := boxIn_keep hv
       rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
-      exact boxIn_keep_of hF (h u _ hu)
+      exact boxIn_keep_of' hF (h u _ hu) hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -285,9 +292,9 @@ theorem Collapses.diaIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ�
       rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
       exact boxIn_box_of (Γ := Γ₂) hk (h u _ hu)
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := boxIn_keep (Γ := Γ₁) hv
+      obtain ⟨hF, hu, hk⟩ := boxIn_keep (Γ := Γ₁) hv
       rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
-      exact boxIn_keep_of hF (h u _ hu)
+      exact boxIn_keep_of' hF (h u _ hu) hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

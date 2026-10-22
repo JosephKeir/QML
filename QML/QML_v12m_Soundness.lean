@@ -206,6 +206,20 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M hM w env hfin hnp hΔ v s
       exact (sat_shift_twoBox hF env Ctx.NoSlots.slots φ v s).mpr
         (ih M hM env hfin hnp hΔ ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩)
+  | @four_dia Γ _ hF hnS Δ x hx φ p ih =>
+      -- An arrow of `x.keep`'s extent at a successor is the second half of one of `x`'s
+      -- (`Model.posKeep_full`), and the kept view agrees with `x`'s across the shift.
+      intro M hM w env hfin hnp hΔ v hd
+      obtain ⟨X, hr, b, hb⟩ := hd
+      have hx' : Γ.ref x = some (.VTypeDia X) :=
+        (Ctx.boxIn_keep ((Ctx.ref_nonproj _ rfl).symm.trans hr)).2.1
+      have H := congrArg Prod.fst (M.posKeep_full hF hnS (env.ref x hx') v)
+      have hm : (⟨b.1.1, ⟨M.frame.trans hF v.2.down b.1.2.down⟩⟩ : M.frame.Acc w) ∈
+          (M.posEval (env.ref x hx')).1 :=
+        (congrArg (fun S : M.frame.PosSec _ _ => (b.1 : M.frame.Acc v.1) ∈ S.1) H).mp b.2
+      exact ih M hM env hfin hnp hΔ ⟨X, hx', ⟨_, hm⟩,
+        (sat_shift (φ := φ.neg) Ctx.NoSlots.slots
+          (Env.shiftAgree_diaKeep hF hnS env hx' v b.1 hm hr b.2)).mp hb⟩
   | @T_dia Γ _ hT hS A a t c hc Δ φ p ih =>
       -- Interpret the eigenvariable as some possible object realised here — `posRet_exists` says
       -- there is one, and that *is* the hypothesis the subproof gets.

@@ -53,11 +53,18 @@ def unbox : SubE σ Δ → SubE σ Δ.boxIn
   | .tm (.boxtm t) => .tm t
   | _ => .hide
 
-/-- The kept component of a necessary entry, one view further in (under 4). -/
+/-- The kept component of a necessary or possible entry, one view further in (under 4): `□t`
+    with its body shifted, and `◇_y t` along `y.keep` with its body shifted (restriction commutes
+    with the operations a possible term is built by). -/
 def keepE : SubE σ Δ → SubE σ Δ.boxIn
   | .ren w => .ren (.step w .keep)
   | .tm (.boxtm t) =>
       if hF : ModalSys.Four = true then .tm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Δ) t))
+      else .hide
+  | .tm (.diatm y hy t) =>
+      if hK : ModalSys.Four = true ∧ ModalSys.shaped = false then
+        .tm (.diatm (.step y .keep) (Ctx.exists_keep_dia hK.1 hK.2 hy)
+          (Term.shift (Ctx.shifts_diaIn_keep hK.1 hK.2 Δ y) t))
       else .hide
   | _ => .hide
 
@@ -105,6 +112,19 @@ theorem keepE_tm {A : VarType} {a : Ann A} (t : Term σ Δ.boxIn A a)
     (hF : ModalSys.Four = true) :
     (SubE.tm (Term.boxtm t)).keepE = .tm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Δ) t)) :=
   dif_pos hF
+
+theorem keepE_dia {A : VarType} {a : Ann A} (y : VarSymb)
+    (hy : ∃ X, Δ.ref y = some (.VTypeDia X)) (t : Term σ (Δ.diaIn y) A a)
+    (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false) :
+    (SubE.tm (Term.diatm y hy t)).keepE = .tm (.diatm (.step y .keep)
+      (Ctx.exists_keep_dia hF hnS hy) (Term.shift (Ctx.shifts_diaIn_keep hF hnS Δ y) t)) :=
+  dif_pos ⟨hF, hnS⟩
+
+theorem keepE_dia_off {A : VarType} {a : Ann A} (y : VarSymb)
+    (hy : ∃ X, Δ.ref y = some (.VTypeDia X)) (t : Term σ (Δ.diaIn y) A a)
+    (hF : ¬ (ModalSys.Four = true ∧ ModalSys.shaped = false)) :
+    (SubE.tm (Term.diatm y hy t)).keepE = .hide :=
+  dif_neg hF
 
 theorem okRef_proj : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef U → s.isProj = true →
     U.step s = some T → (e.proj s).OkRef T
@@ -204,6 +224,47 @@ theorem idxAlong_keepE (hF : ModalSys.Four = true) : ∀ {e : SubE σ Δ} {A : V
       | boxtm t =>
           rw [keepE_tm t hF]
           rfl
+
+theorem okRef_keepE' (hF : ModalSys.Four = true) : ∀ {e : SubE σ Δ} {T : VarType},
+    T.keepable = true → e.OkRef T → e.keepE.OkRef T
+  | .ren _, _, hk, he => Ctx.ref_keep_of' hF he hk
+  | .hide, _, _, he => False.elim he
+  | .tm (T := U) s, T, hk, he => by
+      have hU : U = T := he
+      subst hU
+      cases U with
+      | VTypeBox A =>
+          cases s with
+          | boxtm t =>
+              rw [keepE_tm t hF]
+              rfl
+      | VTypeDia A =>
+          cases s with
+          | diatm y hy t =>
+              rw [keepE_dia y hy t hF (VarType.noShaped_of_keepable_dia hk)]
+              rfl
+      | _ => cases hk
+
+theorem idxAlong_keepE' (hF : ModalSys.Four = true) : ∀ {e : SubE σ Δ} {T : VarType}
+    (p : List Step), T.keepable = true → e.OkRef T →
+      e.keepE.idxAlong p = e.idxAlong (.keep :: p)
+  | .ren _, _, _, _, _ => rfl
+  | .hide, _, _, _, he => False.elim he
+  | .tm (T := U) s, T, p, hk, he => by
+      have hU : U = T := he
+      subst hU
+      cases U with
+      | VTypeBox A =>
+          cases s with
+          | boxtm t =>
+              rw [keepE_tm t hF]
+              rfl
+      | VTypeDia A =>
+          cases s with
+          | diatm y hy t =>
+              rw [keepE_dia y hy t hF (VarType.noShaped_of_keepable_dia hk)]
+              rfl
+      | _ => cases hk
 
 theorem okRef_mono {Δ₁ Δ₂ : Ctx} (h : Δ₁.Le Δ₂) :
     ∀ {e : SubE σ Δ₁} {T : VarType}, e.OkRef T → (e.mono h).OkRef T
@@ -362,8 +423,8 @@ theorem ok_box {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) : Ok Γ.boxIn θ.b
   match v with
   | .step u .box => exact SubE.okRef_unbox (okRef_at hθ (Ctx.boxIn_step_box hv))
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
-      exact SubE.okRef_keepE hF (okRef_at hθ hu)
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
+      exact SubE.okRef_keepE' hF hk (okRef_at hθ hu)
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -381,9 +442,9 @@ theorem coh_box {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : 
       rw [SubE.idxAlong_unbox hk p (okRef_at hθ hu), hc u _ hu (.box :: p)]
       rfl
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
       change ((θ.at u).keepE).idxAlong p = _
-      rw [SubE.idxAlong_keepE hF p (okRef_at hθ hu), hc u _ hu (.keep :: p)]
+      rw [SubE.idxAlong_keepE' hF p hk (okRef_at hθ hu), hc u _ hu (.keep :: p)]
       rfl
   | .root _ => cases hv
   | .step _ .fst => cases hv
@@ -437,9 +498,10 @@ theorem coh_dia {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : 
       rw [SubE.idxAlong_mono, SubE.idxAlong_unbox hk p (okRef_at hθ hu), hc u _ hu (.box :: p)]
       rfl
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep (Γ := Γ) hv
       change (((θ.at u).keepE).mono _).idxAlong p = _
-      rw [SubE.idxAlong_mono, SubE.idxAlong_keepE hF p (okRef_at hθ hu), hc u _ hu (.keep :: p)]
+      rw [SubE.idxAlong_mono, SubE.idxAlong_keepE' hF p hk (okRef_at hθ hu),
+        hc u _ hu (.keep :: p)]
       rfl
   | .root _ => cases hv
   | .step _ .fst => cases hv

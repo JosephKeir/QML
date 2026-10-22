@@ -23,7 +23,10 @@ itself).
 
 **Weak 4.**  Accessibility is transitive (`Frame.trans`), and a necessary object can be kept at an
 accessible world as the necessary object of its values further on (`GFunc.dup`, evaluated by
-`Ops.necDup`): with T, `□` is a comonad.
+`Ops.necDup`): with T, `□` is a comonad.  A possible object is kept too, restricted: along an
+arrow, its extent pulled back and its contents unchanged (`GFunc.dkeep`, evaluated by
+`Ops.posKeep`, law `Model.posKeep_full`).  When shaped, the restriction's labels need a root at
+the arrow's target: arrows act on roots (`Model.rootKeep`, `Arrows.RootKeep`).
 -/
 
 namespace V12M
@@ -141,15 +144,20 @@ inductive GFunc (σ : Signature) : VarType → VarType → Type where
   /-- Under 4: a necessary object kept at each accessible world. -/
   | dup {A : VarType} (hF : ModalSys.Four = true) :
       GFunc σ (.VTypeBox A) (.VTypeBox (.VTypeBox A))
+  /-- Under 4: a possible object kept, restricted, at each accessible world (staged: without T,
+      docs §3 4, Finding 4). -/
+  | dkeep {A : VarType} (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false) :
+      GFunc σ (.VTypeDia A) (.VTypeBox (.VTypeDia A))
 
-/-- Under 4, keep an object of a necessary type. -/
+/-- Under 4, keep an object of a keepable type: `dup` for a necessary object, `dkeep` for a
+    possible one. -/
 def GFunc.keep {σ : Signature} (hF : ModalSys.Four = true) :
-    {T : VarType} → (∃ A, T = .VTypeBox A) → GFunc σ T (.VTypeBox T)
+    {T : VarType} → T.keepable = true → GFunc σ T (.VTypeBox T)
   | .VTypeBox _, _ => .dup hF
-  | .Var, h => False.elim (h.elim fun _ e => by cases e)
-  | .VTypeOne, h => False.elim (h.elim fun _ e => by cases e)
-  | .VTypeProd _ _, h => False.elim (h.elim fun _ e => by cases e)
-  | .VTypeDia _, h => False.elim (h.elim fun _ e => by cases e)
+  | .VTypeDia _, hk => .dkeep hF (VarType.noShaped_of_keepable_dia hk)
+  | .Var, h => False.elim (Bool.false_ne_true h)
+  | .VTypeOne, h => False.elim (Bool.false_ne_true h)
+  | .VTypeProd _ _, h => False.elim (Bool.false_ne_true h)
 
 /-- The lifts of the function algebra to the carriers. -/
 structure Frame.Ops {σ : Signature} (F : Frame.{u, v} σ) where
@@ -162,6 +170,8 @@ structure Frame.Ops {σ : Signature} (F : Frame.{u, v} σ) where
   necExtract : {A : VarType} → {w : F.W} → ModalSys.T = true → F.Nec A w → F.Dom A w
   necDup : {A : VarType} → {w : F.W} → ModalSys.Four = true → F.Nec A w →
     F.Nec (.VTypeBox A) w
+  posKeep : {A : VarType} → {w : F.W} → ModalSys.Four = true → ModalSys.shaped = false →
+    F.Pos A w → F.Nec (.VTypeDia A) w
 
 /-- Evaluating a definable map at a world. -/
 def GFunc.eval {σ : Signature} {F : Frame.{u, v} σ} (ops : F.Ops) :
@@ -180,6 +190,7 @@ def GFunc.eval {σ : Signature} {F : Frame.{u, v} σ} (ops : F.Ops) :
   | _, _, .strength _ _, _, p => ops.posStrength p.1 p.2
   | _, _, .extract hT, _, n => ops.necExtract hT n
   | _, _, .dup hF, _, n => ops.necDup hF n
+  | _, _, .dkeep hF hnS, _, p => ops.posKeep hF hnS p
 
 /-! ## Semantic annotations
 
@@ -268,6 +279,19 @@ def Step.shiftAt : ℕ → List Step → List Step
         | 0 => .keep :: s :: p
         | i + 1 => s :: Step.shiftAt i p
 
+/-- Insert a `keep` after the level step `i` levels from the front of a path, at the end if
+    there is none after it: the kept possibility at that level, and below it everything reached
+    through it (`Step.shiftAt`, which inserts only before a level step). -/
+def Step.keepAt : ℕ → List Step → List Step
+  | 0, [] => [.keep]
+  | _ + 1, [] => []
+  | i, s :: p =>
+      if s.isProj then s :: Step.keepAt i p
+      else
+        match i with
+        | 0 => .keep :: s :: p
+        | i + 1 => s :: Step.keepAt i p
+
 /-- ⭐A leaf of a semantic annotation, anchored at a world (docs §10.28): a **root** possibility with
     a syntactic path into its content, or a **family** with one leaf at the target of each arrow. -/
 inductive Arrows.Leaf {σ : Signature} (F : Arrows.{u, v} σ) (Root : F.W → Type u) :
@@ -295,10 +319,40 @@ def shift (hF : ModalSys.Four = true) : ℕ → {w : F.W} → F.Leaf Root w → 
 
 end Arrows.Leaf
 
+/-- ⭐Under 4, **arrows act on root possibilities**: a root possibility restricted along an arrow
+    out of its world is a root possibility at the arrow's target — a witness's tree of extents,
+    cut at the arrow, is its subtree there.  A possible object kept along an arrow takes its labels
+    from it (`Arrows.Leaf.keepAlong`).  The laws (composition, the identity) are a model's
+    (`Model.rootKeep_trans`, `Model.rootKeep_refl`). -/
+class Arrows.RootKeep {σ : Signature} (F : Arrows.{u, v} σ) (Root : F.W → Type u) where
+  keep : ModalSys.Four = true → ∀ {w : F.W}, Root w → (a : F.Acc w) → Root a.1
+
+namespace Arrows.Leaf
+
+variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u} [Arrows.RootKeep F Root]
+
+/-- A leaf restricted along an arrow, anchored at its target: a root by the root action, a family
+    reindexed by composite arrows. -/
+def keepAlong (hF : ModalSys.Four = true) {w : F.W} (a : F.Acc w) :
+    F.Leaf Root w → F.Leaf Root a.1
+  | .root r p => .root (Arrows.RootKeep.keep hF r a) p
+  | .fam f => .fam fun t => f ⟨t.1, ⟨F.trans hF a.2.down t.2.down⟩⟩
+
+/-- Under 4, keep the possibility at the level `i` steps from the anchor: at the anchor's own
+    level semantically, a family of its restrictions (`keepAlong`); below a `◇` syntactically, a
+    `keep` in the root path (`Step.keepAt`); through a family, at each of its entries. -/
+def dk (hF : ModalSys.Four = true) : ℕ → {w : F.W} → F.Leaf Root w → F.Leaf Root w
+  | 0, _, l => .fam fun s => keepAlong hF s l
+  | i + 1, _, .root r p => .root r (Step.keepAt (i + 1) p)
+  | i + 1, _, .fam f => .fam fun s => dk hF i (f s)
+
+end Arrows.Leaf
+
 /-- ⭐How a definable map moves the shape of its argument: positions are rearranged as the map
     rearranges components, labels are kept, and `extract`/`dup` collapse/shift the level they act
     at.  `j` is the number of levels above the current position. -/
-def GFunc.shp {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u} {w : F.W} :
+def GFunc.shp {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
+    [Arrows.RootKeep F Root] {w : F.W} :
     {A B : VarType} → GFunc σ A B → ℕ →
       Shp (F.Leaf Root w) A → Shp (F.Leaf Root w) B
   | _, _, .id _, _, a => a
@@ -315,6 +369,15 @@ def GFunc.shp {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u} {w
   | _, _, .strength _ _, _, a => .dia a.snd.label (.prod a.fst.inner a.snd.body)
   | _, _, .extract hT, j, a => a.inner.map (Arrows.Leaf.collapse hT j)
   | _, _, .dup hF, j, a => .box (.box (a.inner.map (Arrows.Leaf.shift hF j)))
+  | _, _, .dkeep hF _, j, a => .box (a.map (Arrows.Leaf.dk hF j))
+
+/-- `GFunc.shp` with the root action given explicitly, for statements made before an instance is
+    available (a model's own laws). -/
+abbrev GFunc.shpK {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
+    (rk : ModalSys.Four = true → ∀ {w : F.W}, Root w → (a : F.Acc w) → Root a.1) {w : F.W}
+    {A B : VarType} (f : GFunc σ A B) (j : ℕ) (a : Shp (F.Leaf Root w) A) :
+    Shp (F.Leaf Root w) B :=
+  @GFunc.shp _ σ F Root ⟨rk⟩ w A B f j a
 
 /-- A family of shapes, one at the target of each arrow, as one shape whose leaves are families. -/
 def Arrows.transposeShp {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u} {w : F.W} :
@@ -352,6 +415,16 @@ structure Model (σ : Signature) where
   /-- Under T or strong B, the root possibilities: what a possible object's shape is ultimately
       built on. -/
   RootPoss : frame.W → Type u
+  /-- Under 4, the restriction of a root possibility along an arrow (`Arrows.RootKeep`). -/
+  rootKeep : ModalSys.Four = true → ∀ {w : frame.W}, RootPoss w → (a : frame.Acc w) →
+    RootPoss a.1
+  /-- Restricting along two arrows is restricting along their composite. -/
+  rootKeep_trans : ∀ (hF : ModalSys.Four = true) {w : frame.W} (r : RootPoss w)
+    (a : frame.Acc w) (b : frame.Acc a.1),
+    rootKeep hF (rootKeep hF r a) b = rootKeep hF r ⟨b.1, ⟨frame.trans hF a.2.down b.2.down⟩⟩
+  /-- Under T, restricting along the identity is the root itself. -/
+  rootKeep_refl : ∀ (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {w : frame.W}
+    (r : RootPoss w), rootKeep hF r (frame.reflAcc hT w) = r
   /-- ⭐**Evaluation of a possible object** (docs §10.27, §10.35): its **section** — an extent, and
       one object at each world of it — and, under T or strong B (`ModalSys.shaped`), its
       **shape**, the semantic annotation that records where each possibility inside it comes from.
@@ -374,7 +447,7 @@ structure Model (σ : Signature) where
   posMap_full : ∀ {A B : VarType} {w : frame.W} (f : GFunc σ A B) (p : frame.Pos A w),
     posFull (ops.posMap f p) =
       (⟨(posFull p).1.1, fun w' => GFunc.eval ops f w'.1.1 ((posFull p).1.2 w')⟩,
-        fun hS => .dia ((posFull p).2 hS).label (f.shp 1 ((posFull p).2 hS).body))
+        fun hS => .dia ((posFull p).2 hS).label (GFunc.shpK rootKeep f 1 ((posFull p).2 hS).body))
   /-- A necessary object riding along keeps the extent, pairs its values into the contents, and
       contributes the family of its values' shapes. -/
   posStrength_full : ∀ {A B : VarType} {w : frame.W} (n : frame.Nec A w) (p : frame.Pos B w),
@@ -390,6 +463,17 @@ structure Model (σ : Signature) where
   necDup_eval : ∀ {A : VarType} {w : frame.W} (hF : ModalSys.Four = true) (n : frame.Nec A w)
     (v : frame.Acc w) (s : frame.Acc v.1),
     necEval (necEval (ops.necDup hF n) v) s = necEval n ⟨s.1, ⟨frame.trans hF v.2.down s.2.down⟩⟩
+  /-- ⭐Under 4, **a possible object kept along an arrow** (docs §3 4, "4's four cases"): its
+      extent pulled back along the arrow, the same contents, and its labels restricted along the
+      arrow (`Arrows.Leaf.keepAlong`). -/
+  posKeep_full : ∀ {A : VarType} {w : frame.W} (hF : ModalSys.Four = true)
+    (hnS : ModalSys.shaped = false) (x : frame.Pos A w) (a : frame.Acc w),
+    posFull (necEval (ops.posKeep hF hnS x) a) =
+      (⟨{b : frame.Acc a.1 |
+            (⟨b.1, ⟨frame.trans hF a.2.down b.2.down⟩⟩ : frame.Acc w) ∈ (posFull x).1.1},
+          fun b => (posFull x).1.2 ⟨⟨b.1.1, ⟨frame.trans hF a.2.down b.1.2.down⟩⟩, b.2⟩⟩,
+        fun hS => ((posFull x).2 hS).map (@Arrows.Leaf.keepAlong _ σ frame.toArrows RootPoss
+          ⟨rootKeep⟩ hF w a))
   /-- ⭐Strong D: some possible object has a nonempty extent.  Stated at `𝟙`, where the content
       carries nothing: `strength` then gives, for every necessary object, a possible object with
       the same extent whose content is that object's value — the `Nec → Pos` map, at every type. -/
@@ -467,6 +551,9 @@ variable {σ : Signature} (M : Model.{u, v} σ)
 
 /-- The model's worlds and arrows, which its shapes are built over. -/
 abbrev arrows : Arrows.{u, v} σ := M.frame.toArrows
+
+/-- A model's root action, for the shape operations (`GFunc.shp`). -/
+instance instRootKeep : Arrows.RootKeep M.frame.toArrows M.RootPoss := ⟨M.rootKeep⟩
 
 /-- The section of a possible object: its extent, and its content at each world of it. -/
 abbrev posEval {A : VarType} {w : M.frame.W} (p : M.frame.Pos A w) : M.frame.PosSec A w :=

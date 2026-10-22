@@ -97,19 +97,6 @@ theorem sig_diatm {Γ : Ctx} {A : VarType} {x : VarSymb} {hx hx' : ∃ X, Γ.ref
   cases h
   rfl
 
-omit [ModalSys.NoFour] in
-/-- Substituting a possible term whose witness's image is known. -/
-theorem Term.subst_diatm_sig {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
-    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) {v : VarSymb}
-    (hv : ∃ X, Γ.ref v = some (.VTypeDia X)) {A : VarType} {a : Ann A}
-    (t : Term σ (Γ.diaIn v) A a) {y : VarSymb} (hy : ι v = y)
-    (hw : (θ.at v).idxAlong [] = y) (hθd : Subst.Ok (Γ.diaIn v) (θ.dia v y))
-    (hcd : Subst.Coh ι (Γ.diaIn v) (θ.dia v y)) (hy' : ∃ X, Δ.ref y = some (.VTypeDia X)) :
-    (⟨_, Term.subst ι θ hθ hc (Term.diatm v hv t)⟩ : Σ c, Term σ Δ (.VTypeDia A) c) =
-      ⟨_, Term.diatm y hy' (Term.subst ι (θ.dia v y) hθd hcd t)⟩ := by
-  subst hy
-  rfl
-
 /-- ⭐**β on the possible part, at a necessary object paired with a witness**: the witness
     becomes the possible object with its worlds and content `h` of the object's contents and
     its own. -/

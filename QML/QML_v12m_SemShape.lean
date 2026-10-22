@@ -279,6 +279,34 @@ theorem shiftAt_shiftAt_self :
       · simp only [shiftAt_proj hs]
         rw [shiftAt_shiftAt_self j p]
 
+omit [ModalSys] in
+theorem keepAt_proj {s : Step} (hs : s.isProj = true) (i : Nat) (p : List Step) :
+    keepAt i (s :: p) = s :: keepAt i p := by
+  cases i <;> simp [keepAt, hs]
+
+omit [ModalSys] in
+theorem keepAt_succ {s : Step} (hs : s.isProj = false) (i : Nat) (p : List Step) :
+    keepAt (i + 1) (s :: p) = s :: keepAt i p := by
+  simp [keepAt, hs]
+
+omit [ModalSys] in
+/-- Keeping below a shifted level: the two insertions commute, the keep moving one level down. -/
+theorem keepAt_shiftAt : ∀ (j d : Nat) (p : List Step),
+    keepAt (j + d + 2) (shiftAt j p) = shiftAt j (keepAt (j + d + 1) p)
+  | _, _, [] => by simp [keepAt, shiftAt]
+  | j, d, s :: p => by
+      cases hs : s.isProj
+      · cases j with
+        | zero =>
+            rw [shiftAt_zero hs, Nat.zero_add, keepAt_succ (by rfl), keepAt_succ hs]
+            exact (shiftAt_zero hs _).symm
+        | succ j =>
+            rw [shiftAt_succ hs, show j + 1 + d + 2 = (j + d + 2) + 1 by omega, keepAt_succ hs,
+              show j + 1 + d + 1 = (j + d + 1) + 1 by omega, keepAt_succ hs, shiftAt_succ hs,
+              keepAt_shiftAt j d p]
+      · rw [shiftAt_proj hs, keepAt_proj hs, keepAt_proj hs, shiftAt_proj hs,
+          keepAt_shiftAt j d p]
+
 end Step
 
 namespace Arrows.Leaf
@@ -388,11 +416,40 @@ theorem shift_shift_self (hF : ModalSys.Four = true) :
   | j + 1, _, .fam f =>
       congrArg Arrows.Leaf.fam (funext fun s => shift_shift_self hF j (f s))
 
+section Keep
+
+variable [Arrows.RootKeep F Root]
+
+theorem dk_root_succ (hF : ModalSys.Four = true) (i : ℕ) {w : F.W} (r : Root w)
+    (p : List Step) :
+    dk hF (i + 1) (Arrows.Leaf.root (F := F) r p) = .root r (Step.keepAt (i + 1) p) :=
+  rfl
+
+/-- ⭐Keeping a possibility below a shifted level: `dk` and `shift` commute, `dk` moving one level
+    down.  It never acts at the anchor's level here, so no law of the root action is needed. -/
+theorem dk_shift (hF : ModalSys.Four = true) :
+    ∀ (j d : ℕ) {w : F.W} (ℓ : F.Leaf Root w),
+      dk hF (j + d + 2) (shift hF j ℓ) = shift hF j (dk hF (j + d + 1) ℓ)
+  | j, d, _, .root r p => by
+      rw [shift_root, show j + d + 2 = j + d + 1 + 1 by omega, dk_root_succ hF (j + d + 1),
+        dk_root_succ hF (j + d), shift_root, show j + d + 1 + 1 = j + d + 2 by omega]
+      exact congrArg (Arrows.Leaf.root r) (Step.keepAt_shiftAt j d p)
+  | 0, d, w, .fam f => by
+      rw [Nat.zero_add]
+      rfl
+  | j + 1, d, _, .fam f => by
+      rw [show j + 1 + d + 2 = (j + d + 2) + 1 by omega,
+        show j + 1 + d + 1 = (j + d + 1) + 1 by omega]
+      exact congrArg Arrows.Leaf.fam (funext fun s => dk_shift hF j d (f s))
+
+end Keep
+
 end Arrows.Leaf
 
 namespace Model
 
 variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
+  [Arrows.RootKeep F Root]
 
 variable (F Root) in
 /-- Shapes anchored at a world. -/
@@ -495,6 +552,7 @@ omit [ModalSys] in
 @[simp] theorem _root_.V12M.Shp.inner_box {L : Type*} {A : VarType} (a : Shp L A) :
     (Shp.box a).inner = a := rfl
 
+omit [Arrows.RootKeep F Root] in
 theorem shp_var_eq {w : F.W} : ∀ a b : Shape F Root w .Var, a = b
   | .var, .var => rfl
 
@@ -679,6 +737,7 @@ omit [ModalSys] in
     ∀ a : Shp L (.VTypeDia A), (a.map g).body = a.body.map g
   | .dia _ _ => rfl
 
+omit [Arrows.RootKeep F Root] in
 /-- A leaf map that acts on a family member by member passes through transposition. -/
 theorem transpose_map {w : F.W} (Φ : F.Leaf Root w → F.Leaf Root w)
     (G : ∀ s : F.Acc w, F.Leaf Root s.1 → F.Leaf Root s.1)
@@ -700,6 +759,7 @@ theorem transpose_map {w : F.W} (Φ : F.Leaf Root w → F.Leaf Root w)
       rw [transpose_map Φ G hΦ, hΦ]
       simp only [Shp.map_label, Shp.map_body]
 
+omit [Arrows.RootKeep F Root] in
 /-- Reading a transposed shape at the identity arrow gives the member there. -/
 theorem transpose_collapse_zero (hT : ModalSys.T = true) {w : F.W} :
     ∀ {A : VarType} (g : (s : F.Acc w) → Shape F Root s.1 A),
@@ -719,6 +779,7 @@ theorem transpose_collapse_zero (hT : ModalSys.T = true) {w : F.W} :
       rw [transpose_collapse_zero hT]
       exact (Shp.dia_eta _).symm
 
+omit [Arrows.RootKeep F Root] in
 /-- Keeping a transposed shape: one family per arrow, of the members at the composite arrows. -/
 theorem transpose_shift_zero (hF : ModalSys.Four = true) {w : F.W} :
     ∀ {A : VarType} (g : (s : F.Acc w) → Shape F Root s.1 A),
@@ -737,6 +798,24 @@ theorem transpose_shift_zero (hF : ModalSys.Four = true) {w : F.W} :
       simp only [Arrows.transposeShp, Shp.map, Shp.label_dia, Shp.body_dia]
       rw [transpose_shift_zero hF]
       rfl
+
+omit [Arrows.RootKeep F Root] in
+/-- One shape read through a leaf map per arrow, transposed: each leaf becomes the family of its
+    images.  This is how a possible object kept along every arrow gets its shape (`dk 0`). -/
+theorem transpose_map_const {w : F.W} (G : ∀ s : F.Acc w, F.Leaf Root w → F.Leaf Root s.1) :
+    ∀ {A : VarType} (a : Shape F Root w A),
+      (Arrows.transposeShp fun s => a.map (G s)) = a.map fun ℓ => .fam fun s => G s ℓ
+  | .Var, .var => rfl
+  | .VTypeOne, .one => rfl
+  | .VTypeProd _ _, .prod a b => by
+      simp only [Arrows.transposeShp, Shp.map, Shp.fst_prod, Shp.snd_prod]
+      rw [transpose_map_const G a, transpose_map_const G b]
+  | .VTypeBox _, .box a => by
+      simp only [Arrows.transposeShp, Shp.map, Shp.inner_box]
+      rw [transpose_map_const G a]
+  | .VTypeDia _, .dia ℓ a => by
+      simp only [Arrows.transposeShp, Shp.map, Shp.label_dia, Shp.body_dia]
+      rw [transpose_map_const G a]
 
 /-- ⭐**Every map's shape transport commutes with transposition**, one level further out. -/
 theorem shp_transpose {w : F.W} :
@@ -775,6 +854,10 @@ theorem shp_transpose {w : F.W} :
       simp only [GFunc.shp]
       rw [show (Arrows.transposeShp h).inner = Arrows.transposeShp fun s => (h s).inner from rfl,
         transpose_map _ _ (fun _ => rfl)]
+      rfl
+  | _, _, .dkeep hF _, j, h => by
+      simp only [GFunc.shp]
+      rw [transpose_map _ _ (fun _ => rfl)]
       rfl
 
 /-! ### Unfolding lemmas -/
@@ -1059,6 +1142,7 @@ theorem shp_mapCollapse (hT : ModalSys.T = true) (j : ℕ) {w : F.W} :
       simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_map]
       congr 2
       exact Shp.map_congr (fun ℓ => Arrows.Leaf.shift_collapse hT hF j d ℓ) _
+  | _, _, .dkeep _ hnS, _, _ => absurd (ModalSys.shaped_of_T hT) (by rw [hnS]; decide)
 
 /-- A shift at level `j` passes through any map acting at a level below it. -/
 theorem shp_mapShift (hF : ModalSys.Four = true) (j : ℕ) {w : F.W} :
@@ -1097,6 +1181,10 @@ theorem shp_mapShift (hF : ModalSys.Four = true) (j : ℕ) {w : F.W} :
       simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_map]
       congr 2
       exact Shp.map_congr (fun ℓ => Arrows.Leaf.shift_shift hF j d ℓ) _
+  | _, _, .dkeep hF' _, d, a => by
+      simp only [GFunc.shp, Shp.map, Shp.map_map]
+      congr 1
+      exact Shp.map_congr (fun ℓ => Arrows.Leaf.dk_shift hF j d ℓ) _
 
 /-- Apply a leaf map to every shape of an environment. -/
 def ShEnv.mapLeaves {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w)
@@ -1339,16 +1427,29 @@ theorem boxPush_envShape (hSh : ModalSys.shaped = true) {Γ : Ctx} {w : M.frame.
       rw [ref_envShape]
       rfl
   | .step u .keep, T, h => by
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep h
-      simp only [ShEnv.boxPush]
-      rw [ref_envShape]
-      change Shp.box ((Arrows.transposeShp fun s =>
-          domSh hSh (M.necEval (env.ref u hu) s)).map (Arrows.Leaf.shift hF 0)) = _
-      rw [transpose_shift_zero]
-      change _ = Arrows.transposeShp fun s => Shp.box (Arrows.transposeShp fun t =>
-          domSh hSh (M.necEval (M.necEval (M.ops.necDup hF (env.ref u hu)) s) t))
-      simp only [M.necDup_eval]
-      rfl
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep h
+      cases T with
+      | VTypeBox A =>
+          simp only [ShEnv.boxPush]
+          rw [ref_envShape]
+          change Shp.box ((Arrows.transposeShp fun s =>
+              domSh hSh (M.necEval (env.ref u hu) s)).map (Arrows.Leaf.shift hF 0)) = _
+          rw [transpose_shift_zero]
+          change _ = Arrows.transposeShp fun s => Shp.box (Arrows.transposeShp fun t =>
+              domSh hSh (M.necEval (M.necEval (M.ops.necDup hF (env.ref u hu)) s) t))
+          simp only [M.necDup_eval]
+          rfl
+      | VTypeDia A =>
+          have hnS := VarType.noShaped_of_keepable_dia hk
+          simp only [ShEnv.boxPush]
+          rw [ref_envShape]
+          change (domSh hSh (env.ref u hu)).map (Arrows.Leaf.dk hF 0) = _
+          change _ = Arrows.transposeShp fun s =>
+            (M.posFull (M.necEval (M.ops.posKeep hF hnS (env.ref u hu)) s)).2 hSh
+          simp only [M.posKeep_full]
+          rw [transpose_map_const]
+          rfl
+      | _ => cases hk
   | .root _, _, h => by cases h
   | .step _ .fst, _, h => by cases h
   | .step _ .snd, _, h => by cases h

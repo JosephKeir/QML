@@ -55,14 +55,14 @@ theorem Env.diaPush_ret {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {c : ℕ}
         rw [Ctx.ref_none_of_rootFresh hc u he] at hu
         cases hu)]
   | .step u .keep =>
-      obtain ⟨hF, hu, B, rfl⟩ := Ctx.boxIn_keep hv
-      have hu' : (Γ.insert (.free c) (.VTypeDia A)).ref u = some (.VTypeBox B) :=
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
+      have hu' : (Γ.insert (.free c) (.VTypeDia A)).ref u = some T :=
         (Ctx.ref_insert_ne _ (fun he => by
           rw [Ctx.ref_none_of_rootFresh hc u he] at hu
           cases hu)).trans hu
-      change M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF ⟨B, rfl⟩) w
+      change M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF hk) w
           (env.ref u hu)) ⟨w, ⟨h⟩⟩ =
-        M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF ⟨B, rfl⟩) w
+        M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF hk) w
           ((env.extend (.free c) p).ref u hu')) ⟨w, ⟨h⟩⟩
       rw [Env.ref_extend_ne env p hu' hu (fun he => by
         rw [Ctx.ref_none_of_rootFresh hc u he] at hu

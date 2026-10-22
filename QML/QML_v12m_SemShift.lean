@@ -29,6 +29,84 @@ def Env.ShiftAgree {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂) 
     (env₁ : M.Env Γ₁ w) (env₂ : M.Env Γ₂ w) : Prop :=
   ∀ v T (hv : Γ₁.ref v = some T), env₁.ref v hv = env₂.ref (v.shift k) (h v T hv)
 
+omit [ModalSys] in
+theorem _root_.V12M.Shp.map_comp.{y} {L L' L'' : Type y} (g : L → L') (g' : L' → L'') :
+    ∀ {A : VarType} (a : Shp L A), (a.map g).map g' = a.map (g' ∘ g)
+  | _, .var => rfl
+  | _, .one => rfl
+  | _, .prod a b => by simp only [Shp.map]; rw [Shp.map_comp g g' a, Shp.map_comp g g' b]
+  | _, .box a => by simp only [Shp.map]; rw [Shp.map_comp g g' a]
+  | _, .dia _ a => by simp only [Shp.map]; rw [Shp.map_comp g g' a]; rfl
+
+omit [ModalSys] in
+theorem _root_.V12M.Shp.map_congr'.{y} {L L' : Type y} {g g' : L → L'}
+    (h : ∀ ℓ, g ℓ = g' ℓ) :
+    ∀ {A : VarType} (a : Shp L A), a.map g = a.map g'
+  | _, .var => rfl
+  | _, .one => rfl
+  | _, .prod a b => by simp only [Shp.map]; rw [Shp.map_congr' h a, Shp.map_congr' h b]
+  | _, .box a => by simp only [Shp.map]; rw [Shp.map_congr' h a]
+  | _, .dia ℓ a => by simp only [Shp.map]; rw [Shp.map_congr' h a, h]
+
+omit [ModalSys] in
+/-- Two sections with the same extent and the same contents are equal. -/
+theorem sec_ext {α : Type*} {β : α → Type*} {E₁ E₂ : Set α} {f₁ : (b : E₁) → β b.1}
+    {f₂ : (b : E₂) → β b.1} (hE : E₁ = E₂)
+    (hf : ∀ (b : α) (h₁ : b ∈ E₁) (h₂ : b ∈ E₂), f₁ ⟨b, h₁⟩ = f₂ ⟨b, h₂⟩) :
+    (⟨E₁, f₁⟩ : Σ E : Set α, (b : E) → β b.1) = ⟨E₂, f₂⟩ := by
+  subst hE
+  congr
+  funext b
+  exact hf b.1 b.2 b.2
+
+/-- Restricting a leaf along two arrows is restricting it along their composite. -/
+theorem keepAlong_keepAlong (hF : ModalSys.Four = true) {w : M.frame.W} (v : M.frame.Acc w)
+    (s : M.frame.Acc v.1) (ℓ : M.frame.Leaf M.RootPoss w) :
+    Arrows.Leaf.keepAlong hF s (Arrows.Leaf.keepAlong hF v ℓ) =
+      Arrows.Leaf.keepAlong hF ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩ ℓ := by
+  cases ℓ with
+  | root r p =>
+      change Arrows.Leaf.root (M.rootKeep hF (M.rootKeep hF r v) s) p =
+        Arrows.Leaf.root (M.rootKeep hF r ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩) p
+      rw [M.rootKeep_trans]
+  | fam f =>
+      refine congrArg Arrows.Leaf.fam (funext fun t => ?_)
+      change f ⟨t.1, ⟨M.frame.trans hF v.2.down (M.frame.trans hF s.2.down t.2.down)⟩⟩ =
+        f ⟨t.1, ⟨M.frame.trans hF (M.frame.trans hF v.2.down s.2.down) t.2.down⟩⟩
+      rw [M.frame.trans_assoc hF]
+
+/-- ⭐**Keeping twice is keeping once along the composite**: a possible object restricted along
+    `v`, then along `s`, is its restriction along `v ; s` — the extents by associativity, the
+    labels by the root action's composition law. -/
+theorem posKeep_posKeep (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false) {A : VarType}
+    {w : M.frame.W} (x : M.frame.Pos A w) (v : M.frame.Acc w) (s : M.frame.Acc v.1) :
+    M.necEval (M.ops.posKeep hF hnS (M.necEval (M.ops.posKeep hF hnS x) v)) s =
+      M.necEval (M.ops.posKeep hF hnS x) ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩ := by
+  apply M.posFull_inj
+  rw [M.posKeep_full, M.posKeep_full, M.posKeep_full]
+  dsimp only
+  refine Prod.ext ?_ (funext fun hS => ?_)
+  · dsimp only
+    refine sec_ext (β := fun a : M.frame.Acc s.1 => M.frame.Dom A a.1)
+      (Set.ext fun b => ?_) (fun b h₁ h₂ => ?_)
+    · change (⟨b.1, ⟨M.frame.trans hF v.2.down (M.frame.trans hF s.2.down b.2.down)⟩⟩ :
+          M.frame.Acc w) ∈ (M.posFull x).1.1 ↔
+        (⟨b.1, ⟨M.frame.trans hF (M.frame.trans hF v.2.down s.2.down) b.2.down⟩⟩ :
+          M.frame.Acc w) ∈ (M.posFull x).1.1
+      rw [M.frame.trans_assoc hF]
+    · change (M.posFull x).1.2 ⟨⟨b.1,
+          ⟨M.frame.trans hF v.2.down (M.frame.trans hF s.2.down b.2.down)⟩⟩, _⟩ =
+        (M.posFull x).1.2 ⟨⟨b.1,
+          ⟨M.frame.trans hF (M.frame.trans hF v.2.down s.2.down) b.2.down⟩⟩, _⟩
+      generalize_proofs p₁ p₂
+      revert p₂
+      rw [M.frame.trans_assoc hF]
+      intro p₂
+      rfl
+  · simp only
+    rw [Shp.map_comp]
+    exact Shp.map_congr' (fun ℓ => keepAlong_keepAlong hF v s ℓ) _
+
 variable {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ₂} {w : M.frame.W}
   {env₁ : M.Env Γ₁ w} {env₂ : M.Env Γ₂ w}
 
@@ -80,11 +158,12 @@ theorem Env.ShiftAgree.boxPush (hag : Env.ShiftAgree h env₁ env₂) (w' : M.fr
       change M.necEval (env₁.ref u hu) w' = M.necEval (env₂.ref (u.shift k) (h u _ hu)) w'
       rw [hag u _ hu]
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
       rw [Env.ref_congr _ (VarSymb.shift_level_succ (s := .keep) rfl) _
-        (Ctx.ref_keep_of hF (h u _ hu)), Env.ref, dif_neg (by decide : ¬ Step.keep.isProj = true)]
-      change M.necEval (GFunc.eval M.ops (GFunc.dup (σ := σ) hF) w (env₁.ref u hu)) w' =
-        M.necEval (GFunc.eval M.ops (GFunc.dup (σ := σ) hF) w
+        (Ctx.ref_keep_of' hF (h u _ hu) hk), Env.ref,
+        dif_neg (by decide : ¬ Step.keep.isProj = true)]
+      change M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF hk) w (env₁.ref u hu)) w' =
+        M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF hk) w
           (env₂.ref (u.shift k) (h u _ hu))) w'
       rw [hag u _ hu]
   | .root _ => cases hv
@@ -121,12 +200,12 @@ theorem Env.ShiftAgree.diaPush (hag : Env.ShiftAgree h env₁ env₂) {x : VarSy
       change M.necEval (env₁.ref u hu) w₁.1 = M.necEval (env₂.ref (u.shift k) (h u _ hu)) w₁.1
       rw [hag u _ hu]
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ₁) hv
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep (Γ := Γ₁) hv
       rw [Env.ref_congr _ (VarSymb.shift_level_succ (s := .keep) rfl) _
-        ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_keep_of hF (h u _ hu))), Env.ref,
+        ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_keep_of' hF (h u _ hu) hk)), Env.ref,
         dif_neg (by decide : ¬ Step.keep.isProj = true)]
-      change M.necEval (GFunc.eval M.ops (GFunc.dup (σ := σ) hF) w (env₁.ref u hu)) w₁.1 =
-        M.necEval (GFunc.eval M.ops (GFunc.dup (σ := σ) hF) w
+      change M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF hk) w (env₁.ref u hu)) w₁.1 =
+        M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF hk) w
           (env₂.ref (u.shift k) (h u _ hu))) w₁.1
       rw [hag u _ hu]
   | .root _ => cases hv
@@ -174,7 +253,21 @@ theorem Env.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} (env : M.En
       change _ = M.necEval (M.necEval (M.ops.necDup hF (env.ref u hu)) v) s
       rw [M.necDup_eval]
   | .step u .keep =>
-      obtain ⟨_, hu, A, rfl⟩ := Ctx.boxIn_keep hx
+      obtain ⟨_, hu, hk⟩ := Ctx.boxIn_keep hx
+      cases T with
+      | VTypeDia A =>
+          have hnS := VarType.noShaped_of_keepable_dia hk
+          rw [Env.ref_congr _ (VarSymb.shift_level_zero (s := .keep) rfl) _
+            (Ctx.ref_keep_of' hF (Ctx.ref_keep_of' hF hu hk) hk), Env.ref,
+            dif_neg (by decide : ¬ Step.keep.isProj = true)]
+          change M.necEval (M.ops.posKeep hF hnS (env.ref u hu)) ⟨s.1, _⟩ =
+            M.necEval (M.ops.posKeep hF hnS ((env.boxPush v).ref (.step u .keep)
+              (Ctx.ref_keep_of' hF hu hk))) s
+          rw [Env.ref, dif_neg (by decide : ¬ Step.keep.isProj = true)]
+          change _ = M.necEval (M.ops.posKeep hF hnS
+            (M.necEval (M.ops.posKeep hF hnS (env.ref u hu)) v)) s
+          rw [posKeep_posKeep]
+      | VTypeBox A =>
       rw [Env.ref_congr _ (VarSymb.shift_level_zero (s := .keep) rfl) _
         (Ctx.ref_keep_of hF (Ctx.ref_keep_of hF hu)), Env.ref,
         dif_neg (by decide : ¬ Step.keep.isProj = true)]
@@ -186,6 +279,7 @@ theorem Env.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} (env : M.En
       apply M.nec_inj
       funext t
       rw [M.necDup_eval, M.necDup_eval, M.necDup_eval, M.frame.trans_assoc hF]
+      | _ => cases hk
   | .root _ => cases hx
   | .step _ .fst => cases hx
   | .step _ .snd => cases hx
@@ -197,6 +291,7 @@ end Model
 namespace Model
 
 variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
+  [Arrows.RootKeep F Root]
   {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ₂} {w : F.W}
 
 /-! ## Shapes across a shift -/
@@ -246,12 +341,12 @@ theorem ShEnv.ShiftAgree.boxPush {ρ₁ : ShEnv F Root Γ₁ w}
       change (ρ₁.ref j u hu).inner = (ρ₂.ref j (u.shift k) (h u _ hu)).inner
       rw [hag u _ hu]
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
       rw [ShEnv.ref_congr _ _ (VarSymb.shift_level_succ (s := .keep) rfl) _
-        (Ctx.ref_keep_of hF (h u _ hu)),
+        (Ctx.ref_keep_of' hF (h u _ hu) hk),
         ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
-      change (GFunc.shp (GFunc.dup (σ := σ) hF) j (ρ₁.ref j u hu)).inner =
-        (GFunc.shp (GFunc.dup (σ := σ) hF) j (ρ₂.ref j (u.shift k) (h u _ hu))).inner
+      change (GFunc.shp (GFunc.keep (σ := σ) hF hk) j (ρ₁.ref j u hu)).inner =
+        (GFunc.shp (GFunc.keep (σ := σ) hF hk) j (ρ₂.ref j (u.shift k) (h u _ hu))).inner
       rw [hag u _ hu]
   | .root _ => cases hv
   | .step _ .fst => cases hv
@@ -289,12 +384,12 @@ theorem ShEnv.ShiftAgree.diaPush {ρ₁ : ShEnv F Root Γ₁ w}
       change (ρ₁.ref j u hu).inner = (ρ₂.ref j (u.shift k) (h u _ hu)).inner
       rw [hag u _ hu]
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ₁) hv
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep (Γ := Γ₁) hv
       rw [ShEnv.ref_congr _ _ (VarSymb.shift_level_succ (s := .keep) rfl) _
-        ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_keep_of hF (h u _ hu))),
+        ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_keep_of' hF (h u _ hu) hk)),
         ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
-      change (GFunc.shp (GFunc.dup (σ := σ) hF) j (ρ₁.ref j u hu)).inner =
-        (GFunc.shp (GFunc.dup (σ := σ) hF) j (ρ₂.ref j (u.shift k) (h u _ hu))).inner
+      change (GFunc.shp (GFunc.keep (σ := σ) hF hk) j (ρ₁.ref j u hu)).inner =
+        (GFunc.shp (GFunc.keep (σ := σ) hF hk) j (ρ₂.ref j (u.shift k) (h u _ hu))).inner
       rw [hag u _ hu]
   | .root _ => cases hv
   | .step _ .fst => cases hv

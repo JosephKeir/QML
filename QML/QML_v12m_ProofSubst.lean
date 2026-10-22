@@ -909,7 +909,7 @@ theorem WFF.subst_diaViewRead {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlo
             rw [hat u _ (Ctx.boxIn_step_box hw), SubE.unbox_mono]
             rfl
         | .step u .keep =>
-            obtain ⟨hF, hu, B, rfl⟩ := Ctx.boxIn_keep hw
+            obtain ⟨hF, hu, _⟩ := Ctx.boxIn_keep hw
             change ((θ.rename c c' (.VTypeDia A) hcf'.root).at u).keepE = _
             rw [hat u _ hu, SubE.keepE_mono]
             rfl
@@ -2678,6 +2678,30 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
             hΓ.boxIn hΓ.boxIn.boxIn Ctx.NoSlots.slots Ctx.NoSlots.slots
             (Subst.shiftCorr_box_box hF hθ) φ))
         (Proof.four_box hF (Proof.subst p θ hθ hc hΓ))
+  | _, _, _, @Proof.four_dia _ _ Γ _ hF hnS _ x hx φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
+      have hy : ∃ X, Γ'.ref (ι x) = some (.VTypeDia X) :=
+        hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw
+      have hk₂ : ι (.step x .keep) = .step (ι x) .keep :=
+        hx.elim fun _ hX => Subst.coh_keep_dia hθ hc hX
+      have hwk : (θ.box.at (.step x .keep)).idxAlong [] = .step (ι x) .keep :=
+        hx.elim fun _ hX => Subst.idx_box_keep_dia hF hnS hθ hc hX
+      Proof.conv
+        (congrArg (fun χ => WFF.box (WFF.neg χ))
+          ((WFF.subst_dia θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn
+            Ctx.NoSlots.slots (Ctx.exists_keep_dia hF hnS hx) _ hk₂ (Ctx.exists_keep_dia hF hnS hy)
+            (Subst.ok_dia (Subst.ok_box hθ) (Ctx.exists_keep_dia hF hnS hx) hwk)
+            (hk₂ ▸ Subst.coh_dia (Subst.ok_box hθ) (Subst.coh_box hθ hc)
+              (Ctx.exists_keep_dia hF hnS hx))
+            Ctx.NoSlots.slots
+            (WFF.shift (Ctx.shifts_diaIn_keep hF hnS Γ x) Ctx.NoSlots.slots φ).neg).trans
+            (congrArg (fun χ => WFF.dia _ _ (WFF.neg χ))
+              (WFF.shift_subst (Ctx.shifts_diaIn_keep hF hnS Γ x)
+                (Ctx.shifts_diaIn_keep hF hnS Γ' (ι x)) (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw)
+                (Subst.coh_dia hθ hc hx) _ _ _ (hΓ.diaIn x) Ctx.NoSlots.slots
+                Ctx.NoSlots.slots Ctx.NoSlots.slots
+                (Subst.shiftCorr_dia_keep hF hnS hθ hx hw) φ)).symm).symm)
+        (Proof.four_dia hF hnS hy (Proof.subst p θ hθ hc hΓ))
   | _, _, _, @Proof.T_dia _ _ _ _ hT hS A _ t c hcf _ _ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       have hcf' : Γ'.RootFresh (.free (Ctx.Presented.bound Γ')) :=

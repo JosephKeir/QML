@@ -15,7 +15,8 @@ recursion**: realisation is abstraction followed by `hereRead`.
 Everything is stated at any context `Γ` that declares `c : ◇A` as a root and writes nothing else
 at that root (`hcA`, `hfr`), because the contexts of a world are not in `insert` form.
 
-* `Ctx.ref_insert_dia`, `Ctx.boxIn_insert_dia_le`: declaring a `◇`-typed root adds only that root;
+* `Ctx.ref_insert_dia`: declaring a `◇`-typed root adds only that root (and, under 4, its kept
+  restriction `c.keep` to the `□` view);
   `Ctx.ref_none_of_dia_root`: nothing else is reachable below it.
 * `Subst.diaAbs`: the renaming; `WFF.diaAbs`, `Term.diaAbs`: the operations.
 * `WFF.viewReadAt`: `WFF.viewRead` at such a context.
@@ -125,27 +126,6 @@ theorem ref_insert_dia {Γ : Ctx} {c : ℕ} (_hc : Γ.RootFresh (.free c)) (A : 
         rw [Ctx.ref_step_nonproj _ _ hs] at h ⊢
         rwa [hstep] at h
 
-/-- Declaring a `◇`-typed root adds nothing to the `□` view. -/
-theorem boxIn_insert_dia_le {Γ : Ctx} {c : ℕ} (hc : Γ.RootFresh (.free c)) (A : VarType) :
-    ((Γ.insert (.free c) (.VTypeDia A)).boxIn).Le Γ.boxIn := by
-  intro v T hv
-  match v with
-  | .step u .box =>
-      obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv
-      rcases Ctx.ref_insert_dia hc A hu with ⟨rfl, hT⟩ | hu'
-      · cases hT
-      · exact Ctx.boxIn_box_of hk hu'
-  | .step u .keep =>
-      obtain ⟨hF, hu, B, rfl⟩ := Ctx.boxIn_keep hv
-      rcases Ctx.ref_insert_dia hc A hu with ⟨rfl, hT⟩ | hu'
-      · cases hT
-      · exact Ctx.boxIn_keep_of hF hu'
-  | .root _ => cases hv
-  | .step _ .fst => cases hv
-  | .step _ .snd => cases hv
-  | .step _ .dia => cases hv
-  | .step _ .here => cases hv
-
 /-- Where `c` is a declared `◇`-typed root and nothing else is written at that root, no other
     address rooted at `c` is reachable. -/
 theorem ref_none_of_dia_root {Γ : Ctx} {c : ℕ} {A : VarType}
@@ -234,8 +214,8 @@ theorem diaIn_cases (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none) :
     ∀ {v : VarSymb} {T : VarType}, (Γ.diaIn (.root (.free c))) v = some T →
       (v = .step (.root (.free c)) .dia ∧ T = A) ∨
-        (v.rt ≠ .free c ∧ Γ.boxIn v = some T ∧ (∀ Δ : Ctx, diaAbs σ Δ c v = .ren v) ∧
-          ∀ r : Root, v ≠ .root r) := by
+        ((∀ p, diaAbsIdx c (v.ext p) = v.ext p) ∧ Γ.boxIn v = some T ∧
+          (∀ Δ : Ctx, diaAbs σ Δ c v = .ren v) ∧ ∀ r : Root, v ≠ .root r) := by
   intro v T hv
   match v with
   | .step u .dia =>
@@ -255,7 +235,8 @@ theorem diaIn_cases (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
   | .step u .box =>
       have hv' : Γ.boxIn (.step u .box) = some T := hv
       obtain ⟨_, hu⟩ := Ctx.boxIn_box hv'
-      refine Or.inr ⟨?_, hv', fun _ => rfl, fun _ => by nofun⟩
+      refine Or.inr ⟨fun p => diaAbsIdx_of_rt_ne ?_, hv', fun _ => rfl, fun _ => by nofun⟩
+      rw [VarSymb.ext_rt]
       intro hrt
       by_cases hu0 : u = .root (.free c)
       · rw [hu0, hcA] at hu
@@ -263,14 +244,21 @@ theorem diaIn_cases (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
       · rw [Ctx.ref_none_of_dia_root hcA hfr (u := u) hrt hu0] at hu
         cases hu
   | .step u .keep =>
+      -- under 4 the root itself is kept, `c.keep`, which the abstraction leaves alone
       have hv' : Γ.boxIn (.step u .keep) = some T := hv
-      obtain ⟨_, hu, _, rfl⟩ := Ctx.boxIn_keep hv'
-      refine Or.inr ⟨?_, hv', fun _ => rfl, fun _ => by nofun⟩
-      intro hrt
+      obtain ⟨_, hu, _⟩ := Ctx.boxIn_keep hv'
+      refine Or.inr ⟨fun p => ?_, hv', fun _ => rfl, fun _ => by nofun⟩
       by_cases hu0 : u = .root (.free c)
-      · rw [hu0, hcA] at hu
-        cases hu
-      · rw [Ctx.ref_none_of_dia_root hcA hfr (u := u) hrt hu0] at hu
+      · subst hu0
+        rw [diaAbsIdx_ext_of p (v := .step (.root (.free c)) .keep) (fun he => by cases he)]
+        change (if (VarSymb.root (.free c)) = .root (.free c) ∧ Step.keep = .dia then _
+          else VarSymb.step (diaAbsIdx c (.root (.free c))) .keep).ext p = _
+        rw [if_neg (fun h => by cases h.2)]
+        rfl
+      · refine diaAbsIdx_of_rt_ne ?_
+        rw [VarSymb.ext_rt]
+        intro hrt
+        rw [Ctx.ref_none_of_dia_root hcA hfr (u := u) hrt hu0] at hu
         cases hu
   | .root _ => cases hv
   | .step _ .fst => cases hv
@@ -304,10 +292,7 @@ theorem coh_diaAbs (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
       else .hide).idxAlong p = _
     rw [if_pos rfl, diaAbsIdx_dia c p]
     rfl
-  · have hrt' : (v.ext p).rt ≠ .free c := by
-      rw [VarSymb.ext_rt]
-      exact hrt
-    rw [diaAbsIdx_of_rt_ne hrt', hen (Γ.boxIn.insert (.bnd 0) A)]
+  · rw [hrt p, hen (Γ.boxIn.insert (.bnd 0) A)]
     rfl
 
 end Subst
@@ -602,7 +587,7 @@ theorem Subst.IsRen.box {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx
       change SubE.ren (ι z).inner = _
       rw [VarSymb.inner_box hk, hren.step hc hz Step.box]
   | .step z .keep, hu =>
-      obtain ⟨hF, hz, B, rfl⟩ := Ctx.boxIn_keep hu
+      obtain ⟨hF, hz, hkz⟩ := Ctx.boxIn_keep hu
       change (θ.at z).keepE = _
       rw [hren z _ hz, hren.step hc hz Step.keep]
       rfl
@@ -632,7 +617,7 @@ theorem Subst.IsRen.dia {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx
       change SubE.ren (ι z).inner = _
       rw [VarSymb.inner_box hk, hren.step hc hz Step.box]
   | .step z .keep, hu =>
-      obtain ⟨hF, hz, B, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hu
+      obtain ⟨hF, hz, hkz⟩ := Ctx.boxIn_keep (Γ := Γ) hu
       change ((θ.at z).keepE).mono _ = _
       rw [hren z _ hz, hren.step hc hz Step.keep]
       rfl

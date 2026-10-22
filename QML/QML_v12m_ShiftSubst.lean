@@ -86,7 +86,14 @@ theorem Ann.idxAt_shift : ∀ {T : VarType} (a : Ann T) (k : ℕ) (p : List Step
   | _, .dia _ _, _, .snd :: _ => rfl
   | _, .dia _ _, _, .box :: _ => rfl
   | _, .dia _ _, _, .here :: _ => rfl
-  | _, .dia _ _, _, .keep :: _ => rfl
+  | _, .dia i a, k, .keep :: p => by
+      change (Ann.dia (.step (i.shift k) .keep) ((a.shift (k + 1)).shift 0)).idxAt p =
+        ((Ann.dia (.step i .keep) (a.shift 0)).idxAt p).shift (k + (1 + Step.levels p))
+      rw [← Nat.add_assoc, ← Ann.idxAt_shift (Ann.dia (.step i .keep) (a.shift 0)) (k + 1) p]
+      change (Ann.dia (.step (i.shift k) .keep) ((a.shift (k + 1 + 0)).shift 0)).idxAt p =
+        (Ann.dia ((VarSymb.step i .keep).shift (k + 1))
+          ((a.shift 0).shift (k + 2 + 0))).idxAt p
+      rw [Ann.shift_shift a k 0, VarSymb.shift_level_succ (s := .keep) rfl]
 
 variable [ModalSys]
 
@@ -275,6 +282,62 @@ theorem keepE_keepE {Δ : Ctx} (hF : ModalSys.Four = true) : ∀ {e : SubE σ Δ
             (Ctx.shifts_boxIn_boxIn hF Δ) (Ctx.shifts_boxIn_boxIn hF Δ.boxIn)
             (Ctx.shifts_boxIn_boxIn hF Δ).boxIn t))
 
+/-- The index a kept possible entry reaches: its witness, kept. -/
+theorem idxAlong_keep_dia {Δ : Ctx} : ∀ {e : SubE σ Δ} {X : VarType}, e.OkRef (.VTypeDia X) →
+    e.idxAlong [.keep] = .step (e.idxAlong []) .keep
+  | .ren _, _, _ => rfl
+  | .hide, _, he => False.elim he
+  | .tm (T := U) s, X, he => by
+      have hU : U = .VTypeDia X := he
+      subst hU
+      cases s
+      rfl
+
+/-- The body of a kept possible entry, at the kept witness, is the body shifted. -/
+theorem keepE_diaBody {Δ : Ctx} (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false)
+    {z : VarSymb} :
+    ∀ {e : SubE σ Δ} {X : VarType}, e.OkRef (.VTypeDia X) → e.idxAlong [] = z →
+      (e.keepE).diaBody (.step z .keep) =
+        (e.diaBody z).shift (Ctx.shifts_diaIn_keep hF hnS Δ z)
+  | .ren w, _, _, hw => by
+      have hw' : w = z := hw
+      subst hw'
+      rfl
+  | .hide, _, he, _ => False.elim he
+  | .tm (T := U) s, X, he, hw => by
+      have hU : U = .VTypeDia X := he
+      subst hU
+      cases s with
+      | diatm y hy u =>
+          have hy' : y = z := hw
+          subst hy'
+          rw [keepE_dia _ _ _ hF hnS, diaBody_diatm, diaBody_diatm]
+          rfl
+
+/-- `keepE_keepE` at any keepable type. -/
+theorem keepE_keepE' {Δ : Ctx} (hF : ModalSys.Four = true) : ∀ {e : SubE σ Δ} {T : VarType},
+    T.keepable = true → e.OkRef T →
+      e.keepE.keepE = e.keepE.shift (Ctx.shifts_boxIn_boxIn hF Δ)
+  | .ren w, _, _, _ => by
+      change SubE.ren (.step (.step w .keep) .keep) = SubE.ren ((VarSymb.step w .keep).shift 0)
+      rw [VarSymb.shift_level_zero rfl]
+  | .hide, _, _, he => False.elim he
+  | .tm (T := U) s, T, hk, he => by
+      have hU : U = T := he
+      subst hU
+      cases U with
+      | VTypeBox A => exact keepE_keepE hF (e := .tm s) rfl
+      | VTypeDia A =>
+          cases s with
+          | diatm y hy t =>
+              have hnS := VarType.noShaped_of_keepable_dia hk
+              rw [keepE_dia _ _ _ hF hnS, keepE_dia _ _ _ hF hnS]
+              exact tm_eq_of_sig (sig_diatm (Term.shift_shift_same (m := 0)
+                (Ctx.shifts_diaIn_keep hF hnS Δ y)
+                (Ctx.shifts_diaIn_keep hF hnS Δ.boxIn (.step y .keep))
+                ((Ctx.shifts_boxIn_boxIn hF Δ).diaIn (.step y .keep)) t))
+      | _ => cases hk
+
 variable {k : ℕ} {Δ Δ' : Ctx} (D : Ctx.Shifts k Δ Δ')
 
 theorem okRef_shift : ∀ {e : SubE σ Δ} {T : VarType}, e.OkRef T → (e.shift D).OkRef T
@@ -333,6 +396,33 @@ theorem keepE_shift : ∀ {e : SubE σ Δ} {A : VarType}, e.OkRef (.VTypeBox A) 
               show (SubE.tm (Term.boxtm (Term.shift D.boxIn t)) : SubE σ Δ').keepE = .hide
                 from dif_neg hF]
             rfl
+
+/-- `keepE_shift` at any keepable type. -/
+theorem keepE_shift' : ∀ {e : SubE σ Δ} {T : VarType}, T.keepable = true → e.OkRef T →
+    e.keepE.shift D.boxIn = (e.shift D).keepE
+  | .ren w, _, _, _ => by
+      change SubE.ren ((VarSymb.step w .keep).shift (k + 1)) = SubE.ren (.step (w.shift k) .keep)
+      rw [VarSymb.shift_level_succ rfl]
+  | .hide, _, _, he => False.elim he
+  | .tm (T := U) s, T, hk, he => by
+      have hU : U = T := he
+      subst hU
+      cases U with
+      | VTypeBox A => exact keepE_shift D (e := .tm s) rfl
+      | VTypeDia A =>
+          cases s with
+          | diatm y hy t =>
+              change (SubE.tm (Term.diatm y hy t)).keepE.shift D.boxIn =
+                (SubE.tm (Term.diatm (y.shift k) _ (Term.shift (D.diaIn y) t))).keepE
+              by_cases hK : ModalSys.Four = true ∧ ModalSys.shaped = false
+              · obtain ⟨hF, hnS⟩ := hK
+                rw [keepE_dia _ _ _ hF hnS, keepE_dia _ _ _ hF hnS]
+                exact tm_eq_of_sig (sig_diatm (Term.shift_shift (k := k) (m := 0)
+                  (Ctx.shifts_diaIn_keep hF hnS Δ y) (D.boxIn.diaIn (.step y .keep)) (D.diaIn y)
+                  (Ctx.shifts_diaIn_keep hF hnS Δ' (y.shift k)) t))
+              · rw [keepE_dia_off _ _ _ hK, keepE_dia_off _ _ _ hK]
+                rfl
+      | _ => cases hk
 
 /-- The projections of a shifted entry. -/
 theorem proj_shift : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef U →
@@ -452,9 +542,9 @@ theorem shiftCorr_box_box {Γ Δ : Ctx} (hF : ModalSys.Four = true) {θ : Subst 
       rw [SubE.unbox_keepE hF (okRef_at hθ hu)]
       exact .refl _
   | .step u .keep =>
-      obtain ⟨_, hu, A, rfl⟩ := Ctx.boxIn_keep hv
-      change SubE.Sim (.VTypeBox A) ((θ.at u).keepE.keepE) ((θ.at u).keepE.shift _)
-      rw [SubE.keepE_keepE hF (okRef_at hθ hu)]
+      obtain ⟨_, hu, hk⟩ := Ctx.boxIn_keep hv
+      change SubE.Sim T ((θ.at u).keepE.keepE) ((θ.at u).keepE.shift _)
+      rw [SubE.keepE_keepE' hF hk (okRef_at hθ hu)]
       exact .refl _
   | .root _ => cases hv
   | .step _ .fst => cases hv
@@ -499,10 +589,10 @@ theorem shiftCorr_box (hθ : Ok Γ θ) (hcr : ShiftCorr Γ D θ θ') :
       rw [SubE.unbox_shift D (okRef_at hθ hu)]
       exact (hcr u _ hu).unbox
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
-      change SubE.Sim (.VTypeBox A) (θ'.at (u.shift k)).keepE ((θ.at u).keepE.shift D.boxIn)
-      rw [SubE.keepE_shift D (okRef_at hθ hu)]
-      exact (hcr u _ hu).keepE hF
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
+      change SubE.Sim T (θ'.at (u.shift k)).keepE ((θ.at u).keepE.shift D.boxIn)
+      rw [SubE.keepE_shift' D hk (okRef_at hθ hu)]
+      exact (hcr u _ hu).keepE' hF hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -537,13 +627,13 @@ theorem shiftCorr_dia (hθ : Ok Γ θ) (hcr : ShiftCorr Γ D θ θ') {x ιx : Va
           (Ctx.le_boxIn_diaIn Δ' (ιx.shift k)), SubE.unbox_shift D (okRef_at hθ hu)]
       exact ((hcr u _ hu).unbox).mono _
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
-      change SubE.Sim (.VTypeBox A)
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+      change SubE.Sim T
         ((θ'.at (u.shift k)).keepE.mono (Ctx.le_boxIn_diaIn Δ' (ιx.shift k)))
         ((((θ.at u).keepE).mono (Ctx.le_boxIn_diaIn Δ ιx)).shift (D.diaIn ιx))
       rw [SubE.shift_mono D.boxIn (D.diaIn ιx) (Ctx.le_boxIn_diaIn Δ ιx)
-          (Ctx.le_boxIn_diaIn Δ' (ιx.shift k)), SubE.keepE_shift D (okRef_at hθ hu)]
-      exact ((hcr u _ hu).keepE hF).mono _
+          (Ctx.le_boxIn_diaIn Δ' (ιx.shift k)), SubE.keepE_shift' D hk (okRef_at hθ hu)]
+      exact ((hcr u _ hu).keepE' hF hk).mono _
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -572,6 +662,70 @@ theorem shiftCorr_under (hθ : Ok Γ θ) (hcr : ShiftCorr Γ D θ θ') {d d' : �
     have h₁ := hcr v U ((Ctx.ref_nonproj Γ hlp).trans hv')
     rw [at_nonproj θ hlp] at h₁
     exact h₁.mono _
+
+/-- Coherence at a kept witness: the kept possible address goes to the kept image. -/
+theorem coh_keep_dia {ι : VarSymb → VarSymb} {Γ₀ Δ₀ : Ctx} {θ₀ : Subst σ Δ₀} (hθ : Ok Γ₀ θ₀)
+    (hc : Coh ι Γ₀ θ₀) {x : VarSymb} {X : VarType} (hX : Γ₀.ref x = some (.VTypeDia X)) :
+    ι (.step x .keep) = .step (ι x) .keep := by
+  have h := hc x _ hX [.keep]
+  rw [SubE.idxAlong_keep_dia (okRef_at hθ hX), hc x _ hX []] at h
+  exact h.symm
+
+/-- The witness of a kept possible entry is the kept witness. -/
+theorem idx_box_keep_dia {ι : VarSymb → VarSymb} {Γ₀ Δ₀ : Ctx} (hF : ModalSys.Four = true)
+    (hnS : ModalSys.shaped = false) {θ₀ : Subst σ Δ₀} (hθ : Ok Γ₀ θ₀) (hc : Coh ι Γ₀ θ₀)
+    {x : VarSymb} {X : VarType} (hX : Γ₀.ref x = some (.VTypeDia X)) :
+    (θ₀.box.at (.step x .keep)).idxAlong [] = .step (ι x) .keep := by
+  change ((θ₀.at x).keepE).idxAlong [] = _
+  rw [SubE.idxAlong_keepE' hF [] (VarType.keepable_dia hnS) (okRef_at hθ hX),
+    SubE.idxAlong_keep_dia (okRef_at hθ hX), hc x _ hX []]
+  rfl
+
+/-- ⭐Under 4, the `◇_{x.keep}` view of a substitution's `□` view corresponds to its `◇_x` view,
+    one level further in: `x.dia ↦ x.keep.dia`, and the `□` entries as in `shiftCorr_box_box`. -/
+theorem shiftCorr_dia_keep {Γ₀ Δ₀ : Ctx} (hF : ModalSys.Four = true)
+    (hnS : ModalSys.shaped = false) {θ₀ : Subst σ Δ₀}
+    (hθ : Ok Γ₀ θ₀) {x ιx : VarSymb} (hx : ∃ X, Γ₀.ref x = some (.VTypeDia X))
+    (hw : (θ₀.at x).idxAlong [] = ιx) :
+    ShiftCorr (Γ₀.diaIn x) (Ctx.shifts_diaIn_keep hF hnS Δ₀ ιx) (θ₀.dia x ιx)
+      (θ₀.box.dia (.step x .keep) (.step ιx .keep)) := by
+  refine shiftCorr_of (ok_dia hθ hx hw) ?_
+  obtain ⟨X, hX⟩ := hx
+  intro v T _ hv
+  match v with
+  | .step u .dia =>
+      change (if u = x then (match Γ₀.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T at hv
+      split_ifs at hv with hux
+      subst hux
+      rw [hX] at hv
+      cases hv
+      change SubE.Sim X
+        (if VarSymb.step u .keep = VarSymb.step u .keep then
+          (θ₀.box.at (.step u .keep)).diaBody (.step ιx .keep) else SubE.hide)
+        ((if u = u then (θ₀.at u).diaBody ιx else SubE.hide).shift _)
+      rw [if_pos rfl, if_pos rfl]
+      change SubE.Sim X ((θ₀.at u).keepE.diaBody (.step ιx .keep)) _
+      rw [SubE.keepE_diaBody hF hnS (okRef_at hθ hX) hw]
+      exact .refl _
+  | .step u .box =>
+      have hu := Ctx.boxIn_step_box (Γ := Γ₀) hv
+      change SubE.Sim T (((θ₀.at u).keepE.unbox).mono (Ctx.le_boxIn_diaIn _ _))
+        ((((θ₀.at u).unbox).mono (Ctx.le_boxIn_diaIn Δ₀ ιx)).shift _)
+      rw [SubE.shift_mono (Ctx.shifts_boxIn_boxIn hF Δ₀) _ (Ctx.le_boxIn_diaIn Δ₀ ιx)
+          (Ctx.le_boxIn_diaIn _ _), ← SubE.unbox_keepE hF (okRef_at hθ hu)]
+      exact .refl _
+  | .step u .keep =>
+      obtain ⟨_, hu, hk⟩ := Ctx.boxIn_keep (Γ := Γ₀) hv
+      change SubE.Sim T (((θ₀.at u).keepE.keepE).mono (Ctx.le_boxIn_diaIn _ _))
+        ((((θ₀.at u).keepE).mono (Ctx.le_boxIn_diaIn Δ₀ ιx)).shift _)
+      rw [SubE.shift_mono (Ctx.shifts_boxIn_boxIn hF Δ₀) _ (Ctx.le_boxIn_diaIn Δ₀ ιx)
+          (Ctx.le_boxIn_diaIn _ _), ← SubE.keepE_keepE' hF hk (okRef_at hθ hu)]
+      exact .refl _
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .here => cases hv
 
 end Subst
 

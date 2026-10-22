@@ -186,11 +186,11 @@ theorem Ctx.Abstracts.boxIn {x : VarSymb} {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx
       rw [he, Ctx.ref_nonproj _ rfl]
       exact Ctx.boxIn_box_of hkb (h j' (hj'.trans hj) u _ hu)
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
       obtain ⟨j', hj', he⟩ := VarSymb.absAddr_level (x := x) (u := u) (s := .keep) rfl
         (by intro he; injection he with _ hs'; cases hs') j
       rw [he, Ctx.ref_nonproj _ rfl]
-      exact Ctx.boxIn_keep_of hF (h j' (hj'.trans hj) u _ hu)
+      exact Ctx.boxIn_keep_of' hF (h j' (hj'.trans hj) u _ hu) hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -250,11 +250,11 @@ theorem Ctx.Abstracts.diaIn {x : VarSymb} {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx
       rw [he, Ctx.ref_nonproj _ rfl]
       exact Ctx.boxIn_box_of (Γ := Γ₂) hkb (h j' (hj'.trans hj) u _ hu)
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
       obtain ⟨j', hj', he⟩ := VarSymb.absAddr_level (x := x) (u := u) (s := .keep) rfl
         (by intro he; injection he with _ hs'; cases hs') j
       rw [he, Ctx.ref_nonproj _ rfl]
-      exact Ctx.boxIn_keep_of hF (h j' (hj'.trans hj) u _ hu)
+      exact Ctx.boxIn_keep_of' hF (h j' (hj'.trans hj) u _ hu) hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -446,7 +446,7 @@ theorem diaIn_casesA (hxA : Γ.ref x = some (.VTypeDia A))
       | none => rfl
       | some p =>
           exfalso
-          obtain ⟨_, hu, _, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+          obtain ⟨_, hu, _⟩ := Ctx.boxIn_keep (Γ := Γ) hv
           have hne : (VarSymb.step u .keep) ≠ .step x .dia := fun hcon => by cases hcon
           have hbu : (VarSymb.belowDia x u).map (fun q => q ++ [Step.keep]) = some p := by
             have h' : (if (VarSymb.step u .keep) = .step x .dia then some ([] : List Step)

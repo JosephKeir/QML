@@ -152,6 +152,17 @@ theorem ref_keep_of {Γ : Ctx} (hF : ModalSys.Four = true) {w : VarSymb} {A : Va
     (h : Γ.ref w = some (.VTypeBox A)) : Γ.boxIn.ref (.step w .keep) = some (.VTypeBox A) :=
   (Ctx.ref_nonproj Γ.boxIn (v := .step w .keep) rfl).trans (boxIn_keep_of hF h)
 
+/-- Under 4, a reachable keepable address (necessary or possible) is kept inside `□`. -/
+theorem ref_keep_of' {Γ : Ctx} (hF : ModalSys.Four = true) {w : VarSymb} {T : VarType}
+    (h : Γ.ref w = some T) (hk : T.keepable = true) : Γ.boxIn.ref (.step w .keep) = some T :=
+  (Ctx.ref_nonproj Γ.boxIn (v := .step w .keep) rfl).trans (boxIn_keep_of' hF h hk)
+
+/-- Under 4, a possible address is kept inside `□` as a possible address. -/
+theorem exists_keep_dia {Γ : Ctx} (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false)
+    {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
+    ∃ X, Γ.boxIn.ref (.step x .keep) = some (.VTypeDia X) :=
+  hx.elim fun X h => ⟨X, ref_keep_of' hF h (VarType.keepable_dia hnS)⟩
+
 /-- The contents address of a reachable necessary address is reachable inside `□`. -/
 theorem ref_inner {Γ : Ctx} {w : VarSymb} {A : VarType} (h : Γ.ref w = some (.VTypeBox A)) :
     Γ.boxIn.ref w.inner = some A := by
@@ -175,13 +186,44 @@ theorem shifts_boxIn_boxIn (hF : ModalSys.Four = true) (Γ : Ctx) :
       rw [VarSymb.shift_level_zero rfl, Ctx.ref_nonproj _ rfl]
       exact boxIn_box_of hk (ref_keep_of hF hu)
   | .step u .keep =>
-      obtain ⟨_, hu, A, rfl⟩ := boxIn_keep hv
+      obtain ⟨_, hu, hk⟩ := boxIn_keep hv
       rw [VarSymb.shift_level_zero rfl, Ctx.ref_nonproj _ rfl]
-      exact boxIn_keep_of hF (ref_keep_of hF hu)
+      exact boxIn_keep_of' hF (ref_keep_of' hF hu hk) hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
   | .step _ .dia => cases hv
+  | .step _ .here => cases hv
+
+/-- ⭐Under 4 the `◇_x` view shifts into the `◇_{x.keep}` view one level further in: `x.dia` is
+    reached as `x.keep.dia`, and the `□` view as in `shifts_boxIn_boxIn`. -/
+theorem shifts_diaIn_keep (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false) (Γ : Ctx)
+    (x : VarSymb) :
+    Shifts 0 (Γ.diaIn x) (Γ.boxIn.diaIn (.step x .keep)) := by
+  refine Shifts.of_raw ?_
+  intro v T _ hv
+  match v with
+  | .step u .dia =>
+      change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T at hv
+      split_ifs at hv with hux
+      subst hux
+      cases hx : Γ.ref u with
+      | none => rw [hx] at hv; cases hv
+      | some U =>
+          rw [hx] at hv
+          cases U <;> try cases hv
+          rw [VarSymb.shift_level_zero rfl]
+          exact ref_diaIn_of (ref_keep_of' hF hx (VarType.keepable_dia hnS))
+  | .step u .box =>
+      exact (Ctx.le_boxIn_diaIn _ _).ref (shifts_boxIn_boxIn hF Γ (.step u .box) T
+        ((Ctx.ref_nonproj _ rfl).trans hv))
+  | .step u .keep =>
+      exact (Ctx.le_boxIn_diaIn _ _).ref (shifts_boxIn_boxIn hF Γ (.step u .keep) T
+        ((Ctx.ref_nonproj _ rfl).trans hv))
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
   | .step _ .here => cases hv
 
 theorem Shifts.boxIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Shifts k Γ₁ Γ₂) :
@@ -194,9 +236,9 @@ theorem Shifts.boxIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Shifts k Γ₁ Γ₂) :
       rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]
       exact boxIn_box_of hk (h u _ hu)
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := boxIn_keep hv
+      obtain ⟨hF, hu, hk⟩ := boxIn_keep hv
       rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]
-      exact boxIn_keep_of hF (h u _ hu)
+      exact boxIn_keep_of' hF (h u _ hu) hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -228,9 +270,9 @@ theorem Shifts.diaIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Shifts k Γ₁ Γ₂) (x
       rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]
       exact boxIn_box_of (Γ := Γ₂) hk (h u _ hu)
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := boxIn_keep (Γ := Γ₁) hv
+      obtain ⟨hF, hu, hk⟩ := boxIn_keep (Γ := Γ₁) hv
       rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]
-      exact boxIn_keep_of hF (h u _ hu)
+      exact boxIn_keep_of' hF (h u _ hu) hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

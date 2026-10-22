@@ -262,6 +262,35 @@ theorem keepE_collapse : ∀ {e : SubE σ Δ} {A : VarType}, e.OkRef (.VTypeBox 
                 from dif_neg hF]
             rfl
 
+/-- `keepE_collapse` at any keepable type: a kept possible entry `◇_y t` collapses along
+    `y.keep`, its shifted body collapsed one level further in (`Term.collapse_shift`). -/
+theorem keepE_collapse' : ∀ {e : SubE σ Δ} {T : VarType}, T.keepable = true → e.OkRef T →
+    e.keepE.collapse D.boxIn = (e.collapse D).keepE
+  | .ren w, _, _, _ => by
+      change SubE.ren ((VarSymb.step w .keep).collapse (k + 1)) =
+        SubE.ren (.step (w.collapse k) .keep)
+      rw [VarSymb.collapse_level_succ rfl]
+  | .hide, _, _, he => False.elim he
+  | .tm (T := U) s, T, hk, he => by
+      have hU : U = T := he
+      subst hU
+      cases U with
+      | VTypeBox A => exact keepE_collapse D (e := .tm s) rfl
+      | VTypeDia A =>
+          cases s with
+          | diatm y hy t =>
+              change (SubE.tm (Term.diatm y hy t)).keepE.collapse D.boxIn =
+                (SubE.tm (Term.diatm (y.collapse k) _ (Term.collapse (D.diaIn y) t))).keepE
+              by_cases hK : ModalSys.Four = true ∧ ModalSys.shaped = false
+              · obtain ⟨hF, hnS⟩ := hK
+                rw [keepE_dia _ _ _ hF hnS, keepE_dia _ _ _ hF hnS]
+                exact tm_eq_of_sig (sig_diatm (Term.collapse_shift (k := k) (m := 0)
+                  (Ctx.shifts_diaIn_keep hF hnS Δ y) (D.boxIn.diaIn (.step y .keep)) (D.diaIn y)
+                  (Ctx.shifts_diaIn_keep hF hnS Δ' (y.collapse k)) t))
+              · rw [keepE_dia_off _ _ _ hK, keepE_dia_off _ _ _ hK]
+                rfl
+      | _ => cases hk
+
 /-- The `here` projection of a collapsed entry. -/
 theorem proj_collapse : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef U →
     s.isProj = true → U.step s = some T → (e.proj s).collapse D = (e.collapse D).proj s
@@ -394,11 +423,11 @@ theorem corr_box (hθ : Ok Γ θ) (hcr : Corr Γ D θ θ') :
       rw [SubE.unbox_collapse D (okRef_at hθ hu)]
       exact (hcr u _ hu).unbox
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
-      change SubE.Sim (.VTypeBox A) (θ'.at (u.collapse k)).keepE
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
+      change SubE.Sim T (θ'.at (u.collapse k)).keepE
         ((θ.at u).keepE.collapse D.boxIn)
-      rw [SubE.keepE_collapse D (okRef_at hθ hu)]
-      exact (hcr u _ hu).keepE hF
+      rw [SubE.keepE_collapse' D hk (okRef_at hθ hu)]
+      exact (hcr u _ hu).keepE' hF hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -434,13 +463,13 @@ theorem corr_dia (hθ : Ok Γ θ) (hcr : Corr Γ D θ θ') {x ιx : VarSymb}
           (Ctx.le_boxIn_diaIn Δ' (ιx.collapse k)), SubE.unbox_collapse D (okRef_at hθ hu)]
       exact ((hcr u _ hu).unbox).mono _
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
-      change SubE.Sim (.VTypeBox A)
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+      change SubE.Sim T
         ((θ'.at (u.collapse k)).keepE.mono (Ctx.le_boxIn_diaIn Δ' (ιx.collapse k)))
         ((((θ.at u).keepE).mono (Ctx.le_boxIn_diaIn Δ ιx)).collapse (D.diaIn ιx))
       rw [SubE.collapse_mono D.boxIn (D.diaIn ιx) (Ctx.le_boxIn_diaIn Δ ιx)
-          (Ctx.le_boxIn_diaIn Δ' (ιx.collapse k)), SubE.keepE_collapse D (okRef_at hθ hu)]
-      exact ((hcr u _ hu).keepE hF).mono _
+          (Ctx.le_boxIn_diaIn Δ' (ιx.collapse k)), SubE.keepE_collapse' D hk (okRef_at hθ hu)]
+      exact ((hcr u _ hu).keepE' hF hk).mono _
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

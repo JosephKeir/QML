@@ -106,6 +106,18 @@ theorem sig_diatm {Γ : Ctx} {A : VarType} {x : VarSymb}
   cases h
   rfl
 
+/-- Substituting a possible term whose witness's image is known. -/
+theorem Term.subst_diatm_sig {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) {v : VarSymb}
+    (hv : ∃ X, Γ.ref v = some (.VTypeDia X)) {A : VarType} {a : Ann A}
+    (t : Term σ (Γ.diaIn v) A a) {y : VarSymb} (hy : ι v = y)
+    (hw : (θ.at v).idxAlong [] = y) (hθd : Subst.Ok (Γ.diaIn v) (θ.dia v y))
+    (hcd : Subst.Coh ι (Γ.diaIn v) (θ.dia v y)) (hy' : ∃ X, Δ.ref y = some (.VTypeDia X)) :
+    (⟨_, Term.subst ι θ hθ hc (Term.diatm v hv t)⟩ : Σ c, Term σ Δ (.VTypeDia A) c) =
+      ⟨_, Term.diatm y hy' (Term.subst ι (θ.dia v y) hθd hcd t)⟩ := by
+  subst hy
+  rfl
+
 /-- Substituting into equal terms, annotations included: the outer annotation follows the inner
     one, so the equation has to be moved as a `Sigma` rather than rewritten. -/
 theorem sig_subst {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
@@ -189,6 +201,19 @@ theorem SubE.keepE_eta {σ : Signature} {Δ : Ctx} (hF : ModalSys.Four = true) {
   exact SubE.tm_eq_of_sig (sig_boxtm ((Term.shift_eta _ _ A _).trans
     (Term.eta_congr (VarSymb.inner_shift_zero w) A _ _)))
 
+/-- Under 4, the kept component of an η-expanded possible address. -/
+theorem SubE.keepE_eta_dia {σ : Signature} {Δ : Ctx} (hF : ModalSys.Four = true)
+    (hnS : ModalSys.shaped = false) {w : VarSymb} {A : VarType}
+    (hw : Δ.ref w = some (.VTypeDia A)) :
+    (SubE.tm (Term.eta (σ := σ) w (.VTypeDia A) hw)).keepE =
+      SubE.tm (Term.eta (.step w .keep) (.VTypeDia A)
+        (Ctx.ref_keep_of' hF hw (VarType.keepable_dia hnS))) := by
+  change (SubE.tm (Term.diatm (σ := σ) w ⟨A, hw⟩
+    (Term.eta (.step w .dia) A (Ctx.ref_diaIn_of hw)))).keepE = _
+  rw [SubE.keepE_dia _ _ _ hF hnS]
+  exact SubE.tm_eq_of_sig (sig_diatm ((Term.shift_eta _ _ A _).trans
+    (Term.eta_congr (VarSymb.shift_level_zero (s := .dia) rfl) A _ _)))
+
 /-! ## Entries agreeing up to η -/
 
 namespace SubE
@@ -250,6 +275,21 @@ theorem Sim.keepE (hF : ModalSys.Four = true) {A : VarType} {e e' : SubE σ Δ}
   | ren_eta w h =>
       rw [SubE.keepE_eta hF h]
       exact .ren_eta _ _
+
+theorem Sim.keepE' (hF : ModalSys.Four = true) {T : VarType} (hk : T.keepable = true)
+    {e e' : SubE σ Δ} (h : Sim T e e') : Sim T e.keepE e'.keepE := by
+  cases T with
+  | VTypeBox A => exact h.keepE hF
+  | VTypeDia A =>
+      cases h with
+      | refl => exact .refl _
+      | eta_ren w h =>
+          rw [SubE.keepE_eta_dia hF (VarType.noShaped_of_keepable_dia hk) h]
+          exact .eta_ren _ _
+      | ren_eta w h =>
+          rw [SubE.keepE_eta_dia hF (VarType.noShaped_of_keepable_dia hk) h]
+          exact .ren_eta _ _
+  | _ => cases hk
 
 theorem Sim.mono {Δ' : Ctx} (hle : Δ.Le Δ') {T : VarType} {e e' : SubE σ Δ} (h : Sim T e e') :
     Sim T (e.mono hle) (e'.mono hle) := by
@@ -327,8 +367,8 @@ theorem sim_box {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') : Sim Γ.
   match v with
   | .step u .box => exact (hs u _ (Ctx.boxIn_step_box hv)).unbox
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
-      exact (hs u _ hu).keepE hF
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
+      exact (hs u _ hu).keepE' hF hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -356,8 +396,8 @@ theorem sim_dia {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') {x ιx : 
             exact (hs u _ hx).diaBody hw
   | .step u .box => exact (hs u _ (Ctx.boxIn_step_box (Γ := Γ) hv)).unbox.mono _
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
-      exact ((hs u _ hu).keepE hF).mono _
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+      exact ((hs u _ hu).keepE' hF hk).mono _
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

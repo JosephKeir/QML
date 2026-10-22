@@ -175,11 +175,7 @@ theorem boxIn_empty (v : VarSymb) : Ctx.empty.boxIn v = none := by
       rw [hn u]
       split_ifs <;> rfl
   | .step u .keep =>
-      change (if ModalSys.Four then
-        (match Ctx.empty.ref u with | some (.VTypeBox A) => some (VarType.VTypeBox A) | _ => none)
-        else none) = (none : Option VarType)
-      rw [hn u]
-      split_ifs <;> rfl
+      exact Ctx.boxIn_keep_none (hn u)
   | .root _ => rfl
   | .step _ .fst => rfl
   | .step _ .snd => rfl

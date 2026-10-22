@@ -112,6 +112,17 @@ abbrev arrows : Arrows.{0, 0} σ where
   trans_refl := fun _ _ _ _ _ => rfl
   trans_assoc := fun _ _ _ _ _ _ _ _ => rfl
 
+/-- `keep` appended `n` times. -/
+def _root_.V12M.VarSymb.keepN : ℕ → VarSymb → VarSymb
+  | 0, r => r
+  | n + 1, r => VarSymb.keepN n (.step r .keep)
+
+/-- The canonical root action: a root possibility kept along an arrow is its address kept once per
+    level the arrow crosses.  Depths add along chains, and the identity crosses none, so it is
+    lawful.  (Staged: no possible object is kept in a shaped canonical model yet, docs §3 4.) -/
+instance instRootKeep : Arrows.RootKeep (arrows σ N₀) (fun _ => VarSymb) :=
+  ⟨fun _ {w} r a => VarSymb.keepN (a.1.depth - w.depth) r⟩
+
 /-- Canonical shapes: a root possibility is named by its address. -/
 abbrev CShape (w : World σ N₀) (T : VarType) : Type :=
   Model.Shape (arrows σ N₀) (fun _ => VarSymb) w T

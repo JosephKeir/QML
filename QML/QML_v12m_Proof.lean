@@ -147,6 +147,17 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       {φ : WFF σ Γ.boxIn 0} :
       Proof σ Γ Δ (.box φ) →
       Proof σ Γ Δ (.box (.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots φ)))
+  /-- ⭐**What holds throughout a possible object's extent holds, kept, further in** (the `◇` side
+      of weak 4): `four_box` with the witness carried, `□_x φ ⊢ □□_{x.keep}(shift φ)`.  Its
+      `◇`-form is `◇◇_{x.keep}(shift φ) ⊢ ◇_x φ`: a route through the restriction of `x` is a
+      route of `x`.  *Staged:* without T for now (docs §3 4, Finding 4); under T + 4 it comes
+      with `here_keep`, `□_x Here(x.keep, x.dia)`. -/
+  | four_dia {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false)
+      {Δ : List (WFF σ Γ 0)} {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+      {φ : WFF σ (Γ.diaIn x) 0} :
+      Proof σ Γ Δ (WFF.boxx x hx φ) →
+      Proof σ Γ Δ (.box (WFF.boxx (.step x .keep) (Ctx.exists_keep_dia hF hnS hx)
+        (WFF.shift (Ctx.shifts_diaIn_keep hF hnS Γ x) Ctx.NoSlots.slots φ)))
   -- Strong T
   /-- ⭐**Every object has a possible object realised here**, as an `∃`-elimination: the witness
       `c : ◇A` is fresh, and the subproof gets the single hypothesis `Here (η c) t`.  Its validity

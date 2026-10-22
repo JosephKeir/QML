@@ -76,7 +76,7 @@ theorem ok_realise (hT : ModalSys.T = true) {x : VarSymb} {A : VarType} {a : Ann
       change (if ModalSys.T then some T else none) = some T
       rw [if_pos hT]
   | .step u .keep =>
-      obtain ⟨_, hu, _, rfl⟩ := Ctx.boxIn_keep hv
+      obtain ⟨_, hu, _⟩ := Ctx.boxIn_keep hv
       exact hu
   | .root _ => cases hv
   | .step _ .fst => cases hv
@@ -299,9 +299,9 @@ theorem Ctx.Realises.boxIn [ModalSys] {k : ℕ} {x d : VarSymb} {Γ₁ Γ₂ : C
       rw [VarSymb.realiseAddr_level rfl (by decide), Ctx.ref_nonproj _ rfl]
       exact Ctx.boxIn_box_of hk (h u _ hu)
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
       rw [VarSymb.realiseAddr_level rfl (by decide), Ctx.ref_nonproj _ rfl]
-      exact Ctx.boxIn_keep_of hF (h u _ hu)
+      exact Ctx.boxIn_keep_of' hF (h u _ hu) hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -356,9 +356,9 @@ theorem Ctx.Realises.diaIn [ModalSys] {k : ℕ} {x d : VarSymb} {Γ₁ Γ₂ : C
       rw [VarSymb.realiseAddr_level rfl (by decide), Ctx.ref_nonproj _ rfl]
       exact Ctx.boxIn_box_of (Γ := Γ₂) hk (h u _ hu)
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep (Γ := Γ₁) hv
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep (Γ := Γ₁) hv
       rw [VarSymb.realiseAddr_level rfl (by decide), Ctx.ref_nonproj _ rfl]
-      exact Ctx.boxIn_keep_of hF (h u _ hu)
+      exact Ctx.boxIn_keep_of' hF (h u _ hu) hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

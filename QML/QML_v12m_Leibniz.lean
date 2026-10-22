@@ -49,7 +49,7 @@ theorem ren_box {Γ : Ctx} {θ : Subst σ Δ} (hid : ∀ v T, Γ.ref v = some T 
         change SubE.ren u.inner = _
         rw [VarSymb.inner_box hk]
     | .step u .keep =>
-        obtain ⟨_, hu, _, rfl⟩ := Ctx.boxIn_keep hv
+        obtain ⟨_, hu, _⟩ := Ctx.boxIn_keep hv
         change (θ.at u).keepE = _
         rw [hid u _ hu]
         rfl
@@ -80,7 +80,7 @@ theorem ren_dia {Γ : Ctx} {θ : Subst σ Δ} (hid : ∀ v T, Γ.ref v = some T 
         change SubE.ren u.inner = _
         rw [VarSymb.inner_box hk]
     | .step u .keep =>
-        obtain ⟨_, hu, _, rfl⟩ := Ctx.boxIn_keep (Γ := Γ) hv
+        obtain ⟨_, hu, _⟩ := Ctx.boxIn_keep (Γ := Γ) hv
         change ((θ.at u).keepE).mono _ = _
         rw [hid u _ hu]
         rfl
