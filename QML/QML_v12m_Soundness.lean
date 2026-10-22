@@ -360,20 +360,6 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
   | @ret_realise Γ _ Δ hS hW O N X a y c₀ c Φ p ih =>
       intro M hM w env hfin hnp hΔ
       exact sat_ret_realise env hS hW O N y c Φ (ih M hM env hfin hnp hΔ)
-  | @ret_route Γ _ hS hW S a t Φ κ hκ Δ φ pr p ihr ih =>
-      -- The arrow out lies in some possible object's extent, which interprets the fresh root.
-      intro M hM w env hfin hnp hΔ
-      obtain ⟨i, e, hΦ, r, hr⟩ := ihr M hM env hfin hnp hΔ
-      obtain ⟨q, hm, -⟩ := M.posBack_exists (A := .VTypeOne) hS hW i.2.down PUnit.unit
-      refine (sat_weaken (T := .VTypeDia .VTypeOne) env hκ.root q φ).mp
-        (ih M hM (env.extend (T := .VTypeDia .VTypeOne) (.free κ) q) (hfin.insert hκ _)
-          (hnp.insert _ _) ?_)
-      intro χ hχ
-      rcases List.mem_cons.mp hχ with h₁ | h₂
-      · subst h₁
-        exact sat_ret_route env hS t Φ κ hκ q i hm e hΦ r hr
-      · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
-        exact (sat_weaken (T := .VTypeDia .VTypeOne) env hκ.root q χ').mpr (hΔ χ' hχ')
   | @ret_counit Γ _ Δ hS O A a t ψ p ih =>
       intro M hM w env hfin hnp hΔ
       exact (sat_holeRead hnp env t ψ).mpr

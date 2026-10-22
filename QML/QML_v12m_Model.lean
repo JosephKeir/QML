@@ -451,7 +451,8 @@ structure Model (σ : Signature) where
       possible object at its source has `b` in its extent, with content there indistinguishable
       from any given object at its target.  At a returning possibility's way home it is B's unit
       `A → □◇A` read per arrow (`Proof.ret_realise`); at its arrow out it names the route by a
-      possible object here (`Proof.ret_route`); at T's identity arrow it is `posRet_exists`.
+      possible object here (derived, `Proof.ret_route_node`); at T's identity arrow it is
+      `posRet_exists`.
       Existential, as `posRet_exists`: per arrow, with no uniform carrier and no naturality —
       a carrier realising an object at every successor at once is what forced several possible
       objects onto one way home. -/

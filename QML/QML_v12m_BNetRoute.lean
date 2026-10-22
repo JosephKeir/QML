@@ -1,12 +1,14 @@
 import QML.QML_v12m_BRetOpsC
+import QML.QML_v12m_RouteDerived
 
 /-!
 # QML v12m — strong B on the network: naming the route (rows 3–4)
 
 Under rows 3–4 (`BStrongW`) every edge is doubly witnessed (docs §11.23), so a returning
 possibility along `□` gets its child along a witness: first the node names the route, a fresh
-root `κ : ◇𝟙` with `◇_κ[d ↦ y] Φ` (paper check 3), consistent by `Proof.ret_route` as a Henkin
-witness is by `ex_elim`.
+root `κ : ◇𝟙` with `◇_κ[d ↦ y] Φ` (paper check 3), consistent by the derived
+`Proof.ret_route_node` as a Henkin witness is by `ex_elim`.  Only boxed shapes are named
+(`RShape.boxed`): every shape packs into one, which the truth lemma does first.
 
 * `routeFormula`, ⭐`route_consistent`, `routeStep`, `routeStep_ok`;
 * the operation `NetSt.mkRoute`, ⭐`GoodS.mkRoute`, `Ext.mkRoute`.
@@ -35,10 +37,10 @@ def routeFormula (y : Term σ (ctxOf l) S.flat a)
     (WFF.mono (((Ctx.le_insert (ctxOf_fresh (l := l) le_rfl).root _).boxIn.trans
       (Ctx.le_boxIn_diaIn _ (.root (.free l.length)))).insert (.bnd 0) S.ty) Φ)
 
-omit [ModalSys.NoFour] in
 /-- ⭐**Naming the route is consistent**: a refutation of the theory with the route formula is,
-    by `Proof.ret_route`, one of the theory's returning possibility. -/
-theorem route_consistent (hW : ModalSys.BStrongW = true) {M : Set (WFF σ (ctxOf l) 0)}
+    by `Proof.ret_route_node`, one of the theory's returning possibility. -/
+theorem route_consistent (hW : ModalSys.BStrongW = true) (hb : S.boxed = true)
+    {M : Set (WFF σ (ctxOf l) 0)}
     (hM : Theory.Consistent M) (y : Term σ (ctxOf l) S.flat a)
     (Φ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) S.ty) 1)
     (hr : Theory.Derives M (WFF.retS hS S y Φ)) :
@@ -55,7 +57,7 @@ theorem route_consistent (hW : ModalSys.BStrongW = true) {M : Set (WFF σ (ctxOf
   obtain ⟨q⟩ := Provable.mono h₁ p
   obtain ⟨Δ₁, hΔ₁, ⟨pr⟩⟩ := hr
   refine hM ⟨Δ₁ ++ Δ₀, fun x hx => (List.mem_append.mp hx).elim (hΔ₁ x) (h₀ x), ⟨?_⟩⟩
-  refine Proof.ret_route hS hW y Φ l.length hu (Δ := Δ₁ ++ Δ₀) (φ := .bot)
+  refine Proof.ret_route_node hS hW hb y Φ l.length hu (Δ := Δ₁ ++ Δ₀) (φ := .bot)
     (Proof.ofSubset (fun x hx => List.mem_append_left _ hx) pr)
     (Proof.ofSubset (fun x hx => ?_) q)
   rcases List.mem_cons.mp hx with rfl | hx
@@ -69,16 +71,16 @@ noncomputable def routeStep (t : NodeSt σ) (y : Term σ (ctxOf t.l) S.flat a)
   ⟨.VTypeDia .VTypeOne :: t.l, complete
     (WFF.mono (ctxOf_le_append [.VTypeDia .VTypeOne] t.l) '' t.M ∪ {routeFormula hS y Φ})⟩
 
-omit [ModalSys.NoFour] in
 /-- ⭐The node with its route named is maximal consistent, extends the old one, and holds the
     route formula. -/
-theorem routeStep_ok (hW : ModalSys.BStrongW = true) {t : NodeSt σ} (ht : Theory.IsMCS t.M)
+theorem routeStep_ok (hW : ModalSys.BStrongW = true) (hb : S.boxed = true) {t : NodeSt σ}
+    (ht : Theory.IsMCS t.M)
     (y : Term σ (ctxOf t.l) S.flat a) (Φ : WFF σ ((ctxOf t.l).boxIn.insert (.bnd 0) S.ty) 1)
     (hr : WFF.retS hS S y Φ ∈ t.M) :
     Theory.IsMCS (routeStep hS t y Φ).M ∧ Grows t (routeStep hS t y Φ) ∧
       routeFormula hS y Φ ∈ (routeStep hS t y Φ).M := by
   obtain ⟨hsub, hmcs⟩ :=
-    complete_spec (route_consistent hS hW ht.1 y Φ (Theory.Derives.of_mem hr))
+    complete_spec (route_consistent hS hW hb ht.1 y Φ (Theory.Derives.of_mem hr))
   exact ⟨hmcs, ⟨⟨[_], rfl⟩, fun φ hφ => hsub (Or.inl ⟨φ, hφ, rfl⟩)⟩, hsub (Or.inr rfl)⟩
 
 end Route
@@ -91,13 +93,13 @@ abbrev RouteObl (σ : Signature) :=
     Term σ (ctxOf l) S.flat a × WFF σ ((ctxOf l).boxIn.insert (.bnd 0) S.ty) 1
 
 open Classical in
-/-- ⭐Name the route of the node `s`'s returning possibility `◇[d ↦ y] Φ`, if it has it — over
-    an earlier list of its variables. -/
+/-- ⭐Name the route of the node `s`'s returning possibility `◇[d ↦ y] Φ` at a boxed shape, if
+    it has it — over an earlier list of its variables. -/
 noncomputable def mkRoute (hS : ModalSys.BStrong = true) (N : NetSt σ) (s : Node) :
     RouteObl σ → NetSt σ
   | ⟨l, S, _, y, Φ⟩ =>
       if h : l <:+ (N.st s).l then
-        if WFF.retS hS S (Term.mono (ctxOf_le_of_suffix h) y)
+        if S.boxed = true ∧ WFF.retS hS S (Term.mono (ctxOf_le_of_suffix h) y)
             (WFF.mono ((ctxOf_le_of_suffix h).boxIn.insert (.bnd 0) S.ty) Φ) ∈ (N.st s).M then
           N.setSt s (routeStep hS (N.st s) (Term.mono (ctxOf_le_of_suffix h) y)
             (WFF.mono ((ctxOf_le_of_suffix h).boxIn.insert (.bnd 0) S.ty) Φ))
@@ -111,7 +113,7 @@ theorem GoodS.mkRoute {hS : ModalSys.BStrong = true} (hW : ModalSys.BStrongW = t
   obtain ⟨l, S, a, y, Φ⟩ := o
   simp only [NetSt.mkRoute]
   split_ifs with h hr
-  · obtain ⟨h₁, h₂, -⟩ := routeStep_ok hS hW (hN.mcs s hs) _ _ hr
+  · obtain ⟨h₁, h₂, -⟩ := routeStep_ok hS hW hr.1 (hN.mcs s hs) _ _ hr.2
     exact hN.setSt hs h₂ h₁
   all_goals exact hN
 
@@ -121,7 +123,7 @@ theorem Ext.mkRoute {hS : ModalSys.BStrong = true} (hW : ModalSys.BStrongW = tru
   obtain ⟨l, S, a, y, Φ⟩ := o
   simp only [NetSt.mkRoute]
   split_ifs with h hr
-  · exact Ext.setSt (routeStep_ok hS hW (hN.mcs s hs) _ _ hr).2.1
+  · exact Ext.setSt (routeStep_ok hS hW hr.1 (hN.mcs s hs) _ _ hr.2).2.1
   all_goals exact Ext.refl N
 
 end NetSt

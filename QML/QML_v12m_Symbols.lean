@@ -52,8 +52,9 @@ class ModalSys where
   /-- Strong B with **witnessed ways home** (rows 3–4, `docs/v12-modal-extensions.md` §11.23):
       along any arrow, some possible object at its source has the arrow in its extent, with any
       given content at its target.  Read at a returning possibility's way home it is B's unit
-      `A → □◇A` per arrow (`Proof.ret_realise`); read at its arrow out it names the route
-      (`Proof.ret_route`).  Needs strong B, which the rules using it require. -/
+      `A → □◇A` per arrow (`Proof.ret_realise`); read at its arrow out it names the route,
+      which is derivable (`Proof.ret_route_node`).  Needs strong B, which the rules using it
+      require. -/
   BStrongW : Bool
 
 /-- The system K. -/
@@ -80,7 +81,7 @@ theorem ModalSys.NoB.absurdStrong [ModalSys] [ModalSys.NoB] (hB : ModalSys.BStro
     rule introduces `Here` atoms, so a system with it and T has strong T too; completeness under
     `BStrongW` asks for this.  (It contains strong D as well, `Model.posSerial_of_posBack`, but
     there no flag is needed: strong D's law is asked of a model only under `DStrong`, and its
-    formula is derivable from `ret_route`.) -/
+    formula is derivable by naming a route, itself derivable, `Proof.ret_route_node`.) -/
 class ModalSys.WCoh [ModalSys] : Prop where
   strongT : ModalSys.BStrongW = true → ModalSys.T = true → ModalSys.TStrong = true
 

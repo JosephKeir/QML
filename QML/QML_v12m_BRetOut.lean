@@ -281,7 +281,7 @@ theorem lalias (s : LW C.toFairChain) (i : ℕ) {A : VarType} {a : Ann A}
 /-- ⭐**Rows 3–4: every returning possibility along `□` eventually has its route named**
     (`NetSt.mkRoute`). -/
 theorem StrongChain.route_at (hW : ModalSys.BStrongW = true) {n : ℕ} {s : Node}
-    (hs : (C.net n).Live s) {S : RShape} {a : Ann S.flat}
+    (hs : (C.net n).Live s) {S : RShape} (hb : S.boxed = true) {a : Ann S.flat}
     (y : Term σ (ctxOf ((C.net n).st s).l) S.flat a)
     (Φ : WFF σ ((ctxOf ((C.net n).st s).l).boxIn.insert (.bnd 0) S.ty) 1)
     (h : WFF.retS hS S y Φ ∈ ((C.net n).st s).M) :
@@ -304,15 +304,15 @@ theorem StrongChain.route_at (hW : ModalSys.BStrongW = true) {n : ℕ} {s : Node
       (Term.mono (ctxOf_le_of_suffix hsuf) y)
       (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) S.ty) Φ) := by
     rw [hstep hlm]
-    simp only [NetSt.mkRoute, dif_pos hsuf, if_pos hin]
+    simp only [NetSt.mkRoute, dif_pos hsuf, if_pos (And.intro hb hin)]
     exact Function.update_self _ _ _
-  exact ⟨m, hnm, hsuf, hst, (routeStep_ok hS hW ((C.good m).mcs s hlm) _ _ hin).2.2⟩
+  exact ⟨m, hnm, hsuf, hst, (routeStep_ok hS hW hb ((C.good m).mcs s hlm) _ _ hin).2.2⟩
 
 /-- ⭐**Routes at the limit** (rows 3–4): a returning possibility along `□` at a stage of `s`
     has, at a later stage, its route named by the root `l.length` past that stage's variables
     (`StrongChain.route_at`). -/
 theorem lroute (hW : ModalSys.BStrongW = true) (s : LW C.toFairChain) (i : ℕ) {S : RShape}
-    {a : Ann S.flat} (y : Term σ (ctxOf (lat s i)) S.flat a)
+    (hb : S.boxed = true) {a : Ann S.flat} (y : Term σ (ctxOf (lat s i)) S.flat a)
     (Φ : WFF σ ((ctxOf (lat s i)).boxIn.insert (.bnd 0) S.ty) 1)
     (h : WFF.retS hS S y Φ ∈ ((C.net (birth C.toFairChain s.2 + i)).st s.1).M) :
     ∃ i₁, i ≤ i₁ ∧ ∃ (l : List VarType) (hl : lat s i <:+ l)
@@ -321,7 +321,7 @@ theorem lroute (hW : ModalSys.BStrongW = true) (s : LW C.toFairChain) (i : ℕ) 
         (WFF.mono ((ctxOf_le_of_suffix hl).boxIn.insert (.bnd 0) S.ty) Φ)) ∈
           ((C.net (birth C.toFairChain s.2 + i₁)).st s.1).M := by
   obtain ⟨m, hnm, hsuf, hst, hmem⟩ :=
-    C.route_at hW (live_birth C.toFairChain s.2 (Nat.le_add_right _ i)) y Φ h
+    C.route_at hW (live_birth C.toFairChain s.2 (Nat.le_add_right _ i)) hb y Φ h
   refine ⟨m + 1 - birth C.toFairChain s.2, by omega, _, hsuf, ?_⟩
   have hlm : (C.net (m + 1)).Live s.1 := live_birth C.toFairChain s.2 (by omega)
   have hg := (C.ext (show m + 1 ≤ birth C.toFairChain s.2 + (m + 1 - birth C.toFairChain s.2)

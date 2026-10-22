@@ -400,7 +400,7 @@ theorem lexW (hB : ModalSys.B = true) (hW : ModalSys.BStrongW = true) (s : LW C.
           ((C.net (birth C.toFairChain t.2 + lstg C.toFairChain s t i)).st t.1).M := by
   have hr := BWorld.ret_of_not_box (nodeWorld C.toFairChain s.1 s.2) hS hB (i := i) ψ hψ
   obtain ⟨i₁, hii₁, l, hl, hsuf, hmr⟩ :=
-    lroute C hW s i (S := .box .VTypeOne) Term.unit (WFF.slotUp Ctx.NoSlots.slots _ ψ.neg) hr
+    lroute C hW s i (S := .box .VTypeOne) rfl Term.unit (WFF.slotUp Ctx.NoSlots.slots _ ψ.neg) hr
   have hκ : (ctxOf (lat s i₁)).ref (.root (.free l.length)) = some (.VTypeDia .VTypeOne) :=
     (ctxOf_le_of_suffix hsuf).ref (ctxOf_ref_new _ l)
   have hli : lat s i <:+ lat s i₁ := hl.trans ((List.suffix_cons _ _).trans hsuf)

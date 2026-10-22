@@ -9646,7 +9646,7 @@ Paper check 2, built.  ⭐`BData.posBack_exists_canon`: along an arrow `b : R v 
   `compactnessB` cover strong B with rows 3–4 (`BStrongW`), with T and D (strong forms by
   `WCoh`), 4 off.  All 18 targets build, no `sorry`.
 * **Open, as recorded in paper check 1 and §11.23's open details:** whether `ret_route` is
-  derivable; whether `WCoh` could be dropped by deriving strong T's and strong D's rules from
+  derivable (yes: derived and removed, see below); whether `WCoh` could be dropped by deriving strong T's and strong D's rules from
   rows 3–4's (the model law gives their laws, so completeness says the rules are admissible
   where the strong flags are on; with them off the systems are excluded); rows 3–4 along
   `◇_y` legs of `ret_route` (stated along `□` only).
@@ -9702,6 +9702,41 @@ the clash happens at whatever world the inner returning possibility reaches.  Th
 nesting through `ret_monoS` twice, for two shapes plus packing.  Then `Proof.ret_route`, its
 soundness (`sat_ret_route`, `Env.diaPush_fresh`) and its substitution case
 (`WFF.subst_route_renameTm`) can go; `route_consistent` would use the derived rule.
+
+#### `ret_route` derived and removed *(built, 2026-10-22)*
+
+`QML_v12m_RouteDerived.lean` builds the derivation above, sorry-free, and `Proof.ret_route` is
+gone.
+
+* `kThetaR hS S θΨ`: the carried negation `∀κ. ¬◇_κ[e ↦ hole.1] θΨ(hole.2.box, e)` as a hole
+  formula over `⟨value, □items⟩`, at any shape; `holeRead_kThetaR` reads it as the universal of
+  `routeBody`, and `instantiate_routeBody` instantiates `κ` at a possible object (the leg goes
+  through the substitution, `WFF.subst_retxS_at`).
+* Bodies in hole form: `kPsiV` (any view, any slot type) and `kPsiS` (the `□` view); `kPsi` and
+  `kPsiD` are its instances.  `thetaFst` reads `θΨ` at the first component of a pair hole.
+* Necessary shape `nec (boxC A co)`: ⭐`Proof.kThetaR_refute` (far world: `ret_realise`, then
+  `ret_unitDC` along the realised part, clash at `κ := p`) and ⭐`Proof.ret_routeK` (`byContra`,
+  `all_intro` at the fresh `κ`, `ret_unitC`, `retS_refute_lift`).
+* Witnessed shape `wit (boxC A co) X`: ⭐`Proof.kThetaRW_refute` (`ret_unitDC` outside, so the
+  inner possibility runs along the possible part `e`; `ret_realise` along `e`; `ret_unitWDC`
+  inside; clash in `e`'s view, the values equal by `compsVal_eta` and `mono_compsSlot`) and
+  ⭐`Proof.ret_routeKW`.  The openings `openFree_unitBodyDC` and `openFree_unitBodyWDC_thetaFst`
+  follow `openFree_unitBodyDC_thetaFst`.
+* ⭐`Proof.ret_route_node`: at a node `ctxOf l`, any body at a **boxed** shape
+  (`RShape.boxed`: the necessary part is one `boxC`), packed by `kPsiS_pack2`.
+* *Other shapes are packed by the truth lemma, not by the rule.*  The shape packing (`packG`,
+  `retS_packGW`) lives downstream of the network, so the network names routes only at boxed
+  shapes (`NetSt.mkRoute` checks `S.boxed`; `route_consistent`, `routeStep_ok`, `route_at`,
+  `lroute` and `BData.Routes` carry `hb : S.boxed = true`), and `sat_retS_wit_of_memW` packs
+  first (`retS_packGW`), takes the truth at the packed shape (`sat_retS_wit_of_memW_boxed`, the
+  old proof) and maps it back (`Model.sat_ret_map` along `unpackG`, `holeAt_packG_unpackGW_val`),
+  as `sat_retS_wit_of_memC` does for rows 1–2.  `lexW` names routes at `□𝟙`, already boxed.
+* Removed: the constructor `Proof.ret_route`, its soundness case and `Model.sat_ret_route` with
+  `Env.diaPush_fresh`, its substitution case and `WFF.subst_route_renameTm`.  Rows 3–4 now add a
+  single rule, `ret_realise`, to the model law `posBack_exists`.
+* *Scope.*  The derived rule is stated at nodes (world languages), which is all the completeness
+  proof uses.  At any other presented context the route rule is admissible by soundness of the
+  law (the deleted `sat_ret_route` argument) and completeness — not formalised.
 
 #### Note for the write-up: possible objects and the category of elements *(2026-10-22)*
 
