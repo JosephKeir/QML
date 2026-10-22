@@ -84,11 +84,6 @@ noncomputable def strongOpChain (hS : ModalSys.BStrong = true) (hB : ModalSys.B 
     exact ⟨n, hmn, fun hl => by
       rw [netS_succ_of hs]
       simp only [NetSt.applyOpT, NetSt.applyOpS, if_pos hl]⟩
-  child s o m := by
-    obtain ⟨n, hmn, hs⟩ := schedS_after (σ := σ) (.inl (.inr (.inl (s, o)))) m
-    exact ⟨n, hmn, fun hl => by
-      rw [netS_succ_of hs]
-      simp only [NetSt.applyOpT, NetSt.applyOpS, if_pos hl]⟩
   fwd c p m := by
     obtain ⟨n, hmn, hs⟩ := schedS_after (σ := σ) (.inl (.inr (.inr (.inl (c :: p))))) m
     refine ⟨n, hmn, fun hl => ?_⟩
@@ -107,60 +102,90 @@ noncomputable def strongChain (hS : ModalSys.BStrong = true) (hB : ModalSys.B = 
     (hM₀ : Theory.IsMCS M₀) : FairChain M₀ :=
   (strongOpChain hS hB hM₀).toFair
 
+/-- Strong B's chain performs every child step, but under rows 3–4. -/
+theorem childSteps_netS (hS : ModalSys.BStrong = true) (hW : ModalSys.BStrongW = false) :
+    ChildSteps (netS hS M₀) :=
+  ⟨fun s o m => by
+    obtain ⟨n, hmn, hs⟩ := schedS_after (σ := σ) (.inl (.inr (.inl (s, o)))) m
+    exact ⟨n, hmn, fun hl => by
+      rw [netS_succ_of hs]
+      simp only [NetSt.applyOpT, NetSt.applyOpS, if_pos hl, hW, Bool.false_eq_true,
+        ↓reduceIte]⟩⟩
+
+theorem strongChain_children (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true)
+    (hM₀ : Theory.IsMCS M₀) (hW : ModalSys.BStrongW = false) :
+    Children (strongChain hS hB hM₀).net :=
+  (strongOpChain hS hB hM₀).children (childSteps_netS hS hW)
+
 /-! ## Strong chains -/
 
 /-- ⭐**What strong B's canonical model needs of a chain**, beyond fairness: every network keeps
     strong B's invariants, and every alias and every returning successor is made at some later
-    round (if its node is alive then), as `OpChain` says of weak B's operations. -/
+    round (if its node is alive then), as `OpChain` says of weak B's operations.  Children as
+    weak B's (`Children`), and the returning successors without a back witness (`retOp`,
+    `retXOp`, `retDOp`), only for rows 1–2: rows 3–4 label every edge both ways. -/
 structure StrongChain (hS : ModalSys.BStrong = true) (M₀ : Set (WFF σ (ctxOf l₀) 0))
     extends FairChain M₀ where
   goodS : ∀ n, (net n).GoodS hS
+  children : ModalSys.BStrongW = false → Children net
   aliasOp : ∀ (s : Node) (o : NetSt.AliasObl σ) (m : ℕ), ∃ n, m ≤ n ∧
     ((net n).Live s → net (n + 1) = (net n).mkAlias s o)
-  retOp : ∀ (s : Node) (o : NetSt.RetOblC σ) (m : ℕ), ∃ n, m ≤ n ∧
+  retOp : ModalSys.BStrongW = false → ∀ (s : Node) (o : NetSt.RetOblC σ) (m : ℕ), ∃ n, m ≤ n ∧
     ((net n).Live s → net (n + 1) = (net n).mkRetC hS s o)
-  retXOp : ∀ (s : Node) (o : NetSt.RetOblXC σ) (m : ℕ), ∃ n, m ≤ n ∧
+  retXOp : ModalSys.BStrongW = false → ∀ (s : Node) (o : NetSt.RetOblXC σ) (m : ℕ), ∃ n, m ≤ n ∧
     ((net n).Live s → net (n + 1) = (net n).mkRetXC hS s o)
-  retDOp : ∀ (s : Node) (o : NetSt.RetOblDC σ) (m : ℕ), ∃ n, m ≤ n ∧
+  retDOp : ModalSys.BStrongW = false → ∀ (s : Node) (o : NetSt.RetOblDC σ) (m : ℕ), ∃ n, m ≤ n ∧
     ((net n).Live s → net (n + 1) = (net n).mkRetDC hS s o)
   retXDOp : ∀ (s : Node) (o : NetSt.RetOblXDC σ) (m : ℕ), ∃ n, m ≤ n ∧
     ((net n).Live s → net (n + 1) = (net n).mkRetXDC hS s o)
+  /-- Under rows 3–4 every returning possibility along `□` has its route named. -/
+  routeOp : ModalSys.BStrongW = true → ∀ (s : Node) (o : NetSt.RouteObl σ) (m : ℕ),
+    ∃ n, m ≤ n ∧ ((net n).Live s → net (n + 1) = (net n).mkRoute hS s o)
 
 /-- ⭐Strong B's chain is a strong chain. -/
 noncomputable def strongChainS (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true)
     (hM₀ : Theory.IsMCS M₀) : StrongChain hS M₀ where
   toFairChain := strongChain hS hB hM₀
   goodS := goodS_netS hS hB hM₀
+  children hW := strongChain_children hS hB hM₀ hW
   aliasOp s o m := by
     obtain ⟨n, hmn, hs⟩ := schedS_after (σ := σ) (.inr (.inl (s, o))) m
     exact ⟨n, hmn, fun hl => by
       change netS hS M₀ (n + 1) = _
       rw [netS_succ_of hs]
       exact if_pos hl⟩
-  retOp s o m := by
+  retOp hW s o m := by
     obtain ⟨n, hmn, hs⟩ := schedS_after (σ := σ) (.inr (.inr (.inl (s, o)))) m
     exact ⟨n, hmn, fun hl => by
       change netS hS M₀ (n + 1) = _
       rw [netS_succ_of hs]
-      exact if_pos hl⟩
-  retXOp s o m := by
+      exact (if_pos hl).trans (if_neg (by rw [hW]; decide))⟩
+  retXOp hW s o m := by
     obtain ⟨n, hmn, hs⟩ := schedS_after (σ := σ) (.inr (.inr (.inr (.inl (s, o))))) m
     exact ⟨n, hmn, fun hl => by
       change netS hS M₀ (n + 1) = _
       rw [netS_succ_of hs]
-      exact if_pos hl⟩
-  retDOp s o m := by
+      exact (if_pos hl).trans (if_neg (by rw [hW]; decide))⟩
+  retDOp hW s o m := by
     obtain ⟨n, hmn, hs⟩ := schedS_after (σ := σ) (.inr (.inr (.inr (.inr (.inl (s, o)))))) m
     exact ⟨n, hmn, fun hl => by
       change netS hS M₀ (n + 1) = _
       rw [netS_succ_of hs]
-      exact if_pos hl⟩
+      exact (if_pos hl).trans (if_neg (by rw [hW]; decide))⟩
   retXDOp s o m := by
-    obtain ⟨n, hmn, hs⟩ := schedS_after (σ := σ) (.inr (.inr (.inr (.inr (.inr (s, o)))))) m
+    obtain ⟨n, hmn, hs⟩ :=
+      schedS_after (σ := σ) (.inr (.inr (.inr (.inr (.inr (.inl (s, o))))))) m
     exact ⟨n, hmn, fun hl => by
       change netS hS M₀ (n + 1) = _
       rw [netS_succ_of hs]
       exact if_pos hl⟩
+  routeOp hW s o m := by
+    obtain ⟨n, hmn, hs⟩ :=
+      schedS_after (σ := σ) (.inr (.inr (.inr (.inr (.inr (.inr (s, o))))))) m
+    exact ⟨n, hmn, fun hl => by
+      change netS hS M₀ (n + 1) = _
+      rw [netS_succ_of hs]
+      exact (if_pos hl).trans (if_pos hW)⟩
 
 end BArrow
 

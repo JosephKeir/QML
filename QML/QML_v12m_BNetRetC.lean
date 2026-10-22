@@ -537,10 +537,12 @@ theorem GoodS.mkChild {hS : ModalSys.BStrong = true} (hB : ModalSys.B = true) {N
 /-! ## The chain under strong B -/
 
 open Classical in
-/-- Perform one operation under strong B, at a live node only. -/
+/-- Perform one operation under strong B, at a live node only.  Under rows 3–4 (`BStrongW`) no
+    plain or witness child: every edge is doubly witnessed (docs §11.23). -/
 noncomputable def applyOpS (hS : ModalSys.BStrong = true) (N : NetSt σ) : Op σ → NetSt σ
   | .inl (s, o) => if N.Live s then N.henk s o else N
-  | .inr (.inl (s, o)) => if N.Live s then N.mkChild s o else N
+  | .inr (.inl (s, o)) =>
+      if N.Live s then (if ModalSys.BStrongW = true then N else N.mkChild s o) else N
   | .inr (.inr (.inl k)) => if N.Live k then N.realFS hS k else N
   | .inr (.inr (.inr k)) => if N.Live k then N.realBS hS k else N
 
@@ -553,6 +555,7 @@ theorem GoodS.applyOpS {hS : ModalSys.BStrong = true} (hB : ModalSys.B = true) {
     · exact hN
   · simp only [NetSt.applyOpS]
     split_ifs with h
+    · exact hN
     · exact hN.mkChild hB h o
     · exact hN
   · simp only [NetSt.applyOpS]
@@ -595,6 +598,7 @@ theorem Ext.applyOpS {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS
     · exact Ext.refl N
   · simp only [NetSt.applyOpS]
     split_ifs with h
+    · exact Ext.refl N
     · exact Ext.mkChild h o
     · exact Ext.refl N
   · simp only [NetSt.applyOpS]

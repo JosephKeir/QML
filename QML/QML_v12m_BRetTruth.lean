@@ -1497,11 +1497,11 @@ end BData
 section Limit
 
 variable {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} {hS : ModalSys.BStrong = true}
-  (C : StrongChain hS M₀)
+  (C : StrongChain hS M₀) (E : LimitEx C.toFairChain)
 
 /-- ⭐⭐**The limit has returning possibilities from the far end**: the invariant of the way home
     `k → s` (`lretAtB`, reduced by `RetAtB.toRetInvB`), at a node (`ret_of_invB`). -/
-theorem bdataS_retIn : (bdataS C).RetIn hS := by
+theorem bdataS_retIn : (bdataS C E).RetIn hS := by
   classical
   intro s k h i N Φ j hj n hm
   obtain ⟨cls, imgs, clt, imgt, hJs, hJag, his, hiag, hret⟩ := lretAtB C h.symm j i hj
@@ -1532,7 +1532,7 @@ theorem bdataS_retIn : (bdataS C).RetIn hS := by
 
 /-- ⭐⭐**The limit has returning possibilities along a witness from the far end**: the way home's
     invariant along the witness (`lretAtB`, `RetAtB.toRetInvXB`), at a node (`retx_of_invB`). -/
-theorem bdataS_retInX : (bdataS C).RetInX hS := by
+theorem bdataS_retInX : (bdataS C E).RetInX hS := by
   classical
   intro s k y Y hk i hy N Φ j hj n hm
   replace hk := lbOfKd_eq.mp hk

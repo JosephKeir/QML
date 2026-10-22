@@ -227,21 +227,19 @@ theorem sat_retxDC_of_mem (hS : ModalSys.BStrong = true) (hRX : B.RetOutXDC hS) 
     exact this
 
 /-- ⭐⭐**`ret` along a witness, membership ⇒ truth at every witnessed shape** (any T): as
-    `sat_retS_wit_of_memC`, along `y` (`RetOutXDC`). -/
+    `sat_retS_wit_of_memC`, along `y` (`RetOutXDC`).  The induction hypothesis is asked only
+    below the body's size, so that rows 3–4 can reach this case from smaller atoms. -/
 theorem sat_retxS_wit_of_memC (hS : ModalSys.BStrong = true) (hRX : B.RetOutXDC hS) {s : B.W}
     {i : ℕ} {y : VarSymb} (hy : ∃ Y, ((B.w s).ctx i).ref y = some (.VTypeDia Y)) {N : NShape}
     {Z : VarType} {a : Ann (RShape.wit N Z).flat}
     (t : Term σ ((B.w s).ctx i) (RShape.wit N Z).flat a)
     (Φ : WFF σ ((((B.w s).ctx i).diaIn y).insert (.bnd 0) (RShape.wit N Z).ty) 1)
     (IH : ∀ (s' : B.W) (K : ℕ) (φ : WFF σ ((B.w s').ctx K) 0),
-      φ.size < ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).retS hS (.wit N Z) t Φ :
-        WFF σ _ 0).size → (B.model.sat (B.canonEnv s' K) φ ↔ φ ∈ (B.w s').M K))
+      φ.size < Φ.size + 1 → (B.model.sat (B.canonEnv s' K) φ ↔ φ ∈ (B.w s').M K))
     (h : ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).retS hS (.wit N Z) t Φ : WFF σ _ 0) ∈
       (B.w s).M i) :
     B.model.sat (B.canonEnv s i)
       ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).retS hS (.wit N Z) t Φ : WFF σ _ 0) := by
-  have hsz : ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).retS hS (.wit N Z) t Φ :
-      WFF σ _ 0).size = Φ.size + (RShape.wit N Z).flat.eqRecSize + 1 := rfl
   obtain ⟨Y, hY⟩ := hy
   have hp := BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by
     rw [List.mem_singleton.mp hψ]; exact h)
@@ -271,7 +269,7 @@ end BData
 section LimitOutDC
 
 variable {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} {hS : ModalSys.BStrong = true}
-  (C : StrongChain hS M₀)
+  (C : StrongChain hS M₀) (E : LimitEx C.toFairChain)
 
 /-- ⭐⭐**The limit has returning successors at witnessed companion shapes** (plain leg; any T).
     As `bdataS_retOutC` for the necessary part (`ret_comps_namedW`, `subC`, the alias `y` of
@@ -279,18 +277,18 @@ variable {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} {hS : ModalS
     the back image of the witness; the value moves to `⟨unarrT y, z⟩` item by item
     (`OutLeg.instantiate_compSlot`, `WFF.instantiate_pairSnd`); then the back-witness child
     (`lretDC`). -/
-theorem bdataS_retOutDC : (bdataS C).RetOutDC hS := by
+theorem bdataS_retOutDC (hW : ModalSys.BStrongW = false) : (bdataS C E).RetOutDC hS := by
   classical
   intro s i A Z cs h a a₂ V t₂ Φ hm
   -- name the missing companions, and reorder to the born order
-  obtain ⟨j₁, hij₁, a₁, V₁, hV₁, hm₁⟩ := BWorld.ret_comps_namedW ((bdataS C).w s) hS
+  obtain ⟨j₁, hij₁, a₁, V₁, hV₁, hm₁⟩ := BWorld.ret_comps_namedW ((bdataS C E).w s) hS
     (missComps A cs) (missComps_ok h) .nec V t₂ Φ hm
   set R := ShapeMap.subC (σ := σ) A (missComps A cs ++ cs) (bornComps A) (missComps_ok h)
     (bornComps_ok A) (missComps_sub A cs)
-  set e₁ := ((bdataS C).w s).le hij₁
+  set e₁ := ((bdataS C E).w s).le hij₁
   set Φ₁ := WFF.mono (e₁.boxIn.insert (.bnd 0) (RShape.wit (.boxC A cs h) Z).ty) Φ
   have hm₂ : WFF.retS hS (.wit (bornShape A) Z)
-      (Term.pair (Term.holeRead V₁ R.val.2) (Term.mono e₁ t₂)) Φ₁ ∈ ((bdataS C).w s).M j₁ := by
+      (Term.pair (Term.holeRead V₁ R.val.2) (Term.mono e₁ t₂)) Φ₁ ∈ ((bdataS C E).w s).M j₁ := by
     have hp := BWorld.mem_of_provable (Δ := [_])
       (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hm₁)
       ⟨Proof.ret_map hS .nec (S := .wit (.boxC A (missComps A cs ++ cs) (missComps_ok h)) Z)
@@ -328,14 +326,14 @@ theorem bdataS_retOutDC : (bdataS C).RetOutDC hS := by
     have h2 := hl₃.length_le
     simp only [List.length_cons] at h1
     omega
-  set eJ := ((bdataS C).w s).le hiJ
-  set e₁J := ((bdataS C).w s).le hj₁J
+  set eJ := ((bdataS C E).w s).le hiJ
+  set e₁J := ((bdataS C E).w s).le hj₁J
   set ΦJ : WFF σ ((ctxOf (lat s J)).boxIn.insert (.bnd 0) (RShape.wit (bornShape A) Z).ty) 1 :=
     WFF.mono (eJ.boxIn.insert (.bnd 0) (RShape.wit (.boxC A cs h) Z).ty) Φ
   have hJm : WFF.retS hS (.wit (bornShape A) Z)
       (Term.pair (Term.mono e₁J W) (Term.mono eJ t₂)) ΦJ ∈
         ((C.net (birth C.toFairChain s.2 + J)).st s.1).M := by
-    have := (BWorld.mem_lift (w := (bdataS C).w s) hj₁J).mp hm₂
+    have := (BWorld.mem_lift (w := (bdataS C E).w s) hj₁J).mp hm₂
     change WFF.retS hS (.wit (bornShape A) Z)
       (Term.pair (Term.mono e₁J W) (Term.mono e₁J (Term.mono e₁ t₂)))
       (WFF.mono _ (WFF.mono _ Φ)) ∈ _ at this
@@ -402,7 +400,7 @@ theorem bdataS_retOutDC : (bdataS C).RetOutDC hS := by
         (.root (.free l₂.length)) Z (ctxOf_ref_new Z l₂)))) rfl)).mp ?_
     exact (congrArg (· ∈ _) h₂).mp (hi ((congrArg (· ∈ _) h₁).mpr m1))
   -- the back-witness child
-  obtain ⟨k, hsk, hkd, hcl, hback, hlcx, hmk⟩ := lretDC C s J hyJ ho hz hyo ΦJ m2
+  obtain ⟨k, hsk, hkd, hcl, hback, hlcx, hmk⟩ := lretDC C hW s J hyJ ho hz hyo ΦJ m2
   have hj : lstg C.toFairChain s k i ≤ lstg C.toFairChain s k J := lstg_mono C hsk hiJ
   have hcK : (ctxOf (lat k (lstg C.toFairChain s k J))).ref (.root (.free 0)) =
       some (.VTypeBox A) := (ctxOf_le_of_suffix hcl).ref (bclD_c A Z)
@@ -419,7 +417,7 @@ theorem bdataS_retOutDC : (bdataS C).RetOutDC hS := by
     (ctxOf_le_of_suffix hcl).ref (bclD_e A Z), hkd, ?_, ?_, ?_⟩
   · have e := readArrow_mono_congr (C.lang_suffix (by omega)
       (live_birth C.toFairChain s.2 (Nat.le_add_right _ i))) (Ctx.Le.refl _)
-      ((limgOk C.toFairChain hsk i).mono (((bdataS C).w k).le hj))
+      ((limgOk C.toFairChain hsk i).mono (((bdataS C E).w k).le hj))
       (limgOk C.toFairChain hsk J) (fun _ _ => rfl)
       (Term.pair (Term.boxtm (Term.eta (VarSymb.root (.free 0)).inner A (Ctx.ref_inner hcK)))
         (Term.eta (.root (.free 1)) (.VTypeDia Z) ((ctxOf_le_of_suffix hcl).ref (bclD_e A Z)))) Φ
@@ -429,22 +427,22 @@ theorem bdataS_retOutDC : (bdataS C).RetOutDC hS := by
   · obtain ⟨hsuf₂, -⟩ := hal₂ i₃ le_rfl
     have hz₂ : (ctxOf (lat s i₃)).ref (.root (.free l₂.length)) = some Z :=
       (ctxOf_le_of_suffix hsuf₂).ref (ctxOf_ref_new Z l₂)
-    have hzK := (((bdataS C).w s).le (hi₃J.trans hJK)).ref hz₂
+    have hzK := (((bdataS C E).w s).le (hi₃J.trans hJK)).ref hz₂
     have e2 := congrArg (fun p : Σ b, Term σ _ Z b =>
-      (bdataS C).rden s _ (Ctx.Le.refl _) p.2)
+      (bdataS C E).rden s _ (Ctx.Le.refl _) p.2)
       (eta_addr_congr (σ := σ) (congrArg (fun c => VarSymb.root (.free c)) hlcx)
-        ((bdataS C).hcx hkd (lstg C.toFairChain s k J)) hzK)
-    have e3 : (bdataS C).rden s _ (Ctx.Le.refl _)
+        ((bdataS C E).hcx hkd (lstg C.toFairChain s k J)) hzK)
+    have e3 : (bdataS C E).rden s _ (Ctx.Le.refl _)
         (Term.eta (.root (.free l₂.length)) Z hzK) =
-        (bdataS C).rden s i₃ (Ctx.Le.refl _) (Term.eta (.root (.free l₂.length)) Z hz₂) := by
-      have := BData.rden_lift (B := bdataS C) (hi₃J.trans hJK)
+        (bdataS C E).rden s i₃ (Ctx.Le.refl _) (Term.eta (.root (.free l₂.length)) Z hz₂) := by
+      have := BData.rden_lift (B := bdataS C E) (hi₃J.trans hJK)
         (Term.eta (.root (.free l₂.length)) Z hz₂)
       rwa [Term.mono_eta] at this
-    refine (congrArg (fun o => (bdataS C).Ind o _) ?_).mpr
-      (lalias_ind C s t₂ hl₂ hal₂ hz₂)
+    refine (congrArg (fun o => (bdataS C E).Ind o _) ?_).mpr
+      (lalias_ind C E s t₂ hl₂ hal₂ hz₂)
     exact BData.toDom_congr (e2.trans e3) _ _
   -- the born root's readings home, `Ind` to `V`
-  have hyK := (((bdataS C).w s).le hiK).ref hy₂
+  have hyK := (((bdataS C E).w s).le hiK).ref hy₂
   set Sel := ShapeMap.subC (σ := σ) A (bornComps A) cs (bornComps_ok A) h (compOk_sub_born h)
   have eR : (⟨_, Term.subst (arrowIdx (limg C.toFairChain k s))
       (arrowS σ (ctxOf (lat s K)) (limg C.toFairChain k s))
@@ -457,53 +455,53 @@ theorem bdataS_retOutDC : (bdataS C).RetOutDC hS := by
     exact subst_arrow_compsSlot_born hcK (limgOk C.toFairChain hsk.symm _) hyK hback cs h
       (compOk_sub_born h)
   -- the alias, mapped
-  have hA := lalias_ind C s t hl₁ hal₁ hy₂
+  have hA := lalias_ind C E s t hl₁ hal₁ hy₂
   rw [← BData.interp_canon _ (Model.Env.Agree.refl' _),
     ← BData.interp_canon t (Model.Env.Agree.refl' _)] at hA
   have hM := BData.ind_map (Term.holeAt (unarrHole (σ := σ) A).2 Sel.val.2) hA
   rw [← Model.interp_holeAt, ← Model.interp_holeAt] at hM
   have eL := congrArg (fun x : Σ c, Term σ (ctxOf (lat s i₂)) (A.compsFlat cs) c =>
-    Model.interp ((bdataS C).canonEnv s i₂) x.2)
+    Model.interp ((bdataS C E).canonEnv s i₂) x.2)
     ((Term.holeAt_holeAt_sig _ _ _).trans (Term.holeAt_congr_sig
       ((holeAt_unarrHole A _).trans (unarrAt_eta hy₂)) Sel.val.2))
   have eRt := congrArg (fun x : Σ c, Term σ (ctxOf (lat s j₁)) (A.compsFlat cs) c =>
-    Model.interp ((bdataS C).canonEnv s j₁) x.2)
+    Model.interp ((bdataS C E).canonEnv s j₁) x.2)
     ((Term.holeAt_holeAt_sig _ _ _).trans ((Term.holeAt_congr_sig
       ((holeAt_unarrHole A t).trans (unarrAt_arrB A W)) Sel.val.2).trans
       ((Term.holeAt_congr_sig (congrArg (Sigma.mk _) (Term.holeRead_eq_holeAt V₁ R.val.2))
         Sel.val.2).trans (holeAt_subC_sel h _ V₁ hV₁))))
   dsimp only at eL eRt
-  rw [eL, eRt, Model.interp_mono (BData.canonEnv_le (B := bdataS C) s hij₁) V] at hM
-  have eK : Model.interp ((bdataS C).canonEnv s K) (Term.holeAt (unarrT hyK).2 Sel.val.2) =
-      Model.interp ((bdataS C).canonEnv s i₂) (Term.holeAt (unarrT hy₂).2 Sel.val.2) := by
+  rw [eL, eRt, Model.interp_mono (BData.canonEnv_le (B := bdataS C E) s hij₁) V] at hM
+  have eK : Model.interp ((bdataS C E).canonEnv s K) (Term.holeAt (unarrT hyK).2 Sel.val.2) =
+      Model.interp ((bdataS C E).canonEnv s i₂) (Term.holeAt (unarrT hy₂).2 Sel.val.2) := by
     have e := congrArg (fun x : Σ c, Term σ (ctxOf (lat s K)) (A.compsFlat cs) c =>
-      Model.interp ((bdataS C).canonEnv s K) x.2)
-      ((Term.holeAt_congr_sig (mono_unarrT (((bdataS C).w s).suf hiK) hy₂).symm
+      Model.interp ((bdataS C E).canonEnv s K) x.2)
+      ((Term.holeAt_congr_sig (mono_unarrT (((bdataS C E).w s).suf hiK) hy₂).symm
         Sel.val.2).trans (Term.mono_holeAt_sig _ _ _).symm)
-    exact e.trans (Model.interp_mono (BData.canonEnv_le (B := bdataS C) s hiK) _)
+    exact e.trans (Model.interp_mono (BData.canonEnv_le (B := bdataS C E) s hiK) _)
   rw [← BData.interp_canon _ (Model.Env.Agree.refl' _),
     ← BData.interp_canon V (Model.Env.Agree.refl' _)]
-  refine (congrArg (fun o => (bdataS C).Ind o _)
+  refine (congrArg (fun o => (bdataS C E).Ind o _)
     ((congrArg (fun x : Σ c, Term σ (ctxOf (lat s K)) (A.compsFlat cs) c =>
-      Model.interp ((bdataS C).canonEnv s K) x.2) eR).trans eK)).mpr hM
+      Model.interp ((bdataS C E).canonEnv s K) x.2) eR).trans eK)).mpr hM
 
 
 /-- ⭐⭐**The limit has returning successors along a witness at witnessed companion shapes**
     (any T): as `bdataS_retOutDC`, along `x` (the slot formulas along the leg, the doubly
     witnessed child `lretXDC`). -/
-theorem bdataS_retOutXDC : (bdataS C).RetOutXDC hS := by
+theorem bdataS_retOutXDC : (bdataS C E).RetOutXDC hS := by
   classical
   intro s i x X hx A Z cs h a a₂ V t₂ Φ hm
   -- name the missing companions, and reorder to the born order
-  obtain ⟨j₁, hij₁, a₁, V₁, hV₁, hm₁⟩ := BWorld.ret_comps_namedW ((bdataS C).w s) hS
+  obtain ⟨j₁, hij₁, a₁, V₁, hV₁, hm₁⟩ := BWorld.ret_comps_namedW ((bdataS C E).w s) hS
     (missComps A cs) (missComps_ok h) (.pos x ⟨X, hx⟩) V t₂ Φ hm
-  have hx₁ := (((bdataS C).w s).le hij₁).ref hx
+  have hx₁ := (((bdataS C E).w s).le hij₁).ref hx
   set R := ShapeMap.subC (σ := σ) A (missComps A cs ++ cs) (bornComps A) (missComps_ok h)
     (bornComps_ok A) (missComps_sub A cs)
-  set e₁ := ((bdataS C).w s).le hij₁
+  set e₁ := ((bdataS C E).w s).le hij₁
   set Φ₁ := WFF.mono ((e₁.diaIn x).insert (.bnd 0) (RShape.wit (.boxC A cs h) Z).ty) Φ
   have hm₂ : WFF.retxS hS x ⟨X, hx₁⟩ (.wit (bornShape A) Z)
-      (Term.pair (Term.holeRead V₁ R.val.2) (Term.mono e₁ t₂)) Φ₁ ∈ ((bdataS C).w s).M j₁ := by
+      (Term.pair (Term.holeRead V₁ R.val.2) (Term.mono e₁ t₂)) Φ₁ ∈ ((bdataS C E).w s).M j₁ := by
     have hp := BWorld.mem_of_provable (Δ := [_])
       (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hm₁)
       ⟨Proof.ret_map hS (.pos x ⟨X, hx₁⟩)
@@ -542,15 +540,15 @@ theorem bdataS_retOutXDC : (bdataS C).RetOutXDC hS := by
     have h2 := hl₃.length_le
     simp only [List.length_cons] at h1
     omega
-  set eJ := ((bdataS C).w s).le hiJ
+  set eJ := ((bdataS C E).w s).le hiJ
   have hxJ : (ctxOf (lat s J)).ref x = some (.VTypeDia X) := eJ.ref hx
-  set e₁J := ((bdataS C).w s).le hj₁J
+  set e₁J := ((bdataS C E).w s).le hj₁J
   set ΦJ : WFF σ (((ctxOf (lat s J)).diaIn x).insert (.bnd 0) (RShape.wit (bornShape A) Z).ty)
       1 := WFF.mono ((eJ.diaIn x).insert (.bnd 0) (RShape.wit (.boxC A cs h) Z).ty) Φ
   have hJm : WFF.retxS hS x ⟨X, hxJ⟩ (.wit (bornShape A) Z)
       (Term.pair (Term.mono e₁J W) (Term.mono eJ t₂)) ΦJ ∈
         ((C.net (birth C.toFairChain s.2 + J)).st s.1).M := by
-    have := (BWorld.mem_lift (w := (bdataS C).w s) hj₁J).mp hm₂
+    have := (BWorld.mem_lift (w := (bdataS C E).w s) hj₁J).mp hm₂
     change WFF.retxS hS x ⟨X, hxJ⟩ (.wit (bornShape A) Z)
       (Term.pair (Term.mono e₁J W) (Term.mono e₁J (Term.mono e₁ t₂)))
       (WFF.mono _ (WFF.mono _ Φ)) ∈ _ at this
@@ -620,7 +618,7 @@ theorem bdataS_retOutXDC : (bdataS C).RetOutXDC hS := by
         (.root (.free l₂.length)) Z (ctxOf_ref_new Z l₂)))) rfl)).mp ?_
     exact (congrArg (· ∈ _) h₂).mp (hi ((congrArg (· ∈ _) h₁).mpr m1))
   -- the back-witness child
-  obtain ⟨k, hkx, hkd, hcl, hback, hlcx, hmk⟩ := lretXDC C s J hyJ ho hz hyo hxJ ΦJ m2
+  obtain ⟨k, hkx, hkd, hcl, hback, hlcx, hmk, -⟩ := lretXDC C s J hyJ ho hz hyo hxJ ΦJ m2
   have hsk := lkdR hkx
   have hj : lstg C.toFairChain s k i ≤ lstg C.toFairChain s k J := lstg_mono C hsk hiJ
   have hcK : (ctxOf (lat k (lstg C.toFairChain s k J))).ref (.root (.free 0)) =
@@ -638,9 +636,9 @@ theorem bdataS_retOutXDC : (bdataS C).RetOutXDC hS := by
     (ctxOf_le_of_suffix hcl).ref (bclD_e A Z), hkd, ?_, ?_, ?_⟩
   · have e := readArrowX_mono_congr (C.lang_suffix (by omega)
       (live_birth C.toFairChain s.2 (Nat.le_add_right _ i))) (Ctx.Le.refl _)
-      ((limgOk C.toFairChain hsk i).mono (((bdataS C).w k).le hj))
+      ((limgOk C.toFairChain hsk i).mono (((bdataS C E).w k).le hj))
       (limgOk C.toFairChain hsk J) (fun _ _ => rfl) hx hxJ
-      ((((bdataS C).w k).le hj).ref ((bdataS C).hcx hkx i)) (lhcx C.toFairChain hkx J)
+      ((((bdataS C E).w k).le hj).ref ((bdataS C E).hcx hkx i)) (lhcx C.toFairChain hkx J)
       (Term.pair (Term.boxtm (Term.eta (VarSymb.root (.free 0)).inner A (Ctx.ref_inner hcK)))
         (Term.eta (.root (.free 1)) (.VTypeDia Z) ((ctxOf_le_of_suffix hcl).ref (bclD_e A Z)))) Φ
     rw [Term.mono_refl, WFF.mono_refl] at e
@@ -649,22 +647,22 @@ theorem bdataS_retOutXDC : (bdataS C).RetOutXDC hS := by
   · obtain ⟨hsuf₂, -⟩ := hal₂ i₃ le_rfl
     have hz₂ : (ctxOf (lat s i₃)).ref (.root (.free l₂.length)) = some Z :=
       (ctxOf_le_of_suffix hsuf₂).ref (ctxOf_ref_new Z l₂)
-    have hzK := (((bdataS C).w s).le (hi₃J.trans hJK)).ref hz₂
+    have hzK := (((bdataS C E).w s).le (hi₃J.trans hJK)).ref hz₂
     have e2 := congrArg (fun p : Σ b, Term σ _ Z b =>
-      (bdataS C).rden s _ (Ctx.Le.refl _) p.2)
+      (bdataS C E).rden s _ (Ctx.Le.refl _) p.2)
       (eta_addr_congr (σ := σ) (congrArg (fun c => VarSymb.root (.free c)) hlcx)
-        ((bdataS C).hcx hkd (lstg C.toFairChain s k J)) hzK)
-    have e3 : (bdataS C).rden s _ (Ctx.Le.refl _)
+        ((bdataS C E).hcx hkd (lstg C.toFairChain s k J)) hzK)
+    have e3 : (bdataS C E).rden s _ (Ctx.Le.refl _)
         (Term.eta (.root (.free l₂.length)) Z hzK) =
-        (bdataS C).rden s i₃ (Ctx.Le.refl _) (Term.eta (.root (.free l₂.length)) Z hz₂) := by
-      have := BData.rden_lift (B := bdataS C) (hi₃J.trans hJK)
+        (bdataS C E).rden s i₃ (Ctx.Le.refl _) (Term.eta (.root (.free l₂.length)) Z hz₂) := by
+      have := BData.rden_lift (B := bdataS C E) (hi₃J.trans hJK)
         (Term.eta (.root (.free l₂.length)) Z hz₂)
       rwa [Term.mono_eta] at this
-    refine (congrArg (fun o => (bdataS C).Ind o _) ?_).mpr
-      (lalias_ind C s t₂ hl₂ hal₂ hz₂)
+    refine (congrArg (fun o => (bdataS C E).Ind o _) ?_).mpr
+      (lalias_ind C E s t₂ hl₂ hal₂ hz₂)
     exact BData.toDom_congr (e2.trans e3) _ _
   -- the born root's readings home, `Ind` to `V`
-  have hyK := (((bdataS C).w s).le hiK).ref hy₂
+  have hyK := (((bdataS C E).w s).le hiK).ref hy₂
   set Sel := ShapeMap.subC (σ := σ) A (bornComps A) cs (bornComps_ok A) h (compOk_sub_born h)
   have eR : (⟨_, Term.subst (arrowIdx (limg C.toFairChain k s))
       (arrowS σ (ctxOf (lat s K)) (limg C.toFairChain k s))
@@ -677,35 +675,35 @@ theorem bdataS_retOutXDC : (bdataS C).RetOutXDC hS := by
     exact subst_arrow_compsSlot_born hcK (limgOk C.toFairChain hsk.symm _) hyK hback cs h
       (compOk_sub_born h)
   -- the alias, mapped
-  have hA := lalias_ind C s t hl₁ hal₁ hy₂
+  have hA := lalias_ind C E s t hl₁ hal₁ hy₂
   rw [← BData.interp_canon _ (Model.Env.Agree.refl' _),
     ← BData.interp_canon t (Model.Env.Agree.refl' _)] at hA
   have hM := BData.ind_map (Term.holeAt (unarrHole (σ := σ) A).2 Sel.val.2) hA
   rw [← Model.interp_holeAt, ← Model.interp_holeAt] at hM
   have eL := congrArg (fun x : Σ c, Term σ (ctxOf (lat s i₂)) (A.compsFlat cs) c =>
-    Model.interp ((bdataS C).canonEnv s i₂) x.2)
+    Model.interp ((bdataS C E).canonEnv s i₂) x.2)
     ((Term.holeAt_holeAt_sig _ _ _).trans (Term.holeAt_congr_sig
       ((holeAt_unarrHole A _).trans (unarrAt_eta hy₂)) Sel.val.2))
   have eRt := congrArg (fun x : Σ c, Term σ (ctxOf (lat s j₁)) (A.compsFlat cs) c =>
-    Model.interp ((bdataS C).canonEnv s j₁) x.2)
+    Model.interp ((bdataS C E).canonEnv s j₁) x.2)
     ((Term.holeAt_holeAt_sig _ _ _).trans ((Term.holeAt_congr_sig
       ((holeAt_unarrHole A t).trans (unarrAt_arrB A W)) Sel.val.2).trans
       ((Term.holeAt_congr_sig (congrArg (Sigma.mk _) (Term.holeRead_eq_holeAt V₁ R.val.2))
         Sel.val.2).trans (holeAt_subC_sel h _ V₁ hV₁))))
   dsimp only at eL eRt
-  rw [eL, eRt, Model.interp_mono (BData.canonEnv_le (B := bdataS C) s hij₁) V] at hM
-  have eK : Model.interp ((bdataS C).canonEnv s K) (Term.holeAt (unarrT hyK).2 Sel.val.2) =
-      Model.interp ((bdataS C).canonEnv s i₂) (Term.holeAt (unarrT hy₂).2 Sel.val.2) := by
+  rw [eL, eRt, Model.interp_mono (BData.canonEnv_le (B := bdataS C E) s hij₁) V] at hM
+  have eK : Model.interp ((bdataS C E).canonEnv s K) (Term.holeAt (unarrT hyK).2 Sel.val.2) =
+      Model.interp ((bdataS C E).canonEnv s i₂) (Term.holeAt (unarrT hy₂).2 Sel.val.2) := by
     have e := congrArg (fun x : Σ c, Term σ (ctxOf (lat s K)) (A.compsFlat cs) c =>
-      Model.interp ((bdataS C).canonEnv s K) x.2)
-      ((Term.holeAt_congr_sig (mono_unarrT (((bdataS C).w s).suf hiK) hy₂).symm
+      Model.interp ((bdataS C E).canonEnv s K) x.2)
+      ((Term.holeAt_congr_sig (mono_unarrT (((bdataS C E).w s).suf hiK) hy₂).symm
         Sel.val.2).trans (Term.mono_holeAt_sig _ _ _).symm)
-    exact e.trans (Model.interp_mono (BData.canonEnv_le (B := bdataS C) s hiK) _)
+    exact e.trans (Model.interp_mono (BData.canonEnv_le (B := bdataS C E) s hiK) _)
   rw [← BData.interp_canon _ (Model.Env.Agree.refl' _),
     ← BData.interp_canon V (Model.Env.Agree.refl' _)]
-  refine (congrArg (fun o => (bdataS C).Ind o _)
+  refine (congrArg (fun o => (bdataS C E).Ind o _)
     ((congrArg (fun x : Σ c, Term σ (ctxOf (lat s K)) (A.compsFlat cs) c =>
-      Model.interp ((bdataS C).canonEnv s K) x.2) eR).trans eK)).mpr hM
+      Model.interp ((bdataS C E).canonEnv s K) x.2) eR).trans eK)).mpr hM
 
 end LimitOutDC
 

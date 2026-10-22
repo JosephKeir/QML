@@ -944,8 +944,9 @@ theorem lbackRelX {s k : LW C.toFairChain} {i : ℕ} {A : VarType} {a₀ : Ann A
   · rw [Term.mono_mono]
 
 /-- ⭐⭐**Strong B's canonical data**: the limit of a strong chain, its `Back` atoms'
-    returns interchangeable with their values (`lbackRel`, `lbackRelX`). -/
-noncomputable def bdataS : BData σ where
+    returns interchangeable with their values (`lbackRel`, `lbackRelX`), with existence in the
+    limit given (`LimitEx`: from the chain's children for rows 1–2, otherwise for rows 3–4). -/
+noncomputable def bdataS (E : LimitEx C.toFairChain) : BData σ where
   W := LW C.toFairChain
   actual := ⟨[], 0, trivial⟩
   w s := nodeWorld C.toFairChain s.1 s.2
@@ -956,7 +957,7 @@ noncomputable def bdataS : BData σ where
   stg := lstg C.toFairChain
   imgOk h i := limgOk C.toFairChain h i
   tr h i ψ hψ := ltr C.toFairChain h i ψ hψ
-  ex s i ψ hψ := lex C.toFairChain s i ψ hψ
+  ex s i ψ hψ := E.ex s i ψ hψ
   lb := lbOfKd (lkd C.toFairChain)
   cx s t _ := lcx C.toFairChain s t
   lbR h := lkdR (lbOfKd_eq.mp h)
@@ -965,8 +966,8 @@ noncomputable def bdataS : BData σ where
   lb_trX h i hx ψ hψ := ltrX C.toFairChain (lbOfKd_eq.mp h) i hx ψ hψ
   kd := lkd C.toFairChain
   kd_lb h := lbOfKd_eq.mpr h
-  exX s i x X hx ψ hψ := lexX C.toFairChain s i x X hx ψ hψ
-  unl y h := let ⟨t', hR, hk⟩ := lunl C.toFairChain h; ⟨t', hR, lbOfKd_none hk y⟩
+  exX s i x X hx ψ hψ := E.exX s i x X hx ψ hψ
+  unl y h := E.unl y h
   sep hk h := lbOfKd_sep hk h
   backRel _ _ _ _ _ bd _ t hmem _ hk := lbackRel C hk bd t hmem
   backRelX _ _ _ _ _ _ _ hy bd _ t hmem _ hk := lbackRelX C hy bd t hmem (lbOfKd_eq.mp hk)

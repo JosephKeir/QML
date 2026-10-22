@@ -325,13 +325,13 @@ end BData
 section Limit
 
 variable {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} {hS : ModalSys.BStrong = true}
-  (C : StrongChain hS M₀)
+  (C : StrongChain hS M₀) (E : LimitEx C.toFairChain)
 
 /-- ⭐⭐**The limit of a strong chain is a model proper**. -/
 theorem bdataS_indInvariant (hB : ModalSys.B = true) :
-    (bdataS C).model.IndInvariant :=
-  BData.indInvariant (bdataS_strongTruth C hB)
-    fun hS' => BData.retCongr hS' (bdataS_strongTruth C hB)
+    (bdataS C E).model.IndInvariant :=
+  BData.indInvariant (bdataS_strongTruth C E hB)
+    fun hS' => BData.retCongr hS' (bdataS_strongTruth C E hB)
 
 end Limit
 

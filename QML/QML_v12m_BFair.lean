@@ -10,10 +10,12 @@ extend earlier ones, and every obligation is eventually met —
   in the child (in the parent);
 * ⭐`henk_ex`, `henk_negAll`: every existential, and every failing universal, of a node's theory
   eventually has a witness;
-* ⭐`child_box`, `child_dia`: every failing `□φ`, and every true `◇_x φ`, eventually has a child.
+* ⭐`Children`: every failing `□φ`, and every true `◇_x φ`, eventually has a child — kept apart
+  from fairness, since strong B's rows 3–4 make their children otherwise.
 
 They are proved once for any chain whose rounds perform every Henkin step, child creation and
-realisation step infinitely often (`OpChain`, ⭐`OpChain.toFair`); weak B's chain is one
+realisation step infinitely often (`OpChain`, ⭐`OpChain.toFair`, `OpChain.children`); weak
+B's chain is one
 (`weakChain`), and strong B's another (`QML_v12m_BFairS`).
 -/
 
@@ -71,6 +73,12 @@ structure FairChain (M₀ : Set (WFF σ (ctxOf l₀) 0)) where
       (a : Ann A) (t : Term σ (ctxOf ((net m).st s).l) A a),
       (WFF.instantiate Ctx.NoSlots.slots t (WFF.mono (hle.insert _ A) ψ)).neg ∈
         ((net m).st s).M
+
+/-- ⭐**The chain makes children**: every failing `□φ`, and every true `◇_x φ`, of a node's
+    theory eventually has a child of its own, unlabelled or witnessing `x`.  Weak B's chains
+    and strong B's rows 1–2 make them; rows 3–4 label every edge both ways (docs §11.23), and
+    their limit proves existence otherwise. -/
+structure Children (net : ℕ → NetSt σ) : Prop where
   child_box : ∀ {n : ℕ} {s : Node}, (net n).Live s →
     ∀ {ψ : WFF σ (ctxOf ((net n).st s).l).boxIn 0}, WFF.box ψ ∉ ((net n).st s).M →
     ∃ m, n ≤ m ∧ ∃ (hsuf : ((net n).st s).l <:+ ((net m).st s).l)
@@ -156,8 +164,6 @@ structure OpChain (M₀ : Set (WFF σ (ctxOf l₀) 0)) where
   ext : ∀ {n m : ℕ}, n ≤ m → NetSt.Ext (net n) (net m)
   henk : ∀ (s : Node) (o : Obl σ) (m : ℕ), ∃ n, m ≤ n ∧
     ((net n).Live s → net (n + 1) = (net n).henk s o)
-  child : ∀ (s : Node) (o : Obl σ) (m : ℕ), ∃ n, m ≤ n ∧
-    ((net n).Live s → net (n + 1) = (net n).mkChild s o)
   fwd : ∀ (c : ℕ) (p : Node) (m : ℕ), ∃ n, m ≤ n ∧ ((net n).Live (c :: p) →
     (net (n + 1)).fcl (c :: p) =
       if ((net n).fcl (c :: p)).length < ((net n).st p).l.length then
@@ -168,6 +174,13 @@ structure OpChain (M₀ : Set (WFF σ (ctxOf l₀) 0)) where
       if ((net n).bcl (c :: p)).length < ((net n).st (c :: p)).l.length then
         nextTy ((net n).st (c :: p)).l ((net n).bcl (c :: p)) :: (net n).bcl (c :: p)
       else (net n).bcl (c :: p))
+
+/-- A chain's **child steps**: from any round on, each child creation at a node is performed at
+    some later round (if its node is alive then).  Apart from `OpChain`, as `Children` from
+    `FairChain`: strong B's rows 3–4 make their children otherwise. -/
+structure ChildSteps (net : ℕ → NetSt σ) : Prop where
+  child : ∀ (s : Node) (o : Obl σ) (m : ℕ), ∃ n, m ≤ n ∧
+    ((net n).Live s → net (n + 1) = (net n).mkChild s o)
 
 namespace OpChain
 
@@ -312,7 +325,7 @@ theorem henk_negAll {n : ℕ} {s : Node} (hs : (C.net n).Live s) {A : VarType}
 /-! ### Children -/
 
 /-- ⭐Every failing `□φ` of a node's theory eventually has a child refuting `φ`. -/
-theorem child_box {n : ℕ} {s : Node} (hs : (C.net n).Live s)
+theorem child_box (hc : ChildSteps C.net) {n : ℕ} {s : Node} (hs : (C.net n).Live s)
     {ψ : WFF σ (ctxOf ((C.net n).st s).l).boxIn 0} (hψ : WFF.box ψ ∉ ((C.net n).st s).M) :
     ∃ m, n ≤ m ∧ ∃ (hsuf : ((C.net n).st s).l <:+ ((C.net m).st s).l)
       (M' : Set (WFF σ (ctxOf (((C.net m).st s).l.map VarType.bc)) 0)),
@@ -325,7 +338,7 @@ theorem child_box {n : ℕ} {s : Node} (hs : (C.net n).Live s)
       (C.net (m + 1)).fimg ((C.net m).nch s :: s) = id ∧
       (childArrow ((C.net m).st s).l (WFF.mono (ctxOf_le_of_suffix hsuf).boxIn ψ)).neg ∈
         M' := by
-  obtain ⟨m, hnm, hstep⟩ := C.child s ⟨((C.net n).st s).l, .box ψ⟩ n
+  obtain ⟨m, hnm, hstep⟩ := hc.child s ⟨((C.net n).st s).l, .box ψ⟩ n
   have hlm := C.live_mono hnm hs
   have hsuf := C.lang_suffix hnm hs
   have hg := (C.ext hnm).grows s hs
@@ -355,7 +368,8 @@ theorem child_box {n : ℕ} {s : Node} (hs : (C.net n).Live s)
 
 /-- ⭐Every true `◇_x φ` of a node's theory eventually has a child in the extent of `x` where
     `φ` holds. -/
-theorem child_dia {n : ℕ} {s : Node} (hs : (C.net n).Live s) {x : VarSymb}
+theorem child_dia (hc : ChildSteps C.net) {n : ℕ} {s : Node} (hs : (C.net n).Live s)
+    {x : VarSymb}
     {hx : ∃ X, (ctxOf ((C.net n).st s).l).ref x = some (.VTypeDia X)}
     {ψ : WFF σ ((ctxOf ((C.net n).st s).l).diaIn x) 0}
     (hψ : WFF.dia x hx ψ ∈ ((C.net n).st s).M) :
@@ -372,7 +386,7 @@ theorem child_dia {n : ℕ} {s : Node} (hs : (C.net n).Live s) {x : VarSymb}
       (C.net (m + 1)).fimg ((C.net m).nch s :: s) = id ∧
       childXArrow ((C.net m).st s).l hX
         (WFF.mono ((ctxOf_le_of_suffix hsuf).diaIn x) ψ) ∈ M' := by
-  obtain ⟨m, hnm, hstep⟩ := C.child s ⟨((C.net n).st s).l, .dia x hx ψ⟩ n
+  obtain ⟨m, hnm, hstep⟩ := hc.child s ⟨((C.net n).st s).l, .dia x hx ψ⟩ n
   have hlm := C.live_mono hnm hs
   have hsuf := C.lang_suffix hnm hs
   have hg := (C.ext hnm).grows s hs
@@ -426,8 +440,10 @@ def toFair : FairChain M₀ where
   back_total := C.back_total
   henk_ex := C.henk_ex
   henk_negAll := C.henk_negAll
-  child_box := C.child_box
-  child_dia := C.child_dia
+
+/-- ⭐…and, with its child steps, it makes children. -/
+theorem children (hc : ChildSteps C.net) : Children C.toFair.net :=
+  ⟨C.child_box hc, C.child_dia hc⟩
 
 end OpChain
 
@@ -465,9 +481,6 @@ noncomputable def weakOpChain (hB : ModalSys.B = true) (hM₀ : Theory.IsMCS M�
   henk s o m := by
     obtain ⟨n, hmn, hs⟩ := sched_after (σ := σ) (.inl (s, o)) m
     exact ⟨n, hmn, fun hl => by rw [net_succ_of hs]; simp only [NetSt.applyOp, if_pos hl]⟩
-  child s o m := by
-    obtain ⟨n, hmn, hs⟩ := sched_after (σ := σ) (.inr (.inl (s, o))) m
-    exact ⟨n, hmn, fun hl => by rw [net_succ_of hs]; simp only [NetSt.applyOp, if_pos hl]⟩
   fwd c p m := by
     obtain ⟨n, hmn, hs⟩ := sched_after (σ := σ) (.inr (.inr (.inl (c :: p)))) m
     refine ⟨n, hmn, fun hl => ?_⟩
@@ -481,9 +494,19 @@ noncomputable def weakOpChain (hB : ModalSys.B = true) (hM₀ : Theory.IsMCS M�
     simp only [NetSt.applyOp, if_pos hl]
     exact realB_bcl _ _ _
 
+/-- Weak B's chain performs every child step. -/
+theorem childSteps_net (M₀ : Set (WFF σ (ctxOf l₀) 0)) : ChildSteps (net M₀) :=
+  ⟨fun s o m => by
+    obtain ⟨n, hmn, hs⟩ := sched_after (σ := σ) (.inr (.inl (s, o))) m
+    exact ⟨n, hmn, fun hl => by rw [net_succ_of hs]; simp only [NetSt.applyOp, if_pos hl]⟩⟩
+
 /-- ⭐Weak B's chain is fair. -/
 noncomputable def weakChain (hB : ModalSys.B = true) (hM₀ : Theory.IsMCS M₀) : FairChain M₀ :=
   (weakOpChain hB hM₀).toFair
+
+theorem weakChain_children (hB : ModalSys.B = true) (hM₀ : Theory.IsMCS M₀) :
+    Children (weakChain hB hM₀).net :=
+  (weakOpChain hB hM₀).children (childSteps_net M₀)
 
 end Weak
 

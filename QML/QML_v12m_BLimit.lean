@@ -13,7 +13,7 @@ The canonical model's data (`BData`) from the chain of networks.
   them.  A stage `i` of the source is sent along the arrow at the first stage of the target by
   which its variables are all committed (`stg`, from `fwd_total`, `back_total`).
 * ⭐`bdata`: transfer along the arrow is the network's, read through its committed part
-  (`Transfer.apply`, …); existence is `child_box` and `child_dia`.
+  (`Transfer.apply`, …); existence is the chain's children (`Children`).
 -/
 
 namespace V12M
@@ -455,7 +455,7 @@ theorem ltrX {s t : LW C} {x : VarSymb} {X : VarType} (hk : lkd C s t = some (x,
 /-! ## Existence -/
 
 /-- ⭐A failing necessity has a child where its translation fails. -/
-theorem lex (s : LW C) (i : ℕ) (ψ : WFF σ (ctxOf (lat s i)).boxIn 0)
+theorem lex (hc : Children C.net) (s : LW C) (i : ℕ) (ψ : WFF σ (ctxOf (lat s i)).boxIn 0)
     (hψ : .box ψ ∉ ((C.net (birth C s.2 + i)).st s.1).M) :
     ∃ (t : LW C) (h : LR C s t), (WFF.subst (arrowIdx (limg C s t))
       (arrowS σ _ (limg C s t)) (ok_arrowS (limgOk C h i))
@@ -463,7 +463,7 @@ theorem lex (s : LW C) (i : ℕ) (ψ : WFF σ (ctxOf (lat s i)).boxIn 0)
         ((C.net (birth C t.2 + lstg C s t i)).st t.1).M := by
   classical
   obtain ⟨m, _, hsuf, M', hnot, hlive, hst, _, hfcl, hfimg, hmem⟩ :=
-    C.child_box (live_birth C s.2 (Nat.le_add_right _ i)) hψ
+    hc.child_box (live_birth C s.2 (Nat.le_add_right _ i)) hψ
   let t : LW C := ⟨(C.net m).nch s.1 :: s.1, m + 1, hlive⟩
   have hc : t.1 = (C.net m).nch s.1 :: s.1 := rfl
   have h : LR C s t := Or.inl ⟨_, hc⟩
@@ -492,7 +492,7 @@ theorem lex (s : LW C) (i : ℕ) (ψ : WFF σ (ctxOf (lat s i)).boxIn 0)
   exact hm
 
 /-- ⭐A possibility has a witness child where its translation holds. -/
-theorem lexX (s : LW C) (i : ℕ) (x : VarSymb) (X : VarType)
+theorem lexX (hc : Children C.net) (s : LW C) (i : ℕ) (x : VarSymb) (X : VarType)
     (hx : (ctxOf (lat s i)).ref x = some (.VTypeDia X)) (ψ : WFF σ ((ctxOf (lat s i)).diaIn x) 0)
     (hψ : WFF.dia x ⟨X, hx⟩ ψ ∈ ((C.net (birth C s.2 + i)).st s.1).M) :
     ∃ (t : LW C) (hk : lkd C s t = some (x, X)),
@@ -504,7 +504,7 @@ theorem lexX (s : LW C) (i : ℕ) (x : VarSymb) (X : VarType)
           ((C.net (birth C t.2 + lstg C s t i)).st t.1).M := by
   classical
   obtain ⟨m, _, hsuf, X', hX, M', hnot, hlive, hst, hkind, hcxe, hfcl, hfimg, hmem⟩ :=
-    C.child_dia (live_birth C s.2 (Nat.le_add_right _ i)) hψ
+    hc.child_dia (live_birth C s.2 (Nat.le_add_right _ i)) hψ
   obtain rfl : X' = X := by
     have h1 := (ctxOf_le_of_suffix hsuf).ref hx
     rw [hX] at h1
@@ -547,24 +547,91 @@ theorem lexX (s : LW C) (i : ℕ) (x : VarSymb) (X : VarType)
 
 /-- ⭐Every world with an arrow out has an **unlabelled** arrow out: `□⊥` fails there (`ltr`),
     so `child_box` gives it a child, of kind `none`. -/
-theorem lunl {s t : LW C} (h : LR C s t) : ∃ t', LR C s t' ∧ lkd C s t' = none := by
+theorem lunl (hc : Children C.net) {s t : LW C} (h : LR C s t) :
+    ∃ t', LR C s t' ∧ lkd C s t' = none := by
   classical
   have hψ : WFF.box (.bot : WFF σ (ctxOf (lat s 0)).boxIn 0) ∉
       ((C.net (birth C s.2 + 0)).st s.1).M := fun hb =>
     ((nodeWorld C t.1 t.2).mcs _).bot_not_mem (ltr C h 0 .bot hb)
   obtain ⟨m, _, _, _, _, hlive, _, hkind, _⟩ :=
-    C.child_box (live_birth C s.2 (Nat.le_add_right _ 0)) hψ
+    hc.child_box (live_birth C s.2 (Nat.le_add_right _ 0)) hψ
   let t' : LW C := ⟨(C.net m).nch s.1 :: s.1, m + 1, hlive⟩
   refine ⟨t', Or.inl ⟨_, rfl⟩, ?_⟩
   unfold lkd
   rw [if_pos ⟨_, rfl⟩, ← kind_at C t' (birth_le t'.2 hlive)]
   exact hkind
 
+/-- ⭐A true `◇_x ⊤` has a witness edge whose content variable is no image of the stage's
+    variables: the child made for it sees them under the identity, below its content. -/
+theorem lexX_fresh (hc : Children C.net) (s : LW C) (i : ℕ) (x : VarSymb) (X : VarType)
+    (hx : (ctxOf (lat s i)).ref x = some (.VTypeDia X))
+    (hψ : WFF.dia x ⟨X, hx⟩ (.top : WFF σ _ 0) ∈ ((C.net (birth C s.2 + i)).st s.1).M) :
+    ∃ t : LW C, lkd C s t = some (x, X) ∧ ∀ r < (lat s i).length, limg C s t r ≠ lcx C s t := by
+  classical
+  obtain ⟨m, _, hsuf, X', hX, M', hnot, hlive, hst, hkind, hcxe, hfcl, hfimg, hmem⟩ :=
+    hc.child_dia (live_birth C s.2 (Nat.le_add_right _ i)) hψ
+  obtain rfl : X' = X := by
+    have h1 := (ctxOf_le_of_suffix hsuf).ref hx
+    rw [hX] at h1
+    simp only [Option.some.injEq, VarType.VTypeDia.injEq] at h1
+    exact h1
+  let t : LW C := ⟨(C.net m).nch s.1 :: s.1, m + 1, hlive⟩
+  have hc : t.1 = (C.net m).nch s.1 :: s.1 := rfl
+  have hbt' : birth C t.2 ≤ m + 1 := birth_le t.2 hlive
+  have hkd : lkd C s t = some (x, X') := by
+    rw [lkd, if_pos ⟨_, hc⟩, ← kind_at C t hbt']
+    exact hkind
+  have hlcx : lcx C s t = ((C.net m).st s.1).l.length := by
+    rw [lcx, if_pos ⟨_, hc⟩]
+    exact (cx_at C t hbt').symm.trans hcxe
+  refine ⟨t, hkd, fun r hr => ?_⟩
+  have hr' : r < ((C.net m).st s.1).l.length := lt_of_lt_of_le hr hsuf.length_le
+  have hlen : r < ((C.net (m + 1)).fcl t.1).length := by
+    rw [hc, hfcl]
+    exact hr'
+  rw [limg, if_pos ⟨_, hc⟩, fimgL_eq C hlive hlen, hfimg, hlcx]
+  exact Nat.ne_of_lt hr'
+
+/-! ## Existence, at the chain -/
+
+/-- ⭐**Existence in the limit**, at the chain: the canonical data's `ex`, `exX` and `unl`, and
+    fresh witness arrows (`BData.CxFresh`).  A chain with children has it (`LimitEx.ofChildren`);
+    strong B's rows 3–4, from doubly witnessed children (docs §11.23). -/
+structure LimitEx (C : FairChain M₀) : Prop where
+  ex : ∀ (s : LW C) (i : ℕ) (ψ : WFF σ (ctxOf (lat s i)).boxIn 0),
+    .box ψ ∉ ((C.net (birth C s.2 + i)).st s.1).M →
+    ∃ (t : LW C) (h : LR C s t), (WFF.subst (arrowIdx (limg C s t))
+      (arrowS σ _ (limg C s t)) (ok_arrowS (limgOk C h i))
+      (coh_arrowS (limgOk C h i)) Ctx.NoSlots.slots Ctx.NoSlots.slots ψ).neg ∈
+        ((C.net (birth C t.2 + lstg C s t i)).st t.1).M
+  exX : ∀ (s : LW C) (i : ℕ) (x : VarSymb) (X : VarType)
+    (hx : (ctxOf (lat s i)).ref x = some (.VTypeDia X))
+    (ψ : WFF σ ((ctxOf (lat s i)).diaIn x) 0),
+    WFF.dia x ⟨X, hx⟩ ψ ∈ ((C.net (birth C s.2 + i)).st s.1).M →
+    ∃ (t : LW C) (hk : lkd C s t = some (x, X)),
+      WFF.subst (arrowXIdx (limg C s t) x (lcx C s t))
+        (arrowXS σ _ (limg C s t) x (lcx C s t))
+        (ok_arrowXS (limgOk C (lkdR hk) i) hx (lhcx C hk i))
+        (coh_arrowXS (limgOk C (lkdR hk) i) hx (lhcx C hk i))
+        Ctx.NoSlots.slots Ctx.NoSlots.slots ψ ∈
+          ((C.net (birth C t.2 + lstg C s t i)).st t.1).M
+  unl : ∀ {s t : LW C} (y : VarSymb), LR C s t →
+    ∃ t', LR C s t' ∧ lbOfKd (lkd C) s t' y = none
+  cxFresh : ∀ (s : LW C) (i : ℕ) (x : VarSymb) (X : VarType)
+    (hx : (ctxOf (lat s i)).ref x = some (.VTypeDia X)),
+    WFF.dia x ⟨X, hx⟩ (.top : WFF σ _ 0) ∈ ((C.net (birth C s.2 + i)).st s.1).M →
+    ∃ t : LW C, lkd C s t = some (x, X) ∧ ∀ r < (lat s i).length, limg C s t r ≠ lcx C s t
+
+/-- ⭐A chain with children has existence in the limit. -/
+theorem LimitEx.ofChildren (hc : Children C.net) : LimitEx C :=
+  ⟨lex C hc, lexX C hc, fun y h => let ⟨t', hR, hk⟩ := lunl C hc h; ⟨t', hR, lbOfKd_none hk y⟩,
+    lexX_fresh C hc⟩
+
 /-! ## The canonical data -/
 
 /-- ⭐**The data of B's canonical model**, from the limit of the network, with strong B off (strong
     B's limit, with its own fields, is `bdataS`). -/
-noncomputable def bdata (hW : ModalSys.BStrong = false) : BData σ where
+noncomputable def bdata (hc : Children C.net) (hW : ModalSys.BStrong = false) : BData σ where
   W := LW C
   actual := ⟨[], 0, trivial⟩
   w s := nodeWorld C s.1 s.2
@@ -575,7 +642,7 @@ noncomputable def bdata (hW : ModalSys.BStrong = false) : BData σ where
   stg := lstg C
   imgOk h i := limgOk C h i
   tr h i ψ hψ := ltr C h i ψ hψ
-  ex s i ψ hψ := lex C s i ψ hψ
+  ex s i ψ hψ := lex C hc s i ψ hψ
   lb := lbOfKd (lkd C)
   cx s t _ := lcx C s t
   lbR h := lkdR (lbOfKd_eq.mp h)
@@ -584,8 +651,8 @@ noncomputable def bdata (hW : ModalSys.BStrong = false) : BData σ where
   lb_trX h i hx ψ hψ := ltrX C (lbOfKd_eq.mp h) i hx ψ hψ
   kd := lkd C
   kd_lb h := lbOfKd_eq.mpr h
-  exX s i x X hx ψ hψ := lexX C s i x X hx ψ hψ
-  unl y h := let ⟨t', hR, hk⟩ := lunl C h; ⟨t', hR, lbOfKd_none hk y⟩
+  exX s i x X hx ψ hψ := lexX C hc s i x X hx ψ hψ
+  unl y h := let ⟨t', hR, hk⟩ := lunl C hc h; ⟨t', hR, lbOfKd_none hk y⟩
   sep hk h := lbOfKd_sep hk h
   backRel hS := absurd (hW.symm.trans hS) (by decide)
   backRelX hS := absurd (hW.symm.trans hS) (by decide)

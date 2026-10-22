@@ -15,6 +15,8 @@ Its two readings are the two rules of rows 3–4.
   any arrow).
 * ⭐`sat_ret_route`: at a returning possibility's arrow out, a possible object here naming the
   route (`Proof.ret_route`).
+* `sat_ret_unrealise`, `sat_retx_forget`: the converses the canonical model's truth lemma reads
+  rows 3–4 with — a realised part dropped, and a named route forgotten.
 -/
 
 namespace V12M
@@ -112,6 +114,35 @@ theorem sat_ret_route {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W} (env : M.Env Γ w)
   · exact (sat_mono (Env.extend_agree hag (.bnd 0) e) Φ).mpr hΦ
   · erw [interp_mono (Env.agree_extend env hκ.root p) t]
     exact hr
+
+/-- **Dropping a realised part**: `◇_O[⟨d, e⟩ ↦ ⟨y, c⟩] Φ(d)` gives `◇_O[d ↦ y] Φ(d)`, the
+    converse of `sat_ret_realise`. -/
+theorem sat_ret_unrealise {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W} (env : M.Env Γ w)
+    (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (N : NShape) {X : VarType}
+    {a : Ann N.flat} (y : Term σ Γ N.flat a) {c₀ : Ann X} (c : Term σ Γ X c₀)
+    (Φ : WFF σ (O.view.insert (.bnd 0) N.ty) 1)
+    (h : M.sat env (O.retS hS (.wit N X) (Term.pair y c)
+      (WFF.bodyRepl (RShape.realL O.view N X).2 Φ))) :
+    M.sat env (O.retS hS (.nec N) y Φ) := by
+  obtain ⟨i, ⟨d, p⟩, hΦ, r, hr⟩ := (OutLeg.sat_retS hS env O (.wit N X) _ _).mp h
+  refine (OutLeg.sat_retS hS env O (.nec N) y Φ).mpr ⟨i, d, ?_, r, hr.1⟩
+  rw [sat_bodyRepl O.noProjLast] at hΦ
+  dsimp only [RShape.realL] at hΦ
+  rw [interp_eta_slot_fst (A := N.ty) (B := .VTypeDia X)] at hΦ
+  exact hΦ
+
+/-- **Forgetting a named route**: a returning possibility along `κ` whose body is read from the
+    `□` view is one along `□` (`Env.diaPush_boxIn`). -/
+theorem sat_retx_forget {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w)
+    (hS : ModalSys.BStrong = true) {κ : VarSymb} (hκ : ∃ X, Γ.ref κ = some (.VTypeDia X))
+    (S : RShape) {a : Ann S.flat} (t : Term σ Γ S.flat a)
+    (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) S.ty) 1)
+    (h : M.sat env (WFF.retxS hS κ hκ S t
+      (WFF.mono ((Ctx.le_boxIn_diaIn Γ κ).insert (.bnd 0) S.ty) Φ))) :
+    M.sat env (WFF.retS hS S t Φ) := by
+  obtain ⟨Y, hY, a', e, hΦ, r, hr⟩ := h
+  exact ⟨a'.1, e, (sat_mono (Env.extend_agree (Env.diaPush_boxIn env hY a') (.bnd 0) e) Φ).mp hΦ,
+    r, hr⟩
 
 end Model
 

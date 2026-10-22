@@ -9566,6 +9566,51 @@ arrow, plus two rules and a model law.  Row 4 is `ret_realise` along a `◇_y` l
   `ModalSys.WCoh` (`strongT`, `strongD`), which completeness under `BStrongW` will ask for (step
   6).  While `NoFour` asks `BStrongW` off it holds vacuously (`ModalSys.NoFour.wCoh`).
 
+#### Build step 4: the network makes only doubly witnessed children *(2026-10-22)*
+
+Agreed (user): option (ii), the chain's child fields split off.  Built in four parts.
+
+* **Children apart from fairness.**  `FairChain`'s `child_box`/`child_dia` became a predicate
+  `Children net` (and `OpChain`'s child steps `ChildSteps net`).  The limit's `lex`, `lexX`,
+  `lunl`, `lexX_fresh` and `bdata` take it as a hypothesis; weak B's chain has it
+  (`weakChain_children`), strong B's under rows 1–2 only (`StrongChain.children`, conditional on
+  `BStrongW = false`).
+* **The network under `BStrongW`.**  `applyOpS` makes no plain or witness child, and `applyOpT`
+  no returning successor without a back witness (`mkRetC`, `mkRetXC`, `mkRetDC`): only the doubly
+  witnessed one (`mkRetXDC`).  `StrongChain.retOp`/`retXOp`/`retDOp` are conditional on
+  `BStrongW = false`.  New operation **`NetSt.mkRoute`** (new file `QML_v12m_BNetRoute.lean`): a
+  returning possibility along `□` gets its route named, a fresh root `κ = |l|` with
+  `◇_κ[d ↦ y] Φ`, consistent by `Proof.ret_route` as a Henkin witness is by `ex_elim`
+  (`route_consistent`, `routeStep_ok`).  Chain: `StrongChain.routeOp`, `route_at`, `lroute`.
+  This is the "first `ret_route`" of paper check 3, done as a network step rather than as an
+  `∃`-formula (the leg would have had to be a bound root).
+* **Existence at the limit as data.**  `LimitEx C` (in `BLimit`): `ex`, `exX`, `unl` and fresh
+  witness arrows (`cxFresh`), at the chain.  `bdataS` takes it (`bdataS C E`), so that rows
+  3–4's proof can live downstream of `bdataS`.  `LimitEx.ofChildren` for rows 1–2;
+  ⭐`LimitEx.ofW` for rows 3–4 (new file `QML_v12m_BLimitW.lean`):
+  * `exX` (`lexXW`): `◇_x ψ` gives `◇_x^{□𝟙 × ◇𝟙}[⟨d, e⟩ ↦ ⟨(), ()⟩] ψ`
+    (`BWorld.retx_of_dia`: `ret_new` at the unit, whose value is `()`, then `ret_realise`), and
+    `lretOutXDC` (the chain-level half of `bdataS_retOutXDC`: companions named, aliases,
+    `lretXDC`) gives the child; the body does not use its slot (`WFF.slotUp`,
+    `readArrowX_slotUp`, `WFF.bodyRepl_slotUp`).  `lretXDC` now also reports that the new
+    content is fresh, which is `cxFresh`.
+  * `ex` (`lexW`): `¬□ψ` gives `◇[() ↦ ()] ¬ψ` (`BWorld.ret_of_not_box`), the route `κ`
+    (`lroute`), `◇_κ ¬ψ` (`BWorld.dia_of_retx`), then `lexXW` along `κ`.
+  * `unl` (`lunlW`): the route is past the stage's variables; if it is `y`, a second route
+    from a stage where `y` is declared.
+* **The truth lemma under `BStrongW`** (`BTruthS`): ⭐`BData.strongTruth_ofW` needs only the
+  doubly witnessed children (`RetOutXDC`) and routes (`BData.Routes`, from `lroute`): a necessary
+  shape realises a possible part (`ret_realise`) and drops it semantically
+  (`Model.sat_ret_unrealise`); a plain leg names its route and forgets it semantically
+  (`Model.sat_retx_forget`, by `Env.diaPush_boxIn`).  For this `sat_retxS_wit_of_memC` asks its
+  induction hypothesis only below the body's size.  `bdataS_strongTruth` dispatches on
+  `BStrongW`; so does `exists_canonB`'s choice of existence data.
+* Remaining temporary uses of `NoFour.noBStrongW`: the canonical model's `posBack_exists`
+  (step 5) and `NoFour` itself (step 6).  All 18 targets build, no `sorry`.
+* Not yet: a `BData` field saying every edge is labelled both ways (for step 5).
+* `lretOutXDC` copies the first half of `bdataS_retOutXDC` (about 110 lines); factoring the two
+  would need the second half's alias data exported.
+
 #### Note for the write-up: possible objects and the category of elements *(2026-10-22)*
 
 At each world the definable maps (`GFunc`, strength included) act on possible objects

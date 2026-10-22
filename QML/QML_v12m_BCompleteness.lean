@@ -38,7 +38,7 @@ theorem exists_canonB (hB : ModalSys.B = true) {l₀ : List VarType}
       ∀ ψ ∈ M₀, WFF.mono hle ψ ∈ (B.w s).M 0 := by
   cases hBS : ModalSys.BStrong with
   | false =>
-      let B := bdata (weakChain hB hM₀) hBS
+      let B := bdata (weakChain hB hM₀) (weakChain_children hB hM₀) hBS
       have hST : ∀ hS : ModalSys.BStrong = true, B.StrongTruth hS :=
         fun hS => absurd (hBS.symm.trans hS) (by decide)
       let s : B.W := B.actual
@@ -48,12 +48,15 @@ theorem exists_canonB (hB : ModalSys.B = true) {l₀ : List VarType}
         BData.truth hST s 0, fun ψ hψ => hg.sub ψ (show ψ ∈ ((net M₀ 0).st []).M from hψ)⟩
   | true =>
       let C := strongChainS hBS hB hM₀
-      let B := bdataS C
+      let E : LimitEx C.toFairChain :=
+        if hW : ModalSys.BStrongW = true then LimitEx.ofW C hB hW
+        else LimitEx.ofChildren C.toFairChain (C.children (by simpa using hW))
+      let B := bdataS C E
       let s : B.W := B.actual
       have hg := (ext_netS hBS hB hM₀
         (Nat.zero_le (birth C.toFairChain s.2 + 0))).grows [] trivial
       exact ⟨B, s, ctxOf_le_of_suffix (C.lang_suffix (Nat.zero_le _) trivial),
-        bdataS_indInvariant C hB, BData.truth (bdataS_strongTruth C hB) s 0,
+        bdataS_indInvariant C E hB, BData.truth (bdataS_strongTruth C E hB) s 0,
         fun ψ hψ => hg.sub ψ (show ψ ∈ ((netS hBS M₀ 0).st []).M from hψ)⟩
 
 /-- ⭐**Completeness for B** (weak or strong): in a context of declared variables, a

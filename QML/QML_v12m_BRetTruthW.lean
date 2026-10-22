@@ -611,11 +611,11 @@ end BData
 section Limit
 
 variable {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} {hS : ModalSys.BStrong = true}
-  (C : StrongChain hS M₀)
+  (C : StrongChain hS M₀) (E : LimitEx C.toFairChain)
 
 /-- ⭐⭐**The limit has witnessed returning possibilities from the far end**: the way home's
     invariant (`lretAtB`), a witness edge's (`RetAtB.toRetInvWB`), at a node (`ret_of_invW`). -/
-theorem bdataS_retInW : (bdataS C).RetInW hS := by
+theorem bdataS_retInW : (bdataS C E).RetInW hS := by
   classical
   intro s k h x X hk i N Z Φ j hj hx n c u hm
   replace hk := lbOfKd_eq.mp hk
@@ -653,7 +653,7 @@ theorem bdataS_retInW : (bdataS C).RetInW hS := by
 
 /-- ⭐⭐**The limit has doubly witnessed returning possibilities from the far end**: the way
     home's invariant is the doubly witnessed one (`lretAtB`), at a node (`ret_of_invWD`). -/
-theorem bdataS_retInWX : (bdataS C).RetInWX hS := by
+theorem bdataS_retInWX : (bdataS C E).RetInWX hS := by
   classical
   intro s k y Y hky x X hkx i hy N Z Φ j hj hx n c u hm
   replace hky := lbOfKd_eq.mp hky

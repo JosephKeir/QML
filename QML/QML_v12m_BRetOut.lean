@@ -168,7 +168,8 @@ theorem liftBodyR_eq_readArrow (l : List VarType) (A : VarType)
 /-- ⭐**Every obligation eventually has its returning child**: a child born of the obligation,
     with the parent's roots one up, its root `0` (the born root) coming back to `y`, and the
     obligation's body read there at the born root (`retChildC_body`). -/
-theorem StrongChain.ret_childC {n : ℕ} {s : Node} (hs : (C.net n).Live s) {A : VarType} {y : ℕ}
+theorem StrongChain.ret_childC (hW : ModalSys.BStrongW = false)
+    {n : ℕ} {s : Node} (hs : (C.net n).Live s) {A : VarType} {y : ℕ}
     (hy : (ctxOf ((C.net n).st s).l).ref (.root (.free y)) = some (VarType.VTypeBox A).bc)
     (Ξ : WFF σ ((ctxOf ((C.net n).st s).l).boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
     (h : WFF.retS hS (.nec (bornShape A)) (unarrT (σ := σ) hy).2 Ξ ∈ ((C.net n).st s).M) :
@@ -187,7 +188,7 @@ theorem StrongChain.ret_childC {n : ℕ} {s : Node} (hs : (C.net n).Live s) {A :
         (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) _) Ξ) ∈
           (retChildC hS ((ctxOf_le_of_suffix hsuf).ref hy)
             (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) _) Ξ)).M := by
-  obtain ⟨m, hnm, hstep⟩ := C.retOp s ⟨_, A, y, Ξ⟩ n
+  obtain ⟨m, hnm, hstep⟩ := C.retOp hW s ⟨_, A, y, Ξ⟩ n
   have hlm := C.live_mono hnm hs
   have hsuf := C.lang_suffix hnm hs
   have hg := (C.ext hnm).grows s hs
@@ -213,7 +214,7 @@ theorem StrongChain.ret_childC {n : ℕ} {s : Node} (hs : (C.net n).Live s) {A :
 /-- ⭐⭐**A returning child at the limit**: an obligation at a stage of `s` has a forward edge
     `s → t` whose way home sends `t`'s root `0` to `y`, with the obligation's body read along the
     edge at the born root `c` (`StrongChain.ret_childC`, grown to the edge's stage). -/
-theorem lretC (s : LW C.toFairChain) (i : ℕ) {A : VarType} {y : ℕ}
+theorem lretC (hW : ModalSys.BStrongW = false) (s : LW C.toFairChain) (i : ℕ) {A : VarType} {y : ℕ}
     (hy : (ctxOf (lat s i)).ref (.root (.free y)) = some (VarType.VTypeBox A).bc)
     (Ξ : WFF σ ((ctxOf (lat s i)).boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
     (h : WFF.retS hS (.nec (bornShape A)) (unarrT (σ := σ) hy).2 Ξ ∈
@@ -226,7 +227,7 @@ theorem lretC (s : LW C.toFairChain) (i : ℕ) {A : VarType} {y : ℕ}
         Ξ ∈ ((C.net (birth C.toFairChain t.2 + lstg C.toFairChain s t i)).st t.1).M := by
   classical
   obtain ⟨m, _, hsuf, hnot, hlive, hst, -, hfcl, hfimg, hbcl, hbimg, hmem⟩ :=
-    C.ret_childC (live_birth C.toFairChain s.2 (Nat.le_add_right _ i)) hy Ξ h
+    C.ret_childC hW (live_birth C.toFairChain s.2 (Nat.le_add_right _ i)) hy Ξ h
   let t : LW C.toFairChain := ⟨(C.net m).nch s.1 :: s.1, m + 1, hlive⟩
   have hc : t.1 = (C.net m).nch s.1 :: s.1 := rfl
   have h' : LR C.toFairChain s t := Or.inl ⟨_, hc⟩
@@ -277,6 +278,57 @@ theorem lalias (s : LW C.toFairChain) (i : ℕ) {A : VarType} {a : Ann A}
   rw [hst] at hg
   exact ⟨hg.suf, fun ψ => hg.sub _ (hal ⟨ψ, rfl⟩)⟩
 
+/-- ⭐**Rows 3–4: every returning possibility along `□` eventually has its route named**
+    (`NetSt.mkRoute`). -/
+theorem StrongChain.route_at (hW : ModalSys.BStrongW = true) {n : ℕ} {s : Node}
+    (hs : (C.net n).Live s) {S : RShape} {a : Ann S.flat}
+    (y : Term σ (ctxOf ((C.net n).st s).l) S.flat a)
+    (Φ : WFF σ ((ctxOf ((C.net n).st s).l).boxIn.insert (.bnd 0) S.ty) 1)
+    (h : WFF.retS hS S y Φ ∈ ((C.net n).st s).M) :
+    ∃ m, n ≤ m ∧ ∃ hsuf : ((C.net n).st s).l <:+ ((C.net m).st s).l,
+      (C.net (m + 1)).st s = routeStep hS ((C.net m).st s)
+        (Term.mono (ctxOf_le_of_suffix hsuf) y)
+        (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) S.ty) Φ) ∧
+      routeFormula hS (Term.mono (ctxOf_le_of_suffix hsuf) y)
+        (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) S.ty) Φ) ∈
+          (routeStep hS ((C.net m).st s) (Term.mono (ctxOf_le_of_suffix hsuf) y)
+            (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) S.ty) Φ)).M := by
+  obtain ⟨m, hnm, hstep⟩ := C.routeOp hW s ⟨_, S, a, y, Φ⟩ n
+  have hlm := C.live_mono hnm hs
+  have hsuf := C.lang_suffix hnm hs
+  have hg := (C.ext hnm).grows s hs
+  have hin : WFF.retS hS S (Term.mono (ctxOf_le_of_suffix hsuf) y)
+      (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) S.ty) Φ) ∈
+        ((C.net m).st s).M := hg.sub _ h
+  have hst : (C.net (m + 1)).st s = routeStep hS ((C.net m).st s)
+      (Term.mono (ctxOf_le_of_suffix hsuf) y)
+      (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) S.ty) Φ) := by
+    rw [hstep hlm]
+    simp only [NetSt.mkRoute, dif_pos hsuf, if_pos hin]
+    exact Function.update_self _ _ _
+  exact ⟨m, hnm, hsuf, hst, (routeStep_ok hS hW ((C.good m).mcs s hlm) _ _ hin).2.2⟩
+
+/-- ⭐**Routes at the limit** (rows 3–4): a returning possibility along `□` at a stage of `s`
+    has, at a later stage, its route named by the root `l.length` past that stage's variables
+    (`StrongChain.route_at`). -/
+theorem lroute (hW : ModalSys.BStrongW = true) (s : LW C.toFairChain) (i : ℕ) {S : RShape}
+    {a : Ann S.flat} (y : Term σ (ctxOf (lat s i)) S.flat a)
+    (Φ : WFF σ ((ctxOf (lat s i)).boxIn.insert (.bnd 0) S.ty) 1)
+    (h : WFF.retS hS S y Φ ∈ ((C.net (birth C.toFairChain s.2 + i)).st s.1).M) :
+    ∃ i₁, i ≤ i₁ ∧ ∃ (l : List VarType) (hl : lat s i <:+ l)
+      (hsuf : (.VTypeDia .VTypeOne :: l) <:+ lat s i₁),
+      WFF.mono (ctxOf_le_of_suffix hsuf) (routeFormula hS (Term.mono (ctxOf_le_of_suffix hl) y)
+        (WFF.mono ((ctxOf_le_of_suffix hl).boxIn.insert (.bnd 0) S.ty) Φ)) ∈
+          ((C.net (birth C.toFairChain s.2 + i₁)).st s.1).M := by
+  obtain ⟨m, hnm, hsuf, hst, hmem⟩ :=
+    C.route_at hW (live_birth C.toFairChain s.2 (Nat.le_add_right _ i)) y Φ h
+  refine ⟨m + 1 - birth C.toFairChain s.2, by omega, _, hsuf, ?_⟩
+  have hlm : (C.net (m + 1)).Live s.1 := live_birth C.toFairChain s.2 (by omega)
+  have hg := (C.ext (show m + 1 ≤ birth C.toFairChain s.2 + (m + 1 - birth C.toFairChain s.2)
+    by omega)).grows s.1 hlm
+  rw [hst] at hg
+  exact ⟨hg.suf, hg.sub _ hmem⟩
+
 /-- The born-shape obligation atom along a witness, weakened. -/
 theorem mono_retx_oblC {l l' : List VarType} (hsuf : l <:+ l') {A : VarType} {y : ℕ}
     (hy : (ctxOf l).ref (.root (.free y)) = some (VarType.VTypeBox A).bc) {x : VarSymb}
@@ -313,7 +365,8 @@ theorem liftBodyXR_eq_readArrowX (l : List VarType) (A : VarType) {x : VarSymb} 
     exact .refl _
 
 /-- ⭐**Every obligation along a witness eventually has its witness child**. -/
-theorem StrongChain.ret_childXC {n : ℕ} {s : Node} (hs : (C.net n).Live s) {A : VarType}
+theorem StrongChain.ret_childXC (hW : ModalSys.BStrongW = false)
+    {n : ℕ} {s : Node} (hs : (C.net n).Live s) {A : VarType}
     {y : ℕ} (hy : (ctxOf ((C.net n).st s).l).ref (.root (.free y)) = some (VarType.VTypeBox A).bc)
     {x : VarSymb} {X : VarType} (hX : (ctxOf ((C.net n).st s).l).ref x = some (.VTypeDia X))
     (Ξ : WFF σ (((ctxOf ((C.net n).st s).l).diaIn x).insert (.bnd 0) (.VTypeBox A)) 1)
@@ -335,7 +388,7 @@ theorem StrongChain.ret_childXC {n : ℕ} {s : Node} (hs : (C.net n).Live s) {A 
         (WFF.mono (((ctxOf_le_of_suffix hsuf).diaIn x).insert (.bnd 0) _) Ξ) ∈
           (retChildXC hS ((ctxOf_le_of_suffix hsuf).ref hy) ((ctxOf_le_of_suffix hsuf).ref hX)
             (WFF.mono (((ctxOf_le_of_suffix hsuf).diaIn x).insert (.bnd 0) _) Ξ)).M := by
-  obtain ⟨m, hnm, hstep⟩ := C.retXOp s ⟨_, A, x, y, Ξ⟩ n
+  obtain ⟨m, hnm, hstep⟩ := C.retXOp hW s ⟨_, A, x, y, Ξ⟩ n
   have hlm := C.live_mono hnm hs
   have hsuf := C.lang_suffix hnm hs
   have hg := (C.ext hnm).grows s hs
@@ -372,7 +425,7 @@ theorem StrongChain.ret_childXC {n : ℕ} {s : Node} (hs : (C.net n).Live s) {A 
 /-- ⭐⭐**A witness child at the limit**: an obligation along `x` at a stage of `s` has a witness
     edge `s → t` for `x` whose way home sends `t`'s root `0` to `y`, with the obligation's body
     read along it at the born root (`StrongChain.ret_childXC`). -/
-theorem lretXC (s : LW C.toFairChain) (i : ℕ) {A : VarType} {y : ℕ}
+theorem lretXC (hW : ModalSys.BStrongW = false) (s : LW C.toFairChain) (i : ℕ) {A : VarType} {y : ℕ}
     (hy : (ctxOf (lat s i)).ref (.root (.free y)) = some (VarType.VTypeBox A).bc) {x : VarSymb}
     {X : VarType} (hX : (ctxOf (lat s i)).ref x = some (.VTypeDia X))
     (Ξ : WFF σ (((ctxOf (lat s i)).diaIn x).insert (.bnd 0) (.VTypeBox A)) 1)
@@ -386,7 +439,7 @@ theorem lretXC (s : LW C.toFairChain) (i : ℕ) {A : VarType} {y : ℕ}
         Ξ ∈ ((C.net (birth C.toFairChain t.2 + lstg C.toFairChain s t i)).st t.1).M := by
   classical
   obtain ⟨m, _, hsuf, hnot, hlive, hst, hkind, hcxe, hfcl, hfimg, hbcl, hbimg, hmem⟩ :=
-    C.ret_childXC (live_birth C.toFairChain s.2 (Nat.le_add_right _ i)) hy hX Ξ h
+    C.ret_childXC hW (live_birth C.toFairChain s.2 (Nat.le_add_right _ i)) hy hX Ξ h
   let t : LW C.toFairChain := ⟨(C.net m).nch s.1 :: s.1, m + 1, hlive⟩
   have hc : t.1 = (C.net m).nch s.1 :: s.1 := rfl
   have hbt : m < birth C.toFairChain t.2 := le_birth C.toFairChain t.2 hnot
@@ -442,7 +495,8 @@ theorem mono_retD_oblC {l l' : List VarType} (hsuf : l <:+ l') {A X : VarType} {
     rfl
 
 /-- ⭐**Every witnessed obligation eventually has its back-witness child**. -/
-theorem StrongChain.ret_childDC {n : ℕ} {s : Node} (hs : (C.net n).Live s) {A X : VarType}
+theorem StrongChain.ret_childDC (hW : ModalSys.BStrongW = false)
+    {n : ℕ} {s : Node} (hs : (C.net n).Live s) {A X : VarType}
     {y o z : ℕ}
     (hy : (ctxOf ((C.net n).st s).l).ref (.root (.free y)) = some (VarType.VTypeBox A).bc)
     (ho : (ctxOf ((C.net n).st s).l).ref (.root (.free o)) = some .VTypeOne)
@@ -467,7 +521,7 @@ theorem StrongChain.ret_childDC {n : ℕ} {s : Node} (hs : (C.net n).Live s) {A 
         (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) _) Ξ) ∈
           (retChildDC hS ((ctxOf_le_of_suffix hsuf).ref hy) ((ctxOf_le_of_suffix hsuf).ref hz)
             (WFF.mono ((ctxOf_le_of_suffix hsuf).boxIn.insert (.bnd 0) _) Ξ)).M := by
-  obtain ⟨m, hnm, hstep⟩ := C.retDOp s ⟨_, A, X, (y, o, z), Ξ⟩ n
+  obtain ⟨m, hnm, hstep⟩ := C.retDOp hW s ⟨_, A, X, (y, o, z), Ξ⟩ n
   have hlm := C.live_mono hnm hs
   have hsuf := C.lang_suffix hnm hs
   have hg := (C.ext hnm).grows s hs
@@ -498,7 +552,8 @@ theorem StrongChain.ret_childDC {n : ℕ} {s : Node} (hs : (C.net n).Live s) {A 
     forward edge `s → t` whose way home is a witness edge for `t`'s root `e`, sending `t`'s root
     `c` to `y`, with content `z`, and the obligation's body read along the edge at `⟨c, e⟩`
     (`StrongChain.ret_childDC`). -/
-theorem lretDC (s : LW C.toFairChain) (i : ℕ) {A X : VarType} {y o z : ℕ}
+theorem lretDC (hW : ModalSys.BStrongW = false)
+    (s : LW C.toFairChain) (i : ℕ) {A X : VarType} {y o z : ℕ}
     (hy : (ctxOf (lat s i)).ref (.root (.free y)) = some (VarType.VTypeBox A).bc)
     (ho : (ctxOf (lat s i)).ref (.root (.free o)) = some .VTypeOne)
     (hz : (ctxOf (lat s i)).ref (.root (.free z)) = some X) (hyo : y ≠ o)
@@ -516,7 +571,7 @@ theorem lretDC (s : LW C.toFairChain) (i : ℕ) {A X : VarType} {y o z : ℕ}
         Ξ ∈ ((C.net (birth C.toFairChain t.2 + lstg C.toFairChain s t i)).st t.1).M := by
   classical
   obtain ⟨m, _, hsuf, hnot, hlive, hst, hbk, hbcx, hfcl, hfimg, hbcl, hbimg, hmem⟩ :=
-    C.ret_childDC (live_birth C.toFairChain s.2 (Nat.le_add_right _ i)) hy ho hz hyo Ξ h
+    C.ret_childDC hW (live_birth C.toFairChain s.2 (Nat.le_add_right _ i)) hy ho hz hyo Ξ h
   let t : LW C.toFairChain := ⟨(C.net m).nch s.1 :: s.1, m + 1, hlive⟩
   have hc : t.1 = (C.net m).nch s.1 :: s.1 := rfl
   have h' : LR C.toFairChain s t := Or.inl ⟨_, hc⟩
@@ -665,7 +720,8 @@ theorem lretXDC (s : LW C.toFairChain) (i : ℕ) {A Xe : VarType} {y o z : ℕ}
             ((ctxOf_le_of_suffix hcl).ref (bclD_c A Xe)))
           (Term.eta (.root (.free 1)) (.VTypeDia Xe)
             ((ctxOf_le_of_suffix hcl).ref (bclD_e A Xe)))) Ξ ∈
-          ((C.net (birth C.toFairChain t.2 + lstg C.toFairChain s t i)).st t.1).M := by
+          ((C.net (birth C.toFairChain t.2 + lstg C.toFairChain s t i)).st t.1).M ∧
+      ∀ r < (lat s i).length, limg C.toFairChain s t r ≠ lcx C.toFairChain s t := by
   classical
   obtain ⟨m, _, hsuf, hnot, hlive, hst, hkind, hcxe, hbk, hbcx, hfcl, hfimg, hbcl, hbimg,
     hmem⟩ := C.ret_childXDC (live_birth C.toFairChain s.2 (Nat.le_add_right _ i)) hy ho hz hyo
@@ -693,15 +749,15 @@ theorem lretXDC (s : LW C.toFairChain) (i : ℕ) {A Xe : VarType} {y o z : ℕ}
   rw [hst] at hg
   have hcl : bclD A Xe <:+ lat t (lstg C.toFairChain s t i) :=
     (rclXD_suffix _ A X Xe).trans hg.suf
-  refine ⟨t, hkd, hkdb, hcl, ?_, hlcxb, ?_⟩
+  have hag : ∀ r < (lat s i).length, r + 2 = limg C.toFairChain s t r := fun r hr => by
+    have hlen : r < ((C.net (m + 1)).fcl t.1).length := by
+      rw [hc, hfcl]
+      exact lt_of_lt_of_le hr hsuf.length_le
+    rw [limg, if_pos ⟨_, hc⟩, fimgL_eq C.toFairChain hlive hlen, hfimg]
+  refine ⟨t, hkd, hkdb, hcl, ?_, hlcxb, ?_, fun r hr => ?_⟩
   · rw [limg, if_neg hnb, bimgL_eq C.toFairChain hlive (by rw [hbcl]; simp), hbimg]
     rfl
   · have hm := hg.sub _ hmem
-    have hag : ∀ r < (lat s i).length, r + 2 = limg C.toFairChain s t r := fun r hr => by
-      have hlen : r < ((C.net (m + 1)).fcl t.1).length := by
-        rw [hc, hfcl]
-        exact lt_of_lt_of_le hr hsuf.length_le
-      rw [limg, if_pos ⟨_, hc⟩, fimgL_eq C.toFairChain hlive hlen, hfimg]
     have himg₀ : ImgOk (lat s i) (ctxOf (X :: rclD ((C.net m).st s.1).l A Xe)) (· + 2) :=
       (rclXDImg ((C.net m).st s.1).l A X Xe).suffix hsuf
     have e1 := readArrowX_mono_congr hsuf (Ctx.Le.refl _) himg₀ (rclXDImg _ A X Xe)
@@ -721,6 +777,9 @@ theorem lretXDC (s : LW C.toFairChain) (i : ℕ) {A Xe : VarType} {y o z : ℕ}
     change (⟨_, Term.pair (Term.mono _ (Term.eta _ _ _)) (Term.mono _ (Term.eta _ _ _))⟩ :
       Σ c, Term σ _ _ c) = _
     rw [Term.mono_eta, Term.mono_eta]
+  · rw [← hag r hr, hlcx]
+    have := lt_of_lt_of_le hr hsuf.length_le
+    omega
 
 end Chain
 
@@ -729,7 +788,7 @@ end Chain
 section LimitOut
 
 variable {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} {hS : ModalSys.BStrong = true}
-  (C : StrongChain hS M₀)
+  (C : StrongChain hS M₀) (E : LimitEx C.toFairChain)
 
 /-- The stage an edge commits a stage at grows with it. -/
 theorem lstg_mono {s t : LW C.toFairChain} (h : LR C.toFairChain s t) {i i' : ℕ}
@@ -751,10 +810,10 @@ theorem lalias_ind (s : LW C.toFairChain) {i i₁ : ℕ}
       WFF.mono (ctxOf_le_of_suffix hsuf) (aliasFormula (Term.mono (ctxOf_le_of_suffix hl) t) ψ)
         ∈ ((C.net (birth C.toFairChain s.2 + j)).st s.1).M)
     (hy₁ : (ctxOf (lat s i₁)).ref (.root (.free l.length)) = some A) :
-    (bdataS C).Ind
-      ((bdataS C).toDom A s ((bdataS C).rden s i₁ (Ctx.Le.refl _)
+    (bdataS C E).Ind
+      ((bdataS C E).toDom A s ((bdataS C E).rden s i₁ (Ctx.Le.refl _)
         (Term.eta (.root (.free l.length)) A hy₁)) (BData.definable_rden _ _))
-      ((bdataS C).toDom A s ((bdataS C).rden s i (Ctx.Le.refl _) t)
+      ((bdataS C E).toDom A s ((bdataS C E).rden s i (Ctx.Le.refl _) t)
         (BData.definable_rden _ _)) := by
   refine ⟨⟨i₁, _, Term.eta (.root (.free l.length)) A hy₁⟩, ⟨i, a, t⟩,
     (BData.fromDom_toDom _ _ _ _ _).symm, (BData.fromDom_toDom _ _ _ _ _).symm, fun j h h' φ => ?_⟩

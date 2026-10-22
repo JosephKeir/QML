@@ -50,12 +50,12 @@ theorem InjOk.applyOpS {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.Goo
   all_goals
     simp only [NetSt.applyOpS]
     split_ifs with hl
-    · first
+    all_goals first
         | exact h.henk s o
         | exact h.mkChild hl o
         | exact h.realFS hN k hl
         | exact h.realBS hN k hl
-    · exact h
+        | exact h
 
 omit [ModalSys.NoFour] in
 theorem InjOk.mkAlias {N : NetSt σ} (h : N.InjOk) (s : Node) (o : AliasObl σ) :
@@ -114,21 +114,31 @@ theorem InjOk.mkRetXDC {hS : ModalSys.BStrong = true} {N : NetSt σ} (h : N.InjO
     · exact h
   all_goals exact h
 
+omit [ModalSys.NoFour] in
+theorem InjOk.mkRoute {hS : ModalSys.BStrong = true} {N : NetSt σ} (h : N.InjOk) (s : Node)
+    (o : RouteObl σ) : (N.mkRoute hS s o).InjOk := by
+  obtain ⟨l, S, a, y, Φ⟩ := o
+  simp only [NetSt.mkRoute]
+  split_ifs
+  · exact h.setSt _ _
+  all_goals exact h
+
 /-- ⭐Every operation of strong B keeps the images injective. -/
 theorem InjOk.applyOpT {hS : ModalSys.BStrong = true} {N : NetSt σ} (hN : N.GoodS hS)
     (h : N.InjOk) (o : OpS σ) : (N.applyOpT hS o).InjOk := by
-  rcases o with o | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩
+  rcases o with o | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩ | ⟨s, o⟩
   · exact h.applyOpS hN o
   all_goals
     simp only [NetSt.applyOpT]
     split_ifs with hl
-    · first
+    all_goals first
         | exact h.mkAlias s o
         | exact h.mkRetC hl o
         | exact h.mkRetXC hl o
         | exact h.mkRetDC hl o
         | exact h.mkRetXDC hl o
-    · exact h
+        | exact h.mkRoute s o
+        | exact h
 
 end NetSt
 
