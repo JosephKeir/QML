@@ -29,7 +29,7 @@ renaming of roots (`img`, `stg`), and pushing the canonical environment along an
 the target's canonical environment through a substitution (`boxPush_canon`).  The tree cannot do B
 (no route back); the network now does weak T too (milestone 1).
 
-## Milestone 1 — B with T (KTB)  ← next
+## Milestone 1 — B with T (KTB)  ✓
 
 **Why weak T is not the cheap half.**  `WFF.here` and all six `Here` rules are gated by weak T alone
 (`hT : ModalSys.T = true`); only `T_dia` needs `TStrong`.  So the network model has to host the whole
@@ -252,6 +252,23 @@ Then rows 3–4 (multi-labelled edges, per-witness components) and `◇`-typed c
 **Main risks:** step 5's refactor of the back arrows (the invariant changes shape); step 2's ripple
 is large but mechanical.
 
+## Milestone 2a — 4's four cases, and 4 with T, D, B  ← next *(2026-10-22)*
+
+Paper pass: `v12-modal-extensions.md` §3 4, "4's four cases".  Weak/strong × `□`/`◇`:
+
+1. **Weak `◇`, `four_dia`** (missing; part of `Four`): `x.keep : ◇A` in the `□` view, the extent
+   pulled back along the arrow; rule `◇◇_{x.keep}(shift φ) ⊢ ◇_x φ`.  In the tree, with T and D.
+   Risks: a label for a restricted possible object when shaped (an action of arrows on roots), a
+   `keepE` for `◇` entries in substitution, the own arrow under T.
+2. **Strong `□`, the lift**, per arrow: `O.dia (∃n:□A. φ(n)) ⊢ ∃m:□A. O.dia φ(m.keep)`.  Tree, with
+   a stepwise (Barcan-style) child construction.
+3. **Strong `◇`, the join**, per arrow (as `posBack_exists`):
+   `◇∃y:◇A. ◇_y(shift φ)(y.dia) ⊢ ∃z:◇A. ◇_z φ(z.dia)`.  Needs witnesses added to a world after its
+   successors exist: the network, or an ω-chain tree.
+4. **4 with B**: weak 4 is complete with T and D in either strength, but every B result takes
+   `NoFour`.  First weak B + 4 over arrow frames (the network with paths as arrows); relational
+   completeness and strong B + 4 (`homeUnique`) need round-trip coherence, i.e. milestone 3.
+
 ## Milestone 3 — B with 4, and S5 (5 itself)
 
 The open question is **round-trip coherence** (`v12-arrow-canonical.md` §4, §8 q. 1): with 4 and B,
@@ -264,8 +281,8 @@ complete only over arrow frames, which is a decision about the intended semantic
 
 ## Milestone 4 — the remaining strong forms, completing the cube
 
-* **4's two open maps**: the witnessed join `◇_x ◇_y φ ⊢ ◇_z φ`, and the inward map `□□A → □A`
-  (whose shadow is density, not 4).  Decide which earns the name `FourStrong` first.
+* **4's strong forms** are now milestone 2a (the lift and the join, per arrow).  The inward map
+  `□□A → □A` (whose shadow is density, not 4) remains, as 4's converse rather than its strong form.
 * **D's** inward / graph form (low priority).
 
 *Done when:* every flag combination of the cube (T, D, B, 4, 5, weak and strong) is sound and

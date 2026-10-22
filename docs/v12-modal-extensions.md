@@ -1701,6 +1701,119 @@ content of a possible object.
   - Omitting the lift is coherent: it is a comprehension principle, like the export
     `◇_x ∃y. φ(y) ⊢ ∃x'. ◇_{x'} φ(x'.dia)`, which K also lacks. Plain `◇◇φ → ◇φ` still holds.
 
+#### ⭐4's four cases: the paper pass *(2026-10-22, paper; supersedes the `◇` bullets above where they differ)*
+
+**The grid.**  4's route is a composite `w →a v →b s`.  As for B (§11.1), each hop ranges over all
+arrows or over a named extent, and each map has a weak (restriction, nothing new) and a strong
+(existence) form.  Read by strength and side:
+
+| | `□` side | `◇` side |
+|---|---|---|
+| **weak**: restriction along `a` | `Nec(w) → Nec(v)`: `u.keep`, `four_box` — **built** | `Pos(w) → Pos(v)`: `x.keep`, `four_dia` — **missing** (below) |
+| **strong**: per-arrow existence | the lift: each `n : □A` at `v` is some `m.keep` | the join: each possible object at `v` has, along each arrow of its extent, a counterpart here |
+
+By hop-witnessing the weak rows are `(□,□)` `u.keep` in `Γ.boxIn`; `(◇,□)` `u.keep` in `Γ.diaIn y`;
+`(□,◇)` `x.keep` in `Γ.boxIn`; `(◇,◇)` `x.keep` in `Γ.diaIn y`.  `diaIn` is built on `boxIn`, so
+the four weak rows come from **two context principles**, one of them built.  The strong rows are
+the two laws' leg-parameterised instances (`OutLeg`), as rows 1–4 of B are one predicate.
+
+*What was wrong above.*  The `◇` side was looked for only as the outward transport `Pos(v) → Pos(w)`
+and its gathered form, the join, which is a strong form.  The weak `◇` side is the **inward
+restriction** of a possible object — it was never considered, and today `Ctx.boxIn` keeps no `◇`
+item at all.  It is not 5's principle: 5 re-uses `x` at `v` with the same extent
+(`R(w) ⊆ R(v)`); 4 pulls the extent back along `a` (`R(v) ⊆ R(w)`).
+
+**1. Weak `◇`: restriction of possible objects (`x.keep`).**
+* *Semantics.*  An operation `Ops.posKeep : Pos A w → (a : Acc w) → Pos A a.1` with
+  `ext (posKeep x a) = {b | a ; b ∈ ext x}` and the same contents (`x`'s content at `a ; b`).
+  Unshaped, `posFull_inj` determines it, so `posKeep (posKeep x a) b = posKeep x (a ; b)`
+  (`trans_assoc`) and, under T, `posKeep x (refl w) = x` (`refl_trans`) come free.  The extent may
+  be empty: nothing new is asserted, so by §2a's criterion it is **weak**, part of `Four`.
+* *Syntax.*  `Ctx.boxIn` gains `x.keep : ◇A` for `x : ◇A` under `Four` (so `Γ.diaIn y` does too);
+  `shift` sends `x.keep ↦ x.keep.keep` and `x.dia ↦ x.keep.dia` one view further in.
+* *Rule* — `four_box` with the subscript carried, the K paradigm:
+  `◇ ◇_{x.keep} (shift φ) ⊢ ◇_x φ`, i.e. `□_x φ ⊢ □ □_{x.keep} (shift φ)`.  The outer leg may
+  as well be witnessed: `◇_y` weakens to `◇`, and `shift φ` never mentions `y.dia`.  The converse
+  is not valid (an arrow of `x`'s extent need not factor through `v`), and propositionally the rule
+  is the witnessed `◇◇φ ⊢ ◇φ` — the dual of `four_box` with `x`, not a new object, as the join.
+* *Soundness* is `four_box`'s argument (`SemShift`, `ShiftAgree`) with two more cases:
+  `x.keep.dia` against `x.dia` (the contents agree by definition) and `y.keep.keep` against
+  `y.keep` (associativity, as `four_box`'s `keep`–`keep` case).
+* *Canonical (the tree).*  `x`'s extent at `w` must hold the chains whose last step is a child of
+  some `x.keep^k`, and then `b ∈ ext (x.keep at v) ↔ a ; b ∈ ext x` is address arithmetic of the
+  `succAddr_keep` kind.  The truth lemma's `◇_x` case at a deep arrow is exactly the rule:
+  `φ` at `s` from `w` is `shift φ` at `s` from `v`, so `◇_{x.keep}(shift φ) ∈ v`, so
+  `◇◇_{x.keep}(shift φ) ∈ w`, so `◇_x φ ∈ w`.
+* *Risks.*
+  1. **Shapes (T, strong B).**  `posKeep x a` needs a label anchored at `v`, but `x`'s root is at
+     `w`.  The natural fix is an action of arrows on roots, `Root w → Root v` along `a`, functorial
+     (`trans`, `refl`), with `shape (posKeep x a)` the transported label.  Canonically a root at
+     `v` is a witness address of `v`'s language, and `x.keep` is one.  This is the user's
+     "a witness is a tree of extents": restricting the witness along `a` is taking its subtree.
+  2. **Substitution.**  Substituting a `◇`-term for `x` must say what `x.keep` becomes: a
+     `keepE` for `◇` entries, by `(diatm y h).keep = diatm y.keep (shift h)` — restriction
+     commutes with `posMap` and `posStrength` (a necessary parameter is kept along with it).
+  3. **T + 4 naming.**  At the own arrow `x.keep` is `x`, but no other entry of the `□` view names
+     `x` (there is no `◇` analogue of `u.box`), so the `keepOnly` problem does not recur; collapse
+     sends `x.keep ↦ x`.  To check against `Here`'s rules, which read contents at the own arrow.
+
+**2. Strong `□`: the lift, per arrow.**
+* *Law.*  `∀ a : Acc w, ∀ n : Nec A a.1, ∃ m : Nec A w, necEval (necDup m) a = n` — `m`'s values
+  are fixed only on the composites `a ; −`, so no compatibility across arrows is asked.
+* *Rule* (∃-elimination, leg-parameterised): `O.dia (∃n:□A. φ(n)) ⊢ ∃m:□A. O.dia φ(m.keep)`, `m`
+  fresh.  The witnessed leg is needed: the conclusion keeps `◇_y` and its body may read `y.dia`.
+* *The old obstacle dissolves.*  "Quantifier order" (above, §2c) was about the uniform form,
+  `∃m. □∀n` — one `m` for every successor.  Per arrow, `∃m` sits outside one `◇`, which is sound
+  under the law and is all completeness needs.  The same move made B's rows 3–4 work (§11.23:
+  existential, per arrow, no uniform carrier).
+* *What it says.*  The `□`-domains do not grow along arrows: the dual is a Barcan formula at `□`
+  types, `∀m:□A. □ψ(m.keep) ⊢ □∀n:□A. ψ(n)`.  So it pulls against density (§2c axis 5), as
+  recorded.
+* *Canonical.*  Children reuse the parent's `□`-witnesses — the textbook Barcan construction: to
+  add `∃n χ(n)` to a child under construction with finite part `θ`, the rule turns
+  `◇(θ ∧ ∃n χ(n))` into `∃m ◇(θ ∧ χ(m.keep))`, and `w`'s Henkin witness supplies `m`.  The tree
+  builds a child by one Lindenbaum step, so it would need this stepwise construction instead.
+
+**3. Strong `◇`: the join, per arrow.**
+* *Law* (as `posBack_exists`): `∀ a : Acc w, ∀ q : Pos A a.1, ∀ b ∈ ext q, ∃ z : Pos A w`,
+  `a ; b ∈ ext z` and `Ind (z's content at a ; b) (q's content at b)`.
+* *Rule:* `◇ ∃y:◇A. ◇_y (shift φ)(y.dia) ⊢ ∃z:◇A. ◇_z φ(z.dia)`.  Its soundness reads the law at
+  the premise's arrows and uses `IndInvariant` for the contents.  The plain outer leg suffices: the
+  conclusion cannot mention the outer witness.  At `y := x.dia` for `x : ◇◇A` it is the old
+  `◇_x◇_{x.dia}θ ⊢ ∃z. ◇_z θ(z.dia)`.
+* *The collision obstacle dissolves too.*  The old join failed where two intermediate worlds reach
+  one world with different contents; that bites only one gathered object.  Per arrow, each
+  composite gets its own `z`.  It also no longer separates arrow frames from relational ones
+  (`v12-arrow-canonical.md` §4).
+* *Rejected for now: the `◇`-lift* (surjectivity of `posKeep`: every possible object at `v` is
+  some `x.keep`).  It implies the join with `four_dia`, but asks for whole extents and, when shaped,
+  equal shapes — the uniform kind of requirement that sank `y.ret` and the named back witnesses.
+* *Canonical.*  For `q = x.keep`, `z := x` (weak `◇`).  For a root `y` born at `v`, `w` needs a
+  witness `z` whose extent holds the particular composite `a ; b` — a witness added at `w` after
+  `s` exists.  The tree's languages are fixed when a stage is built, so this wants an ω-chain in
+  which a world's language can still grow (the network), with composite arrows labelled by their
+  witnesses, as rows 3–4 label every edge.
+
+**Order, and how the flags fall.**  Weak `◇` (`four_dia`) belongs to `Four` and fits the tree;
+build it first, since both strong forms mention `x.keep`.  Then the lift (tree, stepwise children),
+then the join (network or an ω-chain tree).  Whether the two strong forms are one flag or two
+(`FourStrong`, as `BStrong`/`BStrongW`) can wait until both are checked.
+
+**4 with the finished flags.**
+
+| with | status | what 4 needs there |
+|---|---|---|
+| T, strong T | ✓ for weak `□` (tree, `keepOnly`) | weak `◇`: shapes (risk 1) and the own-arrow check (risk 3); strong forms: trivial at the identity arrow |
+| D, strong D | ✓ for weak `□` (tree) | nothing visible: `posKeep` may be empty, seriality is about `R` |
+| weak B | **open** (every B result takes `NoFour`) | composite arrows in the network; then either completeness over arrow frames, or round-trip coherence for relational ones (`v12-arrow-canonical.md` §4, §8 q. 1: conjecturally 5's object-level component) |
+| strong B | **open** | additionally `homeUnique` (`Subsingleton (R w v)`): composites give several arrows between two worlds, so the network must quotient paths — which is round-trip coherence again |
+
+So weak 4 is compatible with T and D as built, and the gap is B: B + 4 propositionally yields 5,
+which is why the roadmap put B + 4 with S5.  The cheapest first step is **weak B + 4 over arrow
+frames** — the network with paths as arrows (composition is concatenation, the category laws are
+free), where only the `keep` entries in root-only languages are new — leaving coherence, and with
+it relational completeness and strong B + 4, to the 5 design.
+
 ### B (symmetry)
 - Frame: `v R w` for `v ∈ R(w)`.
 - **Weak B: implemented (2026-09-19), sound; complete without T and 4 for contexts of declared
