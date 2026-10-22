@@ -9633,6 +9633,24 @@ Paper check 2, built.  ⭐`BData.posBack_exists_canon`: along an arrow `b : R v 
 * `sim_arrowXS_arrowS` moved from `BLimitPre` to `BNet`, so that the canonical model can use it.
 * The only remaining temporary use of `NoFour.noBStrongW` is `NoFour` itself (step 6).
 
+#### Build step 6: completeness under rows 3–4 *(2026-10-22)*
+
+* `NoFour.noBStrongW`, `NoFour.absurdW` and the vacuous instance `NoFour.wCoh` are gone.
+  **`NoFour` now extends `ModalSys.WCoh`** (strong T and strong D whenever `BStrongW` with T,
+  resp. D).  This is how "completeness under `BStrongW` asks for `WCoh`" is realised: every B
+  completeness result already takes `[NoFour]`, and threading a separate `[WCoh]` through the
+  fifteen files that use the canonical model would have put an unused instance into most of
+  their declarations.  `NoFour` carried such a coherence field before (`noTStrong`, removed
+  2026-10-20).
+* With that, `exists_canonB`, `completenessB(_presented)`, `strong_completenessB` and
+  `compactnessB` cover strong B with rows 3–4 (`BStrongW`), with T and D (strong forms by
+  `WCoh`), 4 off.  All 18 targets build, no `sorry`.
+* **Open, as recorded in paper check 1 and §11.23's open details:** whether `ret_route` is
+  derivable; whether `WCoh` could be dropped by deriving strong T's and strong D's rules from
+  rows 3–4's (the model law gives their laws, so completeness says the rules are admissible
+  where the strong flags are on; with them off the systems are excluded); rows 3–4 along
+  `◇_y` legs of `ret_route` (stated along `□` only).
+
 #### Note for the write-up: possible objects and the category of elements *(2026-10-22)*
 
 At each world the definable maps (`GFunc`, strength included) act on possible objects

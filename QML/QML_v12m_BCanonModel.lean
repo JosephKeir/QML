@@ -714,7 +714,7 @@ theorem dterm_congr {s : B.W} {i : ℕ} {A : VarType} {a a' : Ann A}
     (`Proof.backEx`, Henkin witnessing); the arrow is labelled by a witness `ω` (`BData.lab`); the
     possible object `◇_ω (c's image).box` has the arrow in its extent, and its content there is
     `c`'s round trip, which is `t`'s class (`BData.backRel`). -/
-theorem posBack_exists_canon [ModalSys.WCoh] (hS : ModalSys.BStrong = true)
+theorem posBack_exists_canon (hS : ModalSys.BStrong = true)
     (hW : ModalSys.BStrongW = true) {A : VarType} {w v : B.W} (b : B.frame.R v w)
     (o : B.frame.Dom A w) :
     ∃ (p : B.frame.Pos A v) (hm : (⟨w, ⟨b⟩⟩ : B.frame.Acc v) ∈ (B.posEval p).1),

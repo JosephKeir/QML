@@ -26,27 +26,18 @@ too, so a `□A` component's box contents are `A × bc A` and `itemAt` encodes t
 
 namespace V12M
 
-/-- The one flag the arrow construction, and with it B's completeness, needs
+/-- What the arrow construction, and with it B's completeness, needs
     (`docs/v12-arrow-canonical.md` §9): 4 off, so a view shows `u.box` (and `x.dia`) and never
     `keep`.  Under T a reachable address may also pass through the projection `here`, which
     `VarType.bc` and the arrows account for.
 
-    **Temporarily also strong B's witnessed ways home off** (`noBStrongW`): rows 3–4 are being
-    rebuilt (docs §11.23), and the network's labels on every edge come after their rules. -/
-class ModalSys.NoFour [ModalSys] : Prop where
+    And the strong forms coherent (`ModalSys.WCoh`): with strong B's witnessed ways home
+    (`BStrongW`), T and D come in their strong forms, which the model law gives them
+    (`Model.posRet_of_posBack`, `Model.posSerial_of_posBack`; docs §11.23, build step 3). -/
+class ModalSys.NoFour [ModalSys] : Prop extends ModalSys.WCoh where
   noFour : ModalSys.Four = false
-  noBStrongW : ModalSys.BStrongW = false
 
 variable [ModalSys]
-
-theorem ModalSys.NoFour.absurdW [ModalSys.NoFour] (hW : ModalSys.BStrongW = true) : False := by
-  rw [ModalSys.NoFour.noBStrongW] at hW
-  cases hW
-
-/-- While `NoFour` asks the witnessed ways home off, the strong forms cohere vacuously. -/
-instance ModalSys.NoFour.wCoh [ModalSys.NoFour] : ModalSys.WCoh where
-  strongT hW := (ModalSys.NoFour.absurdW hW).elim
-  strongD hW := (ModalSys.NoFour.absurdW hW).elim
 
 theorem ModalSys.NoFour.keepOnly [ModalSys.NoFour] : ModalSys.keepOnly = false := by
   simp [ModalSys.keepOnly, ModalSys.NoFour.noFour]
