@@ -2466,7 +2466,7 @@ variable; a lift does not.  B's `arrowS` is the instance `u.box ↦ itemImg img 
    consistency (seed by `keep_lift`, then the residual realised).
 5. ✓ `GNet`: the network state without back arrows (nodes, children with kind and content, edges
    with item maps), its operations (birth, commitment, lift) and invariant (`Good`), as `BNet`.
-6. `GFair`: the schedule, fairness and the limit, as `BFair` and `BLimit`.
+6. ✓ `GFair` (+ `GChain`): the schedule, fairness and the limit, as `BFair` and `BLimit`.
 7. `GCanon`: the canonical model: frame of relational paths, domains of addresses, `keep` and
    extents by translation, the laws (weak 4, then the lifts).
 8. `GTruth`: the truth lemma and completeness.  K4 and D4 first, then T + 4, then the flags.  Then
@@ -2539,6 +2539,119 @@ variable; a lift does not.  B's `arrowS` is the instance `u.box ↦ itemImg img 
     residual variable.  The edge becomes `gliftG f T c n (.free z)` (`lift_ok`).
   * The seed and the residual set quantify over the edge's proofs (`liftSeedE`, `liftRealSet`),
     as B's `realSet` does, so the operation needs no choice of proofs.
+
+**Built: `QML_v12m_GFair.lean`, `QML_v12m_GChain.lean`** (sorry-free, 2026-10-23):
+* `GNetSt.Ext` (live, grows, kind, `fcl` a suffix, `fmap` unchanged on the committed view's
+  items), and `Ext` for every operation.
+* **The lift operation catches up first** (`catchUp`: `realF` until the parent is fully
+  committed, `catchUp_full`), then lifts.  Henkin steps and the lifts along sibling edges grow
+  the parent at any time, so the catching up belongs to the operation, as paper check 1 had it.
+* `GOp` (Henkin, child, realise forward, lift `(k, n)`), `applyOp`, `gsched`, the chain `gnet`,
+  `good_gnet`, `ext_gnet`.
+* `GChain`: ⭐`fwd_total`, ⭐`henk_ex`, `henk_negAll`, ⭐`child_box`, `child_dia`, and
+  ⭐`lift_total`: every address of a child of a liftable type is eventually lifted.  The parent
+  then has a root `r` of that type, committed along the edge, with `fmap (r.keep) = n`.
+
+#### The canonical model on the growing tree: paper pass *(2026-10-23)*
+
+**Verdict: weak 4 (K4, D4, then T + 4) passes in outline.  The strong forms pass when both flags
+are on.  With one flag only, lifting a term that mixes `□` and `◇` items needs the other lift.
+That needs a decision (D5 below); recommended: lift terms, not just addresses.**
+
+**1. The frame.**
+* Worlds are the nodes ever born.
+* `R w v` iff `v` is a strict descendant of `w` (a path of edges), and also `v = w` under T.
+* So the frame is relational and transitive by construction.
+* As in B's `BData`, a stage of a world is a round from its birth on.  A stage of the source
+  goes along an edge to the first stage of the target by which its variables are committed
+  (`stg`, from `fwd_total`).  Along a path, the stages compose.
+
+**2. Translations along paths.**
+* An arrow `a` from `w` to `v` (a path, or the identity) sends the items of `w`'s `□` view to
+  addresses of `v`.  This is the composite item map `θ_a`:
+  * `θ_e = fmap e` for one edge `e`;
+  * `θ_{a;e}(u.s) = fmap e ((θ_a (u.keep)).s)` for `s ∈ {box, keep}`;
+  * `θ_refl(u.keep) = u` under T + 4, the collapse.
+* Each step reads the kept item at the intermediate world and takes its own item there.  So
+  `θ_{a;b}(u.s) = θ_b((θ_a(u.keep)).s)` holds for every split, by associativity of the definition.
+* This is exactly what `necDup`/`dup` and `keep` ask: the value of `u` along `a;b` is the value
+  of `u` kept along `a`, read along `b`.  So `necDup_eval` and the root action
+  (`RootKeep r a := θ_a(r.keep)`) hold **by definition**, and so do its laws (`keep_trans`, and
+  `keep_refl` from the collapse).
+* For a witness: `a ∈ ext_w(x)` iff `a = a'; e`, where `e` is an edge of kind `y` and
+  `y = θ_{a'}(x.keep)` (or `y = x` when `a'` is empty).  The witness view is translated with
+  `x.dia ↦ fmap e (y.dia)`, the content variable of `e`.
+* `posKeep_full` (`ext(posKeep x a) = {b | a;b ∈ ext x}`, contents the same) holds by the same
+  associativity.  A path `a;b` splits as `a'';e` either inside `a` or inside `b`, and in both
+  cases the kept address is `θ_{a;…}(x.keep)`.
+
+**3. Transfer along paths.**
+* `□ψ ∈ M_w` gives `θ_a(ψ) ∈ M_v`, by induction on the path.
+  * By `four_box`, `□ψ` gives `□□ψ^k`, where `ψ^k` reads each item `u.s` as `u.keep.s`.
+  * The first edge's transfer (`GTransfer`) translates `□ψ^k` by `Subst.box` of `fmap e`.  That
+    sends `(u.keep).s` to `(fmap e (u.keep)).s`.
+  * Then the induction hypothesis applies along the rest of the path.
+  * The equation with `θ_a` is a substitution identity (`WFF.subst_comp`).
+* `□_x ψ` along a path in `ext(x)`: the same, with `four_dia` for the kept witness at each step,
+  and the last edge's `□_y` transfer.
+* Under T + 4, the identity arrow's transfer is `T` read through the collapse, as for B with T.
+
+**4. The truth lemma.**
+* As B's (`BTruth`): pushing the canonical environment into `□` along `a` is the target's
+  canonical environment read through `θ_a` (`boxPush_canon`).
+  * The `keep` clause of `Env.boxPush` is the kept object.
+  * Canonically that is the denotation of `θ_a(u.keep)`, by 2.
+* `□`, membership ⇒ truth: transfer along paths (3).
+* `□`, truth ⇒ membership: a failing `□φ` has a child (`child_box`), which is an arrow.
+* `◇_x`, membership ⇒ truth: the born `◇_x` child (`child_dia`) is in `ext(x)`.
+* `◇_x`, truth ⇒ membership: an arrow `a'; e` of `ext(x)` where `φ` holds.  If `◇_x φ` failed,
+  `□_x ¬φ` would transfer along `a'; e` (3).
+* Quantifiers by Henkin witnesses (`henk_ex`, `henk_negAll`).
+* D (`□⊥` fails, so there is a child) and strong D (`D_ex`) as B's.
+
+**5. T + 4 (`keepOnly`).**
+* `□` views show only kept items.  Fresh realisations carry the `here` items (`gc`).
+* The identity arrow is the collapse (2).
+* Paper check 3's point stands: a born `◇_x` child records its datum for `k_x` with content
+  `cx`, so the two contents coincide by definition.  Here `cx` is `fmap e (x.dia)`.
+* Shapes and `posShape_wf` follow B with T (`RT`, `Realised`).
+* Built after K4/D4, as planned.
+
+**6. The strong forms.**
+* *The law.*  `keepLift`: for an arrow `a` and an object `o` of a liftable type at its target,
+  some `m` at the source has `keep m a = o`.  By 2, `keep m a` is the denotation of `θ_a(m.keep)`.
+* *Addresses* are lifted by the chain (`lift_total`), edge by edge back along the path.  Along
+  `a = e₁;…;eₙ`, the lifts compose: `θ_a(r.keep) = n`.
+* *Terms.*  The carriers are the definable objects, so they include terms that are not
+  addresses, for example `boxtm s` at type `□A`.  The term's lift is the same term over lifted
+  items: `θ_{a;b}(r_u.s) = θ_b((θ_a(r_u.keep)).s) = θ_b(u.s)` whenever `θ_a(r_u.keep) = u`.
+  * This needs every item's parent `u` lifted.  A `□`-term can mention `◇` items (`u.keep` for
+    `u : ◇B`), and a `◇`-term `□` items.
+  * **So with both flags on, every term lifts.**
+  * **With one flag only, a term at `□◇B` (or at `◇□B`) needs the other flag's lift.**
+
+**D5 (decided, user 2026-10-23: (a), with (c) as the fallback).  How to lift terms when only one
+flag is on:**
+* **(a) Lift terms directly — recommended.**
+  * The lift operation takes any term `t` of a liftable type at the child, and the edge sends
+    `m.keep ↦ t`, a term entry.  The seed is `{◇_k χ(m.keep) : χ(t) ∈ M_v}`.
+    `glift_consistent` already works for any `t`: the pull-back introduces `∃` at `t`.
+  * The law then holds directly, since `keep m a = ⟦t⟧ = o`.  Lifting items is no longer
+    needed, so both flags stay independent.
+  * The cost: an edge's map sends items to **entries**, addresses or (for lifted keeps) terms.
+    `Subst` already supports term entries in views (`SubE.unbox`, `keepE`).
+  * This touches `gliftG`'s `κ` and the translations of 2.  `GSyntax`'s coherence for the term
+    entry needs `ι` on that item to be the term's annotation.  `GFair` and `GChain` stay as they
+    are, with obligations over terms instead of addresses.
+* (b) Lift addresses only, and let each flag's canonical model use the other flag's lift.  This
+  is unsound for one-flag systems, so it is not an option.
+* (c) Merge the flags (one strong 4).  This loses the four forms decided on (D3).
+
+**Order.**
+1. Weak 4 on the growing tree: `GCanon` (frame, translations along paths, transfer along paths,
+   carriers as B's `BCanonDom`/`BCanonModel` with `θ_a`), then `GTruth`.  K4/D4 first, then
+   T + 4.  This is independent of D5.
+2. Then D5, and the strong laws at the limit.
 
 **Flags.**  Two, as `BStrong`/`BStrongW`: the lift and the join need different constructions, and
 the lift pulls against density (§2c).
