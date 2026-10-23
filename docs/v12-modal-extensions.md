@@ -2456,7 +2456,7 @@ variable; a lift does not.  B's `arrowS` is the instance `u.box ↦ itemImg img 
 
 **Build plan for the growing tree** (one file each, mirroring B's network):
 1. ✓ `GSyntax`: item-map arrows.
-2. `GItems`: the items of a root under 4.  The type of a fresh realisation: `□A ↦ A × □A` (box
+2. ✓ `GItems`: the items of a root under 4.  The type of a fresh realisation: `□A ↦ A × □A` (box
    contents, then the kept object), `◇A ↦ ◇A`, products componentwise, other leaves `𝟙`.  Under
    T + 4 (`keepOnly`), `□A ↦ □A × items(A)`, the kept object, then the items of `u.here`.  Where
    each item lands in it (the `itemAt` of 4).
@@ -2472,6 +2472,24 @@ variable; a lift does not.  B's `arrowS` is the instance `u.box ↦ itemImg img 
 8. `GTruth`: the truth lemma and completeness.  K4 and D4 first, then T + 4, then the flags.  Then
    `ModalSys.NoB` drops `noFourStrong`/`noFourStrongW`.
 
+
+**Built: `QML_v12m_GItems.lean`** (sorry-free, 2026-10-23):
+* `VarType.gcB b` / `VarType.gc` (`b = keepOnly`), beside B's `bcB`, which is untouched.
+* `gPath R q s`: where the item `u.s` (path `q` from a root of type `R`) lands in a variable of
+  `R.gc`.  One recursion on the type, since a `◇A` component is not a tuple: products
+  componentwise, `here ↦ snd` (T + 4), `box ↦ fst`, `keep ↦ snd` (`fst` under T + 4), a `◇`
+  component's `keep ↦ []`.
+* `Ctx.ref_ext_ppath` (a projection path reads as `VarType.walk`), `ref_gPath_nil`, `ref_gPath`,
+  ⭐`ref_gItem` (under `Four`: an item of the `□` view lands at its type).
+* The item map of fresh realisations `gImg l img`, with `GImgOk` (as B's `ImgOk`, at `gc`),
+  ⭐`itemOk_gImg`; a witness arrow's `gImgX` (`x.dia ↦ cx`), ⭐`itemOk_gImgX`.  With `GSyntax`'s
+  `coh_itemS_boxIn`/`_diaIn` these arrows are coherent substitutions.
+* Lifts are not fresh realisations (`m.keep ↦ n` is an existing address, `m.box` a fresh variable
+  of type `A`); their entries override `gImg` at `m`'s items, in `GNet`.
+* **The four strong forms are built together** (user question, 2026-10-23): one rule and one law
+  already cover them, and the canonical side has one lift operation (a `◇`-lift root just has no
+  box item; witness edges reuse `TransferX`).  Unlike B, where rows 1–2 and 3–4 came in separate
+  rounds, the split here is only the order: the bare tree (weak 4) first, then the lifts.
 
 **Flags.**  Two, as `BStrong`/`BStrongW`: the lift and the join need different constructions, and
 the lift pulls against density (§2c).
