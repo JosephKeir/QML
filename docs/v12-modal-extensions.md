@@ -2460,10 +2460,10 @@ variable; a lift does not.  B's `arrowS` is the instance `u.box ↦ itemImg img 
    contents, then the kept object), `◇A ↦ ◇A`, products componentwise, other leaves `𝟙`.  Under
    T + 4 (`keepOnly`), `□A ↦ □A × items(A)`, the kept object, then the items of `u.here`.  Where
    each item lands in it (the `itemAt` of 4).
-3. `GAbs`: tuple and abstraction under 4 (`instantiate_tup_abs`, `subst_arrow_abs` for item
+3. ✓ `GAbs`: tuple and abstraction under 4 (`instantiate_tup_abs`, `subst_arrow_abs` for item
    maps), as `BAbs`.
-4. `GLocal`: `Transfer` over item maps, `realise_consistent`.  Then the lift's consistency: the
-   type `S` of paper check 1 (pull-back, `keep_lift`, `∀`-elimination at `m.box`).
+4. ✓ `GLocal`: `Transfer` over item maps, `realise_consistent`.  ✓ `GLift`: the lift's
+   consistency (seed by `keep_lift`, then the residual realised).
 5. `GNet`: the network state without back arrows (nodes, children with kind and content, edges
    with item maps), its operations (birth, commitment, lift) and invariant (`Good`), as `BNet`.
 6. `GFair`: the schedule, fairness and the limit, as `BFair` and `BLimit`.
@@ -2490,6 +2490,36 @@ variable; a lift does not.  B's `arrowS` is the instance `u.box ↦ itemImg img 
   already cover them, and the canonical side has one lift operation (a `◇`-lift root just has no
   box item; witness edges reuse `TransferX`).  Unlike B, where rows 1–2 and 3–4 came in separate
   rounds, the split here is only the order: the bare tree (weak 4) first, then the lifts.
+
+**Built: `QML_v12m_GAbs.lean`, `QML_v12m_GLocal.lean`, `QML_v12m_GLift.lean`** (sorry-free,
+2026-10-23):
+* **Edge kinds in one statement.**  An edge translates the view `Ctx.kView k`: the `□` view
+  (`k = none`) or, for a child made for `◇_x`, the `◇_x` view (`k = some x`, `x` older:
+  `KOld`/`KDecl`).  An item map already sends `x.dia` where the edge says, and abstraction leaves
+  it alone, so every lemma is proved once for both kinds.  B needed a second copy (`BDia`).  The
+  necessity of a kind is `kBox` (`□` or `□_x`), its possibility `kDia`.
+* `GAbs`: the tuple of a variable's items under 4 (`gtupB`, typed `R.gc`), the abstraction
+  `gabs` (item map `gabsF`), ⭐`instantiate_gtup_gabs`, and ⭐`subst_gext_gabs` for **any** item map
+  `f` extended by a fresh realisation (`gextF`), so it serves arrows with lifted roots too.
+* `GLocal`: `GTransfer` (transfer of `□_k` along an item map), ⭐`grealise_consistent` (as B's
+  `realise_consistent` and `realiseX_consistent` together).
+* `GLift`, **the lift**, for an edge of kind `k` whose source is fully committed (map `f`) and an
+  address `n : T` of the target (`T` liftable).  The source gets a fresh root `m : T`.
+  * Its **seed** is what `keep_lift` hands its subproof: `liftSeed = {◇_k χ(m.keep) : χ(n) ∈
+    M_v}`, `χ(e)` any slot formula (`kLiftRead`, `liftTgt`).  ⭐`glift_consistent`: the seed is
+    consistent with the source (pull-back by the transfer, then `Proof.kKeepLift`).  So no
+    abstraction is needed for the seed: the slot formula *is* the formula about the kept object.
+  * Its **residual** (`VarType.lr`): `m.box : A` for `m : □A`, under T + 4 the items of `m.here`
+    (`gc A`), nothing (`𝟙`) for `m : ◇A`.  ⭐`gliftRealise_consistent`: in a source theory
+    containing the seed, whatever is `□_k`-necessary of `m` is consistent with the target, with
+    `m.keep ↦ n` and the residual going to a fresh variable (`gliftG f T c n (.free z)`).  Proof:
+    if `∃y. ψ(n, y)` failed in the target, `χ(e) := ¬∃y. ψ(e, y)` would be in the seed, and
+    `ψ` refutes it at `y :=` `m`'s residual tuple (`rtup`).
+  * Four substitution identities, each checked item by item: `instantiate_liftChi`,
+    `instantiate_rtup_liftRes`, `liftTgt_liftChi`, `gliftArrow_openFree`.
+  * This differs slightly from paper check 1, which put `∀y` into the seed.  Here the seed holds
+    only formulas about `m.keep`, and the residual is realised afterwards, as an ordinary
+    realisation would be.
 
 **Flags.**  Two, as `BStrong`/`BStrongW`: the lift and the join need different constructions, and
 the lift pulls against density (§2c).
