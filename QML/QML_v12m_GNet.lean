@@ -33,36 +33,26 @@ variable {σ : Signature}
 
 /-! ## Transfers survive growth -/
 
-theorem itemS_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') (f : VarSymb → VarSymb) :
-    (itemS σ Δ f).mono h = itemS σ Δ' f := by
-  funext v
-  match v with
-  | .step u s =>
-      change SubE.mono h (if s.isProj then SubE.hide else .ren (f (.step u s))) =
-        (if s.isProj then SubE.hide else .ren (f (.step u s)))
-      split_ifs <;> rfl
-  | .root _ => rfl
-
 /-- A growing target keeps the transfer. -/
 theorem GTransfer.mono_tgt {Γ : Ctx} {M : Set (WFF σ Γ 0)} {ls : List VarType}
     {hle : (ctxOf ls).Le Γ} {k : Option VarSymb} {hk : KDecl (ctxOf ls) k} {lt lt' : List VarType}
     (h : (ctxOf lt).Le (ctxOf lt')) {N : Set (WFF σ (ctxOf lt) 0)}
     {N' : Set (WFF σ (ctxOf lt') 0)} (hN : ∀ φ ∈ N, WFF.mono h φ ∈ N')
-    {f : VarSymb → VarSymb} {hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f}
+    {f : VarSymb → LEnt σ} {hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f}
     (htr : GTransfer M ls hle k hk N f hf) : GTransfer M ls hle k hk N' f (hf.le h) := by
   intro ψ hψ
   have h' := hN _ (htr ψ hψ)
   rw [WFF.mono_subst] at h'
-  rwa [WFF.subst_eq_of_eq (itemS_mono h f) _ (ok_itemS_kView (hf.le h)) _
-    (coh_itemS_kView (hf.le h))] at h'
+  rwa [WFF.subst_congr _ _ _ (ok_eS_kView (hf.le h)) _ (coh_eS_kView (hf.le h)) _ _
+    (sim_eS_mono h hf) ψ] at h'
 
 /-- A source growing conservatively keeps the transfer. -/
 theorem GTransfer.mono_src {Γ Γ' : Ctx} (h : Γ.Le Γ') {M : Set (WFF σ Γ 0)}
     (hM : Theory.IsMCS M) {M' : Set (WFF σ Γ' 0)} (hM' : Theory.IsMCS M')
     (hsub : ∀ φ ∈ M, WFF.mono h φ ∈ M') {ls : List VarType} {hle : (ctxOf ls).Le Γ}
     {k : Option VarSymb} {hk : KDecl (ctxOf ls) k} {lt : List VarType}
-    {N : Set (WFF σ (ctxOf lt) 0)} {f : VarSymb → VarSymb}
-    {hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f} (htr : GTransfer M ls hle k hk N f hf) :
+    {N : Set (WFF σ (ctxOf lt) 0)} {f : VarSymb → LEnt σ}
+    {hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f} (htr : GTransfer M ls hle k hk N f hf) :
     GTransfer M' ls (hle.trans h) k hk N f hf := by
   intro ψ hψ
   refine htr ψ (mem_of_mono_mem h hM hM' hsub ?_)
@@ -80,24 +70,24 @@ structure GNetSt (σ : Signature) where
   kind : Node → Option VarSymb
   /-- The parent's variables with images in the child, and the edge's item map. -/
   fcl : Node → List VarType
-  fmap : Node → VarSymb → VarSymb
+  fmap : Node → VarSymb → LEnt σ
 
 /-- ⭐An edge from `tp` to `tk` of kind `k`: `tp`'s variables `cl` are committed by the item map
     `f`, with `□_k` transfer. -/
 def FwdData (tp tk : NodeSt σ) (k : Option VarSymb) (cl : List VarType)
-    (f : VarSymb → VarSymb) : Prop :=
+    (f : VarSymb → LEnt σ) : Prop :=
   ∃ (hsuf : cl <:+ tp.l) (hk : KDecl (ctxOf cl) k)
-    (hf : ItemOk ((ctxOf cl).kView k) (ctxOf tk.l) f),
+    (hf : EntOk ((ctxOf cl).kView k) (ctxOf tk.l) f),
     GTransfer tp.M cl (ctxOf_le_of_suffix hsuf) k hk tk.M f hf
 
 theorem FwdData.grow_tgt {tp tk tk' : NodeSt σ} {k : Option VarSymb} {cl : List VarType}
-    {f : VarSymb → VarSymb} (h : FwdData tp tk k cl f) (hg : Grows tk tk') :
+    {f : VarSymb → LEnt σ} (h : FwdData tp tk k cl f) (hg : Grows tk tk') :
     FwdData tp tk' k cl f := by
   obtain ⟨hsuf, hk, hf, htr⟩ := h
   exact ⟨hsuf, hk, hf.le (ctxOf_le_of_suffix hg.suf), GTransfer.mono_tgt _ hg.sub htr⟩
 
 theorem FwdData.grow_src {tp tp' tk : NodeSt σ} {k : Option VarSymb} {cl : List VarType}
-    {f : VarSymb → VarSymb} (hp : Theory.IsMCS tp.M) (hp' : Theory.IsMCS tp'.M)
+    {f : VarSymb → LEnt σ} (hp : Theory.IsMCS tp.M) (hp' : Theory.IsMCS tp'.M)
     (h : FwdData tp tk k cl f) (hg : Grows tp tp') : FwdData tp' tk k cl f := by
   obtain ⟨hsuf, hk, hf, htr⟩ := h
   exact ⟨hsuf.trans hg.suf, hk, hf,
@@ -175,17 +165,17 @@ theorem Good.setSt (hN : N.Good) {s : Node} {t : NodeSt σ} (hs : N.Live s)
         exact hf
 
 /-- The network with the edge into `k` recommitted. -/
-def setFwd (N : GNetSt σ) (k : Node) (cl : List VarType) (f : VarSymb → VarSymb) :
+def setFwd (N : GNetSt σ) (k : Node) (cl : List VarType) (f : VarSymb → LEnt σ) :
     GNetSt σ :=
   { N with fcl := Function.update N.fcl k cl, fmap := Function.update N.fmap k f }
 
-theorem live_setFwd (N : GNetSt σ) (k : Node) (cl : List VarType) (f : VarSymb → VarSymb)
+theorem live_setFwd (N : GNetSt σ) (k : Node) (cl : List VarType) (f : VarSymb → LEnt σ)
     (k' : Node) : (N.setFwd k cl f).Live k' ↔ N.Live k' :=
   live_of_nch (N := N) (N' := N.setFwd k cl f) rfl k'
 
 /-- Recommitting one edge with good data preserves the invariants. -/
 theorem Good.setFwd (hN : N.Good) {c : ℕ} {p : Node} {cl : List VarType}
-    {f : VarSymb → VarSymb} (hd : FwdData (N.st p) (N.st (c :: p)) (N.kind (c :: p)) cl f) :
+    {f : VarSymb → LEnt σ} (hd : FwdData (N.st p) (N.st (c :: p)) (N.kind (c :: p)) cl f) :
     (N.setFwd (c :: p) cl f).Good := by
   refine ⟨fun s hs => hN.mcs s ((live_setFwd _ _ _ _ s).mp hs), fun c' p' hk' => ?_⟩
   rw [live_setFwd] at hk'
@@ -203,24 +193,24 @@ theorem Good.setFwd (hN : N.Good) {c : ℕ} {p : Node} {cl : List VarType}
 
 /-- What an edge puts into the child when the parent's next variable, of type `A`, is freshly
     realised. -/
-def grealSet (hF : ModalSys.Four = true) (ts tt : NodeSt σ) (k : Option VarSymb)
-    (cl : List VarType) (f : VarSymb → VarSymb) (A : VarType) :
+noncomputable def grealSet (hF : ModalSys.Four = true) (ts tt : NodeSt σ) (k : Option VarSymb)
+    (cl : List VarType) (f : VarSymb → LEnt σ) (A : VarType) :
     Set (WFF σ (ctxOf (A.gc :: tt.l)) 0) :=
   {φ | ∃ (hle : (ctxOf (A :: cl)).Le (ctxOf ts.l)) (hk : KDecl (ctxOf cl) k)
-    (hf : ItemOk ((ctxOf cl).kView k) (ctxOf tt.l) f)
+    (hf : EntOk ((ctxOf cl).kView k) (ctxOf tt.l) f)
     (ψ : WFF σ ((ctxOf (A :: cl)).kView k) 0),
     WFF.mono hle (kBox k (kDecl_mono (ctxOf_le_append [A] cl) hk) ψ) ∈ ts.M ∧
       φ = gextArrow hF hk hf ψ}
 
 /-- The child grown by the fresh realisation of the parent's next variable. -/
 noncomputable def grealStep (hF : ModalSys.Four = true) (ts tt : NodeSt σ) (k : Option VarSymb)
-    (cl : List VarType) (f : VarSymb → VarSymb) : NodeSt σ :=
+    (cl : List VarType) (f : VarSymb → LEnt σ) : NodeSt σ :=
   ⟨(nextTy ts.l cl).gc :: tt.l, complete (WFF.mono (ctxOf_le_append [(nextTy ts.l cl).gc] tt.l) ''
     tt.M ∪ grealSet hF ts tt k cl f (nextTy ts.l cl))⟩
 
 /-- ⭐One realisation step along an edge. -/
 theorem grealStep_ok (hF : ModalSys.Four = true) {ts tt : NodeSt σ} {k : Option VarSymb}
-    {cl : List VarType} {f : VarSymb → VarSymb} (hs : Theory.IsMCS ts.M)
+    {cl : List VarType} {f : VarSymb → LEnt σ} (hs : Theory.IsMCS ts.M)
     (ht : Theory.IsMCS tt.M) (hd : FwdData ts tt k cl f) (hlt : cl.length < ts.l.length) :
     Theory.IsMCS (grealStep hF ts tt k cl f).M ∧ Grows tt (grealStep hF ts tt k cl f) ∧
       FwdData ts (grealStep hF ts tt k cl f) k (nextTy ts.l cl :: cl)

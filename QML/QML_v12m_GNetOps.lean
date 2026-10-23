@@ -129,7 +129,7 @@ theorem Good.henk (hN : N.Good) {s : Node} (hs : N.Live s)
 /-- ⭐The network with a new child of `s` of kind `kd` in state `t`, all of `s`'s variables
     committed by `f`. -/
 def newChild (N : GNetSt σ) (s : Node) (kd : Option VarSymb) (t : NodeSt σ)
-    (f : VarSymb → VarSymb) : GNetSt σ where
+    (f : VarSymb → LEnt σ) : GNetSt σ where
   st := Function.update N.st (N.nch s :: s) t
   nch := Function.update (Function.update N.nch s (N.nch s + 1)) (N.nch s :: s) 0
   kind := Function.update N.kind (N.nch s :: s) kd
@@ -144,7 +144,7 @@ theorem not_live_below_new {N : GNetSt σ} (s : Node) (d : ℕ) :
 
 /-- The live nodes after adding a child: the old ones and the new one. -/
 theorem live_newChild {N : GNetSt σ} {s : Node} (hs : N.Live s) (kd : Option VarSymb)
-    (t : NodeSt σ) (f : VarSymb → VarSymb) :
+    (t : NodeSt σ) (f : VarSymb → LEnt σ) :
     ∀ k, (N.newChild s kd t f).Live k ↔ N.Live k ∨ k = N.nch s :: s
   | [] => by simp [Live]
   | d :: p => by
@@ -174,7 +174,7 @@ theorem live_newChild {N : GNetSt σ} {s : Node} (hs : N.Live s) (kd : Option Va
 
 /-- ⭐A new child with a good edge keeps the invariants. -/
 theorem Good.newChild (hN : N.Good) {s : Node} (hs : N.Live s) {kd : Option VarSymb}
-    {t : NodeSt σ} {f : VarSymb → VarSymb} (ht : Theory.IsMCS t.M)
+    {t : NodeSt σ} {f : VarSymb → LEnt σ} (ht : Theory.IsMCS t.M)
     (hf : FwdData (N.st s) t kd (N.st s).l f) : (N.newChild s kd t f).Good := by
   have hks : (N.nch s :: s : Node) ≠ s := NetSt.ne_parent _ s
   have hold : ∀ k, N.Live k → k ≠ N.nch s :: s := fun k hk h => not_live_new s (h ▸ hk)
@@ -216,7 +216,8 @@ theorem kDia_neg_of_not_box {Γ : Ctx} {M : Set (WFF σ Γ 0)} (hM : Theory.IsMC
         (Proof.lookup List.mem_cons_self)))⟩⟩)
 
 /-- The seed of a child of kind `k` for `φ`. -/
-def childSeed (hF : ModalSys.Four = true) (L : List VarType) (M : Set (WFF σ (ctxOf L) 0))
+noncomputable def childSeed (hF : ModalSys.Four = true) (L : List VarType)
+    (M : Set (WFF σ (ctxOf L) 0))
     {k : Option VarSymb} {X : VarType} (hk : KContent (ctxOf L) k X)
     (φ : WFF σ ((ctxOf L).kView k) 0) : Set (WFF σ (ctxOf (childL L k X)) 0) :=
   {gchildArrow hF L hk φ} ∪
@@ -234,7 +235,8 @@ noncomputable def mkChild (hF : ModalSys.Four = true) (N : GNetSt σ) (s : Node)
             if WFF.mono (ctxOf_le_of_suffix h) (.box ψ) ∈ (N.st s).M then N else
               N.newChild s none ⟨childL (N.st s).l none .VTypeOne, complete
                 (childSeed hF (N.st s).l (N.st s).M (kContent_none _ .VTypeOne)
-                  (WFF.mono (ctxOf_le_of_suffix h).boxIn ψ).neg)⟩ (gchildMap (N.st s).l none)
+                  (WFF.mono (ctxOf_le_of_suffix h).boxIn ψ).neg)⟩
+                (ofRen (gchildMap (N.st s).l none))
         | .dia x hx ψ =>
             if WFF.mono (ctxOf_le_of_suffix h) (.dia x hx ψ) ∈ (N.st s).M then
               match hX : (ctxOf (N.st s).l).ref x with
@@ -243,7 +245,7 @@ noncomputable def mkChild (hF : ModalSys.Four = true) (N : GNetSt σ) (s : Node)
                     (childSeed hF (N.st s).l (N.st s).M (k := some x)
                       (fun _ e => by cases e; exact hX)
                       (WFF.mono ((ctxOf_le_of_suffix h).diaIn x) ψ))⟩
-                    (gchildMap (N.st s).l (some x))
+                    (ofRen (gchildMap (N.st s).l (some x)))
               | _ => N
             else N
         | _ => N
@@ -255,9 +257,10 @@ theorem childSeed_ok (hF : ModalSys.Four = true) {L : List VarType}
     (hk : KContent (ctxOf L) k X) {φ : WFF σ ((ctxOf L).kView k) 0}
     (hφ : kDia k (kDecl_of_kContent hk) φ ∈ M) :
     Theory.IsMCS (complete (childSeed hF L M hk φ)) ∧
-      FwdData ⟨L, M⟩ ⟨childL L k X, complete (childSeed hF L M hk φ)⟩ k L (gchildMap L k) := by
+      FwdData ⟨L, M⟩ ⟨childL L k X, complete (childSeed hF L M hk φ)⟩ k L
+        (ofRen (gchildMap L k)) := by
   obtain ⟨hS, ht⟩ := complete_spec (gchild_consistent hF hM hk hφ)
-  refine ⟨ht, List.suffix_refl _, kDecl_of_kContent hk, itemOk_gchild hF L hk, ?_⟩
+  refine ⟨ht, List.suffix_refl _, kDecl_of_kContent hk, entOk_ofRen (itemOk_gchild hF L hk), ?_⟩
   intro ψ hψ
   rw [WFF.mono_refl] at hψ
   exact hS (Or.inr ⟨ψ, hψ, rfl⟩)
@@ -305,114 +308,118 @@ theorem Good.mkChild (hF : ModalSys.Four = true) (hN : N.Good) {s : Node} (hs : 
 /-! ## Lifts -/
 
 /-- The seed of a lifted root, over every proof of the edge's data. -/
-def liftSeedE (hF : ModalSys.Four = true) (tp tk : NodeSt σ) (k : Option VarSymb)
-    (f : VarSymb → VarSymb) (n : VarSymb) {T : VarType} (hl : T.liftable = true) :
-    Set (WFF σ ((ctxOf tp.l).insert (.free tp.l.length) T) 0) :=
-  {φ | ∃ (hk : KDecl (ctxOf tp.l) k) (hf : ItemOk ((ctxOf tp.l).kView k) (ctxOf tk.l) f)
-    (hn : (ctxOf tk.l).ref n = some T), φ ∈ liftSeed hF hl hk hf hn tk.M}
+noncomputable def liftSeedE (hF : ModalSys.Four = true) (tp tk : NodeSt σ) (k : Option VarSymb)
+    (f : VarSymb → LEnt σ) {T : VarType} {a : Ann T} (t : Term σ (ctxOf tk.l) T a)
+    (hl : T.liftable = true) : Set (WFF σ ((ctxOf tp.l).insert (.free tp.l.length) T) 0) :=
+  {φ | ∃ (hk : KDecl (ctxOf tp.l) k) (hf : EntOk ((ctxOf tp.l).kView k) (ctxOf tk.l) f),
+    φ ∈ liftSeed hF hl hk hf t tk.M}
 
 /-- What the lifted root's residual puts into the child. -/
-def liftRealSet (hF : ModalSys.Four = true) (tp tk : NodeSt σ) (k : Option VarSymb)
-    (f : VarSymb → VarSymb) (n : VarSymb) {T : VarType} (hl : T.liftable = true)
+noncomputable def liftRealSet (hF : ModalSys.Four = true) (tp tk : NodeSt σ)
+    (k : Option VarSymb) (f : VarSymb → LEnt σ) {T : VarType} {a : Ann T}
+    (t : Term σ (ctxOf tk.l) T a) (hl : T.liftable = true)
     (Mp : Set (WFF σ (ctxOf (T :: tp.l)) 0)) : Set (WFF σ (ctxOf (T.lr :: tk.l)) 0) :=
-  {φ | ∃ (hk : KDecl (ctxOf tp.l) k) (hf : ItemOk ((ctxOf tp.l).kView k) (ctxOf tk.l) f)
-    (hn : (ctxOf tk.l).ref n = some T) (ψ : WFF σ ((ctxOf (T :: tp.l)).kView k) 0),
+  {φ | ∃ (hk : KDecl (ctxOf tp.l) k) (hf : EntOk ((ctxOf tp.l).kView k) (ctxOf tk.l) f)
+    (ψ : WFF σ ((ctxOf (T :: tp.l)).kView k) 0),
     kBox k (kDecl_mono (ctxOf_le_append [T] tp.l) hk) ψ ∈ Mp ∧
-      φ = gliftArrow hF (VarType.keepable_of_liftable hl) (kOld_of_kDecl hk) hf hn ψ}
+      φ = gliftArrow hF (VarType.keepable_of_liftable hl) (kOld_of_kDecl hk) hf t ψ}
 
 /-- The lifted parent. -/
 noncomputable def liftPar (hF : ModalSys.Four = true) (tp tk : NodeSt σ) (k : Option VarSymb)
-    (f : VarSymb → VarSymb) (n : VarSymb) {T : VarType} (hl : T.liftable = true) : NodeSt σ :=
+    (f : VarSymb → LEnt σ) {T : VarType} {a : Ann T} (t : Term σ (ctxOf tk.l) T a)
+    (hl : T.liftable = true) : NodeSt σ :=
   ⟨T :: tp.l, complete (WFF.weaken (ctxOf_fresh (l := tp.l) le_rfl).root T '' tp.M ∪
-    liftSeedE hF tp tk k f n hl)⟩
+    liftSeedE hF tp tk k f t hl)⟩
 
 /-- The child grown by the lifted root's residual. -/
 noncomputable def liftChild (hF : ModalSys.Four = true) (tp tk : NodeSt σ) (k : Option VarSymb)
-    (f : VarSymb → VarSymb) (n : VarSymb) {T : VarType} (hl : T.liftable = true) : NodeSt σ :=
+    (f : VarSymb → LEnt σ) {T : VarType} {a : Ann T} (t : Term σ (ctxOf tk.l) T a)
+    (hl : T.liftable = true) : NodeSt σ :=
   ⟨T.lr :: tk.l, complete (WFF.mono (ctxOf_le_append [T.lr] tk.l) '' tk.M ∪
-    liftRealSet hF tp tk k f n hl (liftPar hF tp tk k f n hl).M)⟩
+    liftRealSet hF tp tk k f t hl (liftPar hF tp tk k f t hl).M)⟩
 
-/-- ⭐One lift along an edge whose parent is fully committed. -/
+/-- ⭐One lift of a term along an edge whose parent is fully committed. -/
 theorem lift_ok (hF : ModalSys.Four = true) {tp tk : NodeSt σ} {k : Option VarSymb}
-    {f : VarSymb → VarSymb} {n : VarSymb} {T : VarType} (hl : T.liftable = true)
-    (hp : Theory.IsMCS tp.M) (ht : Theory.IsMCS tk.M) (hd : FwdData tp tk k tp.l f)
-    (hn : (ctxOf tk.l).ref n = some T) :
-    Theory.IsMCS (liftPar hF tp tk k f n hl).M ∧ Grows tp (liftPar hF tp tk k f n hl) ∧
-      Theory.IsMCS (liftChild hF tp tk k f n hl).M ∧ Grows tk (liftChild hF tp tk k f n hl) ∧
-      FwdData (liftPar hF tp tk k f n hl) (liftChild hF tp tk k f n hl) k (T :: tp.l)
-        (gliftG f T tp.l.length n (.free tk.l.length)) := by
+    {f : VarSymb → LEnt σ} {T : VarType} {a : Ann T} (t : Term σ (ctxOf tk.l) T a)
+    (hl : T.liftable = true) (hp : Theory.IsMCS tp.M) (ht : Theory.IsMCS tk.M)
+    (hd : FwdData tp tk k tp.l f) :
+    Theory.IsMCS (liftPar hF tp tk k f t hl).M ∧ Grows tp (liftPar hF tp tk k f t hl) ∧
+      Theory.IsMCS (liftChild hF tp tk k f t hl).M ∧ Grows tk (liftChild hF tp tk k f t hl) ∧
+      FwdData (liftPar hF tp tk k f t hl) (liftChild hF tp tk k f t hl) k (T :: tp.l)
+        (gliftG f T tp.l.length (.inr ⟨tk.l, T, a, t⟩) (.free tk.l.length)) := by
   obtain ⟨_, hk, hf, htr⟩ := hd
-  have hseed : liftSeedE hF tp tk k f n hl = liftSeed hF hl hk hf hn tk.M := by
+  have hseed : liftSeedE hF tp tk k f t hl = liftSeed hF hl hk hf t tk.M := by
     ext φ
-    exact ⟨fun ⟨_, _, _, h⟩ => h, fun h => ⟨hk, hf, hn, h⟩⟩
+    exact ⟨fun ⟨_, _, h⟩ => h, fun h => ⟨hk, hf, h⟩⟩
   obtain ⟨hS₁, hmcs₁⟩ := complete_spec (show Theory.Consistent
-    (WFF.weaken (ctxOf_fresh (l := tp.l) le_rfl).root T '' tp.M ∪ liftSeedE hF tp tk k f n hl) by
+    (WFF.weaken (ctxOf_fresh (l := tp.l) le_rfl).root T '' tp.M ∪ liftSeedE hF tp tk k f t hl) by
       rw [hseed]
-      exact glift_consistent hF hl hp ht hk hf htr hn)
-  have hreal := gliftRealise_consistent hF hl ht hk hf hn (M' := (liftPar hF tp tk k f n hl).M)
+      exact glift_consistent hF hl hp ht hk hf htr t)
+  have hreal := gliftRealise_consistent hF hl ht hk hf t (M' := (liftPar hF tp tk k f t hl).M)
     hmcs₁ (fun φ h => hS₁ (Or.inr (hseed ▸ h)))
   obtain ⟨hS₂, hmcs₂⟩ := complete_spec (show Theory.Consistent
     (WFF.mono (ctxOf_le_append [T.lr] tk.l) '' tk.M ∪
-      liftRealSet hF tp tk k f n hl (liftPar hF tp tk k f n hl).M) from
+      liftRealSet hF tp tk k f t hl (liftPar hF tp tk k f t hl).M) from
     hreal.mono (by
-      rintro φ (h | ⟨_, _, _, ψ, h₁, h₂⟩)
+      rintro φ (h | ⟨_, _, ψ, h₁, h₂⟩)
       · exact Or.inl h
       · exact Or.inr ⟨ψ, h₁, h₂⟩))
   refine ⟨hmcs₁, ⟨⟨[T], rfl⟩, fun φ hφ => hS₁ (Or.inl ⟨φ, hφ, rfl⟩)⟩, hmcs₂,
     ⟨⟨[T.lr], rfl⟩, fun φ hφ => hS₂ (Or.inl ⟨φ, hφ, rfl⟩)⟩, List.suffix_refl _,
     kDecl_mono (ctxOf_le_append [T] tp.l) hk,
-    itemOk_gliftZ hF (VarType.keepable_of_liftable hl) (kOld_of_kDecl hk) hf hn, ?_⟩
+    itemOk_gliftZ hF (VarType.keepable_of_liftable hl) (kOld_of_kDecl hk) hf t, ?_⟩
   intro ψ hψ
   rw [WFF.mono_refl] at hψ
-  exact hS₂ (Or.inr ⟨hk, hf, hn, ψ, hψ, rfl⟩)
+  exact hS₂ (Or.inr ⟨hk, hf, ψ, hψ, rfl⟩)
 
-/-- ⭐**Lift** an address `n` of the child `c :: p` along its edge, if the parent is fully
-    committed along it and `n` has a liftable type. -/
-noncomputable def lift (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → VarSymb → GNetSt σ
+/-- ⭐**Lift** a term of the child `c :: p` along its edge, if the parent is fully committed along
+    it, the term is over the child's variables, and its type is liftable: the edge then sends
+    the new root's kept item to the term (docs §3 4, D5 (a)). -/
+noncomputable def lift (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → LTerm σ → GNetSt σ
   | [], _ => N
-  | c :: p, n =>
+  | c :: p, ⟨l, T, a, t⟩ =>
       if N.fcl (c :: p) = (N.st p).l then
-        match (ctxOf (N.st (c :: p)).l).ref n with
-        | some T =>
-            if hl : T.liftable = true then
-              ((N.setSt p (liftPar hF (N.st p) (N.st (c :: p)) (N.kind (c :: p))
-                  (N.fmap (c :: p)) n hl)).setSt (c :: p)
-                (liftChild hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))
-                  n hl)).setFwd
-                (c :: p) (T :: (N.st p).l)
-                (gliftG (N.fmap (c :: p)) T (N.st p).l.length n (.free (N.st (c :: p)).l.length))
-            else N
-        | none => N
+        if h : l <:+ (N.st (c :: p)).l then
+          if hl : T.liftable = true then
+            ((N.setSt p (liftPar hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))
+                (Term.mono (ctxOf_le_of_suffix h) t) hl)).setSt (c :: p)
+              (liftChild hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))
+                (Term.mono (ctxOf_le_of_suffix h) t) hl)).setFwd
+              (c :: p) (T :: (N.st p).l)
+              (gliftG (N.fmap (c :: p)) T (N.st p).l.length
+                (.inr ⟨(N.st (c :: p)).l, T, a, Term.mono (ctxOf_le_of_suffix h) t⟩)
+                (.free (N.st (c :: p)).l.length))
+          else N
+        else N
       else N
 
 /-- ⭐Lifting preserves the invariants. -/
 theorem Good.lift (hF : ModalSys.Four = true) (hN : N.Good) {k : Node} (hk : N.Live k)
-    (n : VarSymb) : (N.lift hF k n).Good := by
-  match k with
-  | [] => exact hN
-  | c :: p =>
+    (o : LTerm σ) : (N.lift hF k o).Good := by
+  match k, o with
+  | [], _ => exact hN
+  | c :: p, ⟨l, T, a, t⟩ =>
       simp only [GNetSt.lift]
-      split_ifs with hcl
-      · split
-        · rename_i T hn
-          split_ifs with hl
-          · have hd := hN.fwd c p hk
-            unfold FwdOk at hd
-            rw [hcl] at hd
-            obtain ⟨hmp, hgp, hmk, hgk, hfd⟩ := lift_ok hF hl (hN.mcs p hk.1) (hN.mcs _ hk) hd hn
-            have hN₁ := hN.setSt hk.1 hgp hmp
-            have hk₁ : (N.setSt p (liftPar hF (N.st p) (N.st (c :: p)) (N.kind (c :: p))
-                (N.fmap (c :: p)) n hl)).Live (c :: p) := (live_setSt _ _ _ _).mpr hk
-            have hN₂ := hN₁.setSt hk₁ (by
-              rw [setSt_ne _ _ (NetSt.ne_parent c p)]
-              exact hgk) hmk
-            refine hN₂.setFwd ?_
-            change FwdData ((((N.setSt p _).setSt (c :: p) _)).st p)
-              (((N.setSt p _).setSt (c :: p) _).st (c :: p)) _ _ _
-            rw [setSt_ne _ _ (fun h => NetSt.ne_parent c p h.symm), setSt_self, setSt_self]
-            exact hfd
-          · exact hN
-        · exact hN
+      split_ifs with hcl h hl
+      · have hd := hN.fwd c p hk
+        unfold FwdOk at hd
+        rw [hcl] at hd
+        obtain ⟨hmp, hgp, hmk, hgk, hfd⟩ :=
+          lift_ok hF (Term.mono (ctxOf_le_of_suffix h) t) hl (hN.mcs p hk.1) (hN.mcs _ hk) hd
+        have hN₁ := hN.setSt hk.1 hgp hmp
+        have hk₁ : (N.setSt p (liftPar hF (N.st p) (N.st (c :: p)) (N.kind (c :: p))
+            (N.fmap (c :: p)) (Term.mono (ctxOf_le_of_suffix h) t) hl)).Live (c :: p) :=
+          (live_setSt _ _ _ _).mpr hk
+        have hN₂ := hN₁.setSt hk₁ (by
+          rw [setSt_ne _ _ (NetSt.ne_parent c p)]
+          exact hgk) hmk
+        refine hN₂.setFwd ?_
+        change FwdData ((((N.setSt p _).setSt (c :: p) _)).st p)
+          (((N.setSt p _).setSt (c :: p) _).st (c :: p)) _ _ _
+        rw [setSt_ne _ _ (fun h => NetSt.ne_parent c p h.symm), setSt_self, setSt_self]
+        exact hfd
+      · exact hN
+      · exact hN
       · exact hN
 
 end GNetSt

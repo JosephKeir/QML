@@ -82,7 +82,7 @@ theorem kView_rt_lt {cl : List VarType} {k : Option VarSymb} {u : VarSymb} {s : 
   exact fun h => by cases h; omega
 
 /-- Recommitting an edge to an extension of its map extends. -/
-theorem Ext.setFwd {N : GNetSt σ} {k : Node} {A : VarType} {f : VarSymb → VarSymb}
+theorem Ext.setFwd {N : GNetSt σ} {k : Node} {A : VarType} {f : VarSymb → LEnt σ}
     (hf : ∀ v T, (ctxOf (N.fcl k)).kView (N.kind k) v = some T → f v = N.fmap k v) :
     Ext N (N.setFwd k (A :: N.fcl k) f) where
   live k' hk := (live_setFwd _ _ _ _ k').mpr hk
@@ -106,7 +106,7 @@ theorem Ext.setFwd {N : GNetSt σ} {k : Node} {A : VarType} {f : VarSymb → Var
       rw [Function.update_of_ne h]
 
 theorem Ext.newChild {N : GNetSt σ} {s : Node} (hs : N.Live s) (kd : Option VarSymb)
-    (t : NodeSt σ) (f : VarSymb → VarSymb) : Ext N (N.newChild s kd t f) := by
+    (t : NodeSt σ) (f : VarSymb → LEnt σ) : Ext N (N.newChild s kd t f) := by
   have hold : ∀ k, N.Live k → k ≠ N.nch s :: s := fun k hk h => not_live_new s (h ▸ hk)
   refine ⟨fun k hk => (live_newChild hs kd t f k).mpr (Or.inl hk), fun k hk => ?_,
     fun k hk => ?_, fun k hk => ?_, fun k hk v _ _ => ?_⟩
@@ -315,93 +315,76 @@ theorem catchUp_full (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {
   rw [h₂, h₁]
   omega
 
-theorem nch_lift (hF : ModalSys.Four = true) (N : GNetSt σ) (k : Node) (n : VarSymb) :
-    (N.lift hF k n).nch = N.nch := by
-  match k with
-  | [] => rfl
-  | c :: p =>
+theorem nch_lift (hF : ModalSys.Four = true) (N : GNetSt σ) (k : Node) (o : LTerm σ) :
+    (N.lift hF k o).nch = N.nch := by
+  match k, o with
+  | [], _ => rfl
+  | c :: p, ⟨l, T, a, t⟩ =>
       simp only [GNetSt.lift]
-      split_ifs
-      · split
-        · split_ifs <;> rfl
-        · rfl
-      · rfl
+      split_ifs <;> rfl
 
 /-- What a lift does, when it applies. -/
-theorem lift_spec (hF : ModalSys.Four = true) {N : GNetSt σ} {c : ℕ} {p : Node} {n : VarSymb}
-    {T : VarType} (hcl : N.fcl (c :: p) = (N.st p).l)
-    (hn : (ctxOf (N.st (c :: p)).l).ref n = some T) (hl : T.liftable = true) :
-    N.lift hF (c :: p) n = ((N.setSt p (liftPar hF (N.st p) (N.st (c :: p)) (N.kind (c :: p))
-        (N.fmap (c :: p)) n hl)).setSt (c :: p)
-      (liftChild hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p)) n hl)).setFwd
+theorem lift_spec (hF : ModalSys.Four = true) {N : GNetSt σ} {c : ℕ} {p : Node}
+    {l : List VarType} {T : VarType} {a : Ann T} {t : Term σ (ctxOf l) T a}
+    (hcl : N.fcl (c :: p) = (N.st p).l) (h : l <:+ (N.st (c :: p)).l) (hl : T.liftable = true) :
+    N.lift hF (c :: p) ⟨l, T, a, t⟩ = ((N.setSt p (liftPar hF (N.st p) (N.st (c :: p))
+        (N.kind (c :: p)) (N.fmap (c :: p)) (Term.mono (ctxOf_le_of_suffix h) t) hl)).setSt
+        (c :: p) (liftChild hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))
+          (Term.mono (ctxOf_le_of_suffix h) t) hl)).setFwd
       (c :: p) (T :: (N.st p).l)
-      (gliftG (N.fmap (c :: p)) T (N.st p).l.length n (.free (N.st (c :: p)).l.length)) := by
-  simp only [GNetSt.lift, if_pos hcl]
-  split
-  · rename_i T' hT'
-    rw [hn] at hT'
-    cases hT'
-    rw [dif_pos hl]
-  · rename_i hne
-    rw [hn] at hne
-    cases hne
+      (gliftG (N.fmap (c :: p)) T (N.st p).l.length
+        (.inr ⟨(N.st (c :: p)).l, T, a, Term.mono (ctxOf_le_of_suffix h) t⟩)
+        (.free (N.st (c :: p)).l.length)) := by
+  simp only [GNetSt.lift, if_pos hcl, dif_pos h, dif_pos hl]
 
 theorem Ext.lift (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k : Node}
-    (hk : N.Live k) (n : VarSymb) : Ext N (N.lift hF k n) := by
-  match k with
-  | [] => exact Ext.refl N
-  | c :: p =>
+    (hk : N.Live k) (o : LTerm σ) : Ext N (N.lift hF k o) := by
+  match k, o with
+  | [], _ => exact Ext.refl N
+  | c :: p, ⟨l, T, a, t⟩ =>
       by_cases hcl : N.fcl (c :: p) = (N.st p).l
-      · cases hn : (ctxOf (N.st (c :: p)).l).ref n with
-        | none =>
-            simp only [GNetSt.lift, if_pos hcl]
-            split
-            · rename_i T hT
-              rw [hn] at hT
-              cases hT
-            · exact Ext.refl N
-        | some T =>
-            by_cases hl : T.liftable = true
-            · rw [lift_spec hF hcl hn hl]
-              have hd := hN.fwd c p hk
-              unfold FwdOk at hd
-              rw [hcl] at hd
-              obtain ⟨-, hgp, -, hgk, -⟩ := lift_ok hF hl (hN.mcs p hk.1) (hN.mcs _ hk) hd hn
-              have e₁ := Ext.setSt (N := N) hgp
-              have e₂ := Ext.setSt (N := N.setSt p (liftPar hF (N.st p) (N.st (c :: p))
-                (N.kind (c :: p)) (N.fmap (c :: p)) n hl)) (s := c :: p)
-                (t := liftChild hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))
-                  n hl) (by rw [setSt_ne _ _ (NetSt.ne_parent c p)]; exact hgk)
-              refine e₁.trans (e₂.trans ?_)
-              have e₃ := Ext.setFwd (N := (N.setSt p (liftPar hF (N.st p) (N.st (c :: p))
-                (N.kind (c :: p)) (N.fmap (c :: p)) n hl)).setSt (c :: p)
-                (liftChild hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))
-                  n hl)) (k := c :: p) (A := T)
-                (f := gliftG (N.fmap (c :: p)) T (N.st p).l.length n
-                  (.free (N.st (c :: p)).l.length)) (fun v T' hv => by
-                  change (ctxOf (N.fcl (c :: p))).kView (N.kind (c :: p)) v = some T' at hv
-                  obtain ⟨u, s, rfl, -, -⟩ := kView_item hv
-                  rw [hcl] at hv
-                  exact gliftG_old (kView_rt_lt hv))
-              change Ext _ (GNetSt.setFwd _ (c :: p) (T :: N.fcl (c :: p)) _) at e₃
-              rw [hcl] at e₃
-              exact e₃
-            · simp only [GNetSt.lift, if_pos hcl]
-              split
-              · rename_i T' hT'
-                rw [hn] at hT'
-                cases hT'
-                rw [dif_neg hl]
-                exact Ext.refl N
-              · exact Ext.refl N
+      · by_cases h : l <:+ (N.st (c :: p)).l
+        · by_cases hl : T.liftable = true
+          · rw [lift_spec hF hcl h hl]
+            have hd := hN.fwd c p hk
+            unfold FwdOk at hd
+            rw [hcl] at hd
+            obtain ⟨-, hgp, -, hgk, -⟩ := lift_ok hF (Term.mono (ctxOf_le_of_suffix h) t) hl
+              (hN.mcs p hk.1) (hN.mcs _ hk) hd
+            have e₁ := Ext.setSt (N := N) hgp
+            have e₂ := Ext.setSt (N := N.setSt p (liftPar hF (N.st p) (N.st (c :: p))
+              (N.kind (c :: p)) (N.fmap (c :: p)) (Term.mono (ctxOf_le_of_suffix h) t) hl))
+              (s := c :: p)
+              (t := liftChild hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))
+                (Term.mono (ctxOf_le_of_suffix h) t) hl)
+              (by rw [setSt_ne _ _ (NetSt.ne_parent c p)]; exact hgk)
+            refine e₁.trans (e₂.trans ?_)
+            have e₃ := Ext.setFwd (N := (N.setSt p (liftPar hF (N.st p) (N.st (c :: p))
+              (N.kind (c :: p)) (N.fmap (c :: p)) (Term.mono (ctxOf_le_of_suffix h) t) hl)).setSt
+              (c :: p) (liftChild hF (N.st p) (N.st (c :: p)) (N.kind (c :: p))
+                (N.fmap (c :: p)) (Term.mono (ctxOf_le_of_suffix h) t) hl)) (k := c :: p) (A := T)
+              (f := gliftG (N.fmap (c :: p)) T (N.st p).l.length
+                (.inr ⟨(N.st (c :: p)).l, T, a, Term.mono (ctxOf_le_of_suffix h) t⟩)
+                (.free (N.st (c :: p)).l.length)) (fun v T' hv => by
+                change (ctxOf (N.fcl (c :: p))).kView (N.kind (c :: p)) v = some T' at hv
+                obtain ⟨u, s, rfl, -, -⟩ := kView_item hv
+                rw [hcl] at hv
+                exact gliftG_old (kView_rt_lt hv))
+            change Ext _ (GNetSt.setFwd _ (c :: p) (T :: N.fcl (c :: p)) _) at e₃
+            rw [hcl] at e₃
+            exact e₃
+          · simp only [GNetSt.lift, if_pos hcl, dif_pos h, dif_neg hl]
+            exact Ext.refl N
+        · simp only [GNetSt.lift, if_pos hcl, dif_neg h]
+          exact Ext.refl N
       · simp only [GNetSt.lift, if_neg hcl]
         exact Ext.refl N
 
 /-! ## The chain -/
 
 /-- An operation: a Henkin witness or a child for an obligation at a node, realising forward
-    along an edge, or lifting an address of a child along its edge. -/
-abbrev GOp (σ : Signature) := (Node × Obl σ) ⊕ (Node × Obl σ) ⊕ Node ⊕ (Node × VarSymb)
+    along an edge, or lifting a term of a child along its edge. -/
+abbrev GOp (σ : Signature) := (Node × Obl σ) ⊕ (Node × Obl σ) ⊕ Node ⊕ (Node × LTerm σ)
 
 instance : Nonempty (GOp σ) := ⟨.inr (.inr (.inl []))⟩
 
@@ -461,7 +444,7 @@ def init {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : GNetSt σ 
   nch := fun _ => 0
   kind := fun _ => none
   fcl := fun _ => []
-  fmap := fun _ => id
+  fmap := fun _ => ofRen id
 
 theorem init_live {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} :
     ∀ {k : Node}, (init M₀).Live k → k = []

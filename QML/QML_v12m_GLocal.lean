@@ -88,31 +88,31 @@ theorem kBox_top_mem {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)} (hM : The
     them, the target says of their images. -/
 def GTransfer {Γ : Ctx} (M : Set (WFF σ Γ 0)) (ls : List VarType) (hle : (ctxOf ls).Le Γ)
     (k : Option VarSymb) (hk : KDecl (ctxOf ls) k) {lt : List VarType}
-    (N : Set (WFF σ (ctxOf lt) 0)) (f : VarSymb → VarSymb)
-    (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f) : Prop :=
+    (N : Set (WFF σ (ctxOf lt) 0)) (f : VarSymb → LEnt σ)
+    (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) : Prop :=
   ∀ ψ : WFF σ ((ctxOf ls).kView k) 0, WFF.mono hle (kBox k hk ψ) ∈ M →
-    WFF.subst (itemIdx f) (itemS σ (ctxOf lt) f) (ok_itemS_kView hf) (coh_itemS_kView hf)
+    WFF.subst (eIdx f) (eS σ (ctxOf lt) f) (ok_eS_kView hf) (coh_eS_kView hf)
       Ctx.NoSlots.slots Ctx.NoSlots.slots ψ ∈ N
 
 /-! ## Realising the next variable -/
 
 /-- The edge's item map extended by the source's next variable, applied to a formula. -/
-abbrev gextArrow (hF : ModalSys.Four = true) {k : Option VarSymb} {A : VarType}
-    {ls lt : List VarType} (hk : KDecl (ctxOf ls) k) {f : VarSymb → VarSymb}
-    (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f) (ψ : WFF σ ((ctxOf (A :: ls)).kView k) 0) :
+noncomputable abbrev gextArrow (hF : ModalSys.Four = true) {k : Option VarSymb} {A : VarType}
+    {ls lt : List VarType} (hk : KDecl (ctxOf ls) k) {f : VarSymb → LEnt σ}
+    (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) (ψ : WFF σ ((ctxOf (A :: ls)).kView k) 0) :
     WFF σ (ctxOf (A.gc :: lt)) 0 :=
-  WFF.subst (itemIdx (gextF f A ls.length lt.length))
-    (itemS σ (ctxOf (A.gc :: lt)) (gextF f A ls.length lt.length))
-    (ok_itemS_kView (itemOk_gextF hF (kOld_of_kDecl hk) hf))
-    (coh_itemS_kView (itemOk_gextF hF (kOld_of_kDecl hk) hf)) Ctx.NoSlots.slots
+  WFF.subst (eIdx (gextF f A ls.length lt.length))
+    (eS σ (ctxOf (A.gc :: lt)) (gextF f A ls.length lt.length))
+    (ok_eS_kView (itemOk_gextF hF (kOld_of_kDecl hk) hf))
+    (coh_eS_kView (itemOk_gextF hF (kOld_of_kDecl hk) hf)) Ctx.NoSlots.slots
     Ctx.NoSlots.slots ψ
 
 /-- One necessity of the source about its next variable is consistent with the target. -/
 theorem grealise_one (hF : ModalSys.Four = true) {Γ : Ctx} [Γ.Presented]
     {M : Set (WFF σ Γ 0)} (hM : Theory.IsMCS M) {A : VarType} {ls lt : List VarType}
     (hle : (ctxOf (A :: ls)).Le Γ) {N : Set (WFF σ (ctxOf lt) 0)} (hN : Theory.IsMCS N)
-    {k : Option VarSymb} (hk : KDecl (ctxOf ls) k) {f : VarSymb → VarSymb}
-    (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f)
+    {k : Option VarSymb} (hk : KDecl (ctxOf ls) k) {f : VarSymb → LEnt σ}
+    (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f)
     (htr : GTransfer M ls ((ctxOf_le_append [A] ls).trans hle) k hk N f hf)
     {ψ : WFF σ ((ctxOf (A :: ls)).kView k) 0}
     (hψ : WFF.mono hle (kBox k (kDecl_mono (ctxOf_le_append [A] ls) hk) ψ) ∈ M) :
@@ -139,7 +139,7 @@ theorem grealise_one (hF : ModalSys.Four = true) {Γ : Ctx} [Γ.Presented]
   -- The transfer puts the existential into the target, and its witness realises `ψ`.
   have hN' := htr _ hex
   have hsub := subst_gext_gabs hF hko hf ψ
-  rw [← WFF.instantiate_toFree (itemS σ (ctxOf lt) f) (ok_itemS_kView hf) (coh_itemS_kView hf)
+  rw [← WFF.instantiate_toFree (eS σ (ctxOf lt) f) (ok_eS_kView hf) (coh_eS_kView hf)
       Ctx.NoSlots.slots Ctx.NoSlots.slots lt.length (ctxOf_fresh le_rfl) A.gc Ctx.NoSlots.slots
       (gabs hF k A ls hko ψ), WFF.instantiate_eta_openFree _ (ctxOf_fresh le_rfl)
       Ctx.NoSlots.slots] at hsub
@@ -154,8 +154,8 @@ theorem grealise_one (hF : ModalSys.Four = true) {Γ : Ctx} [Γ.Presented]
 theorem grealise_consistent (hF : ModalSys.Four = true) {Γ : Ctx} [Γ.Presented]
     {M : Set (WFF σ Γ 0)} (hM : Theory.IsMCS M) {A : VarType} {ls lt : List VarType}
     (hle : (ctxOf (A :: ls)).Le Γ) {N : Set (WFF σ (ctxOf lt) 0)} (hN : Theory.IsMCS N)
-    {k : Option VarSymb} (hk : KDecl (ctxOf ls) k) {f : VarSymb → VarSymb}
-    (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f)
+    {k : Option VarSymb} (hk : KDecl (ctxOf ls) k) {f : VarSymb → LEnt σ}
+    (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f)
     (htr : GTransfer M ls ((ctxOf_le_append [A] ls).trans hle) k hk N f hf) :
     Theory.Consistent (WFF.mono (ctxOf_le_append [A.gc] lt) '' N ∪
       {φ | ∃ ψ, WFF.mono hle (kBox k (kDecl_mono (ctxOf_le_append [A] ls) hk) ψ) ∈ M ∧

@@ -2647,6 +2647,21 @@ flag is on:**
   is unsound for one-flag systems, so it is not an option.
 * (c) Merge the flags (one strong 4).  This loses the four forms decided on (D3).
 
+**D5 (a) built (2026-10-23, sorry-free).**
+* An edge's map is now an **entry map** `VarSymb → LEnt σ`.  An entry is an address (`.inl`) or
+  a term over a list of variables (`LTerm`, `.inr`), weakened into the target when it lies there
+  (`entOf`).
+* `eS`, `eIdx`, `EntOk`, `ok_eS_kView`, `coh_eS_kView`, `sim_eS_mono`, `entOf_mono` are in
+  `GAbs`.  Renamings embed as `ofRen`.
+* `gextF`, `subst_gext_gabs` and `GTransfer` take entry maps.
+* The lift takes a **term**: `liftTgt` instantiates at `t`, and `gliftG`'s `κ` is the entry
+  `.inr ⟨lt, T, a, t⟩`.  The one new fact the identities need is `sim_comp_entOf`: a term entry,
+  sent on by a substitution renaming free-rooted addresses as themselves, is unchanged
+  (`Term.subst_ren`).
+* The lift operation takes `(k, ⟨l, T, a, t⟩)`, lifting when `l` is a suffix of the child's
+  variables.  `GChain.lift_total` is now stated for every term of a liftable type, so the
+  `keepLift` law will hold with equality: `keep m a = ⟦t⟧`.
+
 **Order.**
 1. Weak 4 on the growing tree: `GCanon` (frame, translations along paths, transfer along paths,
    carriers as B's `BCanonDom`/`BCanonModel` with `θ_a`), then `GTruth`.  K4/D4 first, then

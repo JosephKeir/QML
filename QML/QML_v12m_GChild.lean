@@ -105,12 +105,12 @@ theorem itemOk_gchild (hF : ModalSys.Four = true) (l : List VarType) {k : Option
         (by rw [Ctx.ref_nonproj _ rfl]; exact childL_cx l x X)
 
 /-- ⭐The child's map, applied to a formula of the view. -/
-abbrev gchildArrow (hF : ModalSys.Four = true) (l : List VarType) {k : Option VarSymb}
-    {X : VarType} (hk : KContent (ctxOf l) k X) (χ : WFF σ ((ctxOf l).kView k) 0) :
-    WFF σ (ctxOf (childL l k X)) 0 :=
-  WFF.subst (itemIdx (gchildMap l k)) (itemS σ (ctxOf (childL l k X)) (gchildMap l k))
-    (ok_itemS_kView (itemOk_gchild hF l hk)) (coh_itemS_kView (itemOk_gchild hF l hk))
-    Ctx.NoSlots.slots Ctx.NoSlots.slots χ
+noncomputable abbrev gchildArrow (hF : ModalSys.Four = true) (l : List VarType)
+    {k : Option VarSymb} {X : VarType} (hk : KContent (ctxOf l) k X)
+    (χ : WFF σ ((ctxOf l).kView k) 0) : WFF σ (ctxOf (childL l k X)) 0 :=
+  WFF.subst (eIdx (ofRen (gchildMap l k))) (eS σ (ctxOf (childL l k X)) (ofRen (gchildMap l k)))
+    (ok_eS_kView (entOk_ofRen (itemOk_gchild hF l hk)))
+    (coh_eS_kView (entOk_ofRen (itemOk_gchild hF l hk))) Ctx.NoSlots.slots Ctx.NoSlots.slots χ
 
 /-! ## Pulling back -/
 

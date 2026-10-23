@@ -115,43 +115,99 @@ theorem ref_lItem (hF : ModalSys.Four = true) {L : List VarType} {Δ : Ctx} {ρ 
       | dia => exact absurd (hp .dia (by simp)) (by decide)
       | keep => exact absurd (hp .keep (by simp)) (by decide)
 
-/-! ## The item map of a lift -/
+/-! ## Entries -/
 
-/-- ⭐The item map of an edge whose source's root `c : T` is lifted: `c.keep ↦ κ`, `c`'s residual
+theorem okRef_entOf_inl {Δ : Ctx} {w : VarSymb} {T : VarType} (h : Δ.ref w = some T) :
+    (entOf (σ := σ) Δ (.inl w)).OkRef T := h
+
+open Classical in
+theorem entOf_tm {Δ : Ctx} {l : List VarType} {T : VarType} {a : Ann T}
+    (h : (ctxOf l).Le Δ) (t : Term σ (ctxOf l) T a) :
+    entOf Δ (.inr ⟨l, T, a, t⟩) = .tm (Term.mono h t) := dif_pos h
+
+theorem okRef_entOf_tm {Δ : Ctx} {l : List VarType} {T : VarType} {a : Ann T}
+    (h : (ctxOf l).Le Δ) (t : Term σ (ctxOf l) T a) :
+    (entOf Δ (.inr ⟨l, T, a, t⟩)).OkRef T := by
+  rw [entOf_tm h t]
+  rfl
+
+/-- The address of a reachable item's image has a free root. -/
+theorem rt_free_of_ref {l : List VarType} {w : VarSymb} {T : VarType}
+    (h : (ctxOf l).ref w = some T) : ∃ r, w.rt = .free r :=
+  (reach_ppath h).2
+
+open Classical in
+/-- ⭐An entry over `L`, sent on by a substitution renaming every free-rooted address as itself,
+    is the entry again. -/
+theorem sim_comp_entOf {L : List VarType} {Δ Δ' : Ctx} (h₁ : (ctxOf L).Le Δ)
+    (h₂ : (ctxOf L).Le Δ') {ι : VarSymb → VarSymb} (θ : Subst σ Δ') (hθ : Subst.Ok Δ θ)
+    (hc : Subst.Coh ι Δ θ) (hid : ∀ w : VarSymb, (∃ r, w.rt = .free r) → θ.at w = .ren w)
+    {e : LEnt σ} {T : VarType} (he : (entOf (ctxOf L) e).OkRef T) :
+    SubE.Sim T (entOf Δ' e) ((entOf Δ e).comp θ hθ hc) := by
+  match e, he with
+  | .inl w, he =>
+      change SubE.Sim T (.ren w) (θ.at w)
+      rw [hid w (rt_free_of_ref he)]
+      exact .refl _
+  | .inr ⟨l, U, a, t⟩, he =>
+      have hl : (ctxOf l).Le (ctxOf L) := by
+        by_contra hn
+        change (if h : (ctxOf l).Le (ctxOf L) then SubE.tm (Term.mono h t) else .hide).OkRef T
+          at he
+        rw [dif_neg hn] at he
+        exact he
+      have hU : U = T := by
+        rw [entOf_tm hl t] at he
+        exact he
+      subst hU
+      rw [entOf_tm (hl.trans h₂), entOf_tm (hl.trans h₁)]
+      change SubE.Sim U (.tm _) (.tm (Term.subst ι θ hθ hc (Term.mono _ t)))
+      rw [Term.subst_mono]
+      have e := Term.subst_ren (ι := ι) (hl.trans h₂) θ (hθ.restrict (hl.trans h₁))
+        (hc.restrict (hl.trans h₁)) (fun v _ hv => hid v (rt_free_of_ref hv)) t
+      have e' := congrArg (fun p : Σ b, Term σ Δ' U b => (SubE.tm p.2 : SubE σ Δ')) e
+      simp only at e'
+      rw [e']
+      exact .refl _
+
+/-! ## The entry map of a lift -/
+
+/-- ⭐The entry map of an edge whose source's root `c : T` is lifted: `c.keep ↦ κ`, `c`'s residual
     items into the variable `ρ` (`lPath`), every other item by `f`.  The edge's own map takes
-    `κ = n` and `ρ` the fresh variable; abstractions take slots. -/
-def gliftG (f : VarSymb → VarSymb) (T : VarType) (c : ℕ) (κ : VarSymb) (ρ : Root)
-    (v : VarSymb) : VarSymb :=
+    `κ` the lifted term and `ρ` the fresh variable; abstractions take slots. -/
+def gliftG (f : VarSymb → LEnt σ) (T : VarType) (c : ℕ) (κ : LEnt σ) (ρ : Root)
+    (v : VarSymb) : LEnt σ :=
   match v with
   | .step u s =>
       if u.rt = .free c then
-        (if u = .root (.free c) ∧ s = .keep then κ else (VarSymb.root ρ).ext (lPath T u.path s))
+        (if u = .root (.free c) ∧ s = .keep then κ
+          else .inl ((VarSymb.root ρ).ext (lPath T u.path s)))
       else f v
   | .root _ => f v
 
-theorem gliftG_keep (f : VarSymb → VarSymb) (T : VarType) (c : ℕ) (κ : VarSymb) (ρ : Root) :
+theorem gliftG_keep (f : VarSymb → LEnt σ) (T : VarType) (c : ℕ) (κ : LEnt σ) (ρ : Root) :
     gliftG f T c κ ρ (.step (.root (.free c)) .keep) = κ := by
   dsimp only [gliftG]
   exact (if_pos rfl).trans (if_pos ⟨rfl, rfl⟩)
 
-theorem gliftG_res {f : VarSymb → VarSymb} {T : VarType} {c : ℕ} {κ : VarSymb} {ρ : Root}
+theorem gliftG_res {f : VarSymb → LEnt σ} {T : VarType} {c : ℕ} {κ : LEnt σ} {ρ : Root}
     {u : VarSymb} {s : Step} (hrt : u.rt = .free c) (hnk : ¬ (u = .root (.free c) ∧ s = .keep)) :
-    gliftG f T c κ ρ (.step u s) = (VarSymb.root ρ).ext (lPath T u.path s) := by
+    gliftG f T c κ ρ (.step u s) = .inl ((VarSymb.root ρ).ext (lPath T u.path s)) := by
   dsimp only [gliftG]
   rw [if_pos hrt, if_neg hnk]
 
-theorem gliftG_old {f : VarSymb → VarSymb} {T : VarType} {c : ℕ} {κ : VarSymb} {ρ : Root}
+theorem gliftG_old {f : VarSymb → LEnt σ} {T : VarType} {c : ℕ} {κ : LEnt σ} {ρ : Root}
     {u : VarSymb} {s : Step} (hrt : ¬ u.rt = .free c) :
     gliftG f T c κ ρ (.step u s) = f (.step u s) := by
   dsimp only [gliftG]
   rw [if_neg hrt]
 
-/-- ⭐The item map of a lift types the new view. -/
+/-- ⭐The entry map of a lift types the new view. -/
 theorem itemOk_gliftG (hF : ModalSys.Four = true) {k : Option VarSymb} {T : VarType}
     {ls : List VarType} {Δ : Ctx} (hT : T.keepable = true) (hk : KOld k ls.length)
-    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf ls).kView k) Δ f) {κ : VarSymb}
-    (hκ : Δ.ref κ = some T) {ρ : Root} (hρ : Δ.ref (.root ρ) = some T.lr) :
-    ItemOk ((ctxOf (T :: ls)).kView k) Δ (gliftG f T ls.length κ ρ) := by
+    {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf ls).kView k) Δ f) {κ : LEnt σ}
+    (hκ : (entOf Δ κ).OkRef T) {ρ : Root} (hρ : Δ.ref (.root ρ) = some T.lr) :
+    EntOk ((ctxOf (T :: ls)).kView k) Δ (gliftG f T ls.length κ ρ) := by
   intro v T' hl hv
   obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
   by_cases hrt : u.rt = .free ls.length
@@ -166,7 +222,8 @@ theorem itemOk_gliftG (hF : ModalSys.Four = true) {k : Option VarSymb} {T : VarT
     · rw [gliftG_res hrt hnk]
       have h := ref_lItem hF (by rw [rootTy_new]; exact hT) hb hrt hnk
         (Δ := Δ) (ρ := ρ) (by rw [rootTy_new]; exact hρ)
-      rwa [rootTy_new] at h
+      rw [rootTy_new] at h
+      exact h
   · rw [gliftG_old hrt]
     rw [kView_old hrt] at hv
     exact hf _ _ hl hv
@@ -307,13 +364,6 @@ theorem single_raw_root {Δ : Ctx} (r : Root) (e : SubE σ Δ) : Subst.single r 
 theorem itemOk_id {Γ Δ : Ctx} (hle : Γ.Le Δ) : ItemOk Γ Δ id := fun v _ hl hv =>
   hle.ref (show Γ.ref v = _ by rw [Ctx.ref_nonproj _ hl]; exact hv)
 
-theorem ItemOk.le {Γ Δ Δ' : Ctx} {f : VarSymb → VarSymb} (hf : ItemOk Γ Δ f) (hle : Δ.Le Δ') :
-    ItemOk Γ Δ' f := fun v T hl hv => hle.ref (hf v T hl hv)
-
-/-- The address of a reachable item's image has a free root. -/
-theorem rt_free_of_ref {l : List VarType} {w : VarSymb} {T : VarType}
-    (h : (ctxOf l).ref w = some T) : ∃ r, w.rt = .free r :=
-  (reach_ppath h).2
 
 /-! ## The abstractions of a lift -/
 
@@ -335,24 +385,25 @@ theorem lCtx2_le (k : Option VarSymb) (T : VarType) (ls : List VarType) :
 
 theorem itemOk_liftAbs (hF : ModalSys.Four = true) (k : Option VarSymb) (T : VarType)
     (hT : T.keepable = true) (ls : List VarType) (hko : KOld k ls.length) :
-    ItemOk ((ctxOf (T :: ls)).kView k) (lCtx2 k T ls)
-      (gliftG id T ls.length (.root (.bnd 0)) (.bnd 1)) :=
-  itemOk_gliftG hF hT hko (itemOk_id (lCtx2_le k T ls))
-    (by rw [Ctx.ref_insert_ne _ (fun h => by cases h)]; exact Ctx.ref_insert_root _ _ _)
+    EntOk ((ctxOf (T :: ls)).kView k) (lCtx2 k T ls)
+      (gliftG (σ := σ) (ofRen id) T ls.length (.inl (.root (.bnd 0))) (.bnd 1)) :=
+  itemOk_gliftG hF hT hko (entOk_ofRen (itemOk_id (lCtx2_le k T ls)))
+    (okRef_entOf_inl (by
+      rw [Ctx.ref_insert_ne _ (fun h => by cases h)]; exact Ctx.ref_insert_root _ _ _))
     (Ctx.ref_insert_root _ _ _)
 
 /-- A formula of the new view with the lifted root's kept item at the slot `e` and its residual
     at the slot `y`. -/
-def liftAbs (hF : ModalSys.Four = true) (k : Option VarSymb) (T : VarType)
+noncomputable def liftAbs (hF : ModalSys.Four = true) (k : Option VarSymb) (T : VarType)
     (hT : T.keepable = true) (ls : List VarType) (hko : KOld k ls.length)
     (ψ : WFF σ ((ctxOf (T :: ls)).kView k) 0) : WFF σ (lCtx2 k T ls) 2 :=
-  WFF.subst (itemIdx (gliftG id T ls.length (.root (.bnd 0)) (.bnd 1)))
-    (itemS σ (lCtx2 k T ls) (gliftG id T ls.length (.root (.bnd 0)) (.bnd 1)))
-    (ok_itemS_kView (itemOk_liftAbs hF k T hT ls hko))
-    (coh_itemS_kView (itemOk_liftAbs hF k T hT ls hko)) Ctx.NoSlots.slots (lCtx2_slots k T ls) ψ
+  WFF.subst (eIdx (gliftG (ofRen id) T ls.length (.inl (.root (.bnd 0))) (.bnd 1)))
+    (eS σ (lCtx2 k T ls) (gliftG (ofRen id) T ls.length (.inl (.root (.bnd 0))) (.bnd 1)))
+    (ok_eS_kView (itemOk_liftAbs hF k T hT ls hko))
+    (coh_eS_kView (itemOk_liftAbs hF k T hT ls hko)) Ctx.NoSlots.slots (lCtx2_slots k T ls) ψ
 
 /-- ⭐The seed formula refuting a realisation of `ψ`: `χ(e) := ¬∃y. ψ(e, y)`. -/
-def liftChi (hF : ModalSys.Four = true) (k : Option VarSymb) (T : VarType)
+noncomputable def liftChi (hF : ModalSys.Four = true) (k : Option VarSymb) (T : VarType)
     (hT : T.keepable = true) (ls : List VarType) (hko : KOld k ls.length)
     (ψ : WFF σ ((ctxOf (T :: ls)).kView k) 0) :
     WFF σ (((ctxOf ls).kView k).insert (.bnd 0) T) 1 :=
@@ -364,24 +415,24 @@ abbrev lCtx1 (k : Option VarSymb) (T : VarType) (ls : List VarType) : Ctx :=
 
 theorem itemOk_liftRes (hF : ModalSys.Four = true) (k : Option VarSymb) (T : VarType)
     (hT : T.keepable = true) (ls : List VarType) (hko : KOld k ls.length) :
-    ItemOk ((ctxOf (T :: ls)).kView k) (lCtx1 k T ls)
-      (gliftG id T ls.length (mKeep ls) (.bnd 0)) :=
+    EntOk ((ctxOf (T :: ls)).kView k) (lCtx1 k T ls)
+      (gliftG (σ := σ) (ofRen id) T ls.length (.inl (mKeep ls)) (.bnd 0)) :=
   itemOk_gliftG hF hT hko
-    (itemOk_id (((ctxOf_le_append [T] ls).kView k).trans
-      (Ctx.le_insert (Ctx.NoSlots.slots (Γ := (ctxOf (T :: ls)).kView k)).root T.lr)))
-    (by
+    (entOk_ofRen (itemOk_id (((ctxOf_le_append [T] ls).kView k).trans
+      (Ctx.le_insert (Ctx.NoSlots.slots (Γ := (ctxOf (T :: ls)).kView k)).root T.lr))))
+    (okRef_entOf_inl (by
       rw [Ctx.ref_insert_ne _ (fun h => by cases h)]
-      exact (Ctx.le_boxIn_kView _ k).ref (Ctx.ref_keep_of' hF (ctxOf_ref_new T ls) hT))
+      exact (Ctx.le_boxIn_kView _ k).ref (Ctx.ref_keep_of' hF (ctxOf_ref_new T ls) hT)))
     (Ctx.ref_insert_root _ _ _)
 
 /-- A formula of the new view with the lifted root's residual at the slot `y`. -/
-def liftRes (hF : ModalSys.Four = true) (k : Option VarSymb) (T : VarType)
+noncomputable def liftRes (hF : ModalSys.Four = true) (k : Option VarSymb) (T : VarType)
     (hT : T.keepable = true) (ls : List VarType) (hko : KOld k ls.length)
     (ψ : WFF σ ((ctxOf (T :: ls)).kView k) 0) : WFF σ (lCtx1 k T ls) 1 :=
-  WFF.subst (itemIdx (gliftG id T ls.length (mKeep ls) (.bnd 0)))
-    (itemS σ (lCtx1 k T ls) (gliftG id T ls.length (mKeep ls) (.bnd 0)))
-    (ok_itemS_kView (itemOk_liftRes hF k T hT ls hko))
-    (coh_itemS_kView (itemOk_liftRes hF k T hT ls hko)) Ctx.NoSlots.slots
+  WFF.subst (eIdx (gliftG (ofRen id) T ls.length (.inl (mKeep ls)) (.bnd 0)))
+    (eS σ (lCtx1 k T ls) (gliftG (ofRen id) T ls.length (.inl (mKeep ls)) (.bnd 0)))
+    (ok_eS_kView (itemOk_liftRes hF k T hT ls hko))
+    (coh_eS_kView (itemOk_liftRes hF k T hT ls hko)) Ctx.NoSlots.slots
     ((Ctx.NoSlots.slots (Γ := (ctxOf (T :: ls)).kView k)).insert T.lr) ψ
 
 /-- The kept item of the lifted root has its type. -/
@@ -412,11 +463,10 @@ theorem instantiate_liftChi (hF : ModalSys.Four = true) (k : Option VarSymb) (T 
   intro v T' hl hv
   obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
   have hs' : s.isProj = false := hl
-  change SubE.Sim T'
-    (if s.isProj then SubE.hide else .ren (gliftG id T ls.length (mKeep ls) (.bnd 0) (.step u s)))
-    ((if s.isProj then SubE.hide
-      else .ren (gliftG id T ls.length (.root (.bnd 0)) (.bnd 1) (.step u s))).comp _ _ _)
-  rw [if_neg (by simp [hs']), if_neg (by simp [hs'])]
+  change SubE.Sim T' (eS σ _ (gliftG (ofRen id) T ls.length (.inl (mKeep ls)) (.bnd 0)) (.step u s))
+    ((eS σ _ (gliftG (ofRen id) T ls.length (.inl (.root (.bnd 0))) (.bnd 1))
+      (.step u s)).comp _ _ _)
+  rw [eS_item _ hs', eS_item _ hs']
   by_cases hrt : u.rt = .free ls.length
   · by_cases hnk : u = .root (.free ls.length) ∧ s = .keep
     · obtain ⟨rfl, rfl⟩ := hnk
@@ -455,9 +505,8 @@ theorem instantiate_rtup_liftRes (hF : ModalSys.Four = true) (k : Option VarSymb
   obtain ⟨u, s, rfl, hup, U, hU⟩ := kView_item hv
   have hs' : s.isProj = false := hl
   change SubE.Sim T' (.ren (.step u s))
-    ((if s.isProj then SubE.hide
-      else .ren (gliftG id T ls.length (mKeep ls) (.bnd 0) (.step u s))).comp _ _ _)
-  rw [if_neg (by simp [hs'])]
+    ((eS σ _ (gliftG (ofRen id) T ls.length (.inl (mKeep ls)) (.bnd 0)) (.step u s)).comp _ _ _)
+  rw [eS_item _ hs']
   by_cases hrt : u.rt = .free ls.length
   · by_cases hnk : u = .root (.free ls.length) ∧ s = .keep
     · obtain ⟨rfl, rfl⟩ := hnk
@@ -495,68 +544,70 @@ theorem instantiate_rtup_liftRes (hF : ModalSys.Four = true) (k : Option VarSymb
 
 /-- ⭐A slot formula `χ(e)` about the kept object, read in the target at `n`: the body of the
     edge's translation of `∃e. χ(e)`, instantiated at `n`. -/
-def liftTgt {k : Option VarSymb} {T : VarType} {ls lt : List VarType} {f : VarSymb → VarSymb}
-    (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f) {n : VarSymb}
-    (hn : (ctxOf lt).ref n = some T) (χ : WFF σ (((ctxOf ls).kView k).insert (.bnd 0) T) 1) :
+noncomputable def liftTgt {k : Option VarSymb} {T : VarType} {ls lt : List VarType}
+    {f : VarSymb → LEnt σ}
+    (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) {a : Ann T}
+    (t : Term σ (ctxOf lt) T a) (χ : WFF σ (((ctxOf ls).kView k).insert (.bnd 0) T) 1) :
     WFF σ (ctxOf lt) 0 :=
-  WFF.instantiate Ctx.NoSlots.slots (Term.eta n T hn)
-    (WFF.subst (VarSymb.shiftSlot (itemIdx f) 0 0)
-      ((itemS σ (ctxOf lt) f).under 0 0 T (Ctx.NoSlots.slots (Γ := ctxOf lt)).root)
-      (Subst.ok_under (ok_itemS_kView hf) T _)
-      (Subst.coh_under (ok_itemS_kView hf) (coh_itemS_kView hf) Ctx.NoSlots.slots T _)
+  WFF.instantiate Ctx.NoSlots.slots (t)
+    (WFF.subst (VarSymb.shiftSlot (eIdx f) 0 0)
+      ((eS σ (ctxOf lt) f).under 0 0 T (Ctx.NoSlots.slots (Γ := ctxOf lt)).root)
+      (Subst.ok_under (ok_eS_kView hf) T _)
+      (Subst.coh_under (ok_eS_kView hf) (coh_eS_kView hf) Ctx.NoSlots.slots T _)
       ((Ctx.NoSlots.slots (Γ := (ctxOf ls).kView k)).insert T)
       ((Ctx.NoSlots.slots (Γ := ctxOf lt)).insert T) χ)
 
 /-- The target's reading of `χ(e)` at `n` gives the translation of `∃e. χ(e)`. -/
 theorem provable_ex_liftTgt {k : Option VarSymb} {T : VarType} {ls lt : List VarType}
-    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f) {n : VarSymb}
-    (hn : (ctxOf lt).ref n = some T) (χ : WFF σ (((ctxOf ls).kView k).insert (.bnd 0) T) 1) :
-    Provable [liftTgt hf hn χ]
-      (WFF.subst (itemIdx f) (itemS σ (ctxOf lt) f) (ok_itemS_kView hf) (coh_itemS_kView hf)
+    {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) {a : Ann T}
+    (t : Term σ (ctxOf lt) T a) (χ : WFF σ (((ctxOf ls).kView k).insert (.bnd 0) T) 1) :
+    Provable [liftTgt hf t χ]
+      (WFF.subst (eIdx f) (eS σ (ctxOf lt) f) (ok_eS_kView hf) (coh_eS_kView hf)
         Ctx.NoSlots.slots Ctx.NoSlots.slots (WFF.ex T χ)) :=
-  ⟨Proof.ex_intro T (Term.eta n T hn) (Proof.lookup List.mem_cons_self)⟩
+  ⟨Proof.ex_intro T (t) (Proof.lookup List.mem_cons_self)⟩
 
 theorem itemOk_liftTr (hF : ModalSys.Four = true) {k : Option VarSymb} {T : VarType}
     (hT : T.keepable = true) {ls lt : List VarType} (hko : KOld k ls.length)
-    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f) {n : VarSymb}
-    (hn : (ctxOf lt).ref n = some T) :
-    ItemOk ((ctxOf (T :: ls)).kView k) ((ctxOf lt).insert (.bnd 0) T.lr)
-      (gliftG f T ls.length n (.bnd 0)) :=
+    {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) {a : Ann T}
+    (t : Term σ (ctxOf lt) T a) :
+    EntOk ((ctxOf (T :: ls)).kView k) ((ctxOf lt).insert (.bnd 0) T.lr)
+      (gliftG f T ls.length (.inr ⟨lt, T, a, t⟩) (.bnd 0)) :=
   itemOk_gliftG hF hT hko (hf.le (Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lt)).root T.lr))
-    ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lt)).root T.lr).ref hn)
+    (okRef_entOf_tm (Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lt)).root T.lr) t)
     (Ctx.ref_insert_root _ _ _)
 
 /-- `ψ` read in the target with the lifted root's kept item at `n` and its residual at the slot. -/
-def liftTr (hF : ModalSys.Four = true) {k : Option VarSymb} {T : VarType}
+noncomputable def liftTr (hF : ModalSys.Four = true) {k : Option VarSymb} {T : VarType}
     (hT : T.keepable = true) {ls lt : List VarType} (hko : KOld k ls.length)
-    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f) {n : VarSymb}
-    (hn : (ctxOf lt).ref n = some T) (ψ : WFF σ ((ctxOf (T :: ls)).kView k) 0) :
+    {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) {a : Ann T}
+    (t : Term σ (ctxOf lt) T a) (ψ : WFF σ ((ctxOf (T :: ls)).kView k) 0) :
     WFF σ ((ctxOf lt).insert (.bnd 0) T.lr) 1 :=
-  WFF.subst (itemIdx (gliftG f T ls.length n (.bnd 0)))
-    (itemS σ ((ctxOf lt).insert (.bnd 0) T.lr) (gliftG f T ls.length n (.bnd 0)))
-    (ok_itemS_kView (itemOk_liftTr hF hT hko hf hn))
-    (coh_itemS_kView (itemOk_liftTr hF hT hko hf hn)) Ctx.NoSlots.slots
+  WFF.subst (eIdx (gliftG f T ls.length (.inr ⟨lt, T, a, t⟩) (.bnd 0)))
+    (eS σ ((ctxOf lt).insert (.bnd 0) T.lr) (gliftG f T ls.length (.inr ⟨lt, T, a, t⟩) (.bnd 0)))
+    (ok_eS_kView (itemOk_liftTr hF hT hko hf t))
+    (coh_eS_kView (itemOk_liftTr hF hT hko hf t)) Ctx.NoSlots.slots
     ((Ctx.NoSlots.slots (Γ := ctxOf lt)).insert T.lr) ψ
 
 /-- The intermediate item map: the old items translated, the lifted root's at the slots. -/
 theorem itemOk_liftMid (hF : ModalSys.Four = true) {k : Option VarSymb} {T : VarType}
     (hT : T.keepable = true) {ls lt : List VarType} (hko : KOld k ls.length)
-    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f) :
-    ItemOk ((ctxOf (T :: ls)).kView k) (((ctxOf lt).insert (.bnd 0) T).insert (.bnd 1) T.lr)
-      (gliftG f T ls.length (.root (.bnd 0)) (.bnd 1)) :=
+    {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) :
+    EntOk ((ctxOf (T :: ls)).kView k) (((ctxOf lt).insert (.bnd 0) T).insert (.bnd 1) T.lr)
+      (gliftG f T ls.length (.inl (.root (.bnd 0))) (.bnd 1)) :=
   itemOk_gliftG hF hT hko
     (hf.le ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lt)).root T).trans
       (Ctx.le_insert ((Ctx.NoSlots.slots (Γ := ctxOf lt)).insert T).root T.lr)))
-    (by rw [Ctx.ref_insert_ne _ (fun h => by cases h)]; exact Ctx.ref_insert_root _ _ _)
+    (okRef_entOf_inl (by
+      rw [Ctx.ref_insert_ne _ (fun h => by cases h)]; exact Ctx.ref_insert_root _ _ _))
     (Ctx.ref_insert_root _ _ _)
 
 /-- ⭐**The target's reading of the seed formula**: `χ(n) = ¬∃y. ψ(n, y)`. -/
 theorem liftTgt_liftChi (hF : ModalSys.Four = true) {k : Option VarSymb} {T : VarType}
     (hT : T.keepable = true) {ls lt : List VarType} (hko : KOld k ls.length)
-    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f) {n : VarSymb}
-    (hn : (ctxOf lt).ref n = some T) (ψ : WFF σ ((ctxOf (T :: ls)).kView k) 0) :
-    liftTgt hf hn (liftChi hF k T hT ls hko ψ) =
-      (WFF.ex T.lr (liftTr hF hT hko hf hn ψ)).neg := by
+    {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) {a : Ann T}
+    (t : Term σ (ctxOf lt) T a) (ψ : WFF σ ((ctxOf (T :: ls)).kView k) 0) :
+    liftTgt hf t (liftChi hF k T hT ls hko ψ) =
+      (WFF.ex T.lr (liftTr hF hT hko hf t ψ)).neg := by
   have hM := itemOk_liftMid hF hT hko hf
   have hMs : (((ctxOf lt).insert (.bnd 0) T).insert (.bnd 1) T.lr).SlotsFrom 2 :=
     ((Ctx.NoSlots.slots (Γ := ctxOf lt)).insert T).insert T.lr
@@ -564,18 +615,16 @@ theorem liftTgt_liftChi (hF : ModalSys.Four = true) {k : Option VarSymb} {T : Va
   simp only [WFF.subst]
   congr 2
   unfold liftAbs liftTr
-  rw [WFF.subst_comp _ _ (itemS σ _ (gliftG f T ls.length (.root (.bnd 0)) (.bnd 1))) _ _ _ _
-    (ok_itemS_kView hM) (coh_itemS_kView hM) _ _ hMs ?sim1 ψ]
+  rw [WFF.subst_comp _ _ (eS σ _ (gliftG f T ls.length (.inl (.root (.bnd 0))) (.bnd 1))) _ _ _ _
+    (ok_eS_kView hM) (coh_eS_kView hM) _ _ hMs ?sim1 ψ]
   · refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?sim2 ψ
     refine Subst.sim_of ?_
     intro v T' hl hv
     obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
     have hs' : s.isProj = false := hl
-    change SubE.Sim T'
-      (if s.isProj then SubE.hide else .ren (gliftG f T ls.length n (.bnd 0) (.step u s)))
-      ((if s.isProj then SubE.hide
-        else .ren (gliftG f T ls.length (.root (.bnd 0)) (.bnd 1) (.step u s))).comp _ _ _)
-    rw [if_neg (by simp [hs']), if_neg (by simp [hs'])]
+    change SubE.Sim T' (eS σ _ (gliftG f T ls.length (.inr ⟨lt, T, a, t⟩) (.bnd 0)) (.step u s))
+      ((eS σ _ (gliftG f T ls.length (.inl (.root (.bnd 0))) (.bnd 1)) (.step u s)).comp _ _ _)
+    rw [eS_item _ hs', eS_item _ hs']
     by_cases hrt : u.rt = .free ls.length
     · by_cases hnk : u = .root (.free ls.length) ∧ s = .keep
       · obtain ⟨rfl, rfl⟩ := hnk
@@ -584,9 +633,8 @@ theorem liftTgt_liftChi (hF : ModalSys.Four = true) {k : Option VarSymb} {T : Va
         rw [gliftG_keep, gliftG_keep]
         change SubE.Sim T _ ((Subst.under _ _ _ T.lr _).at (.root (.bnd 0)))
         rw [at_under_root_ne _ _ (fun h => by cases h), single_raw_root]
-        change SubE.Sim T _ (.tm (Term.mono _ (Term.eta _ T hn)))
-        rw [Term.mono_eta]
-        exact .ren_eta _ _
+        rw [entOf_tm (Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lt)).root T.lr) t]
+        exact .refl _
       · rw [gliftG_res hrt hnk, gliftG_res hrt hnk]
         change SubE.Sim T' _ ((Subst.under _ _ _ T.lr _).at
           ((VarSymb.root (.bnd 1)).ext (lPath T u.path s)))
@@ -594,24 +642,23 @@ theorem liftTgt_liftChi (hF : ModalSys.Four = true) {k : Option VarSymb} {T : Va
         exact .refl _
     · rw [gliftG_old hrt, gliftG_old hrt]
       rw [kView_old hrt] at hv
-      obtain ⟨r, hr⟩ := rt_free_of_ref (hf _ T' hl hv)
-      change SubE.Sim T' _ ((Subst.under _ _ _ T.lr _).at (f (.step u s)))
-      rw [at_ren_of _ _ (fun w hw => by
-        rw [under_raw_ne _ _ (fun h => by rw [h] at hw; rw [hr] at hw; cases hw),
-          single_raw_ne (fun h => by rw [h] at hw; rw [hr] at hw; cases hw)]
-        rfl)]
-      exact .refl _
+      exact sim_comp_entOf (L := lt)
+        ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lt)).root T).trans
+        (Ctx.le_insert ((Ctx.NoSlots.slots (Γ := ctxOf lt)).insert T).root T.lr))
+        (Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lt)).root T.lr) _ _ _
+        (fun w ⟨r, hr⟩ => at_ren_of _ _ fun w' hw' => by
+          rw [under_raw_ne _ _ (fun h => by rw [h] at hw'; rw [hr] at hw'; cases hw'),
+            single_raw_ne (fun h => by rw [h] at hw'; rw [hr] at hw'; cases hw')]
+          rfl) (hf _ T' hl hv)
   case sim1 =>
     refine Subst.sim_of ?_
     intro v T' hl hv
     obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
     have hs' : s.isProj = false := hl
-    change SubE.Sim T'
-      (if s.isProj then SubE.hide
-        else .ren (gliftG f T ls.length (.root (.bnd 0)) (.bnd 1) (.step u s)))
-      ((if s.isProj then SubE.hide
-        else .ren (gliftG id T ls.length (.root (.bnd 0)) (.bnd 1) (.step u s))).comp _ _ _)
-    rw [if_neg (by simp [hs']), if_neg (by simp [hs'])]
+    change SubE.Sim T' (eS σ _ (gliftG f T ls.length (.inl (.root (.bnd 0))) (.bnd 1)) (.step u s))
+      ((eS σ _ (gliftG (ofRen id) T ls.length (.inl (.root (.bnd 0))) (.bnd 1))
+        (.step u s)).comp _ _ _)
+    rw [eS_item _ hs', eS_item _ hs']
     by_cases hrt : u.rt = .free ls.length
     · by_cases hnk : u = .root (.free ls.length) ∧ s = .keep
       · obtain ⟨rfl, rfl⟩ := hnk
@@ -628,42 +675,44 @@ theorem liftTgt_liftChi (hF : ModalSys.Four = true) {k : Option VarSymb} {T : Va
       change SubE.Sim T' _ ((Subst.under _ _ _ T.lr _).at (.step u s))
       rw [Subst.at_nonproj _ hl, under_raw_ne _ _ (fun h => by cases h),
         under_raw_ne _ _ (fun h => by cases h)]
-      change SubE.Sim T' _ (SubE.mono _ (SubE.mono _
-        (if s.isProj then SubE.hide else .ren (f (.step u s)))))
-      rw [if_neg (by simp [hs'])]
+      rw [kView_old hrt] at hv
+      have h₁ := Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lt)).root T
+      have h₂ := Ctx.le_insert ((Ctx.NoSlots.slots (Γ := ctxOf lt)).insert T).root T.lr
+      rw [eS_item _ hs', entOf_mono h₁ (hf _ T' hl hv),
+        entOf_mono h₂ (okRef_entOf_mono h₁ (hf _ T' hl hv))]
       exact .refl _
 
 /-! ## The edge's own map for a lifted root -/
 
 theorem itemOk_gliftZ (hF : ModalSys.Four = true) {k : Option VarSymb} {T : VarType}
     (hT : T.keepable = true) {ls lt : List VarType} (hko : KOld k ls.length)
-    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f) {n : VarSymb}
-    (hn : (ctxOf lt).ref n = some T) :
-    ItemOk ((ctxOf (T :: ls)).kView k) (ctxOf (T.lr :: lt))
-      (gliftG f T ls.length n (.free lt.length)) :=
+    {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) {a : Ann T}
+    (t : Term σ (ctxOf lt) T a) :
+    EntOk ((ctxOf (T :: ls)).kView k) (ctxOf (T.lr :: lt))
+      (gliftG f T ls.length (.inr ⟨lt, T, a, t⟩) (.free lt.length)) :=
   itemOk_gliftG hF hT hko (hf.le (ctxOf_le_append [T.lr] lt))
-    ((ctxOf_le_append [T.lr] lt).ref hn) (ctxOf_ref_new T.lr lt)
+    (okRef_entOf_tm (ctxOf_le_append [T.lr] lt) t) (ctxOf_ref_new T.lr lt)
 
 /-- ⭐The edge's item map for a lifted root, applied to a formula: `m.keep ↦ n`, the residual
     to the fresh variable `lt.length : T.lr`. -/
-abbrev gliftArrow (hF : ModalSys.Four = true) {k : Option VarSymb} {T : VarType}
+noncomputable abbrev gliftArrow (hF : ModalSys.Four = true) {k : Option VarSymb} {T : VarType}
     (hT : T.keepable = true) {ls lt : List VarType} (hko : KOld k ls.length)
-    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f) {n : VarSymb}
-    (hn : (ctxOf lt).ref n = some T) (ψ : WFF σ ((ctxOf (T :: ls)).kView k) 0) :
+    {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) {a : Ann T}
+    (t : Term σ (ctxOf lt) T a) (ψ : WFF σ ((ctxOf (T :: ls)).kView k) 0) :
     WFF σ (ctxOf (T.lr :: lt)) 0 :=
-  WFF.subst (itemIdx (gliftG f T ls.length n (.free lt.length)))
-    (itemS σ (ctxOf (T.lr :: lt)) (gliftG f T ls.length n (.free lt.length)))
-    (ok_itemS_kView (itemOk_gliftZ hF hT hko hf hn))
-    (coh_itemS_kView (itemOk_gliftZ hF hT hko hf hn)) Ctx.NoSlots.slots Ctx.NoSlots.slots ψ
+  WFF.subst (eIdx (gliftG f T ls.length (.inr ⟨lt, T, a, t⟩) (.free lt.length)))
+    (eS σ (ctxOf (T.lr :: lt)) (gliftG f T ls.length (.inr ⟨lt, T, a, t⟩) (.free lt.length)))
+    (ok_eS_kView (itemOk_gliftZ hF hT hko hf t))
+    (coh_eS_kView (itemOk_gliftZ hF hT hko hf t)) Ctx.NoSlots.slots Ctx.NoSlots.slots ψ
 
 /-- ⭐The edge's translation for a lifted root is `liftTr` opened at the fresh variable. -/
 theorem gliftArrow_openFree (hF : ModalSys.Four = true) {k : Option VarSymb} {T : VarType}
     (hT : T.keepable = true) {ls lt : List VarType} (hko : KOld k ls.length)
-    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f) {n : VarSymb}
-    (hn : (ctxOf lt).ref n = some T) (ψ : WFF σ ((ctxOf (T :: ls)).kView k) 0) :
-    gliftArrow hF hT hko hf hn ψ =
+    {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) {a : Ann T}
+    (t : Term σ (ctxOf lt) T a) (ψ : WFF σ ((ctxOf (T :: ls)).kView k) 0) :
+    gliftArrow hF hT hko hf t ψ =
       WFF.openFree lt.length (ctxOf_fresh le_rfl) Ctx.NoSlots.slots
-        (liftTr hF hT hko hf hn ψ) := by
+        (liftTr hF hT hko hf t ψ) := by
   unfold WFF.openFree liftTr
   refine (WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ ψ).symm
   refine Subst.sim_of ?_
@@ -671,10 +720,9 @@ theorem gliftArrow_openFree (hF : ModalSys.Four = true) {k : Option VarSymb} {T 
   obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
   have hs' : s.isProj = false := hl
   change SubE.Sim T'
-    (if s.isProj then SubE.hide else .ren (gliftG f T ls.length n (.free lt.length) (.step u s)))
-    ((if s.isProj then SubE.hide
-      else .ren (gliftG f T ls.length n (.bnd 0) (.step u s))).comp _ _ _)
-  rw [if_neg (by simp [hs']), if_neg (by simp [hs'])]
+    (eS σ _ (gliftG f T ls.length (.inr ⟨lt, T, a, t⟩) (.free lt.length)) (.step u s))
+    ((eS σ _ (gliftG f T ls.length (.inr ⟨lt, T, a, t⟩) (.bnd 0)) (.step u s)).comp _ _ _)
+  rw [eS_item _ hs', eS_item _ hs']
   have hren : ∀ w : VarSymb, (∃ r, w.rt = .free r) →
       ((Subst.idRen (σ := σ) (ctxOf lt)).toFree 0 lt.length T.lr
         (ctxOf_fresh le_rfl).root).at w = .ren w := fun w ⟨r, hr⟩ =>
@@ -684,10 +732,11 @@ theorem gliftArrow_openFree (hF : ModalSys.Four = true) {k : Option VarSymb} {T 
   by_cases hrt : u.rt = .free ls.length
   · by_cases hnk : u = .root (.free ls.length) ∧ s = .keep
     · obtain ⟨rfl, rfl⟩ := hnk
+      have e := kView_mKeep hko hv
+      subst T'
       rw [gliftG_keep, gliftG_keep]
-      change SubE.Sim T' _ ((Subst.toFree _ 0 lt.length T.lr _).at n)
-      rw [hren n (rt_free_of_ref hn)]
-      exact .refl _
+      exact sim_comp_entOf (L := lt) (Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lt)).root T.lr)
+        (ctxOf_le_append [T.lr] lt) _ _ _ hren (okRef_entOf_tm (Ctx.Le.refl _) t)
     · rw [gliftG_res hrt hnk, gliftG_res hrt hnk]
       change SubE.Sim T' _ ((Subst.toFree _ 0 lt.length T.lr _).at
         ((VarSymb.root (.bnd 0)).ext (lPath T u.path s)))
@@ -695,9 +744,8 @@ theorem gliftArrow_openFree (hF : ModalSys.Four = true) {k : Option VarSymb} {T 
       exact .refl _
   · rw [gliftG_old hrt, gliftG_old hrt]
     rw [kView_old hrt] at hv
-    change SubE.Sim T' _ ((Subst.toFree _ 0 lt.length T.lr _).at (f (.step u s)))
-    rw [hren _ (rt_free_of_ref (hf _ T' hl hv))]
-    exact .refl _
+    exact sim_comp_entOf (L := lt) (Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lt)).root T.lr)
+      (ctxOf_le_append [T.lr] lt) _ _ _ hren (hf _ T' hl hv)
 
 /-! ## The possibility of an edge, and the rule along it -/
 
@@ -838,12 +886,12 @@ theorem list_reduce_d {α : Type} {Δ : Ctx} (P : α → Prop) (top : α) (cj : 
 
 /-- ⭐The lifted root's **seed**: `◇_k χ(m.keep)` for every `χ(e)` whose reading at `n` the
     target holds. -/
-def liftSeed (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable = true)
+noncomputable def liftSeed (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable = true)
     {ls lt : List VarType} {k : Option VarSymb} (hk : KDecl (ctxOf ls) k)
-    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f) {n : VarSymb}
-    (hn : (ctxOf lt).ref n = some T) (N : Set (WFF σ (ctxOf lt) 0)) :
+    {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) {a : Ann T}
+    (t : Term σ (ctxOf lt) T a) (N : Set (WFF σ (ctxOf lt) 0)) :
     Set (WFF σ ((ctxOf ls).insert (.free ls.length) T) 0) :=
-  {φ | ∃ χ, liftTgt hf hn χ ∈ N ∧ φ = kLiftRead hF hl k hk (ctxOf_fresh le_rfl) χ}
+  {φ | ∃ χ, liftTgt hf t χ ∈ N ∧ φ = kLiftRead hF hl k hk (ctxOf_fresh le_rfl) χ}
 
 /-- The seed of a conjunction gives the seeds of its parts. -/
 theorem kLiftRead_and (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable = true)
@@ -865,15 +913,15 @@ theorem kLiftRead_and (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable
 theorem glift_consistent (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable = true)
     {ls lt : List VarType} {M : Set (WFF σ (ctxOf ls) 0)} (hM : Theory.IsMCS M)
     {N : Set (WFF σ (ctxOf lt) 0)} (hN : Theory.IsMCS N) {k : Option VarSymb}
-    (hk : KDecl (ctxOf ls) k) {f : VarSymb → VarSymb}
-    (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f)
-    (htr : GTransfer M ls (Ctx.Le.refl _) k hk N f hf) {n : VarSymb}
-    (hn : (ctxOf lt).ref n = some T) :
+    (hk : KDecl (ctxOf ls) k) {f : VarSymb → LEnt σ}
+    (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f)
+    (htr : GTransfer M ls (Ctx.Le.refl _) k hk N f hf) {a : Ann T}
+    (t : Term σ (ctxOf lt) T a) :
     Theory.Consistent (WFF.weaken (ctxOf_fresh (l := ls) le_rfl).root T '' M ∪
-      liftSeed hF hl hk hf hn N) := by
+      liftSeed hF hl hk hf t N) := by
   rintro ⟨L, hL, p⟩
   have hc := ctxOf_fresh (l := ls) le_rfl
-  obtain ⟨χ, hχ, hder⟩ := list_reduce_d (fun χ => liftTgt hf hn χ ∈ N) .top WFF.and
+  obtain ⟨χ, hχ, hder⟩ := list_reduce_d (fun χ => liftTgt hf t χ ∈ N) .top WFF.and
     hN.top_mem (fun h₁ h₂ => hN.and_mem_iff.mpr ⟨h₁, h₂⟩) (kLiftRead hF hl k hk hc)
     (fun a b => (kLiftRead_and hF hl k hk hc a b).1)
     (fun a b => (kLiftRead_and hF hl k hk hc a b).2)
@@ -889,8 +937,8 @@ theorem glift_consistent (hF : ModalSys.Four = true) {T : VarType} (hl : T.lifta
     by_contra hnd
     have hb := not_kDia_mem hM k hk hnd
     have ht := htr _ (by rw [WFF.mono_refl]; exact hb)
-    have hex := hN.closed ⟨[liftTgt hf hn χ], fun x hx => by
-      rw [List.mem_singleton.mp hx]; exact hχ, provable_ex_liftTgt hf hn χ⟩
+    have hex := hN.closed ⟨[liftTgt hf t χ], fun x hx => by
+      rw [List.mem_singleton.mp hx]; exact hχ, provable_ex_liftTgt hf t χ⟩
     exact hN.neg_mem_iff.mp ht hex
   -- The rule turns the refutation of the seed into one of the source.
   apply hM.1
@@ -928,12 +976,12 @@ theorem kLiftRead_liftChi (hF : ModalSys.Four = true) {T : VarType} (hl : T.lift
 theorem gliftRealise_consistent (hF : ModalSys.Four = true) {T : VarType}
     (hl : T.liftable = true) {ls lt : List VarType} {N : Set (WFF σ (ctxOf lt) 0)}
     (hN : Theory.IsMCS N) {k : Option VarSymb} (hk : KDecl (ctxOf ls) k)
-    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f) {n : VarSymb}
-    (hn : (ctxOf lt).ref n = some T) {M' : Set (WFF σ (ctxOf (T :: ls)) 0)}
-    (hM' : Theory.IsMCS M') (hseed : liftSeed hF hl hk hf hn N ⊆ M') :
+    {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) {a : Ann T}
+    (t : Term σ (ctxOf lt) T a) {M' : Set (WFF σ (ctxOf (T :: ls)) 0)}
+    (hM' : Theory.IsMCS M') (hseed : liftSeed hF hl hk hf t N ⊆ M') :
     Theory.Consistent (WFF.mono (ctxOf_le_append [T.lr] lt) '' N ∪
       {φ | ∃ ψ, kBox k (kDecl_mono (ctxOf_le_append [T] ls) hk) ψ ∈ M' ∧
-        φ = gliftArrow hF (VarType.keepable_of_liftable hl) (kOld_of_kDecl hk) hf hn ψ}) := by
+        φ = gliftArrow hF (VarType.keepable_of_liftable hl) (kOld_of_kDecl hk) hf t ψ}) := by
   have hT := VarType.keepable_of_liftable hl
   have hko := kOld_of_kDecl hk
   have hk' := kDecl_mono (ctxOf_le_append [T] ls) hk
@@ -943,16 +991,16 @@ theorem gliftRealise_consistent (hF : ModalSys.Four = true) {T : VarType}
     (fun h₁ h₂ => by
       simpa only [WFF.mono_refl] using kBox_and_mem hM' (Ctx.Le.refl _) hk'
         (by rw [WFF.mono_refl]; exact h₁) (by rw [WFF.mono_refl]; exact h₂))
-    (gliftArrow hF hT hko hf hn) (fun _ _ => rfl)
+    (gliftArrow hF hT hko hf t) (fun _ _ => rfl)
     (WFF.mono (ctxOf_le_append [T.lr] lt) '' N) L (fun δ hδ => (hL δ hδ).imp id id)
   have hbot := derives_of_derives hder p
-  by_cases hex : WFF.ex T.lr (liftTr hF hT hko hf hn ψ) ∈ N
+  by_cases hex : WFF.ex T.lr (liftTr hF hT hko hf t ψ) ∈ N
   · -- The residual has a Henkin witness: the fresh variable.
     have hc := henkin_consistent hN.1 (Theory.Derives.of_mem hex) (ctxOf_fresh (l := lt) le_rfl)
     rw [gliftArrow_openFree] at hbot
     exact hc hbot
   · -- Otherwise the seed refutes `ψ` at the lifted root.
-    have hneg : liftTgt hf hn (liftChi hF k T hT ls hko ψ) ∈ N := by
+    have hneg : liftTgt hf t (liftChi hF k T hT ls hko ψ) ∈ N := by
       rw [liftTgt_liftChi]
       exact hN.neg_mem_iff.mpr hex
     have hlr := hseed ⟨_, hneg, rfl⟩

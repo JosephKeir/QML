@@ -9,8 +9,8 @@ For the chain `gnet hF M₀` (as B's `BFair`):
 * ⭐`henk_ex`, `henk_negAll`: every existential, and every failing universal, of a node's theory
   eventually has a witness;
 * ⭐`child_box`, `child_dia`: every failing `□φ`, and every true `◇_x φ`, eventually has a child;
-* ⭐`lift_total`: every address of a child of a liftable type is eventually lifted — the parent
-  gets a root `r` of that type with `r.keep ↦` the address along the edge.
+* ⭐`lift_total`: every term of a child of a liftable type is eventually lifted — the parent
+  gets a root `r` of that type with `r.keep ↦` the term along the edge (D5 (a)).
 -/
 
 namespace V12M
@@ -156,7 +156,7 @@ theorem child_box {n : ℕ} {s : Node} (hs : (gnet hF M₀ n).Live s)
       (gnet hF M₀ (m + 1)).kind ((gnet hF M₀ m).nch s :: s) = none ∧
       (gnet hF M₀ (m + 1)).fcl ((gnet hF M₀ m).nch s :: s) = ((gnet hF M₀ m).st s).l ∧
       (gnet hF M₀ (m + 1)).fmap ((gnet hF M₀ m).nch s :: s) =
-        gchildMap ((gnet hF M₀ m).st s).l none ∧
+        ofRen (gchildMap ((gnet hF M₀ m).st s).l none) ∧
       gchildArrow hF ((gnet hF M₀ m).st s).l (kContent_none _ .VTypeOne)
         (WFF.mono (ctxOf_le_of_suffix hsuf).boxIn ψ).neg ∈ M' := by
   obtain ⟨m, hnm, hs'⟩ := gsched_after (σ := σ)
@@ -173,7 +173,7 @@ theorem child_box {n : ℕ} {s : Node} (hs : (gnet hF M₀ n).Live s)
       ⟨childL ((gnet hF M₀ m).st s).l none .VTypeOne, complete
         (GNetSt.childSeed hF ((gnet hF M₀ m).st s).l ((gnet hF M₀ m).st s).M
           (kContent_none _ .VTypeOne) (WFF.mono (ctxOf_le_of_suffix hsuf).boxIn ψ).neg)⟩
-      (gchildMap ((gnet hF M₀ m).st s).l none) := by
+      (ofRen (gchildMap ((gnet hF M₀ m).st s).l none)) := by
     rw [gnet_succ_of hF hs']
     simp only [GNetSt.applyOp, if_pos hlm, GNetSt.mkChild, dif_pos hsuf, if_neg hnin]
   refine ⟨m, hnm, hsuf, _, GNetSt.not_live_new s, ?_, ?_, ?_, ?_, ?_, hS (Or.inl rfl)⟩
@@ -197,7 +197,7 @@ theorem child_dia {n : ℕ} {s : Node} (hs : (gnet hF M₀ n).Live s) {x : VarSy
       (gnet hF M₀ (m + 1)).kind ((gnet hF M₀ m).nch s :: s) = some x ∧
       (gnet hF M₀ (m + 1)).fcl ((gnet hF M₀ m).nch s :: s) = ((gnet hF M₀ m).st s).l ∧
       (gnet hF M₀ (m + 1)).fmap ((gnet hF M₀ m).nch s :: s) =
-        gchildMap ((gnet hF M₀ m).st s).l (some x) ∧
+        ofRen (gchildMap ((gnet hF M₀ m).st s).l (some x)) ∧
       gchildArrow hF ((gnet hF M₀ m).st s).l hX
         (WFF.mono ((ctxOf_le_of_suffix hsuf).diaIn x) ψ) ∈ M' := by
   obtain ⟨m, hnm, hs'⟩ := gsched_after (σ := σ)
@@ -219,7 +219,7 @@ theorem child_dia {n : ℕ} {s : Node} (hs : (gnet hF M₀ n).Live s) {x : VarSy
       ⟨childL ((gnet hF M₀ m).st s).l (some x) X, complete
         (GNetSt.childSeed hF ((gnet hF M₀ m).st s).l ((gnet hF M₀ m).st s).M hk
           (WFF.mono ((ctxOf_le_of_suffix hsuf).diaIn x) ψ))⟩
-      (gchildMap ((gnet hF M₀ m).st s).l (some x)) := by
+      (ofRen (gchildMap ((gnet hF M₀ m).st s).l (some x))) := by
     rw [gnet_succ_of hF hs']
     simp only [GNetSt.applyOp, if_pos hlm, GNetSt.mkChild, dif_pos hsuf, if_pos hin]
     split
@@ -238,36 +238,51 @@ theorem child_dia {n : ℕ} {s : Node} (hs : (gnet hF M₀ n).Live s) {x : VarSy
 
 /-! ## Lifts -/
 
-/-- ⭐**Every liftable address of a child is eventually lifted**: its parent gets a root `r` of
-    the address's type, committed along the edge with `r.keep ↦` the address. -/
-theorem lift_total {n c : ℕ} {p : Node} (hk : (gnet hF M₀ n).Live (c :: p)) {a : VarSymb}
-    {T : VarType} (ha : (ctxOf ((gnet hF M₀ n).st (c :: p)).l).ref a = some T)
+/-- ⭐**Every liftable term of a child is eventually lifted**: its parent gets a root `r` of the
+    term's type, committed along the edge with `r.keep ↦` the term (weakened to the child's
+    variables then). -/
+theorem lift_total {n c : ℕ} {p : Node} (hk : (gnet hF M₀ n).Live (c :: p)) {T : VarType}
+    {a : Ann T} (t : Term σ (ctxOf ((gnet hF M₀ n).st (c :: p)).l) T a)
     (hl : T.liftable = true) :
-    ∃ m, n ≤ m ∧ ∃ r, r < ((gnet hF M₀ m).fcl (c :: p)).length ∧
-      rootTy ((gnet hF M₀ m).st p).l r = T ∧
-      (gnet hF M₀ m).fmap (c :: p) (.step (.root (.free r)) .keep) = a := by
-  obtain ⟨m, hnm, hs⟩ := gsched_after (σ := σ) (.inr (.inr (.inr (c :: p, a)))) n
+    ∃ m, n ≤ m ∧
+      ∃ (_ : ((gnet hF M₀ n).st (c :: p)).l <:+ ((gnet hF M₀ (m + 1)).st (c :: p)).l)
+      (r : ℕ), r < ((gnet hF M₀ (m + 1)).fcl (c :: p)).length ∧
+      rootTy ((gnet hF M₀ (m + 1)).st p).l r = T ∧
+      ∃ (L : List VarType) (hL : ((gnet hF M₀ n).st (c :: p)).l <:+ L),
+        (gnet hF M₀ (m + 1)).fmap (c :: p) (.step (.root (.free r)) .keep) =
+          .inr ⟨L, T, a, Term.mono (ctxOf_le_of_suffix hL) t⟩ ∧
+        L <:+ ((gnet hF M₀ (m + 1)).st (c :: p)).l := by
+  obtain ⟨m, hnm, hs⟩ := gsched_after (σ := σ)
+    (.inr (.inr (.inr (c :: p, ⟨_, T, a, t⟩)))) n
   have hlm := gnet_live_mono hF hM₀ hnm hk
   have hN := good_gnet hF hM₀ m
   obtain ⟨-, hk₁, he₁⟩ := hN.catchUp hF hlm
   have hcl := GNetSt.catchUp_full hF hN hlm
-  have ha₁ : (ctxOf (((gnet hF M₀ m).catchUp hF (c :: p)).st (c :: p)).l).ref a = some T :=
-    (ctxOf_le_of_suffix ((he₁.grows _ hlm).suf)).ref
-      ((ctxOf_le_of_suffix ((ext_gnet hF hM₀ hnm).grows _ hk).suf).ref ha)
-  have hst : gnet hF M₀ (m + 1) = ((gnet hF M₀ m).catchUp hF (c :: p)).lift hF (c :: p) a := by
+  have h₁ : ((gnet hF M₀ n).st (c :: p)).l <:+
+      (((gnet hF M₀ m).catchUp hF (c :: p)).st (c :: p)).l :=
+    ((ext_gnet hF hM₀ hnm).grows _ hk).suf.trans (he₁.grows _ hlm).suf
+  have hst : gnet hF M₀ (m + 1) =
+      ((gnet hF M₀ m).catchUp hF (c :: p)).lift hF (c :: p) ⟨_, T, a, t⟩ := by
     rw [gnet_succ_of hF hs]
     simp only [GNetSt.applyOp, if_pos hlm]
-  refine ⟨m + 1, by omega, (((gnet hF M₀ m).catchUp hF (c :: p)).st p).l.length, ?_, ?_, ?_⟩
-  · rw [hst, GNetSt.lift_spec hF hcl ha₁ hl]
+  have hgrow := ((ext_gnet hF hM₀ (Nat.le_succ m)).grows _ hlm).suf
+  refine ⟨m, hnm, ((ext_gnet hF hM₀ (hnm.trans (Nat.le_succ m))).grows _ hk).suf,
+    (((gnet hF M₀ m).catchUp hF (c :: p)).st p).l.length, ?_, ?_,
+    (((gnet hF M₀ m).catchUp hF (c :: p)).st (c :: p)).l, h₁, ?_, ?_⟩
+  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl]
     simp only [GNetSt.setFwd, Function.update_self, List.length_cons]
     omega
-  · rw [hst, GNetSt.lift_spec hF hcl ha₁ hl]
+  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl]
     change rootTy ((((GNetSt.setSt _ p _).setSt (c :: p) _)).st p).l _ = T
     rw [GNetSt.setSt_ne _ _ (fun h => NetSt.ne_parent c p h.symm), GNetSt.setSt_self]
     exact rootTy_new T _
-  · rw [hst, GNetSt.lift_spec hF hcl ha₁ hl]
+  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl]
     simp only [GNetSt.setFwd, Function.update_self]
     exact gliftG_keep _ _ _ _ _
+  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl]
+    change _ <:+ ((((GNetSt.setSt _ p _).setSt (c :: p) _)).st (c :: p)).l
+    rw [GNetSt.setSt_self]
+    exact List.suffix_cons _ _
 
 end GArrow
 

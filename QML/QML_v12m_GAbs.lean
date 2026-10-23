@@ -405,28 +405,165 @@ theorem instantiate_gtup_gabs (hF : ModalSys.Four = true) (k : Option VarSymb) (
       exact fun h => by cases h)]
     exact .refl _
 
+/-! ## Entries: an edge's map, with terms for lifted items -/
+
+/-- A term over a list of variables. -/
+abbrev LTerm (σ : Signature) := Σ (l : List VarType) (T : VarType) (a : Ann T), Term σ (ctxOf l) T a
+
+/-- ⭐An **entry** of an edge's map: an address, or a term — a lifted root's kept item goes to the
+    term lifted (docs §3 4, paper pass, D5 (a)). -/
+abbrev LEnt (σ : Signature) := VarSymb ⊕ LTerm σ
+
+open Classical in
+/-- An entry as a substitution entry into `Δ`: a term is weakened into `Δ`, when it lies in it. -/
+noncomputable def entOf (Δ : Ctx) : LEnt σ → SubE σ Δ
+  | .inl w => .ren w
+  | .inr ⟨l, _, _, t⟩ => if h : (ctxOf l).Le Δ then .tm (Term.mono h t) else .hide
+
+/-- ⭐The renaming of an edge given by an entry map `g`. -/
+noncomputable def eS (σ : Signature) (Δ : Ctx) (g : VarSymb → LEnt σ) : Subst σ Δ := fun v =>
+  match v with
+  | .step u s => if s.isProj then .hide else entOf Δ (g (.step u s))
+  | .root _ => .hide
+
+/-- Where an entry sends annotation indices below it. -/
+def entIdx : LEnt σ → List Step → VarSymb
+  | .inl w, k => w.ext k
+  | .inr ⟨_, _, a, _⟩, k => a.idxAt k
+
+/-- Where an entry map sends annotation indices: the item before the first level step by its
+    entry, the rest kept. -/
+def eIdx (g : VarSymb → LEnt σ) (a : VarSymb) : VarSymb :=
+  match splitLevel a.path with
+  | some (q, s, k) => entIdx (g (.step ((VarSymb.root a.rt).ext q) s)) k
+  | none => a
+
+/-- The entries are at the items' types. -/
+def EntOk (Γ Δ : Ctx) (g : VarSymb → LEnt σ) : Prop :=
+  ∀ v T, v.lastProj = false → Γ v = some T → (entOf Δ (g v)).OkRef T
+
+/-- A renaming as an entry map. -/
+def ofRen (f : VarSymb → VarSymb) : VarSymb → LEnt σ := fun v => .inl (f v)
+
+theorem entOk_ofRen {Γ Δ : Ctx} {f : VarSymb → VarSymb} (hf : ItemOk Γ Δ f) :
+    EntOk Γ Δ (ofRen (σ := σ) f) := hf
+
+theorem eS_item {Δ : Ctx} (g : VarSymb → LEnt σ) {u : VarSymb} {s : Step}
+    (hs : s.isProj = false) : eS σ Δ g (.step u s) = entOf Δ (g (.step u s)) := by
+  change (if s.isProj then SubE.hide else _) = _
+  rw [if_neg (by simp [hs])]
+
+open Classical in
+theorem idxAlong_entOf {Δ : Ctx} {e : LEnt σ} {T : VarType} (h : (entOf Δ e).OkRef T)
+    (p : List Step) : (entOf Δ e).idxAlong p = entIdx e p := by
+  match e, h with
+  | .inl w, _ => rfl
+  | .inr ⟨l, _, a, t⟩, h =>
+      change (if h : (ctxOf l).Le Δ then SubE.tm (Term.mono h t) else .hide).OkRef T at h
+      change (if h : (ctxOf l).Le Δ then SubE.tm (Term.mono h t) else .hide).idxAlong p = _
+      split_ifs with hl
+      · rfl
+      · rw [dif_neg hl] at h
+        exact h.elim
+
+open Classical in
+/-- An entry into a context stays one into a larger context. -/
+theorem entOf_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') {e : LEnt σ} {T : VarType}
+    (he : (entOf Δ e).OkRef T) : (entOf Δ e).mono h = entOf Δ' e := by
+  match e, he with
+  | .inl w, _ => rfl
+  | .inr ⟨l, _, a, t⟩, he =>
+      change (if h : (ctxOf l).Le Δ then SubE.tm (Term.mono h t) else .hide).OkRef T at he
+      change SubE.mono h (if h : (ctxOf l).Le Δ then SubE.tm (Term.mono h t) else .hide) =
+        (if h : (ctxOf l).Le Δ' then SubE.tm (Term.mono h t) else .hide)
+      by_cases hl : (ctxOf l).Le Δ
+      · rw [dif_pos hl, dif_pos (hl.trans h)]
+        change SubE.tm (Term.mono h (Term.mono hl t)) = _
+        rw [Term.mono_mono]
+      · rw [dif_neg hl] at he
+        exact he.elim
+
+theorem okRef_entOf_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') {e : LEnt σ} {T : VarType}
+    (he : (entOf Δ e).OkRef T) : (entOf Δ' e).OkRef T := by
+  rw [← entOf_mono h he]
+  match entOf Δ e, he with
+  | .ren w, he => exact h.ref he
+  | .tm _, he => exact he
+
+theorem EntOk.le {Γ Δ Δ' : Ctx} {g : VarSymb → LEnt σ} (hg : EntOk Γ Δ g) (hle : Δ.Le Δ') :
+    EntOk Γ Δ' g := fun v T hl hv => okRef_entOf_mono hle (hg v T hl hv)
+
+theorem ok_eS_kView {l : List VarType} {k : Option VarSymb} {Δ : Ctx}
+    {g : VarSymb → LEnt σ} (hg : EntOk ((ctxOf l).kView k) Δ g) :
+    Subst.Ok ((ctxOf l).kView k) (eS σ Δ g) := by
+  intro v T hl hT
+  obtain ⟨u, s, rfl, -, -⟩ := kView_item hT
+  rw [eS_item g hl]
+  exact hg _ T hl hT
+
+/-- The index map of an entry map at an item `u.s`, followed by `p`, for `u` a projection path. -/
+theorem eIdx_item (g : VarSymb → LEnt σ) {u : VarSymb} (hu : PPath u.path) {s : Step}
+    (hs : s.isProj = false) (p : List Step) :
+    eIdx g ((VarSymb.step u s).ext p) = entIdx (g (.step u s)) p := by
+  unfold eIdx
+  rw [VarSymb.ext_path, VarSymb.ext_rt]
+  rw [show (VarSymb.step u s).path ++ p = u.path ++ s :: p by
+    change (u.path ++ [s]) ++ p = _
+    simp, splitLevel_ppath hu hs p]
+  change entIdx (g (.step ((VarSymb.root u.rt).ext u.path) s)) p = _
+  rw [← VarSymb.eq_root_ext u]
+
+theorem coh_eS_kView {l : List VarType} {k : Option VarSymb} {Δ : Ctx}
+    {g : VarSymb → LEnt σ} (hg : EntOk ((ctxOf l).kView k) Δ g) :
+    Subst.Coh (eIdx g) ((ctxOf l).kView k) (eS σ Δ g) := by
+  refine Subst.coh_of (ok_eS_kView hg) ?_
+  intro v T hl hT p
+  obtain ⟨u, s, rfl, hu, -⟩ := kView_item hT
+  rw [eS_item g hl, idxAlong_entOf (hg _ T hl hT) p, eIdx_item g hu hl p]
+
+/-- A growing target keeps an edge's substitution, up to agreement on the view. -/
+theorem sim_eS_mono {l : List VarType} {k : Option VarSymb} {Δ Δ' : Ctx} (h : Δ.Le Δ')
+    {g : VarSymb → LEnt σ} (hg : EntOk ((ctxOf l).kView k) Δ g) :
+    Subst.Sim ((ctxOf l).kView k) ((eS σ Δ g).mono h) (eS σ Δ' g) :=
+  Subst.sim_of fun v T hl hv => by
+    obtain ⟨u, s, rfl, -, -⟩ := kView_item hv
+    change SubE.Sim T (SubE.mono h (eS σ Δ g (.step u s))) _
+    rw [eS_item g hl, eS_item g hl, entOf_mono h (hg _ T hl hv)]
+    exact .refl _
+
+/-- Entry maps agreeing on a view give agreeing substitutions. -/
+theorem sim_eS_congr {l : List VarType} {k : Option VarSymb} {Δ : Ctx}
+    {g g' : VarSymb → LEnt σ}
+    (hag : ∀ v T, v.lastProj = false → (ctxOf l).kView k v = some T → g' v = g v) :
+    Subst.Sim ((ctxOf l).kView k) (eS σ Δ g) (eS σ Δ g') :=
+  Subst.sim_of fun v T hl hv => by
+    obtain ⟨u, s, rfl, -, -⟩ := kView_item hv
+    rw [eS_item g hl, eS_item g' hl, hag _ T hl hv]
+    exact .refl _
+
 /-! ## An arrow extended by a fresh realisation is the old one opened at it -/
 
-/-- An item map extended by the fresh realisation of `c : A` at the variable `z`. -/
-def gextF (f : VarSymb → VarSymb) (A : VarType) (c z : ℕ) (v : VarSymb) : VarSymb :=
+/-- An entry map extended by the fresh realisation of `c : A` at the variable `z`. -/
+def gextF (f : VarSymb → LEnt σ) (A : VarType) (c z : ℕ) (v : VarSymb) : LEnt σ :=
   match v with
-  | .step u s => if u.rt = .free c then (VarSymb.root (.free z)).ext (gPath A u.path s) else f v
+  | .step u s =>
+      if u.rt = .free c then .inl ((VarSymb.root (.free z)).ext (gPath A u.path s)) else f v
   | .root _ => f v
 
-theorem gextF_new {f : VarSymb → VarSymb} {A : VarType} {c z : ℕ} {u : VarSymb}
+theorem gextF_new {f : VarSymb → LEnt σ} {A : VarType} {c z : ℕ} {u : VarSymb}
     (h : u.rt = .free c) (s : Step) :
-    gextF f A c z (.step u s) = (VarSymb.root (.free z)).ext (gPath A u.path s) :=
+    gextF f A c z (.step u s) = .inl ((VarSymb.root (.free z)).ext (gPath A u.path s)) :=
   if_pos h
 
-theorem gextF_old {f : VarSymb → VarSymb} {A : VarType} {c z : ℕ} {u : VarSymb}
+theorem gextF_old {f : VarSymb → LEnt σ} {A : VarType} {c z : ℕ} {u : VarSymb}
     (h : ¬ u.rt = .free c) (s : Step) : gextF f A c z (.step u s) = f (.step u s) :=
   if_neg h
 
-/-- ⭐The extended item map types the new view. -/
+/-- ⭐The extended entry map types the new view. -/
 theorem itemOk_gextF (hF : ModalSys.Four = true) {k : Option VarSymb} {A : VarType}
-    {ls lt : List VarType} (hk : KOld k ls.length) {f : VarSymb → VarSymb}
-    (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f) :
-    ItemOk ((ctxOf (A :: ls)).kView k) (ctxOf (A.gc :: lt)) (gextF f A ls.length lt.length) := by
+    {ls lt : List VarType} (hk : KOld k ls.length) {f : VarSymb → LEnt σ}
+    (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) :
+    EntOk ((ctxOf (A :: ls)).kView k) (ctxOf (A.gc :: lt)) (gextF f A ls.length lt.length) := by
   intro v T hl hv
   obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
   by_cases hrt : u.rt = .free ls.length
@@ -436,37 +573,37 @@ theorem itemOk_gextF (hF : ModalSys.Four = true) {k : Option VarSymb} {A : VarTy
     rwa [rootTy_new] at h
   · rw [gextF_old hrt]
     rw [kView_old hrt] at hv
-    exact (ctxOf_le_append [A.gc] lt).ref (hf _ T hl hv)
+    exact okRef_entOf_mono (ctxOf_le_append [A.gc] lt) (hf _ T hl hv)
 
-/-- ⭐The item map extended by the new variable's fresh realisation is the old item map applied
-    to the abstraction, with the slot sent to the new variable — along either kind of edge. -/
+/-- ⭐The entry map extended by the new variable's fresh realisation is the old map applied to
+    the abstraction, with the slot sent to the new variable — along either kind of edge. -/
 theorem subst_gext_gabs (hF : ModalSys.Four = true) {k : Option VarSymb} {A : VarType}
-    {ls lt : List VarType} (hk : KOld k ls.length) {f : VarSymb → VarSymb}
-    (hf : ItemOk ((ctxOf ls).kView k) (ctxOf lt) f)
+    {ls lt : List VarType} (hk : KOld k ls.length) {f : VarSymb → LEnt σ}
+    (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f)
     (ψ : WFF σ ((ctxOf (A :: ls)).kView k) 0) :
-    WFF.subst (itemIdx (gextF f A ls.length lt.length))
-        (itemS σ (ctxOf (A.gc :: lt)) (gextF f A ls.length lt.length))
-        (ok_itemS_kView (itemOk_gextF hF hk hf)) (coh_itemS_kView (itemOk_gextF hF hk hf))
+    WFF.subst (eIdx (gextF f A ls.length lt.length))
+        (eS σ (ctxOf (A.gc :: lt)) (gextF f A ls.length lt.length))
+        (ok_eS_kView (itemOk_gextF hF hk hf)) (coh_eS_kView (itemOk_gextF hF hk hf))
         Ctx.NoSlots.slots Ctx.NoSlots.slots ψ =
-      WFF.subst (VarSymb.slotToFree (itemIdx f) 0 lt.length)
-        ((itemS σ (ctxOf lt) f).toFree 0 lt.length A.gc (ctxOf_fresh le_rfl).root)
-        (Subst.ok_toFree (ok_itemS_kView hf) A.gc _)
-        (Subst.coh_toFree (ok_itemS_kView hf) (coh_itemS_kView hf) Ctx.NoSlots.slots A.gc _)
+      WFF.subst (VarSymb.slotToFree (eIdx f) 0 lt.length)
+        ((eS σ (ctxOf lt) f).toFree 0 lt.length A.gc (ctxOf_fresh le_rfl).root)
+        (Subst.ok_toFree (ok_eS_kView hf) A.gc _)
+        (Subst.coh_toFree (ok_eS_kView hf) (coh_eS_kView hf) Ctx.NoSlots.slots A.gc _)
         (gabsCtx_slots k A ls) Ctx.NoSlots.slots (gabs hF k A ls hk ψ) := by
   refine (WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ ψ).symm
   refine Subst.sim_of ?_
   intro v T hl hv
   obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
   have hs' : s.isProj = false := hl
-  change SubE.Sim T
-    (if s.isProj then SubE.hide else .ren (gextF f A ls.length lt.length (.step u s)))
+  rw [eS_item _ hs']
+  change SubE.Sim T _
     ((if s.isProj then SubE.hide else .ren (gabsF A ls.length (.step u s))).comp _ _ _)
-  rw [if_neg (by simp [hs']), if_neg (by simp [hs'])]
+  rw [if_neg (by simp [hs'])]
   by_cases hrt : u.rt = .free ls.length
   · rw [gextF_new hrt, gabsF_new hrt]
     change SubE.Sim T _ ((Subst.toFree _ 0 lt.length A.gc _).at
       ((VarSymb.root (.bnd 0)).ext (gPath A u.path s)))
-    have hat := at_toFree_reroot (itemS σ (ctxOf lt) f) lt.length A.gc
+    have hat := at_toFree_reroot (eS σ (ctxOf lt) f) lt.length A.gc
       (ctxOf_fresh le_rfl).root ((VarSymb.root (.bnd 0)).ext (gPath A u.path s))
       (by rw [VarSymb.ext_path]; exact ppath_gPath A u.path s)
     rw [VarSymb.reroot_eq, VarSymb.reroot_eq, VarSymb.ext_path,
@@ -478,8 +615,9 @@ theorem subst_gext_gabs (hF : ModalSys.Four = true) {k : Option VarSymb} {A : Va
     rw [Subst.at_nonproj _ hl]
     change SubE.Sim T _ (if VarSymb.step u s = .root (.bnd 0) then _ else _)
     rw [if_neg (fun h => by cases h)]
-    change SubE.Sim T _ (SubE.mono _ (if s.isProj then SubE.hide else .ren (f (.step u s))))
-    rw [if_neg (by simp [hs'])]
+    change SubE.Sim T _ (SubE.mono _ (eS σ (ctxOf lt) f (.step u s)))
+    rw [kView_old hrt] at hv
+    rw [eS_item _ hs', entOf_mono _ (hf _ T hl hv)]
     exact .refl _
 
 end GArrow
