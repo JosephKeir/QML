@@ -299,6 +299,10 @@ abbrev arrows : Arrows.{0, 0} σ where
   trans_refl := fun _ hF => (noFour hF).elim
   trans_assoc := fun hF => (noFour hF).elim
 
+/-- The network's root action: none is needed, 4 being off. -/
+instance instRootKeep : Arrows.RootKeep B.arrows (fun _ => VarSymb) :=
+  ⟨fun hF => (noFour hF).elim⟩
+
 /-- Shapes on the network: a root possibility is named by its address. -/
 abbrev CShape (s : B.W) (T : VarType) : Type := Model.Shape B.arrows (fun _ => VarSymb) s T
 
@@ -421,7 +425,7 @@ theorem termShp_arrow_cEnv {Γ : Ctx} {s s' : B.W} (h : B.R s s') {i : ℕ}
         (Term.subst (arrowIdx (B.img s s')) (arrowS σ _ (B.img s s'))
           ((B.arOk h i).restrict e.boxIn) ((B.arCoh h i).restrict e.boxIn) b) =
       Model.termShp (B.canonEnvF Γ.boxIn s' (arrowIdx (B.img s s'))) 0 b := by
-  rw [Model.termShp_subst _ _ _ (Ctx.noProjLast_boxIn Γ)]
+  rw [Model.termShp_subst (Or.inl (ModalSys.NoFour.noFour)) _ _ _ (Ctx.noProjLast_boxIn Γ)]
   congr 1
   funext v T hv
   obtain ⟨u, rfl, hu⟩ : ∃ u, v = .step u .box ∧ Γ.ref u = some (.VTypeBox T) := by

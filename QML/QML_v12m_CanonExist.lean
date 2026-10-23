@@ -50,8 +50,10 @@ variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 /-- The Henkin construction over a consistent starting theory gives a world. -/
 noncomputable def ofHenkin (d : ℕ) (L₀ : WorldLang) (hρ : ∀ n, L₀.ρ n = names N₀ d n)
     (hfresh : ∀ m d' n, d ≤ d' → (L₀.base m).RootFresh (.free (names N₀ d' n)))
-    (S₀ : Set ((L₀.pre []).Sentence σ)) (hS₀ : StageSys.Consistent S₀) : World σ N₀ where
+    (S₀ : Set ((L₀.pre []).Sentence σ)) (hS₀ : StageSys.Consistent S₀)
+    (par : Option (World σ N₀)) : World σ N₀ where
   depth := d
+  parent := par
   L := L₀.final S₀
   hρ := hρ
   hfresh := hfresh
@@ -149,11 +151,11 @@ noncomputable def boxWorld (w : World σ N₀) {i : ℕ × ℕ} (χ : WFF σ (w.
     (hχ : (⟨i, .box χ⟩ : w.L.sys.Sentence σ) ∉ w.T) : World σ N₀ :=
   World.ofHenkin (w.depth + 1) (boxLang w) (fun _ => rfl)
     (fun m _ n hd => (w.fresh_deeper hd n (m, m)).boxIn) (boxStart w χ)
-    (boxStart_consistent w χ hχ)
+    (boxStart_consistent w χ hχ) (some w)
 
 theorem boxWorld_acc (w : World σ N₀) {i : ℕ × ℕ} (χ : WFF σ (w.L.ctx i).boxIn 0)
     (hχ : (⟨i, .box χ⟩ : w.L.sys.Sentence σ) ∉ w.T) : Acc' w (boxWorld w χ hχ) := by
-  refine ⟨rfl, Or.inl fun _ => rfl, ?_⟩
+  refine ⟨rfl, Or.inl fun _ => rfl, ?_, rfl⟩
   intro i' ψ j h hmem
   have hk : (⟨max i'.1 i'.2, WFF.mono (le_diag_max w i').boxIn ψ⟩ :
       ((boxLang w).pre []).Sentence σ) ∈ boxStart w χ :=
@@ -299,12 +301,12 @@ noncomputable def diaWorld (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
     (hχ : (⟨i, .dia x hx χ⟩ : w.L.sys.Sentence σ) ∈ w.T) : World σ N₀ :=
   World.ofHenkin (w.depth + 1) (diaLang w x) (fun _ => rfl)
     (fun m _ n hd => (w.fresh_deeper hd n (m, m)).diaIn x) (diaStart w x χ)
-    (diaStart_consistent w x hx χ hχ)
+    (diaStart_consistent w x hx χ hχ) (some w)
 
 theorem diaWorld_acc (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
     (hx : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X)) (χ : WFF σ ((w.L.ctx i).diaIn x) 0)
     (hχ : (⟨i, .dia x hx χ⟩ : w.L.sys.Sentence σ) ∈ w.T) : Acc' w (diaWorld w x hx χ hχ) := by
-  refine ⟨rfl, Or.inr ⟨x, fun _ => rfl⟩, ?_⟩
+  refine ⟨rfl, Or.inr ⟨x, fun _ => rfl⟩, ?_, rfl⟩
   intro i' ψ j h hmem
   have hk : (⟨max i'.1 i'.2, WFF.mono ((le_diag_max w i').boxIn.trans
       (Ctx.le_boxIn_diaIn _ x)) ψ⟩ : ((diaLang w x).pre []).Sentence σ) ∈ diaStart w x χ :=
@@ -315,20 +317,20 @@ theorem diaWorld_acc (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
 theorem exists_dia (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
     (hx : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X)) (χ : WFF σ ((w.L.ctx i).diaIn x) 0)
     (hχ : (⟨i, .dia x hx χ⟩ : w.L.sys.Sentence σ) ∈ w.T) :
-    ∃ (w' : Succ w) (hw' : w' ∈ extent w x) (hd : w'.1.depth - w.depth ≠ 0),
+    ∃ (w' : Succ w) (hw' : w' ∈ extent w x) (hd : w'.1.depth - w.depth = 1),
       (⟨childStage i, WFF.mono (extent_le hw' hd i) χ⟩ : w'.1.L.sys.Sentence σ) ∈ w'.1.T := by
   have hext : (⟨diaWorld w x hx χ hχ, ⟨R.of_acc (diaWorld_acc w x hx χ hχ)⟩⟩ : Succ w) ∈
       extent w x := by
-    refine Or.inl ⟨rfl, fun _ => rfl, ?_⟩
+    refine Or.inl ⟨0, fun h => absurd rfl h, diaWorld_acc w x hx χ hχ, fun _ => rfl, ?_⟩
     intro i' hx' ψ j h hmem
     have hk : (⟨max i'.1 i'.2, WFF.mono ((le_diag_max w i').diaIn x) ψ⟩ :
         ((diaLang w x).pre []).Sentence σ) ∈ diaStart w x χ :=
       Or.inl (Or.inr ⟨i', hx', ψ, le_diag_max w i', hmem, rfl⟩)
     exact World.mem_mono_congr (diaWorld w x hx χ hχ) h _ (WorldLang.subset_finalT _ hk)
   have hdd : ((⟨diaWorld w x hx χ hχ, ⟨R.of_acc (diaWorld_acc w x hx χ hχ)⟩⟩ : Succ w)).1.depth -
-      w.depth ≠ 0 := by
+      w.depth = 1 := by
     have h1 : (diaWorld w x hx χ hχ).depth = w.depth + 1 := (diaWorld_acc w x hx χ hχ).1
-    change (diaWorld w x hx χ hχ).depth - w.depth ≠ 0
+    change (diaWorld w x hx χ hχ).depth - w.depth = 1
     omega
   refine ⟨_, hext, hdd, ?_⟩
   have hk : (⟨max i.1 i.2, WFF.mono ((le_diag_max w i).diaIn x) χ⟩ :

@@ -185,6 +185,7 @@ noncomputable def ops : B.frame.Ops where
   necExtract hT n :=
     B.toDom _ _ (B.rawEval (.extract hT) _ n.1) (definable_rawEval (.extract hT) n.2)
   necDup hF _ := (noFour hF).elim
+  posKeep hF _ _ := (noFour hF).elim
 
 /-- ⭐Evaluating a map on a frame object is evaluating it on the raw object. -/
 theorem eval_toDom : ∀ {A C : VarType} (g : GFunc σ A C) (s : B.W) (o : B.RDom A s)
@@ -206,6 +207,7 @@ theorem eval_toDom : ∀ {A C : VarType} (g : GFunc σ A C) (s : B.W) (o : B.RDo
   | _, _, .strength _ _, _, _, _ => rfl
   | _, _, .extract _, _, _, _ => rfl
   | _, _, .dup hF, _, _, _ => (noFour hF).elim
+  | _, _, .dkeep hF _, _, _, _ => (noFour hF).elim
 
 /-- ⭐Evaluation of possible objects, in full: the section and, when shaped, the stored shape. -/
 def posFull {A : VarType} {s : B.W} (p : B.frame.Pos A s) :
@@ -787,6 +789,9 @@ noncomputable def model : Model.{0, 0} σ where
   necEval := B.necEval
   nec_inj := fun h => B.necEval_injective h
   RootPoss _ := VarSymb
+  rootKeep := fun hF => (noFour hF).elim
+  rootKeep_trans := fun hF => (noFour hF).elim
+  rootKeep_refl := fun _ hF => (noFour hF).elim
   posFull p := B.posFull p
   posFull_inj := fun h => B.posFull_injective (Prod.ext (congrArg Prod.fst h :)
     (funext fun hSh => congrFun (congrArg Prod.snd h) hSh))
@@ -801,6 +806,7 @@ noncomputable def model : Model.{0, 0} σ where
         (definable_box_apply n.2 s)).symm)))
   necExtract_eval _ _ := rfl
   necDup_eval hF _ _ _ := (noFour hF).elim
+  posKeep_full hF := (noFour hF).elim
   posRet_exists hT hS a := B.posRet_exists_canon hT hS a
   posSerial hDS s := B.posSerial_canon hDS s
   Ret S val o := B.Ret S val o

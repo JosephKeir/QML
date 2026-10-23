@@ -34,11 +34,6 @@ def shiftIter : ℕ → VarSymb → VarSymb
   | 0, v => v
   | n + 1, v => shiftIter n (v.shift 0)
 
-/-- `keep` taken `n` times. -/
-def keepIter : ℕ → VarSymb → VarSymb
-  | 0, v => v
-  | n + 1, v => keepIter n (.step v .keep)
-
 theorem shiftIter_proj : ∀ (n : ℕ) (v : VarSymb) (s : Step), s.isProj = true →
     shiftIter n (.step v s) = .step (shiftIter n v) s
   | 0, _, _, _ => rfl
@@ -112,16 +107,11 @@ abbrev arrows : Arrows.{0, 0} σ where
   trans_refl := fun _ _ _ _ _ => rfl
   trans_assoc := fun _ _ _ _ _ _ _ _ => rfl
 
-/-- `keep` appended `n` times. -/
-def _root_.V12M.VarSymb.keepN : ℕ → VarSymb → VarSymb
-  | 0, r => r
-  | n + 1, r => VarSymb.keepN n (.step r .keep)
-
 /-- The canonical root action: a root possibility kept along an arrow is its address kept once per
     level the arrow crosses.  Depths add along chains, and the identity crosses none, so it is
     lawful.  (Staged: no possible object is kept in a shaped canonical model yet, docs §3 4.) -/
 instance instRootKeep : Arrows.RootKeep (arrows σ N₀) (fun _ => VarSymb) :=
-  ⟨fun _ {w} r a => VarSymb.keepN (a.1.depth - w.depth) r⟩
+  ⟨fun _ {w} r a => VarSymb.keepIter (a.1.depth - w.depth) r⟩
 
 /-- Canonical shapes: a root possibility is named by its address. -/
 abbrev CShape (w : World σ N₀) (T : VarType) : Type :=
@@ -251,8 +241,9 @@ theorem cEnv_ref (Γ : Ctx) (w : World σ N₀) (v : VarSymb) {T : VarType}
   canonEnvF_ref Γ w (fun _ _ _ => rfl) v h
 
 /-- ⭐Pushing the canonical environment into `□` gives, at each successor, the successor's
-    environment read through `succAddr`. -/
-theorem cEnv_boxPush (Γ : Ctx) (w : World σ N₀) :
+    environment read through `succAddr`.  Where no possible object is kept: shapes are read only
+    in shaped systems, which keep none yet (staged, docs §3 4). -/
+theorem cEnv_boxPush (hnd : ModalSys.NoDiaKeep) (Γ : Ctx) (w : World σ N₀) :
     ∀ v T (h : Γ.boxIn v = some T),
       (cEnv Γ w).boxPush 0 v T h =
         Arrows.transposeShp (F := arrows σ N₀) (Root := fun _ => VarSymb) fun s =>
@@ -266,7 +257,7 @@ theorem cEnv_boxPush (Γ : Ctx) (w : World σ N₀) :
       rw [VarSymb.inner_box hk]
       rfl
   | .step u .keep, _, h => by
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep h
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep_nd hnd h
       change (GFunc.shp (GFunc.dup (σ := σ) hF) 0 ((cEnv Γ w).ref 0 u hu)).inner = _
       rw [cEnv_ref]
       change Shp.box ((Arrows.transposeShp (F := arrows σ N₀) (Root := fun _ => VarSymb)

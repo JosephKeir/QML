@@ -163,7 +163,7 @@ theorem model_existence {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)}
     convert hψ using 1
     exact WFF.mono_refl _ _
   let w₀ : Canon.World σ (Ctx.Presented.bound Γ) :=
-    Canon.World.ofHenkin 0 L₀ (fun _ => rfl) (fun _ d n _ => hfresh d n) S₀ hS₀
+    Canon.World.ofHenkin 0 L₀ (fun _ => rfl) (fun _ d n _ => hfresh d n) S₀ hS₀ none
   exact ⟨Canon.model w₀, Canon.indInvariant w₀, w₀,
     Canon.canonEnv w₀ w₀ (0, 0), fun ψ hψ =>
     (Canon.truth w₀ w₀ (0, 0) ψ).mpr (WorldLang.subset_finalT S₀ ⟨ψ, hψ, rfl⟩)⟩

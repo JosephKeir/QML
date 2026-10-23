@@ -48,6 +48,7 @@ noncomputable def rawEval :
             fun a => B.rawShape hSh (o.1 a)) (o.2.3 hSh).body)⟩
   | _, _, .extract hT, s, o => o ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩
   | _, _, .dup hF, _, _ => (noFour hF).elim
+  | _, _, .dkeep hF _, _, _ => (noFour hF).elim
 
 variable {B}
 
@@ -138,7 +139,7 @@ theorem rden_applyG :
           rw [← rden_applyG f _ a.1.1 _ _, Canon.applyG_subst]
         · simp only [rden, dif_neg hk]
           exact (rden_sigma _ (applyG_realTerm f _ e hx c)).trans (rden_applyG f _ a.1.1 _ _))
-        fun _ => Canon.termShp_applyG (.diaMap f) (.diatm x hx c) (B.cEnv Γ s) 0
+        fun hSh => Canon.termShp_applyG (Or.inr hSh) (.diaMap f) (.diatm x hx c) (B.cEnv Γ s) 0
   | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c), s, i, e =>
       RPos.congr_cont (funext fun a => by
         change _ = (B.rden s i e (.boxtm b) a.1, (B.rden s i e (.diatm x hx c)).2 a)
@@ -153,7 +154,7 @@ theorem rden_applyG :
           refine Prod.ext ?_ rfl
           exact rden_realTerm_mono_boxIn hr e hx b _ _)
         fun hSh =>
-          (Canon.termShp_applyG (.strength _ _) (.pair (.boxtm b) (.diatm x hx c))
+          (Canon.termShp_applyG (Or.inr hSh) (.strength _ _) (.pair (.boxtm b) (.diatm x hx c))
             (B.cEnv Γ s) 0).trans (by
             change _ = Shp.dia _ (Shp.prod (B.rawShape hSh (B.rden s i e (.boxtm b))).inner _)
             rw [rawShape_rden hSh s i e (.boxtm b)]
@@ -162,6 +163,7 @@ theorem rden_applyG :
       change B.rden s i e (Term.collapse _ b) = B.rden s i e (.boxtm b) ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩
       simp only [rden, dif_neg (B.irrefl s)]
   | _, _, .dup hF, _, _, _, _, _, _ => (noFour hF).elim
+  | _, _, .dkeep hF _, _, _, _, _, _, _ => (noFour hF).elim
 
 /-- ⭐Definable objects are closed under the function algebra. -/
 theorem definable_rawEval {A C : VarType} (g : GFunc σ A C) {s : B.W} {o : B.RDom A s}

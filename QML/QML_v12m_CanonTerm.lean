@@ -200,20 +200,47 @@ theorem boxPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) (w' : Succ w)
         ((rden_sigma _ (Term.eta_congr (VarSymb.inner_box hk) T _ (Ctx.ref_boxIn_of hk hu))).trans
           (rden_eta_le ((w'.acc hd).boxIn_le i) _ _ _ _ _ _))) _ _
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
-      change (model w₀).necEval ((ops w₀).necDup hF ((canonEnv w₀ w i).ref u hu)) w' = _
-      rw [canonEnv_ref]
-      change toDom w₀ (.VTypeBox A) w'.1
-        (rawEval (.dup hF) w (rden w i (Ctx.Le.refl _) (Term.eta u (.VTypeBox A) hu)) w') _ = _
-      refine toDom_congr w₀ ?_ _ _
-      rw [← rden_applyG (.dup hF) (Term.eta u (.VTypeBox A) hu) w i (Ctx.Le.refl _)]
-      change rden w i (Ctx.Le.refl _) (.boxtm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF _)
-        (Term.eta u.inner A (Ctx.ref_inner hu))))) w' = _
-      rw [rden_boxtm_acc _ _ w' hd]
-      exact (rden_sigma _ (sig_boxtm ((Term.shift_eta _ _ _ _).trans
-        (Term.eta_congr (VarSymb.inner_shift_zero u) _ _
-          (Ctx.ref_inner (Ctx.ref_keep_of hF hu)))))).trans
-        (rden_eta_le ((w'.acc hd).boxIn_le i) _ _ _ _ (Ctx.ref_keep_of hF hu) _)
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
+      cases T with
+      | VTypeBox A =>
+          change (model w₀).necEval ((ops w₀).necDup hF ((canonEnv w₀ w i).ref u hu)) w' = _
+          rw [canonEnv_ref]
+          change toDom w₀ (.VTypeBox A) w'.1
+            (rawEval (.dup hF) w (rden w i (Ctx.Le.refl _) (Term.eta u (.VTypeBox A) hu)) w') _ = _
+          refine toDom_congr w₀ ?_ _ _
+          rw [← rden_applyG (.dup hF) (Term.eta u (.VTypeBox A) hu) w i (Ctx.Le.refl _)]
+          change rden w i (Ctx.Le.refl _) (.boxtm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF _)
+            (Term.eta u.inner A (Ctx.ref_inner hu))))) w' = _
+          rw [rden_boxtm_acc _ _ w' hd]
+          exact (rden_sigma _ (sig_boxtm ((Term.shift_eta _ _ _ _).trans
+            (Term.eta_congr (VarSymb.inner_shift_zero u) _ _
+              (Ctx.ref_inner (Ctx.ref_keep_of hF hu)))))).trans
+            (rden_eta_le ((w'.acc hd).boxIn_le i) _ _ _ _ (Ctx.ref_keep_of hF hu) _)
+      | VTypeDia A =>
+          -- ⭐A kept possible object is the kept witness's denotation (`rden_dkeep_acc`).
+          have hnS := VarType.noShaped_of_keepable_dia hk
+          change (model w₀).necEval ((ops w₀).posKeep hF hnS ((canonEnv w₀ w i).ref u hu)) w' = _
+          rw [canonEnv_ref]
+          change toDom w₀ (.VTypeDia A) w'.1
+            (rawEval (.dkeep hF hnS) w (rden w i (Ctx.Le.refl _) (Term.eta u (.VTypeDia A) hu))
+              w') _ = _
+          refine toDom_congr w₀ ?_ _ _
+          rw [← rden_applyG (.dkeep hF hnS) (Term.eta u (.VTypeDia A) hu) w i (Ctx.Le.refl _)]
+          have hk' : (w.L.ctx i).boxIn.ref (.step u .keep) = some (.VTypeDia A) :=
+            Ctx.ref_keep_of' hF hu hk
+          change rden w i (Ctx.Le.refl _) (.boxtm (.diatm (.step u .keep)
+            (Ctx.exists_keep_dia hF hnS ⟨A, hu⟩) (Term.shift (Ctx.shifts_diaIn_keep hF hnS _ u)
+              (Term.eta (.step u .dia) A (Ctx.ref_diaIn_of hu))))) w' = _
+          rw [rden_boxtm_acc _ _ w' hd]
+          have hs : (⟨_, Term.diatm (.step u .keep) (Ctx.exists_keep_dia hF hnS ⟨A, hu⟩)
+                (Term.shift (Ctx.shifts_diaIn_keep hF hnS _ u)
+                  (Term.eta (.step u .dia) A (Ctx.ref_diaIn_of hu)))⟩ :
+                Σ b, Term σ (w.L.ctx i).boxIn (.VTypeDia A) b) =
+              ⟨_, Term.eta (.step u .keep) (.VTypeDia A) hk'⟩ :=
+            sig_diatm ((Term.shift_eta _ _ _ _).trans
+              (Term.eta_congr (VarSymb.shift_level_zero (s := .dia) rfl) _ _ _))
+          exact (rden_sigma _ hs).trans (rden_eta_le ((w'.acc hd).boxIn_le i) _ _ _ _ hk' _)
+      | _ => cases hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -224,7 +251,7 @@ theorem boxPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) (w' : Succ w)
 theorem diaPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) {x : VarSymb} {X : VarType}
     (hr : (w.L.ctx i).ref x = some (.VTypeDia X))
     (w' : ((model w₀).posEval ((canonEnv w₀ w i).ref x hr)).1)
-    (hd : w'.1.1.depth - w.depth ≠ 0) :
+    (hd : w'.1.1.depth - w.depth = 1) :
     Model.Env.Agree (extent_le (canonEnv_extent w₀ w i hr ▸ w'.2) hd i)
       ((canonEnv w₀ w i).diaPush x hr w') (canonEnv w₀ w'.1.1 (childStage i)) := by
   have hw : w'.1 ∈ extent w x := canonEnv_extent w₀ w i hr ▸ w'.2
@@ -250,9 +277,9 @@ theorem diaPush_agree_canon (w : World σ N₀) (i : ℕ × ℕ) {x : VarSymb} {
           (Term.eta (.step u .dia) X (Ctx.ref_diaIn_of hr)) w'.1 hm hd (extent_le hw hd i)).trans
         (rden_eta_le (extent_le hw hd i) _ _ _ _ _ _)
   | .step u .box =>
-      exact boxPush_agree_canon w₀ w i w'.1 (extent_dist hw hd) (.step u .box) T hv
+      exact boxPush_agree_canon w₀ w i w'.1 hd (.step u .box) T hv
   | .step u .keep =>
-      exact boxPush_agree_canon w₀ w i w'.1 (extent_dist hw hd) (.step u .keep) T hv
+      exact boxPush_agree_canon w₀ w i w'.1 hd (.step u .keep) T hv
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -290,6 +317,52 @@ theorem interp_box_far (S : ℕ) {A : VarType}
       refine (interp_box_far S IH d (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) t)
         (by rw [Term.size_shift]; exact ht) hag' ⟨w'.1, ⟨hr⟩⟩ hd').trans ?_
       exact toDom_congr w₀ (rden_boxtm_step hF e t w' hu hr (by omega)).symm _ _
+
+/-- ⭐Under 4 without shapes, the value of a possible term at a member of its witness's extent
+    `k + 1` levels deeper is its denotation there, given the truth lemma at its body's type: a kept
+    member is one of the kept witness's at the proper successor on the way, where the body shifted
+    is read (`Env.shiftAgree_diaKeep`, `rden_diatm_step`) — `interp_box_far` for `◇`. -/
+theorem interp_dia_far {A : VarType}
+    (IH : ∀ {Γ : Ctx} {a : Ann A} (t : Term σ Γ A a) {w : World σ N₀} {i : ℕ × ℕ}
+      {e : Γ.Le (w.L.ctx i)} {env : (model w₀).Env Γ w},
+      Model.Env.Agree e env (canonEnv w₀ w i) →
+      Model.interp env t = toDom w₀ A w (rden w i e t) (definable_rden e t)) :
+    ∀ (k : ℕ) {Γ : Ctx} {a : Ann A} {x : VarSymb} {X : VarType}
+      (hr : Γ.ref x = some (.VTypeDia X)) (t : Term σ (Γ.diaIn x) A a) {w : World σ N₀}
+      {i : ℕ × ℕ} {e : Γ.Le (w.L.ctx i)} {env : (model w₀).Env Γ w},
+      Model.Env.Agree e env (canonEnv w₀ w i) →
+      ∀ (w' : ((model w₀).posEval (env.ref x hr)).1) (hm : w'.1 ∈ extent w x),
+      w'.1.1.depth - w.depth = k + 1 →
+      Model.interp (env.diaPush x hr w') t =
+        toDom w₀ A w'.1.1 ((rden w i e (.diatm x ⟨X, hr⟩ t)).2 ⟨w'.1, hm⟩)
+          (definable_dia_apply (definable_rden e (.diatm x ⟨X, hr⟩ t)) ⟨w'.1, hm⟩)
+  | 0, Γ, _, x, X, hr, t, w, i, e, env, hag, w', hm, hd => by
+      have hm' : w'.1 ∈ ((model w₀).posEval ((canonEnv w₀ w i).ref x (e.ref hr))).1 :=
+        (canonEnv_extent w₀ w i (e.ref hr)).symm ▸ hm
+      refine (IH t ((Model.Env.diaPush_agree hag hr w' hm').trans
+        (diaPush_agree_canon w₀ w i (e.ref hr) ⟨w'.1, hm'⟩ hd))).trans ?_
+      exact toDom_congr w₀ (rden_diatm_acc e ⟨X, hr⟩ t ⟨w'.1, hm⟩ hd).symm _ _
+  | k + 1, Γ, _, x, X, hr, t, w, i, e, env, hag, w', hm, hd => by
+      obtain ⟨hK, -⟩ := extent_far hm hd
+      obtain ⟨hF, hnS⟩ := hK (Nat.succ_ne_zero k)
+      obtain ⟨u, hu, hru, hdu⟩ := Succ.split w'.1 (d := k) hd
+      have hu1 : (⟨u, ⟨R.of_acc hu⟩⟩ : Succ w).1.depth - w.depth = 1 := by
+        have := hu.1
+        change u.depth - w.depth = 1
+        omega
+      have hag' := (Model.Env.boxPush_agree hag (⟨u, ⟨R.of_acc hu⟩⟩ : Succ w)).trans
+        (boxPush_agree_canon w₀ w i ⟨u, ⟨R.of_acc hu⟩⟩ hu1)
+      have hxk : Γ.boxIn.ref (.step x .keep) = some (.VTypeDia X) :=
+        Ctx.ref_keep_of' hF hr (VarType.keepable_dia hnS)
+      have hmk : (⟨w'.1.1, ⟨hru⟩⟩ : Succ u) ∈ extent u (.step x .keep) :=
+        (extent_keep hF hnS hu ⟨w'.1.1, ⟨hru⟩⟩).mp hm
+      have hb' : (⟨w'.1.1, ⟨hru⟩⟩ : Succ u) ∈ ((model w₀).posEval
+          ((env.boxPush (⟨u, ⟨R.of_acc hu⟩⟩ : Succ w)).ref (.step x .keep) hxk)).1 := w'.2
+      refine (Model.interp_shift (Model.Env.shiftAgree_diaKeep hF hnS env hr
+        (⟨u, ⟨R.of_acc hu⟩⟩ : Succ w) ⟨w'.1.1, ⟨hru⟩⟩ w'.2 hxk hb') t).symm.trans ?_
+      refine (interp_dia_far IH k hxk (Term.shift (Ctx.shifts_diaIn_keep hF hnS Γ x) t) hag'
+        ⟨⟨w'.1.1, ⟨hru⟩⟩, hb'⟩ hmk hdu).trans ?_
+      exact toDom_congr w₀ (rden_diatm_step hF hnS e ⟨X, hr⟩ t ⟨w'.1, hm⟩ hu hru).symm _ _
 
 /-- The size of a type: the middle component of the truth lemma's measure.  A `◇` term recurses at
     its body, of the type inside, so within a stage the recursion is on the type first and the size
@@ -529,11 +602,11 @@ mutual
         refine Model.posSec_ext hpq _ _ fun w' => ?_
         have hm : w'.1 ∈ ((model w₀).posEval ((canonEnv w₀ w i).ref x (e.ref hr))).1 :=
           hpq₀ ▸ w'.2
-        by_cases hd : (w'.1.1 : World σ N₀).depth - w.depth ≠ 0
-        · simp only [toDom, rden, dif_neg hd]
-          exact interp_canon t ((Model.Env.diaPush_agree hag hr w' hm).trans
-            (diaPush_agree_canon w₀ w i (e.ref hr) ⟨w'.1, hm⟩ hd))
-        · have hd0 : (w'.1.1 : World σ N₀).depth - w.depth = 0 := not_not.mp hd
+        rcases hd : (w'.1.1 : World σ N₀).depth - w.depth with _ | k
+        swap
+        · exact interp_dia_far w₀ (fun {_Γ} {_a} s {_w} {_i} {_e} {_env} hag' =>
+            interp_canon s hag') k hr t hag w' (canonEnv_extent w₀ w i (e.ref hr) ▸ hm) hd
+        · have hd0 : (w'.1.1 : World σ N₀).depth - w.depth = 0 := hd
           obtain ⟨hweq, hrx⟩ := extent_self (canonEnv_extent w₀ w i (e.ref hr) ▸ hm) hd0
           obtain ⟨⟨w₁, hR⟩, hmem⟩ := w'
           change w₁ = w at hweq

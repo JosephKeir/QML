@@ -1347,7 +1347,7 @@ theorem Canonical.boxPush (hT : ModalSys.T = true) {Δ : Ctx} (hok : Δ.DeclOK) 
       change annShp w (j + 1) (Ann.eta u.inner T) = _
       rw [VarSymb.inner_box hk]
   | .step u .keep, hv =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep hv
+      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep_T hT hv
       change (GFunc.shp (GFunc.dup (σ := σ) hF) j (ρ.ref j u hu)).inner = _
       rw [hρ u _ hu]
       change Shp.box ((annShp w (j + 1) (Ann.eta u.inner A)).map (Arrows.Leaf.shift hF j)) =

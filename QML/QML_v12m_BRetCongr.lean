@@ -57,17 +57,7 @@ theorem Ctx.DiaFree.boxIn {Γ : Ctx} (h : Γ.DiaFree) : Γ.boxIn.DiaFree := by
           rw [hr] at hv
           cases U <;> cases hv
           exact (h.ref hr : (VarType.VTypeBox _).diaFree = true)
-  | .step u .keep =>
-      change (if ModalSys.Four then
-        match Γ.ref u with | some (.VTypeBox A) => some (.VTypeBox A) | _ => none
-        else none) = some T at hv
-      split_ifs at hv
-      cases hr : Γ.ref u with
-      | none => rw [hr] at hv; cases hv
-      | some U =>
-          rw [hr] at hv
-          cases U <;> cases hv
-          exact (h.ref hr : (VarType.VTypeBox _).diaFree = true)
+  | .step u .keep => exact h.ref (Ctx.boxIn_keep hv).2.1
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

@@ -260,14 +260,19 @@ Paper pass: `v12-modal-extensions.md` §3 4, "4's four cases".  Weak/strong × `
    pulled back along the arrow; rule `◇◇_{x.keep}(shift φ) ⊢ ◇_x φ`.  In the tree, with T and D.
    Risks: a label for a restricted possible object when shaped (an action of arrows on roots), a
    `keepE` for `◇` entries in substitution, the own arrow under T.
+   * **Done for K4 and D4 (2026-10-23)**, staged to unshaped systems: sound, and complete over
+     relational frames — canonical worlds record their parent (`extent_keep`).  Next: T + 4 (the
+     shape invariant of Finding 4, `here_keep`, the extent under T by realisation).
 2. **Strong `□`, the lift**, per arrow: `O.dia (∃n:□A. φ(n)) ⊢ ∃m:□A. O.dia φ(m.keep)`.  Tree, with
    a stepwise (Barcan-style) child construction.
 3. **Strong `◇`, the join**, per arrow (as `posBack_exists`):
    `◇∃y:◇A. ◇_y(shift φ)(y.dia) ⊢ ∃z:◇A. ◇_z φ(z.dia)`.  Needs witnesses added to a world after its
    successors exist: the network, or an ω-chain tree.
-4. **4 with B**: weak 4 is complete with T and D in either strength, but every B result takes
-   `NoFour`.  First weak B + 4 over arrow frames (the network with paths as arrows); relational
-   completeness and strong B + 4 (`homeUnique`) need round-trip coherence, i.e. milestone 3.
+4. **4 with B — deferred to milestone 3 (decision, user, 2026-10-23).**  4 is designed with B off
+   throughout.  B + 4 frames are euclidean, so by flag closure (`v12-modal-extensions.md` §4) B + 4
+   must include 5's object-level components (KB4 = KB5 propositionally), as `WCoh` makes
+   `BStrongW ∧ T` include strong T.  So B + 4 comes after weak 5 is designed, by closure, rather
+   than by solving round-trip coherence on its own.
 
 ## Milestone 3 — B with 4, and S5 (5 itself)
 

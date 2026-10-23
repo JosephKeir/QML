@@ -1859,6 +1859,17 @@ tree), is the same change seen from the worlds.  Completeness is already stated 
 canonical model stops being relational for 4, and relational completeness of `four_dia` would
 need unravelling (`v12-arrow-canonical.md` §4).
 
+*Correction and resolution (building, 2026-10-23).*  Completeness is in fact stated over
+`Model.{0, 0}` (`completeness`'s `hval`; `Canon.model`, and B's `BCanonDom.arrows`), so arrows
+there are `Prop`-valued and the theorems are **relational** completeness; `Type`-valued chains
+would have weakened them.  The tree takes the other form of the fix instead: **worlds record
+their parent** (`World.parent`, and `Acc' w w'` asks `w'.parent = some w`), so the worlds form a
+genuine tree, a chain is determined by its end (`Chain.unique`), and accessibility stays a
+relation.  `x`'s extent gains the **kept members** (`KeepExt k x w b`: the `◇_{x.keep^k}`-children
+of the worlds `k` proper steps on), and the law is `extent_keep`: past a proper successor `u`, the
+members of `x`'s extent are those of `x.keep`'s at `u` — because `u` is the only ancestor of a
+member at its depth.  No unravelling is needed for K4/D4.
+
 **Does unravelling recover relational completeness?  Expected yes, for every flag set without B
 *(paper, 2026-10-22)*.**  From an arrow model `M` build `M'`: worlds the finite paths of arrows
 from the actual world; `p R' q` iff `q` extends `p` (by one step without 4, by any number of
@@ -1930,6 +1941,32 @@ case, models (`GFunc.dkeep`, `Ops.posKeep`, `Model.posKeep_full`, the root actio
 `dkeep` case), semantics (`posKeep_posKeep`, `Env.shiftAgree_diaKeep`, `entryVal_keepE_dia`,
 `boxPush_envShape` at `x.keep`), and `four_dia`'s soundness.  `Soundness` builds, no `sorry`.
 Step 2 (the tree with path arrows) is next; the completeness files do not build until then.
+
+**Step 2 built (2026-10-23).**  K4 and D4 (either strength of D) are complete with `x.keep`, over
+relational frames — no path arrows, no unravelling (Finding 3's correction).
+* *Tree* (`CanonWorld`): `World.parent`, `Acc'` asks it, `Chain.split`/`last`/`unique`;
+  `KeepOK k` (no keeping, or 4 unshaped), `KeepExt` with `chain`/`depth`/`le`; `extent` with kept
+  members; `extent_cases`/`_far`/`_proper`/`_self`/`_le`/`_leK`; ⭐`extent_keep`.
+  `VarSymb.keepIter` moved here (the duplicate `keepN` is gone).
+* *Denotations* (`CanonDom`): `Term.shiftDia` (the `◇` body kept `k` times) and `_mono`; `rden`'s
+  `◇` case matches on the depth as its `□` case does; `rden_diatm_far`/`_acc`/`_self` and
+  ⭐`rden_diatm_step`.
+* *The function algebra* (`CanonFunc`, `CanonModel`): `rawEval`/`applyG` at `dkeep`, its cases of
+  `applyG_collapse`/`_shift`/`_subst`/`_mono`; `applyG_shiftDia`, `Term.shiftDia_pair`,
+  `Term.shiftDia_mono_boxIn`, `Ctx.boxIter_succ'`, `RPos.ext_E`; `rden_dkeep_acc`,
+  `rawEval_dkeep_step`, ⭐`rden_dkeep` (by the distance, as `rden_dup`).  The canonical model's
+  `posKeep`, root action (`keepIter` by the depth difference) and its laws.
+* *Truth* (`CanonTerm`, `Completeness`): `boxPush_agree_canon` at a kept `◇` entry,
+  ⭐`interp_dia_far`, and the formula truth lemma's kept members (`farD`: `four_dia`, then the
+  first step's necessary contents, read back by `Env.shiftAgree_diaKeep` and `sat_shift`).
+* *Shaped-only lemmas* `cEnv_boxPush` and `termShp_applyG` take `ModalSys.NoDiaKeep`; B's
+  network supplies it from `NoFour` and gets an absurd root action.
+Full qbuild green (18 targets), no `sorry`.  Next, the T + 4 stage: the shape invariant
+(Finding 4), `here_keep`, and on paper the extent under T + 4 — under T a proper successor is its
+own successor, so `extent_keep` needs `u ∈ ext_w x ↔ u` realises `x.keep`; `here_keep` gives one
+direction, and the other suggests defining the members under T + 4 by realisation of
+`x.keep^k` (the `◇_x` children then a special case), with `four_dia` and `here_introAtA` giving the
+truth lemma's direction (unchecked).
 
 **Steps.**  (1) Syntax, models, environments, substitution (`keepE` at `◇`: restriction commutes
 with `posMap` and `posStrength`), `four_dia`, `here_keep`, soundness.  (2) The tree with path

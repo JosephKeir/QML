@@ -166,6 +166,7 @@ noncomputable def ops : (frame w₀).Ops where
   necExtract hT n :=
     toDom w₀ _ _ (rawEval (.extract hT) _ n.1) (definable_rawEval (.extract hT) n.2)
   necDup hF n := ⟨rawEval (.dup hF) _ n.1, definable_rawEval (.dup hF) n.2⟩
+  posKeep hF hnS p := ⟨rawEval (.dkeep hF hnS) _ p.1, definable_rawEval (.dkeep hF hnS) p.2⟩
 
 /-- ⭐Evaluating a map on a frame object is evaluating it on the raw object. -/
 theorem eval_toDom : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀) (o : RDom A w)
@@ -188,6 +189,7 @@ theorem eval_toDom : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀) 
   | _, _, .strength _ _, _, _, _ => rfl
   | _, _, .extract _, _, _, _ => rfl
   | _, _, .dup _, _, _, _ => rfl
+  | _, _, .dkeep _ _, _, _, _ => rfl
 
 /-- Under T, a frame object's shape is its raw object's. -/
 theorem domShape_toDom (hT : ModalSys.T = true) : ∀ (A : VarType) (w : World σ N₀)
@@ -272,6 +274,19 @@ noncomputable def model : Model.{0, 0} σ where
   necEval := necEval w₀
   nec_inj := fun h => necEval_injective w₀ h
   RootPoss _ := VarSymb
+  rootKeep := fun _ {w} r a => VarSymb.keepIter (a.1.depth - w.depth) r
+  rootKeep_trans := fun _ {w} r a b => by
+    change VarSymb.keepIter (b.1.depth - a.1.depth) (VarSymb.keepIter (a.1.depth - w.depth) r) =
+      VarSymb.keepIter (b.1.depth - w.depth) r
+    rw [VarSymb.keepIter_add]
+    have h₁ := Succ.depth_le a
+    have h₂ := Succ.depth_le b
+    congr 1
+    omega
+  rootKeep_refl := fun _ _ {w} r => by
+    change VarSymb.keepIter (w.depth - w.depth) r = r
+    rw [Nat.sub_self]
+    rfl
   posFull p := ((posFull w₀ p).1, fun hSh => (posFull w₀ p).2 (ModalSys.NoB.T_of_shaped hSh))
   posFull_inj := fun h => posFull_injective w₀ (Prod.ext (congrArg Prod.fst h :)
     (funext fun hT => congrFun (congrArg Prod.snd h) (ModalSys.shaped_of_T hT)))
@@ -286,6 +301,7 @@ noncomputable def model : Model.{0, 0} σ where
         (definable_box_apply n.2 s)).symm)))
   necExtract_eval _ _ := rfl
   necDup_eval _ _ _ _ := rfl
+  posKeep_full _ hnS _ _ := Prod.ext rfl (funext fun hS => absurd hS (by rw [hnS]; decide))
   posRet_exists hT hS a := posRet_exists_canon w₀ hT hS a
   posSerial hDS w := posSerial_canon w₀ hDS w
   Ret _ _ _ := False

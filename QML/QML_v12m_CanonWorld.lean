@@ -13,15 +13,20 @@ its modal depth (`names N₀ d n = N₀ + ⟪d, n⟫`), so the variables of a wo
 modality are fresh for the world it was reached from.
 
 * `BoxView w w'` / `DiaView x w w'`: the base of `w'` is the `□` / `◇_x` view of `w`'s language;
-* `Acc' w w'`: `w'` is one level deeper, has one of the views, and holds everything necessary at
-  `w` — the **proper** successors;
+* `Acc' w w'`: `w'` is one level deeper, has one of the views, holds everything necessary at `w`
+  and has `w` as its parent — the **proper** successors.  A world records its parent, so the
+  worlds form a genuine tree: a chain is determined by its ends (`Chain.unique`), while
+  accessibility stays a relation;
 * `Chain n w w'`: `n` proper steps; `R w w'`: a chain, of length 0 only under T (the world itself)
   and of length at least 2 only under 4.  So `R` is reflexive under T and transitive under 4.  A
   successor's chain is as long as its depth difference (`Succ.chain`): 0 is the world itself
   (`Succ.self`), 1 a proper successor (`Succ.acc`), and a far successor is a successor of a proper
   successor (`Succ.split`).  The views along a chain embed into its last world (`Chain.le`).
 * `extent w x`: the proper successors with the `◇_x` view that hold everything `□_x`-necessary at
-  `w`.
+  `w`, under strong T the world itself when `x` is realised, and under 4 without shapes the
+  **kept** members: the members of `x.keep`'s extent at a proper successor (`KeepExt`).  Pulling
+  the extent back along an arrow is then the extent of the kept address (`extent_keep`) — what
+  makes `posKeep` definable — because a world's ancestors are unique.
 -/
 
 namespace V12M
@@ -149,6 +154,11 @@ structure World where
       {a : Ann A} (t : Term σ (L.ctx i) A a),
       ∃ (i' : ℕ × ℕ) (hi : i ≤ i') (y : VarSymb) (hy : (L.ctx i').ref y = some (.VTypeDia A)),
         (⟨i', WFF.hereAt hT y hy (Term.mono (L.ctx_le hi) t)⟩ : L.sys.Sentence σ) ∈ T
+  /-- ⭐The world this one was built as a successor of, if any.  Recording it makes the worlds a
+      genuine tree — a proper successor's parent is the world it succeeds (`Acc'`) — so a world's
+      ancestors are unique and an arrow is determined by its ends, with accessibility still a
+      relation.  This is what lets a possible object be kept along an arrow (docs §3 4). -/
+  parent : Option World
 
 variable {σ N₀}
 
@@ -374,9 +384,15 @@ def BoxxContents (x : VarSymb) (w w' : World σ N₀) : Prop :=
     (⟨i, WFF.boxx x hx χ⟩ : w.L.sys.Sentence σ) ∈ w.T →
       (⟨j, WFF.mono h χ⟩ : w'.L.sys.Sentence σ) ∈ w'.T
 
-/-- Proper accessibility: one level deeper, with a view, holding everything necessary. -/
+/-- Proper accessibility: one level deeper, with a view, holding everything necessary, and built
+    as a successor of `w`. -/
 def Acc' (w w' : World σ N₀) : Prop :=
-  w'.depth = w.depth + 1 ∧ (BoxView w w' ∨ ∃ x, DiaView x w w') ∧ BoxContents w w'
+  w'.depth = w.depth + 1 ∧ (BoxView w w' ∨ ∃ x, DiaView x w w') ∧ BoxContents w w' ∧
+    w'.parent = some w
+
+/-- A proper successor has one parent. -/
+theorem Acc'.unique {w w' v : World σ N₀} (h : Acc' w v) (h' : Acc' w' v) : w = w' :=
+  Option.some_injective _ (h.2.2.2.symm.trans h'.2.2.2)
 
 /-- The stage of a successor that contains the modal views of stage `i`. -/
 def childStage (i : ℕ × ℕ) : ℕ × ℕ := (max i.1 i.2, 0)
@@ -419,6 +435,30 @@ theorem Chain.le : ∀ {n : ℕ} {w w' : World σ N₀}, Chain n w w' → ∀ {�
       subst h
       exact e
   | _ + 1, _, _, ⟨_, hu, hc⟩, _, i, e => Chain.le hc (e.boxIn.trans (hu.boxIn_le i))
+
+/-- A chain splits at any point. -/
+theorem Chain.split : ∀ {n m : ℕ} {w s : World σ N₀}, Chain (m + n) w s →
+    ∃ v, Chain n w v ∧ Chain m v s
+  | 0, _, w, _, h => ⟨w, rfl, h⟩
+  | _ + 1, _, _, _, ⟨u, hu, hc⟩ => by
+      obtain ⟨v, h₁, h₂⟩ := Chain.split hc
+      exact ⟨v, ⟨u, hu, h₁⟩, h₂⟩
+
+/-- The last step of a chain. -/
+theorem Chain.last {n : ℕ} {w s : World σ N₀} (h : Chain (n + 1) w s) :
+    ∃ v, Chain n w v ∧ Acc' v s := by
+  obtain ⟨v, h₁, u, hu, rfl⟩ := Chain.split (n := n) (m := 1) (by rwa [Nat.add_comm] at h)
+  exact ⟨v, h₁, hu⟩
+
+/-- ⭐**A chain is determined by its end**: worlds record their parents, so a world's ancestor at
+    each distance is unique. -/
+theorem Chain.unique : ∀ {n : ℕ} {w w' s : World σ N₀}, Chain n w s → Chain n w' s → w = w'
+  | 0, _, _, _, h, h' => h.symm.trans h'
+  | _ + 1, _, _, _, h, h' => by
+      obtain ⟨v, hv, hvs⟩ := h.last
+      obtain ⟨v', hv', hvs'⟩ := h'.last
+      obtain rfl := hvs.unique hvs'
+      exact Chain.unique hv hv'
 
 /-- ⭐Accessibility: a chain of proper steps — the empty chain under T, chains of two or more
     steps under 4. -/
@@ -491,48 +531,134 @@ theorem DiaView.leChild {x : VarSymb} {w w' : World σ N₀} (h : DiaView x w w'
     ((w.L.ctx i).diaIn x).Le (w'.L.ctx (childStage i)) :=
   h.le (le_max_left _ _) (le_max_right _ _) 0
 
-/-- ⭐The extent of the possible object named by `x`: the proper successors with the `◇_x` view
-    that hold everything `□_x`-necessary here and, under strong T, the world itself when `x` is
-    realised. -/
-def extent (w : World σ N₀) (x : VarSymb) : Set (Succ w) :=
-  {w' | (w'.1.depth = w.depth + 1 ∧ DiaView x w w'.1 ∧ BoxxContents x w w'.1) ∨
-    (w'.1 = w ∧ w.Realised x)}
+/-- `keep` taken `n` times: where an address of a world is read `n` proper steps on. -/
+def _root_.V12M.VarSymb.keepIter : ℕ → VarSymb → VarSymb
+  | 0, v => v
+  | n + 1, v => VarSymb.keepIter n (.step v .keep)
 
-/-- A member of the extent is the world itself or one level deeper. -/
+/-- Unshaped systems have no T. -/
+theorem _root_.V12M.ModalSys.T_false_of_unshaped (h : ModalSys.shaped = false) :
+    ModalSys.T = false := by
+  cases hT : ModalSys.T
+  · rfl
+  · rw [ModalSys.shaped_of_T hT] at h
+    cases h
+
+/-- Possible objects are kept `k` times: none for `k = 0`, under 4 without shapes otherwise
+    (staged, docs §3 4). -/
+abbrev KeepOK (k : ℕ) : Prop := k ≠ 0 → ModalSys.Four = true ∧ ModalSys.shaped = false
+
+/-- ⭐The members of `x`'s extent reached by keeping it `k` times: for `k = 0` the proper
+    successors with the `◇_x` view that hold everything `□_x`-necessary, for `k + 1` the members
+    of `x.keep`'s at a proper successor — `four_dia` puts everything `□_x`-necessary into
+    them. -/
+def KeepExt : ℕ → VarSymb → World σ N₀ → World σ N₀ → Prop
+  | 0, x, w, b => Acc' w b ∧ DiaView x w b ∧ BoxxContents x w b
+  | k + 1, x, w, b => ∃ u, Acc' w u ∧ KeepExt k (.step x .keep) u b
+
+theorem KeepExt.chain : ∀ {k : ℕ} {x : VarSymb} {w b : World σ N₀}, KeepExt k x w b →
+    Chain (k + 1) w b
+  | 0, _, _, b, h => ⟨b, h.1, rfl⟩
+  | _ + 1, _, _, _, ⟨u, hu, h⟩ => ⟨u, hu, KeepExt.chain h⟩
+
+theorem KeepExt.depth {k : ℕ} {x : VarSymb} {w b : World σ N₀} (h : KeepExt k x w b) :
+    b.depth = w.depth + (k + 1) :=
+  h.chain.depth
+
+/-- The view along a kept member: the `◇_{x.keep^k}` view `k` steps on. -/
+theorem KeepExt.le : ∀ {k : ℕ} {x : VarSymb} {w b : World σ N₀}, KeepExt k x w b →
+    ∀ {Γ : Ctx} {i : ℕ × ℕ}, Γ.Le (w.L.ctx i) →
+      ((Ctx.boxIter k Γ).diaIn (VarSymb.keepIter k x)).Le (b.L.ctx (childIter (k + 1) i))
+  | 0, x, _, _, h, _, _, e => (e.diaIn x).trans (h.2.1.le (le_max_left _ _) (le_max_right _ _) 0)
+  | _ + 1, _, _, _, ⟨_, hu, h⟩, _, i, e => KeepExt.le h (e.boxIn.trans (hu.boxIn_le i))
+
+/-- ⭐The extent of the possible object named by `x`: the proper successors with the `◇_x` view
+    that hold everything `□_x`-necessary here; under strong T, the world itself when `x` is
+    realised; and under 4 without shapes, the kept members (`KeepExt`). -/
+def extent (w : World σ N₀) (x : VarSymb) : Set (Succ w) :=
+  {w' | (∃ k, KeepOK k ∧ KeepExt k x w w'.1) ∨ (w'.1 = w ∧ w.Realised x)}
+
+/-- A member of the extent is the world itself or a kept member as many levels deeper. -/
 theorem extent_cases {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x) :
-    (w'.1.depth - w.depth = 1 ∧ DiaView x w w'.1 ∧ BoxxContents x w w'.1) ∨
+    (∃ k, w'.1.depth - w.depth = k + 1 ∧ KeepOK k ∧ KeepExt k x w w'.1) ∨
       (w'.1.depth - w.depth = 0 ∧ w'.1 = w ∧ w.Realised x) := by
-  rcases hw' with ⟨hd, hv, hb⟩ | ⟨he, hr⟩
-  · exact Or.inl ⟨by omega, hv, hb⟩
+  rcases hw' with ⟨k, hk, h⟩ | ⟨he, hr⟩
+  · exact Or.inl ⟨k, by rw [h.depth]; omega, hk, h⟩
   · exact Or.inr ⟨by rw [he]; omega, he, hr⟩
+
+/-- A member of the extent `k + 1` levels deeper is kept `k` times. -/
+theorem extent_far {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
+    {k : ℕ} (hd : w'.1.depth - w.depth = k + 1) : KeepOK k ∧ KeepExt k x w w'.1 := by
+  rcases extent_cases hw' with ⟨k', hd', hk, h⟩ | ⟨h, _⟩
+  · obtain rfl : k' = k := by omega
+    exact ⟨hk, h⟩
+  · omega
 
 /-- A member of the extent one level deeper is a proper one. -/
 theorem extent_proper {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
-    (hd : w'.1.depth - w.depth ≠ 0) :
-    w'.1.depth - w.depth = 1 ∧ DiaView x w w'.1 ∧ BoxxContents x w w'.1 := by
-  rcases extent_cases hw' with h | ⟨h, _⟩
-  · exact h
-  · exact absurd h hd
+    (hd : w'.1.depth - w.depth = 1) :
+    Acc' w w'.1 ∧ DiaView x w w'.1 ∧ BoxxContents x w w'.1 :=
+  (extent_far hw' (k := 0) hd).2
 
 /-- A member of the extent at this depth is the world itself, and then `x` is realised. -/
 theorem extent_self {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
     (hd : w'.1.depth - w.depth = 0) : w'.1 = w ∧ w.Realised x := by
-  rcases extent_cases hw' with ⟨h, _⟩ | ⟨_, h⟩
+  rcases extent_cases hw' with ⟨_, h, _⟩ | ⟨_, h⟩
   · omega
   · exact h
 
-theorem extent_dist {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
-    (hd : w'.1.depth - w.depth ≠ 0) : w'.1.depth - w.depth = 1 :=
-  (extent_proper hw' hd).1
-
-theorem extent_acc {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
-    (hd : w'.1.depth - w.depth ≠ 0) : Acc' w w'.1 :=
-  w'.acc (extent_dist hw' hd)
-
 theorem extent_le {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
-    (hd : w'.1.depth - w.depth ≠ 0) (i : ℕ × ℕ) :
+    (hd : w'.1.depth - w.depth = 1) (i : ℕ × ℕ) :
     ((w.L.ctx i).diaIn x).Le (w'.1.L.ctx (childStage i)) :=
   (extent_proper hw' hd).2.1.le (le_max_left _ _) (le_max_right _ _) 0
+
+/-- The view along a member `k + 1` levels deeper. -/
+theorem extent_leK {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
+    {k : ℕ} (hd : w'.1.depth - w.depth = k + 1) {Γ : Ctx} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) :
+    ((Ctx.boxIter k Γ).diaIn (VarSymb.keepIter k x)).Le (w'.1.L.ctx (childIter (k + 1) i)) :=
+  (extent_far hw' hd).2.le e
+
+/-- A kept member is in the extent. -/
+theorem mem_extent_of_keep {w : World σ N₀} {x : VarSymb} {k : ℕ} (hk : KeepOK k)
+    {w' : Succ w} (h : KeepExt k x w w'.1) : w' ∈ extent w x :=
+  Or.inl ⟨k, hk, h⟩
+
+/-- ⭐**Keeping an extent along a proper step** (docs §3 4): the members of `x`'s extent past a
+    proper successor `u` are the extent there of `x.keep`.  Past `u` every member is kept, and it
+    was kept through `u` itself — a world's ancestors are unique (`Chain.unique`).  Neither side
+    has the world itself in it, unshaped. -/
+theorem extent_keep (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false)
+    {w u : World σ N₀} (hu : Acc' w u) {x : VarSymb} (b : Succ u) :
+    (⟨b.1, ⟨R.trans hF (R.of_acc hu) b.2.down⟩⟩ : Succ w) ∈ extent w x ↔
+      b ∈ extent u (.step x .keep) := by
+  have hnT := ModalSys.T_false_of_unshaped hnS
+  obtain ⟨hc, h₀, _⟩ := b.chain
+  have hdb : b.1.depth - u.depth ≠ 0 := fun h => by
+    rw [h₀ h] at hnT
+    cases hnT
+  constructor
+  · rintro (⟨k, -, h⟩ | ⟨-, hr⟩)
+    · cases k with
+      | zero =>
+          have h₁ : b.1.depth = w.depth + (0 + 1) := h.depth
+          have := hu.1
+          omega
+      | succ k =>
+          obtain ⟨u', hu', h'⟩ := h
+          have e : b.1.depth - u.depth = k + 1 := by
+            have h₁ : b.1.depth = u'.depth + (k + 1) := h'.depth
+            have := hu.1
+            have := hu'.1
+            omega
+          rw [e] at hc
+          obtain rfl := h'.chain.unique hc
+          exact Or.inl ⟨k, fun _ => ⟨hF, hnS⟩, h'⟩
+    · rw [hr.T] at hnT
+      cases hnT
+  · rintro (⟨k, -, h⟩ | ⟨-, hr⟩)
+    · exact Or.inl ⟨k + 1, fun _ => ⟨hF, hnS⟩, u, hu, h⟩
+    · rw [hr.T] at hnT
+      cases hnT
 
 /-- The world itself is in the extent of a realised address. -/
 theorem self_mem_extent {w : World σ N₀} {x : VarSymb} (h : w.Realised x) :
