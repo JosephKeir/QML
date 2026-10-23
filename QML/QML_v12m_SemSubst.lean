@@ -479,7 +479,7 @@ theorem ShEnv.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} {w : F.W}
 
 /-- Under 4, the `□` view kept and pushed once more agrees, across the shift, with the `□` view
     shifted at its level — the shape counterpart of `Env.shiftAgree_twoBox`. -/
-theorem ShEnv.shiftAgree_twoBox (hF : ModalSys.Four = true) (hnd : ModalSys.NoDiaKeep)
+theorem ShEnv.shiftAgree_twoBox [Arrows.RootKeepLaws F Root] (hF : ModalSys.Four = true)
     {Γ : Ctx} {w : F.W}
     (ρ : ShEnv F Root Γ w) (j : ℕ) :
     ShEnv.ShiftAgree (Ctx.shifts_boxIn_boxIn hF Γ)
@@ -498,7 +498,21 @@ theorem ShEnv.shiftAgree_twoBox (hF : ModalSys.Four = true) (hnd : ModalSys.NoDi
       rw [ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
       rfl
   | .step u .keep =>
-      obtain ⟨_, hu, A, rfl⟩ := Ctx.boxIn_keep_nd hnd hx
+      obtain ⟨_, hu, hk⟩ := Ctx.boxIn_keep hx
+      cases T with
+      | VTypeDia A =>
+          -- ⭐A kept possibility kept again: `shift_dk`, by the root action's composition law.
+          rw [ShEnv.ref_congr _ _ (VarSymb.shift_level_zero (s := .keep) rfl) _
+            (Ctx.ref_keep_of' hF (Ctx.ref_keep_of' hF hu hk) hk),
+            ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
+          change Shp.map (Arrows.Leaf.shift hF j) ((ρ.ref j u hu).map (Arrows.Leaf.dk hF j)) =
+            (GFunc.shp (GFunc.keep (σ := σ) hF hk) (j + 1)
+              ((ρ.boxPush j).ref (j + 1) (.step u .keep) (Ctx.ref_keep_of' hF hu hk))).inner
+          rw [ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
+          change _ = ((ρ.ref j u hu).map (Arrows.Leaf.dk hF j)).map (Arrows.Leaf.dk hF (j + 1))
+          rw [Shp.map_map, Shp.map_map]
+          exact Shp.map_congr (fun ℓ => Arrows.Leaf.shift_dk hF j ℓ) _
+      | VTypeBox A =>
       rw [ShEnv.ref_congr _ _ (VarSymb.shift_level_zero (s := .keep) rfl) _
         (Ctx.ref_keep_of hF (Ctx.ref_keep_of hF hu)),
         ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
@@ -514,6 +528,7 @@ theorem ShEnv.shiftAgree_twoBox (hF : ModalSys.Four = true) (hnd : ModalSys.NoDi
       rw [Shp.map_map, Shp.map_map]
       exact congrArg Shp.box
         (Shp.map_congr (fun ℓ => (Arrows.Leaf.shift_shift_self hF j ℓ).symm) _)
+      | _ => cases hk
   | .root _ => cases hx
   | .step _ .fst => cases hx
   | .step _ .snd => cases hx
@@ -531,13 +546,13 @@ theorem termShp_collapse_self (hT : ModalSys.T = true) {Γ : Ctx} {w : F.W}
 
 /-- ⭐A term of the `□` view, shifted into the `□□` view, has the view's shape shifted at its
     level. -/
-theorem termShp_shift_twoBox (hF : ModalSys.Four = true) (hnd : ModalSys.NoDiaKeep)
+theorem termShp_shift_twoBox [Arrows.RootKeepLaws F Root] (hF : ModalSys.Four = true)
     {Γ : Ctx} {w : F.W}
     (ρ : ShEnv F Root Γ w) (j : ℕ) {A : VarType} {a : Ann A} (t : Term σ Γ.boxIn A a) :
     termShp ((ρ.boxPush j).boxPush (j + 1)) (j + 2)
         (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) t) =
       (termShp (ρ.boxPush j) (j + 1) t).map (Arrows.Leaf.shift hF j) := by
-  rw [termShp_shift (ShEnv.shiftAgree_twoBox hF hnd ρ j)]
+  rw [termShp_shift (ShEnv.shiftAgree_twoBox hF ρ j)]
   exact termShp_mapShift hF j (ρ.boxPush j) 0 t
 
 /-! ## Shapes under substitution -/
@@ -648,8 +663,8 @@ theorem entryShp_unbox {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ)
       | boxtm t => rfl
   | .hide, _, he => False.elim he
 
-theorem entryShp_keepE {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ)
-    (hF : ModalSys.Four = true) (hnd : ModalSys.NoDiaKeep) :
+theorem entryShp_keepE [Arrows.RootKeepLaws F Root] {Δ : Ctx} {w : F.W}
+    (ρ : ShEnv F Root Δ w) (j : ℕ) (hF : ModalSys.Four = true) :
     ∀ {e : SubE σ Δ} {A : VarType} (he : e.OkRef (.VTypeBox A)),
       entryShp (ρ.boxPush j) (j + 1) e.keepE (SubE.okRef_keepE hF he) =
         (GFunc.shp (GFunc.dup (σ := σ) hF) j (entryShp ρ j e he)).inner
@@ -666,11 +681,12 @@ theorem entryShp_keepE {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ)
           change Shp.box (termShp ((ρ.boxPush j).boxPush (j + 1)) (j + 2)
               (Term.shift (Ctx.shifts_boxIn_boxIn hF Δ) t)) =
             Shp.box ((termShp (ρ.boxPush j) (j + 1) t).map (Arrows.Leaf.shift hF j))
-          rw [termShp_shift_twoBox hF hnd ρ j t]
+          rw [termShp_shift_twoBox hF ρ j t]
   | .hide, _, he => False.elim he
 
-theorem substShEnv_box {Γ Δ : Ctx} {w : F.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
-    (hnp : Γ.NoProjLast) (ρ : ShEnv F Root Δ w) (j : ℕ) (hnd : ModalSys.NoDiaKeep) :
+theorem substShEnv_box [Arrows.RootKeepLaws F Root] {Γ Δ : Ctx} {w : F.W} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hnp : Γ.NoProjLast) (ρ : ShEnv F Root Δ w) (j : ℕ)
+    (hnd : ModalSys.NoDiaKeep) :
     substShEnv θ.box (Subst.ok_box hθ) (Ctx.noProjLast_boxIn Γ) (ρ.boxPush j) (j + 1) =
       (substShEnv θ hθ hnp ρ j).boxPush j := by
   funext v T hv
@@ -684,7 +700,7 @@ theorem substShEnv_box {Γ Δ : Ctx} {w : F.W} (θ : Subst σ Δ) (hθ : Subst.O
       obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep_nd hnd hv
       change entryShp (ρ.boxPush j) (j + 1) ((θ.at u).keepE) _ =
         (GFunc.shp (GFunc.dup (σ := σ) hF) j ((substShEnv θ hθ hnp ρ j).ref j u hu)).inner
-      rw [substShEnv_ref, entryShp_keepE ρ j hF hnd (Subst.okRef_at hθ hu)]
+      rw [substShEnv_ref, entryShp_keepE ρ j hF (Subst.okRef_at hθ hu)]
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -767,7 +783,8 @@ theorem entryShp_dia_body {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ
   | .tm (.boxtm _), he, _, _ => nomatch he
   | .hide, he, _, _ => False.elim he
 
-theorem substShEnv_dia {Γ Δ : Ctx} {ι : VarSymb → VarSymb} {w : F.W} (θ : Subst σ Δ)
+theorem substShEnv_dia [Arrows.RootKeepLaws F Root] {Γ Δ : Ctx} {ι : VarSymb → VarSymb}
+    {w : F.W} (θ : Subst σ Δ)
     (hθ : Subst.Ok Γ θ) (hnp : Γ.NoProjLast) (ρ : ShEnv F Root Δ w) (j : ℕ)
     (hnd : ModalSys.NoDiaKeep)
     {x : VarSymb}
@@ -805,14 +822,15 @@ theorem substShEnv_dia {Γ Δ : Ctx} {ι : VarSymb → VarSymb} {w : F.W} (θ : 
         (GFunc.shp (GFunc.dup (σ := σ) hF) j ((substShEnv θ hθ hnp ρ j).ref j u hu)).inner
       rw [entryShp_mono (ShEnv.box_dia_agree ρ j hr₁) _ _
           (SubE.okRef_keepE hF (Subst.okRef_at hθ hu)),
-        entryShp_keepE ρ j hF hnd, substShEnv_ref]
+        entryShp_keepE ρ j hF, substShEnv_ref]
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
   | .step _ .here => cases hv
 
 /-- ⭐**Substitution lemma for shapes.** -/
-theorem termShp_subst {ι : VarSymb → VarSymb} (hnd : ModalSys.NoDiaKeep) :
+theorem termShp_subst [Arrows.RootKeepLaws F Root] {ι : VarSymb → VarSymb}
+    (hnd : ModalSys.NoDiaKeep) :
     ∀ {Γ Δ : Ctx} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ)
       (hnp : Γ.NoProjLast) {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ)
       {T : VarType} {a : Ann T} (t : Term σ Γ T a),

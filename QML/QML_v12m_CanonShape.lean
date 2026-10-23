@@ -113,6 +113,21 @@ abbrev arrows : Arrows.{0, 0} σ where
 instance instRootKeep : Arrows.RootKeep (arrows σ N₀) (fun _ => VarSymb) :=
   ⟨fun _ {w} r a => VarSymb.keepIter (a.1.depth - w.depth) r⟩
 
+/-- The canonical root action is lawful: depths add along chains, the identity crosses none. -/
+instance instRootKeepLaws : Arrows.RootKeepLaws (arrows σ N₀) (fun _ => VarSymb) where
+  keep_trans _ {w} r a b := by
+    change VarSymb.keepIter (b.1.depth - a.1.depth) (VarSymb.keepIter (a.1.depth - w.depth) r) =
+      VarSymb.keepIter (b.1.depth - w.depth) r
+    rw [VarSymb.keepIter_add]
+    have h₁ := (Succ.chain a).1.depth
+    have h₂ := (Succ.chain b).1.depth
+    congr 1
+    omega
+  keep_refl _ _ {w} r := by
+    change VarSymb.keepIter (w.depth - w.depth) r = r
+    rw [Nat.sub_self]
+    rfl
+
 /-- Canonical shapes: a root possibility is named by its address. -/
 abbrev CShape (w : World σ N₀) (T : VarType) : Type :=
   Model.Shape (arrows σ N₀) (fun _ => VarSymb) w T
@@ -240,10 +255,46 @@ theorem cEnv_ref (Γ : Ctx) (w : World σ N₀) (v : VarSymb) {T : VarType}
     (h : Γ.ref v = some T) : (cEnv Γ w).ref 0 v h = canonSh w v T :=
   canonEnvF_ref Γ w (fun _ _ _ => rfl) v h
 
+/-- A kept address read at a successor: `keep` taken once per level crossed. -/
+theorem succAddr_keep_self (w w' : World σ N₀) (u : VarSymb) :
+    succAddr w w' (.step u .keep) = VarSymb.keepIter (w'.depth - w.depth) u := by
+  rcases h : w'.depth - w.depth with _ | d
+  · rw [succAddr_zero h, VarSymb.collapse_keep_zero]
+    rfl
+  · rw [succAddr_succ h, VarSymb.shiftIter_keep]
+
+/-- A root possibility's content shape restricted along an arrow is the kept root's. -/
+theorem rootSh_keepAlong (hF : ModalSys.Four = true) (w : World σ N₀) (v : VarSymb)
+    (s : Succ w) : ∀ (π : List Step) (T : VarType),
+      (rootSh w v π T).map (Arrows.Leaf.keepAlong (F := arrows σ N₀) (Root := fun _ => VarSymb)
+          hF s) = rootSh s.1 (VarSymb.keepIter (s.1.depth - w.depth) v) π T
+  | _, .Var => rfl
+  | _, .VTypeOne => rfl
+  | π, .VTypeProd A B => by
+      simp only [rootSh, Shp.map]
+      rw [rootSh_keepAlong hF w v s _ A, rootSh_keepAlong hF w v s _ B]
+  | π, .VTypeBox A => by
+      simp only [rootSh, Shp.map]
+      rw [rootSh_keepAlong hF w v s _ A]
+  | π, .VTypeDia A => by
+      simp only [rootSh, Shp.map]
+      rw [rootSh_keepAlong hF w v s _ A]
+      rfl
+
+/-- ⭐A possible address kept along an arrow has the kept address's canonical shape there. -/
+theorem canonSh_dia_keepAlong (hF : ModalSys.Four = true) (w : World σ N₀) (u : VarSymb)
+    (s : Succ w) (A : VarType) :
+    (canonSh w u (.VTypeDia A)).map
+        (Arrows.Leaf.keepAlong (F := arrows σ N₀) (Root := fun _ => VarSymb) hF s) =
+      canonSh s.1 (succAddr w s.1 (.step u .keep)) (.VTypeDia A) := by
+  rw [succAddr_keep_self]
+  simp only [canonSh, Shp.map]
+  rw [rootSh_keepAlong]
+  rfl
+
 /-- ⭐Pushing the canonical environment into `□` gives, at each successor, the successor's
-    environment read through `succAddr`.  Where no possible object is kept: shapes are read only
-    in shaped systems, which keep none yet (staged, docs §3 4). -/
-theorem cEnv_boxPush (hnd : ModalSys.NoDiaKeep) (Γ : Ctx) (w : World σ N₀) :
+    environment read through `succAddr`. -/
+theorem cEnv_boxPush (Γ : Ctx) (w : World σ N₀) :
     ∀ v T (h : Γ.boxIn v = some T),
       (cEnv Γ w).boxPush 0 v T h =
         Arrows.transposeShp (F := arrows σ N₀) (Root := fun _ => VarSymb) fun s =>
@@ -256,8 +307,21 @@ theorem cEnv_boxPush (hnd : ModalSys.NoDiaKeep) (Γ : Ctx) (w : World σ N₀) :
         canonSh s.1 (succAddr w s.1 u.inner) T) = _
       rw [VarSymb.inner_box hk]
       rfl
-  | .step u .keep, _, h => by
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep_nd hnd h
+  | .step u .keep, T, h => by
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep h
+      cases T with
+      | VTypeDia A =>
+          -- ⭐Kept at every successor: one family of restrictions (`canonSh_dia_keepAlong`).
+          change ((cEnv Γ w).ref 0 u hu).map (Arrows.Leaf.dk hF 0) = _
+          rw [cEnv_ref]
+          change _ = Arrows.transposeShp (F := arrows σ N₀) (Root := fun _ => VarSymb) fun s =>
+            canonSh s.1 (succAddr w s.1 (.step u .keep)) (.VTypeDia A)
+          rw [show (fun s : Succ w => canonSh s.1 (succAddr w s.1 (.step u .keep)) (.VTypeDia A)) =
+              fun s => (canonSh w u (.VTypeDia A)).map
+                (Arrows.Leaf.keepAlong (F := arrows σ N₀) (Root := fun _ => VarSymb) hF s) from
+            funext fun s => (canonSh_dia_keepAlong hF w u s A).symm, Model.transpose_map_const]
+          rfl
+      | VTypeBox A =>
       change (GFunc.shp (GFunc.dup (σ := σ) hF) 0 ((cEnv Γ w).ref 0 u hu)).inner = _
       rw [cEnv_ref]
       change Shp.box ((Arrows.transposeShp (F := arrows σ N₀) (Root := fun _ => VarSymb)
@@ -271,6 +335,7 @@ theorem cEnv_boxPush (hnd : ModalSys.NoDiaKeep) (Γ : Ctx) (w : World σ N₀) :
       congr 1
       funext t
       rw [← succAddr_keep hF s.2.down t.2.down u]
+      | _ => cases hk
   | .root _, _, h => by cases h
   | .step _ .fst, _, h => by cases h
   | .step _ .snd, _, h => by cases h

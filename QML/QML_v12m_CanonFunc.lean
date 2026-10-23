@@ -359,7 +359,7 @@ def applyG :
     moves shapes — the `applyG` analogue of `termShp_compile`.  Where no possible object is kept:
     shapes are read only in shaped systems, which keep none yet (staged, docs §3 4). -/
 theorem termShp_applyG {F : Arrows.{u, v} σ} {Root : F.W → Type u} [Arrows.RootKeep F Root]
-    (hnd : ModalSys.NoDiaKeep) :
+    [Arrows.RootKeepLaws F Root] (hnd : ModalSys.NoDiaKeep) :
     ∀ {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} {a : Ann A} (t : Term σ Γ A a) {w : F.W}
       (ρ : Model.ShEnv F Root Γ w) (j : ℕ),
       Model.termShp ρ j (applyG g t).2 = GFunc.shp g j (Model.termShp ρ j t)
@@ -399,7 +399,7 @@ theorem termShp_applyG {F : Arrows.{u, v} σ} {Root : F.W → Type u} [Arrows.Ro
       rfl
   | _, _, .extract hT, _, _, .boxtm b, _, ρ, j => Model.termShp_collapse_self hT ρ j b
   | _, _, .dup hF, _, _, .boxtm b, _, ρ, j =>
-      congrArg (fun z => Shp.box (Shp.box z)) (Model.termShp_shift_twoBox hF hnd ρ j b)
+      congrArg (fun z => Shp.box (Shp.box z)) (Model.termShp_shift_twoBox hF ρ j b)
   | _, _, .dkeep hF hnS, _, _, .diatm _ _ _, _, _, _ => by
       rcases hnd with h | h
       · rw [hF] at h

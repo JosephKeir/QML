@@ -327,6 +327,18 @@ end Arrows.Leaf
 class Arrows.RootKeep {σ : Signature} (F : Arrows.{u, v} σ) (Root : F.W → Type u) where
   keep : ModalSys.Four = true → ∀ {w : F.W}, Root w → (a : F.Acc w) → Root a.1
 
+/-- ⭐The **laws** of a root action, for arbitrary arrows: restricting along two arrows is
+    restricting along their composite, and under T restricting along the identity is the root
+    itself (`Model.rootKeep_trans`, `Model.rootKeep_refl`).  A mixin, so that the operations
+    (`Arrows.Leaf.keepAlong`, `GFunc.shp`) need only the action. -/
+class Arrows.RootKeepLaws {σ : Signature} (F : Arrows.{u, v} σ) (Root : F.W → Type u)
+    [Arrows.RootKeep F Root] : Prop where
+  keep_trans : ∀ (hF : ModalSys.Four = true) {w : F.W} (r : Root w) (a : F.Acc w)
+    (b : F.Acc a.1), Arrows.RootKeep.keep hF (Arrows.RootKeep.keep hF r a) b =
+      Arrows.RootKeep.keep hF r ⟨b.1, ⟨F.trans hF a.2.down b.2.down⟩⟩
+  keep_refl : ∀ (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {w : F.W} (r : Root w),
+    Arrows.RootKeep.keep hF r (F.reflAcc hT w) = r
+
 namespace Arrows.Leaf
 
 variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u} [Arrows.RootKeep F Root]
@@ -554,6 +566,10 @@ abbrev arrows : Arrows.{u, v} σ := M.frame.toArrows
 
 /-- A model's root action, for the shape operations (`GFunc.shp`). -/
 instance instRootKeep : Arrows.RootKeep M.frame.toArrows M.RootPoss := ⟨M.rootKeep⟩
+
+/-- A model's root action is lawful. -/
+instance instRootKeepLaws : Arrows.RootKeepLaws M.frame.toArrows M.RootPoss :=
+  ⟨M.rootKeep_trans, M.rootKeep_refl⟩
 
 /-- The section of a possible object: its extent, and its content at each world of it. -/
 abbrev posEval {A : VarType} {w : M.frame.W} (p : M.frame.Pos A w) : M.frame.PosSec A w :=

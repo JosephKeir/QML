@@ -303,6 +303,9 @@ abbrev arrows : Arrows.{0, 0} σ where
 instance instRootKeep : Arrows.RootKeep B.arrows (fun _ => VarSymb) :=
   ⟨fun hF => (noFour hF).elim⟩
 
+instance instRootKeepLaws : Arrows.RootKeepLaws B.arrows (fun _ => VarSymb) :=
+  ⟨fun hF => (noFour hF).elim, fun _ hF => (noFour hF).elim⟩
+
 /-- Shapes on the network: a root possibility is named by its address. -/
 abbrev CShape (s : B.W) (T : VarType) : Type := Model.Shape B.arrows (fun _ => VarSymb) s T
 

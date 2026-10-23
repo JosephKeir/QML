@@ -558,8 +558,7 @@ theorem rawShape_rden (hT : ModalSys.T = true) : ∀ {A : VarType} {a : Ann A} {
           rawShape hT (rden w i e (.boxtm t) s)) =
         Shp.box (Model.termShp ((cEnv Γ w).boxPush 0) (0 + 1) t)
       rw [Model.termShp_transpose ((cEnv Γ w).boxPush 0)
-        (fun s => canonEnvF Γ.boxIn s.1 (succAddr w s.1)) 0
-        (cEnv_boxPush (Or.inr (ModalSys.shaped_of_T hT)) Γ w) t]
+        (fun s => canonEnvF Γ.boxIn s.1 (succAddr w s.1)) 0 (cEnv_boxPush Γ w) t]
       refine congrArg Shp.box (congrArg _ (funext fun s => ?_))
       rcases hd : s.1.depth - w.depth with _ | d
       · rw [rden_boxtm_self e t s hd, rawShape_rden hT, termShp_collapse_cEnv (Succ.self s hd).1,

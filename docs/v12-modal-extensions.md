@@ -1968,6 +1968,140 @@ direction, and the other suggests defining the members under T + 4 by realisatio
 `x.keep^k` (the `◇_x` children then a special case), with `four_dia` and `here_introAtA` giving the
 truth lemma's direction (unchecked).
 
+**T + 4 on paper (2026-10-23).**  What lifting the staging gate takes, in four parts.  Verdict:
+no new obstacle.  The canonical side is *simpler* under T + 4 than in K4, because extents can be
+defined by realisation.  The shape side needs no new model law: Finding 4's invariant holds of
+every semantic shape automatically.
+
+*(a) Semantics and rules.*
+* `posKeep` along the identity is the identity: extent by `refl_trans`; contents unchanged; shape
+  `map (keepAlong refl) = id` by `rootKeep_refl` (roots) and `refl_trans` (families).  This is what
+  T's collapse of `x.keep` reads (`VarSymb.collapse_keep_zero`: `x.keep` collapses to `x`).
+* Rule `here_keep` (T, 4), stated **for any body**, as `four_dia` is:
+  `□_x Here(◇_{x.keep}(shift bd), bd)` for `bd` in `x`'s view.  The address form (`bd = x.dia`) is
+  its instance at the η-expansion.  The general form is closed under substitution (an entry
+  `◇_y t` turns it into the `y`-instance at the substituted body); the address form would need a
+  functoriality argument for `Here`.
+  * Sound: at a member `b` of `x`'s extent along `a`, the subject is `posMap bd (posKeep x a)`.
+    Its extent contains `refl_b`, because `a ; refl = a` (`trans_refl`).  Its content there is
+    `bd` read at `x`'s content at `a`, which is `bd`'s value at `b`.  So `Ind_refl` applies.
+  * Not derivable (Finding 2).
+* The step-1 lemmas whose shape parts were dismissed by `hnS` get real shape obligations:
+  `entryVal_keepE_dia`, the shape part of `Env.shiftAgree_diaKeep`, and `entryShp_keepE` at `◇`
+  entries.  They use (c).
+
+*(b) The canonical extent under T + 4: by realisation.*  Under T a proper successor `u` is its
+own successor.  So the law of step 2 (`extent_keep`) acquires the case `u ∈ ext_u(x.keep) ↔
+u ∈ ext_w(x)`, where the left side is `u.Realised (x.keep)` (`extent_self`).  `here_keep` gives
+"`◇_x`-children realise `x.keep`".  The converse is false: a `□`-child may realise `x.keep`, and
+semantically `x`'s extent can contain every successor.  So under T + 4 **define the extent by
+realisation**:
+
+  `ext_w(x) := {b ∈ Succ w | b.Realised (keepIter d x)}`, where `d = depth b − depth w`.
+
+At `d = 0` this is today's self case.  `here_keep` puts every `◇_x`-child into it.
+* *Contents* follow the realisation route at every distance: at a member at distance `d`, the body
+  is kept `d` times (`Term.shiftDia d`) and realised there by `b`'s own datum for `keepIter d x`
+  (`realisedTerm`).  At `d = 0` this is today's self case, unchanged.
+* *The law of step 2 is now definitional.*  For a proper successor `u` and `b ∈ Succ u` at
+  distance `d'` from `u`, both sides read `b.Realised (keepIter (d'+1) x)`, since
+  `keepIter (d'+1) x = keepIter d' (x.keep)`.  The contents are the same address, the same datum,
+  and `shiftDia` agrees definitionally.  No uniqueness of ancestors is needed: parents are
+  harmless under T + 4 but not used.
+* *The own arrow* (`rden_dkeep` at distance 0) is collapse after shift, `posKeep` along the
+  identity being the identity (a), and the tag `map (keepAlong refl)`.
+* *Truth, membership ⇒ sat* (`farD`, generalised): suppose `□_x ¬χ` holds.
+  * `four_dia`, applied `d` times along the proper chain (`BoxContents`), gives
+    `□_{keepIter d x} ¬(shiftDia d χ)` at `b`.
+  * `Proof.here_elimAtA` with `b`'s datum gives its realisation.
+  * The truth lemma at `b` (`WFF.size_realiseAtA`) and the semantic realisation reading
+    (`interp_dia_self`/`dia_mem_of_sat_self`, one witness down) then contradict `sat`.
+  * At `d = 0` this is today's self case.  `BoxxContents` is no longer used under T + 4.
+* *Truth, `◇_x χ` ⇒ some member*:
+  1. `exists_dia` gives a `◇_x`-child `v` with `χ ∈ T(v)`.
+  2. `here_keep` gives `Here(x.keep, x.dia) ∈ T(v)`, so `v` is a member.
+  3. Rewrite `χ` as `realise_{x.keep, x.dia}(shift χ)`; this is a syntactic identity.
+  4. ⭐`Proof.here_subst` (`Here(s,t), Here(s,t'), φ(t) ⊢ φ(t')`) moves this to `v`'s own datum
+     for `x.keep`, whichever was chosen.  So `World.real` needs no change: the datum choice stays
+     immaterial.
+  5. Then the realisation reading gives `sat`.
+* *Terms* (`interp_dia_far` under T + 4): shift agreement down the chain
+  (`Env.shiftAgree_diaKeep`), then `interp_dia_self` at the end.
+* *New syntax lemma:* `WFF.realiseAtA_shift_keep` (and its `Term` form),
+  `realise_{x.keep, x.dia}(shift_{◇,keep} χ) = χ` up to weakening.  It is the general case of
+  `Term.realiseAtA_eta`:
+  * abstraction sends `x.keep.dia ↦ bnd 0`;
+  * the collapse undoes the shift (`collapse_keep_zero` on `u.keep.keep.here ↦ u.keep.here`, as
+    in `keepE_collapse_self'`);
+  * the substitution puts `x.dia` back.
+* T without 4 is unchanged (proper `◇_x`-children and the self case).  4 without T is step 2.
+
+*(c) Shapes: Finding 4 needs no model law.*
+* *Where it bites.*  The only failing identity is `dk 0 ∘ collapse 0 = collapse 0 ∘ dk 1` (the
+  `dkeep` case of `shp_mapCollapse` at `j = d = 0`), and only on root leaves.
+  * On families both sides are `dk 0 (f refl)`.
+  * For `j + d ≥ 1` the path identity `keepAt (j+d) ∘ collapseAt j = collapseAt j ∘
+    keepAt (j+d+1)` holds on every path.  It was checked on the keep-absorbing cases; prove it as
+    `Step.keepAt_collapseAt`.
+  * There `a` sits one level under the `□` being collapsed, so its leaves should be families.
+* *The invariant, by positions.*  Define `Leaf.WF : List Bool → Leaf → Prop`, with the level kinds
+  from the anchor outermost first (`true` = `□`):
+  * `WF (true :: q) ℓ := ∃ f, ℓ = fam f ∧ ∀ s, WF q (f s)`;
+  * `WF (false :: q) ℓ := True`, since a `◇` crossed at the anchor's level makes the rest
+    syntactic (or semantic, by strength): anything goes;
+  * `WF [] ℓ := True`.
+  `Shp.WF lw a` asks it of every leaf at `lw ++` its position's level kinds.
+* *It holds automatically for semantic shapes.*
+  * A possible object's shape has only `◇`-first positions, so it is vacuous there: no condition on
+    `posFull`.
+  * A necessary object's shape is a transposition (`Frame.domShape`), so its `□`-first leaves are
+    families by construction.
+  * Hence `envShape` is WF.  `cEnv` is WF (`canonSh` transposes at `□`; `rootSh` is `◇`-first).
+    So is `rawShape`.
+* *It is preserved* by `transposeShp`, by every `GFunc.shp` (`extract`: `collapse 0 (fam f) =
+  f refl`, WF at the tail by definition; `dup`/`dkeep`: families of families), by `ShEnv.boxPush`
+  and `diaPush`, and by `termShp` given a WF environment.
+* *Threading.*  `shp_mapCollapse` takes `a.WF` (only its `dkeep` case uses it); so do
+  `termShp_collapse`/`_collapse_self` and their callers (`T_box`'s and substitution's shape
+  lemmas), each discharged by "environments are WF".
+* *The root action's laws in the generic lemmas* (the `dk (j+1) ∘ dk j = shift j ∘ dk j` kind):
+  make `Arrows.RootKeep` **lawful**.  Its fields would be `keep`, `keep_trans` and `keep_refl`, as
+  `Model.rootKeep_trans`/`_refl` are.  The model's instance comes from its fields, the canonical
+  one from `keepIter` (already proved in `CanonModel`), B's is absurd.  This removes the
+  `NoDiaKeep` hypotheses from the shift-side lemmas (`ShEnv.shiftAgree_twoBox`,
+  `termShp_shift_twoBox`, `entryShp_keepE`, `substShEnv_box`/`_dia`, `termShp_subst`).  The
+  collapse side then needs only WF, and `cEnv_boxPush`/`termShp_applyG` lose theirs too.
+
+*Correction to (c) (2026-10-23, while building).*  The substitution lemma's kept-`◇` case
+(`entryShp_keepE` at a `◇` entry) compares `dk j` with `shift j` on the leaves *inside* the kept
+object.  On a root path with exactly `j` levels they differ: `keepAt` appends a `keep`, `shiftAt`
+does not.  Arbitrary models can have such "junk" paths inside a possible object's shape, so the
+position invariant alone does not cover this case.  The fix is in the operation, not a model
+law.  `GFunc.shp dkeep j (.dia ℓ b)` keeps the node's own label by `dk j`, which appends: the kept
+address `z ↦ z.keep`.  It keeps the leaves inside the object by a body form equal to `shift j`
+above the anchor's level and semantic (`dk 0`) at it: `z.dia.q ↦ z.keep.dia.q`.  On correctly
+spelled paths this is today's definition; it differs only on junk.  With it, the body case is the
+shift lemma plus "`dk 0 = shift 0` on families" (the position invariant).
+
+*(d) Build order.*
+1. Lawful `Arrows.RootKeep`; drop `NoDiaKeep` from the shift-side lemmas.  This is independent of
+   T and useful already.
+2. `Leaf.WF`/`Shp.WF`, preservation, WF of semantic and canonical environments, threaded through
+   the collapse lemmas.
+3. Lift the gate (`VarType.keepable (◇A) := true`; `boxIn_keep_T`/`_nd` retire), `posKeep_refl`,
+   `here_keep` (rule, `Proof.subst` case, soundness), the real shape cases of step 1's lemmas.
+   Soundness green under T + 4.
+4. The canonical side (b): extent and contents by realisation under T + 4,
+   `WFF.realiseAtA_shift_keep`, the truth lemma's two directions, `interp_dia_far` under T + 4,
+   `rden_dkeep` at the own arrow.
+
+*Open checks:*
+* `Step.keepAt_collapseAt` in general.
+* That `here_keep`'s soundness reads no shape condition beyond `Here`'s.
+* That every caller of the collapse lemmas has a WF environment at hand.
+
+The main cost is step 2.
+
 **Steps.**  (1) Syntax, models, environments, substitution (`keepE` at `◇`: restriction commutes
 with `posMap` and `posStrength`), `four_dia`, `here_keep`, soundness.  (2) The tree with path
 arrows, `x`'s extents, `rden` and shapes for `x.keep`, the truth lemma's deep `◇_x` case

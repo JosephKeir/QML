@@ -307,6 +307,24 @@ theorem keepAt_shiftAt : ∀ (j d : Nat) (p : List Step),
       · rw [shiftAt_proj hs, keepAt_proj hs, keepAt_proj hs, shiftAt_proj hs,
           keepAt_shiftAt j d p]
 
+omit [ModalSys] in
+/-- Keeping twice at one level: the second `keep` lands right after the first, which is where a
+    shift at that level inserts it. -/
+theorem shiftAt_keepAt : ∀ (i : Nat) (p : List Step),
+    shiftAt i (keepAt i p) = keepAt (i + 1) (keepAt i p)
+  | 0, [] => rfl
+  | _ + 1, [] => rfl
+  | i, s :: p => by
+      cases hs : s.isProj
+      · cases i with
+        | zero =>
+            change shiftAt 0 (keepAt 0 (s :: p)) = keepAt 1 (keepAt 0 (s :: p))
+            have h0 : keepAt 0 (s :: p) = .keep :: s :: p := by simp [keepAt, hs]
+            rw [h0, shiftAt_zero (by rfl), keepAt_succ (by rfl), h0]
+        | succ i =>
+            rw [keepAt_succ hs, shiftAt_succ hs, keepAt_succ hs, shiftAt_keepAt i p]
+      · rw [keepAt_proj hs, shiftAt_proj hs, keepAt_proj hs, shiftAt_keepAt i p]
+
 end Step
 
 namespace Arrows.Leaf
@@ -441,6 +459,48 @@ theorem dk_shift (hF : ModalSys.Four = true) :
       rw [show j + 1 + d + 2 = (j + d + 2) + 1 by omega,
         show j + 1 + d + 1 = (j + d + 1) + 1 by omega]
       exact congrArg Arrows.Leaf.fam (funext fun s => dk_shift hF j d (f s))
+
+variable [Arrows.RootKeepLaws F Root]
+
+/-- Restricting a leaf along two arrows is restricting it along their composite. -/
+theorem keepAlong_comp (hF : ModalSys.Four = true) {w : F.W} (v : F.Acc w) (s : F.Acc v.1)
+    (ℓ : F.Leaf Root w) :
+    keepAlong hF s (keepAlong hF v ℓ) =
+      keepAlong hF ⟨s.1, ⟨F.trans hF v.2.down s.2.down⟩⟩ ℓ := by
+  cases ℓ with
+  | root r p =>
+      exact congrArg (fun r' => Arrows.Leaf.root r' p)
+        (Arrows.RootKeepLaws.keep_trans hF r v s)
+  | fam f =>
+      refine congrArg Arrows.Leaf.fam (funext fun t => ?_)
+      change f ⟨t.1, ⟨F.trans hF v.2.down (F.trans hF s.2.down t.2.down)⟩⟩ =
+        f ⟨t.1, ⟨F.trans hF (F.trans hF v.2.down s.2.down) t.2.down⟩⟩
+      rw [F.trans_assoc hF]
+
+/-- Under T, restricting a leaf along the identity is the leaf. -/
+theorem keepAlong_refl (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {w : F.W}
+    (ℓ : F.Leaf Root w) : keepAlong hF (F.reflAcc hT w) ℓ = ℓ := by
+  cases ℓ with
+  | root r p =>
+      exact congrArg (fun r' => Arrows.Leaf.root r' p) (Arrows.RootKeepLaws.keep_refl hT hF r)
+  | fam f =>
+      refine congrArg Arrows.Leaf.fam (funext fun t => ?_)
+      change f ⟨t.1, ⟨F.trans hF (F.refl hT w) t.2.down⟩⟩ = f t
+      rw [F.refl_trans hT hF]
+
+/-- ⭐**Keeping a kept possibility**: keeping again at the next level is shifting at this one —
+    at the anchor's level by the root action's composition law, below it by path arithmetic. -/
+theorem shift_dk (hF : ModalSys.Four = true) :
+    ∀ (j : ℕ) {w : F.W} (ℓ : F.Leaf Root w),
+      shift hF j (dk hF j ℓ) = dk hF (j + 1) (dk hF j ℓ)
+  | 0, _, ℓ =>
+      congrArg Arrows.Leaf.fam (funext fun s => congrArg Arrows.Leaf.fam (funext fun t =>
+        (keepAlong_comp hF s t ℓ).symm))
+  | j + 1, _, .root r p => by
+      rw [dk_root_succ hF j, shift_root, dk_root_succ hF (j + 1)]
+      exact congrArg (Arrows.Leaf.root r) (Step.shiftAt_keepAt (j + 1) p)
+  | j + 1, _, .fam f =>
+      congrArg Arrows.Leaf.fam (funext fun s => shift_dk hF j (f s))
 
 end Keep
 
