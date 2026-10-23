@@ -144,6 +144,25 @@ theorem sat_liftRead {M : Model.{u, v} σ} (hF : ModalSys.Four = true) {T : VarT
       exact (sat_mono (Env.extend_agree (Env.diaPush_agree hag hy.choose_spec i _) (.bnd 0) o)
         φ).mpr ho
 
+/-- ⭐**The join follows from the `◇`-lift** (docs §3 4, "4's strong forms", Finding 3): along
+    an arrow, every member of a possible object's extent there lies, composed with the arrow, in
+    the extent of a possible object here, with the same content.  The `◇`-lift gives `z` with
+    `posKeep z a = q`, and the weak law (`Model.posKeep_full`) pulls the extent back. -/
+theorem join_of_keepLift (M : Model.{u, v} σ) (hF : ModalSys.Four = true)
+    (hW : ModalSys.FourStrongW = true) {A : VarType} {w : M.frame.W} (a : M.frame.Acc w)
+    (q : M.frame.Pos A a.1) (b : M.frame.Acc a.1) (hb : b ∈ (M.posEval q).1) :
+    ∃ (z : M.frame.Pos A w)
+      (hz : (⟨b.1, ⟨M.frame.trans hF a.2.down b.2.down⟩⟩ : M.frame.Acc w) ∈ (M.posEval z).1),
+      (M.posEval z).2 ⟨_, hz⟩ = (M.posEval q).2 ⟨b, hb⟩ := by
+  obtain ⟨z, hz⟩ := M.keepLift hF (T := .VTypeDia A) (by simp [VarType.liftable, hW]) a q
+  change M.necEval (M.ops.posKeep hF z) a = q at hz
+  have H := congrArg Prod.fst (M.posKeep_full hF z a)
+  rw [hz] at H
+  have hm : b ∈ {b' : M.frame.Acc a.1 | (⟨b'.1, ⟨M.frame.trans hF a.2.down b'.2.down⟩⟩ :
+      M.frame.Acc w) ∈ (M.posFull z).1.1} := by
+    exact (congrArg (fun S : M.frame.PosSec A a.1 => b ∈ S.1) H).mp hb
+  exact ⟨z, hm, (sec_apply H ⟨b, hb⟩ hm).symm⟩
+
 /-- ⭐**Soundness.** -/
 theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : Proof σ Γ Δ φ) :
     ∀ (M : Model.{u, v} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),

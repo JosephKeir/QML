@@ -2430,6 +2430,48 @@ addresses, carries both lifts at every type, with equality.  Refinements recorde
   `□`, then `four_dia`).
 * Next, per the order: weak 4 on the growing tree.
 
+#### The join, and the growing tree's first layer *(2026-10-23)*
+
+**The join, semantically.**  `Model.join_of_keepLift` (`QML_v12m_Soundness.lean`): under `Four`
+and `FourStrongW`, for every arrow `a`, every `q : Pos A a.1` and every `b ∈ ext q`, some
+`z : Pos A w` has the composite `a ; b` in its extent, with the same content there.  The proof
+lifts `q` to `z` (`keepLift` at `◇A`) and reads `posKeep_full` at `z`.  So the join is a
+consequence of the `◇`-lift in every model.  A syntactic derived rule
+(`◇∃y:◇A. ◇_y (shift φ) ⊢ ∃z. ◇_z φ`) is still optional and not needed by the canonical side.
+
+**Finding: arrows must be item maps.**  B's arrows are index maps on roots (`img : ℕ → ℕ`): all
+the items of a root land in one variable of the target (`itemAt z r.q`).  A lift sends `m.keep`
+to an *existing* address `n` of the target, and two roots may share an image.  So the growing
+tree's arrows send each **item**, an address ending in a level step (`u.box`, `u.keep`, `x.dia`),
+to an address of the target.  A fresh realisation still fills the components of one fresh
+variable; a lift does not.  B's `arrowS` is the instance `u.box ↦ itemImg img u`.
+
+**Built: `QML_v12m_GSyntax.lean`** (namespace `GArrow`, sorry-free):
+* `itemS σ Δ f`, the renaming of an item map `f`, and `itemIdx f`, its index map: split the
+  address at its first level step (`splitLevel`, unique by `splitLevel_ppath`), the item before
+  it to its image, the rest kept.
+* `ItemOk Γ Δ f` (images at the items' types), `ok_itemS`, `coh_itemS`; the items of a world's
+  views are projection paths followed by a level step (`boxIn_item`, `diaIn_item`, without
+  `NoFour`), so `coh_itemS_boxIn` and `coh_itemS_diaIn`.
+
+**Build plan for the growing tree** (one file each, mirroring B's network):
+1. ✓ `GSyntax`: item-map arrows.
+2. `GItems`: the items of a root under 4.  The type of a fresh realisation: `□A ↦ A × □A` (box
+   contents, then the kept object), `◇A ↦ ◇A`, products componentwise, other leaves `𝟙`.  Under
+   T + 4 (`keepOnly`), `□A ↦ □A × items(A)`, the kept object, then the items of `u.here`.  Where
+   each item lands in it (the `itemAt` of 4).
+3. `GAbs`: tuple and abstraction under 4 (`instantiate_tup_abs`, `subst_arrow_abs` for item
+   maps), as `BAbs`.
+4. `GLocal`: `Transfer` over item maps, `realise_consistent`.  Then the lift's consistency: the
+   type `S` of paper check 1 (pull-back, `keep_lift`, `∀`-elimination at `m.box`).
+5. `GNet`: the network state without back arrows (nodes, children with kind and content, edges
+   with item maps), its operations (birth, commitment, lift) and invariant (`Good`), as `BNet`.
+6. `GFair`: the schedule, fairness and the limit, as `BFair` and `BLimit`.
+7. `GCanon`: the canonical model: frame of relational paths, domains of addresses, `keep` and
+   extents by translation, the laws (weak 4, then the lifts).
+8. `GTruth`: the truth lemma and completeness.  K4 and D4 first, then T + 4, then the flags.  Then
+   `ModalSys.NoB` drops `noFourStrong`/`noFourStrongW`.
+
 
 **Flags.**  Two, as `BStrong`/`BStrongW`: the lift and the join need different constructions, and
 the lift pulls against density (§2c).
