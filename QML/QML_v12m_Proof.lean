@@ -39,6 +39,16 @@ abbrev WFF.closed {σ : Signature} {d : ℕ} (Γ : Ctx) (ψ : WFF σ Ctx.empty d
 abbrev WFF.diaBox {σ : Signature} {Γ : Ctx} (φ : WFF σ Γ.boxIn.boxIn 0) : WFF σ Γ 0 :=
   (WFF.box (Γ := Γ) (WFF.box (Γ := Γ.boxIn) φ).neg).neg
 
+/-- `□_x Here(◇_{x.keep}(shift bd), bd)`: at each member of `x`'s extent, `x` kept there is
+    realised with `bd`'s value — the conclusion of `Proof.here_keep` (T + 4).  The subject is a
+    term of the `□` view (`x.keep` lives there), moved into `x`'s. -/
+abbrev WFF.hereKeep {σ : Signature} {Γ : Ctx} (hT : ModalSys.T = true)
+    (hF : ModalSys.Four = true) (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    {A : VarType} {a : Ann A} (bd : Term σ (Γ.diaIn x) A a) : WFF σ Γ 0 :=
+  WFF.boxx x hx (WFF.here hT (Term.mono (Ctx.le_boxIn_diaIn Γ x)
+    (Term.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
+      (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) bd))) bd)
+
 inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ Γ 0 → Type where
   -- Structural
   | ax {Γ : Ctx} (φ : WFF σ Γ 0) : Proof σ Γ [φ] φ
@@ -150,14 +160,22 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
   /-- ⭐**What holds throughout a possible object's extent holds, kept, further in** (the `◇` side
       of weak 4): `four_box` with the witness carried, `□_x φ ⊢ □□_{x.keep}(shift φ)`.  Its
       `◇`-form is `◇◇_{x.keep}(shift φ) ⊢ ◇_x φ`: a route through the restriction of `x` is a
-      route of `x`.  *Staged:* without T for now (docs §3 4, Finding 4); under T + 4 it comes
-      with `here_keep`, `□_x Here(x.keep, x.dia)`. -/
-  | four_dia {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false)
+      route of `x`.  Under T + 4 it comes with `here_keep`. -/
+  | four_dia {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = true)
       {Δ : List (WFF σ Γ 0)} {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
       {φ : WFF σ (Γ.diaIn x) 0} :
       Proof σ Γ Δ (WFF.boxx x hx φ) →
-      Proof σ Γ Δ (.box (WFF.boxx (.step x .keep) (Ctx.exists_keep_dia hF hnS hx)
-        (WFF.shift (Ctx.shifts_diaIn_keep hF hnS Γ x) Ctx.NoSlots.slots φ)))
+      Proof σ Γ Δ (.box (WFF.boxx (.step x .keep) (Ctx.exists_keep_dia hF hx)
+        (WFF.shift (Ctx.shifts_diaIn_keep hF Γ x) Ctx.NoSlots.slots φ)))
+  -- T + 4
+  /-- ⭐**A possible object, kept, is realised at each member of its extent** (T + 4):
+      `□_x Here(◇_{x.keep}(shift bd), bd)` (`WFF.hereKeep`), for any body `bd` of `x`'s view, as
+      `four_dia` is stated.  The address form, `bd = x.dia`, is its η-instance; the general form is
+      closed under substitution.  Not derivable (docs §3 4, "T + 4 on paper" (a)). -/
+  | here_keep {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+      (hF : ModalSys.Four = true) (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+      {A : VarType} {a : Ann A} (bd : Term σ (Γ.diaIn x) A a) :
+      Proof σ Γ Δ (WFF.hereKeep hT hF x hx bd)
   -- Strong T
   /-- ⭐**Every object has a possible object realised here**, as an `∃`-elimination: the witness
       `c : ◇A` is fresh, and the subproof gets the single hypothesis `Here (η c) t`.  Its validity

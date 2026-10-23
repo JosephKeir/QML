@@ -185,7 +185,7 @@ noncomputable def ops : B.frame.Ops where
   necExtract hT n :=
     B.toDom _ _ (B.rawEval (.extract hT) _ n.1) (definable_rawEval (.extract hT) n.2)
   necDup hF _ := (noFour hF).elim
-  posKeep hF _ _ := (noFour hF).elim
+  posKeep hF _ := (noFour hF).elim
 
 /-- ⭐Evaluating a map on a frame object is evaluating it on the raw object. -/
 theorem eval_toDom : ∀ {A C : VarType} (g : GFunc σ A C) (s : B.W) (o : B.RDom A s)
@@ -207,7 +207,7 @@ theorem eval_toDom : ∀ {A C : VarType} (g : GFunc σ A C) (s : B.W) (o : B.RDo
   | _, _, .strength _ _, _, _, _ => rfl
   | _, _, .extract _, _, _, _ => rfl
   | _, _, .dup hF, _, _, _ => (noFour hF).elim
-  | _, _, .dkeep hF _, _, _, _ => (noFour hF).elim
+  | _, _, .dkeep hF, _, _, _ => (noFour hF).elim
 
 /-- ⭐Evaluation of possible objects, in full: the section and, when shaped, the stored shape. -/
 def posFull {A : VarType} {s : B.W} (p : B.frame.Pos A s) :
@@ -783,6 +783,17 @@ theorem posBack_exists_canon (hS : ModalSys.BStrong = true)
     exact ((Canon.DTerm.rel_lift _ hstg).symm.trans hrel).trans
       (Canon.DTerm.rel_lift (⟨i, a, t⟩ : Canon.DTerm (B.w w).sys (B.w w).T A) hij).symm
 
+/-- ⭐**The network's shapes are well-formed** (`Model.posShape_wf`), as in the tree: a possible
+    object is a term's denotation, whose stored shape is the term's symbolic shape in the
+    canonical shape environment (`rawShape_rden`). -/
+theorem posShape_wf_canon (hSh : ModalSys.shaped = true) {A : VarType} {s : B.W}
+    (p : B.frame.Pos A s) :
+    Model.ShWF (F := B.arrows) (Root := fun _ => VarSymb) [] (p.1.3 hSh) := by
+  obtain ⟨i, a, t, ht⟩ := p.2
+  change Model.ShWF [] (B.rawShape hSh p.1)
+  rw [← ht, B.rawShape_rden hSh]
+  exact Model.shWF_termShp (lw := []) (B.canonEnvF_wf _ s id) t
+
 /-- ⭐The canonical model. -/
 noncomputable def model : Model.{0, 0} σ where
   frame := B.frame
@@ -795,6 +806,7 @@ noncomputable def model : Model.{0, 0} σ where
   posFull p := B.posFull p
   posFull_inj := fun h => B.posFull_injective (Prod.ext (congrArg Prod.fst h :)
     (funext fun hSh => congrFun (congrArg Prod.snd h) hSh))
+  posShape_wf := fun hSh {_} {_} p => B.posShape_wf_canon hSh p
   ops := B.ops
   necMap_eval g _ a := (B.eval_toDom g a.1 _ _).symm
   necPair_eval _ _ _ := rfl

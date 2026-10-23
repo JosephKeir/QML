@@ -203,14 +203,14 @@ theorem SubE.keepE_eta {σ : Signature} {Δ : Ctx} (hF : ModalSys.Four = true) {
 
 /-- Under 4, the kept component of an η-expanded possible address. -/
 theorem SubE.keepE_eta_dia {σ : Signature} {Δ : Ctx} (hF : ModalSys.Four = true)
-    (hnS : ModalSys.shaped = false) {w : VarSymb} {A : VarType}
+ {w : VarSymb} {A : VarType}
     (hw : Δ.ref w = some (.VTypeDia A)) :
     (SubE.tm (Term.eta (σ := σ) w (.VTypeDia A) hw)).keepE =
       SubE.tm (Term.eta (.step w .keep) (.VTypeDia A)
-        (Ctx.ref_keep_of' hF hw (VarType.keepable_dia hnS))) := by
+        (Ctx.ref_keep_of' hF hw VarType.keepable_dia)) := by
   change (SubE.tm (Term.diatm (σ := σ) w ⟨A, hw⟩
     (Term.eta (.step w .dia) A (Ctx.ref_diaIn_of hw)))).keepE = _
-  rw [SubE.keepE_dia _ _ _ hF hnS]
+  rw [SubE.keepE_dia _ _ _ hF]
   exact SubE.tm_eq_of_sig (sig_diatm ((Term.shift_eta _ _ A _).trans
     (Term.eta_congr (VarSymb.shift_level_zero (s := .dia) rfl) A _ _)))
 
@@ -284,10 +284,10 @@ theorem Sim.keepE' (hF : ModalSys.Four = true) {T : VarType} (hk : T.keepable = 
       cases h with
       | refl => exact .refl _
       | eta_ren w h =>
-          rw [SubE.keepE_eta_dia hF (VarType.noShaped_of_keepable_dia hk) h]
+          rw [SubE.keepE_eta_dia hF h]
           exact .eta_ren _ _
       | ren_eta w h =>
-          rw [SubE.keepE_eta_dia hF (VarType.noShaped_of_keepable_dia hk) h]
+          rw [SubE.keepE_eta_dia hF h]
           exact .ren_eta _ _
   | _ => cases hk
 

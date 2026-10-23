@@ -1081,6 +1081,146 @@ theorem leafOf_shift (hF : ModalSys.Four = true) : ∀ (j : ℕ) (w : World σ N
         rw [leafOf_shift hF j s.1 l _ (ok_succAddrK s _ hok) ha' ht₀
           (splitAt_succAddrK_exists w s.1 h), succAddrK_shift]
 
+/-! ### Keeping a possible object: the label and the inside -/
+
+omit [ModalSys] in
+/-- A `keep` at the level of a path's end goes at the end. -/
+theorem Step.keepAt_levels : ∀ (p : List Step) (m : ℕ), Step.levels p = m →
+    Step.keepAt m p = p ++ [.keep]
+  | [], m, h => by
+      subst h
+      rfl
+  | s :: p, m, h => by
+      rw [Step.levels_cons] at h
+      by_cases hs : s.isProj = true
+      · rw [if_pos hs, Nat.zero_add] at h
+        have e : Step.keepAt m (s :: p) = s :: Step.keepAt m p := by
+          cases m <;> simp [Step.keepAt, hs]
+        rw [e, Step.keepAt_levels p m h]
+        rfl
+      · rw [if_neg hs] at h
+        obtain ⟨k, rfl⟩ : ∃ k, m = k + 1 := ⟨Step.levels p, by omega⟩
+        simp only [Step.keepAt, hs, Bool.false_eq_true, if_false, List.cons_append]
+        rw [Step.keepAt_levels p k (by omega)]
+
+theorem leafOf_none (w : World σ N₀) {m : ℕ} {y : VarSymb} (h : VarSymb.splitAt y m = none) :
+    leafOf w (m + 1) y = .fam fun s => leafOf s.1 m (succAddrK w s.1 m y) := by
+  simp only [leafOf, h]
+
+omit [ModalSys] in
+theorem splitAt_keep_succ (u : VarSymb) (m : ℕ) :
+    VarSymb.splitAt (.step u .keep) (m + 1) =
+      (VarSymb.splitAt u m).map fun q => (q.1, q.2.1, q.2.2 ++ [.keep]) := rfl
+
+omit [ModalSys] in
+/-- Shifting at a cut `n` times keeps the part before it `n` times. -/
+theorem shiftIterK_cut_eq (l : ℕ) : ∀ (n : ℕ) (a : VarSymb) {t : Step} (b : List Step),
+    t.isProj = false → Step.levels b = l →
+    shiftIterK l n (a.ext (t :: b)) = (VarSymb.keepIter n a).ext (t :: b)
+  | 0, _, _, _, _, _ => rfl
+  | n + 1, a, t, b, ht, hlv => by
+      have h₀ : VarSymb.splitAt (a.ext (t :: b)) l = some (a, t, b) := by
+        rw [← hlv]
+        exact VarSymb.splitAt_ext a ht b
+      change shiftIterK l n ((a.ext (t :: b)).shift l) = _
+      rw [(splitAt_shift_at h₀).1]
+      exact shiftIterK_cut_eq l n (.step a .keep) b ht hlv
+
+/-- ⭐**Keeping a canonical label keeps its address**: `dk` at the anchor's level is the family
+    of the kept roots (`keepIter` by the depth, which is how `succAddr` reads a `keep`), and below
+    it a `keep` at the end of the path. -/
+theorem leafOf_dk (hF : ModalSys.Four = true) : ∀ (j : ℕ) (w : World σ N₀) (u : VarSymb),
+    Arrows.Leaf.dk hF j (leafOf w j u) = leafOf w (j + 1) (.step u .keep)
+  | 0, w, u => by
+      have hk : VarSymb.splitAt (.step u .keep) 0 = some (u, .keep, []) := rfl
+      rw [leafOf_zero, leafOf_lvl w hk (by decide)]
+      refine congrArg Arrows.Leaf.fam (funext fun s => ?_)
+      rw [succAddrK_zero_eq, succAddr_keep_self, leafOf_zero]
+      rfl
+  | m + 1, w, u => by
+      rcases hs : VarSymb.splitAt u m with _ | ⟨pre, t, rest⟩
+      · have hk : VarSymb.splitAt (.step u .keep) (m + 1) = none := by
+          rw [splitAt_keep_succ, hs]
+          rfl
+        rw [leafOf_none w hs, leafOf_none w hk]
+        refine congrArg Arrows.Leaf.fam (funext fun s => ?_)
+        rw [succAddrK_level w s.1 m u (rfl : Step.isProj .keep = false)]
+        exact leafOf_dk hF m s.1 _
+      · have hk : VarSymb.splitAt (.step u .keep) (m + 1) = some (pre, t, rest ++ [.keep]) := by
+          rw [splitAt_keep_succ, hs]
+          rfl
+        by_cases htd : t = .dia
+        · subst htd
+          obtain ⟨-, -, hlv⟩ := VarSymb.splitAt_spec hs
+          rw [leafOf_dia w hs, leafOf_dia w hk, Arrows.Leaf.dk_root_succ]
+          simp only [Step.keepAt, Step.isProj, Bool.false_eq_true, if_false]
+          rw [Step.keepAt_levels rest m hlv]
+        · rw [leafOf_lvl w hs htd, leafOf_lvl w hk htd]
+          refine congrArg Arrows.Leaf.fam (funext fun s => ?_)
+          rw [succAddrK_level w s.1 m u (rfl : Step.isProj .keep = false)]
+          exact leafOf_dk hF m s.1 _
+
+/-- ⭐**Keeping the inside of a canonical possibility** (`dkB`): `shift` everywhere below the
+    anchor's level — `leafOf_shift` with the cut at a `dia` — and at that level the family of the
+    roots kept by the depth. -/
+theorem leafOf_dkB (hF : ModalSys.Four = true) : ∀ (j : ℕ) (w : World σ N₀) (l : ℕ)
+    (x : VarSymb) {a : VarSymb} {b : List Step}, x.OK →
+    VarSymb.splitAt x l = some (a, .dia, b) →
+    (∃ p q r, VarSymb.splitAt x (l + j) = some (p, q, r)) →
+    Arrows.Leaf.dkB hF j (leafOf w (l + j + 1) x) = leafOf w (l + j + 2) (x.shift l)
+  | 0, w, l, x, a, b, _, hx, _ => by
+      change Arrows.Leaf.dkB hF 0 (leafOf w (l + 1) x) = leafOf w (l + 1 + 1) (x.shift l)
+      obtain ⟨-, hk, -⟩ := splitAt_shift_at hx
+      obtain ⟨hxe, -, hlv⟩ := VarSymb.splitAt_spec hx
+      rw [leafOf_dia w hx, leafOf_lvl w hk (by decide)]
+      refine congrArg Arrows.Leaf.fam (funext fun s => ?_)
+      have hc : succAddrK w s.1 (l + 1) (x.shift l) =
+          (VarSymb.keepIter (s.1.depth - w.depth) a).ext (.dia :: b) := by
+        rcases hd : s.1.depth - w.depth with _ | d
+        · rw [succAddrK_zero hd, VarSymb.collapse_shift_self, hxe]
+          rfl
+        · rw [succAddrK_succ hd, shiftIterK_shift_same, hxe,
+            shiftIterK_cut_eq l (d + 1) a b rfl hlv]
+      have hs : VarSymb.splitAt ((VarSymb.keepIter (s.1.depth - w.depth) a).ext (.dia :: b)) l =
+          some (VarSymb.keepIter (s.1.depth - w.depth) a, .dia, b) := by
+        rw [← hlv]
+        exact VarSymb.splitAt_ext _ rfl b
+      rw [hc, leafOf_dia s.1 hs]
+      rfl
+  | j + 1, w, l, x, a, b, hok, hx, ⟨pre, t, rest, h⟩ => by
+      obtain ⟨hxe, htp, hlv⟩ := VarSymb.splitAt_spec h
+      by_cases htd : t = .dia
+      · subst htd
+        change Arrows.Leaf.dkB hF (j + 1) (leafOf w (l + (j + 1) + 1) x) =
+          leafOf w (l + j + 2 + 1) (x.shift l)
+        rw [leafOf_dia w h]
+        change Arrows.Leaf.root (F := arrows σ N₀) (Root := fun _ => VarSymb) (w := w) pre
+          (Step.shiftAt (j + 1) (.dia :: rest)) = _
+        rw [Step.shiftAt_succ (rfl : Step.isProj .dia = false)]
+        have hagree := VarSymb.shift_agree pre (.dia :: rest) l
+          (by rw [Step.levels_cons, if_neg (by decide)]; omega)
+        rw [Step.levels_cons, if_neg (by decide),
+          show 1 + Step.levels rest - 1 - l = j + 1 by omega,
+          Step.shiftAt_succ (rfl : Step.isProj .dia = false)] at hagree
+        rw [hxe, hagree]
+        have hl := levels_shiftAt j rest (by omega)
+        have hs := VarSymb.splitAt_ext pre (rfl : Step.isProj .dia = false)
+          (Step.shiftAt j rest)
+        rw [show Step.levels (Step.shiftAt j rest) = l + j + 2 by omega] at hs
+        rw [leafOf_dia w hs]
+      · change Arrows.Leaf.dkB hF (j + 1) (leafOf w (l + (j + 1) + 1) x) =
+          leafOf w (l + j + 1 + 1 + 1) (x.shift l)
+        rw [leafOf_lvl w h htd]
+        obtain ⟨rest', h'⟩ := splitAt_shift_below (k := l + j + 1) h (show l < l + j + 1 by omega)
+        rw [leafOf_lvl w h' htd]
+        change Arrows.Leaf.fam (fun (s : (arrows σ N₀).Acc w) => Arrows.Leaf.dkB hF j
+            (leafOf s.1 (l + j + 1) (succAddrK w s.1 (l + j + 1) x))) = _
+        congr 1
+        funext s
+        obtain ⟨a', ha'⟩ := splitAt_succAddrK_above w s.1 hx (show l < l + j + 1 by omega)
+        rw [leafOf_dkB hF j s.1 l _ (ok_succAddrK s _ hok) ha'
+          (splitAt_succAddrK_exists w s.1 h), succAddrK_shift]
+
 /-! ## Whole annotations: collapse and shift -/
 
 /-- The number of level steps of an address. -/
@@ -1228,6 +1368,57 @@ theorem annShp_eta_shift (hT : ModalSys.T = true) (hF : ModalSys.Four = true) :
         VarSymb.shift_level_succ (rfl : Step.isProj .dia = false)] at ih
       rw [leafOf_shift hF j w l z hok hz ht₀ (splitAt_of_lv hlv), ih]
 
+/-- ⭐**Keeping the inside of a canonical possibility, whole**: `annShp_eta_shift` with the cut at
+    the possibility's `dia` and `dkB` for the shift. -/
+theorem annShp_eta_dkB (hT : ModalSys.T = true) (hF : ModalSys.Four = true) :
+    ∀ (X : VarType) (w : World σ N₀) (j l : ℕ) (z : VarSymb) {a : VarSymb}
+      {b : List Step}, z.OK → VarSymb.splitAt z l = some (a, .dia, b) →
+      l + j < z.lv →
+      (annShp w (l + j + 1) (Ann.eta z X)).map (Arrows.Leaf.dkB hF j) =
+        annShp w (l + j + 2) (Ann.eta (z.shift l) X)
+  | .Var, _, _, _, _, _, _, _, _, _ => rfl
+  | .VTypeOne, _, _, _, _, _, _, _, _, _ => rfl
+  | .VTypeProd A B, w, j, l, z, a, b, hok, hz, hlv => by
+      have hf := VarSymb.splitAt_extend hz [.fst]
+      have hs := VarSymb.splitAt_extend hz [.snd]
+      simp only [Step.levels, Step.isProj, if_true, Nat.add_zero] at hf hs
+      change Shp.prod ((annShp w (l + j + 1) (Ann.eta (.step z .fst) A)).map _)
+          ((annShp w (l + j + 1) (Ann.eta (.step z .snd) B)).map _) =
+        Shp.prod (annShp w (l + j + 2) (Ann.eta (.step (z.shift l) .fst) A))
+          (annShp w (l + j + 2) (Ann.eta (.step (z.shift l) .snd) B))
+      rw [annShp_eta_dkB hT hF A w j l (.step z .fst)
+          (VarSymb.ok_step.mpr ⟨hok, Step.ok_of_proj rfl⟩) hf
+          (by rw [lv_step]; simpa [Step.isProj] using hlv),
+        annShp_eta_dkB hT hF B w j l (.step z .snd)
+          (VarSymb.ok_step.mpr ⟨hok, Step.ok_of_proj rfl⟩) hs
+          (by rw [lv_step]; simpa [Step.isProj] using hlv),
+        VarSymb.shift_proj (rfl : Step.isProj .fst = true),
+        VarSymb.shift_proj (rfl : Step.isProj .snd = true)]
+  | .VTypeBox A, w, j, l, z, a, b, hok, hz, hlv => by
+      have hi := VarSymb.splitAt_extend hz Step.innerPath
+      rw [← List.nil_append Step.innerPath, ← VarSymb.inner_ext z [], List.nil_append,
+        levels_innerPath] at hi
+      change Shp.box ((annShp w (l + j + 1 + 1) (Ann.eta z.inner A)).map _) =
+        Shp.box (annShp w (l + j + 2 + 1) (Ann.eta (z.shift l).inner A))
+      have ih := annShp_eta_dkB hT hF A w j (l + 1) z.inner (ok_inner hT hok) hi
+        (by rw [lv_inner]; omega)
+      rw [show l + 1 + j + 1 = l + j + 1 + 1 by omega, show l + 1 + j + 2 = l + j + 2 + 1 by omega,
+        VarSymb.inner_shift_succ] at ih
+      rw [ih]
+  | .VTypeDia A, w, j, l, z, a, b, hok, hz, hlv => by
+      have hd := VarSymb.splitAt_extend hz [.dia]
+      simp only [Step.levels, Step.isProj, Bool.false_eq_true, if_false, Nat.add_zero] at hd
+      change Shp.dia (Arrows.Leaf.dkB hF j (leafOf w (l + j + 1) z))
+          ((annShp w (l + j + 1 + 1) (Ann.eta (.step z .dia) A)).map _) =
+        Shp.dia (leafOf w (l + j + 2) (z.shift l))
+          (annShp w (l + j + 2 + 1) (Ann.eta (.step (z.shift l) .dia) A))
+      have ih := annShp_eta_dkB hT hF A w j (l + 1) (.step z .dia)
+        (VarSymb.ok_step.mpr ⟨hok, Step.ok_dia⟩) hd
+        (by rw [lv_step]; simp [Step.isProj]; omega)
+      rw [show l + 1 + j + 1 = l + j + 1 + 1 by omega, show l + 1 + j + 2 = l + j + 2 + 1 by omega,
+        VarSymb.shift_level_succ (rfl : Step.isProj .dia = false)] at ih
+      rw [leafOf_dkB hF j w l z hok hz (splitAt_of_lv hlv), ih]
+
 /-! ## Shape environments that read every address canonically -/
 
 /-- Every reachable address has at least `j` levels: `j` views have been entered. -/
@@ -1347,16 +1538,33 @@ theorem Canonical.boxPush (hT : ModalSys.T = true) {Δ : Ctx} (hok : Δ.DeclOK) 
       change annShp w (j + 1) (Ann.eta u.inner T) = _
       rw [VarSymb.inner_box hk]
   | .step u .keep, hv =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep_T hT hv
-      change (GFunc.shp (GFunc.dup (σ := σ) hF) j (ρ.ref j u hu)).inner = _
-      rw [hρ u _ hu]
-      change Shp.box ((annShp w (j + 1) (Ann.eta u.inner A)).map (Arrows.Leaf.shift hF j)) =
-        Shp.box (annShp w (j + 1 + 1) (Ann.eta (VarSymb.step u .keep).inner A))
-      obtain ⟨t, b, hi, ht⟩ := splitAt_inner u
-      have := annShp_eta_shift hT hF A w j 0 u.inner (ok_inner hT (hok.ref u hu)) hi ht
-        (by rw [lv_inner]; have := hdeep u _ hu; omega)
-      rw [Nat.zero_add] at this
-      rw [this, VarSymb.inner_shift_zero]
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
+      cases T with
+      | VTypeBox A =>
+          change (GFunc.shp (GFunc.dup (σ := σ) hF) j (ρ.ref j u hu)).inner = _
+          rw [hρ u _ hu]
+          change Shp.box ((annShp w (j + 1) (Ann.eta u.inner A)).map (Arrows.Leaf.shift hF j)) =
+            Shp.box (annShp w (j + 1 + 1) (Ann.eta (VarSymb.step u .keep).inner A))
+          obtain ⟨t, b, hi, ht⟩ := splitAt_inner u
+          have := annShp_eta_shift hT hF A w j 0 u.inner (ok_inner hT (hok.ref u hu)) hi ht
+            (by rw [lv_inner]; have := hdeep u _ hu; omega)
+          rw [Nat.zero_add] at this
+          rw [this, VarSymb.inner_shift_zero]
+      | VTypeDia A =>
+          -- ⭐A kept possible object: its label by `leafOf_dk`, its inside by `annShp_eta_dkB`.
+          change (GFunc.shp (GFunc.dkeep (σ := σ) hF) j (ρ.ref j u hu)).inner = _
+          rw [hρ u _ hu]
+          change Shp.dia (Arrows.Leaf.dk hF j (leafOf w j u))
+              ((annShp w (j + 1) (Ann.eta (.step u .dia) A)).map (Arrows.Leaf.dkB hF j)) =
+            Shp.dia (leafOf w (j + 1) (.step u .keep))
+              (annShp w (j + 1 + 1) (Ann.eta (.step (.step u .keep) .dia) A))
+          have hd : VarSymb.splitAt (.step u .dia) 0 = some (u, .dia, []) := rfl
+          have := annShp_eta_dkB hT hF A w j 0 (.step u .dia)
+            (VarSymb.ok_step.mpr ⟨hok.ref u hu, Step.ok_dia⟩) hd
+            (by rw [lv_step]; have := hdeep u _ hu; simp [Step.isProj]; omega)
+          rw [Nat.zero_add] at this
+          rw [leafOf_dk hF j w u, this, VarSymb.shift_level_zero (rfl : Step.isProj .dia = false)]
+      | _ => cases hk
   | .root _, hv => cases hv
   | .step _ .fst, hv => cases hv
   | .step _ .snd, hv => cases hv

@@ -1,5 +1,6 @@
 import QML.QML_v12m_CanonDom
 import QML.QML_v12m_HenkinRet
+import QML.QML_v12m_CanonInterch
 
 /-!
 # QML v12m — the canonical model: existence of successors
@@ -313,15 +314,45 @@ theorem diaWorld_acc (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
     Or.inl (Or.inl ⟨i', ψ, le_diag_max w i', hmem, rfl⟩)
   exact World.mem_mono_congr (diaWorld w x hx χ hχ) h _ (WorldLang.subset_finalT _ hk)
 
-/-- ⭐A possible formula holds at some successor in the extent of its witness. -/
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+/-- ⭐**A `Here` atom about a possible object makes its witness realised.**  `here_beta` at the unit
+    reduces the atom to realisedness, `here_name` names the witness's content, and the witnessed
+    theory declares the name: a `RealDatum`. -/
+theorem realised_of_here (hT : ModalSys.T = true) {w : World σ N₀} {x : VarSymb} {i : ℕ × ℕ}
+    {X : VarType} (hx : (w.L.ctx i).ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B}
+    (bd : Term σ ((w.L.ctx i).diaIn x) B β) {a : Ann B} (t : Term σ (w.L.ctx i) B a)
+    (h : (⟨i, WFF.here hT (Term.diatm x ⟨X, hx⟩ bd) t⟩ : w.L.sys.Sentence σ) ∈ w.T) :
+    w.Realised x :=
+  w.realised_of_datum (datum_of_here w.exW hT hx bd t h).some
+
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+/-- ⭐**Under T + 4 a `◇_x`-child realises `x` kept**: `here_keep` at the η-expansion of `x`'s
+    content is among the `□_x`-contents it holds, and that atom names the kept witness's content. -/
+theorem realised_keep_of_boxx (h4 : TFour) {w v : World σ N₀} {x : VarSymb} {i : ℕ × ℕ}
+    (hx : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X)) (hv : DiaView x w v)
+    (hbx : BoxxContents x w v) : v.Realised (.step x .keep) := by
+  obtain ⟨X, hr⟩ := hx
+  have hdia : ((w.L.ctx i).diaIn x).ref (.step x .dia) = some X := Ctx.ref_diaIn_of hr
+  have hmem : (⟨i, WFF.hereKeep h4.1 h4.2 x ⟨X, hr⟩ (Term.eta (.step x .dia) X hdia)⟩ :
+      w.L.sys.Sentence σ) ∈ w.T :=
+    World.mem_of_provable (Δ := []) (fun _ h => by simp at h)
+      ⟨Proof.here_keep h4.1 h4.2 x ⟨X, hr⟩ _⟩
+  have h₁ := hbx i ⟨X, hr⟩ _ (childStage i) (hv.leChild i) hmem
+  have hk : (v.L.ctx (childStage i)).ref (.step x .keep) = some (.VTypeDia X) :=
+    (hv.leChild i).ref ((Ctx.le_boxIn_diaIn _ x).ref
+      (Ctx.ref_keep_of' h4.2 hr VarType.keepable_dia))
+  exact realised_of_here h4.1 hk _ _ h₁
+
+/-- ⭐A possible formula holds at some successor in the extent of its witness: the `◇_x`-child
+    built for it, which holds everything `□_x`-necessary.  Under T + 4 it is a member because it
+    realises `x.keep` (`realised_keep_of_boxx`). -/
 theorem exists_dia (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
     (hx : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X)) (χ : WFF σ ((w.L.ctx i).diaIn x) 0)
     (hχ : (⟨i, .dia x hx χ⟩ : w.L.sys.Sentence σ) ∈ w.T) :
-    ∃ (w' : Succ w) (hw' : w' ∈ extent w x) (hd : w'.1.depth - w.depth = 1),
-      (⟨childStage i, WFF.mono (extent_le hw' hd i) χ⟩ : w'.1.L.sys.Sentence σ) ∈ w'.1.T := by
-  have hext : (⟨diaWorld w x hx χ hχ, ⟨R.of_acc (diaWorld_acc w x hx χ hχ)⟩⟩ : Succ w) ∈
-      extent w x := by
-    refine Or.inl ⟨0, fun h => absurd rfl h, diaWorld_acc w x hx χ hχ, fun _ => rfl, ?_⟩
+    ∃ (w' : Succ w) (_ : w' ∈ extent w x) (_ : w'.1.depth - w.depth = 1)
+      (hv : DiaView x w w'.1), BoxxContents x w w'.1 ∧
+      (⟨childStage i, WFF.mono (hv.leChild i) χ⟩ : w'.1.L.sys.Sentence σ) ∈ w'.1.T := by
+  have hbx : BoxxContents x w (diaWorld w x hx χ hχ) := by
     intro i' hx' ψ j h hmem
     have hk : (⟨max i'.1 i'.2, WFF.mono ((le_diag_max w i').diaIn x) ψ⟩ :
         ((diaLang w x).pre []).Sentence σ) ∈ diaStart w x χ :=
@@ -332,7 +363,15 @@ theorem exists_dia (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
     have h1 : (diaWorld w x hx χ hχ).depth = w.depth + 1 := (diaWorld_acc w x hx χ hχ).1
     change (diaWorld w x hx χ hχ).depth - w.depth = 1
     omega
-  refine ⟨_, hext, hdd, ?_⟩
+  have hext : (⟨diaWorld w x hx χ hχ, ⟨R.of_acc (diaWorld_acc w x hx χ hχ)⟩⟩ : Succ w) ∈
+      extent w x := by
+    by_cases h4 : TFour
+    · refine (mem_extent_tFour h4).mpr ?_
+      rw [hdd]
+      exact realised_keep_of_boxx h4 hx (fun _ => rfl) hbx
+    · rw [extent_of_not h4]
+      exact Or.inl ⟨0, fun h => absurd rfl h, diaWorld_acc w x hx χ hχ, fun _ => rfl, hbx⟩
+  refine ⟨_, hext, hdd, fun _ => rfl, hbx, ?_⟩
   have hk : (⟨max i.1 i.2, WFF.mono ((le_diag_max w i).diaIn x) χ⟩ :
       ((diaLang w x).pre []).Sentence σ) ∈ diaStart w x χ :=
     Or.inr rfl
@@ -345,7 +384,7 @@ theorem exists_extent_of_mem (w : World σ N₀) {i : ℕ × ℕ} (φ : WFF σ (
     ∃ (z : VarSymb) (_ : ∃ X, (w.L.ctx i).ref z = some (.VTypeDia X)) (w' : Succ w),
       w' ∈ extent w z := by
   obtain ⟨z, hz, χ, rfl⟩ := hdia
-  obtain ⟨w', hw', -, -⟩ := exists_dia w z hz χ hφ
+  obtain ⟨w', hw', -, -, -, -⟩ := exists_dia w z hz χ hφ
   exact ⟨z, hz, w', hw'⟩
 
 /-- ⭐Under strong D every world has a witness with a successor in its extent: the axiom

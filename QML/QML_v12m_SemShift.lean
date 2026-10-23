@@ -48,17 +48,6 @@ theorem _root_.V12M.Shp.map_congr'.{y} {L L' : Type y} {g g' : L → L'}
   | _, .box a => by simp only [Shp.map]; rw [Shp.map_congr' h a]
   | _, .dia ℓ a => by simp only [Shp.map]; rw [Shp.map_congr' h a, h]
 
-omit [ModalSys] in
-/-- Two sections with the same extent and the same contents are equal. -/
-theorem sec_ext {α : Type*} {β : α → Type*} {E₁ E₂ : Set α} {f₁ : (b : E₁) → β b.1}
-    {f₂ : (b : E₂) → β b.1} (hE : E₁ = E₂)
-    (hf : ∀ (b : α) (h₁ : b ∈ E₁) (h₂ : b ∈ E₂), f₁ ⟨b, h₁⟩ = f₂ ⟨b, h₂⟩) :
-    (⟨E₁, f₁⟩ : Σ E : Set α, (b : E) → β b.1) = ⟨E₂, f₂⟩ := by
-  subst hE
-  congr
-  funext b
-  exact hf b.1 b.2 b.2
-
 /-- Restricting a leaf along two arrows is restricting it along their composite. -/
 theorem keepAlong_keepAlong (hF : ModalSys.Four = true) {w : M.frame.W} (v : M.frame.Acc w)
     (s : M.frame.Acc v.1) (ℓ : M.frame.Leaf M.RootPoss w) :
@@ -78,10 +67,10 @@ theorem keepAlong_keepAlong (hF : ModalSys.Four = true) {w : M.frame.W} (v : M.f
 /-- ⭐**Keeping twice is keeping once along the composite**: a possible object restricted along
     `v`, then along `s`, is its restriction along `v ; s` — the extents by associativity, the
     labels by the root action's composition law. -/
-theorem posKeep_posKeep (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false) {A : VarType}
+theorem posKeep_posKeep (hF : ModalSys.Four = true) {A : VarType}
     {w : M.frame.W} (x : M.frame.Pos A w) (v : M.frame.Acc w) (s : M.frame.Acc v.1) :
-    M.necEval (M.ops.posKeep hF hnS (M.necEval (M.ops.posKeep hF hnS x) v)) s =
-      M.necEval (M.ops.posKeep hF hnS x) ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩ := by
+    M.necEval (M.ops.posKeep hF (M.necEval (M.ops.posKeep hF x) v)) s =
+      M.necEval (M.ops.posKeep hF x) ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩ := by
   apply M.posFull_inj
   rw [M.posKeep_full, M.posKeep_full, M.posKeep_full]
   dsimp only
@@ -256,16 +245,15 @@ theorem Env.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} (env : M.En
       obtain ⟨_, hu, hk⟩ := Ctx.boxIn_keep hx
       cases T with
       | VTypeDia A =>
-          have hnS := VarType.noShaped_of_keepable_dia hk
           rw [Env.ref_congr _ (VarSymb.shift_level_zero (s := .keep) rfl) _
             (Ctx.ref_keep_of' hF (Ctx.ref_keep_of' hF hu hk) hk), Env.ref,
             dif_neg (by decide : ¬ Step.keep.isProj = true)]
-          change M.necEval (M.ops.posKeep hF hnS (env.ref u hu)) ⟨s.1, _⟩ =
-            M.necEval (M.ops.posKeep hF hnS ((env.boxPush v).ref (.step u .keep)
+          change M.necEval (M.ops.posKeep hF (env.ref u hu)) ⟨s.1, _⟩ =
+            M.necEval (M.ops.posKeep hF ((env.boxPush v).ref (.step u .keep)
               (Ctx.ref_keep_of' hF hu hk))) s
           rw [Env.ref, dif_neg (by decide : ¬ Step.keep.isProj = true)]
-          change _ = M.necEval (M.ops.posKeep hF hnS
-            (M.necEval (M.ops.posKeep hF hnS (env.ref u hu)) v)) s
+          change _ = M.necEval (M.ops.posKeep hF
+            (M.necEval (M.ops.posKeep hF (env.ref u hu)) v)) s
           rw [posKeep_posKeep]
       | VTypeBox A =>
       rw [Env.ref_congr _ (VarSymb.shift_level_zero (s := .keep) rfl) _

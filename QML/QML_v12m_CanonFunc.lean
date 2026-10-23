@@ -321,10 +321,11 @@ noncomputable def rawEval :
             fun s => rawShape hT (o.1 s)) (o.2.3 hT).body)⟩
   | _, _, .extract hT, w, o => o ⟨w, ⟨R.refl hT w⟩⟩
   | _, _, .dup hF, _, o => fun v s => o ⟨s.1, ⟨R.trans hF v.2.down s.2.down⟩⟩
-  | _, _, .dkeep hF hnS, _, o => fun v =>
+  | _, _, .dkeep hF, _, o => fun v =>
       ⟨{b : Succ v.1 | (⟨b.1, ⟨R.trans hF v.2.down b.2.down⟩⟩ : Succ _) ∈ o.1},
         fun b => o.2 ⟨⟨b.1.1, ⟨R.trans hF v.2.down b.1.2.down⟩⟩, b.2⟩,
-        fun hT => absurd hT (by rw [ModalSys.T_false_of_unshaped hnS]; decide)⟩
+        fun hT => (o.3 hT).map
+          (Arrows.Leaf.keepAlong (F := arrows σ N₀) (Root := fun _ => VarSymb) hF v)⟩
 
 /-- A base-typed term with its (only possible) annotation. -/
 def varTerm {Γ : Ctx} : (Σ b : Ann .Var, Term σ Γ .Var b) → Term σ Γ .Var .var
@@ -351,41 +352,44 @@ def applyG :
   | _, _, .extract hT, Γ, _, .boxtm b => ⟨_, Term.collapse (Ctx.collapses_boxIn_self hT Γ) b⟩
   | _, _, .dup hF, Γ, _, .boxtm b =>
       ⟨_, .boxtm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))⟩
-  | _, _, .dkeep hF hnS, Γ, _, .diatm x hx c =>
-      ⟨_, .boxtm (.diatm (.step x .keep) (Ctx.exists_keep_dia hF hnS hx)
-        (Term.shift (Ctx.shifts_diaIn_keep hF hnS Γ x) c))⟩
+  | _, _, .dkeep hF, Γ, _, .diatm x hx c =>
+      ⟨_, .boxtm (.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
+        (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) c))⟩
 
 /-- ⭐**An applied map has the moved shape**: `applyG` moves a term's symbolic shape as `GFunc.shp`
     moves shapes — the `applyG` analogue of `termShp_compile`.  Where no possible object is kept:
     shapes are read only in shaped systems, which keep none yet (staged, docs §3 4). -/
 theorem termShp_applyG {F : Arrows.{u, v} σ} {Root : F.W → Type u} [Arrows.RootKeep F Root]
-    [Arrows.RootKeepLaws F Root] (hnd : ModalSys.NoDiaKeep) :
+    [Arrows.RootKeepLaws F Root] :
     ∀ {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} {a : Ann A} (t : Term σ Γ A a) {w : F.W}
-      (ρ : Model.ShEnv F Root Γ w) (j : ℕ),
+      (ρ : Model.ShEnv F Root Γ w) (j : ℕ) {lw : List Bool} (_hj : lw.length = j)
+      (_hwf : ModalSys.Four = true → ρ.WF lw),
       Model.termShp ρ j (applyG g t).2 = GFunc.shp g j (Model.termShp ρ j t)
-  | _, _, .id _, _, _, _, _, _, _ => rfl
-  | _, _, .comp g f, _, _, t, _, ρ, j =>
-      (termShp_applyG hnd g _ ρ j).trans
-        (congrArg (GFunc.shp g j) (termShp_applyG hnd f t ρ j))
-  | _, _, .fst, _, _, .pair _ _, _, _, _ => rfl
-  | _, _, .snd, _, _, .pair _ _, _, _, _ => rfl
-  | _, _, .pair f g, _, _, t, _, ρ, j => by
+  | _, _, .id _, _, _, _, _, _, _, _, _, _ => rfl
+  | _, _, .comp g f, _, _, t, _, ρ, j, _, hj, hwf =>
+      (termShp_applyG g _ ρ j hj hwf).trans
+        (congrArg (GFunc.shp g j) (termShp_applyG f t ρ j hj hwf))
+  | _, _, .fst, _, _, .pair _ _, _, _, _, _, _, _ => rfl
+  | _, _, .snd, _, _, .pair _ _, _, _, _, _, _, _ => rfl
+  | _, _, .pair f g, _, _, t, _, ρ, j, _, hj, hwf => by
       change Shp.prod (Model.termShp ρ j (applyG f t).2) (Model.termShp ρ j (applyG g t).2) = _
-      rw [termShp_applyG hnd f t ρ j, termShp_applyG hnd g t ρ j]
+      rw [termShp_applyG f t ρ j hj hwf, termShp_applyG g t ρ j hj hwf]
       rfl
-  | _, _, .unit _, _, _, _, _, _, _ => rfl
-  | _, _, .func _ _, _, _, _, _, _, _ => rfl
-  | _, _, .boxMap f, _, _, .boxtm b, _, ρ, j =>
-      congrArg Shp.box (termShp_applyG hnd f b (ρ.boxPush j) (j + 1))
-  | _, _, .boxPair _ _, _, _, .pair (.boxtm _) (.boxtm _), _, _, _ => rfl
-  | _, _, .boxUnit, _, _, .unit, _, _, _ => rfl
-  | _, _, .diaMap f, _, _, .diatm x hx c, _, ρ, j => by
+  | _, _, .unit _, _, _, _, _, _, _, _, _, _ => rfl
+  | _, _, .func _ _, _, _, _, _, _, _, _, _, _ => rfl
+  | _, _, .boxMap f, _, _, .boxtm b, _, ρ, j, lw, hj, hwf =>
+      congrArg Shp.box (termShp_applyG f b (ρ.boxPush j) (j + 1) (lw := lw ++ [true])
+        (by simp [hj]) (fun hF => by subst hj; exact Model.ShEnv.wf_boxPush (hwf hF)))
+  | _, _, .boxPair _ _, _, _, .pair (.boxtm _) (.boxtm _), _, _, _, _, _, _ => rfl
+  | _, _, .boxUnit, _, _, .unit, _, _, _, _, _, _ => rfl
+  | _, _, .diaMap f, _, _, .diatm x hx c, _, ρ, j, lw, hj, hwf => by
       obtain ⟨X, hr⟩ := id hx
       change Model.termShp ρ j (Term.diatm x hx (applyG f c).2) = _
       rw [Model.termShp_diatm ρ j hr, Model.termShp_diatm ρ j hr,
-        termShp_applyG hnd f c (ρ.diaPush j x hr) (j + 1)]
+        termShp_applyG f c (ρ.diaPush j x hr) (j + 1) (lw := lw ++ [false]) (by simp [hj])
+          (fun hF => by subst hj; exact Model.ShEnv.wf_diaPush (hwf hF) hr)]
       rfl
-  | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c), _, ρ, j => by
+  | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c), _, ρ, j, _, _, _ => by
       obtain ⟨X, hr⟩ := id hx
       change Model.termShp ρ j
         (Term.diatm x hx (.pair (Term.mono (Ctx.le_boxIn_diaIn Γ x) b) c)) = _
@@ -397,15 +401,24 @@ theorem termShp_applyG {F : Arrows.{u, v} σ} {Root : F.W → Type u} [Arrows.Ro
       change _ = Shp.dia _ (Shp.prod (Model.termShp (ρ.boxPush j) (j + 1) b) _)
       rw [← Model.termShp_mono (Model.ShEnv.box_dia_agree ρ j hr) (j + 1) b]
       rfl
-  | _, _, .extract hT, _, _, .boxtm b, _, ρ, j => Model.termShp_collapse_self hT ρ j b
-  | _, _, .dup hF, _, _, .boxtm b, _, ρ, j =>
+  | _, _, .extract hT, _, _, .boxtm b, _, ρ, j, _, hj, hwf =>
+      Model.termShp_collapse_self hT ρ j hj hwf b
+  | _, _, .dup hF, _, _, .boxtm b, _, ρ, j, _, _, _ =>
       congrArg (fun z => Shp.box (Shp.box z)) (Model.termShp_shift_twoBox hF ρ j b)
-  | _, _, .dkeep hF hnS, _, _, .diatm _ _ _, _, _, _ => by
-      rcases hnd with h | h
-      · rw [hF] at h
-        cases h
-      · rw [hnS] at h
-        cases h
+  | _, _, .dkeep hF, Γ, _, .diatm x hx c, _, ρ, j, lw, hj, hwf => by
+      -- ⭐Keeping a possible term: its label by the root action, its inside by `dkB`.
+      subst hj
+      obtain ⟨X, hr⟩ := id hx
+      have hxk : Γ.boxIn.ref (.step x .keep) = some (.VTypeDia X) :=
+        Ctx.ref_keep_of' hF hr VarType.keepable_dia
+      change Shp.box (Model.termShp (ρ.boxPush lw.length) (lw.length + 1)
+          (Term.diatm (.step x .keep) _ (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) c))) =
+        GFunc.shp (GFunc.dkeep (σ := σ) hF) lw.length
+          (Model.termShp ρ lw.length (Term.diatm x hx c))
+      rw [Model.termShp_diatm _ _ hxk, Model.termShp_diatm _ _ hr,
+        Model.termShp_shift_diaKeep hF ρ (hwf hF) hr hxk c,
+        Model.ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
+      rfl
 
 theorem varTerm_collapse {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Collapses k Γ₁ Γ₂) :
     ∀ p : (Σ b : Ann .Var, Term σ Γ₁ .Var b),
@@ -468,10 +481,10 @@ theorem applyG_collapse :
       exact (sig_boxtm (sig_boxtm (Term.collapse_shift (k := k) (m := 0)
         (Ctx.shifts_boxIn_boxIn hF Γ₁) h.boxIn.boxIn h.boxIn
         (Ctx.shifts_boxIn_boxIn hF Γ₂) b))).symm
-  | _, _, .dkeep hF hnS, k, Γ₁, Γ₂, h, _, .diatm x _ c => by
+  | _, _, .dkeep hF, k, Γ₁, Γ₂, h, _, .diatm x _ c => by
       simp only [applyG, Term.collapse]
-      have H := Term.collapse_shift (k := k) (m := 0) (Ctx.shifts_diaIn_keep hF hnS Γ₁ x)
-        (h.boxIn.diaIn (.step x .keep)) (h.diaIn x) (Ctx.shifts_diaIn_keep hF hnS Γ₂ (x.collapse k))
+      have H := Term.collapse_shift (k := k) (m := 0) (Ctx.shifts_diaIn_keep hF Γ₁ x)
+        (h.boxIn.diaIn (.step x .keep)) (h.diaIn x) (Ctx.shifts_diaIn_keep hF Γ₂ (x.collapse k))
         c
       first
         | exact sig_boxtm (sig_diatm H)
@@ -599,10 +612,10 @@ theorem applyG_shift :
       exact (sig_boxtm (sig_boxtm (Term.shift_shift (k := k) (m := 0)
         (Ctx.shifts_boxIn_boxIn hF Γ₁) h.boxIn.boxIn h.boxIn
         (Ctx.shifts_boxIn_boxIn hF Γ₂) b))).symm
-  | _, _, .dkeep hF hnS, k, Γ₁, Γ₂, h, _, .diatm x _ c => by
+  | _, _, .dkeep hF, k, Γ₁, Γ₂, h, _, .diatm x _ c => by
       simp only [applyG, Term.shift]
-      have H := Term.shift_shift (k := k) (m := 0) (Ctx.shifts_diaIn_keep hF hnS Γ₁ x)
-        (h.boxIn.diaIn (.step x .keep)) (h.diaIn x) (Ctx.shifts_diaIn_keep hF hnS Γ₂ (x.shift k)) c
+      have H := Term.shift_shift (k := k) (m := 0) (Ctx.shifts_diaIn_keep hF Γ₁ x)
+        (h.boxIn.diaIn (.step x .keep)) (h.diaIn x) (Ctx.shifts_diaIn_keep hF Γ₂ (x.shift k)) c
       first
         | exact sig_boxtm (sig_diatm H)
         | exact (sig_boxtm (sig_diatm H)).symm
@@ -666,33 +679,33 @@ theorem applyG_subst :
         θ.box.box (Subst.ok_box (Subst.ok_box hθ))
         (Subst.coh_box (Subst.ok_box hθ) (Subst.coh_box hθ hc))
         (Subst.shiftCorr_box_box hF hθ) b))
-  | _, _, .dkeep hF hnS, ι, Γ, Δ, θ, hθ, hc, _, .diatm x hx c => by
+  | _, _, .dkeep hF, ι, Γ, Δ, θ, hθ, hc, _, .diatm x hx c => by
       obtain ⟨X, hX⟩ := id hx
       have hw : (θ.at x).idxAlong [] = ι x := hc x _ hX []
       have hwk : (θ.box.at (.step x .keep)).idxAlong [] = .step (ι x) .keep :=
-        Subst.idx_box_keep_dia hF hnS hθ hc hX
+        Subst.idx_box_keep_dia hF hθ hc hX
       have hk₂ : ι (.step x .keep) = .step (ι x) .keep := by
         have h := hc x _ hX [.keep]
         rw [SubE.idxAlong_keep_dia (Subst.okRef_at hθ hX), hw] at h
         exact h.symm
       obtain ⟨X₂, hy₂⟩ := SubE.ref_witness (Subst.okRef_at hθ hX) hw
       have hxk : ∃ X', Γ.boxIn.ref (.step x .keep) = some (.VTypeDia X') :=
-        Ctx.exists_keep_dia hF hnS hx
+        Ctx.exists_keep_dia hF hx
       change (⟨_, Term.boxtm (Term.diatm (.step (ι x) .keep) _
-          (Term.shift (Ctx.shifts_diaIn_keep hF hnS Δ (ι x))
+          (Term.shift (Ctx.shifts_diaIn_keep hF Δ (ι x))
             (Term.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) c)))⟩ :
           Σ b, Term σ Δ (.VTypeBox (.VTypeDia _)) b) =
         ⟨_, Term.boxtm (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc)
-          (Term.diatm (.step x .keep) hxk (Term.shift (Ctx.shifts_diaIn_keep hF hnS Γ x) c)))⟩
+          (Term.diatm (.step x .keep) hxk (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) c)))⟩
       refine sig_boxtm (Eq.symm ((Term.subst_diatm_sig θ.box
         (Subst.ok_box hθ) (Subst.coh_box hθ hc) hxk _ hk₂ hwk
         (Subst.ok_dia (Subst.ok_box hθ) hxk hwk)
         (hk₂ ▸ Subst.coh_dia (Subst.ok_box hθ) (Subst.coh_box hθ hc) hxk)
-        ⟨X₂, Ctx.ref_keep_of' hF hy₂ (VarType.keepable_dia hnS)⟩).trans (sig_diatm ?_)))
-      exact (Term.shift_subst (Ctx.shifts_diaIn_keep hF hnS Γ x)
-        (Ctx.shifts_diaIn_keep hF hnS Δ (ι x)) (θ.dia x (ι x))
+        ⟨X₂, Ctx.ref_keep_of' hF hy₂ VarType.keepable_dia⟩).trans (sig_diatm ?_)))
+      exact (Term.shift_subst (Ctx.shifts_diaIn_keep hF Γ x)
+        (Ctx.shifts_diaIn_keep hF Δ (ι x)) (θ.dia x (ι x))
         (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) _ _ _
-        (Subst.shiftCorr_dia_keep hF hnS hθ hx hw) c).symm
+        (Subst.shiftCorr_dia_keep hF hθ hx hw) c).symm
 
 /-- Applying a definable map commutes with weakening. -/
 theorem applyG_mono :
@@ -742,9 +755,9 @@ theorem applyG_mono :
       simp only [applyG, Term.mono]
       rw [Term.shift_mono (Ctx.shifts_boxIn_boxIn hF Γ) (Ctx.shifts_boxIn_boxIn hF Δ) h.boxIn
         h.boxIn.boxIn b]
-  | _, _, .dkeep hF hnS, Γ, Δ, h, _, .diatm x _ c => by
+  | _, _, .dkeep hF, Γ, Δ, h, _, .diatm x _ c => by
       simp only [applyG, Term.mono]
-      rw [Term.shift_mono (Ctx.shifts_diaIn_keep hF hnS Γ x) (Ctx.shifts_diaIn_keep hF hnS Δ x)
+      rw [Term.shift_mono (Ctx.shifts_diaIn_keep hF Γ x) (Ctx.shifts_diaIn_keep hF Δ x)
         (h.diaIn x) (h.boxIn.diaIn _) c]
 
 /-- ⭐Applying a definable map commutes with realisation (strong T): realisation is a
@@ -816,11 +829,10 @@ theorem applyG_shiftDia {A B : VarType} (g : GFunc σ A B) :
       applyG g (Term.shiftDia n hK t) = ⟨_, Term.shiftDia n hK (applyG g t).2⟩
   | 0, _, _, _, _, _ => rfl
   | n + 1, hK, Γ, x, _, t => by
-      have hF := (hK (Nat.succ_ne_zero n)).1
-      have hnS := (hK (Nat.succ_ne_zero n)).2
+      have hF := (hK (Nat.succ_ne_zero n))
       change applyG g (Term.shiftDia n (fun _ => hK (Nat.succ_ne_zero n))
-        (Term.shift (Ctx.shifts_diaIn_keep hF hnS Γ x) t)) = _
-      rw [applyG_shiftDia g n _ (Term.shift (Ctx.shifts_diaIn_keep hF hnS Γ x) t)]
+        (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) t)) = _
+      rw [applyG_shiftDia g n _ (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) t)]
       exact shiftDia_sigma _ (applyG_shift g _ t)
 
 theorem Term.shiftDia_pair : ∀ (n : ℕ) (hK : KeepOK n) {Γ : Ctx} {x : VarSymb}
@@ -832,10 +844,8 @@ theorem Term.shiftDia_pair : ∀ (n : ℕ) (hK : KeepOK n) {Γ : Ctx} {x : VarSy
   | 0, _, _, _, _, _, _, _, _, _ => rfl
   | n + 1, hK, Γ, x, _, _, _, _, s, t =>
       Term.shiftDia_pair n (fun _ => hK (Nat.succ_ne_zero n))
-        (Term.shift (Ctx.shifts_diaIn_keep (hK (Nat.succ_ne_zero n)).1
-          (hK (Nat.succ_ne_zero n)).2 Γ x) s)
-        (Term.shift (Ctx.shifts_diaIn_keep (hK (Nat.succ_ne_zero n)).1
-          (hK (Nat.succ_ne_zero n)).2 Γ x) t)
+        (Term.shift (Ctx.shifts_diaIn_keep (hK (Nat.succ_ne_zero n)) Γ x) s)
+        (Term.shift (Ctx.shifts_diaIn_keep (hK (Nat.succ_ne_zero n)) Γ x) t)
 
 /-- The `□` view taken once more, outermost. -/
 theorem Ctx.boxIter_succ' : ∀ (n : ℕ) (Γ : Ctx),
@@ -852,12 +862,11 @@ theorem Term.shiftDia_mono_boxIn : ∀ (n : ℕ) (hK : KeepOK n) (hF : n ≠ 0 �
       Term.mono hle (Term.shiftIter n hF b)
   | 0, _, _, _, _, _, _, _, _ => rfl
   | n + 1, hK, hF, Γ, x, _, _, b, hle => by
-      have hF' := (hK (Nat.succ_ne_zero n)).1
-      have hnS := (hK (Nat.succ_ne_zero n)).2
+      have hF' := (hK (Nat.succ_ne_zero n))
       change Term.shiftDia n (fun _ => hK (Nat.succ_ne_zero n))
-        (Term.shift (Ctx.shifts_diaIn_keep hF' hnS Γ x)
+        (Term.shift (Ctx.shifts_diaIn_keep hF' Γ x)
           (Term.mono (Ctx.le_boxIn_diaIn Γ x) b)) = _
-      rw [Term.shift_mono (Ctx.shifts_boxIn_boxIn hF' Γ) (Ctx.shifts_diaIn_keep hF' hnS Γ x)
+      rw [Term.shift_mono (Ctx.shifts_boxIn_boxIn hF' Γ) (Ctx.shifts_diaIn_keep hF' Γ x)
         (Ctx.le_boxIn_diaIn Γ x) (Ctx.le_boxIn_diaIn Γ.boxIn (.step x .keep)) b]
       exact Term.shiftDia_mono_boxIn n _ (fun _ => hF') (Γ := Γ.boxIn)
         (Term.shift (Ctx.shifts_boxIn_boxIn hF' Γ) b) hle
@@ -922,6 +931,61 @@ theorem rden_dup (hF : ModalSys.Four = true) : ∀ (p : ℕ) {A : VarType} {a : 
             (rden_boxtm_step hF e b ⟨s.1, ⟨R.trans hF v.2.down s.2.down⟩⟩
               hu (R.trans hF hr s.2.down) hsu).symm))
 
+/-- Under 4, at any successor past a proper successor `u` — under T + 4 `u` itself among
+    them — a necessary term denotes what its body shifted denotes from `u`. -/
+theorem rden_boxtm_step' (hF : ModalSys.Four = true) {A : VarType} {a : Ann A} {Γ : Ctx}
+    {w : World σ N₀} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (t : Term σ Γ.boxIn A a) (w' : Succ w)
+    {u : World σ N₀} (hu : Acc' w u) (hr : R u w'.1) :
+    rden w i e (.boxtm t) w' =
+      rden u (childStage i) (e.boxIn.trans (hu.boxIn_le i))
+        (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) t)) ⟨w'.1, ⟨hr⟩⟩ := by
+  rcases hd : w'.1.depth - u.depth with _ | q
+  · obtain ⟨hT, hwu⟩ := Succ.self (⟨w'.1, ⟨hr⟩⟩ : Succ u) hd
+    have hk : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
+    have hw1 : w'.1.depth - w.depth = 1 := by
+      change w'.1 = u at hwu
+      rw [hwu]
+      have := hu.1
+      omega
+    rw [rden_boxtm_self _ _ ⟨w'.1, ⟨hr⟩⟩ hd, rden_boxtm_acc e t w' hw1]
+    exact ((rden_sigma _ (Term.collapse_shift_same (Ctx.shifts_boxIn_boxIn hF Γ)
+      (Ctx.collapses_boxIn_self hT Γ.boxIn) (Ctx.Le.refl _)
+      (Ctx.shiftCollapseId_keepOnly hk Γ) t)).trans (rden_mono _ _ _ _ _)).symm
+  · exact rden_boxtm_step hF e t w' hu hr (by omega)
+
+/-- Realisation respects equality of the view term, annotations and all. -/
+theorem realisedTerm_sigma {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
+    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
+    {p q : Σ b : Ann A, Term σ (Γ.diaIn x) A b} (h : p = q) :
+    realisedTerm w hr e hx p.2 = realisedTerm w hr e hx q.2 := by
+  subst h
+  rfl
+
+/-- ⭐Under T + 4, a necessary body moved into a `◇_x` view reads at each member of `x`'s extent
+    what it reads there as a necessary term — by the distance, through the kept witness; at the
+    world itself the realisation collapses it (`rden_realisedTerm_mono_boxIn`). -/
+theorem rden_diatm_mono_boxIn_tFour (h4 : TFour) : ∀ (d : ℕ) {A : VarType} {a : Ann A}
+    {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {x : VarSymb}
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (b : Term σ Γ.boxIn A a) (w' : extent w x),
+    w'.1.1.depth - w.depth = d →
+      (rden w i e (.diatm x hx (Term.mono (Ctx.le_boxIn_diaIn Γ x) b))).2 w' =
+        rden w i e (.boxtm b) w'.1
+  | 0, _, _, Γ, w, i, e, x, hx, b, ⟨⟨w₁, hR⟩, hm⟩, hd => by
+      obtain ⟨_, hw⟩ := Succ.self ⟨w₁, hR⟩ hd
+      change w₁ = w at hw
+      subst hw
+      rw [rden_diatm_tFour h4 e hx _ _ hd, rden_boxtm_self e b _ hd]
+      exact rden_realisedTerm_mono_boxIn (extent_realised h4 hm hd) e hx b
+  | d + 1, _, _, Γ, w, i, e, x, hx, b, w', hd => by
+      obtain ⟨u, hu, hru, hdu⟩ := Succ.split₁ h4.1 w'.1 hd
+      rw [rden_diatm_step_tFour h4 e hx _ w' hu hru,
+        Term.shift_mono (Ctx.shifts_boxIn_boxIn h4.2 Γ) (Ctx.shifts_diaIn_keep h4.2 Γ x)
+          (Ctx.le_boxIn_diaIn Γ x) (Ctx.le_boxIn_diaIn Γ.boxIn (.step x .keep)) b]
+      exact (rden_diatm_mono_boxIn_tFour h4 d (Γ := Γ.boxIn) (e.boxIn.trans (hu.boxIn_le i))
+        (Ctx.exists_keep_dia h4.2 hx) (Term.shift (Ctx.shifts_boxIn_boxIn h4.2 Γ) b)
+        ⟨⟨w'.1.1, ⟨hru⟩⟩, (extent_keep_tFour h4 hu _).mp w'.2⟩ hdu).trans
+        (rden_boxtm_step' h4.2 e b w'.1 hu hru).symm
+
 /-! ### The strong-T gap
 
 Two facts about the content a realised witness has at the world itself.  Both are instances of a
@@ -942,21 +1006,70 @@ theorem RPos.ext_E {w : World σ N₀} {A : VarType} {C : Succ w → Type} {p q 
 
 section DKeep
 
-variable (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false)
+variable (hF : ModalSys.Four = true)
+
+/-- Keeping twice is keeping along the composite: the extents and contents compose the arrows,
+    the shapes by `keepAlong_comp`. -/
+theorem rawEval_dkeep_comp {A : VarType} {w : World σ N₀} (o : RDom (.VTypeDia A) w)
+    (u : Succ w) (v : Succ u.1) :
+    rawEval (.dkeep hF) u.1 (rawEval (.dkeep hF) w o u) v =
+      rawEval (.dkeep hF) w o ⟨v.1, ⟨R.trans hF u.2.down v.2.down⟩⟩ := by
+  refine RPos.ext_E rfl (fun _ _ _ => rfl) fun hT => ?_
+  change Shp.map _ (Shp.map _ _) = Shp.map _ _
+  rw [Shp.map_map]
+  exact Shp.map_congr (fun ℓ => Arrows.Leaf.keepAlong_comp hF u v ℓ) _
+
+/-- ⭐**The stored shapes of a kept possible object** are the object's, kept along each arrow:
+    read off at once for every successor through the transposition (`Model.transposeShp_inj`),
+    from the symbolic shapes (`rawShape_rden`, `termShp_applyG`). -/
+theorem rden_dkeep_tag (hT : ModalSys.T = true) {A : VarType} {a : Ann A} {Γ : Ctx}
+    {w : World σ N₀} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {x : VarSymb}
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (c : Term σ (Γ.diaIn x) A a) (v : Succ w) :
+    (rden w i e (.boxtm (.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
+        (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) c))) v).tag hT =
+      (rawEval (.dkeep hF) w (rden w i e (.diatm x hx c)) v).tag hT := by
+  have h₁ := rawShape_rden hT w i e (.boxtm (.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
+    (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) c)))
+  have h₂ := termShp_applyG (.dkeep hF) (.diatm x hx c) (cEnv Γ w) 0 (lw := []) rfl
+    (fun _ => canonEnvF_wf Γ w id)
+  have h₃ : (Shp.box (Arrows.transposeShp (F := arrows σ N₀) (Root := fun _ => VarSymb)
+        fun v => (rden w i e (.boxtm (.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
+          (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) c))) v).tag hT) : CShape w _) =
+      Shp.box (Arrows.transposeShp (F := arrows σ N₀) (Root := fun _ => VarSymb) fun v =>
+        (Model.termShp (cEnv Γ w) 0 (Term.diatm x hx c)).map
+          (Arrows.Leaf.keepAlong (F := arrows σ N₀) (Root := fun _ => VarSymb) hF v)) := by
+    refine h₁.trans (h₂.trans ?_)
+    rw [Model.transpose_map_const]
+    conv_rhs => rw [Shp.dia_eta (Model.termShp (cEnv Γ w) 0 (Term.diatm x hx c))]
+    rfl
+  exact congrFun (Model.transposeShp_inj (Shp.box.inj h₃)) v
 
 /-- ⭐**Keeping a possible object along a proper step is denoting the kept witness there**: the
-    extents agree by `extent_keep`, the contents by `rden_diatm_step`. -/
+    extents agree by `extent_keep` (under T + 4 `extent_keep_tFour`), the contents by
+    `rden_diatm_step` (`rden_diatm_step_tFour`), the shapes by `rden_dkeep_tag`. -/
 theorem rden_dkeep_acc {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
     (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
     (c : Term σ (Γ.diaIn x) A a) {u : World σ N₀} (hu : Acc' w u)
     (e' : Γ.boxIn.Le (u.L.ctx (childStage i))) :
-    rden u (childStage i) e' (.diatm (.step x .keep) (Ctx.exists_keep_dia hF hnS hx)
-        (Term.shift (Ctx.shifts_diaIn_keep hF hnS Γ x) c)) =
-      rawEval (.dkeep hF hnS) w (rden w i e (.diatm x hx c)) ⟨u, ⟨R.of_acc hu⟩⟩ := by
-  refine RPos.ext_E (Set.ext fun b => (extent_keep hF hnS hu b).symm) (fun b hp hq => ?_)
-    fun hT => absurd hT (by rw [ModalSys.T_false_of_unshaped hnS]; decide)
-  exact (rden_diatm_step hF hnS e hx c ⟨⟨b.1, ⟨R.trans hF (R.of_acc hu) b.2.down⟩⟩, hq⟩ hu
-    b.2.down).symm
+    rden u (childStage i) e' (.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
+        (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) c)) =
+      rawEval (.dkeep hF) w (rden w i e (.diatm x hx c)) ⟨u, ⟨R.of_acc hu⟩⟩ := by
+  have hu1 : (⟨u, ⟨R.of_acc hu⟩⟩ : Succ w).1.depth - w.depth = 1 := by
+    have := hu.1
+    change u.depth - w.depth = 1
+    omega
+  refine RPos.ext_E (Set.ext fun b => ?_) (fun b hp hq => ?_) fun hT => ?_
+  · by_cases h4 : TFour
+    · exact (extent_keep_tFour h4 hu b).symm
+    · exact (extent_keep hF h4 hu b).symm
+  · by_cases h4 : TFour
+    · exact (rden_diatm_step_tFour h4 e hx c ⟨⟨b.1, ⟨R.trans hF (R.of_acc hu) b.2.down⟩⟩, hq⟩ hu
+        b.2.down).symm
+    · exact (rden_diatm_step hF h4 e hx c ⟨⟨b.1, ⟨R.trans hF (R.of_acc hu) b.2.down⟩⟩, hq⟩ hu
+        b.2.down).symm
+  · have h := rden_dkeep_tag hF hT e hx c ⟨u, ⟨R.of_acc hu⟩⟩
+    rw [rden_boxtm_acc e _ _ hu1] at h
+    exact h
 
 /-- Keeping along a proper step, then along an arrow from there, is keeping along the
     composite. -/
@@ -964,53 +1077,66 @@ theorem rawEval_dkeep_step {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N�
     (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
     (c : Term σ (Γ.diaIn x) A a) {u : World σ N₀} (hu : Acc' w u)
     (e' : Γ.boxIn.Le (u.L.ctx (childStage i))) (v : Succ u) :
-    rawEval (.dkeep hF hnS) u (rden u (childStage i) e' (.diatm (.step x .keep)
-        (Ctx.exists_keep_dia hF hnS hx) (Term.shift (Ctx.shifts_diaIn_keep hF hnS Γ x) c))) v =
-      rawEval (.dkeep hF hnS) w (rden w i e (.diatm x hx c))
+    rawEval (.dkeep hF) u (rden u (childStage i) e' (.diatm (.step x .keep)
+        (Ctx.exists_keep_dia hF hx) (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) c))) v =
+      rawEval (.dkeep hF) w (rden w i e (.diatm x hx c))
         ⟨v.1, ⟨R.trans hF (R.of_acc hu) v.2.down⟩⟩ := by
-  refine RPos.ext_E (Set.ext fun b =>
-      (extent_keep hF hnS hu ⟨b.1, ⟨R.trans hF v.2.down b.2.down⟩⟩).symm)
-    (fun b hp hq => ?_) fun hT => absurd hT (by rw [ModalSys.T_false_of_unshaped hnS]; decide)
-  exact (rden_diatm_step hF hnS e hx c ⟨⟨b.1, _⟩, hq⟩ hu
-    (R.trans hF v.2.down b.2.down)).symm
+  rw [rden_dkeep_acc hF e hx c hu e']
+  exact rawEval_dkeep_comp hF _ ⟨u, ⟨R.of_acc hu⟩⟩ v
 
-/-- ⭐Under 4 without shapes, `□◇_{x.keep}` of the shifted body reads at every successor what
-    keeping `◇_x` of the body gives there — by the distance, as `rden_dup`. -/
+/-- ⭐Under 4, `□◇_{x.keep}` of the shifted body reads at every successor what keeping `◇_x` of the
+    body gives there — by the distance, as `rden_dup`.  At the world itself (T + 4) the collapse
+    undoes the shift and keeping along the identity is the identity. -/
 theorem rden_dkeep : ∀ (p : ℕ) {A : VarType} {a : Ann A} {Γ : Ctx} {x : VarSymb}
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (c : Term σ (Γ.diaIn x) A a) (w : World σ N₀)
     (i : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)) (v : Succ w), v.1.depth - w.depth = p →
-      rden w i e (.boxtm (.diatm (.step x .keep) (Ctx.exists_keep_dia hF hnS hx)
-          (Term.shift (Ctx.shifts_diaIn_keep hF hnS Γ x) c))) v =
-        rawEval (.dkeep hF hnS) w (rden w i e (.diatm x hx c)) v
-  | 0, _, _, _, _, _, _, _, _, _, v, hp => by
-      have hT := (v.self hp).1
-      rw [ModalSys.T_false_of_unshaped hnS] at hT
-      cases hT
+      rden w i e (.boxtm (.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
+          (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) c))) v =
+        rawEval (.dkeep hF) w (rden w i e (.diatm x hx c)) v
+  | 0, _, _, Γ, x, hx, c, w, i, e, ⟨v, hv⟩, hp => by
+      obtain ⟨hT, hw⟩ := Succ.self ⟨v, hv⟩ hp
+      change v = w at hw
+      subst hw
+      rw [rden_boxtm_self e _ ⟨v, hv⟩ hp]
+      have hsig : (⟨_, Term.collapse (Ctx.collapses_boxIn_self hT Γ)
+            (Term.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
+              (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) c))⟩ :
+            Σ b, Term σ Γ (.VTypeDia _) b) = ⟨_, Term.diatm x hx c⟩ := by
+        have H := Term.collapse_shift_self (Ctx.shifts_diaIn_keep hF Γ x)
+          ((Ctx.collapses_boxIn_self hT Γ).diaIn (.step x .keep)) (Ctx.Le.refl _) c
+        rw [Term.mono_refl] at H
+        exact sig_diatm H
+      rw [rden_sigma _ hsig]
+      refine RPos.ext_E rfl (fun _ _ _ => rfl) fun hT' => ?_
+      have e₁ : Arrows.Leaf.keepAlong (F := arrows σ N₀) (Root := fun _ => VarSymb) hF
+          (⟨v, hv⟩ : Succ v) = id := funext (Arrows.Leaf.keepAlong_refl hT hF)
+      change _ = Shp.map _ _
+      rw [e₁, Shp.map_id]
   | 1, _, _, _, _, hx, c, w, i, e, v, hp => by
       rw [rden_boxtm_acc e _ v hp]
-      exact rden_dkeep_acc hF hnS e hx c (v.acc hp) _
+      exact rden_dkeep_acc hF e hx c (v.acc hp) _
   | p + 2, _, _, Γ, x, hx, c, w, i, e, v, hp => by
       obtain ⟨u, hu, hr, hd⟩ := v.split hp
       rw [rden_boxtm_step hF e _ v hu hr (by omega)]
       have hsh : (⟨_, Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) (Term.diatm (.step x .keep)
-            (Ctx.exists_keep_dia hF hnS hx) (Term.shift (Ctx.shifts_diaIn_keep hF hnS Γ x) c))⟩ :
+            (Ctx.exists_keep_dia hF hx) (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) c))⟩ :
             Σ b, Term σ Γ.boxIn.boxIn (.VTypeDia _) b) =
           ⟨_, Term.diatm (.step (.step x .keep) .keep)
-            (Ctx.exists_keep_dia hF hnS (Ctx.exists_keep_dia hF hnS hx))
-            (Term.shift (Ctx.shifts_diaIn_keep hF hnS Γ.boxIn (.step x .keep))
-              (Term.shift (Ctx.shifts_diaIn_keep hF hnS Γ x) c))⟩ := by
+            (Ctx.exists_keep_dia hF (Ctx.exists_keep_dia hF hx))
+            (Term.shift (Ctx.shifts_diaIn_keep hF Γ.boxIn (.step x .keep))
+              (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) c))⟩ := by
         simp only [Term.shift]
-        have H := Term.shift_shift_same (m := 0) (Ctx.shifts_diaIn_keep hF hnS Γ x)
-          (Ctx.shifts_diaIn_keep hF hnS Γ.boxIn (.step x .keep))
+        have H := Term.shift_shift_same (m := 0) (Ctx.shifts_diaIn_keep hF Γ x)
+          (Ctx.shifts_diaIn_keep hF Γ.boxIn (.step x .keep))
           ((Ctx.shifts_boxIn_boxIn hF Γ).diaIn (.step x .keep)) c
         first
           | exact sig_diatm H
           | exact sig_diatm H.symm
       refine (congrFun (rden_sigma _ (sig_boxtm hsh)) ⟨v.1, ⟨hr⟩⟩).trans ?_
       exact (rden_dkeep (p + 1) (Γ := Γ.boxIn) (x := .step x .keep)
-          (Ctx.exists_keep_dia hF hnS hx) (Term.shift (Ctx.shifts_diaIn_keep hF hnS Γ x) c) u
+          (Ctx.exists_keep_dia hF hx) (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) c) u
           (childStage i) (e.boxIn.trans (hu.boxIn_le i)) ⟨v.1, ⟨hr⟩⟩ hd).trans
-        (rawEval_dkeep_step hF hnS e hx c hu _ ⟨v.1, ⟨hr⟩⟩)
+        (rawEval_dkeep_step hF e hx c hu _ ⟨v.1, ⟨hr⟩⟩)
 
 end DKeep
 
@@ -1065,31 +1191,41 @@ theorem rden_applyG :
         (c := (rden w i e (.diatm x hx (applyG f c).2)).2)
         (c' := fun w' => rawEval f w'.1.1 ((rden w i e (.diatm x hx c)).2 w'))
         (funext fun w' => by
+        by_cases h4 : TFour
+        · rw [rden_diatm_tFour h4 e hx _ w' rfl, rden_diatm_tFour h4 e hx c w' rfl]
+          exact (rden_sigma _ ((realisedTerm_sigma _ _ _ (applyG_shiftDia f _ _ c).symm).trans
+            (applyG_realisedTerm f _ _ _ _))).trans (rden_applyG f _ w'.1.1 _ _)
         rcases hd : w'.1.1.depth - w.depth with _ | k
         · have hr := (extent_self w'.2 hd).2
-          rw [rden_diatm_self e hx _ w' hd, rden_diatm_self e hx c w' hd,
+          rw [rden_diatm_self h4 e hx _ w' hd, rden_diatm_self h4 e hx c w' hd,
             ← rawEval_transport f _ _]
           refine rden_transport_congr _ ?_
           exact (rden_sigma _ (applyG_realisedTerm f hr e hx c)).trans (rden_applyG f _ w _ _)
-        · rw [rden_diatm_far e hx _ w' hd, rden_diatm_far e hx c w' hd]
+        · rw [rden_diatm_far h4 e hx _ w' hd, rden_diatm_far h4 e hx c w' hd]
           exact (rden_sigma _ (applyG_shiftDia f k _ c)).symm.trans (rden_applyG f _ w'.1.1 _ _))
-        fun hT => termShp_applyG (Or.inr (ModalSys.shaped_of_T hT)) (.diaMap f) (.diatm x hx c)
-          (cEnv Γ w) 0
+        fun _ => termShp_applyG (.diaMap f) (.diatm x hx c) (cEnv Γ w) 0 (lw := []) rfl
+          (fun _ => canonEnvF_wf Γ w id)
   | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c), w, i, e =>
       RPos.congr_cont (E := extent w x) (C := fun w' => RDom _ w'.1)
         (c := (rden w i e (.diatm x hx (.pair (Term.mono (Ctx.le_boxIn_diaIn Γ x) b) c))).2)
         (c' := fun w' => ((rden w i e (Term.boxtm b) w'.1, (rden w i e (Term.diatm x hx c)).2 w') :
           RDom (.VTypeProd _ _) w'.1.1))
         (funext fun w' => by
+        by_cases h4 : TFour
+        · rw [rden_diatm_tFour h4 e hx _ w' rfl, rden_diatm_tFour h4 e hx c w' rfl]
+          refine (rden_sigma _ (realisedTerm_sigma _ _ _ (Term.shiftDia_pair _ _ _ c))).trans
+            (Prod.ext ?_ rfl)
+          exact (rden_diatm_tFour h4 e hx (Term.mono (Ctx.le_boxIn_diaIn Γ x) b) w' rfl).symm.trans
+            (rden_diatm_mono_boxIn_tFour h4 _ e hx b w' rfl)
         rcases hd : w'.1.1.depth - w.depth with _ | k
         · have hr := (extent_self w'.2 hd).2
-          rw [rden_diatm_self e hx _ w' hd, rden_diatm_self e hx c w' hd,
+          rw [rden_diatm_self h4 e hx _ w' hd, rden_diatm_self h4 e hx c w' hd,
             rden_boxtm_self e b w'.1 hd]
           rw [rden_realisedTerm_pair hr e hx, rden_transport_pair]
           refine Prod.ext ?_ rfl
           refine (rden_transport_congr _ (rden_realisedTerm_mono_boxIn hr e hx b)).trans ?_
           exact rden_transport_world _ _ _ _
-        · rw [rden_diatm_far e hx _ w' hd, rden_diatm_far e hx c w' hd]
+        · rw [rden_diatm_far h4 e hx _ w' hd, rden_diatm_far h4 e hx c w' hd]
           have hle : (Ctx.boxIter (k + 1) Γ).Le ((Ctx.boxIter k Γ).diaIn (VarSymb.keepIter k x)) :=
             by rw [Ctx.boxIter_succ']; exact Ctx.le_boxIn_diaIn _ _
           refine (rden_sigma _ (Term.shiftDia_pair k _ _ c)).trans (Prod.ext ?_ rfl)
@@ -1097,8 +1233,9 @@ theorem rden_applyG :
           rw [Term.shiftDia_mono_boxIn k _ (w'.1.four hd) b hle, rden_mono,
             rden_boxtm_far e b w'.1 hd])
         fun hT =>
-          (termShp_applyG (Or.inr (ModalSys.shaped_of_T hT)) (.strength _ _)
-            (.pair (.boxtm b) (.diatm x hx c)) (cEnv Γ w) 0).trans
+          (termShp_applyG (.strength _ _)
+            (.pair (.boxtm b) (.diatm x hx c)) (cEnv Γ w) 0 (lw := []) rfl
+            (fun _ => canonEnvF_wf Γ w id)).trans
           (by
             change _ = Shp.dia _ (Shp.prod (rawShape hT (rden w i e (.boxtm b))).inner _)
             rw [rawShape_rden hT w i e (.boxtm b)]
@@ -1107,8 +1244,8 @@ theorem rden_applyG :
       (rden_boxtm_self e b ⟨w, ⟨R.refl hT w⟩⟩ (Nat.sub_self _)).symm
   | _, _, .dup hF, _, _, .boxtm b, w, i, e =>
       funext fun v => funext fun s => rden_dup hF _ b w i e v rfl s
-  | _, _, .dkeep hF hnS, _, _, .diatm x hx c, w, i, e =>
-      funext fun v => rden_dkeep hF hnS _ hx c w i e v rfl
+  | _, _, .dkeep hF, _, _, .diatm x hx c, w, i, e =>
+      funext fun v => rden_dkeep hF _ hx c w i e v rfl
 
 /-- ⭐Definable objects are closed under the function algebra. -/
 -- (`applyG_realisedTerm`, `rawEval_transport` and `strength_self` above are the strong-T gap;
@@ -1170,8 +1307,13 @@ theorem rden_eta_realised {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
     {k : ℕ × ℕ} (hdecl : (w.L.ctx k).ref x = some (.VTypeDia hr.data.A)) :
     (rden w k (Ctx.Le.refl _) (Term.eta x (.VTypeDia hr.data.A) hdecl)).2
         ⟨⟨w, ⟨R.refl hr.T w⟩⟩, self_mem_extent hr⟩ =
-      rden w hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀ :=
-  (rden_diatm_self (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩
+      rden w hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀ := by
+  by_cases h4 : TFour
+  · exact (rden_diatm_tFour h4 (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩
+      (Term.eta (.step x .dia) hr.data.A (Ctx.ref_diaIn_of hdecl))
+      ⟨⟨w, ⟨R.refl hr.T w⟩⟩, self_mem_extent hr⟩ (Nat.sub_self _)).trans
+      (rden_realisedTerm_eta hr (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩ (Ctx.ref_diaIn_of hdecl))
+  exact (rden_diatm_self h4 (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩
     (Term.eta (.step x .dia) hr.data.A (Ctx.ref_diaIn_of hdecl))
     ⟨⟨w, ⟨R.refl hr.T w⟩⟩, self_mem_extent hr⟩ (Nat.sub_self _)).trans
     (rden_realisedTerm_eta hr (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩ (Ctx.ref_diaIn_of hdecl))

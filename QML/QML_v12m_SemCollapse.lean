@@ -249,6 +249,43 @@ theorem Env.CollapseAgree.extend (hag : Env.CollapseAgree h env₁ env₂) {r : 
     rw [Env.extend_ne env₁ r o hv hvr hv', ← Env.ref_of_nonproj env₁ hlp href hv', hag v U href,
       Env.ref_extend_ne env₂ o _ (h v U href) (by rwa [VarSymb.collapse_rt])]
 
+omit [ModalSys] in
+/-- Two sections with the same extent and the same contents are equal. -/
+theorem sec_ext {α : Type*} {β : α → Type*} {E₁ E₂ : Set α} {f₁ : (b : E₁) → β b.1}
+    {f₂ : (b : E₂) → β b.1} (hE : E₁ = E₂)
+    (hf : ∀ (b : α) (h₁ : b ∈ E₁) (h₂ : b ∈ E₂), f₁ ⟨b, h₁⟩ = f₂ ⟨b, h₂⟩) :
+    (⟨E₁, f₁⟩ : Σ E : Set α, (b : E) → β b.1) = ⟨E₂, f₂⟩ := by
+  subst hE
+  congr
+  funext b
+  exact hf b.1 b.2 b.2
+
+/-- ⭐Under T and 4, **a possible object kept along the identity is itself**: the extent by
+    `refl_trans`, the contents unchanged, the labels by the root action's identity law. -/
+theorem posKeep_refl (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {A : VarType}
+    {w : M.frame.W} (x : M.frame.Pos A w) :
+    M.necEval (M.ops.posKeep hF x) (M.frame.reflAcc hT w) = x := by
+  apply M.posFull_inj
+  rw [M.posKeep_full]
+  refine Prod.ext ?_ (funext fun hS => ?_)
+  · dsimp only
+    refine sec_ext (β := fun a : M.frame.Acc w => M.frame.Dom A a.1)
+      (Set.ext fun b => ?_) (fun b h₁ h₂ => ?_)
+    · change (⟨b.1, ⟨M.frame.trans hF (M.frame.refl hT w) b.2.down⟩⟩ : M.frame.Acc w) ∈
+          (M.posFull x).1.1 ↔ b ∈ (M.posFull x).1.1
+      rw [M.frame.refl_trans hT hF]
+    · change (M.posFull x).1.2 ⟨⟨b.1, ⟨M.frame.trans hF (M.frame.refl hT w) b.2.down⟩⟩, _⟩ =
+        (M.posFull x).1.2 ⟨b, h₂⟩
+      generalize_proofs p₁
+      revert p₁
+      rw [M.frame.refl_trans hT hF]
+      intro p₁
+      rfl
+  · have e : Arrows.Leaf.keepAlong (F := M.frame.toArrows) (Root := M.RootPoss) hF
+        (M.frame.reflAcc hT w) = id := funext (Arrows.Leaf.keepAlong_refl hT hF)
+    dsimp only
+    rw [e, Shp.map_id]
+
 /-- ⭐Under T, the `□` view at the current world agrees with the environment across the
     collapse. -/
 theorem Env.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} (env : M.Env Γ w) :
@@ -272,12 +309,19 @@ theorem Env.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} (env : M.Env 
         rw [hU] at hu
         cases hu
   | .step u .keep =>
-      obtain ⟨hF, hu, A, rfl⟩ := Ctx.boxIn_keep_T hT hv
+      obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
       rw [Env.ref_congr env (VarSymb.collapse_keep_zero (v := u)) _ hu]
-      change M.necEval (M.ops.necDup hF (env.ref u hu)) ⟨w, ⟨M.frame.refl hT w⟩⟩ = env.ref u hu
-      apply M.nec_inj
-      funext s
-      rw [M.necDup_eval, M.frame.refl_trans hT hF]
+      cases T with
+      | VTypeBox A =>
+          change M.necEval (M.ops.necDup hF (env.ref u hu)) ⟨w, ⟨M.frame.refl hT w⟩⟩ =
+            env.ref u hu
+          apply M.nec_inj
+          funext s
+          rw [M.necDup_eval, M.frame.refl_trans hT hF]
+      | VTypeDia A =>
+          change M.necEval (M.ops.posKeep hF (env.ref u hu)) (M.frame.reflAcc hT w) = env.ref u hu
+          exact posKeep_refl hT hF (env.ref u hu)
+      | _ => cases hk
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv

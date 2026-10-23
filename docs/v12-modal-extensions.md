@@ -2102,6 +2102,33 @@ shift lemma plus "`dk 0 = shift 0` on families" (the position invariant).
 
 The main cost is step 2.
 
+**Steps 3 and 4 built (2026-10-23).**  T + 4 is sound and complete with `x.keep`; the staging
+gate is gone (`VarType.keepable (◇A) := true`, `NoDiaKeep := Four = false`).  No `sorry`.
+* *Step 3.*  `posKeep_refl` (SemCollapse); the shape half of `entryVal_keepE_dia` read back through
+  the transposition at the current world (`Model.transposeShp_inj`); the shape collapse lemmas take
+  WF environments (`termShp_collapse_self`, `entryShp_proj`, `substShEnv_ref`).  Rule
+  `Proof.here_keep hT hF x hx bd : □_x Here(◇_{x.keep}(shift bd), bd)` (`WFF.hereKeep`; the
+  subject is a `□`-view term moved into `x`'s view), with `WFF.subst_hereKeep` and
+  `sat_hereKeep` (`trans_refl`).
+* *Step 4, as (b).*  `extent w x := if TFour then {b | b.Realised (keepIter d x)} else …`
+  (`mem_extent_tFour`, `extent_keep_tFour` definitional); `rden`'s `◇` content under T + 4 is the
+  member's own realisation of `shiftDia d t` (`rden_diatm_tFour`, `rden_diatm_step_tFour`); the
+  old lemmas take `¬TFour`.  Canonical `posKeep` tag `map (keepAlong v)`, its law by `rfl`; the
+  `dkeep` tags for all successors at once (`rden_dkeep_tag`, by transposition), at the own arrow the
+  collapse identity and `keepAlong_refl`.  `interp_dia_tFour` (shift agreement down the chain, the
+  self case at the member); `exists_dia` under T + 4 via `realised_keep_of_boxx` (`here_keep` in
+  the child's `□_x` contents, `realised_of_here`).  `Canonical.boxPush`'s kept `◇` case:
+  `leafOf_dk` (label), `leafOf_dkB`/`annShp_eta_dkB` (inside, `leafOf_shift` at a `dia` cut).
+* *The identity* (new file `QML_v12m_RealiseKeep`): `WFF.realiseAtA_shift_keep`, by
+  `Subst.shiftCorr_diaAbsA_keep` + `WFF.shift_subst`, `WFF.collapse_shift_same` (new, the formula
+  form of `Term.collapse_shift_same`; `ShiftCollapseId.insert`) under `keepOnly`, and the round
+  trip `viewReadAtA_diaAbsA`.
+* *Truth lemma* (`dia_truth_tFour`): truth ⇒ membership by `four_dia` along the chain and
+  `here_elimAtA` at the member against `sat_self_iff` (the self case as an equivalence); membership
+  ⇒ truth at the `◇_x`-child through the identity and `here_subst` to the child's datum.
+* Open checks resolved: `Step.keepAt_collapseAt` was proved with the WF hypothesis; `here_keep`'s
+  soundness reads no shape condition; every collapse caller had a WF environment.
+
 **Steps.**  (1) Syntax, models, environments, substitution (`keepE` at `◇`: restriction commutes
 with `posMap` and `posStrength`), `four_dia`, `here_keep`, soundness.  (2) The tree with path
 arrows, `x`'s extents, `rden` and shapes for `x.keep`, the truth lemma's deep `◇_x` case

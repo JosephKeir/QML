@@ -146,7 +146,7 @@ inductive GFunc (σ : Signature) : VarType → VarType → Type where
       GFunc σ (.VTypeBox A) (.VTypeBox (.VTypeBox A))
   /-- Under 4: a possible object kept, restricted, at each accessible world (staged: without T,
       docs §3 4, Finding 4). -/
-  | dkeep {A : VarType} (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false) :
+  | dkeep {A : VarType} (hF : ModalSys.Four = true) :
       GFunc σ (.VTypeDia A) (.VTypeBox (.VTypeDia A))
 
 /-- Under 4, keep an object of a keepable type: `dup` for a necessary object, `dkeep` for a
@@ -154,7 +154,7 @@ inductive GFunc (σ : Signature) : VarType → VarType → Type where
 def GFunc.keep {σ : Signature} (hF : ModalSys.Four = true) :
     {T : VarType} → T.keepable = true → GFunc σ T (.VTypeBox T)
   | .VTypeBox _, _ => .dup hF
-  | .VTypeDia _, hk => .dkeep hF (VarType.noShaped_of_keepable_dia hk)
+  | .VTypeDia _, _ => .dkeep hF
   | .Var, h => False.elim (Bool.false_ne_true h)
   | .VTypeOne, h => False.elim (Bool.false_ne_true h)
   | .VTypeProd _ _, h => False.elim (Bool.false_ne_true h)
@@ -170,7 +170,7 @@ structure Frame.Ops {σ : Signature} (F : Frame.{u, v} σ) where
   necExtract : {A : VarType} → {w : F.W} → ModalSys.T = true → F.Nec A w → F.Dom A w
   necDup : {A : VarType} → {w : F.W} → ModalSys.Four = true → F.Nec A w →
     F.Nec (.VTypeBox A) w
-  posKeep : {A : VarType} → {w : F.W} → ModalSys.Four = true → ModalSys.shaped = false →
+  posKeep : {A : VarType} → {w : F.W} → ModalSys.Four = true →
     F.Pos A w → F.Nec (.VTypeDia A) w
 
 /-- Evaluating a definable map at a world. -/
@@ -190,7 +190,7 @@ def GFunc.eval {σ : Signature} {F : Frame.{u, v} σ} (ops : F.Ops) :
   | _, _, .strength _ _, _, p => ops.posStrength p.1 p.2
   | _, _, .extract hT, _, n => ops.necExtract hT n
   | _, _, .dup hF, _, n => ops.necDup hF n
-  | _, _, .dkeep hF hnS, _, p => ops.posKeep hF hnS p
+  | _, _, .dkeep hF, _, p => ops.posKeep hF p
 
 /-! ## Semantic annotations
 
@@ -242,6 +242,16 @@ def map {L' : Type x} (g : L → L') : {A : VarType} → Shp L A → Shp L' A
   | _, .prod a b => .prod (a.map g) (b.map g)
   | _, .box a => .box (a.map g)
   | _, .dia ℓ a => .dia (g ℓ) (a.map g)
+
+/-- ⭐**Well-formed shapes**, for a well-formedness of leaves by position: each leaf is
+    well-formed at the level kinds from the anchor down to its node — `true` a `□`, `false` a
+    `◇`, outermost first. -/
+def WF (P : List Bool → L → Prop) : List Bool → {A : VarType} → Shp L A → Prop
+  | _, _, .var => True
+  | _, _, .one => True
+  | lw, _, .prod a b => WF P lw a ∧ WF P lw b
+  | lw, _, .box a => WF P (lw ++ [true]) a
+  | lw, _, .dia ℓ a => P lw ℓ ∧ WF P (lw ++ [false]) a
 
 end Shp
 
@@ -303,6 +313,18 @@ namespace Arrows.Leaf
 
 variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
 
+/-- ⭐**The labelling convention, without addresses** (docs §10.39; §3 4, "T + 4").  A leaf at a
+    position whose level kinds from the anchor are `lw` is well-formed when a root's path has as
+    many level steps as the position, and the position does not start with a `□` — a `□` at the
+    anchor's level is crossed semantically, by a family — and a family's members are well-formed
+    one level down, at their own anchors.  Only the *number* of levels is asked of a root: the
+    strength law moves a necessary component under a `◇`, changing a level's kind but not the
+    count. -/
+def WF : List Bool → {w : F.W} → F.Leaf Root w → Prop
+  | lw, _, .root _ p => Step.levels p = lw.length ∧ lw.head? ≠ some true
+  | [], _, .fam f => ∀ s, WF [] (f s)
+  | _ :: q, _, .fam f => ∀ s, WF q (f s)
+
 /-- Under T, collapse the level `i` steps from the anchor: a family is read at the identity arrow
     there, and a root path loses that level step (`Step.collapseAt`). -/
 def collapse (hT : ModalSys.T = true) : ℕ → {w : F.W} → F.Leaf Root w → F.Leaf Root w
@@ -358,6 +380,16 @@ def dk (hF : ModalSys.Four = true) : ℕ → {w : F.W} → F.Leaf Root w → F.L
   | i + 1, _, .root r p => .root r (Step.keepAt (i + 1) p)
   | i + 1, _, .fam f => .fam fun s => dk hF i (f s)
 
+/-- Under 4, keep the leaves **inside** a kept possibility at level `i`: semantically at the
+    anchor's level, as `dk`; below it the `keep` goes before the level step there, as a shift puts
+    it (`Step.shiftAt`) — the content of `z.keep` is read in `z.keep`'s own view.  On a path that
+    spells its position this is `dk`; it differs only on paths too short for their position,
+    where `dk` would append (docs §3 4, "T + 4", the correction to (c)). -/
+def dkB (hF : ModalSys.Four = true) : ℕ → {w : F.W} → F.Leaf Root w → F.Leaf Root w
+  | 0, _, l => .fam fun s => keepAlong hF s l
+  | i + 1, _, .root r p => .root r (Step.shiftAt (i + 1) p)
+  | i + 1, _, .fam f => .fam fun s => dkB hF i (f s)
+
 end Arrows.Leaf
 
 /-- ⭐How a definable map moves the shape of its argument: positions are rearranged as the map
@@ -381,7 +413,8 @@ def GFunc.shp {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
   | _, _, .strength _ _, _, a => .dia a.snd.label (.prod a.fst.inner a.snd.body)
   | _, _, .extract hT, j, a => a.inner.map (Arrows.Leaf.collapse hT j)
   | _, _, .dup hF, j, a => .box (.box (a.inner.map (Arrows.Leaf.shift hF j)))
-  | _, _, .dkeep hF _, j, a => .box (a.map (Arrows.Leaf.dk hF j))
+  | _, _, .dkeep hF, j, a =>
+      .box (.dia (Arrows.Leaf.dk hF j a.label) (a.body.map (Arrows.Leaf.dkB hF j)))
 
 /-- `GFunc.shp` with the root action given explicitly, for statements made before an instance is
     available (a model's own laws). -/
@@ -448,6 +481,13 @@ structure Model (σ : Signature) where
       with differently annotated contents, are never identified (docs §10.24–10.27); unshaped
       this is plain injectivity of the section. -/
   posFull_inj : ∀ {A : VarType} {w : frame.W}, Function.Injective (@posFull A w)
+  /-- ⭐**Possible objects' shapes are well-formed** (docs §3 4, "T + 4"): the labelling
+      convention of §10.39, read without addresses (`Arrows.Leaf.WF`).  The operations keep it;
+      it is what lets keeping a possibility commute with reading a `□` at the current world. -/
+  posShape_wf : ∀ (hS : ModalSys.shaped = true) {A : VarType} {w : frame.W}
+    (p : frame.Pos A w),
+    Shp.WF (fun lw ℓ => Arrows.Leaf.WF (F := frame.toArrows) (Root := RootPoss) lw ℓ) []
+      ((posFull p).2 hS)
   ops : frame.Ops
   necMap_eval : ∀ {A B : VarType} {w : frame.W} (f : GFunc σ A B) (n : frame.Nec A w)
     (w' : frame.Acc w), necEval (ops.necMap f n) w' = GFunc.eval ops f w'.1 (necEval n w')
@@ -479,8 +519,8 @@ structure Model (σ : Signature) where
       extent pulled back along the arrow, the same contents, and its labels restricted along the
       arrow (`Arrows.Leaf.keepAlong`). -/
   posKeep_full : ∀ {A : VarType} {w : frame.W} (hF : ModalSys.Four = true)
-    (hnS : ModalSys.shaped = false) (x : frame.Pos A w) (a : frame.Acc w),
-    posFull (necEval (ops.posKeep hF hnS x) a) =
+ (x : frame.Pos A w) (a : frame.Acc w),
+    posFull (necEval (ops.posKeep hF x) a) =
       (⟨{b : frame.Acc a.1 |
             (⟨b.1, ⟨frame.trans hF a.2.down b.2.down⟩⟩ : frame.Acc w) ∈ (posFull x).1.1},
           fun b => (posFull x).1.2 ⟨⟨b.1.1, ⟨frame.trans hF a.2.down b.1.2.down⟩⟩, b.2⟩⟩,

@@ -366,6 +366,40 @@ noncomputable def canonEnvF (Γ : Ctx) (s : B.W) (f : VarSymb → VarSymb) : B.C
 /-- ⭐The canonical shape environment. -/
 noncomputable abbrev cEnv (Γ : Ctx) (s : B.W) : B.CShEnv Γ s := B.canonEnvF Γ s id
 
+/-- A root possibility's content shape is well-formed, as in the tree (`Canon.rootSh_wf`). -/
+theorem rootSh_wf (s : B.W) (v : VarSymb) : ∀ (T : VarType) (π : List Step)
+    (lw : List Bool), Step.levels π = lw.length → lw.head? = some false →
+      Model.ShWF (F := B.arrows) (Root := fun _ => VarSymb) lw (B.rootSh s v π T)
+  | .Var, _, _, _, _ => trivial
+  | .VTypeOne, _, _, _, _ => trivial
+  | .VTypeProd A C, π, lw, h, hh =>
+      ⟨rootSh_wf s v A _ lw (by rw [Step.levels_append, h]; rfl) hh,
+        rootSh_wf s v C _ lw (by rw [Step.levels_append, h]; rfl) hh⟩
+  | .VTypeBox A, π, lw, h, hh =>
+      rootSh_wf s v A _ (lw ++ [true])
+        (by rw [Step.levels_append, Canon.Step.levels_innerPath, h]; simp)
+        (by cases lw <;> simp_all)
+  | .VTypeDia A, π, lw, h, hh =>
+      ⟨(Arrows.Leaf.wf_root _ π).mpr ⟨h, by rw [hh]; simp⟩,
+        rootSh_wf s v A _ (lw ++ [false])
+          (by rw [Step.levels_append, h]; simp [Step.levels, Step.isProj])
+          (by cases lw <;> simp_all)⟩
+
+/-- ⭐The network's canonical shapes are well-formed. -/
+theorem canonSh_wf : ∀ (T : VarType) (s : B.W) (v : VarSymb),
+    Model.ShWF (F := B.arrows) (Root := fun _ => VarSymb) [] (B.canonSh s v T)
+  | .Var, _, _ => trivial
+  | .VTypeOne, _, _ => trivial
+  | .VTypeProd A C, s, v => ⟨canonSh_wf A s _, canonSh_wf C s _⟩
+  | .VTypeBox A, s, v =>
+      Model.shWF_transpose true [] _ fun a => canonSh_wf A a.1 _
+  | .VTypeDia A, s, v =>
+      ⟨(Arrows.Leaf.wf_root _ []).mpr ⟨rfl, by simp⟩, B.rootSh_wf s v A [.dia] [false] rfl rfl⟩
+
+theorem canonEnvF_wf (Γ : Ctx) (s : B.W) (f : VarSymb → VarSymb) :
+    (B.canonEnvF Γ s f).WF [] :=
+  fun v T _ => B.canonSh_wf T s (f v)
+
 /-- Through a map commuting with projections on reachable addresses, every reachable address reads
     canonically. -/
 theorem canonEnvF_ref (Γ : Ctx) (s : B.W) {f : VarSymb → VarSymb}
@@ -428,7 +462,8 @@ theorem termShp_arrow_cEnv {Γ : Ctx} {s s' : B.W} (h : B.R s s') {i : ℕ}
         (Term.subst (arrowIdx (B.img s s')) (arrowS σ _ (B.img s s'))
           ((B.arOk h i).restrict e.boxIn) ((B.arCoh h i).restrict e.boxIn) b) =
       Model.termShp (B.canonEnvF Γ.boxIn s' (arrowIdx (B.img s s'))) 0 b := by
-  rw [Model.termShp_subst (Or.inl (ModalSys.NoFour.noFour)) _ _ _ (Ctx.noProjLast_boxIn Γ)]
+  rw [Model.termShp_subst _ _ _ (Ctx.noProjLast_boxIn Γ) _ 0 (lw := []) rfl
+    (fun hF => (noFour hF).elim)]
   congr 1
   funext v T hv
   obtain ⟨u, rfl, hu⟩ : ∃ u, v = .step u .box ∧ Γ.ref u = some (.VTypeBox T) := by

@@ -524,6 +524,17 @@ theorem Succ.split {w : World σ N₀} (w' : Succ w) {d : ℕ} (h : w'.1.depth -
   rw [hc'.depth, hu.1]
   omega
 
+/-- Under T, any deeper successor is a successor of a proper successor. -/
+theorem Succ.split₁ (hT : ModalSys.T = true) {w : World σ N₀} (w' : Succ w) {d : ℕ}
+    (h : w'.1.depth - w.depth = d + 1) :
+    ∃ (u : World σ N₀) (_ : Acc' w u) (_ : R u w'.1), w'.1.depth - u.depth = d := by
+  obtain ⟨hc, _, h₂⟩ := w'.chain
+  rw [h] at hc
+  obtain ⟨u, hu, hc'⟩ := hc
+  refine ⟨u, hu, ⟨d, hc', fun _ => hT, fun _ => h₂ (by omega)⟩, ?_⟩
+  rw [hc'.depth, hu.1]
+  omega
+
 
 /-- The view of a stage embeds into the child's stage for it — `extent_le`'s content, from the view
     alone, for the places that have the `DiaView` rather than the membership. -/
@@ -536,17 +547,27 @@ def _root_.V12M.VarSymb.keepIter : ℕ → VarSymb → VarSymb
   | 0, v => v
   | n + 1, v => VarSymb.keepIter n (.step v .keep)
 
-/-- Unshaped systems have no T. -/
-theorem _root_.V12M.ModalSys.T_false_of_unshaped (h : ModalSys.shaped = false) :
-    ModalSys.T = false := by
+/-- Possible objects are kept `k` times: none for `k = 0`, under 4 otherwise. -/
+abbrev KeepOK (k : ℕ) : Prop := k ≠ 0 → ModalSys.Four = true
+
+/-- A `◇` entry kept `n` times is a `◇` entry `n` views further in. -/
+theorem _root_.V12M.Ctx.ref_keepIter : ∀ (n : ℕ), KeepOK n → ∀ {Γ : Ctx} {x : VarSymb}
+    {X : VarType}, Γ.ref x = some (.VTypeDia X) →
+      (Ctx.boxIter n Γ).ref (VarSymb.keepIter n x) = some (.VTypeDia X)
+  | 0, _, _, _, _, h => h
+  | n + 1, hK, _, _, _, h =>
+      Ctx.ref_keepIter n (fun _ => hK (Nat.succ_ne_zero n))
+        (Ctx.ref_keep_of' (hK (Nat.succ_ne_zero n)) h VarType.keepable_dia)
+
+/-- ⭐**T and 4 together.**  Then extents are read off realisation (`extent`, docs §3 4, "T + 4
+    on paper" (b)). -/
+abbrev TFour : Prop := ModalSys.T = true ∧ ModalSys.Four = true
+
+/-- Under 4 but not T + 4, there is no T. -/
+theorem T_false_of_not_tFour (hF : ModalSys.Four = true) (h4 : ¬TFour) : ModalSys.T = false := by
   cases hT : ModalSys.T
   · rfl
-  · rw [ModalSys.shaped_of_T hT] at h
-    cases h
-
-/-- Possible objects are kept `k` times: none for `k = 0`, under 4 without shapes otherwise
-    (staged, docs §3 4). -/
-abbrev KeepOK (k : ℕ) : Prop := k ≠ 0 → ModalSys.Four = true ∧ ModalSys.shaped = false
+  · exact absurd ⟨hT, hF⟩ h4
 
 /-- ⭐The members of `x`'s extent reached by keeping it `k` times: for `k = 0` the proper
     successors with the `◇_x` view that hold everything `□_x`-necessary, for `k + 1` the members
@@ -572,66 +593,95 @@ theorem KeepExt.le : ∀ {k : ℕ} {x : VarSymb} {w b : World σ N₀}, KeepExt 
   | 0, x, _, _, h, _, _, e => (e.diaIn x).trans (h.2.1.le (le_max_left _ _) (le_max_right _ _) 0)
   | _ + 1, _, _, _, ⟨_, hu, h⟩, _, i, e => KeepExt.le h (e.boxIn.trans (hu.boxIn_le i))
 
-/-- ⭐The extent of the possible object named by `x`: the proper successors with the `◇_x` view
-    that hold everything `□_x`-necessary here; under strong T, the world itself when `x` is
-    realised; and under 4 without shapes, the kept members (`KeepExt`). -/
+/-- ⭐The extent of the possible object named by `x`.
+    * Under T + 4, **by realisation**: the successors realising `x` kept as many times as they are
+      deeper.  At the world itself this is `x` realised; `here_keep` puts every `◇_x`-child in
+      (docs §3 4, "T + 4 on paper" (b)).
+    * Otherwise: the proper successors with the `◇_x` view that hold everything `□_x`-necessary
+      here; under T, the world itself when `x` is realised; and under 4, the kept members
+      (`KeepExt`). -/
 def extent (w : World σ N₀) (x : VarSymb) : Set (Succ w) :=
-  {w' | (∃ k, KeepOK k ∧ KeepExt k x w w'.1) ∨ (w'.1 = w ∧ w.Realised x)}
+  if TFour then {w' | w'.1.Realised (VarSymb.keepIter (w'.1.depth - w.depth) x)}
+  else {w' | (∃ k, KeepOK k ∧ KeepExt k x w w'.1) ∨ (w'.1 = w ∧ w.Realised x)}
+
+theorem extent_of_not {w : World σ N₀} {x : VarSymb} (h4 : ¬TFour) :
+    extent w x = {w' | (∃ k, KeepOK k ∧ KeepExt k x w w'.1) ∨ (w'.1 = w ∧ w.Realised x)} :=
+  if_neg h4
+
+/-- ⭐Under T + 4, membership is realisation of the kept address. -/
+theorem mem_extent_tFour (h4 : TFour) {w : World σ N₀} {x : VarSymb} {w' : Succ w} :
+    w' ∈ extent w x ↔ w'.1.Realised (VarSymb.keepIter (w'.1.depth - w.depth) x) := by
+  rw [extent, if_pos h4]
+  rfl
 
 /-- A member of the extent is the world itself or a kept member as many levels deeper. -/
-theorem extent_cases {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x) :
+theorem extent_cases (h4 : ¬TFour) {w : World σ N₀} {x : VarSymb} {w' : Succ w}
+    (hw' : w' ∈ extent w x) :
     (∃ k, w'.1.depth - w.depth = k + 1 ∧ KeepOK k ∧ KeepExt k x w w'.1) ∨
       (w'.1.depth - w.depth = 0 ∧ w'.1 = w ∧ w.Realised x) := by
+  rw [extent_of_not h4] at hw'
   rcases hw' with ⟨k, hk, h⟩ | ⟨he, hr⟩
   · exact Or.inl ⟨k, by rw [h.depth]; omega, hk, h⟩
   · exact Or.inr ⟨by rw [he]; omega, he, hr⟩
 
 /-- A member of the extent `k + 1` levels deeper is kept `k` times. -/
-theorem extent_far {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
-    {k : ℕ} (hd : w'.1.depth - w.depth = k + 1) : KeepOK k ∧ KeepExt k x w w'.1 := by
-  rcases extent_cases hw' with ⟨k', hd', hk, h⟩ | ⟨h, _⟩
+theorem extent_far (h4 : ¬TFour) {w : World σ N₀} {x : VarSymb} {w' : Succ w}
+    (hw' : w' ∈ extent w x) {k : ℕ} (hd : w'.1.depth - w.depth = k + 1) :
+    KeepOK k ∧ KeepExt k x w w'.1 := by
+  rcases extent_cases h4 hw' with ⟨k', hd', hk, h⟩ | ⟨h, _⟩
   · obtain rfl : k' = k := by omega
     exact ⟨hk, h⟩
   · omega
 
 /-- A member of the extent one level deeper is a proper one. -/
-theorem extent_proper {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
-    (hd : w'.1.depth - w.depth = 1) :
+theorem extent_proper (h4 : ¬TFour) {w : World σ N₀} {x : VarSymb} {w' : Succ w}
+    (hw' : w' ∈ extent w x) (hd : w'.1.depth - w.depth = 1) :
     Acc' w w'.1 ∧ DiaView x w w'.1 ∧ BoxxContents x w w'.1 :=
-  (extent_far hw' (k := 0) hd).2
+  (extent_far h4 hw' (k := 0) hd).2
 
 /-- A member of the extent at this depth is the world itself, and then `x` is realised. -/
 theorem extent_self {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
     (hd : w'.1.depth - w.depth = 0) : w'.1 = w ∧ w.Realised x := by
-  rcases extent_cases hw' with ⟨_, h, _⟩ | ⟨_, h⟩
-  · omega
-  · exact h
+  by_cases h4 : TFour
+  · have hr := (mem_extent_tFour h4).mp hw'
+    rw [hd] at hr
+    obtain ⟨w₁, hw₁⟩ := w'
+    obtain ⟨_, he⟩ := Succ.self ⟨w₁, hw₁⟩ hd
+    change w₁ = w at he
+    subst he
+    exact ⟨rfl, hr⟩
+  · rcases extent_cases h4 hw' with ⟨_, h, _⟩ | ⟨_, h⟩
+    · omega
+    · exact h
 
-theorem extent_le {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
-    (hd : w'.1.depth - w.depth = 1) (i : ℕ × ℕ) :
+theorem extent_le (h4 : ¬TFour) {w : World σ N₀} {x : VarSymb} {w' : Succ w}
+    (hw' : w' ∈ extent w x) (hd : w'.1.depth - w.depth = 1) (i : ℕ × ℕ) :
     ((w.L.ctx i).diaIn x).Le (w'.1.L.ctx (childStage i)) :=
-  (extent_proper hw' hd).2.1.le (le_max_left _ _) (le_max_right _ _) 0
+  (extent_proper h4 hw' hd).2.1.le (le_max_left _ _) (le_max_right _ _) 0
 
 /-- The view along a member `k + 1` levels deeper. -/
-theorem extent_leK {w : World σ N₀} {x : VarSymb} {w' : Succ w} (hw' : w' ∈ extent w x)
-    {k : ℕ} (hd : w'.1.depth - w.depth = k + 1) {Γ : Ctx} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) :
+theorem extent_leK (h4 : ¬TFour) {w : World σ N₀} {x : VarSymb} {w' : Succ w}
+    (hw' : w' ∈ extent w x) {k : ℕ} (hd : w'.1.depth - w.depth = k + 1) {Γ : Ctx} {i : ℕ × ℕ}
+    (e : Γ.Le (w.L.ctx i)) :
     ((Ctx.boxIter k Γ).diaIn (VarSymb.keepIter k x)).Le (w'.1.L.ctx (childIter (k + 1) i)) :=
-  (extent_far hw' hd).2.le e
+  (extent_far h4 hw' hd).2.le e
 
 /-- A kept member is in the extent. -/
-theorem mem_extent_of_keep {w : World σ N₀} {x : VarSymb} {k : ℕ} (hk : KeepOK k)
-    {w' : Succ w} (h : KeepExt k x w w'.1) : w' ∈ extent w x :=
-  Or.inl ⟨k, hk, h⟩
+theorem mem_extent_of_keep (h4 : ¬TFour) {w : World σ N₀} {x : VarSymb} {k : ℕ} (hk : KeepOK k)
+    {w' : Succ w} (h : KeepExt k x w w'.1) : w' ∈ extent w x := by
+  rw [extent_of_not h4]
+  exact Or.inl ⟨k, hk, h⟩
 
 /-- ⭐**Keeping an extent along a proper step** (docs §3 4): the members of `x`'s extent past a
     proper successor `u` are the extent there of `x.keep`.  Past `u` every member is kept, and it
     was kept through `u` itself — a world's ancestors are unique (`Chain.unique`).  Neither side
-    has the world itself in it, unshaped. -/
-theorem extent_keep (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false)
+    has the world itself in it, as there is no T. -/
+theorem extent_keep (hF : ModalSys.Four = true) (h4 : ¬TFour)
     {w u : World σ N₀} (hu : Acc' w u) {x : VarSymb} (b : Succ u) :
     (⟨b.1, ⟨R.trans hF (R.of_acc hu) b.2.down⟩⟩ : Succ w) ∈ extent w x ↔
       b ∈ extent u (.step x .keep) := by
-  have hnT := ModalSys.T_false_of_unshaped hnS
+  have hnT := T_false_of_not_tFour hF h4
+  rw [extent_of_not h4, extent_of_not h4]
   obtain ⟨hc, h₀, _⟩ := b.chain
   have hdb : b.1.depth - u.depth ≠ 0 := fun h => by
     rw [h₀ h] at hnT
@@ -652,18 +702,51 @@ theorem extent_keep (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false)
             omega
           rw [e] at hc
           obtain rfl := h'.chain.unique hc
-          exact Or.inl ⟨k, fun _ => ⟨hF, hnS⟩, h'⟩
+          exact Or.inl ⟨k, fun _ => hF, h'⟩
     · rw [hr.T] at hnT
       cases hnT
   · rintro (⟨k, -, h⟩ | ⟨-, hr⟩)
-    · exact Or.inl ⟨k + 1, fun _ => ⟨hF, hnS⟩, u, hu, h⟩
+    · exact Or.inl ⟨k + 1, fun _ => hF, u, hu, h⟩
     · rw [hr.T] at hnT
       cases hnT
 
+/-- ⭐**Under T + 4 the law is definitional**: past a proper successor `u`, both sides read
+    realisation of one address, `keepIter (d + 1) x = keepIter d (x.keep)`. -/
+theorem extent_keep_tFour (h4 : TFour) {w u : World σ N₀} (hu : Acc' w u) {x : VarSymb}
+    (b : Succ u) :
+    (⟨b.1, ⟨R.trans h4.2 (R.of_acc hu) b.2.down⟩⟩ : Succ w) ∈ extent w x ↔
+      b ∈ extent u (.step x .keep) := by
+  rw [mem_extent_tFour h4, mem_extent_tFour h4]
+  have e : b.1.depth - w.depth = (b.1.depth - u.depth) + 1 := by
+    have h₁ := b.chain.1.depth
+    have h₂ := hu.1
+    omega
+  change b.1.Realised (VarSymb.keepIter (b.1.depth - w.depth) x) ↔ _
+  rw [e]
+  rfl
+
+/-- Under T + 4, a member as many levels deeper as `d` realises `x` kept `d` times. -/
+theorem extent_realised (h4 : TFour) {w : World σ N₀} {x : VarSymb} {w' : Succ w}
+    (hm : w' ∈ extent w x) {d : ℕ} (hd : w'.1.depth - w.depth = d) :
+    w'.1.Realised (VarSymb.keepIter d x) :=
+  hd ▸ (mem_extent_tFour h4).mp hm
+
+/-- The view `d` levels on, at a successor `d` levels deeper. -/
+theorem Succ.chainLeAt {w : World σ N₀} (w' : Succ w) {d : ℕ} (hd : w'.1.depth - w.depth = d)
+    {Γ : Ctx} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) :
+    (Ctx.boxIter d Γ).Le (w'.1.L.ctx (childIter d i)) :=
+  (hd ▸ w'.chain.1).le e
+
 /-- The world itself is in the extent of a realised address. -/
 theorem self_mem_extent {w : World σ N₀} {x : VarSymb} (h : w.Realised x) :
-    (⟨w, ⟨R.refl h.T w⟩⟩ : Succ w) ∈ extent w x :=
-  Or.inr ⟨rfl, h⟩
+    (⟨w, ⟨R.refl h.T w⟩⟩ : Succ w) ∈ extent w x := by
+  by_cases h4 : TFour
+  · refine (mem_extent_tFour h4).mpr ?_
+    change w.Realised (VarSymb.keepIter (w.depth - w.depth) x)
+    rw [Nat.sub_self]
+    exact h
+  · rw [extent_of_not h4]
+    exact Or.inr ⟨rfl, h⟩
 
 end Canon
 

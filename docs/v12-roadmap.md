@@ -261,8 +261,10 @@ Paper pass: `v12-modal-extensions.md` §3 4, "4's four cases".  Weak/strong × `
    Risks: a label for a restricted possible object when shaped (an action of arrows on roots), a
    `keepE` for `◇` entries in substitution, the own arrow under T.
    * **Done for K4 and D4 (2026-10-23)**, staged to unshaped systems: sound, and complete over
-     relational frames — canonical worlds record their parent (`extent_keep`).  Next: T + 4 (the
-     shape invariant of Finding 4, `here_keep`, the extent under T by realisation).
+     relational frames — canonical worlds record their parent (`extent_keep`).
+   * **Done for T + 4 (2026-10-23)**: the model law `posShape_wf` (Finding 4's invariant), rule
+     `here_keep`, extents and contents by realisation, `WFF.realiseAtA_shift_keep`; the staging
+     gate is gone, so weak `◇`-4 holds with every flag combination without B.
 2. **Strong `□`, the lift**, per arrow: `O.dia (∃n:□A. φ(n)) ⊢ ∃m:□A. O.dia φ(m.keep)`.  Tree, with
    a stepwise (Barcan-style) child construction.
 3. **Strong `◇`, the join**, per arrow (as `posBack_exists`):

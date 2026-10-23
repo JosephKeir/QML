@@ -63,10 +63,9 @@ theorem SubE.keepE_collapse_self' {σ : Signature} {Δ : Ctx} (hT : ModalSys.T =
       | VTypeDia A =>
           cases s with
           | diatm y hy t =>
-              have hnS := VarType.noShaped_of_keepable_dia hk
-              rw [SubE.keepE_dia _ _ _ hF hnS]
+              rw [SubE.keepE_dia _ _ _ hF]
               exact SubE.tm_eq_of_sig (sig_diatm ((Term.collapse_shift_self (m := 0)
-                (Ctx.shifts_diaIn_keep hF hnS Δ y)
+                (Ctx.shifts_diaIn_keep hF Δ y)
                 ((Ctx.collapses_boxIn_self hT Δ).diaIn (.step y .keep))
                 (Ctx.Le.refl _) t).trans (congrArg (Sigma.mk _) (Term.mono_refl _ t))))
       | _ => cases hk
@@ -225,12 +224,11 @@ theorem keepE_comp' (hF : ModalSys.Four = true) : ∀ {e : SubE σ Δ₁} {T : V
       | VTypeDia A =>
           cases s with
           | diatm y hy t =>
-              have hnS := VarType.noShaped_of_keepable_dia hk
               obtain ⟨X, hX⟩ := hy
               have hw : (θ₂.at y).idxAlong [] = ι₂ y := hc₂ y _ hX []
               have hwk : (θ₂.box.at (.step y .keep)).idxAlong [] = .step (ι₂ y) .keep := by
                 change ((θ₂.at y).keepE).idxAlong [] = _
-                rw [SubE.idxAlong_keepE' hF [] (VarType.keepable_dia hnS) (Subst.okRef_at hθ₂ hX),
+                rw [SubE.idxAlong_keepE' hF [] VarType.keepable_dia (Subst.okRef_at hθ₂ hX),
                   SubE.idxAlong_keep_dia (Subst.okRef_at hθ₂ hX), hw]
               have hk₂ : ι₂ (.step y .keep) = .step (ι₂ y) .keep := by
                 have h := hc₂ y _ hX [.keep]
@@ -238,21 +236,21 @@ theorem keepE_comp' (hF : ModalSys.Four = true) : ∀ {e : SubE σ Δ₁} {T : V
                 exact h.symm
               obtain ⟨X₂, hy₂⟩ := SubE.ref_witness (Subst.okRef_at hθ₂ hX) hw
               have hyk : ∃ X', Δ₁.boxIn.ref (.step y .keep) = some (.VTypeDia X') :=
-                ⟨X, Ctx.ref_keep_of' hF hX (VarType.keepable_dia hnS)⟩
+                ⟨X, Ctx.ref_keep_of' hF hX VarType.keepable_dia⟩
               change (SubE.tm (Term.diatm (ι₂ y) _ (Term.subst ι₂ (θ₂.dia y (ι₂ y))
                   (Subst.ok_dia hθ₂ ⟨X, hX⟩ hw) (Subst.coh_dia hθ₂ hc₂ ⟨X, hX⟩) t))).keepE =
                 ((SubE.tm (Term.diatm y ⟨X, hX⟩ t)).keepE).comp θ₂.box (Subst.ok_box hθ₂)
                   (Subst.coh_box hθ₂ hc₂)
-              rw [keepE_dia _ _ _ hF hnS, keepE_dia _ _ _ hF hnS]
+              rw [keepE_dia _ _ _ hF, keepE_dia _ _ _ hF]
               refine SubE.tm_eq_of_sig (Eq.symm ((Term.subst_diatm_sig θ₂.box
                 (Subst.ok_box hθ₂) (Subst.coh_box hθ₂ hc₂) hyk _ hk₂ hwk
                 (Subst.ok_dia (Subst.ok_box hθ₂) hyk hwk)
                 (hk₂ ▸ Subst.coh_dia (Subst.ok_box hθ₂) (Subst.coh_box hθ₂ hc₂) hyk)
-                ⟨X₂, Ctx.ref_keep_of' hF hy₂ (VarType.keepable_dia hnS)⟩).trans (sig_diatm ?_)))
-              exact (Term.shift_subst (Ctx.shifts_diaIn_keep hF hnS Δ₁ y)
-                (Ctx.shifts_diaIn_keep hF hnS Δ₂ (ι₂ y)) (θ₂.dia y (ι₂ y))
+                ⟨X₂, Ctx.ref_keep_of' hF hy₂ VarType.keepable_dia⟩).trans (sig_diatm ?_)))
+              exact (Term.shift_subst (Ctx.shifts_diaIn_keep hF Δ₁ y)
+                (Ctx.shifts_diaIn_keep hF Δ₂ (ι₂ y)) (θ₂.dia y (ι₂ y))
                 (Subst.ok_dia hθ₂ ⟨X, hX⟩ hw) (Subst.coh_dia hθ₂ hc₂ ⟨X, hX⟩) _ _ _
-                (Subst.shiftCorr_dia_keep hF hnS hθ₂ ⟨X, hX⟩ hw) t).symm
+                (Subst.shiftCorr_dia_keep hF hθ₂ ⟨X, hX⟩ hw) t).symm
       | _ => cases hk
 
 theorem diaBody_comp {x₁ : VarSymb} (hx₁ : ∃ X, Δ₁.ref x₁ = some (.VTypeDia X))

@@ -25,16 +25,6 @@ namespace Canon
 
 variable {σ : Signature} {N₀ : ℕ}
 
-/-- ⭐**A `Here` atom about a possible object makes its witness realised.**  `here_beta` at the unit
-    reduces the atom to realisedness, `here_name` names the witness's content, and the witnessed
-    theory declares the name: a `RealDatum`. -/
-theorem realised_of_here (hT : ModalSys.T = true) {w : World σ N₀} {x : VarSymb} {i : ℕ × ℕ}
-    {X : VarType} (hx : (w.L.ctx i).ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B}
-    (bd : Term σ ((w.L.ctx i).diaIn x) B β) {a : Ann B} (t : Term σ (w.L.ctx i) B a)
-    (h : (⟨i, WFF.here hT (Term.diatm x ⟨X, hx⟩ bd) t⟩ : w.L.sys.Sentence σ) ∈ w.T) :
-    w.Realised x :=
-  w.realised_of_datum (datum_of_here w.exW hT hx bd t h).some
-
 -- Seriality under D needs a successor for every world, which is a Henkin construction, so the
 -- canonical frame is built over a countable signature — the setting of completeness anyway.
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB]
@@ -166,7 +156,7 @@ noncomputable def ops : (frame w₀).Ops where
   necExtract hT n :=
     toDom w₀ _ _ (rawEval (.extract hT) _ n.1) (definable_rawEval (.extract hT) n.2)
   necDup hF n := ⟨rawEval (.dup hF) _ n.1, definable_rawEval (.dup hF) n.2⟩
-  posKeep hF hnS p := ⟨rawEval (.dkeep hF hnS) _ p.1, definable_rawEval (.dkeep hF hnS) p.2⟩
+  posKeep hF p := ⟨rawEval (.dkeep hF) _ p.1, definable_rawEval (.dkeep hF) p.2⟩
 
 /-- ⭐Evaluating a map on a frame object is evaluating it on the raw object. -/
 theorem eval_toDom : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀) (o : RDom A w)
@@ -189,7 +179,7 @@ theorem eval_toDom : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀) 
   | _, _, .strength _ _, _, _, _ => rfl
   | _, _, .extract _, _, _, _ => rfl
   | _, _, .dup _, _, _, _ => rfl
-  | _, _, .dkeep _ _, _, _, _ => rfl
+  | _, _, .dkeep _, _, _, _ => rfl
 
 /-- Under T, a frame object's shape is its raw object's. -/
 theorem domShape_toDom (hT : ModalSys.T = true) : ∀ (A : VarType) (w : World σ N₀)
@@ -268,6 +258,17 @@ theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T =
   · exact (DTerm.rel_lift _ le_sup_left).trans
       (hrel.trans (DTerm.rel_lift (⟨i, a', t⟩ : DTerm w.L.sys w.T _) hiK).symm)
 
+/-- ⭐**The canonical shapes are well-formed** (`Model.posShape_wf`): a possible object is a
+    term's denotation, whose stored shape is the term's symbolic shape in the canonical shape
+    environment (`rawShape_rden`), well-formed as that environment is. -/
+theorem posShape_wf_canon (hT : ModalSys.T = true) {A : VarType} {w : World σ N₀}
+    (p : (frame w₀).Pos A w) :
+    Model.ShWF (F := arrows σ N₀) (Root := fun _ => VarSymb) [] (p.1.3 hT) := by
+  obtain ⟨i, a, t, ht⟩ := p.2
+  change Model.ShWF [] (rawShape hT p.1)
+  rw [← ht, rawShape_rden hT]
+  exact Model.shWF_termShp (lw := []) (canonEnvF_wf _ w id) t
+
 /-- ⭐The canonical model. -/
 noncomputable def model : Model.{0, 0} σ where
   frame := frame w₀
@@ -290,6 +291,7 @@ noncomputable def model : Model.{0, 0} σ where
   posFull p := ((posFull w₀ p).1, fun hSh => (posFull w₀ p).2 (ModalSys.NoB.T_of_shaped hSh))
   posFull_inj := fun h => posFull_injective w₀ (Prod.ext (congrArg Prod.fst h :)
     (funext fun hT => congrFun (congrArg Prod.snd h) (ModalSys.shaped_of_T hT)))
+  posShape_wf := fun hSh {_} {_} p => posShape_wf_canon w₀ (ModalSys.NoB.T_of_shaped hSh) p
   ops := ops w₀
   necMap_eval g _ w' := (eval_toDom w₀ g w'.1 _ _).symm
   necPair_eval _ _ _ := rfl
@@ -301,7 +303,7 @@ noncomputable def model : Model.{0, 0} σ where
         (definable_box_apply n.2 s)).symm)))
   necExtract_eval _ _ := rfl
   necDup_eval _ _ _ _ := rfl
-  posKeep_full _ hnS _ _ := Prod.ext rfl (funext fun hS => absurd hS (by rw [hnS]; decide))
+  posKeep_full _ _ _ := Prod.ext rfl (funext fun _ => rfl)
   posRet_exists hT hS a := posRet_exists_canon w₀ hT hS a
   posSerial hDS w := posSerial_canon w₀ hDS w
   Ret _ _ _ := False

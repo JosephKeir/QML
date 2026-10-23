@@ -325,6 +325,163 @@ theorem shiftAt_keepAt : ∀ (i : Nat) (p : List Step),
             rw [keepAt_succ hs, shiftAt_succ hs, keepAt_succ hs, shiftAt_keepAt i p]
       · rw [keepAt_proj hs, shiftAt_proj hs, keepAt_proj hs, shiftAt_keepAt i p]
 
+omit [ModalSys] in
+/-- A shift at an existing level adds one level step. -/
+theorem levels_shiftAt : ∀ (i : Nat) (p : List Step), i < levels p →
+    levels (shiftAt i p) = levels p + 1
+  | _, [], h => absurd h (Nat.not_lt_zero _)
+  | i, s :: p, h => by
+      cases hs : s.isProj
+      · cases i with
+        | zero =>
+            rw [shiftAt_zero hs]
+            simp only [levels, Step.isProj, Bool.false_eq_true, ↓reduceIte]
+            omega
+        | succ i =>
+            have h' : i < levels p := by
+              simp only [levels, hs, Bool.false_eq_true, ↓reduceIte] at h
+              omega
+            rw [shiftAt_succ hs]
+            simp only [levels, hs, Bool.false_eq_true, ↓reduceIte, levels_shiftAt i p h']
+            omega
+      · have h' : i < levels p := by
+          simp only [levels, hs, ↓reduceIte] at h
+          omega
+        rw [shiftAt_proj hs]
+        simp only [levels, hs, ↓reduceIte, levels_shiftAt i p h']
+        omega
+
+omit [ModalSys] in
+/-- Keeping at a level that exists, or right after the last one, adds one level step. -/
+theorem levels_keepAt : ∀ (i : Nat) (p : List Step), i ≤ levels p →
+    levels (keepAt i p) = levels p + 1
+  | 0, [], _ => rfl
+  | _ + 1, [], h => absurd h (by simp [levels])
+  | i, s :: p, h => by
+      cases hs : s.isProj
+      · cases i with
+        | zero =>
+            have h0 : keepAt 0 (s :: p) = .keep :: s :: p := by simp [keepAt, hs]
+            rw [h0]
+            simp only [levels, Step.isProj, Bool.false_eq_true, ↓reduceIte]
+            omega
+        | succ i =>
+            have h' : i ≤ levels p := by
+              simp only [levels, hs, Bool.false_eq_true, ↓reduceIte] at h
+              omega
+            rw [keepAt_succ hs]
+            simp only [levels, hs, Bool.false_eq_true, ↓reduceIte, levels_keepAt i p h']
+            omega
+      · have h' : i ≤ levels p := by
+          simp only [levels, hs, ↓reduceIte] at h
+          omega
+        rw [keepAt_proj hs]
+        simp only [levels, hs, ↓reduceIte, levels_keepAt i p h']
+        omega
+
+omit [ModalSys] in
+/-- Collapsing an existing level removes one level step. -/
+theorem levels_collapseAt : ∀ (i : Nat) (p : List Step), i < levels p →
+    levels (collapseAt i p) + 1 = levels p
+  | _, [], h => absurd h (Nat.not_lt_zero _)
+  | i, s :: p, h => by
+      cases hs : s.isProj
+      · cases i with
+        | zero =>
+            simp only [collapseAt, hs, Bool.false_eq_true, ↓reduceIte]
+            split_ifs
+            · simp only [levels, hs, Bool.false_eq_true, ↓reduceIte]
+              omega
+            · rw [Step.levels_cons, Step.levels_cons, hs]
+              simp only [Step.isProj, Bool.false_eq_true, ↓reduceIte]
+              omega
+        | succ i =>
+            have h' : i < levels p := by
+              simp only [levels, hs, Bool.false_eq_true, ↓reduceIte] at h
+              omega
+            simp only [collapseAt, hs, Bool.false_eq_true, ↓reduceIte]
+            split_ifs
+            · simp only [levels, hs, Bool.false_eq_true, ↓reduceIte]
+              omega
+            · have := levels_collapseAt i p h'
+              simp only [levels, hs, Bool.false_eq_true, ↓reduceIte]
+              omega
+      · have h' : i < levels p := by
+          simp only [levels, hs, ↓reduceIte] at h
+          omega
+        rw [collapseAt_proj hs]
+        have := levels_collapseAt i p h'
+        simp only [levels, hs, ↓reduceIte]
+        omega
+
+omit [ModalSys] in
+theorem headLvl_keepAt_succ (i : Nat) : ∀ p : List Step, headLvl (keepAt (i + 1) p) = headLvl p
+  | [] => rfl
+  | s :: p => by
+      cases hs : s.isProj
+      · rw [keepAt_succ hs]
+        rfl
+      · rw [keepAt_proj hs]
+        rfl
+
+omit [ModalSys] in
+/-- Keeping after collapsing a lower level is collapsing after keeping, on a path with as many
+    level steps as its position (`Arrows.Leaf.WF`) — on a shorter one keeping would append. -/
+theorem keepAt_collapseAt : ∀ (j d : Nat) (p : List Step), levels p = j + d + 1 →
+    keepAt (j + d) (collapseAt j p) = collapseAt j (keepAt (j + d + 1) p)
+  | _, _, [], h => by simp [levels] at h
+  | j, d, s :: p, h => by
+      cases hs : s.isProj
+      · have hl : levels p = j + d := by
+          simp only [levels, hs, Bool.false_eq_true, ↓reduceIte] at h
+          omega
+        cases j with
+        | zero =>
+            rw [Nat.zero_add, keepAt_succ hs, collapseAt_zero hs, collapseAt_zero hs]
+            split_ifs
+            · rfl
+            · exact keepAt_proj rfl d p
+        | succ i =>
+            rw [show i + 1 + d + 1 = (i + d + 1) + 1 by omega, keepAt_succ hs,
+              collapseAt_succ hs, collapseAt_succ hs, headLvl_keepAt_succ (i + d) p]
+            split_ifs with hc
+            · obtain ⟨rfl, -, -⟩ := hc
+              rw [show 0 + 1 + d = 0 + d + 1 by omega]
+            · rw [show i + 1 + d = (i + d) + 1 by omega, keepAt_succ hs,
+                keepAt_collapseAt i d p (by omega)]
+      · have hl : levels p = j + d + 1 := by
+          simp only [levels, hs, ↓reduceIte] at h
+          omega
+        rw [collapseAt_proj hs, keepAt_proj hs, keepAt_proj hs, collapseAt_proj hs,
+          keepAt_collapseAt j d p hl]
+
+omit [ModalSys] in
+/-- Collapsing a level just kept is the identity. -/
+theorem collapseAt_keepAt_self : ∀ (i : Nat) (p : List Step), collapseAt i (keepAt i p) = p
+  | 0, [] => rfl
+  | _ + 1, [] => rfl
+  | i, s :: p => by
+      cases hs : s.isProj
+      · cases i with
+        | zero =>
+            have h0 : keepAt 0 (s :: p) = .keep :: s :: p := by simp [keepAt, hs]
+            rw [h0, collapseAt_zero (by rfl), if_pos rfl]
+        | succ i =>
+            rw [keepAt_succ hs, collapseAt_succ hs]
+            split_ifs with hc
+            · obtain ⟨rfl, rfl, hl⟩ := hc
+              cases p with
+              | nil => rfl
+              | cons t q =>
+                  cases ht : t.isProj
+                  · have h0 : keepAt 0 (t :: q) = .keep :: t :: q := by simp [keepAt, ht]
+                    rw [h0]
+                  · have h0 : keepAt 0 (t :: q) = t :: keepAt 0 q := keepAt_proj ht 0 q
+                    rw [h0] at hl
+                    simp [headLvl, ht] at hl
+            · rw [collapseAt_keepAt_self i p]
+      · rw [keepAt_proj hs, collapseAt_proj hs, collapseAt_keepAt_self i p]
+
 end Step
 
 namespace Arrows.Leaf
@@ -460,6 +617,91 @@ theorem dk_shift (hF : ModalSys.Four = true) :
         show j + 1 + d + 1 = (j + d + 1) + 1 by omega]
       exact congrArg Arrows.Leaf.fam (funext fun s => dk_shift hF j d (f s))
 
+theorem dkB_root_succ (hF : ModalSys.Four = true) (i : ℕ) {w : F.W} (r : Root w)
+    (p : List Step) :
+    dkB hF (i + 1) (Arrows.Leaf.root (F := F) r p) = .root r (Step.shiftAt (i + 1) p) :=
+  rfl
+
+/-- Keeping inside a possibility below a shifted level: `dkB` and `shift` commute, `dkB` moving
+    one level down. -/
+theorem dkB_shift (hF : ModalSys.Four = true) :
+    ∀ (j d : ℕ) {w : F.W} (ℓ : F.Leaf Root w),
+      dkB hF (j + d + 2) (shift hF j ℓ) = shift hF j (dkB hF (j + d + 1) ℓ)
+  | j, d, _, .root r p => by
+      rw [shift_root, show j + d + 2 = j + d + 1 + 1 by omega, dkB_root_succ hF (j + d + 1),
+        dkB_root_succ hF (j + d), shift_root, show j + d + 1 + 1 = j + d + 2 by omega]
+      exact congrArg (Arrows.Leaf.root r) (Step.shiftAt_shiftAt j d p)
+  | 0, d, w, .fam f => by
+      rw [Nat.zero_add]
+      rfl
+  | j + 1, d, _, .fam f => by
+      rw [show j + 1 + d + 2 = (j + d + 2) + 1 by omega,
+        show j + 1 + d + 1 = (j + d + 1) + 1 by omega]
+      exact congrArg Arrows.Leaf.fam (funext fun s => dkB_shift hF j d (f s))
+
+/-! Keeping the inside of a possibility at level `j` inserts a level there: it commutes with
+every operation acting below it, as a shift does. -/
+
+theorem collapse_dkB (hT : ModalSys.T = true) (hF : ModalSys.Four = true) :
+    ∀ (j d : ℕ) {w : F.W} (ℓ : F.Leaf Root w),
+      collapse hT (j + d + 2) (dkB hF j ℓ) = dkB hF j (collapse hT (j + d + 1) ℓ)
+  | 0, d, _, ℓ => by
+      rw [Nat.zero_add]
+      cases ℓ <;> rfl
+  | j + 1, d, _, .root r p => by
+      simp only [dkB_root_succ, collapse_root]
+      exact congrArg (Arrows.Leaf.root r) (Step.collapseAt_shiftAt (j + 1) d p)
+  | j + 1, d, _, .fam f => by
+      rw [show j + 1 + d + 2 = (j + d + 2) + 1 by omega,
+        show j + 1 + d + 1 = (j + d + 1) + 1 by omega]
+      exact congrArg Arrows.Leaf.fam (funext fun s => collapse_dkB hT hF j d (f s))
+
+theorem shift_dkB_far (hF : ModalSys.Four = true) :
+    ∀ (j d : ℕ) {w : F.W} (ℓ : F.Leaf Root w),
+      shift hF (j + d + 2) (dkB hF j ℓ) = dkB hF j (shift hF (j + d + 1) ℓ)
+  | 0, d, _, ℓ => by
+      rw [Nat.zero_add]
+      cases ℓ <;> rfl
+  | j + 1, d, _, .root r p => by
+      simp only [dkB_root_succ, shift_root]
+      exact congrArg (Arrows.Leaf.root r) (Step.shiftAt_shiftAt (j + 1) d p)
+  | j + 1, d, _, .fam f => by
+      rw [show j + 1 + d + 2 = (j + d + 2) + 1 by omega,
+        show j + 1 + d + 1 = (j + d + 1) + 1 by omega]
+      exact congrArg Arrows.Leaf.fam (funext fun s => shift_dkB_far hF j d (f s))
+
+theorem dk_dkB (hF : ModalSys.Four = true) :
+    ∀ (j d : ℕ) {w : F.W} (ℓ : F.Leaf Root w),
+      dk hF (j + d + 2) (dkB hF j ℓ) = dkB hF j (dk hF (j + d + 1) ℓ)
+  | 0, d, _, ℓ => by
+      rw [Nat.zero_add]
+      cases ℓ <;> rfl
+  | j + 1, d, _, .root r p => by
+      rw [dkB_root_succ hF j, show j + 1 + d + 2 = (j + 1 + d + 1) + 1 by omega,
+        dk_root_succ hF (j + 1 + d + 1), dk_root_succ hF (j + 1 + d), dkB_root_succ hF j,
+        show j + 1 + d + 1 + 1 = (j + 1) + d + 2 by omega]
+      exact congrArg (Arrows.Leaf.root r) (Step.keepAt_shiftAt (j + 1) d p)
+  | j + 1, d, _, .fam f => by
+      rw [show j + 1 + d + 2 = (j + d + 2) + 1 by omega,
+        show j + 1 + d + 1 = (j + d + 1) + 1 by omega]
+      exact congrArg Arrows.Leaf.fam (funext fun s => dk_dkB hF j d (f s))
+
+theorem dkB_dkB (hF : ModalSys.Four = true) :
+    ∀ (j d : ℕ) {w : F.W} (ℓ : F.Leaf Root w),
+      dkB hF (j + d + 2) (dkB hF j ℓ) = dkB hF j (dkB hF (j + d + 1) ℓ)
+  | 0, d, _, ℓ => by
+      rw [Nat.zero_add]
+      cases ℓ <;> rfl
+  | j + 1, d, _, .root r p => by
+      rw [dkB_root_succ hF j, show j + 1 + d + 2 = (j + 1 + d + 1) + 1 by omega,
+        dkB_root_succ hF (j + 1 + d + 1), dkB_root_succ hF (j + 1 + d), dkB_root_succ hF j,
+        show j + 1 + d + 1 + 1 = (j + 1) + d + 2 by omega]
+      exact congrArg (Arrows.Leaf.root r) (Step.shiftAt_shiftAt (j + 1) d p)
+  | j + 1, d, _, .fam f => by
+      rw [show j + 1 + d + 2 = (j + d + 2) + 1 by omega,
+        show j + 1 + d + 1 = (j + d + 1) + 1 by omega]
+      exact congrArg Arrows.Leaf.fam (funext fun s => dkB_dkB hF j d (f s))
+
 variable [Arrows.RootKeepLaws F Root]
 
 /-- Restricting a leaf along two arrows is restricting it along their composite. -/
@@ -502,7 +744,185 @@ theorem shift_dk (hF : ModalSys.Four = true) :
   | j + 1, _, .fam f =>
       congrArg Arrows.Leaf.fam (funext fun s => shift_dk hF j (f s))
 
+/-- Keeping the inside of a kept possibility again at the next level is shifting it at this one. -/
+theorem shift_dkB (hF : ModalSys.Four = true) :
+    ∀ (j : ℕ) {w : F.W} (ℓ : F.Leaf Root w),
+      shift hF j (dkB hF j ℓ) = dkB hF (j + 1) (dkB hF j ℓ)
+  | 0, _, ℓ =>
+      congrArg Arrows.Leaf.fam (funext fun s => congrArg Arrows.Leaf.fam (funext fun t =>
+        (keepAlong_comp hF s t ℓ).symm))
+  | j + 1, _, .root r p => by
+      rw [dkB_root_succ hF j, shift_root, dkB_root_succ hF (j + 1)]
+      exact congrArg (Arrows.Leaf.root r) (Step.shiftAt_shiftAt_self (j + 1) p).symm
+  | j + 1, _, .fam f =>
+      congrArg Arrows.Leaf.fam (funext fun s => shift_dkB hF j (f s))
+
+/-- Under T, reading a kept possibility's label at the current world gives it back. -/
+theorem collapse_dk_self (hT : ModalSys.T = true) (hF : ModalSys.Four = true) :
+    ∀ (j : ℕ) {w : F.W} (ℓ : F.Leaf Root w), collapse hT j (dk hF j ℓ) = ℓ
+  | 0, _, ℓ => keepAlong_refl hT hF ℓ
+  | j + 1, _, .root r p => congrArg (Arrows.Leaf.root r) (Step.collapseAt_keepAt_self (j + 1) p)
+  | j + 1, _, .fam f => congrArg Arrows.Leaf.fam (funext fun s => collapse_dk_self hT hF j (f s))
+
+/-- Under T, reading the kept inside of a possibility at the current world gives it back. -/
+theorem collapse_dkB_self (hT : ModalSys.T = true) (hF : ModalSys.Four = true) :
+    ∀ (j : ℕ) {w : F.W} (ℓ : F.Leaf Root w), collapse hT j (dkB hF j ℓ) = ℓ
+  | 0, _, ℓ => keepAlong_refl hT hF ℓ
+  | j + 1, _, .root r p => congrArg (Arrows.Leaf.root r) (Step.collapseAt_shiftAt_self (j + 1) p)
+  | j + 1, _, .fam f =>
+      congrArg Arrows.Leaf.fam (funext fun s => collapse_dkB_self hT hF j (f s))
+
 end Keep
+
+/-! ### Well-formed leaves (docs §3 4, "T + 4") -/
+
+theorem wf_root {lw : List Bool} {w : F.W} (r : Root w) (p : List Step) :
+    Arrows.Leaf.WF lw (Arrows.Leaf.root (F := F) r p) ↔
+      Step.levels p = lw.length ∧ lw.head? ≠ some true := by
+  cases lw <;> rfl
+
+/-- Turning a `□` of the position into a `◇` keeps a leaf well-formed: only the head of a
+    position asks anything of its kind. -/
+theorem wf_relax : ∀ (lw q : List Bool) {w : F.W} (ℓ : F.Leaf Root w),
+    Arrows.Leaf.WF (lw ++ true :: q) ℓ → Arrows.Leaf.WF (lw ++ false :: q) ℓ
+  | lw, q, _, .root r p, h => by
+      rw [wf_root] at h ⊢
+      refine ⟨by simpa using h.1, ?_⟩
+      cases lw <;> simp_all
+  | [], _, _, .fam _, h => h
+  | _ :: lw, q, _, .fam f, h => fun s => wf_relax lw q (f s) (h s)
+
+/-- Under T, collapsing a level keeps a leaf well-formed, one level shorter. -/
+theorem wf_collapse (hT : ModalSys.T = true) : ∀ (lw q : List Bool) {w : F.W}
+    (ℓ : F.Leaf Root w), Arrows.Leaf.WF (lw ++ true :: q) ℓ →
+      Arrows.Leaf.WF (lw ++ q) (collapse hT lw.length ℓ)
+  | lw, q, _, .root r p, h => by
+      rw [wf_root] at h
+      rw [collapse_root, wf_root]
+      have hl := Step.levels_collapseAt lw.length p (by rw [h.1]; simp)
+      refine ⟨by rw [h.1] at hl; simp at hl; simp; omega, ?_⟩
+      cases lw with
+      | nil => exact absurd rfl h.2
+      | cons c lw => simpa using h.2
+  | [], q, w, .fam f, h => h (F.reflAcc hT w)
+  | _ :: lw, q, _, .fam f, h => fun s => wf_collapse hT lw q (f s) (h s)
+
+/-- Under 4, shifting a level keeps a leaf well-formed, one level longer. -/
+theorem wf_shift (hF : ModalSys.Four = true) : ∀ (lw q : List Bool) {w : F.W}
+    (ℓ : F.Leaf Root w), Arrows.Leaf.WF (lw ++ true :: q) ℓ →
+      Arrows.Leaf.WF (lw ++ true :: true :: q) (shift hF lw.length ℓ)
+  | lw, q, _, .root r p, h => by
+      rw [wf_root] at h
+      rw [shift_root, wf_root, Step.levels_shiftAt lw.length p (by rw [h.1]; simp), h.1]
+      refine ⟨by simp; omega, ?_⟩
+      cases lw with
+      | nil => exact absurd rfl h.2
+      | cons c lw => simpa using h.2
+  | [], q, _, .fam f, h => fun s t => h _
+  | _ :: lw, q, _, .fam f, h => fun s => wf_shift hF lw q (f s) (h s)
+
+section KeepWF
+
+variable [Arrows.RootKeep F Root]
+
+/-- Restricting a leaf along an arrow keeps it well-formed at the same position. -/
+theorem wf_keepAlong (hF : ModalSys.Four = true) : ∀ (lw : List Bool) {w : F.W}
+    (s : F.Acc w) (ℓ : F.Leaf Root w), Arrows.Leaf.WF lw ℓ →
+      Arrows.Leaf.WF lw (keepAlong hF s ℓ)
+  | lw, _, _, .root r p, h => by
+      rw [wf_root] at h
+      exact (wf_root _ p).mpr h
+  | [], _, _, .fam _, h => fun _ => h _
+  | _ :: _, _, _, .fam _, h => fun _ => h _
+
+/-- ⭐Keeping a possibility's label: well-formed one `□` further down. -/
+theorem wf_dk (hF : ModalSys.Four = true) : ∀ (lw : List Bool) {w : F.W} (ℓ : F.Leaf Root w),
+    Arrows.Leaf.WF lw ℓ → Arrows.Leaf.WF (lw ++ [true]) (dk hF lw.length ℓ)
+  | [], _, ℓ, h => fun s => wf_keepAlong hF [] s ℓ h
+  | c :: lw, _, .root r p, h => by
+      rw [wf_root] at h
+      change Arrows.Leaf.WF (c :: lw ++ [true])
+        (Arrows.Leaf.root r (Step.keepAt (lw.length + 1) p))
+      rw [wf_root, Step.levels_keepAt (lw.length + 1) p (by rw [h.1]; simp), h.1]
+      exact ⟨by simp, by simpa using h.2⟩
+  | _ :: lw, _, .fam f, h => fun s => wf_dk hF lw (f s) (h s)
+
+/-- ⭐Keeping the inside of a possibility: well-formed with a `□` inserted before its `◇`. -/
+theorem wf_dkB (hF : ModalSys.Four = true) : ∀ (lw q : List Bool) {w : F.W}
+    (ℓ : F.Leaf Root w), Arrows.Leaf.WF (lw ++ false :: q) ℓ →
+      Arrows.Leaf.WF (lw ++ true :: false :: q) (dkB hF lw.length ℓ)
+  | [], q, _, ℓ, h => fun s => wf_keepAlong hF (false :: q) s ℓ h
+  | c :: lw, q, _, .root r p, h => by
+      rw [wf_root] at h
+      change Arrows.Leaf.WF (c :: lw ++ true :: false :: q)
+        (Arrows.Leaf.root r (Step.shiftAt (lw.length + 1) p))
+      rw [wf_root, Step.levels_shiftAt (lw.length + 1) p (by rw [h.1]; simp), h.1]
+      exact ⟨by simp; omega, by simpa using h.2⟩
+  | _ :: lw, q, _, .fam f, h => fun s => wf_dkB hF lw q (f s) (h s)
+
+/-- ⭐On a well-formed leaf under a `□` at level `j`, keeping the inside of a possibility is a
+    shift: at the anchor's level the leaf is a family, below it both insert before the level
+    step. -/
+theorem dkB_eq_shift (hF : ModalSys.Four = true) : ∀ (lw q : List Bool) {w : F.W}
+    (ℓ : F.Leaf Root w), Arrows.Leaf.WF (lw ++ true :: q) ℓ →
+      dkB hF lw.length ℓ = shift hF lw.length ℓ
+  | [], q, _, .root r p, h => by
+      rw [wf_root] at h
+      exact absurd rfl h.2
+  | [], _, _, .fam _, _ => rfl
+  | _ :: _, _, _, .root _ _, _ => rfl
+  | _ :: lw, q, _, .fam f, h =>
+      congrArg Arrows.Leaf.fam (funext fun s => dkB_eq_shift hF lw q (f s) (h s))
+
+/-- Under T, keeping a possibility's label after collapsing a lower level is collapsing after
+    keeping, on a well-formed leaf whose position crosses a `□` at the collapsed level. -/
+theorem dk_collapse (hT : ModalSys.T = true) (hF : ModalSys.Four = true) :
+    ∀ (lw q : List Bool) {w : F.W} (ℓ : F.Leaf Root w), Arrows.Leaf.WF (lw ++ true :: q) ℓ →
+      dk hF (lw.length + q.length) (collapse hT lw.length ℓ) =
+        collapse hT lw.length (dk hF (lw.length + q.length + 1) ℓ)
+  | [], _, _, .root r p, h => by
+      rw [wf_root] at h
+      exact absurd rfl h.2
+  | [], q, _, .fam f, _ => by
+      simp only [List.length_nil, Nat.zero_add]
+      rfl
+  | c :: lw, q, _, .root r p, h => by
+      rw [wf_root] at h
+      have e : (c :: lw).length + q.length = (lw.length + q.length) + 1 := by simp; omega
+      rw [e, collapse_root, dk_root_succ, dk_root_succ, collapse_root]
+      congr 1
+      rw [← e]
+      exact Step.keepAt_collapseAt _ _ p (by rw [h.1]; simp; omega)
+  | c :: lw, q, _, .fam f, h => by
+      have e : (c :: lw).length + q.length = (lw.length + q.length) + 1 := by simp; omega
+      rw [e]
+      exact congrArg Arrows.Leaf.fam (funext fun s => dk_collapse hT hF lw q (f s) (h s))
+
+/-- Under T, keeping the inside of a possibility after collapsing a lower level is collapsing
+    after keeping; at the anchor's level the leaf is a family. -/
+theorem dkB_collapse (hT : ModalSys.T = true) (hF : ModalSys.Four = true) :
+    ∀ (lw q : List Bool) (d : ℕ) {w : F.W} (ℓ : F.Leaf Root w),
+      Arrows.Leaf.WF (lw ++ true :: q) ℓ →
+      dkB hF (lw.length + d) (collapse hT lw.length ℓ) =
+        collapse hT lw.length (dkB hF (lw.length + d + 1) ℓ)
+  | [], _, _, _, .root r p, h => by
+      rw [wf_root] at h
+      exact absurd rfl h.2
+  | [], q, d, _, .fam f, _ => by
+      simp only [List.length_nil, Nat.zero_add]
+      rfl
+  | c :: lw, q, d, _, .root r p, _ => by
+      have e : (c :: lw).length + d = (lw.length + d) + 1 := by simp; omega
+      rw [e, collapse_root, dkB_root_succ, dkB_root_succ, collapse_root]
+      congr 1
+      rw [← e]
+      exact Step.shiftAt_collapseAt _ _ p
+  | c :: lw, q, d, _, .fam f, h => by
+      have e : (c :: lw).length + d = (lw.length + d) + 1 := by simp; omega
+      rw [e]
+      exact congrArg Arrows.Leaf.fam (funext fun s => dkB_collapse hT hF lw q d (f s) (h s))
+
+end KeepWF
 
 end Arrows.Leaf
 
@@ -877,6 +1297,36 @@ theorem transpose_map_const {w : F.W} (G : ∀ s : F.Acc w, F.Leaf Root w → F.
       simp only [Arrows.transposeShp, Shp.map, Shp.label_dia, Shp.body_dia]
       rw [transpose_map_const G a]
 
+omit [F.RootKeep Root] in
+/-- **Transposition is injective**: each arrow's shape is read back from the families. -/
+theorem transposeShp_inj {w : F.W} :
+    ∀ {A : VarType} {g g' : (s : F.Acc w) → Shape F Root s.1 A},
+      Arrows.transposeShp g = Arrows.transposeShp g' → g = g'
+  | .Var, g, g', _ => funext fun s => by
+      generalize g s = a
+      generalize g' s = b
+      cases a; cases b; rfl
+  | .VTypeOne, g, g', _ => funext fun s => by
+      generalize g s = a
+      generalize g' s = b
+      cases a; cases b; rfl
+  | .VTypeProd _ _, g, g', h => by
+      simp only [Arrows.transposeShp, Shp.prod.injEq] at h
+      have e₁ := transposeShp_inj h.1
+      have e₂ := transposeShp_inj h.2
+      funext s
+      rw [Shp.prod_eta (g s), Shp.prod_eta (g' s), congrFun e₁ s, congrFun e₂ s]
+  | .VTypeBox _, g, g', h => by
+      simp only [Arrows.transposeShp, Shp.box.injEq] at h
+      have e := transposeShp_inj h
+      funext s
+      rw [Shp.box_eta (g s), Shp.box_eta (g' s), congrFun e s]
+  | .VTypeDia _, g, g', h => by
+      simp only [Arrows.transposeShp, Shp.dia.injEq, Arrows.Leaf.fam.injEq] at h
+      have e := transposeShp_inj h.2
+      funext s
+      rw [Shp.dia_eta (g s), Shp.dia_eta (g' s), congrFun h.1 s, congrFun e s]
+
 /-- ⭐**Every map's shape transport commutes with transposition**, one level further out. -/
 theorem shp_transpose {w : F.W} :
     ∀ {A B : VarType} (f : GFunc σ A B) (j : ℕ) (g : (s : F.Acc w) → Shape F Root s.1 A),
@@ -915,8 +1365,10 @@ theorem shp_transpose {w : F.W} :
       rw [show (Arrows.transposeShp h).inner = Arrows.transposeShp fun s => (h s).inner from rfl,
         transpose_map _ _ (fun _ => rfl)]
       rfl
-  | _, _, .dkeep hF _, j, h => by
+  | _, _, .dkeep hF, j, h => by
       simp only [GFunc.shp]
+      change Shp.box (Shp.dia (Arrows.Leaf.dk hF (j + 1) (.fam fun s => (h s).label))
+          ((Arrows.transposeShp fun s => (h s).body).map (Arrows.Leaf.dkB hF (j + 1)))) = _
       rw [transpose_map _ _ (fun _ => rfl)]
       rfl
 
@@ -1142,7 +1594,7 @@ theorem termShp_ann {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) :
 /-! ## Collapsing or shifting a whole shape environment -/
 
 omit [ModalSys] in
-theorem _root_.V12M.Shp.map_map {L : Type y} (g g' : L → L) :
+theorem _root_.V12M.Shp.map_map {L L' L'' : Type y} (g : L → L') (g' : L' → L'') :
     ∀ {A : VarType} (a : Shp L A), (a.map g).map g' = a.map (g' ∘ g)
   | _, .var => rfl
   | _, .one => rfl
@@ -1151,7 +1603,7 @@ theorem _root_.V12M.Shp.map_map {L : Type y} (g g' : L → L) :
   | _, .dia _ a => by simp only [Shp.map]; rw [Shp.map_map g g' a]; rfl
 
 omit [ModalSys] in
-theorem _root_.V12M.Shp.map_congr {L : Type y} {g g' : L → L} (h : ∀ ℓ, g ℓ = g' ℓ) :
+theorem _root_.V12M.Shp.map_congr {L L' : Type y} {g g' : L → L'} (h : ∀ ℓ, g ℓ = g' ℓ) :
     ∀ {A : VarType} (a : Shp L A), a.map g = a.map g'
   | _, .var => rfl
   | _, .one => rfl
@@ -1167,84 +1619,393 @@ theorem _root_.V12M.Shp.map_id {L : Type y} : ∀ {A : VarType} (a : Shp L A), a
   | _, .box a => by simp only [Shp.map]; rw [Shp.map_id a]
   | _, .dia _ a => by simp only [Shp.map]; rw [Shp.map_id a]; rfl
 
-/-- A collapse at level `j` passes through any map acting at a level below it. -/
+/-! ## Well-formed shapes (docs §3 4, "T + 4") -/
+
+/-- Well-formed shapes, leaves by `Arrows.Leaf.WF`. -/
+abbrev ShWF {w : F.W} (lw : List Bool) {A : VarType} (a : Shape F Root w A) : Prop :=
+  Shp.WF (fun lw ℓ => Arrows.Leaf.WF lw ℓ) lw a
+
+omit [ModalSys] in
+/-- ⭐A leaf map that moves positions by a fixed prefix moves well-formed shapes. -/
+theorem _root_.V12M.Shp.wf_map {L : Type y} {P Q : List Bool → L → Prop} (g : L → L)
+    (pre pre' : List Bool) (hg : ∀ r ℓ, P (pre ++ r) ℓ → Q (pre' ++ r) (g ℓ)) :
+    ∀ {A : VarType} (r : List Bool) (a : Shp L A), Shp.WF P (pre ++ r) a →
+      Shp.WF Q (pre' ++ r) (a.map g)
+  | _, _, .var, _ => trivial
+  | _, _, .one, _ => trivial
+  | _, r, .prod a b, h => ⟨Shp.wf_map g pre pre' hg r a h.1, Shp.wf_map g pre pre' hg r b h.2⟩
+  | _, r, .box a, h => by
+      change Shp.WF Q (pre' ++ r ++ [true]) (a.map g)
+      rw [List.append_assoc]
+      exact Shp.wf_map g pre pre' hg (r ++ [true]) a (by rw [← List.append_assoc]; exact h)
+  | _, r, .dia ℓ a, h => by
+      refine ⟨hg r ℓ h.1, ?_⟩
+      change Shp.WF Q (pre' ++ r ++ [false]) (a.map g)
+      rw [List.append_assoc]
+      exact Shp.wf_map g pre pre' hg (r ++ [false]) a (by rw [← List.append_assoc]; exact h.2)
+
+omit [ModalSys] in
+/-- Two leaf maps agreeing on the well-formed leaves below a prefix agree on a well-formed
+    shape. -/
+theorem _root_.V12M.Shp.map_congr_wf {L : Type y} {P : List Bool → L → Prop} {g g' : L → L}
+    (pre : List Bool) (hg : ∀ r ℓ, P (pre ++ r) ℓ → g ℓ = g' ℓ) :
+    ∀ {A : VarType} (r : List Bool) (a : Shp L A), Shp.WF P (pre ++ r) a → a.map g = a.map g'
+  | _, _, .var, _ => rfl
+  | _, _, .one, _ => rfl
+  | _, r, .prod a b, h => by
+      simp only [Shp.map]
+      rw [Shp.map_congr_wf pre hg r a h.1, Shp.map_congr_wf pre hg r b h.2]
+  | _, r, .box a, h => by
+      simp only [Shp.map]
+      rw [Shp.map_congr_wf pre hg (r ++ [true]) a (by rw [← List.append_assoc]; exact h)]
+  | _, r, .dia ℓ a, h => by
+      simp only [Shp.map]
+      rw [hg r ℓ h.1,
+        Shp.map_congr_wf pre hg (r ++ [false]) a (by rw [← List.append_assoc]; exact h.2)]
+
+omit [Arrows.RootKeep F Root] in
+theorem shWF_relax {w : F.W} (lw : List Bool) {A : VarType} (a : Shape F Root w A)
+    (h : ShWF (lw ++ [true]) a) : ShWF (lw ++ [false]) a := by
+  have := Shp.wf_map (P := fun lw ℓ => Arrows.Leaf.WF lw ℓ)
+    (Q := fun lw ℓ => Arrows.Leaf.WF lw ℓ) id (lw ++ [true]) (lw ++ [false])
+    (fun r ℓ hℓ => by
+      simp only [List.append_assoc, List.singleton_append] at hℓ ⊢
+      exact Arrows.Leaf.wf_relax lw r ℓ hℓ) [] a (by simpa using h)
+  simpa [Shp.map_id] using this
+
+omit [Arrows.RootKeep F Root] in
+/-- ⭐Transposition is well-formed: its leaves are families, of well-formed members. -/
+theorem shWF_transpose {w : F.W} (c : Bool) :
+    ∀ {A : VarType} (lw : List Bool) (g : (s : F.Acc w) → Shape F Root s.1 A),
+      (∀ s, ShWF lw (g s)) → ShWF (c :: lw) (Arrows.transposeShp g)
+  | .Var, _, _, _ => trivial
+  | .VTypeOne, _, _, _ => trivial
+  | .VTypeProd _ _, lw, g, h =>
+      ⟨shWF_transpose c lw (fun s => (g s).fst) fun s => by
+          have := h s
+          rw [Shp.prod_eta (g s)] at this
+          exact this.1,
+        shWF_transpose c lw (fun s => (g s).snd) fun s => by
+          have := h s
+          rw [Shp.prod_eta (g s)] at this
+          exact this.2⟩
+  | .VTypeBox _, lw, g, h =>
+      shWF_transpose c (lw ++ [true]) (fun s => (g s).inner) fun s => by
+        have := h s
+        rw [Shp.box_eta (g s)] at this
+        exact this
+  | .VTypeDia _, lw, g, h =>
+      ⟨fun s => by
+          have := h s
+          rw [Shp.dia_eta (g s)] at this
+          exact this.1,
+        shWF_transpose c (lw ++ [false]) (fun s => (g s).body) fun s => by
+          have := h s
+          rw [Shp.dia_eta (g s)] at this
+          exact this.2⟩
+
+/-- ⭐**Every map's shape transport keeps shapes well-formed.** -/
+theorem shWF_shp : ∀ {A B : VarType} (f : GFunc σ A B) (lw : List Bool) {w : F.W}
+    (a : Shape F Root w A), ShWF lw a → ShWF lw (GFunc.shp f lw.length a)
+  | _, _, .id _, _, _, _, h => h
+  | _, _, .comp g f, lw, _, a, h => shWF_shp g lw _ (shWF_shp f lw a h)
+  | _, _, .fst, _, _, a, h => by
+      rw [Shp.prod_eta a] at h
+      exact h.1
+  | _, _, .snd, _, _, a, h => by
+      rw [Shp.prod_eta a] at h
+      exact h.2
+  | _, _, .pair f g, lw, _, a, h => ⟨shWF_shp f lw a h, shWF_shp g lw a h⟩
+  | _, _, .unit _, _, _, _, _ => trivial
+  | _, _, .func _ _, _, _, _, _ => trivial
+  | _, _, .boxMap f, lw, _, a, h => by
+      rw [Shp.box_eta a] at h
+      have := shWF_shp f (lw ++ [true]) a.inner (by simpa using h)
+      simp only [List.length_append, List.length_singleton] at this
+      exact this
+  | _, _, .boxPair _ _, lw, _, a, h => by
+      rw [Shp.prod_eta a, Shp.box_eta a.fst, Shp.box_eta a.snd] at h
+      exact ⟨h.1, h.2⟩
+  | _, _, .boxUnit, _, _, _, _ => trivial
+  | _, _, .diaMap f, lw, _, a, h => by
+      rw [Shp.dia_eta a] at h
+      have := shWF_shp f (lw ++ [false]) a.body (by simpa using h.2)
+      simp only [List.length_append, List.length_singleton] at this
+      exact ⟨h.1, this⟩
+  | _, _, .strength _ _, lw, _, a, h => by
+      rw [Shp.prod_eta a, Shp.box_eta a.fst, Shp.dia_eta a.snd] at h
+      exact ⟨h.2.1, shWF_relax lw _ h.1, h.2.2⟩
+  | _, _, .extract hT, lw, _, a, h => by
+      rw [Shp.box_eta a] at h
+      have := Shp.wf_map (P := fun lw ℓ => Arrows.Leaf.WF lw ℓ)
+        (Q := fun lw ℓ => Arrows.Leaf.WF lw ℓ) (Arrows.Leaf.collapse hT lw.length)
+        (lw ++ [true]) lw (fun r ℓ hℓ => by
+          simp only [List.append_assoc, List.singleton_append] at hℓ
+          exact Arrows.Leaf.wf_collapse hT lw r ℓ hℓ) [] a.inner (by simpa using h)
+      simpa using this
+  | _, _, .dup hF, lw, _, a, h => by
+      rw [Shp.box_eta a] at h
+      have := Shp.wf_map (P := fun lw ℓ => Arrows.Leaf.WF lw ℓ)
+        (Q := fun lw ℓ => Arrows.Leaf.WF lw ℓ) (Arrows.Leaf.shift hF lw.length)
+        (lw ++ [true]) (lw ++ [true, true]) (fun r ℓ hℓ => by
+          simp only [List.append_assoc, List.cons_append,
+            List.nil_append] at hℓ ⊢
+          exact Arrows.Leaf.wf_shift hF lw r ℓ hℓ) [] a.inner (by simpa using h)
+      change ShWF (lw ++ [true] ++ [true]) _
+      simpa using this
+  | _, _, .dkeep hF, lw, _, a, h => by
+      rw [Shp.dia_eta a] at h
+      refine ⟨Arrows.Leaf.wf_dk hF lw a.label h.1, ?_⟩
+      have := Shp.wf_map (P := fun lw ℓ => Arrows.Leaf.WF lw ℓ)
+        (Q := fun lw ℓ => Arrows.Leaf.WF lw ℓ) (Arrows.Leaf.dkB hF lw.length)
+        (lw ++ [false]) (lw ++ [true, false]) (fun r ℓ hℓ => by
+          simp only [List.append_assoc, List.cons_append,
+            List.nil_append] at hℓ ⊢
+          exact Arrows.Leaf.wf_dkB hF lw r ℓ hℓ) [] a.body (by simpa using h.2)
+      change ShWF (lw ++ [true] ++ [false]) _
+      simpa using this
+
+/-- ⭐On a well-formed shape under a `□` at level `j`, keeping the inside of a possibility is a
+    shift (`Arrows.Leaf.dkB_eq_shift`). -/
+theorem shWF_dkB_eq_shift (hF : ModalSys.Four = true) (lw : List Bool) {w : F.W} {A : VarType}
+    (a : Shape F Root w A) (h : ShWF (lw ++ [true]) a) :
+    a.map (Arrows.Leaf.dkB hF lw.length) = a.map (Arrows.Leaf.shift hF lw.length) :=
+  Shp.map_congr_wf (P := fun lw ℓ => Arrows.Leaf.WF lw ℓ) (lw ++ [true])
+    (fun r ℓ hℓ => Arrows.Leaf.dkB_eq_shift hF lw r ℓ (by simpa using hℓ)) [] a
+    (by simpa using h)
+
+/-- Well-formed shape environments: every entry well-formed at the environment's position. -/
+def ShEnv.WF {Γ : Ctx} {w : F.W} (lw : List Bool) (ρ : ShEnv F Root Γ w) : Prop :=
+  ∀ v T (h : Γ v = some T), ShWF lw (ρ v T h)
+
+theorem ShEnv.wf_ref {Γ : Ctx} {w : F.W} {lw : List Bool} {ρ : ShEnv F Root Γ w}
+    (hρ : ρ.WF lw) : ∀ (v : VarSymb) {T : VarType} (h : Γ.ref v = some T),
+      ShWF lw (ρ.ref lw.length v h)
+  | .root _, _, h => hρ _ _ h
+  | .step v s, T, h => by
+      by_cases hs : s.isProj = true
+      · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
+          rw [Ctx.ref_step_proj Γ v hs] at h
+          cases hU : Γ.ref v with
+          | none => rw [hU] at h; cases h
+          | some U => exact ⟨U, rfl⟩
+        rw [ShEnv.ref_proj _ _ hs hU h]
+        exact shWF_shp _ lw _ (ShEnv.wf_ref hρ v hU)
+      · rw [ShEnv.ref_nonproj _ _ hs h]
+        exact hρ _ _ ((Ctx.ref_nonproj _ (by simpa using hs)).symm.trans h)
+
+theorem ShEnv.wf_boxPush {Γ : Ctx} {w : F.W} {lw : List Bool} {ρ : ShEnv F Root Γ w}
+    (hρ : ρ.WF lw) : (ρ.boxPush lw.length).WF (lw ++ [true]) := by
+  intro v T h
+  match v, h with
+  | .step u .box, h =>
+      have := ShEnv.wf_ref hρ u (Ctx.boxIn_step_box h)
+      rw [Shp.box_eta (ρ.ref lw.length u (Ctx.boxIn_step_box h))] at this
+      exact this
+  | .step u .keep, h =>
+      have := shWF_shp (GFunc.keep (σ := σ) (Ctx.boxIn_keep h).1 (Ctx.boxIn_keep h).2.2) lw _
+        (ShEnv.wf_ref hρ u (Ctx.boxIn_keep h).2.1)
+      rw [Shp.box_eta (GFunc.shp _ _ _)] at this
+      exact this
+  | .root _, h => cases h
+  | .step _ .fst, h => cases h
+  | .step _ .snd, h => cases h
+  | .step _ .dia, h => cases h
+  | .step _ .here, h => cases h
+
+theorem ShEnv.wf_diaPush {Γ : Ctx} {w : F.W} {lw : List Bool} {ρ : ShEnv F Root Γ w}
+    (hρ : ρ.WF lw) {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) :
+    (ρ.diaPush lw.length x hx).WF (lw ++ [false]) := by
+  intro v T h
+  match v, h with
+  | .step _ .dia, h =>
+      have e := Ctx.diaIn_step_dia hx h
+      subst e
+      have := ShEnv.wf_ref hρ x hx
+      rw [Shp.dia_eta (ρ.ref lw.length x hx)] at this
+      exact this.2
+  | .step u .box, h => exact shWF_relax lw _ (ShEnv.wf_boxPush hρ (.step u .box) T h)
+  | .step u .keep, h => exact shWF_relax lw _ (ShEnv.wf_boxPush hρ (.step u .keep) T h)
+  | .root _, h => cases h
+  | .step _ .fst, h => cases h
+  | .step _ .snd, h => cases h
+  | .step _ .here, h => cases h
+
+theorem ShEnv.wf_ref' {Γ : Ctx} {w : F.W} {lw : List Bool} {ρ : ShEnv F Root Γ w} {k : ℕ}
+    (hρ : ρ.WF lw) (hk : lw.length = k) (v : VarSymb) {T : VarType} (h : Γ.ref v = some T) :
+    ShWF lw (ρ.ref k v h) := by
+  subst hk
+  exact ShEnv.wf_ref hρ v h
+
+theorem ShEnv.wf_boxPush' {Γ : Ctx} {w : F.W} {lw : List Bool} {ρ : ShEnv F Root Γ w} {k : ℕ}
+    (hρ : ρ.WF lw) (hk : lw.length = k) : (ρ.boxPush k).WF (lw ++ [true]) := by
+  subst hk
+  exact ShEnv.wf_boxPush hρ
+
+theorem ShEnv.wf_diaPush' {Γ : Ctx} {w : F.W} {lw : List Bool} {ρ : ShEnv F Root Γ w} {k : ℕ}
+    (hρ : ρ.WF lw) (hk : lw.length = k) {x : VarSymb} {X : VarType}
+    (hx : Γ.ref x = some (.VTypeDia X)) : (ρ.diaPush k x hx).WF (lw ++ [false]) := by
+  subst hk
+  exact ShEnv.wf_diaPush hρ hx
+
+/-- ⭐**A term's symbolic shape is well-formed** in a well-formed environment. -/
+theorem shWF_termShp : ∀ {Δ : Ctx} {w : F.W} {lw : List Bool} {ρ : ShEnv F Root Δ w},
+    ρ.WF lw → ∀ {T : VarType} {a : Ann T} (t : Term σ Δ T a), ShWF lw (termShp ρ lw.length t)
+  | _, _, _, _, _, _, _, .var _ _ => trivial
+  | _, _, _, _, _, _, _, .func _ => trivial
+  | _, _, _, _, _, _, _, .unit => trivial
+  | _, _, _, _, hρ, _, _, .pair s t => ⟨shWF_termShp hρ s, shWF_termShp hρ t⟩
+  | _, _, lw, _, hρ, _, _, .boxtm t => by
+      have := shWF_termShp (ShEnv.wf_boxPush hρ) t
+      simpa using this
+  | _, _, lw, ρ, hρ, _, _, .diatm x hx t => by
+      obtain ⟨X, hr⟩ := id hx
+      rw [termShp_diatm ρ lw.length hr]
+      have hl := ShEnv.wf_ref hρ x hr
+      rw [Shp.dia_eta (ρ.ref lw.length x hr)] at hl
+      exact ⟨hl.1, by simpa using shWF_termShp (ShEnv.wf_diaPush hρ hr) t⟩
+
+/-- A collapse at level `j` passes through any map acting at a level below it, on a shape
+    well-formed under 4 at a position crossing a `□` at `j` — keeping a possibility needs it. -/
 theorem shp_mapCollapse (hT : ModalSys.T = true) (j : ℕ) {w : F.W} :
-    ∀ {A B : VarType} (f : GFunc σ A B) (d : ℕ) (a : Shape F Root w A),
+    ∀ {A B : VarType} (f : GFunc σ A B) (d : ℕ) (lw q : List Bool) (_hl : lw.length = j)
+      (_hq : q.length = d) (a : Shape F Root w A)
+      (_ha : ModalSys.Four = true → ShWF (lw ++ true :: q) a),
       GFunc.shp f (j + d) (a.map (Arrows.Leaf.collapse hT j)) =
         (GFunc.shp f (j + d + 1) a).map (Arrows.Leaf.collapse hT j)
-  | _, _, .id _, _, _ => rfl
-  | _, _, .comp g f, d, a => by
+  | _, _, .id _, _, _, _, _, _, _, _ => rfl
+  | _, _, .comp g f, d, lw, q, hl, hq, a, ha => by
       simp only [GFunc.shp]
-      rw [shp_mapCollapse hT j f, shp_mapCollapse hT j g]
-  | _, _, .fst, _, a => Shp.map_fst _ a
-  | _, _, .snd, _, a => Shp.map_snd _ a
-  | _, _, .pair f g, d, a => by
+      have hlen : (lw ++ true :: q).length = j + d + 1 := by simp [hl, hq]; omega
+      rw [shp_mapCollapse hT j f d lw q hl hq a ha,
+        shp_mapCollapse hT j g d lw q hl hq _ (fun hF => by
+          rw [← hlen]
+          exact shWF_shp f _ a (ha hF))]
+  | _, _, .fst, _, _, _, _, _, a, _ => Shp.map_fst _ a
+  | _, _, .snd, _, _, _, _, _, a, _ => Shp.map_snd _ a
+  | _, _, .pair f g, d, lw, q, hl, hq, a, ha => by
       simp only [GFunc.shp, Shp.map]
-      rw [shp_mapCollapse hT j f, shp_mapCollapse hT j g]
-  | _, _, .unit _, _, _ => rfl
-  | _, _, .func _ _, _, _ => rfl
-  | _, _, .boxMap f, d, a => by
+      rw [shp_mapCollapse hT j f d lw q hl hq a ha, shp_mapCollapse hT j g d lw q hl hq a ha]
+  | _, _, .unit _, _, _, _, _, _, _, _ => rfl
+  | _, _, .func _ _, _, _, _, _, _, _, _ => rfl
+  | _, _, .boxMap f, d, lw, q, hl, hq, a, ha => by
       simp only [GFunc.shp, Shp.map, Shp.map_inner]
-      rw [show j + d + 1 = j + (d + 1) from rfl, shp_mapCollapse hT j f (d + 1)]
-  | _, _, .boxPair _ _, _, a => by
+      rw [show j + d + 1 = j + (d + 1) from rfl,
+        shp_mapCollapse hT j f (d + 1) lw (q ++ [true]) hl (by simp [hq]) a.inner (fun hF => by
+          have := ha hF
+          rw [Shp.box_eta a] at this
+          simpa [Shp.WF] using this)]
+  | _, _, .boxPair _ _, _, _, _, _, _, a, _ => by
       simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_fst, Shp.map_snd]
-  | _, _, .boxUnit, _, _ => rfl
-  | _, _, .diaMap f, d, a => by
+  | _, _, .boxUnit, _, _, _, _, _, _, _ => rfl
+  | _, _, .diaMap f, d, lw, q, hl, hq, a, ha => by
       simp only [GFunc.shp, Shp.map, Shp.map_label, Shp.map_body]
-      rw [show j + d + 1 = j + (d + 1) from rfl, shp_mapCollapse hT j f (d + 1)]
-  | _, _, .strength _ _, _, a => by
+      rw [show j + d + 1 = j + (d + 1) from rfl,
+        shp_mapCollapse hT j f (d + 1) lw (q ++ [false]) hl (by simp [hq]) a.body (fun hF => by
+          have := ha hF
+          rw [Shp.dia_eta a] at this
+          simpa [Shp.WF] using this.2)]
+  | _, _, .strength _ _, _, _, _, _, _, a, _ => by
       simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_fst, Shp.map_snd, Shp.map_label,
         Shp.map_body]
-  | _, _, .extract hT', d, a => by
+  | _, _, .extract hT', d, _, _, _, _, a, _ => by
       simp only [GFunc.shp, Shp.map_inner, Shp.map_map]
       exact Shp.map_congr (fun ℓ => Arrows.Leaf.collapse_collapse hT j d ℓ) _
-  | _, _, .dup hF, d, a => by
+  | _, _, .dup hF, d, _, _, _, _, a, _ => by
       simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_map]
       congr 2
       exact Shp.map_congr (fun ℓ => Arrows.Leaf.shift_collapse hT hF j d ℓ) _
-  | _, _, .dkeep _ hnS, _, _ => absurd (ModalSys.shaped_of_T hT) (by rw [hnS]; decide)
+  | _, _, .dkeep hF, d, lw, q, hl, hq, a, ha => by
+      -- ⭐The kept label by `dk_collapse` (the invariant), the inside by `dkB_collapse`.
+      have hW := ha hF
+      rw [Shp.dia_eta a] at hW
+      subst hl
+      subst hq
+      simp only [GFunc.shp, Shp.map, Shp.map_map, Shp.map_label, Shp.map_body]
+      rw [Arrows.Leaf.dk_collapse hT hF lw q a.label hW.1]
+      congr 2
+      exact Shp.map_congr_wf (P := fun lw ℓ => Arrows.Leaf.WF lw ℓ) (lw ++ true :: (q ++ [false]))
+        (fun r ℓ hℓ => Arrows.Leaf.dkB_collapse hT hF lw (q ++ false :: r) q.length ℓ
+          (by simpa using hℓ)) [] a.body (by simpa using hW.2)
 
-/-- A shift at level `j` passes through any map acting at a level below it. -/
-theorem shp_mapShift (hF : ModalSys.Four = true) (j : ℕ) {w : F.W} :
+/-- ⭐A leaf map **inserting a level** at `j`: it commutes with every operation acting below that
+    level, moving it one level down — a shift (`shift_levelIns`), and keeping the inside of a
+    possibility (`dkB_levelIns`). -/
+structure LevelIns {w : F.W} (j : ℕ) (g : F.Leaf Root w → F.Leaf Root w) : Prop where
+  collapse : ∀ (hT : ModalSys.T = true) (d : ℕ) (ℓ : F.Leaf Root w),
+    Arrows.Leaf.collapse hT (j + d + 2) (g ℓ) = g (Arrows.Leaf.collapse hT (j + d + 1) ℓ)
+  shift : ∀ (hF : ModalSys.Four = true) (d : ℕ) (ℓ : F.Leaf Root w),
+    Arrows.Leaf.shift hF (j + d + 2) (g ℓ) = g (Arrows.Leaf.shift hF (j + d + 1) ℓ)
+  dk : ∀ (hF : ModalSys.Four = true) (d : ℕ) (ℓ : F.Leaf Root w),
+    Arrows.Leaf.dk hF (j + d + 2) (g ℓ) = g (Arrows.Leaf.dk hF (j + d + 1) ℓ)
+  dkB : ∀ (hF : ModalSys.Four = true) (d : ℕ) (ℓ : F.Leaf Root w),
+    Arrows.Leaf.dkB hF (j + d + 2) (g ℓ) = g (Arrows.Leaf.dkB hF (j + d + 1) ℓ)
+
+theorem shift_levelIns (hF : ModalSys.Four = true) (j : ℕ) {w : F.W} :
+    LevelIns (w := w) j (Arrows.Leaf.shift (F := F) (Root := Root) hF j) :=
+  ⟨fun hT d ℓ => Arrows.Leaf.collapse_shift hT hF j d ℓ,
+    fun _ d ℓ => Arrows.Leaf.shift_shift hF j d ℓ,
+    fun _ d ℓ => Arrows.Leaf.dk_shift hF j d ℓ,
+    fun _ d ℓ => Arrows.Leaf.dkB_shift hF j d ℓ⟩
+
+theorem dkB_levelIns (hF : ModalSys.Four = true) (j : ℕ) {w : F.W} :
+    LevelIns (w := w) j (Arrows.Leaf.dkB (F := F) (Root := Root) hF j) :=
+  ⟨fun hT d ℓ => Arrows.Leaf.collapse_dkB hT hF j d ℓ,
+    fun _ d ℓ => Arrows.Leaf.shift_dkB_far hF j d ℓ,
+    fun _ d ℓ => Arrows.Leaf.dk_dkB hF j d ℓ,
+    fun _ d ℓ => Arrows.Leaf.dkB_dkB hF j d ℓ⟩
+
+/-- ⭐**A level-inserting leaf map passes through any map acting below it.** -/
+theorem shp_mapIns {w : F.W} {j : ℕ} {g : F.Leaf Root w → F.Leaf Root w}
+    (hg : LevelIns j g) :
     ∀ {A B : VarType} (f : GFunc σ A B) (d : ℕ) (a : Shape F Root w A),
-      GFunc.shp f (j + d + 2) (a.map (Arrows.Leaf.shift hF j)) =
-        (GFunc.shp f (j + d + 1) a).map (Arrows.Leaf.shift hF j)
+      GFunc.shp f (j + d + 2) (a.map g) =
+        (GFunc.shp f (j + d + 1) a).map g
   | _, _, .id _, _, _ => rfl
-  | _, _, .comp g f, d, a => by
+  | _, _, .comp g₁ f, d, a => by
       simp only [GFunc.shp]
-      rw [shp_mapShift hF j f, shp_mapShift hF j g]
+      rw [shp_mapIns hg f, shp_mapIns hg g₁]
   | _, _, .fst, _, a => Shp.map_fst _ a
   | _, _, .snd, _, a => Shp.map_snd _ a
-  | _, _, .pair f g, d, a => by
+  | _, _, .pair f g₁, d, a => by
       simp only [GFunc.shp, Shp.map]
-      rw [shp_mapShift hF j f, shp_mapShift hF j g]
+      rw [shp_mapIns hg f, shp_mapIns hg g₁]
   | _, _, .unit _, _, _ => rfl
   | _, _, .func _ _, _, _ => rfl
   | _, _, .boxMap f, d, a => by
       simp only [GFunc.shp, Shp.map, Shp.map_inner]
       rw [show j + d + 2 + 1 = j + (d + 1) + 2 by omega,
-        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, shp_mapShift hF j f (d + 1)]
+        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, shp_mapIns hg f (d + 1)]
   | _, _, .boxPair _ _, _, a => by
       simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_fst, Shp.map_snd]
   | _, _, .boxUnit, _, _ => rfl
   | _, _, .diaMap f, d, a => by
       simp only [GFunc.shp, Shp.map, Shp.map_label, Shp.map_body]
       rw [show j + d + 2 + 1 = j + (d + 1) + 2 by omega,
-        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, shp_mapShift hF j f (d + 1)]
+        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, shp_mapIns hg f (d + 1)]
   | _, _, .strength _ _, _, a => by
       simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_fst, Shp.map_snd, Shp.map_label,
         Shp.map_body]
   | _, _, .extract hT, d, a => by
       simp only [GFunc.shp, Shp.map_inner, Shp.map_map]
-      exact Shp.map_congr (fun ℓ => Arrows.Leaf.collapse_shift hT hF j d ℓ) _
+      exact Shp.map_congr (fun ℓ => hg.collapse hT d ℓ) _
   | _, _, .dup hF', d, a => by
       simp only [GFunc.shp, Shp.map, Shp.map_inner, Shp.map_map]
       congr 2
-      exact Shp.map_congr (fun ℓ => Arrows.Leaf.shift_shift hF j d ℓ) _
-  | _, _, .dkeep hF' _, d, a => by
-      simp only [GFunc.shp, Shp.map, Shp.map_map]
-      congr 1
-      exact Shp.map_congr (fun ℓ => Arrows.Leaf.dk_shift hF j d ℓ) _
+      exact Shp.map_congr (fun ℓ => hg.shift hF' d ℓ) _
+  | _, _, .dkeep hF', d, a => by
+      simp only [GFunc.shp, Shp.map, Shp.map_map, Shp.map_label, Shp.map_body]
+      rw [hg.dk hF' d]
+      congr 2
+      refine Shp.map_congr (fun ℓ => ?_) _
+      exact hg.dkB hF' d ℓ
+
+/-- A shift at level `j` passes through any map acting at a level below it. -/
+theorem shp_mapShift (hF : ModalSys.Four = true) (j : ℕ) {w : F.W} :
+    ∀ {A B : VarType} (f : GFunc σ A B) (d : ℕ) (a : Shape F Root w A),
+      GFunc.shp f (j + d + 2) (a.map (Arrows.Leaf.shift hF j)) =
+        (GFunc.shp f (j + d + 1) a).map (Arrows.Leaf.shift hF j) :=
+  shp_mapIns (shift_levelIns hF j)
 
 /-- Apply a leaf map to every shape of an environment. -/
 def ShEnv.mapLeaves {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w)
@@ -1255,7 +2016,9 @@ section MapLeaves
 
 variable {Γ : Ctx} {w : F.W}
 
-theorem ShEnv.ref_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ) :
+theorem ShEnv.ref_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ)
+    {lw q : List Bool} (hl : lw.length = j) (hq : q.length = d)
+    (hρ : ModalSys.Four = true → ρ.WF (lw ++ true :: q)) :
     ∀ (v : VarSymb) {T : VarType} (h : Γ.ref v = some T),
       (ρ.mapLeaves (Arrows.Leaf.collapse hT j)).ref (j + d) v h =
         (ρ.ref (j + d + 1) v h).map (Arrows.Leaf.collapse hT j)
@@ -1268,14 +2031,17 @@ theorem ShEnv.ref_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv F R
           | none => rw [hU] at h; cases h
           | some U => exact ⟨U, rfl⟩
         rw [ShEnv.ref_proj _ _ hs hU h, ShEnv.ref_proj _ _ hs hU h,
-          ShEnv.ref_mapCollapse hT j ρ d v hU, shp_mapCollapse]
+          ShEnv.ref_mapCollapse hT j ρ d hl hq hρ v hU,
+          shp_mapCollapse hT j _ d lw q hl hq _ (fun hF =>
+            ShEnv.wf_ref' (hρ hF) (by simp [hl, hq]; omega) v hU)]
       · rw [ShEnv.ref_nonproj _ _ hs h, ShEnv.ref_nonproj _ _ hs h]
         rfl
 
-theorem ShEnv.ref_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ) :
+theorem ShEnv.ref_mapIns {j : ℕ} {g : F.Leaf Root w → F.Leaf Root w} (hg : LevelIns j g)
+    (ρ : ShEnv F Root Γ w) (d : ℕ) :
     ∀ (v : VarSymb) {T : VarType} (h : Γ.ref v = some T),
-      (ρ.mapLeaves (Arrows.Leaf.shift hF j)).ref (j + d + 2) v h =
-        (ρ.ref (j + d + 1) v h).map (Arrows.Leaf.shift hF j)
+      (ρ.mapLeaves g).ref (j + d + 2) v h =
+        (ρ.ref (j + d + 1) v h).map g
   | .root _, _, _ => rfl
   | .step v s, T, h => by
       by_cases hs : s.isProj = true
@@ -1285,21 +2051,50 @@ theorem ShEnv.ref_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : ShEnv F R
           | none => rw [hU] at h; cases h
           | some U => exact ⟨U, rfl⟩
         rw [ShEnv.ref_proj _ _ hs hU h, ShEnv.ref_proj _ _ hs hU h,
-          ShEnv.ref_mapShift hF j ρ d v hU, shp_mapShift]
+          ShEnv.ref_mapIns hg ρ d v hU, shp_mapIns hg]
       · rw [ShEnv.ref_nonproj _ _ hs h, ShEnv.ref_nonproj _ _ hs h]
         rfl
 
-theorem ShEnv.boxPush_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ) :
+theorem ShEnv.ref_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ) :
+    ∀ (v : VarSymb) {T : VarType} (h : Γ.ref v = some T),
+      (ρ.mapLeaves (Arrows.Leaf.shift hF j)).ref (j + d + 2) v h =
+        (ρ.ref (j + d + 1) v h).map (Arrows.Leaf.shift hF j) :=
+  ShEnv.ref_mapIns (shift_levelIns hF j) ρ d
+
+theorem ShEnv.boxPush_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ)
+    {lw q : List Bool} (hl : lw.length = j) (hq : q.length = d)
+    (hρ : ModalSys.Four = true → ρ.WF (lw ++ true :: q)) :
     (ρ.mapLeaves (Arrows.Leaf.collapse hT j)).boxPush (j + d) =
       (ρ.boxPush (j + d + 1)).mapLeaves (Arrows.Leaf.collapse hT j) := by
   funext v T h
   match v with
   | .step u .box =>
       simp only [ShEnv.boxPush, ShEnv.mapLeaves]
-      rw [ShEnv.ref_mapCollapse hT j ρ d, Shp.map_inner]
+      rw [ShEnv.ref_mapCollapse hT j ρ d hl hq hρ, Shp.map_inner]
   | .step u .keep =>
       simp only [ShEnv.boxPush, ShEnv.mapLeaves]
-      rw [ShEnv.ref_mapCollapse hT j ρ d, shp_mapCollapse, Shp.map_inner]
+      rw [ShEnv.ref_mapCollapse hT j ρ d hl hq hρ,
+        shp_mapCollapse hT j _ d lw q hl hq _ (fun hF =>
+          ShEnv.wf_ref' (hρ hF) (by simp [hl, hq]; omega) u (Ctx.boxIn_keep h).2.1),
+        Shp.map_inner]
+  | .root _ => cases h
+  | .step _ .fst => cases h
+  | .step _ .snd => cases h
+  | .step _ .dia => cases h
+  | .step _ .here => cases h
+
+theorem ShEnv.boxPush_mapIns {j : ℕ} {g : F.Leaf Root w → F.Leaf Root w} (hg : LevelIns j g)
+    (ρ : ShEnv F Root Γ w) (d : ℕ) :
+    (ρ.mapLeaves g).boxPush (j + d + 2) =
+      (ρ.boxPush (j + d + 1)).mapLeaves g := by
+  funext v T h
+  match v with
+  | .step u .box =>
+      simp only [ShEnv.boxPush, ShEnv.mapLeaves]
+      rw [ShEnv.ref_mapIns hg ρ d, Shp.map_inner]
+  | .step u .keep =>
+      simp only [ShEnv.boxPush, ShEnv.mapLeaves]
+      rw [ShEnv.ref_mapIns hg ρ d, shp_mapIns hg, Shp.map_inner]
   | .root _ => cases h
   | .step _ .fst => cases h
   | .step _ .snd => cases h
@@ -1308,22 +2103,12 @@ theorem ShEnv.boxPush_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv
 
 theorem ShEnv.boxPush_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ) :
     (ρ.mapLeaves (Arrows.Leaf.shift hF j)).boxPush (j + d + 2) =
-      (ρ.boxPush (j + d + 1)).mapLeaves (Arrows.Leaf.shift hF j) := by
-  funext v T h
-  match v with
-  | .step u .box =>
-      simp only [ShEnv.boxPush, ShEnv.mapLeaves]
-      rw [ShEnv.ref_mapShift hF j ρ d, Shp.map_inner]
-  | .step u .keep =>
-      simp only [ShEnv.boxPush, ShEnv.mapLeaves]
-      rw [ShEnv.ref_mapShift hF j ρ d, shp_mapShift, Shp.map_inner]
-  | .root _ => cases h
-  | .step _ .fst => cases h
-  | .step _ .snd => cases h
-  | .step _ .dia => cases h
-  | .step _ .here => cases h
+      (ρ.boxPush (j + d + 1)).mapLeaves (Arrows.Leaf.shift hF j) :=
+  ShEnv.boxPush_mapIns (shift_levelIns hF j) ρ d
 
 theorem ShEnv.diaPush_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ)
+    {lw q : List Bool} (hl : lw.length = j) (hq : q.length = d)
+    (hρ : ModalSys.Four = true → ρ.WF (lw ++ true :: q))
     {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) :
     (ρ.mapLeaves (Arrows.Leaf.collapse hT j)).diaPush (j + d) x hx =
       (ρ.diaPush (j + d + 1) x hx).mapLeaves (Arrows.Leaf.collapse hT j) := by
@@ -1333,11 +2118,34 @@ theorem ShEnv.diaPush_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv
       have e := Ctx.diaIn_step_dia hx h
       subst e
       simp only [ShEnv.diaPush, ShEnv.mapLeaves]
-      rw [ShEnv.ref_mapCollapse hT j ρ d, Shp.map_body]
+      rw [ShEnv.ref_mapCollapse hT j ρ d hl hq hρ, Shp.map_body]
   | .step u .box =>
-      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapCollapse hT j ρ d) (.step u .box)) T) h
+      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapCollapse hT j ρ d hl hq hρ)
+        (.step u .box)) T) h
   | .step u .keep =>
-      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapCollapse hT j ρ d) (.step u .keep)) T) h
+      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapCollapse hT j ρ d hl hq hρ)
+        (.step u .keep)) T) h
+  | .root _ => cases h
+  | .step _ .fst => cases h
+  | .step _ .snd => cases h
+  | .step _ .here => cases h
+
+theorem ShEnv.diaPush_mapIns {j : ℕ} {g : F.Leaf Root w → F.Leaf Root w} (hg : LevelIns j g)
+    (ρ : ShEnv F Root Γ w) (d : ℕ)
+    {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) :
+    (ρ.mapLeaves g).diaPush (j + d + 2) x hx =
+      (ρ.diaPush (j + d + 1) x hx).mapLeaves g := by
+  funext v T h
+  match v with
+  | .step _ .dia =>
+      have e := Ctx.diaIn_step_dia hx h
+      subst e
+      simp only [ShEnv.diaPush, ShEnv.mapLeaves]
+      rw [ShEnv.ref_mapIns hg ρ d, Shp.map_body]
+  | .step u .box =>
+      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapIns hg ρ d) (.step u .box)) T) h
+  | .step u .keep =>
+      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapIns hg ρ d) (.step u .keep)) T) h
   | .root _ => cases h
   | .step _ .fst => cases h
   | .step _ .snd => cases h
@@ -1346,77 +2154,93 @@ theorem ShEnv.diaPush_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv
 theorem ShEnv.diaPush_mapShift (hF : ModalSys.Four = true) (j : ℕ) (ρ : ShEnv F Root Γ w) (d : ℕ)
     {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) :
     (ρ.mapLeaves (Arrows.Leaf.shift hF j)).diaPush (j + d + 2) x hx =
-      (ρ.diaPush (j + d + 1) x hx).mapLeaves (Arrows.Leaf.shift hF j) := by
-  funext v T h
-  match v with
-  | .step _ .dia =>
-      have e := Ctx.diaIn_step_dia hx h
-      subst e
-      simp only [ShEnv.diaPush, ShEnv.mapLeaves]
-      rw [ShEnv.ref_mapShift hF j ρ d, Shp.map_body]
-  | .step u .box =>
-      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapShift hF j ρ d) (.step u .box)) T) h
-  | .step u .keep =>
-      exact congrFun (congrFun (congrFun (ShEnv.boxPush_mapShift hF j ρ d) (.step u .keep)) T) h
-  | .root _ => cases h
-  | .step _ .fst => cases h
-  | .step _ .snd => cases h
-  | .step _ .here => cases h
+      (ρ.diaPush (j + d + 1) x hx).mapLeaves (Arrows.Leaf.shift hF j) :=
+  ShEnv.diaPush_mapIns (shift_levelIns hF j) ρ d hx
 
 end MapLeaves
 
-/-- ⭐Collapsing a whole environment at level `j` passes through `termShp`. -/
+/-- ⭐Collapsing a whole environment at level `j` passes through `termShp`, in an environment
+    well-formed under 4 at a position crossing a `□` at `j`. -/
 theorem termShp_mapCollapse (hT : ModalSys.T = true) (j : ℕ) :
-    ∀ {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (d : ℕ) {T : VarType} {a : Ann T}
+    ∀ {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (d : ℕ) {lw q : List Bool}
+      (_hl : lw.length = j) (_hq : q.length = d)
+      (_hρ : ModalSys.Four = true → ρ.WF (lw ++ true :: q)) {T : VarType} {a : Ann T}
       (t : Term σ Γ T a),
       termShp (ρ.mapLeaves (Arrows.Leaf.collapse hT j)) (j + d) t =
         (termShp ρ (j + d + 1) t).map (Arrows.Leaf.collapse hT j)
-  | _, _, _, _, _, _, .var _ _ => rfl
-  | _, _, _, _, _, _, .func _ => rfl
-  | _, _, _, _, _, _, .unit => rfl
-  | _, _, ρ, d, _, _, .pair s t => by
+  | _, _, _, _, _, _, _, _, _, _, _, .var _ _ => rfl
+  | _, _, _, _, _, _, _, _, _, _, _, .func _ => rfl
+  | _, _, _, _, _, _, _, _, _, _, _, .unit => rfl
+  | _, _, ρ, d, _, _, hl, hq, hρ, _, _, .pair s t => by
       simp only [termShp, Shp.map]
-      rw [termShp_mapCollapse hT j ρ d s, termShp_mapCollapse hT j ρ d t]
-  | _, _, ρ, d, _, _, .boxtm t => by
+      rw [termShp_mapCollapse hT j ρ d hl hq hρ s, termShp_mapCollapse hT j ρ d hl hq hρ t]
+  | _, _, ρ, d, lw, q, hl, hq, hρ, _, _, .boxtm t => by
       simp only [termShp, Shp.map]
-      rw [ShEnv.boxPush_mapCollapse hT j ρ d, show j + d + 1 = j + (d + 1) from rfl,
-        termShp_mapCollapse hT j _ (d + 1) t]
-  | _, _, ρ, d, _, _, .diatm x hx t => by
+      rw [ShEnv.boxPush_mapCollapse hT j ρ d hl hq hρ, show j + d + 1 = j + (d + 1) from rfl,
+        termShp_mapCollapse hT j _ (d + 1) (q := q ++ [true]) hl (by simp [hq])
+          (fun hF => by
+            have := ShEnv.wf_boxPush' (hρ hF) (k := j + d + 1) (by simp [hl, hq]; omega)
+            simpa using this) t]
+  | _, _, ρ, d, lw, q, hl, hq, hρ, _, _, .diatm x hx t => by
       obtain ⟨X, hr⟩ := id hx
-      rw [termShp_diatm _ _ hr, termShp_diatm _ _ hr, ShEnv.ref_mapCollapse hT j ρ d,
-        ShEnv.diaPush_mapCollapse hT j ρ d hr, show j + d + 1 = j + (d + 1) from rfl,
-        termShp_mapCollapse hT j _ (d + 1) t]
+      rw [termShp_diatm _ _ hr, termShp_diatm _ _ hr, ShEnv.ref_mapCollapse hT j ρ d hl hq hρ,
+        ShEnv.diaPush_mapCollapse hT j ρ d hl hq hρ hr, show j + d + 1 = j + (d + 1) from rfl,
+        termShp_mapCollapse hT j _ (d + 1) (q := q ++ [false]) hl (by simp [hq])
+          (fun hF => by
+            have := ShEnv.wf_diaPush' (hρ hF) (k := j + d + 1) (by simp [hl, hq]; omega) hr
+            simpa using this) t]
       simp only [Shp.map, Shp.map_label]
+
+/-- ⭐**A level-inserting leaf map passes through `termShp`**, one level further in. -/
+theorem termShp_mapIns {w : F.W} {j : ℕ} {g : F.Leaf Root w → F.Leaf Root w}
+    (hg : LevelIns j g) :
+    ∀ {Γ : Ctx} (ρ : ShEnv F Root Γ w) (d : ℕ) {T : VarType} {a : Ann T}
+      (t : Term σ Γ T a),
+      termShp (ρ.mapLeaves g) (j + d + 2) t =
+        (termShp ρ (j + d + 1) t).map g
+  | _, _, _, _, _, .var _ _ => rfl
+  | _, _, _, _, _, .func _ => rfl
+  | _, _, _, _, _, .unit => rfl
+  | _, ρ, d, _, _, .pair s t => by
+      simp only [termShp, Shp.map]
+      rw [termShp_mapIns hg ρ d s, termShp_mapIns hg ρ d t]
+  | _, ρ, d, _, _, .boxtm t => by
+      simp only [termShp, Shp.map]
+      rw [ShEnv.boxPush_mapIns hg ρ d, show j + d + 2 + 1 = j + (d + 1) + 2 by omega,
+        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, termShp_mapIns hg _ (d + 1) t]
+  | _, ρ, d, _, _, .diatm x hx t => by
+      obtain ⟨X, hr⟩ := id hx
+      rw [termShp_diatm _ _ hr, termShp_diatm _ _ hr, ShEnv.ref_mapIns hg ρ d,
+        ShEnv.diaPush_mapIns hg ρ d hr, show j + d + 2 + 1 = j + (d + 1) + 2 by omega,
+        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, termShp_mapIns hg _ (d + 1) t]
+      simp only [Shp.map, Shp.map_label]
+
 
 /-- ⭐Shifting a whole environment at level `j` passes through `termShp`, one level further in. -/
-theorem termShp_mapShift (hF : ModalSys.Four = true) (j : ℕ) :
-    ∀ {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (d : ℕ) {T : VarType} {a : Ann T}
-      (t : Term σ Γ T a),
-      termShp (ρ.mapLeaves (Arrows.Leaf.shift hF j)) (j + d + 2) t =
-        (termShp ρ (j + d + 1) t).map (Arrows.Leaf.shift hF j)
-  | _, _, _, _, _, _, .var _ _ => rfl
-  | _, _, _, _, _, _, .func _ => rfl
-  | _, _, _, _, _, _, .unit => rfl
-  | _, _, ρ, d, _, _, .pair s t => by
-      simp only [termShp, Shp.map]
-      rw [termShp_mapShift hF j ρ d s, termShp_mapShift hF j ρ d t]
-  | _, _, ρ, d, _, _, .boxtm t => by
-      simp only [termShp, Shp.map]
-      rw [ShEnv.boxPush_mapShift hF j ρ d, show j + d + 2 + 1 = j + (d + 1) + 2 by omega,
-        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, termShp_mapShift hF j _ (d + 1) t]
-  | _, _, ρ, d, _, _, .diatm x hx t => by
-      obtain ⟨X, hr⟩ := id hx
-      rw [termShp_diatm _ _ hr, termShp_diatm _ _ hr, ShEnv.ref_mapShift hF j ρ d,
-        ShEnv.diaPush_mapShift hF j ρ d hr, show j + d + 2 + 1 = j + (d + 1) + 2 by omega,
-        show j + d + 1 + 1 = j + (d + 1) + 1 by omega, termShp_mapShift hF j _ (d + 1) t]
-      simp only [Shp.map, Shp.map_label]
-
+theorem termShp_mapShift (hF : ModalSys.Four = true) (j : ℕ) {Γ : Ctx} {w : F.W}
+    (ρ : ShEnv F Root Γ w) (d : ℕ) {T : VarType} {a : Ann T} (t : Term σ Γ T a) :
+    termShp (ρ.mapLeaves (Arrows.Leaf.shift hF j)) (j + d + 2) t =
+      (termShp ρ (j + d + 1) t).map (Arrows.Leaf.shift hF j) :=
+  termShp_mapIns (shift_levelIns hF j) ρ d t
 
 section ModelShapes
 
 variable {M : Model.{u, v} σ}
 
 /-! ## S2: the shape of a value is its symbolic shape -/
+
+/-- ⭐**Every object's shape is well-formed**: a necessary one's is a transposition, a possible
+    one's is well-formed by the model's law (`Model.posShape_wf`). -/
+theorem shWF_domSh (hSh : ModalSys.shaped = true) :
+    ∀ {A : VarType} {w : M.frame.W} (o : M.frame.Dom A w),
+      ShWF (F := M.arrows) (Root := M.RootPoss) []
+        (Frame.domShape M.necEval (fun q => (M.posFull q).2 hSh) o)
+  | .Var, _, _ => trivial
+  | .VTypeOne, _, _ => trivial
+  | .VTypeProd _ _, _, o => ⟨shWF_domSh hSh o.1, shWF_domSh hSh o.2⟩
+  | .VTypeBox _, _, n =>
+      shWF_transpose true [] _ fun s => shWF_domSh hSh (M.necEval n s)
+  | .VTypeDia _, _, p => M.posShape_wf hSh p
 
 /-- The shape of an object, when shaped. -/
 abbrev domSh (hSh : ModalSys.shaped = true) {A : VarType} {w : M.frame.W} (o : M.frame.Dom A w) :
@@ -1427,6 +2251,11 @@ abbrev domSh (hSh : ModalSys.shaped = true) {A : VarType} {w : M.frame.W} (o : M
 def envShape (hSh : ModalSys.shaped = true) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
     ShEnv M.arrows M.RootPoss Γ w :=
   fun v T h => domSh hSh (env v T h)
+
+/-- ⭐A model's environment has well-formed shapes. -/
+theorem envShape_wf (hSh : ModalSys.shaped = true) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
+    (envShape hSh env).WF [] :=
+  fun v T h => shWF_domSh hSh (env v T h)
 
 theorem Env.ref_proj' {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {v : VarSymb} {s : Step}
     (hs : s.isProj = true) {U T : VarType} (hU : Γ.ref v = some U)
@@ -1500,14 +2329,15 @@ theorem boxPush_envShape (hSh : ModalSys.shaped = true) {Γ : Ctx} {w : M.frame.
           simp only [M.necDup_eval]
           rfl
       | VTypeDia A =>
-          have hnS := VarType.noShaped_of_keepable_dia hk
           simp only [ShEnv.boxPush]
           rw [ref_envShape]
-          change (domSh hSh (env.ref u hu)).map (Arrows.Leaf.dk hF 0) = _
+          change Shp.dia (Arrows.Leaf.dk hF 0 ((M.posFull (env.ref u hu)).2 hSh).label)
+            (((M.posFull (env.ref u hu)).2 hSh).body.map (Arrows.Leaf.dkB hF 0)) = _
           change _ = Arrows.transposeShp fun s =>
-            (M.posFull (M.necEval (M.ops.posKeep hF hnS (env.ref u hu)) s)).2 hSh
+            (M.posFull (M.necEval (M.ops.posKeep hF (env.ref u hu)) s)).2 hSh
           simp only [M.posKeep_full]
           rw [transpose_map_const]
+          conv_rhs => rw [Shp.dia_eta ((M.posFull (env.ref u hu)).2 hSh)]
           rfl
       | _ => cases hk
   | .root _, _, h => by cases h

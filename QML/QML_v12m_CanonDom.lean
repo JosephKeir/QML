@@ -154,17 +154,16 @@ theorem _root_.V12M.Term.shiftIter_mono : ∀ (n : ℕ) (hF : n ≠ 0 → ModalS
         h.boxIn.boxIn t]
       exact Term.shiftIter_mono n (fun _ => hF') h.boxIn _
 
-/-- A `◇_x` body moved `n` views further in, its witness kept at each (under 4 without shapes when
-    `n ≠ 0`): what a member of `x`'s extent kept `n` times reads (`KeepExt`), as `Term.shiftIter`
-    is what a far successor reads of a `□` body. -/
+/-- A `◇_x` body moved `n` views further in, its witness kept at each (under 4 when `n ≠ 0`):
+    what a member of `x`'s extent kept `n` times reads (`KeepExt`; under T + 4 realised there), as
+    `Term.shiftIter` is what a far successor reads of a `□` body. -/
 def _root_.V12M.Term.shiftDia : (n : ℕ) → KeepOK n → {Γ : Ctx} → {x : VarSymb} →
     {A : VarType} → {a : Ann A} → Term σ (Γ.diaIn x) A a →
     Term σ ((Ctx.boxIter n Γ).diaIn (VarSymb.keepIter n x)) A (Ann.shiftIter n a)
   | 0, _, _, _, _, _, t => t
   | n + 1, hK, Γ, x, _, _, t =>
       Term.shiftDia n (fun _ => hK (Nat.succ_ne_zero n)) (Γ := Γ.boxIn) (x := .step x .keep)
-        (Term.shift (Ctx.shifts_diaIn_keep (hK (Nat.succ_ne_zero n)).1
-          (hK (Nat.succ_ne_zero n)).2 Γ x) t)
+        (Term.shift (Ctx.shifts_diaIn_keep (hK (Nat.succ_ne_zero n)) Γ x) t)
 
 theorem _root_.V12M.Term.shiftDia_mono : ∀ (n : ℕ) (hK : KeepOK n) {Γ Γ' : Ctx} (h : Γ.Le Γ')
     {x : VarSymb} {A : VarType} {a : Ann A} (t : Term σ (Γ.diaIn x) A a),
@@ -172,11 +171,10 @@ theorem _root_.V12M.Term.shiftDia_mono : ∀ (n : ℕ) (hK : KeepOK n) {Γ Γ' :
       Term.mono ((Ctx.Le.boxIter n h).diaIn _) (Term.shiftDia n hK t)
   | 0, _, _, _, _, _, _, _, _ => rfl
   | n + 1, hK, Γ, Γ', h, x, _, _, t => by
-      have hF := (hK (Nat.succ_ne_zero n)).1
-      have hnS := (hK (Nat.succ_ne_zero n)).2
+      have hF := (hK (Nat.succ_ne_zero n))
       change Term.shiftDia n (fun _ => hK (Nat.succ_ne_zero n))
-        (Term.shift (Ctx.shifts_diaIn_keep hF hnS Γ' x) (Term.mono (h.diaIn x) t)) = _
-      rw [Term.shift_mono (Ctx.shifts_diaIn_keep hF hnS Γ x) (Ctx.shifts_diaIn_keep hF hnS Γ' x)
+        (Term.shift (Ctx.shifts_diaIn_keep hF Γ' x) (Term.mono (h.diaIn x) t)) = _
+      rw [Term.shift_mono (Ctx.shifts_diaIn_keep hF Γ x) (Ctx.shifts_diaIn_keep hF Γ' x)
         (h.diaIn x) (h.boxIn.diaIn _) t]
       exact Term.shiftDia_mono n _ h.boxIn _
 
@@ -254,12 +252,20 @@ noncomputable def rden : {A : VarType} → {a : Ann A} → {Γ : Ctx} → (w : W
           rden w'.1 (childIter (d + 1) i) (w'.chainLe hd e) (Term.shiftIter d (w'.four hd) t)
   | _, _, Γ, w, i, e, .diatm x hx t =>
       ⟨extent w x, fun w' =>
+        if h4 : TFour then
+          -- Under T + 4 every member reads the body kept as often as it is deeper, realised by
+          -- its own datum for the kept address.
+          rden w'.1.1 (childIter _ i ⊔ (extent_realised h4 w'.2 rfl).data.i₀) (Ctx.Le.refl _)
+            (realisedTerm w'.1.1 (extent_realised h4 w'.2 rfl) (w'.1.chainLeAt rfl e)
+              (hx.imp fun _ h => Ctx.ref_keepIter _ (fun _ => h4.2) h)
+              (Term.shiftDia _ (fun _ => h4.2) t)).2
+        else
         match hd : w'.1.1.depth - w.depth with
         | 0 => ((extent_self w'.2 hd).1).symm ▸
             rden w (i ⊔ ((extent_self w'.2 hd).2).data.i₀) (Ctx.Le.refl _)
               (realisedTerm w (extent_self w'.2 hd).2 e hx t).2
-        | k + 1 => rden w'.1.1 (childIter (k + 1) i) (extent_leK w'.2 hd e)
-            (Term.shiftDia k (extent_far w'.2 hd).1 t),
+        | k + 1 => rden w'.1.1 (childIter (k + 1) i) (extent_leK h4 w'.2 hd e)
+            (Term.shiftDia k (extent_far h4 w'.2 hd).1 t),
         fun _ => Model.termShp (cEnv Γ w) 0 (.diatm x hx t)⟩
   termination_by structural A => A
 
@@ -312,14 +318,14 @@ theorem rden_boxtm_step {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
 
 /-- ⭐At a member `k + 1` levels deeper — kept `k` times — a possible term denotes there its body
     shifted `k` times. -/
-theorem rden_diatm_far {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
-    (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+theorem rden_diatm_far (h4 : ¬TFour) {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
+    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
     (t : Term σ (Γ.diaIn x) A a) (w' : (extent w x)) {k : ℕ}
     (hd : w'.1.1.depth - w.depth = k + 1) :
     (rden w i e (.diatm x hx t)).2 w' =
-      rden w'.1.1 (childIter (k + 1) i) (extent_leK w'.2 hd e)
-        (Term.shiftDia k (extent_far w'.2 hd).1 t) := by
-  simp only [rden]
+      rden w'.1.1 (childIter (k + 1) i) (extent_leK h4 w'.2 hd e)
+        (Term.shiftDia k (extent_far h4 w'.2 hd).1 t) := by
+  simp only [rden, dif_neg h4]
   split
   · omega
   · rename_i k' hd'
@@ -327,47 +333,61 @@ theorem rden_diatm_far {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} 
     rfl
 
 /-- At a proper successor, a possible term denotes its body there. -/
-theorem rden_diatm_acc {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
-    (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+theorem rden_diatm_acc (h4 : ¬TFour) {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
+    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
     (t : Term σ (Γ.diaIn x) A a) (w' : (extent w x)) (hd : w'.1.1.depth - w.depth = 1) :
     (rden w i e (.diatm x hx t)).2 w' =
-      rden w'.1.1 (childStage i) ((e.diaIn x).trans (extent_le w'.2 hd i)) t :=
-  rden_diatm_far e hx t w' (k := 0) hd
+      rden w'.1.1 (childStage i) ((e.diaIn x).trans (extent_le h4 w'.2 hd i)) t :=
+  rden_diatm_far h4 e hx t w' (k := 0) hd
 
 /-- The same, for a membership proof given separately and at any embedding of the view. -/
-theorem rden_diatm_acc' {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
-    (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+theorem rden_diatm_acc' (h4 : ¬TFour) {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
+    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
     (t : Term σ (Γ.diaIn x) A a) (v : Succ w) (hv : v ∈ (rden w i e (.diatm x hx t)).1)
     (hd : v.1.depth - w.depth = 1) (le : (Γ.diaIn x).Le (v.1.L.ctx (childStage i))) :
     (rden w i e (.diatm x hx t)).2 ⟨v, hv⟩ = rden v.1 (childStage i) le t :=
-  rden_diatm_far e hx t ⟨v, hv⟩ (k := 0) hd
+  rden_diatm_far h4 e hx t ⟨v, hv⟩ (k := 0) hd
 
 /-- ⭐At the world itself, a possible term whose witness is realised denotes its body realised. -/
-theorem rden_diatm_self {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
-    (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+theorem rden_diatm_self (h4 : ¬TFour) {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
+    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
     (t : Term σ (Γ.diaIn x) A a) (w' : (extent w x)) (hd : w'.1.1.depth - w.depth = 0) :
     (rden w i e (.diatm x hx t)).2 w' =
       ((extent_self w'.2 hd).1).symm ▸ rden w (i ⊔ ((extent_self w'.2 hd).2).data.i₀)
         (Ctx.Le.refl _) (realisedTerm w (extent_self w'.2 hd).2 e hx t).2 := by
-  simp only [rden]
+  simp only [rden, dif_neg h4]
   split
   · rfl
   · omega
 
-/-- ⭐Under 4 without shapes, at a member past a proper successor `u`, a possible term denotes
-    what its body shifted denotes from `u`, as a possible term of the kept witness — what
-    `four_dia` says of the theory (`rden_boxtm_step` for `◇`). -/
-theorem rden_diatm_step (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false)
+/-- ⭐**Under T + 4, every member reads the body kept as often as it is deeper**, realised by its
+    own datum for the kept address. -/
+theorem rden_diatm_tFour (h4 : TFour) {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
+    {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    (t : Term σ (Γ.diaIn x) A a) (w' : (extent w x)) {d : ℕ}
+    (hd : w'.1.1.depth - w.depth = d) :
+    (rden w i e (.diatm x hx t)).2 w' =
+      rden w'.1.1 (childIter d i ⊔ (extent_realised h4 w'.2 hd).data.i₀) (Ctx.Le.refl _)
+        (realisedTerm w'.1.1 (extent_realised h4 w'.2 hd) (w'.1.chainLeAt hd e)
+          (hx.imp fun _ h => Ctx.ref_keepIter d (fun _ => h4.2) h)
+          (Term.shiftDia d (fun _ => h4.2) t)).2 := by
+  subst hd
+  simp only [rden, dif_pos h4]
+
+/-- ⭐Under 4, at a member past a proper successor `u`, a possible term denotes what its body
+    shifted denotes from `u`, as a possible term of the kept witness — what `four_dia` says of the
+    theory (`rden_boxtm_step` for `◇`).  Without T, by the distance. -/
+theorem rden_diatm_step (hF : ModalSys.Four = true) (h4 : ¬TFour)
     {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
     (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
     (t : Term σ (Γ.diaIn x) A a) (w' : (extent w x)) {u : World σ N₀} (hu : Acc' w u)
     (hr : R u w'.1.1) :
     (rden w i e (.diatm x hx t)).2 w' =
       (rden u (childStage i) (e.boxIn.trans (hu.boxIn_le i))
-        (.diatm (.step x .keep) (Ctx.exists_keep_dia hF hnS hx)
-          (Term.shift (Ctx.shifts_diaIn_keep hF hnS Γ x) t))).2
-        ⟨⟨w'.1.1, ⟨hr⟩⟩, (extent_keep hF hnS hu ⟨w'.1.1, ⟨hr⟩⟩).mp w'.2⟩ := by
-  have hnT := ModalSys.T_false_of_unshaped hnS
+        (.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
+          (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) t))).2
+        ⟨⟨w'.1.1, ⟨hr⟩⟩, (extent_keep hF h4 hu ⟨w'.1.1, ⟨hr⟩⟩).mp w'.2⟩ := by
+  have hnT := T_false_of_not_tFour hF h4
   obtain ⟨_, h₀, _⟩ := Succ.chain (⟨w'.1.1, ⟨hr⟩⟩ : Succ u)
   obtain ⟨k, hk⟩ : ∃ k, w'.1.1.depth - u.depth = k + 1 := by
     rcases h : w'.1.1.depth - u.depth with _ | k
@@ -377,7 +397,27 @@ theorem rden_diatm_step (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = fal
   have hw : w'.1.1.depth - w.depth = k + 1 + 1 := by
     have := hu.1
     omega
-  rw [rden_diatm_far e hx t w' hw, rden_diatm_far _ _ _ _ hk]
+  rw [rden_diatm_far h4 e hx t w' hw, rden_diatm_far h4 _ _ _ _ hk]
+  rfl
+
+/-- ⭐**The same under T + 4**, at every member: both sides realise one address by one datum. -/
+theorem rden_diatm_step_tFour (h4 : TFour)
+    {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
+    (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    (t : Term σ (Γ.diaIn x) A a) (w' : (extent w x)) {u : World σ N₀} (hu : Acc' w u)
+    (hr : R u w'.1.1) :
+    (rden w i e (.diatm x hx t)).2 w' =
+      (rden u (childStage i) (e.boxIn.trans (hu.boxIn_le i))
+        (.diatm (.step x .keep) (Ctx.exists_keep_dia h4.2 hx)
+          (Term.shift (Ctx.shifts_diaIn_keep h4.2 Γ x) t))).2
+        ⟨⟨w'.1.1, ⟨hr⟩⟩, (extent_keep_tFour h4 hu ⟨w'.1.1, ⟨hr⟩⟩).mp w'.2⟩ := by
+  obtain ⟨k, hk⟩ : ∃ k, w'.1.1.depth - u.depth = k := ⟨_, rfl⟩
+  have hw : w'.1.1.depth - w.depth = k + 1 := by
+    have h₁ : w'.1.1.depth = u.depth + (w'.1.1.depth - u.depth) :=
+      (Succ.chain (⟨w'.1.1, ⟨hr⟩⟩ : Succ u)).1.depth
+    have := hu.1
+    omega
+  rw [rden_diatm_tFour h4 e hx t w' hw, rden_diatm_tFour h4 _ _ _ _ hk]
   rfl
 
 theorem rden_sigma {A : VarType} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i))
@@ -430,11 +470,16 @@ theorem rden_mono : ∀ {A : VarType} {a : Ann A} {Γ Γ' : Ctx} (h : Γ.Le Γ')
         (c := (rden w i e (.diatm x (hx.imp fun _ hh => h.ref hh)
           (Term.mono (h.diaIn x) t))).2) (c' := (rden w i (h.trans e) (.diatm x hx t)).2)
         (funext fun w' => by
+          by_cases h4 : TFour
+          · rw [rden_diatm_tFour h4 _ _ _ w' rfl, rden_diatm_tFour h4 _ _ _ w' rfl,
+              Term.shiftDia_mono _ _ h]
+            exact rden_sigma _ (realisedTerm_mono _ (Ctx.Le.boxIter _ h) _ _ _ _)
           rcases hd : w'.1.1.depth - w.depth with _ | k
-          · rw [rden_diatm_self _ _ _ w' hd, rden_diatm_self _ _ _ w' hd]
+          · rw [rden_diatm_self h4 _ _ _ w' hd, rden_diatm_self h4 _ _ _ w' hd]
             exact rden_transport_congr _ (rden_sigma _
               (realisedTerm_mono _ h e hx (hx.imp fun _ hh => h.ref hh) t))
-          · rw [rden_diatm_far _ _ _ w' hd, rden_diatm_far _ _ _ w' hd, Term.shiftDia_mono _ _ h]
+          · rw [rden_diatm_far h4 _ _ _ w' hd, rden_diatm_far h4 _ _ _ w' hd,
+              Term.shiftDia_mono _ _ h]
             exact rden_mono _ _ w'.1.1 _ _)
         fun _ => (Model.termShp_mono (h := h) (ρ := cEnv Γ w) (ρ' := cEnv Γ' w) (fun _ _ _ => rfl) 0
           (.diatm x hx t))
@@ -472,39 +517,48 @@ theorem rden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A 
         exact rden_congr _ w'.1 i j _ _
       · rw [rden_boxtm_far e t w' h, rden_boxtm_far e' t w' h]
         exact rden_congr _ w'.1 _ _ _ _
-  | _, _, _, .diatm x hx t, w, i, j, e, e' =>
-      RPos.congr_cont (E := extent w x) (C := fun w' => RDom _ w'.1)
+  | .VTypeDia A, _, _, .diatm x hx t, w, i, j, e, e' => by
+      -- A realised content does not depend on the stage either.
+      have hself : ∀ (v : World σ N₀) {y : VarSymb} (hr : v.Realised y) {Γ' : Ctx}
+          {i₁ j₁ : ℕ × ℕ} (e₁ : Γ'.Le (v.L.ctx i₁)) (e₂ : Γ'.Le (v.L.ctx j₁))
+          (hy : ∃ X, Γ'.ref y = some (.VTypeDia X)) {b : Ann A} (s : Term σ (Γ'.diaIn y) A b),
+          rden v (i₁ ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm v hr e₁ hy s).2 =
+            rden v (j₁ ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm v hr e₂ hy s).2 := by
+        intro v y hr Γ' i₁ j₁ e₁ e₂ hy b s
+        have h₁ : (v.L.ctx (i₁ ⊔ hr.data.i₀)).Le
+            (v.L.ctx ((i₁ ⊔ hr.data.i₀) ⊔ (j₁ ⊔ hr.data.i₀))) := v.L.ctx_le le_sup_left
+        have h₂ : (v.L.ctx (j₁ ⊔ hr.data.i₀)).Le
+            (v.L.ctx ((i₁ ⊔ hr.data.i₀) ⊔ (j₁ ⊔ hr.data.i₀))) := v.L.ctx_le le_sup_right
+        have key : Term.mono h₁ (realisedTerm v hr e₁ hy s).2 =
+            Term.mono h₂ (realisedTerm v hr e₂ hy s).2 := by
+          simp only [realisedTerm]
+          rw [Term.mono_realiseAtA hr.data.hT _
+              (hcA' := hr.data.hdeclOf _ (hy.imp fun _ h =>
+                (v.L.ctx_le (le_sup_left.trans le_sup_left)).ref (e₁.ref h))),
+            Term.mono_realiseAtA hr.data.hT _
+              (hcA' := hr.data.hdeclOf _ (hy.imp fun _ h =>
+                (v.L.ctx_le (le_sup_left.trans le_sup_left)).ref (e₁.ref h))),
+            Term.mono_mono, Term.mono_mono, Term.mono_mono, Term.mono_mono]
+        calc rden v (i₁ ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm v hr e₁ hy s).2
+            = rden v _ h₁ (realisedTerm v hr e₁ hy s).2 := rden_congr _ v _ _ _ _
+          _ = rden v _ (Ctx.Le.refl _) (Term.mono h₁ (realisedTerm v hr e₁ hy s).2) :=
+              (rden_mono h₁ _ v _ (Ctx.Le.refl _)).symm
+          _ = rden v _ (Ctx.Le.refl _) (Term.mono h₂ (realisedTerm v hr e₂ hy s).2) := by
+              rw [key]
+          _ = rden v _ h₂ (realisedTerm v hr e₂ hy s).2 := rden_mono h₂ _ v _ (Ctx.Le.refl _)
+          _ = rden v (j₁ ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm v hr e₂ hy s).2 :=
+              rden_congr _ v _ _ _ _
+      exact RPos.congr_cont (E := extent w x) (C := fun w' => RDom _ w'.1)
         (c := (rden w i e (.diatm x hx t)).2)
         (c' := (rden w j e' (.diatm x hx t)).2)
         (funext fun w' => by
+        by_cases h4 : TFour
+        · rw [rden_diatm_tFour h4 _ _ _ w' rfl, rden_diatm_tFour h4 _ _ _ w' rfl]
+          exact hself _ _ _ _ _ _
         rcases hd : w'.1.1.depth - w.depth with _ | k
-        · rw [rden_diatm_self _ _ _ w' hd, rden_diatm_self _ _ _ w' hd]
-          refine rden_transport_congr _ ?_
-          have hr := (extent_self w'.2 hd).2
-          have h₁ : (w.L.ctx (i ⊔ hr.data.i₀)).Le
-              (w.L.ctx ((i ⊔ hr.data.i₀) ⊔ (j ⊔ hr.data.i₀))) := w.L.ctx_le le_sup_left
-          have h₂ : (w.L.ctx (j ⊔ hr.data.i₀)).Le
-              (w.L.ctx ((i ⊔ hr.data.i₀) ⊔ (j ⊔ hr.data.i₀))) := w.L.ctx_le le_sup_right
-          have key : Term.mono h₁ (realisedTerm w hr e hx t).2 =
-              Term.mono h₂ (realisedTerm w hr e' hx t).2 := by
-            simp only [realisedTerm]
-            rw [Term.mono_realiseAtA hr.data.hT _
-                (hcA' := hr.data.hdeclOf _ (hx.imp fun _ h =>
-                  (w.L.ctx_le (le_sup_left.trans le_sup_left)).ref (e.ref h))),
-              Term.mono_realiseAtA hr.data.hT _
-                (hcA' := hr.data.hdeclOf _ (hx.imp fun _ h =>
-                  (w.L.ctx_le (le_sup_left.trans le_sup_left)).ref (e.ref h))),
-              Term.mono_mono, Term.mono_mono, Term.mono_mono, Term.mono_mono]
-          calc rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e hx t).2
-              = rden w _ h₁ (realisedTerm w hr e hx t).2 := rden_congr _ w _ _ _ _
-            _ = rden w _ (Ctx.Le.refl _) (Term.mono h₁ (realisedTerm w hr e hx t).2) :=
-                (rden_mono h₁ _ w _ (Ctx.Le.refl _)).symm
-            _ = rden w _ (Ctx.Le.refl _) (Term.mono h₂ (realisedTerm w hr e' hx t).2) := by
-                rw [key]
-            _ = rden w _ h₂ (realisedTerm w hr e' hx t).2 := rden_mono h₂ _ w _ (Ctx.Le.refl _)
-            _ = rden w (j ⊔ hr.data.i₀) (Ctx.Le.refl _) (realisedTerm w hr e' hx t).2 :=
-                rden_congr _ w _ _ _ _
-        · rw [rden_diatm_far _ _ _ w' hd, rden_diatm_far _ _ _ w' hd]
+        · rw [rden_diatm_self h4 _ _ _ w' hd, rden_diatm_self h4 _ _ _ w' hd]
+          exact rden_transport_congr _ (hself w _ e e' hx t)
+        · rw [rden_diatm_far h4 _ _ _ w' hd, rden_diatm_far h4 _ _ _ w' hd]
           exact rden_congr _ w'.1.1 _ _ _ _) fun _ => rfl
   termination_by structural A => A
 
@@ -672,10 +726,13 @@ theorem definable_dia_apply {A : VarType} {w : World σ N₀} {o : RDom (.VTypeD
   obtain ⟨i, a, t, rfl⟩ := h
   cases t with
   | diatm x hx b =>
+      by_cases h4 : TFour
+      · rw [rden_diatm_tFour h4 _ _ _ w' rfl]
+        exact definable_rden _ _
       rcases hd : w'.1.1.depth - w.depth with _ | k
-      · rw [rden_diatm_self _ _ _ w' hd]
+      · rw [rden_diatm_self h4 _ _ _ w' hd]
         exact definable_transport _ (definable_rden _ _)
-      · rw [rden_diatm_far _ _ _ w' hd]
+      · rw [rden_diatm_far h4 _ _ _ w' hd]
         exact definable_rden _ _
 
 

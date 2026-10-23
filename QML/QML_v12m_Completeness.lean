@@ -1,4 +1,5 @@
 import QML.QML_v12m_CanonInd
+import QML.QML_v12m_RealiseKeep
 
 /-!
 # QML v12m — the truth lemma and completeness
@@ -237,6 +238,48 @@ theorem relSat_canon : ∀ {Γ : Ctx} {n : ℕ} (ρ : Rel σ Γ n) {w : World σ
         (fun k => by cases k using Fin.cases <;> simp [h0, hts]), Spine.ofFn_cons]
       rfl
 
+/-- ⭐**The realised case as an equivalence**: in the witness's view at the world itself a formula
+    holds exactly when its realisation is in the theory (`Model.sat_realiseAtA`, the truth lemma at
+    the same logical size, `WFF.size_realiseAtA`). -/
+theorem sat_self_iff {w : World σ N₀} {i : ℕ × ℕ} {x : VarSymb}
+    (dat : RealDatum σ w.L.sys w.T x)
+    (hdeclI : (w.L.ctx i).ref x = some (.VTypeDia dat.A))
+    (hreal : w.real x = some dat) (χ : WFF σ ((w.L.ctx i).diaIn x) 0)
+    (IH : ∀ ψ : WFF σ (w.L.ctx (i ⊔ dat.i₀)) 0, ψ.size = χ.size →
+      ((model w₀).sat (canonEnv w₀ w (i ⊔ dat.i₀)) ψ ↔
+        (⟨i ⊔ dat.i₀, ψ⟩ : w.L.sys.Sentence σ) ∈ w.T))
+    (hmem : (⟨w, ⟨R.refl dat.hT w⟩⟩ : Succ w) ∈
+      ((model w₀).posEval ((canonEnv w₀ w i).ref x hdeclI)).1) :
+    (model w₀).sat ((canonEnv w₀ w i).diaPush x hdeclI ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hmem⟩) χ ↔
+      (⟨i ⊔ dat.i₀, WFF.realiseAtA dat.hT x
+        (dat.hdeclOf (i ⊔ dat.i₀) ⟨dat.A, (w.L.ctx_le le_sup_left).ref hdeclI⟩)
+        (Term.mono (w.L.ctx_le le_sup_right) dat.t₀)
+        (WFF.mono ((w.L.ctx_le le_sup_left).diaIn x) χ)⟩ : w.L.sys.Sentence σ) ∈ w.T := by
+  have hj : i ≤ i ⊔ dat.i₀ := le_sup_left
+  have hdecl := dat.hdeclOf (i ⊔ dat.i₀) ⟨dat.A, (w.L.ctx_le hj).ref hdeclI⟩
+  have hagj : Model.Env.Agree (w.L.ctx_le hj) (canonEnv w₀ w i) (canonEnv w₀ w (i ⊔ dat.i₀)) :=
+    canonEnv_le w₀ w hj
+  have hm' : (⟨w, ⟨R.refl dat.hT w⟩⟩ : Succ w) ∈
+      ((model w₀).posEval ((canonEnv w₀ w (i ⊔ dat.i₀)).ref x hdecl)).1 := by
+    rw [canonEnv_extent]
+    exact self_mem_extent (World.realised_of_real hreal)
+  have hcont : ((model w₀).posEval
+        ((canonEnv w₀ w (i ⊔ dat.i₀)).ref x hdecl)).2
+          ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hm'⟩ =
+      Model.interp (canonEnv w₀ w (i ⊔ dat.i₀))
+        (Term.mono (w.L.ctx_le (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀) := by
+    have hpq := canonEnv_ref w₀ w (i ⊔ dat.i₀) x hdecl
+    rw [Model.posEval_snd_congr hpq ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hm'⟩ (hpq ▸ hm'),
+      Model.interp_mono (canonEnv_le w₀ w (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀,
+      interp_canon w₀ dat.t₀ (Model.Env.Agree.refl' _)]
+    exact toDom_congr w₀ (rden_eta_of_real hreal hdecl) _ _
+  exact ((Model.sat_mono (Model.Env.diaPush_agree hagj hdeclI
+      ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hmem⟩ hm') χ).symm.trans
+    (Model.sat_realiseAtA dat.hT (canonEnv w₀ w (i ⊔ dat.i₀)) (w.noProjLast _) hdecl
+      (Term.mono (w.L.ctx_le le_sup_right) dat.t₀) hm' hcont
+      (WFF.mono ((w.L.ctx_le hj).diaIn x) χ)).symm).trans
+    (IH _ (by rw [WFF.size_realiseAtA, WFF.size_mono]))
+
 /-- ⭐The realised case of the truth lemma's `◇` step: at the world itself, a formula holding in
     the witness's view holds of the realising term (`Model.sat_realiseAt`), and what the theory
     says about the realising term it says about the witness (`RealDatum.spec`).  The induction
@@ -262,32 +305,218 @@ theorem dia_mem_of_sat_self {w : World σ N₀} {i : ℕ × ℕ} {x : VarSymb}
   subst hXA
   have hj : i ≤ i ⊔ dat.i₀ := le_sup_left
   have hdecl := dat.hdeclOf (i ⊔ dat.i₀) ⟨dat.A, (w.L.ctx_le hj).ref hdeclI⟩
-  have hagj : Model.Env.Agree (w.L.ctx_le hj) (canonEnv w₀ w i) (canonEnv w₀ w (i ⊔ dat.i₀)) :=
-    canonEnv_le w₀ w hj
-  have hm' : (⟨w, ⟨R.refl dat.hT w⟩⟩ : Succ w) ∈
-      ((model w₀).posEval ((canonEnv w₀ w (i ⊔ dat.i₀)).ref x hdecl)).1 := by
-    rw [canonEnv_extent]
-    exact self_mem_extent (World.realised_of_real hreal)
-  have hcont : ((model w₀).posEval
-        ((canonEnv w₀ w (i ⊔ dat.i₀)).ref x hdecl)).2
-          ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hm'⟩ =
-      Model.interp (canonEnv w₀ w (i ⊔ dat.i₀))
-        (Term.mono (w.L.ctx_le (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀) := by
-    have hpq := canonEnv_ref w₀ w (i ⊔ dat.i₀) x hdecl
-    rw [Model.posEval_snd_congr hpq ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hm'⟩ (hpq ▸ hm'),
-      Model.interp_mono (canonEnv_le w₀ w (le_sup_right : dat.i₀ ≤ i ⊔ dat.i₀)) dat.t₀,
-      interp_canon w₀ dat.t₀ (Model.Env.Agree.refl' _)]
-    exact toDom_congr w₀ (rden_eta_of_real hreal hdecl) _ _
-  have hsatR := (Model.sat_realiseAtA dat.hT (canonEnv w₀ w (i ⊔ dat.i₀)) (w.noProjLast _) hdecl
-    (Term.mono (w.L.ctx_le le_sup_right) dat.t₀) hm' hcont
-    (WFF.mono ((w.L.ctx_le hj).diaIn x) χ)).mpr
-    ((Model.sat_mono (Model.Env.diaPush_agree hagj h
-      ⟨⟨w, ⟨R.refl dat.hT w⟩⟩, hmem⟩ hm') χ).mpr hsat)
   have hdia := dat.spec w.mcs (i ⊔ dat.i₀) le_sup_right hdecl _
-    ((IH _ (by rw [WFF.size_realiseAtA, WFF.size_mono])).mp hsatR)
+    ((sat_self_iff w₀ dat hdeclI hreal χ IH hmem).mp hsat)
   have hmem' := World.mem_mono_congr w (Ctx.Le.refl _) (w.L.ctx_le hj)
     (ψ := WFF.dia x hx χ) hdia
   rwa [WFF.mono_refl] at hmem'
+
+/-- ⭐**The `◇` step of the truth lemma under T + 4**: every member of a witness's extent is read
+    by realisation (docs §3 4, "T + 4 on paper" (b)).
+    * *Truth ⇒ membership*, contrapositively: what is `□_x`-impossible holds at no member — by the
+      distance, `four_dia` at each proper step on the way, and at the member itself the realisation
+      of the necessity (`Proof.here_elimAtA`) against the realisation of the truth
+      (`sat_self_iff`).
+    * *Membership ⇒ truth*: the `◇_x`-child realises `x.keep` (`here_keep`, `exists_dia`), and its
+      own reading of the formula is the realisation at the kept witness's content
+      (`WFF.realiseAtA_shift_keep`), moved to the child's datum by `Proof.here_subst`. -/
+theorem dia_truth_tFour (h4 : TFour) (n : ℕ)
+    (IH : ∀ (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF σ (w.L.ctx i) 0), φ.size < n →
+      ((model w₀).sat (canonEnv w₀ w i) φ ↔ (⟨i, φ⟩ : w.L.sys.Sentence σ) ∈ w.T))
+    (w : World σ N₀) (i : ℕ × ℕ) (x : VarSymb)
+    (hx : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X))
+    (χ : WFF σ ((w.L.ctx i).diaIn x) 0) (hχs : χ.size < n) :
+    (∃ (X : VarType) (h : (w.L.ctx i).ref x = some (.VTypeDia X))
+      (w' : ((model w₀).posEval ((canonEnv w₀ w i).ref x h)).1),
+        (model w₀).sat ((canonEnv w₀ w i).diaPush x h w') χ) ↔
+      (⟨i, WFF.dia x hx χ⟩ : w.L.sys.Sentence σ) ∈ w.T := by
+  obtain ⟨hT, hF⟩ := h4
+  have farT : ∀ (d : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (x : VarSymb)
+      (hx : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X))
+      (ψ : WFF σ ((w.L.ctx i).diaIn x) 0), ψ.size < n →
+      (⟨i, WFF.boxx x hx ψ.neg⟩ : w.L.sys.Sentence σ) ∈ w.T →
+      ∀ {X : VarType} (h : (w.L.ctx i).ref x = some (.VTypeDia X))
+        (w' : ((model w₀).posEval ((canonEnv w₀ w i).ref x h)).1),
+        w'.1.1.depth - w.depth = d →
+        ¬ (model w₀).sat ((canonEnv w₀ w i).diaPush x h w') ψ := by
+    intro d
+    induction d with
+    | zero =>
+        intro w i x hx ψ hψs hmem X h w' hd hs
+        have hw' : w'.1 ∈ extent w x := canonEnv_extent w₀ w i h ▸ w'.2
+        obtain ⟨hweq, hrx⟩ := extent_self hw' hd
+        obtain ⟨⟨w₁, hR⟩, hm⟩ := w'
+        change w₁ = w at hweq
+        subst hweq
+        have hXA : X = hrx.data.A := by
+          have h1 : some (VarType.VTypeDia X) = some (.VTypeDia hrx.data.A) :=
+            h.symm.trans (hrx.data.declType i ⟨X, h⟩)
+          simp only [Option.some.injEq, VarType.VTypeDia.injEq] at h1
+          exact h1
+        subst hXA
+        have hr := (sat_self_iff w₀ hrx.data h (World.real_of_realised hrx) ψ
+          (fun φ hφ => IH _ _ φ (by rw [hφ]; exact hψs)) hm).mp hs
+        have hj : i ≤ i ⊔ hrx.data.i₀ := le_sup_left
+        have hdecl := hrx.data.hdeclOf (i ⊔ hrx.data.i₀) ⟨_, (w₁.L.ctx_le hj).ref h⟩
+        have hn : (⟨i ⊔ hrx.data.i₀, WFF.realiseAtA hrx.data.hT x hdecl
+            (Term.mono (w₁.L.ctx_le le_sup_right) hrx.data.t₀)
+            (WFF.mono ((w₁.L.ctx_le hj).diaIn x) ψ).neg⟩ : w₁.L.sys.Sentence σ) ∈ w₁.T := by
+          refine World.mem_of_provable (Δ := [WFF.hereAt hrx.data.hT x hdecl
+              (Term.mono (w₁.L.ctx_le le_sup_right) hrx.data.t₀),
+            WFF.mono (w₁.L.ctx_le hj) (WFF.boxx x hx ψ.neg)]) ?_
+            ⟨Proof.here_elimAtA hrx.data.hT x hdecl _ _ (Proof.lookup List.mem_cons_self)
+              (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩
+          intro φ hφ
+          rcases List.mem_cons.mp hφ with rfl | hφ'
+          · exact hrx.data.hhereAt w₁.mcs _ le_sup_right hdecl
+          · rw [List.mem_singleton.mp hφ']
+            exact (World.mem_lift hj).mp hmem
+        rw [WFF.realiseAtA_neg] at hn
+        exact (w₁.mcs.neg_mem_iff.mp hn) hr
+    | succ k ih =>
+        intro w i x hx ψ hψs hmem X h w' hd
+        have hw' : w'.1 ∈ extent w x := canonEnv_extent w₀ w i h ▸ w'.2
+        obtain ⟨u, hu, hru, hdu⟩ := Succ.split₁ hT w'.1 hd
+        have hu1 : (⟨u, ⟨R.of_acc hu⟩⟩ : Succ w).1.depth - w.depth = 1 := by
+          have := hu.1
+          change u.depth - w.depth = 1
+          omega
+        have h4' : (⟨i, .box (WFF.boxx (.step x .keep) (Ctx.exists_keep_dia hF hx)
+            (WFF.shift (Ctx.shifts_diaIn_keep hF _ x) Ctx.NoSlots.slots ψ.neg))⟩ :
+            w.L.sys.Sentence σ) ∈ w.T :=
+          World.mem_of_provable (Δ := [WFF.boxx x hx ψ.neg])
+            (fun φ hφ => by
+              rw [List.mem_singleton.mp hφ]
+              exact hmem)
+            ⟨Proof.four_dia hF hx (Proof.lookup List.mem_cons_self)⟩
+        have hxk' : (w.L.ctx i).boxIn.ref (.step x .keep) = some (.VTypeDia X) :=
+          Ctx.ref_keep_of' hF h VarType.keepable_dia
+        have hxk : (u.L.ctx (childStage i)).ref (.step x .keep) = some (.VTypeDia X) :=
+          (hu.boxIn_le i).ref hxk'
+        have hmu := hu.2.2.1 i _ (childStage i) (hu.boxIn_le i) h4'
+        have hmk : (⟨w'.1.1, ⟨hru⟩⟩ : Succ u) ∈ extent u (.step x .keep) :=
+          (extent_keep_tFour ⟨hT, hF⟩ hu ⟨w'.1.1, ⟨hru⟩⟩).mp hw'
+        have hmc : (⟨w'.1.1, ⟨hru⟩⟩ : Succ u) ∈
+            ((model w₀).posEval ((canonEnv w₀ u (childStage i)).ref _ hxk)).1 :=
+          (canonEnv_extent w₀ u (childStage i) hxk).symm ▸ hmk
+        have hsat := ih u (childStage i) (.step x .keep) ⟨X, hxk⟩
+          (WFF.mono ((hu.boxIn_le i).diaIn _)
+            (WFF.shift (Ctx.shifts_diaIn_keep hF _ x) Ctx.NoSlots.slots ψ))
+          (by rw [WFF.size_mono, WFF.size_shift]; exact hψs) hmu hxk ⟨_, hmc⟩ hdu
+        have hb' : (⟨w'.1.1, ⟨hru⟩⟩ : Succ u) ∈ ((model w₀).posEval
+            (((canonEnv w₀ w i).boxPush (⟨u, ⟨R.of_acc hu⟩⟩ : Succ w)).ref
+              (.step x .keep) hxk')).1 := w'.2
+        exact fun hs => hsat ((Model.sat_mono (Model.Env.diaPush_agree
+          (boxPush_agree_canon w₀ w i ⟨u, ⟨R.of_acc hu⟩⟩ hu1) hxk' ⟨_, hb'⟩ hmc) _).mpr
+          ((Model.sat_shift Ctx.NoSlots.slots (Model.Env.shiftAgree_diaKeep hF
+            (canonEnv w₀ w i) h ⟨u, ⟨R.of_acc hu⟩⟩ ⟨w'.1.1, ⟨hru⟩⟩ w'.2 hxk' hb') ψ).mpr
+            hs))
+  constructor
+  · rintro ⟨X, h, w', hsat⟩
+    by_contra hnot
+    have hbx : (⟨i, WFF.boxx x hx χ.neg⟩ : w.L.sys.Sentence σ) ∈ w.T :=
+      World.mem_of_provable (Δ := [(WFF.dia x hx χ).neg])
+        (fun ψ hψ => by
+          rw [List.mem_singleton.mp hψ]
+          exact w.mcs.neg_mem_iff.mpr hnot)
+        ⟨Proof.boxx_neg_of_not_dia x hx χ⟩
+    exact farT _ w i x hx χ hχs hbx h w' rfl hsat
+  · intro hmem
+    obtain ⟨X, h⟩ : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X) := hx
+    obtain ⟨v, hvm, hd, hv, hbxc, hχv⟩ := exists_dia w x ⟨X, h⟩ χ hmem
+    have hu : Acc' w v.1 := v.acc hd
+    have hrk : v.1.Realised (.step x .keep) := by
+      have := (mem_extent_tFour ⟨hT, hF⟩).mp hvm
+      rw [hd] at this
+      exact this
+    have hxk' : (w.L.ctx i).boxIn.ref (.step x .keep) = some (.VTypeDia X) :=
+      Ctx.ref_keep_of' hF h VarType.keepable_dia
+    have hxk : (v.1.L.ctx (childStage i)).ref (.step x .keep) = some (.VTypeDia X) :=
+      (hu.boxIn_le i).ref hxk'
+    have hXA : X = hrk.data.A := by
+      have h1 : some (VarType.VTypeDia X) = some (.VTypeDia hrk.data.A) :=
+        hxk.symm.trans (hrk.data.declType (childStage i) ⟨X, hxk⟩)
+      simp only [Option.some.injEq, VarType.VTypeDia.injEq] at h1
+      exact h1
+    subst hXA
+    have hvm' : v ∈ ((model w₀).posEval ((canonEnv w₀ w i).ref x h)).1 :=
+      (canonEnv_extent w₀ w i h).symm ▸ hvm
+    refine ⟨_, h, ⟨v, hvm'⟩, ?_⟩
+    have hmc : (⟨v.1, ⟨R.refl hT v.1⟩⟩ : Succ v.1) ∈
+        ((model w₀).posEval ((canonEnv w₀ v.1 (childStage i)).ref _ hxk)).1 := by
+      rw [canonEnv_extent]
+      exact self_mem_extent hrk
+    have hb' : (⟨v.1, ⟨R.refl hT v.1⟩⟩ : Succ v.1) ∈ ((model w₀).posEval
+        (((canonEnv w₀ w i).boxPush v).ref (.step x .keep) hxk')).1 := hvm'
+    -- across the shift, the member's view is the kept witness's at the child itself
+    refine (Model.sat_shift Ctx.NoSlots.slots (Model.Env.shiftAgree_diaKeep hF
+      (canonEnv w₀ w i) h v ⟨v.1, ⟨R.refl hT v.1⟩⟩ hvm' hxk' hb') χ).mp ?_
+    refine (Model.sat_mono (Model.Env.diaPush_agree (boxPush_agree_canon w₀ w i v hd) hxk'
+      ⟨_, hb'⟩ hmc) _).mp ?_
+    refine (sat_self_iff w₀ hrk.data hxk (World.real_of_realised hrk) _
+      (fun φ hφ => IH _ _ φ (by rw [hφ, WFF.size_mono, WFF.size_shift]; exact hχs)) hmc).mpr ?_
+    rw [WFF.mono_mono]
+    -- the realisation at the kept witness's content is the formula (`realiseAtA_shift_keep`) …
+    have hle : ((w.L.ctx i).diaIn x).Le (v.1.L.ctx (childStage i ⊔ hrk.data.i₀)) :=
+      (hv.leChild i).trans (v.1.L.ctx_le le_sup_left)
+    have hdia : (v.1.L.ctx (childStage i ⊔ hrk.data.i₀)).ref (.step x .dia) = some hrk.data.A :=
+      hle.ref (Ctx.ref_diaIn_of h)
+    have hdecl := hrk.data.hdeclOf (childStage i ⊔ hrk.data.i₀)
+      ⟨_, (v.1.L.ctx_le le_sup_left).ref hxk⟩
+    have hχ' : (⟨childStage i ⊔ hrk.data.i₀, WFF.realiseAtA hT (.step x .keep) hdecl
+        (Term.eta (.step x .dia) _ hdia)
+        (WFF.mono (((Ctx.le_boxIn_diaIn _ x).trans hle).diaIn (.step x .keep))
+          (WFF.shift (Ctx.shifts_diaIn_keep hF _ x) Ctx.NoSlots.slots χ))⟩ :
+        v.1.L.sys.Sentence σ) ∈ v.1.T := by
+      rw [WFF.realiseAtA_shift_keep hT hF h hle hdecl hdia χ]
+      exact World.mem_mono_congr v.1 hle (hv.leChild i) hχv
+    -- … and `here_keep` says the kept witness is realised there by that content
+    have hk₀ : (w.L.ctx i).boxIn.ref (.step x .keep) = some (.VTypeDia hrk.data.A) := hxk'
+    have hkeep : (⟨i, WFF.hereKeep hT hF x ⟨_, h⟩
+        (Term.eta (.step x .dia) _ (Ctx.ref_diaIn_of h))⟩ : w.L.sys.Sentence σ) ∈ w.T :=
+      World.mem_of_provable (Δ := []) (fun _ h => by simp at h)
+        ⟨Proof.here_keep hT hF x ⟨_, h⟩ _⟩
+    have hH₁ := hbxc i ⟨_, h⟩ _ _ hle hkeep
+    have hs : (⟨_, Term.mono hle (Term.mono (Ctx.le_boxIn_diaIn _ x)
+          (Term.diatm (.step x .keep) (Ctx.exists_keep_dia hF ⟨_, h⟩)
+            (Term.shift (Ctx.shifts_diaIn_keep hF _ x)
+              (Term.eta (.step x .dia) _ (Ctx.ref_diaIn_of h)))))⟩ :
+          Σ b, Term σ (v.1.L.ctx (childStage i ⊔ hrk.data.i₀)) (.VTypeDia hrk.data.A) b) =
+        ⟨_, Term.eta (.step x .keep) (.VTypeDia hrk.data.A) hdecl⟩ := by
+      rw [Term.mono_mono]
+      have h₁ : (⟨_, Term.diatm (.step x .keep) (Ctx.exists_keep_dia hF ⟨_, h⟩)
+            (Term.shift (Ctx.shifts_diaIn_keep hF _ x)
+              (Term.eta (.step x .dia) _ (Ctx.ref_diaIn_of h)))⟩ :
+            Σ b, Term σ (w.L.ctx i).boxIn (.VTypeDia hrk.data.A) b) =
+          ⟨_, Term.eta (.step x .keep) (.VTypeDia hrk.data.A) hk₀⟩ :=
+        sig_diatm ((Term.shift_eta _ _ _ _).trans
+          (Term.eta_congr (VarSymb.shift_level_zero (s := .dia) rfl) _ _ _))
+      refine (sig_mono _ h₁).trans ?_
+      rw [Term.mono_eta]
+    have hH₁' : (⟨childStage i ⊔ hrk.data.i₀, WFF.here hT
+        (Term.eta (.step x .keep) (.VTypeDia hrk.data.A) hdecl)
+        (Term.eta (.step x .dia) _ hdia)⟩ : v.1.L.sys.Sentence σ) ∈ v.1.T := by
+      refine Eq.mp (congrArg (fun φ => (⟨_, φ⟩ : v.1.L.sys.Sentence σ) ∈ v.1.T) ?_) hH₁
+      exact WFF.here_congr hT hs (congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _))
+    have hH₂ := hrk.data.hhereAt v.1.mcs (childStage i ⊔ hrk.data.i₀) le_sup_right hdecl
+    exact World.mem_of_provable
+      (Δ := [WFF.here hT (Term.eta (.step x .keep) (.VTypeDia hrk.data.A) hdecl)
+          (Term.eta (.step x .dia) _ hdia),
+        WFF.hereAt hT (.step x .keep) hdecl
+          (Term.mono (v.1.L.ctx_le le_sup_right) hrk.data.t₀),
+        WFF.realiseAtA hT (.step x .keep) hdecl (Term.eta (.step x .dia) _ hdia)
+          (WFF.mono (((Ctx.le_boxIn_diaIn _ x).trans hle).diaIn (.step x .keep))
+            (WFF.shift (Ctx.shifts_diaIn_keep hF _ x) Ctx.NoSlots.slots χ))])
+      (fun φ hφ => by
+        rcases List.mem_cons.mp hφ with rfl | hφ
+        · exact hH₁'
+        rcases List.mem_cons.mp hφ with rfl | hφ
+        · exact hH₂
+        rw [List.mem_singleton.mp hφ]
+        exact hχ')
+      ⟨Proof.here_subst hT _ _ _ _ (Proof.lookup List.mem_cons_self)
+        (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
+        (Proof.lookup (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ List.mem_cons_self)))⟩
 
 theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF σ (w.L.ctx i) 0), φ.size < n →
     ((model w₀).sat (canonEnv w₀ w i) φ ↔ (⟨i, φ⟩ : w.L.sys.Sentence σ) ∈ w.T)
@@ -475,13 +704,15 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
           change (∃ (X : VarType) (h : (w.L.ctx i).ref x = some (.VTypeDia X))
             (w' : ((model w₀).posEval ((canonEnv w₀ w i).ref x h)).1),
               (model w₀).sat ((canonEnv w₀ w i).diaPush x h w') χ) ↔ _
+          by_cases hTF : TFour
+          · exact dia_truth_tFour w₀ hTF n (truth_lt n) w i x hx χ hχs
           have key : ∀ {X : VarType} (h : (w.L.ctx i).ref x = some (.VTypeDia X))
               (w' : ((model w₀).posEval ((canonEnv w₀ w i).ref x h)).1)
               (hd : w'.1.1.depth - w.depth = 1),
               (model w₀).sat ((canonEnv w₀ w i).diaPush x h w') χ ↔
-                (⟨childStage i, WFF.mono (extent_le (canonEnv_extent w₀ w i h ▸ w'.2) hd i) χ⟩ :
+                (⟨childStage i, WFF.mono (extent_le hTF (canonEnv_extent w₀ w i h ▸ w'.2) hd i) χ⟩ :
                   w'.1.1.L.sys.Sentence σ) ∈ w'.1.1.T :=
-            fun h w' hd => (Model.sat_mono (diaPush_agree_canon w₀ w i h w' hd) χ).symm.trans
+            fun h w' hd => (Model.sat_mono (diaPush_agree_canon w₀ hTF w i h w' hd) χ).symm.trans
               (truth_lt n w'.1.1 (childStage i) _ (by rw [WFF.size_mono]; exact hχs))
           -- Kept members, by the distance: `four_dia`, then the necessary contents of the first
           -- step — `far` for `□` above, with the witness kept.
@@ -498,48 +729,48 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
             | zero =>
                 intro w i x hx ψ hψs hmem X h w' hd
                 have hw' : w'.1 ∈ extent w x := canonEnv_extent w₀ w i h ▸ w'.2
-                have hneg := (extent_proper hw' hd).2.2 i hx ψ.neg (childStage i)
-                  (extent_le hw' hd i) hmem
+                have hneg := (extent_proper hTF hw' hd).2.2 i hx ψ.neg (childStage i)
+                  (extent_le hTF hw' hd i) hmem
                 exact fun hs => (w'.1.1.mcs.neg_mem_iff.mp hneg)
                   ((truth_lt n w'.1.1 (childStage i) _ (by rw [WFF.size_mono]; exact hψs)).mp
-                    ((Model.sat_mono (diaPush_agree_canon w₀ w i h w' hd) ψ).mpr hs))
+                    ((Model.sat_mono (diaPush_agree_canon w₀ hTF w i h w' hd) ψ).mpr hs))
             | succ k ih =>
                 intro w i x hx ψ hψs hmem X h w' hd
                 have hw' : w'.1 ∈ extent w x := canonEnv_extent w₀ w i h ▸ w'.2
-                obtain ⟨hF, hnS⟩ := (extent_far hw' hd).1 (Nat.succ_ne_zero k)
+                have hF := (extent_far hTF hw' hd).1 (Nat.succ_ne_zero k)
                 obtain ⟨u, hu, hru, hdu⟩ := Succ.split w'.1 (d := k) hd
                 have hu1 : (⟨u, ⟨R.of_acc hu⟩⟩ : Succ w).1.depth - w.depth = 1 := by
                   have := hu.1
                   change u.depth - w.depth = 1
                   omega
-                have h4 : (⟨i, .box (WFF.boxx (.step x .keep) (Ctx.exists_keep_dia hF hnS hx)
-                    (WFF.shift (Ctx.shifts_diaIn_keep hF hnS _ x) Ctx.NoSlots.slots ψ.neg))⟩ :
+                have h4 : (⟨i, .box (WFF.boxx (.step x .keep) (Ctx.exists_keep_dia hF hx)
+                    (WFF.shift (Ctx.shifts_diaIn_keep hF _ x) Ctx.NoSlots.slots ψ.neg))⟩ :
                     w.L.sys.Sentence σ) ∈ w.T :=
                   World.mem_of_provable (Δ := [WFF.boxx x hx ψ.neg])
                     (fun φ hφ => by
                       rw [List.mem_singleton.mp hφ]
                       exact hmem)
-                    ⟨Proof.four_dia hF hnS hx (Proof.lookup List.mem_cons_self)⟩
+                    ⟨Proof.four_dia hF hx (Proof.lookup List.mem_cons_self)⟩
                 have hxk' : (w.L.ctx i).boxIn.ref (.step x .keep) = some (.VTypeDia X) :=
-                  Ctx.ref_keep_of' hF h (VarType.keepable_dia hnS)
+                  Ctx.ref_keep_of' hF h VarType.keepable_dia
                 have hxk : (u.L.ctx (childStage i)).ref (.step x .keep) = some (.VTypeDia X) :=
                   (hu.boxIn_le i).ref hxk'
                 have hmu := hu.2.2.1 i _ (childStage i) (hu.boxIn_le i) h4
                 have hmk : (⟨w'.1.1, ⟨hru⟩⟩ : Succ u) ∈ extent u (.step x .keep) :=
-                  (extent_keep hF hnS hu ⟨w'.1.1, ⟨hru⟩⟩).mp hw'
+                  (extent_keep hF hTF hu ⟨w'.1.1, ⟨hru⟩⟩).mp hw'
                 have hmc : (⟨w'.1.1, ⟨hru⟩⟩ : Succ u) ∈
                     ((model w₀).posEval ((canonEnv w₀ u (childStage i)).ref _ hxk)).1 :=
                   (canonEnv_extent w₀ u (childStage i) hxk).symm ▸ hmk
                 have hsat := ih u (childStage i) (.step x .keep) ⟨X, hxk⟩
                   (WFF.mono ((hu.boxIn_le i).diaIn _)
-                    (WFF.shift (Ctx.shifts_diaIn_keep hF hnS _ x) Ctx.NoSlots.slots ψ))
+                    (WFF.shift (Ctx.shifts_diaIn_keep hF _ x) Ctx.NoSlots.slots ψ))
                   (by rw [WFF.size_mono, WFF.size_shift]; exact hψs) hmu hxk ⟨_, hmc⟩ hdu
                 have hb' : (⟨w'.1.1, ⟨hru⟩⟩ : Succ u) ∈ ((model w₀).posEval
                     (((canonEnv w₀ w i).boxPush (⟨u, ⟨R.of_acc hu⟩⟩ : Succ w)).ref
                       (.step x .keep) hxk')).1 := w'.2
                 exact fun hs => hsat ((Model.sat_mono (Model.Env.diaPush_agree
                   (boxPush_agree_canon w₀ w i ⟨u, ⟨R.of_acc hu⟩⟩ hu1) hxk' ⟨_, hb'⟩ hmc) _).mpr
-                  ((Model.sat_shift Ctx.NoSlots.slots (Model.Env.shiftAgree_diaKeep hF hnS
+                  ((Model.sat_shift Ctx.NoSlots.slots (Model.Env.shiftAgree_diaKeep hF
                     (canonEnv w₀ w i) h ⟨u, ⟨R.of_acc hu⟩⟩ ⟨w'.1.1, ⟨hru⟩⟩ w'.2 hxk' hb') ψ).mpr
                     hs))
           constructor
@@ -564,7 +795,7 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
                 (fun ψ hψ => truth_lt n _ _ ψ (by rw [hψ]; exact hχs)) hmem hsat
           · intro hmem
             obtain ⟨X, h⟩ : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X) := hx
-            obtain ⟨w', hw', hd, hmem'⟩ := exists_dia w x ⟨X, h⟩ χ hmem
+            obtain ⟨w', hw', hd, hv, -, hmem'⟩ := exists_dia w x ⟨X, h⟩ χ hmem
             exact ⟨X, h, ⟨w', (canonEnv_extent w₀ w i h).symm ▸ hw'⟩, (key h _ hd).mpr hmem'⟩
       | here hT s t =>
           cases s with

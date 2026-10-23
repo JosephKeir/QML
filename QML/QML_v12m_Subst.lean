@@ -62,9 +62,9 @@ def keepE : SubE σ Δ → SubE σ Δ.boxIn
       if hF : ModalSys.Four = true then .tm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Δ) t))
       else .hide
   | .tm (.diatm y hy t) =>
-      if hK : ModalSys.Four = true ∧ ModalSys.shaped = false then
-        .tm (.diatm (.step y .keep) (Ctx.exists_keep_dia hK.1 hK.2 hy)
-          (Term.shift (Ctx.shifts_diaIn_keep hK.1 hK.2 Δ y) t))
+      if hK : ModalSys.Four = true then
+        .tm (.diatm (.step y .keep) (Ctx.exists_keep_dia hK hy)
+          (Term.shift (Ctx.shifts_diaIn_keep hK Δ y) t))
       else .hide
   | _ => .hide
 
@@ -115,14 +115,14 @@ theorem keepE_tm {A : VarType} {a : Ann A} (t : Term σ Δ.boxIn A a)
 
 theorem keepE_dia {A : VarType} {a : Ann A} (y : VarSymb)
     (hy : ∃ X, Δ.ref y = some (.VTypeDia X)) (t : Term σ (Δ.diaIn y) A a)
-    (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false) :
+    (hF : ModalSys.Four = true) :
     (SubE.tm (Term.diatm y hy t)).keepE = .tm (.diatm (.step y .keep)
-      (Ctx.exists_keep_dia hF hnS hy) (Term.shift (Ctx.shifts_diaIn_keep hF hnS Δ y) t)) :=
-  dif_pos ⟨hF, hnS⟩
+      (Ctx.exists_keep_dia hF hy) (Term.shift (Ctx.shifts_diaIn_keep hF Δ y) t)) :=
+  dif_pos hF
 
 theorem keepE_dia_off {A : VarType} {a : Ann A} (y : VarSymb)
     (hy : ∃ X, Δ.ref y = some (.VTypeDia X)) (t : Term σ (Δ.diaIn y) A a)
-    (hF : ¬ (ModalSys.Four = true ∧ ModalSys.shaped = false)) :
+    (hF : ¬ (ModalSys.Four = true)) :
     (SubE.tm (Term.diatm y hy t)).keepE = .hide :=
   dif_neg hF
 
@@ -241,7 +241,7 @@ theorem okRef_keepE' (hF : ModalSys.Four = true) : ∀ {e : SubE σ Δ} {T : Var
       | VTypeDia A =>
           cases s with
           | diatm y hy t =>
-              rw [keepE_dia y hy t hF (VarType.noShaped_of_keepable_dia hk)]
+              rw [keepE_dia y hy t hF]
               rfl
       | _ => cases hk
 
@@ -262,7 +262,7 @@ theorem idxAlong_keepE' (hF : ModalSys.Four = true) : ∀ {e : SubE σ Δ} {T : 
       | VTypeDia A =>
           cases s with
           | diatm y hy t =>
-              rw [keepE_dia y hy t hF (VarType.noShaped_of_keepable_dia hk)]
+              rw [keepE_dia y hy t hF]
               rfl
       | _ => cases hk
 

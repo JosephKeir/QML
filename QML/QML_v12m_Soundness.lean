@@ -66,6 +66,44 @@ theorem sat_closed {M : Model.{u, v} σ} {Γ Γ' : Ctx} {w : M.frame.W} (env : M
   (sat_mono (env := e₀) (fun _ _ h => nomatch h) ψ).trans
     (sat_mono (env := e₀) (fun _ _ h => nomatch h) ψ).symm
 
+/-- ⭐**`here_keep` is valid** (T + 4): at a member `b` of `x`'s extent along `a`, `x` kept
+    there has the identity in its extent, since `a ; refl = a` (`trans_refl`), and its content
+    there is `bd` read at `x`'s content at `a`, across the shift (`Env.shiftAgree_diaKeep`). -/
+theorem sat_hereKeep {M : Model.{u, v} σ} (hT : ModalSys.T = true) (hF : ModalSys.Four = true)
+    {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {x : VarSymb} {X : VarType}
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (hr : Γ.ref x = some (.VTypeDia X))
+    (b : (M.posEval (env.ref x hr)).1) {A : VarType} {a : Ann A}
+    (bd : Term σ (Γ.diaIn x) A a) :
+    sat (env.diaPush x hr b) (WFF.here (d := 0) hT (Term.mono (Ctx.le_boxIn_diaIn Γ x)
+      (Term.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
+        (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) bd))) bd) := by
+  obtain ⟨⟨u, ⟨r⟩⟩, hb₀⟩ := b
+  have hk : Γ.boxIn.ref (.step x .keep) = some (.VTypeDia X) :=
+    Ctx.ref_keep_of' hF hr VarType.keepable_dia
+  change Realised hT (interp _ (Term.mono _ _)) _
+  rw [interp_mono (Env.box_dia_agree env hr ⟨⟨u, ⟨r⟩⟩, hb₀⟩)]
+  unfold Realised
+  rw [dia_beta _ _ hk]
+  have hm₀ : (⟨u, ⟨M.frame.trans hF r (M.frame.refl hT u)⟩⟩ : M.frame.Acc w) ∈
+      (M.posEval (env.ref x hr)).1 := by
+    rw [M.frame.trans_refl hT hF]
+    exact hb₀
+  have H := congrArg Prod.fst (M.posKeep_full hF (env.ref x hr) ⟨u, ⟨r⟩⟩)
+  have hm : M.frame.reflAcc hT u ∈
+      (M.posEval ((env.boxPush ⟨u, ⟨r⟩⟩).ref (.step x .keep) hk)).1 :=
+    (congrArg (fun S : M.frame.PosSec _ _ => M.frame.reflAcc hT u ∈ S.1) H).mpr hm₀
+  refine ⟨hm, ?_⟩
+  change M.Ind (interp ((env.boxPush ⟨u, ⟨r⟩⟩).diaPush (.step x .keep) hk ⟨_, hm⟩)
+    (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) bd)) _
+  rw [interp_shift (Env.shiftAgree_diaKeep hF env hr ⟨u, ⟨r⟩⟩ (M.frame.reflAcc hT u) hm₀ hk hm)
+    bd]
+  change M.Ind (interp (env.diaPush x hr
+    ⟨⟨u, ⟨M.frame.trans hF r (M.frame.refl hT u)⟩⟩, hm₀⟩) bd) _
+  revert hm₀
+  rw [M.frame.trans_refl hT hF]
+  intro _
+  exact M.Ind_refl _
+
 /-- ⭐**Soundness.** -/
 theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : Proof σ Γ Δ φ) :
     ∀ (M : Model.{u, v} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
@@ -206,20 +244,24 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M hM w env hfin hnp hΔ v s
       exact (sat_shift_twoBox hF env Ctx.NoSlots.slots φ v s).mpr
         (ih M hM env hfin hnp hΔ ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩)
-  | @four_dia Γ _ hF hnS Δ x hx φ p ih =>
+  | @four_dia Γ _ hF Δ x hx φ p ih =>
       -- An arrow of `x.keep`'s extent at a successor is the second half of one of `x`'s
       -- (`Model.posKeep_full`), and the kept view agrees with `x`'s across the shift.
       intro M hM w env hfin hnp hΔ v hd
       obtain ⟨X, hr, b, hb⟩ := hd
       have hx' : Γ.ref x = some (.VTypeDia X) :=
         (Ctx.boxIn_keep ((Ctx.ref_nonproj _ rfl).symm.trans hr)).2.1
-      have H := congrArg Prod.fst (M.posKeep_full hF hnS (env.ref x hx') v)
+      have H := congrArg Prod.fst (M.posKeep_full hF (env.ref x hx') v)
       have hm : (⟨b.1.1, ⟨M.frame.trans hF v.2.down b.1.2.down⟩⟩ : M.frame.Acc w) ∈
           (M.posEval (env.ref x hx')).1 :=
         (congrArg (fun S : M.frame.PosSec _ _ => (b.1 : M.frame.Acc v.1) ∈ S.1) H).mp b.2
       exact ih M hM env hfin hnp hΔ ⟨X, hx', ⟨_, hm⟩,
         (sat_shift (φ := φ.neg) Ctx.NoSlots.slots
-          (Env.shiftAgree_diaKeep hF hnS env hx' v b.1 hm hr b.2)).mp hb⟩
+          (Env.shiftAgree_diaKeep hF env hx' v b.1 hm hr b.2)).mp hb⟩
+  | @here_keep Γ _ Δ hT hF x hx A a bd =>
+      intro M hM w env hfin hnp hΔ hd
+      obtain ⟨X, hr, b, hb⟩ := hd
+      exact hb (sat_hereKeep hT hF env hx hr b bd)
   | @T_dia Γ _ hT hS A a t c hc Δ φ p ih =>
       -- Interpret the eigenvariable as some possible object realised here — `posRet_exists` says
       -- there is one, and that *is* the hypothesis the subproof gets.

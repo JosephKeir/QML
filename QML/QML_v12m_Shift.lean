@@ -158,10 +158,10 @@ theorem ref_keep_of' {Γ : Ctx} (hF : ModalSys.Four = true) {w : VarSymb} {T : V
   (Ctx.ref_nonproj Γ.boxIn (v := .step w .keep) rfl).trans (boxIn_keep_of' hF h hk)
 
 /-- Under 4, a possible address is kept inside `□` as a possible address. -/
-theorem exists_keep_dia {Γ : Ctx} (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false)
+theorem exists_keep_dia {Γ : Ctx} (hF : ModalSys.Four = true)
     {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
     ∃ X, Γ.boxIn.ref (.step x .keep) = some (.VTypeDia X) :=
-  hx.elim fun X h => ⟨X, ref_keep_of' hF h (VarType.keepable_dia hnS)⟩
+  hx.elim fun X h => ⟨X, ref_keep_of' hF h VarType.keepable_dia⟩
 
 /-- The contents address of a reachable necessary address is reachable inside `□`. -/
 theorem ref_inner {Γ : Ctx} {w : VarSymb} {A : VarType} (h : Γ.ref w = some (.VTypeBox A)) :
@@ -197,7 +197,7 @@ theorem shifts_boxIn_boxIn (hF : ModalSys.Four = true) (Γ : Ctx) :
 
 /-- ⭐Under 4 the `◇_x` view shifts into the `◇_{x.keep}` view one level further in: `x.dia` is
     reached as `x.keep.dia`, and the `□` view as in `shifts_boxIn_boxIn`. -/
-theorem shifts_diaIn_keep (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = false) (Γ : Ctx)
+theorem shifts_diaIn_keep (hF : ModalSys.Four = true) (Γ : Ctx)
     (x : VarSymb) :
     Shifts 0 (Γ.diaIn x) (Γ.boxIn.diaIn (.step x .keep)) := by
   refine Shifts.of_raw ?_
@@ -214,7 +214,7 @@ theorem shifts_diaIn_keep (hF : ModalSys.Four = true) (hnS : ModalSys.shaped = f
           rw [hx] at hv
           cases U <;> try cases hv
           rw [VarSymb.shift_level_zero rfl]
-          exact ref_diaIn_of (ref_keep_of' hF hx (VarType.keepable_dia hnS))
+          exact ref_diaIn_of (ref_keep_of' hF hx VarType.keepable_dia)
   | .step u .box =>
       exact (Ctx.le_boxIn_diaIn _ _).ref (shifts_boxIn_boxIn hF Γ (.step u .box) T
         ((Ctx.ref_nonproj _ rfl).trans hv))

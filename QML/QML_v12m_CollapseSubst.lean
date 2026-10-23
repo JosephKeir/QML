@@ -281,12 +281,12 @@ theorem keepE_collapse' : ∀ {e : SubE σ Δ} {T : VarType}, T.keepable = true 
           | diatm y hy t =>
               change (SubE.tm (Term.diatm y hy t)).keepE.collapse D.boxIn =
                 (SubE.tm (Term.diatm (y.collapse k) _ (Term.collapse (D.diaIn y) t))).keepE
-              by_cases hK : ModalSys.Four = true ∧ ModalSys.shaped = false
-              · obtain ⟨hF, hnS⟩ := hK
-                rw [keepE_dia _ _ _ hF hnS, keepE_dia _ _ _ hF hnS]
+              by_cases hK : ModalSys.Four = true
+              · have hF := hK
+                rw [keepE_dia _ _ _ hF, keepE_dia _ _ _ hF]
                 exact tm_eq_of_sig (sig_diatm (Term.collapse_shift (k := k) (m := 0)
-                  (Ctx.shifts_diaIn_keep hF hnS Δ y) (D.boxIn.diaIn (.step y .keep)) (D.diaIn y)
-                  (Ctx.shifts_diaIn_keep hF hnS Δ' (y.collapse k)) t))
+                  (Ctx.shifts_diaIn_keep hF Δ y) (D.boxIn.diaIn (.step y .keep)) (D.diaIn y)
+                  (Ctx.shifts_diaIn_keep hF Δ' (y.collapse k)) t))
               · rw [keepE_dia_off _ _ _ hK, keepE_dia_off _ _ _ hK]
                 rfl
       | _ => cases hk
