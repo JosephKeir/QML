@@ -2459,6 +2459,130 @@ theorem OutLeg.subst_retS_renameTm {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ 
         (Subst.coh_under ok0 coh0 (hΓ.diaIn y) _ hr0) ((hΓ.diaIn y).insert _)
         ((hΔ.diaIn (ι y)).insert _) ((hΔ'.diaIn (ι y)).insert _) Φ).symm
 
+/-- A body weakened past a fresh variable, substituted with the variable renamed: the weakening
+    of the substituted body (`WFF.subst_body_renameTm` for `Subst.rename`). -/
+theorem WFF.subst_body_rename {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0) (hΔ : Δ.SlotsFrom 0)
+    {u u' : ℕ} (hu : Γ.RootFresh (.free u)) (hu' : Δ.RootFresh (.free u')) (T : VarType)
+    {C : VarType} (Ψ : WFF σ (Γ.boxIn.insert (.bnd 0) C) 1) :
+    WFF.subst (VarSymb.shiftSlot (VarSymb.renameIdx ι u u') 0 0)
+        ((θ.rename u u' T hu'.root).box.under 0 0 C
+          (hΔ.insertFree u' T).boxIn.root)
+        (Subst.ok_under (Subst.ok_box (Subst.ok_rename hθ T hu'.root)) _ _)
+        (Subst.coh_under (Subst.ok_box (Subst.ok_rename hθ T hu'.root))
+          (Subst.coh_box (Subst.ok_rename hθ T hu'.root)
+            (Subst.coh_rename hθ hc hu T hu'.root)) (hΓ.insertFree u T).boxIn _ _)
+        ((hΓ.insertFree u T).boxIn.insert _) ((hΔ.insertFree u' T).boxIn.insert _)
+        (WFF.mono ((Ctx.le_insert hu.root T).boxIn.insert (.bnd 0) _) Ψ) =
+      WFF.mono ((Ctx.le_insert hu'.root T).boxIn.insert (.bnd 0) _)
+        (WFF.bodySubst θ hθ hc hΓ hΔ Ψ) := by
+  have h := WFF.subst_weaken_rename θ hθ hc hΓ hΔ hu hu' T (WFF.box (WFF.ex C Ψ))
+  injection h with _ _ h₁
+  simp only [WFF.mono, WFF.subst] at h₁
+  injection h₁ with _ _ _ h₂
+
+/-- The renamed fresh variable, kept, goes to the new one kept. -/
+theorem Subst.rename_box_keep (θ : Subst σ Δ) (u u' : ℕ) (T : VarType)
+    (h : Δ (.root (.free u')) = none) :
+    (θ.rename u u' T h).box.at (.step (.root (.free u)) .keep) =
+      .ren (.step (.root (.free u')) .keep) := by
+  rw [Subst.at_nonproj _ rfl]
+  change (θ.rename u u' T h (.root (.free u))).keepE = _
+  rw [Subst.rename_root]
+  rfl
+
+/-- ⭐**Substituting `keep_lift`'s hypothesis**: the leg and the body go as the old substitution
+    sends them, and the fresh variable kept goes to the new one kept.  Along a witness the witness
+    goes to `ι y`, as in `OutLeg.subst_retS_renameTm`. -/
+theorem WFF.subst_liftRead_rename {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
+    (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0)
+    (hΔ : Δ.SlotsFrom 0) {u u' : ℕ} (hu : Γ.RootFresh (.free u)) (hu' : Δ.RootFresh (.free u'))
+    (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable = true) (O : OutLeg Γ)
+    (φ : WFF σ (O.view.insert (.bnd 0) T) 1) :
+    WFF.subst (VarSymb.renameIdx ι u u') (θ.rename u u' T hu'.root) (Subst.ok_rename hθ T hu'.root)
+        (Subst.coh_rename hθ hc hu T hu'.root) (hΓ.insertFree u T) (hΔ.insertFree u' T)
+        (WFF.liftRead hF hl O hu φ) =
+      WFF.liftRead hF hl (O.subst θ hθ hc) hu' (OutLeg.bodySubst θ hθ hc hΓ hΔ O φ) := by
+  have hle := Ctx.le_insert hu.root T
+  have hle' := Ctx.le_insert hu'.root T
+  have hΔ' := hΔ.insertFree u' T
+  have okr := Subst.ok_rename (u := u) hθ T hu'.root
+  have cohr := Subst.coh_rename hθ hc hu T hu'.root
+  cases O with
+  | nec =>
+      refine congrArg (fun χ : WFF σ (Δ.insert (.free u') T).boxIn 0 => (WFF.box χ.neg).neg) ?_
+      refine (WFF.subst_instantiate _ (Subst.ok_box okr) (Subst.coh_box okr cohr)
+        (hΓ.insertFree u T).boxIn hΔ'.boxIn _ _).trans ?_
+      refine (WFF.instantiate_congr_sig _ (Term.subst_eta_renAt _ _ _ T _ _ _
+        (Ctx.ref_keep_of' hF (Ctx.ref_insert_root Δ (.free u') T) (VarType.keepable_of_liftable hl))
+        (Subst.rename_box_keep θ u u' T hu'.root)) _).trans ?_
+      exact congrArg _ (WFF.subst_body_rename θ hθ hc hΓ hΔ hu hu' T φ)
+  | pos y hy =>
+      have hyΓ : ∃ Y, (Γ.insert (.free u) T).ref y = some (.VTypeDia Y) :=
+        hy.imp fun _ h => hle.ref h
+      have hιr : VarSymb.renameIdx ι u u' y = ι y := by
+        obtain ⟨Y, h⟩ := hy
+        exact if_neg (Ctx.RootFresh.rt_ne hu h)
+      have hwr : ((θ.rename u u' T hu'.root).at y).idxAlong [] = ι y :=
+        hyΓ.elim fun _ h => (cohr y _ h []).trans hιr
+      have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ h => hc y _ h []
+      have hwm : ((θ.mono hle').at y).idxAlong [] = ι y :=
+        hy.elim fun _ h => Subst.coh_mono hc hle' y _ h []
+      have hr0 := (hΔ.diaIn (ι y)).root
+      have hr1 := (hΔ'.diaIn (ι y)).root
+      have key : ∀ (z : VarSymb) (_hz : VarSymb.renameIdx ι u u' y = z)
+          (P : ∃ Y, (Δ.insert (.free u') T).ref z = some (.VTypeDia Y))
+          (hz' : ((Δ.insert (.free u') T).diaIn z).SlotsFrom 0)
+          (p : Subst.Ok ((Γ.insert (.free u) T).diaIn y) ((θ.rename u u' T hu'.root).dia y z))
+          (q : Subst.Coh (VarSymb.renameIdx ι u u') ((Γ.insert (.free u) T).diaIn y)
+            ((θ.rename u u' T hu'.root).dia y z))
+          (ψ : WFF σ ((Γ.insert (.free u) T).diaIn y) 0),
+          WFF.subst (VarSymb.renameIdx ι u u') (θ.rename u u' T hu'.root) okr cohr
+              (hΓ.insertFree u T) hΔ' (WFF.dia y hyΓ ψ) =
+            WFF.dia z P (WFF.subst (VarSymb.renameIdx ι u u') ((θ.rename u u' T hu'.root).dia y z)
+              p q ((hΓ.insertFree u T).diaIn y) hz' ψ) := by
+        intro z hz P hz' p q ψ
+        subst hz
+        rfl
+      have okd := Subst.ok_dia okr hyΓ hwr
+      have cohd : Subst.Coh (VarSymb.renameIdx ι u u') ((Γ.insert (.free u) T).diaIn y)
+          ((θ.rename u u' T hu'.root).dia y (ι y)) := hιr ▸ Subst.coh_dia okr cohr hyΓ
+      refine (key (ι y) hιr _ (hΔ'.diaIn (ι y)) okd cohd _).trans (congrArg (WFF.dia _ _) ?_)
+      refine (WFF.subst_instantiate _ okd cohd ((hΓ.insertFree u T).diaIn y)
+        (hΔ'.diaIn (ι y)) _ _).trans ?_
+      have hat : ((θ.rename u u' T hu'.root).dia y (ι y)).at (.step (.root (.free u)) .keep) =
+          .ren (.step (.root (.free u')) .keep) := by
+        rw [Subst.dia_eq_box_mono _ y (ι y) _ T (Ctx.ref_keep_of' hF
+          (Ctx.ref_insert_root Γ (.free u) T) (VarType.keepable_of_liftable hl)),
+          Subst.rename_box_keep]
+        rfl
+      refine (WFF.instantiate_congr_sig _ (Term.subst_eta_renAt _ _ _ T _ _ _
+        ((Ctx.le_boxIn_diaIn _ _).ref (Ctx.ref_keep_of' hF (Ctx.ref_insert_root Δ (.free u') T)
+          (VarType.keepable_of_liftable hl))) hat) _).trans
+        (congrArg _ ?_)
+      have okm := Subst.ok_dia (Subst.ok_mono hθ hle') hy hwm
+      have cohm := Subst.coh_dia (Subst.ok_mono hθ hle') (Subst.coh_mono hc hle') hy
+      have ok0 := Subst.ok_dia hθ hy hw
+      have coh0 := Subst.coh_dia hθ hc hy
+      have ok3 := Subst.ok_mono ok0 (hle'.diaIn (ι y))
+      have coh3 := Subst.coh_mono coh0 (hle'.diaIn (ι y))
+      rw [WFF.subst_mono ((hle.diaIn y).insert (.bnd 0) _) _ _ _ ((hΓ.diaIn y).insert _) _ _ φ]
+      refine (WFF.subst_congr _ (((θ.mono hle').dia y (ι y)).under 0 0 _ hr1) _
+        (Subst.ok_under okm _ hr1) _ (Subst.coh_under okm cohm (hΓ.diaIn y) _ hr1) _ _
+        (Subst.sim_under (Subst.sim_dia (Subst.sim_rename_mono hu T hu'.root) hwr) _ hr1)
+        φ).trans ?_
+      refine (WFF.subst_congr (((θ.dia y (ι y)).mono (hle'.diaIn (ι y))).under 0 0 _ hr1) _
+        (Subst.ok_under ok3 _ hr1) _ (Subst.coh_under ok3 coh3 (hΓ.diaIn y) _ hr1) _ _ _
+        (Subst.sim_under (Subst.sim_dia_mono θ hle' y (ι y)) _ hr1) φ).symm.trans ?_
+      refine (WFF.subst_congr (((θ.dia y (ι y)).under 0 0 _ hr0).mono
+          ((hle'.diaIn (ι y)).insert _ _)) _
+        (Subst.ok_mono (Subst.ok_under ok0 _ hr0) _) _
+        (Subst.coh_mono (Subst.coh_under ok0 coh0 (hΓ.diaIn y) _ hr0) _) _ _ _
+        (Subst.sim_under_mono (θ.dia y (ι y)) (hle'.diaIn (ι y)) _ hr0 hr1) φ).symm.trans ?_
+      exact (WFF.mono_subst ((hle'.diaIn (ι y)).insert _ _) _ (Subst.ok_under ok0 _ hr0)
+        (Subst.coh_under ok0 coh0 (hΓ.diaIn y) _ hr0) ((hΓ.diaIn y).insert _)
+        ((hΔ.diaIn (ι y)).insert _) ((hΔ'.diaIn (ι y)).insert _) φ).symm
+
 /-- ⭐Substituting the returning possibility that a fresh-value rule hands its subproof: the leg
     and the body are weakened past the fresh root, so they go as the old substitution sends them;
     only the value is new.  Along a witness the witness goes to `ι y` (the fresh root is not its
@@ -2738,6 +2862,25 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw
       Proof.conv (WFF.subst_hereKeep hT hF θ hθ hc hΓ hx hw hy bd).symm
         (Proof.here_keep hT hF (ι x) hy _)
+  | _, _, _, @Proof.keep_lift _ _ Γ _ Δ hF T hl O φ c cfr ψ p q, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      have hu' : Γ'.RootFresh (.free (Ctx.Presented.bound Γ')) :=
+        Ctx.Presented.fresh_bound _ le_rfl
+      have ihq := Proof.subst q (Γ' := Γ'.insert (.free (Ctx.Presented.bound Γ')) T)
+        (θ.rename c _ T hu'.root) (Subst.ok_rename hθ T hu'.root)
+        (Subst.coh_rename hθ hc cfr T hu'.root) (hΓ.insertFree c T)
+      Proof.keep_lift hF hl (O.subst θ hθ hc) (OutLeg.bodySubst θ hθ hc hΓ hΓ' O φ) _ hu'
+        (Proof.conv (OutLeg.subst_dia θ hθ hc hΓ hΓ' O (WFF.ex T φ))
+          (Proof.subst p θ hθ hc hΓ))
+        (Proof.conv (WFF.subst_weaken_rename θ hθ hc hΓ hΓ' cfr hu' T ψ)
+          (Proof.castHyps
+            (by
+              rw [List.map_cons, List.map_map, List.map_map]
+              exact congrArg₂ List.cons
+                (WFF.subst_liftRead_rename θ hθ hc hΓ hΓ' cfr hu' hF hl O φ)
+                (List.map_congr_left fun χ _ =>
+                  WFF.subst_weaken_rename θ hθ hc hΓ hΓ' cfr hu' T χ))
+            ihq))
   | _, _, _, @Proof.T_dia _ _ _ _ hT hS A _ t c hcf _ _ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       have hcf' : Γ'.RootFresh (.free (Ctx.Presented.bound Γ')) :=

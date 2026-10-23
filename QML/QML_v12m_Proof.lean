@@ -49,6 +49,18 @@ abbrev WFF.hereKeep {σ : Signature} {Γ : Ctx} (hT : ModalSys.T = true)
     (Term.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
       (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) bd))) bd)
 
+/-- `O.dia φ(c.keep)`: `φ`'s slot read at the fresh object `c`, kept, along the leg — the
+    hypothesis `Proof.keep_lift` hands its subproof. -/
+def WFF.liftRead {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = true) {T : VarType}
+    (hl : T.liftable = true) (O : OutLeg Γ) {c : ℕ} (hc : Γ.RootFresh (.free c))
+    (φ : WFF σ (O.view.insert (.bnd 0) T) 1) : WFF σ (Γ.insert (.free c) T) 0 :=
+  (O.mono (Ctx.le_insert hc.root T)).dia
+    (WFF.instantiate (OutLeg.slotsFrom ((Ctx.NoSlots.slots (Γ := Γ)).insertFree c T) _)
+      (Term.eta (.step (.root (.free c)) .keep) T
+        ((O.mono (Ctx.le_insert hc.root T)).le_view.ref (Ctx.ref_keep_of' hF
+          (Ctx.ref_insert_root Γ (.free c) T) (VarType.keepable_of_liftable hl))))
+      (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root T)).insert (.bnd 0) T) φ))
+
 inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ Γ 0 → Type where
   -- Structural
   | ax {Γ : Ctx} (φ : WFF σ Γ 0) : Proof σ Γ [φ] φ
@@ -176,6 +188,20 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       (hF : ModalSys.Four = true) (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
       {A : VarType} {a : Ann A} (bd : Term σ (Γ.diaIn x) A a) :
       Proof σ Γ Δ (WFF.hereKeep hT hF x hx bd)
+  -- Strong 4
+  /-- ⭐**Strong 4: keep is surjective along each arrow** (docs §3 4, "4's strong forms"): an
+      object of a liftable type at the far end of any arrow of the leg is the restriction of one
+      here — the `□`-lift (`FourStrong`) and the `◇`-lift (`FourStrongW`), along `□` or `◇_x`,
+      the four strong rows of 4's grid.  As `ex_elim`: the fresh `c : T` is read kept, `c.keep`,
+      in the subproof's hypothesis (`WFF.liftRead`). -/
+  | keep_lift {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hF : ModalSys.Four = true)
+      {T : VarType} (hl : T.liftable = true) (O : OutLeg Γ)
+      (φ : WFF σ (O.view.insert (.bnd 0) T) 1) (c : ℕ) (hc : Γ.RootFresh (.free c))
+      {ψ : WFF σ Γ 0} :
+      Proof σ Γ Δ (O.dia (WFF.ex T φ)) →
+      Proof σ (Γ.insert (.free c) T)
+        (WFF.liftRead hF hl O hc φ :: Δ.map (WFF.weaken hc.root T)) (ψ.weaken hc.root T) →
+      Proof σ Γ Δ ψ
   -- Strong T
   /-- ⭐**Every object has a possible object realised here**, as an `∃`-elimination: the witness
       `c : ◇A` is fresh, and the subproof gets the single hypothesis `Here (η c) t`.  Its validity

@@ -104,6 +104,46 @@ theorem sat_hereKeep {M : Model.{u, v} σ} (hT : ModalSys.T = true) (hF : ModalS
   intro _
   exact M.Ind_refl _
 
+/-- ⭐**The hypothesis `keep_lift` hands its subproof holds of the lifted object**: along the
+    leg's arrow, `c.keep` is the object the premise found there (`Model.keepLift`). -/
+theorem sat_liftRead {M : Model.{u, v} σ} (hF : ModalSys.Four = true) {T : VarType}
+    (hl : T.liftable = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W} (env : M.Env Γ w) {c : ℕ}
+    (hc : Γ.RootFresh (.free c)) (O : OutLeg Γ) (φ : WFF σ (O.view.insert (.bnd 0) T) 1)
+    (i : O.Arr env) (m : M.frame.Dom T w) {o : M.frame.Dom T (O.acc env i).1}
+    (hm : M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF (VarType.keepable_of_liftable hl))
+      w m) (O.acc env i) = o)
+    (ho : M.sat ((O.push env i).extend (.bnd 0) o) φ) :
+    M.sat (env.extend (.free c) m) (WFF.liftRead hF hl O hc φ) := by
+  have hag := Env.agree_extend env hc.root m
+  cases O with
+  | nec =>
+      refine (OutLeg.sat_dia _ .nec _).mpr ⟨i, ?_⟩
+      change M.sat ((env.extend (.free c) m).boxPush i) (WFF.instantiate _ _ _)
+      rw [sat_instantiate _ (Ctx.noProjLast_boxIn _), interp_eta]
+      have key : ∀ h, ((env.extend (.free c) m).boxPush i).ref
+          (.step (.root (.free c)) .keep) h = o := fun _ => by
+        change M.necEval (GFunc.eval M.ops (GFunc.keep _ _) w
+          ((env.extend (.free c) m) (.root (.free c)) T (Ctx.ref_insert_root Γ _ T))) i = o
+        rw [Env.extend_root]
+        exact hm
+      rw [key]
+      exact (sat_mono (Env.extend_agree (Env.boxPush_agree hag i) (.bnd 0) o) φ).mpr ho
+  | pos y hy =>
+      have href := Env.ref_agree hag y hy.choose_spec
+      have hle := Ctx.le_insert hc.root T
+      refine ⟨_, hle.ref hy.choose_spec, ⟨i.1, by rw [← href]; exact i.2⟩, ?_⟩
+      rw [sat_instantiate _ (Ctx.noProjLast_diaIn _ _), interp_eta]
+      have key : ∀ h, ((env.extend (.free c) m).diaPush y (hle.ref hy.choose_spec)
+          ⟨i.1, by rw [← href]; exact i.2⟩).ref (.step (.root (.free c)) .keep) h = o :=
+        fun _ => by
+          change M.necEval (GFunc.eval M.ops (GFunc.keep _ _) w
+            ((env.extend (.free c) m) (.root (.free c)) T (Ctx.ref_insert_root Γ _ T))) i.1 = o
+          rw [Env.extend_root]
+          exact hm
+      rw [key]
+      exact (sat_mono (Env.extend_agree (Env.diaPush_agree hag hy.choose_spec i _) (.bnd 0) o)
+        φ).mpr ho
+
 /-- ⭐**Soundness.** -/
 theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : Proof σ Γ Δ φ) :
     ∀ (M : Model.{u, v} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
@@ -262,6 +302,19 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M hM w env hfin hnp hΔ hd
       obtain ⟨X, hr, b, hb⟩ := hd
       exact hb (sat_hereKeep hT hF env hx hr b bd)
+  | @keep_lift Γ _ Δ hF T hl O φ c hc ψ p q ihp ihq =>
+      -- The premise's arrow and object; the law lifts the object; the subproof sees it kept.
+      intro M hM w env hfin hnp hΔ
+      obtain ⟨i, o, ho⟩ := (OutLeg.sat_dia env O _).mp (ihp M hM env hfin hnp hΔ)
+      obtain ⟨m, hm⟩ := M.keepLift hF hl (O.acc env i) o
+      refine (sat_weaken env hc.root m ψ).mp
+        (ihq M hM (env.extend (.free c) m) (hfin.insert hc _) (hnp.insert _ _) ?_)
+      intro χ hχ
+      rcases List.mem_cons.mp hχ with h₁ | h₂
+      · subst h₁
+        exact sat_liftRead hF hl env hc O φ i m hm ho
+      · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
+        exact (sat_weaken env hc.root m χ').mpr (hΔ χ' hχ')
   | @T_dia Γ _ hT hS A a t c hc Δ φ p ih =>
       -- Interpret the eigenvariable as some possible object realised here — `posRet_exists` says
       -- there is one, and that *is* the hypothesis the subproof gets.

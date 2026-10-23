@@ -2129,6 +2129,318 @@ gate is gone (`VarType.keepable (◇A) := true`, `NoDiaKeep := Four = false`).  
 * Open checks resolved: `Step.keepAt_collapseAt` was proved with the WF hypothesis; `here_keep`'s
   soundness reads no shape condition; every collapse caller had a WF environment.
 
+#### 4's strong forms: scoping *(2026-10-23, paper)*
+
+What B taught (§11.23, "The per-arrow reading"): state existence **per arrow**, strong-T style, as
+a model law; give each positive formula its own child or op; no uniform carriers, no named
+witnesses; joint possibilities only through pairing.  The outline above (items 2 and 3 of "4's four
+cases") already follows that.  Checked here against how the canonical model builds worlds.
+
+**The lift (strong `□`).**
+* *Law*, per arrow: `∀ a : Acc w, ∀ n : Nec A a.1, ∃ m : Nec A w, necEval (necDup m) a = n`.
+* *Rule*, an `∃`-elimination along a leg, as `T_dia`:
+  `O.dia (∃n:□A. φ(n)) ⊢ ∃m:□A. O.dia φ(m.keep)`, `m` fresh.
+* *Soundness* is the law at the premise's arrow; `Proof.subst` as `T_dia`'s (`renameTm`).
+* *Canonical: the textbook Barcan child.*  A child `v` of `w` must not invent `□`-objects.  Build
+  it by a Lindenbaum relative to `w`: a finite set `Σ(ȳ)` over `v`'s language, with fresh roots
+  `ȳ`, is *`w`-consistent* when `O.dia ∃ȳ. ⋀Σ ∈ T(w)` (`O` the child's leg).
+  * Adding `ψ` or `¬ψ` keeps it.
+  * A base or `◇` witness is a fresh root, existentially closed in the encoding.
+  * A `□` witness for `∃n:□A. χ(n)` uses the rule at `w`: `O.dia ∃n ∃ȳ (θ ∧ χ(n))` gives a Henkin
+    witness `m` of `w`, and `χ(m.keep)` is added.
+  * The `□`- and `□_x`-contents hold, since `□ψ` with `O.dia ∃ȳ(θ ∧ ¬ψ)` is inconsistent.
+  * Then every `□`-term of `v` is a keep of a `w`-term (`rden_dup`), which is the law.
+* ⚠ **Finding 1: the lift must be restricted to `◇`-free contents.**  At `n : □◇A`, `v`'s fresh
+  `◇`-root `y` gives `n := boxtm y.keep`.  A lift `m` at `w` needs values `posKeep y c` at each
+  `a ; c`, so `w` must name an object whose kept extent is `y`'s.  That is the `◇`-lift (every
+  possible object at `v` is a keep), rejected above as uniform.  With equality replaced by `Ind`
+  the same naming is needed.  So: **the lift at `□A` for `◇`-free `A`**.  By the standing
+  principle, the `◇` side is the join.
+* *Finding 1's cost.*  A fresh root of `v` may have a `◇`-free `□` component under a `◇`-typed
+  sibling, e.g. `n : □(A × ◇B)` with `n.box.fst : A`.  The Barcan step must split every `□` type
+  into its liftable part and the rest (`□(A × B) ≅ □A × □B` by `boxPair`, at every level).  The
+  `∃` witness is then a pair of a keep and a fresh root.  This needs a type decomposition with
+  `GFunc` isomorphisms; alternatively the rule at product types.
+* *Interactions.*
+  * T: the own arrow is trivial (`m := n`).
+  * D: nothing.
+  * Strong T: its witnesses `c : ◇A` are fresh at `v`, which is allowed.
+  * T + 4: unchanged; extents are about `◇`.
+  * B: off, as for all of 4.
+* *Cost.*  A new child construction beside `World.ofHenkin`: the `w`-relative Lindenbaum, the
+  encoding `∃ȳ`, the type split.  The truth lemma and extents are unchanged: the children's
+  views are as now.
+
+**The join (strong `◇`).**
+* *Law*, per arrow and per member: for `a : w → v`, `q : Pos A v` and `b ∈ ext q`, some `z : Pos A w`
+  has `a ; b ∈ ext z` and `Ind (z at a ; b) (q at b)`.
+* *Rule:* `◇ ∃y:◇A. ◇_y (shift φ)(y.dia) ⊢ ∃z:◇A. ◇_z φ(z.dia)`.
+* ⚠ **Finding 2: the tree cannot meet it.**  For a grandchild `s` (a `◇_y`-child of `v`, `y` fresh
+  at `v`), some root `z` of `w` must have `s` in its extent.
+  * Without T, extents are view-based: `s` must be a `◇_{z.keep}`-child of `v`, but `s` was built in
+    `y`'s view.
+  * With T + 4 they are theory-based: `s` must realise `z.keep.keep`, but nothing in `s` ties that
+    address to `y`.
+  * The join rule at `w` gives a witness `z₀` with `◇_{z₀} φ`, whose members are its own children,
+    not `s`.
+  * The Barcan child cannot help either: making `y` a keep is the `◇`-lift again.
+  * So `z` must be added to `w` **after** `s` exists.
+* *Canonical: the network, as B's routes.*  It is B's `mkRoute` for composite arrows.  When `v`
+  gains a `◇_y`-child `s`, the network adds a fresh root `z` to `w` and commits `z.keep` to `v`.
+  The composite `w → v → s` is labelled by `z.keep` at `v` and by `y` at `s`.
+  * Consistency of the new root comes from the join rule, as `route_consistent` comes from
+    `ret_route`.
+  * This needs a network with composite arrows (4 on the network), which is also the first step of
+    B + 4 (§3 4, "4 with the finished flags").
+  * Open on paper: whether the commitments of `z.keep` into `v`'s existing children stay
+    consistent, and whether one label per arrow still suffices (the per-arrow reading says yes).
+
+**⭐Correction (2026-10-23, user): no `◇`-free restriction — Finding 1 came from the tree.**
+The restriction is not used anywhere else, and it was the wrong turn for T too.  Its source is the
+tree: `w` is finished before `v` exists, so `w` can name `v`'s objects only if `v` invents none
+(the Barcan child).  That fails at the first fresh `◇`-witness of `v`, which looked like a `◇`-type
+problem.  It is a *direction* problem.
+* *The role.*  Both strong forms say that **the parent names what first appears in a
+  descendant**.  The lift does it for necessary objects (as keeps); the join for the members of
+  possible objects (as extents of parent witnesses).  This is strong B's situation, where the
+  network committed children's objects, `◇`-typed contents included (§11.15), with the naming
+  run upstream.
+* *The construction: a growing tree.*  An ω-chain in which worlds, children and languages keep
+  growing, and each arrow carries a **translation** (§2 of `v12-arrow-canonical.md`).
+  * Lift: when `v` gains `n`, the parent gains a fresh `m`, and the arrow's translation sends
+    `m.keep ↦ n`.  That is the law, **as an equality, at every type**.  Consistency comes from the
+    lift rule applied to `O.dia ∃n ⋀Σ_v(n)`, `v`'s finite part with its fresh roots closed.
+  * Join: the same with `z.keep ↦ y` along `w → v`, and the composite into `y`'s member labelled.
+    Consistency comes from the join rule, as B's `route_consistent` came from `ret_route`.
+  * Without B every world has one parent, so arrows are ancestor paths, composition is
+    concatenation, and the frame stays **relational** (one path per pair).  No back edges: lighter
+    than B's network, and the groundwork B + 4 needs.
+  * The Barcan child is not needed.
+* *Open on paper before building.*
+  1. The other children of `w`: `□ψ(m.keep) ∈ T(w)` must hold where `m.keep` is translated to
+     something else, or committed fresh.  This is commitment in declaration order, as in B.
+  2. Weak 4 on the growing tree: `x.keep`, extents of kept witnesses along paths, and T + 4 by
+     realisation.  Reuse the tree's proofs, or keep the tree for systems without the strong flags.
+  3. The join's content: equality (by the translation) or `Ind` (weaker law, larger class).
+  4. Strong T, D and the shapes under T on the growing tree.
+
+**Superseded:** Finding 1's restriction and its cost, and the Barcan child.  Finding 2 stands, and
+now applies to both forms.
+
+#### The growing tree, on paper *(2026-10-23)*
+
+Agreed (user): systems without the strong flags keep today's tree; migration for uniformity can
+come later.
+
+**The setting: B's network without back arrows.**  It reuses `QML_v12m_BNet*`'s design.
+* Nodes have root-only languages (`ctxOf l`) and maximal consistent theories that grow by
+  conservative extension.
+* Each edge `w → v` carries a forward translation: committed parent roots go to child roots.  Under
+  4 a `□`-root `r` has `r.box ↦ z_r` and `r.keep ↦ k_r`, and a `◇`-root `x` has `x.keep ↦ k_x`.
+  Necessity transfer holds for the committed part.
+* Operations on a fair schedule: Henkin witnesses, children for `¬□φ` and `◇_x φ` (labelled by
+  their kind, as B's), commitments (`realise_consistent`), and the lift operations below.
+* Every world has one parent, so arrows are ancestor paths, composite translations are
+  `Subst.comp`, and the frame is **relational**.  Necessity transfer along a path comes from
+  `four_box`/`four_dia` and the edges.  Under T the identity arrow is the collapse, as B with T.
+
+**The lift operation, and why every type is fine.**  For an edge `a : w → v` and a root `n` of `v`
+of type `□A`, add a fresh root `m` to `w` and commit `m.keep ↦ n`.  The image is an **existing**
+root, so the image map is no longer injective.
+* *Consistency, from the lift rule.*  Let `type(m) := {O.dia χ(m.keep) : χ(n) ∈ M_v}`, with `χ`
+  over `n` and the committed images.
+  * If `χ(n) ∈ M_v` then `∃n'. χ(n') ∈ M_v`.
+  * Its pull-back is in `M_w`: otherwise `□¬…` is in `M_w` and transfers to `v`.  So
+    `O.dia ∃n'. χ(n') ∈ M_w`.
+  * The rule gives `∃m. O.dia χ(m.keep)`.
+  * The set is closed under conjunction, so it is finitely consistent with a fresh `m`.
+  * Its completion keeps transfer: `□ψ(m.keep)` with `¬ψ(n) ∈ M_v` would meet `O.dia ¬ψ(m.keep)`.
+* `m.box` and `m`'s other commitments (to `v` and to `w`'s other children) are ordinary
+  commitments (`realise_consistent`).  Later roots of `w` are typed against `M_v` with `m`
+  committed, so transfer stays true.
+* *Nothing in the argument looks at `A`.*  Finding 1 came from asking `w` to be finished first.
+* *The law holds with equality*: the translation gives `dup m` along `a` the denotation of `n`.
+* *Terms, not just roots.*  Every definable `□`-object at `v` is a term over `v`'s roots.  Its lift
+  is the same term over the roots' lifts, with `r.box ↦ m_r.box`, `r.keep ↦ m_r.keep` and
+  `y.keep ↦ z_y.keep`.  This works once `v`'s `◇`-roots are lifted too (next).
+* *Composite arrows* by associativity: lift along each edge of the path.
+
+**⭐Finding 3: the strong `◇` form is the `◇`-lift, not the join.**  Under weak `◇`-4, `posKeep z a`
+is determined by `z`, and canonically it must be a definable object at `v`, the image of `z.keep`.
+* A new parent witness therefore always brings a whole new object at `v`, with all its formulas.
+* Adding `z` with only the composite `a ; b` in its extent (the join's operation) needs `z.keep`'s
+  image to be chosen consistently with `z`'s theory.  That needs `O.dia ∃y:◇A. χ(y) ⊢ ∃z. O.dia
+  χ(z.keep)` for arbitrary `χ`: the `◇`-lift rule.  The join rule (`χ` of the form `◇_y (shift φ)`)
+  is too weak to type `z`.
+* With the `◇`-lift the operation is the lift operation at `◇` types: `z.keep ↦ y`, consistent by the
+  `◇`-lift rule exactly as above.
+* *The `◇`-lift.*
+  * *Law*, per arrow: `∀ a : Acc w, ∀ q : Pos A a.1, ∃ z : Pos A w, necEval (posKeep z) a = q`.
+  * *Rule:* `O.dia (∃y:◇A. φ(y)) ⊢ ∃z:◇A. O.dia φ(z.keep)`, `z` fresh.  Its soundness is the law
+    at the premise's arrow.
+  * The join follows with `four_dia`.
+* *The earlier rejection was mistaken.*
+  * "Whole extents" is per arrow: `z` depends on `a` and is free elsewhere, and a relational frame
+    has one arrow per pair.  So nothing has to cohere across arrows, which was what sank `y.ret`
+    and the named back witnesses.
+  * "Equal shapes" dissolves once the root action is the translation of `keep`
+    (`RootKeep r a := θ_a(r.keep)`): the lifted `z` keeps to `y`'s own label.
+* *So both strong forms are one principle*: **keep is surjective along each arrow**.  A
+  descendant's `□`- and `◇`-objects are its ancestors' kept objects.  It is the Barcan principle
+  at the modal types, per arrow.  It is an existence principle, so it belongs to the strong forms
+  (the cube-versus-Barcan separation).  Base-type domains may still grow; the base Barcan
+  principle stays separate.
+
+**The canonical model on the growing tree.**
+* *Extents.*  `ext_w(x)` is the children born for `◇_x` formulas, together with the composites
+  `a ; b` for `b ∈ ext_v(θ_a(x.keep))`.  This is `KeepExt` read through translations, so the
+  weak law `ext (posKeep x a) = {b | a ; b ∈ ext x}` is definitional.  A lifted `z` with
+  `z.keep ↦ y` has `ext_w(z) ⊇ a ; ext_v(y)`.
+* *Truth lemma.*
+  * `□`: transfer along paths, existence by children.
+  * `◇_x`, membership ⇒ truth: born children.
+  * `◇_x`, truth ⇒ membership at a composite: K4's `farD` with translations (`four_dia`, transfer).
+  * `∃` at `□`/`◇` types: Henkin, as now.  The lift laws are what the operations give.
+* *Strong T, D* and *shapes under T* as in B's network with T.  The root action is the
+  translation of `keep`.
+
+**Decisions.**
+* D1: the strong `◇` form is the `◇`-lift (recommended), replacing the join, which becomes derived.
+* D2: the laws with equality, which the renaming translation gives.  `Ind` would be weaker and
+  larger in models.
+* D3: one flag for both lifts or two.  The construction is one operation, so one flag is natural;
+  two keep `□` and `◇` independent, as `BStrong`/`BStrongW`.
+* D4: build a new growing-tree family alongside B's network (B's files assume `NoFour`
+  throughout), sharing the local lemmas (`BLocal`, `realise_consistent`).
+
+**Decided (user, 2026-10-23).**  D1: the `◇`-lift, the join derived.  D2: equality, with `Ind` as the
+fallback if equality cannot be met.  D4: a new family beside B's network.  D3: kept like B, so
+**four strong forms**.
+* They are the four weak rows of "4's four cases", made strong: the first hop is the leg (`□` or
+  `◇_x`), the second the object's own range (all arrows for `□`, its extent for `◇`).
+* Two laws (the `□`-lift and the `◇`-lift), each with its rule stated once along any leg
+  (`OutLeg`), as B's rows 1–4 are one predicate.
+* The flags group them by the second hop, as `BStrong`/`BStrongW` group B's rows by the back leg:
+  `FourStrong` for the `□`-lift (rows `(□,□)`, `(◇,□)`) and `FourStrongW` for the `◇`-lift (rows
+  `(□,◇)`, `(◇,◇)`).
+* The witnessed-leg rules are sound from the all-arrows laws, but not derivable from the plain-leg
+  rules, since `φ` may read `x.dia`.
+
+**Order.**
+1. Laws, rules, soundness and `Proof.subst` for both lifts.
+2. Weak 4 on the growing tree: K4/D4, then T + 4.  This is completeness without the strong flags,
+   proved again on translations; it is the groundwork, and B + 4's too.
+3. The lift operations and their fairness; the laws at the limit; completeness with the flags.
+
+**Still to check on paper, before step 2.**
+* The pull-back step in detail: `χ` with roots outside the committed part, and non-injective
+  images.
+* Fairness: every root of every node lifted along its parent edge, every commitment made.
+* T + 4's identity arrow on translations: realisation and `x.keep ↦ x`.
+
+#### The growing tree: the three paper checks *(2026-10-23)*
+
+All three pass.  Each refines the design.
+
+**1. The lift operation in detail.**  Against B's network (`NetSt`, `Transfer`,
+`realise_consistent`):
+* *A commitment covers a whole root.*  B commits a parent root along an edge with images for all
+  its items.  Under 4 a `□`-root has two items (`r.box ↦ z_r`, `r.keep ↦ k_r`) and a `◇`-root
+  one (`x.keep ↦ k_x`).  The lift root `m` gets both at once:
+  * `m.keep ↦ n`, the lifted object;
+  * `m.box ↦ z_m`, fresh, as `realise_consistent` makes it.
+* *Its type at `w`, with the box image still to come:*
+  `S := {O.dia χ(m.box, m.keep) : ∀y. χ(y, n) ∈ M_v}`, `χ` over the committed images.
+  * *Finitely consistent.*  `∀y. ⋀χᵢ(y, n) ∈ M_v` gives `∃n'. ∀y. ⋀χᵢ(y, n') ∈ M_v`.  Its pull-back
+    is in `M_w` (otherwise `□¬…` transfers to `v`).  The lift rule gives
+    `∃m. O.dia ∀y. ⋀χᵢ(y, m.keep)`, and `∀`-elimination at the term `m.box` inside the leg gives
+    `O.dia ⋀χᵢ(m.box, m.keep)`.
+  * *Then the box image exists.*  For `□ψ(m.box, m.keep) ∈ M_w'`, `∃y. ψ(y, n) ∈ M_v`: otherwise
+    `∀y. ¬ψ(y, n) ∈ M_v`, so `O.dia ¬ψ ∈ S` contradicts `□ψ`.  So `z_m` is realised as
+    `realise_consistent` does.
+  * A `◇`-lift root has no box item: `S := {O.dia χ(z.keep) : χ(y) ∈ M_v}`, directly.
+* *The committed part stays a suffix.*  B commits a parent's oldest variables first.  The lift
+  operation first commits all of `w`'s current roots along `a` (each by `realise_consistent`).
+  Then `m` is added as the newest root and committed at once.
+* *Non-injective images are harmless.*  The pull-back needs only some preimage of each `v`-formula
+  over the images, and substitution does not ask for injectivity.  Images may coincide (two lifts
+  of one `n`), and lifting an `n` that is already a keep image is redundant but harmless.
+* *Images become addresses.*  The modal objects of `v` are its roots' `□`- and `◇`-typed
+  addresses, projections of product roots included (`p.fst : □A` for `p : □A × B`).  A keep image
+  is therefore an address of `v`, not a root index.  B's images are already root plus item path.
+* *Witness edges* (`kind = x`): the leg is `◇_x`, transfer is `TransferX`, and `cx` pulls back as
+  `x.dia`; the `◇_x`-leg rule does the rest.
+* *Composite arrows:* lift along each edge (associativity).  So the laws at every arrow follow from
+  the edge lifts.  The law at every definable object follows from the roots' lifts, rebuilding
+  the term over them.
+
+**2. Fairness.**  B's schedule, with one more kind of obligation: lift each modal address of each
+node along its parent edge.
+* There are countably many obligations, discharged by dovetailing, as `fwd_total`/`back_total`.
+* A lift root at `w` is a new root of `w`.  So it is lifted along `w`'s own parent edge in turn,
+  up to the root of the tree; the depth is finite, so this ends.
+* It is committed along `w`'s other edges (`fwd_total`), and `w`'s Henkin obligations cover the
+  formulas that mention it.
+* `w`'s parent is unaffected: its formulas do not mention `m`, and `M_w` grows conservatively.
+* At the limit (stage `i` = round `birth + i`, as B's) every modal address used by a term at some
+  stage has been lifted by some round, so every definable object is lifted.
+
+**3. T + 4 on translations.**
+* The identity arrow is the collapse, `x.keep ↦ x`, so `posKeep x refl = x` and `refl ; b = b`
+  hold by translation.  The root action is the translation of `keep`
+  (`RootKeep r a := θ_a(r.keep)`); its laws are composition and the collapse.
+* *Under `keepOnly`, a commitment is its keep image alone.*  `□` views show only kept objects, so
+  a `□`-root needs only `r.keep ↦ k_r`, and its value at `v` is read by collapse.  So the lift
+  root under T + 4 is just `m.keep ↦ n`.
+* *One content per arrow.*  A `◇_x`-child `v` (content `cx`) also lies in `ext_w(x)` as the
+  composite `a ; refl_v`, through `k_x`'s realisation at `v`.  The two contents must coincide.
+  * In the tree the datum was chosen classically, so contents went by realisation, with
+    `here_subst` in the truth lemma.
+  * In the network the datum is constructed, so the born child records its datum for `k_x` with
+    content `cx`.  `here_keep` makes it a datum.  Then the contents coincide definitionally, and
+    the tree's detour through `realiseAtA_shift_keep` is not needed.
+* The membership of `refl` is realisation, as for B with T.
+
+**Verdict.**  The direction holds: B's network without back arrows, with keep images to existing
+addresses, carries both lifts at every type, with equality.  Refinements recorded above:
+* commitments are per root, with two items under 4 and the keep alone under T + 4;
+* the lift operation commits the parent fully first;
+* images are addresses;
+* born children fix their keep data.
+
+#### Step 1 built: the flags, the law and the rule *(2026-10-23)*
+
+* **Flags** `ModalSys.FourStrong` (the `□`-lift) and `ModalSys.FourStrongW` (the `◇`-lift).
+  `VarType.liftable` is `FourStrong` at `□`-types, `FourStrongW` at `◇`-types and false elsewhere,
+  so one rule and one law cover all four strong rows.  `ModalSys.NoB`, the staged tree's class,
+  asks both off for now (`noFourStrong`, `noFourStrongW`, `NoB.not_liftable`), as `NoFour` asked
+  `BStrongW` off until the network was ready.
+* **Model law** `Model.keepLift` (under `Four`, at a liftable `T`): for every arrow `a` and every
+  `o : Dom T a.1`, some `m : Dom T w` has `necEval (keep m) a = o` — equality, as decided.  The
+  staged model meets it vacuously (`NoB`), B's network by `noFour`.
+* **Rule** `Proof.keep_lift hF hl O φ c hc`, an `∃`-elimination along any leg `O` (`□` or `◇_x`):
+  from `O.dia (∃t:T. φ(t))`, the subproof may assume `O.dia φ(c.keep)` for a fresh `c : T`
+  (`WFF.liftRead`, the slot instantiated at the η-expansion of `c.keep`).
+  * Sound by `sat_liftRead`: the premise's arrow and object, the law's lift, read through
+    `Env.boxPush`'s `keep` clause.
+  * `Proof.subst` by `Subst.rename` (the kept eigenvariable renames to the kept new one,
+    `Subst.rename_box_keep`), `WFF.subst_liftRead_rename` (the pattern of
+    `OutLeg.subst_retS_renameTm`) and `WFF.subst_body_rename`.
+* Not yet: the join `◇∃y:◇A. ◇_y (shift φ) ⊢ ∃z. ◇_z φ` as a derived rule (the `◇`-lift along
+  `□`, then `four_dia`).
+* Next, per the order: weak 4 on the growing tree.
+
+
+**Flags.**  Two, as `BStrong`/`BStrongW`: the lift and the join need different constructions, and
+the lift pulls against density (§2c).
+
+**Recommended order (revised).**
+1. Laws, rules, soundness and `Proof.subst` for both forms, at every type.  This is independent of
+   the canonical side.
+2. A paper pass on the growing tree: open points 1–4 above.
+3. The growing tree, the lift on it, then the join.
+
+
 **Steps.**  (1) Syntax, models, environments, substitution (`keepE` at `◇`: restriction commutes
 with `posMap` and `posStrength`), `four_dia`, `here_keep`, soundness.  (2) The tree with path
 arrows, `x`'s extents, `rden` and shapes for `x.keep`, the truth lemma's deep `◇_x` case

@@ -56,9 +56,18 @@ class ModalSys where
       which is derivable (`Proof.ret_route_node`).  Needs strong B, which the rules using it
       require. -/
   BStrongW : Bool
+  /-- ⭐Strong 4, the **`□`-lift** (`docs/v12-modal-extensions.md` §3 4, "4's strong forms"):
+      along any arrow, every necessary object at its target is the restriction (`keep`) of one at
+      its source.  Rows `(□,□)` and `(◇,□)` of 4's grid.  Needs weak 4, which the rule requires. -/
+  FourStrong : Bool
+  /-- ⭐Strong 4, the **`◇`-lift**: along any arrow, every possible object at its target is the
+      restriction of one at its source.  The join `◇◇A → ◇A` follows with `four_dia`.  Rows
+      `(□,◇)` and `(◇,◇)`.  Needs weak 4, which the rule requires. -/
+  FourStrongW : Bool
 
 /-- The system K. -/
-def ModalSys.K : ModalSys := ⟨false, false, false, false, false, false, false, false⟩
+def ModalSys.K : ModalSys :=
+  ⟨false, false, false, false, false, false, false, false, false, false⟩
 
 /-- The systems without B, for which the staged canonical model is built.  B's accessible worlds
     lead back to their origin, against the order of construction; its canonical model is to be the
@@ -66,6 +75,10 @@ def ModalSys.K : ModalSys := ⟨false, false, false, false, false, false, false,
 class ModalSys.NoB [ModalSys] : Prop where
   noB : ModalSys.B = false
   noBStrong : ModalSys.BStrong = false
+  /-- Temporarily, strong 4 is off as well: its canonical model is the growing tree, not the
+      staged one (`docs/v12-modal-extensions.md` §3 4, "The growing tree, on paper"). -/
+  noFourStrong : ModalSys.FourStrong = false
+  noFourStrongW : ModalSys.FourStrongW = false
 
 theorem ModalSys.NoB.absurd [ModalSys] [ModalSys.NoB] (hB : ModalSys.B = true) : False := by
   rw [ModalSys.NoB.noB] at hB
@@ -451,6 +464,20 @@ def VarType.keepable : VarType → Bool
 
 omit [ModalSys] in
 theorem VarType.keepable_dia {A : VarType} : (VarType.VTypeDia A).keepable = true := rfl
+
+/-- The types strong 4 lifts: `□`-types under `FourStrong`, `◇`-types under `FourStrongW`. -/
+def VarType.liftable : VarType → Bool
+  | .VTypeBox _ => ModalSys.FourStrong
+  | .VTypeDia _ => ModalSys.FourStrongW
+  | _ => false
+
+theorem VarType.keepable_of_liftable {T : VarType} (h : T.liftable = true) :
+    T.keepable = true := by
+  cases T <;> first | rfl | (simp [VarType.liftable] at h)
+
+theorem ModalSys.NoB.not_liftable [ModalSys.NoB] {T : VarType} (h : T.liftable = true) :
+    False := by
+  cases T <;> simp [VarType.liftable, ModalSys.NoB.noFourStrong, ModalSys.NoB.noFourStrongW] at h
 
 def VarType.step : VarType → Step → Option VarType
   | .VTypeProd A _, .fst => some A

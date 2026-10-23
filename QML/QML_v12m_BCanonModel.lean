@@ -818,6 +818,7 @@ noncomputable def model : Model.{0, 0} σ where
         (definable_box_apply n.2 s)).symm)))
   necExtract_eval _ _ := rfl
   necDup_eval hF _ _ _ := (noFour hF).elim
+  keepLift hF := (noFour hF).elim
   posKeep_full hF := (noFour hF).elim
   posRet_exists hT hS a := B.posRet_exists_canon hT hS a
   posSerial hDS s := B.posSerial_canon hDS s
