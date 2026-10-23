@@ -2464,7 +2464,7 @@ variable; a lift does not.  B's `arrowS` is the instance `u.box ↦ itemImg img 
    maps), as `BAbs`.
 4. ✓ `GLocal`: `Transfer` over item maps, `realise_consistent`.  ✓ `GLift`: the lift's
    consistency (seed by `keep_lift`, then the residual realised).
-5. `GNet`: the network state without back arrows (nodes, children with kind and content, edges
+5. ✓ `GNet`: the network state without back arrows (nodes, children with kind and content, edges
    with item maps), its operations (birth, commitment, lift) and invariant (`Good`), as `BNet`.
 6. `GFair`: the schedule, fairness and the limit, as `BFair` and `BLimit`.
 7. `GCanon`: the canonical model: frame of relational paths, domains of addresses, `keep` and
@@ -2520,6 +2520,25 @@ variable; a lift does not.  B's `arrowS` is the instance `u.box ↦ itemImg img 
   * This differs slightly from paper check 1, which put `∀y` into the seed.  Here the seed holds
     only formulas about `m.keep`, and the residual is realised afterwards, as an ordinary
     realisation would be.
+
+**Built: `QML_v12m_GChild.lean`, `QML_v12m_GNet.lean`, `QML_v12m_GNetOps.lean`** (sorry-free,
+2026-10-23):
+* `GChild`: a child of kind `k` for a true `◇_k φ` (for a failing `□φ`, `◇¬φ`): variables
+  `childL l k X` (the world's at `gc`, then `x`'s content `X`), map `gchildMap` (`gImg` /
+  `gImgX`).  ⭐`subst_gpull_child` (pull-back by the tuples `gtup`, the content to `x.dia`) and
+  ⭐`gchild_consistent`, one proof for both kinds (`kBox_kDia_bot`).
+* `GNet`: the state `GNetSt` (B's `NetSt` without back arrows): `st`, `nch`, `kind : Node →
+  Option VarSymb`, `fcl`, and the edge's item map `fmap`.  The content variable of a witness edge
+  is `fmap k (x.dia)`, so there is no separate `cx`.  `FwdData` (suffix, `KDecl`, `ItemOk`,
+  `GTransfer`), `Good` (`mcs`, `fwd`), `GTransfer.mono_tgt`/`mono_src`, `Good.setSt`,
+  `Good.setFwd`, and `realF` with ⭐`Good.realF` (`grealStep_ok`, by `grealise_consistent`).
+* `GNetOps`: `henk` (as B's), `newChild`/`mkChild` with ⭐`Good.mkChild`, and ⭐`lift`/`Good.lift`.
+  * The lift acts on the child `c :: p` and an address `n` of it.  It requires that `fcl (c :: p)`
+    is all of `p`'s variables, and that `n`'s type is liftable.
+  * `p` becomes `liftPar`: a fresh root holding the seed.  The child becomes `liftChild`: a fresh
+    residual variable.  The edge becomes `gliftG f T c n (.free z)` (`lift_ok`).
+  * The seed and the residual set quantify over the edge's proofs (`liftSeedE`, `liftRealSet`),
+    as B's `realSet` does, so the operation needs no choice of proofs.
 
 **Flags.**  Two, as `BStrong`/`BStrongW`: the lift and the join need different constructions, and
 the lift pulls against density (§2c).
