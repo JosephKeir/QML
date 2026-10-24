@@ -61,7 +61,7 @@ theorem gkeep_edge {T : VarType} (hl : T.liftable = true) {s t : GW hF M₀} (c 
     (hc : t.1 = c :: s.1) (o : GRDom hM₀ T t) (ho : GDefinable hM₀ T t o) :
     ∃ m, GDefinable hM₀ T s m ∧
       grawEval hM₀ (GFunc.keep hF (VarType.keepable_of_liftable hl)) s m
-        ⟨t, ⟨⟨[c], List.cons_ne_nil _ _, hc⟩⟩⟩ = o := by
+        ⟨t, ⟨⟨[c], pathOk_cons, hc⟩⟩⟩ = o := by
   obtain ⟨j, a, u, rfl⟩ := ho
   obtain ⟨i, r, hr, hroot, L, hL, hfm, hLsuf⟩ := gllift hM₀ ⟨c, hc⟩ j u hl
   have hR : (ctxOf (glat s i)).ref (.root (.free r)) = some T := by
@@ -70,7 +70,7 @@ theorem gkeep_edge {T : VarType} (hl : T.liftable = true) {s t : GW hF M₀} (c 
   rw [← grden_applyG]
   refine (congrFun (grden_sigma (Ctx.Le.refl _)
     (applyG_keep_eta (VarType.keepable_of_liftable hl) _ hR)) _).trans ?_
-  rw [grden_boxtm_path (Ctx.Le.refl _) _ t _ [c] hc (List.cons_ne_nil _ _), Term.mono_refl]
+  rw [grden_boxtm_path (Ctx.Le.refl _) _ t _ [c] hc (pathOk_cons), Term.mono_refl]
   have hat : (eS σ (ctxOf (glat t (glstg s t i))) (fmapL hF M₀ t.1)).at
       (.step (.root (.free r)) .keep) =
         .tm (Term.mono (ctxOf_le_of_suffix hLsuf) (Term.mono (ctxOf_le_of_suffix hL) u)) := by
@@ -81,21 +81,21 @@ theorem gkeep_edge {T : VarType} (hl : T.liftable = true) {s t : GW hF M₀} (c 
 
 /-- Strong 4 along a path. -/
 theorem gkeepLift_path {T : VarType} (hl : T.liftable = true) : ∀ (P : List ℕ) (s t : GW hF M₀)
-    (_ : t.1 = nodeOf s.1 P) (_ : P ≠ []) (o : GRDom hM₀ T t) (_ : GDefinable hM₀ T t o)
+    (_ : t.1 = nodeOf s.1 P) (_ : PathOk P) (o : GRDom hM₀ T t) (_ : GDefinable hM₀ T t o)
     (hR : GR s t),
     ∃ m, GDefinable hM₀ T s m ∧
       grawEval hM₀ (GFunc.keep hF (VarType.keepable_of_liftable hl)) s m ⟨t, ⟨hR⟩⟩ = o
-  | [], _, _, _, hP, _, _, _ => absurd rfl hP
+  | [], _, _, _, hP, _, _, _ => (absT hP.T_of_nil).elim
   | [c], _, _, h, _, o, ho, _ => gkeep_edge hl c h o ho
   | c :: c' :: P, s, t, h, _, o, ho, _ => by
       have hb := born_step h
-      have q : GR (stepW s c hb) t := ⟨c' :: P, List.cons_ne_nil _ _, h⟩
+      have q : GR (stepW s c hb) t := ⟨c' :: P, pathOk_cons, h⟩
       obtain ⟨m', hm', e'⟩ :=
-        gkeepLift_path hl (c' :: P) (stepW s c hb) t h (List.cons_ne_nil _ _) o ho q
+        gkeepLift_path hl (c' :: P) (stepW s c hb) t h (pathOk_cons) o ho q
       obtain ⟨m, hm, e⟩ := gkeep_edge hl (s := s) (t := stepW s c hb) c rfl m' hm'
       refine ⟨m, hm, ?_⟩
       subst e' e
-      exact grawEval_keep_comp _ ⟨[c], List.cons_ne_nil _ _, rfl⟩ q m
+      exact grawEval_keep_comp _ ⟨[c], pathOk_cons, rfl⟩ q m
 
 /-- ⭐**Strong 4 on raw objects**: along any arrow, every definable object of a liftable type at its
     target is a kept definable object of its source. -/
@@ -104,7 +104,7 @@ theorem graw_keepLift {T : VarType} (hl : T.liftable = true) (s : GW hF M₀) (a
     ∃ m, GDefinable hM₀ T s m ∧
       grawEval hM₀ (GFunc.keep hF (VarType.keepable_of_liftable hl)) s m a = o := by
   obtain ⟨t, ⟨hR⟩⟩ := a
-  exact gkeepLift_path hl (pathOf hR) s t (pathOf_eq hR) (pathOf_ne hR) o ho hR
+  exact gkeepLift_path hl (pathOf hR) s t (pathOf_eq hR) (pathOf_ok hR) o ho hR
 
 /-! ## The model -/
 

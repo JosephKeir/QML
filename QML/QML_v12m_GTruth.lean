@@ -25,22 +25,22 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoT]
 
 /-! ## Translating formulas along a path -/
 
 variable (hM₀ : Theory.IsMCS M₀)
 
 /-- ⭐A `□` view's formula translated along a path. -/
-noncomputable def pTrW : (s t : GW hF M₀) → (P : List ℕ) → (h : t.1 = nodeOf s.1 P) → P ≠ [] →
+noncomputable def pTrW : (s t : GW hF M₀) → (P : List ℕ) → (h : t.1 = nodeOf s.1 P) → PathOk P →
     (i : ℕ) → WFF σ ((ctxOf (glat s i)).kView none) 0 → WFF σ (ctxOf (glat t (pstg s t P h i))) 0
-  | _, _, [], _, hP, _, _ => absurd rfl hP
+  | _, _, [], _, hP, _, _ => (absT hP.T_of_nil).elim
   | _, t, [c], h, _, i, φ =>
       WFF.subst (eIdx (fmapL hF M₀ t.1)) (eS σ _ (fmapL hF M₀ t.1))
         (ok_eS_kView (gentOk_box hM₀ ⟨c, h⟩ i)) (coh_eS_kView (gentOk_box hM₀ ⟨c, h⟩ i))
         Ctx.NoSlots.slots Ctx.NoSlots.slots φ
   | s, t, c :: c' :: P, h, _, i, φ =>
-      pTrW (stepW s c (born_step h)) t (c' :: P) h (List.cons_ne_nil _ _)
+      pTrW (stepW s c (born_step h)) t (c' :: P) h (pathOk_cons)
         (glstg s (stepW s c (born_step h)) i)
         (WFF.subst (eIdx (fmapL hF M₀ (c :: s.1)))
           (eS σ (ctxOf (glat (stepW s c (born_step h)) (glstg s (stepW s c (born_step h)) i)))
@@ -51,21 +51,21 @@ noncomputable def pTrW : (s t : GW hF M₀) → (P : List ℕ) → (h : t.1 = no
           Ctx.NoSlots.slots Ctx.NoSlots.slots
           (WFF.shift (Ctx.shifts_boxIn_boxIn hF _) Ctx.NoSlots.slots φ))
 
-theorem size_pTrW : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (hP : P ≠ [])
+theorem size_pTrW : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (hP : PathOk P)
     (i : ℕ) (φ : WFF σ ((ctxOf (glat s i)).kView none) 0),
     (pTrW hM₀ s t P h hP i φ).size = φ.size
-  | _, _, [], _, hP, _, _ => absurd rfl hP
+  | _, _, [], _, hP, _, _ => (absT hP.T_of_nil).elim
   | _, _, [_], _, _, _, _ => WFF.size_subst _ _ _ _ _ _
   | s, t, c :: c' :: P, h, _, _, φ =>
-      (size_pTrW (stepW s c (born_step h)) t (c' :: P) h (List.cons_ne_nil _ _) _ _).trans
+      (size_pTrW (stepW s c (born_step h)) t (c' :: P) h (pathOk_cons) _ _).trans
         ((WFF.size_subst _ _ _ _ _ _).trans (WFF.size_shift _ _ φ))
 
 /-- ⭐**What is necessary is translated into every descendant**: `four_box`, then the first
     edge's transfer, then the rest of the path. -/
-theorem box_mem_path : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (hP : P ≠ [])
+theorem box_mem_path : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (hP : PathOk P)
     (i : ℕ) (φ : WFF σ ((ctxOf (glat s i)).kView none) 0), .box φ ∈ (gw hM₀ s).M i →
     pTrW hM₀ s t P h hP i φ ∈ (gw hM₀ t).M (pstg s t P h i)
-  | _, _, [], _, hP, _, _, _ => absurd rfl hP
+  | _, _, [], _, hP, _, _, _ => (absT hP.T_of_nil).elim
   | _, _, [c], h, _, i, φ, hφ => gltr hM₀ ⟨c, h⟩ i φ hφ
   | s, t, c :: c' :: P, h, _, i, φ, hφ => by
       have h4 : WFF.box (.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF _) Ctx.NoSlots.slots φ)) ∈
@@ -73,17 +73,17 @@ theorem box_mem_path : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s
         BWorld.mem_of_provable (Δ := [.box φ])
           (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hφ)
           ⟨Proof.four_box hF (Proof.lookup List.mem_cons_self)⟩
-      exact box_mem_path (stepW s c (born_step h)) t (c' :: P) h (List.cons_ne_nil _ _) _ _
+      exact box_mem_path (stepW s c (born_step h)) t (c' :: P) h (pathOk_cons) _ _
         (gltr hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i _ h4)
 
 /-! ## Views along an edge -/
 
-variable [ModalSys.NoT] [ModalSys.NoSym] {hM₀}
+variable [ModalSys.NoSym] {hM₀}
 
 /-- Agreement into `□` along an arrow, for any path to its end. -/
 theorem gagree_boxPush_path {Γ : Ctx} {w : GW hF M₀} {k : ℕ} (C : GTr σ Γ (ctxOf (glat w k)))
     (env : (gmodel hF hM₀).Env Γ w) (hag : GAgree hM₀ C env) (t : GW hF M₀) (hR : GR w t)
-    (P : List ℕ) (h : t.1 = nodeOf w.1 P) (hP : P ≠ []) :
+    (P : List ℕ) (h : t.1 = nodeOf w.1 P) (hP : PathOk P) :
     GAgree hM₀ (C.box.comp (ptrC hM₀ w t P h hP k)) (env.boxPush ⟨t, ⟨hR⟩⟩) := by
   obtain rfl := pathOf_of hR h
   exact gagree_boxPush C env hag ⟨t, ⟨hR⟩⟩
@@ -112,23 +112,23 @@ theorem gcanon_boxPush_edge (s t : GW hF M₀) (c : ℕ) (h : t.1 = nodeOf s.1 [
       Model.substEnv (eS σ _ (fmapL hF M₀ t.1)) (ok_eS_kView (gentOk_box hM₀ ⟨c, h⟩ i))
         (Ctx.noProjLast_boxIn _) (gcanonEnv hM₀ t (glstg s t i)) :=
   eq_substEnv_of_gagree _ _ _ (coh_eS_kView (gentOk_box hM₀ ⟨c, h⟩ i)) _
-    (gagree_boxPush_path (.nil _) _ (gagree_canon s i) t hR [c] h (List.cons_ne_nil _ _))
+    (gagree_boxPush_path (.nil _) _ (gagree_canon s i) t hR [c] h (pathOk_cons))
 
 /-- ⭐**Along a path, the `□` view satisfies a formula exactly when the end satisfies its
     translation.** -/
 theorem sat_boxPush_path : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P)
-    (hP : P ≠ []) (i : ℕ) (hR : GR s t) (φ : WFF σ ((ctxOf (glat s i)).kView none) 0),
+    (hP : PathOk P) (i : ℕ) (hR : GR s t) (φ : WFF σ ((ctxOf (glat s i)).kView none) 0),
     (gmodel hF hM₀).sat ((gcanonEnv hM₀ s i).boxPush ⟨t, ⟨hR⟩⟩) φ ↔
       (gmodel hF hM₀).sat (gcanonEnv hM₀ t (pstg s t P h i)) (pTrW hM₀ s t P h hP i φ)
-  | _, _, [], _, hP, _, _, _ => absurd rfl hP
+  | _, _, [], _, hP, _, _, _ => (absT hP.T_of_nil).elim
   | s, t, [c], h, _, i, hR, φ => by
       rw [gcanon_boxPush_edge s t c h i hR]
       exact (Model.sat_subst _ _ (coh_eS_kView (gentOk_box hM₀ ⟨c, h⟩ i)) Ctx.NoSlots.slots
         Ctx.NoSlots.slots _ _ φ).symm
   | s, t, c :: c' :: P, h, _, i, hR, φ => by
       have hb := born_step h
-      have e : GR s (stepW s c hb) := ⟨[c], List.cons_ne_nil _ _, rfl⟩
-      have q : GR (stepW s c hb) t := ⟨c' :: P, List.cons_ne_nil _ _, h⟩
+      have e : GR s (stepW s c hb) := ⟨[c], pathOk_cons, rfl⟩
+      have q : GR (stepW s c hb) t := ⟨c' :: P, pathOk_cons, h⟩
       have hθ := ok_eS_kView (gentOk_box hM₀ (t := stepW s c hb) ⟨c, rfl⟩ i)
       have hc := coh_eS_kView (gentOk_box hM₀ (t := stepW s c hb) ⟨c, rfl⟩ i)
       refine (Model.sat_shift_twoBox hF (gcanonEnv hM₀ s i) Ctx.NoSlots.slots φ
@@ -136,7 +136,7 @@ theorem sat_boxPush_path : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = node
       rw [gcanon_boxPush_edge s (stepW s c hb) c rfl i e, ← Model.substEnv_box _ hθ]
       refine (Model.sat_subst _ _ (Subst.coh_box hθ hc) Ctx.NoSlots.slots Ctx.NoSlots.slots _ _
         _).symm.trans ?_
-      exact sat_boxPush_path (stepW s c hb) t (c' :: P) h (List.cons_ne_nil _ _) _ q _
+      exact sat_boxPush_path (stepW s c hb) t (c' :: P) h (pathOk_cons) _ q _
 
 /-! ## Witnesses' views along a path -/
 
@@ -166,7 +166,7 @@ noncomputable def pTrXW : (s t : GW hF M₀) → (P : List ℕ) → (h : t.1 = n
           Ctx.NoSlots.slots Ctx.NoSlots.slots
           (WFF.shift (Ctx.shifts_diaIn_keep hF _ x) Ctx.NoSlots.slots χ))
 
-omit [ModalSys.NoT] [ModalSys.NoSym] in
+omit [ModalSys.NoSym] in
 theorem size_pTrXW : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (i : ℕ)
     (x : VarSymb) (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X))
     (hm : InExt s t P h x) (χ : WFF σ ((ctxOf (glat s i)).kView (some x)) 0),
@@ -177,7 +177,7 @@ theorem size_pTrXW : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1
       (size_pTrXW (stepW s c (born_step h)) t (c' :: P) h _ _ _ hm _).trans
         ((WFF.size_subst _ _ _ _ _ _).trans (WFF.size_shift _ _ χ))
 
-omit [ModalSys.NoT] [ModalSys.NoSym] in
+omit [ModalSys.NoSym] in
 theorem pTrXW_neg : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (i : ℕ)
     (x : VarSymb) (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X))
     (hm : InExt s t P h x) (χ : WFF σ ((ctxOf (glat s i)).kView (some x)) 0),
@@ -187,7 +187,7 @@ theorem pTrXW_neg : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 
   | s, t, c :: c' :: P, h, _, _, _, hm, _ =>
       pTrXW_neg (stepW s c (born_step h)) t (c' :: P) h _ _ _ hm _
 
-omit [ModalSys.NoT] [ModalSys.NoSym] in
+omit [ModalSys.NoSym] in
 /-- ⭐**What holds throughout a possible object's extent is translated into every arrow of it**:
     `four_dia`, then the first edge's transfer, then the rest of the path. -/
 theorem boxx_mem_path : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (i : ℕ)
@@ -208,7 +208,7 @@ theorem boxx_mem_path : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf 
       exact boxx_mem_path (stepW s c (born_step h)) t (c' :: P) h _ _ _ hm _
         (gltr hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i _ h4)
 
-omit [ModalSys.NoT] [ModalSys.NoSym] in
+omit [ModalSys.NoSym] in
 theorem inExt_pathOf {s t : GW hF M₀} (hR : GR s t) {P : List ℕ} {h : t.1 = nodeOf s.1 P}
     {x : VarSymb} (hm : InExt s t P h x) : InExt s t (pathOf hR) (pathOf_eq hR) x := by
   obtain rfl := pathOf_of hR h
@@ -271,8 +271,8 @@ theorem sat_diaPush_path : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = node
         Ctx.NoSlots.slots _ _ χ).symm
   | s, t, c :: c' :: P, h, i, x, X, hr, hR, hmt, hm, χ => by
       have hb := born_step h
-      have e : GR s (stepW s c hb) := ⟨[c], List.cons_ne_nil _ _, rfl⟩
-      have q : GR (stepW s c hb) t := ⟨c' :: P, List.cons_ne_nil _ _, h⟩
+      have e : GR s (stepW s c hb) := ⟨[c], pathOk_cons, rfl⟩
+      have q : GR (stepW s c hb) t := ⟨c' :: P, pathOk_cons, h⟩
       have hθ := ok_eS_kView (gentOk_box hM₀ (t := stepW s c hb) ⟨c, rfl⟩ i)
       have hc := coh_eS_kView (gentOk_box hM₀ (t := stepW s c hb) ⟨c, rfl⟩ i)
       have hyk : (ctxOf (glat s i)).boxIn.ref (.step x .keep) = some (.VTypeDia X) :=
@@ -461,16 +461,16 @@ theorem gtruth_lt :
           · intro hsat
             by_contra hnot
             obtain ⟨t, ⟨c, hc⟩, -, hneg⟩ := glex hM₀ s i χ hnot
-            have hR : GR s t := ⟨[c], List.cons_ne_nil _ _, hc⟩
-            have h1 := (sat_boxPush_path s t [c] hc (List.cons_ne_nil _ _) i hR χ).mp
+            have hR : GR s t := ⟨[c], pathOk_cons, hc⟩
+            have h1 := (sat_boxPush_path s t [c] hc (pathOk_cons) i hR χ).mp
               (hsat ⟨t, ⟨hR⟩⟩)
             have h2 := (gtruth_lt n t _ _ (by rw [size_pTrW]; exact hχs)).mp h1
             exact ((gw hM₀ t).mcs _).neg_mem_iff.mp hneg h2
           · intro hmem a
             obtain ⟨t, ⟨hR⟩⟩ := a
-            refine (sat_boxPush_path s t _ (pathOf_eq hR) (pathOf_ne hR) i hR χ).mpr ?_
+            refine (sat_boxPush_path s t _ (pathOf_eq hR) (pathOf_ok hR) i hR χ).mpr ?_
             exact (gtruth_lt n t _ _ (by rw [size_pTrW]; exact hχs)).mpr
-              (box_mem_path hM₀ s t _ (pathOf_eq hR) (pathOf_ne hR) i χ hmem)
+              (box_mem_path hM₀ s t _ (pathOf_eq hR) (pathOf_ok hR) i χ hmem)
       | dia x hx χ =>
           have hχs : χ.size < n := by simp only [WFF.size] at hφ; omega
           change (∃ (X : VarType) (h : (ctxOf (glat s i)).ref x = some (.VTypeDia X))
@@ -494,7 +494,7 @@ theorem gtruth_lt :
           · intro hmem
             obtain ⟨X, h⟩ := id hx
             obtain ⟨t, ⟨c, hc⟩, hk, hm⟩ := glexX hM₀ s i x X h χ hmem
-            have hR : GR s t := ⟨[c], List.cons_ne_nil _ _, hc⟩
+            have hR : GR s t := ⟨[c], pathOk_cons, hc⟩
             have hmt : (⟨t, ⟨hR⟩⟩ : GAcc hF M₀ s) ∈
                 ((gmodel hF hM₀).posEval ((gcanonEnv hM₀ s i).ref x h)).1 :=
               (gcanon_mem_iff s i h _).mpr (inExt_pathOf hR (show InExt s t [c] hc x from hk))

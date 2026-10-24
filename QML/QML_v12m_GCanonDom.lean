@@ -31,17 +31,6 @@ variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
 /-! ## Arrows -/
 
-open Classical in
-/-- The path to a strict descendant. -/
-noncomputable def pathOf {s t : GW hF M₀} (h : GR s t) : List ℕ := Classical.choose h
-
-open Classical in
-theorem pathOf_ne {s t : GW hF M₀} (h : GR s t) : pathOf h ≠ [] := (Classical.choose_spec h).1
-
-open Classical in
-theorem pathOf_eq {s t : GW hF M₀} (h : GR s t) : t.1 = nodeOf s.1 (pathOf h) :=
-  (Classical.choose_spec h).2
-
 variable (hF M₀) in
 /-- The arrows out of a world: its strict descendants. -/
 abbrev GAcc (s : GW hF M₀) : Type := Σ t : GW hF M₀, PLift (GR s t)
@@ -80,7 +69,7 @@ noncomputable def grden : {A : VarType} → {a : Ann A} → {Γ : Ctx} → (s : 
   | _, _, _, s, i, e, .pair t u => (grden s i e t, grden s i e u)
   | _, _, _, s, i, e, .boxtm b => fun a =>
       grden a.1 (pstg s a.1 (pathOf a.2.down) (pathOf_eq a.2.down) i) (Ctx.Le.refl _)
-        (pTr hM₀ s a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (pathOf_ne a.2.down) i
+        (pTr hM₀ s a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (pathOf_ok a.2.down) i
           (Term.mono e.boxIn b)).2
   | _, _, _, s, i, e, .diatm x hx t =>
       ⟨{a | InExt s a.1 (pathOf a.2.down) (pathOf_eq a.2.down) x}, fun a =>
@@ -135,7 +124,7 @@ theorem grden_congr : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t : Term σ Γ A
       simp only [grden]
       set P := pathOf a.2.down
       have hP := pathOf_eq a.2.down
-      have hne := pathOf_ne a.2.down
+      have hne := pathOf_ok a.2.down
       set K := max i j
       have side : ∀ (k : ℕ) (hk : k ≤ K) (ek : Γ.Le (ctxOf (glat s k))),
           grden hM₀ a.1 (pstg s a.1 P hP k) (Ctx.Le.refl _)

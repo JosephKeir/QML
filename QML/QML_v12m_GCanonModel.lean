@@ -35,11 +35,6 @@ section Flags
 
 variable [ModalSys.NoT] [ModalSys.NoSym]
 
-omit [ModalSys.NoSym] in
-theorem absT (hT : ModalSys.T = true) : False := by
-  rw [ModalSys.NoT.noT] at hT
-  cases hT
-
 omit [ModalSys.NoT] in
 theorem absB (hB : ModalSys.B = true) : False := by
   rw [ModalSys.NoSym.noB] at hB
@@ -56,17 +51,6 @@ def groot : GW hF M₀ := ⟨[], 0, trivial⟩
 
 variable [ModalSys.NoT] [ModalSys.NoSym] (hM₀ : Theory.IsMCS M₀)
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoSym] in
-/-- ⭐The growing tree's arrows: strict descendants, composed by appending paths. -/
-abbrev garrows : Arrows.{0, 0} σ where
-  W := GW hF M₀
-  R := GR
-  refl := fun hT _ => (absT hT).elim
-  trans := fun _ {_ _ _} h₁ h₂ => gtrans h₁ h₂
-  refl_trans := fun hT _ _ _ _ => (absT hT).elim
-  trans_refl := fun hT _ _ _ _ => (absT hT).elim
-  trans_assoc := fun _ _ _ _ _ _ _ _ => rfl
-
 omit [ModalSys.NoT] [ModalSys.NoSym] in
 /-- Under D every world has an arrow out: `□⊥` fails, since `D_box` refutes it. -/
 theorem gserial (hM₀ : Theory.IsMCS M₀) (hD : ModalSys.D = true) (s : GW hF M₀) :
@@ -76,12 +60,12 @@ theorem gserial (hM₀ : Theory.IsMCS M₀) (hD : ModalSys.D = true) (s : GW hF 
       (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact h)
       ⟨Proof.D_box hD (Proof.lookup List.mem_cons_self)⟩)
   obtain ⟨t, ⟨c, hc⟩, -, -⟩ := glex hM₀ s 0 .bot hnot
-  exact ⟨t, ⟨⟨[c], List.cons_ne_nil _ _, hc⟩⟩⟩
+  exact ⟨t, ⟨⟨[c], pathOk_cons, hc⟩⟩⟩
 
 variable (hF) in
 /-- ⭐The canonical frame. -/
 noncomputable def gframe : Frame.{0, 0} σ where
-  toArrows := garrows (hF := hF) (M₀ := M₀)
+  toArrows := garrows hF M₀
   actual := groot hF M₀
   serial := fun hD s => gserial hM₀ hD s
   symm := fun hB => (absB hB).elim
@@ -251,7 +235,7 @@ theorem gposSerial_canon (hDS : ModalSys.DStrong = true) (s : GW hF M₀) :
             WFF.dia x ⟨X, hX⟩ .top := rfl
         rw [← e]
         exact hmem)
-      have hR : GR s t' := ⟨[c], List.cons_ne_nil _ _, hc⟩
+      have hR : GR s t' := ⟨[c], pathOk_cons, hc⟩
       refine ⟨⟨grden hM₀ s j (Ctx.Le.refl _) (.diatm x hx u), gdefinable_rden _ _⟩,
         ⟨⟨⟨t', ⟨hR⟩⟩, ?_⟩⟩⟩
       exact (grden_diatm_mem (hM₀ := hM₀) (Ctx.Le.refl _) x hx u t' hR [c] hc).mpr hk

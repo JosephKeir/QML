@@ -10,9 +10,9 @@
 - [QML v12 semantics design](project_qml_v12_semantics.md) — carriers + injective eval, pointed models; V12M (`ModalSys`) sound for every flag, complete for every combination without B and for weak B (+T, D) without 4 (arrow-indexed frames); S4 naming: views expose only keep under T+4
 - [QML: presented contexts are the real ones](feedback_qml_presented_contexts.md) — state metatheorems (weakening, completeness) for `Ctx.Presented`; non-presentable generality is only a bonus
 - [QML: joint possibility goes through pairing](feedback_qml_joint_possibility_pairing.md) — anything asking to link two possibilities must take a PAIRED one as hypothesis; if pairing can’t do it the design is wrong
-- [QML: type-generality is not automatic](feedback_qml_type_generality.md) — equality is base-type-only and better for it; when an operation strips a ◇, restrict to ◇-free and NEST instead
+- [QML: no ◇-free restrictions](feedback_qml_type_generality.md) — 'restrict to ◇-free and nest' FAILED (Here re-generalised; rejected for strong 4 twice); look for the construction's fault instead
 - [QML: the user's only freshness obligation](feedback_qml_locally_nameless_obligations.md) — declared free names must be new; every other freshness condition belongs to the machinery (make it structural)
-- [⭐QML: where we are (all levels)](project_qml_current_position.md) — READ FIRST (2026-10-25): wip/four-dia; GFlat (presented, compactness) uncommitted; T+4 paper pass done, awaiting user on D-T1..4
+- [⭐QML: where we are (all levels)](project_qml_current_position.md) — READ FIRST (2026-10-25): wip/four-dia; (B) templates: cEnv + shape laws built, uncommitted; next shaped canonical model on the tree
 - [QML: lake and the working directory](feedback_qml_lake_cwd.md) — workspace is now the repo, so plain `lake` works; never `lake --dir` (elan takes the toolchain from cwd)
 - [QML metatheory to do](project_qml_metatheory_todo.md) — after completeness: strong completeness/compactness, generalisation on constants, uniform substitution, cut elimination, Craig interpolation, T_dia∀ ⇔ positive-Φ rule (notes in docs/v12-metatheory-todo.md)
 - [QML: cube vs Barcan](feedback_qml_cube_vs_barcan.md) — modal axioms: accessibility first, object existence only in strong forms; Barcan/comprehension (D_name) kept separate from the cube

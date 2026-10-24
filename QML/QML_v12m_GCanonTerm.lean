@@ -23,16 +23,16 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoT]
 
 /-! ## Paths as chains -/
 
 variable (hM₀ : Theory.IsMCS M₀)
 
 /-- A path's translation of a `□` view, as a chain. -/
-noncomputable def ptrC : (s t : GW hF M₀) → (P : List ℕ) → (h : t.1 = nodeOf s.1 P) → P ≠ [] →
+noncomputable def ptrC : (s t : GW hF M₀) → (P : List ℕ) → (h : t.1 = nodeOf s.1 P) → PathOk P →
     (i : ℕ) → GTr σ ((ctxOf (glat s i)).kView none) (ctxOf (glat t (pstg s t P h i)))
-  | _, _, [], _, hP, _ => absurd rfl hP
+  | _, _, [], _, hP, _ => (absT hP.T_of_nil).elim
   | _, t, [c], h, _, i =>
       .sub (eS σ _ (fmapL hF M₀ t.1)) (ok_eS_kView (gentOk_box hM₀ ⟨c, h⟩ i))
         (coh_eS_kView (gentOk_box hM₀ ⟨c, h⟩ i)) (.nil _)
@@ -43,16 +43,16 @@ noncomputable def ptrC : (s t : GW hF M₀) → (P : List ℕ) → (h : t.1 = no
           (Subst.ok_box (ok_eS_kView (gentOk_box hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i)))
           (Subst.coh_box (ok_eS_kView (gentOk_box hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i))
             (coh_eS_kView (gentOk_box hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i)))
-          (ptrC (stepW s c (born_step h)) t (c' :: P) h (List.cons_ne_nil _ _)
+          (ptrC (stepW s c (born_step h)) t (c' :: P) h (pathOk_cons)
             (glstg s (stepW s c (born_step h)) i)))
 
-theorem pTr_app : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (hP : P ≠ [])
+theorem pTr_app : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (hP : PathOk P)
     (i : ℕ) {A : VarType} {a : Ann A} (b : Term σ ((ctxOf (glat s i)).kView none) A a),
     pTr hM₀ s t P h hP i b = (ptrC hM₀ s t P h hP i).app b
-  | _, _, [], _, hP, _, _, _, _ => absurd rfl hP
+  | _, _, [], _, hP, _, _, _, _ => (absT hP.T_of_nil).elim
   | _, _, [_], _, _, _, _, _, _ => rfl
   | s, t, c :: c' :: P, h, _, _, _, _, _ =>
-      pTr_app (stepW s c (born_step h)) t (c' :: P) h (List.cons_ne_nil _ _) _ _
+      pTr_app (stepW s c (born_step h)) t (c' :: P) h (pathOk_cons) _ _
 
 /-- A path's translation of a witness's view, as a chain. -/
 noncomputable def ptrXC : (s t : GW hF M₀) → (P : List ℕ) → (h : t.1 = nodeOf s.1 P) → (i : ℕ) →
@@ -88,7 +88,7 @@ theorem pTrX_app : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P
 
 /-! ## Agreement through a chain -/
 
-variable [ModalSys.NoT] [ModalSys.NoSym]
+variable [ModalSys.NoSym]
 
 /-- ⭐**Agreement through a chain**: every address reads as the denotation of its η-expansion
     translated by the chain. -/
@@ -98,7 +98,6 @@ def GAgree {Γ : Ctx} {w : GW hF M₀} {k : ℕ} (C : GTr σ Γ (ctxOf (glat w k
     gtoDom hM₀ T w (grden hM₀ w k (Ctx.Le.refl _) (C.app (Term.eta v T hv)).2)
       (gdefinable_rden _ _)
 
-omit [ModalSys.NoSym] in
 theorem keepOnly_false : ModalSys.keepOnly = false := by
   simp [ModalSys.keepOnly, ModalSys.NoT.noT]
 
@@ -158,7 +157,7 @@ theorem GRPos.c_congr {s : GW hF M₀} {C : GAcc hF M₀ s → Type} {o o' : GRP
 theorem gagree_boxPush {Γ : Ctx} {w : GW hF M₀} {k : ℕ} (C : GTr σ Γ (ctxOf (glat w k)))
     (env : (gmodel hF hM₀).Env Γ w) (hag : GAgree hM₀ C env) (a : GAcc hF M₀ w) :
     GAgree hM₀ (C.box.comp (ptrC hM₀ w a.1 (pathOf a.2.down) (pathOf_eq a.2.down)
-      (pathOf_ne a.2.down) k)) (env.boxPush a) := by
+      (pathOf_ok a.2.down) k)) (env.boxPush a) := by
   refine gagree_of_raw _ _ fun v T hlp hv => ?_
   match v, hv with
   | .step u .box, hv =>
@@ -208,7 +207,7 @@ theorem gagree_diaPush_box {Γ : Ctx} {w : GW hF M₀} {k : ℕ} (C : GTr σ Γ 
   rw [gagree_boxPush C env hag a v T hv]
   refine gtoDom_congr ?_ _ _
   rw [GTr.app_comp, GTr.app_comp, ← pTr_app, ← pTrX_app]
-  refine grden_sigma _ ((pTrX_box (hM₀ := hM₀) w a.1 _ _ (pathOf_ne a.2.down) k _ _ hm _).symm.trans
+  refine grden_sigma _ ((pTrX_box (hM₀ := hM₀) w a.1 _ _ (pathOf_ok a.2.down) k _ _ hm _).symm.trans
     (pTrX_sigma hM₀ _ _ _ _ _ _ _ hm ?_))
   refine (GTr.dia_box_mono C x ⟨X, hr⟩ (Term.eta v T hv)).symm.trans ?_
   exact (C.dia x _).app_sigma (congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _))

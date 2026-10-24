@@ -4,8 +4,9 @@ import QML.QML_v12m_GLimit
 # QML v12m — the growing tree's canonical model: paths
 
 Under 4 the canonical model's arrows are the tree's **paths**: a world `t` is accessible from `s`
-when it is a strict descendant (`GR`), reached by a list of child indices, the first step first
-(`nodeOf`).  The tree is a tree, so the path is unique (`nodeOf_inj`).
+when it is a descendant (`GR`), reached by a list of child indices, the first step first
+(`nodeOf`); under T the empty path is the identity arrow, along which a view is collapsed.
+The tree is a tree, so the path is unique (`nodeOf_inj`).
 
 Along a path, the `□` view of a stage is translated **edge by edge, from the front**
 (`docs/v12-modal-extensions.md` §3 4, "The canonical model on the growing tree: paper pass", 2):
@@ -69,8 +70,24 @@ theorem gborn_of_suffix {k k' : Node} (hk : GBorn hF M₀ k') (h : k <:+ k') : G
   obtain ⟨n, hn⟩ := hk
   exact ⟨n, live_of_suffix hn⟩
 
-/-- ⭐Accessibility: a strict descendant. -/
-def GR (s t : GW hF M₀) : Prop := ∃ P : List ℕ, P ≠ [] ∧ t.1 = nodeOf s.1 P
+/-- A path that is an arrow: nonempty, or empty under T (the identity arrow). -/
+abbrev PathOk (P : List ℕ) : Prop := P ≠ [] ∨ ModalSys.T = true
+
+theorem PathOk.T_of_nil (h : PathOk []) : ModalSys.T = true := h.resolve_left fun e => e rfl
+
+theorem pathOk_cons {c : ℕ} {P : List ℕ} : PathOk (c :: P) := Or.inl (List.cons_ne_nil _ _)
+
+/-- ⭐Accessibility: a descendant along a path — a strict one, or, under T, the world itself. -/
+def GR (s t : GW hF M₀) : Prop := ∃ P : List ℕ, PathOk P ∧ t.1 = nodeOf s.1 P
+
+/-- Worlds with one node are one world. -/
+theorem gw_eq {s t : GW hF M₀} (h : t.1 = s.1) : t = s := Subtype.ext h
+
+/-- The empty path's end is its start, at every stage. -/
+theorem glat_le_of_eq {s t : GW hF M₀} (h : t.1 = s.1) (i : ℕ) :
+    (ctxOf (glat s i)).Le (ctxOf (glat t i)) := by
+  rw [gw_eq h]
+  exact Ctx.Le.refl _
 
 /-- The world one step along a path. -/
 def stepW (s : GW hF M₀) (c : ℕ) (hb : GBorn hF M₀ (c :: s.1)) : GW hF M₀ := ⟨c :: s.1, hb⟩
@@ -93,15 +110,17 @@ noncomputable def pstg : (s t : GW hF M₀) → (P : List ℕ) → t.1 = nodeOf 
 /-- ⭐**A `□` view's term translated along a path**: along one edge by its entries; along
     `c :: P`, kept, translated by the first edge's `□`-lift, then along `P`. -/
 noncomputable def pTr (hM₀ : Theory.IsMCS M₀) :
-    (s t : GW hF M₀) → (P : List ℕ) → (h : t.1 = nodeOf s.1 P) → P ≠ [] → (i : ℕ) →
+    (s t : GW hF M₀) → (P : List ℕ) → (h : t.1 = nodeOf s.1 P) → PathOk P → (i : ℕ) →
     {A : VarType} → {a : Ann A} → Term σ ((ctxOf (glat s i)).kView none) A a →
       Σ b : Ann A, Term σ (ctxOf (glat t (pstg s t P h i))) A b
-  | _, _, [], _, hP, _, _, _, _ => absurd rfl hP
+  | s, _, [], h, hP, i, _, _, b =>
+      ⟨_, Term.mono (glat_le_of_eq h i)
+        (Term.collapse (Ctx.collapses_boxIn_self hP.T_of_nil (ctxOf (glat s i))) b)⟩
   | _, t, [c], h, _, i, _, _, b =>
       ⟨_, Term.subst (eIdx (fmapL hF M₀ t.1)) (eS σ _ (fmapL hF M₀ t.1))
         (ok_eS_kView (gentOk_box hM₀ ⟨c, h⟩ i)) (coh_eS_kView (gentOk_box hM₀ ⟨c, h⟩ i)) b⟩
   | s, t, c :: c' :: P, h, _, i, _, _, b =>
-      pTr hM₀ (stepW s c (born_step h)) t (c' :: P) h (List.cons_ne_nil _ _)
+      pTr hM₀ (stepW s c (born_step h)) t (c' :: P) h pathOk_cons
         (glstg s (stepW s c (born_step h)) i)
         (Term.subst (eIdx (fmapL hF M₀ (c :: s.1)))
           (eS σ (ctxOf (glat (stepW s c (born_step h)) (glstg s (stepW s c (born_step h)) i)))
@@ -176,6 +195,74 @@ noncomputable def pTrX (hM₀ : Theory.IsMCS M₀) :
             ((coh_eS_kView (gentOk_box hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i))
               (.step x .keep) _
               (Ctx.exists_keep_dia hF hx).choose_spec []))
+          (Subst.coh_dia (ok_eS_kView (gentOk_box hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i))
+            (coh_eS_kView (gentOk_box hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i))
+            (Ctx.exists_keep_dia hF hx))
+          (Term.shift (Ctx.shifts_diaIn_keep hF _ x) u))
+
+/-! ## Witnesses kept along a path (T + 4) -/
+
+/-- The kept witness of a declared possible address is declared at any child. -/
+theorem wit_ref_ch (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (hc : GCh hF M₀ s t) (i : ℕ)
+    {x : VarSymb} (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X)) :
+    ∃ Z, (ctxOf (glat t (glstg s t i))).ref (wit t x) = some (.VTypeDia Z) := by
+  obtain ⟨X, hX⟩ := hx
+  have hk := gentOk_box hM₀ hc i (.step x .keep) (.VTypeDia X) rfl
+    (Ctx.boxIn_keep_of' hF hX rfl)
+  rw [show wit t x = entIdx (fmapL hF M₀ t.1 (.step x .keep)) [] from
+    eIdx_item _ (reach_ppath hX).1 rfl []]
+  exact wit_decl hk
+
+/-- ⭐**The witness kept along a path**: itself along the empty path; along an edge, the edge's
+    kept witness; along `c :: P`, the first edge's kept witness, kept along `P`.  Under T a path
+    is in `x`'s extent when its end realises this witness (`docs/v12-modal-extensions.md` §3 4,
+    "T + 4 on the growing tree"). -/
+noncomputable def kw : (s t : GW hF M₀) → (P : List ℕ) → t.1 = nodeOf s.1 P → VarSymb → VarSymb
+  | _, _, [], _, x => x
+  | _, t, [_], _, x => wit t x
+  | s, t, c :: c' :: P, h, x =>
+      kw (stepW s c (born_step h)) t (c' :: P) h (wit (stepW s c (born_step h)) x)
+
+/-- The kept witness is declared at a possible type at the end. -/
+theorem kw_decl (hM₀ : Theory.IsMCS M₀) : ∀ (s t : GW hF M₀) (P : List ℕ)
+    (h : t.1 = nodeOf s.1 P) (i : ℕ) {x : VarSymb},
+    (∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X)) →
+    ∃ Z, (ctxOf (glat t (pstg s t P h i))).ref (kw s t P h x) = some (.VTypeDia Z)
+  | _, _, [], h, i, _, hx => hx.imp fun _ e => (glat_le_of_eq h i).ref e
+  | _, _, [c], h, i, _, hx => wit_ref_ch hM₀ ⟨c, h⟩ i hx
+  | s, t, c :: c' :: P, h, i, _, hx =>
+      kw_decl hM₀ (stepW s c (born_step h)) t (c' :: P) h _ (wit_ref hM₀ (born_step h) i hx)
+
+/-- ⭐**A witness's view translated along a path, the witness kept**: along the empty path,
+    unchanged; along an edge, kept (`four_dia`'s shift) and translated by the edge's `◇`-lift at
+    `x.keep`; along `c :: P`, the first edge's, then along `P` with the kept witness.  These are
+    `pTrX`'s steps without reading the content off at the end. -/
+noncomputable def pTrXK (hM₀ : Theory.IsMCS M₀) :
+    (s t : GW hF M₀) → (P : List ℕ) → (h : t.1 = nodeOf s.1 P) → (i : ℕ) → (x : VarSymb) →
+    (∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X)) →
+    {A : VarType} → {a : Ann A} → Term σ ((ctxOf (glat s i)).kView (some x)) A a →
+      Σ b : Ann A,
+        Term σ ((ctxOf (glat t (pstg s t P h i))).kView (some (kw s t P h x))) A b
+  | _, _, [], h, i, _, _, _, _, u => ⟨_, Term.mono ((glat_le_of_eq h i).kView _) u⟩
+  | _, t, [c], h, i, x, hx, _, _, u =>
+      ⟨_, Term.subst (eIdx (fmapL hF M₀ t.1))
+        ((eS σ (ctxOf (glat t (glstg _ t i))) (fmapL hF M₀ t.1)).dia (.step x .keep) (wit t x))
+        (Subst.ok_dia (ok_eS_kView (gentOk_box hM₀ ⟨c, h⟩ i)) (Ctx.exists_keep_dia hF hx)
+          ((coh_eS_kView (gentOk_box hM₀ ⟨c, h⟩ i))
+            (.step x .keep) _ (Ctx.exists_keep_dia hF hx).choose_spec []))
+        (Subst.coh_dia (ok_eS_kView (gentOk_box hM₀ ⟨c, h⟩ i))
+          (coh_eS_kView (gentOk_box hM₀ ⟨c, h⟩ i)) (Ctx.exists_keep_dia hF hx))
+        (Term.shift (Ctx.shifts_diaIn_keep hF _ x) u)⟩
+  | s, t, c :: c' :: P, h, i, x, hx, _, _, u =>
+      pTrXK hM₀ (stepW s c (born_step h)) t (c' :: P) h (glstg s (stepW s c (born_step h)) i)
+        (wit (stepW s c (born_step h)) x) (wit_ref hM₀ (born_step h) i hx)
+        (Term.subst (eIdx (fmapL hF M₀ (c :: s.1)))
+          ((eS σ (ctxOf (glat (stepW s c (born_step h)) (glstg s (stepW s c (born_step h)) i)))
+            (fmapL hF M₀ (c :: s.1))).dia (.step x .keep) (wit (stepW s c (born_step h)) x))
+          (Subst.ok_dia (ok_eS_kView (gentOk_box hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i))
+            (Ctx.exists_keep_dia hF hx)
+            ((coh_eS_kView (gentOk_box hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i))
+              (.step x .keep) _ (Ctx.exists_keep_dia hF hx).choose_spec []))
           (Subst.coh_dia (ok_eS_kView (gentOk_box hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i))
             (coh_eS_kView (gentOk_box hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i))
             (Ctx.exists_keep_dia hF hx))
@@ -281,7 +368,7 @@ theorem pstg_monotone (hM₀ : Theory.IsMCS M₀) :
         (glstg_monotone hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ hii)
 
 theorem pTr_sigma (hM₀ : Theory.IsMCS M₀) (s t : GW hF M₀) (P : List ℕ)
-    (h : t.1 = nodeOf s.1 P) (hP : P ≠ []) (i : ℕ) {A : VarType} {a a' : Ann A}
+    (h : t.1 = nodeOf s.1 P) (hP : PathOk P) (i : ℕ) {A : VarType} {a a' : Ann A}
     {u : Term σ ((ctxOf (glat s i)).kView none) A a}
     {u' : Term σ ((ctxOf (glat s i)).kView none) A a'}
     (e : (⟨a, u⟩ : Σ b : Ann A, Term σ ((ctxOf (glat s i)).kView none) A b) = ⟨a', u'⟩) :
@@ -291,13 +378,19 @@ theorem pTr_sigma (hM₀ : Theory.IsMCS M₀) (s t : GW hF M₀) (P : List ℕ)
 
 /-- ⭐**Translating a later stage is weakening the translation**. -/
 theorem pTr_mono (hM₀ : Theory.IsMCS M₀) :
-    ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (hP : P ≠ []) {i i' : ℕ}
+    ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (hP : PathOk P) {i i' : ℕ}
       (hii : i ≤ i') {A : VarType} {a : Ann A}
       (b : Term σ ((ctxOf (glat s i)).kView none) A a),
       (⟨_, Term.mono (gle hM₀ t (pstg_monotone hM₀ s t P h hii))
           (pTr hM₀ s t P h hP i b).2⟩ : Σ c, Term σ (ctxOf (glat t (pstg s t P h i'))) A c) =
         pTr hM₀ s t P h hP i' (Term.mono ((gle hM₀ s hii).kView none) b)
-  | _, _, [], _, hP, _, _, _, _, _, _ => absurd rfl hP
+  | s, _, [], h, hP, i, i', hii, _, _, b => by
+      have hT := hP.T_of_nil
+      change (⟨_, Term.mono _ (Term.mono _ (Term.collapse _ b))⟩ : Σ c, Term σ _ _ c) =
+        ⟨_, Term.mono _ (Term.collapse _ (Term.mono _ b))⟩
+      rw [Term.collapse_mono (Ctx.collapses_boxIn_self hT (ctxOf (glat s i)))
+        (Ctx.collapses_boxIn_self hT (ctxOf (glat s i'))) (gle hM₀ s hii).boxIn (gle hM₀ s hii),
+        Term.mono_mono, Term.mono_mono]
   | _, t, [c], h, _, i, i', hii, _, _, b => by
       change (⟨_, Term.mono _ (Term.subst _ _ _ _ b)⟩ : Σ c, Term σ _ _ c) =
         ⟨_, Term.subst _ _ _ _ (Term.mono _ b)⟩
@@ -307,7 +400,7 @@ theorem pTr_mono (hM₀ : Theory.IsMCS M₀) :
   | s, t, c :: c' :: P, h, _, i, i', hii, _, _, b => by
       have hw := born_step h
       have hg := glstg_monotone hM₀ (t := stepW s c hw) ⟨c, rfl⟩ hii
-      refine (pTr_mono hM₀ (stepW s c hw) t (c' :: P) h (List.cons_ne_nil _ _) hg _).trans ?_
+      refine (pTr_mono hM₀ (stepW s c hw) t (c' :: P) h pathOk_cons hg _).trans ?_
       simp only [pTr]
       refine pTr_sigma hM₀ _ _ _ _ _ _ ?_
       rw [Term.mono_subst, Term.shift_mono (Ctx.shifts_boxIn_boxIn hF _)
@@ -357,6 +450,100 @@ theorem pTrX_mono (hM₀ : Theory.IsMCS M₀) :
       exact sim_dia_eS_mono (gle hM₀ (stepW s c hw) hg)
         (gentOk_box hM₀ (t := stepW s c hw) ⟨c, rfl⟩ i) _ _
         (Ctx.exists_keep_dia hF hx)
+
+/-! ## Arrows -/
+
+open Classical in
+/-- The path of an arrow. -/
+noncomputable def pathOf {s t : GW hF M₀} (h : GR s t) : List ℕ := Classical.choose h
+
+open Classical in
+theorem pathOf_ok {s t : GW hF M₀} (h : GR s t) : PathOk (pathOf h) :=
+  (Classical.choose_spec h).1
+
+open Classical in
+theorem pathOf_eq {s t : GW hF M₀} (h : GR s t) : t.1 = nodeOf s.1 (pathOf h) :=
+  (Classical.choose_spec h).2
+
+/-- The chosen path is any path. -/
+theorem pathOf_of {s t : GW hF M₀} (hR : GR s t) {P : List ℕ} (h : t.1 = nodeOf s.1 P) :
+    pathOf hR = P :=
+  nodeOf_inj ((pathOf_eq hR).symm.trans h)
+
+/-- ⭐The frame is transitive: paths compose. -/
+theorem gtrans {s t u : GW hF M₀} (h₁ : GR s t) (h₂ : GR t u) : GR s u := by
+  obtain ⟨P, hP, e₁⟩ := h₁
+  obtain ⟨Q, -, e₂⟩ := h₂
+  refine ⟨P ++ Q, hP.imp (fun hP h => hP (List.append_eq_nil_iff.mp h).1) id, ?_⟩
+  rw [nodeOf_append, ← e₁]
+  exact e₂
+
+/-- Under T every world is its own successor, by the empty path. -/
+theorem grefl (hT : ModalSys.T = true) (s : GW hF M₀) : GR s s := ⟨[], Or.inr hT, rfl⟩
+
+theorem pathOf_trans {s t u : GW hF M₀} (h₁ : GR s t) (h₂ : GR t u) :
+    pathOf (gtrans h₁ h₂) = pathOf h₁ ++ pathOf h₂ :=
+  pathOf_of _ (by rw [nodeOf_append, ← pathOf_eq h₁]; exact pathOf_eq h₂)
+
+theorem pathOf_refl (hT : ModalSys.T = true) (s : GW hF M₀) : pathOf (grefl hT s) = [] :=
+  pathOf_of _ rfl
+
+variable (hF M₀) in
+/-- ⭐The growing tree's arrows: descendants, composed by appending paths; under T the empty path
+    is the identity. -/
+abbrev garrows : Arrows.{0, 0} σ where
+  W := GW hF M₀
+  R := GR
+  refl := fun hT s => grefl hT s
+  trans := fun _ {_ _ _} h₁ h₂ => gtrans h₁ h₂
+  refl_trans := fun _ _ _ _ _ => rfl
+  trans_refl := fun _ _ _ _ _ => rfl
+  trans_assoc := fun _ _ _ _ _ _ _ _ => rfl
+
+/-! ## The root action: keeping a witness along an arrow -/
+
+theorem kw_path {s t : GW hF M₀} {P P' : List ℕ} (e : P = P') (h : t.1 = nodeOf s.1 P)
+    (h' : t.1 = nodeOf s.1 P') (x : VarSymb) : kw s t P h x = kw s t P' h' x := by
+  subst e
+  rfl
+
+/-- ⭐**Keeping along a composite is keeping twice.** -/
+theorem kw_append : ∀ (P : List ℕ) {s t u : GW hF M₀} (Q : List ℕ) (h₁ : t.1 = nodeOf s.1 P)
+    (h₂ : u.1 = nodeOf t.1 Q) (h : u.1 = nodeOf s.1 (P ++ Q)) (x : VarSymb),
+    kw s u (P ++ Q) h x = kw t u Q h₂ (kw s t P h₁ x)
+  | [], s, t, u, Q, h₁, h₂, h, x => by
+      obtain rfl := gw_eq h₁
+      rfl
+  | [c], s, ⟨tn, tb⟩, u, [], h₁, h₂, h, x => by
+      change tn = c :: s.1 at h₁
+      subst h₁
+      obtain rfl := gw_eq h₂
+      rfl
+  | [c], s, ⟨tn, tb⟩, u, c' :: Q, h₁, h₂, h, x => by
+      change tn = c :: s.1 at h₁
+      subst h₁
+      rfl
+  | c :: c' :: P, s, t, u, Q, h₁, h₂, h, x =>
+      kw_append (c' :: P) (s := stepW s c (born_step h₁)) Q h₁ h₂ h _
+
+/-- ⭐**The canonical root action**: a root possibility, named by its address, kept along an
+    arrow is the witness kept along the arrow's path. -/
+noncomputable instance instRootKeepG : Arrows.RootKeep (garrows hF M₀) (fun _ => VarSymb) :=
+  ⟨fun _ {s} r a => kw s a.1 (pathOf a.2.down) (pathOf_eq a.2.down) r⟩
+
+/-- Its laws: keeping along two arrows is keeping along their composite (`kw_append`), and
+    keeping along the identity is the identity. -/
+instance instRootKeepLawsG : Arrows.RootKeepLaws (garrows hF M₀) (fun _ => VarSymb) where
+  keep_trans := fun _ {s} r a b => by
+    change kw a.1 b.1 (pathOf b.2.down) _ (kw s a.1 (pathOf a.2.down) _ r) =
+      kw s b.1 (pathOf (gtrans a.2.down b.2.down)) _ r
+    rw [kw_path (pathOf_trans a.2.down b.2.down) _
+      (by rw [nodeOf_append, ← pathOf_eq a.2.down]; exact pathOf_eq b.2.down),
+      kw_append _ _ (pathOf_eq a.2.down) (pathOf_eq b.2.down)]
+  keep_refl := fun hT _ {s} r => by
+    change kw s s (pathOf (grefl hT s)) _ r = r
+    rw [kw_path (pathOf_refl hT s) _ rfl]
+    rfl
 
 end GArrow
 

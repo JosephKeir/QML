@@ -23,27 +23,19 @@ variable [ModalSys]
 class ModalSys.NoT [ModalSys] : Prop where
   noT : ModalSys.T = false
 
+omit [ModalSys] in
+theorem absT [ModalSys] [ModalSys.NoT] (hT : ModalSys.T = true) : False := by
+  rw [ModalSys.NoT.noT] at hT
+  cases hT
+
 namespace GArrow
 
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoT]
 
 /-! ## The frame -/
-
-/-- ⭐The frame is transitive: paths compose. -/
-theorem gtrans {s t u : GW hF M₀} (h₁ : GR s t) (h₂ : GR t u) : GR s u := by
-  obtain ⟨P, hP, e₁⟩ := h₁
-  obtain ⟨Q, -, e₂⟩ := h₂
-  refine ⟨P ++ Q, fun h => hP (List.append_eq_nil_iff.mp h).1, ?_⟩
-  rw [nodeOf_append, ← e₁]
-  exact e₂
-
-/-- The chosen path is any path. -/
-theorem pathOf_of {s t : GW hF M₀} (hR : GR s t) {P : List ℕ} (h : t.1 = nodeOf s.1 P) :
-    pathOf hR = P :=
-  nodeOf_inj ((pathOf_eq hR).symm.trans h)
 
 variable {hM₀ : Theory.IsMCS M₀}
 
@@ -51,7 +43,7 @@ variable {hM₀ : Theory.IsMCS M₀}
 
 theorem grden_boxtm_path {A : VarType} {a : Ann A} {Γ : Ctx} {s : GW hF M₀} {i : ℕ}
     (e : Γ.Le (ctxOf (glat s i))) (b : Term σ Γ.boxIn A a) (t : GW hF M₀) (hR : GR s t)
-    (P : List ℕ) (h : t.1 = nodeOf s.1 P) (hP : P ≠ []) :
+    (P : List ℕ) (h : t.1 = nodeOf s.1 P) (hP : PathOk P) :
     grden hM₀ s i e (.boxtm b) ⟨t, ⟨hR⟩⟩ =
       grden hM₀ t (pstg s t P h i) (Ctx.Le.refl _)
         (pTr hM₀ s t P h hP i (Term.mono e.boxIn b)).2 := by
@@ -101,9 +93,9 @@ theorem grden_boxtm_cons {A : VarType} {a : Ann A} {s : GW hF M₀} {i : ℕ}
     grden hM₀ s i (Ctx.Le.refl _) (.boxtm b) ⟨t, ⟨hR⟩⟩ =
       grden hM₀ (stepW s c (born_step h)) (glstg s (stepW s c (born_step h)) i) (Ctx.Le.refl _)
         (.boxtm (eTrK hM₀ s c (born_step h) i b).2)
-        ⟨t, ⟨(⟨c' :: P, List.cons_ne_nil _ _, h⟩ : GR (stepW s c (born_step h)) t)⟩⟩ := by
-  rw [grden_boxtm_path (Ctx.Le.refl _) b t hR (c :: c' :: P) h (List.cons_ne_nil _ _),
-    grden_boxtm_path (Ctx.Le.refl _) _ t _ (c' :: P) h (List.cons_ne_nil _ _),
+        ⟨t, ⟨(⟨c' :: P, pathOk_cons, h⟩ : GR (stepW s c (born_step h)) t)⟩⟩ := by
+  rw [grden_boxtm_path (Ctx.Le.refl _) b t hR (c :: c' :: P) h (pathOk_cons),
+    grden_boxtm_path (Ctx.Le.refl _) _ t _ (c' :: P) h (pathOk_cons),
     Term.mono_refl, Term.mono_refl]
   rfl
 
@@ -126,28 +118,28 @@ theorem eTrK_dup (s : GW hF M₀) (c : ℕ) (hb : GBorn hF M₀ (c :: s.1)) (i :
 
 /-- ⭐**`dup` along paths**: `□□` of the shifted body reads, two arrows on, what `□` of the body
     reads along the composite. -/
-theorem grden_dup : ∀ (P : List ℕ) (s v : GW hF M₀) (_ : v.1 = nodeOf s.1 P) (_ : P ≠ [])
+theorem grden_dup : ∀ (P : List ℕ) (s v : GW hF M₀) (_ : v.1 = nodeOf s.1 P) (_ : PathOk P)
     (i : ℕ) {A : VarType} {a : Ann A} (b : Term σ ((ctxOf (glat s i)).kView none) A a)
     (hR : GR s v) (u : GAcc hF M₀ v),
     grden hM₀ s i (Ctx.Le.refl _)
         (.boxtm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF (ctxOf (glat s i))) b)))
         ⟨v, ⟨hR⟩⟩ u =
       grden hM₀ s i (Ctx.Le.refl _) (.boxtm b) ⟨u.1, ⟨gtrans hR u.2.down⟩⟩
-  | [], _, _, _, hP, _, _, _, _, _, _ => absurd rfl hP
+  | [], _, _, _, hP, _, _, _, _, _, _ => (absT hP.T_of_nil).elim
   | [c], s, ⟨v, hv⟩, h, _, i, _, _, b, hR, ⟨u, ⟨hu⟩⟩ => by
       change v = c :: s.1 at h
       subst h
       obtain ⟨Q, hQ, hq⟩ := hu
-      obtain ⟨c', Q', rfl⟩ := List.exists_cons_of_ne_nil hQ
-      rw [grden_boxtm_path (Ctx.Le.refl _) _ ⟨c :: s.1, hv⟩ hR [c] rfl (List.cons_ne_nil _ _),
+      obtain ⟨c', Q', rfl⟩ := List.exists_cons_of_ne_nil (hQ.resolve_right absT)
+      rw [grden_boxtm_path (Ctx.Le.refl _) _ ⟨c :: s.1, hv⟩ hR [c] rfl (pathOk_cons),
         grden_boxtm_cons b u _ c c' Q' hq, Term.mono_refl]
       rfl
   | c :: c₂ :: P, s, v, h, _, i, _, _, b, hR, ⟨u, ⟨hu⟩⟩ => by
-      have hR' : GR (stepW s c (born_step h)) v := ⟨c₂ :: P, List.cons_ne_nil _ _, h⟩
+      have hR' : GR (stepW s c (born_step h)) v := ⟨c₂ :: P, pathOk_cons, h⟩
       rw [grden_boxtm_cons _ v hR c c₂ P h]
       refine (congrFun (congrFun (grden_sigma (Ctx.Le.refl _)
         (eTrK_dup s c (born_step h) i b)) ⟨v, ⟨hR'⟩⟩) ⟨u, ⟨hu⟩⟩).trans ?_
-      refine (grden_dup (c₂ :: P) (stepW s c (born_step h)) v h (List.cons_ne_nil _ _) _
+      refine (grden_dup (c₂ :: P) (stepW s c (born_step h)) v h (pathOk_cons) _
         (eTrK hM₀ s c (born_step h) i b).2 hR' ⟨u, ⟨hu⟩⟩).trans ?_
       obtain ⟨Q, -, hq⟩ := hu
       have hu' : u.1 = nodeOf s.1 (c :: c₂ :: (P ++ Q)) := by
@@ -203,7 +195,7 @@ theorem gkeep_cons {A : VarType} {a : Ann A} {s : GW hF M₀} {i : ℕ} (x : Var
       gkeep hM₀ (grden hM₀ (stepW s c (born_step h)) (glstg s (stepW s c (born_step h)) i)
           (Ctx.Le.refl _) (.diatm (wit (stepW s c (born_step h)) x)
             (wit_ref hM₀ (born_step h) i hx) (eTrKX hM₀ s c (born_step h) i x hx b).2))
-        ⟨v, ⟨(⟨c₂ :: P, List.cons_ne_nil _ _, h⟩ : GR (stepW s c (born_step h)) v)⟩⟩ := by
+        ⟨v, ⟨(⟨c₂ :: P, pathOk_cons, h⟩ : GR (stepW s c (born_step h)) v)⟩⟩ := by
   refine GRPos.ext_E (Set.ext fun ⟨t, ⟨ht⟩⟩ => ?_) fun ⟨t, ⟨ht⟩⟩ hp hq => ?_
   · obtain ⟨Q, -, hq⟩ := ht
     have ht' : t.1 = nodeOf s.1 (c :: c₂ :: (P ++ Q)) := by
@@ -258,7 +250,7 @@ theorem eTrK_dkeep (s : GW hF M₀) (c : ℕ) (hb : GBorn hF M₀ (c :: s.1)) (i
 
 /-- ⭐**`dkeep` along paths**: `□◇_{x.keep}` of the shifted body is, along each arrow, the possible
     object kept along it. -/
-theorem grden_dkeep : ∀ (P : List ℕ) (s v : GW hF M₀) (_ : v.1 = nodeOf s.1 P) (_ : P ≠ [])
+theorem grden_dkeep : ∀ (P : List ℕ) (s v : GW hF M₀) (_ : v.1 = nodeOf s.1 P) (_ : PathOk P)
     (i : ℕ) {A : VarType} {a : Ann A} (x : VarSymb)
     (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X))
     (u : Term σ ((ctxOf (glat s i)).diaIn x) A a) (hR : GR s v),
@@ -266,22 +258,22 @@ theorem grden_dkeep : ∀ (P : List ℕ) (s v : GW hF M₀) (_ : v.1 = nodeOf s.
         (.boxtm (.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
           (Term.shift (Ctx.shifts_diaIn_keep hF (ctxOf (glat s i)) x) u))) ⟨v, ⟨hR⟩⟩ =
       gkeep hM₀ (grden hM₀ s i (Ctx.Le.refl _) (.diatm x hx u)) ⟨v, ⟨hR⟩⟩
-  | [], _, _, _, hP, _, _, _, _, _, _, _ => absurd rfl hP
+  | [], _, _, _, hP, _, _, _, _, _, _, _ => (absT hP.T_of_nil).elim
   | [c], s, ⟨v, hv⟩, h, _, i, _, _, x, hx, u, hR => by
       change v = c :: s.1 at h
       subst h
-      rw [grden_boxtm_path (Ctx.Le.refl _) _ ⟨c :: s.1, hv⟩ hR [c] rfl (List.cons_ne_nil _ _),
+      rw [grden_boxtm_path (Ctx.Le.refl _) _ ⟨c :: s.1, hv⟩ hR [c] rfl (pathOk_cons),
         Term.mono_refl]
       change grden hM₀ (stepW s c hv) _ (Ctx.Le.refl _) (.diatm (wit (stepW s c hv) x)
         (wit_ref hM₀ hv i hx) (eTrKX hM₀ s c hv i x hx u).2) = _
       refine GRPos.ext_E (Set.ext fun ⟨t, ⟨ht⟩⟩ => ?_) fun ⟨t, ⟨ht⟩⟩ hp hq => ?_
       · obtain ⟨Q, hQ, hq⟩ := ht
-        obtain ⟨c', Q', rfl⟩ := List.exists_cons_of_ne_nil hQ
+        obtain ⟨c', Q', rfl⟩ := List.exists_cons_of_ne_nil (hQ.resolve_right absT)
         exact (grden_diatm_mem _ _ _ _ t _ (c' :: Q') hq).trans
           (grden_diatm_mem (hM₀ := hM₀) (Ctx.Le.refl _) x hx u t (gtrans hR ⟨_, hQ, hq⟩)
             (c :: c' :: Q') hq).symm
       · obtain ⟨Q, hQ, hq'⟩ := ht
-        obtain ⟨c', Q', rfl⟩ := List.exists_cons_of_ne_nil hQ
+        obtain ⟨c', Q', rfl⟩ := List.exists_cons_of_ne_nil (hQ.resolve_right absT)
         have hq₂ : (⟨t, ⟨gtrans hR ⟨_, hQ, hq'⟩⟩⟩ : GAcc hF M₀ s) ∈
             (grden hM₀ s i (Ctx.Le.refl _) (.diatm x hx u)).E := hq
         have hi := (grden_diatm_mem _ _ _ _ t _ (c' :: Q') hq').mp hp
@@ -291,11 +283,11 @@ theorem grden_dkeep : ∀ (P : List ℕ) (s v : GW hF M₀) (_ : v.1 = nodeOf s.
           Term.mono_refl]
         rfl
   | c :: c₂ :: P, s, v, h, _, i, _, _, x, hx, u, hR => by
-      have hR' : GR (stepW s c (born_step h)) v := ⟨c₂ :: P, List.cons_ne_nil _ _, h⟩
+      have hR' : GR (stepW s c (born_step h)) v := ⟨c₂ :: P, pathOk_cons, h⟩
       rw [grden_boxtm_cons _ v hR c c₂ P h]
       refine (congrFun (grden_sigma (Ctx.Le.refl _)
         (eTrK_dkeep s c (born_step h) i x hx u)) ⟨v, ⟨hR'⟩⟩).trans ?_
-      refine (grden_dkeep (c₂ :: P) (stepW s c (born_step h)) v h (List.cons_ne_nil _ _) _ _
+      refine (grden_dkeep (c₂ :: P) (stepW s c (born_step h)) v h (pathOk_cons) _ _
         (wit_ref hM₀ (born_step h) i hx) (eTrKX hM₀ s c (born_step h) i x hx u).2 hR').trans ?_
       exact (gkeep_cons x hx u v hR c c₂ P h).symm
 
@@ -303,19 +295,19 @@ theorem grden_dkeep : ∀ (P : List ℕ) (s v : GW hF M₀) (_ : v.1 = nodeOf s.
 
 /-- ⭐Translating along a path commutes with applying a definable map. -/
 theorem pTr_applyG {A C : VarType} (g : GFunc σ A C) : ∀ (s t : GW hF M₀) (P : List ℕ)
-    (h : t.1 = nodeOf s.1 P) (hP : P ≠ []) (i : ℕ) {a : Ann A}
+    (h : t.1 = nodeOf s.1 P) (hP : PathOk P) (i : ℕ) {a : Ann A}
     (b : Term σ ((ctxOf (glat s i)).kView none) A a),
     pTr hM₀ s t P h hP i (Canon.applyG g b).2 = Canon.applyG g (pTr hM₀ s t P h hP i b).2
-  | _, _, [], _, hP, _, _, _ => absurd rfl hP
+  | _, _, [], _, hP, _, _, _ => (absT hP.T_of_nil).elim
   | _, _, [_], _, _, _, _, b => (Canon.applyG_subst g _ _ _ b).symm
   | s, t, c :: c' :: P, h, _, i, _, b => by
       have hθ := ok_eS_kView (gentOk_box hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i)
       have hc := coh_eS_kView (gentOk_box hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i)
-      refine (pTr_sigma hM₀ _ t (c' :: P) h (List.cons_ne_nil _ _) _
+      refine (pTr_sigma hM₀ _ t (c' :: P) h (pathOk_cons) _
         ((sig_subst _ (Subst.ok_box hθ) (Subst.coh_box hθ hc)
           (Canon.applyG_shift g (Ctx.shifts_boxIn_boxIn hF _) b).symm).trans
           (Canon.applyG_subst g _ (Subst.ok_box hθ) (Subst.coh_box hθ hc) _).symm)).trans ?_
-      exact pTr_applyG g (stepW s c (born_step h)) t (c' :: P) h (List.cons_ne_nil _ _) _ _
+      exact pTr_applyG g (stepW s c (born_step h)) t (c' :: P) h (pathOk_cons) _ _
 
 /-- ⭐Translating a witness's view along a path commutes with applying a definable map. -/
 theorem pTrX_applyG {A C : VarType} (g : GFunc σ A C) : ∀ (s t : GW hF M₀) (P : List ℕ)
@@ -338,16 +330,16 @@ theorem pTrX_applyG {A C : VarType} (g : GFunc σ A C) : ∀ (s t : GW hF M₀) 
           (Canon.applyG_subst g _ hok hcoh _).symm)).trans ?_
       exact pTrX_applyG g _ t (c' :: P) h _ _ _ hm _
 
-theorem pTr_pair : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (hP : P ≠ [])
+theorem pTr_pair : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (hP : PathOk P)
     (i : ℕ) {A C : VarType} {a₁ : Ann A} {a₂ : Ann C}
     (b : Term σ ((ctxOf (glat s i)).kView none) A a₁)
     (d : Term σ ((ctxOf (glat s i)).kView none) C a₂),
     pTr hM₀ s t P h hP i (.pair b d) =
       ⟨_, .pair (pTr hM₀ s t P h hP i b).2 (pTr hM₀ s t P h hP i d).2⟩
-  | _, _, [], _, hP, _, _, _, _, _, _, _ => absurd rfl hP
+  | _, _, [], _, hP, _, _, _, _, _, _, _ => (absT hP.T_of_nil).elim
   | _, _, [_], _, _, _, _, _, _, _, _, _ => rfl
   | s, t, c :: c' :: P, h, _, _, _, _, _, _, _, _ =>
-      pTr_pair (stepW s c (born_step h)) t (c' :: P) h (List.cons_ne_nil _ _) _ _ _
+      pTr_pair (stepW s c (born_step h)) t (c' :: P) h (pathOk_cons) _ _ _
 
 theorem pTrX_pair : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (i : ℕ)
     (x : VarSymb) (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X))
@@ -380,12 +372,12 @@ theorem subst_dia_shift_mono {Γ Δ : Ctx} {ι : VarSymb → VarSymb} (θ : Subs
   exact Canon.Term.subst_dia_mono θ hθ hc (Ctx.exists_keep_dia hF hx) hw _
 
 /-- ⭐A witness's translation agrees with the plain one on the `□` view. -/
-theorem pTrX_box : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (hP : P ≠ [])
+theorem pTrX_box : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (hP : PathOk P)
     (i : ℕ) (x : VarSymb) (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X))
     (hm : InExt s t P h x) {A : VarType} {a : Ann A}
     (b : Term σ ((ctxOf (glat s i)).kView none) A a),
     pTrX hM₀ s t P h i x hx hm (Term.mono (Ctx.le_boxIn_diaIn _ x) b) = pTr hM₀ s t P h hP i b
-  | _, _, [], _, hP, _, _, _, _, _, _, _ => absurd rfl hP
+  | _, _, [], _, hP, _, _, _, _, _, _, _ => (absT hP.T_of_nil).elim
   | _, _, [_], _, _, _, _, _, _, _, _, b => congrArg (Sigma.mk _) (Term.subst_mono _ _ _ _ b)
   | s, t, c :: c' :: P, h, _, i, x, hx, hm, _, _, b => by
       have hθ := ok_eS_kView (gentOk_box hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i)
@@ -394,11 +386,10 @@ theorem pTrX_box : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P
       simp only [pTr, pTrX]
       exact (pTrX_sigma hM₀ _ t (c' :: P) h _ _ (wit_ref hM₀ (born_step h) i hx) hm
         (congrArg (Sigma.mk _) (subst_dia_shift_mono (hF := hF) _ hθ hc hx hw b))).trans
-        (pTrX_box _ t (c' :: P) h (List.cons_ne_nil _ _) _ _ _ hm _)
+        (pTrX_box _ t (c' :: P) h (pathOk_cons) _ _ _ hm _)
 
 /-! ## The function algebra on raw objects -/
 
-variable [ModalSys.NoT]
 
 variable (hM₀) in
 /-- ⭐The function algebra on raw objects.  `extract` does not arise (T is off); `dup` reads a
@@ -462,8 +453,8 @@ theorem grden_applyG :
       obtain ⟨t, ⟨hR⟩⟩ := a
       change grden hM₀ s i e (.boxtm (Canon.applyG f b).2) ⟨t, ⟨hR⟩⟩ =
         grawEval hM₀ f t (grden hM₀ s i e (.boxtm b) ⟨t, ⟨hR⟩⟩)
-      rw [grden_boxtm_path e _ t hR _ (pathOf_eq hR) (pathOf_ne hR),
-        grden_boxtm_path e b t hR _ (pathOf_eq hR) (pathOf_ne hR)]
+      rw [grden_boxtm_path e _ t hR _ (pathOf_eq hR) (pathOf_ok hR),
+        grden_boxtm_path e b t hR _ (pathOf_eq hR) (pathOf_ok hR)]
       refine (grden_sigma (Ctx.Le.refl _)
         ((pTr_sigma hM₀ _ _ _ _ _ _ (Canon.applyG_mono f e.boxIn b).symm).trans
           (pTr_applyG f _ _ _ _ _ _ _))).trans ?_
@@ -472,9 +463,9 @@ theorem grden_applyG :
       obtain ⟨t, ⟨hR⟩⟩ := a
       change grden hM₀ s i e (.boxtm (.pair b c)) ⟨t, ⟨hR⟩⟩ =
         (grden hM₀ s i e (.boxtm b) ⟨t, ⟨hR⟩⟩, grden hM₀ s i e (.boxtm c) ⟨t, ⟨hR⟩⟩)
-      rw [grden_boxtm_path e _ t hR _ (pathOf_eq hR) (pathOf_ne hR),
-        grden_boxtm_path e b t hR _ (pathOf_eq hR) (pathOf_ne hR),
-        grden_boxtm_path e c t hR _ (pathOf_eq hR) (pathOf_ne hR)]
+      rw [grden_boxtm_path e _ t hR _ (pathOf_eq hR) (pathOf_ok hR),
+        grden_boxtm_path e b t hR _ (pathOf_eq hR) (pathOf_ok hR),
+        grden_boxtm_path e c t hR _ (pathOf_eq hR) (pathOf_ok hR)]
       exact grden_sigma (Ctx.Le.refl _) (pTr_pair _ _ _ _ _ _ _ _)
   | _, _, .boxUnit, _, _, .unit, _, _, _ => funext fun _ => rfl
   | _, _, .diaMap f, _, _, .diatm x hx c, s, i, e =>
@@ -492,10 +483,10 @@ theorem grden_applyG :
         refine (grden_sigma (Ctx.Le.refl _) (pTrX_pair _ _ _ _ _ _ _ _ _ _)).trans
           (Prod.ext ?_ rfl)
         change _ = grden hM₀ s i e (.boxtm b) ⟨t, ⟨hR⟩⟩
-        rw [grden_boxtm_path e b t hR _ (pathOf_eq hR) (pathOf_ne hR)]
+        rw [grden_boxtm_path e b t hR _ (pathOf_eq hR) (pathOf_ok hR)]
         exact grden_sigma (Ctx.Le.refl _)
           ((pTrX_sigma hM₀ _ _ _ _ _ _ _ _ (congrArg (Sigma.mk _) hb)).trans
-            (pTrX_box _ _ _ _ (pathOf_ne hR) _ _ _ _ _)))
+            (pTrX_box _ _ _ _ (pathOf_ok hR) _ _ _ _ _)))
   | _, _, .extract hT, _, _, _, _, _, _ => absurd hT (by rw [ModalSys.NoT.noT]; decide)
   | _, _, .dup _, Γ, _, .boxtm b, s, i, e => funext fun v => funext fun u => by
       obtain ⟨v, ⟨hR⟩⟩ := v
@@ -509,7 +500,7 @@ theorem grden_applyG :
         grden hM₀ s i (Ctx.Le.refl _) (.boxtm (Term.mono e.boxIn b)) ⟨u.1, ⟨gtrans hR u.2.down⟩⟩
       rw [← Term.shift_mono (Ctx.shifts_boxIn_boxIn hF Γ) (Ctx.shifts_boxIn_boxIn hF _) e.boxIn
         e.boxIn.boxIn b]
-      exact grden_dup (pathOf hR) s v (pathOf_eq hR) (pathOf_ne hR) i _ hR u
+      exact grden_dup (pathOf hR) s v (pathOf_eq hR) (pathOf_ok hR) i _ hR u
   | _, _, .dkeep _, Γ, _, .diatm x hx c, s, i, e => funext fun v => by
       obtain ⟨v, ⟨hR⟩⟩ := v
       refine (congrFun (grden_mono e
@@ -525,7 +516,7 @@ theorem grden_applyG :
           ⟨v, ⟨hR⟩⟩
       rw [← Term.shift_mono (Ctx.shifts_diaIn_keep hF Γ x) (Ctx.shifts_diaIn_keep hF _ x)
         (e.diaIn x) (e.boxIn.diaIn (.step x .keep)) c]
-      exact grden_dkeep (pathOf hR) s v (pathOf_eq hR) (pathOf_ne hR) i x _ _ hR
+      exact grden_dkeep (pathOf hR) s v (pathOf_eq hR) (pathOf_ok hR) i x _ _ hR
 
 /-- ⭐Definable objects are closed under the function algebra. -/
 theorem gdefinable_rawEval {A C : VarType} (g : GFunc σ A C) {s : GW hF M₀}

@@ -2778,6 +2778,171 @@ Order: frame and paths (1, 2), extents and contents (3), shapes (4), function al
 (6), term truth (7), formula truth (8), completeness under T + 4; then drop
 `noFourStrong`/`noFourStrongW` from `NoB` and fold `NoSym` into it.
 
+*User decided D-T1…D-T4 as recommended (2026-10-25).*  Built so far (uncommitted): phase 1, the
+identity arrow as the empty path (`PathOk`, `pTr`'s `[]` case = the collapse; downstream files
+dismiss the `[]` cases under `NoT` for now), and `kw`, `kw_decl`, `pTrXK` (`GCanonPath`).
+
+**⚠ Finding (2026-10-25): under T the strong forms of 4 clash with canonical shapes at contents
+with `◇`.**  The canonical shape of an address (B's and the tree's `canonSh`) labels every `◇`
+position inside its content as a root possibility relative to the address (`rootSh`).  The lift
+sends a kept item to an arbitrary **term**, and a term's shape may have a **family** leaf there:
+* at a child `t`, with `u : □◇X`, the object `o := ◇_z ⟨z.dia, u.box⟩ : ◇(Z × ◇X)` has shape
+  `dia (root z []) (prod _ (fam …))` — its second leaf is reached through the necessary `u`;
+* the lift makes a root `m` of the parent whose canonical shape has root leaves everywhere;
+* keeping along an arrow maps roots to roots and families to families (`Arrows.Leaf.keepAlong`,
+  `dkB`), so `keep(m)` along the edge has a root leaf where `o` has a family;
+* so `posFull_inj` forbids `keep(m) = o`, and `keepLift` fails.  The `□`-lift fails the same way
+  at `□A` with `◇` inside `A` (the lifted term's values carry their own shapes, the lifted root's
+  canonical family carries `rootSh` ones).
+* Top-level labels are fine: at a world language every witness is an address, and its canonical
+  label is `root v []`, which the lift edge maps to the lifted term's witness (`kw` = the term
+  entry's witness).  So with **`◇`-free contents** (no inner leaves) everything matches, term
+  entries included (a `◇`-free type has one shape).
+* Without T there are no shapes, which is why the T-off construction is unaffected.
+
+Options:
+* **(A) Restrict the strong forms under T to `◇`-free contents** (`liftable (□A)`, `liftable (◇A)`
+  ask `A.diaFree` when T is on) — "restrict to `◇`-free and nest" (`feedback_qml_type_generality`).
+  Then the planned T + 4 build goes through with address-based canonical shapes.
+* **(B) Shape templates in the network**: every root carries a shape template, lifted roots take
+  theirs from the lifted term's shape (pulled back along the edge), commitments carry templates
+  along, and `canonSh` reads them.  General, but a new layer of network data with its own
+  well-foundedness (templates of new roots from earlier roots' templates); needs its own paper
+  pass.
+* **(C) Change the shape semantics** so that keeping may change a leaf's kind — reopens §10.27–10.39.
+
+*User (2026-10-25): (A) rejected — "restrict to `◇`-free and nest" is a failed principle (`Here`
+was generalised back; strong 4 rejected it on 2026-10-23).  Paper pass on (B) requested.*
+
+**(B) on paper: shape templates (2026-10-25).**  Verdict: **feasible.**  The canonical shape of an
+address is no longer fixed by its type alone: a root inherits a **template**, set when it is made.
+Lifted roots take theirs from the lifted term, and the templates stay **self-rooted**, which is
+what makes the pull-back possible.  The cost is a well-founded definition of the canonical shapes
+over the creation order, and origin cases in every shape lemma.
+
+*1. What the canonical shapes must satisfy.*  Only the canonical shape environment `cEnv` is a
+choice: a definable object's tag is the term's symbolic shape in it (`termShp`, as B's), and a
+necessary object's shape is the family of its values' shapes (`rawShape`).  The laws then reduce
+to two conditions on `canonSh w v T`, both of the form "`cEnv` pushed into `□` is the transposed
+family of the successors' shapes" (B's `cEnv_boxPush`):
+* (C1) at `□`-typed `v`: `canonSh w v (□A) = box (transpose (a ↦ shape at a.1 of v's value along
+  a))`, the value along `a` being the denotation of `θ_a(v.keep)` (under `keepOnly`).
+* (C2) at `◇`-typed `v`, for every arrow `a`:
+  `(canonSh w v (◇A)).map (keepAlong a) = shape at a.1 of θ_a(v.keep)`, the value of `keep v a`
+  (`posKeep_full`).
+For an address image `θ_a(v.keep) = y` the right side is `canonSh a.1 y`.  For a term entry (a
+lifted keep) it is the term's `termShp` at the child.  Along `[]` both hold by `rootKeep_refl` and
+the collapse.  `posShape_wf` asks only that `cEnv` be well-formed (`shWF_termShp`).
+`posFull_inj`, `posMap_full` and `posStrength_full` hold for `termShp`-tags as in B.  No law ties a
+shape to the contents, so leaves nothing constrains may be chosen freely.
+
+*2. Why generic shapes fail, and what leaves a lifted term's shape has.*  B's `canonSh` gives a
+`◇`-address `v` the body `rootSh v`: every inner leaf is `root v π`.  Leaves of a term's shape at a
+world `t`, by source:
+* the witness `z`'s top label `root z []`, and its content positions (`z.dia…`), which have the
+  shape of `z`'s body template;
+* `□`-items of `z`'s view (`u.keep`, the only items under `keepOnly`): families — `dk 0`, `dkB 0`
+  (`ShEnv.boxPush`), and inside further views `dk (i+1)` keeps families families and roots roots;
+* nested witnesses: one of the above.
+**Invariant (self-rooted templates):** a `◇`-address's body template has root leaves only of the
+form `root v π`, where `v` is the address itself; every other leaf is a family.  The generic
+`rootSh` is self-rooted.  An image's template `T(v).map (keepAlong a)` sends `root v π` to
+`root (rootKeep v a) π`, which is the image itself (`rootKeep = kw`), so it stays self-rooted.  By
+the sources above, if every template at `t` is self-rooted, then **every root leaf anchored at `t`
+in a lifted term `◇_z w` is labelled `z`**.
+
+*3. The templates, by origin.*
+* *Generic* (Henkin witnesses, child contents, fresh roots): B's and the tree's `canonSh`, by
+  recursion on the type with the path index map (`succAddr` along a path = `pIdx`).
+* *Images of a parent's item* (fresh realisations of `v.keep` along an edge `e`): inherit
+  `T(v).map (keepAlong e)` (`◇`), resp. `T(v)` restricted along `e` (`□`, by `dup`).  Images of
+  generic roots stay generic, so the tree's shapes are the special case with no lifts.
+* *Lifted `◇`-roots* `m`, entry `m.keep ↦ ◇_z w` at the child `t` along `e`: the **pull-back** of
+  `termShp_t(◇_z w)`.  Each root leaf `root z π` becomes `root m π` (as `rootKeep m e = z`, the term
+  entry's witness).  Each family `fam f` becomes `fam g`, with `g (e;b) := f b` and `g a` a fixed
+  well-formed default leaf for every `a` not through `e` (including `refl_s`).  The pull-back is
+  self-rooted, preserves well-formedness, and satisfies (C2) along `e` by construction.  Along any
+  other `a`, (C2) holds because `m`'s image there inherits (`keepAlong` of a family is a family).
+  The defaults are harmless: nothing but the inherited templates reads them.
+* *Lifted `□`-roots* `r`, entry `r.keep ↦ □u` at `t`: the family whose entry at `e;b` is the shape
+  of `u` along `b` at `b.1` (`termShp` of `pTr b u`), and at `a` not through `e` the generic
+  `canonSh a.1 (pIdx a r.inner)`.  That is (C1) by construction.  `r`'s images along other arrows
+  are then generic, and so is its `here` (along `refl_s`, by recursion on the type).
+* Projections of a root (`v.fst`, `v.here`) read the root's template, as `canonSh_proj` does.
+*Well-founded:* a lifted root's template, made at round `n + 1`, needs `termShp` at the child at
+round `n`.  That reads the templates of addresses that exist then, made at rounds `≤ n`, and the
+generic `□`-families, which never consult later lifts.  An image's template needs its source's,
+made earlier.  So the canonical shapes are defined by recursion on the creation round.  The
+origin is read off the limit (`fmapL`: an image is an `.inl` entry, a lift an `.inr` entry).
+
+*4. What changes in the build.*
+* Shape layer (new): origin of an address, creation rounds, templates, `canonSh` by origin, and
+  (C1)/(C2) as `cEnv_boxPush`-style lemmas per origin.
+* The term truth lemma's shape part goes **through chains**: an environment agreeing with a chain
+  has shapes `termShp (cEnv w) (C.app (eta v))`, so term entries need no special treatment there.
+  B's `termShp_arrow_cEnv` (canonical env read through an index map) is not used.
+* Everything else as in the T + 4 paper pass above.
+
+*Open (to settle while building):* the Lean form of the round-recursion (creation rounds via
+`Nat.find` on `gnet`, or recorded in `GNetSt`); default leaves' well-formedness at every level
+list; and the `□`-lift's (C1) at `refl` (`r.here` generic) — checked on paper above only in
+outline.
+
+*User (2026-10-25): go ahead with (B).*
+
+**(B) in Lean: the form of the recursion (2026-10-25, revised and built the same day).**  The
+paper pass above is right that the dependencies are well-founded, but not by the creation round of
+an *address*: a generic `□` family reads the shapes of the address's images, which are made later.
+What decreases is the **level** of a root, ghost data computed alongside the chain.  Built
+(uncommitted at time of writing), all green and sorry-free:
+
+* *Network facts* (`QML_v12m_GOrigin`, invariants `OrigOk` carried to the limit): (N1) an edge's
+  term entries are kept items of roots (`fmapL_term`); (N3) along an edge an image root has one
+  source root (`fmapL_inj`); a root is lifted along one edge (`fmapL_lift1`).
+* *Levels* (`QML_v12m_GLevel`): a chain `glev` beside `gnet`, not stored in the network.  An image
+  root takes its source's level; a lifted root is one above every variable of the child it is
+  lifted from (and its residual alike); no operation changes an existing root's level.  In the
+  limit, `lev`, with ⭐`lev_img` (images at their source's level) and ⭐`lev_lift` (a lifted term's
+  variables below the lifted root).  This replaces the creation-round analysis (N2) entirely.
+* *One construction step* `CStep ρ` (`QML_v12m_GTemplate`), templates read in a family `ρ`:
+  * `□A`: along each arrow, `boxEnt`, **edge by edge**: along an edge the entry for the address's
+    kept item is an address, whose value along the rest it is, or a lifted term, whose shape at
+    the child (read in `ρ`) is read at the rest of the arrow (`unT`, the inverse of transposition);
+    along the empty path the contents here, by recursion on the type.  No address map along a
+    path, and no choice: the edge's own entry says which case applies.
+  * `◇A` at a root: lifted → the pull-back of its lifted term's shape (`liftDia`); image of a
+    parent's `◇`-root → that root's shape kept along the edge (`diaT`, by recursion on the node);
+    otherwise generic.  At a non-root `◇` address, generic.
+* ⭐*The canonical shapes* `cEnv s v T := CStep ρ T s v` with `ρ` the canonical shapes of the
+  addresses **below** `v`'s level (a default above): well-founded recursion on the level, no
+  approximations and no stabilisation.  Well-formed (`cEnv_wf`).
+* ⭐*Locality* (`QML_v12m_GCEnv`): at a declared address a step reads its family only below the
+  address's level (`cStep_local`): an image is declared at the same level (`keep_img`), a lifted
+  term's variables are declared and lower (`lift_root`), an image `◇`-root's source likewise
+  (`inherit_src`).  Hence ⭐`cEnv_eq`: at a declared address, under T, `cEnv = CStep cEnv`.
+* *Self-rooted* (`QML_v12m_GSelf`): a `◇`-shape whose top-level root leaves are all labelled by
+  the address.  Steps' `◇`-shapes are (`cStep_top`); inside a `◇` every operation keeps top-level
+  labels (`shTop_termShp`), and the `□`-items of the witness's view enter as families, so a lifted
+  term is self-rooted at its witness (`shTop_termShp_dia`); hence ⭐`liftDiaAt_keep`: a lifted
+  root's template kept along its lift edge is its lifted term's shape — (C2) along the lift edge.
+  Projections read the parent's shape (`cStep_proj`).
+
+* ⭐*The laws* (`QML_v12m_GShapeTr`, `QML_v12m_GLaws`, built): a term translated along a path has
+  the shape of the term in the environment **pulled back** along the path (`pullP`, `pTr_pullP`).
+  ⭐`comp_pull`: the pulled-back canonical environment is the path's component (`unT`) of the
+  canonical environment pushed into `□` — by induction on the **path** alone.  An edge's entry for
+  a kept item reads as the item kept along the edge (`edge_entry`): for an image, by inheritance
+  (`edge_dia_inl`, `edge_box_inl`; network facts: image roots are never lifted, a `◇`-root's
+  kept image is a root, (N3)); for a lifted root, by the templates themselves
+  (`edge_dia_inr` via `liftDiaAt_keep`; `edge_box_inr` via `boxEnt`'s lifted branch).  The
+  composite step is shape algebra: `entryShp_keepE(_dia)`, `unT_keep`, `keepSh_comp`.  No
+  induction on levels is needed.  Hence ⭐`termShp_boxPush`: a `□` body's shape inside `□` is the
+  transposed family of its translations' shapes — B's `cEnv_boxPush`/`termShp_arrow_cEnv` in one.
+
+*Order of work from here:* the shaped canonical model on the tree — tags in `GRPos` (as B's
+`RPos`), `rawShape`, `rawShape_rden` by `termShp_boxPush`, the keep law by `termShp_pTr` and
+`entryShp_keepE_dia` — then the T-cases of the paper pass and removing the temporary `NoT`.
+
 **Order.**
 1. Weak 4 on the growing tree: `GCanon` (frame, translations along paths, transfer along paths,
    carriers as B's `BCanonDom`/`BCanonModel` with `θ_a`), then `GTruth`.  K4/D4 first, then
@@ -9080,6 +9245,36 @@ full build green).
 * *Next:* item 6 (membership ⇒ truth under T: `BRetOut`'s producers, `ncb_unpackN`,
   `holeAt_packN_unpackN`, `lalias_ind`), item 7 (`Back` at `◇`-typed contents along a witness,
   `arrowXIdx_inj`; the canonical `Ret` at the own arrow), item 8.
+
+**Item 6, membership ⇒ truth under T: the plan (2026-10-18, paper).**  No new rule.
+* *Why `RetOut` changes.*  `RetOut` hands back a `□A` object and its contents' reading only, and
+  products reach it through `packN : N → □(N.flat)`.  Under T that loses the companions: the
+  user's value carries companion values `t_q`, the packed object's contents carry them as data,
+  but the unpacked object's companions are the child's own here-items, whose returns are
+  independent (risk 1 again).  So the interface moves to companion shapes:
+  * `RetOutC`: from `◇^{boxC A cs}[d ↦ V] Φ(d)` (any valid `cs`), an arrow `s → k` and a term `g`
+    of `k`'s `□` view with `Φ(□g)` there, whose readings home **with companions**
+    (`compsVal g cs` sent home) are `Ind` to `V`.  At `cs = []` this is `RetOut`.
+  * Products by `packCC` (a sound map `N → boxC N.packTy cs_N`, keeping every companion of every
+    component, under `fst`/`snd`) and back by `fstC`/`sndC` (their soundness gives the
+    components' comebacks from the packed one's); the values compose to the identity (`getP`
+    reads, as in stage 4).
+* *The production at the limit* (`bdataS`), from `◇^{boxC A cs}[d ↦ V] Φ` at `s`:
+  1. *Name the missing companions*: `ret_compS` as an existential (`∃z. ◇^{boxC A (p :: cs)}…`,
+     by `ex_intro` at the fresh root), witnessed at the limit (`exW`), one companion at a time,
+     then `subC` to the born order `bornComps A`.
+  2. *Alias* `y` for `arr W` (the value's tuple, `arrT`), and move the value to `unarrT y` at the
+     slot formula `◇^{S_A}[u ↦ unarr(z)] Φ'` (`unarr` = `unarrT` with its root replaced by the slot):
+     `unarr(η y) = unarrT y` and `unarr(arr W) = W` (the arrangement identity).
+  3. *The child* (`lretC`): the body holds at the born root `c`, and `c`'s value with companions
+     comes home as `unarrT y` (the back arrow `c ↦ y`), so its readings are `Ind` to `W` by the
+     alias (`lalias_ind`, `ind_map` at `unarr`), and to `V` by selecting `cs` (`ind_map` at
+     `subC`'s value).
+* *Witnessed shapes and the leg along a witness* follow the same steps on the witnessed children
+  (`lretDC`, `lretXC`, `lretXDC`).
+* *Order:* (a) the arrangement identity; (b) naming companions at the limit; (c) `RetOutC` at the
+  limit, plain leg; (d) the `BData` truth lemma at every necessary shape via `packCC`/`fstC`/`sndC`;
+  (e) the witnessed and leg variants; then drop `ret_oblC_noT`, `ret_oblDC_noT`, `packN`/`unpackN`.
 
 **Item 6, membership ⇒ truth under T: the plan (2026-10-18, paper).**  No new rule.
 * *Why `RetOut` changes.*  `RetOut` hands back a `□A` object and its contents' reading only, and
