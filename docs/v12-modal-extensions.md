@@ -2662,6 +2662,54 @@ flag is on:**
   variables.  `GChain.lift_total` is now stated for every term of a liftable type, so the
   `keepLift` law will hold with equality: `keep m a = ⟦t⟧`.
 
+**The canonical model on the growing tree, built (2026-10-24, sorry-free; T and B off).**
+Completeness for 4 with D and both strong forms free, at root languages: ⭐`completenessG`
+(`QML_v12m_GCompleteness`; axioms propext, choice, Quot.sound).  Flags as classes:
+`ModalSys.NoT` (T off) and `ModalSys.NoSym` (B and strong B off).  Files, in order:
+* `GLimit`: the limit — worlds `GW` (nodes ever born, stages from birth), committed entries
+  `fmapL`, the child stage `glstg`, transfer `gltr`/`gltrX`, existence `glex`/`glexX`, the lift
+  in limit form `gllift`.
+* `GCanonPath`: paths `nodeOf` (first step first), the frame `GR` (strict descendants), the path
+  translations `pTr`/`pTrX` recursive **from the front** (keep, the first edge's `□`/`◇`-lift,
+  then the rest), extents `InExt` with the kept witness `wit`, stage lemmas.
+* `GCanonDom`: raw objects `GRDom`/`GRPos`, the denotation `grden` (a `□`-term along an arrow is
+  its body translated by the arrow's path), `grden_mono`/`grden_congr`, `GDefinable`.
+* `GCanonFunc`: the function algebra `grawEval`; `dup` and `dkeep` along paths (`grden_dup`,
+  `grden_dkeep`, via the kept first-edge translations `eTrK`/`eTrKX` and `applyG_subst`);
+  `grden_applyG`.
+* `GCanonModel`: the frame, carriers (definable raw objects), operations, strong D.
+* `GCanonLift`: strong 4's law on raw objects (`gkeep_edge`: the lifted root's η-expansion, kept,
+  translates to the lifted term; `graw_keepLift` along paths) and ⭐`gmodel`.  `necDup_eval` and
+  `posKeep_full` hold by `rfl`; `Ind` is equality.
+* `GTr`: **translation chains** (substitution, shift and weakening steps) acting on terms.
+* `GCanonTerm`: ⭐`interp_gtr`, the truth lemma for terms through chains.
+* `GTruth`: path translations of formulas `pTrW`/`pTrXW`; ⭐`sat_boxPush_path`,
+  `sat_diaPush_path`; `box_mem_path`, `boxx_mem_path`; ⭐`gtruth`.
+
+Findings on the way:
+* **A shift is not a substitution.**  `Subst.Coh` asks one index map for every split of an
+  address, and a shift's index depends on the depth.  So a path's translation is a composite of
+  substitutions and shifts, not one substitution.
+* **Term entries break B's route to the term truth lemma.**  B compares the pushed environment
+  with the target's canonical one through `substEnv`, using the lemma at each entry.  A lifted
+  item's entry is an arbitrary term at the child, of any type, so the induction on types does not
+  reach it.  Instead the lemma is stated for any environment agreeing with a **chain** (every
+  address reads as the denotation of its η-expansion translated by the chain).  It is proved by
+  induction on the term alone: pushing into `□`/`◇_x` along an arrow appends the arrow's path to
+  the chain (`gagree_boxPush`, `gagree_diaPush`), and the variables' values hold by the definition
+  of `grden`.
+* With the term lemma at every term, the formula lemma goes as B's.  Along one edge the pushed
+  canonical environment **equals** the substituted target environment
+  (`gcanon_boxPush_edge`, `gcanon_diaPush_edge`).  Along longer paths it goes semantically:
+  `sat_shift_twoBox` / `Env.shiftAgree_diaKeep` for the first edge kept, `substEnv_box` /
+  `substEnv_dia`, then the rest of the path.  Membership goes along paths by `four_box` /
+  `four_dia` and the edges' transfers.
+
+Still to do: presented contexts (B's flattening `BFlat` assumes 4 off: under 4 a `□` view also
+shows kept items; the child arrow and its pull-back, `GChild`, are the pair to flatten with),
+strong completeness and compactness, T + 4, and then dropping `noFourStrong`/`noFourStrongW`
+from `ModalSys.NoB`.
+
 **Order.**
 1. Weak 4 on the growing tree: `GCanon` (frame, translations along paths, transfer along paths,
    carriers as B's `BCanonDom`/`BCanonModel` with `θ_a`), then `GTruth`.  K4/D4 first, then
