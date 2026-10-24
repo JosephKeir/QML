@@ -236,13 +236,12 @@ theorem kView_boxIn' {l : List VarType} {k : Option VarSymb} {u : VarSymb} {s : 
       | snd => exact h
       | here => exact h
 
-/-- ⭐Pulling back undoes the child's map. -/
-theorem subst_gpull_child (hF : ModalSys.Four = true) (l : List VarType) {k : Option VarSymb}
-    {X : VarType} (hk : KContent (ctxOf l) k X) (χ : WFF σ ((ctxOf l).kView k) 0) :
-    WFF.subst (gpullIdx l k X) (gpullS hF σ l k X hk) (ok_gpullS hF l k X hk)
-      (coh_gpullS hF l k X hk) Ctx.NoSlots.slots Ctx.NoSlots.slots (gchildArrow hF l hk χ) = χ := by
-  refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS _ _ _ ?_ χ).trans
-    (WFF.subst_id _ _ _ χ)
+/-- ⭐The child's map followed by pulling back is the identity, up to η. -/
+theorem sim_gchild_pull (hF : ModalSys.Four = true) (l : List VarType) {k : Option VarSymb}
+    {X : VarType} (hk : KContent (ctxOf l) k X) :
+    Subst.Sim ((ctxOf l).kView k) (Subst.idS σ ((ctxOf l).kView k))
+      ((eS σ (ctxOf (childL l k X)) (ofRen (gchildMap l k))).comp (gpullS hF σ l k X hk)
+        (ok_gpullS hF l k X hk) (coh_gpullS hF l k X hk)) := by
   refine Subst.sim_of ?_
   intro v T hl hv
   obtain ⟨u, s, rfl, hup, U, hU⟩ := kView_item hv
@@ -289,6 +288,14 @@ theorem subst_gpull_child (hF : ModalSys.Four = true) (l : List VarType) {k : Op
       (gpull_lt hF l k X hk hlt) u (by rw [← hr]; exact VarSymb.eq_root_ext u) hit,
       Term.mono_eta]
     exact .ren_eta _ _
+
+/-- ⭐Pulling back undoes the child's map. -/
+theorem subst_gpull_child (hF : ModalSys.Four = true) (l : List VarType) {k : Option VarSymb}
+    {X : VarType} (hk : KContent (ctxOf l) k X) (χ : WFF σ ((ctxOf l).kView k) 0) :
+    WFF.subst (gpullIdx l k X) (gpullS hF σ l k X hk) (ok_gpullS hF l k X hk)
+      (coh_gpullS hF l k X hk) Ctx.NoSlots.slots Ctx.NoSlots.slots (gchildArrow hF l hk χ) = χ :=
+  (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS _ _ _
+    (sim_gchild_pull hF l hk) χ).trans (WFF.subst_id _ _ _ χ)
 
 /-! ## Creating a child -/
 

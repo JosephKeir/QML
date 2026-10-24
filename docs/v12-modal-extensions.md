@@ -2705,10 +2705,78 @@ Findings on the way:
   `substEnv_dia`, then the rest of the path.  Membership goes along paths by `four_box` /
   `four_dia` and the edges' transfers.
 
-Still to do: presented contexts (B's flattening `BFlat` assumes 4 off: under 4 a `□` view also
-shows kept items; the child arrow and its pull-back, `GChild`, are the pair to flatten with),
-strong completeness and compactness, T + 4, and then dropping `noFourStrong`/`noFourStrongW`
-from `ModalSys.NoB`.
+**Presented contexts, strong completeness, compactness (2026-10-25, sorry-free):**
+`QML_v12m_GFlat`.  Every well-formed presentation flattens into a world language as for B, with
+the growing tree's child edge and its pull-back as the pair for each view (`gpair`, from
+`sim_gchild_pull`; one pair for the `□` view and the `◇_x` view alike).  B's own pair
+(`pairBox`) shows only `u.box` items, so it serves 4 off only; B's chain machinery (`Pair`,
+`Pair.box`, `Pair.dia`, `Pair.insertRoot`, `Chain`) is now flag-free (`sim_box_of`, `sim_dia_of`
+handle kept items by `SubE.Sim.keepE'`), and `NoFour` stays only on B's views and theorems.
+⭐`completenessG_presented`, `model_existenceG`, `strong_completenessG`, `compactnessG`.
+
+Still to do: T + 4, and then dropping `noFourStrong`/`noFourStrongW` from `ModalSys.NoB` (then
+`ModalSys.NoSym` says what `NoB` says, and folds into it).
+
+**T + 4 on the growing tree: paper pass (2026-10-25).**  The network layer is already T-generic
+(`GItems`…`GChain` are parametrised by `keepOnly`); only the canonical side assumes T off
+(`ModalSys.NoT` from `GCanonFunc` on).  What T + 4 adds there, and how:
+
+1. *Frame.*  The identity arrow is the **empty path**: `GR s t := ∃ P, (P ≠ [] ∨ T) ∧
+   t.1 = nodeOf s.1 P`.  Composition stays path append, the identity laws hold by `[] ++ P = P`
+   and proof irrelevance, and every path recursion gains a `[]` case.
+2. *Necessary terms along `[]`:* the collapse (`Term.collapse (collapses_boxIn_self hT Γ)`), as
+   B's `rden_boxtm_self`.  `dup` along `[]` is `necDup_eval` with `refl_trans`; `pTr`'s
+   composition lemmas gain the cases `[] ++ Q` and `P ++ []`.  Under `keepOnly` a `□` view shows
+   only `u.keep`, and the collapse sends it to `u`.
+3. *Extents under T: by realisation at every distance*, as in the tree (§3 4, "T + 4 on
+   paper" (b)).  `ext_s(x) := {⟨t, P⟩ | (gw t).Realised (W_P x)}`, where `W_P x` is the witness
+   kept along `P` (`W_[] x = x`, `W_(c::P) x = W_P (wit (stepW s c) x)`, as `pTrX`'s recursion).
+   * The kept law is then definitional: `W_(c::Q) x = W_Q (W_c x)`, so
+     `ext(keep x along c) = {b | c;b ∈ ext x}`.
+   * Contents follow the realisation route: the body is kept along the path into the view of
+     `W_P x` (`pTrX`'s steps without the last edge's content substitution, call it `pTrXK`) and
+     realised at `t` by `t`'s datum for `W_P x` (B's `realTerm`, which is a substitution, a collapse
+     and a substitution, so chain-friendly).
+   * `here_keep` puts every `◇_x`-child into `ext(x)`: transferred along the edge it is
+     `Here(◇_{wit}(…), …) ∈ M_t`.  The converse is false (a `□`-child may realise the kept
+     witness) and is not needed.
+   * Truth, membership ⇒ sat: `glexX`'s child, `here_keep`, then `here_subst` moves the formula
+     to the chosen datum's content (the datum is chosen classically, as in the tree).
+   * Truth, sat ⇒ membership: `□_x ¬χ` goes along any path by `four_dia` and the plain `□`
+     transfers (edge kinds are not used), then `here_elimAtA` with `t`'s datum.
+   * With T off nothing is realised, so the extents stay `InExt` (view-based); `grden`'s `◇`
+     case splits on T, as the tree's `rden` splits on `TFour`.
+4. *Shapes* (T makes the model shaped): `GRPos` stores a tag; `RootPoss s := VarSymb` and
+   `rootKeep r a := W_{path a} r` (so `rootKeep_trans` and `rootKeep_refl` hold by the
+   recursion); canonical shapes `canonSh` with the path index map in place of B's `succAddr`;
+   `rawShape_rden`, `posShape_wf` by `shWF_termShp`, as B's and the tree's.
+5. *Function algebra:* `extract` reads along `[]`; each map's tag by `termShp_applyG`; `dkeep`'s
+   tag as the tree's `rden_dkeep_tag`.
+6. *Model laws:* `necExtract_eval`, `posShape_wf`, `posRet_exists` (strong T, as B's
+   `posRet_exists_canon`).  `Here` reads `Ind`, so `Ind` cannot be equality under T: the
+   canonical `DTerm` relation, as B's and the tree's, with `IndInvariant` as `BInd`.
+7. *Truth lemma for terms:* `GTr` gains a collapse step (and realisation is subst ∘ collapse ∘
+   subst); the agreement pushes along `[]` (collapse) and along realised members.
+8. *Formula truth lemma:* the identity cases (`T_box` with `sat_boxHere`; `◇` along `[]` by the
+   realised datum, B's `dia_mem_of_sat_self`), `Here` atoms (B's `here_truth`), and the `◇` case
+   by realisation (3).
+
+Decisions for the user, with recommendations:
+* **D-T1 (identity as the empty path)** — recommended, so the path machinery stays uniform; the
+  alternative is B's `RT` (an `∨` beside the paths) with separate own-arrow lemmas everywhere.
+* **D-T2 (extents under T by realisation, datum chosen classically, `here_subst` in the truth
+  lemma)** — recommended, as the tree; the alternative is a network change recording a datum at
+  each born `◇_x`-child (contents coincide by definition, §3 4 "3. T + 4 on translations"), which
+  only helps the `◇_x`-children, not the other realised members.
+* **D-T3 (generalise the canonical files in place)**, with T-case splits inside `grden` and the
+  model, as the tree does — recommended over a parallel `GT*` development, which would duplicate
+  most of `GCanonDom`…`GTruth`.
+* **D-T4 (`Ind` as the canonical `DTerm` relation for every flag, with `IndInvariant` ported from
+  `BInd`)** — recommended over `Ind := equality` when T is off and the relation when T is on.
+
+Order: frame and paths (1, 2), extents and contents (3), shapes (4), function algebra (5), model
+(6), term truth (7), formula truth (8), completeness under T + 4; then drop
+`noFourStrong`/`noFourStrongW` from `NoB` and fold `NoSym` into it.
 
 **Order.**
 1. Weak 4 on the growing tree: `GCanon` (frame, translations along paths, transfer along paths,
