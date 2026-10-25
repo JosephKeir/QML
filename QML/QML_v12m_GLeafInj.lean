@@ -5,7 +5,7 @@ import QML.QML_v12m_GCanonDom
 # QML v12m — the growing tree: labels are injective
 
 The second half of the leaf calculus (`docs/v12-modal-extensions.md` §3 4, "The leaf calculus,
-revised plan"), with the `□`-lift on and under T.  In a pushed canonical environment
+revised plan"), under T.  In a pushed canonical environment
 (`Pushed`) the `◇` addresses are of two kinds:
 * *root-level* (and level-free) ones, labelled by a root and a path spelling the address
   (`Pushed.rootSh`, `cEnv_dia_generic`);
@@ -494,7 +494,6 @@ theorem isFam_label_of_wf {s : GW hF M₀} (lw : List Bool) {X : VarType}
 /-- ⭐**The labels of a pushed environment**: a root-level address is labelled by its root and its
     path, a keep-first one by a family. -/
 theorem Pushed.label_cases (hT : ModalSys.T = true)
-    (hS : ModalSys.FourStrongW = true → ModalSys.FourStrong = true)
     (hM₀ : Theory.IsMCS M₀) {s : GW hF M₀} {i : ℕ} {Δ : Ctx} {ρ : GEnv hF M₀ Δ s} {j : ℕ}
     (hP : Pushed hF M₀ s i Δ ρ (j + 1)) {y : VarSymb} {X : VarType}
     (h : Δ.ref y = some (.VTypeDia X)) :
@@ -505,7 +504,7 @@ theorem Pushed.label_cases (hT : ModalSys.T = true)
   rcases addr_cases y (hP.nobox hko y h) with hy | ⟨pre, q, hpre, rfl⟩ | hy
   · exact absurd hy (hP.not_ppath y _ h)
   · refine Or.inl ⟨pre, q, hpre, rfl, ?_⟩
-    rw [hP.rootSh hT hS hM₀ pre hpre _ h q rfl]
+    rw [hP.rootSh hT hM₀ pre hpre _ h q rfl]
     rfl
   · refine Or.inr ⟨hy, ?_⟩
     obtain ⟨Δ', w, hle, hlen, hag, hk⟩ := hP.kpart
@@ -815,15 +814,14 @@ theorem ann_eq_of_termShp_pushed {n : ℕ} (hL : ∀ k < n, LabInjAt hF M₀ k) 
         injection e
       rw [ann_eq_of_termShp_pushed hL (hP.dia hr) u u' (by omega) hb]
 
-/-- Level-free labels are injective: every possible template is generic. -/
+/-- Level-free labels are injective: every possible address's canonical shape is generic. -/
 theorem labInj_zero (hT : ModalSys.T = true)
-    (hS : ModalSys.FourStrongW = true → ModalSys.FourStrong = true)
     (hM₀ : Theory.IsMCS M₀) : LabInjAt hF M₀ 0 := by
   intro s i Δ ρ hP y y' X X' h h' hl
   cases hP
   rw [cEnv_ref hT hM₀ (Ctx.Le.refl _) y h, cEnv_ref hT hM₀ (Ctx.Le.refl _) y' h',
-    cEnv_dia_generic hT hS hM₀ _ s y X le_rfl ⟨i, h⟩,
-    cEnv_dia_generic hT hS hM₀ _ s y' X' le_rfl ⟨i, h'⟩] at hl
+    cEnv_dia_generic hT hM₀ ⟨i, h⟩,
+    cEnv_dia_generic hT hM₀ ⟨i, h'⟩] at hl
   have hl' : (Arrows.Leaf.root y [] : GLeaf hF M₀ s) = .root y' [] := hl
   injection hl' with _ h₁
 
@@ -871,17 +869,16 @@ theorem labInj_kf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {j : ℕ}
     root-level labels spell their addresses, keep-first ones are families told apart along a late
     edge by the shallower case (`labInj_kf`). -/
 theorem labInj (hT : ModalSys.T = true)
-    (hS : ModalSys.FourStrongW = true → ModalSys.FourStrong = true)
     (hM₀ : Theory.IsMCS M₀) : ∀ j, LabInjAt hF M₀ j := by
   intro j
   induction j using Nat.strong_induction_on with
   | _ j ih =>
     cases j with
-    | zero => exact labInj_zero hT hS hM₀
+    | zero => exact labInj_zero hT hM₀
     | succ j =>
       intro s i Δ ρ hP y y' X X' h h' hl
-      rcases hP.label_cases hT hS hM₀ h with ⟨pre, q, -, rfl, hy⟩ | ⟨hky, hfy⟩ <;>
-        rcases hP.label_cases hT hS hM₀ h' with ⟨pre', q', -, rfl, hy'⟩ | ⟨hky', hfy'⟩
+      rcases hP.label_cases hT hM₀ h with ⟨pre, q, -, rfl, hy⟩ | ⟨hky, hfy⟩ <;>
+        rcases hP.label_cases hT hM₀ h' with ⟨pre', q', -, rfl, hy'⟩ | ⟨hky', hfy'⟩
       · rw [hy, hy'] at hl
         injection hl with _ h₁ h₂
         subst h₁
@@ -896,22 +893,20 @@ theorem labInj (hT : ModalSys.T = true)
 /-- ⭐⭐**Canonical shapes determine annotations**: two terms of a stage's language with the same
     canonical shape have the same annotation. -/
 theorem ann_eq_of_termShp (hT : ModalSys.T = true)
-    (hS : ModalSys.FourStrongW = true → ModalSys.FourStrong = true)
     (hM₀ : Theory.IsMCS M₀) {s : GW hF M₀} {i : ℕ} {A : VarType} {a a' : Ann A}
     (t : Term σ (ctxOf (glat s i)) A a) (t' : Term σ (ctxOf (glat s i)) A a')
     (h : Model.termShp (famEnv cEnv (ctxOf (glat s i)) s) 0 t =
       Model.termShp (famEnv cEnv (ctxOf (glat s i)) s) 0 t') : a = a' :=
-  ann_eq_of_termShp_pushed (n := t.mdepth) (fun k _ => labInj hT hS hM₀ k) Pushed.base t t'
+  ann_eq_of_termShp_pushed (n := t.mdepth) (fun k _ => labInj hT hM₀ k) Pushed.base t t'
     (Nat.zero_add _).le h
 
-/-- ⭐⭐**Tags determine annotations**: under T, with the `□`-lift on, two terms with one
-    denotation have one annotation. -/
+/-- ⭐⭐**Tags determine annotations**: under T, two terms with one denotation have one
+    annotation. -/
 theorem ann_eq_of_grden (hT : ModalSys.T = true)
-    (hS : ModalSys.FourStrongW = true → ModalSys.FourStrong = true)
     (hM₀ : Theory.IsMCS M₀) {s : GW hF M₀} {i : ℕ} {A : VarType} {a a' : Ann A}
     (t : Term σ (ctxOf (glat s i)) A a) (t' : Term σ (ctxOf (glat s i)) A a')
     (h : grden hM₀ s i (Ctx.Le.refl _) t = grden hM₀ s i (Ctx.Le.refl _) t') : a = a' :=
-  ann_eq_of_termShp hT hS hM₀ t t' (by
+  ann_eq_of_termShp hT hM₀ t t' (by
     rw [← grawShape_grden (hM₀ := hM₀) hT s i (Ctx.Le.refl _) t,
       ← grawShape_grden (hM₀ := hM₀) hT s i (Ctx.Le.refl _) t', h])
 

@@ -943,6 +943,8 @@ theorem keptTr_form (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW
       PPath w.path ∧ (tl = false → X = [] ∧ X' = [] ∧ R = []) ∧
       ∀ (n' : ℕ) (R' : List Step), (tl = false → R' = []) → ∀ Y : VarType,
         Step.walkTy U (.keep :: (List.replicate n' .keep ++ X ++ R')) = some (.VTypeDia Y) →
+        entIdx (fmapL hF M₀ (c :: t.1) (.step v .keep)) (List.replicate n' .keep ++ X ++ R') =
+          w.ext (List.replicate n' .keep ++ X' ++ R') ∧
         entIdx (fmapL hF M₀ (c :: t.1) (.step v .keep))
             (.keep :: (List.replicate n' .keep ++ X ++ R')) =
           (VarSymb.step w .keep).ext (List.replicate n' .keep ++ X' ++ R') ∧
@@ -962,7 +964,7 @@ theorem keptTr_form (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW
   | inl w =>
       rw [he] at hok
       exact ⟨w, 0, [], [], q, true, rfl, rfl, .inl ⟨ppath_nil, ppath_nil⟩, (reach_ppath hok).1,
-        (fun h => by cases h), fun n' R' _ Y hY => ⟨rfl, U, Y, ⟨_, hok⟩, hY⟩⟩
+        (fun h => by cases h), fun n' R' _ Y hY => ⟨rfl, rfl, U, Y, ⟨_, hok⟩, hY⟩⟩
   | inr τ =>
       rw [he] at hok
       obtain ⟨e₀, hsuf, hadm, -, hτ⟩ := fmapL_adm he
@@ -1004,7 +1006,13 @@ theorem keptTr_form (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW
               show Step.here :: itemPath k ++ R' = .here :: (itemPath k ++ R') from rfl,
               walkTy_here hT, items_walk_eq] at hY
             exact hY
-          refine ⟨?_, _, Y, ⟨_, hl'.ref hw₂⟩, ?_⟩
+          refine ⟨?_, ?_, _, Y, ⟨_, hl'.ref hw₂⟩, ?_⟩
+          · rw [List.append_assoc, bt_keeps,
+              show Step.here :: itemPath k ++ R' = .here :: (itemPath k ++ R') from rfl,
+              bt_item _ _ k hkl R' hR]
+            change ((shiftN n' (boxItems l')[k].1).ext R').collapse _ = _
+            rw [hw₁, shiftN_keep, collapse_kept, keepN_ext, ← VarSymb.ext_append]
+            simp
           · rw [List.append_assoc, keeps_cons_append, bt_keeps,
               show Step.here :: itemPath k ++ R' = .here :: (itemPath k ++ R') from rfl,
               bt_item _ _ k hkl R' hR]
@@ -1019,7 +1027,8 @@ theorem keptTr_form (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW
         obtain ⟨rfl, -⟩ := Sigma.mk.inj (eq_of_heq h₄)
         refine ⟨z, 0, [], [], _, true, rfl, rfl, .inl ⟨ppath_nil, ppath_nil⟩,
           (reach_ppath hz).1, (fun h => by cases h), fun n' R' _ Y hY =>
-            ⟨Ann.idxAt_eta _ z _ Y hY, _, Y, ⟨_, hl'.ref hz⟩, hY⟩⟩
+            ⟨Ann.idxAt_eta _ z _ Y ((walkTy_keep rfl _).symm.trans hY), Ann.idxAt_eta _ z _ Y hY,
+              _, Y, ⟨_, hl'.ref hz⟩, hY⟩⟩
       · -- a view tuple
         change (⟨l', _, _, t'⟩ : LTerm σ) = viewTuple hF l' z Z hz at he₀
         unfold viewTuple at he₀
@@ -1036,7 +1045,11 @@ theorem keptTr_form (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW
             (reach_ppath hz).1, fun _ => ⟨rfl, rfl, rfl⟩, fun n' R' hR' Y _ => ?_⟩
           obtain rfl := hR' rfl
           simp only [List.append_nil]
-          refine ⟨?_, _, Z, ⟨_, hl'.ref hz⟩, ?_⟩
+          refine ⟨?_, ?_, _, Z, ⟨_, hl'.ref hz⟩, ?_⟩
+          · have e := vt_keeps z id (boxItems l') Z n' []
+            rw [List.append_nil] at e
+            rw [e]
+            exact keepN_ext n' z
           · have e := keepN_succ_kept n' z []
             rw [List.append_nil] at e
             rw [show Step.keep :: List.replicate n' Step.keep =
@@ -1053,7 +1066,12 @@ theorem keptTr_form (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW
           have hR : Step.walkTy Z R' = some (.VTypeDia Y) := by
             rw [walkTy_keep hUk, List.append_assoc, walkTy_keeps hUk] at hY
             exact hY
-          refine ⟨?_, _, Y, ⟨_, hl'.ref hz⟩, ?_⟩
+          refine ⟨?_, ?_, _, Y, ⟨_, hl'.ref hz⟩, ?_⟩
+          · rw [List.append_assoc, vt_keeps,
+              show [Step.dia, .fst] ++ R' = .dia :: .fst :: R' from rfl, vt_content _ _ _ _ R' hR,
+              show (VarSymb.step (keepN n' z) .dia).ext R' = (keepN n' z).ext (.dia :: R') from rfl,
+              keepN_ext, ← VarSymb.ext_append]
+            simp
           · rw [List.append_assoc, keeps_cons_append, vt_keeps,
               show [Step.dia, .fst] ++ R' = .dia :: .fst :: R' from rfl, vt_content _ _ _ _ R' hR,
               show (VarSymb.step (keepN (n' + 1) z) .dia).ext R' =
@@ -1075,7 +1093,15 @@ theorem keptTr_form (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW
               rw [walkTy_keep hUk, List.append_assoc, walkTy_keeps hUk] at hY
               change Step.walkTy (itemsTy (boxItems l')) (itemPath k ++ R') = _ at hY
               rwa [items_walk_eq] at hY
-            refine ⟨?_, _, Y, ⟨_, hl'.ref hw₂⟩, ?_⟩
+            refine ⟨?_, ?_, _, Y, ⟨_, hl'.ref hw₂⟩, ?_⟩
+            · rw [List.append_assoc, vt_keeps,
+                show (Step.dia :: Step.snd :: itemPath k) ++ R' =
+                  .dia :: .snd :: (itemPath k ++ R') from rfl, vt_item _ _ _ _ k hkl R' hR]
+              change (shiftN n' (boxItems l')[k].1).ext R' = _
+              rw [hw₁, shiftN_keep,
+                show (VarSymb.step (keepN n' w) .keep).ext R' = (keepN n' w).ext (.keep :: R')
+                  from rfl, keepN_ext, ← VarSymb.ext_append]
+              simp
             · rw [List.append_assoc, keeps_cons_append, vt_keeps,
                 show (Step.dia :: Step.snd :: itemPath k) ++ R' =
                   .dia :: .snd :: (itemPath k ++ R') from rfl, vt_item _ _ _ _ k hkl R' hR]
@@ -1363,11 +1389,6 @@ abbrev pathAcc {s t : GW hF M₀} {P : List ℕ} (hP : PathOk P) (h : t.1 = node
     (garrows hF M₀).Acc s :=
   ⟨t, ⟨⟨P, hP, h⟩⟩⟩
 
-/-- The root action read along an arrow's own path. -/
-theorem gKeep_eq {s t : GW hF M₀} {P : List ℕ} (hP : PathOk P) (h : t.1 = nodeOf s.1 P)
-    (r : VarSymb) (p : List Step) : gKeep s r (pathAcc hP h) p = gKeepP s t P h r p :=
-  gKeepP_path (pathOf_of _ h) _ _ r p
-
 /-- ⭐**The root possibility at a position of a typed kept address, kept along an arrow, is the
     kept address's member there** (the base case of composition): a root path `r` or `r.dia…` is
     kept by `gKeep`; a family `r.keep…` by reindexing, the doubled keep (`gMem_dk`). -/
@@ -1527,15 +1548,6 @@ theorem levels_form {n : ℕ} {X X' R : List Step} (h : Step.levels X = Step.lev
     Step.levels (List.replicate n .keep ++ X ++ R) =
       Step.levels (List.replicate n .keep ++ X' ++ R) := by
   rw [Step.levels_append, Step.levels_append, Step.levels_append, Step.levels_append, h]
-
-omit [ModalSys] in
-theorem levels_shapeOK {X X' : List Step} (h : ShapeOK X X') :
-    (Step.levels X = 0 ∧ Step.levels X' = 0) ∨ (Step.levels X = 1 ∧ Step.levels X' = 1) := by
-  rcases h with ⟨hX, hX'⟩ | ⟨Xp, s', X'p, rfl, hXp, rfl, hs', hX'p⟩
-  · exact .inl ⟨levels_pp hX, levels_pp hX'⟩
-  · refine .inr ⟨?_, ?_⟩
-    · rw [Step.levels_cons, if_neg (by decide), levels_pp hXp]
-    · rw [Step.levels_cons, if_neg (by simp [hs']), levels_pp hX'p]
 
 omit [ModalSys] in
 /-- ⭐**A shift goes through a translation's form**: before a leading keep or the piece's level
@@ -1774,7 +1786,7 @@ theorem gMem_shift (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (i : ℕ
         keptTr_form hT hM₀ t c (born_step h) hd hq
       obtain ⟨n', R', e₁, e₂, hR⟩ := form_shift hsh hi
       have htR : tl = false → R = [] := fun h => (htl h).2.2
-      obtain ⟨he₀, U', Y', hd', hY'⟩ := hform n R htR X₀ hq
+      obtain ⟨-, he₀, U', Y', hd', hY'⟩ := hform n R htR X₀ hq
       have hq₁ : Step.walkTy U (.keep :: Step.shiftAt i (List.replicate n .keep ++ X ++ R)) =
           some (.VTypeDia X₀) := by
         obtain ⟨U₁, hU₁, -⟩ := Option.bind_eq_some_iff.mp hq
@@ -1782,7 +1794,7 @@ theorem gMem_shift (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (i : ℕ
         rw [walkTy_keep hUk, Step.walkTy_shiftAt, ← walkTy_keep hUk]
         exact hq
       rw [e₁] at hq₁ ⊢
-      obtain ⟨he₁, -⟩ := hform n' R' (fun h => hR (htR h)) X₀ hq₁
+      obtain ⟨-, he₁, -⟩ := hform n' R' (fun h => hR (htR h)) X₀ hq₁
       rw [gMem_tr t t' c P h hv hw he₁ (levels_form hlX).symm,
         gMem_tr t t' c P h hv hw he₀ (levels_form hlX).symm, ← e₂]
       exact ihP h ⟨hw, U', Y', hd', hY'⟩ (by rw [← levels_form hlX]; exact hi)
@@ -1928,7 +1940,7 @@ theorem gMem_del (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (i : ℕ) 
         keptTr_form hT hM₀ t c (born_step h) hd hq
       obtain ⟨n', R', e₁, e₂, hi', hR⟩ := form_del hsh hi
       have htR : tl = false → R = [] := fun h => (htl h).2.2
-      obtain ⟨he₀, U', Y', hd', hY'⟩ := hform n R htR X₀ hq
+      obtain ⟨-, he₀, U', Y', hd', hY'⟩ := hform n R htR X₀ hq
       have hq₁ : Step.walkTy U (.keep :: delLvl i (List.replicate n .keep ++ X ++ R)) =
           some (.VTypeDia X₀) := by
         obtain ⟨U₁, hU₁, -⟩ := Option.bind_eq_some_iff.mp hq
@@ -1936,7 +1948,7 @@ theorem gMem_del (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (i : ℕ) 
         rw [walkTy_keep hUk] at hq ⊢
         exact walkTy_delLvl i _ U _ hi hq
       rw [e₁] at hq₁ ⊢
-      obtain ⟨he₁, -⟩ := hform n' R' (fun h => hR (htR h)) X₀ hq₁
+      obtain ⟨-, he₁, -⟩ := hform n' R' (fun h => hR (htR h)) X₀ hq₁
       rw [gMem_tr t t' c P h hv hw he₁ (levels_form hlX).symm,
         gMem_tr t t' c P h hv hw he₀ (levels_form hlX).symm, ← e₂]
       exact ihP h ⟨hw, U', Y', hd', hY'⟩ hi'
@@ -2009,7 +2021,7 @@ theorem gMem_app (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (m : ℕ) 
       obtain ⟨w, n, X, X', R, tl, rfl, hlX, hsh, hw, htl, hform⟩ :=
         keptTr_form hT hM₀ t c (born_step h) hd hq
       have htR : tl = false → R = [] := fun h => (htl h).2.2
-      obtain ⟨he₀, U', Y', hd', hY'⟩ := hform n R htR X₀ hq
+      obtain ⟨-, he₀, U', Y', hd', hY'⟩ := hform n R htR X₀ hq
       have hq₁ : Step.walkTy U (.keep :: (List.replicate n .keep ++ X ++ R ++ [.keep])) =
           some (.VTypeDia X₀) := by
         rw [show Step.keep :: (List.replicate n .keep ++ X ++ R ++ [.keep]) =
@@ -2028,7 +2040,7 @@ theorem gMem_app (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (m : ℕ) 
             exact ⟨n + 1, [], by simp [List.replicate_succ'], by simp [List.replicate_succ'],
               fun _ => rfl⟩
       rw [e₁] at hq₁ ⊢
-      obtain ⟨he₁, -⟩ := hform n' R' hR' X₀ hq₁
+      obtain ⟨-, he₁, -⟩ := hform n' R' hR' X₀ hq₁
       rw [gMem_tr t t' c P h hv hw he₁ (levels_form hlX).symm,
         gMem_tr t t' c P h hv hw he₀ (levels_form hlX).symm, ← e₂]
       exact ihP h ⟨hw, U', Y', hd', hY'⟩ (by rw [← levels_form hlX]; exact hm)
@@ -2411,7 +2423,7 @@ theorem gMem_wf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (m : ℕ) :
       obtain ⟨w, n, X, X', R, tl, rfl, hlX, hsh, hw, htl, hform⟩ :=
         keptTr_form hT hM₀ t c (born_step h) hd hq
       have htR : tl = false → R = [] := fun h => (htl h).2.2
-      obtain ⟨he₀, U', Y', hd', hY'⟩ := hform n R htR X₀ hq
+      obtain ⟨-, he₀, U', Y', hd', hY'⟩ := hform n R htR X₀ hq
       rw [gMem_tr t t' c P h hv hw he₀ (levels_form hlX).symm]
       exact ihP h ⟨hw, U', Y', hd', hY'⟩ (by rw [← levels_form hlX]; exact hm) hlw
         (boxOK_of_lvl _ lw fun j hj e => boxOK_lvl _ lw j hb hj (form_lvl_dia hsh e))
@@ -2435,6 +2447,45 @@ theorem gKeep_wf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : GW hF
         exact gMem_wf hT hM₀ _ _ _ (kOk_of_typedAt ht).1 rfl h₀.1.symm h₀.2.2.1
       · rw [if_neg ht]
         exact (Arrows.Leaf.wf_root _ _).mpr h₀
+
+/-! ## The growing tree's root action -/
+
+open Classical in
+/-- ⭐**The growing tree's root action**: the canonical leaf-valued action (`gKeep`) under T over
+    a maximal theory; otherwise, where nothing is shaped, a root path stays. -/
+noncomputable instance instRootKeepG : Arrows.RootKeep (garrows hF M₀) (fun _ => VarSymb) :=
+  if ModalSys.T = true ∧ Theory.IsMCS M₀ then gRK
+  else Arrows.RootKeep.ofRoot fun _ {_} r _ => r
+
+theorem instRootKeepG_eq (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) :
+    (instRootKeepG : Arrows.RootKeep (garrows hF M₀) (fun _ => VarSymb)) = gRK :=
+  if_pos ⟨hT, hM₀⟩
+
+/-- Under T, leaves are kept by the canonical action. -/
+theorem keepAlong_eq (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : GW hF M₀}
+    (a : (garrows hF M₀).Acc s) (ℓ : GLeaf hF M₀ s) :
+    Arrows.Leaf.keepAlong hF a ℓ = gKA a ℓ := by
+  rw [← keepAlong_gRK]
+  congr 1
+  exact instRootKeepG_eq hT hM₀
+
+/-- ⭐**Its laws**: under T those of the canonical action, else path arithmetic. -/
+instance instRootKeepLawsG : Arrows.RootKeepLaws (garrows hF M₀) (fun _ => VarSymb) := by
+  by_cases h : ModalSys.T = true ∧ Theory.IsMCS M₀
+  · obtain ⟨hT, hM₀⟩ := h
+    rw [instRootKeepG_eq hT hM₀]
+    exact @Arrows.RootKeepLaws.mk _ _ (garrows hF M₀) (fun _ => VarSymb) gRK
+      (fun _ {_} r a b p => (keepAlong_gRK b _).trans (gKeep_trans hT hM₀ r a b p))
+      (fun hT' _ {_} r p => gKeep_refl hT' r p)
+      (fun _ {_} r a lw p h => gKeep_wf hT hM₀ r a lw p h)
+      (fun _ {_} r a c lw p h => gKeep_keepAt hT hM₀ r a c lw p h)
+      (fun _ {_} r a c lw q p h => gKeep_shiftAt hT hM₀ r a c lw q p h)
+      (fun hT' _ {_} r a c lw q p h => gKeep_collapseAt hT' hM₀ r a c lw q p h)
+  · have e : (instRootKeepG : Arrows.RootKeep (garrows hF M₀) (fun _ => VarSymb)) =
+        Arrows.RootKeep.ofRoot fun _ {_} r _ => r := if_neg h
+    rw [e]
+    exact Arrows.RootKeepLaws.ofRoot (F := garrows hF M₀) (Root := fun _ => VarSymb) _
+      (fun _ {_} _ _ _ => rfl) (fun _ _ {_} _ => rfl)
 
 end GArrow
 

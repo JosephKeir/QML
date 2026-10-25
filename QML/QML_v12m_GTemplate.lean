@@ -1,25 +1,17 @@
 import QML.QML_v12m_GKeep
-import QML.QML_v12m_GLevel
 
 /-!
-# QML v12m — the growing tree: shape templates and the canonical shapes
+# QML v12m — the growing tree: the canonical shapes
 
-Under T + 4 with the strong forms the canonical shape of an address depends on its origin
-(`docs/v12-modal-extensions.md` §3 4, "(B) on paper: shape templates" and "(B) in Lean").  One
-**construction step** `CStep ρ` reads the templates in a family `ρ`:
+Under T possible objects carry shapes (`docs/v12-modal-extensions.md` §3 4, "Phase 2b").  The
+canonical shape of an address is its **address shape**: the tree of its η-annotation with each
+`◇`-node labelled by the label of the address there (`gLab`).  Kept along an arrow, a root
+possibility's labels move by the leaf-valued root action (`gKeep`), so a lifted root needs no
+template of its own.
 
-* a `□` address has along each arrow the shape of its value there (`boxEnt`), edge by edge: an
-  edge's entry for its kept item is an address, whose value along the rest it is, or a lifted
-  term, whose shape at the child is read at the rest of the arrow (`unT`); along the empty path,
-  its contents here, by recursion on the type;
-* a `◇`-root that is **lifted** has the pull-back of its lifted term's shape (`liftDia`); one that
-  is the **image** of a `◇`-root of the parent inherits that root's shape kept along the edge
-  (`diaT`, by recursion on the node); every other `◇` address has the generic shape (`genDia`).
-
-Templates read only the child's language at the lift, whose roots are below the lifted root
-(`lev_lift`).  So ⭐`cEnv`, **the canonical shapes**, is one step with the templates read in the
-canonical shapes of lower addresses, by well-founded recursion on the level (`levA`).  It is
-well-formed (`cEnv_wf`).
+* `annSh`: the shape of an annotation, its indices' labels at its `◇`-nodes;
+* ⭐`cEnv`, **the canonical shapes**: the address shape of a declared address;
+* ⭐`cEnv_wf`: they are well-formed; ⭐`cEnv_dia_generic`: a possible address's is generic.
 -/
 
 namespace V12M
@@ -32,36 +24,6 @@ open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
   {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
-
-/-! ## Lifted terms -/
-
-omit [ModalSys] [Countable σ.FuncSyms] [Countable σ.RelSyms] in
-/-- A lifted term, when it is a term of `◇A`. -/
-def LTerm.diaOf (A : VarType) :
-    (e : LTerm σ) → Option (Σ a : Ann (.VTypeDia A), Term σ (ctxOf e.1) (.VTypeDia A) a)
-  | ⟨_, .VTypeDia A', b, τ⟩ => if h : A' = A then by subst h; exact some ⟨b, τ⟩ else none
-  | _ => none
-
-/-- An edge with a term entry is an edge of the limit. -/
-theorem gborn_of_inr {k : Node} {v : VarSymb} {e : LTerm σ} (h : fmapL hF M₀ k v = .inr e) :
-    GBorn hF M₀ k := by
-  obtain ⟨m, hk, -⟩ := fmapL_committed h
-  exact ⟨m, hk⟩
-
-theorem gborn_parent {c : ℕ} {p : Node} (h : GBorn hF M₀ (c :: p)) : GBorn hF M₀ p :=
-  gborn_of_suffix h (List.suffix_cons c p)
-
-/-- A root's kept item is lifted along an edge out of `s`. -/
-def Lifted (s : GW hF M₀) (z : ℕ) : Prop :=
-  ∃ c e, fmapL hF M₀ (c :: s.1) (.step (.root (.free z)) .keep) = .inr e
-
-/-- The child a lifted root is lifted from. -/
-noncomputable def Lifted.child {s : GW hF M₀} {z : ℕ} (h : Lifted s z) : GW hF M₀ :=
-  ⟨h.choose :: s.1, gborn_of_inr h.choose_spec.choose_spec⟩
-
-/-- The term a lifted root is lifted to. -/
-noncomputable def Lifted.ent {s : GW hF M₀} {z : ℕ} (h : Lifted s z) : LTerm σ :=
-  h.choose_spec.choose
 
 /-! ## Shape families -/
 
@@ -86,37 +48,26 @@ def dsh : List Bool → (s : GW hF M₀) → (T : VarType) → GShape hF M₀ s 
 def genDia (s : GW hF M₀) (v : VarSymb) (A : VarType) : GShape hF M₀ s (.VTypeDia A) :=
   .dia (.root v []) (rootSh s v [.dia] A)
 
-/-! ## The templates -/
+/-! ## Address shapes -/
 
-/-- The pull-back to the root `z` of `s` of a lifted term's shape, read in `ρ` at the child `t`. -/
-noncomputable def liftDiaAt (ρ : ShFam hF M₀) (s : GW hF M₀) (z : ℕ) (t : GW hF M₀)
-    (e : LTerm σ) (A : VarType) : GShape hF M₀ s (.VTypeDia A) :=
-  match e.diaOf A with
-  | some ⟨_, τ⟩ =>
-      pbShp hF M₀ (t := t) (.root (.free z)) [] (Model.termShp (famEnv ρ (ctxOf e.1) t) 0 τ)
-  | none => genDia s (.root (.free z)) A
-
-/-- ⭐**The template of a lifted `◇`-root**: the pull-back to the root of its lifted term's shape,
-    read in `ρ` at the child. -/
-noncomputable def liftDia (ρ : ShFam hF M₀) {s : GW hF M₀} {z : ℕ} (h : Lifted s z)
-    (A : VarType) : GShape hF M₀ s (.VTypeDia A) :=
-  liftDiaAt ρ s z h.child h.ent A
+/-- ⭐**The shape of an annotation**: its tree, each `◇`-node labelled by its index's label. -/
+noncomputable def annSh (t : GW hF M₀) : {T : VarType} → Ann T → GShape hF M₀ t T
+  | _, .var => .var
+  | _, .one => .one
+  | _, .prod a b => .prod (annSh t a) (annSh t b)
+  | _, .box a => .box (annSh t a)
+  | _, .dia i a => .dia (gLab t i) (annSh t a)
 
 open Classical in
-/-- ⭐**The shape of a `◇`-root**: a lifted root's template; an image of a parent's `◇`-root, that
-    root's shape kept along the edge; else generic.  By recursion on the node. -/
-noncomputable def diaT (ρ : ShFam hF M₀) :
-    (p : Node) → (hp : GBorn hF M₀ p) → VarSymb → (A : VarType) →
-      GShape hF M₀ ⟨p, hp⟩ (.VTypeDia A)
-  | [], hp, v, A =>
-      if h : ∃ z, v = .root (.free z) ∧ Lifted ⟨[], hp⟩ z then liftDia ρ h.choose_spec.2 A
-      else genDia ⟨[], hp⟩ v A
-  | c :: p, hp, v, A =>
-      if h : ∃ z, v = .root (.free z) ∧ Lifted ⟨c :: p, hp⟩ z then liftDia ρ h.choose_spec.2 A
-      else if h' : ∃ u, fmapL hF M₀ (c :: p) (.step (.root (.free u)) .keep) = .inl v then
-        (diaT ρ p (gborn_parent hp) (.root (.free h'.choose)) A).map
-          (Arrows.Leaf.keepAlong hF (edgeAcc (s := ⟨p, gborn_parent hp⟩) (t := ⟨c :: p, hp⟩) rfl))
-      else genDia ⟨c :: p, hp⟩ v A
+/-- ⭐**The canonical shapes**: under T over a maximal theory, a declared address's address
+    shape (its η-annotation's); a default shape otherwise. -/
+noncomputable def cEnv (s : GW hF M₀) (v : VarSymb) (T : VarType) : GShape hF M₀ s T :=
+  if ModalSys.T = true ∧ Theory.IsMCS M₀ ∧ DeclAt s v T then annSh s (Ann.eta v T)
+  else dsh [] s T
+
+theorem cEnv_decl (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : GW hF M₀} {v : VarSymb}
+    {T : VarType} (hd : DeclAt s v T) : cEnv s v T = annSh s (Ann.eta v T) :=
+  if_pos ⟨hT, hM₀, hd⟩
 
 /-! ## Reading a family at an arrow -/
 
@@ -153,60 +104,6 @@ theorem unT_transpose {t : GW hF M₀} (b : (garrows hF M₀).Acc t) :
       rw [unT_transpose b]
       exact (Shp.dia_eta _).symm
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
-/-- A lifted term, when it is a term of `□A`. -/
-def LTerm.boxOf (A : VarType) :
-    (e : LTerm σ) → Option (Σ a : Ann (.VTypeBox A), Term σ (ctxOf e.1) (.VTypeBox A) a)
-  | ⟨_, .VTypeBox A', b, τ⟩ => if h : A' = A then by subst h; exact some ⟨b, τ⟩ else none
-  | _ => none
-
-/-- ⭐**A `□` address's value along a path**, its shape read by `g` at the end: along the empty
-    path, its contents here; along an edge whose entry for its kept item is an address, that
-    address's value along the rest; along an edge to which it is lifted, the lifted term's shape at
-    the child, read in `ρ`, at the rest of the path (`unT`). -/
-noncomputable def boxEnt (ρ : ShFam hF M₀) {A : VarType}
-    (g : (t : GW hF M₀) → VarSymb → GShape hF M₀ t A) :
-    (s : GW hF M₀) → VarSymb → (P : List ℕ) → (t : GW hF M₀) → t.1 = nodeOf s.1 P →
-      GShape hF M₀ t A
-  | _, v, [], t, _ => g t (.step v .here)
-  | s, v, c :: Q, t, h =>
-      match fmapL hF M₀ (c :: s.1) (.step v .keep) with
-      | .inl y => boxEnt ρ g (stepW s c (born_step h)) y Q t h
-      | .inr e =>
-          if hQ : PathOk Q then
-            match e.boxOf A with
-            | some ⟨_, τ⟩ =>
-                unT ⟨t, ⟨⟨Q, hQ, h⟩⟩⟩ (Model.termShp
-                  (famEnv ρ (ctxOf e.1) (stepW s c (born_step h))) 0 τ).inner
-            | none => dsh [] t A
-          else dsh [] t A
-
-/-- ⭐**One construction step**: the canonical shapes, with the lifted templates read in `ρ`.  By
-    recursion on the type. -/
-noncomputable def CStep (ρ : ShFam hF M₀) :
-    (T : VarType) → (s : GW hF M₀) → VarSymb → GShape hF M₀ s T
-  | .Var, _, _ => .var
-  | .VTypeOne, _, _ => .one
-  | .VTypeProd A C, s, v => .prod (CStep ρ A s (.step v .fst)) (CStep ρ C s (.step v .snd))
-  | .VTypeBox A, s, v =>
-      .box (Arrows.transposeShp (F := garrows hF M₀) (Root := fun _ => VarSymb) fun a =>
-        boxEnt ρ (fun t w => CStep ρ A t w) s v (pathOf a.2.down) a.1 (pathOf_eq a.2.down))
-  | .VTypeDia A, s, v => diaT ρ s.1 s.2 v A
-
-/-! ## The canonical shapes -/
-
-/-- The level of an address: its root's. -/
-noncomputable def levA (s : GW hF M₀) (v : VarSymb) : ℕ :=
-  match v.rt with
-  | .free r => lev s r
-  | .bnd _ => 0
-
-/-- ⭐**The canonical shapes**: one construction step, the templates read in the canonical shapes
-    of lower addresses.  By well-founded recursion on the level. -/
-noncomputable def cEnv (s : GW hF M₀) (v : VarSymb) (T : VarType) : GShape hF M₀ s T :=
-  CStep (fun t w W => if levA t w < levA s v then cEnv t w W else dsh [] t W) T s v
-termination_by levA s v
-
 /-! ## Well-formedness -/
 
 theorem dsh_wf : ∀ (lw : List Bool) (s : GW hF M₀) (T : VarType),
@@ -216,12 +113,6 @@ theorem dsh_wf : ∀ (lw : List Bool) (s : GW hF M₀) (T : VarType),
   | lw, s, .VTypeProd A C => ⟨dsh_wf lw s A, dsh_wf lw s C⟩
   | lw, s, .VTypeBox A => dsh_wf (lw ++ [true]) s A
   | lw, s, .VTypeDia A => ⟨dleaf_wf lw s, dsh_wf (lw ++ [false]) s A⟩
-
-theorem genDia_wf (s : GW hF M₀) (v : VarSymb) (A : VarType) :
-    Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (genDia s v A) :=
-  ⟨(Arrows.Leaf.wf_root _ []).mpr ⟨rfl, by simp, trivial, ⟨.VTypeDia A, A, rfl⟩⟩,
-    rootSh_wf s v A [.dia] [false] rfl rfl (Step.BoxOK_snoc_dia [] [] rfl trivial)
-        (.VTypeDia A) rfl⟩
 
 /-- Keeping a shape's leaves along an arrow keeps it well-formed. -/
 theorem shWF_map_keepAlong {s : GW hF M₀} (a : (garrows hF M₀).Acc s) :
@@ -251,84 +142,214 @@ theorem shWF_unT {t : GW hF M₀} (b : (garrows hF M₀).Acc t) :
       | .root _ _, h₁ => exact absurd ((Arrows.Leaf.wf_root _ _).mp h₁).2 (by simp)
       | .fam _, h₁ => exact h₁ b
 
-theorem shWF_unT_inner {t : GW hF M₀} (b : (garrows hF M₀).Acc t) {A : VarType}
-    (S : GShape hF M₀ t (.VTypeBox A))
-    (h : Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] S) :
-    Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (unT b S.inner) := by
-  rw [Shp.box_eta S] at h
-  exact shWF_unT b [] _ h
-
 /-- A family well-formed at every address gives well-formed environments. -/
 theorem famEnv_wf {ρ : ShFam hF M₀}
     (hρ : ∀ t v T, Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (ρ t v T))
     (Γ : Ctx) (t : GW hF M₀) : (famEnv ρ Γ t).WF [] :=
   fun v T _ => hρ t v T
 
-theorem liftDia_wf {ρ : ShFam hF M₀}
-    (hρ : ∀ t v T, Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (ρ t v T))
-    {s : GW hF M₀} {z : ℕ} (h : Lifted s z) (A : VarType) :
-    Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (liftDia ρ h A) := by
-  unfold liftDia liftDiaAt
-  split
-  · exact pbShp_wf _ [] _ (Model.shWF_termShp (famEnv_wf hρ _ _) _)
-  · exact genDia_wf _ _ _
+/-- The type of a projection of a declared address. -/
+theorem declAt_ext {s : GW hF M₀} {v : VarSymb} {U : VarType} (hd : DeclAt s v U)
+    {q : List Step} (hq : PPath q) {T : VarType} (hw : Step.walkTy U q = some T) :
+    DeclAt s (v.ext q) T := by
+  obtain ⟨i, hi⟩ := hd
+  refine ⟨i, ?_⟩
+  rw [Ctx.ref_ext_ppath _ q v hq, hi, Option.bind_some, ← walkTy_ppath U hq]
+  exact hw
 
-theorem diaT_wf {ρ : ShFam hF M₀}
-    (hρ : ∀ t v T, Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (ρ t v T)) :
-    ∀ (p : Node) (hp : GBorn hF M₀ p) (v : VarSymb) (A : VarType),
-      Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (diaT ρ p hp v A)
-  | [], hp, v, A => by
-      unfold diaT
-      split
-      · exact liftDia_wf hρ _ A
-      · exact genDia_wf _ _ _
-  | c :: p, hp, v, A => by
-      unfold diaT
-      split
-      · exact liftDia_wf hρ _ A
-      · split
-        · exact shWF_map_keepAlong _ [] _ (diaT_wf hρ p _ _ A)
-        · exact genDia_wf _ _ _
+/-- ⭐**The label of a position of a declared address is well-formed** at the position's level
+    kinds, when the `□` levels are spelled by `keep`s. -/
+theorem gLab_wf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : GW hF M₀} {v : VarSymb}
+    {U : VarType} (hd : DeclAt s v U) (hv : PPath v.path) {π : List Step} {A : VarType}
+    (hw : Step.walkTy U π = some (.VTypeDia A)) {lw : List Bool}
+    (hl : Step.levels π = lw.length)
+    (hk : ∀ j, lw[j]? = some true → lvlStep j π = some .keep) :
+    Arrows.Leaf.WF lw (gLab s (v.ext π)) := by
+  by_cases h0 : Step.levels π = 0
+  · have hπ := ppath_of_levels0 h0
+    have hpre : PPath (v.ext π).path := by
+      rw [VarSymb.ext_path]
+      exact fun x hx => (List.mem_append.mp hx).elim (hv x) (hπ x)
+    rw [gLab_ppath _ hpre]
+    obtain rfl : lw = [] := List.eq_nil_of_length_eq_zero (by omega)
+    exact (Arrows.Leaf.wf_root _ []).mpr ⟨rfl, by simp, trivial,
+      ⟨.VTypeDia .VTypeOne, .VTypeOne, rfl⟩⟩
+  · obtain ⟨π₀, st, r, rfl, hπ₀, hst⟩ := split_first π (by omega)
+    have hpre : PPath (v.ext π₀).path := by
+      rw [VarSymb.ext_path]
+      exact fun x hx => (List.mem_append.mp hx).elim (hv x) (hπ₀ x)
+    have hlv : ∀ j, lvlStep j (π₀ ++ st :: r) = lvlStep j (st :: r) := fun j => by
+      rw [lvlStep_append, levels_pp hπ₀, if_neg (by omega), Nat.sub_zero]
+    rw [Step.walkTy_append, walkTy_ppath U hπ₀] at hw
+    obtain ⟨U₀, hU₀, hw₀⟩ := Option.bind_eq_some_iff.mp hw
+    have hd₀ : DeclAt s (v.ext π₀) U₀ := declAt_ext hd hπ₀ ((walkTy_ppath U hπ₀).trans hU₀)
+    have hlr : Step.levels (π₀ ++ st :: r) = 1 + Step.levels r := by
+      rw [Step.levels_append, levels_pp hπ₀, Step.levels_cons, if_neg (by simp [hst])]
+      omega
+    rw [VarSymb.ext_append]
+    cases st with
+    | fst => cases hst
+    | snd => cases hst
+    | here => cases hst
+    | box =>
+        have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
+        obtain ⟨W, hW, -⟩ := Option.bind_eq_some_iff.mp hw₀
+        change (if ModalSys.keepOnly = true then none else U₀.step .box) = some W at hW
+        rw [if_pos hko] at hW
+        cases hW
+    | dia =>
+        rw [show (v.ext π₀).ext (Step.dia :: r) = (VarSymb.step (v.ext π₀) .dia).ext r from rfl,
+          gLab_dia _ hpre]
+        have hlev : Step.levels (Step.dia :: r) = lw.length := by
+          rw [← hl, hlr, Step.levels_cons, if_neg (by decide)]
+        have hhead : lw.head? ≠ some true := fun hh => by
+          have := hk 0 (by
+            cases lw with
+            | nil => cases hh
+            | cons c l => simpa using hh)
+          rw [hlv, lvlStep_lvl_zero (by decide)] at this
+          cases this
+        have hbox : Step.BoxOK lw (Step.dia :: r) := boxOK_of_lvl _ lw fun j hj e => by
+          have := hk j hj
+          rw [hlv, e] at this
+          cases this
+        exact (Arrows.Leaf.wf_root _ _).mpr ⟨hlev, hhead, hbox, ⟨U₀, A, hw₀⟩⟩
+    | keep =>
+        rw [show (v.ext π₀).ext (Step.keep :: r) = (VarSymb.step (v.ext π₀) .keep).ext r from rfl,
+          gLab_keep _ hpre]
+        cases lw with
+        | nil => simp at hl; omega
+        | cons c lw' =>
+            intro b
+            refine gMem_wf hT hM₀ (Step.levels r) _ _ ⟨hpre, U₀, A, hd₀, hw₀⟩ rfl
+              (by simp at hl; omega) (boxOK_of_lvl _ lw' fun j hj e => ?_)
+            have := hk (j + 1) (by simpa using hj)
+            rw [hlv, lvlStep_lvl_succ rfl, e] at this
+            cases this
 
-theorem boxEnt_wf {ρ : ShFam hF M₀}
-    (hρ : ∀ t v T, Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (ρ t v T))
-    {A : VarType} {g : (t : GW hF M₀) → VarSymb → GShape hF M₀ t A}
-    (hg : ∀ t w, Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (g t w)) :
-    ∀ (s : GW hF M₀) (v : VarSymb) (P : List ℕ) (t : GW hF M₀) (h : t.1 = nodeOf s.1 P),
-      Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (boxEnt ρ g s v P t h)
-  | _, _, [], t, _ => hg t _
-  | s, v, c :: Q, t, h => by
-      unfold boxEnt
-      split
-      · exact boxEnt_wf hρ hg _ _ Q t h
-      · split
-        · split
-          · exact shWF_unT_inner _ _ (Model.shWF_termShp (famEnv_wf hρ _ _) _)
-          · exact dsh_wf [] t A
-        · exact dsh_wf [] t A
-
-/-- ⭐**Each construction step is well-formed**, from a well-formed family. -/
-theorem cStep_wf {ρ : ShFam hF M₀}
-    (hρ : ∀ t v T, Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (ρ t v T)) :
-    ∀ (T : VarType) (s : GW hF M₀) (v : VarSymb),
-      Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (CStep ρ T s v)
-  | .Var, _, _ => trivial
-  | .VTypeOne, _, _ => trivial
-  | .VTypeProd A C, s, v => ⟨cStep_wf hρ A s _, cStep_wf hρ C s _⟩
-  | .VTypeBox A, s, v => by
-      exact Model.shWF_transpose true [] _ fun a =>
-        boxEnt_wf hρ (fun t w => cStep_wf hρ A t w) s v _ a.1 _
-  | .VTypeDia A, s, v => diaT_wf hρ s.1 s.2 v A
+/-- The address shape of a position of a declared address is well-formed. -/
+theorem annSh_eta_wf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : GW hF M₀}
+    {v : VarSymb} {U : VarType} (hd : DeclAt s v U) (hv : PPath v.path) :
+    ∀ (T : VarType) (π : List Step) (lw : List Bool), Step.walkTy U π = some T →
+      Step.levels π = lw.length → (∀ j, lw[j]? = some true → lvlStep j π = some .keep) →
+      Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) lw
+        (annSh s (Ann.eta (v.ext π) T))
+  | .Var, _, _, _, _, _ => trivial
+  | .VTypeOne, _, _, _, _, _ => trivial
+  | .VTypeProd A C, π, lw, hw, hl, hk => by
+      have hlv : ∀ (st : Step), st.isProj = true → ∀ j, lw[j]? = some true →
+          lvlStep j (π ++ [st]) = some .keep := fun st hs j hj => by
+        rw [lvlStep_append, if_pos (by rw [hl]; exact (List.getElem?_eq_some_iff.mp hj).1)]
+        exact hk j hj
+      have hl' : ∀ (st : Step), st.isProj = true → Step.levels (π ++ [st]) = lw.length :=
+        fun st hs => by rw [Step.levels_append, hl]; simp [Step.levels, hs]
+      refine ⟨?_, ?_⟩
+      · have := annSh_eta_wf hT hM₀ hd hv A (π ++ [.fst]) lw
+          (by rw [Step.walkTy_append, hw]; rfl) (hl' .fst rfl) (hlv .fst rfl)
+        rwa [VarSymb.ext_append_single] at this
+      · have := annSh_eta_wf hT hM₀ hd hv C (π ++ [.snd]) lw
+          (by rw [Step.walkTy_append, hw]; rfl) (hl' .snd rfl) (hlv .snd rfl)
+        rwa [VarSymb.ext_append_single] at this
+  | .VTypeBox A, π, lw, hw, hl, hk => by
+      have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
+      have := annSh_eta_wf hT hM₀ hd hv A (π ++ [.keep, .here]) (lw ++ [true])
+        (by
+          rw [Step.walkTy_append, hw, Option.bind_some, walkTy_keep rfl, walkTy_here hT]
+          rfl)
+        (by rw [Step.levels_append, hl]; simp [Step.levels, Step.isProj])
+        (fun j hj => by
+          rw [lvlStep_append]
+          by_cases hjl : j < lw.length
+          · rw [if_pos (by rw [hl]; exact hjl)]
+            exact hk j (by rwa [List.getElem?_append_left hjl] at hj)
+          · rw [if_neg (by omega)]
+            have hj' : j - lw.length = 0 := by
+              rw [List.getElem?_append_right (by omega)] at hj
+              by_contra hne
+              rw [List.getElem?_eq_none (by simp; omega)] at hj
+              cases hj
+            rw [hl, hj', lvlStep_lvl_zero rfl])
+      change Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) (lw ++ [true])
+        (annSh s (Ann.eta (v.ext π).inner A))
+      rw [VarSymb.inner_keepOnly hko]
+      rw [VarSymb.ext_append] at this
+      exact this
+  | .VTypeDia A, π, lw, hw, hl, hk => by
+      refine ⟨gLab_wf hT hM₀ hd hv hw hl hk, ?_⟩
+      have := annSh_eta_wf hT hM₀ hd hv A (π ++ [.dia]) (lw ++ [false])
+        (by rw [Step.walkTy_append, hw]; rfl)
+        (by rw [Step.levels_append, hl]; simp [Step.levels, Step.isProj])
+        (fun j hj => by
+          rw [lvlStep_append]
+          by_cases hjl : j < lw.length
+          · rw [if_pos (by rw [hl]; exact hjl)]
+            exact hk j (by rwa [List.getElem?_append_left hjl] at hj)
+          · exfalso
+            rw [List.getElem?_append_right (by omega)] at hj
+            by_cases hj0 : j - lw.length = 0
+            · rw [hj0] at hj
+              cases hj
+            · rw [List.getElem?_eq_none (by simp; omega)] at hj
+              cases hj)
+      rwa [VarSymb.ext_append_single] at this
 
 /-- ⭐**The canonical shapes are well-formed.** -/
 theorem cEnv_wf (s : GW hF M₀) (v : VarSymb) (T : VarType) :
     Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (cEnv s v T) := by
-  rw [cEnv]
-  refine cStep_wf (fun t w W => ?_) T s v
+  unfold cEnv
   split
-  · exact cEnv_wf t w W
-  · exact dsh_wf [] t W
-termination_by levA s v
+  · rename_i h
+    obtain ⟨hT, hM₀, hd⟩ := h
+    obtain ⟨i, hi⟩ := id hd
+    exact annSh_eta_wf hT hM₀ hd (reach_ppath hi).1 T [] [] rfl rfl (fun _ h => by cases h)
+  · exact dsh_wf [] s T
+
+/-! ## Possible addresses read generically -/
+
+/-- Inside a possible root's content, address shapes are generic. -/
+theorem annSh_rootSh {s : GW hF M₀} {y : VarSymb} (hy : PPath y.path) :
+    ∀ (T : VarType) (π : List Step), annSh s (Ann.eta (y.ext (.dia :: π)) T) =
+      rootSh s y (.dia :: π) T
+  | .Var, _ => rfl
+  | .VTypeOne, _ => rfl
+  | .VTypeProd A C, π => by
+      change Shp.prod (annSh s (Ann.eta (.step (y.ext (.dia :: π)) .fst) A))
+        (annSh s (Ann.eta (.step (y.ext (.dia :: π)) .snd) C)) = _
+      rw [← VarSymb.ext_append_single, ← VarSymb.ext_append_single, List.cons_append,
+        List.cons_append, annSh_rootSh hy A, annSh_rootSh hy C]
+      rfl
+  | .VTypeBox A, π => by
+      change Shp.box (annSh s (Ann.eta (y.ext (.dia :: π)).inner A)) =
+        Shp.box (rootSh s y ((.dia :: π) ++ Step.innerPath) A)
+      by_cases hk : ModalSys.keepOnly = true
+      · rw [VarSymb.inner_keepOnly hk, show Step.innerPath = [.keep, .here] from if_pos hk,
+          show ((y.ext (.dia :: π)).step .keep).step .here = y.ext (.dia :: (π ++ [.keep, .here]))
+            by rw [← List.cons_append, VarSymb.ext_append]; rfl,
+          annSh_rootSh hy A]
+        rfl
+      · rw [VarSymb.inner_box (Bool.eq_false_iff.mpr hk),
+          show Step.innerPath = [.box] from if_neg hk,
+          show (y.ext (.dia :: π)).step .box = y.ext (.dia :: (π ++ [.box]))
+            by rw [← List.cons_append, VarSymb.ext_append]; rfl,
+          annSh_rootSh hy A]
+        rfl
+  | .VTypeDia A, π => by
+      change Shp.dia (gLab s (y.ext (.dia :: π))) (annSh s (Ann.eta (.step (y.ext (.dia :: π))
+        .dia) A)) = _
+      rw [← VarSymb.ext_append_single, List.cons_append, annSh_rootSh hy A,
+        show y.ext (.dia :: π) = (VarSymb.step y .dia).ext π from rfl, gLab_dia _ hy]
+      rfl
+
+/-- ⭐**A possible address's canonical shape is generic** (`genDia`). -/
+theorem cEnv_dia_generic (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : GW hF M₀}
+    {y : VarSymb} {X : VarType} (hd : DeclAt s y (.VTypeDia X)) :
+    cEnv s y (.VTypeDia X) = genDia s y X := by
+  obtain ⟨i, hi⟩ := id hd
+  have hy := (reach_ppath hi).1
+  rw [cEnv_decl hT hM₀ hd]
+  change Shp.dia (gLab s y) (annSh s (Ann.eta (.step y .dia) X)) = _
+  rw [gLab_ppath _ hy, show VarSymb.step y .dia = y.ext (.dia :: []) from rfl, annSh_rootSh hy]
+  rfl
 
 end GArrow
 

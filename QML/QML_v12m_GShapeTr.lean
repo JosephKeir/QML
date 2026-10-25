@@ -1,4 +1,4 @@
-import QML.QML_v12m_GCEnv
+import QML.QML_v12m_GSelf
 
 /-!
 # QML v12m — the growing tree: shapes of translated terms

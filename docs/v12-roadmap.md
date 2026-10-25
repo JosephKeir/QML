@@ -13,7 +13,7 @@ package.  Design detail stays in `v12-modal-extensions.md` (per axiom) and `v12-
 | weak B with any of T, D (both strengths), without 4 (`NoFour`) | ✓ | ✓ (+ strong completeness, compactness; every presented context) | the network (`BArrow.*`) |
 | strong B, rows 1–2 (carriers `□□A`, `◇_y□A`), with T and D in either strength, 4 off | ✓ | ✓ (+ strong completeness, compactness; every presented context; T added 2026-10-20, `v12-modal-extensions.md` §11.21) | the network, strong chain (`bdataS`) |
 | strong B, rows 3–4 (row 3: B's unit `A → □◇A` read per arrow; row 4 the same along `◇_y`; flag `BStrongW`), with T (strong form, `WCoh`) and D (either strength), 4 off | ✓ | ✓ (+ strong completeness, compactness; every presented context; 2026-10-22, `v12-modal-extensions.md` §11.23: the per-arrow reading — model law `posBack_exists`, rule `ret_realise` (`ret_route` derived, `Proof.ret_route_node`, and removed), every edge doubly witnessed; the uniform-carrier design with named back witnesses abandoned, record branch `record/b2-named-witnesses`) | the network, strong chain (`bdataS`, `LimitEx.ofW`) |
-| 4 with its strong forms (the lift `FourStrong`, `FourStrongW`, either or both), T and D (either strength), B off; under T the `□`-lift on whenever the `◇`-lift is (`ModalSys.FourCoh`) | ✓ | ✓ (+ strong completeness, compactness; every presented context; `GArrow.completenessG_presented`, 2026-10-25; T added 2026-10-25 by D-H3 and the leaf calculus, `v12-modal-extensions.md` §3 4); `FourStrongW` without `FourStrong` under T still open | the growing tree (`GArrow.*`, `gmodel`) |
+| 4 with its strong forms (the lift `FourStrong`, `FourStrongW`, either or both, independently), T and D (either strength), B off | ✓ | ✓ (+ strong completeness, compactness; every presented context; `GArrow.completenessG_presented`, 2026-10-25; T added 2026-10-25 by D-H3 and the leaf calculus, `v12-modal-extensions.md` §3 4); `FourStrongW` without `FourStrong` under T still open | the growing tree (`GArrow.*`, `gmodel`) |
 | B with 4, S5 | ✓ | **open** | — |
 | 5, 4's open maps | not yet stated | — | — |
 
@@ -272,11 +272,13 @@ Paper pass: `v12-modal-extensions.md` §3 4, "4's four cases".  Weak/strong × `
      languages (`completenessG`; `v12-modal-extensions.md` §3 4, "The canonical model on the
      growing tree, built"); presented contexts, strong completeness and compactness 2026-10-25
      (`GFlat`).
-   * **T + 4 complete (2026-10-25)**, with the `□`-lift on whenever the `◇`-lift is
-     (`ModalSys.FourCoh`): strong 4 lifts generators (D-H3), every `◇` template is generic, and
-     tags determine annotations (`ann_eq_of_grden`, `GLeaf`/`GLeafInj`); the `here` case
-     (`ghere_truth`) and `IndInvariant` (`GInd`) as B's.  Open: `FourStrongW` without
-     `FourStrong` under T (a coherence condition or its own canonical model, §3 4 "Diagnosis").
+   * **T + 4 complete (2026-10-25)**: strong 4 lifts generators (D-H3), tags determine
+     annotations (`ann_eq_of_grden`, `GLeaf`/`GLeafInj`); the `here` case (`ghere_truth`) and
+     `IndInvariant` (`GInd`) as B's.
+   * **The `◇`-lift without the `□`-lift under T, complete (2026-10-25)**: the leaf-valued root
+     action (`GKeep`) and address shapes (`GTemplate`) replace the shape templates, and
+     `ModalSys.FourCoh` is gone (§3 4, "Phase 2b").  Every combination of 4's strong forms is
+     complete with T and D, B off.
      Next: drop `noFourStrong`/`noFourStrongW` from `NoB` (dispatching to the growing tree when
      4 and a strong form are on), then fold `NoSym` into it.
 3. **Strong `◇`, the join**, per arrow (as `posBack_exists`):

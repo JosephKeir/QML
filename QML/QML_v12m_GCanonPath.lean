@@ -550,11 +550,6 @@ abbrev garrows : Arrows.{0, 0} σ where
 
 /-! ## The root action: keeping a witness along an arrow -/
 
-theorem kw_path {s t : GW hF M₀} {P P' : List ℕ} (e : P = P') (h : t.1 = nodeOf s.1 P)
-    (h' : t.1 = nodeOf s.1 P') (x : VarSymb) : kw s t P h x = kw s t P' h' x := by
-  subst e
-  rfl
-
 /-- ⭐**Keeping along a composite is keeping twice.** -/
 theorem kw_append : ∀ (P : List ℕ) {s t u : GW hF M₀} (Q : List ℕ) (h₁ : t.1 = nodeOf s.1 P)
     (h₂ : u.1 = nodeOf t.1 Q) (h : u.1 = nodeOf s.1 (P ++ Q)) (x : VarSymb),
@@ -573,30 +568,6 @@ theorem kw_append : ∀ (P : List ℕ) {s t u : GW hF M₀} (Q : List ℕ) (h₁
       rfl
   | c :: c' :: P, s, t, u, Q, h₁, h₂, h, x =>
       kw_append (c' :: P) (s := stepW s c (born_step h₁)) Q h₁ h₂ h _
-
-/-- ⭐**The canonical root action**: a root possibility, named by its address, kept along an
-    arrow is the witness kept along the arrow's path. -/
-noncomputable def gRk (s : GW hF M₀) (r : VarSymb) (a : (garrows hF M₀).Acc s) : VarSymb :=
-  kw s a.1 (pathOf a.2.down) (pathOf_eq a.2.down) r
-
-/-- The canonical root action, on leaves: a root path stays a root path (`gRk`). -/
-noncomputable instance instRootKeepG : Arrows.RootKeep (garrows hF M₀) (fun _ => VarSymb) :=
-  Arrows.RootKeep.ofRoot fun _ {s} r a => gRk s r a
-
-/-- Its laws: keeping along two arrows is keeping along their composite (`kw_append`), and
-    keeping along the identity is the identity. -/
-instance instRootKeepLawsG : Arrows.RootKeepLaws (garrows hF M₀) (fun _ => VarSymb) :=
-  Arrows.RootKeepLaws.ofRoot _
-    (fun _ {s} r a b => by
-      change kw a.1 b.1 (pathOf b.2.down) _ (kw s a.1 (pathOf a.2.down) _ r) =
-        kw s b.1 (pathOf (gtrans a.2.down b.2.down)) _ r
-      rw [kw_path (pathOf_trans a.2.down b.2.down) _
-        (by rw [nodeOf_append, ← pathOf_eq a.2.down]; exact pathOf_eq b.2.down),
-        kw_append _ _ (pathOf_eq a.2.down) (pathOf_eq b.2.down)])
-    (fun hT _ {s} r => by
-      change kw s s (pathOf (grefl hT s)) _ r = r
-      rw [kw_path (pathOf_refl hT s) _ rfl]
-      rfl)
 
 end GArrow
 

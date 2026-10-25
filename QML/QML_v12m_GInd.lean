@@ -128,8 +128,6 @@ theorem substEnv_grepSubst (hnp : Γ.NoProjLast) :
 
 end Represent
 
-variable [ModalSys.FourCoh]
-
 /-- Invariance under T, as B's (`BData.indInvariant_inv`).  Over a tame context an environment is
     the canonical one at a stage, read through a substitution (`substEnv_grepSubst`); so a slot
     formula with an object in its slot is true exactly when the substituted slot formula,
@@ -190,7 +188,6 @@ theorem gindInvariant_inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLa
   rw [key o u hu _ hK h₁, key o' u' hu' _ hK h₂]
   exact hrel _ h₁ h₂ _
 
-omit [ModalSys.FourCoh] in
 /-- A representative of an object is one of the value under a hole term, filled. -/
 theorem grden_holeAt {s : GW hF M₀} {A : VarType} {o : (gframe hF hM₀).Dom A s}
     (u : Canon.DTerm (gw hM₀ s).sys (gw hM₀ s).T A)

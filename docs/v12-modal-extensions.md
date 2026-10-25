@@ -3654,6 +3654,31 @@ A kept address is an address of the `□` view whose top level is the `keep`, as
   (leaves `gLab`), `edge_entry`/`comp_pull` re-proved from `gMem`, the leaf calculus with generic
   labels, and `FourCoh` dropped.
 
+**Built (2026-10-25): phase 2b, step 3 — the switch.  The `◇`-lift without the `□`-lift is
+complete under T; `FourCoh` is gone** (20 top targets green, no `sorry`, standard axioms).
+* *The instance* (`GKeep`): `instRootKeepG` is `gKeep` under T over a maximal theory, and the
+  path-blind action otherwise (nothing is shaped there).  `instRootKeepLawsG` has the six laws,
+  or path arithmetic.  The `kw`-based action (`gRk`) is gone; `kw` stays, for extents.
+* *Canonical shapes are address shapes* (`GTemplate`): `cEnv s v T = annSh s (Ann.eta v T)` for
+  a declared `v`, with ⭐`cEnv_wf` (via `gLab_wf`, `gMem_wf`) and ⭐`cEnv_dia_generic` (a possible
+  address's shape is `genDia`, now with no hypothesis).
+* *The edge law* (`GLaws`): shapes indexed by positions (`shOf`, `shOf_congr`, `annSh_eta`);
+  ⭐`cEnv_ref`, ⭐`boxPush_cEnv` (a kept item's shape is its kept address's), ⭐`keepSh_shOf` and
+  ⭐`entry_shOf`.  Both sides of ⭐`edge_entry` are the address shapes of the entry's indices,
+  leaf by leaf on typed paths, by `keptTr_form`'s new conjunct
+  (`entIdx e (rep n ++ X ++ R) = w.ext (rep n ++ X' ++ R)`).  `comp_pull`, `termShp_pTr`,
+  `termShp_boxPush`, `termShp_pTr_keepDia` and the whole model layer are unchanged.
+* *The leaf calculus* (`GLeaf`, `GLeafInj`) needs no `hS`: the root-level labels are generic
+  because every possible address's shape is.  `ann_eq_of_grden` holds under T alone.  The truth
+  lemma (`gtruth`), `GInd`, `GCompleteness`, `GFlat` drop `[ModalSys.FourCoh]`.
+* *Removed as dead:* the template layer (`Lifted`, `liftDia`, `diaT`, `boxEnt`, `CStep`, the
+  level recursion of `cEnv`, `pbLeaf`/`pbShp`, `ShTop`/`EnvTop`, the old `edge_*` laws,
+  `cEnv_dia_step`), `fmapL_dia_eta`, and whole files `GLevel` (root levels), `GCEnv`
+  (`ctxOf_step` moved to `GSelf`) and `GOrigin` (the `OrigOk` invariant).  The levels and the
+  origin invariant served only the templates.
+* *Next:* the `NoB` refactor (drop `noFourStrong`/`noFourStrongW`, dispatching to the growing
+  tree when 4 and a strong form are on), then 5.
+
 **Order.**
 1. Weak 4 on the growing tree: `GCanon` (frame, translations along paths, transfer along paths,
    carriers as B's `BCanonDom`/`BCanonModel` with `θ_a`), then `GTruth`.  K4/D4 first, then

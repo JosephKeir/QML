@@ -22,15 +22,6 @@ namespace V12M
 
 variable [ModalSys]
 
-/-- Under T the `□`-lift is on whenever the `◇`-lift is: the systems the growing tree's `here`
-    case covers (docs §3 4, "Diagnosis": the `FourStrongW`-only system with T is still open).
-    Without T there is nothing to ask (`ModalSys.NoT`). -/
-class ModalSys.FourCoh [ModalSys] : Prop where
-  strong : ModalSys.T = true → ModalSys.FourStrongW = true → ModalSys.FourStrong = true
-
-instance ModalSys.FourCoh.of_noT [ModalSys] [ModalSys.NoT] : ModalSys.FourCoh :=
-  ⟨fun hT => (absT hT).elim⟩
-
 namespace GArrow
 
 open BArrow
@@ -842,14 +833,14 @@ abbrev GEqTruth (s : GW hF M₀) (A : VarType) : Prop :=
     (`ann_eq_of_grden`), so the two contents can be equated (`eqRec`, by the truth lemma at a
     smaller formula), and `Proof.here_eq` moves the atom. -/
 theorem ghere_transfer (hT : ModalSys.T = true)
-    (hS : ModalSys.FourStrongW = true → ModalSys.FourStrong = true) {s : GW hF M₀} {A : VarType}
+    {s : GW hF M₀} {A : VarType}
     (IH : GEqTruth hM₀ s A) {K : ℕ} {c : Ann (.VTypeDia A)}
     (S : Term σ (ctxOf (glat s K)) (.VTypeDia A) c) {b b' : Ann A}
     (r : Term σ (ctxOf (glat s K)) A b) (r' : Term σ (ctxOf (glat s K)) A b')
     (he : grden hM₀ s K (Ctx.Le.refl _) r = grden hM₀ s K (Ctx.Le.refl _) r')
     (hmem : WFF.here hT S r ∈ (gw hM₀ s).M K) :
     WFF.here hT S r' ∈ (gw hM₀ s).M K := by
-  obtain rfl := ann_eq_of_grden hT hS hM₀ r r' he
+  obtain rfl := ann_eq_of_grden hT hM₀ r r' he
   have heq : eqRec A r r' ∈ (gw hM₀ s).M K := by
     refine (IH K r r').mp ((Model.sat_eqRec _ A r r').mpr ?_)
     rw [interp_gcanon r (Model.Env.Agree.refl' _) (Ctx.Presented.noProjLast _),
@@ -896,15 +887,15 @@ theorem ginterp_dia_self (hT : ModalSys.T = true) {s : GW hF M₀} {i : ℕ} {x 
           _).symm
     _ = _ := interp_gcanon _ (Model.Env.Agree.refl' _) (Ctx.Presented.noProjLast _)
 
-/-- ⭐⭐**The truth lemma's `here` case** (B's `here_truth`), with the `□`-lift on whenever the
-    `◇`-lift is.  Satisfaction says the witness is realised and its content along the world's own
-    arrow is indistinguishable from `t`'s value; membership says the theory co-names them.
+/-- ⭐⭐**The truth lemma's `here` case** (B's `here_truth`).  Satisfaction says the witness is
+    realised and its content along the world's own arrow is indistinguishable from `t`'s value;
+    membership says the theory co-names them.
     *Membership ⇒ truth*: the atom makes the witness realised and relates its realisation and `t`
     (`grel_here`).  *Truth ⇒ membership*: related representatives carry the atom from the realised
     body to `t`, one equal denotation at a time (`ghere_transfer`) and across the relation
     once. -/
 theorem ghere_truth (hT : ModalSys.T = true)
-    (hS : ModalSys.FourStrongW = true → ModalSys.FourStrong = true) {s : GW hF M₀} {i : ℕ}
+    {s : GW hF M₀} {i : ℕ}
     {x : VarSymb} (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X)) {A : VarType}
     {β : Ann A} (bd : Term σ ((ctxOf (glat s i)).diaIn x) A β) {a : Ann A}
     (t : Term σ (ctxOf (glat s i)) A a) (IH : GEqTruth hM₀ s A) :
@@ -941,7 +932,7 @@ theorem ghere_truth (hT : ModalSys.T = true)
         at this
       rwa [Term.mono_mono] at this
     -- carried to the representative `u`, then across the relation to `u'`
-    have h₂ := ghere_transfer hT hS IH _ _ (u.lift _ huK)
+    have h₂ := ghere_transfer hT IH _ _ (u.lift _ huK)
       ((grden_lift hkK _).trans (hu.symm.trans (grden_lift huK u.t).symm)) h₁
     have h₃ : WFF.here hT (Term.mono (gle hM₀ s hiK) (Term.diatm x hx bd)) (u'.lift _ hu'K) ∈
         (gw hM₀ s).M (max (max i hr.data.i₀) (max u.i u'.i)) := by
@@ -953,7 +944,7 @@ theorem ghere_truth (hT : ModalSys.T = true)
       rw [WFF.instantiate_here_slot, WFF.instantiate_here_slot] at key
       exact key.mp h₂
     -- and to `t`
-    have h₄ := ghere_transfer hT hS IH _ _ (Term.mono (gle hM₀ s hiK) t)
+    have h₄ := ghere_transfer hT IH _ _ (Term.mono (gle hM₀ s hiK) t)
       ((grden_lift hu'K u'.t).trans (hu'.trans (grden_lift hiK t).symm)) h₃
     exact (BWorld.mem_lift hiK).mpr h₄
   · intro hmem
@@ -967,7 +958,7 @@ theorem ghere_truth (hT : ModalSys.T = true)
     · rw [hT] at hnT
       cases hnT
 
-theorem gtruth_lt [ModalSys.FourCoh] :
+theorem gtruth_lt :
     ∀ (n : ℕ) (s : GW hF M₀) (i : ℕ) (φ : WFF σ (ctxOf (glat s i)) 0), φ.size < n →
     ((gmodel hF hM₀).sat (gcanonEnv hM₀ s i) φ ↔ φ ∈ (gw hM₀ s).M i)
   | 0, _, _, _, h => absurd h (Nat.not_lt_zero _)
@@ -993,7 +984,7 @@ theorem gtruth_lt [ModalSys.FourCoh] :
       | here hT S t =>
           cases S with
           | diatm x hx bd =>
-              exact ghere_truth hT (ModalSys.FourCoh.strong hT) hx bd t
+              exact ghere_truth hT hx bd t
                 (fun K _ u u' => gtruth_lt n s K _ (by
                   rw [WFF.size_eqRec]; simp only [WFF.size] at hφ; omega))
       | back hB _ _ _ => exact (absBS hB).elim
@@ -1140,7 +1131,7 @@ theorem gtruth_lt [ModalSys.FourCoh] :
               ((gtruth_lt n t _ _ (by rw [size_pTrXW]; exact hχs)).mpr hm)⟩
 
 /-- ⭐**The truth lemma** for the growing tree's canonical model. -/
-theorem gtruth [ModalSys.FourCoh] (s : GW hF M₀) (i : ℕ) (φ : WFF σ (ctxOf (glat s i)) 0) :
+theorem gtruth (s : GW hF M₀) (i : ℕ) (φ : WFF σ (ctxOf (glat s i)) 0) :
     (gmodel hF hM₀).sat (gcanonEnv hM₀ s i) φ ↔ φ ∈ (gw hM₀ s).M i :=
   gtruth_lt (φ.size + 1) s i φ (Nat.lt_succ_self _)
 

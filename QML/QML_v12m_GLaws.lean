@@ -19,8 +19,8 @@ the shape algebra the laws are stated in:
 and the laws:
 
 * along an edge, an entry for a kept item reads as the item kept along the edge (`edge_entry`):
-  for an image by inheritance (`edge_dia_inl`, `edge_box_inl`), for a lifted root by its template
-  (`edge_dia_inr`, `edge_box_inr`);
+  both sides are the address shapes of the entry's indices (`entry_shOf`, `keepSh_shOf`), by
+  the translation's form (`keptTr_form`);
 * ⭐`comp_pull`: along every path, the pulled-back canonical environment is the path's component
   of the canonical environment pushed into `□` (by induction on the path);
 * ⭐`termShp_pTr`, `termShp_boxPush`: a `□` body's translation has its shape inside `□`, read at
@@ -191,7 +191,125 @@ theorem keepSh_comp {s : GW hF M₀} (a : (garrows hF M₀).Acc s) (b : (garrows
   | VTypeOne => cases hk
   | VTypeProd _ _ => cases hk
 
+/-! ## Shapes indexed by positions -/
+
+/-- A shape of a type, its leaf at each spelled position given by `L` (T + 4 spelling: a `□` is
+    entered by `keep.here`). -/
+noncomputable def shOf (t : GW hF M₀) : (T : VarType) → (List Step → GLeaf hF M₀ t) →
+    GShape hF M₀ t T
+  | .Var, _ => .var
+  | .VTypeOne, _ => .one
+  | .VTypeProd A C, L => .prod (shOf t A fun π => L (.fst :: π)) (shOf t C fun π => L (.snd :: π))
+  | .VTypeBox A, L => .box (shOf t A fun π => L (.keep :: .here :: π))
+  | .VTypeDia A, L => .dia (L []) (shOf t A fun π => L (.dia :: π))
+
+/-- Shapes indexed by positions agree when their leaves agree at the typed positions. -/
+theorem shOf_congr (hT : ModalSys.T = true) {t : GW hF M₀} :
+    ∀ (T : VarType) (L L' : List Step → GLeaf hF M₀ t),
+      (∀ π X, Step.walkTy T π = some (.VTypeDia X) → L π = L' π) → shOf t T L = shOf t T L'
+  | .Var, _, _, _ => rfl
+  | .VTypeOne, _, _, _ => rfl
+  | .VTypeProd A C, L, L', h => by
+      change Shp.prod _ _ = Shp.prod _ _
+      rw [shOf_congr hT A _ _ fun π X hπ => h (.fst :: π) X hπ,
+        shOf_congr hT C _ _ fun π X hπ => h (.snd :: π) X hπ]
+  | .VTypeBox A, L, L', h => by
+      change Shp.box _ = Shp.box _
+      rw [shOf_congr hT A _ _ fun π X hπ => h (.keep :: .here :: π) X
+        (by rw [walkTy_keep rfl, walkTy_here hT]; exact hπ)]
+  | .VTypeDia A, L, L', h => by
+      change Shp.dia _ _ = Shp.dia _ _
+      rw [h [] A rfl, shOf_congr hT A _ _ fun π X hπ => h (.dia :: π) X hπ]
+
+theorem shOf_map {t : GW hF M₀} {t' : GW hF M₀} (g : GLeaf hF M₀ t → GLeaf hF M₀ t') :
+    ∀ (T : VarType) (L : List Step → GLeaf hF M₀ t),
+      (shOf t T L).map g = shOf t' T fun π => g (L π)
+  | .Var, _ => rfl
+  | .VTypeOne, _ => rfl
+  | .VTypeProd A C, L => by
+      change Shp.prod _ _ = Shp.prod _ _
+      rw [shOf_map g A, shOf_map g C]
+  | .VTypeBox A, L => by
+      change Shp.box _ = Shp.box _
+      rw [shOf_map g A]
+  | .VTypeDia A, L => by
+      change Shp.dia _ _ = Shp.dia _ _
+      rw [shOf_map g A]
+
+theorem unT_shOf {t : GW hF M₀} (b : (garrows hF M₀).Acc t) :
+    ∀ (T : VarType) (L : List Step → GLeaf hF M₀ t),
+      unT b (shOf t T L) = shOf b.1 T fun π => evalLeaf (L π) b
+  | .Var, _ => rfl
+  | .VTypeOne, _ => rfl
+  | .VTypeProd A C, L => by
+      change Shp.prod _ _ = Shp.prod _ _
+      rw [unT_shOf b A, unT_shOf b C]
+  | .VTypeBox A, L => by
+      change Shp.box _ = Shp.box _
+      rw [unT_shOf b A]
+  | .VTypeDia A, L => by
+      change Shp.dia _ _ = Shp.dia _ _
+      rw [unT_shOf b A]
+
+theorem transpose_shOf {t : GW hF M₀} :
+    ∀ (T : VarType) (L : (a : (garrows hF M₀).Acc t) → List Step → GLeaf hF M₀ a.1),
+      Arrows.transposeShp (F := garrows hF M₀) (Root := fun _ => VarSymb)
+          (fun a => shOf a.1 T (L a)) = shOf t T fun π => .fam fun a => L a π
+  | .Var, _ => rfl
+  | .VTypeOne, _ => rfl
+  | .VTypeProd A C, L =>
+      congrArg₂ Shp.prod (transpose_shOf A fun a π => L a (.fst :: π))
+        (transpose_shOf C fun a π => L a (.snd :: π))
+  | .VTypeBox A, L => congrArg Shp.box (transpose_shOf A fun a π => L a (.keep :: .here :: π))
+  | .VTypeDia A, L => congrArg₂ Shp.dia rfl (transpose_shOf A fun a π => L a (.dia :: π))
+
+/-- ⭐**An address shape is indexed by the address's positions** (T + 4). -/
+theorem annSh_eta (hko : ModalSys.keepOnly = true) {t : GW hF M₀} :
+    ∀ (T : VarType) (w : VarSymb), annSh t (Ann.eta w T) = shOf t T fun π => gLab t (w.ext π)
+  | .Var, _ => rfl
+  | .VTypeOne, _ => rfl
+  | .VTypeProd A C, w => by
+      change Shp.prod (annSh t (Ann.eta (.step w .fst) A)) (annSh t (Ann.eta (.step w .snd) C)) = _
+      rw [annSh_eta hko A, annSh_eta hko C]
+      rfl
+  | .VTypeBox A, w => by
+      change Shp.box (annSh t (Ann.eta w.inner A)) = _
+      rw [VarSymb.inner_keepOnly hko, annSh_eta hko A]
+      rfl
+  | .VTypeDia A, w => by
+      change Shp.dia (gLab t w) (annSh t (Ann.eta (.step w .dia) A)) = _
+      rw [annSh_eta hko A]
+      rfl
+
 /-! ## The canonical shapes at reachable addresses -/
+
+/-- Collapsing the top of a kept address's label reads it at the world. -/
+theorem collapse_gLab (hT : ModalSys.T = true) {s : GW hF M₀} {v : VarSymb} (hv : PPath v.path)
+    (q : List Step) :
+    Arrows.Leaf.collapse hT 0 (gLab s ((VarSymb.step v .keep).ext q)) = gLab s (v.ext q) := by
+  rw [gLab_keep _ hv]
+  change gMem s s (pathOf (grefl hT s)) (pathOf_eq _) _ = _
+  rw [gMem_path (pathOf_refl hT s) _ rfl, gMem_kept_nil _ _ _ hv]
+
+/-- A projection of an address shape is the address shape of the projection. -/
+theorem proj_annSh (hT : ModalSys.T = true) {s : GW hF M₀} {v : VarSymb} (hv : PPath v.path)
+    {U T : VarType} {st : Step} (hs : st.isProj = true) (h : U.step st = some T) :
+    GFunc.shp (GFunc.proj (σ := σ) hs h) 0 (annSh s (Ann.eta v U)) =
+      annSh s (Ann.eta (.step v st) T) := by
+  have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
+  cases U <;> cases st <;> (try cases hs) <;> (try cases h)
+  · rfl
+  · rfl
+  · rename_i X
+    obtain ⟨hT', rfl⟩ := VarType.step_here h
+    change (annSh s (Ann.eta v.inner X)).map (Arrows.Leaf.collapse hT' 0) = _
+    rw [annSh_eta hko, annSh_eta hko, shOf_map]
+    congr 1
+    funext π
+    rw [VarSymb.inner_keepOnly hko,
+      show ((VarSymb.step v .keep).step .here).ext π = (VarSymb.step v .keep).ext (.here :: π)
+        from rfl, collapse_gLab hT' hv]
+    rfl
 
 /-- ⭐The canonical environment of a language below a stage reads every reachable address as the
     address's canonical shape. -/
@@ -208,81 +326,65 @@ theorem cEnv_ref (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : GW hF
           | none => rw [hU] at h; cases h
           | some U => exact ⟨U, rfl⟩
         rw [Model.ShEnv.ref_proj _ 0 hs hU h, cEnv_ref hT hM₀ hl v hU,
-          cEnv_eq hT hM₀ ⟨i, hl.ref hU⟩, cEnv_eq hT hM₀ ⟨i, hl.ref h⟩, cStep_proj]
+          cEnv_decl hT hM₀ ⟨i, hl.ref hU⟩, cEnv_decl hT hM₀ ⟨i, hl.ref h⟩]
+        exact proj_annSh hT (reach_ppath (hl.ref hU)).1 hs _
       · rw [Ctx.ref_step_nonproj _ v hs, ctxOf_step] at h
         cases h
 
-theorem rootSh_keep {s : GW hF M₀} (a : (garrows hF M₀).Acc s) (v : VarSymb) :
-    ∀ (π : List Step) (A : VarType), (rootSh s v π A).map (Arrows.Leaf.keepAlong hF a) =
-      rootSh a.1 (gRk _ v a) π A
-  | _, .Var => rfl
-  | _, .VTypeOne => rfl
-  | π, .VTypeProd A C => by
-      simp only [rootSh, Shp.map]
-      rw [rootSh_keep a v _ A, rootSh_keep a v _ C]
-  | π, .VTypeBox A => by
-      simp only [rootSh, Shp.map]
-      rw [rootSh_keep a v _ A]
-  | π, .VTypeDia A => by
-      simp only [rootSh, Shp.map]
-      rw [rootSh_keep a v _ A]
-      rfl
-
-/-- Keeping a generic shape gives the generic shape of the kept root. -/
-theorem genDia_keep {s : GW hF M₀} (a : (garrows hF M₀).Acc s) (v : VarSymb) (A : VarType) :
-    (genDia s v A).map (Arrows.Leaf.keepAlong hF a) =
-      genDia a.1
-        (gRk _ v a) A := by
-  simp only [genDia, Shp.map]
-  rw [rootSh_keep]
-  rfl
-
-/-- A possible root has no other reachable address. -/
-theorem ref_dia_root {l : List VarType} {r : ℕ} {B : VarType}
-    (hr : (ctxOf l).ref (.root (.free r)) = some (.VTypeDia B)) :
-    ∀ (u : VarSymb) {T : VarType}, (ctxOf l).ref u = some T → u.rt = .free r →
-      u = .root (.free r)
-  | .root _, _, _, hu => by cases hu; rfl
-  | .step v st, T, h, hu => by
-      exfalso
-      by_cases hs : st.isProj = true
-      · rw [Ctx.ref_step_proj _ v hs] at h
-        cases hU : (ctxOf l).ref v with
-        | none => rw [hU] at h; cases h
-        | some U =>
-            have hv := ref_dia_root hr v hU hu
-            subst hv
-            rw [hr] at hU
-            cases hU
-            rw [hr] at h
-            cases st <;> simp_all [VarType.step, Step.isProj]
-      · rw [Ctx.ref_step_nonproj _ v hs, ctxOf_step] at h
-        cases h
-
-/-- A possible root's kept item goes to a root. -/
-theorem root_keep_img (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ} (hc : t.1 = c :: s.1)
-    {i r : ℕ} {X : VarType} (hr : (ctxOf (glat s i)).ref (.root (.free r)) = some (.VTypeDia X))
-    {y : VarSymb} (hy : fmapL hF M₀ t.1 (.step (.root (.free r)) .keep) = .inl y) :
-    ∃ z, y = .root (.free z) := by
-  have hitem : (ctxOf (glat s i)).kView none (.step (.root (.free r)) .keep) = some (.VTypeDia X) :=
-    Ctx.boxIn_keep_of' hF hr rfl
-  obtain ⟨m, hk, ⟨U, hU⟩⟩ := gcommitted_box hM₀ hc hitem
-  have hbox : (ctxOf ((gnet hF M₀ m).fcl t.1)).boxIn (.step (.root (.free r)) .keep) = some U := by
-    cases hkd : (gnet hF M₀ m).kind t.1 with
-    | none => rw [hkd] at hU; exact hU
-    | some x => rw [hkd] at hU; exact hU
-  obtain ⟨-, hu, -⟩ := Ctx.boxIn_keep hbox
-  have hk' : (gnet hF M₀ m).Live (c :: s.1) := hc ▸ hk
-  obtain ⟨hsuf, -⟩ := (good_gnet hF hM₀ m).fwd c s.1 hk'
-  rw [← hc] at hsuf
-  have hdU : DeclAt s (.root (.free r)) U := ⟨m - gbirth hF M₀ s.2, by
-    rw [glat_round s hk'.1]; exact (ctxOf_le_of_suffix hsuf).ref hu⟩
-  obtain rfl := DeclAt.unique hM₀ hdU ⟨i, hr⟩
-  rw [fmapL_at hM₀ hk ⟨_, hU⟩] at hy
-  rw [hc] at hk hU hy
-  exact (origOk_gnet hF hM₀ m).rootKeep c s.1 hk r X hU y hy
-
-/-! ## Along an edge: images -/
+/-- ⭐**A declared address kept into `□`**: its canonical shape kept is the kept address's
+    address shape. -/
+theorem boxPush_cEnv (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : GW hF M₀}
+    {u : VarSymb} {U : VarType} (hd : DeclAt s u U) (hk : U.keepable = true) :
+    (GFunc.shp (σ := σ) (GFunc.keep hF hk) 0 (cEnv s u U)).inner =
+      annSh s (Ann.eta (.step u .keep) U) := by
+  have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
+  obtain ⟨i, hi⟩ := id hd
+  have hu := (reach_ppath hi).1
+  rw [cEnv_decl hT hM₀ hd]
+  cases U with
+  | VTypeDia A =>
+      change Shp.dia (Arrows.Leaf.dk hF 0 (gLab s u))
+        ((annSh s (Ann.eta (.step u .dia) A)).map (Arrows.Leaf.dkB hF 0)) = _
+      rw [annSh_eta hko, annSh_eta hko, shOf_map]
+      change Shp.dia _ _ = Shp.dia _ _
+      congr 1
+      · change Arrows.Leaf.fam _ = gLab s ((VarSymb.step u .keep).ext [])
+        rw [gLab_keep _ hu]
+        congr 1
+        funext b
+        rw [keepAlong_eq hT hM₀]
+        exact gKA_gLab (q := []) hT hM₀ ⟨hu, _, A, hd, rfl⟩ (fun _ h => by cases h) b
+      · refine shOf_congr hT A _ _ fun π X hπ => ?_
+        change Arrows.Leaf.fam _ = gLab s ((VarSymb.step u .keep).ext (.dia :: π))
+        rw [gLab_keep _ hu]
+        congr 1
+        funext b
+        rw [keepAlong_eq hT hM₀]
+        exact gKA_gLab (q := .dia :: π) hT hM₀ ⟨hu, _, X, hd, by rw [walkTy_keep rfl]; exact hπ⟩
+          (noProjHead_cons rfl π) b
+  | VTypeBox A =>
+      change Shp.box ((annSh s (Ann.eta u.inner A)).map (Arrows.Leaf.shift hF 0)) =
+        Shp.box (annSh s (Ann.eta (VarSymb.step u .keep).inner A))
+      rw [annSh_eta hko, annSh_eta hko, shOf_map]
+      congr 1
+      refine shOf_congr hT A _ _ fun π X hπ => ?_
+      rw [VarSymb.inner_keepOnly hko, VarSymb.inner_keepOnly hko,
+        show ((VarSymb.step u .keep).step .here).ext π = (VarSymb.step u .keep).ext (.here :: π)
+          from rfl,
+        show (((VarSymb.step u .keep).step .keep).step .here).ext π =
+          (VarSymb.step u .keep).ext (.keep :: .here :: π) from rfl,
+        gLab_keep _ hu, gLab_keep _ hu]
+      change Arrows.Leaf.fam _ = _
+      congr 1
+      funext b
+      rw [gMem_dk hT hM₀ _ _ ⟨hu, _, X, hd,
+        by rw [walkTy_keep rfl, walkTy_here hT]; exact hπ⟩]
+      congr 1
+      funext b'
+      exact gMem_path (pathOf_trans b.2.down b'.2.down) _ _ _
+  | Var => cases hk
+  | VTypeOne => cases hk
+  | VTypeProd _ _ => cases hk
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 /-- A keepable address's kept item in the `□` view. -/
@@ -290,289 +392,214 @@ theorem item_keep (hF : ModalSys.Four = true) {Γ : Ctx} {u : VarSymb} {U : VarT
     (hu : Γ.ref u = some U) (hk : U.keepable = true) : Γ.kView none (.step u .keep) = some U :=
   Ctx.boxIn_keep_of' hF hu hk
 
-/-- `diaT` at an address neither lifted nor an image of a root is generic. -/
-theorem diaT_eq_genDia {ρ : ShFam hF M₀} {s : GW hF M₀} {v : VarSymb} {B : VarType}
-    (hnl : ¬ ∃ z, v = .root (.free z) ∧ Lifted s z)
-    (hni : ∀ c p, s.1 = c :: p →
-      ¬ ∃ u, fmapL hF M₀ s.1 (.step (.root (.free u)) .keep) = .inl v) :
-    diaT ρ s.1 s.2 v B = genDia s v B := by
-  obtain ⟨sn, sb⟩ := s
-  cases sn with
-  | nil =>
-      unfold diaT
-      rw [dif_neg hnl]
-  | cons c p =>
-      unfold diaT
-      rw [dif_neg hnl, dif_neg (hni c p rfl)]
+/-! ## Along an edge -/
 
-/-- A root whose kept item is committed is declared at the parent, at a keepable type. -/
-theorem committed_root_decl (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ}
-    (hc : t.1 = c :: s.1) {u : ℕ} (h : GCommitted hF M₀ t.1 (.step (.root (.free u)) .keep)) :
-    ∃ V, DeclAt s (.root (.free u)) V ∧ V.keepable = true := by
-  obtain ⟨m, hk, ⟨U, hU⟩⟩ := h
-  have hbox : (ctxOf ((gnet hF M₀ m).fcl t.1)).boxIn (.step (.root (.free u)) .keep) = some U := by
-    cases hkd : (gnet hF M₀ m).kind t.1 with
-    | none => rw [hkd] at hU; exact hU
-    | some x => rw [hkd] at hU; exact hU
-  obtain ⟨-, hu, hku⟩ := Ctx.boxIn_keep hbox
-  have hk' : (gnet hF M₀ m).Live (c :: s.1) := hc ▸ hk
-  obtain ⟨hsuf, -⟩ := (good_gnet hF hM₀ m).fwd c s.1 hk'
-  rw [← hc] at hsuf
-  exact ⟨U, ⟨m - gbirth hF M₀ s.2, by
-    rw [glat_round s hk'.1]; exact (ctxOf_le_of_suffix hsuf).ref hu⟩, hku⟩
+/-- Where an edge sends a typed position of a declared address, and the address kept. -/
+theorem edge_point (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : GW hF M₀} {c : ℕ}
+    (hb : GBorn hF M₀ (c :: s.1)) {u : VarSymb} {U : VarType} (hd : DeclAt s u U)
+    {π : List Step} {X : VarType} (hπ : Step.walkTy U (.keep :: π) = some (.VTypeDia X)) :
+    ∃ w q', entIdx (fmapL hF M₀ (c :: s.1) (.step u .keep)) π = w.ext q' ∧
+      entIdx (fmapL hF M₀ (c :: s.1) (.step u .keep)) (.keep :: π) =
+        (VarSymb.step w .keep).ext q' ∧ PPath w.path ∧ Step.levels q' = Step.levels π := by
+  obtain ⟨w, n, X₁, X₁', R, tl, rfl, hlX, -, hw, htl, hform⟩ := keptTr_form hT hM₀ s c hb hd hπ
+  obtain ⟨h₁, h₂, -⟩ := hform n R (fun h => (htl h).2.2) X hπ
+  exact ⟨w, _, h₁, h₂, hw, (levels_form hlX).symm⟩
 
-/-- An item whose entry is a declared address is committed. -/
-theorem committed_of_decl {t : GW hF M₀} {w y : VarSymb} {U : VarType}
-    (hy : fmapL hF M₀ t.1 (.step w .keep) = .inl y) (hd : DeclAt t y U) :
-    GCommitted hF M₀ t.1 (.step w .keep) := by
-  classical
-  by_contra hn
-  have hn' : ¬ ∃ m, (gnet hF M₀ m).Live t.1 ∧ ∃ T, (ctxOf ((gnet hF M₀ m).fcl t.1)).kView
-      ((gnet hF M₀ m).kind t.1) (.step w .keep) = some T := hn
-  rw [fmapL, dif_neg hn'] at hy
-  cases hy
-  obtain ⟨i, hi⟩ := hd
-  rw [Ctx.ref_step_nonproj _ _ (by decide), ctxOf_step] at hi
-  cases hi
+/-- The arrow of an edge has the edge's path. -/
+theorem pathOf_edge {s t : GW hF M₀} {c : ℕ} (hc : t.1 = c :: s.1) :
+    pathOf (edgeAcc (s := s) hc).2.down = [c] :=
+  pathOf_of _ hc
 
-/-- A possible address whose image is a root's image is that root. -/
-theorem src_of_dia (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ} (hc : t.1 = c :: s.1)
-    {i : ℕ} {u : VarSymb} {B : VarType} (hu : (ctxOf (glat s i)).ref u = some (.VTypeDia B))
-    {y : VarSymb} (hy : fmapL hF M₀ t.1 (.step u .keep) = .inl y) {u' : ℕ}
-    (hu' : fmapL hF M₀ t.1 (.step (.root (.free u')) .keep) = .inl y) :
-    u = .root (.free u') := by
-  have hcom := gcommitted_box hM₀ hc (item_keep hF hu rfl)
-  obtain ⟨hdy, -⟩ := keep_img hM₀ hc ⟨i, hu⟩ rfl hy
-  have hc2 := committed_of_decl hu' hdy
-  obtain ⟨tn, tb⟩ := t
+/-- ⭐**A declared address kept along an edge** is indexed by its kept positions' images. -/
+theorem keepSh_shOf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ}
+    (hc : t.1 = c :: s.1) {u : VarSymb} {U : VarType} (hd : DeclAt s u U)
+    (hk : U.keepable = true) :
+    keepSh (edgeAcc hc) U (cEnv s u U) =
+      shOf t U fun π => gLab t (entIdx (fmapL hF M₀ t.1 (.step u .keep)) π) := by
+  have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
+  obtain ⟨i, hi⟩ := id hd
+  have hu := (reach_ppath hi).1
+  obtain ⟨tn, hb⟩ := t
   change tn = c :: s.1 at hc
   subst hc
-  have hrt := fmapL_inj hM₀ hc2 hcom hu' hy rfl
-  obtain ⟨V, ⟨j, hj⟩, hkV⟩ := committed_root_decl hM₀ (t := ⟨c :: s.1, tb⟩) rfl hc2
-  obtain ⟨hdy', -⟩ := keep_img hM₀ (t := ⟨c :: s.1, tb⟩) rfl ⟨j, hj⟩ hkV hu'
-  obtain rfl := DeclAt.unique hM₀ hdy' hdy
-  exact ref_dia_root (DeclAt.at_le hM₀ hj (le_max_right i j)) u
-    (DeclAt.at_le hM₀ hu (le_max_left i j)) hrt.symm
-
-/-- A possible non-root address is the image of no root. -/
-theorem not_img_of_nonroot (hM₀ : Theory.IsMCS M₀) {s : GW hF M₀} {i : ℕ} {u : VarSymb}
-    {B : VarType} (hu : (ctxOf (glat s i)).ref u = some (.VTypeDia B))
-    (hroot : ¬ ∃ r, u = .root (.free r)) :
-    ∀ c₀ p₀, s.1 = c₀ :: p₀ →
-      ¬ ∃ u', fmapL hF M₀ s.1 (.step (.root (.free u')) .keep) = .inl u := by
-  rintro c₀ p₀ hs ⟨u', hu'⟩
-  obtain ⟨sn, sb⟩ := s
-  change sn = c₀ :: p₀ at hs
-  subst hs
-  have hc2 := committed_of_decl hu' ⟨i, hu⟩
-  obtain ⟨V, ⟨j, hj⟩, hkV⟩ := committed_root_decl hM₀ (s := ⟨p₀, gborn_parent sb⟩)
-    (t := ⟨c₀ :: p₀, sb⟩) rfl hc2
-  obtain ⟨hdu, -⟩ := keep_img hM₀ (s := ⟨p₀, gborn_parent sb⟩) (t := ⟨c₀ :: p₀, sb⟩)
-    rfl ⟨j, hj⟩ hkV hu'
-  obtain rfl := DeclAt.unique hM₀ hdu ⟨i, hu⟩
-  obtain ⟨z, hz⟩ := root_keep_img hM₀ (s := ⟨p₀, gborn_parent sb⟩) (t := ⟨c₀ :: p₀, sb⟩)
-    rfl hj hu'
-  exact hroot ⟨z, hz⟩
-
-/-- ⭐**(B1) A possible address's image along an edge has its shape kept along the edge.** -/
-theorem edge_dia_inl (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ}
-    (hc : t.1 = c :: s.1) {i : ℕ} {u : VarSymb} {B : VarType}
-    (hu : (ctxOf (glat s i)).ref u = some (.VTypeDia B)) {y : VarSymb}
-    (hy : fmapL hF M₀ t.1 (.step u .keep) = .inl y) :
-    cEnv t y (.VTypeDia B) =
-      (cEnv s u (.VTypeDia B)).map (Arrows.Leaf.keepAlong hF (edgeAcc hc)) := by
-  obtain ⟨hdy, -⟩ := keep_img hM₀ hc ⟨i, hu⟩ rfl hy
-  have hcom := gcommitted_box hM₀ hc (item_keep hF hu rfl)
-  rw [cEnv_eq hT hM₀ hdy, cEnv_eq hT hM₀ ⟨i, hu⟩]
-  change diaT cEnv t.1 t.2 y B = (diaT cEnv s.1 s.2 u B).map _
-  have hnl : ¬ ∃ z, y = .root (.free z) ∧ Lifted t z := by
-    rintro ⟨z, rfl, ⟨c', e, he⟩⟩
-    obtain ⟨tn, tb⟩ := t
-    change tn = c :: s.1 at hc
-    subst hc
-    exact fmapL_imgNL hM₀ hcom hy rfl c' e he
-  by_cases hroot : ∃ r, u = .root (.free r)
-  · obtain ⟨r, rfl⟩ := hroot
-    obtain ⟨tn, tb⟩ := t
-    change tn = c :: s.1 at hc
-    subst hc
-    have hex : ∃ u', fmapL hF M₀ (c :: s.1) (.step (.root (.free u')) .keep) = .inl y := ⟨r, hy⟩
-    conv_lhs => unfold diaT
-    rw [dif_neg hnl, dif_pos hex]
-    have hch : hex.choose = r := by
-      have := src_of_dia hM₀ (t := ⟨c :: s.1, tb⟩) rfl hu hy hex.choose_spec
-      injection this with h
-      injection h with h
-      exact h.symm
-    rw [hch]
-  · have hni : ∀ c₀ p₀, t.1 = c₀ :: p₀ →
-        ¬ ∃ u', fmapL hF M₀ t.1 (.step (.root (.free u')) .keep) = .inl y :=
-      fun _ _ _ ⟨u', hu'⟩ => hroot ⟨u', src_of_dia hM₀ hc hu hy hu'⟩
-    have hnl' : ¬ ∃ z, u = .root (.free z) ∧ Lifted s z := fun ⟨z, hz, _⟩ => hroot ⟨z, hz⟩
-    rw [diaT_eq_genDia hnl hni, diaT_eq_genDia hnl' (not_img_of_nonroot hM₀ hu hroot),
-      genDia_keep, rootKeep_edge, wit_of_inl (reach_ppath hu).1 hy]
-
-/-- ⭐**(B2) A necessary address's image along an edge has its family restricted along the
-    edge.** -/
-theorem edge_box_inl (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ}
-    (hc : t.1 = c :: s.1) {i : ℕ} {u : VarSymb} {B : VarType}
-    (hu : (ctxOf (glat s i)).ref u = some (.VTypeBox B)) {y : VarSymb}
-    (hy : fmapL hF M₀ t.1 (.step u .keep) = .inl y) :
-    cEnv t y (.VTypeBox B) = restrictBox (edgeAcc hc) (cEnv s u (.VTypeBox B)) := by
-  obtain ⟨hdy, -⟩ := keep_img hM₀ hc ⟨i, hu⟩ rfl hy
-  rw [cEnv_eq hT hM₀ hdy, cEnv_eq hT hM₀ ⟨i, hu⟩]
-  obtain ⟨tn, tb⟩ := t
-  change tn = c :: s.1 at hc
-  subst hc
-  refine congrArg Shp.box (congrArg _ (funext fun b => ?_))
-  change _ = unT (accTrans (edgeAcc (s := s) (t := ⟨c :: s.1, tb⟩) rfl) b)
-    (Arrows.transposeShp (F := garrows hF M₀) (Root := fun _ => VarSymb) fun b' =>
-      boxEnt cEnv (fun t w => CStep cEnv B t w) s u (pathOf b'.2.down) b'.1 (pathOf_eq b'.2.down))
-  rw [unT_transpose]
-  have hp : pathOf (accTrans (edgeAcc (s := s) (t := ⟨c :: s.1, tb⟩) rfl) b).2.down =
-      c :: pathOf b.2.down := by
-    change pathOf (gtrans (edgeAcc (s := s) (t := ⟨c :: s.1, tb⟩) rfl).2.down b.2.down) = _
-    rw [pathOf_trans (edgeAcc (s := s) (t := ⟨c :: s.1, tb⟩) rfl).2.down b.2.down,
-      pathOf_of (edgeAcc (s := s) (t := ⟨c :: s.1, tb⟩) rfl).2.down (P := [c]) rfl]
-    rfl
-  rw [boxEnt_path cEnv _ s u hp b.1 _ (pathOf_eq b.2.down)]
-  simp only [boxEnt, hy]
-  rfl
-
-/-- A lifted term's language is below a stage of the child. -/
-theorem lift_le (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ} (hc : t.1 = c :: s.1)
-    {w : VarSymb} {e : LTerm σ} (he : fmapL hF M₀ t.1 w = .inr e) :
-    ∃ j, (ctxOf e.1).Le (ctxOf (glat t j)) := by
-  classical
-  obtain ⟨m, hk, ⟨T, hT⟩⟩ := fmapL_committed he
-  have hfa := fmapL_at hM₀ hk ⟨T, hT⟩
-  obtain ⟨-, -, hf, -⟩ := (good_gnet hF hM₀ m).fwd c s.1 (hc ▸ hk)
-  rw [← hc] at hf
-  have h := hf _ T (kView_lastProj hT) hT
-  rw [← hfa, he] at h
-  obtain ⟨l, U, a, τ⟩ := e
-  change (if h : (ctxOf l).Le (ctxOf ((gnet hF M₀ m).st t.1).l) then
-    SubE.tm (Term.mono h τ) else SubE.hide).OkRef T at h
-  split_ifs at h with hle
-  · exact ⟨m - gbirth hF M₀ t.2, by rw [glat_round t hk]; exact hle⟩
-  · exact h.elim
-
-/-- A lifted root's lift data is the edge's. -/
-theorem lifted_eq (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ} (hc : t.1 = c :: s.1)
-    {z : ℕ} {e : LTerm σ} (he : fmapL hF M₀ t.1 (.step (.root (.free z)) .keep) = .inr e)
-    (h : Lifted s z) : h.child = t ∧ h.ent = e := by
-  rw [hc] at he
-  have hcc := fmapL_lift1 hM₀ h.choose_spec.choose_spec he
-  have hch : h.child = t := Subtype.ext (by
-    change h.choose :: s.1 = t.1
-    rw [hcc, hc])
-  refine ⟨hch, ?_⟩
-  have key : ∀ c' (_ : c' = c) (e' : LTerm σ),
-      fmapL hF M₀ (c' :: s.1) (.step (.root (.free z)) .keep) = .inr e' → e' = e := by
-    intro c' hc' e' h'
-    subst hc'
-    rw [he] at h'
-    exact (Sum.inr.inj h').symm
-  exact key _ hcc _ h.choose_spec.choose_spec
-
-/-- A lifted root's template is its edge's pull-back. -/
-theorem cEnv_lifted (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ}
-    (hc : t.1 = c :: s.1) {i z : ℕ} {B : VarType}
-    (hu : (ctxOf (glat s i)).ref (.root (.free z)) = some (.VTypeDia B)) {e : LTerm σ}
-    (he : fmapL hF M₀ t.1 (.step (.root (.free z)) .keep) = .inr e) :
-    cEnv s (.root (.free z)) (.VTypeDia B) = liftDiaAt cEnv s z t e B := by
-  have hL : Lifted s z := ⟨c, e, hc ▸ he⟩
-  have key : ∀ z' (hz' : z' = z) (hL' : Lifted s z'),
-      liftDiaAt cEnv s z' hL'.child hL'.ent B = liftDiaAt cEnv s z t e B := by
-    intro z' hz' hL'
-    subst hz'
-    obtain ⟨h₁, h₂⟩ := lifted_eq hM₀ hc he hL'
-    rw [h₁, h₂]
-  rw [cEnv_eq hT hM₀ ⟨i, hu⟩]
-  change diaT cEnv s.1 s.2 (.root (.free z)) B = _
-  have hex : ∃ z', VarSymb.root (.free z) = .root (.free z') ∧ Lifted s z' := ⟨z, rfl, hL⟩
-  have hz : hex.choose = z := by
-    have := hex.choose_spec.1
-    injection this with h
-    injection h with h
-    exact h.symm
-  obtain ⟨sn, sb⟩ := s
-  cases sn with
-  | nil =>
-      unfold diaT
-      rw [dif_pos hex]
-      exact key _ hz _
-  | cons c₀ p₀ =>
-      unfold diaT
-      rw [dif_pos hex]
-      exact key _ hz _
-
-/-- ⭐**A lifted possible root kept along its lift edge has its lifted term's shape.** -/
-theorem edge_dia_inr (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ}
-    (hc : t.1 = c :: s.1) {i z : ℕ} {B : VarType}
-    (hu : (ctxOf (glat s i)).ref (.root (.free z)) = some (.VTypeDia B)) {e : LTerm σ}
-    (he : fmapL hF M₀ t.1 (.step (.root (.free z)) .keep) = .inr e)
-    {b : Ann (.VTypeDia B)} {τ : Term σ (ctxOf e.1) (.VTypeDia B) b}
-    (hd : e.diaOf B = some ⟨b, τ⟩) :
-    (cEnv s (.root (.free z)) (.VTypeDia B)).map (Arrows.Leaf.keepAlong hF (edgeAcc hc)) =
-      Model.termShp (famEnv cEnv (ctxOf e.1) t) 0 τ := by
-  obtain ⟨j, hl⟩ := lift_le hM₀ hc he
-  rw [cEnv_lifted hT hM₀ hc hu he]
-  exact liftDiaAt_keep (fun t v T => cEnv_wf t v T) hc (cEnv_ref hT hM₀ hl)
-    (fun v X hv => by
-      rw [cEnv_eq hT hM₀ ⟨j, hl.ref hv⟩]
-      exact cStep_top cEnv t v X) he hd
-
-/-- ⭐**A lifted necessary root restricted along its lift edge has its lifted term's shape.** -/
-theorem edge_box_inr (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ}
-    (hc : t.1 = c :: s.1) {i z : ℕ} {B : VarType}
-    (hu : (ctxOf (glat s i)).ref (.root (.free z)) = some (.VTypeBox B)) {e : LTerm σ}
-    (he : fmapL hF M₀ t.1 (.step (.root (.free z)) .keep) = .inr e)
-    {b : Ann (.VTypeBox B)} {τ : Term σ (ctxOf e.1) (.VTypeBox B) b}
-    (hd : e.boxOf B = some ⟨b, τ⟩) :
-    restrictBox (edgeAcc hc) (cEnv s (.root (.free z)) (.VTypeBox B)) =
-      Model.termShp (famEnv cEnv (ctxOf e.1) t) 0 τ := by
-  have hXwf : Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) []
-      (Model.termShp (famEnv cEnv (ctxOf e.1) t) 0 τ) :=
-    Model.shWF_termShp (lw := []) (famEnv_wf (fun t v T => cEnv_wf t v T) (ctxOf e.1) t) τ
-  rw [Shp.box_eta (Model.termShp _ _ τ)] at hXwf ⊢
-  have hXfam := allL_isFam_of_wf [] _ hXwf
-  rw [cEnv_eq hT hM₀ ⟨i, hu⟩]
-  obtain ⟨tn, tb⟩ := t
-  change tn = c :: s.1 at hc
-  subst hc
-  refine congrArg Shp.box ?_
-  conv_rhs => rw [← transpose_unT _ hXfam]
-  refine congrArg _ (funext fun b' => ?_)
-  change unT (accTrans (edgeAcc (s := s) (t := ⟨c :: s.1, tb⟩) rfl) b')
-    (Arrows.transposeShp (F := garrows hF M₀) (Root := fun _ => VarSymb) fun b'' =>
-      boxEnt cEnv (fun t w => CStep cEnv B t w) s (.root (.free z)) (pathOf b''.2.down) b''.1
-        (pathOf_eq b''.2.down)) = _
-  rw [unT_transpose]
-  have hp : pathOf (accTrans (edgeAcc (s := s) (t := ⟨c :: s.1, tb⟩) rfl) b').2.down =
-      c :: pathOf b'.2.down := by
-    change pathOf (gtrans (edgeAcc (s := s) (t := ⟨c :: s.1, tb⟩) rfl).2.down b'.2.down) = _
-    rw [pathOf_trans (edgeAcc (s := s) (t := ⟨c :: s.1, tb⟩) rfl).2.down b'.2.down,
-      pathOf_of (edgeAcc (s := s) (t := ⟨c :: s.1, tb⟩) rfl).2.down (P := [c]) rfl]
-    rfl
-  rw [boxEnt_path cEnv _ s _ hp b'.1 _ (pathOf_eq b'.2.down)]
-  simp only [boxEnt, he, dif_pos (pathOf_ok b'.2.down), hd]
-  rfl
-
-/-- ⭐(B1)/(B2): **an address's image along an edge is the address kept along it.** -/
-theorem edge_inl (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ}
-    (hc : t.1 = c :: s.1) {i : ℕ} {u : VarSymb} {U : VarType}
-    (hu : (ctxOf (glat s i)).ref u = some U) (hk : U.keepable = true) {y : VarSymb}
-    (hy : fmapL hF M₀ t.1 (.step u .keep) = .inl y) :
-    cEnv t y U = keepSh (edgeAcc hc) U (cEnv s u U) := by
+  rw [cEnv_decl hT hM₀ hd, annSh_eta hko]
   cases U with
-  | VTypeDia B => exact edge_dia_inl hT hM₀ hc hu hy
-  | VTypeBox B => exact edge_box_inl hT hM₀ hc hu hy
+  | VTypeDia A =>
+      change (shOf s _ _).map _ = _
+      rw [shOf_map]
+      refine shOf_congr hT _ _ _ fun π X hπ => ?_
+      have hπ' : Step.walkTy (.VTypeDia A) (.keep :: π) = some (.VTypeDia X) :=
+        (walkTy_keep rfl π).trans hπ
+      rw [keepAlong_eq hT hM₀, gKA_gLab hT hM₀ ⟨hu, _, X, hd, hπ'⟩ (noProjHead_of_dia hπ),
+        gMem_path (pathOf_edge rfl) _ rfl]
+      obtain ⟨w, q', h₁, h₂, hw, hl⟩ := edge_point hT hM₀ hb hd hπ'
+      rw [h₁, gMem_tr s _ c [] rfl hu hw h₂ hl, gMem_kept_nil _ _ _ hw]
+  | VTypeBox A =>
+      change Shp.box (Arrows.transposeShp (F := garrows hF M₀) (Root := fun _ => VarSymb)
+        fun b => unT (accTrans (edgeAcc (s := s) (t := ⟨c :: s.1, hb⟩) rfl) b) (shOf s A fun π =>
+          gLab s (u.ext (.keep :: .here :: π)))) = Shp.box _
+      simp only [unT_shOf]
+      rw [transpose_shOf]
+      congr 1
+      refine shOf_congr hT _ _ _ fun π X hπ => ?_
+      have hπ' : Step.walkTy (.VTypeBox A) (.keep :: .here :: π) = some (.VTypeDia X) := by
+        rw [walkTy_keep rfl, walkTy_here hT]
+        exact hπ
+      obtain ⟨w, q', -, h₂, hw, hl⟩ := edge_point hT hM₀ hb hd hπ'
+      rw [h₂, gLab_keep _ hw]
+      congr 1
+      funext b
+      rw [show u.ext (.keep :: .here :: π) = (VarSymb.step u .keep).ext (.here :: π) from rfl,
+        gLab_keep _ hu]
+      change gMem s b.1 (pathOf (gtrans (edgeAcc (s := s) (t := ⟨c :: s.1, hb⟩) rfl).2.down
+        b.2.down)) _ _ = _
+      have hp : pathOf (gtrans (edgeAcc (s := s) (t := ⟨c :: s.1, hb⟩) rfl).2.down b.2.down) =
+          c :: pathOf b.2.down := by
+        rw [pathOf_trans (edgeAcc (s := s) (t := ⟨c :: s.1, hb⟩) rfl).2.down b.2.down,
+          pathOf_edge (s := s) (t := (⟨c :: s.1, hb⟩ : GW hF M₀)) (c := c) rfl]
+        rfl
+      rw [gMem_path hp _ (pathOf_eq b.2.down),
+        gMem_tr s b.1 c _ _ hu hw h₂ hl]
+      rfl
   | Var => cases hk
   | VTypeOne => cases hk
   | VTypeProd _ _ => cases hk
 
-/-! ## Along an edge: the entry -/
+/-- ⭐**A view's items kept into `□`** have the address shapes of their kept addresses. -/
+theorem itemsTm_shp (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {t : GW hF M₀}
+    {l : List VarType} {j : ℕ} (hl : (ctxOf l).Le (ctxOf (glat t j))) :
+    ∀ (L : List (VarSymb × VarType)) (hL : ∀ e ∈ L, (ctxOf l).boxIn.ref e.1 = some e.2),
+      (∀ e ∈ L, ∃ w, e.1 = .step w .keep ∧ (ctxOf l).ref w = some e.2 ∧ e.2.keepable = true) →
+      Model.termShp (((famEnv cEnv (ctxOf l) t)).boxPush 0) 1 (itemsTm (σ := σ) L hL).2 =
+        shOf t (itemsTy L) fun π => gLab t ((itemsAnnF L id).idxAt π)
+  | [], _, _ => rfl
+  | e :: L, hL, hK => by
+      have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
+      obtain ⟨w, hw₁, hw₂, hw₃⟩ := hK e List.mem_cons_self
+      change Shp.prod (Model.termShp _ 1 (Term.eta e.1 e.2 _))
+        (Model.termShp _ 1 (itemsTm (σ := σ) L _).2) = Shp.prod _ _
+      rw [Model.termShp_eta,
+        itemsTm_shp hT hM₀ hl L _ fun e' he' => hK e' (List.mem_cons_of_mem _ he')]
+      refine congrArg₂ Shp.prod ?_ rfl
+      obtain ⟨e₁, e₂⟩ := e
+      change e₁ = .step w .keep at hw₁
+      subst hw₁
+      dsimp only
+      rw [Model.ShEnv.ref_nonproj _ _ (by decide)]
+      change (GFunc.shp (σ := σ) (GFunc.keep hF _) 0
+        ((famEnv cEnv (ctxOf l) t).ref 0 w _)).inner = _
+      rw [cEnv_ref hT hM₀ hl, boxPush_cEnv hT hM₀ ⟨j, hl.ref hw₂⟩ hw₃, annSh_eta hko]
+      refine shOf_congr hT _ _ _ fun π X hπ => ?_
+      change gLab t ((VarSymb.step w .keep).ext π) = gLab t ((Ann.eta _ e₂).idxAt π)
+      rw [Ann.idxAt_eta π _ e₂ X hπ]
+      rfl
+
+/-- ⭐**An edge's entry for a declared address's kept item** is indexed by the entry's indices. -/
+theorem entry_shOf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {t : GW hF M₀} {j : ℕ}
+    {u : VarSymb} {U : VarType} (hk : U.keepable = true)
+    (hx : (entOf (ctxOf (glat t j)) (fmapL hF M₀ t.1 (.step u .keep))).OkRef U) :
+    Model.entryShp (famEnv cEnv (ctxOf (glat t j)) t) 0
+        (entOf (ctxOf (glat t j)) (fmapL hF M₀ t.1 (.step u .keep))) hx =
+      shOf t U fun π => gLab t (entIdx (fmapL hF M₀ t.1 (.step u .keep)) π) := by
+  have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
+  set Δ := ctxOf (glat t j)
+  suffices key : ∀ (x : LEnt σ), fmapL hF M₀ t.1 (.step u .keep) = x →
+      ∀ (hx : (entOf Δ x).OkRef U), Model.entryShp (famEnv cEnv Δ t) 0 (entOf Δ x) hx =
+        shOf t U fun π => gLab t (entIdx x π) from key _ rfl hx
+  intro x hfm hx
+  cases x with
+  | inl y =>
+      change (famEnv cEnv Δ t).ref 0 y hx = _
+      rw [cEnv_ref hT hM₀ (Ctx.Le.refl _), cEnv_decl hT hM₀ ⟨j, hx⟩, annSh_eta hko]
+      rfl
+  | inr τ =>
+      obtain ⟨e₀, hsuf, hadm, -, hτ⟩ := fmapL_adm hfm
+      obtain ⟨L, T₀, a₀, t₀⟩ := τ
+      have hle : (ctxOf L).Le Δ := by
+        by_contra hn
+        rw [show entOf Δ (.inr ⟨L, T₀, a₀, t₀⟩) = .hide from dif_neg hn] at hx
+        exact hx
+      have he : entOf Δ (.inr ⟨L, T₀, a₀, t₀⟩) = .tm (Term.mono hle t₀) := dif_pos hle
+      have hx₂ : (SubE.tm (Term.mono hle t₀) : SubE σ Δ).OkRef U := he ▸ hx
+      rw [Model.entryShp_congr _ 0 he hx hx₂]
+      have hTU : T₀ = U := hx₂
+      subst hTU
+      change Model.termShp _ 0 (Term.mono hle t₀) = _
+      rw [Model.termShp_mono (Γ := ctxOf L) (Γ' := Δ) (h := hle) (ρ := famEnv cEnv (ctxOf L) t)
+        (ρ' := famEnv cEnv Δ t) (fun _ _ _ => rfl) 0]
+      obtain ⟨l', T', a', t'⟩ := e₀
+      have h₂ := eq_of_heq (Sigma.mk.inj hτ).2
+      obtain ⟨rfl, h₃⟩ := Sigma.mk.inj h₂
+      obtain ⟨rfl, h₄⟩ := Sigma.mk.inj (eq_of_heq h₃)
+      have hsl : (ctxOf l').Le (ctxOf L) := ctxOf_le_of_suffix hsuf
+      rw [eq_of_heq h₄, Model.termShp_mono (h := hsl) (ρ := famEnv cEnv (ctxOf l') t)
+        (ρ' := famEnv cEnv (ctxOf L) t) (fun _ _ _ => rfl) 0]
+      have hl' : (ctxOf l').Le Δ := hsl.trans hle
+      simp only [entIdx]
+      rcases hadm with hbt | ⟨z, Z, hz, he₀⟩ | ⟨-, z, Z, hz, he₀⟩
+      · -- the `□` view tuple
+        change (⟨l', _, _, t'⟩ : LTerm σ) = boxTuple hF l' at hbt
+        unfold boxTuple at hbt
+        obtain ⟨rfl, h₅⟩ := Sigma.mk.inj (eq_of_heq (Sigma.mk.inj hbt).2)
+        obtain ⟨rfl, h₆⟩ := Sigma.mk.inj (eq_of_heq h₅)
+        rw [eq_of_heq h₆]
+        change Shp.box (Model.termShp _ 1 _) = _
+        rw [itemsTm_shp hT hM₀ hl' _ _ (boxItems_kept hko l')]
+        change Shp.box _ = Shp.box _
+        congr 1
+        refine shOf_congr hT _ _ _ fun π X hπ => ?_
+        obtain ⟨k, hkl, r, rfl, hr⟩ := items_walk _ π X hπ
+        obtain ⟨w, hw₁, -, -⟩ := boxItems_kept hko l' _ (List.getElem_mem hkl)
+        rw [show Ann.box (itemsTm (σ := σ) (boxItems l') (boxItems_ref hF l')).1 =
+          BTann id (boxItems l') by rw [itemsTm_ann]; rfl]
+        dsimp only
+        rw [bt_keep, bt_item _ _ k hkl r hr, items_idxAt _ _ k hkl, Ann.idxAt_eta r _ _ X hr]
+        simp only [id]
+        rw [hw₁, VarSymb.shift_level_zero (by decide), collapse_kept]
+      · -- an η-lift
+        change (⟨l', _, _, t'⟩ : LTerm σ) = etaTerm l' z Z hz at he₀
+        unfold etaTerm at he₀
+        obtain ⟨rfl, h₅⟩ := Sigma.mk.inj (eq_of_heq (Sigma.mk.inj he₀).2)
+        obtain ⟨rfl, h₆⟩ := Sigma.mk.inj (eq_of_heq h₅)
+        rw [eq_of_heq h₆, Model.termShp_eta, cEnv_ref hT hM₀ hl', cEnv_decl hT hM₀ ⟨_, hl'.ref hz⟩,
+          annSh_eta hko]
+        exact shOf_congr hT _ _ _ fun π X hπ => by rw [Ann.idxAt_eta π z _ X hπ]
+      · -- a view tuple
+        change (⟨l', _, _, t'⟩ : LTerm σ) = viewTuple hF l' z Z hz at he₀
+        unfold viewTuple at he₀
+        obtain ⟨rfl, h₅⟩ := Sigma.mk.inj (eq_of_heq (Sigma.mk.inj he₀).2)
+        obtain ⟨rfl, h₆⟩ := Sigma.mk.inj (eq_of_heq h₅)
+        rw [eq_of_heq h₆, Model.termShp_diatm _ 0 hz]
+        have hd : DeclAt t z (.VTypeDia Z) := ⟨_, hl'.ref hz⟩
+        have hag : Model.ShEnv.Agree (Ctx.le_boxIn_diaIn (ctxOf l') z)
+            ((famEnv cEnv (ctxOf l') t).boxPush 0) ((famEnv cEnv (ctxOf l') t).diaPush 0 z hz) :=
+          fun v T hv => by
+            match v, hv with
+            | .step u .keep, _ => rfl
+            | .step u .box, _ => rfl
+            | .root _, hv => cases hv
+            | .step _ .fst, hv => cases hv
+            | .step _ .snd, hv => cases hv
+            | .step _ .dia, hv => cases hv
+            | .step _ .here, hv => cases hv
+        change Shp.dia _ (Shp.prod (Model.termShp _ 1 (Term.eta _ Z _))
+          (Model.termShp _ 1 (Term.mono _ _))) = _
+        rw [Model.termShp_eta, Model.termShp_mono hag 1,
+          itemsTm_shp hT hM₀ hl' _ _ (boxItems_kept hko l'),
+          Model.ShEnv.ref_nonproj _ _ (by decide)]
+        change Shp.dia ((famEnv cEnv (ctxOf l') t).ref 0 z hz).label
+          (Shp.prod ((famEnv cEnv (ctxOf l') t).ref 0 z hz).body _) = _
+        rw [cEnv_ref hT hM₀ hl', cEnv_decl hT hM₀ hd]
+        change Shp.dia (gLab t z) (Shp.prod (annSh t (Ann.eta (.step z .dia) Z)) _) =
+          Shp.dia _ (Shp.prod _ _)
+        rw [annSh_eta hko]
+        refine congrArg₂ Shp.dia rfl (congrArg₂ Shp.prod ?_ ?_)
+        · exact shOf_congr hT _ _ _ fun π X hπ => by
+            change _ = gLab t ((Ann.eta (.step z .dia) Z).idxAt π)
+            rw [Ann.idxAt_eta π _ Z X hπ]
+        · change _ = shOf t _ fun π =>
+            gLab t ((itemsTm (σ := σ) (boxItems l') (boxItems_ref hF l')).1.idxAt π)
+          rw [itemsTm_ann]
 
 /-- ⭐**An edge's entry for a kept item reads as the item kept along the edge.** -/
 theorem edge_entry (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ}
@@ -585,46 +612,8 @@ theorem edge_entry (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s t : G
   set Δ := ctxOf (glat t (glstg s t i))
   have hθ : eS σ Δ (fmapL hF M₀ t.1) (.step u .keep) =
       entOf Δ (fmapL hF M₀ t.1 (.step u .keep)) := eS_item _ rfl
-  rw [Model.entryShp_congr _ 0 hθ hok (hθ ▸ hok)]
-  suffices key : ∀ (x : LEnt σ), fmapL hF M₀ t.1 (.step u .keep) = x →
-      ∀ (hx : (entOf Δ x).OkRef U), Model.entryShp (famEnv cEnv Δ t) 0 (entOf Δ x) hx =
-        keepSh (edgeAcc hc) U (cEnv s u U) from key _ rfl _
-  intro x hfm hx
-  cases x with
-  | inl y =>
-      change (famEnv cEnv Δ t).ref 0 y hx = _
-      rw [cEnv_ref hT hM₀ (Ctx.Le.refl _)]
-      exact edge_inl hT hM₀ hc hu hk hfm
-  | inr e =>
-      have hfm' := hfm
-      rw [hc] at hfm'
-      obtain ⟨z, hz⟩ := fmapL_term hM₀ hfm'
-      obtain rfl : u = .root (.free z) := (VarSymb.step.inj hz).1
-      obtain ⟨l, T, a, τ⟩ := e
-      by_cases hle : (ctxOf l).Le Δ
-      · have he : entOf Δ (.inr ⟨l, T, a, τ⟩) = .tm (Term.mono hle τ) := by
-          simp only [entOf, dif_pos hle]
-        have hx₂ : (SubE.tm (Term.mono hle τ) : SubE σ Δ).OkRef U := he ▸ hx
-        rw [Model.entryShp_congr _ 0 he hx hx₂]
-        have hTU : T = U := hx₂
-        subst hTU
-        change Model.termShp _ 0 (Term.mono hle τ) = _
-        rw [Model.termShp_mono (Γ := ctxOf l) (Γ' := Δ) (h := hle) (ρ := famEnv cEnv (ctxOf l) t)
-          (ρ' := famEnv cEnv Δ t) (fun _ _ _ => rfl) 0]
-        cases T with
-        | VTypeDia B =>
-            exact (edge_dia_inr hT hM₀ hc hu hfm (b := a) (τ := τ)
-              (by simp [LTerm.diaOf])).symm
-        | VTypeBox B =>
-            exact (edge_box_inr hT hM₀ hc hu hfm (b := a) (τ := τ)
-              (by simp [LTerm.boxOf])).symm
-        | Var => cases hk
-        | VTypeOne => cases hk
-        | VTypeProd _ _ => cases hk
-      · have he : entOf Δ (.inr ⟨l, T, a, τ⟩) = .hide := by
-          simp only [entOf, dif_neg hle]
-        have hh : (SubE.hide : SubE σ Δ).OkRef U := he ▸ hx
-        exact hh.elim
+  rw [Model.entryShp_congr _ 0 hθ hok (hθ ▸ hok), entry_shOf hT hM₀ hk,
+    keepSh_shOf hT hM₀ hc ⟨i, hu⟩ hk]
 
 /-! ## Along a path -/
 
@@ -671,17 +660,6 @@ theorem restrictBox_wf {s : GW hF M₀} (a : (garrows hF M₀).Acc s) {B : VarTy
     Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (restrictBox a S) := by
   rw [Shp.box_eta S] at hS
   exact Model.shWF_transpose true [] _ fun b => shWF_unT _ [] _ hS
-
-theorem keepSh_wf {s : GW hF M₀} (a : (garrows hF M₀).Acc s) {U : VarType}
-    (S : GShape hF M₀ s U)
-    (hS : Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] S) :
-    Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (keepSh a U S) := by
-  cases U with
-  | VTypeDia B => exact shWF_map_keepAlong a [] S hS
-  | VTypeBox B => exact restrictBox_wf a S hS
-  | Var => exact dsh_wf [] _ _
-  | VTypeOne => exact dsh_wf [] _ _
-  | VTypeProd _ _ => exact dsh_wf [] _ _
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 /-- An item of a `□` view under T and 4 is a kept item. -/

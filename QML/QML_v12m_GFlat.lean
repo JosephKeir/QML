@@ -70,7 +70,7 @@ noncomputable def _root_.V12M.CtxExpr.gchain (hF : ModalSys.Four = true) :
 
 /-! ## Completeness in every presented context -/
 
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.FourCoh] [ModalSys.NoSym]
+variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoSym]
 
 /-- Completeness for 4 in any context flattened into a world language. -/
 theorem completenessG_flat (hF : ModalSys.Four = true) {Γ : Ctx} {l : List VarType}
@@ -85,7 +85,7 @@ theorem completenessG_flat (hF : ModalSys.Four = true) {Γ : Ctx} {l : List VarT
   exact hval M hM _ hnp fun ψ hψ => (F.sat e ψ).mp (hΔ _ (List.mem_map_of_mem hψ))
 
 /-- ⭐**Completeness for 4 in every presented context** whose views are at declared witnesses
-    (B off; T, D and strong 4 free, `ModalSys.FourCoh`). -/
+    (B off; T, D and strong 4 free). -/
 theorem completenessG_presented (hF : ModalSys.Four = true) (e : CtxExpr) (he : e.Wf)
     {Δ : List (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
     (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}

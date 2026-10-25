@@ -4,7 +4,7 @@ import QML.QML_v12m_GInd
 # QML v12m — completeness for 4 on the growing tree
 
 With 4 on and B off (`ModalSys.NoSym`; T and D free, in either strength; strong 4 in either or
-both forms, with the `□`-lift on whenever the `◇`-lift is under T, `ModalSys.FourCoh`):
+both forms, independently):
 ⭐`completenessG`, a sequent in a context of declared variables (`ctxOf l₀`, the root's starting
 language) valid in every model is provable.  Its negation extends to a maximal consistent theory
 `M₀`; the growing tree from `M₀` gives the canonical model (`gmodel`), a model proper
@@ -20,7 +20,7 @@ namespace GArrow
 
 open BArrow
 
-variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.FourCoh]
+variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
   [ModalSys.NoSym]
 
 /-- ⭐⭐**The growing tree's canonical model over a maximal consistent theory**: its root
@@ -36,7 +36,7 @@ theorem exists_canonG (hF : ModalSys.Four = true) {l₀ : List VarType}
   exact ⟨ctxOf_le_of_suffix hg.suf, gtruth (groot hF M₀) 0,
     fun ψ hψ => hg.sub ψ (show ψ ∈ ((gnet hF M₀ 0).st []).M from hψ)⟩
 
-/-- ⭐**Completeness for 4** (B off; T, D and strong 4 free, `ModalSys.FourCoh`): in a context of
+/-- ⭐**Completeness for 4** (B off; T, D and strong 4 free): in a context of
     declared variables, a sequent that holds in every model, at every world, in every environment,
     is provable. -/
 theorem completenessG (hF : ModalSys.Four = true) {l₀ : List VarType}
@@ -67,7 +67,7 @@ theorem completenessG (hF : ModalSys.Four = true) {l₀ : List VarType}
   have hφ := (htruth _).mp ((Model.sat_mono hag φ).mpr hsat)
   exact ((gw hM₀ (groot hF _)).mcs 0).neg_mem_iff.mp (hmem φ.neg (Or.inr rfl)) hφ
 
-/-- ⭐**Soundness and completeness for 4** (B off, `ModalSys.FourCoh`), in a context of declared
+/-- ⭐**Soundness and completeness for 4** (B off), in a context of declared
     variables. -/
 theorem provable_iff_validG (hF : ModalSys.Four = true) {l₀ : List VarType}
     {Δ : List (WFF σ (ctxOf l₀) 0)} {φ : WFF σ (ctxOf l₀) 0} :

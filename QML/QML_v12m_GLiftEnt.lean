@@ -1,4 +1,4 @@
-import QML.QML_v12m_GOrigin
+import QML.QML_v12m_GLimit
 
 /-!
 # QML v12m — the growing tree: term entries are admissible lifts
@@ -8,9 +8,7 @@ Every term entry of every edge is an admissible lifted term (`LiftAdm`: the `□
 the child's language at the lift (`docs/v12-modal-extensions.md` §3 4, D-H3).  Term entries are
 made only by the lift (`gliftG`); the other operations make address entries (`gextF`, `ofRen`).
 
-* `AdmEnt`, `LiftEntOk`, `liftEntOk_gnet`, and in the limit ⭐`fmapL_adm`;
-* ⭐`fmapL_dia_eta`: with the `□`-lift on, a term entry of possible type is the η-expansion of a
-  possible address of the child.
+* `AdmEnt`, `LiftEntOk`, `liftEntOk_gnet`, and in the limit ⭐`fmapL_adm`.
 -/
 
 namespace V12M
@@ -179,39 +177,6 @@ theorem fmapL_adm {k : Node} {v : VarSymb} {e : LTerm σ} (h : fmapL hF M₀ k v
   unfold fmapL at h
   split_ifs at h
   exact liftEntOk_gnet hF M₀ _ k v e h
-
-/-- ⭐**With the `□`-lift on whenever the `◇`-lift is, a term entry of possible type is an
-    η-expansion** of a possible address of the child, weakened. -/
-theorem fmapL_dia_eta (hS : ModalSys.FourStrongW = true → ModalSys.FourStrong = true)
-    {k : Node} {v : VarSymb} {L : List VarType}
-    {A : VarType} {a : Ann (.VTypeDia A)} {t : Term σ (ctxOf L) (.VTypeDia A) a}
-    (h : fmapL hF M₀ k v = .inr ⟨L, _, a, t⟩) :
-    ∃ (l : List VarType) (hl : l <:+ L) (z : VarSymb) (hz : (ctxOf l).ref z = some (.VTypeDia A)),
-      (⟨a, t⟩ : Σ b, Term σ (ctxOf L) (.VTypeDia A) b) =
-        ⟨_, Term.mono (ctxOf_le_of_suffix hl) (Term.eta z (.VTypeDia A) hz)⟩ := by
-  obtain ⟨e₀, hsuf, hadm, hlift, he⟩ := fmapL_adm h
-  obtain ⟨l', T', a', t'⟩ := e₀
-  rcases hadm with hb | ⟨z, Z, hz, he₀⟩ | ⟨hS', z, Z, hz, he₀⟩
-  · change (⟨l', T', a', t'⟩ : LTerm σ) = boxTuple hF l' at hb
-    unfold boxTuple at hb
-    cases hb
-    cases he
-  · change (ctxOf l').ref z = some (.VTypeDia Z) at hz
-    change (⟨l', T', a', t'⟩ : LTerm σ) = etaTerm l' z Z hz at he₀
-    unfold etaTerm at he₀
-    cases he₀
-    change (⟨L, _, a, t⟩ : LTerm σ) = ⟨L, .VTypeDia Z, _,
-      Term.mono (ctxOf_le_of_suffix hsuf) (Term.eta z (.VTypeDia Z) hz)⟩ at he
-    have h₁ := eq_of_heq (Sigma.mk.inj he).2
-    obtain rfl : A = Z := VarType.VTypeDia.inj (Sigma.mk.inj h₁).1
-    exact ⟨l', hsuf, z, hz, eq_of_heq (Sigma.mk.inj h₁).2⟩
-  · have hT' : T' = _ := congrArg (fun e : LTerm σ => e.2.1) he₀
-    have hW : ModalSys.FourStrongW = true := by
-      change T'.liftable = true at hlift
-      rw [hT'] at hlift
-      exact hlift
-    rw [hS hW] at hS'
-    cases hS'
 
 end GArrow
 

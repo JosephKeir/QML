@@ -8,10 +8,9 @@ import QML.QML_v12m_GViewSubst
 Under T, "tags determine annotations" (`docs/v12-modal-extensions.md` §3 4, "Diagnosis" and D-H3):
 terms with one denotation have one annotation, as B's `ann_eq_of_rden` and the staged tree's.
 
-With the `□`-lift on, strong 4 lifts only generators, so every address is labelled faithfully:
-
-* ⭐`cEnv_dia_generic`: every possible address's canonical shape is the generic one (`genDia`) —
-  a lifted root copies its η-expanded address's template (`pbShp_genDia`), an image inherits one.
+Canonical shapes are address shapes, so every address is labelled faithfully: a possible
+address's canonical shape is the generic one (`cEnv_dia_generic`), and inside a root's content
+the pushed environments stay generic (`Pushed.rootSh`).
 -/
 
 namespace V12M
@@ -24,148 +23,6 @@ open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
   {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
-
-/-! ## Every possible template is generic -/
-
-/-- Pulling a generic content shape back to a lifted root gives the root's generic content
-    shape. -/
-theorem pbShp_rootSh {s t : GW hF M₀} (m z : VarSymb) :
-    ∀ (T : VarType) (π : List Step) (lw : List Bool),
-      pbShp hF M₀ (s := s) (t := t) m lw (rootSh t z π T) = rootSh s m π T
-  | .Var, _, _ => rfl
-  | .VTypeOne, _, _ => rfl
-  | .VTypeProd A C, π, lw => by
-      simp only [rootSh, pbShp]
-      rw [pbShp_rootSh m z A, pbShp_rootSh m z C]
-  | .VTypeBox A, π, lw => by
-      simp only [rootSh, pbShp]
-      rw [pbShp_rootSh m z A]
-  | .VTypeDia A, π, lw => by
-      simp only [rootSh, pbShp, pbLeaf]
-      rw [pbShp_rootSh m z A]
-
-theorem pbShp_genDia {s t : GW hF M₀} (m z : VarSymb) (A : VarType) :
-    pbShp hF M₀ (s := s) (t := t) m [] (genDia t z A) = genDia s m A := by
-  simp only [genDia, pbShp, pbLeaf]
-  rw [pbShp_rootSh m z A]
-
-/-- One step: a possible address's template is generic when the templates of lower addresses, and
-    of the parent's addresses at the same level, are. -/
-theorem cEnv_dia_step (hT : ModalSys.T = true)
-    (hS : ModalSys.FourStrongW = true → ModalSys.FourStrong = true)
-    (hM₀ : Theory.IsMCS M₀) {s : GW hF M₀} {v : VarSymb} {X : VarType}
-    (hd : DeclAt s v (.VTypeDia X))
-    (ihl : ∀ (t : GW hF M₀) (w : VarSymb) (W : VarType), levA t w < levA s v →
-      DeclAt t w (.VTypeDia W) → cEnv t w (.VTypeDia W) = genDia t w W)
-    (ihp : ∀ (c : ℕ) (p : Node) (hs : s.1 = c :: p) (w : VarSymb) (W : VarType),
-      levA ⟨p, gborn_parent (hs ▸ s.2)⟩ w = levA s v →
-      DeclAt ⟨p, gborn_parent (hs ▸ s.2)⟩ w (.VTypeDia W) →
-      cEnv ⟨p, gborn_parent (hs ▸ s.2)⟩ w (.VTypeDia W) = genDia ⟨p, gborn_parent (hs ▸ s.2)⟩ w W) :
-    cEnv s v (.VTypeDia X) = genDia s v X := by
-  obtain ⟨i, hv⟩ := hd
-  by_cases hroot : ∃ r, v = .root (.free r)
-  · obtain ⟨z, rfl⟩ := hroot
-    by_cases hL : Lifted s z
-    · -- a lifted root: the pull-back of an η-expanded address's template
-      obtain ⟨c, e, he⟩ := hL
-      let t : GW hF M₀ := ⟨c :: s.1, gborn_of_inr he⟩
-      rw [cEnv_lifted hT hM₀ (t := t) rfl hv he]
-      obtain ⟨j, hlj⟩ := lift_le hM₀ (t := t) rfl he
-      obtain ⟨L, T, a, τ⟩ := e
-      cases T with
-      | VTypeDia A' =>
-          by_cases hA : A' = X
-          · subst hA
-            obtain ⟨l, hl, z', hz', hτ⟩ := fmapL_dia_eta hS he
-            have hsh : Model.termShp (famEnv cEnv (ctxOf L) t) 0 τ = cEnv t z' (.VTypeDia A') := by
-              have h₁ := congrArg
-                (fun q : Σ b, Term σ (ctxOf L) (.VTypeDia A') b =>
-                  Model.termShp (famEnv cEnv (ctxOf L) t) 0 q.2) hτ
-              refine h₁.trans ?_
-              change Model.termShp (famEnv cEnv (ctxOf L) t) 0
-                (Term.mono (ctxOf_le_of_suffix hl) (Term.eta z' (.VTypeDia A') hz')) = _
-              rw [Model.termShp_mono (ρ := famEnv cEnv (ctxOf l) t)
-                  (ρ' := famEnv cEnv (ctxOf L) t) (fun _ _ _ => rfl),
-                Model.termShp_eta,
-                cEnv_ref hT hM₀ ((ctxOf_le_of_suffix hl).trans hlj)]
-            obtain ⟨j', hj', hlt, -⟩ := ref_rt hz'
-            have hlev : levA t z' < levA s (.root (.free z)) := by
-              unfold levA
-              rw [hj']
-              exact lev_lift hM₀ (t := t) rfl he
-                (lt_of_lt_of_le hlt (hl.length_le))
-            have hdz : DeclAt t z' (.VTypeDia A') :=
-              ⟨j, ((ctxOf_le_of_suffix hl).trans hlj).ref hz'⟩
-            have hdo : LTerm.diaOf A' (⟨L, .VTypeDia A', a, τ⟩ : LTerm σ) = some ⟨a, τ⟩ := by
-              simp [LTerm.diaOf]
-            unfold liftDiaAt
-            rw [hdo]
-            change pbShp hF M₀ (.root (.free z)) []
-              (Model.termShp (famEnv cEnv (ctxOf L) t) 0 τ) = _
-            rw [hsh, ihl t z' A' hlev hdz, pbShp_genDia]
-          · unfold liftDiaAt
-            simp only [LTerm.diaOf, dif_neg hA]
-      | Var => rfl
-      | VTypeOne => rfl
-      | VTypeProd _ _ => rfl
-      | VTypeBox _ => rfl
-    · by_cases himg : ∃ (c : ℕ) (p : Node) (_ : s.1 = c :: p) (u : ℕ),
-          fmapL hF M₀ s.1 (.step (.root (.free u)) .keep) = .inl (.root (.free z))
-      · -- an image root: its source's template, kept along the edge
-        obtain ⟨c, p, hs, u, hu⟩ := himg
-        let q : GW hF M₀ := ⟨p, gborn_parent (hs ▸ s.2)⟩
-        have hc : s.1 = c :: q.1 := hs
-        obtain ⟨V, hdV, hkV⟩ := committed_root_decl hM₀ hc
-          (committed_of_decl hu ⟨i, hv⟩)
-        obtain ⟨hdy, hlv⟩ := keep_img hM₀ hc hdV hkV hu
-        obtain rfl := DeclAt.unique hM₀ hdy ⟨i, hv⟩
-        obtain ⟨i', hu'⟩ := hdV
-        rw [edge_dia_inl hT hM₀ hc hu' hu, ihp c p hs _ _ hlv.symm ⟨i', hu'⟩, genDia_keep,
-          rootKeep_edge, wit_of_inl (by intro _ h; cases h) hu]
-      · -- neither: generic
-        have hnl : ¬ ∃ z', VarSymb.root (.free z) = .root (.free z') ∧ Lifted s z' := by
-          rintro ⟨z', hz', hL'⟩
-          injection hz' with h
-          injection h with h
-          exact hL (h ▸ hL')
-        have hni : ∀ c p, s.1 = c :: p →
-            ¬ ∃ u, fmapL hF M₀ s.1 (.step (.root (.free u)) .keep) = .inl (.root (.free z)) :=
-          fun c p hs ⟨u, hu⟩ => himg ⟨c, p, hs, u, hu⟩
-        rw [cEnv_eq hT hM₀ ⟨i, hv⟩]
-        exact diaT_eq_genDia hnl hni
-  · have hnl : ¬ ∃ z, v = .root (.free z) ∧ Lifted s z := fun ⟨z, hz, _⟩ => hroot ⟨z, hz⟩
-    rw [cEnv_eq hT hM₀ ⟨i, hv⟩]
-    exact diaT_eq_genDia hnl (not_img_of_nonroot hM₀ hv hroot)
-
-/-- ⭐**With the `□`-lift on, every possible address's canonical shape is generic**: by induction
-    on the level, and on the node for images.  A lifted root's template pulls back its lifted
-    term's shape, which (D-H3) is an η-expanded possible address's, lower (`lev_lift`); an image
-    inherits its source's, kept (`edge_dia_inl`, `genDia_keep`); any other address is generic. -/
-theorem cEnv_dia_generic (hT : ModalSys.T = true)
-    (hS : ModalSys.FourStrongW = true → ModalSys.FourStrong = true)
-    (hM₀ : Theory.IsMCS M₀) :
-    ∀ (n : ℕ) (s : GW hF M₀) (v : VarSymb) (X : VarType), levA s v ≤ n →
-      DeclAt s v (.VTypeDia X) → cEnv s v (.VTypeDia X) = genDia s v X := by
-  intro n
-  induction n using Nat.strong_induction_on with
-  | _ n ih =>
-  intro s
-  obtain ⟨sn, sb⟩ := s
-  induction sn with
-  | nil =>
-      intro v X hn hd
-      refine cEnv_dia_step hT hS hM₀ hd
-        (fun t w W hlt hdw => ih _ (lt_of_lt_of_le hlt hn) t w W le_rfl hdw) ?_
-      intro c p hs
-      cases hs
-  | cons c p ihp =>
-      intro v X hn hd
-      refine cEnv_dia_step hT hS hM₀ hd
-        (fun t w W hlt hdw => ih _ (lt_of_lt_of_le hlt hn) t w W le_rfl hdw) ?_
-      intro c' p' hs w W hlv hdw
-      injection hs with hc hp
-      subst hc hp
-      exact ihp (gborn_parent sb) w W (hlv ▸ hn) hdw
 
 /-! ## Generic content shapes under keeping and collapsing -/
 
@@ -432,12 +289,11 @@ open BArrow
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
   {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
 
-/-- ⭐**Inside a possible root's content the pushed canonical environment is generic**: with the
-    `□`-lift on, every address `pre.dia.q` reads `rootSh s pre (dia :: q)` — the root's template
-    is generic (`cEnv_dia_generic`), and keeping and projecting move generic shapes to generic
-    shapes (`rootSh_keep_shp`, `rootSh_proj`). -/
+/-- ⭐**Inside a possible root's content the pushed canonical environment is generic**: every
+    address `pre.dia.q` reads `rootSh s pre (dia :: q)` — the root's canonical shape is generic
+    (`cEnv_dia_generic`), and keeping and projecting move generic shapes to generic shapes
+    (`rootSh_keep_shp`, `rootSh_proj`). -/
 theorem Pushed.rootSh (hT : ModalSys.T = true)
-    (hS : ModalSys.FourStrongW = true → ModalSys.FourStrong = true)
     (hM₀ : Theory.IsMCS M₀) {s : GW hF M₀} {i : ℕ} {Δ : Ctx} {ρ : GEnv hF M₀ Δ s} {j : ℕ}
     (hP : Pushed hF M₀ s i Δ ρ j) (pre : VarSymb) (hpre : PPath pre.path) :
     ∀ (y : VarSymb) {T : VarType} (h : Δ.ref y = some T) (q : List Step),
@@ -489,14 +345,14 @@ theorem Pushed.rootSh (hT : ModalSys.T = true)
           subst hXT
           change (ρ.ref j _ hx).body = _
           rcases ext_dia_eq_step hvq.symm with ⟨rfl, rfl, -⟩ | ⟨q', rfl, rfl⟩
-          · -- the root's own content: its template is generic
+          · -- the root's own content: its canonical shape is generic
             have hl := hP.levels _ hx
             rw [levels_ppath hpre] at hl
             subst hl
             cases hP with
             | base =>
                 rw [cEnv_ref hT hM₀ (Ctx.Le.refl _) _ hx,
-                  cEnv_dia_generic hT hS hM₀ _ s _ X le_rfl ⟨i, hx⟩]
+                  cEnv_dia_generic hT hM₀ ⟨i, hx⟩]
                 rfl
           · rw [ih _ hx q' rfl]
             rfl
