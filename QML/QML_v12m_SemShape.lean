@@ -676,6 +676,231 @@ theorem BoxOK_kindPath : ∀ lw : List Bool, BoxOK lw (kindPath lw)
       · rw [if_neg (by decide)]
         exact ⟨(fun _ => by decide), BoxOK_kindPath lw⟩
 
+/-! ### Typed paths -/
+
+/-- A level step applies only at a keepable type. -/
+theorem typeStep_level_keepable {T U : VarType} {s : Step} (hs : s.isProj = false)
+    (h : typeStep T s = some U) : T.keepable = true := by
+  cases s with
+  | fst => cases hs
+  | snd => cases hs
+  | here => cases hs
+  | box =>
+      change (if ModalSys.keepOnly = true then none else T.step .box) = some U at h
+      split at h
+      · cases h
+      · cases T <;> simp [VarType.step] at h
+        rfl
+  | dia =>
+      change T.step .dia = some U at h
+      cases T <;> simp [VarType.step] at h
+      rfl
+  | keep =>
+      change (if T.keepable = true then some T else none) = some U at h
+      by_cases hk : T.keepable = true
+      · exact hk
+      · rw [if_neg hk] at h
+        cases h
+
+theorem walkTy_keep_level {T : VarType} {s : Step} (hs : s.isProj = false) (p : List Step) :
+    walkTy T (.keep :: s :: p) = walkTy T (s :: p) := by
+  change (if T.keepable = true then some T else none).bind (fun U => walkTy U (s :: p)) = _
+  by_cases hk : T.keepable = true
+  · rw [if_pos hk]
+    rfl
+  · rw [if_neg hk]
+    change none = (typeStep T s).bind fun U => walkTy U p
+    cases h : typeStep T s with
+    | none => rfl
+    | some U => exact absurd (typeStep_level_keepable hs h) hk
+
+/-- ⭐Inserting a `keep` before a level step keeps the walk. -/
+theorem walkTy_shiftAt : ∀ (i : ℕ) (T : VarType) (p : List Step),
+    walkTy T (shiftAt i p) = walkTy T p
+  | _, _, [] => rfl
+  | i, T, s :: p => by
+      by_cases hs : s.isProj = true
+      · rw [shiftAt_proj hs]
+        change (typeStep T s).bind (fun U => walkTy U (shiftAt i p)) =
+          (typeStep T s).bind fun U => walkTy U p
+        congr 1
+        funext U
+        exact walkTy_shiftAt i U p
+      · have hs' : s.isProj = false := Bool.eq_false_iff.mpr hs
+        cases i with
+        | zero => rw [shiftAt_zero hs', walkTy_keep_level hs']
+        | succ i =>
+            rw [shiftAt_succ hs']
+            change (typeStep T s).bind (fun U => walkTy U (shiftAt i p)) =
+              (typeStep T s).bind fun U => walkTy U p
+            congr 1
+            funext U
+            exact walkTy_shiftAt i U p
+
+/-- Keeping at a level keeps a walk that ends at a keepable type. -/
+theorem walkTy_keepAt : ∀ (i : ℕ) (T : VarType) (p : List Step) (U : VarType),
+    walkTy T p = some U → U.keepable = true → walkTy T (keepAt i p) = some U
+  | 0, T, [], U, h, hk => by
+      change some T = some U at h
+      cases h
+      change (if T.keepable = true then some T else none).bind (fun U => walkTy U []) = _
+      rw [if_pos hk]
+      rfl
+  | _ + 1, _, [], _, h, _ => h
+  | i, T, s :: p, U, h, hk => by
+      by_cases hs : s.isProj = true
+      · rw [keepAt_proj hs]
+        change (typeStep T s).bind (fun U => walkTy U p) = some U at h
+        change (typeStep T s).bind (fun U => walkTy U (keepAt i p)) = some U
+        cases hst : typeStep T s with
+        | none => rw [hst] at h; cases h
+        | some V =>
+            rw [hst] at h
+            exact walkTy_keepAt i V p U h hk
+      · have hs' : s.isProj = false := Bool.eq_false_iff.mpr hs
+        cases i with
+        | zero =>
+            change walkTy T (if s.isProj then s :: keepAt 0 p else .keep :: s :: p) = some U
+            rw [if_neg hs, walkTy_keep_level hs']
+            exact h
+        | succ i =>
+            rw [keepAt_succ hs']
+            change (typeStep T s).bind (fun U => walkTy U p) = some U at h
+            change (typeStep T s).bind (fun U => walkTy U (keepAt i p)) = some U
+            cases hst : typeStep T s with
+            | none => rw [hst] at h; cases h
+            | some V =>
+                rw [hst] at h
+                exact walkTy_keepAt i V p U h hk
+
+/-- Under T, collapsing a level whose step is not `dia` keeps a walk: a `keep` disappears, a
+    `box` becomes `here`, which reads the same contents. -/
+theorem walkTy_collapseAt (hT : ModalSys.T = true) : ∀ (i : ℕ) (lw q : List Bool)
+    (T : VarType) (p : List Step) (U : VarType), lw.length = i → BoxOK (lw ++ true :: q) p →
+      walkTy T p = some U → walkTy T (collapseAt i p) = some U
+  | _, _, _, _, [], _, _, _, hw => hw
+  | i, lw, q, T, s :: p, U, hi, h, hw => by
+      change (typeStep T s).bind (fun V => walkTy V p) = some U at hw
+      by_cases hs : s.isProj = true
+      · rw [collapseAt_proj hs]
+        unfold BoxOK at h
+        rw [if_pos hs] at h
+        change (typeStep T s).bind (fun V => walkTy V (collapseAt i p)) = some U
+        cases hst : typeStep T s with
+        | none => rw [hst] at hw; cases hw
+        | some V =>
+            rw [hst] at hw
+            exact walkTy_collapseAt hT i lw q V p U hi h hw
+      · have hs' : s.isProj = false := Bool.eq_false_iff.mpr hs
+        unfold BoxOK at h
+        rw [if_neg hs] at h
+        cases i with
+        | zero =>
+            obtain rfl : lw = [] := List.eq_nil_of_length_eq_zero hi
+            rw [collapseAt_zero hs']
+            have hd : s ≠ .dia := h.1 rfl
+            split
+            · rename_i hk
+              subst hk
+              change (if T.keepable = true then some T else none).bind
+                (fun V => walkTy V p) = some U at hw
+              by_cases hkT : T.keepable = true
+              · rw [if_pos hkT] at hw
+                exact hw
+              · rw [if_neg hkT] at hw
+                cases hw
+            · rename_i hk
+              cases s with
+              | fst => cases hs'
+              | snd => cases hs'
+              | here => cases hs'
+              | dia => exact absurd rfl hd
+              | keep => exact absurd rfl hk
+              | box =>
+                  change (if ModalSys.keepOnly = true then none else T.step .box).bind
+                    (fun V => walkTy V p) = some U at hw
+                  by_cases hko : ModalSys.keepOnly = true
+                  · rw [if_pos hko] at hw
+                    cases hw
+                  · rw [if_neg hko] at hw
+                    cases T with
+                    | VTypeBox A =>
+                        change (if ModalSys.T = true then some A else none).bind
+                          (fun V => walkTy V p) = some U
+                        rw [if_pos hT]
+                        exact hw
+                    | _ => cases hw
+        | succ i =>
+            cases lw with
+            | nil => cases hi
+            | cons b lw =>
+                rw [collapseAt_succ hs']
+                split
+                · rename_i hsp
+                  obtain ⟨-, rfl, -⟩ := hsp
+                  change (if T.keepable = true then some T else none).bind
+                    (fun V => walkTy V p) = some U at hw
+                  by_cases hkT : T.keepable = true
+                  · rw [if_pos hkT] at hw
+                    exact hw
+                  · rw [if_neg hkT] at hw
+                    cases hw
+                · change (typeStep T s).bind (fun V => walkTy V (collapseAt i p)) = some U
+                  cases hst : typeStep T s with
+                  | none => rw [hst] at hw; cases hw
+                  | some V =>
+                      rw [hst] at hw
+                      exact walkTy_collapseAt hT i lw q V p U (by simpa using hi) h.2 hw
+
+theorem typable_shiftAt {p : List Step} (h : Typable p) (i : ℕ) : Typable (shiftAt i p) := by
+  obtain ⟨T, X, hX⟩ := h
+  exact ⟨T, X, (walkTy_shiftAt i T p).trans hX⟩
+
+theorem typable_keepAt {p : List Step} (h : Typable p) (i : ℕ) : Typable (keepAt i p) := by
+  obtain ⟨T, X, hX⟩ := h
+  exact ⟨T, X, walkTy_keepAt i T p _ hX rfl⟩
+
+theorem typable_collapseAt (hT : ModalSys.T = true) {p : List Step} {lw q : List Bool}
+    (hb : BoxOK (lw ++ true :: q) p) (h : Typable p) : Typable (collapseAt lw.length p) := by
+  obtain ⟨T, X, hX⟩ := h
+  exact ⟨T, X, walkTy_collapseAt hT _ lw q T p _ rfl hb hX⟩
+
+theorem walkTy_append : ∀ (T : VarType) (p q : List Step),
+    walkTy T (p ++ q) = (walkTy T p).bind fun U => walkTy U q
+  | _, [], _ => rfl
+  | T, s :: p, q => by
+      change (typeStep T s).bind (fun U => walkTy U (p ++ q)) =
+        ((typeStep T s).bind fun U => walkTy U p).bind fun U => walkTy U q
+      cases typeStep T s with
+      | none => rfl
+      | some V => exact walkTy_append V p q
+
+/-- The type a position's kinds spell: a possibility per `◇` level, nothing per `□` level. -/
+def kindTy : List Bool → VarType
+  | [] => .VTypeDia .VTypeOne
+  | false :: q => .VTypeDia (kindTy q)
+  | true :: q => kindTy q
+
+omit [ModalSys] in
+theorem kindTy_dia : ∀ lw : List Bool, ∃ X, kindTy lw = .VTypeDia X
+  | [] => ⟨_, rfl⟩
+  | false :: _ => ⟨_, rfl⟩
+  | true :: q => kindTy_dia q
+
+theorem walkTy_kindPath : ∀ lw : List Bool,
+    walkTy (kindTy lw) (kindPath lw) = some (.VTypeDia .VTypeOne)
+  | [] => rfl
+  | false :: q => walkTy_kindPath q
+  | true :: q => by
+      obtain ⟨X, hX⟩ := kindTy_dia q
+      change (if (kindTy q).keepable = true then some (kindTy q) else none).bind
+        (fun U => walkTy U (kindPath q)) = _
+      rw [hX, if_pos (show (VarType.VTypeDia X).keepable = true from rfl), ← hX]
+      exact walkTy_kindPath q
+
+theorem typable_kindPath (lw : List Bool) : Typable (kindPath lw) :=
+  ⟨_, _, walkTy_kindPath lw⟩
+
 end Step
 
 namespace Arrows.Leaf
@@ -907,7 +1132,7 @@ end Keep
 
 theorem wf_root {lw : List Bool} {w : F.W} (r : Root w) (p : List Step) :
     Arrows.Leaf.WF lw (Arrows.Leaf.root (F := F) r p) ↔
-      Step.levels p = lw.length ∧ lw.head? ≠ some true ∧ Step.BoxOK lw p := by
+      Step.levels p = lw.length ∧ lw.head? ≠ some true ∧ Step.BoxOK lw p ∧ Step.Typable p := by
   cases lw <;> rfl
 
 /-- Turning a `□` of the position into a `◇` keeps a leaf well-formed: only the head of a
@@ -916,7 +1141,7 @@ theorem wf_relax : ∀ (lw q : List Bool) {w : F.W} (ℓ : F.Leaf Root w),
     Arrows.Leaf.WF (lw ++ true :: q) ℓ → Arrows.Leaf.WF (lw ++ false :: q) ℓ
   | lw, q, _, .root r p, h => by
       rw [wf_root] at h ⊢
-      refine ⟨by simpa using h.1, ?_, Step.BoxOK_relax lw q p h.2.2⟩
+      refine ⟨by simpa using h.1, ?_, Step.BoxOK_relax lw q p h.2.2.1, h.2.2.2⟩
       cases lw with
       | nil => simp
       | cons c lw => simpa using h.2.1
@@ -932,7 +1157,8 @@ theorem wf_collapse (hT : ModalSys.T = true) : ∀ (lw q : List Bool) {w : F.W}
       rw [collapse_root, wf_root]
       have hl := Step.levels_collapseAt lw.length p (by rw [h.1]; simp)
       refine ⟨by rw [h.1] at hl; simp at hl; simp; omega, ?_,
-        Step.BoxOK_collapseAt lw.length lw q p rfl (by rw [h.1]; simp; omega) h.2.2⟩
+        Step.BoxOK_collapseAt lw.length lw q p rfl (by rw [h.1]; simp; omega) h.2.2.1,
+        Step.typable_collapseAt hT h.2.2.1 h.2.2.2⟩
       cases lw with
       | nil => exact absurd rfl h.2.1
       | cons c lw => simpa using h.2.1
@@ -945,9 +1171,10 @@ theorem wf_shift (hF : ModalSys.Four = true) : ∀ (lw q : List Bool) {w : F.W}
       Arrows.Leaf.WF (lw ++ true :: true :: q) (shift hF lw.length ℓ)
   | lw, q, _, .root r p, h => by
       rw [wf_root] at h
-      have hb := Step.BoxOK_shiftAt lw.length lw true q p rfl (by rw [h.1]; simp; omega) h.2.2
+      have hb := Step.BoxOK_shiftAt lw.length lw true q p rfl (by rw [h.1]; simp; omega) h.2.2.1
+      have ht := Step.typable_shiftAt h.2.2.2 lw.length
       rw [shift_root, wf_root, Step.levels_shiftAt lw.length p (by rw [h.1]; simp), h.1]
-      refine ⟨by simp; omega, ?_, hb⟩
+      refine ⟨by simp; omega, ?_, hb, ht⟩
       cases lw with
       | nil => exact absurd rfl h.2.1
       | cons c lw => simpa using h.2.1
@@ -974,9 +1201,10 @@ theorem wf_dk (hF : ModalSys.Four = true) : ∀ (lw : List Bool) {w : F.W} (ℓ 
       rw [wf_root] at h
       change Arrows.Leaf.WF (c :: lw ++ [true])
         (Arrows.Leaf.root r (Step.keepAt (lw.length + 1) p))
-      have hb := Step.BoxOK_keepAt (c :: lw) p h.1 h.2.2
+      have hb := Step.BoxOK_keepAt (c :: lw) p h.1 h.2.2.1
+      have ht := Step.typable_keepAt h.2.2.2 (lw.length + 1)
       rw [wf_root, Step.levels_keepAt (lw.length + 1) p (by rw [h.1]; simp), h.1]
-      exact ⟨by simp, by simpa using h.2.1, hb⟩
+      exact ⟨by simp, by simpa using h.2.1, hb, ht⟩
   | _ :: lw, _, .fam f, h => fun s => wf_dk hF lw (f s) (h s)
 
 /-- ⭐Keeping the inside of a possibility: well-formed with a `□` inserted before its `◇`. -/
@@ -989,9 +1217,10 @@ theorem wf_dkB (hF : ModalSys.Four = true) : ∀ (lw q : List Bool) {w : F.W}
       change Arrows.Leaf.WF (c :: lw ++ true :: false :: q)
         (Arrows.Leaf.root r (Step.shiftAt (lw.length + 1) p))
       have hb := Step.BoxOK_shiftAt (lw.length + 1) (c :: lw) false q p rfl
-        (by rw [h.1]; simp; omega) h.2.2
+        (by rw [h.1]; simp; omega) h.2.2.1
+      have ht := Step.typable_shiftAt h.2.2.2 (lw.length + 1)
       rw [wf_root, Step.levels_shiftAt (lw.length + 1) p (by rw [h.1]; simp), h.1]
-      exact ⟨by simp; omega, by simpa using h.2.1, hb⟩
+      exact ⟨by simp; omega, by simpa using h.2.1, hb, ht⟩
   | _ :: lw, q, _, .fam f, h => fun s => wf_dkB hF lw q (f s) (h s)
 
 omit [Arrows.RootKeepLaws F Root] in

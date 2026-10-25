@@ -23,10 +23,6 @@ open BArrow
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
   {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
 
-/-- An address declared at some stage of a world, at a type. -/
-def DeclAt (s : GW hF M₀) (v : VarSymb) (T : VarType) : Prop :=
-  ∃ i, (ctxOf (glat s i)).ref v = some T
-
 /-- Two families agree at the declared addresses below a level. -/
 def AgreeBelow (K : ℕ) (ρ ρ' : ShFam hF M₀) : Prop :=
   ∀ t w W, DeclAt t w W → levA t w < K → ρ t w W = ρ' t w W
@@ -107,22 +103,6 @@ theorem lift_root (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ} (hc :
     rw [glat_round t hk]
     exact hle.ref (by rw [Ctx.ref_nonproj _ rfl]; exact hj)
   · exact h.elim
-
-/-- A declared address keeps its declaration at later stages. -/
-theorem DeclAt.at_le (hM₀ : Theory.IsMCS M₀) {s : GW hF M₀} {v : VarSymb} {T : VarType} {i i' : ℕ}
-    (h : (ctxOf (glat s i)).ref v = some T) (hii : i ≤ i') : (ctxOf (glat s i')).ref v = some T :=
-  (ctxOf_le_of_suffix (gnet_lang_suffix hF hM₀ (by omega)
-    (live_gbirth hF hM₀ s.2 (Nat.le_add_right _ i)))).ref h
-
-/-- An address is declared at one type. -/
-theorem DeclAt.unique (hM₀ : Theory.IsMCS M₀) {s : GW hF M₀} {v : VarSymb} {T T' : VarType}
-    (h : DeclAt s v T) (h' : DeclAt s v T') : T = T' := by
-  obtain ⟨i, hi⟩ := h
-  obtain ⟨i', hi'⟩ := h'
-  have e₁ := DeclAt.at_le hM₀ hi (le_max_left i i')
-  have e₂ := DeclAt.at_le hM₀ hi' (le_max_right i i')
-  rw [e₁] at e₂
-  exact Option.some.inj e₂
 
 omit [ModalSys] in
 theorem ctxOf_step : ∀ (l : List VarType) (v : VarSymb) (st : Step), ctxOf l (.step v st) = none

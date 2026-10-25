@@ -3512,6 +3512,148 @@ writing; 20 top targets green, no messages, no `sorry`).
   6. drop `FourCoh`.
   This replaces the template pull-back layer (`pbShp`, `liftDia`, `ShTop`).
 
+**⚠ Finding (2026-10-25, starting phase 2b): untyped root paths are too weak for the laws.**  The
+laws quantify over every well-formed root leaf, and a well-formed root path need not be a position
+of its root's content: well-formedness sees only level counts and kinds.  For a view-tuple-lifted
+`x : ◇(Z × I)`, `root x [dia, keep, fst, q]` is well-formed at `[false, true, …]` but spells
+`x.dia.keep`, a `keep` of a product.  `collapseAt 1` sends it to `[dia, fst, q]`, a genuine
+position.  So `keep_collapseAt` asks
+`rkeep x e [dia, fst, q] = collapse 1 (rkeep x e [dia, keep, fst, q])`.
+* The left side is `root z (dia :: q)`, by any reasonable translation.
+* The right side is the collapse of whatever the junk path is sent to.  Under the annotation's
+  `idxAt` that is the default address; under a normalisation that drops ill-typed steps, the level
+  indices shift, and the collapse lands on `q`.
+No total translation of untyped paths satisfies all the laws.  The paper induction assumed
+faithful (address-spelling) paths, and that assumption has to become part of the representation:
+**a root's path must be valid for that root**, a typed position of its content ending at a
+possibility.
+
+*Options:*
+* (a) the root action carries a validity predicate (`RootKeep.valid r p`, `True` for root-to-root
+  actions; in the growing tree, a type-correct path in the root's declared type ending at a `◇`),
+  and `Leaf.WF`'s root clause asks it.  The leaf operations at well-formed positions preserve it
+  (a `keep` is inserted only before a `dia`/`keep` step or at a possibility's end, and deleted
+  only where it is), as new laws.  `Leaf.WF` then depends on the instance.
+* (b) the same predicate as an extra hypothesis of the laws only, with a shape invariant threaded
+  separately.
+(a) is the principled form: it is the faithfulness invariant, stated for leaves.
+
+*Discussion with the user (2026-10-25): why is there junk, and can well-formedness be
+structural?*  Junk comes from the extrinsic encoding: a root leaf is a root and a raw
+`List Step`, the path edits and `idxAt` are total on raw lists with junk cases, and `Leaf.WF` is
+proved afterwards.  It was harmless while every root action was path-blind (rename the root, keep
+the path); the leaf-valued action for view tuples is the first thing that reads a path's meaning.
+Two structural options:
+* **Option 1 (fully structural; recorded as an open possibility, not tried):** leaves indexed
+  by their position (level kinds), and root paths typed by the root's content type, with the
+  operations defined only where they make sense.  This removes `Leaf.WF` and every hypothesis of
+  the laws, at the cost of rewriting the shape layer (`Shp`, `Leaf`, `GFunc.shp`, `termShp`, all
+  models) with dependent index arithmetic.  Keep it in mind if typing root paths alone turns out
+  not to suffice.  The kind relaxations (strength, and later 5's `m.side`) would have to be
+  modelled in the position types.
+* **Option 2 (chosen):** root leaves carry their root's content type, and the path must be typed
+  in it, a position ending at a possibility.  Positions stay extrinsic (counts, kinds, `BoxOK`),
+  and well-formedness stays instance-free.
+*Does 5 need option 1?*  Checked against the paper design (`x.side`, `m.side`, `5_lift`): no
+operation of 5 depends on a position's kinds when the path does not record them.  `side` is a path
+step, typed like `keep`, and `m.side`'s □-to-◇ change is a relaxation like strength's.  So option 2
+extends to 5 by typing the `side` step.  This is a judgement until 5 is designed.
+
+**Built (2026-10-25): option 2, as typability** (uncommitted at time of writing; 20 top targets
+green, no `sorry`).  Carrying the root's type in the leaf would break the B and staged leaf
+calculi.  Their labels are computed from annotations (`leafOf`), where a root-level label cuts the
+address at a prefix whose type is not known.  So the leaf carries no type, and `Leaf.WF`'s root
+clause asks that the path be typed in *some* type: `Step.Typable p := ∃ T, Step.Typed T p`, with
+`Step.typeStep`, `Step.walkTy`, `Step.Typed` in `Model`.
+* This already excludes the counterexample: `[dia, keep, fst, …]` is typed in no type, since a
+  `keep` keeps a type and `fst` needs a product.
+* The canonical action checks a path against the root's own type and renames otherwise.  That
+  case split is stable under the edits at well-formed positions, which preserve typedness in a
+  given type (`walkTy_shiftAt`, `walkTy_keepAt`, `walkTy_collapseAt`) and reflect it for typable
+  paths.  Reflection is to be proved with the action.
+* Built: `typeStep_level_keepable`, `walkTy_keep_level`, `walkTy_shiftAt`, `walkTy_keepAt`,
+  `walkTy_collapseAt` (under T, at a `□` position), `typable_shiftAt/keepAt/collapseAt`,
+  `walkTy_append`, `kindTy`/`walkTy_kindPath`, `Canon.Step.walkTy_innerPath`; the three
+  `rootSh_wf` copies take the root's type and `walkTy U π = some T`.
+
+**Phase 2b: the definition, corrected (2026-10-25, while writing it).**  The paper induction's
+`rkeep v (c :: P) p = keepAlong P (Lab_{t₁}(tr_c(v.keep).p))` (label at the first child, then keep
+the label along the rest) is right for a `◇` root but **wrong for a `□` address's family members**.
+For `u : □◇B` the member at `c :: P` of `u.keep.here`'s family is the label of `u`'s *value at the
+composite arrow*, read at the identity there: `(u along c :: P).here`.  Labelling first gives the
+label of `(u along c).here` kept along `P`, which is `u(c)`'s possibility restricted along `P`, a
+different object.  `idxAt` loses the same information on terms: a `here` collapses the kept level.
+So the members are computed as `pTr` computes a translation, edge by edge, on **kept addresses**.
+A kept address is an address of the `□` view whose top level is the `keep`, as in `u.keep.q`.
+* `gMem t Y [] = Lab_t (Y.collapse top)`: at the identity arrow, read at the world itself.
+* `gMem t Y (c :: P) = gMem t₁ (eIdx_c (Y.shift top)) P`: keep once more, translate by the
+  edge's entries (an image `w` gives `w.keep.q`; a lifted term's annotation gives the item's kept
+  address, e.g. `w_k.keep.q''` for a `□` view tuple item, with the keep kept).
+* `Lab_t y`: by `y`'s first level step.  None: `root y []`.  `dia`: `root pre (dia :: r)`.
+  `keep`: `fam (b ↦ gMem t y b)`.  This is one recursion on `(levels, |P|)`, with a level guard
+  that holds for the genuine translations.
+* The root action: along the identity, `root r p` (literally, since a typed path may begin with
+  `keep`).  Otherwise, when `p` is typed in `r`'s declared type, `gMem s (r.keep.p) a`; when it is
+  not, the root path of an undeclared junk root.  So keeping along an arrow then keeps the junk
+  root junk.  A kept witness can change type (a view tuple's `x : ◇(Z × I)` keeps as
+  `z : ◇Z`), so falling back to `kw` would break the composition law.
+* `gMem` is `pTr` on annotations.  The bridge lemma `gMem t Y P = Lab_end ((pTr P (var Y)).idxAt
+  [])` makes the existing `termShp_pTr`/`comp_pull` machinery available.
+* *Canonical shapes become address shapes:* `ASh s v π T` is `rootSh` with leaves
+  `Lab_s (v.ext π)`.  For a `◇` root it is `genDia`; for a `□` address its leaves are the families
+  above.  This replaces `boxEnt`, `diaT`, `liftDia`, `pbShp` and the level recursion of `cEnv`.
+
+**Built (2026-10-25): phase 2b, step 1** (`QML_v12m_GKeep.lean`, uncommitted; top build green, no
+`sorry`).  It is not yet the instance; the growing tree still uses `kw`.
+* *Definitions.*  `gMem` (well-founded on `(levels, |P|)`), `gLab`, `gKeepP`/`gKeep`, `gKA`
+  (leaves kept by it).  `DeclAt` (with `at_le`, `unique`) moved here from `GCEnv`, and `GTemplate`
+  imports `GKeep`.
+* *Annotations.*  `Ann.eta_shift`; `Ann.idxAt_eta` (an η-annotation along a typed path reaches the
+  address extended by it); `itemsAnnF`, `items_walk`, `items_idxAt`; the view tuples'
+  annotations `VTann`/`BTann` with `vt_keeps`/`bt_keeps` (leading keeps) and `vt_base`/`bt_base`.
+* ⭐`keptTr_ok` (T + 4): every edge sends a typed kept address `v.keep.q` to a typed kept address
+  `w.keep.q'` with as many levels, uniformly in extra leading keeps, and keeps "no leading
+  projection".
+* ⭐`gMem_dk` (a kept address kept once more has the family of its members), `gKA_gLab` (base
+  case), `gKA_gMem`, and the laws ⭐`gKeep_trans`, ⭐`gKeep_refl`.
+* *Two corrections found while proving.*  (1) A translated root can change its content type: a view
+  tuple's `x : ◇(Z × I)` keeps as `z : ◇Z`, so a typed target is typed in *some* type.  (2) Keeping
+  a family member taken at the identity is the member along the composite only for paths that do
+  not start with a projection.  For a `□` address, `u.keep.here.…` at the identity kept along `b`
+  is `u(1)` restricted, while the member at `b` is `u(b)`; they are different objects.  So
+  `TypedAt` asks a root of *possible* type, whose positions start with `dia` or `keep`
+  (`noProjHead_of_dia`), and every translation keeps that (`NoProjHead`).
+* *Next.*  `keep_wf` and the three naturality laws: by induction on the path, using "translation
+  commutes with the edits" (per entry kind, on `rep n ++ X ++ R` shapes) and, at the end, "labels
+  follow the edits" (by levels, the family case recursing one level down; at level 0 by
+  `gKA_gLab`/`gMem_dk`).  Then the instance (`if T` then `gKeep` else path-blind), templates
+  replaced by address shapes, the edge laws, the leaf calculus, and dropping `FourCoh`.
+
+**Built (2026-10-25): phase 2b, step 2 — all six laws of the canonical action under T**
+(`GKeep`, about 2440 lines, uncommitted; top build green, no `sorry`).  Still not the instance.
+* ⭐`keptTr_form`: an edge's translation of a typed kept address rewrites one middle piece
+  `X ↦ X'` (`ShapeOK`: projections for projections, or `dia…` for a level step) after the leading
+  keeps, uniformly in their number and in the rest.  The exception is a witness's address, all
+  keeps.  Direct computations: `vt_content`, `vt_item`, `bt_item`, `items_walk_eq`.
+* Path edits as list functions: `delLvl`, `lvlStep`, ⭐`collapseAt_eq_delLvl` (collapsing a
+  `keep` level deletes it), the append laws for `shiftAt`/`delLvl`/`lvlStep`, the leading-keeps
+  laws; ⭐`form_shift`, ⭐`form_del` (the edits go through a translation's form).
+* "Labels follow the edits", by induction on the level and the path: ⭐`gMem_shift`,
+  ⭐`gMem_del`, ⭐`gMem_app`.  At level 0 they use `gKA_gLab`/`gMem_dk`; a family passes the
+  edit to its members one level down.
+* The laws: `gKeep_trans`, `gKeep_refl`, ⭐`gKeep_keepAt`, ⭐`gKeep_shiftAt`, ⭐`gKeep_collapseAt`,
+  ⭐`gKeep_wf` (via `gMem_wf`; `BoxOK` through `lvlStep`, `boxOK_of_lvl`, `form_lvl_dia`).  The
+  "typed for its root" split is stable under the edits (`typedAt_app_iff`, `typedAt_shift_iff`,
+  `typedAt_del_iff`).  The last uses `Typable`: a `keep` followed by `fst` is typed in no type.
+* `gRK` (the action as a `RootKeep`), `gdk`/`gdkB`, `keepAlong_gRK`.
+* *Next (step 3, the switch).*  The instance: `gKeep` under T, path-blind without T (unshaped,
+  so only lawfulness matters).  `RootKeepLaws` from the six laws with `hM₀`; only the model
+  (`GCanonLift`) uses the laws instance, where `hM₀` is at hand.  Switching the `RootKeep`
+  instance breaks the template layer (`GShape`'s `pbLeaf`, `GSelf`, `GLaws`'s `edge_*`, which use
+  "a root kept is a root").  So it is replaced together: canonical shapes as address shapes
+  (leaves `gLab`), `edge_entry`/`comp_pull` re-proved from `gMem`, the leaf calculus with generic
+  labels, and `FourCoh` dropped.
+
 **Order.**
 1. Weak 4 on the growing tree: `GCanon` (frame, translations along paths, transfer along paths,
    carriers as B's `BCanonDom`/`BCanonModel` with `θ_a`), then `GTruth`.  K4/D4 first, then

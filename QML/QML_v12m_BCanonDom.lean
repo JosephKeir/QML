@@ -370,24 +370,26 @@ noncomputable abbrev cEnv (Γ : Ctx) (s : B.W) : B.CShEnv Γ s := B.canonEnvF Γ
 /-- A root possibility's content shape is well-formed, as in the tree (`Canon.rootSh_wf`). -/
 theorem rootSh_wf (s : B.W) (v : VarSymb) : ∀ (T : VarType) (π : List Step)
     (lw : List Bool), Step.levels π = lw.length → lw.head? = some false →
-      Step.BoxOK lw π →
+      Step.BoxOK lw π → ∀ U : VarType, Step.walkTy U π = some T →
       Model.ShWF (F := B.arrows) (Root := fun _ => VarSymb) lw (B.rootSh s v π T)
-  | .Var, _, _, _, _, _ => trivial
-  | .VTypeOne, _, _, _, _, _ => trivial
-  | .VTypeProd A C, π, lw, h, hh, hb =>
+  | .Var, _, _, _, _, _, _, _ => trivial
+  | .VTypeOne, _, _, _, _, _, _, _ => trivial
+  | .VTypeProd A C, π, lw, h, hh, hb, U, hU =>
       ⟨rootSh_wf s v A _ lw (by rw [Step.levels_append, h]; rfl) hh
-          (Step.BoxOK_snoc_proj lw π .fst h hb),
+          (Step.BoxOK_snoc_proj lw π .fst h hb) U (by rw [Step.walkTy_append, hU]; rfl),
         rootSh_wf s v C _ lw (by rw [Step.levels_append, h]; rfl) hh
-          (Step.BoxOK_snoc_proj lw π .snd h hb)⟩
-  | .VTypeBox A, π, lw, h, hh, hb =>
+          (Step.BoxOK_snoc_proj lw π .snd h hb) U (by rw [Step.walkTy_append, hU]; rfl)⟩
+  | .VTypeBox A, π, lw, h, hh, hb, U, hU =>
       rootSh_wf s v A _ (lw ++ [true])
         (by rw [Step.levels_append, Canon.Step.levels_innerPath, h]; simp)
         (by cases lw <;> simp_all) (Canon.Step.BoxOK_innerPath lw π h hb)
-  | .VTypeDia A, π, lw, h, hh, hb =>
-      ⟨(Arrows.Leaf.wf_root _ π).mpr ⟨h, by rw [hh]; simp, hb⟩,
+        U (by rw [Step.walkTy_append, hU]; exact Canon.Step.walkTy_innerPath A)
+  | .VTypeDia A, π, lw, h, hh, hb, U, hU =>
+      ⟨(Arrows.Leaf.wf_root _ π).mpr ⟨h, by rw [hh]; simp, hb, ⟨U, A, hU⟩⟩,
         rootSh_wf s v A _ (lw ++ [false])
           (by rw [Step.levels_append, h]; simp [Step.levels, Step.isProj])
-          (by cases lw <;> simp_all) (Step.BoxOK_snoc_dia lw π h hb)⟩
+          (by cases lw <;> simp_all) (Step.BoxOK_snoc_dia lw π h hb)
+          U (by rw [Step.walkTy_append, hU]; rfl)⟩
 
 /-- ⭐The network's canonical shapes are well-formed. -/
 theorem canonSh_wf : ∀ (T : VarType) (s : B.W) (v : VarSymb),
@@ -398,8 +400,9 @@ theorem canonSh_wf : ∀ (T : VarType) (s : B.W) (v : VarSymb),
   | .VTypeBox A, s, v =>
       Model.shWF_transpose true [] _ fun a => canonSh_wf A a.1 _
   | .VTypeDia A, s, v =>
-      ⟨(Arrows.Leaf.wf_root _ []).mpr ⟨rfl, by simp, trivial⟩,
-        B.rootSh_wf s v A [.dia] [false] rfl rfl (Step.BoxOK_snoc_dia [] [] rfl trivial)⟩
+      ⟨(Arrows.Leaf.wf_root _ []).mpr ⟨rfl, by simp, trivial, ⟨.VTypeDia A, A, rfl⟩⟩,
+        B.rootSh_wf s v A [.dia] [false] rfl rfl (Step.BoxOK_snoc_dia [] [] rfl trivial)
+        (.VTypeDia A) rfl⟩
 
 theorem canonEnvF_wf (Γ : Ctx) (s : B.W) (f : VarSymb → VarSymb) :
     (B.canonEnvF Γ s f).WF [] :=

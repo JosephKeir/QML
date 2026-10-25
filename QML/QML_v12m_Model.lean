@@ -312,6 +312,28 @@ def Step.BoxOK : List Bool → List Step → Prop
       if s.isProj then Step.BoxOK lw p
       else (lw.head? = some true → s ≠ .dia) ∧ Step.BoxOK lw.tail p
 
+/-- One step of a root's path, on types: a projection by `VarType.step`, `dia` into a possibility's
+    content, `keep` on a keepable type, `box` into a necessary object's contents when views show
+    them (`ModalSys.keepOnly` off). -/
+def Step.typeStep (T : VarType) : Step → Option VarType
+  | .keep => if T.keepable then some T else none
+  | .box => if ModalSys.keepOnly then none else T.step .box
+  | s => T.step s
+
+/-- A path walked on types. -/
+def Step.walkTy : VarType → List Step → Option VarType
+  | T, [] => some T
+  | T, s :: p => (Step.typeStep T s).bind fun U => Step.walkTy U p
+
+/-- A path is typed in `T` when each step applies and it ends at a possibility. -/
+def Step.Typed (T : VarType) (p : List Step) : Prop := ∃ X, Step.walkTy T p = some (.VTypeDia X)
+
+/-- ⭐**A root's path is typable** (docs §3 4, "Finding: untyped root paths are too weak for the
+    laws"): typed in some type.  So it spells a position of some possibility's content, and no
+    step contradicts another (a `keep` of a product, a projection out of a possibility).  Which
+    type is the root's own is the root action's business. -/
+def Step.Typable (p : List Step) : Prop := ∃ T, Step.Typed T p
+
 /-- ⭐A leaf of a semantic annotation, anchored at a world (docs §10.28): a **root** possibility with
     a syntactic path into its content, or a **family** with one leaf at the target of each arrow. -/
 inductive Arrows.Leaf {σ : Signature} (F : Arrows.{u, v} σ) (Root : F.W → Type u) :
@@ -329,9 +351,11 @@ variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
     anchor's level is crossed semantically, by a family — and a family's members are well-formed
     one level down, at their own anchors.  Of a root's path only the *number* of levels is asked,
     and that it does not enter a possibility at a `□` level (`Step.BoxOK`): the strength law moves
-    a necessary component under a `◇`, changing a level's kind from `□` to `◇`. -/
+    a necessary component under a `◇`, changing a level's kind from `□` to `◇`; and the path
+    is typable (`Step.Typable`). -/
 def WF : List Bool → {w : F.W} → F.Leaf Root w → Prop
-  | lw, _, .root _ p => Step.levels p = lw.length ∧ lw.head? ≠ some true ∧ Step.BoxOK lw p
+  | lw, _, .root _ p =>
+      Step.levels p = lw.length ∧ lw.head? ≠ some true ∧ Step.BoxOK lw p ∧ Step.Typable p
   | [], _, .fam f => ∀ s, WF [] (f s)
   | _ :: q, _, .fam f => ∀ s, WF q (f s)
 
