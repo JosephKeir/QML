@@ -451,6 +451,54 @@ theorem pTrX_mono (hM₀ : Theory.IsMCS M₀) :
         (gentOk_box hM₀ (t := stepW s c hw) ⟨c, rfl⟩ i) _ _
         (Ctx.exists_keep_dia hF hx)
 
+theorem pTrXK_sigma (hM₀ : Theory.IsMCS M₀) (s t : GW hF M₀) (P : List ℕ)
+    (h : t.1 = nodeOf s.1 P) (i : ℕ) (x : VarSymb)
+    (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X))
+    {A : VarType} {a a' : Ann A} {u : Term σ ((ctxOf (glat s i)).kView (some x)) A a}
+    {u' : Term σ ((ctxOf (glat s i)).kView (some x)) A a'}
+    (e : (⟨a, u⟩ : Σ b : Ann A, Term σ ((ctxOf (glat s i)).kView (some x)) A b) = ⟨a', u'⟩) :
+    pTrXK hM₀ s t P h i x hx u = pTrXK hM₀ s t P h i x hx u' := by
+  cases e
+  rfl
+
+/-- Keeping a witness's view along a path at a later stage is weakening the kept view. -/
+theorem pTrXK_mono (hM₀ : Theory.IsMCS M₀) :
+    ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) {i i' : ℕ} (hii : i ≤ i')
+      (x : VarSymb) (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X))
+      {A : VarType} {a : Ann A} (u : Term σ ((ctxOf (glat s i)).kView (some x)) A a),
+      (⟨_, Term.mono ((gle hM₀ t (pstg_monotone hM₀ s t P h hii)).kView _)
+          (pTrXK hM₀ s t P h i x hx u).2⟩ :
+          Σ c, Term σ ((ctxOf (glat t (pstg s t P h i'))).kView (some (kw s t P h x))) A c) =
+        pTrXK hM₀ s t P h i' x (hx.imp fun _ e => (gle hM₀ s hii).ref e)
+          (Term.mono ((gle hM₀ s hii).kView (some x)) u)
+  | _, _, [], _, _, _, _, _, _, _, _, u => by
+      change (⟨_, Term.mono _ (Term.mono _ u)⟩ : Σ c, Term σ _ _ c) =
+        ⟨_, Term.mono _ (Term.mono _ u)⟩
+      rw [Term.mono_mono, Term.mono_mono]
+  | s, t, [c], h, i, i', hii, x, hx, _, _, u => by
+      have hg := glstg_monotone hM₀ (t := t) ⟨c, h⟩ hii
+      change (⟨_, Term.mono _ (Term.subst _ _ _ _ _)⟩ : Σ c, Term σ _ _ c) =
+        ⟨_, Term.subst _ _ _ _ _⟩
+      rw [Term.mono_subst, Term.shift_mono (Ctx.shifts_diaIn_keep hF _ x)
+        (Ctx.shifts_diaIn_keep hF _ x) ((gle hM₀ s hii).kView (some x))
+        ((gle hM₀ s hii).boxIn.diaIn _), Term.subst_mono]
+      refine Term.subst_congr _ _ _ _ _ _ ?_ _
+      exact sim_dia_eS_mono (gle hM₀ t hg) (gentOk_box hM₀ ⟨c, h⟩ i) _ _
+        (Ctx.exists_keep_dia hF hx)
+  | s, t, c :: c' :: P, h, i, i', hii, x, hx, _, _, u => by
+      have hw := born_step h
+      have hg := glstg_monotone hM₀ (t := stepW s c hw) ⟨c, rfl⟩ hii
+      refine (pTrXK_mono hM₀ (stepW s c hw) t (c' :: P) h hg _ _ _).trans ?_
+      simp only [pTrXK]
+      refine pTrXK_sigma hM₀ (stepW s c hw) t (c' :: P) h _ _ _ ?_
+      rw [Term.mono_subst, Term.shift_mono (Ctx.shifts_diaIn_keep hF _ x)
+        (Ctx.shifts_diaIn_keep hF _ x) ((gle hM₀ s hii).kView (some x))
+        ((gle hM₀ s hii).boxIn.diaIn _), Term.subst_mono]
+      refine Term.subst_congr _ _ _ _ _ _ ?_ _
+      exact sim_dia_eS_mono (gle hM₀ (stepW s c hw) hg)
+        (gentOk_box hM₀ (t := stepW s c hw) ⟨c, rfl⟩ i) _ _
+        (Ctx.exists_keep_dia hF hx)
+
 /-! ## Arrows -/
 
 open Classical in
@@ -528,22 +576,27 @@ theorem kw_append : ∀ (P : List ℕ) {s t u : GW hF M₀} (Q : List ℕ) (h₁
 
 /-- ⭐**The canonical root action**: a root possibility, named by its address, kept along an
     arrow is the witness kept along the arrow's path. -/
+noncomputable def gRk (s : GW hF M₀) (r : VarSymb) (a : (garrows hF M₀).Acc s) : VarSymb :=
+  kw s a.1 (pathOf a.2.down) (pathOf_eq a.2.down) r
+
+/-- The canonical root action, on leaves: a root path stays a root path (`gRk`). -/
 noncomputable instance instRootKeepG : Arrows.RootKeep (garrows hF M₀) (fun _ => VarSymb) :=
-  ⟨fun _ {s} r a => kw s a.1 (pathOf a.2.down) (pathOf_eq a.2.down) r⟩
+  Arrows.RootKeep.ofRoot fun _ {s} r a => gRk s r a
 
 /-- Its laws: keeping along two arrows is keeping along their composite (`kw_append`), and
     keeping along the identity is the identity. -/
-instance instRootKeepLawsG : Arrows.RootKeepLaws (garrows hF M₀) (fun _ => VarSymb) where
-  keep_trans := fun _ {s} r a b => by
-    change kw a.1 b.1 (pathOf b.2.down) _ (kw s a.1 (pathOf a.2.down) _ r) =
-      kw s b.1 (pathOf (gtrans a.2.down b.2.down)) _ r
-    rw [kw_path (pathOf_trans a.2.down b.2.down) _
-      (by rw [nodeOf_append, ← pathOf_eq a.2.down]; exact pathOf_eq b.2.down),
-      kw_append _ _ (pathOf_eq a.2.down) (pathOf_eq b.2.down)]
-  keep_refl := fun hT _ {s} r => by
-    change kw s s (pathOf (grefl hT s)) _ r = r
-    rw [kw_path (pathOf_refl hT s) _ rfl]
-    rfl
+instance instRootKeepLawsG : Arrows.RootKeepLaws (garrows hF M₀) (fun _ => VarSymb) :=
+  Arrows.RootKeepLaws.ofRoot _
+    (fun _ {s} r a b => by
+      change kw a.1 b.1 (pathOf b.2.down) _ (kw s a.1 (pathOf a.2.down) _ r) =
+        kw s b.1 (pathOf (gtrans a.2.down b.2.down)) _ r
+      rw [kw_path (pathOf_trans a.2.down b.2.down) _
+        (by rw [nodeOf_append, ← pathOf_eq a.2.down]; exact pathOf_eq b.2.down),
+        kw_append _ _ (pathOf_eq a.2.down) (pathOf_eq b.2.down)])
+    (fun hT _ {s} r => by
+      change kw s s (pathOf (grefl hT s)) _ r = r
+      rw [kw_path (pathOf_refl hT s) _ rfl]
+      rfl)
 
 end GArrow
 

@@ -275,19 +275,21 @@ noncomputable def model : Model.{0, 0} σ where
   necEval := necEval w₀
   nec_inj := fun h => necEval_injective w₀ h
   RootPoss _ := VarSymb
-  rootKeep := fun _ {w} r a => VarSymb.keepIter (a.1.depth - w.depth) r
-  rootKeep_trans := fun _ {w} r a b => by
-    change VarSymb.keepIter (b.1.depth - a.1.depth) (VarSymb.keepIter (a.1.depth - w.depth) r) =
-      VarSymb.keepIter (b.1.depth - w.depth) r
-    rw [VarSymb.keepIter_add]
-    have h₁ := Succ.depth_le a
-    have h₂ := Succ.depth_le b
-    congr 1
-    omega
-  rootKeep_refl := fun _ _ {w} r => by
-    change VarSymb.keepIter (w.depth - w.depth) r = r
-    rw [Nat.sub_self]
-    rfl
+  rootKeep := fun _ {w} r a p => .root (VarSymb.keepIter (a.1.depth - w.depth) r) p
+  rootKeepLaws := Arrows.RootKeepLaws.ofRoot (F := (frame w₀).toArrows) (Root := fun _ => VarSymb)
+    (fun _ {w} r a => VarSymb.keepIter (a.1.depth - w.depth) r)
+    (fun _ {w} r a b => by
+      change VarSymb.keepIter (b.1.depth - a.1.depth) (VarSymb.keepIter (a.1.depth - w.depth) r) =
+        VarSymb.keepIter (b.1.depth - w.depth) r
+      rw [VarSymb.keepIter_add]
+      have h₁ := Succ.depth_le a
+      have h₂ := Succ.depth_le b
+      congr 1
+      omega)
+    (fun _ _ {w} r => by
+      change VarSymb.keepIter (w.depth - w.depth) r = r
+      rw [Nat.sub_self]
+      rfl)
   posFull p := ((posFull w₀ p).1, fun hSh => (posFull w₀ p).2 (ModalSys.NoB.T_of_shaped hSh))
   posFull_inj := fun h => posFull_injective w₀ (Prod.ext (congrArg Prod.fst h :)
     (funext fun hT => congrFun (congrArg Prod.snd h) (ModalSys.shaped_of_T hT)))

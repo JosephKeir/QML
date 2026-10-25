@@ -219,7 +219,8 @@ theorem dsh_wf : ∀ (lw : List Bool) (s : GW hF M₀) (T : VarType),
 
 theorem genDia_wf (s : GW hF M₀) (v : VarSymb) (A : VarType) :
     Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (genDia s v A) :=
-  ⟨(Arrows.Leaf.wf_root _ []).mpr ⟨rfl, by simp⟩, rootSh_wf s v A [.dia] [false] rfl rfl⟩
+  ⟨(Arrows.Leaf.wf_root _ []).mpr ⟨rfl, by simp, trivial⟩,
+    rootSh_wf s v A [.dia] [false] rfl rfl (Step.BoxOK_snoc_dia [] [] rfl trivial)⟩
 
 /-- Keeping a shape's leaves along an arrow keeps it well-formed. -/
 theorem shWF_map_keepAlong {s : GW hF M₀} (a : (garrows hF M₀).Acc s) :

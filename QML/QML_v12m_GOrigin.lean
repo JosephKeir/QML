@@ -411,7 +411,11 @@ theorem OrigOk.lift (hF : ModalSys.Four = true) (hO : N.OrigOk) (hN : N.Good) {k
       by_cases hcl : N.fcl (c :: p) = (N.st p).l
       · by_cases h : l <:+ (N.st (c :: p)).l
         · by_cases hl : T.liftable = true
-          · rw [lift_spec hF hcl h hl]
+          · by_cases hv : LiftAdm hF ⟨l, T, a, t⟩
+            swap
+            · simp only [GNetSt.lift, if_pos hcl, dif_pos h, dif_pos hl, if_neg hv]
+              exact hO
+            rw [lift_spec hF hcl h hl hv]
             have hpk : (p : Node) ≠ c :: p := fun e => NetSt.ne_parent c p e.symm
             refine ((hO.setSt p _).setSt (c :: p) _).setFwd hcl
               (B := (N.st (c :: p)).l.length) (fun v y hv hy => hN.img_lt hk hv hy) le_rfl

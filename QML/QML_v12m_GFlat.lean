@@ -70,7 +70,7 @@ noncomputable def _root_.V12M.CtxExpr.gchain (hF : ModalSys.Four = true) :
 
 /-! ## Completeness in every presented context -/
 
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoT] [ModalSys.NoSym]
+variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.FourCoh] [ModalSys.NoSym]
 
 /-- Completeness for 4 in any context flattened into a world language. -/
 theorem completenessG_flat (hF : ModalSys.Four = true) {Γ : Ctx} {l : List VarType}
@@ -85,7 +85,7 @@ theorem completenessG_flat (hF : ModalSys.Four = true) {Γ : Ctx} {l : List VarT
   exact hval M hM _ hnp fun ψ hψ => (F.sat e ψ).mp (hΔ _ (List.mem_map_of_mem hψ))
 
 /-- ⭐**Completeness for 4 in every presented context** whose views are at declared witnesses
-    (T and B off; D and strong 4 free). -/
+    (B off; T, D and strong 4 free, `ModalSys.FourCoh`). -/
 theorem completenessG_presented (hF : ModalSys.Four = true) (e : CtxExpr) (he : e.Wf)
     {Δ : List (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
     (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
@@ -105,7 +105,7 @@ theorem model_existenceG_ctxOf (hF : ModalSys.Four = true) {l₀ : List VarType}
   obtain ⟨hle, htruth, hmem₀⟩ := exists_canonG hF hM₀
   have hag : Model.Env.Agree hle (fun v T hv => gcanonEnv hM₀ (groot hF _) 0 v T (hle v T hv))
       (gcanonEnv hM₀ (groot hF _) 0) := fun _ _ _ => rfl
-  exact ⟨gmodel hF hM₀, gmodel_indInvariant hF hM₀, groot hF _,
+  exact ⟨gmodel hF hM₀, gmodel_indInvariant hM₀, groot hF _,
     fun v T hv => gcanonEnv hM₀ (groot hF _) 0 v T (hle v T hv),
     fun ψ hψ => (Model.sat_mono hag ψ).mp ((htruth _).mpr (hmem₀ ψ (hSM hψ)))⟩
 

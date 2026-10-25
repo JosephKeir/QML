@@ -389,8 +389,7 @@ theorem diaT_top (ρ : ShFam hF M₀) :
           | .root r q, hℓ =>
               change r = _ at hℓ
               subst hℓ
-              change Arrows.RootKeep.keep (F := garrows hF M₀) (Root := fun _ => VarSymb) hF _
-                (edgeAcc (s := ⟨p, gborn_parent hp⟩) (t := ⟨c :: p, hp⟩) rfl) = _
+              change gRk _ _ (edgeAcc (s := ⟨p, gborn_parent hp⟩) (t := ⟨c :: p, hp⟩) rfl) = _
               rw [rootKeep_edge]
               exact wit_of_inl (fun _ h => by cases h) h'.choose_spec
           | .fam _, _ => trivial

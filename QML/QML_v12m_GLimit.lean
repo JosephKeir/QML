@@ -376,6 +376,8 @@ theorem glexX (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ) (x : VarSym
     (ψ : WFF σ ((ctxOf (glat s i)).kView (some x)) 0)
     (hψ : WFF.dia x ⟨X, hx⟩ ψ ∈ ((gnet hF M₀ (gbirth hF M₀ s.2 + i)).st s.1).M) :
     ∃ (t : GW hF M₀) (h : GCh hF M₀ s t) (hkd : lkd t = some x),
+      (∃ y, fmapL hF M₀ t.1 (.step x .keep) = .inl y) ∧
+      (∃ b, fmapL hF M₀ t.1 (.step x .dia) = .inl b) ∧
       WFF.subst (eIdx (fmapL hF M₀ t.1)) (eS σ _ (fmapL hF M₀ t.1))
         (ok_eS_kView (hkd ▸ gentOk hM₀ h i)) (coh_eS_kView (hkd ▸ gentOk hM₀ h i))
         Ctx.NoSlots.slots Ctx.NoSlots.slots ψ ∈ ((gnet hF M₀ (grnd s t i)).st t.1).M := by
@@ -386,7 +388,13 @@ theorem glexX (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ) (x : VarSym
   have h : GCh hF M₀ s t := ⟨_, hc⟩
   have hbt' : gbirth hF M₀ t.2 ≤ m + 1 := gbirth_le hF t.2 hlive
   have hlkd : lkd t = some x := (kind_at hM₀ t hbt').symm.trans hkind
-  refine ⟨t, h, hlkd, ?_⟩
+  have hag₀ := glimit_child_ag hM₀ hsuf (t := t) hlive hkind hfcl hfmap
+  have hxk : (ctxOf (glat s i)).kView (some x) (.step x .keep) = some (.VTypeDia X) :=
+    (Ctx.le_boxIn_diaIn _ x) _ _ ((Ctx.ref_nonproj _ rfl).symm.trans
+      (Ctx.ref_keep_of' hF hx VarType.keepable_dia))
+  have hxd : (ctxOf (glat s i)).kView (some x) (.step x .dia) = some X :=
+    (Ctx.ref_nonproj _ rfl).symm.trans (Ctx.ref_diaIn_of hx)
+  refine ⟨t, h, hlkd, ⟨_, (hag₀ _ _ hxk).symm⟩, ⟨_, (hag₀ _ _ hxd).symm⟩, ?_⟩
   have hbt : m < gbirth hF M₀ t.2 := le_gbirth hF hM₀ t.2 hnot
   have hg : Grows ((gnet hF M₀ (m + 1)).st t.1) ((gnet hF M₀ (grnd s t i)).st t.1) :=
     (ext_gnet hF hM₀ ((Nat.succ_le_of_lt hbt).trans (Nat.le_add_right _ _))).grows t.1 hlive
@@ -402,10 +410,12 @@ theorem glexX (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ) (x : VarSym
 
 /-! ## Lifts in the limit -/
 
-/-- ⭐**Every liftable term of a child is the image of a lifted root's kept item**: some stage of
-    the parent has a root `r` of the term's type whose kept item the edge sends to the term. -/
+/-- ⭐**Every admissible liftable term of a child is the image of a lifted root's kept item**
+    (a necessary term or a view tuple, `LiftAdm`): some stage of the parent has a root `r` of the
+    term's type whose kept item the edge sends to the term. -/
 theorem gllift (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s t) (j : ℕ)
-    {T : VarType} {a : Ann T} (u : Term σ (ctxOf (glat t j)) T a) (hl : T.liftable = true) :
+    {T : VarType} {a : Ann T} (u : Term σ (ctxOf (glat t j)) T a) (hl : T.liftable = true)
+    (hv : LiftAdm hF ⟨glat t j, T, a, u⟩) :
     ∃ (i r : ℕ), r < (glat s i).length ∧ rootTy (glat s i) r = T ∧
       ∃ (L : List VarType) (hL : glat t j <:+ L),
         fmapL hF M₀ t.1 (.step (.root (.free r)) .keep) =
@@ -416,7 +426,7 @@ theorem gllift (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s
   change k = c :: s.1 at hc
   subst hc
   have hlive := live_gbirth hF hM₀ hk (Nat.le_add_right _ j)
-  obtain ⟨m, hnm, -, r, hr, hroot, L, hL, hfm, hLsuf⟩ := lift_total hF hM₀ hlive u hl
+  obtain ⟨m, hnm, -, r, hr, hroot, L, hL, hfm, hLsuf⟩ := lift_total hF hM₀ hlive u hl hv
   have hbs : gbirth hF M₀ s.2 ≤ m + 1 :=
     gbirth_le hF s.2 (gnet_live_mono hF hM₀ (by omega) hlive.1)
   have hmi : gbirth hF M₀ s.2 + (m + 1 - gbirth hF M₀ s.2) = m + 1 := by omega

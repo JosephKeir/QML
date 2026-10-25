@@ -52,17 +52,8 @@ theorem _root_.V12M.Shp.map_congr'.{y} {L L' : Type y} {g g' : L → L'}
 theorem keepAlong_keepAlong (hF : ModalSys.Four = true) {w : M.frame.W} (v : M.frame.Acc w)
     (s : M.frame.Acc v.1) (ℓ : M.frame.Leaf M.RootPoss w) :
     Arrows.Leaf.keepAlong hF s (Arrows.Leaf.keepAlong hF v ℓ) =
-      Arrows.Leaf.keepAlong hF ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩ ℓ := by
-  cases ℓ with
-  | root r p =>
-      change Arrows.Leaf.root (M.rootKeep hF (M.rootKeep hF r v) s) p =
-        Arrows.Leaf.root (M.rootKeep hF r ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩) p
-      rw [M.rootKeep_trans]
-  | fam f =>
-      refine congrArg Arrows.Leaf.fam (funext fun t => ?_)
-      change f ⟨t.1, ⟨M.frame.trans hF v.2.down (M.frame.trans hF s.2.down t.2.down)⟩⟩ =
-        f ⟨t.1, ⟨M.frame.trans hF (M.frame.trans hF v.2.down s.2.down) t.2.down⟩⟩
-      rw [M.frame.trans_assoc hF]
+      Arrows.Leaf.keepAlong hF ⟨s.1, ⟨M.frame.trans hF v.2.down s.2.down⟩⟩ ℓ :=
+  Arrows.Leaf.keepAlong_comp hF v s ℓ
 
 /-- ⭐**Keeping twice is keeping once along the composite**: a possible object restricted along
     `v`, then along `s`, is its restriction along `v ; s` — the extents by associativity, the

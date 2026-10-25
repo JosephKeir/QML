@@ -15,6 +15,17 @@ the shape algebra the laws are stated in:
   (`keepAlong`), a necessary one's family reindexed (`restrictBox`); `unT_keep`: it is the
   arrow's component of `GFunc.keep`'s shape; `keepSh_comp`: keeping along two arrows is keeping
   along their composite.
+
+and the laws:
+
+* along an edge, an entry for a kept item reads as the item kept along the edge (`edge_entry`):
+  for an image by inheritance (`edge_dia_inl`, `edge_box_inl`), for a lifted root by its template
+  (`edge_dia_inr`, `edge_box_inr`);
+* ⭐`comp_pull`: along every path, the pulled-back canonical environment is the path's component
+  of the canonical environment pushed into `□` (by induction on the path);
+* ⭐`termShp_pTr`, `termShp_boxPush`: a `□` body's translation has its shape inside `□`, read at
+  the arrow; `termShp_pTr_keep` at a kept item; `termShp_pTr_keepDia`, the keep law for possible
+  terms.
 -/
 
 namespace V12M
@@ -203,7 +214,7 @@ theorem cEnv_ref (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : GW hF
 
 theorem rootSh_keep {s : GW hF M₀} (a : (garrows hF M₀).Acc s) (v : VarSymb) :
     ∀ (π : List Step) (A : VarType), (rootSh s v π A).map (Arrows.Leaf.keepAlong hF a) =
-      rootSh a.1 (Arrows.RootKeep.keep (F := garrows hF M₀) (Root := fun _ => VarSymb) hF v a) π A
+      rootSh a.1 (gRk _ v a) π A
   | _, .Var => rfl
   | _, .VTypeOne => rfl
   | π, .VTypeProd A C => by
@@ -221,7 +232,7 @@ theorem rootSh_keep {s : GW hF M₀} (a : (garrows hF M₀).Acc s) (v : VarSymb)
 theorem genDia_keep {s : GW hF M₀} (a : (garrows hF M₀).Acc s) (v : VarSymb) (A : VarType) :
     (genDia s v A).map (Arrows.Leaf.keepAlong hF a) =
       genDia a.1
-        (Arrows.RootKeep.keep (F := garrows hF M₀) (Root := fun _ => VarSymb) hF v a) A := by
+        (gRk _ v a) A := by
   simp only [genDia, Shp.map]
   rw [rootSh_keep]
   rfl
@@ -796,6 +807,38 @@ theorem termShp_boxPush (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (s 
   conv_lhs => rw [← transpose_unT _ (allL_isFam_of_wf [] _ hwf)]
   refine congrArg _ (funext fun b => ?_)
   rw [termShp_pTr hT hM₀]
+
+/-- ⭐**(C2)/(RC) at a kept item**: a keepable address's kept item, translated along a path, has
+    the address's shape kept along the path's arrow — a possible address's labels restricted, a
+    necessary address's family reindexed. -/
+theorem termShp_pTr_keep (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (P : List ℕ)
+    (s t : GW hF M₀) (h : t.1 = nodeOf s.1 P) (hP : PathOk P) (i : ℕ) {u : VarSymb}
+    {U : VarType} (hu : (ctxOf (glat s i)).ref u = some U) (hk : U.keepable = true) :
+    Model.termShp (famEnv cEnv (ctxOf (glat t (pstg s t P h i))) t) 0
+        (pTr hM₀ s t P h hP i (Term.eta (.step u .keep) U (Ctx.ref_keep_of' hF hu hk))).2 =
+      keepSh ⟨t, ⟨⟨P, hP, h⟩⟩⟩ U (cEnv s u U) := by
+  rw [termShp_pTr hT hM₀, Model.termShp_eta, Model.ShEnv.ref_nonproj _ _ (by decide)]
+  rw [boxPush_keep hT hM₀ hk (item_keep hF hu hk), unT_keep _ hk _ (cEnv_wf s u U)]
+
+/-- ⭐**The keep law for possible terms**: a possible term kept into `□` (its witness kept, its body
+    shifted, `SubE.keepE_dia`) and translated along a path has the term's shape with its labels
+    restricted along the path's arrow. -/
+theorem termShp_pTr_keepDia (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (P : List ℕ)
+    (s t : GW hF M₀) (h : t.1 = nodeOf s.1 P) (hP : PathOk P) (i : ℕ) {y : VarSymb}
+    (hy : ∃ X, (ctxOf (glat s i)).ref y = some (.VTypeDia X)) {A : VarType} {a : Ann A}
+    (b : Term σ ((ctxOf (glat s i)).diaIn y) A a) :
+    Model.termShp (famEnv cEnv (ctxOf (glat t (pstg s t P h i))) t) 0
+        (pTr hM₀ s t P h hP i (Term.diatm (.step y .keep) (Ctx.exists_keep_dia hF hy)
+          (Term.shift (Ctx.shifts_diaIn_keep hF _ y) b))).2 =
+      (Model.termShp (famEnv cEnv (ctxOf (glat s i)) s) 0 (Term.diatm y hy b)).map
+        (Arrows.Leaf.keepAlong (F := garrows hF M₀) (Root := fun _ => VarSymb) hF
+          ⟨t, ⟨⟨P, hP, h⟩⟩⟩) := by
+  rw [termShp_pTr hT hM₀, ← unT_dkeep (σ := σ) ⟨t, ⟨⟨P, hP, h⟩⟩⟩]
+  congr 1
+  have hk := Model.entryShp_keepE_dia (lw := []) (famEnv cEnv (ctxOf (glat s i)) s)
+    (famEnv_wf (fun t v T => cEnv_wf t v T) _ s) hF (e := .tm (Term.diatm y hy b)) rfl
+  rw [Model.entryShp_congr _ _ (SubE.keepE_dia y hy b hF) _ rfl] at hk
+  exact hk
 
 end GArrow
 

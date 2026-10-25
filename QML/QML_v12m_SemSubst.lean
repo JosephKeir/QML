@@ -232,7 +232,8 @@ theorem termShp_shift_diaKeep [Arrows.RootKeepLaws F Root] (hF : ModalSys.Four =
       (termShp (ρ.diaPush lw.length y hy) (lw.length + 1) t).map
         (Arrows.Leaf.dkB hF lw.length) := by
   rw [termShp_shift (ShEnv.shiftAgree_diaKeep hF ρ hρ hy hyk)]
-  exact termShp_mapIns (dkB_levelIns hF lw.length) (ρ.diaPush lw.length y hy) 0 t
+  exact termShp_mapDkB hF lw.length (ρ.diaPush lw.length y hy) 0 (q := []) rfl rfl
+    (ShEnv.wf_diaPush hρ hy) t
 
 /-! ## Shapes under substitution -/
 

@@ -326,7 +326,8 @@ theorem nch_lift (hF : ModalSys.Four = true) (N : GNetSt σ) (k : Node) (o : LTe
 /-- What a lift does, when it applies. -/
 theorem lift_spec (hF : ModalSys.Four = true) {N : GNetSt σ} {c : ℕ} {p : Node}
     {l : List VarType} {T : VarType} {a : Ann T} {t : Term σ (ctxOf l) T a}
-    (hcl : N.fcl (c :: p) = (N.st p).l) (h : l <:+ (N.st (c :: p)).l) (hl : T.liftable = true) :
+    (hcl : N.fcl (c :: p) = (N.st p).l) (h : l <:+ (N.st (c :: p)).l) (hl : T.liftable = true)
+    (hv : LiftAdm hF ⟨l, T, a, t⟩) :
     N.lift hF (c :: p) ⟨l, T, a, t⟩ = ((N.setSt p (liftPar hF (N.st p) (N.st (c :: p))
         (N.kind (c :: p)) (N.fmap (c :: p)) (Term.mono (ctxOf_le_of_suffix h) t) hl)).setSt
         (c :: p) (liftChild hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))
@@ -335,7 +336,7 @@ theorem lift_spec (hF : ModalSys.Four = true) {N : GNetSt σ} {c : ℕ} {p : Nod
       (gliftG (N.fmap (c :: p)) T (N.st p).l.length
         (.inr ⟨(N.st (c :: p)).l, T, a, Term.mono (ctxOf_le_of_suffix h) t⟩)
         (.free (N.st (c :: p)).l.length)) := by
-  simp only [GNetSt.lift, if_pos hcl, dif_pos h, dif_pos hl]
+  simp only [GNetSt.lift, if_pos hcl, dif_pos h, dif_pos hl, if_pos hv]
 
 theorem Ext.lift (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k : Node}
     (hk : N.Live k) (o : LTerm σ) : Ext N (N.lift hF k o) := by
@@ -345,7 +346,11 @@ theorem Ext.lift (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k : 
       by_cases hcl : N.fcl (c :: p) = (N.st p).l
       · by_cases h : l <:+ (N.st (c :: p)).l
         · by_cases hl : T.liftable = true
-          · rw [lift_spec hF hcl h hl]
+          · by_cases hv : LiftAdm hF ⟨l, T, a, t⟩
+            swap
+            · simp only [GNetSt.lift, if_pos hcl, dif_pos h, dif_pos hl, if_neg hv]
+              exact Ext.refl N
+            rw [lift_spec hF hcl h hl hv]
             have hd := hN.fwd c p hk
             unfold FwdOk at hd
             rw [hcl] at hd

@@ -2943,6 +2943,575 @@ What decreases is the **level** of a root, ghost data computed alongside the cha
 `RPos`), `rawShape`, `rawShape_rden` by `termShp_boxPush`, the keep law by `termShp_pTr` and
 `entryShp_keepE_dia` — then the T-cases of the paper pass and removing the temporary `NoT`.
 
+**The shaped canonical model on the tree: built (2026-10-25, uncommitted).**  Items 3–7 of the
+paper pass, all green, no `sorry`:
+* *Extents and contents* (`GCanonDom`): `GMem s t P h x := Realised (kw …) ∨ (T = false ∧ InExt …)`
+  (its cons recursion is definitional); `grden`'s `◇` case reads realised arrows by `grealT`
+  (B's `realTerm`) of `pTrXK`, the others by `pTrX`; `GRPos` carries a tag under T (the tree's
+  `Canon.RPos` asks for T, the only shaped flag without B), `grawShape`, ⭐`grawShape_grden`.
+* *Function algebra* (`GCanonFunc`), T-general: `extract` along `grefl`; `dup`/`dkeep` along `[]`
+  and `[c]`-then-identity by ⭐`collapse_pTrK` (collapsing the kept translation is the
+  translation: `Term.collapse_subst` with `Subst.corr_box_self`, then `collapse_shift_same`);
+  the realised branches of `diaMap`/`strength` (`pTrXK_applyG`/`_box`/`_pair`, `grealT_applyG`,
+  `grden_grealT_mono_boxIn`); tags by `Canon.termShp_applyG` and `termShp_pTr_keepDia`.
+* *Model* (`GCanonModel`, `GCanonLift`): NoT-free.  Tags, `posShape_wf`, `rootKeep := kw`,
+  `posStrength_full`/`posKeep_full`, ⭐`grealised_wit` (a `◇_x`-child realises `wit t x`:
+  `here_keep` through `gltrX`), strong D, ⭐`gposRet_exists_canon` (B's).  `Ind` is a temporary
+  bridge `(T → gInd) ∧ (T = false → Eq)` until `IndInvariant` is ported (D-T4).
+* *Term truth* (`GTr`, new `GTrShape`, `GCanonTerm`), T-general: `GTr.col` (with `app_collapse`),
+  chains `ptrXKC` and `grealC` (realisation = `sub diaAbsA ∘ col ∘ sub single`, `grealT_app` by
+  `rfl`), the `here` projection by `app_collapse`, ⭐`gagree_diaPushR` along realised arrows, and
+  the `◇` tag by `Model.domSh_interp` with ⭐`envShape_gtr` (an agreeing environment's shapes are
+  the canonical ones pulled back along the chain, `pullC`, ⭐`termShp_gtr`).
+* *Formula truth, started* (`GTruth`): `pTrW`/`box_mem_path`/`sat_boxPush_path` along `[]`
+  (`T_box`, `sat_collapse`); the `InExt` machinery takes `T = false`.  For the `◇` case along a
+  `◇_x`-child: ⭐`WFF.subst_realiseAtA` (new `SubstRealise`: substitution commutes with
+  realisation at a witness it renames, via `subst_hereRead`, `subst_viewReadTm` and the round
+  trip `diaAbsA_viewReadAtA`), which with the tree's `realiseAtA_shift_keep` at the parent's `◇_x`
+  view makes the child's reading the realisation at its content of the kept translation.
+
+**⚠ Finding (2026-10-25): the `Here` case needs the tags to determine annotations on the tree.**
+B's `here_truth` (and the tree's) moves a `Here` atom between terms with **equal denotations** by
+`eqRec` and `Proof.here_eq` (`here_transfer`), and `eqRec` compares within one fibre (one
+annotation, §10.2) — so it first needs that terms with equal denotations have equal annotations:
+"tags determine annotations" (B's `ann_eq_of_rden`, by the leaf calculus `BLeaf`; the tree's
+`CanonLeaf`).  The paper pass (item 8) did not list this.  If it failed on the tree, two terms over
+different witness skeletons would denote one object, and the truth lemma would fail at `Here`:
+it is a property the templates must have, not only a proof obligation.
+* *What holds already.*  Top-level witnesses: every `◇` address's template is self-rooted
+  (`ShTop`: label `root v []`), so equal tags give equal top witnesses.  Inside `□`: at the
+  identity arrow the level-1 tags read as the level-0 tags of the collapsed term (`comp_pull` at
+  `[]`, `termShp_boxPush`), and `Ann.collapse 0` is injective on kept items under `keepOnly`, so
+  `□` positions reduce to the level below.
+* *What is open.*  Inside a possible object's body: the content `x.dia` is labelled by the
+  template's body, the kept items `u.keep` by families (`GFunc.keep`).  Generic and inherited
+  templates label the content `root x (dia :: π)` (`rootSh`, `keepAlong`), but a **lifted** root's
+  template is a pull-back (`pbShp`): the child's root leaves become `root m p`, its families become
+  guarded families (`pbLeaf`, default leaves off the edge).  A pulled-back family at the content
+  and a kept item's family must still differ; at the identity arrow (not through the child) the
+  former is a default leaf `root (free 0) (dia …)` and the latter `root u []`, so they do — but a
+  proof needs an invariant over every template form (B's `BLeaf` is 870 lines for the simpler
+  network).
+* *Options.*  (a) A leaf calculus for the templates (`ann_eq_of_grden`), as B's and the tree's.
+  (b) Make the templates' inner labels visibly separated by construction (e.g. a tag recording
+  the position's address kind), so injectivity is by `cases`.  Not (c) an annotation-free
+  `here_eq` (rejected design: joint possibility goes through pairing, §2d) — nor `Ind := Eq`
+  (`Here` reads `Ind`, item 6).
+* *A collision to fix first.*  Default leaves are `root (free 0) (dia …)` (`dleaf`), and a
+  pulled-back family is a default leaf on the arrows not through the child.  A kept item `u.keep`
+  of a `◇` view has the family `a ↦ keepAlong a (root u [])`, which at the identity arrow is
+  `root u []`.  So when `u = root (free 0)`, at the identity a lifted root's content label and
+  `u.keep`'s agree; through the child they agree too when the lifted content is `u`'s image kept
+  (`keepAlong_comp`); and on the other arrows they agree whenever `u`'s kept witness there is root 0.
+  Rooting default leaves at a **bound** root (`root (bnd 0) …`), which no world language declares,
+  separates every default leaf from every real label, and under T the identity arrow (never through
+  a child) then tells a pulled-back family from a kept item's.  This is the natural first step of
+  either option.
+* *Built so far (2026-10-25):* the whole `◇` case of the formula truth lemma under T —
+  `pTrXKW`, `boxx_mem_pathK`, `sat_diaPush_pathK`, `glexX` now recording that a `◇_x`-child's entries
+  at `x.keep`/`x.dia` are renamings, ⭐`gchild_real`, ⭐`gchild_here`, ⭐`gdia_real_not_boxx`
+  (truth ⇒ membership along realised arrows, `here_elimAtA`), ⭐`gdia_sat_child` (membership ⇒
+  truth, `here_subst`).  `gtruth_lt` keeps `[NoT]` only for the `here` case.
+
+**⚠ Paper pass (2026-10-25): `◇`-lifted terms break "tags determine annotations"; root
+possibilities as positions are not enough.**  *User: option (a), then a paper pass on making
+root possibilities positions.*  Both collisions below come from a `◇`-lifted root `x` of `s`, its
+entry along its lift edge `e` a term `τ` at the child `t` (`x.keep ↦ τ`).  In each, two terms
+`r ≠ r'` (different annotations) get equal tags; with `□_x ⊥ ∈ M_s` (`x`'s extent empty, contents
+vacuous) they denote one object, while `M_s` may contain `Here(S, r) ∧ ¬Here(S, r')` — nothing in
+the theory at `s` relates them.  So the truth lemma is **false** at `Here` for such theories: a
+fault of the construction, not only a missing proof.
+
+1. *Merged at the template.*  `τ = ◇_w ⟨◇_{w.dia.fst} (), ◇_{w.dia.fst} ()⟩` labels both content
+   positions `root w [dia, fst]`, so `x`'s template (`pbShp`) labels `x.dia.fst` and `x.dia.snd`
+   alike: `r = ◇_x (◇_{x.dia.fst} ())`, `r' = ◇_x (◇_{x.dia.snd} ())`.  Root possibilities that
+   name positions (`(x, π)`, kept along `e` to the child label's root) would separate these.
+2. *Merged below the template — forced.*  `z : ◇◇Y` at `t`, `τ = ◇_z ◇_{z.dia} η(z.dia.keep)`.  Its
+   inner label is the kept item's, `dk 1 (root z [dia]) = root z [dia, keep]`.  Keeping preserves
+   paths (`keepAlong (root ρ p) = root (rootKeep ρ a) p`), so **any** root keeping to `τ` labels
+   `x.dia.dia` by `root ρ [dia, keep]`, whatever `ρ` is.  The context `Γ.diaIn x |>.diaIn x.dia
+   |>.diaIn x.dia.keep` declares both `x.dia.keep.dia` and `x.dia.dia.keep` (both `◇Y`), and
+   * `x.dia.keep.dia`: `dkB 1 (root ρ [dia, keep]) = root ρ (shiftAt 1 [dia, keep]) = root ρ [dia, keep, keep]`;
+   * `x.dia.dia.keep`: `dk 2 (root ρ [dia, keep]) = root ρ (keepAt 2 [dia, keep]) = root ρ [dia, keep, keep]`.
+   (Generic labels: `[dia, keep, dia]` and `[dia, dia, keep]`.)  So `η` of the two, under
+   `◇_x ◇_{x.dia} ◇_{x.dia.keep}`, collide, and no choice of root possibilities avoids it.
+
+*Root cause.*  A `◇`-lifted root keeps **literally** to its term, so its root labels carry the
+child's paths, which spell the child's positions, not the root's ("foreign paths"); the path
+operations (`keepAt`, `shiftAt`, `collapseAt`) act by level index, so positions that differ in
+where a `keep` sits merge.  The semantics is not at fault: in any model, a preimage of `⟦τ⟧` has the
+same collisions.  The canonical model goes wrong only because it **names** the preimage by an
+address that the theory at `s` talks about freely.  Only the `◇`-lift makes such roots: a
+`□`-lifted root's labels are families at its own level, and their members at the identity arrow are
+generic (`boxEnt` along `[]` reads `r.here`), so the identity arrow still tells them apart (to be
+confirmed in the leaf calculus).
+
+*Proposal (D-H1): the `◇`-lift lifts each view's **generic** possible object; every other possible
+object is its image under a definable map.*
+* *Network.*  For a child `t`, a stage `j` and a `◇` address `z` of `glat t j`, the **view tuple**
+  `σ_z := ◇_z ⟨η(z.dia), η(y₁.keep), …, η(yₙ.keep)⟩` over the keepable declared roots `yᵢ`.  The
+  chain `◇`-lifts view tuples and nothing else; the `□`-lift is unchanged.
+* *Strong 4 by naturality (`gkeep_edge`).*  A definable `⟦◇_z u⟧` is `posMap g ⟦σ_z⟧`, with `g` the
+  map reading `u` off the tuple (the view's items are the tuple's components, so `g` is `u`
+  compiled over them).  Keep commutes with `posMap` (extents and contents by definition; tags
+  because `GFunc.shp` commutes with `keepAlong`, by `keepAlong_comp`), and `⟦x_σ⟧` kept along `e` is
+  `⟦σ_z⟧`, as today.  So the preimage is `posMap g ⟦x_σ⟧`, definable at `s` (definable objects are
+  closed under `grawEval`), denoted by a **compound term**: its own merged positions are nobody's
+  address.  This handles `z.dia.keep` too, which a syntactic pull-back could not (`x.dia.fst` is not
+  keepable).
+* *Templates.*  A lifted root's template is still the pull-back of `σ_z`'s shape.  Its root labels
+  are `root x (dia :: π)` at `x.dia.fst.π`, one per position: an **offset** `[fst]` (accumulating
+  when `z` is itself lifted), with the same levels as the position.  The item positions are
+  families.  Off the lift edge those families get **markers** instead of `dleaf`: default leaves
+  rooted at the position's own address, so the identity arrow can read them back (the root action
+  acts on a marker's world-level prefix by `kw`).
+* *Leaf calculus.*  Canonical labels: the leaf of the address, read with its root's offset and with
+  markers.  Edits commute with an offset of projections inserted after the first `dia`: checked for
+  `keepAt`/`shiftAt`, and for `collapseAt`'s special case, since no `keep` ever directly precedes the
+  inserted projections.  Then mirror `CanonLeaf`: `Canonical`, its `boxPush`/`diaPush`,
+  `termShp_canonical`, a decoder, `annShp_injective`, `ann_eq_of_grden`; then B's `here_truth`.
+
+*Alternative (smaller, not general):* `◇`-lift the η-expansions of addresses only.  All templates
+are then generic (no offsets, no markers), and `⟦◇_z u⟧`'s preimage is `posMap g (posStrength (N,
+x_z))`, with `N` the items' preimages: `dkeep x_y` for the `◇` items and the `□`-lift for the `□`
+items.  So it needs `FourStrong` whenever `FourStrongW` is on.  With `FourStrongW` alone the parent
+cannot name the child's `□` items, so their values must travel inside one lifted possibility: the
+view tuple.
+
+*Unaffected:* everything built for the truth lemma (function algebra, model laws, term truth, the
+`◇` case).  *Changed:* the chain's `◇`-lift (`GLift`, `GFair`, `gllift`), `gkeep_edge`, `liftDiaAt`'s
+defaults, the root action on markers, and a new leaf calculus (the bulk; the staged tree's
+`CanonLeaf` is 1 730 lines).
+
+*User (2026-10-25): D-H1.*  **Built (2026-10-25, uncommitted, all 20 top targets green, no
+`sorry`):** the network and strong 4.
+* `QML_v12m_GView`: `keepItems`, `boxItems` (the declared items of a world language's `□` view —
+  with T off these include the `u.box` contents too, so the tuple is over the `□` view's items, not
+  only kept ones), `itemsTm`, ⭐`viewTuple`, `LiftAdm`; ⭐`pullS` (`z.dia ↦ x.dia.fst`, item `k` `↦`
+  component `k` of `x.dia.snd`) with `ok_pullS`, `coh_pullS` (index map `pullIdx`: by the address
+  the index's first level step leaves from).
+* `GNetSt.lift` lifts only `LiftAdm` terms (necessary terms, view tuples); `lift_spec`, `levLift`,
+  `lift_total`, `gllift` carry the condition.
+* `QML_v12m_SubstShift` (general): ⭐`Term.subst_shift` — substituting into a shifted term is
+  substituting the entries at the shifted addresses (`Subst.PreShift`, up to η); mirrors
+  `Term.shift_subst`.
+* `QML_v12m_GViewSubst`: `Subst.atShift` (with `Coh`: each declared address of a world language's
+  `◇` view has one level step), `SubE.projs`, ⭐`subst_shift_pullS`: the lift edge's substitution,
+  applied to the shifted pull-back of `u`, is `u` — `subst_shift`, then `subst_comp` with the
+  composite `∼` the identity (`z.dia` and each item go to their η-expansions), then
+  `subst_idS_mono`.
+* `gkeep_edge`: `□` as before (`gkeep_edge_adm`); `◇` by ⭐the pull-back: `⟦◇_z u⟧` is kept from
+  `◇_x (pullS u)`.  The preimage is syntactic, not `posMap g ⟦x_σ⟧`: a semantic preimage would need
+  `interp`, i.e. the model whose `keepLift` this proves.
+
+*Next: the leaf calculus.*  A closed form (B's `leafOf`) does not fit: a `□`-lifted root's members
+along its lift edge are a term's shapes, not an address's.  Plan: a **decoder through the identity
+arrow** — a root `root r p` reads `r.ext p` with the root's offset re-inserted after its first
+`dia`; a family is read at the identity arrow, with a `keep` re-inserted at the cut when the member
+is one level lower — and the invariant as a left inverse (every shape of the environment reads back
+to its address's η-annotation), preserved by `boxPush`/`diaPush` through decoder lemmas for `dk`,
+`dkB`, `shift`, `collapse`; base cases per template (generic, inherited, lifted with offset).
+Families at a lifted root's item positions get members off the lift edge that read back to the
+position (markers) instead of `dleaf`.
+
+**⚠ Correction (2026-10-25): the identity arrow cannot read families back.**  For a `□` address
+`v : □◇Y`, the labels of `v.keep.here` and of `(v.here).keep` (both `◇Y`, both in `Γ.boxIn`) are
+families whose members at the identity arrow are both `v.here`'s label.  This is forced: extracting
+`v` is `v`'s value along the identity arrow (`necExtract_eval`), and keeping `v.here` along the
+identity arrow is `v.here`.  The two objects differ (`v` along `a` against `v` at the identity,
+kept along `a`), and so do their labels, but only along proper arrows.  So families must be
+read **along an edge**, through the edge's translation of addresses:
+* along an edge, an image root's kept item is an address (`fmapL_inj`), and a view tuple's root's
+  positions translate to the child's items (tuple stripping); both are injective;
+* a `□`-lifted root's members along **its** lift edge are an arbitrary term's shapes, which may
+  merge positions (`□⟨w.keep, w.keep⟩`).  So no fixed edge reads every family back.
+
+*Proposal (D-H2): the `□`-lift also lifts only each `□` view's generic object*, `□⟨η(item₁), …⟩`
+over the `□` view's items, with every other necessary object kept from a pulled-back term, as
+D-H1 does for `◇`.  Then every member of every family along every edge is an address's label, and
+the leaf calculus reads families along one fixed edge per world (under T every world has
+infinitely many children: each `¬□ψ` gets its own).  The alternative keeps arbitrary `□`-lifts and
+proves injectivity without a decoder, choosing for each pair of addresses an edge that is neither's
+lift edge.  That works, but it is a case analysis for each pair, not a calculus.
+
+*User (2026-10-25): D-H2.*  **Built (uncommitted, 20 top targets green, no `sorry`):**
+`GArrow.boxTuple` (`□⟨η(items)⟩`), `LiftAdm` = `□` view tuple or view tuple, `pullBoxS`
+(item `k ↦ r.inner.itemPath k`) with `ok_pullBoxS`/`coh_pullBoxS`, ⭐`subst_shift_pullBox`
+(through `at_inner_boxTuple`: under `keepOnly` the edge's entry is read at
+`r.keep.keep.here` — `keepE`, then `here`, and `collapse ∘ shift = id` by
+`collapse_shift_same`; otherwise at `r.keep.box` by `unbox`), and the `□` case of `gkeep_edge`.
+
+**⚠ Correction (2026-10-25): D-H2 does not give a one-edge decoder after all.**  Along an edge `e`
+two *different* roots can merge.  A root `x` lifted along `e` to `z`'s view tuple has
+`x.keep ↦ z`, and `z` may be the image of another parent item, `u.keep ↦ z`.  Then the families of
+`x.keep` and `u.keep` agree along `e`, and differ along every other edge.  The same happens with a
+`□`-tuple component `w_k` that is an image.  This is semantic (two parent objects keep to one
+child object), so no choice of lifts avoids it.  D-H2 remains sound and uniform ("strong 4 lifts
+each view's generic object"), but it is not needed for the leaf calculus: the per-pair argument
+works with arbitrary `□`-lifts too.
+
+**The leaf calculus, revised plan.**  Injectivity of labels in every pushed context, by induction on
+the depth, over all worlds at once.  In a pushed context the `◇` addresses are of two kinds:
+* *root-level* `x.dia.rest`: all with one world address `x`, the context's first `◇` witness
+  (positions of two different roots never share a context).  Labels are `root x p` (generic,
+  inherited and offset templates) or the item families of an offset template.  These are read back
+  directly: the path is the address after `x`, with the root's offset removed, and the edits `dk`,
+  `dkB`, `shift`, `collapse` at level `≥ 1` match the address operations (the root cases of the
+  staged `CanonLeaf`).  Item families are told apart along their lift edge, and from kept items off
+  it by **markers** in place of `dleaf`: default leaves whose root name has a level step, which no
+  genuine label has.
+* *keep-first* `u.keep.rest`: labels are families.  Compare them along a child of `s` **born after**
+  every root involved: no such root can be lifted along it, so every entry is an image and the
+  translation is injective (`fmapL_inj`).  The members there are the child's labels of the
+  translated addresses, one level shallower.  To get this from `termShp_boxPush`, wrap each address
+  into a depth-0 term `□ W(◇_y ())`: the wrappers are the context's keep-first witnesses, and the
+  tag of the wrapped term records exactly `y`'s label.  Such a child always exists: a late `¬□⊥`
+  obligation makes one.
+Then the term-level theorem (`ann_eq_of_grden`), by induction on terms in pushed contexts, and B's
+`here_truth`.
+
+**⚠ D-H1's item families (2026-10-25).**  A root `x` lifted to a view tuple has *families* at its
+content's item positions (keeping forces them: the child's kept items are families).  Then
+`(x.dia.snd.itemPath k).keep` and `x.keep.dia.snd.itemPath k`, both in `(Γ.diaIn x).diaIn x.keep`,
+have labels `dk 1 ℓ` and `dkB 0 ℓ`.  These agree along the lift edge, since `ℓ` is a kept item's
+family.  They are separated only if the defaults off the edge are chosen *incoherently* with
+keeping.
+
+**Diagnosis (2026-10-25, with the user: stepping back).**
+* *The leaves are right.*  A shape is a semantic annotation: each `◇` position carries the
+  possibility occupying it, as a root possibility plus a path copying the address (a leading `□`
+  level semantic, a family; everything after a leading `◇` level syntactic, a path).  The leaf
+  operations copy the annotation operations by level index.  They are exact precisely when every
+  **address** is labelled faithfully: its label's path spells its own position.  A term's tag is
+  computed from its addresses' tags, so faithful addresses give tags equal to annotations read
+  canonically, and "tags determine annotations" follows.  That is how B and the staged tree work.
+* *The wrong turn was at D5 (a): strong 4's canonical lift was made literal.*  The chain lifted
+  arbitrary liftable terms and named each preimage by a fresh address.  Keeping preserves a label's
+  path and kind, so that address inherits the term's labels wherever they sit: a family where a
+  generic shape has a root (the "`◇`-free" finding), one possibility at two positions (the template
+  merge), a path spelling the child's position (foreign paths), families at content positions
+  (D-H1's item families).  Every difficulty since was an unfaithfully labelled address, and the
+  shape templates (B) were built to accept these labels, not to remove them.
+* *The right construction lifts generators* (**D-H3**).  Keeping commutes with every term former
+  (`four_dia`'s semantics), so surjectivity on generators is surjectivity everywhere.  Lift possible
+  addresses by their η-expansions, and the `□` view's necessary data by the `□` view tuple (D-H2).
+  Every other possible object is their strength: `⟦◇_z u⟧` is kept from `◇_x u'`, `x` lifted to
+  `η(z)` and `u'` reading `z.dia` as `x.dia` and the `□` view's items from the necessary root —
+  joint possibility through pairing.  Every address stays faithful (an η-lift copies a faithful
+  template; images inherit one), so every `◇` template is generic.
+* *What remains is semantic, not an artifact*: two parent objects may keep to one child object along
+  an edge, and the identity arrow cannot separate keep-then-read from read-then-keep
+  (`necExtract`).  Both are handled by comparing along a child born after the roots involved.
+* *The one genuine tension: `FourStrongW` without `FourStrong`.*  With only the `◇`-lift, the
+  parent has no generator for the child's necessary data, so a possibility carrying it must be
+  named, unfaithfully.  For that system there are two options: a coherence condition
+  (`FourStrongW → FourStrong`, as `ModalSys.WCoh`), or its own canonical model with defaults that
+  do not cohere with keeping.  Neither is decided yet.
+
+*User (2026-10-25): try D-H3.*  Plan: `LiftAdm` = the `□` view tuple, or `η(z)` for a possible
+address, or (only when `FourStrong` is off) a view tuple — so the `FourStrongW`-only case keeps
+D-H1 until decided and nothing regresses; `gkeep_edge`'s `◇` case by the new pull-back when
+`FourStrong` is on.  Then the leaf calculus for faithful templates.
+
+**Built (2026-10-25): D-H3, the leaf calculus, and T + 4 complete** (uncommitted at time of
+writing; 20 top targets green, no `sorry`).  Everything holds under T with the `□`-lift on
+whenever the `◇`-lift is, `hS : FourStrongW → FourStrong` (the class `ModalSys.FourCoh` asks it
+under T only; lift entries record liftability, `AdmEnt`, so a `◇` entry under the coherence is an
+η-expansion, `fmapL_dia_eta`).
+* *Every `◇` template is generic* (`cEnv_dia_generic`, `GLeaf`).
+* *Pushed environments* (`Pushed s i Δ ρ j`: the canonical environment of stage `i` pushed `j`
+  views in).  Addresses have exactly `j` levels and no `box` step; each is root-level
+  `pre.dia.q` or keep-first `u.keep.rest` (`addr_cases`).  Root-level labels are
+  `root pre (dia :: q)` (`Pushed.rootSh`: keeping and projecting move generic shapes to generic
+  shapes), keep-first ones families (`Pushed.label_cases`).
+* *Keep-first labels along a late edge* (`GLeafInj`).  The keep-first part of a pushed context is
+  a chain of views from the `□` view (`Wr`, `Pushed.kpart`); a keep-first address `y` wraps into a
+  term of the `□` view, `Wr.wrap (◇_y ())`, whose shape holds `y`'s label.  Read along an edge it
+  is its translation's shape at the child (`edge_shp`: `unT_termShp`, `comp_pull`,
+  `termShp_subst`).  Under T every stage has a child born after it, for `¬□⊥` (`glate`); there
+  every entry of the stage's kept items is an image, and the index map is injective on keep-first
+  addresses (`late_inj`, by `gPath_keep_inj`).  So two keep-first addresses with one label have
+  translations with one annotation at the child (shapes determine annotations there, one level
+  shallower), hence one image, hence are equal (`labInj_kf`).
+* ⭐⭐`labInj` (labels injective in every pushed environment, by strong induction on the depth),
+  `ann_eq_of_termShp_pushed`, `ann_eq_of_termShp`, ⭐⭐`ann_eq_of_grden`.
+* The `here` case as B's: `ghere_transfer`, `ginterp_dia_self`, ⭐⭐`ghere_truth`; `gtruth` under
+  `[ModalSys.FourCoh]` (an instance from `NoT`).  ⭐⭐`gmodel_indInvariant` (`GInd`) as B's
+  `indInvariant`: representing substitutions (`grepSubst`, `substEnv_grepSubst`), invariance from
+  the truth lemma; `Ind` is `gInd` under T, equality without.  `GCompleteness` and `GFlat` take
+  `[ModalSys.FourCoh]` in place of `[ModalSys.NoT]`.
+* Still open: `FourStrongW` without `FourStrong` under T (the "Diagnosis"'s one genuine tension).
+  Making `FourCoh` a field of `NoB` (in place of `noFourStrong`/`noFourStrongW`) would adopt the
+  coherence option for the top-level theorems.
+
+**The `◇`-lift without the `□`-lift under T: two checks (2026-10-25, paper; user: "let's do the
+two checks first").**
+
+*Check 1 — the `◇`-lift does not give the `□`-lift (a countermodel).*  So the coherence
+`FourStrongW → FourStrong` would be a new axiom, not a derivable fact, and the system without it is
+a genuine system.
+* *Frame.*  Two worlds `w`, `v`; arrows `1_w`, `1_v`, `a : w → v` (reflexive, transitive: T, 4,
+  weak D).  `D w = {0}`, `D v = {0, 1}`; every function symbol is the constant `0` at `v`.
+* *Clean objects.*  `Clean` on objects at `w` or `v`, by the type: at `Var`, the object is `0`
+  when at `v` (anything at `w`); `𝟙` always; products componentwise; a necessary object when all
+  its values are clean; **a possible object always**.
+* *Carriers.*  `Nec A v` = all sections; `Nec A w` = the sections whose values are all clean.
+  `Pos A u` = all well-formed (section, shape) triples, at both worlds (`RootPoss = PUnit`, so the
+  root action and its laws are trivial; `posFull` is the identity, so `posFull_inj` holds and the
+  `pos*_full` laws define the operations; the operations keep well-formedness, as in every
+  model).  `Ind` is equality.
+* *Closure.*  Every operation keeps `Nec · w` clean.  `necMap` along a definable map does, since
+  definable maps preserve `Clean`: projections, pairing and `unit` trivially; functions by the
+  constant interpretation; `extract` reads a value; `dup` reindexes values; `boxMap` acts
+  pointwise; and `diaMap`, `strength`, `dkeep` land in possible objects, which are always clean.
+  No definable map goes from `◇A` to `A`, so possible contents never leak into necessary
+  objects.  `necPair` and `necUnit` keep it too.
+* *Laws.*  The `◇`-lift holds: a possible object `q` at `v` restricts from the triple at `w`
+  whose extent is `{a}` (with `1_w` if wanted), whose content at `a` is `q`'s at `1_v`, and whose
+  shape has `q`'s labels at `a`, with defaults at `1_w` (`keepAlong a` reindexes families by
+  `t ↦ a ≫ t`, which only reaches `a`).  Strong T and strong D hold too, since `Pos` is full.
+* *The `□`-lift fails.*  With `u : □Var` free, `u(1_w) = u(a) = 0` (clean), the instance of
+  `keep_lift` at `□Var`,
+  `◇ ∃n:□Var. ¬ (n.here = u.keep.here) ⊢ ∃m:□Var. ◇ ¬ (m.keep.here = u.keep.here)`,
+  has a true premise (along `a`, `n` with `n(1_v) = 1`) and a false conclusion: every
+  `m ∈ Nec Var w` has `m(a) = 0` and `m(1_w) = 0`.  By soundness, it is not derivable with only
+  the `◇`-lift.
+
+*Check 2 — where our representation fails, and a fix (paper pass).*
+* *The obstruction is the root action.*  With only the `◇`-lift, a possible object at the child
+  carrying the child's necessary data, `⟦◇_z⟨z.dia, items⟩⟧`, has no generator at the parent
+  (there is no `□`-lift for the items), so it is lifted whole: a parent root `x` with
+  `x.keep ↦` the view tuple along its lift edge `e` (D-H1).  Its shape is fixed by the laws:
+  `posStrength_full` puts the items' families at the item positions, and `posKeep_full` says that
+  shape is `x`'s shape mapped by `keepAlong e`.  Today `keepAlong e (root r p) = root (rk r e) p`:
+  **the restriction of a root possibility is a root possibility.**  So `x`'s labels at its item
+  positions must be families, and `x`'s template cannot be generic.  Every collision met so far
+  (D-H1's item families, the template merge, foreign paths) is this unfaithful template.  It is a
+  limit of the representation, not of the semantics: a restricted possibility's content can hold
+  necessary data of the target world (that is what `strength` makes), and check 1's model has
+  such restrictions.
+* *The fix: a leaf-valued root action.*  `keepAlong a (root r p) := rkeep r a p`, the
+  possibility at position `p` of `r`'s restriction along `a`, a **leaf** at `a`'s target: a root
+  path where the restriction's content is a possibility, a family where it is necessary data.
+  Laws: `rkeep r 1 p = root r p` (T); `keepAlong b (rkeep r a p) = rkeep r (a ≫ b) p`;
+  well-formedness at `p`'s position (families are allowed below a `◇` level); and
+  **naturality** in the path edits: `rkeep r a (E_i p) = L_i (rkeep r a p)` for the level edits at
+  level `i ≥ 1` (`keepAt`/`dk`, `shiftAt`/`dkB`, `shift`, `collapseAt`/`collapse`).  Naturality
+  makes `keepAlong` commute with the leaf operations at levels `≥ 1` (for families this is
+  already so, by reindexing), which is what soundness needs where it now uses that
+  `keepAlong` keeps roots.  The present design is the special case
+  `rkeep r a p = root (rk r a) p`, for which naturality is definitional, so every existing model
+  remains one.
+* *The canonical model with it.*  Every root's template is generic (`genDia`), including a
+  view-tuple-lifted root's.  The root action carries the lift: along `x`'s lift edge, `rkeep x e p`
+  is the label at position `p` of the view tuple's shape at the child (`z`'s root paths in the
+  first component, the items' families in the second), extended to edited paths by naturality;
+  along the other edges, where `x.keep` is an image, it is the image's root path; along a longer
+  path, by recursion from the first edge, so the composition law holds by construction and the
+  identity law by the empty path.  `edge_entry` then holds by the definition of `rkeep`.
+* *The leaf calculus with it.*  Unchanged.  Root-level addresses are labelled `root pre path`
+  (generic templates), keep-first ones by families, and keep-first families are compared along a
+  late edge, where every entry is an image and `rkeep` gives root paths.  D-H1's collision
+  disappears: `(x.dia.snd.item_k).keep` is root-level (`root x [dia, snd, …, keep]`) and
+  `x.keep.dia.snd.item_k` keep-first (a family), so constructors separate them.
+* *Risks to check before building.*  (1) `rkeep x e` must be a function of the path: defined
+  step by step (projections read components, `dia` the body, a `keep` the kept leaf), a `keep`
+  step reached by `keepAt` (`dk`) and by `shiftAt` (`dkB`) must agree, which holds on paths
+  that spell their position (§3 4, the `dkB` note) and so on faithful labels; and naturality at the
+  `here`/`collapse` edits and at paths that cross from the `z` part into an item (the edit lands
+  in a family there).  Checked by hand at `(x.dia.snd.item_k).keep`: both readings give
+  `dk 1` of the item's family.  (2) Every
+  soundness proof and every lemma that uses that `keepAlong` keeps roots (`Leaf.WF`
+  preservation, `shTop_shp`, the `GSelf` lemmas, `posShape_wf` for the operations).  (3) The
+  `Model` change touches every model (the staged tree, the network, the growing tree), though
+  only by instantiating the special case.
+* *Assessment.*  The `◇`-lift-only system with T is a genuine system (check 1), and the failure to
+  complete it was in our representation: a root's restriction was required to be a root.  The
+  leaf-valued root action removes exactly that assumption, and the rest of the construction (D-H1's
+  view-tuple lift, built; the leaf calculus, built) carries over.
+
+**The leaf-valued root action: paper pass on the risks (2026-10-25; user: "let's do the paper pass
+on the risks").**  No blocker found, one correction (naturality is conditional on well-formedness).
+
+*Risk 2 first: what the semantics uses.*  `keepAlong`'s root clause (a root kept is a root) is used
+in exactly seven places in the semantic library (`SemShape`, `SemShift`, `SemCollapse`,
+`SemSubst`):
+* `keepAlong_comp` and `keepAlong_refl` (via `RootKeepLaws.keep_trans`/`keep_refl`): these become
+  the new composition and identity laws;
+* `wf_keepAlong` (root case): becomes the well-formedness law;
+* the level-0 cases of `collapse_dkB`, `shift_dkB_far`, `dk_dkB`, `dkB_dkB`, today
+  `cases ℓ <;> rfl`: for `ℓ = root r p` they are exactly naturality,
+  `rkeep r s (E (d+1) p) = L (d+1) (rkeep r s p)` with `(E, L)` = `(collapseAt, collapse)`,
+  `(shiftAt, shift)`, `(keepAt, dk)`, `(shiftAt, dkB)`.
+Every other operation acts at a level `≥ 1` by path arithmetic or at level 0 through `dk`/`dkB`,
+which call `keepAlong`, so nothing else depends on restrictions being roots.  (`dk_collapse`,
+`dkB_collapse`, `shift_dk`, `shift_dkB`, `collapse_dk(B)_self` use only the two laws.)
+
+*Correction: naturality must be conditional on well-formedness.*  `shift` and `dkB` both act on
+root paths by `shiftAt`, so an unconditional law would ask
+`shift (d+1) (rkeep r s p) = dkB (d+1) (rkeep r s p)`.  This fails on the canonical item families:
+for `ℓ = fam (t ↦ root (rk w t) [])` (a kept `◇` item), `dkB 1 ℓ` is a family of families while
+`shift 1 ℓ` is a family of roots.  At a well-formed position the two never compete: `shift` acts at
+a `□` level, where a well-formed leaf's members are families and `dkB = shift` (`dkB_eq_shift`),
+and `dkB` at a `◇` level.  So the laws, the four level-0 cases and the fields of `LevelIns`
+take well-formedness hypotheses (position kinds), and `shp_mapIns`, `ShEnv.ref_mapIns`,
+`boxPush_mapIns`, `diaPush_mapIns`, `termShp_mapIns` thread them.  Their callers already work in
+well-formed environments (`envShape_wf`, the `hρ`/`hwf` arguments), so this is mechanical.
+
+*Risk 1: the canonical root action is a function of the path, and natural.*
+* *Definition by addresses, not by edits.*  Along one edge `e`, `rkeep₁ x e p` is the label, in the
+  child's pushed canonical environment, of the translation of the address `x.ext p`: for an image
+  `y` it is `y.ext p` (so `rkeep₁ x e p = root y p`, as today); for an η-lift to `z` it is
+  `z.ext p`; for a view-tuple lift `◇_z⟨z.dia, items⟩` it sends `x.dia.fst.q ↦ z.dia.q` and
+  `x.dia.snd.(itemPath k).q ↦ item_k.q`.  Along a longer path, by recursion from the first edge
+  (`keepAlong` of the rest), so the composition law holds by construction and the identity law by
+  the empty path.  This is a function of `p` because a pushed canonical label depends only on the
+  address: it is computed along the address's own steps (a projection reads a component, `dia`
+  the body, `keep` keeps at the level reached), and `boxPush`/`diaPush` agree on the `□` part.  So
+  the `dk`/`dkB` question of the previous note does not arise: paths are read as addresses, not as
+  edit histories.
+* *Translation commutes with the edits.*  It replaces the prefix up to the first level step and
+  keeps level indices (`x`'s level 0 is its `dia`; an item's is its `keep`), and the edits at
+  level `≥ 1` act after that step, with one exception: `collapseAt 1` deletes a level-0 `keep`
+  followed at once by a level step.  It never fires on `x`'s paths (their level-0 step is `dia`);
+  on the child's side it fires only on `item.keep.keep` (a `box` step is excluded under
+  `keepOnly`, which T + 4 has), and deleting either of two adjacent `keep`s gives the same list.
+  Checked on `x.dia.snd.k.keep`, `x.dia.snd.k.here.keep`, `x.dia.snd.k.keep.keep`.
+* *Labels follow the edits.*  `lab (E y) = L (lab y)` at the child is how pushing works (`boxPush`
+  keeps at the level, the shift/collapse agreements of `SemShift`/`SemCollapse`), and holds by
+  induction on the edit level: root paths go by path arithmetic, and a family consumes one level,
+  passing the edit to its members one level lower (an item's family at level 0 has members
+  `rk w t`'s labels, edited at level `d`).  This induction is the part still to be written out in
+  full.
+* *Well-formedness.*  `rkeep x e p` is well-formed at `p`'s position: in the `z` part it is a root
+  path with the same levels; in an item it is a family, allowed below a `◇` level, with members
+  well-formed one level down (the child's pushed labels are well-formed).
+
+*What changes, and what does not.*
+* `Arrows.RootKeep` / `Model`: the root action becomes leaf-valued per path, with the composition,
+  identity, well-formedness and (conditional) naturality laws.  The staged tree and the network
+  instantiate the special case `rkeep r a p = root (rk r a) p`, where every law is path
+  arithmetic; proofs that unfold `keepAlong` on roots by `rfl` still do.
+* The semantic library: the seven places above plus the `LevelIns` threading.
+* The growing tree: templates become generic by definition, so the pull-back machinery (`pbShp`,
+  `liftDia`, `ShTop`, `keepAlong_pbShp`, `liftDiaAt_keep`) goes, `edge_entry` holds by the
+  definition of `rkeep`, and `cEnv_dia_generic` becomes immediate.  D-H1's view-tuple lift and its
+  `gkeep_edge` case (built) are unchanged; so are the leaf calculus (late edges carry images, where
+  `rkeep` gives root paths) and the truth lemma.  With it the `◇`-lift-only system with T would be
+  complete, and `FourCoh` would go.
+
+**The canonical root action's laws: the induction (2026-10-25, paper; user: "try the paper
+induction first").**  It closes, with no circularity, provided it does not go through the generic
+`LevelIns` lemmas: those need naturality at level 0 of the very roots being treated, one world
+down, and at the same level, which descends the tree forever.  Proved directly on addresses
+instead, the induction is on the edit level for labels and on the arrow's length for the root
+action.
+
+*Setting.*  T + 4 (`keepOnly`: no `box` steps).  Arrows are paths; the identity arrow is the empty
+path.  Every template is generic.  An edit `E_m` at level `m` (`keepAt`, `shiftAt`, `collapseAt`)
+goes with its leaf operation `L_m` (`dk`; `dkB` before a `◇` step, `shift` before a `□` step;
+`collapse`).  Which operation goes with `shiftAt` is decided by the address's next step, so the
+well-formedness condition of the previous note is met by construction.
+
+*Definitions.*
+* `Lab_t(y)`, the **label of an address** `y` at `t`, by recursion along `y`'s steps from its
+  level-free prefix: generic (`root u []`) there, and each step applies the operation the pushes
+  apply at the level reached (projections read components, `dia` takes the body, `keep` keeps:
+  `dk` on the label, `dkB`/`shift` inside).  (A) The label in any pushed canonical environment
+  containing `y` is `Lab_t(y)` (an induction on `Pushed`, as `Pushed.rootSh`).
+* The **translation** of a kept item along an edge `c`, `tr_c(u.keep)`, is the child's object its
+  entry names: an image `y`, an η-lift's `z`, a view tuple's components (`z.dia` and the items), or
+  the `□` view tuple's items collapsed.  A path translates by recursion from its first edge,
+  kept between edges (as `pTr`); along the empty path `tr(u.keep) = u`.  The address `u.keep.r`
+  translates to `tr(u.keep).r`, read through the components.  The `keep` is consumed: `r`'s level
+  `i` at the parent is level `i` of the translated address, counted from the child's anchor.
+* The **root action**: `rkeep v [] p = root v p`, and along `c :: P`,
+  `rkeep v (c :: P) p = keepAlong P (Lab_{t₁}(tr_c(v.keep).p))`.
+
+*Lemmas.*
+* (T) **Translation commutes with the edits** at levels `≥ 1`: it replaces the part up to the first
+  level step and keeps level indices, and the edits act after it.  The one exception,
+  `collapseAt 1` deleting a level-0 `keep` followed by a level step, fires only on `keep.keep`
+  under `keepOnly`, and deleting either `keep` gives the same list (checked on
+  `x.dia.snd.k.keep`, `x.dia.snd.k.here.keep`, `x.dia.snd.k.keep.keep`).
+* (C) **Translations compose**: along `d` then `e` is along `d ≫ e` (`tr_e(tr_d(w.keep).keep) =
+  tr_{d≫e}(w.keep)`, the recursion of the definition); along the identity arrow, `tr(w.keep) = w`.
+* (I) **A keep-first label is the family of its translations' labels**:
+  `Lab_t(u.keep.r) = fam (b ↦ Lab_{b.1}(tr_b(u.keep).r))`.  This is a structural induction on
+  `r`.  A step after the `keep` at parent level `j + 1` acts on the family pointwise at level `j`,
+  which is the step the child's pushes apply to `Lab(tr_b(u.keep))`, since translation keeps
+  types.
+* (B) **Labels follow the edits**: `Lab_t(E_m y) = L_m(Lab_t(y))`, by induction on `m`, for all
+  worlds at once.
+  * *Root-level or level-free `y`* (`Lab = root u path`): an edit at level `m ≥ 1` keeps it
+    root-level, and both sides are `root u (E_m path)`.  This is path arithmetic.
+  * *Keep-first `y = u.keep.r`, `m ≥ 1`*: the edit acts in `r` (the `collapseAt 1` case agrees,
+    by (T)).  By (I), (T) at level `m - 1`, then (B) at `m - 1` at each `b.1`:
+    `Lab(E_m y) = fam (b ↦ Lab(E_{m-1}(tr_b(u.keep).r))) = fam (b ↦ L_{m-1}(Lab(tr_b(u.keep).r)))`.
+    That is `L_m(Lab y)`, since `L_m` acts on a family pointwise at `m - 1`.
+  * *`m = 0`*, where the edit is semantic.
+    * `keepAt 0`/`shiftAt 0` before a `◇` step turn `w'.r'` into `w'.keep.r'`.  By (I) the label
+      is `fam (d ↦ Lab(tr_d(w'.keep).r'))`.  Also `dk 0 (root w' r') = dkB 0 (root w' r')
+      = fam (d ↦ rkeep w' d r')`, and the two agree by the definition of `rkeep` and (C).
+    * `shift 0` before a `□` step (`w'.keep.r'' ↦ w'.keep.keep.r''`): (I) twice and (C)
+      (`f(d ≫ e)`).
+    * `collapse 0` (`w'.keep.r' ↦ w'.r'`): `collapse 0 (fam f) = f(refl)`, and the translation
+      along the identity is `w'` (C).
+    None of these recurses.
+* **The laws.**
+  * *Identity*: by definition.
+  * *Composition*: by the recursion on the path and (C).
+  * *Well-formedness*: a label is well-formed at its address's position.  Translation keeps the
+    level count and changes at most the head kind, from `□` (an item's `keep`) to `◇` (`x`'s
+    `dia`), which a family tolerates (`wf_relax`).
+  * *Naturality*: for `a = c :: P`, `rkeep v a (E_m p) = keepAlong P (Lab(E_m ŷ))`, where
+    `ŷ = tr_c(v.keep).p`, using (T).  This equals `keepAlong P (L_m(Lab ŷ))` by (B), and
+    `L_m(keepAlong P (Lab ŷ))` by naturality for the shorter arrow `P` (`keepAlong` reindexes
+    families, which commutes with pointwise operations, and calls `rkeep` on roots).  So
+    naturality is by induction on the arrow's length, with (B) proved first and independently.
+
+*Order of proof:* (A), (C), (T), (I); then (B) by induction on the level; then the four laws, with
+naturality by induction on the arrow.  The generic `LevelIns` lemmas then hold in the canonical
+model as instances of the law.  This is how the semantic library uses them; the canonical side
+never needs them.
+
+*Still unchecked by hand:* (T) for the `□` view tuple's items (it mirrors `subst_shift_pullBox`,
+built), and (I) for an `r` that goes through a projection `here` after an item's `keep` (a
+`collapse` inside the family, pointwise like the others).
+
+**Built (2026-10-25; user: "start building it"): phases 1 and 2a** (uncommitted at time of
+writing; 20 top targets green, no messages, no `sorry`).
+* *Phase 1, the interface.*  `Arrows.RootKeep.keep` is leaf-valued
+  (`Root w → Acc w → List Step → Leaf`), `keepAlong (root r p) = keep r a p`, and
+  `Arrows.RootKeep.ofRoot` gives the old root-to-root actions.  `Arrows.RootKeepLaws` has
+  `keep_trans`, `keep_refl`, `keep_wf`, `keep_keepAt`, `keep_shiftAt` and `keep_collapseAt`, the
+  last three conditioned on well-formedness at levels `≥ 1`; `RootKeepLaws.ofRoot` discharges
+  them for root-to-root actions (path arithmetic).  `Model` has `rootKeep` and `rootKeepLaws`.
+  In `SemShape`, `collapse_dkB`, `shift_dkB_far`, `dk_dkB` and `dkB_dkB` take positions and
+  well-formedness, `dkB_levelIns` is gone, and the well-formedness-threaded chain `shp_mapDkB`,
+  `ShEnv.ref/boxPush/diaPush_mapDkB`, `termShp_mapDkB` (mirroring `mapCollapse`) serves
+  `termShp_shift_diaKeep`.  All models use `ofRoot`; the growing tree names its root function
+  `gRk`.
+* *Phase 2a, well-formedness.*  `Leaf.WF`'s root clause gains `Step.BoxOK` (at a `□` level of the
+  position, the path's level step is not `dia`).  Path lemmas `BoxOK_relax/append/shiftAt/
+  collapseAt/keepAt`, `kindPath`; the three `rootSh_wf` copies take it; the growing tree's
+  default leaf follows the position's kinds (`Step.kindPath`).
+* *Phase 2b, still to do: the growing tree's leaf-valued action.*  The laws for a view-tuple
+  lift cannot go through the generic commutation lemmas (they would need the laws being proved,
+  one world down, at the same level).  They go through a **closed form of the canonical labels**,
+  as B's `leafOf`: `gLab t y` by recursion on `y`'s levels (level-free `root y []`, root-level
+  `root pre (dia :: q)`, keep-first `fam (b ↦ gLab (tr_b(u.keep).rest))`, with `tr` the edge
+  translations along paths).  The steps are:
+  1. `gLab` and the path translations;
+  2. the pushed canonical environment reads `gLab` (B's `Canonical`), which needs every `◇`
+     template generic (`diaT`'s lifted case becomes `genDia`);
+  3. the root action `gKeep r a p = gLab (tr_a(r.keep).p)`, with the laws by (B) on the closed
+     form;
+  4. re-prove the edge laws (`edge_entry`, `comp_pull`) for generic templates;
+  5. simplify the leaf calculus (no `hS`);
+  6. drop `FourCoh`.
+  This replaces the template pull-back layer (`pbShp`, `liftDia`, `ShTop`).
+
 **Order.**
 1. Weak 4 on the growing tree: `GCanon` (frame, translations along paths, transfer along paths,
    carriers as B's `BCanonDom`/`BCanonModel` with `θ_a`), then `GTruth`.  K4/D4 first, then

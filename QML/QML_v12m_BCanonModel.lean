@@ -801,8 +801,7 @@ noncomputable def model : Model.{0, 0} σ where
   nec_inj := fun h => B.necEval_injective h
   RootPoss _ := VarSymb
   rootKeep := fun hF => (noFour hF).elim
-  rootKeep_trans := fun hF => (noFour hF).elim
-  rootKeep_refl := fun _ hF => (noFour hF).elim
+  rootKeepLaws := B.instRootKeepLaws
   posFull p := B.posFull p
   posFull_inj := fun h => B.posFull_injective (Prod.ext (congrArg Prod.fst h :)
     (funext fun hSh => congrFun (congrArg Prod.snd h) hSh))

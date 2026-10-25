@@ -243,7 +243,7 @@ theorem child_dia {n : ℕ} {s : Node} (hs : (gnet hF M₀ n).Live s) {x : VarSy
     variables then). -/
 theorem lift_total {n c : ℕ} {p : Node} (hk : (gnet hF M₀ n).Live (c :: p)) {T : VarType}
     {a : Ann T} (t : Term σ (ctxOf ((gnet hF M₀ n).st (c :: p)).l) T a)
-    (hl : T.liftable = true) :
+    (hl : T.liftable = true) (hv : LiftAdm hF ⟨_, T, a, t⟩) :
     ∃ m, n ≤ m ∧
       ∃ (_ : ((gnet hF M₀ n).st (c :: p)).l <:+ ((gnet hF M₀ (m + 1)).st (c :: p)).l)
       (r : ℕ), r < ((gnet hF M₀ (m + 1)).fcl (c :: p)).length ∧
@@ -269,17 +269,17 @@ theorem lift_total {n c : ℕ} {p : Node} (hk : (gnet hF M₀ n).Live (c :: p)) 
   refine ⟨m, hnm, ((ext_gnet hF hM₀ (hnm.trans (Nat.le_succ m))).grows _ hk).suf,
     (((gnet hF M₀ m).catchUp hF (c :: p)).st p).l.length, ?_, ?_,
     (((gnet hF M₀ m).catchUp hF (c :: p)).st (c :: p)).l, h₁, ?_, ?_⟩
-  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl]
+  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl hv]
     simp only [GNetSt.setFwd, Function.update_self, List.length_cons]
     omega
-  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl]
+  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl hv]
     change rootTy ((((GNetSt.setSt _ p _).setSt (c :: p) _)).st p).l _ = T
     rw [GNetSt.setSt_ne _ _ (fun h => NetSt.ne_parent c p h.symm), GNetSt.setSt_self]
     exact rootTy_new T _
-  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl]
+  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl hv]
     simp only [GNetSt.setFwd, Function.update_self]
     exact gliftG_keep _ _ _ _ _
-  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl]
+  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl hv]
     change _ <:+ ((((GNetSt.setSt _ p _).setSt (c :: p) _)).st (c :: p)).l
     rw [GNetSt.setSt_self]
     exact List.suffix_cons _ _

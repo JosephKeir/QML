@@ -111,22 +111,23 @@ abbrev arrows : Arrows.{0, 0} σ where
     level the arrow crosses.  Depths add along chains, and the identity crosses none, so it is
     lawful.  (Staged: no possible object is kept in a shaped canonical model yet, docs §3 4.) -/
 instance instRootKeep : Arrows.RootKeep (arrows σ N₀) (fun _ => VarSymb) :=
-  ⟨fun _ {w} r a => VarSymb.keepIter (a.1.depth - w.depth) r⟩
+  Arrows.RootKeep.ofRoot fun _ {w} r a => VarSymb.keepIter (a.1.depth - w.depth) r
 
 /-- The canonical root action is lawful: depths add along chains, the identity crosses none. -/
-instance instRootKeepLaws : Arrows.RootKeepLaws (arrows σ N₀) (fun _ => VarSymb) where
-  keep_trans _ {w} r a b := by
-    change VarSymb.keepIter (b.1.depth - a.1.depth) (VarSymb.keepIter (a.1.depth - w.depth) r) =
-      VarSymb.keepIter (b.1.depth - w.depth) r
-    rw [VarSymb.keepIter_add]
-    have h₁ := (Succ.chain a).1.depth
-    have h₂ := (Succ.chain b).1.depth
-    congr 1
-    omega
-  keep_refl _ _ {w} r := by
-    change VarSymb.keepIter (w.depth - w.depth) r = r
-    rw [Nat.sub_self]
-    rfl
+instance instRootKeepLaws : Arrows.RootKeepLaws (arrows σ N₀) (fun _ => VarSymb) :=
+  Arrows.RootKeepLaws.ofRoot _
+    (fun _ {w} r a b => by
+      change VarSymb.keepIter (b.1.depth - a.1.depth) (VarSymb.keepIter (a.1.depth - w.depth) r) =
+        VarSymb.keepIter (b.1.depth - w.depth) r
+      rw [VarSymb.keepIter_add]
+      have h₁ := (Succ.chain a).1.depth
+      have h₂ := (Succ.chain b).1.depth
+      congr 1
+      omega)
+    (fun _ _ {w} r => by
+      change VarSymb.keepIter (w.depth - w.depth) r = r
+      rw [Nat.sub_self]
+      rfl)
 
 /-- Canonical shapes: a root possibility is named by its address. -/
 abbrev CShape (w : World σ N₀) (T : VarType) : Type :=
@@ -202,24 +203,33 @@ theorem Step.levels_innerPath : Step.levels Step.innerPath = 1 := by
   unfold Step.innerPath
   split <;> rfl
 
+theorem Step.BoxOK_innerPath (lw : List Bool) (π : List Step) (hl : Step.levels π = lw.length)
+    (hb : Step.BoxOK lw π) : Step.BoxOK (lw ++ [true]) (π ++ Step.innerPath) :=
+  Step.BoxOK_append lw [true] π _ hl hb (by
+    unfold Step.innerPath
+    split <;> simp [Step.BoxOK, Step.isProj])
+
 /-- A root possibility's content shape is well-formed: its paths spell their positions. -/
 theorem rootSh_wf (w : World σ N₀) (v : VarSymb) : ∀ (T : VarType) (π : List Step)
     (lw : List Bool), Step.levels π = lw.length → lw.head? = some false →
+      Step.BoxOK lw π →
       Model.ShWF (F := arrows σ N₀) (Root := fun _ => VarSymb) lw (rootSh w v π T)
-  | .Var, _, _, _, _ => trivial
-  | .VTypeOne, _, _, _, _ => trivial
-  | .VTypeProd A B, π, lw, h, hh =>
-      ⟨rootSh_wf w v A _ lw (by rw [Step.levels_append, h]; rfl) hh,
-        rootSh_wf w v B _ lw (by rw [Step.levels_append, h]; rfl) hh⟩
-  | .VTypeBox A, π, lw, h, hh =>
+  | .Var, _, _, _, _, _ => trivial
+  | .VTypeOne, _, _, _, _, _ => trivial
+  | .VTypeProd A B, π, lw, h, hh, hb =>
+      ⟨rootSh_wf w v A _ lw (by rw [Step.levels_append, h]; rfl) hh
+          (Step.BoxOK_snoc_proj lw π .fst h hb),
+        rootSh_wf w v B _ lw (by rw [Step.levels_append, h]; rfl) hh
+          (Step.BoxOK_snoc_proj lw π .snd h hb)⟩
+  | .VTypeBox A, π, lw, h, hh, hb =>
       rootSh_wf w v A _ (lw ++ [true])
         (by rw [Step.levels_append, Step.levels_innerPath, h]; simp)
-        (by cases lw <;> simp_all)
-  | .VTypeDia A, π, lw, h, hh =>
-      ⟨(Arrows.Leaf.wf_root _ π).mpr ⟨h, by rw [hh]; simp⟩,
+        (by cases lw <;> simp_all) (Step.BoxOK_innerPath lw π h hb)
+  | .VTypeDia A, π, lw, h, hh, hb =>
+      ⟨(Arrows.Leaf.wf_root _ π).mpr ⟨h, by rw [hh]; simp, hb⟩,
         rootSh_wf w v A _ (lw ++ [false])
           (by rw [Step.levels_append, h]; simp [Step.levels, Step.isProj])
-          (by cases lw <;> simp_all)⟩
+          (by cases lw <;> simp_all) (Step.BoxOK_snoc_dia lw π h hb)⟩
 
 /-- ⭐The canonical shape of what an address names: a `◇` address is a root possibility, a `□`
     address has at each successor the shape of its contents' address there. -/
@@ -241,7 +251,8 @@ theorem canonSh_wf : ∀ (T : VarType) (w : World σ N₀) (v : VarSymb),
   | .VTypeBox A, w, v =>
       Model.shWF_transpose true [] _ fun s => canonSh_wf A s.1 _
   | .VTypeDia A, w, v =>
-      ⟨(Arrows.Leaf.wf_root _ []).mpr ⟨rfl, by simp⟩, rootSh_wf w v A [.dia] [false] rfl rfl⟩
+      ⟨(Arrows.Leaf.wf_root _ []).mpr ⟨rfl, by simp, trivial⟩,
+        rootSh_wf w v A [.dia] [false] rfl rfl (Step.BoxOK_snoc_dia [] [] rfl trivial)⟩
 
 /-- A projection step moves a canonical shape to the projected address's. -/
 theorem canonSh_proj (w : World σ N₀) (v : VarSymb) {U T : VarType} {s : Step}

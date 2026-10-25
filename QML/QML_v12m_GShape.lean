@@ -48,21 +48,24 @@ def rootSh (s : GW hF M₀) (v : VarSymb) : List Step → (T : VarType) → GSha
 
 theorem rootSh_wf (s : GW hF M₀) (v : VarSymb) : ∀ (T : VarType) (π : List Step)
     (lw : List Bool), Step.levels π = lw.length → lw.head? = some false →
+      Step.BoxOK lw π →
       Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) lw (rootSh s v π T)
-  | .Var, _, _, _, _ => trivial
-  | .VTypeOne, _, _, _, _ => trivial
-  | .VTypeProd A C, π, lw, h, hh =>
-      ⟨rootSh_wf s v A _ lw (by rw [Step.levels_append, h]; rfl) hh,
-        rootSh_wf s v C _ lw (by rw [Step.levels_append, h]; rfl) hh⟩
-  | .VTypeBox A, π, lw, h, hh =>
+  | .Var, _, _, _, _, _ => trivial
+  | .VTypeOne, _, _, _, _, _ => trivial
+  | .VTypeProd A C, π, lw, h, hh, hb =>
+      ⟨rootSh_wf s v A _ lw (by rw [Step.levels_append, h]; rfl) hh
+          (Step.BoxOK_snoc_proj lw π .fst h hb),
+        rootSh_wf s v C _ lw (by rw [Step.levels_append, h]; rfl) hh
+          (Step.BoxOK_snoc_proj lw π .snd h hb)⟩
+  | .VTypeBox A, π, lw, h, hh, hb =>
       rootSh_wf s v A _ (lw ++ [true])
         (by rw [Step.levels_append, Canon.Step.levels_innerPath, h]; simp)
-        (by cases lw <;> simp_all)
-  | .VTypeDia A, π, lw, h, hh =>
-      ⟨(Arrows.Leaf.wf_root _ π).mpr ⟨h, by rw [hh]; simp⟩,
+        (by cases lw <;> simp_all) (Canon.Step.BoxOK_innerPath lw π h hb)
+  | .VTypeDia A, π, lw, h, hh, hb =>
+      ⟨(Arrows.Leaf.wf_root _ π).mpr ⟨h, by rw [hh]; simp, hb⟩,
         rootSh_wf s v A _ (lw ++ [false])
           (by rw [Step.levels_append, h]; simp [Step.levels, Step.isProj])
-          (by cases lw <;> simp_all)⟩
+          (by cases lw <;> simp_all) (Step.BoxOK_snoc_dia lw π h hb)⟩
 
 /-! ## Default leaves -/
 
@@ -70,7 +73,7 @@ theorem rootSh_wf (s : GW hF M₀) (v : VarSymb) : ∀ (T : VarType) (π : List 
     many level steps as the position, or, at a `□` level, a family of such. -/
 def dleaf : List Bool → (s : GW hF M₀) → GLeaf hF M₀ s
   | true :: q, _ => .fam fun b => dleaf q b.1
-  | lw, _ => .root (.root (.free 0)) (List.replicate lw.length .dia)
+  | lw, _ => .root (.root (.free 0)) (Step.kindPath lw)
 
 omit [ModalSys] in
 theorem levels_replicate_dia : ∀ n : ℕ, Step.levels (List.replicate n Step.dia) = n
@@ -80,8 +83,9 @@ theorem levels_replicate_dia : ∀ n : ℕ, Step.levels (List.replicate n Step.d
       omega
 
 theorem dleaf_wf : ∀ (lw : List Bool) (s : GW hF M₀), Arrows.Leaf.WF lw (dleaf lw s)
-  | [], _ => (Arrows.Leaf.wf_root _ _).mpr ⟨levels_replicate_dia 0, by simp⟩
-  | false :: q, _ => (Arrows.Leaf.wf_root _ _).mpr ⟨levels_replicate_dia _, by simp⟩
+  | [], _ => (Arrows.Leaf.wf_root _ _).mpr ⟨Step.levels_kindPath [], by simp, trivial⟩
+  | false :: q, _ =>
+      (Arrows.Leaf.wf_root _ _).mpr ⟨Step.levels_kindPath _, by simp, Step.BoxOK_kindPath _⟩
   | true :: q, _ => fun b => dleaf_wf q b.1
 
 /-! ## Pulling back along an edge -/
@@ -138,8 +142,7 @@ abbrev edgeAcc {s t : GW hF M₀} {c : ℕ} (hc : t.1 = c :: s.1) : (garrows hF 
 
 /-- Keeping a root along an edge is the edge's kept witness. -/
 theorem rootKeep_edge {s t : GW hF M₀} {c : ℕ} (hc : t.1 = c :: s.1) (m : VarSymb) :
-    Arrows.RootKeep.keep (F := garrows hF M₀) (Root := fun _ => VarSymb) hF m (edgeAcc hc) =
-      wit t m := by
+    gRk _ m (edgeAcc hc) = wit t m := by
   change kw s t (pathOf _) _ m = wit t m
   rw [kw_path (P' := [c]) (pathOf_of _ hc) _ hc m]
   rfl
@@ -153,6 +156,7 @@ theorem keepAlong_pbLeaf {s t : GW hF M₀} {c : ℕ} (hc : t.1 = c :: s.1) (m :
       Arrows.Leaf.keepAlong hF (edgeAcc hc) (pbLeaf hF M₀ (s := s) m lw ℓ) = ℓ
   | .root r p, h => by
       simp only [pbLeaf, Arrows.Leaf.keepAlong]
+      change (Arrows.Leaf.root (gRk _ m (edgeAcc hc)) p : GLeaf hF M₀ t) = _
       rw [rootKeep_edge, h r p rfl]
   | .fam f, _ => by
       change Arrows.Leaf.fam (fun b => (if h' : GR t b.1 then f ⟨b.1, ⟨h'⟩⟩ else dleaf _ b.1)) = _

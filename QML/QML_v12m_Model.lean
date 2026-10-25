@@ -302,6 +302,16 @@ def Step.keepAt : ℕ → List Step → List Step
         | 0 => .keep :: s :: p
         | i + 1 => s :: Step.keepAt i p
 
+/-- At the `□` levels of a position, a path's level steps are not `dia`: a root's path does not
+    cross a `□` level of its position by entering a possibility's content (docs §3 4, "The
+    canonical root action's laws").  The other way round is allowed — the strength law moves a
+    necessary component under a `◇` (`Arrows.Leaf.wf_relax`). -/
+def Step.BoxOK : List Bool → List Step → Prop
+  | _, [] => True
+  | lw, s :: p =>
+      if s.isProj then Step.BoxOK lw p
+      else (lw.head? = some true → s ≠ .dia) ∧ Step.BoxOK lw.tail p
+
 /-- ⭐A leaf of a semantic annotation, anchored at a world (docs §10.28): a **root** possibility with
     a syntactic path into its content, or a **family** with one leaf at the target of each arrow. -/
 inductive Arrows.Leaf {σ : Signature} (F : Arrows.{u, v} σ) (Root : F.W → Type u) :
@@ -317,11 +327,11 @@ variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
     position whose level kinds from the anchor are `lw` is well-formed when a root's path has as
     many level steps as the position, and the position does not start with a `□` — a `□` at the
     anchor's level is crossed semantically, by a family — and a family's members are well-formed
-    one level down, at their own anchors.  Only the *number* of levels is asked of a root: the
-    strength law moves a necessary component under a `◇`, changing a level's kind but not the
-    count. -/
+    one level down, at their own anchors.  Of a root's path only the *number* of levels is asked,
+    and that it does not enter a possibility at a `□` level (`Step.BoxOK`): the strength law moves
+    a necessary component under a `◇`, changing a level's kind from `□` to `◇`. -/
 def WF : List Bool → {w : F.W} → F.Leaf Root w → Prop
-  | lw, _, .root _ p => Step.levels p = lw.length ∧ lw.head? ≠ some true
+  | lw, _, .root _ p => Step.levels p = lw.length ∧ lw.head? ≠ some true ∧ Step.BoxOK lw p
   | [], _, .fam f => ∀ s, WF [] (f s)
   | _ :: q, _, .fam f => ∀ s, WF q (f s)
 
@@ -341,25 +351,21 @@ def shift (hF : ModalSys.Four = true) : ℕ → {w : F.W} → F.Leaf Root w → 
 
 end Arrows.Leaf
 
-/-- ⭐Under 4, **arrows act on root possibilities**: a root possibility restricted along an arrow
-    out of its world is a root possibility at the arrow's target — a witness's tree of extents,
-    cut at the arrow, is its subtree there.  A possible object kept along an arrow takes its labels
-    from it (`Arrows.Leaf.keepAlong`).  The laws (composition, the identity) are a model's
-    (`Model.rootKeep_trans`, `Model.rootKeep_refl`). -/
+/-- ⭐Under 4, **arrows act on root possibilities** (docs §3 4, "The leaf-valued root action"):
+    `keep hF r a p` is the possibility at position `p` of `r`'s content, restricted along `a` — a
+    leaf at the arrow's target, a root path where the restriction's content holds a possibility
+    and a family where it holds necessary data of the target (what `strength` puts there).  A
+    possible object kept along an arrow takes its labels from it (`Arrows.Leaf.keepAlong`).  Most
+    actions send a root to a root (`Arrows.RootKeep.ofRoot`); the laws are `Arrows.RootKeepLaws`. -/
 class Arrows.RootKeep {σ : Signature} (F : Arrows.{u, v} σ) (Root : F.W → Type u) where
-  keep : ModalSys.Four = true → ∀ {w : F.W}, Root w → (a : F.Acc w) → Root a.1
+  keep : ModalSys.Four = true → ∀ {w : F.W}, Root w → (a : F.Acc w) → List Step →
+    Arrows.Leaf F Root a.1
 
-/-- ⭐The **laws** of a root action, for arbitrary arrows: restricting along two arrows is
-    restricting along their composite, and under T restricting along the identity is the root
-    itself (`Model.rootKeep_trans`, `Model.rootKeep_refl`).  A mixin, so that the operations
-    (`Arrows.Leaf.keepAlong`, `GFunc.shp`) need only the action. -/
-class Arrows.RootKeepLaws {σ : Signature} (F : Arrows.{u, v} σ) (Root : F.W → Type u)
-    [Arrows.RootKeep F Root] : Prop where
-  keep_trans : ∀ (hF : ModalSys.Four = true) {w : F.W} (r : Root w) (a : F.Acc w)
-    (b : F.Acc a.1), Arrows.RootKeep.keep hF (Arrows.RootKeep.keep hF r a) b =
-      Arrows.RootKeep.keep hF r ⟨b.1, ⟨F.trans hF a.2.down b.2.down⟩⟩
-  keep_refl : ∀ (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {w : F.W} (r : Root w),
-    Arrows.RootKeep.keep hF r (F.reflAcc hT w) = r
+/-- A root action sending a root possibility to a root possibility, its paths unchanged. -/
+abbrev Arrows.RootKeep.ofRoot {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
+    (k : ModalSys.Four = true → ∀ {w : F.W}, Root w → (a : F.Acc w) → Root a.1) :
+    Arrows.RootKeep F Root :=
+  ⟨fun hF {_} r a p => .root (k hF r a) p⟩
 
 namespace Arrows.Leaf
 
@@ -369,7 +375,7 @@ variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u} [Arrows
     reindexed by composite arrows. -/
 def keepAlong (hF : ModalSys.Four = true) {w : F.W} (a : F.Acc w) :
     F.Leaf Root w → F.Leaf Root a.1
-  | .root r p => .root (Arrows.RootKeep.keep hF r a) p
+  | .root r p => Arrows.RootKeep.keep hF r a p
   | .fam f => .fam fun t => f ⟨t.1, ⟨F.trans hF a.2.down t.2.down⟩⟩
 
 /-- Under 4, keep the possibility at the level `i` steps from the anchor: at the anchor's own
@@ -391,6 +397,59 @@ def dkB (hF : ModalSys.Four = true) : ℕ → {w : F.W} → F.Leaf Root w → F.
   | i + 1, _, .fam f => .fam fun s => dkB hF i (f s)
 
 end Arrows.Leaf
+
+/-- ⭐The **laws** of a root action (docs §3 4, "The canonical root action's laws"): restricting
+    along two arrows is restricting along their composite; under T, along the identity is the root
+    itself; restricting keeps a leaf well-formed; and it is **natural in the path edits** below
+    the anchor's level, at well-formed positions — keeping at the end (`dk`), keeping before a
+    level step (`dkB`; before a `□` step this is `shift`, `Arrows.Leaf.dkB_eq_shift`), and
+    collapsing a `□` level.  A mixin, so that the operations (`Arrows.Leaf.keepAlong`,
+    `GFunc.shp`) need only the action. -/
+class Arrows.RootKeepLaws {σ : Signature} (F : Arrows.{u, v} σ) (Root : F.W → Type u)
+    [Arrows.RootKeep F Root] : Prop where
+  keep_trans : ∀ (hF : ModalSys.Four = true) {w : F.W} (r : Root w) (a : F.Acc w)
+    (b : F.Acc a.1) (p : List Step),
+    Arrows.Leaf.keepAlong hF b (Arrows.RootKeep.keep hF r a p) =
+      Arrows.RootKeep.keep hF r ⟨b.1, ⟨F.trans hF a.2.down b.2.down⟩⟩ p
+  keep_refl : ∀ (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {w : F.W} (r : Root w)
+    (p : List Step), Arrows.RootKeep.keep hF r (F.reflAcc hT w) p = .root r p
+  keep_wf : ∀ (hF : ModalSys.Four = true) {w : F.W} (r : Root w) (a : F.Acc w)
+    (lw : List Bool) (p : List Step), Arrows.Leaf.WF lw (Arrows.Leaf.root (F := F) r p) →
+      Arrows.Leaf.WF lw (Arrows.RootKeep.keep hF r a p)
+  keep_keepAt : ∀ (hF : ModalSys.Four = true) {w : F.W} (r : Root w) (a : F.Acc w)
+    (c : Bool) (lw : List Bool) (p : List Step),
+    Arrows.Leaf.WF (c :: lw) (Arrows.Leaf.root (F := F) r p) →
+      Arrows.RootKeep.keep hF r a (Step.keepAt (lw.length + 1) p) =
+        Arrows.Leaf.dk hF (lw.length + 1) (Arrows.RootKeep.keep hF r a p)
+  keep_shiftAt : ∀ (hF : ModalSys.Four = true) {w : F.W} (r : Root w) (a : F.Acc w)
+    (c : Bool) (lw q : List Bool) (p : List Step),
+    Arrows.Leaf.WF (c :: lw ++ false :: q) (Arrows.Leaf.root (F := F) r p) →
+      Arrows.RootKeep.keep hF r a (Step.shiftAt (lw.length + 1) p) =
+        Arrows.Leaf.dkB hF (lw.length + 1) (Arrows.RootKeep.keep hF r a p)
+  keep_collapseAt : ∀ (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {w : F.W}
+    (r : Root w) (a : F.Acc w) (c : Bool) (lw q : List Bool) (p : List Step),
+    Arrows.Leaf.WF (c :: lw ++ true :: q) (Arrows.Leaf.root (F := F) r p) →
+      Arrows.RootKeep.keep hF r a (Step.collapseAt (lw.length + 1) p) =
+        Arrows.Leaf.collapse hT (lw.length + 1) (Arrows.RootKeep.keep hF r a p)
+
+/-- A root action sending roots to roots is lawful when its action on roots is: every path edit
+    then acts on the path alone. -/
+theorem Arrows.RootKeepLaws.ofRoot {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
+    (k : ModalSys.Four = true → ∀ {w : F.W}, Root w → (a : F.Acc w) → Root a.1)
+    (htrans : ∀ (hF : ModalSys.Four = true) {w : F.W} (r : Root w) (a : F.Acc w)
+      (b : F.Acc a.1), k hF (k hF r a) b = k hF r ⟨b.1, ⟨F.trans hF a.2.down b.2.down⟩⟩)
+    (hrefl : ∀ (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {w : F.W} (r : Root w),
+      k hF r (F.reflAcc hT w) = r) :
+    @Arrows.RootKeepLaws _ σ F Root (Arrows.RootKeep.ofRoot k) := by
+  letI := Arrows.RootKeep.ofRoot k
+  refine ⟨fun hF {_} r a b p => ?_, fun hT hF {_} r p => ?_, fun _ {_} r a lw p h => ?_,
+    fun _ {_} _ _ _ _ _ _ => rfl, fun _ {_} _ _ _ _ _ _ _ => rfl,
+    fun _ _ {_} _ _ _ _ _ _ _ => rfl⟩
+  · change Arrows.Leaf.root (k hF (k hF r a) b) p = Arrows.Leaf.root _ p
+    rw [htrans]
+  · change Arrows.Leaf.root (k hF r (F.reflAcc hT _)) p = Arrows.Leaf.root r p
+    rw [hrefl]
+  · cases lw <;> exact h
 
 /-- ⭐How a definable map moves the shape of its argument: positions are rearranged as the map
     rearranges components, labels are kept, and `extract`/`dup` collapse/shift the level they act
@@ -419,7 +478,8 @@ def GFunc.shp {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
 /-- `GFunc.shp` with the root action given explicitly, for statements made before an instance is
     available (a model's own laws). -/
 abbrev GFunc.shpK {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
-    (rk : ModalSys.Four = true → ∀ {w : F.W}, Root w → (a : F.Acc w) → Root a.1) {w : F.W}
+    (rk : ModalSys.Four = true → ∀ {w : F.W}, Root w → (a : F.Acc w) → List Step →
+      Arrows.Leaf F Root a.1) {w : F.W}
     {A B : VarType} (f : GFunc σ A B) (j : ℕ) (a : Shp (F.Leaf Root w) A) :
     Shp (F.Leaf Root w) B :=
   @GFunc.shp _ σ F Root ⟨rk⟩ w A B f j a
@@ -460,16 +520,13 @@ structure Model (σ : Signature) where
   /-- Under T or strong B, the root possibilities: what a possible object's shape is ultimately
       built on. -/
   RootPoss : frame.W → Type u
-  /-- Under 4, the restriction of a root possibility along an arrow (`Arrows.RootKeep`). -/
+  /-- Under 4, the restriction of a root possibility along an arrow, read at a path of its
+      content (`Arrows.RootKeep`). -/
   rootKeep : ModalSys.Four = true → ∀ {w : frame.W}, RootPoss w → (a : frame.Acc w) →
-    RootPoss a.1
-  /-- Restricting along two arrows is restricting along their composite. -/
-  rootKeep_trans : ∀ (hF : ModalSys.Four = true) {w : frame.W} (r : RootPoss w)
-    (a : frame.Acc w) (b : frame.Acc a.1),
-    rootKeep hF (rootKeep hF r a) b = rootKeep hF r ⟨b.1, ⟨frame.trans hF a.2.down b.2.down⟩⟩
-  /-- Under T, restricting along the identity is the root itself. -/
-  rootKeep_refl : ∀ (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {w : frame.W}
-    (r : RootPoss w), rootKeep hF r (frame.reflAcc hT w) = r
+    List Step → frame.Leaf RootPoss a.1
+  /-- The root action's laws (`Arrows.RootKeepLaws`): composition, the identity, well-formedness
+      and naturality in the path edits. -/
+  rootKeepLaws : @Arrows.RootKeepLaws _ σ frame.toArrows RootPoss ⟨rootKeep⟩
   /-- ⭐**Evaluation of a possible object** (docs §10.27, §10.35): its **section** — an extent, and
       one object at each world of it — and, under T or strong B (`ModalSys.shaped`), its
       **shape**, the semantic annotation that records where each possibility inside it comes from.
@@ -616,7 +673,7 @@ instance instRootKeep : Arrows.RootKeep M.frame.toArrows M.RootPoss := ⟨M.root
 
 /-- A model's root action is lawful. -/
 instance instRootKeepLaws : Arrows.RootKeepLaws M.frame.toArrows M.RootPoss :=
-  ⟨M.rootKeep_trans, M.rootKeep_refl⟩
+  M.rootKeepLaws
 
 /-- The section of a possible object: its extent, and its content at each world of it. -/
 abbrev posEval {A : VarType} {w : M.frame.W} (p : M.frame.Pos A w) : M.frame.PosSec A w :=

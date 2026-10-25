@@ -43,15 +43,20 @@ theorem absB (hB : ModalSys.B = true) : False := by
 theorem absShaped (h : ModalSys.shaped = true) : False := by
   simp [ModalSys.shaped, ModalSys.NoT.noT, ModalSys.NoSym.noBStrong] at h
 
+omit [ModalSys.NoT] in
+/-- Without B the only shaped flag is T. -/
+theorem gT_of_shaped (h : ModalSys.shaped = true) : ModalSys.T = true := by
+  simpa [ModalSys.shaped, ModalSys.NoSym.noBStrong] using h
+
 end Flags
 
 variable (hF M₀) in
 /-- The root of the tree. -/
 def groot : GW hF M₀ := ⟨[], 0, trivial⟩
 
-variable [ModalSys.NoT] [ModalSys.NoSym] (hM₀ : Theory.IsMCS M₀)
+variable [ModalSys.NoSym] (hM₀ : Theory.IsMCS M₀)
 
-omit [ModalSys.NoT] [ModalSys.NoSym] in
+omit [ModalSys.NoSym] in
 /-- Under D every world has an arrow out: `□⊥` fails, since `D_box` refutes it. -/
 theorem gserial (hM₀ : Theory.IsMCS M₀) (hD : ModalSys.D = true) (s : GW hF M₀) :
     ∃ t, Nonempty (GR s t) := by
@@ -165,14 +170,50 @@ theorem gnecEval_injective {A : VarType} {s : GW hF M₀} :
   funext a
   exact gtoDom_inj (congrFun h a)
 
-theorem gposEval_injective {A : VarType} {s : GW hF M₀} :
-    Function.Injective (gposEval hM₀ (A := A) (s := s)) := by
-  rintro ⟨⟨E, c⟩, hp⟩ ⟨⟨E', c'⟩, hp'⟩ h
-  simp only [gposEval] at h
-  obtain ⟨rfl, hc⟩ := Sigma.mk.inj_iff.mp h
+/-- ⭐Evaluation of possible objects, in full: the section and, when shaped (under T, B being
+    off), the stored shape. -/
+def gposFull {A : VarType} {s : GW hF M₀} (p : (gframe hF hM₀).Pos A s) :
+    (gframe hF hM₀).PosSec A s × (ModalSys.shaped = true → GShape hF M₀ s (.VTypeDia A)) :=
+  (gposEval hM₀ p, fun hSh => p.1.3 (gT_of_shaped hSh))
+
+/-- A possible object is its section and, when shaped, its shape. -/
+theorem gposFull_injective {A : VarType} {s : GW hF M₀} :
+    Function.Injective (gposFull hM₀ (A := A) (s := s)) := by
+  rintro ⟨⟨E, c, τ⟩, hp⟩ ⟨⟨E', c', τ'⟩, hp'⟩ h
+  have h₁ := congrArg Prod.fst h
+  have h₂ := congrArg Prod.snd h
+  simp only [gposFull, gposEval] at h₁ h₂
+  obtain ⟨rfl, hc⟩ := Sigma.mk.inj_iff.mp h₁
   have hc' := eq_of_heq hc
   apply Subtype.ext
   exact GRPos.congr_cont (funext fun a => gtoDom_inj (congrFun hc' a))
+    fun hT => congrFun h₂ (ModalSys.shaped_of_T hT)
+
+/-- ⭐**The canonical shapes are well-formed**: a possible object is a term's denotation, whose
+    stored shape is the term's canonical shape (`grawShape_grden`), well-formed as the canonical
+    environment is. -/
+theorem gposShape_wf_canon (hT : ModalSys.T = true) {A : VarType} {s : GW hF M₀}
+    (p : (gframe hF hM₀).Pos A s) :
+    Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (p.1.3 hT) := by
+  obtain ⟨i, a, t, ht⟩ := p.2
+  change Model.ShWF [] (grawShape hT p.1)
+  rw [← ht, grawShape_grden hT]
+  exact Model.shWF_termShp (lw := []) (famEnv_wf (fun t v T => cEnv_wf t v T) _ s) t
+
+/-- When shaped, a frame object's shape is its raw object's. -/
+theorem gdomShape_toDom (hSh : ModalSys.shaped = true) : ∀ (A : VarType) (s : GW hF M₀)
+    (o : GRDom hM₀ A s) (h : GDefinable hM₀ A s o),
+    Frame.domShape (gnecEval hM₀) (fun q => (gposFull hM₀ q).2 hSh) (gtoDom hM₀ A s o h) =
+      grawShape (gT_of_shaped hSh) o
+  | .Var, _, _, _ => rfl
+  | .VTypeOne, _, _, _ => rfl
+  | .VTypeProd A C, s, o, h =>
+      congrArg₂ Shp.prod (gdomShape_toDom hSh A s o.1 (gdefinable_fst h))
+        (gdomShape_toDom hSh C s o.2 (gdefinable_snd h))
+  | .VTypeBox A, _, o, h =>
+      congrArg Shp.box (congrArg Arrows.transposeShp (funext fun a =>
+        gdomShape_toDom hSh A a.1 (o a) (gdefinable_box_apply h a)))
+  | .VTypeDia _, _, _, _ => rfl
 
 variable (hF) in
 /-- The function algebra on the carriers. -/
@@ -187,7 +228,8 @@ noncomputable def gops : (gframe hF hM₀).Ops where
   posStrength n p := ⟨grawEval hM₀ (.strength _ _) _
       ((n.1, p.1) : GRDom hM₀ (.VTypeProd (.VTypeBox _) (.VTypeDia _)) _),
     gdefinable_rawEval (.strength _ _) (gdefinable_pair n.2 p.2)⟩
-  necExtract hT _ := (absT hT).elim
+  necExtract hT n :=
+    gtoDom hM₀ _ _ (grawEval hM₀ (.extract hT) _ n.1) (gdefinable_rawEval (.extract hT) n.2)
   necDup hF' n := ⟨grawEval hM₀ (.dup hF') _ n.1, gdefinable_rawEval (.dup hF') n.2⟩
   posKeep hF' p := ⟨grawEval hM₀ (.dkeep hF') _ p.1, gdefinable_rawEval (.dkeep hF') p.2⟩
 
@@ -210,11 +252,27 @@ theorem geval_toDom : ∀ {A C : VarType} (g : GFunc σ A C) (s : GW hF M₀) (o
   | _, _, .boxUnit, _, _, _ => rfl
   | _, _, .diaMap _, _, _, _ => rfl
   | _, _, .strength _ _, _, _, _ => rfl
-  | _, _, .extract hT, _, _, _ => (absT hT).elim
+  | _, _, .extract _, _, _, _ => rfl
   | _, _, .dup _, _, _, _ => rfl
   | _, _, .dkeep _, _, _, _ => rfl
 
 /-! ## Strong D -/
+
+omit [ModalSys.NoSym] in
+/-- ⭐**Under T a `◇_x`-child realises the witness's image** (the tree's
+    `realised_keep_of_boxx`): `here_keep` at the η-expansion of `x`'s content is a `□_x`-formula of
+    the parent, and its translation into the child (`gltrX`) is a `Here` atom about `wit t x`. -/
+theorem grealised_wit (hT : ModalSys.T = true) {s t : GW hF M₀} (h : GCh hF M₀ s t)
+    {x : VarSymb} (hkd : lkd t = some x) (i : ℕ) {X : VarType}
+    (hx : (ctxOf (glat s i)).ref x = some (.VTypeDia X)) :
+    (gw hM₀ t).Realised (wit t x) := by
+  have hmem : WFF.hereKeep hT hF x ⟨X, hx⟩ (Term.eta (.step x .dia) X (Ctx.ref_diaIn_of hx)) ∈
+      (gw hM₀ s).M i :=
+    BWorld.mem_of_provable (Δ := []) (fun _ h => by simp at h)
+      ⟨Proof.here_keep hT hF x ⟨X, hx⟩ _⟩
+  have h₁ := gltrX hM₀ h hkd i hx _ hmem
+  obtain ⟨Z, hk⟩ := wit_ref_ch hM₀ h i ⟨X, hx⟩
+  exact (gw hM₀ t).datum_of_here hT hk _ _ h₁
 
 /-- ⭐Under strong D every world has a possible object of type `𝟙` with a nonempty extent: the
     axiom's Henkin witness is a possible term `◇_x u`, whose extent has the child made for `x`
@@ -227,7 +285,7 @@ theorem gposSerial_canon (hDS : ModalSys.DStrong = true) (s : GW hF M₀) :
   match t with
   | .diatm x hx u =>
       obtain ⟨X, hX⟩ := id hx
-      obtain ⟨t', ⟨c, hc⟩, hk, -⟩ := glexX hM₀ s j x X hX .top (by
+      obtain ⟨t', ⟨c, hc⟩, hk, -, -, -⟩ := glexX hM₀ s j x X hX .top (by
         have e : (WFF.instantiate Ctx.NoSlots.slots (Term.diatm x hx u)
             (WFF.mono ((ctxOf_le_of_suffix ((gw hM₀ s).suf (Nat.zero_le j))).insert (.bnd 0)
               (.VTypeDia .VTypeOne))
@@ -238,7 +296,138 @@ theorem gposSerial_canon (hDS : ModalSys.DStrong = true) (s : GW hF M₀) :
       have hR : GR s t' := ⟨[c], pathOk_cons, hc⟩
       refine ⟨⟨grden hM₀ s j (Ctx.Le.refl _) (.diatm x hx u), gdefinable_rden _ _⟩,
         ⟨⟨⟨t', ⟨hR⟩⟩, ?_⟩⟩⟩
-      exact (grden_diatm_mem (hM₀ := hM₀) (Ctx.Le.refl _) x hx u t' hR [c] hc).mpr hk
+      refine (grden_diatm_mem (hM₀ := hM₀) (Ctx.Le.refl _) x hx u t' hR [c] hc).mpr ?_
+      by_cases hT : ModalSys.T = true
+      · exact .inl (grealised_wit hM₀ hT ⟨c, hc⟩ hk j hX)
+      · exact .inr ⟨Bool.eq_false_iff.mpr hT, hk⟩
+
+/-! ## Indistinguishability -/
+
+/-- ⭐**Canonical indistinguishability**: objects with representatives the world's theory cannot
+    tell apart (`DTerm.Rel`) — B's `Ind`, the tree's `Canon.Ind`. -/
+def gInd {A : VarType} {s : GW hF M₀} (o o' : (gframe hF hM₀).Dom A s) : Prop :=
+  ∃ u u' : Canon.DTerm (gw hM₀ s).sys (gw hM₀ s).T A,
+    grden hM₀ s u.i (Ctx.Le.refl _) u.t = gfromDom hM₀ A s o ∧
+      grden hM₀ s u'.i (Ctx.Le.refl _) u'.t = gfromDom hM₀ A s o' ∧ u.Rel u'
+
+/-- Every object is definable, so it is related to itself. -/
+theorem gInd_refl {A : VarType} {s : GW hF M₀} (o : (gframe hF hM₀).Dom A s) : gInd hM₀ o o := by
+  obtain ⟨i, a, t, ht⟩ := gdefinable_fromDom hM₀ A s o
+  exact ⟨⟨i, a, t⟩, ⟨i, a, t⟩, ht, ht, Canon.DTerm.Rel.refl _⟩
+
+variable {hM₀}
+
+omit [ModalSys.NoSym] in
+/-- ⭐A realised witness's possible object has its realisation as content here (B's
+    `mem_here_real`). -/
+theorem gmem_here_real {s : GW hF M₀} {x : VarSymb} (hr : (gw hM₀ s).Realised x) {i : ℕ}
+    {X : VarType} (hx : (ctxOf (glat s i)).ref x = some (.VTypeDia X)) {A : VarType} {β : Ann A}
+    (bd : Term σ ((ctxOf (glat s i)).diaIn x) A β) :
+    WFF.here hr.T (Term.mono (gle hM₀ s (le_max_left i hr.data.i₀)) (Term.diatm x ⟨X, hx⟩ bd))
+        (grealT hr (Ctx.Le.refl _) ⟨X, hx⟩ bd).2 ∈ (gw hM₀ s).M (max i hr.data.i₀) :=
+  Canon.mem_here_datum hr.data (le_max_left _ _) (le_max_right _ _) hx bd
+
+omit [ModalSys.NoSym] in
+/-- ⭐**A `Here` atom relates the witness's realisation to its term** (B's `rel_here`). -/
+theorem grel_here {s : GW hF M₀} {A : VarType} (hT : ModalSys.T = true) {i : ℕ} {x : VarSymb}
+    (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X)) {β : Ann A}
+    (bd : Term σ ((ctxOf (glat s i)).diaIn x) A β) {a : Ann A}
+    (t : Term σ (ctxOf (glat s i)) A a) (hr : (gw hM₀ s).Realised x)
+    (hmem : WFF.here hT (Term.diatm x hx bd) t ∈ (gw hM₀ s).M i) :
+    (⟨max i hr.data.i₀, _, (grealT hr (Ctx.Le.refl _) hx bd).2⟩ :
+      Canon.DTerm (gw hM₀ s).sys (gw hM₀ s).T A).Rel ⟨i, a, t⟩ := by
+  obtain ⟨X, hx'⟩ := id hx
+  have hk : i ≤ max i hr.data.i₀ := le_max_left _ _
+  have ht : WFF.here hT (Term.mono (gle hM₀ s hk) (Term.diatm x hx bd))
+      (Term.mono (gle hM₀ s hk) t) ∈ (gw hM₀ s).M (max i hr.data.i₀) :=
+    (BWorld.mem_lift hk).mp hmem
+  exact (Canon.DTerm.rel_of_coname hT _ (BWorld.mem_T.mpr (gmem_here_real hr hx' bd))
+    (BWorld.mem_T.mpr ht)).trans
+    (Canon.DTerm.rel_lift (⟨i, a, t⟩ : Canon.DTerm (gw hM₀ s).sys (gw hM₀ s).T _) hk).symm
+
+omit [ModalSys.NoSym] in
+/-- A term and its lift to a later stage denote alike. -/
+theorem grden_lift {s : GW hF M₀} {i K : ℕ} (h : i ≤ K) {A : VarType} {a : Ann A}
+    (t : Term σ (ctxOf (glat s i)) A a) :
+    grden hM₀ s K (Ctx.Le.refl _) (Term.mono (gle hM₀ s h) t) =
+      grden hM₀ s i (Ctx.Le.refl _) t := by
+  rw [grden_mono]
+  exact grden_congr _ _ _ _ _ _
+
+omit [ModalSys.NoSym] in
+/-- ⭐The realised content of the witness's own content address is the datum's content (B's
+    `rden_realTerm_eta`). -/
+theorem grden_grealT_eta {s : GW hF M₀} {x : VarSymb} (hr : (gw hM₀ s).Realised x) {k : ℕ}
+    (hx : ∃ X, (ctxOf (glat s k)).ref x = some (.VTypeDia X))
+    (hdia : ((ctxOf (glat s k)).diaIn x).ref (.step x .dia) = some hr.data.A) :
+    grden hM₀ s _ (Ctx.Le.refl _)
+        (grealT hr (Ctx.Le.refl _) hx (Term.eta (.step x .dia) hr.data.A hdia)).2 =
+      grden hM₀ s hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀ := by
+  have hdecl : (ctxOf (glat s (max k hr.data.i₀))).ref x = some (.VTypeDia hr.data.A) :=
+    hr.data.hdeclOf _ (hx.imp fun _ h => (gle hM₀ s (le_max_left _ _)).ref h)
+  have hmono : (⟨_, Term.mono (((Ctx.Le.refl _).trans (gle hM₀ s (le_max_left _ _))).diaIn x)
+      (Term.eta (.step x .dia) hr.data.A hdia)⟩ : Σ z : Ann hr.data.A,
+        Term σ ((ctxOf (glat s (max k hr.data.i₀))).diaIn x) hr.data.A z) =
+      ⟨_, Term.eta (.step x .dia) hr.data.A (Ctx.ref_diaIn_of hdecl)⟩ := by
+    rw [Term.mono_eta]
+  simp only [grealT]
+  rw [grden_sigma _ (Canon.Term.realiseAtA_sigma hr.data.hT x hdecl _ hmono),
+    grden_sigma _ (Term.realiseAtA_eta hr.data.hT x hdecl
+      (Term.mono (gle hM₀ s (le_max_right _ _)) hr.data.t₀)),
+    grden_mono]
+  exact grden_congr _ _ _ _ _ _
+
+omit [ModalSys.NoSym] in
+/-- ⭐The content, along the world's own arrow, of the possible object a realised witness names:
+    what its datum's content denotes (B's `rden_eta_real`). -/
+theorem grden_eta_real {s : GW hF M₀} {x : VarSymb} (hr : (gw hM₀ s).Realised x) {k : ℕ}
+    (hdecl : (ctxOf (glat s k)).ref x = some (.VTypeDia hr.data.A)) (hm) :
+    (grden hM₀ s k (Ctx.Le.refl _) (Term.eta x (.VTypeDia hr.data.A) hdecl)).c
+        ⟨⟨s, ⟨grefl hr.T s⟩⟩, hm⟩ = grden hM₀ s hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀ := by
+  refine (grden_diatm_real (Ctx.Le.refl _) x ⟨hr.data.A, hdecl⟩
+    (Term.eta (.step x .dia) hr.data.A (Ctx.ref_diaIn_of hdecl)) s (grefl hr.T s) [] rfl hm
+    hr).trans ?_
+  have h₁ : pTrXK hM₀ s s [] rfl k x ⟨hr.data.A, hdecl⟩
+      (Term.mono ((Ctx.Le.refl _).diaIn x)
+        (Term.eta (.step x .dia) hr.data.A (Ctx.ref_diaIn_of hdecl))) =
+      ⟨_, Term.eta (.step x .dia) hr.data.A (Ctx.ref_diaIn_of hdecl)⟩ := by
+    rw [pTrXK_nil, Term.mono_refl]
+  exact (grden_sigma _ (grealT_sigma hr _ _ h₁)).trans
+    (grden_grealT_eta hr ⟨hr.data.A, hdecl⟩ (Ctx.ref_diaIn_of hdecl))
+
+variable (hM₀)
+
+/-- ⭐**Strong T: every object of a domain is, up to `Ind`, the content along the world's own
+    arrow of a possible object** (B's `posRet_exists_canon`): the object is a term's denotation;
+    the theory has a `Here` atom for that term about some witness (`BWorld.retW`), which is then
+    realised (`datum_of_here`); the witness's η-expansion has the own arrow in its extent, with
+    the datum's content there (`grden_eta_real`), and the atom relates that content and the term
+    (`grel_here`). -/
+theorem gposRet_exists_canon {A : VarType} {s : GW hF M₀} (hT : ModalSys.T = true)
+    (hS : ModalSys.TStrong = true) (o : (gframe hF hM₀).Dom A s) :
+    ∃ (p : (gframe hF hM₀).Pos A s) (hm : (gframe hF hM₀).reflAcc hT s ∈ (gposEval hM₀ p).1),
+      gInd hM₀ ((gposEval hM₀ p).2 ⟨(gframe hF hM₀).reflAcc hT s, hm⟩) o := by
+  obtain ⟨i, a', t, ht⟩ := gdefinable_fromDom hM₀ A s o
+  obtain ⟨i', hi, y, hy, hmem⟩ := (gw hM₀ s).retW hT hS i t
+  have hr : (gw hM₀ s).Realised y :=
+    (gw hM₀ s).datum_of_here hT hy (Term.eta (.step y .dia) A (Ctx.ref_diaIn_of hy)) _ hmem
+  obtain rfl : hr.data.A = A := by
+    have := (hr.data.hdeclOf i' ⟨A, hy⟩).symm.trans hy
+    simpa using this
+  have hm : (gframe hF hM₀).reflAcc hT s ∈ (grden hM₀ s hr.data.i₀ (Ctx.Le.refl _)
+      (Term.eta y (.VTypeDia hr.data.A) hr.data.hd₀)).E :=
+    (grden_diatm_mem (Ctx.Le.refl _) y _ _ s (grefl hT s) [] rfl).mpr (Or.inl hr)
+  refine ⟨⟨grden hM₀ s hr.data.i₀ (Ctx.Le.refl _) (Term.eta y (.VTypeDia hr.data.A) hr.data.hd₀),
+      gdefinable_rden _ _⟩, hm, _, ⟨i', _, Term.mono (gle hM₀ s hi) t⟩, ?_, ?_,
+      grel_here hT ⟨_, hy⟩ (Term.eta (.step y .dia) hr.data.A (Ctx.ref_diaIn_of hy)) _ hr hmem⟩
+  · have hc : gtoDom hM₀ _ s (grden hM₀ s hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀)
+        (gdefinable_rden _ _) =
+        (gposEval hM₀ ⟨grden hM₀ s hr.data.i₀ (Ctx.Le.refl _)
+          (Term.eta y (.VTypeDia hr.data.A) hr.data.hd₀), gdefinable_rden _ _⟩).2
+          ⟨(gframe hF hM₀).reflAcc hT s, hm⟩ :=
+      gtoDom_congr (grden_eta_real hr hr.data.hd₀ _).symm _ _
+    rw [grden_grealT_eta hr ⟨_, hy⟩ (Ctx.ref_diaIn_of hy), ← hc, gfromDom_toDom]
+  · exact (grden_lift hi t).trans ht
 
 end GArrow
 

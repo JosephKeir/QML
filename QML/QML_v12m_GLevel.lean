@@ -89,12 +89,14 @@ noncomputable def levMk (N : GNetSt σ) (lv : Lev) (s : Node)
   if (N.mkChild hF s o).nch s = N.nch s then lv
   else Function.update lv (N.nch s :: s) (childLev N lv s ((N.mkChild hF s o).kind (N.nch s :: s)))
 
+open Classical in
 /-- Levels after a lift: the lifted root is one above every variable of the child, and its
     residual is at the same level. -/
-def levLift (N : GNetSt σ) (lv : Lev) : Node → LTerm σ → Lev
+noncomputable def levLift (N : GNetSt σ) (lv : Lev) : Node → LTerm σ → Lev
   | [], _ => lv
-  | c :: p, ⟨l, T, _, _⟩ =>
-      if N.fcl (c :: p) = (N.st p).l ∧ l <:+ (N.st (c :: p)).l ∧ T.liftable = true then
+  | c :: p, ⟨l, T, a, t⟩ =>
+      if N.fcl (c :: p) = (N.st p).l ∧ l <:+ (N.st (c :: p)).l ∧ T.liftable = true ∧
+          LiftAdm hF ⟨l, T, a, t⟩ then
         setLev (setLev lv p (N.st p).l.length (levMax lv (c :: p) (N.st (c :: p)).l.length + 1))
           (c :: p) (N.st (c :: p)).l.length (levMax lv (c :: p) (N.st (c :: p)).l.length + 1)
       else lv
@@ -122,7 +124,7 @@ noncomputable def levOp (N : GNetSt σ) (lv : Lev) : GOp σ → Lev
   | .inr (.inl (s, o)) => if N.Live s then levMk hF N lv s o else lv
   | .inr (.inr (.inl k)) => if N.Live k then levRealF N lv k else lv
   | .inr (.inr (.inr (k, n))) =>
-      if N.Live k then levLift (N.catchUp hF k) (levCatchUp hF N lv k) k n else lv
+      if N.Live k then levLift hF (N.catchUp hF k) (levCatchUp hF N lv k) k n else lv
 
 variable {hF}
 
@@ -183,7 +185,7 @@ theorem levRealF_old (lv : Lev) {k : Node} {k' : Node} {z : ℕ}
       · rfl
 
 theorem levLift_old {N : GNetSt σ} (lv : Lev) {k : Node} (o : LTerm σ) {k' : Node} {z : ℕ}
-    (hz : z < (N.st k').l.length) : levLift N lv k o k' z = lv k' z := by
+    (hz : z < (N.st k').l.length) : levLift hF N lv k o k' z = lv k' z := by
   match k, o with
   | [], _ => rfl
   | c :: p, ⟨l, T, _, _⟩ =>
@@ -382,32 +384,36 @@ theorem LevOk.catchUp {lv : Lev} (hL : N.LevOk lv) (hN : N.Good) {k : Node} (hk 
 
 /-- Lifting keeps the facts. -/
 theorem LevOk.lift {lv : Lev} (hL : N.LevOk lv) (hN : N.Good) {k : Node} (hk : N.Live k)
-    (o : LTerm σ) : (N.lift hF k o).LevOk (levLift N lv k o) := by
+    (o : LTerm σ) : (N.lift hF k o).LevOk (levLift hF N lv k o) := by
   match k, o with
   | [], _ => exact hL
   | c :: p, ⟨l, T, a, t⟩ =>
-      by_cases hcond : N.fcl (c :: p) = (N.st p).l ∧ l <:+ (N.st (c :: p)).l ∧ T.liftable = true
+      by_cases hcond : N.fcl (c :: p) = (N.st p).l ∧ l <:+ (N.st (c :: p)).l ∧
+        T.liftable = true ∧ LiftAdm hF ⟨l, T, a, t⟩
       swap
-      · have hlv : levLift N lv (c :: p) ⟨l, T, a, t⟩ = lv := by
+      · have hlv : levLift hF N lv (c :: p) ⟨l, T, a, t⟩ = lv := by
           simp only [levLift, if_neg hcond]
         rw [hlv]
         by_cases hcl : N.fcl (c :: p) = (N.st p).l
         · by_cases h : l <:+ (N.st (c :: p)).l
-          · have hl : ¬ T.liftable = true := fun hl => hcond ⟨hcl, h, hl⟩
-            simp only [GNetSt.lift, if_pos hcl, dif_pos h, dif_neg hl]
-            exact hL
+          · by_cases hl : T.liftable = true
+            · have hv : ¬ LiftAdm hF ⟨l, T, a, t⟩ := fun hv => hcond ⟨hcl, h, hl, hv⟩
+              simp only [GNetSt.lift, if_pos hcl, dif_pos h, dif_pos hl, if_neg hv]
+              exact hL
+            · simp only [GNetSt.lift, if_pos hcl, dif_pos h, dif_neg hl]
+              exact hL
           · simp only [GNetSt.lift, if_pos hcl, dif_neg h]
             exact hL
         · simp only [GNetSt.lift, if_neg hcl]
           exact hL
-      obtain ⟨hcl, h, hl⟩ := hcond
-      rw [lift_spec hF hcl h hl]
-      have hlv : levLift N lv (c :: p) ⟨l, T, a, t⟩ =
+      obtain ⟨hcl, h, hl, hv⟩ := hcond
+      rw [lift_spec hF hcl h hl hv]
+      have hlv : levLift hF N lv (c :: p) ⟨l, T, a, t⟩ =
           setLev (setLev lv p (N.st p).l.length
               (levMax lv (c :: p) (N.st (c :: p)).l.length + 1))
             (c :: p) (N.st (c :: p)).l.length
               (levMax lv (c :: p) (N.st (c :: p)).l.length + 1) := by
-        simp only [levLift, if_pos (And.intro hcl (And.intro h hl))]
+        simp only [levLift, if_pos (And.intro hcl (And.intro h (And.intro hl hv)))]
       rw [hlv]
       have hpk : (p : Node) ≠ c :: p := fun e => NetSt.ne_parent c p e.symm
       set N₁ := (N.setSt p (liftPar hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))

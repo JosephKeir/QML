@@ -1,4 +1,5 @@
 import QML.QML_v12m_GNet
+import QML.QML_v12m_GView
 import QML.QML_v12m_BNetOps
 
 /-!
@@ -372,23 +373,27 @@ theorem lift_ok (hF : ModalSys.Four = true) {tp tk : NodeSt σ} {k : Option VarS
   rw [WFF.mono_refl] at hψ
   exact hS₂ (Or.inr ⟨hk, hf, ψ, hψ, rfl⟩)
 
+open Classical in
 /-- ⭐**Lift** a term of the child `c :: p` along its edge, if the parent is fully committed along
-    it, the term is over the child's variables, and its type is liftable: the edge then sends
-    the new root's kept item to the term (docs §3 4, D5 (a)). -/
+    it, the term is over the child's variables, its type is liftable, and it is a necessary term or
+    a view tuple (`LiftAdm`): the edge then sends the new root's kept item to the term (docs §3 4,
+    D5 (a), D-H1). -/
 noncomputable def lift (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → LTerm σ → GNetSt σ
   | [], _ => N
   | c :: p, ⟨l, T, a, t⟩ =>
       if N.fcl (c :: p) = (N.st p).l then
         if h : l <:+ (N.st (c :: p)).l then
           if hl : T.liftable = true then
-            ((N.setSt p (liftPar hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))
-                (Term.mono (ctxOf_le_of_suffix h) t) hl)).setSt (c :: p)
-              (liftChild hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))
-                (Term.mono (ctxOf_le_of_suffix h) t) hl)).setFwd
-              (c :: p) (T :: (N.st p).l)
-              (gliftG (N.fmap (c :: p)) T (N.st p).l.length
-                (.inr ⟨(N.st (c :: p)).l, T, a, Term.mono (ctxOf_le_of_suffix h) t⟩)
-                (.free (N.st (c :: p)).l.length))
+            if LiftAdm hF ⟨l, T, a, t⟩ then
+              ((N.setSt p (liftPar hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))
+                  (Term.mono (ctxOf_le_of_suffix h) t) hl)).setSt (c :: p)
+                (liftChild hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))
+                  (Term.mono (ctxOf_le_of_suffix h) t) hl)).setFwd
+                (c :: p) (T :: (N.st p).l)
+                (gliftG (N.fmap (c :: p)) T (N.st p).l.length
+                  (.inr ⟨(N.st (c :: p)).l, T, a, Term.mono (ctxOf_le_of_suffix h) t⟩)
+                  (.free (N.st (c :: p)).l.length))
+            else N
           else N
         else N
       else N
@@ -400,7 +405,7 @@ theorem Good.lift (hF : ModalSys.Four = true) (hN : N.Good) {k : Node} (hk : N.L
   | [], _ => exact hN
   | c :: p, ⟨l, T, a, t⟩ =>
       simp only [GNetSt.lift]
-      split_ifs with hcl h hl
+      split_ifs with hcl h hl hv
       · have hd := hN.fwd c p hk
         unfold FwdOk at hd
         rw [hcl] at hd
@@ -418,6 +423,7 @@ theorem Good.lift (hF : ModalSys.Four = true) (hN : N.Good) {k : Node} (hk : N.L
           (((N.setSt p _).setSt (c :: p) _).st (c :: p)) _ _ _
         rw [setSt_ne _ _ (fun h => NetSt.ne_parent c p h.symm), setSt_self, setSt_self]
         exact hfd
+      · exact hN
       · exact hN
       · exact hN
       · exact hN
