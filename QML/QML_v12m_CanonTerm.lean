@@ -94,7 +94,7 @@ omit w₀ in
 theorem World.noProjLast (w : World σ N₀) (i : ℕ × ℕ) : (w.L.ctx i).NoProjLast :=
   Ctx.Presented.noProjLast _
 
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB]
+variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.StagedSys]
 
 /-- ⭐The canonical environment: every visible address denotes its η-expansion. -/
 noncomputable def canonEnv (w : World σ N₀) (i : ℕ × ℕ) : (model w₀).Env (w.L.ctx i) w :=

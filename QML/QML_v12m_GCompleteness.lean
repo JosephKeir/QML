@@ -3,7 +3,7 @@ import QML.QML_v12m_GInd
 /-!
 # QML v12m — completeness for 4 on the growing tree
 
-With 4 on and B off (`ModalSys.NoSym`; T and D free, in either strength; strong 4 in either or
+With 4 on and B off (`ModalSys.NoB`; T and D free, in either strength; strong 4 in either or
 both forms, independently):
 ⭐`completenessG`, a sequent in a context of declared variables (`ctxOf l₀`, the root's starting
 language) valid in every model is provable.  Its negation extends to a maximal consistent theory
@@ -21,7 +21,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  [ModalSys.NoSym]
+  [ModalSys.NoB]
 
 /-- ⭐⭐**The growing tree's canonical model over a maximal consistent theory**: its root
     satisfies, at its first stage, exactly its theory, which contains `M₀`. -/

@@ -19,11 +19,6 @@ namespace V12M
 
 variable [ModalSys]
 
-/-- B is off, in both strengths: the growing tree has no arrows back. -/
-class ModalSys.NoSym [ModalSys] : Prop where
-  noB : ModalSys.B = false
-  noBStrong : ModalSys.BStrong = false
-
 namespace GArrow
 
 open BArrow
@@ -33,20 +28,20 @@ variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
 section Flags
 
-variable [ModalSys.NoT] [ModalSys.NoSym]
+variable [ModalSys.NoT] [ModalSys.NoB]
 
 omit [ModalSys.NoT] in
 theorem absB (hB : ModalSys.B = true) : False := by
-  rw [ModalSys.NoSym.noB] at hB
+  rw [ModalSys.NoB.noB] at hB
   cases hB
 
 theorem absShaped (h : ModalSys.shaped = true) : False := by
-  simp [ModalSys.shaped, ModalSys.NoT.noT, ModalSys.NoSym.noBStrong] at h
+  simp [ModalSys.shaped, ModalSys.NoT.noT, ModalSys.NoB.noBStrong] at h
 
 omit [ModalSys.NoT] in
 /-- Without B the only shaped flag is T. -/
 theorem gT_of_shaped (h : ModalSys.shaped = true) : ModalSys.T = true := by
-  simpa [ModalSys.shaped, ModalSys.NoSym.noBStrong] using h
+  simpa [ModalSys.shaped, ModalSys.NoB.noBStrong] using h
 
 end Flags
 
@@ -54,9 +49,9 @@ variable (hF M₀) in
 /-- The root of the tree. -/
 def groot : GW hF M₀ := ⟨[], 0, trivial⟩
 
-variable [ModalSys.NoSym] (hM₀ : Theory.IsMCS M₀)
+variable [ModalSys.NoB] (hM₀ : Theory.IsMCS M₀)
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 /-- Under D every world has an arrow out: `□⊥` fails, since `D_box` refutes it. -/
 theorem gserial (hM₀ : Theory.IsMCS M₀) (hD : ModalSys.D = true) (s : GW hF M₀) :
     ∃ t, Nonempty (GR s t) := by
@@ -258,7 +253,7 @@ theorem geval_toDom : ∀ {A C : VarType} (g : GFunc σ A C) (s : GW hF M₀) (o
 
 /-! ## Strong D -/
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 /-- ⭐**Under T a `◇_x`-child realises the witness's image** (the tree's
     `realised_keep_of_boxx`): `here_keep` at the η-expansion of `x`'s content is a `□_x`-formula of
     the parent, and its translation into the child (`gltrX`) is a `Here` atom about `wit t x`. -/
@@ -317,7 +312,7 @@ theorem gInd_refl {A : VarType} {s : GW hF M₀} (o : (gframe hF hM₀).Dom A s)
 
 variable {hM₀}
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 /-- ⭐A realised witness's possible object has its realisation as content here (B's
     `mem_here_real`). -/
 theorem gmem_here_real {s : GW hF M₀} {x : VarSymb} (hr : (gw hM₀ s).Realised x) {i : ℕ}
@@ -327,7 +322,7 @@ theorem gmem_here_real {s : GW hF M₀} {x : VarSymb} (hr : (gw hM₀ s).Realise
         (grealT hr (Ctx.Le.refl _) ⟨X, hx⟩ bd).2 ∈ (gw hM₀ s).M (max i hr.data.i₀) :=
   Canon.mem_here_datum hr.data (le_max_left _ _) (le_max_right _ _) hx bd
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 /-- ⭐**A `Here` atom relates the witness's realisation to its term** (B's `rel_here`). -/
 theorem grel_here {s : GW hF M₀} {A : VarType} (hT : ModalSys.T = true) {i : ℕ} {x : VarSymb}
     (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X)) {β : Ann A}
@@ -345,7 +340,7 @@ theorem grel_here {s : GW hF M₀} {A : VarType} (hT : ModalSys.T = true) {i : �
     (BWorld.mem_T.mpr ht)).trans
     (Canon.DTerm.rel_lift (⟨i, a, t⟩ : Canon.DTerm (gw hM₀ s).sys (gw hM₀ s).T _) hk).symm
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 /-- A term and its lift to a later stage denote alike. -/
 theorem grden_lift {s : GW hF M₀} {i K : ℕ} (h : i ≤ K) {A : VarType} {a : Ann A}
     (t : Term σ (ctxOf (glat s i)) A a) :
@@ -354,7 +349,7 @@ theorem grden_lift {s : GW hF M₀} {i K : ℕ} (h : i ≤ K) {A : VarType} {a :
   rw [grden_mono]
   exact grden_congr _ _ _ _ _ _
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 /-- ⭐The realised content of the witness's own content address is the datum's content (B's
     `rden_realTerm_eta`). -/
 theorem grden_grealT_eta {s : GW hF M₀} {x : VarSymb} (hr : (gw hM₀ s).Realised x) {k : ℕ}
@@ -377,7 +372,7 @@ theorem grden_grealT_eta {s : GW hF M₀} {x : VarSymb} (hr : (gw hM₀ s).Reali
     grden_mono]
   exact grden_congr _ _ _ _ _ _
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 /-- ⭐The content, along the world's own arrow, of the possible object a realised witness names:
     what its datum's content denotes (B's `rden_eta_real`). -/
 theorem grden_eta_real {s : GW hF M₀} {x : VarSymb} (hr : (gw hM₀ s).Realised x) {k : ℕ}

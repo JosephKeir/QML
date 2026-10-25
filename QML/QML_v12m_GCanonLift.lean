@@ -231,10 +231,10 @@ theorem graw_keepLift {T : VarType} (hl : T.liftable = true) (s : GW hF M₀) (a
 
 /-! ## The model -/
 
-variable [ModalSys.NoSym]
+variable [ModalSys.NoB]
 
 theorem absBS (h : ModalSys.BStrong = true) : False := by
-  rw [ModalSys.NoSym.noBStrong] at h
+  rw [ModalSys.NoB.noBStrong] at h
   cases h
 
 variable (hF hM₀) in

@@ -80,7 +80,7 @@ theorem Ctx.decomp_unique {Γ : Ctx} {d : Root → ℕ} (hd : Γ.LevelDepth d) {
 namespace Canon
 
 variable {σ : Signature} {N₀ : ℕ} (w₀ : World σ N₀) [Countable σ.FuncSyms]
-  [Countable σ.RelSyms] [ModalSys.NoB]
+  [Countable σ.RelSyms] [ModalSys.StagedSys]
 
 /-! ## Representatives -/
 

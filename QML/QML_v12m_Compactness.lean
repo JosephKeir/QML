@@ -145,7 +145,7 @@ theorem realise_type {Γ : Ctx} [Γ.NoSlots] {S : Set (WFF σ Γ 0)} (hS : WFF.S
   · rw [WFF.bindFree_openFree]
     exact Proof.ofSubset (fun ψ h => List.mem_append_right _ h) q₁
 
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB]
+variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.StagedSys]
 
 /-- ⭐**Model existence.** Every consistent set of formulas in a presented context is satisfiable:
     the canonical model built over it, at its first world, in the canonical environment. -/

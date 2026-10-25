@@ -213,7 +213,7 @@ theorem Model.Env.Agree.refl' {σ : Signature} {M : Model.{u, v} σ} {Γ : Ctx} 
 namespace Canon
 
 variable {σ : Signature} {N₀ : ℕ} (w₀ : World σ N₀) [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  [ModalSys.NoB]
+  [ModalSys.StagedSys]
 
 /-- The truth lemma for atoms. -/
 theorem relSat_canon : ∀ {Γ : Ctx} {n : ℕ} (ρ : Rel σ Γ n) {w : World σ N₀} {i : ℕ × ℕ}
@@ -905,7 +905,7 @@ end Canon
 
 /-! ## Completeness -/
 
-variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB]
+variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.StagedSys]
 
 /-- ⭐**Completeness**: a sequent in a presented context that holds in every model, at every
     world, in every environment, is provable. -/

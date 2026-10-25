@@ -69,16 +69,18 @@ class ModalSys where
 def ModalSys.K : ModalSys :=
   ⟨false, false, false, false, false, false, false, false, false, false⟩
 
-/-- The systems without B, for which the staged canonical model is built.  B's accessible worlds
-    lead back to their origin, against the order of construction; its canonical model is to be the
-    arrow-based one of `docs/v12-arrow-canonical.md`.  Strong B needs weak B, so it is off too. -/
+/-- The systems without B.  B's accessible worlds lead back to their origin, against the order
+    of construction; its canonical model is the arrow-based network (`BArrow`).  Strong B needs
+    weak B, so it is off too.  Their canonical model is the staged tree (`Canon`) without 4's strong
+    forms and the growing tree (`GArrow`) with 4. -/
 class ModalSys.NoB [ModalSys] : Prop where
   noB : ModalSys.B = false
   noBStrong : ModalSys.BStrong = false
-  /-- Temporarily, strong 4 is off as well: its canonical model is the growing tree, not the
-      staged one (`docs/v12-modal-extensions.md` §3 4, "The growing tree, on paper"). -/
-  noFourStrong : ModalSys.FourStrong = false
-  noFourStrongW : ModalSys.FourStrongW = false
+
+/-- ⭐**The systems the staged canonical model is built for**: B off, and 4's strong forms off
+    when 4 is on (with 4 the growing tree covers every strong form, `GArrow`). -/
+class ModalSys.StagedSys [ModalSys] : Prop extends ModalSys.NoB where
+  noLift : ModalSys.Four = true → ModalSys.FourStrong = false ∧ ModalSys.FourStrongW = false
 
 theorem ModalSys.NoB.absurd [ModalSys] [ModalSys.NoB] (hB : ModalSys.B = true) : False := by
   rw [ModalSys.NoB.noB] at hB
@@ -475,9 +477,10 @@ theorem VarType.keepable_of_liftable {T : VarType} (h : T.liftable = true) :
     T.keepable = true := by
   cases T <;> first | rfl | (simp [VarType.liftable] at h)
 
-theorem ModalSys.NoB.not_liftable [ModalSys.NoB] {T : VarType} (h : T.liftable = true) :
-    False := by
-  cases T <;> simp [VarType.liftable, ModalSys.NoB.noFourStrong, ModalSys.NoB.noFourStrongW] at h
+theorem ModalSys.StagedSys.not_liftable [ModalSys.StagedSys] (hF : ModalSys.Four = true)
+    {T : VarType} (h : T.liftable = true) : False := by
+  obtain ⟨h₁, h₂⟩ := ModalSys.StagedSys.noLift hF
+  cases T <;> simp [VarType.liftable, h₁, h₂] at h
 
 def VarType.step : VarType → Step → Option VarType
   | .VTypeProd A _, .fst => some A

@@ -6,10 +6,12 @@ Lean 4 + Mathlib formalisation of a quantified modal logic with first-class poss
 ## Where things are
 
 - **Current development: `QML/QML_v12m_*.lean`, namespace `V12M`.** Generalised over
-  `class ModalSys` (flags `T`, `Four`, `TStrong`, `D`, `DStrong`, `B`, `BStrong`, `BStrongW`; used
-  as `variable [ModalSys]`). Frames are arrow-indexed (`Frame.R : W → W → Sort v`; relational frames
-  are the `Prop` case). Soundness holds for every flag; completeness, strong completeness and
-  compactness for every flag combination without B (`[ModalSys.NoB]`). B with 4 off
+  `class ModalSys` (flags `T`, `Four`, `TStrong`, `D`, `DStrong`, `B`, `BStrong`, `BStrongW`,
+  `FourStrong`, `FourStrongW`; used as `variable [ModalSys]`). Frames are arrow-indexed
+  (`Frame.R : W → W → Sort v`; relational frames are the `Prop` case). Soundness holds for every
+  flag; completeness, strong completeness and compactness for every flag combination without B
+  (`[ModalSys.NoB]`, `QML_v12m_NoBComplete.lean`: the staged tree `Canon` without 4, the growing
+  tree `GArrow` with 4 and any of its strong forms). B with 4 off
   (`[ModalSys.NoFour]`, which includes `ModalSys.WCoh`; T, D and B each in either strength;
   strong B for rows 1–2 and, with `BStrongW`, rows 3–4) is complete for **every presented
   context** with a fresh presentation

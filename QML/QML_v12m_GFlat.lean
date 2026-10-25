@@ -70,7 +70,7 @@ noncomputable def _root_.V12M.CtxExpr.gchain (hF : ModalSys.Four = true) :
 
 /-! ## Completeness in every presented context -/
 
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoSym]
+variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB]
 
 /-- Completeness for 4 in any context flattened into a world language. -/
 theorem completenessG_flat (hF : ModalSys.Four = true) {Γ : Ctx} {l : List VarType}

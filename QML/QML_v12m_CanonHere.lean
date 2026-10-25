@@ -36,7 +36,7 @@ theorem mem_here_realised {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) 
 
 section HereCase
 
-variable (w₀ : World σ N₀) [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB]
+variable (w₀ : World σ N₀) [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.StagedSys]
 
 /-- The truth lemma at the equations of one type: what the `here` case receives from the
     induction, `eqRec` being smaller than `Here` (`WFF.size_eqRec`). -/
@@ -68,7 +68,7 @@ theorem here_transfer (hT : ModalSys.T = true) {w : World σ N₀} {A : VarType}
   · rw [List.mem_singleton.mp hψ]
     exact heq
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.StagedSys] in
 /-- A term and its lift to a later stage denote alike. -/
 theorem rden_lift {w : World σ N₀} {i K : ℕ × ℕ} (h : i ≤ K) {A : VarType} {a : Ann A}
     (t : Term σ (w.L.ctx i) A a) :

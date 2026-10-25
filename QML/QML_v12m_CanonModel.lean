@@ -27,7 +27,7 @@ variable {σ : Signature} {N₀ : ℕ}
 
 -- Seriality under D needs a successor for every world, which is a Henkin construction, so the
 -- canonical frame is built over a countable signature — the setting of completeness anyway.
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoB]
+variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.StagedSys]
 
 /-- ⭐The canonical frame, pointed at a world. -/
 noncomputable def frame (w₀ : World σ N₀) : Frame.{0, 0} σ where
@@ -305,7 +305,7 @@ noncomputable def model : Model.{0, 0} σ where
         (definable_box_apply n.2 s)).symm)))
   necExtract_eval _ _ := rfl
   necDup_eval _ _ _ _ := rfl
-  keepLift := fun _ {_} hl => (ModalSys.NoB.not_liftable hl).elim
+  keepLift := fun hF {_} hl => (ModalSys.StagedSys.not_liftable hF hl).elim
   posKeep_full _ _ _ := Prod.ext rfl (funext fun _ => rfl)
   posRet_exists hT hS a := posRet_exists_canon w₀ hT hS a
   posSerial hDS w := posSerial_canon w₀ hDS w

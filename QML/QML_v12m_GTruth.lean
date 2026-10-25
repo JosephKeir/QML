@@ -92,7 +92,7 @@ theorem box_mem_path : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s
 
 /-! ## Views along an edge -/
 
-variable [ModalSys.NoSym] {hM₀}
+variable [ModalSys.NoB] {hM₀}
 
 /-- Agreement into `□` along an arrow, for any path to its end. -/
 theorem gagree_boxPush_path {Γ : Ctx} {w : GW hF M₀} {k : ℕ} (C : GTr σ Γ (ctxOf (glat w k)))
@@ -187,7 +187,7 @@ noncomputable def pTrXW : (s t : GW hF M₀) → (P : List ℕ) → (h : t.1 = n
           Ctx.NoSlots.slots Ctx.NoSlots.slots
           (WFF.shift (Ctx.shifts_diaIn_keep hF _ x) Ctx.NoSlots.slots χ))
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 theorem size_pTrXW : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (i : ℕ)
     (x : VarSymb) (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X))
     (hm : InExt s t P h x) (χ : WFF σ ((ctxOf (glat s i)).kView (some x)) 0),
@@ -198,7 +198,7 @@ theorem size_pTrXW : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1
       (size_pTrXW (stepW s c (born_step h)) t (c' :: P) h _ _ _ hm _).trans
         ((WFF.size_subst _ _ _ _ _ _).trans (WFF.size_shift _ _ χ))
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 theorem pTrXW_neg : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (i : ℕ)
     (x : VarSymb) (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X))
     (hm : InExt s t P h x) (χ : WFF σ ((ctxOf (glat s i)).kView (some x)) 0),
@@ -208,7 +208,7 @@ theorem pTrXW_neg : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 
   | s, t, c :: c' :: P, h, _, _, _, hm, _ =>
       pTrXW_neg (stepW s c (born_step h)) t (c' :: P) h _ _ _ hm _
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 /-- ⭐**What holds throughout a possible object's extent is translated into every arrow of it**:
     `four_dia`, then the first edge's transfer, then the rest of the path. -/
 theorem boxx_mem_path : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (i : ℕ)
@@ -229,7 +229,7 @@ theorem boxx_mem_path : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf 
       exact boxx_mem_path (stepW s c (born_step h)) t (c' :: P) h _ _ _ hm _
         (gltr hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i _ h4)
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 theorem inExt_pathOf {s t : GW hF M₀} (hR : GR s t) {P : List ℕ} {h : t.1 = nodeOf s.1 P}
     {x : VarSymb} (hm : InExt s t P h x) : InExt s t (pathOf hR) (pathOf_eq hR) x := by
   obtain rfl := pathOf_of hR h
@@ -365,7 +365,7 @@ noncomputable def pTrXKW : (s t : GW hF M₀) → (P : List ℕ) → (h : t.1 = 
           Ctx.NoSlots.slots Ctx.NoSlots.slots
           (WFF.shift (Ctx.shifts_diaIn_keep hF _ x) Ctx.NoSlots.slots χ))
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 theorem size_pTrXKW : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (i : ℕ)
     (x : VarSymb) (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X))
     (χ : WFF σ ((ctxOf (glat s i)).kView (some x)) 0),
@@ -376,7 +376,7 @@ theorem size_pTrXKW : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.
       (size_pTrXKW (stepW s c (born_step h)) t (c' :: P) h _ _ _ _).trans
         ((WFF.size_subst _ _ _ _ _ _).trans (WFF.size_shift _ _ χ))
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 theorem pTrXKW_neg : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (i : ℕ)
     (x : VarSymb) (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X))
     (χ : WFF σ ((ctxOf (glat s i)).kView (some x)) 0),
@@ -386,7 +386,7 @@ theorem pTrXKW_neg : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1
   | s, t, c :: c' :: P, h, _, _, _, _ =>
       pTrXKW_neg (stepW s c (born_step h)) t (c' :: P) h _ _ _ _
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 /-- ⭐**What holds throughout a possible object's extent holds of the kept witness at every
     descendant**: `four_dia`, then the plain transfer along each edge (`gltr`). -/
 theorem boxx_mem_pathK : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 P) (i : ℕ)
@@ -416,7 +416,7 @@ theorem boxx_mem_pathK : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf
       exact boxx_mem_pathK (stepW s c (born_step h)) t (c' :: P) h _ _ _ _
         (gltr hM₀ (t := stepW s c (born_step h)) ⟨c, rfl⟩ i _ h4)
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 /-- Membership in a canonical extent depends on the path only through its end. -/
 theorem gmem_path {s t : GW hF M₀} (hR : GR s t) {P : List ℕ} (h : t.1 = nodeOf s.1 P)
     {x : VarSymb} :
@@ -512,7 +512,7 @@ theorem sat_diaPush_pathK (hT : ModalSys.T = true) : ∀ (s t : GW hF M₀) (P :
 
 /-! ## Along an edge made for a witness (T) -/
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 /-- ⭐**Along an edge made for a witness, the child's reading of a formula of the witness's view is
     the realisation, at the child's content, of the formula translated with the witness kept**:
     the formula is the realisation of its kept shift at the content (`realiseAtA_shift_keep`, at the
@@ -558,7 +558,7 @@ theorem gchild_real (hT : ModalSys.T = true) {s t : GW hF M₀} {c : ℕ}
   unfold WFF.realiseAtA
   exact WFF.hereRead_congr hT hη.symm _
 
-omit [ModalSys.NoSym] in
+omit [ModalSys.NoB] in
 /-- ⭐**Along an edge made for a witness, the kept witness is realised by the child's content**:
     `here_keep` at the η-expansion of the content, transferred along the edge (`gltrX`). -/
 theorem gchild_here (hT : ModalSys.T = true) {s t : GW hF M₀} {c : ℕ}

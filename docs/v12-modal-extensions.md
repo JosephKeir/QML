@@ -3679,6 +3679,17 @@ complete under T; `FourCoh` is gone** (20 top targets green, no `sorry`, standar
 * *Next:* the `NoB` refactor (drop `noFourStrong`/`noFourStrongW`, dispatching to the growing
   tree when 4 and a strong form are on), then 5.
 
+**Built (2026-10-25): the `NoB` refactor.**  `ModalSys.NoB` is B off in both strengths and no
+more: its temporary strong-4 fields are gone, and the growing tree's `ModalSys.NoSym` (the same two
+fields) is folded into it.  The staged tree's files ask `ModalSys.StagedSys`, which extends `NoB`
+with "4's strong forms are off when 4 is on".  Only `keepLift` uses it
+(`StagedSys.not_liftable`), and it is conditioned on 4.  `QML_v12m_NoBComplete.lean` states the
+metatheorems for every system without B and every well-formed presentation.  It uses the growing
+tree when 4 is on and the staged tree when 4 is off, where 4's strong forms say nothing
+(`stagedSys_of_noFour`): ⭐`completenessNoB`, `provable_iff_validNoB`, `model_existenceNoB`,
+`strong_completenessNoB`, `compactnessNoB` (standard axioms).  The staged tree's own theorems
+(`completeness` etc., for `[Γ.Presented]`) stay, under `StagedSys`.
+
 **Order.**
 1. Weak 4 on the growing tree: `GCanon` (frame, translations along paths, transfer along paths,
    carriers as B's `BCanonDom`/`BCanonModel` with `θ_a`), then `GTruth`.  K4/D4 first, then

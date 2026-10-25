@@ -279,8 +279,12 @@ Paper pass: `v12-modal-extensions.md` §3 4, "4's four cases".  Weak/strong × `
      action (`GKeep`) and address shapes (`GTemplate`) replace the shape templates, and
      `ModalSys.FourCoh` is gone (§3 4, "Phase 2b").  Every combination of 4's strong forms is
      complete with T and D, B off.
-     Next: drop `noFourStrong`/`noFourStrongW` from `NoB` (dispatching to the growing tree when
-     4 and a strong form are on), then fold `NoSym` into it.
+   * **One theorem for every system without B (2026-10-25)**: `ModalSys.NoB` is just "B off"
+     (the temporary `noFourStrong`/`noFourStrongW` are gone, and the growing tree's `NoSym` is
+     folded into it).  The staged tree asks `ModalSys.StagedSys` (B off, and 4's strong forms off
+     when 4 is on).  `QML_v12m_NoBComplete.lean` dispatches on 4: ⭐`completenessNoB`,
+     `provable_iff_validNoB`, `model_existenceNoB`, `strong_completenessNoB`, `compactnessNoB`,
+     for every well-formed presentation.
 3. **Strong `◇`, the join**, per arrow (as `posBack_exists`):
    `◇∃y:◇A. ◇_y(shift φ)(y.dia) ⊢ ∃z:◇A. ◇_z φ(z.dia)`.  Needs witnesses added to a world after its
    successors exist: the network, or an ω-chain tree.
