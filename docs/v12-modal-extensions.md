@@ -4244,6 +4244,25 @@ arrows.
 * `noFive`, and the canonical fill-ins.
 * Done when TOP is green with soundness unchanged, since nothing reads `side` yet.
 
+**Step 1 as built (2026-10-29): two corrections to the list above.**
+* *`side` is on `Frame`, not `Arrows`.*  The three canonical `Arrows` are used generically, with
+  no class saying 5 is off, while every `Frame` is built where `NoB` or `NoFour` is in scope.  B's
+  `symm` sits on `Frame` for the same reason.  If S5's shapes need `side` on `Arrows` (a root action
+  along side arrows), moving it is mechanical.
+* *`GFunc.dside` moves to step 2.*  4's `dkeep` is applied to terms by `applyG`, which sends it to
+  the address `x.keep`.  So its 5 counterpart needs the step-2 syntax (`x.side`, `sideTr`).
+* *What step 1 adds:*
+  * the flags `Five` and `FiveStrong` (`ModalSys.K` has twelve flags);
+  * `ModalSys.sideOn`;
+  * `Frame.side` with `side_inj`, `side_side`, `trans_side`, `side_trans` and `side_refl`, and
+    `Frame.sideAcc`;
+  * `Ops.posSide`;
+  * the model laws `posSide_ext` (the extent is the image under `side a`), `posSide_content` (the
+    contents carried across, stated without casts) and `necSide_exists` (the gather, up to `Ind`);
+  * `noFive` in `NoB` and `NoFour`, with `NoB.absurdFive` and `NoFour.absurdFive`;
+  * vacuous fill-ins in the three canonical models (`CanonModel`, `BCanonModel`,
+    `GCanonModel`/`GCanonLift`).
+
 ### □-BF and ◇-BF
 Base variables are invisible under `□`, so each Barcan formula pairs a concept quantifier outside
 with a base quantifier inside.

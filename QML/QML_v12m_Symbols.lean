@@ -64,10 +64,17 @@ class ModalSys where
       restriction of one at its source.  The join `◇◇A → ◇A` follows with `four_dia`.  Rows
       `(□,◇)` and `(◇,◇)`.  Needs weak 4, which the rule requires. -/
   FourStrongW : Bool
+  /-- ⭐Weak 5 (`docs/v12-modal-extensions.md` §3 5, "5: scope and plan"): for arrows `a : w → v`
+      and `b : w → s` an arrow `side a b : v → s`, and possible objects stay visible inside `□`,
+      their extents moved across (`x.side`). -/
+  Five : Bool
+  /-- ⭐Strong 5, the **gather**: along any arrow `a : w → v`, every necessary object at `v`, read
+      along the side arrows `side a b`, is one at `w`.  Needs weak 5, which the rule requires. -/
+  FiveStrong : Bool
 
 /-- The system K. -/
 def ModalSys.K : ModalSys :=
-  ⟨false, false, false, false, false, false, false, false, false, false⟩
+  ⟨false, false, false, false, false, false, false, false, false, false, false, false⟩
 
 /-- The systems without B.  B's accessible worlds lead back to their origin, against the order
     of construction; its canonical model is the arrow-based network (`BArrow`).  Strong B needs
@@ -76,6 +83,9 @@ def ModalSys.K : ModalSys :=
 class ModalSys.NoB [ModalSys] : Prop where
   noB : ModalSys.B = false
   noBStrong : ModalSys.BStrong = false
+  /-- Temporarily, 5 is off as well: its canonical model, the cluster network, is not built yet
+      (`docs/v12-modal-extensions.md` §3 5). -/
+  noFive : ModalSys.Five = false
 
 /-- ⭐**The systems the staged canonical model is built for**: B off, and 4's strong forms off
     when 4 is on (with 4 the growing tree covers every strong form, `GArrow`). -/
@@ -85,6 +95,10 @@ class ModalSys.StagedSys [ModalSys] : Prop extends ModalSys.NoB where
 theorem ModalSys.NoB.absurd [ModalSys] [ModalSys.NoB] (hB : ModalSys.B = true) : False := by
   rw [ModalSys.NoB.noB] at hB
   cases hB
+
+theorem ModalSys.NoB.absurdFive [ModalSys] [ModalSys.NoB] (hV : ModalSys.Five = true) : False := by
+  rw [ModalSys.NoB.noFive] at hV
+  cases hV
 
 theorem ModalSys.NoB.absurdStrong [ModalSys] [ModalSys.NoB] (hB : ModalSys.BStrong = true) :
     False := by
@@ -111,6 +125,12 @@ theorem ModalSys.keepOnly_flags [ModalSys] (hk : ModalSys.keepOnly = true) :
     T's `extract` and strong B's round trips both read a possibility back at its origin, so both
     need to know where the possibilities inside an object come from (§11.15, phase L3). -/
 def ModalSys.shaped [ModalSys] : Bool := ModalSys.T || ModalSys.BStrong
+
+/-- ⭐**Where possible objects have sides** (staged, `docs/v12-modal-extensions.md` §3 5, paper
+    check P1): with 5 and 4, and unshaped.  With 4 every item of a `□` view has an image along a
+    side arrow, so substitution computes; without 4 the links are needed, and with shapes a root
+    action along side arrows. -/
+def ModalSys.sideOn [ModalSys] : Bool := ModalSys.Five && ModalSys.Four && !ModalSys.shaped
 
 theorem ModalSys.shaped_of_T [ModalSys] (hT : ModalSys.T = true) : ModalSys.shaped = true := by
   simp [ModalSys.shaped, hT]

@@ -88,6 +88,29 @@ structure Frame (σ : Signature) extends Arrows.{u, v} σ where
       a round trip brings back is determined (`docs/v12-modal-extensions.md` §11.3).  Relational
       frames satisfy it outright. -/
   homeUnique : ModalSys.BStrong = true → ∀ {w v : W}, Subsingleton (R w v)
+  /-- Under 5, **an arrow across**: for `a : w → v` and `b : w → s`, an arrow `side a b : v → s`
+      (`docs/v12-modal-extensions.md` §3 5).  An operation, not mere existence, because `x.side`'s
+      evaluation law names it (`Model.posSide_ext`), as `necDup_eval` names the composite. -/
+  side : ModalSys.Five = true → ∀ {w v s : W}, R w v → R w s → R v s
+  /-- Under 5, `side a` is injective, so a possible object's contents along it are well defined.
+      Automatic for a relational frame, as are the laws below. -/
+  side_inj : ∀ (hV : ModalSys.Five = true) {w v s s' : W} (a : R w v) (b : R w s) (b' : R w s'),
+    (⟨s, ⟨side hV a b⟩⟩ : Σ t, PLift (R v t)) = ⟨s', ⟨side hV a b'⟩⟩ →
+      (⟨s, ⟨b⟩⟩ : Σ t, PLift (R w t)) = ⟨s', ⟨b'⟩⟩
+  /-- Under 5, across twice from one source is across once: `x.side.side` reads as `x.side`. -/
+  side_side : ∀ (hV : ModalSys.Five = true) {w v s t : W} (a : R w v) (b : R w s) (e : R w t),
+    side hV (side hV a b) (side hV a e) = side hV b e
+  /-- Under 4 and 5, out and across is straight there: `u.keep` read along a side arrow is `u`. -/
+  trans_side : ∀ (hF : ModalSys.Four = true) (hV : ModalSys.Five = true) {w v s : W} (a : R w v)
+    (b : R w s), trans hF a (side hV a b) = b
+  /-- Under 4 and 5, across from further in is across from the composite: `shift` sends `x.side`
+      to `x.side.side`. -/
+  side_trans : ∀ (hF : ModalSys.Four = true) (hV : ModalSys.Five = true) {w v t s : W}
+    (a : R w v) (c : R v t) (e : R w s), side hV c (side hV a e) = side hV (trans hF a c) e
+  /-- Under T and 5, across from the identity is the arrow itself: the collapse sends `x.side` to
+      `x`. -/
+  side_refl : ∀ (hT : ModalSys.T = true) (hV : ModalSys.Five = true) {w s : W} (b : R w s),
+    side hV (refl hT w) b = b
   D : W → Type u
   Nec : VarType → W → Type u
   Pos : VarType → W → Type u
@@ -108,6 +131,10 @@ def Dom : VarType → F.W → Type u
 
 /-- What a necessary object delivers: an object at every accessible world. -/
 abbrev NecSec (A : VarType) (w : F.W) : Type (max u v) := (w' : F.Acc w) → F.Dom A w'.1
+
+/-- Under 5, the arrow across from `a`'s target to `b`'s. -/
+abbrev sideAcc (hV : ModalSys.Five = true) {w : F.W} (a b : F.Acc w) : F.Acc a.1 :=
+  ⟨b.1, ⟨F.side hV a.2.down b.2.down⟩⟩
 
 /-- What a possible object delivers: an extent, and exactly one object at each of its worlds. -/
 abbrev PosSec (A : VarType) (w : F.W) : Type (max u v) :=
@@ -171,6 +198,10 @@ structure Frame.Ops {σ : Signature} (F : Frame.{u, v} σ) where
   necDup : {A : VarType} → {w : F.W} → ModalSys.Four = true → F.Nec A w →
     F.Nec (.VTypeBox A) w
   posKeep : {A : VarType} → {w : F.W} → ModalSys.Four = true →
+    F.Pos A w → F.Nec (.VTypeDia A) w
+  /-- Under 5, a possible object moved across (`x.side`): at each arrow `a`, its extent carried
+      along `side a`, with the same contents. -/
+  posSide : {A : VarType} → {w : F.W} → ModalSys.Five = true →
     F.Pos A w → F.Nec (.VTypeDia A) w
 
 /-- Evaluating a definable map at a world. -/
@@ -614,6 +645,19 @@ structure Model (σ : Signature) where
           fun b => (posFull x).1.2 ⟨⟨b.1.1, ⟨frame.trans hF a.2.down b.1.2.down⟩⟩, b.2⟩⟩,
         fun hS => ((posFull x).2 hS).map (@Arrows.Leaf.keepAlong _ σ frame.toArrows RootPoss
           ⟨rootKeep⟩ hF w a))
+  /-- ⭐Under 5, **a possible object moved across** (docs §3 5, paper check P1): along `a`, its
+      extent is the image of `x`'s under `side a`. -/
+  posSide_ext : ∀ {A : VarType} {w : frame.W} (hV : ModalSys.Five = true) (x : frame.Pos A w)
+    (a : frame.Acc w),
+    (posFull (necEval (ops.posSide hV x) a)).1.1 = frame.sideAcc hV a '' (posFull x).1.1
+  /-- Under 5, a possible object moved across has at `side a b` the content `x` has at `b`.  Only
+      the section is stated: sides are staged out of shaped systems (`ModalSys.sideOn`), so the
+      shape waits for S5. -/
+  posSide_content : ∀ {A : VarType} {w : frame.W} (hV : ModalSys.Five = true) (x : frame.Pos A w)
+    (a b : frame.Acc w) (hb : b ∈ (posFull x).1.1)
+    (hc : frame.sideAcc hV a b ∈ (posFull (necEval (ops.posSide hV x) a)).1.1),
+    (posFull (necEval (ops.posSide hV x) a)).1.2 ⟨frame.sideAcc hV a b, hc⟩ =
+      (posFull x).1.2 ⟨b, hb⟩
   /-- ⭐Strong D: some possible object has a nonempty extent.  Stated at `𝟙`, where the content
       carries nothing: `strength` then gives, for every necessary object, a possible object with
       the same extent whose content is that object's value — the `Nec → Pos` map, at every type. -/
@@ -625,6 +669,11 @@ structure Model (σ : Signature) where
       it is the separate condition `Model.IndInvariant` — a model proper is one satisfying it. -/
   Ind : {A : VarType} → {w : frame.W} → frame.Dom A w → frame.Dom A w → Prop
   Ind_refl : ∀ {A : VarType} {w : frame.W} (o : frame.Dom A w), Ind o o
+  /-- ⭐Strong 5, **the gather**, per arrow: a necessary object at `a`'s target, read along the
+      arrows across, is (up to `Ind`) one at the source. -/
+  necSide_exists : ∀ (hV : ModalSys.Five = true) (_hS : ModalSys.FiveStrong = true) {A : VarType}
+    {w : frame.W} (a : frame.Acc w) (n : frame.Nec A a.1),
+    ∃ m : frame.Nec A w, ∀ b : frame.Acc w, Ind (necEval m b) (necEval n (frame.sideAcc hV a b))
   /-- ⭐Strong T: every object has *some* possible object whose extent contains the current world,
       with a content there indistinguishable from the object (`Ind`, which is what `Here` reads,
       §10.33).  This says on its own that `R` is reflexive wherever a domain is inhabited.  Any

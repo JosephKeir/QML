@@ -267,7 +267,10 @@ noncomputable def gmodel : Model.{0, 0} σ where
     rw [geval_toDom]
     exact (gtoDom_congr e _ _).trans (gtoDom_fromDom hM₀ T a.1 o)
   posKeep_full _ _ _ := Prod.ext rfl (funext fun _ => rfl)
+  posSide_ext := fun hV => (ModalSys.NoB.absurdFive hV).elim
+  posSide_content := fun hV => (ModalSys.NoB.absurdFive hV).elim
   posSerial hDS s := gposSerial_canon hM₀ hDS s
+  necSide_exists := fun hV => (ModalSys.NoB.absurdFive hV).elim
   Ind o o' := (ModalSys.T = true → gInd hM₀ o o') ∧ (ModalSys.T = false → o = o')
   Ind_refl o := ⟨fun _ => gInd_refl hM₀ o, fun _ => rfl⟩
   posRet_exists hT hS a := by

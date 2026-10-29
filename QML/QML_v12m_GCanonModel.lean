@@ -70,6 +70,12 @@ noncomputable def gframe : Frame.{0, 0} σ where
   serial := fun hD s => gserial hM₀ hD s
   symm := fun hB => (absB hB).elim
   homeUnique := fun _ => ⟨fun _ _ => rfl⟩
+  side := fun hV => (ModalSys.NoB.absurdFive hV).elim
+  side_inj := fun hV => (ModalSys.NoB.absurdFive hV).elim
+  side_side := fun hV => (ModalSys.NoB.absurdFive hV).elim
+  trans_side := fun _ hV => (ModalSys.NoB.absurdFive hV).elim
+  side_trans := fun _ hV => (ModalSys.NoB.absurdFive hV).elim
+  side_refl := fun _ hV => (ModalSys.NoB.absurdFive hV).elim
   D s := (gw hM₀ s).D
   Nec A s := {o : GRDom hM₀ (.VTypeBox A) s // GDefinable hM₀ (.VTypeBox A) s o}
   Pos A s := {o : GRDom hM₀ (.VTypeDia A) s // GDefinable hM₀ (.VTypeDia A) s o}
@@ -227,6 +233,7 @@ noncomputable def gops : (gframe hF hM₀).Ops where
     gtoDom hM₀ _ _ (grawEval hM₀ (.extract hT) _ n.1) (gdefinable_rawEval (.extract hT) n.2)
   necDup hF' n := ⟨grawEval hM₀ (.dup hF') _ n.1, gdefinable_rawEval (.dup hF') n.2⟩
   posKeep hF' p := ⟨grawEval hM₀ (.dkeep hF') _ p.1, gdefinable_rawEval (.dkeep hF') p.2⟩
+  posSide hV := (ModalSys.NoB.absurdFive hV).elim
 
 /-- ⭐Evaluating a map on a frame object is evaluating it on the raw object. -/
 theorem geval_toDom : ∀ {A C : VarType} (g : GFunc σ A C) (s : GW hF M₀) (o : GRDom hM₀ A s)

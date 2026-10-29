@@ -36,8 +36,15 @@ namespace V12M
     (`Model.posRet_of_posBack`; docs §11.23, build steps 3 and 6). -/
 class ModalSys.NoFour [ModalSys] : Prop extends ModalSys.WCoh where
   noFour : ModalSys.Four = false
+  /-- Temporarily, 5 is off as well: the network has no side arrows (`docs/v12-modal-extensions.md`
+      §3 5). -/
+  noFive : ModalSys.Five = false
 
 variable [ModalSys]
+
+theorem ModalSys.NoFour.absurdFive [ModalSys.NoFour] (hV : ModalSys.Five = true) : False := by
+  rw [ModalSys.NoFour.noFive] at hV
+  cases hV
 
 theorem ModalSys.NoFour.keepOnly [ModalSys.NoFour] : ModalSys.keepOnly = false := by
   simp [ModalSys.keepOnly, ModalSys.NoFour.noFour]

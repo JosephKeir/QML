@@ -83,6 +83,12 @@ noncomputable def frame : Frame.{0, 0} σ where
   serial := fun hD s => B.serial_canon hD s
   symm := fun _ {_ _} h => ⟨h.elim (fun h => Or.inl (B.symm h)) fun h => Or.inr ⟨h.1, h.2.symm⟩⟩
   homeUnique := fun _ => ⟨fun _ _ => rfl⟩
+  side := fun hV => (ModalSys.NoFour.absurdFive hV).elim
+  side_inj := fun hV => (ModalSys.NoFour.absurdFive hV).elim
+  side_side := fun hV => (ModalSys.NoFour.absurdFive hV).elim
+  trans_side := fun _ hV => (ModalSys.NoFour.absurdFive hV).elim
+  side_trans := fun _ hV => (ModalSys.NoFour.absurdFive hV).elim
+  side_refl := fun _ hV => (ModalSys.NoFour.absurdFive hV).elim
   D s := (B.w s).D
   Nec A s := {o : B.RDom (.VTypeBox A) s // B.Definable (.VTypeBox A) s o}
   Pos A s := {o : B.RDom (.VTypeDia A) s // B.Definable (.VTypeDia A) s o}
@@ -186,6 +192,7 @@ noncomputable def ops : B.frame.Ops where
     B.toDom _ _ (B.rawEval (.extract hT) _ n.1) (definable_rawEval (.extract hT) n.2)
   necDup hF _ := (noFour hF).elim
   posKeep hF _ := (noFour hF).elim
+  posSide hV := (ModalSys.NoFour.absurdFive hV).elim
 
 /-- ⭐Evaluating a map on a frame object is evaluating it on the raw object. -/
 theorem eval_toDom : ∀ {A C : VarType} (g : GFunc σ A C) (s : B.W) (o : B.RDom A s)
@@ -819,8 +826,11 @@ noncomputable def model : Model.{0, 0} σ where
   necDup_eval hF _ _ _ := (noFour hF).elim
   keepLift hF := (noFour hF).elim
   posKeep_full hF := (noFour hF).elim
+  posSide_ext := fun hV => (ModalSys.NoFour.absurdFive hV).elim
+  posSide_content := fun hV => (ModalSys.NoFour.absurdFive hV).elim
   posRet_exists hT hS a := B.posRet_exists_canon hT hS a
   posSerial hDS s := B.posSerial_canon hDS s
+  necSide_exists := fun hV => (ModalSys.NoFour.absurdFive hV).elim
   Ret S val o := B.Ret S val o
   Ret_fwd := by intro _ _ hS _ _ _ h; exact B.ret_fwd hS h
   Ret_conv := by intro _ _ _ hA _ _ _ h; exact Or.inl ⟨hA, h⟩
