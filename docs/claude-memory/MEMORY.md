@@ -21,3 +21,4 @@
 - [QML: unlinked ◇-equality → model law](feedback_qml_unlinked_equality_model_law.md) — equality-like relations between ◇ objects with no link become model primitives with laws (as Ind), never new object-language rules
 
 - [QML scope: the cube](project_qml_scope_cube.md) — goal is the cube (T, D, B, 4, 5, weak + strong): a demonstration of the methods, and what philosophers care about; beyond-cube generality only an aside
+- [QML: follow proven paths](feedback_qml_follow_proven_paths.md) — prefer designs that repeat constructions already found to work (returning possibility, keepE, staging); name the precedent, flag the unprecedented as a cost

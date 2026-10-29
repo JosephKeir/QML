@@ -4156,14 +4156,93 @@ outward component is strong 5.  Weak 5's `□` side is like B's: a value at the 
 **Decisions** (labelled F, so as not to clash with 4's D5).
 * **F1 (decided, user 2026-10-29).**  `x.side` is its own path step, a level step like `keep`, on
   `◇` items only.  It follows `here` (T) and `keep` (4): an inward determinate map is a step.
-* **F2 (deferred to P2).**  Substitution: the linked operator (a′), the witness-capable former
-  (a), or K45-first staging (c).  (a′) is preferred to (a).
+* **F2 (partly decided, user 2026-10-29).**  Substitution goes through the linked operator (a′),
+  not the term former (a): "it's also following a path that we have already been down and found
+  success with".  Still open: links beside `x.side` or links only; and whether K45 comes first
+  (c), which is an order question rather than an alternative to (a′).
 * **F3 (decided, user 2026-10-29).**  Flags `Five` and `FiveStrong` (the gather); no strong `◇` for
   5 alone, which is unsound, not merely costly.  `FiveStrongW` is kept free in case a strong `◇`
   appears with B or T.
 * **F4 (open, by step 8).**  Closure as a class (`FiveCoh`), as `WCoh`.
 * **F5 (open, by step 3).**  Relational clusters in the canonical model (recommended), or
   arrow-labelled ones.
+
+**Decided (user, 2026-10-29), revisable later:** F2 links *beside* `x.side`; F6 the order:
+unshaped systems first, K45/KD45 before K5/KD5 (links arrive with K5), as 4's option A; F5
+relational clusters; F4 the class `FiveCoh`.
+
+#### 5, paper check P1: the law set, and what step 1 adds *(2026-10-29, paper)*
+
+**The semantic map is the twin of 4's `dkeep`.**
+* *4's version.*  4 keeps a possible object by a definable map `GFunc.dkeep : ◇A → □◇A`, evaluated
+  by `Ops.posKeep : Pos A w → Nec (◇A) w`, with the law `posKeep_full`.
+* *5's version.*  `x.side` is a map of the same type, §2c axis 1's `◇A → □◇A`.  It is a definable
+  map `GFunc.dside`, evaluated by `Ops.posSide`, with the law `posSide_full`.
+  * Write `sideAcc a b := ⟨b.1, side a.2 b.2⟩ : Acc v`.
+  * The section of `posSide x` at `a` has extent `{c | ∃ b ∈ ext x, sideAcc a b = c}`.  Its content
+    at `c` is `x`'s content at the unique such `b` (by choice, unique by `side_inj`).
+* *The frame operation.*  It goes on `Arrows`, beside `trans`, since shapes' leaves see arrows:
+  `side : Five = true → R w v → R w s → R v s`.
+
+**The rules' soundness, item by item.**
+* *The pattern.*  Each rule compares a view read along `b` with its `sideTr` image read along `a`
+  and then `sideAcc a b`, as `four_box` does by `SemShift`/`ShiftAgree`.
+  * `five_box` and `five_dia` read the table below forwards.
+  * `five_dia_back` reads it backwards: a `c` in `x.side`'s extent supplies its `b`.
+
+| item, along `b` | image, along `a` then `sideAcc a b` | law |
+|---|---|---|
+| `x.dia` (in `Γ.diaIn x`) | `x.side.dia` | `side_inj`: contents well defined |
+| `x'.side` | `x'.side.side` | `side_side`: `side (side a b) (side a e) = side b e` |
+| `u.box` (4) | `u.keep.box` | `trans_side`: `a ; side a b = b` |
+| `u.keep` (4) | `u.keep.keep` | `trans_side`, `trans_assoc` |
+| `x'.keep` (4) | `x'.keep.keep` | `trans_side`, `trans_assoc` |
+
+**Existing rules that meet `x.side`.**
+* *`four_box`, `four_dia`.*  `shift` must send `x.side` somewhere.
+  * `x.side.side` works, by **`side_trans`**: `side c (side a e) = side (a ; c) e`.  This law was
+    missing from the plan's list.
+  * `x.side.keep` would need left cancellation of `c ; −`, and `x.keep.side` has the wrong extent.
+  * `side_side` is the case `c = side a b` of `side_trans` (with `trans_side`), but without 4 it is
+    a law of its own.
+* *`T_box`.*  The collapse sends `x.side ↦ x`, by `side_refl`: `side (refl w) b = b`.  Under 5 that
+  means S5 (step 7).
+* *The gather.*  It needs no frame law, only `Ind` and `IndInvariant`, as `posBack_exists`.
+
+**The law set.**
+* `side_inj` and `side_side` (Five); `trans_side` and `side_trans` (Four, Five); `side_refl`
+  (T, Five).
+* All of them hold in relational frames by proof irrelevance; for `side_inj`, the two arrows have
+  the same target and `R` is a proposition.
+* Step 1 adds all five, so no frame field is reopened later.  `side a (a ; c) = c`, for the closure
+  edge strong 5 + 4 ⇒ `FourStrong`, waits until step 8 needs it.
+
+**The staging gate (F6), as 4's option A.**
+* `x.side ∈ Γ.boxIn` only when `ModalSys.sideOn := Five && Four && !shaped`.  This is temporary,
+  through `VarType.sideable`, as `keepable` once was.
+* `GFunc.dside` takes a proof of `sideOn`.
+* `five_box` and `five_dia` are stated over the side view, which is closed-only while the gate is
+  off.  So K5's propositional part is there from the start.
+* Under the gate `sideTr` is total, and substitution computes as `keepE` does:
+  `(diatm y h).side = diatm y.side (sideTr h)`.  **P2 reduces to checking that case.**  The links
+  come with K5, and shapes with S5.
+* `posSide_full` states the section only.  The gate keeps `x.side` out of shaped systems, so its
+  shape waits for step 7.
+
+**The existing completeness theorems must exclude 5**, since their canonical models build no side
+arrows.
+* Temporary `noFive` fields go in `NoB` and `NoFour`, as `noFourStrong` once went in `NoB`.  The
+  statements do not change.
+* The three canonical `Arrows` (`CanonShape`, `BCanonDom`, `GCanonPath`) fill `side` and its laws
+  vacuously.
+
+**Step 1, then.**
+* Flags `Five` and `FiveStrong` (strong needs weak, which the rules require).
+* `Arrows.side` and the five laws.
+* `Ops.posSide`, `GFunc.dside`, `posSide_full`, `necSide_exists`.
+* `ModalSys.sideOn` and `VarType.sideable`.
+* `noFive`, and the canonical fill-ins.
+* Done when TOP is green with soundness unchanged, since nothing reads `side` yet.
 
 ### □-BF and ◇-BF
 Base variables are invisible under `□`, so each Barcan formula pairs a concept quantifier outside
