@@ -59,7 +59,9 @@ Lean 4 + Mathlib formalisation of a quantified modal logic with first-class poss
 - **Prefer `python scripts/qbuild.py [Short ...]`** (e.g. `qbuild.py SemBack Proof`; no argument =
   the v12m top modules): errors cut to a few lines (`-n N` for more), v12m warnings only, plus
   v12m `sorry`s, lines over 100 characters and a one-line summary.  Goals beyond the cut: the Lean
-  LSP tools (`lean_goal`, `lean_diagnostic_messages`).
+  LSP tools (`lean_goal`, `lean_diagnostic_messages`).  CI (`.github/workflows/lean_action_ci.yml`)
+  runs `qbuild.py --strict`, which also fails on a v12m `sorry` or long line; new top modules go
+  in `TOP` there.
 - Run `lake build <module>` (e.g. `lake build QML.QML_v12m_Soundness`) **from the repo directory**.
 - **Never `lake --dir=...`**: elan picks the toolchain from the current directory, so from elsewhere
   it downloads the wrong Lean and recompiles dependencies into `.lake/packages`.

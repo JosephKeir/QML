@@ -4,6 +4,7 @@ Usage (from the repo directory):
     python scripts/qbuild.py                  # the v12m top modules
     python scripts/qbuild.py SemBack Proof    # short names, or full QML.QML_v12m_X
     python scripts/qbuild.py -n 30 SemBack    # keep up to 30 lines per message
+    python scripts/qbuild.py --strict         # also fail on a sorry or a long line (CI)
 
 Prints each error, and each warning from a v12m file, cut to a few lines; skips the noisy
 legacy files and CRLF-only `Leibniz` warnings; then reports v12m `sorry`s, lines over 100
@@ -27,6 +28,8 @@ def module(name):
 def main(argv):
     sys.stdout.reconfigure(encoding="utf-8")
     keep = 8
+    strict = "--strict" in argv
+    argv = [a for a in argv if a != "--strict"]
     if argv[:1] == ["-n"]:
         keep, argv = int(argv[1]), argv[2:]
     mods = [module(m) for m in (argv or TOP)]
@@ -58,7 +61,6 @@ def main(argv):
         print("\n".join(m[:keep]))
         if len(m) > keep:
             print(f"  ... ({len(m) - keep} more lines)")
-    status = "OK" if proc.returncode == 0 else "FAILED"
 
     sorries, longs = [], []
     for path in sorted(glob.glob("QML/QML_v12m_*.lean")):
@@ -72,9 +74,11 @@ def main(argv):
         print("sorry:", s)
     for s in longs:
         print("long line:", s)
+    code = proc.returncode or (1 if strict and (sorries or longs) else 0)
+    status = "OK" if code == 0 else "FAILED"
     print(f"== {status}: {len(mods)} target(s), {shown} message(s), "
           f"{len(sorries)} sorry, {len(longs)} long line(s)")
-    return proc.returncode
+    return code
 
 
 if __name__ == "__main__":
