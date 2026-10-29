@@ -89,7 +89,7 @@ components come out existential in the syntax.
 | T | evaluation here (`u.here`) | a possible object for each object, realised here (`T_dia`); *also* a necessary object for each object (§3 T, candidate) |
 | 4 | restriction down chains (`u.keep`) | the lift `Pos(v) → Pos(w)`: no determinate join |
 | B | propositional `φ ⊢ □◇φ`, with the value at the origin | two: a `□□`-object with a constant round trip, and possible objects reaching back (§3 B) |
-| 5 | *to be re-sorted*: both components below are determinate maps | ? |
+| 5 | `x.side` (`Pos(w) → Pos(v)`) with `five_box`; `v`'s `□`-values along side arrows are named at the target, as B's back values (§3 5, "5: scope and plan") | the gather: per arrow, a necessary object at `v`, read along side arrows, is one at `w` |
 
 This replaces the earlier rule, "the `Nec`-side component is weak and the `Pos`-side strong". The
 two agree on T, D and 4. For B the new rule makes the outward half and propositional B weak, and
@@ -102,6 +102,36 @@ plan and has to be settled before 5 is designed.
 and add the `Pos`-side component in *strong*. For 4 the weak component is the named one. For B and
 5 it is the existential one, so the nesting weak ⊂ strong puts the open part inside strong B and
 strong 5.
+
+**⭐Why D is the odd one out: its frame condition creates a world (2026-10-25, user + paper).**  In
+the Lemmon–Scott form `◇ᵏ□ˡp → □ᵐ◇ⁿp` (`k, l, m, n`), the frame condition is
+`w Rᵏ v ∧ w Rᵐ u ⇒ ∃t (v Rˡ t ∧ u Rⁿ t)`.  The dual form is `(m, n, k, l)`, with the same
+condition, roles swapped.  The `∃t` collapses to a world already given when `l = 0` or `n = 0`:
+
+| axiom | form | dual form | condition |
+|---|---|---|---|
+| T | `□p → p` (0,1,0,0) | `p → ◇p` (0,0,0,1) | an arrow `w → w` |
+| 4 | `□p → □□p` (0,1,2,0) | `◇◇p → ◇p` (2,0,0,1) | an arrow `w → u` for `w R² u` |
+| B | `p → □◇p` (0,0,1,1) | `◇□p → p` (1,1,0,0) | an arrow `u → w` for `w R u` |
+| 5 | `◇p → □◇p` (1,0,1,1) | `◇□p → □p` (1,1,1,0) | an arrow `u → v` for `w R v`, `w R u` |
+| D | `□p → ◇p` (0,1,0,1) | itself | `∃t. w R t`: a **new world** |
+
+The criterion "both `l` and `n` are at least 1" is invariant under duality, as it must be.  D is the
+only cube axiom that meets it.
+* *T, 4, B and 5 add arrows between given worlds.*  So each has a route to evaluate along, hence a
+  determinate weak map (`u.here`, `u.keep`, the value at the origin, `x.side`).  Their canonical
+  models add arrows (loops, paths, back arrows, sibling arrows).
+* *D has no given target.*  Weak D is propositional, and its object-level content is existence
+  only (`D_ex`).  Its canonical model needs nothing special: `◇⊤` is in every world, so the
+  existence lemma builds the successor.  Self-duality (`(k,l) = (m,n)`) is a separate fact, and it
+  is why D has one object map rather than two.
+* *Modal depth* (the user's observation) agrees with the criterion inside the cube, D alone keeping
+  depth in both forms.  It diverges outside the cube:
+  * `.2`, `◇□p → □◇p`, keeps depth and creates a world (D-like);
+  * `□p → ◇◇p` changes depth and creates a world (D-like);
+  * functionality, `◇p → □p`, keeps depth but identifies worlds (a third kind).
+* *A prediction.*  `.2` (S4.2) would follow D's pattern, not B/4's.  Its strong form would name the
+  meeting world, a joint possibility, so it would go through pairing.
 
 ### 2b. How to state a carrier map *(2026-09-18, after strong T)*
 
@@ -3874,7 +3904,7 @@ arrows, `x`'s extents, `rden` and shapes for `x.keep`, the truth lemma's deep `�
 - *Route (§2c)*: out and over, `w → v` and `w → s` giving `v → s`.  Like 4's lift and unlike T and
   B, it does not return to the origin, so no pinned relation is available; both components below are
   transport maps rather than value statements.
-- **⚠ To be re-sorted (2026-09-19).** By §2a's new criterion both components below are *weak*: each
+- **⚠ To be re-sorted (2026-09-19); re-sorted 2026-10-25, see "5: scope and plan" below.** By §2a's new criterion both components below are *weak*: each
   is a determinate map on existing objects (re-use of a witness, restriction), so neither requires
   new objects. The labels below are the old ones. What a new-objects strong 5 would be, if any, is
   open. The canonical model also needs arrows between siblings, which the tree cannot give
@@ -3888,6 +3918,252 @@ arrows, `x`'s extents, `rden` and shapes for `x.keep`, the truth lemma's deep `�
 - The two halves are contrapositive-paired with the slogans the other way round from 4 (§2a):
   "possible ⇒ necessarily possible" with its witness kept is the named half; "possibly necessary ⇒
   necessary" for objects born inside is the existential half.
+
+#### ⭐5: scope and plan *(2026-10-25, paper; supersedes the bullets above where they differ)*
+
+**Verdict.**  5 follows the strategy of B and 4: a route, a grid read by hop-witnessing, weak forms
+as determinate maps (context principles), strong forms as per-arrow existence laws with an
+∃-elimination rule, and a canonical model in which the world that first sees an object names it.
+T is the same strategy on the one-arrow route `w → w`.  D, self-dual with no arrow to name, is the
+exception.  5 differs from 4 in two places:
+* *One cell of the grid is empty.*  Strong `◇` is blocked by the frame, not by syntax.
+* *The weak `□` side adds no item.*  As with weak B, it brings values that the canonical model names
+  at the target.
+On paper, §5's obstacle for K5 ("5's box half without 4") and §3 5's "open without 4" both go away,
+the way weak B's back values did (item 3).  Nothing here is built.
+
+**The route and the frame operation.**  `w →a v` and `w →b s`; 5 gives an arrow `side a b : v → s`.
+* *An operation, not mere existence.*  The weak `◇` map's evaluation law names this arrow, as
+  `necDup_eval` names the composite.  So 5 has `Frame.side : (a b : Acc w) → R a.1 b.1`, beside
+  `refl` (T) and `trans` (4).
+* *Laws, to be fixed by the soundness proofs* (4's turned out to need exactly `trans_assoc`):
+  * `side_inj`: `side a` is injective as an `Acc`-valued map, so `x.side`'s contents are well
+    defined;
+  * `side_side`: `side (side a b) (side a e) = side b e`, so `x.side.side` reads as `x.side`;
+  * with 4, `trans_side`: `a ; side a b = b`, so `u.keep` read along a side arrow is `u`; perhaps
+    also `side a (a ; c) = c` (strong 5 with 4, item 4);
+  * with T, `side_refl`: `side (refl w) b = b`.  Then `side a (refl w) : v → w` is a way home and
+    `side (side a (refl w)) c` a composite, so T + 5 ⇒ B, 4 holds with operations.
+* *Relational frames.*  Every law holds by proof irrelevance.
+* *What the frame looks like.*  Relationally, every successor of `w` has one and the same successor
+  set, a cluster `C ⊇ R(w)`.  So `R(v)` can be strictly larger than `R(w)`, which is what empties
+  the strong `◇` cell.
+
+**The grid.**
+
+| | `□` side | `◇` side |
+|---|---|---|
+| **weak** | `five_box`: `◇□(sideTr ψ) ⊢ □ψ`.  No new item.  `v`'s own `□`-objects have values at `s`, which `s` names (as weak B's back values) | `Pos(w) → Pos(v)`: `x.side`, extent `side a '' ext x`, the same contents; `five_dia`, `five_dia_back` |
+| **strong** | the **gather** `Nec(v) → Nec(w)`, per arrow: `◇∃n:□A. □(sideTr χ)(n.box) ⊢ ∃m:□A. □χ(m.box)` | **blocked**: an arrow out of `v` need not end in `R(w)`.  Sound only with B or T, where `R(v) = R(w)` |
+
+By hop-witnessing:
+* the out leg `a` may be witnessed (`◇_y`, rows `(◇,·)`); the side leg `b` is witnessed by `x.side`
+  (rows `(·,◇)`);
+* as for 4, `diaIn` is built on `boxIn`, so the four weak rows come from **one context principle**
+  (`x.side ∈ Γ.boxIn`) and **one translation** (`sideTr`).
+
+**1. The side translation `sideTr`: 5's `shift`.**
+* `ψ` lives in `Γ.boxIn`, read at `s` along `b`.  `sideTr ψ` lives in `Γ.boxIn.boxIn`, read at `s`
+  along `a` and then `side a b`.
+* Items: `x.side ↦ x.side.side` (`side_side`).  Under 4 also `u.box ↦ u.keep.box`,
+  `u.keep ↦ u.keep.keep` and `x.keep ↦ x.keep.keep` (`trans_side`).
+* **Without 4 it is partial.**  `u.box` (`u : □A` at `w`, read along `b`) has no name along
+  `a ; side a b` without `keep`.
+* *Making that structural.*  The rules take `ψ` in a sub-context, the **side view**
+  (`Γ.boxIn` without the `□`-parameters when 4 is off), weakened into both sides.  That replaces
+  a side condition.  Closed `ψ` gives the propositional `◇□ψ ⊢ □ψ`.
+
+**2. Weak `◇`: `x.side`.**
+* *Semantics.*  `Ops.posSide x a`, with extent `side a '' ext x`; its content at `side a b` is `x`'s
+  content at `b`.
+* *Why weak.*  It is determinate and may be empty, so it is weak, part of `Five`.
+* *Rules.*  There are two, because the extent is exactly the image:
+  * `five_dia`: `◇_x φ ⊢ □◇_{x.side}(sideTr φ)`, the 5 axiom with the witness carried (the K
+    paradigm);
+  * `five_dia_back`: `◇◇_{x.side}(sideTr φ) ⊢ ◇_x φ`, "nothing else is in the extent", the shape
+    of `four_dia`.  It is not derivable from `five_dia`.  The canonical model needs it: `x.side`'s
+    extent at `v` is read off `w`'s `x`-children, not built at `v`.
+* *Soundness* is `four_box`'s pattern (`SemShift`) with `side_side` and `side_inj`.  Each of the
+  three rules checks in two lines on paper.
+* *Earlier decision.*  `side` is a path step typed like `keep` (the option-2 judgement).
+  Relationally, `x.side` is just `x`, re-used: §2a's "`◇`-items stay visible under `□`".
+
+**3. Weak `□`: `five_box`, and values named at the target.**
+* *What is new.*  A necessary object `n` at `v` has a value at `s` along `side a b`.  It is
+  determinate, but `s` must name it.  This is weak B's back value (`v12-arrow-canonical.md`,
+  finite-piece lemma) with the sibling `s` in place of the parent.
+* **Finite-piece lemma, 5's version (paper).**  Suppose `□χ(n⃗.box, x⃗.side.side) ∈ v`, where `n⃗` are
+  the `□`-items of `v` that are not in the side view.  Then `s ∪ {χ(c⃗, x⃗.side)}` is consistent for
+  fresh `c⃗`.
+  * Otherwise `s ⊢ ∀y⃗ ¬χ(y⃗, x⃗.side)`.
+  * At `v`, `□∃y⃗ χ(y⃗, x⃗.side.side)` follows (`K_box` on `ex_intro`).
+  * Hence `◇□(sideTr ψ)` holds at `w` for `ψ = ∃y⃗ χ(y⃗, x⃗.side)`, and `five_box` gives `□ψ`.
+    That contradicts `s` along `b`.
+  * `v`'s own `◇`-items `q` are bound the same way, as `∃r:◇A` inside the `□`.
+* *Consequence.*  Weak completeness needs **no** outward `□`-object principle.  §2a's
+  `◇∃c:□B. □χ(c.box) ⊢ ∃c:□B. □χ(c.box)` is the strong form (item 4).
+
+**4. Strong `□`: the gather.**
+* *Law* `necSide_exists`: `∀ a : Acc w, ∀ n : Nec A a.1, ∃ m : Nec A w, ∀ b,
+  Ind (necEval m b) (necEval n ⟨b.1, side a b⟩)`.  This is up to `Ind`, as for `Here` and `Back`.
+* *Per arrow.*  `m` depends on `a`.  As for 4's lift (§3 4 item 2), the quantifier-order obstacle
+  goes away per arrow.
+* *Rule* (∃-elimination, out leg parameterised):
+  `O.dia (∃n:□A. □(sideTr χ)(n.box)) ⊢ ∃m:□A. □χ(m.box)`, `m` fresh.  This is §2a's carrier
+  principle, with its parameters stated.
+* *Canonically*, `w` names `m` as a late `□`-root (4's lift pattern: the parent names what first
+  appears in a descendant).
+* *A closure edge.*  With 4 and `side a (a ; c) = c`, `m.keep` along `a` is `n`.  So strong 5 + 4 ⇒
+  4's `□`-lift (`FourStrong`).
+
+**5. Strong `◇`: none for 5 alone.**
+* *The `◇`-lift is unsound.*  4's analogue, "every possible object at `v` is some `x.side`", fails:
+  `q`'s extent may reach `R(v) ∖ R(w)`.
+  * *Countermodel.*  Worlds `w, v, t` with `R = {w→v, v→v, v→t, t→v, t→t}`, which is euclidean, and
+    `R(w) = {v} ⊊ R(v) = {v, t}`.  Let `p` hold only at `t`, and `q` at `v` have extent `{v→t}`.
+    Then `◇∃q. ◇_q p` holds at `w`.  But every `x.side` has extent inside `{v→v}`, so
+    `∃x. ◇◇_{x.side} p` fails.
+  * *Its propositional shadow is 4.*  With `five_dia_back` the lift would give `◇◇p ⊢ ◇p`, which is
+    4's dual and fails in K5: the countermodel has `◇◇p ∧ ¬◇p` at `w`.  So the cell is empty
+    propositionally too.  Under 4 it is filled, by 4's own `◇`-lift (`FourStrongW`).
+  * *4's join fails too.*  Its analogue, "along each arrow of `q`'s extent there is a counterpart at
+    `w`", needs an arrow `w → t`, and the frame has none.
+  * *The reason.*  `side` embeds `w`'s successors into `v`'s, not the other way.  A `□`-object at
+    `v` is a total function, and restricting it to the embedded part gives a total function at `w`
+    (the gather).  A `◇`-object at `v` is a partial one, and what lies outside the embedded part
+    has no image at all.
+* *The restricted form is empty.*  "`q` read on the side image comes from `w`" is sound, but it says
+  nothing unless models are forbidden an empty possible object (§2d, "no forced empty term").
+* *With B or T.*  `R(v) = R(w)` inside the cluster, so the `◇`-lift is sound.  It belongs to KB5
+  and S5, with B's family, not to 5.
+
+**The re-sort (§2a).**  Weak 5 is `x.side` with `five_box`, `five_dia` and `five_dia_back`: no new
+objects, one new context item.  Strong 5 is the gather.  §2a's inward component is weak 5, and its
+outward component is strong 5.  Weak 5's `□` side is like B's: a value at the target.
+
+**Substitution: the one new syntactic risk.**
+* *The problem.*  `Proof.subst` must send `x.side` to "`t.side`" for a `◇`-term `t`.  For 4,
+  `(diatm y h).keep = diatm y.keep (shift h)`.  For 5, `(diatm y h).side` would be
+  `diatm y.side (sideTr h)`.  Without 4, `sideTr h` is undefined when `h` reads a `□`-parameter
+  (`posStrength`).
+* *Semantics is fine.*  `posSide` is an operation on all of `Pos`, so the object exists.  The
+  syntax at `v` cannot name it.
+* *Why T and 4 never met this.*  Their steps distribute over term formation, because every
+  ingredient of a term has an image: collapse sends `u.box ↦ u.here`, shift `u.box ↦ u.keep.box`
+  (`keepE`).  Without 4, `side` does not distribute: a `□`-parameter has no image along a side
+  arrow.  So the side image of `posStrength(u, y)` can only be named whole.
+* *Why not a relation (as `Here`, `Back`).*  A relation needs both ends in one scope, which is why
+  T's and B's are stated at a route back to the origin (§2c axis 4).  Here no world sees both: `t`
+  reads `u` at `w`, and its side image lives inside `□`, where `u` is invisible along side arrows.
+  So the relation grade is unavailable (§2c axis 2).  What is left is the function grade, and since
+  it cannot be computed from the parts, it has to be primitive: a term former.
+* *Only K5 and KD5 need it.*  By closure, T + 5 and B + 5 have 4, and with 4 `sideTr` is total.
+* *A wrinkle.*  `◇`-terms stand in witness positions too.  After substitution `◇_{x.side} φ` needs
+  `side t` as a **witness**, so the former is a new witness form, not only a new term.
+* *Options (F2, deferred to P2, user 2026-10-29):*
+  * **(a)** A witness-capable former `side t`: a `◇`-term of `Γ` gives one of `Γ.boxIn`, evaluated
+    by `posSide`.  Then `x.side := side (var x)`, reducing on `diatm` where `sideTr` is defined.
+    No new rule, and substitution becomes structural.
+  * **(b)** Give sides only to some `◇`-items.  This is not closed under substitution.
+  * **(a′)** *(user's question, 2026-10-29)* A **linked modal operator** `□[d ↦ t] Φ(d)`, as B's
+    returning possibility `◇[d ↦ t] Φ(d)` (§11.14).  It holds at `w`, where `t` is in scope, and
+    binds the side image as an ordinary `◇`-item `d` of the inner view.
+    * *What it fixes.*  "No world sees both ends" was too quick: an operator at `w` that binds the
+      far end sees both, which is how B's former works.  The inner language stays inner (no
+      cross-level terms), and the witness wrinkle goes away, since `d` is a variable.
+    * *How it arises.*  `WFF.subst` meets a `□` (or `◇_y`) whose view needs `x.side` for an
+      `x ↦ t` that does not reduce, and outputs `□[d ↦ t]` with `x.side ↦ d` inside.  So the level
+      formers carry lists of links, as the named back witnesses did.
+    * *Link rule.*  `□[d ↦ x] Φ(d) ⊣⊢ □Φ(x.side)`, and the `diatm` reduction where `sideTr` is
+      defined.  Under 4 every link reduces, so the operator is derived there.
+    * *To settle in P2:* links beside `x.side` (F1 as decided), or links only.
+  * **(c)** *(leaning)* Staging, as 4's option A: K45 and KD45 first, where substitution computes
+    exactly as `keepE`; decide K5's substitution afterwards.  This swaps steps 3 and 4 of the order
+    of work, and it brings the coherence test forward.
+
+**The canonical model: a cluster network.**
+* *The frame.*  A generated K5 frame is a root pointing into one cluster.  So the canonical model is
+  a tree whose non-root worlds form clusters.
+  * Every world created below the root gets sibling arrows to and from every member of its cluster.
+  * Arrows inside a cluster are relational (one per ordered pair), so every `side` law holds by
+    proof irrelevance and the model is relational (`v12-arrow-canonical.md`, direction (2)).
+  * Under B the root joins the cluster: `v R w` and euclidean give `R(w) ⊇ R(v)`.
+* *Names.*  A member's language has three parts:
+  * what it inherits along tree arrows, by `side`/`keep`;
+  * its own born items;
+  * **late roots**: for each other member `v` and each `v`-item outside the side view, a root naming
+    its value along `v → s`.  They are indexed by (origin, item, target), so translations do not
+    depend on the route.
+  * Both halves of this machinery exist: B's network adds content roots later (`bcx`, one per
+    label, §11.23), and the growing tree adds late parent roots.
+* *Truth along a sibling arrow `v → s`.*
+  * `□` at `v`: the finite-piece lemma (item 3), jointly over finitely many origins (conjoin the
+    existentials; `□` distributes).
+  * `◇_{x.side}` at `v`: `five_dia_back` gives `◇_x` at `w`, whose witness child is in `x`'s extent.
+  * `◇_{r}` at `s` for a late root `r` naming `v`'s `q.side`: `five_dia_back` at `v`.
+* *With 4 (K45, KD45).*
+  * `sideTr` translates `keep` items.
+  * `w → v → s` and `w → s` are one relational arrow, so `w`'s translations must agree along both.
+  * That agreement is `five_box` with a `keep` parameter, `◇□χ(u.keep.box) ⊢ □χ(u.box)`.  So the
+    coherence conjecture's component (`v12-arrow-canonical.md` §4) is simply what 5's own rule says
+    under 4, in the K paradigm, not a separate principle.
+  * Step 4 below tests the conjecture.
+* *Strong 5.*  The late roots for `n` at siblings are `m.box`, for the `m` that `w` names (item 4).
+* *Fairness.*  Every (member, item, member) triple is visited, by an ω-chain like B's network and
+  the growing tree.
+
+**Closure (§4).**
+* *The edges.*  T + 5 ⇒ B, 4; B + 4 ⇒ 5; B + 5 ⇒ 4; strong 5 + 4 ⇒ `FourStrong`.
+* *Frames.*  With `side` an operation (and `side_refl`), the edges hold on frames.
+* *Flags (F4).*  A class `ModalSys.FiveCoh`, as `WCoh`, asked by completeness.
+* *The payoff.*  The 96 open B + 4 combinations become cases of B + 4 + 5.  Their canonical model is
+  the cluster network with the root inside, where B's back arrows are cluster arrows.  Milestone 3's
+  round-trip coherence then becomes the step-4 test above.
+
+**Order of work.**
+0. *Paper, before code.*
+   * (P1) The rules' soundness against the laws, fixing the law set.
+   * (P2) F2, substitution: (a) or (c).
+   * (P3) The cluster network: joint consistency of late roots, the `five_dia_back` cases, and that
+     translations do not depend on the route.
+   * (P4) Shapes under T (S5): a root action along side arrows (`gKeep`'s analogue), and "tags
+     determine annotations" with many arrows into a world.  P4 can wait: do the unshaped systems
+     first, as 4's option A did.
+1. *Flags and semantics.*  `Five` and `FiveStrong`; `Frame.side` and its laws; `Ops.posSide` with
+   its evaluation law; `necSide_exists`.  The existing proofs must survive (nothing uses `side` yet).
+2. *Syntax.*  The `side` step (typed like `keep`); `x.side ∈ Γ.boxIn`; `sideTr` and the side view;
+   `five_box`, `five_dia`, `five_dia_back`; soundness (`SemSide`, mirroring `SemShift`);
+   substitution.
+3. *K5, KD5.*  The cluster network: B's network with sibling arrows and late roots.
+4. *K45, KD45.*  `keep` in `sideTr`, and the coherence test.
+5. *Strong 5.*  The gather, through late parent roots.
+6. *B + 5 (= B + 4 + 5).*  The root joins the cluster, and B's rows are read there; relational
+   clusters give `homeUnique` free.  This closes milestone 3's B + 4.
+7. *T + 5 = S5.*  Shapes, `side_refl`, `Here` at the own arrow.
+8. *`FiveCoh` and one theorem*, as `NoBComplete`.
+
+**Risks, largest first.**
+1. *The cluster network's bookkeeping.*  Late roots run both ways between every pair of members,
+   where B has one back arrow per child.  This is the largest build.
+2. *Substitution* (F2).
+3. *Shapes under T* (S5): many routes into one world, and "tags determine annotations" again.
+4. *The coherence conjecture* (step 4).  If `five_box` with `keep` parameters does not make the
+   translations route-independent, K45 needs arrow-labelled clusters (paths modulo the side laws),
+   and completeness holds over arrow frames only.
+5. *B's family under 5* (step 6).  The `Back` rows read round trips, and in a cluster every round
+   trip is a cluster arrow followed by a way home.  Rows 3–4 may collapse; to check, not assume.
+
+**Decisions** (labelled F, so as not to clash with 4's D5).
+* **F1 (decided, user 2026-10-29).**  `x.side` is its own path step, a level step like `keep`, on
+  `◇` items only.  It follows `here` (T) and `keep` (4): an inward determinate map is a step.
+* **F2 (deferred to P2).**  Substitution: the linked operator (a′), the witness-capable former
+  (a), or K45-first staging (c).  (a′) is preferred to (a).
+* **F3 (decided, user 2026-10-29).**  Flags `Five` and `FiveStrong` (the gather); no strong `◇` for
+  5 alone, which is unsound, not merely costly.  `FiveStrongW` is kept free in case a strong `◇`
+  appears with B or T.
+* **F4 (open, by step 8).**  Closure as a class (`FiveCoh`), as `WCoh`.
+* **F5 (open, by step 3).**  Relational clusters in the canonical model (recommended), or
+  arrow-labelled ones.
 
 ### □-BF and ◇-BF
 Base variables are invisible under `□`, so each Barcan formula pairs a concept quantifier outside
@@ -3942,9 +4218,9 @@ Known edges *(all sketch)*:
 | T | ✓ | ✓ | |
 | KB | done (closed) | ✓ | |
 | K4 | ✓ | ✗ | lift |
-| K5 | ✗ | ✗ | 5's box half without 4 |
+| K5 | ✓ (plan, §3 5) | ✓ (plan) | was "5's box half without 4"; on paper the values are named at the target (§3 5) |
 | KD4 | done | ✗ | lift |
-| KD5 | ✗ | ✗ | 5's box half without 4 |
+| KD5 | ✓ (plan, §3 5) | ✓ (plan) | as K5 |
 | KDB | done (closed) | ✓ | |
 | KTB | ✗ | ✓ | weak B |
 | S4 | ✓ | ✗ | lift |
@@ -4091,7 +4367,7 @@ content type.
   **B with 4 is open.**
 * strong B: **open**, and the decision is taken — see below.
 
-**5** — nothing: no flag, no rules, no frame condition, no canonical model.  The arrow canonical
+**5** — scoped on paper 2026-10-25 (§3 5, "5: scope and plan").  Before that, nothing: no flag, no rules, no frame condition, no canonical model.  The arrow canonical
 model (`docs/v12-arrow-canonical.md`) is the intended route, after B.
 
 ### Decision: strong B goes the relational route *(2026-09-25)*

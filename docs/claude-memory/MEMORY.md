@@ -12,10 +12,12 @@
 - [QML: joint possibility goes through pairing](feedback_qml_joint_possibility_pairing.md) — anything asking to link two possibilities must take a PAIRED one as hypothesis; if pairing can’t do it the design is wrong
 - [QML: no ◇-free restrictions](feedback_qml_type_generality.md) — 'restrict to ◇-free and nest' FAILED (Here re-generalised; rejected for strong 4 twice); look for the construction's fault instead
 - [QML: the user's only freshness obligation](feedback_qml_locally_nameless_obligations.md) — declared free names must be new; every other freshness condition belongs to the machinery (make it structural)
-- [⭐QML: where we are (all levels)](project_qml_current_position.md) — READ FIRST (2026-10-25): wip/four-dia; every system without B complete (NoBComplete: growing tree with 4, staged without; FourCoh gone); NoB = B off only, staged tree asks StagedSys; next 5 or B with 4
+- [⭐QML: where we are (all levels)](project_qml_current_position.md) — READ FIRST (2026-10-29): wip/four-dia; every system without B complete; 5 planned (§3 5), F1 + F3 decided, F2 deferred to paper P2 (lean K45 first); next P1/P2 then step 1
 - [QML: lake and the working directory](feedback_qml_lake_cwd.md) — workspace is now the repo, so plain `lake` works; never `lake --dir` (elan takes the toolchain from cwd)
 - [QML metatheory to do](project_qml_metatheory_todo.md) — after completeness: strong completeness/compactness, generalisation on constants, uniform substitution, cut elimination, Craig interpolation, T_dia∀ ⇔ positive-Φ rule (notes in docs/v12-metatheory-todo.md)
 - [QML: cube vs Barcan](feedback_qml_cube_vs_barcan.md) — modal axioms: accessibility first, object existence only in strong forms; Barcan/comprehension (D_name) kept separate from the cube
 - [QML: witnessed rules follow the K paradigm](feedback_qml_witness_k_paradigm.md) — subscripted rules = plain ones + witness carried along (K_box vs K_dia); also the pattern for 4 and 5
 - [QML: principled over minimal](feedback_qml_principled_over_minimal.md) — when reusable/generalisable, prefer the principled design to the smaller patch
 - [QML: unlinked ◇-equality → model law](feedback_qml_unlinked_equality_model_law.md) — equality-like relations between ◇ objects with no link become model primitives with laws (as Ind), never new object-language rules
+
+- [QML scope: the cube](project_qml_scope_cube.md) — goal is the cube (T, D, B, 4, 5, weak + strong): a demonstration of the methods, and what philosophers care about; beyond-cube generality only an aside

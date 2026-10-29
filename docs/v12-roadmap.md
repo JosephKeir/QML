@@ -15,7 +15,8 @@ package.  Design detail stays in `v12-modal-extensions.md` (per axiom) and `v12-
 | strong B, rows 3–4 (row 3: B's unit `A → □◇A` read per arrow; row 4 the same along `◇_y`; flag `BStrongW`), with T (strong form, `WCoh`) and D (either strength), 4 off | ✓ | ✓ (+ strong completeness, compactness; every presented context; 2026-10-22, `v12-modal-extensions.md` §11.23: the per-arrow reading — model law `posBack_exists`, rule `ret_realise` (`ret_route` derived, `Proof.ret_route_node`, and removed), every edge doubly witnessed; the uniform-carrier design with named back witnesses abandoned, record branch `record/b2-named-witnesses`) | the network, strong chain (`bdataS`, `LimitEx.ofW`) |
 | 4 with its strong forms (the lift `FourStrong`, `FourStrongW`, either or both, independently), T and D (either strength), B off | ✓ | ✓ (+ strong completeness, compactness; every presented context; `GArrow.completenessG_presented`, 2026-10-25; T added 2026-10-25 by D-H3 and the leaf calculus, `v12-modal-extensions.md` §3 4); `FourStrongW` without `FourStrong` under T still open | the growing tree (`GArrow.*`, `gmodel`) |
 | B with 4, S5 | ✓ | **open** | — |
-| 5, 4's open maps | not yet stated | — | — |
+| 5 | not yet stated; scoped on paper 2026-10-25 (`v12-modal-extensions.md` §3 5, "5: scope and plan") | — | the cluster network (planned) |
+| 4's converse (`□□A → □A`) | not yet stated | — | — |
 
 `here_beta` stays general: §10.18 is decided (keep).
 
@@ -303,6 +304,23 @@ coherence is the shadow of flag closure, supplied by 5's object-level component
 frame condition exist yet) and testing the conjecture; if coherence fails, these systems are
 complete only over arrow frames, which is a decision about the intended semantics.  Strong B's
 `Back` (milestone 2) is likely to be what states the coherence.
+
+**Plan (2026-10-25, paper; `v12-modal-extensions.md` §3 5, "5: scope and plan").**  5 follows B
+and 4's strategy.
+* *Frame.*  An operation `side a b : v → s`.
+* *Weak 5.*  `x.side` (`Pos(w) → Pos(v)`) with `five_dia`, `five_dia_back` and `five_box`, through
+  a side translation `sideTr` (5's `shift`, partial without 4).
+* *Strong 5.*  The gather, per arrow: `◇∃n:□A. □(sideTr χ)(n.box) ⊢ ∃m:□A. □χ(m.box)`.  There is
+  no strong `◇` for 5 alone.
+* *Without 4.*  Weak completeness needs no outward principle: the values of `v`'s objects along
+  side arrows are named at the target, as weak B's back values.
+* *Canonical model.*  A cluster network: relational clusters, sibling arrows, late roots.
+* *With 4.*  The coherence component is `five_box` with a `keep` parameter, which is the step-4
+  test of the conjecture.
+* *Order.*  Paper P1–P4, then flags and semantics, then syntax, then K5/KD5, K45/KD45, strong 5,
+  B + 5 (closing B + 4 by closure), S5, and one theorem.
+* *Decisions.*  F1 and F3 decided (user, 2026-10-29); F2 deferred to paper check P2 (lean:
+  K45 first); F4, F5 open.
 
 ## Milestone 4 — the remaining strong forms, completing the cube
 
