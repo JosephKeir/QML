@@ -4584,6 +4584,77 @@ model.**
     their preimages denote alike anyway.
 * *Then* the cluster model's design pass against the code, and `GCluModel`.
 
+#### The K45 cluster model: design pass against the code *(2026-10-31)*
+
+**The shape: every world's modal facts are the root's, through preimages.**  All nodes are
+descendants of the root `ρ`, so `R s t :⇔ t ≠ ρ` has the same arrows from every world.  The model
+is the root's model, with each world's own base domain.
+
+**Raw objects (`GCluDom`, mirroring `GCanonDom`, unshaped).**
+* `GRDomC .Var s = (gw s).D`; `𝟙`; products componentwise.
+* `□A` is a function on `Acc s = Σ t, PLift (t ≠ ρ)`; `◇A` is an extent in `Acc s` with
+  contents.  `Acc s` does not depend on `s`, so **modal raw objects are literally shared**.
+* No shapes: T is off, and strong B is off.
+
+**Denotations, by recursion on the type, with a case split on the world.**
+* *At `ρ`*, as `grden` with T off:
+  * a `□`-term `□b` along `a` is the denotation at `a.1` of `pTr ρ a.1 b`, the path from `ρ`;
+  * a `◇`-term `◇_x c` has extent `{a | InExt ρ a.1 _ x}` and contents `pTrX`.
+* *At `s ≠ ρ`*, a modal term `m` denotes `den_ρ (pre_s m)`.  `pre_s` is the term-level preimage
+  along the path `ρ → s` (`preI` per edge, composed), and modal terms of `s` contain no base
+  variable of `s`, since views hide them.
+* *Base terms* denote their class in the world's term model, as now.
+* *Well-founded.*  The `ρ`-case calls smaller types at other worlds, and the other worlds call `ρ`
+  at the same type: recursion on `(type, world ≠ ρ)`.
+
+**Operations and laws (`GCluModel`).**
+* `keep` and `side` are the identity on modal raw objects, so `necDup_eval`, `posKeep_full`,
+  `posSide_ext` and `posSide_content` are immediate.
+* `trans` and `side` on the frame are trivial, so the side laws are by proof irrelevance.
+* `keepLift` and `necSide_exists` (strong 4 and 5, both lifts on) hold with the object itself.
+  This needs the carriers to be one set at every world: **definable at `s` = definable at `ρ`**
+  (R4).
+
+**The truth lemma (`GCluTruth`), by formula size over all worlds at once.**
+* Atoms, equality and quantifiers at base types, as now.  Quantifiers at modal types go through
+  Henkin witnesses, with R4 for the converse.
+* *`□ψ` at `s`.*
+  * The `□`-environment pushed from `s` is the one pushed from `ρ`, read through `pre_s`:
+    definitional, given names are unique.
+  * So `sat_s (□ψ) ↔ ∀ t ≠ ρ, pTrW ρ t (pre_s ψ) ∈ M_t`, using `size_pTrW` and the induction
+    hypothesis at `t`.
+  * That is `□ (pre_s ψ) ∈ M_ρ`, by `box_mem_path` and `child_box`, and so `□ψ ∈ M_s` by
+    `box_path_iff`.
+* *`◇_x ψ` at `s`*: the same through `pre_s x`, with the `◇`-version of uniformity (R2).
+
+**Risks, and what each needs.**
+* *R1. Stages for `pre_s` at the term level.*  A term's addresses are named at various parent
+  stages, so take the maximum (as `exists_pre`).  Denotations must not depend on the stage, as
+  `grden_congr`.
+* *R2. `◇`-uniformity.*  `◇_x ψ ∈ M_t` iff `◇_{pre x} (pre ψ) ∈ M_s`, one edge and then a path.
+  * One way: `five_dia`, then `gltr`.  The other: `four_dia` with `gltr` in the contrapositive.
+  * It needs the `◇`-view version of `subst_shift_pre` (`shifts_diaIn_keep`, the edge's `◇`
+    view), the same shape as the `□` version.
+* *R3. Extents at `ρ`.*  `InExt ρ t P z` for `ρ`'s witnesses, as now.  A cluster world's
+  `◇`-address `x` has the extent of `pre_s x`.
+* *R4. Preimages invert translation:* `den_ρ (pre_s (θ_{ρ→s} (m.keep))) = den_ρ m` for every
+  `ρ`-term `m`.
+  * For addresses it is `names_unique`, at η-faithful types; at the others there is one object.
+  * For terms it holds structurally.
+  * It gives "definable at `s` = definable at `ρ`", so the carriers are shared and `keepLift` is
+    trivial.
+
+**Files, in order (estimate).**
+1. `GCluDia`: the `◇`-view identity and `◇`-uniformity (R2), about as large as `GCluPre`'s `□`
+   part.
+2. `GCluPreT`: preimages of terms along paths, with stages (R1) and inversion (R4).
+3. `GCluDom`, `GCluModel`: raw objects, denotations, carriers, the model.  Smaller than
+   `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
+   the identity.
+4. `GCluTruth`: the truth lemma.
+5. `GCluCompleteness`, and dispatching K45 and KD45 with both lifts in `NoBComplete` (relaxing
+   the temporary `noFive`).
+
 **Step 2 for K45 as built (2026-10-29).**  `Proof.five_box` and `Proof.five_dia` (under `Four`
 and `Five`); their soundness cases (`Soundness`) and substitution cases (`ProofSubst`).  No new
 syntax.
