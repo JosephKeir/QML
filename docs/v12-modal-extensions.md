@@ -4263,6 +4263,40 @@ arrows.
   * vacuous fill-ins in the three canonical models (`CanonModel`, `BCanonModel`,
     `GCanonModel`/`GCanonLift`).
 
+**⭐Finding (2026-10-29, starting step 2): with 4, `x.side` is `x.keep`.**
+* *The semantics.*  Under 4 and 5 every arrow `e : w → s` factors as `a ; side a e`
+  (`trans_side`), and `side a (a ; d) = d` holds in every relational frame.  So the two extents
+  agree:
+  * `x.keep` along `a` has `{d | a ; d ∈ ext x}`;
+  * `x.side` along `a` has `{side a e | e ∈ ext x}`.
+
+  The contents agree too, both being `x`'s at `e = a ; d`.  Relationally this is `R(v) = R(w)` for
+  `v ∈ R(w)`: 4 gives `⊆` and 5 gives `⊇`, so pulling back and pushing across coincide.  P1's claim
+  that `x.keep.side` "has the wrong extent" overlooked `trans_side`.
+* *So under 4 there is no `side` item.*  It would be a second address for an object that already
+  has one, against the rule that every object has one address (`QML_v12m_Symbols`).
+  * The gate `ModalSys.sideOn` is withdrawn.  The `side` step (F1) is for K5 and KD5, where it
+    carries the links (F2).
+* *5's rules under 4 are 4's translation run the other way.*
+  * `five_box`: `◇□(shift φ) ⊢ □φ`, the same `shift` as `four_box`'s `□φ ⊢ □□(shift φ)`.
+  * `five_dia`: `◇_x φ ⊢ □◇_{x.keep}(shift φ)`, the converse direction of `four_dia`, strengthened
+    from `◇` to `□`.
+  * `five_dia_back` is `four_dia` itself.
+* *What their soundness needs.*  Only `trans_side`: `b = a ; side a b` gives `five_box`
+  (`sat_shift_twoBox`), and `side a b ∈ ext(x.keep)` gives `five_dia` (`Env.shiftAgree_diaKeep`).
+  `side_inj`, `side_side`, `side_trans` and `side_refl` are for K5 and S5.
+* *Substitution* is `four_box`'s and `four_dia`'s cases verbatim (`shift_subst`, `subst_dia`,
+  `shiftCorr_dia_keep`), so P2 is empty for K45.
+* *The gather under 4.*  With `trans_side` and `side a (a ; d) = d`, `b ↦ side a b` is a
+  bijection from `w`'s arrows to `v`'s, so the gather is 4's `□`-lift (`FourStrong`).  Strong K45
+  needs no new rule: by closure, `FiveStrong` with 4 means `FourStrong`.
+* *Consequence for the order of work.*  Steps 2, 4 and 5 shrink.  K45's canonical model is the
+  growing tree with cluster arrows, under rules that are already all there except these two.
+
+**Step 2 for K45 as built (2026-10-29).**  `Proof.five_box` and `Proof.five_dia` (under `Four`
+and `Five`); their soundness cases (`Soundness`) and substitution cases (`ProofSubst`).  No new
+syntax.
+
 ### □-BF and ◇-BF
 Base variables are invisible under `□`, so each Barcan formula pairs a concept quantifier outside
 with a base quantifier inside.

@@ -179,6 +179,25 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (WFF.boxx x hx φ) →
       Proof σ Γ Δ (.box (WFF.boxx (.step x .keep) (Ctx.exists_keep_dia hF hx)
         (WFF.shift (Ctx.shifts_diaIn_keep hF Γ x) Ctx.NoSlots.slots φ)))
+  -- Weak 5, with 4 (docs §3 5, "step 2"): `x.side` is `x.keep`, so 4's shift serves
+  /-- ⭐**What is possibly necessary is necessary** (weak 5, with 4): `◇□(shift φ) ⊢ □φ`, the
+      `□` view read along the arrow across, `a ; side a b = b`.  Its `◇`-form is
+      `◇φ ⊢ □◇(shift φ)`. -/
+  | five_box {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
+      {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ.boxIn 0} :
+      Proof σ Γ Δ (WFF.neg (.box (WFF.neg (.box
+        (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots φ))))) →
+      Proof σ Γ Δ (.box φ)
+  /-- ⭐**A possibility is necessarily possible, through the same object** (weak 5, with 4):
+      `◇_x φ ⊢ □◇_{x.keep}(shift φ)`, `five_box` with the witness carried.  With 4 and 5 the
+      restriction of `x` along an arrow is `x` moved across it, so `x.keep` is `x.side`; the
+      converse direction is `four_dia`. -/
+  | five_dia {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
+      {Δ : List (WFF σ Γ 0)} {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+      {φ : WFF σ (Γ.diaIn x) 0} :
+      Proof σ Γ Δ (.dia x hx φ) →
+      Proof σ Γ Δ (.box (.dia (.step x .keep) (Ctx.exists_keep_dia hF hx)
+        (WFF.shift (Ctx.shifts_diaIn_keep hF Γ x) Ctx.NoSlots.slots φ)))
   -- T + 4
   /-- ⭐**A possible object, kept, is realised at each member of its extent** (T + 4):
       `□_x Here(◇_{x.keep}(shift bd), bd)` (`WFF.hereKeep`), for any body `bd` of `x`'s view, as

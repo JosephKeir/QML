@@ -2856,6 +2856,39 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
                 Ctx.NoSlots.slots Ctx.NoSlots.slots
                 (Subst.shiftCorr_dia_keep hF hθ hx hw) φ)).symm).symm)
         (Proof.four_dia hF hy (Proof.subst p θ hθ hc hΓ))
+  | _, _, _, @Proof.five_box _ _ _ _ hF hV _ φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      Proof.five_box hF hV (Proof.conv
+        (congrArg (fun χ => WFF.neg (WFF.box (WFF.neg (WFF.box χ))))
+          (WFF.shift_subst (Ctx.shifts_boxIn_boxIn hF _) (Ctx.shifts_boxIn_boxIn hF Γ')
+            θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) θ.box.box
+            (Subst.ok_box (Subst.ok_box hθ)) (Subst.coh_box (Subst.ok_box hθ) (Subst.coh_box hθ hc))
+            hΓ.boxIn hΓ.boxIn.boxIn Ctx.NoSlots.slots Ctx.NoSlots.slots
+            (Subst.shiftCorr_box_box hF hθ) φ).symm)
+        (Proof.subst p θ hθ hc hΓ))
+  | _, _, _, @Proof.five_dia _ _ Γ _ hF hV _ x hx φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
+      have hy : ∃ X, Γ'.ref (ι x) = some (.VTypeDia X) :=
+        hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw
+      have hk₂ : ι (.step x .keep) = .step (ι x) .keep :=
+        hx.elim fun _ hX => Subst.coh_keep_dia hθ hc hX
+      have hwk : (θ.box.at (.step x .keep)).idxAlong [] = .step (ι x) .keep :=
+        hx.elim fun _ hX => Subst.idx_box_keep_dia hF hθ hc hX
+      Proof.conv
+        (congrArg WFF.box
+          ((WFF.subst_dia θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn
+            Ctx.NoSlots.slots (Ctx.exists_keep_dia hF hx) _ hk₂ (Ctx.exists_keep_dia hF hy)
+            (Subst.ok_dia (Subst.ok_box hθ) (Ctx.exists_keep_dia hF hx) hwk)
+            (hk₂ ▸ Subst.coh_dia (Subst.ok_box hθ) (Subst.coh_box hθ hc)
+              (Ctx.exists_keep_dia hF hx))
+            Ctx.NoSlots.slots
+            (WFF.shift (Ctx.shifts_diaIn_keep hF Γ x) Ctx.NoSlots.slots φ)).trans
+            (congrArg (fun χ => WFF.dia _ _ χ)
+              (WFF.shift_subst (Ctx.shifts_diaIn_keep hF Γ x)
+                (Ctx.shifts_diaIn_keep hF Γ' (ι x)) (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw)
+                (Subst.coh_dia hθ hc hx) _ _ _ (hΓ.diaIn x) Ctx.NoSlots.slots
+                Ctx.NoSlots.slots Ctx.NoSlots.slots
+                (Subst.shiftCorr_dia_keep hF hθ hx hw) φ)).symm).symm)
+        (Proof.five_dia hF hV hy (Proof.subst p θ hθ hc hΓ))
   | _, _, _, @Proof.here_keep _ _ Γ _ Δ hT hF x hx A a bd, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
       have hy : ∃ X, Γ'.ref (ι x) = some (.VTypeDia X) :=

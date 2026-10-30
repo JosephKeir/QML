@@ -126,12 +126,6 @@ theorem ModalSys.keepOnly_flags [ModalSys] (hk : ModalSys.keepOnly = true) :
     need to know where the possibilities inside an object come from (§11.15, phase L3). -/
 def ModalSys.shaped [ModalSys] : Bool := ModalSys.T || ModalSys.BStrong
 
-/-- ⭐**Where possible objects have sides** (staged, `docs/v12-modal-extensions.md` §3 5, paper
-    check P1): with 5 and 4, and unshaped.  With 4 every item of a `□` view has an image along a
-    side arrow, so substitution computes; without 4 the links are needed, and with shapes a root
-    action along side arrows. -/
-def ModalSys.sideOn [ModalSys] : Bool := ModalSys.Five && ModalSys.Four && !ModalSys.shaped
-
 theorem ModalSys.shaped_of_T [ModalSys] (hT : ModalSys.T = true) : ModalSys.shaped = true := by
   simp [ModalSys.shaped, hT]
 

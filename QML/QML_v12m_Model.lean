@@ -651,8 +651,8 @@ structure Model (σ : Signature) where
     (a : frame.Acc w),
     (posFull (necEval (ops.posSide hV x) a)).1.1 = frame.sideAcc hV a '' (posFull x).1.1
   /-- Under 5, a possible object moved across has at `side a b` the content `x` has at `b`.  Only
-      the section is stated: sides are staged out of shaped systems (`ModalSys.sideOn`), so the
-      shape waits for S5. -/
+      the section is stated: no syntax reads `posSide` in a shaped system yet (with 4 it is
+      `posKeep`, docs §3 5, "with 4, `x.side` is `x.keep`"), so the shape waits for S5. -/
   posSide_content : ∀ {A : VarType} {w : frame.W} (hV : ModalSys.Five = true) (x : frame.Pos A w)
     (a b : frame.Acc w) (hb : b ∈ (posFull x).1.1)
     (hc : frame.sideAcc hV a b ∈ (posFull (necEval (ops.posSide hV x) a)).1.1),

@@ -317,6 +317,37 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       exact ih M hM env hfin hnp hΔ ⟨X, hx', ⟨_, hm⟩,
         (sat_shift (φ := φ.neg) Ctx.NoSlots.slots
           (Env.shiftAgree_diaKeep hF env hx' v b.1 hm hr b.2)).mp hb⟩
+  | @five_box Γ _ hF hV Δ φ p ih =>
+      -- Any arrow `b` is the premise's arrow `a` followed by the arrow across, `a ; side a b`.
+      intro M hM w env hfin hnp hΔ b
+      by_contra hb
+      refine ih M hM env hfin hnp hΔ fun a ha => hb ?_
+      have h := (sat_shift_twoBox hF env Ctx.NoSlots.slots φ a (M.frame.sideAcc hV a b)).mp
+        (ha (M.frame.sideAcc hV a b))
+      obtain ⟨t, ⟨c⟩⟩ := b
+      dsimp only [Frame.sideAcc] at h
+      rwa [M.frame.trans_side hF hV] at h
+  | @five_dia Γ _ hF hV Δ x hx φ p ih =>
+      -- `x`'s arrow `b`, moved across `v`, is in `x.keep`'s extent there, `v ; side v b = b`
+      -- (`Model.posKeep_full`), and the kept view agrees with `x`'s across the shift.
+      intro M hM w env hfin hnp hΔ v
+      obtain ⟨X, hr, ⟨⟨t, ⟨c⟩⟩, hb⟩, hφ⟩ := ih M hM env hfin hnp hΔ
+      have e : M.frame.trans hF v.2.down (M.frame.side hV v.2.down c) = c :=
+        M.frame.trans_side hF hV _ _
+      have hrk : Γ.boxIn.ref (.step x .keep) = some (.VTypeDia X) :=
+        Ctx.ref_keep_of' hF hr VarType.keepable_dia
+      have hm : (⟨t, ⟨M.frame.trans hF v.2.down (M.frame.side hV v.2.down c)⟩⟩ : M.frame.Acc w) ∈
+          (M.posEval (env.ref x hr)).1 := by
+        rw [e]; exact hb
+      have H := congrArg Prod.fst (M.posKeep_full hF (env.ref x hr) v)
+      have hm' : M.frame.sideAcc hV v ⟨t, ⟨c⟩⟩ ∈
+          (M.posEval ((env.boxPush v).ref (.step x .keep) hrk)).1 :=
+        (congrArg (fun S : M.frame.PosSec _ _ => M.frame.sideAcc hV v ⟨t, ⟨c⟩⟩ ∈ S.1) H).mpr hm
+      have key : ∀ (c' : M.frame.R w t) (hc : (⟨t, ⟨c'⟩⟩ : M.frame.Acc w) ∈
+          (M.posEval (env.ref x hr)).1), c' = c → M.sat (env.diaPush x hr ⟨⟨t, ⟨c'⟩⟩, hc⟩) φ := by
+        rintro c' hc rfl; exact hφ
+      exact ⟨X, hrk, ⟨_, hm'⟩, (sat_shift Ctx.NoSlots.slots
+        (Env.shiftAgree_diaKeep hF env hr v _ hm hrk hm') φ).mpr (key _ hm e)⟩
   | @here_keep Γ _ Δ hT hF x hx A a bd =>
       intro M hM w env hfin hnp hΔ hd
       obtain ⟨X, hr, b, hb⟩ := hd
