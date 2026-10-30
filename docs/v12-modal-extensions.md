@@ -4814,7 +4814,16 @@ is the root's model, with each world's own base domain.
    `shiftCorr_preI`, `shiftCorr_preIX` (a world's preimage renamings commute with 4's shift);
    `preTB_shift`, `preTB_keepDia`; `preTB_applyG`, `preTD_applyG`, `preTD_box`; ⭐`cden_applyG`
    (as `grden_applyG`; `dup` by `cden_tr`, `dkeep` by `cden_trX`); ⭐`cdefinable_rawEval`.
-   Next: `GCluModel` (frame, carriers, operations, laws, as checked above).
+   **The model, built (2026-10-30, `QML_v12m_GCluModel.lean`, in TOP in place of `GCluFunc`):**
+   `carrows`, `cframe` (every arrow law by proof irrelevance; `serial` from the root's
+   `□⊥`-child); `ctoDom`/`cfromDom` and their laws; `cnecEval`, `cposEval` and injectivity;
+   `cops` (`posSide` is `posKeep`); `ceval_toDom`; `cposSerial` (the root's Henkin witness for
+   strong D, read at the world by R4); `ckeepLift` (the object itself, by R4); ⭐`cmodel`.  As
+   the field check said: every law of 4 and 5 by definition or by R4; `Ind` is equality; the
+   root action is the identity on roots (`RootKeep.ofRoot`).  `CluFlags` gained `noB`,
+   `noBStrong`.
+   Next: `GCluTruth`, the truth lemma (by formula size over all worlds; `□` and `◇` through
+   `box_pathO_iff`, `dia_pathO_iff`).
    Smaller than
    `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
    the identity.

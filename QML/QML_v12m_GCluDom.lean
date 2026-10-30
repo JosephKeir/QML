@@ -8,7 +8,7 @@ against the code").  Without T every non-root world is a strict descendant of th
 (`groot`), so every world's arrows are the root's (`CAcc := GAcc ρ`), and modal raw objects do
 not depend on the world.
 
-* `CluFlags`: 5 and both lifts on, T off.
+* `CluFlags`: 5 and both lifts on, T and B off.
 * `rpath`, `rstg`, `rorig`: a world's path from the root, the root stage of its stage, and its
   origins at the root (`GCluOrig`).
 * **Raw objects** (`CRDom`): a necessary object has a value along each arrow of the root, a
@@ -39,12 +39,14 @@ open BArrow
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
   {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
 
-/-- The flags of the K45 cluster model: 5 and both lifts on, T off. -/
+/-- The flags of the K45 cluster model: 5 and both lifts on, T and B off. -/
 structure CluFlags : Prop where
   five : ModalSys.Five = true
   noT : ModalSys.T = false
   fourS : ModalSys.FourStrong = true
   fourSW : ModalSys.FourStrongW = true
+  noB : ModalSys.B = false
+  noBStrong : ModalSys.BStrong = false
 
 theorem CluFlags.keepOnly (hX : CluFlags) : ModalSys.keepOnly = false := by
   simp [ModalSys.keepOnly, hX.noT]

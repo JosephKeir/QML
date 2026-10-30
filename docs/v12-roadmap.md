@@ -329,8 +329,9 @@ K45 cluster model: design pass against the code").  Built so far: names by origi
 (`names_unique`); `GCluDia` (`◇`-uniformity, R2); `GCluOrig` (one canonical preimage along
 paths, uniformity for it; names forward; the round trip is weakening, R4); `SubstFaithful`
 (substitution reads only η-faithful addresses); `GCluDom` (denotations, stage independence,
-and R4 in the model: at modal types every world defines what the root defines).  Next:
-`GCluModel`, `GCluTruth` and `GCluCompleteness`.
+and R4 in the model: at modal types every world defines what the root defines); `GCluTr` (the
+path translation's round trip); `GCluFunc` (the function algebra); `GCluModel` (the model).
+Next: `GCluTruth` and `GCluCompleteness`.
 
 ## Milestone 4 — the remaining strong forms, completing the cube
 
