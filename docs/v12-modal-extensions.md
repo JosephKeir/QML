@@ -4824,6 +4824,37 @@ is the root's model, with each world's own base domain.
    `noBStrong`.
    Next: `GCluTruth`, the truth lemma (by formula size over all worlds; `□` and `◇` through
    `box_pathO_iff`, `dia_pathO_iff`).
+
+   **The truth lemma: design check against `GTruth` (2026-10-30).**
+   * *What the growing tree does.*  The term lemma (`GCanonTerm`) works with **chains**
+     (`GTr`: substitutions, shifts, weakenings, collapses) and **agreement**: an environment
+     agrees with a chain `C` when every address reads as the denotation of its η-expansion
+     translated by `C` (`GAgree`).  Agreement passes into `□` along an arrow (the chain grows by
+     the path's translation) and into `◇_x`; `interp_gtr` (by induction on the term) gives a
+     term's value as its translated denotation; `interp_gcanon` follows.  The truth lemma then
+     compares a pushed environment with the end's canonical one through substitution
+     (`eq_substEnv_of_gagree`, `sat_boxPush_path`, `sat_diaPush_path`).
+   * *What carries over unchanged.*  `GTr` and its lemmas (generic); the formula translations
+     `pTrW`, `pTrXW` and `box_mem_path`, `boxx_mem_path` (about the theories, not the model);
+     the propositional, atom and quantifier cases (Henkin witnesses at the world, carriers
+     definable at the world).
+   * *What is ported to `cmodel`.*  `GAgree` → `CAgree`; `interp_gtr` → `interp_ctr`;
+     `gcanonEnv`, `interp_gcanon`; the push lemmas and `eq_substEnv_of_gagree`; the root's
+     `sat_boxPush_path`, `sat_diaPush_path` (T off only: no realisations, no shapes, no `Here`).
+   * *The one cluster-specific step.*  Pushing from a world `s` along an arrow `a`: the chain
+     grows by **`s`'s preimage, then the root's path translation** to `a`'s end.  That is
+     `cden`'s own definition at a modal type, so `cagree_boxPush` and `cagree_diaPush` hold by
+     unfolding and the chain lemmas.  Then `env_s.boxPush a = substEnv pre_s (env_ρ.boxPush a)`
+     (as `eq_substEnv_of_gagree`), so `sat (env_s.boxPush a) χ ↔ sat (env_ρ.boxPush a)
+     (pre_s χ)` (`sat_subst`), and the root's push lemma takes it to `a`'s end.
+   * *The modal cases.*
+     * `□χ` at `s`: ⇐ `box_pathO_iff` gives `□(pre_s χ)` at the root, `box_mem_path` and the
+       induction hypothesis at each arrow's end; ⇒ by contraposition, `glex` at the root.
+     * `◇_x χ` at `s`: the extent is the arrows of `rorig x`'s extent at the root; ⇐
+       `dia_pathO_iff`, `glexX` at the root; ⇒ by contraposition through `boxx_mem_path`.
+   * *Size.*  Mostly a port: `GCluTerm` (agreement and the term lemma, about `GCanonTerm`'s 630
+     lines, smaller without T) and `GCluTruth` (the push lemmas and the cases, about half of
+     `GTruth`'s 1140, which is mostly T).  No new mathematics found; the risk is volume.
    Smaller than
    `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
    the identity.
