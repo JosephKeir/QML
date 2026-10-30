@@ -5,7 +5,8 @@ import QML.QML_v12m_GLimit
 
 Every term entry of every edge is an admissible lifted term (`LiftAdm`: the `□` view tuple, the
 η-expansion of a possible address, or — only when the `□`-lift is off — a view tuple), weakened to
-the child's language at the lift (`docs/v12-modal-extensions.md` §3 4, D-H3).  Term entries are
+the child's language at the lift (`docs/v12-modal-extensions.md` §3 4, D-H3).  Under 5 it is the
+η-term of an address (names by origin, §3 5).  Term entries are
 made only by the lift (`gliftG`); the other operations make address entries (`gextF`, `ofRen`).
 
 * `AdmEnt`, `LiftEntOk`, `liftEntOk_gnet`, and in the limit ⭐`fmapL_adm`.
@@ -21,9 +22,12 @@ open BArrow
 
 variable {σ : Signature}
 
-/-- An entry is an admissible lifted term of a liftable type, weakened to a later language. -/
+/-- An entry is an admissible lifted term of a liftable type, weakened to a later language; under
+    5, the η-term of an address (names by origin, `OriginAdm`). -/
 def AdmEnt (hF : ModalSys.Four = true) (e : LTerm σ) : Prop :=
   ∃ (e₀ : LTerm σ) (h : e₀.1 <:+ e.1), LiftAdm hF e₀ ∧ e₀.2.1.liftable = true ∧
+    (ModalSys.Five = true → ∃ (z : VarSymb) (T : VarType) (hz : (ctxOf e₀.1).ref z = some T),
+      e₀ = ⟨e₀.1, T, _, Term.eta z T hz⟩) ∧
     e = ⟨e.1, e₀.2.1, e₀.2.2.1, Term.mono (ctxOf_le_of_suffix h) e₀.2.2.2⟩
 
 namespace GNetSt
@@ -101,7 +105,9 @@ theorem LiftEntOk.lift (hL : N.LiftEntOk hF) (k : Node) (o : LTerm σ) :
             simp only [gliftG] at he
             split_ifs at he with h₁ h₂
             · cases he
-              exact ⟨⟨l, T, a, t⟩, h, hv.1, hl, rfl⟩
+              refine ⟨⟨l, T, a, t⟩, h, hv.1, hl, fun h5 => ?_, rfl⟩
+              obtain ⟨z, T', hz, e, -⟩ := hv.2 h5
+              exact ⟨z, T', hz, e⟩
             · exact hL _ _ e he
       all_goals exact hL
 

@@ -513,7 +513,7 @@ theorem entry_shOf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {t : GW 
       rw [cEnv_ref hT hM₀ (Ctx.Le.refl _), cEnv_decl hT hM₀ ⟨j, hx⟩, annSh_eta hko]
       rfl
   | inr τ =>
-      obtain ⟨e₀, hsuf, hadm, -, hτ⟩ := fmapL_adm hfm
+      obtain ⟨e₀, hsuf, hadm, -, -, hτ⟩ := fmapL_adm hfm
       obtain ⟨L, T₀, a₀, t₀⟩ := τ
       have hle : (ctxOf L).Le Δ := by
         by_contra hn

@@ -4663,6 +4663,34 @@ is the root's model, with each world's own base domain.
    * ⭐`dia_path_iff`: along a path, by `exists_pre` edge by edge, as `box_path_iff`.
    * As planned, no surprises: the `□` part's shape carried over directly.
 2. `GCluPreT`: preimages of terms along paths, with stages (R1) and inversion (R4).
+   **Built so far (2026-10-30, `QML_v12m_GCluOrig.lean`, in TOP in place of `GCluDia`):**
+   * *One preimage, as a function.*  `orig s t z` chooses one parent namer of each child address,
+     for every stage at once, so a stage change is a weakening (R1).  `exists_stage` (as
+     `exists_pre`, map fixed) and the chosen stage `estg`.
+   * *Along a path.*  `pstgO` (stages) and `porig` (origins), composed edge by edge; `PPreOk`,
+     `pPreOk`.  `preWP`/`preWPX`: the path preimage of a `□`-view or `◇_x`-view formula is **one**
+     renaming substitution (`preI`/`preIX` of `porig`), not an iterate.  `preWP_cons`,
+     `preWPX_cons`: it is the first edge's preimage of the rest's (`sim_eS_ren_comp`,
+     `preI_comp`, `preIX_comp`).
+   * ⭐`box_pathO_iff`, ⭐`dia_pathO_iff`: uniformity along a path for this canonical preimage,
+     stated at the descendant's own stage (`□ψ ∈ M_t,j`, conservativity absorbing the later
+     stages).  These replace the existential `box_path_iff`/`dia_path_iff` for the truth lemma.
+   * *R4 at addresses.*  `AdmEnt` now records, under 5, that a lift is an η-term of an address
+     (the guard's `OriginAdm`), so ⭐`fmapL_names`: every entry names an address.
+     ⭐`orig_names`: the origin of a named address is its namer, at η-faithful types.
+   * *Terms need nothing new:* only base-typed addresses are terms, so a modal term is `boxtm`
+     or `diatm`, and its preimage is the same renaming applied inside.
+
+   **R4 for terms: the plan.**
+   * *Per edge.*  The round trip `rt v := orig (the address v.keep's entry names)`: the edge
+     after `four_box`'s shift, then the preimage, is the renaming `preI rt` (up to η), the mirror
+     of `sim_pre_edge`.  `rt` keeps types, and fixes η-faithful addresses (`orig_names`).
+   * *Along a path* (`pTr` translates edge by edge, first edge first, and the preimage composes
+     the other way): the composite is again a renaming by a type-preserving map fixing the
+     η-faithful addresses, by induction.
+   * *Semantically* (with `GCluDom`): such a renaming does not change a root denotation, since
+     at the other types (`𝟙`, `×`, `□` only) the raw domain is a singleton.  So
+     `den_ρ (pre_s (pTr ρ s m.keep)) = den_ρ m`, and the carriers are shared.
 3. `GCluDom`, `GCluModel`: raw objects, denotations, carriers, the model.  Smaller than
    `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
    the identity.

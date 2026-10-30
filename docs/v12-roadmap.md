@@ -326,8 +326,9 @@ and 4's strategy.
 model is the root-centric cluster model on the growing tree (`v12-modal-extensions.md` §3 5, "The
 K45 cluster model: design pass against the code").  Built so far: names by origin (N1,
 `glorigin`); `GCluPre` (`□`-uniformity along edges and paths, `box_cluster`); `GCluNames`
-(`names_unique`); `GCluDia` (`◇`-uniformity, R2).  Next: `GCluPreT` (term preimages with
-stages, R1; inversion, R4), then `GCluDom`/`GCluModel`, `GCluTruth` and `GCluCompleteness`.
+(`names_unique`); `GCluDia` (`◇`-uniformity, R2); `GCluOrig` (one canonical preimage along
+paths, uniformity for it, R4 at addresses).  Next: R4 for terms (the round trip is a renaming),
+then `GCluDom`/`GCluModel`, `GCluTruth` and `GCluCompleteness`.
 
 ## Milestone 4 — the remaining strong forms, completing the cube
 

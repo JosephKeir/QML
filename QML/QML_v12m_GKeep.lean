@@ -782,7 +782,7 @@ theorem keptTr_ok (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW h
       exact ⟨w, _, fun _ => rfl, (reach_ppath hok).1, ⟨U, X, ⟨_, hok⟩, hq⟩, rfl, id⟩
   | inr τ =>
       rw [he] at hok
-      obtain ⟨e₀, hsuf, hadm, -, hτ⟩ := fmapL_adm he
+      obtain ⟨e₀, hsuf, hadm, -, -, hτ⟩ := fmapL_adm he
       obtain ⟨L, T₀, a₀, t₀⟩ := τ
       have hle : (ctxOf L).Le Δ := by
         by_contra hn
@@ -967,7 +967,7 @@ theorem keptTr_form (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW
         (fun h => by cases h), fun n' R' _ Y hY => ⟨rfl, rfl, U, Y, ⟨_, hok⟩, hY⟩⟩
   | inr τ =>
       rw [he] at hok
-      obtain ⟨e₀, hsuf, hadm, -, hτ⟩ := fmapL_adm he
+      obtain ⟨e₀, hsuf, hadm, -, -, hτ⟩ := fmapL_adm he
       obtain ⟨L, T₀, a₀, t₀⟩ := τ
       have hle : (ctxOf L).Le Δ := by
         by_contra hn
