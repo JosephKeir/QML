@@ -5049,6 +5049,20 @@ KDB5) the root's loop is new work, so S5 comes **before** B + 5, reversing steps
 * *T off is gone from `GCluPre`, `GCluDia` and `GCluOrig`:* it was only passed along.  The real
   gate left there is `ModalSys.keepOnly = false`, which is step 2.  `CluFlags.noT` stays until then.
 
+**Step 2 built (2026-10-30): no `keepOnly` versions were needed.**
+* *Item 5 and step 2 of the order expected mirrors; the lemmas simply hold in both modes.*  The
+  gate was only ever `VarSymb.inner_box` in a `box` case, and a `box` item carries `keepOnly = false`
+  itself (`Ctx.boxIn_box`).  T's views have no `box` items, so the case does not arise.
+* *`keepE_eta_sim`* now goes through `SubE.keepE_eta` and `SubE.keepE_eta_dia`, which never
+  depended on the mode.
+* *So these hold with T on or off, given both lifts:* `exists_pre`, `sim_pre_edge`, `box_pre_iff`,
+  `dia_pre_iff`, ⭐`box_pathO_iff`, ⭐`dia_pathO_iff`, `round_trip`, `shiftCorr_preI`,
+  `shiftCorr_preIX`, and the edge lemmas of `GCluTr`.  That is the theory half of the cluster:
+  uniformity and the renaming round trip.
+* *What is still T off:* the model only, through `CluFlags.noT` (`cden`, `cmodel`, the term lemma
+  and the truth lemma).  There `pTr` along the empty path, `extract`, shapes and `Here` are real
+  work, which is steps 3 and 4.
+
 ### □-BF and ◇-BF
 Base variables are invisible under `□`, so each Barcan formula pairs a concept quantifier outside
 with a base quantifier inside.

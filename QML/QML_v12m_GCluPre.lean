@@ -52,14 +52,13 @@ theorem levels_boxIn_item {l : List VarType} {v : VarSymb} {T : VarType}
 /-- ⭐**The preimage item map is well typed**, when `pre` keeps the type of every reachable
     keepable address. -/
 theorem itemOk_preI {ls lt : List VarType} {pre : VarSymb → VarSymb}
-    (hk : ModalSys.keepOnly = false)
     (hpre : ∀ z T, (ctxOf lt).ref z = some T → T.keepable = true →
       (ctxOf ls).ref (pre z) = some T) :
     ItemOk ((ctxOf lt).boxIn) ((ctxOf ls).boxIn) (preI pre) := by
   intro v T _ hv
   match v with
   | .step z .box =>
-      obtain ⟨-, hz⟩ := Ctx.boxIn_box hv
+      obtain ⟨hk, hz⟩ := Ctx.boxIn_box hv
       rw [Ctx.ref_nonproj _ rfl]
       exact Ctx.boxIn_box_of hk (hpre z _ hz rfl)
   | .step z .keep =>
@@ -114,41 +113,17 @@ theorem entOf_names_tm (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh h
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 /-- A kept η-term is the η-term of the kept address, up to η. -/
-theorem keepE_eta_sim {Δ : Ctx} (hk : ModalSys.keepOnly = false) (hF' : ModalSys.Four = true)
-    {u : VarSymb} {T : VarType} (hu : Δ.ref u = some T) (hkp : T.keepable = true) :
+theorem keepE_eta_sim {Δ : Ctx} (hF' : ModalSys.Four = true) {u : VarSymb} {T : VarType}
+    (hu : Δ.ref u = some T) (hkp : T.keepable = true) :
     SubE.Sim T (SubE.keepE (.tm (Term.eta (σ := σ) u T hu))) (.ren (.step u .keep)) := by
   cases T with
   | VTypeBox A =>
-      change SubE.Sim _ (SubE.keepE (.tm (.boxtm (Term.eta u.inner A (Ctx.ref_inner hu))))) _
-      rw [SubE.keepE_tm _ hF']
-      have e1 : (VarSymb.inner u).shift 0 = (VarSymb.step u .keep).inner := by
-        rw [VarSymb.inner_box hk, VarSymb.inner_box hk, VarSymb.shift_level_zero rfl]
-      have hr : Δ.boxIn.ref (.step u .keep) = some (.VTypeBox A) := Ctx.ref_keep_of hF' hu
-      have H := (Term.shift_eta (σ := σ) (Ctx.shifts_boxIn_boxIn hF' Δ) u.inner A
-        (Ctx.ref_inner hu)).trans (Term.eta_congr e1 A _ (Ctx.ref_inner hr))
-      rw [show (SubE.tm (Term.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF' Δ)
-          (Term.eta u.inner A (Ctx.ref_inner hu)))) : SubE σ Δ.boxIn) =
-        SubE.tm (Term.boxtm (Term.eta (VarSymb.step u .keep).inner A (Ctx.ref_inner hr))) from
-        congrArg (fun p : Σ b, Term σ Δ.boxIn.boxIn A b => SubE.tm (Term.boxtm p.2)) H]
-      exact SubE.Sim.eta_ren (T := .VTypeBox A) (.step u .keep) hr
+      rw [SubE.keepE_eta hF' hu]
+      exact SubE.Sim.eta_ren (T := .VTypeBox A) (.step u .keep) (Ctx.ref_keep_of hF' hu)
   | VTypeDia A =>
-      change SubE.Sim _ (SubE.keepE (.tm (.diatm u ⟨A, hu⟩
-        (Term.eta (.step u .dia) A (Ctx.ref_diaIn_of hu))))) _
-      rw [SubE.keepE_dia _ _ _ hF']
-      have hr : Δ.boxIn.ref (.step u .keep) = some (.VTypeDia A) :=
-        Ctx.ref_keep_of' hF' hu VarType.keepable_dia
-      have e1 : (VarSymb.step u .dia).shift 0 = .step (.step u .keep) .dia :=
-        VarSymb.shift_level_zero rfl
-      have H := (Term.shift_eta (σ := σ) (Ctx.shifts_diaIn_keep hF' Δ u) (.step u .dia) A
-        (Ctx.ref_diaIn_of hu)).trans (Term.eta_congr e1 A _ (Ctx.ref_diaIn_of hr))
-      rw [show (SubE.tm (Term.diatm (.step u .keep) (Ctx.exists_keep_dia hF' ⟨A, hu⟩)
-          (Term.shift (Ctx.shifts_diaIn_keep hF' Δ u)
-            (Term.eta (.step u .dia) A (Ctx.ref_diaIn_of hu)))) : SubE σ Δ.boxIn) =
-        SubE.tm (Term.diatm (.step u .keep) ⟨A, hr⟩
-          (Term.eta (.step (.step u .keep) .dia) A (Ctx.ref_diaIn_of hr))) from
-        congrArg (fun p : Σ b, Term σ (Δ.boxIn.diaIn (.step u .keep)) A b =>
-          SubE.tm (Term.diatm (.step u .keep) ⟨A, hr⟩ p.2)) H]
-      exact SubE.Sim.eta_ren (T := .VTypeDia A) (.step u .keep) hr
+      rw [SubE.keepE_eta_dia hF' hu]
+      exact SubE.Sim.eta_ren (T := .VTypeDia A) (.step u .keep)
+        (Ctx.ref_keep_of' hF' hu VarType.keepable_dia)
   | Var => cases hkp
   | VTypeOne => cases hkp
   | VTypeProd _ _ => cases hkp
@@ -161,7 +136,7 @@ def PreOk (s t : GW hF M₀) (i : ℕ) (lt : List VarType) (pre : VarSymb → Va
 
 /-- ⭐**The preimage, then the edge read through the shift, is the identity** on the child's `□`
     view, up to η (`docs/v12-modal-extensions.md` §3 5, names by origin). -/
-theorem sim_pre_edge (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false)
+theorem sim_pre_edge (hM₀ : Theory.IsMCS M₀)
     {s t : GW hF M₀} (h : GCh hF M₀ s t) (i : ℕ) {lt : List VarType}
     {pre : VarSymb → VarSymb} (hpre : PreOk s t i lt pre) :
     Subst.Sim ((ctxOf lt).boxIn)
@@ -179,7 +154,7 @@ theorem sim_pre_edge (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false
   rw [Subst.at_atShift]
   match st, hv with
   | .box, hv =>
-      obtain ⟨-, hz⟩ := Ctx.boxIn_box hv
+      obtain ⟨hk, hz⟩ := Ctx.boxIn_box hv
       obtain ⟨hpz, hn⟩ := hpre u _ hz rfl
       change SubE.Sim T ((edgeBox s t i).at (VarSymb.shift 0 (.step (pre u) .box))) _
       rw [VarSymb.shift_level_zero rfl, Subst.at_nonproj _ rfl]
@@ -209,7 +184,7 @@ theorem sim_pre_edge (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false
         exact .refl _
       · obtain ⟨rfl, hz'', e⟩ := entOf_names_tm hM₀ h i hpz hkp hz' he
         rw [e]
-        exact keepE_eta_sim hk hF' hz'' hkp
+        exact keepE_eta_sim hF' hz'' hkp
   | .fst, hv => cases hv
   | .snd, hv => cases hv
   | .dia, hv => cases hv
@@ -239,25 +214,25 @@ theorem subst_idS_le {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots] (hle : Γ.Le Δ) (�
   rwa [WFF.mono_refl, WFF.subst_id] at h
 
 /-- The preimage of a formula of the child's `□` view, in the parent's `□` view. -/
-noncomputable def preW (hk : ModalSys.keepOnly = false) {s t : GW hF M₀} {i : ℕ}
+noncomputable def preW {s t : GW hF M₀} {i : ℕ}
     {lt : List VarType} {pre : VarSymb → VarSymb} (hpre : PreOk s t i lt pre)
     (ψ : WFF σ (ctxOf lt).boxIn 0) : WFF σ (ctxOf (glat s i)).boxIn 0 :=
   WFF.subst (eIdx (ofRen (preI pre))) (eS σ (ctxOf (glat s i)).boxIn (ofRen (preI pre)))
-    (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hk fun z T hz hkp => (hpre z T hz hkp).1)))
+    (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI fun z T hz hkp => (hpre z T hz hkp).1)))
     (coh_eS_kView (k := none)
-      (entOk_ofRen (itemOk_preI hk fun z T hz hkp => (hpre z T hz hkp).1)))
+      (entOk_ofRen (itemOk_preI fun z T hz hkp => (hpre z T hz hkp).1)))
     Ctx.NoSlots.slots Ctx.NoSlots.slots ψ
 
 /-- ⭐**A formula of the child's `□` view is the edge's translation of its preimage, read
     through the shift** (`docs/v12-modal-extensions.md` §3 5): `five_box`'s and `four_box`'s
     form, so `□ψ` at the child and `□ (preW ψ)` at the parent stand or fall together. -/
-theorem subst_shift_pre (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false)
+theorem subst_shift_pre (hM₀ : Theory.IsMCS M₀)
     {s t : GW hF M₀} (h : GCh hF M₀ s t) (i : ℕ) {lt : List VarType}
     (hle : (ctxOf lt).Le (ctxOf (glat t (glstg s t i)))) {pre : VarSymb → VarSymb}
     (hpre : PreOk s t i lt pre) (ψ : WFF σ (ctxOf lt).boxIn 0) :
     WFF.subst (eIdx (fmapL hF M₀ t.1)) (edgeBox s t i) (ok_edgeBox hM₀ h i)
         (coh_edgeBox hM₀ h i) Ctx.NoSlots.slots Ctx.NoSlots.slots
-        (WFF.shift (Ctx.shifts_boxIn_boxIn hF _) Ctx.NoSlots.slots (preW hk hpre ψ)) =
+        (WFF.shift (Ctx.shifts_boxIn_boxIn hF _) Ctx.NoSlots.slots (preW hpre ψ)) =
       WFF.mono hle.boxIn ψ := by
   unfold preW
   rw [WFF.subst_shift (Ctx.shifts_boxIn_boxIn hF _) Ctx.NoSlots.slots Ctx.NoSlots.slots _
@@ -268,27 +243,27 @@ theorem subst_shift_pre (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = fa
       Ctx.NoSlots.slots (Subst.preShift_atShift _ _),
     WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ (Subst.ok_idS_le hle.boxIn)
       (Subst.coh_idS_le hle.boxIn) Ctx.NoSlots.slots Ctx.NoSlots.slots Ctx.NoSlots.slots
-      (simS_symm (sim_pre_edge hM₀ hk h i hpre)) ψ]
+      (simS_symm (sim_pre_edge hM₀ h i hpre)) ψ]
   exact subst_idS_le hle.boxIn ψ
 
 /-- ⭐**Cluster uniformity along an edge** (`docs/v12-modal-extensions.md` §3 5): under 4 and 5, a
     child's `□`-formula holds exactly when its preimage's does at the parent — by `four_box` and
     the edge's transfer one way, the transfer's contrapositive and `five_box` the other. -/
-theorem box_pre_iff (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false)
+theorem box_pre_iff (hM₀ : Theory.IsMCS M₀)
     (hV : ModalSys.Five = true) {s t : GW hF M₀} (h : GCh hF M₀ s t) (i : ℕ)
     {lt : List VarType} (hle : (ctxOf lt).Le (ctxOf (glat t (glstg s t i))))
     {pre : VarSymb → VarSymb} (hpre : PreOk s t i lt pre) (ψ : WFF σ (ctxOf lt).boxIn 0) :
-    WFF.box (preW hk hpre ψ) ∈ ((gnet hF M₀ (gbirth hF M₀ s.2 + i)).st s.1).M ↔
+    WFF.box (preW hpre ψ) ∈ ((gnet hF M₀ (gbirth hF M₀ s.2 + i)).st s.1).M ↔
       WFF.box (WFF.mono hle.boxIn ψ) ∈ ((gnet hF M₀ (grnd s t i)).st t.1).M := by
   have hsm : Theory.IsMCS ((gnet hF M₀ (gbirth hF M₀ s.2 + i)).st s.1).M :=
     (good_gnet hF hM₀ _).mcs s.1 (live_gbirth hF hM₀ s.2 (Nat.le_add_right _ i))
   have htm : Theory.IsMCS ((gnet hF M₀ (grnd s t i)).st t.1).M :=
     (good_gnet hF hM₀ _).mcs t.1 (live_gbirth hF hM₀ t.2 (Nat.le_add_right _ _))
-  have key := subst_shift_pre hM₀ hk h i hle hpre ψ
+  have key := subst_shift_pre hM₀ h i hle hpre ψ
   constructor
   · intro hb
     have h4 : WFF.box (WFF.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF _) Ctx.NoSlots.slots
-        (preW hk hpre ψ))) ∈ ((gnet hF M₀ (gbirth hF M₀ s.2 + i)).st s.1).M :=
+        (preW hpre ψ))) ∈ ((gnet hF M₀ (gbirth hF M₀ s.2 + i)).st s.1).M :=
       hsm.closed ⟨[_], fun x hx => by rw [List.mem_singleton.mp hx]; exact hb,
         ⟨Proof.four_box hF (Proof.lookup List.mem_cons_self)⟩⟩
     rw [← key]
@@ -297,7 +272,7 @@ theorem box_pre_iff (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false)
     rw [← key] at hb
     by_contra hn
     have h5 : WFF.box (WFF.neg (WFF.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF _)
-        Ctx.NoSlots.slots (preW hk hpre ψ)))) ∈
+        Ctx.NoSlots.slots (preW hpre ψ)))) ∈
         ((gnet hF M₀ (gbirth hF M₀ s.2 + i)).st s.1).M := by
       by_contra hn'
       exact hn (hsm.closed ⟨[_], fun x hx => by
@@ -404,7 +379,7 @@ theorem gMs_mono_iff (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) {i i' : ℕ} (
     ancestor's `□` view holds there — its preimage along the path, edge by edge. -/
 theorem box_path_iff (hV : ModalSys.Five = true)
     (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
-    (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false) :
+    (hM₀ : Theory.IsMCS M₀) :
     ∀ (P : List ℕ) (s t : GW hF M₀), t.1 = nodeOf s.1 P → ∀ (j : ℕ)
       (ψ : WFF σ (ctxOf (glat t j)).boxIn 0),
       ∃ (i j' : ℕ) (hjj : j ≤ j') (ψ' : WFF σ (ctxOf (glat s i)).boxIn 0),
@@ -415,12 +390,12 @@ theorem box_path_iff (hV : ModalSys.Five = true)
       exact ⟨j, j, le_rfl, ψ, by rw [WFF.mono_refl]⟩
   | c :: P, s, t, hP, j, ψ => by
       have hb := born_step hP
-      obtain ⟨i', j', hjj, ψ', hiff⟩ := box_path_iff hV hS hW hM₀ hk P (stepW s c hb) t hP j ψ
+      obtain ⟨i', j', hjj, ψ', hiff⟩ := box_path_iff hV hS hW hM₀ P (stepW s c hb) t hP j ψ
       have hch : GCh hF M₀ s (stepW s c hb) := ⟨c, rfl⟩
       obtain ⟨i, pre, hi', hpre⟩ := exists_pre hV hS hW hM₀ hch i'
       have hle := ctxOf_le_of_suffix (glat_suffix hM₀ (stepW s c hb) hi')
-      refine ⟨i, j', hjj, preW hk hpre ψ', ?_⟩
-      rw [box_pre_iff hM₀ hk hV hch i hle hpre ψ', ← hiff]
+      refine ⟨i, j', hjj, preW hpre ψ', ?_⟩
+      rw [box_pre_iff hM₀ hV hch i hle hpre ψ', ← hiff]
       exact (gMs_mono_iff hM₀ (stepW s c hb) hi' (WFF.box ψ')).symm
 
 /-- ⭐**Transfer along a cluster arrow** (`docs/v12-modal-extensions.md` §3 5): what is necessary at
@@ -428,12 +403,12 @@ theorem box_path_iff (hV : ModalSys.Five = true)
     of `s` — the arrow `u → t` read through their common ancestor. -/
 theorem box_cluster (hV : ModalSys.Five = true)
     (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
-    (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false) {s u t : GW hF M₀}
+    (hM₀ : Theory.IsMCS M₀) {s u t : GW hF M₀}
     {P Q : List ℕ} (hu : u.1 = nodeOf s.1 P) (ht : t.1 = nodeOf s.1 Q) (hQ : PathOk Q) (j : ℕ)
     (ψ : WFF σ (ctxOf (glat u j)).boxIn 0) (hψ : WFF.box ψ ∈ gMs u j) :
     ∃ (i : ℕ) (ψ' : WFF σ (ctxOf (glat s i)).boxIn 0), WFF.box ψ' ∈ gMs s i ∧
       pTrW hM₀ s t Q ht hQ i ψ' ∈ (gw hM₀ t).M (pstg s t Q ht i) := by
-  obtain ⟨i, j', hjj, ψ', hiff⟩ := box_path_iff hV hS hW hM₀ hk P s u hu j ψ
+  obtain ⟨i, j', hjj, ψ', hiff⟩ := box_path_iff hV hS hW hM₀ P s u hu j ψ
   have hb : WFF.box ψ' ∈ gMs s i :=
     hiff.mpr ((gMs_mono_iff hM₀ u hjj (WFF.box ψ)).mp hψ)
   exact ⟨i, ψ', hb, box_mem_path hM₀ s t Q ht hQ i ψ' hb⟩

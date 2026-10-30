@@ -134,19 +134,19 @@ theorem pPreOk (hV : ModalSys.Five = true)
 /-! ## Preimages of formulas along a path -/
 
 /-- The path preimage of a formula of a descendant's `□` view, in the ancestor's `□` view. -/
-noncomputable def preWP (hk : ModalSys.keepOnly = false) {P : List ℕ} {s t : GW hF M₀}
+noncomputable def preWP {P : List ℕ} {s t : GW hF M₀}
     {hP : t.1 = nodeOf s.1 P} {j : ℕ} (hpo : PPreOk P s t hP j)
     (ψ : WFF σ (ctxOf (glat t j)).boxIn 0) :
     WFF σ (ctxOf (glat s (pstgO P s t hP j))).boxIn 0 :=
   WFF.subst (eIdx (ofRen (preI (porig P s t hP))))
     (eS σ (ctxOf (glat s (pstgO P s t hP j))).boxIn (ofRen (preI (porig P s t hP))))
-    (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hk hpo)))
-    (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hk hpo)))
+    (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hpo)))
+    (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hpo)))
     Ctx.NoSlots.slots Ctx.NoSlots.slots ψ
 
 /-- The path preimage of a formula of a descendant's `◇_x` view, in the ancestor's
     `◇_{porig x}` view. -/
-noncomputable def preWPX (hk : ModalSys.keepOnly = false) {P : List ℕ} {s t : GW hF M₀}
+noncomputable def preWPX {P : List ℕ} {s t : GW hF M₀}
     {hP : t.1 = nodeOf s.1 P} {j : ℕ} (hpo : PPreOk P s t hP j) {x : VarSymb} {X : VarType}
     (hx : (ctxOf (glat t j)).ref x = some (.VTypeDia X))
     (ψ : WFF σ ((ctxOf (glat t j)).diaIn x) 0) :
@@ -154,8 +154,8 @@ noncomputable def preWPX (hk : ModalSys.keepOnly = false) {P : List ℕ} {s t : 
   WFF.subst (eIdx (ofRen (preIX (porig P s t hP) x)))
     (eS σ ((ctxOf (glat s (pstgO P s t hP j))).diaIn (porig P s t hP x))
       (ofRen (preIX (porig P s t hP) x)))
-    (ok_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hk hx hpo)))
-    (coh_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hk hx hpo)))
+    (ok_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hx hpo)))
+    (coh_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hx hpo)))
     Ctx.NoSlots.slots Ctx.NoSlots.slots ψ
 
 omit [ModalSys] in
@@ -213,13 +213,13 @@ theorem preI_step (f : VarSymb → VarSymb) (u : VarSymb) (st : Step) :
 /-- ⭐**The path preimage is the first edge's preimage of the rest's.** -/
 theorem preWP_cons (hV : ModalSys.Five = true)
     (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
-    (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false) {c : ℕ} {P : List ℕ}
+    (hM₀ : Theory.IsMCS M₀) {c : ℕ} {P : List ℕ}
     {s t : GW hF M₀} (hP : t.1 = nodeOf s.1 (c :: P)) (j : ℕ)
     (ψ : WFF σ (ctxOf (glat t j)).boxIn 0) :
-    preWP hk (pPreOk hV hS hW hM₀ (c :: P) s t hP j) ψ =
-      preW hk (estg_spec hV hS hW hM₀ (s := s) (t := stepW s c (born_step hP)) ⟨c, rfl⟩
+    preWP (pPreOk hV hS hW hM₀ (c :: P) s t hP j) ψ =
+      preW (estg_spec hV hS hW hM₀ (s := s) (t := stepW s c (born_step hP)) ⟨c, rfl⟩
           (pstgO P (stepW s c (born_step hP)) t hP j)).2
-        (preWP hk (pPreOk hV hS hW hM₀ P (stepW s c (born_step hP)) t hP j) ψ) := by
+        (preWP (pPreOk hV hS hW hM₀ P (stepW s c (born_step hP)) t hP j) ψ) := by
   unfold preWP preW
   refine (WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
     fun u st _ hst _ => ?_) ψ).symm
@@ -229,15 +229,15 @@ theorem preWP_cons (hV : ModalSys.Five = true)
 /-- ⭐**The path preimage of a `◇_x` view is the first edge's preimage of the rest's.** -/
 theorem preWPX_cons (hV : ModalSys.Five = true)
     (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
-    (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false) {c : ℕ} {P : List ℕ}
+    (hM₀ : Theory.IsMCS M₀) {c : ℕ} {P : List ℕ}
     {s t : GW hF M₀} (hP : t.1 = nodeOf s.1 (c :: P)) (j : ℕ) {x : VarSymb} {X : VarType}
     (hx : (ctxOf (glat t j)).ref x = some (.VTypeDia X))
     (ψ : WFF σ ((ctxOf (glat t j)).diaIn x) 0) :
-    preWPX hk (pPreOk hV hS hW hM₀ (c :: P) s t hP j) hx ψ =
-      preWX hk (estg_spec hV hS hW hM₀ (s := s) (t := stepW s c (born_step hP)) ⟨c, rfl⟩
+    preWPX (pPreOk hV hS hW hM₀ (c :: P) s t hP j) hx ψ =
+      preWX (estg_spec hV hS hW hM₀ (s := s) (t := stepW s c (born_step hP)) ⟨c, rfl⟩
           (pstgO P (stepW s c (born_step hP)) t hP j)).2
         (pPreOk hV hS hW hM₀ P (stepW s c (born_step hP)) t hP j x _ hx rfl)
-        (preWPX hk (pPreOk hV hS hW hM₀ P (stepW s c (born_step hP)) t hP j) hx ψ) := by
+        (preWPX (pPreOk hV hS hW hM₀ P (stepW s c (born_step hP)) t hP j) hx ψ) := by
   unfold preWPX preWX
   refine (WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
     fun u st _ hst hv => ?_) ψ).symm
@@ -311,10 +311,10 @@ theorem preWPX_nil {l : List VarType} {x : VarSymb} (ψ : WFF σ ((ctxOf l).diaI
     stage. -/
 theorem box_pathO_iff (hV : ModalSys.Five = true)
     (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
-    (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false) :
+    (hM₀ : Theory.IsMCS M₀) :
     ∀ (P : List ℕ) (s t : GW hF M₀) (hP : t.1 = nodeOf s.1 P) (j : ℕ)
       (ψ : WFF σ (ctxOf (glat t j)).boxIn 0),
-      WFF.box (preWP hk (pPreOk hV hS hW hM₀ P s t hP j) ψ) ∈ gMs s (pstgO P s t hP j) ↔
+      WFF.box (preWP (pPreOk hV hS hW hM₀ P s t hP j) ψ) ∈ gMs s (pstgO P s t hP j) ↔
         WFF.box ψ ∈ gMs t j
   | [], s, t, hP, j, ψ => by
       obtain rfl : t = s := gw_eq hP
@@ -323,23 +323,23 @@ theorem box_pathO_iff (hV : ModalSys.Five = true)
       have hch : GCh hF M₀ s (stepW s c (born_step hP)) := ⟨c, rfl⟩
       have hes := estg_spec hV hS hW hM₀ hch (pstgO P (stepW s c (born_step hP)) t hP j)
       have hle := ctxOf_le_of_suffix (glat_suffix hM₀ (stepW s c (born_step hP)) hes.1)
-      rw [preWP_cons hV hS hW hM₀ hk hP j ψ]
-      refine (box_pre_iff hM₀ hk hV hch _ hle hes.2 _).trans ?_
-      rw [← box_pathO_iff hV hS hW hM₀ hk P (stepW s c (born_step hP)) t hP j ψ]
+      rw [preWP_cons hV hS hW hM₀ hP j ψ]
+      refine (box_pre_iff hM₀ hV hch _ hle hes.2 _).trans ?_
+      rw [← box_pathO_iff hV hS hW hM₀ P (stepW s c (born_step hP)) t hP j ψ]
       exact (gMs_mono_iff hM₀ (stepW s c (born_step hP)) hes.1 (WFF.box
-        (preWP hk (pPreOk hV hS hW hM₀ P (stepW s c (born_step hP)) t hP j) ψ))).symm
+        (preWP (pPreOk hV hS hW hM₀ P (stepW s c (born_step hP)) t hP j) ψ))).symm
 
 /-- ⭐**`◇`-uniformity along a path, canonically**: a descendant's `◇_x ψ` holds exactly when
     `◇` at the witness's path origin, of the body's path preimage, holds at the ancestor's chosen
     stage. -/
 theorem dia_pathO_iff (hV : ModalSys.Five = true)
     (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
-    (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false) :
+    (hM₀ : Theory.IsMCS M₀) :
     ∀ (P : List ℕ) (s t : GW hF M₀) (hP : t.1 = nodeOf s.1 P) (j : ℕ) {x : VarSymb}
       {X : VarType} (hx : (ctxOf (glat t j)).ref x = some (.VTypeDia X))
       (ψ : WFF σ ((ctxOf (glat t j)).diaIn x) 0),
       WFF.dia (porig P s t hP x) ⟨X, pPreOk hV hS hW hM₀ P s t hP j x _ hx rfl⟩
-          (preWPX hk (pPreOk hV hS hW hM₀ P s t hP j) hx ψ) ∈ gMs s (pstgO P s t hP j) ↔
+          (preWPX (pPreOk hV hS hW hM₀ P s t hP j) hx ψ) ∈ gMs s (pstgO P s t hP j) ↔
         WFF.dia x ⟨X, hx⟩ ψ ∈ gMs t j
   | [], s, t, hP, j, x, X, hx, ψ => by
       obtain rfl : t = s := gw_eq hP
@@ -349,11 +349,11 @@ theorem dia_pathO_iff (hV : ModalSys.Five = true)
       have hes := estg_spec hV hS hW hM₀ hch (pstgO P (stepW s c (born_step hP)) t hP j)
       have hle := ctxOf_le_of_suffix (glat_suffix hM₀ (stepW s c (born_step hP)) hes.1)
       have hx' := pPreOk hV hS hW hM₀ P (stepW s c (born_step hP)) t hP j x _ hx rfl
-      rw [preWPX_cons hV hS hW hM₀ hk hP j hx ψ]
-      refine (dia_pre_iff hM₀ hk hV hch _ hle hes.2 hx' _).trans ?_
-      rw [← dia_pathO_iff hV hS hW hM₀ hk P (stepW s c (born_step hP)) t hP j hx ψ]
+      rw [preWPX_cons hV hS hW hM₀ hP j hx ψ]
+      refine (dia_pre_iff hM₀ hV hch _ hle hes.2 hx' _).trans ?_
+      rw [← dia_pathO_iff hV hS hW hM₀ P (stepW s c (born_step hP)) t hP j hx ψ]
       exact (gMs_mono_iff hM₀ (stepW s c (born_step hP)) hes.1 (WFF.dia _ ⟨X, hx'⟩
-        (preWPX hk (pPreOk hV hS hW hM₀ P (stepW s c (born_step hP)) t hP j) hx ψ))).symm
+        (preWPX (pPreOk hV hS hW hM₀ P (stepW s c (born_step hP)) t hP j) hx ψ))).symm
 
 /-! ## Origins invert naming (R4, at addresses) -/
 
@@ -485,15 +485,15 @@ theorem rt_ok (hV : ModalSys.Five = true)
     `porig ∘ pnm` is weakening: the renaming fixes the η-faithful addresses (`porig_pnm`), and a
     substitution reads no others (`Term.subst_congrF`). -/
 theorem round_trip (hV : ModalSys.Five = true)
-    (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false) (P : List ℕ) (s t : GW hF M₀)
+    (hM₀ : Theory.IsMCS M₀) (P : List ℕ) (s t : GW hF M₀)
     (hP : t.1 = nodeOf s.1 P) (i : ℕ) {K : ℕ}
     (hrt : ∀ z T, (ctxOf (glat s i)).ref z = some T → T.keepable = true →
       (ctxOf (glat s K)).ref ((porig P s t hP ∘ pnm P s t hP) z) = some T)
     (hiK : i ≤ K) {A : VarType} {a : Ann A} (b : Term σ (ctxOf (glat s i)).boxIn A a) :
     (⟨_, Term.subst (eIdx (ofRen (preI (porig P s t hP ∘ pnm P s t hP))))
         (eS σ (ctxOf (glat s K)).boxIn (ofRen (preI (porig P s t hP ∘ pnm P s t hP))))
-        (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hk hrt)))
-        (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hk hrt))) b⟩ :
+        (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hrt)))
+        (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hrt))) b⟩ :
         Σ c, Term σ (ctxOf (glat s K)).boxIn A c) =
       ⟨a, Term.mono (ctxOf_le_of_suffix (glat_suffix hM₀ s hiK)).boxIn b⟩ := by
   have hle := (ctxOf_le_of_suffix (glat_suffix hM₀ s hiK)).boxIn

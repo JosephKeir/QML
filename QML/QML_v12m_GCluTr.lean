@@ -63,7 +63,7 @@ theorem sim_edge_nm (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M�
   have hn := nm_spec hX.five t u
   match st, hv with
   | .box, hv =>
-      obtain ⟨-, hz⟩ := Ctx.boxIn_box hv
+      obtain ⟨hk, hz⟩ := Ctx.boxIn_box hv
       rw [VarSymb.shift_level_zero rfl, Subst.at_nonproj _ rfl]
       change SubE.Sim T (((eS σ _ (fmapL hF M₀ t.1)).at (.step u .keep)).unbox)
         (.ren (.step (nm t u) .box))
@@ -71,14 +71,14 @@ theorem sim_edge_nm (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M�
       rcases hn with he | ⟨L, U, hz', he⟩
       · rw [he]
         change SubE.Sim T (.ren (nm t u).inner) _
-        rw [VarSymb.inner_box hX.keepOnly]
+        rw [VarSymb.inner_box hk]
         exact .refl _
       · obtain ⟨rfl, hz'', e⟩ := entOf_names_tm hM₀ h i hz rfl hz' he
         rw [e]
         change SubE.Sim T (.tm (Term.eta (nm t u).inner T (Ctx.ref_inner hz''))) _
         generalize Ctx.ref_inner hz'' = hp
         revert hp
-        rw [VarSymb.inner_box hX.keepOnly]
+        rw [VarSymb.inner_box hk]
         exact fun hp => .eta_ren _ hp
   | .keep, hv =>
       obtain ⟨hF', hz, hkp⟩ := Ctx.boxIn_keep hv
@@ -91,7 +91,7 @@ theorem sim_edge_nm (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M�
         exact .refl _
       · obtain ⟨rfl, hz'', e⟩ := entOf_names_tm hM₀ h i hz hkp hz' he
         rw [e]
-        exact keepE_eta_sim hX.keepOnly hF' hz'' hkp
+        exact keepE_eta_sim hF' hz'' hkp
   | .fst, hv => cases hv
   | .snd, hv => cases hv
   | .dia, hv => cases hv
@@ -105,8 +105,8 @@ theorem tr_edge (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (
         Σ c, Term σ (ctxOf (glat t (glstg s t i))).boxIn A c) =
       ⟨_, Term.subst (eIdx (ofRen (preI (nm t))))
         (eS σ (ctxOf (glat t (glstg s t i))).boxIn (ofRen (preI (nm t))))
-        (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly (nm_ok hX hM₀ h i))))
-        (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly (nm_ok hX hM₀ h i))))
+        (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI (nm_ok hX hM₀ h i))))
+        (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI (nm_ok hX hM₀ h i))))
         b⟩ :=
   (Term.subst_shift (Ctx.shifts_boxIn_boxIn hF _) _ _ _ (Subst.atShift (edgeBox s t i))
     (Subst.ok_atShift (Ctx.shifts_boxIn_boxIn hF _) (ok_edgeBox hM₀ h i))
@@ -148,9 +148,9 @@ theorem tr_path (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) :
       pTr hM₀ s t P h hP i (Term.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF _) b)) =
         ⟨_, Term.boxtm (Term.subst (eIdx (ofRen (preI (pnm P s t h))))
           (eS σ (ctxOf (glat t (pstg s t P h i))).boxIn (ofRen (preI (pnm P s t h))))
-          (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly
+          (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI
             (pnm_ok hX hM₀ P s t h i))))
-          (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly
+          (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI
             (pnm_ok hX hM₀ P s t h i)))) b)⟩
   | [], _, _, _, hP, _, _, _, _ => absurd hP.T_of_nil (by rw [hX.noT]; decide)
   | [c], s, t, h, _, i, _, _, b => by
@@ -174,9 +174,9 @@ theorem tr_path (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) :
               (eS σ (ctxOf (glat (stepW s c (born_step h))
                 (glstg s (stepW s c (born_step h)) i))).boxIn
                 (ofRen (preI (nm (stepW s c (born_step h))))))
-              (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly
+              (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI
                 (nm_ok hX hM₀ hch i))))
-              (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly
+              (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI
                 (nm_ok hX hM₀ hch i)))) b))⟩ := by
         refine sig_boxtm ?_
         refine (sig_subst_cong _ _ _ (Term.shift_shift_same _
@@ -276,9 +276,9 @@ theorem tr_edgeX_body (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M
         Σ e, Term σ ((ctxOf (glat t (glstg s t i))).diaIn (nm t x)) A e) =
       ⟨_, Term.subst (eIdx (ofRen (preIX (nm t) x)))
         (eS σ ((ctxOf (glat t (glstg s t i))).diaIn (nm t x)) (ofRen (preIX (nm t) x)))
-        (ok_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hX.keepOnly hx (nm_ok hX hM₀ h i))))
+        (ok_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hx (nm_ok hX hM₀ h i))))
         (coh_eS_kView (k := some x)
-          (entOk_ofRen (itemOk_preIX hX.keepOnly hx (nm_ok hX hM₀ h i)))) c⟩ :=
+          (entOk_ofRen (itemOk_preIX hx (nm_ok hX hM₀ h i)))) c⟩ :=
   (Term.subst_shift (Ctx.shifts_diaIn_keep hF _ x) _ _ _
     (Subst.atShift (edgeDia s t i x (nm t x)))
     (Subst.ok_atShift (Ctx.shifts_diaIn_keep hF _ x)
@@ -303,9 +303,9 @@ theorem tr_edgeX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} 
         (Term.subst (eIdx (ofRen (preIX (nm t) x)))
           (eS σ ((ctxOf (glat t (glstg s t i))).diaIn (nm t x)) (ofRen (preIX (nm t) x)))
           (ok_eS_kView (k := some x)
-            (entOk_ofRen (itemOk_preIX hX.keepOnly hx (nm_ok hX hM₀ h i))))
+            (entOk_ofRen (itemOk_preIX hx (nm_ok hX hM₀ h i))))
           (coh_eS_kView (k := some x)
-            (entOk_ofRen (itemOk_preIX hX.keepOnly hx (nm_ok hX hM₀ h i)))) c)⟩ :=
+            (entOk_ofRen (itemOk_preIX hx (nm_ok hX hM₀ h i)))) c)⟩ :=
   (sig_subst_diatm _ _ _ _ _ (nm t x) (idx_names hM₀ h i hx (nm_spec hX.five t x))
     ⟨X, nm_ok hX hM₀ h i x _ hx rfl⟩ (ok_edgeDia hM₀ h i hx (nm_spec hX.five t x))
     (coh_edgeDia hM₀ h i hx (nm_spec hX.five t x))).trans
@@ -346,9 +346,9 @@ theorem tr_pathX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) :
           (Term.subst (eIdx (ofRen (preIX (pnm P s t h) x)))
             (eS σ ((ctxOf (glat t (pstg s t P h i))).diaIn (pnm P s t h x))
               (ofRen (preIX (pnm P s t h) x)))
-            (ok_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hX.keepOnly hx
+            (ok_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hx
               (pnm_ok hX hM₀ P s t h i))))
-            (coh_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hX.keepOnly hx
+            (coh_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hx
               (pnm_ok hX hM₀ P s t h i)))) c)⟩
   | [], _, _, _, hP, _, _, _, _, _, _, _ => absurd hP.T_of_nil (by rw [hX.noT]; decide)
   | [c], s, t, h, _, i, x, X, hx, _, _, b => by
@@ -397,9 +397,9 @@ theorem tr_pathX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) :
                   (glstg s (stepW s c (born_step h)) i))).diaIn
                     (nm (stepW s c (born_step h)) x))
                   (ofRen (preIX (nm (stepW s c (born_step h))) x)))
-                (ok_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hX.keepOnly hx
+                (ok_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hx
                   (nm_ok hX hM₀ hch i))))
-                (coh_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hX.keepOnly hx
+                (coh_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hx
                   (nm_ok hX hM₀ hch i)))) b))⟩ := by
         refine (sig_subst_diatm _ _ _ _ _ _ hy (Ctx.exists_keep_dia hF ⟨X, hnx⟩) p q).trans ?_
         refine sig_diatm ?_

@@ -155,7 +155,7 @@ theorem sat_boxPush_c (hX : CluFlags) (s : GW hF M₀) (i : ℕ) (a : CAcc hF M�
     (χ : WFF σ ((ctxOf (glat s i)).kView none) 0) :
     (cmodel hF hM₀ hX).sat ((ccanonEnv hM₀ hX s i).boxPush a) χ ↔
       (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX a.1 (pstg (groot hF M₀) a.1 P h (rstg s i)))
-        (pTrW hM₀ (groot hF M₀) a.1 P h hP (rstg s i) (preWP hX.keepOnly (rpre hX hM₀ s i) χ)) := by
+        (pTrW hM₀ (groot hF M₀) a.1 P h hP (rstg s i) (preWP (rpre hX hM₀ s i) χ)) := by
   subst e
   have hag : CAgree hM₀ hX (preC hM₀ hX s i a) ((ccanonEnv hM₀ hX s i).boxPush a) :=
     cagree_boxPush hX (.nil _) _ (cagree_canon hX s i) a
@@ -163,7 +163,7 @@ theorem sat_boxPush_c (hX : CluFlags) (s : GW hF M₀) (i : ℕ) (a : CAcc hF M�
     (pathOf_eq a.2.down) (pathOf_ok a.2.down) (rstg s i)) (Ctx.noProjLast_boxIn _)
   rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_boxIn _) _ _ _ _ (npl_ptrC hM₀ _ _ _ _ _ _)
     (Ctx.noProjLast_boxIn _) _ hag _ hag']
-  refine (Model.sat_subst _ _ (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly
+  refine (Model.sat_subst _ _ (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI
     (rpre hX hM₀ s i)))) Ctx.NoSlots.slots Ctx.NoSlots.slots _ _ χ).symm.trans ?_
   exact sat_ptrC hX _ _ _ _ _ _ _ hag' _
 
@@ -187,7 +187,7 @@ theorem sat_diaPush_c (hX : CluFlags) (s : GW hF M₀) (i : ℕ) {x : VarSymb} {
     (cmodel hF hM₀ hX).sat ((ccanonEnv hM₀ hX s i).diaPush x hr a) χ ↔
       (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX a.1.1 (pstg (groot hF M₀) a.1.1 P h (rstg s i)))
         (pTrXW hM₀ (groot hF M₀) a.1.1 P h (rstg s i) (rorig s x) (rorig_ref hX hM₀ s i ⟨X, hr⟩)
-          hm (preWPX hX.keepOnly (rpre hX hM₀ s i) hr χ)) := by
+          hm (preWPX (rpre hX hM₀ s i) hr χ)) := by
   subst e
   have hag : CAgree hM₀ hX (preXC hM₀ hX s i ⟨X, hr⟩ a.1 hm)
       ((ccanonEnv hM₀ hX s i).diaPush x hr a) :=
@@ -247,13 +247,13 @@ theorem cinterp_lift (hX : CluFlags) {A : VarType} {s : GW hF M₀} {i i' : ℕ}
 
 theorem size_preWP (hX : CluFlags) (s : GW hF M₀) (i : ℕ)
     (χ : WFF σ ((ctxOf (glat s i)).kView none) 0) :
-    (preWP hX.keepOnly (rpre hX hM₀ s i) χ).size = χ.size :=
+    (preWP (rpre hX hM₀ s i) χ).size = χ.size :=
   WFF.size_subst _ _ _ _ _ _
 
 theorem size_preWPX (hX : CluFlags) (s : GW hF M₀) (i : ℕ) {x : VarSymb} {X : VarType}
     (hr : (ctxOf (glat s i)).ref x = some (.VTypeDia X))
     (χ : WFF σ ((ctxOf (glat s i)).diaIn x) 0) :
-    (preWPX hX.keepOnly (rpre hX hM₀ s i) hr χ).size = χ.size :=
+    (preWPX (rpre hX hM₀ s i) hr χ).size = χ.size :=
   WFF.size_subst _ _ _ _ _ _
 
 /-- ⭐**The truth lemma below a size, at every world and stage.** -/
@@ -368,14 +368,14 @@ theorem ctruth_lt (hX : CluFlags) :
               ψ).mp hs₁
       | box χ =>
           have hχs : χ.size < n := by simp only [WFF.size] at hφ; omega
-          have hpath := box_pathO_iff hX.five hX.fourS hX.fourSW hM₀ hX.keepOnly (rpath s)
+          have hpath := box_pathO_iff hX.five hX.fourS hX.fourSW hM₀ (rpath s)
             (groot hF M₀) s (rpath_eq s) i χ
           change (∀ a : CAcc hF M₀,
             (cmodel hF hM₀ hX).sat ((ccanonEnv hM₀ hX s i).boxPush a) χ) ↔ _
           constructor
           · intro hsat
             by_contra hnot
-            have hn' : WFF.box (preWP hX.keepOnly (rpre hX hM₀ s i) χ) ∉
+            have hn' : WFF.box (preWP (rpre hX hM₀ s i) χ) ∉
                 (gw hM₀ (groot hF M₀)).M (rstg s i) := fun h => hnot (hpath.mp h)
             obtain ⟨t, ⟨c, hc⟩, -, hneg⟩ := glex hM₀ (groot hF M₀) (rstg s i) _ hn'
             have hR : GR (groot hF M₀) t := ⟨[c], pathOk_cons, hc⟩
@@ -399,20 +399,20 @@ theorem ctruth_lt (hX : CluFlags) :
           constructor
           · rintro ⟨X, h, a, hsat⟩
             by_contra hnot
-            have hpath := dia_pathO_iff hX.five hX.fourS hX.fourSW hM₀ hX.keepOnly
+            have hpath := dia_pathO_iff hX.five hX.fourS hX.fourSW hM₀
               (rpath s) (groot hF M₀) s (rpath_eq s) i h χ
             have hm := (ccanon_mem_iff hX s i h a.1).mp a.2
             have h1 := (sat_diaPush_c hX s i h a _ (pathOf_eq a.1.2.down) rfl hm χ).mp hsat
             have h2 := (ctruth_lt hX n a.1.1 _ _ (by
               rw [size_pTrXW, size_preWPX (hM₀ := hM₀) hX]; exact hχs)).mp h1
             have hnot' : ¬ WFF.dia (rorig s x) (rorig_ref hX hM₀ s i ⟨X, h⟩)
-                (preWPX hX.keepOnly (rpre hX hM₀ s i) h χ) ∈
+                (preWPX (rpre hX hM₀ s i) h χ) ∈
                 (gw hM₀ (groot hF M₀)).M (rstg s i) := fun hd => hnot (hpath.mp hd)
             have hbx : WFF.boxx (rorig s x) (rorig_ref hX hM₀ s i ⟨X, h⟩)
-                (preWPX hX.keepOnly (rpre hX hM₀ s i) h χ).neg ∈
+                (preWPX (rpre hX hM₀ s i) h χ).neg ∈
                 (gw hM₀ (groot hF M₀)).M (rstg s i) :=
               BWorld.mem_of_provable (Δ := [(WFF.dia (rorig s x) (rorig_ref hX hM₀ s i ⟨X, h⟩)
-                  (preWPX hX.keepOnly (rpre hX hM₀ s i) h χ)).neg])
+                  (preWPX (rpre hX hM₀ s i) h χ)).neg])
                 (fun ψ hψ => by
                   rw [List.mem_singleton.mp hψ]
                   exact ((gw hM₀ (groot hF M₀)).mcs _).neg_mem_iff.mpr hnot')
@@ -423,7 +423,7 @@ theorem ctruth_lt (hX : CluFlags) :
             exact ((gw hM₀ a.1.1).mcs _).neg_mem_iff.mp hneg h2
           · intro hmem
             obtain ⟨X, h⟩ := id hx
-            have hpath := dia_pathO_iff hX.five hX.fourS hX.fourSW hM₀ hX.keepOnly
+            have hpath := dia_pathO_iff hX.five hX.fourS hX.fourSW hM₀
               (rpath s) (groot hF M₀) s (rpath_eq s) i h χ
             obtain ⟨t, ⟨c, hc⟩, hk, -, -, hm'⟩ := glexX hM₀ (groot hF M₀) (rstg s i) (rorig s x) X
               (rpre hX hM₀ s i x _ h rfl) _ (hpath.mpr hmem)

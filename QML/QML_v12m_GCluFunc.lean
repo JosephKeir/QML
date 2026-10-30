@@ -52,14 +52,15 @@ variable {hM₀}
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 /-- A renaming of `□`-view items commutes with 4's shift. -/
-theorem shiftCorr_preI (hk : ModalSys.keepOnly = false) {l L : List VarType}
+theorem shiftCorr_preI {l L : List VarType}
     (f : VarSymb → VarSymb)
     (hθ : Subst.Ok (ctxOf l).boxIn (eS σ (ctxOf L).boxIn (ofRen (preI f)))) :
     Subst.ShiftCorr (ctxOf l).boxIn (Ctx.shifts_boxIn_boxIn hF (ctxOf L))
       (eS σ (ctxOf L).boxIn (ofRen (preI f))) (eS σ (ctxOf L).boxIn (ofRen (preI f))).box := by
   refine Subst.shiftCorr_of hθ fun v T hl hv => ?_
   match v, hl, hv with
-  | .step u .box, _, _ =>
+  | .step u .box, _, hv =>
+      obtain ⟨hk, -⟩ := Ctx.boxIn_box hv
       rw [VarSymb.shift_level_zero rfl, Subst.at_nonproj _ rfl]
       change SubE.Sim T (((eS σ (ctxOf L).boxIn (ofRen (preI f))).at (.step u .keep)).unbox)
         ((eS σ (ctxOf L).boxIn (ofRen (preI f)) (.step u .box)).shift _)
@@ -82,7 +83,7 @@ theorem shiftCorr_preI (hk : ModalSys.keepOnly = false) {l L : List VarType}
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 /-- A renaming of `◇_x`-view items commutes with `four_dia`'s shift. -/
-theorem shiftCorr_preIX (hk : ModalSys.keepOnly = false) {l L : List VarType}
+theorem shiftCorr_preIX {l L : List VarType}
     (f : VarSymb → VarSymb) {x : VarSymb}
     (hθ : Subst.Ok ((ctxOf l).diaIn x) (eS σ ((ctxOf L).diaIn (f x)) (ofRen (preIX f x)))) :
     Subst.ShiftCorr ((ctxOf l).diaIn x) (Ctx.shifts_diaIn_keep hF (ctxOf L) (f x))
@@ -107,7 +108,8 @@ theorem shiftCorr_preIX (hk : ModalSys.keepOnly = false) {l L : List VarType}
   · have e : preIX f x (.step u st) = preI f (.step u st) := if_neg hvx
     have hb := diaIn_boxIn_of_ne' hv hvx
     match st, hb, e with
-    | .box, _, e =>
+    | .box, hb, e =>
+        obtain ⟨hk, -⟩ := Ctx.boxIn_box hb
         change SubE.Sim T
           ((((eS σ (ctxOf L).boxIn (ofRen (preI f))).at (.step u .keep)).unbox).mono
             (Ctx.le_boxIn_diaIn (ctxOf L).boxIn (.step (f x) .keep)))
@@ -139,8 +141,8 @@ theorem preTB_shift (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀)
         Σ c, Term σ ((ctxOf (glat (groot hF M₀) (rstg s i))).kView none) (.VTypeBox A) c) =
       ⟨_, .boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF _) (preTB hX hM₀ s i b).2)⟩ :=
   sig_boxtm (Term.shift_subst (Ctx.shifts_boxIn_boxIn hF _) (Ctx.shifts_boxIn_boxIn hF _) _ _ _
-    _ _ _ (shiftCorr_preI (hF := hF) hX.keepOnly _ (ok_eS_kView (k := none)
-      (entOk_ofRen (itemOk_preI hX.keepOnly (rpre hX hM₀ s i))))) b).symm
+    _ _ _ (shiftCorr_preI (hF := hF) _ (ok_eS_kView (k := none)
+      (entOk_ofRen (itemOk_preI (rpre hX hM₀ s i))))) b).symm
 
 /-- The preimage of a kept possible term is the kept preimage, at the kept witness's origin. -/
 theorem preTB_keepDia (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ)
@@ -153,9 +155,9 @@ theorem preTB_keepDia (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
         (Ctx.exists_keep_dia hF (rorig_ref hX hM₀ s i ⟨X, hx⟩))
         (Term.shift (Ctx.shifts_diaIn_keep hF _ (rorig s x)) (preTD hX hM₀ s i ⟨X, hx⟩ b).2)⟩ := by
   have hθ := ok_eS_kView (k := none)
-    (entOk_ofRen (σ := σ) (itemOk_preI hX.keepOnly (rpre hX hM₀ s i)))
+    (entOk_ofRen (σ := σ) (itemOk_preI (rpre hX hM₀ s i)))
   have hc := coh_eS_kView (k := none)
-    (entOk_ofRen (σ := σ) (itemOk_preI hX.keepOnly (rpre hX hM₀ s i)))
+    (entOk_ofRen (σ := σ) (itemOk_preI (rpre hX hM₀ s i)))
   have hy : eIdx (ofRen (σ := σ) (preI (rorig s))) (.step x .keep) = .step (rorig s x) .keep := by
     rw [show (VarSymb.step x .keep) = (VarSymb.step x .keep).ext [] from rfl,
       eIdx_item _ (reach_ppath hx).1 rfl []]
@@ -169,7 +171,7 @@ theorem preTB_keepDia (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
     (Ctx.exists_keep_dia hF (rorig_ref hX hM₀ s i ⟨X, hx⟩)) (Subst.ok_dia hθ hxk hw)
     (hy ▸ Subst.coh_dia hθ hc hxk)).trans (sig_diatm ?_)
   exact (Term.shift_subst (Ctx.shifts_diaIn_keep hF _ x) (Ctx.shifts_diaIn_keep hF _ (rorig s x))
-    _ _ _ _ _ _ (shiftCorr_preIX (hF := hF) hX.keepOnly _ (ok_eS_kView (k := some x)
+    _ _ _ _ _ _ (shiftCorr_preIX (hF := hF) _ (ok_eS_kView (k := some x)
       (entOk_ofRen (itemOk_rpreX hX hM₀ s i ⟨X, hx⟩)))) b).symm
 
 /-! ## Denoting an applied map -/

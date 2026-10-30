@@ -103,15 +103,15 @@ noncomputable def preTB (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M
     Σ c : Ann A, Term σ ((ctxOf (glat (groot hF M₀) (rstg s i))).kView none) A c :=
   ⟨_, Term.subst (eIdx (ofRen (preI (rorig s))))
     (eS σ (ctxOf (glat (groot hF M₀) (rstg s i))).boxIn (ofRen (preI (rorig s))))
-    (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly (rpre hX hM₀ s i))))
-    (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly (rpre hX hM₀ s i)))) b⟩
+    (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI (rpre hX hM₀ s i))))
+    (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI (rpre hX hM₀ s i)))) b⟩
 
 theorem itemOk_rpreX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ)
     {x : VarSymb} (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X)) :
     ItemOk ((ctxOf (glat s i)).diaIn x) ((ctxOf (glat (groot hF M₀) (rstg s i))).diaIn (rorig s x))
       (preIX (rorig s) x) := by
   obtain ⟨X, hX'⟩ := hx
-  exact itemOk_preIX hX.keepOnly hX' (rpre hX hM₀ s i)
+  exact itemOk_preIX hX' (rpre hX hM₀ s i)
 
 /-- A world's `◇_x`-view term, read at the root in the view of `x`'s origin. -/
 noncomputable def preTD (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ)
@@ -198,7 +198,7 @@ theorem itemOk_rpreX_le (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M
     ItemOk ((ctxOf (glat s i)).diaIn x) ((ctxOf (glat (groot hF M₀) R)).diaIn (rorig s x))
       (preIX (rorig s) x) := by
   obtain ⟨X, hX'⟩ := hx
-  exact itemOk_preIX hX.keepOnly hX' (rpre_le hX hM₀ s hR)
+  exact itemOk_preIX hX' (rpre_le hX hM₀ s hR)
 
 /-- ⭐**The denotation does not depend on the stage it is computed at.**  The root stages of two
     stages need not be ordered; both preimages are read at the later one, where the renaming is
@@ -229,9 +229,9 @@ theorem cden_congr (hX : CluFlags) : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t
               (pTr hM₀ (groot hF M₀) a.1 P hP hne R
                 (Term.subst (eIdx (ofRen (preI (rorig s))))
                   (eS σ (ctxOf (glat (groot hF M₀) R)).boxIn (ofRen (preI (rorig s))))
-                  ((ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly
+                  ((ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI
                     (rpre_le hX hM₀ s (le_max_left _ _))))).restrict e.boxIn)
-                  ((coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly
+                  ((coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI
                     (rpre_le hX hM₀ s (le_max_left _ _))))).restrict e.boxIn) b)).2 := by
         intro k hk ek
         have hm := pstg_monotone hM₀ (groot hF M₀) a.1 P hP hk
@@ -244,11 +244,11 @@ theorem cden_congr (hX : CluFlags) : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t
           Σ c, Term σ _ _ c) = _
         rw [Term.mono_subst]
         refine (Term.subst_congr (ι' := eIdx (ofRen (preI (rorig s)))) _ _ _
-          (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly (rpre_le hX hM₀ s hk))))
+          (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI (rpre_le hX hM₀ s hk))))
           _ (coh_eS_kView (k := none)
-            (entOk_ofRen (itemOk_preI hX.keepOnly (rpre_le hX hM₀ s hk))))
+            (entOk_ofRen (itemOk_preI (rpre_le hX hM₀ s hk))))
           (sim_eS_mono (l := glat s k) (k := none) _
-            (entOk_ofRen (itemOk_preI hX.keepOnly (rpre hX hM₀ s k)))) _).trans ?_
+            (entOk_ofRen (itemOk_preI (rpre hX hM₀ s k)))) _).trans ?_
         rw [Term.subst_mono]
       exact (side i (le_max_left _ _) e).trans (side j (le_max_right _ _) e').symm
   | _, _, Γ, .diatm x hx b, s, i, j, e, e' => by
@@ -486,8 +486,8 @@ theorem cden_named_box (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
         (.boxtm (Term.subst (eIdx (ofRen (preI (pnm (rpath s) (groot hF M₀) s (rpath_eq s)))))
           (eS σ (ctxOf (glat s J)).boxIn
             (ofRen (preI (pnm (rpath s) (groot hF M₀) s (rpath_eq s)))))
-          (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly hJ)))
-          (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly hJ))) b)) =
+          (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hJ)))
+          (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hJ))) b)) =
       cden hM₀ hX (groot hF M₀) i (Ctx.Le.refl _) (.boxtm b) := by
   rw [cden_box_eq]
   set r := rstg s J
@@ -509,14 +509,14 @@ theorem cden_named_box (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
         (Term.subst (eIdx (ofRen (preI (pnm (rpath s) (groot hF M₀) s (rpath_eq s)))))
           (eS σ (ctxOf (glat s J)).boxIn
             (ofRen (preI (pnm (rpath s) (groot hF M₀) s (rpath_eq s)))))
-          (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly hJ)))
-          (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly hJ))) b))).2⟩ :
+          (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hJ)))
+          (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hJ))) b))).2⟩ :
         Σ c, Term σ (ctxOf (glat (groot hF M₀) r)).boxIn A c) =
       ⟨_, Term.subst (eIdx (ofRen (preI (rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s)))))
         (eS σ (ctxOf (glat (groot hF M₀) r)).boxIn
           (ofRen (preI (rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s)))))
-        (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly hrtr)))
-        (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly hrtr))) b⟩ := by
+        (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hrtr)))
+        (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hrtr))) b⟩ := by
     simp only [preTB, Term.mono_refl]
     refine Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
       fun u st _ hst _ => ?_) b
@@ -528,13 +528,13 @@ theorem cden_named_box (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
   refine e1.trans ?_
   dsimp only
   rw [Term.mono_subst]
-  have hKo := itemOk_preI hX.keepOnly hrtK
+  have hKo := itemOk_preI hrtK
   refine (Term.subst_congr
     (ι' := eIdx (ofRen (preI (rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s))))) _ _ _
     (ok_eS_kView (k := none) (entOk_ofRen hKo)) _ (coh_eS_kView (k := none) (entOk_ofRen hKo))
     (sim_eS_mono (l := glat (groot hF M₀) i) (k := none) _
-      (entOk_ofRen (itemOk_preI hX.keepOnly hrtr))) b).trans ?_
-  exact round_trip hX.five hM₀ hX.keepOnly (rpath s) (groot hF M₀) s (rpath_eq s) i hrtK
+      (entOk_ofRen (itemOk_preI hrtr))) b).trans ?_
+  exact round_trip hX.five hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i hrtK
     (le_max_left i r) b
 
 /-- ⭐**What the root defines at a `□` type, every world defines** (R4): the root term named at
@@ -661,8 +661,8 @@ theorem cden_named_dia (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
           (Term.subst (eIdx (ofRen (preIX (pnm (rpath s) (groot hF M₀) s (rpath_eq s)) y)))
             (eS σ ((ctxOf (glat s J)).diaIn (pnm (rpath s) (groot hF M₀) s (rpath_eq s) y))
               (ofRen (preIX (pnm (rpath s) (groot hF M₀) s (rpath_eq s)) y)))
-            (ok_eS_kView (k := some y) (entOk_ofRen (itemOk_preIX hX.keepOnly hY hJ)))
-            (coh_eS_kView (k := some y) (entOk_ofRen (itemOk_preIX hX.keepOnly hY hJ))) b)) =
+            (ok_eS_kView (k := some y) (entOk_ofRen (itemOk_preIX hY hJ)))
+            (coh_eS_kView (k := some y) (entOk_ofRen (itemOk_preIX hY hJ))) b)) =
       cden hM₀ hX (groot hF M₀) i (Ctx.Le.refl _) (.diatm y ⟨Y, hY⟩ b) := by
   rw [cden_dia_eq]
   set r := rstg s J
@@ -677,7 +677,7 @@ theorem cden_named_dia (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
     fun z T hz hkp => (gle hM₀ _ (le_max_right i r)).ref (hrtr z T hz hkp)
   have hyy := porig_pnm hX.five hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i y _ hY
     rfl rfl
-  have hKo := itemOk_preIX hX.keepOnly hY hrtK
+  have hKo := itemOk_preIX hY hrtK
   refine cden_root_dia_wit hX (le_max_right i r) (le_max_left i r) ⟨Y, hY⟩ b _ hyy _ _ ?_
   refine heq_of_eq_of_heq ?_ (ren_dia_fix (gle hM₀ (groot hF M₀) (le_max_left i r))
     (rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s)) (rt_fix hX hM₀ s i) _ rfl hyy
@@ -687,8 +687,8 @@ theorem cden_named_dia (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
         (Term.subst (eIdx (ofRen (preIX (pnm (rpath s) (groot hF M₀) s (rpath_eq s)) y)))
           (eS σ ((ctxOf (glat s J)).diaIn (pnm (rpath s) (groot hF M₀) s (rpath_eq s) y))
             (ofRen (preIX (pnm (rpath s) (groot hF M₀) s (rpath_eq s)) y)))
-          (ok_eS_kView (k := some y) (entOk_ofRen (itemOk_preIX hX.keepOnly hY hJ)))
-          (coh_eS_kView (k := some y) (entOk_ofRen (itemOk_preIX hX.keepOnly hY hJ))) b))).2⟩ :
+          (ok_eS_kView (k := some y) (entOk_ofRen (itemOk_preIX hY hJ)))
+          (coh_eS_kView (k := some y) (entOk_ofRen (itemOk_preIX hY hJ))) b))).2⟩ :
         Σ c, Term σ ((ctxOf (glat (groot hF M₀) r)).diaIn
           ((rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s)) y)) A c) =
       ⟨_, Term.subst
@@ -696,8 +696,8 @@ theorem cden_named_dia (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
         (eS σ ((ctxOf (glat (groot hF M₀) r)).diaIn
             ((rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s)) y))
           (ofRen (preIX (rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s)) y)))
-        (ok_eS_kView (k := some y) (entOk_ofRen (itemOk_preIX hX.keepOnly hY hrtr)))
-        (coh_eS_kView (k := some y) (entOk_ofRen (itemOk_preIX hX.keepOnly hY hrtr))) b⟩ := by
+        (ok_eS_kView (k := some y) (entOk_ofRen (itemOk_preIX hY hrtr)))
+        (coh_eS_kView (k := some y) (entOk_ofRen (itemOk_preIX hY hrtr))) b⟩ := by
     simp only [preTD, Term.mono_refl]
     refine Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
       fun u st _ hst hv => ?_) b
@@ -728,7 +728,7 @@ theorem cden_named_dia (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
     _ _ _ (ok_eS_kView (k := some y) (entOk_ofRen hKo)) _
     (coh_eS_kView (k := some y) (entOk_ofRen hKo))
     (sim_eS_mono (l := glat (groot hF M₀) i) (k := some y) _
-      (entOk_ofRen (itemOk_preIX hX.keepOnly hY hrtr))) b
+      (entOk_ofRen (itemOk_preIX hY hrtr))) b
 
 /-- ⭐**What the root defines at a `◇` type, every world defines** (R4): the root term named at
     the world (`cden_named_dia`). -/

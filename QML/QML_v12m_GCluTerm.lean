@@ -36,8 +36,8 @@ noncomputable def preC (hX : CluFlags) (w : GW hF M₀) (k : ℕ) (a : CAcc hF M
       (ctxOf (glat a.1 (pstg (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down)
         (rstg w k)))) :=
   .sub (eS σ (ctxOf (glat (groot hF M₀) (rstg w k))).boxIn (ofRen (preI (rorig w))))
-    (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly (rpre hX hM₀ w k))))
-    (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly (rpre hX hM₀ w k))))
+    (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI (rpre hX hM₀ w k))))
+    (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI (rpre hX hM₀ w k))))
     (ptrC hM₀ (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (pathOf_ok a.2.down)
       (rstg w k))
 
