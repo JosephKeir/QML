@@ -796,7 +796,7 @@ theorem keptTr_ok (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW h
       obtain ⟨rfl, -⟩ := Sigma.mk.inj (eq_of_heq h₃)
       have hl' : (ctxOf l').Le Δ := (ctxOf_le_of_suffix hsuf).trans hle
       simp only [entIdx]
-      rcases LiftAdm.of_T hF hT hadm with hbt | ⟨z, Z, hz, he₀⟩ | ⟨-, z, Z, hz, he₀⟩
+      rcases hadm with hbt | ⟨z, Z, hz, he₀⟩ | ⟨-, z, Z, hz, he₀⟩ | ⟨-, z, A, hz, he₀⟩
       · -- the `□` view tuple
         change (⟨l', _, _, t'⟩ : LTerm σ) = boxTuple hF l' at hbt
         unfold boxTuple at hbt
@@ -880,6 +880,15 @@ theorem keptTr_ok (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW h
               if_pos (show Step.snd.isProj = true from rfl), if_neg (by decide),
               Step.levels_append, levels_pp (itemPath_ppath k)]
             omega
+      · -- an η-lift of a necessary address
+        change (⟨l', _, _, t'⟩ : LTerm σ) = etaBox l' z A hz at he₀
+        unfold etaBox at he₀
+        obtain ⟨rfl, h₄⟩ := Sigma.mk.inj (eq_of_heq (Sigma.mk.inj he₀).2)
+        obtain ⟨rfl, -⟩ := Sigma.mk.inj (eq_of_heq h₄)
+        refine ⟨z, _, fun n => Ann.idxAt_eta _ z _ X ?_, (reach_ppath hz).1,
+          ⟨_, X, ⟨_, hl'.ref hz⟩, hq⟩, rfl, id⟩
+        rw [walkTy_keep hUk, walkTy_keeps hUk]
+        exact hq'
 
 
 /-! ## The translation's form: a middle piece rewritten -/
@@ -983,7 +992,7 @@ theorem keptTr_form (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW
       simp only [entIdx]
       obtain ⟨m, q₀, rfl, hq0⟩ := keeps_decomp q
       have hq₀ : Step.walkTy _ q₀ = some (.VTypeDia X₀) := (walkTy_keeps hUk m q₀).symm.trans hq'
-      rcases LiftAdm.of_T hF hT hadm with hbt | ⟨z, Z, hz, he₀⟩ | ⟨-, z, Z, hz, he₀⟩
+      rcases hadm with hbt | ⟨z, Z, hz, he₀⟩ | ⟨-, z, Z, hz, he₀⟩ | ⟨-, z, A, hz, he₀⟩
       · -- the `□` view tuple: `here` into an item, read at the world
         change (⟨l', _, _, t'⟩ : LTerm σ) = boxTuple hF l' at hbt
         unfold boxTuple at hbt
@@ -1114,6 +1123,15 @@ theorem keptTr_form (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW
             · rw [walkTy_keep hw₃, List.append_assoc, walkTy_keeps hw₃, List.singleton_append,
                 walkTy_keep hw₃]
               exact hR
+      · -- an η-lift of a necessary address: the address renamed
+        change (⟨l', _, _, t'⟩ : LTerm σ) = etaBox l' z A hz at he₀
+        unfold etaBox at he₀
+        obtain ⟨rfl, h₄⟩ := Sigma.mk.inj (eq_of_heq (Sigma.mk.inj he₀).2)
+        obtain ⟨rfl, -⟩ := Sigma.mk.inj (eq_of_heq h₄)
+        refine ⟨z, 0, [], [], _, true, rfl, rfl, .inl ⟨ppath_nil, ppath_nil⟩,
+          (reach_ppath hz).1, (fun h => by cases h), fun n' R' _ Y hY =>
+            ⟨Ann.idxAt_eta _ z _ Y ((walkTy_keep hUk _).symm.trans hY), Ann.idxAt_eta _ z _ Y hY,
+              _, Y, ⟨_, hl'.ref hz⟩, hY⟩⟩
 
 
 /-! ## Path edits on shaped paths -/

@@ -347,7 +347,7 @@ theorem names_type (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M�
 /-- ⭐**Every stage of a child has a preimage along its edge**, at a stage of the parent committed
     no earlier than it (names by origin, `glorigin`; both lifts on, so every keepable address is
     liftable). -/
-theorem exists_pre (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
+theorem exists_pre (hV : ModalSys.Five = true)
     (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
     (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s t) (j : ℕ) :
     ∃ (i : ℕ) (pre : VarSymb → VarSymb), j ≤ glstg s t i ∧ PreOk s t i (glat t j) pre := by
@@ -357,7 +357,7 @@ theorem exists_pre (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
     intro z T hz hkp
     have hl : T.liftable = true := by
       cases T <;> simp_all [VarType.liftable, VarType.keepable]
-    obtain ⟨i, v, U, hv, hkU, hn⟩ := glorigin hV hT hM₀ h j hz hl
+    obtain ⟨i, v, U, hv, hkU, hn⟩ := glorigin hV hM₀ h j hz hl
     obtain rfl := names_type hM₀ h hv hkU hn hz
     exact ⟨i, v, hv, hn⟩
   let P : VarSymb → Prop := fun z =>
@@ -402,7 +402,7 @@ theorem gMs_mono_iff (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) {i i' : ℕ} (
 /-- ⭐**Cluster uniformity along a path** (`docs/v12-modal-extensions.md` §3 5): a `□`-formula at
     a descendant's stage holds, at some later stage of it, exactly when a formula of the
     ancestor's `□` view holds there — its preimage along the path, edge by edge. -/
-theorem box_path_iff (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
+theorem box_path_iff (hV : ModalSys.Five = true)
     (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
     (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false) :
     ∀ (P : List ℕ) (s t : GW hF M₀), t.1 = nodeOf s.1 P → ∀ (j : ℕ)
@@ -415,9 +415,9 @@ theorem box_path_iff (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
       exact ⟨j, j, le_rfl, ψ, by rw [WFF.mono_refl]⟩
   | c :: P, s, t, hP, j, ψ => by
       have hb := born_step hP
-      obtain ⟨i', j', hjj, ψ', hiff⟩ := box_path_iff hV hT hS hW hM₀ hk P (stepW s c hb) t hP j ψ
+      obtain ⟨i', j', hjj, ψ', hiff⟩ := box_path_iff hV hS hW hM₀ hk P (stepW s c hb) t hP j ψ
       have hch : GCh hF M₀ s (stepW s c hb) := ⟨c, rfl⟩
-      obtain ⟨i, pre, hi', hpre⟩ := exists_pre hV hT hS hW hM₀ hch i'
+      obtain ⟨i, pre, hi', hpre⟩ := exists_pre hV hS hW hM₀ hch i'
       have hle := ctxOf_le_of_suffix (glat_suffix hM₀ (stepW s c hb) hi')
       refine ⟨i, j', hjj, preW hk hpre ψ', ?_⟩
       rw [box_pre_iff hM₀ hk hV hch i hle hpre ψ', ← hiff]
@@ -426,14 +426,14 @@ theorem box_path_iff (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
 /-- ⭐**Transfer along a cluster arrow** (`docs/v12-modal-extensions.md` §3 5): what is necessary at
     a descendant `u` of `s` is, through its preimage at `s`, translated into every descendant `t`
     of `s` — the arrow `u → t` read through their common ancestor. -/
-theorem box_cluster (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
+theorem box_cluster (hV : ModalSys.Five = true)
     (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
     (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false) {s u t : GW hF M₀}
     {P Q : List ℕ} (hu : u.1 = nodeOf s.1 P) (ht : t.1 = nodeOf s.1 Q) (hQ : PathOk Q) (j : ℕ)
     (ψ : WFF σ (ctxOf (glat u j)).boxIn 0) (hψ : WFF.box ψ ∈ gMs u j) :
     ∃ (i : ℕ) (ψ' : WFF σ (ctxOf (glat s i)).boxIn 0), WFF.box ψ' ∈ gMs s i ∧
       pTrW hM₀ s t Q ht hQ i ψ' ∈ (gw hM₀ t).M (pstg s t Q ht i) := by
-  obtain ⟨i, j', hjj, ψ', hiff⟩ := box_path_iff hV hT hS hW hM₀ hk P s u hu j ψ
+  obtain ⟨i, j', hjj, ψ', hiff⟩ := box_path_iff hV hS hW hM₀ hk P s u hu j ψ
   have hb : WFF.box ψ' ∈ gMs s i :=
     hiff.mpr ((gMs_mono_iff hM₀ u hjj (WFF.box ψ)).mp hψ)
   exact ⟨i, ψ', hb, box_mem_path hM₀ s t Q ht hQ i ψ' hb⟩

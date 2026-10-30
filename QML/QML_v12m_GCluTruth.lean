@@ -368,7 +368,7 @@ theorem ctruth_lt (hX : CluFlags) :
               ψ).mp hs₁
       | box χ =>
           have hχs : χ.size < n := by simp only [WFF.size] at hφ; omega
-          have hpath := box_pathO_iff hX.five hX.noT hX.fourS hX.fourSW hM₀ hX.keepOnly (rpath s)
+          have hpath := box_pathO_iff hX.five hX.fourS hX.fourSW hM₀ hX.keepOnly (rpath s)
             (groot hF M₀) s (rpath_eq s) i χ
           change (∀ a : CAcc hF M₀,
             (cmodel hF hM₀ hX).sat ((ccanonEnv hM₀ hX s i).boxPush a) χ) ↔ _
@@ -399,7 +399,7 @@ theorem ctruth_lt (hX : CluFlags) :
           constructor
           · rintro ⟨X, h, a, hsat⟩
             by_contra hnot
-            have hpath := dia_pathO_iff hX.five hX.noT hX.fourS hX.fourSW hM₀ hX.keepOnly
+            have hpath := dia_pathO_iff hX.five hX.fourS hX.fourSW hM₀ hX.keepOnly
               (rpath s) (groot hF M₀) s (rpath_eq s) i h χ
             have hm := (ccanon_mem_iff hX s i h a.1).mp a.2
             have h1 := (sat_diaPush_c hX s i h a _ (pathOf_eq a.1.2.down) rfl hm χ).mp hsat
@@ -423,7 +423,7 @@ theorem ctruth_lt (hX : CluFlags) :
             exact ((gw hM₀ a.1.1).mcs _).neg_mem_iff.mp hneg h2
           · intro hmem
             obtain ⟨X, h⟩ := id hx
-            have hpath := dia_pathO_iff hX.five hX.noT hX.fourS hX.fourSW hM₀ hX.keepOnly
+            have hpath := dia_pathO_iff hX.five hX.fourS hX.fourSW hM₀ hX.keepOnly
               (rpath s) (groot hF M₀) s (rpath_eq s) i h χ
             obtain ⟨t, ⟨c, hc⟩, hk, -, -, hm'⟩ := glexX hM₀ (groot hF M₀) (rstg s i) (rorig s x) X
               (rpre hX hM₀ s i x _ h rfl) _ (hpath.mpr hmem)

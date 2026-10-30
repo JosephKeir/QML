@@ -447,10 +447,10 @@ theorem gllift (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s
   · have hP := (glstg_spec hM₀ (t := ⟨c :: s.1, hk⟩) ⟨c, rfl⟩ (m + 1 - gbirth hF M₀ s.2)).1
     exact hLsuf.trans (gnet_lang_suffix hF hM₀ (by omega) hlive')
 
-/-- ⭐**Names by origin in the limit** (N1, `docs/v12-modal-extensions.md` §3 5): under 5, with T
-    off, every reachable address of a liftable type of a child is named by its edge — the entry of
-    a kept item of its parent, at some stage, is the address or its η-term. -/
-theorem glorigin (hV : ModalSys.Five = true) (hT : ModalSys.T = false) (hM₀ : Theory.IsMCS M₀)
+/-- ⭐**Names by origin in the limit** (N1, `docs/v12-modal-extensions.md` §3 5): under 5 every
+    reachable address of a liftable type of a child is named by its edge — the entry of a kept
+    item of its parent, at some stage, is the address or its η-term. -/
+theorem glorigin (hV : ModalSys.Five = true) (hM₀ : Theory.IsMCS M₀)
     {s t : GW hF M₀} (h : GCh hF M₀ s t) (j : ℕ) {z : VarSymb} {T : VarType}
     (hz : (ctxOf (glat t j)).ref z = some T) (hl : T.liftable = true) :
     ∃ (i : ℕ) (v : VarSymb) (U : VarType), (ctxOf (glat s i)).ref v = some U ∧
@@ -463,7 +463,7 @@ theorem glorigin (hV : ModalSys.Five = true) (hT : ModalSys.T = false) (hM₀ : 
   change k = c :: s.1 at hc
   subst hc
   have hlive := live_gbirth hF hM₀ hk (Nat.le_add_right _ j)
-  obtain ⟨m, hnm, v, U, hv, he⟩ := origin_total hF hM₀ hV hT hlive hz hl
+  obtain ⟨m, hnm, v, U, hv, he⟩ := origin_total hF hM₀ hV hlive hz hl
   have hlive' : (gnet hF M₀ (m + 1)).Live (c :: s.1) := gnet_live_mono hF hM₀ (by omega) hlive
   have hbs : gbirth hF M₀ s.2 ≤ m + 1 :=
     gbirth_le hF s.2 (gnet_live_mono hF hM₀ (by omega) hlive.1)

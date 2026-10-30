@@ -174,6 +174,75 @@ theorem ref_gItem (hF : ModalSys.Four = true) {l : List VarType} {Δ : Ctx} {z :
     exact e.symm
   exact ref_gPath hF _ _ _ hp hwalk hz fun w' hw' => ref_gPath_nil hw' hs
 
+/-- Where a kept item lands in its root's image determines the item and what follows. -/
+theorem gPath_keep_inj (hT : ModalSys.T = true) (hko : ModalSys.keepOnly = true) :
+    ∀ (R : VarType) (q q' : List Step) {U U' : VarType} (rest rest' : List Step),
+      PPath q → PPath q' → R.walk q = some U → R.walk q' = some U' → U.keepable = true →
+        U'.keepable = true → gPath R q .keep ++ rest = gPath R q' .keep ++ rest' →
+          q = q' ∧ rest = rest' := by
+  intro R
+  induction R with
+  | Var | VTypeOne =>
+      intro q q' U U' rest rest' hq hq' hw hw' hk hk' h
+      exfalso
+      rcases q with _ | ⟨st, q⟩
+      · simp only [VarType.walk, Option.some.injEq] at hw
+        subst hw
+        cases hk
+      · cases st <;> simp [VarType.walk, VarType.step] at hw
+  | VTypeProd A B ihA ihB =>
+      intro q q' U U' rest rest' hq hq' hw hw' hk hk' h
+      rcases q with _ | ⟨st, q⟩
+      · simp only [VarType.walk, Option.some.injEq] at hw
+        subst hw
+        cases hk
+      rcases q' with _ | ⟨st', q'⟩
+      · simp only [VarType.walk, Option.some.injEq] at hw'
+        subst hw'
+        cases hk'
+      have hq₁ : PPath q := fun t ht => hq t (List.mem_cons_of_mem _ ht)
+      have hq₁' : PPath q' := fun t ht => hq' t (List.mem_cons_of_mem _ ht)
+      cases st <;> cases st' <;> simp only [VarType.walk, VarType.step, Option.bind_some,
+        Option.bind_none, reduceCtorEq] at hw hw' <;>
+        simp only [gPath, List.cons_append, List.cons.injEq] at h <;>
+        (try exact absurd h.1 (by decide))
+      · obtain ⟨hq, hr⟩ := ihA q q' rest rest' hq₁ hq₁' hw hw' hk hk' h.2
+        exact ⟨by rw [hq], hr⟩
+      · obtain ⟨hq, hr⟩ := ihB q q' rest rest' hq₁ hq₁' hw hw' hk hk' h.2
+        exact ⟨by rw [hq], hr⟩
+  | VTypeBox A ih =>
+      intro q q' U U' rest rest' hq hq' hw hw' hk hk' h
+      rcases q with _ | ⟨st, q⟩ <;> rcases q' with _ | ⟨st', q'⟩
+      · simp only [gPath, hko, cond_true, List.cons_append, List.nil_append,
+          List.cons.injEq, true_and] at h
+        exact ⟨rfl, h⟩
+      · cases st' <;> simp [VarType.walk, VarType.step] at hw' <;>
+          simp [gPath, hko] at h
+        exact absurd (hq' _ List.mem_cons_self) (by decide)
+      · cases st <;> simp [VarType.walk, VarType.step] at hw <;>
+          simp [gPath, hko] at h
+        exact absurd (hq _ List.mem_cons_self) (by decide)
+      · have hq₁ : PPath q := fun t ht => hq t (List.mem_cons_of_mem _ ht)
+        have hq₁' : PPath q' := fun t ht => hq' t (List.mem_cons_of_mem _ ht)
+        cases st <;> cases st' <;> simp only [VarType.walk, VarType.step, hT,
+          ↓reduceIte, Option.bind_some, Option.bind_none, reduceCtorEq] at hw hw' <;>
+          (try exact absurd (hq _ List.mem_cons_self) (by decide)) <;>
+          (try exact absurd (hq' _ List.mem_cons_self) (by decide))
+        simp only [gPath, List.cons_append, List.cons.injEq, true_and] at h
+        obtain ⟨hq, hr⟩ := ih q q' rest rest' hq₁ hq₁' hw hw' hk hk' h
+        exact ⟨by rw [hq], hr⟩
+  | VTypeDia A _ =>
+      intro q q' U U' rest rest' hq hq' hw hw' hk hk' h
+      rcases q with _ | ⟨st, q⟩
+      · rcases q' with _ | ⟨st', q'⟩
+        · exact ⟨rfl, by simpa [gPath] using h⟩
+        · exfalso
+          cases st' <;> simp [VarType.walk, VarType.step] at hw'
+          exact absurd (hq' _ List.mem_cons_self) (by decide)
+      · exfalso
+        cases st <;> simp [VarType.walk, VarType.step] at hw
+        exact absurd (hq _ List.mem_cons_self) (by decide)
+
 /-! ## The item map of fresh realisations -/
 
 /-- ⭐The item map of a family of fresh realisations, root `r` to the variable `img r`: the item

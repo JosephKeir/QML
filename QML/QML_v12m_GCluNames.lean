@@ -15,7 +15,11 @@ exactly at the types with a base or a possible part (`VarType.etaInj`); at the o
 substitution ever read them (`Term.subst_congrF`).
 
 * `NamesE`, `KeepInj`, `GNetSt.NamesInj`;
-* `eta_inj` (at `VarType.etaInj`, in `SubstFaithful`), `gPath_keep_inj_noT`, `names_ref`.
+* `eta_inj` (at `VarType.etaInj`, in `SubstFaithful`), `gPath_keep_inj'`, `names_ref`.
+
+Under T a lifted root `m : □A` has kept items besides `m.keep`: those of `m.here`.  They are its
+residual, which lands under the child's fresh variable, so no other entry names them
+(`lift_item_cases`, `keepInj_gliftG`).
 -/
 
 namespace V12M
@@ -46,10 +50,12 @@ def GNetSt.NamesInj (N : GNetSt σ) : Prop :=
 
 /-! ## Injectivity of the naming maps -/
 
-theorem VarSymb.inner_inj_box {w w' : VarSymb} (hk : ModalSys.keepOnly = false)
-    (h : w.inner = w'.inner) : w = w' := by
-  rw [VarSymb.inner_box hk, VarSymb.inner_box hk] at h
-  exact (VarSymb.step.inj h).1
+theorem VarSymb.inner_inj {w w' : VarSymb} (h : w.inner = w'.inner) : w = w' := by
+  cases hk : ModalSys.keepOnly
+  · rw [VarSymb.inner_box hk, VarSymb.inner_box hk] at h
+    exact (VarSymb.step.inj h).1
+  · rw [VarSymb.inner_keepOnly hk, VarSymb.inner_keepOnly hk] at h
+    exact (VarSymb.step.inj (VarSymb.step.inj h).1).1
 
 theorem sig_pair_inj {Γ : Ctx} {A B : VarType} {a a' : Ann A} {b b' : Ann B}
     {s : Term σ Γ A a} {s' : Term σ Γ A a'} {t : Term σ Γ B b} {t' : Term σ Γ B b'}
@@ -66,7 +72,7 @@ theorem sig_boxtm_inj {Γ : Ctx} {A : VarType} {a a' : Ann A}
   rfl
 
 /-- ⭐η-expansion is injective at an η-faithful type. -/
-theorem eta_inj (hk : ModalSys.keepOnly = false) :
+theorem eta_inj :
     ∀ {Γ : Ctx} (T : VarType), T.etaInj = true → ∀ {w w' : VarSymb}
       (h : Γ.ref w = some T) (h' : Γ.ref w' = some T),
       (⟨_, Term.eta (σ := σ) w T h⟩ : Σ a, Term σ Γ T a) = ⟨_, Term.eta w' T h'⟩ → w = w'
@@ -82,13 +88,13 @@ theorem eta_inj (hk : ModalSys.keepOnly = false) :
       obtain ⟨e₁, e₂⟩ := sig_pair_inj e'
       simp only [VarType.etaInj, Bool.or_eq_true] at hT
       rcases hT with hA | hB
-      · exact (VarSymb.step.inj (eta_inj hk A hA _ _ e₁)).1
-      · exact (VarSymb.step.inj (eta_inj hk B hB _ _ e₂)).1
+      · exact (VarSymb.step.inj (eta_inj A hA _ _ e₁)).1
+      · exact (VarSymb.step.inj (eta_inj B hB _ _ e₂)).1
   | Γ, .VTypeBox A, hT, w, w', h, h', e => by
       have e' : (⟨_, Term.boxtm (Term.eta (σ := σ) w.inner A (Ctx.ref_inner h))⟩ :
           Σ c, Term σ Γ (.VTypeBox A) c) =
           ⟨_, Term.boxtm (Term.eta w'.inner A (Ctx.ref_inner h'))⟩ := e
-      exact VarSymb.inner_inj_box hk (eta_inj hk A hT _ _ (sig_boxtm_inj e'))
+      exact VarSymb.inner_inj (eta_inj A hT _ _ (sig_boxtm_inj e'))
   | _, .VTypeDia A, _, w, w', h, h', e => by
       have := (Sigma.mk.inj e).1
       injection this
@@ -151,6 +157,17 @@ theorem gPath_keep_inj_noT (hT : ModalSys.T = false) :
       | Var => cases s <;> simp [VarType.step] at h₁
       | VTypeOne => cases s <;> simp [VarType.step] at h₁
 
+/-- ⭐**Kept items' paths are told apart by `gPath`**, with T on or off. -/
+theorem gPath_keep_inj' (hF : ModalSys.Four = true) (U : VarType) (p p' : List Step)
+    (hp : PPath p) (hp' : PPath p') {A A' : VarType} (hw : U.walk p = some A)
+    (hw' : U.walk p' = some A') (hA : A.keepable = true) (hA' : A'.keepable = true)
+    (e : gPath U p .keep = gPath U p' .keep) : p = p' := by
+  cases hT : ModalSys.T
+  · exact gPath_keep_inj_noT hT U p p' hp hp' hw hw' hA hA' e
+  · have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
+    exact (gPath_keep_inj hT hko U p p' [] [] hp hp' hw hw' hA hA'
+      (by simpa using e)).1
+
 /-- What an entry names, it declares, at the entry's type. -/
 theorem names_ref {Δ : Ctx} {e : LEnt σ} {U : VarType} (he : (entOf Δ e).OkRef U) {z : VarSymb}
     (hn : NamesE e z) : Δ.ref z = some U := by
@@ -198,9 +215,9 @@ theorem keep_item_root {l : List VarType} {u : VarSymb} {U : VarType}
   rw [← VarSymb.eq_root_ext u, hu, hroot] at this
   simpa using this.symm
 
-/-- ⭐**A child's naming map is injective on kept items** (T off): `gImg` keeps the root and moves
-    the path by `gPath`. -/
-theorem keepInj_gchild (hT : ModalSys.T = false) (l : List VarType) (kd : Option VarSymb) :
+/-- ⭐**A child's naming map is injective on kept items**: `gImg` keeps the root and moves the path
+    by `gPath`. -/
+theorem keepInj_gchild (hF : ModalSys.Four = true) (l : List VarType) (kd : Option VarSymb) :
     KeepInj l kd (ofRen (σ := σ) (gchildMap l kd)) := by
   intro v v' U U' z hv hv' _ _ hn hn'
   have hb := kView_boxIn' hv (by rintro ⟨_, _, _, h⟩; cases h)
@@ -222,7 +239,7 @@ theorem keepInj_gchild (hT : ModalSys.T = false) (l : List VarType) (kd : Option
     List.nil_append, id] at e
   obtain ⟨er, eg⟩ := root_ext_inj e
   cases er
-  rw [hr, hr', gPath_keep_inj_noT hT _ _ _ hp hp' hw hw' hk hk' eg]
+  rw [hr, hr', gPath_keep_inj' hF _ _ _ hp hp' hw hw' hk hk' eg]
 
 namespace GNetSt
 
@@ -274,8 +291,7 @@ theorem NamesInj.newChild (hI : N.NamesInj) {s : Node} (hs : N.Live s) (kd : Opt
     simp only [Function.update_self]
     exact hk
 
-theorem NamesInj.mkChild (hT : ModalSys.T = false) (hF : ModalSys.Four = true)
-    (hI : N.NamesInj) {s : Node} (hs : N.Live s)
+theorem NamesInj.mkChild (hF : ModalSys.Four = true) (hI : N.NamesInj) {s : Node} (hs : N.Live s)
     (o : Σ l : List VarType, WFF σ (ctxOf l) 0) : (N.mkChild hF s o).NamesInj := by
   obtain ⟨l, φ⟩ := o
   simp only [GNetSt.mkChild]
@@ -283,10 +299,10 @@ theorem NamesInj.mkChild (hT : ModalSys.T = false) (hF : ModalSys.Four = true)
   · split
     · split_ifs
       · exact hI
-      · exact hI.newChild hs _ _ (keepInj_gchild hT _ _)
+      · exact hI.newChild hs _ _ (keepInj_gchild hF _ _)
     · split_ifs
       · split
-        · exact hI.newChild hs _ _ (keepInj_gchild hT _ _)
+        · exact hI.newChild hs _ _ (keepInj_gchild hF _ _)
         · exact hI
       · exact hI
     · exact hI
@@ -294,9 +310,9 @@ theorem NamesInj.mkChild (hT : ModalSys.T = false) (hF : ModalSys.Four = true)
 
 end GNetSt
 
-/-- ⭐**Realising forward keeps names unique** (T off): the new variable's kept items go to
-    distinct addresses under the child's fresh variable, which no older entry names. -/
-theorem keepInj_gextF (hT : ModalSys.T = false) {cl : List VarType} {k : Option VarSymb}
+/-- ⭐**Realising forward keeps names unique**: the new variable's kept items go to distinct
+    addresses under the child's fresh variable, which no older entry names. -/
+theorem keepInj_gextF (hF : ModalSys.Four = true) {cl : List VarType} {k : Option VarSymb}
     {f : VarSymb → LEnt σ} {tl : List VarType} (hkd : KOld k cl.length)
     (hf : EntOk ((ctxOf cl).kView k) (ctxOf tl) f) (hold : KeepInj cl k f) (A : VarType) :
     KeepInj (A :: cl) k (gextF f A cl.length tl.length) := by
@@ -325,7 +341,7 @@ theorem keepInj_gextF (hT : ModalSys.T = false) {cl : List VarType} {k : Option 
     subst hrr hrr'
     rw [rootTy_new] at hw hw'
     obtain ⟨-, eg⟩ := root_ext_inj (hn.trans hn'.symm)
-    rw [hr, hr', gPath_keep_inj_noT hT A _ _ hp hp' hw hw' hk hk' eg]
+    rw [hr, hr', gPath_keep_inj' hF A _ _ hp hp' hw hw' hk hk' eg]
   · rw [gextF_new h₁, namesE_inl] at hn
     rw [gextF_old h₂] at hn'
     rw [kView_old h₂] at hv'
@@ -344,7 +360,7 @@ namespace GNetSt
 
 variable {N : GNetSt σ}
 
-theorem NamesInj.realF (hT : ModalSys.T = false) (hF : ModalSys.Four = true) (hN : N.Good)
+theorem NamesInj.realF (hF : ModalSys.Four = true) (hN : N.Good)
     (hI : N.NamesInj) {k : Node} (hk : N.Live k) : (N.realF hF k).NamesInj := by
   match k with
   | [] => exact hI
@@ -353,32 +369,32 @@ theorem NamesInj.realF (hT : ModalSys.T = false) (hF : ModalSys.Four = true) (hN
       split_ifs
       · obtain ⟨_, hkd, hf, _⟩ := hN.fwd c p hk
         exact (hI.setSt _ _).setFwd
-          (keepInj_gextF hT (kOld_of_kDecl hkd) hf (hI c p hk) _)
+          (keepInj_gextF hF (kOld_of_kDecl hkd) hf (hI c p hk) _)
       · exact hI
 
-theorem NamesInj.iterate_realF (hT : ModalSys.T = false) (hF : ModalSys.Four = true) (k : Node) :
+theorem NamesInj.iterate_realF (hF : ModalSys.Four = true) (k : Node) :
     ∀ (j : ℕ) {N : GNetSt σ}, N.Good → N.Live k → N.NamesInj →
       ((fun N' => N'.realF hF k)^[j] N).NamesInj
   | 0, _, _, _, hI => hI
   | j + 1, _, hN, hk, hI => by
       rw [Function.iterate_succ_apply]
-      exact NamesInj.iterate_realF hT hF k j (hN.realF hF hk)
-        ((live_of_nch (nch_realF hF _ k) k).mpr hk) (hI.realF hT hF hN hk)
+      exact NamesInj.iterate_realF hF k j (hN.realF hF hk)
+        ((live_of_nch (nch_realF hF _ k) k).mpr hk) (hI.realF hF hN hk)
 
-theorem NamesInj.catchUp (hT : ModalSys.T = false) (hF : ModalSys.Four = true) (hN : N.Good)
+theorem NamesInj.catchUp (hF : ModalSys.Four = true) (hN : N.Good)
     (hI : N.NamesInj) {k : Node} (hk : N.Live k) : (N.catchUp hF k).NamesInj := by
   match k with
   | [] => exact hI
-  | c :: p => exact NamesInj.iterate_realF hT hF (c :: p) _ hN hk hI
+  | c :: p => exact NamesInj.iterate_realF hF (c :: p) _ hN hk hI
 
 end GNetSt
 
-/-- The new root of a lift is its only new kept item: a liftable type has no projections (T
-    off). -/
-theorem lift_item_root (hT : ModalSys.T = false) {cl : List VarType} {k : Option VarSymb}
-    {T : VarType} (hkd : KOld k cl.length) (hl : T.liftable = true) {v : VarSymb} {U : VarType}
+/-- A lift's new kept items: the root itself and, under T, those of its `here` value. -/
+theorem lift_item_cases {cl : List VarType} {k : Option VarSymb} {T : VarType}
+    (hkd : KOld k cl.length) (hl : T.liftable = true) {v : VarSymb} {U : VarType}
     (h₁ : v.rt = .free cl.length) (hv : (ctxOf (T :: cl)).kView k (.step v .keep) = some U) :
-    v = .root (.free cl.length) ∧ U = T := by
+    (v = .root (.free cl.length) ∧ U = T) ∨ ∃ A q, T = .VTypeBox A ∧ v.path = .here :: q ∧
+      PPath q ∧ A.walk q = some U ∧ U.keepable = true := by
   obtain ⟨r, hr, hp, hw, hk⟩ := keep_item_root (kView_boxIn hkd h₁ hv)
   have hrr : r = cl.length := by
     have := congrArg VarSymb.rt hr
@@ -389,46 +405,107 @@ theorem lift_item_root (hT : ModalSys.T = false) {cl : List VarType} {k : Option
   cases hpath : v.path with
   | nil =>
       rw [hpath] at hr hw
-      exact ⟨hr, (Option.some.inj hw).symm⟩
+      exact .inl ⟨hr, (Option.some.inj hw).symm⟩
   | cons s q =>
       rw [hpath] at hw hp
-      obtain ⟨U₁, h₁', -⟩ := walk_cons_some hw
-      rw [step_proj_keepable hT (VarType.keepable_of_liftable hl) (hp s List.mem_cons_self)]
-        at h₁'
-      cases h₁'
+      obtain ⟨U₁, h₁', hq⟩ := walk_cons_some hw
+      have hpq : PPath q := fun x hx => hp x (List.mem_cons_of_mem _ hx)
+      have hs := hp s List.mem_cons_self
+      cases T with
+      | VTypeBox A =>
+          cases s with
+          | here =>
+              obtain ⟨-, rfl⟩ := VarType.step_here h₁'
+              exact .inr ⟨_, q, rfl, rfl, hpq, hq, hk⟩
+          | fst | snd => cases h₁'
+          | box | dia | keep => exact absurd hs (by decide)
+      | VTypeDia Z =>
+          cases s with
+          | fst | snd | here => cases h₁'
+          | box | dia | keep => exact absurd hs (by decide)
+      | Var | VTypeOne | VTypeProd _ _ => simp [VarType.liftable] at hl
 
-/-- ⭐**A guarded lift keeps names unique** (T off): the new root's kept item names only the
-    lifted address, which no committed item named. -/
-theorem keepInj_gliftG (hT : ModalSys.T = false) (hk : ModalSys.keepOnly = false)
-    {cl : List VarType} {k : Option VarSymb} {f : VarSymb → LEnt σ} (hold : KeepInj cl k f)
-    (hkd : KOld k cl.length) {T : VarType} (hl : T.liftable = true) {L : List VarType}
-    {z : VarSymb} (hz : (ctxOf L).ref z = some T)
+/-- A residual kept item of a lifted root lands under the fresh variable. -/
+theorem gliftG_res_here {f : VarSymb → LEnt σ} {T : VarType} {c : ℕ} {κ : LEnt σ} {ρ : Root}
+    {A : VarType} {v : VarSymb} {q : List Step} (hA : T = .VTypeBox A) (hq : v.path = .here :: q)
+    (h₁ : v.rt = .free c) :
+    gliftG f T c κ ρ (.step v .keep) = .inl ((VarSymb.root ρ).ext (gPath A q .keep)) := by
+  have hnk : ¬ (v = .root (.free c) ∧ Step.keep = .keep) := fun h => by
+    rw [h.1] at hq
+    cases hq
+  rw [gliftG_res h₁ hnk, hA, hq]
+  rfl
+
+/-- ⭐**A guarded lift keeps names unique**: the new root's kept item names only the lifted address,
+    which no committed item named; the residual's go to distinct addresses under the child's fresh
+    variable, which nothing older names. -/
+theorem keepInj_gliftG (hF : ModalSys.Four = true) {cl tl : List VarType} {k : Option VarSymb}
+    {f : VarSymb → LEnt σ} (hold : KeepInj cl k f) (hkd : KOld k cl.length)
+    (hf : EntOk ((ctxOf cl).kView k) (ctxOf tl) f) {T : VarType} (hl : T.liftable = true)
+    {z : VarSymb} (hz : (ctxOf tl).ref z = some T)
     (hfresh : ¬ ∃ v U, (ctxOf cl).kView k (.step v .keep) = some U ∧
-      NamesE (f (.step v .keep)) z) (ρ : Root) :
-    KeepInj (T :: cl) k (gliftG f T cl.length (.inr ⟨L, T, _, Term.eta (σ := σ) z T hz⟩) ρ) := by
-  have hκ : ∀ w, NamesE (σ := σ) (.inr ⟨L, T, _, Term.eta z T hz⟩) w → T.etaInj = true →
+      NamesE (f (.step v .keep)) z) :
+    KeepInj (T :: cl) k (gliftG f T cl.length (.inr ⟨tl, T, _, Term.eta (σ := σ) z T hz⟩)
+      (.free tl.length)) := by
+  have hκ : ∀ w, NamesE (σ := σ) (.inr ⟨tl, T, _, Term.eta z T hz⟩) w → T.etaInj = true →
       w = z := by
     rintro w (he | ⟨L', T', hw, he⟩) hTe
     · cases he
     · have h1 := Sigma.mk.inj (Sum.inr.inj he)
       obtain ⟨rfl, h2⟩ := h1
       obtain ⟨rfl, h4⟩ := Sigma.mk.inj (eq_of_heq h2)
-      exact (eta_inj hk T hTe hz hw (eq_of_heq h4)).symm
+      exact (eta_inj T hTe hz hw (eq_of_heq h4)).symm
+  have hzf : ∀ g, z ≠ (VarSymb.root (.free tl.length)).ext g := by
+    intro g e
+    obtain ⟨r, hr, hlt, -⟩ := ref_rt hz
+    rw [e, VarSymb.ext_rt] at hr
+    cases hr
+    omega
+  have fresh : ∀ {w : VarSymb} {W : VarType} {g : List Step},
+      (ctxOf cl).kView k (.step w .keep) = some W →
+      NamesE (f (.step w .keep)) ((VarSymb.root (.free tl.length)).ext g) → False := by
+    intro w W g hw hnw
+    obtain ⟨r, hr, hlt, -⟩ := ref_rt (names_ref (hf _ _ rfl hw) hnw)
+    rw [VarSymb.ext_rt] at hr
+    cases hr
+    omega
   intro v v' U U' w hv hv' hU hU' hn hn'
   by_cases h₁ : v.rt = .free cl.length <;> by_cases h₂ : v'.rt = .free cl.length
-  · rw [(lift_item_root hT hkd hl h₁ hv).1, (lift_item_root hT hkd hl h₂ hv').1]
-  · obtain ⟨rfl, rfl⟩ := lift_item_root hT hkd hl h₁ hv
-    rw [gliftG_keep] at hn
-    rw [gliftG_old h₂] at hn'
+  · rcases lift_item_cases hkd hl h₁ hv with ⟨e₁, eU⟩ | ⟨A, q, hA, hq, hpq, hw₁, hk₁⟩ <;>
+      rcases lift_item_cases hkd hl h₂ hv' with ⟨e₂, eU'⟩ | ⟨A', q', hA', hq', hpq', hw₂, hk₂⟩
+    · rw [e₁, e₂]
+    · subst e₁ eU
+      rw [gliftG_keep] at hn
+      rw [gliftG_res_here hA' hq' h₂, namesE_inl] at hn'
+      exact (hzf _ ((hκ w hn hU).symm.trans hn'.symm)).elim
+    · subst e₂ eU'
+      rw [gliftG_keep] at hn'
+      rw [gliftG_res_here hA hq h₁, namesE_inl] at hn
+      exact (hzf _ ((hκ w hn' hU').symm.trans hn.symm)).elim
+    · obtain rfl : A = A' := VarType.VTypeBox.inj (hA.symm.trans hA')
+      rw [gliftG_res_here hA hq h₁, namesE_inl] at hn
+      rw [gliftG_res_here hA' hq' h₂, namesE_inl] at hn'
+      obtain ⟨-, eg⟩ := root_ext_inj (hn.trans hn'.symm)
+      have e := gPath_keep_inj' hF A q q' hpq hpq' hw₁ hw₂ hk₁ hk₂ eg
+      rw [VarSymb.eq_root_ext v, VarSymb.eq_root_ext v', h₁, h₂, hq, hq', e]
+  · rw [gliftG_old h₂] at hn'
     rw [kView_old h₂] at hv'
-    obtain rfl := hκ w hn hU
-    exact (hfresh ⟨v', U', hv', hn'⟩).elim
-  · obtain ⟨rfl, rfl⟩ := lift_item_root hT hkd hl h₂ hv'
-    rw [gliftG_keep] at hn'
-    rw [gliftG_old h₁] at hn
+    rcases lift_item_cases hkd hl h₁ hv with ⟨rfl, rfl⟩ | ⟨A, q, hA, hq, -, -, -⟩
+    · rw [gliftG_keep] at hn
+      obtain rfl := hκ w hn hU
+      exact (hfresh ⟨v', U', hv', hn'⟩).elim
+    · rw [gliftG_res_here hA hq h₁, namesE_inl] at hn
+      subst hn
+      exact (fresh hv' hn').elim
+  · rw [gliftG_old h₁] at hn
     rw [kView_old h₁] at hv
-    obtain rfl := hκ w hn' hU'
-    exact (hfresh ⟨v, U, hv, hn⟩).elim
+    rcases lift_item_cases hkd hl h₂ hv' with ⟨rfl, rfl⟩ | ⟨A, q, hA, hq, -, -, -⟩
+    · rw [gliftG_keep] at hn'
+      obtain rfl := hκ w hn' hU'
+      exact (hfresh ⟨v, U, hv, hn⟩).elim
+    · rw [gliftG_res_here hA hq h₂, namesE_inl] at hn'
+      subst hn'
+      exact (fresh hv hn).elim
   · rw [gliftG_old h₁] at hn
     rw [gliftG_old h₂] at hn'
     rw [kView_old h₁] at hv
@@ -439,10 +516,8 @@ namespace GNetSt
 
 variable {N : GNetSt σ}
 
-theorem NamesInj.lift (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
-    (hF : ModalSys.Four = true) (hN : N.Good) (hI : N.NamesInj) {k : Node} (hk : N.Live k)
-    (o : LTerm σ) : (N.lift hF k o).NamesInj := by
-  have hko : ModalSys.keepOnly = false := by simp [ModalSys.keepOnly, hT]
+theorem NamesInj.lift (hV : ModalSys.Five = true) (hF : ModalSys.Four = true) (hN : N.Good)
+    (hI : N.NamesInj) {k : Node} (hk : N.Live k) (o : LTerm σ) : (N.lift hF k o).NamesInj := by
   match k, o with
   | [], _ => exact hI
   | c :: p, ⟨l, T, a, t⟩ =>
@@ -456,8 +531,8 @@ theorem NamesInj.lift (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
         have ht : t = Term.eta z T hz' := eq_of_heq h4
         clear h4 h3 h2 he hz
         subst ht
-        obtain ⟨_, hkd, _, _⟩ := hN.fwd c p hk
-        rw [hcl] at hkd
+        obtain ⟨_, hkd, hf, _⟩ := hN.fwd c p hk
+        rw [hcl] at hkd hf
         have hold := hI c p hk
         rw [hcl] at hold
         refine ((hI.setSt _ _).setSt _ _).setFwd ?_
@@ -466,7 +541,7 @@ theorem NamesInj.lift (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
             Term.mono (ctxOf_le_of_suffix h) (Term.eta z T hz')⟩)
           (.free (N.st (c :: p)).l.length))
         rw [Term.mono_eta]
-        refine keepInj_gliftG hT hko hold (kOld_of_kDecl hkd) hl _ ?_ _
+        refine keepInj_gliftG hF hold (kOld_of_kDecl hkd) hf hl _ ?_
         rintro ⟨v, U, hv', hn⟩
         exact hnk ⟨v, U, hcl ▸ hv', hn⟩
       all_goals exact hI
@@ -477,8 +552,8 @@ namespace GNetSt
 
 variable {N : GNetSt σ}
 
-theorem NamesInj.applyOp (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
-    (hF : ModalSys.Four = true) (hN : N.Good) (hI : N.NamesInj) (o : GOp σ) :
+theorem NamesInj.applyOp (hV : ModalSys.Five = true) (hF : ModalSys.Four = true) (hN : N.Good)
+    (hI : N.NamesInj) (o : GOp σ) :
     (N.applyOp hF o).NamesInj := by
   rcases o with ⟨s, o⟩ | ⟨s, o⟩ | k | ⟨k, n⟩
   · simp only [GNetSt.applyOp]
@@ -487,16 +562,16 @@ theorem NamesInj.applyOp (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
     · exact hI
   · simp only [GNetSt.applyOp]
     split_ifs with hs
-    · exact hI.mkChild hT hF hs o
+    · exact hI.mkChild hF hs o
     · exact hI
   · simp only [GNetSt.applyOp]
     split_ifs with hk
-    · exact hI.realF hT hF hN hk
+    · exact hI.realF hF hN hk
     · exact hI
   · simp only [GNetSt.applyOp]
     split_ifs with hk
     · obtain ⟨hN', hk', -⟩ := hN.catchUp hF hk
-      exact (hI.catchUp hT hF hN hk).lift hV hT hF hN' hk' n
+      exact (hI.catchUp hF hN hk).lift hV hF hN' hk' n
     · exact hI
 
 theorem namesInj_init {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) :
@@ -504,20 +579,20 @@ theorem namesInj_init {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0))
 
 end GNetSt
 
-/-- ⭐**Names are unique along every edge of every network of the chain** (under 5, T off). -/
+/-- ⭐**Names are unique along every edge of every network of the chain** (under 5). -/
 theorem namesInj_gnet [Countable σ.FuncSyms] [Countable σ.RelSyms] (hV : ModalSys.Five = true)
-    (hT : ModalSys.T = false) (hF : ModalSys.Four = true) {l₀ : List VarType}
+    (hF : ModalSys.Four = true) {l₀ : List VarType}
     {M₀ : Set (WFF σ (ctxOf l₀) 0)} (hM₀ : Theory.IsMCS M₀) : ∀ n, (gnet hF M₀ n).NamesInj
   | 0 => GNetSt.namesInj_init M₀
   | n + 1 =>
-      (namesInj_gnet hV hT hF hM₀ n).applyOp hV hT hF (good_gnet hF hM₀ n) (gsched n)
+      (namesInj_gnet hV hF hM₀ n).applyOp hV hF (good_gnet hF hM₀ n) (gsched n)
 
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
   {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
 
 /-- ⭐**Names are unique in the limit** (`docs/v12-modal-extensions.md` §3 5, (N1)): two kept
     items of a parent that name one address of the child, at an η-faithful type, are one item. -/
-theorem names_unique (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
+theorem names_unique (hV : ModalSys.Five = true)
     (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s t) {i i' : ℕ} {v v' z : VarSymb}
     {U U' : VarType} (hv : (ctxOf (glat s i)).ref v = some U) (hkp : U.keepable = true)
     (hv' : (ctxOf (glat s i')).ref v' = some U') (hkp' : U'.keepable = true)
@@ -539,7 +614,7 @@ theorem names_unique (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
     hc ▸ live_gbirth hF hM₀ t.2 (Nat.le_add_right _ _)
   have hkind : (gnet hF M₀ (grnd s t i₀)).kind (c :: s.1) = lkd t :=
     hc ▸ kind_at hM₀ t (Nat.le_add_right _ _)
-  have hinj := namesInj_gnet hV hT hF hM₀ (grnd s t i₀) c s.1 hlive
+  have hinj := namesInj_gnet hV hF hM₀ (grnd s t i₀) c s.1 hlive
   rw [hkind, ← hc] at hinj
   rw [← hag _ _ hkv] at hn
   rw [← hag _ _ hkv'] at hn'

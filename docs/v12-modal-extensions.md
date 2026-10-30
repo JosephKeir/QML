@@ -5027,6 +5027,28 @@ KDB5) the root's loop is new work, so S5 comes **before** B + 5, reversing steps
 * The `keepOnly` mirrors may be more than mechanical (`here` items in `sim_pre_edge`).
 * `back_keep`: confirming that it is underivable, and that its `ret` form follows from it.
 
+**Decided (user, 2026-10-30):** S5 before B + 5, first with both lifts and `BStrong` off;
+`back_keep` is added for strong B once its underivability is confirmed.
+
+**Step 1 built (2026-10-30): names by origin hold with T on or off.**
+* *`etaBox` is a lift under 5 whatever T.*  One correction to item 5: `LiftAdm.of_T` is not keyed
+  to 5 off, it is gone.  The T + 4 shape proofs accept the fourth form directly: `keptTr_ok`,
+  `keptTr_form` and `entry_shOf` treat it as the `◇` η-lift (`Ann.idxAt_eta`, `Model.termShp_eta`).
+  So no "5 off" hypothesis enters the growing tree's shape layer, which would have touched about
+  120 declarations.
+* *`origin_total`, `glorigin`* lose T off.  They quantify over every reachable address, so the
+  `here` projections of kept images are covered with no new argument.
+* *`GCluNames`.*
+  * `eta_inj` by `VarSymb.inner_inj`, in both modes.
+  * `gPath_keep_inj` moved from `GLeafInj` to `GItems`; ⭐`gPath_keep_inj'` covers T on and off.
+  * ⭐`lift_item_cases`: under T a lifted root `m : □A` has more kept items, those of `m.here`.
+    They are its residual (`gliftG_res_here`), under the child's fresh variable.
+  * ⭐`keepInj_gliftG` gains that case: the residual's names are told apart by `gPath`, and differ
+    from the lifted address and from every older entry, since the fresh variable is new.
+  * ⭐`names_unique`, `namesInj_gnet` hold whatever T.
+* *T off is gone from `GCluPre`, `GCluDia` and `GCluOrig`:* it was only passed along.  The real
+  gate left there is `ModalSys.keepOnly = false`, which is step 2.  `CluFlags.noT` stays until then.
+
 ### □-BF and ◇-BF
 Base variables are invisible under `□`, so each Barcan formula pairs a concept quantifier outside
 with a base quantifier inside.

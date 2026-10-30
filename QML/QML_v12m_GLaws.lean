@@ -536,7 +536,7 @@ theorem entry_shOf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {t : GW 
         (ρ' := famEnv cEnv (ctxOf L) t) (fun _ _ _ => rfl) 0]
       have hl' : (ctxOf l').Le Δ := hsl.trans hle
       simp only [entIdx]
-      rcases LiftAdm.of_T hF hT hadm with hbt | ⟨z, Z, hz, he₀⟩ | ⟨-, z, Z, hz, he₀⟩
+      rcases hadm with hbt | ⟨z, Z, hz, he₀⟩ | ⟨-, z, Z, hz, he₀⟩ | ⟨-, z, A, hz, he₀⟩
       · -- the `□` view tuple
         change (⟨l', _, _, t'⟩ : LTerm σ) = boxTuple hF l' at hbt
         unfold boxTuple at hbt
@@ -600,6 +600,14 @@ theorem entry_shOf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {t : GW 
         · change _ = shOf t _ fun π =>
             gLab t ((itemsTm (σ := σ) (boxItems l') (boxItems_ref hF l')).1.idxAt π)
           rw [itemsTm_ann]
+      · -- an η-lift of a necessary address
+        change (⟨l', _, _, t'⟩ : LTerm σ) = etaBox l' z A hz at he₀
+        unfold etaBox at he₀
+        obtain ⟨rfl, h₅⟩ := Sigma.mk.inj (eq_of_heq (Sigma.mk.inj he₀).2)
+        obtain ⟨rfl, h₆⟩ := Sigma.mk.inj (eq_of_heq h₅)
+        rw [eq_of_heq h₆, Model.termShp_eta, cEnv_ref hT hM₀ hl', cEnv_decl hT hM₀ ⟨_, hl'.ref hz⟩,
+          annSh_eta hko]
+        exact shOf_congr hT _ _ _ fun π X hπ => by rw [Ann.idxAt_eta π z _ X hπ]
 
 /-- ⭐**An edge's entry for a kept item reads as the item kept along the edge.** -/
 theorem edge_entry (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ}

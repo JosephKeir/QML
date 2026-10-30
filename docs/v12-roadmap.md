@@ -16,7 +16,7 @@ package.  Design detail stays in `v12-modal-extensions.md` (per axiom) and `v12-
 | 4 with its strong forms (the lift `FourStrong`, `FourStrongW`, either or both, independently), T and D (either strength), B off | ✓ | ✓ (+ strong completeness, compactness; every presented context; `GArrow.completenessG_presented`, 2026-10-25; T added 2026-10-25 by D-H3 and the leaf calculus, `v12-modal-extensions.md` §3 4); `FourStrongW` without `FourStrong` under T still open | the growing tree (`GArrow.*`, `gmodel`) |
 | B with 4, S5 | ✓ | **open** | — |
 | 5 | not yet stated; scoped on paper 2026-10-25 (`v12-modal-extensions.md` §3 5, "5: scope and plan") | — | the cluster network (planned) |
-| 4's converse (`□□A → □A`) | not yet stated | — | — |
+| 4's converse (`□□A → □A`, density; beyond the cube, see milestone 4) | not stated | — | — |
 
 `here_beta` stays general: §10.18 is decided (keep).
 
@@ -347,15 +347,24 @@ systems (K5/KD5, K45 without both lifts, 5 with T, strong 5), and B with 5.
 * First target: S5 with both of 4's lifts, `BStrong` off.  Work: names by origin under T
   (`here` projections), `keepOnly` cluster files, a cluster leaf calculus (identity root action),
   T's model fields, then completeness and the class `FiveCoh`.
+* *Decided (user, 2026-10-30):* S5 first, as above; `back_keep` is added for strong B once its
+  underivability is confirmed.
 
-## Milestone 4 — the remaining strong forms, completing the cube
+## Milestone 4 — completing the cube
 
-* **4's strong forms** are now milestone 2a (the lift and the join, per arrow).  The inward map
-  `□□A → □A` (whose shadow is density, not 4) remains, as 4's converse rather than its strong form.
-* **D's** inward / graph form (low priority).
+T, D and 4 are finished, weak and strong.  What is left of the cube is B with 4 and 5's remaining
+systems (milestone 3).
 
 *Done when:* every flag combination of the cube (T, D, B, 4, 5, weak and strong) is sound and
 complete, or the exceptions are understood and recorded.
+
+**Beyond the cube (not owed by it; recorded only so they aren't lost).**
+* *4's converse:* density, `□□φ → □φ` (`R ⊆ R∘R`), with the map `□□A → □A`.  A different axiom
+  from 4.  The lift makes `Nec(w) → Nec(v)` surjective; density is the injective side, and it
+  pulls against the lift (`v12-modal-extensions.md` §2c).
+* *D's graph form:* `∀u:□A. ∃x:◇A. ◇_x(x.dia = u.box)`, rejected as a statement of strong D for
+  want of equality at `◇` types.  Strong D itself (`D_ex`, the map `Nec → Pos`) is complete.  A
+  relation form, like `Here`, is possible but has no present use (§2c).
 
 ## Afterwards — general metatheory (`v12-metatheory-todo.md`)
 

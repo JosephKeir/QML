@@ -301,10 +301,11 @@ theorem GNetSt.KeepImage.ext {N N' : GNetSt σ} (h : GNetSt.Ext N N') {k : Node}
   · rw [h.fmap k hk _ _ hv]
     exact he
 
-/-- ⭐**Names by origin** (N1, `docs/v12-modal-extensions.md` §3 5): under 5, with T off, every
-    reachable address of a liftable type of a child is eventually named by its edge as a kept item
-    of its parent — already, or by the lift of its η-term. -/
-theorem origin_total (hV : ModalSys.Five = true) (hT : ModalSys.T = false) {n c : ℕ} {p : Node}
+/-- ⭐**Names by origin** (N1, `docs/v12-modal-extensions.md` §3 5): under 5 every reachable
+    address of a liftable type of a child is eventually named by its edge as a kept item of its
+    parent — already, or by the lift of its η-term.  Under T these include the `here` projections
+    of kept images: a necessary object's value at the child. -/
+theorem origin_total (hV : ModalSys.Five = true) {n c : ℕ} {p : Node}
     (hk : (gnet hF M₀ n).Live (c :: p)) {z : VarSymb} {T : VarType}
     (hz : (ctxOf ((gnet hF M₀ n).st (c :: p)).l).ref z = some T) (hl : T.liftable = true) :
     ∃ m, n ≤ m ∧ (gnet hF M₀ (m + 1)).KeepImage (c :: p) z := by
@@ -327,7 +328,7 @@ theorem origin_total (hV : ModalSys.Five = true) (hT : ModalSys.T = false) {n c 
     exact hki.ext (GNetSt.Ext.lift hF hN₁ hk₁ _) hk₁
   · have hadm : LiftAdm hF ⟨_, T, _, Term.eta (σ := σ) z T hz⟩ := by
       cases T with
-      | VTypeBox A => exact liftAdm_etaBox hF hV hT _ z A hz
+      | VTypeBox A => exact liftAdm_etaBox hF hV _ z A hz
       | VTypeDia Z => exact liftAdm_etaTerm hF _ z Z hz
       | _ => exact absurd hl (by simp [VarType.liftable])
     have hv' : LiftAdm hF ⟨_, T, _, Term.eta (σ := σ) z T hz⟩ ∧

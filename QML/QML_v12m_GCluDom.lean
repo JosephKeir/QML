@@ -70,7 +70,7 @@ noncomputable abbrev rorig (s : GW hF M₀) : VarSymb → VarSymb :=
 
 theorem rpre (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ) :
     PPreOk (rpath s) (groot hF M₀) s (rpath_eq s) i :=
-  pPreOk hX.five hX.noT hX.fourS hX.fourSW hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i
+  pPreOk hX.five hX.fourS hX.fourSW hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i
 
 /-! ## Raw objects -/
 
@@ -534,7 +534,7 @@ theorem cden_named_box (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
     (ok_eS_kView (k := none) (entOk_ofRen hKo)) _ (coh_eS_kView (k := none) (entOk_ofRen hKo))
     (sim_eS_mono (l := glat (groot hF M₀) i) (k := none) _
       (entOk_ofRen (itemOk_preI hX.keepOnly hrtr))) b).trans ?_
-  exact round_trip hX.five hX.noT hM₀ hX.keepOnly (rpath s) (groot hF M₀) s (rpath_eq s) i hrtK
+  exact round_trip hX.five hM₀ hX.keepOnly (rpath s) (groot hF M₀) s (rpath_eq s) i hrtK
     (le_max_left i r) b
 
 /-- ⭐**What the root defines at a `□` type, every world defines** (R4): the root term named at
@@ -636,12 +636,12 @@ theorem rt_fix (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i :
       have hu := Ctx.boxIn_step_box hb
       change VarSymb.step (porig (rpath s) (groot hF M₀) s (rpath_eq s)
         (pnm (rpath s) (groot hF M₀) s (rpath_eq s) u)) .box = _
-      rw [porig_pnm hX.five hX.noT hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i u _ hu rfl hT]
+      rw [porig_pnm hX.five hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i u _ hu rfl hT]
   | u, .keep, T, _, hb, hT => by
       obtain ⟨-, hu, hkp⟩ := Ctx.boxIn_keep hb
       change VarSymb.step (porig (rpath s) (groot hF M₀) s (rpath_eq s)
         (pnm (rpath s) (groot hF M₀) s (rpath_eq s) u)) .keep = _
-      rw [porig_pnm hX.five hX.noT hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i u _ hu hkp hT]
+      rw [porig_pnm hX.five hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i u _ hu hkp hT]
   | _, .fst, _, _, hb, _ => by cases hb
   | _, .snd, _, _, hb, _ => by cases hb
   | _, .dia, _, _, hb, _ => by cases hb
@@ -675,7 +675,7 @@ theorem cden_named_dia (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
       (ctxOf (glat (groot hF M₀) K)).ref
         ((rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s)) z) = some T :=
     fun z T hz hkp => (gle hM₀ _ (le_max_right i r)).ref (hrtr z T hz hkp)
-  have hyy := porig_pnm hX.five hX.noT hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i y _ hY
+  have hyy := porig_pnm hX.five hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i y _ hY
     rfl rfl
   have hKo := itemOk_preIX hX.keepOnly hY hrtK
   refine cden_root_dia_wit hX (le_max_right i r) (le_max_left i r) ⟨Y, hY⟩ b _ hyy _ _ ?_

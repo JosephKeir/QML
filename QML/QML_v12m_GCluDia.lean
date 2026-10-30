@@ -273,7 +273,7 @@ theorem dia_pre_iff (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false)
 /-- ⭐**`◇`-uniformity along a path** (`docs/v12-modal-extensions.md` §3 5, R2): a `◇_x`-formula
     at a descendant's stage holds, at some later stage of it, exactly when a `◇`-formula holds at
     the ancestor — at the witness's preimage, of the body's preimage, edge by edge. -/
-theorem dia_path_iff (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
+theorem dia_path_iff (hV : ModalSys.Five = true)
     (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
     (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false) :
     ∀ (P : List ℕ) (s t : GW hF M₀), t.1 = nodeOf s.1 P → ∀ (j : ℕ) (x : VarSymb) (X : VarType)
@@ -290,9 +290,9 @@ theorem dia_path_iff (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
   | c :: P, s, t, hP, j, x, X, hx, ψ => by
       have hb := born_step hP
       obtain ⟨i', j', hjj, x', hx', ψ', hiff⟩ :=
-        dia_path_iff hV hT hS hW hM₀ hk P (stepW s c hb) t hP j x X hx ψ
+        dia_path_iff hV hS hW hM₀ hk P (stepW s c hb) t hP j x X hx ψ
       have hch : GCh hF M₀ s (stepW s c hb) := ⟨c, rfl⟩
-      obtain ⟨i, pre, hi', hpre⟩ := exists_pre hV hT hS hW hM₀ hch i'
+      obtain ⟨i, pre, hi', hpre⟩ := exists_pre hV hS hW hM₀ hch i'
       have hle := ctxOf_le_of_suffix (glat_suffix hM₀ (stepW s c hb) hi')
       refine ⟨i, j', hjj, pre x', (hpre x' _ hx' rfl).1, preWX hk hpre hx' ψ', ?_⟩
       rw [dia_pre_iff hM₀ hk hV hch i hle hpre hx' ψ', ← hiff]
