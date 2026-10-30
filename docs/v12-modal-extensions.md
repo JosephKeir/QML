@@ -4533,6 +4533,25 @@ model.**
 * *Stages.*  Each address is named at its own parent stage.  A formula has finitely many, so take
   the maximum.
 
+**Built (2026-10-30): the one-edge preimage identity** (`QML_v12m_GCluPre.lean`, in TOP).
+* *Generic, in `SubstShift`:*
+  * ⭐`WFF.subst_shift` (with `Rel.subst_shift`, `preShift_under`): substituting into a shifted
+    formula is substituting into the formula by the entries at the shifted addresses.
+  * Reused from `GViewSubst` (strong 4's `◇`-lift, D-H1): `Subst.atShift`, a substitution read
+    through the shift, coherent when every item has one level step.  `subst_shift_pre` follows
+    the same pattern as `subst_shift_pullS` there.
+* *In `GCluPre`:*
+  * `Names` (the edge names `z` by `v`) and `PreOk` (an address map that is a preimage along the
+    edge).
+  * `preI`, with `itemOk_preI`; `preW` (the preimage of a formula).
+  * `edgeBox` (the edge's `□`-view substitution), and `keepE_eta_sim`.
+  * ⭐`sim_pre_edge`: the preimage, followed by the edge read through the shift, is the identity
+    up to η.
+  * ⭐`subst_shift_pre`: `subst (edge).box (shift (preW ψ)) = mono ψ`.
+* *Next.*  One-edge cluster uniformity: `□ψ` at the child iff `□ (preW ψ)` at the parent, by
+  `four_box` with `gltr` in one direction, and `gltr`'s contrapositive with `five_box` in the
+  other.  Then preimages along paths and the cluster model.
+
 **Step 2 for K45 as built (2026-10-29).**  `Proof.five_box` and `Proof.five_dia` (under `Four`
 and `Five`); their soundness cases (`Soundness`) and substitution cases (`ProofSubst`).  No new
 syntax.
