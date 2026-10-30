@@ -15,7 +15,9 @@ defined and stage changes are weakenings.
   substitution; ⭐`preWP_cons`, ⭐`preWPX_cons`: it is the edge's preimage of the rest's;
 * ⭐`box_pathO_iff`, ⭐`dia_pathO_iff`: uniformity along a path for the canonical preimage;
 * ⭐`fmapL_names`: under 5 every entry names an address; ⭐`orig_names`: the origin of a named
-  address is its namer, at η-faithful types (R4 at addresses).
+  address is its namer, at η-faithful types (R4 at addresses);
+* `nm`, `pstgN`, `pnm`: names forward along an edge and a path; ⭐`pnm_ref`; ⭐`porig_pnm`: the
+  round trip fixes η-faithful addresses, and `porig_pnm_ref`: it keeps types.
 -/
 
 namespace V12M
@@ -395,6 +397,78 @@ theorem orig_names (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
   obtain ⟨i', U', hv', hkU', hn'⟩ := orig_spec ⟨i, v, U, hv, hkp, hn⟩
   obtain rfl := names_type hM₀ h hv' hkU' hn' (names_ref' hM₀ h hv hkp hn)
   exact (names_unique hV hT hM₀ h hv hkp hv' hkU' hU hU hn hn').symm
+
+/-! ## Names along a path, and the round trip (R4) -/
+
+open Classical in
+/-- The name of a parent address along an edge: the child address its kept item's entry names
+    (`fmapL_names`). -/
+noncomputable def nm (t : GW hF M₀) (v : VarSymb) : VarSymb :=
+  if h : ∃ z, NamesE (fmapL hF M₀ t.1 (.step v .keep)) z then h.choose else v
+
+theorem nm_spec (hV : ModalSys.Five = true) (t : GW hF M₀) (v : VarSymb) :
+    Names t v (nm t v) := by
+  have h := fmapL_names (hF := hF) (M₀ := M₀) hV t.1 (.step v .keep)
+  unfold nm
+  rw [dif_pos h]
+  exact h.choose_spec
+
+/-- The descendant's stage at which an ancestor's stage is committed, edge by edge. -/
+noncomputable def pstgN : (P : List ℕ) → (s t : GW hF M₀) → t.1 = nodeOf s.1 P → ℕ → ℕ
+  | [], _, _, _, i => i
+  | c :: P, s, t, hP, i =>
+      pstgN P (stepW s c (born_step hP)) t hP (glstg s (stepW s c (born_step hP)) i)
+
+/-- The names along a path, composed edge by edge. -/
+noncomputable def pnm : (P : List ℕ) → (s t : GW hF M₀) → t.1 = nodeOf s.1 P →
+    VarSymb → VarSymb
+  | [], _, _, _ => id
+  | c :: P, s, t, hP =>
+      pnm P (stepW s c (born_step hP)) t hP ∘ nm (stepW s c (born_step hP))
+
+/-- ⭐**An ancestor's keepable address is named at the descendant, at its type.** -/
+theorem pnm_ref (hV : ModalSys.Five = true) (hM₀ : Theory.IsMCS M₀) :
+    ∀ (P : List ℕ) (s t : GW hF M₀) (hP : t.1 = nodeOf s.1 P) (i : ℕ) (v : VarSymb)
+      (U : VarType), (ctxOf (glat s i)).ref v = some U → U.keepable = true →
+      (ctxOf (glat t (pstgN P s t hP i))).ref (pnm P s t hP v) = some U
+  | [], s, t, hP, i, v, U, hv, _ => by
+      obtain rfl : t = s := gw_eq hP
+      exact hv
+  | c :: P, s, t, hP, i, v, U, hv, hkp =>
+      pnm_ref hV hM₀ P (stepW s c (born_step hP)) t hP _ _ U
+        (names_ref' hM₀ ⟨c, rfl⟩ hv hkp (nm_spec hV _ v)) hkp
+
+/-- ⭐**The origin of an address's name is the address**, at η-faithful types. -/
+theorem orig_nm (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
+    (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s t) {i : ℕ} {v : VarSymb}
+    {U : VarType} (hv : (ctxOf (glat s i)).ref v = some U) (hkp : U.keepable = true)
+    (hU : U.etaInj = true) : orig s t (nm t v) = v :=
+  orig_names hV hT hM₀ h hv hkp hU (nm_spec hV t v)
+
+/-- ⭐**The round trip along a path** (R4): the path origin of an address's path name is the
+    address, at η-faithful types. -/
+theorem porig_pnm (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
+    (hM₀ : Theory.IsMCS M₀) :
+    ∀ (P : List ℕ) (s t : GW hF M₀) (hP : t.1 = nodeOf s.1 P) (i : ℕ) (v : VarSymb)
+      (U : VarType), (ctxOf (glat s i)).ref v = some U → U.keepable = true →
+      U.etaInj = true → porig P s t hP (pnm P s t hP v) = v
+  | [], _, _, _, _, _, _, _, _, _ => rfl
+  | c :: P, s, t, hP, i, v, U, hv, hkp, hU => by
+      change orig s (stepW s c (born_step hP)) (porig P (stepW s c (born_step hP)) t hP
+        (pnm P (stepW s c (born_step hP)) t hP (nm (stepW s c (born_step hP)) v))) = v
+      rw [porig_pnm hV hT hM₀ P (stepW s c (born_step hP)) t hP _ _ U
+        (names_ref' hM₀ ⟨c, rfl⟩ hv hkp (nm_spec hV _ v)) hkp hU]
+      exact orig_nm hV hT hM₀ ⟨c, rfl⟩ hv hkp hU
+
+/-- The round trip keeps types, at every keepable type. -/
+theorem porig_pnm_ref (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
+    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hM₀ : Theory.IsMCS M₀) (P : List ℕ) (s t : GW hF M₀) (hP : t.1 = nodeOf s.1 P) (i : ℕ)
+    {v : VarSymb} {U : VarType} (hv : (ctxOf (glat s i)).ref v = some U)
+    (hkp : U.keepable = true) :
+    (ctxOf (glat s (pstgO P s t hP (pstgN P s t hP i)))).ref (porig P s t hP (pnm P s t hP v)) =
+      some U :=
+  pPreOk hV hT hS hW hM₀ P s t hP _ _ U (pnm_ref hV hM₀ P s t hP i v U hv hkp) hkp
 
 end GArrow
 

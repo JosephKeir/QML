@@ -4681,16 +4681,28 @@ is the root's model, with each world's own base domain.
    * *Terms need nothing new:* only base-typed addresses are terms, so a modal term is `boxtm`
      or `diatm`, and its preimage is the same renaming applied inside.
 
-   **R4 for terms: the plan.**
-   * *Per edge.*  The round trip `rt v := orig (the address v.keep's entry names)`: the edge
-     after `four_box`'s shift, then the preimage, is the renaming `preI rt` (up to η), the mirror
-     of `sim_pre_edge`.  `rt` keeps types, and fixes η-faithful addresses (`orig_names`).
-   * *Along a path* (`pTr` translates edge by edge, first edge first, and the preimage composes
-     the other way): the composite is again a renaming by a type-preserving map fixing the
-     η-faithful addresses, by induction.
-   * *Semantically* (with `GCluDom`): such a renaming does not change a root denotation, since
-     at the other types (`𝟙`, `×`, `□` only) the raw domain is a singleton.  So
-     `den_ρ (pre_s (pTr ρ s m.keep)) = den_ρ m`, and the carriers are shared.
+   **R4 for terms, revised and built (syntactic half).**  No path translation is needed: a root
+   term is named at `s` by *renaming*, and its preimage is the root term renamed by the round
+   trip.
+   * `nm t v`: the child address that `v.keep`'s entry names (`nm_spec`, by `fmapL_names`);
+     `pstgN`, `pnm`: stages and names forward along a path; ⭐`pnm_ref`: a keepable address is
+     named at its type.
+   * ⭐`porig_pnm`: `porig ∘ pnm` fixes every η-faithful keepable address (`orig_nm`, edge by
+     edge); `porig_pnm_ref`: it keeps types at every keepable type.
+   * So for a root term `m` (a `boxtm` or `diatm`), the `s`-term `m'` renamed by `preI pnm` (or
+     `preIX pnm x`) has preimage `m` renamed by `preI (porig ∘ pnm)` (`sim_eS_ren_comp`,
+     `Term.subst_comp_sig`).
+   * *Semantic half, in `GCluDom`:* that renaming does not change a root denotation, since at
+     the other types (`𝟙`, `×`, `□` only) the raw domain is a singleton.  So `den_s m' = den_ρ m`,
+     and the carriers are shared.
+
+   **`GCluDom`'s denotation, refined (2026-10-30).**
+   * *Arrows.*  Without T, `GR ρ t ⇔ t ≠ ρ`, so the arrows of every world are `GAcc ρ`.  Using
+     `GAcc ρ` itself reuses `pathOf` and the root's path machinery unchanged.
+   * *One structural recursion on the type, no well-founded recursion.*  At a modal type, `den_s`
+     at `s ≠ ρ` is *the root case applied to the preimage*, inlined: `boxtm b` denotes
+     `fun a => den_{a.1} (pTr ρ a.1 (pre_s b))`, and `diatm` likewise through `porig x`.  So the
+     only recursive calls are at smaller types, and `den_s m = den_ρ (pre_s m)` is definitional.
 3. `GCluDom`, `GCluModel`: raw objects, denotations, carriers, the model.  Smaller than
    `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
    the identity.

@@ -327,8 +327,9 @@ model is the root-centric cluster model on the growing tree (`v12-modal-extensio
 K45 cluster model: design pass against the code").  Built so far: names by origin (N1,
 `glorigin`); `GCluPre` (`□`-uniformity along edges and paths, `box_cluster`); `GCluNames`
 (`names_unique`); `GCluDia` (`◇`-uniformity, R2); `GCluOrig` (one canonical preimage along
-paths, uniformity for it, R4 at addresses).  Next: R4 for terms (the round trip is a renaming),
-then `GCluDom`/`GCluModel`, `GCluTruth` and `GCluCompleteness`.
+paths, uniformity for it; names forward and the round trip, R4's syntactic half).  Next:
+`GCluDom` (denotations, one structural recursion; R4's semantic half), then `GCluModel`,
+`GCluTruth` and `GCluCompleteness`.
 
 ## Milestone 4 — the remaining strong forms, completing the cube
 
