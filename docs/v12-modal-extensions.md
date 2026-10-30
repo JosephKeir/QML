@@ -4809,7 +4809,12 @@ is the root's model, with each world's own base domain.
    ⭐`cden_trX`.  ⭐`cden_named_dia` in `GCluDom` now proves `cdefinable_dia_of_root`, replacing
    `nmTD`/`preTD_nmTD`.  So the path translation's round trip holds at `□` and `◇`, as the
    paper check said.
-   Next: the raw function algebra (`crawEval`) and `cden_applyG`, then `GCluModel`.
+   **The function algebra, built (2026-10-30, `QML_v12m_GCluFunc.lean`, in TOP in place of
+   `GCluTr`):** `crawEval` (`dup`, `dkeep` the identity along every arrow; `extract` vacuous);
+   `shiftCorr_preI`, `shiftCorr_preIX` (a world's preimage renamings commute with 4's shift);
+   `preTB_shift`, `preTB_keepDia`; `preTB_applyG`, `preTD_applyG`, `preTD_box`; ⭐`cden_applyG`
+   (as `grden_applyG`; `dup` by `cden_tr`, `dkeep` by `cden_trX`); ⭐`cdefinable_rawEval`.
+   Next: `GCluModel` (frame, carriers, operations, laws, as checked above).
    Smaller than
    `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
    the identity.
