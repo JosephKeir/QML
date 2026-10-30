@@ -4548,9 +4548,18 @@ model.**
   * ⭐`sim_pre_edge`: the preimage, followed by the edge read through the shift, is the identity
     up to η.
   * ⭐`subst_shift_pre`: `subst (edge).box (shift (preW ψ)) = mono ψ`.
-* *Next.*  One-edge cluster uniformity: `□ψ` at the child iff `□ (preW ψ)` at the parent, by
-  `four_box` with `gltr` in one direction, and `gltr`'s contrapositive with `five_box` in the
-  other.  Then preimages along paths and the cluster model.
+* ⭐`box_pre_iff` (2026-10-31): **one-edge cluster uniformity.**  `□ (preW ψ)` at the parent's
+  stage `i` iff `□ψ` at the child's round `grnd s t i`: by `four_box` and `gltr` one way, and
+  `gltr`'s contrapositive with `five_box` the other.
+* ⭐`exists_pre` (2026-10-31): every stage `j` of a child has a preimage along its edge, at a
+  parent stage `i` with `j ≤ glstg s t i`.
+  * Under 5, T off and both lifts, by `glorigin` per address and a finite maximum of the stages
+    (`ctxOf_fin`, `Ctx.Fin.reach`).
+  * With `names_type` (the naming address has the named address's type), `glat_suffix` and
+    `glat_ref_agree`.
+* *Next.*  Preimages along paths: iterate `exists_pre` and `box_pre_iff` up to `ρ`.  A cluster
+  arrow `u → t` then translates through `ρ` (`pre`, then `ρ`'s path transfer down to `t`).  Then
+  the cluster model.
 
 **Step 2 for K45 as built (2026-10-29).**  `Proof.five_box` and `Proof.five_dia` (under `Four`
 and `Five`); their soundness cases (`Soundness`) and substitution cases (`ProofSubst`).  No new

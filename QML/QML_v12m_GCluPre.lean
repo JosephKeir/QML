@@ -1,5 +1,6 @@
 import QML.QML_v12m_GLimit
 import QML.QML_v12m_GViewSubst
+import QML.QML_v12m_CtxFin
 
 /-!
 # QML v12m — 5 on the growing tree: preimages along an edge
@@ -269,6 +270,117 @@ theorem subst_shift_pre (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = fa
       (Subst.coh_idS_le hle.boxIn) Ctx.NoSlots.slots Ctx.NoSlots.slots Ctx.NoSlots.slots
       (simS_symm (sim_pre_edge hM₀ hk h i hpre)) ψ]
   exact subst_idS_le hle.boxIn ψ
+
+/-- ⭐**Cluster uniformity along an edge** (`docs/v12-modal-extensions.md` §3 5): under 4 and 5, a
+    child's `□`-formula holds exactly when its preimage's does at the parent — by `four_box` and
+    the edge's transfer one way, the transfer's contrapositive and `five_box` the other. -/
+theorem box_pre_iff (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false)
+    (hV : ModalSys.Five = true) {s t : GW hF M₀} (h : GCh hF M₀ s t) (i : ℕ)
+    {lt : List VarType} (hle : (ctxOf lt).Le (ctxOf (glat t (glstg s t i))))
+    {pre : VarSymb → VarSymb} (hpre : PreOk s t i lt pre) (ψ : WFF σ (ctxOf lt).boxIn 0) :
+    WFF.box (preW hk hpre ψ) ∈ ((gnet hF M₀ (gbirth hF M₀ s.2 + i)).st s.1).M ↔
+      WFF.box (WFF.mono hle.boxIn ψ) ∈ ((gnet hF M₀ (grnd s t i)).st t.1).M := by
+  have hsm : Theory.IsMCS ((gnet hF M₀ (gbirth hF M₀ s.2 + i)).st s.1).M :=
+    (good_gnet hF hM₀ _).mcs s.1 (live_gbirth hF hM₀ s.2 (Nat.le_add_right _ i))
+  have htm : Theory.IsMCS ((gnet hF M₀ (grnd s t i)).st t.1).M :=
+    (good_gnet hF hM₀ _).mcs t.1 (live_gbirth hF hM₀ t.2 (Nat.le_add_right _ _))
+  have key := subst_shift_pre hM₀ hk h i hle hpre ψ
+  constructor
+  · intro hb
+    have h4 : WFF.box (WFF.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF _) Ctx.NoSlots.slots
+        (preW hk hpre ψ))) ∈ ((gnet hF M₀ (gbirth hF M₀ s.2 + i)).st s.1).M :=
+      hsm.closed ⟨[_], fun x hx => by rw [List.mem_singleton.mp hx]; exact hb,
+        ⟨Proof.four_box hF (Proof.lookup List.mem_cons_self)⟩⟩
+    rw [← key]
+    exact gltr hM₀ h i _ h4
+  · intro hb
+    rw [← key] at hb
+    by_contra hn
+    have h5 : WFF.box (WFF.neg (WFF.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF _)
+        Ctx.NoSlots.slots (preW hk hpre ψ)))) ∈
+        ((gnet hF M₀ (gbirth hF M₀ s.2 + i)).st s.1).M := by
+      by_contra hn'
+      exact hn (hsm.closed ⟨[_], fun x hx => by
+        rw [List.mem_singleton.mp hx]; exact hsm.neg_mem_iff.mpr hn',
+        ⟨Proof.five_box hF hV (Proof.lookup List.mem_cons_self)⟩⟩)
+    exact htm.neg_mem_iff.mp (gltr hM₀ h i _ h5) hb
+
+/-! ## Preimages exist -/
+
+omit [ModalSys] [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+/-- A root-only language declares finitely many addresses. -/
+theorem ctxOf_fin : ∀ l : List VarType, (ctxOf l).Fin
+  | [] => by
+      change {v | (Ctx.ofDecls (decls []) v).isSome}.Finite
+      convert Set.finite_empty
+      ext v
+      simp [Ctx.ofDecls, decls, Ctx.empty]
+  | A :: l => by
+      rw [ctxOf_cons]
+      exact (ctxOf_fin l).insert _ A
+
+/-- A world's language grows with its stages. -/
+theorem glat_suffix (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) {i i' : ℕ} (h : i ≤ i') :
+    glat s i <:+ glat s i' :=
+  gnet_lang_suffix hF hM₀ (by omega) (live_gbirth hF hM₀ s.2 (Nat.le_add_right _ i))
+
+/-- Two stages' languages agree on what both declare. -/
+theorem glat_ref_agree (hM₀ : Theory.IsMCS M₀) (t : GW hF M₀) {j j' : ℕ} {z : VarSymb}
+    {T T' : VarType} (h : (ctxOf (glat t j)).ref z = some T)
+    (h' : (ctxOf (glat t j')).ref z = some T') : T = T' := by
+  rcases le_total j j' with hjj | hjj
+  · exact Option.some.inj (((ctxOf_le_of_suffix (glat_suffix hM₀ t hjj)).ref h).symm.trans h')
+  · exact Option.some.inj (h.symm.trans ((ctxOf_le_of_suffix (glat_suffix hM₀ t hjj)).ref h'))
+
+/-- The parent's address that names a child's address has its type. -/
+theorem names_type (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s t) {i j : ℕ}
+    {v z : VarSymb} {U T : VarType} (hv : (ctxOf (glat s i)).ref v = some U)
+    (hkp : U.keepable = true) (hn : Names t v z) (hz : (ctxOf (glat t j)).ref z = some T) :
+    U = T := by
+  rcases hn with he | ⟨L, T', hz', he⟩
+  · have hok := gentOk_box hM₀ h i (.step v .keep) U rfl (Ctx.boxIn_keep_of' hF hv hkp)
+    rw [he] at hok
+    exact glat_ref_agree hM₀ t hok hz
+  · obtain ⟨rfl, hz'', -⟩ := entOf_names_tm hM₀ h i hv hkp hz' he
+    exact glat_ref_agree hM₀ t hz'' hz
+
+/-- ⭐**Every stage of a child has a preimage along its edge**, at a stage of the parent committed
+    no earlier than it (names by origin, `glorigin`; both lifts on, so every keepable address is
+    liftable). -/
+theorem exists_pre (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
+    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s t) (j : ℕ) :
+    ∃ (i : ℕ) (pre : VarSymb → VarSymb), j ≤ glstg s t i ∧ PreOk s t i (glat t j) pre := by
+  classical
+  have hor : ∀ z T, (ctxOf (glat t j)).ref z = some T → T.keepable = true →
+      ∃ (i : ℕ) (v : VarSymb), (ctxOf (glat s i)).ref v = some T ∧ Names t v z := by
+    intro z T hz hkp
+    have hl : T.liftable = true := by
+      cases T <;> simp_all [VarType.liftable, VarType.keepable]
+    obtain ⟨i, v, U, hv, hkU, hn⟩ := glorigin hV hT hM₀ h j hz hl
+    obtain rfl := names_type hM₀ h hv hkU hn hz
+    exact ⟨i, v, hv, hn⟩
+  let P : VarSymb → Prop := fun z =>
+    ∃ T, (ctxOf (glat t j)).ref z = some T ∧ T.keepable = true
+  let iz : VarSymb → ℕ := fun z =>
+    if hz : P z then (hor z _ hz.choose_spec.1 hz.choose_spec.2).choose else 0
+  let pre : VarSymb → VarSymb := fun z =>
+    if hz : P z then (hor z _ hz.choose_spec.1 hz.choose_spec.2).choose_spec.choose else z
+  obtain ⟨N, hN⟩ := ((Ctx.Fin.reach (ctxOf_fin (glat t j))).image iz).bddAbove
+  refine ⟨max N (gbirth hF M₀ t.2 + j), pre, ?_, ?_⟩
+  · have := (glstg_spec hM₀ h (max N (gbirth hF M₀ t.2 + j))).1
+    omega
+  · intro z T hz hkp
+    have hP : P z := ⟨T, hz, hkp⟩
+    have hc := (hor z _ hP.choose_spec.1 hP.choose_spec.2).choose_spec.choose_spec
+    have hTT : hP.choose = T := Option.some.inj (hP.choose_spec.1.symm.trans hz)
+    have hiz : iz z ≤ max N (gbirth hF M₀ t.2 + j) :=
+      (hN ⟨z, by simp [hz], rfl⟩).trans (le_max_left _ _)
+    simp only [iz, dif_pos hP] at hiz
+    simp only [pre, dif_pos hP]
+    refine ⟨?_, hc.2⟩
+    rw [← hTT]
+    exact (ctxOf_le_of_suffix (glat_suffix hM₀ s hiz)).ref hc.1
 
 end GArrow
 
