@@ -331,8 +331,9 @@ paths, uniformity for it; names forward; the round trip is weakening, R4); `Subs
 (substitution reads only η-faithful addresses); `GCluDom` (denotations, stage independence,
 and R4 in the model: at modal types every world defines what the root defines); `GCluTr` (the
 path translation's round trip); `GCluFunc` (the function algebra); `GCluModel` (the model);
-`GCluTerm`, `GCluTruth` (the truth lemma).  Next: `GCluCompleteness`, and the dispatch in
-`NoBComplete`.
+`GCluTerm`, `GCluTruth` (the truth lemma); **`GCluCompleteness`: K45 and KD45 with both lifts
+complete** (presented contexts, strong completeness, compactness).  Next: the dispatch in
+`NoBComplete` (replacing the temporary `noFive`).
 
 ## Milestone 4 — the remaining strong forms, completing the cube
 
