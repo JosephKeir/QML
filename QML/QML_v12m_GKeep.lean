@@ -796,7 +796,7 @@ theorem keptTr_ok (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW h
       obtain ⟨rfl, -⟩ := Sigma.mk.inj (eq_of_heq h₃)
       have hl' : (ctxOf l').Le Δ := (ctxOf_le_of_suffix hsuf).trans hle
       simp only [entIdx]
-      rcases hadm with hbt | ⟨z, Z, hz, he₀⟩ | ⟨-, z, Z, hz, he₀⟩
+      rcases LiftAdm.of_T hF hT hadm with hbt | ⟨z, Z, hz, he₀⟩ | ⟨-, z, Z, hz, he₀⟩
       · -- the `□` view tuple
         change (⟨l', _, _, t'⟩ : LTerm σ) = boxTuple hF l' at hbt
         unfold boxTuple at hbt
@@ -983,7 +983,7 @@ theorem keptTr_form (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW
       simp only [entIdx]
       obtain ⟨m, q₀, rfl, hq0⟩ := keeps_decomp q
       have hq₀ : Step.walkTy _ q₀ = some (.VTypeDia X₀) := (walkTy_keeps hUk m q₀).symm.trans hq'
-      rcases hadm with hbt | ⟨z, Z, hz, he₀⟩ | ⟨-, z, Z, hz, he₀⟩
+      rcases LiftAdm.of_T hF hT hadm with hbt | ⟨z, Z, hz, he₀⟩ | ⟨-, z, Z, hz, he₀⟩
       · -- the `□` view tuple: `here` into an item, read at the world
         change (⟨l', _, _, t'⟩ : LTerm σ) = boxTuple hF l' at hbt
         unfold boxTuple at hbt

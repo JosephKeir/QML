@@ -327,7 +327,8 @@ theorem nch_lift (hF : ModalSys.Four = true) (N : GNetSt σ) (k : Node) (o : LTe
 theorem lift_spec (hF : ModalSys.Four = true) {N : GNetSt σ} {c : ℕ} {p : Node}
     {l : List VarType} {T : VarType} {a : Ann T} {t : Term σ (ctxOf l) T a}
     (hcl : N.fcl (c :: p) = (N.st p).l) (h : l <:+ (N.st (c :: p)).l) (hl : T.liftable = true)
-    (hv : LiftAdm hF ⟨l, T, a, t⟩) :
+    (hv : LiftAdm hF ⟨l, T, a, t⟩ ∧
+      (ModalSys.Five = true → N.OriginAdm (c :: p) ⟨l, T, a, t⟩)) :
     N.lift hF (c :: p) ⟨l, T, a, t⟩ = ((N.setSt p (liftPar hF (N.st p) (N.st (c :: p))
         (N.kind (c :: p)) (N.fmap (c :: p)) (Term.mono (ctxOf_le_of_suffix h) t) hl)).setSt
         (c :: p) (liftChild hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))
@@ -346,7 +347,8 @@ theorem Ext.lift (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k : 
       by_cases hcl : N.fcl (c :: p) = (N.st p).l
       · by_cases h : l <:+ (N.st (c :: p)).l
         · by_cases hl : T.liftable = true
-          · by_cases hv : LiftAdm hF ⟨l, T, a, t⟩
+          · by_cases hv : LiftAdm hF ⟨l, T, a, t⟩ ∧
+                (ModalSys.Five = true → N.OriginAdm (c :: p) ⟨l, T, a, t⟩)
             swap
             · simp only [GNetSt.lift, if_pos hcl, dif_pos h, dif_pos hl, if_neg hv]
               exact Ext.refl N

@@ -243,7 +243,7 @@ theorem child_dia {n : ℕ} {s : Node} (hs : (gnet hF M₀ n).Live s) {x : VarSy
     variables then). -/
 theorem lift_total {n c : ℕ} {p : Node} (hk : (gnet hF M₀ n).Live (c :: p)) {T : VarType}
     {a : Ann T} (t : Term σ (ctxOf ((gnet hF M₀ n).st (c :: p)).l) T a)
-    (hl : T.liftable = true) (hv : LiftAdm hF ⟨_, T, a, t⟩) :
+    (hl : T.liftable = true) (hv : LiftAdm hF ⟨_, T, a, t⟩) (hV : ModalSys.Five = false) :
     ∃ m, n ≤ m ∧
       ∃ (_ : ((gnet hF M₀ n).st (c :: p)).l <:+ ((gnet hF M₀ (m + 1)).st (c :: p)).l)
       (r : ℕ), r < ((gnet hF M₀ (m + 1)).fcl (c :: p)).length ∧
@@ -266,23 +266,85 @@ theorem lift_total {n c : ℕ} {p : Node} (hk : (gnet hF M₀ n).Live (c :: p)) 
     rw [gnet_succ_of hF hs]
     simp only [GNetSt.applyOp, if_pos hlm]
   have hgrow := ((ext_gnet hF hM₀ (Nat.le_succ m)).grows _ hlm).suf
+  have hv' : LiftAdm hF ⟨_, T, a, t⟩ ∧
+      (ModalSys.Five = true →
+        ((gnet hF M₀ m).catchUp hF (c :: p)).OriginAdm (c :: p) ⟨_, T, a, t⟩) :=
+    ⟨hv, fun h5 => Bool.noConfusion (h5.symm.trans hV)⟩
   refine ⟨m, hnm, ((ext_gnet hF hM₀ (hnm.trans (Nat.le_succ m))).grows _ hk).suf,
     (((gnet hF M₀ m).catchUp hF (c :: p)).st p).l.length, ?_, ?_,
     (((gnet hF M₀ m).catchUp hF (c :: p)).st (c :: p)).l, h₁, ?_, ?_⟩
-  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl hv]
+  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl hv']
     simp only [GNetSt.setFwd, Function.update_self, List.length_cons]
     omega
-  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl hv]
+  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl hv']
     change rootTy ((((GNetSt.setSt _ p _).setSt (c :: p) _)).st p).l _ = T
     rw [GNetSt.setSt_ne _ _ (fun h => NetSt.ne_parent c p h.symm), GNetSt.setSt_self]
     exact rootTy_new T _
-  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl hv]
+  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl hv']
     simp only [GNetSt.setFwd, Function.update_self]
     exact gliftG_keep _ _ _ _ _
-  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl hv]
+  · rw [hst, GNetSt.lift_spec hF hcl h₁ hl hv']
     change _ <:+ ((((GNetSt.setSt _ p _).setSt (c :: p) _)).st (c :: p)).l
     rw [GNetSt.setSt_self]
     exact List.suffix_cons _ _
+
+/-! ## Names by origin (5) -/
+
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] hM₀ in
+/-- An edge's naming of an address survives growth. -/
+theorem GNetSt.KeepImage.ext {N N' : GNetSt σ} (h : GNetSt.Ext N N') {k : Node} (hk : N.Live k)
+    {z : VarSymb} (hz : N.KeepImage k z) : N'.KeepImage k z := by
+  obtain ⟨v, U, hv, he⟩ := hz
+  refine ⟨v, U, ?_, ?_⟩
+  · rw [h.kind k hk]
+    exact ((ctxOf_le_of_suffix (h.fcl k hk)).kView _) _ _ hv
+  · rw [h.fmap k hk _ _ hv]
+    exact he
+
+/-- ⭐**Names by origin** (N1, `docs/v12-modal-extensions.md` §3 5): under 5, with T off, every
+    reachable address of a liftable type of a child is eventually named by its edge as a kept item
+    of its parent — already, or by the lift of its η-term. -/
+theorem origin_total (hV : ModalSys.Five = true) (hT : ModalSys.T = false) {n c : ℕ} {p : Node}
+    (hk : (gnet hF M₀ n).Live (c :: p)) {z : VarSymb} {T : VarType}
+    (hz : (ctxOf ((gnet hF M₀ n).st (c :: p)).l).ref z = some T) (hl : T.liftable = true) :
+    ∃ m, n ≤ m ∧ (gnet hF M₀ (m + 1)).KeepImage (c :: p) z := by
+  obtain ⟨m, hnm, hs⟩ := gsched_after (σ := σ)
+    (.inr (.inr (.inr (c :: p, ⟨_, T, _, Term.eta (σ := σ) z T hz⟩)))) n
+  have hlm := gnet_live_mono hF hM₀ hnm hk
+  have hN := good_gnet hF hM₀ m
+  obtain ⟨hN₁, hk₁, he₁⟩ := hN.catchUp hF hlm
+  have hcl := GNetSt.catchUp_full hF hN hlm
+  have h₁ : ((gnet hF M₀ n).st (c :: p)).l <:+
+      (((gnet hF M₀ m).catchUp hF (c :: p)).st (c :: p)).l :=
+    ((ext_gnet hF hM₀ hnm).grows _ hk).suf.trans (he₁.grows _ hlm).suf
+  have hst : gnet hF M₀ (m + 1) =
+      ((gnet hF M₀ m).catchUp hF (c :: p)).lift hF (c :: p) ⟨_, T, _, Term.eta z T hz⟩ := by
+    rw [gnet_succ_of hF hs]
+    simp only [GNetSt.applyOp, if_pos hlm]
+  refine ⟨m, hnm, ?_⟩
+  by_cases hki : ((gnet hF M₀ m).catchUp hF (c :: p)).KeepImage (c :: p) z
+  · rw [hst]
+    exact hki.ext (GNetSt.Ext.lift hF hN₁ hk₁ _) hk₁
+  · have hadm : LiftAdm hF ⟨_, T, _, Term.eta (σ := σ) z T hz⟩ := by
+      cases T with
+      | VTypeBox A => exact liftAdm_etaBox hF hV hT _ z A hz
+      | VTypeDia Z => exact liftAdm_etaTerm hF _ z Z hz
+      | _ => exact absurd hl (by simp [VarType.liftable])
+    have hv' : LiftAdm hF ⟨_, T, _, Term.eta (σ := σ) z T hz⟩ ∧
+        (ModalSys.Five = true → ((gnet hF M₀ m).catchUp hF (c :: p)).OriginAdm (c :: p)
+          ⟨_, T, _, Term.eta z T hz⟩) :=
+      ⟨hadm, fun _ => ⟨z, T, hz, rfl, hki⟩⟩
+    rw [hst, GNetSt.lift_spec hF hcl h₁ hl hv']
+    have hR : (ctxOf (T :: (((gnet hF M₀ m).catchUp hF (c :: p)).st p).l)).ref
+        (.root (.free (((gnet hF M₀ m).catchUp hF (c :: p)).st p).l.length)) = some T := by
+      rw [Ctx.ref_nonproj _ rfl, ctxOf_root_lt (by simp), rootTy_new]
+    refine ⟨.root (.free (((gnet hF M₀ m).catchUp hF (c :: p)).st p).l.length), T, ?_,
+      Or.inr ⟨_, T, (ctxOf_le_of_suffix h₁).ref hz, ?_⟩⟩
+    · simp only [GNetSt.setFwd, Function.update_self]
+      exact (Ctx.le_boxIn_kView _ _) _ _
+        (Ctx.boxIn_keep_of' hF hR (VarType.keepable_of_liftable hl))
+    · simp only [GNetSt.setFwd, Function.update_self]
+      rw [gliftG_keep, Term.mono_eta]
 
 end GArrow
 

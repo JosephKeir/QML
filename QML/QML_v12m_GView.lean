@@ -636,12 +636,29 @@ def etaTerm {σ : Signature} (l : List VarType) (z : VarSymb) (Z : VarType)
     (hz : (ctxOf l).ref z = some (.VTypeDia Z)) : LTerm σ :=
   ⟨l, .VTypeDia Z, _, Term.eta z (.VTypeDia Z) hz⟩
 
+/-- The η-expansion of a necessary address of a world language, as a lifted term. -/
+def etaBox {σ : Signature} (l : List VarType) (z : VarSymb) (A : VarType)
+    (hz : (ctxOf l).ref z = some (.VTypeBox A)) : LTerm σ :=
+  ⟨l, .VTypeBox A, _, Term.eta z (.VTypeBox A) hz⟩
+
 /-- ⭐**The terms strong 4 lifts: generators** (`docs/v12-modal-extensions.md` §3 4, D-H3) — the
     `□` view tuple, and the η-expansion of a possible address; and, only when the `□`-lift is off
-    (the parent then cannot name the child's necessary data), view tuples (D-H1). -/
+    (the parent then cannot name the child's necessary data), view tuples (D-H1).  Under 5 (T off)
+    also the η-expansion of a necessary address: there every object is named once, by its origin,
+    so addresses are lifted one by one and terms not at all (docs §3 5, names by origin (N1)). -/
 def LiftAdm (hF : ModalSys.Four = true) {σ : Signature} (e : LTerm σ) : Prop :=
   e = boxTuple hF e.1 ∨ (∃ z Z hz, e = etaTerm e.1 z Z hz) ∨
-    (ModalSys.FourStrong = false ∧ ∃ z Z hz, e = viewTuple hF e.1 z Z hz)
+    (ModalSys.FourStrong = false ∧ ∃ z Z hz, e = viewTuple hF e.1 z Z hz) ∨
+    (ModalSys.Five = true ∧ ModalSys.T = false ∧ ∃ z A hz, e = etaBox e.1 z A hz)
+
+/-- Under T the generators are the three of D-H3. -/
+theorem LiftAdm.of_T (hF : ModalSys.Four = true) {σ : Signature} {e : LTerm σ}
+    (hT : ModalSys.T = true) (h : LiftAdm hF e) :
+    e = boxTuple hF e.1 ∨ (∃ z Z hz, e = etaTerm e.1 z Z hz) ∨
+      (ModalSys.FourStrong = false ∧ ∃ z Z hz, e = viewTuple hF e.1 z Z hz) :=
+  h.imp_right (Or.imp_right fun h => h.resolve_right fun h' => by
+    rw [hT] at h'
+    exact Bool.noConfusion h'.2.1)
 
 theorem liftAdm_boxTuple (hF : ModalSys.Four = true) {σ : Signature} (l : List VarType) :
     LiftAdm hF (boxTuple (σ := σ) hF l) :=
@@ -656,7 +673,13 @@ theorem liftAdm_viewTuple (hF : ModalSys.Four = true) {σ : Signature}
     (hS : ModalSys.FourStrong = false) (l : List VarType) (z : VarSymb) (Z : VarType)
     (hz : (ctxOf l).ref z = some (.VTypeDia Z)) :
     LiftAdm hF (viewTuple (σ := σ) hF l z Z hz) :=
-  .inr (.inr ⟨hS, z, Z, hz, rfl⟩)
+  .inr (.inr (.inl ⟨hS, z, Z, hz, rfl⟩))
+
+theorem liftAdm_etaBox (hF : ModalSys.Four = true) {σ : Signature}
+    (hV : ModalSys.Five = true) (hT : ModalSys.T = false) (l : List VarType) (z : VarSymb)
+    (A : VarType) (hz : (ctxOf l).ref z = some (.VTypeBox A)) :
+    LiftAdm hF (etaBox (σ := σ) l z A hz) :=
+  .inr (.inr (.inr ⟨hV, hT, z, A, hz, rfl⟩))
 
 end GArrow
 

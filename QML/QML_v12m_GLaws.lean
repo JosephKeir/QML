@@ -536,7 +536,7 @@ theorem entry_shOf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {t : GW 
         (ρ' := famEnv cEnv (ctxOf L) t) (fun _ _ _ => rfl) 0]
       have hl' : (ctxOf l').Le Δ := hsl.trans hle
       simp only [entIdx]
-      rcases hadm with hbt | ⟨z, Z, hz, he₀⟩ | ⟨-, z, Z, hz, he₀⟩
+      rcases LiftAdm.of_T hF hT hadm with hbt | ⟨z, Z, hz, he₀⟩ | ⟨-, z, Z, hz, he₀⟩
       · -- the `□` view tuple
         change (⟨l', _, _, t'⟩ : LTerm σ) = boxTuple hF l' at hbt
         unfold boxTuple at hbt

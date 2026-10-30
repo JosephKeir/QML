@@ -373,6 +373,20 @@ theorem lift_ok (hF : ModalSys.Four = true) {tp tk : NodeSt σ} {k : Option VarS
   rw [WFF.mono_refl] at hψ
   exact hS₂ (Or.inr ⟨hk, hf, ψ, hψ, rfl⟩)
 
+/-- An address of the child `k` that its edge already names as a kept parent item, committed: a
+    forward image, or the η-term of a lifted root (docs §3 5, names by origin). -/
+def KeepImage (N : GNetSt σ) (k : Node) (z : VarSymb) : Prop :=
+  ∃ v U, (ctxOf (N.fcl k)).kView (N.kind k) (.step v .keep) = some U ∧
+    (N.fmap k (.step v .keep) = .inl z ∨
+      ∃ (L : List VarType) (T : VarType) (hz : (ctxOf L).ref z = some T),
+        N.fmap k (.step v .keep) = .inr ⟨L, T, _, Term.eta z T hz⟩)
+
+/-- ⭐**Names by origin** (N1, docs §3 5): under 5 a lift is the η-term of an address that the
+    edge does not name yet, so every object of the child has exactly one origin. -/
+def OriginAdm (N : GNetSt σ) (k : Node) (e : LTerm σ) : Prop :=
+  ∃ (z : VarSymb) (T : VarType) (hz : (ctxOf e.1).ref z = some T),
+    e = ⟨e.1, T, _, Term.eta z T hz⟩ ∧ ¬ N.KeepImage k z
+
 open Classical in
 /-- ⭐**Lift** a term of the child `c :: p` along its edge, if the parent is fully committed along
     it, the term is over the child's variables, its type is liftable, and it is a necessary term or
@@ -384,7 +398,8 @@ noncomputable def lift (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → LT
       if N.fcl (c :: p) = (N.st p).l then
         if h : l <:+ (N.st (c :: p)).l then
           if hl : T.liftable = true then
-            if LiftAdm hF ⟨l, T, a, t⟩ then
+            if LiftAdm hF ⟨l, T, a, t⟩ ∧
+                (ModalSys.Five = true → N.OriginAdm (c :: p) ⟨l, T, a, t⟩) then
               ((N.setSt p (liftPar hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))
                   (Term.mono (ctxOf_le_of_suffix h) t) hl)).setSt (c :: p)
                 (liftChild hF (N.st p) (N.st (c :: p)) (N.kind (c :: p)) (N.fmap (c :: p))

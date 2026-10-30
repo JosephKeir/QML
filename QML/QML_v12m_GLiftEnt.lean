@@ -101,7 +101,7 @@ theorem LiftEntOk.lift (hL : N.LiftEntOk hF) (k : Node) (o : LTerm σ) :
             simp only [gliftG] at he
             split_ifs at he with h₁ h₂
             · cases he
-              exact ⟨⟨l, T, a, t⟩, h, hv, hl, rfl⟩
+              exact ⟨⟨l, T, a, t⟩, h, hv.1, hl, rfl⟩
             · exact hL _ _ e he
       all_goals exact hL
 

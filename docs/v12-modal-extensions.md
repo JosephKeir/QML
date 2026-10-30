@@ -4505,6 +4505,34 @@ model.**
   stage, by `lift_total`.  `pre` needs a stage map going up, the inverse of `pstg`, chosen in the
   limit, with its monotonicity.
 
+**Built (2026-10-30): (N1) in the schedule, and origins.**
+* `LiftAdm` gains a fourth form: under 5 with T off, the η-term of a necessary address
+  (`etaBox`, `liftAdm_etaBox`).  `LiftAdm.of_T` discards that form under T, for the T + 4 shape
+  proofs (`GKeep`, `GLaws`).
+* `GNetSt.KeepImage` (an address that a committed kept parent item names, as a forward image or
+  as the η-term of a lift) and `GNetSt.OriginAdm` (under 5 a lift is the η-term of an address not
+  yet named).  The lift is guarded by `LiftAdm ∧ (Five → OriginAdm)`, so each address is lifted at
+  most once.
+* `lift_total`, `gllift` and the 4-only model's lift lemmas take `ModalSys.Five = false`
+  (`gmodel` supplies it from `NoB`).
+* ⭐`origin_total` (`GChain`, with `KeepImage.ext`) and ⭐`glorigin` (`GLimit`).  Under 5 with T
+  off, every reachable liftable address `z` of a child is named by its edge: some kept parent
+  item `v.keep`, at some stage, has the entry `z` or `η z`, with `v` of `z`'s type.
+
+**Next: `GCluPre`, sharpened.**
+* `pre_u` only has to be an **address map**: reachable keepable addresses of `u`, to `ρ`'s,
+  through `glorigin` edge by edge.
+* It induces a renaming of view items: `α.box ↦ pre α .box`, `α.keep ↦ pre α .keep`,
+  `x.keep ↦ pre x .keep`, `x.dia ↦ pre x .dia`.  Formulas and terms follow by `WFF.subst`.
+* Cluster uniformity then reduces to one identity: **the path translation of `shift (pre ψ)` is
+  `ψ`**.
+  * The direction from `ρ` to `u` is `four_box` followed by transfer.
+  * The direction from `u` to `ρ` is transfer in the contrapositive followed by `five_box`.
+  * For one edge the identity is the edge's entries.  An entry `η z` sends `(η z).box` to
+    `z.box`, through `Subst.box`.  For paths it follows by composition.
+* *Stages.*  Each address is named at its own parent stage.  A formula has finitely many, so take
+  the maximum.
+
 **Step 2 for K45 as built (2026-10-29).**  `Proof.five_box` and `Proof.five_dia` (under `Four`
 and `Five`); their soundness cases (`Soundness`) and substitution cases (`ProofSubst`).  No new
 syntax.

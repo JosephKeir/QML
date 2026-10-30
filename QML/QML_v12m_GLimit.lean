@@ -415,7 +415,7 @@ theorem glexX (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ) (x : VarSym
     term's type whose kept item the edge sends to the term. -/
 theorem gllift (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s t) (j : ℕ)
     {T : VarType} {a : Ann T} (u : Term σ (ctxOf (glat t j)) T a) (hl : T.liftable = true)
-    (hv : LiftAdm hF ⟨glat t j, T, a, u⟩) :
+    (hv : LiftAdm hF ⟨glat t j, T, a, u⟩) (hV : ModalSys.Five = false) :
     ∃ (i r : ℕ), r < (glat s i).length ∧ rootTy (glat s i) r = T ∧
       ∃ (L : List VarType) (hL : glat t j <:+ L),
         fmapL hF M₀ t.1 (.step (.root (.free r)) .keep) =
@@ -426,7 +426,7 @@ theorem gllift (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s
   change k = c :: s.1 at hc
   subst hc
   have hlive := live_gbirth hF hM₀ hk (Nat.le_add_right _ j)
-  obtain ⟨m, hnm, -, r, hr, hroot, L, hL, hfm, hLsuf⟩ := lift_total hF hM₀ hlive u hl hv
+  obtain ⟨m, hnm, -, r, hr, hroot, L, hL, hfm, hLsuf⟩ := lift_total hF hM₀ hlive u hl hv hV
   have hbs : gbirth hF M₀ s.2 ≤ m + 1 :=
     gbirth_le hF s.2 (gnet_live_mono hF hM₀ (by omega) hlive.1)
   have hmi : gbirth hF M₀ s.2 + (m + 1 - gbirth hF M₀ s.2) = m + 1 := by omega
@@ -446,6 +446,41 @@ theorem gllift (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s
       (Ctx.boxIn_keep_of' hF hR (VarType.keepable_of_liftable hl))
   · have hP := (glstg_spec hM₀ (t := ⟨c :: s.1, hk⟩) ⟨c, rfl⟩ (m + 1 - gbirth hF M₀ s.2)).1
     exact hLsuf.trans (gnet_lang_suffix hF hM₀ (by omega) hlive')
+
+/-- ⭐**Names by origin in the limit** (N1, `docs/v12-modal-extensions.md` §3 5): under 5, with T
+    off, every reachable address of a liftable type of a child is named by its edge — the entry of
+    a kept item of its parent, at some stage, is the address or its η-term. -/
+theorem glorigin (hV : ModalSys.Five = true) (hT : ModalSys.T = false) (hM₀ : Theory.IsMCS M₀)
+    {s t : GW hF M₀} (h : GCh hF M₀ s t) (j : ℕ) {z : VarSymb} {T : VarType}
+    (hz : (ctxOf (glat t j)).ref z = some T) (hl : T.liftable = true) :
+    ∃ (i : ℕ) (v : VarSymb) (U : VarType), (ctxOf (glat s i)).ref v = some U ∧
+      U.keepable = true ∧
+      (fmapL hF M₀ t.1 (.step v .keep) = .inl z ∨
+        ∃ (L : List VarType) (T' : VarType) (hz' : (ctxOf L).ref z = some T'),
+          fmapL hF M₀ t.1 (.step v .keep) = .inr ⟨L, T', _, Term.eta z T' hz'⟩) := by
+  obtain ⟨c, hc⟩ := h
+  obtain ⟨k, hk⟩ := t
+  change k = c :: s.1 at hc
+  subst hc
+  have hlive := live_gbirth hF hM₀ hk (Nat.le_add_right _ j)
+  obtain ⟨m, hnm, v, U, hv, he⟩ := origin_total hF hM₀ hV hT hlive hz hl
+  have hlive' : (gnet hF M₀ (m + 1)).Live (c :: s.1) := gnet_live_mono hF hM₀ (by omega) hlive
+  have hbs : gbirth hF M₀ s.2 ≤ m + 1 :=
+    gbirth_le hF s.2 (gnet_live_mono hF hM₀ (by omega) hlive.1)
+  have hmi : gbirth hF M₀ s.2 + (m + 1 - gbirth hF M₀ s.2) = m + 1 := by omega
+  obtain ⟨hsufp, -⟩ := (good_gnet hF hM₀ (m + 1)).fwd c s.1 hlive'
+  have hb : (ctxOf ((gnet hF M₀ (m + 1)).fcl (c :: s.1))).boxIn (.step v .keep) = some U := by
+    cases hkd : (gnet hF M₀ (m + 1)).kind (c :: s.1) with
+    | none => rw [hkd] at hv; exact hv
+    | some x => rw [hkd] at hv; exact hv
+  obtain ⟨-, hvU, hkp⟩ := Ctx.boxIn_keep hb
+  refine ⟨m + 1 - gbirth hF M₀ s.2, v, U, ?_, hkp, ?_⟩
+  · change (ctxOf ((gnet hF M₀ (gbirth hF M₀ s.2 + (m + 1 - gbirth hF M₀ s.2))).st s.1).l).ref v =
+      some U
+    rw [hmi]
+    exact (ctxOf_le_of_suffix hsufp).ref hvU
+  · rw [fmapL_eq hM₀ hlive' hv]
+    exact he
 
 end GArrow
 

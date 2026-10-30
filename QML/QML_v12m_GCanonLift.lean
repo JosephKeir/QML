@@ -76,7 +76,8 @@ theorem grawEval_keep_refl (hT : ModalSys.T = true) : ∀ {T : VarType} (hk : T.
     `⟦□b⟧` from `□ b'`, `b'` read through the root lifted to the `□` view tuple
     (`subst_shift_pullBox`); a possible one `⟦◇_z u⟧` from `◇_x u'`, `x` the root lifted to `z`'s
     view tuple (`subst_shift_pullS`). -/
-theorem gkeep_edge {T : VarType} (hl : T.liftable = true) {s t : GW hF M₀} (c : ℕ)
+theorem gkeep_edge (hV : ModalSys.Five = false) {T : VarType} (hl : T.liftable = true)
+    {s t : GW hF M₀} (c : ℕ)
     (hc : t.1 = c :: s.1) (o : GRDom hM₀ T t) (ho : GDefinable hM₀ T t o) :
     ∃ m, GDefinable hM₀ T s m ∧
       grawEval hM₀ (GFunc.keep hF (VarType.keepable_of_liftable hl)) s m
@@ -88,7 +89,7 @@ theorem gkeep_edge {T : VarType} (hl : T.liftable = true) {s t : GW hF M₀} (c 
       | _, .boxtm b =>
           obtain ⟨i, r, hr, hroot, L, hL, hfm, hLsuf⟩ := gllift hM₀ ⟨c, hc⟩ j
             (GArrow.boxTuple (σ := σ) hF (glat t j)).2.2.2 (by simpa [VarType.liftable] using hl)
-            (liftAdm_boxTuple hF _)
+            (liftAdm_boxTuple hF _) hV
           have hR : (ctxOf (glat s i)).ref (.root (.free r)) =
               some (.VTypeBox (itemsTy (boxItems (glat t j)))) := by
             rw [Ctx.ref_nonproj _ rfl, ctxOf_root_lt hr, hroot]
@@ -122,11 +123,11 @@ theorem gkeep_edge {T : VarType} (hl : T.liftable = true) {s t : GW hF M₀} (c 
           · -- D-H3: `z` and the `□` view's items are lifted separately.
             obtain ⟨i₁, x, hx₁, hroot₁, L₁, hL₁, hfm₁, hLsuf₁⟩ := gllift hM₀ ⟨c, hc⟩ j
               (GArrow.etaTerm (σ := σ) (glat t j) z Z hzZ).2.2.2
-              (by simpa [VarType.liftable] using hl) (liftAdm_etaTerm hF _ z Z hzZ)
+              (by simpa [VarType.liftable] using hl) (liftAdm_etaTerm hF _ z Z hzZ) hV
             obtain ⟨i₂, r, hr₂, hroot₂, L₂, hL₂, hfm₂, hLsuf₂⟩ := gllift hM₀ ⟨c, hc⟩ j
               (GArrow.boxTuple (σ := σ) hF (glat t j)).2.2.2
               (by simpa [VarType.liftable, GArrow.boxTuple] using hS)
-              (liftAdm_boxTuple hF _)
+              (liftAdm_boxTuple hF _) hV
             have hX : (ctxOf (glat s (max i₁ i₂))).ref (.root (.free x)) = some (.VTypeDia Z) :=
               ((gw hM₀ s).le (le_max_left i₁ i₂)).ref
                 (show (ctxOf (glat s i₁)).ref (.root (.free x)) = some (.VTypeDia Z) by
@@ -172,7 +173,7 @@ theorem gkeep_edge {T : VarType} (hl : T.liftable = true) {s t : GW hF M₀} (c 
           have hvt := liftAdm_viewTuple (σ := σ) hF (Bool.eq_false_iff.mpr hS) (glat t j) z Z hzZ
           obtain ⟨i, r, hr, hroot, L, hL, hfm, hLsuf⟩ := gllift hM₀ ⟨c, hc⟩ j
             (GArrow.viewTuple (σ := σ) hF (glat t j) z Z hzZ).2.2.2
-            (by simpa [VarType.liftable] using hl) hvt
+            (by simpa [VarType.liftable] using hl) hvt hV
           have hR : (ctxOf (glat s i)).ref (.root (.free r)) =
               some (.VTypeDia (.VTypeProd Z (itemsTy (boxItems (glat t j))))) := by
             rw [Ctx.ref_nonproj _ rfl, ctxOf_root_lt hr, hroot]
@@ -201,7 +202,8 @@ theorem gkeep_edge {T : VarType} (hl : T.liftable = true) {s t : GW hF M₀} (c 
   | VTypeProd _ _ => exact absurd hl (by simp [VarType.liftable])
 
 /-- Strong 4 along a path. -/
-theorem gkeepLift_path {T : VarType} (hl : T.liftable = true) : ∀ (P : List ℕ) (s t : GW hF M₀)
+theorem gkeepLift_path (hV : ModalSys.Five = false) {T : VarType} (hl : T.liftable = true) :
+    ∀ (P : List ℕ) (s t : GW hF M₀)
     (_ : t.1 = nodeOf s.1 P) (_ : PathOk P) (o : GRDom hM₀ T t) (_ : GDefinable hM₀ T t o)
     (hR : GR s t),
     ∃ m, GDefinable hM₀ T s m ∧
@@ -209,25 +211,26 @@ theorem gkeepLift_path {T : VarType} (hl : T.liftable = true) : ∀ (P : List �
   | [], s, t, h, hP, o, ho, hR => by
       obtain rfl : t = s := gw_eq h
       exact ⟨o, ho, grawEval_keep_refl hP.T_of_nil _ hR o⟩
-  | [c], _, _, h, _, o, ho, _ => gkeep_edge hl c h o ho
+  | [c], _, _, h, _, o, ho, _ => gkeep_edge hV hl c h o ho
   | c :: c' :: P, s, t, h, _, o, ho, _ => by
       have hb := born_step h
       have q : GR (stepW s c hb) t := ⟨c' :: P, pathOk_cons, h⟩
       obtain ⟨m', hm', e'⟩ :=
-        gkeepLift_path hl (c' :: P) (stepW s c hb) t h (pathOk_cons) o ho q
-      obtain ⟨m, hm, e⟩ := gkeep_edge hl (s := s) (t := stepW s c hb) c rfl m' hm'
+        gkeepLift_path hV hl (c' :: P) (stepW s c hb) t h (pathOk_cons) o ho q
+      obtain ⟨m, hm, e⟩ := gkeep_edge hV hl (s := s) (t := stepW s c hb) c rfl m' hm'
       refine ⟨m, hm, ?_⟩
       subst e' e
       exact grawEval_keep_comp _ ⟨[c], pathOk_cons, rfl⟩ q m
 
 /-- ⭐**Strong 4 on raw objects**: along any arrow, every definable object of a liftable type at its
     target is a kept definable object of its source. -/
-theorem graw_keepLift {T : VarType} (hl : T.liftable = true) (s : GW hF M₀) (a : GAcc hF M₀ s)
+theorem graw_keepLift (hV : ModalSys.Five = false) {T : VarType} (hl : T.liftable = true)
+    (s : GW hF M₀) (a : GAcc hF M₀ s)
     (o : GRDom hM₀ T a.1) (ho : GDefinable hM₀ T a.1 o) :
     ∃ m, GDefinable hM₀ T s m ∧
       grawEval hM₀ (GFunc.keep hF (VarType.keepable_of_liftable hl)) s m a = o := by
   obtain ⟨t, ⟨hR⟩⟩ := a
-  exact gkeepLift_path hl (pathOf hR) s t (pathOf_eq hR) (pathOf_ok hR) o ho hR
+  exact gkeepLift_path hV hl (pathOf hR) s t (pathOf_eq hR) (pathOf_ok hR) o ho hR
 
 /-! ## The model -/
 
@@ -262,7 +265,7 @@ noncomputable def gmodel : Model.{0, 0} σ where
   necDup_eval _ _ _ _ := rfl
   keepLift := by
     intro _ T hl w a o
-    obtain ⟨m, hm, e⟩ := graw_keepLift hl w a _ (gdefinable_fromDom hM₀ T a.1 o)
+    obtain ⟨m, hm, e⟩ := graw_keepLift ModalSys.NoB.noFive hl w a _ (gdefinable_fromDom hM₀ T a.1 o)
     refine ⟨gtoDom hM₀ T w m hm, ?_⟩
     rw [geval_toDom]
     exact (gtoDom_congr e _ _).trans (gtoDom_fromDom hM₀ T a.1 o)
