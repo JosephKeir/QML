@@ -4724,7 +4724,75 @@ is the root's model, with each world's own base domain.
      view's type; `ren_dia_fix` and `cden_root_dia_wit` take it as a variable with an equation,
      so it can be substituted (the `WFF.subst_dia` trick).
    So the carriers can be the root's definable objects at every world, at modal types.
-   Next: `GCluModel`, checked first against `GCanonModel`'s fields.  Smaller than
+
+   **`GCluModel`: the fields checked against `GCanonModel` (2026-10-30).**
+   * *Frame.*  `R s t := GR ρ t` (a `Prop`), so every world's `Acc` is `CAcc` on the nose;
+     `trans a b := b`, `side a b := b`, every arrow law by proof irrelevance; `refl` and `symm`
+     vacuous (T, B off); `homeUnique` relational; `serial` under D from the root's `□⊥`-child.
+     `Nec A s`, `Pos A s`: the definable raw objects at `s` (`CDefinable`).
+   * *Operations.*  `necMap`, `necPair`, `necUnit`, `posMap`, `posStrength` by the raw function
+     algebra (`crawEval`), with definability from `cden_applyG`, as `grden_applyG`.  `necDup n`
+     and `posKeep x` are `n` and `x` themselves along every arrow, and `posSide x` is `x`: the
+     raw objects are shared, and definability at the arrow's end is R4.
+   * *Laws.*  `necDup_eval`, `posKeep_full`, `posSide_ext`, `posSide_content`: by definition
+     (`trans` and `side` keep the target).  `keepLift` and `necSide_exists`: the object itself,
+     definable at the source by R4.  `Ind` is equality; `posSerial` from the root's Henkin
+     witness, as `gposSerial_canon`; T- and B-fields vacuous.
+   * **One piece of R4 is needed after all:** the *path translation's* round trip.  `cden_applyG`
+     at `dup` and `dkeep` (and the definability of `fun v => n`) reads a root term through
+     `pTr ρ t` and back through `t`'s preimage.  The plan for it, from what is built:
+     * each edge's entry of a kept item names an address (`fmapL_names`), so translating a
+       shifted root term along the path is renaming by the names, up to η and at η-faithful
+       items (`SimF`);
+     * then the preimage gives the round trip, a weakening (`round_trip`).
+     By induction on the path, `pTr` going first edge first and `porig` composing the other way;
+     `pTrX` likewise for `dkeep`.  A paper check of the edge case comes first.
+
+   **Paper check: the path translation's round trip (2026-10-30) — passes, and it is needed.**
+   * *Why it is needed.*
+     * `necDup_eval` with `nec_inj` forces `necDup n`'s raw object: along `v` it is `n`.  It must
+       lie in the carrier.
+     * The carriers must be definable objects: the truth lemma's `∀` direction instantiates
+       with a term for each carrier object.
+     * Any term of type `□□A` is `□□b'` (modal terms are constructor-headed).  Along `v` it
+       denotes the root's denotation of `pre_{v.1}` of the inner part of `pTr ρ v.1 (□b')`
+       (`cden_box_eq`).  So showing that the forced object is definable *is* computing
+       `pre_{v.1} ∘ pTr ρ v.1` on some term.
+     * Likewise `posKeep` (forced by `posKeep_full`, `posFull_inj`) and `cden_applyG` at
+       `dup`/`dkeep`.  It is exactly where 4's keep enters: "keep is the identity" is this round
+       trip.
+     * The renaming round trip (`round_trip`) does not cover it: there no translation is
+       involved.
+   * *The statement.*  For a root `□`-view term `b₀` and a descendant `t` along `P`,
+     `pTr ρ t P (□(shift b₀)) = □Y` with `pre_t Y` the weakening of `b₀`.  This is exact as
+     terms, since `Term.subst_congrF` gives exact equality from agreement up to η at η-faithful
+     items.  (`applyG (.dup)` is `□□(shift b)`; at `s ≠ ρ`, `pre_s (□(shift b)) = □(shift (pre_s b))`
+     by `Subst.shiftCorr_box_box` and `Term.shift_subst`, reducing to the root.)
+   * *The edge, `P = [c]`.*  `Y = θ.box (shift₀ b₀)` with `θ = eS (fmapL t)`.  Item by item:
+     * `u.box ↦ (u.keep).box` (`shift_level_zero`) `↦ (θ.at u.keep).unbox` (`Subst.box`);
+     * `u.keep ↦ (u.keep).keep ↦ (θ.at u.keep).keepE`;
+     * so only the *kept* items' entries are read, and each names an address `z`
+       (`fmapL_names`).  `.inl z` gives `z.inner = z.box` (`inner_box`) and `z.keep`; `η z`
+       gives `η (z.box)` and `η (z.keep)` up to η (`keepE_eta_sim`);
+     * the preimage then sends `z.box`, `z.keep` to `(orig z).box`, `(orig z).keep`
+       (`Term.subst_eta_renAt` for the η-entries), and `orig z = u` at η-faithful types
+       (`orig_names`).
+     So the composite agrees with the identity at the η-faithful items: weakening.
+   * *The step, `c :: c' :: P`.*  `pTr` shifts and applies `θ_c.box`.
+     * `shift₀ (□ (shift₀ b₀)) = □ (shift₁ (shift₀ b₀)) = □ (shift₀ (shift₀ b₀))`
+       (`Term.shift_shift_same`), and `θ_c.box.box ∘ shift₀ = shift₀ ∘ θ_c.box`
+       (`Subst.shiftCorr_box_box`, `Term.shift_subst`).
+     * So the argument is `□ (shift₀ b₀')` with `b₀' := θ_c.box (shift₀ b₀)` at `c`: the
+       induction hypothesis at `c` applies, and `pre_t = pre_c ∘ pre_{c→t}` (`porig` of a cons).
+       Then `pre_c b₀'` is the edge case.
+   * *Bookkeeping.*  The arrow's path is `pathOf`, the preimage's is `rpath`; state the lemma
+     for any `P` and `subst` it to `rpath t` (`nodeOf_inj`).  Stages are compared at a common
+     later one, as in `cden_congr`.
+   * *`◇`, for `dkeep`.*  `pTr` of `◇_{x.keep}(shift c)` is `◇_{wit}(…)`: the witness's image is
+     the kept witness's name (`idx_names`), whose origin is `x` (`orig_names`, `◇` types being
+     η-faithful).  The body as above, through `θ.dia`, with the witness handled as a variable
+     with an equation (`cden_root_dia_wit`).
+   Smaller than
    `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
    the identity.
 4. `GCluTruth`: the truth lemma.
