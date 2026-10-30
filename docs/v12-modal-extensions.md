@@ -4710,9 +4710,21 @@ is the root's model, with each world's own base domain.
    **`GCluDom` begun (2026-10-30, in TOP in place of `GCluOrig`):** `CluFlags`, `rpath`, `rstg`,
    `rorig`; `CAcc := GAcc ρ`; `CRPos`, `CRDom`; `preTB`, `preTD`; ⭐`cden` (one structural
    recursion); `cden_mono`; ⭐`cden_congr` (the root stages of two stages need not be ordered, so
-   both preimages are read at the later one, where the renaming is the same).  Next: the root
-   case without the identity renaming, definable objects, and R4 in the model (definable at `s`
-   = definable at `ρ` at modal types).  Smaller than
+   both preimages are read at the later one, where the renaming is the same).
+   **Then (2026-10-30):** `cden_root_box`/`cden_root_dia` (at the root, the identity renaming
+   drops: `subst_preI_id`, `subst_preIX_id`); ⭐`cden_box_eq`/`cden_dia_eq` (a world's modal
+   term denotes the root's denotation of its preimage); `CDefinable` with its closure lemmas;
+   and **R4 in the model**, ⭐`cdefinable_box_iff`/⭐`cdefinable_dia_iff`: at modal types a world
+   defines exactly what the root defines.
+   * World to root: the preimage (`cden_box_eq`).
+   * Root to world: name the root term at the world (`nmTB`, `nmTD`: renamed by `pnm`).  Its
+     preimage is the root term renamed by the round trip (`preTB_nmTB`, `preTD_nmTD`, by
+     `Term.subst_comp_sig` and `sim_eS_ren_comp`), which is a weakening (`round_trip`).
+   * At `◇` the witness's round trip equals the witness only propositionally, and it sits in the
+     view's type; `ren_dia_fix` and `cden_root_dia_wit` take it as a variable with an equation,
+     so it can be substituted (the `WFF.subst_dia` trick).
+   So the carriers can be the root's definable objects at every world, at modal types.
+   Next: `GCluModel`, checked first against `GCanonModel`'s fields.  Smaller than
    `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
    the identity.
 4. `GCluTruth`: the truth lemma.
