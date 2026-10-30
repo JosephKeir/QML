@@ -4548,28 +4548,28 @@ model.**
   * ⭐`sim_pre_edge`: the preimage, followed by the edge read through the shift, is the identity
     up to η.
   * ⭐`subst_shift_pre`: `subst (edge).box (shift (preW ψ)) = mono ψ`.
-* ⭐`box_pre_iff` (2026-10-31): **one-edge cluster uniformity.**  `□ (preW ψ)` at the parent's
+* ⭐`box_pre_iff` (2026-10-30): **one-edge cluster uniformity.**  `□ (preW ψ)` at the parent's
   stage `i` iff `□ψ` at the child's round `grnd s t i`: by `four_box` and `gltr` one way, and
   `gltr`'s contrapositive with `five_box` the other.
-* ⭐`exists_pre` (2026-10-31): every stage `j` of a child has a preimage along its edge, at a
+* ⭐`exists_pre` (2026-10-30): every stage `j` of a child has a preimage along its edge, at a
   parent stage `i` with `j ≤ glstg s t i`.
   * Under 5, T off and both lifts, by `glorigin` per address and a finite maximum of the stages
     (`ctxOf_fin`, `Ctx.Fin.reach`).
   * With `names_type` (the naming address has the named address's type), `glat_suffix` and
     `glat_ref_agree`.
-* ⭐`box_path_iff` (2026-10-31): **cluster uniformity along a path.**  A `□`-formula at a
+* ⭐`box_path_iff` (2026-10-30): **cluster uniformity along a path.**  A `□`-formula at a
   descendant's stage holds, at some later stage of it, iff a formula of the ancestor's `□` view
   holds there: its preimage, edge by edge (`gMs`, conservativity `gMs_mono_iff`).
-* ⭐`box_cluster` (2026-10-31): **transfer along a cluster arrow.**  `□ψ` at a descendant `u` of
+* ⭐`box_cluster` (2026-10-30): **transfer along a cluster arrow.**  `□ψ` at a descendant `u` of
   `s` gives, at every descendant `t` of `s`, the path translation (`pTrW`, `box_mem_path`, both
   generic in `GTruth`) of `ψ`'s preimage at `s`.
-* ⭐**Names are unique** (2026-10-31, `QML_v12m_GCluNames.lean`, in TOP).
+* ⭐**Names are unique** (2026-10-30, `QML_v12m_GCluNames.lean`, in TOP).
   * *Why it is needed.*  The cluster model shares its modal carriers, with `keep` the identity.
     So a child address named by two parent addresses would need them to have one denotation.
   * *The invariant.*  `GNetSt.NamesInj`: along every edge, a child address is named (`NamesE`: as
     an address, or as its η-term) by at most one committed kept parent item (`KeepInj`).  It is
     proved operation by operation, mirroring `GLiftEnt`'s `LiftEntOk`:
-    * child creation (`keepInj_gchild`: `gImg` keeps the root, and `gPath_keep_inj` separates
+    * child creation (`keepInj_gchild`: `gImg` keeps the root, and `gPath_keep_inj_noT` separates
       paths);
     * forward realisation (`keepInj_gextF`: new kept items go under the child's fresh variable,
       which no older entry names, by `names_ref` and `ref_rt`);
@@ -4583,8 +4583,10 @@ model.**
     base or a possible part somewhere).  At the others every world has exactly one object, so
     their preimages denote alike anyway.
 * *Then* the cluster model's design pass against the code, and `GCluModel`.
+  (`gPath_keep_inj_noT` was renamed from `gPath_keep_inj`, which `GLeafInj` already uses for
+  the T + 4 version.)
 
-#### The K45 cluster model: design pass against the code *(2026-10-31)*
+#### The K45 cluster model: design pass against the code *(2026-10-30)*
 
 **The shape: every world's modal facts are the root's, through preimages.**  All nodes are
 descendants of the root `ρ`, so `R s t :⇔ t ≠ ρ` has the same arrows from every world.  The model
@@ -4646,7 +4648,20 @@ is the root's model, with each world's own base domain.
 
 **Files, in order (estimate).**
 1. `GCluDia`: the `◇`-view identity and `◇`-uniformity (R2), about as large as `GCluPre`'s `□`
-   part.
+   part.  **Built (2026-10-30, `QML_v12m_GCluDia.lean`, in TOP in place of `GCluPre` and
+   `GCluNames`):**
+   * `preIX`/`preWX`: the preimage of a `◇_x` view, `x.dia ↦ (pre x).dia` and `preI` elsewhere;
+     `edgeS`, `edgeDia` (the edge's substitution inside `◇_{z.keep}` at the witness `x` that
+     `z.keep`'s item names, `idx_names`), with `ok_edgeDia`, `coh_edgeDia`, `levels_diaIn`.
+   * ⭐`sim_preX_edge`: preimage then edge (through `four_dia`'s shift) is the identity on the
+     child's `◇_x` view, up to η.  At `x.dia` it reads the named item's `◇` body (`Names` either
+     way); elsewhere it reduces to the `□` case, `sim_pre_edge`, by `Subst.dia_eq_box_mono`.
+   * ⭐`subst_shift_preX`, and `subst_dia_preX`: the edge sends `◇_{(pre x).keep}(shift (pre ψ))`
+     to `◇_x ψ`.
+   * ⭐`dia_pre_iff` (one edge): `five_dia` then `gltr`; conversely `boxx_neg_of_not_dia`,
+     `four_dia` and `gltr` give `¬◇_x ¬¬ψ` at the child, against `◇_x ψ` by `K_dia`.
+   * ⭐`dia_path_iff`: along a path, by `exists_pre` edge by edge, as `box_path_iff`.
+   * As planned, no surprises: the `□` part's shape carried over directly.
 2. `GCluPreT`: preimages of terms along paths, with stages (R1) and inversion (R4).
 3. `GCluDom`, `GCluModel`: raw objects, denotations, carriers, the model.  Smaller than
    `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is

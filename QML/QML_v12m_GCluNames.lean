@@ -13,7 +13,7 @@ exactly at the types with a base or a possible part (`VarType.etaInj`); at the o
 `𝟙`, `×` and `□`) every world has one object, so names need not be unique there.
 
 * `NamesE`, `KeepInj`, `GNetSt.NamesInj`;
-* `VarType.etaInj`, `eta_inj`, `gPath_keep_inj`, `names_ref`.
+* `VarType.etaInj`, `eta_inj`, `gPath_keep_inj_noT`, `names_ref`.
 -/
 
 namespace V12M
@@ -113,7 +113,7 @@ theorem walk_cons_some {U A : VarType} {s : Step} {q : List Step}
 
 /-- ⭐**Kept items' paths are told apart by `gPath`** (T off): two projection paths to keepable
     types with one kept image are one path. -/
-theorem gPath_keep_inj (hT : ModalSys.T = false) :
+theorem gPath_keep_inj_noT (hT : ModalSys.T = false) :
     ∀ (U : VarType) (p p' : List Step), PPath p → PPath p' → ∀ {A A' : VarType},
       U.walk p = some A → U.walk p' = some A' → A.keepable = true → A'.keepable = true →
       gPath U p .keep = gPath U p' .keep → p = p'
@@ -142,7 +142,7 @@ theorem gPath_keep_inj (hT : ModalSys.T = false) :
             | (cases h₁; cases h₂; simp only [gPath, List.cons.injEq] at e
                first
                  | exact absurd e.1 (by decide)
-                 | rw [gPath_keep_inj hT _ q q' hpq hpq' hq hq' hA hA' e.2])
+                 | rw [gPath_keep_inj_noT hT _ q q' hpq hpq' hq hq' hA hA' e.2])
       | VTypeBox B =>
           cases s <;> simp only [VarType.step] at h₁
           all_goals first
@@ -228,7 +228,7 @@ theorem keepInj_gchild (hT : ModalSys.T = false) (l : List VarType) (kd : Option
     List.nil_append, id] at e
   obtain ⟨er, eg⟩ := root_ext_inj e
   cases er
-  rw [hr, hr', gPath_keep_inj hT _ _ _ hp hp' hw hw' hk hk' eg]
+  rw [hr, hr', gPath_keep_inj_noT hT _ _ _ hp hp' hw hw' hk hk' eg]
 
 namespace GNetSt
 
@@ -331,7 +331,7 @@ theorem keepInj_gextF (hT : ModalSys.T = false) {cl : List VarType} {k : Option 
     subst hrr hrr'
     rw [rootTy_new] at hw hw'
     obtain ⟨-, eg⟩ := root_ext_inj (hn.trans hn'.symm)
-    rw [hr, hr', gPath_keep_inj hT A _ _ hp hp' hw hw' hk hk' eg]
+    rw [hr, hr', gPath_keep_inj_noT hT A _ _ hp hp' hw hw' hk hk' eg]
   · rw [gextF_new h₁, namesE_inl] at hn
     rw [gextF_old h₂] at hn'
     rw [kView_old h₂] at hv'

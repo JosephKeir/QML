@@ -322,6 +322,13 @@ and 4's strategy.
 * *Decisions.*  F1 and F3 decided (user, 2026-10-29); F2 deferred to paper check P2 (lean:
   K45 first); F4, F5 open.
 
+**Progress (2026-10-30).**  Steps 1 (semantics) and 2 (K45 rules) are built.  The K45 canonical
+model is the root-centric cluster model on the growing tree (`v12-modal-extensions.md` §3 5, "The
+K45 cluster model: design pass against the code").  Built so far: names by origin (N1,
+`glorigin`); `GCluPre` (`□`-uniformity along edges and paths, `box_cluster`); `GCluNames`
+(`names_unique`); `GCluDia` (`◇`-uniformity, R2).  Next: `GCluPreT` (term preimages with
+stages, R1; inversion, R4), then `GCluDom`/`GCluModel`, `GCluTruth` and `GCluCompleteness`.
+
 ## Milestone 4 — the remaining strong forms, completing the cube
 
 * **4's strong forms** are now milestone 2a (the lift and the join, per arrow).  The inward map
