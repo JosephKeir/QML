@@ -336,6 +336,18 @@ complete** (presented contexts, strong completeness, compactness), and dispatche
 `NoBComplete` (`NoB.fiveCluster` in place of the temporary `noFive`).  Next for 5: the other
 systems (K5/KD5, K45 without both lifts, 5 with T, strong 5), and B with 5.
 
+**S5, paper check (2026-10-30; `v12-modal-extensions.md` §3 5, "paper check for S5").**
+* Under T the root is in the cluster already (the empty path is an arrow).  So S5 is the K45
+  cluster model with T, and weak B is free.  KB5 and KDB5 (no T) need the root's loop, so **S5
+  comes first**.
+* Round-trip coherence: for weak B it is flag closure, as conjectured.  Strong B needs one
+  B + 4 rule, `back_keep` (a kept carrier comes back as its own value; sound by `homeUnique`;
+  underivability still to confirm).  With it, strong B collapses in the cluster: rows 3–4 are
+  free, and `Back`/`ret` reduce to kept carriers.
+* First target: S5 with both of 4's lifts, `BStrong` off.  Work: names by origin under T
+  (`here` projections), `keepOnly` cluster files, a cluster leaf calculus (identity root action),
+  T's model fields, then completeness and the class `FiveCoh`.
+
 ## Milestone 4 — the remaining strong forms, completing the cube
 
 * **4's strong forms** are now milestone 2a (the lift and the join, per arrow).  The inward map

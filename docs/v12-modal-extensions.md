@@ -4706,7 +4706,9 @@ is the root's model, with each world's own base domain.
      at `s ≠ ρ` is *the root case applied to the preimage*, inlined: `boxtm b` denotes
      `fun a => den_{a.1} (pTr ρ a.1 (pre_s b))`, and `diatm` likewise through `porig x`.  So the
      only recursive calls are at smaller types, and `den_s m = den_ρ (pre_s m)` is definitional.
-3. `GCluDom`, `GCluModel`: raw objects, denotations, carriers, the model.
+3. `GCluDom`, `GCluModel`: raw objects, denotations, carriers, the model.  Smaller than
+   `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
+   the identity.
    **`GCluDom` begun (2026-10-30, in TOP in place of `GCluOrig`):** `CluFlags`, `rpath`, `rstg`,
    `rorig`; `CAcc := GAcc ρ`; `CRPos`, `CRDom`; `preTB`, `preTD`; ⭐`cden` (one structural
    recursion); `cden_mono`; ⭐`cden_congr` (the root stages of two stages need not be ordered, so
@@ -4887,9 +4889,6 @@ is the root's model, with each world's own base domain.
    `NoBComplete` dispatches on 4, then on 5: the cluster model (`cluFlags_of_five`), the growing
    tree (`growSys_of_noFive`), the staged tree (`stagedSys_of_noFour`, 5 off by `fiveCluster`).
    Still uncovered with 5: K5 and KD5 (4 off), K45 without both lifts, 5 with T, strong 5.
-   Smaller than
-   `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
-   the identity.
 4. `GCluTruth`: the truth lemma.
 5. `GCluCompleteness`, and dispatching K45 and KD45 with both lifts in `NoBComplete` (relaxing
    the temporary `noFive`).
@@ -4897,6 +4896,136 @@ is the root's model, with each world's own base domain.
 **Step 2 for K45 as built (2026-10-29).**  `Proof.five_box` and `Proof.five_dia` (under `Four`
 and `Five`); their soundness cases (`Soundness`) and substitution cases (`ProofSubst`).  No new
 syntax.
+
+#### 5, paper check for S5: the root joins the cluster *(2026-10-30, paper)*
+
+**Verdict.**  S5 follows the K45 cluster model.  Under T the root is already in the cluster, so
+weak B costs nothing.  Strong B needs **one new rule**, a B + 4 coherence rule, and then it
+collapses: no back arrows and no network.  T's work is real: names by origin and the preimage
+files redone for T's views, and a leaf calculus for shapes in the cluster.  Without T (KB5,
+KDB5) the root's loop is new work, so S5 comes **before** B + 5, reversing steps 6 and 7.
+
+**1. The frame: under T the root is in the cluster already.**
+* `GR ρ t` holds for every world under T: the empty path is an arrow (`PathOk`).  So `CAcc =
+  GAcc ρ` is every world, and the cluster frame `R s t :⇔ GR ρ t` is universal.  `refl`, `symm`,
+  `trans` and `side` all hold relationally, and `side_refl` is trivial.
+* *Weak B is free.*  Its only model law is `symm`, and its only rule `B_dia`, which is sound
+  there (and should be derivable: `five_box` at a closed `ψ`, then `T_box`).  No way-home value
+  is named: a world's `□`-object along `s → ρ` is the root term read along the root's own arrow,
+  `pTr ρ ρ []`, the collapse.
+* *Without T* (KB5, KDB5), `GR ρ ρ` fails.  The root's loop is no tree path, so the root's own
+  `□`-items need values at the root, named there.  That is weak B's back values at one arrow
+  (finite-piece lemma, by `B_dia` and 4).  So step 6 is harder than step 7: **S5 first**.
+
+**2. Milestone 3's round-trip coherence, answered.**
+* *Weak B: nothing to do.*  Every round trip is a cluster arrow read through `ρ`, and `five_box`
+  already makes the translations route-independent (the K45 check).  For weak B the conjecture
+  holds: coherence is the shadow of flag closure.
+* *Strong B: one interaction rule.*
+  * Under strong B, `homeUnique` makes arrows unique.  So under T and 4 the composite of an arrow
+    and its way home is the identity, and a **kept carrier comes back as its own value**:
+    `⊢ Back (u.dup) u.here`.  More generally, a shifted `□`-view term comes back as its collapse.
+    This is valid in every model with `BStrong`, T and 4.
+  * *It appears underivable.*  Read `Back` along a designated way home per arrow (an operation
+    `home a`, with `home refl = refl`).  Then every B rule stays sound (`back_pair` reads both
+    carriers along `home a`; `back_here` needs only `home refl = refl`), no rule mentions
+    `keep`, and `trans a (home a)` need not be the identity.  **To confirm** rule by rule.
+  * *Proposed:* `back_keep` (`BStrong`, T, `Four`): `⊢ O.back (shift b) (collapse b)` at the
+    out leg `nec`.  It is 4's analogue of `back_here` (the own arrow), and in the K paradigm.
+  * So the conjecture fails for strong B: coherence needs this rule, not 5 alone.
+
+**3. Strong B collapses in the cluster** (with both of 4's lifts).
+* *`Ret`, canonically, is the round trip itself:* `Nonempty S ∧ ∀ a, Ind (val a home) o`.  Then
+  `Ret_fwd` and `Ret_conv` are immediate; `IndInvariant`'s `Ret` congruences follow from `Ind`'s.
+* *`Back c t ∈ M_w` gives the round trip.*
+  * `c`'s value at `v`, read back at `w`, is the lift `m` of `c_v.here` (its origin), valued at
+    `w` as `m_w.here`.
+  * `w` knows `◇□(m_w.keep.keep.here = c.keep.here.keep.here)`: the lift's identification at
+    `v`, carried to `w` by 5's uniformity.
+  * `back_keep` gives `Back (m_w.dup) m_w.here`.  `back_pair` and `back_counit`, with `ψ`
+    "the two components agree", then give `m_w.here = t`.  At `◇` contents it is the same with
+    `Ind`.
+* *Conversely* by `back_ret` (the definite description), through the `ret` case.
+* *The returning possibility.*  With the `□`-lift,
+  `◇[d ↦ t] Φ(d) ⊣⊢ ∃n:□A. n.here ≈ t ∧ ◇Φ(n.keep)`.  The `⇒` direction needs the lift and
+  `back_keep`'s `ret` form (derivable through `ret_counit`?  to check).  So its witness is a
+  Henkin `n` and an ordinary `◇`-child.
+* *Row 1* (`backRet_exists`): `B_strong`'s Henkin carrier at each world, as in the network.
+  *Row 2* from row 1, as now.
+* *Rows 3–4* (`posBack_exists`) are **free**: `posRet_exists` at the target, and the possible
+  object is definable at the source by R4 (shared carriers, the `◇`-lift).  So risk 5's guess
+  holds: rows 3–4 collapse.  `WCoh` stays as it is.
+
+**4. T in the cluster: each field against the K45 model.**
+* *`necExtract_eval`.*  The own arrow at `s` is `⟨s, _⟩`.  Under `keepOnly` the edge's entry for
+  `u₀.box` is `θ(u₀.keep).here`, so extracting is the `here` projection, definitionally, as
+  `cden_tr`.
+* *Extents at the own arrow.*  `⟨s, _⟩ ∈ ext ρ y₀` is `InExt` along the path to `s`, or
+  realisation at `ρ`.  By `posKeep_full` that is the growing tree's realisation of the kept image
+  at `s` (`here_keep`).  `Here` at `s` reads the same arrow, so `ghere_truth`'s argument ports.
+* *`posRet_exists`.*  A Henkin witness at each world (`Proof.retEx`), as the network does.
+* *Shapes.*
+  * `RootPoss` is the root's root possibilities, at every world.
+  * The root action is the identity, so `keepAlong` is re-anchoring (`trans a b = b`).
+  * Shapes are anchor-free: `Acc` is one type, so a leaf's index is its only dependence on the
+    world.  They are re-anchored per world.
+  * `posKeep_full`, `posShape_wf` and `rootKeepLaws` hold by definition (K45's `cmodel` already
+    proves the laws for the identity action; `keep_refl` is `rfl`).
+  * `posSide` needs no shape law: every S5 system has 4, where `x.side` is `x.keep`.
+* *Tags determine annotations.*
+  * Labels are root origins with paths (root-level addresses), or families of them (keep-first
+    addresses).
+  * Injectivity comes from names being unique: the origin map is injective edge by edge
+    (`NamesInj`), through `here` projections too.
+  * The own arrow's ambiguity (`v.keep.here` against `(v.here).keep`, §3 4) is separated at any
+    other world `b`.  There `v`'s values at `b` and at `s` have different origins: different
+    addresses, each lifted once.  When the objects are equal, so are the labels.
+  * This is a new **cluster leaf calculus**, simpler than `GLeafInj`: the identity action keeps
+    roots roots, so no late edge is needed.  It is the largest item T brings.
+* *`Ind`* as the growing tree's (`GInd`).  At modal types it does not depend on the world, as the
+  carriers do not.
+
+**5. Names by origin under T (N1).**
+* *The `etaBox` lift is gated by T off* (`GView`), and so are `origin_total`, `glorigin`,
+  `exists_pre` and the cluster files.  D-H3's generator lifts (the `□` view tuple) served the
+  growing tree's leaf calculus (`GKeep`, `GLaws`), which the cluster does not use.  D-H2's own
+  correction says arbitrary `□`-lifts are fine for injectivity.  So: `etaBox` under 5 whatever T,
+  and `LiftAdm.of_T`'s discarding keyed to 5 off (`GrowSys`) instead of T.
+* *A new source of names: `here` projections.*
+  * Under T, `u.here` at `t` (`u` the kept image of `u₀`) is `u₀`'s value at `t`.
+  * It is no keep image, since no root address denotes `u₀` at `t`.  So N1 lifts it once.
+  * No other route names it again: from a sibling, the translation through `ρ` gives `u.here`.
+  * Realisations name terms; Henkin witnesses (`here_name`, `retEx`) name new objects.
+  * The audit is to be redone in full over T's views.
+* *T's views (`keepOnly`).*  The `□` view's items are `u.keep` and `x.keep`, with contents
+  `u.keep.here`.  `preI` loses the `α.box` case and gains `here` projections.  `GCluPre`, `Dia`,
+  `Orig`, `Tr`, `Dom` and `Func` need `keepOnly` versions, mostly mirrors.
+
+**6. Flags.**
+* *First target:* S5 with both of 4's lifts (`FourStrong`, `FourStrongW`).  `FiveStrong` is free,
+  being `FourStrong` under 4.  T and D in either strength, weak B, `BStrong` off.  This mirrors
+  K45, where both lifts came first.  S5 without the lifts waits for committing cluster arrows
+  (K45's milestone B).
+* *Then* strong B (`BStrong`, `BStrongW`) in the same model, with `back_keep`.
+* *Then* KB5 and KDB5: the root's loop.
+* *F4, the class `FiveCoh`:* `T ∧ Five → B ∧ Four`, `B ∧ Four → Five`, `B ∧ Five → Four`, and
+  `FiveStrong ∧ Four → FourStrong`.  The final theorem asks it, as `WCoh` is asked.  The dispatch
+  then splits on B as well.
+
+**7. Order of work.**
+1. N1 under T (`GView`, `GChain`, `GLimit`, `GLiftEnt`, `GCluNames`): `etaBox` with T, `here`
+   projections, names unique.
+2. `keepOnly` versions of the cluster files (preimages, uniformity, round trips).
+3. Shapes: anchor-free leaves, the identity action, and the cluster leaf calculus.
+4. The model under T (extract, realisation, `posRet`, `Ind`), the term lemma with shapes, and
+   the truth lemma with `here`.
+5. Completeness for S5 (both lifts, `BStrong` off), and the dispatch (F4).
+6. Strong B: `back_keep` (soundness, substitution), canonical `Ret`, the `Back` and `ret` cases.
+
+**Risks, largest first.**
+* The cluster leaf calculus.
+* The `keepOnly` mirrors may be more than mechanical (`here` items in `sim_pre_edge`).
+* `back_keep`: confirming that it is underivable, and that its `ret` form follows from it.
 
 ### □-BF and ◇-BF
 Base variables are invisible under `□`, so each Barcan formula pairs a concept quantifier outside
