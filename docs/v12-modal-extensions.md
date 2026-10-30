@@ -4563,14 +4563,25 @@ model.**
 * ⭐`box_cluster` (2026-10-31): **transfer along a cluster arrow.**  `□ψ` at a descendant `u` of
   `s` gives, at every descendant `t` of `s`, the path translation (`pTrW`, `box_mem_path`, both
   generic in `GTruth`) of `ψ`'s preimage at `s`.
-* ⚠ *Still to prove before the model: names are unique.*
-  * The cluster model shares modal carriers, with `keep` the identity.  So a child address named
-    by two parent addresses would need them to have one denotation.
-  * (N1) is built to prevent this: forward commitments are fresh, and a lift fires only on an
-    address not yet named.  But the invariant, `Names t v z ∧ Names t v' z → v = v'`, is not yet
-    proved.
-  * It is an induction over the chain's operations (`realF`/`gextF`, `mkChild`/`gchildMap`,
-    `henk`, the guarded lift).
+* ⭐**Names are unique** (2026-10-31, `QML_v12m_GCluNames.lean`, in TOP).
+  * *Why it is needed.*  The cluster model shares its modal carriers, with `keep` the identity.
+    So a child address named by two parent addresses would need them to have one denotation.
+  * *The invariant.*  `GNetSt.NamesInj`: along every edge, a child address is named (`NamesE`: as
+    an address, or as its η-term) by at most one committed kept parent item (`KeepInj`).  It is
+    proved operation by operation, mirroring `GLiftEnt`'s `LiftEntOk`:
+    * child creation (`keepInj_gchild`: `gImg` keeps the root, and `gPath_keep_inj` separates
+      paths);
+    * forward realisation (`keepInj_gextF`: new kept items go under the child's fresh variable,
+      which no older entry names, by `names_ref` and `ref_rt`);
+    * the guarded lift (`keepInj_gliftG`: the new root is its only new kept item, by
+      `lift_item_root`; its entry `η z` names only `z`, by `eta_inj`; and the guard says no
+      committed item named `z`);
+    * `henk`, `catchUp`, `applyOp`;
+    * so `namesInj_gnet` for every network of the chain, and ⭐`names_unique` in the limit.
+  * *A refinement.*  η-expansion is not injective at types built from `𝟙`, `×` and `□` (at `□𝟙`,
+    `η z = □⟨⟩` for every `z`).  So uniqueness is stated at η-faithful types (`VarType.etaInj`: a
+    base or a possible part somewhere).  At the others every world has exactly one object, so
+    their preimages denote alike anyway.
 * *Then* the cluster model's design pass against the code, and `GCluModel`.
 
 **Step 2 for K45 as built (2026-10-29).**  `Proof.five_box` and `Proof.five_dia` (under `Four`
