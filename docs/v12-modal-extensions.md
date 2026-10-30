@@ -4860,6 +4860,21 @@ is the root's model, with each world's own base domain.
    `CAgree`, `cagree_of_raw`, ⭐`cagree_boxPush`, `cagree_diaPush_box`, ⭐`cagree_diaPush`;
    ⭐`interp_ctr` (with `interpFunc_ctr`); `ccanonEnv`, `cagree_canon`, ⭐`interp_ccanon`.  All
    compiled at the first attempt: the port went through as planned.
+   **`GCluTruth` built (2026-10-30, in TOP in place of `GCluTerm`): ⭐`ctruth`, the truth lemma
+   for the K45 cluster model.**  One correction to the design check on the way:
+   * *The growing tree's push lemma could not be ported as it stands*: its proof pushes from
+     intermediate worlds, and in the cluster model a world's push goes through its own
+     preimage.  Instead, **any** environment agreeing with a path's chain satisfies a formula
+     exactly when the end satisfies its translation (⭐`sat_ptrC`, ⭐`sat_ptrXC`), link by link:
+     a substitution link is a substituted environment (`eq_substEnv_of_cagree`, `sat_subst`), a
+     shift link agrees across the shift (`shiftAgree_of_cagree`, the general `Model.sat_shift`);
+     `cenvOf` supplies an environment for each link.  No intermediate world is pushed from.
+   * Then `sat_boxPush_c`, `sat_diaPush_c` (a world's push is its preimage, then the root's
+     path), `relSat_ccanon`, `ccanonEnv_le`, `cinterp_lift`, `ccanon_mem_iff`, and `ctruth_lt`:
+     the propositional, atom and quantifier cases as the growing tree's; `□` and `◇` through
+     `box_pathO_iff`, `dia_pathO_iff`, with `glex`, `glexX` at the root for the converses.
+   Next: `GCluCompleteness`, and dispatching K45 and KD45 with both lifts in `NoBComplete`
+   (relaxing the temporary `noFive`).
    Smaller than
    `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
    the identity.
