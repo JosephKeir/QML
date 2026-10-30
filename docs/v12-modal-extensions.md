@@ -4692,9 +4692,12 @@ is the root's model, with each world's own base domain.
    * So for a root term `m` (a `boxtm` or `diatm`), the `s`-term `m'` renamed by `preI pnm` (or
      `preIX pnm x`) has preimage `m` renamed by `preI (porig ∘ pnm)` (`sim_eS_ren_comp`,
      `Term.subst_comp_sig`).
-   * *Semantic half, in `GCluDom`:* that renaming does not change a root denotation, since at
-     the other types (`𝟙`, `×`, `□` only) the raw domain is a singleton.  So `den_s m' = den_ρ m`,
-     and the carriers are shared.
+   * ~~*Semantic half, in `GCluDom`*~~ — **not needed** (2026-10-30): a substitution reads only
+     η-faithful addresses, since only base-typed addresses are terms and a possible term names
+     its witness (⭐`Term.subst_congrF`, new generic file `QML_v12m_SubstFaithful.lean`, which
+     now also holds `VarType.etaInj`).  So renaming by the round trip is literally weakening
+     (⭐`round_trip`, in `GCluOrig`), and `den_s m' = den_ρ m` follows from the denotation's own
+     laws, with no singleton argument.
 
    **`GCluDom`'s denotation, refined (2026-10-30).**
    * *Arrows.*  Without T, `GR ρ t ⇔ t ≠ ρ`, so the arrows of every world are `GAcc ρ`.  Using
@@ -4703,7 +4706,13 @@ is the root's model, with each world's own base domain.
      at `s ≠ ρ` is *the root case applied to the preimage*, inlined: `boxtm b` denotes
      `fun a => den_{a.1} (pTr ρ a.1 (pre_s b))`, and `diatm` likewise through `porig x`.  So the
      only recursive calls are at smaller types, and `den_s m = den_ρ (pre_s m)` is definitional.
-3. `GCluDom`, `GCluModel`: raw objects, denotations, carriers, the model.  Smaller than
+3. `GCluDom`, `GCluModel`: raw objects, denotations, carriers, the model.
+   **`GCluDom` begun (2026-10-30, in TOP in place of `GCluOrig`):** `CluFlags`, `rpath`, `rstg`,
+   `rorig`; `CAcc := GAcc ρ`; `CRPos`, `CRDom`; `preTB`, `preTD`; ⭐`cden` (one structural
+   recursion); `cden_mono`; ⭐`cden_congr` (the root stages of two stages need not be ordered, so
+   both preimages are read at the later one, where the renaming is the same).  Next: the root
+   case without the identity renaming, definable objects, and R4 in the model (definable at `s`
+   = definable at `ρ` at modal types).  Smaller than
    `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
    the identity.
 4. `GCluTruth`: the truth lemma.

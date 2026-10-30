@@ -17,7 +17,8 @@ defined and stage changes are weakenings.
 * ⭐`fmapL_names`: under 5 every entry names an address; ⭐`orig_names`: the origin of a named
   address is its namer, at η-faithful types (R4 at addresses);
 * `nm`, `pstgN`, `pnm`: names forward along an edge and a path; ⭐`pnm_ref`; ⭐`porig_pnm`: the
-  round trip fixes η-faithful addresses, and `porig_pnm_ref`: it keeps types.
+  round trip fixes η-faithful addresses, and `porig_pnm_ref`: it keeps types;
+* ⭐`round_trip`: so renaming a root term by the round trip is weakening (R4).
 -/
 
 namespace V12M
@@ -469,6 +470,55 @@ theorem porig_pnm_ref (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
     (ctxOf (glat s (pstgO P s t hP (pstgN P s t hP i)))).ref (porig P s t hP (pnm P s t hP v)) =
       some U :=
   pPreOk hV hT hS hW hM₀ P s t hP _ _ U (pnm_ref hV hM₀ P s t hP i v U hv hkp) hkp
+
+/-- The round trip keeps types, into any later stage. -/
+theorem rt_ok (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
+    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hM₀ : Theory.IsMCS M₀) (P : List ℕ) (s t : GW hF M₀) (hP : t.1 = nodeOf s.1 P) (i : ℕ)
+    {K : ℕ} (hK : pstgO P s t hP (pstgN P s t hP i) ≤ K) :
+    ∀ z T, (ctxOf (glat s i)).ref z = some T → T.keepable = true →
+      (ctxOf (glat s K)).ref ((porig P s t hP ∘ pnm P s t hP) z) = some T :=
+  fun _ _ hz hkp => (ctxOf_le_of_suffix (glat_suffix hM₀ s hK)).ref
+    (porig_pnm_ref hV hT hS hW hM₀ P s t hP i hz hkp)
+
+/-- ⭐**R4: the round trip does not change a term.**  Renaming a `□`-view term of an ancestor by
+    `porig ∘ pnm` is weakening: the renaming fixes the η-faithful addresses (`porig_pnm`), and a
+    substitution reads no others (`Term.subst_congrF`). -/
+theorem round_trip (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
+    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false) (P : List ℕ) (s t : GW hF M₀)
+    (hP : t.1 = nodeOf s.1 P) (i : ℕ) {K : ℕ} (hK : pstgO P s t hP (pstgN P s t hP i) ≤ K)
+    (hiK : i ≤ K) {A : VarType} {a : Ann A} (b : Term σ (ctxOf (glat s i)).boxIn A a) :
+    (⟨_, Term.subst (eIdx (ofRen (preI (porig P s t hP ∘ pnm P s t hP))))
+        (eS σ (ctxOf (glat s K)).boxIn (ofRen (preI (porig P s t hP ∘ pnm P s t hP))))
+        (ok_eS_kView (k := none)
+          (entOk_ofRen (itemOk_preI hk (rt_ok hV hT hS hW hM₀ P s t hP i hK))))
+        (coh_eS_kView (k := none)
+          (entOk_ofRen (itemOk_preI hk (rt_ok hV hT hS hW hM₀ P s t hP i hK)))) b⟩ :
+        Σ c, Term σ (ctxOf (glat s K)).boxIn A c) =
+      ⟨a, Term.mono (ctxOf_le_of_suffix (glat_suffix hM₀ s hiK)).boxIn b⟩ := by
+  have hle := (ctxOf_le_of_suffix (glat_suffix hM₀ s hiK)).boxIn
+  refine (Term.subst_congrF _ (Subst.idS σ _) _ (Subst.ok_idS_le hle) _
+    (Subst.coh_idS_le hle) (Subst.simF_of fun v T hl hv hTe => ?_) b).trans
+    (Term.subst_idS_mono hle _ _ b)
+  match v, hl, hv with
+  | .step u .box, hl, hv =>
+      have hu := Ctx.boxIn_step_box hv
+      rw [eS_item _ rfl]
+      change SubE.Sim T (.ren (.step (porig P s t hP (pnm P s t hP u)) .box)) (.ren _)
+      rw [porig_pnm hV hT hM₀ P s t hP i u _ hu rfl hTe]
+      exact .refl _
+  | .step u .keep, hl, hv =>
+      obtain ⟨-, hu, hkp⟩ := Ctx.boxIn_keep hv
+      rw [eS_item _ rfl]
+      change SubE.Sim T (.ren (.step (porig P s t hP (pnm P s t hP u)) .keep)) (.ren _)
+      rw [porig_pnm hV hT hM₀ P s t hP i u _ hu hkp hTe]
+      exact .refl _
+  | .root _, _, hv => cases hv
+  | .step _ .fst, _, hv => cases hv
+  | .step _ .snd, _, hv => cases hv
+  | .step _ .dia, _, hv => cases hv
+  | .step _ .here, _, hv => cases hv
 
 end GArrow
 

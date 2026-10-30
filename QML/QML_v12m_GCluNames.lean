@@ -1,4 +1,5 @@
 import QML.QML_v12m_GLimit
+import QML.QML_v12m_SubstFaithful
 
 /-!
 # QML v12m — 5 on the growing tree: names are unique
@@ -10,21 +11,14 @@ named by at most one committed kept parent item.
 
 Naming is by an address (`.inl z`) or by its η-term (`.inr η z`).  η-expansion is injective
 exactly at the types with a base or a possible part (`VarType.etaInj`); at the others (built from
-`𝟙`, `×` and `□`) every world has one object, so names need not be unique there.
+`𝟙`, `×` and `□`) every world has one object, so names need not be unique there; nor does a
+substitution ever read them (`Term.subst_congrF`).
 
 * `NamesE`, `KeepInj`, `GNetSt.NamesInj`;
-* `VarType.etaInj`, `eta_inj`, `gPath_keep_inj_noT`, `names_ref`.
+* `eta_inj` (at `VarType.etaInj`, in `SubstFaithful`), `gPath_keep_inj_noT`, `names_ref`.
 -/
 
 namespace V12M
-
-/-- The types at which η-expansion is injective: those with a base or a possible part. -/
-def VarType.etaInj : VarType → Bool
-  | .Var => true
-  | .VTypeOne => false
-  | .VTypeProd A B => A.etaInj || B.etaInj
-  | .VTypeBox A => A.etaInj
-  | .VTypeDia _ => true
 
 variable [ModalSys]
 
