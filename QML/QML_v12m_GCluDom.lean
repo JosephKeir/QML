@@ -1,4 +1,4 @@
-import QML.QML_v12m_GCluOrig
+import QML.QML_v12m_GCluLabel
 
 /-!
 # QML v12m — 5 on the growing tree: the cluster model's raw objects and denotations
@@ -50,23 +50,6 @@ structure CluFlags : Prop where
 
 theorem CluFlags.keepOnly (hX : CluFlags) : ModalSys.keepOnly = false := by
   simp [ModalSys.keepOnly, hX.noT]
-
-/-! ## Paths from the root -/
-
-/-- A world's path from the root. -/
-def rpath (s : GW hF M₀) : List ℕ := s.1.reverse
-
-theorem rpath_eq (s : GW hF M₀) : s.1 = nodeOf (groot hF M₀).1 (rpath s) := by
-  rw [nodeOf_eq]
-  simp [rpath, groot]
-
-/-- The root's stage at which a world's stage has its preimage. -/
-noncomputable abbrev rstg (s : GW hF M₀) (i : ℕ) : ℕ :=
-  pstgO (rpath s) (groot hF M₀) s (rpath_eq s) i
-
-/-- A world's origins at the root. -/
-noncomputable abbrev rorig (s : GW hF M₀) : VarSymb → VarSymb :=
-  porig (rpath s) (groot hF M₀) s (rpath_eq s)
 
 theorem rpre (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ) :
     PPreOk (rpath s) (groot hF M₀) s (rpath_eq s) i :=

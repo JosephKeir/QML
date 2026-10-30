@@ -5156,6 +5156,32 @@ as `gposRet_exists_canon`.  `Ind`, `IndInvariant`, `ghere_truth`, `ginterp_dia_s
   annotation in both models.  The tree has this; the cluster's is part of the port.
 * *`glate` under 5:* it compiles without a 5-off hypothesis, but nothing has used it under T + 5.
 
+**The label layer, built (2026-10-30).**  `GCluLabel` and `GCluShape`, 1 422 lines, about the
+design pass's estimate of 1 500, though reading a term's shape along an arrow is still to come.  It
+is direct rather than a port: nothing of `GLeaf`, `GLeafInj` or `GLaws` is copied.
+* ⭐*Labels have a closed form.*  The tree's `gMem` walks a path because an entry may be a view
+  tuple.  Under 5 every entry names an address (`fmapL_names`), so there is nothing to walk: the
+  member of `u.keep.r` at `b` is the label of `(name of u at b).r`, read back at the root (`cNext`).
+  So `cLab` is a recursion on levels, not on paths, and is defined at the root only.
+* *Foundations (`GCluLabel`).*  `carrows` with no flags (`refl` is now real), `CLeaf.rean`, the
+  identity root action, `cLab`, ⭐`cNext_cases`, `cLab_wf`.  ⭐`rnm_rorig`, the round trip the other
+  way (`nm_orig`: an entry names one address).
+* *Edit laws.*  ⭐`cLab_edit` is one induction on levels, for any leaf operation that passes through
+  families, edits root paths and holds at level zero.  `cLab_dk`, `cLab_dkB` and `cLab_shift` are
+  its instances, each base case a round trip.  `cLab_collapse` is proved apart, because reading at
+  the own arrow has a different base case (`cLab_collapse_zero`).
+* *`GCluShape`.*  `annC`, `cE`, `CPushed`, ⭐`CPushed.ref` (a pushed root environment reads every
+  reachable address as its address shape), ⭐`cLab_inj`, ⭐⭐`ann_eq_of_termShpC`: tags determine
+  annotations at the root.
+* *One correction to the design pass.*  Comparing with tree labels was not needed: `cLab_inj` is
+  direct.  But the late edge **is** needed.  A lifted root can name another address's value along
+  an edge (`u'` lifted from `u`'s value at `c`), so `u.keep.here` and `u'.keep` agree at `c`.  Along
+  a late edge every entry is an image; `glate` and `late_inj` work under 5 unchanged.
+
+**Where things stand for steps 3–5.**  Left: tags in `CRPos`, `cden` under T (`GMem`, `grealT`,
+`pTrXK`, stage independence), `tr_collapse`, `tr_pathXK`, `crawShape`, `cops` and `cmodel`, the term
+lemma, `Here`, the truth lemma, `Ind`, `IndInvariant`, and the dispatch.
+
 ### □-BF and ◇-BF
 Base variables are invisible under `□`, so each Barcan formula pairs a concept quantifier outside
 with a base quantifier inside.

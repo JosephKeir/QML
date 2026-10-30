@@ -44,23 +44,12 @@ theorem CluFlags.absShaped (hX : CluFlags) (h : ModalSys.shaped = true) : False 
 
 /-! ## The frame -/
 
-variable (hF M₀) in
-/-- ⭐**The cluster arrows**: from every world to every strict descendant of the root. -/
-abbrev carrows (hX : CluFlags) : Arrows.{0, 0} σ where
-  W := GW hF M₀
-  R := fun _ t => GR (groot hF M₀) t
-  refl := fun hT => (hX.absT hT).elim
-  trans := fun _ {_ _ _} _ h₂ => h₂
-  refl_trans := fun _ _ _ _ _ => rfl
-  trans_refl := fun _ _ _ _ _ => rfl
-  trans_assoc := fun _ _ _ _ _ _ _ _ => rfl
-
 variable (hM₀ : Theory.IsMCS M₀)
 
 variable (hF) in
 /-- ⭐**The cluster frame.** -/
 noncomputable def cframe (hX : CluFlags) : Frame.{0, 0} σ where
-  toArrows := carrows hF M₀ hX
+  toArrows := carrows hF M₀
   actual := groot hF M₀
   serial := fun hD _ => gserial hM₀ hD (groot hF M₀)
   symm := fun hB => (hX.absB hB).elim
@@ -282,10 +271,8 @@ noncomputable def cmodel (hX : CluFlags) : Model.{0, 0} σ where
   necEval := cnecEval hM₀ hX
   nec_inj := fun h => cnecEval_injective hM₀ hX h
   RootPoss _ := VarSymb
-  rootKeep := (Arrows.RootKeep.ofRoot (F := carrows hF M₀ hX) (Root := fun _ => VarSymb)
-    fun _ {_} r _ => r).keep
-  rootKeepLaws := Arrows.RootKeepLaws.ofRoot _ (fun _ {_} _ _ _ => rfl)
-    (fun hT => (hX.absT hT).elim)
+  rootKeep := (instRootKeepC hF M₀).keep
+  rootKeepLaws := instRootKeepLawsC hF M₀
   posFull p := (cposEval hM₀ hX p, fun hS => (hX.absShaped hS).elim)
   posFull_inj := fun h => cposEval_injective hM₀ hX (congrArg Prod.fst h)
   posShape_wf := fun hS => (hX.absShaped hS).elim
