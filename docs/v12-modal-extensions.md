@@ -5063,6 +5063,99 @@ KDB5) the root's loop is new work, so S5 comes **before** B + 5, reversing steps
   and the truth lemma).  There `pTr` along the empty path, `extract`, shapes and `Here` are real
   work, which is steps 3 and 4.
 
+#### Where 5 stands, strong and weak *(2026-10-30)*
+
+* *Weak 5* is `Five`: the rules `five_box`, `five_dia`, both under `Four`.
+* *Strong 5* is `FiveStrong`: the model law `necSide_exists` and no rule.  With 4 it needs none,
+  since the gather is 4's `□`-lift.  Without 4 its rule is unwritten.
+* *No strong `◇` for 5 alone:* unsound.  With 4 its place is 4's `◇`-lift.
+
+| 4's lifts | Reads as | K45, KD45 | S5 |
+|---|---|---|---|
+| both | strong 5 + the `◇`-lift | **complete** | theory built, model next |
+| `□`-lift only | strong 5 | open | open |
+| `◇`-lift only | weak 5 + the `◇`-lift | open | open |
+| neither | weak 5 | open | open |
+
+* The open cells have rules and soundness; they need committing cluster arrows (milestone B of
+  the K45 paper check).  Note that strong K45 proper, without the `◇`-lift, is one of them.
+* *K5, KD5 (4 off):* semantics only (`Frame.side`, `posSide`).  No `side` step, `sideTr`, links or
+  rules, so those flag settings prove no 5 principle, and completeness excludes them.
+* *KB5, KDB5:* not started (the root's loop).  *S5 with strong B:* after the first S5 target.
+
+#### S5 steps 3–4: design pass against the code *(2026-10-30)*
+
+**Verdict: no blocker found, and the plan gets smaller.**  `GKeep`'s root action is not needed, and
+`GLeafInj` can be reused rather than ported.  What remains new is a label layer over cluster
+arrows, plus T's cases mirrored from `grden` and `GTruth`.  Estimate: about 3 000 lines, of which
+about 1 500 are the label layer (the K45 cluster was about 4 000).
+
+**What the stored tags are for.**  One thing: `ann_eq_of_grden`, used only in `ghere_transfer`.
+Two terms with one denotation must have one annotation, so that `eqRec` between them typechecks.
+So the tags must be faithful, and cannot be trivial, since the model's laws fix their structure:
+* `posFull_inj` forbids hiding an annotation in the raw object: section and shape must determine it;
+* `posStrength_full` forces families at `□` positions, with members the actual values' shapes.
+
+**The frame and the root action.**
+* `R s t := GR ρ t`, as K45; under T that is every world.  `refl` is `⟨s, _⟩`, `symm` trivial.
+* *The root action is the identity.*  `Arrows.RootKeep.ofRoot` and `RootKeepLaws.ofRoot` already
+  exist and already cover T (`hrefl` is `rfl`), and K45's `cmodel` uses them.  So `gKeep` and the
+  law proofs in `GKeep` (most of its 2 510 lines) are not needed.
+* *Re-anchoring is one line.*  `Acc w` is one type, definitionally, so `.root r p ↦ .root r p`,
+  `.fam f ↦ .fam f` moves a leaf between anchors, and `keepAlong a l` is that re-anchoring
+  (`trans a b = b`).  Tags are stored anchored at `ρ`, and `posKeep_full` is by definition.
+
+**`cden` under T: `grden`'s clause at the root, through the preimage.**
+* *Extent:* `GMem ρ a.1 P (rorig s x)`, which under T is `Realised (kw ρ a.1 P (rorig s x))`.
+* *Content:* along a realising arrow, `grealT` of `pTrXK` of the preimage of the body.
+* *Tag:* the root's `termShp` of the preimage.  So `den_s m = den_ρ (pre_s m)` stays definitional,
+  tag included, and R4 and `cden_tr` carry tags with no new argument: `round_trip` is an equality
+  of terms.
+* *Own arrow.*  `kw ρ s P (rorig s x)` is `x`: `porig ∘ pnm` is the identity (built), and the other
+  way holds since an entry names one address.  So `Here` at `s` reads `s`'s own realisation.
+
+**Two new round trips (paper: both pass).**
+* `tr_collapse`, for `extract`: `pTr ρ s P (pre_s b)` is `collapse b`, up to η.  Under `keepOnly` an
+  item `u.keep` goes to `(pre u).keep`, then to what the edge names, `u`; and collapse sends
+  `u.keep` to `u`.  At `P = []` it is the identity renaming.  By induction as `tr_path`.
+* `tr_pathXK`: `pTrXK ρ s P x₀ (pre_s c)` is `c`.  At an edge this is `subst_dia_preX`, already built
+  (`pTrXK`'s edge is the shift then the substitution), composed as `preWPX_cons`.
+
+**The label layer (the new piece).**
+* `cLab`, `cMem`: as `gLab`, `gMem`, except roots are renamed through `rorig` at the anchor, and
+  families range over all worlds, read through the root.  Termination as `gMem`: `collapse` lowers
+  the levels, translation does not raise them.
+* *What must be ported:* `cEnv` over cluster arrows, `Canonical`, `annSh`, the path-edit lemmas for
+  labels (`gMem_dk`, `gMem_shift`, `gMem_del`), `grawShape_grden`, and the well-formedness of
+  labels.  Roughly `GTemplate`, `GShapeTr`, `GTrShape`, most of `GLaws` and part of `GKeep`.
+* *What can be reused: injectivity.*  `ann_eq_of_termShp`, `labInj` and `glate` carry no 5-off
+  hypothesis, so they should hold under T + 5.  Compare labels with the tree's:
+  * restricting a cluster label's families to descendants gives the tree's label with roots
+    renamed by `rorig`;
+  * `rorig` is injective at `◇` types (an entry names one address);
+  * so equal cluster tags give equal tree tags, and `ann_eq_of_termShp` applies at the root.
+  That avoids porting `GLeafInj` (846 lines).  A world's terms reduce to the root's, since
+  `porig` is injective on indices.
+
+**T's remaining fields.**  `necExtract_eval` by `tr_collapse`.  `posRet_exists` by Henkin witnesses,
+as `gposRet_exists_canon`.  `Ind`, `IndInvariant`, `ghere_truth`, `ginterp_dia_self`: mirrors of
+`GInd` and `GTruth`.  In the truth lemma `sat_ptrC` gains its collapse link, in place of the
+`absT` at the empty path.
+
+**Order of work.**
+1. `carrows` before raw objects, re-anchoring, `CRPos` with its tag.
+2. `cLab`, `cMem`, well-formedness, the comparison with the tree's labels.
+3. `cden` under T, `cden_congr`, R4 with tags; `tr_collapse`, `tr_pathXK`.
+4. The label ports, `grawShape`'s analogue; `cops` and `cmodel` under T.
+5. The term lemma, `Here`, the truth lemma; `Ind`, `IndInvariant`; completeness and the dispatch.
+
+**Risks.**
+* *The label layer's size.*  If the ports stay close to the tree's it is routine; a generic
+  version over the two kinds of family may be better, to decide when writing `cMem`.
+* *The comparison with tree labels at term level* needs `termShp` read as `annSh` of the
+  annotation in both models.  The tree has this; the cluster's is part of the port.
+* *`glate` under 5:* it compiles without a 5-off hypothesis, but nothing has used it under T + 5.
+
 ### □-BF and ◇-BF
 Base variables are invisible under `□`, so each Barcan formula pairs a concept quantifier outside
 with a base quantifier inside.
