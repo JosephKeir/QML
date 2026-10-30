@@ -4855,6 +4855,11 @@ is the root's model, with each world's own base domain.
    * *Size.*  Mostly a port: `GCluTerm` (agreement and the term lemma, about `GCanonTerm`'s 630
      lines, smaller without T) and `GCluTruth` (the push lemmas and the cases, about half of
      `GTruth`'s 1140, which is mostly T).  No new mathematics found; the risk is volume.
+   **`GCluTerm` built (2026-10-30, in TOP in place of `GCluModel`):** `preC`, `preXC` (the
+   world's preimage, then the root's `ptrC`/`ptrXC`) with `preC_app`, `preXC_app`, `npl_*`;
+   `CAgree`, `cagree_of_raw`, ⭐`cagree_boxPush`, `cagree_diaPush_box`, ⭐`cagree_diaPush`;
+   ⭐`interp_ctr` (with `interpFunc_ctr`); `ccanonEnv`, `cagree_canon`, ⭐`interp_ccanon`.  All
+   compiled at the first attempt: the port went through as planned.
    Smaller than
    `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
    the identity.
