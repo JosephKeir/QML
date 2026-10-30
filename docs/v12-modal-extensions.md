@@ -4293,6 +4293,218 @@ arrows.
 * *Consequence for the order of work.*  Steps 2, 4 and 5 shrink.  K45's canonical model is the
   growing tree with cluster arrows, under rules that are already all there except these two.
 
+#### 5, paper check P3 for K45: the cluster on the growing tree *(2026-10-30, paper)*
+
+**The frame.**
+* A generated K45 frame is a root `ρ` that sees a cluster `C`, with `C` universal.  For
+  `v ∈ R(ρ)`, `R(v) = R(ρ)` (4 gives `⊆`, 5 gives `⊇`), and `v R v`.
+* On the growing tree (worlds: nodes ever born) that is `R u t :⇔ t ≠ ρ`.  It is relational, so
+  every law of `trans` and `side` holds by proof irrelevance (F5).
+* Tree paths give the arrows to descendants.  The new arrows are the **cluster arrows**: from `u`
+  to its ancestors other than `ρ` (itself included, the loop), and to nodes on other branches.
+  Every non-descendant arrow `u → t` factors uniquely as a cluster arrow to a **branch head** (an
+  ancestor of `u`, or the child of `lca(u, t)` towards `t`) followed by a tree path.
+
+**What a cluster arrow must translate.**  `u`'s `□` view: the items it inherits along its path, its
+born roots, and (below) its late roots.
+* *With both lifts* (`FourStrong`, `FourStrongW`), every root is eventually lifted to `ρ`
+  (`lift_total`, iterated).  So every item is the image of a root item, and `u → t` can translate
+  through `ρ`.
+  * Two preimages of one root (two lifts `m`, `m'` with `m.keep ↦ n`) translate to provably equal
+    terms at `t`: `◇□(m.keep.box = m'.keep.box)` holds at `ρ` through `u`, and `five_box` turns it
+    into `□(m.box = m'.box)`.
+  * Base domains are quotients by provable equality (`TEq`), so these co-denote.
+  * **This is the coherence conjecture, checked: `five_box` with a `keep` parameter makes the
+    translations route-independent.**
+* *Without them*, `u`'s born items have no name at `t`, so the arrow commits them: **late roots**.
+  This is B's network pattern (`bcx`, content roots added later), now between existing nodes.
+
+**Late roots, on paper.**
+* *Commitment.*  Adding an arrow `u → t` commits `t` to `{θ(φ) | □φ ∈ M_u}`.  `θ` sends each
+  `u`-item that `t` does not yet name to a fresh root of `t`, and everything else to its existing
+  name.
+* *Consistency, by `five_box`* (5's finite-piece lemma).  Suppose `M_t ⊢ ¬θ(φ)`, with `φ`
+  conjunctive.
+  * Then `M_t ⊢ ∀ȳ ¬φ'(ȳ)`, since the fresh roots generalise.
+  * So `◇∀ȳ¬φ'` holds at `lca` (or at `ρ`) through `t`.
+  * At `u`, `□∃ȳ φ'` holds (`K_box` on `ex_intro`).  So `◇□∃ȳ φ'` holds at the lca, and
+    `five_box` gives `□∃ȳ φ'` there, against `◇∀ȳ¬φ'`.
+* *Names by origin.*  A late root names "item `n`, born at `u₀`, seen at `t`".  A second route to
+  the same item must reuse that name, as the lift reuses an existing root.  Otherwise Lindenbaum
+  could make two names for one object differ.
+* *Why a reused name stays consistent: `□`-claims are cluster-uniform.*
+  * Inside a cluster, `□ψ(n.box) ∈ M_{u₀}` iff `□ψ(r.box) ∈ M_{u₁}` for `r` the image of
+    `n.keep` along `u₀ → u₁`.
+  * One way is transfer.  For the other, `◇¬ψ(n.box)` gives `□◇¬ψ(n.keep.box)` (`five_box`'s
+    `◇`-form with a `keep` parameter), which transfers.
+  * A `□`-object is used only through `box` and `keep`, so its whole type at a world is such
+    claims.  The commitments of a second route are then already true at the target, or are
+    consistent by the argument above, run at the origin.
+* *Composites.*  `θ_{u→t''}` must be `θ_{t→t''} ∘ θ_{u→t}`, up to provable equality, for
+  `necDup_eval` and `posKeep_full`.  Names by origin make that hold by definition.
+
+**The `◇` side.**
+* *Extents.*  `x.keep` at `u` has extent `{d : u → t' | ρ → t' ∈ ext x}`, cluster arrows
+  included.  `ext x` itself is `x`'s children together with the kept members, as now.
+* *Truth lemma, `◇_{x.keep}` at `u` (truth ⇒ membership).*  `◇_{x.keep}ψ ∈ M_u` gives
+  `◇◇_{x.keep}ψ` at `ρ`, then `◇_x ψ` there (`four_dia`), then a witness child.  The arrow from
+  `u` to it is a cluster arrow.
+* *A `◇`-root born at `u`* is translated along cluster arrows like a `□`-root (as the image of its
+  `keep`), with late roots at `◇` types.
+
+**Verdict and order.**
+* *A.*  Cluster arrows with **derived** translations: frame, arrows, composites, extents, truth
+  lemma.  Complete for K45 and KD45 **with both lifts**: there every item comes from `ρ`, so no
+  arrow commits anything.  The smallest end-to-end milestone, and it tests coherence directly.
+* *B.*  **Committing** cluster arrows (late roots by origin, on a fair schedule, consistency as
+  above).  Complete for every K45 and KD45 strength combination.
+* *Sizes.*  A is the infrastructure B needs; B's increment is B's network's commitments on the
+  growing tree's states.
+* *Closure.*  `FiveStrong` with 4 means `FourStrong` (F4); `FourStrongW` stays independent.
+
+**⚠ Finding (2026-10-30, checking A against the growing tree): duplicate preimages, and the
+`◇` side.**
+* *What changes in K45.*  For `ρ`-objects, keeping along `ρ → u` loses nothing, since
+  `R(u) = R(ρ)`.  So two `ρ`-objects that agree along one arrow agree everywhere.
+* *Where the growing tree breaks.*  Its lift (D5 (a)) lifts every term of a child, image items
+  included.  So an item `y_u = θ(y.keep)` gets a second preimage `m`, with `m.keep ↦ y_u`.
+  * For a `□`-object at a `◇`-free type, `five_box` makes `m` and `y` provably equal, and the
+    `TEq` quotient identifies them (as above).
+  * For a `◇`-object, and for a `□`-object whose type contains `◇`, there is no equation to
+    quotient by (§2d).
+  * Canonical extents come from births: `ext m` is `m`'s children together with its kept members,
+    and `ext y` is `y`'s.
+  * But `posKeep_full` along `ρ → u` puts `ρ`'s `m`-children into `y_u`'s extent at `u` (the
+    cluster arrows `u → s₀`), and `ρ`'s `y`-children too.  The truth lemma (`boxPush_canon`)
+    needs both restrictions to be `y_u`'s denotation.  So it needs `ext m = ext y`, which births
+    do not give.
+* *Two repairs.*
+  * (i) **Witness classes**, as §10.10's interchangeability.  `five_dia` and `four_dia` make `m`
+    and `y` interchangeable at `ρ` (`◇_m φ ⊣⊢ ◇_y φ`), so an extent can be read over the class,
+    with each child's content variable serving every member.
+  * (ii) **Names by origin**.  Lift only items that are not already images (born roots), each
+    once.  Every object then has a unique origin at `ρ`, and a cluster member's extents are read
+    through it: `ext_u(x) = {u → s | ρ → s ∈ ext_ρ(origin x)}`.  With both lifts on, terms lift
+    through their items (D5's own remark), so `keepLift` still holds.  The truth lemma's
+    `◇_x` case at `u` goes through `ρ` by `five_dia` and `four_dia`.
+* *Recommendation: (ii).*  It is the same discipline milestone B needs (names by origin), and it
+  keeps extents defined by births.  It changes the lift schedule (`GNetOps`, `GFair`, `GChain`)
+  for the 5 systems only.
+
+**Decided (user, 2026-10-30): (ii).  Refined on paper the same day: names by origin needs two
+clauses.**
+* *The principle.*  In K45 the frame forces two `◇`-objects over different witnesses to be equal
+  whenever the construction relates them by `keep`.  The syntax cannot identify them (§2d,
+  §10.23), so the construction must never give one object two names.
+* *Why the schedule alone is not enough.*  A second name can also arise from a value:
+  * `m`, lifted from `□⟨items⟩` at `u`, has a value at a sibling `s` that is determined (the
+    items' values across `u → s`);
+  * a forward commitment `m.box ↦ c` with `c` fresh would name that value again;
+  * `c`'s `◇`-components would then be second names, with their own extents.
+* **(N1) Lift born roots only, each once.**  These are the roots that are no parent item's `keep`
+  image.  Terms are never lifted.  A term's preimage is built structurally from its roots'
+  preimages.  So two terms that denote one object (`diatm x c`, `diatm x c'`) have preimages over
+  one witness, with one extent, and contents provably equal (`five_box` turns `□_x (c = c')` at
+  `u` into `□_z (h = h')` at `ρ`).  With both lifts on, terms mixing `□` and `◇` items have
+  preimages (D5's remark), so `keepLift` holds.
+* **(N2) A lift root's values are committed to terms, not fresh names.**  Along another edge
+  `ρ → s`, the forward commitment of `m.box` is the term its relation determines,
+  `⟨θ_{ρ→s}(origin(r).box)⟩`, a term entry (as D5 (a) allows).
+  * Transfer for it: `□φ(m.box) ∈ M_ρ` gives `□φ(⟨r.box⟩)` at `u` through `m.keep ↦ □⟨items⟩`
+    (box β).  So `◇□φ(⟨origin.keep.box⟩)` holds at `ρ`, and `five_box` gives
+    `□φ(⟨origin.box⟩)`.
+  * The recursion bottoms out at the values of roots that are not lifts, which are freshly named
+    as now.
+* *Other names are harmless.*  A Henkin witness, or a child's content variable, names a new
+  object.  The frame never forces it equal to another object, since only `keep` relations made by
+  the construction force equalities, and (N1) and (N2) cover those.
+* *So no pooling of extents is needed:* extents stay keyed to births, and `dia_beta` holds as now.
+
+**Paper check: where names are created (2026-10-30).  Result: (N1) at the level of addresses,
+and (N2) is then vacuous.**
+* *(N1), stated at addresses.*  Lift each **reachable address of a liftable type** that is not a
+  parent item's `keep` image, once.  This covers roots, and also components such as `c.snd : ◇C`
+  of a root `c : B × ◇C`, which `FourStrongW`'s law must reach.
+* *The audit.*  Each source of a new name, with the route that might name its object again:
+  * *Forward commitment* `y.box ↦ c` along `ρ → s`.  The cluster route `u → s` names `y`'s value
+    through its origin `y`, as `θ_{ρ→s}(y.box) = c`: the same name.  The loop `s → s` gives the
+    same, through `y`.
+  * *Child creation* along `u → t`, with `r.box ↦ d`.  The route through `ρ` gives
+    `θ_{ρ→t}(r_ρ.box) = θ_{u→t}((θ_{ρ→u}(r_ρ.keep)).box) = d`, by the composite definition.  If `d`
+    is `◇`-typed, it is born at `t` and lifted once.  Nothing forces it equal to another object:
+    a `□`-object's value at `t` need not be the `keep` of its value at `u`.
+  * *Lift* of an address `n` at `u` gives `m` at `ρ`.  `m`'s values elsewhere are `n`'s values
+    across `u → s`, which name through `n`'s origin, `m` itself: `θ_{ρ→s}(m.box)`, the forward
+    commitment.  One name.
+  * *Residual* of a lift along `u → c`: `m.box ↦ r`.  In K45, `c` has a loop, and
+    `u → c → c = u → c`, so `r` is `n`'s value along the loop.  Through `n`'s origin chain
+    `n → m → m'` that is `θ_{ρ→c}(m'.box) = θ_{u→c}(m.box) = r`.  One name.
+  * *Content variable* of an `x`-child, and *Henkin witnesses*: new objects, which no `keep`
+    relation forces equal to another.
+* *Where (N2) came from.*  It was needed only for **term** lifts (`□⟨items⟩`), whose values are
+  fixed by other origins.  With address lifts, every lifted object's values name through itself.
+* *What changes in the code, then:* under 5, `LiftAdm` admits only the η-forms of reachable
+  liftable addresses that are not `keep` images.  It drops `boxTuple` and `viewTuple`, the
+  generator lifts of D-H1 and D-H3, which were made for the shaped T + 4 case.
+
+**The three paper checks before building A (2026-10-30).  All pass, and they simplify the
+model.**
+
+*1. Structural preimages and the lift law: pass.*
+* `pre_u` sends `u`'s modal terms to `ρ`'s.
+* *On addresses*, `pre` is the origin: the parent item whose `keep` image the address is, or its
+  lift (N1), iterated up to `ρ`.
+* *On terms*, structurally:
+  * `pre(boxtm b) = boxtm b̂`, with `b`'s items `α.box`, `α.keep`, `x.keep` sent to
+    `pre α .box`, `pre α .keep`, `pre x .keep`;
+  * `pre(diatm x c) = diatm (pre x) ĉ`, with `x.dia ↦ (pre x).dia`;
+  * pairs and units componentwise.
+* *Why it is total.*  Base variables never occur, since views hide them.  The η-term of an
+  address is a term over its own address.
+* *The lift law.*  `(pre t).keep` translates along `ρ → u` back to `t`, by the shift's
+  `keep.box ↦ box` steps and the composite identity.  So `keepLift` holds at every liftable term.
+* *Terms that denote one object* have preimages over the same witnesses (§ above).
+
+*2. The truth lemma's cluster cases: pass, by reading everything through `ρ`.*
+* **Cluster uniformity.**  `□φ ∈ M_u` iff `□φ̂ ∈ M_ρ`, with `φ̂` the `pre`-translation of `φ`.
+  * One way: transfer along `ρ → u` in the contrapositive, then `five_box` with every parameter
+    kept.
+  * The other way: transfer.
+* *`□` at `u`*: `sat_u(□φ)` is `∀ t ≠ ρ, …`, which is `sat_ρ(□φ̂)`, since the `□`-environment
+  pushed from `u` is the one pushed from `ρ`, read through `pre`.  Loops (`u → u`, `□` read at a
+  world's own arrow without T) are the case `t = u`, with nothing special.
+* *`◇` at `u`*: `◇ψ ∈ M_u` gives `◇◇ψ̂'` at `ρ` (transfer), then `◇ψ̂` (4's dual with `keep`
+  parameters), then a child of `ρ`.  `◇_x` goes the same way with `four_dia`, and the converse
+  with `five_dia`.
+* *On descendant arrows*, the path translation and the origin translation agree by the composite
+  identity: `θ_{u→t}(n.box) = θ_{u→t}(θ_{ρ→u}(pre n .keep).box) = θ_{ρ→t}(pre n .box)`.
+* ⭐**The simplification.**  `Acc u` is `{t | t ≠ ρ}` for every world.  So a raw `□`- or
+  `◇`-object at `u` is literally a raw object at `ρ`, and the definable ones agree (by `pre`, and
+  by `keep`).
+  * **The cluster shares its modal carriers**: `keep` and `side` are the identity on raw modal
+    objects.
+  * `necDup_eval`, `posKeep_full`, `posSide_*` and the side laws are then immediate.
+  * Only base domains and theories differ from world to world.
+
+*3. The existing code: build a sibling model on the same limit.*
+* `GR` is "a path exists" (`GCanonPath`).  The translations `pTr`, `pTrX`, `pTrXK`, `kw` and the
+  extents `InExt` recurse on paths, with stage bookkeeping (`pstg`).  About nine `G` files
+  depend on this.
+* So A does not change `GR`.  It builds a **sibling canonical model** on `GLimit`'s limit:
+  * the frame `R u t :⇔ t ≠ ρ`;
+  * modal denotations at `u` given by `ρ`'s through `pre` (`ρ`'s own are unchanged, so its
+    lemmas are reused);
+  * base domains as now;
+  * a new truth lemma, by induction over all worlds at once, with the modal cases through `ρ`.
+* The schedule changes once, for N1: `LiftAdm` under 5 (`GView`), and origins in the chain
+  (`GChain`: every reachable liftable address eventually has a preimage).
+* *New files* (estimate): `GCluPre` (preimages, with stages), `GCluModel` (frame, shared
+  carriers, laws), `GCluTruth`, `GCluCompleteness`.  Probably well under the growing tree's size,
+  since the carriers are `ρ`'s.
+* *Risk.*  Stages for `pre`: an item of `u` at stage `i` gets its origin at `ρ` only at a later
+  stage, by `lift_total`.  `pre` needs a stage map going up, the inverse of `pstg`, chosen in the
+  limit, with its monotonicity.
+
 **Step 2 for K45 as built (2026-10-29).**  `Proof.five_box` and `Proof.five_dia` (under `Four`
 and `Five`); their soundness cases (`Soundness`) and substitution cases (`ProofSubst`).  No new
 syntax.
