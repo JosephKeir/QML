@@ -4557,9 +4557,21 @@ model.**
     (`ctxOf_fin`, `Ctx.Fin.reach`).
   * With `names_type` (the naming address has the named address's type), `glat_suffix` and
     `glat_ref_agree`.
-* *Next.*  Preimages along paths: iterate `exists_pre` and `box_pre_iff` up to `ρ`.  A cluster
-  arrow `u → t` then translates through `ρ` (`pre`, then `ρ`'s path transfer down to `t`).  Then
-  the cluster model.
+* ⭐`box_path_iff` (2026-10-31): **cluster uniformity along a path.**  A `□`-formula at a
+  descendant's stage holds, at some later stage of it, iff a formula of the ancestor's `□` view
+  holds there: its preimage, edge by edge (`gMs`, conservativity `gMs_mono_iff`).
+* ⭐`box_cluster` (2026-10-31): **transfer along a cluster arrow.**  `□ψ` at a descendant `u` of
+  `s` gives, at every descendant `t` of `s`, the path translation (`pTrW`, `box_mem_path`, both
+  generic in `GTruth`) of `ψ`'s preimage at `s`.
+* ⚠ *Still to prove before the model: names are unique.*
+  * The cluster model shares modal carriers, with `keep` the identity.  So a child address named
+    by two parent addresses would need them to have one denotation.
+  * (N1) is built to prevent this: forward commitments are fresh, and a lift fires only on an
+    address not yet named.  But the invariant, `Names t v z ∧ Names t v' z → v = v'`, is not yet
+    proved.
+  * It is an induction over the chain's operations (`realF`/`gextF`, `mkChild`/`gchildMap`,
+    `henk`, the guarded lift).
+* *Then* the cluster model's design pass against the code, and `GCluModel`.
 
 **Step 2 for K45 as built (2026-10-29).**  `Proof.five_box` and `Proof.five_dia` (under `Four`
 and `Five`); their soundness cases (`Soundness`) and substitution cases (`ProofSubst`).  No new

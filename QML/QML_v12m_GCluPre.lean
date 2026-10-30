@@ -1,4 +1,4 @@
-import QML.QML_v12m_GLimit
+import QML.QML_v12m_GTruth
 import QML.QML_v12m_GViewSubst
 import QML.QML_v12m_CtxFin
 
@@ -381,6 +381,62 @@ theorem exists_pre (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
     refine ⟨?_, hc.2⟩
     rw [← hTT]
     exact (ctxOf_le_of_suffix (glat_suffix hM₀ s hiz)).ref hc.1
+
+/-! ## Preimages along paths -/
+
+/-- A world's theory at a stage. -/
+noncomputable abbrev gMs (s : GW hF M₀) (i : ℕ) : Set (WFF σ (ctxOf (glat s i)) 0) :=
+  ((gnet hF M₀ (gbirth hF M₀ s.2 + i)).st s.1).M
+
+theorem gMs_mcs (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ) : Theory.IsMCS (gMs s i) :=
+  (good_gnet hF hM₀ _).mcs s.1 (live_gbirth hF hM₀ s.2 (Nat.le_add_right _ i))
+
+/-- A world's later stages are conservative over its earlier ones. -/
+theorem gMs_mono_iff (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) {i i' : ℕ} (h : i ≤ i')
+    (φ : WFF σ (ctxOf (glat s i)) 0) :
+    φ ∈ gMs s i ↔ WFF.mono (ctxOf_le_of_suffix (glat_suffix hM₀ s h)) φ ∈ gMs s i' := by
+  have hg := ggrow_stage hM₀ s i (m := gbirth hF M₀ s.2 + i') (by omega)
+  exact ⟨fun hφ => hg.sub φ hφ,
+    fun hφ => mem_of_mono_mem _ (gMs_mcs hM₀ s i) (gMs_mcs hM₀ s i') hg.sub hφ⟩
+
+/-- ⭐**Cluster uniformity along a path** (`docs/v12-modal-extensions.md` §3 5): a `□`-formula at
+    a descendant's stage holds, at some later stage of it, exactly when a formula of the
+    ancestor's `□` view holds there — its preimage along the path, edge by edge. -/
+theorem box_path_iff (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
+    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false) :
+    ∀ (P : List ℕ) (s t : GW hF M₀), t.1 = nodeOf s.1 P → ∀ (j : ℕ)
+      (ψ : WFF σ (ctxOf (glat t j)).boxIn 0),
+      ∃ (i j' : ℕ) (hjj : j ≤ j') (ψ' : WFF σ (ctxOf (glat s i)).boxIn 0),
+        WFF.box ψ' ∈ gMs s i ↔
+          WFF.box (WFF.mono (ctxOf_le_of_suffix (glat_suffix hM₀ t hjj)).boxIn ψ) ∈ gMs t j'
+  | [], s, t, hP, j, ψ => by
+      obtain rfl : t = s := gw_eq hP
+      exact ⟨j, j, le_rfl, ψ, by rw [WFF.mono_refl]⟩
+  | c :: P, s, t, hP, j, ψ => by
+      have hb := born_step hP
+      obtain ⟨i', j', hjj, ψ', hiff⟩ := box_path_iff hV hT hS hW hM₀ hk P (stepW s c hb) t hP j ψ
+      have hch : GCh hF M₀ s (stepW s c hb) := ⟨c, rfl⟩
+      obtain ⟨i, pre, hi', hpre⟩ := exists_pre hV hT hS hW hM₀ hch i'
+      have hle := ctxOf_le_of_suffix (glat_suffix hM₀ (stepW s c hb) hi')
+      refine ⟨i, j', hjj, preW hk hpre ψ', ?_⟩
+      rw [box_pre_iff hM₀ hk hV hch i hle hpre ψ', ← hiff]
+      exact (gMs_mono_iff hM₀ (stepW s c hb) hi' (WFF.box ψ')).symm
+
+/-- ⭐**Transfer along a cluster arrow** (`docs/v12-modal-extensions.md` §3 5): what is necessary at
+    a descendant `u` of `s` is, through its preimage at `s`, translated into every descendant `t`
+    of `s` — the arrow `u → t` read through their common ancestor. -/
+theorem box_cluster (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
+    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false) {s u t : GW hF M₀}
+    {P Q : List ℕ} (hu : u.1 = nodeOf s.1 P) (ht : t.1 = nodeOf s.1 Q) (hQ : PathOk Q) (j : ℕ)
+    (ψ : WFF σ (ctxOf (glat u j)).boxIn 0) (hψ : WFF.box ψ ∈ gMs u j) :
+    ∃ (i : ℕ) (ψ' : WFF σ (ctxOf (glat s i)).boxIn 0), WFF.box ψ' ∈ gMs s i ∧
+      pTrW hM₀ s t Q ht hQ i ψ' ∈ (gw hM₀ t).M (pstg s t Q ht i) := by
+  obtain ⟨i, j', hjj, ψ', hiff⟩ := box_path_iff hV hT hS hW hM₀ hk P s u hu j ψ
+  have hb : WFF.box ψ' ∈ gMs s i :=
+    hiff.mpr ((gMs_mono_iff hM₀ u hjj (WFF.box ψ)).mp hψ)
+  exact ⟨i, ψ', hb, box_mem_path hM₀ s t Q ht hQ i ψ' hb⟩
 
 end GArrow
 
