@@ -195,7 +195,7 @@ theorem npl_grealC {t : GW hF M₀} {y : VarSymb} (hr : (gw hM₀ t).Realised y)
 
 /-! ## Agreement through a chain -/
 
-variable [ModalSys.NoB]
+variable [ModalSys.GrowSys]
 
 /-- ⭐**Agreement through a chain**: every address reads as the denotation of its η-expansion
     translated by the chain. -/
@@ -265,7 +265,7 @@ theorem gagree_of_raw {Γ : Ctx} {w : GW hF M₀} {k : ℕ} (C : GTr σ Γ (ctxO
         exact h _ _ (show (VarSymb.step v st).lastProj = false from
           Bool.eq_false_iff.mpr hs) _
 
-omit [ModalSys.NoB] in
+omit [ModalSys.GrowSys] in
 theorem GRPos.c_congr {s : GW hF M₀} {A : VarType} {C : GAcc hF M₀ s → Type}
     {o o' : GRPos s A C} (e : o = o')
     (b : GAcc hF M₀ s) (h : b ∈ o.E) (h' : b ∈ o'.E) : o.c ⟨b, h⟩ = o'.c ⟨b, h'⟩ := by

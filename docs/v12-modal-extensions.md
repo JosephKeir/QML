@@ -4879,12 +4879,14 @@ is the root's model, with each world's own base domain.
    completeness), `compactnessC`; `cmodel_indInvariant` (`Ind` is equality).  Axioms: `propext`,
    `Classical.choice`, `Quot.sound`.  Presentations are flattened by the growing tree's child
    edges (`CtxExpr.gchain`), which do not depend on `NoB`.
-   **Open: the dispatch.**  `NoB` still carries the temporary `noFive`, used only to dismiss 5's
-   fields in the staged tree (`CanonModel`) and the growing tree (`GCanonModel`, `GCanonLift`).
-   Proposed: `NoB` replaces `noFive` by `fiveCluster : Five = true → Four = true ∧ T = false ∧
-   FourStrong = true ∧ FourStrongW = true` (the systems with 5 now covered); a class
-   `ModalSys.NoFive` for the two older canonical models; `NoBComplete` dispatches on 4 and then
-   on 5.  Still uncovered with 5: K5 and KD5 (4 off), K45 without both lifts, and 5 with T.
+   **The dispatch, done (2026-10-30, decided with the user).**  `NoB`'s temporary `noFive` is
+   replaced by `fiveCluster : Five = true → Four = true ∧ T = false ∧ FourStrong = true ∧
+   FourStrongW = true` (the systems with 5 now covered).  A class `ModalSys.NoFive`; the staged
+   tree's `StagedSys` and the growing tree's new `GrowSys` each extend `NoB` and `NoFive` (a
+   bundled class, so lemmas that omit it stay clean of the unused-variable linter).
+   `NoBComplete` dispatches on 4, then on 5: the cluster model (`cluFlags_of_five`), the growing
+   tree (`growSys_of_noFive`), the staged tree (`stagedSys_of_noFour`, 5 off by `fiveCluster`).
+   Still uncovered with 5: K5 and KD5 (4 off), K45 without both lifts, 5 with T, strong 5.
    Smaller than
    `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
    the identity.

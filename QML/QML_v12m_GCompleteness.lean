@@ -21,7 +21,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  [ModalSys.NoB]
+  [ModalSys.GrowSys]
 
 /-- ⭐⭐**The growing tree's canonical model over a maximal consistent theory**: its root
     satisfies, at its first stage, exactly its theory, which contains `M₀`. -/

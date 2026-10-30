@@ -11,9 +11,10 @@ All of this is research code and still changing.
 
 * **Sound** for every combination of the flags implemented so far.
 * **Complete**, with strong completeness and compactness:
-  * for every system without B (K, T, D, 4 and 4's strong forms);
+  * for every system without B and 5 (K, T, D, 4 and 4's strong forms);
+  * for K45 and KD45 (weak 5 with 4 and both of 4's lifts, T off);
   * for B with T and D but without 4, including strong B.
-* **Open:** B with 4, and 5 (and so S5).  5 is planned on paper but not yet built.
+* **Open:** B with 4; 5 without 4, without both lifts, or with T; strong 5; and so S5.
 
 The current development is `QML/QML_v12m_*.lean` (namespace `V12M`).  Other files in `QML/` are
 earlier versions, kept for reference; they contain `sorry`s and warnings.

@@ -234,7 +234,7 @@ theorem graw_keepLift (hV : ModalSys.Five = false) {T : VarType} (hl : T.liftabl
 
 /-! ## The model -/
 
-variable [ModalSys.NoB]
+variable [ModalSys.GrowSys]
 
 theorem absBS (h : ModalSys.BStrong = true) : False := by
   rw [ModalSys.NoB.noBStrong] at h
@@ -265,15 +265,16 @@ noncomputable def gmodel : Model.{0, 0} σ where
   necDup_eval _ _ _ _ := rfl
   keepLift := by
     intro _ T hl w a o
-    obtain ⟨m, hm, e⟩ := graw_keepLift ModalSys.NoB.noFive hl w a _ (gdefinable_fromDom hM₀ T a.1 o)
+    obtain ⟨m, hm, e⟩ := graw_keepLift ModalSys.NoFive.noFive hl w a _
+      (gdefinable_fromDom hM₀ T a.1 o)
     refine ⟨gtoDom hM₀ T w m hm, ?_⟩
     rw [geval_toDom]
     exact (gtoDom_congr e _ _).trans (gtoDom_fromDom hM₀ T a.1 o)
   posKeep_full _ _ _ := Prod.ext rfl (funext fun _ => rfl)
-  posSide_ext := fun hV => (ModalSys.NoB.absurdFive hV).elim
-  posSide_content := fun hV => (ModalSys.NoB.absurdFive hV).elim
+  posSide_ext := fun hV => (ModalSys.NoFive.absurdFive hV).elim
+  posSide_content := fun hV => (ModalSys.NoFive.absurdFive hV).elim
   posSerial hDS s := gposSerial_canon hM₀ hDS s
-  necSide_exists := fun hV => (ModalSys.NoB.absurdFive hV).elim
+  necSide_exists := fun hV => (ModalSys.NoFive.absurdFive hV).elim
   Ind o o' := (ModalSys.T = true → gInd hM₀ o o') ∧ (ModalSys.T = false → o = o')
   Ind_refl o := ⟨fun _ => gInd_refl hM₀ o, fun _ => rfl⟩
   posRet_exists hT hS a := by

@@ -36,12 +36,12 @@ noncomputable def frame (w₀ : World σ N₀) : Frame.{0, 0} σ where
   serial := fun hD w => (exists_succ hD w).imp fun _ ha => ⟨R.of_acc ha⟩
   symm := fun hB => (ModalSys.NoB.absurd hB).elim
   homeUnique := fun _ => ⟨fun _ _ => rfl⟩
-  side := fun hV => (ModalSys.NoB.absurdFive hV).elim
-  side_inj := fun hV => (ModalSys.NoB.absurdFive hV).elim
-  side_side := fun hV => (ModalSys.NoB.absurdFive hV).elim
-  trans_side := fun _ hV => (ModalSys.NoB.absurdFive hV).elim
-  side_trans := fun _ hV => (ModalSys.NoB.absurdFive hV).elim
-  side_refl := fun _ hV => (ModalSys.NoB.absurdFive hV).elim
+  side := fun hV => (ModalSys.NoFive.absurdFive hV).elim
+  side_inj := fun hV => (ModalSys.NoFive.absurdFive hV).elim
+  side_side := fun hV => (ModalSys.NoFive.absurdFive hV).elim
+  trans_side := fun _ hV => (ModalSys.NoFive.absurdFive hV).elim
+  side_trans := fun _ hV => (ModalSys.NoFive.absurdFive hV).elim
+  side_refl := fun _ hV => (ModalSys.NoFive.absurdFive hV).elim
   D w := w.D
   Nec A w := {o : RDom (.VTypeBox A) w // Definable (.VTypeBox A) w o}
   Pos A w := {o : RDom (.VTypeDia A) w // Definable (.VTypeDia A) w o}
@@ -163,7 +163,7 @@ noncomputable def ops : (frame w₀).Ops where
     toDom w₀ _ _ (rawEval (.extract hT) _ n.1) (definable_rawEval (.extract hT) n.2)
   necDup hF n := ⟨rawEval (.dup hF) _ n.1, definable_rawEval (.dup hF) n.2⟩
   posKeep hF p := ⟨rawEval (.dkeep hF) _ p.1, definable_rawEval (.dkeep hF) p.2⟩
-  posSide hV := (ModalSys.NoB.absurdFive hV).elim
+  posSide hV := (ModalSys.NoFive.absurdFive hV).elim
 
 /-- ⭐Evaluating a map on a frame object is evaluating it on the raw object. -/
 theorem eval_toDom : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀) (o : RDom A w)
@@ -314,11 +314,11 @@ noncomputable def model : Model.{0, 0} σ where
   necDup_eval _ _ _ _ := rfl
   keepLift := fun hF {_} hl => (ModalSys.StagedSys.not_liftable hF hl).elim
   posKeep_full _ _ _ := Prod.ext rfl (funext fun _ => rfl)
-  posSide_ext := fun hV => (ModalSys.NoB.absurdFive hV).elim
-  posSide_content := fun hV => (ModalSys.NoB.absurdFive hV).elim
+  posSide_ext := fun hV => (ModalSys.NoFive.absurdFive hV).elim
+  posSide_content := fun hV => (ModalSys.NoFive.absurdFive hV).elim
   posRet_exists hT hS a := posRet_exists_canon w₀ hT hS a
   posSerial hDS w := posSerial_canon w₀ hDS w
-  necSide_exists := fun hV => (ModalSys.NoB.absurdFive hV).elim
+  necSide_exists := fun hV => (ModalSys.NoFive.absurdFive hV).elim
   Ret _ _ _ := False
   Ret_fwd := by intro _ _ _ _ _ _ h; exact h.elim
   Ret_conv hS := (ModalSys.NoB.absurdStrong hS).elim

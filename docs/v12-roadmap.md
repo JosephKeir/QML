@@ -332,8 +332,9 @@ paths, uniformity for it; names forward; the round trip is weakening, R4); `Subs
 and R4 in the model: at modal types every world defines what the root defines); `GCluTr` (the
 path translation's round trip); `GCluFunc` (the function algebra); `GCluModel` (the model);
 `GCluTerm`, `GCluTruth` (the truth lemma); **`GCluCompleteness`: K45 and KD45 with both lifts
-complete** (presented contexts, strong completeness, compactness).  Next: the dispatch in
-`NoBComplete` (replacing the temporary `noFive`).
+complete** (presented contexts, strong completeness, compactness), and dispatched in
+`NoBComplete` (`NoB.fiveCluster` in place of the temporary `noFive`).  Next for 5: the other
+systems (K5/KD5, K45 without both lifts, 5 with T, strong 5), and B with 5.
 
 ## Milestone 4 — the remaining strong forms, completing the cube
 

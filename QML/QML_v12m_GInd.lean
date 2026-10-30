@@ -24,7 +24,7 @@ open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
   {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
-  [ModalSys.NoB] (hM₀ : Theory.IsMCS M₀)
+  [ModalSys.GrowSys] (hM₀ : Theory.IsMCS M₀)
 
 /-! ## Representatives -/
 

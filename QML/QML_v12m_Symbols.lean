@@ -83,21 +83,30 @@ def ModalSys.K : ModalSys :=
 class ModalSys.NoB [ModalSys] : Prop where
   noB : ModalSys.B = false
   noBStrong : ModalSys.BStrong = false
-  /-- Temporarily, 5 is off as well: its canonical model, the cluster network, is not built yet
-      (`docs/v12-modal-extensions.md` §3 5). -/
+  /-- 5 is covered with 4, both of 4's lifts and T off — K45 and KD45 (the cluster model,
+      `GArrow.cmodel`, `docs/v12-modal-extensions.md` §3 5); its other systems are not yet. -/
+  fiveCluster : ModalSys.Five = true → ModalSys.Four = true ∧ ModalSys.T = false ∧
+    ModalSys.FourStrong = true ∧ ModalSys.FourStrongW = true
+
+/-- 5 off: what the staged tree and the growing tree are built for (with 5, the cluster model). -/
+class ModalSys.NoFive [ModalSys] : Prop where
   noFive : ModalSys.Five = false
 
-/-- ⭐**The systems the staged canonical model is built for**: B off, and 4's strong forms off
-    when 4 is on (with 4 the growing tree covers every strong form, `GArrow`). -/
-class ModalSys.StagedSys [ModalSys] : Prop extends ModalSys.NoB where
+/-- ⭐**The systems the staged canonical model is built for**: B and 5 off, and 4's strong forms
+    off when 4 is on (with 4 the growing tree covers every strong form, `GArrow`). -/
+class ModalSys.StagedSys [ModalSys] : Prop extends ModalSys.NoB, ModalSys.NoFive where
   noLift : ModalSys.Four = true → ModalSys.FourStrong = false ∧ ModalSys.FourStrongW = false
+
+/-- ⭐**The systems the growing tree is built for**: B and 5 off (4 on, its strong forms free). -/
+class ModalSys.GrowSys [ModalSys] : Prop extends ModalSys.NoB, ModalSys.NoFive
 
 theorem ModalSys.NoB.absurd [ModalSys] [ModalSys.NoB] (hB : ModalSys.B = true) : False := by
   rw [ModalSys.NoB.noB] at hB
   cases hB
 
-theorem ModalSys.NoB.absurdFive [ModalSys] [ModalSys.NoB] (hV : ModalSys.Five = true) : False := by
-  rw [ModalSys.NoB.noFive] at hV
+theorem ModalSys.NoFive.absurdFive [ModalSys] [ModalSys.NoFive] (hV : ModalSys.Five = true) :
+    False := by
+  rw [ModalSys.NoFive.noFive] at hV
   cases hV
 
 theorem ModalSys.NoB.absurdStrong [ModalSys] [ModalSys.NoB] (hB : ModalSys.BStrong = true) :

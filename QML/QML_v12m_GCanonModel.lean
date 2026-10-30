@@ -28,7 +28,7 @@ variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
 section Flags
 
-variable [ModalSys.NoT] [ModalSys.NoB]
+variable [ModalSys.NoT] [ModalSys.GrowSys]
 
 omit [ModalSys.NoT] in
 theorem absB (hB : ModalSys.B = true) : False := by
@@ -49,9 +49,9 @@ variable (hF M₀) in
 /-- The root of the tree. -/
 def groot : GW hF M₀ := ⟨[], 0, trivial⟩
 
-variable [ModalSys.NoB] (hM₀ : Theory.IsMCS M₀)
+variable [ModalSys.GrowSys] (hM₀ : Theory.IsMCS M₀)
 
-omit [ModalSys.NoB] in
+omit [ModalSys.GrowSys] in
 /-- Under D every world has an arrow out: `□⊥` fails, since `D_box` refutes it. -/
 theorem gserial (hM₀ : Theory.IsMCS M₀) (hD : ModalSys.D = true) (s : GW hF M₀) :
     ∃ t, Nonempty (GR s t) := by
@@ -70,12 +70,12 @@ noncomputable def gframe : Frame.{0, 0} σ where
   serial := fun hD s => gserial hM₀ hD s
   symm := fun hB => (absB hB).elim
   homeUnique := fun _ => ⟨fun _ _ => rfl⟩
-  side := fun hV => (ModalSys.NoB.absurdFive hV).elim
-  side_inj := fun hV => (ModalSys.NoB.absurdFive hV).elim
-  side_side := fun hV => (ModalSys.NoB.absurdFive hV).elim
-  trans_side := fun _ hV => (ModalSys.NoB.absurdFive hV).elim
-  side_trans := fun _ hV => (ModalSys.NoB.absurdFive hV).elim
-  side_refl := fun _ hV => (ModalSys.NoB.absurdFive hV).elim
+  side := fun hV => (ModalSys.NoFive.absurdFive hV).elim
+  side_inj := fun hV => (ModalSys.NoFive.absurdFive hV).elim
+  side_side := fun hV => (ModalSys.NoFive.absurdFive hV).elim
+  trans_side := fun _ hV => (ModalSys.NoFive.absurdFive hV).elim
+  side_trans := fun _ hV => (ModalSys.NoFive.absurdFive hV).elim
+  side_refl := fun _ hV => (ModalSys.NoFive.absurdFive hV).elim
   D s := (gw hM₀ s).D
   Nec A s := {o : GRDom hM₀ (.VTypeBox A) s // GDefinable hM₀ (.VTypeBox A) s o}
   Pos A s := {o : GRDom hM₀ (.VTypeDia A) s // GDefinable hM₀ (.VTypeDia A) s o}
@@ -233,7 +233,7 @@ noncomputable def gops : (gframe hF hM₀).Ops where
     gtoDom hM₀ _ _ (grawEval hM₀ (.extract hT) _ n.1) (gdefinable_rawEval (.extract hT) n.2)
   necDup hF' n := ⟨grawEval hM₀ (.dup hF') _ n.1, gdefinable_rawEval (.dup hF') n.2⟩
   posKeep hF' p := ⟨grawEval hM₀ (.dkeep hF') _ p.1, gdefinable_rawEval (.dkeep hF') p.2⟩
-  posSide hV := (ModalSys.NoB.absurdFive hV).elim
+  posSide hV := (ModalSys.NoFive.absurdFive hV).elim
 
 /-- ⭐Evaluating a map on a frame object is evaluating it on the raw object. -/
 theorem geval_toDom : ∀ {A C : VarType} (g : GFunc σ A C) (s : GW hF M₀) (o : GRDom hM₀ A s)
@@ -260,7 +260,7 @@ theorem geval_toDom : ∀ {A C : VarType} (g : GFunc σ A C) (s : GW hF M₀) (o
 
 /-! ## Strong D -/
 
-omit [ModalSys.NoB] in
+omit [ModalSys.GrowSys] in
 /-- ⭐**Under T a `◇_x`-child realises the witness's image** (the tree's
     `realised_keep_of_boxx`): `here_keep` at the η-expansion of `x`'s content is a `□_x`-formula of
     the parent, and its translation into the child (`gltrX`) is a `Here` atom about `wit t x`. -/
@@ -319,7 +319,7 @@ theorem gInd_refl {A : VarType} {s : GW hF M₀} (o : (gframe hF hM₀).Dom A s)
 
 variable {hM₀}
 
-omit [ModalSys.NoB] in
+omit [ModalSys.GrowSys] in
 /-- ⭐A realised witness's possible object has its realisation as content here (B's
     `mem_here_real`). -/
 theorem gmem_here_real {s : GW hF M₀} {x : VarSymb} (hr : (gw hM₀ s).Realised x) {i : ℕ}
@@ -329,7 +329,7 @@ theorem gmem_here_real {s : GW hF M₀} {x : VarSymb} (hr : (gw hM₀ s).Realise
         (grealT hr (Ctx.Le.refl _) ⟨X, hx⟩ bd).2 ∈ (gw hM₀ s).M (max i hr.data.i₀) :=
   Canon.mem_here_datum hr.data (le_max_left _ _) (le_max_right _ _) hx bd
 
-omit [ModalSys.NoB] in
+omit [ModalSys.GrowSys] in
 /-- ⭐**A `Here` atom relates the witness's realisation to its term** (B's `rel_here`). -/
 theorem grel_here {s : GW hF M₀} {A : VarType} (hT : ModalSys.T = true) {i : ℕ} {x : VarSymb}
     (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X)) {β : Ann A}
@@ -347,7 +347,7 @@ theorem grel_here {s : GW hF M₀} {A : VarType} (hT : ModalSys.T = true) {i : �
     (BWorld.mem_T.mpr ht)).trans
     (Canon.DTerm.rel_lift (⟨i, a, t⟩ : Canon.DTerm (gw hM₀ s).sys (gw hM₀ s).T _) hk).symm
 
-omit [ModalSys.NoB] in
+omit [ModalSys.GrowSys] in
 /-- A term and its lift to a later stage denote alike. -/
 theorem grden_lift {s : GW hF M₀} {i K : ℕ} (h : i ≤ K) {A : VarType} {a : Ann A}
     (t : Term σ (ctxOf (glat s i)) A a) :
@@ -356,7 +356,7 @@ theorem grden_lift {s : GW hF M₀} {i K : ℕ} (h : i ≤ K) {A : VarType} {a :
   rw [grden_mono]
   exact grden_congr _ _ _ _ _ _
 
-omit [ModalSys.NoB] in
+omit [ModalSys.GrowSys] in
 /-- ⭐The realised content of the witness's own content address is the datum's content (B's
     `rden_realTerm_eta`). -/
 theorem grden_grealT_eta {s : GW hF M₀} {x : VarSymb} (hr : (gw hM₀ s).Realised x) {k : ℕ}
@@ -379,7 +379,7 @@ theorem grden_grealT_eta {s : GW hF M₀} {x : VarSymb} (hr : (gw hM₀ s).Reali
     grden_mono]
   exact grden_congr _ _ _ _ _ _
 
-omit [ModalSys.NoB] in
+omit [ModalSys.GrowSys] in
 /-- ⭐The content, along the world's own arrow, of the possible object a realised witness names:
     what its datum's content denotes (B's `rden_eta_real`). -/
 theorem grden_eta_real {s : GW hF M₀} {x : VarSymb} (hr : (gw hM₀ s).Realised x) {k : ℕ}
