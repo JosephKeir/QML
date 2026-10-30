@@ -4802,7 +4802,14 @@ is the root's model, with each world's own base domain.
    * Refactors on the way: `round_trip` takes its typing fact directly (no stage inequality, no
      lift flags); ⭐`cden_named_box` in `GCluDom` (a root `□`-term named at any stage of a world
      denotes what it does) now proves `cdefinable_box_of_root`, replacing `nmTB`/`preTB_nmTB`.
-   Next: the `◇` half (`dkeep`: `pTr` of a kept possible term, through `θ.dia`).
+   **Built, `◇` half (2026-10-30):** `sim_edge_nmX` (the mirror of `sim_preX_edge`),
+   `tr_edgeX_body`, `tr_edgeX` (the witness's index is the name, only propositionally:
+   `sig_subst_diatm` takes it as a variable), ⭐`tr_pathX` (the step as `four_dia`'s substitution
+   case: `Subst.shiftCorr_dia_keep`, `Subst.coh_keep_dia`, `Subst.idx_box_keep_dia`), and
+   ⭐`cden_trX`.  ⭐`cden_named_dia` in `GCluDom` now proves `cdefinable_dia_of_root`, replacing
+   `nmTD`/`preTD_nmTD`.  So the path translation's round trip holds at `□` and `◇`, as the
+   paper check said.
+   Next: the raw function algebra (`crawEval`) and `cden_applyG`, then `GCluModel`.
    Smaller than
    `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
    the identity.

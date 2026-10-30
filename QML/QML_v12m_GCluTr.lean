@@ -13,6 +13,8 @@ preimage must be the root term again.
 * `pstgN_eq`: the two path stage functions agree.
 * ⭐`tr_path`: along a path, translating a kept `□`-view term is renaming it by the path names.
 * ⭐`cden_tr`: so a kept root term read along an arrow denotes what the root term does.
+* The `◇` half: `sim_edge_nmX`, `tr_edgeX_body`, `tr_edgeX`, ⭐`tr_pathX`, ⭐`cden_trX` — the
+  witness's image is the name of the kept witness (`idx_names`).
 -/
 
 namespace V12M
@@ -204,6 +206,246 @@ theorem cden_tr (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (t : GW hF M₀) (P 
   obtain rfl : P = rpath t := nodeOf_inj (h.symm.trans (rpath_eq t))
   exact (cden_sigma hX _ (tr_path hX hM₀ _ _ t h hP i b)).trans
     (cden_named_box hX hM₀ t i _ (pnm_ok hX hM₀ _ _ t h i) b)
+
+/-! ## The `◇` half -/
+
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+/-- Substituting into a possible term, with the witness's image as a variable (its index is
+    known only propositionally). -/
+theorem sig_subst_diatm {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) {x : VarSymb}
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A}
+    (b : Term σ (Γ.diaIn x) A a) (y : VarSymb) (hy : ι x = y)
+    (hyP : ∃ Y, Δ.ref y = some (.VTypeDia Y)) (p : Subst.Ok (Γ.diaIn x) (θ.dia x y))
+    (q : Subst.Coh ι (Γ.diaIn x) (θ.dia x y)) :
+    (⟨_, Term.subst ι θ hθ hc (.diatm x hx b)⟩ : Σ c, Term σ Δ (.VTypeDia A) c) =
+      ⟨_, .diatm y hyP (Term.subst ι (θ.dia x y) p q b)⟩ := by
+  subst hy
+  rfl
+
+/-- ⭐**Along an edge, the edge's `◇_{x.keep}` view read through `four_dia`'s shift is renaming
+    by the names**, at the name of `x`: the mirror of `sim_preX_edge`. -/
+theorem sim_edge_nmX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀}
+    (h : GCh hF M₀ s t) (i : ℕ) {x : VarSymb} {X : VarType}
+    (hx : (ctxOf (glat s i)).ref x = some (.VTypeDia X)) :
+    Subst.Sim ((ctxOf (glat s i)).diaIn x) (Subst.atShift (edgeDia s t i x (nm t x)))
+      (eS σ ((ctxOf (glat t (glstg s t i))).diaIn (nm t x)) (ofRen (preIX (nm t) x))) := by
+  have hn := nm_spec hX.five t x
+  refine Subst.sim_of fun v T hl hv => ?_
+  obtain ⟨u, st, rfl, -, -⟩ := kView_item (k := some x) hv
+  rw [eS_item _ hl]
+  generalize hvs : VarSymb.step u st = v at *
+  change SubE.Sim T ((edgeDia s t i x (nm t x)).at (v.shift 0)) (.ren (preIX (nm t) x v))
+  by_cases hvx : v = .step x .dia
+  · subst hvx
+    have hT : T = X := Option.some.inj (hv.symm.trans
+      ((Ctx.ref_nonproj _ (v := .step x .dia) rfl).symm.trans (Ctx.ref_diaIn_of hx)))
+    subst hT
+    rw [show preIX (nm t) x (.step x .dia) = .step (nm t x) .dia from if_pos rfl,
+      VarSymb.shift_level_zero rfl, Subst.at_nonproj _ rfl]
+    change SubE.Sim T (if VarSymb.step x .keep = .step x .keep then
+      ((edgeS s t i).at (.step x .keep)).diaBody (nm t x) else .hide) _
+    rw [if_pos rfl, Subst.at_nonproj _ rfl, edgeS, eS_item _ rfl]
+    rcases hn with he | ⟨L, U, hz', he⟩
+    · rw [he]
+      exact .refl _
+    · obtain ⟨rfl, hz'', e⟩ := entOf_names_tm hM₀ h i hx rfl hz' he
+      rw [e]
+      unfold Term.eta
+      rw [SubE.diaBody_diatm]
+      exact .eta_ren _ _
+  · rw [show preIX (nm t) x v = preI (nm t) v from if_neg hvx]
+    have hb := diaIn_boxIn_of_ne' hv hvx
+    rw [Subst.dia_eq_box_mono (edgeS s t i) (.step x .keep) (nm t x) _ T
+      (Ctx.shifts_boxIn_boxIn hF _ _ T ((Ctx.ref_nonproj _ hl).trans hb))]
+    have H := sim_edge_nm hX hM₀ h i v T ((Ctx.ref_nonproj _ hl).trans hb)
+    rw [Subst.at_nonproj (eS σ _ (ofRen (preI (nm t)))) hl, Subst.at_atShift] at H
+    subst hvs
+    rw [eS_item _ hl] at H
+    exact H.mono _
+
+/-- The body of a kept possible term, translated along an edge, is renamed by the names. -/
+theorem tr_edgeX_body (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀}
+    (h : GCh hF M₀ s t) (i : ℕ) {x : VarSymb} {X : VarType}
+    (hx : (ctxOf (glat s i)).ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A}
+    (c : Term σ ((ctxOf (glat s i)).diaIn x) A a) :
+    (⟨_, Term.subst (eIdx (fmapL hF M₀ t.1)) (edgeDia s t i x (nm t x))
+        (ok_edgeDia hM₀ h i hx (nm_spec hX.five t x))
+        (coh_edgeDia hM₀ h i hx (nm_spec hX.five t x))
+        (Term.shift (Ctx.shifts_diaIn_keep hF _ x) c)⟩ :
+        Σ e, Term σ ((ctxOf (glat t (glstg s t i))).diaIn (nm t x)) A e) =
+      ⟨_, Term.subst (eIdx (ofRen (preIX (nm t) x)))
+        (eS σ ((ctxOf (glat t (glstg s t i))).diaIn (nm t x)) (ofRen (preIX (nm t) x)))
+        (ok_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hX.keepOnly hx (nm_ok hX hM₀ h i))))
+        (coh_eS_kView (k := some x)
+          (entOk_ofRen (itemOk_preIX hX.keepOnly hx (nm_ok hX hM₀ h i)))) c⟩ :=
+  (Term.subst_shift (Ctx.shifts_diaIn_keep hF _ x) _ _ _
+    (Subst.atShift (edgeDia s t i x (nm t x)))
+    (Subst.ok_atShift (Ctx.shifts_diaIn_keep hF _ x)
+      (ok_edgeDia hM₀ h i hx (nm_spec hX.five t x)))
+    (Subst.coh_atShift (Ctx.shifts_diaIn_keep hF _ x)
+      (ok_edgeDia hM₀ h i hx (nm_spec hX.five t x))
+      (coh_edgeDia hM₀ h i hx (nm_spec hX.five t x)) (levels_diaIn _ _))
+    (Subst.preShift_atShift _ _) c).trans
+  (Term.subst_congr _ _ _ _ _ _ (sim_edge_nmX hX hM₀ h i hx) c)
+
+/-- ⭐**Along an edge, translating a kept possible term is renaming it by the names**, at the
+    name of its witness. -/
+theorem tr_edgeX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s t)
+    (i : ℕ) {x : VarSymb} {X : VarType} (hx : (ctxOf (glat s i)).ref x = some (.VTypeDia X))
+    {A : VarType} {a : Ann A} (c : Term σ ((ctxOf (glat s i)).diaIn x) A a) :
+    (⟨_, Term.subst (eIdx (fmapL hF M₀ t.1)) (edgeS s t i)
+        (ok_eS_kView (gentOk_box hM₀ h i)) (coh_eS_kView (gentOk_box hM₀ h i))
+        (.diatm (.step x .keep) (Ctx.exists_keep_dia hF ⟨X, hx⟩)
+          (Term.shift (Ctx.shifts_diaIn_keep hF _ x) c))⟩ :
+        Σ e, Term σ (ctxOf (glat t (glstg s t i))) (.VTypeDia A) e) =
+      ⟨_, .diatm (nm t x) ⟨X, nm_ok hX hM₀ h i x _ hx rfl⟩
+        (Term.subst (eIdx (ofRen (preIX (nm t) x)))
+          (eS σ ((ctxOf (glat t (glstg s t i))).diaIn (nm t x)) (ofRen (preIX (nm t) x)))
+          (ok_eS_kView (k := some x)
+            (entOk_ofRen (itemOk_preIX hX.keepOnly hx (nm_ok hX hM₀ h i))))
+          (coh_eS_kView (k := some x)
+            (entOk_ofRen (itemOk_preIX hX.keepOnly hx (nm_ok hX hM₀ h i)))) c)⟩ :=
+  (sig_subst_diatm _ _ _ _ _ (nm t x) (idx_names hM₀ h i hx (nm_spec hX.five t x))
+    ⟨X, nm_ok hX hM₀ h i x _ hx rfl⟩ (ok_edgeDia hM₀ h i hx (nm_spec hX.five t x))
+    (coh_edgeDia hM₀ h i hx (nm_spec hX.five t x))).trans
+  (sig_diatm (tr_edgeX_body hX hM₀ h i hx c))
+
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+/-- A possible term renamed by equal maps is one term. -/
+theorem sig_diatm_ren_congr {Γ Δ : Ctx} {x : VarSymb} {A : VarType} {a : Ann A}
+    (c : Term σ (Γ.diaIn x) A a) :
+    ∀ (f g : VarSymb → VarSymb) (_e : f = g)
+      (hf : ∃ Y, Δ.ref (f x) = some (.VTypeDia Y)) (hg : ∃ Y, Δ.ref (g x) = some (.VTypeDia Y))
+      (pf : Subst.Ok (Γ.diaIn x) (eS σ (Δ.diaIn (f x)) (ofRen (preIX f x))))
+      (qf : Subst.Coh (eIdx (ofRen (σ := σ) (preIX f x))) (Γ.diaIn x)
+        (eS σ (Δ.diaIn (f x)) (ofRen (preIX f x))))
+      (pg : Subst.Ok (Γ.diaIn x) (eS σ (Δ.diaIn (g x)) (ofRen (preIX g x))))
+      (qg : Subst.Coh (eIdx (ofRen (σ := σ) (preIX g x))) (Γ.diaIn x)
+        (eS σ (Δ.diaIn (g x)) (ofRen (preIX g x)))),
+      (⟨_, .diatm (f x) hf (Term.subst (eIdx (ofRen (preIX f x)))
+          (eS σ (Δ.diaIn (f x)) (ofRen (preIX f x))) pf qf c)⟩ :
+          Σ e, Term σ Δ (.VTypeDia A) e) =
+        ⟨_, .diatm (g x) hg (Term.subst (eIdx (ofRen (preIX g x)))
+          (eS σ (Δ.diaIn (g x)) (ofRen (preIX g x))) pg qg c)⟩ := by
+  intro f g e _ _ _ _ _ _
+  subst e
+  rfl
+
+/-- ⭐**Along a path, translating a kept possible term is renaming it by the path names**, at
+    the path name of its witness.  The step as `tr_path`'s, with the `◇` views'
+    correspondence (`Subst.shiftCorr_dia_keep`) and the kept witness's index
+    (`Subst.coh_keep_dia`, `Subst.idx_box_keep_dia`), as `four_dia`'s substitution case. -/
+theorem tr_pathX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) :
+    ∀ (P : List ℕ) (s t : GW hF M₀) (h : t.1 = nodeOf s.1 P) (hP : PathOk P) (i : ℕ)
+      {x : VarSymb} {X : VarType} (hx : (ctxOf (glat s i)).ref x = some (.VTypeDia X))
+      {A : VarType} {a : Ann A} (c : Term σ ((ctxOf (glat s i)).diaIn x) A a),
+      pTr hM₀ s t P h hP i (.diatm (.step x .keep) (Ctx.exists_keep_dia hF ⟨X, hx⟩)
+          (Term.shift (Ctx.shifts_diaIn_keep hF _ x) c)) =
+        ⟨_, .diatm (pnm P s t h x) ⟨X, pnm_ok hX hM₀ P s t h i x _ hx rfl⟩
+          (Term.subst (eIdx (ofRen (preIX (pnm P s t h) x)))
+            (eS σ ((ctxOf (glat t (pstg s t P h i))).diaIn (pnm P s t h x))
+              (ofRen (preIX (pnm P s t h) x)))
+            (ok_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hX.keepOnly hx
+              (pnm_ok hX hM₀ P s t h i))))
+            (coh_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hX.keepOnly hx
+              (pnm_ok hX hM₀ P s t h i)))) c)⟩
+  | [], _, _, _, hP, _, _, _, _, _, _, _ => absurd hP.T_of_nil (by rw [hX.noT]; decide)
+  | [c], s, t, h, _, i, x, X, hx, _, _, b => by
+      refine (tr_edgeX hX hM₀ (s := s) (t := t) ⟨c, h⟩ i hx b).trans ?_
+      exact sig_diatm_ren_congr b _ _
+        (funext fun v => congrFun (nm_congr (t := t) (t' := stepW s c (born_step h)) h) v)
+        _ _ _ _ _ _
+  | c :: c' :: P, s, t, h, _, i, x, X, hx, A, _, b => by
+      have hch : GCh hF M₀ s (stepW s c (born_step h)) := ⟨c, rfl⟩
+      have hθ := ok_eS_kView (gentOk_box hM₀ hch i)
+      have hc := coh_eS_kView (gentOk_box hM₀ hch i)
+      have hxk : ((ctxOf (glat s i)).kView none).ref (.step x .keep) = some (.VTypeDia X) :=
+        Ctx.boxIn_keep_of' hF hx rfl
+      have hidx := idx_names hM₀ hch i hx (nm_spec hX.five _ x)
+      have hy : eIdx (fmapL hF M₀ (c :: s.1)) (.step (.step x .keep) .keep) =
+          .step (nm (stepW s c (born_step h)) x) .keep := by
+        exact (Subst.coh_keep_dia hθ hc hxk).trans
+          (congrArg (fun w => VarSymb.step w .keep) hidx)
+      have hwk : ((eS σ (ctxOf (glat (stepW s c (born_step h))
+          (glstg s (stepW s c (born_step h)) i))) (fmapL hF M₀ (c :: s.1))).box.at
+            (.step (.step x .keep) .keep)).idxAlong [] =
+          .step (nm (stepW s c (born_step h)) x) .keep := by
+        exact (Subst.idx_box_keep_dia hF hθ hc hxk).trans
+          (congrArg (fun w => VarSymb.step w .keep) hidx)
+      have hxk' := Ctx.exists_keep_dia hF ⟨X, hxk⟩
+      have p := Subst.ok_dia (Subst.ok_box hθ) hxk' hwk
+      have q : Subst.Coh (eIdx (fmapL hF M₀ (c :: s.1)))
+          (((ctxOf (glat s i)).kView none).boxIn.diaIn (.step (.step x .keep) .keep))
+          ((eS σ (ctxOf (glat (stepW s c (born_step h))
+            (glstg s (stepW s c (born_step h)) i))) (fmapL hF M₀ (c :: s.1))).box.dia
+            (.step (.step x .keep) .keep) (.step (nm (stepW s c (born_step h)) x) .keep)) :=
+        hy ▸ Subst.coh_dia (Subst.ok_box hθ) (Subst.coh_box hθ hc) hxk'
+      have hnx := nm_ok hX hM₀ hch i x _ hx rfl
+      have key : (⟨_, Term.subst (eIdx (fmapL hF M₀ (c :: s.1)))
+            (edgeBox s (stepW s c (born_step h)) i) (ok_edgeBox hM₀ hch i)
+            (coh_edgeBox hM₀ hch i) (Term.shift (Ctx.shifts_boxIn_boxIn hF _)
+              (.diatm (.step x .keep) (Ctx.exists_keep_dia hF ⟨X, hx⟩)
+                (Term.shift (Ctx.shifts_diaIn_keep hF _ x) b)))⟩ :
+            Σ e, Term σ ((ctxOf (glat (stepW s c (born_step h))
+              (glstg s (stepW s c (born_step h)) i))).kView none) (.VTypeDia A) e) =
+          ⟨_, .diatm (.step (nm (stepW s c (born_step h)) x) .keep)
+            (Ctx.exists_keep_dia hF ⟨X, hnx⟩)
+            (Term.shift (Ctx.shifts_diaIn_keep hF _ (nm (stepW s c (born_step h)) x))
+              (Term.subst (eIdx (ofRen (preIX (nm (stepW s c (born_step h))) x)))
+                (eS σ ((ctxOf (glat (stepW s c (born_step h))
+                  (glstg s (stepW s c (born_step h)) i))).diaIn
+                    (nm (stepW s c (born_step h)) x))
+                  (ofRen (preIX (nm (stepW s c (born_step h))) x)))
+                (ok_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hX.keepOnly hx
+                  (nm_ok hX hM₀ hch i))))
+                (coh_eS_kView (k := some x) (entOk_ofRen (itemOk_preIX hX.keepOnly hx
+                  (nm_ok hX hM₀ hch i)))) b))⟩ := by
+        refine (sig_subst_diatm _ _ _ _ _ _ hy (Ctx.exists_keep_dia hF ⟨X, hnx⟩) p q).trans ?_
+        refine sig_diatm ?_
+        refine (sig_subst_cong _ p q (Term.shift_shift_same
+          (Ctx.shifts_diaIn_keep hF _ x)
+          (Ctx.shifts_diaIn_keep hF ((ctxOf (glat s i)).kView none) (.step x .keep)) _
+          b).symm).trans ?_
+        refine (Term.shift_subst (Ctx.shifts_diaIn_keep hF _ (.step x .keep))
+          (Ctx.shifts_diaIn_keep hF _ (nm (stepW s c (born_step h)) x))
+          (edgeDia s (stepW s c (born_step h)) i x (nm (stepW s c (born_step h)) x))
+          (ok_edgeDia hM₀ hch i hx (nm_spec hX.five _ x))
+          (coh_edgeDia hM₀ hch i hx (nm_spec hX.five _ x)) _ p q
+          (Subst.shiftCorr_dia_keep hF hθ ⟨X, hxk⟩ (hc _ _ hxk [] |>.trans hidx)) _).symm.trans ?_
+        exact sig_shift_cong _ (tr_edgeX_body hX hM₀ hch i hx b)
+      refine (pTr_sigma hM₀ _ t (c' :: P) h pathOk_cons _ key).trans ?_
+      refine (tr_pathX hX hM₀ (c' :: P) (stepW s c (born_step h)) t h pathOk_cons _ hnx
+        _).trans ?_
+      refine sig_diatm (Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
+        fun u st _ hst hv => ?_) b)
+      have hcomp := preIX_comp (pnm (c' :: P) (stepW s c (born_step h)) t h)
+        (nm (stepW s c (born_step h))) (v := .step u st) hst hv
+      by_cases hvx : VarSymb.step u st = .step x .dia
+      · have e : preIX (nm (stepW s c (born_step h))) x (.step u st) =
+            .step (nm (stepW s c (born_step h)) x) .dia := by
+          unfold preIX
+          rw [if_pos hvx]
+        exact ⟨_, .dia, e, rfl, by rw [← e, hcomp]; rfl⟩
+      · obtain ⟨u', e'⟩ := preI_step (nm (stepW s c (born_step h))) u st
+        have e : preIX (nm (stepW s c (born_step h))) x (.step u st) = .step u' st := by
+          unfold preIX
+          rw [if_neg hvx, e']
+        exact ⟨u', st, e, hst, by rw [← e, hcomp]; rfl⟩
+
+/-- ⭐**The path translation's round trip** (`◇`): a kept root possible term read along an
+    arrow, at the arrow's end, denotes what the root term does (`tr_pathX`, `cden_named_dia`). -/
+theorem cden_trX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (t : GW hF M₀) (P : List ℕ)
+    (h : t.1 = nodeOf (groot hF M₀).1 P) (hP : PathOk P) (i : ℕ) {x : VarSymb} {X : VarType}
+    (hx : (ctxOf (glat (groot hF M₀) i)).ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A}
+    (c : Term σ ((ctxOf (glat (groot hF M₀) i)).diaIn x) A a) :
+    cden hM₀ hX t (pstg (groot hF M₀) t P h i) (Ctx.Le.refl _)
+        (pTr hM₀ (groot hF M₀) t P h hP i (.diatm (.step x .keep)
+          (Ctx.exists_keep_dia hF ⟨X, hx⟩) (Term.shift (Ctx.shifts_diaIn_keep hF _ x) c))).2 =
+      cden hM₀ hX (groot hF M₀) i (Ctx.Le.refl _) (.diatm x ⟨X, hx⟩ c) := by
+  obtain rfl : P = rpath t := nodeOf_inj (h.symm.trans (rpath_eq t))
+  exact (cden_sigma hX _ (tr_pathX hX hM₀ _ _ t h hP i hx c)).trans
+    (cden_named_dia hX hM₀ t i _ hx (pnm_ok hX hM₀ _ _ t h i) c)
 
 end GArrow
 
