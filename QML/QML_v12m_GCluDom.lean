@@ -24,7 +24,8 @@ not depend on the world.
 * `CDefinable` and its closure lemmas.
 * ⭐`cdefinable_box_iff`, ⭐`cdefinable_dia_iff` (R4): at modal types a world defines exactly what
   the root defines — one way by preimages, the other by naming the root term at the world
-  (`nmTB`, `nmTD`), whose preimage is the root term renamed by the round trip, a weakening.
+  (`cden_named_box`, `nmTD`), whose preimage is the root term renamed by the round trip, a
+  weakening.
 -/
 
 namespace V12M
@@ -471,45 +472,71 @@ theorem cdefinable_box_root (hX : CluFlags) {A : VarType} (s : GW hF M₀)
       exact ⟨rstg s i, _, .boxtm (preTB hX hM₀ s i (Term.mono (Ctx.Le.refl _).boxIn b)).2,
         (cden_box_eq hX s i _ b).symm⟩
 
-/-- A root `□`-view term named at a world: renamed by the path names (`pnm`). -/
-noncomputable def nmTB (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ)
+/-- ⭐**A root `□`-term named at a world denotes what the root term does** (R4), at any stage
+    of the world where the names are declared: the named term's preimage is the root term
+    renamed by the round trip (`Term.subst_comp_sig`, `sim_eS_ren_comp`), a weakening
+    (`round_trip`). -/
+theorem cden_named_box (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i J : ℕ)
+    (hJ : ∀ z T, (ctxOf (glat (groot hF M₀) i)).ref z = some T → T.keepable = true →
+      (ctxOf (glat s J)).ref (pnm (rpath s) (groot hF M₀) s (rpath_eq s) z) = some T)
     {A : VarType} {a : Ann A} (b : Term σ (ctxOf (glat (groot hF M₀) i)).boxIn A a) :
-    Σ c : Ann A, Term σ (ctxOf (glat s (pstgN (rpath s) (groot hF M₀) s (rpath_eq s) i))).boxIn
-      A c :=
-  ⟨_, Term.subst (eIdx (ofRen (preI (pnm (rpath s) (groot hF M₀) s (rpath_eq s)))))
-    (eS σ (ctxOf (glat s (pstgN (rpath s) (groot hF M₀) s (rpath_eq s) i))).boxIn
-      (ofRen (preI (pnm (rpath s) (groot hF M₀) s (rpath_eq s)))))
-    (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly
-      (pnm_ref hX.five hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i))))
-    (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly
-      (pnm_ref hX.five hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i)))) b⟩
-
-/-- The preimage of a named root term is the root term renamed by the round trip. -/
-theorem preTB_nmTB (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ)
-    {A : VarType} {a : Ann A} (b : Term σ (ctxOf (glat (groot hF M₀) i)).boxIn A a) :
-    (⟨_, (preTB hX hM₀ s _ (Term.mono (Ctx.Le.refl _).boxIn (nmTB hX hM₀ s i b).2)).2⟩ :
-        Σ c, Term σ (ctxOf (glat (groot hF M₀)
-          (rstg s (pstgN (rpath s) (groot hF M₀) s (rpath_eq s) i)))).boxIn A c) =
-      ⟨_, Term.subst
-        (eIdx (ofRen (preI (rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s)))))
-        (eS σ (ctxOf (glat (groot hF M₀)
-          (rstg s (pstgN (rpath s) (groot hF M₀) s (rpath_eq s) i)))).boxIn
+    cden hM₀ hX s J (Ctx.Le.refl _)
+        (.boxtm (Term.subst (eIdx (ofRen (preI (pnm (rpath s) (groot hF M₀) s (rpath_eq s)))))
+          (eS σ (ctxOf (glat s J)).boxIn
+            (ofRen (preI (pnm (rpath s) (groot hF M₀) s (rpath_eq s)))))
+          (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly hJ)))
+          (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly hJ))) b)) =
+      cden hM₀ hX (groot hF M₀) i (Ctx.Le.refl _) (.boxtm b) := by
+  rw [cden_box_eq]
+  set r := rstg s J
+  set K := max i r
+  have hrtr : ∀ z T, (ctxOf (glat (groot hF M₀) i)).ref z = some T → T.keepable = true →
+      (ctxOf (glat (groot hF M₀) r)).ref
+        ((rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s)) z) = some T :=
+    fun z T hz hkp => rpre hX hM₀ s J _ T (hJ z T hz hkp) hkp
+  have hrtK : ∀ z T, (ctxOf (glat (groot hF M₀) i)).ref z = some T → T.keepable = true →
+      (ctxOf (glat (groot hF M₀) K)).ref
+        ((rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s)) z) = some T :=
+    fun z T hz hkp => (gle hM₀ _ (le_max_right i r)).ref (hrtr z T hz hkp)
+  refine (cden_congr hX _ _ _ K _ (gle hM₀ _ (le_max_right i r))).trans ?_
+  refine (cden_mono hX (gle hM₀ _ (le_max_right i r)) _ _ _ (Ctx.Le.refl _)).symm.trans ?_
+  refine Eq.trans ?_ ((cden_mono hX (gle hM₀ _ (le_max_left i r)) _ _ _
+    (Ctx.Le.refl _)).trans (cden_congr hX _ _ _ _ _ _))
+  refine cden_sigma hX _ (sig_boxtm ?_)
+  have e0 : (⟨_, (preTB hX hM₀ s J (Term.mono (Ctx.Le.refl _).boxIn
+        (Term.subst (eIdx (ofRen (preI (pnm (rpath s) (groot hF M₀) s (rpath_eq s)))))
+          (eS σ (ctxOf (glat s J)).boxIn
+            (ofRen (preI (pnm (rpath s) (groot hF M₀) s (rpath_eq s)))))
+          (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly hJ)))
+          (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly hJ))) b))).2⟩ :
+        Σ c, Term σ (ctxOf (glat (groot hF M₀) r)).boxIn A c) =
+      ⟨_, Term.subst (eIdx (ofRen (preI (rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s)))))
+        (eS σ (ctxOf (glat (groot hF M₀) r)).boxIn
           (ofRen (preI (rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s)))))
-        (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly
-          (rt_ok hX.five hX.noT hX.fourS hX.fourSW hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i
-            le_rfl))))
-        (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly
-          (rt_ok hX.five hX.noT hX.fourS hX.fourSW hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i
-            le_rfl)))) b⟩ := by
-  simp only [preTB, nmTB, Term.mono_refl]
-  refine Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
-    fun u st _ hst _ => ?_) b
-  obtain ⟨u', e⟩ := preI_step (pnm (rpath s) (groot hF M₀) s (rpath_eq s)) u st
-  exact ⟨u', st, e, hst, by rw [← e, preI_comp]⟩
+        (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly hrtr)))
+        (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hX.keepOnly hrtr))) b⟩ := by
+    simp only [preTB, Term.mono_refl]
+    refine Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
+      fun u st _ hst _ => ?_) b
+    obtain ⟨u', e⟩ := preI_step (pnm (rpath s) (groot hF M₀) s (rpath_eq s)) u st
+    exact ⟨u', st, e, hst, by rw [← e, preI_comp]⟩
+  have e1 := congrArg (fun p : Σ c, Term σ (ctxOf (glat (groot hF M₀) r)).boxIn A c =>
+    (⟨p.1, Term.mono (gle hM₀ _ (le_max_right i r)).boxIn p.2⟩ :
+      Σ c, Term σ (ctxOf (glat (groot hF M₀) K)).boxIn A c)) e0
+  refine e1.trans ?_
+  dsimp only
+  rw [Term.mono_subst]
+  have hKo := itemOk_preI hX.keepOnly hrtK
+  refine (Term.subst_congr
+    (ι' := eIdx (ofRen (preI (rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s))))) _ _ _
+    (ok_eS_kView (k := none) (entOk_ofRen hKo)) _ (coh_eS_kView (k := none) (entOk_ofRen hKo))
+    (sim_eS_mono (l := glat (groot hF M₀) i) (k := none) _
+      (entOk_ofRen (itemOk_preI hX.keepOnly hrtr))) b).trans ?_
+  exact round_trip hX.five hX.noT hM₀ hX.keepOnly (rpath s) (groot hF M₀) s (rpath_eq s) i hrtK
+    (le_max_left i r) b
 
 /-- ⭐**What the root defines at a `□` type, every world defines** (R4): the root term named at
-    the world, whose preimage is the root term renamed by the round trip — a weakening
-    (`round_trip`). -/
+    the world (`cden_named_box`). -/
 theorem cdefinable_box_of_root (hX : CluFlags) {A : VarType} (s : GW hF M₀)
     (o : CRDom hM₀ (.VTypeBox A) (groot hF M₀))
     (h : CDefinable hM₀ hX (.VTypeBox A) (groot hF M₀) o) :
@@ -517,32 +544,8 @@ theorem cdefinable_box_of_root (hX : CluFlags) {A : VarType} (s : GW hF M₀)
   obtain ⟨i, _, t, rfl⟩ := h
   cases t with
   | boxtm b =>
-      refine ⟨_, _, .boxtm (nmTB hX hM₀ s i b).2, ?_⟩
-      rw [cden_box_eq]
-      set r := rstg s (pstgN (rpath s) (groot hF M₀) s (rpath_eq s) i)
-      set K := max i r
-      refine (cden_congr hX _ _ _ K _ (gle hM₀ _ (le_max_right i r))).trans ?_
-      refine (cden_mono hX (gle hM₀ _ (le_max_right i r)) _ _ _ (Ctx.Le.refl _)).symm.trans ?_
-      refine Eq.trans ?_ ((cden_mono hX (gle hM₀ _ (le_max_left i r)) _ _ _
-        (Ctx.Le.refl _)).trans (cden_congr hX _ _ _ _ _ _))
-      refine cden_sigma hX _ (sig_boxtm ?_)
-      have e1 := congrArg (fun p : Σ c, Term σ (ctxOf (glat (groot hF M₀) r)).boxIn _ c =>
-        (⟨p.1, Term.mono (gle hM₀ _ (le_max_right i r)).boxIn p.2⟩ :
-          Σ c, Term σ (ctxOf (glat (groot hF M₀) K)).boxIn _ c)) (preTB_nmTB hX hM₀ s i b)
-      refine e1.trans ?_
-      dsimp only
-      rw [Term.mono_subst]
-      have hKo := itemOk_preI hX.keepOnly (rt_ok hX.five hX.noT hX.fourS hX.fourSW hM₀
-        (rpath s) (groot hF M₀) s (rpath_eq s) i (le_max_right i r))
-      refine (Term.subst_congr
-        (ι' := eIdx (ofRen (preI (rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s))))) _ _ _
-        (ok_eS_kView (k := none) (entOk_ofRen hKo)) _ (coh_eS_kView (k := none)
-          (entOk_ofRen hKo))
-        (sim_eS_mono (l := glat (groot hF M₀) i)
-        (k := none) _ (entOk_ofRen (itemOk_preI hX.keepOnly (rt_ok hX.five hX.noT hX.fourS
-          hX.fourSW hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i le_rfl)))) b).trans ?_
-      exact round_trip hX.five hX.noT hX.fourS hX.fourSW hM₀ hX.keepOnly (rpath s)
-        (groot hF M₀) s (rpath_eq s) i (le_max_right i r) (le_max_left i r) b
+      exact ⟨_, _, _, cden_named_box hX hM₀ s i _
+        (pnm_ref hX.five hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i) b⟩
 
 /-- ⭐**At a `□` type a world defines exactly what the root defines.** -/
 theorem cdefinable_box_iff (hX : CluFlags) {A : VarType} (s : GW hF M₀)

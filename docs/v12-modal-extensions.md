@@ -4792,6 +4792,17 @@ is the root's model, with each world's own base domain.
      the kept witness's name (`idx_names`), whose origin is `x` (`orig_names`, `◇` types being
      η-faithful).  The body as above, through `θ.dia`, with the witness handled as a variable
      with an equation (`cden_root_dia_wit`).
+   **Built, `□` half (2026-10-30, `QML_v12m_GCluTr.lean`, in TOP in place of `GCluDom`):**
+   * `sim_edge_nm`, `tr_edge`: along an edge, the edge read through 4's shift is renaming by the
+     names `nm`, up to η (the mirror of `sim_pre_edge`).
+   * ⭐`tr_path`: along a path, translating a kept `□`-view term is renaming it by the path names
+     (`Term.shift_shift_same`, `Subst.shiftCorr_box_box`, `Term.shift_subst` at the step);
+     `pstgN_eq` (the two path stage functions agree), `pnm_ok`.
+   * ⭐`cden_tr`: a kept root term read along an arrow denotes what the root term does.
+   * Refactors on the way: `round_trip` takes its typing fact directly (no stage inequality, no
+     lift flags); ⭐`cden_named_box` in `GCluDom` (a root `□`-term named at any stage of a world
+     denotes what it does) now proves `cdefinable_box_of_root`, replacing `nmTB`/`preTB_nmTB`.
+   Next: the `◇` half (`dkeep`: `pTr` of a kept possible term, through `θ.dia`).
    Smaller than
    `GCanonDom`/`GCanonFunc`/`GCanonModel`, since there are no shapes or realisation and keep is
    the identity.

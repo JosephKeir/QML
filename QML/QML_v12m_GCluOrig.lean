@@ -485,16 +485,15 @@ theorem rt_ok (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
     `porig ∘ pnm` is weakening: the renaming fixes the η-faithful addresses (`porig_pnm`), and a
     substitution reads no others (`Term.subst_congrF`). -/
 theorem round_trip (hV : ModalSys.Five = true) (hT : ModalSys.T = false)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
     (hM₀ : Theory.IsMCS M₀) (hk : ModalSys.keepOnly = false) (P : List ℕ) (s t : GW hF M₀)
-    (hP : t.1 = nodeOf s.1 P) (i : ℕ) {K : ℕ} (hK : pstgO P s t hP (pstgN P s t hP i) ≤ K)
+    (hP : t.1 = nodeOf s.1 P) (i : ℕ) {K : ℕ}
+    (hrt : ∀ z T, (ctxOf (glat s i)).ref z = some T → T.keepable = true →
+      (ctxOf (glat s K)).ref ((porig P s t hP ∘ pnm P s t hP) z) = some T)
     (hiK : i ≤ K) {A : VarType} {a : Ann A} (b : Term σ (ctxOf (glat s i)).boxIn A a) :
     (⟨_, Term.subst (eIdx (ofRen (preI (porig P s t hP ∘ pnm P s t hP))))
         (eS σ (ctxOf (glat s K)).boxIn (ofRen (preI (porig P s t hP ∘ pnm P s t hP))))
-        (ok_eS_kView (k := none)
-          (entOk_ofRen (itemOk_preI hk (rt_ok hV hT hS hW hM₀ P s t hP i hK))))
-        (coh_eS_kView (k := none)
-          (entOk_ofRen (itemOk_preI hk (rt_ok hV hT hS hW hM₀ P s t hP i hK)))) b⟩ :
+        (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI hk hrt)))
+        (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hk hrt))) b⟩ :
         Σ c, Term σ (ctxOf (glat s K)).boxIn A c) =
       ⟨a, Term.mono (ctxOf_le_of_suffix (glat_suffix hM₀ s hiK)).boxIn b⟩ := by
   have hle := (ctxOf_le_of_suffix (glat_suffix hM₀ s hiK)).boxIn
