@@ -5425,7 +5425,8 @@ about 800, no `sorry`, standard axioms.**  ⭐`Proof.retWN_lift`, every witnesse
 and `BStrongW → TStrong` (`WCoh`).  These go in when `noBStrong` comes out: while it stands they say
 nothing.
 
-**`.wit` truth ⇒ membership: where it stands (2026-10-31, paper).**  Still not derived, but sharper.
+**`.wit` truth ⇒ membership: where it stands (2026-10-31, paper).**  Along `pos` it is **not derivable**
+without `BStrongW`, so a rule is needed (see "The pos leg" below).  The route below is the nec leg.
 * *What it needs.*  The converse of `Proof.retW_lift`: from `Here z c`, `Back (n.dup) t` and
   `◇Φ(n.keep, z.keep)`, the atom `◇[⟨d, x⟩ ↦ ⟨t, c⟩] Φ`.
 * *Why it is hard.*  A `.wit` atom on a non-identity arrow only ever comes from `ret_unitWC` at another
@@ -5452,11 +5453,10 @@ nothing.
      only in the content.
   7. *Close.*  `□_x Here(x.keep, x.dia)` and step 4's `Here(x.keep, p̂.c)` make the contents
      interchangeable (`here_subst`, at the value slot, `WFF.instantiate_retSlot`).  Contradiction.
-  This reduces `.wit` truth ⇒ membership to one new tool (step 2) and one new lemma (step 4), and it needs
-  no new rule.  `gabs` is not the tool for step 2: it abstracts one variable's items, for realising a new
+  On the nec leg this needs one new tool (step 2), one new lemma (step 4) and no new rule.  `gabs` is not the tool for step 2: it abstracts one variable's items, for realising a new
   variable.  The 4-off `pack2` goes through `packS`; the 4-on analogue is a substitution sending each
   item to its path in `itemsTm (boxItems l)`.  Along `pos y` the body also mentions `y.dia`, so the
-  hole must carry `y`.  This is the nec leg in detail, and the pos leg is not checked.
+  hole must carry `y`, which `ret_unitWC` does.  That is not enough: see "The pos leg".
 * *The two new pieces, built (2026-10-31): `QML_v12m_RetGPack`, 336 lines, no `sorry`, standard axioms.*
   * Step 2: `gpack` (182 lines, against about 150), a body closed over the `□` view's tuple.
     `holeAt_gtup_gpack` and `holeAt_gtup_gpack_at` read it back.
@@ -5465,12 +5465,76 @@ nothing.
     reads the formula back by collapsing, and `WFF.collapse_shift_same` undoes the shift on `Θ` (a
     hole context has no level steps, `Ctx.shiftCollapseId_hole`).  New: `WFF.shift_holeAt`,
     `WFF.collapse_holeAt`.
-* *Cost.*  About 1 000 to 1 400 lines, against about 150 for the fallback rule.  Of that, 336 are built.
-  What is left reuses built tools, but steps 5 and 6 and the pos leg have only been checked on paper.
-* *An attempted countermodel failed.*  One world, arrows ℤ₃, `home a = a`, necessary objects constant,
-  refutes the fallback rule at first sight.  But `back_keep` at `◇` contents forces
-  `x.keep(a + home a)` to be `Ind` to `x`, which ℤ₃ does not allow.  So `back_keep` may be doing the work
-  here, which supports the derivation being available.  Neither direction is proved.
+* *The pos leg: not derivable without `BStrongW` (paper, 2026-10-31; not mechanised).*
+  * *Where the route stops.*  Step 3 goes through with `ret_unitWC` in place of `ret_unit`: its witness
+    is `y` itself, with content `y.dia`, so the hole carries `y`.  Step 6 does not.  `¬T'` at the far
+    world is the negation of a `retxS` atom at `.wit`, and `ret_unitWC`'s body is a plain `retS`.
+  * *Why no other route.*  Going through every constructor of `Proof`: `ret_extS`, `ret_compS`,
+    `ret_monoS`, `ret_eqS`, `ret_map`, `ret_mapD` and the units' outer atoms keep the leg, the shape
+    and the arrow.  `ret_bridge` and `ret_new` give `.box`.  `ret_hereXWC` gives the identity arrow.
+    A `retxS` at `.wit` on a new arrow comes only from `ret_unitWDC` (its body, along the way home of
+    an arrow that already carries such an atom) and from `ret_realise`, which needs `BStrongW`.
+  * *The argument.*  Take `BStrongW` off, and a two-world model with one arrow between any two worlds,
+    `Ind` equality, all flags of S5 with strong B holding.  Read `retxS` at `.wit` as usual, and also require that its
+    arrow out is the identity; every other formula keeps its clause.  Every rule still holds: the
+    producers above give identity arrows (the way home of the identity is the identity, as arrows are
+    unique), every other rule only consumes the atom, and shifting, collapsing and substituting
+    leave the world and the arrow out alone.  Now let `y`'s extent at `w` be just the arrow to `v`,
+    with `Here z c`, `Back (n.dup) t` and `Φ := ⊤`.  The premises hold, and so does `◇_y ⊤`, but
+    `◇_y[⟨d, x⟩ ↦ ⟨t, c⟩] ⊤` fails in this reading.  In the real semantics it is true (`d := n.keep`,
+    `x := z.keep`, `Model.realised_keep`).  So it is valid and not derivable.
+  * *Sanity checks.*  The same reading of the nec leg fails, because `ret_unitWC` gives `retS` at `.wit`
+    on new arrows: there the route stands.  With 4 off nothing is contradicted, because `z.keep` does
+    not exist, so no valid formula forces the atom (`BArrow`'s completeness stands).  It is the same
+    kind of gap as `back_keep`, also a consequence of `homeUnique` that no earlier rule states.
+  * *With `BStrongW`.*  `ret_realise` breaks this reading, so that case is not settled.  It makes no
+    difference: strong B without `BStrongW` needs the rule anyway.
+  * *Not an `Ind` matter.*  The argument's model has `Ind` equality and body `⊤`, and the atom fails there at
+    every value.  So no weakening of the value or the content helps: what fails is the arrow.
+  * *Why the legs differ.*  Under T + 4 `pos` is `nec` with a marker: by `posKeep_full`, `a` lies in `y`'s
+    extent exactly when `y.keep` is realised at `a`'s target.  So `retxS y S t Φ` says the same as
+    `retS S t (∃u. Here(y.keep, u) ∧ Φ̃(u))`, with `Φ̃` the abstraction of `Φ` over `y.dia`, in a model
+    proper (`u` is only `Ind` to `y`'s content, which `hM.inv` absorbs).  `here_keep` gives `◇_y Φ ⊢
+    ◇(∃u. Here(y.keep, u) ∧ Φ̃(u))`, and the nec route at that body gives the marked plain atom.  So along
+    `pos` the result is derivable *up to the leg* (paper; the nec route is not built).  What is missing
+    is the step to `retxS`.  `dia_here_keep` is that step for `◇`, by contraposing `four_dia`, but an atom
+    has no dual to contrapose.  At `.box` the atom can be rebuilt on any leg because its way home is a
+    separate formula, `Back` (`ret_bridge`).  At `.wit` the witness's way home has no such formula.
+    The nec leg gets by because `ret_unitWC`'s body happens to be a plain atom: a second source of atoms,
+    not a sign that `pos` is a different logic.
+* *The rule this calls for: not added, awaiting the user's decision.*  `ret_realise` with a named part,
+  along any leg, at any necessary shape, under T + 4: `Here z c, O.retS (.nec N) y Φ(⟨d, z.keep⟩) ⊢
+  O.retS (.wit N X) ⟨y, c⟩ Φ`.  Sound by `Model.realised_keep`, so with no new model law.  With it the
+  nec route is not needed either, so steps 1, 3 and 5–7 would not be built.  It is `back_keep` and
+  `ret_bridge` for the witness part.  *The alternative:* leg transfer, `retS S t (∃u. Here(y.keep, u) ∧ Φ̃(u))
+  ⊢ retxS y S t Φ`, under T + 4, `dia_here_keep` for atoms.  It is exactly the gap, and it keeps the
+  derivation, but it leaves the nec route to build.
+* *What the rule is (paper, 2026-10-31).*
+  * *One equation.*  Keep is precomposition, `(keep_a z)(b) ≃ z(a ; b)`.  At `b = id` and at `b = a⁻¹`
+    (`a ; a⁻¹ = id`, `homeUnique`), for a total and a partial object:
+    | read at | necessary | possible |
+    |---|---|---|
+    | `id` | how `shift` and `collapse` compute | `here_keep` |
+    | `a⁻¹` | `back_keep` | the rule |
+  * *Own arrow against any arrow.*  Necessary part: `ret_hereC`, then `back_keep` with `ret_bridge`.
+    Possible part: `ret_hereWC`, then the rule.  `ret_hereWC` stays, since it does not need 4.
+  * *`ret_realise`.*  The rule names the witness (`z.keep`) where `ret_realise` only says there is one.
+    Under T + 4, `T_dia` and the rule derive `ret_realise`, and in a model `posRet_exists` gives
+    `posBack_exists` by keeping the realiser.  With `posRet_of_posBack`, under T + 4 + strong B the
+    laws of strong T and of `BStrongW` are equivalent.
+  * *The characterisation.*  It is the converse of `Proof.retW_lift`: `◇[⟨d, x⟩ ↦ ⟨t, c⟩] Ψ ⟺
+    ∃⟨n, z⟩. Back (n.dup) t ∧ Here z c ∧ ◇Ψ(n.keep, z.keep)`, along either leg (other shapes by
+    packing, `Proof.retWN_lift`).  `⇐` is the rule with `ret_bridge`, and `⇐` gives the rule back
+    through `Proof.retN_lift`.  At `.box` the same equivalence is already derivable (`ret_lift`,
+    `ret_bridge`).  So what comes back as `c` is always the kept image of something realised as `c`.
+  * *Statement.*  A variable `z` is not closed under substitution.  State it as `here_keep` is: subject
+    `Term.diatm x hx bd`, far end `Term.diatm (x.keep) (shift bd)` (`WFF.subst_hereKeep`, §10.11).
+* *Cost.*  The derivation was about 1 000 to 1 400 lines; 336 are built, and it cannot finish along
+  `pos`.  The rule is about 150 lines, plus a case in each match on `Proof`.
+* *An attempted countermodel failed, and why.*  One world, arrows ℤ₃, `home a = a`, necessary objects
+  constant, refutes the rule at first sight.  But `back_keep` at `◇` contents forces `x.keep(a + home a)`
+  to be `Ind` to `x`, which ℤ₃ does not allow.  That was a test of the rule's soundness, in a model.
+  It said nothing about derivability, which the argument above settles along `pos`.
 
 **What held up.**
 * `Ret_fwd` at any content, `RetCongr.keep`, and rows 1–4: `posBack_exists` is free through R4.
