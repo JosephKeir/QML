@@ -4926,16 +4926,18 @@ KDB5) the root's loop is new work, so S5 comes **before** B + 5, reversing steps
     and its way home is the identity, and a **kept carrier comes back as its own value**:
     `⊢ Back (u.dup) u.here`.  More generally, a shifted `□`-view term comes back as its collapse.
     This is valid in every model with `BStrong`, T and 4.
-  * *It appears underivable.*  Read `Back` along a designated way home per arrow (an operation
+  * *It appears underivable* (confirmed below, "`back_keep`: the check", with `home` an
+    involution).  Read `Back` along a designated way home per arrow (an operation
     `home a`, with `home refl = refl`).  Then every B rule stays sound (`back_pair` reads both
     carriers along `home a`; `back_here` needs only `home refl = refl`), no rule mentions
-    `keep`, and `trans a (home a)` need not be the identity.  **To confirm** rule by rule.
+    `keep`, and `trans a (home a)` need not be the identity.
   * *Proposed:* `back_keep` (`BStrong`, T, `Four`): `⊢ O.back (shift b) (collapse b)` at the
     out leg `nec`.  It is 4's analogue of `back_here` (the own arrow), and in the K paradigm.
   * So the conjecture fails for strong B: coherence needs this rule, not 5 alone.
 
 **3. Strong B collapses in the cluster** (with both of 4's lifts).
-* *`Ret`, canonically, is the round trip itself:* `Nonempty S ∧ ∀ a, Ind (val a home) o`.  Then
+* *`Ret`, canonically, is the round trip itself* (corrected below, "`back_keep`: the check": only
+  at `◇`-free contents): `Nonempty S ∧ ∀ a, Ind (val a home) o`.  Then
   `Ret_fwd` and `Ret_conv` are immediate; `IndInvariant`'s `Ret` congruences follow from `Ind`'s.
 * *`Back c t ∈ M_w` gives the round trip.*
   * `c`'s value at `v`, read back at `w`, is the lift `m` of `c_v.here` (its origin), valued at
@@ -5215,6 +5217,97 @@ What the build added, against the design above:
 
 **Left for 5.**  Strong B on S5 (confirm `back_keep` is underivable, add it, canonical `Ret`); a
 dispatch with `B` on, with its class; KB5 and KDB5; the open lifts in the table; K5 and KD5.
+
+#### `back_keep`: the check *(2026-10-31, paper)*
+
+**Verdict.**  `back_keep` is underivable, and needed: it is valid at `◇`-free contents, so
+completeness for strong B fails without it.  The check corrects the S5 paper check in three places.
+* The designated way home must be an **involution**, so the two-arrow sketch does not work.
+* At `◇` contents the rule is **not valid in every `Model`**, so it needs a model law, `Ret_keep`.
+* Canonically `Ret` is **not** the round trip at `◇` contents.  It is read off the theory's atoms, as
+  `BArrow`'s is.
+No second rule appears to be needed: the `ret` forms follow on paper.  All of this is on paper, not
+in Lean.
+
+**1. Underivable: the designated-home semantics.**
+* *Change the semantics in one way.*  Drop `homeUnique`.  Give each arrow `a : w → v` a designated way
+  home `home a : v → w`, with `home (home a) = a` and `home refl = refl`.  Read `Ret_fwd`, `Ret_conv`
+  and `ComesBack` along `home a`, in place of `∃ r`.
+* *Why an involution.*  `sat_ret_unitC` uses the arrow out as a way home for the way home ("the arrow
+  out is itself a way home for `r`").  The S5 paper check's `home` lacked this.  On `ℤ₂`, with `home
+  refl = refl`, it forces `home g = g`, so `a · home a` is the identity and `back_keep` holds there.
+* *The countermodel.*  One world; arrows `ℤ₃`; `trans` is addition, `refl` is `0`, `side a b = b - a`;
+  `home a = a`; full function spaces as carriers, with `Ind` equality.  Shapes are free: `Pos` is a
+  section with any well-formed shape, the root action is translation, and the operations act on shapes
+  by their laws.  Strong T, D, 4 (both lifts) and 5 all hold, since translation is invertible.  `Ret`
+  is the round trip along `home`; a constant carrier gives `backRet_exists`.
+* *`back_keep` fails.*  Take `u : □Var` with `u 0 = p` and `u 1 = u 2 = q`.  Along `a = 1`, `u.dup` reads
+  `u (a + home a) = u 2 = q`, and `u.here = p`.
+
+*Rule by rule.*  `homeUnique` is used four times in `SemBack`, and every other way home is one of three
+kinds: from `symm` (`of_def`, `ret_exists`, `back_ret`), reused from a hypothesis, or the arrow out.
+
+| Rules | Why they hold along `home` |
+|---|---|
+| T, 4, 5, D, weak B, strong T, D and 4 | no way home in the rule; the proofs never use `homeUnique` |
+| `back_counit`, `back_unit`, `back_ne`, `back_beta`, `back_eq`, `back_eqC`, `ret_bridge` | the way home is reused from the hypothesis |
+| `back_pair`, `ret_counitC` | uses 1 and 4 of `homeUnique`: both ways home are `home i` |
+| `back_here`, `back_hereX` | uses 2 and 3: `home refl = refl` |
+| `back_ret`, `ret_new`, `ret_extS`, `ret_compS`, `ret_map`, `ret_mapD`, `ret_monoS`, `ret_diaS`, `ret_eqS` | `symm` becomes `home`; the rest reuses it |
+| `B_strong` | constant carrier |
+| `ret_counit`, `ret_counitD` | `□` holds along `home i` |
+| `ret_unitC`, `ret_unitWC`, `ret_unitDC`, `ret_unitWDC` | the arrow out is `home (home i)` |
+| `ret_hereC`, `ret_hereWC`, `ret_hereXC`, `ret_hereXWC` | the own arrow: `home refl = refl` |
+| `ret_realise` | `posBack_exists` at `home i` |
+
+No rule mentions both `keep` and a way home.  That is the gap `back_keep` fills.
+
+**2. The rule, and its law.**
+* *Valid at `◇`-free contents.*  Under T and 4, `homeUnique` makes `a · r` the identity, so the round
+  trip holds and `Ret_conv` gives `Ret`.
+* *Not valid at `◇` contents in every model.*  `Ret` is primitive there, and nothing forces a kept
+  carrier into it.  So add a law:
+  `Ret_keep : BStrong → T → Four → Nonempty S → Ret S (n read along a · b) (n refl)`.
+* *Any leg.*  The rule should take a leg and its nonemptiness:
+  `O.dia ⊤ ⊢ O.back (shift b) (collapse b)`.  The S5 paper check had `nec` only, but `Ret_fwd` needs
+  both legs (`BLeg`), and no rule restricts a leg.  Under T, `nec`'s premise is free.
+* *Cost.*  Small: `Proof`, `ProofSubst`, `Soundness` and a `SemBack` lemma; `Ret_keep` at the four model
+  constructions, vacuous at three (`Canon`, the tree, `BArrow` with 4 off).
+
+**3. Canonical `Ret`: atoms, as `BArrow`'s.**  "`Ret` is the round trip" fails at `◇` contents: from the
+round trip back to the atom needs `back_ret`, which is `◇`-free only.  So take `BCanonModel.Ret`: the
+round trip at `◇`-free contents, and otherwise a `Back` atom of the theory.  `Ret_keep` then is the
+rule.
+
+*`Ret_fwd` at any content.*  Let `Back bd t` be in the theory, `a` an arrow, and `m` the lift of `bd`'s
+value along `a`.  We want `m.here` and `t` interchangeable in every slot formula `χ`, with parameters
+`p`.
+1. `B_strong` gives a carrier `q` for `p`, and `back_pair` gives `Back ⟨bd, q⟩ ⟨t, p⟩`.
+2. `back_keep` gives `Back (shift m) m.here`.
+3. `ret_bridge` turns 2 into `ret m.here (□ ψ(d, ⟨bd, q⟩))`, where `ψ` is `χ(x, z) → χ(y, z)`.  The
+   premise is reflexivity at the arrow's end: the kept lift and `bd`'s value are one term there, by the
+   path translation's round trip.
+4. `ret_counitC` gives `χ(m.here, p) → χ(t, p)`.  The converse is the same with `ψ` reversed.
+
+**4. The `ret` forms.**
+* *Counit form: follows.*  `ret y (□ψ(d, shift b)) ⊢ ψ(y, collapse b)` is `ret_counitC` at `back_keep`.
+* *Lifting form: follows, and needs no `keep_lift`.*  Under strong B, `ret` already brings necessary
+  objects home.  From `ret t Φ(d)`:
+  1. `ret_extS` at the companion `b = d.dup` gives a fresh `n : □A`, the value of `b`.  It is `d` kept
+     along the way home.
+  2. `ret_counit` gives `n.here ≈ t`.  This uses only the own arrow.
+  3. `ret_unitC` at `n.dup` puts a nested `ret` in the body, and `ret_counitC` there, with `back_keep` at
+     `d.dup`, gives `d ≈ n.keep`.  So `◇Φ(n.keep)`.
+* *At `◇` contents* there is no equality to say `b = d.dup`.  Tie them with an atom instead:
+  `□ Back (b.keep) d.inner`, true by `back_keep` under `□`, read back by `back_here`.  This is the least
+  checked step here, and the one to test first.
+* *Companions and `.wit` shapes:* not yet checked against these steps.  Rows 3–4 should stay free, as
+  the S5 paper check says.
+
+**5. Order of work.**
+1. Add `back_keep` and `Ret_keep` (soundness, substitution).
+2. Write the lifting form as a derived rule, at `◇` contents too, before touching the model.
+3. The cluster's `Ret`, `Ret_fwd`, then the `Back` and `ret` truth cases.
 
 ### □-BF and ◇-BF
 Base variables are invisible under `□`, so each Barcan formula pairs a concept quantifier outside
