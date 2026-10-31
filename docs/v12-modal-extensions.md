@@ -5072,7 +5072,7 @@ KDB5) the root's loop is new work, so S5 comes **before** B + 5, reversing steps
 
 | 4's lifts | Reads as | K45, KD45 | S5 |
 |---|---|---|---|
-| both | strong 5 + the `◇`-lift | **complete** | theory built, model next |
+| both | strong 5 + the `◇`-lift | **complete** | **complete** (2026-10-31) |
 | `□`-lift only | strong 5 | open | open |
 | `◇`-lift only | weak 5 + the `◇`-lift | open | open |
 | neither | weak 5 | open | open |
@@ -5081,7 +5081,7 @@ KDB5) the root's loop is new work, so S5 comes **before** B + 5, reversing steps
   the K45 paper check).  Note that strong K45 proper, without the `◇`-lift, is one of them.
 * *K5, KD5 (4 off):* semantics only (`Frame.side`, `posSide`).  No `side` step, `sideTr`, links or
   rules, so those flag settings prove no 5 principle, and completeness excludes them.
-* *KB5, KDB5:* not started (the root's loop).  *S5 with strong B:* after the first S5 target.
+* *KB5, KDB5:* not started (the root's loop).  *S5 with strong B:* next (`back_keep`).
 
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
@@ -5184,25 +5184,37 @@ content by `grealT` of `pTrXK` where the witness is realised and `pTrX` where no
 `annC` of the preimage's annotation.  `cden_mono`, `cden_congr`, `cden_root_dia`, `cden_dia_eq` and
 R4 hold with T on or off, and `crawEval` has its tags and a real `extract`.
 
-**The staging.**  `CluFlags.noT` stays until the last file is done, so K45 stays complete at every
-step.  Its uses, 42 at this point, are the list of what is left: `GCluModel` 21, `GCluTerm` 6,
-`GCluTruth` 6, `GCluFunc` 5, `GCluTr` 2, `GCluDom` and `GCluCompleteness` 1 each.  They are not
-proof holes: each is a T branch closed by T being off, so the theorems are true as stated, for K45
-only.
+**S5 with both lifts, complete (2026-10-31).**  `CluFlags` is now 5, both lifts, `B → T` and strong B
+off.  T, strong T, D, strong D and strong 5 are free, so `completenessC_presented`,
+`strong_completenessC` and `compactnessC` cover K45, KD45 and S5, the last with `B` on or off.
+`NoB.fiveCluster` no longer asks for T off, so `completenessNoB` and its companions cover S5 with `B`
+off.  With `B` on there is no dispatch yet: use the `C` theorems with `CluFlags` directly.  `noT` and
+`noB` are gone, so no T branch was left closed by a flag.  Strict build green; the headline theorems
+use only `propext`, `Classical.choice` and `Quot.sound`.
 
-**Design for the rest (2026-10-31).**
-* *Shapes at worlds.*  `crawShape (cden s i e t)` is `termShp` in a world environment `cEs` with
-  labels `cLab (preIx s y) s`.  The generic `termShp_subst` and the tree's `unT_termShp` argument
-  (to port) reduce `□` to items, where a member is `cLab_keep_of` by definition.
-* *One typing fact.*  A preimage's annotation maps indices by `eIdx`, which is `preIx` on every
-  index a view's terms can hold: a first level step is a `keep`, or a `dia` at the view's witness.
-* *`tr_path`, `tr_pathX`* need only their `[]` cases (`Term.collapse_shift_same`).
-* *`cden_applyG`* mirrors `grden_applyG`'s realised branches (`grealT_applyG`, `pTrXK_applyG`,
-  `collapse_pTrK`), read through the preimage; tags by `Canon.termShp_applyG`.
+What the build added, against the design above:
+* *Shapes at worlds* went directly off annotations.  `crawShape_cden` (`GCluRaw`) says a denotation's
+  shape is its annotation read at the root (`preIx`), by induction on the term, without a world
+  environment.  `transpose_annC` turns the family along the arrows into one shape.
+* *A world environment was still needed*, for one place: the `◇` case of `interp_ctr`, because an
+  extent can be empty, so a shape cannot be read off contents.  `GCluWShape` gives it: `CInvW` says a
+  pushed world environment reads each address at the shape of its root reading, at the first level
+  for keepable addresses only, and `termShp_annW`, `ann_eq_of_termShpW` follow.  The base case needs
+  no address calculation: the environment is the canonical one's `envShape`, read by `crawShape_cden`.
+* *`here` at the first level reads the anchor's own arrow*, so `proj_annC` holds at any anchor only
+  below the first level.  So the world invariant's first level is not proved by projecting: it
+  comes from the denotation, by `crawShape_cden`.
+* *`tr_pathXK` is stated under the `◇`*: `.diatm (kw …) (pTrXK …)` is `.diatm (pnm …) (renamed)`, since
+  `wit` and `nm` are only propositionally equal.  `pTrXK_pre` is its round trip, which gives
+  `cden_own_mem` and `cden_own_content`: a content at a world's own arrow is the realisation.
+* *`pullC`, `termShp_gtr` and their helpers are now generic in the arrows*, not tree-specific.
+* *The `◇` truth case under T* works through chains: `sat_ptrXKC`, `cagree_own` (the realisation's
+  chain agrees with the canonical environment along the own arrow) and `sat_diaPush_cK`.
+  `cdia_real_not_boxx`, `cdia_sat_child`, `chere_transfer`, `chere_truth` then mirror the tree's.
+* *`GCluInd`* is `GInd` with the names changed.  It needed nothing new.
 
-**Where things stand for steps 3–5.**  Left: `tr_collapse`, `tr_pathXK`, the shapes at worlds,
-`cops` and `cmodel` under T, the term lemma, `Here`, the truth lemma, `Ind`, `IndInvariant`, and the
-dispatch.
+**Left for 5.**  Strong B on S5 (confirm `back_keep` is underivable, add it, canonical `Ret`); a
+dispatch with `B` on, with its class; KB5 and KDB5; the open lifts in the table; K5 and KD5.
 
 ### □-BF and ◇-BF
 Base variables are invisible under `□`, so each Barcan formula pairs a concept quantifier outside

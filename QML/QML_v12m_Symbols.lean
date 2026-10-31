@@ -83,9 +83,9 @@ def ModalSys.K : ModalSys :=
 class ModalSys.NoB [ModalSys] : Prop where
   noB : ModalSys.B = false
   noBStrong : ModalSys.BStrong = false
-  /-- 5 is covered with 4, both of 4's lifts and T off — K45 and KD45 (the cluster model,
+  /-- 5 is covered with 4 and both of 4's lifts — K45, KD45 and S5 (the cluster model,
       `GArrow.cmodel`, `docs/v12-modal-extensions.md` §3 5); its other systems are not yet. -/
-  fiveCluster : ModalSys.Five = true → ModalSys.Four = true ∧ ModalSys.T = false ∧
+  fiveCluster : ModalSys.Five = true → ModalSys.Four = true ∧
     ModalSys.FourStrong = true ∧ ModalSys.FourStrongW = true
 
 /-- 5 off: what the staged tree and the growing tree are built for (with 5, the cluster model). -/

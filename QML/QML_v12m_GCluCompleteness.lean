@@ -1,10 +1,11 @@
-import QML.QML_v12m_GCluTruth
+import QML.QML_v12m_GCluInd
 import QML.QML_v12m_GFlat
 
 /-!
-# QML v12m — completeness for K45 and KD45: the cluster model
+# QML v12m — completeness for K45, KD45 and S5: the cluster model
 
-With 4, weak 5 and both lifts of 4 on, T and B off (`CluFlags`; D in either strength), the
+With 4, weak 5 and both lifts of 4 on (`CluFlags`; D and T in either strength, weak B under T,
+strong B off), the
 cluster model over a maximal consistent theory satisfies it at the root (⭐`exists_canonC`), so
 a consistent set is satisfiable (`model_existenceC`), and every well-formed presented context
 has the metatheorems: strong completeness (`strong_completenessC`), completeness
@@ -21,12 +22,6 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-
-/-- The cluster model is a model proper: its `Ind` is equality. -/
-theorem cmodel_indInvariant (hF : ModalSys.Four = true) {l₀ : List VarType}
-    {M₀ : Set (WFF σ (ctxOf l₀) 0)} (hM₀ : Theory.IsMCS M₀) (hX : CluFlags) :
-    (cmodel hF hM₀ hX).IndInvariant :=
-  Model.indInvariant_of_eq (fun _ _ h => h) (fun hS => (hX.absBS hS).elim)
 
 /-- ⭐⭐**The cluster model over a maximal consistent theory**: its root satisfies, at its first
     stage, exactly its theory, which contains `M₀`. -/
@@ -50,11 +45,11 @@ theorem model_existenceC_ctxOf (hF : ModalSys.Four = true) (hX : CluFlags) {l₀
   have hag : Model.Env.Agree hle
       (fun v T hv => ccanonEnv hM₀ hX (groot hF _) 0 v T (hle v T hv))
       (ccanonEnv hM₀ hX (groot hF _) 0) := fun _ _ _ => rfl
-  exact ⟨cmodel hF hM₀ hX, cmodel_indInvariant hF hM₀ hX, groot hF _,
+  exact ⟨cmodel hF hM₀ hX, cmodel_indInvariant hM₀ hX hF, groot hF _,
     fun v T hv => ccanonEnv hM₀ hX (groot hF _) 0 v T (hle v T hv),
     fun ψ hψ => (Model.sat_mono hag ψ).mp ((htruth _).mpr (hmem₀ ψ (hSM hψ)))⟩
 
-/-- ⭐**Model existence for K45 and KD45** in every presented context whose presentation is
+/-- ⭐**Model existence for K45, KD45 and S5** in every presented context whose presentation is
     well-formed. -/
 theorem model_existenceC (hF : ModalSys.Four = true) (hX : CluFlags) (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)} (hS : WFF.SetConsistent S) : WFF.SetSatisfiable S :=
@@ -62,7 +57,7 @@ theorem model_existenceC (hF : ModalSys.Four = true) (hX : CluFlags) (e : CtxExp
   ((e.gchain hF he.1 he.2).2.toFlat).setSatisfiable
     (model_existenceC_ctxOf hF hX (((e.gchain hF he.1 he.2).2.toFlat).setConsistent hS))
 
-/-- ⭐**Strong completeness for K45 and KD45**: a formula true in every model, world and
+/-- ⭐**Strong completeness for K45, KD45 and S5**: a formula true in every model, world and
     environment satisfying a set of premises is derivable from finitely many of them. -/
 theorem strong_completenessC (hF : ModalSys.Four = true) (hX : CluFlags) (e : CtxExpr)
     (he : e.Wf) {S : Set (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
@@ -83,7 +78,7 @@ theorem strong_completenessC (hF : ModalSys.Four = true) (hX : CluFlags) (e : Ct
   exact hsat φ.neg (Set.mem_insert _ _)
     (hval M hM env fun ψ hψ => hsat ψ (Set.mem_insert_of_mem _ hψ))
 
-/-- ⭐**Completeness for K45 and KD45** in every presented context whose presentation is
+/-- ⭐**Completeness for K45, KD45 and S5** in every presented context whose presentation is
     well-formed: a sequent valid in every model is provable. -/
 theorem completenessC_presented (hF : ModalSys.Four = true) (hX : CluFlags) (e : CtxExpr)
     (he : e.Wf) {Δ : List (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
@@ -96,7 +91,7 @@ theorem completenessC_presented (hF : ModalSys.Four = true) (hX : CluFlags) (e :
     fun M hM _ env hS => hval M hM env (Ctx.Presented.noProjLast _) hS
   exact Provable.mono hΔ' p
 
-/-- ⭐**Compactness for K45 and KD45**: a set of formulas is satisfiable when every finite subset
+/-- ⭐**Compactness for K45, KD45 and S5**: a set of formulas is satisfiable when every finite subset
     is — in models of any universe. -/
 theorem compactnessC (hF : ModalSys.Four = true) (hX : CluFlags) (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)}

@@ -98,14 +98,17 @@ theorem annC_eta (hko : ModalSys.keepOnly = true) {g : GW hF M₀} :
 
 /-! ## Addresses of a level -/
 
-/-- `y` is a position of a declared root address, at `j` levels and of type `T`. -/
-def CForm (j : ℕ) (y : VarSymb) (T : VarType) : Prop :=
-  ∃ (v : VarSymb) (U : VarType) (π : List Step), DeclAt (groot hF M₀) v U ∧ PPath v.path ∧
+/-- `y` is a position of an address declared at `g`, at `j` levels and of type `T`. -/
+def CFormAt (g : GW hF M₀) (j : ℕ) (y : VarSymb) (T : VarType) : Prop :=
+  ∃ (v : VarSymb) (U : VarType) (π : List Step), DeclAt g v U ∧ PPath v.path ∧
     y = v.ext π ∧ Step.walkTy U π = some T ∧ Step.levels π = j
 
-theorem CForm.proj {j : ℕ} {y : VarSymb} {U T : VarType} (h : CForm (hF := hF) (M₀ := M₀) j y U)
-    {st : Step} (hs : st.isProj = true) (hst : U.step st = some T) :
-    CForm (hF := hF) (M₀ := M₀) j (.step y st) T := by
+/-- `y` is a position of a declared root address, at `j` levels and of type `T`. -/
+abbrev CForm (j : ℕ) (y : VarSymb) (T : VarType) : Prop := CFormAt (groot hF M₀) j y T
+
+theorem CFormAt.proj {g : GW hF M₀} {j : ℕ} {y : VarSymb} {U T : VarType}
+    (h : CFormAt g j y U) {st : Step} (hs : st.isProj = true) (hst : U.step st = some T) :
+    CFormAt g j (.step y st) T := by
   obtain ⟨v, U₀, π, hd, hv, rfl, hw, hn⟩ := h
   refine ⟨v, U₀, π ++ [st], hd, hv, (VarSymb.ext_append_single v π st).symm, ?_, ?_⟩
   · rw [Step.walkTy_append, hw, Option.bind_some]
@@ -119,8 +122,8 @@ theorem CForm.proj {j : ℕ} {y : VarSymb} {U T : VarType} (h : CForm (hF := hF)
   · rw [Step.levels_append, hn]
     simp [Step.levels, hs]
 
-theorem CForm.keep {j : ℕ} {y : VarSymb} {U : VarType} (h : CForm (hF := hF) (M₀ := M₀) j y U)
-    (hk : U.keepable = true) : CForm (hF := hF) (M₀ := M₀) (j + 1) (.step y .keep) U := by
+theorem CFormAt.keep {g : GW hF M₀} {j : ℕ} {y : VarSymb} {U : VarType} (h : CFormAt g j y U)
+    (hk : U.keepable = true) : CFormAt g (j + 1) (.step y .keep) U := by
   obtain ⟨v, U₀, π, hd, hv, rfl, hw, hn⟩ := h
   refine ⟨v, U₀, π ++ [.keep], hd, hv, (VarSymb.ext_append_single v π _).symm, ?_, ?_⟩
   · rw [Step.walkTy_append, hw, Option.bind_some, walkTy_keep hk]
@@ -128,9 +131,8 @@ theorem CForm.keep {j : ℕ} {y : VarSymb} {U : VarType} (h : CForm (hF := hF) (
   · rw [Step.levels_append, hn]
     simp [Step.levels, Step.isProj]
 
-theorem CForm.dia {j : ℕ} {y : VarSymb} {X : VarType}
-    (h : CForm (hF := hF) (M₀ := M₀) j y (.VTypeDia X)) :
-    CForm (hF := hF) (M₀ := M₀) (j + 1) (.step y .dia) X := by
+theorem CFormAt.dia {g : GW hF M₀} {j : ℕ} {y : VarSymb} {X : VarType}
+    (h : CFormAt g j y (.VTypeDia X)) : CFormAt g (j + 1) (.step y .dia) X := by
   obtain ⟨v, U₀, π, hd, hv, rfl, hw, hn⟩ := h
   refine ⟨v, U₀, π ++ [.dia], hd, hv, (VarSymb.ext_append_single v π _).symm, ?_, ?_⟩
   · rw [Step.walkTy_append, hw, Option.bind_some]
@@ -169,12 +171,11 @@ theorem cNext_root (v : VarSymb) (r : List Step) : cNext (groot hF M₀) v r = v
 
 include hV hS hW hM₀ hT in
 /-- ⭐**An address's shape kept** at its level is the kept address's shape. -/
-theorem keep_annC {j : ℕ} {y : VarSymb} {U : VarType}
+theorem keep_annC {j : ℕ} {y : VarSymb} {U : VarType} {g : GW hF M₀}
     (hf : CForm (hF := hF) (M₀ := M₀) j y U) (hF' : ModalSys.Four = true)
     (hk : U.keepable = true) :
-    (GFunc.shp (σ := σ) (GFunc.keep hF' hk) j
-        (annC (groot hF M₀) (Ann.eta y U))).inner =
-      annC (groot hF M₀) (Ann.eta (.step y .keep) U) := by
+    (GFunc.shp (σ := σ) (GFunc.keep hF' hk) j (annC g (Ann.eta y U))).inner =
+      annC g (Ann.eta (.step y .keep) U) := by
   have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
   obtain ⟨v, U₀, π, hd, hv, rfl, hw, hn⟩ := hf
   cases U with
@@ -186,7 +187,7 @@ theorem keep_annC {j : ℕ} {y : VarSymb} {U : VarType}
       rw [annC_eta hko, annC_eta hko, cShOf_map,
         cLab_dk hV hS hW hM₀ hT j hd hv hw hn, VarSymb.ext_append_single]
       refine congrArg _ (cShOf_congr hT A _ _ fun π' X hπ => ?_)
-      have := cLab_dkB hV hS hW hM₀ hT hπ j hd hv hw hn (groot hF M₀)
+      have := cLab_dkB hV hS hW hM₀ hT hπ j hd hv hw hn g
       rw [VarSymb.ext_append, VarSymb.ext_append] at this
       exact this
   | VTypeBox A =>
@@ -194,7 +195,7 @@ theorem keep_annC {j : ℕ} {y : VarSymb} {U : VarType}
         Shp.box (annC _ (Ann.eta (VarSymb.step (v.ext π) .keep).inner A))
       rw [annC_eta hko, annC_eta hko, cShOf_map]
       refine congrArg _ (cShOf_congr hT A _ _ fun π' X hπ => ?_)
-      have := cLab_shift hV hS hW hM₀ hT hπ j hd hv hw hn (groot hF M₀)
+      have := cLab_shift hV hS hW hM₀ hT hπ j hd hv hw hn g
       rw [VarSymb.ext_append, VarSymb.ext_append] at this
       rw [VarSymb.inner_keepOnly hko, VarSymb.inner_keepOnly hko]
       exact this
@@ -203,12 +204,14 @@ theorem keep_annC {j : ℕ} {y : VarSymb} {U : VarType}
   | VTypeProd _ _ => cases hk
 
 include hV hS hW hM₀ hT in
-/-- A projection of an address's shape is the projection's shape. -/
-theorem proj_annC {j : ℕ} {y : VarSymb} {U T : VarType}
+/-- A projection of an address's shape is the projection's shape, below the first level at any
+    anchor: at the first level a `here` reads the anchor's own arrow. -/
+theorem proj_annC {j : ℕ} {y : VarSymb} {U T : VarType} {g : GW hF M₀}
+    (h0 : j = 0 → g = groot hF M₀)
     (hf : CForm (hF := hF) (M₀ := M₀) j y U) {st : Step} (hs : st.isProj = true)
     (h : U.step st = some T) :
-    GFunc.shp (GFunc.proj (σ := σ) hs h) j (annC (groot hF M₀) (Ann.eta y U)) =
-      annC (groot hF M₀) (Ann.eta (.step y st) T) := by
+    GFunc.shp (GFunc.proj (σ := σ) hs h) j (annC g (Ann.eta y U)) =
+      annC g (Ann.eta (.step y st) T) := by
   have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
   cases U <;> cases st <;> (try cases hs) <;> (try cases h)
   · rfl
@@ -225,11 +228,12 @@ theorem proj_annC {j : ℕ} {y : VarSymb} {U T : VarType}
       show (VarSymb.step (v.ext π) .here).ext π' = (v.ext π).ext (.here :: π') from rfl]
     cases j with
     | zero =>
+        obtain rfl := h0 rfl
         have hπ₀ := ppath_of_levels0 hn
         rw [cLab_collapse_zero hV hS hW hM₀ hT' hπ (declAt_ext hd hπ₀ hw) (ppath_ext hv hπ₀),
           cNext_root]
     | succ n =>
-        have := cLab_collapse hV hS hW hM₀ hT' hπ n hd hv hw hn (groot hF M₀)
+        have := cLab_collapse hV hS hW hM₀ hT' hπ n hd hv hw hn g
         rwa [VarSymb.ext_append, VarSymb.ext_append] at this
 
 end Root
@@ -287,7 +291,7 @@ theorem cInv_of_items {Δ : Ctx}
         obtain ⟨hf, he⟩ := cInv_of_items hitem v hU
         refine ⟨hf.proj hs hst, ?_⟩
         rw [Model.ShEnv.ref_proj _ j hs hU h, he]
-        exact proj_annC hV hS hW hM₀ hT hf hs _
+        exact proj_annC hV hS hW hM₀ hT (fun _ => rfl) hf hs _
       · have h' : Δ (.step v st) = some T := by rwa [Ctx.ref_step_nonproj _ v hs] at h
         rw [Model.ShEnv.ref_nonproj _ j hs h]
         exact hitem _ T h'
@@ -614,6 +618,114 @@ theorem ann_eq_of_termShpC {i : ℕ} : ∀ {Δ : Ctx}
         injection hr' with e
         injection e
       rw [ann_eq_of_termShpC (hP.dia hr) u u' hb]
+
+include hF hV hS hW hM₀ hT in
+/-- ⭐**In a pushed root environment a term's shape is its annotation's.** -/
+theorem termShp_annC {i : ℕ} : ∀ {Δ : Ctx}
+    {τ : Model.ShEnv (carrows hF M₀) (fun _ => VarSymb) Δ (groot hF M₀)} {j : ℕ},
+    CPushed hF M₀ i Δ τ j → ∀ {A : VarType} {a : Ann A} (t : Term σ Δ A a),
+      Model.termShp τ j t = annC (groot hF M₀) a
+  | _, _, _, _, _, _, .var _ _ => rfl
+  | _, _, _, _, _, _, .func _ => rfl
+  | _, _, _, _, _, _, .unit => rfl
+  | _, _, _, hP, _, _, .pair t₁ t₂ => by
+      change Shp.prod _ _ = Shp.prod _ _
+      rw [termShp_annC hP t₁, termShp_annC hP t₂]
+  | _, _, _, hP, _, _, .boxtm u => by
+      change Shp.box _ = Shp.box _
+      rw [termShp_annC hP.box u]
+  | Δ, τ, j, hP, _, _, .diatm x hx u => by
+      obtain ⟨X, hr⟩ := id hx
+      rw [Model.termShp_diatm τ j hr hx u, termShp_annC (hP.dia hr) u,
+        ((hP.ref hV hS hW hM₀ hT) x hr).2]
+      rfl
+
+include hF hV hS hW hM₀ hT in
+/-- The address shape of a position of a declared root address is well-formed. -/
+theorem annC_eta_wf {v : VarSymb} {U : VarType} (hd : DeclAt (groot hF M₀) v U)
+    (hv : PPath v.path) (g : GW hF M₀) :
+    ∀ (T : VarType) (π : List Step) (lw : List Bool), Step.walkTy U π = some T →
+      Step.levels π = lw.length → (∀ j, lw[j]? = some true → lvlStep j π = some .keep) →
+      Model.ShWF (F := carrows hF M₀) (Root := fun _ => VarSymb) lw
+        (annC g (Ann.eta (v.ext π) T))
+  | .Var, _, _, _, _, _ => trivial
+  | .VTypeOne, _, _, _, _, _ => trivial
+  | .VTypeProd A C, π, lw, hw, hl, hk => by
+      have hlv : ∀ (st : Step), st.isProj = true → ∀ j, lw[j]? = some true →
+          lvlStep j (π ++ [st]) = some .keep := fun st hs j hj => by
+        rw [lvlStep_append, if_pos (by rw [hl]; exact (List.getElem?_eq_some_iff.mp hj).1)]
+        exact hk j hj
+      have hl' : ∀ (st : Step), st.isProj = true → Step.levels (π ++ [st]) = lw.length :=
+        fun st hs => by rw [Step.levels_append, hl]; simp [Step.levels, hs]
+      refine ⟨?_, ?_⟩
+      · have := annC_eta_wf hd hv g A (π ++ [.fst]) lw
+          (by rw [Step.walkTy_append, hw]; rfl) (hl' .fst rfl) (hlv .fst rfl)
+        rwa [VarSymb.ext_append_single] at this
+      · have := annC_eta_wf hd hv g C (π ++ [.snd]) lw
+          (by rw [Step.walkTy_append, hw]; rfl) (hl' .snd rfl) (hlv .snd rfl)
+        rwa [VarSymb.ext_append_single] at this
+  | .VTypeBox A, π, lw, hw, hl, hk => by
+      have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
+      have := annC_eta_wf hd hv g A (π ++ [.keep, .here]) (lw ++ [true])
+        (by
+          rw [Step.walkTy_append, hw, Option.bind_some, walkTy_keep rfl, walkTy_here hT]
+          rfl)
+        (by rw [Step.levels_append, hl]; simp [Step.levels, Step.isProj])
+        (fun j hj => by
+          rw [lvlStep_append]
+          by_cases hjl : j < lw.length
+          · rw [if_pos (by rw [hl]; exact hjl)]
+            exact hk j (by rwa [List.getElem?_append_left hjl] at hj)
+          · rw [if_neg (by omega)]
+            have hj' : j - lw.length = 0 := by
+              rw [List.getElem?_append_right (by omega)] at hj
+              by_contra hne
+              rw [List.getElem?_eq_none (by simp; omega)] at hj
+              cases hj
+            rw [hl, hj', lvlStep_lvl_zero rfl])
+      change Model.ShWF (F := carrows hF M₀) (Root := fun _ => VarSymb) (lw ++ [true])
+        (annC g (Ann.eta (v.ext π).inner A))
+      rw [VarSymb.inner_keepOnly hko]
+      rw [VarSymb.ext_append] at this
+      exact this
+  | .VTypeDia A, π, lw, hw, hl, hk => by
+      refine ⟨cLab_wf hV hS hW hM₀ hT _ hd hv hw rfl hl hk g, ?_⟩
+      have := annC_eta_wf hd hv g A (π ++ [.dia]) (lw ++ [false])
+        (by rw [Step.walkTy_append, hw]; rfl)
+        (by rw [Step.levels_append, hl]; simp [Step.levels, Step.isProj])
+        (fun j hj => by
+          rw [lvlStep_append]
+          by_cases hjl : j < lw.length
+          · rw [if_pos (by rw [hl]; exact hjl)]
+            exact hk j (by rwa [List.getElem?_append_left hjl] at hj)
+          · exfalso
+            rw [List.getElem?_append_right (by omega)] at hj
+            by_cases hj0 : j - lw.length = 0
+            · rw [hj0] at hj
+              cases hj
+            · rw [List.getElem?_eq_none (by simp; omega)] at hj
+              cases hj)
+      rwa [VarSymb.ext_append_single] at this
+
+include hF hV hS hW hM₀ hT in
+/-- ⭐**The root's environment is well-formed.** -/
+theorem cE_wf (i : ℕ) : (cE hF M₀ (ctxOf (glat (groot hF M₀) i))).WF [] := by
+  intro v T h
+  obtain ⟨r, rfl⟩ := ctxOf_decl h
+  have hr : (ctxOf (glat (groot hF M₀) i)).ref (.root (.free r)) = some T := by
+    rw [Ctx.ref_nonproj _ rfl]
+    exact h
+  exact annC_eta_wf hV hS hW hM₀ hT ⟨i, hr⟩ ppath_nil _ T [] [] rfl rfl
+    (fun _ hj => by simp at hj)
+
+include hF hV hS hW hM₀ hT in
+/-- ⭐**An applied map moves the annotation's shape as it moves shapes**, at the root. -/
+theorem annC_applyG {R : ℕ} {B C : VarType} (g : GFunc σ B C) {b : Ann B}
+    (t : Term σ (ctxOf (glat (groot hF M₀) R)) B b) :
+    annC (groot hF M₀) (Canon.applyG g t).1 = GFunc.shp g 0 (annC (groot hF M₀) b) := by
+  rw [← termShp_annC hV hS hW hM₀ hT (CPushed.base (i := R)) t,
+    ← termShp_annC hV hS hW hM₀ hT (CPushed.base (i := R)) (Canon.applyG g t).2]
+  exact Canon.termShp_applyG g t _ 0 (lw := []) rfl fun _ => cE_wf hV hS hW hM₀ hT R
 
 end Inj
 

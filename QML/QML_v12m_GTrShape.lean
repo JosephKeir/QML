@@ -63,35 +63,36 @@ theorem npl_dia : ∀ {Γ Δ : Ctx} (C : GTr σ Γ Δ) (x : VarSymb)
 
 end GTr
 
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+variable {F : Arrows.{0, 0} σ} {Root : F.W → Type} [Arrows.RootKeep F Root]
 
 /-! ## The pulled environment -/
 
 /-- The environment a collapse pulls back: each address read at its collapse. -/
 noncomputable def colPullG {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Collapses k Γ₁ Γ₂)
-    (hnp : Γ₁.NoProjLast) {t : GW hF M₀} (ρ : GEnv hF M₀ Γ₂ t) : GEnv hF M₀ Γ₁ t :=
+    (hnp : Γ₁.NoProjLast) {t : F.W} (ρ : Model.ShEnv F Root Γ₂ t) : Model.ShEnv F Root Γ₁ t :=
   fun v T hv => ρ.ref 0 (v.collapse k) (h v T ((Ctx.ref_nonproj Γ₁ (hnp v T hv)).trans hv))
 
 theorem colPullG_agree {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Collapses k Γ₁ Γ₂) (hnp : Γ₁.NoProjLast)
-    {t : GW hF M₀} (ρ : GEnv hF M₀ Γ₂ t) : Model.ShEnv.CollapseAgree h (colPullG h hnp ρ) ρ 0 :=
+    {t : F.W} (ρ : Model.ShEnv F Root Γ₂ t) :
+    Model.ShEnv.CollapseAgree h (colPullG h hnp ρ) ρ 0 :=
   Model.ShEnv.CollapseAgree.of_raw fun _ _ _ _ => rfl
 
-theorem colPullG_wf {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Collapses k Γ₁ Γ₂) (hnp : Γ₁.NoProjLast)
-    {t : GW hF M₀} {ρ : GEnv hF M₀ Γ₂ t} (hρ : ρ.WF []) : (colPullG h hnp ρ).WF [] :=
+theorem colPullG_wf [Arrows.RootKeepLaws F Root] {k : ℕ} {Γ₁ Γ₂ : Ctx}
+    (h : Ctx.Collapses k Γ₁ Γ₂) (hnp : Γ₁.NoProjLast) {t : F.W} {ρ : Model.ShEnv F Root Γ₂ t}
+    (hρ : ρ.WF []) : (colPullG h hnp ρ).WF [] :=
   fun _ _ _ => Model.ShEnv.wf_ref' (k := 0) hρ rfl _ _
 
 /-- ⭐**The environment a chain pulls back**. -/
-noncomputable def pullC {t : GW hF M₀} : {Γ Δ : Ctx} → (C : GTr σ Γ Δ) → C.NPL →
-    GEnv hF M₀ Δ t → GEnv hF M₀ Γ t
+noncomputable def pullC {t : F.W} : {Γ Δ : Ctx} → (C : GTr σ Γ Δ) → C.NPL →
+    Model.ShEnv F Root Δ t → Model.ShEnv F Root Γ t
   | _, _, .nil _, _, ρ => ρ
   | _, _, .sub θ hθ _ C, hC, ρ => Model.substShEnv θ hθ hC.1 (pullC C hC.2 ρ) 0
   | _, _, .sh h C, hC, ρ => shiftPull h hC.1 (pullC C hC.2 ρ)
   | _, _, .mono h C, hC, ρ => fun v T hv => pullC C hC ρ v T (h v T hv)
   | _, _, .col h C, hC, ρ => colPullG h hC.1 (pullC C hC.2 ρ)
 
-theorem pullC_wf {t : GW hF M₀} : ∀ {Γ Δ : Ctx} (C : GTr σ Γ Δ) (hC : C.NPL)
-    {ρ : GEnv hF M₀ Δ t}, ρ.WF [] → (pullC C hC ρ).WF []
+theorem pullC_wf [Arrows.RootKeepLaws F Root] {t : F.W} : ∀ {Γ Δ : Ctx} (C : GTr σ Γ Δ)
+    (hC : C.NPL) {ρ : Model.ShEnv F Root Δ t}, ρ.WF [] → (pullC C hC ρ).WF []
   | _, _, .nil _, _, _, hρ => hρ
   | _, _, .sub θ hθ _ C, hC, _, hρ => substShEnv_wf θ hθ hC.1 (pullC_wf C hC.2 hρ)
   | _, _, .sh h C, hC, _, hρ => shiftPull_wf h hC.1 (pullC_wf C hC.2 hρ)
@@ -99,8 +100,9 @@ theorem pullC_wf {t : GW hF M₀} : ∀ {Γ Δ : Ctx} (C : GTr σ Γ Δ) (hC : C
   | _, _, .col h C, hC, _, hρ => colPullG_wf h hC.1 (pullC_wf C hC.2 hρ)
 
 /-- ⭐**The shape of a chain's image is the term's shape in the pulled environment.** -/
-theorem termShp_gtr {t : GW hF M₀} : ∀ {Γ Δ : Ctx} (C : GTr σ Γ Δ) (hC : C.NPL)
-    (ρ : GEnv hF M₀ Δ t), ρ.WF [] → ∀ {A : VarType} {a : Ann A} (X : Term σ Γ A a),
+theorem termShp_gtr [Arrows.RootKeepLaws F Root] {t : F.W} : ∀ {Γ Δ : Ctx} (C : GTr σ Γ Δ)
+    (hC : C.NPL) (ρ : Model.ShEnv F Root Δ t), ρ.WF [] →
+    ∀ {A : VarType} {a : Ann A} (X : Term σ Γ A a),
       Model.termShp ρ 0 (C.app X).2 = Model.termShp (pullC C hC ρ) 0 X
   | _, _, .nil _, _, _, _, _, _, _ => rfl
   | _, _, .sub θ hθ hc C, hC, ρ, hρ, _, _, X => by

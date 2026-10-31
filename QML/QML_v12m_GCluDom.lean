@@ -42,14 +42,11 @@ variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
 /-- The flags of the K45 cluster model: 5 and both lifts on, T and B off. -/
 structure CluFlags : Prop where
   five : ModalSys.Five = true
-  noT : ModalSys.T = false
   fourS : ModalSys.FourStrong = true
   fourSW : ModalSys.FourStrongW = true
-  noB : ModalSys.B = false
+  /-- Weak B holds of the cluster only where the root has its loop. -/
+  bT : ModalSys.B = true → ModalSys.T = true
   noBStrong : ModalSys.BStrong = false
-
-theorem CluFlags.keepOnly (hX : CluFlags) : ModalSys.keepOnly = false := by
-  simp [ModalSys.keepOnly, hX.noT]
 
 theorem rpre (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ) :
     PPreOk (rpath s) (groot hF M₀) s (rpath_eq s) i :=
@@ -398,6 +395,22 @@ theorem cden_dia_c_neg (hX : CluFlags) {A : VarType} {a : Ann A} {Γ : Ctx} (s :
           (Or.resolve_left hb hr).2
           (preTD hX hM₀ s i (hx.imp fun _ h => e.ref h) (Term.mono (e.diaIn x) t)).2).2 :=
   dif_neg hr
+
+open Classical in
+/-- A possible term's content along an arrow it realises. -/
+theorem cden_dia_c_pos' (hX : CluFlags) {A : VarType} {a : Ann A} {Γ : Ctx} (s : GW hF M₀)
+    (i : ℕ) (e : Γ.Le (ctxOf (glat s i))) (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    (t : Term σ (Γ.diaIn x) A a) (b : CAcc hF M₀) (hb : b ∈ (cden hM₀ hX s i e (.diatm x hx t)).E)
+    (hr : (gw hM₀ b.1).Realised
+      (kw (groot hF M₀) b.1 (pathOf b.2.down) (pathOf_eq b.2.down) (rorig s x))) :
+    (cden hM₀ hX s i e (.diatm x hx t)).c ⟨b, hb⟩ =
+      cden hM₀ hX b.1 _ (Ctx.Le.refl _) (grealT hr (Ctx.Le.refl _)
+        (kw_decl hM₀ (groot hF M₀) b.1 (pathOf b.2.down) (pathOf_eq b.2.down) (rstg s i)
+          (rorig_ref hX hM₀ s i (hx.imp fun _ h => e.ref h)))
+        (pTrXK hM₀ (groot hF M₀) b.1 (pathOf b.2.down) (pathOf_eq b.2.down) (rstg s i)
+          (rorig s x) (rorig_ref hX hM₀ s i (hx.imp fun _ h => e.ref h))
+          (preTD hX hM₀ s i (hx.imp fun _ h => e.ref h) (Term.mono (e.diaIn x) t)).2).2).2 :=
+  dif_pos hr
 
 /-! ## At the root, and a world's denotation through the root -/
 

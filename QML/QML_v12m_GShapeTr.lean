@@ -29,32 +29,43 @@ abbrev GEnv (Γ : Ctx) (t : GW hF M₀) : Type :=
 
 /-! ## The pulled environments -/
 
-theorem entryShp_wf {Δ : Ctx} {t : GW hF M₀} {ρ : GEnv hF M₀ Δ t} (hρ : ρ.WF []) :
+section Pull
+
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms]
+
+variable {F : Arrows.{0, 0} σ} {Root : F.W → Type} [Arrows.RootKeep F Root]
+
+theorem entryShp_wf [Arrows.RootKeepLaws F Root] {Δ : Ctx} {t : F.W}
+    {ρ : Model.ShEnv F Root Δ t} (hρ : ρ.WF []) :
     ∀ (e : SubE σ Δ) {T : VarType} (h : e.OkRef T),
-      Model.ShWF (F := garrows hF M₀) (Root := fun _ => VarSymb) [] (Model.entryShp ρ 0 e h)
+      Model.ShWF (F := F) (Root := Root) [] (Model.entryShp ρ 0 e h)
   | .ren w, _, h => Model.ShEnv.wf_ref' (k := 0) hρ rfl w h
   | .tm s, _, h => by
       cases h
       exact Model.shWF_termShp hρ s
   | .hide, _, h => h.elim
 
-theorem substShEnv_wf {Γ Δ : Ctx} {t : GW hF M₀} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
-    (hnp : Γ.NoProjLast) {ρ : GEnv hF M₀ Δ t} (hρ : ρ.WF []) :
+theorem substShEnv_wf [Arrows.RootKeepLaws F Root] {Γ Δ : Ctx} {t : F.W} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hnp : Γ.NoProjLast) {ρ : Model.ShEnv F Root Δ t} (hρ : ρ.WF []) :
     (Model.substShEnv θ hθ hnp ρ 0).WF [] :=
   fun v _ _ => entryShp_wf hρ (θ v) _
 
 /-- The environment a shift pulls back: each address read at its shift. -/
 noncomputable def shiftPull {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂) (hnp : Γ₁.NoProjLast)
-    {t : GW hF M₀} (ρ : GEnv hF M₀ Γ₂ t) : GEnv hF M₀ Γ₁ t :=
+    {t : F.W} (ρ : Model.ShEnv F Root Γ₂ t) : Model.ShEnv F Root Γ₁ t :=
   fun v T hv => ρ.ref 0 (v.shift k) (h v T ((Ctx.ref_nonproj Γ₁ (hnp v T hv)).trans hv))
 
 theorem shiftPull_agree {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂) (hnp : Γ₁.NoProjLast)
-    {t : GW hF M₀} (ρ : GEnv hF M₀ Γ₂ t) : Model.ShEnv.ShiftAgree h (shiftPull h hnp ρ) ρ 0 :=
+    {t : F.W} (ρ : Model.ShEnv F Root Γ₂ t) :
+    Model.ShEnv.ShiftAgree h (shiftPull h hnp ρ) ρ 0 :=
   Model.ShEnv.ShiftAgree.of_raw fun _ _ _ _ => rfl
 
-theorem shiftPull_wf {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂) (hnp : Γ₁.NoProjLast)
-    {t : GW hF M₀} {ρ : GEnv hF M₀ Γ₂ t} (hρ : ρ.WF []) : (shiftPull h hnp ρ).WF [] :=
+theorem shiftPull_wf [Arrows.RootKeepLaws F Root] {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂)
+    (hnp : Γ₁.NoProjLast) {t : F.W} {ρ : Model.ShEnv F Root Γ₂ t} (hρ : ρ.WF []) :
+    (shiftPull h hnp ρ).WF [] :=
   fun _ _ _ => Model.ShEnv.wf_ref' (k := 0) hρ rfl _ _
+
+end Pull
 
 /-- The environment collapsing the `□` view pulls back: the view's shapes collapsed. -/
 noncomputable abbrev colPull (hT : ModalSys.T = true) {Γ : Ctx} {t : GW hF M₀}

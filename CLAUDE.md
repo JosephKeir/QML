@@ -12,8 +12,8 @@ Lean 4 + Mathlib formalisation of a quantified modal logic with first-class poss
   holds for every flag; completeness, strong completeness and compactness for every flag
   combination without B (`[ModalSys.NoB]`, `QML_v12m_NoBComplete.lean`: the staged tree `Canon`
   without 4, the growing tree `GArrow` with 4 and any of its strong forms, and the cluster model
-  `GArrow.cmodel` for 5 — so far K45 and KD45 with both lifts, `ModalSys.NoB.fiveCluster`). B with
-  4 off
+  `GArrow.cmodel` for 5 — so far K45, KD45 and S5 with both lifts, `ModalSys.NoB.fiveCluster`; S5
+  with `B` on through `GArrow.CluFlags` and the `C` theorems directly). B with 4 off
   (`[ModalSys.NoFour]`, which includes `ModalSys.WCoh`; T, D and B each in either strength;
   strong B for rows 1–2 and, with `BStrongW`, rows 3–4) is complete for **every presented
   context** with a fresh presentation

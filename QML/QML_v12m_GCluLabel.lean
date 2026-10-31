@@ -164,6 +164,11 @@ theorem cLab_keep {v : VarSymb} (hv : PPath v.path) (r : List Step) (w : GW hF M
   simp only [VarSymb.ext_rt]
   rw [show (VarSymb.step v .keep).rt = v.rt from rfl, VarSymb.root_ext_path]
 
+/-- The label at one anchor, moved to another. -/
+theorem cLab_rean (y : VarSymb) (g g' : GW hF M₀) : CLeaf.rean g' (cLab y g) = cLab y g' := by
+  rw [cLab, cLab]
+  split <;> rfl
+
 /-! ## Declared addresses -/
 
 section Decl

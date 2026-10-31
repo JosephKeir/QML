@@ -333,8 +333,12 @@ and R4 in the model: at modal types every world defines what the root defines); 
 path translation's round trip); `GCluFunc` (the function algebra); `GCluModel` (the model);
 `GCluTerm`, `GCluTruth` (the truth lemma); **`GCluCompleteness`: K45 and KD45 with both lifts
 complete** (presented contexts, strong completeness, compactness), and dispatched in
-`NoBComplete` (`NoB.fiveCluster` in place of the temporary `noFive`).  Next for 5: the other
-systems (K5/KD5, K45 without both lifts, 5 with T, strong 5), and B with 5.
+`NoBComplete` (`NoB.fiveCluster` in place of the temporary `noFive`).
+
+**S5 with both lifts complete (2026-10-31).**  The cluster model carries T, strong T and weak B
+(`CluFlags`: 5, both lifts, `B → T`, strong B off), so the `C` theorems cover K45, KD45 and S5, with
+`B` on or off; `NoB.fiveCluster` no longer asks for T off.  Next for 5: strong B on S5 (`back_keep`),
+a dispatch with `B` on, then KB5/KDB5, the open lifts, and K5/KD5.
 
 **S5, paper check (2026-10-30; `v12-modal-extensions.md` §3 5, "paper check for S5").**
 * Under T the root is in the cluster already (the empty path is an arrow).  So S5 is the K45

@@ -12,8 +12,11 @@ against `GCanonModel`"), as `GCanonModel`/`GCanonLift` for the growing tree.
 * The carriers are the definable raw objects (`CDefinable`), the function algebra acts by
   `crawEval` (`cops`, `ceval_toDom`); `necDup`, `posKeep` and `posSide` read an object along every
   arrow as itself.
-* `cposSerial` (strong D), `ckeepLift` (strong 4) and ⭐`cmodel`: the model, every law of 4
-  and 5 by definition or by R4.
+* `cposFull`, `cposShape_wf`: under T a possible object's shape, stored at the root and moved to
+  the world (`CLeaf.rean`), is its annotation's; the operations move it (`shp_rean`,
+  `cdiaMap_shape`, `cstrength_shape`, `ckeep_shape`).
+* `cposSerial` (strong D), `ckeepLift` (strong 4), `cInd` and `cposRet_exists` (strong T), and
+  ⭐`cmodel`: the model, every law of 4 and 5 by definition or by R4.
 -/
 
 namespace V12M
@@ -27,20 +30,142 @@ open BArrow
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
   {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
 
-theorem CluFlags.absT (hX : CluFlags) (hT : ModalSys.T = true) : False := by
-  rw [hX.noT] at hT
-  cases hT
-
-theorem CluFlags.absB (hX : CluFlags) (hB : ModalSys.B = true) : False := by
-  rw [hX.noB] at hB
-  cases hB
-
 theorem CluFlags.absBS (hX : CluFlags) (hB : ModalSys.BStrong = true) : False := by
   rw [hX.noBStrong] at hB
   cases hB
 
-theorem CluFlags.absShaped (hX : CluFlags) (h : ModalSys.shaped = true) : False := by
-  simp [ModalSys.shaped, hX.noT, hX.noBStrong] at h
+/-- With strong B off the only shaped flag is T. -/
+theorem CluFlags.T_of_shaped (hX : CluFlags) (h : ModalSys.shaped = true) : ModalSys.T = true := by
+  simpa [ModalSys.shaped, hX.noBStrong] using h
+
+/-! ## Moving shapes between anchors -/
+
+theorem CLeaf.rean_rean {g : GW hF M₀} (s t : GW hF M₀) (l : CLeaf hF M₀ g) :
+    CLeaf.rean t (CLeaf.rean s l) = CLeaf.rean t l :=
+  match g, l with
+  | _, .root _ _ => rfl
+  | _, .fam _ => rfl
+
+theorem CLeaf.rean_self {g : GW hF M₀} (l : CLeaf hF M₀ g) : CLeaf.rean g l = l :=
+  match g, l with
+  | _, .root _ _ => rfl
+  | _, .fam _ => rfl
+
+theorem cshape_rean_rean {g : GW hF M₀} {T : VarType} (a : CShape hF M₀ g T) (s t : GW hF M₀) :
+    (a.map (CLeaf.rean s)).map (CLeaf.rean t) = a.map (CLeaf.rean t) := by
+  rw [Shp.map_map]
+  exact Shp.map_congr (fun l => CLeaf.rean_rean s t l) _
+
+theorem cshape_rean_self {g : GW hF M₀} {T : VarType} (a : CShape hF M₀ g T) :
+    a.map (CLeaf.rean g) = a :=
+  (Shp.map_congr (fun l => CLeaf.rean_self l) a).trans (Shp.map_id a)
+
+/-- A family of shapes is one shape, whatever the anchor. -/
+theorem transpose_rean (g t : GW hF M₀) : ∀ {A : VarType}
+    (f : (a : CAcc hF M₀) → CShape hF M₀ a.1 A),
+    (Arrows.transposeShp (F := carrows hF M₀) (Root := fun _ => VarSymb) (w := g) f).map
+        (CLeaf.rean t) =
+      Arrows.transposeShp (F := carrows hF M₀) (Root := fun _ => VarSymb) (w := t) f
+  | .Var, _ => rfl
+  | .VTypeOne, _ => rfl
+  | .VTypeProd A C, f => by
+      change Shp.prod _ _ = Shp.prod _ _
+      rw [transpose_rean g t (A := A), transpose_rean g t (A := C)]
+  | .VTypeBox A, f => by
+      change Shp.box _ = Shp.box _
+      rw [transpose_rean g t (A := A)]
+  | .VTypeDia A, f => by
+      change Shp.dia _ _ = Shp.dia _ _
+      rw [transpose_rean g t (A := A)]
+      rfl
+
+/-- Below the anchor's level a leaf operation does not see the anchor. -/
+theorem rean_collapse (hT : ModalSys.T = true) (t : GW hF M₀) (i : ℕ) {g : GW hF M₀}
+    (l : CLeaf hF M₀ g) :
+    CLeaf.rean t (Arrows.Leaf.collapse hT (i + 1) l) =
+      Arrows.Leaf.collapse hT (i + 1) (CLeaf.rean t l) :=
+  match g, l with
+  | _, .root _ _ => rfl
+  | _, .fam _ => rfl
+
+theorem rean_shift (hF' : ModalSys.Four = true) (t : GW hF M₀) (i : ℕ) {g : GW hF M₀}
+    (l : CLeaf hF M₀ g) :
+    CLeaf.rean t (Arrows.Leaf.shift hF' (i + 1) l) =
+      Arrows.Leaf.shift hF' (i + 1) (CLeaf.rean t l) :=
+  match g, l with
+  | _, .root _ _ => rfl
+  | _, .fam _ => rfl
+
+theorem rean_dk (hF' : ModalSys.Four = true) (t : GW hF M₀) (i : ℕ) {g : GW hF M₀}
+    (l : CLeaf hF M₀ g) :
+    CLeaf.rean t (Arrows.Leaf.dk hF' (i + 1) l) = Arrows.Leaf.dk hF' (i + 1) (CLeaf.rean t l) :=
+  match g, l with
+  | _, .root _ _ => rfl
+  | _, .fam _ => rfl
+
+theorem rean_dkB (hF' : ModalSys.Four = true) (t : GW hF M₀) (i : ℕ) {g : GW hF M₀}
+    (l : CLeaf hF M₀ g) :
+    CLeaf.rean t (Arrows.Leaf.dkB hF' (i + 1) l) = Arrows.Leaf.dkB hF' (i + 1) (CLeaf.rean t l) :=
+  match g, l with
+  | _, .root _ _ => rfl
+  | _, .fam _ => rfl
+
+/-- ⭐**Below the anchor's level a map moves a shape as it moves the shape's move.** -/
+theorem shp_rean (t : GW hF M₀) {g : GW hF M₀} : ∀ {A B : VarType} (f : GFunc σ A B) (j : ℕ)
+    (a : CShape hF M₀ g A),
+    (GFunc.shp f (j + 1) a).map (CLeaf.rean t) = GFunc.shp f (j + 1) (a.map (CLeaf.rean t))
+  | _, _, .id _, _, _ => rfl
+  | _, _, .comp f₂ f₁, j, a => by
+      change (GFunc.shp f₂ (j + 1) (GFunc.shp f₁ (j + 1) a)).map _ =
+        GFunc.shp f₂ (j + 1) (GFunc.shp f₁ (j + 1) _)
+      rw [shp_rean t f₂ j, shp_rean t f₁ j]
+  | _, _, .fst, _, .prod _ _ => rfl
+  | _, _, .snd, _, .prod _ _ => rfl
+  | _, _, .pair f₁ f₂, j, a => by
+      change Shp.prod _ _ = Shp.prod _ _
+      rw [shp_rean t f₁ j, shp_rean t f₂ j]
+  | _, _, .unit _, _, _ => rfl
+  | _, _, .func _ _, _, _ => rfl
+  | _, _, .boxMap f, j, .box a => congrArg Shp.box (shp_rean t f (j + 1) a)
+  | _, _, .boxPair _ _, _, .prod (.box _) (.box _) => rfl
+  | _, _, .boxUnit, _, _ => rfl
+  | _, _, .diaMap f, j, .dia _ a => congrArg (Shp.dia _) (shp_rean t f (j + 1) a)
+  | _, _, .strength _ _, _, .prod (.box _) (.dia _ _) => rfl
+  | _, _, .extract hT, j, .box a => by
+      change (a.map (Arrows.Leaf.collapse hT (j + 1))).map (CLeaf.rean t) =
+        (a.map (CLeaf.rean t)).map (Arrows.Leaf.collapse hT (j + 1))
+      rw [Shp.map_map, Shp.map_map]
+      exact Shp.map_congr (fun l => rean_collapse hT t j l) _
+  | _, _, .dup hF', j, .box a => by
+      change Shp.box (Shp.box ((a.map (Arrows.Leaf.shift hF' (j + 1))).map (CLeaf.rean t))) =
+        Shp.box (Shp.box ((a.map (CLeaf.rean t)).map (Arrows.Leaf.shift hF' (j + 1))))
+      rw [Shp.map_map, Shp.map_map]
+      exact congrArg (fun z => Shp.box (Shp.box z))
+        (Shp.map_congr (fun l => rean_shift hF' t j l) _)
+  | _, _, .dkeep hF', j, .dia l a => by
+      change Shp.box (Shp.dia _ ((a.map (Arrows.Leaf.dkB hF' (j + 1))).map (CLeaf.rean t))) =
+        Shp.box (Shp.dia _ ((a.map (CLeaf.rean t)).map (Arrows.Leaf.dkB hF' (j + 1))))
+      rw [Shp.map_map, Shp.map_map, rean_dk]
+      exact congrArg (fun z => Shp.box (Shp.dia _ z))
+        (Shp.map_congr (fun l => rean_dkB hF' t j l) _)
+
+theorem leafWF_rean (t : GW hF M₀) {g : GW hF M₀} (lw : List Bool) (l : CLeaf hF M₀ g)
+    (h : Arrows.Leaf.WF lw l) : Arrows.Leaf.WF lw (CLeaf.rean t l) :=
+  match g, lw, l, h with
+  | _, _, .root _ _, h => h
+  | _, [], .fam _, h => h
+  | _, _ :: _, .fam _, h => h
+
+/-- Moving a shape keeps it well-formed. -/
+theorem shWF_rean (t : GW hF M₀) {g : GW hF M₀} : ∀ {A : VarType} (lw : List Bool)
+    (a : CShape hF M₀ g A),
+    Model.ShWF (F := carrows hF M₀) (Root := fun _ => VarSymb) lw a →
+      Model.ShWF (F := carrows hF M₀) (Root := fun _ => VarSymb) lw (a.map (CLeaf.rean t))
+  | _, _, .var, _ => trivial
+  | _, _, .one, _ => trivial
+  | _, lw, .prod a b, h => ⟨shWF_rean t lw a h.1, shWF_rean t lw b h.2⟩
+  | _, lw, .box a, h => shWF_rean t (lw ++ [true]) a h
+  | _, lw, .dia l a, h => ⟨leafWF_rean t lw l h.1, shWF_rean t (lw ++ [false]) a h.2⟩
 
 /-! ## The frame -/
 
@@ -52,14 +177,14 @@ noncomputable def cframe (hX : CluFlags) : Frame.{0, 0} σ where
   toArrows := carrows hF M₀
   actual := groot hF M₀
   serial := fun hD _ => gserial hM₀ hD (groot hF M₀)
-  symm := fun hB => (hX.absB hB).elim
+  symm := fun hB {w _} _ => ⟨(carrows hF M₀).refl (hX.bT hB) w⟩
   homeUnique := fun _ => ⟨fun _ _ => rfl⟩
   side := fun _ {_ _ _} _ b => b
   side_inj := fun _ {_ _ _ _} _ _ _ h => h
   side_side := fun _ {_ _ _ _} _ _ _ => rfl
   trans_side := fun _ _ {_ _ _} _ _ => rfl
   side_trans := fun _ _ {_ _ _ _} _ _ _ => rfl
-  side_refl := fun hT => (hX.absT hT).elim
+  side_refl := fun _ _ {_ _} _ => rfl
   D s := (gw hM₀ s).D
   Nec A s := {o : CRDom hM₀ (.VTypeBox A) s // CDefinable hM₀ hX (.VTypeBox A) s o}
   Pos A s := {o : CRDom hM₀ (.VTypeDia A) s // CDefinable hM₀ hX (.VTypeDia A) s o}
@@ -164,15 +289,46 @@ theorem cnecEval_injective (hX : CluFlags) {A : VarType} {s : GW hF M₀} :
   funext a
   exact ctoDom_inj hX (congrFun h a)
 
-theorem cposEval_injective (hX : CluFlags) {A : VarType} {s : GW hF M₀} :
-    Function.Injective (cposEval hM₀ hX (A := A) (s := s)) := by
+/-- ⭐Evaluation of possible objects, in full: the section and, when shaped, the shape. -/
+def cposFull (hX : CluFlags) {A : VarType} {s : GW hF M₀} (p : (cframe hF hM₀ hX).Pos A s) :
+    (cframe hF hM₀ hX).PosSec A s × (ModalSys.shaped = true → CShape hF M₀ s (.VTypeDia A)) :=
+  (cposEval hM₀ hX p, fun hSh => crawShape (hX.T_of_shaped hSh) p.1)
+
+/-- A possible object is its section and, when shaped, its shape. -/
+theorem cposFull_injective (hX : CluFlags) {A : VarType} {s : GW hF M₀} :
+    Function.Injective (cposFull hM₀ hX (A := A) (s := s)) := by
   rintro ⟨⟨E, c, τ⟩, hp⟩ ⟨⟨E', c', τ'⟩, hp'⟩ h
-  simp only [cposEval] at h
-  obtain ⟨rfl, hc⟩ := Sigma.mk.inj_iff.mp h
+  have h₁ := congrArg Prod.fst h
+  have h₂ := congrArg Prod.snd h
+  simp only [cposFull, cposEval] at h₁ h₂
+  obtain ⟨rfl, hc⟩ := Sigma.mk.inj_iff.mp h₁
   have hc' := eq_of_heq hc
   apply Subtype.ext
-  exact CRPos.congr_cont (funext fun a => ctoDom_inj hX (congrFun hc' a))
-    fun hT => (hX.absT hT).elim
+  refine CRPos.congr_cont (funext fun a => ctoDom_inj hX (congrFun hc' a)) fun hT => ?_
+  have e : (τ hT).map (CLeaf.rean s) = (τ' hT).map (CLeaf.rean s) :=
+    congrFun h₂ (ModalSys.shaped_of_T hT)
+  have e' := congrArg (Shp.map (CLeaf.rean (groot hF M₀))) e
+  rwa [cshape_rean_rean, cshape_rean_rean, cshape_rean_self, cshape_rean_self] at e'
+
+/-- ⭐**The shapes are well-formed**: a possible object is a root term's denotation (R4), whose
+    shape is the term's annotation's (`crawShape_cden`), the term's shape in the root's
+    environment (`termShp_annC`). -/
+theorem cposShape_wf (hX : CluFlags) (hT : ModalSys.T = true) {A : VarType} {s : GW hF M₀}
+    (p : (cframe hF hM₀ hX).Pos A s) :
+    Model.ShWF (F := carrows hF M₀) (Root := fun _ => VarSymb) [] (crawShape hT p.1) := by
+  obtain ⟨i, a, t, ht⟩ := (cdefinable_dia_iff hX s p.1).mp p.2
+  have e : crawShape hT (s := groot hF M₀) (A := .VTypeDia A) p.1 = annC (groot hF M₀) a := by
+    rw [← ht, crawShape_cden hX hM₀ hT, show preIx (groot hF M₀) = id from funext preIx_root,
+      Ann.mapIdx_id]
+  have hw : Model.ShWF (F := carrows hF M₀) (Root := fun _ => VarSymb) []
+      (annC (groot hF M₀) a) := by
+    rw [← termShp_annC hX.five hX.fourS hX.fourSW hM₀ hT (CPushed.base (i := i)) t]
+    exact Model.shWF_termShp (lw := []) (cE_wf hX.five hX.fourS hX.fourSW hM₀ hT i) t
+  have e' : crawShape hT (s := s) (A := .VTypeDia A) p.1 =
+      (crawShape hT (s := groot hF M₀) (A := .VTypeDia A) p.1).map (CLeaf.rean s) :=
+    (cshape_rean_rean _ _ _).symm
+  rw [e', e]
+  exact shWF_rean s [] _ hw
 
 variable (hF) in
 /-- ⭐**The function algebra on the carriers**; `posSide` is `posKeep`, 4's keep being the
@@ -188,7 +344,8 @@ noncomputable def cops (hX : CluFlags) : (cframe hF hM₀ hX).Ops where
   posStrength n p := ⟨crawEval hM₀ hX (.strength _ _) _
       ((n.1, p.1) : CRDom hM₀ (.VTypeProd (.VTypeBox _) (.VTypeDia _)) _),
     cdefinable_rawEval hX (.strength _ _) (cdefinable_pair hX n.2 p.2)⟩
-  necExtract hT _ := (hX.absT hT).elim
+  necExtract hT n := ctoDom hM₀ hX _ _ (crawEval hM₀ hX (.extract hT) _ n.1)
+    (cdefinable_rawEval hX (.extract hT) n.2)
   necDup hF' n := ⟨crawEval hM₀ hX (.dup hF') _ n.1, cdefinable_rawEval hX (.dup hF') n.2⟩
   posKeep hF' p := ⟨crawEval hM₀ hX (.dkeep hF') _ p.1, cdefinable_rawEval hX (.dkeep hF') p.2⟩
   posSide _ p := ⟨crawEval hM₀ hX (.dkeep hF) _ p.1, cdefinable_rawEval hX (.dkeep hF) p.2⟩
@@ -213,7 +370,7 @@ theorem ceval_toDom (hX : CluFlags) : ∀ {A C : VarType} (g : GFunc σ A C) (s 
   | _, _, .boxUnit, _, _, _ => rfl
   | _, _, .diaMap _, _, _, _ => rfl
   | _, _, .strength _ _, _, _, _ => rfl
-  | _, _, .extract hT, _, _, _ => (hX.absT hT).elim
+  | _, _, .extract _, _, _, _ => rfl
   | _, _, .dup _, _, _, _ => rfl
   | _, _, .dkeep _, _, _, _ => rfl
 
@@ -240,9 +397,15 @@ theorem cposSerial (hX : CluFlags) (hDS : ModalSys.DStrong = true) (s : GW hF M�
         rw [← e]
         exact hmem)
       have hR : GR (groot hF M₀) t' := ⟨[c], pathOk_cons, hc⟩
-      exact ⟨⟨cden hM₀ hX (groot hF M₀) j (Ctx.Le.refl _) (.diatm x hx u),
-          cdefinable_dia_of_root hX s _ (cdefinable_den hX _ _)⟩,
-        ⟨⟨⟨t', ⟨hR⟩⟩, .inr ⟨hX.noT, inExt_pathOf hR (P := [c]) (h := hc) hk⟩⟩⟩⟩
+      refine ⟨⟨cden hM₀ hX (groot hF M₀) j (Ctx.Le.refl _) (.diatm x hx u),
+          cdefinable_dia_of_root hX s _ (cdefinable_den hX _ _)⟩, ⟨⟨⟨t', ⟨hR⟩⟩, ?_⟩⟩⟩
+      by_cases hT : ModalSys.T = true
+      · have key : ∀ (P : List ℕ) (h : t'.1 = nodeOf (groot hF M₀).1 P), P = [c] →
+            GMem hM₀ (groot hF M₀) t' P h x := by
+          rintro _ h rfl
+          exact .inl (grealised_wit hM₀ hT ⟨c, hc⟩ hk j hX')
+        exact key _ _ (pathOf_of hR hc)
+      · exact .inr ⟨Bool.eq_false_iff.mpr hT, inExt_pathOf hR (P := [c]) (h := hc) hk⟩
 
 /-- ⭐**Strong 4 on the carriers**: along any arrow, an object of a liftable type at its end is
     the object itself kept at its source — definable there by R4. -/
@@ -263,10 +426,148 @@ theorem ckeepLift (hX : CluFlags) (hF' : ModalSys.Four = true) {T : VarType}
   | .VTypeOne, hl, _ => cases hl
   | .VTypeProd _ _, hl, _ => cases hl
 
+/-! ## The shapes of the operations -/
+
+/-- When shaped, a frame object's shape is its raw object's. -/
+theorem cdomShape_toDom (hX : CluFlags) (hSh : ModalSys.shaped = true) :
+    ∀ (A : VarType) (s : GW hF M₀) (o : CRDom hM₀ A s) (h : CDefinable hM₀ hX A s o),
+      Frame.domShape (cnecEval hM₀ hX) (fun q => (cposFull hM₀ hX q).2 hSh)
+          (ctoDom hM₀ hX A s o h) = crawShape (hX.T_of_shaped hSh) o
+  | .Var, _, _, _ => rfl
+  | .VTypeOne, _, _, _ => rfl
+  | .VTypeProd A C, s, o, h =>
+      congrArg₂ Shp.prod (cdomShape_toDom hX hSh A s o.1 (cdefinable_fst hX h))
+        (cdomShape_toDom hX hSh C s o.2 (cdefinable_snd hX h))
+  | .VTypeBox A, _, o, h =>
+      congrArg Shp.box (congrArg Arrows.transposeShp (funext fun a =>
+        cdomShape_toDom hX hSh A a.1 (o a) (cdefinable_box_apply hX h a)))
+  | .VTypeDia _, _, _, _ => rfl
+
+/-- A mapped possible object's shape. -/
+theorem cdiaMap_shape (hX : CluFlags) (hT : ModalSys.T = true) {A B : VarType} (f : GFunc σ A B)
+    {s : GW hF M₀} (p : CRDom hM₀ (.VTypeDia A) s) :
+    crawShape hT (crawEval hM₀ hX (.diaMap f) s p) =
+      .dia (crawShape hT p).label (GFunc.shp f 1 (crawShape hT p).body) := by
+  change (Shp.dia (p.tag hT).label (GFunc.shp f 1 (p.tag hT).body)).map (CLeaf.rean s) =
+    .dia ((p.tag hT).map (CLeaf.rean s)).label (GFunc.shp f 1 ((p.tag hT).map (CLeaf.rean s)).body)
+  generalize p.tag hT = τ
+  cases τ with
+  | dia l a => exact congrArg (Shp.dia _) (shp_rean s f 0 a)
+
+/-- A possible object's shape with a necessary object riding along. -/
+theorem cstrength_shape (hX : CluFlags) (hT : ModalSys.T = true) {A B : VarType} {s : GW hF M₀}
+    (n : CRDom hM₀ (.VTypeBox A) s) (p : CRDom hM₀ (.VTypeDia B) s) :
+    crawShape hT (crawEval hM₀ hX (.strength A B) s
+        ((n, p) : CRDom hM₀ (.VTypeProd (.VTypeBox A) (.VTypeDia B)) s)) =
+      .dia (crawShape hT p).label
+        (.prod (Arrows.transposeShp (F := carrows hF M₀) (Root := fun _ => VarSymb) (w := s)
+          fun a => crawShape hT (n a)) (crawShape hT p).body) := by
+  change (Shp.dia (p.tag hT).label
+      (.prod (Arrows.transposeShp (F := carrows hF M₀) (Root := fun _ => VarSymb)
+        (w := groot hF M₀) fun a => crawShape hT (n a)) (p.tag hT).body)).map (CLeaf.rean s) =
+    .dia ((p.tag hT).map (CLeaf.rean s)).label
+      (.prod (Arrows.transposeShp (F := carrows hF M₀) (Root := fun _ => VarSymb) (w := s)
+        fun a => crawShape hT (n a)) ((p.tag hT).map (CLeaf.rean s)).body)
+  generalize p.tag hT = τ
+  cases τ with
+  | dia l a =>
+      change Shp.dia _ (Shp.prod _ _) = Shp.dia _ (Shp.prod _ _)
+      rw [transpose_rean]
+      rfl
+
+/-- A possible object kept along an arrow has its shape moved along the arrow. -/
+theorem ckeep_shape (hT : ModalSys.T = true) (hF' : ModalSys.Four = true) {A : VarType}
+    {s : GW hF M₀} (a : (carrows hF M₀).Acc s) (p : CRDom hM₀ (.VTypeDia A) s) :
+    crawShape hT (s := a.1) (A := .VTypeDia A) p =
+      (crawShape hT (s := s) (A := .VTypeDia A) p).map (Arrows.Leaf.keepAlong hF' a) := by
+  rw [Shp.map_congr (fun l => keepAlong_rean hF' a l)]
+  exact (cshape_rean_rean _ _ _).symm
+
+/-! ## Strong T, and indistinguishability -/
+
+/-- ⭐**Canonical indistinguishability**: objects with representatives the world's theory cannot
+    tell apart (`gInd`). -/
+def cInd (hX : CluFlags) {A : VarType} {s : GW hF M₀} (o o' : (cframe hF hM₀ hX).Dom A s) : Prop :=
+  ∃ u u' : Canon.DTerm (gw hM₀ s).sys (gw hM₀ s).T A,
+    cden hM₀ hX s u.i (Ctx.Le.refl _) u.t = cfromDom hM₀ hX A s o ∧
+      cden hM₀ hX s u'.i (Ctx.Le.refl _) u'.t = cfromDom hM₀ hX A s o' ∧ u.Rel u'
+
+/-- Every object is definable, so it is related to itself. -/
+theorem cInd_refl (hX : CluFlags) {A : VarType} {s : GW hF M₀} (o : (cframe hF hM₀ hX).Dom A s) :
+    cInd hM₀ hX o o := by
+  obtain ⟨i, a, t, ht⟩ := cdefinable_fromDom hM₀ hX A s o
+  exact ⟨⟨i, a, t⟩, ⟨i, a, t⟩, ht, ht, Canon.DTerm.Rel.refl _⟩
+
+variable {hM₀}
+
+/-- A term and its lift to a later stage denote alike. -/
+theorem cden_lift (hX : CluFlags) {s : GW hF M₀} {i K : ℕ} (h : i ≤ K) {A : VarType} {a : Ann A}
+    (t : Term σ (ctxOf (glat s i)) A a) :
+    cden hM₀ hX s K (Ctx.Le.refl _) (Term.mono (gle hM₀ s h) t) =
+      cden hM₀ hX s i (Ctx.Le.refl _) t := by
+  rw [cden_mono]
+  exact cden_congr hX _ _ _ _ _ _
+
+/-- ⭐The realised content of the witness's own content address is the datum's content. -/
+theorem cden_grealT_eta (hX : CluFlags) {s : GW hF M₀} {x : VarSymb}
+    (hr : (gw hM₀ s).Realised x) {k : ℕ}
+    (hx : ∃ X, (ctxOf (glat s k)).ref x = some (.VTypeDia X))
+    (hdia : ((ctxOf (glat s k)).diaIn x).ref (.step x .dia) = some hr.data.A) :
+    cden hM₀ hX s _ (Ctx.Le.refl _)
+        (grealT hr (Ctx.Le.refl _) hx (Term.eta (.step x .dia) hr.data.A hdia)).2 =
+      cden hM₀ hX s hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀ := by
+  have hdecl : (ctxOf (glat s (max k hr.data.i₀))).ref x = some (.VTypeDia hr.data.A) :=
+    hr.data.hdeclOf _ (hx.imp fun _ h => (gle hM₀ s (le_max_left _ _)).ref h)
+  have hmono : (⟨_, Term.mono (((Ctx.Le.refl _).trans (gle hM₀ s (le_max_left _ _))).diaIn x)
+      (Term.eta (.step x .dia) hr.data.A hdia)⟩ : Σ z : Ann hr.data.A,
+        Term σ ((ctxOf (glat s (max k hr.data.i₀))).diaIn x) hr.data.A z) =
+      ⟨_, Term.eta (.step x .dia) hr.data.A (Ctx.ref_diaIn_of hdecl)⟩ := by
+    rw [Term.mono_eta]
+  simp only [grealT]
+  rw [cden_sigma hX _ (Canon.Term.realiseAtA_sigma hr.data.hT x hdecl _ hmono),
+    cden_sigma hX _ (Term.realiseAtA_eta hr.data.hT x hdecl
+      (Term.mono (gle hM₀ s (le_max_right _ _)) hr.data.t₀)),
+    cden_mono]
+  exact cden_congr hX _ _ _ _ _ _
+
+variable (hM₀)
+
+/-- ⭐**Strong T: every object of a domain is, up to `cInd`, the content along the world's own
+    arrow of a possible object** (`gposRet_exists_canon`, the own arrow's content by
+    `cden_own_content`). -/
+theorem cposRet_exists (hX : CluFlags) {A : VarType} {s : GW hF M₀} (hT : ModalSys.T = true)
+    (hS : ModalSys.TStrong = true) (o : (cframe hF hM₀ hX).Dom A s) :
+    ∃ (p : (cframe hF hM₀ hX).Pos A s)
+      (hm : (cframe hF hM₀ hX).reflAcc hT s ∈ (cposEval hM₀ hX p).1),
+      cInd hM₀ hX ((cposEval hM₀ hX p).2 ⟨(cframe hF hM₀ hX).reflAcc hT s, hm⟩) o := by
+  obtain ⟨i, a', t, ht⟩ := cdefinable_fromDom hM₀ hX A s o
+  obtain ⟨i', hi, y, hy, hmem⟩ := (gw hM₀ s).retW hT hS i t
+  have hr : (gw hM₀ s).Realised y :=
+    (gw hM₀ s).datum_of_here hT hy (Term.eta (.step y .dia) A (Ctx.ref_diaIn_of hy)) _ hmem
+  obtain rfl : hr.data.A = A := by
+    have := (hr.data.hdeclOf i' ⟨A, hy⟩).symm.trans hy
+    simpa using this
+  have hR : GR (groot hF M₀) s := (carrows hF M₀).refl hT s
+  have hm := (cden_own_mem hX hM₀ hT s hr.data.i₀ hr.data.hd₀
+    (Term.eta (.step y .dia) hr.data.A (Ctx.ref_diaIn_of hr.data.hd₀)) hR).mpr hr
+  refine ⟨⟨cden hM₀ hX s hr.data.i₀ (Ctx.Le.refl _)
+      (Term.eta y (.VTypeDia hr.data.A) hr.data.hd₀), cdefinable_den hX _ _⟩, hm, _,
+      ⟨i', _, Term.mono (gle hM₀ s hi) t⟩, ?_, ?_,
+      grel_here hT ⟨_, hy⟩ (Term.eta (.step y .dia) hr.data.A (Ctx.ref_diaIn_of hy)) _ hr hmem⟩
+  · have hc : ctoDom hM₀ hX _ s (cden hM₀ hX s hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀)
+        (cdefinable_den hX _ _) =
+        (cposEval hM₀ hX ⟨cden hM₀ hX s hr.data.i₀ (Ctx.Le.refl _)
+          (Term.eta y (.VTypeDia hr.data.A) hr.data.hd₀), cdefinable_den hX _ _⟩).2
+          ⟨(cframe hF hM₀ hX).reflAcc hT s, hm⟩ :=
+      ctoDom_congr hX (((cden_own_content hX hM₀ s hr.data.i₀ hr.data.hd₀ _ hR hm hr).trans
+        (cden_grealT_eta hX hr ⟨_, hr.data.hd₀⟩ (Ctx.ref_diaIn_of hr.data.hd₀))).symm) _ _
+    rw [cden_grealT_eta hX hr ⟨_, hy⟩ (Ctx.ref_diaIn_of hy), ← hc, cfromDom_toDom]
+  · exact (cden_lift hX hi t).trans ht
+
 /-! ## The model -/
 
 variable (hF) in
-/-- ⭐**The K45 cluster model** (5 and both lifts of 4 on, T and B off; D either way). -/
+/-- ⭐**The cluster model** (5 and both lifts of 4 on; T and D either way; weak B under T). -/
 noncomputable def cmodel (hX : CluFlags) : Model.{0, 0} σ where
   frame := cframe hF hM₀ hX
   necEval := cnecEval hM₀ hX
@@ -274,31 +575,37 @@ noncomputable def cmodel (hX : CluFlags) : Model.{0, 0} σ where
   RootPoss _ := VarSymb
   rootKeep := (instRootKeepC hF M₀).keep
   rootKeepLaws := instRootKeepLawsC hF M₀
-  posFull p := (cposEval hM₀ hX p, fun hS => (hX.absShaped hS).elim)
-  posFull_inj := fun h => cposEval_injective hM₀ hX (congrArg Prod.fst h)
-  posShape_wf := fun hS => (hX.absShaped hS).elim
+  posFull p := cposFull hM₀ hX p
+  posFull_inj := fun h => cposFull_injective hM₀ hX h
+  posShape_wf := fun hS {_} {_} p => cposShape_wf hM₀ hX (hX.T_of_shaped hS) p
   ops := cops hF hM₀ hX
   necMap_eval g _ a := (ceval_toDom hM₀ hX g a.1 _ _).symm
   necPair_eval _ _ _ := rfl
   posMap_full g _ := Prod.ext
     (congrArg (Sigma.mk _) (funext fun a => (ceval_toDom hM₀ hX g a.1.1 _ _).symm))
-    (funext fun hS => (hX.absShaped hS).elim)
-  posStrength_full _ _ := Prod.ext rfl (funext fun hS => (hX.absShaped hS).elim)
-  necExtract_eval hT _ := (hX.absT hT).elim
+    (funext fun hS => cdiaMap_shape hM₀ hX (hX.T_of_shaped hS) g _)
+  posStrength_full n p := Prod.ext rfl (funext fun hS =>
+    (cstrength_shape hM₀ hX (hX.T_of_shaped hS) n.1 p.1).trans
+      (congrArg (fun z => Shp.dia _ (Shp.prod z _)) (congrArg Arrows.transposeShp (funext fun s =>
+        (cdomShape_toDom hM₀ hX hS _ s.1 (n.1 s) (cdefinable_box_apply hX n.2 s)).symm))))
+  necExtract_eval _ _ := rfl
   necDup_eval _ _ _ _ := rfl
   keepLift hF' _ hl _ a o := ckeepLift hM₀ hX hF' hl a o
-  posKeep_full _ _ _ := Prod.ext rfl (funext fun hS => (hX.absShaped hS).elim)
+  posKeep_full hF' x a := Prod.ext rfl (funext fun hS =>
+    ckeep_shape (hM₀ := hM₀) (hX.T_of_shaped hS) hF' a x.1)
   posSide_ext _ x _ := by
     ext b
     exact ⟨fun hb => ⟨b, hb, rfl⟩, fun ⟨c, hc, e⟩ => by rw [← e]; exact hc⟩
   posSide_content _ _ _ _ _ _ := rfl
   posSerial hDS s := cposSerial hM₀ hX hDS s
-  Ind o o' := o = o'
-  Ind_refl _ := rfl
+  Ind o o' := (ModalSys.T = true → cInd hM₀ hX o o') ∧ (ModalSys.T = false → o = o')
+  Ind_refl o := ⟨fun _ => cInd_refl hM₀ hX o, fun _ => rfl⟩
   necSide_exists _ _ {_} {w} a n :=
     ⟨⟨n.1, (cdefinable_box_iff hX w n.1).mpr ((cdefinable_box_iff hX a.1 n.1).mp n.2)⟩,
-      fun _ => rfl⟩
-  posRet_exists hT _ _ := (hX.absT hT).elim
+      fun _ => ⟨fun _ => cInd_refl hM₀ hX _, fun _ => rfl⟩⟩
+  posRet_exists hT hS a := by
+    obtain ⟨p, hm, hp⟩ := cposRet_exists hM₀ hX hT hS a
+    exact ⟨p, hm, fun _ => hp, fun hT' => absurd (hT.symm.trans hT') (by decide)⟩
   Ret _ _ _ := False
   Ret_fwd hS := (hX.absBS hS).elim
   Ret_conv hS := (hX.absBS hS).elim

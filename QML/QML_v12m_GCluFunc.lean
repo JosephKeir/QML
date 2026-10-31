@@ -1,4 +1,4 @@
-import QML.QML_v12m_GCluTr
+import QML.QML_v12m_GCluRaw
 
 /-!
 # QML v12m — 5 on the growing tree: the cluster model's function algebra
@@ -254,6 +254,28 @@ theorem preTD_box (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {Γ : Ctx} {s : GW
         if_neg fun h => hst (VarSymb.step.inj h).2]
       exact .refl _
 
+/-- ⭐The realised content of a term of the `□` view is what the term denotes here: realisation
+    collapses it (`grden_grealT_mono_boxIn`). -/
+theorem cden_grealT_mono_boxIn (hX : CluFlags) {t : GW hF M₀} {y : VarSymb}
+    (hr : (gw hM₀ t).Realised y) {j : ℕ}
+    (hy : ∃ Y, (ctxOf (glat t j)).ref y = some (.VTypeDia Y)) {A : VarType} {a : Ann A}
+    (b : Term σ (ctxOf (glat t j)).boxIn A a) :
+    cden hM₀ hX t _ (Ctx.Le.refl _)
+        (grealT hr (Ctx.Le.refl _) hy (Term.mono (Ctx.le_boxIn_diaIn _ y) b)).2 =
+      cden hM₀ hX t j (Ctx.Le.refl _) (Term.collapse (Ctx.collapses_boxIn_self hr.T _) b) := by
+  have hle : (ctxOf (glat t j)).boxIn.Le (ctxOf (glat t (max j hr.data.i₀))).boxIn :=
+    (gle hM₀ t (le_max_left _ _)).boxIn
+  have hcomb : Term.mono (((Ctx.Le.refl _).trans (gle hM₀ t (le_max_left _ _))).diaIn y)
+      (Term.mono (Ctx.le_boxIn_diaIn _ y) b) =
+      Term.mono (Ctx.le_boxIn_diaIn (ctxOf (glat t (max j hr.data.i₀))) y) (Term.mono hle b) := by
+    rw [Term.mono_mono, Term.mono_mono]
+  simp only [grealT]
+  rw [hcomb, cden_sigma hX _ (Term.realiseAtA_mono_boxIn hr.data.hT y _ _ (Term.mono hle b)),
+    Term.collapse_mono (Ctx.collapses_boxIn_self hr.T _)
+      (Ctx.collapses_boxIn_self hr.data.hT _) hle (gle hM₀ t (le_max_left _ _)) b,
+    cden_mono]
+  exact cden_congr hX _ _ _ _ _ _
+
 /-- ⭐**Denoting a map applied to a term is applying the map to the denotation.**  As
     `grden_applyG`, a world's preimage commuting with each operation; `dup` and `dkeep` are the
     path translation's round trip (`cden_tr`, `cden_trX`). -/
@@ -296,22 +318,64 @@ theorem cden_applyG (hX : CluFlags) :
       change cden hM₀ hX s i e (.diatm x hx (Canon.applyG f c).2) =
         crawEval hM₀ hX (.diaMap f) s (cden hM₀ hX s i e (.diatm x hx c))
       simp only [cden, crawEval]
-      refine CRPos.congr_cont (funext fun a => ?_) fun hT => absurd hT (by rw [hX.noT]; decide)
-      simp only [dif_neg ((gw hM₀ a.1.1).not_realised hX.noT)]
-      refine (cden_sigma hX _ ((pTrX_sigma hM₀ _ _ _ _ _ _ _ _
-        (preTD_applyG hX hM₀ f e _ c)).trans (pTrX_applyG f _ _ _ _ _ _ _ _ _))).trans ?_
-      exact cden_applyG hX f _ a.1.1 _ (Ctx.Le.refl _)
+      refine CRPos.congr_cont (funext fun a => ?_) fun hT => ?_
+      · by_cases hr : (gw hM₀ a.1.1).Realised
+            (kw (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down) (rorig s x))
+        · simp only [dif_pos hr]
+          refine (cden_sigma hX _ ((grealT_sigma hr _ _ ((pTrXK_sigma hM₀ _ _ _ _ _ _ _
+            (preTD_applyG hX hM₀ f e _ c)).trans (pTrXK_applyG f _ _ _ _ _ _ _ _))).trans
+            (grealT_applyG f hr _ _ _))).trans ?_
+          exact cden_applyG hX f _ a.1.1 _ (Ctx.Le.refl _)
+        · simp only [dif_neg hr]
+          refine (cden_sigma hX _ ((pTrX_sigma hM₀ _ _ _ _ _ _ _ _
+            (preTD_applyG hX hM₀ f e _ c)).trans (pTrX_applyG f _ _ _ _ _ _ _ _ _))).trans ?_
+          exact cden_applyG hX f _ a.1.1 _ (Ctx.Le.refl _)
+      · have e₁ := congrArg Sigma.fst (preTD_applyG hX hM₀ f e (hx.imp fun _ h => e.ref h) c)
+        exact (congrArg (fun c' => annC (groot hF M₀) (Ann.dia (rorig s x) c')) e₁).trans
+          (annC_applyG hX.five hX.fourS hX.fourSW hM₀ hT (.diaMap f)
+            (.diatm (rorig s x) (rorig_ref hX hM₀ s i (hx.imp fun _ h => e.ref h))
+              (preTD hX hM₀ s i (hx.imp fun _ h => e.ref h) (Term.mono (e.diaIn x) c)).2))
   | _, _, .strength _ _, Γ, _, .pair (.boxtm b) (.diatm x hx c), s, i, e => by
       change cden hM₀ hX s i e (.diatm x hx (.pair (Term.mono (Ctx.le_boxIn_diaIn Γ x) b) c)) =
         crawEval hM₀ hX (.strength _ _) s (cden hM₀ hX s i e (.pair (.boxtm b) (.diatm x hx c)))
       simp only [cden, crawEval]
-      refine CRPos.congr_cont (funext fun a => ?_) fun hT => absurd hT (by rw [hX.noT]; decide)
-      simp only [dif_neg ((gw hM₀ a.1.1).not_realised hX.noT)]
-      refine (cden_sigma hX _ (pTrX_pair _ _ _ _ _ _ _ _ _ _)).trans (Prod.ext ?_ rfl)
-      exact cden_sigma hX _ ((pTrX_sigma hM₀ _ _ _ _ _ _ _ _
-        (preTD_box hX hM₀ e (hx.imp fun _ h => e.ref h) b)).trans
-          (pTrX_box _ _ _ _ (pathOf_ok a.1.2.down) _ _ _ _ _))
-  | _, _, .extract hT, _, _, _, _, _, _ => absurd hT (by rw [hX.noT]; decide)
+      refine CRPos.congr_cont (funext fun a => ?_) fun hT => ?_
+      · by_cases hr : (gw hM₀ a.1.1).Realised
+            (kw (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down) (rorig s x))
+        · simp only [dif_pos hr]
+          refine (cden_sigma hX _ (grealT_sigma hr _ _ (pTrXK_pair _ _ _ _ _ _ _ _ _))).trans
+            (Prod.ext ?_ rfl)
+          have hk := kw_decl hM₀ (groot hF M₀) a.1.1 _ (pathOf_eq a.1.2.down) (rstg s i)
+            (rorig_ref hX hM₀ s i (hx.imp fun _ h => e.ref h))
+          refine (cden_sigma hX (Ctx.Le.refl _) (grealT_sigma hr (Ctx.Le.refl _) hk
+            ((pTrXK_sigma hM₀ _ _ _ _ _ _ _
+              (preTD_box hX hM₀ e (hx.imp fun _ h => e.ref h) b)).trans
+            (pTrXK_box _ _ _ _ _ _ _ _)))).trans ?_
+          refine (cden_grealT_mono_boxIn hX hr hk _).trans ?_
+          exact cden_sigma hX _ (collapse_pTrK hr.T _ _ _ _ (pathOf_ok a.1.2.down) _ _)
+        · simp only [dif_neg hr]
+          refine (cden_sigma hX _ (pTrX_pair _ _ _ _ _ _ _ _ _ _)).trans (Prod.ext ?_ rfl)
+          exact cden_sigma hX _ ((pTrX_sigma hM₀ _ _ _ _ _ _ _ _
+            (preTD_box hX hM₀ e (hx.imp fun _ h => e.ref h) b)).trans
+              (pTrX_box _ _ _ _ (pathOf_ok a.1.2.down) _ _ _ _ _))
+      · have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
+        obtain ⟨X, hr⟩ := id hx
+        have key := crawShape_box_transpose hX hM₀ hT s (groot hF M₀) i e b
+        have e₂ := mapIdx_eIdx_preIX hko s e hr (Term.mono (Ctx.le_boxIn_diaIn Γ x) b)
+        exact (congrArg (fun z => (Shp.dia (cLab (rorig s x) (groot hF M₀))
+          (Shp.prod (annC (groot hF M₀) z) (annC (groot hF M₀)
+            (preTD hX hM₀ s i (hx.imp fun _ h => e.ref h) (Term.mono (e.diaIn x) c)).1)) :
+            CShape hF M₀ (groot hF M₀) _)) e₂).trans
+          (congrArg (fun z => (Shp.dia (cLab (rorig s x) (groot hF M₀)) (Shp.prod z (annC
+            (groot hF M₀)
+            (preTD hX hM₀ s i (hx.imp fun _ h => e.ref h) (Term.mono (e.diaIn x) c)).1)) :
+            CShape hF M₀ (groot hF M₀) _)) key.symm)
+  | _, _, .extract hT, Γ, _, .boxtm b, s, i, e => by
+      change cden hM₀ hX s i e (Term.collapse (Ctx.collapses_boxIn_self hT Γ) b) =
+        cden hM₀ hX s i e (.boxtm b) ⟨s, ⟨(carrows hF M₀).refl hT s⟩⟩
+      simp only [cden]
+      rw [cden_collapse hX hM₀ hT s i, Term.collapse_mono (Ctx.collapses_boxIn_self hT Γ)
+        (Ctx.collapses_boxIn_self hT _) e.boxIn e, cden_mono]
   | _, _, .dup _, Γ, _, .boxtm b, s, i, e => funext fun v => funext fun u => by
       have hm : (⟨_, Term.mono e.boxIn (Term.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))⟩ :
           Σ c, Term σ (ctxOf (glat s i)).boxIn _ c) =
