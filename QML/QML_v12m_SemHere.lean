@@ -184,24 +184,26 @@ variable (M) in
     terms and carrier data. -/
 structure RetCongr : Prop where
   map : ∀ {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
-    {w : M.frame.W} {S : Set (M.frame.Acc w)}
+    {w : M.frame.W} {ℓ : Option (M.frame.Leaf M.RootPoss w)} {S : Set (M.frame.Acc w)}
     {val : (a : S) → (c : M.frame.Acc a.1.1) → M.frame.Dom A c.1} {o : M.frame.Dom A w},
-    M.Ret S val o → M.Ret S (fun a c => M.holeVal s (val a c)) (M.holeVal s o)
-  pair : ∀ {A B : VarType} {w : M.frame.W} {S : Set (M.frame.Acc w)}
+    M.Ret ℓ S val o → M.Ret ℓ S (fun a c => M.holeVal s (val a c)) (M.holeVal s o)
+  pair : ∀ {A B : VarType} {w : M.frame.W} {ℓ : Option (M.frame.Leaf M.RootPoss w)}
+    {S : Set (M.frame.Acc w)}
     {val : (a : S) → (c : M.frame.Acc a.1.1) → M.frame.Dom A c.1}
     {val' : (a : S) → (c : M.frame.Acc a.1.1) → M.frame.Dom B c.1}
     {o : M.frame.Dom A w} {o' : M.frame.Dom B w},
-    M.IsCarrierData S val → M.IsCarrierData S val' → M.Ret S val o → M.Ret S val' o' →
-      M.Ret (A := .VTypeProd A B) S
+    M.IsCarrierData ℓ S val → M.IsCarrierData ℓ S val' → M.Ret ℓ S val o → M.Ret ℓ S val' o' →
+      M.Ret (A := .VTypeProd A B) ℓ S
         (fun a c => ((val a c, val' a c) : M.frame.Dom (.VTypeProd A B) c.1))
         ((o, o') : M.frame.Dom (.VTypeProd A B) w)
   /-- ⭐A **kept carrier comes back as its own value** (T + 4, `back_keep`).  At a `◇`-free content
       this follows from `Ret_conv`, the way home being unique; at a `◇` content `Ret` is primitive,
       so it is a requirement on models. -/
   keep : ∀ (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {A : VarType} {w : M.frame.W}
-    {S : Set (M.frame.Acc w)} (n : M.frame.Nec A w), Nonempty S →
-    M.IsCarrierData S (fun a c => M.necEval n ⟨c.1, ⟨M.frame.trans hF a.1.2.down c.2.down⟩⟩) →
-    M.Ret S (fun a c => M.necEval n ⟨c.1, ⟨M.frame.trans hF a.1.2.down c.2.down⟩⟩)
+    {ℓ : Option (M.frame.Leaf M.RootPoss w)} {S : Set (M.frame.Acc w)} (n : M.frame.Nec A w),
+    Nonempty S →
+    M.IsCarrierData ℓ S (fun a c => M.necEval n ⟨c.1, ⟨M.frame.trans hF a.1.2.down c.2.down⟩⟩) →
+    M.Ret ℓ S (fun a c => M.necEval n ⟨c.1, ⟨M.frame.trans hF a.1.2.down c.2.down⟩⟩)
       (M.necEval n (M.frame.reflAcc hT w))
 
 variable (M) in

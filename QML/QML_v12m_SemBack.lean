@@ -45,7 +45,7 @@ def RoundTrip {A : VarType} {w : M.frame.W} {ι : Type*} (acc : ι → M.frame.A
 theorem backs_nec_boxtm {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {A : VarType} {a₀ : Ann A}
     (bd : Term σ Γ.boxIn.boxIn A a₀) (o : M.frame.Dom A w) :
     M.Backs .nec (A := A) (interp env (Term.boxtm (Term.boxtm bd))) o ↔
-      M.Ret (Set.univ : Set (M.frame.Acc w))
+      M.Ret none (Set.univ : Set (M.frame.Acc w))
         (fun a b => interp ((env.boxPush a.1).boxPush b) bd) o := by
   have h : (fun (a : (Set.univ : Set (M.frame.Acc w))) (b : M.frame.Acc a.1.1) =>
       M.necEval (M.necEval (interp env (Term.boxtm (Term.boxtm bd)) :
@@ -54,7 +54,20 @@ theorem backs_nec_boxtm {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {A : VarTy
         interp ((env.boxPush a.1).boxPush b) bd := by
     funext a b
     rw [box_beta env (Term.boxtm bd) a.1, box_beta (env.boxPush a.1) bd]
-  exact iff_of_eq (congrArg (fun v => M.Ret _ v o) h)
+  exact iff_of_eq (congrArg (fun v => M.Ret none _ v o) h)
+
+/-- A `◇`-term has its witness's tag. -/
+theorem posTag_diatm {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {y : VarSymb}
+    (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) {Y : VarType} (h : Γ.ref y = some (.VTypeDia Y))
+    {A : VarType} {a₀ : Ann A} (u : Term σ (Γ.diaIn y) A a₀) :
+    M.posTag (interp env (Term.diatm y hy u) : M.frame.Pos A w) =
+      M.posTag (env.ref y h : M.frame.Pos Y w) := by
+  unfold posTag
+  split_ifs with hSh
+  · have e := domSh_interp hSh env (Term.diatm y hy u)
+    rw [termShp_diatm _ 0 h hy u, ref_envShape] at e
+    exact congrArg some (congrArg Shp.label e)
+  · rfl
 
 /-- ⭐Row 2: a `◇□`-carrier comes back through its body, read in its witness's view and one `□`
     view further in; the out leg is the witness's extent. -/
@@ -62,19 +75,20 @@ theorem backs_pos_diatm {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {y : VarSy
     (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) {Y : VarType} (h : Γ.ref y = some (.VTypeDia Y))
     {A : VarType} {a₀ : Ann A} (bd : Term σ (Γ.diaIn y).boxIn A a₀) (o : M.frame.Dom A w) :
     M.Backs .pos (A := A) (interp env (Term.diatm y hy (Term.boxtm bd))) o ↔
-      M.Ret (M.posEval (env.ref y h)).1
+      M.Ret (M.posTag (env.ref y h : M.frame.Pos Y w)) (M.posEval (env.ref y h)).1
         (fun a b => interp ((env.diaPush y h a).boxPush b) bd) o := by
-  change M.Ret (M.posEval (interp env (Term.diatm y hy (Term.boxtm bd)))).1
+  change M.Ret (M.posTag (interp env (Term.diatm y hy (Term.boxtm bd))))
+      (M.posEval (interp env (Term.diatm y hy (Term.boxtm bd)))).1
       (fun a b => M.necEval ((M.posEval (interp env (Term.diatm y hy (Term.boxtm bd)))).2 a) b)
       o ↔ _
-  rw [dia_beta env hy h (Term.boxtm bd)]
+  rw [posTag_diatm env hy h, dia_beta env hy h (Term.boxtm bd)]
   have e : (fun (a : (M.posEval (env.ref y h)).1) (b : M.frame.Acc a.1.1) =>
       M.necEval (interp (env.diaPush y h a) (Term.boxtm bd) : M.frame.Nec A a.1.1) b) =
       fun (a : (M.posEval (env.ref y h)).1) (b : M.frame.Acc a.1.1) =>
         interp ((env.diaPush y h a).boxPush b) bd := by
     funext a b
     exact box_beta (env.diaPush y h a) bd b
-  exact iff_of_eq (congrArg (fun v => M.Ret _ v o) e)
+  exact iff_of_eq (congrArg (fun v => M.Ret _ _ v o) e)
 
 /-! ## Hole formulas -/
 
@@ -341,12 +355,18 @@ noncomputable def pushS {w : M.frame.W} (env : M.Env Γ w) :
   | .nec, a => env.boxPush a.1
   | .pos y hy, a => env.diaPush y hy.choose_spec a
 
+/-- The witness of a leg's carriers. -/
+noncomputable def tag {w : M.frame.W} (env : M.Env Γ w) :
+    OutLeg Γ → Option (M.frame.Leaf M.RootPoss w)
+  | .nec => none
+  | .pos y hy => M.posTag (env.ref y hy.choose_spec)
+
 /-- ⭐A `Back` atom is the model's "comes back as" at its leg (`Model.Ret`, docs §11.20). -/
 theorem sat_back {d : ℕ} (hS : ModalSys.BStrong = true) {w : M.frame.W} (env : M.Env Γ w)
     (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
     (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a) :
     M.sat env (O.back hS bd t : WFF σ Γ d) ↔
-      M.Ret (O.legSet env) (fun a b => Model.interp ((O.pushS env a).boxPush b) bd)
+      M.Ret (O.tag env) (O.legSet env) (fun a b => Model.interp ((O.pushS env a).boxPush b) bd)
         (Model.interp env t) := by
   cases O with
   | nec => exact Model.backs_nec_boxtm env bd (Model.interp env t)
@@ -356,7 +376,8 @@ theorem sat_back {d : ℕ} (hS : ModalSys.BStrong = true) {w : M.frame.W} (env :
 theorem roundTrip_of_ret (hS : ModalSys.BStrong = true) {w : M.frame.W} (env : M.Env Γ w)
     (O : OutLeg Γ) {A : VarType} {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀)
     {o : M.frame.Dom A w}
-    (h : M.Ret (O.legSet env) (fun a b => Model.interp ((O.pushS env a).boxPush b) bd) o) :
+    (h : M.Ret (O.tag env) (O.legSet env)
+      (fun a b => Model.interp ((O.pushS env a).boxPush b) bd) o) :
     Model.RoundTrip (O.acc env) (fun i b => Model.interp ((O.push env i).boxPush b) bd) o := by
   obtain ⟨⟨a⟩, h₂⟩ := M.Ret_fwd hS h
   cases O with
@@ -368,7 +389,8 @@ theorem ret_of_roundTrip (hS : ModalSys.BStrong = true) {w : M.frame.W} (env : M
     (O : OutLeg Γ) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
     (bd : Term σ O.view.boxIn A a₀) {o : M.frame.Dom A w}
     (h : Model.RoundTrip (O.acc env) (fun i b => Model.interp ((O.push env i).boxPush b) bd) o) :
-    M.Ret (O.legSet env) (fun a b => Model.interp ((O.pushS env a).boxPush b) bd) o := by
+    M.Ret (O.tag env) (O.legSet env)
+      (fun a b => Model.interp ((O.pushS env a).boxPush b) bd) o := by
   refine M.Ret_conv hS hA ?_
   obtain ⟨⟨i⟩, h₂⟩ := h
   cases O with
@@ -378,17 +400,19 @@ theorem ret_of_roundTrip (hS : ModalSys.BStrong = true) {w : M.frame.W} (env : M
 /-- A carrier term's data at its leg is its interpretation's (`Model.carrierData`). -/
 theorem isCarrierData {w : M.frame.W} (env : M.Env Γ w) (O : OutLeg Γ) {A : VarType}
     {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) :
-    M.IsCarrierData (O.legSet env) (fun a b => Model.interp ((O.pushS env a).boxPush b) bd) := by
+    M.IsCarrierData (O.tag env) (O.legSet env)
+      (fun a b => Model.interp ((O.pushS env a).boxPush b) bd) := by
   cases O with
   | nec =>
-      refine ⟨.nec, Model.interp env (Term.boxtm (Term.boxtm bd)), ?_⟩
+      refine ⟨.nec, Model.interp env (Term.boxtm (Term.boxtm bd)), ?_, rfl⟩
       refine Sigma.ext rfl (heq_of_eq (funext fun a => funext fun b => ?_))
       change M.necEval (M.necEval (Model.interp env (Term.boxtm (Term.boxtm bd)) :
         M.frame.Nec (.VTypeBox A) w) a.1) b = _
       rw [Model.box_beta env (Term.boxtm bd) a.1, Model.box_beta (env.boxPush a.1) bd]
       rfl
   | pos y hy =>
-      refine ⟨.pos, Model.interp env (Term.diatm y hy (Term.boxtm bd)), ?_⟩
+      refine ⟨.pos, Model.interp env (Term.diatm y hy (Term.boxtm bd)), ?_,
+        Model.posTag_diatm env hy hy.choose_spec _⟩
       dsimp only [Model.carrierData]
       rw [Model.dia_beta env hy hy.choose_spec (Term.boxtm bd)]
       refine Sigma.ext rfl (heq_of_eq (funext fun a => funext fun b => ?_))

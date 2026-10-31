@@ -831,9 +831,9 @@ noncomputable def model : Model.{0, 0} σ where
   posRet_exists hT hS a := B.posRet_exists_canon hT hS a
   posSerial hDS s := B.posSerial_canon hDS s
   necSide_exists := fun hV => (ModalSys.NoFour.absurdFive hV).elim
-  Ret S val o := B.Ret S val o
-  Ret_fwd := by intro _ _ hS _ _ _ h; exact B.ret_fwd hS h
-  Ret_conv := by intro _ _ _ hA _ _ _ h; exact Or.inl ⟨hA, h⟩
+  Ret _ S val o := B.Ret S val o
+  Ret_fwd := by intro _ _ hS _ _ _ _ h; exact B.ret_fwd hS h
+  Ret_conv := by intro _ _ _ hA _ _ _ _ h; exact Or.inl ⟨hA, h⟩
   backRet_exists hS hne o := B.backRet_exists_canon hS hne o
   posBack_exists hS hW b o := B.posBack_exists_canon hS hW b o
   Ind o o' := B.Ind o o'

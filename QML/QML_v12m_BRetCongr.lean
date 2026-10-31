@@ -209,15 +209,16 @@ theorem ret_map {A C : VarType} {b : Ann C}
     `◇`-free content, whose carrier and value are denotable and whose atom is then true, so in the
     theory (the truth lemma). -/
 theorem toAtom (hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set (B.frame.Acc s)}
+    {ℓ : Option (B.model.frame.Leaf B.model.RootPoss s)}
     {val : (x : S) → (y : B.frame.Acc x.1.1) → B.frame.Dom A y.1} {o : B.frame.Dom A s}
-    (hc : B.model.IsCarrierData S val) (h : B.Ret S val o) :
+    (hc : B.model.IsCarrierData ℓ S val) (h : B.Ret S val o) :
     ∃ (i : ℕ) (L : BLeg) (c : Ann (L.carrier A)) (ct : Term σ ((B.w s).ctx i) (L.carrier A) c)
       (a : Ann A) (t : Term σ ((B.w s).ctx i) A a),
       WFF.back hS L ct t ∈ (B.w s).M i ∧
       B.cData L (B.toDom _ s (B.rden s i (Ctx.Le.refl _) ct) (definable_rden _ _)) = ⟨S, val⟩ ∧
       B.toDom A s (B.rden s i (Ctx.Le.refl _) t) (definable_rden _ _) = o := by
   rcases h with h₀ | ⟨_, h⟩
-  · obtain ⟨L, c, hcd⟩ := hc
+  · obtain ⟨L, c, hcd, -⟩ := hc
     obtain ⟨i₁, c₁, ct, hct⟩ := B.definable_fromDom _ s c
     obtain ⟨i₂, a₂, t, ht⟩ := B.definable_fromDom _ s o
     have h₁ : i₁ ≤ max i₁ i₂ := le_max_left _ _
@@ -241,9 +242,11 @@ theorem toAtom (hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set (
     a common stage, of one leg (`leg_unique`), so `back_pair` pairs them and the paired atom is
     true with the paired data. -/
 theorem ret_pair (hS : ModalSys.BStrong = true) {A C : VarType} {s : B.W}
+    {ℓ : Option (B.model.frame.Leaf B.model.RootPoss s)}
     {S : Set (B.frame.Acc s)} {val : (x : S) → (y : B.frame.Acc x.1.1) → B.frame.Dom A y.1}
     {val' : (x : S) → (y : B.frame.Acc x.1.1) → B.frame.Dom C y.1} {o : B.frame.Dom A s}
-    {o' : B.frame.Dom C s} (hc : B.model.IsCarrierData S val) (hc' : B.model.IsCarrierData S val')
+    {o' : B.frame.Dom C s} (hc : B.model.IsCarrierData ℓ S val)
+    (hc' : B.model.IsCarrierData ℓ S val')
     (h : B.Ret S val o) (h' : B.Ret S val' o') :
     B.Ret (A := .VTypeProd A C) S (fun x y => ((val x y, val' x y) :
       B.frame.Dom (.VTypeProd A C) y.1)) ((o, o') : B.frame.Dom (.VTypeProd A C) s) := by
@@ -304,10 +307,10 @@ end Congr
 theorem retCongr (hS : ModalSys.BStrong = true)
     (hST : ∀ hS : ModalSys.BStrong = true, B.StrongTruth hS) : B.model.RetCongr where
   map := by
-    intro _ _ _ sh _ _ _ _ h
+    intro _ _ _ sh _ _ _ _ _ h
     exact ret_map hST sh h
   pair := by
-    intro _ _ _ _ _ _ _ _ hc hc' h h'
+    intro _ _ _ _ _ _ _ _ _ hc hc' h h'
     exact ret_pair hST hS hc hc' h h'
   keep := by
     intro _ hF

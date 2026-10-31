@@ -5354,9 +5354,9 @@ value along `a`.  We want `m.here` and `t` interchangeable in every slot formula
 
 #### Strong B on S5: the cluster's truth cases, the check *(2026-10-31, paper)*
 
-**Verdict.**  The proof side suffices: no new rule.  But the semantics has a gap, and `Model.Ret` needs one
-more argument, which is the user's decision (below).  Estimate for the rest of strong B on S5: 1 700 to
-2 000 lines.  All of this is on paper.
+**Verdict.**  The proof side suffices: no new rule.  But the semantics had a gap, and `Model.Ret` needed one
+more argument (below; done).  Estimate for the rest of strong B on S5: 1 700 to 2 000 lines.  On paper,
+except where marked built.
 
 **The gap: `Ret` cannot tell two carriers with one set of data apart.**
 * *What happens.*  `Backs L c o` is `Ret` at `carrierData L c`, a set of arrows and values.  In `BArrow` two
@@ -5370,7 +5370,7 @@ more argument, which is the user's decision (below).  Estimate for the rest of s
   `back_beta` and Leibniz, all per leg.  The reading that tags `Ret` by its leg validates every rule and
   refutes the entailment.  The same goes for `.nec` against a `.pos` of full extent.  So completeness would
   fail, or a rule with no good form would be needed: there is no equality across witnesses to state it with.
-* *Proposed: a tag, not a rule.*  `Ret` takes the carrier's witness as well: `Ret (ℓ : Option Leaf) S val o`,
+* *Built (2026-10-31; the user's decision): a tag, not a rule.*  `Ret` takes the carrier's witness as well: `Ret (ℓ : Option Leaf) S val o`,
   `none` for `.nec` and the head label of the carrier's shape for `.pos` (`Shp.dia ℓ _`; shapes exist under
   strong B, `shaped_of_BStrong`).  A term's label is its witness's (`Model.termShp_diatm`), so `ℓ` depends on
   `O` and the environment only, and every rule's soundness goes through `OutLeg.sat_back` unchanged.
@@ -5409,16 +5409,30 @@ comes after the truth lemma, so it is redone inside: `cInd` composes there, sinc
 annotation and `eqRec` is below the atom (`DTerm.Rel.trans`).  `cdia_sat_child` must be split: it runs the induction
 on the whole `χ`, and only `Φ` is small enough.
 
-**`Ret_fwd` along `pos`: a correction.**  Step 1 of "`Ret_fwd` at any content" used `B_strong` for a parameter's
-carrier, but `B_strong` is `.nec` only, and leg restriction is the gap above.  Instead take `n := c.here` for `c`
-from `B_strong`, so `n.here ≈ p` by `back_here`, and `back_keep` at `n.inner` along `O`.  Then `back_pair` works on
-either leg.
+**`Ret_fwd`: a new route, and the law moves.**  "`Ret_fwd` at any content" above is superseded.  It closed a slot
+formula over its parameters with a `B_strong` carrier for each, but `B_strong` is `.nec` only, and leg restriction is
+the gap above.  It also needed the kept lift and the carrier to be one term at the arrow's end, by the path
+translation.  Both go away.
+* ⭐`Proof.back_of_leg` (built, `QML_v12m_RetUnliftC`, standard axioms): if a leg's carrier agrees at some arrow with
+  a home term `b` kept, `O.dia □(shift b = bd)`, then `Back (shift b) t` in the plain leg.  `ret_bridge` with the
+  agreement in the body, then `ret_counitC` at `b`'s own carrier, the hole formula being `Back` itself, so no parameter
+  is closed over.  `back_here` then has any parameters.  The move is `Proof.ret_comp_swap`'s.
+* *The law.*  The agreement needs `eqRec` true at one arrow, so it needs the truth lemma, and `Ret_fwd` is a `Model`
+  field, proved before it.  So build the round trip into the cluster's `Ret`: `Nonempty S`, the round trip, and at a
+  `◇` content an atom.  `Ret_fwd` is then a projection, and the work moves to the `Back` truth case, membership ⇒
+  truth, where the induction hypothesis reaches `eqRec`: `O.dia □eqRec` has size `A + 4`, below `Back`'s `3A + 5`.
+* *What this costs.*  `backRet_exists` is a field too, so it needs a round trip before the truth lemma.  Take the
+  kept carrier `n.dup`, for `n := c.here` with `c` from `B_strong`: its round trip is `n(a ; r) = n(id)` on raw objects,
+  and `n.here ≈ t` by `back_here`.  `cden_applyG` gives its denotation.
+* *Membership ⇒ truth at `ret`.*  It no longer reads `Back` semantically: `back_here_rel` at the own arrow, and ties
+  moved to the home world along `r`.
 
 **The rest.**  `backRet_exists`: `∃c. Back c t` is a theorem, so `exW_term` names it (`ret_comp_named`'s pattern).
 `posBack_exists`: `cposRet_exists` at the target, kept along the arrow (with `BStrongW → TStrong`).  `RetCongr`
 comes after the truth lemma, in `cmodel_indInvariant`: atoms and `Ret` coincide there, and `IsCarrierData` gives the
 terms.  `homeUnique` is free (`Frame.{0, 0}`).  `T_of_shaped` needs `BStrong → B`.
-*Least checked:* `Ret_fwd`'s "one term there", which rests on the path translation's round trip.
+*Least checked:* annotations in the pushed environment (`ann_eq_of_termShpW` through `CInvW.box`), which `eqRec` at
+the arrow and the ties both need.
 
 #### Strong B on S5, every shape: the check *(2026-10-31, paper)*
 

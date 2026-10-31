@@ -298,16 +298,30 @@ def carrierData : (L : BLeg) → {A : VarType} → {w : M.frame.W} → M.frame.D
       ⟨(M.posEval (c : M.frame.Pos (.VTypeBox A) _)).1,
         fun a b => M.necEval ((M.posEval (c : M.frame.Pos (.VTypeBox A) _)).2 a) b⟩
 
-/-- Round-trip data that is some carrier's. -/
-def IsCarrierData {A : VarType} {w : M.frame.W} (S : Set (M.frame.Acc w))
+/-- A possible object's witness: the label of its shape, when it has one. -/
+noncomputable def posTag {A : VarType} {w : M.frame.W} (p : M.frame.Pos A w) :
+    Option (M.frame.Leaf M.RootPoss w) :=
+  if h : ModalSys.shaped = true then some (M.shape h p).label else none
+
+/-- ⭐What `carrierData` leaves out of a carrier: its witness.  A leg's arrows and values say
+    everything else, a leg being nonempty wherever `Ret` holds (`Model.Ret_fwd`). -/
+noncomputable def carrierTag : (L : BLeg) → {A : VarType} → {w : M.frame.W} →
+    M.frame.Dom (L.carrier A) w → Option (M.frame.Leaf M.RootPoss w)
+  | .nec, _, _, _ => none
+  | .pos, A, _, c => M.posTag (c : M.frame.Pos (.VTypeBox A) _)
+
+/-- Round-trip data that is some carrier's, with that carrier's witness. -/
+def IsCarrierData {A : VarType} {w : M.frame.W} (ℓ : Option (M.frame.Leaf M.RootPoss w))
+    (S : Set (M.frame.Acc w))
     (val : (a : S) → (b : M.frame.Acc a.1.1) → M.frame.Dom A b.1) : Prop :=
-  ∃ (L : BLeg) (c : M.frame.Dom (L.carrier A) w), M.carrierData L c = ⟨S, val⟩
+  ∃ (L : BLeg) (c : M.frame.Dom (L.carrier A) w),
+    M.carrierData L c = ⟨S, val⟩ ∧ M.carrierTag L c = ℓ
 
 /-- ⭐`c` **comes back as** `o` (strong B, `Back`; docs §11.1, §11.20): the model's `Ret` at the
     carrier's round-trip data (`carrierData`). -/
 def Backs (L : BLeg) {A : VarType} {w : M.frame.W} (c : M.frame.Dom (L.carrier A) w)
     (o : M.frame.Dom A w) : Prop :=
-  M.Ret (M.carrierData L c).1 (M.carrierData L c).2 o
+  M.Ret (M.carrierTag L c) (M.carrierData L c).1 (M.carrierData L c).2 o
 
 /-- Under T, a **companion** of a value `x : A` at `v`, the necessary object at the path `p` into
     it, comes back as `o` along the way home `r` (`True` at a path reaching no necessary
