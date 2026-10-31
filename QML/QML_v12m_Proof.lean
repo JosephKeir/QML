@@ -418,6 +418,19 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t φ) →
       Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots (Term.collapse
         (Ctx.collapses_boxIn_self hT Γ) (Term.collapse (Ctx.collapses_boxIn_self hT Γ.boxIn) bd)) φ)
+  /-- ⭐**A kept carrier comes back as its own value** (T + 4, docs §3 5, "`back_keep`: the check"):
+      out along an arrow of the leg and home again is the identity, the way home being unique, so
+      `b`, kept and read there, comes back as `b` read here.  The own arrow's `back_here` says what
+      a carrier's value must be if it comes back; this says that a kept carrier does.  Not derivable
+      (`homeUnique` is the only thing that links the way home to the arrow out, and no other rule
+      mentions both). -/
+  | back_keep {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hT : ModalSys.T = true) (hF : ModalSys.Four = true) (O : OutLeg Γ) {A : VarType}
+      {a : Ann A} (b : Term σ Γ.boxIn A a) :
+      Proof σ Γ Δ (O.dia .top) →
+      Proof σ Γ Δ (O.back hS (Term.mono O.le_view.boxIn
+        (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))
+        (Term.collapse (Ctx.collapses_boxIn_self hT Γ) b))
   /-- ⭐**`Back` is the definite description of the returning possibility** (docs §11.18,
       §11.20): if the carrier's object comes back, along any arrow of a nonempty out leg, only as
       `t` — every fresh `c` with `◇[e ↦ c] (e = □bd)` is `t` — then the carrier comes back as `t`.

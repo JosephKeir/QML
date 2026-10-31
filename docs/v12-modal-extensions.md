@@ -5223,7 +5223,7 @@ dispatch with `B` on, with its class; KB5 and KDB5; the open lifts in the table;
 **Verdict.**  `back_keep` is underivable, and needed: it is valid at `◇`-free contents, so
 completeness for strong B fails without it.  The check corrects the S5 paper check in three places.
 * The designated way home must be an **involution**, so the two-arrow sketch does not work.
-* At `◇` contents the rule is **not valid in every `Model`**, so it needs a model law, `Ret_keep`.
+* At `◇` contents the rule is **not valid in every `Model`**, so it needs a law, `RetCongr.keep`.
 * Canonically `Ret` is **not** the round trip at `◇` contents.  It is read off the theory's atoms, as
   `BArrow`'s is.
 No second rule appears to be needed: the `ret` forms follow on paper.  All of this is on paper, not
@@ -5266,18 +5266,22 @@ No rule mentions both `keep` and a way home.  That is the gap `back_keep` fills.
 * *Valid at `◇`-free contents.*  Under T and 4, `homeUnique` makes `a · r` the identity, so the round
   trip holds and `Ret_conv` gives `Ret`.
 * *Not valid at `◇` contents in every model.*  `Ret` is primitive there, and nothing forces a kept
-  carrier into it.  So add a law:
-  `Ret_keep : BStrong → T → Four → Nonempty S → Ret S (n read along a · b) (n refl)`.
+  carrier into it.  So add a law, built as `RetCongr.keep`: under T and 4, for `n` necessary and `S`
+  nonempty, if `S` and `n` read along `a · b` are carrier data, `Ret S (n read along a · b) (n refl)`.
+  It sits in `RetCongr`, not `Model`, because it must be restricted to carrier data: a canonical
+  `Ret` read off atoms can only hold where a carrier term stands behind the data, and
+  `IsCarrierData` is defined after `Model`.
 * *Any leg.*  The rule should take a leg and its nonemptiness:
   `O.dia ⊤ ⊢ O.back (shift b) (collapse b)`.  The S5 paper check had `nec` only, but `Ret_fwd` needs
   both legs (`BLeg`), and no rule restricts a leg.  Under T, `nec`'s premise is free.
-* *Cost.*  Small: `Proof`, `ProofSubst`, `Soundness` and a `SemBack` lemma; `Ret_keep` at the four model
-  constructions, vacuous at three (`Canon`, the tree, `BArrow` with 4 off).
+* *Built (2026-10-31).*  `Proof.back_keep`, with soundness (`sat_back_keep`) and substitution
+  (`Proof.subst`, through `OutLeg.subst_mono_view` at the `◇` leg).  `RetCongr.keep` is vacuous in the
+  existing models: `BArrow` has 4 off, and the others have strong B off.
 
 **3. Canonical `Ret`: atoms, as `BArrow`'s.**  "`Ret` is the round trip" fails at `◇` contents: from the
 round trip back to the atom needs `back_ret`, which is `◇`-free only.  So take `BCanonModel.Ret`: the
-round trip at `◇`-free contents, and otherwise a `Back` atom of the theory.  `Ret_keep` then is the
-rule.
+round trip at `◇`-free contents, and otherwise a `Back` atom of the theory.  `RetCongr.keep` then is
+the rule.
 
 *`Ret_fwd` at any content.*  Let `Back bd t` be in the theory, `a` an arrow, and `m` the lift of `bd`'s
 value along `a`.  We want `m.here` and `t` interchangeable in every slot formula `χ`, with parameters
@@ -5305,7 +5309,7 @@ value along `a`.  We want `m.here` and `t` interchangeable in every slot formula
   the S5 paper check says.
 
 **5. Order of work.**
-1. Add `back_keep` and `Ret_keep` (soundness, substitution).
+1. Add `back_keep` and its law (soundness, substitution).  Done.
 2. Write the lifting form as a derived rule, at `◇` contents too, before touching the model.
 3. The cluster's `Ret`, `Ret_fwd`, then the `Back` and `ret` truth cases.
 

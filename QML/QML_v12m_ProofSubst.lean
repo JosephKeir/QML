@@ -1187,6 +1187,33 @@ theorem WFF.instantiate_congr_sig {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {T 
   cases h
   rfl
 
+/-- A term of the doubled `□` view, read in a leg's `□` view, substitutes as itself. -/
+theorem OutLeg.subst_mono_view {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) :
+    (O : OutLeg Γ) → {A : VarType} → {a : Ann A} → (s : Term σ Γ.boxIn.boxIn A a) →
+    (⟨_, Term.subst ι (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
+        (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) (Term.mono O.le_view.boxIn s)⟩ :
+        Σ c, Term σ (O.subst θ hθ hc).view.boxIn A c) =
+      ⟨_, Term.mono (O.subst θ hθ hc).le_view.boxIn
+        (Term.subst ι θ.box.box (Subst.ok_box (Subst.ok_box hθ))
+          (Subst.coh_box (Subst.ok_box hθ) (Subst.coh_box hθ hc)) s)⟩
+  | .nec, _, _, s => by
+      change (⟨_, Term.subst ι θ.box.box _ _ (Term.mono (Ctx.Le.refl _).boxIn s)⟩ :
+        Σ c, Term σ Δ.boxIn.boxIn _ c) = ⟨_, Term.mono (Ctx.Le.refl _).boxIn _⟩
+      rw [Term.mono_refl, Term.mono_refl]
+  | .pos y hy, _, _, s => by
+      have hle := Ctx.le_boxIn_diaIn Δ (ι y)
+      have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
+      have hs₁ : Subst.Sim Γ.boxIn (θ.dia y (ι y)) (θ.box.mono hle) := fun v T hv => by
+        rw [Subst.dia_eq_box_mono θ y (ι y) v T hv, ← Subst.at_mono]
+        exact .refl _
+      refine (congrArg (Sigma.mk _) (Term.subst_mono _ _ _ _ s)).trans ?_
+      refine Eq.trans ?_ (congrArg (Sigma.mk _) (Term.mono_subst _ _ _ _ _)).symm
+      refine (Term.subst_congr _ _ _ (Subst.ok_box (Subst.ok_mono (Subst.ok_box hθ) hle)) _
+        (Subst.coh_box (Subst.ok_mono (Subst.ok_box hθ) hle)
+          (Subst.coh_mono (Subst.coh_box hθ hc) hle)) (Subst.sim_box hs₁) s).trans ?_
+      exact (Term.subst_congr _ _ _ _ _ _ (Subst.sim_box_mono θ.box hle) s).symm
+
 /-- Substituting `back_here`'s conclusion: instantiation commutes with substitution, and so do the
     two collapses (`Term.collapse_subst`, twice). -/
 theorem WFF.subst_backHere {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
@@ -3074,6 +3101,27 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
           (Proof.conv (OutLeg.subst_back θ hθ hc hΓ hΓ' hS .nec bd t)
             (Proof.subst pb θ hθ hc hΓ))
           (Proof.conv (WFF.subst_instantiate θ hθ hc hΓ hΓ' t φ) (Proof.subst pφ θ hθ hc hΓ)))
+  | _, _, _, @Proof.back_keep _ _ Γ _ _ hS hT hF O A a b pne, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      have hb := Subst.ok_box hθ
+      have hcb := Subst.coh_box hθ hc
+      have hmono : ∀ {B : VarType} {Δ₁ Δ₂ : Ctx} (e : Δ₁.Le Δ₂) {u u' : Σ c, Term σ Δ₁ B c},
+          u = u' → (⟨_, Term.mono e u.2⟩ : Σ c, Term σ Δ₂ B c) = ⟨_, Term.mono e u'.2⟩ := by
+        intro B Δ₁ Δ₂ e u u' h
+        cases h
+        rfl
+      Proof.conv
+        ((OutLeg.back_congr hS (O.subst θ hθ hc)
+          ((OutLeg.subst_mono_view θ hθ hc O (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b)).trans
+            (hmono _ (Term.shift_subst (Ctx.shifts_boxIn_boxIn hF Γ)
+              (Ctx.shifts_boxIn_boxIn hF Γ') θ.box hb hcb θ.box.box (Subst.ok_box hb)
+              (Subst.coh_box hb hcb) (Subst.shiftCorr_box_box hF hθ) b).symm)).symm
+          (Term.collapse_subst (Ctx.collapses_boxIn_self hT Γ)
+            (Ctx.collapses_boxIn_self hT Γ') θ.box hb hcb θ hθ hc
+            (Subst.corr_box_self hT hθ) b)).trans
+          (OutLeg.subst_back θ hθ hc hΓ hΓ' hS O _ _).symm)
+        (Proof.back_keep hS hT hF (O.subst θ hθ hc) (Term.subst ι θ.box hb hcb b)
+          (Proof.conv (OutLeg.subst_dia θ hθ hc hΓ hΓ' O .top) (Proof.subst pne θ hθ hc hΓ)))
   | _, _, _, @Proof.back_ret _ _ Γ _ hS hB O A hA a₀ bd a t c hcf _ pne p, Γ', _, ι, θ, hθ,
       hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots

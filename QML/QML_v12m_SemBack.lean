@@ -508,6 +508,49 @@ theorem sat_back_here (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A
     interp_collapse (Env.collapseAgree_self hT (env.boxPush (M.frame.reflAcc hT w)))]
   exact (hM.inv hfin hnp env φ _ _ hown).mpr hφ
 
+omit [Γ.NoSlots] in
+include hM in
+/-- ⭐**A kept carrier comes back as its own value** (`back_keep`): read out along an arrow of the
+    leg, a shifted term is the term read along the composite (`Env.shiftAgree_twoBox`), so its
+    data are the kept object's (`RetCongr.keep`). -/
+theorem sat_back_keep (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+    (hF : ModalSys.Four = true) (O : OutLeg Γ) {A : VarType} {a : Ann A}
+    (b : Term σ Γ.boxIn A a) (hne : M.sat env (O.dia (.top : WFF σ O.view 0))) :
+    M.sat env (O.back hS (Term.mono O.le_view.boxIn (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))
+      (Term.collapse (Ctx.collapses_boxIn_self hT Γ) b) : WFF σ Γ 0) := by
+  have key : ∀ (a' : O.legSet env) (c : M.frame.Acc a'.1.1),
+      interp ((O.pushS env a').boxPush c)
+        (Term.mono O.le_view.boxIn (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b)) =
+      M.necEval (interp env (Term.boxtm b) : M.frame.Nec A w)
+        ⟨c.1, ⟨M.frame.trans hF a'.1.2.down c.2.down⟩⟩ := by
+    intro a' c
+    rw [box_beta env b, ← interp_shift (Env.shiftAgree_twoBox hF env a'.1 c)]
+    cases O with
+    | nec =>
+        change interp ((env.boxPush a'.1).boxPush c) (Term.mono (Ctx.Le.refl _).boxIn _) = _
+        rw [Term.mono_refl]
+    | pos y hy =>
+        exact interp_mono (Env.boxPush_agree (Env.diaPush_boxIn env hy.choose_spec a') c) _
+  have hfun : (fun (a' : O.legSet env) (c : M.frame.Acc a'.1.1) =>
+      interp ((O.pushS env a').boxPush c)
+        (Term.mono O.le_view.boxIn (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))) =
+      fun (a' : O.legSet env) (c : M.frame.Acc a'.1.1) =>
+        M.necEval (interp env (Term.boxtm b) : M.frame.Nec A w)
+          ⟨c.1, ⟨M.frame.trans hF a'.1.2.down c.2.down⟩⟩ :=
+    funext fun a' => funext fun c => key a' c
+  have hne' : Nonempty (O.legSet env) := by
+    obtain ⟨i, _⟩ := (OutLeg.sat_dia env O _).mp hne
+    cases O with
+    | nec => exact ⟨⟨i, trivial⟩⟩
+    | pos y hy => exact ⟨i⟩
+  have hcd := OutLeg.isCarrierData env O
+    (Term.mono O.le_view.boxIn (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))
+  rw [hfun] at hcd
+  refine (OutLeg.sat_back hS env O _ _).mpr ?_
+  rw [hfun, interp_collapse (Env.collapseAgree_self hT env),
+    ← box_beta env b (M.frame.reflAcc hT w)]
+  exact (hM.ret hS).keep hT hF _ hne' hcd
+
 include hnp hfin hM in
 /-- ⭐The own arrow along `◇_y` (T): with the identity in `y`'s extent, both the value and the
     `Here` atom's term are indistinguishable from the carrier's body read twice there. -/

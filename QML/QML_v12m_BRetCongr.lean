@@ -309,6 +309,10 @@ theorem retCongr (hS : ModalSys.BStrong = true)
   pair := by
     intro _ _ _ _ _ _ _ _ hc hc' h h'
     exact ret_pair hST hS hc hc' h h'
+  keep := by
+    intro _ hF
+    rw [ModalSys.NoFour.noFour] at hF
+    cases hF
 
 end BData
 

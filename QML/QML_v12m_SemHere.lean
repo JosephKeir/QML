@@ -181,7 +181,7 @@ variable (M) in
     and what they come back as (`back_beta`); two carriers over one leg pair (`back_pair`) — two
     carriers' data, as `back_pair` pairs (a `◇`-free component need not be any carrier's, and then
     no atom stands behind it).  Part of a model proper (`IndInvariant.ret`), since it mentions hole
-    terms. -/
+    terms and carrier data. -/
 structure RetCongr : Prop where
   map : ∀ {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
     {w : M.frame.W} {S : Set (M.frame.Acc w)}
@@ -195,6 +195,14 @@ structure RetCongr : Prop where
       M.Ret (A := .VTypeProd A B) S
         (fun a c => ((val a c, val' a c) : M.frame.Dom (.VTypeProd A B) c.1))
         ((o, o') : M.frame.Dom (.VTypeProd A B) w)
+  /-- ⭐A **kept carrier comes back as its own value** (T + 4, `back_keep`).  At a `◇`-free content
+      this follows from `Ret_conv`, the way home being unique; at a `◇` content `Ret` is primitive,
+      so it is a requirement on models. -/
+  keep : ∀ (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {A : VarType} {w : M.frame.W}
+    {S : Set (M.frame.Acc w)} (n : M.frame.Nec A w), Nonempty S →
+    M.IsCarrierData S (fun a c => M.necEval n ⟨c.1, ⟨M.frame.trans hF a.1.2.down c.2.down⟩⟩) →
+    M.Ret S (fun a c => M.necEval n ⟨c.1, ⟨M.frame.trans hF a.1.2.down c.2.down⟩⟩)
+      (M.necEval n (M.frame.reflAcc hT w))
 
 variable (M) in
 /-- `Ind` is a **congruence** for what strong B builds values with (§11.15): it is preserved by a

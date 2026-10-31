@@ -574,6 +574,9 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M hM w env hfin hnp hΔ
       exact sat_back_hereX env hnp hfin hM hS hT y hy bd t t₀ φ (ihb M hM env hfin hnp hΔ)
         (ihh M hM env hfin hnp hΔ) (ihφ M hM env hfin hnp hΔ)
+  | @back_keep Γ _ Δ hS hT hF O A a b pne ihne =>
+      intro M hM w env hfin hnp hΔ
+      exact sat_back_keep env hM hS hT hF O b (ihne M hM env hfin hnp hΔ)
   | @ret_bridge Γ _ Δ hS O A a₀ bd a t Φ pb pd ihb ihd =>
       intro M hM w env hfin hnp hΔ
       exact sat_ret_bridge env hS O bd t Φ (ihb M hM env hfin hnp hΔ)
