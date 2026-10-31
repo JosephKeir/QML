@@ -40,9 +40,15 @@ noncomputable def crawEval (hX : CluFlags) :
   | _, _, .boxMap f, _, o => fun a => crawEval hX f a.1 (o a)
   | _, _, .boxPair _ _, _, o => fun a => (o.1 a, o.2 a)
   | _, _, .boxUnit, _, _ => fun _ => PUnit.unit
-  | _, _, .diaMap f, _, o => ⟨o.E, fun a => crawEval hX f a.1.1 (o.c a)⟩
-  | _, _, .strength _ _, _, o => ⟨o.2.E, fun a => (o.1 a.1, o.2.c a)⟩
-  | _, _, .extract hT, _, _ => absurd hT (by rw [hX.noT]; decide)
+  | _, _, .diaMap f, _, o =>
+      ⟨o.E, fun a => crawEval hX f a.1.1 (o.c a),
+        fun hT => .dia (o.tag hT).label (GFunc.shp f 1 (o.tag hT).body)⟩
+  | _, _, .strength _ _, _, o =>
+      ⟨o.2.E, fun a => (o.1 a.1, o.2.c a),
+        fun hT => .dia (o.2.tag hT).label
+          (.prod (Arrows.transposeShp (F := carrows hF M₀) (Root := fun _ => VarSymb)
+            fun a => crawShape hT (o.1 a)) (o.2.tag hT).body)⟩
+  | _, _, .extract hT, s, o => o ⟨s, ⟨(carrows hF M₀).refl hT s⟩⟩
   | _, _, .dup _, _, o => fun _ => o
   | _, _, .dkeep _, _, o => fun _ => o
 
@@ -290,8 +296,8 @@ theorem cden_applyG (hX : CluFlags) :
       change cden hM₀ hX s i e (.diatm x hx (Canon.applyG f c).2) =
         crawEval hM₀ hX (.diaMap f) s (cden hM₀ hX s i e (.diatm x hx c))
       simp only [cden, crawEval]
-      congr 1
-      funext a
+      refine CRPos.congr_cont (funext fun a => ?_) fun hT => absurd hT (by rw [hX.noT]; decide)
+      simp only [dif_neg ((gw hM₀ a.1.1).not_realised hX.noT)]
       refine (cden_sigma hX _ ((pTrX_sigma hM₀ _ _ _ _ _ _ _ _
         (preTD_applyG hX hM₀ f e _ c)).trans (pTrX_applyG f _ _ _ _ _ _ _ _ _))).trans ?_
       exact cden_applyG hX f _ a.1.1 _ (Ctx.Le.refl _)
@@ -299,8 +305,8 @@ theorem cden_applyG (hX : CluFlags) :
       change cden hM₀ hX s i e (.diatm x hx (.pair (Term.mono (Ctx.le_boxIn_diaIn Γ x) b) c)) =
         crawEval hM₀ hX (.strength _ _) s (cden hM₀ hX s i e (.pair (.boxtm b) (.diatm x hx c)))
       simp only [cden, crawEval]
-      congr 1
-      funext a
+      refine CRPos.congr_cont (funext fun a => ?_) fun hT => absurd hT (by rw [hX.noT]; decide)
+      simp only [dif_neg ((gw hM₀ a.1.1).not_realised hX.noT)]
       refine (cden_sigma hX _ (pTrX_pair _ _ _ _ _ _ _ _ _ _)).trans (Prod.ext ?_ rfl)
       exact cden_sigma hX _ ((pTrX_sigma hM₀ _ _ _ _ _ _ _ _
         (preTD_box hX hM₀ e (hx.imp fun _ h => e.ref h) b)).trans

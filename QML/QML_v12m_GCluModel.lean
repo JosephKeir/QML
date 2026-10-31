@@ -166,12 +166,13 @@ theorem cnecEval_injective (hX : CluFlags) {A : VarType} {s : GW hF M₀} :
 
 theorem cposEval_injective (hX : CluFlags) {A : VarType} {s : GW hF M₀} :
     Function.Injective (cposEval hM₀ hX (A := A) (s := s)) := by
-  rintro ⟨⟨E, c⟩, hp⟩ ⟨⟨E', c'⟩, hp'⟩ h
+  rintro ⟨⟨E, c, τ⟩, hp⟩ ⟨⟨E', c', τ'⟩, hp'⟩ h
   simp only [cposEval] at h
   obtain ⟨rfl, hc⟩ := Sigma.mk.inj_iff.mp h
   have hc' := eq_of_heq hc
   apply Subtype.ext
-  exact congrArg (CRPos.mk E) (funext fun a => ctoDom_inj hX (congrFun hc' a))
+  exact CRPos.congr_cont (funext fun a => ctoDom_inj hX (congrFun hc' a))
+    fun hT => (hX.absT hT).elim
 
 variable (hF) in
 /-- ⭐**The function algebra on the carriers**; `posSide` is `posKeep`, 4's keep being the
@@ -241,7 +242,7 @@ theorem cposSerial (hX : CluFlags) (hDS : ModalSys.DStrong = true) (s : GW hF M�
       have hR : GR (groot hF M₀) t' := ⟨[c], pathOk_cons, hc⟩
       exact ⟨⟨cden hM₀ hX (groot hF M₀) j (Ctx.Le.refl _) (.diatm x hx u),
           cdefinable_dia_of_root hX s _ (cdefinable_den hX _ _)⟩,
-        ⟨⟨⟨t', ⟨hR⟩⟩, inExt_pathOf hR (P := [c]) (h := hc) hk⟩⟩⟩
+        ⟨⟨⟨t', ⟨hR⟩⟩, .inr ⟨hX.noT, inExt_pathOf hR (P := [c]) (h := hc) hk⟩⟩⟩⟩
 
 /-- ⭐**Strong 4 on the carriers**: along any arrow, an object of a liftable type at its end is
     the object itself kept at its source — definable there by R4. -/

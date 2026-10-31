@@ -1,4 +1,4 @@
-import QML.QML_v12m_GCluLabel
+import QML.QML_v12m_GCluShape
 
 /-!
 # QML v12m — 5 on the growing tree: the cluster model's raw objects and denotations
@@ -61,10 +61,20 @@ variable (hF M₀) in
 /-- The arrows of every world: the root's. -/
 abbrev CAcc : Type := GAcc hF M₀ (groot hF M₀)
 
-/-- A raw possible object: an extent and a raw object along each of its arrows. -/
-structure CRPos (C : CAcc hF M₀ → Type) where
+/-- A raw possible object: an extent, a raw object along each of its arrows and, under T, its
+    shape, stored at the root (`crawShape` moves it to a world). -/
+structure CRPos (A : VarType) (C : CAcc hF M₀ → Type) where
   E : Set (CAcc hF M₀)
   c : (a : E) → C a.1
+  tag : ModalSys.T = true → CShape hF M₀ (groot hF M₀) (.VTypeDia A)
+
+theorem CRPos.congr_cont {A : VarType} {C : CAcc hF M₀ → Type} {E : Set (CAcc hF M₀)}
+    {c c' : (a : E) → C a.1}
+    {τ τ' : ModalSys.T = true → CShape hF M₀ (groot hF M₀) (.VTypeDia A)} (hc : c = c')
+    (hτ : ∀ hT, τ hT = τ' hT) : (⟨E, c, τ⟩ : CRPos A C) = ⟨E, c', τ'⟩ := by
+  subst hc
+  obtain rfl : τ = τ' := funext hτ
+  rfl
 
 variable (hM₀ : Theory.IsMCS M₀)
 
@@ -74,7 +84,20 @@ def CRDom : VarType → GW hF M₀ → Type
   | .VTypeOne, _ => PUnit
   | .VTypeProd A C, s => CRDom A s × CRDom C s
   | .VTypeBox A, _ => (a : CAcc hF M₀) → CRDom A a.1
-  | .VTypeDia A, _ => CRPos fun a => CRDom A a.1
+  | .VTypeDia A, _ => CRPos A fun a => CRDom A a.1
+
+variable {hM₀} in
+/-- ⭐Under T, the shape of a raw object at a world: the stored shapes of its possible objects,
+    arranged as its type arranges them. -/
+def crawShape (hT : ModalSys.T = true) :
+    {A : VarType} → {s : GW hF M₀} → CRDom hM₀ A s → CShape hF M₀ s A
+  | .Var, _, _ => .var
+  | .VTypeOne, _, _ => .one
+  | .VTypeProd _ _, _, o => .prod (crawShape hT o.1) (crawShape hT o.2)
+  | .VTypeBox _, _, o =>
+      .box (Arrows.transposeShp (F := carrows hF M₀) (Root := fun _ => VarSymb) fun a =>
+        crawShape hT (o a))
+  | .VTypeDia _, s, o => (o.tag hT).map (CLeaf.rean s)
 
 /-! ## Preimages of terms at the root -/
 
@@ -113,6 +136,7 @@ theorem rorig_ref (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (
 
 /-! ## Denotations -/
 
+open Classical in
 variable (hM₀) in
 /-- ⭐**The denotation of a term at a world**, computed at a stage containing its context.  At
     a modal type it is the root's denotation of the term's preimage, inlined, so the recursion is
@@ -129,13 +153,28 @@ noncomputable def cden (hX : CluFlags) : {A : VarType} → {a : Ann A} → {Γ :
         (pTr hM₀ (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (pathOf_ok a.2.down)
           (rstg s i) (preTB hX hM₀ s i (Term.mono e.boxIn b)).2).2
   | _, _, _, s, i, e, .diatm x hx t =>
-      ⟨{a | InExt (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (rorig s x)}, fun a =>
-        cden hX a.1.1
-          (pstg (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down) (rstg s i))
-          (Ctx.Le.refl _)
-          (pTrX hM₀ (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down) (rstg s i)
-            (rorig s x) (rorig_ref hX hM₀ s i (hx.imp fun _ h => e.ref h)) a.2
-            (preTD hX hM₀ s i (hx.imp fun _ h => e.ref h) (Term.mono (e.diaIn x) t)).2).2⟩
+      ⟨{a | GMem hM₀ (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (rorig s x)},
+        fun a =>
+        if hr : (gw hM₀ a.1.1).Realised
+            (kw (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down) (rorig s x))
+        then
+          cden hX a.1.1 _ (Ctx.Le.refl _)
+            (grealT hr (Ctx.Le.refl _)
+              (kw_decl hM₀ (groot hF M₀) a.1.1 _ (pathOf_eq a.1.2.down) (rstg s i)
+                (rorig_ref hX hM₀ s i (hx.imp fun _ h => e.ref h)))
+              (pTrXK hM₀ (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down) (rstg s i)
+                (rorig s x) (rorig_ref hX hM₀ s i (hx.imp fun _ h => e.ref h))
+                (preTD hX hM₀ s i (hx.imp fun _ h => e.ref h) (Term.mono (e.diaIn x) t)).2).2).2
+        else
+          cden hX a.1.1
+            (pstg (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down) (rstg s i))
+            (Ctx.Le.refl _)
+            (pTrX hM₀ (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down) (rstg s i)
+              (rorig s x) (rorig_ref hX hM₀ s i (hx.imp fun _ h => e.ref h))
+              (Or.resolve_left a.2 hr).2
+              (preTD hX hM₀ s i (hx.imp fun _ h => e.ref h) (Term.mono (e.diaIn x) t)).2).2,
+        fun _ => annC _ (.dia (rorig s x)
+          (preTD hX hM₀ s i (hx.imp fun _ h => e.ref h) (Term.mono (e.diaIn x) t)).1)⟩
   termination_by structural A => A
 
 theorem cden_sigma (hX : CluFlags) {A : VarType} {Γ : Ctx} {s : GW hF M₀} {i : ℕ}
@@ -163,9 +202,13 @@ theorem cden_mono (hX : CluFlags) : ∀ {A : VarType} {a : Ann A} {Γ Γ' : Ctx}
   | _, _, _, _, h, .diatm x hx t, s, i, e => by
       change cden hM₀ hX s i e (.diatm x _ (Term.mono (h.diaIn x) t)) = _
       simp only [cden]
-      congr 1
-      funext a
-      rw [Term.mono_mono]
+      refine CRPos.congr_cont (funext fun a => ?_) fun _ => rfl
+      by_cases hr : (gw hM₀ a.1.1).Realised
+          (kw (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down) (rorig s x))
+      · simp only [dif_pos hr]
+        rw [Term.mono_mono]
+      · simp only [dif_neg hr]
+        rw [Term.mono_mono]
   termination_by structural A => A
 
 /-- The root stage `R` reads a world's stage-`i` preimages, when it is no earlier. -/
@@ -182,6 +225,33 @@ theorem itemOk_rpreX_le (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M
       (preIX (rorig s) x) := by
   obtain ⟨X, hX'⟩ := hx
   exact itemOk_preIX hX' (rpre_le hX hM₀ s hR)
+
+/-- A world's `◇_x`-view preimage at a stage, lifted to a later root stage, is the renaming
+    there. -/
+theorem preTD_lift (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) {i k R : ℕ} {Γ : Ctx}
+    (e : Γ.Le (ctxOf (glat s i))) (ek : Γ.Le (ctxOf (glat s k))) (hi : rstg s i ≤ R)
+    (hk : rstg s k ≤ R) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
+    {a : Ann A} (b : Term σ (Γ.diaIn x) A a) :
+    (⟨_, Term.mono ((gle hM₀ (groot hF M₀) hk).kView (some (rorig s x)))
+        (preTD hX hM₀ s k (hx.imp fun _ h => ek.ref h) (Term.mono (ek.diaIn x) b)).2⟩ :
+        Σ c, Term σ ((ctxOf (glat (groot hF M₀) R)).kView (some (rorig s x))) A c) =
+      ⟨_, Term.subst (eIdx (ofRen (preIX (rorig s) x)))
+        (eS σ ((ctxOf (glat (groot hF M₀) R)).diaIn (rorig s x)) (ofRen (preIX (rorig s) x)))
+        ((ok_eS_kView (k := some x) (entOk_ofRen (itemOk_rpreX_le hX hM₀ s hi
+          (hx.imp fun _ h => e.ref h)))).restrict (e.diaIn x))
+        ((coh_eS_kView (k := some x) (entOk_ofRen (itemOk_rpreX_le hX hM₀ s hi
+          (hx.imp fun _ h => e.ref h)))).restrict (e.diaIn x)) b⟩ := by
+  change (⟨_, Term.mono _ (Term.subst _ _ _ _ (Term.mono (ek.diaIn x) b))⟩ :
+    Σ c, Term σ _ _ c) = _
+  rw [Term.mono_subst]
+  refine (Term.subst_congr (ι' := eIdx (ofRen (preIX (rorig s) x))) _ _ _
+    (ok_eS_kView (k := some x) (entOk_ofRen
+      (itemOk_rpreX_le hX hM₀ s hk (hx.imp fun _ h => ek.ref h))))
+    _ (coh_eS_kView (k := some x) (entOk_ofRen
+      (itemOk_rpreX_le hX hM₀ s hk (hx.imp fun _ h => ek.ref h))))
+    (sim_eS_mono (l := glat s k) (k := some x) _
+      (entOk_ofRen (itemOk_rpreX hX hM₀ s k (hx.imp fun _ h => ek.ref h)))) _).trans ?_
+  rw [Term.subst_mono]
 
 /-- ⭐**The denotation does not depend on the stage it is computed at.**  The root stages of two
     stages need not be ordered; both preimages are read at the later one, where the renaming is
@@ -236,48 +306,98 @@ theorem cden_congr (hX : CluFlags) : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t
       exact (side i (le_max_left _ _) e).trans (side j (le_max_right _ _) e').symm
   | _, _, Γ, .diatm x hx b, s, i, j, e, e' => by
       simp only [cden]
-      congr 1
-      funext a
-      set P := pathOf a.1.2.down
-      have hP := pathOf_eq a.1.2.down
-      set R := max (rstg s i) (rstg s j)
-      have side : ∀ (k : ℕ) (hk : rstg s k ≤ R) (ek : Γ.Le (ctxOf (glat s k))),
-          cden hM₀ hX a.1.1 (pstg (groot hF M₀) a.1.1 P hP (rstg s k)) (Ctx.Le.refl _)
-              (pTrX hM₀ (groot hF M₀) a.1.1 P hP (rstg s k) (rorig s x)
-                (rorig_ref hX hM₀ s k (hx.imp fun _ h => ek.ref h)) a.2
-                (preTD hX hM₀ s k (hx.imp fun _ h => ek.ref h) (Term.mono (ek.diaIn x) b)).2).2 =
-            cden hM₀ hX a.1.1 (pstg (groot hF M₀) a.1.1 P hP R) (Ctx.Le.refl _)
-              (pTrX hM₀ (groot hF M₀) a.1.1 P hP R (rorig s x)
-                ((rorig_ref hX hM₀ s i (hx.imp fun _ h => e.ref h)).imp fun _ h =>
-                  (gle hM₀ (groot hF M₀) (le_max_left _ _)).ref h) a.2
-                (Term.subst (eIdx (ofRen (preIX (rorig s) x)))
-                  (eS σ ((ctxOf (glat (groot hF M₀) R)).diaIn (rorig s x))
-                    (ofRen (preIX (rorig s) x)))
-                  ((ok_eS_kView (k := some x) (entOk_ofRen (itemOk_rpreX_le hX hM₀ s
-                    (le_max_left _ _) (hx.imp fun _ h => e.ref h)))).restrict (e.diaIn x))
-                  ((coh_eS_kView (k := some x) (entOk_ofRen (itemOk_rpreX_le hX hM₀ s
-                    (le_max_left _ _) (hx.imp fun _ h => e.ref h)))).restrict (e.diaIn x))
-                  b)).2 := by
-        intro k hk ek
-        have hm := pstg_monotone hM₀ (groot hF M₀) a.1.1 P hP hk
-        refine (cden_congr hX _ a.1.1 _ (pstg (groot hF M₀) a.1.1 P hP R) (Ctx.Le.refl _)
-          (gle hM₀ a.1.1 hm)).trans ?_
-        refine ((cden_mono hX (gle hM₀ a.1.1 hm) _ a.1.1 _ (Ctx.Le.refl _)).symm).trans ?_
-        refine cden_sigma hX _ ((pTrX_mono hM₀ (groot hF M₀) a.1.1 P hP hk _ _ a.2 _).trans ?_)
-        refine pTrX_sigma hM₀ _ _ _ _ _ _ _ _ ?_
-        change (⟨_, Term.mono _ (Term.subst _ _ _ _ (Term.mono (ek.diaIn x) b))⟩ :
-          Σ c, Term σ _ _ c) = _
-        rw [Term.mono_subst]
-        refine (Term.subst_congr (ι' := eIdx (ofRen (preIX (rorig s) x))) _ _ _
-          (ok_eS_kView (k := some x) (entOk_ofRen
-            (itemOk_rpreX_le hX hM₀ s hk (hx.imp fun _ h => ek.ref h))))
-          _ (coh_eS_kView (k := some x) (entOk_ofRen
-            (itemOk_rpreX_le hX hM₀ s hk (hx.imp fun _ h => ek.ref h))))
-          (sim_eS_mono (l := glat s k) (k := some x) _
-            (entOk_ofRen (itemOk_rpreX hX hM₀ s k (hx.imp fun _ h => ek.ref h)))) _).trans ?_
-        rw [Term.subst_mono]
-      exact (side i (le_max_left _ _) e).trans (side j (le_max_right _ _) e').symm
+      refine CRPos.congr_cont (funext fun a => ?_) fun _ => rfl
+      by_cases hr : (gw hM₀ a.1.1).Realised
+          (kw (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down) (rorig s x))
+      · simp only [dif_pos hr]
+        set P := pathOf a.1.2.down
+        have hP := pathOf_eq a.1.2.down
+        set R := max (rstg s i) (rstg s j)
+        have hxR : ∃ X, (ctxOf (glat (groot hF M₀) R)).ref (rorig s x) = some (.VTypeDia X) :=
+          (rorig_ref hX hM₀ s i (hx.imp fun _ h => e.ref h)).imp fun _ h =>
+            (gle hM₀ (groot hF M₀) (le_max_left _ _)).ref h
+        have side : ∀ (k : ℕ) (hk : rstg s k ≤ R) (ek : Γ.Le (ctxOf (glat s k))),
+            cden hM₀ hX a.1.1 (max (pstg (groot hF M₀) a.1.1 P hP (rstg s k)) hr.data.i₀)
+                (Ctx.Le.refl _)
+                (grealT hr (Ctx.Le.refl _) (kw_decl hM₀ (groot hF M₀) a.1.1 _ hP (rstg s k)
+                    (rorig_ref hX hM₀ s k (hx.imp fun _ h => ek.ref h)))
+                  (pTrXK hM₀ (groot hF M₀) a.1.1 P hP (rstg s k) (rorig s x)
+                    (rorig_ref hX hM₀ s k (hx.imp fun _ h => ek.ref h))
+                    (preTD hX hM₀ s k (hx.imp fun _ h => ek.ref h)
+                      (Term.mono (ek.diaIn x) b)).2).2).2 =
+              cden hM₀ hX a.1.1 (max (pstg (groot hF M₀) a.1.1 P hP R) hr.data.i₀)
+                (Ctx.Le.refl _)
+                (grealT hr (Ctx.Le.refl _) (kw_decl hM₀ (groot hF M₀) a.1.1 _ hP R hxR)
+                  (pTrXK hM₀ (groot hF M₀) a.1.1 P hP R (rorig s x) hxR
+                    (Term.subst (eIdx (ofRen (preIX (rorig s) x)))
+                      (eS σ ((ctxOf (glat (groot hF M₀) R)).diaIn (rorig s x))
+                        (ofRen (preIX (rorig s) x)))
+                      ((ok_eS_kView (k := some x) (entOk_ofRen (itemOk_rpreX_le hX hM₀ s
+                        (le_max_left _ _) (hx.imp fun _ h => e.ref h)))).restrict (e.diaIn x))
+                      ((coh_eS_kView (k := some x) (entOk_ofRen (itemOk_rpreX_le hX hM₀ s
+                        (le_max_left _ _) (hx.imp fun _ h => e.ref h)))).restrict (e.diaIn x))
+                      b)).2).2 := by
+          intro k hk ek
+          have hm := pstg_monotone hM₀ (groot hF M₀) a.1.1 P hP hk
+          have hm' : max (pstg (groot hF M₀) a.1.1 P hP (rstg s k)) hr.data.i₀ ≤
+              max (pstg (groot hF M₀) a.1.1 P hP R) hr.data.i₀ := max_le_max hm (le_refl _)
+          refine (cden_congr hX _ a.1.1 _ _ (Ctx.Le.refl _) (gle hM₀ a.1.1 hm')).trans ?_
+          refine ((cden_mono hX (gle hM₀ a.1.1 hm') _ a.1.1 _ (Ctx.Le.refl _)).symm).trans ?_
+          refine cden_sigma hX _ (grealT_mono hr hm _ _ _ _ ?_)
+          refine (pTrXK_mono hM₀ (groot hF M₀) a.1.1 P hP hk _ _ _).trans ?_
+          exact pTrXK_sigma hM₀ _ _ _ _ _ _ _
+            (preTD_lift hX hM₀ s e ek (le_max_left _ _) hk hx b)
+        exact (side _ (le_max_left _ _) e).trans (side _ (le_max_right _ _) e').symm
+      · simp only [dif_neg hr]
+        have hmE := (Or.resolve_left a.2 hr).2
+        set P := pathOf a.1.2.down
+        have hP := pathOf_eq a.1.2.down
+        set R := max (rstg s i) (rstg s j)
+        have hxR : ∃ X, (ctxOf (glat (groot hF M₀) R)).ref (rorig s x) = some (.VTypeDia X) :=
+          (rorig_ref hX hM₀ s i (hx.imp fun _ h => e.ref h)).imp fun _ h =>
+            (gle hM₀ (groot hF M₀) (le_max_left _ _)).ref h
+        have side : ∀ (k : ℕ) (hk : rstg s k ≤ R) (ek : Γ.Le (ctxOf (glat s k))),
+            cden hM₀ hX a.1.1 (pstg (groot hF M₀) a.1.1 P hP (rstg s k)) (Ctx.Le.refl _)
+                (pTrX hM₀ (groot hF M₀) a.1.1 P hP (rstg s k) (rorig s x)
+                  (rorig_ref hX hM₀ s k (hx.imp fun _ h => ek.ref h)) hmE
+                  (preTD hX hM₀ s k (hx.imp fun _ h => ek.ref h)
+                    (Term.mono (ek.diaIn x) b)).2).2 =
+              cden hM₀ hX a.1.1 (pstg (groot hF M₀) a.1.1 P hP R) (Ctx.Le.refl _)
+                (pTrX hM₀ (groot hF M₀) a.1.1 P hP R (rorig s x) hxR hmE
+                  (Term.subst (eIdx (ofRen (preIX (rorig s) x)))
+                    (eS σ ((ctxOf (glat (groot hF M₀) R)).diaIn (rorig s x))
+                      (ofRen (preIX (rorig s) x)))
+                    ((ok_eS_kView (k := some x) (entOk_ofRen (itemOk_rpreX_le hX hM₀ s
+                      (le_max_left _ _) (hx.imp fun _ h => e.ref h)))).restrict (e.diaIn x))
+                    ((coh_eS_kView (k := some x) (entOk_ofRen (itemOk_rpreX_le hX hM₀ s
+                      (le_max_left _ _) (hx.imp fun _ h => e.ref h)))).restrict (e.diaIn x))
+                    b)).2 := by
+          intro k hk ek
+          have hm := pstg_monotone hM₀ (groot hF M₀) a.1.1 P hP hk
+          refine (cden_congr hX _ a.1.1 _ (pstg (groot hF M₀) a.1.1 P hP R) (Ctx.Le.refl _)
+            (gle hM₀ a.1.1 hm)).trans ?_
+          refine ((cden_mono hX (gle hM₀ a.1.1 hm) _ a.1.1 _ (Ctx.Le.refl _)).symm).trans ?_
+          refine cden_sigma hX _ ((pTrX_mono hM₀ (groot hF M₀) a.1.1 P hP hk _ _ hmE _).trans ?_)
+          exact pTrX_sigma hM₀ _ _ _ _ _ _ _ _
+            (preTD_lift hX hM₀ s e ek (le_max_left _ _) hk hx b)
+        exact (side _ (le_max_left _ _) e).trans (side _ (le_max_right _ _) e').symm
   termination_by structural A => A
+
+open Classical in
+/-- A possible term's content along an arrow it does not realise. -/
+theorem cden_dia_c_neg (hX : CluFlags) {A : VarType} {a : Ann A} {Γ : Ctx} (s : GW hF M₀) (i : ℕ)
+    (e : Γ.Le (ctxOf (glat s i))) (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    (t : Term σ (Γ.diaIn x) A a) (b : CAcc hF M₀) (hb : b ∈ (cden hM₀ hX s i e (.diatm x hx t)).E)
+    (hr : ¬ (gw hM₀ b.1).Realised
+      (kw (groot hF M₀) b.1 (pathOf b.2.down) (pathOf_eq b.2.down) (rorig s x))) :
+    (cden hM₀ hX s i e (.diatm x hx t)).c ⟨b, hb⟩ =
+      cden hM₀ hX b.1 (pstg (groot hF M₀) b.1 (pathOf b.2.down) (pathOf_eq b.2.down) (rstg s i))
+        (Ctx.Le.refl _)
+        (pTrX hM₀ (groot hF M₀) b.1 (pathOf b.2.down) (pathOf_eq b.2.down) (rstg s i)
+          (rorig s x) (rorig_ref hX hM₀ s i (hx.imp fun _ h => e.ref h))
+          (Or.resolve_left hb hr).2
+          (preTD hX hM₀ s i (hx.imp fun _ h => e.ref h) (Term.mono (e.diaIn x) t)).2).2 :=
+  dif_neg hr
 
 /-! ## At the root, and a world's denotation through the root -/
 
@@ -337,21 +457,49 @@ theorem cden_root_box (hX : CluFlags) {A : VarType} {a : Ann A} {Γ : Ctx} (i : 
           i (Term.mono e.boxIn b)).2 :=
   cden_sigma hX _ (pTr_sigma hM₀ _ _ _ _ _ _ (subst_preI_id _ _ _))
 
-/-- At the root, a possible term denotes as on the growing tree, without T. -/
+open Classical in
+/-- At the root, a possible term denotes as on the growing tree. -/
 theorem cden_root_dia (hX : CluFlags) {A : VarType} {a : Ann A} {Γ : Ctx} (i : ℕ)
     (e : Γ.Le (ctxOf (glat (groot hF M₀) i))) (x : VarSymb)
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (b : Term σ (Γ.diaIn x) A a) :
     cden hM₀ hX (groot hF M₀) i e (.diatm x hx b) =
-      ⟨{a' | InExt (groot hF M₀) a'.1 (pathOf a'.2.down) (pathOf_eq a'.2.down) x}, fun a' =>
-        cden hM₀ hX a'.1.1
-          (pstg (groot hF M₀) a'.1.1 (pathOf a'.1.2.down) (pathOf_eq a'.1.2.down) i)
-          (Ctx.Le.refl _)
-          (pTrX hM₀ (groot hF M₀) a'.1.1 (pathOf a'.1.2.down) (pathOf_eq a'.1.2.down) i x
-            (hx.imp fun _ h => e.ref h) a'.2 (Term.mono (e.diaIn x) b)).2⟩ := by
+      ⟨{a' | GMem hM₀ (groot hF M₀) a'.1 (pathOf a'.2.down) (pathOf_eq a'.2.down) x}, fun a' =>
+        if hr : (gw hM₀ a'.1.1).Realised
+            (kw (groot hF M₀) a'.1.1 (pathOf a'.1.2.down) (pathOf_eq a'.1.2.down) x)
+        then
+          cden hM₀ hX a'.1.1 _ (Ctx.Le.refl _)
+            (grealT hr (Ctx.Le.refl _)
+              (kw_decl hM₀ (groot hF M₀) a'.1.1 _ (pathOf_eq a'.1.2.down) i
+                (hx.imp fun _ h => e.ref h))
+              (pTrXK hM₀ (groot hF M₀) a'.1.1 (pathOf a'.1.2.down) (pathOf_eq a'.1.2.down) i x
+                (hx.imp fun _ h => e.ref h) (Term.mono (e.diaIn x) b)).2).2
+        else
+          cden hM₀ hX a'.1.1
+            (pstg (groot hF M₀) a'.1.1 (pathOf a'.1.2.down) (pathOf_eq a'.1.2.down) i)
+            (Ctx.Le.refl _)
+            (pTrX hM₀ (groot hF M₀) a'.1.1 (pathOf a'.1.2.down) (pathOf_eq a'.1.2.down) i x
+              (hx.imp fun _ h => e.ref h) (Or.resolve_left a'.2 hr).2
+              (Term.mono (e.diaIn x) b)).2,
+        fun _ => annC _ (.dia x a)⟩ := by
   simp only [cden]
-  congr 1
-  funext a'
-  exact cden_sigma hX _ (pTrX_sigma hM₀ _ _ _ _ _ _ _ _ (subst_preIX_id _ _ _))
+  refine CRPos.congr_cont (funext fun a' => ?_) fun _ => ?_
+  · by_cases hr : (gw hM₀ a'.1.1).Realised
+        (kw (groot hF M₀) a'.1.1 (pathOf a'.1.2.down) (pathOf_eq a'.1.2.down) x)
+    · have hr' : (gw hM₀ a'.1.1).Realised (kw (groot hF M₀) a'.1.1 (pathOf a'.1.2.down)
+          (pathOf_eq a'.1.2.down) (rorig (groot hF M₀) x)) := hr
+      simp only [dif_pos hr, dif_pos hr']
+      exact cden_sigma hX _ (grealT_sigma hr _ _ (pTrXK_sigma hM₀ _ _ _ _ _ _ _
+        (subst_preIX_id _ _ _)))
+    · have hr' : ¬ (gw hM₀ a'.1.1).Realised (kw (groot hF M₀) a'.1.1 (pathOf a'.1.2.down)
+          (pathOf_eq a'.1.2.down) (rorig (groot hF M₀) x)) := hr
+      simp only [dif_neg hr, dif_neg hr']
+      exact cden_sigma hX _ (pTrX_sigma hM₀ _ _ _ _ _ _ _ _ (subst_preIX_id _ _ _))
+  · have e₀ := congrArg Sigma.fst (subst_preIX_id (σ := σ) (Term.mono (e.diaIn x) b)
+      (ok_eS_kView (k := some x) (entOk_ofRen (itemOk_rpreX hX hM₀ (groot hF M₀) i
+        (hx.imp fun _ h => e.ref h))))
+      (coh_eS_kView (k := some x) (entOk_ofRen (itemOk_rpreX hX hM₀ (groot hF M₀) i
+        (hx.imp fun _ h => e.ref h)))))
+    exact congrArg (fun c => annC (groot hF M₀) (Ann.dia x c)) e₀
 
 /-- ⭐**A world's necessary term denotes the root's denotation of its preimage.** -/
 theorem cden_box_eq (hX : CluFlags) {A : VarType} {a : Ann A} {Γ : Ctx} (s : GW hF M₀)
@@ -443,7 +591,11 @@ theorem cdefinable_dia_apply (hX : CluFlags) {A : VarType} {s : GW hF M₀}
     CDefinable hM₀ hX A a.1.1 (o.c a) := by
   obtain ⟨i, _, t, rfl⟩ := h
   cases t with
-  | diatm x hx b => exact cdefinable_den hX _ _
+  | diatm x hx b =>
+      simp only [cden]
+      split
+      · exact cdefinable_den hX _ _
+      · exact cdefinable_den hX _ _
 
 /-! ## Definable at a world = definable at the root (R4), at `□` types -/
 

@@ -174,7 +174,7 @@ theorem ccanon_mem_iff (hX : CluFlags) (s : GW hF M₀) (i : ℕ) {x : VarSymb} 
     b ∈ ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s i).ref x hr)).1 ↔
       InExt (groot hF M₀) b.1 (pathOf b.2.down) (pathOf_eq b.2.down) (rorig s x) := by
   rw [cagree_canon hX s i x _ hr]
-  exact Iff.rfl
+  exact ⟨fun h => (Or.resolve_left h ((gw hM₀ _).not_realised hX.noT)).2, fun h => .inr ⟨hX.noT, h⟩⟩
 
 /-- ⭐**A world's `◇_x` view along an arrow of `x`'s extent satisfies a formula exactly when the
     arrow's end satisfies its preimage translated along the root's path for `x`'s origin.** -/

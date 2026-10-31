@@ -5178,9 +5178,31 @@ is direct rather than a port: nothing of `GLeaf`, `GLeafInj` or `GLaws` is copie
   an edge (`u'` lifted from `u`'s value at `c`), so `u.keep.here` and `u'.keep` agree at `c`.  Along
   a late edge every entry is an image; `glate` and `late_inj` work under 5 unchanged.
 
-**Where things stand for steps 3–5.**  Left: tags in `CRPos`, `cden` under T (`GMem`, `grealT`,
-`pTrXK`, stage independence), `tr_collapse`, `tr_pathXK`, `crawShape`, `cops` and `cmodel`, the term
-lemma, `Here`, the truth lemma, `Ind`, `IndInvariant`, and the dispatch.
+**`cden` under T, built (2026-10-31).**  `CRPos` has a tag, stored at the root; `crawShape` moves it
+to a world.  `cden`'s `◇` clause is `grden`'s at the root, through the preimage: extent `GMem`,
+content by `grealT` of `pTrXK` where the witness is realised and `pTrX` where not, and tag
+`annC` of the preimage's annotation.  `cden_mono`, `cden_congr`, `cden_root_dia`, `cden_dia_eq` and
+R4 hold with T on or off, and `crawEval` has its tags and a real `extract`.
+
+**The staging.**  `CluFlags.noT` stays until the last file is done, so K45 stays complete at every
+step.  Its uses, 42 at this point, are the list of what is left: `GCluModel` 21, `GCluTerm` 6,
+`GCluTruth` 6, `GCluFunc` 5, `GCluTr` 2, `GCluDom` and `GCluCompleteness` 1 each.  They are not
+proof holes: each is a T branch closed by T being off, so the theorems are true as stated, for K45
+only.
+
+**Design for the rest (2026-10-31).**
+* *Shapes at worlds.*  `crawShape (cden s i e t)` is `termShp` in a world environment `cEs` with
+  labels `cLab (preIx s y) s`.  The generic `termShp_subst` and the tree's `unT_termShp` argument
+  (to port) reduce `□` to items, where a member is `cLab_keep_of` by definition.
+* *One typing fact.*  A preimage's annotation maps indices by `eIdx`, which is `preIx` on every
+  index a view's terms can hold: a first level step is a `keep`, or a `dia` at the view's witness.
+* *`tr_path`, `tr_pathX`* need only their `[]` cases (`Term.collapse_shift_same`).
+* *`cden_applyG`* mirrors `grden_applyG`'s realised branches (`grealT_applyG`, `pTrXK_applyG`,
+  `collapse_pTrK`), read through the preimage; tags by `Canon.termShp_applyG`.
+
+**Where things stand for steps 3–5.**  Left: `tr_collapse`, `tr_pathXK`, the shapes at worlds,
+`cops` and `cmodel` under T, the term lemma, `Here`, the truth lemma, `Ind`, `IndInvariant`, and the
+dispatch.
 
 ### □-BF and ◇-BF
 Base variables are invisible under `□`, so each Barcan formula pairs a concept quantifier outside

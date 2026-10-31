@@ -137,7 +137,7 @@ theorem cagree_of_raw (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
         exact h _ _ (show (VarSymb.step v st).lastProj = false from
           Bool.eq_false_iff.mpr hs) _
 
-theorem CRPos.c_congr {C : CAcc hF M₀ → Type} {o o' : CRPos C} (e : o = o')
+theorem CRPos.c_congr {A : VarType} {C : CAcc hF M₀ → Type} {o o' : CRPos A C} (e : o = o')
     (b : CAcc hF M₀) (h : b ∈ o.E) (h' : b ∈ o'.E) : o.c ⟨b, h⟩ = o'.c ⟨b, h'⟩ := by
   subst e
   rfl
@@ -258,6 +258,8 @@ theorem cagree_diaPush (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
       refine (CRPos.c_congr e a.1 hm₁ (e ▸ (hm₁ : a.1 ∈ (cden hM₀ hX w k (Ctx.Le.refl _)
         (C.app (Term.diatm u ⟨X, hr⟩
           (Term.eta (.step u .dia) X (Ctx.ref_diaIn_of hr)))).2).E))).trans ?_
+      refine (cden_dia_c_neg hX w k _ _ _ _ a.1 _
+        ((gw hM₀ a.1.1).not_realised hX.noT)).trans ?_
       change cden hM₀ hX a.1.1 _ (Ctx.Le.refl _) (pTrX hM₀ (groot hF M₀) a.1.1 _ _ (rstg w k) _ _
         hm (preTD hX hM₀ w k _ (Term.mono (Ctx.Le.refl _) ((C.dia u ⟨X, hr⟩).app
           (Term.eta (.step u .dia) X (Ctx.ref_diaIn_of hr))).2)).2).2 = _
@@ -355,13 +357,15 @@ mutual
         have key : ∀ b, b ∈ ((cmodel hF hM₀ hX).posEval (env.ref x hr)).1 →
             InExt (groot hF M₀) b.1 (pathOf b.2.down) (pathOf_eq b.2.down) (rorig w (C.idx x)) := by
           rw [hpq]
-          exact fun _ hb => hb
+          exact fun _ hb => (Or.resolve_left hb ((gw hM₀ _).not_realised hX.noT)).2
         have hm := key a.1 a.2
         rw [interp_ctr hX Y _ (cagree_diaPush hX C env hag hr a hm)
           (GTr.npl_comp _ _ (GTr.npl_dia C x _) (npl_preXC hM₀ hX _ _ _ _ hm))
           (Ctx.noProjLast_diaIn _ _)]
         refine ctoDom_congr hX ?_ _ _
         rw [GTr.app_comp, preXC_app]
+        refine Eq.trans ?_ (cden_dia_c_neg hX w k _ _ _ _ a.1 _
+          ((gw hM₀ a.1.1).not_realised hX.noT)).symm
         change _ = cden hM₀ hX a.1.1 _ (Ctx.Le.refl _) (pTrX hM₀ (groot hF M₀) a.1.1 _ _
           (rstg w k) _ _ hm (preTD hX hM₀ w k _ (Term.mono (Ctx.Le.refl _)
             ((C.dia x hx).app Y).2)).2).2
