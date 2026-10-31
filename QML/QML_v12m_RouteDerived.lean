@@ -95,6 +95,7 @@ def kThetaR (θΨ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd C S.ty)) 1) :
         (Term.eta (.root (.bnd 2)) S.ty (Ctx.ref_insert_root _ (.bnd 2) _)))
       θΨ)))
 
+omit [ModalSys.NoFour] in
 /-- ⭐The negated route read, at any depth, at a value and a necessary object `□s`. -/
 theorem holeAt_kThetaR {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) {a : Ann S.flat}
     (y : Term σ Δ S.flat a) {c : Ann C} (s : Term σ Δ.boxIn C c)
@@ -166,6 +167,7 @@ def routeBody {Γ : Ctx} [Γ.NoSlots] {a : Ann S.flat} (y : Term σ Γ S.flat a)
           (Ctx.ref_insert_root _ (.bnd (0 + 1)) _)))
       θΨ))
 
+omit [ModalSys.NoFour] in
 /-- At home the negated route is the universal of `routeBody`. -/
 theorem holeRead_kThetaR {Γ : Ctx} [Γ.NoSlots] {a : Ann S.flat}
     (y : Term σ Γ S.flat a) {c : Ann C} (s : Term σ Γ.boxIn C c)

@@ -346,6 +346,7 @@ theorem sig_holeAt_right {Γ : Ctx} {A : VarType} {a : Ann A} (t : Term σ Γ A 
   cases h
   rfl
 
+omit [ModalSys.NoFour] in
 /-- Padding a necessary object `□sb`: `□⟨sb, ()⟩`. -/
 theorem holeAt_boxtm_padC_obj {Γ : Ctx} {Z : VarType} {a₀ : Ann Z} (sb : Term σ Γ.boxIn Z a₀)
     (b : Bool) (hb : ModalSys.T = b) :
@@ -357,6 +358,7 @@ theorem holeAt_boxtm_padC_obj {Γ : Ctx} {Z : VarType} {a₀ : Ann Z} (sb : Term
   exact sig_boxtm (sig_pair (Term.subst_eta_tm _ _ _ _ _ _ sb
     (Subst.box_at_inner_boxtm _ (Subst.at_single_root _ _))) rfl)
 
+omit [ModalSys.NoFour] in
 /-- Under T, a padded value's companion `fst :: q` is the value's companion `q`. -/
 theorem compVal_padC {Γ : Ctx} {Z : VarType} {a₀ : Ann Z} (sb : Term σ Γ.boxIn Z a₀)
     (q : List Step) {ps ps' : List (List Step)}
@@ -415,6 +417,7 @@ theorem at_compsIdx_compsVal {Γ : Ctx} (θ : Subst σ Γ.boxIn) {A : VarType} {
         exact at_compsIdx_compsVal θ sb ps h.tail q hq₁ hq' _
           (by rw [Subst.at_proj θ v rfl, hv]; rfl)
 
+omit [ModalSys.NoFour] in
 /-- Under T, padding a value with companions: `⟨sb, ()⟩`, with `sb`'s companions under `fst`. -/
 theorem holeAt_padCVal_compsVal {Γ : Ctx} {Z : VarType} {a₀ : Ann Z} (sb : Term σ Γ.boxIn Z a₀)
     (hZ : Z.CompOk Z.hereChains) :
@@ -440,6 +443,7 @@ theorem holeAt_padCVal_compsVal {Γ : Ctx} {Z : VarType} {a₀ : Ann Z} (sb : Te
       exact (Term.subst_eta_tm _ _ _ _ _ _ _ (at_compsIdx_compsVal _ sb _ hZ q hq hq₁ _
         (Subst.at_single_root _ _))).trans (compVal_padC sb q h hq₁).symm
 
+omit [ModalSys.NoFour] in
 /-- ⭐**Padding a value with companions**, for either value of the flag. -/
 theorem holeAt_compsVal_padC {Γ : Ctx} {Z : VarType} {a₀ : Ann Z} (sb : Term σ Γ.boxIn Z a₀) :
     ∀ (b : Bool) (hb : ModalSys.T = b),

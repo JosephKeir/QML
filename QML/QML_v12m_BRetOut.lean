@@ -836,6 +836,7 @@ theorem exists_boxtm {Γ : Ctx} {A : VarType} {c : Ann (.VTypeBox A)}
   cases x with
   | boxtm s => exact ⟨_, s, rfl⟩
 
+omit [ModalSys.NoFour] in
 /-- Reading a necessary pair's first item. -/
 theorem holeAt_box_fst {Γ : Ctx} {A B : VarType} {a : Ann A} {b : Ann B}
     (s : Term σ Γ.boxIn A a) (t : Term σ Γ.boxIn B b) (h : _) :
@@ -848,6 +849,7 @@ theorem holeAt_box_fst {Γ : Ctx} {A B : VarType} {a : Ann A} {b : Ann B}
     exact if_pos rfl)]
   rfl
 
+omit [ModalSys.NoFour] in
 /-- Reading a necessary pair's second item. -/
 theorem holeAt_box_snd {Γ : Ctx} {A B : VarType} {a : Ann A} {b : Ann B}
     (s : Term σ Γ.boxIn A a) (t : Term σ Γ.boxIn B b) (h : _) :

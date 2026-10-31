@@ -5317,10 +5317,11 @@ value along `a`.  We want `m.here` and `t` interchangeable in every slot formula
   `ret t Φ(d) ⊢ ∃n:□A. Back (n.dup) t ∧ ◇Φ(n.keep)`.
   * `Back (n.dup) t` says `n.here ≈ t`: `back_here` reads it, and `back_keep` gives the carrier.
   * `T₁ := □ψ₁(p.inner)`, with `ψ₁⟨x, y⟩ := Back (y.dup) x`.  `ret_counit` gives `Back (n.dup) t`.
-  * `T₂ := □□Back (dd z.keep) y`, for `z = p.inner.snd` and `y = p.keep.inner.snd`.  It says `b` is of
+  * `T₂ := □□Back (dd y) z.keep`, for `z = p.inner.snd` and `y = p.keep.inner.snd`.  It says `b` is of
     kept form, and it is needed: the nested `ret` delivers `z.keep`, `b` read along `r` and kept along
     `s`, while the carrier's image is `y`, `b` read along `r · s`.  These two addresses differ, and
-    they agree only for a kept `b`.  `back_here` interchanges them.
+    they agree only for a kept `b`.  `back_here` interchanges them.  (First written the other way
+    round; this way `back_here` applies directly, with no contraposition.)
   * `T₃ := Back (b.dup) d` at the far end, which turns `Φ(d)` into `Φ(b.here)`.
   * All three hold of `b = d.dup`, by `back_keep`, under `□` where stated.
   * *The nested step.*  `ret_unitC` at `□sb = n.dup`, with `θ := □Back (dd e.inner) z.keep`, puts a `ret`
@@ -5330,6 +5331,16 @@ value along `a`.  We want `m.here` and `t` interchangeable in every slot formula
     friendly (`applyG_subst`), and `applyG dup (.boxtm b)` is `back_keep`'s carrier.  Every step inside a
     body has to open the slot to a fresh root and pass through `ret_monoS`, because rules need slot-free
     contexts.  Estimate: 600 to 1 000 lines for this shape alone.
+  * *Built (2026-10-31): `QML_v12m_RetLift`, 1 021 lines, no `sorry`, standard axioms.*
+    ⭐`Proof.ret_lift` is the `∃`-elimination form, for a fresh `c : □A`, **along either leg**, which
+    the estimate did not include.  The ties are one hole formula on the pair `⟨d, b⟩` (`WFF.ties`) with
+    one reading lemma at `⟨□a, □□c⟩` (`WFF.holeAt_ties`), so their proof (`Proof.ties_dup`) and their
+    use (`Proof.lift_back`, `Proof.lift_inner`) share it.  `Proof.ret_tied` is `∃`-introduction at
+    `d.dup`, then `pairUp`.  `Proof.ret_ext` now holds without `NoFour`: `Subst.box_at_inner_boxtm` has
+    a keep-only case, so `QML_v12m_RetDerived` has no flag at all.
+  * *Still to do: the `∃` as a formula.*  Henkin (`exW`) needs `∃n. Back (n.dup) t ∧ ◇Φ(n.keep)` as a
+    member of the theory, so its body must be written with `n` a slot.  Left for the truth case,
+    which fixes the exact form.
 * *Companions and `.wit` shapes: not yet checked, and the truth lemma needs them.*  It has to cover
   every `retS` and `retxS` shape, whatever `BStrongW` says, and everything above is for `.box` along
   `nec`.  The sketches so far: `.boxC` by packing into a flat `□` (`packC`), with a tie per companion, since
@@ -5338,7 +5349,7 @@ value along `a`.  We want `m.here` and `t` interchangeable in every slot formula
 **5. Order of work.**
 1. Add `back_keep` and its law (soundness, substitution).  Done.
 2. Check companions and `.wit` on paper, then write the lifting form as a derived rule, at `◇`
-   contents too, before touching the model.
+   contents too, before touching the model.  Done for `.box` along both legs (`Proof.ret_lift`).
 3. The cluster's `Ret`, `Ret_fwd`, then the `Back` and `ret` truth cases.
 
 #### Strong B on S5, every shape: the check *(2026-10-31, paper)*
@@ -5351,7 +5362,7 @@ one case is unresolved.  All of this is on paper.
 | `Back`, either leg | membership ⇒ truth | `Ret` is the atom | free |
 | `Back`, `◇`-free | truth ⇒ membership | `back_ret`, as `BBackTruth` | a port |
 | `Back`, `◇` contents | truth ⇒ membership | the atom itself | free |
-| `ret`, `.box` | membership ⇒ truth | the lifting form, then an ordinary child | pinned above |
+| `ret`, `.box` | membership ⇒ truth | the lifting form, then an ordinary child | derivation built |
 | `ret`, `.box`, `nec` | truth ⇒ membership | `back_keep`, `ret_bridge`, interchange at the value slot | simple |
 | `ret`, `.box`, `pos` | truth ⇒ membership | as `nec`, with `ret_bridge` along the leg | needs finding 1 |
 | `.prod`, `.boxC` | membership ⇒ truth | pack flat (`pack`, `packC`), with a coherence tie | new, routine |
@@ -5360,7 +5371,7 @@ one case is unresolved.  All of this is on paper.
 | `.wit` | truth ⇒ membership | below | **unresolved** |
 | `retxS`, each shape | both | as `retS`, along `pos` | the same work |
 
-**Finding 1: `ret_bridge` must conclude along its leg.**  It concludes the plain `WFF.ret` from an arrow
+**Finding 1: `ret_bridge` must conclude along its leg (built, 2026-10-31).**  It concluded the plain `WFF.ret` from an arrow
 of any leg.  `retxS` (truth ⇒ membership) and `Ret_fwd` at `pos` both need `O.ret`, with the body in
 `O.view`.  At `◇`-free contents that follows from `ret_new` and equality; at `◇` contents it does not.
 So generalise the rule.  This is no new rule, the soundness proof is the same, and nothing uses it yet.
@@ -5386,7 +5397,8 @@ are `ret_realise` (needs `BStrongW`, and its possible part is fresh), the own-ar
 * `holeC` and `compsRen` need 4 off, so `BArrow`'s route through them is not available.
 
 **Finding 4: flags.**  `CluFlags` will need `BStrong → B` (the rules assume it; with `bT` that gives T)
-and `BStrongW → TStrong` (`WCoh`).
+and `BStrongW → TStrong` (`WCoh`).  These go in when `noBStrong` comes out: while it stands they say
+nothing.
 
 **What held up.**
 * `Ret_fwd` at any content, `RetCongr.keep`, and rows 1–4: `posBack_exists` is free through R4.
@@ -5396,7 +5408,7 @@ and `BStrongW → TStrong` (`WCoh`).
 * `.wit` membership ⇒ truth: `Here z c` comes from `ret_counitD` with the body given by `here_keep`.
 
 **Size, rough.**  `BArrow`'s files for these cases total about 6 700 lines, though much of that is
-network-specific.  For the cluster: the lifting form 600–1 000; `.prod` and `.boxC` about 500; `.wit`
+network-specific.  For the cluster: the lifting form 600–1 000 (built: 1 021, both legs); `.prod` and `.boxC` about 500; `.wit`
 membership ⇒ truth about 800; the `Back` and `ret` truth cases and `Ret` 1 000–1 500; `.wit` truth ⇒
 membership 800–1 500 by derivation, about 100 by the rule.  So about 3 000 to 5 000 lines.
 

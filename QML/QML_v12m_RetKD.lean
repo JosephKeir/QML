@@ -51,6 +51,7 @@ def kThetaD (hS : ModalSys.BStrong = true) {A C X : VarType}
         (Term.eta (.root (.bnd 1)) _ (Ctx.ref_insert_root _ (.bnd 1) _)))
       θΨ))
 
+omit [ModalSys.NoFour] in
 /-- The hole formula read, at any depth, at a value and a necessary object `□s`. -/
 theorem holeAt_kThetaD {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys.BStrong = true)
     {A C X : VarType} {c : Ann (.VTypeProd C X)} (w : Term σ Δ (.VTypeProd C X) c) {a : Ann A}
@@ -76,6 +77,7 @@ theorem holeAt_kThetaD {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys
       rfl
     · exact Term.subst_eta_renAt _ _ _ _ _ _ _ _ (Subst.under_at_slot _ (0 + 1) d _ _)
 
+omit [ModalSys.NoFour] in
 /-- At home, the hole formula read at the value and the home object is the negated premise. -/
 theorem holeRead_kThetaD {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
     {A C X : VarType} {c : Ann (.VTypeProd C X)} (t : Term σ Γ (.VTypeProd C X) c) {a : Ann A}
@@ -104,6 +106,7 @@ theorem openFree_kPsiD {A C X : VarType} {a : Ann A} (sb : Term σ Γ.boxIn A a)
     (Term.subst_eta_renAt _ _ _ _ (.root (.bnd 0)) (.root (.free u)) _ _
       (by exact Subst.toFree_root _ _ _ _ _))) θΨ
 
+omit [ModalSys.NoFour] in
 /-- Opening the unit's conjunct along the possible part at `u`: a returning possibility along
     `u`'s possible part, whose body is the negated witnessed unit (`unitBodyW`) at `u`'s
     necessary object and content. -/
@@ -244,6 +247,7 @@ def kThetaDC (hS : ModalSys.BStrong = true) {A C X : VarType} (co : List (List S
         (Term.eta (.root (.bnd 1)) _ (Ctx.ref_insert_root _ (.bnd 1) _)))
       θΨ))
 
+omit [ModalSys.NoFour] in
 theorem holeAt_kThetaDC {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys.BStrong = true)
     {A C X : VarType} (co : List (List Step)) (ho : C.CompOk co)
     {c : Ann (.VTypeProd (C.compsFlat co) X)} (w : Term σ Δ (.VTypeProd (C.compsFlat co) X) c)
@@ -269,6 +273,7 @@ theorem holeAt_kThetaDC {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSy
       rfl
     · exact Term.subst_eta_renAt _ _ _ _ _ _ _ _ (Subst.under_at_slot _ (0 + 1) d _ _)
 
+omit [ModalSys.NoFour] in
 theorem holeRead_kThetaDC {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
     {A C X : VarType} (co : List (List Step)) (ho : C.CompOk co)
     {c : Ann (.VTypeProd (C.compsFlat co) X)} (t : Term σ Γ (.VTypeProd (C.compsFlat co) X) c)
@@ -283,6 +288,7 @@ section OpenC
 
 variable {Γ : Ctx} [Γ.NoSlots] {u : ℕ} (hu : Γ.boxIn.RootFresh (.free u))
 
+omit [ModalSys.NoFour] in
 /-- Opening the companion unit's conjunct along the possible part at `u`. -/
 theorem openFree_unitBodyDC_kThetaDC (hS : ModalSys.BStrong = true) {A C X : VarType}
     (co : List (List Step)) (ho : C.CompOk co) {a : Ann A} (sb : Term σ Γ.boxIn A a)

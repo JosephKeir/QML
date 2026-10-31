@@ -6,24 +6,30 @@ import QML.QML_v12m_BSyntax
 The primitive rules extend a returning possibility by a companion at any shape (`ret_extS`) and
 move it along a map of shapes (`ret_map`).  The `□`-shaped forms used by the network are derived
 here: extension with repacking (`Proof.ret_ext`, `ret_extS` then `ret_map` at `pack`) and β for a
-hole term on the item (`Proof.ret_beta`, `ret_map` at `hole`).  Stated under `ModalSys.NoFour`,
-where a necessary object's item is `.box` (`VarSymb.inner`).
+hole term on the item (`Proof.ret_beta`, `ret_map` at `hole`).
 -/
 
 namespace V12M
 
-variable [ModalSys] {σ : Signature} [ModalSys.NoFour]
+variable [ModalSys] {σ : Signature}
 
 /-- The entry of a necessary object's term, one view in: its body. -/
 theorem Subst.box_at_inner_boxtm {Δ : Ctx} (θ : Subst σ Δ) {v : VarSymb} {A : VarType}
     {a : Ann A} {t : Term σ Δ.boxIn A a} (hs : θ.at v = .tm (.boxtm t)) :
     θ.box.at v.inner = .tm t := by
-  rw [VarSymb.inner_box ModalSys.NoFour.keepOnly]
-  change (θ.at v).unbox = _
-  rw [hs]
-  rfl
+  by_cases hk : ModalSys.keepOnly = true
+  · have hTF := ModalSys.keepOnly_flags hk
+    rw [VarSymb.inner_keepOnly hk]
+    change (((θ.at v).keepE).proj .here) = _
+    rw [hs, SubE.keepE_tm t hTF.2, SubE.proj_boxtm_here _ hTF.1]
+    exact SubE.tm_sigma ((Term.collapse_shift_same (Ctx.shifts_boxIn_boxIn hTF.2 Δ)
+      (Ctx.collapses_boxIn_self hTF.1 Δ.boxIn) (Ctx.Le.refl _)
+      (Ctx.shiftCollapseId_keepOnly hk Δ) t).trans (congrArg (Sigma.mk _) (Term.mono_refl _ t)))
+  · rw [VarSymb.inner_box (Bool.eq_false_iff.mpr hk)]
+    change (θ.at v).unbox = _
+    rw [hs]
+    rfl
 
-omit [ModalSys.NoFour] in
 /-- Terms equal as dependent pairs are similar entries. -/
 theorem SubE.sim_tm_sigma {Δ : Ctx} {T : VarType} {a b : Ann T} {s : Term σ Δ T a}
     {t : Term σ Δ T b} (h : (⟨a, s⟩ : Σ c, Term σ Δ T c) = ⟨b, t⟩) :
@@ -94,7 +100,6 @@ theorem WFF.bodyRepl_pack_bodySplit {A B : VarType}
       rw [Subst.at_nonproj _ (by assumption), Subst.set_ne _ _ h0]
       exact .refl _
 
-omit [ModalSys.NoFour] in
 /-- Weakening commutes with replacing the bound item. -/
 theorem WFF.mono_bodyRepl {V' : Ctx} [V'.NoSlots] (h : V.Le V') {A B : VarType} {b : Ann B}
     (X : Term σ (V.insert (.bnd 0) A) B b) (Ψ : WFF σ (V.insert (.bnd 0) B) 1) :
@@ -115,7 +120,6 @@ theorem WFF.mono_bodyRepl {V' : Ctx} [V'.NoSlots] (h : V.Le V') {A B : VarType} 
 
 end Body
 
-omit [ModalSys.NoFour] in
 /-- A hole read at the hole's own η-expansion is the term in it. -/
 theorem Term.holeRead_eta_root {Γ : Ctx} [Γ.NoSlots] {A : VarType} {a : Ann A}
     (t : Term σ Γ A a) :

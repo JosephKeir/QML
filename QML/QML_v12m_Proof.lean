@@ -735,15 +735,14 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t φ) →
       Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t₀ φ)
   /-- ⭐**Bridging** (§11.14): a carrier that comes back as `t`, possibly with `Φ` of its image out
-      there, is a returning possibility with value `t` — from any arrow of its out leg, plain or
-      witnessed. -/
+      there, is a returning possibility with value `t` along its out leg, plain or witnessed. -/
   | ret_bridge {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
       (O : OutLeg Γ) {A : VarType} {a₀ : Ann A}
       (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a)
-      (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) :
+      (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1) :
       Proof σ Γ Δ (O.back hS bd t) →
       Proof σ Γ Δ (O.dia (O.bodyRead (Term.boxtm bd) Φ)) →
-      Proof σ Γ Δ (WFF.ret hS t Φ)
+      Proof σ Γ Δ (O.ret hS t Φ)
 
 /-! ## Handling hypotheses -/
 

@@ -2640,25 +2640,6 @@ theorem Term.holeAt_congr_sig {Γ : Ctx} {A : VarType} {a₁ a₂ : Ann A} {t₁
   cases h
   rfl
 
-/-- The bridge's body reading commutes with substitution: at `◇_y` it is `WFF.viewReadTm`. -/
-theorem OutLeg.subst_bodyRead {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
-    (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0)
-    (hΔ : Δ.SlotsFrom 0) :
-    (O : OutLeg Γ) → {A : VarType} → {b : Ann (.VTypeBox A)} →
-    (c : Term σ O.view (.VTypeBox A) b) → (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) →
-    WFF.subst ι (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)
-        (OutLeg.slotsFrom hΓ O) (OutLeg.slotsFrom hΔ _) (O.bodyRead c Φ) =
-      (O.subst θ hθ hc).bodyRead
-        (Term.subst ι (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) c)
-        (WFF.bodySubst θ hθ hc hΓ hΔ Φ)
-  | .nec, _, _, c, Φ => by
-      change WFF.subst ι θ.box _ _ _ _ (WFF.instantiate _ c _) = WFF.instantiate _ _ _
-      rw [WFF.subst_instantiate θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn hΔ.boxIn,
-        WFF.subst_mono (hΓ := hΓ.boxIn.insert _), WFF.mono_refl]
-      rfl
-  | .pos y hy, _, _, c, Φ =>
-      WFF.subst_viewReadTm θ hθ hc hΓ hΔ (ι y) _ _ _ c Φ
-
 /-- Substituting `back_ret`'s body: the slot is fixed and the carrier's term goes as the leg's `□`
     view does. -/
 theorem OutLeg.subst_backRetBody {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx}
@@ -3508,15 +3489,18 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
   | _, _, _, @Proof.ret_bridge _ _ Γ _ _ hS O A a₀ bd a t Φ pb pd, Γ', _, ι, θ, hθ, hc,
       hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
-      Proof.ret_bridge hS (O.subst θ hθ hc)
-        (Term.subst ι (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
-          (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) bd)
-        (Term.subst ι θ hθ hc t) (WFF.bodySubst θ hθ hc hΓ hΓ' Φ)
-        (Proof.conv (OutLeg.subst_back θ hθ hc hΓ hΓ' hS O bd t) (Proof.subst pb θ hθ hc hΓ))
-        (Proof.conv ((OutLeg.subst_dia θ hθ hc hΓ hΓ' O _).trans
-            (congrArg (O.subst θ hθ hc).dia
-              (OutLeg.subst_bodyRead θ hθ hc hΓ hΓ' O (Term.boxtm bd) Φ)))
-          (Proof.subst pd θ hθ hc hΓ))
+      Proof.conv (OutLeg.subst_ret θ hθ hc hΓ hΓ' hS O t Φ).symm
+        (Proof.ret_bridge hS (O.subst θ hθ hc)
+          (Term.subst ι (O.viewSubst θ hθ hc).box (Subst.ok_box (O.viewOk θ hθ hc))
+            (Subst.coh_box (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)) bd)
+          (Term.subst ι θ hθ hc t) (OutLeg.bodySubst θ hθ hc hΓ hΓ' O Φ)
+          (Proof.conv (OutLeg.subst_back θ hθ hc hΓ hΓ' hS O bd t) (Proof.subst pb θ hθ hc hΓ))
+          (Proof.conv ((OutLeg.subst_dia θ hθ hc hΓ hΓ' O _).trans
+              (congrArg (O.subst θ hθ hc).dia
+                (WFF.subst_instantiate (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc)
+                  (O.viewCoh θ hθ hc) (OutLeg.slotsFrom hΓ O) (OutLeg.slotsFrom hΓ' _)
+                  (Term.boxtm bd) Φ)))
+            (Proof.subst pd θ hθ hc hΓ)))
 
 /-- ⭐**Weakening** along any inclusion of contexts, into a presented context. -/
 def Proof.mono {σ : Signature} {Γ Γ' : Ctx} [Γ'.Presented] {Δs : List (WFF σ Γ 0)}

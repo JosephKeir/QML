@@ -46,6 +46,7 @@ def kTheta (hS : ModalSys.BStrong = true) {A C : VarType}
         (Term.eta (.root (.bnd 1)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 1) _)))
       θΨ))
 
+omit [ModalSys.NoFour] in
 /-- The hole formula read, at any depth, at a value and a necessary object `□s`. -/
 theorem holeAt_kTheta {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys.BStrong = true)
     {A C : VarType} {a : Ann A} (y : Term σ Δ A a) {c : Ann C} (s : Term σ Δ.boxIn C c)
@@ -70,6 +71,7 @@ theorem holeAt_kTheta {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys.
       rfl
     · exact Term.subst_eta_renAt _ _ _ _ _ _ _ _ (Subst.under_at_slot _ (0 + 1) d _ _)
 
+omit [ModalSys.NoFour] in
 /-- At home, the hole formula read at the value and the home object is the negated premise. -/
 theorem holeRead_kTheta {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) {A C : VarType}
     {a : Ann A} (t : Term σ Γ A a) {c : Ann C} (sb : Term σ Γ.boxIn C c)
@@ -118,6 +120,7 @@ theorem openFree_kPsi {Γ : Ctx} [Γ.NoSlots] (hu : Γ.boxIn.RootFresh (.free u)
       change Subst.toFree _ _ _ _ _ (.root (.bnd 0)) = _
       exact Subst.toFree_root _ _ _ _ _))) θΨ
 
+omit [ModalSys.NoFour] in
 /-- Opening the unit's conjunct of the home step at `u`: a returning possibility whose body is the
     negation of the unit at the far world, at `u`'s content. -/
 theorem openFree_unitBody_kTheta {Γ : Ctx} [Γ.NoSlots] (hu : Γ.boxIn.RootFresh (.free u))
@@ -214,6 +217,7 @@ theorem Subst.at_ext_eta (hT : ModalSys.T = true) {Δ : Ctx} (θ : Subst σ Δ) 
       · exact ih (Ctx.ref_here_of hT hx) hC h'
           (by rw [Subst.at_proj θ v rfl, hv]; exact SubE.proj_here_eta hT hx)
 
+omit [ModalSys.NoFour] in
 /-- The contents of an η-expanded necessary object's companion: the companion's item. -/
 theorem compVal_eta {Γ : Ctx} {u : VarSymb} {A : VarType} (hu : Γ.ref u = some (.VTypeBox A))
     (p : List Step) {ps : List (List Step)} (h : A.CompOk (p :: ps)) :
@@ -244,6 +248,7 @@ theorem mono_compsSlot {Δ Δ' Δ'' : Ctx} {u : VarSymb} {C : VarType}
   | _ :: ps, h => sig_pair (mono_compsSlot hu hle hle' ps h.tail)
       (congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _))
 
+omit [ModalSys.NoFour] in
 /-- An η-expanded necessary object's value with companions is the slot's. -/
 theorem compsVal_eta {Γ : Ctx} {u : VarSymb} {A : VarType} (hu : Γ.ref u = some (.VTypeBox A)) :
     ∀ (cs : List (List Step)) (h : A.CompOk cs),
@@ -270,6 +275,7 @@ def kThetaC (hS : ModalSys.BStrong = true) {A C : VarType} (co : List (List Step
         (Term.eta (.root (.bnd 1)) (.VTypeBox A) (Ctx.ref_insert_root _ (.bnd 1) _)))
       θΨ))
 
+omit [ModalSys.NoFour] in
 theorem holeAt_kThetaC {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys.BStrong = true)
     {A C : VarType} (co : List (List Step)) (ho : A.CompOk co) {a : Ann (A.compsFlat co)}
     (y : Term σ Δ (A.compsFlat co) a) {c : Ann C} (s : Term σ Δ.boxIn C c)
@@ -294,6 +300,7 @@ theorem holeAt_kThetaC {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys
       rfl
     · exact Term.subst_eta_renAt _ _ _ _ _ _ _ _ (Subst.under_at_slot _ (0 + 1) d _ _)
 
+omit [ModalSys.NoFour] in
 theorem holeRead_kThetaC {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) {A C : VarType}
     (co : List (List Step)) (ho : A.CompOk co) {a : Ann (A.compsFlat co)}
     (t : Term σ Γ (A.compsFlat co) a) {c : Ann C} (sb : Term σ Γ.boxIn C c)
@@ -303,6 +310,7 @@ theorem holeRead_kThetaC {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) 
   rw [WFF.holeRead_eq_holeAt, holeAt_kThetaC]
   rfl
 
+omit [ModalSys.NoFour] in
 /-- Opening the companion unit's conjunct of the home step at `u`. -/
 theorem openFree_unitBodyC_kThetaC {Γ : Ctx} [Γ.NoSlots] {u : ℕ}
     (hu : Γ.boxIn.RootFresh (.free u)) (hS : ModalSys.BStrong = true) {A C : VarType}

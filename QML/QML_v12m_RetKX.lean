@@ -68,6 +68,7 @@ def kThetaW (hS : ModalSys.BStrong = true) {A C X : VarType}
         (Term.eta (.root (.bnd 1)) (.VTypeBox C) (Ctx.ref_insert_root _ (.bnd 1) _)))
       θΨ))
 
+omit [ModalSys.NoFour] in
 /-- The hole formula read, at any depth, at a value and a witnessed object `⟨□s, v⟩` for a
     possible variable `v`. -/
 theorem holeAt_kThetaW {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys.BStrong = true)
@@ -134,6 +135,7 @@ theorem holeAt_kThetaW {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys
       · exact congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _)
     · exact Term.subst_eta_renAt _ _ _ _ _ _ _ _ (Subst.under_at_slot _ (0 + 1) d _ _)
 
+omit [ModalSys.NoFour] in
 /-- At home, the hole formula read at the value, the home object and `x` is the negated premise
     along `x`. -/
 theorem holeRead_kThetaW {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) {x : VarSymb}
@@ -177,6 +179,7 @@ theorem openFree_kPsiX {a : Ann A} (sb : Term σ Γ.boxIn A a)
   · exact Term.subst_eta_renAt _ _ _ _ _ _ _ (Ctx.ref_insert_root _ _ _)
       (Subst.toFree_root _ _ _ _ _)
 
+omit [ModalSys.NoFour] in
 /-- Opening the witnessed unit's conjunct of the home step at `u`: a returning possibility with
     the witness as its possible part, whose body is the negated unit along that part
     (`unitBodyD`), at `u`'s content. -/
@@ -300,6 +303,7 @@ def kThetaWC (hS : ModalSys.BStrong = true) {A C X : VarType} (co : List (List S
         (Term.eta (.root (.bnd 1)) (.VTypeBox C) (Ctx.ref_insert_root _ (.bnd 1) _)))
       θΨ))
 
+omit [ModalSys.NoFour] in
 theorem holeAt_kThetaWC {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys.BStrong = true)
     {A C X : VarType} (co : List (List Step)) (ho : C.CompOk co) {c : Ann (C.compsFlat co)}
     (w : Term σ Δ (C.compsFlat co) c) {a : Ann A} (s : Term σ Δ.boxIn A a)
@@ -369,6 +373,7 @@ theorem holeAt_kThetaWC {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSy
       · exact congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _)
     · exact Term.subst_eta_renAt _ _ _ _ _ _ _ _ (Subst.under_at_slot _ (0 + 1) d _ _)
 
+omit [ModalSys.NoFour] in
 theorem holeRead_kThetaWC {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) {x : VarSymb}
     {X A C : VarType} (hX : Γ.ref x = some (.VTypeDia X)) (co : List (List Step))
     (ho : C.CompOk co) {c : Ann (C.compsFlat co)} (y : Term σ Γ (C.compsFlat co) c)
@@ -386,6 +391,7 @@ section OpenC
 variable {Γ : Ctx} [Γ.NoSlots] {x : VarSymb} {X A C : VarType}
   (hX : Γ.ref x = some (.VTypeDia X)) {u : ℕ} (hu : (Γ.diaIn x).RootFresh (.free u))
 
+omit [ModalSys.NoFour] in
 /-- Opening the witnessed companion unit's conjunct of the home step at `u`. -/
 theorem openFree_unitBodyWC_kThetaWC (hS : ModalSys.BStrong = true) (co : List (List Step))
     (ho : C.CompOk co) {a : Ann A} (sb : Term σ Γ.boxIn A a)

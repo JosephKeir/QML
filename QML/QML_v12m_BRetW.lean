@@ -445,6 +445,7 @@ theorem Term.holeAt_eta_root {Γ : Ctx} {A : VarType} {a : Ann A} (t : Term σ �
     change Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm t) (.root (.bnd 0)) = _
     exact if_pos rfl)
 
+omit [ModalSys.NoFour] in
 /-- Two necessary objects, packed through the hole. -/
 theorem Term.holeAt_pack {Γ : Ctx} {A B : VarType} {a : Ann A} {b : Ann B}
     (s : Term σ Γ.boxIn A a) (t : Term σ Γ.boxIn B b) :
@@ -527,6 +528,7 @@ theorem RShape.extTm_wit {Γ : Ctx} [Γ.NoSlots] {N : NShape} {X B : VarType} {a
   exact sig_pair (sig_pair (Term.holeAt_pair_fst_fst _ _ _) (Term.holeAt_pair_snd _ _))
     (Term.holeAt_pair_fst_snd _ _ _)
 
+omit [ModalSys.NoFour] in
 /-- Packing at the witness shape, on the object out there: `⟨⟨□s, □t⟩, e⟩ ↦ ⟨□⟨s, t⟩, e⟩`. -/
 theorem ShapeMap.liftObj_pack_wit {Γ : Ctx} {C B X : VarType} {c : Ann C} {b : Ann B}
     {x : Ann (.VTypeDia X)} (s : Term σ Γ.boxIn C c) (t : Term σ Γ.boxIn B b)
@@ -981,6 +983,7 @@ def retExtAtomO {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) (O : OutL
       (Term.boxSnd (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox (.VTypeProd A B))))
       Φ))
 
+omit [ModalSys.NoFour] in
 /-- `retExt_consistent` along any leg. -/
 theorem retExtO_consistent {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)}
     (hM : Theory.Consistent M) (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A B : VarType}

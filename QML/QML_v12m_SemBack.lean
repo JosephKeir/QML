@@ -764,12 +764,10 @@ theorem agree_push {w : M.frame.W} (env : M.Env Γ w) :
     there. -/
 theorem sat_bodyRead [Γ.NoSlots] {w : M.frame.W} (env : M.Env Γ w) (O : OutLeg Γ)
     (i : O.Arr env) {A : VarType} {b : Ann (.VTypeBox A)} (c : Term σ O.view (.VTypeBox A) b)
-    (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) :
+    (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1) :
     M.sat (O.push env i) (O.bodyRead c Φ) ↔
-      M.sat ((env.boxPush (O.acc env i)).extend (.bnd 0) (Model.interp (O.push env i) c)) Φ := by
-  unfold OutLeg.bodyRead
-  rw [Model.sat_instantiate _ O.noProjLast Ctx.NoSlots.slots c _]
-  exact Model.sat_mono (Model.Env.extend_agree (agree_push env O i) (.bnd 0) _) Φ
+      M.sat ((O.push env i).extend (.bnd 0) (Model.interp (O.push env i) c)) Φ :=
+  Model.sat_instantiate _ O.noProjLast Ctx.NoSlots.slots c _
 
 /-- ⭐A returning possibility along the leg: an arrow of the leg, a necessary object at its far
     end with the body, and a way home along which the object comes back as the value. -/
@@ -1434,13 +1432,13 @@ theorem sat_ret_hereC (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {A
 
 theorem sat_ret_bridge (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {A : VarType}
     {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
-    (t : Term σ Γ A a) (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1)
+    (t : Term σ Γ A a) (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1)
     (hb : M.sat env (O.back hS bd t : WFF σ Γ 0))
     (hd : M.sat env (O.dia (O.bodyRead (Term.boxtm bd) Φ))) :
-    M.sat env (WFF.ret hS t Φ : WFF σ Γ 0) := by
+    M.sat env (O.ret hS t Φ : WFF σ Γ 0) := by
   obtain ⟨i, hi⟩ := (OutLeg.sat_dia env O _).mp hd
   obtain ⟨r, hr⟩ := (OutLeg.sat_back_rt hS env O bd t hb).2 i
-  refine ⟨O.acc env i, interp (O.push env i) (Term.boxtm bd),
+  refine (OutLeg.sat_retS hS env O (.box A) t Φ).mpr ⟨i, interp (O.push env i) (Term.boxtm bd),
     (OutLeg.sat_bodyRead env O i _ Φ).mp hi, r, ?_⟩
   dsimp only [ComesBack, NComesBack, compsBack]
   rw [box_beta]

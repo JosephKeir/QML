@@ -83,6 +83,7 @@ def unpackG : (N : NShape) → ShapeMap σ N.packed N
       (.comp (.fstC R.packTy S.packTy R.packComps S.packComps R.packOk S.packOk) (unpackG R))
       (.comp (.sndC R.packTy S.packTy R.packComps S.packComps R.packOk S.packOk) (unpackG S))
 
+omit [ModalSys.NoFour] in
 /-- ⭐**Packing then unpacking is the identity** on objects of a necessary shape (any T). -/
 theorem holeAt_packG_unpackG : (N : NShape) → {Γ : Ctx} → {c : Ann N.ty} →
     (x : Term σ Γ N.ty c) →
@@ -117,6 +118,7 @@ theorem holeAt_packG_unpackG : (N : NShape) → {Γ : Ctx} → {c : Ann N.ty} �
           ((holeAt_box_snd s₁ s₂ _).trans h₂.symm) _).trans ?_)
         exact holeAt_packG_unpackG S x₂
 
+omit [ModalSys.NoFour] in
 /-- Packing then unpacking, on the slot. -/
 theorem holeAt_packG_unpackG_slot (N : NShape) :
     (⟨_, Term.holeAt (packG (σ := σ) N).obj.2 (unpackG (σ := σ) N).obj.2⟩ :

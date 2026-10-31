@@ -23,6 +23,7 @@ variable {σ : Signature} [ModalSys.NoFour]
 
 /-! ## Packing at a witnessed shape -/
 
+omit [ModalSys.NoFour] in
 /-- Packing then unpacking at a witnessed shape, on the slot. -/
 theorem holeAt_packG_unpackGW_slot (N : NShape) (Z : VarType) :
     (⟨_, Term.holeAt (ShapeMap.liftObj (σ := σ) (.wit N Z) (packG N)).2

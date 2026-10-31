@@ -1292,9 +1292,9 @@ theorem le_view : (O : OutLeg Γ) → Γ.boxIn.Le O.view
 /-- A returning possibility's body read at the far end of the leg, with the carrier's image `c` in
     its slot: what the bridging rule asks to be possible (`Proof.ret_bridge`). -/
 def bodyRead [Γ.NoSlots] (O : OutLeg Γ) {A : VarType} {b : Ann (.VTypeBox A)}
-    (c : Term σ O.view (.VTypeBox A) b) (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeBox A)) 1) :
+    (c : Term σ O.view (.VTypeBox A) b) (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1) :
     WFF σ O.view 0 :=
-  WFF.instantiate Ctx.NoSlots.slots c (WFF.mono (O.le_view.insert (.bnd 0) _) Φ)
+  WFF.instantiate Ctx.NoSlots.slots c Φ
 
 /-- ⭐The **returning possibility along the leg** (§11.17): `◇[e ↦ t] Φ` from any arrow, or
     `◇_y[e ↦ t] Φ` from an arrow of `y`'s extent, with `Φ` read in the leg's view. -/

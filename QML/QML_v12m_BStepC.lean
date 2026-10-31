@@ -79,6 +79,7 @@ def tupCG (Y R : VarType) : (b : Bool) → (hb : ModalSys.T = b) →
 
 /-! ## The maps' objects at concrete necessary objects -/
 
+omit [ModalSys.NoFour] in
 /-- The first half with its companions, at `□⟨a, b⟩`: `□a`. -/
 theorem holeAt_fstC_obj {Γ : Ctx} {X Y : VarType} {csX csY : List (List Step)}
     {hX : X.CompOk csX} {hY : Y.CompOk csY} {a₀ : Ann X} {b₀ : Ann Y} (a : Term σ Γ.boxIn X a₀)
@@ -92,6 +93,7 @@ theorem holeAt_fstC_obj {Γ : Ctx} {X Y : VarType} {csX csY : List (List Step)}
     rw [Subst.at_proj _ _ rfl, Subst.box_at_inner_boxtm _ (Subst.at_single_root _ _)]
     rfl))
 
+omit [ModalSys.NoFour] in
 /-- The second half with its companions, at `□⟨a, b⟩`: `□b`. -/
 theorem holeAt_sndC_obj {Γ : Ctx} {X Y : VarType} {csX csY : List (List Step)}
     {hX : X.CompOk csX} {hY : Y.CompOk csY} {a₀ : Ann X} {b₀ : Ann Y} (a : Term σ Γ.boxIn X a₀)
@@ -105,6 +107,7 @@ theorem holeAt_sndC_obj {Γ : Ctx} {X Y : VarType} {csX csY : List (List Step)}
     rw [Subst.at_proj _ _ rfl, Subst.box_at_inner_boxtm _ (Subst.at_single_root _ _)]
     rfl))
 
+omit [ModalSys.NoFour] in
 /-- Packing with companions, at `⟨□a, □b⟩`: `□⟨a, b⟩`. -/
 theorem holeAt_packCC_obj {Γ : Ctx} {X Y : VarType} {csX csY : List (List Step)}
     {hX : X.CompOk csX} {hY : Y.CompOk csY} {a₀ : Ann X} {b₀ : Ann Y} (a : Term σ Γ.boxIn X a₀)
@@ -599,6 +602,7 @@ theorem liftBody_ex_flat_mem {lv cl clt : List VarType} {A : VarType}
     ← liftBodyAt_congr himgt (tupT_cons_mono hs')]
   exact h
 
+omit [ModalSys.NoFour] in
 /-- ⭐Splitting a weakened paired body along a product slot is re-reading the weakened body
     through `packCC`'s object: both put `□⟨d₀.inner, d₁.inner⟩` in the slot. -/
 theorem WFF.bodySplit_mono_pairUp_packCC {V V' : Ctx} [V.NoSlots] [V'.NoSlots] (h : V.Le V')
@@ -1863,6 +1867,7 @@ theorem tupCompsImg_read_idx {Δ : Ctx} (cls : List VarType) (img : ℕ → ℕ)
 
 /-! ## Companions' contents of pairs and tuples -/
 
+omit [ModalSys.NoFour] in
 /-- Under T, a pair's companion `fst :: q` is its first component's companion `q`. -/
 theorem compVal_pair_fst {Γ : Ctx} {X Y : VarType} {a₀ : Ann X} {b₀ : Ann Y}
     (s : Term σ Γ.boxIn X a₀) (t : Term σ Γ.boxIn Y b₀) (q : List Step)
@@ -1922,6 +1927,7 @@ theorem compVal_pair_fst {Γ : Ctx} {X Y : VarType} {a₀ : Ann X} {b₀ : Ann Y
       ((sig_holeAt_right _ key2.symm).trans ((Term.holeAt_holeAt_sig _ _ _).trans
         (sig_holeAt (Term.holeAt_pair_fst _ _) _))))))
 
+omit [ModalSys.NoFour] in
 /-- Under T, a pair's companion `snd :: q` is its second component's companion `q`. -/
 theorem compVal_pair_snd {Γ : Ctx} {X Y : VarType} {a₀ : Ann X} {b₀ : Ann Y}
     (s : Term σ Γ.boxIn X a₀) (t : Term σ Γ.boxIn Y b₀) (q : List Step)

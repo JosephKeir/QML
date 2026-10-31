@@ -351,6 +351,7 @@ def retExtAtom {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true) {A B : Var
       (Term.boxSnd (Ctx.ref_insert_root Γ.boxIn (.bnd 0) (.VTypeBox (.VTypeProd A B))))
       Φ))
 
+omit [ModalSys.NoFour] in
 /-- ⭐**A returning possibility's new item is witnessed by a fresh variable** (`ret_ext`), as an
     existential's is (`henkin_consistent`). -/
 theorem retExt_consistent {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)}
@@ -414,6 +415,7 @@ def WFF.pairUp {X Y : VarType} (Φ : WFF σ (V.insert (.bnd 0) (.VTypeBox (.VTyp
       ((Ctx.NoSlots.slots (Γ := V)).rootFresh (le_refl 0)) rfl)
     ((Ctx.NoSlots.slots (Γ := V)).insert _) (((Ctx.NoSlots.slots (Γ := V)).insert _).insert _) Φ
 
+omit [ModalSys.NoFour] in
 /-- The paired item, substituted by an entry sending its components to `w`'s components: the
     η-expansion of `w`. -/
 theorem sim_pairItem {X Y : VarType} {Δ : Ctx} {ι : VarSymb → VarSymb} (θ : Subst σ Δ)
@@ -432,6 +434,7 @@ theorem sim_pairItem {X Y : VarType} {Δ : Ctx} {ι : VarSymb → VarSymb} (θ :
   rw [SubE.tm_sigma e]
   exact .ren_eta _ hw
 
+omit [ModalSys.NoFour] in
 /-- ⭐Splitting the paired item into its components undoes `pairUp`: the composite sends the slot
     to its own η-expansion. -/
 theorem WFF.bodySplit_pairUp {X Y : VarType}
@@ -701,6 +704,7 @@ theorem tupImgT_ext {A : VarType} {cl lt : List VarType} {img : ℕ → ℕ}
 
 /-! ## Splitting a weakened paired body -/
 
+omit [ModalSys.NoFour] in
 /-- `bodySplit_pairUp` through a weakening of the view: splitting the weakened split body is the
     weakened body. -/
 theorem WFF.bodySplit_mono_pairUp {V V' : Ctx} [V.NoSlots] [V'.NoSlots] (h : V.Le V')
