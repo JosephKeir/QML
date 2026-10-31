@@ -16,7 +16,7 @@ import re
 import subprocess
 import sys
 
-TOP = ["BCompactness", "Compactness", "StrongD", "LeibnizProof", "ArrowCheck", "BFairS", "BAliasW", "BDecodeLimit", "RetForget", "BLimitRet", "BBackTail", "BBackTruth", "BBackLimit", "BRetTruth", "BRetTruthW", "BRetOut", "BTruthS", "BRetCongr", "GFlat", "GLaws", "NoBComplete", "GCluCompleteness", "CubeComplete", "RetLift", "RetLiftN", "RetLiftW", "RetGPack"]
+TOP = ["BCompactness", "Compactness", "StrongD", "LeibnizProof", "ArrowCheck", "BFairS", "BAliasW", "BDecodeLimit", "RetForget", "BLimitRet", "BBackTail", "BBackTruth", "BBackLimit", "BRetTruth", "BRetTruthW", "BRetOut", "BTruthS", "BRetCongr", "GFlat", "GLaws", "NoBComplete", "GCluCompleteness", "CubeComplete", "RetLift", "RetLiftN", "RetLiftW", "RetGPack", "RetUnlift"]
 NOISE = ("✔", "⣿", "info:", "trace:", "Note: This linter")
 HEAD = re.compile(r"^(error|warning): ")
 

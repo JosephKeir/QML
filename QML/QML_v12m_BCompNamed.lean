@@ -47,6 +47,7 @@ theorem WFF.mono_retSlot {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (h : Γ.Le Γ
     rw [if_neg hvr, if_neg hvr]
     exact .refl _
 
+omit [ModalSys.NoFour] in
 /-- Instantiating a slot formula of a returning possibility whose value was replaced. -/
 theorem WFF.instantiate_compSlot {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
     (S : RShape) {C : VarType} {b : Ann S.flat} (X : Term σ (Γ.insert (.bnd 0) C) S.flat b)
@@ -94,6 +95,7 @@ def _root_.V12M.OutLeg.retSlot {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = 
   | .nec, S, Φ => WFF.retSlot hS S Φ
   | .pos y hy, S, Φ => WFF.retxSlot hS y hy S Φ
 
+omit [ModalSys.NoFour] in
 theorem _root_.V12M.OutLeg.instantiate_retSlot {Γ : Ctx} [Γ.NoSlots]
     (hS : ModalSys.BStrong = true) :
     (O : OutLeg Γ) → (S : RShape) → (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1) →
@@ -111,6 +113,7 @@ theorem _root_.V12M.OutLeg.mono_retSlot {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots
   | .nec, S, Φ => WFF.mono_retSlot h hS S Φ
   | .pos y hy, S, Φ => WFF.mono_retxSlot h hS y hy S Φ
 
+omit [ModalSys.NoFour] in
 /-- Instantiating a slot formula along a leg whose value was replaced. -/
 theorem _root_.V12M.OutLeg.instantiate_compSlot {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
     (O : OutLeg Γ) (S : RShape) {C : VarType} {b : Ann S.flat}
@@ -136,6 +139,7 @@ def compSlot (O : OutLeg Γ) {a : Ann (A.compsFlat cs)} (V : Term σ Γ (A.comps
       (Term.eta (.root (.bnd 0)) ((A.compAt p).getD .VTypeOne) (Ctx.ref_insert_root _ _ _)))
     (O.retSlot hS (.nec (.boxC A (p :: cs) h')) Φ)
 
+omit [ModalSys.NoFour] in
 /-- ⭐The slot formula, weakened and instantiated: the returning possibility at one more
     companion, valued at the weakened value and the term. -/
 theorem instantiate_compSlot_mono {Γ' : Ctx} [Γ'.NoSlots] (hle : Γ.Le Γ') (O : OutLeg Γ)
@@ -163,6 +167,7 @@ theorem instantiate_compSlot_mono {Γ' : Ctx} [Γ'.NoSlots] (hle : Γ.Le Γ') (O
     (sig_pair (Term.subst_single_mono_sig z (Term.mono hle V))
       (Term.subst_eta_tm _ _ _ _ _ _ z (Subst.at_single_root _ _)))
 
+omit [ModalSys.NoFour] in
 /-- ⭐⭐**Naming a companion's return, in a world** (any leg): `◇^{boxC A cs}[d ↦ V] Φ` at a
     stage gives, at a later one, `◇^{boxC A (p :: cs)}[d ↦ ⟨V, z⟩] Φ` for some term `z` —
     `ret_compS` at a fresh root, as `∃z` (`ex_intro`), witnessed (`exW_term`). -/
@@ -203,6 +208,7 @@ theorem _root_.V12M.OutLeg.mono_mono {Γ Γ' Γ'' : Ctx} (h : Γ.Le Γ') (h' : �
   | .nec => rfl
   | .pos _ _ => rfl
 
+omit [ModalSys.NoFour] in
 /-- ⭐⭐**Naming several companions' returns, in a world** (any leg): `◇^{boxC A cs}[d ↦ V] Φ` at
     a stage gives, at a later one, `◇^{boxC A (Q ++ cs)}[d ↦ V'] Φ` for some value `V'` that has
     `V` in front of the new companions (`V'` read along `|Q|` first components is `V`). -/
@@ -266,6 +272,7 @@ def compSlotW (O : OutLeg Γ) {a : Ann (A.compsFlat cs)} {b : Ann X}
       (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root _) t))
     (O.retSlot hS (.wit (.boxC A (p :: cs) h') X) Φ)
 
+omit [ModalSys.NoFour] in
 /-- The witnessed slot formula, weakened and instantiated. -/
 theorem instantiate_compSlotW_mono {Γ' : Ctx} [Γ'.NoSlots] (hle : Γ.Le Γ') (O : OutLeg Γ)
     {a : Ann (A.compsFlat cs)} {b : Ann X} (V : Term σ Γ (A.compsFlat cs) a)
@@ -299,6 +306,7 @@ theorem instantiate_compSlotW_mono {Γ' : Ctx} [Γ'.NoSlots] (hle : Γ.Le Γ') (
       (Term.subst_eta_tm _ _ _ _ _ _ z (Subst.at_single_root _ _)))
       (Term.subst_single_mono_sig z (Term.mono hle t)))
 
+omit [ModalSys.NoFour] in
 /-- ⭐⭐**Naming a companion's return at a witnessed shape, in a world** (any leg):
     `◇^{boxC A cs × ◇X}[d ↦ ⟨V, t⟩] Φ` at a stage gives, at a later one,
     `◇^{boxC A (p :: cs) × ◇X}[d ↦ ⟨⟨V, z⟩, t⟩] Φ` for some term `z`. -/
@@ -331,6 +339,7 @@ theorem BWorld.ret_comp_namedW (w : BWorld σ) {i : ℕ} (O : OutLeg (w.ctx i))
 
 end CompNamedW
 
+omit [ModalSys.NoFour] in
 /-- ⭐⭐**Naming several companions' returns at a witnessed shape, in a world** (any leg): as
     `ret_comps_named`, the possible part's value kept. -/
 theorem BWorld.ret_comps_namedW (w : BWorld σ) (hS : ModalSys.BStrong = true) {A X : VarType}

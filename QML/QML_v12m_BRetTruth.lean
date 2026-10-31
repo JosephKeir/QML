@@ -442,6 +442,7 @@ def WFF.retSlot (hS : ModalSys.BStrong = true) (S : RShape)
   WFF.retS hS S (Term.eta (.root (.bnd 0)) S.flat (Ctx.ref_insert_root Γ (.bnd 0) S.flat))
     (bodyUp S Φ)
 
+omit [ModalSys.NoFour] in
 /-- ⭐Instantiating the slot formula of a returning possibility gives it, valued at the term. -/
 theorem WFF.instantiate_retSlot (hS : ModalSys.BStrong = true) (S : RShape)
     (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) S.ty) 1) {a : Ann S.flat} (z : Term σ Γ S.flat a) :
@@ -465,23 +466,36 @@ theorem WFF.instantiate_retSlot (hS : ModalSys.BStrong = true) (S : RShape)
       .ren (.root (.bnd 0)) from fun _ _ => if_pos rfl]
     exact .refl _
   · have hv' : Γ.boxIn v = some U := by simpa [Ctx.insert, hvr] using hv
-    obtain ⟨w, rfl, hw⟩ := boxIn_item' hv'
-    have hw0 : w.rt ≠ .bnd 0 :=
-      Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) hw
-    change SubE.Sim U (Subst.idS σ _ (.step w .box))
-      ((Subst.under _ 0 1 _ _ (.step w .box)).comp _ _ _)
+    have hrt : v.rt ≠ .bnd 0 := Ctx.ref_rt_ne
+      ((Ctx.NoSlots.slots (Γ := Γ)).boxIn.rootFresh (le_refl 0))
+      ((Ctx.ref_nonproj _ hlp).trans hv')
+    change SubE.Sim U (Subst.idS σ _ v) ((Subst.under _ 0 1 _ _ v).comp _ _ _)
     rw [show Subst.under (Subst.idS σ (Γ.insert (.bnd 0) S.flat).boxIn) 0 1 S.ty
-      slots_insert_boxIn.root (.step w .box) = .ren (.step w .box) from if_neg hvr]
+      slots_insert_boxIn.root v = .ren v from if_neg hvr]
     dsimp only [SubE.comp]
-    rw [Subst.at_nonproj _ rfl]
-    rw [show ∀ θ h, Subst.under (σ := σ) (Δ := Γ.boxIn) θ 1 0 S.ty h (.step w .box) =
-      (θ (.step w .box)).mono (Ctx.le_insert h S.ty) from fun _ _ => if_neg (by
-        intro e; cases e)]
-    change SubE.Sim U _ (SubE.mono _ ((Subst.at _ w).unbox))
-    rw [Subst.single_at_ne hw0]
-    change SubE.Sim U (.ren (.step w .box)) (.ren w.inner)
-    rw [VarSymb.inner_box ModalSys.NoFour.keepOnly]
-    exact .refl _
+    rw [Subst.at_nonproj _ hlp]
+    rw [show ∀ θ h, Subst.under (σ := σ) (Δ := Γ.boxIn) θ 1 0 S.ty h v =
+      (θ v).mono (Ctx.le_insert h S.ty) from fun _ _ => if_neg (fun e => by
+        rw [e, ((Ctx.NoSlots.slots (Γ := Γ)).boxIn.rootFresh (Nat.zero_le 1)).root] at hv'
+        cases hv')]
+    match v, hv' with
+    | .step w .box, hv' =>
+        have hw0 : w.rt ≠ .bnd 0 := hrt
+        change SubE.Sim U _ (SubE.mono _ ((Subst.at _ w).unbox))
+        rw [Subst.single_at_ne hw0]
+        change SubE.Sim U (.ren (.step w .box)) (.ren w.inner)
+        rw [VarSymb.inner_box (Ctx.boxIn_box hv').1]
+        exact .refl _
+    | .step w .keep, hv' =>
+        have hw0 : w.rt ≠ .bnd 0 := hrt
+        change SubE.Sim U _ (SubE.mono _ ((Subst.at _ w).keepE))
+        rw [Subst.single_at_ne hw0]
+        exact .refl _
+    | .root _, hv' => cases hv'
+    | .step _ .fst, hv' => cases hv'
+    | .step _ .snd, hv' => cases hv'
+    | .step _ .here, hv' => cases hv'
+    | .step _ .dia, hv' => cases hv'
 
 end RetSlot
 
@@ -546,6 +560,7 @@ def WFF.retxSlot (hS : ModalSys.BStrong = true) (y : VarSymb)
   WFF.retxS hS y (hy.imp fun _ h => (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root _).ref h) S
     (Term.eta (.root (.bnd 0)) S.flat (Ctx.ref_insert_root Γ (.bnd 0) S.flat)) (bodyUpX y S Φ)
 
+omit [ModalSys.NoFour] in
 /-- ⭐Instantiating the slot formula of a returning possibility along `y` gives it. -/
 theorem WFF.instantiate_retxSlot (hS : ModalSys.BStrong = true) (y : VarSymb)
     (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) (S : RShape)
@@ -614,11 +629,13 @@ theorem WFF.instantiate_retxSlot (hS : ModalSys.BStrong = true) (y : VarSymb)
         change SubE.Sim U _ (SubE.mono _ (SubE.mono _ (Subst.at _ u).unbox))
         rw [Subst.single_at_ne hu0]
         change SubE.Sim U (.ren (.step u .box)) (.ren u.inner)
-        rw [VarSymb.inner_box ModalSys.NoFour.keepOnly]
+        rw [VarSymb.inner_box (Ctx.boxIn_box ((Ctx.ref_nonproj _ rfl).trans hv')).1]
         exact .refl _
     | .step u .keep, hv' =>
-        exact absurd (Ctx.boxIn_keep ((Ctx.ref_nonproj _ rfl).trans hv')).1
-          (by simp [ModalSys.NoFour.noFour])
+        have hu0 : u.rt ≠ .bnd 0 := hrt
+        change SubE.Sim U _ (SubE.mono _ (SubE.mono _ (Subst.at _ u).keepE))
+        rw [Subst.single_at_ne hu0]
+        exact .refl _
 
 end RetxSlot
 

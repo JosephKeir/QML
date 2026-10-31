@@ -5417,9 +5417,33 @@ about 800, no `sorry`, standard axioms.**  ⭐`Proof.retWN_lift`, every witnesse
   model proper.  `Ind` need not compose, so that proof moves the value inside the `Back` atom with
   `hM.inv` and only then reads the atom at the own arrow.  (Packing is not about a common way home:
   `homeUnique` already gives that.  It is needed because `ret_counit` and the unit live at `.box`.)
-* Truth ⇒ membership: `ret_comps_named` gives a fresh value `z`, `ret_counitC` with `back_keep` gives
-  `Back (y.dup) z`, so `z ≈ y.here`, and interchange replaces `z` by the given value.
+* Truth ⇒ membership: see "Unlifting" below; the sketch here had two gaps.
 * `holeC` and `compsRen` need 4 off, so `BArrow`'s route through them is not available.
+
+**Unlifting, built (2026-10-31): `QML_v12m_RetUnlift`, no `sorry`, standard axioms.**  The converse of
+lifting, at the shapes where it is direct.
+* ⭐`Proof.back_value`: `back_here` contraposed, so a value interchanges with the carrier's both ways.
+* ⭐`Proof.ret_unlift`, the converse of `Proof.ret_lift`, along either leg: `back_keep` puts the carrier on
+  the leg with its own value, `ret_bridge` builds the atom, `back_value` swaps the value for `t`.
+* ⭐`Proof.retW_unlift`: `ret_keep` on top of it.  ⭐`Proof.retW_unlift_at` is the exact converse of
+  `Proof.retW_lift`, from what `WFF.liftedW` says.
+* `WFF.instantiate_retSlot` and `WFF.instantiate_retxSlot` now hold under 4 (they had used `NoFour`).
+
+**Companions on unlifting (paper, 2026-10-31): the route.**  The converse of `Proof.retN_lift` at `.boxC`.
+The sketch in Finding 3 fails twice.  `ret_counitC` reads only `.box` atoms and no shape map projects a
+companion's object: `Y := d.here.q` is not a hole of `d`.  And if `ret_unlift` runs first, the packed object
+`p` is bound, so home terms cannot name it.  With `c : □N.flat` the home carrier and `b := c.inner.q`:
+1. Bridge at `.box A`, object `e := unpack(c.keep)`, keeping home-visible ties: `Ψ(d) := Φ(d) ∧ ties(d, c.keep)`.
+2. `ret_compS` names a fresh `z`: the atom at `.boxC A (q :: cs)` with value `⟨t₀, z⟩`.
+3. `ret_monoS`, then `ret_map` at `packC`: a `.box` atom whose object `P` holds `Y` in its contents, value
+   `⟨t₀, z⟩`.  This is what lets the counit see the companion.
+4. The tie is `□Back (Y.keep.dup) x`, with `x = (c.keep).inner.q`.  `back_here` with `Proof.back_shift` turns
+   it round to `□Back ((shift shift x)) Y.inner`, which is `ret_counitC`'s premise at the carrier `□b`.
+5. `ret_counitC` with `back_keep` at `□b` (as `Proof.back_dd`) gives `Back (shift b) z` at home.
+   `back_beta` at the projection gives `Back (shift b) u` from `Back (c.dup) t`, where `u := t.q`.
+6. `back_here` and `Proof.back_value` interchange `z` and `u` at the value slot (`OutLeg.instantiate_compSlot`).
+Induct on `cs`.  Products: `ShapeMap.packCC` to reach one `.boxC`, `fstC` and `sndC` back.  The witnessed
+shapes are then `ret_keep`.  Estimate 400 to 500 lines; nothing new is needed.
 
 **Finding 4: flags.**  `CluFlags` will need `BStrong → B` (the rules assume it; with `bT` that gives T)
 and `BStrongW → TStrong` (`WCoh`).  These go in when `noBStrong` comes out: while it stands they say
