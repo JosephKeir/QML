@@ -58,10 +58,16 @@ variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalS
 /-- With 5 the cluster model applies. -/
 theorem cluFlags_of_cube (hV : ModalSys.Five = true) : GArrow.CluFlags :=
   have h := ModalSys.CubeSys.five_lifts hV
-  ⟨hV, h.2.1, h.2.2, ModalSys.CubeSys.five_B hV, Bool.eq_false_iff.mpr fun hS => by
+  ⟨hV, h.2.1, h.2.2, ModalSys.CubeSys.five_B hV, fun hS => (ModalSys.CubeSys.strongB hS).1,
+    fun hS hW => ModalSys.CubeSys.strongT hW
+      (ModalSys.CubeSys.five_B hV (ModalSys.CubeSys.strongB hS).1)⟩
+
+/-- With 5, strong B is off, so far. -/
+theorem noBStrong_of_cube (hV : ModalSys.Five = true) : ModalSys.BStrong = false :=
+  Bool.eq_false_iff.mpr fun hS => by
     have := (ModalSys.CubeSys.strongB hS).2
-    rw [h.1] at this
-    cases this⟩
+    rw [(ModalSys.CubeSys.five_lifts hV).1] at this
+    cases this
 
 /-- With B and without 5 the network applies. -/
 theorem noFour_of_cube (hV : ¬ ModalSys.Five = true) (hB : ModalSys.B = true) : ModalSys.NoFour :=
@@ -85,6 +91,7 @@ theorem completenessCube (e : CtxExpr) (he : e.Wf)
     Provable Δ φ := by
   by_cases hV : ModalSys.Five = true
   · exact GArrow.completenessC_presented (ModalSys.CubeSys.five_lifts hV).1 (cluFlags_of_cube hV)
+      (noBStrong_of_cube hV)
       e he hval
   by_cases hB : ModalSys.B = true
   · haveI := noFour_of_cube hV hB
@@ -106,7 +113,8 @@ theorem provable_iff_validCube (e : CtxExpr) (he : e.Wf)
 theorem model_existenceCube (e : CtxExpr) (he : e.Wf) {S : Set (WFF σ e.denote 0)}
     (hS : WFF.SetConsistent S) : WFF.SetSatisfiable S := by
   by_cases hV : ModalSys.Five = true
-  · exact GArrow.model_existenceC (ModalSys.CubeSys.five_lifts hV).1 (cluFlags_of_cube hV) e he hS
+  · exact GArrow.model_existenceC (ModalSys.CubeSys.five_lifts hV).1 (cluFlags_of_cube hV)
+      (noBStrong_of_cube hV) e he hS
   by_cases hB : ModalSys.B = true
   · haveI := noFour_of_cube hV hB
     exact BArrow.model_existenceB hB e he hS
@@ -121,6 +129,7 @@ theorem strong_completenessCube (e : CtxExpr) (he : e.Wf)
     ∃ Δ : List (WFF σ e.denote 0), (∀ ψ ∈ Δ, ψ ∈ S) ∧ Provable Δ φ := by
   by_cases hV : ModalSys.Five = true
   · exact GArrow.strong_completenessC (ModalSys.CubeSys.five_lifts hV).1 (cluFlags_of_cube hV)
+      (noBStrong_of_cube hV)
       e he hval
   by_cases hB : ModalSys.B = true
   · haveI := noFour_of_cube hV hB
@@ -135,7 +144,8 @@ theorem compactnessCube (e : CtxExpr) (he : e.Wf) {S : Set (WFF σ e.denote 0)}
         ∀ ψ ∈ Δ, M.sat env ψ) :
     WFF.SetSatisfiable S := by
   by_cases hV : ModalSys.Five = true
-  · exact GArrow.compactnessC (ModalSys.CubeSys.five_lifts hV).1 (cluFlags_of_cube hV) e he hfin
+  · exact GArrow.compactnessC (ModalSys.CubeSys.five_lifts hV).1 (cluFlags_of_cube hV)
+      (noBStrong_of_cube hV) e he hfin
   by_cases hB : ModalSys.B = true
   · haveI := noFour_of_cube hV hB
     exact BArrow.compactnessB hB e he hfin

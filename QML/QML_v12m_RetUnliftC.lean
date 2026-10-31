@@ -695,6 +695,84 @@ def Proof.back_of_leg (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (Proof.ret_bridge hS O bd t _ hb hd) B₀
   exact Proof.conv ((WFF.holeRead_eq_holeAt _ _).trans (WFF.holeAt_backDup hS hF _ t b)) H
 
+/-- `back_here` the other way, at any carrier (`¬φ` gives the converse). -/
+def Proof.back_here_symm (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+    {Δ : List (WFF σ Γ 0)} {a₀ : Ann A} (bd : Term σ Γ.boxIn.boxIn A a₀) {a : Ann A}
+    (t : Term σ Γ A a) (φ : WFF σ (Γ.insert (.bnd 0) A) 1)
+    (h : Proof σ Γ Δ (WFF.back hS .nec (Term.boxtm (Term.boxtm bd)) t))
+    (p : Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots
+      (Term.collapse (Ctx.collapses_boxIn_self hT Γ)
+        (Term.collapse (Ctx.collapses_boxIn_self hT Γ.boxIn) bd)) φ)) :
+    Proof σ Γ Δ (WFF.instantiate Ctx.NoSlots.slots t φ) := by
+  refine Proof.byContra ?_
+  have hn : Proof σ Γ (WFF.neg (WFF.instantiate Ctx.NoSlots.slots t φ) :: Δ)
+      (WFF.instantiate Ctx.NoSlots.slots (Term.collapse (Ctx.collapses_boxIn_self hT Γ)
+        (Term.collapse (Ctx.collapses_boxIn_self hT Γ.boxIn) bd)) φ.neg) :=
+    Proof.back_here hS hT _ t φ.neg
+      (Proof.ofSubset (fun _ hx => List.mem_cons_of_mem _ hx) h)
+      (Proof.lookup List.mem_cons_self)
+  exact Proof.imp_elim hn (Proof.ofSubset (fun _ hx => List.mem_cons_of_mem _ hx) p)
+
+/-- ⭐**Any carrier's value is a kept carrier's**: what `□□v` comes back as, `□(v read here)`, kept,
+    comes back as too.  `back_keep` gives its own value, which is interchangeable with `t`. -/
+def Proof.back_kept (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+    (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} {a₀ : Ann A}
+    (v : Term σ Γ.boxIn.boxIn A a₀) {a : Ann A} (t : Term σ Γ A a)
+    (h : Proof σ Γ Δ (WFF.back hS .nec (Term.boxtm (Term.boxtm v)) t)) :
+    Proof σ Γ Δ (WFF.back hS .nec (Term.boxtm (Term.boxtm (Term.shift
+      (Ctx.shifts_boxIn_boxIn hF Γ)
+      (Term.collapse (Ctx.collapses_boxIn_self hT Γ.boxIn) v)))) t) := by
+  let n := Term.collapse (Ctx.collapses_boxIn_self hT Γ.boxIn) v
+  have B : Proof σ Γ Δ (WFF.back hS .nec (Term.boxtm (Term.boxtm
+      (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) n)))
+      (Term.collapse (Ctx.collapses_boxIn_self hT Γ) n)) :=
+    Proof.conv (OutLeg.back_congr hS .nec (congrArg (Sigma.mk _) (Term.mono_refl _ _)) rfl)
+      (Proof.back_keep hS hT hF .nec n (Proof.dia_top hT))
+  let φ := WFF.holeAt ((Ctx.NoSlots.slots (Γ := Γ)).insert A)
+    (Term.pair (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root A) (Term.boxtm n))
+      (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root Γ (.bnd 0) A)))
+    (WFF.backDupL (σ := σ) hS hF A)
+  have eφ : ∀ {b : Ann A} (u : Term σ Γ A b), WFF.instantiate Ctx.NoSlots.slots u φ =
+      WFF.back hS .nec (Term.boxtm (Term.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) n))) u :=
+    fun u => (WFF.instantiate_holeAt_pair _ _ u).trans (WFF.holeAt_backG hS _ _ _ _)
+  exact Proof.conv (eφ t) (Proof.back_here_symm hS hT v t φ h (Proof.conv (eφ _).symm B))
+
+omit [Γ.NoSlots] in
+/-- ⭐**`Back` at the own arrow** (`back_here`), in a world: a plain carrier read here twice is
+    interchangeable with its value, at every later stage. -/
+theorem BWorld.back_here_rel (w : BWorld σ) (hS : ModalSys.BStrong = true)
+    (hT : ModalSys.T = true) {i : ℕ} {a₀ : Ann A} (bd : Term σ (w.ctx i).boxIn.boxIn A a₀)
+    {a : Ann A} (t : Term σ (w.ctx i) A a)
+    (hmem : WFF.back hS .nec (Term.boxtm (Term.boxtm bd)) t ∈ w.M i) :
+    Canon.DTerm.Rel (S := w.sys) (T := w.T)
+      ⟨i, _, Term.collapse (Ctx.collapses_boxIn_self hT _)
+        (Term.collapse (Ctx.collapses_boxIn_self hT _) bd)⟩ ⟨i, a, t⟩ := by
+  intro j hj hj' χ
+  have hm := w.sub hj _ hmem
+  have key : ∀ φ : WFF σ ((w.ctx j).insert (.bnd 0) A) 1,
+      WFF.instantiate Ctx.NoSlots.slots (Term.mono (w.le hj) t) φ ∈ w.M j →
+      WFF.instantiate Ctx.NoSlots.slots (Term.mono (w.le hj)
+        (Term.collapse (Ctx.collapses_boxIn_self hT _)
+          (Term.collapse (Ctx.collapses_boxIn_self hT _) bd))) φ ∈ w.M j := by
+    intro φ hφ
+    have h := BWorld.mem_of_provable (Δ := [_, _]) (fun ψ hψ => by
+        rcases List.mem_cons.mp hψ with rfl | hψ
+        · exact hm
+        · rw [List.mem_singleton.mp hψ]; exact hφ)
+      ⟨Proof.back_here hS hT (Term.mono (w.le hj).boxIn.boxIn bd)
+        (Term.mono (w.le hj) t) φ (Proof.lookup List.mem_cons_self)
+        (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩
+    rwa [Term.collapse_mono (Ctx.collapses_boxIn_self hT (w.ctx i).boxIn)
+        (Ctx.collapses_boxIn_self hT (w.ctx j).boxIn) (w.le hj).boxIn.boxIn
+        (w.le hj).boxIn,
+      Term.collapse_mono (Ctx.collapses_boxIn_self hT (w.ctx i))
+        (Ctx.collapses_boxIn_self hT (w.ctx j)) (w.le hj).boxIn (w.le hj)] at h
+  change WFF.instantiate _ (Term.mono (w.le hj) _) χ ∈ w.M j ↔
+    WFF.instantiate _ (Term.mono (w.le hj') t) χ ∈ w.M j
+  refine ⟨fun h => ?_, key χ⟩
+  by_contra hn
+  exact (w.mcs j).neg_mem_iff.mp (key χ.neg ((w.mcs j).neg_mem_iff.mpr hn)) h
+
 end Leg
 
 end V12M

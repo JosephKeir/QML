@@ -1,4 +1,6 @@
 import QML.QML_v12m_GCluFunc
+import QML.QML_v12m_RetUnliftC
+import QML.QML_v12m_BCanonModel
 
 /-!
 # QML v12m — 5 on the growing tree: the cluster model
@@ -30,13 +32,10 @@ open BArrow
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
   {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
 
-theorem CluFlags.absBS (hX : CluFlags) (hB : ModalSys.BStrong = true) : False := by
-  rw [hX.noBStrong] at hB
-  cases hB
-
-/-- With strong B off the only shaped flag is T. -/
 theorem CluFlags.T_of_shaped (hX : CluFlags) (h : ModalSys.shaped = true) : ModalSys.T = true := by
-  simpa [ModalSys.shaped, hX.noBStrong] using h
+  by_cases hB : ModalSys.BStrong = true
+  · exact hX.bT (hX.bS hB)
+  · simpa [ModalSys.shaped, hB] using h
 
 /-! ## Moving shapes between anchors -/
 
@@ -564,6 +563,129 @@ theorem cposRet_exists (hX : CluFlags) {A : VarType} {s : GW hF M₀} (hT : Moda
     rw [cden_grealT_eta hX hr ⟨_, hy⟩ (Ctx.ref_diaIn_of hy), ← hc, cfromDom_toDom]
   · exact (cden_lift hX hi t).trans ht
 
+/-! ## Comes back -/
+
+/-- A carrier's round-trip data on the cluster frame (`Model.carrierData`). -/
+noncomputable def cData (hX : CluFlags) : (L : BLeg) → {A : VarType} → {s : GW hF M₀} →
+    (cframe hF hM₀ hX).Dom (L.carrier A) s →
+    Σ S : Set ((cframe hF hM₀ hX).Acc s),
+      (a : S) → (b : (cframe hF hM₀ hX).Acc a.1.1) → (cframe hF hM₀ hX).Dom A b.1
+  | .nec, A, s, c =>
+      ⟨Set.univ, fun a b => cnecEval hM₀ hX
+        (cnecEval hM₀ hX (c : (cframe hF hM₀ hX).Nec (.VTypeBox A) s) a.1) b⟩
+  | .pos, A, _, c =>
+      ⟨(cposEval hM₀ hX (c : (cframe hF hM₀ hX).Pos (.VTypeBox A) _)).1,
+        fun a b => cnecEval hM₀ hX
+          ((cposEval hM₀ hX (c : (cframe hF hM₀ hX).Pos (.VTypeBox A) _)).2 a) b⟩
+
+/-- A carrier's witness on the cluster frame (`Model.carrierTag`). -/
+noncomputable def cTag (hX : CluFlags) : (L : BLeg) → {A : VarType} → {s : GW hF M₀} →
+    (cframe hF hM₀ hX).Dom (L.carrier A) s →
+    Option ((cframe hF hM₀ hX).Leaf (fun _ => VarSymb) s)
+  | .nec, _, _, _ => none
+  | .pos, A, _, c =>
+      if h : ModalSys.shaped = true then
+        some (crawShape (hX.T_of_shaped h)
+          (c : (cframe hF hM₀ hX).Pos (.VTypeBox A) _).1).label
+      else none
+
+/-- The model's indistinguishability, before the model. -/
+abbrev cIndM (hX : CluFlags) {A : VarType} {s : GW hF M₀} (o o' : (cframe hF hM₀ hX).Dom A s) :
+    Prop :=
+  (ModalSys.T = true → cInd hM₀ hX o o') ∧ (ModalSys.T = false → o = o')
+
+/-- ⭐**Canonical "comes back as"**: the round trip, and at a `◇` content a `Back` atom of the theory
+    with these data and this witness, as `BArrow`'s.  The round trip is part of the definition, so
+    `Model.Ret_fwd` is free and the truth lemma's `Back` case proves it for an atom, where the
+    induction reaches `eqRec` (`Proof.back_of_leg`). -/
+def cRet (hX : CluFlags) {A : VarType} {s : GW hF M₀}
+    (ℓ : Option ((cframe hF hM₀ hX).Leaf (fun _ => VarSymb) s))
+    (S : Set ((cframe hF hM₀ hX).Acc s))
+    (val : (a : S) → (b : (cframe hF hM₀ hX).Acc a.1.1) → (cframe hF hM₀ hX).Dom A b.1)
+    (o : (cframe hF hM₀ hX).Dom A s) : Prop :=
+  Nonempty S ∧ (∀ a : S, ∃ r : (cframe hF hM₀ hX).R a.1.1 s, cIndM hM₀ hX (val a ⟨s, ⟨r⟩⟩) o) ∧
+    (A.diaFree = true ∨ ∃ (hS : ModalSys.BStrong = true) (i : ℕ) (L : BLeg) (c : Ann (L.carrier A))
+      (ct : Term σ (ctxOf (glat s i)) (L.carrier A) c) (a : Ann A)
+      (t : Term σ (ctxOf (glat s i)) A a),
+      WFF.back hS L ct t ∈ (gw hM₀ s).M i ∧
+      cData hM₀ hX L (ctoDom hM₀ hX _ s (cden hM₀ hX s i (Ctx.Le.refl _) ct)
+        (cdefinable_den hX _ _)) = ⟨S, val⟩ ∧
+      cTag hM₀ hX L (ctoDom hM₀ hX _ s (cden hM₀ hX s i (Ctx.Le.refl _) ct)
+        (cdefinable_den hX _ _)) = ℓ ∧
+      ctoDom hM₀ hX A s (cden hM₀ hX s i (Ctx.Le.refl _) t) (cdefinable_den hX _ _) = o)
+
+variable {hM₀} in
+/-- ⭐A `□`-term's value along a world's own arrow is the term collapsed. -/
+theorem cden_boxtm_own (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀) (i : ℕ)
+    {A : VarType} {a : Ann A} (b : Term σ (ctxOf (glat s i)).boxIn A a)
+    (hR : GR (groot hF M₀) s) :
+    cden hM₀ hX s i (Ctx.Le.refl _) (.boxtm b) ⟨s, ⟨hR⟩⟩ =
+      cden hM₀ hX s i (Ctx.Le.refl _) (Term.collapse (Ctx.collapses_boxIn_self hT _) b) := by
+  simp only [cden]
+  rw [cden_collapse hX hM₀ hT s i, Term.mono_refl]
+
+/-- ⭐**Every object comes back** (`Model.backRet_exists`): `B_strong`'s carrier names a value, and
+    the kept carrier of that value (`Proof.back_kept`) makes the round trip on raw objects, a kept
+    object being read along an arrow as itself (`cden_applyG`).  An atom's round trip needs the
+    truth lemma; a kept carrier's does not. -/
+theorem cbackRet_exists (hX : CluFlags) (hS : ModalSys.BStrong = true) {A : VarType}
+    {s : GW hF M₀} (o : (cframe hF hM₀ hX).Dom A s) :
+    ∃ c : (cframe hF hM₀ hX).Nec (.VTypeBox A) s,
+      cRet hM₀ hX none (Set.univ : Set ((cframe hF hM₀ hX).Acc s))
+        (fun a b => cnecEval hM₀ hX (cnecEval hM₀ hX c a.1) b) o := by
+  have hT := hX.bT (hX.bS hS)
+  obtain ⟨i, a, t, ht⟩ := cdefinable_fromDom hM₀ hX A s o
+  have hdia : (OutLeg.nec : OutLeg (ctxOf (glat s i))).dia (.top : WFF σ _ 0) ∈ (gw hM₀ s).M i :=
+    BWorld.mem_of_provable (Δ := []) (fun _ h => absurd h List.not_mem_nil) ⟨Proof.dia_top hT⟩
+  have hex : BData.WFF.backEx hS t ∈ (gw hM₀ s).M i :=
+    BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hdia)
+      ⟨BData.Proof.backEx hS t _ (ctxOf_fresh le_rfl) (Proof.lookup List.mem_cons_self)⟩
+  obtain ⟨j, hij, cb, c, hm⟩ := (gw hM₀ s).exW_term hex
+  have hm' : WFF.back hS .nec c (Term.mono (gle hM₀ s hij) t) ∈ (gw hM₀ s).M j := by
+    convert hm using 1
+    refine Eq.symm ((congrArg (WFF.instantiate _ _) ?_).trans
+      (BData.WFF.instantiate_backAt_slot hS (Term.mono (gle hM₀ s hij) t) _))
+    refine WFF.back_congr' hS .nec (Term.mono_eta _ _ _ _) ?_
+    simp only [Term.mono_mono]
+  clear hm
+  match cb, c, hm' with
+  | _, .boxtm (.boxtm v), hm' =>
+    let n := Term.collapse (Ctx.collapses_boxIn_self hT _) v
+    let κ := Term.boxtm (Term.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF _) n))
+    have hk : WFF.back hS .nec κ (Term.mono (gle hM₀ s hij) t) ∈ (gw hM₀ s).M j :=
+      BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by
+        rw [List.mem_singleton.mp hψ]; exact hm')
+        ⟨Proof.back_kept hS hT hF v _ (Proof.lookup List.mem_cons_self)⟩
+    have hrel := BWorld.back_here_rel (gw hM₀ s) hS hT v _ hm'
+    have hκ : cden hM₀ hX s j (Ctx.Le.refl _) κ =
+        fun _ => cden hM₀ hX s j (Ctx.Le.refl _) (Term.boxtm n) :=
+      cden_applyG hX (.dup hF) (Term.boxtm n) s j (Ctx.Le.refl _)
+    have hR : GR (groot hF M₀) s := (carrows hF M₀).refl hT s
+    have hval : cden hM₀ hX s j (Ctx.Le.refl _) (Term.mono (gle hM₀ s hij) t) =
+        cfromDom hM₀ hX A s o := (cden_lift hX hij t).trans ht
+    refine ⟨⟨_, cdefinable_den hX _ _⟩, ⟨⟨⟨⟨s, ⟨hR⟩⟩, trivial⟩⟩, fun b => ⟨hR, ?_⟩,
+      .inr ⟨hS, j, .nec, _, κ, _, _, hk, rfl, rfl,
+        (ctoDom_congr hX hval _ _).trans (ctoDom_fromDom hM₀ hX A s o)⟩⟩⟩
+    refine ⟨fun _ => ⟨⟨j, _, Term.collapse (Ctx.collapses_boxIn_self hT _) n⟩,
+      ⟨j, _, Term.mono (gle hM₀ s hij) t⟩, ?_, hval, hrel⟩,
+      fun hnT => absurd (hT.symm.trans hnT) (by decide)⟩
+    change _ = cfromDom hM₀ hX A s (ctoDom hM₀ hX A s _ _)
+    rw [cfromDom_toDom]
+    exact (cden_boxtm_own hX hT s j n hR).symm.trans (congrFun (congrFun hκ.symm b.1) ⟨s, ⟨hR⟩⟩)
+
+/-- ⭐**Witnessed ways home are free** (`Model.posBack_exists`): strong T's realiser at the target,
+    the same possible object at the source, carriers being shared (R4). -/
+theorem cposBack_exists (hX : CluFlags) (hS : ModalSys.BStrong = true)
+    (hW : ModalSys.BStrongW = true) {A : VarType} {w v : GW hF M₀}
+    (b : (cframe hF hM₀ hX).R v w) (o : (cframe hF hM₀ hX).Dom A w) :
+    ∃ (p : (cframe hF hM₀ hX).Pos A v)
+      (hm : (⟨w, ⟨b⟩⟩ : (cframe hF hM₀ hX).Acc v) ∈ (cposFull hM₀ hX p).1.1),
+      cIndM hM₀ hX ((cposFull hM₀ hX p).1.2 ⟨⟨w, ⟨b⟩⟩, hm⟩) o := by
+  have hT := hX.bT (hX.bS hS)
+  obtain ⟨p, hm, hp⟩ := cposRet_exists hM₀ hX hT (hX.bW hS hW) o
+  exact ⟨⟨p.1, (cdefinable_dia_iff hX v p.1).mpr ((cdefinable_dia_iff hX w p.1).mp p.2)⟩, hm,
+    fun _ => hp, fun hnT => absurd (hT.symm.trans hnT) (by decide)⟩
+
 /-! ## The model -/
 
 variable (hF) in
@@ -606,11 +728,11 @@ noncomputable def cmodel (hX : CluFlags) : Model.{0, 0} σ where
   posRet_exists hT hS a := by
     obtain ⟨p, hm, hp⟩ := cposRet_exists hM₀ hX hT hS a
     exact ⟨p, hm, fun _ => hp, fun hT' => absurd (hT.symm.trans hT') (by decide)⟩
-  Ret _ _ _ _ := False
-  Ret_fwd hS := (hX.absBS hS).elim
-  Ret_conv hS := (hX.absBS hS).elim
-  backRet_exists hS := (hX.absBS hS).elim
-  posBack_exists hS := (hX.absBS hS).elim
+  Ret ℓ S val o := cRet hM₀ hX ℓ S val o
+  Ret_fwd _ _ _ _ _ h := ⟨h.1, h.2.1⟩
+  Ret_conv _ hA _ _ _ _ h := ⟨h.1, h.2, .inl hA⟩
+  backRet_exists hS _ o := cbackRet_exists hM₀ hX hS o
+  posBack_exists hS hW b o := cposBack_exists hM₀ hX hS hW b o
 
 end GArrow
 

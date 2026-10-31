@@ -5427,6 +5427,13 @@ translation.  Both go away.
 * *Membership ⇒ truth at `ret`.*  It no longer reads `Back` semantically: `back_here_rel` at the own arrow, and ties
   moved to the home world along `r`.
 
+**Built (2026-10-31): the cluster's `Ret`.**  `CluFlags` has `bS` (`BStrong → B`) and `bW` in place of `noBStrong`.
+`cRet` is the round trip with an atom at `◇` contents, so `Ret_fwd` and `Ret_conv` are one line.  `cbackRet_exists`
+takes `B_strong`'s carrier and the kept carrier of its value (`Proof.back_kept`, `BWorld.back_here_rel`,
+`cden_applyG`, `cden_boxtm_own`).  `cposBack_exists` is `cposRet_exists` read at the source.  The truth lemma, `cindInvariant_inv`
+and completeness take a temporary `hNS : BStrong = false`, which `noBStrong_of_cube` supplies.  It goes when the `back`,
+`retS` and `retxS` cases are in.
+
 **The rest.**  `backRet_exists`: `∃c. Back c t` is a theorem, so `exW_term` names it (`ret_comp_named`'s pattern).
 `posBack_exists`: `cposRet_exists` at the target, kept along the arrow (with `BStrongW → TStrong`).  `RetCongr`
 comes after the truth lemma, in `cmodel_indInvariant`: atoms and `Ret` coincide there, and `IsCarrierData` gives the

@@ -123,15 +123,6 @@ def CAgree (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ} (C : GTr σ Γ 
 
 variable {hM₀}
 
-/-- ⭐A `□`-term's value along a world's own arrow is the term collapsed. -/
-theorem cden_boxtm_own (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀) (i : ℕ)
-    {A : VarType} {a : Ann A} (b : Term σ (ctxOf (glat s i)).boxIn A a)
-    (hR : GR (groot hF M₀) s) :
-    cden hM₀ hX s i (Ctx.Le.refl _) (.boxtm b) ⟨s, ⟨hR⟩⟩ =
-      cden hM₀ hX s i (Ctx.Le.refl _) (Term.collapse (Ctx.collapses_boxIn_self hT _) b) := by
-  simp only [cden]
-  rw [cden_collapse hX hM₀ hT s i, Term.mono_refl]
-
 /-- Agreement at the visible addresses gives agreement at every reachable one. -/
 theorem cagree_of_raw (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
     (C : GTr σ Γ (ctxOf (glat w k))) (env : (cmodel hF hM₀ hX).Env Γ w)

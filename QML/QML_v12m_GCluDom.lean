@@ -39,14 +39,17 @@ open BArrow
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
   {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
 
-/-- The flags of the K45 cluster model: 5 and both lifts on, T and B off. -/
+/-- The flags of the cluster model: 5 and both lifts on. -/
 structure CluFlags : Prop where
   five : ModalSys.Five = true
   fourS : ModalSys.FourStrong = true
   fourSW : ModalSys.FourStrongW = true
   /-- Weak B holds of the cluster only where the root has its loop. -/
   bT : ModalSys.B = true → ModalSys.T = true
-  noBStrong : ModalSys.BStrong = false
+  /-- Strong B comes with weak B, whose rules it assumes. -/
+  bS : ModalSys.BStrong = true → ModalSys.B = true
+  /-- Witnessed ways home are strong T's realisers, kept (`ModalSys.WCoh`). -/
+  bW : ModalSys.BStrong = true → ModalSys.BStrongW = true → ModalSys.TStrong = true
 
 theorem rpre (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ) :
     PPreOk (rpath s) (groot hF M₀) s (rpath_eq s) i :=
