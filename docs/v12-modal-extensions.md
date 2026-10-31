@@ -5432,10 +5432,32 @@ nothing.
   world, and there its body is a closed hole.  So the derivation must argue by contradiction, carrying
   `¬` of the atom out, and `Φ` must first be abstracted over a tuple of its parameters.  `pack2` does that
   with 4 off; with 4 on the tool would be `GAbs`, not yet used for this.
-* *The route.*  Assume `¬T`.  The unit carries `¬T` and `Here z c` to the far end of the way home; there
-  `◇(Here (x.keep) t ∧ φ) ⊢ ◇_x φ` puts that far end in `x`'s extent, where `x = z.keep`.
-  `ret_bridge` along `pos x` makes it a `retx`, and `ret_unitWC` then gives the atom **at the same far
-  world**, against `¬T`.
+* *The route, checked on paper (2026-10-31).*  Write `T` for the atom, `x := z.keep`.  Assume `¬T`.
+  1. *Carriers.*  Take `n.dup` for `t`, a `B_strong` carrier for `c`, and `z.dup` for `z`.  `back_pair`
+     and `ret_bridge` give `ret ⟨t, ⟨c, z⟩⟩ Φ(p)`, with the tie `□Back (dk x.keep) p.inner.z`, which is
+     `back_keep` at the carrier's image.
+  2. *Close the body.*  Let `□sb` be the `□` view's tuple (`boxTuple`), and `Φ̂` be `Φ` with its items
+     sent to `sb`'s components, a hole formula on the tuple.  The body's parameters then travel in the
+     unit's object `e`, and only `t`, `c` and `z` need the value.
+  3. *Out.*  `ret_unit` at `□sb`, with `θ := ¬wit(y.t, y.c) Φ̂(·; e.inner) ∧ Here(y.z, y.c)`.  At `v`:
+     `ret sb θ(p.inner, e)`, a nested world with `¬T'` and `Here(p̂.z, p̂.c)`, whose parameters are `e.inner`.
+  4. *Into `x`'s extent.*  `Proof.ret_lift` at `v` gives `n'` with `◇θ(p̂, n'.keep)`.  The tie turns `Here`
+     into `Here(x.keep, p̂.c)`, and `◇(Here (x.keep) t ∧ φ) ⊢ ◇_x φ` gives `◇_x θ(…)`.  That lemma is
+     `here_intro` at `x.keep`, then `four_dia` contraposed, and it does need `WFF.collapse_shift`.
+  5. *Along `x`.*  `back_keep` along `pos x`, moved to the value `sb` by interchange (classically), then
+     the generalised `ret_bridge` along `pos x` gives `retx_x [d₁ ↦ sb] θ`.
+  6. *Back.*  `ret_unitW` at `v`, with `θ'` the hole form of `Φ` at `⟨d, x⟩`, `□sb' := boxFst p`, and `u`
+     the content `x.dia`.  **The same far world** now has `¬T'` and `wit ⟨p̂.t, x.dia⟩ Φ̂(·; d₁.inner)`.
+     Both bodies read the parameters from one object, and `sb'` read there is `p̂.t`, so they differ
+     only in the content.
+  7. *Close.*  `□_x Here(x.keep, x.dia)` and step 4's `Here(x.keep, p̂.c)` make the contents
+     interchangeable (`here_subst`, at the value slot, `WFF.instantiate_retSlot`).  Contradiction.
+  This reduces `.wit` truth ⇒ membership to one new tool (step 2) and one new lemma (step 4), and it needs
+  no new rule.  `gabs` is not the tool for step 2: it abstracts one variable's items, for realising a new
+  variable.  The 4-off `pack2` goes through `packS`; the 4-on analogue is a substitution sending each
+  item to its path in `itemsTm (boxItems l)`, which does not exist yet.  Along `pos y` the body also
+  mentions `y.dia`, so the hole must carry `y`.  Not checked in Lean, and this is the nec leg in detail.
+* *Cost.*  About 1 000 to 1 400 lines, against about 150 for the fallback rule.
 * *An attempted countermodel failed.*  One world, arrows ℤ₃, `home a = a`, necessary objects constant,
   refutes the fallback rule at first sight.  But `back_keep` at `◇` contents forces
   `x.keep(a + home a)` to be `Ind` to `x`, which ℤ₃ does not allow.  So `back_keep` may be doing the work
