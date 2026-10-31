@@ -5302,16 +5302,95 @@ value along `a`.  We want `m.here` and `t` interchangeable in every slot formula
   2. `ret_counit` gives `n.here ≈ t`.  This uses only the own arrow.
   3. `ret_unitC` at `n.dup` puts a nested `ret` in the body, and `ret_counitC` there, with `back_keep` at
      `d.dup`, gives `d ≈ n.keep`.  So `◇Φ(n.keep)`.
-* *At `◇` contents* there is no equality to say `b = d.dup`.  Tie them with an atom instead:
-  `□ Back (b.keep) d.inner`, true by `back_keep` under `□`, read back by `back_here`.  This is the least
-  checked step here, and the one to test first.
-* *Companions and `.wit` shapes:* not yet checked against these steps.  Rows 3–4 should stay free, as
-  the S5 paper check says.
+* *At `◇` contents* there is no equality to say `b = d.dup`, so the derivation uses atoms at every
+  content.  Write `dd x` for `(x.dup).dup`.  Pack `⟨d, b⟩` into one object `p : □(A × □A)` (`ret_extS`,
+  then `ret_map` along `ShapeMap.pack`), since `ret_counit` and `ret_unitC` need a single `□`.  The
+  target, an `∃` so that the worlds' Henkin step needs no change:
+  `ret t Φ(d) ⊢ ∃n:□A. Back (n.dup) t ∧ ◇Φ(n.keep)`.
+  * `Back (n.dup) t` says `n.here ≈ t`: `back_here` reads it, and `back_keep` gives the carrier.
+  * `T₁ := □ψ₁(p.inner)`, with `ψ₁⟨x, y⟩ := Back (y.dup) x`.  `ret_counit` gives `Back (n.dup) t`.
+  * `T₂ := □□Back (dd z.keep) y`, for `z = p.inner.snd` and `y = p.keep.inner.snd`.  It says `b` is of
+    kept form, and it is needed: the nested `ret` delivers `z.keep`, `b` read along `r` and kept along
+    `s`, while the carrier's image is `y`, `b` read along `r · s`.  These two addresses differ, and
+    they agree only for a kept `b`.  `back_here` interchanges them.
+  * `T₃ := Back (b.dup) d` at the far end, which turns `Φ(d)` into `Φ(b.here)`.
+  * All three hold of `b = d.dup`, by `back_keep`, under `□` where stated.
+  * *The nested step.*  `ret_unitC` at `□sb = n.dup`, with `θ := □Back (dd e.inner) z.keep`, puts a `ret`
+    in the body.  `T₂` rewrites `θ` to the carrier's image, `ret_counitC` with `back_keep` at `b` gives
+    `Back (dd n.keep) b.here`, and `back_here` gives `Φ(n.keep)`.
+  * *In Lean.*  `Canon.applyG` at `dup`, `fst` and `snd` should keep the hole formulas substitution
+    friendly (`applyG_subst`), and `applyG dup (.boxtm b)` is `back_keep`'s carrier.  Every step inside a
+    body has to open the slot to a fresh root and pass through `ret_monoS`, because rules need slot-free
+    contexts.  Estimate: 600 to 1 000 lines for this shape alone.
+* *Companions and `.wit` shapes: not yet checked, and the truth lemma needs them.*  It has to cover
+  every `retS` and `retxS` shape, whatever `BStrongW` says, and everything above is for `.box` along
+  `nec`.  The sketches so far: `.boxC` by packing into a flat `□` (`packC`), with a tie per companion, since
+  `packC` has no inverse; `.wit` by also naming `x : ◇X` with `Here x c`, through R4.  Neither is checked.
 
 **5. Order of work.**
 1. Add `back_keep` and its law (soundness, substitution).  Done.
-2. Write the lifting form as a derived rule, at `◇` contents too, before touching the model.
+2. Check companions and `.wit` on paper, then write the lifting form as a derived rule, at `◇`
+   contents too, before touching the model.
 3. The cluster's `Ret`, `Ret_fwd`, then the `Back` and `ret` truth cases.
+
+#### Strong B on S5, every shape: the check *(2026-10-31, paper)*
+
+**Verdict.**  No blocker found, but the work is much larger than "strong B collapses" suggested, and
+one case is unresolved.  All of this is on paper.
+
+| Case | Direction | Route | Status |
+|---|---|---|---|
+| `Back`, either leg | membership ⇒ truth | `Ret` is the atom | free |
+| `Back`, `◇`-free | truth ⇒ membership | `back_ret`, as `BBackTruth` | a port |
+| `Back`, `◇` contents | truth ⇒ membership | the atom itself | free |
+| `ret`, `.box` | membership ⇒ truth | the lifting form, then an ordinary child | pinned above |
+| `ret`, `.box`, `nec` | truth ⇒ membership | `back_keep`, `ret_bridge`, interchange at the value slot | simple |
+| `ret`, `.box`, `pos` | truth ⇒ membership | as `nec`, with `ret_bridge` along the leg | needs finding 1 |
+| `.prod`, `.boxC` | membership ⇒ truth | pack flat (`pack`, `packC`), with a coherence tie | new, routine |
+| `.boxC` | truth ⇒ membership | name the companion, then identify it | new, routine |
+| `.wit` | membership ⇒ truth | lift `□(q.keep)`, read `Here` by `ret_counitD` | new |
+| `.wit` | truth ⇒ membership | below | **unresolved** |
+| `retxS`, each shape | both | as `retS`, along `pos` | the same work |
+
+**Finding 1: `ret_bridge` must conclude along its leg.**  It concludes the plain `WFF.ret` from an arrow
+of any leg.  `retxS` (truth ⇒ membership) and `Ret_fwd` at `pos` both need `O.ret`, with the body in
+`O.view`.  At `◇`-free contents that follows from `ret_new` and equality; at `◇` contents it does not.
+So generalise the rule.  This is no new rule, the soundness proof is the same, and nothing uses it yet.
+
+**Finding 2: `.wit` is forced in the cluster.**  In `BArrow` a way home lies in an extent only when an
+atom put it there.  In the cluster extents come from `Realised`: if `q` at `v` has its witness's name
+realised at `w`, the way home is in `q`'s extent whatever atoms exist, even with `BStrongW` off.  So
+`retS (.wit …)` is true there, and the truth lemma needs the atom.  The only rules introducing `.wit`
+are `ret_realise` (needs `BStrongW`, and its possible part is fresh), the own-arrow rules and the units.
+* *Possible derivation.*  At `v`, along `q`'s extent, `ret_unitWC` gives a `.wit` atom looking back.
+  Its premise is a `retx` at `v`, from the generalised `ret_bridge`.  Then `four_dia` with `here_elim`
+  gives `◇(Here (x.keep) t ∧ φ) ⊢ ◇_x φ`, which puts the way home in the extent.  This is a sketch, and
+  the largest piece here.
+* *Alternative, a rule.*  `Here z c, O.ret y Φ(z.keep) ⊢ O.retS (.wit …) ⟨y, c⟩ Φ`: `ret_hereWC`'s partner
+  at any arrow.  Sound by `homeUnique` and `posKeep_full`, with no model law, in about 40 lines.  The
+  semantic argument suggests it is derivable, so it may be unnecessary, but that is not shown.
+
+**Finding 3: companions need ties in both directions.**
+* `packC` has no inverse, so after lifting, the new object's companions must be tied to the flat
+  object's second part: `□ Back (y.dup) x₂`, with `y` the companion.
+* Truth ⇒ membership: `ret_comps_named` gives a fresh value `z`, `ret_counitC` with `back_keep` gives
+  `Back (y.dup) z`, so `z ≈ y.here`, and interchange replaces `z` by the given value.
+* `holeC` and `compsRen` need 4 off, so `BArrow`'s route through them is not available.
+
+**Finding 4: flags.**  `CluFlags` will need `BStrong → B` (the rules assume it; with `bT` that gives T)
+and `BStrongW → TStrong` (`WCoh`).
+
+**What held up.**
+* `Ret_fwd` at any content, `RetCongr.keep`, and rows 1–4: `posBack_exists` is free through R4.
+* No change to the worlds' construction: `B_strong`, `ret_new` and `ret_compS` become `∃` theorems, as
+  `Proof.retEx` does for strong T, and `BWorld.ret_comps_named` already does this for companions.
+* `back_keep` on any leg was the right form, since both legs use it.
+* `.wit` membership ⇒ truth: `Here z c` comes from `ret_counitD` with the body given by `here_keep`.
+
+**Size, rough.**  `BArrow`'s files for these cases total about 6 700 lines, though much of that is
+network-specific.  For the cluster: the lifting form 600–1 000; `.prod` and `.boxC` about 500; `.wit`
+membership ⇒ truth about 800; the `Back` and `ret` truth cases and `Ret` 1 000–1 500; `.wit` truth ⇒
+membership 800–1 500 by derivation, about 100 by the rule.  So about 3 000 to 5 000 lines.
 
 ### □-BF and ◇-BF
 Base variables are invisible under `□`, so each Barcan formula pairs a concept quantifier outside
