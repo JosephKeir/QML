@@ -5436,14 +5436,14 @@ nothing.
   1. *Carriers.*  Take `n.dup` for `t`, a `B_strong` carrier for `c`, and `z.dup` for `z`.  `back_pair`
      and `ret_bridge` give `ret ⟨t, ⟨c, z⟩⟩ Φ(p)`, with the tie `□Back (dk x.keep) p.inner.z`, which is
      `back_keep` at the carrier's image.
-  2. *Close the body.*  Let `□sb` be the `□` view's tuple (`boxTuple`), and `Φ̂` be `Φ` with its items
+  2. *Close the body.*  Let `□sb` be the `□` view's tuple (`viewTup`), and `Φ̂` be `Φ` with its items
      sent to `sb`'s components, a hole formula on the tuple.  The body's parameters then travel in the
      unit's object `e`, and only `t`, `c` and `z` need the value.
   3. *Out.*  `ret_unit` at `□sb`, with `θ := ¬wit(y.t, y.c) Φ̂(·; e.inner) ∧ Here(y.z, y.c)`.  At `v`:
      `ret sb θ(p.inner, e)`, a nested world with `¬T'` and `Here(p̂.z, p̂.c)`, whose parameters are `e.inner`.
   4. *Into `x`'s extent.*  `Proof.ret_lift` at `v` gives `n'` with `◇θ(p̂, n'.keep)`.  The tie turns `Here`
      into `Here(x.keep, p̂.c)`, and `◇(Here (x.keep) t ∧ φ) ⊢ ◇_x φ` gives `◇_x θ(…)`.  That lemma is
-     `here_intro` at `x.keep`, then `four_dia` contraposed, and it does need `WFF.collapse_shift`.
+     `four_dia` contraposed, then `here_elim` at `x.keep`, for `φ` a closed hole formula.
   5. *Along `x`.*  `back_keep` along `pos x`, moved to the value `sb` by interchange (classically), then
      the generalised `ret_bridge` along `pos x` gives `retx_x [d₁ ↦ sb] θ`.
   6. *Back.*  `ret_unitW` at `v`, with `θ'` the hole form of `Φ` at `⟨d, x⟩`, `□sb' := boxFst p`, and `u`
@@ -5455,9 +5455,18 @@ nothing.
   This reduces `.wit` truth ⇒ membership to one new tool (step 2) and one new lemma (step 4), and it needs
   no new rule.  `gabs` is not the tool for step 2: it abstracts one variable's items, for realising a new
   variable.  The 4-off `pack2` goes through `packS`; the 4-on analogue is a substitution sending each
-  item to its path in `itemsTm (boxItems l)`, which does not exist yet.  Along `pos y` the body also
-  mentions `y.dia`, so the hole must carry `y`.  Not checked in Lean, and this is the nec leg in detail.
-* *Cost.*  About 1 000 to 1 400 lines, against about 150 for the fallback rule.
+  item to its path in `itemsTm (boxItems l)`.  Along `pos y` the body also mentions `y.dia`, so the
+  hole must carry `y`.  This is the nec leg in detail, and the pos leg is not checked.
+* *The two new pieces, built (2026-10-31): `QML_v12m_RetGPack`, 336 lines, no `sorry`, standard axioms.*
+  * Step 2: `gpack` (182 lines, against about 150), a body closed over the `□` view's tuple.
+    `holeAt_gtup_gpack` and `holeAt_gtup_gpack_at` read it back.
+  * Step 4: ⭐`Proof.dia_here_keep` (154 lines): `◇(Here (x.keep) t ∧ Θ(s)) ⊢ ◇_x Θ(s)`, for `Θ` a closed
+    hole formula.  No `WFF.shift_mono`, and no lemma that a shift fixes a closed formula: `here_elim`
+    reads the formula back by collapsing, and `WFF.collapse_shift_same` undoes the shift on `Θ` (a
+    hole context has no level steps, `Ctx.shiftCollapseId_hole`).  New: `WFF.shift_holeAt`,
+    `WFF.collapse_holeAt`.
+* *Cost.*  About 1 000 to 1 400 lines, against about 150 for the fallback rule.  Of that, 336 are built.
+  What is left reuses built tools, but steps 5 and 6 and the pos leg have only been checked on paper.
 * *An attempted countermodel failed.*  One world, arrows ℤ₃, `home a = a`, necessary objects constant,
   refutes the fallback rule at first sight.  But `back_keep` at `◇` contents forces
   `x.keep(a + home a)` to be `Ind` to `x`, which ℤ₃ does not allow.  So `back_keep` may be doing the work
