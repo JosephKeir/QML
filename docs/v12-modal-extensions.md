@@ -5367,8 +5367,8 @@ one case is unresolved.  All of this is on paper.
 | `ret`, `.box`, `pos` | truth ⇒ membership | as `nec`, with `ret_bridge` along the leg | needs finding 1 |
 | `.prod`, `.boxC` | membership ⇒ truth | pack flat (`pack`, `packC`), with a coherence tie | derivation built |
 | `.boxC` | truth ⇒ membership | name the companion, then identify it | new, routine |
-| `.wit` | membership ⇒ truth | lift `□(q.keep)`, read `Here` by `ret_counitD` | new |
-| `.wit` | truth ⇒ membership | below | **unresolved** |
+| `.wit` | membership ⇒ truth | the object `⟨d, x⟩` kept, as `.box`; `Here` by a derived counit | derivation built |
+| `.wit` | truth ⇒ membership | below, sharpened in "`.wit` truth ⇒ membership: where it stands" | **unresolved** |
 | `retxS`, each shape | both | as `retS`, along `pos` | the same work |
 
 **Finding 1: `ret_bridge` must conclude along its leg (built, 2026-10-31).**  It concluded the plain `WFF.ret` from an arrow
@@ -5388,6 +5388,21 @@ are `ret_realise` (needs `BStrongW`, and its possible part is fresh), the own-ar
 * *Alternative, a rule.*  `Here z c, O.ret y Φ(z.keep) ⊢ O.retS (.wit …) ⟨y, c⟩ Φ`: `ret_hereWC`'s partner
   at any arrow.  Sound by `homeUnique` and `posKeep_full`, with no model law, in about 40 lines.  The
   semantic argument suggests it is derivable, so it may be unnecessary, but that is not shown.
+
+**`.wit` membership ⇒ truth, built (2026-10-31): `QML_v12m_RetLiftW`, 1 519 lines against the estimate of
+about 800, no `sorry`, standard axioms.**  ⭐`Proof.retWN_lift`, every witnessed shape, along either leg:
+`◇[⟨d, x⟩ ↦ ⟨t, c⟩] Ψ` gives a fresh `⟨n, z⟩` with `Back (n.dup) t`, `Here z c` and `◇Ψ(n.keep, z.keep)`.
+* *One object.*  `⟨d, x⟩ : G = □F × ◇X` is treated as one object, kept as `⟨d.keep, x.keep⟩`, so this
+  is the `.box` derivation with `Back` at `G`.  `ret_extS` names its value `⟨n, z⟩`.
+* *It stays at the witnessed shape.*  `retD_forget` needs a body closed over a home object, and an
+  arbitrary `Ψ` is not, so there is no dropping to a plain `ret`.  The unit is `ret_unitD`, and the
+  nested returning possibility goes along `x` (`Proof.ret_swapW`, `ret_counitC` at the leg).
+* *No `◇_x` in the ties.*  `□_x Here(z', x.dia)` is built at the far end from `here_keep` and one tie
+  (`Proof.wCounit_boxx`), which avoids substituting under `◇_x`.
+* *A counit along either leg.*  `ret_counitD` is a plain-leg rule.  ⭐`Proof.counitD_leg` derives it along
+  any leg, by contradiction: the unit carries the negation out along the part.  So no leg forgetting.
+* *In a model.*  ⭐`Model.realised_keep`: `Here z c` puts the way home in the extent of `z.keep`, with the
+  same content, because out and home is the identity (`homeUnique`, `posKeep_full`).
 
 **Finding 3: companions need ties in both directions.**
 * `packC` has no inverse, so after lifting, the new object's companions must be tied to the flat
@@ -5410,6 +5425,22 @@ are `ret_realise` (needs `BStrongW`, and its possible part is fresh), the own-ar
 and `BStrongW → TStrong` (`WCoh`).  These go in when `noBStrong` comes out: while it stands they say
 nothing.
 
+**`.wit` truth ⇒ membership: where it stands (2026-10-31, paper).**  Still not derived, but sharper.
+* *What it needs.*  The converse of `Proof.retW_lift`: from `Here z c`, `Back (n.dup) t` and
+  `◇Φ(n.keep, z.keep)`, the atom `◇[⟨d, x⟩ ↦ ⟨t, c⟩] Φ`.
+* *Why it is hard.*  A `.wit` atom on a non-identity arrow only ever comes from `ret_unitWC` at another
+  world, and there its body is a closed hole.  So the derivation must argue by contradiction, carrying
+  `¬` of the atom out, and `Φ` must first be abstracted over a tuple of its parameters.  `pack2` does that
+  with 4 off; with 4 on the tool would be `GAbs`, not yet used for this.
+* *The route.*  Assume `¬T`.  The unit carries `¬T` and `Here z c` to the far end of the way home; there
+  `◇(Here (x.keep) t ∧ φ) ⊢ ◇_x φ` puts that far end in `x`'s extent, where `x = z.keep`.
+  `ret_bridge` along `pos x` makes it a `retx`, and `ret_unitWC` then gives the atom **at the same far
+  world**, against `¬T`.
+* *An attempted countermodel failed.*  One world, arrows ℤ₃, `home a = a`, necessary objects constant,
+  refutes the fallback rule at first sight.  But `back_keep` at `◇` contents forces
+  `x.keep(a + home a)` to be `Ind` to `x`, which ℤ₃ does not allow.  So `back_keep` may be doing the work
+  here, which supports the derivation being available.  Neither direction is proved.
+
 **What held up.**
 * `Ret_fwd` at any content, `RetCongr.keep`, and rows 1–4: `posBack_exists` is free through R4.
 * No change to the worlds' construction: `B_strong`, `ret_new` and `ret_compS` become `∃` theorems, as
@@ -5418,8 +5449,8 @@ nothing.
 * `.wit` membership ⇒ truth: `Here z c` comes from `ret_counitD` with the body given by `here_keep`.
 
 **Size, rough.**  `BArrow`'s files for these cases total about 6 700 lines, though much of that is
-network-specific.  For the cluster: the lifting form 600–1 000 (built: 1 021, both legs); `.prod` and `.boxC` about 500; `.wit`
-membership ⇒ truth about 800; the `Back` and `ret` truth cases and `Ret` 1 000–1 500; `.wit` truth ⇒
+network-specific.  For the cluster: the lifting form 600–1 000 (built: 1 021, both legs); `.prod` and `.boxC` about 500 (built: 515); `.wit`
+membership ⇒ truth about 800 (built: 1 519); the `Back` and `ret` truth cases and `Ret` 1 000–1 500; `.wit` truth ⇒
 membership 800–1 500 by derivation, about 100 by the rule.  So about 3 000 to 5 000 lines.
 
 ### □-BF and ◇-BF
