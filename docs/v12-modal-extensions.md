@@ -5368,7 +5368,7 @@ one case is unresolved.  All of this is on paper.
 | `.prod`, `.boxC` | membership ⇒ truth | pack flat (`pack`, `packC`), with a coherence tie | derivation built |
 | `.boxC` | truth ⇒ membership | name the companion, then identify it | new, routine |
 | `.wit` | membership ⇒ truth | the object `⟨d, x⟩` kept, as `.box`; `Here` by a derived counit | derivation built |
-| `.wit` | truth ⇒ membership | below, sharpened in "`.wit` truth ⇒ membership: where it stands" | **unresolved** |
+| `.wit` | truth ⇒ membership | by the rule `ret_keep`, below in "`.wit` truth ⇒ membership: where it stands" | rule built |
 | `retxS`, each shape | both | as `retS`, along `pos` | the same work |
 
 **Finding 1: `ret_bridge` must conclude along its leg (built, 2026-10-31).**  It concluded the plain `WFF.ret` from an arrow
@@ -5401,7 +5401,7 @@ about 800, no `sorry`, standard axioms.**  ⭐`Proof.retWN_lift`, every witnesse
   (`Proof.wCounit_boxx`), which avoids substituting under `◇_x`.
 * *A counit along either leg.*  `ret_counitD` is a plain-leg rule.  ⭐`Proof.counitD_leg` derives it along
   any leg, by contradiction: the unit carries the negation out along the part.  So no leg forgetting.
-* *In a model.*  ⭐`Model.realised_keep`: `Here z c` puts the way home in the extent of `z.keep`, with the
+* *In a model.*  ⭐`Model.realised_keep` (`QML_v12m_SemRealise`): `Here z c` puts the way home in the extent of `z.keep`, with the
   same content, because out and home is the identity (`homeUnique`, `posKeep_full`).
 
 **Finding 3: companions need ties in both directions.**
@@ -5425,8 +5425,9 @@ about 800, no `sorry`, standard axioms.**  ⭐`Proof.retWN_lift`, every witnesse
 and `BStrongW → TStrong` (`WCoh`).  These go in when `noBStrong` comes out: while it stands they say
 nothing.
 
-**`.wit` truth ⇒ membership: where it stands (2026-10-31, paper).**  Along `pos` it is **not derivable**
-without `BStrongW`, so a rule is needed (see "The pos leg" below).  The route below is the nec leg.
+**`.wit` truth ⇒ membership: where it stands (2026-10-31).**  Along `pos` it is **not derivable** without
+`BStrongW` (paper; see "The pos leg" below), so the rule `ret_keep` was added.  The route below is the
+nec leg, kept as the record of why its instance is derivable; it was not finished and is not needed.
 * *What it needs.*  The converse of `Proof.retW_lift`: from `Here z c`, `Back (n.dup) t` and
   `◇Φ(n.keep, z.keep)`, the atom `◇[⟨d, x⟩ ↦ ⟨t, c⟩] Φ`.
 * *Why it is hard.*  A `.wit` atom on a non-identity arrow only ever comes from `ret_unitWC` at another
@@ -5502,11 +5503,14 @@ without `BStrongW`, so a rule is needed (see "The pos leg" below).  The route be
     separate formula, `Back` (`ret_bridge`).  At `.wit` the witness's way home has no such formula.
     The nec leg gets by because `ret_unitWC`'s body happens to be a plain atom: a second source of atoms,
     not a sign that `pos` is a different logic.
-* *The rule this calls for: not added, awaiting the user's decision.*  `ret_realise` with a named part,
-  along any leg, at any necessary shape, under T + 4: `Here z c, O.retS (.nec N) y Φ(⟨d, z.keep⟩) ⊢
-  O.retS (.wit N X) ⟨y, c⟩ Φ`.  Sound by `Model.realised_keep`, so with no new model law.  With it the
-  nec route is not needed either, so steps 1, 3 and 5–7 would not be built.  It is `back_keep` and
-  `ret_bridge` for the witness part.  *The alternative:* leg transfer, `retS S t (∃u. Here(y.keep, u) ∧ Φ̃(u))
+* *The rule: ⭐`Proof.ret_keep`, added (2026-10-31; the user's decision).*  `ret_realise` with a named part,
+  along any leg, at any necessary shape, under T + 4: `Here(◇_x bd, c), O.retS (.nec N) y Φ(⟨d, ◇_{x.keep}
+  (shift bd)⟩) ⊢ O.retS (.wit N A) ⟨y, c⟩ Φ` (`RShape.keepL`, `Term.keptDia`).  It is stated at a `◇`-term
+  so as to survive substitution, as `here_keep` is.  Sound by `Model.sat_ret_keep` through
+  `Model.realised_keep`, with no new model law.  So the nec route is not needed: steps 1, 3 and 5–7 are
+  not built, and `QML_v12m_RetGPack` has no caller (kept until the cluster work is done, then removed
+  if still unused).  It is `back_keep` and `ret_bridge` for the witness part.  *The alternative, not
+  taken:* leg transfer, `retS S t (∃u. Here(y.keep, u) ∧ Φ̃(u))
   ⊢ retxS y S t Φ`, under T + 4, `dia_here_keep` for atoms.  It is exactly the gap, and it keeps the
   derivation, but it leaves the nec route to build.
 * *What the rule is (paper, 2026-10-31).*
@@ -5527,10 +5531,11 @@ without `BStrongW`, so a rule is needed (see "The pos leg" below).  The route be
     packing, `Proof.retWN_lift`).  `⇐` is the rule with `ret_bridge`, and `⇐` gives the rule back
     through `Proof.retN_lift`.  At `.box` the same equivalence is already derivable (`ret_lift`,
     `ret_bridge`).  So what comes back as `c` is always the kept image of something realised as `c`.
-  * *Statement.*  A variable `z` is not closed under substitution.  State it as `here_keep` is: subject
-    `Term.diatm x hx bd`, far end `Term.diatm (x.keep) (shift bd)` (`WFF.subst_hereKeep`, §10.11).
+  * *Statement.*  A variable `z` is not closed under substitution, hence the `◇`-term
+    (`Term.subst_keptDia`, `RShape.subst_keepL`, §10.11).
 * *Cost.*  The derivation was about 1 000 to 1 400 lines; 336 are built, and it cannot finish along
-  `pos`.  The rule is about 150 lines, plus a case in each match on `Proof`.
+  `pos`.  The rule took 143 lines net (185 added, of which 30 moved), and `Proof.subst` and `soundness`
+  were the only matches on `Proof` to extend.
 * *An attempted countermodel failed, and why.*  One world, arrows ℤ₃, `home a = a`, necessary objects
   constant, refutes the rule at first sight.  But `back_keep` at `◇` contents forces `x.keep(a + home a)`
   to be `Ind` to `x`, which ℤ₃ does not allow.  That was a test of the rule's soundness, in a model.

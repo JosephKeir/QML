@@ -49,6 +49,23 @@ abbrev WFF.hereKeep {σ : Signature} {Γ : Ctx} (hT : ModalSys.T = true)
     (Term.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
       (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) bd))) bd)
 
+/-- `◇_{x.keep}(shift bd)`: the possible object `◇_x bd` kept, in the `□` view (`WFF.hereKeep`). -/
+def Term.keptDia {σ : Signature} {Γ : Ctx} (hF : ModalSys.Four = true) {x : VarSymb}
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A}
+    (bd : Term σ (Γ.diaIn x) A a) : Σ b, Term σ Γ.boxIn (.VTypeDia A) b :=
+  ⟨_, Term.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
+    (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) bd)⟩
+
+/-- In `ret_keep`'s premise, the witnessed slot filled: the necessary part as it is, and the
+    possible object `◇_x bd` kept. -/
+def RShape.keepL {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = true) (O : OutLeg Γ)
+    (N : NShape) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A}
+    (bd : Term σ (Γ.diaIn x) A a) :
+    Σ b, Term σ (O.view.insert (.bnd 0) N.ty) (RShape.wit N A).ty b :=
+  ⟨_, Term.pair (Term.eta (.root (.bnd 0)) N.ty (Ctx.ref_insert_root O.view (.bnd 0) N.ty))
+    (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := O.view)).root N.ty)
+      (Term.mono O.le_view (Term.keptDia hF hx bd).2))⟩
+
 /-- `O.dia φ(c.keep)`: `φ`'s slot read at the fresh object `c`, kept, along the leg — the
     hypothesis `Proof.keep_lift` hands its subproof. -/
 def WFF.liftRead {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = true) {T : VarType}
@@ -665,6 +682,23 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (O.retS hS (.nec N) y Φ) →
       Proof σ Γ Δ (O.retS hS (.wit N X) (Term.pair y c)
         (WFF.bodyRepl (RShape.realL O.view N X).2 Φ))
+  /-- ⭐**A kept possible object comes back as its own content** (T + 4), `back_keep` for a possible
+      part, with `ret_bridge` built in since no `Back` atom reads one: out along an arrow of the
+      leg and home again is the identity (`homeUnique`), so the way home lies in the kept object's
+      extent exactly as the identity lies in the object's own, with the same content.  It is
+      `ret_hereWC` at any arrow, and `ret_realise` with the witness named: `T_dia` gives it the
+      name.  With `ret_bridge` it is the converse of `Proof.retW_lift`.  Stated at a `◇`-term, as
+      `here_keep` is, to survive substitution.  Not derivable along `pos` (docs, "`.wit` truth ⇒
+      membership"): only `ret_realise` and `ret_unitWDC` put a witnessed atom on a new arrow of
+      `◇_y`, and the latter needs one already. -/
+  | ret_keep {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)
+      (hT : ModalSys.T = true) (hF : ModalSys.Four = true) (O : OutLeg Γ) (N : NShape)
+      (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType} {b₀ : Ann A}
+      (bd : Term σ (Γ.diaIn x) A b₀) {c₀ : Ann A} (c : Term σ Γ A c₀) {a : Ann N.flat}
+      (y : Term σ Γ N.flat a) (Φ : WFF σ (O.view.insert (.bnd 0) (RShape.wit N A).ty) 1) :
+      Proof σ Γ Δ (WFF.here hT (Term.diatm x hx bd) c) →
+      Proof σ Γ Δ (O.retS hS (.nec N) y (WFF.bodyRepl (RShape.keepL hF O N hx bd).2 Φ)) →
+      Proof σ Γ Δ (O.retS hS (.wit N A) (Term.pair y c) Φ)
   /-- **Leibniz for the value**, along any leg, at any shape (docs §11.20: generalised from the
       `□` shape, which is derived, `Proof.ret_eq`, as `ret_monoS` generalised `ret_mono`). -/
   | ret_eqS {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hS : ModalSys.BStrong = true)

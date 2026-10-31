@@ -1486,34 +1486,4 @@ def Proof.retWN_lift (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
 
 end MainN
 
-/-! ## What `Here` says of the kept object -/
-
-namespace Model
-
-universe u v
-
-variable {σ : Signature} {M : Model.{u, v} σ}
-
-/-- ⭐**The way home lies in the kept object's extent**: what is realised here is, kept along an
-    arrow out, realised along the way home with the same content, since out and home is the
-    identity (`homeUnique`).  So the witness clause of `ComesBack` follows from `Here`. -/
-theorem realised_keep (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
-    (hF : ModalSys.Four = true) {X : VarType} {w : M.frame.W} (a : M.frame.Acc w)
-    (r : M.frame.R a.1 w) (z : M.frame.Pos X w) {o : M.frame.Dom X w}
-    (h : M.Realised hT (z : M.frame.Dom (.VTypeDia X) w) o) :
-    ∃ hm : (⟨w, ⟨r⟩⟩ : M.frame.Acc a.1) ∈ (M.posEval (M.necEval (M.ops.posKeep hF z) a)).1,
-      M.Ind ((M.posEval (M.necEval (M.ops.posKeep hF z) a)).2 ⟨_, hm⟩) o := by
-  obtain ⟨hm, hi⟩ := h
-  have key : ∀ (s : M.frame.R w w), ∃ hx : (⟨w, ⟨s⟩⟩ : M.frame.Acc w) ∈ (M.posEval z).1,
-      M.Ind ((M.posEval z).2 ⟨⟨w, ⟨s⟩⟩, hx⟩) o := fun s => by
-    obtain rfl : s = M.frame.refl hT w := @Subsingleton.elim _ (M.frame.homeUnique hS) _ _
-    exact ⟨hm, hi⟩
-  obtain ⟨hx, hi'⟩ := key (M.frame.trans hF a.2.down r)
-  have hP := congrArg (fun p => p.1) (M.posKeep_full hF z a)
-  change M.posEval _ = _ at hP
-  rw [hP]
-  exact ⟨hx, hi'⟩
-
-end Model
-
 end V12M

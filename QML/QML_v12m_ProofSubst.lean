@@ -1658,6 +1658,30 @@ theorem Term.subst_diaIn_mono {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Sub
     rw [Subst.dia_eq_box_mono θ x z v T hv, Subst.at_mono]
     exact .refl _) sb
 
+/-- ⭐**A kept possible object substitutes as itself**: the kept witness goes to the image's
+    (`Subst.coh_keep_dia`), and the shifted body across the shift (`Subst.shiftCorr_dia_keep`). -/
+theorem Term.subst_keptDia {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
+    (hF : ModalSys.Four = true) (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ)
+    {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (hw : (θ.at x).idxAlong [] = ι x)
+    (hy : ∃ X, Δ.ref (ι x) = some (.VTypeDia X)) {A : VarType} {a : Ann A}
+    (bd : Term σ (Γ.diaIn x) A a) :
+    (⟨_, Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) (Term.keptDia hF hx bd).2⟩ :
+        Σ b, Term σ Δ.boxIn (.VTypeDia A) b) =
+      Term.keptDia hF hy
+        (Term.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) bd) := by
+  have hk₂ : ι (.step x .keep) = .step (ι x) .keep :=
+    hx.elim fun _ hX => Subst.coh_keep_dia hθ hc hX
+  have hwk : (θ.box.at (.step x .keep)).idxAlong [] = .step (ι x) .keep :=
+    hx.elim fun _ hX => Subst.idx_box_keep_dia hF hθ hc hX
+  have hθk := Subst.ok_dia (Subst.ok_box hθ) (Ctx.exists_keep_dia hF hx) hwk
+  have hck := hk₂ ▸ Subst.coh_dia (Subst.ok_box hθ) (Subst.coh_box hθ hc)
+    (Ctx.exists_keep_dia hF hx)
+  refine (Term.subst_diatm_sig θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc)
+    (Ctx.exists_keep_dia hF hx) _ hk₂ hwk hθk hck (Ctx.exists_keep_dia hF hy)).trans ?_
+  exact sig_diatm (Term.shift_subst (Ctx.shifts_diaIn_keep hF Γ x)
+    (Ctx.shifts_diaIn_keep hF Δ (ι x)) (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw)
+    (Subst.coh_dia hθ hc hx) _ hθk hck (Subst.shiftCorr_dia_keep hF hθ hx hw) bd).symm
+
 /-- ⭐**Substituting `here_keep`'s formula** gives its instance at the witness's image and the
     substituted body: the subject goes as the `□` view does (`Term.subst_diaIn_mono`), the kept
     witness to the image's (`Subst.coh_keep_dia`), and the shifted body across the shift
@@ -1671,22 +1695,11 @@ theorem WFF.subst_hereKeep {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots]
     WFF.subst ι θ hθ hc hΓ Ctx.NoSlots.slots (WFF.hereKeep hT hF x hx bd) =
       WFF.hereKeep hT hF (ι x) hy
         (Term.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) bd) := by
-  have hk₂ : ι (.step x .keep) = .step (ι x) .keep :=
-    hx.elim fun _ hX => Subst.coh_keep_dia hθ hc hX
-  have hwk : (θ.box.at (.step x .keep)).idxAlong [] = .step (ι x) .keep :=
-    hx.elim fun _ hX => Subst.idx_box_keep_dia hF hθ hc hX
-  have hθk := Subst.ok_dia (Subst.ok_box hθ) (Ctx.exists_keep_dia hF hx) hwk
-  have hck := hk₂ ▸ Subst.coh_dia (Subst.ok_box hθ) (Subst.coh_box hθ hc)
-    (Ctx.exists_keep_dia hF hx)
   refine congrArg WFF.neg ((WFF.subst_dia θ hθ hc hΓ Ctx.NoSlots.slots hx (ι x) rfl hy
     (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) Ctx.NoSlots.slots _).trans ?_)
   refine congrArg (fun χ => WFF.dia (ι x) hy (WFF.neg χ)) (WFF.here_congr hT ?_ rfl)
   refine (Term.subst_diaIn_mono θ hθ hc x (ι x) _ _ _).trans (sig_mono _ ?_)
-  refine (Term.subst_diatm_sig θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc)
-    (Ctx.exists_keep_dia hF hx) _ hk₂ hwk hθk hck (Ctx.exists_keep_dia hF hy)).trans ?_
-  exact sig_diatm (Term.shift_subst (Ctx.shifts_diaIn_keep hF Γ x)
-    (Ctx.shifts_diaIn_keep hF Δ (ι x)) (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw)
-    (Subst.coh_dia hθ hc hx) _ hθk hck (Subst.shiftCorr_dia_keep hF hθ hx hw) bd).symm
+  exact Term.subst_keptDia hF θ hθ hc hx hw hy bd
 
 /-- Substituting the witnessed unit's body: the necessary object goes as the `□` view does, the
     witness's content as the witness view does, and the hole reads slots only. -/
@@ -2011,6 +2024,42 @@ theorem RShape.subst_realL {ι : VarSymb → VarSymb} {V W : Ctx} [V.NoSlots] [W
   Term.subst_eta_renAt _ _ _ _ _ _ _ _ (by
     rw [Subst.at_proj _ _ rfl, Subst.under_at_root]
     rfl)
+
+/-- A term of the `□` view, read in a leg's view, substitutes as itself. -/
+theorem OutLeg.subst_mono_le_view {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) :
+    (O : OutLeg Γ) → {A : VarType} → {a : Ann A} → (s : Term σ Γ.boxIn A a) →
+    (⟨_, Term.subst ι (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)
+        (Term.mono O.le_view s)⟩ : Σ c, Term σ (O.subst θ hθ hc).view A c) =
+      ⟨_, Term.mono (O.subst θ hθ hc).le_view
+        (Term.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) s)⟩
+  | .nec, _, _, s => by
+      change (⟨_, Term.subst ι θ.box _ _ (Term.mono (Ctx.Le.refl _) s)⟩ :
+        Σ c, Term σ Δ.boxIn _ c) = ⟨_, Term.mono (Ctx.Le.refl _) _⟩
+      rw [Term.mono_refl, Term.mono_refl]
+  | .pos y _, _, _, s => Term.subst_diaIn_mono θ hθ hc y (ι y) _ _ s
+
+/-- Substituting under the slot sends `ret_keep`'s reading of the slot to the instance at the
+    substituted content. -/
+theorem RShape.subst_keepL {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
+    (hF : ModalSys.Four = true) (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ)
+    (O : OutLeg Γ) (N : NShape) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    (hw : (θ.at x).idxAlong [] = ι x) (hy : ∃ X, Δ.ref (ι x) = some (.VTypeDia X)) {A : VarType}
+    {a : Ann A} (bd : Term σ (Γ.diaIn x) A a) :
+    (⟨_, Term.subst (VarSymb.shiftSlot ι 0 0)
+        ((O.viewSubst θ hθ hc).under 0 0 N.ty
+          (Ctx.NoSlots.slots (Γ := (O.subst θ hθ hc).view)).root)
+        (Subst.ok_under (O.viewOk θ hθ hc) _ _)
+        (Subst.coh_under (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) Ctx.NoSlots.slots _ _)
+        (RShape.keepL hF O N hx bd).2⟩ :
+        Σ b, Term σ ((O.subst θ hθ hc).view.insert (.bnd 0) N.ty) (RShape.wit N A).ty b) =
+      RShape.keepL hF (O.subst θ hθ hc) N hy
+        (Term.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) bd) := by
+  refine sig_pair (Term.subst_eta_renAt _ _ _ _ _ _ _ _ (Subst.under_at_root _ _ _)) ?_
+  refine (Term.subst_under_mono (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)
+    Ctx.NoSlots.slots Ctx.NoSlots.slots N.ty _).trans (sig_mono _ ?_)
+  exact (OutLeg.subst_mono_le_view θ hθ hc O _).trans
+    (sig_mono _ (Term.subst_keptDia hF θ hθ hc hx hw hy bd))
 
 /-- Substituting under the slot leaves the companion step's companion term alone. -/
 theorem RShape.subst_extR {ι : VarSymb → VarSymb} {V W : Ctx} [V.NoSlots] [W.NoSlots]
@@ -3274,6 +3323,23 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         (Proof.ret_realise hS hW (O.subst θ hθ hc) N (Term.subst ι θ hθ hc y)
           (Term.subst ι θ hθ hc c) _
           (Proof.conv (OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O (.nec N) y Φ)
+            (Proof.subst p θ hθ hc hΓ)))
+  | _, _, _, @Proof.ret_keep _ _ Γ _ _ hS hT hF O N x hx A b₀ bd c₀ c a y Φ ph p, Γ', _, ι, θ, hθ,
+      hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
+      have hy : ∃ X, Γ'.ref (ι x) = some (.VTypeDia X) :=
+        hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw
+      Proof.conv (OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O (.wit N A) _ Φ).symm
+        (Proof.ret_keep hS hT hF (O.subst θ hθ hc) N (ι x) hy
+          (Term.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) bd)
+          (Term.subst ι θ hθ hc c) (Term.subst ι θ hθ hc y) _
+          (Proof.subst ph θ hθ hc hΓ)
+          (Proof.conv ((OutLeg.subst_retS θ hθ hc hΓ hΓ' hS O (.nec N) y _).trans
+              (OutLeg.retS_congr' hS _ (.nec N) rfl
+                ((WFF.subst_bodyRepl (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)
+                    _ Φ).trans
+                  (WFF.bodyRepl_congr (RShape.subst_keepL hF θ hθ hc O N hx hw hy bd) _))))
             (Proof.subst p θ hθ hc hΓ)))
   | _, _, _, @Proof.ret_counit _ _ Γ _ _ hS O A a t ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
