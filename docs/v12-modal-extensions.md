@@ -5194,6 +5194,14 @@ off.  With `B` on there is no dispatch yet: use the `C` theorems with `CluFlags`
 `noB` are gone, so no T branch was left closed by a flag.  Strict build green; the headline theorems
 use only `propext`, `Classical.choice` and `Quot.sound`.
 
+**The dispatch, built (2026-10-31).**  `QML_v12m_CubeComplete`: `ModalSys.CubeSys` and one set of
+theorems, `completenessCube`, `provable_iff_validCube`, `model_existenceCube`, `strong_completenessCube`
+and `compactnessCube`, splitting on 5, then B.  `ModalSys.S5`, every flag but strong B's, is in it
+(`S5_cube`).  `CubeSys` replaces the planned `FiveCoh`.  F4's closure conditions say which flag settings
+are coherent; what a theorem needs is which ones are built, so the class says that: 5 with 4 and both
+lifts, B with 5 only under T, B with 4 only with 5, strong B with B and 4 off.  It loosens as the work
+goes on, and closure can be asked for separately if it is ever wanted.
+
 What the build added, against the design above:
 * *Shapes at worlds* went directly off annotations.  `crawShape_cden` (`GCluRaw`) says a denotation's
   shape is its annotation read at the root (`preIx`), by induction on the term, without a world
@@ -5215,8 +5223,8 @@ What the build added, against the design above:
   `cdia_real_not_boxx`, `cdia_sat_child`, `chere_transfer`, `chere_truth` then mirror the tree's.
 * *`GCluInd`* is `GInd` with the names changed.  It needed nothing new.
 
-**Left for 5.**  Strong B on S5 (confirm `back_keep` is underivable, add it, canonical `Ret`); a
-dispatch with `B` on, with its class; KB5 and KDB5; the open lifts in the table; K5 and KD5.
+**Left for 5.**  Strong B on S5 (`back_keep` is built; see "Strong B on S5, every shape: the check");
+KB5 and KDB5; the open lifts in the table; K5 and KD5.
 
 #### `back_keep`: the check *(2026-10-31, paper)*
 
