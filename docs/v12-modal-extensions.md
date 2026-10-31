@@ -5352,6 +5352,74 @@ value along `a`.  We want `m.here` and `t` interchangeable in every slot formula
    contents too, before touching the model.  Done for `.box` along both legs (`Proof.ret_lift`).
 3. The cluster's `Ret`, `Ret_fwd`, then the `Back` and `ret` truth cases.
 
+#### Strong B on S5: the cluster's truth cases, the check *(2026-10-31, paper)*
+
+**Verdict.**  The proof side suffices: no new rule.  But the semantics has a gap, and `Model.Ret` needs one
+more argument, which is the user's decision (below).  Estimate for the rest of strong B on S5: 1 700 to
+2 000 lines.  All of this is on paper.
+
+**The gap: `Ret` cannot tell two carriers with one set of data apart.**
+* *What happens.*  `Backs L c o` is `Ret` at `carrierData L c`, a set of arrows and values.  In `BArrow` two
+  carriers never share data: a witness's extent is never everything (`univ_ne_extent`), and two
+  witnesses' extents differ (`eq_of_extent_eq`, fresh arrows).  The cluster has neither.  A witness can
+  reach every arrow, or exactly the arrows another witness reaches.
+* *Why it is a real gap.*  Take `y`, `y'` with equal extents, which T + 4 can say:
+  `□(∃u. Here(y.keep, u) ↔ ∃u. Here(y'.keep, u))`.  Then `Back (◇_y □bd) t` entails `Back (◇_{y'} □bd) t` in
+  every model, since `Ret` sees one set of data.  At a `◇` content this is underivable.  No rule moves a `Back`
+  between legs (`back_ret` is `◇`-free), and pos atoms at `◇` contents come only from `back_keep`, `back_pair`,
+  `back_beta` and Leibniz, all per leg.  The reading that tags `Ret` by its leg validates every rule and
+  refutes the entailment.  The same goes for `.nec` against a `.pos` of full extent.  So completeness would
+  fail, or a rule with no good form would be needed: there is no equality across witnesses to state it with.
+* *Proposed: a tag, not a rule.*  `Ret` takes the carrier's witness as well: `Ret (ℓ : Option Leaf) S val o`,
+  `none` for `.nec` and the head label of the carrier's shape for `.pos` (`Shp.dia ℓ _`; shapes exist under
+  strong B, `shaped_of_BStrong`).  A term's label is its witness's (`Model.termShp_diatm`), so `ℓ` depends on
+  `O` and the environment only, and every rule's soundness goes through `OutLeg.sat_back` unchanged.
+  `RetCongr` keeps `ℓ`.  `Ret_fwd`, `Ret_conv` hold at every `ℓ`, `backRet_exists` at `none`.  `BArrow` ignores `ℓ`,
+  the other models say `False`.  It follows "unlinked `◇`-equality → model law".
+* *Precedent: §10.23's second obstacle, the same gap for `Here`.*  `□_x⊥ ∧ □_z⊥ ∧ Here(q, η x) → Here(q, η z)` was valid and
+  underivable, because a possible object was determined by its section.  §10.27 and §10.35 fixed it on the model
+  side: a possible object is extent, contents and **shape**.  §11.12 Decision 2 extended shapes to strong B, for `Back`'s
+  *values*.  `carrierData` still drops the *carrier's* shape, and that is this gap.  Its head label is all that
+  is missing: a `Back` leg is nonempty, so the contents give the rest.  It only shows now because no system before
+  had both `Back` and a way to say two extents agree: without 4 `y.keep` does not exist, and without strong B `Ret` is `False`.
+* *Alternative, not recommended.*  Index `Ret` by the carrier itself.  Cleaner to state, and `IsCarrierData` goes.
+  But `map` and `pair` then need the image carrier, and two possible carriers have no pairing operation.
+
+**What the unlift rules need, and where it comes from.**
+| Needed | Source |
+|---|---|
+| home carrier `b` | cluster carriers are shared, `keep` the identity: `cdefinable_box_iff`, `ckeepLift` |
+| `Back (shift b) (collapse b)` | `back_keep`, so the value needs no `Back` of its own |
+| value `t` | `collapse b`, then moved to `t` as `mem_ret_of_ind` (`ann_eq_of_cden`, `eqRec`, `ret_eqS`, `OutLeg.retSlot`) |
+| `z` with `z.keep` the far witness | `ckeepLift` at `◇`, which needs the `◇`-lift (`CluFlags.fourSW`) |
+| `Here z c` | out and home is the identity, then `chere_truth` |
+
+**Truth ⇒ membership, `.boxC`.**  The ties cannot come from the induction: they make `packedBody` bigger than the
+atom.  And they are not free at the kept object: a companion `Y` at `v` is not kept syntactically, only up to
+denotation.  So write `P₀` for the object's own packing, for which the ties are provable for any term, and
+`P̃ := □(shift b)`.  The body needs `Φ(E)` and `eqRec (□flat) P₀ P̃`, each below the atom's size
+(`eqRecSize (□A) = eqRecSize A + 1`), and Leibniz gives the ties at `P̃`.  This needs `Proof.packTies_intro` at
+terms, not only addresses, and `ann_eq_of_termShpW` in the pushed environment (`CInvW.box`).  Pairs go through
+`N.packed`.  `.wit` adds `ret_keep`.
+
+**Membership ⇒ truth.**  `∃` as a formula is `WFF.ex T (WFF.bindFree c (lifted))`; `exW_term` gives a term `□b`, so
+`Proof.retN_lift`'s conclusions land in the shape `retC_unlift` uses.  `Back` at any size holds by the definition of
+`Ret`, with no induction hypothesis, so ties are read semantically.  `Model.nComesBack_of_ties` needs `hM.inv`, which
+comes after the truth lemma, so it is redone inside: `cInd` composes there, since equal denotations have one
+annotation and `eqRec` is below the atom (`DTerm.Rel.trans`).  `cdia_sat_child` must be split: it runs the induction
+on the whole `χ`, and only `Φ` is small enough.
+
+**`Ret_fwd` along `pos`: a correction.**  Step 1 of "`Ret_fwd` at any content" used `B_strong` for a parameter's
+carrier, but `B_strong` is `.nec` only, and leg restriction is the gap above.  Instead take `n := c.here` for `c`
+from `B_strong`, so `n.here ≈ p` by `back_here`, and `back_keep` at `n.inner` along `O`.  Then `back_pair` works on
+either leg.
+
+**The rest.**  `backRet_exists`: `∃c. Back c t` is a theorem, so `exW_term` names it (`ret_comp_named`'s pattern).
+`posBack_exists`: `cposRet_exists` at the target, kept along the arrow (with `BStrongW → TStrong`).  `RetCongr`
+comes after the truth lemma, in `cmodel_indInvariant`: atoms and `Ret` coincide there, and `IsCarrierData` gives the
+terms.  `homeUnique` is free (`Frame.{0, 0}`).  `T_of_shaped` needs `BStrong → B`.
+*Least checked:* `Ret_fwd`'s "one term there", which rests on the path translation's round trip.
+
 #### Strong B on S5, every shape: the check *(2026-10-31, paper)*
 
 **Verdict.**  No blocker found, but the work is much larger than "strong B collapses" suggested, and
