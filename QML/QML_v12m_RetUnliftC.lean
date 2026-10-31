@@ -647,52 +647,29 @@ section Leg
 
 variable {Γ : Ctx} [Γ.NoSlots] {A : VarType}
 
-omit [Γ.NoSlots] in
-/-- The carrier of a home term, as the box of its image shifted once more. -/
-theorem compBd_eq (hF : ModalSys.Four = true) (O : OutLeg Γ) {k₀ : Ann A}
-    (k : Term σ Γ.boxIn A k₀) :
-    compBd hF O k = ⟨_, Term.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF O.view)
-      (Term.mono O.le_view.boxIn (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) k)))⟩ := by
-  unfold compBd
-  rw [Term.shift_mono (Ctx.shifts_boxIn_boxIn hF Γ.boxIn) (Ctx.shifts_boxIn_boxIn hF O.view)
-    O.le_view.boxIn O.le_view.boxIn.boxIn]
-  exact sig_boxtm (sig_mono _ (Term.shift_shift_same _ _ _ k).symm)
-
-/-- ⭐⭐**What comes back along a leg comes back as a kept carrier** (T + 4, strong B): if a leg's
-    carrier agrees at some arrow with the home term `b`, kept, then `b` kept comes back as the
-    value.  So one arrow's reading of the carrier is interchangeable with the value (`back_here`,
-    with any parameters).  This is what makes the round trip: `ret_bridge` with the agreement in
-    the body, then `ret_counitC` at `b`'s own carrier. -/
-def Proof.back_of_leg (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+/-- ⭐⭐**What comes back along a leg comes back as a kept carrier** (T + 4, strong B): if at some
+    arrow of the leg the carrier's value comes back from the carrier of the home term `b`, then
+    `b` kept comes back as the value.  So one arrow's reading of the carrier is interchangeable with
+    the value (`back_here`, with any parameters).  `ret_bridge` with the tie in the body, then
+    `ret_counitC` at `b`'s own carrier.  The tie is a `Back`, not an equation: `bd` and `b` kept can
+    be one object at the arrow's end under two home names, with two annotations. -/
+def Proof.back_of_tie (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} (O : OutLeg Γ) {b₀ : Ann A}
-    (b : Term σ Γ.boxIn A b₀) (bd : Term σ O.view.boxIn A (Ann.shift 0 b₀)) {a : Ann A}
+    (b : Term σ Γ.boxIn A b₀) {a₀ : Ann A} (bd : Term σ O.view.boxIn A a₀) {a : Ann A}
     (t : Term σ Γ A a) (hb : Proof σ Γ Δ (O.back hS bd t))
-    (he : Proof σ Γ Δ (O.dia (WFF.box (eqRec A
-      (Term.mono O.le_view.boxIn (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b)) bd)))) :
+    (hd : Proof σ Γ Δ (O.dia (WFF.box (WFF.holeAt Ctx.NoSlots.slots
+      (Term.pair bd (compBd hF O b).2) (WFF.backDup hS hF A))))) :
     Proof σ Γ Δ (WFF.back hS .nec (Term.boxtm (Term.boxtm
       (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))) t) := by
-  have hne : Proof σ Γ Δ (O.dia .top) := Proof.leg_dia O Proof.top_intro he
+  have hne : Proof σ Γ Δ (O.dia .top) := Proof.leg_dia O Proof.top_intro hd
   have B₀ : Proof σ Γ Δ (O.back hS (compBd hF O b).2 (Term.boxtm b)) :=
     Proof.conv (OutLeg.back_congr hS O rfl (Term.collapse_boxtm_shift hT hF b))
       (Proof.back_keep hS hT hF O (Term.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b)) hne)
-  let x := Term.mono O.le_view.boxIn (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b)
-  have hq : Proof σ O.view [WFF.box (eqRec A x bd)]
-      (WFF.box (WFF.back hS .nec (Term.boxtm (Term.boxtm (Term.shift
-        (Ctx.shifts_boxIn_boxIn hF O.view.boxIn)
-        (Term.shift (Ctx.shifts_boxIn_boxIn hF O.view) x)))) bd)) :=
-    Proof.leg_K (.nec : OutLeg O.view) (Proof.back_eq hS .nec _ x bd
-      (Proof.back_shift hS hT hF x) (Proof.lookup List.mem_cons_self))
-      (Proof.lookup List.mem_cons_self)
-  have hd : Proof σ Γ Δ (O.dia (O.bodyRead (Term.boxtm bd)
-      (counitBodyC (compBd hF O b).2 (WFF.backDup hS hF A)))) := by
-    refine Proof.leg_dia O (Proof.conv ?_ hq) he
-    unfold OutLeg.bodyRead
-    rw [instantiate_counitBodyC]
-    refine congrArg WFF.box (Eq.trans ?_ (WFF.holeAt_congr _
-      (sig_pair rfl (compBd_eq hF O b).symm) _))
-    exact (WFF.holeAt_backDup hS hF _ bd _).symm
+  have hd' : Proof σ Γ Δ (O.dia (O.bodyRead (Term.boxtm bd)
+      (counitBodyC (compBd hF O b).2 (WFF.backDup hS hF A)))) :=
+    Proof.conv (congrArg O.dia (instantiate_counitBodyC bd _ _).symm) hd
   have H := Proof.ret_counitC hS O t (compBd hF O b).2 (Term.boxtm b) (WFF.backDup hS hF A)
-    (Proof.ret_bridge hS O bd t _ hb hd) B₀
+    (Proof.ret_bridge hS O bd t _ hb hd') B₀
   exact Proof.conv ((WFF.holeRead_eq_holeAt _ _).trans (WFF.holeAt_backDup hS hF _ t b)) H
 
 /-- `back_here` the other way, at any carrier (`¬φ` gives the converse). -/

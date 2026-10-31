@@ -5413,17 +5413,26 @@ on the whole `χ`, and only `Φ` is small enough.
 formula over its parameters with a `B_strong` carrier for each, but `B_strong` is `.nec` only, and leg restriction is
 the gap above.  It also needed the kept lift and the carrier to be one term at the arrow's end, by the path
 translation.  Both go away.
-* ⭐`Proof.back_of_leg` (built, `QML_v12m_RetUnliftC`, standard axioms): if a leg's carrier agrees at some arrow with
-  a home term `b` kept, `O.dia □(shift b = bd)`, then `Back (shift b) t` in the plain leg.  `ret_bridge` with the
-  agreement in the body, then `ret_counitC` at `b`'s own carrier, the hole formula being `Back` itself, so no parameter
-  is closed over.  `back_here` then has any parameters.  The move is `Proof.ret_comp_swap`'s.
-* *The law.*  The agreement needs `eqRec` true at one arrow, so it needs the truth lemma, and `Ret_fwd` is a `Model`
-  field, proved before it.  So build the round trip into the cluster's `Ret`: `Nonempty S`, the round trip, and at a
-  `◇` content an atom.  `Ret_fwd` is then a projection, and the work moves to the `Back` truth case, membership ⇒
-  truth, where the induction hypothesis reaches `eqRec`: `O.dia □eqRec` has size `A + 4`, below `Back`'s `3A + 5`.
-* *What this costs.*  `backRet_exists` is a field too, so it needs a round trip before the truth lemma.  Take the
-  kept carrier `n.dup`, for `n := c.here` with `c` from `B_strong`: its round trip is `n(a ; r) = n(id)` on raw objects,
-  and `n.here ≈ t` by `back_here`.  `cden_applyG` gives its denotation.
+* ⭐`Proof.back_of_tie` (built, `QML_v12m_RetUnliftC`): if at some arrow of the leg the carrier's value comes back
+  from the carrier of a home term `b`, then `Back (shift b) t` in the plain leg.  `ret_bridge` with the tie in the
+  body, then `ret_counitC` at `b`'s own carrier, the hole formula being `Back` itself, so no parameter is closed
+  over.  `back_here` then has any parameters.  The move is `Proof.ret_comp_swap`'s.
+* *No equation: a correction (2026-10-31).*  The first form took `O.dia □(shift b = bd)`, with `eqRec` proved by the
+  induction.  That cannot work: `eqRec` needs one annotation, and agreeing at one arrow does not give it, since
+  `termShp` over a pushed environment compares a whole family of arrows.  A carrier `u` and a home name `y` for `u(a)`
+  are one object at the far world under two home names.  So the tie is a `Back`.
+* *Where the tie comes from.*  Not the induction either: it is the size of the atom, or bigger.  It comes from the far
+  world, with no induction hypothesis.  Take `□g` for the carrier's value at `v` and `r := preTB_v g` at the root, and
+  let the home term be `b := pTrK_s r`.  By `pTrK_pre` its preimage is `r`, and by `tr_path` a kept term translates
+  by renaming, so at `v` the two sides of the tie are one term.  The tie there is `Proof.back_shift`, a theorem.
+  It reaches home by `box_mem_path` contraposed, along `pos` by `boxx_mem_path`, or `boxx_mem_pathK` with `here_elim`
+  at a realised arrow, as `cdia_real_not_boxx`.  This is the original "one term there", now with a precise form.  It
+  needs `pTrW` to commute with hole formulas.
+* *The law.*  This uses no induction hypothesis, so an atom's round trip could be proved before the truth lemma.
+  `cRet` keeps it in the definition all the same, which is simpler: `Ret_fwd` is a projection.  The `Back` case's
+  membership ⇒ truth is then a standalone lemma.
+* *`backRet_exists`* takes the kept carrier `n.dup`, for `n := c.here` with `c` from `B_strong`.
+
 * *Membership ⇒ truth at `ret`.*  It no longer reads `Back` semantically: `back_here_rel` at the own arrow, and ties
   moved to the home world along `r`.
 
@@ -5438,8 +5447,7 @@ and completeness take a temporary `hNS : BStrong = false`, which `noBStrong_of_c
 `posBack_exists`: `cposRet_exists` at the target, kept along the arrow (with `BStrongW → TStrong`).  `RetCongr`
 comes after the truth lemma, in `cmodel_indInvariant`: atoms and `Ret` coincide there, and `IsCarrierData` gives the
 terms.  `homeUnique` is free (`Frame.{0, 0}`).  `T_of_shaped` needs `BStrong → B`.
-*Least checked:* annotations in the pushed environment (`ann_eq_of_termShpW` through `CInvW.box`), which `eqRec` at
-the arrow and the ties both need.
+*Least checked:* commuting `pTrW`, `pTrXW` and `pTrXKW` with hole formulas, and the realised arrows along `pos`.
 
 #### Strong B on S5, every shape: the check *(2026-10-31, paper)*
 

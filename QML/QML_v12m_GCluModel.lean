@@ -596,8 +596,8 @@ abbrev cIndM (hX : CluFlags) {A : VarType} {s : GW hF M₀} (o o' : (cframe hF h
 
 /-- ⭐**Canonical "comes back as"**: the round trip, and at a `◇` content a `Back` atom of the theory
     with these data and this witness, as `BArrow`'s.  The round trip is part of the definition, so
-    `Model.Ret_fwd` is free and the truth lemma's `Back` case proves it for an atom, where the
-    induction reaches `eqRec` (`Proof.back_of_leg`). -/
+    `Model.Ret_fwd` is free and the truth lemma's `Back` case proves it for an atom
+    (`Proof.back_of_tie`). -/
 def cRet (hX : CluFlags) {A : VarType} {s : GW hF M₀}
     (ℓ : Option ((cframe hF hM₀ hX).Leaf (fun _ => VarSymb) s))
     (S : Set ((cframe hF hM₀ hX).Acc s))
