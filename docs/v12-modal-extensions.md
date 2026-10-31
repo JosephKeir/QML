@@ -5365,7 +5365,7 @@ one case is unresolved.  All of this is on paper.
 | `ret`, `.box` | membership ⇒ truth | the lifting form, then an ordinary child | derivation built |
 | `ret`, `.box`, `nec` | truth ⇒ membership | `back_keep`, `ret_bridge`, interchange at the value slot | simple |
 | `ret`, `.box`, `pos` | truth ⇒ membership | as `nec`, with `ret_bridge` along the leg | needs finding 1 |
-| `.prod`, `.boxC` | membership ⇒ truth | pack flat (`pack`, `packC`), with a coherence tie | new, routine |
+| `.prod`, `.boxC` | membership ⇒ truth | pack flat (`pack`, `packC`), with a coherence tie | derivation built |
 | `.boxC` | truth ⇒ membership | name the companion, then identify it | new, routine |
 | `.wit` | membership ⇒ truth | lift `□(q.keep)`, read `Here` by `ret_counitD` | new |
 | `.wit` | truth ⇒ membership | below | **unresolved** |
@@ -5392,6 +5392,16 @@ are `ret_realise` (needs `BStrongW`, and its possible part is fresh), the own-ar
 **Finding 3: companions need ties in both directions.**
 * `packC` has no inverse, so after lifting, the new object's companions must be tied to the flat
   object's second part: `□ Back (y.dup) x₂`, with `y` the companion.
+  *Built (2026-10-31): `QML_v12m_RetLiftN`, 515 lines against the estimate of about 500, no `sorry`,
+  standard axioms.*  The object itself **can** be read back off the packed one (`NShape.unpack`); only
+  its companions need ties, one each (`WFF.nTies`, proved by `Proof.nTies_intro`).  So every necessary
+  shape reduces to `.box`: `NShape.packMap`, then ⭐`Proof.retN_lift`, which is `Proof.ret_lift` at the
+  packed body, with nothing of the nested step redone.  The ties' hole is `⟨e, p⟩`, the object and
+  its packing, because reading the companion off `e` avoids collapsing `p`'s contents.  In a model:
+  ⭐`Model.nComesBack_of_ties`, the ties and the packed object's return give `NComesBack`, for any
+  model proper.  `Ind` need not compose, so that proof moves the value inside the `Back` atom with
+  `hM.inv` and only then reads the atom at the own arrow.  (Packing is not about a common way home:
+  `homeUnique` already gives that.  It is needed because `ret_counit` and the unit live at `.box`.)
 * Truth ⇒ membership: `ret_comps_named` gives a fresh value `z`, `ret_counitC` with `back_keep` gives
   `Back (y.dup) z`, so `z ≈ y.here`, and interchange replaces `z` by the given value.
 * `holeC` and `compsRen` need 4 off, so `BArrow`'s route through them is not available.

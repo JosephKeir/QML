@@ -968,6 +968,22 @@ def Proof.ret_tied (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     exact Proof.conv (WFF.instantiate_eta_openFree r hr Ctx.NoSlots.slots
       Ctx.NoSlots.slots Φ).symm (Proof.lookup List.mem_cons_self)
 
+/-- What a lifted returning possibility says of its fresh `c : □A`: `c` comes back as `t` along an
+    arrow out, and possibly `Φ(c.keep)`. -/
+def WFF.lifted (hS : ModalSys.BStrong = true) (hF : ModalSys.Four = true) (O : OutLeg Γ)
+    {a₁ : Ann A} (t : Term σ Γ A a₁) (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1)
+    (c : ℕ) (hc : Γ.RootFresh (.free c)) : WFF σ (Γ.insert (.free c) (.VTypeBox A)) 0 :=
+  WFF.and
+    (WFF.back hS .nec (Term.boxtm (Term.boxtm
+      (Term.shift (Ctx.shifts_boxIn_boxIn hF _) (Term.eta (VarSymb.root (.free c)).inner A
+        (Ctx.ref_inner (Ctx.ref_insert_root Γ (.free c) (.VTypeBox A)))))))
+      (Term.weaken hc.root _ t))
+    ((O.mono (Ctx.le_insert hc.root _)).dia (WFF.instantiate Ctx.NoSlots.slots
+      (Term.mono (O.mono (Ctx.le_insert hc.root _)).le_view (Term.boxtm
+        (Term.shift (Ctx.shifts_boxIn_boxIn hF _) (Term.eta (VarSymb.root (.free c)).inner A
+          (Ctx.ref_inner (Ctx.ref_insert_root Γ (.free c) (.VTypeBox A)))))))
+      (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root _)).insert (.bnd 0) _) Φ)))
+
 /-- ⭐⭐**Lifting a returning possibility** (T + 4, strong B): `◇[d ↦ t] Φ(d)` gives, as an
     `∃`-elimination, a fresh `c : □A` that comes back as `t` along an arrow out and such that
     possibly `Φ(c.keep)`.  Along either leg.  Ties and companion: `Proof.ret_tied`, `ret_ext`; then
@@ -979,18 +995,7 @@ def Proof.ret_lift (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hc₂ : Γ.RootFresh (.free (c + 2)))
     (p : Proof σ Γ Δ (O.ret hS t Φ))
     (q : Proof σ (Γ.insert (.free c) (.VTypeBox A))
-      (WFF.and
-          (WFF.back hS .nec (Term.boxtm (Term.boxtm
-            (Term.shift (Ctx.shifts_boxIn_boxIn hF _) (Term.eta (VarSymb.root (.free c)).inner A
-              (Ctx.ref_inner (Ctx.ref_insert_root Γ (.free c) (.VTypeBox A)))))))
-            (Term.weaken hc.root _ t))
-          ((O.mono (Ctx.le_insert hc.root _)).dia (WFF.instantiate Ctx.NoSlots.slots
-            (Term.mono (O.mono (Ctx.le_insert hc.root _)).le_view (Term.boxtm
-              (Term.shift (Ctx.shifts_boxIn_boxIn hF _) (Term.eta (VarSymb.root (.free c)).inner A
-                (Ctx.ref_inner (Ctx.ref_insert_root Γ (.free c) (.VTypeBox A)))))))
-            (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root _)).insert (.bnd 0) _) Φ))) ::
-        Δ.map (WFF.weaken hc.root _))
-      (φ.weaken hc.root _)) :
+      (WFF.lifted hS hF O t Φ c hc :: Δ.map (WFF.weaken hc.root _)) (φ.weaken hc.root _)) :
     Proof σ Γ Δ φ := by
   refine Proof.ret_ext hS O t (WFF.pairUp (WFF.tiedBody hS hF Φ)) c hc
     (Proof.ret_tied hS hT hF O t Φ (c + 1) (OutLeg.rootFresh hc₁ O) p) ?_
