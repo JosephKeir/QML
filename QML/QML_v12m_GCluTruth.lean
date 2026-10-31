@@ -1,4 +1,6 @@
 import QML.QML_v12m_GCluTerm
+import QML.QML_v12m_GCluBack
+import QML.QML_v12m_BBackTruth
 
 /-!
 # QML v12m — 5 on the growing tree: the cluster model's truth lemma
@@ -15,6 +17,7 @@ end satisfies its translation, link by link (`Model.sat_subst`, `Model.sat_shift
 * `sat_boxPush_c`, `sat_diaPush_c`, `sat_diaPush_cK`: pushing from a world is its preimage, then
   the root's path, the last along an arrow whose end realises the kept witness.
 * `cdia_real_not_boxx`, `cdia_sat_child`, ⭐`chere_truth`: under T, as the tree's.
+* `mem_back_of_sat_diaFreeC`, ⭐`mem_back_of_sat_necC`: `Back`, truth ⇒ membership.
 * ⭐`ctruth`: the truth lemma, `□` and `◇` through `box_pathO_iff` and `dia_pathO_iff`.
 -/
 
@@ -702,6 +705,205 @@ theorem chere_truth (hX : CluFlags) (hT : ModalSys.T = true) {s : GW hF M₀} {i
     · rw [hT] at hnT
       cases hnT
 
+/-! ## `Back`, truth ⇒ membership -/
+
+/-- ⭐At a `◇`-free type `cInd` is equality (`BData.ind_eq_of_diaFree`). -/
+theorem cind_eq_of_diaFree (hX : CluFlags) {s : GW hF M₀} {A : VarType} (hA : A.diaFree = true)
+    {o o' : (cframe hF hM₀ hX).Dom A s}
+    (IH : ∀ (K : ℕ) (u u' : Term σ (ctxOf (glat s K)) A (Ann.eta (.root (.bnd 0)) A)),
+      (eqRec A u u' : WFF σ _ 0) ∈ (gw hM₀ s).M K →
+        (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s K) (eqRec A u u' : WFF σ _ 0))
+    (h : cInd hM₀ hX o o') : o = o' := by
+  obtain ⟨⟨i, a, u⟩, ⟨i', a', u'⟩, hu, hu', hrel⟩ := h
+  obtain rfl := Ann.eq_of_diaFree hA a (Ann.eta (.root (.bnd 0)) A)
+  obtain rfl := Ann.eq_of_diaFree hA a' (Ann.eta (.root (.bnd 0)) A)
+  have hK : i ≤ max i i' := le_max_left _ _
+  have hK' : i' ≤ max i i' := le_max_right _ _
+  have key := hrel _ hK hK' (eqRec A
+    (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root _ (.bnd 0) A))
+    (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := (gw hM₀ s).ctx (max i i'))).root A)
+      (Term.mono ((gw hM₀ s).le hK') u')))
+  rw [WFF.instantiate_eqRec_slot hA, WFF.instantiate_eqRec_slot hA] at key
+  have h0 : (eqRec A (Term.mono ((gw hM₀ s).le hK') u') (Term.mono ((gw hM₀ s).le hK') u') :
+      WFF σ _ 0) ∈ (gw hM₀ s).M (max i i') :=
+    BWorld.mem_of_provable (Δ := []) (fun _ h => by simp at h) ⟨Proof.eqRec_refl A _⟩
+  have hsat := IH _ _ _ (BWorld.mem_T.mp (key.mpr (BWorld.mem_T.mpr h0)))
+  rw [Model.sat_eqRec, interp_ccanon hX _ (Model.Env.Agree.refl' _) (Ctx.Presented.noProjLast _),
+    interp_ccanon hX _ (Model.Env.Agree.refl' _) (Ctx.Presented.noProjLast _)] at hsat
+  have he := ctoDom_inj hX hsat
+  change cden hM₀ hX s _ _ (Term.mono ((gw hM₀ s).le hK) u) =
+    cden hM₀ hX s _ _ (Term.mono ((gw hM₀ s).le hK') u') at he
+  rw [cden_lift hX hK u, cden_lift hX hK' u', hu, hu'] at he
+  rw [← ctoDom_fromDom hM₀ hX A s o, ← ctoDom_fromDom hM₀ hX A s o']
+  exact ctoDom_congr hX he _ _
+
+/-- ⭐⭐**`Back`, truth ⇒ membership, at a `◇`-free content** (`BData.mem_back_of_sat_diaFree`):
+    were the atom not in the theory, `back_ret` would give a value `g ≠ t` that the leg brings
+    home; the atom's round trip brings it home as `t`; `Ind` is equality. -/
+theorem mem_back_of_sat_diaFreeC (hX : CluFlags) (hS : ModalSys.BStrong = true) {s : GW hF M₀}
+    {i : ℕ} (O : OutLeg (ctxOf (glat s i))) {A : VarType} (hA : A.diaFree = true) {a₀ : Ann A}
+    (bd : Term σ O.view.boxIn A a₀) {a : Ann A} (t : Term σ (ctxOf (glat s i)) A a)
+    (IH : ∀ (K : ℕ) (φ : WFF σ (ctxOf (glat s K)) 0),
+      φ.size < (O.back hS bd t : WFF σ _ 0).size →
+        ((cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s K) φ ↔ φ ∈ (gw hM₀ s).M K))
+    (h : (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s i) (O.back hS bd t : WFF σ _ 0)) :
+    (O.back hS bd t : WFF σ _ 0) ∈ (gw hM₀ s).M i := by
+  have hB := hX.bS hS
+  have hT := hX.bT hB
+  have hsz := BData.size_back_ge hS O bd t
+  have hrt := OutLeg.sat_back_rt hS (ccanonEnv hM₀ hX s i) O bd t h
+  obtain ⟨⟨i₀⟩, hrt⟩ := hrt
+  have hdia : O.dia (.top : WFF σ O.view 0) ∈ (gw hM₀ s).M i :=
+    (IH i _ (by have := BData.size_dia_top (σ := σ) O; omega)).mp
+      ((OutLeg.sat_dia (ccanonEnv hM₀ hX s i) O _).mpr ⟨i₀, trivial⟩)
+  have hind : ∀ {x y : (cframe hF hM₀ hX).Dom A s}, cIndM hM₀ hX x y → x = y := fun hxy =>
+    cind_eq_of_diaFree hX hA (fun K u u' hm => (IH K _ (by rw [WFF.size_eqRec]; omega)).mpr hm)
+      (hxy.1 hT)
+  by_contra hnot
+  have hc : (ctxOf (glat s i)).RootFresh (.free (glat s i).length) := ctxOf_fresh le_rfl
+  have hall : WFF.backRetAll hS O hA bd t _ hc ∉ (gw hM₀ s).M i := fun hm =>
+    hnot (BWorld.mem_of_provable (Δ := [_, _]) (fun ψ hψ => by
+      rcases List.mem_cons.mp hψ with rfl | hψ
+      · exact hm
+      · rw [List.mem_singleton.mp hψ]; exact hdia)
+      ⟨Proof.back_of_all hS hB O hA bd t _ hc⟩)
+  obtain ⟨j, hij, ag, g, hneg⟩ := (gw hM₀ s).allW (((gw hM₀ s).mcs i).neg_mem_iff.mpr hall)
+  have hns := fun hs => ((gw hM₀ s).mcs j).neg_mem_iff.mp hneg ((IH j _ (by
+    rw [WFF.size_instantiate, WFF.size_mono, WFF.bindFree, WFF.renameRoot, WFF.size_subst,
+      BData.size_backRetImp]
+    omega)).mp hs)
+  rw [Model.sat_instantiate _ (Ctx.Presented.noProjLast _) _ g,
+    Model.sat_mono (Model.Env.extend_agree (ccanonEnv_le hX s hij) (.bnd 0) _),
+    Model.sat_bindFree _ (Ctx.Presented.noProjLast _) _ hc] at hns
+  refine hns fun hR => ?_
+  set og := Model.interp (ccanonEnv hM₀ hX s j) g
+  obtain ⟨i₁, e, hΦ, r, hr⟩ := OutLeg.ret_of_sat_agree
+    (Model.Env.agree_extend (ccanonEnv hM₀ hX s i) hc.root og) hS O _ _ hR
+  have hslot : ((ccanonEnv hM₀ hX s i).extend (.free _) og).ref (.root (.free _))
+      (Ctx.ref_insert_root _ (.free (glat s i).length) A) = og :=
+    Model.Env.extend_root _ (.free _) og (Ctx.ref_insert_root _ _ A)
+  unfold WFF.backRetBody at hΦ
+  have hslot0 : ((O.push (ccanonEnv hM₀ hX s i) i₁).extend (.bnd 0) e).ref (.root (.bnd 0))
+      (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox A)) = e :=
+    Model.Env.extend_root _ (.bnd 0) e (Ctx.ref_insert_root O.view (.bnd 0) (.VTypeBox A))
+  rw [Model.sat_eqRec, Model.interp_castAnn,
+    Model.interp_mono (Model.Env.agree_extend _ (OutLeg.slotsFrom Ctx.NoSlots.slots O).root _),
+    Model.interp_eta, hslot0] at hΦ
+  rw [hΦ, Model.box_beta] at hr
+  obtain ⟨r', hr'⟩ := hrt i₁
+  change cIndM hM₀ hX _ _ at hr hr'
+  rw [Model.interp_eta, hslot] at hr
+  have h₁ := hind hr
+  have h₂ := hind hr'
+  rw [Model.sat_eqRec, Model.interp_castAnn, Term.weaken,
+    Model.interp_mono (Model.Env.agree_extend _ hc.root _), Model.interp_eta, hslot]
+  exact h₁.symm.trans h₂
+
+/-- One value at two stages means one annotation (`ann_eq_of_cden`). -/
+theorem ann_eq_of_toDomC (hX : CluFlags) (hT : ModalSys.T = true) {s : GW hF M₀} {A : VarType}
+    {i i' : ℕ} {a a' : Ann A} (t : Term σ (ctxOf (glat s i)) A a)
+    (t' : Term σ (ctxOf (glat s i')) A a')
+    (h : ctoDom hM₀ hX A s (cden hM₀ hX s i (Ctx.Le.refl _) t) (cdefinable_den hX _ _) =
+      ctoDom hM₀ hX A s (cden hM₀ hX s i' (Ctx.Le.refl _) t') (cdefinable_den hX _ _)) :
+    a = a' := by
+  have hK : i ≤ max i i' := le_max_left _ _
+  have hK' : i' ≤ max i i' := le_max_right _ _
+  exact ann_eq_of_cden hX hT (Term.mono ((gw hM₀ s).le hK) t) (Term.mono ((gw hM₀ s).le hK') t')
+    ((cden_lift hX hK t).trans ((ctoDom_inj hX h).trans (cden_lift hX hK' t').symm))
+
+/-- Denotations equal at a common stage make the equation true there. -/
+theorem sat_eqRec_liftC (hX : CluFlags) {s : GW hF M₀} {A : VarType} {i i' K : ℕ} (hK : i ≤ K)
+    (hK' : i' ≤ K) {a : Ann A} (t : Term σ (ctxOf (glat s i)) A a)
+    (t' : Term σ (ctxOf (glat s i')) A a)
+    (h : ctoDom hM₀ hX A s (cden hM₀ hX s i (Ctx.Le.refl _) t) (cdefinable_den hX _ _) =
+      ctoDom hM₀ hX A s (cden hM₀ hX s i' (Ctx.Le.refl _) t') (cdefinable_den hX _ _)) :
+    (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s K)
+      (eqRec A (Term.mono ((gw hM₀ s).le hK) t) (Term.mono ((gw hM₀ s).le hK') t') :
+        WFF σ _ 0) := by
+  rw [Model.sat_eqRec, interp_ccanon hX _ (Model.Env.Agree.refl' _) (Ctx.Presented.noProjLast _),
+    interp_ccanon hX _ (Model.Env.Agree.refl' _) (Ctx.Presented.noProjLast _)]
+  exact ctoDom_congr hX ((cden_lift hX hK t).trans ((ctoDom_inj hX h).trans
+    (cden_lift hX hK' t').symm)) _ _
+
+/-- ⭐⭐**`Back`, truth ⇒ membership, row 1** (`BData.mem_back_of_sat_nec`).  At a `◇`-free content,
+    `mem_back_of_sat_diaFreeC`.  Otherwise `cRet` is an atom of the theory with these data and this
+    witness.  A plain leg has no witness, and a possible carrier has one, so the atom is row 1
+    (here, unlike on the arrow network, a witness's extent can be every arrow).  `nec_inj` twice
+    makes the carriers' denotations equal, `ann_eq_of_toDomC` the annotations, the induction
+    hypothesis puts `eqRec` of carriers and of values in the theory, and `back_eqC`, `back_eq` move
+    the atom to ours. -/
+theorem mem_back_of_sat_necC (hX : CluFlags) (hS : ModalSys.BStrong = true) {s : GW hF M₀}
+    {i : ℕ} {A : VarType} {a₀ : Ann A} (bd : Term σ (ctxOf (glat s i)).boxIn.boxIn A a₀)
+    {a : Ann A} (t : Term σ (ctxOf (glat s i)) A a)
+    (IH : ∀ (K : ℕ) (φ : WFF σ (ctxOf (glat s K)) 0),
+      φ.size < ((OutLeg.nec : OutLeg (ctxOf (glat s i))).back hS bd t : WFF σ _ 0).size →
+        ((cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s K) φ ↔ φ ∈ (gw hM₀ s).M K))
+    (h : (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s i)
+      ((OutLeg.nec : OutLeg (ctxOf (glat s i))).back hS bd t : WFF σ _ 0)) :
+    ((OutLeg.nec : OutLeg (ctxOf (glat s i))).back hS bd t : WFF σ _ 0) ∈ (gw hM₀ s).M i := by
+  have hT := hX.bT (hX.bS hS)
+  have hSh : ModalSys.shaped = true := ModalSys.shaped_of_T hT
+  by_cases hA : A.diaFree = true
+  · exact mem_back_of_sat_diaFreeC hX hS .nec hA bd t IH h
+  have hsz := BData.size_back_ge hS .nec bd t
+  change cRet hM₀ hX _ _ _ _ at h
+  rcases h with ⟨-, -, hA' | ⟨hS', i', L, c, ct, a', t', hmem, hdata, htag, hval⟩⟩
+  · exact absurd hA' hA
+  revert c ct hmem hdata htag
+  cases L with
+  | pos =>
+      intro c ct _ _ htag
+      have htag' : (cTag hM₀ hX .pos (ctoDom hM₀ hX _ s
+          (cden hM₀ hX s i' (Ctx.Le.refl _) ct) (cdefinable_den hX _ _))).isSome = false := by
+        rw [htag]
+        rfl
+      simp [cTag, hSh] at htag'
+  | nec =>
+      intro c ct
+      cases ct with
+      | boxtm u =>
+          cases u with
+          | boxtm bd' =>
+              intro hmem hdata _
+              obtain ⟨-, hval'⟩ := Sigma.mk.inj_iff.mp hdata
+              have hfun := eq_of_heq hval'
+              have hc : ctoDom hM₀ hX _ s (cden hM₀ hX s i' (Ctx.Le.refl _)
+                    (Term.boxtm (Term.boxtm bd'))) (cdefinable_den hX _ _) =
+                  ctoDom hM₀ hX _ s (cden hM₀ hX s i (Ctx.Le.refl _)
+                    (Term.boxtm (Term.boxtm bd))) (cdefinable_den hX _ _) := by
+                rw [← interp_ccanon hX (Term.boxtm (Term.boxtm bd)) (Model.Env.Agree.refl' _)
+                  (Ctx.Presented.noProjLast _)]
+                exact (cmodel hF hM₀ hX).nec_inj (funext fun a₁ =>
+                  (cmodel hF hM₀ hX).nec_inj (funext fun b =>
+                    congrFun (congrFun hfun ⟨a₁, Set.mem_univ _⟩) b))
+              have hv : ctoDom hM₀ hX A s (cden hM₀ hX s i' (Ctx.Le.refl _) t')
+                    (cdefinable_den hX _ _) =
+                  ctoDom hM₀ hX A s (cden hM₀ hX s i (Ctx.Le.refl _) t)
+                    (cdefinable_den hX _ _) := by
+                rw [hval, interp_ccanon hX t (Model.Env.Agree.refl' _)
+                  (Ctx.Presented.noProjLast _)]
+              obtain ⟨⟨⟩⟩ := ann_eq_of_toDomC hX hT _ _ hc
+              obtain rfl := ann_eq_of_toDomC hX hT _ _ hv
+              have hK : i ≤ max i i' := le_max_left _ _
+              have hK' : i' ≤ max i i' := le_max_right _ _
+              have hmc := (IH _ _ (by
+                rw [WFF.size_eqRec]; simp only [VarType.eqRecSize] at hsz ⊢; omega)).mp
+                (sat_eqRec_liftC hX hK' hK _ _ hc)
+              have hmv := (IH _ _ (by rw [WFF.size_eqRec]; omega)).mp
+                (sat_eqRec_liftC hX hK' hK _ _ hv)
+              refine (BWorld.mem_lift hK).mpr (BWorld.mem_of_provable (Δ := [_, _, _])
+                (fun ψ hψ => by
+                  rcases List.mem_cons.mp hψ with rfl | hψ
+                  · exact (BWorld.mem_lift hK').mp hmem
+                  rcases List.mem_cons.mp hψ with rfl | hψ
+                  · exact hmc
+                  · rw [List.mem_singleton.mp hψ]; exact hmv)
+                ⟨Proof.back_eq hS .nec _ _ _ (Proof.back_eqC hS .nec _ _ _
+                  (Proof.lookup List.mem_cons_self)
+                  (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self)))
+                  (Proof.lookup (List.mem_cons_of_mem _
+                    (List.mem_cons_of_mem _ List.mem_cons_self)))⟩)
+
 /-! ## The truth lemma -/
 
 /-- ⭐**The truth lemma below a size, at every world and stage.** -/
@@ -735,7 +937,23 @@ theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
               exact chere_truth hX hT hx bd t
                 (fun K _ u u' => ctruth_lt hX hNS n s K _ (by
                   rw [WFF.size_eqRec]; simp only [WFF.size] at hφ; omega))
-      | back hB _ _ _ => exact absurd (hNS.symm.trans hB) (by decide)
+      | back hB L c t =>
+          cases L with
+          | pos => exact absurd (hNS.symm.trans hB) (by decide)
+          | nec =>
+              cases c with
+              | boxtm u =>
+                  cases u with
+                  | boxtm bd =>
+                      refine ⟨fun h => mem_back_of_sat_necC hX hB bd t (fun K ψ hψ =>
+                        ctruth_lt hX hNS n s K ψ (Nat.lt_of_lt_of_le hψ (Nat.le_of_lt_succ hφ)))
+                        h, fun hm => ?_⟩
+                      change (cmodel hF hM₀ hX).Backs .nec _ _
+                      rw [interp_ccanon hX (Term.boxtm (Term.boxtm bd))
+                        (Model.Env.Agree.refl' _) (Ctx.Presented.noProjLast _),
+                        interp_ccanon hX t (Model.Env.Agree.refl' _)
+                          (Ctx.Presented.noProjLast _)]
+                      exact cRet_of_mem_nec hM₀ hX hB s i bd t hm
       | retS hB _ _ _ => exact absurd (hNS.symm.trans hB) (by decide)
       | retxS hB _ _ _ _ _ => exact absurd (hNS.symm.trans hB) (by decide)
       | and φ ψ =>

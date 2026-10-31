@@ -5449,6 +5449,24 @@ comes after the truth lemma, in `cmodel_indInvariant`: atoms and `Ret` coincide 
 terms.  `homeUnique` is free (`Frame.{0, 0}`).  `T_of_shaped` needs `BStrong → B`.
 *Least checked:* commuting `pTrW`, `pTrXW` and `pTrXKW` with hole formulas, and the realised arrows along `pos`.
 
+**Built (2026-10-31): the `Back` case at row 1 (`QML_v12m_GCluBack`, `QML_v12m_GCluTruth`).**  Both directions, wired into
+`ctruth_lt`; `pos` is still absurd by `hNS`.
+* *Hole formulas.*  `pTrW_holeAt` needs a hole formula unchanged by shift and collapse, which `WFF.shift_holeAt` and
+  `WFF.collapse_holeAt` do not say.  It holds: `WFF.shift_hole`, by `WFF.subst_shift` at the identity, the hole's only
+  declared address being its root; `WFF.collapse_hole` from `collapse_shift_same`.  `WFF.boxHole` writes `□ψ` as one hole
+  formula, so one commuting lemma covers the tie.
+* *Stages.*  `rstg` is not monotone, so the tie goes through a root stage `R` above all of them: `preTB_at`, `preTB_lift`,
+  `pTr_mono`, `pTrK_mono`.  `preTB_pTrK` is R4 (`round_trip`) for a kept root term.
+* *Membership ⇒ truth* is `cRet_of_mem_nec`, with no induction hypothesis, as planned: `tie_nec`, `back_of_tie`,
+  `back_here_rel`.
+* *Truth ⇒ membership* is `mem_back_of_sat_necC`, a port of `BData.mem_back_of_sat_nec` with one change.  `univ_ne_extent`
+  does not hold on the cluster: a witness can be realised at every world, so a witness's extent can be every arrow.  The
+  `Ret` tag does that job instead: a plain leg has tag `none`, and a possible carrier has `some` label, since strong B
+  makes shapes present.
+* *Next, and least checked:* `pos` truth ⇒ membership.  `BData.mem_back_of_sat_pos` reaches the annotations through
+  fresh witness arrows (`CxFresh`), which the cluster does not have.  Data and tag give the extent, the contents and the
+  label; the carrier's stored inner annotation has to come from the contents' shape at an arrow of the extent.
+
 #### Strong B on S5, every shape: the check *(2026-10-31, paper)*
 
 **Verdict.**  No blocker found, but the work is much larger than "strong B collapses" suggested, and

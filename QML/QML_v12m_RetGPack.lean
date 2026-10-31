@@ -196,6 +196,22 @@ theorem Ctx.shiftCollapseId_hole (m : ℕ) (H : VarType) :
     (Ctx.empty.insert (.bnd 0) H).ShiftCollapseId m :=
   Ctx.ShiftCollapseId.insert (Ctx.ShiftCollapseId.of_raw fun _ _ _ hv => by cases hv) _ H
 
+/-- ⭐**A hole formula is closed, so shifting it does nothing**: the hole's own addresses have no
+    level for the shift to act on. -/
+theorem WFF.shift_hole (k : ℕ) {H : VarType} (ψ : WFF σ (Ctx.empty.insert (.bnd 0) H) 1) :
+    WFF.shift (Ctx.shifts_hole k H) (Ctx.slotsFrom_empty.insert H) ψ = ψ := by
+  have hs := Ctx.slotsFrom_empty.insert (d := 0) H
+  have e := WFF.subst_shift (Ctx.shifts_hole k H) hs hs (Subst.idS σ _) Subst.ok_idS Subst.coh_idS
+    (Subst.idS σ _) Subst.ok_idS Subst.coh_idS hs
+    (Subst.preShift_of fun v T hl hv => by
+      by_cases hvr : v = .root (.bnd 0)
+      · subst hvr
+        exact .refl _
+      · change (if v = VarSymb.root (.bnd 0) then _ else Ctx.empty v) = _ at hv
+        rw [if_neg hvr] at hv
+        cases hv) ψ
+  rwa [WFF.subst_id, WFF.subst_id] at e
+
 /-- Shifting a hole read shifts the term and the hole formula. -/
 theorem WFF.shift_holeAt {k : ℕ} {Γ Γ' : Ctx} {d : ℕ} (D : Ctx.Shifts k Γ Γ')
     (hs : Γ.SlotsFrom d) (hs' : Γ'.SlotsFrom d) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
@@ -239,6 +255,14 @@ theorem WFF.collapse_holeAt {k : ℕ} {Γ Γ' : Ctx} {d : ℕ} (D : Ctx.Collapse
   · change (if v = VarSymb.root (.bnd 0) then _ else Ctx.empty v) = _ at hv
     rw [if_neg hvr] at hv
     cases hv
+
+/-- A hole formula is closed, so collapsing it does nothing: collapsing undoes the shift, and the
+    shift does nothing. -/
+theorem WFF.collapse_hole (k : ℕ) {H : VarType} (ψ : WFF σ (Ctx.empty.insert (.bnd 0) H) 1) :
+    WFF.collapse (Ctx.collapses_hole k H) (Ctx.slotsFrom_empty.insert H) ψ = ψ := by
+  have e := WFF.collapse_shift_same (Ctx.shifts_hole k H) (Ctx.collapses_hole k H) (Ctx.Le.refl _)
+    (Ctx.shiftCollapseId_hole k H) (Ctx.slotsFrom_empty.insert H) (Ctx.slotsFrom_empty.insert H) ψ
+  rwa [WFF.shift_hole, WFF.mono_refl] at e
 
 /-- A hole read that does not mention the slot, with the slot filled. -/
 theorem WFF.instantiate_holeAt_mono {Ω : Ctx} [Ω.NoSlots] {B : VarType} {b₀ : Ann B}
