@@ -578,15 +578,14 @@ noncomputable def cData (hX : CluFlags) : (L : BLeg) → {A : VarType} → {s : 
         fun a b => cnecEval hM₀ hX
           ((cposEval hM₀ hX (c : (cframe hF hM₀ hX).Pos (.VTypeBox A) _)).2 a) b⟩
 
-/-- A carrier's witness on the cluster frame (`Model.carrierTag`). -/
+/-- A carrier's shape on the cluster frame (`Model.carrierTag`). -/
 noncomputable def cTag (hX : CluFlags) : (L : BLeg) → {A : VarType} → {s : GW hF M₀} →
     (cframe hF hM₀ hX).Dom (L.carrier A) s →
-    Option ((cframe hF hM₀ hX).Leaf (fun _ => VarSymb) s)
+    Option (Shp ((cframe hF hM₀ hX).Leaf (fun _ => VarSymb) s) (.VTypeDia (.VTypeBox A)))
   | .nec, _, _, _ => none
   | .pos, A, _, c =>
       if h : ModalSys.shaped = true then
-        some (crawShape (hX.T_of_shaped h)
-          (c : (cframe hF hM₀ hX).Pos (.VTypeBox A) _).1).label
+        some (crawShape (hX.T_of_shaped h) (c : (cframe hF hM₀ hX).Pos (.VTypeBox A) _).1)
       else none
 
 /-- The model's indistinguishability, before the model. -/
@@ -599,7 +598,7 @@ abbrev cIndM (hX : CluFlags) {A : VarType} {s : GW hF M₀} (o o' : (cframe hF h
     `Model.Ret_fwd` is free and the truth lemma's `Back` case proves it for an atom
     (`Proof.back_of_tie`). -/
 def cRet (hX : CluFlags) {A : VarType} {s : GW hF M₀}
-    (ℓ : Option ((cframe hF hM₀ hX).Leaf (fun _ => VarSymb) s))
+    (ℓ : Option (Shp ((cframe hF hM₀ hX).Leaf (fun _ => VarSymb) s) (.VTypeDia (.VTypeBox A))))
     (S : Set ((cframe hF hM₀ hX).Acc s))
     (val : (a : S) → (b : (cframe hF hM₀ hX).Acc a.1.1) → (cframe hF hM₀ hX).Dom A b.1)
     (o : (cframe hF hM₀ hX).Dom A s) : Prop :=

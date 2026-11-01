@@ -5450,7 +5450,7 @@ terms.  `homeUnique` is free (`Frame.{0, 0}`).  `T_of_shaped` needs `BStrong →
 *Least checked:* commuting `pTrW`, `pTrXW` and `pTrXKW` with hole formulas, and the realised arrows along `pos`.
 
 **Built (2026-10-31): the `Back` case at row 1 (`QML_v12m_GCluBack`, `QML_v12m_GCluTruth`).**  Both directions, wired into
-`ctruth_lt`; `pos` is still absurd by `hNS`.
+`ctruth_lt`.  Row 2 followed, below.
 * *Hole formulas.*  `pTrW_holeAt` needs a hole formula unchanged by shift and collapse, which `WFF.shift_holeAt` and
   `WFF.collapse_holeAt` do not say.  It holds: `WFF.shift_hole`, by `WFF.subst_shift` at the identity, the hole's only
   declared address being its root; `WFF.collapse_hole` from `collapse_shift_same`.  `WFF.boxHole` writes `□ψ` as one hole
@@ -5464,7 +5464,7 @@ terms.  `homeUnique` is free (`Frame.{0, 0}`).  `T_of_shaped` needs `BStrong →
   `Ret` tag does that job instead: a plain leg has tag `none`, and a possible carrier has `some` label, since strong B
   makes shapes present.
 
-**The tag is too small (2026-11-01, paper; proposal, not built).**  `pos` truth ⇒ membership needs one annotation for
+**The tag is too small (2026-11-01; built, the user's decision).**  `pos` truth ⇒ membership needs one annotation for
 two carriers with one set of data and one label.  The earlier note said the contents give the rest.  On the cluster they
 do not.
 * *Why.*  Under T + 4 every arrow of an extent is realised (`here_keep`; `realised_keep_of_boxx`), so `cden`'s
@@ -5478,19 +5478,26 @@ do not.
   lacks it, and `eqRec` compares one annotation only.  So the truth lemma can fail, depending on a choice nothing
   constrains.  The generic models do not suffer: there the two contents are only `Ind`.  This is a defect of the
   canonical model, not of the logic.
-* *Proposal: the tag is the carrier's whole shape.*  `Ret` takes `M.shape p`, not its label.  Data and tag are then the
+* *The fix: the tag is the carrier's whole shape.*  `Ret` takes `M.shape p`, not its label.  Data and tag are then the
   carrier (`posFull_inj`), which is §10.27's "extent, contents and shape", and two possible carriers still need no pairing
   operation, since `pair` only combines shapes.  `pos` truth ⇒ membership becomes short: tags equal give shapes equal, so
   annotations equal (`ann_eq_of_termShpW`), so `y = y'`; then `eqRec` and `back_eqC`, with no fresh arrow.
-  Cost: `OutLeg.tag` takes the body; `RetCongr.map`, `pair` and `keep` state their new tags, by `termShp_subst`,
-  `termShp_shift` and `termShp_diatm`; `sat_back_beta`, `sat_back_pair` and `sat_back_keep` follow.  About 300 lines, no new rule.
-  `BArrow` ignores the tag and the other models say `False`, so they barely change.
+  Built: `Model.CarrierTag`; `OutLeg.tag` takes the body (`tag_pos`, `tag_holeRead`, `tag_pair`, `tag_label`, `tag_keep`);
+  `RetCongr.map` moves the body's shape (`tagMap`, `holeShp`, by `termShp_holeRead`), `pair` needs one label and pairs the
+  shapes (`tagPair`), and `keep` asks that the tag hold the kept object's shape, shifted.  No new rule.  `BArrow` ignores the
+  tag and the other models say `False`, so they barely changed.
 * *Rejected: repair the contents.*  Prefer `pTrX` at `InExt` arrows, or pick the fresh variable in `Realised.data`, then
   port `CxFresh` and the label injectivity.  That reworks `cden` and everything proved of it (`cden_own_content`,
   `chere_truth`, the shape lemmas), and leaves `Ret` seeing less than the carrier.
-* *The tie along `pos` is not affected.*  On paper: `dia_pathO_iff`, `boxx_mem_pathK`, `here_elim` at the realised
-  arrow, then `tr_kept` as at `.nec`.  It needs `pTrXW_holeAt` and `pTrXKW_holeAt`, and that realising leaves a `y`-free
-  term alone.  Not built.
+* *Built: row 2 of the `Back` case (`QML_v12m_GCluBack`, `QML_v12m_GCluTruth`).*  Under T every arrow of an extent is
+  realised by definition (`GMem`), so `pTrXW` is not needed.  `tie_pos`: `dia_mem_of_real` (`dia_pathO_iff`,
+  `boxx_mem_pathK`, `grealW_of_boxx`), then at the far world the kept carrier of `b` realises to the value's own
+  (`pTrXK_box`, `tr_keptK`, `grealT_box`), so the tie is `Proof.back_shift` again.  `cRet_of_mem_pos` is the round trip, its
+  nonempty leg from the truth of `◇_y ⊤`.  `mem_back_of_sat_posC` is short: one shape, so one annotation
+  (`ann_eq_of_crawShapeL`), so one witness; contents from the data; `CRPos.congr_cont`; `eqRec`; `back_eqC`.
+* *Left.*  `retS` and `retxS`, both ways; split `cdia_sat_child`; `RetCongr` in `cmodel_indInvariant`, now with the
+  tags: `map` and `pair` from the atoms by `OutLeg.tag_holeRead` and `tag_pair`, `keep` from `back_keep` at a witness read
+  off the tag.  Then `hNS` goes.
 
 #### Strong B on S5, every shape: the check *(2026-10-31, paper)*
 

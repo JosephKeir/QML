@@ -127,6 +127,43 @@ end Model
 
 namespace Model
 
+variable {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
+  [Arrows.RootKeep F Root]
+
+/-! ## A hole's shape -/
+
+omit [ModalSys] [Arrows.RootKeep F Root] in
+theorem hole_decl {A T : VarType} {v : VarSymb}
+    (hv : (Ctx.empty.insert (.bnd 0) A) v = some T) : v = .root (.bnd 0) ∧ A = T := by
+  by_cases hvr : v = .root (.bnd 0)
+  · subst hvr
+    exact ⟨rfl, by simpa [Ctx.insert] using hv⟩
+  · change (if v = VarSymb.root (.bnd 0) then _ else Ctx.empty v) = _ at hv
+    rw [if_neg hvr] at hv
+    cases hv
+
+omit [Arrows.RootKeep F Root] in
+/-- The shape environment of a hole holding a shape. -/
+def holeShEnv {A : VarType} {w : F.W} (a : Shape F Root w A) :
+    ShEnv F Root (Ctx.empty.insert (.bnd 0) A) w :=
+  fun _ _ hv => (hole_decl hv).2 ▸ a
+
+/-- ⭐A hole term read at a term has the shape the hole term makes of the term's. -/
+theorem termShp_holeRead [Arrows.RootKeepLaws F Root] {Δ : Ctx} [Δ.NoSlots] (hnp : Δ.NoProjLast)
+    {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) {lw : List Bool} (hj : lw.length = j)
+    (hwf : ModalSys.Four = true → ρ.WF lw) {A : VarType} {a₀ : Ann A} (bd : Term σ Δ A a₀)
+    {B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
+    termShp ρ j (Term.holeRead bd s) = termShp (holeShEnv (termShp ρ j bd)) j s := by
+  unfold Term.holeRead
+  rw [termShp_subst _ _ _ (hnp.insert (.bnd 0) A) ρ j hj hwf]
+  refine termShp_mono (fun v T hv => ?_) j s
+  obtain ⟨rfl, rfl⟩ := hole_decl hv
+  exact (entryShp_congr ρ j (e' := .tm bd) (if_pos rfl) _ rfl).symm
+
+end Model
+
+namespace Model
+
 variable {σ : Signature} {M : Model.{u, v} σ}
 
 /-! ## The η-law -/
@@ -177,32 +214,56 @@ def holeVal {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) 
   interp ((Env.empty v).extend (.bnd 0) o) s
 
 variable (M) in
+/-- What a hole term makes of the shape in its hole, inside a carrier: two levels in. -/
+def holeShp {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
+    {w : M.frame.W} (a : Shp (M.frame.Leaf M.RootPoss w) A) : Shp (M.frame.Leaf M.RootPoss w) B :=
+  termShp (F := M.arrows) (Root := M.RootPoss) (holeShEnv a) 2 s
+
+/-- A carrier's shape with its body's shape moved. -/
+def tagMap {L : Type*} {A B : VarType} (f : Shp L A → Shp L B)
+    (sh : Shp L (.VTypeDia (.VTypeBox A))) : Shp L (.VTypeDia (.VTypeBox B)) :=
+  .dia sh.label (.box (f sh.body.inner))
+
+/-- The tag of two carriers paired: one witness, the bodies' shapes paired. -/
+def tagPair {L : Type*} {A B : VarType} : Option (Shp L (.VTypeDia (.VTypeBox A))) →
+    Option (Shp L (.VTypeDia (.VTypeBox B))) →
+    Option (Shp L (.VTypeDia (.VTypeBox (.VTypeProd A B))))
+  | some p, some q => some (.dia p.label (.box (.prod p.body.inner q.body.inner)))
+  | _, _ => none
+
+variable (M) in
 /-- ⭐**"Comes back as" is a congruence** (strong B, docs §11.20): a hole term maps the values
     and what they come back as (`back_beta`); two carriers over one leg pair (`back_pair`) — two
     carriers' data, as `back_pair` pairs (a `◇`-free component need not be any carrier's, and then
-    no atom stands behind it).  Part of a model proper (`IndInvariant.ret`), since it mentions hole
+    no atom stands behind it).  Each law says what becomes of the carrier's shape; "one leg" is
+    one label (`tagPair`).  Part of a model proper (`IndInvariant.ret`), since it mentions hole
     terms and carrier data. -/
 structure RetCongr : Prop where
   map : ∀ {A B : VarType} {b : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B b)
-    {w : M.frame.W} {ℓ : Option (M.frame.Leaf M.RootPoss w)} {S : Set (M.frame.Acc w)}
+    {w : M.frame.W} {ℓ : M.CarrierTag A w} {S : Set (M.frame.Acc w)}
     {val : (a : S) → (c : M.frame.Acc a.1.1) → M.frame.Dom A c.1} {o : M.frame.Dom A w},
-    M.Ret ℓ S val o → M.Ret ℓ S (fun a c => M.holeVal s (val a c)) (M.holeVal s o)
-  pair : ∀ {A B : VarType} {w : M.frame.W} {ℓ : Option (M.frame.Leaf M.RootPoss w)}
+    M.Ret ℓ S val o →
+      M.Ret (ℓ.map (tagMap (M.holeShp s))) S (fun a c => M.holeVal s (val a c)) (M.holeVal s o)
+  pair : ∀ {A B : VarType} {w : M.frame.W} {ℓ : M.CarrierTag A w} {ℓ' : M.CarrierTag B w}
     {S : Set (M.frame.Acc w)}
     {val : (a : S) → (c : M.frame.Acc a.1.1) → M.frame.Dom A c.1}
     {val' : (a : S) → (c : M.frame.Acc a.1.1) → M.frame.Dom B c.1}
     {o : M.frame.Dom A w} {o' : M.frame.Dom B w},
-    M.IsCarrierData ℓ S val → M.IsCarrierData ℓ S val' → M.Ret ℓ S val o → M.Ret ℓ S val' o' →
-      M.Ret (A := .VTypeProd A B) ℓ S
+    ℓ.map Shp.label = ℓ'.map Shp.label →
+    M.IsCarrierData ℓ S val → M.IsCarrierData ℓ' S val' → M.Ret ℓ S val o → M.Ret ℓ' S val' o' →
+      M.Ret (A := .VTypeProd A B) (tagPair ℓ ℓ') S
         (fun a c => ((val a c, val' a c) : M.frame.Dom (.VTypeProd A B) c.1))
         ((o, o') : M.frame.Dom (.VTypeProd A B) w)
   /-- ⭐A **kept carrier comes back as its own value** (T + 4, `back_keep`).  At a `◇`-free content
       this follows from `Ret_conv`, the way home being unique; at a `◇` content `Ret` is primitive,
       so it is a requirement on models. -/
   keep : ∀ (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {A : VarType} {w : M.frame.W}
-    {ℓ : Option (M.frame.Leaf M.RootPoss w)} {S : Set (M.frame.Acc w)} (n : M.frame.Nec A w),
+    {ℓ : M.CarrierTag A w} {S : Set (M.frame.Acc w)} (n : M.frame.Nec A w),
     Nonempty S →
     M.IsCarrierData ℓ S (fun a c => M.necEval n ⟨c.1, ⟨M.frame.trans hF a.1.2.down c.2.down⟩⟩) →
+    (∀ sh, ℓ = some sh → sh.body.inner =
+      (domSh (M := M) (ModalSys.shaped_of_T hT) (A := .VTypeBox A) n).inner.map
+        (Arrows.Leaf.shift hF 0)) →
     M.Ret ℓ S (fun a c => M.necEval n ⟨c.1, ⟨M.frame.trans hF a.1.2.down c.2.down⟩⟩)
       (M.necEval n (M.frame.reflAcc hT w))
 

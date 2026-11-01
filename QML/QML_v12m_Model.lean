@@ -696,24 +696,27 @@ structure Model (σ : Signature) where
       "comes back as" is a requirement on models rather than a definition (§11.20, decision of
       2026-10-10).  It implies the round trip (`Ret_fwd`), and at `◇`-free contents, where `Ind`
       is equality, it is the round trip (`Ret_conv`).  Its congruences, which mention hole terms,
-      are in `Model.IndInvariant`.  It also takes the carrier's witness (`carrierTag`: `none` for a
-      necessary carrier): a possible object is its section **and** its shape (docs §10.35), so two
-      carriers over different witnesses with one extent are two carriers, as a formula can tell
-      and no rule can relate (docs, "the cluster's truth cases"). -/
-  Ret : {A : VarType} → {w : frame.W} → Option (frame.Leaf RootPoss w) →
+      are in `Model.IndInvariant`.  It also takes the carrier's **shape** (`carrierTag`: `none` for
+      a necessary carrier): a possible object is its section **and** its shape (docs §10.35), so
+      data and tag are the whole carrier.  Two carriers with one section are two carriers, as a
+      formula can tell and no rule can relate (docs, "the cluster's truth cases" and "the tag is
+      too small"). -/
+  Ret : {A : VarType} → {w : frame.W} →
+    Option (Shp (frame.Leaf RootPoss w) (.VTypeDia (.VTypeBox A))) →
     (S : Set (frame.Acc w)) → ((a : S) → (b : frame.Acc a.1.1) → frame.Dom A b.1) →
     frame.Dom A w → Prop
   /-- What comes back as `o` makes the round trip: the leg is nonempty, and from each of its arrows
       some way home returns a value indistinguishable from `o`. -/
   Ret_fwd : ∀ {A : VarType} {w : frame.W} (_hS : ModalSys.BStrong = true)
-    {ℓ : Option (frame.Leaf RootPoss w)}
+    {ℓ : Option (Shp (frame.Leaf RootPoss w) (.VTypeDia (.VTypeBox A)))}
     {S : Set (frame.Acc w)} {val : (a : S) → (b : frame.Acc a.1.1) → frame.Dom A b.1}
     {o : frame.Dom A w}, Ret ℓ S val o →
       Nonempty S ∧ ∀ a : S, ∃ r : frame.R a.1.1 w, Ind (val a ⟨w, ⟨r⟩⟩) o
   /-- At a `◇`-free content the round trip comes back: `Back` is the definite description there
       (`back_ret`). -/
   Ret_conv : ∀ {A : VarType} {w : frame.W} (_hS : ModalSys.BStrong = true)
-    (_hA : A.diaFree = true) {ℓ : Option (frame.Leaf RootPoss w)} {S : Set (frame.Acc w)}
+    (_hA : A.diaFree = true) {ℓ : Option (Shp (frame.Leaf RootPoss w) (.VTypeDia (.VTypeBox A)))}
+    {S : Set (frame.Acc w)}
     {val : (a : S) → (b : frame.Acc a.1.1) → frame.Dom A b.1} {o : frame.Dom A w},
     (Nonempty S ∧ ∀ a : S, ∃ r : frame.R a.1.1 w, Ind (val a ⟨w, ⟨r⟩⟩) o) → Ret ℓ S val o
   /-- ⭐Strong B: wherever there is a way out, every object is what some necessarily necessary

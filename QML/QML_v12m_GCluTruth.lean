@@ -17,7 +17,8 @@ end satisfies its translation, link by link (`Model.sat_subst`, `Model.sat_shift
 * `sat_boxPush_c`, `sat_diaPush_c`, `sat_diaPush_cK`: pushing from a world is its preimage, then
   the root's path, the last along an arrow whose end realises the kept witness.
 * `cdia_real_not_boxx`, `cdia_sat_child`, ⭐`chere_truth`: under T, as the tree's.
-* `mem_back_of_sat_diaFreeC`, ⭐`mem_back_of_sat_necC`: `Back`, truth ⇒ membership.
+* `mem_back_of_sat_diaFreeC`, ⭐`mem_back_of_sat_necC`, ⭐`mem_back_of_sat_posC`: `Back`, truth ⇒
+  membership.
 * ⭐`ctruth`: the truth lemma, `□` and `◇` through `box_pathO_iff` and `dia_pathO_iff`.
 -/
 
@@ -904,6 +905,105 @@ theorem mem_back_of_sat_necC (hX : CluFlags) (hS : ModalSys.BStrong = true) {s :
                   (Proof.lookup (List.mem_cons_of_mem _
                     (List.mem_cons_of_mem _ List.mem_cons_self)))⟩)
 
+/-- One shape at two stages means one annotation (`ann_eq_of_crawShape`). -/
+theorem ann_eq_of_crawShapeL (hX : CluFlags) (hT : ModalSys.T = true) {s : GW hF M₀} {A : VarType}
+    {i i' : ℕ} {a a' : Ann A} (t : Term σ (ctxOf (glat s i)) A a)
+    (t' : Term σ (ctxOf (glat s i')) A a')
+    (h : crawShape hT (cden hM₀ hX s i (Ctx.Le.refl _) t) =
+      crawShape hT (cden hM₀ hX s i' (Ctx.Le.refl _) t')) : a = a' := by
+  have hK : i ≤ max i i' := le_max_left _ _
+  have hK' : i' ≤ max i i' := le_max_right _ _
+  refine ann_eq_of_crawShape (hM₀ := hM₀) hX hT (Term.mono ((gw hM₀ s).le hK) t)
+    (Term.mono ((gw hM₀ s).le hK') t') ?_
+  rw [cden_lift hX hK t, cden_lift hX hK' t']
+  exact h
+
+/-- ⭐⭐**`Back`, truth ⇒ membership, row 2** (`BData.mem_back_of_sat_pos`), with no fresh arrow:
+    the tag is the carrier's whole shape.  At a `◇`-free content, `mem_back_of_sat_diaFreeC`.
+    Otherwise `cRet` is an atom with these data and this shape.  A possible carrier has a tag, so
+    the atom is row 2.  One shape is one annotation (`ann_eq_of_crawShapeL`), so one witness; the
+    data then give the contents, which with the annotation make the carriers' denotations equal.
+    `eqRec` of carriers and of values is true, so in the theory, and `back_eqC`, `back_eq` move
+    the atom to ours. -/
+theorem mem_back_of_sat_posC (hX : CluFlags) (hS : ModalSys.BStrong = true) {s : GW hF M₀}
+    {i : ℕ} {y : VarSymb} (hy : ∃ Y, (ctxOf (glat s i)).ref y = some (.VTypeDia Y)) {A : VarType}
+    {a₀ : Ann A} (bd : Term σ ((ctxOf (glat s i)).diaIn y).boxIn A a₀) {a : Ann A}
+    (t : Term σ (ctxOf (glat s i)) A a)
+    (IH : ∀ (K : ℕ) (φ : WFF σ (ctxOf (glat s K)) 0),
+      φ.size < ((OutLeg.pos y hy : OutLeg (ctxOf (glat s i))).back hS bd t : WFF σ _ 0).size →
+        ((cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s K) φ ↔ φ ∈ (gw hM₀ s).M K))
+    (h : (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s i)
+      ((OutLeg.pos y hy : OutLeg (ctxOf (glat s i))).back hS bd t : WFF σ _ 0)) :
+    ((OutLeg.pos y hy : OutLeg (ctxOf (glat s i))).back hS bd t : WFF σ _ 0) ∈ (gw hM₀ s).M i := by
+  have hT := hX.bT (hX.bS hS)
+  have hSh : ModalSys.shaped = true := ModalSys.shaped_of_T hT
+  by_cases hA : A.diaFree = true
+  · exact mem_back_of_sat_diaFreeC hX hS (.pos y hy) hA bd t IH h
+  have hsz := BData.size_back_ge hS (.pos y hy) bd t
+  change (cmodel hF hM₀ hX).Backs .pos _ _ at h
+  rw [interp_ccanon hX (Term.diatm y hy (Term.boxtm bd)) (Model.Env.Agree.refl' _)
+    (Ctx.Presented.noProjLast _)] at h
+  change cRet hM₀ hX (cTag hM₀ hX .pos _) (cData hM₀ hX .pos _).1 (cData hM₀ hX .pos _).2 _ at h
+  rcases h with ⟨-, -, hA' | ⟨hS', i', L, c, ct, a', t', hmem, hdata, htag, hval⟩⟩
+  · exact absurd hA' hA
+  revert c ct hmem hdata htag
+  cases L with
+  | nec =>
+      intro c ct _ _ htag
+      have htag' : cTag hM₀ hX .pos (ctoDom hM₀ hX _ s (cden hM₀ hX s i (Ctx.Le.refl _)
+          (Term.diatm y hy (Term.boxtm bd))) (cdefinable_den hX _ _)) = none := htag.symm
+      simp [cTag, hSh] at htag'
+  | pos =>
+      intro c ct
+      cases ct with
+      | diatm y' hy' u =>
+          cases u with
+          | boxtm bd' =>
+              intro hmem hdata htag
+              have hsh : crawShape hT (cden hM₀ hX s i' (Ctx.Le.refl _)
+                    (Term.diatm y' hy' (Term.boxtm bd'))) =
+                  crawShape hT (cden hM₀ hX s i (Ctx.Le.refl _)
+                    (Term.diatm y hy (Term.boxtm bd))) := by
+                simp only [cTag, dif_pos hSh] at htag
+                exact Option.some.inj htag
+              have hann := ann_eq_of_crawShapeL hX hT _ _ hsh
+              obtain ⟨rfl, hbd⟩ := Ann.dia.inj hann
+              obtain rfl := Ann.box.inj hbd
+              obtain ⟨-, hval'⟩ := Sigma.mk.inj_iff.mp hdata
+              have hfun := eq_of_heq hval'
+              have hraw : cden hM₀ hX s i' (Ctx.Le.refl _) (Term.diatm y' hy' (Term.boxtm bd')) =
+                  cden hM₀ hX s i (Ctx.Le.refl _) (Term.diatm y' hy (Term.boxtm bd)) :=
+                CRPos.congr_cont (funext fun a₁ => ctoDom_inj hX ((cmodel hF hM₀ hX).nec_inj
+                  (funext fun b => congrFun (congrFun hfun a₁) b))) fun _ => rfl
+              have hc := ctoDom_congr (hM₀ := hM₀) hX hraw (cdefinable_den hX _ _)
+                (cdefinable_den hX _ _)
+              have hv : ctoDom hM₀ hX A s (cden hM₀ hX s i' (Ctx.Le.refl _) t')
+                    (cdefinable_den hX _ _) =
+                  ctoDom hM₀ hX A s (cden hM₀ hX s i (Ctx.Le.refl _) t)
+                    (cdefinable_den hX _ _) := by
+                rw [hval, interp_ccanon hX t (Model.Env.Agree.refl' _)
+                  (Ctx.Presented.noProjLast _)]
+              obtain rfl := ann_eq_of_toDomC hX hT _ _ hv
+              have hK : i ≤ max i i' := le_max_left _ _
+              have hK' : i' ≤ max i i' := le_max_right _ _
+              have hmc := (IH _ _ (by
+                rw [WFF.size_eqRec]; simp only [VarType.eqRecSize] at hsz ⊢; omega)).mp
+                (sat_eqRec_liftC hX hK' hK _ _ hc)
+              have hmv := (IH _ _ (by rw [WFF.size_eqRec]; omega)).mp
+                (sat_eqRec_liftC hX hK' hK _ _ hv)
+              refine (BWorld.mem_lift hK).mpr (BWorld.mem_of_provable (Δ := [_, _, _])
+                (fun ψ hψ => by
+                  rcases List.mem_cons.mp hψ with rfl | hψ
+                  · exact (BWorld.mem_lift hK').mp hmem
+                  rcases List.mem_cons.mp hψ with rfl | hψ
+                  · exact hmc
+                  · rw [List.mem_singleton.mp hψ]; exact hmv)
+                ⟨Proof.back_eq hS .pos _ _ _ (Proof.back_eqC hS .pos _ _ _
+                  (Proof.lookup List.mem_cons_self)
+                  (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self)))
+                  (Proof.lookup (List.mem_cons_of_mem _
+                    (List.mem_cons_of_mem _ List.mem_cons_self)))⟩)
+
 /-! ## The truth lemma -/
 
 /-- ⭐**The truth lemma below a size, at every world and stage.** -/
@@ -939,7 +1039,34 @@ theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
                   rw [WFF.size_eqRec]; simp only [WFF.size] at hφ; omega))
       | back hB L c t =>
           cases L with
-          | pos => exact absurd (hNS.symm.trans hB) (by decide)
+          | pos =>
+              cases c with
+              | diatm y hy u =>
+                  cases u with
+                  | boxtm bd =>
+                      obtain ⟨Y, hr⟩ := id hy
+                      have hle : ((OutLeg.pos y hy : OutLeg (ctxOf (glat s i))).back hB bd t :
+                          WFF σ _ 0).size ≤ n := Nat.le_of_lt_succ hφ
+                      refine ⟨fun h => mem_back_of_sat_posC hX hB hy bd t (fun K ψ hψ =>
+                        ctruth_lt hX hNS n s K ψ (Nat.lt_of_lt_of_le hψ hle)) h, fun hm => ?_⟩
+                      have hdia : (OutLeg.pos y hy : OutLeg (ctxOf (glat s i))).dia
+                          (.top : WFF σ _ 0) ∈ (gw hM₀ s).M i :=
+                        BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by
+                          rw [List.mem_singleton.mp hψ]
+                          exact hm)
+                          ⟨Proof.back_ne hB (.pos y hy) bd t (Proof.lookup List.mem_cons_self)⟩
+                      have hsz := BData.size_back_ge hB (.pos y hy) bd t
+                      have hs3 := BData.size_dia_top (σ := σ) (OutLeg.pos y hy :
+                        OutLeg (ctxOf (glat s i)))
+                      obtain ⟨b, -⟩ := (OutLeg.sat_dia _ (.pos y hy) _).mp
+                        ((ctruth_lt hX hNS n s i _ (by omega)).mpr hdia)
+                      change (cmodel hF hM₀ hX).Backs .pos _ _
+                      rw [interp_ccanon hX (Term.diatm y hy (Term.boxtm bd))
+                        (Model.Env.Agree.refl' _) (Ctx.Presented.noProjLast _),
+                        interp_ccanon hX t (Model.Env.Agree.refl' _)
+                          (Ctx.Presented.noProjLast _)]
+                      exact cRet_of_mem_pos hM₀ hX hB s i hr bd t hm
+                        ⟨b.1, (ccanon_mem_iff hX s i hy.choose_spec b.1).mp b.2⟩
           | nec =>
               cases c with
               | boxtm u =>

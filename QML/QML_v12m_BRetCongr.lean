@@ -209,7 +209,7 @@ theorem ret_map {A C : VarType} {b : Ann C}
     `◇`-free content, whose carrier and value are denotable and whose atom is then true, so in the
     theory (the truth lemma). -/
 theorem toAtom (hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set (B.frame.Acc s)}
-    {ℓ : Option (B.model.frame.Leaf B.model.RootPoss s)}
+    {ℓ : B.model.CarrierTag A s}
     {val : (x : S) → (y : B.frame.Acc x.1.1) → B.frame.Dom A y.1} {o : B.frame.Dom A s}
     (hc : B.model.IsCarrierData ℓ S val) (h : B.Ret S val o) :
     ∃ (i : ℕ) (L : BLeg) (c : Ann (L.carrier A)) (ct : Term σ ((B.w s).ctx i) (L.carrier A) c)
@@ -242,11 +242,11 @@ theorem toAtom (hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set (
     a common stage, of one leg (`leg_unique`), so `back_pair` pairs them and the paired atom is
     true with the paired data. -/
 theorem ret_pair (hS : ModalSys.BStrong = true) {A C : VarType} {s : B.W}
-    {ℓ : Option (B.model.frame.Leaf B.model.RootPoss s)}
+    {ℓ : B.model.CarrierTag A s} {ℓ' : B.model.CarrierTag C s}
     {S : Set (B.frame.Acc s)} {val : (x : S) → (y : B.frame.Acc x.1.1) → B.frame.Dom A y.1}
     {val' : (x : S) → (y : B.frame.Acc x.1.1) → B.frame.Dom C y.1} {o : B.frame.Dom A s}
     {o' : B.frame.Dom C s} (hc : B.model.IsCarrierData ℓ S val)
-    (hc' : B.model.IsCarrierData ℓ S val')
+    (hc' : B.model.IsCarrierData ℓ' S val')
     (h : B.Ret S val o) (h' : B.Ret S val' o') :
     B.Ret (A := .VTypeProd A C) S (fun x y => ((val x y, val' x y) :
       B.frame.Dom (.VTypeProd A C) y.1)) ((o, o') : B.frame.Dom (.VTypeProd A C) s) := by
@@ -310,7 +310,7 @@ theorem retCongr (hS : ModalSys.BStrong = true)
     intro _ _ _ sh _ _ _ _ _ h
     exact ret_map hST sh h
   pair := by
-    intro _ _ _ _ _ _ _ _ _ hc hc' h h'
+    intro _ _ _ _ _ _ _ _ _ _ _ hc hc' h h'
     exact ret_pair hST hS hc hc' h h'
   keep := by
     intro _ hF

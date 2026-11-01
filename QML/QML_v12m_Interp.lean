@@ -298,20 +298,27 @@ def carrierData : (L : BLeg) → {A : VarType} → {w : M.frame.W} → M.frame.D
       ⟨(M.posEval (c : M.frame.Pos (.VTypeBox A) _)).1,
         fun a b => M.necEval ((M.posEval (c : M.frame.Pos (.VTypeBox A) _)).2 a) b⟩
 
-/-- A possible object's witness: the label of its shape, when it has one. -/
-noncomputable def posTag {A : VarType} {w : M.frame.W} (p : M.frame.Pos A w) :
-    Option (M.frame.Leaf M.RootPoss w) :=
-  if h : ModalSys.shaped = true then some (M.shape h p).label else none
+variable (M) in
+/-- A carrier's tag: the shape of a possible carrier, `none` of a necessary one. -/
+abbrev CarrierTag (A : VarType) (w : M.frame.W) : Type _ :=
+  Option (Shp (M.frame.Leaf M.RootPoss w) (.VTypeDia (.VTypeBox A)))
 
-/-- ⭐What `carrierData` leaves out of a carrier: its witness.  A leg's arrows and values say
-    everything else, a leg being nonempty wherever `Ret` holds (`Model.Ret_fwd`). -/
+/-- A possible object's shape, when it has one. -/
+noncomputable def posTag {A : VarType} {w : M.frame.W} (p : M.frame.Pos A w) :
+    Option (Shp (M.frame.Leaf M.RootPoss w) (.VTypeDia A)) :=
+  if h : ModalSys.shaped = true then some (M.shape h p) else none
+
+/-- ⭐What `carrierData` leaves out of a carrier: its shape.  A possible object is its section and
+    its shape (docs §10.35), so data and tag are the whole carrier.  The contents do not
+    determine the shape: under T + 4 a content is a realised value, which may be named by any
+    term with one `Here` (docs, "the tag is too small"). -/
 noncomputable def carrierTag : (L : BLeg) → {A : VarType} → {w : M.frame.W} →
-    M.frame.Dom (L.carrier A) w → Option (M.frame.Leaf M.RootPoss w)
+    M.frame.Dom (L.carrier A) w → M.CarrierTag A w
   | .nec, _, _, _ => none
   | .pos, A, _, c => M.posTag (c : M.frame.Pos (.VTypeBox A) _)
 
-/-- Round-trip data that is some carrier's, with that carrier's witness. -/
-def IsCarrierData {A : VarType} {w : M.frame.W} (ℓ : Option (M.frame.Leaf M.RootPoss w))
+/-- Round-trip data that is some carrier's, with that carrier's shape. -/
+def IsCarrierData {A : VarType} {w : M.frame.W} (ℓ : M.CarrierTag A w)
     (S : Set (M.frame.Acc w))
     (val : (a : S) → (b : M.frame.Acc a.1.1) → M.frame.Dom A b.1) : Prop :=
   ∃ (L : BLeg) (c : M.frame.Dom (L.carrier A) w),

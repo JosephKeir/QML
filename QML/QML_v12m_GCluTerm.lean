@@ -496,11 +496,12 @@ theorem cInvW_canon (hX : CluFlags) (hSh : ModalSys.shaped = true) (w : GW hF M�
   exact (crawShape_cden hX hM₀ hT w k _ _).trans
     (congrArg (annC w) (mapIdx_eta_preIx hko w hpp hk'))
 
-/-- ⭐⭐**Under T, one denotation means one annotation.** -/
-theorem ann_eq_of_cden (hX : CluFlags) (hT : ModalSys.T = true) {s : GW hF M₀} {i : ℕ}
+/-- ⭐⭐**Under T, one shape means one annotation.** -/
+theorem ann_eq_of_crawShape (hX : CluFlags) (hT : ModalSys.T = true) {s : GW hF M₀} {i : ℕ}
     {A : VarType} {a a' : Ann A} (t : Term σ (ctxOf (glat s i)) A a)
     (t' : Term σ (ctxOf (glat s i)) A a')
-    (h : cden hM₀ hX s i (Ctx.Le.refl _) t = cden hM₀ hX s i (Ctx.Le.refl _) t') : a = a' := by
+    (h : crawShape hT (cden hM₀ hX s i (Ctx.Le.refl _) t) =
+      crawShape hT (cden hM₀ hX s i (Ctx.Le.refl _) t')) : a = a' := by
   have hSh := ModalSys.shaped_of_T hT
   have hI := cInvW_canon (hM₀ := hM₀) hX hSh s i
   refine ann_eq_of_termShpW hX.five hX.fourS hX.fourSW hM₀ hT hI t t' ?_
@@ -508,6 +509,13 @@ theorem ann_eq_of_cden (hX : CluFlags) (hT : ModalSys.T = true) {s : GW hF M₀}
     termShp_annW hX.five hX.fourS hX.fourSW hM₀ hT hI t',
     ← crawShape_cden hX hM₀ hT s i (Ctx.Le.refl _) t,
     ← crawShape_cden hX hM₀ hT s i (Ctx.Le.refl _) t', h]
+
+/-- ⭐⭐**Under T, one denotation means one annotation.** -/
+theorem ann_eq_of_cden (hX : CluFlags) (hT : ModalSys.T = true) {s : GW hF M₀} {i : ℕ}
+    {A : VarType} {a a' : Ann A} (t : Term σ (ctxOf (glat s i)) A a)
+    (t' : Term σ (ctxOf (glat s i)) A a')
+    (h : cden hM₀ hX s i (Ctx.Le.refl _) t = cden hM₀ hX s i (Ctx.Le.refl _) t') : a = a' :=
+  ann_eq_of_crawShape hX hT t t' (congrArg (crawShape hT) h)
 
 /-- An environment's reading at a declared address is its raw value, where no projection is last. -/
 theorem cenv_ref_raw (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} (env : (cmodel hF hM₀ hX).Env Γ w)
