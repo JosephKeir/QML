@@ -363,28 +363,28 @@ structure FarUp (hX : CluFlags) (s : GW hF M₀) {i I : ℕ} (hI : i ≤ I)
         (Term.mono (gle hM₀ v hK).boxIn c)))⟩
 
 /-- The plain leg's far world, from a later stage. -/
-noncomputable def farUpNec (hX : CluFlags) (s : GW hF M₀) {i I : ℕ} (hI : i ≤ I)
-    (a : CAcc hF M₀) : FarUp hM₀ hX s hI .nec a.1 (farNec hM₀ hX s i a).C where
-  L' := (farNec hM₀ hX s I a).L
-  C' := (farNec hM₀ hX s I a).C
+noncomputable def farUpNec (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀) {i I : ℕ}
+    (hI : i ≤ I) (a : CAcc hF M₀) : FarUp hM₀ hX s hI .nec a.1 (farNec hM₀ hX hT s i a).C where
+  L' := (farNec hM₀ hX hT s I a).L
+  C' := (farNec hM₀ hX hT s I a).C
   stage := by
     have hRi : rstg s i ≤ max (rstg s i) (rstg s I) := le_max_left _ _
     have hRI : rstg s I ≤ max (rstg s i) (rstg s I) := le_max_right _ _
-    refine ⟨_, pstg_monotone hM₀ _ _ _ (pathOf_eq a.2.down) hRi,
-      pstg_monotone hM₀ _ _ _ (pathOf_eq a.2.down) hRI, fun u => ?_⟩
-    refine (sig_mono _ (preC_app hM₀ hX s i a u)).trans ?_
-    refine Eq.trans ?_ (sig_mono _ (preC_app hM₀ hX s I a _)).symm
-    exact (pTr_mono hM₀ _ _ _ _ (pathOf_ok a.2.down) hRi _).trans
-      ((pTr_sigma hM₀ _ _ _ _ (pathOf_ok a.2.down) _
+    refine ⟨_, pstg_monotone hM₀ _ _ _ (cpath_eq a.2.down) hRi,
+      pstg_monotone hM₀ _ _ _ (cpath_eq a.2.down) hRI, fun u => ?_⟩
+    refine (sig_mono _ (preC_app hM₀ hX s i a _ u)).trans ?_
+    refine Eq.trans ?_ (sig_mono _ (preC_app hM₀ hX s I a _ _)).symm
+    exact (pTr_mono hM₀ _ _ _ _ (cpathOk hT a.2.down) hRi _).trans
+      ((pTr_sigma hM₀ _ _ _ _ (cpathOk hT a.2.down) _
         (preTB_lift hM₀ hX s hI hRi hRI u).symm).trans
-        (pTr_mono hM₀ _ _ _ _ (pathOf_ok a.2.down) hRI _).symm)
-  dia_hole u ψ h := (farNec hM₀ hX s I a).dia_of _ (by
-    rw [(farNec hM₀ hX s I a).trW_hole]
+        (pTr_mono hM₀ _ _ _ _ (cpathOk hT a.2.down) hRI _).symm)
+  dia_hole u ψ h := (farNec hM₀ hX hT s I a).dia_of _ (by
+    rw [(farNec hM₀ hX hT s I a).trW_hole]
     exact h)
   kept₂ c hJI := by
-    obtain ⟨L', hL, hK, e⟩ := kept2_path hM₀ hX s I a.1 _ (pathOf_eq a.2.down)
-      (pathOf_ok a.2.down) c hJI
-    exact ⟨L', hL, hK, (sig_mono _ (preC_app hM₀ hX s I a _)).trans e⟩
+    obtain ⟨L', hL, hK, e⟩ := kept2_path hM₀ hX s I a.1 _ (cpath_eq a.2.down)
+      (cpathOk hT a.2.down) c hJI
+    exact ⟨L', hL, hK, (sig_mono _ (preC_app hM₀ hX s I a _ _)).trans e⟩
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 /-- An arrow of a witness's extent is one at a later context. -/
@@ -419,7 +419,7 @@ noncomputable def farUpPos (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M
       have hxI := rorig_ref hX hM₀ s I hy'
       have hxR : ∃ X, (ctxOf (glat (groot hF M₀) (max (rstg s i) (rstg s I)))).ref (rorig s y) =
           some (.VTypeDia X) := hx₀.imp fun _ e => (gle hM₀ (groot hF M₀) hRi).ref e
-      have he := pathOf_eq a.1.2.down
+      have he := cpath_eq a.1.2.down
       have hyi := kw_decl hM₀ (groot hF M₀) a.1.1 _ he (rstg s i) hx₀
       have hyI := kw_decl hM₀ (groot hF M₀) a.1.1 _ he (rstg s I) hxI
       have hyL := kw_decl hM₀ (groot hF M₀) a.1.1 _ he _ hxR
@@ -442,7 +442,7 @@ noncomputable def farUpPos (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M
       rw [(farPos hM₀ hX hT s I hy' ⟨a.1, hm⟩).trW_hole]
       exact h)
     kept₂ := fun c hJI => by
-      obtain ⟨L', hL, hK, e⟩ := kept2_real hM₀ hX hT s I hy' a.1.1 _ (pathOf_eq a.1.2.down)
+      obtain ⟨L', hL, hK, e⟩ := kept2_real hM₀ hX hT s I hy' a.1.1 _ (cpath_eq a.1.2.down)
         (real_of_ext hM₀ hX hT s i hy.choose_spec a) c hJI
       refine ⟨L', hL, hK, Eq.trans ?_ e⟩
       exact sig_mono _ (real_app hM₀ (groot hF M₀) _ _ (rstg s I) (rorig s y) _ _ _ _).symm }
@@ -463,9 +463,9 @@ theorem exists_far (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀) (I 
           (gw hM₀ (groot hF M₀)).M (rstg s I) :=
         fun h => ((gw hM₀ s).mcs I).neg_mem_iff.mp hmem (hpath.mp h)
       obtain ⟨t, ⟨c, hc⟩, -, hneg⟩ := glex hM₀ (groot hF M₀) (rstg s I) _ hn'
-      have hR : GR (groot hF M₀) t := ⟨[c], pathOk_cons, hc⟩
-      refine ⟨⟨t, ⟨hR⟩⟩, farNec hM₀ hX s I ⟨t, ⟨hR⟩⟩, ?_,
-        fun hI => ⟨farUpNec hM₀ hX s hI ⟨t, ⟨hR⟩⟩⟩⟩
+      have hR : CR t := ⟨[c], .inl pathOk_cons, hc⟩
+      refine ⟨⟨t, ⟨hR⟩⟩, farNec hM₀ hX hT s I ⟨t, ⟨hR⟩⟩, ?_,
+        fun hI => ⟨farUpNec hM₀ hX hT s hI ⟨t, ⟨hR⟩⟩⟩⟩
       have key : ∀ (P : List ℕ) (he : t.1 = nodeOf (groot hF M₀).1 P) (hok : PathOk P), P = [c] →
           pTrW hM₀ (groot hF M₀) t P he hok (rstg s I) (preWP (rpre hX hM₀ s I) χ) ∈
             (gw hM₀ t).M (pstg (groot hF M₀) t P he (rstg s I)) := by
@@ -476,16 +476,16 @@ theorem exists_far (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀) (I 
             (preWP (rpre hX hM₀ s I) χ).neg).neg ∈ (gw hM₀ t).M _ := hneg
         rw [pTrW_neg hM₀] at hneg'
         exact ((gw hM₀ t).mcs _).neg_mem_iff.mp hneg' (((gw hM₀ t).mcs _).neg_mem_iff.mpr hnot)
-      exact key _ _ _ (pathOf_of hR hc)
+      exact key _ _ _ (cpath_of hR hc)
   | pos y hy =>
       have hpath := dia_pathO_iff hX.five hX.fourS hX.fourSW hM₀ (rpath s) (groot hF M₀) s
         (rpath_eq s) I hy.choose_spec χ
       obtain ⟨t, c, hc, hrl, hwd, hdecl, hR₂⟩ := cdia_mem_child hX hT s I hy.choose_spec χ
         (hpath.mpr hmem)
-      have hR : GR (groot hF M₀) t := ⟨[c], pathOk_cons, hc⟩
+      have hR : CR t := ⟨[c], .inl pathOk_cons, hc⟩
       have hmt : (⟨t, ⟨hR⟩⟩ : CAcc hF M₀) ∈
           ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s I).ref y hy.choose_spec)).1 :=
-        (ccanon_mem_iff hX s I hy.choose_spec _).mpr ((gmem_path hR (P := [c]) hc).mpr (Or.inl hrl))
+        (ccanon_mem_iff hX s I hy.choose_spec _).mpr ((cmem_path hR (P := [c]) hc).mpr (Or.inl hrl))
       refine ⟨⟨⟨t, ⟨hR⟩⟩, hmt⟩, farPos hM₀ hX hT s I hy ⟨⟨t, ⟨hR⟩⟩, hmt⟩, ?_, fun {I'} hI => ?_⟩
       · have key : ∀ (P : List ℕ) (he : t.1 = nodeOf (groot hF M₀).1 P), P = [c] →
             ∀ (hrl' : (gw hM₀ t).Realised (kw (groot hF M₀) t P he (rorig s y))),
@@ -496,7 +496,7 @@ theorem exists_far (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀) (I 
           intro P he e hrl'
           subst e
           exact hR₂
-        exact key _ _ (pathOf_of hR hc) _
+        exact key _ _ (cpath_of hR hc) _
       · have hy' : ∃ Y, (ctxOf (glat s I')).ref y = some (.VTypeDia Y) :=
           hy.imp fun _ e => (gle hM₀ s hI).ref e
         exact ⟨farUpPos hM₀ hX hT s hI hy ⟨⟨t, ⟨hR⟩⟩, hmt⟩ hy'
@@ -625,7 +625,7 @@ theorem comp_home (hX : CluFlags) (hT : ModalSys.T = true) (s v : GW hF M₀)
       ctoDom hM₀ hX _ s (cden hM₀ hX s I (Ctx.Le.refl _) (Term.collapse
         (Ctx.collapses_boxIn_self hT _) (Term.mono (gle hM₀ s hJI).boxIn
           (homeT hM₀ hX s v (compVal E₀ q h).2).2))) (cdefinable_den hX _ _) := by
-  have hR : GR (groot hF M₀) s := (carrows hF M₀).refl hT s
+  have hR : CR s := (carrows hF M₀).refl hT s
   have e : Model.interp ((ccanonEnv hM₀ hX v K).boxPush ⟨s, ⟨r⟩⟩) (compVal E₀ q h).2 =
       (cmodel hF hM₀ hX).compRead hT (.VTypeBox A) (.here :: q)
         (Model.interp (ccanonEnv hM₀ hX v K) (.boxtm E₀)) r :=
@@ -735,7 +735,7 @@ theorem sat_ret_of_memC (hX : CluFlags) (hS : ModalSys.BStrong = true) {s : GW h
     (hmem : O.retS hS (.nec (.boxC A cs h)) t Φ ∈ (gw hM₀ s).M i) :
     (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s i)
       (O.retS hS (.nec (.boxC A cs h)) t Φ : WFF σ _ 0) := by
-  have hT := hX.bT (hX.bS hS)
+  have hT := hX.bT hS
   obtain ⟨j, hij, b₀, b, hB, hD⟩ := (gw hM₀ s).ret_term hS hT hF O h t Φ hmem
   rw [WFF.instantiate_packedBody_boxC hS hF h] at hD
   obtain ⟨a₀, F, hm, hU⟩ := exists_far hM₀ hX hT s j _ _ hD
@@ -761,7 +761,7 @@ theorem sat_ret_of_memC (hX : CluFlags) (hS : ModalSys.BStrong = true) {s : GW h
     exact ctoDom_congr hX (cden_sigma hX _ hB₀) _ _
   have hsat := (Model.sat_instantiate _ O₁.noProjLast _ _ _).mp ((F.sat_trW _).mpr
     ((IH _ _ _ (by rw [F.size_trW, WFF.size_instantiate, WFF.size_mono])).mpr hm₁))
-  have hR : GR (groot hF M₀) s := (carrows hF M₀).refl hT s
+  have hR : CR s := (carrows hF M₀).refl hT s
   refine (Model.sat_mono (ccanonEnv_le hX s hij) _).mp ?_
   rw [OutLeg.mono_retS]
   refine (OutLeg.sat_retS (M := cmodel hF hM₀ hX) (d := 0) hS (ccanonEnv hM₀ hX s j) O₁

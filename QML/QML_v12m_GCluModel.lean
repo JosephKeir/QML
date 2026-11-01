@@ -34,7 +34,7 @@ variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
 theorem CluFlags.T_of_shaped (hX : CluFlags) (h : ModalSys.shaped = true) : ModalSys.T = true := by
   by_cases hB : ModalSys.BStrong = true
-  · exact hX.bT (hX.bS hB)
+  · exact hX.bT hB
   · simpa [ModalSys.shaped, hB] using h
 
 /-! ## Moving shapes between anchors -/
@@ -170,13 +170,45 @@ theorem shWF_rean (t : GW hF M₀) {g : GW hF M₀} : ∀ {A : VarType} (lw : Li
 
 variable (hM₀ : Theory.IsMCS M₀)
 
+/-- ⭐**Weak B on the cluster**: if the root reaches anything, it reaches everything.  Under T by
+    `rpath`.  With T off and `¬□⊥ ∈ M₀` the root has its self-arrow.  With `□⊥ ∈ M₀` a first step
+    of a path would be a child holding `⊥`, so the root reaches nothing: KB5's dead end. -/
+theorem csymm (hM₀ : Theory.IsMCS M₀) (hX : CluFlags) (hB : ModalSys.B = true) {w v : GW hF M₀}
+    (hv : CR v) : CR w := by
+  by_cases hT : ModalSys.T = true
+  · exact (carrows hF M₀).refl hT w
+  have hT' : ModalSys.T = false := Bool.eq_false_iff.mpr hT
+  by_cases hne : (WFF.box (Γ := ctxOf l₀) .bot).neg ∈ M₀
+  · have hl : GNetSt.LoopOn M₀ := ⟨hB, ⟨hF, hX.five, hX.fourS, hX.fourSW, hT'⟩, hne⟩
+    rcases hp : rpath w with _ | ⟨c, P⟩
+    · exact ⟨[], .inr ⟨rfl, hl⟩, by have := rpath_eq w; rwa [hp] at this⟩
+    · exact ⟨rpath w, .inl (by rw [hp]; exact pathOk_cons), rpath_eq w⟩
+  · exfalso
+    have hbot : WFF.box (Γ := ctxOf l₀) .bot ∈ M₀ := by
+      by_contra hn
+      exact hne (hM₀.neg_mem_iff.mpr hn)
+    obtain ⟨P, hP, h⟩ := hv
+    cases P with
+    | nil =>
+        rcases hP with hP | hP
+        · exact hT hP.T_of_nil
+        · exact hne hP.2.2.2
+    | cons c P =>
+        have hψ : WFF.box (Γ := (ctxOf (glat (groot hF M₀) 0))) .bot ∈
+            ((gnet hF M₀ (gbirth hF M₀ (groot hF M₀).2 + 0)).st []).M :=
+          ((ext_gnet hF hM₀ (Nat.zero_le _)).grows [] trivial).sub _ hbot
+        have ht := gltr hM₀ (s := groot hF M₀) (t := stepW (groot hF M₀) c (born_step h))
+          ⟨c, rfl⟩ 0 .bot hψ
+        exact ((good_gnet hF hM₀ _).mcs _
+          (live_gbirth hF hM₀ (born_step h) (Nat.le_add_right _ _))).bot_not_mem ht
+
 variable (hF) in
 /-- ⭐**The cluster frame.** -/
 noncomputable def cframe (hX : CluFlags) : Frame.{0, 0} σ where
   toArrows := carrows hF M₀
   actual := groot hF M₀
-  serial := fun hD _ => gserial hM₀ hD (groot hF M₀)
-  symm := fun hB {w _} _ => ⟨(carrows hF M₀).refl (hX.bT hB) w⟩
+  serial := fun hD _ => (gserial hM₀ hD (groot hF M₀)).imp fun _ ⟨h⟩ => ⟨CR.of_GR h⟩
+  symm := fun hB {_ v} h => ⟨csymm hM₀ hX hB (v := v) h⟩
   homeUnique := fun _ => ⟨fun _ _ => rfl⟩
   side := fun _ {_ _ _} _ b => b
   side_inj := fun _ {_ _ _ _} _ _ _ h => h
@@ -395,7 +427,7 @@ theorem cposSerial (hX : CluFlags) (hDS : ModalSys.DStrong = true) (s : GW hF M�
             WFF.dia x ⟨X, hX'⟩ .top := rfl
         rw [← e]
         exact hmem)
-      have hR : GR (groot hF M₀) t' := ⟨[c], pathOk_cons, hc⟩
+      have hR : CR t' := ⟨[c], .inl pathOk_cons, hc⟩
       refine ⟨⟨cden hM₀ hX (groot hF M₀) j (Ctx.Le.refl _) (.diatm x hx u),
           cdefinable_dia_of_root hX s _ (cdefinable_den hX _ _)⟩, ⟨⟨⟨t', ⟨hR⟩⟩, ?_⟩⟩⟩
       by_cases hT : ModalSys.T = true
@@ -403,8 +435,8 @@ theorem cposSerial (hX : CluFlags) (hDS : ModalSys.DStrong = true) (s : GW hF M�
             GMem hM₀ (groot hF M₀) t' P h x := by
           rintro _ h rfl
           exact .inl (grealised_wit hM₀ hT ⟨c, hc⟩ hk j hX')
-        exact key _ _ (pathOf_of hR hc)
-      · exact .inr ⟨Bool.eq_false_iff.mpr hT, inExt_pathOf hR (P := [c]) (h := hc) hk⟩
+        exact key _ _ (cpath_of hR hc)
+      · exact .inr ⟨Bool.eq_false_iff.mpr hT, inExt_cpath hR (P := [c]) (h := hc) hk⟩
 
 /-- ⭐**Strong 4 on the carriers**: along any arrow, an object of a liftable type at its end is
     the object itself kept at its source — definable there by R4. -/
@@ -546,7 +578,7 @@ theorem cposRet_exists (hX : CluFlags) {A : VarType} {s : GW hF M₀} (hT : Moda
   obtain rfl : hr.data.A = A := by
     have := (hr.data.hdeclOf i' ⟨A, hy⟩).symm.trans hy
     simpa using this
-  have hR : GR (groot hF M₀) s := (carrows hF M₀).refl hT s
+  have hR : CR s := (carrows hF M₀).refl hT s
   have hm := (cden_own_mem hX hM₀ hT s hr.data.i₀ hr.data.hd₀
     (Term.eta (.step y .dia) hr.data.A (Ctx.ref_diaIn_of hr.data.hd₀)) hR).mpr hr
   refine ⟨⟨cden hM₀ hX s hr.data.i₀ (Ctx.Le.refl _)
@@ -617,11 +649,11 @@ variable {hM₀} in
 /-- ⭐A `□`-term's value along a world's own arrow is the term collapsed. -/
 theorem cden_boxtm_own (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀) (i : ℕ)
     {A : VarType} {a : Ann A} (b : Term σ (ctxOf (glat s i)).boxIn A a)
-    (hR : GR (groot hF M₀) s) :
+    (hR : CR s) :
     cden hM₀ hX s i (Ctx.Le.refl _) (.boxtm b) ⟨s, ⟨hR⟩⟩ =
       cden hM₀ hX s i (Ctx.Le.refl _) (Term.collapse (Ctx.collapses_boxIn_self hT _) b) := by
   simp only [cden]
-  rw [cden_collapse hX hM₀ hT s i, Term.mono_refl]
+  rw [dif_pos (cpathOk hT _), cden_collapse hX hM₀ hT s i, Term.mono_refl]
 
 /-- ⭐**Every object comes back** (`Model.backRet_exists`): `B_strong`'s carrier names a value, and
     the kept carrier of that value (`Proof.back_kept`) makes the round trip on raw objects, a kept
@@ -632,7 +664,7 @@ theorem cbackRet_exists (hX : CluFlags) (hS : ModalSys.BStrong = true) {A : VarT
     ∃ c : (cframe hF hM₀ hX).Nec (.VTypeBox A) s,
       cRet hM₀ hX none (Set.univ : Set ((cframe hF hM₀ hX).Acc s))
         (fun a b => cnecEval hM₀ hX (cnecEval hM₀ hX c a.1) b) o := by
-  have hT := hX.bT (hX.bS hS)
+  have hT := hX.bT hS
   obtain ⟨i, a, t, ht⟩ := cdefinable_fromDom hM₀ hX A s o
   have hdia : (OutLeg.nec : OutLeg (ctxOf (glat s i))).dia (.top : WFF σ _ 0) ∈ (gw hM₀ s).M i :=
     BWorld.mem_of_provable (Δ := []) (fun _ h => absurd h List.not_mem_nil) ⟨Proof.dia_top hT⟩
@@ -659,7 +691,7 @@ theorem cbackRet_exists (hX : CluFlags) (hS : ModalSys.BStrong = true) {A : VarT
     have hκ : cden hM₀ hX s j (Ctx.Le.refl _) κ =
         fun _ => cden hM₀ hX s j (Ctx.Le.refl _) (Term.boxtm n) :=
       cden_applyG hX (.dup hF) (Term.boxtm n) s j (Ctx.Le.refl _)
-    have hR : GR (groot hF M₀) s := (carrows hF M₀).refl hT s
+    have hR : CR s := (carrows hF M₀).refl hT s
     have hval : cden hM₀ hX s j (Ctx.Le.refl _) (Term.mono (gle hM₀ s hij) t) =
         cfromDom hM₀ hX A s o := (cden_lift hX hij t).trans ht
     refine ⟨⟨_, cdefinable_den hX _ _⟩, ⟨⟨⟨⟨s, ⟨hR⟩⟩, trivial⟩⟩, fun b => ⟨hR, ?_⟩,
@@ -680,7 +712,7 @@ theorem cposBack_exists (hX : CluFlags) (hS : ModalSys.BStrong = true)
     ∃ (p : (cframe hF hM₀ hX).Pos A v)
       (hm : (⟨w, ⟨b⟩⟩ : (cframe hF hM₀ hX).Acc v) ∈ (cposFull hM₀ hX p).1.1),
       cIndM hM₀ hX ((cposFull hM₀ hX p).1.2 ⟨⟨w, ⟨b⟩⟩, hm⟩) o := by
-  have hT := hX.bT (hX.bS hS)
+  have hT := hX.bT hS
   obtain ⟨p, hm, hp⟩ := cposRet_exists hM₀ hX hT (hX.bW hS hW) o
   exact ⟨⟨p.1, (cdefinable_dia_iff hX v p.1).mpr ((cdefinable_dia_iff hX w p.1).mp p.2)⟩, hm,
     fun _ => hp, fun hnT => absurd (hT.symm.trans hnT) (by decide)⟩

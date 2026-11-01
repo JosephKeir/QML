@@ -5,7 +5,7 @@ import QML.QML_v12m_BCompactness
 # QML v12m — completeness across the cube
 
 Every system with a canonical model, in one theorem.  `ModalSys.CubeSys` says which: 5 with 4 and
-both of 4's lifts, B with 5 only under T, B with 4 only with 5, and strong B with weak B.  In a
+both of 4's lifts, B with 4 only with 5, strong B with weak B, and with 5 only under T.  In a
 well-formed presented context such a system has the metatheorems: a valid sequent is provable
 (⭐`completenessCube`, and soundness with it, ⭐`provable_iff_validCube`), a consistent set is
 satisfiable (`model_existenceCube`), and strong completeness and compactness
@@ -16,7 +16,8 @@ arrow-based network with B and without 5 (`BArrow`, 4 off), and otherwise whatev
 picks.
 
 `ModalSys.S5`, every flag but strong B's, is one of them (`ModalSys.S5_cube`), and so is
-`ModalSys.S5Strong`, every flag (`ModalSys.S5Strong_cube`).
+`ModalSys.S5Strong`, every flag (`ModalSys.S5Strong_cube`).  So are KB5 and KDB5
+(`ModalSys.KB5_cube`, `ModalSys.KDB5_cube`), T off: the root has its self-arrow, or none is needed.
 -/
 
 namespace V12M
@@ -24,14 +25,14 @@ namespace V12M
 variable [ModalSys]
 
 /-- ⭐**The systems with a canonical model.**  Not a statement of what is coherent, but of what is
-    built: B with 5 without T (KB5, KDB5) and 5 without both lifts are still to come.  `strongT` is
+    built: strong B with 5 without T and 5 without both lifts are still to come.  `strongT` is
     `ModalSys.WCoh`, which the network and the cluster ask for. -/
 class ModalSys.CubeSys [ModalSys] : Prop where
   /-- 5 comes with 4 and both of 4's lifts. -/
   five_lifts : ModalSys.Five = true →
     ModalSys.Four = true ∧ ModalSys.FourStrong = true ∧ ModalSys.FourStrongW = true
-  /-- B with 5 comes with T: the cluster has weak B through the root's own arrow. -/
-  five_B : ModalSys.Five = true → ModalSys.B = true → ModalSys.T = true
+  /-- Strong B with 5 comes with T.  Weak B needs no T: the root has its self-arrow. -/
+  five_B : ModalSys.Five = true → ModalSys.BStrong = true → ModalSys.T = true
   /-- B with 4 comes with 5. -/
   four_B : ModalSys.B = true → ModalSys.Four = true → ModalSys.Five = true
   /-- Strong B comes with weak B, so with 4 it comes with 5 (`four_B`). -/
@@ -70,14 +71,45 @@ theorem ModalSys.S5Strong_cube : @ModalSys.CubeSys ModalSys.S5Strong :=
     strongB := fun _ => rfl
     strongT := fun _ _ => rfl }
 
+/-- KB5: weak B and 5, T and D off, with both of 4's lifts. -/
+def ModalSys.KB5 : ModalSys :=
+  { T := false, Four := true, TStrong := false, D := false, DStrong := false, B := true,
+    BStrong := false, BStrongW := false, FourStrong := true, FourStrongW := true,
+    Five := true, FiveStrong := true }
+
+omit [ModalSys] in
+/-- ⭐KB5 is in the cube. -/
+theorem ModalSys.KB5_cube : @ModalSys.CubeSys ModalSys.KB5 :=
+  letI := ModalSys.KB5
+  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+    five_B := fun _ h => (Bool.false_ne_true h).elim
+    four_B := fun _ _ => rfl
+    strongB := fun h => (Bool.false_ne_true h).elim
+    strongT := fun h => (Bool.false_ne_true h).elim }
+
+/-- KDB5: KB5 with D in both strengths. -/
+def ModalSys.KDB5 : ModalSys :=
+  { T := false, Four := true, TStrong := false, D := true, DStrong := true, B := true,
+    BStrong := false, BStrongW := false, FourStrong := true, FourStrongW := true,
+    Five := true, FiveStrong := true }
+
+omit [ModalSys] in
+/-- ⭐KDB5 is in the cube. -/
+theorem ModalSys.KDB5_cube : @ModalSys.CubeSys ModalSys.KDB5 :=
+  letI := ModalSys.KDB5
+  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+    five_B := fun _ h => (Bool.false_ne_true h).elim
+    four_B := fun _ _ => rfl
+    strongB := fun h => (Bool.false_ne_true h).elim
+    strongT := fun h => (Bool.false_ne_true h).elim }
+
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.CubeSys]
 
 /-- With 5 the cluster model applies. -/
 theorem cluFlags_of_cube (hV : ModalSys.Five = true) : GArrow.CluFlags :=
   have h := ModalSys.CubeSys.five_lifts hV
   ⟨hV, h.2.1, h.2.2, ModalSys.CubeSys.five_B hV, ModalSys.CubeSys.strongB,
-    fun hS hW => ModalSys.CubeSys.strongT hW
-      (ModalSys.CubeSys.five_B hV (ModalSys.CubeSys.strongB hS))⟩
+    fun hS hW => ModalSys.CubeSys.strongT hW (ModalSys.CubeSys.five_B hV hS)⟩
 
 /-- With B and without 5 the network applies. -/
 theorem noFour_of_cube (hV : ¬ ModalSys.Five = true) (hB : ModalSys.B = true) : ModalSys.NoFour :=

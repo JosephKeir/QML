@@ -34,43 +34,79 @@ variable (hM₀ : Theory.IsMCS M₀)
 /-! ## Pushing from a world -/
 
 /-- Pushing from a world into `□` along an arrow: the world's preimage, then the root's path. -/
-noncomputable def preC (hX : CluFlags) (w : GW hF M₀) (k : ℕ) (a : CAcc hF M₀) :
+noncomputable def preC (hX : CluFlags) (w : GW hF M₀) (k : ℕ) (a : CAcc hF M₀)
+    (hp : PathOk (cpath a.2.down)) :
     GTr σ (ctxOf (glat w k)).boxIn
-      (ctxOf (glat a.1 (pstg (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down)
+      (ctxOf (glat a.1 (pstg (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down)
         (rstg w k)))) :=
   .sub (eS σ (ctxOf (glat (groot hF M₀) (rstg w k))).boxIn (ofRen (preI (rorig w))))
     (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI (rpre hX hM₀ w k))))
     (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI (rpre hX hM₀ w k))))
-    (ptrC hM₀ (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (pathOf_ok a.2.down)
-      (rstg w k))
+    (ptrC hM₀ (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down) hp (rstg w k))
 
-theorem preC_app (hX : CluFlags) (w : GW hF M₀) (k : ℕ) (a : CAcc hF M₀) {A : VarType}
+theorem preC_app (hX : CluFlags) (w : GW hF M₀) (k : ℕ) (a : CAcc hF M₀)
+    (hp : PathOk (cpath a.2.down)) {A : VarType}
     {b : Ann A} (t : Term σ (ctxOf (glat w k)).boxIn A b) :
-    (preC hM₀ hX w k a).app t =
-      pTr hM₀ (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (pathOf_ok a.2.down)
+    (preC hM₀ hX w k a hp).app t =
+      pTr hM₀ (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down) hp
         (rstg w k) (preTB hX hM₀ w k t).2 :=
   (pTr_app hM₀ _ _ _ _ _ _ _).symm
+
+/-- A path's chain reads `□` as the denotation does. -/
+theorem cden_preC (hX : CluFlags) (w : GW hF M₀) (k : ℕ) (a : CAcc hF M₀)
+    (hp : PathOk (cpath a.2.down)) {A : VarType} {b : Ann A}
+    (t : Term σ (ctxOf (glat w k)).boxIn A b) :
+    cden hM₀ hX a.1 _ (Ctx.Le.refl _) ((preC hM₀ hX w k a hp).app t).2 =
+      cden hM₀ hX w k (Ctx.Le.refl _) (.boxtm t) a := by
+  refine (cden_sigma hX _ (preC_app hM₀ hX w k a hp t)).trans ?_
+  refine Eq.symm ((dif_pos hp).trans ?_)
+  rw [Term.mono_refl]
+
+/-- Pushing from a world into `□` along the self-arrow: the world's preimage, then the
+    self-edge. -/
+noncomputable def preLC (hX : CluFlags) (hl : GNetSt.LoopOn M₀) (w : GW hF M₀) (k : ℕ) :
+    GTr σ (ctxOf (glat w k)).boxIn (ctxOf (glat (groot hF M₀) (lstg hF M₀ (rstg w k)))) :=
+  .sub (eS σ (ctxOf (glat (groot hF M₀) (rstg w k))).boxIn (ofRen (preI (rorig w))))
+    (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI (rpre hX hM₀ w k))))
+    (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI (rpre hX hM₀ w k))))
+    (.sub (eS σ _ (fmapL hF M₀ [])) (ok_eS_kView (gloopOk hM₀ hl _))
+      (coh_eS_kView (gloopOk hM₀ hl _)) (.nil _))
+
+theorem preLC_app (hX : CluFlags) (hl : GNetSt.LoopOn M₀) (w : GW hF M₀) (k : ℕ) {A : VarType}
+    {b : Ann A} (t : Term σ (ctxOf (glat w k)).boxIn A b) :
+    (preLC hM₀ hX hl w k).app t = loopTm hM₀ hl (rstg w k) (preTB hX hM₀ w k t).2 :=
+  rfl
+
+/-- The self-arrow's chain reads `□` as the denotation does. -/
+theorem cden_preLC (hX : CluFlags) (w : GW hF M₀) (k : ℕ) (hR : CR (groot hF M₀))
+    (hn : ¬ PathOk (cpath hR)) {A : VarType} {b : Ann A}
+    (t : Term σ (ctxOf (glat w k)).boxIn A b) :
+    cden hM₀ hX (groot hF M₀) _ (Ctx.Le.refl _) ((preLC hM₀ hX (hR.loop hn) w k).app t).2 =
+      cden hM₀ hX w k (Ctx.Le.refl _) (.boxtm t) ⟨groot hF M₀, ⟨hR⟩⟩ := by
+  refine Eq.symm ((dif_neg hn).trans ?_)
+  rw [Term.mono_refl]
+  rfl
 
 /-- Pushing from a world into `◇_x` along an arrow of `x`'s extent. -/
 noncomputable def preXC (hX : CluFlags) (w : GW hF M₀) (k : ℕ) {x : VarSymb}
     (hx : ∃ X, (ctxOf (glat w k)).ref x = some (.VTypeDia X)) (a : CAcc hF M₀)
-    (hm : InExt (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (rorig w x)) :
+    (hm : InExt (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down) (rorig w x)) :
     GTr σ ((ctxOf (glat w k)).diaIn x)
-      (ctxOf (glat a.1 (pstg (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down)
+      (ctxOf (glat a.1 (pstg (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down)
         (rstg w k)))) :=
   .sub (eS σ ((ctxOf (glat (groot hF M₀) (rstg w k))).diaIn (rorig w x))
       (ofRen (preIX (rorig w) x)))
     (ok_eS_kView (k := some x) (entOk_ofRen (itemOk_rpreX hX hM₀ w k hx)))
     (coh_eS_kView (k := some x) (entOk_ofRen (itemOk_rpreX hX hM₀ w k hx)))
-    (ptrXC hM₀ (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (rstg w k)
+    (ptrXC hM₀ (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down) (rstg w k)
       (rorig w x) (rorig_ref hX hM₀ w k hx) hm)
 
 theorem preXC_app (hX : CluFlags) (w : GW hF M₀) (k : ℕ) {x : VarSymb}
     (hx : ∃ X, (ctxOf (glat w k)).ref x = some (.VTypeDia X)) (a : CAcc hF M₀)
-    (hm : InExt (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (rorig w x))
+    (hm : InExt (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down) (rorig w x))
     {A : VarType} {b : Ann A} (t : Term σ ((ctxOf (glat w k)).diaIn x) A b) :
     (preXC hM₀ hX w k hx a hm).app t =
-      pTrX hM₀ (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (rstg w k)
+      pTrX hM₀ (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down) (rstg w k)
         (rorig w x) (rorig_ref hX hM₀ w k hx) hm (preTD hX hM₀ w k hx t).2 :=
   (pTrX_app hM₀ _ _ _ _ _ _ _ hm _).symm
 
@@ -78,21 +114,21 @@ theorem preXC_app (hX : CluFlags) (w : GW hF M₀) (k : ℕ) {x : VarSymb}
 noncomputable def preXKC (hX : CluFlags) (w : GW hF M₀) (k : ℕ) {x : VarSymb}
     (hx : ∃ X, (ctxOf (glat w k)).ref x = some (.VTypeDia X)) (a : CAcc hF M₀) :
     GTr σ ((ctxOf (glat w k)).diaIn x)
-      ((ctxOf (glat a.1 (pstg (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down)
-        (rstg w k)))).kView (some (kw (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down)
+      ((ctxOf (glat a.1 (pstg (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down)
+        (rstg w k)))).kView (some (kw (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down)
           (rorig w x)))) :=
   .sub (eS σ ((ctxOf (glat (groot hF M₀) (rstg w k))).diaIn (rorig w x))
       (ofRen (preIX (rorig w) x)))
     (ok_eS_kView (k := some x) (entOk_ofRen (itemOk_rpreX hX hM₀ w k hx)))
     (coh_eS_kView (k := some x) (entOk_ofRen (itemOk_rpreX hX hM₀ w k hx)))
-    (ptrXKC hM₀ (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (rstg w k)
+    (ptrXKC hM₀ (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down) (rstg w k)
       (rorig w x) (rorig_ref hX hM₀ w k hx))
 
 theorem preXKC_app (hX : CluFlags) (w : GW hF M₀) (k : ℕ) {x : VarSymb}
     (hx : ∃ X, (ctxOf (glat w k)).ref x = some (.VTypeDia X)) (a : CAcc hF M₀)
     {A : VarType} {b : Ann A} (t : Term σ ((ctxOf (glat w k)).diaIn x) A b) :
     (preXKC hM₀ hX w k hx a).app t =
-      pTrXK hM₀ (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (rstg w k)
+      pTrXK hM₀ (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down) (rstg w k)
         (rorig w x) (rorig_ref hX hM₀ w k hx) (preTD hX hM₀ w k hx t).2 :=
   (pTrXK_app hM₀ _ _ _ _ _ _ _ _).symm
 
@@ -101,13 +137,29 @@ theorem npl_preXKC (hX : CluFlags) (w : GW hF M₀) (k : ℕ) {x : VarSymb}
     (preXKC hM₀ hX w k hx a).NPL :=
   ⟨Ctx.noProjLast_diaIn _ _, npl_ptrXKC hM₀ _ _ _ _ _ _ _⟩
 
-theorem npl_preC (hX : CluFlags) (w : GW hF M₀) (k : ℕ) (a : CAcc hF M₀) :
-    (preC hM₀ hX w k a).NPL :=
+theorem npl_preC (hX : CluFlags) (w : GW hF M₀) (k : ℕ) (a : CAcc hF M₀)
+    (hp : PathOk (cpath a.2.down)) : (preC hM₀ hX w k a hp).NPL :=
   ⟨Ctx.noProjLast_boxIn _, npl_ptrC hM₀ _ _ _ _ _ _⟩
+
+theorem npl_preLC (hX : CluFlags) (hl : GNetSt.LoopOn M₀) (w : GW hF M₀) (k : ℕ) :
+    (preLC hM₀ hX hl w k).NPL :=
+  ⟨Ctx.noProjLast_boxIn _, Ctx.noProjLast_boxIn _, trivial⟩
+
+/-- ⭐**Every arrow has a chain reading `□` as the denotation does.** -/
+theorem exists_preC (hX : CluFlags) (w : GW hF M₀) (k : ℕ) (a : CAcc hF M₀) :
+    ∃ (J : ℕ) (D : GTr σ (ctxOf (glat w k)).boxIn (ctxOf (glat a.1 J))), D.NPL ∧
+      ∀ {A : VarType} {b : Ann A} (t : Term σ (ctxOf (glat w k)).boxIn A b),
+        cden hM₀ hX a.1 J (Ctx.Le.refl _) (D.app t).2 =
+          cden hM₀ hX w k (Ctx.Le.refl _) (.boxtm t) a := by
+  by_cases hp : PathOk (cpath a.2.down)
+  · exact ⟨_, preC hM₀ hX w k a hp, npl_preC hM₀ hX w k a hp, cden_preC hM₀ hX w k a hp⟩
+  · obtain ⟨t, ⟨hR⟩⟩ := a
+    obtain rfl : t = groot hF M₀ := gw_eq (hR.loop_eq hp)
+    exact ⟨_, preLC hM₀ hX (hR.loop hp) w k, npl_preLC hM₀ hX _ w k, cden_preLC hM₀ hX w k hR hp⟩
 
 theorem npl_preXC (hX : CluFlags) (w : GW hF M₀) (k : ℕ) {x : VarSymb}
     (hx : ∃ X, (ctxOf (glat w k)).ref x = some (.VTypeDia X)) (a : CAcc hF M₀)
-    (hm : InExt (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (rorig w x)) :
+    (hm : InExt (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down) (rorig w x)) :
     (preXC hM₀ hX w k hx a hm).NPL :=
   ⟨Ctx.noProjLast_diaIn _ _, npl_ptrXC hM₀ _ _ _ _ _ _ _ hm⟩
 
@@ -184,10 +236,14 @@ theorem CRPos.c_congr {A : VarType} {C : CAcc hF M₀ → Type} {o o' : CRPos A 
 
 /-- ⭐**Agreement passes into `□` along an arrow**, the chain growing by the world's preimage and
     the root's path. -/
-theorem cagree_boxPush (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
+theorem cagree_boxPush_of (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
     (C : GTr σ Γ (ctxOf (glat w k))) (env : (cmodel hF hM₀ hX).Env Γ w)
-    (hag : CAgree hM₀ hX C env) (a : CAcc hF M₀) :
-    CAgree hM₀ hX (C.box.comp (preC hM₀ hX w k a)) (env.boxPush a) := by
+    (hag : CAgree hM₀ hX C env) (a : CAcc hF M₀) {J : ℕ}
+    (D : GTr σ (ctxOf (glat w k)).boxIn (ctxOf (glat a.1 J)))
+    (hD : ∀ {A : VarType} {b : Ann A} (t : Term σ (ctxOf (glat w k)).boxIn A b),
+      cden hM₀ hX a.1 J (Ctx.Le.refl _) (D.app t).2 =
+        cden hM₀ hX w k (Ctx.Le.refl _) (.boxtm t) a) :
+    CAgree hM₀ hX (C.box.comp D) (env.boxPush a) := by
   refine cagree_of_raw hX _ _ fun v T hlp hv => ?_
   match v, hv with
   | .step u .box, hv =>
@@ -201,13 +257,9 @@ theorem cagree_boxPush (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
       change (cmodel hF hM₀ hX).necEval (env.ref u hu) a = _
       rw [hag u _ hu]
       refine ctoDom_congr hX ?_ _ _
-      rw [GTr.app_comp, preC_app]
+      rw [GTr.app_comp]
       refine (congrFun (cden_sigma hX (Ctx.Le.refl _) (GTr.app_boxtm C _)) a).trans ?_
-      change cden hM₀ hX a.1 _ (Ctx.Le.refl _) (pTr hM₀ (groot hF M₀) a.1 _ _ _ (rstg w k)
-        (preTB hX hM₀ w k (Term.mono (Ctx.Le.refl _).boxIn
-          (C.box.app (Term.eta u.inner T (Ctx.ref_inner hu))).2)).2).2 = _
-      rw [Term.mono_refl]
-      exact cden_sigma hX _ (pTr_sigma hM₀ _ _ _ _ _ _ (preTB_sigma hX hM₀ w k
+      exact (hD _).symm.trans (cden_sigma hX _ (D.app_sigma
         (C.box.app_sigma (Term.eta_congr (VarSymb.inner_box hk) T _ _))))
   | .step u .keep, hv =>
       obtain ⟨hF', hu, hkp⟩ := Ctx.boxIn_keep hv
@@ -217,19 +269,22 @@ theorem cagree_boxPush (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
       refine ctoDom_congr hX ?_ _ _
       change (crawEval hM₀ hX (GFunc.keep hF' hkp) w (cden hM₀ hX w k (Ctx.Le.refl _)
         (C.app (Term.eta u T hu)).2)) a = _
-      rw [← cden_applyG, GTr.app_comp, preC_app]
+      rw [← cden_applyG, GTr.app_comp]
       refine (congrFun (cden_sigma hX (Ctx.Le.refl _) ((GTr.applyG_app _ C _).trans
         ((C.app_sigma (applyG_keep_eta (hF := hF) hkp u hu)).trans
           (GTr.app_boxtm C _)))) a).trans ?_
-      change cden hM₀ hX a.1 _ (Ctx.Le.refl _) (pTr hM₀ (groot hF M₀) a.1 _ _ _ (rstg w k)
-        (preTB hX hM₀ w k (Term.mono (Ctx.Le.refl _).boxIn
-          (C.box.app (Term.eta (.step u .keep) T _)).2)).2).2 = _
-      rw [Term.mono_refl]
+      exact (hD _).symm
   | .root _, hv => cases hv
   | .step _ .fst, hv => cases hv
   | .step _ .snd, hv => cases hv
   | .step _ .dia, hv => cases hv
   | .step _ .here, hv => cases hv
+
+theorem cagree_boxPush (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
+    (C : GTr σ Γ (ctxOf (glat w k))) (env : (cmodel hF hM₀ hX).Env Γ w)
+    (hag : CAgree hM₀ hX C env) (a : CAcc hF M₀) (hp : PathOk (cpath a.2.down)) :
+    CAgree hM₀ hX (C.box.comp (preC hM₀ hX w k a hp)) (env.boxPush a) :=
+  cagree_boxPush_of hX C env hag a _ (cden_preC hM₀ hX w k a hp)
 
 theorem preTD_sigma (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ)
     {x : VarSymb} (hx : ∃ X, (ctxOf (glat s i)).ref x = some (.VTypeDia X)) {A : VarType}
@@ -247,17 +302,17 @@ theorem cagree_diaPush_box (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
     (C : GTr σ Γ (ctxOf (glat w k))) (env : (cmodel hF hM₀ hX).Env Γ w)
     (hag : CAgree hM₀ hX C env) {x : VarSymb} {X : VarType} (hr : Γ.ref x = some (.VTypeDia X))
     (a : CAcc hF M₀)
-    (hm : InExt (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (rorig w (C.idx x)))
+    (hm : InExt (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down) (rorig w (C.idx x)))
     (v : VarSymb) {T : VarType} (hv : Γ.boxIn.ref v = some T)
     (hv' : (Γ.diaIn x).ref v = some T) :
     (env.boxPush a).ref v hv =
       ctoDom hM₀ hX T a.1 (cden hM₀ hX a.1 _ (Ctx.Le.refl _)
         (((C.dia x ⟨X, hr⟩).comp (preXC hM₀ hX w k (C.idx_decl ⟨X, hr⟩) a hm)).app
           (Term.eta v T hv')).2) (cdefinable_den hX _ _) := by
-  rw [cagree_boxPush hX C env hag a v T hv]
+  rw [cagree_boxPush hX C env hag a (pathOk_of_inExt hm) v T hv]
   refine ctoDom_congr hX ?_ _ _
   rw [GTr.app_comp, GTr.app_comp, preC_app, preXC_app]
-  refine cden_sigma hX _ ((pTrX_box (hM₀ := hM₀) (groot hF M₀) a.1 _ _ (pathOf_ok a.2.down)
+  refine cden_sigma hX _ ((pTrX_box (hM₀ := hM₀) (groot hF M₀) a.1 _ _ (pathOk_of_inExt hm)
     (rstg w k) _ _ hm _).symm.trans (pTrX_sigma hM₀ _ _ _ _ _ _ _ hm ?_))
   have e1 : (C.dia x ⟨X, hr⟩).app (Term.eta v T hv') =
       ⟨_, Term.mono (Ctx.le_boxIn_diaIn _ (C.idx x)) (C.box.app (Term.eta v T hv)).2⟩ :=
@@ -277,9 +332,9 @@ theorem cagree_diaPush (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
     (C : GTr σ Γ (ctxOf (glat w k))) (env : (cmodel hF hM₀ hX).Env Γ w)
     (hag : CAgree hM₀ hX C env) {x : VarSymb} {X : VarType} (hr : Γ.ref x = some (.VTypeDia X))
     (a : ((cmodel hF hM₀ hX).posEval (env.ref x hr)).1)
-    (hrl : ¬ (gw hM₀ a.1.1).Realised (kw (groot hF M₀) a.1.1 (pathOf a.1.2.down)
-      (pathOf_eq a.1.2.down) (rorig w (C.idx x))))
-    (hm : InExt (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down)
+    (hrl : ¬ (gw hM₀ a.1.1).Realised (kw (groot hF M₀) a.1.1 (cpath a.1.2.down)
+      (cpath_eq a.1.2.down) (rorig w (C.idx x))))
+    (hm : InExt (groot hF M₀) a.1.1 (cpath a.1.2.down) (cpath_eq a.1.2.down)
       (rorig w (C.idx x))) :
     CAgree hM₀ hX ((C.dia x ⟨X, hr⟩).comp (preXC hM₀ hX w k (C.idx_decl ⟨X, hr⟩) a.1 hm))
       (env.diaPush x hr a) := by
@@ -329,17 +384,17 @@ theorem cagree_diaPushR_box (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ
     (C : GTr σ Γ (ctxOf (glat w k))) (env : (cmodel hF hM₀ hX).Env Γ w)
     (hag : CAgree hM₀ hX C env) {x : VarSymb} {X : VarType} (hr : Γ.ref x = some (.VTypeDia X))
     (a : CAcc hF M₀)
-    (hrl : (gw hM₀ a.1).Realised (kw (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down)
+    (hrl : (gw hM₀ a.1).Realised (kw (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down)
       (rorig w (C.idx x))))
     (v : VarSymb) {T : VarType} (hv : Γ.boxIn.ref v = some T)
     (hv' : (Γ.diaIn x).ref v = some T) :
     (env.boxPush a).ref v hv =
       ctoDom hM₀ hX T a.1 (cden hM₀ hX a.1 _ (Ctx.Le.refl _)
         ((((C.dia x ⟨X, hr⟩).comp (preXKC hM₀ hX w k (C.idx_decl ⟨X, hr⟩) a)).comp
-          (grealC hM₀ hrl _ (kw_decl hM₀ (groot hF M₀) a.1 _ (pathOf_eq a.2.down) (rstg w k)
+          (grealC hM₀ hrl _ (kw_decl hM₀ (groot hF M₀) a.1 _ (cpath_eq a.2.down) (rstg w k)
             (rorig_ref hX hM₀ w k (C.idx_decl ⟨X, hr⟩))))).app (Term.eta v T hv')).2)
         (cdefinable_den hX _ _) := by
-  rw [cagree_boxPush hX C env hag a v T hv]
+  rw [cagree_boxPush hX C env hag a (cpathOk hrl.T a.2.down) v T hv]
   refine ctoDom_congr hX ?_ _ _
   rw [GTr.app_comp, GTr.app_comp, GTr.app_comp, preC_app, preXKC_app, ← grealT_app]
   have e1 : (C.dia x ⟨X, hr⟩).app (Term.eta v T hv') =
@@ -360,7 +415,7 @@ theorem cagree_diaPushR_box (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ
   refine Eq.trans ?_ (cden_sigma hX _ (grealT_sigma hrl _ _ ((pTrXK_sigma hM₀ _ _ _ _ _ _ _
     e3).trans (pTrXK_box _ _ _ _ _ _ _ _)))).symm
   rw [cden_grealT_mono_boxIn hX]
-  exact (cden_sigma hX _ (collapse_pTrK hrl.T _ _ _ _ (pathOf_ok a.2.down) _ _)).symm
+  exact (cden_sigma hX _ (collapse_pTrK hrl.T _ _ _ _ (cpathOk hrl.T a.2.down) _ _)).symm
 
 /-- ⭐Agreement passes into `◇_x` along an arrow whose end realises the kept witness: the chain
     grows by the world's preimage, the kept path and the realisation. -/
@@ -368,10 +423,10 @@ theorem cagree_diaPushR (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
     (C : GTr σ Γ (ctxOf (glat w k))) (env : (cmodel hF hM₀ hX).Env Γ w)
     (hag : CAgree hM₀ hX C env) {x : VarSymb} {X : VarType} (hr : Γ.ref x = some (.VTypeDia X))
     (a : ((cmodel hF hM₀ hX).posEval (env.ref x hr)).1)
-    (hrl : (gw hM₀ a.1.1).Realised (kw (groot hF M₀) a.1.1 (pathOf a.1.2.down)
-      (pathOf_eq a.1.2.down) (rorig w (C.idx x)))) :
+    (hrl : (gw hM₀ a.1.1).Realised (kw (groot hF M₀) a.1.1 (cpath a.1.2.down)
+      (cpath_eq a.1.2.down) (rorig w (C.idx x)))) :
     CAgree hM₀ hX (((C.dia x ⟨X, hr⟩).comp (preXKC hM₀ hX w k (C.idx_decl ⟨X, hr⟩) a.1)).comp
-      (grealC hM₀ hrl _ (kw_decl hM₀ (groot hF M₀) a.1.1 _ (pathOf_eq a.1.2.down) (rstg w k)
+      (grealC hM₀ hrl _ (kw_decl hM₀ (groot hF M₀) a.1.1 _ (cpath_eq a.1.2.down) (rstg w k)
         (rorig_ref hX hM₀ w k (C.idx_decl ⟨X, hr⟩))))) (env.diaPush x hr a) := by
   refine cagree_of_raw hX _ _ fun v T hlp hv => ?_
   match v, hv with
@@ -611,14 +666,13 @@ mutual
     | _, _, _, .boxtm X, w, k, C, env, hag, hC, _ => by
         apply (cmodel hF hM₀ hX).nec_inj
         funext a
-        rw [Model.box_beta, interp_ctr hX X _ (cagree_boxPush hX C env hag a)
-          (GTr.npl_comp _ _ (GTr.npl_box C) (npl_preC hM₀ hX _ _ _)) (Ctx.noProjLast_boxIn _)]
+        obtain ⟨J, D, hnp, hD⟩ := exists_preC (hM₀ := hM₀) hX w k a
+        rw [Model.box_beta, interp_ctr hX X _ (cagree_boxPush_of hX C env hag a D hD)
+          (GTr.npl_comp _ _ (GTr.npl_box C) hnp) (Ctx.noProjLast_boxIn _)]
         refine ctoDom_congr hX ?_ _ _
-        rw [GTr.app_comp, preC_app]
-        refine Eq.symm ((congrFun (cden_sigma hX (Ctx.Le.refl _) (GTr.app_boxtm C X)) a).trans ?_)
-        change cden hM₀ hX a.1 _ (Ctx.Le.refl _) (pTr hM₀ (groot hF M₀) a.1 _ _ _ (rstg w k)
-          (preTB hX hM₀ w k (Term.mono (Ctx.Le.refl _).boxIn (C.box.app X).2)).2).2 = _
-        rw [Term.mono_refl]
+        rw [GTr.app_comp]
+        exact Eq.symm ((congrFun (cden_sigma hX (Ctx.Le.refl _) (GTr.app_boxtm C X)) a).trans
+          (hD _).symm)
     | _, _, _, .diatm x hx Y, w, k, C, env, hag, hC, hΓ => by
         obtain ⟨X', hr⟩ := id hx
         refine (cmodel hF hM₀ hX).pos_inj ?_ fun hSh => ?_
@@ -641,12 +695,12 @@ mutual
           (cdefinable_den hX _ _)]
         refine Model.posSec_ext hpq _ _ fun a => ?_
         have key : ∀ b, b ∈ ((cmodel hF hM₀ hX).posEval (env.ref x hr)).1 →
-            GMem hM₀ (groot hF M₀) b.1 (pathOf b.2.down) (pathOf_eq b.2.down)
+            GMem hM₀ (groot hF M₀) b.1 (cpath b.2.down) (cpath_eq b.2.down)
               (rorig w (C.idx x)) := by
           rw [hpq]
           exact fun _ hb => hb
-        by_cases hrl : (gw hM₀ a.1.1).Realised (kw (groot hF M₀) a.1.1 (pathOf a.1.2.down)
-            (pathOf_eq a.1.2.down) (rorig w (C.idx x)))
+        by_cases hrl : (gw hM₀ a.1.1).Realised (kw (groot hF M₀) a.1.1 (cpath a.1.2.down)
+            (cpath_eq a.1.2.down) (rorig w (C.idx x)))
         · rw [interp_ctr hX Y _ (cagree_diaPushR hX C env hag hr a hrl)
             (GTr.npl_comp _ _ (GTr.npl_comp _ _ (GTr.npl_dia C x _)
               (npl_preXKC hM₀ hX _ _ _ _)) (npl_grealC hM₀ hrl _ _)) (Ctx.noProjLast_diaIn _ _)]

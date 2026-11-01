@@ -5083,7 +5083,7 @@ KDB5) the root's loop is new work, so S5 comes **before** B + 5, reversing steps
   the K45 paper check).  Note that strong K45 proper, without the `◇`-lift, is one of them.
 * *K5, KD5 (4 off):* semantics only (`Frame.side`, `posSide`).  No `side` step, `sideTr`, links or
   rules, so those flag settings prove no 5 principle, and completeness excludes them.
-* *KB5, KDB5:* the weak forms are checked on paper ("KB5 and KDB5: the root's loop").  *S5 with strong B:* complete (2026-11-01).
+* *KB5, KDB5:* complete with weak B (2026-11-01; "KB5 and KDB5: the root's loop").  *S5 with strong B:* complete (2026-11-01).
 
 #### Where 5 stands, by system *(2026-11-01)*
 
@@ -5093,7 +5093,7 @@ KDB5) the root's loop is new work, so S5 comes **before** B + 5, reversing steps
 |---|---|---|---|---|
 | K45, KD45 | open | open | open | **complete**, D in either strength |
 | S5 | open | open | open | **complete**, T and D in either strength, B off, weak or strong, witnessed ways home |
-| KDB5, KB5 | open | open | open | weak B: checked on paper.  Strong B: not started |
+| KDB5, KB5 | open | open | open | **complete** with weak B, D in either strength.  Strong B: not started |
 | K5, KD5 | no rules yet | no rule written | unsound | no lifts without 4 |
 
 * *Open cells with 4* have rules and soundness, and need committing cluster arrows (K45's milestone B).  The loop's step uses both lifts,
@@ -5166,7 +5166,7 @@ wrong for a loop that must fix `u`.
 * `shaped` is `T || BStrong`, and the tree's tags are `T = true → …`, so strong B without T needs shapes on the cluster without T.
 * So `CubeSys.five_B` does not simply go: it becomes `Five → BStrong → T`.
 
-**Order.**  Built: the two lemmas, the extension of the transfer, the self-edge in the tree and its limit (below).  The arrow on the cluster is checked on paper (below).  Next: the cluster; dispatch.  Then a paper check of the strong forms.
+**Order.**  Built: the two lemmas, the extension of the transfer, the self-edge in the tree and its limit (below).  The arrow on the cluster (below), built: `CR`, `cden`'s branch, `QML_v12m_GCluLoop`, `preLC`, `sat_boxPush_loop`, `csymm`, the truth lemma's `□` case, and dispatch.  **Weak KB5 and KDB5 are complete (2026-11-01).**  Next: a paper check of the strong forms.
 
 #### KB5 and KDB5: the step in Lean *(2026-11-01)*
 
@@ -5199,7 +5199,7 @@ So `pTr`, `pstg`, `PathOk` and everything proved about them stay, and the loop i
 
 #### KB5 and KDB5: the arrow on the cluster, the check *(2026-11-01, paper)*
 
-**Verdict.**  It works, with no new rule, no change to `pTr`, `pstg`, `PathOk`, `GR` or `gmodel`, and about 600 lines, most of them the loop's half of lemmas that already exist.  The edge's half of each is the pattern: the loop is an edge whose entries fix kept items.  All of this is on paper.
+**Verdict, borne out in the build.**  It works, with no new rule and no change to `pTr`, `pstg`, `PathOk`, `GR` or `gmodel`.  The edge's half of each is the pattern: the loop is an edge whose entries fix kept items.  
 
 **1. The relation.**  `GR` stays.  It underlies `grden` and all of `gmodel`, whose definitions have no `NoFive` in scope to exclude the loop, so the loop cannot go in it.  The cluster gets its own:
 `CR t := ∃ P, (PathOk P ∨ RootLoop P) ∧ t.1 = nodeOf [] P`, with `RootLoop P := P = [] ∧ LoopOn M₀`, and `carrows.R := fun _ t => CR t`, `CAcc := Σ t, PLift (CR t)`.  `cpath`, `cpath_eq`, `cpath_of` are `pathOf`, `pathOf_eq`, `pathOf_of` for it.  In the `GClu*` files that is a rename of `pathOf` and `GR (groot hF M₀)`, and `.inl` at the constructors.  `PathOk (cpath h)` holds under T (`.inr`) and on any arrow but the loop; the 23 `pathOf_ok` sites take that fact.  Those under strong B have T.
@@ -5212,7 +5212,7 @@ So `pTr`, `pstg`, `PathOk` and everything proved about them stay, and the loop i
 **3. The lemmas on arrows.**  Each is the existing proof plus a loop branch:
 * `cden_mono`: the `mono` goes under `θ`, as before.  `cden_congr`: `lstg` is monotone, and `θ` at two stages agrees (`sim_eS_mono`), as `pTr_mono`'s edge clause.  `cden_root_box`, `cden_box_eq`: `subst_preI_id`.  `cdefinable_box_apply`: the value is a denotation.
 * `cden_applyG`: `boxMap` is `Canon.applyG_subst`, `pTr_applyG`'s edge clause.  `boxPair` is `rfl`.  `dup` and `dkeep` are the loop's `cden_tr`, `cden_trX`: **`θ(□ shift b) = □b`** and `θ(◇_{x.keep} shift c) = ◇_x c`, then `cden_mono` and `cden_congr`.  The first is `WFF.subst_loopHat` at terms, from `keepFix_shift`.  The second needs `keepFix_shift` for `Subst.dia`.
-* `preC`, `cagree_boxPush`: a loop chain, `.sub preI (.sub θ (.nil))`, with the old proof's text.  `sat_boxPush_c`: a loop form, the edge clause of `sat_ptrC`.  The `◇` pushes take `InExt`, so `P ≠ []`, so `PathOk`.
+* `preC`, `cagree_boxPush`: a loop chain, `.sub preI (.sub θ (.nil))`, and one proof for both, `cagree_boxPush_of`, over any chain reading `□` as `cden` does (`exists_preC`).  `sat_boxPush_c`: a loop form, the edge clause of `sat_ptrC`.  The `◇` pushes take `InExt`, so `P ≠ []`, so `PathOk`.
 * `ctruth`, `□`: right to left, on the loop, `box_pathO_iff`, then `gltr_loop`, then the induction hypothesis (`θ` preserves size: the entries are addresses).  Left to right uses a child of the root, as now.
 
 **4. The frame.**  `symm`, for `B` with T off: the flags give `LoopOn` unless `□⊥ ∈ M₀`.  With `LoopOn`, `RootLoop []` puts the root in `Acc`, and every other world is there by `rpath`.  With `□⊥ ∈ M₀`, `Acc` is empty: a first step `[c]` of a path gives a child, and `gltr` at `⊥` puts `⊥` in its theory.  That is KB5's dead end, and it needs no invariant on `mkChild`.  `refl`, `trans`, `serial`, `side` and the raw-object laws read nothing of the path.
@@ -5220,8 +5220,6 @@ So `pTr`, `pstg`, `PathOk` and everything proved about them stay, and the loop i
 **5. What does not change.**  `CRDom` (`Acc` is one type), R4 (`cden_named_box` and `cdefinable_box_iff` compare preimages at the root), `box_pathO_iff`, `dia_pathO_iff`, `names_unique`, `Ind` (equality with T off), and everything shaped.
 
 **6. Dispatch.**  `CluFlags.bT` becomes `BStrong → T`: of its 13 uses, 12 are under strong B and one is `symm`.  `CubeSys.five_B` becomes `Five → BStrong → T`.  So KB5 and KDB5 join the cube with both lifts, and weak B.
-
-**Not checked:** the T-only sites' `simp only [cden]`, which will need `dif_pos`, one by one.
 
 **Order.**  `CR` and the rename, with `cden` branching and `T` sites restored, the strict build unchanged in meaning; the loop's term facts; the arrow lemmas; `symm` and the truth lemma; dispatch.
 
@@ -5363,7 +5361,7 @@ What the build added, against the design above:
   `cdia_real_not_boxx`, `cdia_sat_child`, `chere_transfer`, `chere_truth` then mirror the tree's.
 * *`GCluInd`* is `GInd` with the names changed.  It needed nothing new.
 
-**Left for 5.**  KB5 and KDB5, weak then strong (see "KB5 and KDB5: the root's loop"); the open lifts in the table; K5 and KD5.
+**Left for 5.**  Strong B on KB5 and KDB5; the open lifts in the table; K5 and KD5.
 
 #### `back_keep`: the check *(2026-10-31, paper)*
 

@@ -5,7 +5,7 @@ import QML.QML_v12m_GCluOrig
 
 The cluster model (`docs/v12-modal-extensions.md` §3 5, "S5 steps 3–4"), under T as without it.
 
-* `carrows`: every world's arrows are the root's, `R s t :⇔ GR ρ t`.  Under T the root reaches
+* `carrows`: every world's arrows are the root's, `R s t :⇔ CR t`.  Under T the root reaches
   every world, itself included, so the frame is universal.
 * `CLeaf`, `CLeaf.rean`: `Acc w` is one type at every world, so a leaf moves between anchors with
   no change; the root action is the identity (`instRootKeepC`), and `keepAlong` is that move.
@@ -48,12 +48,75 @@ noncomputable abbrev rnm (s : GW hF M₀) : VarSymb → VarSymb :=
 
 /-! ## The cluster arrows -/
 
+variable (M₀) in
+/-- The root's self-arrow: the empty path, when the root has a self-edge. -/
+def RootLoop (P : List ℕ) : Prop := P = [] ∧ GNetSt.LoopOn M₀
+
+/-- ⭐**A world the root reaches**: by a path that is an arrow, or the root by its self-arrow. -/
+def CR (t : GW hF M₀) : Prop :=
+  ∃ P : List ℕ, (PathOk P ∨ RootLoop M₀ P) ∧ t.1 = nodeOf (groot hF M₀).1 P
+
+open Classical in
+/-- The path of a cluster arrow. -/
+noncomputable def cpath {t : GW hF M₀} (h : CR t) : List ℕ := Classical.choose h
+
+open Classical in
+theorem cpath_spec {t : GW hF M₀} (h : CR t) : PathOk (cpath h) ∨ RootLoop M₀ (cpath h) :=
+  (Classical.choose_spec h).1
+
+open Classical in
+theorem cpath_eq {t : GW hF M₀} (h : CR t) : t.1 = nodeOf (groot hF M₀).1 (cpath h) :=
+  (Classical.choose_spec h).2
+
+/-- The chosen path is any path. -/
+theorem cpath_of {t : GW hF M₀} (hR : CR t) {P : List ℕ} (h : t.1 = nodeOf (groot hF M₀).1 P) :
+    cpath hR = P :=
+  nodeOf_inj ((cpath_eq hR).symm.trans h)
+
+theorem cpathOk (hT : ModalSys.T = true) {t : GW hF M₀} (h : CR t) : PathOk (cpath h) := .inr hT
+
+/-- An arrow that is not a path is the self-arrow, which needs the self-edge. -/
+theorem CR.loop {t : GW hF M₀} (h : CR t) (hn : ¬ PathOk (cpath h)) : GNetSt.LoopOn M₀ :=
+  ((cpath_spec h).resolve_left hn).2
+
+/-- …and it ends at the root. -/
+theorem CR.loop_eq {t : GW hF M₀} (h : CR t) (hn : ¬ PathOk (cpath h)) :
+    t.1 = (groot hF M₀).1 := by
+  have e := cpath_eq h
+  rwa [((cpath_spec h).resolve_left hn).1] at e
+
+/-- The membership of an arrow in an extent reads any path to its end. -/
+theorem cmem_path {hM₀ : Theory.IsMCS M₀} {t : GW hF M₀} (hR : CR t) {P : List ℕ}
+    (h : t.1 = nodeOf (groot hF M₀).1 P) {x : VarSymb} :
+    GMem hM₀ (groot hF M₀) t (cpath hR) (cpath_eq hR) x ↔ GMem hM₀ (groot hF M₀) t P h x := by
+  obtain rfl := cpath_of hR h
+  exact Iff.rfl
+
+/-- A descendant of the root is reached. -/
+theorem CR.of_GR {t : GW hF M₀} (h : GR (groot hF M₀) t) : CR t := by
+  obtain ⟨P, hP, e⟩ := h
+  exact ⟨P, .inl hP, e⟩
+
+/-- A path in a witness's extent is a path that is an arrow. -/
+theorem pathOk_of_inExt {s t : GW hF M₀} {P : List ℕ} {h : t.1 = nodeOf s.1 P} {x : VarSymb}
+    (hm : InExt s t P h x) : PathOk P := by
+  cases P with
+  | nil => exact hm.elim
+  | cons _ _ => exact pathOk_cons
+
+/-- A path in a witness's extent is the arrow's path. -/
+theorem inExt_cpath {t : GW hF M₀} (hR : CR t) {P : List ℕ}
+    {h : t.1 = nodeOf (groot hF M₀).1 P} {x : VarSymb} (hm : InExt (groot hF M₀) t P h x) :
+    InExt (groot hF M₀) t (cpath hR) (cpath_eq hR) x := by
+  obtain rfl := cpath_of hR h
+  exact hm
+
 variable (hF M₀) in
 /-- ⭐**The cluster arrows**: from every world to every world the root reaches. -/
 abbrev carrows : Arrows.{0, 0} σ where
   W := GW hF M₀
-  R := fun _ t => GR (groot hF M₀) t
-  refl := fun hT w => ⟨rpath w, .inr hT, rpath_eq w⟩
+  R := fun _ t => CR t
+  refl := fun hT w => ⟨rpath w, .inl (.inr hT), rpath_eq w⟩
   trans := fun _ {_ _ _} _ h₂ => h₂
   refl_trans := fun _ _ _ _ _ => rfl
   trans_refl := fun _ _ _ _ _ => rfl

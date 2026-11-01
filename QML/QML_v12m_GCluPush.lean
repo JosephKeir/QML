@@ -228,28 +228,62 @@ theorem sat_ptrXKC (hX : CluFlags) : ∀ (s t : GW hF M₀) (P : List ℕ) (h : 
     satisfies its preimage translated along the root's path**: the pushed environment agrees
     with the world's preimage, then the root's path (`cagree_boxPush`). -/
 theorem sat_boxPush_c (hX : CluFlags) (s : GW hF M₀) (i : ℕ) (a : CAcc hF M₀) (P : List ℕ)
-    (h : a.1.1 = nodeOf (groot hF M₀).1 P) (hP : PathOk P) (e : pathOf a.2.down = P)
+    (h : a.1.1 = nodeOf (groot hF M₀).1 P) (hP : PathOk P) (e : cpath a.2.down = P)
     (χ : WFF σ ((ctxOf (glat s i)).kView none) 0) :
     (cmodel hF hM₀ hX).sat ((ccanonEnv hM₀ hX s i).boxPush a) χ ↔
       (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX a.1 (pstg (groot hF M₀) a.1 P h (rstg s i)))
         (pTrW hM₀ (groot hF M₀) a.1 P h hP (rstg s i) (preWP (rpre hX hM₀ s i) χ)) := by
   subst e
-  have hag : CAgree hM₀ hX (preC hM₀ hX s i a) ((ccanonEnv hM₀ hX s i).boxPush a) :=
-    cagree_boxPush hX (.nil _) _ (cagree_canon hX s i) a
-  have hag' := cagree_envOf (hM₀ := hM₀) hX (ptrC hM₀ (groot hF M₀) a.1 (pathOf a.2.down)
-    (pathOf_eq a.2.down) (pathOf_ok a.2.down) (rstg s i)) (Ctx.noProjLast_boxIn _)
+  have hag : CAgree hM₀ hX (preC hM₀ hX s i a hP) ((ccanonEnv hM₀ hX s i).boxPush a) :=
+    cagree_boxPush hX (.nil _) _ (cagree_canon hX s i) a hP
+  have hag' := cagree_envOf (hM₀ := hM₀) hX (ptrC hM₀ (groot hF M₀) a.1 (cpath a.2.down)
+    (cpath_eq a.2.down) hP (rstg s i)) (Ctx.noProjLast_boxIn _)
   rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_boxIn _) _ _ _ _ (npl_ptrC hM₀ _ _ _ _ _ _)
     (Ctx.noProjLast_boxIn _) _ hag _ hag']
   refine (Model.sat_subst _ _ (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI
     (rpre hX hM₀ s i)))) Ctx.NoSlots.slots Ctx.NoSlots.slots _ _ χ).symm.trans ?_
   exact sat_ptrC hX _ _ _ _ _ _ _ hag' _
 
+/-- A root's `□`-view formula translated along the self-edge. -/
+noncomputable abbrev loopW (hM₀ : Theory.IsMCS M₀) (hl : GNetSt.LoopOn M₀) (i : ℕ)
+    (φ : WFF σ ((ctxOf (glat (groot hF M₀) i)).kView none) 0) :
+    WFF σ (ctxOf (glat (groot hF M₀) (lstg hF M₀ i))) 0 :=
+  WFF.subst (eIdx (fmapL hF M₀ [])) (eS σ _ (fmapL hF M₀ []))
+    (ok_eS_kView (gloopOk hM₀ hl i)) (coh_eS_kView (gloopOk hM₀ hl i))
+    Ctx.NoSlots.slots Ctx.NoSlots.slots φ
+
+/-- ⭐**Pushing from a world along the self-arrow**: the world's preimage, then the self-edge. -/
+theorem sat_boxPush_loop (hX : CluFlags) (s : GW hF M₀) (i : ℕ) (hR : CR (groot hF M₀))
+    (hn : ¬ PathOk (cpath hR)) (χ : WFF σ ((ctxOf (glat s i)).kView none) 0) :
+    (cmodel hF hM₀ hX).sat ((ccanonEnv hM₀ hX s i).boxPush ⟨groot hF M₀, ⟨hR⟩⟩) χ ↔
+      (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX (groot hF M₀) (lstg hF M₀ (rstg s i)))
+        (loopW hM₀ (hR.loop hn) (rstg s i) (preWP (rpre hX hM₀ s i) χ)) := by
+  have hl := hR.loop hn
+  have hag : CAgree hM₀ hX (preLC hM₀ hX hl s i)
+      ((ccanonEnv hM₀ hX s i).boxPush ⟨groot hF M₀, ⟨hR⟩⟩) :=
+    cagree_boxPush_of hX (.nil _) _ (cagree_canon hX s i) ⟨groot hF M₀, ⟨hR⟩⟩ _
+      (cden_preLC hM₀ hX s i hR hn)
+  have hD : GTr.NPL (.sub (eS σ _ (fmapL hF M₀ [])) (ok_eS_kView (gloopOk hM₀ hl (rstg s i)))
+      (coh_eS_kView (gloopOk hM₀ hl (rstg s i))) (.nil _)) :=
+    (npl_preLC hM₀ hX hl s i).2
+  have hag' := cagree_envOf (hM₀ := hM₀) hX (.sub (eS σ _ (fmapL hF M₀ []))
+    (ok_eS_kView (gloopOk hM₀ hl (rstg s i))) (coh_eS_kView (gloopOk hM₀ hl (rstg s i)))
+    (.nil _)) (Ctx.noProjLast_boxIn _)
+  rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_boxIn _) _ _ _ _ hD
+    (Ctx.noProjLast_boxIn _) _ hag _ hag']
+  refine (Model.sat_subst _ _ (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI
+    (rpre hX hM₀ s i)))) Ctx.NoSlots.slots Ctx.NoSlots.slots _ _ χ).symm.trans ?_
+  rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_boxIn _) _ _ _ (.nil _) (by trivial)
+    (Ctx.Presented.noProjLast _) _ hag' _ (cagree_canon hX _ _)]
+  exact (Model.sat_subst _ _ (coh_eS_kView (gloopOk hM₀ hl (rstg s i))) Ctx.NoSlots.slots
+    Ctx.NoSlots.slots _ _ _).symm
+
 /-- An arrow is in a canonical possible object's extent exactly when it is in the extent of the
     witness's origin at the root. -/
 theorem ccanon_mem_iff (hX : CluFlags) (s : GW hF M₀) (i : ℕ) {x : VarSymb} {X : VarType}
     (hr : (ctxOf (glat s i)).ref x = some (.VTypeDia X)) (b : CAcc hF M₀) :
     b ∈ ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s i).ref x hr)).1 ↔
-      GMem hM₀ (groot hF M₀) b.1 (pathOf b.2.down) (pathOf_eq b.2.down) (rorig s x) := by
+      GMem hM₀ (groot hF M₀) b.1 (cpath b.2.down) (cpath_eq b.2.down) (rorig s x) := by
   rw [cagree_canon hX s i x _ hr]
   exact Iff.rfl
 
@@ -257,7 +291,7 @@ theorem ccanon_mem_iff (hX : CluFlags) (s : GW hF M₀) (i : ℕ) {x : VarSymb} 
     world realises the witness. -/
 theorem ccanon_own_mem (hX : CluFlags) (hT : ModalSys.T = true) (t : GW hF M₀) (K : ℕ)
     {z : VarSymb} {Z : VarType} (hz : (ctxOf (glat t K)).ref z = some (.VTypeDia Z))
-    (hR : GR (groot hF M₀) t) :
+    (hR : CR t) :
     (⟨t, ⟨hR⟩⟩ : CAcc hF M₀) ∈ ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX t K).ref z hz)).1 ↔
       (gw hM₀ t).Realised z := by
   rw [cagree_canon hX t K z _ hz]
@@ -267,11 +301,11 @@ theorem ccanon_own_mem (hX : CluFlags) (hT : ModalSys.T = true) (t : GW hF M₀)
     arrow (`cagree_diaPushR`, `cden_real_pre`). -/
 theorem cagree_own (hX : CluFlags) (t : GW hF M₀) (K : ℕ) {z : VarSymb} {Z : VarType}
     (hz : (ctxOf (glat t K)).ref z = some (.VTypeDia Z)) (hr : (gw hM₀ t).Realised z)
-    (hR : GR (groot hF M₀) t)
+    (hR : CR t)
     (hm : (⟨t, ⟨hR⟩⟩ : CAcc hF M₀) ∈
       ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX t K).ref z hz)).1) :
     CAgree hM₀ hX (grealC hM₀ hr K ⟨Z, hz⟩) ((ccanonEnv hM₀ hX t K).diaPush z hz ⟨_, hm⟩) := by
-  have hr' : (gw hM₀ t).Realised (kw (groot hF M₀) t (pathOf hR) (pathOf_eq hR) (rorig t z)) := by
+  have hr' : (gw hM₀ t).Realised (kw (groot hF M₀) t (cpath hR) (cpath_eq hR) (rorig t z)) := by
     rw [kw_rorig hX hM₀ t K hz]
     exact hr
   have h₀ := cagree_diaPushR hX (.nil _) _ (cagree_canon hX t K) hz ⟨_, hm⟩ hr'
@@ -279,14 +313,14 @@ theorem cagree_own (hX : CluFlags) (t : GW hF M₀) (K : ℕ) {z : VarSymb} {Z :
   rw [h₀ v T hv]
   refine ctoDom_congr hX ?_ _ _
   rw [GTr.app_comp, GTr.app_comp, preXKC_app, ← grealT_app, ← grealT_app]
-  exact cden_real_pre hX hM₀ t K hz _ (pathOf_eq hR) hr' hr
+  exact cden_real_pre hX hM₀ t K hz _ (cpath_eq hR) hr' hr
 
 /-- ⭐**A world's `◇_x` view along an arrow of `x`'s extent satisfies a formula exactly when the
     arrow's end satisfies its preimage translated along the root's path for `x`'s origin.** -/
 theorem sat_diaPush_c (hX : CluFlags) (s : GW hF M₀) (i : ℕ) {x : VarSymb} {X : VarType}
     (hr : (ctxOf (glat s i)).ref x = some (.VTypeDia X))
     (a : ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s i).ref x hr)).1) (P : List ℕ)
-    (h : a.1.1.1 = nodeOf (groot hF M₀).1 P) (e : pathOf a.1.2.down = P)
+    (h : a.1.1.1 = nodeOf (groot hF M₀).1 P) (e : cpath a.1.2.down = P)
     (hrl : ¬ (gw hM₀ a.1.1).Realised (kw (groot hF M₀) a.1.1 P h (rorig s x)))
     (hm : InExt (groot hF M₀) a.1.1 P h (rorig s x))
     (χ : WFF σ ((ctxOf (glat s i)).diaIn x) 0) :
@@ -298,8 +332,8 @@ theorem sat_diaPush_c (hX : CluFlags) (s : GW hF M₀) (i : ℕ) {x : VarSymb} {
   have hag : CAgree hM₀ hX (preXC hM₀ hX s i ⟨X, hr⟩ a.1 hm)
       ((ccanonEnv hM₀ hX s i).diaPush x hr a) :=
     cagree_diaPush hX (.nil _) _ (cagree_canon hX s i) hr a hrl hm
-  have hag' := cagree_envOf (hM₀ := hM₀) hX (ptrXC hM₀ (groot hF M₀) a.1.1 (pathOf a.1.2.down)
-    (pathOf_eq a.1.2.down) (rstg s i) (rorig s x) (rorig_ref hX hM₀ s i ⟨X, hr⟩) hm)
+  have hag' := cagree_envOf (hM₀ := hM₀) hX (ptrXC hM₀ (groot hF M₀) a.1.1 (cpath a.1.2.down)
+    (cpath_eq a.1.2.down) (rstg s i) (rorig s x) (rorig_ref hX hM₀ s i ⟨X, hr⟩) hm)
     (Ctx.noProjLast_diaIn _ _)
   rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_diaIn _ _) _ _ _ _ (npl_ptrXC hM₀ _ _ _ _ _ _ _ hm)
     (Ctx.noProjLast_diaIn _ _) _ hag _ hag']
@@ -313,11 +347,11 @@ theorem sat_diaPush_c (hX : CluFlags) (s : GW hF M₀) (i : ℕ) {x : VarSymb} {
 theorem sat_diaPush_cK (hX : CluFlags) (s : GW hF M₀) (i : ℕ) {x : VarSymb} {X : VarType}
     (hr : (ctxOf (glat s i)).ref x = some (.VTypeDia X))
     (a : ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s i).ref x hr)).1) (P : List ℕ)
-    (h : a.1.1.1 = nodeOf (groot hF M₀).1 P) (e : pathOf a.1.2.down = P)
+    (h : a.1.1.1 = nodeOf (groot hF M₀).1 P) (e : cpath a.1.2.down = P)
     (hrl : (gw hM₀ a.1.1).Realised (kw (groot hF M₀) a.1.1 P h (rorig s x))) {Z : VarType}
     (hz : (ctxOf (glat a.1.1 (pstg (groot hF M₀) a.1.1 P h (rstg s i)))).ref
       (kw (groot hF M₀) a.1.1 P h (rorig s x)) = some (.VTypeDia Z))
-    (hR : GR (groot hF M₀) a.1.1)
+    (hR : CR a.1.1)
     (hmz : (⟨a.1.1, ⟨hR⟩⟩ : CAcc hF M₀) ∈ ((cmodel hF hM₀ hX).posEval
       ((ccanonEnv hM₀ hX a.1.1 (pstg (groot hF M₀) a.1.1 P h (rstg s i))).ref _ hz)).1)
     (χ : WFF σ ((ctxOf (glat s i)).diaIn x) 0) :
@@ -332,8 +366,8 @@ theorem sat_diaPush_cK (hX : CluFlags) (s : GW hF M₀) (i : ℕ) {x : VarSymb} 
       ((ccanonEnv hM₀ hX s i).diaPush x hr a) :=
     cagree_diaPushR hX (.nil _) _ (cagree_canon hX s i) hr a hrl
   have hag₂ := cagree_own hX a.1.1 _ hz hrl hR hmz
-  have hag' := cagree_envOf (hM₀ := hM₀) hX ((ptrXKC hM₀ (groot hF M₀) a.1.1 (pathOf a.1.2.down)
-    (pathOf_eq a.1.2.down) (rstg s i) (rorig s x) (rorig_ref hX hM₀ s i ⟨X, hr⟩)).comp
+  have hag' := cagree_envOf (hM₀ := hM₀) hX ((ptrXKC hM₀ (groot hF M₀) a.1.1 (cpath a.1.2.down)
+    (cpath_eq a.1.2.down) (rstg s i) (rorig s x) (rorig_ref hX hM₀ s i ⟨X, hr⟩)).comp
       (grealC hM₀ hrl _ ⟨Z, hz⟩)) (Ctx.noProjLast_diaIn _ _)
   rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_diaIn _ _) _ _ _ _
     (GTr.npl_comp _ _ (npl_ptrXKC hM₀ _ _ _ _ _ _ _) hD) (Ctx.noProjLast_diaIn _ _) _ hag _ hag']
@@ -407,7 +441,7 @@ abbrev CTruthBelow (hX : CluFlags) (n : ℕ) : Prop :=
 theorem ccanon_cont_real (hX : CluFlags) (t : GW hF M₀) {y : VarSymb}
     (hrl : (gw hM₀ t).Realised y) {K : ℕ} (hK : hrl.data.i₀ ≤ K)
     (hdecl : (ctxOf (glat t K)).ref y = some (.VTypeDia hrl.data.A))
-    (hR : GR (groot hF M₀) t)
+    (hR : CR t)
     (hm : (⟨t, ⟨hR⟩⟩ : CAcc hF M₀) ∈
       ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX t K).ref y hdecl)).1) :
     ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX t K).ref y hdecl)).2 ⟨_, hm⟩ =
@@ -426,16 +460,16 @@ theorem cdia_real_not_boxx (hX : CluFlags) (hT : ModalSys.T = true) {n : ℕ}
     (IH : CTruthBelow hF hM₀ hX n) (s : GW hF M₀) (i : ℕ) {x : VarSymb} {X : VarType}
     (hr : (ctxOf (glat s i)).ref x = some (.VTypeDia X))
     (a : ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s i).ref x hr)).1)
-    (hrl : (gw hM₀ a.1.1).Realised (kw (groot hF M₀) a.1.1 (pathOf a.1.2.down)
-      (pathOf_eq a.1.2.down) (rorig s x)))
+    (hrl : (gw hM₀ a.1.1).Realised (kw (groot hF M₀) a.1.1 (cpath a.1.2.down)
+      (cpath_eq a.1.2.down) (rorig s x)))
     (χ : WFF σ ((ctxOf (glat s i)).diaIn x) 0) (hχs : χ.size < n)
     (hsat : (cmodel hF hM₀ hX).sat ((ccanonEnv hM₀ hX s i).diaPush x hr a) χ)
     (hbx : WFF.boxx (rorig s x) (rorig_ref hX hM₀ s i ⟨X, hr⟩)
       (preWPX (rpre hX hM₀ s i) hr χ).neg ∈ (gw hM₀ (groot hF M₀)).M (rstg s i)) : False := by
   set t := a.1.1 with ht
-  have hR : GR (groot hF M₀) t := (carrows hF M₀).refl hT t
-  set P := pathOf a.1.2.down with hPd
-  have hPe : t.1 = nodeOf (groot hF M₀).1 P := pathOf_eq a.1.2.down
+  have hR : CR t := (carrows hF M₀).refl hT t
+  set P := cpath a.1.2.down with hPd
+  have hPe : t.1 = nodeOf (groot hF M₀).1 P := cpath_eq a.1.2.down
   obtain ⟨Z, hz⟩ := kw_decl hM₀ (groot hF M₀) t P hPe (rstg s i) (rorig_ref hX hM₀ s i ⟨X, hr⟩)
   have hZA : Z = hrl.data.A := by
     have h1 := (hrl.data.hdeclOf _ ⟨Z, hz⟩).symm.trans hz
@@ -570,12 +604,12 @@ theorem cdia_sat_child (hX : CluFlags) (hT : ModalSys.T = true) {n : ℕ}
     ∃ a : ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s i).ref x h)).1,
       (cmodel hF hM₀ hX).sat ((ccanonEnv hM₀ hX s i).diaPush x h a) χ := by
   obtain ⟨t, c, hc, hrl, hwd, hdecl, hR₂⟩ := cdia_mem_child hX hT s i h χ hmem
-  have hR : GR (groot hF M₀) t := ⟨[c], pathOk_cons, hc⟩
+  have hR : CR t := ⟨[c], .inl pathOk_cons, hc⟩
   have hmt : (⟨t, ⟨hR⟩⟩ : CAcc hF M₀) ∈
       ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s i).ref x h)).1 :=
-    (ccanon_mem_iff hX s i h _).mpr ((gmem_path hR (P := [c]) hc).mpr (Or.inl hrl))
+    (ccanon_mem_iff hX s i h _).mpr ((cmem_path hR (P := [c]) hc).mpr (Or.inl hrl))
   refine ⟨⟨_, hmt⟩, ?_⟩
-  have hRr : GR (groot hF M₀) t := (carrows hF M₀).refl hT t
+  have hRr : CR t := (carrows hF M₀).refl hT t
   have hmz := (ccanon_own_mem hX hT t _ hwd hRr).mpr hrl
   have hsatK : (cmodel hF hM₀ hX).sat
       ((ccanonEnv hM₀ hX t (glstg (groot hF M₀) t (rstg s i))).diaPush _ hwd ⟨_, hmz⟩)
@@ -597,7 +631,7 @@ theorem cdia_sat_child (hX : CluFlags) (hT : ModalSys.T = true) {n : ℕ}
       (ccanon_cont_real hX t hrl (le_max_right _ _) hdecl hRr hm') _).mp hsatR
     exact (Model.sat_mono (Model.Env.diaPush_agree (ccanonEnv_le hX t hj) hwd ⟨_, hmz⟩ hm') _).mp
       hs₁
-  have hPe : pathOf hR = [c] := pathOf_of hR hc
+  have hPe : cpath hR = [c] := cpath_of hR hc
   exact (sat_diaPush_cK hX s i h ⟨_, hmt⟩ [c] hc hPe hrl hwd hRr hmz χ).mpr hsatK
 
 /-! ## What `Here` says -/
@@ -651,7 +685,7 @@ theorem cinterp_dia_self (hX : CluFlags) (hT : ModalSys.T = true) {s : GW hF M�
   have hK : hr.data.i₀ ≤ max i hr.data.i₀ := le_max_right _ _
   have hdecl : (ctxOf (glat s (max i hr.data.i₀))).ref x = some (.VTypeDia hr.data.A) :=
     (gle hM₀ s hj).ref h
-  have hR : GR (groot hF M₀) s := (carrows hF M₀).refl hT s
+  have hR : CR s := (carrows hF M₀).refl hT s
   have hm' := (ccanon_own_mem hX hT s _ hdecl hR).mpr hr
   calc Model.interp ((ccanonEnv hM₀ hX s i).diaPush x h ⟨_, hm⟩) bd
       = Model.interp ((ccanonEnv hM₀ hX s _).diaPush x hdecl ⟨_, hm'⟩)
@@ -677,7 +711,7 @@ theorem chere_truth (hX : CluFlags) (hT : ModalSys.T = true) {s : GW hF M₀} {i
   have hD : Model.interp (ccanonEnv hM₀ hX s i) t =
       ctoDom hM₀ hX A s (cden hM₀ hX s i (Ctx.Le.refl _) t) (cdefinable_den hX _ _) :=
     interp_ccanon hX t (Model.Env.Agree.refl' _) (Ctx.Presented.noProjLast _)
-  have hR : GR (groot hF M₀) s := (carrows hF M₀).refl hT s
+  have hR : CR s := (carrows hF M₀).refl hT s
   constructor
   · rintro ⟨hm, hind⟩
     obtain ⟨u, u', hu, hu', hrel⟩ := hind.1 hT

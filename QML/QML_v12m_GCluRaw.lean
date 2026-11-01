@@ -421,11 +421,11 @@ theorem crawShape_cden : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (s : GW hF M�
       rw [← transpose_annC hX hM₀ hT s s (kInv_base hko e) b]
       refine congrArg _ (funext fun a' => ?_)
       simp only [cden]
-      rw [crawShape_cden]
+      rw [dif_pos (cpathOk hT _), crawShape_cden]
       refine congrArg (annC a'.1) ?_
-      rw [pTr_ann hX hM₀ hT (pathOf_eq a'.2.down) (pathOf_ok a'.2.down) i (Term.mono e.boxIn b)]
-      rw [pnm_path_congr (nodeOf_inj ((pathOf_eq a'.2.down).symm.trans (rpath_eq a'.1)))
-        (pathOf_eq a'.2.down) (rpath_eq a'.1), Ann.mapIdx_mapIdx]
+      rw [pTr_ann hX hM₀ hT (cpath_eq a'.2.down) (cpathOk hT a'.2.down) i (Term.mono e.boxIn b)]
+      rw [pnm_path_congr (nodeOf_inj ((cpath_eq a'.2.down).symm.trans (rpath_eq a'.1)))
+        (cpath_eq a'.2.down) (rpath_eq a'.1), Ann.mapIdx_mapIdx]
       rfl
   | _, _, Γ, s, i, e, .diatm x hx c => by
       have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
@@ -443,11 +443,11 @@ theorem crawShape_box_at {A : VarType} {a : Ann A} {Γ : Ctx} (s : GW hF M₀) (
     (e : Γ.Le (ctxOf (glat s i))) (b : Term σ Γ.boxIn A a) (a' : CAcc hF M₀) :
     crawShape hT (cden hM₀ hX s i e (.boxtm b) a') = annC a'.1 (a.mapIdx (chiI s a'.1)) := by
   simp only [cden]
-  rw [crawShape_cden hX hM₀ hT]
+  rw [dif_pos (cpathOk hT _), crawShape_cden hX hM₀ hT]
   refine congrArg (annC a'.1) ?_
-  rw [pTr_ann hX hM₀ hT (pathOf_eq a'.2.down) (pathOf_ok a'.2.down) i (Term.mono e.boxIn b),
-    pnm_path_congr (nodeOf_inj ((pathOf_eq a'.2.down).symm.trans (rpath_eq a'.1)))
-      (pathOf_eq a'.2.down) (rpath_eq a'.1), Ann.mapIdx_mapIdx]
+  rw [pTr_ann hX hM₀ hT (cpath_eq a'.2.down) (cpathOk hT a'.2.down) i (Term.mono e.boxIn b),
+    pnm_path_congr (nodeOf_inj ((cpath_eq a'.2.down).symm.trans (rpath_eq a'.1)))
+      (cpath_eq a'.2.down) (rpath_eq a'.1), Ann.mapIdx_mapIdx]
   rfl
 
 include hX hM₀ hT in

@@ -820,35 +820,41 @@ def gloop_kept (hF : ModalSys.Four = true) (hT : ModalSys.T = false)
   rw [e]
   exact Proof.lookup List.mem_cons_self
 
-/-- `θ`, sending kept items to themselves, undoes the shift. -/
-theorem keepFix_shift (hF : ModalSys.Four = true) (hb : ModalSys.keepOnly = false)
-    {cl : List VarType} {Δ : Ctx} {f : VarSymb → LEnt σ} (hkf : KeepFix cl f)
-    {e : SubE σ Δ} {v : VarSymb} {U : VarType} (hl : v.lastProj = false)
-    (hv : (ctxOf cl).boxIn v = some U) :
-    SubE.Sim U (((eS σ Δ f).set (.bnd 0) e).box.at (v.shift 0)) (.ren v) := by
+/-- `θ`, sending kept items to themselves, undoes the shift on a `□` view. -/
+theorem box_shift_ren (hF : ModalSys.Four = true) (hb : ModalSys.keepOnly = false)
+    {cl : List VarType} {Δ : Ctx} {θ : Subst σ Δ}
+    (he : ∀ u W, (ctxOf cl).boxIn (.step u .keep) = some W → θ.at (.step u .keep) = .ren u)
+    {v : VarSymb} {U : VarType} (hl : v.lastProj = false) (hv : (ctxOf cl).boxIn v = some U) :
+    SubE.Sim U (θ.box.at (v.shift 0)) (.ren v) := by
   obtain ⟨u, s, rfl, -, W, hW⟩ := kView_item (k := none) hv
-  have he : ∀ W', (ctxOf cl).boxIn (.step u .keep) = some W' →
-      ((eS σ Δ f).set (.bnd 0) e).at (.step u .keep) = .ren u := fun W' h => by
-    rw [Subst.at_nonproj _ rfl, Subst.set_ne _ _ (fun e => by cases e), eS_item _ rfl,
-      hkf u W' h]
-    rfl
   cases s with
   | box =>
       obtain ⟨-, hu⟩ := Ctx.boxIn_box hv
       have hk := Ctx.boxIn_keep_of' hF hu rfl
       rw [VarSymb.shift_level_zero rfl, Subst.at_nonproj _ rfl]
       change SubE.Sim U (SubE.unbox (Subst.at _ _)) _
-      rw [he _ hk]
+      rw [he _ _ hk]
       change SubE.Sim U (.ren (VarSymb.inner u)) _
       rw [show VarSymb.inner u = .step u .box by simp [VarSymb.inner, hb]]
       exact .refl _
   | keep =>
-      rw [VarSymb.shift_level_zero rfl, Subst.box_at_keep, he _ hv]
+      rw [VarSymb.shift_level_zero rfl, Subst.box_at_keep, he _ _ hv]
       exact .refl _
   | dia => cases hv
   | fst => cases hl
   | snd => cases hl
   | here => cases hl
+
+/-- Entries fixing kept items, with a slot set, undo the shift. -/
+theorem keepFix_shift (hF : ModalSys.Four = true) (hb : ModalSys.keepOnly = false)
+    {cl : List VarType} {Δ : Ctx} {f : VarSymb → LEnt σ} (hkf : KeepFix cl f)
+    {e : SubE σ Δ} {v : VarSymb} {U : VarType} (hl : v.lastProj = false)
+    (hv : (ctxOf cl).boxIn v = some U) :
+    SubE.Sim U (((eS σ Δ f).set (.bnd 0) e).box.at (v.shift 0)) (.ren v) :=
+  box_shift_ren hF hb (fun u W h => by
+    rw [Subst.at_nonproj _ rfl, Subst.set_ne _ _ (fun e => by cases e), eS_item _ rfl,
+      hkf u W h]
+    rfl) hl hv
 
 /-- ⭐**One necessity about the root's next variable is consistent with the root**: `◇¬` of the
     hat is refuted (`Proof.loop_tup`), so the transfer reflects `□ψ` at the variable's kept part,

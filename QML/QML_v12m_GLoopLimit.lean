@@ -153,6 +153,43 @@ theorem gltr_loop (hM₀ : Theory.IsMCS M₀) (hl : GNetSt.LoopOn M₀) (i : ℕ
     (coh_eS_kView (gloopOk hM₀ hl i)) _ _
     (sim_eS_congr fun v T _ hv => (hag v T hv).symm) ψ] at h₁
 
+theorem lstg_monotone (hM₀ : Theory.IsMCS M₀) (hl : GNetSt.LoopOn M₀) {i i' : ℕ} (hii : i ≤ i') :
+    lstg hF M₀ i ≤ lstg hF M₀ i' := by
+  have hP := lstg_spec (hF := hF) hM₀ hl i'
+  have hP' : GStgP (groot hF M₀) (groot hF M₀) i (lstg hF M₀ i') :=
+    ⟨by have := hP.1; omega, le_trans (gnet_lang_suffix hF hM₀ (by omega)
+      (live_gbirth hF hM₀ (groot hF M₀).2 (Nat.le_add_right _ i))).length_le hP.2⟩
+  classical
+  rw [lstg, glstg, dif_pos ⟨_, hP'⟩]
+  exact Nat.find_min' _ hP'
+
+/-- ⭐**A root's `□`-view term translated along the self-edge.** -/
+noncomputable def loopTm (hM₀ : Theory.IsMCS M₀) (hl : GNetSt.LoopOn M₀) (i : ℕ) {A : VarType}
+    {a : Ann A} (b : Term σ ((ctxOf (glat (groot hF M₀) i)).kView none) A a) :
+    Σ c : Ann A, Term σ (ctxOf (glat (groot hF M₀) (lstg hF M₀ i))) A c :=
+  ⟨_, Term.subst (eIdx (fmapL hF M₀ [])) (eS σ _ (fmapL hF M₀ []))
+    (ok_eS_kView (gloopOk hM₀ hl i)) (coh_eS_kView (gloopOk hM₀ hl i)) b⟩
+
+theorem loopTm_sigma (hM₀ : Theory.IsMCS M₀) (hl : GNetSt.LoopOn M₀) (i : ℕ) {A : VarType}
+    {a a' : Ann A} {u : Term σ ((ctxOf (glat (groot hF M₀) i)).kView none) A a}
+    {u' : Term σ ((ctxOf (glat (groot hF M₀) i)).kView none) A a'}
+    (e : (⟨a, u⟩ : Σ b : Ann A, Term σ ((ctxOf (glat (groot hF M₀) i)).kView none) A b) =
+      ⟨a', u'⟩) :
+    loopTm hM₀ hl i u = loopTm hM₀ hl i u' := by
+  cases e
+  rfl
+
+/-- Translating a later stage is weakening the translation. -/
+theorem loopTm_mono (hM₀ : Theory.IsMCS M₀) (hl : GNetSt.LoopOn M₀) {i i' : ℕ} (hii : i ≤ i')
+    {A : VarType} {a : Ann A} (b : Term σ ((ctxOf (glat (groot hF M₀) i)).kView none) A a) :
+    (⟨_, Term.mono (gle hM₀ (groot hF M₀) (lstg_monotone hM₀ hl hii)) (loopTm hM₀ hl i b).2⟩ :
+      Σ c, Term σ (ctxOf (glat (groot hF M₀) (lstg hF M₀ i'))) A c) =
+      loopTm hM₀ hl i' (Term.mono ((gle hM₀ (groot hF M₀) hii).kView none) b) := by
+  change (⟨_, Term.mono _ (Term.subst _ _ _ _ b)⟩ : Σ c, Term σ _ _ c) =
+    ⟨_, Term.subst _ _ _ _ (Term.mono _ b)⟩
+  rw [Term.mono_subst, Term.subst_mono]
+  exact Term.subst_congr _ _ _ _ _ _ (sim_eS_mono _ (gloopOk hM₀ hl i)) b
+
 end GArrow
 
 end V12M

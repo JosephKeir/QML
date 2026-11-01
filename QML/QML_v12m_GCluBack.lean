@@ -441,13 +441,13 @@ theorem cRet_of_mem_nec (hX : CluFlags) (hS : ModalSys.BStrong = true) (s : GW h
       (cData hM₀ hX .nec (ctoDom hM₀ hX _ s
         (cden hM₀ hX s i (Ctx.Le.refl _) (.boxtm (.boxtm bd))) (cdefinable_den hX _ _))).2
       (ctoDom hM₀ hX A s (cden hM₀ hX s i (Ctx.Le.refl _) t) (cdefinable_den hX _ _)) := by
-  have hT := hX.bT (hX.bS hS)
-  have hR : GR (groot hF M₀) s := (carrows hF M₀).refl hT s
+  have hT := hX.bT hS
+  have hR : CR s := (carrows hF M₀).refl hT s
   refine ⟨⟨⟨⟨s, ⟨hR⟩⟩, trivial⟩⟩, fun b => ⟨hR, fun _ => ?_,
     fun hnT => absurd (hT.symm.trans hnT) (by decide)⟩,
     .inr ⟨hS, i, .nec, _, _, _, _, hmem, rfl, rfl, rfl⟩⟩
-  obtain ⟨g₀, g, hg⟩ := exists_boxtm (pTr hM₀ (groot hF M₀) b.1.1 (pathOf b.1.2.down)
-    (pathOf_eq b.1.2.down) (pathOf_ok b.1.2.down) (rstg s i) (preTB hX hM₀ s i (.boxtm bd)).2)
+  obtain ⟨g₀, g, hg⟩ := exists_boxtm (pTr hM₀ (groot hF M₀) b.1.1 (cpath b.1.2.down)
+    (cpath_eq b.1.2.down) (cpathOk hT b.1.2.down) (rstg s i) (preTB hX hM₀ s i (.boxtm bd)).2)
   obtain ⟨I, hI, b₀, k, hdia, hden⟩ := tie_nec hM₀ hX hS hT s i b.1.1 _ _ _ bd g hg
   have hatom : WFF.back hS .nec (.boxtm (.boxtm (Term.mono (gle hM₀ s hI).boxIn.boxIn bd)))
       (Term.mono (gle hM₀ s hI) t) ∈ (gw hM₀ s).M I := (gw hM₀ s).sub hI _ hmem
@@ -469,9 +469,7 @@ theorem cRet_of_mem_nec (hX : CluFlags) (hS : ModalSys.BStrong = true) (s : GW h
       (sig_collapse_cong (Ctx.collapses_boxIn_self hT _) (Term.collapse_shift_boxIn hT hF k))
     have e₂ : cden hM₀ hX b.1.1 _ (Ctx.Le.refl _) (.boxtm g) =
         cden hM₀ hX s i (Ctx.Le.refl _) (.boxtm (.boxtm bd)) b.1 := by
-      change _ = cden hM₀ hX b.1.1 _ (Ctx.Le.refl _) (pTr hM₀ (groot hF M₀) b.1.1
-        (pathOf b.1.2.down) (pathOf_eq b.1.2.down) (pathOf_ok b.1.2.down) (rstg s i)
-        (preTB hX hM₀ s i (Term.mono (Ctx.Le.refl _).boxIn (.boxtm bd))).2).2
+      refine Eq.trans ?_ (dif_pos (cpathOk hT b.1.2.down)).symm
       rw [Term.mono_refl]
       exact (cden_sigma hX _ hg).symm
     exact e₁.trans ((cden_boxtm_own hX hT s I k hR).symm.trans
@@ -729,7 +727,7 @@ theorem cRet_of_mem_pos (hX : CluFlags) (hS : ModalSys.BStrong = true) (s : GW h
     {a₀ : Ann A} (bd : Term σ ((ctxOf (glat s i)).diaIn y).boxIn A a₀) {a : Ann A}
     (t : Term σ (ctxOf (glat s i)) A a)
     (hmem : WFF.back hS .pos (.diatm y ⟨Y, hr⟩ (.boxtm bd)) t ∈ (gw hM₀ s).M i)
-    (hne : ∃ b : CAcc hF M₀, GMem hM₀ (groot hF M₀) b.1 (pathOf b.2.down) (pathOf_eq b.2.down)
+    (hne : ∃ b : CAcc hF M₀, GMem hM₀ (groot hF M₀) b.1 (cpath b.2.down) (cpath_eq b.2.down)
       (rorig s y)) :
     cRet hM₀ hX (cTag hM₀ hX .pos (ctoDom hM₀ hX _ s
         (cden hM₀ hX s i (Ctx.Le.refl _) (.diatm y ⟨Y, hr⟩ (.boxtm bd))) (cdefinable_den hX _ _)))
@@ -738,19 +736,19 @@ theorem cRet_of_mem_pos (hX : CluFlags) (hS : ModalSys.BStrong = true) (s : GW h
       (cData hM₀ hX .pos (ctoDom hM₀ hX _ s
         (cden hM₀ hX s i (Ctx.Le.refl _) (.diatm y ⟨Y, hr⟩ (.boxtm bd))) (cdefinable_den hX _ _))).2
       (ctoDom hM₀ hX A s (cden hM₀ hX s i (Ctx.Le.refl _) t) (cdefinable_den hX _ _)) := by
-  have hT := hX.bT (hX.bS hS)
-  have hR : GR (groot hF M₀) s := (carrows hF M₀).refl hT s
+  have hT := hX.bT hS
+  have hR : CR s := (carrows hF M₀).refl hT s
   obtain ⟨b₀', hb₀'⟩ := hne
   refine ⟨⟨⟨b₀', hb₀'⟩⟩, fun b => ⟨hR, fun _ => ?_,
     fun hnT => absurd (hT.symm.trans hnT) (by decide)⟩,
     .inr ⟨hS, i, .pos, _, _, _, _, hmem, rfl, rfl, rfl⟩⟩
-  have hm : GMem hM₀ (groot hF M₀) b.1.1 (pathOf b.1.2.down) (pathOf_eq b.1.2.down) (rorig s y) :=
+  have hm : GMem hM₀ (groot hF M₀) b.1.1 (cpath b.1.2.down) (cpath_eq b.1.2.down) (rorig s y) :=
     b.2
   have hrl := hm.resolve_right fun h => absurd (hT.symm.trans h.1) (by decide)
   have hx₀ := rorig_ref hX hM₀ s i ⟨Y, hr⟩
   obtain ⟨g₀, g, hg⟩ := exists_boxtm (grealT hrl (Ctx.Le.refl _)
-    (kw_decl hM₀ (groot hF M₀) b.1.1 (pathOf b.1.2.down) (pathOf_eq b.1.2.down) (rstg s i) hx₀)
-    (pTrXK hM₀ (groot hF M₀) b.1.1 (pathOf b.1.2.down) (pathOf_eq b.1.2.down) (rstg s i)
+    (kw_decl hM₀ (groot hF M₀) b.1.1 (cpath b.1.2.down) (cpath_eq b.1.2.down) (rstg s i) hx₀)
+    (pTrXK hM₀ (groot hF M₀) b.1.1 (cpath b.1.2.down) (cpath_eq b.1.2.down) (rstg s i)
       (rorig s y) hx₀ (preTD hX hM₀ s i ⟨Y, hr⟩ (.boxtm bd)).2).2)
   obtain ⟨I, hI, hy, b₀, k, hdia, hden⟩ := tie_pos hM₀ hX hS hT s i hr b.1.1 _ _ hrl bd g hg
   have hatom : WFF.back hS .pos (.diatm y hy (.boxtm (Term.mono ((gle hM₀ s hI).diaIn y).boxIn bd)))

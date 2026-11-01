@@ -68,7 +68,7 @@ theorem size_grealW {t : GW hF M₀} {y : VarSymb} (hr : (gw hM₀ t).Realised y
     arrow. -/
 theorem sat_grealW (hX : CluFlags) (hT : ModalSys.T = true) (t : GW hF M₀) {z : VarSymb}
     {Z : VarType} {j : ℕ} (hz : (ctxOf (glat t j)).ref z = some (.VTypeDia Z))
-    (hR : GR (groot hF M₀) t) (hrl : (gw hM₀ t).Realised z)
+    (hR : CR t) (hrl : (gw hM₀ t).Realised z)
     (hmz : (⟨t, ⟨hR⟩⟩ : CAcc hF M₀) ∈
       ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX t j).ref z hz)).1)
     (χ : WFF σ ((ctxOf (glat t j)).diaIn z) 0) :
@@ -116,13 +116,14 @@ structure FarLeg (hX : CluFlags) (s : GW hF M₀) (I : ℕ) (O : OutLeg (ctxOf (
     (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX (O.acc (ccanonEnv hM₀ hX s I) a).1 L) (trW χ)
 
 /-- The plain leg's arrow: the world's preimage, then the root's path. -/
-noncomputable def farNec (hX : CluFlags) (s : GW hF M₀) (I : ℕ) (a : CAcc hF M₀) :
+noncomputable def farNec (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀) (I : ℕ)
+    (a : CAcc hF M₀) :
     FarLeg hM₀ hX s I .nec a where
-  L := pstg (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (rstg s I)
-  C := preC hM₀ hX s I a
-  npl := npl_preC hM₀ hX s I a
-  ag := cagree_boxPush hX (.nil _) _ (cagree_canon hX s I) a
-  trW χ := pTrW hM₀ (groot hF M₀) a.1 (pathOf a.2.down) (pathOf_eq a.2.down) (pathOf_ok a.2.down)
+  L := pstg (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down) (rstg s I)
+  C := preC hM₀ hX s I a (cpathOk hT a.2.down)
+  npl := npl_preC hM₀ hX s I a _
+  ag := cagree_boxPush hX (.nil _) _ (cagree_canon hX s I) a _
+  trW χ := pTrW hM₀ (groot hF M₀) a.1 (cpath a.2.down) (cpath_eq a.2.down) (cpathOk hT a.2.down)
     (rstg s I) (preWP (rpre hX hM₀ s I) χ)
   size_trW χ := (size_pTrW hM₀ _ _ _ _ _ _ _).trans (size_preWP (hM₀ := hM₀) hX s I χ)
   trW_and φ ψ := pTrW_and hM₀ _ _ _ _ _ _ _ _
@@ -130,7 +131,7 @@ noncomputable def farNec (hX : CluFlags) (s : GW hF M₀) (I : ℕ) (a : CAcc hF
     have e : preWP (rpre hX hM₀ s I) (WFF.holeAt Ctx.NoSlots.slots u ψ) =
         WFF.holeAt Ctx.NoSlots.slots (preTB hX hM₀ s I u).2 ψ := WFF.subst_holeAt _ _ _ _ _ u ψ
     rw [e, pTrW_holeAt hM₀]
-    exact WFF.holeAt_congr _ (preC_app hM₀ hX s I a u).symm ψ
+    exact WFF.holeAt_congr _ (preC_app hM₀ hX s I a _ u).symm ψ
   dia_of χ h := dia_mem_of_path hM₀ hX s I a.1 _ _ _ (le_refl _) χ (by rw [WFF.mono_refl]; exact h)
   sat_trW χ := sat_boxPush_c hX s I a _ _ _ rfl χ
 
@@ -138,7 +139,7 @@ noncomputable def farNec (hX : CluFlags) (s : GW hF M₀) (I : ℕ) (a : CAcc hF
 theorem real_of_ext (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀) (I : ℕ) {y : VarSymb}
     {Y : VarType} (hr : (ctxOf (glat s I)).ref y = some (.VTypeDia Y))
     (a : ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s I).ref y hr)).1) :
-    (gw hM₀ a.1.1).Realised (kw (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down)
+    (gw hM₀ a.1.1).Realised (kw (groot hF M₀) a.1.1 (cpath a.1.2.down) (cpath_eq a.1.2.down)
       (rorig s y)) :=
   ((ccanon_mem_iff hX s I hr a.1).mp a.2).resolve_right
     fun h => absurd (hT.symm.trans h.1) (by decide)
@@ -149,18 +150,18 @@ noncomputable def farPos (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M�
     {y : VarSymb} (hy : ∃ Y, (ctxOf (glat s I)).ref y = some (.VTypeDia Y))
     (a : ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s I).ref y hy.choose_spec)).1) :
     FarLeg hM₀ hX s I (.pos y hy) a where
-  L := max (pstg (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down) (rstg s I))
+  L := max (pstg (groot hF M₀) a.1.1 (cpath a.1.2.down) (cpath_eq a.1.2.down) (rstg s I))
     (real_of_ext hM₀ hX hT s I hy.choose_spec a).data.i₀
   C := (preXKC hM₀ hX s I hy a.1).comp (grealC hM₀ (real_of_ext hM₀ hX hT s I hy.choose_spec a) _
-    (kw_decl hM₀ (groot hF M₀) a.1.1 _ (pathOf_eq a.1.2.down) (rstg s I)
+    (kw_decl hM₀ (groot hF M₀) a.1.1 _ (cpath_eq a.1.2.down) (rstg s I)
       (rorig_ref hX hM₀ s I hy)))
   npl := GTr.npl_comp _ _ (npl_preXKC hM₀ hX s I hy a.1) (npl_grealC hM₀ _ _ _)
   ag := cagree_diaPushR hX (.nil _) _ (cagree_canon hX s I) hy.choose_spec a
     (real_of_ext hM₀ hX hT s I hy.choose_spec a)
   trW χ := grealW hM₀ (real_of_ext hM₀ hX hT s I hy.choose_spec a)
-    (kw_decl hM₀ (groot hF M₀) a.1.1 _ (pathOf_eq a.1.2.down) (rstg s I)
+    (kw_decl hM₀ (groot hF M₀) a.1.1 _ (cpath_eq a.1.2.down) (rstg s I)
       (rorig_ref hX hM₀ s I hy))
-    (pTrXKW hM₀ (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down) (rstg s I)
+    (pTrXKW hM₀ (groot hF M₀) a.1.1 (cpath a.1.2.down) (cpath_eq a.1.2.down) (rstg s I)
       (rorig s y) (rorig_ref hX hM₀ s I hy) (preWPX (rpre hX hM₀ s I) hy.choose_spec χ))
   size_trW χ := (size_grealW hM₀ _ _ _).trans ((size_pTrXKW (hM₀ := hM₀) _ _ _ _ _ _ _ _).trans
     (size_preWPX (hM₀ := hM₀) hX s I _ χ))
@@ -180,12 +181,12 @@ noncomputable def farPos (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M�
     rw [WFF.mono_refl]
     exact h
   sat_trW χ := by
-    obtain ⟨Z, hz⟩ := kw_decl hM₀ (groot hF M₀) a.1.1 _ (pathOf_eq a.1.2.down) (rstg s I)
+    obtain ⟨Z, hz⟩ := kw_decl hM₀ (groot hF M₀) a.1.1 _ (cpath_eq a.1.2.down) (rstg s I)
       (rorig_ref hX hM₀ s I hy)
-    have hR : GR (groot hF M₀) a.1.1 := (carrows hF M₀).refl hT a.1.1
+    have hR : CR a.1.1 := (carrows hF M₀).refl hT a.1.1
     have hrl := real_of_ext hM₀ hX hT s I hy.choose_spec a
     have hmz := (ccanon_own_mem hX hT a.1.1 _ hz hR).mpr hrl
-    exact (sat_diaPush_cK hX s I hy.choose_spec a _ (pathOf_eq a.1.2.down) rfl hrl hz hR hmz
+    exact (sat_diaPush_cK hX s I hy.choose_spec a _ (cpath_eq a.1.2.down) rfl hrl hz hR hmz
       χ).trans (sat_grealW hM₀ hX hT a.1.1 hz hR hrl hmz _).symm
 
 /-! ## Ties at terms -/
@@ -508,12 +509,13 @@ theorem kept_path (hX : CluFlags) (s : GW hF M₀) (I : ℕ) (v : GW hF M₀) (P
   exact sig_boxtm ((tr_pathK hX hM₀ _ _ _ h R _).symm.trans (pTrK_home hM₀ hX v h hR₀ hK c))
 
 /-- A kept home term along the plain leg. -/
-theorem kept_nec (hX : CluFlags) (s : GW hF M₀) (I : ℕ) (a : CAcc hF M₀) {K : ℕ} {A : VarType}
+theorem kept_nec (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀) (I : ℕ)
+    (a : CAcc hF M₀) {K : ℕ} {A : VarType}
     {c₀ : Ann A} (c : Term σ (ctxOf (glat a.1 K)).boxIn A c₀)
     (hJI : pstg (groot hF M₀) s (rpath s) (rpath_eq s) (rstg a.1 K) ≤ I) :
-    FarKept hM₀ (farNec hM₀ hX s I a)
+    FarKept hM₀ (farNec hM₀ hX hT s I a)
       (Term.mono (gle hM₀ s hJI).boxIn (homeT hM₀ hX s a.1 c).2) c := by
-  obtain ⟨L', hL, hK, e⟩ := kept_path hM₀ hX s I a.1 _ (pathOf_eq a.2.down) (pathOf_ok a.2.down) c
+  obtain ⟨L', hL, hK, e⟩ := kept_path hM₀ hX s I a.1 _ (cpath_eq a.2.down) (cpathOk hT a.2.down) c
     hJI
   refine ⟨L', hL, hK, ?_⟩
   refine Eq.trans ?_ e
@@ -525,8 +527,8 @@ theorem kept_nec (hX : CluFlags) (s : GW hF M₀) (I : ℕ) (a : CAcc hF M₀) {
       ⟨_, .boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF _)
         (Term.mono (gle hM₀ s hJI).boxIn (homeT hM₀ hX s a.1 c).2))⟩ :=
     congrArg (Sigma.mk _) (Term.mono_refl _ _)
-  exact (preC_app hM₀ hX s I a _).trans
-    (pTr_sigma hM₀ _ _ _ _ (pathOf_ok a.2.down) _ (preTB_sigma hX hM₀ s I e₀))
+  exact (preC_app hM₀ hX s I a _ _).trans
+    (pTr_sigma hM₀ _ _ _ _ (cpathOk hT a.2.down) _ (preTB_sigma hX hM₀ s I e₀))
 
 /-- A kept home term along a witness whose arrow is realised. -/
 theorem kept_real (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀) (I : ℕ) {y : VarSymb}
@@ -602,7 +604,7 @@ theorem kept_pos (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀) (I : 
     (hJI : pstg (groot hF M₀) s (rpath s) (rpath_eq s) (rstg a.1.1 K) ≤ I) :
     FarKept hM₀ (farPos hM₀ hX hT s I hy a)
       (Term.mono (gle hM₀ s hJI).boxIn (homeT hM₀ hX s a.1.1 c).2) c := by
-  obtain ⟨L', hL, hK, e⟩ := kept_real hM₀ hX hT s I hy a.1.1 _ (pathOf_eq a.1.2.down)
+  obtain ⟨L', hL, hK, e⟩ := kept_real hM₀ hX hT s I hy a.1.1 _ (cpath_eq a.1.2.down)
     (real_of_ext hM₀ hX hT s I hy.choose_spec a) c hJI
   refine ⟨L', hL, hK, Eq.trans ?_ e⟩
   exact sig_mono _ (real_app hM₀ (groot hF M₀) _ _ (rstg s I) (rorig s y) _ _ _ _).symm
@@ -778,8 +780,8 @@ theorem ret_lift_core (hX : CluFlags) (hS : ModalSys.BStrong = true) (hT : Modal
       (gw hM₀ s).M I := by
   cases O with
   | nec =>
-      exact ret_core hM₀ hX hS hT s I .nec a (farNec hM₀ hX s I a) h E₀ _
-        (kept_nec hM₀ hX s I a _ hJI) _
+      exact ret_core hM₀ hX hS hT s I .nec a (farNec hM₀ hX hT s I a) h E₀ _
+        (kept_nec hM₀ hX hT s I a _ hJI) _
         ((Model.sat_mono (Model.Env.extend_agree (Model.Env.boxPush_agree
           (ccanonEnv_le hX s hiI) a) (.bnd 0) _) Φ).mpr hΦ)
         (fun ψ hψ => IH _ ψ (by rwa [WFF.size_mono] at hψ))
@@ -803,7 +805,7 @@ theorem comps_home (hX : CluFlags) (hT : ModalSys.T = true) (s v : GW hF M₀)
       ctoDom hM₀ hX _ s (cden hM₀ hX s I (Ctx.Le.refl _) (Term.collapse
         (Ctx.collapses_boxIn_self hT _) (Term.mono (gle hM₀ s hJI).boxIn
           (homeT hM₀ hX s v (compsVal E₀ cs h).2).2))) (cdefinable_den hX _ _) := by
-  have hR : GR (groot hF M₀) s := (carrows hF M₀).refl hT s
+  have hR : CR s := (carrows hF M₀).refl hT s
   rw [← interp_ccanon hX (.boxtm E₀) (Model.Env.Agree.refl' _) (Ctx.Presented.noProjLast _),
     ← Model.interp_compsVal (ccanonEnv hM₀ hX v K) E₀ s r cs h,
     ← Model.box_beta (ccanonEnv hM₀ hX v K) (compsVal E₀ cs h).2 ⟨s, ⟨r⟩⟩,
@@ -825,7 +827,7 @@ theorem mem_ret_of_satN (hX : CluFlags) (hS : ModalSys.BStrong = true) {s : GW h
         ((cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s' K) φ ↔ φ ∈ (gw hM₀ s').M K))
     (hsat : (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s i) (O.retS hS (.nec N) t Φ : WFF σ _ 0)) :
     (O.retS hS (.nec N) t Φ : WFF σ _ 0) ∈ (gw hM₀ s).M i := by
-  have hT := hX.bT (hX.bS hS)
+  have hT := hX.bT hS
   obtain ⟨a₀, e, hΦ, r, hr⟩ := (OutLeg.sat_retS (M := cmodel hF hM₀ hX) (d := 0) hS
     (ccanonEnv hM₀ hX s i) O (.nec N) t Φ).mp hsat
   obtain ⟨K, e₀, g, hg⟩ := cdefinable_fromDom hM₀ hX N.ty _ e

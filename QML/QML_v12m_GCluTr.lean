@@ -896,12 +896,12 @@ theorem cden_dia_c_pos (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
     {a : Ann A} (c : Term σ ((ctxOf (glat s i)).diaIn x) A a) (b : CAcc hF M₀)
     (hb : b ∈ (cden hM₀ hX s i (Ctx.Le.refl _) (.diatm x ⟨X, hx⟩ c)).E)
     (hr : (gw hM₀ b.1).Realised
-      (kw (groot hF M₀) b.1 (pathOf b.2.down) (pathOf_eq b.2.down) (rorig s x))) :
+      (kw (groot hF M₀) b.1 (cpath b.2.down) (cpath_eq b.2.down) (rorig s x))) :
     (cden hM₀ hX s i (Ctx.Le.refl _) (.diatm x ⟨X, hx⟩ c)).c ⟨b, hb⟩ =
       cden hM₀ hX b.1 _ (Ctx.Le.refl _) (grealT hr (Ctx.Le.refl _)
-        (kw_decl hM₀ (groot hF M₀) b.1 (pathOf b.2.down) (pathOf_eq b.2.down) (rstg s i)
+        (kw_decl hM₀ (groot hF M₀) b.1 (cpath b.2.down) (cpath_eq b.2.down) (rstg s i)
           (rorig_ref hX hM₀ s i ⟨X, hx⟩))
-        (pTrXK hM₀ (groot hF M₀) b.1 (pathOf b.2.down) (pathOf_eq b.2.down) (rstg s i)
+        (pTrXK hM₀ (groot hF M₀) b.1 (cpath b.2.down) (cpath_eq b.2.down) (rstg s i)
           (rorig s x) (rorig_ref hX hM₀ s i ⟨X, hx⟩)
           (preTD hX hM₀ s i ⟨X, hx⟩ (Term.mono ((Ctx.Le.refl _).diaIn x) c)).2).2).2 :=
   dif_pos hr
@@ -911,27 +911,27 @@ theorem cden_dia_c_pos (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
 theorem cden_own_mem (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (hT : ModalSys.T = true)
     (s : GW hF M₀) (i : ℕ) {x : VarSymb} {X : VarType}
     (hx : (ctxOf (glat s i)).ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A}
-    (c : Term σ ((ctxOf (glat s i)).diaIn x) A a) (hR : GR (groot hF M₀) s) :
+    (c : Term σ ((ctxOf (glat s i)).diaIn x) A a) (hR : CR s) :
     (⟨s, ⟨hR⟩⟩ : CAcc hF M₀) ∈ (cden hM₀ hX s i (Ctx.Le.refl _) (.diatm x ⟨X, hx⟩ c)).E ↔
       (gw hM₀ s).Realised x := by
-  change GMem hM₀ (groot hF M₀) s (pathOf hR) (pathOf_eq hR) (rorig s x) ↔ _
+  change GMem hM₀ (groot hF M₀) s (cpath hR) (cpath_eq hR) (rorig s x) ↔ _
   rw [gmem_T hT, kw_rorig hX hM₀ s i hx]
 
 /-- ⭐**A possible term's content at a world's own arrow is its realisation** (`pTrXK_pre`). -/
 theorem cden_own_content (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ)
     {x : VarSymb} {X : VarType} (hx : (ctxOf (glat s i)).ref x = some (.VTypeDia X)) {A : VarType}
-    {a : Ann A} (c : Term σ ((ctxOf (glat s i)).diaIn x) A a) (hR : GR (groot hF M₀) s)
+    {a : Ann A} (c : Term σ ((ctxOf (glat s i)).diaIn x) A a) (hR : CR s)
     (hm : (⟨s, ⟨hR⟩⟩ : CAcc hF M₀) ∈ (cden hM₀ hX s i (Ctx.Le.refl _) (.diatm x ⟨X, hx⟩ c)).E)
     (hr : (gw hM₀ s).Realised x) :
     (cden hM₀ hX s i (Ctx.Le.refl _) (.diatm x ⟨X, hx⟩ c)).c ⟨⟨s, ⟨hR⟩⟩, hm⟩ =
       cden hM₀ hX s _ (Ctx.Le.refl _) (grealT hr (Ctx.Le.refl _) ⟨X, hx⟩ c).2 := by
   have hr' : (gw hM₀ s).Realised
-      (kw (groot hF M₀) s (pathOf hR) (pathOf_eq hR) (rorig s x)) := by
+      (kw (groot hF M₀) s (cpath hR) (cpath_eq hR) (rorig s x)) := by
     rw [kw_rorig hX hM₀ s i hx]
     exact hr
   refine (cden_dia_c_pos hX hM₀ s i hx c ⟨s, ⟨hR⟩⟩ hm hr').trans ?_
   rw [Term.mono_refl]
-  exact cden_real_pre hX hM₀ s i hx c (pathOf_eq hR) hr' hr
+  exact cden_real_pre hX hM₀ s i hx c (cpath_eq hR) hr' hr
 
 end GArrow
 

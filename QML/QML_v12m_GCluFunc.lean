@@ -1,4 +1,5 @@
 import QML.QML_v12m_GCluRaw
+import QML.QML_v12m_GCluLoop
 
 /-!
 # QML v12m — 5 on the growing tree: the cluster model's function algebra
@@ -305,14 +306,24 @@ theorem cden_applyG (hX : CluFlags) :
       change cden hM₀ hX s i e (.boxtm (Canon.applyG f b).2) a =
         crawEval hM₀ hX f a.1 (cden hM₀ hX s i e (.boxtm b) a)
       simp only [cden]
-      refine (cden_sigma hX _ ((pTr_sigma hM₀ _ _ _ _ _ _ (preTB_applyG hX hM₀ f e b)).trans
-        (pTr_applyG f _ _ _ _ _ _ _))).trans ?_
-      exact cden_applyG hX f _ a.1 _ (Ctx.Le.refl _)
+      by_cases hp : PathOk (cpath a.2.down)
+      · simp only [dif_pos hp]
+        refine (cden_sigma hX _ ((pTr_sigma hM₀ _ _ _ _ _ _ (preTB_applyG hX hM₀ f e b)).trans
+          (pTr_applyG f _ _ _ _ _ _ _))).trans ?_
+        exact cden_applyG hX f _ a.1 _ (Ctx.Le.refl _)
+      · simp only [dif_neg hp]
+        refine (cden_sigma hX _ ((loopTm_sigma hM₀ _ _ (preTB_applyG hX hM₀ f e b)).trans
+          (loopTm_applyG hM₀ _ _ f _))).trans ?_
+        exact cden_applyG hX f _ a.1 _ _
   | _, _, .boxPair _ _, _, _, .pair (.boxtm b) (.boxtm c), s, i, e => funext fun a => by
       change cden hM₀ hX s i e (.boxtm (.pair b c)) a =
         (cden hM₀ hX s i e (.boxtm b) a, cden hM₀ hX s i e (.boxtm c) a)
       simp only [cden]
-      exact cden_sigma hX _ (pTr_pair _ _ _ _ _ _ _ _)
+      by_cases hp : PathOk (cpath a.2.down)
+      · simp only [dif_pos hp]
+        exact cden_sigma hX _ (pTr_pair _ _ _ _ _ _ _ _)
+      · simp only [dif_neg hp]
+        rfl
   | _, _, .boxUnit, _, _, .unit, _, _, _ => funext fun _ => rfl
   | _, _, .diaMap f, _, _, .diatm x hx c, s, i, e => by
       change cden hM₀ hX s i e (.diatm x hx (Canon.applyG f c).2) =
@@ -320,7 +331,7 @@ theorem cden_applyG (hX : CluFlags) :
       simp only [cden, crawEval]
       refine CRPos.congr_cont (funext fun a => ?_) fun hT => ?_
       · by_cases hr : (gw hM₀ a.1.1).Realised
-            (kw (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down) (rorig s x))
+            (kw (groot hF M₀) a.1.1 (cpath a.1.2.down) (cpath_eq a.1.2.down) (rorig s x))
         · simp only [dif_pos hr]
           refine (cden_sigma hX _ ((grealT_sigma hr _ _ ((pTrXK_sigma hM₀ _ _ _ _ _ _ _
             (preTD_applyG hX hM₀ f e _ c)).trans (pTrXK_applyG f _ _ _ _ _ _ _ _))).trans
@@ -341,23 +352,24 @@ theorem cden_applyG (hX : CluFlags) :
       simp only [cden, crawEval]
       refine CRPos.congr_cont (funext fun a => ?_) fun hT => ?_
       · by_cases hr : (gw hM₀ a.1.1).Realised
-            (kw (groot hF M₀) a.1.1 (pathOf a.1.2.down) (pathOf_eq a.1.2.down) (rorig s x))
-        · simp only [dif_pos hr]
+            (kw (groot hF M₀) a.1.1 (cpath a.1.2.down) (cpath_eq a.1.2.down) (rorig s x))
+        · simp only [dif_pos hr, dif_pos (cpathOk hr.T a.1.2.down)]
           refine (cden_sigma hX _ (grealT_sigma hr _ _ (pTrXK_pair _ _ _ _ _ _ _ _ _))).trans
             (Prod.ext ?_ rfl)
-          have hk := kw_decl hM₀ (groot hF M₀) a.1.1 _ (pathOf_eq a.1.2.down) (rstg s i)
+          have hk := kw_decl hM₀ (groot hF M₀) a.1.1 _ (cpath_eq a.1.2.down) (rstg s i)
             (rorig_ref hX hM₀ s i (hx.imp fun _ h => e.ref h))
           refine (cden_sigma hX (Ctx.Le.refl _) (grealT_sigma hr (Ctx.Le.refl _) hk
             ((pTrXK_sigma hM₀ _ _ _ _ _ _ _
               (preTD_box hX hM₀ e (hx.imp fun _ h => e.ref h) b)).trans
             (pTrXK_box _ _ _ _ _ _ _ _)))).trans ?_
           refine (cden_grealT_mono_boxIn hX hr hk _).trans ?_
-          exact cden_sigma hX _ (collapse_pTrK hr.T _ _ _ _ (pathOf_ok a.1.2.down) _ _)
-        · simp only [dif_neg hr]
+          exact cden_sigma hX _ (collapse_pTrK hr.T _ _ _ _ (cpathOk hr.T a.1.2.down) _ _)
+        · have hm := (Or.resolve_left a.2 hr).2
+          simp only [dif_neg hr, dif_pos (pathOk_of_inExt hm)]
           refine (cden_sigma hX _ (pTrX_pair _ _ _ _ _ _ _ _ _ _)).trans (Prod.ext ?_ rfl)
           exact cden_sigma hX _ ((pTrX_sigma hM₀ _ _ _ _ _ _ _ _
             (preTD_box hX hM₀ e (hx.imp fun _ h => e.ref h) b)).trans
-              (pTrX_box _ _ _ _ (pathOf_ok a.1.2.down) _ _ _ _ _))
+              (pTrX_box _ _ _ _ (pathOk_of_inExt hm) _ _ _ _ _))
       · have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
         obtain ⟨X, hr⟩ := id hx
         have key := crawShape_box_transpose hX hM₀ hT s (groot hF M₀) i e b
@@ -374,7 +386,8 @@ theorem cden_applyG (hX : CluFlags) :
       change cden hM₀ hX s i e (Term.collapse (Ctx.collapses_boxIn_self hT Γ) b) =
         cden hM₀ hX s i e (.boxtm b) ⟨s, ⟨(carrows hF M₀).refl hT s⟩⟩
       simp only [cden]
-      rw [cden_collapse hX hM₀ hT s i, Term.collapse_mono (Ctx.collapses_boxIn_self hT Γ)
+      rw [dif_pos (cpathOk hT _), cden_collapse hX hM₀ hT s i,
+        Term.collapse_mono (Ctx.collapses_boxIn_self hT Γ)
         (Ctx.collapses_boxIn_self hT _) e.boxIn e, cden_mono]
   | _, _, .dup _, Γ, _, .boxtm b, s, i, e => funext fun v => funext fun u => by
       have hm : (⟨_, Term.mono e.boxIn (Term.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))⟩ :
@@ -387,9 +400,14 @@ theorem cden_applyG (hX : CluFlags) :
       have key : cden hM₀ hX s i e
           (.boxtm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))) v =
           cden hM₀ hX (groot hF M₀) (rstg s i) (Ctx.Le.refl _)
-            (.boxtm (preTB hX hM₀ s i (Term.mono e.boxIn b)).2) :=
-        (cden_sigma hX _ (pTr_sigma hM₀ _ _ _ _ _ _ ((preTB_sigma hX hM₀ s i hm).trans
-          (preTB_shift hX hM₀ s i _)))).trans (cden_tr hX hM₀ v.1 _ _ _ _ _)
+            (.boxtm (preTB hX hM₀ s i (Term.mono e.boxIn b)).2) := by
+        by_cases hp : PathOk (cpath v.2.down)
+        · exact (dif_pos hp).trans ((cden_sigma hX _ (pTr_sigma hM₀ _ _ _ _ _ _
+            ((preTB_sigma hX hM₀ s i hm).trans (preTB_shift hX hM₀ s i _)))).trans
+            (cden_tr hX hM₀ v.1 _ _ _ _ _))
+        · exact (dif_neg hp).trans ((cden_sigma hX _ (loopTm_sigma hM₀ _ _
+            ((preTB_sigma hX hM₀ s i hm).trans (preTB_shift hX hM₀ s i _)))).trans
+            (cden_tr_loop hX hM₀ (v.2.down.loop hp) (v.2.down.loop_eq hp) _ _))
       change cden hM₀ hX s i e (.boxtm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b)))
         v u = cden hM₀ hX s i e (.boxtm b) u
       rw [key, cden_box_eq hX s i e b]
@@ -409,10 +427,15 @@ theorem cden_applyG (hX : CluFlags) :
           (Ctx.exists_keep_dia hF ⟨X, hX'⟩) (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) c))) v =
           cden hM₀ hX (groot hF M₀) (rstg s i) (Ctx.Le.refl _)
             (.diatm (rorig s x) ⟨X, rpre hX hM₀ s i x _ hxs rfl⟩
-              (preTD hX hM₀ s i ⟨X, hxs⟩ (Term.mono (e.diaIn x) c)).2) :=
-        (cden_sigma hX _ (pTr_sigma hM₀ _ _ _ _ _ _ ((preTB_sigma hX hM₀ s i hm).trans
-          (preTB_keepDia hX hM₀ s i hxs _)))).trans
-          (cden_trX hX hM₀ v.1 _ _ _ _ (rpre hX hM₀ s i x _ hxs rfl) _)
+              (preTD hX hM₀ s i ⟨X, hxs⟩ (Term.mono (e.diaIn x) c)).2) := by
+        by_cases hp : PathOk (cpath v.2.down)
+        · exact (dif_pos hp).trans ((cden_sigma hX _ (pTr_sigma hM₀ _ _ _ _ _ _
+            ((preTB_sigma hX hM₀ s i hm).trans (preTB_keepDia hX hM₀ s i hxs _)))).trans
+            (cden_trX hX hM₀ v.1 _ _ _ _ (rpre hX hM₀ s i x _ hxs rfl) _))
+        · exact (dif_neg hp).trans ((cden_sigma hX _ (loopTm_sigma hM₀ _ _
+            ((preTB_sigma hX hM₀ s i hm).trans (preTB_keepDia hX hM₀ s i hxs _)))).trans
+            (cden_trX_loop hX hM₀ (v.2.down.loop hp) (v.2.down.loop_eq hp) _
+              (rpre hX hM₀ s i x _ hxs rfl) _))
       change cden hM₀ hX s i e (.boxtm (.diatm (.step x .keep)
           (Ctx.exists_keep_dia hF ⟨X, hX'⟩) (Term.shift (Ctx.shifts_diaIn_keep hF Γ x) c))) v =
         cden hM₀ hX s i e (.diatm x ⟨X, hX'⟩ c)

@@ -556,7 +556,7 @@ theorem cLab_inj (j : ℕ) : ∀ {y y' : VarSymb} {A A' : VarType},
               have hi₁' := DeclAt.at_le hM₀ hi₁ (le_max_left i₁ i₂)
               have hi₂' := DeclAt.at_le hM₀ hi₂ (le_max_right i₁ i₂)
               obtain ⟨t, c, hc, L, hsuf, hg⟩ := glate hT hM₀ (groot hF M₀) (max i₁ i₂)
-              have hR : GR (groot hF M₀) t := ⟨[c], pathOk_cons, hc⟩
+              have hR : CR t := ⟨[c], .inl pathOk_cons, hc⟩
               have hm := congrFun (Arrows.Leaf.fam.inj h) ⟨t, ⟨hR⟩⟩
               beta_reduce at hm
               obtain ⟨w₁, U₂, π₂, hd₂, hv₂, hlπ₂, hw₂, hf₂⟩ :

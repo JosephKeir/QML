@@ -296,18 +296,15 @@ theorem cden_kept (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀) (I :
     {X : VarType} (hx : (ctxOf (glat s I)).ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A}
     (bd : Term σ ((ctxOf (glat s I)).diaIn x) A a) (b : CAcc hF M₀) :
     cden hM₀ hX b.1 _ (Ctx.Le.refl _)
-        ((preC hM₀ hX s I b).app (Term.keptDia hF ⟨X, hx⟩ bd).2).2 =
+        ((preC hM₀ hX s I b (cpathOk hT b.2.down)).app (Term.keptDia hF ⟨X, hx⟩ bd).2).2 =
       cden hM₀ hX s I (Ctx.Le.refl _) (.diatm x ⟨X, hx⟩ bd) := by
   have hY : (ctxOf (glat (groot hF M₀) (rstg s I))).ref (rorig s x) = some (.VTypeDia X) :=
     rpre hX hM₀ s I x _ hx rfl
   have hJ := pnm_ok hX hM₀ (rpath b.1) (groot hF M₀) b.1 (rpath_eq b.1) (rstg s I)
   have h₁ : cden hM₀ hX b.1 _ (Ctx.Le.refl _)
-      ((preC hM₀ hX s I b).app (Term.keptDia hF ⟨X, hx⟩ bd).2).2 =
+      ((preC hM₀ hX s I b (cpathOk hT b.2.down)).app (Term.keptDia hF ⟨X, hx⟩ bd).2).2 =
       cden hM₀ hX s I (Ctx.Le.refl _) (.boxtm (Term.keptDia hF ⟨X, hx⟩ bd).2) b := by
-    refine (cden_sigma hX _ (preC_app hM₀ hX s I b _)).trans ?_
-    change _ = cden hM₀ hX b.1 _ (Ctx.Le.refl _) (pTr hM₀ (groot hF M₀) b.1 _ _ _ (rstg s I)
-      (preTB hX hM₀ s I (Term.mono (Ctx.Le.refl _).boxIn (Term.keptDia hF ⟨X, hx⟩ bd).2)).2).2
-    rw [Term.mono_refl]
+    exact cden_preC hM₀ hX s I b _ _
   have h₂ : cden hM₀ hX s I (Ctx.Le.refl _) (.boxtm (Term.keptDia hF ⟨X, hx⟩ bd).2) =
       cden hM₀ hX (groot hF M₀) (rstg s I) (Ctx.Le.refl _)
         (.boxtm (Term.keptDia hF ⟨X, hY⟩ (preTD hX hM₀ s I ⟨X, hx⟩ bd).2).2) := by
@@ -344,8 +341,9 @@ theorem interp_kept (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀) (I
       (cden hM₀ hX s I (Ctx.Le.refl _) (.diatm x ⟨X, hx⟩ bd))) :
     Model.interp ((ccanonEnv hM₀ hX s I).boxPush b) (Term.keptDia hF ⟨X, hx⟩ bd).2 =
       ctoDom hM₀ hX (.VTypeDia A) b.1 (cden hM₀ hX s I (Ctx.Le.refl _) (.diatm x ⟨X, hx⟩ bd)) h :=
-  (interp_ctr hX _ (farNec hM₀ hX s I b).C (farNec hM₀ hX s I b).ag (farNec hM₀ hX s I b).npl
-    (Ctx.noProjLast_boxIn _)).trans (ctoDom_congr hX (cden_kept hM₀ hX hT s I hx bd b) _ _)
+  (interp_ctr hX _ (farNec hM₀ hX hT s I b).C (farNec hM₀ hX hT s I b).ag
+    (farNec hM₀ hX hT s I b).npl (Ctx.noProjLast_boxIn _)).trans
+    (ctoDom_congr hX (cden_kept hM₀ hX hT s I hx bd b) _ _)
 
 /-! ## Truth ⇒ membership -/
 
@@ -425,7 +423,7 @@ theorem mem_ret_of_satW (hX : CluFlags) (hS : ModalSys.BStrong = true) {s : GW h
     (hsat : (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s i)
       (O.retS hS (.wit N Z) (Term.pair t₁ t₂) Φ : WFF σ _ 0)) :
     (O.retS hS (.wit N Z) (Term.pair t₁ t₂) Φ : WFF σ _ 0) ∈ (gw hM₀ s).M i := by
-  have hT := hX.bT (hX.bS hS)
+  have hT := hX.bT hS
   obtain ⟨a₀, e, hΦ, r, hcb, hm, hind⟩ := (OutLeg.sat_retS (M := cmodel hF hM₀ hX) (d := 0) hS
     (ccanonEnv hM₀ hX s i) O (.wit N Z) _ Φ).mp hsat
   have hd₀ := cdefinable_fromDom hM₀ hX (.VTypeDia Z) _ e.2
@@ -488,7 +486,7 @@ theorem sat_ret_of_memWC (hX : CluFlags) (hS : ModalSys.BStrong = true) {s : GW 
     (hmem : O.retS hS (.wit (.boxC A cs h) Z) (Term.pair t₁ t₂) Φ ∈ (gw hM₀ s).M i) :
     (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s i)
       (O.retS hS (.wit (.boxC A cs h) Z) (Term.pair t₁ t₂) Φ : WFF σ _ 0) := by
-  have hT := hX.bT (hX.bS hS)
+  have hT := hX.bT hS
   obtain ⟨j, hij, b₀, b, x, hx, d₀, bd, hB, hH, hD⟩ :=
     (gw hM₀ s).retW_term hS hT hF O h t₁ t₂ Φ hmem
   let O₁ := O.mono (gle hM₀ s hij)

@@ -2,10 +2,10 @@ import QML.QML_v12m_GCluInd
 import QML.QML_v12m_GFlat
 
 /-!
-# QML v12m — completeness for K45, KD45 and S5: the cluster model
+# QML v12m — completeness for K45, KD45, KB5, KDB5 and S5: the cluster model
 
-With 4, weak 5 and both lifts of 4 on (`CluFlags`; D and T in either strength, weak B under T,
-strong B with weak B), the cluster model over a maximal consistent theory satisfies it at the root
+With 4, weak 5 and both lifts of 4 on (`CluFlags`; D, T and weak B in either combination, strong
+B with weak B and T), the cluster model over a maximal consistent theory satisfies it at the root
 (⭐`exists_canonC`), so a consistent set is satisfiable (`model_existenceC`), and every well-formed
 presented context has the metatheorems: strong completeness (`strong_completenessC`), completeness
 (⭐`completenessC_presented`) and compactness (`compactnessC`).  Presentations are flattened
