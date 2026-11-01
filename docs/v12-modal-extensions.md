@@ -5379,8 +5379,8 @@ except where marked built.
 * *Precedent: §10.23's second obstacle, the same gap for `Here`.*  `□_x⊥ ∧ □_z⊥ ∧ Here(q, η x) → Here(q, η z)` was valid and
   underivable, because a possible object was determined by its section.  §10.27 and §10.35 fixed it on the model
   side: a possible object is extent, contents and **shape**.  §11.12 Decision 2 extended shapes to strong B, for `Back`'s
-  *values*.  `carrierData` still drops the *carrier's* shape, and that is this gap.  Its head label is all that
-  is missing: a `Back` leg is nonempty, so the contents give the rest.  It only shows now because no system before
+  *values*.  `carrierData` still drops the *carrier's* shape, and that is this gap.  That its head label was all
+  that was missing is **wrong**: see "The tag is too small" below.  It only shows now because no system before
   had both `Back` and a way to say two extents agree: without 4 `y.keep` does not exist, and without strong B `Ret` is `False`.
 * *Alternative, not recommended.*  Index `Ret` by the carrier itself.  Cleaner to state, and `IsCarrierData` goes.
   But `map` and `pair` then need the image carrier, and two possible carriers have no pairing operation.
@@ -5463,9 +5463,34 @@ terms.  `homeUnique` is free (`Frame.{0, 0}`).  `T_of_shaped` needs `BStrong →
   does not hold on the cluster: a witness can be realised at every world, so a witness's extent can be every arrow.  The
   `Ret` tag does that job instead: a plain leg has tag `none`, and a possible carrier has `some` label, since strong B
   makes shapes present.
-* *Next, and least checked:* `pos` truth ⇒ membership.  `BData.mem_back_of_sat_pos` reaches the annotations through
-  fresh witness arrows (`CxFresh`), which the cluster does not have.  Data and tag give the extent, the contents and the
-  label; the carrier's stored inner annotation has to come from the contents' shape at an arrow of the extent.
+
+**The tag is too small (2026-11-01, paper; proposal, not built).**  `pos` truth ⇒ membership needs one annotation for
+two carriers with one set of data and one label.  The earlier note said the contents give the rest.  On the cluster they
+do not.
+* *Why.*  Under T + 4 every arrow of an extent is realised (`here_keep`; `realised_keep_of_boxx`), so `cden`'s
+  `diatm` case always takes the realised branch, and the content there is `Realised.data`'s `t₀`, an arbitrary `Here`
+  value.  So `y.dia` denotes whatever term the choice picked.  `BData.mem_back_of_sat_pos` recovers the annotation at a
+  fresh witness arrow, where the content is a fresh variable.  Here no arrow is known to keep it fresh.
+* *Example.*  `y : ◇◇X`, `z : ◇X`, `□_y Here(y.keep, z.keep)`.  Let `c₁ := ◇_y □(z kept)` and `c₂ := ◇_y □(y.dia kept)`.
+  `Back c₁ z` is a theorem (`back_keep`).  If the choice picks `z`'s name at every arrow of `y`, then `c₁` and `c₂` have one
+  extent, one set of contents and one label, so `Back c₂ z` is true in the cluster.  It looks underivable: atoms at `◇`
+  contents come from `back_keep`, `back_beta`, `back_pair` and Leibniz, none of which puts `y.dia` into a carrier that
+  lacks it, and `eqRec` compares one annotation only.  So the truth lemma can fail, depending on a choice nothing
+  constrains.  The generic models do not suffer: there the two contents are only `Ind`.  This is a defect of the
+  canonical model, not of the logic.
+* *Proposal: the tag is the carrier's whole shape.*  `Ret` takes `M.shape p`, not its label.  Data and tag are then the
+  carrier (`posFull_inj`), which is §10.27's "extent, contents and shape", and two possible carriers still need no pairing
+  operation, since `pair` only combines shapes.  `pos` truth ⇒ membership becomes short: tags equal give shapes equal, so
+  annotations equal (`ann_eq_of_termShpW`), so `y = y'`; then `eqRec` and `back_eqC`, with no fresh arrow.
+  Cost: `OutLeg.tag` takes the body; `RetCongr.map`, `pair` and `keep` state their new tags, by `termShp_subst`,
+  `termShp_shift` and `termShp_diatm`; `sat_back_beta`, `sat_back_pair` and `sat_back_keep` follow.  About 300 lines, no new rule.
+  `BArrow` ignores the tag and the other models say `False`, so they barely change.
+* *Rejected: repair the contents.*  Prefer `pTrX` at `InExt` arrows, or pick the fresh variable in `Realised.data`, then
+  port `CxFresh` and the label injectivity.  That reworks `cden` and everything proved of it (`cden_own_content`,
+  `chere_truth`, the shape lemmas), and leaves `Ret` seeing less than the carrier.
+* *The tie along `pos` is not affected.*  On paper: `dia_pathO_iff`, `boxx_mem_pathK`, `here_elim` at the realised
+  arrow, then `tr_kept` as at `.nec`.  It needs `pTrXW_holeAt` and `pTrXKW_holeAt`, and that realising leaves a `y`-free
+  term alone.  Not built.
 
 #### Strong B on S5, every shape: the check *(2026-10-31, paper)*
 
