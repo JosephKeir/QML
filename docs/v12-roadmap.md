@@ -345,7 +345,8 @@ strong B being off remains, and `CubeSys.strongB` asks only for weak B: with 4 t
 (`four_B`), so 4 on is the cluster and 4 off the network.  `ModalSys.S5Strong`, every flag on, is
 in the cube (`ModalSys.S5Strong_cube`), with `completenessCube`, `strong_completenessCube` and
 `compactnessCube`.  The truth lemma is `GCluRet`, `GCluRetOut`, `GCluRetW`; the congruence `GCluCongr`.
-Next for 5: KB5/KDB5, the open lifts, and K5/KD5.
+Next for 5: KB5/KDB5 (weak forms checked on paper: the root's loop, a self-edge, no new rule; strong forms unchecked and larger),
+the open lifts, and K5/KD5.
 
 **S5, paper check (2026-10-30; `v12-modal-extensions.md` §3 5, "paper check for S5").**
 * Under T the root is in the cluster already (the empty path is an arrow).  So S5 is the K45

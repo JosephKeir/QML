@@ -5083,7 +5083,90 @@ KDB5) the root's loop is new work, so S5 comes **before** B + 5, reversing steps
   the K45 paper check).  Note that strong K45 proper, without the `◇`-lift, is one of them.
 * *K5, KD5 (4 off):* semantics only (`Frame.side`, `posSide`).  No `side` step, `sideTr`, links or
   rules, so those flag settings prove no 5 principle, and completeness excludes them.
-* *KB5, KDB5:* not started (the root's loop).  *S5 with strong B:* next (`back_keep`).
+* *KB5, KDB5:* the weak forms are checked on paper ("KB5 and KDB5: the root's loop").  *S5 with strong B:* complete (2026-11-01).
+
+#### Where 5 stands, by system *(2026-11-01)*
+
+`CubeSys` is what is built.  "Both lifts" is `FourStrong` and `FourStrongW`.  With 4, strong 5 is the `□`-lift, so `FiveStrong` itself is free.
+
+| System | Weak 5 (no lift) | `□`-lift only (strong 5) | `◇`-lift only | Both lifts |
+|---|---|---|---|---|
+| K45, KD45 | open | open | open | **complete**, D in either strength |
+| S5 | open | open | open | **complete**, T and D in either strength, B off, weak or strong, witnessed ways home |
+| KDB5, KB5 | open | open | open | weak B: checked on paper.  Strong B: not started |
+| K5, KD5 | no rules yet | no rule written | unsound | no lifts without 4 |
+
+* *Open cells with 4* have rules and soundness, and need committing cluster arrows (K45's milestone B).  The loop's step uses both lifts,
+  so the lower rows may need more than that.
+* *K5, KD5*: semantics only (`Frame.side`, `posSide`).  No `side` step, `sideTr`, links, or rules, so these flags prove no 5 principle.
+  Strong 5 without 4 has no rule.  The `◇`-lift for 5 alone is unsound (the countermodel above), so that cell is closed, not open.
+* *Flags excluded as settings, not systems.*  5 with 4 off under T or B: T + 5 and B + 5 prove 4 propositionally, and `FiveCoh`, the class
+  planned for this, was never built.  B and 4 with 5 off (`four_B`): KB4 is KB5 propositionally, but whether the flag setting proves 5's object-level
+  components is unchecked.
+
+#### KB5 and KDB5: the root's loop, the check *(2026-11-01, paper)*
+
+**Verdict.**  Weak B on 5 without T needs no new rule and no new semantics.  The root joins the cluster by a **self-edge**, an
+edge of the tree from the root to itself, with `u.keep ↦ u` and `u.box` sent to a late root.  Everything it needs is derivable, with
+closed B used once.  The strong forms (`BStrong`) are a separate, larger job and are left out: they hit T everywhere.  All of this is on
+paper.  Estimate for the weak forms: 1 500 to 2 000 lines by the usual reckoning, which has run about 1.8 times low lately, so
+nearer 3 000.
+
+**1. The frames.**
+* *KDB5 has S5's relational frames*: `w → v`, so `v → w`, so `w → w`.  It differs from S5 in syntax: with T off there is no `here`, no
+  `Here`, and `keepOnly` is false, so a view shows both `u.box` and `u.keep`.  So its cluster is K45's, not S5's, with the root added.
+* *A generated KB5 frame is one cluster or one dead end.*  So KB5 splits on `◇⊤ ∈ M₀`.  With it, the root's loop is KDB5's.
+  Without it, `□⊥` holds at the root at every stage, so `mkChild` makes no child (it is gated on a failing `□φ` or a true `◇_x φ`),
+  there are no arrows, and `symm` is vacuous.  D enters only through `◇⊤`.
+
+**2. What the loop must say.**  At the arrow `ρ → ρ`, a kept object is the object: raw objects do not depend on the world, and
+`cden`'s keep is the identity.  So the loop's translation `θ` is forced: `θ(u.keep) = u`.  `θ(u.box)` must be a term of the root, and T
+gave `u.keep.here`; here it is a new root.  The requirement is transfer: `□φ ∈ M ⇒ θφ ∈ M`.  `v12-arrow-canonical.md`'s finite-piece
+lemma does not give this.  It abstracts every item, so its values are unlinked from the parameters, which is right for B's arrows and
+wrong for a loop that must fix `u`.
+
+**3. The two lemmas.**  Closed B is used only in the base.
+* *Base: closed T.*  For closed `ψ`, `◇⊤, □ψ ⊢ ψ`.  `¬ψ ⊢ □◇¬ψ` (`Proof.B_box`), `□ψ ⊢ □□ψ` (`four_box`, the shift of a closed formula
+  being itself), so `□⊥`, against `◇⊤`.  So transfer holds with nothing committed.
+* *Step: 5 and the lifts, no B.*  With `θ` committed on the old items and `c` a new keepable item, let `A(ū.box, ū.keep, c″)` be `∃y. φ` (no `y` if
+  `c` is possible), and let `E(ū.box, ū.keep)` be `∀c″. □(shift A)(c″.keep) → A(c″)`.  Then `⊢ □E`.  Suppose `◇¬E`.  By `keep_lift`,
+  `c″` is some `ĉ.keep`: `◇(□(shift A)(ĉ.keep.keep) ∧ ¬A(ĉ.keep))`.  By `five_box`, `□A(ĉ.keep)`, against `◇¬A(ĉ.keep)`.  So `θE ∈ M`
+  by transfer on the old items, and with `θ(ū.keep.box) = ū.box`, `θ(ū.keep.keep) = ū.keep` it reads
+  `□A(c.keep) → A[θ](c)`.  Given `□φ` for the new formula, `□A(c.keep) ∈ M`, so `∃y. φ[θ, y, c] ∈ M`: finitely satisfiable, so a fresh
+  root realises the whole type.  This is `backType_extend` with the parameters kept, and it is why the values are linked.
+* *So both lifts are used, in the step only.*  This is one reason the check does not extend to the open lifts.
+
+**4. The construction: a self-edge.**  It is an ordinary edge, `FwdData (st []) (st []) none cl f`, so proven paths apply.
+* `fmap`'s entries already allow it: `.inl u` for `u.keep`, a late root for `u.box`.  `cl` lags behind the root's list, as a child's does.
+* `GNetSt.realF` at `[]` is a no-op today (`Ext.realF`'s first case): the loop's step goes there, with no new operation and no new schedule.
+  It is `grealStep_ok` with the keep entries fixed and the consistency from 3, instead of the child's.
+* `lift` at `[]` stays a no-op.  `InExt` at `[]` is already `False`, which is right: no extent contains the loop, and `five_dia` at the loop
+  reads `◇_x φ` back.
+* `glat` needs nothing: the root's list already grows.
+
+**5. The path layer: the real cost.**
+* `PathOk [] ` means T today, and 20 sites read that off (`PathOk.T_of_nil`), in `GCanonPath`, `GCanonFunc`, `GCanonLift`,
+  `GCanonTerm`, `GTruth`, `GLaws`, `GShapeTr`, `GCluTr` and `GCluPush`.  The arrow must hold only at the root, or `pTr s s []` has no
+  meaning, so `PathOk` needs its source.
+* `pTr`, `pTrW`, `pstg`, `ptrC` get a second nil clause, the self-edge, and `pstg ρ ρ [] i` stops being `i`.  Each `T_of_nil` site gains a branch.  The
+  shape sites (`GLaws`, `GShapeTr`) are T-only, since shapes are.
+* `tr_path` at the loop: `θ(□ shift b) = □b`, from `θ(u.keep) = u`.  So `cden`'s keep identity survives, and with it R4.
+* `box_mem_path` at `[]` is transfer.  `cframe.symm` becomes the loop, or vacuity (1).  `CluFlags.bT` weakens to strong B only.
+
+**6. Rejected.**
+* *A mirror child*: a child of the root copying `M₀`, with the root dropped.  The theory works, by the lemmas above.  But `Frame.symm` is
+  asked at every world, so the root must leave `W`, and `W := GW` runs through every cluster file by definitional equality.
+* *Arrows out of the root removed*: `Acc` stops being uniform, which is R4's whole point.
+* *A possible object spanning the cluster, `□_x` of all of `M₀`*: no such object exists in the weak systems.
+* *Reading KDB5 through S5*: the languages differ, and the conservativity it needs is this lemma.
+
+**7. The strong forms are not covered.**  `BStrong` with T off on 5 is not "the same with strong B on".
+* `back_keep`, `ret_keep`, `back_here`, `back_hereX`, `ret_bridge` and the four `ret_here*` rules all take T.  `back_keep`'s value is `collapse b`, which
+  has no T-off form: the value is `θb`, a late root, so the rule would be `∃`-shaped.  Probably a new rule.  Unchecked.
+* `shaped` is `T || BStrong`, and the tree's tags are `T = true → …`, so strong B without T needs shapes on the cluster without T.
+* So `CubeSys.five_B` does not simply go: it becomes `Five → BStrong → T`.
+
+**Order.**  `PathOk` with its source; the two lemmas; the self-edge in the tree; the path layer; the cluster; dispatch.  Then a paper check of the strong forms.
 
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
@@ -5223,8 +5306,7 @@ What the build added, against the design above:
   `cdia_real_not_boxx`, `cdia_sat_child`, `chere_transfer`, `chere_truth` then mirror the tree's.
 * *`GCluInd`* is `GInd` with the names changed.  It needed nothing new.
 
-**Left for 5.**  Strong B on S5 (`back_keep` is built; see "Strong B on S5, every shape: the check");
-KB5 and KDB5; the open lifts in the table; K5 and KD5.
+**Left for 5.**  KB5 and KDB5, weak then strong (see "KB5 and KDB5: the root's loop"); the open lifts in the table; K5 and KD5.
 
 #### `back_keep`: the check *(2026-10-31, paper)*
 
