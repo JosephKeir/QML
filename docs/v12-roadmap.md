@@ -346,8 +346,10 @@ strong B being off remains, and `CubeSys.strongB` asks only for weak B: with 4 t
 in the cube (`ModalSys.S5Strong_cube`), with `completenessCube`, `strong_completenessCube` and
 `compactnessCube`.  The truth lemma is `GCluRet`, `GCluRetOut`, `GCluRetW`; the congruence `GCluCongr`.
 **Weak KB5 and KDB5 complete (2026-11-01):** the root's self-edge, no new rule (`QML_v12m_GLoop`, `QML_v12m_GLoopStep`,
-`QML_v12m_GLoopLimit`, `QML_v12m_GCluLoop`), in the cube as `ModalSys.KB5_cube`, `ModalSys.KDB5_cube`.  Next for 5: strong B on them, unchecked and larger,
-the open lifts, and K5/KD5.
+`QML_v12m_GLoopLimit`, `QML_v12m_GCluLoop`), in the cube as `ModalSys.KB5_cube`, `ModalSys.KDB5_cube`.  Strong B on them is checked on paper
+(`v12-modal-extensions.md`, "Strong B on KB5 and KDB5"): with 4 and B it makes arrows unique, so KDB5 gets S5's arrow frames (`Frame.exists_unit_of_serial`), and with T off it needs new rules, a `Here` without T and about
+9 500 lines redone.  **Decided (2026-11-01):** KDB5 with strong B is read as S5 with strong B, and KB5 with strong B is a **possible gap**: review it once everything else is finished, and fill it only if it
+still seems worthwhile.  Next for 5: the open lifts and K5/KD5.
 
 **S5, paper check (2026-10-30; `v12-modal-extensions.md` §3 5, "paper check for S5").**
 * Under T the root is in the cluster already (the empty path is an arrow).  So S5 is the K45

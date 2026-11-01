@@ -5093,14 +5093,14 @@ KDB5) the root's loop is new work, so S5 comes **before** B + 5, reversing steps
 |---|---|---|---|---|
 | K45, KD45 | open | open | open | **complete**, D in either strength |
 | S5 | open | open | open | **complete**, T and D in either strength, B off, weak or strong, witnessed ways home |
-| KDB5, KB5 | open | open | open | **complete** with weak B, D in either strength.  Strong B: not started |
+| KDB5, KB5 | open | open | open | **complete** with weak B, D in either strength.  Strong B: KDB5 is S5 there, not built separately; KB5 is a **possible gap**, for review at the end ("Strong B on KB5 and KDB5") |
 | K5, KD5 | no rules yet | no rule written | unsound | no lifts without 4 |
 
 * *Open cells with 4* have rules and soundness, and need committing cluster arrows (K45's milestone B).  The loop's step uses both lifts,
   so the lower rows may need more than that.
 * *K5, KD5*: semantics only (`Frame.side`, `posSide`).  No `side` step, `sideTr`, links, or rules, so these flags prove no 5 principle.
   Strong 5 without 4 has no rule.  The `◇`-lift for 5 alone is unsound (the countermodel above), so that cell is closed, not open.
-* *Flags excluded as settings, not systems.*  5 with 4 off under T or B: T + 5 and B + 5 prove 4 propositionally, and `FiveCoh`, the class
+* *Flags excluded as settings, not systems.*  Strong B with D and 5, T off: its frames are S5's (`Frame.exists_unit_of_serial`), so it is read as S5 with strong B, and the flag setting is outside `CubeSys` (`five_B`).  KB5 with strong B is the one system this leaves out, and it is recorded as a possible gap.  5 with 4 off under T or B: T + 5 and B + 5 prove 4 propositionally, and `FiveCoh`, the class
   planned for this, was never built.  B and 4 with 5 off (`four_B`): KB4 is KB5 propositionally, but whether the flag setting proves 5's object-level
   components is unchecked.
 
@@ -5161,12 +5161,12 @@ wrong for a loop that must fix `u`.
 * *Reading KDB5 through S5*: the languages differ, and the conservativity it needs is this lemma.
 
 **7. The strong forms are not covered.**  `BStrong` with T off on 5 is not "the same with strong B on".
-* `back_keep`, `ret_keep`, `back_here`, `back_hereX`, `ret_bridge` and the four `ret_here*` rules all take T.  `back_keep`'s value is `collapse b`, which
-  has no T-off form: the value is `θb`, a late root, so the rule would be `∃`-shaped.  Probably a new rule.  Unchecked.
+* `back_keep`, `ret_keep`, `back_here`, `back_hereX` and the four `ret_here*` rules all take T.  `back_keep`'s value is `collapse b`, which
+  has no T-off form: the value is `θb`, a late root, so the rule would be `∃`-shaped.  Checked since: "Strong B on KB5 and KDB5", below.
 * `shaped` is `T || BStrong`, and the tree's tags are `T = true → …`, so strong B without T needs shapes on the cluster without T.
 * So `CubeSys.five_B` does not simply go: it becomes `Five → BStrong → T`.
 
-**Order.**  Built: the two lemmas, the extension of the transfer, the self-edge in the tree and its limit (below).  The arrow on the cluster (below), built: `CR`, `cden`'s branch, `QML_v12m_GCluLoop`, `preLC`, `sat_boxPush_loop`, `csymm`, the truth lemma's `□` case, and dispatch.  **Weak KB5 and KDB5 are complete (2026-11-01).**  Next: a paper check of the strong forms.
+**Order.**  Built: the two lemmas, the extension of the transfer, the self-edge in the tree and its limit (below).  The arrow on the cluster (below), built: `CR`, `cden`'s branch, `QML_v12m_GCluLoop`, `preLC`, `sat_boxPush_loop`, `csymm`, the truth lemma's `□` case, and dispatch.  **Weak KB5 and KDB5 are complete (2026-11-01).**  The strong forms are checked on paper ("Strong B on KB5 and KDB5", below).
 
 #### KB5 and KDB5: the step in Lean *(2026-11-01)*
 
@@ -5222,6 +5222,63 @@ So `pTr`, `pstg`, `PathOk` and everything proved about them stay, and the loop i
 **6. Dispatch.**  `CluFlags.bT` becomes `BStrong → T`: of its 13 uses, 12 are under strong B and one is `symm`.  `CubeSys.five_B` becomes `Five → BStrong → T`.  So KB5 and KDB5 join the cube with both lifts, and weak B.
 
 **Order.**  `CR` and the rename, with `cden` branching and `T` sites restored, the strict build unchanged in meaning; the loop's term facts; the arrow lemmas; `symm` and the truth lemma; dispatch.
+
+#### Strong B on KB5 and KDB5: the check *(2026-11-01, paper)*
+
+**Verdict.**  No contradiction found, but this is not an extension of the weak build.  With `homeUnique` the frames stop being weak KDB5's.  Doing it with T off takes three new rules, a `Here` that does not need T, which **extends the language**, and a rebuild of about 9 500 lines of T-dependent code.  **Decided (the user, 2026-11-01): option A in 9**, with KB5's strong form kept as a possible gap, to review when everything else is finished.  Sections 2 to 8 are on paper, and stay here as the design if that review wants them.  `Frame.exists_unit` and `Frame.exists_unit_of_serial` (`QML_v12m_CubeComplete`) are built.
+
+**1. Strong B collapses the arrows.**  Under B and 4, an arrow `a : w → v` has a way home `r`, so `e := a · r : w → w`.  `homeUnique` then gives `e · b = b`, `c · e = c`, and one `e` at each world.  So every world with an arrow out has an identity arrow, and T's frame laws hold with `refl := e`, `side_refl` included.
+* *KDB5 with strong B has S5's arrow frames*, at every world.  This is what weak KDB5 lacks: there `a · r` need not be an identity, so weak KDB5 is a real system on arrow frames and not only a smaller language.
+* *KB5 with strong B*: those frames, or a dead end.  So it splits on `◇⊤`, as the weak form does.
+* T's rules are valid on these frames, so the flag `T` off removes syntax (`.here`, `Here`) and no frame.
+* *Not shown:* that every T-off model is a T-on model outright.  The frames are.  But a T-off model's `Ind` answers only to T-off formulas, and its shapes need not obey `RootKeepLaws` at `e`.
+
+**2. `back_keep` splits into two facts.**  Its value is `collapse b`, which has no T-off form.  The designated-home semantics of "`back_keep`: the check" separates what it says.  In both models below there is one world, `home` is an involution, and the T-off rules hold.
+* *The value does not depend on the arrow.*  Arrows `ℤ₃`, `home a = 1 - a`: every `a · home a` is `1`, so each carrier has one value, but `1` is no unit.  So "a kept object comes back as itself" fails.
+* *A kept object comes back as itself.*  Arrows a set of two or more, `x · y = y`, `home a = a`: every arrow is a left unit, so keeping along a round trip changes nothing, but `u(a · home a) = u(a)` depends on `a`.  So "one value" fails.
+* So neither follows from the other, and neither follows from the existing rules.  The rules, with `back_keep` deriving each under T:
+  * `back_self`: wherever `.nec.dia ⊤`, for a fresh `c : A`, assume `Back .nec (shift b) c`.  An `∃`-elimination, as `B_strong`.
+  * `back_own`: `O.dia ⊤ ⊢ O.back (shift b) (own b)`, for `b` in the part of `Γ.boxIn` where the value has a name: `v.keep ↦ v`, and `u.keep.box ↦ u.box` in a view.  The first is the left unit law, the second the right.
+  * `back_leg`: `Back .nec (shift b) t, O.dia ⊤ ⊢ O.back (shift b) t`.  Without it two legs could name two values, and no rule moves a `Back` between legs at `◇` contents.
+* `RetCongr.keep` loses T: it reads `n` along `e`, which exists since `S` is nonempty.
+
+**3. The other T-taking rules.**
+* *`back_here` becomes functionality.*  `Back bd t, Back bd t' ⊢ φ(t) → φ(t')` along `.nec` needs no T: `B_strong` closes `φ` over its parameters, `back_pair` joins the three, and `back_counit` runs at a tautology, with `back_ne` for the `◇`.  Along `pos`, `B_strong` is not available, so its carriers have to be kept ones.  Not checked.
+* *`ret_bridge` does not take T*: the list in "The strong forms are not covered" above was wrong.
+* *`ret_hereC`, `ret_hereWC`, `ret_hereXC`, `ret_hereXWC`, `back_hereX` are not needed.*  Only `BRetTruth`, `BRetTruthW` and `BCanonModel` use them, all with 4 off.  The cluster reaches the own arrow as any other arrow, by `box_mem_path` contraposed.
+* *`ret_keep` is the problem*: section 4.
+
+**4. `.wit` needs a `Here` without T.**
+* *Membership ⇒ truth.*  `Proof.retWN_lift` turns a witnessed atom into a fresh `z` with `Here z c`, and `chere_truth` puts the own arrow in `z`'s extent.  With T off, `InExt` at the own arrow of a fresh `z` is false, and `Realised` carries T.
+* *Truth ⇒ membership.*  The cluster forces this one.  Under the `◇`-lift, every possible object out there is `z.keep` for a home `z`, so the way home lies in its extent exactly when the own arrow lies in `z`'s.  The atom must then come from a fact about `z` and `c` in the theory.
+* *That fact cannot be said with T off.*  It would be a witnessed `ret` with its bound witness equal to `z.keep`, and there is no equality at `◇` types.  It holds as a scheme over all `Φ`, but a Henkin step needs one formula.
+* *So:* `WFF.here` under a wider guard, `T || (BStrong && Four)`, read as `∃ e : R w w`, `e` in the extent, content `≈ c`.  False at a dead end, as it should be.  `here_keep`, `here_elim`, `here_intro`, `here_beta`, `here_name`, `here_subst`, `here_eq` and `ret_keep` move to the guard, with `homeUnique` doing T's work.  `BArrow` has 4 off, so it does not change.
+* *Rejected: completeness for `.wit`-free sequents only.*  It would avoid all of this with `BStrongW` off, since the `ret_lift` route stays at necessary shapes.  But it states completeness for part of the language.
+* *Rows 3 and 4* need more: `posBack_exists` needs extents reaching the root, and `InExt` at `[]` is `False`.  Not checked.
+
+**5. The own arrow on the cluster has the right form.**  This part is good news, and the check of the step's consistency is the one thing here done in detail.
+* *Every world has the loop's form.*  At `s`, read `□b` along `s`'s own arrow by R4: `τ_s := pTr ∘ pre_s`.  Its value at `u.keep` is `u`, and at `u.box` a term of `s`.  So `τ_s` is `θ`'s form, with no late root needed away from the root.
+* *The root's step gets one conjunct.*  `θ(u.box) = z` must also satisfy `Back (shift u) z`.  Consistent: `back_self` names `y`, `four_box` gives `□□ψ(c.keep.box)` from `□ψ(c.box)`, `◇⊤` gives `◇□`, and `back_counit` with `back_pair` and `back_own` gives `ψ(c, y)`.  So the body of `gloopBody` becomes `∃y. Back (shift c) y ∧ ψ̃(c, y)`.
+* *Other worlds:* `Back (shift b) (τ_s b)` is the image of the theorem `□Back (shift shift b̂) b̂` at the root, by `tr_path`.  That is `back_own`'s second clause, and it is why that clause is in the rule.
+
+**6. The derivations.**  `Proof.ret_lift`, `retN_lift`, `retWN_lift` and the unlifting rules name `collapse` throughout, so each value becomes a fresh root with its `Back`, each one an `∃`-elimination in a context with slots to avoid.  `ties_dup` survives, since its ties are T-free statements, and `back_shift` becomes `back_own`'s second clause.  The route looks the same, the terms do not.
+
+**7. Shapes and the tree.**  `shaped` is on, so the cluster needs its shape layer with T off.  The tree's tags are `T = true → …` and become `shaped = true → …`; `GMem`'s `Realised` branch and `RealDatum.hT` move to the new guard.  `BArrow` shows shapes work with T off, but only with 4 off.  This is the least checked part.
+
+**8. Size.**  Every file below assumes T today.
+
+| Layer | Files | Lines |
+|---|---|---|
+| Derivations | `RetLift`, `RetLiftW`, `RetLiftN`, `RetUnlift`, `RetUnliftC`, `RetGPack` | 4 281 |
+| Truth cases and laws | `GCluBack`, `GCluRet`, `GCluRetOut`, `GCluRetW`, `GCluCongr` | 3 485 |
+| Shapes and `Ind` | `GCluShape`, `GCluWShape`, `GCluRaw`, `GCluInd` | 1 713 |
+
+That is 9 479 lines to redo, plus the tree's tags, the guard on `Here`, the new rules' soundness and substitution, and part of `GCluTruth`.  Some could be shared by stating the derivations over a value given with its `Back`, with `collapse` as the T instance.  By the usual reckoning, 10 000 lines or more, against about 3 000 for the weak forms.
+
+**9. The decision (the user, 2026-11-01).**
+* *Taken: option A, treat KDB5 with strong B as S5 with strong B.*  By 1 they have one class of frames.  `CubeSys.five_B` stays, `Frame.exists_unit_of_serial` records why, and the setting joins "flags excluded as settings, not systems".
+* *Possible gap: KB5 with strong B.*  It is the one system that needs the T-off stack, because T fails at its dead ends.  It is S5 with strong B or a dead end, so it adds little, and it costs sections 2 to 7.  **Review it once everything else is finished**, and fill it then only if it still seems worthwhile.  The T-off language with KDB5's flags would come with it.
+* *Not taken for now: option B, build the T-off stack.*  The open lifts and K5/KD5 come first: they are real gaps in systems that are otherwise done, and strong K45 without the `◇`-lift is among them.
 
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
@@ -5361,7 +5418,7 @@ What the build added, against the design above:
   `cdia_real_not_boxx`, `cdia_sat_child`, `chere_transfer`, `chere_truth` then mirror the tree's.
 * *`GCluInd`* is `GInd` with the names changed.  It needed nothing new.
 
-**Left for 5.**  Strong B on KB5 and KDB5; the open lifts in the table; K5 and KD5.
+**Left for 5.**  The open lifts in the table; K5 and KD5.  Then a review of the one possible gap, KB5 with strong B ("Strong B on KB5 and KDB5").
 
 #### `back_keep`: the check *(2026-10-31, paper)*
 

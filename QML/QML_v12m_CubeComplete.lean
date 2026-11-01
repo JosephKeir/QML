@@ -24,14 +24,39 @@ namespace V12M
 
 variable [ModalSys]
 
-/-- ⭐**The systems with a canonical model.**  Not a statement of what is coherent, but of what is
-    built: strong B with 5 without T and 5 without both lifts are still to come.  `strongT` is
-    `ModalSys.WCoh`, which the network and the cluster ask for. -/
+/-- ⭐**Strong B collapses the arrows**: with 4, an arrow out of `w` and strong B, out and home
+    is an arrow `w → w` meeting T's frame laws (`refl_trans`, `trans_refl`, `side_refl`), arrows
+    being unique.  So strong B's frames with 5 are S5's, but for dead ends
+    (`Frame.exists_unit_of_serial`): why `CubeSys.five_B` costs KDB5 nothing. -/
+theorem Frame.exists_unit {σ : Signature} (F : Frame σ) (hF : ModalSys.Four = true)
+    (hB : ModalSys.B = true) (hS : ModalSys.BStrong = true) {w v : F.W} (a : F.R w v) :
+    ∃ e : F.R w w, (∀ {t : F.W} (b : F.R w t), F.trans hF e b = b) ∧
+      (∀ {t : F.W} (c : F.R t w), F.trans hF c e = c) ∧
+      ∀ (hV : ModalSys.Five = true) {t : F.W} (b : F.R w t), F.side hV e b = b := by
+  obtain ⟨r⟩ := F.symm hB a
+  have hu : ∀ {x y : F.W}, Subsingleton (F.R x y) := F.homeUnique hS
+  exact ⟨F.trans hF a r, fun _ => hu.elim _ _, fun _ => hu.elim _ _, fun _ {_} _ => hu.elim _ _⟩
+
+/-- Under D, `Frame.exists_unit` at every world: KDB5 with strong B has S5's frames. -/
+theorem Frame.exists_unit_of_serial {σ : Signature} (F : Frame σ) (hD : ModalSys.D = true)
+    (hF : ModalSys.Four = true) (hB : ModalSys.B = true) (hS : ModalSys.BStrong = true) (w : F.W) :
+    ∃ e : F.R w w, (∀ {t : F.W} (b : F.R w t), F.trans hF e b = b) ∧
+      (∀ {t : F.W} (c : F.R t w), F.trans hF c e = c) ∧
+      ∀ (hV : ModalSys.Five = true) {t : F.W} (b : F.R w t), F.side hV e b = b := by
+  obtain ⟨v, ⟨a⟩⟩ := F.serial hD w
+  exact F.exists_unit hF hB hS a
+
+/-- ⭐**The systems with a canonical model.**  Not a statement of what is coherent, but of what
+    is built: 5 without both lifts is still to come.  Strong B with 5 without T is left out: KDB5
+    there is S5 (`Frame.exists_unit_of_serial`), and KB5 there is a possible gap, to review (docs,
+    "Strong B on KB5 and KDB5").  `strongT` is `ModalSys.WCoh`, which the network and the cluster
+    ask for. -/
 class ModalSys.CubeSys [ModalSys] : Prop where
   /-- 5 comes with 4 and both of 4's lifts. -/
   five_lifts : ModalSys.Five = true →
     ModalSys.Four = true ∧ ModalSys.FourStrong = true ∧ ModalSys.FourStrongW = true
-  /-- Strong B with 5 comes with T.  Weak B needs no T: the root has its self-arrow. -/
+  /-- Strong B with 5 comes with T, which under D its frames meet anyway
+      (`Frame.exists_unit_of_serial`).  Weak B needs no T: the root has its self-arrow. -/
   five_B : ModalSys.Five = true → ModalSys.BStrong = true → ModalSys.T = true
   /-- B with 4 comes with 5. -/
   four_B : ModalSys.B = true → ModalSys.Four = true → ModalSys.Five = true
