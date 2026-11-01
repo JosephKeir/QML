@@ -5166,7 +5166,27 @@ wrong for a loop that must fix `u`.
 * `shaped` is `T || BStrong`, and the tree's tags are `T = true → …`, so strong B without T needs shapes on the cluster without T.
 * So `CubeSys.five_B` does not simply go: it becomes `Five → BStrong → T`.
 
-**Order.**  `PathOk` with its source; the two lemmas; the self-edge in the tree; the path layer; the cluster; dispatch.  Then a paper check of the strong forms.
+**Order.**  Built: the two lemmas and the extension of the transfer (below).  Next: the self-edge in the tree; `PathOk` with its source and the path layer; the cluster; dispatch.  Then a paper check of the strong forms.
+
+#### KB5 and KDB5: the step in Lean *(2026-11-01)*
+
+`QML_v12m_GLoop` and `QML_v12m_GLoopStep`, sorry-free, standard axioms: `Proof.closed_T`, `WFF.loopHat`, `WFF.loopHat_read`, `Proof.keep_lift_tup`, `Proof.loop_tup`; then `gloop_one`, `gloop_consistent`, `gloopStep_ok` and `loopData_nil`.  No new rule.  Four things differ from the check above.
+
+* *The body is formula-level, with the old items free.*  `WFF.loopHat φ` is `φ` shifted one view in, its slot read at `Term.keepOf`.  A hole form was built first and dropped: it needs one tuple of every old item, its abstraction, and that tuple's image.  Here the transfer reads the shift off `WFF.subst_shift` with `Subst.PreShift`, the route that gave `WFF.shift_closed`, so `θ` only has to send `u.keep` to `u`.
+* *Products need a lift of their own.*  `keep_lift` is at liftable types, and a root of the list can have any type.  So the slot is a tuple of `A`'s keepable components (`VarType.kc`, `VarType.tup`), and `Proof.keep_lift_tup` lifts them in turn, in a growing world language, handing on a tuple of kept addresses (`Term.Kept`).  A later component's quantifier sits inside an earlier one's, so a `◇∃p : X × Y` becomes `◇∃a. ∃b` (`WFF.slotPair`).  Lifting a component at a time needs nothing from `T`: `𝟙` is `Proof.ex_one`.
+* *`PathOk` comes after the tree.*  Its second nil clause reads the self-edge's entries, and those are typed by `Good`'s invariant for the loop, so the tree comes first.
+
+* *One slot, not `gc`.*  `gabs` and its tuple `gtup` mix a variable's kept items with its contents, and the keep lift needs them apart.  So `gpairAbs` abstracts `c`'s items into one slot of type `kc A × lc A`, each at its own projection path: no `gPath`, no `gc`.  Splitting that slot is `WFF.slotPair`, the same split `keep_lift_tup` uses.
+
+**The extension, built.**  Root's next variable `c : A`, committed part `cl`, entries `f` with `f(u.keep) = u` (`KeepFix`).  `gloopF` sends `u.keep` to `u` for `c`'s items too, and `u.box` to the fresh root `z : lc A` at the same projection path, `lc A` being `A`'s `□`-contents with T off.  For `□ψ ∈ M`:
+1. `gpairAbs` abstracts `ψ`, and `φ(k) := ∃y : lc A. ψ̃(k, y)` is `gloopBody`, over `V.insert (.bnd 0) (kc A)`.
+2. `⊢ □∀k. □φ̂(k) → φ(k)` in `ctxOf cl` (`Proof.loop_tup`), so the transfer gives its image in `M`.
+3. Read the image at `k :=` `c`'s kept-part objects (`objTup`).  `θ` of the hat is `φ` with its old items unchanged and the slot at `c`'s `keep` tuple (`WFF.subst_loopHat`): `θ.box (u.keep.box) = u.box` and `θ.box (u.keep.keep) = u.keep`, from `f(u.keep) = u` (`keepFix_shift`).
+4. `□ψ` gives `□φ` at that tuple (`gloop_kept`), so `∃y. θψ̃(c, y)` is in `M`, and Henkin at `z` gives `gloopArrow ψ` (`gloopArrow_eq`).
+
+`gloopStep_ok` is the step: it keeps `LoopData`, the self-edge's `FwdData` with `KeepFix`, on the grown root.  `loopData_nil` is the base at `cl = []`, closed T.
+
+**Next, the tree.**  `fmap []`, `fcl []` and `kind []` are free today: the root has no parent, and an edge's data is stored at its target.  The loop's data goes there, `GNetSt` gets a flag that holds exactly when `Five`, B and T off and `¬□⊥ ∈ M₀`, and `Good` gets a clause for `LoopData` under the flag.  `realF` at `[]` runs `gloopStep`.  `Good.setSt` needs the clause at `s = []`: both ends of the self-edge grow together (`FwdData.grow_tgt`, `grow_src`).  `QML_v12m_GFwd` holds `FwdData`, split from `GNet`, so `GLoopStep` sits below the network and the network can import it.
 
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
