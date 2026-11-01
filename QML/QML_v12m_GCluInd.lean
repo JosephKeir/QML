@@ -192,22 +192,6 @@ theorem cindInvariant_inv (hNS : ModalSys.BStrong = false) :
   rw [key o u hu _ hK h₁, key o' u' hu' _ hK h₂]
   exact hrel _ h₁ h₂ _
 
-/-- A representative of an object is one of the value under a hole term, filled. -/
-theorem cden_holeAt {s : GW hF M₀} {A : VarType} {o : (cframe hF hM₀ hX).Dom A s}
-    (u : Canon.DTerm (gw hM₀ s).sys (gw hM₀ s).T A)
-    (hu : cden hM₀ hX s u.i (Ctx.Le.refl _) u.t = cfromDom hM₀ hX A s o)
-    {C : VarType} {c : Ann C} (hh : Term σ (Ctx.empty.insert (.bnd 0) A) C c) :
-    cden hM₀ hX s u.i (Ctx.Le.refl _) (Term.holeAt u.t hh) =
-      cfromDom hM₀ hX C s ((cmodel hF hM₀ hX).holeVal hh o) := by
-  have e1 := interp_ccanon hX (hM₀ := hM₀) (Term.holeAt u.t hh) (env := ccanonEnv hM₀ hX s u.i)
-    (e := Ctx.Le.refl _) (Model.Env.Agree.refl' _) (Ctx.Presented.noProjLast _)
-  have e2 : Model.interp (ccanonEnv hM₀ hX s u.i) u.t = o := by
-    rw [interp_ccanon hX u.t (env := ccanonEnv hM₀ hX s u.i) (e := Ctx.Le.refl _)
-      (Model.Env.Agree.refl' _) (Ctx.Presented.noProjLast _)]
-    exact (ctoDom_congr hX hu _ _).trans (ctoDom_fromDom hM₀ hX A s o)
-  rw [Model.interp_holeAt, e2] at e1
-  rw [e1, cfromDom_toDom]
-
 /-- ⭐⭐**The cluster model is a model proper**: invariance (`cindInvariant_inv`
     under T, equality without) and the congruence laws: related representatives stay related
     under hole terms and pairing (`DTerm.Rel.holeAt`, `DTerm.Rel.pair`). -/
@@ -218,25 +202,7 @@ theorem cmodel_indInvariant (hF : ModalSys.Four = true) (hNS : ModalSys.BStrong 
     by_cases hT : ModalSys.T = true
     · exact cindInvariant_inv hM₀ hX hNS htame hnp env φ o o' (hInd.1 hT)
     · rw [hInd.2 (Bool.eq_false_iff.mpr hT)]
-  map := by
-    intro A C c hh s o o' hi
-    refine ⟨fun hT => ?_, fun hT => by rw [hi.2 hT]⟩
-    obtain ⟨u, u', hu, hu', hrel⟩ := hi.1 hT
-    exact ⟨⟨u.i, _, Term.holeAt u.t hh⟩, ⟨u'.i, _, Term.holeAt u'.t hh⟩,
-      cden_holeAt hM₀ hX u hu hh, cden_holeAt hM₀ hX u' hu' hh, hrel.holeAt hh⟩
-  pair := by
-    intro A C s a a' b b' ha hb
-    refine ⟨fun hT => ?_, fun hT => by rw [ha.2 hT, hb.2 hT]⟩
-    obtain ⟨u₁, u₁', h₁, h₁', r₁⟩ := ha.1 hT
-    obtain ⟨u₂, u₂', h₂, h₂', r₂⟩ := hb.1 hT
-    refine ⟨⟨max u₁.i u₂.i, _, Term.pair (u₁.lift _ (le_max_left _ _))
-        (u₂.lift _ (le_max_right _ _))⟩,
-      ⟨max u₁'.i u₂'.i, _, Term.pair (u₁'.lift _ (le_max_left _ _))
-        (u₂'.lift _ (le_max_right _ _))⟩, ?_, ?_, Canon.DTerm.Rel.pair r₁ r₂ _ _ _ _ _ _⟩
-    · exact Prod.ext ((cden_lift hX (le_max_left u₁.i u₂.i) u₁.t).trans h₁)
-        ((cden_lift hX (le_max_right u₁.i u₂.i) u₂.t).trans h₂)
-    · exact Prod.ext ((cden_lift hX (le_max_left u₁'.i u₂'.i) u₁'.t).trans h₁')
-        ((cden_lift hX (le_max_right u₁'.i u₂'.i) u₂'.t).trans h₂')
+  toIndCongr := cindCongr hM₀ hX
   ret := fun hS => absurd (hNS.symm.trans hS) (by decide)
 
 end GArrow

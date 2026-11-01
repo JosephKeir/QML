@@ -5394,7 +5394,7 @@ except where marked built.
 | `z` with `z.keep` the far witness | `ckeepLift` at `◇`, which needs the `◇`-lift (`CluFlags.fourSW`) |
 | `Here z c` | out and home is the identity, then `chere_truth` |
 
-**Truth ⇒ membership, `.boxC`.**  The ties cannot come from the induction: they make `packedBody` bigger than the
+**Truth ⇒ membership, `.boxC`** *(superseded: built without `eqRec`, see "`retS` on the cluster" below).*  The ties cannot come from the induction: they make `packedBody` bigger than the
 atom.  And they are not free at the kept object: a companion `Y` at `v` is not kept syntactically, only up to
 denotation.  So write `P₀` for the object's own packing, for which the ties are provable for any term, and
 `P̃ := □(shift b)`.  The body needs `Φ(E)` and `eqRec (□flat) P₀ P̃`, each below the atom's size
@@ -5402,7 +5402,7 @@ denotation.  So write `P₀` for the object's own packing, for which the ties ar
 terms, not only addresses, and `ann_eq_of_termShpW` in the pushed environment (`CInvW.box`).  Pairs go through
 `N.packed`.  `.wit` adds `ret_keep`.
 
-**Membership ⇒ truth.**  `∃` as a formula is `WFF.ex T (WFF.bindFree c (lifted))`; `exW_term` gives a term `□b`, so
+**Membership ⇒ truth** *(the ties part superseded, see "`retS` on the cluster" below).*  `∃` as a formula is `WFF.ex T (WFF.bindFree c (lifted))`; `exW_term` gives a term `□b`, so
 `Proof.retN_lift`'s conclusions land in the shape `retC_unlift` uses.  `Back` at any size holds by the definition of
 `Ret`, with no induction hypothesis, so ties are read semantically.  `Model.nComesBack_of_ties` needs `hM.inv`, which
 comes after the truth lemma, so it is redone inside: `cInd` composes there, since equal denotations have one
@@ -5498,7 +5498,28 @@ do not.
 * *Left.*  `retS` and `retxS`, both ways; split `cdia_sat_child`; `RetCongr` in `cmodel_indInvariant` (checked below).
   Then `hNS` goes.
 
-**`RetCongr` on the cluster under the whole-shape tag (2026-11-02, paper).**  All three laws go through, with no change to
+**`retS` on the cluster: one mechanism for both directions (2026-11-01).**  The far-world tie does the work of the
+`eqRec` steps planned above.
+* ⭐`FarLeg` (`QML_v12m_GCluRet`, built): an arrow of a leg, read at its far world.  A chain `C`, a translation `trW`
+  commuting with conjunction and hole formulas and keeping sizes, its meaning (`sat_trW`) and the way home (`dia_of`).
+  `farNec`, `farPos` are the two legs, so the `retS` proofs are written once.  `GCluTruth` is split: what comes before
+  `Back` is `QML_v12m_GCluPush`.  `cindCongr` is before the truth lemma.
+* *Truth ⇒ membership at necessary shapes: built* (`mem_ret_of_satN`, both legs).  Pack the far object `e`, with `packG`, as
+  `□E₀`, and take `c := compsVal E₀`.  Its home term `b` (`homeT`) keeps to `c` at the far world **as one term**
+  (`FarKept`; `kept_nec`, `kept_pos`), so `P̃ = P₀` and no `eqRec` is needed.  At the far world the body is true, so in the
+  theory by the induction (`Φ`'s size), and the ties are theorems (`packTies_tm`, `Proof.packTies_intro` at terms).
+  `Proof.retC_unlift` then gives the returning possibility (`ret_core`), and `ret_map` along `unpackG` the shape back.
+  The value moves at `N`, not at the packed shape, whose `eqRec` can exceed the atom's size.
+* *Membership ⇒ truth: planned.*  Reduce to `.boxC` by `retS_packG`.  `Proof.retN_lift` gives `∃c. Back (c kept) t ∧
+  ◇ packed(c kept)`.  `O.dia` at home gives an arrow with the translation in the far theory (`exists_far`, from `glex` and the
+  first half of `cdia_sat_child`, which must be split).  `Φ` is true there by the induction.  **A tie in the far theory is
+  exactly `Proof.back_of_tie`'s premise**, so each companion reads home by `back_of_tie` and `back_here_rel`.  No `eqRec`, no
+  `Rel.trans`, and `Ind` need not compose.  Pieces: (1) reading `∃` off: `instantiate x (bindFree c lifted)` as a
+  substitution, then `WFF.subst_instantiate`, `OutLeg.subst_dia`; (2) `tie_nec` and `tie_pos` factored through a far-world
+  hypothesis; (3) a `FarLeg` at a later stage against one at an earlier stage (as `pTr_mono`, `preTB_lift`).
+* *Then.*  `.wit`: `ret_keep`, `ckeepLift` at `◇`, `chere_truth`.  `RetCongr` (below), and `hNS` goes.
+
+**`RetCongr` on the cluster under the whole-shape tag (2026-11-01, paper).**  All three laws go through, with no change to
 `Ret` or the rules.  They come after the truth lemma, which must not use them.  The round-trip part of `cRet` is free each
 time.  What needs an argument is the atom at a `◇` content.  Estimate: 200 to 250 lines.
 * *`keep`, the one in doubt.*  `IsCarrierData` gives a carrier `c`.  It is definable, so a term, and at a common stage with
