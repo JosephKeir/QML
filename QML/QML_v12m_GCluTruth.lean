@@ -1,4 +1,4 @@
-import QML.QML_v12m_GCluRetOut
+import QML.QML_v12m_GCluRetW
 import QML.QML_v12m_BBackTruth
 
 /-!
@@ -299,7 +299,7 @@ theorem mem_back_of_sat_posC (hX : CluFlags) (hS : ModalSys.BStrong = true) {s :
 /-! ## The truth lemma -/
 
 /-- ⭐**The truth lemma below a size, at every world and stage.** -/
-theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
+theorem ctruth_lt (hX : CluFlags) :
     ∀ (n : ℕ) (s : GW hF M₀) (i : ℕ) (φ : WFF σ (ctxOf (glat s i)) 0), φ.size < n →
     ((cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s i) φ ↔ φ ∈ (gw hM₀ s).M i)
   | 0, _, _, _, h => absurd h (Nat.not_lt_zero _)
@@ -327,7 +327,7 @@ theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
           cases S with
           | diatm x hx bd =>
               exact chere_truth hX hT hx bd t
-                (fun K _ u u' => ctruth_lt hX hNS n s K _ (by
+                (fun K _ u u' => ctruth_lt hX n s K _ (by
                   rw [WFF.size_eqRec]; simp only [WFF.size] at hφ; omega))
       | back hB L c t =>
           cases L with
@@ -340,7 +340,7 @@ theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
                       have hle : ((OutLeg.pos y hy : OutLeg (ctxOf (glat s i))).back hB bd t :
                           WFF σ _ 0).size ≤ n := Nat.le_of_lt_succ hφ
                       refine ⟨fun h => mem_back_of_sat_posC hX hB hy bd t (fun K ψ hψ =>
-                        ctruth_lt hX hNS n s K ψ (Nat.lt_of_lt_of_le hψ hle)) h, fun hm => ?_⟩
+                        ctruth_lt hX n s K ψ (Nat.lt_of_lt_of_le hψ hle)) h, fun hm => ?_⟩
                       have hdia : (OutLeg.pos y hy : OutLeg (ctxOf (glat s i))).dia
                           (.top : WFF σ _ 0) ∈ (gw hM₀ s).M i :=
                         BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by
@@ -351,7 +351,7 @@ theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
                       have hs3 := BData.size_dia_top (σ := σ) (OutLeg.pos y hy :
                         OutLeg (ctxOf (glat s i)))
                       obtain ⟨b, -⟩ := (OutLeg.sat_dia _ (.pos y hy) _).mp
-                        ((ctruth_lt hX hNS n s i _ (by omega)).mpr hdia)
+                        ((ctruth_lt hX n s i _ (by omega)).mpr hdia)
                       change (cmodel hF hM₀ hX).Backs .pos _ _
                       rw [interp_ccanon hX (Term.diatm y hy (Term.boxtm bd))
                         (Model.Env.Agree.refl' _) (Ctx.Presented.noProjLast _),
@@ -365,7 +365,7 @@ theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
                   cases u with
                   | boxtm bd =>
                       refine ⟨fun h => mem_back_of_sat_necC hX hB bd t (fun K ψ hψ =>
-                        ctruth_lt hX hNS n s K ψ (Nat.lt_of_lt_of_le hψ (Nat.le_of_lt_succ hφ)))
+                        ctruth_lt hX n s K ψ (Nat.lt_of_lt_of_le hψ (Nat.le_of_lt_succ hφ)))
                         h, fun hm => ?_⟩
                       change (cmodel hF hM₀ hX).Backs .nec _ _
                       rw [interp_ccanon hX (Term.boxtm (Term.boxtm bd))
@@ -373,25 +373,63 @@ theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
                         interp_ccanon hX t (Model.Env.Agree.refl' _)
                           (Ctx.Presented.noProjLast _)]
                       exact cRet_of_mem_nec hM₀ hX hB s i bd t hm
-      | retS hB _ _ _ => exact absurd (hNS.symm.trans hB) (by decide)
-      | retxS hB _ _ _ _ _ => exact absurd (hNS.symm.trans hB) (by decide)
+      | retS hB S t Φ =>
+          have hle : Φ.size + S.flat.eqRecSize + 1 ≤ n := Nat.le_of_lt_succ hφ
+          have IH : ∀ (s' : GW hF M₀) (K : ℕ) (ψ : WFF σ (ctxOf (glat s' K)) 0),
+              ψ.size < Φ.size + S.flat.eqRecSize + 1 →
+                ((cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s' K) ψ ↔ ψ ∈ (gw hM₀ s').M K) :=
+            fun s' K ψ hψ => ctruth_lt hX n s' K ψ (Nat.lt_of_lt_of_le hψ hle)
+          cases S with
+          | nec N =>
+              exact ⟨mem_ret_of_satN hM₀ hX hB .nec N t Φ IH,
+                sat_ret_of_memN hM₀ hX hB .nec N t Φ fun s' K ψ hψ => IH s' K ψ (by omega)⟩
+          | wit N Z =>
+              have hz : N.flat.eqRecSize + Z.eqRecSize + 1 =
+                  (RShape.wit N Z).flat.eqRecSize := rfl
+              have IHe : CEqTruth hM₀ hX s Z := fun K _ u u' => IH s K _ (by
+                rw [WFF.size_eqRec]
+                omega)
+              exact ⟨mem_ret_of_satW' hM₀ hX hB .nec N t Φ
+                (fun s' K ψ hψ => IH s' K ψ (by omega)) IHe,
+                sat_ret_of_memW hM₀ hX hB .nec N t Φ (fun s' K ψ hψ => IH s' K ψ (by omega)) IHe⟩
+      | retxS hB y hy S t Φ =>
+          have hle : Φ.size + S.flat.eqRecSize + 1 ≤ n := Nat.le_of_lt_succ hφ
+          have IH : ∀ (s' : GW hF M₀) (K : ℕ) (ψ : WFF σ (ctxOf (glat s' K)) 0),
+              ψ.size < Φ.size + S.flat.eqRecSize + 1 →
+                ((cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s' K) ψ ↔ ψ ∈ (gw hM₀ s').M K) :=
+            fun s' K ψ hψ => ctruth_lt hX n s' K ψ (Nat.lt_of_lt_of_le hψ hle)
+          cases S with
+          | nec N =>
+              exact ⟨mem_ret_of_satN hM₀ hX hB (.pos y hy) N t Φ IH,
+                sat_ret_of_memN hM₀ hX hB (.pos y hy) N t Φ
+                  fun s' K ψ hψ => IH s' K ψ (by omega)⟩
+          | wit N Z =>
+              have hz : N.flat.eqRecSize + Z.eqRecSize + 1 =
+                  (RShape.wit N Z).flat.eqRecSize := rfl
+              have IHe : CEqTruth hM₀ hX s Z := fun K _ u u' => IH s K _ (by
+                rw [WFF.size_eqRec]
+                omega)
+              exact ⟨mem_ret_of_satW' hM₀ hX hB (.pos y hy) N t Φ
+                (fun s' K ψ hψ => IH s' K ψ (by omega)) IHe,
+                sat_ret_of_memW hM₀ hX hB (.pos y hy) N t Φ
+                  (fun s' K ψ hψ => IH s' K ψ (by omega)) IHe⟩
       | and φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega
           change _ ∧ _ ↔ _
-          rw [ctruth_lt hX hNS n s i φ h₁, ctruth_lt hX hNS n s i ψ h₂,
+          rw [ctruth_lt hX n s i φ h₁, ctruth_lt hX n s i ψ h₂,
             ((gw hM₀ s).mcs i).and_mem_iff]
       | or φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega
           change _ ∨ _ ↔ _
-          rw [ctruth_lt hX hNS n s i φ h₁, ctruth_lt hX hNS n s i ψ h₂,
+          rw [ctruth_lt hX n s i φ h₁, ctruth_lt hX n s i ψ h₂,
             ((gw hM₀ s).mcs i).or_mem_iff]
       | imp φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega
           change (_ → _) ↔ _
-          rw [ctruth_lt hX hNS n s i φ h₁, ctruth_lt hX hNS n s i ψ h₂,
+          rw [ctruth_lt hX n s i φ h₁, ctruth_lt hX n s i ψ h₂,
             ((gw hM₀ s).mcs i).imp_mem_iff]
       | all A ψ =>
           have hψ : ψ.size < n := by simp only [WFF.size] at hφ; omega
@@ -405,7 +443,7 @@ theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
               (Model.interp (ccanonEnv hM₀ hX s i') t)) ψ).mpr (hsat _)
             have hs₂ := (Model.sat_instantiate (ccanonEnv hM₀ hX s i')
               (Ctx.Presented.noProjLast _) Ctx.NoSlots.slots t _).mpr hs₁
-            have hs₃ := (ctruth_lt hX hNS n s i' _
+            have hs₃ := (ctruth_lt hX n s i' _
               (by rw [WFF.size_instantiate, WFF.size_mono]; exact hψ)).mp hs₂
             exact (((gw hM₀ s).mcs i').neg_mem_iff.mp hmem) hs₃
           · intro hmem o
@@ -420,7 +458,7 @@ theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
                   rw [List.mem_singleton.mp hχ]
                   exact (BWorld.mem_lift hK).mp hmem)
                 ⟨Proof.all_elim A ((gw hM₀ s).liftT hK' t') (Proof.lookup List.mem_cons_self)⟩
-            have hs := (ctruth_lt hX hNS n s (i ⊔ i') _
+            have hs := (ctruth_lt hX n s (i ⊔ i') _
               (by rw [WFF.size_instantiate, WFF.size_mono]; exact hψ)).mpr hinst
             have hs₁ := (Model.sat_instantiate (ccanonEnv hM₀ hX s (i ⊔ i'))
               (Ctx.Presented.noProjLast _) Ctx.NoSlots.slots ((gw hM₀ s).liftT hK' t') _).mp hs
@@ -441,7 +479,7 @@ theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
             rw [← cinterp_lift hX ht' hK'] at hs₁
             have hs₂ := (Model.sat_instantiate (ccanonEnv hM₀ hX s (i ⊔ i'))
               (Ctx.Presented.noProjLast _) Ctx.NoSlots.slots ((gw hM₀ s).liftT hK' t') _).mpr hs₁
-            have hmemK := (ctruth_lt hX hNS n s (i ⊔ i') _
+            have hmemK := (ctruth_lt hX n s (i ⊔ i') _
               (by rw [WFF.size_instantiate, WFF.size_mono]; exact hψ)).mp hs₂
             exact (BWorld.mem_lift hK).mpr (BWorld.mem_of_provable
               (Δ := [WFF.instantiate Ctx.NoSlots.slots ((gw hM₀ s).liftT hK' t')
@@ -453,7 +491,7 @@ theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
           · intro hmem
             obtain ⟨i', hi, a, t, hmem'⟩ := (gw hM₀ s).exW_term hmem
             refine ⟨Model.interp (ccanonEnv hM₀ hX s i') t, ?_⟩
-            have hs := (ctruth_lt hX hNS n s i' _
+            have hs := (ctruth_lt hX n s i' _
               (by rw [WFF.size_instantiate, WFF.size_mono]; exact hψ)).mpr hmem'
             have hs₁ := (Model.sat_instantiate (ccanonEnv hM₀ hX s i') (Ctx.Presented.noProjLast _)
               Ctx.NoSlots.slots t _).mp hs
@@ -474,13 +512,13 @@ theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
             have hR : GR (groot hF M₀) t := ⟨[c], pathOk_cons, hc⟩
             have h1 := (sat_boxPush_c hX s i ⟨t, ⟨hR⟩⟩ [c] hc pathOk_cons (pathOf_of hR hc)
               χ).mp (hsat ⟨t, ⟨hR⟩⟩)
-            have h2 := (ctruth_lt hX hNS n t _ _ (by
+            have h2 := (ctruth_lt hX n t _ _ (by
               rw [size_pTrW, size_preWP (hM₀ := hM₀) hX]; exact hχs)).mp h1
             exact ((gw hM₀ t).mcs _).neg_mem_iff.mp hneg h2
           · intro hmem a
             refine (sat_boxPush_c hX s i a (pathOf a.2.down) (pathOf_eq a.2.down)
               (pathOf_ok a.2.down) rfl χ).mpr ?_
-            exact (ctruth_lt hX hNS n a.1 _ _ (by
+            exact (ctruth_lt hX n a.1 _ _ (by
               rw [size_pTrW, size_preWP (hM₀ := hM₀) hX]; exact hχs)).mpr
               (box_mem_path hM₀ (groot hF M₀) a.1 _ (pathOf_eq a.2.down) (pathOf_ok a.2.down)
                 (rstg s i) _ (hpath.mpr hmem))
@@ -489,7 +527,7 @@ theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
           change (∃ (X : VarType) (h : (ctxOf (glat s i)).ref x = some (.VTypeDia X))
             (a : ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s i).ref x h)).1),
               (cmodel hF hM₀ hX).sat ((ccanonEnv hM₀ hX s i).diaPush x h a) χ) ↔ _
-          have IH : CTruthBelow hF hM₀ hX n := fun t j φ hφ => ctruth_lt hX hNS n t j φ hφ
+          have IH : CTruthBelow hF hM₀ hX n := fun t j φ hφ => ctruth_lt hX n t j φ hφ
           constructor
           · rintro ⟨X, h, a, hsat⟩
             by_contra hnot
@@ -513,7 +551,7 @@ theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
             · exact cdia_real_not_boxx hX hrl.T IH s i h a hrl χ hχs hsat hbx
             obtain ⟨-, hm⟩ := Or.resolve_left hg hrl
             have h1 := (sat_diaPush_c hX s i h a _ (pathOf_eq a.1.2.down) rfl hrl hm χ).mp hsat
-            have h2 := (ctruth_lt hX hNS n a.1.1 _ _ (by
+            have h2 := (ctruth_lt hX n a.1.1 _ _ (by
               rw [size_pTrXW, size_preWPX (hM₀ := hM₀) hX]; exact hχs)).mp h1
             have hneg := boxx_mem_path (hM₀ := hM₀) (groot hF M₀) a.1.1 _ (pathOf_eq a.1.2.down)
               (rstg s i) (rorig s x) _ hm _ hbx
@@ -535,14 +573,14 @@ theorem ctruth_lt (hX : CluFlags) (hNS : ModalSys.BStrong = false) :
               (ccanon_mem_iff hX s i h _).mpr (.inr ⟨hnT,
                 inExt_pathOf hR (show InExt (groot hF M₀) t [c] hc (rorig s x) from hk)⟩)
             exact ⟨X, h, ⟨_, hmt⟩, (sat_diaPush_c hX s i h ⟨_, hmt⟩ [c] hc (pathOf_of hR hc)
-              ((gw hM₀ t).not_realised hnT) hk χ).mpr ((ctruth_lt hX hNS n t _ _ (by
+              ((gw hM₀ t).not_realised hnT) hk χ).mpr ((ctruth_lt hX n t _ _ (by
                 rw [size_pTrXW, size_preWPX (hM₀ := hM₀) hX]; exact hχs)).mpr hm')⟩
 
 /-- ⭐**The truth lemma** for the cluster model. -/
-theorem ctruth (hX : CluFlags) (hNS : ModalSys.BStrong = false) (s : GW hF M₀) (i : ℕ)
+theorem ctruth (hX : CluFlags) (s : GW hF M₀) (i : ℕ)
     (φ : WFF σ (ctxOf (glat s i)) 0) :
     (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s i) φ ↔ φ ∈ (gw hM₀ s).M i :=
-  ctruth_lt hX hNS (φ.size + 1) s i φ (Nat.lt_succ_self _)
+  ctruth_lt hX (φ.size + 1) s i φ (Nat.lt_succ_self _)
 
 end GArrow
 

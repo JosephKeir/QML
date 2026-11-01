@@ -26,7 +26,6 @@ variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
 /-- ⭐⭐**The cluster model over a maximal consistent theory**: its root satisfies, at its first
     stage, exactly its theory, which contains `M₀`. -/
 theorem exists_canonC (hF : ModalSys.Four = true) (hX : CluFlags)
-    (hNS : ModalSys.BStrong = false)
     {l₀ : List VarType}
     {M₀ : Set (WFF σ (ctxOf l₀) 0)} (hM₀ : Theory.IsMCS M₀) :
     ∃ hle : (ctxOf l₀).Le (ctxOf (glat (groot hF M₀) 0)),
@@ -35,7 +34,7 @@ theorem exists_canonC (hF : ModalSys.Four = true) (hX : CluFlags)
           φ ∈ (gw hM₀ (groot hF M₀)).M 0) ∧
       ∀ ψ ∈ M₀, WFF.mono hle ψ ∈ (gw hM₀ (groot hF M₀)).M 0 := by
   have hg := (ext_gnet hF hM₀ (Nat.zero_le (gbirth hF M₀ (groot hF M₀).2 + 0))).grows [] trivial
-  exact ⟨ctxOf_le_of_suffix hg.suf, ctruth hX hNS (groot hF M₀) 0,
+  exact ⟨ctxOf_le_of_suffix hg.suf, ctruth hX (groot hF M₀) 0,
     fun ψ hψ => hg.sub ψ (show ψ ∈ ((gnet hF M₀ 0).st []).M from hψ)⟩
 
 /-- Model existence at a world language: the cluster model over a maximal consistent extension
@@ -45,7 +44,7 @@ theorem model_existenceC_ctxOf (hF : ModalSys.Four = true) (hX : CluFlags)
     {l₀ : List VarType}
     {S : Set (WFF σ (ctxOf l₀) 0)} (hS : WFF.SetConsistent S) : WFF.SetSatisfiable S := by
   obtain ⟨hSM, hM₀⟩ := complete_spec (setConsistent_iff.mp hS)
-  obtain ⟨hle, htruth, hmem₀⟩ := exists_canonC hF hX hNS hM₀
+  obtain ⟨hle, htruth, hmem₀⟩ := exists_canonC hF hX hM₀
   have hag : Model.Env.Agree hle
       (fun v T hv => ccanonEnv hM₀ hX (groot hF _) 0 v T (hle v T hv))
       (ccanonEnv hM₀ hX (groot hF _) 0) := fun _ _ _ => rfl

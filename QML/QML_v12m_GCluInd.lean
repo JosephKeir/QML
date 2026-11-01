@@ -136,7 +136,7 @@ end Represent
     instantiated at a representative of the object, is in the theory (`sat_subst`,
     `sat_instantiate`, `ctruth`).  Related objects have representatives interchangeable in every
     slot formula (`DTerm.Rel`), so the two memberships agree. -/
-theorem cindInvariant_inv (hNS : ModalSys.BStrong = false) :
+theorem cindInvariant_inv :
     ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLast →
     ∀ {s : GW hF M₀} (env : (cmodel hF hM₀ hX).Env Γ s) {A : VarType}
       (φ : WFF σ (Γ.insert (.bnd 0) A) 1) (o o' : (cframe hF hM₀ hX).Dom A s), cInd hM₀ hX o o' →
@@ -181,7 +181,7 @@ theorem cindInvariant_inv (hNS : ModalSys.BStrong = false) :
       _ ↔ (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX s K') (WFF.instantiate Ctx.NoSlots.slots
             (u.lift K' hu) (WFF.mono ((gle hM₀ s hK).insert (.bnd 0) A) φ')) := by
           rw [Model.sat_instantiate (ccanonEnv hM₀ hX s K') (Ctx.Presented.noProjLast _), hval]
-      _ ↔ _ := ctruth hX hNS s K' _
+      _ ↔ _ := ctruth hX s K' _
   obtain ⟨u, u', hu, hu', hrel⟩ := hInd
   have hK : crepSup hM₀ hX env hfin ≤ max (crepSup hM₀ hX env hfin) (max u.i u'.i) :=
     le_max_left _ _
@@ -200,7 +200,7 @@ theorem cmodel_indInvariant (hF : ModalSys.Four = true) (hNS : ModalSys.BStrong 
   inv := by
     intro Γ _ htame hnp s env A φ o o' hInd
     by_cases hT : ModalSys.T = true
-    · exact cindInvariant_inv hM₀ hX hNS htame hnp env φ o o' (hInd.1 hT)
+    · exact cindInvariant_inv hM₀ hX htame hnp env φ o o' (hInd.1 hT)
     · rw [hInd.2 (Bool.eq_false_iff.mpr hT)]
   toIndCongr := cindCongr hM₀ hX
   ret := fun hS => absurd (hNS.symm.trans hS) (by decide)

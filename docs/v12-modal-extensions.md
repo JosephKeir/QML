@@ -5522,7 +5522,20 @@ do not.
   was found; its fields are the stage agreement (`pTr_mono`, `preTB_lift`; `pTrXK_mono`, `preTD_stage`, `grealT_mono`), the way
   home, and `kept₂` (`kept2_path`, `kept2_real`).  `tie_nec` and `tie_pos` were left alone, not refactored onto this, so their
   kept-carrier steps and `kept2_*` overlap.
-* *Then.*  `.wit`: `ret_keep`, `ckeepLift` at `◇`, `chere_truth`.  `RetCongr` (below), and `hNS` goes.
+* *`.wit`: built, both directions* (`QML_v12m_GCluRetW`).  A witnessed returning possibility is a necessary one with a possible
+  object kept, plus that object's `Here` (`Proof.ret_keep`), so each direction is the necessary case with `chere_truth`, and no
+  far-world work of its own.  Truth ⇒ membership (`mem_ret_of_satW`): the possible object `e₂` has a name `diatm x bd` here, by
+  `cdefinable_dia_iff`, because raw possible objects do not depend on the world; its `Here` is true, the necessary part kept is
+  true (`sat_nec_keep`), and `ret_keep` joins them.  Membership ⇒ truth (`sat_ret_of_memW`): `BWorld.retW_term` reads
+  `Proof.retWN_lift` at a term, `Proof.retC_unlift` turns the rest into the necessary part kept, `sat_ret_of_memC` makes that
+  true, and the soundness lemma `Model.sat_ret_keep` joins it with `Here`.  It needs no model law, so it is usable before the
+  truth lemma.  The one new fact is ⭐`cden_kept`: a kept possible object read along an arrow is the object.  The shape half does
+  not go through generally (the per-arrow shape environments do not match the symbolic ones), so it is done on terms: under `□`
+  both are the root's (`cden_box_eq`, `preTB_keepDia`), named at the far world (`cden_named_box`, `rnm_keepDia`), where the own
+  arrow reads the collapse (`cden_boxtm_own`, `Term.collapse_keptDia`), and that is the object (`cden_named_dia`).
+* *Wired in.*  `ctruth_lt` and `ctruth` have no `hNS`, at every shape along both legs.  `hNS` now remains only for the `ret` field
+  of `cmodel_indInvariant`, and through it in `GCluCompleteness` and `noBStrong_of_cube`.
+* *Then.*  `RetCongr` (below), so `hNS` goes and `CubeSys.strongB` can admit S5.
 
 **`RetCongr` on the cluster under the whole-shape tag (2026-11-01, paper).**  All three laws go through, with no change to
 `Ret` or the rules.  They come after the truth lemma, which must not use them.  The round-trip part of `cRet` is free each
