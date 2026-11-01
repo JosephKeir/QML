@@ -5166,7 +5166,7 @@ wrong for a loop that must fix `u`.
 * `shaped` is `T || BStrong`, and the tree's tags are `T = true → …`, so strong B without T needs shapes on the cluster without T.
 * So `CubeSys.five_B` does not simply go: it becomes `Five → BStrong → T`.
 
-**Order.**  Built: the two lemmas, the extension of the transfer, the self-edge in the tree and its limit (below).  Next: a paper check of the arrow on the cluster; the cluster; dispatch.  Then a paper check of the strong forms.
+**Order.**  Built: the two lemmas, the extension of the transfer, the self-edge in the tree and its limit (below).  The arrow on the cluster is checked on paper (below).  Next: the cluster; dispatch.  Then a paper check of the strong forms.
 
 #### KB5 and KDB5: the step in Lean *(2026-11-01)*
 
@@ -5195,7 +5195,35 @@ wrong for a loop that must fix `u`.
 * Keeping `pstg` at `i` would need the root closed under the loop at every stage: commit eagerly, ending each round by committing to a fixed point (a type measure, plus a step without a fresh root for variables with no `□` component).  That wraps `gnet` and breaks the exact equations `henk_ex`, `child_box`, `lift_total` and `origin_total` rely on.
 * Most `T_of_nil` sites are about `gmodel`, which 5 does not use (`GrowSys` has `NoFive`).  Only `cden`'s `□` clause and the lemmas on arrows out of the root need the loop, and `[]` also means the identity tree path in `pnm`, `rstg` and `rorig`, which is not an arrow at all.
 
-So `pTr`, `pstg`, `PathOk` and everything proved about them stay, and the loop is one more arrow on the cluster: `GR ρ ρ` when `lp`, with `cden`'s `□` clause branching to `gloopF`'s translation at `lstg`.  The `◇` clause needs no branch: `InExt` at `[]` is `False`, so no extent contains the loop.  A paper check of this comes next.
+So `pTr`, `pstg`, `PathOk` and everything proved about them stay, and the loop is one more arrow on the cluster.
+
+#### KB5 and KDB5: the arrow on the cluster, the check *(2026-11-01, paper)*
+
+**Verdict.**  It works, with no new rule, no change to `pTr`, `pstg`, `PathOk`, `GR` or `gmodel`, and about 600 lines, most of them the loop's half of lemmas that already exist.  The edge's half of each is the pattern: the loop is an edge whose entries fix kept items.  All of this is on paper.
+
+**1. The relation.**  `GR` stays.  It underlies `grden` and all of `gmodel`, whose definitions have no `NoFive` in scope to exclude the loop, so the loop cannot go in it.  The cluster gets its own:
+`CR t := ∃ P, (PathOk P ∨ RootLoop P) ∧ t.1 = nodeOf [] P`, with `RootLoop P := P = [] ∧ LoopOn M₀`, and `carrows.R := fun _ t => CR t`, `CAcc := Σ t, PLift (CR t)`.  `cpath`, `cpath_eq`, `cpath_of` are `pathOf`, `pathOf_eq`, `pathOf_of` for it.  In the `GClu*` files that is a rename of `pathOf` and `GR (groot hF M₀)`, and `.inl` at the constructors.  `PathOk (cpath h)` holds under T (`.inr`) and on any arrow but the loop; the 23 `pathOf_ok` sites take that fact.  Those under strong B have T.
+
+**2. `cden`.**  `.boxtm b` along `a` is `if h : PathOk (cpath a.2.down)` then the old clause, else `cden a.1 (lstg R) _ (θ pre b)`, for `R := rstg s i`, `θ` the limit's entries `fmapL []` and `pre` the world's preimage.
+* *Termination:* the recursion is structural on the type, and `θ pre b` has type `A`, so the branch is free.
+* *Typing:* the value lands at `a.1`, not `ρ`, so no cast: `a.1 = ρ` gives the `Le` into `ctxOf (glat a.1 _)`, a proof.  The stage goes inside each branch, so the old branch is literally the old clause, and `dif_pos` restores it at the T-only sites.
+* *The `◇` clause has no branch.*  `GMem ρ ρ [] x` is `Realised ∨ (T off ∧ InExt)`.  `Realised` carries T (`RealDatum.hT`), and `InExt` at `[]` is `False`.  So with T off no extent contains the loop.  This also matches `five_dia`: `◇_x φ ∈ M`, so `□◇_{x.keep}(shift φ) ∈ M`, whose image along the loop is `◇_x φ` again, with the same extent.
+
+**3. The lemmas on arrows.**  Each is the existing proof plus a loop branch:
+* `cden_mono`: the `mono` goes under `θ`, as before.  `cden_congr`: `lstg` is monotone, and `θ` at two stages agrees (`sim_eS_mono`), as `pTr_mono`'s edge clause.  `cden_root_box`, `cden_box_eq`: `subst_preI_id`.  `cdefinable_box_apply`: the value is a denotation.
+* `cden_applyG`: `boxMap` is `Canon.applyG_subst`, `pTr_applyG`'s edge clause.  `boxPair` is `rfl`.  `dup` and `dkeep` are the loop's `cden_tr`, `cden_trX`: **`θ(□ shift b) = □b`** and `θ(◇_{x.keep} shift c) = ◇_x c`, then `cden_mono` and `cden_congr`.  The first is `WFF.subst_loopHat` at terms, from `keepFix_shift`.  The second needs `keepFix_shift` for `Subst.dia`.
+* `preC`, `cagree_boxPush`: a loop chain, `.sub preI (.sub θ (.nil))`, with the old proof's text.  `sat_boxPush_c`: a loop form, the edge clause of `sat_ptrC`.  The `◇` pushes take `InExt`, so `P ≠ []`, so `PathOk`.
+* `ctruth`, `□`: right to left, on the loop, `box_pathO_iff`, then `gltr_loop`, then the induction hypothesis (`θ` preserves size: the entries are addresses).  Left to right uses a child of the root, as now.
+
+**4. The frame.**  `symm`, for `B` with T off: the flags give `LoopOn` unless `□⊥ ∈ M₀`.  With `LoopOn`, `RootLoop []` puts the root in `Acc`, and every other world is there by `rpath`.  With `□⊥ ∈ M₀`, `Acc` is empty: a first step `[c]` of a path gives a child, and `gltr` at `⊥` puts `⊥` in its theory.  That is KB5's dead end, and it needs no invariant on `mkChild`.  `refl`, `trans`, `serial`, `side` and the raw-object laws read nothing of the path.
+
+**5. What does not change.**  `CRDom` (`Acc` is one type), R4 (`cden_named_box` and `cdefinable_box_iff` compare preimages at the root), `box_pathO_iff`, `dia_pathO_iff`, `names_unique`, `Ind` (equality with T off), and everything shaped.
+
+**6. Dispatch.**  `CluFlags.bT` becomes `BStrong → T`: of its 13 uses, 12 are under strong B and one is `symm`.  `CubeSys.five_B` becomes `Five → BStrong → T`.  So KB5 and KDB5 join the cube with both lifts, and weak B.
+
+**Not checked:** the T-only sites' `simp only [cden]`, which will need `dif_pos`, one by one.
+
+**Order.**  `CR` and the rename, with `cden` branching and `T` sites restored, the strict build unchanged in meaning; the loop's term facts; the arrow lemmas; `symm` and the truth lemma; dispatch.
 
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
