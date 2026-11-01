@@ -5535,7 +5535,10 @@ do not.
   arrow reads the collapse (`cden_boxtm_own`, `Term.collapse_keptDia`), and that is the object (`cden_named_dia`).
 * *Wired in.*  `ctruth_lt` and `ctruth` have no `hNS`, at every shape along both legs.  `hNS` now remains only for the `ret` field
   of `cmodel_indInvariant`, and through it in `GCluCompleteness` and `noBStrong_of_cube`.
-* *Then.*  `RetCongr` (below), so `hNS` goes and `CubeSys.strongB` can admit S5.
+* *`RetCongr`: built* (`QML_v12m_GCluCongr`, `cmodel_retCongr`), as checked below.  Each law builds an atom of the theory and
+  reads it true (`ctruth`, `OutLeg.sat_back`), so the `Ret` comes whole and only data and tag are compared; the round trip
+  never needs a separate argument.  `hNS` is gone, and `CubeSys.strongB` asks only for weak B, since with 4 that gives 5
+  (`four_B`).  `ModalSys.S5Strong`, every flag on, is in the cube.
 
 **`RetCongr` on the cluster under the whole-shape tag (2026-11-01, paper).**  All three laws go through, with no change to
 `Ret` or the rules.  They come after the truth lemma, which must not use them.  The round-trip part of `cRet` is free each

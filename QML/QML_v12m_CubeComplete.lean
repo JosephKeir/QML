@@ -5,7 +5,7 @@ import QML.QML_v12m_BCompactness
 # QML v12m — completeness across the cube
 
 Every system with a canonical model, in one theorem.  `ModalSys.CubeSys` says which: 5 with 4 and
-both of 4's lifts, B with 5 only under T, B with 4 only with 5, and strong B only with 4 off.  In a
+both of 4's lifts, B with 5 only under T, B with 4 only with 5, and strong B with weak B.  In a
 well-formed presented context such a system has the metatheorems: a valid sequent is provable
 (⭐`completenessCube`, and soundness with it, ⭐`provable_iff_validCube`), a consistent set is
 satisfiable (`model_existenceCube`), and strong completeness and compactness
@@ -15,7 +15,8 @@ The canonical model is the cluster model with 5 (`GArrow.cmodel`, `GArrow.CluFla
 arrow-based network with B and without 5 (`BArrow`, 4 off), and otherwise whatever `NoBComplete`
 picks.
 
-`ModalSys.S5`, every flag but strong B's, is one of them (`ModalSys.S5_cube`).
+`ModalSys.S5`, every flag but strong B's, is one of them (`ModalSys.S5_cube`), and so is
+`ModalSys.S5Strong`, every flag (`ModalSys.S5Strong_cube`).
 -/
 
 namespace V12M
@@ -23,8 +24,8 @@ namespace V12M
 variable [ModalSys]
 
 /-- ⭐**The systems with a canonical model.**  Not a statement of what is coherent, but of what is
-    built: strong B with 5, B with 5 without T (KB5, KDB5), and 5 without both lifts are still to
-    come.  `strongT` is `ModalSys.WCoh`, which the network asks for. -/
+    built: B with 5 without T (KB5, KDB5) and 5 without both lifts are still to come.  `strongT` is
+    `ModalSys.WCoh`, which the network and the cluster ask for. -/
 class ModalSys.CubeSys [ModalSys] : Prop where
   /-- 5 comes with 4 and both of 4's lifts. -/
   five_lifts : ModalSys.Five = true →
@@ -33,8 +34,8 @@ class ModalSys.CubeSys [ModalSys] : Prop where
   five_B : ModalSys.Five = true → ModalSys.B = true → ModalSys.T = true
   /-- B with 4 comes with 5. -/
   four_B : ModalSys.B = true → ModalSys.Four = true → ModalSys.Five = true
-  /-- Strong B comes with weak B, and with 4 off. -/
-  strongB : ModalSys.BStrong = true → ModalSys.B = true ∧ ModalSys.Four = false
+  /-- Strong B comes with weak B, so with 4 it comes with 5 (`four_B`). -/
+  strongB : ModalSys.BStrong = true → ModalSys.B = true
   strongT : ModalSys.BStrongW = true → ModalSys.T = true → ModalSys.TStrong = true
 
 /-- S5, with every strong form but strong B's. -/
@@ -53,21 +54,30 @@ theorem ModalSys.S5_cube : @ModalSys.CubeSys ModalSys.S5 :=
     strongB := fun h => (Bool.false_ne_true h).elim
     strongT := fun _ _ => rfl }
 
+/-- S5 with every strong form. -/
+def ModalSys.S5Strong : ModalSys :=
+  { T := true, Four := true, TStrong := true, D := true, DStrong := true, B := true,
+    BStrong := true, BStrongW := true, FourStrong := true, FourStrongW := true,
+    Five := true, FiveStrong := true }
+
+omit [ModalSys] in
+/-- ⭐S5 with every strong form is in the cube. -/
+theorem ModalSys.S5Strong_cube : @ModalSys.CubeSys ModalSys.S5Strong :=
+  letI := ModalSys.S5Strong
+  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+    five_B := fun _ _ => rfl
+    four_B := fun _ _ => rfl
+    strongB := fun _ => rfl
+    strongT := fun _ _ => rfl }
+
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.CubeSys]
 
 /-- With 5 the cluster model applies. -/
 theorem cluFlags_of_cube (hV : ModalSys.Five = true) : GArrow.CluFlags :=
   have h := ModalSys.CubeSys.five_lifts hV
-  ⟨hV, h.2.1, h.2.2, ModalSys.CubeSys.five_B hV, fun hS => (ModalSys.CubeSys.strongB hS).1,
+  ⟨hV, h.2.1, h.2.2, ModalSys.CubeSys.five_B hV, ModalSys.CubeSys.strongB,
     fun hS hW => ModalSys.CubeSys.strongT hW
-      (ModalSys.CubeSys.five_B hV (ModalSys.CubeSys.strongB hS).1)⟩
-
-/-- With 5, strong B is off, so far. -/
-theorem noBStrong_of_cube (hV : ModalSys.Five = true) : ModalSys.BStrong = false :=
-  Bool.eq_false_iff.mpr fun hS => by
-    have := (ModalSys.CubeSys.strongB hS).2
-    rw [(ModalSys.CubeSys.five_lifts hV).1] at this
-    cases this
+      (ModalSys.CubeSys.five_B hV (ModalSys.CubeSys.strongB hS))⟩
 
 /-- With B and without 5 the network applies. -/
 theorem noFour_of_cube (hV : ¬ ModalSys.Five = true) (hB : ModalSys.B = true) : ModalSys.NoFour :=
@@ -78,7 +88,7 @@ theorem noFour_of_cube (hV : ¬ ModalSys.Five = true) (hB : ModalSys.B = true) :
 /-- Without B and without 5, `NoBComplete` applies. -/
 theorem noB_of_cube (hV : ¬ ModalSys.Five = true) (hB : ¬ ModalSys.B = true) : ModalSys.NoB :=
   { noB := Bool.eq_false_iff.mpr hB
-    noBStrong := Bool.eq_false_iff.mpr fun hS => hB (ModalSys.CubeSys.strongB hS).1
+    noBStrong := Bool.eq_false_iff.mpr fun hS => hB (ModalSys.CubeSys.strongB hS)
     fiveCluster := fun h => absurd h hV }
 
 /-- ⭐⭐**Completeness across the cube**: in a well-formed presented context, a sequent valid in
@@ -91,7 +101,6 @@ theorem completenessCube (e : CtxExpr) (he : e.Wf)
     Provable Δ φ := by
   by_cases hV : ModalSys.Five = true
   · exact GArrow.completenessC_presented (ModalSys.CubeSys.five_lifts hV).1 (cluFlags_of_cube hV)
-      (noBStrong_of_cube hV)
       e he hval
   by_cases hB : ModalSys.B = true
   · haveI := noFour_of_cube hV hB
@@ -114,7 +123,7 @@ theorem model_existenceCube (e : CtxExpr) (he : e.Wf) {S : Set (WFF σ e.denote 
     (hS : WFF.SetConsistent S) : WFF.SetSatisfiable S := by
   by_cases hV : ModalSys.Five = true
   · exact GArrow.model_existenceC (ModalSys.CubeSys.five_lifts hV).1 (cluFlags_of_cube hV)
-      (noBStrong_of_cube hV) e he hS
+      e he hS
   by_cases hB : ModalSys.B = true
   · haveI := noFour_of_cube hV hB
     exact BArrow.model_existenceB hB e he hS
@@ -129,7 +138,6 @@ theorem strong_completenessCube (e : CtxExpr) (he : e.Wf)
     ∃ Δ : List (WFF σ e.denote 0), (∀ ψ ∈ Δ, ψ ∈ S) ∧ Provable Δ φ := by
   by_cases hV : ModalSys.Five = true
   · exact GArrow.strong_completenessC (ModalSys.CubeSys.five_lifts hV).1 (cluFlags_of_cube hV)
-      (noBStrong_of_cube hV)
       e he hval
   by_cases hB : ModalSys.B = true
   · haveI := noFour_of_cube hV hB
@@ -145,7 +153,7 @@ theorem compactnessCube (e : CtxExpr) (he : e.Wf) {S : Set (WFF σ e.denote 0)}
     WFF.SetSatisfiable S := by
   by_cases hV : ModalSys.Five = true
   · exact GArrow.compactnessC (ModalSys.CubeSys.five_lifts hV).1 (cluFlags_of_cube hV)
-      (noBStrong_of_cube hV) e he hfin
+      e he hfin
   by_cases hB : ModalSys.B = true
   · haveI := noFour_of_cube hV hB
     exact BArrow.compactnessB hB e he hfin

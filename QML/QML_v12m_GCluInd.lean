@@ -1,4 +1,4 @@
-import QML.QML_v12m_GCluTruth
+import QML.QML_v12m_GCluCongr
 
 /-!
 # QML v12m — 5 on the growing tree: the cluster model is a model proper
@@ -193,9 +193,10 @@ theorem cindInvariant_inv :
   exact hrel _ h₁ h₂ _
 
 /-- ⭐⭐**The cluster model is a model proper**: invariance (`cindInvariant_inv`
-    under T, equality without) and the congruence laws: related representatives stay related
-    under hole terms and pairing (`DTerm.Rel.holeAt`, `DTerm.Rel.pair`). -/
-theorem cmodel_indInvariant (hF : ModalSys.Four = true) (hNS : ModalSys.BStrong = false) :
+    under T, equality without), the congruence laws: related representatives stay related
+    under hole terms and pairing (`DTerm.Rel.holeAt`, `DTerm.Rel.pair`), and under strong B
+    "comes back as" is a congruence (`cmodel_retCongr`). -/
+theorem cmodel_indInvariant (hF : ModalSys.Four = true) :
     (cmodel hF hM₀ hX).IndInvariant where
   inv := by
     intro Γ _ htame hnp s env A φ o o' hInd
@@ -203,7 +204,7 @@ theorem cmodel_indInvariant (hF : ModalSys.Four = true) (hNS : ModalSys.BStrong 
     · exact cindInvariant_inv hM₀ hX htame hnp env φ o o' (hInd.1 hT)
     · rw [hInd.2 (Bool.eq_false_iff.mpr hT)]
   toIndCongr := cindCongr hM₀ hX
-  ret := fun hS => absurd (hNS.symm.trans hS) (by decide)
+  ret := fun hS => cmodel_retCongr hM₀ hX hS
 
 end GArrow
 

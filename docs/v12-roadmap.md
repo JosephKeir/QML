@@ -338,9 +338,14 @@ complete** (presented contexts, strong completeness, compactness), and dispatche
 **S5 with both lifts complete (2026-10-31).**  The cluster model carries T, strong T and weak B
 (`CluFlags`: 5, both lifts, `B → T`, strong B off), so the `C` theorems cover K45, KD45 and S5, with
 `B` on or off; `NoB.fiveCluster` no longer asks for T off.  `QML_v12m_CubeComplete` states it all once
-(`ModalSys.CubeSys`, `completenessCube`).  Next for 5: strong B on S5 (`back_keep` and the lifting form
-at every shape, `Proof.retN_lift` and `Proof.retWN_lift`, are built; `.wit` truth ⇒ membership is
-next), then KB5/KDB5, the open lifts, and K5/KD5.
+(`ModalSys.CubeSys`, `completenessCube`).
+
+**Strong B on S5 complete (2026-11-01).**  `CluFlags` has strong B with weak B, no hypothesis of
+strong B being off remains, and `CubeSys.strongB` asks only for weak B: with 4 that gives 5
+(`four_B`), so 4 on is the cluster and 4 off the network.  `ModalSys.S5Strong`, every flag on, is
+in the cube (`ModalSys.S5Strong_cube`), with `completenessCube`, `strong_completenessCube` and
+`compactnessCube`.  The truth lemma is `GCluRet`, `GCluRetOut`, `GCluRetW`; the congruence `GCluCongr`.
+Next for 5: KB5/KDB5, the open lifts, and K5/KD5.
 
 **S5, paper check (2026-10-30; `v12-modal-extensions.md` §3 5, "paper check for S5").**
 * Under T the root is in the cluster already (the empty path is an arrow).  So S5 is the K45
