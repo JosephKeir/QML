@@ -43,10 +43,11 @@ structure Ext (N N' : GNetSt σ) : Prop where
   fcl : ∀ k, N.Live k → N.fcl k <:+ N'.fcl k
   fmap : ∀ k, N.Live k → ∀ v T, (ctxOf (N.fcl k)).kView (N.kind k) v = some T →
     N'.fmap k v = N.fmap k v
+  lp : N'.lp = N.lp
 
 theorem Ext.refl (N : GNetSt σ) : Ext N N :=
   ⟨fun _ h => h, fun _ _ => Grows.refl _, fun _ _ => rfl, fun _ _ => List.suffix_refl _,
-    fun _ _ _ _ _ => rfl⟩
+    fun _ _ _ _ _ => rfl, rfl⟩
 
 theorem Ext.trans {N N' N'' : GNetSt σ} (h₁ : Ext N N') (h₂ : Ext N' N'') : Ext N N'' where
   live k hk := h₂.live k (h₁.live k hk)
@@ -57,6 +58,7 @@ theorem Ext.trans {N N' N'' : GNetSt σ} (h₁ : Ext N N') (h₂ : Ext N' N'') :
     refine (h₂.fmap k (h₁.live k hk) v T ?_).trans (h₁.fmap k hk v T hv)
     rw [h₁.kind k hk]
     exact ((ctxOf_le_of_suffix (h₁.fcl k hk)).kView _) v T hv
+  lp := h₂.lp.trans h₁.lp
 
 theorem Ext.setSt {N : GNetSt σ} {s : Node} {t : NodeSt σ} (hg : Grows (N.st s) t) :
     Ext N (N.setSt s t) where
@@ -71,6 +73,7 @@ theorem Ext.setSt {N : GNetSt σ} {s : Node} {t : NodeSt σ} (hg : Grows (N.st s
   kind _ _ := rfl
   fcl _ _ := List.suffix_refl _
   fmap _ _ _ _ _ := rfl
+  lp := rfl
 
 /-- The items of a committed view have older roots than the next variable. -/
 theorem kView_rt_lt {cl : List VarType} {k : Option VarSymb} {u : VarSymb} {s : Step}
@@ -104,12 +107,13 @@ theorem Ext.setFwd {N : GNetSt σ} {k : Node} {A : VarType} {f : VarSymb → LEn
       exact hf v T hv
     · change Function.update N.fmap k _ k' v = _
       rw [Function.update_of_ne h]
+  lp := rfl
 
 theorem Ext.newChild {N : GNetSt σ} {s : Node} (hs : N.Live s) (kd : Option VarSymb)
     (t : NodeSt σ) (f : VarSymb → LEnt σ) : Ext N (N.newChild s kd t f) := by
   have hold : ∀ k, N.Live k → k ≠ N.nch s :: s := fun k hk h => not_live_new s (h ▸ hk)
   refine ⟨fun k hk => (live_newChild hs kd t f k).mpr (Or.inl hk), fun k hk => ?_,
-    fun k hk => ?_, fun k hk => ?_, fun k hk v _ _ => ?_⟩
+    fun k hk => ?_, fun k hk => ?_, fun k hk v _ _ => ?_, rfl⟩
   · change Grows (N.st k) (Function.update N.st _ t k)
     rw [Function.update_of_ne (hold k hk)]
     exact Grows.refl _
@@ -124,7 +128,16 @@ theorem Ext.newChild {N : GNetSt σ} {s : Node} (hs : N.Live s) (kd : Option Var
 theorem Ext.realF (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k : Node}
     (hk : N.Live k) : Ext N (N.realF hF k) := by
   match k with
-  | [] => exact Ext.refl N
+  | [] =>
+      simp only [GNetSt.realF]
+      split_ifs with h
+      · obtain ⟨hl, hlt⟩ := h
+        obtain ⟨-, hV, hS, hW, hT⟩ := hN.flags hl
+        obtain ⟨_, hg, _⟩ := gloopStep_ok hF hV hS hW hT (hN.mcs [] trivial) (hN.loop hl) hlt
+        refine (Ext.setSt hg).trans (Ext.setFwd fun v T hv => ?_)
+        obtain ⟨u, s, rfl, -, -⟩ := kView_item hv
+        exact gloopF_old (kView_rt_lt hv) s
+      · exact Ext.refl N
   | c :: p =>
       simp only [GNetSt.realF]
       split_ifs with hlt
@@ -236,7 +249,9 @@ theorem Ext.mkChild (hF : ModalSys.Four = true) {N : GNetSt σ} {s : Node} (hs :
 theorem nch_realF (hF : ModalSys.Four = true) (N : GNetSt σ) (k : Node) :
     (N.realF hF k).nch = N.nch := by
   match k with
-  | [] => rfl
+  | [] =>
+      simp only [GNetSt.realF]
+      split_ifs <;> rfl
   | c :: p =>
       simp only [GNetSt.realF]
       split_ifs <;> rfl
@@ -445,6 +460,10 @@ theorem Ext.applyOp (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) (o
       exact h₃.trans (Ext.lift hF h₁ h₂ n)
     · exact Ext.refl N
 
+/-- When the root gets a self-edge: B and the flags, with T off, and `□⊥` refuted. -/
+def LoopOn {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : Prop :=
+  ModalSys.B = true ∧ LoopFlags ∧ (WFF.box (Γ := ctxOf l₀) .bot).neg ∈ M₀
+
 /-- The network of one world with theory `M₀`. -/
 def init {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : GNetSt σ where
   st := fun _ => ⟨l₀, M₀⟩
@@ -452,6 +471,7 @@ def init {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : GNetSt σ 
   kind := fun _ => none
   fcl := fun _ => []
   fmap := fun _ => ofRen id
+  lp := LoopOn M₀
 
 theorem init_live {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} :
     ∀ {k : Node}, (init M₀).Live k → k = []
@@ -460,7 +480,8 @@ theorem init_live {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} :
 
 theorem Good.init {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} (h : Theory.IsMCS M₀) :
     (init M₀).Good :=
-  ⟨fun _ _ => h, fun _ _ hk => absurd (init_live hk) (by simp)⟩
+  ⟨fun _ _ => h, fun _ _ hk => absurd (init_live hk) (by simp), rfl, fun hl => hl.2.1,
+    fun hl => loopData_nil hl.1 hl.2.1.1 (t := ⟨l₀, M₀⟩) h hl.2.2 _⟩
 
 end GNetSt
 

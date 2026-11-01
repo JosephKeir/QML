@@ -962,6 +962,26 @@ noncomputable def gloopStep (t : NodeSt σ) (cl : List VarType) (f : VarSymb →
     complete (WFF.mono (ctxOf_le_append [VarType.lc (nextTy t.l cl)] t.l) '' t.M ∪
       gloopSet t cl f (nextTy t.l cl))⟩
 
+/-- The extended entries add no term. -/
+theorem gloopF_inr {f : VarSymb → LEnt σ} {c z : ℕ} {v : VarSymb} {e : LTerm σ}
+    (h : gloopF f c z v = .inr e) : f v = .inr e := by
+  match v, h with
+  | .root _, h => exact h
+  | .step u s, h =>
+      by_cases hrt : u.rt = .free c
+      · cases s with
+        | box =>
+            rw [gloopF_box hrt] at h
+            cases h
+        | keep =>
+            rw [gloopF_keep hrt] at h
+            cases h
+        | dia => exact h
+        | fst => exact h
+        | snd => exact h
+        | here => exact h
+      · rwa [gloopF_old hrt] at h
+
 theorem keepFix_gloopF {A : VarType} {cl : List VarType} {f : VarSymb → LEnt σ}
     (hkf : KeepFix cl f) (z : ℕ) : KeepFix (A :: cl) (gloopF f cl.length z) := by
   intro v U hv

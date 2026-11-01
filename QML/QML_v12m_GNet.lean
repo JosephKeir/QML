@@ -1,5 +1,5 @@
 import QML.QML_v12m_GChild
-import QML.QML_v12m_GFwd
+import QML.QML_v12m_GLoopStep
 
 /-!
 # QML v12m — the growing tree: networks
@@ -10,10 +10,13 @@ newest step first.  Each live node has the types of its variables and a maximal 
 in them (`BArrow.NodeSt`).  Each child has one arrow, from its parent: an edge of kind `kind`
 (`none` for `□`, `some x` for a child made for `◇_x`), whose committed part is the parent's
 oldest variables `fcl` (a suffix of its list), sent by the item map `fmap`, with `□_k` transfer
-(`FwdData`).  `Good` collects the invariants.
+(`FwdData`).  `Good` collects the invariants.  The root has no parent, so its slots hold its
+self-edge, when it has one (`lp`, KB5 and KDB5): an edge of kind `none` from the root to itself,
+fixing kept items (`LoopData`).
 
 The operations, each preserving `Good`:
-* `realF`: commit the parent's next variable along an edge (a fresh realisation, `gextF`);
+* `realF`: commit the parent's next variable along an edge (a fresh realisation, `gextF`; on the
+  root's self-edge, `gloopF`, kept items fixed);
 * `henk`: a Henkin witness, or a counter-instance for a failing universal, at one node;
 * `mkChild`: a new child for a failing `□φ` or a true `◇_x φ` (`gchild_consistent`);
 * `lift`: ⭐strong 4 — the parent of a fully committed edge gets a fresh root `m` with
@@ -44,6 +47,13 @@ structure GNetSt (σ : Signature) where
   /-- The parent's variables with images in the child, and the edge's item map. -/
   fcl : Node → List VarType
   fmap : Node → VarSymb → LEnt σ
+  /-- Whether the root has a self-edge. -/
+  lp : Prop
+
+/-- The flags the root's self-edge runs on: T off, and 4, 5 and both of 4's lifts. -/
+def LoopFlags : Prop :=
+  ModalSys.Four = true ∧ ModalSys.Five = true ∧ ModalSys.FourStrong = true ∧
+    ModalSys.FourStrongW = true ∧ ModalSys.T = false
 
 namespace GNetSt
 
@@ -61,6 +71,11 @@ def FwdOk (k p : Node) : Prop := FwdData (N.st p) (N.st k) (N.kind k) (N.fcl k) 
 structure Good : Prop where
   mcs : ∀ s, N.Live s → Theory.IsMCS (N.st s).M
   fwd : ∀ c p, N.Live (c :: p) → N.FwdOk (c :: p) p
+  /-- The root's slots are of kind `none`. -/
+  kindRoot : N.kind [] = none
+  flags : N.lp → LoopFlags
+  /-- The root's self-edge. -/
+  loop : N.lp → LoopData (N.st []) (N.fcl []) (N.fmap [])
 
 variable {N}
 
@@ -92,7 +107,7 @@ theorem live_setSt (N : GNetSt σ) (s : Node) (t : NodeSt σ) (k : Node) :
 /-- ⭐Growing one live node conservatively preserves the invariants. -/
 theorem Good.setSt (hN : N.Good) {s : Node} {t : NodeSt σ} (hs : N.Live s)
     (hg : Grows (N.st s) t) (ht : Theory.IsMCS t.M) : (N.setSt s t).Good := by
-  refine ⟨fun k hk => ?_, fun c p hk => ?_⟩
+  refine ⟨fun k hk => ?_, fun c p hk => ?_, hN.kindRoot, hN.flags, fun hl => ?_⟩
   · rw [live_setSt] at hk
     by_cases hks : k = s
     · subst hks
@@ -115,6 +130,14 @@ theorem Good.setSt (hN : N.Good) {s : Node} {t : NodeSt σ} (hs : N.Live s)
         exact hf.grow_src (hN.mcs p hk.1) ht hg
       · rw [setSt_ne _ _ hps]
         exact hf
+  · have h := hN.loop hl
+    change LoopData ((N.setSt s t).st []) _ _
+    by_cases hs0 : s = []
+    · subst hs0
+      rw [setSt_self]
+      exact ⟨(h.1.grow_tgt hg).grow_src (hN.mcs [] trivial) ht hg, h.2⟩
+    · rw [setSt_ne _ _ (Ne.symm hs0)]
+      exact h
 
 /-- The network with the edge into `k` recommitted. -/
 def setFwd (N : GNetSt σ) (k : Node) (cl : List VarType) (f : VarSymb → LEnt σ) :
@@ -129,17 +152,39 @@ theorem live_setFwd (N : GNetSt σ) (k : Node) (cl : List VarType) (f : VarSymb 
 theorem Good.setFwd (hN : N.Good) {c : ℕ} {p : Node} {cl : List VarType}
     {f : VarSymb → LEnt σ} (hd : FwdData (N.st p) (N.st (c :: p)) (N.kind (c :: p)) cl f) :
     (N.setFwd (c :: p) cl f).Good := by
-  refine ⟨fun s hs => hN.mcs s ((live_setFwd _ _ _ _ s).mp hs), fun c' p' hk' => ?_⟩
-  rw [live_setFwd] at hk'
-  unfold FwdOk
-  by_cases he : (c' :: p' : Node) = c :: p
-  · obtain ⟨rfl, rfl⟩ := List.cons.inj he
-    simp only [GNetSt.setFwd, Function.update_self]
-    exact hd
-  · have := hN.fwd c' p' hk'
-    unfold FwdOk at this
-    simp only [GNetSt.setFwd, Function.update_of_ne he]
+  refine ⟨fun s hs => hN.mcs s ((live_setFwd _ _ _ _ s).mp hs), fun c' p' hk' => ?_, hN.kindRoot,
+    hN.flags, fun hl => ?_⟩
+  · rw [live_setFwd] at hk'
+    unfold FwdOk
+    by_cases he : (c' :: p' : Node) = c :: p
+    · obtain ⟨rfl, rfl⟩ := List.cons.inj he
+      simp only [GNetSt.setFwd, Function.update_self]
+      exact hd
+    · have := hN.fwd c' p' hk'
+      unfold FwdOk at this
+      simp only [GNetSt.setFwd, Function.update_of_ne he]
+      exact this
+  · change LoopData (N.st []) (Function.update N.fcl (c :: p) cl [])
+      (Function.update N.fmap (c :: p) f [])
+    rw [Function.update_of_ne (List.cons_ne_nil c p).symm,
+      Function.update_of_ne (List.cons_ne_nil c p).symm]
+    exact hN.loop hl
+
+/-- Recommitting the root's self-edge with good data preserves the invariants. -/
+theorem Good.setLoop (hN : N.Good) {cl : List VarType} {f : VarSymb → LEnt σ}
+    (hd : LoopData (N.st []) cl f) : (N.setFwd [] cl f).Good := by
+  refine ⟨fun s hs => hN.mcs s ((live_setFwd _ _ _ _ s).mp hs), fun c p hk => ?_, hN.kindRoot,
+    hN.flags, fun _ => ?_⟩
+  · rw [live_setFwd] at hk
+    have := hN.fwd c p hk
+    unfold FwdOk at this ⊢
+    change FwdData (N.st p) (N.st (c :: p)) (N.kind (c :: p))
+      (Function.update N.fcl [] cl (c :: p)) (Function.update N.fmap [] f (c :: p))
+    rw [Function.update_of_ne (List.cons_ne_nil c p), Function.update_of_ne (List.cons_ne_nil c p)]
     exact this
+  · change LoopData (N.st []) (Function.update N.fcl [] cl []) (Function.update N.fmap [] f [])
+    rw [Function.update_self, Function.update_self]
+    exact hd
 
 /-! ## Realising forward -/
 
@@ -186,9 +231,16 @@ theorem grealStep_ok (hF : ModalSys.Four = true) {ts tt : NodeSt σ} {k : Option
   rw [mono_kBox] at hψ
   exact hS (Or.inr ⟨hle, hk, hf, ψ, by rw [mono_kBox]; exact hψ, rfl⟩)
 
-/-- ⭐Commit the parent's next variable along the edge into `k`. -/
+open Classical in
+/-- ⭐Commit the parent's next variable along the edge into `k`, or the root's along its
+    self-edge. -/
 noncomputable def realF (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → GNetSt σ
-  | [] => N
+  | [] =>
+      if N.lp ∧ (N.fcl []).length < (N.st []).l.length then
+        (N.setSt [] (gloopStep (N.st []) (N.fcl []) (N.fmap []))).setFwd []
+          (nextTy (N.st []).l (N.fcl []) :: N.fcl [])
+          (gloopF (N.fmap []) (N.fcl []).length (N.st []).l.length)
+      else N
   | c :: p =>
       if (N.fcl (c :: p)).length < (N.st p).l.length then
         (N.setSt (c :: p) (grealStep hF (N.st p) (N.st (c :: p)) (N.kind (c :: p))
@@ -202,7 +254,16 @@ noncomputable def realF (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → G
 theorem Good.realF (hF : ModalSys.Four = true) (hN : N.Good) {k : Node} (hk : N.Live k) :
     (N.realF hF k).Good := by
   match k with
-  | [] => exact hN
+  | [] =>
+      simp only [GNetSt.realF]
+      split_ifs with h
+      · obtain ⟨hl, hlt⟩ := h
+        obtain ⟨-, hV, hS, hW, hT⟩ := hN.flags hl
+        obtain ⟨hmcs, hg, hfd⟩ := gloopStep_ok hF hV hS hW hT (hN.mcs [] trivial) (hN.loop hl) hlt
+        refine (hN.setSt (s := []) trivial hg hmcs).setLoop ?_
+        rw [setSt_self]
+        exact hfd
+      · exact hN
   | c :: p =>
       simp only [GNetSt.realF]
       split_ifs with hlt

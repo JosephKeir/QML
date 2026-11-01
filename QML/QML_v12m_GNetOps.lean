@@ -136,6 +136,7 @@ def newChild (N : GNetSt σ) (s : Node) (kd : Option VarSymb) (t : NodeSt σ)
   kind := Function.update N.kind (N.nch s :: s) kd
   fcl := Function.update N.fcl (N.nch s :: s) (N.st s).l
   fmap := Function.update N.fmap (N.nch s :: s) f
+  lp := N.lp
 
 theorem not_live_new {N : GNetSt σ} (s : Node) : ¬ N.Live (N.nch s :: s) :=
   fun h => lt_irrefl _ h.2
@@ -179,7 +180,8 @@ theorem Good.newChild (hN : N.Good) {s : Node} (hs : N.Live s) {kd : Option VarS
     (hf : FwdData (N.st s) t kd (N.st s).l f) : (N.newChild s kd t f).Good := by
   have hks : (N.nch s :: s : Node) ≠ s := NetSt.ne_parent _ s
   have hold : ∀ k, N.Live k → k ≠ N.nch s :: s := fun k hk h => not_live_new s (h ▸ hk)
-  refine ⟨fun k hk => ?_, fun c p hk => ?_⟩
+  have hr : ([] : Node) ≠ N.nch s :: s := (List.cons_ne_nil _ _).symm
+  refine ⟨fun k hk => ?_, fun c p hk => ?_, ?_, hN.flags, fun hl => ?_⟩
   · rcases (live_newChild hs kd t f k).mp hk with hk | rfl
     · change Theory.IsMCS (Function.update N.st _ t k).M
       rw [Function.update_of_ne (hold k hk)]
@@ -204,6 +206,13 @@ theorem Good.newChild (hN : N.Good) {s : Node} (hs : N.Live s) {kd : Option VarS
         (Function.update N.fmap _ f _)
       simp only [Function.update_self, Function.update_of_ne hks.symm]
       exact hf
+  · exact (Function.update_of_ne hr kd N.kind).trans hN.kindRoot
+  · have e₁ : (N.newChild s kd t f).st [] = N.st [] := Function.update_of_ne hr t N.st
+    have e₂ : (N.newChild s kd t f).fcl [] = N.fcl [] :=
+      Function.update_of_ne hr (N.st s).l N.fcl
+    have e₃ : (N.newChild s kd t f).fmap [] = N.fmap [] := Function.update_of_ne hr f N.fmap
+    rw [e₁, e₂, e₃]
+    exact hN.loop hl
 
 /-- A failing necessity gives the possibility of the negation. -/
 theorem kDia_neg_of_not_box {Γ : Ctx} {M : Set (WFF σ Γ 0)} (hM : Theory.IsMCS M)

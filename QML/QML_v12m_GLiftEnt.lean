@@ -66,7 +66,11 @@ theorem LiftEntOk.newChild (hL : N.LiftEntOk hF) (s : Node) (kd : Option VarSymb
 
 theorem LiftEntOk.realF (hL : N.LiftEntOk hF) (k : Node) : (N.realF hF k).LiftEntOk hF := by
   match k with
-  | [] => exact hL
+  | [] =>
+      simp only [GNetSt.realF]
+      split_ifs
+      · exact (hL.setSt _ _).setFwd _ _ fun v e he => hL _ _ e (gloopF_inr he)
+      · exact hL
   | c :: p =>
       simp only [GNetSt.realF]
       split_ifs

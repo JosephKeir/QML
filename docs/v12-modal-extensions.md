@@ -5166,7 +5166,7 @@ wrong for a loop that must fix `u`.
 * `shaped` is `T || BStrong`, and the tree's tags are `T = true → …`, so strong B without T needs shapes on the cluster without T.
 * So `CubeSys.five_B` does not simply go: it becomes `Five → BStrong → T`.
 
-**Order.**  Built: the two lemmas and the extension of the transfer (below).  Next: the self-edge in the tree; `PathOk` with its source and the path layer; the cluster; dispatch.  Then a paper check of the strong forms.
+**Order.**  Built: the two lemmas, the extension of the transfer, the self-edge in the tree and its limit (below).  Next: a paper check of the arrow on the cluster; the cluster; dispatch.  Then a paper check of the strong forms.
 
 #### KB5 and KDB5: the step in Lean *(2026-11-01)*
 
@@ -5186,7 +5186,16 @@ wrong for a loop that must fix `u`.
 
 `gloopStep_ok` is the step: it keeps `LoopData`, the self-edge's `FwdData` with `KeepFix`, on the grown root.  `loopData_nil` is the base at `cl = []`, closed T.
 
-**Next, the tree.**  `fmap []`, `fcl []` and `kind []` are free today: the root has no parent, and an edge's data is stored at its target.  The loop's data goes there, `GNetSt` gets a flag that holds exactly when `Five`, B and T off and `¬□⊥ ∈ M₀`, and `Good` gets a clause for `LoopData` under the flag.  `realF` at `[]` runs `gloopStep`.  `Good.setSt` needs the clause at `s = []`: both ends of the self-edge grow together (`FwdData.grow_tgt`, `grow_src`).  `QML_v12m_GFwd` holds `FwdData`, split from `GNet`, so `GLoopStep` sits below the network and the network can import it.
+**The tree, built.**  An edge's data is stored at its target and the root has no parent, so `fmap []`, `fcl []` and `kind []` hold the self-edge.  `GNetSt.lp` is the flag, `LoopOn M₀` at the start: B, `LoopFlags` (T off, 4, 5, both lifts) and `¬□⊥ ∈ M₀`.  `Good` gets `kindRoot`, `flags` and `loop`, and `Good.setSt` covers both ends of the self-edge growing together.  `realF` at `[]` runs `gloopStep`, a no-op with the flag off, so T, K45, KD45 and S5 are untouched: the full strict build confirms it.  `QML_v12m_GFwd` holds `FwdData`, split from `GNet`, so `GLoopStep` sits below the network.
+
+**The limit, built.**  `QML_v12m_GLoopLimit`: `loop_total`, then `lstg`, `gloop_at`, `gloopOk`, `gloopFix`, `gltr_loop`, as `fwd_total`, `gfwd_at`, `gentOk_box`, `gltr` for a child.  So stage `i` of the root translates into stage `lstg i`, fixing kept items and transferring necessity.
+
+**The arrow: `PathOk` with its source is dropped.**  The check above had a second nil clause in `pTr`, `pTrW`, `pstg`, `ptrC`, and `PathOk` taking its source.  Reading the sites rules that out as the cheap route.
+* `pstg s t [] h i` is `i`, definitionally, and the T proofs read that: the nil clause's stage cannot become `lstg i`, a T-dependent `if`, without reworking each of them, in `GCanonFunc`, `GTruth`, `GLaws`, `GShapeTr` and the T-only cluster files.
+* Keeping `pstg` at `i` would need the root closed under the loop at every stage: commit eagerly, ending each round by committing to a fixed point (a type measure, plus a step without a fresh root for variables with no `□` component).  That wraps `gnet` and breaks the exact equations `henk_ex`, `child_box`, `lift_total` and `origin_total` rely on.
+* Most `T_of_nil` sites are about `gmodel`, which 5 does not use (`GrowSys` has `NoFive`).  Only `cden`'s `□` clause and the lemmas on arrows out of the root need the loop, and `[]` also means the identity tree path in `pnm`, `rstg` and `rorig`, which is not an arrow at all.
+
+So `pTr`, `pstg`, `PathOk` and everything proved about them stay, and the loop is one more arrow on the cluster: `GR ρ ρ` when `lp`, with `cden`'s `□` clause branching to `gloopF`'s translation at `lstg`.  The `◇` clause needs no branch: `InExt` at `[]` is `False`, so no extent contains the loop.  A paper check of this comes next.
 
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 

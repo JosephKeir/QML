@@ -259,6 +259,14 @@ theorem NamesInj.setFwd (hI : N.NamesInj) {k : Node} {cl : List VarType}
   · simp only [GNetSt.setFwd, Function.update_of_ne he]
     exact hI c p hl
 
+/-- The root's self-edge is not a child's. -/
+theorem NamesInj.setLoop (hI : N.NamesInj) {cl : List VarType} {f : VarSymb → LEnt σ} :
+    (N.setFwd [] cl f).NamesInj := by
+  intro c p hl
+  rw [live_setFwd] at hl
+  simp only [GNetSt.setFwd, Function.update_of_ne (List.cons_ne_nil c p)]
+  exact hI c p hl
+
 theorem NamesInj.henk (hI : N.NamesInj) (s : Node)
     (o : Σ l : List VarType, WFF σ (ctxOf l) 0) : (N.henk s o).NamesInj := by
   obtain ⟨l, φ⟩ := o
@@ -363,7 +371,11 @@ variable {N : GNetSt σ}
 theorem NamesInj.realF (hF : ModalSys.Four = true) (hN : N.Good)
     (hI : N.NamesInj) {k : Node} (hk : N.Live k) : (N.realF hF k).NamesInj := by
   match k with
-  | [] => exact hI
+  | [] =>
+      simp only [GNetSt.realF]
+      split_ifs
+      · exact (hI.setSt _ _).setLoop
+      · exact hI
   | c :: p =>
       simp only [GNetSt.realF]
       split_ifs
