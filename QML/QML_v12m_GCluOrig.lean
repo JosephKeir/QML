@@ -54,7 +54,7 @@ theorem orig_spec {s t : GW hF M₀} {z : VarSymb}
 /-- ⭐**Every stage of a child has the origins as its preimage**, at a stage of the parent
     committed no earlier than it (`exists_pre` with the map fixed). -/
 theorem exists_stage (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hS : ModalSys.fourL = true) (hW : ModalSys.fourLW = true)
     (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s t) (j : ℕ) :
     ∃ i : ℕ, j ≤ glstg s t i ∧ PreOk s t i (glat t j) (orig s t) := by
   classical
@@ -92,7 +92,7 @@ noncomputable def estg (s t : GW hF M₀) (j : ℕ) : ℕ :=
   if h : ∃ i : ℕ, j ≤ glstg s t i ∧ PreOk s t i (glat t j) (orig s t) then h.choose else 0
 
 theorem estg_spec (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hS : ModalSys.fourL = true) (hW : ModalSys.fourLW = true)
     (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s t) (j : ℕ) :
     j ≤ glstg s t (estg s t j) ∧ PreOk s t (estg s t j) (glat t j) (orig s t) := by
   have he := exists_stage hV hS hW hM₀ h j
@@ -121,7 +121,7 @@ def PPreOk (P : List ℕ) (s t : GW hF M₀) (hP : t.1 = nodeOf s.1 P) (j : ℕ)
     (ctxOf (glat s (pstgO P s t hP j))).ref (porig P s t hP z) = some T
 
 theorem pPreOk (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hS : ModalSys.fourL = true) (hW : ModalSys.fourLW = true)
     (hM₀ : Theory.IsMCS M₀) :
     ∀ (P : List ℕ) (s t : GW hF M₀) (hP : t.1 = nodeOf s.1 P) (j : ℕ), PPreOk P s t hP j
   | [], s, t, hP, j, z, T, hz, _ => by
@@ -212,7 +212,7 @@ theorem preI_step (f : VarSymb → VarSymb) (u : VarSymb) (st : Step) :
 
 /-- ⭐**The path preimage is the first edge's preimage of the rest's.** -/
 theorem preWP_cons (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hS : ModalSys.fourL = true) (hW : ModalSys.fourLW = true)
     (hM₀ : Theory.IsMCS M₀) {c : ℕ} {P : List ℕ}
     {s t : GW hF M₀} (hP : t.1 = nodeOf s.1 (c :: P)) (j : ℕ)
     (ψ : WFF σ (ctxOf (glat t j)).boxIn 0) :
@@ -228,7 +228,7 @@ theorem preWP_cons (hV : ModalSys.Five = true)
 
 /-- ⭐**The path preimage of a `◇_x` view is the first edge's preimage of the rest's.** -/
 theorem preWPX_cons (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hS : ModalSys.fourL = true) (hW : ModalSys.fourLW = true)
     (hM₀ : Theory.IsMCS M₀) {c : ℕ} {P : List ℕ}
     {s t : GW hF M₀} (hP : t.1 = nodeOf s.1 (c :: P)) (j : ℕ) {x : VarSymb} {X : VarType}
     (hx : (ctxOf (glat t j)).ref x = some (.VTypeDia X))
@@ -310,7 +310,7 @@ theorem preWPX_nil {l : List VarType} {x : VarSymb} (ψ : WFF σ ((ctxOf l).diaI
     descendant's `□ψ` holds exactly when `□` of its path preimage holds at the ancestor's chosen
     stage. -/
 theorem box_pathO_iff (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hS : ModalSys.fourL = true) (hW : ModalSys.fourLW = true)
     (hM₀ : Theory.IsMCS M₀) :
     ∀ (P : List ℕ) (s t : GW hF M₀) (hP : t.1 = nodeOf s.1 P) (j : ℕ)
       (ψ : WFF σ (ctxOf (glat t j)).boxIn 0),
@@ -333,7 +333,7 @@ theorem box_pathO_iff (hV : ModalSys.Five = true)
     `◇` at the witness's path origin, of the body's path preimage, holds at the ancestor's chosen
     stage. -/
 theorem dia_pathO_iff (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hS : ModalSys.fourL = true) (hW : ModalSys.fourLW = true)
     (hM₀ : Theory.IsMCS M₀) :
     ∀ (P : List ℕ) (s t : GW hF M₀) (hP : t.1 = nodeOf s.1 P) (j : ℕ) {x : VarSymb}
       {X : VarType} (hx : (ctxOf (glat t j)).ref x = some (.VTypeDia X))
@@ -463,7 +463,7 @@ theorem porig_pnm (hV : ModalSys.Five = true)
 
 /-- The round trip keeps types, at every keepable type. -/
 theorem porig_pnm_ref (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hS : ModalSys.fourL = true) (hW : ModalSys.fourLW = true)
     (hM₀ : Theory.IsMCS M₀) (P : List ℕ) (s t : GW hF M₀) (hP : t.1 = nodeOf s.1 P) (i : ℕ)
     {v : VarSymb} {U : VarType} (hv : (ctxOf (glat s i)).ref v = some U)
     (hkp : U.keepable = true) :
@@ -473,7 +473,7 @@ theorem porig_pnm_ref (hV : ModalSys.Five = true)
 
 /-- The round trip keeps types, into any later stage. -/
 theorem rt_ok (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hS : ModalSys.fourL = true) (hW : ModalSys.fourLW = true)
     (hM₀ : Theory.IsMCS M₀) (P : List ℕ) (s t : GW hF M₀) (hP : t.1 = nodeOf s.1 P) (i : ℕ)
     {K : ℕ} (hK : pstgO P s t hP (pstgN P s t hP i) ≤ K) :
     ∀ z T, (ctxOf (glat s i)).ref z = some T → T.keepable = true →

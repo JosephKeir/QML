@@ -517,11 +517,11 @@ abbrev LiftGoal (σ : Signature) (T : VarType) (l : List VarType)
       (WFF.instantiate Ctx.NoSlots.slots t (WFF.mono (h.boxIn.insert (.bnd 0) T) ρ))] .bot
 
 /-- `keep_lift` at one object, refuting. -/
-def Proof.keep_lift_leaf (hF : ModalSys.Four = true) (hl : T.liftable = true) {l : List VarType}
+def Proof.keep_lift_leaf (hF : ModalSys.Four = true) (hl : T.liftableR = true) {l : List VarType}
     {Δ : List (WFF σ (ctxOf l) 0)} (ρ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) T) 1)
     (p : Proof σ (ctxOf l) Δ ((OutLeg.nec : OutLeg (ctxOf l)).dia (.ex T ρ)))
     (K : LiftGoal σ T l ρ) : Proof σ (ctxOf l) Δ .bot := by
-  have hk := VarType.keepable_of_liftable hl
+  have hk := VarType.keepable_of_liftableR hl
   have hr := Ctx.ref_keep_of' hF (Ctx.ref_insert_root (ctxOf l) (.free l.length) T) hk
   refine Proof.keep_lift hF hl .nec ρ l.length (ctxOf_fresh le_rfl) (ψ := .bot) p ?_
   have q := K (T :: l) (ctxOf_le_append [T] l) _ (Term.eta _ T hr) (.leaf hk _ hr)

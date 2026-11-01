@@ -58,8 +58,8 @@ def CInvW (w : GW hF M₀) {Δ : Ctx}
 
 section Pushed
 
-variable (hV : ModalSys.Five = true) (hS : ModalSys.FourStrong = true)
-  (hW : ModalSys.FourStrongW = true) (hM₀ : Theory.IsMCS M₀) (hT : ModalSys.T = true)
+variable (hV : ModalSys.Five = true) (hS : ModalSys.fourL = true)
+  (hW : ModalSys.fourLW = true) (hM₀ : Theory.IsMCS M₀) (hT : ModalSys.T = true)
 
 include hV hS hW hM₀ hT in
 /-- What holds of a view's declared addresses holds of its reachable ones. -/

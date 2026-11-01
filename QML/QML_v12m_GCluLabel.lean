@@ -236,8 +236,8 @@ theorem cLab_rean (y : VarSymb) (g g' : GW hF M₀) : CLeaf.rean g' (cLab y g) =
 
 section Decl
 
-variable (hV : ModalSys.Five = true) (hS : ModalSys.FourStrong = true)
-  (hW : ModalSys.FourStrongW = true) (hM₀ : Theory.IsMCS M₀)
+variable (hV : ModalSys.Five = true) (hS : ModalSys.fourL = true)
+  (hW : ModalSys.fourLW = true) (hM₀ : Theory.IsMCS M₀)
 
 include hV hM₀ in
 /-- A root's keepable address is declared at its name. -/

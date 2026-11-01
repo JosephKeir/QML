@@ -628,12 +628,12 @@ structure Model (σ : Signature) where
     (v : frame.Acc w) (s : frame.Acc v.1),
     necEval (necEval (ops.necDup hF n) v) s = necEval n ⟨s.1, ⟨frame.trans hF v.2.down s.2.down⟩⟩
   /-- ⭐**Strong 4: keep is surjective along each arrow**, at the liftable types
-      (`VarType.liftable`): every object of such a type at an arrow's target is the restriction of
+      (`VarType.liftableR`): every object of such a type at an arrow's target is the restriction of
       one at its source — the `□`-lift and the `◇`-lift, per arrow (docs §3 4, "4's strong
       forms"). -/
-  keepLift : ∀ (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable = true) {w : frame.W}
+  keepLift : ∀ (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftableR = true) {w : frame.W}
     (a : frame.Acc w) (o : frame.Dom T a.1), ∃ m : frame.Dom T w,
-      necEval (GFunc.eval ops (GFunc.keep (σ := σ) hF (VarType.keepable_of_liftable hl)) w m) a = o
+      necEval (GFunc.eval ops (GFunc.keep (σ := σ) hF (VarType.keepable_of_liftableR hl)) w m) a = o
   /-- ⭐Under 4, **a possible object kept along an arrow** (docs §3 4, "4's four cases"): its
       extent pulled back along the arrow, the same contents, and its labels restricted along the
       arrow (`Arrows.Leaf.keepAlong`). -/

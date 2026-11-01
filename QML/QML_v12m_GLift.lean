@@ -1,4 +1,5 @@
 import QML.QML_v12m_GLocal
+import QML.QML_v12m_LiftT
 
 /-!
 # QML v12m — the growing tree: the lift
@@ -773,17 +774,27 @@ theorem kLiftRead_eq (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable 
       (WFF.instantiate hs (Term.eta (.step (.root (.free c)) .keep) T h) (WFF.mono hle χ)) := by
   cases k <;> rfl
 
-/-- ⭐**Strong 4 along an edge's kind** (`Proof.keep_lift` at the leg `□` or `◇_x`). -/
-def Proof.kKeepLift (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable = true)
-    {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} :
+/-- ⭐**Strong 4 along an edge's kind**: `Proof.keep_lift` at the leg `□` or `◇_x`, or under T and
+    5, where the flags may be off, its derivation. -/
+noncomputable def Proof.kKeepLift (hF : ModalSys.Four = true) {T : VarType}
+    (hl : T.liftable = true) {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} :
     (k : Option VarSymb) → (hk : KDecl Γ k) → (χ : WFF σ ((Γ.kView k).insert (.bnd 0) T) 1) →
     (c : ℕ) → (hc : Γ.RootFresh (.free c)) → {ψ : WFF σ Γ 0} →
     Proof σ Γ Δ (kDia k hk (WFF.ex T χ)) →
     Proof σ (Γ.insert (.free c) T)
       (kLiftRead hF hl k hk hc χ :: Δ.map (WFF.weaken hc.root T)) (ψ.weaken hc.root T) →
     Proof σ Γ Δ ψ
-  | none, _, χ, c, hc, _, p, q => Proof.keep_lift hF hl .nec χ c hc p q
-  | some x, hk, χ, c, hc, _, p, q => Proof.keep_lift hF hl (.pos x (hk x rfl)) χ c hc p q
+  | none, _, χ, c, hc, _, p, q =>
+      if hR : T.liftableR = true then Proof.keep_lift hF hR .nec χ c hc p q
+      else
+        have h := (VarType.liftableR_or hl).resolve_left hR
+        Proof.keep_lift_T h.1 hF h.2 hl
+          (VarType.tup_of_keepable (VarType.keepable_of_liftable hl)) χ c hc p q
+  | some x, hk, χ, c, hc, _, p, q =>
+      if hR : T.liftableR = true then Proof.keep_lift hF hR (.pos x (hk x rfl)) χ c hc p q
+      else
+        have h := (VarType.liftableR_or hl).resolve_left hR
+        Proof.keep_lift_posT h.1 hF h.2 hl (hk x rfl).choose_spec (hk x rfl) χ c hc p q
 
 /-- `◇_k` is monotone. -/
 theorem kDia_mono {Γ : Ctx} (k : Option VarSymb) (hk : KDecl Γ k)

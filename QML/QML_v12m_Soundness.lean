@@ -154,7 +154,7 @@ theorem join_of_keepLift (M : Model.{u, v} σ) (hF : ModalSys.Four = true)
     ∃ (z : M.frame.Pos A w)
       (hz : (⟨b.1, ⟨M.frame.trans hF a.2.down b.2.down⟩⟩ : M.frame.Acc w) ∈ (M.posEval z).1),
       (M.posEval z).2 ⟨_, hz⟩ = (M.posEval q).2 ⟨b, hb⟩ := by
-  obtain ⟨z, hz⟩ := M.keepLift hF (T := .VTypeDia A) (by simp [VarType.liftable, hW]) a q
+  obtain ⟨z, hz⟩ := M.keepLift hF (T := .VTypeDia A) (by simp [VarType.liftableR, hW]) a q
   change M.necEval (M.ops.posKeep hF z) a = q at hz
   have H := congrArg Prod.fst (M.posKeep_full hF z a)
   rw [hz] at H
@@ -362,7 +362,7 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro χ hχ
       rcases List.mem_cons.mp hχ with h₁ | h₂
       · subst h₁
-        exact sat_liftRead hF hl env hc O φ i m hm ho
+        exact sat_liftRead hF (VarType.liftable_of_R hl) env hc O φ i m hm ho
       · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken env hc.root m χ').mpr (hΔ χ' hχ')
   | @T_dia Γ _ hT hS A a t c hc Δ φ p ih =>

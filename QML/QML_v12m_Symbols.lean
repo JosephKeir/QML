@@ -76,6 +76,20 @@ class ModalSys where
 def ModalSys.K : ModalSys :=
   ⟨false, false, false, false, false, false, false, false, false, false, false, false⟩
 
+/-- 4's `□`-lift in force: `FourStrong`, or T and 5, which prove it (`Proof.keep_lift_T`). -/
+def ModalSys.fourL [ModalSys] : Bool := ModalSys.FourStrong || (ModalSys.T && ModalSys.Five)
+
+/-- 4's `◇`-lift in force: `FourStrongW`, or T and 5, which prove it. -/
+def ModalSys.fourLW [ModalSys] : Bool := ModalSys.FourStrongW || (ModalSys.T && ModalSys.Five)
+
+theorem ModalSys.fourS_of_noT [ModalSys] (hT : ModalSys.T = false) (h : ModalSys.fourL = true) :
+    ModalSys.FourStrong = true := by
+  simpa [ModalSys.fourL, hT] using h
+
+theorem ModalSys.fourSW_of_noT [ModalSys] (hT : ModalSys.T = false)
+    (h : ModalSys.fourLW = true) : ModalSys.FourStrongW = true := by
+  simpa [ModalSys.fourLW, hT] using h
+
 /-- The systems without B.  B's accessible worlds lead back to their origin, against the order
     of construction; its canonical model is the arrow-based network (`BArrow`).  Strong B needs
     weak B, so it is off too.  Their canonical model is the staged tree (`Canon`) without 4's strong
@@ -86,7 +100,7 @@ class ModalSys.NoB [ModalSys] : Prop where
   /-- 5 is covered with 4 and both of 4's lifts — K45, KD45 and S5 (the cluster model,
       `GArrow.cmodel`, `docs/v12-modal-extensions.md` §3 5); its other systems are not yet. -/
   fiveCluster : ModalSys.Five = true → ModalSys.Four = true ∧
-    ModalSys.FourStrong = true ∧ ModalSys.FourStrongW = true
+    ModalSys.fourL = true ∧ ModalSys.fourLW = true
 
 /-- 5 off: what the staged tree and the growing tree are built for (with 5, the cluster model). -/
 class ModalSys.NoFive [ModalSys] : Prop where
@@ -490,20 +504,39 @@ def VarType.keepable : VarType → Bool
 omit [ModalSys] in
 theorem VarType.keepable_dia {A : VarType} : (VarType.VTypeDia A).keepable = true := rfl
 
-/-- The types strong 4 lifts: `□`-types under `FourStrong`, `◇`-types under `FourStrongW`. -/
-def VarType.liftable : VarType → Bool
+/-- The types strong 4 lifts by rule: `□`-types under `FourStrong`, `◇`-types under
+    `FourStrongW`. -/
+def VarType.liftableR : VarType → Bool
   | .VTypeBox _ => ModalSys.FourStrong
   | .VTypeDia _ => ModalSys.FourStrongW
   | _ => false
+
+/-- The types with 4's lift in force: `VarType.liftableR`, and under T and 5 both kinds, where the
+    lift is derivable (`Proof.keep_lift_T`, `Proof.keep_lift_posT`). -/
+def VarType.liftable : VarType → Bool
+  | .VTypeBox _ => ModalSys.fourL
+  | .VTypeDia _ => ModalSys.fourLW
+  | _ => false
+
+theorem VarType.liftable_of_R {T : VarType} (h : T.liftableR = true) : T.liftable = true := by
+  cases T <;> simp_all [VarType.liftableR, VarType.liftable, ModalSys.fourL, ModalSys.fourLW]
+
+theorem VarType.liftableR_or {T : VarType} (h : T.liftable = true) :
+    T.liftableR = true ∨ (ModalSys.T = true ∧ ModalSys.Five = true) := by
+  cases T <;> simp_all [VarType.liftableR, VarType.liftable, ModalSys.fourL, ModalSys.fourLW]
 
 theorem VarType.keepable_of_liftable {T : VarType} (h : T.liftable = true) :
     T.keepable = true := by
   cases T <;> first | rfl | (simp [VarType.liftable] at h)
 
+theorem VarType.keepable_of_liftableR {T : VarType} (h : T.liftableR = true) :
+    T.keepable = true :=
+  VarType.keepable_of_liftable (VarType.liftable_of_R h)
+
 theorem ModalSys.StagedSys.not_liftable [ModalSys.StagedSys] (hF : ModalSys.Four = true)
-    {T : VarType} (h : T.liftable = true) : False := by
+    {T : VarType} (h : T.liftableR = true) : False := by
   obtain ⟨h₁, h₂⟩ := ModalSys.StagedSys.noLift hF
-  cases T <;> simp [VarType.liftable, h₁, h₂] at h
+  cases T <;> simp [VarType.liftableR, h₁, h₂] at h
 
 def VarType.step : VarType → Step → Option VarType
   | .VTypeProd A _, .fst => some A

@@ -274,7 +274,7 @@ theorem dia_pre_iff (hM₀ : Theory.IsMCS M₀)
     at a descendant's stage holds, at some later stage of it, exactly when a `◇`-formula holds at
     the ancestor — at the witness's preimage, of the body's preimage, edge by edge. -/
 theorem dia_path_iff (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hS : ModalSys.fourL = true) (hW : ModalSys.fourLW = true)
     (hM₀ : Theory.IsMCS M₀) :
     ∀ (P : List ℕ) (s t : GW hF M₀), t.1 = nodeOf s.1 P → ∀ (j : ℕ) (x : VarSymb) (X : VarType)
       (hx : (ctxOf (glat t j)).ref x = some (.VTypeDia X))

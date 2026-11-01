@@ -2967,7 +2967,8 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
             (by
               rw [List.map_cons, List.map_map, List.map_map]
               exact congrArg₂ List.cons
-                (WFF.subst_liftRead_rename θ hθ hc hΓ hΓ' cfr hu' hF hl O φ)
+                (WFF.subst_liftRead_rename θ hθ hc hΓ hΓ' cfr hu' hF
+                  (VarType.liftable_of_R hl) O φ)
                 (List.map_congr_left fun χ _ =>
                   WFF.subst_weaken_rename θ hθ hc hΓ hΓ' cfr hu' T χ))
             ihq))

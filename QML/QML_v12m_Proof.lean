@@ -231,12 +231,13 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       the four strong rows of 4's grid.  As `ex_elim`: the fresh `c : T` is read kept, `c.keep`,
       in the subproof's hypothesis (`WFF.liftRead`). -/
   | keep_lift {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hF : ModalSys.Four = true)
-      {T : VarType} (hl : T.liftable = true) (O : OutLeg Γ)
+      {T : VarType} (hl : T.liftableR = true) (O : OutLeg Γ)
       (φ : WFF σ (O.view.insert (.bnd 0) T) 1) (c : ℕ) (hc : Γ.RootFresh (.free c))
       {ψ : WFF σ Γ 0} :
       Proof σ Γ Δ (O.dia (WFF.ex T φ)) →
       Proof σ (Γ.insert (.free c) T)
-        (WFF.liftRead hF hl O hc φ :: Δ.map (WFF.weaken hc.root T)) (ψ.weaken hc.root T) →
+        (WFF.liftRead hF (VarType.liftable_of_R hl) O hc φ :: Δ.map (WFF.weaken hc.root T))
+        (ψ.weaken hc.root T) →
       Proof σ Γ Δ ψ
   -- Strong T
   /-- ⭐**Every object has a possible object realised here**, as an `∃`-elimination: the witness

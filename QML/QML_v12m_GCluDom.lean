@@ -44,8 +44,8 @@ variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
 /-- The flags of the cluster model: 5 and both lifts on. -/
 structure CluFlags : Prop where
   five : ModalSys.Five = true
-  fourS : ModalSys.FourStrong = true
-  fourSW : ModalSys.FourStrongW = true
+  fourS : ModalSys.fourL = true
+  fourSW : ModalSys.fourLW = true
   /-- Strong B on the cluster is S5's. -/
   bT : ModalSys.BStrong = true → ModalSys.T = true
   /-- Strong B comes with weak B, whose rules it assumes. -/

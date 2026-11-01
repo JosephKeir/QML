@@ -349,7 +349,8 @@ in the cube (`ModalSys.S5Strong_cube`), with `completenessCube`, `strong_complet
 `QML_v12m_GLoopLimit`, `QML_v12m_GCluLoop`), in the cube as `ModalSys.KB5_cube`, `ModalSys.KDB5_cube`.  Strong B on them is checked on paper
 (`v12-modal-extensions.md`, "Strong B on KB5 and KDB5"): with 4 and B it makes arrows unique, so KDB5 gets S5's arrow frames (`Frame.exists_unit_of_serial`), and with T off it needs new rules, a `Here` without T and about
 9 500 lines redone.  **Decided (2026-11-01):** KDB5 with strong B is read as S5 with strong B, and KB5 with strong B is a **possible gap**: review it once everything else is finished, and fill it only if it
-still seems worthwhile.  Next for 5: the open lifts and K5/KD5.
+still seems worthwhile.  **The open lifts are scoped (2026-11-01, `v12-modal-extensions.md`, "The open lifts: scope"):** committing cluster arrows is superseded.  **Every S5 column is complete (2026-11-01):** T and 5 prove
+4's lifts (`QML_v12m_LiftT`, `ModalSys.S5NoLift_cube`, `ModalSys.S5StrongNoLift_cube`).  With T off, `Proof.loop_tup`'s statement is valid in every model and not derivable without the lifts ("The countermodel check", on paper), so those cells are incomplete as ruled.  Next for 5: decide on that rule, then K5/KD5.
 
 **S5, paper check (2026-10-30; `v12-modal-extensions.md` §3 5, "paper check for S5").**
 * Under T the root is in the cluster already (the empty path is an arrow).  So S5 is the K45

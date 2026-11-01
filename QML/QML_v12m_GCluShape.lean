@@ -144,8 +144,8 @@ theorem CFormAt.dia {g : GW hF M₀} {j : ℕ} {y : VarSymb} {X : VarType}
 
 section Root
 
-variable (hV : ModalSys.Five = true) (hS : ModalSys.FourStrong = true)
-  (hW : ModalSys.FourStrongW = true) (hM₀ : Theory.IsMCS M₀) (hT : ModalSys.T = true)
+variable (hV : ModalSys.Five = true) (hS : ModalSys.fourL = true)
+  (hW : ModalSys.fourLW = true) (hM₀ : Theory.IsMCS M₀) (hT : ModalSys.T = true)
 
 /-- At the root, a world's address reading is the address. -/
 theorem rorig_root : rorig (groot hF M₀) = id := rfl
@@ -266,8 +266,8 @@ def CInv {Δ : Ctx} (τ : Model.ShEnv (carrows hF M₀) (fun _ => VarSymb) Δ (g
 
 section Pushed
 
-variable (hV : ModalSys.Five = true) (hS : ModalSys.FourStrong = true)
-  (hW : ModalSys.FourStrongW = true) (hM₀ : Theory.IsMCS M₀) (hT : ModalSys.T = true)
+variable (hV : ModalSys.Five = true) (hS : ModalSys.fourL = true)
+  (hW : ModalSys.fourLW = true) (hM₀ : Theory.IsMCS M₀) (hT : ModalSys.T = true)
 
 include hV hS hW hM₀ hT in
 /-- What holds of a context's declared addresses holds of its reachable ones. -/
@@ -390,8 +390,8 @@ theorem postIx_lvl (s : GW hF M₀) {y : VarSymb} (hy : PPath y.path) {st : Step
 
 section Inj
 
-variable (hV : ModalSys.Five = true) (hS : ModalSys.FourStrong = true)
-  (hW : ModalSys.FourStrongW = true) (hM₀ : Theory.IsMCS M₀) (hT : ModalSys.T = true)
+variable (hV : ModalSys.Five = true) (hS : ModalSys.fourL = true)
+  (hW : ModalSys.fourLW = true) (hM₀ : Theory.IsMCS M₀) (hT : ModalSys.T = true)
 
 include hF hV hS hW hM₀ hT in
 /-- ⭐**`cNext` remembers the address it read at the world**: `postIx` undoes it. -/

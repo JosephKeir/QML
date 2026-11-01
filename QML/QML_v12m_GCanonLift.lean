@@ -126,7 +126,7 @@ theorem gkeep_edge (hV : ModalSys.Five = false) {T : VarType} (hl : T.liftable =
               (by simpa [VarType.liftable] using hl) (liftAdm_etaTerm hF _ z Z hzZ) hV
             obtain ⟨i₂, r, hr₂, hroot₂, L₂, hL₂, hfm₂, hLsuf₂⟩ := gllift hM₀ ⟨c, hc⟩ j
               (GArrow.boxTuple (σ := σ) hF (glat t j)).2.2.2
-              (by simpa [VarType.liftable, GArrow.boxTuple] using hS)
+              (by simp [VarType.liftable, GArrow.boxTuple, ModalSys.fourL, hS])
               (liftAdm_boxTuple hF _) hV
             have hX : (ctxOf (glat s (max i₁ i₂))).ref (.root (.free x)) = some (.VTypeDia Z) :=
               ((gw hM₀ s).le (le_max_left i₁ i₂)).ref
@@ -265,7 +265,7 @@ noncomputable def gmodel : Model.{0, 0} σ where
   necDup_eval _ _ _ _ := rfl
   keepLift := by
     intro _ T hl w a o
-    obtain ⟨m, hm, e⟩ := graw_keepLift ModalSys.NoFive.noFive hl w a _
+    obtain ⟨m, hm, e⟩ := graw_keepLift ModalSys.NoFive.noFive (VarType.liftable_of_R hl) w a _
       (gdefinable_fromDom hM₀ T a.1 o)
     refine ⟨gtoDom hM₀ T w m hm, ?_⟩
     rw [geval_toDom]

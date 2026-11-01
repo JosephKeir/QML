@@ -274,8 +274,8 @@ theorem tr_pathK (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) :
       exact ⟨u', st, e, hst, by rw [← e, preI_comp]; rfl⟩
 
 /-- The stage a path's origins read a stage at commits it again along the path. -/
-theorem le_pstg_pstgO (hV : ModalSys.Five = true) (hS : ModalSys.FourStrong = true)
-    (hW : ModalSys.FourStrongW = true) (hM₀ : Theory.IsMCS M₀) :
+theorem le_pstg_pstgO (hV : ModalSys.Five = true) (hS : ModalSys.fourL = true)
+    (hW : ModalSys.fourLW = true) (hM₀ : Theory.IsMCS M₀) :
     ∀ (P : List ℕ) (s t : GW hF M₀) (h : t.1 = nodeOf s.1 P) (j : ℕ),
       j ≤ pstg s t P h (pstgO P s t h j)
   | [], _, _, _, _ => le_refl _

@@ -5075,12 +5075,12 @@ KDB5) the root's loop is new work, so S5 comes **before** B + 5, reversing steps
 | 4's lifts | Reads as | K45, KD45 | S5 |
 |---|---|---|---|
 | both | strong 5 + the `◇`-lift | **complete** | **complete** (2026-10-31) |
-| `□`-lift only | strong 5 | open | open |
-| `◇`-lift only | weak 5 + the `◇`-lift | open | open |
-| neither | weak 5 | open | open |
+| `□`-lift only | strong 5 | open | **complete** (2026-11-01) |
+| `◇`-lift only | weak 5 + the `◇`-lift | open | **complete** (2026-11-01) |
+| neither | weak 5 | open | **complete** (2026-11-01) |
 
-* The open cells have rules and soundness; they need committing cluster arrows (milestone B of
-  the K45 paper check).  Note that strong K45 proper, without the `◇`-lift, is one of them.
+* The open cells have rules and soundness.  They were to take committing cluster arrows (milestone B of
+  the K45 paper check), which is **superseded**: see "The open lifts: scope".  Note that strong K45 proper, without the `◇`-lift, is one of them.
 * *K5, KD5 (4 off):* semantics only (`Frame.side`, `posSide`).  No `side` step, `sideTr`, links or
   rules, so those flag settings prove no 5 principle, and completeness excludes them.
 * *KB5, KDB5:* complete with weak B (2026-11-01; "KB5 and KDB5: the root's loop").  *S5 with strong B:* complete (2026-11-01).
@@ -5092,12 +5092,12 @@ KDB5) the root's loop is new work, so S5 comes **before** B + 5, reversing steps
 | System | Weak 5 (no lift) | `□`-lift only (strong 5) | `◇`-lift only | Both lifts |
 |---|---|---|---|---|
 | K45, KD45 | open | open | open | **complete**, D in either strength |
-| S5 | open | open | open | **complete**, T and D in either strength, B off, weak or strong, witnessed ways home |
+| S5 | **complete** | **complete** | **complete** | **complete**, T and D in either strength, B off, weak or strong, witnessed ways home; the other columns the same, T and 5 proving the lifts (`QML_v12m_LiftT`) |
 | KDB5, KB5 | open | open | open | **complete** with weak B, D in either strength.  Strong B: KDB5 is S5 there, not built separately; KB5 is a **possible gap**, for review at the end ("Strong B on KB5 and KDB5") |
 | K5, KD5 | no rules yet | no rule written | unsound | no lifts without 4 |
 
-* *Open cells with 4* have rules and soundness, and need committing cluster arrows (K45's milestone B).  The loop's step uses both lifts,
-  so the lower rows may need more than that.
+* *Open cells with 4* have T off, and rules and soundness.  The plan of committing cluster arrows (K45's milestone B) is superseded by "The open lifts: scope": a relationally
+  valid principle is missing from the rules there ("The countermodel check").  S5's cells closed without a construction: its lifts are derivable.
 * *K5, KD5*: semantics only (`Frame.side`, `posSide`).  No `side` step, `sideTr`, links, or rules, so these flags prove no 5 principle.
   Strong 5 without 4 has no rule.  The `◇`-lift for 5 alone is unsound (the countermodel above), so that cell is closed, not open.
 * *Flags excluded as settings, not systems.*  Strong B with D and 5, T off: its frames are S5's (`Frame.exists_unit_of_serial`), so it is read as S5 with strong B, and the flag setting is outside `CubeSys` (`five_B`).  KB5 with strong B is the one system this leaves out, and it is recorded as a possible gap.  5 with 4 off under T or B: T + 5 and B + 5 prove 4 propositionally, and `FiveCoh`, the class
@@ -5279,6 +5279,101 @@ That is 9 479 lines to redo, plus the tree's tags, the guard on `Here`, the new 
 * *Taken: option A, treat KDB5 with strong B as S5 with strong B.*  By 1 they have one class of frames.  `CubeSys.five_B` stays, `Frame.exists_unit_of_serial` records why, and the setting joins "flags excluded as settings, not systems".
 * *Possible gap: KB5 with strong B.*  It is the one system that needs the T-off stack, because T fails at its dead ends.  It is S5 with strong B or a dead end, so it adds little, and it costs sections 2 to 7.  **Review it once everything else is finished**, and fill it then only if it still seems worthwhile.  The T-off language with KDB5's flags would come with it.
 * *Not taken for now: option B, build the T-off stack.*  The open lifts and K5/KD5 come first: they are real gaps in systems that are otherwise done, and strong K45 without the `◇`-lift is among them.
+
+#### The open lifts: scope *(2026-11-01; S5 built, T off on paper)*
+
+**Verdict.**  The plan in the tables, committing cluster arrows (K45's milestone B), does not stand, and the cells split by T.
+* *S5:* the lifts are derivable from T, 4 and 5, so its open cells needed no new construction.  **Built** (below, after 7).
+* *K45, KD45, KB5, KDB5, T off:* every model validates a principle that the rules do not prove without the lifts, so those cells are **not complete as ruled**, and no canonical model can fix that.  They need a decision.  See "The countermodel check" below, which corrects sections 4 to 6.
+
+**1. The theorems are relational.**  `completenessCube`, and the theorems under it, quantify over `Model.{0, 0}`, so `Frame.R` is a `Prop`: at most one arrow per pair.  Soundness is polymorphic.  F5 and milestone B assume relational clusters too.
+
+**2. Under T, 4 and 5 every arrow is invertible, in every model** (`Frame.exists_inverse`, checked; no axioms).  For `a : w → v`, put `r := side a (refl w)`, so `a ; r = refl w` by `trans_side`.  Put `r' := side r (refl v)`, so `r ; r' = refl v`.  Then `a = a ; (r ; r') = (a ; r) ; r' = r'`, so `r ; a = refl v`.
+* So keeping along `a` has an inverse, keeping along `r`, and keep is surjective.  `Model.boxLift_of_T_five` (checked; `propext`, `Quot.sound`): the `□`-lift holds in every model with T, 4 and 5, whatever `FourStrong` says.  The `◇`-lift is the same on paper, by `posKeep_full`.
+* So `FourStrong` and `FourStrongW` add nothing to S5's models, and the question is only whether the rules see it.
+
+**3. S5: the lifts are derivable (built, see below).**  Write `φ̂` for `WFF.loopHat φ`: `φ` shifted one view in, its slot read at the kept object.
+* *A kept possibility comes back.*  At `v`, `φ(c) ⊢ □◇(shift φ̂)`.  Otherwise `◇□¬(shift φ̂)`, so `□¬φ̂` by `five_box`, so `¬φ` by `T_box`, since the collapse undoes `φ̂`.
+* *Hence the lift, along `.nec`.*  Let `ξ := ∃y. ◇(shift φ)(y.keep)` in `Γ.boxIn`, whose collapse is `liftRead`'s `∃`.  From `◇∃c. φ(c)`, the previous point and `ex_intro` at `c.keep` under `□` give `◇□(shift ξ)`.  `five_box` gives `□ξ`, and `T_box` the `∃y`.  Then `ex_elim` is `keep_lift`, with no flag.
+* *Along `.pos x`.*  `here_keep` turns `◇_x φ` into a plain `◇` of `∃t. Here(x.keep, t) ∧ φ(c, t)`, the `.nec` lift applies, and `here_intro` with `four_dia` returns.  This is the least checked step here.
+* *Consequence.*  Every S5 column is the complete one.  `keep_lift` stays guarded by its flag, and the tree asks an effective flag, `FourStrong || (T && Five)` and its `◇` twin, calling the rule or the derivation (`GLift`'s edge lemma).  `Model.keepLift` does not change.  Neither does the construction.
+* *Why not just widen the rule's guard.*  One line, but it makes a derivable step a primitive rule, against "prefer admissibility".
+
+**4. T off: the principle.**  `Proof.loop_tup` states it: `□∀k. (□φ̂(k) → φ(k))`.  What is necessary of an object kept, at a world, holds of the object there.
+* *Valid on every relational frame with 4 and 5, B or not.*  At `v`, `side a a : v → v` exists, and keeping along it is the identity, the frame being relational.  With B, the same holds at the root under `◇⊤`.
+* *So is the lift, inside the cluster:* `v → u → v` is the identity, so `n` at `v` is `(n kept along v → u)` kept along `u → v`.  Relational frames lose the lifts only at a root outside its cluster.
+* *`loop_tup` uses both lifts.*  The lift takes `k` to the outer world, where `five_box` applies.  Without them `k` is born at `v`, and `five_box` has no outer view that holds it.  `◇(□(shift ψ) ∧ ¬ψ)` is refutable for `ψ` over outer parameters only.
+* *Probably not derivable.*  **Corrected by "The countermodel check": no new law is needed, the principle is valid on every frame with 4 and 5, and its underivability is shown there.**  On arrow frames it follows from one law, `side a (a ; c) = c`, which relational frames meet by proof irrelevance, and which the docs left as "perhaps" (item 4 of the scope).  It makes `e := side a a` a left unit.  The present laws give only `e ; z = z` on the image of `side a`.  They do not seem to give the law: rewriting by them leaves `side a (a ; c)` irreducible in the free frame.  With non-injective `a ; _` and carriers smaller than full function spaces, a countermodel looks available.  **Sketched, not proved.**
+* *What that does to milestone B.*  Its consistency step generalises over fresh roots.  The loop `u → u` has none: `θ(k.keep) = k` is an old name, and committing it is the principle itself.  "Why a reused name stays consistent" covers `□`-claims only.  So milestone B would fail at the first loop, for the same reason, not for a bookkeeping one.
+
+**5. If the principle is added.**  One rule, `loop_tup`'s statement, with soundness at any arrows from the present laws.  Then:
+* *The lifts are derivable inside the cluster*, as in 3, with the principle in T's place, by an outer `□`.
+* *KB5, KDB5:* the root is in the cluster.  `gloopStep` takes the rule, and the tree's lifts need the derived form.
+* *K45, KD45:* the root is outside, and that is the only place the cells differ.  So the cluster needs a **hub**, a child of the root that serves the root's `◇`s by `five_dia`, with R4 read through the hub.  That is the largest piece, and it is not designed yet: the `GClu*` files read everything through `groot`.
+* *No committing arrows in either case.*  Every object is named at the hub.
+
+**6. The decision for T off.**
+* *Add the rule.*  Completeness stays relational, and the rule says what every frame with 4 and 5 forces.
+* *Or weaken `Frame` and move those cells to arrow frames*: no new rule, a weaker theorem, and arrow-labelled clusters.  That is a change of intended semantics, and much the larger build.
+* *Recommendation: the rule.*
+
+**7. Order and size.**
+
+| Step | What | Size, by the usual reckoning |
+|---|---|---|
+| 1 | S5: derive `keep_lift`, both legs; effective flags through the tree and the cluster | **done** |
+| 2 | Check on paper: is the principle underivable?  **Yes**: "The countermodel check" | **done** |
+| 3 | KB5, KDB5 without lifts | 1 500 to 3 000 lines |
+| 4 | K45, KD45 without lifts: the hub | 3 000 to 5 000 lines, undesigned |
+
+Strong B on S5 is unaffected.  K5 and KD5 have 4 off, so none of this applies to them directly, but the principle's analogue will have to be asked of them too.
+
+**Built (2026-11-01): every S5 column.**  `QML_v12m_LiftT`, no `sorry`, standard axioms.  No new rule, no change to the construction, and the full strict build passes.
+* *Semantics.*  `Frame.exists_inverse`, `Model.boxLift_of_T_five`, as in 2.
+* *Along `□`.*  ⭐`Proof.keep_lift_T`, as in 3, with one simplification: `φ̂` is `WFF.loopHat`, so the step at the far world is `Proof.far_nec` and `ξ`'s shift is read by `WFF.shift_loopHat`.
+* *Along `◇_x`.*  ⭐`Proof.keep_lift_posT`.  The plan in 3 used `∃t. Here(x.keep, t) ∧ φ(c, t)`.  Built instead: `WFF.liftPos`, the body at `◇_{x.keep}`, with `x.keep`'s content and the slot kept, so no second bound variable.  `WFF.bodyAbsA` abstracts the body, `Proof.far_pos` applies `here_intro` with `here_keep`'s atom, `Proof.pos_nec` takes it through to a plain `◇`, and `Proof.four_dia_home` brings it back into `x`'s extent after the lift.
+* *New general lemmas.*  `WFF.collapse_shift_self`, `WFF.shift_shift_same`, and `WFF.readAt` (a body read at a term of a larger context), with `subst_readAt`, `shift_readAt`, `collapse_readAt`.
+* *The plumbing.*  `VarType.liftableR` is the rule's guard, and `Model.keepLift`'s: the flags, exactly.  `VarType.liftable` is now the tree's: `ModalSys.fourL`, `ModalSys.fourLW`, that is the flag or T and 5.  `Proof.kKeepLift` dispatches: the rule if the flag is on, otherwise the derivation.  `CluFlags` and `CubeSys.five_lifts` ask `fourL`, `fourLW`.  So the rule and the class of models are unchanged, and everything in the cluster went through by a rename of its hypotheses.  One site needed attention, in the 5-off model.
+* *Systems.*  `ModalSys.S5NoLift`, no strong form at all, and `ModalSys.S5StrongNoLift`, every flag but the lifts, are in the cube (`S5NoLift_cube`, `S5StrongNoLift_cube`).  The cube covers the columns between them.
+* *Size.*  `QML_v12m_LiftT` is 1 155 lines, of which the `◇_x` leg is more than half, against the estimate of about 1 000 for everything.
+
+#### The countermodel check *(2026-11-01, paper; the frame lemmas in Lean)*
+
+**Verdict.**  `Proof.loop_tup`'s statement, `□∀k. (□φ̂(k) → φ(k))`, is **valid in every model and not derivable without the lifts**.  So K45, KD45, KB5 and KDB5 without both lifts are incomplete as ruled, over relational models and over the arrow models the current `Frame` allows.  The principle is what is missing, and it is a rule on its own: no new frame law is needed.  This corrects sections 4 to 6 of the scope above.
+
+**1. It is valid in every model.**  ⭐`Frame.side_self_unit`, in Lean, no axioms: `side a a ; c = c`, in every frame with 4 and 5.
+* *Proof.*  `(side x y) ; (side y z) = side x z` (`Frame.side_cocycle`, from `side_side` and `trans_side`), so `e := side a a` has `e ; e = e`.  Any `c` is `e ; side e c`, so `e ; c = e ; e ; side e c = e ; side e c = c`.
+* *So the principle.*  At `a : w → v` read `□` along `e`.  `a ; e = a`, so the old items read as they did, and `e` a left unit makes `k` kept along `e` be `k`.  This needs `shaped` off for a `◇` slot, which is the case in question.
+* *So the scope's sentence "the present laws give only `e ; z = z` on the image of `side a`" was wrong*, and with it the proposal of a new law.  The law `side a (a ; c) = c` is neither needed nor a consequence: take worlds `ρ, v`, `R v v` the right-zero semigroup on `{0, 1}`, and one arrow `a : ρ → v` with `a ; x = a`, `side a a = 0`.  Every law holds, and `side a (a ; 1) = 0`.
+
+How this was found: Knuth-Bendix completion on the laws, on one world, ran to `m(d(v0,v0),v1) -> v1`, after a bug in the script was fixed.  The completion did not terminate and it is not part of any proof here.  The proof above is by hand, and in Lean.
+
+**2. Soundness uses less than `Frame` asks.**  Of 5's arrow laws the proofs of soundness use `trans_side` alone, in the `five_box` and `five_dia` cases.  `side_side`, `side_trans`, `side_inj`, `posSide_ext`, `posSide_content` and `necSide_exists` are used by no soundness proof: they occur only as fields and in model definitions.  So the rules are sound on frames with an arrow across and no more.  A frame of that kind may have no left unit, and that is where the countermodel lives.
+
+**3. The countermodel.**  Flags: T off, 4 and 5 on, both lifts off, every strong form off; B and D either way, so it covers all four systems.  The signature has one binary relation `Q` and no function symbols.
+* *Arrows.*  One world.  `S` is the **Baer-Levi semigroup**: injections `ℕ → ℕ` whose image has infinite complement, with `a ; b := b ∘ a`.
+  * *An arrow across.*  Given `a, b`, define `x` on the image of `a` by `b ∘ a⁻¹`, and send the complement of that image injectively to one half of the complement of `b`'s image.  Then `x ∈ S` and `a ; x = b`.  Choose `side a b` to be such an `x`.
+  * *No left unit.*  `e ; s = s` says `s ∘ e = s`, so `e` is the identity, which is not in `S`.
+  * `D` and B hold: `S` is nonempty, and there is an arrow back.  `homeUnique` is vacuous with strong B off.
+* *Base objects.*  `D := S × {0, 1}`, with `Q((s, 0), (s, 1))` and nothing else.
+* *Necessary objects*, by recursion on the type, as sets of functions on `S`, closed under `T_g n := n ∘ (g ; _)`:
+  * at `Var`: `k : s ↦ (s, 0)`, and for each `b`, `L⁰_b : s ↦ (b ; s, 0)` and `L¹_b : s ↦ (b ; s, 1)`.  Note that `s ↦ (s, 1)` is **not** there.  `T_g k = L⁰_g` and `T_g Lⁱ_b = Lⁱ_{b ; g}`;
+  * at `𝟙` the one function, at `A × B` pairs of objects, at `□A` the functions `g ↦ T_g m` for `m` an object at `A`, at `◇A` the one function;
+  * possible objects: one, with empty extent, at each type.  `shaped` is off, so there are no shapes.
+* *Closure.*  Every `GFunc` maps objects to objects, by induction on it: `T_g` commutes with pointwise maps, which covers `boxMap`, `boxPair` and `dup`.  `func` has no instance, `extract` needs T, and `diaMap`, `strength` and `dkeep` land in a singleton.  The other laws of `Model` are vacuous for these flags or immediate from the empty extents, with `Ind` equality and `Ret` empty.
+* *The formula.*  `φ(y) := ∃z:□Var. □Q(y.box, z.box)`, so `φ̂(y) = ∃z. □Q(y.keep.box, z.box)`.  At the world, read at `k`:
+  * `□φ̂(k)` holds: along `b`, `k` kept is `L⁰_b`, and `z := L¹_b` is a witness;
+  * `φ(k)` fails: a witness would be `s ↦ (s, 1)`, which is `L¹_b` only if `b` is a left unit.
+  So `□∀k. (□φ̂(k) → φ(k))` is false.
+
+**4. What is and is not checked.**  In Lean: `Frame.side_cocycle`, `Frame.side_self_unit`.  On paper: the audit in 2, by searching the sources, and the model in 3.  This model is not a `Model` as it stands, since `Frame` asks `side_side` and `side_trans`, which it fails.  To put it in Lean, delete those two fields, which no proof reads, and build it.  That does not change `Model.{0, 0}`, where the laws hold by proof irrelevance, so every completeness theorem says the same.  It would widen the class soundness covers.  Note the opposite effect on 1: with the laws deleted the principle is valid on relational frames only.  That is enough, since the theorems are relational.
+
+**5. What it changes.**
+* *Section 4 of the scope:* "probably not derivable" is now shown, on paper.  The fix is **one rule**, `loop_tup`'s statement with T off.  Sound from the present laws, no new law.  With both lifts on it is derivable (`Proof.loop_tup`), so it adds nothing to the systems already complete.
+* *Section 6, the alternative:* moving those cells to arrow frames does not work with `Frame` as it is, where the principle is valid too.  It would mean weakening `Frame` as in 4, then building arrow-labelled clusters on frames like the one above.  So the choice is the rule, or that.
+* *Section 5 stands:* the rule gives the lifts inside the cluster, KB5 and KDB5 have their root in it, and K45 and KD45 need a hub.  Not checked further here.
+
+**The decision: open.**  Whether to add the rule.  Recommendation: add it.  It says what every frame with 4 and 5 already forces.
 
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 

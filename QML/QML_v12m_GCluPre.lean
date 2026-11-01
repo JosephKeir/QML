@@ -323,7 +323,7 @@ theorem names_type (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M�
     no earlier than it (names by origin, `glorigin`; both lifts on, so every keepable address is
     liftable). -/
 theorem exists_pre (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hS : ModalSys.fourL = true) (hW : ModalSys.fourLW = true)
     (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s t) (j : ℕ) :
     ∃ (i : ℕ) (pre : VarSymb → VarSymb), j ≤ glstg s t i ∧ PreOk s t i (glat t j) pre := by
   classical
@@ -378,7 +378,7 @@ theorem gMs_mono_iff (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) {i i' : ℕ} (
     a descendant's stage holds, at some later stage of it, exactly when a formula of the
     ancestor's `□` view holds there — its preimage along the path, edge by edge. -/
 theorem box_path_iff (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hS : ModalSys.fourL = true) (hW : ModalSys.fourLW = true)
     (hM₀ : Theory.IsMCS M₀) :
     ∀ (P : List ℕ) (s t : GW hF M₀), t.1 = nodeOf s.1 P → ∀ (j : ℕ)
       (ψ : WFF σ (ctxOf (glat t j)).boxIn 0),
@@ -402,7 +402,7 @@ theorem box_path_iff (hV : ModalSys.Five = true)
     a descendant `u` of `s` is, through its preimage at `s`, translated into every descendant `t`
     of `s` — the arrow `u → t` read through their common ancestor. -/
 theorem box_cluster (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
+    (hS : ModalSys.fourL = true) (hW : ModalSys.fourLW = true)
     (hM₀ : Theory.IsMCS M₀) {s u t : GW hF M₀}
     {P Q : List ℕ} (hu : u.1 = nodeOf s.1 P) (ht : t.1 = nodeOf s.1 Q) (hQ : PathOk Q) (j : ℕ)
     (ψ : WFF σ (ctxOf (glat u j)).boxIn 0) (hψ : WFF.box ψ ∈ gMs u j) :

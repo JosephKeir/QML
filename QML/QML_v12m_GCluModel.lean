@@ -179,7 +179,8 @@ theorem csymm (hM₀ : Theory.IsMCS M₀) (hX : CluFlags) (hB : ModalSys.B = tru
   · exact (carrows hF M₀).refl hT w
   have hT' : ModalSys.T = false := Bool.eq_false_iff.mpr hT
   by_cases hne : (WFF.box (Γ := ctxOf l₀) .bot).neg ∈ M₀
-  · have hl : GNetSt.LoopOn M₀ := ⟨hB, ⟨hF, hX.five, hX.fourS, hX.fourSW, hT'⟩, hne⟩
+  · have hl : GNetSt.LoopOn M₀ := ⟨hB, ⟨hF, hX.five, ModalSys.fourS_of_noT hT' hX.fourS,
+      ModalSys.fourSW_of_noT hT' hX.fourSW, hT'⟩, hne⟩
     rcases hp : rpath w with _ | ⟨c, P⟩
     · exact ⟨[], .inr ⟨rfl, hl⟩, by have := rpath_eq w; rwa [hp] at this⟩
     · exact ⟨rpath w, .inl (by rw [hp]; exact pathOk_cons), rpath_eq w⟩
@@ -743,7 +744,7 @@ noncomputable def cmodel (hX : CluFlags) : Model.{0, 0} σ where
         (cdomShape_toDom hM₀ hX hS _ s.1 (n.1 s) (cdefinable_box_apply hX n.2 s)).symm))))
   necExtract_eval _ _ := rfl
   necDup_eval _ _ _ _ := rfl
-  keepLift hF' _ hl _ a o := ckeepLift hM₀ hX hF' hl a o
+  keepLift hF' _ hl _ a o := ckeepLift hM₀ hX hF' (VarType.liftable_of_R hl) a o
   posKeep_full hF' x a := Prod.ext rfl (funext fun hS =>
     ckeep_shape (hM₀ := hM₀) (hX.T_of_shaped hS) hF' a x.1)
   posSide_ext _ x _ := by
