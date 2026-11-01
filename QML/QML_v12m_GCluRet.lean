@@ -232,6 +232,50 @@ theorem at_ext_congr {Δ : Ctx} (θ θ' : Subst σ Δ) (p : List Step) :
       · exact ih hC (by rw [Subst.at_proj θ v rfl, Subst.at_proj θ' v' rfl, hv])
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+/-- ⭐One companion's tie, read at a term: the value's last part, with the object's own companion
+    kept. -/
+theorem cTies_step {Γ Ω : Ctx} [Γ.NoSlots] {d : ℕ} {ι : VarSymb → VarSymb} (θ : Subst σ Γ)
+    (hθ : Subst.Ok Ω θ) (hc : Subst.Coh ι Ω θ) (hs : Ω.SlotsFrom d) (hs' : Γ.SlotsFrom 0)
+    (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) (hF : ModalSys.Four = true)
+    {A : VarType} {a₀ : Ann A} (E₀ : Term σ Γ.boxIn A a₀) (e : VarSymb)
+    (he : Ω.ref e = some (.VTypeBox A)) (hat : θ.at e = .tm (.boxtm E₀)) (q : List Step)
+    (ps : List (List Step)) (h : A.CompOk (q :: ps)) (z : VarSymb)
+    (hz : Ω.boxIn.ref z = some (A.compsFlat (q :: ps))) {s₀ : Ann (A.compsFlat ps)}
+    (S : Term σ Γ.boxIn (A.compsFlat ps) s₀) {y₀ : Ann ((A.compAt q).getD .VTypeOne)}
+    (y : Term σ Γ.boxIn ((A.compAt q).getD .VTypeOne) y₀)
+    (hzat : θ.box.at z = .tm (Term.pair S y)) :
+    WFF.subst ι θ hθ hc hs hs' (WFF.cTies hS hF hs e he (q :: ps) h z hz) =
+      WFF.and (WFF.box (WFF.holeAt Ctx.NoSlots.slots (Term.pair y
+          (Term.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF _) (compVal E₀ q h).2)))
+          (WFF.backDup hS hF _)))
+        (WFF.subst ι θ hθ hc hs hs' (WFF.cTies hS hF hs e he ps h.tail _ (Ctx.ref_fst_of hz))) := by
+  obtain ⟨-, hall, -⟩ := h.resolve_left (List.cons_ne_nil _ _)
+  have hq := compAt_getD (hall q List.mem_cons_self)
+  let θ' := Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm (Term.boxtm E₀))
+  have hr : θ'.at (.root (.bnd 0)) = .tm (Term.boxtm E₀) := Subst.at_single_root _ _
+  obtain ⟨w₀, w, hw⟩ := at_ext_tm hT θ' (.here :: q) (Term.boxtm E₀)
+    (A := .VTypeBox A) hq hr
+  have hY : θ.at ((VarSymb.step e .here).ext q) = .tm (Term.boxtm w) :=
+    (at_ext_congr θ θ' (.here :: q) (A := .VTypeBox A) hq (hat.trans hr.symm)).trans hw
+  have hcv : compVal E₀ q h = ⟨_, w⟩ :=
+    Term.subst_eta_tm _ _ _ _ _ _ _ (Subst.box_at_inner_boxtm θ' hw)
+  have ha : θ.box.at (.step z .snd) = .tm y := by
+    rw [Subst.at_proj _ _ rfl, hzat]
+    rfl
+  have hb : θ.box.at (.step ((VarSymb.step e .here).ext q) .keep) =
+      .tm (Term.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) w)) := by
+    rw [Subst.box_at_keep, hY]
+    exact SubE.keepE_tm w hF
+  refine congrArg (WFF.and · _) (congrArg WFF.box ((WFF.subst_holeAt θ.box (Subst.ok_box hθ)
+    (Subst.coh_box hθ hc) hs.boxIn hs'.boxIn
+    (Term.pair (Term.eta (.step z .snd) _ (Ctx.ref_snd_of hz))
+      (Term.eta (.step ((VarSymb.step e .here).ext q) .keep) (.VTypeBox _)
+        (Ctx.ref_keep_of' hF (h.ref_head he) rfl))) (WFF.backDup hS hF _)).trans
+    (WFF.holeAt_congr _ (sig_pair (Term.subst_eta_tm _ _ _ _ _ _ _ ha)
+      ((Term.subst_eta_tm _ _ _ _ _ _ _ hb).trans
+        (sig_boxtm (sig_shift_cong _ hcv.symm)))) _)))
+
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 /-- ⭐Each companion's tie, at a term: `Proof.back_shift` at the companion's contents. -/
 theorem cTies_tm {Γ Ω : Ctx} [Γ.NoSlots] {d : ℕ} {ι : VarSymb → VarSymb} (θ : Subst σ Γ)
     (hθ : Subst.Ok Ω θ) (hc : Subst.Coh ι Ω θ) (hs : Ω.SlotsFrom d) (hs' : Γ.SlotsFrom 0)
@@ -244,35 +288,12 @@ theorem cTies_tm {Γ Ω : Ctx} [Γ.NoSlots] {d : ℕ} {ι : VarSymb → VarSymb}
     Nonempty (Proof σ Γ Δ (WFF.subst ι θ hθ hc hs hs' (WFF.cTies hS hF hs e he cs h z hz)))
   | [], _, _, _, _ => ⟨Proof.top_intro⟩
   | q :: ps, h, z, hz, hzat => by
-      obtain ⟨-, hall, -⟩ := h.resolve_left (List.cons_ne_nil _ _)
       obtain ⟨hrec⟩ := cTies_tm θ hθ hc hs hs' hS hT hF E₀ e he hat ps h.tail _
         (Ctx.ref_fst_of hz) (by rw [Subst.at_proj _ _ rfl, hzat]; rfl)
-      have hq := compAt_getD (hall q List.mem_cons_self)
-      let θ' := Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm (Term.boxtm E₀))
-      have hr : θ'.at (.root (.bnd 0)) = .tm (Term.boxtm E₀) := Subst.at_single_root _ _
-      obtain ⟨w₀, w, hw⟩ := at_ext_tm hT θ' (.here :: q) (Term.boxtm E₀)
-        (A := .VTypeBox A) hq hr
-      have hY : θ.at ((VarSymb.step e .here).ext q) = .tm (Term.boxtm w) :=
-        (at_ext_congr θ θ' (.here :: q) (A := .VTypeBox A) hq (hat.trans hr.symm)).trans hw
-      have hcv : compVal E₀ q h = ⟨_, w⟩ :=
-        Term.subst_eta_tm _ _ _ _ _ _ _ (Subst.box_at_inner_boxtm θ' hw)
-      have ha : θ.box.at (.step z .snd) = .tm (compVal E₀ q h).2 := by
-        rw [Subst.at_proj _ _ rfl, hzat]
-        rfl
-      have hb : θ.box.at (.step ((VarSymb.step e .here).ext q) .keep) =
-          .tm (Term.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) w)) := by
-        rw [Subst.box_at_keep, hY]
-        exact SubE.keepE_tm w hF
-      refine ⟨Proof.and_intro ?_ hrec⟩
-      refine Proof.conv (congrArg WFF.box ((WFF.subst_holeAt θ.box (Subst.ok_box hθ)
-        (Subst.coh_box hθ hc) hs.boxIn hs'.boxIn
-        (Term.pair (Term.eta (.step z .snd) _ (Ctx.ref_snd_of hz))
-          (Term.eta (.step ((VarSymb.step e .here).ext q) .keep) (.VTypeBox _)
-            (Ctx.ref_keep_of' hF (h.ref_head he) rfl))) (WFF.backDup hS hF _)).trans
-        (WFF.holeAt_congr _ (sig_pair ((Term.subst_eta_tm _ _ _ _ _ _ _ ha).trans hcv)
-          (Term.subst_eta_tm _ _ _ _ _ _ _ hb)) _))).symm ?_
+      refine ⟨Proof.conv (cTies_step θ hθ hc hs hs' hS hT hF E₀ e he hat q ps h z hz _ _ hzat).symm
+        (Proof.and_intro ?_ hrec)⟩
       exact Proof.nec (Proof.conv (WFF.holeAt_backDup hS hF _ _ _).symm
-        (Proof.back_shift hS hT hF w))
+        (Proof.back_shift hS hT hF _))
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 /-- ⭐**An object's ties to its own packing**, at any term. -/

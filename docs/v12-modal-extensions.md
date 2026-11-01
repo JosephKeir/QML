@@ -5510,13 +5510,18 @@ do not.
   theory by the induction (`Φ`'s size), and the ties are theorems (`packTies_tm`, `Proof.packTies_intro` at terms).
   `Proof.retC_unlift` then gives the returning possibility (`ret_core`), and `ret_map` along `unpackG` the shape back.
   The value moves at `N`, not at the packed shape, whose `eqRec` can exceed the atom's size.
-* *Membership ⇒ truth: planned.*  Reduce to `.boxC` by `retS_packG`.  `Proof.retN_lift` gives `∃c. Back (c kept) t ∧
-  ◇ packed(c kept)`.  `O.dia` at home gives an arrow with the translation in the far theory (`exists_far`, from `glex` and the
-  first half of `cdia_sat_child`, which must be split).  `Φ` is true there by the induction.  **A tie in the far theory is
-  exactly `Proof.back_of_tie`'s premise**, so each companion reads home by `back_of_tie` and `back_here_rel`.  No `eqRec`, no
-  `Rel.trans`, and `Ind` need not compose.  Pieces: (1) reading `∃` off: `instantiate x (bindFree c lifted)` as a
-  substitution, then `WFF.subst_instantiate`, `OutLeg.subst_dia`; (2) `tie_nec` and `tie_pos` factored through a far-world
-  hypothesis; (3) a `FarLeg` at a later stage against one at an earlier stage (as `pTr_mono`, `preTB_lift`).
+* *Membership ⇒ truth at necessary shapes: built* (`QML_v12m_GCluRetOut`, `sat_ret_of_memN`, both legs).  Reduce to `.boxC`
+  by `retS_packG`, map back by `sat_ret_map` along `unpackG`.  `BArrow.BWorld.ret_term` reads `Proof.retN_lift` at a term:
+  `∃c. Back (c kept) t ∧ ◇ packed(c kept)` with the `∃` Henkin-witnessed (`WFF.instantiate_bindFree`, `WFF.subst_lifted`).
+  `exists_far` turns the `◇` into an arrow with the translation in the far theory (`glex`; `cdia_mem_child`, the half of
+  `cdia_sat_child` with no induction hypothesis).  `Φ` is true there by the induction.  **Every component then goes home the
+  same way** (`back_home`, `comps_ind`): the base by the theorem `Proof.back_shift`, each companion by its tie in the far
+  theory (`cTies_step`).  A tie there is the premise of `Proof.back_of_tieV`, which is `back_of_tie` from a `Back` along the
+  plain leg, through `Proof.ret_unlift`, so no leg `Back` is built by hand.  No `eqRec`, no `Rel.trans`; `Ind` need not compose.
+  `FarUp` is the same arrow read from a later home stage, needed because the far term's home term lives later than the arrow
+  was found; its fields are the stage agreement (`pTr_mono`, `preTB_lift`; `pTrXK_mono`, `preTD_stage`, `grealT_mono`), the way
+  home, and `kept₂` (`kept2_path`, `kept2_real`).  `tie_nec` and `tie_pos` were left alone, not refactored onto this, so their
+  kept-carrier steps and `kept2_*` overlap.
 * *Then.*  `.wit`: `ret_keep`, `ckeepLift` at `◇`, `chere_truth`.  `RetCongr` (below), and `hNS` goes.
 
 **`RetCongr` on the cluster under the whole-shape tag (2026-11-01, paper).**  All three laws go through, with no change to

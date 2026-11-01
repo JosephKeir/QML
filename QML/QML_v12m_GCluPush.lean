@@ -479,16 +479,24 @@ theorem cdia_real_not_boxx (hX : CluFlags) (hT : ModalSys.T = true) {n : ℕ}
   rw [WFF.realiseAtA_neg] at hn
   exact ((gw hM₀ t).mcs _).neg_mem_iff.mp hn hrm
 
-/-- ⭐**Under T, a possible formula of the root's theory holds along the edge made for its
-    witness** (`gdia_sat_child`), read at any world whose witness it is the origin of. -/
-theorem cdia_sat_child (hX : CluFlags) (hT : ModalSys.T = true) {n : ℕ}
-    (IH : CTruthBelow hF hM₀ hX n) (s : GW hF M₀) (i : ℕ) {x : VarSymb} {X : VarType}
-    (h : (ctxOf (glat s i)).ref x = some (.VTypeDia X))
-    (χ : WFF σ ((ctxOf (glat s i)).diaIn x) 0) (hχs : χ.size < n)
+/-- ⭐**Under T, a possible formula of the root's theory is in the theory of the child made for its
+    witness, realised there** (no induction hypothesis). -/
+theorem cdia_mem_child (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀) (i : ℕ)
+    {x : VarSymb} {X : VarType} (h : (ctxOf (glat s i)).ref x = some (.VTypeDia X))
+    (χ : WFF σ ((ctxOf (glat s i)).diaIn x) 0)
     (hmem : WFF.dia (rorig s x) (rorig_ref hX hM₀ s i ⟨X, h⟩) (preWPX (rpre hX hM₀ s i) h χ) ∈
       (gw hM₀ (groot hF M₀)).M (rstg s i)) :
-    ∃ a : ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s i).ref x h)).1,
-      (cmodel hF hM₀ hX).sat ((ccanonEnv hM₀ hX s i).diaPush x h a) χ := by
+    ∃ (t : GW hF M₀) (c : ℕ) (hc : t.1 = nodeOf (groot hF M₀).1 [c])
+      (hrl : (gw hM₀ t).Realised (kw (groot hF M₀) t [c] hc (rorig s x)))
+      (_ : (ctxOf (glat t (glstg (groot hF M₀) t (rstg s i)))).ref (wit t (rorig s x)) =
+        some (.VTypeDia X))
+      (hdecl : (ctxOf (glat t (max (glstg (groot hF M₀) t (rstg s i)) hrl.data.i₀))).ref
+        (wit t (rorig s x)) = some (.VTypeDia hrl.data.A)),
+      WFF.realiseAtA hT (wit t (rorig s x)) hdecl
+        (Term.mono (gle hM₀ t (le_max_right _ _)) hrl.data.t₀)
+        (WFF.mono ((gle hM₀ t (le_max_left _ _)).diaIn _)
+          (pTrXKW hM₀ (groot hF M₀) t [c] hc (rstg s i) (rorig s x) (rorig_ref hX hM₀ s i ⟨X, h⟩)
+            (preWPX (rpre hX hM₀ s i) h χ))) ∈ (gw hM₀ t).M _ := by
   have hrx : (ctxOf (glat (groot hF M₀) (rstg s i))).ref (rorig s x) = some (.VTypeDia X) :=
     rpre hX hM₀ s i x _ h rfl
   obtain ⟨t, ⟨c, hc⟩, hk, ⟨y, hfy⟩, ⟨b, hfd⟩, hm⟩ := glexX hM₀ (groot hF M₀) (rstg s i)
@@ -497,13 +505,8 @@ theorem cdia_sat_child (hX : CluFlags) (hT : ModalSys.T = true) {n : ℕ}
   have hfk : fmapL hF M₀ t.1 (.step (rorig s x) .keep) = .inl (wit t (rorig s x)) := by
     rw [hwy]
     exact hfy
-  have hR : GR (groot hF M₀) t := ⟨[c], pathOk_cons, hc⟩
   have hrl : (gw hM₀ t).Realised (wit t (rorig s x)) :=
     grealised_wit hM₀ hT ⟨c, hc⟩ hk (rstg s i) hrx
-  have hmt : (⟨t, ⟨hR⟩⟩ : CAcc hF M₀) ∈
-      ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s i).ref x h)).1 :=
-    (ccanon_mem_iff hX s i h _).mpr ((gmem_path hR (P := [c]) hc).mpr (Or.inl hrl))
-  refine ⟨⟨_, hmt⟩, ?_⟩
   have hwd : (ctxOf (glat t (glstg (groot hF M₀) t (rstg s i)))).ref (wit t (rorig s x)) =
       some (.VTypeDia X) := by
     have := ok_eS_kView (gentOk_box hM₀ ⟨c, hc⟩ (rstg s i)) (.step (rorig s x) .keep)
@@ -517,18 +520,67 @@ theorem cdia_sat_child (hX : CluFlags) (hT : ModalSys.T = true) {n : ℕ}
       ((Ctx.ref_nonproj _ rfl).symm.trans (Ctx.ref_diaIn_of hrx))
     rw [eS_item _ rfl, hfd] at this
     exact this
+  have hmK : WFF.realiseAtA hT (wit t (rorig s x)) hwd (Term.eta b X hbd)
+      (pTrXKW hM₀ (groot hF M₀) t [c] hc (rstg s i) (rorig s x) (rorig_ref hX hM₀ s i ⟨X, h⟩)
+        (preWPX (rpre hX hM₀ s i) h χ)) ∈
+      (gw hM₀ t).M (glstg (groot hF M₀) t (rstg s i)) := by
+    rw [gchild_real (hM₀ := hM₀) hT hc hk (rstg s i) hrx hfk hfd hwd hbd _]
+    exact hm
+  have hXA : X = hrl.data.A := by
+    have h1 := (hrl.data.hdeclOf _ ⟨X, hwd⟩).symm.trans hwd
+    simp only [Option.some.injEq, VarType.VTypeDia.injEq] at h1
+    exact h1.symm
+  subst hXA
+  have hj : glstg (groot hF M₀) t (rstg s i) ≤
+      max (glstg (groot hF M₀) t (rstg s i)) hrl.data.i₀ := le_max_left _ _
+  have hK : hrl.data.i₀ ≤ max (glstg (groot hF M₀) t (rstg s i)) hrl.data.i₀ := le_max_right _ _
+  have hdecl := (gle hM₀ t hj).ref hwd
+  have hbK := (gle hM₀ t hj).ref hbd
+  have hH₁ : WFF.hereAt hT (wit t (rorig s x)) hdecl (Term.eta b _ hbK) ∈ (gw hM₀ t).M _ := by
+    have := (BWorld.mem_lift hj).mp
+      (gchild_here (hM₀ := hM₀) hT hc hk (rstg s i) hrx hfk hfd hwd hbd)
+    change WFF.here hT (Term.mono _ (Term.eta _ _ _)) (Term.mono _ (Term.eta _ _ _)) ∈ _ at this
+    rwa [Term.mono_eta, Term.mono_eta] at this
+  have hH₂ := BWorld.mem_T.mp (hrl.data.hhereAt (gw hM₀ t).mcsT _ hK hdecl)
+  have hR₁ : WFF.realiseAtA hT (wit t (rorig s x)) hdecl (Term.eta b _ hbK)
+      (WFF.mono ((gle hM₀ t hj).diaIn _) (pTrXKW hM₀ (groot hF M₀) t [c] hc (rstg s i)
+        (rorig s x) (rorig_ref hX hM₀ s i ⟨_, h⟩) (preWPX (rpre hX hM₀ s i) h χ))) ∈
+        (gw hM₀ t).M _ := by
+    have := (BWorld.mem_lift hj).mp hmK
+    rwa [WFF.mono_realiseAtA hT (gle hM₀ t hj) hwd hdecl, Term.mono_eta] at this
+  exact ⟨t, c, hc, hrl, hwd, hdecl, BWorld.mem_of_provable (Δ := [_, _, _]) (fun φ hφ => by
+      rcases List.mem_cons.mp hφ with rfl | hφ
+      · exact hH₁
+      rcases List.mem_cons.mp hφ with rfl | hφ
+      · exact hH₂
+      · rw [List.mem_singleton.mp hφ]
+        exact hR₁)
+    ⟨Proof.here_subst hT _ _ _ _ (Proof.lookup List.mem_cons_self)
+      (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
+      (Proof.lookup (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ List.mem_cons_self)))⟩⟩
+
+/-- ⭐**Under T, a possible formula of the root's theory holds along the edge made for its
+    witness** (`gdia_sat_child`), read at any world whose witness it is the origin of. -/
+theorem cdia_sat_child (hX : CluFlags) (hT : ModalSys.T = true) {n : ℕ}
+    (IH : CTruthBelow hF hM₀ hX n) (s : GW hF M₀) (i : ℕ) {x : VarSymb} {X : VarType}
+    (h : (ctxOf (glat s i)).ref x = some (.VTypeDia X))
+    (χ : WFF σ ((ctxOf (glat s i)).diaIn x) 0) (hχs : χ.size < n)
+    (hmem : WFF.dia (rorig s x) (rorig_ref hX hM₀ s i ⟨X, h⟩) (preWPX (rpre hX hM₀ s i) h χ) ∈
+      (gw hM₀ (groot hF M₀)).M (rstg s i)) :
+    ∃ a : ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s i).ref x h)).1,
+      (cmodel hF hM₀ hX).sat ((ccanonEnv hM₀ hX s i).diaPush x h a) χ := by
+  obtain ⟨t, c, hc, hrl, hwd, hdecl, hR₂⟩ := cdia_mem_child hX hT s i h χ hmem
+  have hR : GR (groot hF M₀) t := ⟨[c], pathOk_cons, hc⟩
+  have hmt : (⟨t, ⟨hR⟩⟩ : CAcc hF M₀) ∈
+      ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s i).ref x h)).1 :=
+    (ccanon_mem_iff hX s i h _).mpr ((gmem_path hR (P := [c]) hc).mpr (Or.inl hrl))
+  refine ⟨⟨_, hmt⟩, ?_⟩
   have hRr : GR (groot hF M₀) t := (carrows hF M₀).refl hT t
   have hmz := (ccanon_own_mem hX hT t _ hwd hRr).mpr hrl
   have hsatK : (cmodel hF hM₀ hX).sat
       ((ccanonEnv hM₀ hX t (glstg (groot hF M₀) t (rstg s i))).diaPush _ hwd ⟨_, hmz⟩)
       (pTrXKW hM₀ (groot hF M₀) t [c] hc (rstg s i) (rorig s x) (rorig_ref hX hM₀ s i ⟨X, h⟩)
         (preWPX (rpre hX hM₀ s i) h χ)) := by
-    have hmK : WFF.realiseAtA hT (wit t (rorig s x)) hwd (Term.eta b X hbd)
-        (pTrXKW hM₀ (groot hF M₀) t [c] hc (rstg s i) (rorig s x) (rorig_ref hX hM₀ s i ⟨X, h⟩)
-          (preWPX (rpre hX hM₀ s i) h χ)) ∈
-        (gw hM₀ t).M (glstg (groot hF M₀) t (rstg s i)) := by
-      rw [gchild_real (hM₀ := hM₀) hT hc hk (rstg s i) hrx hfk hfd hwd hbd _]
-      exact hm
     have hXA : X = hrl.data.A := by
       have h1 := (hrl.data.hdeclOf _ ⟨X, hwd⟩).symm.trans hwd
       simp only [Option.some.injEq, VarType.VTypeDia.injEq] at h1
@@ -536,49 +588,17 @@ theorem cdia_sat_child (hX : CluFlags) (hT : ModalSys.T = true) {n : ℕ}
     subst hXA
     have hj : glstg (groot hF M₀) t (rstg s i) ≤
         max (glstg (groot hF M₀) t (rstg s i)) hrl.data.i₀ := le_max_left _ _
-    have hK : hrl.data.i₀ ≤ max (glstg (groot hF M₀) t (rstg s i)) hrl.data.i₀ := le_max_right _ _
-    have hdecl := (gle hM₀ t hj).ref hwd
-    have hbK := (gle hM₀ t hj).ref hbd
-    have hH₁ : WFF.hereAt hT (wit t (rorig s x)) hdecl (Term.eta b _ hbK) ∈ (gw hM₀ t).M _ := by
-      have := (BWorld.mem_lift hj).mp
-        (gchild_here (hM₀ := hM₀) hT hc hk (rstg s i) hrx hfk hfd hwd hbd)
-      change WFF.here hT (Term.mono _ (Term.eta _ _ _)) (Term.mono _ (Term.eta _ _ _)) ∈ _ at this
-      rwa [Term.mono_eta, Term.mono_eta] at this
-    have hH₂ := BWorld.mem_T.mp (hrl.data.hhereAt (gw hM₀ t).mcsT _ hK hdecl)
-    have hR₁ : WFF.realiseAtA hT (wit t (rorig s x)) hdecl (Term.eta b _ hbK)
-        (WFF.mono ((gle hM₀ t hj).diaIn _) (pTrXKW hM₀ (groot hF M₀) t [c] hc (rstg s i)
-          (rorig s x) (rorig_ref hX hM₀ s i ⟨_, h⟩) (preWPX (rpre hX hM₀ s i) h χ))) ∈
-          (gw hM₀ t).M _ := by
-      have := (BWorld.mem_lift hj).mp hmK
-      rwa [WFF.mono_realiseAtA hT (gle hM₀ t hj) hwd hdecl, Term.mono_eta] at this
-    have hR₂ : WFF.realiseAtA hT (wit t (rorig s x)) hdecl (Term.mono (gle hM₀ t hK) hrl.data.t₀)
-        (WFF.mono ((gle hM₀ t hj).diaIn _) (pTrXKW hM₀ (groot hF M₀) t [c] hc (rstg s i)
-          (rorig s x) (rorig_ref hX hM₀ s i ⟨_, h⟩) (preWPX (rpre hX hM₀ s i) h χ))) ∈
-          (gw hM₀ t).M _ :=
-      BWorld.mem_of_provable (Δ := [_, _, _]) (fun φ hφ => by
-          rcases List.mem_cons.mp hφ with rfl | hφ
-          · exact hH₁
-          rcases List.mem_cons.mp hφ with rfl | hφ
-          · exact hH₂
-          · rw [List.mem_singleton.mp hφ]
-            exact hR₁)
-        ⟨Proof.here_subst hT _ _ _ _ (Proof.lookup List.mem_cons_self)
-          (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
-          (Proof.lookup (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ List.mem_cons_self)))⟩
     have hm' := (ccanon_own_mem hX hT t _ hdecl hRr).mpr hrl
     have hsatR := (IH t _ _ (by
       rw [WFF.size_realiseAtA, WFF.size_mono, size_pTrXKW, size_preWPX (hM₀ := hM₀) hX]
       exact hχs)).mpr hR₂
     have hs₁ := (Model.sat_realiseAtA hT (ccanonEnv hM₀ hX t _) (Ctx.Presented.noProjLast _) hdecl
-      (Term.mono (gle hM₀ t hK) hrl.data.t₀) hm' (ccanon_cont_real hX t hrl hK hdecl hRr hm')
-      _).mp hsatR
+      (Term.mono (gle hM₀ t (le_max_right _ _)) hrl.data.t₀) hm'
+      (ccanon_cont_real hX t hrl (le_max_right _ _) hdecl hRr hm') _).mp hsatR
     exact (Model.sat_mono (Model.Env.diaPush_agree (ccanonEnv_le hX t hj) hwd ⟨_, hmz⟩ hm') _).mp
       hs₁
   have hPe : pathOf hR = [c] := pathOf_of hR hc
-  have hrl' : (gw hM₀ (⟨⟨t, ⟨hR⟩⟩, hmt⟩ :
-      ((cmodel hF hM₀ hX).posEval ((ccanonEnv hM₀ hX s i).ref x h)).1).1.1).Realised
-      (kw (groot hF M₀) t [c] hc (rorig s x)) := hrl
-  exact (sat_diaPush_cK hX s i h ⟨_, hmt⟩ [c] hc hPe hrl' hwd hRr hmz χ).mpr hsatK
+  exact (sat_diaPush_cK hX s i h ⟨_, hmt⟩ [c] hc hPe hrl hwd hRr hmz χ).mpr hsatK
 
 /-! ## What `Here` says -/
 
