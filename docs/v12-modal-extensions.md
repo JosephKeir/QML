@@ -5495,9 +5495,26 @@ do not.
   (`pTrXK_box`, `tr_keptK`, `grealT_box`), so the tie is `Proof.back_shift` again.  `cRet_of_mem_pos` is the round trip, its
   nonempty leg from the truth of `◇_y ⊤`.  `mem_back_of_sat_posC` is short: one shape, so one annotation
   (`ann_eq_of_crawShapeL`), so one witness; contents from the data; `CRPos.congr_cont`; `eqRec`; `back_eqC`.
-* *Left.*  `retS` and `retxS`, both ways; split `cdia_sat_child`; `RetCongr` in `cmodel_indInvariant`, now with the
-  tags: `map` and `pair` from the atoms by `OutLeg.tag_holeRead` and `tag_pair`, `keep` from `back_keep` at a witness read
-  off the tag.  Then `hNS` goes.
+* *Left.*  `retS` and `retxS`, both ways; split `cdia_sat_child`; `RetCongr` in `cmodel_indInvariant` (checked below).
+  Then `hNS` goes.
+
+**`RetCongr` on the cluster under the whole-shape tag (2026-11-02, paper).**  All three laws go through, with no change to
+`Ret` or the rules.  They come after the truth lemma, which must not use them.  The round-trip part of `cRet` is free each
+time.  What needs an argument is the atom at a `◇` content.  Estimate: 200 to 250 lines.
+* *`keep`, the one in doubt.*  `IsCarrierData` gives a carrier `c`.  It is definable, so a term, and at a common stage with
+  `n`'s term `boxtm b`.  At row 1 the atom is `cbackRet_exists`'s.  At row 2 `c`'s term is `diatm y (boxtm bd)`, which names
+  the witness, and the atom is `back_keep` along `.pos y` at `b`, with value `collapse b`, denoting `n` here.  Its premise
+  `◇_y ⊤` is the truth of a nonempty extent (the truth lemma).  This atom's carrier `κ` is not `c`: their bodies may differ,
+  and only `κ`'s is kept.  They agree anyway.  The extent is `y`'s for both, the contents are the kept values for both
+  (`sat_back_keep`'s `key`, to be pulled out as a lemma), and the tags agree: one label by `tag_pos`, and one body shape,
+  since `tag_keep` gives `κ`'s and the law's new premise gives `c`'s, both `(domSh n).inner` shifted.  That premise is exactly
+  what the proof needs.  So the atom has the data and the tag.
+* *`map`.*  `Term.diaFree_hole` keeps the `◇`-free branch.  An atom goes by `back_beta`: data by `interp_holeRead`, tag
+  by `tag_holeRead`.  The carrier's data need a port of `BData.atom_data`.
+* *`pair`.*  Either side may be `◇`-free with no atom.  `IsCarrierData` names a carrier and truth ⇒ membership gives the atom,
+  as `BData.toAtom`.  Then one leg, which `leg_unique` got from extents and the cluster must get from the premise on labels:
+  `none` against `some` separates the rows, and at row 2 one label gives one witness.  That last step is the proof inside
+  `ann_eq_of_termShpW` (`cLab_inj`, `postIx_preIx`), to be pulled out as a lemma.  Then `back_pair`, with `tag_pair`.
 
 #### Strong B on S5, every shape: the check *(2026-10-31, paper)*
 
