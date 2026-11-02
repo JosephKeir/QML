@@ -5373,7 +5373,51 @@ How this was found: Knuth-Bendix completion on the laws, on one world, ran to `m
 * *Section 6, the alternative:* moving those cells to arrow frames does not work with `Frame` as it is, where the principle is valid too.  It would mean weakening `Frame` as in 4, then building arrow-labelled clusters on frames like the one above.  So the choice is the rule, or that.
 * *Section 5 stands:* the rule gives the lifts inside the cluster, KB5 and KDB5 have their root in it, and K45 and KD45 need a hub.  Not checked further here.
 
-**The decision: open.**  Whether to add the rule.  Recommendation: add it.  It says what every frame with 4 and 5 already forces.
+**The decision: open.**  Whether to add the rule: see "The proposed rule: precedents and characterisation".
+
+#### The proposed rule: precedents and characterisation *(2026-11-02, paper; the lemmas marked in Lean)*
+
+**Verdict.**  The rule is the object-level form of a textbook axiom, it has a clean frame condition, and every part of it has a precedent except one piece of syntax.  It is **U with objects**: U is `□(□p → p)`, shift reflexivity, which K45 proves propositionally.
+
+**The rule.**  With 4 and 5, for a leg `O`, a tuple `T` of keepable objects, and `φ` over `O.view` with a slot at `T`:
+* along `□`: `□∀k. (□φ̂(k) → φ(k))`;
+* along `◇_x`: `□_x∀k. (□_{x.keep}φ̂(k) → φ(k))`.
+`φ̂` is `φ` shifted one view in with its slot read kept (`WFF.loopHat`), and along `◇_x` the shift sends `x.dia` to `x.keep.dia`, as `four_dia`'s does.  Guard: `shaped` off (below).
+
+**Characterisation.**
+* *Frames.*  Every arrow's target has a unit the arrow absorbs: for `a : w → v` there is `e : v → v` with `a ; e = a` and `e ; b = b`.  Relationally this is `w R v ⇒ v R v`, the frame condition of U.  That the condition gives the rule is proved (1 of "The countermodel check").  The converse, that a frame failing it refutes the rule in some model, is the countermodel of that section generalised, and it is **sketched only**: `k`, `L⁰`, `L¹` over the arrows into a world, with a parameter at `a` for the clause `a ; e = a`.
+* *In words:* every reached world is reflexive, in the arrow sense.  T everywhere is S5's; this is T below the first step.
+* *Objects.*  ⭐`Model.boxLift_of_reached`, `Model.diaLift_of_reached` (in Lean, `QML_v12m_CubeComplete`, the second with shapes off): **keep is onto along every arrow out of a reached world**, in every model with 4 and 5, whatever the flags say.  `Frame.exists_left_inverse` gives `x` with `x ; a = side a a`.
+* *So the rule is `keep_lift` under a `□`* (paper, both ways).  Given the rule, the derivation in `QML_v12m_LiftT` runs with it in `T_box`'s place.  Given `□(keep_lift)`: `◇X ⊢ □◇(shift X)` puts the contrary one step further in, the lift names `k` there as `m.keep`, and `Proof.five_refute` applies, `m` now being an outer parameter.  This is `Proof.loop_tup`'s own proof, one view in.
+* *What that says about the flags.*  In a system with 4 and 5, `FourStrong` and `FourStrongW` only say anything at a world with no arrow in.  Under T or B every world with an arrow out is reached, so there they say nothing.  In K45 and KD45 they speak only of the root.  That is why S5's columns collapsed, and it predicts that KB5's and KDB5's collapse too, through `closed_T` at the root, once the rule is in.  Not built.
+
+**Precedents.**
+
+| Rule | Relation to the proposed rule |
+|---|---|
+| `T_box` | The same shape.  Under T the rule is an instance: `φ̂`'s collapse is `φ` (`Proof.far_nec`) |
+| `Proof.five_refute`, `Proof.loop_tup` | With `φ` over outer parameters the rule is already a theorem.  The rule extends that to objects born at the far world, the one case `five_box` cannot reach |
+| `here_keep` | The closest in shape: a statement under `□_x` about `x.keep` at the own arrow, not derivable.  The `◇_x` row is its T-off form, with no `Here` atom |
+| `back_keep` | The closest in origin: a rule found to be missing because no other rule mentions both `keep` and a round trip, shown independent by dropping a frame fact the other rules' soundness never uses (`homeUnique` there, `side_side` and `side_trans` here) |
+| `keep_lift` | The same content under a `□`, and the same leg parameter |
+| `B_dia` | The contrast.  B's open form fails on arrows, so it stays closed.  This open form is valid on arrows |
+| Coherence is the shadow of flag closure (`v12-arrow-canonical.md` §4) | The same pattern: propositional by closure, with an object-level component to be supplied |
+
+**The project's tests.**
+* *Accessibility first.*  It is weak: a statement about arrows, universal, with no existence claim, so it belongs to `Five` and not to a strong form.  The objects `keep_lift` then names at reached worlds already exist, by keeping along the way back.  It is not comprehension.
+* *The K paradigm.*  Two rows, as `K_box` and `K_dia`, `four_box` and `four_dia`, `five_box` and `five_dia`.  The `◇_x` row carries the witness's content.  It holds at every arrow of the extent: `a ; e = a`, so `e` lies in `x.keep`'s extent with the same content.  I expect it is not derivable from the `□` row, because `x.dia` is invisible in the `□` view and with T off no `Here` can name it, but that is **not shown**.  With both lifts on, both rows are theorems: the `◇_x` row by `keep_lift` along `.pos` and `five_dia`.
+* *Admissibility.*  Not derivable, by "The countermodel check".  With both lifts on it is derivable, so it adds nothing to the systems already complete.
+* *No `◇`-free restriction.*  The slot takes `◇` objects as well as `□`.
+* *Unlinked `◇`-equality.*  Not at issue: it relates no two possible objects.
+* *No new law.*  Sound from the present `Frame`.
+
+**Costs and open points.**
+* *`WFF.loopHat` is new in a rule's statement*, and this is the part without a precedent: a slot read at a different level from the rest.  It is in `QML_v12m_GLoop`, above `Proof`, so it has to move down, with `Term.keepOf` and `VarType.tup`.  Its substitution lemma is `WFF.loopHat_read`'s pattern, and `WFF.shift_loopHat` shows it behaves.
+* *The guard.*  With `shaped` on, a `◇` slot kept along `e` is `k` only if its shape is unchanged, and that is not a law with T off.  Under T the rule is derivable and with strong B and T off the system is outside `CubeSys`, so `shaped` off loses nothing built.  It would need revisiting if KB5 with strong B is ever filled.
+* *Soundness and substitution* (about 150 lines by estimate, not attempted).
+* *Whether the rule is enough* is not settled.  It gives the lifts at reached worlds.  K45 and KD45 still need the hub, which is undesigned.
+
+**Recommendation: add the rule, both rows, as one rule over `OutLeg`, under `Five`.**
 
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 

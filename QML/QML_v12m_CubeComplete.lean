@@ -66,6 +66,60 @@ theorem Frame.side_self_unit {σ : Signature} (F : Frame σ) (hF : ModalSys.Four
   have hc := F.trans_side hF hV (F.side hV a a) c
   rw [← hc, ← F.trans_assoc hF, he]
 
+/-- With an arrow in, `side` from the unit is the identity. -/
+theorem Frame.side_unit_self {σ : Signature} (F : Frame σ) (hF : ModalSys.Four = true)
+    (hV : ModalSys.Five = true) {u w v : F.W} (r : F.R u w) (a : F.R w v) :
+    F.side hV (F.side hV r r) a = a := by
+  have h := F.trans_side hF hV (F.side hV r r) a
+  rwa [F.side_self_unit hF hV] at h
+
+/-- ⭐**An arrow out of a reached world has a left inverse**, up to the unit at its target. -/
+theorem Frame.exists_left_inverse {σ : Signature} (F : Frame σ) (hF : ModalSys.Four = true)
+    (hV : ModalSys.Five = true) {u w v : F.W} (r : F.R u w) (a : F.R w v) :
+    ∃ x : F.R v w, F.trans hF x a = F.side hV a a := by
+  refine ⟨F.side hV a (F.side hV r r), ?_⟩
+  have h := F.side_cocycle hF hV a (F.side hV r r) a
+  rwa [F.side_unit_self hF hV r a] at h
+
+/-- ⭐**Keep is onto along every arrow out of a reached world**, in every model with 4 and 5,
+    whatever the lift flags say.  So the lifts only say anything at a world with no arrow in. -/
+theorem Model.boxLift_of_reached {σ : Signature} (M : Model σ) (hF : ModalSys.Four = true)
+    (hV : ModalSys.Five = true) {A : VarType} {u w : M.frame.W} (r : M.frame.R u w)
+    (a : M.frame.Acc w) (n : M.frame.Nec A a.1) :
+    ∃ m : M.frame.Nec A w, M.necEval (M.ops.necDup hF m) a = n := by
+  obtain ⟨x, hx⟩ := M.frame.exists_left_inverse hF hV r a.2.down
+  refine ⟨M.necEval (M.ops.necDup hF n) ⟨w, ⟨x⟩⟩, M.nec_inj ?_⟩
+  funext s
+  rw [M.necDup_eval hF _ a s, M.necDup_eval hF n ⟨w, ⟨x⟩⟩ _]
+  have e : M.frame.trans hF x (M.frame.trans hF a.2.down s.2.down) = s.2.down := by
+    rw [← M.frame.trans_assoc hF, hx, M.frame.side_self_unit hF hV]
+  rw [e]
+
+/-- `Model.boxLift_of_reached` for possible objects, with shapes off. -/
+theorem Model.diaLift_of_reached {σ : Signature} (M : Model σ) (hF : ModalSys.Four = true)
+    (hV : ModalSys.Five = true) (hN : ModalSys.shaped = false) {A : VarType} {u w : M.frame.W}
+    (r : M.frame.R u w) (a : M.frame.Acc w) (q : M.frame.Pos A a.1) :
+    ∃ m : M.frame.Pos A w, M.necEval (M.ops.posKeep hF m) a = q := by
+  obtain ⟨x, hx⟩ := M.frame.exists_left_inverse hF hV r a.2.down
+  refine ⟨M.necEval (M.ops.posKeep hF q) ⟨w, ⟨x⟩⟩, M.posFull_inj ?_⟩
+  have e : ∀ {t : M.frame.W} (s : M.frame.R a.1 t),
+      M.frame.trans hF x (M.frame.trans hF a.2.down s) = s := fun s => by
+    rw [← M.frame.trans_assoc hF, hx, M.frame.side_self_unit hF hV]
+  refine Prod.ext ?_ (funext fun h => by simp [hN] at h)
+  have key : ∀ (g : ∀ b : M.frame.Acc a.1, PLift (M.frame.R a.1 b.1)), (∀ b, g b = b.2) →
+      ((⟨{b | (⟨b.1, g b⟩ : M.frame.Acc a.1) ∈ (M.posFull q).1.1},
+        fun b => (M.posFull q).1.2 ⟨⟨b.1.1, g b.1⟩, b.2⟩⟩ : M.frame.PosSec A a.1) =
+        (M.posFull q).1) := by
+    intro g hg
+    obtain rfl : g = fun b => b.2 := funext hg
+    rfl
+  have h₁ := congrArg Prod.fst (M.posKeep_full hF (M.necEval (M.ops.posKeep hF q) ⟨w, ⟨x⟩⟩) a)
+  have h₂ := congrArg Prod.fst (M.posKeep_full hF q ⟨w, ⟨x⟩⟩)
+  dsimp only at h₁ h₂
+  rw [h₁, h₂]
+  exact key (fun b => ⟨M.frame.trans hF x (M.frame.trans hF a.2.down b.2.down)⟩)
+    (fun b => congrArg PLift.up (e b.2.down))
+
 /-- ⭐**The systems with a canonical model.**  Not a statement of what is coherent, but of what
     is built: 5 with T off and without both lifts is still to come.  Strong B with 5 without T is
     left out: KDB5
