@@ -1,6 +1,7 @@
 import QML.QML_v12m_Eq
 import QML.QML_v12m_Open
 import QML.QML_v12m_SubstId
+import QML.QML_v12m_LoopHatSubst
 
 /-!
 # QML v12m — substitution in proofs
@@ -2425,6 +2426,53 @@ abbrev OutLeg.bodySubst {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ 
       (OutLeg.slotsFrom hΔ (O.subst θ hθ hc)).root)
     ((OutLeg.slotsFrom hΓ O).insert T) ((OutLeg.slotsFrom hΔ (O.subst θ hθ hc)).insert T) Φ
 
+/-- ⭐**U with objects under a substitution.** -/
+theorem WFF.subst_fiveRefl {σ : Signature} {T : VarType} {ι : VarSymb → VarSymb} {Γ Δ : Ctx}
+    [Γ.NoSlots] [Δ.NoSlots]
+    (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0)
+    (hΔ : Δ.SlotsFrom 0) (hF : ModalSys.Four = true) (hT : T.tup = true) (O : OutLeg Γ)
+    (φ : WFF σ (O.view.insert (.bnd 0) T) 1) :
+    WFF.subst ι θ hθ hc hΓ hΔ (WFF.fiveRefl hF hT O φ) =
+      WFF.fiveRefl hF hT (O.subst θ hθ hc) (OutLeg.bodySubst θ hθ hc hΓ hΔ O φ) := by
+  cases O with
+  | nec =>
+      exact congrArg (fun χ => WFF.box (.all T (.imp (.box χ) _)))
+        (WFF.subst_loopHat_under hF hT θ hθ hc hΓ hΔ φ)
+  | pos x hx =>
+      have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
+      have hy : ∃ X, Δ.ref (ι x) = some (.VTypeDia X) :=
+        hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw
+      obtain ⟨X, hX⟩ := id hx
+      have hk₂ : ι (.step x .keep) = .step (ι x) .keep := Subst.coh_keep_dia hθ hc hX
+      have hθy := Subst.ok_dia hθ hx hw
+      have hcy := Subst.coh_dia hθ hc hx
+      have hsy := hΔ.diaIn (ι x)
+      have hO := Subst.ok_under (d := 0) hθy T hsy.root
+      have hC := Subst.coh_under hθy hcy (hΓ.diaIn x) T hsy.root
+      have hne : (VarSymb.step x .keep).rt ≠ .bnd 0 :=
+        Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0))
+          (Ctx.ref_keep_of' hF hX rfl)
+      have hk₁ : VarSymb.shiftSlot ι 0 0 (.step x .keep) = .step (ι x) .keep :=
+        (if_neg hne).trans hk₂
+      have hkI := Ctx.exists_keep_body hF hx T
+      have hkI' : ∃ Y, ((Δ.diaIn (ι x)).insert (.bnd 0) T).ref (.step (ι x) .keep) =
+          some (.VTypeDia Y) := Ctx.exists_keep_body hF hy T
+      have hwk : (((θ.dia x (ι x)).under 0 0 T hsy.root).at (.step x .keep)).idxAlong [] =
+          .step (ι x) .keep :=
+        hkI.elim fun _ hY => (hC _ _ hY []).trans hk₁
+      have hθk := Subst.ok_dia hO hkI hwk
+      have hck : Subst.Coh (VarSymb.shiftSlot ι 0 0)
+          (((Γ.diaIn x).insert (.bnd 0) T).diaIn (.step x .keep))
+          (((θ.dia x (ι x)).under 0 0 T hsy.root).dia (.step x .keep) (.step (ι x) .keep)) :=
+        hk₁ ▸ Subst.coh_dia hO hC hkI
+      refine congrArg WFF.neg ((WFF.subst_dia θ hθ hc hΓ hΔ hx (ι x) rfl hy hθy hcy hsy _).trans
+        (congrArg (WFF.dia _ _) ?_))
+      refine congrArg (fun χ => WFF.neg (.all T (.imp χ _))) ?_
+      exact congrArg WFF.neg ((WFF.subst_dia _ hO hC ((hΓ.diaIn x).insert T) (hsy.insert T) hkI _
+        hk₁ hkI' hθk hck ((hsy.insert T).diaIn _) _).trans
+        (congrArg (fun χ => WFF.dia _ hkI' (WFF.neg χ))
+          (WFF.subst_loopHatX_under hF hT θ hθ hc hΓ hΔ hx φ hθk hck hO hC)))
+
 /-- Substituting a body along `◇_x` given by a hole formula: the content's view term goes as
     `x`'s view sends it, the hole formula as the `□` view does. -/
 theorem WFF.subst_viewBody {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
@@ -2946,6 +2994,9 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
                 Ctx.NoSlots.slots Ctx.NoSlots.slots
                 (Subst.shiftCorr_dia_keep hF hθ hx hw) φ)).symm).symm)
         (Proof.five_dia hF hV hy (Proof.subst p θ hθ hc hΓ))
+  | _, _, _, @Proof.five_refl _ _ Γ _ Δ hF hV hN O T hT φ, Γ', _, ι, θ, hθ, hc, hΓ =>
+      Proof.conv (WFF.subst_fiveRefl θ hθ hc hΓ Ctx.NoSlots.slots hF hT O φ).symm
+        (Proof.five_refl hF hV hN (O.subst θ hθ hc) hT _)
   | _, _, _, @Proof.here_keep _ _ Γ _ Δ hT hF x hx A a bd, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
       have hy : ∃ X, Γ'.ref (ι x) = some (.VTypeDia X) :=

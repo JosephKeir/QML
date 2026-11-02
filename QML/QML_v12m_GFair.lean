@@ -132,8 +132,8 @@ theorem Ext.realF (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k :
       simp only [GNetSt.realF]
       split_ifs with h
       · obtain ⟨hl, hlt⟩ := h
-        obtain ⟨-, hV, hS, hW, hT⟩ := hN.flags hl
-        obtain ⟨_, hg, _⟩ := gloopStep_ok hF hV hS hW hT (hN.mcs [] trivial) (hN.loop hl) hlt
+        obtain ⟨-, hV, hS, hT⟩ := hN.flags hl
+        obtain ⟨_, hg, _⟩ := gloopStep_ok hF hV hS hT (hN.mcs [] trivial) (hN.loop hl) hlt
         refine (Ext.setSt hg).trans (Ext.setFwd fun v T hv => ?_)
         obtain ⟨u, s, rfl, -, -⟩ := kView_item hv
         exact gloopF_old (kView_rt_lt hv) s

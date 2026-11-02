@@ -76,19 +76,16 @@ class ModalSys where
 def ModalSys.K : ModalSys :=
   ⟨false, false, false, false, false, false, false, false, false, false, false, false⟩
 
-/-- 4's `□`-lift in force: `FourStrong`, or T and 5, which prove it (`Proof.keep_lift_T`). -/
-def ModalSys.fourL [ModalSys] : Bool := ModalSys.FourStrong || (ModalSys.T && ModalSys.Five)
+/-- 4's lifts are derivable: with T and 5 (`Proof.keep_lift_T`), or with 5 and weak B, T and strong
+    B off (`Proof.keep_lift_B`). -/
+def ModalSys.liftsProved [ModalSys] : Bool :=
+  ModalSys.Five && (ModalSys.T || (ModalSys.B && !ModalSys.BStrong))
 
-/-- 4's `◇`-lift in force: `FourStrongW`, or T and 5, which prove it. -/
-def ModalSys.fourLW [ModalSys] : Bool := ModalSys.FourStrongW || (ModalSys.T && ModalSys.Five)
+/-- 4's `□`-lift in force: `FourStrong`, or derivable. -/
+def ModalSys.fourL [ModalSys] : Bool := ModalSys.FourStrong || ModalSys.liftsProved
 
-theorem ModalSys.fourS_of_noT [ModalSys] (hT : ModalSys.T = false) (h : ModalSys.fourL = true) :
-    ModalSys.FourStrong = true := by
-  simpa [ModalSys.fourL, hT] using h
-
-theorem ModalSys.fourSW_of_noT [ModalSys] (hT : ModalSys.T = false)
-    (h : ModalSys.fourLW = true) : ModalSys.FourStrongW = true := by
-  simpa [ModalSys.fourLW, hT] using h
+/-- 4's `◇`-lift in force: `FourStrongW`, or derivable. -/
+def ModalSys.fourLW [ModalSys] : Bool := ModalSys.FourStrongW || ModalSys.liftsProved
 
 /-- The systems without B.  B's accessible worlds lead back to their origin, against the order
     of construction; its canonical model is the arrow-based network (`BArrow`).  Strong B needs
@@ -511,8 +508,8 @@ def VarType.liftableR : VarType → Bool
   | .VTypeDia _ => ModalSys.FourStrongW
   | _ => false
 
-/-- The types with 4's lift in force: `VarType.liftableR`, and under T and 5 both kinds, where the
-    lift is derivable (`Proof.keep_lift_T`, `Proof.keep_lift_posT`). -/
+/-- The types with 4's lift in force: `VarType.liftableR`, and both kinds where the lift is
+    derivable (`ModalSys.liftsProved`). -/
 def VarType.liftable : VarType → Bool
   | .VTypeBox _ => ModalSys.fourL
   | .VTypeDia _ => ModalSys.fourLW
@@ -522,8 +519,14 @@ theorem VarType.liftable_of_R {T : VarType} (h : T.liftableR = true) : T.liftabl
   cases T <;> simp_all [VarType.liftableR, VarType.liftable, ModalSys.fourL, ModalSys.fourLW]
 
 theorem VarType.liftableR_or {T : VarType} (h : T.liftable = true) :
-    T.liftableR = true ∨ (ModalSys.T = true ∧ ModalSys.Five = true) := by
+    T.liftableR = true ∨ ModalSys.liftsProved = true := by
   cases T <;> simp_all [VarType.liftableR, VarType.liftable, ModalSys.fourL, ModalSys.fourLW]
+
+theorem ModalSys.liftsProved_cases (h : ModalSys.liftsProved = true) :
+    ModalSys.Five = true ∧ (ModalSys.T = true ∨
+      (ModalSys.T = false ∧ ModalSys.B = true ∧ ModalSys.shaped = false)) := by
+  cases hT : ModalSys.T <;> cases hB : ModalSys.B <;> cases hS : ModalSys.BStrong <;>
+    cases hV : ModalSys.Five <;> simp_all [ModalSys.liftsProved, ModalSys.shaped]
 
 theorem VarType.keepable_of_liftable {T : VarType} (h : T.liftable = true) :
     T.keepable = true := by

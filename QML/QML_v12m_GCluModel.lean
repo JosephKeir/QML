@@ -179,8 +179,8 @@ theorem csymm (hM₀ : Theory.IsMCS M₀) (hX : CluFlags) (hB : ModalSys.B = tru
   · exact (carrows hF M₀).refl hT w
   have hT' : ModalSys.T = false := Bool.eq_false_iff.mpr hT
   by_cases hne : (WFF.box (Γ := ctxOf l₀) .bot).neg ∈ M₀
-  · have hl : GNetSt.LoopOn M₀ := ⟨hB, ⟨hF, hX.five, ModalSys.fourS_of_noT hT' hX.fourS,
-      ModalSys.fourSW_of_noT hT' hX.fourSW, hT'⟩, hne⟩
+  · have hl : GNetSt.LoopOn M₀ := ⟨hB, ⟨hF, hX.five,
+      Bool.eq_false_iff.mpr fun h => hT (hX.bT h), hT'⟩, hne⟩
     rcases hp : rpath w with _ | ⟨c, P⟩
     · exact ⟨[], .inr ⟨rfl, hl⟩, by have := rpath_eq w; rwa [hp] at this⟩
     · exact ⟨rpath w, .inl (by rw [hp]; exact pathOk_cons), rpath_eq w⟩

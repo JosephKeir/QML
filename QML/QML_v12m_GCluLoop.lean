@@ -28,7 +28,7 @@ theorem le_lstg (hM₀ : Theory.IsMCS M₀) (hl : GNetSt.LoopOn M₀) (i : ℕ) 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 /-- With the self-edge, kept items are the object's: T is off. -/
 theorem keepOnly_of_loop (hl : GNetSt.LoopOn M₀) : ModalSys.keepOnly = false := by
-  have hT : ModalSys.T = false := hl.2.1.2.2.2.2
+  have hT : ModalSys.T = false := hl.2.1.2.2.2
   simp [ModalSys.keepOnly, hT]
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in

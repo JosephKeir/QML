@@ -13,11 +13,14 @@ Lean 4 + Mathlib formalisation of a quantified modal logic with first-class poss
   combination without B (`[ModalSys.NoB]`, `QML_v12m_NoBComplete.lean`: the staged tree `Canon`
   without 4, the growing tree `GArrow` with 4 and any of its strong forms, and the cluster model
   `GArrow.cmodel` for 5 — so far K45 and KD45 with both lifts and S5 with any, `ModalSys.NoB.fiveCluster`;
-  T and 5 prove 4's lifts, `QML_v12m_LiftT`).
+  T and 5 prove 4's lifts, `QML_v12m_LiftT`; with T off the rule `Proof.five_refl`, U with objects,
+  supplies what they need at reached worlds, `QML_v12m_SemRefl`, and with weak B proves them,
+  `QML_v12m_LiftB`).
   `QML_v12m_CubeComplete.lean` states everything built as one set of theorems for
   `[ModalSys.CubeSys]`, S5 with `B` and strong B on included (`completenessCube`, `ModalSys.S5_cube`,
   `ModalSys.S5Strong_cube`), and KB5 and KDB5 with weak B (`ModalSys.KB5_cube`, `ModalSys.KDB5_cube`:
-  the root's self-edge, `QML_v12m_GLoop*`, `QML_v12m_GCluLoop`). B with 4 off
+  the root's self-edge, `QML_v12m_GLoop*`, `QML_v12m_GCluLoop`), each with any of 4's lifts
+  (`ModalSys.KB5NoLift_cube`, `ModalSys.KDB5NoLift_cube`). B with 4 off
   (`[ModalSys.NoFour]`, which includes `ModalSys.WCoh`; T, D and B each in either strength;
   strong B for rows 1–2 and, with `BStrongW`, rows 3–4) is complete for **every presented
   context** with a fresh presentation

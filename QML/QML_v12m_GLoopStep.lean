@@ -9,7 +9,7 @@ root's next variable `c : A`: its kept items go to `c`'s own components, and its
 fresh root of the type of their contents (`gloopF`).
 
 `gpairS` abstracts `c`'s items into one slot, the kept part first.  Splitting that slot,
-`Proof.loop_tup` reflects the kept part, and the transfer on the older variables does the rest.
+`Proof.five_refl` reflects the kept part, and the transfer on the older variables does the rest.
 -/
 
 namespace V12M
@@ -799,7 +799,7 @@ theorem gloopArrow_eq (hT : ModalSys.T = false) {A : VarType} {cl l : List VarTy
     rw [eS_item _ hs', entOf_mono _ (hf _ T hl hv)]
     exact .refl _
 
-/-- What `Proof.loop_tup` reflects for `ψ`: its `□` contents existentially closed. -/
+/-- What `Proof.five_refl` reflects for `ψ`: its `□` contents existentially closed. -/
 def gloopBody (hT : ModalSys.T = false) (A : VarType) (cl : List VarType)
     (ψ : WFF σ ((ctxOf (A :: cl)).kView none) 0) :
     WFF σ ((ctxOf cl).boxIn.insert (.bnd 0) (VarType.kc A)) 1 :=
@@ -857,11 +857,10 @@ theorem keepFix_shift (hF : ModalSys.Four = true) (hb : ModalSys.keepOnly = fals
     rfl) hl hv
 
 /-- ⭐**One necessity about the root's next variable is consistent with the root**: `◇¬` of the
-    hat is refuted (`Proof.loop_tup`), so the transfer reflects `□ψ` at the variable's kept part,
+    hat is refuted (`Proof.five_refl`), so the transfer reflects `□ψ` at the variable's kept part,
     and the Henkin witness of its contents is the fresh root. -/
 theorem gloop_one (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
-    (hT : ModalSys.T = false) {A : VarType} {cl l : List VarType}
+    (hS : ModalSys.BStrong = false) (hT : ModalSys.T = false) {A : VarType} {cl l : List VarType}
     {M : Set (WFF σ (ctxOf l) 0)} (hM : Theory.IsMCS M) (hle : (ctxOf (A :: cl)).Le (ctxOf l))
     {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf cl).kView none) (ctxOf l) f)
     (hkf : KeepFix cl f)
@@ -870,6 +869,7 @@ theorem gloop_one (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
     Theory.Consistent (WFF.mono (ctxOf_le_append [VarType.lc A] l) '' M ∪
       {gloopArrow hT hle hf ψ}) := by
   have hb : ModalSys.keepOnly = false := by simp [ModalSys.keepOnly, hT]
+  have hN : ModalSys.shaped = false := by simp [ModalSys.shaped, hT, hS]
   have hle₀ : (ctxOf cl).Le (ctxOf l) := (ctxOf_le_append [A] cl).trans hle
   have hTt := VarType.tup_kc A
   have hfrV := (Ctx.NoSlots.slots (Γ := (ctxOf cl).boxIn)).rootFresh (le_refl 0)
@@ -881,7 +881,7 @@ theorem gloop_one (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
   -- The step, through the transfer, at the variable's objects.
   have hE : WFF.mono hle₀ (.box (.all _ (.imp (.box (WFF.loopHat hF hTt (gloopBody hT A cl ψ)))
       (gloopBody hT A cl ψ)))) ∈ M := hM.closed ⟨[], (fun _ hx => by cases hx),
-    Provable.monoCtx (Δs := []) hle₀ ⟨Proof.loop_tup hF hV hS hW hTt _⟩⟩
+    Provable.monoCtx (Δs := []) hle₀ ⟨Proof.five_refl hF hV hN .nec hTt _⟩⟩
   have him := htr _ hE
   have eI := WFF.instantiate_subst_under (V := (ctxOf cl).boxIn) _ hO hC (objTup (σ := σ) hle)
     (.imp (.box (WFF.loopHat hF hTt (gloopBody hT A cl ψ))) (gloopBody hT A cl ψ))
@@ -932,8 +932,7 @@ theorem gloop_one (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
     variables up to the next one is consistent with the root, the next one's `□` contents going to
     a fresh variable. -/
 theorem gloop_consistent (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
-    (hT : ModalSys.T = false) {A : VarType} {cl l : List VarType}
+    (hS : ModalSys.BStrong = false) (hT : ModalSys.T = false) {A : VarType} {cl l : List VarType}
     {M : Set (WFF σ (ctxOf l) 0)} (hM : Theory.IsMCS M) (hle : (ctxOf (A :: cl)).Le (ctxOf l))
     {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf cl).kView none) (ctxOf l) f)
     (hkf : KeepFix cl f)
@@ -945,7 +944,7 @@ theorem gloop_consistent (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
     (box_top_mem hM hle) (fun h₁ h₂ => box_and_mem hM hle h₁ h₂)
     (gloopArrow hT hle hf) (fun _ _ => rfl)
     (WFF.mono (ctxOf_le_append [VarType.lc A] l) '' M) L (fun δ hδ => (hL δ hδ).imp id id)
-  exact gloop_one hF hV hS hW hT hM hle hf hkf htr hψ (derives_of_derives hder p)
+  exact gloop_one hF hV hS hT hM hle hf hkf htr hψ (derives_of_derives hder p)
 
 /-! ## The step at the root -/
 
@@ -998,15 +997,15 @@ theorem keepFix_gloopF {A : VarType} {cl : List VarType} {f : VarSymb → LEnt �
 
 /-- ⭐One step along the root's self-edge. -/
 theorem gloopStep_ok (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true)
-    (hT : ModalSys.T = false) {t : NodeSt σ} {cl : List VarType} {f : VarSymb → LEnt σ}
+    (hS : ModalSys.BStrong = false) (hT : ModalSys.T = false) {t : NodeSt σ} {cl : List VarType}
+    {f : VarSymb → LEnt σ}
     (hs : Theory.IsMCS t.M) (hd : LoopData t cl f) (hlt : cl.length < t.l.length) :
     Theory.IsMCS (gloopStep t cl f).M ∧ Grows t (gloopStep t cl f) ∧
       LoopData (gloopStep t cl f) (nextTy t.l cl :: cl) (gloopF f cl.length t.l.length) := by
   obtain ⟨⟨hsuf, _, hf, htr⟩, hkf⟩ := hd
   have hsuf' := suffix_next hsuf hlt
   have hle := ctxOf_le_of_suffix hsuf'
-  have hcons := gloop_consistent hF hV hS hW hT hs hle hf hkf htr
+  have hcons := gloop_consistent hF hV hS hT hs hle hf hkf htr
   have hsub : WFF.mono (ctxOf_le_append [VarType.lc (nextTy t.l cl)] t.l) '' t.M ∪
       gloopSet t cl f (nextTy t.l cl) ⊆
         WFF.mono (ctxOf_le_append [VarType.lc (nextTy t.l cl)] t.l) '' t.M ∪

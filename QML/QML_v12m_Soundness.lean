@@ -3,6 +3,7 @@ import QML.QML_v12m_SemStrongT
 import QML.QML_v12m_SemHere
 import QML.QML_v12m_SemBack
 import QML.QML_v12m_SemRealise
+import QML.QML_v12m_SemRefl
 
 /-!
 # QML v12m — soundness
@@ -348,6 +349,9 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
         rintro c' hc rfl; exact hφ
       exact ⟨X, hrk, ⟨_, hm'⟩, (sat_shift Ctx.NoSlots.slots
         (Env.shiftAgree_diaKeep hF env hr v _ hm hrk hm') φ).mpr (key _ hm e)⟩
+  | @five_refl Γ _ Δ hF hV hN O T hT φ =>
+      intro M _ _ env _ _ _
+      exact Model.sat_fiveRefl hF hV hN hT env O φ
   | @here_keep Γ _ Δ hT hF x hx A a bd =>
       intro M hM w env hfin hnp hΔ hd
       obtain ⟨X, hr, b, hb⟩ := hd

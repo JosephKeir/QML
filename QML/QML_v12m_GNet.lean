@@ -50,10 +50,9 @@ structure GNetSt (σ : Signature) where
   /-- Whether the root has a self-edge. -/
   lp : Prop
 
-/-- The flags the root's self-edge runs on: T off, and 4, 5 and both of 4's lifts. -/
+/-- The flags the root's self-edge runs on: 4 and 5, T and strong B off. -/
 def LoopFlags : Prop :=
-  ModalSys.Four = true ∧ ModalSys.Five = true ∧ ModalSys.FourStrong = true ∧
-    ModalSys.FourStrongW = true ∧ ModalSys.T = false
+  ModalSys.Four = true ∧ ModalSys.Five = true ∧ ModalSys.BStrong = false ∧ ModalSys.T = false
 
 namespace GNetSt
 
@@ -258,8 +257,8 @@ theorem Good.realF (hF : ModalSys.Four = true) (hN : N.Good) {k : Node} (hk : N.
       simp only [GNetSt.realF]
       split_ifs with h
       · obtain ⟨hl, hlt⟩ := h
-        obtain ⟨-, hV, hS, hW, hT⟩ := hN.flags hl
-        obtain ⟨hmcs, hg, hfd⟩ := gloopStep_ok hF hV hS hW hT (hN.mcs [] trivial) (hN.loop hl) hlt
+        obtain ⟨-, hV, hS, hT⟩ := hN.flags hl
+        obtain ⟨hmcs, hg, hfd⟩ := gloopStep_ok hF hV hS hT (hN.mcs [] trivial) (hN.loop hl) hlt
         refine (hN.setSt (s := []) trivial hg hmcs).setLoop ?_
         rw [setSt_self]
         exact hfd

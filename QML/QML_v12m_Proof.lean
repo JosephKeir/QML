@@ -1,6 +1,7 @@
 import QML.QML_v12m_SubstEta
 import QML.QML_v12m_Presented
 import QML.QML_v12m_BackSyntax
+import QML.QML_v12m_LoopHat
 
 /-!
 # QML v12m — the proof system
@@ -215,6 +216,17 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (.dia x hx φ) →
       Proof σ Γ Δ (.box (.dia (.step x .keep) (Ctx.exists_keep_dia hF hx)
         (WFF.shift (Ctx.shifts_diaIn_keep hF Γ x) Ctx.NoSlots.slots φ)))
+  /-- ⭐**U with objects** (weak 5, with 4; docs, "The countermodel check" and "The proposed rule"):
+      `□∀k. (□φ̂(k) → φ(k))`, and along `◇_x`, `□_x∀k. (□_{x.keep}φ̂(k) → φ(k))`.  Every world an
+      arrow reaches is reflexive: `a ; side a a = a`, and `side a a` is a left unit.  For a body
+      over outer parameters this is `Proof.five_refute`; what no other rule reaches is an object
+      `k` born at the far world.  Not derivable without 4's lifts, and with them derivable (docs,
+      "The countermodel check").  With weak B it proves them (`Proof.keep_lift_B`).  With shapes
+      off: a shape need not survive keeping along `side a a`. -/
+  | five_refl {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hF : ModalSys.Four = true)
+      (hV : ModalSys.Five = true) (hN : ModalSys.shaped = false) (O : OutLeg Γ) {T : VarType}
+      (hT : T.tup = true) (φ : WFF σ (O.view.insert (.bnd 0) T) 1) :
+      Proof σ Γ Δ (WFF.fiveRefl hF hT O φ)
   -- T + 4
   /-- ⭐**A possible object, kept, is realised at each member of its extent** (T + 4):
       `□_x Here(◇_{x.keep}(shift bd), bd)` (`WFF.hereKeep`), for any body `bd` of `x`'s view, as

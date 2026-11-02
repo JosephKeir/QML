@@ -6,7 +6,7 @@ import QML.QML_v12m_GCluRet
 Membership ⇒ truth at `retS` and `retxS`, at necessary shapes (`docs/v12-modal-extensions.md`,
 "`retS` on the cluster").
 
-* `WFF.instantiate_bindFree`, `WFF.subst_lifted`, ⭐`BWorld.ret_term`: `Proof.retN_lift`, read at a
+* `WFF.subst_lifted`, ⭐`BWorld.ret_term`: `Proof.retN_lift`, read at a
   term of a later stage.
 * `Proof.back_of_tieV`: `Proof.back_of_tie` from a `Back` along the plain leg.
 * `kept2_path`, `kept2_real`: a home term's kept carrier, at the far world.
@@ -27,32 +27,6 @@ open BArrow GArrow
 section LiftRead
 
 variable {σ : Signature} {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] {A : VarType}
-
-/-- Filling a bound variable, at a later context, is substituting the variable. -/
-theorem WFF.instantiate_bindFree (h : Γ.Le Γ') (c : ℕ) (hc : Γ.RootFresh (.free c)) {T : VarType}
-    {x₀ : Ann T} (x : Term σ Γ' T x₀) (ψ : WFF σ (Γ.insert (.free c) T) 0) :
-    WFF.instantiate Ctx.NoSlots.slots x (WFF.mono (h.insert (.bnd 0) T)
-        (WFF.bindFree c hc Ctx.NoSlots.slots T ψ)) =
-      WFF.subst (Subst.singleIdx (.free c) (.tm x)) (Subst.single (.free c) (.tm x))
-        (Subst.ok_single h rfl) (Subst.coh_single hc h rfl)
-        ((Ctx.NoSlots.slots (Γ := Γ)).insertFree c T) Ctx.NoSlots.slots ψ := by
-  have hfr : Γ.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ)).rootFresh le_rfl
-  unfold WFF.instantiate WFF.substRoot
-  refine (WFF.subst_mono (h.insert (.bnd 0) T) _ _ _
-    ((Ctx.NoSlots.slots (Γ := Γ)).insert T) _ _ _).trans ?_
-  unfold WFF.bindFree WFF.renameRoot
-  refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ ψ
-  refine Subst.sim_of ?_
-  intro v U hlp hv
-  rw [Subst.comp_apply]
-  by_cases hvr : v = .root (.free c)
-  · subst hvr
-    rw [Subst.single_root, Subst.single_root, SubE.comp_ren, Subst.at_single_root]
-    exact .refl _
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
-    rw [Subst.single_ne _ hvr, Subst.single_ne _ hvr, SubE.comp_ren,
-      Subst.single_at_ne (Ctx.ref_rt_ne hfr ((Ctx.ref_nonproj Γ hlp).trans hv'))]
-    exact .refl _
 
 /-- A substitution that is the identity on a view, into an instantiation weakened from the view. -/
 theorem WFF.subst_instantiate_ren {ι : VarSymb → VarSymb} {V V₁ V' : Ctx} [V.NoSlots]

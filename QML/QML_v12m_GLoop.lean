@@ -6,14 +6,12 @@ import QML.QML_v12m_GViewSubst
 
 KB5 and KDB5 (`docs/v12-modal-extensions.md`, "KB5 and KDB5: the root's loop").  With T off the
 root joins the cluster by a self-edge, `u.keep ↦ u`, `u.box ↦` a late root.  Two facts make its
-transfer consistent, and neither needs a new rule.
+transfer consistent.
 
 * ⭐`Proof.closed_T`, the base: with `□⊥` refuted, `□ψ ⊢ ψ` for closed `ψ`, by weak B and 4.  The
   only use of B.
-* ⭐`Proof.loop_tup`, the step: what the new variable's reading says is reflected, by 5 and the
-  lifts.  `WFF.loopHat` is a formula one view in with its slot kept, and `◇¬(□φ̂ → φ)` gives, by
-  `Proof.keep_lift_tup`, `◇(□(shift Q) ∧ ¬Q)` for `Q` the body read at kept objects, which
-  `five_box` refutes (`WFF.loopHat_read`).
+* `Proof.five_refl`, the step: what the new variable's reading says is reflected.  `WFF.loopHat` is
+  a formula one view in with its slot kept, and `WFF.loopHat_read` reads it at kept objects.
 -/
 
 namespace V12M
@@ -98,27 +96,6 @@ def Proof.of_neg_imp {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {A B : WFF σ Γ 0}
       (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
       (Proof.lookup List.mem_cons_self)))))
 
-/-- `¬□∀B ⊢ ◇∃¬B`. -/
-def Proof.dia_ex_neg {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)}
-    (B : WFF σ (Γ.boxIn.insert (.bnd 0) T) 1) (c : ℕ) (hc : Γ.boxIn.RootFresh (.free c))
-    (h : Proof σ Γ Δ (WFF.box (.all T B)).neg) :
-    Proof σ Γ Δ ((OutLeg.nec : OutLeg Γ).dia (.ex T B.neg)) := by
-  have r : Proof σ (Γ.boxIn.insert (.free c) T)
-      ([(WFF.ex T B.neg).neg].map (WFF.weaken hc.root T))
-      (WFF.openFree c hc Ctx.NoSlots.slots B) := by
-    refine Proof.byContra (Proof.imp_elim
-      (Proof.lookup (x := (WFF.weaken hc.root T (WFF.ex T B.neg).neg))
-        (List.mem_cons_of_mem _ List.mem_cons_self)) ?_)
-    refine Proof.ex_intro T (Term.eta (.root (.free c)) T (Ctx.ref_insert_root _ _ T)) ?_
-    exact Proof.conv (WFF.instantiate_eta_openFree c hc Ctx.NoSlots.slots Ctx.NoSlots.slots
-      B.neg).symm (Proof.lookup List.mem_cons_self)
-  have r' := Proof.all_intro c T hc r
-  rw [WFF.bindFree_openFree] at r'
-  have hb : Proof σ Γ [WFF.box (WFF.ex T B.neg).neg] (.box (.all T B)) := Proof.K_box r'
-  exact Proof.imp_intro (Proof.imp_elim (Proof.ofSubset (fun _ hx => List.mem_cons_of_mem _ hx) h)
-    (Proof.imp_elim (Proof.ofSubset (fun _ hx => by cases hx) (Proof.imp_intro hb))
-      (Proof.lookup List.mem_cons_self)))
-
 /-- `◇¬(□(shift Q) → Q)` is refuted: by `five_box`, `□Q`. -/
 def Proof.five_refute {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hF : ModalSys.Four = true)
     (hV : ModalSys.Five = true) {P : WFF σ Γ.boxIn.boxIn 0} {Q : WFF σ Γ.boxIn 0}
@@ -139,22 +116,7 @@ def Proof.five_refute {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hF : Mo
   exact Proof.imp_elim h (Proof.imp_elim (Proof.ofSubset (fun _ hx => by cases hx)
     (Proof.imp_intro hb)) h₂)
 
-/-- Equal terms are `Sim`. -/
-theorem SubE.Sim.of_sig {Δ : Ctx} {T : VarType} {a b : Ann T} {s : Term σ Δ T a}
-    {t : Term σ Δ T b} (h : (⟨a, s⟩ : Σ c, Term σ Δ T c) = ⟨b, t⟩) (U : VarType) :
-    SubE.Sim U (.tm s) (.tm t) := by
-  cases h
-  exact .refl _
-
 /-! ## Tuples of kept objects -/
-
-/-- The types of tuples of keepable objects. -/
-def VarType.tup : VarType → Bool
-  | .VTypeBox _ => true
-  | .VTypeDia _ => true
-  | .VTypeOne => true
-  | .VTypeProd A B => VarType.tup A && VarType.tup B
-  | .Var => false
 
 /-- The keepable components of a variable of type `A`. -/
 def VarType.kc : VarType → VarType
@@ -174,25 +136,6 @@ theorem VarType.tup_kc : ∀ A : VarType, (VarType.kc A).tup = true
       change ((VarType.kc A).tup && (VarType.kc B).tup) = true
       rw [VarType.tup_kc A, VarType.tup_kc B]
       rfl
-
-/-- The annotation of `Term.keepOf`. -/
-def keepAnn : VarSymb → (T : VarType) → Ann T
-  | _, .Var => .var
-  | _, .VTypeOne => .one
-  | w, .VTypeProd A B => .prod (keepAnn (.step w .fst) A) (keepAnn (.step w .snd) B)
-  | w, .VTypeBox A => Ann.eta (.step w .keep) (.VTypeBox A)
-  | w, .VTypeDia A => Ann.eta (.step w .keep) (.VTypeDia A)
-
-/-- ⭐A tuple of objects, kept: the tuple of its components' `keep` steps. -/
-def Term.keepOf (hF : ModalSys.Four = true) {Γ : Ctx} : (T : VarType) → T.tup = true →
-    (w : VarSymb) → Γ.ref w = some T → Term σ Γ.boxIn T (keepAnn w T)
-  | .VTypeOne, _, _, _ => .unit
-  | .VTypeProd A B, ht, w, h =>
-      have hAB : A.tup = true ∧ B.tup = true := by simpa [VarType.tup] using ht
-      .pair (Term.keepOf hF A hAB.1 (.step w .fst) (Ctx.ref_fst_of h))
-        (Term.keepOf hF B hAB.2 (.step w .snd) (Ctx.ref_snd_of h))
-  | .VTypeBox A, _, w, h => Term.eta (.step w .keep) (.VTypeBox A) (Ctx.ref_keep_of' hF h rfl)
-  | .VTypeDia A, _, w, h => Term.eta (.step w .keep) (.VTypeDia A) (Ctx.ref_keep_of' hF h rfl)
 
 /-- A tuple of kept addresses. -/
 inductive Term.Kept {σ : Signature} {Ω : Ctx} : {T : VarType} → {a : Ann T} → Term σ Ω T a → Prop
@@ -236,25 +179,6 @@ theorem Term.Kept.read (hF : ModalSys.Four = true) {Ω V : Ctx} {ι : VarSymb �
       | VTypeProd A B => cases hk
 
 /-! ## The body of the step -/
-
-theorem Ctx.shifts_loop (hF : ModalSys.Four = true) (Γ : Ctx) [Γ.NoSlots] (T : VarType) :
-    Ctx.Shifts 0 (Γ.boxIn.insert (.bnd 0) T) (Γ.boxIn.boxIn.insert (.bnd 0) T) :=
-  (Ctx.shifts_boxIn_boxIn hF Γ).insert ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) T
-
-/-- ⭐`φ` one view in with its slot kept: the old items shifted, the slot `c″` read as `c″.keep`. -/
-def WFF.loopHat {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = true) (hT : T.tup = true)
-    (φ : WFF σ (Γ.boxIn.insert (.bnd 0) T) 1) : WFF σ (Γ.boxIn.insert (.bnd 0) T).boxIn 1 :=
-  have hle : Γ.boxIn.boxIn.Le (Γ.boxIn.insert (.bnd 0) T).boxIn :=
-    (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root T).boxIn
-  have hfr := (Ctx.NoSlots.slots (Γ := Γ.boxIn.boxIn)).rootFresh (le_refl 0)
-  WFF.subst (Subst.singleIdx (.bnd 0) (.tm (Term.keepOf hF T hT (.root (.bnd 0))
-      (Ctx.ref_insert_root Γ.boxIn (.bnd 0) T))))
-    (Subst.single (.bnd 0) (.tm (Term.keepOf hF T hT (.root (.bnd 0))
-      (Ctx.ref_insert_root Γ.boxIn (.bnd 0) T))))
-    (Subst.ok_single hle rfl) (Subst.coh_single hfr hle rfl)
-    ((Ctx.NoSlots.slots (Γ := Γ.boxIn.boxIn)).insert T)
-    ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert T).boxIn
-    (WFF.shift (Ctx.shifts_loop hF Γ T) ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert T) φ)
 
 /-- ⭐**The slot read at a tuple of kept addresses**: `□φ̂` is `□(shift φ(t))`. -/
 theorem WFF.loopHat_read {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (hF : ModalSys.Four = true)
@@ -461,119 +385,7 @@ theorem WFF.instantiate_bodyRepl_pair {V' : Ctx} [V'.NoSlots] (h : V.Le V') {a�
     rw [Subst.single_at_ne (Ctx.ref_rt_ne hfr hv')]
     exact .refl _
 
-/-- `∃p : X × Y. ρ(p) ⊢ ∃a. ∃b. ρ(a, b)`. -/
-def Proof.ex_slotPair (ρ : WFF σ (V.insert (.bnd 0) (.VTypeProd X Y)) 1) (u : ℕ)
-    (hu : V.RootFresh (.free u)) : Proof σ V [.ex _ ρ] (.ex X (.ex Y (WFF.slotPair ρ))) := by
-  have hL : V.Le (V.insert (.free u) (.VTypeProd X Y)) := Ctx.le_insert hu.root _
-  have hr := Ctx.ref_insert_root V (.free u) (.VTypeProd X Y)
-  have ha : (V.insert (.free u) (.VTypeProd X Y)).ref (.step (.root (.free u)) .fst) = some X :=
-    Ctx.ref_fst_of hr
-  have hb : (V.insert (.free u) (.VTypeProd X Y)).ref (.step (.root (.free u)) .snd) = some Y :=
-    Ctx.ref_snd_of hr
-  refine Proof.ex_elim u _ hu (φ := WFF.openFree u hu Ctx.NoSlots.slots ρ) ?_ ?_
-  · rw [WFF.bindFree_openFree]
-    exact Proof.lookup List.mem_cons_self
-  refine Proof.ex_intro X (Term.eta _ X ha) (Proof.conv
-    (WFF.instantiate_ex_slotPair hL ρ _).symm ?_)
-  refine Proof.ex_intro Y (Term.eta _ Y hb) ?_
-  have e := WFF.instantiate_bodyRepl_pair (Ctx.Le.refl _) (Term.eta _ X ha)
-    (WFF.mono (hL.insert (.bnd 0) _) ρ) (Term.eta _ Y hb)
-  rw [WFF.mono_refl, WFF.mono_refl, Term.mono_refl] at e
-  rw [e]
-  exact Proof.conv (WFF.instantiate_eta_openFree u hu Ctx.NoSlots.slots Ctx.NoSlots.slots ρ).symm
-    (Proof.lookup List.mem_cons_self)
-
-/-- `∃p : 𝟙. ρ(p) ⊢ ρ(⋆)`. -/
-def Proof.ex_one (ρ : WFF σ (V.insert (.bnd 0) .VTypeOne) 1) (u : ℕ)
-    (hu : V.RootFresh (.free u)) :
-    Proof σ V [.ex _ ρ] (WFF.instantiate Ctx.NoSlots.slots .unit ρ) := by
-  refine Proof.ex_elim u _ hu (φ := WFF.openFree u hu Ctx.NoSlots.slots ρ) ?_ ?_
-  · rw [WFF.bindFree_openFree]
-    exact Proof.lookup List.mem_cons_self
-  rw [show WFF.weaken hu.root .VTypeOne (WFF.instantiate Ctx.NoSlots.slots .unit ρ) = _ from
-    WFF.mono_instantiate _ _ Ctx.NoSlots.slots _ ρ]
-  exact Proof.conv (WFF.instantiate_eta_openFree u hu Ctx.NoSlots.slots Ctx.NoSlots.slots ρ).symm
-    (Proof.lookup List.mem_cons_self)
-
 end Pairs
-
-theorem Term.Kept.mono {Ω Ω' : Ctx} (h : Ω.Le Ω') {T : VarType} {a : Ann T} {t : Term σ Ω T a}
-    (ht : Term.Kept t) : Term.Kept (Term.mono h t) := by
-  induction ht with
-  | unit => exact .unit
-  | pair _ _ ih₁ ih₂ => exact .pair ih₁ ih₂
-  | leaf hk x hx =>
-      rw [Term.mono_eta]
-      exact .leaf hk x _
-
-/-! ## The lift at a tuple -/
-
-/-- What `keep_lift_tup` hands on: the possibility read at a tuple of kept objects, further on. -/
-abbrev LiftGoal (σ : Signature) (T : VarType) (l : List VarType)
-    (ρ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) T) 1) : Type :=
-  ∀ (l' : List VarType) (h : (ctxOf l).Le (ctxOf l')) (a : Ann T)
-    (t : Term σ (ctxOf l').boxIn T a), Term.Kept t →
-    Proof σ (ctxOf l') [(OutLeg.nec : OutLeg (ctxOf l')).dia
-      (WFF.instantiate Ctx.NoSlots.slots t (WFF.mono (h.boxIn.insert (.bnd 0) T) ρ))] .bot
-
-/-- `keep_lift` at one object, refuting. -/
-def Proof.keep_lift_leaf (hF : ModalSys.Four = true) (hl : T.liftableR = true) {l : List VarType}
-    {Δ : List (WFF σ (ctxOf l) 0)} (ρ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) T) 1)
-    (p : Proof σ (ctxOf l) Δ ((OutLeg.nec : OutLeg (ctxOf l)).dia (.ex T ρ)))
-    (K : LiftGoal σ T l ρ) : Proof σ (ctxOf l) Δ .bot := by
-  have hk := VarType.keepable_of_liftableR hl
-  have hr := Ctx.ref_keep_of' hF (Ctx.ref_insert_root (ctxOf l) (.free l.length) T) hk
-  refine Proof.keep_lift hF hl .nec ρ l.length (ctxOf_fresh le_rfl) (ψ := .bot) p ?_
-  have q := K (T :: l) (ctxOf_le_append [T] l) _ (Term.eta _ T hr) (.leaf hk _ hr)
-  exact Proof.imp_elim (Proof.ofSubset (fun _ hx => by cases hx) (Proof.imp_intro q))
-    (Proof.lookup List.mem_cons_self)
-
-/-- ⭐**`keep_lift` at a tuple**, refuting: each keepable component in turn. -/
-def Proof.keep_lift_tup (hF : ModalSys.Four = true) (hS : ModalSys.FourStrong = true)
-    (hW : ModalSys.FourStrongW = true) : (T : VarType) → T.tup = true → {l : List VarType} →
-    {Δ : List (WFF σ (ctxOf l) 0)} → (ρ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) T) 1) →
-    Proof σ (ctxOf l) Δ ((OutLeg.nec : OutLeg (ctxOf l)).dia (.ex T ρ)) → LiftGoal σ T l ρ →
-    Proof σ (ctxOf l) Δ .bot
-  | .VTypeBox A, _, _, _, ρ, p, K => Proof.keep_lift_leaf (T := .VTypeBox A) hF hS ρ p K
-  | .VTypeDia A, _, _, _, ρ, p, K => Proof.keep_lift_leaf (T := .VTypeDia A) hF hW ρ p K
-  | .VTypeOne, _, l, _, ρ, p, K => by
-      have hc := (ctxOf_fresh (l := l) le_rfl).boxIn
-      have q := K l (Ctx.Le.refl _) _ .unit .unit
-      rw [WFF.mono_refl] at q
-      exact Proof.imp_elim (Proof.ofSubset (fun _ hx => by cases hx) (Proof.imp_intro q))
-        (Proof.leg_dia .nec (Proof.ex_one ρ l.length hc) p)
-  | .VTypeProd X Y, ht, l, _, ρ, p, K => by
-      have hXY : X.tup = true ∧ Y.tup = true := by simpa [VarType.tup] using ht
-      have hc := (ctxOf_fresh (l := l) le_rfl).boxIn
-      refine Proof.keep_lift_tup hF hS hW X hXY.1 (.ex Y (WFF.slotPair ρ))
-        (Proof.leg_dia .nec (Proof.ex_slotPair ρ l.length hc) p) fun l₁ h₁ _ t₁ k₁ => ?_
-      refine Proof.keep_lift_tup hF hS hW Y hXY.2
-        (WFF.bodyRepl (slotTm t₁ Y) (WFF.mono (h₁.boxIn.insert (.bnd 0) _) ρ))
-        (Proof.conv (congrArg (fun z => (OutLeg.nec : OutLeg (ctxOf l₁)).dia z)
-          (WFF.instantiate_ex_slotPair h₁.boxIn ρ t₁)) (Proof.lookup List.mem_cons_self))
-        fun l₂ h₂ _ t₂ k₂ => ?_
-      have q := K l₂ (h₁.trans h₂) _ _ (.pair (k₁.mono h₂.boxIn) k₂)
-      have e := WFF.instantiate_bodyRepl_pair h₂.boxIn t₁
-        (WFF.mono (h₁.boxIn.insert (.bnd 0) _) ρ) t₂
-      rw [WFF.mono_mono] at e
-      rw [e]
-      exact q
-
-/-- ⭐**The loop's step** (5 and the lifts, no B, no D): `⊢ □∀c″. □φ̂(c″) → φ(c″)`.  Otherwise
-    `◇¬(…)`, by `keep_lift_tup` at some tuple of kept objects `t`, against `five_box` at `φ(t)`:
-    `φ̂(t)` is `φ(t)` shifted (`WFF.loopHat_read`). -/
-def Proof.loop_tup (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
-    (hS : ModalSys.FourStrong = true) (hW : ModalSys.FourStrongW = true) (hT : T.tup = true)
-    {l : List VarType} {Δ : List (WFF σ (ctxOf l) 0)}
-    (φ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) T) 1) :
-    Proof σ (ctxOf l) Δ (.box (.all T (.imp (.box (WFF.loopHat hF hT φ)) φ))) := by
-  refine Proof.byContra (Proof.keep_lift_tup hF hS hW T hT _ (Proof.dia_ex_neg _ l.length
-    (ctxOf_fresh le_rfl).boxIn (Proof.lookup List.mem_cons_self)) fun l' h _ t ht => ?_)
-  refine Proof.five_refute hF hV
-    (Q := WFF.instantiate Ctx.NoSlots.slots t (WFF.mono (h.boxIn.insert (.bnd 0) T) φ)) rfl
-    (Proof.conv ?_ (Proof.lookup List.mem_cons_self))
-  exact congrArg (fun z => (OutLeg.nec : OutLeg (ctxOf l')).dia z.neg)
-    (congrArg₂ WFF.imp (WFF.loopHat_read hF hT h φ ht) rfl)
 
 end Step
 

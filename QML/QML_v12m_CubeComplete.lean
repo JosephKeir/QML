@@ -5,8 +5,8 @@ import QML.QML_v12m_BCompactness
 # QML v12m — completeness across the cube
 
 Every system with a canonical model, in one theorem.  `ModalSys.CubeSys` says which: 5 with 4 and
-both of 4's lifts in force, by flag or under T, B with 4 only with 5, strong B with weak B, and
-with 5 only under T.  In a
+both of 4's lifts in force, by flag, under T or with weak B, B with 4 only with 5, strong B with
+weak B, and with 5 only under T.  In a
 well-formed presented context such a system has the metatheorems: a valid sequent is provable
 (⭐`completenessCube`, and soundness with it, ⭐`provable_iff_validCube`), a consistent set is
 satisfiable (`model_existenceCube`), and strong completeness and compactness
@@ -21,6 +21,8 @@ picks.
 (`Proof.keep_lift_T`, `Proof.keep_lift_posT`), so S5 needs neither flag: `ModalSys.S5NoLift`, weak
 everything, and `ModalSys.S5StrongNoLift`, every flag but the lifts.  So are KB5 and KDB5
 (`ModalSys.KB5_cube`, `ModalSys.KDB5_cube`), T off: the root has its self-arrow, or none is needed.
+Weak B and 5 prove the lifts too (`Proof.keep_lift_B`, `Proof.keep_lift_posB`), so neither needs a
+flag: `ModalSys.KB5NoLift`, `ModalSys.KDB5NoLift`.
 -/
 
 namespace V12M
@@ -48,23 +50,6 @@ theorem Frame.exists_unit_of_serial {σ : Signature} (F : Frame σ) (hD : ModalS
       ∀ (hV : ModalSys.Five = true) {t : F.W} (b : F.R w t), F.side hV e b = b := by
   obtain ⟨v, ⟨a⟩⟩ := F.serial hD w
   exact F.exists_unit hF hB hS a
-
-/-- With 4 and 5, `side` composes: `(side x y) ; (side y z) = side x z`. -/
-theorem Frame.side_cocycle {σ : Signature} (F : Frame σ) (hF : ModalSys.Four = true)
-    (hV : ModalSys.Five = true) {w u v t : F.W} (x : F.R w u) (y : F.R w v) (z : F.R w t) :
-    F.trans hF (F.side hV x y) (F.side hV y z) = F.side hV x z := by
-  have h := F.trans_side hF hV (F.side hV x y) (F.side hV x z)
-  rwa [F.side_side hV x y z] at h
-
-/-- ⭐**`side a a` is a left unit**, in every frame with 4 and 5, relational or not, and `a` followed
-    by it is `a`.  So at every world an arrow reaches, `□φ̂(k) → φ(k)` holds: `Proof.loop_tup`'s
-    statement is valid with no lift (docs, "The countermodel check"). -/
-theorem Frame.side_self_unit {σ : Signature} (F : Frame σ) (hF : ModalSys.Four = true)
-    (hV : ModalSys.Five = true) {w v t : F.W} (a : F.R w v) (c : F.R v t) :
-    F.trans hF (F.side hV a a) c = c := by
-  have he := F.side_cocycle hF hV a a a
-  have hc := F.trans_side hF hV (F.side hV a a) c
-  rw [← hc, ← F.trans_assoc hF, he]
 
 /-- With an arrow in, `side` from the unit is the identity. -/
 theorem Frame.side_unit_self {σ : Signature} (F : Frame σ) (hF : ModalSys.Four = true)
@@ -121,14 +106,14 @@ theorem Model.diaLift_of_reached {σ : Signature} (M : Model σ) (hF : ModalSys.
     (fun b => congrArg PLift.up (e b.2.down))
 
 /-- ⭐**The systems with a canonical model.**  Not a statement of what is coherent, but of what
-    is built: 5 with T off and without both lifts is still to come.  Strong B with 5 without T is
+    is built: K45 and KD45 without both lifts are still to come.  Strong B with 5 without T is
     left out: KDB5
     there is S5 (`Frame.exists_unit_of_serial`), and KB5 there is a possible gap, to review (docs,
     "Strong B on KB5 and KDB5").  `strongT` is `ModalSys.WCoh`, which the network and the cluster
     ask for. -/
 class ModalSys.CubeSys [ModalSys] : Prop where
-  /-- 5 comes with 4 and both of 4's lifts in force: by flag, or under T, which with 5 proves
-      them. -/
+  /-- 5 comes with 4 and both of 4's lifts in force: by flag, or under T or weak B, either of which
+      with 5 proves them. -/
   five_lifts : ModalSys.Five = true →
     ModalSys.Four = true ∧ ModalSys.fourL = true ∧ ModalSys.fourLW = true
   /-- Strong B with 5 comes with T, which under D its frames meet anyway
@@ -230,6 +215,38 @@ omit [ModalSys] in
 /-- ⭐KDB5 is in the cube. -/
 theorem ModalSys.KDB5_cube : @ModalSys.CubeSys ModalSys.KDB5 :=
   letI := ModalSys.KDB5
+  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+    five_B := fun _ h => (Bool.false_ne_true h).elim
+    four_B := fun _ _ => rfl
+    strongB := fun h => (Bool.false_ne_true h).elim
+    strongT := fun h => (Bool.false_ne_true h).elim }
+
+/-- KB5 with no strong form: 4's lifts off. -/
+def ModalSys.KB5NoLift : ModalSys :=
+  { T := false, Four := true, TStrong := false, D := false, DStrong := false, B := true,
+    BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
+    Five := true, FiveStrong := false }
+
+omit [ModalSys] in
+/-- ⭐KB5 with no strong form is in the cube: 5 and weak B prove 4's lifts. -/
+theorem ModalSys.KB5NoLift_cube : @ModalSys.CubeSys ModalSys.KB5NoLift :=
+  letI := ModalSys.KB5NoLift
+  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+    five_B := fun _ h => (Bool.false_ne_true h).elim
+    four_B := fun _ _ => rfl
+    strongB := fun h => (Bool.false_ne_true h).elim
+    strongT := fun h => (Bool.false_ne_true h).elim }
+
+/-- KDB5 with D in both strengths, 4's lifts off. -/
+def ModalSys.KDB5NoLift : ModalSys :=
+  { T := false, Four := true, TStrong := false, D := true, DStrong := true, B := true,
+    BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
+    Five := true, FiveStrong := false }
+
+omit [ModalSys] in
+/-- ⭐KDB5 without 4's lifts is in the cube. -/
+theorem ModalSys.KDB5NoLift_cube : @ModalSys.CubeSys ModalSys.KDB5NoLift :=
+  letI := ModalSys.KDB5NoLift
   { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ h => (Bool.false_ne_true h).elim
     four_B := fun _ _ => rfl

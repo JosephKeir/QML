@@ -5093,11 +5093,11 @@ KDB5) the root's loop is new work, so S5 comes **before** B + 5, reversing steps
 |---|---|---|---|---|
 | K45, KD45 | open | open | open | **complete**, D in either strength |
 | S5 | **complete** | **complete** | **complete** | **complete**, T and D in either strength, B off, weak or strong, witnessed ways home; the other columns the same, T and 5 proving the lifts (`QML_v12m_LiftT`) |
-| KDB5, KB5 | open | open | open | **complete** with weak B, D in either strength.  Strong B: KDB5 is S5 there, not built separately; KB5 is a **possible gap**, for review at the end ("Strong B on KB5 and KDB5") |
+| KDB5, KB5 | **complete** | **complete** | **complete** | **complete**, with weak B, D in either strength; the other columns the same, 5 and weak B proving the lifts from `Proof.five_refl` (`QML_v12m_LiftB`).  Strong B: KDB5 is S5 there, not built separately; KB5 is a **possible gap**, for review at the end ("Strong B on KB5 and KDB5") |
 | K5, KD5 | no rules yet | no rule written | unsound | no lifts without 4 |
 
 * *Open cells with 4* have T off, and rules and soundness.  The plan of committing cluster arrows (K45's milestone B) is superseded by "The open lifts: scope": a relationally
-  valid principle is missing from the rules there ("The countermodel check").  S5's cells closed without a construction: its lifts are derivable.
+  valid principle was missing from the rules there ("The countermodel check").  It is now the rule `Proof.five_refl` ("The proposed rule").  KB5's and KDB5's cells closed with it, without a construction, as S5's did: their lifts are derivable.  K45's and KD45's stay open: they need the hub.
 * *K5, KD5*: semantics only (`Frame.side`, `posSide`).  No `side` step, `sideTr`, links, or rules, so these flags prove no 5 principle.
   Strong 5 without 4 has no rule.  The `◇`-lift for 5 alone is unsound (the countermodel above), so that cell is closed, not open.
 * *Flags excluded as settings, not systems.*  Strong B with D and 5, T off: its frames are S5's (`Frame.exists_unit_of_serial`), so it is read as S5 with strong B, and the flag setting is outside `CubeSys` (`five_B`).  KB5 with strong B is the one system this leaves out, and it is recorded as a possible gap.  5 with 4 off under T or B: T + 5 and B + 5 prove 4 propositionally, and `FiveCoh`, the class
@@ -5323,7 +5323,7 @@ That is 9 479 lines to redo, plus the tree's tags, the guard on `Here`, the new 
 |---|---|---|
 | 1 | S5: derive `keep_lift`, both legs; effective flags through the tree and the cluster | **done** |
 | 2 | Check on paper: is the principle underivable?  **Yes**: "The countermodel check" | **done** |
-| 3 | KB5, KDB5 without lifts | 1 500 to 3 000 lines |
+| 3 | KB5, KDB5 without lifts: `Proof.five_refl`, and the lifts derived from it ("KB5 and KDB5 without lifts: the check") | **done**, 927 lines |
 | 4 | K45, KD45 without lifts: the hub | 3 000 to 5 000 lines, undesigned |
 
 Strong B on S5 is unaffected.  K5 and KD5 have 4 off, so none of this applies to them directly, but the principle's analogue will have to be asked of them too.
@@ -5342,7 +5342,7 @@ Strong B on S5 is unaffected.  K5 and KD5 have 4 off, so none of this applies to
 **Verdict.**  `Proof.loop_tup`'s statement, `□∀k. (□φ̂(k) → φ(k))`, is **valid in every model and not derivable without the lifts**.  So K45, KD45, KB5 and KDB5 without both lifts are incomplete as ruled, over relational models and over the arrow models the current `Frame` allows.  The principle is what is missing, and it is a rule on its own: no new frame law is needed.  This corrects sections 4 to 6 of the scope above.
 
 **1. It is valid in every model.**  ⭐`Frame.side_self_unit`, in Lean, no axioms: `side a a ; c = c`, in every frame with 4 and 5.
-* *Proof.*  `(side x y) ; (side y z) = side x z` (`Frame.side_cocycle`, from `side_side` and `trans_side`), so `e := side a a` has `e ; e = e`.  Any `c` is `e ; side e c`, so `e ; c = e ; e ; side e c = e ; side e c = c`.
+* *Proof.*  `(side x y) ; (side y z) = side x z` (`Frame.side_cocycle`, now in `QML_v12m_SemRefl`, from `side_side` and `trans_side`), so `e := side a a` has `e ; e = e`.  Any `c` is `e ; side e c`, so `e ; c = e ; e ; side e c = e ; side e c = c`.
 * *So the principle.*  At `a : w → v` read `□` along `e`.  `a ; e = a`, so the old items read as they did, and `e` a left unit makes `k` kept along `e` be `k`.  This needs `shaped` off for a `◇` slot, which is the case in question.
 * *So the scope's sentence "the present laws give only `e ; z = z` on the image of `side a`" was wrong*, and with it the proposal of a new law.  The law `side a (a ; c) = c` is neither needed nor a consequence: take worlds `ρ, v`, `R v v` the right-zero semigroup on `{0, 1}`, and one arrow `a : ρ → v` with `a ; x = a`, `side a a = 0`.  Every law holds, and `side a (a ; 1) = 0`.
 
@@ -5373,9 +5373,9 @@ How this was found: Knuth-Bendix completion on the laws, on one world, ran to `m
 * *Section 6, the alternative:* moving those cells to arrow frames does not work with `Frame` as it is, where the principle is valid too.  It would mean weakening `Frame` as in 4, then building arrow-labelled clusters on frames like the one above.  So the choice is the rule, or that.
 * *Section 5 stands:* the rule gives the lifts inside the cluster, KB5 and KDB5 have their root in it, and K45 and KD45 need a hub.  Not checked further here.
 
-**The decision: open.**  Whether to add the rule: see "The proposed rule: precedents and characterisation".
+**The decision: taken, the rule is added.**  See "The proposed rule: precedents and characterisation", and "Built" there.
 
-#### The proposed rule: precedents and characterisation *(2026-11-02, paper; the lemmas marked in Lean)*
+#### The proposed rule: precedents and characterisation *(2026-11-02, paper; the rule built the same day, see "Built" below)*
 
 **Verdict.**  The rule is the object-level form of a textbook axiom, it has a clean frame condition, and every part of it has a precedent except one piece of syntax.  It is **U with objects**: U is `□(□p → p)`, shift reflexivity, which K45 proves propositionally.
 
@@ -5414,10 +5414,65 @@ How this was found: Knuth-Bendix completion on the laws, on one world, ran to `m
 **Costs and open points.**
 * *`WFF.loopHat` is new in a rule's statement*, and this is the part without a precedent: a slot read at a different level from the rest.  It is in `QML_v12m_GLoop`, above `Proof`, so it has to move down, with `Term.keepOf` and `VarType.tup`.  Its substitution lemma is `WFF.loopHat_read`'s pattern, and `WFF.shift_loopHat` shows it behaves.
 * *The guard.*  With `shaped` on, a `◇` slot kept along `e` is `k` only if its shape is unchanged, and that is not a law with T off.  Under T the rule is derivable and with strong B and T off the system is outside `CubeSys`, so `shaped` off loses nothing built.  It would need revisiting if KB5 with strong B is ever filled.
-* *Soundness and substitution* (about 150 lines by estimate, not attempted).
-* *Whether the rule is enough* is not settled.  It gives the lifts at reached worlds.  K45 and KD45 still need the hub, which is undesigned.
+* *Soundness and substitution* were estimated at about 150 lines.  That was low: see "Built".
+* *Whether the rule is enough* is settled for KB5 and KDB5: it is ("KB5 and KDB5 without lifts: the check").  It gives the lifts at reached worlds, and K45 and KD45 still need the hub, which is undesigned.
 
-**Recommendation: add the rule, both rows, as one rule over `OutLeg`, under `Five`.**
+**Recommendation: add the rule, both rows, as one rule over `OutLeg`, under `Five`.**  Taken (2026-11-02).
+
+**Built (2026-11-02): the rule.**  `Proof.five_refl`, for `Four`, `Five`, `shaped` off, a leg `O : OutLeg Γ` and `T.tup`; statement `WFF.fiveRefl`.  No `sorry`, standard axioms, the full strict build passes.  The state before it is the tag `checkpoint/before-five-refl`.
+* *`QML_v12m_LoopHat`* (121 lines, below `Proof`): `VarType.tup`, `Term.keepOf`, `WFF.loopHat`, moved from `QML_v12m_GLoop`, then the `◇_x` row's hat `WFF.loopHatX` and `WFF.fiveRefl`.
+* *`QML_v12m_SemRefl`* (247 lines): `Model.sat_fiveRefl`, soundness at both rows.  `Frame.side_cocycle` and `Frame.side_self_unit` moved here from `QML_v12m_CubeComplete`.
+* *`QML_v12m_LoopHatSubst`* (325 lines): `WFF.subst_loopHat_under`, `WFF.subst_loopHatX_under`.  `WFF.subst_fiveRefl` is in `QML_v12m_ProofSubst`.
+* *Size.*  About 690 lines net, not 150.  The estimate left out the machinery both rows share (`WFF.subst_hatGen`, `Term.subst_keepOf`, `Model.keepOf_unit`, `Model.sat_singleAt`), about as large as the two rows together, and the `◇_x` row is about twice the `□` row: its hat shifts `x.dia` to `x.keep.dia`.
+* *Checked.*  In a scratch file, not in the repo: `Proof.five_refl hF hV hN .nec hT φ` proves exactly `Proof.loop_tup`'s statement, without asking `FourStrong` or `FourStrongW`.  `Proof.loop_tup` itself is unchanged, and its callers still ask the flags.
+
+**What this does and does not settle.**  The rules are now sound and closed under substitution with the principle in, so the countermodel of "The countermodel check" no longer applies to the rules as they stand.  At this point no cell of the table had moved: KB5's and KDB5's closed with the next section.  Still not shown: that the rule suffices for K45 and KD45, the converse of the frame condition (sketched), and that the `◇_x` row is independent of the `□` row.
+
+#### KB5 and KDB5 without lifts: the check *(2026-11-02, paper; built the same day, see "Built" at the end)*
+
+**Verdict.**  The columns collapse, as predicted.  With 4, 5 and weak B, T and strong B off, `keep_lift` is **derivable at both legs and at every world**, from `Proof.five_refl` and closed T.  So there is no new rule and no new construction.  `Proof.kKeepLift` gets a third branch, the loop's step takes the rule in place of `Proof.loop_tup`, and the effective flags widen.  All four columns of KB5 and KDB5 close, D in either strength.  Estimate: 600 to 1 000 lines, against the scope's 1 500 to 3 000.  The last estimate was low by a factor of four, so read this one with that in mind.  (It was 927.)
+
+**It is valid first.**  At a world with an arrow out, `symm` gives an arrow in, so the world is reached and `Model.boxLift_of_reached`, `Model.diaLift_of_reached` apply.  At a world with none, the premise `◇∃c. φ(c)` fails.  So nothing semantic stands in the way, and the question is only whether the rules see it.
+
+**The obstacle: B is closed.**  `Proof.keep_lift_T` ends with `T_box` at the world itself.  `five_refl` is a statement under a `□`, so it cannot replace that last step directly, and `Proof.closed_T`, which can come out of a `□`, takes only closed formulas.  Open B fails on arrows, so this is not a technicality: every parameter must be abstracted before B is used.  Doing that one variable at a time is what `gloopStep` does, and it would mean a Henkin step at each node.  The `□` view tuple does it at once.
+
+**Along `□`.**  `Γ` is `ctxOf l`, and `φ` is over `Γ.boxIn` with a slot at a liftable `T`.
+
+1. *One generic parameter.*  Let `B := □(itemsTy (boxItems l))`, a keepable tuple type, and `r` the root of `ctxOf [B]`.  `pullBoxS l r` sends `φ` to `χ` over `(ctxOf [B]).boxIn`, reading each item of the view as a component of `r`'s contents.  `Proof.subst` at `r ↦ boxTuple l` undoes it: item `k` goes to `r.box.π_k`, then back to item `k`.  So it is enough to prove `⊢ ¬□⊥ → ◇∃c. χ(c) → ∃y. ◇χ(y.keep)` at `ctxOf [B]`.  `ok_pullBoxS`, `coh_pullBoxS` exist, and `subst_shift_pullBox`'s `hsim` is this round trip with a shift added.
+2. *Out and back, no B.*  `five_refl` at `χ.neg` gives `□U` with `U := ∀c. □(χ¬)^(c) → ¬χ(c)`.  `Proof.far_nec` and `Proof.far_ex` go through with `U` as a hypothesis where they used `T_box`.  So `◇∃c. χ(c)` and `□U` give `◇□(shift ξ)`, and `five_box` gives `□ξ`, for `ξ := WFF.ex T (WFF.liftBody hF ht χ)`, that is `∃y. ◇χ̂(y)`.
+3. *Closed T, at a slot.*  Let `ζ(k) := ∃y. ◇χ[r := k](y.keep)`, closed apart from `k`, and `F := ∀k. (□ζ̂(k) → ζ(k))`.  `F` is closed, so the rule at `Ctx.empty`, weakened, and `Proof.closed_T` give `F` at `ctxOf [B]` from `¬□⊥`.  ⭐**This is the only use of B:** `Proof.root_refl`.
+4. *Reading it at `r`.*  `ζ̂` has no outer parameters, so `WFF.subst_loopHat` applies with `hfix` vacuous: `ζ̂(r) = ζ(r.keep)`.  And `ξ = ζ(r.keep)`, because at a context with one root `shift` is the substitution `r ↦ r.keep`: `r.box.π` goes to `r.keep.box.π`, and `r.keep` to `r.keep.keep`.  That is `WFF.shift_closed`'s route, `WFF.subst_shift` at `idS` and then a `Sim`.  So `□ξ`, read in `F`, gives `ζ(r)`.
+
+`¬□⊥` comes from the premise, and `ex_elim` on `ζ(r)` with its body taken from `WFF.liftRead` is the rule's own shape, so no `collapse` is involved and T's `WFF.liftRead_nec` has no counterpart here.
+
+**Along `◇_x`.**  `Proof.keep_lift_posT` reduces to the `□` lift at `WFF.liftPos φ`, and T enters only in `Proof.pos_nec`, through `here_keep` and `Proof.far_pos`.
+* `five_refl (.pos x hx') φ.neg` gives `□_x U_x`, with `U_x := ∀c. (□_{x.keep}(φ¬)^_x(c) → ¬φ(c))`, which is the slot `Proof.pos_nec` fills with `here_keep`'s `□_x Here`.  `Proof.K_dia` applies with the same shape.
+* In `x`'s view `φ(c)` gives `◇_{x.keep} φ̂_x(c)` by `U_x`, and that is `liftPos φ` at `c`.  So `∃c. liftPos φ(c)` holds along `◇_x`, a `□`-view formula, and `Proof.dia_forget` makes it plain.
+* The `□` lift and `Proof.four_dia_home` then finish it, unchanged.  Neither takes T.
+
+No `Here` is needed, and the abstraction runs once, at the `□` leg.  This is the `◇_x` row's first real use: the check that the row is the right statement passes.
+
+**What changes.**
+* `ModalSys.fourL`, `ModalSys.fourLW`: `FourStrong || (Five && (T || (B && !BStrong)))`, and its `◇` twin.  `B && !BStrong` with T off is exactly `shaped` off with B on, which is the rule's guard.
+* `VarType.liftableR_or` gets the third alternative, and `Proof.kKeepLift` the third branch.  It goes to `ctxOf ls`, which is what its one caller has.
+* `LoopFlags` drops both lifts and adds `BStrong = false`, which `csymm` reads off `CluFlags.bT`.  `gloop_one`, `gloop_consistent` and `gloopStep_ok` lose `hS`, `hW` and call `Proof.five_refl`.  Then `Proof.loop_tup`, `Proof.keep_lift_tup`, `ModalSys.fourS_of_noT` and `ModalSys.fourSW_of_noT` have no callers, and go.
+* `QML_v12m_LiftB`, new: imports `QML_v12m_LiftT` and `QML_v12m_GLoopStep` (for `WFF.subst_loopHat`), imported by `QML_v12m_GLift`.  No cycle: checked on the import graph.
+* `ModalSys.KB5NoLift`, `ModalSys.KDB5NoLift`, and their `CubeSys` instances, as S5's.
+
+**Why the rest stands.**  The tree and the cluster read the lifts only through `VarType.liftable`, the hypotheses `fourL`, `fourLW`, and `Proof.kKeepLift`, so S5's precedent applies.  The sites reading a raw flag are `GView.LiftAdm`'s third clause, `GCanonLift`'s `by_cases` (a total lemma, proved for either value), `LoopFlags` and the loop's lemmas.  T off with `FourStrong` off is, though, a combination the cluster has never been compiled at: the `CubeSys` instance is what tests it.
+
+**Not built.**
+* *K45, KD45* (not this check).  Steps 1, 2 and 4 use no B, and step 3 uses it only to come out of the outer `□`, so the same argument gives `□(keep_lift)` there.  That agrees with "The proposed rule" and says nothing about the hub.
+
+**Built (2026-11-02): every column of KB5 and KDB5.**  `QML_v12m_LiftB`, 927 lines, no `sorry`, standard axioms, the full strict build passes, and elsewhere the code shrank by about 110 lines net.  So the estimate held this time.  `completenessCube` instantiates at `ModalSys.KB5NoLift` and `ModalSys.KDB5NoLift` (`ModalSys.KB5NoLift_cube`, `ModalSys.KDB5NoLift_cube`, no axioms), and in a scratch check at KB5 with the `□`-lift alone and KDB5 with the `◇`-lift alone.  No rule was added, and no construction changed.  The cluster compiled with T off and `FourStrong` off at the first attempt, apart from one positional read of `LoopFlags`.
+* *`WFF.keptBody`, `WFF.liftEx`.*  The body with its slot read kept and nothing shifted, and `∃y. ◇φ(y.keep)` built from it.  `WFF.loopHat` is `keptBody` at the shifted body by `rfl`, and `ξ` is `liftEx` at the shifted body by `rfl`.  Both commute with substitution (`WFF.subst_keptBody`, `WFF.subst_liftEx`), which is what steps 1 and 4 use.
+* *Step 2.*  `Proof.far_necU`, `Proof.far_exU`, `Proof.lift_boxU`, as planned.  `WFF.keptBody_read` reads the hat at the far world's new object.
+* *Step 3.*  `Proof.root_refl`, now in the repo.
+* *Step 4.*  `WFF.shift_gen`, `shift` as `r ↦ r.keep`, through `genR_only`: with T off a keepable parameter is the context's only address.  `Proof.lift_gen` is the lift at the parameter.
+* *Step 1.*  `WFF.subst_pull_tuple`, the round trip, stated at depth 0 and applied to `∃c. φ`, with the body recovered by `WFF.ex.inj`.  So it needs no lemma about substitutions under binders.  `Proof.lift_exB`, `Proof.keep_lift_B`.
+* *Along `◇_x`.*  **Better than the check said.**  The third identity holds at the slot, not only at `c`: `WFF.mono_liftPos`, `liftPos φ` weakened into `x`'s view **is** `◇_{x.keep} φ̂_x`, from `WFF.loopHatX_eq`.  So `Proof.far_posU`, `Proof.pos_viewU`, `Proof.pos_necU` and `Proof.keep_lift_posB` follow `QML_v12m_LiftT`'s shape with no new reading lemma.  The rule's body is at `¬φ`, so one double negation goes under the `◇` (`Proof.neg_neg_elim`).
+* *The plumbing.*  `ModalSys.liftsProved` is `Five && (T || (B && !BStrong))`, and `fourL`, `fourLW` read it.  `Proof.kKeepLift` has its third branch and now sits at `ctxOf ls`.  `LoopFlags` is 4, 5, strong B off, T off, so `gloop_one` calls the rule.  `Proof.loop_tup`, `Proof.keep_lift_tup`, `Proof.keep_lift_leaf`, `LiftGoal`, `Proof.dia_ex_neg`, `Proof.ex_slotPair`, `Proof.ex_one`, `Term.Kept.mono`, `ModalSys.fourS_of_noT` and `ModalSys.fourSW_of_noT` had no callers left, and went.  So `Proof.loop_tup`, in older sections, is the state at `checkpoint/before-five-refl`.  `WFF.instantiate_bindFree` moved here from `QML_v12m_GCluRetOut`.  `Proof.five_refute` stays: it is the case the rule's documentation cites, though nothing calls it now.
+* *`QML_v12m_LiftB` imports `QML_v12m_GLoopStep`* for `WFF.subst_loopHat`, and `QML_v12m_GLift` imports `QML_v12m_LiftB`.
 
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
@@ -5557,7 +5612,7 @@ What the build added, against the design above:
   `cdia_real_not_boxx`, `cdia_sat_child`, `chere_transfer`, `chere_truth` then mirror the tree's.
 * *`GCluInd`* is `GInd` with the names changed.  It needed nothing new.
 
-**Left for 5.**  The open lifts in the table; K5 and KD5.  Then a review of the one possible gap, KB5 with strong B ("Strong B on KB5 and KDB5").
+**Left for 5.**  K45 and KD45 without both lifts, which need the hub; K5 and KD5.  Then a review of the one possible gap, KB5 with strong B ("Strong B on KB5 and KDB5").
 
 #### `back_keep`: the check *(2026-10-31, paper)*
 
