@@ -5309,7 +5309,7 @@ That is 9 479 lines to redo, plus the tree's tags, the guard on `Here`, the new 
 **5. If the principle is added.**  One rule, `loop_tup`'s statement, with soundness at any arrows from the present laws.  Then:
 * *The lifts are derivable inside the cluster*, as in 3, with the principle in T's place, by an outer `□`.
 * *KB5, KDB5:* the root is in the cluster.  `gloopStep` takes the rule, and the tree's lifts need the derived form.
-* *K45, KD45:* the root is outside, and that is the only place the cells differ.  So the cluster needs a **hub**, a child of the root that serves the root's `◇`s by `five_dia`, with R4 read through the hub.  That is the largest piece, and it is not designed yet: the `GClu*` files read everything through `groot`.
+* *K45, KD45:* the root is outside, and that is the only place the cells differ.  So the cluster needs a **hub**, a child of the root that serves the root's `◇`s by `five_dia`, with R4 read through the hub.  **Replaced by "K45 and KD45 without both lifts: the hub": the hub is the tree's root, outside the cluster, with no self-edge.**  That is the largest piece, and it is not designed yet: the `GClu*` files read everything through `groot`.
 * *No committing arrows in either case.*  Every object is named at the hub.
 
 **6. The decision for T off.**
@@ -5324,7 +5324,7 @@ That is 9 479 lines to redo, plus the tree's tags, the guard on `Here`, the new 
 | 1 | S5: derive `keep_lift`, both legs; effective flags through the tree and the cluster | **done** |
 | 2 | Check on paper: is the principle underivable?  **Yes**: "The countermodel check" | **done** |
 | 3 | KB5, KDB5 without lifts: `Proof.five_refl`, and the lifts derived from it ("KB5 and KDB5 without lifts: the check") | **done**, 927 lines |
-| 4 | K45, KD45 without lifts: the hub | 3 000 to 5 000 lines, undesigned |
+| 4 | K45, KD45 without lifts: the hub.  Checked on paper: "K45 and KD45 without both lifts: the hub" | 3 500 to 5 500 lines |
 
 Strong B on S5 is unaffected.  K5 and KD5 have 4 off, so none of this applies to them directly, but the principle's analogue will have to be asked of them too.
 
@@ -5473,6 +5473,96 @@ No `Here` is needed, and the abstraction runs once, at the `□` leg.  This is t
 * *Along `◇_x`.*  **Better than the check said.**  The third identity holds at the slot, not only at `c`: `WFF.mono_liftPos`, `liftPos φ` weakened into `x`'s view **is** `◇_{x.keep} φ̂_x`, from `WFF.loopHatX_eq`.  So `Proof.far_posU`, `Proof.pos_viewU`, `Proof.pos_necU` and `Proof.keep_lift_posB` follow `QML_v12m_LiftT`'s shape with no new reading lemma.  The rule's body is at `¬φ`, so one double negation goes under the `◇` (`Proof.neg_neg_elim`).
 * *The plumbing.*  `ModalSys.liftsProved` is `Five && (T || (B && !BStrong))`, and `fourL`, `fourLW` read it.  `Proof.kKeepLift` has its third branch and now sits at `ctxOf ls`.  `LoopFlags` is 4, 5, strong B off, T off, so `gloop_one` calls the rule.  `Proof.loop_tup`, `Proof.keep_lift_tup`, `Proof.keep_lift_leaf`, `LiftGoal`, `Proof.dia_ex_neg`, `Proof.ex_slotPair`, `Proof.ex_one`, `Term.Kept.mono`, `ModalSys.fourS_of_noT` and `ModalSys.fourSW_of_noT` had no callers left, and went.  So `Proof.loop_tup`, in older sections, is the state at `checkpoint/before-five-refl`.  `WFF.instantiate_bindFree` moved here from `QML_v12m_GCluRetOut`.  `Proof.five_refute` stays: it is the case the rule's documentation cites, though nothing calls it now.
 * *`QML_v12m_LiftB` imports `QML_v12m_GLoopStep`* for `WFF.subst_loopHat`, and `QML_v12m_GLift` imports `QML_v12m_LiftB`.
+
+#### K45 and KD45 without both lifts: the hub, the check *(2026-11-02, paper)*
+
+**Verdict.**  It works on paper, and no new rule is needed.  The sketch in "The open lifts: scope" is replaced.  The hub is not a child of the root inside the cluster: it is the **root of the tree**, it is never accessible, and it needs no self-edge.  The real root `w` is a separate world, built last, on top of the existing cluster model, which is used as a black box.  So the 13 400 lines of `GClu*` should not change.  The new work is a second source of commitments in the net and one generic construction on models.  Estimate: 3 500 to 5 500 lines.  One correction to the cube comes out of it (6).
+
+**1. What has to change, and what does not.**
+* *Why the root cannot name everything.*  With lifts off, keep along `w → v` is not onto, and it must not be: `keep_lift` is underivable at `w` ("The countermodel check").  So `w`'s quantifiers range over **fewer** objects than the cluster has, and the cluster's objects need another namer.
+* *Why `cmodel` already has the shape we need.*  Its worlds read everything through the tree's root `ρ`, and with T and B off `ρ` is **not** in `Acc`.  The tree's root is never used as an accessible world.  So `ρ` can be a theory that exists only to name things.
+* *So:* let `ρ` be a successor theory of `w`.  It is reached in `w`'s logic, so the lifts hold there.  It is a namer with no arrow into it, and `w` sees exactly what `ρ` sees.
+* *Why no self-edge.*  The old sketch put the hub in the cluster, and a hub in the cluster needs `R h h`, so a second loop.  Keeping it out removes that altogether.  Nothing is lost: `ρ` is only there to name.
+
+**2. The lifts in the tree: `liftsProved` and one invariant.**  Let `F(ζ)` be `Proof.root_refl`'s conclusion, closed, for `ζ` closed apart from its slot.
+* `⊢ □F(ζ)` is the rule at `Ctx.empty`, so `F(ζ)` is in every successor theory: `ρ`'s, by construction, and each child's, by transfer, a closed formula's image being itself.
+* `Proof.lift_gen` used B only to get `F`.  Given `F` as a hypothesis, the rest of `QML_v12m_LiftB` runs unchanged, both legs.
+* So the tree gets an invariant, `Good.ax`: each live node's theory contains every `F(ζ)`, or contains `□⊥`.  `Proof.kKeepLift`'s third branch reads `F` from the theory, in `liftSeed_consistent`, its one caller.
+* `□⊥` covers a root with no arrows, where no lift is asked: the premise `◇∃c. χ` contradicts it.
+* `ModalSys.liftsProved` becomes `Five && (T || !BStrong)`.
+
+**3. The net: `w` as a second source.**  `GNetSt` gets a field `src : NodeSt σ`, and `init M₀` starts it at `⟨l₀, M₀⟩`.  With `HubOn M₀`, that is 5 and 4 on, T, B and strong B off, not both lifts by flag, and `¬□⊥ ∈ M₀`, the tree's root starts instead at an extension of `{ψ closed | □ψ ∈ M₀}` over `[]`, consistent by `¬□⊥`.  `M₀` stays the parameter of `gnet`, so **no signature in `GClu*` changes**, in the pattern of `LoopOn M₀`.  Otherwise `init` is as now.  The self-edge's slots, `fmap []`, `fcl []`, hold the edge `src → []`, exactly as they hold the self-edge under `LoopOn`.
+* *Committing `w`'s variables:* `realF []` runs the **child's** clause, `grealStep` with `gextF`, from `N.src` as parent.  It is an ordinary edge, of kind `none`, so its consistency is the existing one, with no 5 in it.
+* *Henkin at `w`:* a new operation in `GOp`, `henk` on `src`.  `henk` splits into a function on `NodeSt` and `setSt`.
+* *Lifting back, for the mixed columns only:* `lift []`, a no-op today, runs the child's clause from `src`, guarded by `liftableR`, at **every** term, not just at addresses (5).
+* `Good` gets `hub : N.hb → FwdData N.src (N.st []) none (N.fcl []) (N.fmap [])`, beside `loop`, at the same four sites.
+* *The limit:* `src`'s stages form a `BWorld`, and `lstg` and its lemmas are `QML_v12m_GLoopLimit`'s.
+
+**4. `w` on top: `Model.cone`, generic, over a relational model.**  Input: a model `N` with T, B and strong B off, a world `ρ`, environments `e i` at growing languages with truth at `ρ`, a `BWorld` `S`, and the entries of an edge from `S` to those languages.
+* *Frame.*  `W := Option N.W`, `none` is `w`.  `R none (some t) := N.R ρ t`, `R _ none := False`, and otherwise `N.R`.  Relational, so every arrow law is proof irrelevance.
+* *Base.*  `D none`, `funcInterp`, `relInterp`: `S`'s term model, as `(gw s).D`.
+* *Modal carriers at `w`:* the `ρ`-objects that `w`'s terms denote, a **subset** of `N`'s.  That is the whole point.  `τ`, the substitution sending each keepable component `u` to `θ(u.keep)`, gives `den_w t := N.interp (e i) (τ t)`.  `Nec`, `Pos` at `some s` are `N`'s, and everything at `none` that is about arrows is `N`'s at `ρ`.
+* *Why `τ` does the work.*  `τ(□ψ) = □(τ.box ψ)`, with `τ.box (u.box) = k_u.box` and `τ.box (u.keep) = k_u.keep`, for `k_u := θ(u.keep)`.  That is `θ(□ shift ψ)`.  And `τ(◇_x ψ) = ◇_{k_x}(…)`.
+* *Truth at `w`*, by induction on the formula, with **no reasoning about the cluster**:
+  * Atoms and equality: `S`'s term model.  Quantifiers: Henkin at `S`, and terms for the converse.
+  * `□ψ ∈ M_w ⇔ τ(□ψ) ∈ M_ρ`.  Forward, `four_box` then the edge.  Back, `¬□ψ` gives `□◇¬(shift ψ)` by `five_box`, then the edge.
+  * `◇_x ψ ∈ M_w ⇔ τ(◇_x ψ) ∈ M_ρ`.  Forward, `five_dia` then the edge.  Back, `four_dia` on `□_x¬ψ`, then the edge.
+  * `τ(□ψ) ∈ M_ρ ⇔ N.sat (e i) (τ(□ψ))`: `ctruth` at the root, as a black box.
+  * `N.sat (e i) (τ(□ψ)) ⇔ sat_w (□ψ)`: `Model.sat_subst`, and `sat_cone`, below.
+* *`sat_cone`.*  At `some t`, a formula means in the cone what it means in `N`: nothing at `t` looks at `none`.  An induction on formulas, over a map `N.Dom A t → Dom A (some t)`, which is the identity at each constructor.
+* *Laws at `none`.*  Shapes are off, so `posShape_wf`, `Ret` and its laws are vacuous, and `Ind` is equality.  `necDup`, `posKeep`, `posSide`, `necMap` and the rest are `N`'s at `ρ`; `Def_w` is closed under them because terms are.  `keepLift` and `necSide_exists` at `none` are (5).  `posSerial`: `S`'s strong D.  `serial`: `¬□⊥` gives a child of `ρ`.
+
+**5. The mixed columns.**  With `FourStrong` on and `FourStrongW` off, `Model.keepLift` asks, at `w`, that every `□`-object of the cluster be `w`-definable, and the rule gives it.
+* A cluster object is hub-definable by R4, at a hub **term**, not only an address.  So `lift []` runs at every term of a liftable type, and `θ(y.keep)` is a term entry.  `fmapL_names`, that entries name addresses, is about the tree's own edges and does not touch this one.
+* No uniqueness of names is needed at `w`.  Two `w`-objects with one image denote one raw object, and `w`'s formulas see them only through `□`, so they agree already.  N1 stays a fact about the tree.
+* This is why `src` must be in the net.  With lifts off the chain could be fixed in advance.  With a lift flag on, `w`'s growth depends on the hub's, and they have to interleave.
+
+**6. ⚠ Correction: `FiveStrong` with lifts off, T and B off, is incomplete as ruled, so it must leave the cube.**  `necSide_exists`, read relationally, says exactly that a necessary object at a target is one at the source: the `□`-lift, semantically.  `FiveStrong` has no rule.  So `K45` with `FiveStrong` on and `FourStrong` off has fewer models and the same proofs as with it off, and `keep_lift` at the root is valid there and underivable.  F4's "by closure, `FiveStrong` with 4 means `FourStrong`" is that closure, and it has to be stated.
+* It has been harmless so far: `CubeSys.five_lifts` asked the flags with T off, and KB5's and KDB5's reached worlds meet the gather anyway.
+* `liftsProved` widening in 2 would let it through silently.  So `CubeSys` gets a clause: `Five → FiveStrong → B = false → T = false → FourStrong`.
+
+**7. Rejected.**
+* *The hub inside the cluster, with a self-edge* (the scope's sketch): needs a second loop, for no gain.
+* *`w` as the tree's root, with the hub as its only child, rebasing the cluster on the hub.*  The tree-level work is small, and lifting and committing are already there.  But `groot` appears about 700 times in `GClu*`, `rpath` is undefined at `w`, and every world-generic lemma would need a case for it.  It touches everything the cone leaves alone.
+* *`w` as a world inside `cmodel`, by a case in `preTB`.*  Tidy for `cden`, but R4 becomes one-directional at `w`, and `cdefinable_box_iff` and its uses all split.
+* *Translating proofs between instances of `ModalSys`, K45 into K45 with lifts plus axioms.*  `WFF` depends on the instance through `Ctx.boxIn`, so about 70 constructors with transports, and `Model` would need converting too.
+* *Saturating the hub first and choosing `w`'s objects afterwards.*  Henkin does not realise types: a witness at `w` needs a hub object realising its whole type, which is what committing does.
+
+**8. Not checked.**
+* *`Model.cone`'s bulk.*  Every field is routine on paper, but there are many, and `Dom` at `some t` versus `N.Dom` needs the identity map threaded through `GFunc.eval` and `interp`.  This is the likeliest place for the estimate to go wrong.
+* *`Def_w` closed under the operations* needs `interp` of `Canon.applyG`, generically.  `cden_applyG` is the cluster's form.  I found no generic form, so it may be new, at about 100 lines.
+* *`Term.keep` of an arbitrary term.*  `τ` on `boxtm` and `diatm` is `SubE.keepE`, and on addresses `θ`.  Checked by reading, not written out.
+* *Whether anything in `GClu*` reads `(gnet 0).st [] = ⟨l₀, M₀⟩`.*  The sites found are `exists_canonC`, `GCompleteness` and `GCluModel:199`, the last being `csymm`'s, which has B on.  With `HubOn` false nothing changes.  I have not chased every definitional use.
+* *The relational converse of the frame condition*, and the `◇_x` row's independence, are still as in "The proposed rule".
+
+**9. Order and size.**
+
+| Step | What | Lines |
+|---|---|---|
+| 1 | `F` as a hypothesis in `LiftB`; `Good.ax`; `kKeepLift`'s third branch; the flags; the `CubeSys` clause | 300 to 500 |
+| 2 | `src`, `HubOn`, `init`, `realF []`, `henk` on `src`; `Good.hub` | 800 to 1 200 |
+| 3 | The limit: `src`'s `BWorld`, `lstg` | 300 to 500 |
+| 4 | `Model.cone`, `sat_cone` | 1 200 to 2 200 |
+| 5 | Truth at `w`, dispatch; **K45 and KD45 with no lift complete here** | 500 to 800 |
+| 6 | `lift []`, `keepLift` and `necSide_exists` at `w`; the mixed columns | 400 to 800 |
+
+Steps 1 to 5 are a milestone by themselves: the no-lift column.  Strong K45 proper, the `□`-lift without the `◇`-lift, is step 6.
+
+**Built (2026-11-05): step 1, and the hub as the tree's root.**  Strict build clean, standard axioms.  No `GClu*` signature changed.
+* *`QML_v12m_LiftB`.*  `F` is a hypothesis: `WFF.genAx`, closed, with `Proof.genAx_nec` (the rule at `Ctx.empty`); `WFF.pullGen`, `WFF.liftAx`, `Proof.liftAx_nec`; `Proof.lift_gen` takes `genAx` instead of B; `Proof.lift_exF`, `Proof.keep_lift_F`, `Proof.keep_lift_posF` take `liftAx`.  The B forms are wrappers through `Proof.root_refl`.
+* *Flags.*  `ModalSys.liftsProved` is `Five && (T || !BStrong)`.  `ModalSys.axNeed`: the lifts are derived from the closed sentences, T off, not both flags.  `ModalSys.hubFlags := axNeed && !B`.
+* *`QML_v12m_GLift`.*  `NecThm`, ⭐`AxOk` (every necessitated closed sentence, or `□⊥`), `AxOk.grow`, ⭐`FwdData.axOk` (an edge hands them on), ⭐`axOk_of_B` (closed T), `Proof.kDia_box_bot`, `kLiftAx`, `kLiftAx_nec`.  `Proof.kKeepLift` takes the closed sentence as a hypothesis for its third branch, and `glift_consistent` reads it from `AxOk` of the source, or refutes the possibility by `□⊥`.  So B is no longer used in the tree's lifts: weak B enters only through `axOk_of_B` at the root.
+* *The tree.*  ⭐`Good.ax`: every live node has `AxOk` under `axNeed`.  ⭐`HubOn M₀` (`hubFlags` and `¬□⊥ ∈ M₀`), `hubSeed`, `hubSeed_consistent`, `hubSt` and `hubSt_axOk`: with `HubOn`, `init` starts the root at the hub.  `init_st`, `init_st_hub`, `not_hubOn_of_B`, `not_hubOn_of_flags`.  `exists_canonC`, `exists_canonG` and `csymm` read the root through `init_st`.
+* *Temporary.*  `CluFlags.noHub`, `ModalSys.NoB.noHub`, `ModalSys.CubeSys.five_hub`: the hub systems are not dispatched until the cone exists.  When it does, these go, and the `FiveStrong` clause of 6 comes in.
+* *Next: step 2.*  `src` and the edge `src → []`.  The plan is to do `src`'s Henkin steps inside the existing root-Henkin operation, not as a new `GOp` constructor: each root obligation recurs forever, so fairness holds, and no pattern on `GOp` shifts.
+
+**Built (2026-11-05): step 2, the world asked about in the network.**  Strict build clean.
+* *`GNetSt`* has `src`, the world asked about, and `hb`, whether the root is a hub; `init` sets them to `⟨l₀, M₀⟩` and `HubOn M₀`.
+* *`Good`* has `srcMcs`, ⭐`hub` (the edge `src → []` is a `FwdData` of kind `none`, in the root's slots `fcl []`, `fmap []`) and `excl` (hub and self-edge exclude each other).  `hubSt_fwd` starts it, with nothing committed: `hubSeed` is exactly what the transfer asks.  `Good.setHub`; `Good.setLoop` now takes `N.lp`.
+* *`realF []`* has a third branch: with `hb`, `src`'s next variable is committed into the hub by the child's clause, `grealStep` and `gextF` from `src`, consistent by `grealStep_ok`.
+* *Henkin at the world asked about:* `henkT`, `henk`'s step on a state alone, `henkT_ok`; `withSrc`, `henkSrc`.  `applyOp`'s Henkin operation at the root also steps `src` (`(N.henk s o).henkSrc s o`), so `GOp` is unchanged and `GChain`'s Henkin lemmas went through untouched: `henkSrc` changes only `src`.
+* *`Ext`* tracks `src` (`Ext.src`, `Ext.hb`, `Ext.henkSrc`).  `NamesInj` and `LiftEntOk` got the hub branch and `henkSrc`; `GNetSt.realF_fcl_root` the hub branch.
+* *Next: step 3*, the limit: `src`'s stages as a `BWorld` (Henkin witnessing from the root-Henkin operation's fairness), the edge's totality (`GLoopLimit`'s `loop_total`, `lstg`, `gloop_at` pattern), and transfer along it at the limit.
 
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 

@@ -31,9 +31,12 @@ theorem GNetSt.realF_fcl_root (hF : ModalSys.Four = true) (N : GNetSt σ) :
     (N.realF hF []).fcl [] =
       if N.lp ∧ (N.fcl []).length < (N.st []).l.length then
         nextTy (N.st []).l (N.fcl []) :: N.fcl []
+      else if N.hb ∧ (N.fcl []).length < N.src.l.length then
+        nextTy N.src.l (N.fcl []) :: N.fcl []
       else N.fcl [] := by
   simp only [GNetSt.realF]
   split_ifs
+  · simp only [GNetSt.setFwd, Function.update_self]
   · simp only [GNetSt.setFwd, Function.update_self]
   · rfl
 

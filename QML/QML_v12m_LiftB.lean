@@ -515,13 +515,30 @@ abbrev WFF.genBody (hF : ModalSys.Four = true) (ht : T.tup = true)
     (WFF.bindFree 0 (Ctx.RootFresh.empty _) Ctx.NoSlots.slots K
       (WFF.liftEx (Γ := ctxOf [K]) hF ht χ))
 
-/-- ⭐**The lift at one generic parameter.**  `□ξ` from `Proof.lift_boxU`, read in
-    `Proof.root_refl` at the parameter: `ζ̂(r)` is `ζ(r.keep)`, which is `ξ`. -/
-def Proof.lift_gen (hB : ModalSys.B = true) (hF : ModalSys.Four = true)
+/-- ⭐**The closed sentence the lift reads**: `∀k. □ζ̂(k) → ζ(k)`, at `ζ` the lift's conclusion with
+    the generic parameter bound.  Its necessity is a theorem (`Proof.genAx_nec`); with weak B it
+    holds wherever something is accessible (`Proof.root_refl`). -/
+def WFF.genAx (hF : ModalSys.Four = true) (ht : T.tup = true) (hKt : K.tup = true)
+    (χ : WFF σ ((ctxOf [K]).boxIn.insert (.bnd 0) T) 1) : WFF σ Ctx.empty 0 :=
+  WFF.mono Ctx.boxIn_empty_le (.all K (.imp (.box (WFF.loopHat hF hKt (WFF.genBody hF ht χ)))
+    (WFF.genBody hF ht χ)))
+
+/-- ⭐`□genAx` is a theorem: the rule at the empty context. -/
+def Proof.genAx_nec (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
+    (hN : ModalSys.shaped = false) (ht : T.tup = true) (hKt : K.tup = true)
+    (χ : WFF σ ((ctxOf [K]).boxIn.insert (.bnd 0) T) 1) :
+    Proof σ Ctx.empty [] (.box ((WFF.genAx hF ht hKt χ).closed Ctx.empty.boxIn)) :=
+  Proof.conv (congrArg WFF.box ((WFF.mono_mono _ _ _).trans (WFF.mono_refl _ _)).symm)
+    (Proof.five_refl hF hV hN .nec hKt (WFF.genBody hF ht χ))
+
+/-- ⭐**The lift at one generic parameter.**  `□ξ` from `Proof.lift_boxU`, read in `genAx` at the
+    parameter: `ζ̂(r)` is `ζ(r.keep)`, which is `ξ`. -/
+def Proof.lift_gen (hF : ModalSys.Four = true)
     (hV : ModalSys.Five = true) (hN : ModalSys.shaped = false) (hT : ModalSys.T = false)
     (hk : T.keepable = true) (ht : T.tup = true) (hK : K.keepable = true) (hKt : K.tup = true)
     {Δ : List (WFF σ (ctxOf [K]) 0)} (χ : WFF σ ((ctxOf [K]).boxIn.insert (.bnd 0) T) 1)
-    (p : Proof σ (ctxOf [K]) Δ ((OutLeg.nec : OutLeg (ctxOf [K])).dia (WFF.ex T χ))) :
+    (p : Proof σ (ctxOf [K]) Δ ((OutLeg.nec : OutLeg (ctxOf [K])).dia (WFF.ex T χ)))
+    (hax : Proof σ (ctxOf [K]) Δ ((WFF.genAx hF ht hKt χ).closed _)) :
     Proof σ (ctxOf [K]) Δ (WFF.liftEx hF ht χ) := by
   have hfr₀ : Ctx.empty.RootFresh (.free 0) := Ctx.RootFresh.empty _
   have hbox := Proof.lift_boxU hF hV hN hk ht χ 1 (ctxOf_fresh (l := [K]) le_rfl).boxIn p
@@ -581,7 +598,9 @@ def Proof.lift_gen (hB : ModalSys.B = true) (hF : ModalSys.Four = true)
     rw [WFF.mono_mono]
     exact (WFF.instantiate_eta_openFree 0 hfr₀ Ctx.NoSlots.slots Ctx.NoSlots.slots _).trans
       (WFF.openFree_bindFree 0 hfr₀ Ctx.NoSlots.slots _)
-  have F := Proof.root_refl hB hF hV hN hKt (WFF.genBody hF ht χ) (Proof.not_box_bot p)
+  have F : Proof σ (ctxOf [K]) Δ (WFF.mono (Ctx.boxIn_empty_le.trans (Ctx.empty_le _))
+      (.all K (.imp (.box (WFF.loopHat hF hKt (WFF.genBody hF ht χ))) (WFF.genBody hF ht χ)))) :=
+    Proof.conv (WFF.mono_mono _ _ _) hax
   exact Proof.imp_elim (Proof.conv (congrArg₂ WFF.imp eL eR)
     (Proof.all_elim K (Term.eta genR K hr) (φ := WFF.mono (hle.insert (.bnd 0) K)
       (.imp (.box (WFF.loopHat hF hKt (WFF.genBody hF ht χ))) (WFF.genBody hF ht χ))) F))
@@ -640,34 +659,88 @@ theorem WFF.subst_pull_tuple (hF : ModalSys.Four = true) (hT : ModalSys.T = fals
   rw [getElem_findIdx_boxItems hm, hv] at e
   exact (Option.some.inj e).symm
 
-/-- ⭐⭐**`∃y. ◇φ(y.keep)`, from `◇∃c. φ(c)`** (4, 5, weak B, T and strong B off): the lift at the
-    generic parameter, which `tupS` brings back to the whole context. -/
+/-- The body pulled back to the generic parameter. -/
+def WFF.pullGen (hF : ModalSys.Four = true) {l : List VarType}
+    (φ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) T) 1) :
+    WFF σ ((ctxOf [boxK l]).boxIn.insert (.bnd 0) T) 1 :=
+  have hO := ok_pullBoxS (σ := σ) hF (genR_ref (boxK l))
+  have hC := coh_pullBoxS (σ := σ) hF (genR_ref (boxK l))
+  have hs := Ctx.NoSlots.slots (Γ := (ctxOf [boxK l]).boxIn)
+  have hs₀ := Ctx.NoSlots.slots (Γ := (ctxOf l).boxIn)
+  WFF.subst (VarSymb.shiftSlot (pullBoxIdx l genR) 0 0) ((pullBoxS l genR).under 0 0 T hs.root)
+    (Subst.ok_under hO T hs.root) (Subst.coh_under hO hC hs₀ T hs.root) (hs₀.insert T)
+    (hs.insert T) φ
+
+/-- ⭐**The closed sentence the lift of `φ` reads**: `genAx` at the pulled-back body. -/
+def WFF.liftAx (hF : ModalSys.Four = true) (ht : T.tup = true) {l : List VarType}
+    (φ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) T) 1) : WFF σ Ctx.empty 0 :=
+  WFF.genAx hF ht rfl (WFF.pullGen hF φ)
+
+/-- ⭐`□liftAx` is a theorem. -/
+def Proof.liftAx_nec (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
+    (hN : ModalSys.shaped = false) (ht : T.tup = true) {l : List VarType}
+    (φ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) T) 1) :
+    Proof σ Ctx.empty [] (.box ((WFF.liftAx hF ht φ).closed Ctx.empty.boxIn)) :=
+  Proof.genAx_nec hF hV hN ht rfl _
+
+/-- ⭐⭐**`∃y. ◇φ(y.keep)`, from `◇∃c. φ(c)` and `liftAx φ`** (4 and 5, T and strong B off): the
+    lift at the generic parameter, which `tupS` brings back to the whole context. -/
+def Proof.lift_exF (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
+    (hN : ModalSys.shaped = false) (hT : ModalSys.T = false)
+    (hk : T.keepable = true) (ht : T.tup = true) {l : List VarType}
+    {Δ : List (WFF σ (ctxOf l) 0)} (φ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) T) 1)
+    (p : Proof σ (ctxOf l) Δ ((OutLeg.nec : OutLeg (ctxOf l)).dia (WFF.ex T φ)))
+    (hax : Proof σ (ctxOf l) Δ ((WFF.liftAx hF ht φ).closed _)) :
+    Proof σ (ctxOf l) Δ (WFF.liftEx hF ht φ) := by
+  have g : Proof σ (ctxOf [boxK l])
+      [(OutLeg.nec : OutLeg (ctxOf [boxK l])).dia (WFF.ex T (WFF.pullGen hF φ)),
+        (WFF.genAx hF ht rfl (WFF.pullGen hF φ)).closed _]
+      (WFF.liftEx hF ht (WFF.pullGen hF φ)) :=
+    Proof.lift_gen hF hV hN hT hk ht rfl rfl _ (Proof.lookup List.mem_cons_self)
+      (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
+  have s := Proof.subst g (tupS σ hF l) (ok_tupS hF l) (coh_tupS hF l) Ctx.NoSlots.slots
+  have e₁ : WFF.subst _ (tupS σ hF l).box (Subst.ok_box (ok_tupS hF l))
+      (Subst.coh_box (ok_tupS hF l) (coh_tupS hF l)) Ctx.NoSlots.slots Ctx.NoSlots.slots
+      (WFF.ex T (WFF.pullGen hF φ)) = WFF.ex T φ := WFF.subst_pull_tuple hF hT (WFF.ex T φ)
+  have e₂ : WFF.subst _ (tupS σ hF l) (ok_tupS hF l) (coh_tupS hF l) Ctx.NoSlots.slots
+      Ctx.NoSlots.slots ((WFF.genAx hF ht rfl (WFF.pullGen hF φ)).closed _) =
+      (WFF.liftAx hF ht φ).closed _ := WFF.subst_mono_empty _ _ _ _ _ _ _ _
+  have ec := (WFF.subst_liftEx hF ht (tupS σ hF l) (ok_tupS hF l) (coh_tupS hF l)
+    Ctx.NoSlots.slots Ctx.NoSlots.slots (WFF.pullGen hF φ)).trans
+    (congrArg (WFF.liftEx hF ht) (eq_of_heq (WFF.ex.inj e₁).2))
+  have s' : Proof σ (ctxOf l) [(OutLeg.nec : OutLeg (ctxOf l)).dia (WFF.ex T φ),
+      (WFF.liftAx hF ht φ).closed _] (WFF.liftEx hF ht φ) :=
+    Proof.conv ec (Proof.castHyps (congrArg₂ (fun z y => [(WFF.box (WFF.neg z)).neg, y]) e₁ e₂) s)
+  exact Proof.imp_elim (Proof.imp_elim (Proof.ofSubset (fun _ hx => by cases hx)
+    (Proof.imp_intro (Proof.imp_intro s'))) hax) p
+
+/-- ⭐⭐**`∃y. ◇φ(y.keep)`, from `◇∃c. φ(c)`** (4, 5, weak B, T and strong B off): `liftAx` by
+    closed T. -/
 def Proof.lift_exB (hB : ModalSys.B = true) (hF : ModalSys.Four = true)
     (hV : ModalSys.Five = true) (hN : ModalSys.shaped = false) (hT : ModalSys.T = false)
     (hk : T.keepable = true) (ht : T.tup = true) {l : List VarType}
     {Δ : List (WFF σ (ctxOf l) 0)} (φ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) T) 1)
     (p : Proof σ (ctxOf l) Δ ((OutLeg.nec : OutLeg (ctxOf l)).dia (WFF.ex T φ))) :
-    Proof σ (ctxOf l) Δ (WFF.liftEx hF ht φ) := by
-  have hO := ok_pullBoxS (σ := σ) hF (genR_ref (boxK l))
-  have hC := coh_pullBoxS (σ := σ) hF (genR_ref (boxK l))
-  have hs := Ctx.NoSlots.slots (Γ := (ctxOf [boxK l]).boxIn)
-  have hs₀ := Ctx.NoSlots.slots (Γ := (ctxOf l).boxIn)
-  let χ : WFF σ ((ctxOf [boxK l]).boxIn.insert (.bnd 0) T) 1 :=
-    WFF.subst (VarSymb.shiftSlot (pullBoxIdx l genR) 0 0) ((pullBoxS l genR).under 0 0 T hs.root)
-      (Subst.ok_under hO T hs.root) (Subst.coh_under hO hC hs₀ T hs.root) (hs₀.insert T)
-      (hs.insert T) φ
-  have g : Proof σ (ctxOf [boxK l]) [(OutLeg.nec : OutLeg (ctxOf [boxK l])).dia (WFF.ex T χ)]
-      (WFF.liftEx hF ht χ) :=
-    Proof.lift_gen hB hF hV hN hT hk ht rfl rfl χ (Proof.lookup List.mem_cons_self)
-  have s := Proof.subst g (tupS σ hF l) (ok_tupS hF l) (coh_tupS hF l) Ctx.NoSlots.slots
-  have e₁ : WFF.subst _ (tupS σ hF l).box (Subst.ok_box (ok_tupS hF l))
-      (Subst.coh_box (ok_tupS hF l) (coh_tupS hF l)) Ctx.NoSlots.slots Ctx.NoSlots.slots
-      (WFF.ex T χ) = WFF.ex T φ := WFF.subst_pull_tuple hF hT (WFF.ex T φ)
-  have ec := (WFF.subst_liftEx hF ht (tupS σ hF l) (ok_tupS hF l) (coh_tupS hF l)
-    Ctx.NoSlots.slots Ctx.NoSlots.slots χ).trans
-    (congrArg (WFF.liftEx hF ht) (eq_of_heq (WFF.ex.inj e₁).2))
-  exact Proof.imp_elim (Proof.ofSubset (fun _ hx => by cases hx) (Proof.imp_intro (Proof.conv ec
-    (Proof.castHyps (congrArg (fun z => [(WFF.box (WFF.neg z)).neg]) e₁) s)))) p
+    Proof σ (ctxOf l) Δ (WFF.liftEx hF ht φ) :=
+  Proof.lift_exF hF hV hN hT hk ht φ p (Proof.conv (WFF.mono_mono _ _ _).symm
+    (Proof.root_refl hB hF hV hN rfl (WFF.genBody hF ht (WFF.pullGen hF φ)) (Proof.not_box_bot p)))
+
+/-- ⭐⭐**`keep_lift` along `□`, given `liftAx`** (4 and 5, T and strong B off), whatever
+    `FourStrong` and `FourStrongW` say. -/
+def Proof.keep_lift_F (hF : ModalSys.Four = true)
+    (hV : ModalSys.Five = true) (hN : ModalSys.shaped = false) (hT : ModalSys.T = false)
+    (hl : T.liftable = true) (ht : T.tup = true) {l : List VarType}
+    {Δ : List (WFF σ (ctxOf l) 0)} (φ : WFF σ ((ctxOf l).boxIn.insert (.bnd 0) T) 1) (c : ℕ)
+    (hc : (ctxOf l).RootFresh (.free c)) {ψ : WFF σ (ctxOf l) 0}
+    (p : Proof σ (ctxOf l) Δ ((OutLeg.nec : OutLeg (ctxOf l)).dia (WFF.ex T φ)))
+    (hax : Proof σ (ctxOf l) Δ ((WFF.liftAx hF ht φ).closed _))
+    (q : Proof σ ((ctxOf l).insert (.free c) T)
+      (WFF.liftRead hF hl (.nec : OutLeg (ctxOf l)) hc φ :: Δ.map (WFF.weaken hc.root T))
+      (ψ.weaken hc.root T)) :
+    Proof σ (ctxOf l) Δ ψ := by
+  refine Proof.ex_elim c T hc (φ := WFF.liftRead hF hl (.nec : OutLeg (ctxOf l)) hc φ) ?_ q
+  rw [WFF.liftRead_keptBody hF hl ht φ hc, WFF.bindFree_openFree]
+  exact Proof.lift_exF hF hV hN hT (VarType.keepable_of_liftable hl) ht φ p hax
 
 /-- ⭐⭐**`keep_lift` along `□` is derivable with 4, 5 and weak B**, whatever `FourStrong` and
     `FourStrongW` say, T and strong B off: the rule's own shape. -/
@@ -917,6 +990,44 @@ def Proof.keep_lift_posB (hB : ModalSys.B = true) (hF : ModalSys.Four = true)
       (Proof.lookup List.mem_cons_self))
   refine Proof.keep_lift_B hB hF hV hN hT hl ht (WFF.liftPos hF hk hx φ) c hc
     (Proof.pos_necU hF hV hN hk ht hx hx' φ hc p) ?_
+  exact Proof.imp_elim (Proof.ofSubset (fun _ hz => List.mem_cons_of_mem _ hz) (Proof.imp_intro q))
+    (Proof.ofSubset (fun z hz => by
+      rw [List.mem_singleton.mp hz]
+      exact List.mem_cons_self) d)
+
+/-- ⭐⭐**`keep_lift` along `◇_x`, given `liftAx` at `liftPos`** (4 and 5, T and strong B off):
+    `liftPos` carries the body through the lift along `□`, and `four_dia` brings it back. -/
+def Proof.keep_lift_posF (hF : ModalSys.Four = true)
+    (hV : ModalSys.Five = true) (hN : ModalSys.shaped = false) (hT : ModalSys.T = false)
+    (hl : T.liftable = true) (hx : (ctxOf l).ref x = some (.VTypeDia X))
+    (hx' : ∃ X', (ctxOf l).ref x = some (.VTypeDia X')) {Δ : List (WFF σ (ctxOf l) 0)}
+    (φ : WFF σ (((ctxOf l).diaIn x).insert (.bnd 0) T) 1) (c : ℕ)
+    (hc : (ctxOf l).RootFresh (.free c)) {ψ : WFF σ (ctxOf l) 0}
+    (p : Proof σ (ctxOf l) Δ (.dia x hx' (WFF.ex T φ)))
+    (hax : Proof σ (ctxOf l) Δ ((WFF.liftAx hF
+      (VarType.tup_of_keepable (VarType.keepable_of_liftable hl))
+      (WFF.liftPos hF (VarType.keepable_of_liftable hl) hx φ)).closed _))
+    (q : Proof σ ((ctxOf l).insert (.free c) T)
+      (WFF.liftRead hF hl (.pos x hx') hc φ :: Δ.map (WFF.weaken hc.root T))
+      (ψ.weaken hc.root T)) :
+    Proof σ (ctxOf l) Δ ψ := by
+  have hk := VarType.keepable_of_liftable hl
+  have ht := VarType.tup_of_keepable hk
+  have h := Ctx.le_insert hc.root T
+  have hw' : ((ctxOf l).insert (.free c) T).boxIn.ref (.step (.root (.free c)) .keep) = some T :=
+    Ctx.ref_keep_of' hF (Ctx.ref_insert_root (ctxOf l) (.free c) T) hk
+  have hw := (Ctx.le_boxIn_diaIn ((ctxOf l).insert (.free c) T) x).ref hw'
+  have hx₁ : ∃ X', ((ctxOf l).insert (.free c) T).ref x = some (.VTypeDia X') :=
+    hx'.imp fun _ hY => h.ref hY
+  have e := WFF.read_liftPos hF hk hx φ h.boxIn (.step (.root (.free c)) .keep) hw'
+  rw [← WFF.shift_read_body hF hk hx φ hc hw hw'] at e
+  have d : Proof σ ((ctxOf l).insert (.free c) T)
+      [WFF.liftRead hF hl (.nec : OutLeg (ctxOf l)) hc (WFF.liftPos hF hk hx φ)]
+      (WFF.liftRead hF hl (.pos x hx') hc φ) :=
+    Proof.four_dia_home hF hx₁ _ (Proof.conv (congrArg (fun z => (WFF.box z.neg).neg) e)
+      (Proof.lookup List.mem_cons_self))
+  refine Proof.keep_lift_F hF hV hN hT hl ht (WFF.liftPos hF hk hx φ) c hc
+    (Proof.pos_necU hF hV hN hk ht hx hx' φ hc p) hax ?_
   exact Proof.imp_elim (Proof.ofSubset (fun _ hz => List.mem_cons_of_mem _ hz) (Proof.imp_intro q))
     (Proof.ofSubset (fun z hz => by
       rw [List.mem_singleton.mp hz]

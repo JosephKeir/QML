@@ -44,10 +44,12 @@ structure Ext (N N' : GNetSt σ) : Prop where
   fmap : ∀ k, N.Live k → ∀ v T, (ctxOf (N.fcl k)).kView (N.kind k) v = some T →
     N'.fmap k v = N.fmap k v
   lp : N'.lp = N.lp
+  src : N.hb → Grows N.src N'.src
+  hb : N'.hb = N.hb
 
 theorem Ext.refl (N : GNetSt σ) : Ext N N :=
   ⟨fun _ h => h, fun _ _ => Grows.refl _, fun _ _ => rfl, fun _ _ => List.suffix_refl _,
-    fun _ _ _ _ _ => rfl, rfl⟩
+    fun _ _ _ _ _ => rfl, rfl, fun _ => Grows.refl _, rfl⟩
 
 theorem Ext.trans {N N' N'' : GNetSt σ} (h₁ : Ext N N') (h₂ : Ext N' N'') : Ext N N'' where
   live k hk := h₂.live k (h₁.live k hk)
@@ -59,6 +61,8 @@ theorem Ext.trans {N N' N'' : GNetSt σ} (h₁ : Ext N N') (h₂ : Ext N' N'') :
     rw [h₁.kind k hk]
     exact ((ctxOf_le_of_suffix (h₁.fcl k hk)).kView _) v T hv
   lp := h₂.lp.trans h₁.lp
+  src h := (h₁.src h).trans (h₂.src (by rw [h₁.hb]; exact h))
+  hb := h₂.hb.trans h₁.hb
 
 theorem Ext.setSt {N : GNetSt σ} {s : Node} {t : NodeSt σ} (hg : Grows (N.st s) t) :
     Ext N (N.setSt s t) where
@@ -74,6 +78,8 @@ theorem Ext.setSt {N : GNetSt σ} {s : Node} {t : NodeSt σ} (hg : Grows (N.st s
   fcl _ _ := List.suffix_refl _
   fmap _ _ _ _ _ := rfl
   lp := rfl
+  src _ := Grows.refl _
+  hb := rfl
 
 /-- The items of a committed view have older roots than the next variable. -/
 theorem kView_rt_lt {cl : List VarType} {k : Option VarSymb} {u : VarSymb} {s : Step}
@@ -108,12 +114,14 @@ theorem Ext.setFwd {N : GNetSt σ} {k : Node} {A : VarType} {f : VarSymb → LEn
     · change Function.update N.fmap k _ k' v = _
       rw [Function.update_of_ne h]
   lp := rfl
+  src _ := Grows.refl _
+  hb := rfl
 
 theorem Ext.newChild {N : GNetSt σ} {s : Node} (hs : N.Live s) (kd : Option VarSymb)
     (t : NodeSt σ) (f : VarSymb → LEnt σ) : Ext N (N.newChild s kd t f) := by
   have hold : ∀ k, N.Live k → k ≠ N.nch s :: s := fun k hk h => not_live_new s (h ▸ hk)
   refine ⟨fun k hk => (live_newChild hs kd t f k).mpr (Or.inl hk), fun k hk => ?_,
-    fun k hk => ?_, fun k hk => ?_, fun k hk v _ _ => ?_, rfl⟩
+    fun k hk => ?_, fun k hk => ?_, fun k hk v _ _ => ?_, rfl, fun _ => Grows.refl _, rfl⟩
   · change Grows (N.st k) (Function.update N.st _ t k)
     rw [Function.update_of_ne (hold k hk)]
     exact Grows.refl _
@@ -130,13 +138,19 @@ theorem Ext.realF (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k :
   match k with
   | [] =>
       simp only [GNetSt.realF]
-      split_ifs with h
+      split_ifs with h h'
       · obtain ⟨hl, hlt⟩ := h
         obtain ⟨-, hV, hS, hT⟩ := hN.flags hl
         obtain ⟨_, hg, _⟩ := gloopStep_ok hF hV hS hT (hN.mcs [] trivial) (hN.loop hl) hlt
         refine (Ext.setSt hg).trans (Ext.setFwd fun v T hv => ?_)
         obtain ⟨u, s, rfl, -, -⟩ := kView_item hv
         exact gloopF_old (kView_rt_lt hv) s
+      · obtain ⟨hb, hlt⟩ := h'
+        obtain ⟨_, hg, _⟩ :=
+          grealStep_ok hF (hN.srcMcs hb) (hN.mcs [] trivial) (hN.hub hb) hlt
+        refine (Ext.setSt hg).trans (Ext.setFwd fun v T hv => ?_)
+        obtain ⟨u, s, rfl, -, -⟩ := kView_item hv
+        exact gextF_old (kView_rt_lt hv) s
       · exact Ext.refl N
   | c :: p =>
       simp only [GNetSt.realF]
@@ -209,6 +223,17 @@ theorem Ext.henk {N : GNetSt σ} (hN : N.Good) {s : Node} (hs : N.Live s) (o : O
     | .back _ _ _ _ => exact Ext.refl N
     | .retS _ _ _ _ => exact Ext.refl N
     | .retxS _ _ _ _ _ _ => exact Ext.refl N
+  · exact Ext.refl N
+
+theorem Ext.henkSrc {N : GNetSt σ} (hN : N.Good) (s : Node) (o : Obl σ) :
+    Ext N (N.henkSrc s o) := by
+  unfold GNetSt.henkSrc GNetSt.withSrc
+  split_ifs with h
+  · have hl : ∀ k, ({ N with src := henkT N.src o } : GNetSt σ).Live k ↔ N.Live k :=
+      live_of_nch rfl
+    exact ⟨fun k h => (hl k).mpr h, fun _ _ => Grows.refl _, fun _ _ => rfl,
+      fun _ _ => List.suffix_refl _, fun _ _ _ _ _ => rfl, rfl,
+      fun hb => (henkT_ok (hN.srcMcs hb) o).2, rfl⟩
   · exact Ext.refl N
 
 theorem Ext.mkChild (hF : ModalSys.Four = true) {N : GNetSt σ} {s : Node} (hs : N.Live s)
@@ -372,7 +397,7 @@ theorem Ext.lift (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k : 
             unfold FwdOk at hd
             rw [hcl] at hd
             obtain ⟨-, hgp, -, hgk, -⟩ := lift_ok hF (Term.mono (ctxOf_le_of_suffix h) t) hl
-              (hN.mcs p hk.1) (hN.mcs _ hk) hd
+              (hN.mcs p hk.1) (hN.mcs _ hk) hd (hN.ax p hk.1)
             have e₁ := Ext.setSt (N := N) hgp
             have e₂ := Ext.setSt (N := N.setSt p (liftPar hF (N.st p) (N.st (c :: p))
               (N.kind (c :: p)) (N.fmap (c :: p)) (Term.mono (ctxOf_le_of_suffix h) t) hl))
@@ -413,7 +438,7 @@ instance : Nonempty (GOp σ) := ⟨.inr (.inr (.inl []))⟩
 open Classical in
 /-- Perform one operation, at a live node only. -/
 noncomputable def applyOp (hF : ModalSys.Four = true) (N : GNetSt σ) : GOp σ → GNetSt σ
-  | .inl (s, o) => if N.Live s then N.henk s o else N
+  | .inl (s, o) => if N.Live s then (N.henk s o).henkSrc s o else N
   | .inr (.inl (s, o)) => if N.Live s then N.mkChild hF s o else N
   | .inr (.inr (.inl k)) => if N.Live k then N.realF hF k else N
   | .inr (.inr (.inr (k, n))) => if N.Live k then (N.catchUp hF k).lift hF k n else N
@@ -423,7 +448,7 @@ theorem Good.applyOp (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) (
   rcases o with ⟨s, o⟩ | ⟨s, o⟩ | k | ⟨k, n⟩
   · simp only [GNetSt.applyOp]
     split_ifs with h
-    · exact hN.henk h o
+    · exact (hN.henk h o).henkSrc s o
     · exact hN
   · simp only [GNetSt.applyOp]
     split_ifs with h
@@ -444,7 +469,7 @@ theorem Ext.applyOp (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) (o
   rcases o with ⟨s, o⟩ | ⟨s, o⟩ | k | ⟨k, n⟩
   · simp only [GNetSt.applyOp]
     split_ifs with h
-    · exact Ext.henk hN h o
+    · exact (Ext.henk hN h o).trans (Ext.henkSrc (hN.henk h o) s o)
     · exact Ext.refl N
   · simp only [GNetSt.applyOp]
     split_ifs with h
@@ -464,24 +489,119 @@ theorem Ext.applyOp (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) (o
 def LoopOn {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : Prop :=
   ModalSys.B = true ∧ LoopFlags ∧ (WFF.box (Γ := ctxOf l₀) .bot).neg ∈ M₀
 
-/-- The network of one world with theory `M₀`. -/
-def init {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : GNetSt σ where
-  st := fun _ => ⟨l₀, M₀⟩
+/-- ⭐**When the tree's root is a hub** (docs, "K45 and KD45 without both lifts: the hub"): the
+    flags, and `□⊥` refuted.  The root then holds only the closed sentences `M₀` necessitates, and
+    `M₀`'s world is put on top of the cluster afterwards. -/
+def HubOn {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : Prop :=
+  ModalSys.hubFlags = true ∧ (WFF.box (Γ := ctxOf l₀) .bot).neg ∈ M₀
+
+/-- The hub's seed: the closed sentences whose necessity `M₀` holds. -/
+def hubSeed {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : Set (WFF σ (ctxOf []) 0) :=
+  {φ | WFF.box (WFF.closed (ctxOf l₀).boxIn φ) ∈ M₀}
+
+theorem hubSeed_consistent {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+    (hM₀ : Theory.IsMCS M₀) (hne : (WFF.box (Γ := ctxOf l₀) .bot).neg ∈ M₀) :
+    Theory.Consistent (hubSeed M₀) := by
+  rintro ⟨L, hL, ⟨p⟩⟩
+  have q := Proof.K_box (Proof.mono (Ctx.empty_le (ctxOf l₀).boxIn) p)
+  refine hM₀.neg_mem_iff.mp hne (hM₀.closed ⟨_, fun x hx => ?_, ⟨q⟩⟩)
+  obtain ⟨y, hy, rfl⟩ := List.mem_map.mp hx
+  obtain ⟨z, hz, rfl⟩ := List.mem_map.mp hy
+  exact hL z hz
+
+/-- The hub: a maximal extension of its seed, over no variables yet. -/
+noncomputable def hubSt {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : NodeSt σ :=
+  ⟨[], complete (hubSeed M₀)⟩
+
+theorem hubSt_mcs {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} (hM₀ : Theory.IsMCS M₀)
+    (h : HubOn M₀) : Theory.IsMCS (hubSt M₀).M :=
+  (complete_spec (hubSeed_consistent hM₀ h.2)).2
+
+/-- ⭐The hub holds every necessitated closed sentence. -/
+theorem hubSt_axOk {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} (hM₀ : Theory.IsMCS M₀)
+    (h : HubOn M₀) : AxOk (hubSt M₀).M := by
+  refine Or.inl fun ψ hψ => (complete_spec (hubSeed_consistent hM₀ h.2)).1 ?_
+  change WFF.box (WFF.mono _ (WFF.mono _ ψ)) ∈ M₀
+  rw [WFF.mono_mono]
+  exact mem_box_of_necThm hM₀ hψ
+
+/-- ⭐The hub's edge from the world asked about, with nothing committed yet. -/
+theorem hubSt_fwd {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} (hM₀ : Theory.IsMCS M₀)
+    (h : HubOn M₀) (f : VarSymb → LEnt σ) : FwdData ⟨l₀, M₀⟩ (hubSt M₀) none [] f := by
+  have hf : EntOk ((ctxOf []).kView none) (ctxOf (hubSt M₀).l) f := fun v T _ hv => by
+    rw [show (ctxOf []).kView none v = none from boxIn_empty v] at hv
+    cases hv
+  refine ⟨List.nil_suffix, kDecl_none _, hf, fun ψ hψ => ?_⟩
+  have hψ' : WFF.mono (ctxOf_le_of_suffix List.nil_suffix) (.box ψ) ∈ M₀ := hψ
+  rw [eq_closed_boxIn_empty ψ] at hψ' ⊢
+  rw [WFF.closed, WFF.subst_mono_empty _ (Ctx.empty_le _)]
+  change WFF.box (WFF.mono _ (WFF.mono _ _)) ∈ M₀ at hψ'
+  rw [WFF.mono_mono] at hψ'
+  refine (complete_spec (hubSeed_consistent hM₀ h.2)).1 ?_
+  change WFF.box (WFF.mono _ (WFF.mono _ _)) ∈ M₀
+  rw [WFF.mono_mono]
+  exact hψ'
+
+open Classical in
+/-- The network of one world with theory `M₀`, or, with `HubOn M₀`, of the hub. -/
+noncomputable def init {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : GNetSt σ where
+  st := fun _ => if HubOn M₀ then hubSt M₀ else ⟨l₀, M₀⟩
   nch := fun _ => 0
   kind := fun _ => none
   fcl := fun _ => []
   fmap := fun _ => ofRen id
   lp := LoopOn M₀
+  src := ⟨l₀, M₀⟩
+  hb := HubOn M₀
 
 theorem init_live {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} :
     ∀ {k : Node}, (init M₀).Live k → k = []
   | [], _ => rfl
   | _ :: _, h => absurd h.2 (Nat.not_lt_zero _)
 
-theorem Good.init {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} (h : Theory.IsMCS M₀) :
-    (init M₀).Good :=
-  ⟨fun _ _ => h, fun _ _ hk => absurd (init_live hk) (by simp), rfl, fun hl => hl.2.1,
-    fun hl => loopData_nil hl.1 hl.2.1.1 (t := ⟨l₀, M₀⟩) h hl.2.2 _⟩
+theorem init_st_hub {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} (h : HubOn M₀)
+    (s : Node) : (init M₀).st s = hubSt M₀ :=
+  if_pos h
+
+theorem init_st {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} (h : ¬ HubOn M₀)
+    (s : Node) : (init M₀).st s = ⟨l₀, M₀⟩ :=
+  if_neg h
+
+/-- With B on the root is no hub. -/
+theorem not_hubOn_of_B {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+    (hB : ModalSys.B = true) : ¬ HubOn M₀ := fun h => by
+  have := h.1
+  simp [ModalSys.hubFlags, hB] at this
+
+theorem not_hubOn_of_flags {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+    (h : ModalSys.hubFlags = false) : ¬ HubOn M₀ := fun hh =>
+  Bool.false_ne_true (h.symm.trans hh.1)
+
+theorem Good.init (hF : ModalSys.Four = true) {l₀ : List VarType}
+    {M₀ : Set (WFF σ (ctxOf l₀) 0)} (h : Theory.IsMCS M₀) : (init M₀).Good := by
+  refine ⟨fun s _ => ?_, fun _ _ hk => absurd (init_live hk) (by simp), rfl, fun hl => hl.2.1,
+    fun hl => ?_, fun s _ hn => ?_, fun _ => h, fun hh => ?_,
+    fun hh hl => not_hubOn_of_B hl.1 hh⟩
+  · by_cases hh : HubOn M₀
+    · rw [init_st_hub hh]
+      exact hubSt_mcs h hh
+    · rw [init_st hh]
+      exact h
+  · change LoopData ((GNetSt.init M₀).st []) _ _
+    rw [init_st (not_hubOn_of_B hl.1)]
+    exact loopData_nil hl.1 hl.2.1.1 (t := ⟨l₀, M₀⟩) h hl.2.2 _
+  · by_cases hh : HubOn M₀
+    · rw [init_st_hub hh]
+      exact hubSt_axOk h hh
+    rw [init_st hh]
+    cases hB : ModalSys.B
+    · refine Or.inr ?_
+      by_contra hb
+      exact hh ⟨by simp [ModalSys.hubFlags, hn, hB], h.neg_mem_iff.mpr hb⟩
+    · exact axOk_of_B hB hF h
+  · change FwdData ⟨l₀, M₀⟩ ((GNetSt.init M₀).st []) none [] (ofRen id)
+    rw [init_st_hub hh]
+    exact hubSt_fwd h hh _
 
 end GNetSt
 
@@ -513,7 +633,7 @@ noncomputable def gnet (hF : ModalSys.Four = true) {l₀ : List VarType}
 /-- ⭐Every network of the chain is good. -/
 theorem good_gnet (hF : ModalSys.Four = true) {l₀ : List VarType}
     {M₀ : Set (WFF σ (ctxOf l₀) 0)} (h : Theory.IsMCS M₀) : ∀ n, (gnet hF M₀ n).Good
-  | 0 => GNetSt.Good.init h
+  | 0 => GNetSt.Good.init hF h
   | n + 1 => (good_gnet hF h n).applyOp hF (gsched n)
 
 /-- ⭐Along the chain, later networks extend earlier ones. -/

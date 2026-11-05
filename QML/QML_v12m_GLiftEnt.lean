@@ -53,6 +53,9 @@ theorem LiftEntOk.setFwd (hL : N.LiftEntOk hF) (k : Node) (cl : List VarType)
   · rw [Function.update_of_ne hk] at he
     exact hL k' v e he
 
+theorem LiftEntOk.henkSrc (hL : N.LiftEntOk hF) (s : Node)
+    (o : Σ l : List VarType, WFF σ (ctxOf l) 0) : (N.henkSrc s o).LiftEntOk hF := hL
+
 theorem LiftEntOk.newChild (hL : N.LiftEntOk hF) (s : Node) (kd : Option VarSymb)
     (t : NodeSt σ) (g : VarSymb → VarSymb) : (N.newChild s kd t (ofRen g)).LiftEntOk hF := by
   intro k' v e he
@@ -70,6 +73,13 @@ theorem LiftEntOk.realF (hL : N.LiftEntOk hF) (k : Node) : (N.realF hF k).LiftEn
       simp only [GNetSt.realF]
       split_ifs
       · exact (hL.setSt _ _).setFwd _ _ fun v e he => hL _ _ e (gloopF_inr he)
+      · refine (hL.setSt _ _).setFwd _ _ fun v e he => ?_
+        match v, he with
+        | .root _, he => exact hL _ _ e he
+        | .step u s, he =>
+            simp only [gextF] at he
+            split_ifs at he
+            · exact hL _ _ e he
       · exact hL
   | c :: p =>
       simp only [GNetSt.realF]
@@ -151,7 +161,7 @@ theorem LiftEntOk.applyOp (hL : N.LiftEntOk hF) (o : GOp σ) : (N.applyOp hF o).
   rcases o with ⟨s, o⟩ | ⟨s, o⟩ | k | ⟨k, n⟩
   · simp only [GNetSt.applyOp]
     split_ifs
-    · exact hL.henk s o
+    · exact (hL.henk s o).henkSrc s o
     · exact hL
   · simp only [GNetSt.applyOp]
     split_ifs

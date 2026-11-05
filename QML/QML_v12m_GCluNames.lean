@@ -282,6 +282,10 @@ theorem NamesInj.henk (hI : N.NamesInj) (s : Node)
     · exact hI
   · exact hI
 
+theorem NamesInj.henkSrc (hI : N.NamesInj) (s : Node)
+    (o : Σ l : List VarType, WFF σ (ctxOf l) 0) : (N.henkSrc s o).NamesInj :=
+  fun c p hk => hI c p ((live_of_nch (N := N) (N' := N.henkSrc s o) rfl (c :: p)).mp hk)
+
 theorem NamesInj.newChild (hI : N.NamesInj) {s : Node} (hs : N.Live s) (kd : Option VarSymb)
     (t : NodeSt σ) {f : VarSymb → LEnt σ} (hk : KeepInj (N.st s).l kd f) :
     (N.newChild s kd t f).NamesInj := by
@@ -374,6 +378,7 @@ theorem NamesInj.realF (hF : ModalSys.Four = true) (hN : N.Good)
   | [] =>
       simp only [GNetSt.realF]
       split_ifs
+      · exact (hI.setSt _ _).setLoop
       · exact (hI.setSt _ _).setLoop
       · exact hI
   | c :: p =>
@@ -570,7 +575,7 @@ theorem NamesInj.applyOp (hV : ModalSys.Five = true) (hF : ModalSys.Four = true)
   rcases o with ⟨s, o⟩ | ⟨s, o⟩ | k | ⟨k, n⟩
   · simp only [GNetSt.applyOp]
     split_ifs
-    · exact hI.henk s o
+    · exact (hI.henk s o).henkSrc s o
     · exact hI
   · simp only [GNetSt.applyOp]
     split_ifs with hs

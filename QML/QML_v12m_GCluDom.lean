@@ -52,6 +52,8 @@ structure CluFlags : Prop where
   bS : ModalSys.BStrong = true → ModalSys.B = true
   /-- Witnessed ways home are strong T's realisers, kept (`ModalSys.WCoh`). -/
   bW : ModalSys.BStrong = true → ModalSys.BStrongW = true → ModalSys.TStrong = true
+  /-- The tree's root is the world asked about, not a hub. -/
+  noHub : ModalSys.hubFlags = false
 
 theorem rpre (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ) :
     PPreOk (rpath s) (groot hF M₀) s (rpath_eq s) i :=

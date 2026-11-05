@@ -196,8 +196,12 @@ theorem csymm (hM₀ : Theory.IsMCS M₀) (hX : CluFlags) (hB : ModalSys.B = tru
         · exact hne hP.2.2.2
     | cons c P =>
         have hψ : WFF.box (Γ := (ctxOf (glat (groot hF M₀) 0))) .bot ∈
-            ((gnet hF M₀ (gbirth hF M₀ (groot hF M₀).2 + 0)).st []).M :=
-          ((ext_gnet hF hM₀ (Nat.zero_le _)).grows [] trivial).sub _ hbot
+            ((gnet hF M₀ (gbirth hF M₀ (groot hF M₀).2 + 0)).st []).M := by
+          have hg := (ext_gnet hF hM₀
+            (Nat.zero_le (gbirth hF M₀ (groot hF M₀).2 + 0))).grows [] trivial
+          rw [show (gnet hF M₀ 0).st [] = ⟨l₀, M₀⟩ from
+            GNetSt.init_st (GNetSt.not_hubOn_of_B hB) []] at hg
+          exact hg.sub _ hbot
         have ht := gltr hM₀ (s := groot hF M₀) (t := stepW (groot hF M₀) c (born_step h))
           ⟨c, rfl⟩ 0 .bot hψ
         exact ((good_gnet hF hM₀ _).mcs _

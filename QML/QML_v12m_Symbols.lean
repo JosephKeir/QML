@@ -76,10 +76,21 @@ class ModalSys where
 def ModalSys.K : ModalSys :=
   ⟨false, false, false, false, false, false, false, false, false, false, false, false⟩
 
-/-- 4's lifts are derivable: with T and 5 (`Proof.keep_lift_T`), or with 5 and weak B, T and strong
-    B off (`Proof.keep_lift_B`). -/
+/-- 4's lifts are derivable: with T and 5 (`Proof.keep_lift_T`), or with 5, T and strong B off, from
+    the closed sentences `Proof.five_refl` necessitates (`Proof.keep_lift_F`): weak B gives them
+    wherever something is accessible, and without B the tree's root is a hub that holds them
+    (docs, "K45 and KD45 without both lifts: the hub"). -/
 def ModalSys.liftsProved [ModalSys] : Bool :=
-  ModalSys.Five && (ModalSys.T || (ModalSys.B && !ModalSys.BStrong))
+  ModalSys.Five && (ModalSys.T || !ModalSys.BStrong)
+
+/-- The tree's nodes must hold those closed sentences: the lifts are derived from them, T off, and
+    not both lifts are given by flag. -/
+def ModalSys.axNeed [ModalSys] : Bool :=
+  ModalSys.liftsProved && !ModalSys.T && !(ModalSys.FourStrong && ModalSys.FourStrongW)
+
+/-- ⭐**The tree's root is a hub**, not the world asked about: B off, so nothing gives the closed
+    sentences at the root itself. -/
+def ModalSys.hubFlags [ModalSys] : Bool := ModalSys.axNeed && !ModalSys.B
 
 /-- 4's `□`-lift in force: `FourStrong`, or derivable. -/
 def ModalSys.fourL [ModalSys] : Bool := ModalSys.FourStrong || ModalSys.liftsProved
@@ -98,6 +109,9 @@ class ModalSys.NoB [ModalSys] : Prop where
       `GArrow.cmodel`, `docs/v12-modal-extensions.md` §3 5); its other systems are not yet. -/
   fiveCluster : ModalSys.Five = true → ModalSys.Four = true ∧
     ModalSys.fourL = true ∧ ModalSys.fourLW = true
+  /-- Not yet with the hub: K45 and KD45 without both lifts (docs, "K45 and KD45 without both lifts:
+      the hub"). -/
+  noHub : ModalSys.Five = true → ModalSys.hubFlags = false
 
 /-- 5 off: what the staged tree and the growing tree are built for (with 5, the cluster model). -/
 class ModalSys.NoFive [ModalSys] : Prop where
@@ -524,9 +538,21 @@ theorem VarType.liftableR_or {T : VarType} (h : T.liftable = true) :
 
 theorem ModalSys.liftsProved_cases (h : ModalSys.liftsProved = true) :
     ModalSys.Five = true ∧ (ModalSys.T = true ∨
-      (ModalSys.T = false ∧ ModalSys.B = true ∧ ModalSys.shaped = false)) := by
-  cases hT : ModalSys.T <;> cases hB : ModalSys.B <;> cases hS : ModalSys.BStrong <;>
+      (ModalSys.T = false ∧ ModalSys.shaped = false)) := by
+  cases hT : ModalSys.T <;> cases hS : ModalSys.BStrong <;>
     cases hV : ModalSys.Five <;> simp_all [ModalSys.liftsProved, ModalSys.shaped]
+
+theorem ModalSys.axNeed_flags (h : ModalSys.axNeed = true) :
+    ModalSys.Five = true ∧ ModalSys.T = false ∧ ModalSys.shaped = false := by
+  cases hT : ModalSys.T <;> cases hS : ModalSys.BStrong <;> cases hV : ModalSys.Five <;>
+    simp_all [ModalSys.axNeed, ModalSys.liftsProved, ModalSys.shaped]
+
+/-- The third way to a lift, `Proof.keep_lift_F`, is taken only when the nodes must hold the closed
+    sentences. -/
+theorem VarType.axNeed_of {T : VarType} (hl : T.liftable = true) (hR : T.liftableR = false)
+    (hT : ModalSys.T = false) : ModalSys.axNeed = true := by
+  have h := (VarType.liftableR_or hl).resolve_left (by simp [hR])
+  cases T <;> simp_all [VarType.liftableR, VarType.liftable, ModalSys.axNeed]
 
 theorem VarType.keepable_of_liftable {T : VarType} (h : T.liftable = true) :
     T.keepable = true := by

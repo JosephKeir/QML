@@ -36,7 +36,8 @@ theorem growSys_of_noFive (hV : ¬ ModalSys.Five = true) : ModalSys.GrowSys :=
 theorem cluFlags_of_five (hV : ModalSys.Five = true) : GArrow.CluFlags :=
   have h := ModalSys.NoB.fiveCluster hV
   ⟨hV, h.2.1, h.2.2, fun hS => (ModalSys.NoB.absurdStrong hS).elim,
-    fun hS => (ModalSys.NoB.absurdStrong hS).elim, fun hS => (ModalSys.NoB.absurdStrong hS).elim⟩
+    fun hS => (ModalSys.NoB.absurdStrong hS).elim, fun hS => (ModalSys.NoB.absurdStrong hS).elim,
+    ModalSys.NoB.noHub hV⟩
 
 /-- ⭐**Completeness without B**: in a well-formed presented context, a sequent valid in every
     model is provable. -/

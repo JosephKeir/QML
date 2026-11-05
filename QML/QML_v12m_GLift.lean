@@ -774,18 +774,137 @@ theorem kLiftRead_eq (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable 
       (WFF.instantiate hs (Term.eta (.step (.root (.free c)) .keep) T h) (WFF.mono hle χ)) := by
   cases k <;> rfl
 
+/-! ## The rule's closed sentences at a node -/
+
+/-- A closed sentence whose necessity is a theorem. -/
+def NecThm (ψ : WFF σ Ctx.empty 0) : Prop :=
+  Nonempty (Proof σ Ctx.empty [] (.box (ψ.closed Ctx.empty.boxIn)))
+
+/-- ⭐**A node holds the rule's closed sentences** (docs, "K45 and KD45 without both lifts: the
+    hub"): every closed sentence whose necessity is a theorem, or, with nothing accessible, `□⊥`.
+    The third way to a lift reads them (`Proof.keep_lift_F`). -/
+def AxOk {l : List VarType} (M : Set (WFF σ (ctxOf l) 0)) : Prop :=
+  (∀ ψ : WFF σ Ctx.empty 0, NecThm ψ → ψ.closed (ctxOf l) ∈ M) ∨
+    WFF.box (Γ := ctxOf l) .bot ∈ M
+
+/-- Growing keeps them. -/
+theorem AxOk.grow {t t' : NodeSt σ} (hg : Grows t t') (h : AxOk t.M) : AxOk t'.M := by
+  rcases h with h | h
+  · refine Or.inl fun ψ hψ => ?_
+    have := hg.sub _ (h ψ hψ)
+    rwa [WFF.mono_mono] at this
+  · exact Or.inr (hg.sub _ h)
+
+/-- A necessitated closed sentence's necessity is in every maximal consistent theory. -/
+theorem mem_box_of_necThm {l : List VarType} {M : Set (WFF σ (ctxOf l) 0)}
+    (hM : Theory.IsMCS M) {ψ : WFF σ Ctx.empty 0} (h : NecThm ψ) :
+    WFF.box (ψ.closed (ctxOf l).boxIn) ∈ M := by
+  obtain ⟨pf⟩ := h
+  obtain ⟨q⟩ := Provable.monoCtx (Δs := []) (Ctx.empty_le (ctxOf l)) ⟨pf⟩
+  exact hM.closed ⟨[], (fun _ hx => by cases hx),
+    ⟨Proof.conv (congrArg WFF.box (WFF.mono_mono _ _ _)) q⟩⟩
+
+/-- ⭐**An edge hands them on**: the target holds every necessitated closed sentence. -/
+theorem FwdData.axOk {tp tk : NodeSt σ} {k : Option VarSymb} {cl : List VarType}
+    {f : VarSymb → LEnt σ} (hd : FwdData tp tk k cl f) (hp : Theory.IsMCS tp.M) : AxOk tk.M := by
+  obtain ⟨hsuf, hk, hf, htr⟩ := hd
+  refine Or.inl fun ψ ⟨pf⟩ => ?_
+  have q' : Proof σ (ctxOf cl) [] (.box (ψ.closed (ctxOf cl).boxIn)) :=
+    Proof.conv (congrArg WFF.box (WFF.mono_mono _ _ _)) (Proof.mono (Ctx.empty_le (ctxOf cl)) pf)
+  have hb : Provable [] (kBox k hk (ψ.closed ((ctxOf cl).kView k))) := by
+    cases k with
+    | none => exact ⟨q'⟩
+    | some x =>
+        exact ⟨Proof.conv (congrArg (WFF.boxx x (hk x rfl)) (WFF.mono_mono _ _ _))
+          (Proof.imp_elim (Proof.ofSubset (fun _ hx => by cases hx)
+            (Proof.imp_intro (BArrow.Proof.box_boxx (hk x rfl) _))) q')⟩
+  have hm := hp.closed ⟨[], (fun _ hx => by cases hx),
+    Provable.monoCtx (Δs := []) (ctxOf_le_of_suffix hsuf) hb⟩
+  have ht := htr _ hm
+  rwa [WFF.subst_mono_empty _ (Ctx.empty_le (ctxOf tk.l))] at ht
+
+/-- ⭐**Weak B gives them at any world** (`Proof.closed_T`). -/
+theorem axOk_of_B (hB : ModalSys.B = true) (hF : ModalSys.Four = true) {l : List VarType}
+    {M : Set (WFF σ (ctxOf l) 0)} (hM : Theory.IsMCS M) : AxOk M := by
+  by_cases hb : WFF.box (Γ := ctxOf l) .bot ∈ M
+  · exact Or.inr hb
+  refine Or.inl fun ψ hψ => hM.closed ⟨[(WFF.box (Γ := ctxOf l) .bot).neg,
+    .box (ψ.closed (ctxOf l).boxIn)], fun x hx => ?_,
+    ⟨Proof.closed_T hB hF ψ (Proof.lookup List.mem_cons_self)
+      (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))⟩⟩
+  rcases List.mem_cons.mp hx with rfl | hx
+  · exact hM.neg_mem_iff.mpr hb
+  · rw [List.mem_singleton.mp hx]
+    exact mem_box_of_necThm hM hψ
+
+/-- With `□⊥` nothing is possible, along either kind of edge. -/
+def Proof.kDia_box_bot {Γ : Ctx} (k : Option VarSymb) (hk : KDecl Γ k)
+    (φ : WFF σ (Γ.kView k) 0) : Proof σ Γ [kDia k hk φ, WFF.box (Γ := Γ) .bot] .bot := by
+  cases k with
+  | none =>
+      have q : Proof σ Γ.boxIn [.bot] φ.neg :=
+        Proof.imp_intro (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
+      exact Proof.imp_elim (Proof.lookup List.mem_cons_self)
+        (Proof.ofSubset (fun z hz => by
+          rw [List.mem_singleton.mp hz]
+          exact List.mem_cons_of_mem _ List.mem_cons_self) (Proof.K_box (Δ := [.bot]) q))
+  | some x =>
+      have hb : Proof σ Γ [WFF.box (Γ := Γ) .bot] (WFF.boxx x (hk x rfl) .bot) :=
+        BArrow.Proof.box_boxx (hk x rfl) .bot
+      have hi : Proof σ (Γ.diaIn x) [φ] WFF.bot.neg :=
+        Proof.imp_intro (Proof.lookup List.mem_cons_self)
+      have hd : Proof σ Γ [WFF.dia x (hk x rfl) φ] (WFF.dia x (hk x rfl) WFF.bot.neg) :=
+        Proof.castHyps (by simp) (Proof.K_dia (Δ₁ := []) (Δ₂ := []) (ψ := φ) x (hk x rfl)
+          (Proof.castHyps (by simp) hi))
+      exact Proof.imp_elim
+        (Proof.ofSubset (fun z hz => by
+          rw [List.mem_singleton.mp hz]
+          exact List.mem_cons_of_mem _ List.mem_cons_self) hb)
+        (Proof.ofSubset (fun z hz => by
+          rw [List.mem_singleton.mp hz]
+          exact List.mem_cons_self) hd)
+
+/-- With `□⊥` in a theory, no possibility is. -/
+theorem not_kDia_of_box_bot {Γ : Ctx} {M : Set (WFF σ Γ 0)} (hM : Theory.IsMCS M)
+    (k : Option VarSymb) (hk : KDecl Γ k) {φ : WFF σ (Γ.kView k) 0}
+    (hb : WFF.box (Γ := Γ) .bot ∈ M) : kDia k hk φ ∉ M := fun hd =>
+  hM.1 ⟨[kDia k hk φ, WFF.box (Γ := Γ) .bot], fun x hx => by
+    rcases List.mem_cons.mp hx with rfl | hx
+    · exact hd
+    · rw [List.mem_singleton.mp hx]
+      exact hb, ⟨Proof.kDia_box_bot k hk φ⟩⟩
+
+/-- ⭐The closed sentence `kKeepLift`'s third way reads: `liftAx` at the body along `□`, or at
+    `liftPos` along `◇_x`. -/
+noncomputable def kLiftAx (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable = true)
+    {ls : List VarType} : (k : Option VarSymb) → KDecl (ctxOf ls) k →
+    WFF σ (((ctxOf ls).kView k).insert (.bnd 0) T) 1 → WFF σ Ctx.empty 0
+  | none, _, χ => WFF.liftAx hF (VarType.tup_of_keepable (VarType.keepable_of_liftable hl)) χ
+  | some x, hk, χ => WFF.liftAx hF (VarType.tup_of_keepable (VarType.keepable_of_liftable hl))
+      (WFF.liftPos hF (VarType.keepable_of_liftable hl) (hk x rfl).choose_spec χ)
+
+theorem kLiftAx_nec (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
+    (hN : ModalSys.shaped = false) {T : VarType} (hl : T.liftable = true) {ls : List VarType}
+    (k : Option VarSymb) (hk : KDecl (ctxOf ls) k)
+    (χ : WFF σ (((ctxOf ls).kView k).insert (.bnd 0) T) 1) : NecThm (kLiftAx hF hl k hk χ) := by
+  cases k with
+  | none => exact ⟨Proof.liftAx_nec hF hV hN _ _⟩
+  | some x => exact ⟨Proof.liftAx_nec hF hV hN _ _⟩
+
 /-- ⭐**Strong 4 along an edge's kind**: `Proof.keep_lift` at the leg `□` or `◇_x`, or where the
-    flags may be off, its derivation, by T and 5 or by 5 and weak B. -/
+    flags may be off, its derivation, by T and 5, or by 5 from the closed sentence `kLiftAx`. -/
 noncomputable def Proof.kKeepLift (hF : ModalSys.Four = true) {T : VarType}
     (hl : T.liftable = true) {ls : List VarType} {Δ : List (WFF σ (ctxOf ls) 0)} :
     (k : Option VarSymb) → (hk : KDecl (ctxOf ls) k) →
     (χ : WFF σ (((ctxOf ls).kView k).insert (.bnd 0) T) 1) →
+    (T.liftableR = false → ModalSys.T = false →
+      Proof σ (ctxOf ls) Δ ((kLiftAx hF hl k hk χ).closed _)) →
     (c : ℕ) → (hc : (ctxOf ls).RootFresh (.free c)) → {ψ : WFF σ (ctxOf ls) 0} →
     Proof σ (ctxOf ls) Δ (kDia k hk (WFF.ex T χ)) →
     Proof σ ((ctxOf ls).insert (.free c) T)
       (kLiftRead hF hl k hk hc χ :: Δ.map (WFF.weaken hc.root T)) (ψ.weaken hc.root T) →
     Proof σ (ctxOf ls) Δ ψ
-  | none, _, χ, c, hc, _, p, q =>
+  | none, _, χ, hax, c, hc, _, p, q =>
       if hR : T.liftableR = true then Proof.keep_lift hF hR .nec χ c hc p q
       else
         have h := ModalSys.liftsProved_cases ((VarType.liftableR_or hl).resolve_left hR)
@@ -793,19 +912,20 @@ noncomputable def Proof.kKeepLift (hF : ModalSys.Four = true) {T : VarType}
           Proof.keep_lift_T hT hF h.1 hl
             (VarType.tup_of_keepable (VarType.keepable_of_liftable hl)) χ c hc p q
         else
-          have h' := h.2.resolve_left hT
-          Proof.keep_lift_B h'.2.1 hF h.1 h'.2.2 h'.1 hl
-            (VarType.tup_of_keepable (VarType.keepable_of_liftable hl)) χ c hc p q
-  | some x, hk, χ, c, hc, _, p, q =>
+          have hT' : ModalSys.T = false := Bool.eq_false_iff.mpr hT
+          Proof.keep_lift_F hF h.1 (h.2.resolve_left hT).2 hT' hl
+            (VarType.tup_of_keepable (VarType.keepable_of_liftable hl)) χ c hc p
+            (hax (Bool.eq_false_iff.mpr hR) hT') q
+  | some x, hk, χ, hax, c, hc, _, p, q =>
       if hR : T.liftableR = true then Proof.keep_lift hF hR (.pos x (hk x rfl)) χ c hc p q
       else
         have h := ModalSys.liftsProved_cases ((VarType.liftableR_or hl).resolve_left hR)
         if hT : ModalSys.T = true then
           Proof.keep_lift_posT hT hF h.1 hl (hk x rfl).choose_spec (hk x rfl) χ c hc p q
         else
-          have h' := h.2.resolve_left hT
-          Proof.keep_lift_posB h'.2.1 hF h.1 h'.2.2 h'.1 hl (hk x rfl).choose_spec (hk x rfl) χ c hc
-            p q
+          have hT' : ModalSys.T = false := Bool.eq_false_iff.mpr hT
+          Proof.keep_lift_posF hF h.1 (h.2.resolve_left hT).2 hT' hl (hk x rfl).choose_spec
+            (hk x rfl) χ c hc p (hax (Bool.eq_false_iff.mpr hR) hT') q
 
 /-- `◇_k` is monotone. -/
 theorem kDia_mono {Γ : Ctx} (k : Option VarSymb) (hk : KDecl Γ k)
@@ -938,7 +1058,7 @@ theorem glift_consistent (hF : ModalSys.Four = true) {T : VarType} (hl : T.lifta
     (hk : KDecl (ctxOf ls) k) {f : VarSymb → LEnt σ}
     (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f)
     (htr : GTransfer M ls (Ctx.Le.refl _) k hk N f hf) {a : Ann T}
-    (t : Term σ (ctxOf lt) T a) :
+    (t : Term σ (ctxOf lt) T a) (hax : ModalSys.axNeed = true → AxOk M) :
     Theory.Consistent (WFF.weaken (ctxOf_fresh (l := ls) le_rfl).root T '' M ∪
       liftSeed hF hl hk hf t N) := by
   rintro ⟨L, hL, p⟩
@@ -963,10 +1083,31 @@ theorem glift_consistent (hF : ModalSys.Four = true) {T : VarType} (hl : T.lifta
       rw [List.mem_singleton.mp hx]; exact hχ, provable_ex_liftTgt hf t χ⟩
     exact hN.neg_mem_iff.mp ht hex
   -- The rule turns the refutation of the seed into one of the source.
+  by_cases hneed : T.liftableR = false ∧ ModalSys.T = false
+  · -- The third way: the closed sentence is in the source, or `□⊥` is, against `hdia`.
+    rcases hax (VarType.axNeed_of hl hneed.1 hneed.2) with hall | hbot
+    · have hfl := ModalSys.axNeed_flags (VarType.axNeed_of hl hneed.1 hneed.2)
+      have hm := hall _ (kLiftAx_nec hF hfl.1 hfl.2.2 hl k hk χ)
+      apply hM.1
+      refine ⟨(kLiftAx hF hl k hk χ).closed _ :: kDia k hk (WFF.ex T χ) :: Δ₀, fun x hx => ?_,
+        ⟨Proof.kKeepLift hF hl k hk χ (fun _ _ => Proof.lookup List.mem_cons_self) ls.length hc
+          (ψ := .bot) (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
+          (Proof.ofSubset (fun y hy => ?_) q)⟩⟩
+      · rcases List.mem_cons.mp hx with rfl | hx
+        · exact hm
+        rcases List.mem_cons.mp hx with rfl | hx
+        · exact hdia
+        · exact h₀ x hx
+      · rcases List.mem_cons.mp (h₁ y hy) with rfl | hy'
+        · exact List.mem_cons_self
+        · obtain ⟨z, hz, rfl⟩ := List.mem_map.mp hy'
+          exact List.mem_cons_of_mem _ (List.mem_map_of_mem
+            (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ hz)))
+    · exact not_kDia_of_box_bot hM k hk hbot hdia
   apply hM.1
   refine ⟨kDia k hk (WFF.ex T χ) :: Δ₀, fun x hx => ?_,
-    ⟨Proof.kKeepLift hF hl k hk χ ls.length hc (ψ := .bot) (Proof.lookup List.mem_cons_self)
-      (Proof.ofSubset (fun y hy => ?_) q)⟩⟩
+    ⟨Proof.kKeepLift hF hl k hk χ (fun h₁ h₂ => absurd ⟨h₁, h₂⟩ hneed) ls.length hc (ψ := .bot)
+      (Proof.lookup List.mem_cons_self) (Proof.ofSubset (fun y hy => ?_) q)⟩⟩
   · rcases List.mem_cons.mp hx with rfl | hx
     · exact hdia
     · exact h₀ x hx

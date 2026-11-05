@@ -125,6 +125,121 @@ theorem Good.henk (hN : N.Good) {s : Node} (hs : N.Live s)
     | .retxS _ _ _ _ _ _ => exact hN
   · exact hN
 
+open Classical in
+/-- `henk`'s step on a node's state alone: the world asked about grows by it (`henkSrc`). -/
+noncomputable def henkT (t : NodeSt σ) : (Σ l : List VarType, WFF σ (ctxOf l) 0) → NodeSt σ
+  | ⟨l, φ⟩ =>
+      if h : l <:+ t.l then
+        match φ with
+        | .ex A ψ =>
+            if WFF.mono (ctxOf_le_of_suffix h) (.ex A ψ) ∈ t.M then
+              ⟨A :: t.l, complete
+                (WFF.mono (ctxOf_le_append [A] t.l) '' t.M ∪
+                  {WFF.openFree t.l.length (ctxOf_fresh le_rfl) Ctx.NoSlots.slots
+                    (WFF.mono ((ctxOf_le_of_suffix h).insert _ A) ψ)})⟩
+            else t
+        | .imp (.all A ψ) .bot =>
+            if WFF.mono (ctxOf_le_of_suffix h) (.imp (.all A ψ) .bot) ∈ t.M then
+              ⟨A :: t.l, complete
+                (WFF.mono (ctxOf_le_append [A] t.l) '' t.M ∪
+                  {WFF.openFree t.l.length (ctxOf_fresh le_rfl) Ctx.NoSlots.slots
+                    (WFF.mono ((ctxOf_le_of_suffix h).insert _ A) ψ).neg})⟩
+            else t
+        | _ => t
+      else t
+
+theorem henkT_ok {t : NodeSt σ} (hM : Theory.IsMCS t.M)
+    (o : Σ l : List VarType, WFF σ (ctxOf l) 0) :
+    Theory.IsMCS (henkT t o).M ∧ Grows t (henkT t o) := by
+  obtain ⟨l, φ⟩ := o
+  suffices H : ∀ u, u = henkT t ⟨l, φ⟩ → Theory.IsMCS u.M ∧ Grows t u from H _ rfl
+  intro u hu
+  simp only [henkT] at hu
+  split_ifs at hu with h
+  · revert hu
+    match φ with
+    | .ex A ψ =>
+        intro hu
+        simp only at hu
+        split_ifs at hu with hmem
+        · subst hu
+          exact NetSt.henk_grow hM (Theory.Derives.of_mem hmem)
+        · subst hu
+          exact ⟨hM, Grows.refl _⟩
+    | .imp (.all A ψ) .bot =>
+        intro hu
+        simp only at hu
+        split_ifs at hu with hmem
+        · subst hu
+          exact NetSt.henk_grow hM ⟨[_], fun x hx => by
+            rw [List.mem_singleton.mp hx]; exact hmem, ⟨Proof.exNeg_of_negAll _⟩⟩
+        · subst hu
+          exact ⟨hM, Grows.refl _⟩
+    | .atom _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .eq _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .top => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .bot => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .and _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .or _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.atom _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.eq _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp .top _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp .bot _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.and _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.or _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.imp _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.ex _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.box _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.dia _ _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.here _ _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.back _ _ _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.retS _ _ _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.retxS _ _ _ _ _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) (.atom _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) (.eq _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) .top => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) (.and _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) (.or _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) (.imp _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) (.all _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) (.ex _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) (.box _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) (.dia _ _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) (.here _ _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) (.back _ _ _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) (.retS _ _ _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) (.retxS _ _ _ _ _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .all _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .box _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .dia _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .here _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .back _ _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .retS _ _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .retxS _ _ _ _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+  · subst hu
+    exact ⟨hM, Grows.refl _⟩
+
+/-- The network with the world asked about in state `t`. -/
+def withSrc (N : GNetSt σ) (t : NodeSt σ) : GNetSt σ := { N with src := t }
+
+open Classical in
+/-- ⭐A Henkin step at the root is one at the world asked about too, when the root is a hub. -/
+noncomputable def henkSrc (N : GNetSt σ) (s : Node)
+    (o : Σ l : List VarType, WFF σ (ctxOf l) 0) : GNetSt σ :=
+  N.withSrc (if s = [] ∧ N.hb then henkT N.src o else N.src)
+
+theorem Good.henkSrc (hN : N.Good) (s : Node) (o : Σ l : List VarType, WFF σ (ctxOf l) 0) :
+    (N.henkSrc s o).Good := by
+  unfold GNetSt.henkSrc GNetSt.withSrc
+  split_ifs with h
+  · obtain ⟨h₁, h₂⟩ := henkT_ok (hN.srcMcs h.2) o
+    have hl : ∀ k, ({ N with src := henkT N.src o } : GNetSt σ).Live k ↔ N.Live k :=
+      live_of_nch rfl
+    exact ⟨fun k hk => hN.mcs k ((hl k).mp hk), fun c p hk => hN.fwd c p ((hl _).mp hk),
+      hN.kindRoot, hN.flags, hN.loop, fun k hk hn => hN.ax k ((hl k).mp hk) hn, fun _ => h₁,
+      fun hb => (hN.hub hb).grow_src (hN.srcMcs hb) h₁ h₂, hN.excl⟩
+  · exact hN
+
 /-! ## Children -/
 
 /-- ⭐The network with a new child of `s` of kind `kd` in state `t`, all of `s`'s variables
@@ -137,6 +252,8 @@ def newChild (N : GNetSt σ) (s : Node) (kd : Option VarSymb) (t : NodeSt σ)
   fcl := Function.update N.fcl (N.nch s :: s) (N.st s).l
   fmap := Function.update N.fmap (N.nch s :: s) f
   lp := N.lp
+  src := N.src
+  hb := N.hb
 
 theorem not_live_new {N : GNetSt σ} (s : Node) : ¬ N.Live (N.nch s :: s) :=
   fun h => lt_irrefl _ h.2
@@ -181,7 +298,8 @@ theorem Good.newChild (hN : N.Good) {s : Node} (hs : N.Live s) {kd : Option VarS
   have hks : (N.nch s :: s : Node) ≠ s := NetSt.ne_parent _ s
   have hold : ∀ k, N.Live k → k ≠ N.nch s :: s := fun k hk h => not_live_new s (h ▸ hk)
   have hr : ([] : Node) ≠ N.nch s :: s := (List.cons_ne_nil _ _).symm
-  refine ⟨fun k hk => ?_, fun c p hk => ?_, ?_, hN.flags, fun hl => ?_⟩
+  refine ⟨fun k hk => ?_, fun c p hk => ?_, ?_, hN.flags, fun hl => ?_, fun k hk hn => ?_,
+    hN.srcMcs, fun hb => ?_, hN.excl⟩
   · rcases (live_newChild hs kd t f k).mp hk with hk | rfl
     · change Theory.IsMCS (Function.update N.st _ t k).M
       rw [Function.update_of_ne (hold k hk)]
@@ -213,6 +331,19 @@ theorem Good.newChild (hN : N.Good) {s : Node} (hs : N.Live s) {kd : Option VarS
     have e₃ : (N.newChild s kd t f).fmap [] = N.fmap [] := Function.update_of_ne hr f N.fmap
     rw [e₁, e₂, e₃]
     exact hN.loop hl
+  · rcases (live_newChild hs kd t f k).mp hk with hk | rfl
+    · change AxOk (Function.update N.st _ t k).M
+      rw [Function.update_of_ne (hold k hk)]
+      exact hN.ax k hk hn
+    · change AxOk (Function.update N.st _ t _).M
+      rw [Function.update_self]
+      exact hf.axOk (hN.mcs s hs)
+  · have e₁ : (N.newChild s kd t f).st [] = N.st [] := Function.update_of_ne hr t N.st
+    have e₂ : (N.newChild s kd t f).fcl [] = N.fcl [] :=
+      Function.update_of_ne hr (N.st s).l N.fcl
+    have e₃ : (N.newChild s kd t f).fmap [] = N.fmap [] := Function.update_of_ne hr f N.fmap
+    rw [e₁, e₂, e₃]
+    exact hN.hub hb
 
 /-- A failing necessity gives the possibility of the negation. -/
 theorem kDia_neg_of_not_box {Γ : Ctx} {M : Set (WFF σ Γ 0)} (hM : Theory.IsMCS M)
@@ -352,7 +483,7 @@ noncomputable def liftChild (hF : ModalSys.Four = true) (tp tk : NodeSt σ) (k :
 theorem lift_ok (hF : ModalSys.Four = true) {tp tk : NodeSt σ} {k : Option VarSymb}
     {f : VarSymb → LEnt σ} {T : VarType} {a : Ann T} (t : Term σ (ctxOf tk.l) T a)
     (hl : T.liftable = true) (hp : Theory.IsMCS tp.M) (ht : Theory.IsMCS tk.M)
-    (hd : FwdData tp tk k tp.l f) :
+    (hd : FwdData tp tk k tp.l f) (hax : ModalSys.axNeed = true → AxOk tp.M) :
     Theory.IsMCS (liftPar hF tp tk k f t hl).M ∧ Grows tp (liftPar hF tp tk k f t hl) ∧
       Theory.IsMCS (liftChild hF tp tk k f t hl).M ∧ Grows tk (liftChild hF tp tk k f t hl) ∧
       FwdData (liftPar hF tp tk k f t hl) (liftChild hF tp tk k f t hl) k (T :: tp.l)
@@ -364,7 +495,7 @@ theorem lift_ok (hF : ModalSys.Four = true) {tp tk : NodeSt σ} {k : Option VarS
   obtain ⟨hS₁, hmcs₁⟩ := complete_spec (show Theory.Consistent
     (WFF.weaken (ctxOf_fresh (l := tp.l) le_rfl).root T '' tp.M ∪ liftSeedE hF tp tk k f t hl) by
       rw [hseed]
-      exact glift_consistent hF hl hp ht hk hf htr t)
+      exact glift_consistent hF hl hp ht hk hf htr t hax)
   have hreal := gliftRealise_consistent hF hl ht hk hf t (M' := (liftPar hF tp tk k f t hl).M)
     hmcs₁ (fun φ h => hS₁ (Or.inr (hseed ▸ h)))
   obtain ⟨hS₂, hmcs₂⟩ := complete_spec (show Theory.Consistent
@@ -435,6 +566,7 @@ theorem Good.lift (hF : ModalSys.Four = true) (hN : N.Good) {k : Node} (hk : N.L
         rw [hcl] at hd
         obtain ⟨hmp, hgp, hmk, hgk, hfd⟩ :=
           lift_ok hF (Term.mono (ctxOf_le_of_suffix h) t) hl (hN.mcs p hk.1) (hN.mcs _ hk) hd
+            (hN.ax p hk.1)
         have hN₁ := hN.setSt hk.1 hgp hmp
         have hk₁ : (N.setSt p (liftPar hF (N.st p) (N.st (c :: p)) (N.kind (c :: p))
             (N.fmap (c :: p)) (Term.mono (ctxOf_le_of_suffix h) t) hl)).Live (c :: p) :=

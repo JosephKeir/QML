@@ -32,9 +32,12 @@ theorem exists_canonG (hF : ModalSys.Four = true) {l₀ : List VarType}
         (gmodel hF hM₀).sat (gcanonEnv hM₀ (groot hF M₀) 0) φ ↔
           φ ∈ (gw hM₀ (groot hF M₀)).M 0) ∧
       ∀ ψ ∈ M₀, WFF.mono hle ψ ∈ (gw hM₀ (groot hF M₀)).M 0 := by
+  have hst : (gnet hF M₀ 0).st [] = ⟨l₀, M₀⟩ :=
+    GNetSt.init_st (GNetSt.not_hubOn_of_flags (by
+      simp [ModalSys.hubFlags, ModalSys.axNeed, ModalSys.liftsProved, ModalSys.NoFive.noFive])) []
   have hg := (ext_gnet hF hM₀ (Nat.zero_le (gbirth hF M₀ (groot hF M₀).2 + 0))).grows [] trivial
-  exact ⟨ctxOf_le_of_suffix hg.suf, gtruth (groot hF M₀) 0,
-    fun ψ hψ => hg.sub ψ (show ψ ∈ ((gnet hF M₀ 0).st []).M from hψ)⟩
+  rw [hst] at hg
+  exact ⟨ctxOf_le_of_suffix hg.suf, gtruth (groot hF M₀) 0, fun ψ hψ => hg.sub ψ hψ⟩
 
 /-- ⭐**Completeness for 4** (B off; T, D and strong 4 free): in a context of
     declared variables, a sequent that holds in every model, at every world, in every environment,

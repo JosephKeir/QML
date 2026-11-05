@@ -121,6 +121,9 @@ class ModalSys.CubeSys [ModalSys] : Prop where
   five_B : ModalSys.Five = true → ModalSys.BStrong = true → ModalSys.T = true
   /-- B with 4 comes with 5. -/
   four_B : ModalSys.B = true → ModalSys.Four = true → ModalSys.Five = true
+  /-- Not yet with the hub: K45 and KD45 without both lifts (docs, "K45 and KD45 without both lifts:
+      the hub"). -/
+  five_hub : ModalSys.Five = true → ModalSys.hubFlags = false
   /-- Strong B comes with weak B, so with 4 it comes with 5 (`four_B`). -/
   strongB : ModalSys.BStrong = true → ModalSys.B = true
   strongT : ModalSys.BStrongW = true → ModalSys.T = true → ModalSys.TStrong = true
@@ -138,6 +141,7 @@ theorem ModalSys.S5_cube : @ModalSys.CubeSys ModalSys.S5 :=
   { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ _ => rfl
     four_B := fun _ _ => rfl
+    five_hub := fun _ => rfl
     strongB := fun h => (Bool.false_ne_true h).elim
     strongT := fun _ _ => rfl }
 
@@ -154,6 +158,7 @@ theorem ModalSys.S5Strong_cube : @ModalSys.CubeSys ModalSys.S5Strong :=
   { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ _ => rfl
     four_B := fun _ _ => rfl
+    five_hub := fun _ => rfl
     strongB := fun _ => rfl
     strongT := fun _ _ => rfl }
 
@@ -170,6 +175,7 @@ theorem ModalSys.S5NoLift_cube : @ModalSys.CubeSys ModalSys.S5NoLift :=
   { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ _ => rfl
     four_B := fun _ _ => rfl
+    five_hub := fun _ => rfl
     strongB := fun h => (Bool.false_ne_true h).elim
     strongT := fun h => (Bool.false_ne_true h).elim }
 
@@ -186,6 +192,7 @@ theorem ModalSys.S5StrongNoLift_cube : @ModalSys.CubeSys ModalSys.S5StrongNoLift
   { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ _ => rfl
     four_B := fun _ _ => rfl
+    five_hub := fun _ => rfl
     strongB := fun _ => rfl
     strongT := fun _ _ => rfl }
 
@@ -202,6 +209,7 @@ theorem ModalSys.KB5_cube : @ModalSys.CubeSys ModalSys.KB5 :=
   { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ h => (Bool.false_ne_true h).elim
     four_B := fun _ _ => rfl
+    five_hub := fun _ => rfl
     strongB := fun h => (Bool.false_ne_true h).elim
     strongT := fun h => (Bool.false_ne_true h).elim }
 
@@ -218,6 +226,7 @@ theorem ModalSys.KDB5_cube : @ModalSys.CubeSys ModalSys.KDB5 :=
   { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ h => (Bool.false_ne_true h).elim
     four_B := fun _ _ => rfl
+    five_hub := fun _ => rfl
     strongB := fun h => (Bool.false_ne_true h).elim
     strongT := fun h => (Bool.false_ne_true h).elim }
 
@@ -234,6 +243,7 @@ theorem ModalSys.KB5NoLift_cube : @ModalSys.CubeSys ModalSys.KB5NoLift :=
   { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ h => (Bool.false_ne_true h).elim
     four_B := fun _ _ => rfl
+    five_hub := fun _ => rfl
     strongB := fun h => (Bool.false_ne_true h).elim
     strongT := fun h => (Bool.false_ne_true h).elim }
 
@@ -250,6 +260,7 @@ theorem ModalSys.KDB5NoLift_cube : @ModalSys.CubeSys ModalSys.KDB5NoLift :=
   { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ h => (Bool.false_ne_true h).elim
     four_B := fun _ _ => rfl
+    five_hub := fun _ => rfl
     strongB := fun h => (Bool.false_ne_true h).elim
     strongT := fun h => (Bool.false_ne_true h).elim }
 
@@ -259,7 +270,8 @@ variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalS
 theorem cluFlags_of_cube (hV : ModalSys.Five = true) : GArrow.CluFlags :=
   have h := ModalSys.CubeSys.five_lifts hV
   ⟨hV, h.2.1, h.2.2, ModalSys.CubeSys.five_B hV, ModalSys.CubeSys.strongB,
-    fun hS hW => ModalSys.CubeSys.strongT hW (ModalSys.CubeSys.five_B hV hS)⟩
+    fun hS hW => ModalSys.CubeSys.strongT hW (ModalSys.CubeSys.five_B hV hS),
+    ModalSys.CubeSys.five_hub hV⟩
 
 /-- With B and without 5 the network applies. -/
 theorem noFour_of_cube (hV : ¬ ModalSys.Five = true) (hB : ModalSys.B = true) : ModalSys.NoFour :=
@@ -271,7 +283,8 @@ theorem noFour_of_cube (hV : ¬ ModalSys.Five = true) (hB : ModalSys.B = true) :
 theorem noB_of_cube (hV : ¬ ModalSys.Five = true) (hB : ¬ ModalSys.B = true) : ModalSys.NoB :=
   { noB := Bool.eq_false_iff.mpr hB
     noBStrong := Bool.eq_false_iff.mpr fun hS => hB (ModalSys.CubeSys.strongB hS)
-    fiveCluster := fun h => absurd h hV }
+    fiveCluster := fun h => absurd h hV
+    noHub := fun h => absurd h hV }
 
 /-- ⭐⭐**Completeness across the cube**: in a well-formed presented context, a sequent valid in
     every model is provable. -/

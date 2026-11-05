@@ -32,9 +32,11 @@ theorem exists_canonC (hF : ModalSys.Four = true) (hX : CluFlags)
         (cmodel hF hM₀ hX).sat (ccanonEnv hM₀ hX (groot hF M₀) 0) φ ↔
           φ ∈ (gw hM₀ (groot hF M₀)).M 0) ∧
       ∀ ψ ∈ M₀, WFF.mono hle ψ ∈ (gw hM₀ (groot hF M₀)).M 0 := by
+  have hst : (gnet hF M₀ 0).st [] = ⟨l₀, M₀⟩ :=
+    GNetSt.init_st (GNetSt.not_hubOn_of_flags hX.noHub) []
   have hg := (ext_gnet hF hM₀ (Nat.zero_le (gbirth hF M₀ (groot hF M₀).2 + 0))).grows [] trivial
-  exact ⟨ctxOf_le_of_suffix hg.suf, ctruth hX (groot hF M₀) 0,
-    fun ψ hψ => hg.sub ψ (show ψ ∈ ((gnet hF M₀ 0).st []).M from hψ)⟩
+  rw [hst] at hg
+  exact ⟨ctxOf_le_of_suffix hg.suf, ctruth hX (groot hF M₀) 0, fun ψ hψ => hg.sub ψ hψ⟩
 
 /-- Model existence at a world language: the cluster model over a maximal consistent extension
     satisfies the set at its root. -/
