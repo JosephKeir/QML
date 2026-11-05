@@ -357,13 +357,14 @@ theorem dia_pathO_iff (hV : ModalSys.Five = true)
 
 /-! ## Origins invert naming (R4, at addresses) -/
 
-/-- ⭐**Under 5 every entry names an address**: forward images are addresses, and lifts are
-    η-terms of addresses (names by origin, `AdmEnt`). -/
-theorem fmapL_names (hV : ModalSys.Five = true) (k : Node) (v : VarSymb) :
+/-- ⭐**Under 5 every entry of a child's edge names an address**: forward images are addresses,
+    and lifts are η-terms of addresses (names by origin, `AdmEnt`).  The root's slots hold the hub's
+    edge, which lifts terms. -/
+theorem fmapL_names (hV : ModalSys.Five = true) (k : Node) (v : VarSymb) (hk : k ≠ []) :
     ∃ z, NamesE (fmapL hF M₀ k v) z := by
   rcases h : fmapL hF M₀ k v with z | ⟨L, Te, ae, te⟩
   · exact ⟨z, .inl rfl⟩
-  · obtain ⟨⟨l, T, a, t⟩, hsuf, -, -, h5, he⟩ := fmapL_adm h
+  · obtain ⟨⟨l, T, a, t⟩, hsuf, -, -, h5, he⟩ := fmapL_adm (fun e => absurd e hk) h
     obtain ⟨z, T', hz, e5⟩ := h5 hV
     clear h5
     dsimp only at hsuf hz he
@@ -407,9 +408,15 @@ open Classical in
 noncomputable def nm (t : GW hF M₀) (v : VarSymb) : VarSymb :=
   if h : ∃ z, NamesE (fmapL hF M₀ t.1 (.step v .keep)) z then h.choose else v
 
-theorem nm_spec (hV : ModalSys.Five = true) (t : GW hF M₀) (v : VarSymb) :
+/-- A child is not the root. -/
+theorem GCh.ne_nil {s t : GW hF M₀} (h : GCh hF M₀ s t) : t.1 ≠ [] := by
+  obtain ⟨c, hc⟩ := h
+  rw [hc]
+  exact List.cons_ne_nil _ _
+
+theorem nm_spec (hV : ModalSys.Five = true) (t : GW hF M₀) (v : VarSymb) (ht : t.1 ≠ []) :
     Names t v (nm t v) := by
-  have h := fmapL_names (hF := hF) (M₀ := M₀) hV t.1 (.step v .keep)
+  have h := fmapL_names (hF := hF) (M₀ := M₀) hV t.1 (.step v .keep) ht
   unfold nm
   rw [dif_pos h]
   exact h.choose_spec
@@ -437,14 +444,14 @@ theorem pnm_ref (hV : ModalSys.Five = true) (hM₀ : Theory.IsMCS M₀) :
       exact hv
   | c :: P, s, t, hP, i, v, U, hv, hkp =>
       pnm_ref hV hM₀ P (stepW s c (born_step hP)) t hP _ _ U
-        (names_ref' hM₀ ⟨c, rfl⟩ hv hkp (nm_spec hV _ v)) hkp
+        (names_ref' hM₀ ⟨c, rfl⟩ hv hkp (nm_spec hV _ v (List.cons_ne_nil _ _))) hkp
 
 /-- ⭐**The origin of an address's name is the address**, at η-faithful types. -/
 theorem orig_nm (hV : ModalSys.Five = true)
     (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s t) {i : ℕ} {v : VarSymb}
     {U : VarType} (hv : (ctxOf (glat s i)).ref v = some U) (hkp : U.keepable = true)
     (hU : U.etaInj = true) : orig s t (nm t v) = v :=
-  orig_names hV hM₀ h hv hkp hU (nm_spec hV t v)
+  orig_names hV hM₀ h hv hkp hU (nm_spec hV t v h.ne_nil)
 
 /-- ⭐**The round trip along a path** (R4): the path origin of an address's path name is the
     address, at η-faithful types. -/
@@ -458,7 +465,7 @@ theorem porig_pnm (hV : ModalSys.Five = true)
       change orig s (stepW s c (born_step hP)) (porig P (stepW s c (born_step hP)) t hP
         (pnm P (stepW s c (born_step hP)) t hP (nm (stepW s c (born_step hP)) v))) = v
       rw [porig_pnm hV hM₀ P (stepW s c (born_step hP)) t hP _ _ U
-        (names_ref' hM₀ ⟨c, rfl⟩ hv hkp (nm_spec hV _ v)) hkp hU]
+        (names_ref' hM₀ ⟨c, rfl⟩ hv hkp (nm_spec hV _ v (List.cons_ne_nil _ _))) hkp hU]
       exact orig_nm hV hM₀ ⟨c, rfl⟩ hv hkp hU
 
 /-- The round trip keeps types, at every keepable type. -/

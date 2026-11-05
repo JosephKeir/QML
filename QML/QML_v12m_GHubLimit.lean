@@ -282,6 +282,103 @@ theorem hubTm_mono (hM₀ : Theory.IsMCS M₀) (hh : GNetSt.HubOn M₀) {i i' : 
   rw [Term.mono_subst, Term.subst_mono]
   exact Term.subst_congr _ _ _ _ _ _ (sim_eS_mono _ (hubOk hM₀ hh i)) b
 
+/-! ## Lifts into the world asked about (docs, "the hub", step 6) -/
+
+namespace GNetSt
+
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+theorem realF_root_hub (hF : ModalSys.Four = true) (N : GNetSt σ) (hb : N.hb) (hnl : ¬ N.lp)
+    (hlt : (N.fcl []).length < N.src.l.length) :
+    (N.realF hF []).src = N.src ∧ ((N.realF hF []).fcl []).length = (N.fcl []).length + 1 ∧
+      (N.realF hF []).hb = N.hb ∧ (N.realF hF []).lp = N.lp := by
+  have e := GNetSt.realF_fcl_root hF N
+  rw [if_neg (fun h => hnl h.1), if_pos ⟨hb, hlt⟩] at e
+  refine ⟨?_, by rw [e, List.length_cons], ?_, ?_⟩ <;>
+  · simp only [GNetSt.realF]
+    split_ifs <;> rfl
+
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+theorem iterate_realF_root (hF : ModalSys.Four = true) :
+    ∀ (j : ℕ) (N : GNetSt σ), N.hb → ¬ N.lp → (N.fcl []).length + j ≤ N.src.l.length →
+      ((fun N' => N'.realF hF [])^[j] N).src = N.src ∧
+        (((fun N' => N'.realF hF [])^[j] N).fcl []).length = (N.fcl []).length + j
+  | 0, _, _, _, _ => ⟨rfl, rfl⟩
+  | j + 1, N, hb, hnl, h => by
+      rw [Function.iterate_succ_apply]
+      have hlt : (N.fcl []).length < N.src.l.length := by omega
+      obtain ⟨h₁, h₂, h₃, h₄⟩ := realF_root_hub hF N hb hnl hlt
+      obtain ⟨ih₁, ih₂⟩ := iterate_realF_root hF j (N.realF hF [])
+        (by rw [h₃]; exact hb) (by rw [h₄]; exact hnl) (by rw [h₁, h₂]; omega)
+      exact ⟨ih₁.trans h₁, by rw [ih₂, h₂]; omega⟩
+
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+/-- ⭐After catching up, the world asked about is fully committed along the hub's edge. -/
+theorem catchUp_full_hub (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) (hb : N.hb) :
+    (N.catchUp hF []).fcl [] = (N.catchUp hF []).src.l := by
+  obtain ⟨hsuf, -⟩ := hN.hub hb
+  have hle := hsuf.length_le
+  obtain ⟨h₁, h₂⟩ := iterate_realF_root hF (N.src.l.length - (N.fcl []).length) N hb
+    (hN.excl hb) (by omega)
+  obtain ⟨hN', -, he⟩ := hN.catchUp hF (k := []) trivial
+  have hb' : (N.catchUp hF []).hb := by rw [he.hb]; exact hb
+  obtain ⟨hsuf', -⟩ := hN'.hub hb'
+  simp only [GNetSt.catchUp, if_pos hb] at hsuf' ⊢
+  refine hsuf'.eq_of_length ?_
+  rw [h₂, h₁]
+  omega
+
+end GNetSt
+
+/-- ⭐**Every hub term of a type lifted by flag is eventually lifted to the world asked about**:
+    the world asked about gets a root of the term's type, committed along the hub's edge with
+    its kept item sent to the term. -/
+theorem hub_lift_total (hM₀ : Theory.IsMCS M₀) (hh : GNetSt.HubOn M₀) {n : ℕ} {T : VarType}
+    {a : Ann T} (t : Term σ (ctxOf ((gnet hF M₀ n).st []).l) T a) (hl : T.liftableR = true) :
+    ∃ m, n ≤ m ∧ ∃ (r : ℕ) (L : List VarType) (hL : ((gnet hF M₀ n).st []).l <:+ L),
+      (gnet hF M₀ (m + 1)).fcl [] = (gnet hF M₀ (m + 1)).src.l ∧
+      r < (gnet hF M₀ (m + 1)).src.l.length ∧ rootTy (gnet hF M₀ (m + 1)).src.l r = T ∧
+      (gnet hF M₀ (m + 1)).fmap [] (.step (.root (.free r)) .keep) =
+        .inr ⟨L, T, a, Term.mono (ctxOf_le_of_suffix hL) t⟩ := by
+  obtain ⟨m, hnm, hs⟩ := gsched_after (σ := σ) (.inr (.inr (.inr ([], ⟨_, T, a, t⟩)))) n
+  have hN := good_gnet hF hM₀ m
+  have hb : (gnet hF M₀ m).hb := by rw [hb_gnet hM₀]; exact hh
+  obtain ⟨-, -, he₁⟩ := hN.catchUp hF (k := []) trivial
+  have hb' : ((gnet hF M₀ m).catchUp hF []).hb := by rw [he₁.hb]; exact hb
+  have hcl := GNetSt.catchUp_full_hub hF hN hb
+  have h₁ : ((gnet hF M₀ n).st []).l <:+ (((gnet hF M₀ m).catchUp hF []).st []).l :=
+    ((ext_gnet hF hM₀ hnm).grows [] trivial).suf.trans (he₁.grows [] trivial).suf
+  have hst : gnet hF M₀ (m + 1) = ((gnet hF M₀ m).catchUp hF []).lift hF [] ⟨_, T, a, t⟩ := by
+    rw [gnet_succ_of hF hs]
+    simp only [GNetSt.applyOp, if_pos (show (gnet hF M₀ m).Live [] from trivial)]
+  refine ⟨m, hnm, ?_⟩
+  rw [hst]
+  generalize (gnet hF M₀ m).catchUp hF [] = N at hb' hcl h₁
+  simp only [GNetSt.lift, if_pos (show N.hb ∧ N.fcl [] = N.src.l from ⟨hb', hcl⟩), dif_pos h₁,
+    dif_pos hl]
+  refine ⟨N.src.l.length, (N.st []).l, h₁, rfl, ?_, rootTy_new T _, ?_⟩
+  · change N.src.l.length < (T :: N.src.l).length
+    simp
+  · simp only [GNetSt.setFwd, Function.update_self]
+    exact gliftG_keep _ _ _ _ _
+
+/-- ⭐**In the limit**: a root of the world asked about at a later stage, of the term's type, whose
+    kept item the hub's edge sends to the term. -/
+theorem hub_lift_limit (hM₀ : Theory.IsMCS M₀) (hh : GNetSt.HubOn M₀) {n : ℕ} {T : VarType}
+    {a : Ann T} (t : Term σ (ctxOf ((gnet hF M₀ n).st []).l) T a) (hl : T.liftableR = true) :
+    ∃ j, n < j ∧ ∃ (r : ℕ) (_ : (ctxOf (gnet hF M₀ j).src.l).ref (.root (.free r)) = some T)
+      (L : List VarType) (hL : ((gnet hF M₀ n).st []).l <:+ L),
+      fmapL hF M₀ [] (.step (.root (.free r)) .keep) =
+        .inr ⟨L, T, a, Term.mono (ctxOf_le_of_suffix hL) t⟩ := by
+  obtain ⟨m, hnm, r, L, hL, hcl, hr, hty, he⟩ := hub_lift_total hM₀ hh t hl
+  have hr' : (ctxOf (gnet hF M₀ (m + 1)).src.l).ref (.root (.free r)) = some T := by
+    change ctxOf _ (.root (.free r)) = some T
+    rw [ctxOf_root_lt hr, hty]
+  refine ⟨m + 1, by omega, r, hr', L, hL, ?_⟩
+  rw [fmapL_eq hM₀ (m := m + 1) (k := []) trivial (T := T)]
+  · exact he
+  · rw [(good_gnet hF hM₀ (m + 1)).kindRoot, hcl]
+    exact Ctx.boxIn_keep_of' hF hr' (VarType.keepable_of_liftableR hl)
+
 end GArrow
 
 end V12M

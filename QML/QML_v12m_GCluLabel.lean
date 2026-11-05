@@ -431,7 +431,7 @@ theorem nm_orig {s t : GW hF M₀} (h : GCh hF M₀ s t) {j : ℕ} {z : VarSymb}
     glorigin hV hM₀ h j hz (liftable_of_keepable hS hW hk)
   obtain ⟨i', U', hv', hkU', hn'⟩ := orig_spec (s := s) (t := t) (z := z) ⟨i, v, U, hv, hkU, hn⟩
   obtain rfl := names_type hM₀ h hv' hkU' hn' hz
-  have hn'' := nm_spec hV t (orig s t z)
+  have hn'' := nm_spec hV t (orig s t z) h.ne_nil
   rcases hn' with e | ⟨L, T₁, hz₁, e⟩ <;> rcases hn'' with e' | ⟨L', T₂, hz₂, e'⟩
   · exact Sum.inl.inj (e'.symm.trans e)
   · rw [e] at e'

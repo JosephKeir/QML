@@ -12,9 +12,9 @@ Lean 4 + Mathlib formalisation of a quantified modal logic with first-class poss
   holds for every flag; completeness, strong completeness and compactness for every flag
   combination without B (`[ModalSys.NoB]`, `QML_v12m_NoBComplete.lean`: the staged tree `Canon`
   without 4, the growing tree `GArrow` with 4 and any of its strong forms, and the cluster model
-  `GArrow.cmodel` for 5 — so far K45 and KD45 with both lifts or neither (neither: the hub, the
-  world asked about on top of the cluster, `QML_v12m_GHubTruth`, `ModalSys.NoB.hubNoLift`) and S5
-  with any, `ModalSys.NoB.fiveCluster`;
+  `GArrow.cmodel` for 5 — so far K45 and KD45 with any lifts (without both, the hub: the world
+  asked about on top of the cluster, `QML_v12m_GHubTruth`; strong 5 needs strong 4 there,
+  `ModalSys.NoB.hubFiveS`) and S5 with any, `ModalSys.NoB.fiveCluster`;
   T and 5 prove 4's lifts, `QML_v12m_LiftT`; with T off the rule `Proof.five_refl`, U with objects,
   supplies what they need at reached worlds, `QML_v12m_SemRefl`, and with weak B proves them,
   `QML_v12m_LiftB`).

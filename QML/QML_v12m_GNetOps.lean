@@ -222,6 +222,17 @@ theorem henkT_ok {t : NodeSt σ} (hM : Theory.IsMCS t.M)
 /-- The network with the world asked about in state `t`. -/
 def withSrc (N : GNetSt σ) (t : NodeSt σ) : GNetSt σ := { N with src := t }
 
+theorem live_withSrc (N : GNetSt σ) (t : NodeSt σ) (k : Node) : (N.withSrc t).Live k ↔ N.Live k :=
+  live_of_nch (N := N) (N' := N.withSrc t) rfl k
+
+/-- Growing the world asked about conservatively preserves the invariants. -/
+theorem Good.withSrc (hN : N.Good) {t : NodeSt σ} (hg : N.hb → Grows N.src t)
+    (ht : N.hb → Theory.IsMCS t.M) : (N.withSrc t).Good := by
+  have hl : ∀ k, (N.withSrc t).Live k ↔ N.Live k := live_of_nch rfl
+  exact ⟨fun k hk => hN.mcs k ((hl k).mp hk), fun c p hk => hN.fwd c p ((hl _).mp hk),
+    hN.kindRoot, hN.flags, hN.loop, fun k hk hn => hN.ax k ((hl k).mp hk) hn, ht,
+    fun hb => (hN.hub hb).grow_src (hN.srcMcs hb) (ht hb) (hg hb), hN.excl⟩
+
 open Classical in
 /-- ⭐A Henkin step at the root is one at the world asked about too, when the root is a hub. -/
 noncomputable def henkSrc (N : GNetSt σ) (s : Node)
@@ -483,7 +494,7 @@ noncomputable def liftChild (hF : ModalSys.Four = true) (tp tk : NodeSt σ) (k :
 theorem lift_ok (hF : ModalSys.Four = true) {tp tk : NodeSt σ} {k : Option VarSymb}
     {f : VarSymb → LEnt σ} {T : VarType} {a : Ann T} (t : Term σ (ctxOf tk.l) T a)
     (hl : T.liftable = true) (hp : Theory.IsMCS tp.M) (ht : Theory.IsMCS tk.M)
-    (hd : FwdData tp tk k tp.l f) (hax : ModalSys.axNeed = true → AxOk tp.M) :
+    (hd : FwdData tp tk k tp.l f) (hax : T.liftableR = false → ModalSys.T = false → AxOk tp.M) :
     Theory.IsMCS (liftPar hF tp tk k f t hl).M ∧ Grows tp (liftPar hF tp tk k f t hl) ∧
       Theory.IsMCS (liftChild hF tp tk k f t hl).M ∧ Grows tk (liftChild hF tp tk k f t hl) ∧
       FwdData (liftPar hF tp tk k f t hl) (liftChild hF tp tk k f t hl) k (T :: tp.l)
@@ -531,9 +542,24 @@ open Classical in
 /-- ⭐**Lift** a term of the child `c :: p` along its edge, if the parent is fully committed along
     it, the term is over the child's variables, its type is liftable, and it is a necessary term or
     a view tuple (`LiftAdm`): the edge then sends the new root's kept item to the term (docs §3 4,
-    D5 (a), D-H1). -/
+    D5 (a), D-H1).  At the root, with the hub, the same clause from the world asked about, at every
+    term of a type lifted by flag (docs, "the hub", step 6): the rule needs no closed sentence
+    there. -/
 noncomputable def lift (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → LTerm σ → GNetSt σ
-  | [], _ => N
+  | [], ⟨l, T, a, t⟩ =>
+      if N.hb ∧ N.fcl [] = N.src.l then
+        if h : l <:+ (N.st []).l then
+          if hl : T.liftableR = true then
+            ((N.withSrc (liftPar hF N.src (N.st []) none (N.fmap [])
+                (Term.mono (ctxOf_le_of_suffix h) t) (VarType.liftable_of_R hl))).setSt []
+              (liftChild hF N.src (N.st []) none (N.fmap []) (Term.mono (ctxOf_le_of_suffix h) t)
+                (VarType.liftable_of_R hl))).setFwd [] (T :: N.src.l)
+              (gliftG (N.fmap []) T N.src.l.length
+                (.inr ⟨(N.st []).l, T, a, Term.mono (ctxOf_le_of_suffix h) t⟩)
+                (.free (N.st []).l.length))
+          else N
+        else N
+      else N
   | c :: p, ⟨l, T, a, t⟩ =>
       if N.fcl (c :: p) = (N.st p).l then
         if h : l <:+ (N.st (c :: p)).l then
@@ -557,7 +583,23 @@ noncomputable def lift (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → LT
 theorem Good.lift (hF : ModalSys.Four = true) (hN : N.Good) {k : Node} (hk : N.Live k)
     (o : LTerm σ) : (N.lift hF k o).Good := by
   match k, o with
-  | [], _ => exact hN
+  | [], ⟨l, T, a, t⟩ =>
+      simp only [GNetSt.lift]
+      split_ifs with hcl h hl
+      · obtain ⟨hb, hcl⟩ := hcl
+        have hd := hN.hub hb
+        rw [hcl] at hd
+        obtain ⟨hmp, hgp, hmk, hgk, hfd⟩ :=
+          lift_ok hF (Term.mono (ctxOf_le_of_suffix h) t) (VarType.liftable_of_R hl)
+            (hN.srcMcs hb) (hN.mcs [] trivial) hd
+            (fun h₁ _ => Bool.noConfusion (hl.symm.trans h₁))
+        have hN₁ := hN.withSrc (fun _ => hgp) (fun _ => hmp)
+        have hN₂ := hN₁.setSt (s := []) trivial hgk hmk
+        refine hN₂.setHub hb ?_
+        change FwdData _ ((GNetSt.setSt _ [] _).st []) none _ _
+        rw [setSt_self]
+        exact hfd
+      all_goals exact hN
   | c :: p, ⟨l, T, a, t⟩ =>
       simp only [GNetSt.lift]
       split_ifs with hcl h hl hv
@@ -566,7 +608,7 @@ theorem Good.lift (hF : ModalSys.Four = true) (hN : N.Good) {k : Node} (hk : N.L
         rw [hcl] at hd
         obtain ⟨hmp, hgp, hmk, hgk, hfd⟩ :=
           lift_ok hF (Term.mono (ctxOf_le_of_suffix h) t) hl (hN.mcs p hk.1) (hN.mcs _ hk) hd
-            (hN.ax p hk.1)
+            (fun h₁ h₂ => hN.ax p hk.1 (VarType.axNeed_of hl h₁ h₂))
         have hN₁ := hN.setSt hk.1 hgp hmp
         have hk₁ : (N.setSt p (liftPar hF (N.st p) (N.st (c :: p)) (N.kind (c :: p))
             (N.fmap (c :: p)) (Term.mono (ctxOf_le_of_suffix h) t) hl)).Live (c :: p) :=

@@ -448,7 +448,7 @@ theorem rnm_child {t : GW hF M₀} {c : ℕ} (hc : t.1 = c :: (groot hF M₀).1)
   obtain ⟨k, hk⟩ := t
   change k = [c] at hc
   subst hc
-  have hn := nm_spec hV (⟨[c], hk⟩ : GW hF M₀) v
+  have hn := nm_spec hV (⟨[c], hk⟩ : GW hF M₀) v (List.cons_ne_nil _ _)
   have hz : nm (⟨[c], hk⟩ : GW hF M₀) v = z := by
     rcases hn with e | ⟨L, T, hz', e⟩
     · exact Sum.inl.inj (e.symm.trans he)

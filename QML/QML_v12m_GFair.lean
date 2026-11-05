@@ -298,9 +298,11 @@ theorem realF_fcl (hF : ModalSys.Four = true) (N : GNetSt σ) (c : ℕ) (p : Nod
   · exact Function.update_self _ _ _
   · rfl
 
-/-- Realise forward along the edge into `k` until its parent is fully committed. -/
+open Classical in
+/-- Realise forward along the edge into `k` until its parent is fully committed; at the root,
+    with the hub, along the edge from the world asked about. -/
 noncomputable def catchUp (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → GNetSt σ
-  | [] => N
+  | [] => if N.hb then (fun N' => N'.realF hF [])^[N.src.l.length - (N.fcl []).length] N else N
   | c :: p => (fun N' => N'.realF hF (c :: p))^[(N.st p).l.length - (N.fcl (c :: p)).length] N
 
 theorem iterate_realF (hF : ModalSys.Four = true) (c : ℕ) (p : Node) :
@@ -334,7 +336,11 @@ theorem Good.catchUp (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {
     (hk : N.Live k) :
     (N.catchUp hF k).Good ∧ (N.catchUp hF k).Live k ∧ Ext N (N.catchUp hF k) := by
   match k with
-  | [] => exact ⟨hN, hk, Ext.refl N⟩
+  | [] =>
+      simp only [GNetSt.catchUp]
+      split_ifs
+      · exact Good.iterate_realF hF [] _ hN hk
+      · exact ⟨hN, hk, Ext.refl N⟩
   | c :: p => exact Good.iterate_realF hF (c :: p) _ hN hk
 
 /-- ⭐After catching up, the parent is fully committed along the edge. -/
@@ -358,7 +364,9 @@ theorem catchUp_full (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {
 theorem nch_lift (hF : ModalSys.Four = true) (N : GNetSt σ) (k : Node) (o : LTerm σ) :
     (N.lift hF k o).nch = N.nch := by
   match k, o with
-  | [], _ => rfl
+  | [], ⟨l, T, a, t⟩ =>
+      simp only [GNetSt.lift]
+      split_ifs <;> rfl
   | c :: p, ⟨l, T, a, t⟩ =>
       simp only [GNetSt.lift]
       split_ifs <;> rfl
@@ -379,10 +387,46 @@ theorem lift_spec (hF : ModalSys.Four = true) {N : GNetSt σ} {c : ℕ} {p : Nod
         (.free (N.st (c :: p)).l.length)) := by
   simp only [GNetSt.lift, if_pos hcl, dif_pos h, dif_pos hl, if_pos hv]
 
+theorem Ext.withSrc {N : GNetSt σ} {t : NodeSt σ} (hg : N.hb → Grows N.src t) :
+    Ext N (N.withSrc t) :=
+  have hl : ∀ k, (N.withSrc t).Live k ↔ N.Live k := live_of_nch rfl
+  ⟨fun k h => (hl k).mpr h, fun _ _ => Grows.refl _, fun _ _ => rfl,
+    fun _ _ => List.suffix_refl _, fun _ _ _ _ _ => rfl, rfl, hg, rfl⟩
+
 theorem Ext.lift (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k : Node}
     (hk : N.Live k) (o : LTerm σ) : Ext N (N.lift hF k o) := by
   match k, o with
-  | [], _ => exact Ext.refl N
+  | [], ⟨l, T, a, t⟩ =>
+      simp only [GNetSt.lift]
+      split_ifs with hcl h hl
+      · obtain ⟨hb, hcl⟩ := hcl
+        have hd := hN.hub hb
+        rw [hcl] at hd
+        obtain ⟨-, hgp, -, hgk, -⟩ :=
+          lift_ok hF (Term.mono (ctxOf_le_of_suffix h) t) (VarType.liftable_of_R hl)
+            (hN.srcMcs hb) (hN.mcs [] trivial) hd
+            (fun h₁ _ => Bool.noConfusion (hl.symm.trans h₁))
+        have e₁ := Ext.withSrc (N := N) (fun _ => hgp)
+        have e₂ := Ext.setSt (N := N.withSrc (liftPar hF N.src (N.st []) none (N.fmap [])
+          (Term.mono (ctxOf_le_of_suffix h) t) (VarType.liftable_of_R hl))) (s := [])
+          (t := liftChild hF N.src (N.st []) none (N.fmap []) (Term.mono (ctxOf_le_of_suffix h) t)
+            (VarType.liftable_of_R hl)) hgk
+        refine e₁.trans (e₂.trans ?_)
+        have e₃ := Ext.setFwd (N := (N.withSrc (liftPar hF N.src (N.st []) none (N.fmap [])
+          (Term.mono (ctxOf_le_of_suffix h) t) (VarType.liftable_of_R hl))).setSt []
+            (liftChild hF N.src (N.st []) none (N.fmap []) (Term.mono (ctxOf_le_of_suffix h) t)
+              (VarType.liftable_of_R hl))) (k := []) (A := T)
+          (f := gliftG (N.fmap []) T N.src.l.length
+            (.inr ⟨(N.st []).l, T, a, Term.mono (ctxOf_le_of_suffix h) t⟩)
+            (.free (N.st []).l.length)) (fun v T' hv => by
+            change (ctxOf (N.fcl [])).kView (N.kind []) v = some T' at hv
+            obtain ⟨u, s, rfl, -, -⟩ := kView_item hv
+            rw [hcl] at hv
+            exact gliftG_old (kView_rt_lt hv))
+        change Ext _ (GNetSt.setFwd _ [] (T :: N.fcl []) _) at e₃
+        rw [hcl] at e₃
+        exact e₃
+      all_goals exact Ext.refl N
   | c :: p, ⟨l, T, a, t⟩ =>
       by_cases hcl : N.fcl (c :: p) = (N.st p).l
       · by_cases h : l <:+ (N.st (c :: p)).l
@@ -397,7 +441,8 @@ theorem Ext.lift (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k : 
             unfold FwdOk at hd
             rw [hcl] at hd
             obtain ⟨-, hgp, -, hgk, -⟩ := lift_ok hF (Term.mono (ctxOf_le_of_suffix h) t) hl
-              (hN.mcs p hk.1) (hN.mcs _ hk) hd (hN.ax p hk.1)
+              (hN.mcs p hk.1) (hN.mcs _ hk) hd
+              (fun h₁ h₂ => hN.ax p hk.1 (VarType.axNeed_of hl h₁ h₂))
             have e₁ := Ext.setSt (N := N) hgp
             have e₂ := Ext.setSt (N := N.setSt p (liftPar hF (N.st p) (N.st (c :: p))
               (N.kind (c :: p)) (N.fmap (c :: p)) (Term.mono (ctxOf_le_of_suffix h) t) hl))

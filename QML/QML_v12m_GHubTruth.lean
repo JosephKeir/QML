@@ -306,11 +306,60 @@ theorem hubDefP_serial (hD : ModalSys.DStrong = true) :
       exact ⟨_, ⟨j, _, Term.diatm x hx u, rfl⟩,
         ⟨⟨⟨s, ⟨r⟩⟩, (Set.ext_iff.mp hE ⟨some s, ⟨r⟩⟩).mpr ha⟩⟩⟩
 
+/-- ⭐**With a lift flag, every hub object of the type is read at a kept address of the world asked
+    about**: it is a hub term's value (`cdefinable_fromDom`), and the term is eventually lifted
+    (`hub_lift_limit`). -/
+theorem hub_lifted {T : VarType} (hl : T.liftableR = true)
+    (o : (cmodel hF hM₀ hX).frame.Dom T (groot hF M₀)) :
+    ∃ (j : ℕ) (v : VarSymb) (hr : (ctxOf (gnet hF M₀ j).src.l).ref v = some T),
+      (hubV hF hM₀ hX hh j).ref (.step v .keep)
+        (Ctx.ref_keep_of' hF hr (VarType.keepable_of_liftableR hl)) = o := by
+  obtain ⟨i', a, t', ht'⟩ := cdefinable_fromDom hM₀ hX T (groot hF M₀) o
+  obtain ⟨j, hj, r, hr, L, hL, he⟩ := hub_lift_limit (n := gbirth hF M₀ (groot hF M₀).2 + i')
+    hM₀ hh t' hl
+  have hi : i' ≤ hstg hF M₀ j := by
+    have := (hstg_spec (hF := hF) hM₀ hh j).1
+    omega
+  refine ⟨j, .root (.free r), hr, ?_⟩
+  have hok := hubOk hM₀ hh j (.step (.root (.free r)) .keep) T rfl
+    (Ctx.boxIn_keep_of' hF hr (VarType.keepable_of_liftableR hl))
+  rw [he] at hok
+  have hLe : (ctxOf L).Le (ctxOf (glat (groot hF M₀) (hstg hF M₀ j))) := by
+    by_contra hn
+    rw [show entOf (ctxOf (glat (groot hF M₀) (hstg hF M₀ j))) (.inr ⟨L, T, a, _⟩) = .hide from
+      dif_neg hn] at hok
+    exact hok
+  have hθ : (eS σ (ctxOf (glat (groot hF M₀) (hstg hF M₀ j))) (fmapL hF M₀ [])).at
+      (.step (.root (.free r)) .keep) =
+      .tm (Term.mono hLe (Term.mono (ctxOf_le_of_suffix hL) t')) := by
+    rw [Subst.at_nonproj _ rfl, eS_item _ rfl, he, entOf_tm hLe]
+  unfold hubV
+  rw [substEnv_ref, entryVal_congr _ hθ _ rfl]
+  change interp _ (Term.mono hLe (Term.mono _ t')) = o
+  rw [Term.mono_mono]
+  exact cinterp_lift hX ht' hi
+
+/-- Every necessary hub object of a type lifted by flag is the apex's. -/
+theorem hub_defN_of_lift {A : VarType} (hl : (VarType.VTypeBox A).liftableR = true)
+    (n : (cmodel hF hM₀ hX).frame.Nec A (groot hF M₀)) : HubDefN hF hM₀ hX hh A n := by
+  obtain ⟨j, v, hr, hval⟩ := hub_lifted hM₀ hX hh hl n
+  exact ⟨j, _, Term.eta v _ hr, by
+    rw [interp_eta]
+    exact ((hubE₀_keyed hM₀ hX hh j).1 v A hr).trans hval⟩
+
+/-- Every possible hub object of a type lifted by flag is the apex's. -/
+theorem hub_defP_of_lift {A : VarType} (hl : (VarType.VTypeDia A).liftableR = true)
+    (p : (cmodel hF hM₀ hX).frame.Pos A (groot hF M₀)) : HubDefP hF hM₀ hX hh A p := by
+  obtain ⟨j, v, hr, hval⟩ := hub_lifted hM₀ hX hh hl p
+  exact ⟨j, _, Term.eta v _ hr, by
+    rw [interp_eta]
+    exact ((hubE₀_keyed hM₀ hX hh j).2 v A hr).trans hval⟩
+
 variable (hF) in
 /-- ⭐**The cone's data**: the hub with the objects the world asked about names, under its term
-    model.  Without 4's lifts and strong 5 (step 6 of the docs' plan). -/
-noncomputable def hubData (hNL : ModalSys.FourStrong = false ∧ ModalSys.FourStrongW = false ∧
-    ModalSys.FiveStrong = false) : (cmodel hF hM₀ hX).ConeData where
+    model.  With strong 5, strong 4 (docs, "the hub", 6). -/
+noncomputable def hubData (hFS : ModalSys.FiveStrong = true → ModalSys.FourStrong = true) :
+    (cmodel hF hM₀ hX).ConeData where
   ρ := groot hF M₀
   D := (gsrcWorld hF M₀ hM₀ hh).D
   funcInterp := (gsrcWorld hF M₀ hM₀ hh).canonFunc
@@ -363,23 +412,28 @@ noncomputable def hubData (hNL : ModalSys.FourStrong = false ∧ ModalSys.FourSt
     rw [posSide_eq_posKeep (hubSh hX hh) hF hV]
     exact ⟨i, _, (Canon.applyG (.dkeep hF) t).2, by rw [interp_applyG (hubSh hX hh)]; rfl⟩
   posSerial hD := hubDefP_serial hM₀ hX hh hD
-  keepLiftN _ _ hl := flagElim hNL.1 hl
-  keepLiftP _ _ hl := flagElim hNL.2.1 hl
-  necSide _ h5 := flagElim hNL.2.2 h5
+  keepLiftN hF' _ hl a o := by
+    obtain ⟨m, hm⟩ := (cmodel hF hM₀ hX).keepLift hF' hl a o
+    exact ⟨m, hub_defN_of_lift hM₀ hX hh hl m, hm⟩
+  keepLiftP hF' _ hl a o := by
+    obtain ⟨m, hm⟩ := (cmodel hF hM₀ hX).keepLift hF' hl a o
+    exact ⟨m, hub_defP_of_lift hM₀ hX hh hl m, hm⟩
+  necSide hV h5 _ a n := by
+    obtain ⟨m, hm⟩ := (cmodel hF hM₀ hX).necSide_exists hV h5 a n
+    exact ⟨m, hub_defN_of_lift hM₀ hX hh (hFS h5) m, fun b => hub_ind hM₀ hX hh _ _ (hm b)⟩
 
-variable (hNL : ModalSys.FourStrong = false ∧ ModalSys.FourStrongW = false ∧
-  ModalSys.FiveStrong = false)
+variable (hFS : ModalSys.FiveStrong = true → ModalSys.FourStrong = true)
 
 variable (hF) in
 /-- ⭐**The cone over the cluster model with the world asked about at its apex.** -/
 noncomputable abbrev hubCone : Model.{0, 0} σ :=
-  (hubData hF hM₀ hX hh hNL).cone (hubOn_T hh) (hubOn_B hh) (hubOn_BS hX hh) (hub_ind hM₀ hX hh)
+  (hubData hF hM₀ hX hh hFS).cone (hubOn_T hh) (hubOn_B hh) (hubOn_BS hX hh) (hub_ind hM₀ hX hh)
 
 variable (hF) in
 /-- ⭐**The apex's environment at a stage**: base addresses their classes, keepable ones the hub's
     reading of their kept address. -/
 noncomputable def hubE (i : ℕ) :
-    (hubCone hF hM₀ hX hh hNL).Env (ctxOf (gnet hF M₀ i).src.l) none :=
+    (hubCone hF hM₀ hX hh hFS).Env (ctxOf (gnet hF M₀ i).src.l) none :=
   ConeData.apexEnv _ _ _ _ _ hF (Ctx.Presented.noProjLast _) (hubBase hM₀ hh i)
     (hubV hF hM₀ hX hh i)
     (fun v _ h => ⟨i, _, Term.eta v _ h, by
@@ -390,33 +444,33 @@ noncomputable def hubE (i : ℕ) :
       exact (hubE₀_keyed hM₀ hX hh i).2 v _ h⟩)
 
 theorem hubE_agree {i j : ℕ} (hij : i ≤ j) :
-    Env.Agree (ctxOf_le_of_suffix (src_grows hM₀ hh hij).suf) (hubE hF hM₀ hX hh hNL i)
-      (hubE hF hM₀ hX hh hNL j) :=
+    Env.Agree (ctxOf_le_of_suffix (src_grows hM₀ hh hij).suf) (hubE hF hM₀ hX hh hFS i)
+      (hubE hF hM₀ hX hh hFS j) :=
   ConeData.apexEnv_agree (hInd := hub_ind hM₀ hX hh) _ (hubBase_mono hM₀ hh hij)
     fun _ _ h => hubV_mono hM₀ hX hh hij h
 
 theorem hubE_keyed (i : ℕ) :
-    ConeData.Keyed hF (hubE hF hM₀ hX hh hNL i) (hubV hF hM₀ hX hh i) :=
+    ConeData.Keyed hF (hubE hF hM₀ hX hh hFS i) (hubV hF hM₀ hX hh i) :=
   ConeData.apexEnv_keyed (hInd := hub_ind hM₀ hX hh)
 
 /-- A necessary term's object at the apex is the first cone's. -/
 theorem hub_nb (i : ℕ) {A : VarType} {a : Ann (.VTypeBox A)}
     (t : Term σ (ctxOf (gnet hF M₀ i).src.l) (.VTypeBox A) a) :
-    ConeData.nb (interp (hubE hF hM₀ hX hh hNL i) t) =
+    ConeData.nb (interp (hubE hF hM₀ hX hh hFS i) t) =
       ConeData.nb (interp (hubE₀ hF hM₀ hX hh i) t) := by
   cases t with
   | boxtm b =>
-      rw [ConeData.interp_apex_box (hubE_keyed hM₀ hX hh hNL i) b,
+      rw [ConeData.interp_apex_box (hubE_keyed hM₀ hX hh hFS i) b,
         ConeData.interp_apex_box (hubE₀_keyed hM₀ hX hh i) b]
 
 /-- A possible term's object at the apex is the first cone's. -/
 theorem hub_pb (i : ℕ) {A : VarType} {a : Ann (.VTypeDia A)}
     (t : Term σ (ctxOf (gnet hF M₀ i).src.l) (.VTypeDia A) a) :
-    ConeData.pb (interp (hubE hF hM₀ hX hh hNL i) t) =
+    ConeData.pb (interp (hubE hF hM₀ hX hh hFS i) t) =
       ConeData.pb (interp (hubE₀ hF hM₀ hX hh i) t) := by
   cases t with
   | diatm x hx c =>
-      rw [ConeData.interp_apex_dia (hubE_keyed hM₀ hX hh hNL i) hx c,
+      rw [ConeData.interp_apex_dia (hubE_keyed hM₀ hX hh hFS i) hx c,
         ConeData.interp_apex_dia (hubE₀_keyed hM₀ hX hh i) hx c]
 
 /-! ## Base terms at the apex -/
@@ -426,7 +480,7 @@ mutual
       (args : Fin n → (gsrcWorld hF M₀ hM₀ hh).D)
       (ts : Fin n → Term σ (ctxOf (gnet hF M₀ i).src.l) .Var .var),
       (∀ k, args k = (gsrcWorld hF M₀ hM₀ hh).cls i (ts k)) →
-      interpFunc (hubE hF hM₀ hX hh hNL i) g args =
+      interpFunc (hubE hF hM₀ hX hh hFS i) g args =
         (gsrcWorld hF M₀ hM₀ hh).cls i (.func ((Spine.ofFn ts).fill g))
     | _, .F ⟨f, rfl⟩, args, ts, hts => by
         change (gsrcWorld hF M₀ hM₀ hh).canonFunc f (fun k => args (Fin.cast rfl k)) = _
@@ -434,10 +488,10 @@ mutual
             fun k => (gsrcWorld hF M₀ hM₀ hh).cls i (ts k) from funext fun k => hts k,
           BWorld.canonFunc_cls]
     | _, .eval g t, args, ts, hts => by
-        change interpFunc (hubE hF hM₀ hX hh hNL i) g
-          (Fin.cons (interp (hubE hF hM₀ hX hh hNL i) t) args) = _
+        change interpFunc (hubE hF hM₀ hX hh hFS i) g
+          (Fin.cons (interp (hubE hF hM₀ hX hh hFS i) t) args) = _
         have h0 := hub_interp_var i t
-        rw [hub_interpFunc i g (Fin.cons (interp (hubE hF hM₀ hX hh hNL i) t) args) (Fin.cons t ts)
+        rw [hub_interpFunc i g (Fin.cons (interp (hubE hF hM₀ hX hh hFS i) t) args) (Fin.cons t ts)
           (fun k => by cases k using Fin.cases <;> simp [h0, hts]), Spine.ofFn_cons]
         rfl
   termination_by _ g => g.size
@@ -447,7 +501,7 @@ mutual
 
   /-- ⭐A base term's value at the apex is its class. -/
   theorem hub_interp_var (i : ℕ) : ∀ t : Term σ (ctxOf (gnet hF M₀ i).src.l) .Var .var,
-      interp (hubE hF hM₀ hX hh hNL i) t = (gsrcWorld hF M₀ hM₀ hh).cls i t
+      interp (hubE hF hM₀ hX hh hFS i) t = (gsrcWorld hF M₀ hM₀ hh).cls i t
     | .var v hv => ConeData.apexEnv_ref (hInd := hub_ind hM₀ hX hh) v hv
     | .func f => hub_interpFunc i f Fin.elim0 Fin.elim0 (fun k => k.elim0)
   termination_by t => t.size
@@ -460,7 +514,7 @@ theorem hub_relSat (i : ℕ) : ∀ {n : ℕ} (ρ : Rel σ (ctxOf (gnet hF M₀ i
     (args : Fin n → (gsrcWorld hF M₀ hM₀ hh).D)
     (ts : Fin n → Term σ (ctxOf (gnet hF M₀ i).src.l) .Var .var),
     (∀ k, args k = (gsrcWorld hF M₀ hM₀ hh).cls i (ts k)) →
-    (relSat (hubE hF hM₀ hX hh hNL i) ρ args ↔
+    (relSat (hubE hF hM₀ hX hh hFS i) ρ args ↔
       WFF.atom ((Spine.ofFn ts).fillR ρ) ∈ (gsrcWorld hF M₀ hM₀ hh).M i)
   | _, .R ⟨r, rfl⟩, args, ts, hts => by
       change (gsrcWorld hF M₀ hM₀ hh).canonRel r (fun k => args (Fin.cast rfl k)) ↔ _
@@ -468,58 +522,58 @@ theorem hub_relSat (i : ℕ) : ∀ {n : ℕ} (ρ : Rel σ (ctxOf (gnet hF M₀ i
           fun k => (gsrcWorld hF M₀ hM₀ hh).cls i (ts k) from funext fun k => hts k,
         BWorld.canonRel_cls]
   | _, .eval ρ t, args, ts, hts => by
-      change relSat (hubE hF hM₀ hX hh hNL i) ρ
-        (Fin.cons (interp (hubE hF hM₀ hX hh hNL i) t) args) ↔ _
-      have h0 := hub_interp_var hM₀ hX hh hNL i t
-      rw [hub_relSat i ρ (Fin.cons (interp (hubE hF hM₀ hX hh hNL i) t) args) (Fin.cons t ts)
+      change relSat (hubE hF hM₀ hX hh hFS i) ρ
+        (Fin.cons (interp (hubE hF hM₀ hX hh hFS i) t) args) ↔ _
+      have h0 := hub_interp_var hM₀ hX hh hFS i t
+      rw [hub_relSat i ρ (Fin.cons (interp (hubE hF hM₀ hX hh hFS i) t) args) (Fin.cons t ts)
         (fun k => by cases k using Fin.cases <;> simp [h0, hts]), Spine.ofFn_cons]
       rfl
 
 /-! ## Every object of the apex is named -/
 
 /-- ⭐**Every object at the apex is the value of a term of the world asked about.** -/
-theorem hub_definable : ∀ (A : VarType) (o : (hubCone hF hM₀ hX hh hNL).frame.Dom A none),
+theorem hub_definable : ∀ (A : VarType) (o : (hubCone hF hM₀ hX hh hFS).frame.Dom A none),
     ∃ (i : ℕ) (a : Ann A) (t : Term σ (ctxOf (gnet hF M₀ i).src.l) A a),
-      interp (hubE hF hM₀ hX hh hNL i) t = o
+      interp (hubE hF hM₀ hX hh hFS i) t = o
   | .Var, o => by
       obtain ⟨⟨i, t⟩, rfl⟩ := Quotient.exists_rep (o : (gsrcWorld hF M₀ hM₀ hh).D)
-      exact ⟨i, _, t, hub_interp_var hM₀ hX hh hNL i t⟩
+      exact ⟨i, _, t, hub_interp_var hM₀ hX hh hFS i t⟩
   | .VTypeOne, _ => ⟨0, _, .unit, rfl⟩
   | .VTypeProd A B, o => by
-      obtain ⟨i, _, t, ht⟩ := hub_definable A (o : (hubCone hF hM₀ hX hh hNL).frame.Dom A none ×
-        (hubCone hF hM₀ hX hh hNL).frame.Dom B none).1
-      obtain ⟨j, _, u, hu⟩ := hub_definable B (o : (hubCone hF hM₀ hX hh hNL).frame.Dom A none ×
-        (hubCone hF hM₀ hX hh hNL).frame.Dom B none).2
+      obtain ⟨i, _, t, ht⟩ := hub_definable A (o : (hubCone hF hM₀ hX hh hFS).frame.Dom A none ×
+        (hubCone hF hM₀ hX hh hFS).frame.Dom B none).1
+      obtain ⟨j, _, u, hu⟩ := hub_definable B (o : (hubCone hF hM₀ hX hh hFS).frame.Dom A none ×
+        (hubCone hF hM₀ hX hh hFS).frame.Dom B none).2
       refine ⟨max i j, _,
         .pair (Term.mono (ctxOf_le_of_suffix (src_grows hM₀ hh (le_max_left i j)).suf) t)
           (Term.mono (ctxOf_le_of_suffix (src_grows hM₀ hh (le_max_right i j)).suf) u), ?_⟩
       change (interp _ (Term.mono _ t), interp _ (Term.mono _ u)) = o
-      rw [interp_mono (hubE_agree hM₀ hX hh hNL (le_max_left i j)),
-        interp_mono (hubE_agree hM₀ hX hh hNL (le_max_right i j)), ht, hu]
+      rw [interp_mono (hubE_agree hM₀ hX hh hFS (le_max_left i j)),
+        interp_mono (hubE_agree hM₀ hX hh hFS (le_max_right i j)), ht, hu]
       rfl
   | .VTypeBox A, o => by
       obtain ⟨n, i, a, t, rfl⟩ := o
-      exact ⟨i, a, t, Subtype.ext (hub_nb hM₀ hX hh hNL i t)⟩
+      exact ⟨i, a, t, Subtype.ext (hub_nb hM₀ hX hh hFS i t)⟩
   | .VTypeDia A, o => by
       obtain ⟨p, i, a, t, rfl⟩ := o
-      exact ⟨i, a, t, Subtype.ext (hub_pb hM₀ hX hh hNL i t)⟩
+      exact ⟨i, a, t, Subtype.ext (hub_pb hM₀ hX hh hFS i t)⟩
 
 /-! ## The truth lemma at the apex -/
 
 /-- ⭐**The truth lemma at the apex, below a size, at every stage.** -/
 theorem hubTruth_lt : ∀ (n i : ℕ) (φ : WFF σ (ctxOf (gnet hF M₀ i).src.l) 0), φ.size < n →
-    ((hubCone hF hM₀ hX hh hNL).sat (hubE hF hM₀ hX hh hNL i) φ ↔
+    ((hubCone hF hM₀ hX hh hFS).sat (hubE hF hM₀ hX hh hFS i) φ ↔
       φ ∈ (gsrcWorld hF M₀ hM₀ hh).M i)
   | 0, _, _, h => absurd h (Nat.not_lt_zero _)
   | n + 1, i, φ, hφ => by
       cases φ with
       | atom ρ =>
-          change relSat (hubE hF hM₀ hX hh hNL i) ρ Fin.elim0 ↔ _
-          rw [hub_relSat hM₀ hX hh hNL i ρ Fin.elim0 Fin.elim0 (fun k => k.elim0)]
+          change relSat (hubE hF hM₀ hX hh hFS i) ρ Fin.elim0 ↔ _
+          rw [hub_relSat hM₀ hX hh hFS i ρ Fin.elim0 Fin.elim0 (fun k => k.elim0)]
           rfl
       | eq t u =>
-          change interp (hubE hF hM₀ hX hh hNL i) t = interp (hubE hF hM₀ hX hh hNL i) u ↔ _
-          rw [hub_interp_var hM₀ hX hh hNL i t, hub_interp_var hM₀ hX hh hNL i u,
+          change interp (hubE hF hM₀ hX hh hFS i) t = interp (hubE hF hM₀ hX hh hFS i) u ↔ _
+          rw [hub_interp_var hM₀ hX hh hFS i t, hub_interp_var hM₀ hX hh hFS i u,
             BWorld.cls_eq_iff (le_refl i) (le_refl i)]
           change WFF.eq (Term.mono ((gsrcWorld hF M₀ hM₀ hh).le (le_refl i)) t)
             (Term.mono ((gsrcWorld hF M₀ hM₀ hh).le (le_refl i)) u) ∈
@@ -551,22 +605,22 @@ theorem hubTruth_lt : ∀ (n i : ℕ) (φ : WFF σ (ctxOf (gnet hF M₀ i).src.l
             ((gsrcWorld hF M₀ hM₀ hh).mcs i).imp_mem_iff]
       | all A ψ =>
           have hψ : ψ.size < n := by simp only [WFF.size] at hφ; omega
-          change (∀ o : (hubCone hF hM₀ hX hh hNL).frame.Dom A none,
-            (hubCone hF hM₀ hX hh hNL).sat ((hubE hF hM₀ hX hh hNL i).extend (.bnd 0) o) ψ) ↔ _
+          change (∀ o : (hubCone hF hM₀ hX hh hFS).frame.Dom A none,
+            (hubCone hF hM₀ hX hh hFS).sat ((hubE hF hM₀ hX hh hFS i).extend (.bnd 0) o) ψ) ↔ _
           constructor
           · intro hsat
             by_contra hnot
             obtain ⟨i', hi, a, t, hmem⟩ := (gsrcWorld hF M₀ hM₀ hh).allW
               (((gsrcWorld hF M₀ hM₀ hh).mcs i).neg_mem_iff.mpr hnot)
-            have hs₁ := (Model.sat_mono (Model.Env.extend_agree (hubE_agree hM₀ hX hh hNL hi)
-              (.bnd 0) (interp (hubE hF hM₀ hX hh hNL i') t)) ψ).mpr (hsat _)
-            have hs₂ := (Model.sat_instantiate (hubE hF hM₀ hX hh hNL i')
+            have hs₁ := (Model.sat_mono (Model.Env.extend_agree (hubE_agree hM₀ hX hh hFS hi)
+              (.bnd 0) (interp (hubE hF hM₀ hX hh hFS i') t)) ψ).mpr (hsat _)
+            have hs₂ := (Model.sat_instantiate (hubE hF hM₀ hX hh hFS i')
               (Ctx.Presented.noProjLast _) Ctx.NoSlots.slots t _).mpr hs₁
             have hs₃ := (hubTruth_lt n i' _
               (by rw [WFF.size_instantiate, WFF.size_mono]; exact hψ)).mp hs₂
             exact (((gsrcWorld hF M₀ hM₀ hh).mcs i').neg_mem_iff.mp hmem) hs₃
           · intro hmem o
-            obtain ⟨i', a, t', ht'⟩ := hub_definable hM₀ hX hh hNL A o
+            obtain ⟨i', a, t', ht'⟩ := hub_definable hM₀ hX hh hFS A o
             have hK : i ≤ i ⊔ i' := le_sup_left
             have hK' : i' ≤ i ⊔ i' := le_sup_right
             have hinst : WFF.instantiate Ctx.NoSlots.slots ((gsrcWorld hF M₀ hM₀ hh).liftT hK' t')
@@ -581,29 +635,29 @@ theorem hubTruth_lt : ∀ (n i : ℕ) (φ : WFF σ (ctxOf (gnet hF M₀ i).src.l
                   (Proof.lookup List.mem_cons_self)⟩
             have hs := (hubTruth_lt n (i ⊔ i') _
               (by rw [WFF.size_instantiate, WFF.size_mono]; exact hψ)).mpr hinst
-            have hs₁ := (Model.sat_instantiate (hubE hF hM₀ hX hh hNL (i ⊔ i'))
+            have hs₁ := (Model.sat_instantiate (hubE hF hM₀ hX hh hFS (i ⊔ i'))
               (Ctx.Presented.noProjLast _) Ctx.NoSlots.slots
               ((gsrcWorld hF M₀ hM₀ hh).liftT hK' t') _).mp hs
-            rw [show interp (hubE hF hM₀ hX hh hNL (i ⊔ i'))
+            rw [show interp (hubE hF hM₀ hX hh hFS (i ⊔ i'))
                 ((gsrcWorld hF M₀ hM₀ hh).liftT hK' t') = o from
-              (interp_mono (hubE_agree hM₀ hX hh hNL hK') t').trans ht'] at hs₁
-            exact (Model.sat_mono (Model.Env.extend_agree (hubE_agree hM₀ hX hh hNL hK) (.bnd 0) o)
+              (interp_mono (hubE_agree hM₀ hX hh hFS hK') t').trans ht'] at hs₁
+            exact (Model.sat_mono (Model.Env.extend_agree (hubE_agree hM₀ hX hh hFS hK) (.bnd 0) o)
               ψ).mp hs₁
       | ex A ψ =>
           have hψ : ψ.size < n := by simp only [WFF.size] at hφ; omega
-          change (∃ o : (hubCone hF hM₀ hX hh hNL).frame.Dom A none,
-            (hubCone hF hM₀ hX hh hNL).sat ((hubE hF hM₀ hX hh hNL i).extend (.bnd 0) o) ψ) ↔ _
+          change (∃ o : (hubCone hF hM₀ hX hh hFS).frame.Dom A none,
+            (hubCone hF hM₀ hX hh hFS).sat ((hubE hF hM₀ hX hh hFS i).extend (.bnd 0) o) ψ) ↔ _
           constructor
           · rintro ⟨o, hsat⟩
-            obtain ⟨i', a, t', ht'⟩ := hub_definable hM₀ hX hh hNL A o
+            obtain ⟨i', a, t', ht'⟩ := hub_definable hM₀ hX hh hFS A o
             have hK : i ≤ i ⊔ i' := le_sup_left
             have hK' : i' ≤ i ⊔ i' := le_sup_right
-            have hs₁ := (Model.sat_mono (Model.Env.extend_agree (hubE_agree hM₀ hX hh hNL hK)
+            have hs₁ := (Model.sat_mono (Model.Env.extend_agree (hubE_agree hM₀ hX hh hFS hK)
               (.bnd 0) o) ψ).mpr hsat
-            rw [← show interp (hubE hF hM₀ hX hh hNL (i ⊔ i'))
+            rw [← show interp (hubE hF hM₀ hX hh hFS (i ⊔ i'))
                 ((gsrcWorld hF M₀ hM₀ hh).liftT hK' t') = o from
-              (interp_mono (hubE_agree hM₀ hX hh hNL hK') t').trans ht'] at hs₁
-            have hs₂ := (Model.sat_instantiate (hubE hF hM₀ hX hh hNL (i ⊔ i'))
+              (interp_mono (hubE_agree hM₀ hX hh hFS hK') t').trans ht'] at hs₁
+            have hs₂ := (Model.sat_instantiate (hubE hF hM₀ hX hh hFS (i ⊔ i'))
               (Ctx.Presented.noProjLast _) Ctx.NoSlots.slots
               ((gsrcWorld hF M₀ hM₀ hh).liftT hK' t') _).mpr hs₁
             have hmemK := (hubTruth_lt n (i ⊔ i') _
@@ -618,28 +672,28 @@ theorem hubTruth_lt : ∀ (n i : ℕ) (φ : WFF σ (ctxOf (gnet hF M₀ i).src.l
                 (Proof.lookup List.mem_cons_self)⟩)
           · intro hmem
             obtain ⟨i', hi, a, t, hmem'⟩ := (gsrcWorld hF M₀ hM₀ hh).exW_term hmem
-            refine ⟨interp (hubE hF hM₀ hX hh hNL i') t, ?_⟩
+            refine ⟨interp (hubE hF hM₀ hX hh hFS i') t, ?_⟩
             have hs := (hubTruth_lt n i' _
               (by rw [WFF.size_instantiate, WFF.size_mono]; exact hψ)).mpr hmem'
-            have hs₁ := (Model.sat_instantiate (hubE hF hM₀ hX hh hNL i')
+            have hs₁ := (Model.sat_instantiate (hubE hF hM₀ hX hh hFS i')
               (Ctx.Presented.noProjLast _) Ctx.NoSlots.slots t _).mp hs
-            exact (Model.sat_mono (Model.Env.extend_agree (hubE_agree hM₀ hX hh hNL hi) (.bnd 0) _)
+            exact (Model.sat_mono (Model.Env.extend_agree (hubE_agree hM₀ hX hh hFS hi) (.bnd 0) _)
               ψ).mp hs₁
-      | box χ => exact apex_box_iff (hubE_keyed hM₀ hX hh hNL i) (hubV_sat hM₀ hX hh i) χ
-      | dia x hx χ => exact apex_dia_iff (hubE_keyed hM₀ hX hh hNL i) (hubV_sat hM₀ hX hh i) hx χ
+      | box χ => exact apex_box_iff (hubE_keyed hM₀ hX hh hFS i) (hubV_sat hM₀ hX hh i) χ
+      | dia x hx χ => exact apex_dia_iff (hubE_keyed hM₀ hX hh hFS i) (hubV_sat hM₀ hX hh i) hx χ
 
 /-- ⭐⭐**The truth lemma at the apex**: the world asked about satisfies, at each stage, exactly its
     theory there. -/
 theorem hubTruth (i : ℕ) (φ : WFF σ (ctxOf (gnet hF M₀ i).src.l) 0) :
-    (hubCone hF hM₀ hX hh hNL).sat (hubE hF hM₀ hX hh hNL i) φ ↔
+    (hubCone hF hM₀ hX hh hFS).sat (hubE hF hM₀ hX hh hFS i) φ ↔
       φ ∈ (gsrcWorld hF M₀ hM₀ hh).M i :=
-  hubTruth_lt hM₀ hX hh hNL (φ.size + 1) i φ (Nat.lt_succ_self _)
+  hubTruth_lt hM₀ hX hh hFS (φ.size + 1) i φ (Nat.lt_succ_self _)
 
 /-- ⭐⭐**The cone over a maximal consistent theory with the hub on**: its apex satisfies, at its
     first stage, exactly that theory. -/
 theorem exists_canonHub (φ : WFF σ (ctxOf l₀) 0) :
-    (hubCone hF hM₀ hX hh hNL).sat (hubE hF hM₀ hX hh hNL 0) φ ↔ φ ∈ M₀ :=
-  hubTruth hM₀ hX hh hNL 0 φ
+    (hubCone hF hM₀ hX hh hFS).sat (hubE hF hM₀ hX hh hFS 0) φ ↔ φ ∈ M₀ :=
+  hubTruth hM₀ hX hh hFS 0 φ
 
 end GArrow
 

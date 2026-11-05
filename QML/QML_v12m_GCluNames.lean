@@ -401,7 +401,11 @@ theorem NamesInj.iterate_realF (hF : ModalSys.Four = true) (k : Node) :
 theorem NamesInj.catchUp (hF : ModalSys.Four = true) (hN : N.Good)
     (hI : N.NamesInj) {k : Node} (hk : N.Live k) : (N.catchUp hF k).NamesInj := by
   match k with
-  | [] => exact hI
+  | [] =>
+      simp only [GNetSt.catchUp]
+      split_ifs
+      · exact NamesInj.iterate_realF hF [] _ hN hk hI
+      · exact hI
   | c :: p => exact NamesInj.iterate_realF hF (c :: p) _ hN hk hI
 
 end GNetSt
@@ -536,7 +540,14 @@ variable {N : GNetSt σ}
 theorem NamesInj.lift (hV : ModalSys.Five = true) (hF : ModalSys.Four = true) (hN : N.Good)
     (hI : N.NamesInj) {k : Node} (hk : N.Live k) (o : LTerm σ) : (N.lift hF k o).NamesInj := by
   match k, o with
-  | [], _ => exact hI
+  | [], ⟨l, T, a, t⟩ =>
+      simp only [GNetSt.lift]
+      split_ifs
+      · intro c p hl
+        rw [live_setFwd, live_setSt, live_withSrc] at hl
+        simp only [GNetSt.setFwd, Function.update_of_ne (List.cons_ne_nil c p)]
+        exact hI c p hl
+      all_goals exact hI
   | c :: p, ⟨l, T, a, t⟩ =>
       simp only [GNetSt.lift]
       split_ifs with hcl h hl hv

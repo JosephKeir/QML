@@ -50,7 +50,7 @@ theorem pstgN_eq : ∀ (P : List ℕ) (s t : GW hF M₀) (h : t.1 = nodeOf s.1 P
 theorem nm_ok (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s t)
     (i : ℕ) : ∀ z T, (ctxOf (glat s i)).ref z = some T → T.keepable = true →
       (ctxOf (glat t (glstg s t i))).ref (nm t z) = some T :=
-  fun z _ hz hkp => names_ref' hM₀ h hz hkp (nm_spec hX.five t z)
+  fun z _ hz hkp => names_ref' hM₀ h hz hkp (nm_spec hX.five t z h.ne_nil)
 
 /-- ⭐**Along an edge, the edge read through 4's shift is renaming by the names**, up to η: an
     item `u.box` or `u.keep` reads the entry of `u.keep`, which names `nm t u`. -/
@@ -63,7 +63,7 @@ theorem sim_edge_nm (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M�
   rw [show eS σ (ctxOf (glat t (glstg s t i))).boxIn (ofRen (preI (nm t))) (.step u st) =
     .ren (preI (nm t) (.step u st)) from eS_item _ hl]
   change SubE.Sim T ((edgeBox s t i).at (VarSymb.shift 0 (.step u st))) _
-  have hn := nm_spec hX.five t u
+  have hn := nm_spec hX.five t u h.ne_nil
   match st, hv with
   | .box, hv =>
       obtain ⟨hk, hz⟩ := Ctx.boxIn_box hv
@@ -385,7 +385,7 @@ theorem sim_edge_nmX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M�
     (hx : (ctxOf (glat s i)).ref x = some (.VTypeDia X)) :
     Subst.Sim ((ctxOf (glat s i)).diaIn x) (Subst.atShift (edgeDia s t i x (nm t x)))
       (eS σ ((ctxOf (glat t (glstg s t i))).diaIn (nm t x)) (ofRen (preIX (nm t) x))) := by
-  have hn := nm_spec hX.five t x
+  have hn := nm_spec hX.five t x h.ne_nil
   refine Subst.sim_of fun v T hl hv => ?_
   obtain ⟨u, st, rfl, -, -⟩ := kView_item (k := some x) hv
   rw [eS_item _ hl]
@@ -425,8 +425,8 @@ theorem tr_edgeX_body (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M
     (hx : (ctxOf (glat s i)).ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A}
     (c : Term σ ((ctxOf (glat s i)).diaIn x) A a) :
     (⟨_, Term.subst (eIdx (fmapL hF M₀ t.1)) (edgeDia s t i x (nm t x))
-        (ok_edgeDia hM₀ h i hx (nm_spec hX.five t x))
-        (coh_edgeDia hM₀ h i hx (nm_spec hX.five t x))
+        (ok_edgeDia hM₀ h i hx (nm_spec hX.five t x h.ne_nil))
+        (coh_edgeDia hM₀ h i hx (nm_spec hX.five t x h.ne_nil))
         (Term.shift (Ctx.shifts_diaIn_keep hF _ x) c)⟩ :
         Σ e, Term σ ((ctxOf (glat t (glstg s t i))).diaIn (nm t x)) A e) =
       ⟨_, Term.subst (eIdx (ofRen (preIX (nm t) x)))
@@ -437,10 +437,10 @@ theorem tr_edgeX_body (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M
   (Term.subst_shift (Ctx.shifts_diaIn_keep hF _ x) _ _ _
     (Subst.atShift (edgeDia s t i x (nm t x)))
     (Subst.ok_atShift (Ctx.shifts_diaIn_keep hF _ x)
-      (ok_edgeDia hM₀ h i hx (nm_spec hX.five t x)))
+      (ok_edgeDia hM₀ h i hx (nm_spec hX.five t x h.ne_nil)))
     (Subst.coh_atShift (Ctx.shifts_diaIn_keep hF _ x)
-      (ok_edgeDia hM₀ h i hx (nm_spec hX.five t x))
-      (coh_edgeDia hM₀ h i hx (nm_spec hX.five t x)) (levels_diaIn _ _))
+      (ok_edgeDia hM₀ h i hx (nm_spec hX.five t x h.ne_nil))
+      (coh_edgeDia hM₀ h i hx (nm_spec hX.five t x h.ne_nil)) (levels_diaIn _ _))
     (Subst.preShift_atShift _ _) c).trans
   (Term.subst_congr _ _ _ _ _ _ (sim_edge_nmX hX hM₀ h i hx) c)
 
@@ -461,9 +461,9 @@ theorem tr_edgeX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} 
             (entOk_ofRen (itemOk_preIX hx (nm_ok hX hM₀ h i))))
           (coh_eS_kView (k := some x)
             (entOk_ofRen (itemOk_preIX hx (nm_ok hX hM₀ h i)))) c)⟩ :=
-  (sig_subst_diatm _ _ _ _ _ (nm t x) (idx_names hM₀ h i hx (nm_spec hX.five t x))
-    ⟨X, nm_ok hX hM₀ h i x _ hx rfl⟩ (ok_edgeDia hM₀ h i hx (nm_spec hX.five t x))
-    (coh_edgeDia hM₀ h i hx (nm_spec hX.five t x))).trans
+  (sig_subst_diatm _ _ _ _ _ (nm t x) (idx_names hM₀ h i hx (nm_spec hX.five t x h.ne_nil))
+    ⟨X, nm_ok hX hM₀ h i x _ hx rfl⟩ (ok_edgeDia hM₀ h i hx (nm_spec hX.five t x h.ne_nil))
+    (coh_edgeDia hM₀ h i hx (nm_spec hX.five t x h.ne_nil))).trans
   (sig_diatm (tr_edgeX_body hX hM₀ h i hx c))
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
@@ -528,7 +528,7 @@ theorem tr_pathX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) :
       have hc := coh_eS_kView (gentOk_box hM₀ hch i)
       have hxk : ((ctxOf (glat s i)).kView none).ref (.step x .keep) = some (.VTypeDia X) :=
         Ctx.boxIn_keep_of' hF hx rfl
-      have hidx := idx_names hM₀ hch i hx (nm_spec hX.five _ x)
+      have hidx := idx_names hM₀ hch i hx (nm_spec hX.five _ x hch.ne_nil)
       have hy : eIdx (fmapL hF M₀ (c :: s.1)) (.step (.step x .keep) .keep) =
           .step (nm (stepW s c (born_step h)) x) .keep := by
         exact (Subst.coh_keep_dia hθ hc hxk).trans
@@ -576,8 +576,8 @@ theorem tr_pathX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) :
         refine (Term.shift_subst (Ctx.shifts_diaIn_keep hF _ (.step x .keep))
           (Ctx.shifts_diaIn_keep hF _ (nm (stepW s c (born_step h)) x))
           (edgeDia s (stepW s c (born_step h)) i x (nm (stepW s c (born_step h)) x))
-          (ok_edgeDia hM₀ hch i hx (nm_spec hX.five _ x))
-          (coh_edgeDia hM₀ hch i hx (nm_spec hX.five _ x)) _ p q
+          (ok_edgeDia hM₀ hch i hx (nm_spec hX.five _ x hch.ne_nil))
+          (coh_edgeDia hM₀ hch i hx (nm_spec hX.five _ x hch.ne_nil)) _ p q
           (Subst.shiftCorr_dia_keep hF hθ ⟨X, hxk⟩ (hc _ _ hxk [] |>.trans hidx)) _).symm.trans ?_
         exact sig_shift_cong _ (tr_edgeX_body hX hM₀ hch i hx b)
       refine (pTr_sigma hM₀ _ t (c' :: P) h pathOk_cons _ key).trans ?_
@@ -715,7 +715,7 @@ theorem tr_pathXK (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) :
   | c :: c' :: P, s, t, h, i, x, X, hx, A, _, b => by
       have hch : GCh hF M₀ s (stepW s c (born_step h)) := ⟨c, rfl⟩
       have hw : wit (stepW s c (born_step h)) x = nm (stepW s c (born_step h)) x :=
-        idx_names hM₀ hch i hx (nm_spec hX.five _ x)
+        idx_names hM₀ hch i hx (nm_spec hX.five _ x hch.ne_nil)
       have hnx := nm_ok hX hM₀ hch i x _ hx rfl
       have hwx : (ctxOf (glat (stepW s c (born_step h)) (glstg s (stepW s c (born_step h)) i))).ref
           (wit (stepW s c (born_step h)) x) = some (.VTypeDia X) := hw ▸ hnx

@@ -48,7 +48,7 @@ theorem completenessNoB (e : CtxExpr) (he : e.Wf)
     Provable Δ φ := by
   by_cases hF : ModalSys.Four = true
   · by_cases hV : ModalSys.Five = true
-    · exact GArrow.completenessC_presented hF (cluFlags_of_five hV) ModalSys.NoB.hubNoLift e he
+    · exact GArrow.completenessC_presented hF (cluFlags_of_five hV) ModalSys.NoB.hubFiveS e he
         hval
     · haveI := growSys_of_noFive hV
       exact GArrow.completenessG_presented hF e he hval
@@ -71,7 +71,7 @@ theorem model_existenceNoB (e : CtxExpr) (he : e.Wf) {S : Set (WFF σ e.denote 0
     (hS : WFF.SetConsistent S) : WFF.SetSatisfiable S := by
   by_cases hF : ModalSys.Four = true
   · by_cases hV : ModalSys.Five = true
-    · exact GArrow.model_existenceC hF (cluFlags_of_five hV) ModalSys.NoB.hubNoLift e he hS
+    · exact GArrow.model_existenceC hF (cluFlags_of_five hV) ModalSys.NoB.hubFiveS e he hS
     · haveI := growSys_of_noFive hV
       exact GArrow.model_existenceG hF e he hS
   · haveI := stagedSys_of_noFour hF
@@ -86,7 +86,7 @@ theorem strong_completenessNoB (e : CtxExpr) (he : e.Wf)
     ∃ Δ : List (WFF σ e.denote 0), (∀ ψ ∈ Δ, ψ ∈ S) ∧ Provable Δ φ := by
   by_cases hF : ModalSys.Four = true
   · by_cases hV : ModalSys.Five = true
-    · exact GArrow.strong_completenessC hF (cluFlags_of_five hV) ModalSys.NoB.hubNoLift e he hval
+    · exact GArrow.strong_completenessC hF (cluFlags_of_five hV) ModalSys.NoB.hubFiveS e he hval
     · haveI := growSys_of_noFive hV
       exact GArrow.strong_completenessG hF e he hval
   · haveI := stagedSys_of_noFour hF
@@ -101,7 +101,7 @@ theorem compactnessNoB (e : CtxExpr) (he : e.Wf) {S : Set (WFF σ e.denote 0)}
     WFF.SetSatisfiable S := by
   by_cases hF : ModalSys.Four = true
   · by_cases hV : ModalSys.Five = true
-    · exact GArrow.compactnessC hF (cluFlags_of_five hV) ModalSys.NoB.hubNoLift e he hfin
+    · exact GArrow.compactnessC hF (cluFlags_of_five hV) ModalSys.NoB.hubFiveS e he hfin
     · haveI := growSys_of_noFive hV
       exact GArrow.compactnessG hF e he hfin
   · haveI := stagedSys_of_noFour hF

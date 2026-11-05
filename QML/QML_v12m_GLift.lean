@@ -1058,7 +1058,7 @@ theorem glift_consistent (hF : ModalSys.Four = true) {T : VarType} (hl : T.lifta
     (hk : KDecl (ctxOf ls) k) {f : VarSymb → LEnt σ}
     (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f)
     (htr : GTransfer M ls (Ctx.Le.refl _) k hk N f hf) {a : Ann T}
-    (t : Term σ (ctxOf lt) T a) (hax : ModalSys.axNeed = true → AxOk M) :
+    (t : Term σ (ctxOf lt) T a) (hax : T.liftableR = false → ModalSys.T = false → AxOk M) :
     Theory.Consistent (WFF.weaken (ctxOf_fresh (l := ls) le_rfl).root T '' M ∪
       liftSeed hF hl hk hf t N) := by
   rintro ⟨L, hL, p⟩
@@ -1085,7 +1085,7 @@ theorem glift_consistent (hF : ModalSys.Four = true) {T : VarType} (hl : T.lifta
   -- The rule turns the refutation of the seed into one of the source.
   by_cases hneed : T.liftableR = false ∧ ModalSys.T = false
   · -- The third way: the closed sentence is in the source, or `□⊥` is, against `hdia`.
-    rcases hax (VarType.axNeed_of hl hneed.1 hneed.2) with hall | hbot
+    rcases hax hneed.1 hneed.2 with hall | hbot
     · have hfl := ModalSys.axNeed_flags (VarType.axNeed_of hl hneed.1 hneed.2)
       have hm := hall _ (kLiftAx_nec hF hfl.1 hfl.2.2 hl k hk χ)
       apply hM.1

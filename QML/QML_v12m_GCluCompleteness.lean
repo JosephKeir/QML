@@ -41,11 +41,11 @@ theorem exists_canonC (hF : ModalSys.Four = true) (hX : CluFlags)
 
 /-- Model existence at a world language: the cluster model over a maximal consistent extension
     satisfies the set at its root, or, with the hub, the cone over it at its apex
-    (`exists_canonHub`).  `hNH`: with the hub, neither of 4's lifts by flag yet (docs, "K45 and
-    KD45 without both lifts: the hub", step 6), and no strong 5 (6 there). -/
+    (`exists_canonHub`).  `hNH`: with the hub, strong 5 comes with strong 4; without it strong 5
+    is incomplete as ruled (docs, "K45 and KD45 without both lifts: the hub", 6). -/
 theorem model_existenceC_ctxOf (hF : ModalSys.Four = true) (hX : CluFlags)
-    (hNH : ModalSys.hubFlags = true → ModalSys.FourStrong = false ∧ ModalSys.FourStrongW = false ∧
-      ModalSys.FiveStrong = false) {l₀ : List VarType}
+    (hNH : ModalSys.hubFlags = true → ModalSys.FiveStrong = true → ModalSys.FourStrong = true)
+    {l₀ : List VarType}
     {S : Set (WFF σ (ctxOf l₀) 0)} (hS : WFF.SetConsistent S) : WFF.SetSatisfiable S := by
   obtain ⟨hSM, hM₀⟩ := complete_spec (setConsistent_iff.mp hS)
   by_cases hh : GNetSt.HubOn (complete S)
@@ -63,8 +63,8 @@ theorem model_existenceC_ctxOf (hF : ModalSys.Four = true) (hX : CluFlags)
 /-- ⭐**Model existence for K45, KD45 and S5** in every presented context whose presentation is
     well-formed. -/
 theorem model_existenceC (hF : ModalSys.Four = true) (hX : CluFlags)
-    (hNH : ModalSys.hubFlags = true → ModalSys.FourStrong = false ∧ ModalSys.FourStrongW = false ∧
-      ModalSys.FiveStrong = false) (e : CtxExpr) (he : e.Wf)
+    (hNH : ModalSys.hubFlags = true → ModalSys.FiveStrong = true → ModalSys.FourStrong = true)
+    (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)} (hS : WFF.SetConsistent S) : WFF.SetSatisfiable S :=
   letI : e.denote.Presented := ⟨e, he.1, rfl⟩
   ((e.gchain hF he.1 he.2).2.toFlat).setSatisfiable
@@ -73,8 +73,8 @@ theorem model_existenceC (hF : ModalSys.Four = true) (hX : CluFlags)
 /-- ⭐**Strong completeness for K45, KD45 and S5**: a formula true in every model, world and
     environment satisfying a set of premises is derivable from finitely many of them. -/
 theorem strong_completenessC (hF : ModalSys.Four = true) (hX : CluFlags)
-    (hNH : ModalSys.hubFlags = true → ModalSys.FourStrong = false ∧ ModalSys.FourStrongW = false ∧
-      ModalSys.FiveStrong = false) (e : CtxExpr)
+    (hNH : ModalSys.hubFlags = true → ModalSys.FiveStrong = true → ModalSys.FourStrong = true)
+    (e : CtxExpr)
     (he : e.Wf) {S : Set (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
     (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env e.denote w),
       (∀ ψ ∈ S, M.sat env ψ) → M.sat env φ) :
@@ -96,8 +96,8 @@ theorem strong_completenessC (hF : ModalSys.Four = true) (hX : CluFlags)
 /-- ⭐**Completeness for K45, KD45 and S5** in every presented context whose presentation is
     well-formed: a sequent valid in every model is provable. -/
 theorem completenessC_presented (hF : ModalSys.Four = true) (hX : CluFlags)
-    (hNH : ModalSys.hubFlags = true → ModalSys.FourStrong = false ∧ ModalSys.FourStrongW = false ∧
-      ModalSys.FiveStrong = false) (e : CtxExpr)
+    (hNH : ModalSys.hubFlags = true → ModalSys.FiveStrong = true → ModalSys.FourStrong = true)
+    (e : CtxExpr)
     (he : e.Wf) {Δ : List (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
     (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W}
       (env : M.Env e.denote w),
@@ -111,8 +111,8 @@ theorem completenessC_presented (hF : ModalSys.Four = true) (hX : CluFlags)
 /-- ⭐**Compactness for K45, KD45 and S5**: a set of formulas is satisfiable when every finite subset
     is — in models of any universe. -/
 theorem compactnessC (hF : ModalSys.Four = true) (hX : CluFlags)
-    (hNH : ModalSys.hubFlags = true → ModalSys.FourStrong = false ∧ ModalSys.FourStrongW = false ∧
-      ModalSys.FiveStrong = false) (e : CtxExpr) (he : e.Wf)
+    (hNH : ModalSys.hubFlags = true → ModalSys.FiveStrong = true → ModalSys.FourStrong = true)
+    (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)}
     (hfin : ∀ Δ : List (WFF σ e.denote 0), (∀ ψ ∈ Δ, ψ ∈ S) →
       ∃ (M : Model.{u, v} σ) (_ : M.IndInvariant) (w : M.frame.W) (env : M.Env e.denote w),

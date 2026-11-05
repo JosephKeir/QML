@@ -32,9 +32,10 @@ def AdmEnt (hF : ModalSys.Four = true) (e : LTerm σ) : Prop :=
 
 namespace GNetSt
 
-/-- Every term entry of every edge is an admissible lifted term. -/
+/-- Every term entry of every edge is an admissible lifted term, but the hub's edge from the
+    world asked about (docs, "the hub", step 6). -/
 def LiftEntOk (hF : ModalSys.Four = true) (N : GNetSt σ) : Prop :=
-  ∀ k v e, N.fmap k v = .inr e → AdmEnt hF e
+  ∀ k v e, N.fmap k v = .inr e → (k = [] → ¬ N.hb) → AdmEnt hF e
 
 variable {hF : ModalSys.Four = true} {N : GNetSt σ}
 
@@ -42,55 +43,55 @@ theorem LiftEntOk.setSt (hL : N.LiftEntOk hF) (s : Node) (t : NodeSt σ) :
     (N.setSt s t).LiftEntOk hF := hL
 
 theorem LiftEntOk.setFwd (hL : N.LiftEntOk hF) (k : Node) (cl : List VarType)
-    {f : VarSymb → LEnt σ} (hf : ∀ v e, f v = .inr e → AdmEnt hF e) :
+    {f : VarSymb → LEnt σ} (hf : ∀ v e, f v = .inr e → (k = [] → ¬ N.hb) → AdmEnt hF e) :
     (N.setFwd k cl f).LiftEntOk hF := by
-  intro k' v e he
+  intro k' v e he hk'
   change Function.update N.fmap k f k' v = .inr e at he
   by_cases hk : k' = k
   · subst hk
     rw [Function.update_self] at he
-    exact hf v e he
+    exact hf v e he hk'
   · rw [Function.update_of_ne hk] at he
-    exact hL k' v e he
+    exact hL k' v e he hk'
 
 theorem LiftEntOk.henkSrc (hL : N.LiftEntOk hF) (s : Node)
     (o : Σ l : List VarType, WFF σ (ctxOf l) 0) : (N.henkSrc s o).LiftEntOk hF := hL
 
 theorem LiftEntOk.newChild (hL : N.LiftEntOk hF) (s : Node) (kd : Option VarSymb)
     (t : NodeSt σ) (g : VarSymb → VarSymb) : (N.newChild s kd t (ofRen g)).LiftEntOk hF := by
-  intro k' v e he
+  intro k' v e he hk'
   change Function.update N.fmap (N.nch s :: s) (ofRen g) k' v = .inr e at he
   by_cases hk : k' = N.nch s :: s
   · subst hk
     rw [Function.update_self] at he
     cases he
   · rw [Function.update_of_ne hk] at he
-    exact hL k' v e he
+    exact hL k' v e he hk'
 
 theorem LiftEntOk.realF (hL : N.LiftEntOk hF) (k : Node) : (N.realF hF k).LiftEntOk hF := by
   match k with
   | [] =>
       simp only [GNetSt.realF]
       split_ifs
-      · exact (hL.setSt _ _).setFwd _ _ fun v e he => hL _ _ e (gloopF_inr he)
-      · refine (hL.setSt _ _).setFwd _ _ fun v e he => ?_
+      · exact (hL.setSt _ _).setFwd _ _ fun v e he hk => hL _ _ e (gloopF_inr he) hk
+      · refine (hL.setSt _ _).setFwd _ _ fun v e he hk => ?_
         match v, he with
-        | .root _, he => exact hL _ _ e he
+        | .root _, he => exact hL _ _ e he hk
         | .step u s, he =>
             simp only [gextF] at he
             split_ifs at he
-            · exact hL _ _ e he
+            · exact hL _ _ e he hk
       · exact hL
   | c :: p =>
       simp only [GNetSt.realF]
       split_ifs
-      · refine (hL.setSt _ _).setFwd _ _ fun v e he => ?_
+      · refine (hL.setSt _ _).setFwd _ _ fun v e he hk => ?_
         match v, he with
-        | .root _, he => exact hL _ _ e he
+        | .root _, he => exact hL _ _ e he hk
         | .step u s, he =>
             simp only [gextF] at he
             split_ifs at he
-            · exact hL _ _ e he
+            · exact hL _ _ e he hk
       · exact hL
 
 theorem LiftEntOk.iterate_realF (k : Node) :
@@ -102,19 +103,32 @@ theorem LiftEntOk.iterate_realF (k : Node) :
 
 theorem LiftEntOk.catchUp (hL : N.LiftEntOk hF) (k : Node) : (N.catchUp hF k).LiftEntOk hF := by
   match k with
-  | [] => exact hL
+  | [] =>
+      simp only [GNetSt.catchUp]
+      split_ifs
+      · exact LiftEntOk.iterate_realF [] _ hL
+      · exact hL
   | c :: p => exact LiftEntOk.iterate_realF (c :: p) _ hL
 
 theorem LiftEntOk.lift (hL : N.LiftEntOk hF) (k : Node) (o : LTerm σ) :
     (N.lift hF k o).LiftEntOk hF := by
   match k, o with
-  | [], _ => exact hL
+  | [], ⟨l, T, a, t⟩ =>
+      simp only [GNetSt.lift]
+      split_ifs with hcl
+      · intro k' v e he hk
+        by_cases hk' : k' = []
+        · exact absurd hcl.1 (hk hk')
+        · change Function.update N.fmap [] _ k' v = .inr e at he
+          rw [Function.update_of_ne hk'] at he
+          exact hL k' v e he fun h => absurd h hk'
+      all_goals exact hL
   | c :: p, ⟨l, T, a, t⟩ =>
       simp only [GNetSt.lift]
       split_ifs with hcl h hl hv
-      · refine ((hL.setSt _ _).setSt _ _).setFwd _ _ fun v e he => ?_
+      · refine ((hL.setSt _ _).setSt _ _).setFwd _ _ fun v e he hk => ?_
         match v, he with
-        | .root _, he => exact hL _ _ e he
+        | .root _, he => exact hL _ _ e he hk
         | .step u s, he =>
             simp only [gliftG] at he
             split_ifs at he with h₁ h₂
@@ -122,7 +136,7 @@ theorem LiftEntOk.lift (hL : N.LiftEntOk hF) (k : Node) (o : LTerm σ) :
               refine ⟨⟨l, T, a, t⟩, h, hv.1, hl, fun h5 => ?_, rfl⟩
               obtain ⟨z, T', hz, e, -⟩ := hv.2 h5
               exact ⟨z, T', hz, e⟩
-            · exact hL _ _ e he
+            · exact hL _ _ e he hk
       all_goals exact hL
 
 theorem LiftEntOk.henk (hL : N.LiftEntOk hF) (s : Node)
@@ -178,7 +192,7 @@ theorem LiftEntOk.applyOp (hL : N.LiftEntOk hF) (o : GOp σ) : (N.applyOp hF o).
 
 theorem liftEntOk_init {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) :
     (init M₀).LiftEntOk hF :=
-  fun _ _ _ he => nomatch he
+  fun _ _ _ he _ => nomatch he
 
 end GNetSt
 
@@ -191,12 +205,19 @@ theorem liftEntOk_gnet [Countable σ.FuncSyms] [Countable σ.RelSyms] (hF : Moda
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
   {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
 
-/-- ⭐**In the limit, every term entry is an admissible lifted term**, weakened. -/
-theorem fmapL_adm {k : Node} {v : VarSymb} {e : LTerm σ} (h : fmapL hF M₀ k v = .inr e) :
+/-- ⭐**In the limit, every term entry is an admissible lifted term**, weakened: but the hub's
+    edge. -/
+theorem fmapL_adm {k : Node} {v : VarSymb} {e : LTerm σ}
+    (hk : k = [] → ∀ n, ¬ (gnet hF M₀ n).hb) (h : fmapL hF M₀ k v = .inr e) :
     AdmEnt hF e := by
   unfold fmapL at h
   split_ifs at h
-  exact liftEntOk_gnet hF M₀ _ k v e h
+  exact liftEntOk_gnet hF M₀ _ k v e h fun e' => hk e' _
+
+/-- Without the hub's flags, no network of the chain has a hub. -/
+theorem not_hb_gnet (hM₀ : Theory.IsMCS M₀) (h : ModalSys.hubFlags = false) (n : ℕ) :
+    ¬ (gnet hF M₀ n).hb := fun hb =>
+  GNetSt.not_hubOn_of_flags h ((ext_gnet hF hM₀ (Nat.zero_le n)).hb ▸ hb)
 
 end GArrow
 
