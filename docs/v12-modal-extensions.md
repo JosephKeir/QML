@@ -5617,6 +5617,58 @@ Steps 1 to 5 are a milestone by themselves: the no-lift column.  Strong K45 prop
 * *Dispatch.*  `NoB.hubFiveS` and `CubeSys.hub_fiveS` (`hubFlags → FiveStrong → FourStrong`) replace `hubNoLift`, `hub_noLift`: the permanent clause of 6 above, nothing temporary is left.  Instances: `ModalSys.K45BoxLift_cube`, `K45DiaLift_cube`, `K45Strong5_cube`, `KD45Strong5_cube`.
 * *Next:* K5 and KD5 (5 without 4); then the possible gap, KB5 with strong B, at the very end.
 
+#### K5 and KD5: where the scope stands *(2026-11-05)*
+
+**Not scoped for building.**  What exists is "5: scope and plan" (2026-10-25), written before any of 5 was built; the cluster model and the hub came later.  Built for 4 off: the semantics only (`Frame.side`, `Ops.posSide`, `necSide_exists`).  There is no syntax: `Ctx.boxIn` gives `keep` only under `Four`, `five_box`, `five_dia` and `five_refl` take `Four`, and `SubE.keepE` is `.hide` without 4.  Unlike every system done so far, K5 needs new syntax, so it is the largest piece left.
+
+What a paper check must settle before code:
+1. *The side step* (F1, decided: typed like `keep`).  Proposal: reuse `.keep` on `◇`-items, `x.keep : ◇A` in `Γ.boxIn` under `Five` as well as `Four`, read by `posSide` when 4 is off (`posSide_eq_posKeep` when both are on).  K45's rules and code paths stay as they are.
+2. *Substitution* (F2, the user's decision, deferred until now).  The gap, exactly: `keepE` on `diatm y hy t` needs `t` shifted into the view inside `◇_{y.keep}` (`Ctx.shifts_diaIn_keep`), and without 4 `t`'s `□`-parameters `u.box` have no image there.  Only this **witnessed** shift is needed: `□`-terms are not kept without 4.  Under the witness the arrow is pinned: inside `◇_{y.keep}` at `v`, along `side a b`, `b` is determined (`side_inj`), so `u`'s value along `b` is determinate.  Candidates:
+   * **(w)** *(new, to check)* the view inside a moved witness sees its origin's `□`-parameters: a view item, as `diaIn` adds `x.dia`.  No term former, no links, substitution stays structural, the K paradigm (the witness carried).  Risks: an address that reaches two levels out, and whether `five_dia_back` and the canonical model can name it.
+   * **(a)** a primitive former `side t`, witness-capable.
+   * **(a′)** the linked operator `□[d ↦ t]`, as B's returning possibility (a built precedent).
+   * Leaning: check (w) first; (a′) is the fallback.
+3. *Rules without 4.*  `five_box` over the side view (the view without `□`-parameters, so no side condition); `five_dia` (its `sideTr` total under the witness if (w)); `five_dia_back` (under 4 it is `four_dia`); U with objects without 4 (`five_refl`'s analogue: every successor is reflexive in a K5 frame, and the countermodel check's lesson applies with T off); strong 5's gather (its rule is unwritten without 4).
+4. *Soundness and substitution lemmas.*  `SemSide` beside `SemShift`; the no-4 `keep` through the `Subst*` and `ShiftSubst` files.
+5. *The model.*  A K5 frame is a root seeing part of a cluster, and every member of the cluster has a loop.  The precedent is the hub: the world asked about on a cone over the cluster.  The difference is that the apex sees only part of the cluster, its own children.  The main model question is whether `GClu*`'s cluster, built over a hub that sees all of it, carries over.  The 2026-10-25 plan's cluster network with late roots predates it.
+6. *Lifts.*  None: there are no lifts without 4, and the `◇`-lift is unsound for 5 alone.  Strong 5 is the gather.
+
+*Size:* not estimated yet.  Syntax and substitution are likely the bulk; plausibly as large as the hub or larger.
+
+#### K5 and KD5: the substitution check, F2 *(2026-11-05, paper)*
+
+**Verdict.**  (w) fails, and so does (a).  **(a′) works, in the form "links only":** without 4 a possible object's side image is never an address, only a link, `□[d ↦ t] Φ(d)` and `◇_y[d ↦ t] Φ(d)`.  The link's term lives at the outer level, so substitution is structural with no `keepE` at all.  This is B's returning possibility exactly (`WFF.retS`, `WFF.retxS`: a term of `Γ`, a body over `Γ.boxIn.insert (.bnd d) _`).  It meets the pairing principle, and the rules need no side condition.
+
+**Why (w) fails.**  The view item would be `u`'s value along `b`, inside `◇_{y.keep}` at `v`.
+1. *No value.*  `Model.Env Γ w` gives every visible address an object **at the current world** (`Env.boxPush` and `Env.diaPush` compute the inner env from the outer one alone).  `u`'s side image is defined only on `side a '' Acc w`, so it is no `Nec` at `v`.  As a `Pos` at `v` it would be the side image of a full-extent possible object at `w`.  That object is not an operation of the model and is not definable in the canonical one, so it would be a new primitive with no syntax behind it.
+2. *Unpaired.*  Reading `u`'s item jointly with `y.keep` links two possibilities, `y.keep` and `u`'s side image.  By the pairing principle, that must go through a paired one.  The paired one is `diatm y ⟨u.box, y.dia⟩`, the term itself.  So the side image has to be named whole.
+
+**Why (a) fails.**  A former `side t : Term Γ.boxIn (◇A)` is evaluated at `v` with `v`'s env, and `t` needs `w`'s.  That is the same obstacle as 1.  It could only work with an env that carries the outer env, which would change the semantics everywhere.
+
+**(a′), links only.**
+* *Formers*, gated by `Five = true` and `Four = false` (under 4 every link is `x.keep`, so the operator is derived there):
+  * `□[d ↦ t] Φ(d)`, with `t : Term Γ (◇A)` and `Φ : WFF (Γ.boxIn.insert (.bnd d) (◇A)) (d + 1)`.  It holds at `w` iff `Φ` holds at every `v` along `a`, with `d := posSide ⟦t⟧ a` (`Env.extend` on `boxPush`).
+  * `◇_y[d ↦ t] Φ(d)`, with `Φ` over `(Γ.diaIn y).insert (.bnd d) (◇A)`, because side images occur inside `◇_y` too.  The duals are by negation, as the link is determinate.
+  * Their shape is `retS`'s and `retxS`'s, so every recursion over `WFF` treats them as `retS` is treated.
+* *No `x.keep` without 4.*  `Ctx.boxIn` is unchanged, and the K45 code is untouched.  This settles the old "links beside `x.side`, or links only" question: links only.
+* *Substitution.*  `θ` acts on the term `t` at `Γ` and on `Φ` through `θ.box.insert`, exactly as for `retS`.  Non-reducing side images never arise, because nothing reduces.
+* *The rules, link form.*  `φ` and `ψ` are over the **side view**: the bound variable `d`'s view and links only, with no `□`-parameter of the origin.
+  * `five_dia`: `◇_x φ(x.dia) ⊢ □[d ↦ x] ◇_d φ(d.dia)`.
+  * `five_dia_back`: `◇[d ↦ x] ◇_d φ(d.dia) ⊢ ◇_x φ(x.dia)`.
+  * `five_box`: `◇[e ↦ x⃗] □[d ↦ e⃗] ψ(d⃗) ⊢ □[d ↦ x⃗] ψ(d⃗)`, for ψ's links read twice across.
+* *Generality by pairing.*  The general `five_dia`, with `φ` reading `u.box`, is the instance `x := diatm x ⟨u.box, x.dia⟩` of the side-view rule, by modal β (`◇_{diatm x h}` is `◇_x` with `x.dia ↦ h`).  The link's term carries `u.box` at `w`, where it is in scope.  So the side view is the whole content of the rule, and it is a structural restriction, not a side condition.
+* *Soundness on paper.*
+  * `five_dia` and `five_dia_back`: `posSide_ext` and `posSide_content` (`c ∈ side a '' ext x`, so `c = side a e`).
+  * `five_box`: along `c = side a b`, `posSide (posSide X a) (side a b)` is `posSide X b`.  The extent is `side (side a b) '' (side a '' ext X)`, which is `side b '' ext X` by `side_side`; the contents agree.  This holds without shapes; with shapes it is up to `Ind`, which K5 and KD5 do not need.
+  * The existing laws suffice; nothing new is needed on frames.
+* *Cost.*  Two `WFF` formers, with `retS`'s pattern in every recursion over `WFF`: weakening, shift, collapse, substitution and its composition files, realise, the semantics, the Henkin, Lindenbaum and canonical machinery.  `retS` and `retxS` show where every case goes.  Existing completeness proofs dismiss the formers by flag (`Four = false` against their 4, or `Five = false`).
+
+**Still open for the paper check (next).**
+1. *U with objects without 4.*  Every successor has a loop (`side a a : v → v`), and the countermodel check's lesson applies with T off.  `five_refl` in link form, or derivable?
+2. *The gather without 4* (strong 5), in link form.
+3. *The model.*  The world asked about is the apex over part of the cluster; each cluster world must name the side image of every possible term of its origin (for links).  Can `GClu*` be reused, or does K5 need a K5 cluster?  This is the old P3, now against the hub.
+4. *Size.*
+
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
 **Verdict: no blocker found, and the plan gets smaller.**  `GKeep`'s root action is not needed, and
