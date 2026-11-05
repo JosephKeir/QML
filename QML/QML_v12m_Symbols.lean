@@ -109,9 +109,11 @@ class ModalSys.NoB [ModalSys] : Prop where
       `GArrow.cmodel`, `docs/v12-modal-extensions.md` §3 5); its other systems are not yet. -/
   fiveCluster : ModalSys.Five = true → ModalSys.Four = true ∧
     ModalSys.fourL = true ∧ ModalSys.fourLW = true
-  /-- Not yet with the hub: K45 and KD45 without both lifts (docs, "K45 and KD45 without both lifts:
-      the hub"). -/
-  noHub : ModalSys.Five = true → ModalSys.hubFlags = false
+  /-- With the hub (K45 and KD45 without both lifts), neither of 4's lifts by flag yet (docs,
+      "K45 and KD45 without both lifts: the hub", step 6), and no strong 5: without strong 4 it is
+      incomplete as ruled (6 there). -/
+  hubNoLift : ModalSys.hubFlags = true → ModalSys.FourStrong = false ∧
+    ModalSys.FourStrongW = false ∧ ModalSys.FiveStrong = false
 
 /-- 5 off: what the staged tree and the growing tree are built for (with 5, the cluster model). -/
 class ModalSys.NoFive [ModalSys] : Prop where

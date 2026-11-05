@@ -5324,7 +5324,7 @@ That is 9 479 lines to redo, plus the tree's tags, the guard on `Here`, the new 
 | 1 | S5: derive `keep_lift`, both legs; effective flags through the tree and the cluster | **done** |
 | 2 | Check on paper: is the principle underivable?  **Yes**: "The countermodel check" | **done** |
 | 3 | KB5, KDB5 without lifts: `Proof.five_refl`, and the lifts derived from it ("KB5 and KDB5 without lifts: the check") | **done**, 927 lines |
-| 4 | K45, KD45 without lifts: the hub.  Checked on paper: "K45 and KD45 without both lifts: the hub" | 3 500 to 5 500 lines |
+| 4 | K45, KD45 without lifts: the hub.  Checked on paper: "K45 and KD45 without both lifts: the hub".  Steps 1 to 5 built: no lift by flag complete | 3 500 to 5 500 lines |
 
 Strong B on S5 is unaffected.  K5 and KD5 have 4 off, so none of this applies to them directly, but the principle's analogue will have to be asked of them too.
 
@@ -5562,7 +5562,43 @@ Steps 1 to 5 are a milestone by themselves: the no-lift column.  Strong K45 prop
 * *`realF []`* has a third branch: with `hb`, `src`'s next variable is committed into the hub by the child's clause, `grealStep` and `gextF` from `src`, consistent by `grealStep_ok`.
 * *Henkin at the world asked about:* `henkT`, `henk`'s step on a state alone, `henkT_ok`; `withSrc`, `henkSrc`.  `applyOp`'s Henkin operation at the root also steps `src` (`(N.henk s o).henkSrc s o`), so `GOp` is unchanged and `GChain`'s Henkin lemmas went through untouched: `henkSrc` changes only `src`.
 * *`Ext`* tracks `src` (`Ext.src`, `Ext.hb`, `Ext.henkSrc`).  `NamesInj` and `LiftEntOk` got the hub branch and `henkSrc`; `GNetSt.realF_fcl_root` the hub branch.
-* *Next: step 3*, the limit: `src`'s stages as a `BWorld` (Henkin witnessing from the root-Henkin operation's fairness), the edge's totality (`GLoopLimit`'s `loop_total`, `lstg`, `gloop_at` pattern), and transfer along it at the limit.
+* *Then step 3*, the limit: `src`'s stages as a `BWorld` (Henkin witnessing from the root-Henkin operation's fairness), the edge's totality (`GLoopLimit`'s `loop_total`, `lstg`, `gloop_at` pattern), and transfer along it at the limit.
+
+**Built (2026-11-05): step 3, the world asked about in the limit** (`QML_v12m_GHubLimit`, 290 lines).  Strict build clean, standard axioms.
+* `hb_gnet`, `src_grows`, `src_mcs`, `src_zero`; `GNetSt.henk_src` (the root's Henkin step leaves `src` and `hb` alone) and `src_henk` (a round of the root's Henkin operation is `henkT` on `src`).
+* ⭐`henkSrc_ex`, `henkSrc_negAll`, as `henk_ex`, `henk_negAll`; ⭐`gsrcWorld hF M₀ hM₀ hh : BWorld σ`, stage `i` being round `i`.
+* ⭐`hub_total` (as `loop_total`, through `realF []`'s hub branch and `Good.excl`), `HStgP`, `hstg`, `hrnd`, `hstg_spec`, `hstg_monotone`; ⭐`hub_at` (as `gloop_at`), ⭐`hubOk`, ⭐`gltr_hub` (necessity transfer into the hub), `hubTm`, `hubTm_mono`.
+
+**Built (2026-11-05): step 4, the cone** (`QML_v12m_Cone`, 760 lines against 1 200 to 2 200).  Strict build clean, standard axioms.  Generic, over any `N : Model.{0, 0} σ`.
+* ⭐`Model.ConeData N`: a world `ρ`, a base domain with the signature, and `DefN`, `DefP`, which of `ρ`'s modal objects are the apex's, closed under the operations, with strong D's, the lifts' (`keepLiftN`, `keepLiftP`) and the gather's (`necSide`) conditions at `ρ` as fields.
+* ⭐`ConeData.cone hT hB hS hInd`, for T, B and strong B off and `N`'s `Ind` equality (cmodel's is with T off).  Worlds `Option N.W`, `none` the apex; `R w (some t) := N.R (base w) t`, nothing into the apex.  At every world the carriers are subtypes of `N`'s at the base world (all of them below the apex), so the operations are written once.  `RootPoss` is empty, `Ind` is equality, `Ret` is `False`.
+* `toC`, `ofC` (as `ctoDom`, `cfromDom`), `eval_toC`: below the apex the operations are `N`'s.  `posSec_ext'`, `posSec_of_eq`.
+* ⭐`EnvRel`, with `.ref`, `.boxPush`, `.extend`, `.mem_ref`, `.diaPush`; `interp_cone` (through `box_beta`, `dia_beta`, never into the compilation, as `interp_mono`), `relSat_cone`, ⭐⭐`sat_cone`: below the apex a formula means what it means in `N`.  ⭐`cone_indInvariant`: a model proper, by `indInvariant_of_eq`.
+* *Next: step 5*, truth at the apex; plan below.
+
+**Step 5, the plan (2026-11-05, paper; resolves two of 8's "not checked").**
+* *Where modal terms reach the apex.*  `WFF.eq` is base-typed, and `here`, `back`, `retS`, `retxS` are off.  So the `□` and `◇` cases read the apex's environment only at **addresses** (`Env.boxPush`, `Env.diaPush`), and modal **terms** enter only through quantifier instances.
+* *Closure without keeping terms (8, "`Def_w` closed", "`Term.keep` of an arbitrary term").*  Build the cone twice.
+  * First `C₀`, with every object of `ρ` the apex's (`DefN`, `DefP` true; strong D, the lifts and the gather are `N`'s at `ρ`).
+  * Its apex environment `e₀ i`: a base address is its class in `gsrcWorld`'s term model, and a keepable address `u` is `cden` at the root, stage `hstg i`, of `fmapL [] (u.keep)`, the edge's entry.
+  * Then `DefN`, `DefP` are the values `(C₀.interp (e₀ i) t).1` of `w`'s terms of the type, at any stage.  Closure under the operations is a **generic** lemma, `interp_applyG`: in any model, the value of `Canon.applyG g t` is `g` applied to `t`'s value (`cden_applyG`'s form, for `interp`; new, about 100 lines).  No `keepE` of an arbitrary term is needed.
+  * The real cone `C` restricts the apex to these.  Its values are `C₀`'s (an inclusion lemma between two cones over one `N`, as `interp_cone`).
+* *Truth at the apex*, by induction on size (as `ctruth_lt`):
+  * Atoms and equality: the term model.
+  * Quantifiers: every apex object is a term's value at some stage, so `∀`-elimination and `sat` of an instance; Henkin by `henkSrc_ex`, `henkSrc_negAll`, which give fresh roots.
+  * `□` and `◇`: `sat_cone` to `N` at `t`, then **mirror `sat_boxPush_loop`** (`GCluPush`): the root's self-edge uses the same slots, `fmapL []`, and the same `eS` substitution as the hub's edge, through `CAgree`, `eq_substEnv_of_cagree` and `Model.sat_subst`.  Then `ctruth` at the root, and the axioms: `□ψ ∈ M_w` iff the edge's image of `□(shift ψ)` is in the hub (`four_box` and `gltr_hub` forward, `five_box` back), and `◇` by `five_dia` and `four_dia`.
+* *Small first step.*  `CluFlags.noHub` is only used where the root is read as `M₀` (`exists_canonC`), so it moves there, as `¬ HubOn M₀`, and `cmodel` works with the hub on.
+* *Estimate* for step 5: 800 to 1 400 lines, above the table's 500 to 800.
+
+**Built (2026-11-05): step 5, truth at the world asked about; K45 and KD45 with no lift by flag are complete.**  Strict build clean, standard axioms.  About 1 150 lines: `QML_v12m_ConeApex` (generic, 500) and `QML_v12m_GHubTruth` (650).  No new rule, and no `GClu*` signature changed but `CluFlags`, which lost `noHub`.
+* *Generic, over any cone* (`QML_v12m_ConeApex`).  ⭐`ConeData.Keyed hF E V`: an environment `V` of the apex's `□` view at `ρ` holds, at each kept address `u.keep`, the apex's object at `u`.  Then ⭐⭐`sat_apex_box`: `□ψ` at the apex is `□(shift ψ)` under `V`, and ⭐⭐`sat_apex_dia`: `◇_x ψ` is `◇_{x.keep}(shift ψ)` under `V`; `interp_apex_box`, `interp_apex_dia` are the term forms.  Through `downBox`, `downDia` (the apex's views read in `N`), `shiftAgree_downBox`, `shiftAgree_downDia` (as `Env.shiftAgree_twoBox`, `Env.shiftAgree_diaKeep`), `sat_cone` and `sat_shift`.  So the plan's `sat_boxPush_loop` mirror was not needed: `ρ` reads the apex as its parent, one shift away.
+* ⭐`Model.interp_applyG` (unshaped, any model), the `interp` form of `cden_applyG`; `dup` and `dkeep` by `Env.shiftAgree_twoBox` and `entryVal_keepE_dia`.  `posSide_eq_posKeep`: in a relational unshaped model `x.side` is `x.keep`, so closure under `posSide` is closure under `posKeep`.
+* `ConeData.apexVal`, `apexEnv`, `apexEnv_ref`, `apexEnv_keyed`, `apexVal_mono`, `apexEnv_agree`: the apex's environment, base addresses by a given function, keepable ones `V`'s object at the kept address, pairs by components.
+* *The hub* (`QML_v12m_GHubTruth`).  `hubOn_T`, `hubOn_B`, `hubOn_BS`, `hub_ind` (with T off cmodel's `Ind` is equality); ⭐`hubV` (the `□` view along the edge: `substEnv` of the edge's `eS` over the root's canonical environment at `hstg i`), `hubV_sat` (`sat_subst` and `ctruth`), `hubV_mono` (`hubTm_mono`).  ⭐⭐`apex_box_iff`, ⭐⭐`apex_dia_iff`: for any cone keyed to `hubV`, `four_box`/`five_box` and `five_dia`/`four_dia` with `gltr_hub`; the converse directions are semantic (`□_{x.keep}¬` against `◇_{x.keep}` under `V`), so no proof-theoretic contradiction lemma was needed.
+* *Two cones, as planned.*  `hubFull` (`C₀`: all of the root's objects; its laws are cmodel's) and `hubE₀`; then `HubDefN`, `HubDefP` (values in `C₀` of the world's terms), `hubData` (closure by `interp_applyG` on `C₀`, pairs at the larger stage, `hubDefP_serial` for strong D through `apex_dia_iff` on `C₀`), `hubCone`, `hubE`.  `hub_nb`, `hub_pb`: the two cones give a term one object (both are `V`'s kept form), which is the plan's inclusion lemma for free.
+* `hub_interp_var`, `hub_relSat` (base terms are their classes), ⭐`hub_definable` (every apex object is a term's value at some stage), ⭐⭐`hubTruth` (by size, as `ctruth_lt`; `□` and `◇` do not recurse), `exists_canonHub`.
+* *Dispatch.*  `exists_canonC` takes `¬ HubOn M₀`; `model_existenceC_ctxOf` splits on `HubOn` (`by_cases`), the hub case being the cone at its apex.  The temporary guard `noHub` is gone everywhere: `NoB.hubNoLift` and `CubeSys.hub_noLift` say that with the hub neither lift is on by flag (step 6) and strong 5 is off (6 above, permanent).
+* *Next: step 6*, the mixed columns: `lift []` from `src` at every term, `keepLiftN`/`keepLiftP` of `hubData` from it, and `necSide` with strong 4.  Then K5/KD5.
 
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
