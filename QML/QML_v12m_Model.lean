@@ -111,6 +111,13 @@ structure Frame (σ : Signature) extends Arrows.{u, v} σ where
       `x`. -/
   side_refl : ∀ (hT : ModalSys.T = true) (hV : ModalSys.Five = true) {w s : W} (b : R w s),
     side hV (refl hT w) b = b
+  /-- Under 5 without 4, **the loop at a reached world is a unit for the arrows across**: across
+      from `side a a` is the arrow itself (`docs/v12-modal-extensions.md`, "K5 and KD5: U and the
+      gather without 4").  `side_refl` with the loop in `refl`'s place; with 4 the corresponding
+      fact is a lemma (`Frame.side_self_unit`), without `;` it is a law.  What U with objects
+      reads (`Proof.five_reflL`). -/
+  side_loop : ∀ (_hN : ModalSys.Four = false) (hV : ModalSys.Five = true) {w v t : W} (a : R w v)
+    (c : R v t), side hV (side hV a a) c = c
   D : W → Type u
   Nec : VarType → W → Type u
   Pos : VarType → W → Type u

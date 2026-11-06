@@ -76,6 +76,7 @@ noncomputable def gframe : Frame.{0, 0} σ where
   trans_side := fun _ hV => (ModalSys.NoFive.absurdFive hV).elim
   side_trans := fun _ hV => (ModalSys.NoFive.absurdFive hV).elim
   side_refl := fun _ hV => (ModalSys.NoFive.absurdFive hV).elim
+  side_loop := fun _ hV => (ModalSys.NoFive.absurdFive hV).elim
   D s := (gw hM₀ s).D
   Nec A s := {o : GRDom hM₀ (.VTypeBox A) s // GDefinable hM₀ (.VTypeBox A) s o}
   Pos A s := {o : GRDom hM₀ (.VTypeDia A) s // GDefinable hM₀ (.VTypeDia A) s o}

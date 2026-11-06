@@ -362,6 +362,13 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
   | @five_boxL Γ _ Δ hV hN hS D a t χ p ih =>
       intro M hM w env hfin hnp hΔ
       exact Model.sat_fiveBoxL hV hN hS env t χ (ih M hM env hfin hnp hΔ)
+  | @five_gatherL Γ _ Δ hV hN hS h5 O B D a t χ p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact Model.sat_fiveGatherL hV hN hM hS h5 env O t χ (ih M hM env hfin hnp hΔ)
+  | @five_reflL Γ _ Δ hV hN hS B D χ =>
+      intro M _ w env _ _ _
+      exact (sat_mono (env := Model.Env.empty w) (fun _ _ h => nomatch h) _).mpr
+        (Model.sat_fiveReflL hV hN hS _ χ)
   | @here_keep Γ _ Δ hT hF x hx A a bd =>
       intro M hM w env hfin hnp hΔ hd
       obtain ⟨X, hr, b, hb⟩ := hd

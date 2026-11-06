@@ -156,6 +156,7 @@ def frame : Frame.{0, 0} σ where
   trans_side := fun _ _ {_ _ _} _ _ => rfl
   side_trans := fun _ _ {_ _ _ _} _ _ _ => rfl
   side_refl h := flagElim hT h
+  side_loop := fun _ _ {_ _ _} _ _ => rfl
   D := c.Dw
   Nec A w := {n : N.frame.Nec A (c.base w) // c.DN w A n}
   Pos A w := {p : N.frame.Pos A (c.base w) // c.DP w A p}

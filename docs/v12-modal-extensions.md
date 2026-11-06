@@ -5771,6 +5771,16 @@ So there are two ways to build it:
 * *Closure under substitution* (`ProofSubst`): `VarSymb.shiftSlot_root`, `WFF.linkHole_congr`, ⭐`WFF.subst_linkHole`, ⭐`WFF.subst_sideDia`, on `WFF.subst_holeAt`.
 * *Next:* the gather (strong 5) and U with objects, with the law `side_loop`.
 
+**Built (2026-11-06): step 2 complete, every rule of 5 without 4.**  Strict build clean, no new rule beyond the five planned.
+* ⭐`five_gatherL` (strong 5): along either leg (`OutLeg.linkDia`), `◇[e ↦ t] ∃n:□B. □[d ↦ e] χ(⟨n.box, d⟩) ⊢ ∃m:□B. □[d ↦ t] χ(⟨m.box, d⟩)` (`WFF.linkHoleN`: a link whose hole carries a necessary object's values).  This is stated with an `∃` conclusion rather than as 4's ∃-elimination; the two are equivalent by `ex_elim`.
+  * *Sound* (`Model.sat_fiveGatherL`): `necSide_exists`, `holeSat_ind` (the model's `IndInvariant`, as 4's lift), `sideOf_side`.
+  * *Closed under substitution*: `OutLeg.subst_linkDia` (as `subst_retS`), `WFF.subst_linkHoleN`, `Term.subst_mono_eta_ren`.
+* ⭐`five_reflL` (U with objects, without 4): the closed formula `WFF.fiveReflL`, `□∀k:□B. ∀q:D.ty. (□[d ↦ q] χ(⟨k.box, d⟩) → ∃c:B. χ(⟨c, q⟩))`.
+  * *Sound* (`Model.sat_fiveReflL`) from the new law ⭐`Frame.side_loop` (`side (side a a) c = c`, gated `Four = false`, `rfl` on every relational frame) through `Model.sideOf_loop`.
+  * *Closed under substitution* trivially, being closed (`WFF.subst_mono_empty`).
+  * *Only the `□` row.*  Unlike `five_refl`, no `◇_x` row: a loop's commitments read only the world's `□`-items and possible items, never its base items, so the `□` row covers loops at children of either kind.
+* *Next:* step 3 of the order (U's `◇_x` row) is not needed, as above; so step 4, `BData` (generalise or mirror), against `BCanon*`.
+
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
 **Verdict: no blocker found, and the plan gets smaller.**  `GKeep`'s root action is not needed, and

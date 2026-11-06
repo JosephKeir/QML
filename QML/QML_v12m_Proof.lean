@@ -261,6 +261,31 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
         (Ctx.NoSlots.slots (Γ := Γ).boxIn.insert _)
         (Term.eta (.root (.bnd 0)) D.ty (Ctx.ref_insert_root _ _ _)) χ)))) →
       Proof σ Γ Δ (WFF.linkHole hV hN Ctx.NoSlots.slots t χ)
+  /-- ⭐**Strong 5, the gather** (without 4): along either leg,
+      `◇[e ↦ t] ∃n:□B. □[d ↦ e] χ(⟨n.box, d⟩) ⊢ ∃m:□B. □[d ↦ t] χ(⟨m.box, d⟩)`.  A necessary
+      object at the arrow's target, read along the arrows across, is one here
+      (`Model.necSide_exists`); `χ` reads it beside the objects moved across.  With shapes off,
+      as `five_boxL`. -/
+  | five_gatherL {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hV : ModalSys.Five = true)
+      (hN : ModalSys.Four = false) (hS : ModalSys.shaped = false)
+      (h5 : ModalSys.FiveStrong = true) (O : OutLeg Γ) {B : VarType} {D : DShape} {a : Ann D.ty}
+      (t : Term σ Γ D.ty a) (χ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd B D.ty)) 1) :
+      Proof σ Γ Δ (O.linkDia hV hN t (.ex (.VTypeBox B) (WFF.linkHoleN hV hN
+        (((OutLeg.slotsFrom Ctx.NoSlots.slots O).insert _).insert _) (.root (.bnd 1))
+        (Ctx.ref_insert_root _ _ _)
+        (Term.mono (Ctx.le_insert ((OutLeg.slotsFrom Ctx.NoSlots.slots O).insert _).root _)
+          (Term.eta (.root (.bnd 0)) D.ty (Ctx.ref_insert_root _ _ _))) χ))) →
+      Proof σ Γ Δ (.ex (.VTypeBox B) (WFF.linkHoleN hV hN (Ctx.NoSlots.slots.insert _)
+        (.root (.bnd 0)) (Ctx.ref_insert_root _ _ _)
+        (Term.mono (Ctx.le_insert Ctx.NoSlots.slots.root _) t) χ))
+  /-- ⭐**U with objects, without 4** (`WFF.fiveReflL`): every reached world is reflexive, with
+      a loop that names the values of its necessary objects and fixes its possible ones.  A
+      closed formula: with 4 it is `five_refl`, whose hat reads objects kept; without 4 nothing is
+      kept, so the loop is read as T's collapse, by `∃`.  With shapes off, as `five_refl`. -/
+  | five_reflL {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hV : ModalSys.Five = true)
+      (hN : ModalSys.Four = false) (hS : ModalSys.shaped = false) {B : VarType} {D : DShape}
+      (χ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd B D.ty)) 1) :
+      Proof σ Γ Δ ((WFF.fiveReflL hV hN χ).closed Γ)
   -- T + 4
   /-- ⭐**A possible object, kept, is realised at each member of its extent** (T + 4):
       `□_x Here(◇_{x.keep}(shift bd), bd)` (`WFF.hereKeep`), for any body `bd` of `x`'s view, as

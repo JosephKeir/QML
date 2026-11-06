@@ -221,6 +221,7 @@ noncomputable def cframe (hX : CluFlags) : Frame.{0, 0} σ where
   trans_side := fun _ _ {_ _ _} _ _ => rfl
   side_trans := fun _ _ {_ _ _ _} _ _ _ => rfl
   side_refl := fun _ _ {_ _} _ => rfl
+  side_loop := fun _ _ {_ _ _} _ _ => rfl
   D s := (gw hM₀ s).D
   Nec A s := {o : CRDom hM₀ (.VTypeBox A) s // CDefinable hM₀ hX (.VTypeBox A) s o}
   Pos A s := {o : CRDom hM₀ (.VTypeDia A) s // CDefinable hM₀ hX (.VTypeDia A) s o}

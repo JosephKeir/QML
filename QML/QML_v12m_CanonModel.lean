@@ -42,6 +42,7 @@ noncomputable def frame (w₀ : World σ N₀) : Frame.{0, 0} σ where
   trans_side := fun _ hV => (ModalSys.NoFive.absurdFive hV).elim
   side_trans := fun _ hV => (ModalSys.NoFive.absurdFive hV).elim
   side_refl := fun _ hV => (ModalSys.NoFive.absurdFive hV).elim
+  side_loop := fun _ hV => (ModalSys.NoFive.absurdFive hV).elim
   D w := w.D
   Nec A w := {o : RDom (.VTypeBox A) w // Definable (.VTypeBox A) w o}
   Pos A w := {o : RDom (.VTypeDia A) w // Definable (.VTypeDia A) w o}

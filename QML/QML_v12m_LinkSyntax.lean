@@ -36,4 +36,44 @@ def WFF.sideDia {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {A : VarType}
       (Term.eta (.step (.root (.bnd d)) .dia) A (Ctx.ref_diaIn_of (Ctx.ref_insert_root _ _ _)))
       χ)
 
+/-- ⭐`□[d ↦ t] χ(⟨n.box, d⟩)` at depth `d` of `Γ`: the link, with the values of a necessary
+    object `n : □B` of `Γ` beside the slot in the hole.  What the gather speaks of. -/
+def WFF.linkHoleN {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {B : VarType} (n : VarSymb)
+    (hn : Γ.ref n = some (.VTypeBox B)) {D : DShape} {a : Ann D.ty} (t : Term σ Γ D.ty a)
+    (χ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd B D.ty)) 1) : WFF σ Γ d :=
+  .link hV hN t (WFF.holeAt (hs.boxIn.insert _)
+    (.pair (Term.mono (Ctx.le_insert hs.boxIn.root _) (Term.eta n.inner B (Ctx.ref_inner hn)))
+      (Term.eta (.root (.bnd d)) D.ty (Ctx.ref_insert_root _ _ _))) χ)
+
+/-- ⭐**U with objects, without 4** (docs, "K5 and KD5: U and the gather without 4"), closed:
+    `□∀k:□B. ∀q:D.ty. (□[d ↦ q] χ(⟨k.box, d⟩) → ∃c:B. χ(⟨c, q⟩))`.  Every world an arrow reaches
+    has a loop, `side a a`, which a necessary object's value along it names, and which moves the
+    possible objects there to themselves (`Frame.side_loop`): T's collapse under a `□`, with `∃`
+    in place of `here`. -/
+def WFF.fiveReflL {B : VarType} {D : DShape}
+    (χ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd B D.ty)) 1) : WFF σ Ctx.empty 0 :=
+  have h₁ := (Ctx.NoSlots.slots (Γ := Ctx.empty.boxIn)).insert (.VTypeBox B)
+  have h₂ := h₁.insert D.ty
+  .box (.all (.VTypeBox B) (.all D.ty (.imp
+    (WFF.linkHoleN hV hN h₂ (.root (.bnd 0))
+      ((Ctx.le_insert h₁.root D.ty).ref (Ctx.ref_insert_root _ _ _))
+      (Term.eta (.root (.bnd 1)) D.ty (Ctx.ref_insert_root _ _ _)) χ)
+    (.ex B (WFF.holeAt (h₂.insert B)
+      (.pair (Term.eta (.root (.bnd 2)) B (Ctx.ref_insert_root _ _ _))
+        (Term.eta (.root (.bnd 1)) D.ty
+          ((Ctx.le_insert h₂.root B).ref (Ctx.ref_insert_root _ _ _)))) χ)))))
+
+namespace OutLeg
+
+variable {Γ : Ctx}
+
+/-- ⭐**A link along the leg**, existentially: `◇[d ↦ t] Φ` from some arrow, or `◇_y[d ↦ t] Φ`
+    from an arrow of `y`'s extent, with `Φ` read in the leg's view (as `OutLeg.retS`). -/
+def linkDia {d : ℕ} : (O : OutLeg Γ) → {D : DShape} → {a : Ann D.ty} → Term σ Γ D.ty a →
+    WFF σ (O.view.insert (.bnd d) D.ty) (d + 1) → WFF σ Γ d
+  | .nec, _, _, t, Φ => WFF.neg (.link hV hN t (WFF.neg Φ))
+  | .pos y hy, _, _, t, Φ => .linkx hV hN y hy t Φ
+
+end OutLeg
+
 end V12M
