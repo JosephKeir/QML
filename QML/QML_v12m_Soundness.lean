@@ -4,6 +4,7 @@ import QML.QML_v12m_SemHere
 import QML.QML_v12m_SemBack
 import QML.QML_v12m_SemRealise
 import QML.QML_v12m_SemRefl
+import QML.QML_v12m_SemLink
 
 /-!
 # QML v12m — soundness
@@ -352,6 +353,15 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
   | @five_refl Γ _ Δ hF hV hN O T hT φ =>
       intro M _ _ env _ _ _
       exact Model.sat_fiveRefl hF hV hN hT env O φ
+  | @five_diaL Γ _ Δ hV hN y hy A a h χ p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact Model.sat_fiveDiaL hV hN env y hy h χ (ih M hM env hfin hnp hΔ)
+  | @five_dia_backL Γ _ Δ hV hN y hy A a h χ p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact Model.sat_fiveDiaBackL hV hN env y hy h χ (ih M hM env hfin hnp hΔ)
+  | @five_boxL Γ _ Δ hV hN hS D a t χ p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact Model.sat_fiveBoxL hV hN hS env t χ (ih M hM env hfin hnp hΔ)
   | @here_keep Γ _ Δ hT hF x hx A a bd =>
       intro M hM w env hfin hnp hΔ hd
       obtain ⟨X, hr, b, hb⟩ := hd

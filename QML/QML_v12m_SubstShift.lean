@@ -343,7 +343,7 @@ theorem WFF.subst_shift : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {Γ �
           (hΔ.boxIn.insert _) (Subst.preShift_under (Subst.preShift_box hp) hΓ.boxIn _
             hΔ.boxIn.root) Φ)
   | k, ι, ι', Γ, Γ', Δ, d, d', C, hΓ, hΓ', Ψ, hΨ, hc, Ψ', hΨ', hc', hΔ, hp,
-      .linkx hV hF y hy (A := A) t Φ => by
+      .linkx hV hF y hy (D := D) t Φ => by
       have hw : (Ψ.at (y.shift k)).idxAlong [] = ι (y.shift k) :=
         hy.elim fun _ hY => hc _ _ (C y _ hY) []
       have hw' : (Ψ'.at y).idxAlong [] = ι' y := hy.elim fun _ hY => hc' y _ hY []
@@ -351,15 +351,15 @@ theorem WFF.subst_shift : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {Γ �
         hy.elim fun _ hY => hw.symm.trans (((hp y _ hY).idx).trans hw')
       have key : ∀ (z z' : VarSymb) (_hz : z = z') (hwz : (Ψ.at (y.shift k)).idxAlong [] = z)
           (P : ∃ Y, Δ.ref z = some (.VTypeDia Y)) (hΔz : (Δ.diaIn z).SlotsFrom d')
-          (p : Subst.Ok ((Γ'.diaIn (y.shift k)).insert (.bnd d) (.VTypeDia A))
+          (p : Subst.Ok ((Γ'.diaIn (y.shift k)).insert (.bnd d) D.ty)
             ((Ψ.dia (y.shift k) z).under d d' _ hΔz.root))
           (q : Subst.Coh (VarSymb.shiftSlot ι d d')
-            ((Γ'.diaIn (y.shift k)).insert (.bnd d) (.VTypeDia A))
+            ((Γ'.diaIn (y.shift k)).insert (.bnd d) D.ty)
             ((Ψ.dia (y.shift k) z).under d d' _ hΔz.root))
           (P' : ∃ Y, Δ.ref z' = some (.VTypeDia Y)) (hΔz' : (Δ.diaIn z').SlotsFrom d')
-          (p' : Subst.Ok ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A))
+          (p' : Subst.Ok ((Γ.diaIn y).insert (.bnd d) D.ty)
             ((Ψ'.dia y z').under d d' _ hΔz'.root))
-          (q' : Subst.Coh (VarSymb.shiftSlot ι' d d') ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A))
+          (q' : Subst.Coh (VarSymb.shiftSlot ι' d d') ((Γ.diaIn y).insert (.bnd d) D.ty)
             ((Ψ'.dia y z').under d d' _ hΔz'.root)),
           (WFF.linkx hV hF z P (Term.subst ι Ψ hΨ hc (Term.shift C t))
               (WFF.subst (VarSymb.shiftSlot ι d d') ((Ψ.dia (y.shift k) z).under d d' _ hΔz.root)

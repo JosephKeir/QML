@@ -1,5 +1,6 @@
 import QML.QML_v12m_SemLemmas
 import QML.QML_v12m_SemHere
+import QML.QML_v12m_SemLink
 
 /-!
 # QML v12m — the cone: a world on top of a model
@@ -254,20 +255,6 @@ def posSec {A : VarType} {w : Option N.frame.W} (p : (c.frame hT hB).Pos A w) :
     | ⟨⟨none, ⟨r⟩⟩, _⟩ => False.elim r⟩
 
 end ConeData
-
-/-- Two sections are equal when their extents are and their contents agree. -/
-theorem posSec_ext' {F : Frame.{u, v} σ} {A : VarType} {w : F.W} {X Y : F.PosSec A w}
-    (hE : X.1 = Y.1) (hf : ∀ a (h : a ∈ X.1) (h' : a ∈ Y.1), X.2 ⟨a, h⟩ = Y.2 ⟨a, h'⟩) :
-    X = Y := by
-  obtain ⟨E, f⟩ := X
-  obtain ⟨E', f'⟩ := Y
-  obtain rfl : E = E' := hE
-  exact congrArg (Sigma.mk E) (funext fun ⟨a, h⟩ => hf a h h)
-
-theorem posSec_of_eq {F : Frame.{u, v} σ} {A : VarType} {w : F.W} {X Y : F.PosSec A w}
-    (h : X = Y) : X.1 = Y.1 ∧ ∀ a (h : a ∈ X.1) (h' : a ∈ Y.1), X.2 ⟨a, h⟩ = Y.2 ⟨a, h'⟩ := by
-  subst h
-  exact ⟨rfl, fun _ _ _ => rfl⟩
 
 namespace ConeData
 

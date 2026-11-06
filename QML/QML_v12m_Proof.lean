@@ -2,6 +2,7 @@ import QML.QML_v12m_SubstEta
 import QML.QML_v12m_Presented
 import QML.QML_v12m_BackSyntax
 import QML.QML_v12m_LoopHat
+import QML.QML_v12m_LinkSyntax
 
 /-!
 # QML v12m — the proof system
@@ -227,6 +228,39 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       (hV : ModalSys.Five = true) (hN : ModalSys.shaped = false) (O : OutLeg Γ) {T : VarType}
       (hT : T.tup = true) (φ : WFF σ (O.view.insert (.bnd 0) T) 1) :
       Proof σ Γ Δ (WFF.fiveRefl hF hT O φ)
+  -- Weak 5 without 4: links (docs, "K5 and KD5: the substitution check, F2")
+  /-- ⭐**A possibility is necessarily possible, through the same object moved across** (weak 5
+      without 4): `◇_y χ(h) ⊢ □[d ↦ diatm y h] ◇_d χ(d.dia)`, `five_dia` in link form.  `χ` is
+      closed apart from its hole, the side view; `h` carries what the body reads at `y`'s arrows,
+      so the rule is closed under substitution. -/
+  | five_diaL {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hV : ModalSys.Five = true)
+      (hN : ModalSys.Four = false) (y : VarSymb) (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y))
+      {A : VarType} {a : Ann A} (h : Term σ (Γ.diaIn y) A a)
+      (χ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
+      Proof σ Γ Δ (.dia y hy (WFF.holeAt Ctx.NoSlots.slots h χ)) →
+      Proof σ Γ Δ (.link hV hN (D := .dia A) (Term.diatm y hy h)
+        (WFF.sideDia Ctx.NoSlots.slots χ))
+  /-- ⭐**Nothing else is in the moved extent** (weak 5 without 4):
+      `◇[d ↦ diatm y h] ◇_d χ(d.dia) ⊢ ◇_y χ(h)`, the converse of `five_diaL`: the extent of the
+      object moved across is the image of `y`'s.  Not derivable from `five_diaL`. -/
+  | five_dia_backL {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hV : ModalSys.Five = true)
+      (hN : ModalSys.Four = false) (y : VarSymb) (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y))
+      {A : VarType} {a : Ann A} (h : Term σ (Γ.diaIn y) A a)
+      (χ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
+      Proof σ Γ Δ (WFF.neg (.link hV hN (D := .dia A) (Term.diatm y hy h)
+        (WFF.neg (WFF.sideDia Ctx.NoSlots.slots χ)))) →
+      Proof σ Γ Δ (.dia y hy (WFF.holeAt Ctx.NoSlots.slots h χ))
+  /-- ⭐**What is possibly necessary of the objects moved across is necessary of them** (weak 5
+      without 4): `◇[e ↦ t] □[d ↦ e] χ(d) ⊢ □[d ↦ t] χ(d)`, `five_box` in link form: moved across
+      twice from one source is moved across once (`side_side`).  With shapes off, as an object
+      moved across has only its section stated. -/
+  | five_boxL {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hV : ModalSys.Five = true)
+      (hN : ModalSys.Four = false) (hS : ModalSys.shaped = false) {D : DShape} {a : Ann D.ty}
+      (t : Term σ Γ D.ty a) (χ : WFF σ (Ctx.empty.insert (.bnd 0) D.ty) 1) :
+      Proof σ Γ Δ (WFF.neg (.link hV hN t (WFF.neg (WFF.linkHole hV hN
+        (Ctx.NoSlots.slots (Γ := Γ).boxIn.insert _)
+        (Term.eta (.root (.bnd 0)) D.ty (Ctx.ref_insert_root _ _ _)) χ)))) →
+      Proof σ Γ Δ (WFF.linkHole hV hN Ctx.NoSlots.slots t χ)
   -- T + 4
   /-- ⭐**A possible object, kept, is realised at each member of its extent** (T + 4):
       `□_x Here(◇_{x.keep}(shift bd), bd)` (`WFF.hereKeep`), for any body `bd` of `x`'s view, as

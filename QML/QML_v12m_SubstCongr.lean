@@ -592,13 +592,13 @@ theorem WFF.subst_congr : {ι ι' : VarSymb → VarSymb} → {Γ Δ : Ctx} → {
           (hΓ.boxIn.insert _) (hΔ.boxIn.insert _)
           (Subst.sim_under (Subst.sim_box hs) _ hΔ.boxIn.root)
           Φ)
-  | ι, ι', Γ, Δ, d, d', θ, θ', hθ, hθ', hc, hc', hΓ, hΔ, hs, .linkx hV hF y hy (A := A) t Φ => by
+  | ι, ι', Γ, Δ, d, d', θ, θ', hθ, hθ', hc, hc', hΓ, hΔ, hs, .linkx hV hF y hy (D := D) t Φ => by
       have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
       have key : ∀ (z : VarSymb) (_hz : z = ι y) (P : ∃ Y, Δ.ref z = some (.VTypeDia Y))
           (hΔz : (Δ.diaIn z).SlotsFrom d')
-          (p : Subst.Ok ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A))
+          (p : Subst.Ok ((Γ.diaIn y).insert (.bnd d) D.ty)
             ((θ'.dia y z).under d d' _ hΔz.root))
-          (q : Subst.Coh (VarSymb.shiftSlot ι' d d') ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A))
+          (q : Subst.Coh (VarSymb.shiftSlot ι' d d') ((Γ.diaIn y).insert (.bnd d) D.ty)
             ((θ'.dia y z).under d d' _ hΔz.root)),
           WFF.subst ι θ hθ hc hΓ hΔ (.linkx hV hF y hy t Φ) =
             .linkx hV hF z P (Term.subst ι' θ' hθ' hc' t)

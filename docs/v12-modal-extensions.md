@@ -5759,6 +5759,18 @@ So there are two ways to build it:
 * *One signature change:* `Model.ConeData.sat_cone` takes `Five = true → Four = true`, as the cone is used only with 4; `ConeApex` passes `fun _ => hF`.
 * *Next:* step 2, the rules (`five_box`, `five_dia`, `five_dia_back`, the gather, U) in link form, with `side_loop`, soundness and closure under substitution.
 
+**Correction (2026-11-06): a link binds a tuple, a `DShape`.**  Links do not nest at one arrow: `□[d ↦ t]` goes a level in, so a second link inside binds a side image one level further.  `five_box` and the network's commitments both need several side images along one arrow.  So a link binds a **shape** of possible objects (`DShape`: `one`, `dia A`, `prod`; type `D.ty`), as `retS` binds an `RShape`, and moves its term across componentwise (`Model.sideOf`).  The shape is implicit in `link` and `linkx`, so no match arm changed arity.  The paper check missed this; nothing else changes.
+
+**Built (2026-11-06): step 2, the three weak rules.**  Strict build clean.
+* *Statements* (`QML_v12m_LinkSyntax`, below `Proof`): the body is a formula closed apart from one hole, read by the existing `WFF.holeAt` (the returning possibility's).  `WFF.linkHole`, `□[d ↦ t] χ(d)` at any depth, and `WFF.sideDia`, `◇_d χ(d.dia)` for a link's slot.
+* *Rules* (`Proof`), gated `Five`, not `Four`:
+  * ⭐`five_diaL`: `◇_y χ(h) ⊢ □[d ↦ diatm y h] ◇_d χ(d.dia)`, for any body term `h`.  So it is closed under substitution, and generality comes by pairing.
+  * ⭐`five_dia_backL`: the converse.
+  * ⭐`five_boxL`: `◇[e ↦ t] □[d ↦ e] χ(d) ⊢ □[d ↦ t] χ(d)`, with shapes off.
+* *Soundness* (`QML_v12m_SemLink`): `sat_sideDia`, ⭐`sideOf_side` (moved across `a`, then `side a b`, is moved across `b`: `side_side`, `pos_inj` with shapes off), `sat_fiveDiaL`, `sat_fiveDiaBackL`, `sat_fiveBoxL`.  No new frame law.  `posSec_ext'` and `posSec_of_eq` moved there from `Cone`.
+* *Closure under substitution* (`ProofSubst`): `VarSymb.shiftSlot_root`, `WFF.linkHole_congr`, ⭐`WFF.subst_linkHole`, ⭐`WFF.subst_sideDia`, on `WFF.subst_holeAt`.
+* *Next:* the gather (strong 5) and U with objects, with the law `side_loop`.
+
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
 **Verdict: no blocker found, and the plan gets smaller.**  `GKeep`'s root action is not needed, and

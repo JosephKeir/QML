@@ -431,6 +431,14 @@ def ComesBack : (S : RShape) → {v w : M.frame.W} → M.frame.Dom S.ty v → M.
       ∃ h : (⟨w, ⟨r⟩⟩ : M.frame.Acc v) ∈ (M.posEval (e.2 : M.frame.Pos X v)).1,
         M.Ind ((M.posEval (e.2 : M.frame.Pos X v)).2 ⟨_, h⟩) o.2
 
+/-- ⭐**A tuple of possible objects moved across** `a` (weak 5): each component by `posSide`, read
+    at `a`.  What a link binds. -/
+def sideOf (hV : ModalSys.Five = true) : (D : DShape) → {w : M.frame.W} → M.frame.Dom D.ty w →
+    (a : M.frame.Acc w) → M.frame.Dom D.ty a.1
+  | .one, _, _, _ => PUnit.unit
+  | .dia _, _, p, a => M.necEval (M.ops.posSide hV p) a
+  | .prod D E, _, p, a => (sideOf hV D p.1 a, sideOf hV E p.2 a)
+
 /-- ⭐Satisfaction. -/
 def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ Γ d → Prop
   | _, _, _, env, .atom ρ => relSat env ρ Fin.elim0
@@ -457,13 +465,11 @@ def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ
         (e : M.frame.Dom S.ty a.1.1),
         sat ((env.diaPush y h a).extend (.bnd d) e) Φ ∧
           ∃ r : M.frame.R a.1.1 w, ComesBack S e r (interp env t)
-  | _, d, w, env, .link hV _ t Φ =>
-      ∀ a : M.frame.Acc w,
-        sat ((env.boxPush a).extend (.bnd d) (M.necEval (M.ops.posSide hV (interp env t)) a)) Φ
-  | Γ, d, _, env, .linkx hV _ y _ t Φ =>
+  | _, d, w, env, .link hV _ (D := D) t Φ =>
+      ∀ a : M.frame.Acc w, sat ((env.boxPush a).extend (.bnd d) (M.sideOf hV D (interp env t) a)) Φ
+  | Γ, d, _, env, .linkx hV _ y _ (D := D) t Φ =>
       ∃ (Y : VarType) (h : Γ.ref y = some (.VTypeDia Y)) (b : (M.posEval (env.ref y h)).1),
-        sat ((env.diaPush y h b).extend (.bnd d)
-          (M.necEval (M.ops.posSide hV (interp env t)) b.1)) Φ
+        sat ((env.diaPush y h b).extend (.bnd d) (M.sideOf hV D (interp env t) b.1)) Φ
 
 end Model
 

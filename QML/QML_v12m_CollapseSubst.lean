@@ -745,7 +745,7 @@ theorem WFF.collapse_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {�
           (Subst.corr_under (Subst.ok_box hθ) (Subst.corr_box hθ hcr) hΓ.boxIn _ hΔ.boxIn.root
             hΔ'.boxIn.root (hΔ.boxIn.rootFresh le_rfl)) Φ)
   | k, ι, ι', Γ, Γ', Δ, Δ', d, d', C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .linkx hV hF y hy (A := A) t Φ => by
+      .linkx hV hF y hy (D := Ds) t Φ => by
       have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
       have hwι : ι' (y.collapse k) = (ι y).collapse k := hy.elim fun _ hY => by
         have h₁ := hc' (y.collapse k) _ (C y _ hY) []
@@ -757,10 +757,10 @@ theorem WFF.collapse_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {�
       have hr := (hΔ.diaIn (ι y)).root
       have key : ∀ (z : VarSymb) (_hz : z = (ι y).collapse k)
           (P : ∃ Y, Δ'.ref z = some (.VTypeDia Y)) (hΔz : (Δ'.diaIn z).SlotsFrom d')
-          (p : Subst.Ok ((Γ'.diaIn (y.collapse k)).insert (.bnd d) (.VTypeDia A))
+          (p : Subst.Ok ((Γ'.diaIn (y.collapse k)).insert (.bnd d) Ds.ty)
             ((θ'.dia (y.collapse k) z).under d d' _ hΔz.root))
           (q : Subst.Coh (VarSymb.shiftSlot ι' d d')
-            ((Γ'.diaIn (y.collapse k)).insert (.bnd d) (.VTypeDia A))
+            ((Γ'.diaIn (y.collapse k)).insert (.bnd d) Ds.ty)
             ((θ'.dia (y.collapse k) z).under d d' _ hΔz.root)),
           WFF.collapse D hΔ (WFF.subst ι θ hθ hc hΓ hΔ (.linkx hV hF y hy t Φ)) =
             .linkx hV hF z P (Term.subst ι' θ' hθ' hc' (Term.collapse C t))

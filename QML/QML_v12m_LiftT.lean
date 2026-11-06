@@ -135,11 +135,11 @@ theorem WFF.collapse_shift_self : ∀ {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx} {d : �
         (WFF.collapse_shift_self (hs.boxIn.insert (hs₁.boxIn.rootFresh le_rfl) _)
           (hc.boxIn.insert (hs₂.boxIn.rootFresh le_rfl) _) (hle.boxIn.insert _ _)
           (hs₁.boxIn.insert _) (hs₂.boxIn.insert _) Φ)
-  | m, Γ₁, _, Γ₃, _, hs, hc, hle, hs₁, hs₂, .linkx hV hF y hy (A := A) t Φ => by
+  | m, Γ₁, _, Γ₃, _, hs, hc, hle, hs₁, hs₂, .linkx hV hF y hy (D := D) t Φ => by
       have key : ∀ (z : VarSymb) (_hz : z = (y.shift m).collapse (m + 1))
           (P : ∃ Y, Γ₃.ref z = some (.VTypeDia Y))
-          (hle' : ((Γ₁.diaIn y).insert (.bnd _) (.VTypeDia A)).Le
-            ((Γ₃.diaIn z).insert (.bnd _) (.VTypeDia A))),
+          (hle' : ((Γ₁.diaIn y).insert (.bnd _) D.ty).Le
+            ((Γ₃.diaIn z).insert (.bnd _) D.ty)),
           WFF.collapse hc hs₂ (WFF.shift hs hs₁ (.linkx hV hF y hy t Φ)) =
             .linkx hV hF z P (Term.mono hle t) (WFF.mono hle' Φ) := by
         intro z hz P hle'
@@ -239,11 +239,11 @@ theorem WFF.shift_shift_same : ∀ {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx} {d : ℕ}
           (h₂₃.boxIn.insert (hs₂.boxIn.rootFresh le_rfl) _)
           (h₂₃'.boxIn.insert (hs₂.boxIn.rootFresh le_rfl) _)
           (hs₁.boxIn.insert _) (hs₂.boxIn.insert _) Φ)
-  | m, _, Γ₂, Γ₃, _, h₁₂, h₂₃, h₂₃', hs₁, hs₂, .linkx hV hF y hy (A := A) t Φ => by
+  | m, _, Γ₂, Γ₃, _, h₁₂, h₂₃, h₂₃', hs₁, hs₂, .linkx hV hF y hy (D := D) t Φ => by
       have key : ∀ (z : VarSymb) (_hz : z = (y.shift m).shift m)
           (P : ∃ Y, Γ₃.ref z = some (.VTypeDia Y))
-          (h' : Ctx.Shifts (m + 1 + 1) ((Γ₂.diaIn (y.shift m)).insert (.bnd _) (.VTypeDia A))
-            ((Γ₃.diaIn z).insert (.bnd _) (.VTypeDia A))),
+          (h' : Ctx.Shifts (m + 1 + 1) ((Γ₂.diaIn (y.shift m)).insert (.bnd _) D.ty)
+            ((Γ₃.diaIn z).insert (.bnd _) D.ty)),
           WFF.shift h₂₃ hs₂ (WFF.shift h₁₂ hs₁ (.linkx hV hF y hy t Φ)) =
             .linkx hV hF z P (Term.shift h₂₃' (Term.shift h₁₂ t))
               (WFF.shift h' ((hs₂.diaIn _).insert _)

@@ -117,12 +117,12 @@ theorem WFF.subst_ren {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ :
       WFF.link_congr hV hF (Term.subst_ren hle θ hθ hc hid t)
         (WFF.subst_ren (hle.boxIn.insert _ _) _ _ _ _ _
           (Subst.ren_under (Subst.ren_box hid) _ hΔ.boxIn.root) Φ)
-  | ι, Γ, Δ, d, hle, θ, hθ, hc, hΓ, hΔ, hid, .linkx hV hF y hy (A := A) t Φ => by
+  | ι, Γ, Δ, d, hle, θ, hθ, hc, hΓ, hΔ, hid, .linkx hV hF y hy (D := D) t Φ => by
       have key : ∀ (z : VarSymb) (_hz : y = z) (P : ∃ Y, Δ.ref z = some (.VTypeDia Y))
           (hΔz : (Δ.diaIn z).SlotsFrom d)
-          (p : Subst.Ok ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A))
+          (p : Subst.Ok ((Γ.diaIn y).insert (.bnd d) D.ty)
             ((θ.dia y z).under d d _ hΔz.root))
-          (q : Subst.Coh (VarSymb.shiftSlot ι d d) ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A))
+          (q : Subst.Coh (VarSymb.shiftSlot ι d d) ((Γ.diaIn y).insert (.bnd d) D.ty)
             ((θ.dia y z).under d d _ hΔz.root)),
           WFF.linkx hV hF z P (Term.subst ι θ hθ hc t)
               (WFF.subst (VarSymb.shiftSlot ι d d) ((θ.dia y z).under d d _ hΔz.root) p q

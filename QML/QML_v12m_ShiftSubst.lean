@@ -972,7 +972,7 @@ theorem WFF.shift_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {Γ �
           (Subst.shiftCorr_under (Subst.ok_box hθ) (Subst.shiftCorr_box hθ hcr) hΓ.boxIn _
             hΔ.boxIn.root hΔ'.boxIn.root (hΔ.boxIn.rootFresh le_rfl)) Φ)
   | k, ι, ι', Γ, Γ', Δ, Δ', d, d', C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .linkx hV hF y hy (A := A) t Φ => by
+      .linkx hV hF y hy (D := Ds) t Φ => by
       have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
       have hwι : ι' (y.shift k) = (ι y).shift k := hy.elim fun _ hY => by
         have h₁ := hc' (y.shift k) _ (C y _ hY) []
@@ -984,10 +984,10 @@ theorem WFF.shift_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {Γ �
       have hr := (hΔ.diaIn (ι y)).root
       have key : ∀ (z : VarSymb) (_hz : z = (ι y).shift k)
           (P : ∃ Y, Δ'.ref z = some (.VTypeDia Y)) (hΔz : (Δ'.diaIn z).SlotsFrom d')
-          (p : Subst.Ok ((Γ'.diaIn (y.shift k)).insert (.bnd d) (.VTypeDia A))
+          (p : Subst.Ok ((Γ'.diaIn (y.shift k)).insert (.bnd d) Ds.ty)
             ((θ'.dia (y.shift k) z).under d d' _ hΔz.root))
           (q : Subst.Coh (VarSymb.shiftSlot ι' d d')
-            ((Γ'.diaIn (y.shift k)).insert (.bnd d) (.VTypeDia A))
+            ((Γ'.diaIn (y.shift k)).insert (.bnd d) Ds.ty)
             ((θ'.dia (y.shift k) z).under d d' _ hΔz.root)),
           WFF.shift D hΔ (WFF.subst ι θ hθ hc hΓ hΔ (.linkx hV hF y hy t Φ)) =
             .linkx hV hF z P (Term.subst ι' θ' hθ' hc' (Term.shift C t))

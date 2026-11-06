@@ -1434,6 +1434,84 @@ theorem WFF.holeAt_congr {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {A : VarType
   cases h
   rfl
 
+/-! ### Links under substitution (5 without 4) -/
+
+omit [ModalSys] in
+theorem VarSymb.shiftSlot_root (ι : VarSymb → VarSymb) (d d' : ℕ) :
+    VarSymb.shiftSlot ι d d' (.root (.bnd d)) = .root (.bnd d') := by
+  simp [VarSymb.shiftSlot, VarSymb.rt, VarSymb.reroot]
+
+theorem WFF.linkHole_congr (hV : ModalSys.Five = true) (hN : ModalSys.Four = false) {Γ : Ctx}
+    {d : ℕ} (hs : Γ.SlotsFrom d) {D : DShape} {a a' : Ann D.ty}
+    {t : Term σ Γ D.ty a} {t' : Term σ Γ D.ty a'}
+    (h : (⟨a, t⟩ : Σ a, Term σ Γ D.ty a) = ⟨a', t'⟩)
+    (χ : WFF σ (Ctx.empty.insert (.bnd 0) D.ty) 1) :
+    WFF.linkHole hV hN hs t χ = WFF.linkHole hV hN hs t' χ := by
+  cases h
+  rfl
+
+/-- ⭐**A link with a hole is fixed by substitution, but for its term.** -/
+theorem WFF.subst_linkHole (hV : ModalSys.Five = true) (hN : ModalSys.Four = false)
+    {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
+    {D : DShape} {a : Ann D.ty} (t : Term σ Γ D.ty a)
+    (χ : WFF σ (Ctx.empty.insert (.bnd 0) D.ty) 1) :
+    WFF.subst ι θ hθ hc hΓ hΔ (WFF.linkHole hV hN hΓ t χ) =
+      WFF.linkHole hV hN hΔ (Term.subst ι θ hθ hc t) χ := by
+  unfold WFF.linkHole
+  refine WFF.link_congr' hV hN rfl ?_
+  refine (WFF.subst_holeAt _ _ _ _ _ _ χ).trans (WFF.holeAt_congr _ ?_ χ)
+  exact Term.subst_eta_renAt _ _ _ D.ty _ _ _ _ (Subst.under_at_slot _ _ _ _ _)
+
+/-- ⭐**`◇_d χ(d.dia)` is fixed by substitution**: the slot `d` goes to the slot. -/
+theorem WFF.subst_sideDia {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d')
+    {A : VarType} (χ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
+    WFF.subst (VarSymb.shiftSlot ι d d') (θ.box.under d d' (.VTypeDia A) hΔ.boxIn.root)
+      (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
+      (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn _ hΔ.boxIn.root)
+      (hΓ.boxIn.insert _) (hΔ.boxIn.insert _) (WFF.sideDia hΓ χ) = WFF.sideDia hΔ χ := by
+  have hι := VarSymb.shiftSlot_root ι d d'
+  have hat := Subst.under_at_slot θ.box d d' (.VTypeDia A) hΔ.boxIn.root
+  -- the witness goes to the slot; the body is the hole filled with the slot's content
+  have key : ∀ (z : VarSymb) (hz : VarSymb.shiftSlot ι d d' (.root (.bnd d)) = z)
+      (P : ∃ X, (Δ.boxIn.insert (.bnd d') (.VTypeDia A)).ref z = some (.VTypeDia X))
+      (hθz : Subst.Ok ((Γ.boxIn.insert (.bnd d) (.VTypeDia A)).diaIn (.root (.bnd d)))
+        ((θ.box.under d d' (.VTypeDia A) hΔ.boxIn.root).dia (.root (.bnd d)) z))
+      (hcz : Subst.Coh (VarSymb.shiftSlot ι d d')
+        ((Γ.boxIn.insert (.bnd d) (.VTypeDia A)).diaIn (.root (.bnd d)))
+        ((θ.box.under d d' (.VTypeDia A) hΔ.boxIn.root).dia (.root (.bnd d)) z))
+      (hsz : ((Δ.boxIn.insert (.bnd d') (.VTypeDia A)).diaIn z).SlotsFrom (d' + 1)),
+      WFF.subst (VarSymb.shiftSlot ι d d') (θ.box.under d d' (.VTypeDia A) hΔ.boxIn.root)
+        (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
+        (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn _ hΔ.boxIn.root)
+        (hΓ.boxIn.insert _) (hΔ.boxIn.insert _) (WFF.sideDia hΓ χ) =
+      .dia z P (WFF.subst (VarSymb.shiftSlot ι d d')
+        ((θ.box.under d d' (.VTypeDia A) hΔ.boxIn.root).dia (.root (.bnd d)) z) hθz hcz
+        ((hΓ.boxIn.insert _).diaIn _) hsz
+        (WFF.holeAt ((hΓ.boxIn.insert _).diaIn _)
+          (Term.eta (.step (.root (.bnd d)) .dia) A
+            (Ctx.ref_diaIn_of (Ctx.ref_insert_root _ _ _))) χ)) := by
+    rintro z rfl P hθz hcz hsz
+    rfl
+  have hw : ((θ.box.under d d' (.VTypeDia A) hΔ.boxIn.root).at (.root (.bnd d))).idxAlong [] =
+      .root (.bnd d') := by rw [hat]; rfl
+  have hθz := Subst.ok_dia (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
+    ⟨A, Ctx.ref_insert_root _ _ _⟩ hw
+  have hcz := hι ▸ Subst.coh_dia (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
+    (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn _ hΔ.boxIn.root)
+    ⟨A, Ctx.ref_insert_root _ _ _⟩
+  rw [key _ hι ⟨A, Ctx.ref_insert_root _ _ _⟩ hθz hcz ((hΔ.boxIn.insert _).diaIn _)]
+  unfold WFF.sideDia
+  refine congrArg _ ((WFF.subst_holeAt _ _ _ _ _ _ χ).trans (WFF.holeAt_congr _ ?_ χ))
+  refine Term.subst_eta_renAt _ _ _ A _ _ _ _ ?_
+  rw [Subst.at_nonproj _ rfl]
+  change (if VarSymb.root (.bnd d) = VarSymb.root (.bnd d) then
+    SubE.diaBody _ (Subst.at _ (.root (.bnd d))) else .hide) = _
+  rw [if_pos rfl, hat]
+  rfl
+
+
 theorem VarSymb.inner_rt (u : VarSymb) : u.inner.rt = u.rt := by
   unfold VarSymb.inner
   split <;> rfl
@@ -2997,6 +3075,47 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
   | _, _, _, @Proof.five_refl _ _ Γ _ Δ hF hV hN O T hT φ, Γ', _, ι, θ, hθ, hc, hΓ =>
       Proof.conv (WFF.subst_fiveRefl θ hθ hc hΓ Ctx.NoSlots.slots hF hT O φ).symm
         (Proof.five_refl hF hV hN (O.subst θ hθ hc) hT _)
+  | _, _, _, @Proof.five_diaL _ _ Γ _ _ hV hN y hy A a h χ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
+      have hy' : ∃ X, Γ'.ref (ι y) = some (.VTypeDia X) :=
+        hy.elim fun _ hY => SubE.ref_witness (Subst.okRef_at hθ hY) hw
+      Proof.conv (WFF.link_congr' hV hN rfl
+          (WFF.subst_sideDia θ hθ hc hΓ Ctx.NoSlots.slots χ).symm)
+        (Proof.five_diaL hV hN (ι y) hy'
+          (Term.subst ι (θ.dia y (ι y)) (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) h) χ
+          (Proof.conv
+            ((WFF.subst_dia θ hθ hc hΓ Ctx.NoSlots.slots hy (ι y) rfl hy'
+              (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) Ctx.NoSlots.slots
+              (WFF.holeAt _ h χ)).trans
+              (congrArg (WFF.dia (ι y) hy') (WFF.subst_holeAt _ _ _ _ _ h χ)))
+            (Proof.subst p θ hθ hc hΓ)))
+  | _, _, _, @Proof.five_dia_backL _ _ Γ _ _ hV hN y hy A a h χ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
+      have hy' : ∃ X, Γ'.ref (ι y) = some (.VTypeDia X) :=
+        hy.elim fun _ hY => SubE.ref_witness (Subst.okRef_at hθ hY) hw
+      Proof.conv
+        ((WFF.subst_dia θ hθ hc hΓ Ctx.NoSlots.slots hy (ι y) rfl hy'
+          (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) Ctx.NoSlots.slots
+          (WFF.holeAt _ h χ)).trans
+          (congrArg (WFF.dia (ι y) hy') (WFF.subst_holeAt _ _ _ _ _ h χ))).symm
+        (Proof.five_dia_backL hV hN (ι y) hy'
+          (Term.subst ι (θ.dia y (ι y)) (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) h) χ
+          (Proof.conv (congrArg WFF.neg (WFF.link_congr' hV hN rfl
+              (congrArg WFF.neg (WFF.subst_sideDia θ hθ hc hΓ Ctx.NoSlots.slots χ))))
+            (Proof.subst p θ hθ hc hΓ)))
+  | _, _, _, @Proof.five_boxL _ _ Γ _ _ hV hN hS D a t χ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hr := (Ctx.NoSlots.slots (Γ := Γ')).boxIn.root
+      Proof.conv (WFF.subst_linkHole hV hN θ hθ hc hΓ Ctx.NoSlots.slots t χ).symm
+        (Proof.five_boxL hV hN hS (Term.subst ι θ hθ hc t) χ
+          (Proof.conv (congrArg WFF.neg (WFF.link_congr' hV hN rfl (congrArg WFF.neg
+              ((WFF.subst_linkHole hV hN (θ.box.under 0 0 D.ty hr)
+                (Subst.ok_under (Subst.ok_box hθ) _ hr)
+                (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn _ hr)
+                (hΓ.boxIn.insert _) ((Ctx.NoSlots.slots (Γ := Γ')).boxIn.insert _)
+                (Term.eta (.root (.bnd 0)) D.ty (Ctx.ref_insert_root _ _ _)) χ).trans
+                (WFF.linkHole_congr hV hN _ (Term.subst_eta_renAt _ _ _ D.ty _ _ _ _
+                  (Subst.under_at_slot _ _ _ _ _)) χ)))))
+            (Proof.subst p θ hθ hc hΓ)))
   | _, _, _, @Proof.here_keep _ _ Γ _ Δ hT hF x hx A a bd, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
       have hy : ∃ X, Γ'.ref (ι x) = some (.VTypeDia X) :=

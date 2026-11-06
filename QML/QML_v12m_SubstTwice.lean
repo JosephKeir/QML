@@ -728,7 +728,7 @@ theorem WFF.subst_comp {σ : Signature} : {ι₁ ι₂ ι₃ : VarSymb → VarSy
           (Subst.sim_under_comp (Subst.ok_box hθ₁) (Subst.ok_box hθ₂) (Subst.coh_box hθ₂ hc₂)
             (Subst.sim_box_comp hθ₁ hθ₂ hc₂ hs) hΔ₁.boxIn _ hΔ₁.boxIn.root hΔ₂.boxIn.root) Φ)
   | ι₁, ι₂, ι₃, Γ, Δ₁, Δ₂, d, d₁, d₂, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, hΓ, hΔ₁, hΔ₂,
-      hs, .linkx hV hF y hy (A := A) t Φ => by
+      hs, .linkx hV hF y hy (D := D) t Φ => by
       have hw₁ : (θ₁.at y).idxAlong [] = ι₁ y := hy.elim fun _ hY => hc₁ y _ hY []
       have hy₁ : ∃ Y, Δ₁.ref (ι₁ y) = some (.VTypeDia Y) :=
         hy.elim fun _ hY => SubE.ref_witness (Subst.okRef_at hθ₁ hY) hw₁
@@ -739,9 +739,9 @@ theorem WFF.subst_comp {σ : Signature} : {ι₁ ι₂ ι₃ : VarSymb → VarSy
       have hr₁ := (hΔ₁.diaIn (ι₁ y)).root
       have key : ∀ (z : VarSymb) (_hz : z = ι₂ (ι₁ y)) (P : ∃ Y, Δ₂.ref z = some (.VTypeDia Y))
           (hΔz : (Δ₂.diaIn z).SlotsFrom d₂)
-          (p : Subst.Ok ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A))
+          (p : Subst.Ok ((Γ.diaIn y).insert (.bnd d) D.ty)
             ((θ₃.dia y z).under d d₂ _ hΔz.root))
-          (q : Subst.Coh (VarSymb.shiftSlot ι₃ d d₂) ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A))
+          (q : Subst.Coh (VarSymb.shiftSlot ι₃ d d₂) ((Γ.diaIn y).insert (.bnd d) D.ty)
             ((θ₃.dia y z).under d d₂ _ hΔz.root)),
           WFF.subst ι₂ θ₂ hθ₂ hc₂ hΔ₁ hΔ₂ (WFF.subst ι₁ θ₁ hθ₁ hc₁ hΓ hΔ₁ (.linkx hV hF y hy t Φ)) =
             .linkx hV hF z P (Term.subst ι₃ θ₃ hθ₃ hc₃ t)
