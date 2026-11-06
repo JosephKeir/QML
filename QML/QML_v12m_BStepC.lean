@@ -150,7 +150,7 @@ theorem holeAt_tupCRT_obj (hT : ModalSys.T = true) : ∀ (R : VarType) {Γ : Ctx
 theorem flatB_tupB_false (hb : ModalSys.T = false) : ∀ (R : VarType) {Γ : Ctx} (u : VarSymb)
     (hu : Γ.ref u = some R),
     (⟨_, tupB (σ := σ) u R false hb hu⟩ : Σ a, Term σ Γ.boxIn (R.bcB false) a) = flatB u R hu
-  | .VTypeBox _, _, _, _ => eta_addr_congr (VarSymb.inner_box ModalSys.NoFour.keepOnly).symm _ _
+  | .VTypeBox _, _, _, _ => eta_addr_congr (VarSymb.inner_box ModalSys.FourOff.keepOnly).symm _ _
   | .VTypeProd X Y, _, _, hu => sig_pair (flatB_tupB_false hb X _ (Ctx.ref_fst_of hu))
       (flatB_tupB_false hb Y _ (Ctx.ref_snd_of hu))
   | .Var, _, _, _ => rfl
@@ -535,7 +535,7 @@ theorem liftBody_ex_pairUp_memB {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.IsM
       change SubE.Sim U ((Subst.single _ _).at u).unbox (.ren (.step u .box))
       rw [Subst.single_at_ne (by rw [hr]; exact fun h => by cases h)]
       change SubE.Sim U (.ren u.inner) _
-      rw [VarSymb.inner_box ModalSys.NoFour.keepOnly]
+      rw [VarSymb.inner_box ModalSys.FourOff.keepOnly]
       exact .refl _
     refine SubE.sim_tm_sigma (sig_boxtm (sig_pair ?_
       (Term.subst_eta_tm _ _ _ _ _ _ _ (Subst.box_at_inner_boxtm _ hsg)))).symm
@@ -915,7 +915,7 @@ theorem single_box_under_ren {l lt : List VarType} {Δ : Ctx} (hl : l.length ≤
           rw [hr]
           exact fun h => absurd (Root.free.inj h) (by omega))]
         change SubE.mono _ (SubE.ren w.inner) = _
-        rw [VarSymb.inner_box ModalSys.NoFour.keepOnly]
+        rw [VarSymb.inner_box ModalSys.FourOff.keepOnly]
         rfl
 
 /-- A fresh root's value, substituted into a body over older roots' `◇_y` view, renames every
@@ -960,7 +960,7 @@ theorem single_dia_under_ren {l lt : List VarType} (hl : l.length ≤ lt.length)
             rw [hr]
             exact fun h => absurd (Root.free.inj h) (by omega))]
           change SubE.mono _ (SubE.mono _ (SubE.ren w.inner)) = _
-          rw [VarSymb.inner_box ModalSys.NoFour.keepOnly]
+          rw [VarSymb.inner_box ModalSys.FourOff.keepOnly]
           rfl
         · cases he
           obtain ⟨r, hr, hlt, -⟩ := ref_rt hyr
@@ -2047,7 +2047,7 @@ theorem subst_arrow_eta_inner {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
       (⟨_, Term.subst (arrowIdx img) (arrowS σ Δ img) (ok_arrowS himg) (coh_arrowS himg)
         (Term.eta x.inner C hx)⟩ : Σ c, Term σ Δ C c) = ⟨_, Term.eta (itemImg img x) C hw⟩ := by
   have he : (arrowS σ Δ img).at x.inner = .ren (itemImg img x) := by
-    rw [VarSymb.inner_box ModalSys.NoFour.keepOnly]
+    rw [VarSymb.inner_box ModalSys.FourOff.keepOnly]
     rfl
   have hw : Δ.ref (itemImg img x) = some C := by
     have := Subst.okRef_at (ok_arrowS (σ := σ) himg) hx

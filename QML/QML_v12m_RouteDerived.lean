@@ -31,7 +31,7 @@ theorem boxIn_item_route {Γ : Ctx} {v : VarSymb} {T : VarType} (h : Γ.boxIn v 
   | .step u .box => exact ⟨u, rfl, (Ctx.boxIn_box h).2⟩
   | .step u .keep =>
       obtain ⟨hF, _⟩ := Ctx.boxIn_keep h
-      rw [ModalSys.NoFour.noFour] at hF
+      rw [ModalSys.FourOff.noFour] at hF
       cases hF
   | .root _ => cases h
   | .step _ .fst => cases h
@@ -219,7 +219,7 @@ theorem instantiate_routeBody {Γ : Ctx} [Γ.NoSlots] {a : Ann S.flat}
     change (((Subst.single _ _).at u).unbox.mono _).mono _ = _
     rw [Subst.single_at_ne hu0]
     change SubE.ren u.inner = _
-    rw [VarSymb.inner_box ModalSys.NoFour.keepOnly]
+    rw [VarSymb.inner_box ModalSys.FourOff.keepOnly]
   · exact (Term.subst_eta_renAt _ _ _ _ _ _ _ _ (Subst.under_at_slot _ (0 + 1) 0 _ _)).trans
       (congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _).symm)
 

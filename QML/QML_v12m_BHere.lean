@@ -85,7 +85,7 @@ theorem here_truth (hT : ModalSys.T = true) {s : B.W} {i : ℕ} {x : VarSymb}
   · rintro ⟨hm, u, u', hu, hu', hrel⟩
     have hm' : B.model.frame.reflAcc hT s ∈ B.extent s x := canonEnv_extent s i h ▸ hm
     have hr : (B.w s).Realised x :=
-      (mem_extent_self hm' fun ⟨_, hk⟩ => B.irrefl s (B.lbR hk)).2
+      (mem_extent_self hm' fun ⟨_, hk⟩ => B.irrefl hT s (B.lbR hk)).2
     rw [hC hr hm, fromDom_toDom] at hu
     rw [hD, fromDom_toDom] at hu'
     -- one stage for everything
@@ -121,7 +121,7 @@ theorem here_truth (hT : ModalSys.T = true) {s : B.W} {i : ℕ} {x : VarSymb}
     have hr : (B.w s).Realised x := (B.w s).datum_of_here hT h bd t hmem
     have hm : B.model.frame.reflAcc hT s ∈ (B.model.posEval ((B.canonEnv s i).ref x h)).1 := by
       rw [canonEnv_extent]
-      exact Or.inr ⟨B.irrefl s, hr⟩
+      exact Or.inr ⟨B.irrefl hT s, hr⟩
     refine ⟨hm, _, ⟨i, a, t⟩, ?_, ?_, rel_here hT hx bd t hr hmem⟩
     · rw [hC hr hm, fromDom_toDom]
     · rw [hD, fromDom_toDom]

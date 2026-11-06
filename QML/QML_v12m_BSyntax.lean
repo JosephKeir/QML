@@ -34,10 +34,13 @@ namespace V12M
     And the strong forms coherent (`ModalSys.WCoh`): with strong B's witnessed ways home
     (`BStrongW`), T comes in its strong form, which the model law gives it
     (`Model.posRet_of_posBack`; docs §11.23, build steps 3 and 6). -/
-class ModalSys.NoFour [ModalSys] : Prop extends ModalSys.WCoh where
+class ModalSys.FourOff [ModalSys] : Prop extends ModalSys.WCoh where
   noFour : ModalSys.Four = false
-  /-- Temporarily, 5 is off as well: the network has no side arrows (`docs/v12-modal-extensions.md`
-      §3 5). -/
+
+/-- `FourOff` with 5 off as well: B's network, whose arrows come in pairs and have no side
+    arrows.  K5's network has 5 on (`docs/v12-modal-extensions.md`, "K5 and KD5, step 4"); the
+    canonical data `BData` asks only `FourOff`. -/
+class ModalSys.NoFour [ModalSys] : Prop extends ModalSys.FourOff where
   noFive : ModalSys.Five = false
 
 variable [ModalSys]
@@ -46,8 +49,8 @@ theorem ModalSys.NoFour.absurdFive [ModalSys.NoFour] (hV : ModalSys.Five = true)
   rw [ModalSys.NoFour.noFive] at hV
   cases hV
 
-theorem ModalSys.NoFour.keepOnly [ModalSys.NoFour] : ModalSys.keepOnly = false := by
-  simp [ModalSys.keepOnly, ModalSys.NoFour.noFour]
+theorem ModalSys.FourOff.keepOnly [ModalSys.FourOff] : ModalSys.keepOnly = false := by
+  simp [ModalSys.keepOnly, ModalSys.FourOff.noFour]
 
 /-! ## Addresses as paths -/
 
@@ -390,14 +393,14 @@ def arrowIdx (img : ℕ → ℕ) (a : VarSymb) : VarSymb :=
 def ImgOk (l : List VarType) (Δ : Ctx) (img : ℕ → ℕ) : Prop :=
   ∀ r, r < l.length → Δ.ref (.root (.free (img r))) = some (rootTy l r).bc
 
-theorem boxIn_item [ModalSys.NoFour] {l : List VarType} {v : VarSymb} {T : VarType}
+theorem boxIn_item [ModalSys.FourOff] {l : List VarType} {v : VarSymb} {T : VarType}
     (h : (ctxOf l).boxIn v = some T) :
     ∃ u, v = .step u .box ∧ (ctxOf l).ref u = some (.VTypeBox T) := by
   match v with
   | .step u .box => exact ⟨u, rfl, (Ctx.boxIn_box h).2⟩
   | .step u .keep =>
       obtain ⟨hF, _⟩ := Ctx.boxIn_keep h
-      rw [ModalSys.NoFour.noFour] at hF
+      rw [ModalSys.FourOff.noFour] at hF
       cases hF
   | .root _ => cases h
   | .step _ .fst => cases h
@@ -434,7 +437,7 @@ theorem ref_rt {l : List VarType} {u : VarSymb} {T : VarType}
   rw [hr]
   exact ctxOf_root_lt hlt
 
-theorem ok_arrowS [ModalSys.NoFour] {σ : Signature} {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
+theorem ok_arrowS [ModalSys.FourOff] {σ : Signature} {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
     (himg : ImgOk l Δ img) : Subst.Ok (ctxOf l).boxIn (arrowS σ Δ img) := by
   intro v T _ hv
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
@@ -477,7 +480,7 @@ theorem arrowIdx_item {img : ℕ → ℕ} {u : VarSymb} (hu : PPath u.path) :
   rw [h]
   rfl
 
-theorem coh_arrowS [ModalSys.NoFour] {σ : Signature} {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
+theorem coh_arrowS [ModalSys.FourOff] {σ : Signature} {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
     (himg : ImgOk l Δ img) : Subst.Coh (arrowIdx img) (ctxOf l).boxIn (arrowS σ Δ img) := by
   refine Subst.coh_of (ok_arrowS himg) ?_
   intro v T _ hv p
@@ -504,7 +507,7 @@ noncomputable def arrowXIdx (img : ℕ → ℕ) (x : VarSymb) (cx : ℕ) (a : Va
     (VarSymb.root (.free cx)).ext (a.path.drop (x.path.length + 1))
   else arrowIdx img a
 
-theorem diaIn_item [ModalSys.NoFour] {l : List VarType} {x v : VarSymb} {T : VarType}
+theorem diaIn_item [ModalSys.FourOff] {l : List VarType} {x v : VarSymb} {T : VarType}
     (h : ((ctxOf l).diaIn x) v = some T) :
     (∃ u, v = .step u .box ∧ (ctxOf l).ref u = some (.VTypeBox T)) ∨
       (v = .step x .dia ∧ (ctxOf l).ref x = some (.VTypeDia T)) := by
@@ -528,21 +531,21 @@ theorem diaIn_item [ModalSys.NoFour] {l : List VarType} {x v : VarSymb} {T : Var
   | .step u .snd => exact Or.inl (boxIn_item (l := l) h)
   | .step u .here => exact Or.inl (boxIn_item (l := l) h)
 
-theorem ok_arrowXS [ModalSys.NoFour] {σ : Signature} {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
+theorem ok_arrowXS [ModalSys.FourOff] {σ : Signature} {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
     (himg : ImgOk l Δ img) {x : VarSymb} {X : VarType} (hx : (ctxOf l).ref x = some (.VTypeDia X))
     {cx : ℕ} (hcx : Δ.ref (.root (.free cx)) = some X) :
     Subst.Ok ((ctxOf l).diaIn x) (arrowXS σ Δ img x cx) := by
   intro v T _ hv
   rcases diaIn_item hv with ⟨u, rfl, hu⟩ | ⟨rfl, hxT⟩
   · exact ok_arrowS (σ := σ) himg (.step u .box) T rfl
-      (by rw [Ctx.boxIn_box_of ModalSys.NoFour.keepOnly hu])
+      (by rw [Ctx.boxIn_box_of ModalSys.FourOff.keepOnly hu])
   · rw [hx] at hxT
     cases hxT
     change (if x = x then SubE.ren (.root (.free cx)) else .hide).OkRef X
     rw [if_pos rfl]
     exact hcx
 
-theorem coh_arrowXS [ModalSys.NoFour] {σ : Signature} {l : List VarType} {Δ : Ctx}
+theorem coh_arrowXS [ModalSys.FourOff] {σ : Signature} {l : List VarType} {Δ : Ctx}
     {img : ℕ → ℕ} (himg : ImgOk l Δ img) {x : VarSymb} {X : VarType}
     (hx : (ctxOf l).ref x = some (.VTypeDia X)) {cx : ℕ}
     (hcx : Δ.ref (.root (.free cx)) = some X) :

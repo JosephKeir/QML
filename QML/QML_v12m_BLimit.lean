@@ -647,8 +647,8 @@ noncomputable def bdata (hc : Children C.net) (hW : ModalSys.BStrong = false) : 
   actual := ⟨[], 0, trivial⟩
   w s := nodeWorld C s.1 s.2
   R := LR C
-  symm := LR.symm
-  irrefl := LR.irrefl
+  symm _ := LR.symm
+  irrefl _ := LR.irrefl
   img := limg C
   stg := lstg C
   imgOk h i := limgOk C h i
@@ -664,11 +664,11 @@ noncomputable def bdata (hc : Children C.net) (hW : ModalSys.BStrong = false) : 
   kd := lkd C
   kd_lb h := lbOfKd_eq.mpr h
   exX s i x X hx ψ hψ := lexX C hc s i x X hx ψ hψ
-  unl y h := let ⟨t', hR, hk⟩ := lunl C hc h; ⟨t', hR, lbOfKd_none hk y⟩
-  sep hk h := lbOfKd_sep hk h
+  unl _ {_ _} y h := let ⟨t', hR, hk⟩ := lunl C hc h; ⟨t', hR, lbOfKd_none hk y⟩
+  sep _ {_ _ _ _ _} hk h := lbOfKd_sep hk h
   lab hS := absurd (hW.symm.trans hS) (by decide)
-  backRel hS := absurd (hW.symm.trans hS) (by decide)
-  backRelX hS := absurd (hW.symm.trans hS) (by decide)
+  backRel hS _ := absurd (hW.symm.trans hS) (by decide)
+  backRelX hS _ := absurd (hW.symm.trans hS) (by decide)
 
 end BArrow
 

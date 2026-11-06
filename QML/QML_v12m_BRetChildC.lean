@@ -202,7 +202,7 @@ theorem at_retPullC_item {w : VarSymb} {T : VarType}
     (hw : (ctxOf l).ref w = some (.VTypeBox T)) :
     (retPullC σ l A hV hu e).at (itemAt (imgRoot Nat.succ w.rt) w) =
       .tm (Term.eta (.step w .box) T ((hV.trans (Ctx.le_insert hu.root _)).ref
-        (Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly hw))) := by
+        (Ctx.ref_boxIn_of ModalSys.FourOff.keepOnly hw))) := by
   obtain ⟨r, hr, _, _⟩ := ref_rt hw
   rw [hr]
   change (retPullC σ l A hV hu e).at (itemAt (.free (r + 1)) w) = _
@@ -379,7 +379,7 @@ theorem itemsTree_tupB (hT : ModalSys.T = true) : ∀ (R : VarType) {Γ : Ctx} (
     (itemsTree (σ := σ) hT u R hu : Σ a, Term σ Γ.boxIn (R.bcB true) a) =
       ⟨_, tupB u R true hT hu⟩
   | .VTypeBox C, _, u, hu => sig_pair
-      (eta_addr_congr (VarSymb.inner_box ModalSys.NoFour.keepOnly) _ _)
+      (eta_addr_congr (VarSymb.inner_box ModalSys.FourOff.keepOnly) _ _)
       (itemsTree_tupB hT C (.step u .here) (Ctx.ref_here_of hT hu))
   | .VTypeProd X Y, _, u, hu => sig_pair
       (itemsTree_tupB hT X (.step u .fst) (Ctx.ref_fst_of hu))
@@ -465,7 +465,7 @@ theorem Subst.at_ext_collapse_tupB (hT : ModalSys.T = true) {Γ : Ctx} (θ : Sub
           change SubE.tm (Term.collapse _ (Term.eta (.step x .box) C' _)) = _
           refine SubE.tm_eq_of_sig ((Term.collapse_eta _ _ C' _).trans
             (Term.eta_congr ?_ C' _ _))
-          rw [← VarSymb.inner_box ModalSys.NoFour.keepOnly]
+          rw [← VarSymb.inner_box ModalSys.FourOff.keepOnly]
           exact VarSymb.inner_collapse_zero x
         exact Subst.at_ext_eta hT θ q (Ctx.ref_here_of hT hx) hC h' h1
       · obtain ⟨q, hq₀, rfl⟩ := List.mem_map.mp hq
@@ -565,7 +565,7 @@ theorem holeRead_compsSlot_tupCVal (hT : ModalSys.T = true) (A : VarType) :
       refine sig_pair rfl (sig_pair ?_ ?_)
       · refine (Term.subst_eta_tm _ _ _ _ _ _ _
           (at_compsFst_compsSlot _ _ _ _ _ _ hv)).trans ?_
-        exact eta_addr_congr (VarSymb.inner_box ModalSys.NoFour.keepOnly) _ _
+        exact eta_addr_congr (VarSymb.inner_box ModalSys.FourOff.keepOnly) _ _
       · refine (Term.subst_bcTree _ _ _ A _).trans ?_
         refine (congrArg (bcTree A) (funext fun q => funext fun hq => ?_)).trans
           (itemsTree_tupB hT A (.step (.root (.free 0)) .here) (Ctx.ref_here_of hT (born_ref A)))
@@ -610,7 +610,7 @@ theorem holeRead_compsSlot_tupC (A : VarType) : ∀ (b : Bool) (hb : ModalSys.T 
       rw [Term.subst_mono]
       refine sig_pair rfl ((Term.subst_eta_tm _ _ _ _ _ _ _
         (by rw [Subst.at_nonproj _ rfl, Subst.single_root])).trans ?_)
-      exact eta_addr_congr (VarSymb.inner_box ModalSys.NoFour.keepOnly) _ _
+      exact eta_addr_congr (VarSymb.inner_box ModalSys.FourOff.keepOnly) _ _
   | true, hb => holeRead_compsSlot_tupCVal hb A _ _ _
 
 /-- A body over the born root's tuple read at the child, at a value `b` of the flag: `liftBody`'s
@@ -651,7 +651,7 @@ theorem subst_tupC_obj (l : List VarType) (A : VarType) : ∀ (b : Bool) (hb : M
       rw [Term.subst_mono]
       refine sig_boxtm (sig_pair rfl ((Term.subst_eta_renAt _ _ _ A _ _ _
         (Ctx.ref_inner (rcl_born_ref l A)) (Subst.box_at_inner_ren _ h0)).trans ?_))
-      exact (eta_addr_congr (VarSymb.inner_box ModalSys.NoFour.keepOnly) _ _).trans
+      exact (eta_addr_congr (VarSymb.inner_box ModalSys.FourOff.keepOnly) _ _).trans
         (congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _).symm)
   | true, hb => by
       have h0 : ((arrowS σ (ctxOf (rcl l A)) Nat.succ).set (.bnd 0)

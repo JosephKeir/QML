@@ -619,7 +619,7 @@ theorem liftBody_ex_pairUp_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.IsMC
       change SubE.Sim U ((Subst.single _ _).at u).unbox (.ren (.step u .box))
       rw [Subst.single_at_ne (by rw [hr]; exact fun h => by cases h)]
       change SubE.Sim U (.ren u.inner) _
-      rw [VarSymb.inner_box ModalSys.NoFour.keepOnly]
+      rw [VarSymb.inner_box ModalSys.FourOff.keepOnly]
       exact .refl _
     refine SubE.sim_tm_sigma (sig_boxtm (sig_pair ?_
       (Term.subst_eta_tm _ _ _ _ _ _ _ (Subst.box_at_inner_boxtm _ hsg)))).symm

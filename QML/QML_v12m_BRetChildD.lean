@@ -198,7 +198,7 @@ theorem at_retPullD_tup : ∀ {u : VarSymb} {U : VarType} (hu : (ctxOf l).ref u 
 theorem at_retPullD_item {w : VarSymb} {T : VarType} (hw : (ctxOf l).ref w = some (.VTypeBox T)) :
     (retPullD hT σ l A X).at (itemAt (imgRoot (· + 2) w.rt) w) =
       .tm (Term.eta (.step w .box) T ((Ctx.le_insert (pullCtx_fresh l).root _).ref
-        (Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly hw))) := by
+        (Ctx.ref_boxIn_of ModalSys.FourOff.keepOnly hw))) := by
   obtain ⟨r, hr, _, _⟩ := ref_rt hw
   rw [hr]
   change (retPullD hT σ l A X).at (itemAt (.free (r + 2)) w) = _
@@ -216,7 +216,7 @@ theorem subst_retPullD_entry :
         Σ a, Term σ (pullCtxD l A X) (RShape.wit (.box (bcT (bclD A X))) X).ty a) =
       ⟨_, Term.eta (.root (.free l.length)) _ (Ctx.ref_insert_root _ _ _)⟩ := by
   have hs := Subst.box_at_inner_boxtm (retPullD hT σ l A X) (v := .root (.free 0)) rfl
-  rw [VarSymb.inner_box ModalSys.NoFour.keepOnly] at hs
+  rw [VarSymb.inner_box ModalSys.FourOff.keepOnly] at hs
   refine sig_pair ?_ (Term.subst_eta_renAt _ _ _ _ _ _ _ (pullCtxD_ref_e l A X) rfl)
   refine sig_boxtm ?_
   rw [Term.subst_mono]

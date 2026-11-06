@@ -25,14 +25,14 @@ variable [ModalSys]
 
 namespace BArrow
 
-variable {σ : Signature} [ModalSys.NoFour] {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+variable {σ : Signature} [ModalSys.FourOff] {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
 
 /-! ## Back-witness arrows -/
 
 /-- ⭐A back-witness child's back arrow: its variables `bcl` have images `bimg` at the parent, with
     `□_e` transfer, `e.dia` going to the parent's variable `bcx` (docs §11.20).  Nothing for a child
     with no back witness. -/
-def BackXData [ModalSys.NoFour] (tk tp : NodeSt σ) :
+def BackXData [ModalSys.FourOff] (tk tp : NodeSt σ) :
     Option (VarSymb × VarType) → ℕ → List VarType → (ℕ → ℕ) → Prop
   | none, _, _, _ => True
   | some (e, X), cx, bcl, bimg =>
@@ -143,7 +143,7 @@ theorem realB_bcl (N : NetSt σ) (c : ℕ) (p : Node) :
   · exact Function.update_self _ _ _
   · rfl
 
-omit [ModalSys.NoFour] in
+omit [ModalSys.FourOff] in
 theorem newChild_st (N : NetSt σ) (s : Node) (kd : Option (VarSymb × VarType)) (cx : ℕ)
     (t : NodeSt σ) : (N.newChild s kd cx t).st (N.nch s :: s) = t :=
   Function.update_self _ _ _

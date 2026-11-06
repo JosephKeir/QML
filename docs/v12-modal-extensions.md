@@ -5781,6 +5781,33 @@ So there are two ways to build it:
   * *Only the `□` row.*  Unlike `five_refl`, no `◇_x` row: a loop's commitments read only the world's `□`-items and possible items, never its base items, so the `□` row covers loops at children of either kind.
 * *Next:* step 3 of the order (U's `◇_x` row) is not needed, as above; so step 4, `BData` (generalise or mirror), against `BCanon*`.
 
+#### K5 and KD5, step 4: `BData`, generalise or mirror *(2026-11-06, an audit of the code)*
+
+**Verdict: generalise (G).**  The model half of B's network, `BCanon*` and `BTruth` (about 3 900 lines), depends on B only through fields that can be gated by flag, and on 5 being off in 13 places, which are exactly what K5 must add under either option.  So mirroring would copy about 3 900 lines in order to add the same 13 things.
+
+**What the model half asks of `BData`, field by field.**
+* `irrefl` (11 uses): only to tell T's own arrow from network arrows (`reflAcc hT`, `succAddr_self`, `extract hT`, `Here`).  Every use is under T.  Gate it as `T = true → ¬ R s s`.  K5 and KD5 have T off, and their clusters have loops.
+* `symm` (11 uses in `BCanonModel`): the frame's B law and strong B's `Back` truth cases.  Gate it by `B`.
+* `sep` and `unl`: used only by strong B (`BBackTruth`, `BRetCongr`, `BBackTail`).  Gate them by `BStrong`.  `sep` may well fail in K5, where two side images can share an extent.
+* `lab`, `backRel`, `backRelX`: already gated by strong B.
+* `img`, `stg`, `imgOk`, `tr`, `ex`, `lb`, `cx`, `lbR`, `lb_hcx`, `lb_hxX`, `lb_trX`, `kd`, `kd_lb`, `exX`: arrows as renamings, and labels as extents.  K5's network has exactly these.
+* *5 off:* `BData` lives under `[ModalSys.NoFour]`, which includes `noFive` ("temporarily").  In the model half this is read only at the frame's `side`, `side_inj`, `side_side`, `trans_side`, the operation `posSide` and its laws `posSide_ext`, `posSide_content`, at `necSide_exists`, and at the truth lemma's two link cases.
+
+**Plan under G.**
+1. *(4a, mechanical)* A class for the model half without `noFive`: `NoFour` would extend it, so B's files are unchanged.  Gate `irrefl` by T, `symm` by B, and `sep` and `unl` by strong B; B's limit (`BLimit`) supplies them as now.
+2. *(with step 6)* The 13 places: `BData` gets the frame's arrow across (euclid, from the network's cluster arrows), the canonical `posSide` (a possible object moved across is the denotation of its link root at the target), its two laws, the link transfer (`tr` for links), and for strong 5 the gather's data.  B's instance supplies them by `absurdFive`.
+* *Mirrored, not shared:* the network operations and their schedule (`BNet*`, `BFair`, `BLimit`), whose arrows differ (every pair of non-root nodes, and loops).
+
+**Built (2026-11-06): 4a.**  Strict build clean, with no change of statement for B.
+* *The classes* (`QML_v12m_BSyntax`): ⭐`ModalSys.FourOff` (`WCoh` and 4 off), and `ModalSys.NoFour` extends it with `noFive`.  `noFour` and `keepOnly` now live on `FourOff`.
+* *`FourOff` now:* `BData` and its imports, `BSyntax`, `BAbs`, `BLocal`, `BChild`, `BDia`, `BNet*` and `BFair`.  Everything downstream keeps `NoFour`, which gives `FourOff`.  The model (`BCanonModel`, `BTruth`) stays under `NoFour` until step 6 fills the 13 places.
+* *The gates* (`BData`):
+  * `irrefl` by T: every use was under T, and now passes its T proof.
+  * `symm`, `unl` and `sep` by `Five = false`: B's network, with 5 off, has its arrows in pairs.  The wrappers `BData.symmB` and `BData.unlB` give them under `NoFour`; `eq_of_extent_eq` takes the flag.
+  * `backRel` and `backRelX` (strong B) take `Five = false` too, as their statements read `symm`.
+  * Why `Five = false` rather than B's flags: every use is in a `NoFour` context, where it is `NoFour.noFive`.  A K5 network, with 5 on, discharges the three by absurdity.
+* *Next:* step 5, the K5 network (mirroring `BNet*`, `BFair`, `BLimit`).
+
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
 **Verdict: no blocker found, and the plan gets smaller.**  `GKeep`'s root action is not needed, and

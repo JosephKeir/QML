@@ -116,7 +116,7 @@ def NItems.pack {V : Ctx} : {N : NShape} → NItems σ V N → Σ b, Term σ V N
 def unpackAt (hT : ModalSys.T = true) {P : VarType} : (N : NShape) → {c : Ann N.packTy} →
     Term σ (Ctx.empty.insert (.bnd 0) P) N.packTy c →
     ShapeMap σ (.boxC P (P.compsAllB true) (VarType.compOk_compsAllB true hT P)) N
-  | .boxC _ cs h, _, q => .holeC q true hT ModalSys.NoFour.noFour cs h
+  | .boxC _ cs h, _, q => .holeC q true hT ModalSys.FourOff.noFour cs h
   | .prod R S, _, q => .pair
       (unpackAt hT R (Term.holeAt q (Term.eta (.step (.root (.bnd 0)) .fst) R.packTy
         (Ctx.ref_fst_of (Ctx.ref_insert_root _ _ _)))))
@@ -154,7 +154,7 @@ theorem holeVal_unpackAt_compsRead (hT : ModalSys.T = true) {M : Model σ} {P : 
       M.holeVal (unpackAt hT N q).val.2
           (M.compsRead P (P.compsAllB true) (VarType.compOk_compsAllB true hT P) e r) =
         M.NRead N (M.holeVal (unpackAt hT N q).obj.2 e) r
-  | .boxC _ cs h, _, q => Model.holeC_compsRead q true hT ModalSys.NoFour.noFour cs h e r
+  | .boxC _ cs h, _, q => Model.holeC_compsRead q true hT ModalSys.FourOff.noFour cs h e r
   | .prod R S, _, _ => Prod.ext (holeVal_unpackAt_compsRead hT e r R _)
       (holeVal_unpackAt_compsRead hT e r S _)
 

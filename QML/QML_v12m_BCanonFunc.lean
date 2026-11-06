@@ -162,7 +162,7 @@ theorem rden_applyG :
             rfl)
   | _, _, .extract hT, _, _, .boxtm b, s, i, e => by
       change B.rden s i e (Term.collapse _ b) = B.rden s i e (.boxtm b) ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩
-      simp only [rden, dif_neg (B.irrefl s)]
+      simp only [rden, dif_neg (B.irrefl hT s)]
   | _, _, .dup hF, _, _, _, _, _, _ => (noFour hF).elim
   | _, _, .dkeep hF, _, _, _, _, _, _ => (noFour hF).elim
 

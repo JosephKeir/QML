@@ -29,7 +29,7 @@ variable [ModalSys]
 
 omit [ModalSys] in
 /-- Without 4 (B's network throughout). -/
-theorem noFour' [ModalSys] [ModalSys.NoFour] : ModalSys.Four = false := ModalSys.NoFour.noFour
+theorem noFour' [ModalSys] [ModalSys.NoFour] : ModalSys.Four = false := ModalSys.FourOff.noFour
 
 /-! ## Levels of addresses -/
 
@@ -305,7 +305,7 @@ theorem succAddrK_level {s : B.W} (a : B.Acc s) {k : ℕ} {y : VarSymb} (h : Box
   · rw [succAddrK_self hR, succAddrK_self hR, VarSymb.collapse_level_succ hs]
 
 theorem inner_eq (v : VarSymb) : v.inner = .step v .box :=
-  VarSymb.inner_box ModalSys.NoFour.keepOnly
+  VarSymb.inner_box ModalSys.FourOff.keepOnly
 
 theorem succAddrK_inner {s : B.W} (a : B.Acc s) {k : ℕ} {y : VarSymb} (h : BoxCut y k) :
     B.succAddrK s a (k + 1) y.inner = (B.succAddrK s a k y).inner := by
@@ -533,7 +533,7 @@ theorem leafOf_collapse (hT : ModalSys.T = true) : ∀ (j : ℕ) (s : B.W) (l : 
       change Arrows.Leaf.collapse hT 0 (B.leafOf s (l + 1) x) = B.leafOf s l (x.collapse l)
       rw [leafOf_lvl s hx ht₀]
       change B.leafOf s l (B.succAddrK s (B.arrows.reflAcc hT s) l x) = _
-      rw [succAddrK_self (a := B.arrows.reflAcc hT s) (B.irrefl s)]
+      rw [succAddrK_self (a := B.arrows.reflAcc hT s) (B.irrefl hT s)]
   | j + 1, s, l, x, a, t₀, b, hok, hx, ht₀, hlv => by
       obtain ⟨pre, t, rest, h⟩ := Canon.splitAt_of_lv (show l + (j + 1) < x.lv by omega)
       obtain ⟨hxe, htp, hlvr⟩ := VarSymb.splitAt_spec h
@@ -800,8 +800,8 @@ theorem leafOf_inj (hT : ModalSys.T = true) : ∀ (m : ℕ) (s : B.W) {y y' : Va
         obtain ⟨hok₀, hlv₀, -⟩ := B.succAddrK_cut ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩ hok hpre hy hl
         obtain ⟨hok₀', hlv₀', -⟩ := B.succAddrK_cut ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩ hok' hpre' hy' hl'
         have e₀ := leafOf_inj hT m s hok₀ hok₀' hlv₀ hlv₀' h₀
-        rw [succAddrK_self (a := ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩) (B.irrefl s),
-          succAddrK_self (a := ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩) (B.irrefl s), hy, hy'] at e₀
+        rw [succAddrK_self (a := ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩) (B.irrefl hT s),
+          succAddrK_self (a := ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩) (B.irrefl hT s), hy, hy'] at e₀
         have c := collapse_cut pre rest
         have c' := collapse_cut pre' rest'
         rw [hl] at c

@@ -68,14 +68,17 @@ theorem lbOfKd_sep {W : Type} {kd : W → W → Option (VarSymb × VarType)} {s 
   exact (Prod.mk.inj (Option.some.inj ((lbOfKd_eq.mp hk).symm.trans (lbOfKd_eq.mp hX)))).1
 
 /-- ⭐The data of the canonical model for B. -/
-structure BData [ModalSys.NoFour] (σ : Signature) where
+structure BData [ModalSys.FourOff] (σ : Signature) where
   W : Type
   actual : W
   w : W → BWorld σ
   R : W → W → Prop
-  symm : ∀ {s t}, R s t → R t s
-  /-- The network has no loops, so a world's own arrow (under T) is not one of its arrows. -/
-  irrefl : ∀ s, ¬ R s s
+  /-- With 5 off (B's network) the arrows come in pairs.  K5's network, with 5 on, has arrows
+      out of its root only (`docs/v12-modal-extensions.md`, "K5 and KD5, step 4"). -/
+  symm : ModalSys.Five = false → ∀ {s t}, R s t → R t s
+  /-- Under T the network has no loops, so a world's own arrow is not one of its arrows.  (K5's
+      cluster has loops, with T off.) -/
+  irrefl : ModalSys.T = true → ∀ s, ¬ R s s
   img : W → W → ℕ → ℕ
   stg : W → W → ℕ → ℕ
   imgOk : ∀ {s t}, R s t → ∀ i, ImgOk ((w s).l i) ((w t).ctx (stg s t i)) (img s t)
@@ -119,10 +122,10 @@ structure BData [ModalSys.NoFour] (σ : Signature) where
   /-- ⭐Wherever there is an arrow out there is one **not labelled** `y`, for each `y` (docs §11.23,
       P2): a plain leg's arrows are never one witness's extent, which strong B's `back` case reads
       to tell the legs apart. -/
-  unl : ∀ {s t} (y : VarSymb), R s t → ∃ t', R s t' ∧ lb s t' y = none
+  unl : ModalSys.Five = false → ∀ {s t} (y : VarSymb), R s t → ∃ t', R s t' ∧ lb s t' y = none
   /-- ⭐**Labels separate witnesses** (docs §11.23, P2): a witness labelling some arrow is
       determined by the arrows it labels. -/
-  sep : ∀ {s k y y' Y}, lb s k y = some Y →
+  sep : ModalSys.Five = false → ∀ {s k y y' Y}, lb s k y = some Y →
     (∀ t, (∃ X, lb s t y = some X) ↔ (∃ X, lb s t y' = some X)) → y = y'
   /-- ⭐Rows 3–4 (docs §11.23): **every arrow is labelled**, by a witness declared at some stage
       — what `Model.posBack_exists` reads. -/
@@ -131,27 +134,29 @@ structure BData [ModalSys.NoFour] (σ : Signature) where
       ∃ i, ((w s).ctx i).ref x = some (.VTypeDia X)
   /-- ⭐Strong B, row 1: a `Back` atom's carrier, read out along an arrow and home again, is
       interchangeable with the atom's value (`Att.back`, from the network's invariants). -/
-  backRel : ∀ (hS : ModalSys.BStrong = true) {s : W} {i : ℕ} {A : VarType} {a₀ : Ann A}
+  backRel : ∀ (hS : ModalSys.BStrong = true) (hV : ModalSys.Five = false) {s : W} {i : ℕ}
+    {A : VarType} {a₀ : Ann A}
     (bd : Term σ ((w s).ctx i).boxIn.boxIn A a₀) {a : Ann A} (t : Term σ ((w s).ctx i) A a),
     WFF.back hS .nec (Term.boxtm (Term.boxtm bd)) t ∈ (w s).M i →
     ∀ {k : W} (h : R s k),
       Canon.DTerm.Rel (S := (w s).sys) (T := (w s).T)
         ⟨stg k s (stg s k i), _, Term.subst (arrowIdx (img k s)) (arrowS σ _ (img k s))
-          (ok_arrowS (imgOk (symm h) (stg s k i))) (coh_arrowS (imgOk (symm h) (stg s k i)))
+          (ok_arrowS (imgOk (symm hV h) (stg s k i))) (coh_arrowS (imgOk (symm hV h) (stg s k i)))
           (Term.subst (arrowIdx (img s k)) (arrowS σ _ (img s k)).box
             (Subst.ok_box (ok_arrowS (imgOk h i)))
             (Subst.coh_box (ok_arrowS (imgOk h i)) (coh_arrowS (imgOk h i))) bd)⟩
         ⟨i, a, t⟩
   /-- ⭐Strong B, row 2: the same along the arrows of the carrier's witness `y`. -/
-  backRelX : ∀ (hS : ModalSys.BStrong = true) {s : W} {i : ℕ} {A : VarType} {a₀ : Ann A}
+  backRelX : ∀ (hS : ModalSys.BStrong = true) (hV : ModalSys.Five = false) {s : W} {i : ℕ}
+    {A : VarType} {a₀ : Ann A}
     {y : VarSymb} {Y : VarType} (hy : ((w s).ctx i).ref y = some (.VTypeDia Y))
     (bd : Term σ (((w s).ctx i).diaIn y).boxIn A a₀) {a : Ann A} (t : Term σ ((w s).ctx i) A a),
     WFF.back hS .pos (Term.diatm y ⟨Y, hy⟩ (Term.boxtm bd)) t ∈ (w s).M i →
     ∀ {k : W} (hk : lb s k y = some Y),
       Canon.DTerm.Rel (S := (w s).sys) (T := (w s).T)
         ⟨stg k s (stg s k i), _, Term.subst (arrowIdx (img k s)) (arrowS σ _ (img k s))
-          (ok_arrowS (imgOk (symm (lbR hk)) (stg s k i)))
-          (coh_arrowS (imgOk (symm (lbR hk)) (stg s k i)))
+          (ok_arrowS (imgOk (symm hV (lbR hk)) (stg s k i)))
+          (coh_arrowS (imgOk (symm hV (lbR hk)) (stg s k i)))
           (Term.subst (arrowXIdx (img s k) y (cx s k y)) (arrowXS σ _ (img s k) y (cx s k y)).box
             (Subst.ok_box (ok_arrowXS (imgOk (lbR hk) i) hy (lb_hcx hk i)))
             (Subst.coh_box (ok_arrowXS (imgOk (lbR hk) i) hy (lb_hcx hk i))
@@ -160,7 +165,7 @@ structure BData [ModalSys.NoFour] (σ : Signature) where
 
 namespace BData
 
-variable [ModalSys.NoFour] (B : BData σ)
+variable [ModalSys.FourOff] (B : BData σ)
 
 /-! ### The kind label -/
 
@@ -210,6 +215,15 @@ theorem mem_extent_self {s : B.W} {x : VarSymb} {a : B.Acc s} (h : a ∈ B.exten
     (hk : ¬ ∃ X, B.lb s a.1 x = some X) : ¬ B.R s a.1 ∧ (B.w s).Realised x :=
   h.resolve_left hk
 
+/-- In B's network (5 off) the arrows come in pairs. -/
+theorem symmB [ModalSys.NoFour] {s t : B.W} (h : B.R s t) : B.R t s :=
+  B.symm ModalSys.NoFour.noFive h
+
+/-- In B's network every world with an arrow out has one not labelled `y`. -/
+theorem unlB [ModalSys.NoFour] {s t : B.W} (y : VarSymb) (h : B.R s t) :
+    ∃ t', B.R s t' ∧ B.lb s t' y = none :=
+  B.unl ModalSys.NoFour.noFive y h
+
 variable {B} in
 /-- Equal extents label the same network arrows. -/
 theorem lb_iff_of_extent_eq {s : B.W} {y y' : VarSymb} (h : B.extent s y = B.extent s y')
@@ -230,9 +244,9 @@ theorem lb_iff_of_extent_eq {s : B.W} {y y' : VarSymb} (h : B.extent s y = B.ext
 
 variable {B} in
 /-- ⭐Two witnesses with one extent, labelling some arrow, are one (`sep`). -/
-theorem eq_of_extent_eq {s k : B.W} {y y' : VarSymb} {Y : VarType}
+theorem eq_of_extent_eq (hV : ModalSys.Five = false) {s k : B.W} {y y' : VarSymb} {Y : VarType}
     (hk : B.lb s k y = some Y) (h : B.extent s y = B.extent s y') : y = y' :=
-  B.sep hk (lb_iff_of_extent_eq h)
+  B.sep hV hk (lb_iff_of_extent_eq h)
 
 /-- Under a world's own arrow, the content of a realised witness's possible object `⟨x; t⟩`: the
     body realised by the datum's content, at a stage above both (`Term.realiseAtA`) — the tree's
@@ -285,7 +299,7 @@ that address is the arrow's index map applied (`arrowIdx`, as `rden` translates)
 own arrow it is collapsed (`succAddr`).  Only the frame's arrows differ from the tree's. -/
 
 theorem noFour : ModalSys.Four = true → False := fun h => by
-  rw [ModalSys.NoFour.noFour] at h
+  rw [ModalSys.FourOff.noFour] at h
   cases h
 
 /-- ⭐The network's arrows: its worlds with `RT`.  The frame is built on them, so a canonical shape
@@ -358,7 +372,7 @@ theorem canonSh_proj (s : B.W) (v : VarSymb) {U T : VarType} {st : Step}
         B.canonSh a.1 (B.succAddr s a v.inner) _).map (Arrows.Leaf.collapse hT 0) = _
     rw [Model.transpose_collapse_zero hT]
     change B.canonSh s (B.succAddr s ⟨s, ⟨Or.inr ⟨hT, rfl⟩⟩⟩ v.inner) _ = _
-    rw [succAddr_self (B.irrefl s), VarSymb.inner_collapse_zero]
+    rw [succAddr_self (B.irrefl hT s), VarSymb.inner_collapse_zero]
 
 /-- The shape environment reading each address through an address map. -/
 noncomputable def canonEnvF (Γ : Ctx) (s : B.W) (f : VarSymb → VarSymb) : B.CShEnv Γ s :=

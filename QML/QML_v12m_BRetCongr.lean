@@ -170,7 +170,7 @@ theorem leg_unique {s : B.W} {i : ℕ}
             · exact ⟨a.1, X, hX⟩
             · obtain ⟨t₀, ht₀⟩ := exists_kd_of_realised hr hy.choose_spec
               exact ⟨t₀, _, B.kd_lb ht₀⟩
-          obtain rfl := eq_of_extent_eq hX hext
+          obtain rfl := eq_of_extent_eq ModalSys.NoFour.noFive hX hext
           rfl
 
 section Congr
@@ -314,7 +314,7 @@ theorem retCongr (hS : ModalSys.BStrong = true)
     exact ret_pair hST hS hc hc' h h'
   keep := by
     intro _ hF
-    rw [ModalSys.NoFour.noFour] at hF
+    rw [ModalSys.FourOff.noFour] at hF
     cases hF
 
 end BData

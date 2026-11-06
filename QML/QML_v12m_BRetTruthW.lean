@@ -130,7 +130,7 @@ theorem holeAt_possObj {Γ : Ctx} {C X Z : VarType} {b : Ann Z}
     ?h1) (Term.subst_eta_tm _ _ _ _ _ _
       (Term.eta (x.step .dia) X (Ctx.ref_diaIn_of hxr)) ?h2)
   case h1 =>
-    rw [VarSymb.inner_box ModalSys.NoFour.keepOnly, Subst.at_nonproj _ rfl]
+    rw [VarSymb.inner_box ModalSys.FourOff.keepOnly, Subst.at_nonproj _ rfl]
     dsimp only [Subst.dia]
     rw [Subst.at_proj _ _ rfl]
     dsimp only [Subst.at]
@@ -562,11 +562,11 @@ def RetInW (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
       ∃ hiK : i ≤ B.stg k s j,
         WFF.retS hS (.wit N Z)
           (Term.pair (n.subst (arrowIdx (B.img k s)) (arrowS σ _ (B.img k s))
-              (ok_arrowS (B.imgOk (B.symm h) j)) (coh_arrowS (B.imgOk (B.symm h) j))).2
+              (ok_arrowS (B.imgOk (B.symmB h) j)) (coh_arrowS (B.imgOk (B.symmB h) j))).2
             (Term.subst (arrowXIdx (B.img k s) x (B.cx k s x))
               (arrowXS σ _ (B.img k s) x (B.cx k s x))
-              (ok_arrowXS (B.imgOk (B.symm h) j) hx (B.lb_hcx hk j))
-              (coh_arrowXS (B.imgOk (B.symm h) j) hx (B.lb_hcx hk j)) u))
+              (ok_arrowXS (B.imgOk (B.symmB h) j) hx (B.lb_hcx hk j))
+              (coh_arrowXS (B.imgOk (B.symmB h) j) hx (B.lb_hcx hk j)) u))
           (WFF.mono (((B.w s).le hiK).boxIn.insert (.bnd 0) _) Φ) ∈ (B.w s).M (B.stg k s j)
 
 /-- ⭐**Doubly witnessed returning possibilities from the far end**: as `RetInW`, along an arrow
@@ -585,12 +585,12 @@ def RetInWX (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
         (OutLeg.pos y ⟨Y, ((B.w s).le hiK).ref hy⟩ : OutLeg ((B.w s).ctx (B.stg k s j))).retS hS
           (.wit N Z)
           (Term.pair (n.subst (arrowIdx (B.img k s)) (arrowS σ _ (B.img k s))
-              (ok_arrowS (B.imgOk (B.symm (B.lbR hky)) j))
-              (coh_arrowS (B.imgOk (B.symm (B.lbR hky)) j))).2
+              (ok_arrowS (B.imgOk (B.symmB (B.lbR hky)) j))
+              (coh_arrowS (B.imgOk (B.symmB (B.lbR hky)) j))).2
             (Term.subst (arrowXIdx (B.img k s) x (B.cx k s x))
               (arrowXS σ _ (B.img k s) x (B.cx k s x))
-              (ok_arrowXS (B.imgOk (B.symm (B.lbR hky)) j) hx (B.lb_hcx hkx j))
-              (coh_arrowXS (B.imgOk (B.symm (B.lbR hky)) j) hx (B.lb_hcx hkx j)) u))
+              (ok_arrowXS (B.imgOk (B.symmB (B.lbR hky)) j) hx (B.lb_hcx hkx j))
+              (coh_arrowXS (B.imgOk (B.symmB (B.lbR hky)) j) hx (B.lb_hcx hkx j)) u))
           (WFF.mono ((((B.w s).le hiK).diaIn y).insert (.bnd 0) _) Φ) ∈ (B.w s).M (B.stg k s j)
 
 end BData
@@ -898,7 +898,7 @@ theorem mem_ret_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   have hext : (⟨s, ⟨r⟩⟩ : B.Acc k) ∈ B.extent k x := canonEnv_extent k J hX' ▸ hmem
   rcases hext with ⟨X₁, hk⟩ | ⟨hnR, -⟩
   swap
-  · exact absurd (B.symm hR) hnR
+  · exact absurd (B.symmB hR) hnR
   obtain rfl := B.lb_hxX hk J X hX'
   obtain ⟨hiK, hret⟩ := hRW hR hk Φ hj hX' n' u' hmb
   refine mem_ret_of_ind hS hInj (S := .wit N Z) ⟨k, hR⟩ hiK _ t Φ
@@ -906,8 +906,8 @@ theorem mem_ret_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
       rw [WFF.size_eqRec, hsz]; exact Nat.lt_succ_of_le (Nat.le_add_left _ _))).mp hs) hret ?_
   have hcont' : B.Ind (Model.interp (B.canonEnv s (B.stg k s J))
       (Term.subst (arrowXIdx (B.img k s) x (B.cx k s x)) (arrowXS σ _ (B.img k s) x (B.cx k s x))
-        (ok_arrowXS (B.imgOk (B.symm hR) J) hX' (B.lb_hcx hk J))
-        (coh_arrowXS (B.imgOk (B.symm hR) J) hX' (B.lb_hcx hk J)) u'))
+        (ok_arrowXS (B.imgOk (B.symmB hR) J) hX' (B.lb_hcx hk J))
+        (coh_arrowXS (B.imgOk (B.symmB hR) J) hX' (B.lb_hcx hk J)) u'))
       (Model.interp (B.canonEnv s i) t).2 := by
     rw [Model.interp_subst _ _ _ (Ctx.noProjLast_diaIn _ x)]
     dsimp only at hcont
@@ -940,7 +940,7 @@ theorem mem_retx_of_sat_here_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj
   have hsz : ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).retS hS (.wit N Z) t Φ :
       WFF σ _ 0).size = Φ.size + (RShape.wit N Z).flat.eqRecSize + 1 := rfl
   have hr : (B.w s).Realised y :=
-    (mem_extent_self (canonEnv_extent s i hY ▸ hm) fun ⟨_, hk⟩ => B.irrefl s (B.lbR hk)).2
+    (mem_extent_self (canonEnv_extent s i hY ▸ hm) fun ⟨_, hk⟩ => B.irrefl hT s (B.lbR hk)).2
   obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom (RShape.wit N Z).ty s e
   obtain ⟨_, g₁, _, g₂, hgp⟩ := getP_prod_some g
   obtain ⟨n, hn⟩ := NItems.exists_obj N g₁
@@ -1173,7 +1173,7 @@ theorem mem_retx_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   have hext' : (⟨s, ⟨r⟩⟩ : B.Acc k) ∈ B.extent k x := canonEnv_extent k J hX' ▸ hmem
   rcases hext' with ⟨X₁, hkx⟩ | ⟨hnR, -⟩
   swap
-  · exact absurd (B.symm hR) hnR
+  · exact absurd (B.symmB hR) hnR
   obtain rfl := B.lb_hxX hkx J X hX'
   obtain ⟨hiK, hret⟩ := hRWX hky hkx hY Φ hj hX' n' u' hmb
   refine mem_retx_of_ind hS hInj (S := .wit N Z) ⟨k, hR⟩ hiK hy _ t Φ
@@ -1181,8 +1181,8 @@ theorem mem_retx_of_sat_wit (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
       rw [WFF.size_eqRec, hsz]; exact Nat.lt_succ_of_le (Nat.le_add_left _ _))).mp hs) hret ?_
   have hcont' : B.Ind (Model.interp (B.canonEnv s (B.stg k s J))
       (Term.subst (arrowXIdx (B.img k s) x (B.cx k s x)) (arrowXS σ _ (B.img k s) x (B.cx k s x))
-        (ok_arrowXS (B.imgOk (B.symm hR) J) hX' (B.lb_hcx hkx J))
-        (coh_arrowXS (B.imgOk (B.symm hR) J) hX' (B.lb_hcx hkx J)) u'))
+        (ok_arrowXS (B.imgOk (B.symmB hR) J) hX' (B.lb_hcx hkx J))
+        (coh_arrowXS (B.imgOk (B.symmB hR) J) hX' (B.lb_hcx hkx J)) u'))
       (Model.interp (B.canonEnv s i) t).2 := by
     rw [Model.interp_subst _ _ _ (Ctx.noProjLast_diaIn _ x)]
     dsimp only at hcont

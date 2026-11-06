@@ -65,7 +65,7 @@ theorem boxIn_item' {Γ : Ctx} {v : VarSymb} {T : VarType} (h : Γ.boxIn v = som
   | .step u .box => exact ⟨u, rfl, (Ctx.boxIn_box h).2⟩
   | .step u .keep =>
       obtain ⟨hF, _⟩ := Ctx.boxIn_keep h
-      rw [ModalSys.NoFour.noFour] at hF
+      rw [ModalSys.FourOff.noFour] at hF
       cases hF
   | .root _ => cases h
   | .step _ .fst => cases h
@@ -994,8 +994,8 @@ noncomputable def bdataS (E : LimitEx C.toFairChain) : BData σ where
   actual := ⟨[], 0, trivial⟩
   w s := nodeWorld C.toFairChain s.1 s.2
   R := LR C.toFairChain
-  symm := LR.symm
-  irrefl := LR.irrefl
+  symm _ := LR.symm
+  irrefl _ := LR.irrefl
   img := limg C.toFairChain
   stg := lstg C.toFairChain
   imgOk h i := limgOk C.toFairChain h i
@@ -1011,11 +1011,11 @@ noncomputable def bdataS (E : LimitEx C.toFairChain) : BData σ where
   kd := lkd C.toFairChain
   kd_lb h := lbOfKd_eq.mpr h
   exX s i x X hx ψ hψ := E.exX s i x X hx ψ hψ
-  unl y h := E.unl y h
-  sep hk h := lbOfKd_sep hk h
+  unl _ {_ _} y h := E.unl y h
+  sep _ {_ _ _ _ _} hk h := lbOfKd_sep hk h
   lab _ hW _ _ h := llab C hW h
-  backRel _ _ _ _ _ bd _ t hmem _ hk := lbackRel C hk bd t hmem
-  backRelX _ _ _ _ _ _ _ hy bd _ t hmem _ hk := lbackRelX C hy bd t hmem (lbOfKd_eq.mp hk)
+  backRel _ _ _ _ _ _ bd _ t hmem _ hk := lbackRel C hk bd t hmem
+  backRelX _ _ _ _ _ _ _ _ hy bd _ t hmem _ hk := lbackRelX C hy bd t hmem (lbOfKd_eq.mp hk)
 
 end Limit
 

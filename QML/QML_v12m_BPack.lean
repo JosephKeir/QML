@@ -286,7 +286,7 @@ theorem at_item_of_tupB_base [ModalSys.NoFour] {Γ : Ctx} (θ : Subst σ Γ.boxI
     (hbb : ModalSys.T = bb)
     (h : θ.at (b.ext (encPath u.path)) = .tm (tupB u (.VTypeBox T) bb hbb hu)) :
     θ.at (b.ext (encPath u.path ++ itemTail)) =
-      .tm (Term.eta (.step u .box) T (Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly hu)) := by
+      .tm (Term.eta (.step u .box) T (Ctx.ref_boxIn_of ModalSys.FourOff.keepOnly hu)) := by
   rw [VarSymb.ext_append]
   cases bb with
   | true =>
@@ -456,7 +456,7 @@ theorem at_item_of_tupB_base_mono [ModalSys.NoFour] {Γ Δ : Ctx} (hle : Γ.boxI
     (bb : Bool) (hbb : ModalSys.T = bb)
     (h : θ.at (b.ext (encPath u.path)) = .tm (Term.mono hle (tupB u (.VTypeBox T) bb hbb hu))) :
     θ.at (b.ext (encPath u.path ++ itemTail)) = .tm (Term.mono hle
-      (Term.eta (.step u .box) T (Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly hu))) := by
+      (Term.eta (.step u .box) T (Ctx.ref_boxIn_of ModalSys.FourOff.keepOnly hu))) := by
   rw [VarSymb.ext_append]
   cases bb with
   | true =>

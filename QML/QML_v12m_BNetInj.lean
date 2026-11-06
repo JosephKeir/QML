@@ -135,7 +135,7 @@ theorem InjOk.newChild {N : NetSt σ} (h : N.InjOk) {s : Node} (hs : N.Live s)
       exact h c p hk
     · exact absurd hk he
 
-variable [ModalSys.NoFour]
+variable [ModalSys.FourOff]
 
 theorem InjOk.realF {N : NetSt σ} (hN : N.Good) (h : N.InjOk) (k : Node) (hk : N.Live k) :
     (N.realF k).InjOk := by
@@ -196,15 +196,15 @@ theorem InjOk.mkChild {N : NetSt σ} (h : N.InjOk) {s : Node} (hs : N.Live s)
 /-- No node records a back witness. -/
 def NoBk (N : NetSt σ) : Prop := ∀ k, N.bkind k = none
 
-omit [ModalSys.NoFour] in
+omit [ModalSys.FourOff] in
 theorem NoBk.init {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : (init M₀).NoBk :=
   fun _ => rfl
 
-omit [ModalSys.NoFour] in
+omit [ModalSys.FourOff] in
 theorem NoBk.setSt {N : NetSt σ} (h : N.NoBk) (s : Node) (t : NodeSt σ) :
     (N.setSt s t).NoBk := h
 
-omit [ModalSys.NoFour] in
+omit [ModalSys.FourOff] in
 theorem NoBk.newChild {N : NetSt σ} (h : N.NoBk) (s : Node) (kd : Option (VarSymb × VarType))
     (cx : ℕ) (t : NodeSt σ) (fimg₀ : ℕ → ℕ) (bcl₀ : List VarType) (bimg₀ : ℕ → ℕ) :
     (N.newChild s kd cx t fimg₀ bcl₀ bimg₀ none).NoBk := by

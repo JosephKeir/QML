@@ -267,7 +267,7 @@ def RetOutC (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
         readArrow ((B.imgOk hR i).mono ((B.w k).le hj)) (Term.boxtm g) Φ ∈ (B.w k).M j ∧
         B.Ind (B.toDom (A.compsFlat cs) s (B.rden s (B.stg k s j) (Ctx.Le.refl _)
             (Term.subst (arrowIdx (B.img k s)) (arrowS σ _ (B.img k s))
-              (ok_arrowS (B.imgOk (B.symm hR) j)) (coh_arrowS (B.imgOk (B.symm hR) j))
+              (ok_arrowS (B.imgOk (B.symmB hR) j)) (coh_arrowS (B.imgOk (B.symmB hR) j))
               (compsVal g cs h).2)) (definable_rden _ _))
           (B.toDom (A.compsFlat cs) s (B.rden s i (Ctx.Le.refl _) V) (definable_rden _ _))
 
@@ -286,12 +286,12 @@ theorem sat_retC_of_mem (hS : ModalSys.BStrong = true) (hRO : B.RetOutC hS) {s :
   obtain ⟨k, hR, j, hj, b, g, hmem, hInd⟩ := hRO V Φ hm
   have hsat := (IH k j _ (by unfold readArrow; rw [WFF.size_subst]; omega)).mpr hmem
   rw [sat_readArrow, ← boxPush_canon_at s i ⟨k, ⟨Or.inl hR⟩⟩ hR hj] at hsat
-  refine ⟨⟨k, ⟨Or.inl hR⟩⟩, _, hsat, Or.inl (B.symm hR), ?_⟩
+  refine ⟨⟨k, ⟨Or.inl hR⟩⟩, _, hsat, Or.inl (B.symmB hR), ?_⟩
   change B.model.compsBack A cs (Model.interp (B.canonEnv k j) (Term.boxtm g)) _ _
   refine compsBack_of_ind A _ _ cs h _ ?_
   rw [← interp_canon _ (Model.Env.Agree.refl' _), ← interp_canon V (Model.Env.Agree.refl' _),
     Model.interp_subst _ _ _ (Ctx.noProjLast_boxIn _),
-    ← boxPush_canon_at k _ ⟨s, ⟨Or.inl (B.symm hR)⟩⟩ (B.symm hR) le_rfl,
+    ← boxPush_canon_at k _ ⟨s, ⟨Or.inl (B.symmB hR)⟩⟩ (B.symmB hR) le_rfl,
     Model.interp_compsVal] at hInd
   exact hInd
 
@@ -345,8 +345,8 @@ def RetOutXC (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
             (((B.w k).le hj).ref (B.hcx hk i)) (Term.boxtm g) Φ ∈ (B.w k).M j ∧
         B.Ind (B.toDom (A.compsFlat cs) s (B.rden s (B.stg k s j) (Ctx.Le.refl _)
             (Term.subst (arrowIdx (B.img k s)) (arrowS σ _ (B.img k s))
-              (ok_arrowS (B.imgOk (B.symm (B.kdR hk)) j))
-              (coh_arrowS (B.imgOk (B.symm (B.kdR hk)) j)) (compsVal g cs h).2))
+              (ok_arrowS (B.imgOk (B.symmB (B.kdR hk)) j))
+              (coh_arrowS (B.imgOk (B.symmB (B.kdR hk)) j)) (compsVal g cs h).2))
             (definable_rden _ _))
           (B.toDom (A.compsFlat cs) s (B.rden s i (Ctx.Le.refl _) V) (definable_rden _ _))
 
@@ -373,12 +373,12 @@ theorem sat_retxC_of_mem (hS : ModalSys.BStrong = true) (hRX : B.RetOutXC hS) {s
     exact Or.inl ⟨Y, B.kd_lb hk⟩
   rw [sat_readArrowX, ← diaPush_canon_at s i hY ⟨⟨k, ⟨Or.inl hR⟩⟩, ha⟩ (B.kd_lb hk) hj]
     at hsat
-  refine ⟨Y, hY, ⟨⟨k, ⟨Or.inl hR⟩⟩, ha⟩, _, hsat, Or.inl (B.symm hR), ?_⟩
+  refine ⟨Y, hY, ⟨⟨k, ⟨Or.inl hR⟩⟩, ha⟩, _, hsat, Or.inl (B.symmB hR), ?_⟩
   change B.model.compsBack A cs (Model.interp (B.canonEnv k j) (Term.boxtm g)) _ _
   refine compsBack_of_ind A _ _ cs h _ ?_
   rw [← interp_canon _ (Model.Env.Agree.refl' _), ← interp_canon V (Model.Env.Agree.refl' _),
     Model.interp_subst _ _ _ (Ctx.noProjLast_boxIn _),
-    ← boxPush_canon_at k _ ⟨s, ⟨Or.inl (B.symm hR)⟩⟩ (B.symm hR) le_rfl,
+    ← boxPush_canon_at k _ ⟨s, ⟨Or.inl (B.symmB hR)⟩⟩ (B.symmB hR) le_rfl,
     Model.interp_compsVal] at hInd
   exact hInd
 

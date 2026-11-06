@@ -299,7 +299,7 @@ theorem getP_unarrAt_item {Γ : Ctx} (A : VarType) {a : Ann (VarType.VTypeBox A)
   have hok := ok_arrowS (σ := σ) (retBackImg [(VarType.VTypeBox A).bc] A (bc_root_ref A))
   have hw : (ctxOf [(VarType.VTypeBox A).bc]).ref (itemAt (.free 0) u) = some T := by
     have hu' : (ctxOf [VarType.VTypeBox A]).boxIn.ref (.step u .box) = some T := by
-      rwa [VarSymb.inner_box ModalSys.NoFour.keepOnly] at hu
+      rwa [VarSymb.inner_box ModalSys.FourOff.keepOnly] at hu
     have := hok (.step u .box) T rfl ((Ctx.ref_nonproj _ rfl).symm.trans hu')
     change (ctxOf _).ref (itemImg (fun _ => 0) u) = some T at this
     rwa [itemImg, hrt] at this
@@ -309,7 +309,7 @@ theorem getP_unarrAt_item {Γ : Ctx} (A : VarType) {a : Ann (VarType.VTypeBox A)
   refine (sig_subst _ _ _ (Term.subst_eta_renAt _ _ _ T _ _ hu hw ?_)).trans
     (Term.subst_eta_tm _ _ _ T _ hw s
       (Subst.at_ext_getP _ _ (Subst.at_single_root (σ := σ) _ _) hs))
-  rw [VarSymb.inner_box ModalSys.NoFour.keepOnly, Subst.at_nonproj _ rfl]
+  rw [VarSymb.inner_box ModalSys.FourOff.keepOnly, Subst.at_nonproj _ rfl]
   change SubE.ren (itemImg (fun _ => 0) u) = _
   rw [itemImg, hrt]
   rfl
@@ -402,13 +402,13 @@ theorem subst_arrow_eta_born {l : List VarType} {Δ : Ctx} [Δ.NoSlots] {img : �
         (Term.eta u.inner T hu)⟩ : Σ c, Term σ Δ T c) =
         ⟨_, Term.eta (itemAt (.free (img 0)) u) T hw⟩ := by
   have hu' : (ctxOf l).boxIn.ref (.step u .box) = some T := by
-    rwa [VarSymb.inner_box ModalSys.NoFour.keepOnly] at hu
+    rwa [VarSymb.inner_box ModalSys.FourOff.keepOnly] at hu
   have hw : Δ.ref (itemAt (.free (img 0)) u) = some T := by
     have := ok_arrowS (σ := σ) himg (.step u .box) T rfl ((Ctx.ref_nonproj _ rfl).symm.trans hu')
     change Δ.ref (itemImg img u) = some T at this
     rwa [itemImg, hrt] at this
   refine ⟨hw, Term.subst_eta_renAt _ _ _ T _ _ hu hw ?_⟩
-  rw [VarSymb.inner_box ModalSys.NoFour.keepOnly, Subst.at_nonproj _ rfl]
+  rw [VarSymb.inner_box ModalSys.FourOff.keepOnly, Subst.at_nonproj _ rfl]
   change SubE.ren (itemImg img u) = _
   rw [itemImg, hrt]
   rfl

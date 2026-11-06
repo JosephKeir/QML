@@ -78,7 +78,7 @@ theorem canonEnv_ref (s : B.W) (i : ℕ) :
                 (.boxtm (Term.eta v.inner _ (Ctx.ref_inner hU))) ⟨s, ⟨Or.inr ⟨hT₁, rfl⟩⟩⟩) _ = _
               exact toDom_congr
                 ((rden_boxtm_self (Ctx.Le.refl _) (Term.eta v.inner _ (Ctx.ref_inner hU))
-                  ⟨s, ⟨Or.inr ⟨hT₁, rfl⟩⟩⟩ (B.irrefl s)).trans
+                  ⟨s, ⟨Or.inr ⟨hT₁, rfl⟩⟩⟩ (B.irrefl hT₁ s)).trans
                   (rden_sigma _ ((Term.collapse_eta _ _ _ _).trans
                     (Term.eta_congr (VarSymb.inner_collapse_zero v) _ _ _)))) _ _
           | box => cases hs
@@ -160,7 +160,7 @@ theorem boxPush_canon (s : B.W) (i : ℕ) (a : B.Acc s) (hR : B.R s a.1) :
       (B.canonEnv a.1 (B.stg s a.1 i)) := by
   funext v T hv
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
-  have hk := ModalSys.NoFour.keepOnly
+  have hk := ModalSys.FourOff.keepOnly
   have hw : ((B.w a.1).ctx (B.stg s a.1 i)).ref (itemAt (imgRoot (B.img s a.1) u.rt) u) =
       some T := B.arOk hR i (.step u .box) T rfl hv
   change B.model.necEval ((B.canonEnv s i).ref u (Ctx.boxIn_step_box hv)) a =
@@ -265,7 +265,7 @@ theorem interp_dia_self {A : VarType} {a : Ann A} {Γ : Ctx} {s : B.W} {i : ℕ}
   have hm' : B.model.frame.reflAcc hT s ∈
       (B.model.posEval ((B.canonEnv s K).ref x hdecl)).1 := by
     rw [canonEnv_extent]
-    exact Or.inr ⟨B.irrefl s, hrx⟩
+    exact Or.inr ⟨B.irrefl hT s, hrx⟩
   have hcont : (B.model.posEval ((B.canonEnv s K).ref x hdecl)).2
         ⟨B.model.frame.reflAcc hT s, hm'⟩ =
       Model.interp (B.canonEnv s K)

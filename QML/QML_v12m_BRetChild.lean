@@ -218,7 +218,7 @@ theorem at_retPull_tup : ∀ {u : VarSymb} {U : VarType} (hu' : (ctxOf l).ref u 
 theorem at_retPull_item {w : VarSymb} {T : VarType} (hw : (ctxOf l).ref w = some (.VTypeBox T)) :
     (retPullS hT σ l A hV hu e).at (itemAt (imgRoot Nat.succ w.rt) w) =
       .tm (Term.eta (.step w .box) T ((hV.trans (Ctx.le_insert hu.root _)).ref
-        (Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly hw))) := by
+        (Ctx.ref_boxIn_of ModalSys.FourOff.keepOnly hw))) := by
   obtain ⟨r, hr, _, _⟩ := ref_rt hw
   rw [hr]
   change (retPullS hT σ l A hV hu e).at (itemAt (.free (r + 1)) w) = _
@@ -255,7 +255,7 @@ theorem subst_retPull_entry {kl : List VarType} (hs : [VarType.VTypeBox A] <:+ k
         Σ a, Term σ (pullCtx V l A) (.VTypeBox (bcT [.VTypeBox A])) a) =
       ⟨_, Term.eta (.root (.free l.length)) _ (Ctx.ref_insert_root _ _ _)⟩ := by
   have hs' := Subst.box_at_inner_boxtm (retPullS hT σ l A hV hu e) (v := .root (.free 0)) rfl
-  rw [VarSymb.inner_box ModalSys.NoFour.keepOnly] at hs'
+  rw [VarSymb.inner_box ModalSys.FourOff.keepOnly] at hs'
   change (⟨_, Term.boxtm (Term.subst _ _ _ _ (Term.mono _ _))⟩ :
       Σ a, Term σ (pullCtx V l A) (.VTypeBox (bcT [.VTypeBox A])) a) =
     ⟨_, Term.boxtm (Term.pair Term.unit

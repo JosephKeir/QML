@@ -39,7 +39,7 @@ def tupAnnB : VarSymb → (R : VarType) → (b : Bool) → Ann (R.bcB b)
 /-- The items of `u : R` as one term of the `□` view, for a value `b` of the T flag: under T a
     `□A` component contributes its box contents and, second, the items of its value here.  The
     flag is an argument so that the type `R.bcB b` reduces by matching on it. -/
-def tupB [ModalSys.NoFour] {Γ : Ctx} : (u : VarSymb) → (R : VarType) → (b : Bool) →
+def tupB [ModalSys.FourOff] {Γ : Ctx} : (u : VarSymb) → (R : VarType) → (b : Bool) →
     ModalSys.T = b → Γ.ref u = some R → Term σ Γ.boxIn (R.bcB b) (tupAnnB u R b)
   | _, .Var, _, _, _ => .unit
   | _, .VTypeOne, _, _, _ => .unit
@@ -47,17 +47,17 @@ def tupB [ModalSys.NoFour] {Γ : Ctx} : (u : VarSymb) → (R : VarType) → (b :
       .pair (tupB (.step u .fst) A b hb (Ctx.ref_fst_of h))
         (tupB (.step u .snd) B b hb (Ctx.ref_snd_of h))
   | u, .VTypeBox A, true, hb, h =>
-      .pair (Term.eta (.step u .box) A (Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly h))
+      .pair (Term.eta (.step u .box) A (Ctx.ref_boxIn_of ModalSys.FourOff.keepOnly h))
         (tupB (.step u .here) A true hb (Ctx.ref_here_of hb h))
   | u, .VTypeBox A, false, _, h =>
-      Term.eta (.step u .box) A (Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly h)
+      Term.eta (.step u .box) A (Ctx.ref_boxIn_of ModalSys.FourOff.keepOnly h)
   | _, .VTypeDia _, _, _, _ => .unit
 
 /-- The annotation of `tup`. -/
 abbrev tupAnn (u : VarSymb) (R : VarType) : Ann R.bc := tupAnnB u R ModalSys.T
 
 /-- ⭐The items of `u : R`, as one term of the `□` view of type `R.bc`. -/
-abbrev tup [ModalSys.NoFour] {Γ : Ctx} (u : VarSymb) (R : VarType) (h : Γ.ref u = some R) :
+abbrev tup [ModalSys.FourOff] {Γ : Ctx} (u : VarSymb) (R : VarType) (h : Γ.ref u = some R) :
     Term σ Γ.boxIn R.bc (tupAnn u R) :=
   tupB u R ModalSys.T rfl h
 
@@ -90,7 +90,7 @@ theorem ctxOf_ref_old {A : VarType} {l : List VarType} {u : VarSymb}
     (h : u.rt ≠ .free l.length) : (ctxOf (A :: l)).ref u = (ctxOf l).ref u :=
   Ctx.ref_insert_ne A h
 
-theorem ok_absS [ModalSys.NoFour] (A : VarType) (l : List VarType) :
+theorem ok_absS [ModalSys.FourOff] (A : VarType) (l : List VarType) :
     Subst.Ok (ctxOf (A :: l)).boxIn (absS σ (absCtx A l) l.length) := by
   intro v T _ hv
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
@@ -106,9 +106,9 @@ theorem ok_absS [ModalSys.NoFour] (A : VarType) (l : List VarType) :
       rw [hr] at h
       cases h)]
     rw [ctxOf_ref_old hrt] at hu
-    exact Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly hu
+    exact Ctx.ref_boxIn_of ModalSys.FourOff.keepOnly hu
 
-theorem coh_absS [ModalSys.NoFour] (A : VarType) (l : List VarType) :
+theorem coh_absS [ModalSys.FourOff] (A : VarType) (l : List VarType) :
     Subst.Coh (absIdx l.length) (ctxOf (A :: l)).boxIn (absS σ (absCtx A l) l.length) := by
   refine Subst.coh_of (ok_absS A l) ?_
   intro v T _ hv p
@@ -130,7 +130,7 @@ theorem absCtx_le (A : VarType) (l : List VarType) :
   ((ctxOf_le_append [A] l).boxIn).insert (.bnd 0) A.bc
 
 /-- ⭐The abstraction of a formula of the new `□` view. -/
-noncomputable def abs [ModalSys.NoFour] (A : VarType) (l : List VarType)
+noncomputable def abs [ModalSys.FourOff] (A : VarType) (l : List VarType)
     (ψ : WFF σ (ctxOf (A :: l)).boxIn 0) : WFF σ (absCtx A l) 1 :=
   WFF.subst (absIdx l.length) (absS σ (absCtx A l) l.length) (ok_absS A l) (coh_absS A l)
     Ctx.NoSlots.slots (absCtx_slots A l) ψ
@@ -147,7 +147,7 @@ theorem encStep_here (hT : ModalSys.T = true) : encStep .here = .snd := by
 /-- ⭐Projecting a tuple along an encoded projection step gives the tuple of the projected
     address: a product's tuple is a pair, and under T a `□` component's tuple has its value
     here's tuple second. -/
-theorem proj_tupB [ModalSys.NoFour] {Γ : Ctx} {u : VarSymb} {U U' : VarType} {b : Bool}
+theorem proj_tupB [ModalSys.FourOff] {Γ : Ctx} {u : VarSymb} {U U' : VarType} {b : Bool}
     (hb : ModalSys.T = b) (hu : Γ.ref u = some U) {s : Step} (hs : s.isProj = true)
     (h' : U.step s = some U') (hu' : Γ.ref (.step u s) = some U') :
     (SubE.tm (tupB (σ := σ) u U b hb hu) : SubE σ Γ.boxIn).proj (encStep s) =
@@ -175,12 +175,12 @@ theorem proj_tupB [ModalSys.NoFour] {Γ : Ctx} {u : VarSymb} {U U' : VarType} {b
 
 /-- ⭐A substitution whose entry at an encoded address is the tuple of `u : □T` reads, at `u`'s
     item's image, the item itself. -/
-theorem at_item_of_tupB [ModalSys.NoFour] {Γ : Ctx} (θ : Subst σ Γ.boxIn) (z : Root)
+theorem at_item_of_tupB [ModalSys.FourOff] {Γ : Ctx} (θ : Subst σ Γ.boxIn) (z : Root)
     {u : VarSymb} {T : VarType} (hu : Γ.ref u = some (.VTypeBox T)) (b : Bool)
     (hb : ModalSys.T = b)
     (h : θ.at ((VarSymb.root z).ext (encPath u.path)) = .tm (tupB u (.VTypeBox T) b hb hu)) :
     θ.at (itemAt z u) =
-      .tm (Term.eta (.step u .box) T (Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly hu)) := by
+      .tm (Term.eta (.step u .box) T (Ctx.ref_boxIn_of ModalSys.FourOff.keepOnly hu)) := by
   rw [itemAt, VarSymb.ext_append]
   cases b with
   | true =>
@@ -193,7 +193,7 @@ theorem at_item_of_tupB [ModalSys.NoFour] {Γ : Ctx} (θ : Subst σ Γ.boxIn) (z
       exact h
 
 /-- `proj_tupB` for a tuple weakened into a larger context. -/
-theorem proj_tupB_mono [ModalSys.NoFour] {Γ Δ : Ctx} (hle : Γ.boxIn.Le Δ) {u : VarSymb}
+theorem proj_tupB_mono [ModalSys.FourOff] {Γ Δ : Ctx} (hle : Γ.boxIn.Le Δ) {u : VarSymb}
     {U U' : VarType} {b : Bool} (hb : ModalSys.T = b) (hu : Γ.ref u = some U) {s : Step}
     (hs : s.isProj = true) (h' : U.step s = some U') (hu' : Γ.ref (.step u s) = some U') :
     (SubE.tm (Term.mono hle (tupB (σ := σ) u U b hb hu)) : SubE σ Δ).proj (encStep s) =
@@ -220,13 +220,13 @@ theorem proj_tupB_mono [ModalSys.NoFour] {Γ Δ : Ctx} (hle : Γ.boxIn.Le Δ) {u
   | _ => exact absurd hs (by decide)
 
 /-- `at_item_of_tupB` for a tuple weakened into a larger context. -/
-theorem at_item_of_tupB_mono [ModalSys.NoFour] {Γ Δ : Ctx} (hle : Γ.boxIn.Le Δ)
+theorem at_item_of_tupB_mono [ModalSys.FourOff] {Γ Δ : Ctx} (hle : Γ.boxIn.Le Δ)
     (θ : Subst σ Δ) (z : Root) {u : VarSymb} {T : VarType} (hu : Γ.ref u = some (.VTypeBox T))
     (b : Bool) (hb : ModalSys.T = b)
     (h : θ.at ((VarSymb.root z).ext (encPath u.path)) =
       .tm (Term.mono hle (tupB u (.VTypeBox T) b hb hu))) :
     θ.at (itemAt z u) = .tm (Term.mono hle
-      (Term.eta (.step u .box) T (Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly hu))) := by
+      (Term.eta (.step u .box) T (Ctx.ref_boxIn_of ModalSys.FourOff.keepOnly hu))) := by
   rw [itemAt, VarSymb.ext_append]
   cases b with
   | true =>
@@ -240,7 +240,7 @@ theorem at_item_of_tupB_mono [ModalSys.NoFour] {Γ Δ : Ctx} (hle : Γ.boxIn.Le 
 
 /-- Projecting the tuple entry along an encoded path from the slot reaches the tuple of the
     component. -/
-theorem at_single_tupB [ModalSys.NoFour] (b : Bool) (hb : ModalSys.T = b) {A : VarType}
+theorem at_single_tupB [ModalSys.FourOff] (b : Bool) (hb : ModalSys.T = b) {A : VarType}
     {l : List VarType} :
     ∀ {u : VarSymb} {U : VarType} (hu : (ctxOf (A :: l)).ref u = some U),
       u.rt = .free l.length →
@@ -289,12 +289,12 @@ theorem at_single_tupB [ModalSys.NoFour] (b : Bool) (hb : ModalSys.T = b) {A : V
           | _ => exact absurd hproj (by decide)
 
 /-- The tuple entry read at an item's image is the item. -/
-theorem at_single_item [ModalSys.NoFour] (b : Bool) (hb : ModalSys.T = b) {A : VarType}
+theorem at_single_item [ModalSys.FourOff] (b : Bool) (hb : ModalSys.T = b) {A : VarType}
     {l : List VarType} {u : VarSymb} {T : VarType}
     (hu : (ctxOf (A :: l)).ref u = some (.VTypeBox T)) (hrt : u.rt = .free l.length) :
     (Subst.single (σ := σ) (Δ := (ctxOf (A :: l)).boxIn) (.bnd 0)
       (.tm (tupB (.root (.free l.length)) A b hb (ctxOf_ref_new A l)))).at (itemAt (.bnd 0) u) =
-      .tm (Term.eta (.step u .box) T (Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly hu)) := by
+      .tm (Term.eta (.step u .box) T (Ctx.ref_boxIn_of ModalSys.FourOff.keepOnly hu)) := by
   have ih := at_single_tupB (σ := σ) b hb hu hrt
   rw [itemAt, VarSymb.ext_append]
   cases b with
@@ -309,7 +309,7 @@ theorem at_single_item [ModalSys.NoFour] (b : Bool) (hb : ModalSys.T = b) {A : V
 
 /-- ⭐A formula of the new `□` view is its abstraction instantiated at the tuple of the new
     variable's items. -/
-theorem instantiate_tup_abs [ModalSys.NoFour] (A : VarType) (l : List VarType)
+theorem instantiate_tup_abs [ModalSys.FourOff] (A : VarType) (l : List VarType)
     (ψ : WFF σ (ctxOf (A :: l)).boxIn 0) :
     WFF.instantiate Ctx.NoSlots.slots (tup (.root (.free l.length)) A (ctxOf_ref_new A l))
       (WFF.mono (absCtx_le A l) (abs A l ψ)) = ψ := by
@@ -391,7 +391,7 @@ theorem itemAt_reroot (z z' : Root) (u : VarSymb) : (itemAt z u).reroot z' = ite
 
 /-- ⭐The arrow extended by the new variable's image is the old arrow applied to the abstraction,
     with the slot sent to the image. -/
-theorem subst_arrow_abs [ModalSys.NoFour] {A : VarType} {ls lt : List VarType} {img : ℕ → ℕ}
+theorem subst_arrow_abs [ModalSys.FourOff] {A : VarType} {ls lt : List VarType} {img : ℕ → ℕ}
     (himg : ImgOk ls (ctxOf lt) img) (ψ : WFF σ (ctxOf (A :: ls)).boxIn 0) :
     WFF.subst (arrowIdx (extImg img ls.length lt.length))
         (arrowS σ (ctxOf (A.bc :: lt)) (extImg img ls.length lt.length))

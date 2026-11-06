@@ -153,7 +153,7 @@ theorem ok_packXS (l : List VarType) {Δ : Ctx} {b : VarSymb} (hb : Δ.ref b = s
   intro v T _ hv
   rcases diaIn_item hv with ⟨u, rfl, hu⟩ | ⟨rfl, hxT⟩
   · exact ok_packS (σ := σ) l hb (.step u .box) T rfl
-      (by rw [Ctx.boxIn_box_of ModalSys.NoFour.keepOnly hu])
+      (by rw [Ctx.boxIn_box_of ModalSys.FourOff.keepOnly hu])
   · rw [hx] at hxT
     cases hxT
     change (if x = x then SubE.ren c else .hide).OkRef X
@@ -1114,7 +1114,7 @@ theorem liftBodyX_ex_pairUp_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.IsM
       change SubE.Sim U ((Subst.single _ _).at u).unbox (.ren (.step u .box))
       rw [Subst.single_at_ne (by rw [hr]; exact fun h => by cases h)]
       change SubE.Sim U (.ren u.inner) _
-      rw [VarSymb.inner_box ModalSys.NoFour.keepOnly]
+      rw [VarSymb.inner_box ModalSys.FourOff.keepOnly]
       exact .refl _
     rw [Subst.set_root]
     refine SubE.sim_tm_sigma (sig_boxtm (sig_pair ?_

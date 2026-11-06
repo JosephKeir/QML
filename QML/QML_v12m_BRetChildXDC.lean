@@ -230,7 +230,7 @@ theorem at_retPullXDC_item {w : VarSymb} {T : VarType}
     (hw : (ctxOf l).ref w = some (.VTypeBox T)) :
     (retPullXDC σ l A Xe hV hu ex).at (itemAt (imgRoot (· + 2) w.rt) w) =
       .tm (Term.eta (.step w .box) T ((hV.trans (Ctx.le_insert hu.root _)).ref
-        (Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly hw))) := by
+        (Ctx.ref_boxIn_of ModalSys.FourOff.keepOnly hw))) := by
   obtain ⟨r, hr, _, _⟩ := ref_rt hw
   rw [hr]
   change (retPullXDC σ l A Xe hV hu ex).at (itemAt (.free (r + 2)) w) = _

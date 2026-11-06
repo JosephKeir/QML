@@ -81,7 +81,7 @@ noncomputable def frame : Frame.{0, 0} σ where
   toArrows := B.arrows
   actual := B.actual
   serial := fun hD s => B.serial_canon hD s
-  symm := fun _ {_ _} h => ⟨h.elim (fun h => Or.inl (B.symm h)) fun h => Or.inr ⟨h.1, h.2.symm⟩⟩
+  symm := fun _ {_ _} h => ⟨h.elim (fun h => Or.inl (B.symmB h)) fun h => Or.inr ⟨h.1, h.2.symm⟩⟩
   homeUnique := fun _ => ⟨fun _ _ => rfl⟩
   side := fun hV => (ModalSys.NoFour.absurdFive hV).elim
   side_inj := fun hV => (ModalSys.NoFour.absurdFive hV).elim
@@ -540,12 +540,12 @@ theorem ret_fwd (_hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set
                 erw [rden_boxtm_self _ _ ⟨s, ⟨rk⟩⟩ hk]
                 exact (rden_congr _ _ _ _ _ _).trans
                   (rden_sigma _ (Term.collapse_collapse (k := 0) (m := 0) _ _ _ _ bd)).symm
-              refine ⟨Or.inl (B.symm hk), _, ⟨i, a, t⟩, ?_, (fromDom_toDom _ _ _ _ _).symm,
-                B.backRel hS' bd t hmem hk⟩
+              refine ⟨Or.inl (B.symmB hk), _, ⟨i, a, t⟩, ?_, (fromDom_toDom _ _ _ _ _).symm,
+                B.backRel hS' ModalSys.NoFour.noFive bd t hmem hk⟩
               change _ = B.fromDom A s (B.toDom A s ((B.rden s i (Ctx.Le.refl _)
-                (Term.boxtm (Term.boxtm bd))) ⟨k, ⟨rk⟩⟩ ⟨s, ⟨Or.inl (B.symm hk)⟩⟩) _)
+                (Term.boxtm (Term.boxtm bd))) ⟨k, ⟨rk⟩⟩ ⟨s, ⟨Or.inl (B.symmB hk)⟩⟩) _)
               rw [fromDom_toDom, rden_boxtm_net _ _ _ hk]
-              exact (rden_boxtm_net _ _ _ (B.symm hk)).symm
+              exact (rden_boxtm_net _ _ _ (B.symmB hk)).symm
   | pos =>
       intro c ct
       cases ct with
@@ -583,13 +583,13 @@ theorem ret_fwd (_hS : ModalSys.BStrong = true) {A : VarType} {s : B.W} {S : Set
                 · exact absurd hR hm.1
               obtain ⟨X, hkX⟩ := hk
               obtain rfl := B.lb_hxX hkX i Y hY
-              refine ⟨Or.inl (B.symm hR), _, ⟨i, a, t⟩, ?_, (fromDom_toDom _ _ _ _ _).symm,
-                B.backRelX hS' hY bd t hmem hkX⟩
+              refine ⟨Or.inl (B.symmB hR), _, ⟨i, a, t⟩, ?_, (fromDom_toDom _ _ _ _ _).symm,
+                B.backRelX hS' ModalSys.NoFour.noFive hY bd t hmem hkX⟩
               change _ = B.fromDom A s (B.toDom A s (((B.rden s i (Ctx.Le.refl _)
                 (Term.diatm y ⟨_, hY⟩ (Term.boxtm bd))).2 ⟨⟨k, ⟨rk⟩⟩, hm⟩)
-                ⟨s, ⟨Or.inl (B.symm hR)⟩⟩) _)
+                ⟨s, ⟨Or.inl (B.symmB hR)⟩⟩) _)
               rw [fromDom_toDom, rden_diatm_net _ _ _ ⟨⟨k, ⟨rk⟩⟩, hm⟩ ⟨_, hkX⟩]
-              exact (rden_boxtm_net _ _ _ (B.symm hR)).symm
+              exact (rden_boxtm_net _ _ _ (B.symmB hR)).symm
 
 omit [ModalSys.NoFour] in
 /-- Filling the carrier slot of a row-1 `Back` atom. -/
@@ -674,7 +674,7 @@ theorem rden_eta_real {s : B.W} {x : VarSymb} (hr : (B.w s).Realised x) {k : ℕ
         ⟨⟨s, ⟨Or.inr ⟨hr.T, rfl⟩⟩⟩, hm⟩ = B.rden s hr.data.i₀ (Ctx.Le.refl _) hr.data.t₀ :=
   (rden_diatm_self (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩
     (Term.eta (.step x .dia) hr.data.A (Ctx.ref_diaIn_of hdecl)) ⟨_, hm⟩
-    (fun ⟨_, hk⟩ => B.irrefl s (B.lbR hk))).trans
+    (fun ⟨_, hk⟩ => B.irrefl hr.T s (B.lbR hk))).trans
     (rden_realTerm_eta hr (Ctx.Le.refl _) ⟨hr.data.A, hdecl⟩ (Ctx.ref_diaIn_of hdecl) _ _)
 
 /-- ⭐**Every object of a domain is, up to `Ind`, the content along the world's own arrow of a
@@ -694,7 +694,7 @@ theorem posRet_exists_canon {A : VarType} {s : B.W} (hT : ModalSys.T = true)
   obtain rfl : hr.data.A = A := by
     have := (hr.data.hdeclOf i' ⟨A, hy⟩).symm.trans hy
     simpa using this
-  have hm : B.frame.reflAcc hT s ∈ B.extent s y := Or.inr ⟨B.irrefl s, hr⟩
+  have hm : B.frame.reflAcc hT s ∈ B.extent s y := Or.inr ⟨B.irrefl hT s, hr⟩
   refine ⟨⟨B.rden s hr.data.i₀ (Ctx.Le.refl _) (Term.eta y (.VTypeDia hr.data.A) hr.data.hd₀),
       definable_rden _ _⟩, hm, _, ⟨i', _, Term.mono ((B.w s).le hi) t⟩, ?_, ?_,
       rel_here hT ⟨_, hy⟩ (Term.eta (.step y .dia) hr.data.A (Ctx.ref_diaIn_of hy)) _ hr hmem⟩
@@ -736,7 +736,7 @@ theorem posBack_exists_canon (hS : ModalSys.BStrong = true)
   obtain ⟨i, a, t, ht⟩ := B.definable_fromDom A w o
   have hdia : (OutLeg.nec : OutLeg ((B.w w).ctx i)).dia (.top : WFF σ _ 0) ∈ (B.w w).M i := by
     refine ((B.w w).mcs i).neg_mem_iff.mpr fun hbox => ?_
-    exact ((B.w v).mcs _).neg_mem_iff.mp (B.tr (B.symm hR) i _ hbox) ((B.w v).mcs _).top_mem
+    exact ((B.w v).mcs _).neg_mem_iff.mp (B.tr (B.symmB hR) i _ hbox) ((B.w v).mcs _).top_mem
   have hex : WFF.backEx hS t ∈ (B.w w).M i :=
     BWorld.mem_of_provable (Δ := [_]) (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hdia)
       ⟨Proof.backEx hS t _ (ctxOf_fresh le_rfl) (Proof.lookup List.mem_cons_self)⟩
@@ -748,9 +748,9 @@ theorem posBack_exists_canon (hS : ModalSys.BStrong = true)
       (WFF.instantiate_backAt_slot hS (Term.mono ((B.w w).le hij) t) _))
     refine WFF.back_congr' hS .nec (Term.mono_eta _ _ _ _) ?_
     simp only [Term.mono_mono]
-  have hrel := B.backRel hS
+  have hrel := B.backRel hS ModalSys.NoFour.noFive
     (Term.eta ((VarSymb.root (.free c)).inner).inner A (Ctx.ref_inner (Ctx.ref_inner hc)))
-    (Term.mono ((B.w w).le hij) t) hm' (B.symm hR)
+    (Term.mono ((B.w w).le hij) t) hm' (B.symmB hR)
   -- the label of the arrow, and the possible object
   obtain ⟨ω, Ω, hlb, i₀, hω⟩ := B.lab hS hW hR
   set K := max i₀ (B.stg w v j) with hK
@@ -761,8 +761,8 @@ theorem posBack_exists_canon (hS : ModalSys.BStrong = true)
   -- the carrier's image at `v`, and the possible object's body
   set u₀ : Term σ ((B.w v).ctx (B.stg w v j)).boxIn A _ :=
     Term.subst (arrowIdx (B.img w v)) (arrowS σ _ (B.img w v)).box
-      (Subst.ok_box (ok_arrowS (B.imgOk (B.symm hR) j)))
-      (Subst.coh_box (ok_arrowS (B.imgOk (B.symm hR) j)) (coh_arrowS (B.imgOk (B.symm hR) j)))
+      (Subst.ok_box (ok_arrowS (B.imgOk (B.symmB hR) j)))
+      (Subst.coh_box (ok_arrowS (B.imgOk (B.symmB hR) j)) (coh_arrowS (B.imgOk (B.symmB hR) j)))
       (Term.eta ((VarSymb.root (.free c)).inner).inner A (Ctx.ref_inner (Ctx.ref_inner hc)))
     with hu₀
   have hL : ((B.w v).ctx (B.stg w v j)).boxIn.Le (((B.w v).ctx K).diaIn ω) :=

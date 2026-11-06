@@ -173,7 +173,7 @@ theorem coh_itemIdx {Γ Δ : Ctx} {θ : Subst σ Δ} (hθ : Subst.Ok Γ.boxIn θ
       dsimp only
       rw [VarSymb.ext_rt, show (VarSymb.step u .box).rt = u.rt from rfl, VarSymb.root_ext_path]
   | .step u .keep =>
-      exact absurd ((Ctx.boxIn_keep hv).1.symm.trans ModalSys.NoFour.noFour) (by decide)
+      exact absurd ((Ctx.boxIn_keep hv).1.symm.trans ModalSys.FourOff.noFour) (by decide)
   | .root _ => cases hv
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
@@ -236,7 +236,7 @@ theorem holeAt_tupCompsImg_holeCVal {cls : List VarType} {Δ : Ctx} [Δ.NoSlots]
     ∀ (cs : List (List Step)) (h : A.CompOk cs),
       (⟨_, Term.holeAt (tupCompsImg cls img himg ((bcT cls).compsAllB b)
           (VarType.compOk_compsAllB b hb (bcT cls))).2
-          (holeCVal (packT cls u) b hb ModalSys.NoFour.noFour cs h).2⟩ :
+          (holeCVal (packT cls u) b hb ModalSys.FourOff.noFour cs h).2⟩ :
         Σ c, Term σ Δ (A.compsFlat cs) c) =
         ⟨_, Term.subst (arrowIdx img) (arrowS σ Δ img) (ok_arrowS himg) (coh_arrowS himg)
           (compsVal u cs h).2⟩
@@ -280,8 +280,8 @@ theorem holeAt_tupCompsImg_holeCVal {cls : List VarType} {Δ : Ctx} [Δ.NoSlots]
       have hcθW : Subst.Coh (Subst.singleIdx (.bnd 0) (.tm W)) (Ctx.empty.insert (.bnd 0)
           ((bcT cls).compsFlat ((bcT cls).compsAllB b))) θW :=
         Subst.coh_single (Ctx.RootFresh.empty _) (Ctx.empty_le _) rfl
-      have hR := ok_compsRen (σ := σ) ModalSys.NoFour.noFour (bcT cls) b hb
-      have hcR := coh_compsRen (σ := σ) ModalSys.NoFour.noFour (bcT cls) b hb
+      have hR := ok_compsRen (σ := σ) ModalSys.FourOff.noFour (bcT cls) b hb
+      have hcR := coh_compsRen (σ := σ) ModalSys.FourOff.noFour (bcT cls) b hb
       have hL₃ : Subst.Ok (Ctx.empty.insert (.bnd 0) (.VTypeBox (bcT cls))).boxIn
           ((compsRen σ _ ((bcT cls).compsAllB b)).comp θW hθW hcθW) :=
         fun v T hl hv => SubE.okRef_comp θW hθW hcθW (hR v T hl hv)
@@ -338,7 +338,7 @@ theorem holeAt_tupCompsImg_holeCVal {cls : List VarType} {Δ : Ctx} [Δ.NoSlots]
                 (by rw [Subst.at_nonproj _ rfl]; exact Subst.single_root _ _)]
             refine (congrArg (SubE.Sim _ · _) (SubE.tm_eq_of_sig ?_)).mp hS
             refine (sig_subst _ _ _ (Term.subst_eta_tm _ _ _ _ _ _ _ (by
-              rw [← VarSymb.inner_box ModalSys.NoFour.keepOnly]
+              rw [← VarSymb.inner_box ModalSys.FourOff.keepOnly]
               exact Subst.box_at_inner_boxtm θ (by
                 rw [Subst.at_nonproj _ rfl]; exact Subst.single_root _ _)))).trans ?_
             exact subst_arrow_tupT cls himg
@@ -357,10 +357,10 @@ theorem holeAt_tupCompsImg_holeCVal {cls : List VarType} {Δ : Ctx} [Δ.NoSlots]
             refine (congrArg (SubE.Sim _ · _) (SubE.tm_eq_of_sig ?_)).mp hS
             refine sig_subst _ _ _ (sig_subst _ _ _ (eta_addr_congr ?_ _
               (Ctx.ref_inner (Ctx.ref_compMem hT (VarType.mem_hereChains _ q hq) hu))))
-            rw [VarSymb.inner_box ModalSys.NoFour.keepOnly]
+            rw [VarSymb.inner_box ModalSys.FourOff.keepOnly]
             rfl
       | .step _ .keep =>
-          exact absurd ((Ctx.boxIn_keep hv).1.symm.trans ModalSys.NoFour.noFour) (by decide)
+          exact absurd ((Ctx.boxIn_keep hv).1.symm.trans ModalSys.FourOff.noFour) (by decide)
       | .root _ => cases hv
       | .step _ .fst => cases hv
       | .step _ .snd => cases hv
@@ -372,7 +372,7 @@ theorem holeAt_tupCompsImg_holeCVal {cls : List VarType} {Δ : Ctx} [Δ.NoSlots]
     items make — `holeC` of `packT` at each `□`. -/
 def packMapC (b : Bool) (hb : ModalSys.T = b) (cls : List VarType) : {N : NShape} →
     NItems σ (ctxOf cls).boxIn N → ShapeMap σ (tupShape b hb cls) N
-  | .boxC _ cs h, ⟨_, u⟩ => .holeC (packT cls u) b hb ModalSys.NoFour.noFour cs h
+  | .boxC _ cs h, ⟨_, u⟩ => .holeC (packT cls u) b hb ModalSys.FourOff.noFour cs h
   | .prod _ _, (n₁, n₂) => .pair (packMapC b hb cls n₁) (packMapC b hb cls n₂)
 
 /-- ⭐The packing map's object, read where the bound object is the roots' items: the object the
@@ -1102,7 +1102,7 @@ def RetIn : Prop :=
     readArrow ((B.imgOk h i).mono ((B.w k).le hj)) n.obj.2 Φ ∈ (B.w k).M j →
       ∃ hiK : i ≤ B.stg k s j,
         WFF.retS hS (.nec N) (n.subst (arrowIdx (B.img k s)) (arrowS σ _ (B.img k s))
-          (ok_arrowS (B.imgOk (B.symm h) j)) (coh_arrowS (B.imgOk (B.symm h) j))).2
+          (ok_arrowS (B.imgOk (B.symmB h) j)) (coh_arrowS (B.imgOk (B.symmB h) j))).2
           (WFF.mono (((B.w s).le hiK).boxIn.insert (.bnd 0) _) Φ) ∈ (B.w s).M (B.stg k s j)
 
 end BData
@@ -1134,14 +1134,14 @@ theorem ind_of_nComesBack {s k : B.W} (hR : B.R s k) (r : B.RT k s) {j : ℕ} {N
     (h : B.model.NComesBack N (Model.interp (B.canonEnv k j) n.obj.2) r o) :
     B.Ind (Model.interp (B.canonEnv s (B.stg k s j))
       (n.subst (arrowIdx (B.img k s)) (arrowS σ _ (B.img k s))
-        (ok_arrowS (B.imgOk (B.symm hR) j)) (coh_arrowS (B.imgOk (B.symm hR) j))).2) o := by
+        (ok_arrowS (B.imgOk (B.symmB hR) j)) (coh_arrowS (B.imgOk (B.symmB hR) j))).2) o := by
   induction N with
   | boxC A cs hcs =>
       obtain ⟨_, u⟩ := n
       change B.Ind (Model.interp (B.canonEnv s (B.stg k s j))
         (Term.subst _ _ _ _ (compsVal u cs hcs).2)) o
       rw [Model.interp_subst _ _ _ (Ctx.noProjLast_boxIn _),
-        ← boxPush_canon_at k _ ⟨s, ⟨r⟩⟩ (B.symm hR) le_rfl, Model.interp_compsVal]
+        ← boxPush_canon_at k _ ⟨s, ⟨r⟩⟩ (B.symmB hR) le_rfl, Model.interp_compsVal]
       exact Model.ind_compsRead (M := B.model) (fun h₁ h₂ => ind_pair h₁ h₂) A
         (Model.interp (B.canonEnv k j) (Term.boxtm u)) r cs hcs o h
   | prod R S ihR ihS =>
@@ -1303,8 +1303,8 @@ def RetInX (B : BData σ) (hS : ModalSys.BStrong = true) : Prop :=
       ∃ hiK : i ≤ B.stg k s j,
         (OutLeg.pos y ⟨Y, ((B.w s).le hiK).ref hy⟩ : OutLeg ((B.w s).ctx (B.stg k s j))).retS hS
           (.nec N) (n.subst (arrowIdx (B.img k s)) (arrowS σ _ (B.img k s))
-            (ok_arrowS (B.imgOk (B.symm (B.lbR hk)) j))
-            (coh_arrowS (B.imgOk (B.symm (B.lbR hk)) j))).2
+            (ok_arrowS (B.imgOk (B.symmB (B.lbR hk)) j))
+            (coh_arrowS (B.imgOk (B.symmB (B.lbR hk)) j))).2
           (WFF.mono ((((B.w s).le hiK).diaIn y).insert (.bnd 0) _) Φ) ∈ (B.w s).M (B.stg k s j)
 
 /-- ⭐⭐**`ret` along a witness at the own arrow, truth ⇒ membership** (T; necessary shapes).  The
@@ -1331,7 +1331,7 @@ theorem mem_retx_of_sat_here (hS : ModalSys.BStrong = true) (hInj : B.ImgInj)
   have hsz : ((OutLeg.pos y hy : OutLeg ((B.w s).ctx i)).retS hS (.nec N) t Φ :
       WFF σ _ 0).size = Φ.size + N.flat.eqRecSize + 1 := rfl
   have hr : (B.w s).Realised y :=
-    (mem_extent_self (canonEnv_extent s i hY ▸ hm) fun ⟨_, hk⟩ => B.irrefl s (B.lbR hk)).2
+    (mem_extent_self (canonEnv_extent s i hY ▸ hm) fun ⟨_, hk⟩ => B.irrefl hT s (B.lbR hk)).2
   obtain ⟨j₀, c₀, g, hg⟩ := B.definable_fromDom N.ty s e
   obtain ⟨n, hn⟩ := NItems.exists_obj N g
   set J := max j₀ i

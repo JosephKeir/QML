@@ -216,7 +216,7 @@ theorem Ctx.Under.boxIn [ModalSys.NoFour] {Δ : Ctx} (h : Δ.Under Q) : Δ.boxIn
   refine Ctx.Under.of_decl hQ fun y T hy => ?_
   match y, hy with
   | .step u .box, hy => exact hQ u .box (h u _ (Ctx.boxIn_box hy).2)
-  | .step u .keep, hy => exact absurd (Ctx.boxIn_keep hy).1 (by simp [ModalSys.NoFour.noFour])
+  | .step u .keep, hy => exact absurd (Ctx.boxIn_keep hy).1 (by simp [ModalSys.FourOff.noFour])
   | .root _, hy => cases hy
   | .step _ .fst, hy => cases hy
   | .step _ .snd, hy => cases hy
@@ -563,7 +563,7 @@ theorem univ_ne_extent {s : B.W} (harr : ∃ k, B.R s k)
     (y : VarSymb) : (Set.univ : Set (B.frame.Acc s)) ≠ B.extent s y := by
   intro h
   obtain ⟨k, hk⟩ := harr
-  obtain ⟨t₀, hR, hkd⟩ := B.unl y hk
+  obtain ⟨t₀, hR, hkd⟩ := B.unlB y hk
   have hm : (⟨t₀, ⟨Or.inl hR⟩⟩ : B.Acc s) ∈ B.extent s y := h ▸ Set.mem_univ _
   rcases hm with ⟨X, hX⟩ | ⟨hnR, -⟩
   · rw [hkd] at hX
@@ -782,7 +782,7 @@ theorem mem_back_of_sat_pos (hS : ModalSys.BStrong = true) (hB : ModalSys.B = tr
               have hdata' := hdata.trans hD
               have hfst := congrArg Sigma.fst hdata'
               change B.extent s y' = B.extent s y at hfst
-              obtain rfl : y = y' := eq_of_extent_eq (B.kd_lb hkk) hfst.symm
+              obtain rfl : y = y' := eq_of_extent_eq ModalSys.NoFour.noFive (B.kd_lb hkk) hfst.symm
               -- the contents agree along every arrow of the extent
               have hcont : ∀ (a₁ : B.Acc s) (m : a₁ ∈ B.extent s y),
                   (B.rden s i' (Ctx.Le.refl _) (Term.diatm y hy' (Term.boxtm bd'))).2 ⟨a₁, m⟩ =
@@ -799,7 +799,7 @@ theorem mem_back_of_sat_pos (hS : ModalSys.BStrong = true) (hB : ModalSys.B = tr
               have hck := hcont _ hm₀
               rw [rden_diatm_net _ _ _ ⟨_, hm₀⟩ ⟨Y, B.kd_lb hkk⟩,
                 rden_diatm_net _ _ _ ⟨_, hm₀⟩ ⟨Y, B.kd_lb hkk⟩] at hck
-              have hann := ann_eq_of_toDom hS hInj ⟨s, B.symm hkR⟩ _ _ (toDom_congr hck _ _)
+              have hann := ann_eq_of_toDom hS hInj ⟨s, B.symmB hkR⟩ _ _ (toDom_congr hck _ _)
               have hQ : ∀ (j : ℕ) (hj : j ≤ max i i') {b : Ann (.VTypeBox A)}
                   (u : Term σ (((B.w s).ctx j).diaIn y) (.VTypeBox A) b),
                   b.All fun ℓ => ViewLabel ((B.w s).l (max i i')) y ℓ ∧ B.LabelTy s ℓ := by

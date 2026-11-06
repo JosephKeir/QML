@@ -276,7 +276,7 @@ theorem subst_tupC_obj_gen {V Δ : Ctx} (A : VarType) (hcΔ : (ctxOf [VarType.VT
       rw [Term.subst_mono]
       refine sig_boxtm (sig_pair rfl ((Term.subst_eta_renAt _ _ _ A _ _ _
         (Ctx.ref_inner (hcΔ.ref (born_ref A))) (Subst.box_at_inner_ren _ h0)).trans ?_))
-      exact (eta_addr_congr (VarSymb.inner_box ModalSys.NoFour.keepOnly) _ _).trans
+      exact (eta_addr_congr (VarSymb.inner_box ModalSys.FourOff.keepOnly) _ _).trans
         (congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _).symm)
   | true, hb => by
       dsimp only [ShapeMap.obj]

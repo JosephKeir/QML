@@ -184,7 +184,7 @@ theorem at_retPullDC_item {w : VarSymb} {T : VarType}
     (hw : (ctxOf l).ref w = some (.VTypeBox T)) :
     (retPullDC σ l A X).at (itemAt (imgRoot (· + 2) w.rt) w) =
       .tm (Term.eta (.step w .box) T ((Ctx.le_insert (pullCtx_fresh l).root _).ref
-        (Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly hw))) := by
+        (Ctx.ref_boxIn_of ModalSys.FourOff.keepOnly hw))) := by
   obtain ⟨r, hr, _, _⟩ := ref_rt hw
   rw [hr]
   change (retPullDC σ l A X).at (itemAt (.free (r + 2)) w) = _
@@ -566,7 +566,7 @@ theorem holeAt_eta_tupC_obj {Γ : Ctx} (A : VarType) {u : VarSymb}
       dsimp only [ShapeMap.obj]
       refine sig_boxtm (sig_pair rfl ((Term.subst_eta_tm _ _ _ _ _ _ _
         (Subst.box_at_inner_boxtm _ h0)).trans ?_))
-      exact eta_addr_congr (VarSymb.inner_box ModalSys.NoFour.keepOnly) _ _
+      exact eta_addr_congr (VarSymb.inner_box ModalSys.FourOff.keepOnly) _ _
   | true, hb => by
       have h0 : (Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm (Term.eta u (.VTypeBox A) hu))).at
           (.root (.bnd 0)) = .tm (Term.eta u (.VTypeBox A) hu) := Subst.at_single_root _ _

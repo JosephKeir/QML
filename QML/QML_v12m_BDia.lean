@@ -106,7 +106,7 @@ theorem absXCtx_slots (A : VarType) (l : List VarType) (x : VarSymb) :
     (absXCtx A l x).SlotsFrom 1 :=
   (Ctx.NoSlots.slots (Γ := (ctxOf l).diaIn x)).insert A.bc
 
-theorem ok_absXS [ModalSys.NoFour] {A : VarType} {l : List VarType} {x : VarSymb} {X : VarType}
+theorem ok_absXS [ModalSys.FourOff] {A : VarType} {l : List VarType} {x : VarSymb} {X : VarType}
     (hx : (ctxOf l).ref x = some (.VTypeDia X)) :
     Subst.Ok ((ctxOf (A :: l)).diaIn x) (absXS σ (absXCtx A l x) l.length x) := by
   intro v T _ hv
@@ -124,7 +124,7 @@ theorem ok_absXS [ModalSys.NoFour] {A : VarType} {l : List VarType} {x : VarSymb
         rw [hr] at h
         cases h)]
       rw [ctxOf_ref_old hrt] at hu
-      exact (Ctx.le_boxIn_diaIn _ x).ref (Ctx.ref_boxIn_of ModalSys.NoFour.keepOnly hu)
+      exact (Ctx.le_boxIn_diaIn _ x).ref (Ctx.ref_boxIn_of ModalSys.FourOff.keepOnly hu)
   · change (if x = x then SubE.ren (.step x .dia) else .hide).OkRef T
     rw [if_pos rfl]
     obtain ⟨r, hr⟩ := (reach_ppath hx).2
@@ -141,7 +141,7 @@ theorem ok_absXS [ModalSys.NoFour] {A : VarType} {l : List VarType} {x : VarSymb
       cases h)]
     exact Ctx.ref_diaIn_of hx
 
-theorem coh_absXS [ModalSys.NoFour] {A : VarType} {l : List VarType} {x : VarSymb} {X : VarType}
+theorem coh_absXS [ModalSys.FourOff] {A : VarType} {l : List VarType} {x : VarSymb} {X : VarType}
     (hx : (ctxOf l).ref x = some (.VTypeDia X)) :
     Subst.Coh (absIdx l.length) ((ctxOf (A :: l)).diaIn x)
       (absXS σ (absXCtx A l x) l.length x) := by
@@ -176,14 +176,14 @@ theorem absXCtx_le (A : VarType) (l : List VarType) (x : VarSymb) :
   (((ctxOf_le_append [A] l).diaIn x)).insert (.bnd 0) A.bc
 
 /-- ⭐The abstraction of a formula of the new witness view. -/
-noncomputable def absX [ModalSys.NoFour] (A : VarType) (l : List VarType) {x : VarSymb}
+noncomputable def absX [ModalSys.FourOff] (A : VarType) (l : List VarType) {x : VarSymb}
     {X : VarType} (hx : (ctxOf l).ref x = some (.VTypeDia X))
     (ψ : WFF σ ((ctxOf (A :: l)).diaIn x) 0) : WFF σ (absXCtx A l x) 1 :=
   WFF.subst (absIdx l.length) (absXS σ (absXCtx A l x) l.length x) (ok_absXS hx) (coh_absXS hx)
     Ctx.NoSlots.slots (absXCtx_slots A l x) ψ
 
 /-- Projecting a weakened tuple entry reaches the weakened tuple of the component. -/
-theorem at_single_tup_mono [ModalSys.NoFour] {A : VarType} {l : List VarType} {Δ : Ctx}
+theorem at_single_tup_mono [ModalSys.FourOff] {A : VarType} {l : List VarType} {Δ : Ctx}
     (h : (ctxOf (A :: l)).boxIn.Le Δ) :
     ∀ {u : VarSymb} {U : VarType} (hu : (ctxOf (A :: l)).ref u = some U),
       u.rt = .free l.length →
@@ -213,7 +213,7 @@ theorem at_single_tup_mono [ModalSys.NoFour] {A : VarType} {l : List VarType} {�
           exact proj_tupB_mono h rfl hU hproj hu' hu
 
 /-- ⭐A formula of the new witness view is its abstraction at the tuple of the new items. -/
-theorem instantiate_tup_absX [ModalSys.NoFour] (A : VarType) (l : List VarType) {x : VarSymb}
+theorem instantiate_tup_absX [ModalSys.FourOff] (A : VarType) (l : List VarType) {x : VarSymb}
     {X : VarType} (hx : (ctxOf l).ref x = some (.VTypeDia X))
     (ψ : WFF σ ((ctxOf (A :: l)).diaIn x) 0) :
     WFF.instantiate Ctx.NoSlots.slots
@@ -254,7 +254,7 @@ theorem instantiate_tup_absX [ModalSys.NoFour] (A : VarType) (l : List VarType) 
 
 /-! ## The extended witness arrow -/
 
-theorem subst_arrowX_abs [ModalSys.NoFour] {A : VarType} {ls lt : List VarType} {img : ℕ → ℕ}
+theorem subst_arrowX_abs [ModalSys.FourOff] {A : VarType} {ls lt : List VarType} {img : ℕ → ℕ}
     (himg : ImgOk ls (ctxOf lt) img) {x : VarSymb} {X : VarType}
     (hx : (ctxOf ls).ref x = some (.VTypeDia X)) {cx : ℕ}
     (hcx : (ctxOf lt).ref (.root (.free cx)) = some X)
@@ -320,7 +320,7 @@ theorem subst_arrowX_abs [ModalSys.NoFour] {A : VarType} {ls lt : List VarType} 
 
 /-- ⭐The `□_x` transfer of a witness arrow: whatever the source `□_x`-necessitates about its
     variables with images (and `x.dia`), the target says of the images (and of `cx`). -/
-def TransferX [ModalSys.NoFour] {Γ : Ctx} (M : Set (WFF σ Γ 0)) (ls : List VarType)
+def TransferX [ModalSys.FourOff] {Γ : Ctx} (M : Set (WFF σ Γ 0)) (ls : List VarType)
     (hle : (ctxOf ls).Le Γ) {x : VarSymb} {X : VarType}
     (hx : (ctxOf ls).ref x = some (.VTypeDia X)) {Δ : Ctx} [Δ.NoSlots] (N : Set (WFF σ Δ 0))
     (img : ℕ → ℕ) (himg : ImgOk ls Δ img) (cx : ℕ) (hcx : Δ.ref (.root (.free cx)) = some X) :
@@ -329,7 +329,7 @@ def TransferX [ModalSys.NoFour] {Γ : Ctx} (M : Set (WFF σ Γ 0)) (ls : List Va
     WFF.subst (arrowXIdx img x cx) (arrowXS σ Δ img x cx) (ok_arrowXS himg hx hcx)
       (coh_arrowXS himg hx hcx) Ctx.NoSlots.slots Ctx.NoSlots.slots ψ ∈ N
 
-theorem ref_old_of_ref {A : VarType} {ls : List VarType} [ModalSys.NoFour] {x : VarSymb}
+theorem ref_old_of_ref {A : VarType} {ls : List VarType} [ModalSys.FourOff] {x : VarSymb}
     {X : VarType} (hx : (ctxOf ls).ref x = some (.VTypeDia X)) :
     (ctxOf (A :: ls)).ref x = some (.VTypeDia X) := by
   rw [ctxOf_ref_old (by
@@ -339,7 +339,7 @@ theorem ref_old_of_ref {A : VarType} {ls : List VarType} [ModalSys.NoFour] {x : 
   exact hx
 
 /-- The witness arrow extended by the source's next variable. -/
-noncomputable abbrev extArrowX [ModalSys.NoFour] {A : VarType} {ls lt : List VarType} {img : ℕ → ℕ}
+noncomputable abbrev extArrowX [ModalSys.FourOff] {A : VarType} {ls lt : List VarType} {img : ℕ → ℕ}
     (himg : ImgOk ls (ctxOf lt) img) {x : VarSymb} {X : VarType}
     (hx : (ctxOf ls).ref x = some (.VTypeDia X)) {cx : ℕ}
     (hcx : (ctxOf lt).ref (.root (.free cx)) = some X)
@@ -350,7 +350,7 @@ noncomputable abbrev extArrowX [ModalSys.NoFour] {A : VarType} {ls lt : List Var
     (coh_arrowXS (imgOk_ext himg) (ref_old_of_ref hx) ((ctxOf_le_append [A.bc] lt).ref hcx))
     Ctx.NoSlots.slots Ctx.NoSlots.slots ψ
 
-theorem realiseX_one [ModalSys.NoFour] {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)}
+theorem realiseX_one [ModalSys.FourOff] {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)}
     (hM : Theory.IsMCS M) {A : VarType} {ls lt : List VarType}
     (hle : (ctxOf (A :: ls)).Le Γ) {N : Set (WFF σ (ctxOf lt) 0)} (hN : Theory.IsMCS N)
     {img : ℕ → ℕ} (himg : ImgOk ls (ctxOf lt) img) {x : VarSymb} {X : VarType}
@@ -383,7 +383,7 @@ theorem realiseX_one [ModalSys.NoFour] {Γ : Ctx} [Γ.Presented] {M : Set (WFF �
   exact hc
 
 /-- ⭐**Realising the next variable along a witness arrow.** -/
-theorem realiseX_consistent [ModalSys.NoFour] {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)}
+theorem realiseX_consistent [ModalSys.FourOff] {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)}
     (hM : Theory.IsMCS M) {A : VarType} {ls lt : List VarType}
     (hle : (ctxOf (A :: ls)).Le Γ) {N : Set (WFF σ (ctxOf lt) 0)} (hN : Theory.IsMCS N)
     {img : ℕ → ℕ} (himg : ImgOk ls (ctxOf lt) img) {x : VarSymb} {X : VarType}
@@ -402,7 +402,7 @@ theorem realiseX_consistent [ModalSys.NoFour] {Γ : Ctx} [Γ.Presented] {M : Set
   exact realiseX_one hM hle hN himg hx hcx htr hψ (derives_of_derives hder p)
 
 /-- A witness arrow's transfer gives closed transfer. -/
-theorem TransferX.closed [ModalSys.NoFour] {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)}
+theorem TransferX.closed [ModalSys.FourOff] {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)}
     (hM : Theory.IsMCS M) {ls : List VarType} {hle : (ctxOf ls).Le Γ} {x : VarSymb} {X : VarType}
     {hx : (ctxOf ls).ref x = some (.VTypeDia X)} {Δ : Ctx} [Δ.NoSlots] {N : Set (WFF σ Δ 0)}
     {img : ℕ → ℕ} {himg : ImgOk ls Δ img} {cx : ℕ} {hcx : Δ.ref (.root (.free cx)) = some X}
@@ -430,7 +430,7 @@ theorem childX_cx (l : List VarType) (X : VarType) :
   rwa [List.length_map] at this
 
 /-- Pulling back a witness child: its variables to tuples, the content to `x.dia`. -/
-def pullXS [ModalSys.NoFour] (σ : Signature) (l : List VarType) (x : VarSymb) :
+def pullXS [ModalSys.FourOff] (σ : Signature) (l : List VarType) (x : VarSymb) :
     Subst σ ((ctxOf l).diaIn x) :=
   fun v => match v with
   | .root (.free r) =>
@@ -448,18 +448,18 @@ def pullXIdx (l : List VarType) (x : VarSymb) (a : VarSymb) : VarSymb :=
       else if r = l.length then (VarSymb.step x .dia).ext a.path else a
   | .bnd _ => a
 
-theorem pullX_tm [ModalSys.NoFour] {l : List VarType} (x : VarSymb) {r : ℕ} (h : r < l.length) :
+theorem pullX_tm [ModalSys.FourOff] {l : List VarType} (x : VarSymb) {r : ℕ} (h : r < l.length) :
     pullXS σ l x (.root (.free r)) = .tm (Term.mono (Ctx.le_boxIn_diaIn _ x)
       (tup (.root (.free r)) (rootTy l r) (by
         rw [Ctx.ref_nonproj _ rfl]; exact ctxOf_root_lt h))) :=
   dif_pos h
 
-theorem pullX_cx [ModalSys.NoFour] (l : List VarType) (x : VarSymb) :
+theorem pullX_cx [ModalSys.FourOff] (l : List VarType) (x : VarSymb) :
     pullXS σ l x (.root (.free l.length)) = .ren (.step x .dia) := by
   change (if h : l.length < l.length then _ else if l.length = l.length then _ else _) = _
   rw [dif_neg (lt_irrefl _), if_pos rfl]
 
-theorem ok_pullXS [ModalSys.NoFour] (l : List VarType) {x : VarSymb} {X : VarType}
+theorem ok_pullXS [ModalSys.FourOff] (l : List VarType) {x : VarSymb} {X : VarType}
     (hx : (ctxOf l).ref x = some (.VTypeDia X)) :
     Subst.Ok (ctxOf (X :: l.map VarType.bc)) (pullXS σ l x) := by
   intro v T _ hv
@@ -482,7 +482,7 @@ theorem ok_pullXS [ModalSys.NoFour] (l : List VarType) {x : VarSymb} {X : VarTyp
     cases hT
     exact Ctx.ref_diaIn_of hx
 
-theorem coh_pullXS [ModalSys.NoFour] (l : List VarType) {x : VarSymb} {X : VarType}
+theorem coh_pullXS [ModalSys.FourOff] (l : List VarType) {x : VarSymb} {X : VarType}
     (hx : (ctxOf l).ref x = some (.VTypeDia X)) :
     Subst.Coh (pullXIdx l x) (ctxOf (X :: l.map VarType.bc)) (pullXS σ l x) := by
   refine Subst.coh_of (ok_pullXS l hx) ?_
@@ -508,7 +508,7 @@ theorem coh_pullXS [ModalSys.NoFour] (l : List VarType) {x : VarSymb} {X : VarTy
     rw [VarSymb.ext_path]
     rfl
 
-theorem at_pullX_tup [ModalSys.NoFour] {l : List VarType} (x : VarSymb) :
+theorem at_pullX_tup [ModalSys.FourOff] {l : List VarType} (x : VarSymb) :
     ∀ {u : VarSymb} {U : VarType} (hu : (ctxOf l).ref u = some U),
       (pullXS σ l x).at ((VarSymb.root u.rt).ext (encPath u.path)) =
         .tm (Term.mono (Ctx.le_boxIn_diaIn _ x) (tup u U hu))
@@ -537,7 +537,7 @@ theorem at_pullX_tup [ModalSys.NoFour] {l : List VarType} (x : VarSymb) :
           exact proj_tupB_mono _ rfl hU hproj hu' hu
 
 /-- ⭐Pulling back undoes the witness child's arrow. -/
-theorem subst_pullX_arrowX [ModalSys.NoFour] (l : List VarType) {x : VarSymb} {X : VarType}
+theorem subst_pullX_arrowX [ModalSys.FourOff] (l : List VarType) {x : VarSymb} {X : VarType}
     (hx : (ctxOf l).ref x = some (.VTypeDia X)) (χ : WFF σ ((ctxOf l).diaIn x) 0) :
     WFF.subst (pullXIdx l x) (pullXS σ l x) (ok_pullXS l hx) (coh_pullXS l hx) Ctx.NoSlots.slots
       Ctx.NoSlots.slots (WFF.subst (arrowXIdx id x l.length)
@@ -563,7 +563,7 @@ theorem subst_pullX_arrowX [ModalSys.NoFour] (l : List VarType) {x : VarSymb} {X
     exact .refl _
 
 /-- The arrow into a new witness child, applied to a formula of the witness view. -/
-noncomputable abbrev childXArrow [ModalSys.NoFour] (l : List VarType) {x : VarSymb} {X : VarType}
+noncomputable abbrev childXArrow [ModalSys.FourOff] (l : List VarType) {x : VarSymb} {X : VarType}
     (hx : (ctxOf l).ref x = some (.VTypeDia X)) (χ : WFF σ ((ctxOf l).diaIn x) 0) :
     WFF σ (ctxOf (X :: l.map VarType.bc)) 0 :=
   WFF.subst (arrowXIdx id x l.length) (arrowXS σ (ctxOf (X :: l.map VarType.bc)) id x l.length)
@@ -572,7 +572,7 @@ noncomputable abbrev childXArrow [ModalSys.NoFour] (l : List VarType) {x : VarSy
 
 /-- ⭐**The existence lemma for `◇_x`.**  If `◇_x φ` holds, the `□_x`-necessities sent along the
     witness child's arrow are consistent with the image of `φ`. -/
-theorem childX_consistent [ModalSys.NoFour] {l : List VarType} {M : Set (WFF σ (ctxOf l) 0)}
+theorem childX_consistent [ModalSys.FourOff] {l : List VarType} {M : Set (WFF σ (ctxOf l) 0)}
     (hM : Theory.IsMCS M) {x : VarSymb} {X : VarType} (hx : (ctxOf l).ref x = some (.VTypeDia X))
     {φ : WFF σ ((ctxOf l).diaIn x) 0} (hφ : WFF.dia x ⟨X, hx⟩ φ ∈ M) :
     Theory.Consistent ({childXArrow l hx φ} ∪

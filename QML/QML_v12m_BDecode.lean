@@ -226,7 +226,7 @@ theorem leafOf_inj_noT (hT : ModalSys.T = false) (hInj : B.ImgInj) :
           rw [succAddrK_net (a := ⟨t₁, ⟨Or.inl hR⟩⟩) hR, hy']
           exact labelTy_arrow hT hR hpre' (hy' ▸ hty')
         have e₁ := leafOf_inj_noT hT hInj m t₁ hok₁ hok₁' hlv₁ hlv₁' hty₁ hty₁'
-          ⟨s, B.symm hR⟩ h₁
+          ⟨s, B.symmB hR⟩ h₁
         rw [succAddrK_net (a := ⟨t₁, ⟨Or.inl hR⟩⟩) hR,
           succAddrK_net (a := ⟨t₁, ⟨Or.inl hR⟩⟩) hR, hy, hy', arrowIdx_cut_noT hT _ hpre,
           arrowIdx_cut_noT hT _ hpre'] at e₁
@@ -317,7 +317,7 @@ theorem Ctx.Walks.boxIn [ModalSys.NoFour] {Γ₀ Δ : Ctx} (h : Γ₀.Walks Δ) 
       change R.walk (u.path ++ [.box]) = some T
       rw [VarType.walk_append, hw]
       rfl
-  | .step u .keep, hy => exact absurd (Ctx.boxIn_keep hy).1 (by simp [ModalSys.NoFour.noFour])
+  | .step u .keep, hy => exact absurd (Ctx.boxIn_keep hy).1 (by simp [ModalSys.FourOff.noFour])
   | .root _, hy => cases hy
   | .step _ .fst, hy => cases hy
   | .step _ .snd, hy => cases hy

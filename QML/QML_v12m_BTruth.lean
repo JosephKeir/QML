@@ -86,7 +86,7 @@ theorem dia_mem_of_sat_self {s : B.W} {i : ℕ} {x : VarSymb} (hr : (B.w s).Real
   have hm' : B.model.frame.reflAcc hr.T s ∈
       (B.model.posEval ((B.canonEnv s K).ref x hdecl)).1 := by
     rw [canonEnv_extent]
-    exact Or.inr ⟨B.irrefl s, hr⟩
+    exact Or.inr ⟨B.irrefl hr.T s, hr⟩
   have hcont : (B.model.posEval ((B.canonEnv s K).ref x hdecl)).2
         ⟨B.model.frame.reflAcc hr.T s, hm'⟩ =
       Model.interp (B.canonEnv s K)
