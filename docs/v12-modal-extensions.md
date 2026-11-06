@@ -5863,6 +5863,283 @@ So there are two ways to build it:
 * *Files:* `QML_v12m_LinkSyntax` (`DShape.Pos`, `DShape.Map`, `OutLeg.linkL`, `OutLeg.prim`, `WFF.linkxBox`, `Ctx.RootFresh.of_le`), `QML_v12m_Proof`, `QML_v12m_SemLink` (`Model.mapVal`, `holeVal_mapHole`, `mapVal_sideOf`, `sat_linkMap`, `sat_linkOne`), `QML_v12m_Soundness`, `QML_v12m_ProofSubst` (`OutLeg.subst_linkL`, `OutLeg.subst_prim`, `OutLeg.linkL_congr`, `WFF.subst_diaIn_mono_rename`).  About 460 lines, well under the estimate: every piece mirrored an existing one.
 * *Next:* the K5 network itself.
 
+#### K5 and KD5, step 5: the network, a coherence problem *(2026-11-06, paper, before any code)*
+
+**Finding.**  The network's consistency argument ("the model, the check", *Consistency, plain*) does not survive incremental commitment.  It assumes that an arrow `u → s` commits all of `u`'s items at once, with the plain ones going to **fresh** roots `ys` of `s`.  Then an inconsistency gives `M_s ⊢ ∀ys ¬φ'(ys, links)`, and `five_boxL` at a common predecessor refutes it.  But the network is an ω-construction: `u` keeps gaining variables, and the arrow commits them one at a time, as B's does (`realise_consistent`).
+* *The clash.*  `u → s` has committed a `□`-item `n` of `u` to a Henkin root `y` of `s`, chosen when `u` had no name for a possible object `g`.  Later `u` gets `g`'s side image `e_u`, and `s` already has (or later gets) `g`'s side image `e_s`.  The entry `e_u ↦ e_s` is determined (`side_side`), so `□[d ↦ e_u] Θ(n.box, d) ∈ M_u` must give `Θ(y, e_s) ∈ M_s`.  `M_s` may already contain `¬Θ(y, e_s)`, decided when it was completed.  The refutation now needs `M_s ⊢ ∀ys ¬Θ(ys, e_s)`, and `M_s` refutes it only at the chosen `y`.  An example that interacts: `n : □□Var`, `Θ(y, d) = ◇_d (d.dia = y.box)`.
+* *Why B and the cluster model never met it.*  B's network has no determined entries: every image along every arrow is a fresh Henkin root, so no two arrows constrain one name.  The cluster model (`GClu*`) names everything through the tree's root by lifts ((N1), (N2), 2026-10-30), so a determined entry's formula mentions only its origin's items, never another arrow's Henkin roots.  K5 as designed has determined entries (side images) **and** Henkin roots from many sources at one target, which neither precedent has.
+* *It is coherence, not bookkeeping.*  Two names of one possible object at a node must satisfy the same formulas there, or a `◇` witness made for one breaks the other's `□_e` transfer.  So side images must have one name per node (the determined entries), and the clash cannot be avoided by naming side images afresh per arrow.
+
+**A semantic observation that may help.**  Inside the cluster `posSide` is onto.  A possible object `q` at a cluster world `s` is the side image, along `u → s`, of its own side image along `s → u`: `side (s → u) (s → s) = u → s`, and the loop fixes `q` (`posSide_side`, `posSide_loop`).  So at every cluster world, every possible object at a successor is a side image of one here (a "`◇`-gather"), valid in every model, though not at the root.
+* If that is derivable at cluster worlds (from `five_reflL` with `five_diaL` and `five_boxL`, the object form of K5's secondary reflexivity and symmetry), then `u`'s knowledge about **all** its possible objects, `∀x. □[d ↦ x] Θ(n.box, d)`, transfers as `□∀z. Θ(n.box, z)`, and the Henkin step for `n` takes it into account.
+* Whether that is enough for the determined entries (which concern one object, not all) is **not** settled.
+
+**Options, each needing a paper check.**
+* **(H) Names through one cluster world.**  The `GClu*` and hub precedent: pick a cluster world `h` (a child of the root), and name every possible object of the cluster at `h`, through the `◇`-gather.  Determined entries then mention only `h`'s items, as (N2).  But `□`-items still have no names at `h` without strong 5's gather, so the plain Henkin roots remain, and the clash may recur between them and `h`'s names.
+* **(C) Constrained completions.**  When `u` gets a new side image, complete its theory with the back-images of what its targets already decided (`◇[d ↦ e_u] Ψ(n.box, d)` for each `Ψ(y, e_s) ∈ M_s`).  This needs a new consistency lemma joining constraints from `g`'s origin and from each target, which looks like interpolation.
+* **(Q) Check whether weak K5 is complete as ruled.**  If neither works, the clash may be a sign of a missing rule, as `five_refl` was for the T-off cells.  The countermodel check would take the scenario above.
+
+**Recommendation:** a paper check before any network code: first whether the `◇`-gather is derivable at cluster worlds, then whether (H) closes the clash, with (Q) as the fallback.  B's network files stay the precedent for the mechanics either way.
+
+**The paper check (2026-11-06).  Result: strong 5 and weak 5 part ways.  With the gather, names through one cluster world look sound (GArrow's and `GClu*`'s shape).  Without it, no fix was found, and the obstacle is a joint-consistency property, not a missing rule.**
+
+*1. The `◇`-gather holds at cluster worlds, semantically.*  At a world `u` with a predecessor, every possible object `q` at a successor `s` is the side image along `u → s` of `posSide q (s → u)`: `side (s → u) (s → s)` is `u → s`, and the loop fixes `q`.  So every possible object of the cluster is a side image of one at any cluster world.  Not at the root, which has no predecessor.  Derivability from `five_reflL`, `five_diaL` and `five_boxL` (K5's secondary reflexivity and symmetry, with objects) was not checked; nothing below depends on it.
+
+*2. The clash, analysed.*  Write `o` for a world with a possible object `g`, and `x_u`, `x_s` for `g`'s side images at `u` and `s`, with `x_u ↦ x_s` along `u → s` forced by `side_side`.  Let `n` be a `□`-object of `u`, committed along `u → s` to a Henkin root `y` before `u` had `x_u`.
+* *In every model the bad state is impossible:* `o`'s link facts put `x_u` under `u`'s universal facts about `n`, so `u` refutes at `s` what `s` would need.
+* *But no world can see that.*  The refutation joins two things: `o`'s facts about `x_u` with `o`'s `□`-items' values **at `u`**, and `s`'s facts about `x_s` with `n`'s value **at `s`**.  Without 4, `o`'s `□`-items' values at `u`, read along `u → s`, are not their values at `s`.  So the first can be stated only at `u`, the second only at `s`, and the identification `y = n(u → s)` lives only in the network.  `five_boxL` refutes formulas closed apart from the link's slot; this one has another world's `□`-items in it.
+* *Ordering does not avoid it.*  Committing forced entries before plain ones works on one arrow at one time.  But possible objects are born forever, and every cluster world needs their side images, so a world keeps receiving them after its arrows have committed plain items.
+* *Constrained completions, (C), meet it head on.*  Adding `x_u` to `u` must respect `□`-types from its predecessors (`o`'s facts) and `◇`-types from its successors (`◇[d ↦ x_u] Ψ(n.box, d)` for each `Ψ(y, x_s) ∈ M_s`).  Their joint consistency, given each separately, is a Robinson-style joint consistency, which is interpolation.  That is on the metatheory list, not available, and not obviously true here.
+
+*3. (H), names through one world, fails for weak 5.*  The clash is about `□`-objects of cluster worlds, not possible objects.  A central world names those only through strong 5's gather.  And the K45 hub's trick, a namer below the root where the gather holds, does not transfer: weak K5 lets the root force the gather to fail at every successor (`□(◇[e ↦ t] ∃n. □[d ↦ e] χ(n.box, d) ∧ ¬∃m. □[d ↦ t] χ(m.box, d))` is consistent), so no namer satisfying it exists.
+
+*4. (Q) found nothing missing.*  Every constraint tried (two worlds' `□`-objects against one possible object, with or without `◇_d` inside) combines at the target with independent witnesses, `□[d ↦ t] ∃y₁ y₂. χ₁(y₁, d) ∧ χ₂(y₂, d)`, which `link_K` and `∃`-steps derive.  So weak K5 is plausibly complete as ruled; what fails is the step-by-step construction, whose separate completions cannot see the joint constraint.
+
+*5. With strong 5 the picture is GArrow's and `GClu*`'s.*  At a cluster world `h` (a child of the root), the gather names every `□`-object of the cluster through `h` (`necSide_exists`), and the `◇`-gather every possible object.
+* A cluster world's `□`-facts about its items are then `h`'s `□`-facts about their names: `□[d ↦ e] χ(n.box, d)` at `s` holds exactly when `□[d ↦ t] χ(m.box, d)` holds at `h`, the two `□`s ranging over the same arrows with the same side images.
+* So cluster arrows commit nothing of their own: every entry is determined through `h`, and its formula mentions only `h`'s items, (N2)'s shape, refuted by `five_boxL` at `h`.  Items born at a cluster world are lifted to `h` first, by the gather, as GArrow's lift names what first appears in a child.
+* That is a growing tree rooted at `h` with lifts, read as a cluster: `GArrow`'s and `cmodel`'s structure with the gather in place of `keep_lift` and side images in place of `keep`.  It is not B's network, and the step 4 decision (generalise `BData`) would not be used for it.
+* *Not checked:* whether `GArrow` and `GClu*` can be reused or must be mirrored (they speak 4's language: `keep`, path translations), the `◇`-gather's derivability at `h`, and where the root goes (outside the cluster, with tree edges into it, as the hub's `w`).
+
+**Recommendation.**
+* Build **strong K5 and KD5** first, by names through one cluster world, after a design check against `GArrow` and `GClu*` (reuse or mirror).  This reverses the staging of "the model, the check" (weak first, then strong 5's lift), and replaces B's network as the precedent.
+* Record **weak K5 and KD5** as a possible gap for the final review, with the joint-consistency lemma of 2 as the open question.  Revisit if interpolation is ever proved.
+* Already built and unaffected: the link syntax, the rules, `side_loop`, the posSide laws up to `Ind`, the link rules, and `BData`'s 4a generalisation (harmless, and still B's).
+
+#### Weak K5 and KD5: alternative constructions, scoped *(2026-11-06, paper; asked for before settling on strong 5 only)*
+
+**Verdict.**  None of the six alternatives works as a construction by local steps.  The obstruction can now be stated exactly, and it explains which cube cells meet it.  Two routes remain, both research-sized.
+
+**The obstruction, exactly.**  Three ingredients together:
+1. *Private necessary objects at cluster worlds.*  Weak 5 has no operation carrying a necessary object across an arrow (`Model.Ops` has `necDup` for 4 and `posSide` for 5; `necSide_exists` only for strong 5).  So a `□`-object `N` at `u` has values `N(u → s)` that no other world can name.
+2. *Possible objects shared across the cluster.*  `posSide` and `side_side` make the side images of one possible object at `u` and at `s` correspond along `u → s`.
+3. *Theories completed one world at a time.*
+
+The bad state, in its sharpest form (`N, C : □□Var`, `g` a possible object of `c`):
+* `u` decides `∀x. □_x(x.dia = C_u.box) → □[d ↦ x] ∀c'. ¬(□(N.box.box = c'.box) ∧ □_d(d.dia = c'.box))`, where `C_u` is `C`'s value at `u`.
+* `s` decides `□(y.box = C_s.box)`, with `y` the commitment of `N` and `C_s` that of `C`.
+* `c` decides `□[d ↦ g] □_d(d.dia = C.box.box)`.
+
+Each is consistent with everything its world can state; jointly they are unrealisable, because `g`'s side image at `u` falls under `u`'s `∀x`.  The refutation needs the identifications `y = N(u → s)` and `C_s = C(c → s)`, which exist only in the network: from `c`, `u`'s `N` and `s`'s `y` are two unrelated `∃`s.  So whichever world decides last needed global knowledge to decide safely.
+
+**Which cells meet it.**  Only weak K5 and KD5 have all three ingredients.  Strong 5 removes (1): the gather names every cluster world's `□`-objects at one world.  K45 and S5 remove (1) too: their `□`-lift is derivable at reached worlds (`liftsProved`).  B's network has no (2): it has no side images.  This is why every built construction escaped it.
+
+**The alternatives tried.**
+* *(A) Arrows indexed by route* (arrow-indexed frames, `side a b` a dedicated arrow per pair): the clash is on the single arrow `side a b`, between its forced entries for items `a` realises later and its own earlier plain commitments.
+* *(B) A fixed pool of possible-object names at every world from birth:* a complete theory decides facts about names not yet in use, and their later use constrains them.  The same clash.
+* *(C) Simultaneous births* (all copies of a new possible object, or all values of a new `□`-object, made at once at every world): the bad state above arises with both orders of creation; the copy at `u` first fails at `s`, the copy at `s` first fails at `u`.
+* *(D) Constrained completions with a joint-consistency lemma:* the bad state shows the lemma cannot be local, not even interpolation at one world: no world holds the refutation.  What is needed is realisability of the whole network.
+* *(E) Possible objects carrying private values.*  `diatm z (N.box)` turns `N`'s values on `z`'s extent into a possible object, which the `◇`-gather names at a central world.  So a private object's restrictions to extents can be shared.  But the identity of `N`'s value at a particular `s` across `u`'s and `s`'s descriptions is still lost, as above.
+* *(F) Delaying identities to the limit* (keep `N(u → s)` as a type, realised at the end): removes `s`'s premature decision, but the copies of possible objects are themselves cross-world values, so `u`'s decisions about `(N, x_u)` and `s`'s realisation fall in the same round, and the cycle returns.
+
+**The two routes left.**
+* *(G) A global calculus.*  A labelled (or hyper-) sequent calculus for weak K5 with these objects, whose saturation sees the whole network at once, proved complete, then translated into `Proof`.  This is the standard answer to a logic whose canonical construction is not local.  It is a new proof system with its own cut elimination or translation: very large.
+* *(H) Through K45.*  A weak K5 model is a K45 cluster plus a root seeing part of it, and weak K45 is complete (the hub).  The reduction needs K45 to be conservative over K5 on translated formulas.  K45's clusters are closed under `keep`, so they have more `□`-objects, and whether that validates more K5-language formulas is open.  The cross-instance proof translation was already rejected for the hub (about 70 constructors with transports).  This is a hard conservativity theorem on top of that.
+
+**Incompleteness is not ruled out either.**  The bad state is not expressible by a formula, since it rests on identities, so it gives no countermodel.  But the logic may be complete only weakly, or need an infinitary principle.  No candidate was found.
+
+**Recommendation.**  Strong K5 and KD5 by names through one cluster world, as proposed.  Record weak K5 and KD5 as a possible gap for the final review, with this obstruction, and (G) and (H) as the routes.
+
+**Decided (user, 2026-11-06):** weak K5 and KD5 are recorded as possible gaps for the final review (`docs/claude-memory/project_qml_possible_gaps.md`), and work moves to strong K5 and KD5.
+
+#### Strong K5 and KD5: the gather rule is too weak, the check *(2026-11-06, paper, before the design)*
+
+**Finding: strong K5 and KD5 are incomplete as ruled.**  The law `Model.necSide_exists` is exact: for `n` at `u` there is `m` here with `m(b)` `Ind` to `n(side a b)` at every arrow `b`.  The only rule, `five_gatherL`, transfers `n`'s `□`-facts to `m` (`◇[e ↦ t] ∃n. □[d ↦ e] χ(n.box, d) ⊢ ∃m. □[d ↦ t] χ(m.box, d)`), but no `◇`-fact.  At a cluster world (one with a predecessor, whose successors are the whole cluster) exactness carries the `◇`-facts too, and the rules cannot derive it.
+
+* *Valid in every strong model:* `□(◇∃n:□Var. ◇P(n.box) → ∃m:□Var. ◇P(m.box))`.  At a successor `p` of the root (a cluster world), take `u` and `n` with `P(n(u → s₀))`.  Then `p R s₀`, and the exact gather gives `m` at `p` with `m(p → s₀) = n(u → s₀)`.
+* *Not derivable* (a model of every rule, with the gather law weakened to `five_gatherL`'s `□`-form):
+  * Worlds `r` (the root) and a cluster `p, u, s₀, s₁`, every cluster world seeing every cluster world, and `r` seeing all four.  `Var` is `{a, b}` at each world, with `P = {a}`.
+  * `□Var`-objects: at `u`, `n` (`a` at `s₀`, `b` elsewhere), `n'` (`a` at `s₁`, `b` elsewhere) and the constant `b`.  Everywhere else, only the constant `b`.  No possible objects (with strong D: symmetric ones).
+  * Swapping `s₀` and `s₁` (and `n` with `n'`) is an automorphism.  So if `□χ(n.box)` holds at `u`, then `χ(b)` holds at `s₁`, hence at `s₀`, and the constant `b` is a gather witness for every `χ`: `five_gatherL` is sound.
+  * At `p`, `◇∃n. ◇P(n.box)` holds (through `u`, `s₀`), and every `m` at `p` is the constant `b`.  So the formula fails at `r`.
+* *The precedent:* the hub's correction 6 (`FiveStrong` with the lifts off, K45, "incomplete as ruled"), which left the cube.  Here the axiom does have a rule; the rule is just too weak.
+* *Why the design needs this repaired:* names through one cluster world require a gathered name `m` to have **all** of `n`'s cross-world facts, `◇` included (uniformity, as `□`-claims are cluster-uniform in K45 through `keep`).  With the `□`-form alone, the namer's completion can give `m` a `□`-fact that `n` lacks, and `u`'s witness child for that `◇`-fact then clashes with `m`'s commitments.  This is the same mechanism as K45's, which `keep` rules out there by identity.
+
+**Repairs, for a decision.**
+* **(R1) A `◇`-preserving gather.**  `◇[e ↦ t] ∃n. (□[d ↦ e] χ(n.box, d) ∧ ⋀ⱼ ◇[d ↦ e] χⱼ(n.box, d)) ⊢ ∃m. (□[d ↦ t] χ(m.box, d) ∧ ⋀ⱼ ◇[d ↦ t] χⱼ(m.box, d))`, with a finite list of `◇`-conjuncts, since one cannot combine `◇`s.  It is sound only where the successors are the whole cluster, so it is stated under a box, as a closed formula with its parameters bound (`five_reflL`'s precedent), or as the rule at `◇`-depth one.  It extends `five_gatherL`, which becomes the case with an empty list.
+* **(R2) An identity form.**  Inside a cluster the side image of a `□`-object exists both ways (`necSide_exists` at the target, along its arrow back), so a former naming it would make the gather an identity, as `keep_lift` is for K45.  That is new syntax, a third link-like former, and a larger change.
+* **(R3) Drop strong K5 and KD5 from the cube** (as K45 with `FiveStrong` and the lifts off).  Then 5 without 4 would have no complete cell.
+* *Leaning (R1):* a rule the axiom needs, with `five_reflL`'s shape, extending an existing rule.  To check before building: that (R1) gives full uniformity for the namer's lifts (types of finitely many objects at once, by pairing), and that it suffices for every other cross-world fact the design uses.
+
+**(R1) scoped (2026-11-06, the user doubted it is principled).  Verdict: it is not; withdrawn in favour of an identity form, (R2′).**
+
+*Why (R1) has no precedent.*
+* `five_gatherL` transfers **properties**: `□`-facts of `n`, read at `t`.  That is natural because `□` distributes over `∧`, so the whole `□`-type is one formula.
+* `◇`-facts do not combine: `◇φ ∧ ◇ψ` is not `◇(φ ∧ ψ)`.  So a property form that carries them needs an arbitrary finite list of separate `◇`-conjuncts.  The nearest precedent, `K_dia`, allows exactly one `◇`.
+* It is sound only where the successors are the whole cluster, so it must be stated under a box, with its parameters bound.  (`five_reflL` is stated that way, but it is a single principle, U, not a type-transfer schema.)
+* So (R1) is a schema for transferring finite types, not a principle.
+
+*What the law says.*  `necSide_exists` is an **identity**: every necessary object at a successor *is*, seen across, a necessary object here.  It is the Barcan formula for necessary objects across `side`.  Every identity-shaped law here is stated by naming the object, not by listing its properties:
+* `keep_lift` (K45): the successor's object is `m.keep`, a term;
+* the links (5 without 4): the side image of a possible object is bound by `□[d ↦ t]`.
+
+**(R2′) Links with necessary components.**
+* *Syntax.*  `DShape` gets a constructor `box B`.  A link then binds, componentwise, side images of possible objects (as now) and of necessary objects.
+* *Semantics.*  The side image of a necessary object `m` along `a : w → u` is a necessary object `k` at `u` that **matches** `m`: `k(side a b)` is `Ind` to `m(b)` for every `b : w → s`.  Such a `k` need not exist, and need not be unique at the root's successors, whose arrows are not all of the form `side a b`.  So a link binds every match: `□[k ↦ m] Φ(k)` holds when `Φ` holds of every match along every arrow, and `◇[k ↦ m] Φ(k)` when it holds of some match along some arrow.  At a possible component the match is `posSide`, unique, so today's links are the special case.  Inside the cluster every arrow from `u` is a side arrow, so matches are unique up to `Ind`, and a link to a necessary object behaves as an identity there.
+* *Strong 5, as one rule:* `◇[e ↦ t] ∃n. Φ(n, e) ⊢ ∃m. ◇[⟨e, k⟩ ↦ ⟨t, m⟩] Φ(k, e)`, for **any** `Φ`, with no lists and no box.  It is sound at every world: `necSide_exists` gives `m`, and `n` itself is a match.
+* *Why it gives the network what (R1) could not.*  The namer lifts `n` by adding `m` with `◇[k ↦ m] Φ_F(k)` for every finite piece `Φ_F` of `n`'s type at `u`.  These pieces conjoin **inside** one `◇` (each implies the smaller ones), so the set is consistent by the rule.  Then the determined entry `m ↦ n` along `ρ → u` is consistent: if `□[k ↦ m] Ψ` holds at `ρ` and `¬Ψ(n)` at `u`, then `◇[k ↦ m](Φ_F ∧ ¬Ψ)` holds at `ρ`, against link K.  The `◇`-facts live inside `Φ`, at `u`, where they combine.
+* *`five_gatherL` should become derivable:* the Barcan form gives `∃m. ◇[⟨e, k⟩ ↦ ⟨t, m⟩] □[d ↦ e] χ(k.box, d)`, and `five_boxL` extended to necessary components (a match of a match is a match, by `side_side`) gives `□[d ↦ t] χ(m.box, d)`.  To be checked.
+
+**Cost and risks, on paper.**
+* `DShape.box` through every recursion over links: about step 1's arms, mostly mechanical, a few hundred lines.
+* *The semantics changes for every link:* from "`d := sideOf ⟦t⟧ a`" to "every or some `d` matching `⟦t⟧` along `a`".  The soundness of the five 5-rules and the six structural rules is redone, through a lemma that at possible-only shapes the match is `sideOf` (up to `Ind`).  This is the main risk.  `five_boxL` and `five_reflL` at necessary components need `Ind` chained through matches, the kind of thing `IndInvariant`'s `posSide_side` was added for, so a parallel law may be needed (to check).
+* The new rule, its soundness, and closure under substitution, after `five_gatherL`'s.
+* *Estimate:* 2 000 to 4 000 lines before the network.  The network then follows K45's cluster model, with this binding in `keep`'s place.
+
+**Recommendation.**  (R2′), after a paper check of (a) every existing link rule's soundness under the matching semantics, (b) whether `five_boxL` and `five_reflL` extend to necessary components and what `Ind` law that needs, and (c) whether `five_gatherL` is derivable, so that it can go.
+
+**(R2′) paper check (2026-11-06).  Result: it fails at the root.  The rules mostly survive, but the truth lemma does not.**
+
+*(a) The structural rules under matching semantics.*
+* `link_K`, `linkx_K`: sound for any matching relation.  A K rule never asks how many matches there are.
+* `link_map`, `link_comap`: each direction is sound on one leg only.  On the `□` leg, `comap` is always sound, and `map` needs every match of `f t` to be `f` of a match of `t`.  That fails when `f` drops a necessary component, which may have no match, or duplicates one, which may have two.  On the `◇` leg it is the other way round.  Repair: restrict the problem directions to maps that are bijective on necessary components.  The network's use, joining links into a tuple, is `comap` on the `□` leg, which is unaffected.
+* `link_oneI`, `link_oneE`: unchanged.
+
+*(b) `five_boxL` and `five_reflL` at necessary components.*
+* `five_boxL` needs a match `z'` of `m` along `b` to be a match of `e`'s match `z_e` along `side a b`.  `side_side` gives that at the arrows of the form `side a c`.  When the source is a cluster world, those are all of `u`'s arrows, and it holds.  At the root they are not, and it fails, since `z'` and `z_e` may differ at the other arrows.  So `five_boxL` at necessary components is sound only under a box.
+* A variant that reads the necessary component through its **values** only (`◇[⟨e, k⟩ ↦ ⟨t, m⟩] □[d ↦ e] χ(k.box, d) ⊢ □[d ↦ t] χ(m.box, d)`) is sound everywhere, since it uses only side arrows.
+* `five_reflL` with a necessary component: the same restriction.
+
+*(c) `five_gatherL` from the Barcan rule:* derivable, through the values variant of (b).
+
+*(d) The decisive problem: the truth lemma at the root.*
+* At a successor `s` of the root `w`, a match of `w`'s `m` is any necessary object of `s` that agrees with `m` along the side arrows `s → s''` with `s'' ∈ R(w)`, and `R(w)` is in general a proper part of the cluster.  So matches are not unique: two objects of `s` may agree there and differ elsewhere.
+* `□[k ↦ m] Φ(k)` then says that `Φ` holds of **every** match.  The network commits `Φ` only of the match it designates, the image of `m` along `w → s`.  A second match at `s`, agreeing by accident on `R(w)`, gets `Φ` decided by `s` alone, and `s` cannot know it is a match: "agrees with `m` on `R(w)`" is not expressible at `s`.  So the truth lemma fails for these links at the root.
+* *Variants tried.*
+  * The side image as a **possible** object (extent the side arrows, content `m`'s values) is functional and total.  But it is typed `◇B`, so a necessary object at `u` can no longer be identified with it: `n.box` under a `◇_y` view has no counterpart in `k.dia`.  The identity is lost, and with it the point of (R2′).
+  * Restricting the former to cluster worlds is not possible: formulas are not indexed by worlds.
+
+**Why every repair so far is flawed: the root's partial view.**  Strong 5's exactness is valid only at cluster worlds.  At the root, `R(w)` is part of the cluster, so the transfer of `◇`-facts is invalid there, and a cross-world identity has no functional meaning there.  So any rule capturing it must be relativised to cluster worlds, under a box, as U is.  (R1) does that, with a list, unprincipled.  (R2′) does not, and breaks at the root.  In K45 the same asymmetry was absent, because 4 makes the root see the whole cluster, so `keep_lift` holds at the root and is an identity there.
+
+**Does any of this help the weak forms?**  No.  A link to a necessary object needs a match to exist, and that is strong 5's law.  In weak 5 a cluster world's necessary objects have no match elsewhere, so they stay private, and the obstruction of "Weak K5 and KD5: alternative constructions" is untouched.  The one thing the check adds is that the weak obstruction and the strong rule's weakness have the same source: necessary objects of the cluster are not visible from other worlds by any term.
+
+**Where this leaves strong K5 and KD5.**
+* (R1) under a box is correct, but it is a schema transferring finite lists of facts.
+* (R2′) is principled but fails at the root.
+* (R3) drops them from the cube.
+* *Not yet tried:* a principle in U's own form, a closed sentence about successors.  Something like "at every successor, every necessary object of a further successor is, along the arrows across, one of its own, in every respect", with the respects carried by a binder that is functional at cluster worlds.  It is unclear that this can be stated without (R2′)'s binder.
+
+#### Strong 5: the precedent, and cluster rigidity *(2026-11-06, paper; the user asked for past work first)*
+
+**The precedent: `back_joint` (§11.5, §11.14, the 2026-10-21 decision D1).**
+* Strong B once needed several `Back` atoms at once.  The first proposal was an n-ary rule `back_joint` over a list of atoms.
+* It was rejected as "a rule family of unbounded arity" (D1 (c)).  The decision was D1 (a): **one** returning possibility whose single binder carries all the named witnesses, `◇[d ↦ y; z₁ ⇝ c₁, …]`, keeping "exactly one bound possible part".
+* The standing principle (`feedback_qml_joint_possibility_pairing`): propositional modal logic promotes exactly **one** formula to possible.  Possibilities do not combine; what is joint goes inside the one possibility.
+* *(R1) breaks it the same way:* it distributes `n`'s `◇`-facts into separate `◇`s at `p`.  The repair, by the precedent, is to keep **one** possibility and move its **whole body** across.  That is what (R2′) tried with a binder.  The body can instead move as it stands.
+
+**The principle: cluster rigidity.**
+* *Propositionally,* K5 proves `□(◇Φ → Φ)` for every **modalized** `Φ` (every atom under a modality): at a world with a predecessor, all successors see the same cluster, so modalized formulas have one truth value across it.  `□(◇□χ → □χ)` and `□(◇◇χ → ◇χ)` are instances.  Without 4 it is only under a box: at the root it fails.
+* *With objects,* call a hole formula `Φ(e)` **uniform** when every atom, equality and quantifier over a base type is under a modality (`□`, `◇_x`, a link), and the quantifiers outside modalities range over uniform types only: `𝟙`, `◇A` and products of them, and, **with strong 5 only**, `□B`.
+* *The rule (`five_rigid`, a closed sentence as `five_reflL` is):* `□∀q:D.ty. (◇[e ↦ q] Φ(e) → Φ(q))`, for `Φ` uniform and closed apart from its hole.  Its negation is the converse, `Φ(q) → □[e ↦ q] Φ(e)`, so one schema carries both directions.
+* *Why it is sound.*  At a cluster world `p`, with `a : p → u`, `side a` is a bijection from `p`'s arrows onto `u`'s.  Side images correspond (`posSide_side`).  Possible objects correspond (`posSide` along `a`, inverted along `u → p` with the loop).  With strong 5, necessary objects correspond too, by `necSide_exists` both ways: at `p` for `a`, and at `u` for its arrow back to `p`.  All up to `Ind`.  A uniform formula reads its hole only through these, so `Φ(e)` at `u` iff `Φ(q)` at `p`.
+* *What strong 5 is, then:* rigidity extended to quantification over necessary objects.  That is the Barcan reading of `necSide_exists`, restricted, as it must be, to where it is valid.  It refutes the countermodel: `Φ := ∃n:□Var. ◇P(n.box)` is uniform, and the instance is the valid formula.
+* *Instances:* the `◇`-gather (`Φ := ∃z:◇A. Ψ(z)`), the namer's lift of a necessary object with its whole uniform type (`Φ := ∃n. Ψ_F(n, e)` for each finite piece, the pieces conjoining inside one formula), and `five_boxL` and `five_gatherL` under a box.  `five_boxL` and `five_gatherL` stay as they are: they also hold at the root.
+
+**How it serves the network.**  The namer `ρ` lifts a necessary object `n` of a cluster world by a fresh `m` with every `Ψ_F(m)`, each by an instance.  Then every uniform fact about `n` at `u` holds of `m` at `ρ`, and conversely, since `¬Ψ` is uniform too.  So the determined entries along `ρ → s` are consistent, and the clash in "the gather rule is too weak" cannot arise.
+
+**For the weak forms.**
+* Rigidity without the `□B` quantifiers is valid in weak models too, since possible objects correspond without strong 5.  Whether it is **derivable** from the weak rules (`five_boxL`, `five_diaL`, `five_dia_backL`, `five_reflL`) is not checked.  If not, weak K5 was also incomplete as ruled, independently of its construction problem.
+* It does not touch the weak obstruction.  That involves a cluster world's own necessary objects as parameters, and rigidity speaks only of uniform formulas, closed apart from side images.
+* *One small gain:* weak K5's syntax would then contain everything the cluster makes valid about possible objects.  So if the construction problem is ever solved, no missing rule should surface there.
+
+**To check before building.**
+1. That "uniform" is the right class: every connective, every link and both legs, and nothing outside modalities reading a world's own base objects.
+2. The soundness lemma: cluster invariance of uniform formulas, an induction over `WFF` through a correspondence of domains up to `Ind`.  That needs `IndInvariant`, and possibly a law for necessary objects alongside `posSide_side`.
+3. Whether the weak part is derivable from the current rules.
+4. That the network needs no further cross-world fact beyond uniform ones.
+
+**Cost (rough).**  A decidable predicate `WFF.Uniform`, about 200 to 400 lines.  The invariance lemma, 800 to 1 500 (like `sat_cone`).  The rule, soundness and substitution, a few hundred, substitution being trivial for a closed sentence.  1 500 to 2 500 lines in all.
+
+**The four checks (2026-11-06, paper).  1 and 2 pass, 3 finds that weak K5 is incomplete as ruled too, and 4 fails: the root's own necessary objects bring the weak obstruction back in strong K5.**
+
+*Groundwork: `side a` is a bijection at a world with a predecessor, in every arrow-indexed frame.*  For `g : w₀ → p`, `a : p → u` and `c : u → t`, let `ℓ := side g g`, the loop at `p`, and `r := side a ℓ : u → p`.
+* `side_loop` gives `side ℓ a = a`.  So `side r (side a a) = side ℓ a = a`, by `side_side` at `p`.
+* `side_side` at `u` then gives `side a (side r c) = side (side a a) c = c`.
+* So every arrow out of `u` is `side a` of one out of `p`, and `side_inj` gives injectivity.  The laws suffice, without relational frames.
+
+*1. The class "uniform": right.*  A structural predicate.  `⊤`, `⊥` and the connectives recurse.  `∀`/`∃` recurse at the uniform types (`𝟙`, `◇A`, products, and `□B` with strong 5).  `□`, `◇_x`, `link` and `linkx` are uniform whatever is inside.  Atoms, equality and base-type quantifiers outside a modality are not.  Inside a modality only box items and bound variables are visible: a world's own base objects are not.  `Here`, `Back` and `retS` are off in 5 without 4.
+
+*2. The soundness lemma: goes through with the existing laws.*  An induction on uniform formulas, with corresponding environments at `u` and `p`.
+* *Arrows:* the bijection above.
+* *Side images of the hole:* `posSide_side`, one application.
+* *Possible objects bound outside modalities:* from `p` to `u` along `a`, and from `u` to `p` along `r`.  Each direction is one application of `posSide_side`, `posSide_ext` or `posSide_content`.  No `Ind` chaining, because each direction picks its own pivot.
+* *Necessary objects, with strong 5:* `necSide_exists` at `p` along `a`, and at `u` along `r`.  `side r (side a b) = b` makes the two the same correspondence.
+* *Inside a modality:* both evaluations are at one world, with environments `Ind`-related.  `holeSat_ind`, which is an iff so the direction of `Ind` does not matter, does it after pairing.
+* No new model law.
+
+*3. The weak part: likely not derivable, so weak K5 is incomplete as ruled too.*
+* *Derivable instances:* `five_boxL` (`Φ = □[d ↦ e] χ`), and very likely the `◇`-form `◇[e ↦ q] ◇[d ↦ e] χ → ◇[d ↦ q] χ`.  Propositionally, K5 derives `□(◇◇p → ◇p)` from 5 and K; the link version would be checked when written.
+* *The instances with a quantifier:* the `◇`-gather, `◇[e ↦ q] ∃z:◇A. Ψ(z, e) → ∃z'. Ψ(z', q)`.  It is valid in every model (`z' := posSide z r`).  But no weak rule concludes `∃` of a possible object from a successor's.  `five_reflL` produces objects only from a necessary object of the world itself, and `five_gatherL` is strong and produces necessary objects.  So it is very likely underivable, and weak K5 lacks it independently of its construction problem.
+* *For the gaps note:* weak K5 needs `five_rigid` (the weak class) as a rule as well as a construction.
+
+*4. What the network needs: fails at the root.*
+* Inside the cluster everything is uniform, as hoped.  A cluster world's facts about its items are uniform in them, the namer's lift takes their whole uniform type by `five_rigid`, and determined entries through the namer are consistent.
+* *But the root `w` has necessary objects of its own.*  Nothing sees the root, so no gather names them: in strong models they are arbitrary sections over `R(w)`.  Their values at several cluster worlds (the namer `ρ` and `w`'s other successors `s`) are parameters that `ρ` does not coordinate.
+* *The weak bad state recurs*, with `ρ` in `u`'s place and `w` in `c`'s.
+  * `w` decides, about its `n : □□Var` and a possible object `q'` born late, `□[d ↦ q'] □_d(d.dia = n.box.box)`.
+  * `s` has decided `□(m_s.box = y_s.box)`, with `m_s` the namer's `m` at `s` and `y_s = n(w → s)`.
+  * `ρ` has decided `∀x. □_x(x.dia = y_ρ.box) → □[d ↦ x] ∀c'. ¬(□(m.box.box = c'.box) ∧ □_d(d.dia = c'.box))`, with `y_ρ = n(w → ρ)`.
+  * Committing `q'` along `ρ → s` then fails.  Each decision is consistent with what its world can state.  `w` cannot name `ρ`'s `m` inside its `◇` to `ρ` (it can name `m` only along its own arrows, by the gather), and `ρ` cannot name `n`'s values at `s`.
+* *Why K45 escaped:* 4's `keep` makes the root's objects definable at the namer, which is how the hub's `τ` works.  Without 4 the root's necessary objects are private.
+* *Ordering does not save it:* possible objects of the root are born late, as anywhere.
+
+**Where this leaves 5 without 4.**
+* *Both strengths are incomplete as ruled.*  Both lack `five_rigid` (weak: over possible objects; strong: over necessary objects too).
+* *Both meet the obstruction:* weak at every cluster world, strong at the root only.
+* *One route remains for strong:* the root represented at the namer by a possible object marking its view, "a K5 world is a namer read along a witness" (the aside in "the model, the check").  `w`'s `□` becomes `□_x` at `ρ`, and `w`'s objects become `ρ`'s.  That needs the translation to preserve consistency, a conservativity result about the root, the same kind of step as (H) for weak, and it has not been checked.
+
+#### Strong K5: the last routes, checked *(2026-11-06, paper)*
+
+**1. The root as a possible object at the namer: fails.**  The marker `x_w`, with extent the root's view, cannot exist in general.
+* The root can say `□∀x:◇𝟙. □_x P ∧ ◇¬P`: at its successors every possible object's extent lies in `P`, and some successor is `¬P`.  That is satisfiable in strong K5.
+* `x_w`'s side image at any successor `s` of the root has as extent all of `s`'s arrows to the root's view, the `¬P` successor included, against the first conjunct.  And `posSide` is an operation, so a possible object at the namer forces its side images everywhere.
+* So no translation `□ ↦ □_{x_w}` can be faithful, whatever conservativity result one proves.
+
+**1′. A namer outside the root's view: fails too.**  With the namer `ρ` a cluster world not seen by the root, the root's objects have no values at `ρ`, and every value at a cluster world is gathered at `ρ`.  But the root's `n` has values at several of its successors `s, s'`, gathered at `ρ` as **unrelated** names.  The root's link facts (`□[d ↦ q] Θ(n.box, d)`) constrain all of them at once together with `q`'s side images.  `ρ` decides the relation between the name of `n(w → s')` and `q`'s preimage freely, so it can contradict what `s'` received from the root.  Two coordinators, the root for its own objects and `ρ` for the cluster, with neither seeing the other's identities.
+
+**2. Arrow semantics instead of relational: does not help.**
+* The semantics is already arrow-indexed (`Frame.R : W → W → Sort v`); only the planned canonical models were relational.  So the question is whether a canonical frame with parallel arrows, one per route, avoids the obstruction.
+* *It does not.*  Every bad state lives on one source `c` with two arrows `a : c → u`, `b : c → s` and the side arrow `side a b : u → s`.  `side_side` keeps exactly these identified in arrow semantics too: a possible object's side image along `side a b` is its side image along `b`.  That identification is what makes `five_boxL` sound, so it cannot be relaxed without changing the logic.
+* *Parallel arrows give per-arrow values* (`N` along `side a b` and along `side a' b'` may differ).  But each bad state uses a single route, so that freedom is not used.
+* *Committing each side arrow "at once" when it is created* (the `∀ys` argument's precondition) still fails: the source keeps gaining variables, and each must have a value along every arrow already there.
+* *Making worlds not grow* (each world complete in a fixed rich language, arrows defined by coherence) moves the problem into the existence of coherent arrows between given worlds.  That is amalgamation again, with saturation in place of interpolation.
+
+**Conclusion.**  The obstruction is an amalgamation problem.
+* *In general:* a world's **private** necessary objects (with no world that sees it, so no gather) have values at several worlds of one cluster.  Those worlds share possible objects (side images).  Theories completed separately cannot see the identities that tie them together.
+* *Weak 5* has private objects at every cluster world.
+* *Strong 5* has them only at the root.  That is enough, because the root sees several cluster worlds.
+* *K45 and S5* have none: `keep` makes the root's objects definable below it.
+* *B* has no side images.
+* *The tools that address amalgamation:* interpolation, saturated models, or a global (labelled) calculus.  All are research-sized here.
+
+**Recommendation.**  Record strong K5 and KD5 as possible gaps alongside weak, with the finding that **both are also incomplete as ruled** (the missing principle, `five_rigid`, is checked and principled), and with this diagnosis.  Adding `five_rigid` now would not complete them, so it belongs to the final review too, unless wanted for its own sake.
+
+**Decided (user, 2026-11-06):** strong K5 and KD5 are possible gaps too, left for now.
+
+#### 5 without 4: a saturation construction, scoped *(2026-11-06, paper; the user asked whether the semantic tool could be tried)*
+
+**The idea: decide first, identify later.**  Every bad state so far had the same order: an arrow fixed a private object's image (identification), and a theory was completed later (a decision) without seeing it.  A model-theoretic construction reverses the order.
+* Fix every world's complete theory first, in a language that never grows, and **saturated**: every consistent type that an arrow will need is already realized by its terms.
+* Then define arrows by **realizing** the source's items in the target.
+* *Possible objects first.*  Pair each world's possible objects with the central world's by back-and-forth on uniform types.  `five_rigid` makes the uniform types match, and saturation supplies partners.  This gives every possible object one name per world, coherently (`side_side`).
+* *Then private items, along each arrow, all at once.*  The type to realize is `{Φ(ȳ, x̄_s) | □[d̄ ↦ x̄_u] Φ(ū.box, d̄) ∈ M_u}`, with `ȳ` fresh and the copies `x̄_s` fixed.  Its consistency is the design's original `∀ȳ` argument, `five_boxL` at the central world, which needs exactly this: no earlier private choice among the parameters.
+* *The bad states dissolve.*  In the weak example, `s`'s "decision" relating `y = N(u → s)` to `C_s` is no longer a decision: both are chosen after `M_s` is fixed, by realizing two types that share no parameter.  The root's private objects (check 4) are realized along the root's arrows the same way.  Weak and strong alike.
+* *Existence of witness worlds:* a new world realizes the central world's link-type of the globals, the source's type, and the witness formula at once.  Consistency is by `five_rigid` in its converse form, `U(q) → □[e ↦ q] U(e)`, and link K.
+* *The root:* its possible objects' copies must agree with its own link facts and with the central world's uniform types.  That needs `◇[e ↦ q] U(e) → □[e ↦ q] U(e)` for uniform `U`, which is valid at **every** world, the root included, since the root's successors are cluster worlds.  It is "5 for uniform formulas", a natural companion of `five_rigid`.
+* *Arrows are realizations,* so the canonical frame is naturally arrow-indexed.  This is where the user's earlier question about arrow semantics fits.
+
+**The obstacles.**
+1. *Cardinality.*  Arrows go **both ways** inside a cluster.  Realizing a source's whole item set needs the target to be saturated over parameter sets as large as the source, and the source likewise.  With "forth" maps of length `λ`, every world must be `λ⁺`-saturated, hence of size `> λ`: impossible both ways at once.  The way out in model theory is saturated models of one common size `λ` (needing `λ^{<λ} = λ`, a set-theoretic hypothesis such as GCH or an inaccessible), or special models and monster-model bookkeeping.
+2. *Ordering inside a countable construction does not avoid 1.*  Interleaving (copies and private items one at a time, with `ω`-saturation) lets a private item be realized before a copy it is related to, which is the bad state again.  Realizing copies first makes the private items' types range over infinitely many parameters, so `ℵ₁`-saturation is needed, and then 1.
+3. *Bookkeeping by need* (countably many needed types, a countable set of globals fixed in advance) is circular.  Values of private `□◇`-items must land among the globals, so the globals must anticipate types that only later stages produce.
+4. *Machinery.*  Saturated complete theories, back-and-forth and realization for this logic's MCSs (not first-order structures) are all new.  Mathlib's model theory (first-order: ultraproducts, Löwenheim–Skolem, Fraïssé) does not cover them.
+
+**Verdict.**  It is the right kind of tool: the obstruction is an ordering artifact of the stepwise construction, not a defect of the logic, and saturation removes the ordering.  But it costs a set-theoretic hypothesis (or monster-model technique) and a new layer of model theory for this logic.
+* *Independent of the construction, the rules need `five_rigid` and its "5 for uniform formulas" companion.*  Both are valid, principled, and checked for soundness (the first in "The four checks"; the second by the same correspondence, since every world's successors are cluster worlds).
+* *Recommendation:* keep 5 without 4 among the gaps, with this route recorded as the most promising for the final review.  If wanted later, the first step would be `five_rigid` and its companion (rules only, about 1 500 to 2 500 lines), then a feasibility study of the saturated construction under an explicit hypothesis.
+
+**Decided (user, 2026-11-06):** recorded as the most promising direction, but likely a lot of work and probably not worth it at this point.  5 without 4 stays among the possible gaps.
+
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
 **Verdict: no blocker found, and the plan gets smaller.**  `GKeep`'s root action is not needed, and
