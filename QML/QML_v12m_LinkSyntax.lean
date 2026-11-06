@@ -74,6 +74,74 @@ def linkDia {d : ℕ} : (O : OutLeg Γ) → {D : DShape} → {a : Ann D.ty} → 
   | .nec, _, _, t, Φ => WFF.neg (.link hV hN t (WFF.neg Φ))
   | .pos y hy, _, _, t, Φ => .linkx hV hN y hy t Φ
 
+/-- ⭐**The link along the leg**: `□[d ↦ t] Φ` along every arrow, or `◇_y[d ↦ t] Φ` along some
+    arrow of `y`'s extent; the leg's primitive modality (`OutLeg.prim`) with the slot carried. -/
+def linkL {d : ℕ} : (O : OutLeg Γ) → {D : DShape} → {a : Ann D.ty} → Term σ Γ D.ty a →
+    WFF σ (O.view.insert (.bnd d) D.ty) (d + 1) → WFF σ Γ d
+  | .nec, _, _, t, Φ => .link hV hN t Φ
+  | .pos y hy, _, _, t, Φ => .linkx hV hN y hy t Φ
+
+/-- The leg's primitive modality: `□`, or `◇_y`. -/
+def prim {d : ℕ} : (O : OutLeg Γ) → WFF σ O.view d → WFF σ Γ d
+  | .nec, φ => .box φ
+  | .pos y hy, φ => .dia y hy φ
+
 end OutLeg
+
+/-- `□_y[d ↦ t] Φ`, the dual of `◇_y[d ↦ t]`: along every arrow of `y`'s extent.  What `K_dia`'s
+    `□_x` hypotheses are for `linkx_K`. -/
+def WFF.linkxBox {Γ : Ctx} {d : ℕ} (y : VarSymb) (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y))
+    {D : DShape} {a : Ann D.ty} (t : Term σ Γ D.ty a)
+    (Φ : WFF σ ((Γ.diaIn y).insert (.bnd d) D.ty) (d + 1)) : WFF σ Γ d :=
+  WFF.neg (.linkx hV hN y hy t (WFF.neg Φ))
+
+omit [ModalSys] in
+theorem Ctx.RootFresh.of_le {Γ Γ' : Ctx} {r : Root} (hle : Γ.Le Γ') (h : Γ'.RootFresh r) :
+    Γ.RootFresh r := by
+  intro v hv
+  cases hΓ : Γ v with
+  | none => rfl
+  | some T =>
+      have := hle v T hΓ
+      rw [h v hv] at this
+      cases this
+
+/-! ## Maps of tuples
+
+A link's tuple is rearranged by projections, pairing and unit; moving across commutes with that
+(`Model.sideOf` is componentwise), which is `Proof.link_map`.  `ret_map`'s `ShapeMap` is the
+precedent; here no item has a value to come back as, so a map is just where each possible object
+of the target is found in the source. -/
+
+/-- A **place of a tuple shape** holding a possible object `◇A`. -/
+inductive DShape.Pos : DShape → VarType → Type where
+  | here (A : VarType) : DShape.Pos (.dia A) A
+  | fst {D : DShape} (E : DShape) {A : VarType} : DShape.Pos D A → DShape.Pos (.prod D E) A
+  | snd (D : DShape) {E : DShape} {A : VarType} : DShape.Pos E A → DShape.Pos (.prod D E) A
+
+/-- ⭐A **map of tuple shapes** `D → E`: for each possible object of `E`, its place in `D`. -/
+def DShape.Map (D : DShape) : DShape → Type
+  | .one => Unit
+  | .dia A => D.Pos A
+  | .prod E₁ E₂ => D.Map E₁ × D.Map E₂
+
+/-- The object at a place of the tuple at address `v`, as an η-term. -/
+def DShape.Pos.tm {Γ : Ctx} : {D : DShape} → {A : VarType} → D.Pos A → (v : VarSymb) →
+    Γ.ref v = some D.ty → Σ b, Term σ Γ (.VTypeDia A) b
+  | _, _, .here A, v, h => ⟨_, Term.eta v (.VTypeDia A) h⟩
+  | _, _, .fst _ p, v, h => p.tm (.step v .fst) (Ctx.ref_fst_of h)
+  | _, _, .snd _ p, v, h => p.tm (.step v .snd) (Ctx.ref_snd_of h)
+
+/-- The tuple at address `v`, rearranged by a map. -/
+def DShape.Map.tm {Γ : Ctx} {D : DShape} (v : VarSymb) (h : Γ.ref v = some D.ty) :
+    (E : DShape) → D.Map E → Σ b, Term σ Γ E.ty b
+  | .one, _ => ⟨_, .unit⟩
+  | .dia _, p => DShape.Pos.tm (σ := σ) (D := D) p v h
+  | .prod E₁ E₂, f => ⟨_, .pair (DShape.Map.tm v h E₁ f.1).2 (DShape.Map.tm v h E₂ f.2).2⟩
+
+/-- ⭐A map as a **hole term**: the hole's tuple rearranged. -/
+def DShape.Map.hole {D E : DShape} (f : D.Map E) :
+    Σ b, Term σ (Ctx.empty.insert (.bnd 0) D.ty) E.ty b :=
+  DShape.Map.tm (.root (.bnd 0)) (Ctx.ref_insert_root _ _ _) E f
 
 end V12M

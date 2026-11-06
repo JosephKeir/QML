@@ -5837,6 +5837,32 @@ So there are two ways to build it:
 * `QML_v12m_SemLink`: `sideOf_side` and `sideOf_loop` are now `Ind` relations, componentwise through `IndCongr.pair`.  All five rules' soundness goes through `holeSat_ind`.
 * *Next:* the K5 network itself.
 
+#### K5 and KD5, step 5: a gap, the links' structural rules *(2026-11-06, found starting the network)*
+
+**Finding.**  Links have no structural rules.  The five rules of step 2 are 5's, and nothing else mentions `link` or `linkx`.  So none of the following is derivable, and the network needs each:
+* *K for links.*  Distributing a link over a derivation, as `K_box` and `K_dia` do for `□` and `◇_x`.  The truth lemma's existence case, a new child for a failing `□[d ↦ t] Φ`, needs `{Φ' : □[d ↦ t] Φ' ∈ M} ∪ {¬Φ}` consistent, which is K.  Likewise the mixed case `◇_y[d ↦ t] Φ, □[d ↦ t] Ψ ⊢ ◇_y[d ↦ t] (Φ ∧ Ψ)`, `K_dia`'s shape.
+* *A link to nothing is a modality.*  `□[d ↦ ()] Φ ⊣⊢ □ Φ(())`, and `◇_y[d ↦ ()] Φ ⊣⊢ ◇_y Φ(())`.  The closed transfer that starts every cluster arrow (B's `closed_back`) is propositional 5, `◇□χ ⊢ □χ` for closed `χ`.  Without 4 the plain `five_box` is off, so that has to come from `five_boxL` at the shape `one`, through this.
+* *Combining links along one arrow.*  The finite-piece lemma joins finitely many links, to different terms, into one link to their tuple.  This is β along a map of shapes, `□[d ↦ t] Φ(f d) ⊣⊢ □[d ↦ f t] Φ(d)` for `f` built from projections, pairing and unit; `ret_map` is its counterpart for the returning possibility.
+* *Why step 2 missed it:* the audit checked each 5 rule's statement and soundness, not that a link can be reasoned inside.  `retS` met the same need with `ret_monoS` (monotonicity), `ret_map` (β along shape maps) and `ret_extS`.
+
+**Proposed rules (paper; each sound at once from `Model.sat`'s link clauses).**
+* `link_K`, `K_box`'s shape: from `Δ ⊢ φ` in the link's view with the slot a fresh name, `□[d ↦ t] Δ ⊢ □[d ↦ t] φ`.
+* `linkx_K`, `K_dia`'s shape: `◇_y[d ↦ t] ψ, □_y[d ↦ t] Δ₂, □[d ↦ t] Δ₁ ⊢ ◇_y[d ↦ t] φ`.
+* `link_map`, `linkx_map`, `ret_map`'s shape: along a map of shapes `f : D → E` (projections, pairing, unit), both ways.  The unit instance relates a link to a plain modality.
+* Possibly fewer: K might be stated once for both legs over `OutLeg`, as `ret_monoS` is.  To be settled when written.
+* *Cost:* about `retS`'s structural rules, 800 to 1 500 lines with soundness and substitution, before the network.
+
+**Decided (user, 2026-11-06): the rules as proposed, `K_box` and `K_dia` the shapes.**  The user is sure of those two shapes, and asked whether other rule sets could have been given them too; that question is for the final review (`docs/claude-memory/project_qml_possible_gaps.md`).
+
+**Built the same day.**  Six rules, each sound and closed under substitution; no new frame or model law.
+* ⭐`link_K`, `K_box`'s shape: the slot opened as a fresh eigenvariable `u` (`WFF.bindFree`, as `all_intro`), from `Δ ⊢ φ` in `Γ.boxIn, u`, `□[d ↦ t] Δ ⊢ □[d ↦ t] φ`.
+* ⭐`linkx_K`, `K_dia`'s shape: from `ψ, Δ₂, Δ₁ ⊢ φ` in `Γ.diaIn y, u`, `◇_y[d ↦ t] ψ, □_y[d ↦ t] Δ₂, □[d ↦ t] Δ₁ ⊢ ◇_y[d ↦ t] φ` (`WFF.linkxBox` the dual).
+* ⭐`link_map`, `link_comap`, `ret_map`'s shape, along either leg (`OutLeg.linkL`): along a map of tuple shapes `f : D.Map E` (`DShape.Pos`, `DShape.Map`, its hole term `DShape.Map.hole`), `O.linkL t Φ(f d) ⊣⊢ O.linkL (f t) Φ`.  Sound because moving across is componentwise (`Model.mapVal_sideOf`).
+* ⭐`link_oneI`, `link_oneE`: a link to `()` is the leg's own modality (`OutLeg.prim`: `□`, or `◇_y`), `O.linkL () Φ ⊣⊢ O.prim Φ(())`.
+* *What they give, on paper:* plain `□` and `□_y` hypotheses enter a link to any `t` (`link_oneI` then `link_comap` along `D → 𝟙`), links to different terms join into one link to their tuple (`link_comap` along the projections, then `link_K`), and propositional 5 comes from `five_boxL` at the shape `one` through `link_oneE`.
+* *Files:* `QML_v12m_LinkSyntax` (`DShape.Pos`, `DShape.Map`, `OutLeg.linkL`, `OutLeg.prim`, `WFF.linkxBox`, `Ctx.RootFresh.of_le`), `QML_v12m_Proof`, `QML_v12m_SemLink` (`Model.mapVal`, `holeVal_mapHole`, `mapVal_sideOf`, `sat_linkMap`, `sat_linkOne`), `QML_v12m_Soundness`, `QML_v12m_ProofSubst` (`OutLeg.subst_linkL`, `OutLeg.subst_prim`, `OutLeg.linkL_congr`, `WFF.subst_diaIn_mono_rename`).  About 460 lines, well under the estimate: every piece mirrored an existing one.
+* *Next:* the K5 network itself.
+
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
 **Verdict: no blocker found, and the plan gets smaller.**  `GKeep`'s root action is not needed, and

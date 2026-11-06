@@ -369,6 +369,44 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M hM w env _ _ _
       exact (sat_mono (env := Model.Env.empty w) (fun _ _ h => nomatch h) _).mpr
         (Model.sat_fiveReflL hV hN hM hS _ χ)
+  | @link_K Γ _ hV hN D a t u hu Δ φ p ih =>
+      intro M hM w env hfin _ hΔ b
+      have hnpb := Ctx.noProjLast_boxIn Γ
+      refine (sat_bindFree (env.boxPush b) hnpb u hu _ D.ty _ φ).mpr ?_
+      exact ih M hM _ (hfin.boxIn.insert hu D.ty) (hnpb.insert _ D.ty)
+        (fun ψ hψ => (sat_bindFree (env.boxPush b) hnpb u hu _ D.ty _ ψ).mp
+          (hΔ _ (List.mem_map.mpr ⟨ψ, hψ, rfl⟩) b))
+  | @linkx_K Γ _ hV hN y hy D a t u hu Δ₁ Δ₂ φ ψ p ih =>
+      intro M hM w env hfin _ hΔ
+      obtain ⟨Y, hr, b, hψ⟩ := hΔ _ List.mem_cons_self
+      have hnpd := Ctx.noProjLast_diaIn Γ y
+      have hnpb := Ctx.noProjLast_boxIn Γ
+      refine ⟨Y, hr, b, (sat_bindFree _ hnpd u hu _ D.ty _ φ).mpr
+        (ih M hM _ ((hfin.diaIn y).insert hu D.ty) (hnpd.insert _ D.ty)
+          (hyps_cons ((sat_bindFree _ hnpd u hu _ D.ty _ ψ).mp hψ) (fun χ hχ => ?_)))⟩
+      rcases List.mem_append.mp hχ with h₂ | h₁
+      · have hb := hΔ _
+          (List.mem_cons_of_mem _ (List.mem_append_left _ (List.mem_map.mpr ⟨χ, h₂, rfl⟩)))
+        refine (sat_bindFree _ hnpd u hu ((Ctx.NoSlots.slots (Γ := Γ)).diaIn y) D.ty _ χ).mp ?_
+        by_contra hne
+        exact hb ⟨Y, hr, b, hne⟩
+      · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₁
+        have hb := hΔ _ (List.mem_cons_of_mem _
+          (List.mem_append_right _ (List.mem_map.mpr ⟨χ', hχ', rfl⟩)))
+        exact (sat_mono (Env.extend_agree (Env.box_dia_agree env hr b) (.free u) _) χ').mpr
+          ((sat_bindFree _ hnpb u _ _ D.ty _ χ').mp (hb b.1))
+  | @link_map Γ _ Δ hV hN O D E f a t Φ p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact (Model.sat_linkMap hV hN hnp env O f t Φ).mp (ih M hM env hfin hnp hΔ)
+  | @link_comap Γ _ Δ hV hN O D E f a t Φ p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact (Model.sat_linkMap hV hN hnp env O f t Φ).mpr (ih M hM env hfin hnp hΔ)
+  | @link_oneI Γ _ Δ hV hN O Φ p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact (Model.sat_linkOne hV hN env O Φ).mpr (ih M hM env hfin hnp hΔ)
+  | @link_oneE Γ _ Δ hV hN O Φ p ih =>
+      intro M hM w env hfin hnp hΔ
+      exact (Model.sat_linkOne hV hN env O Φ).mp (ih M hM env hfin hnp hΔ)
   | @here_keep Γ _ Δ hT hF x hx A a bd =>
       intro M hM w env hfin hnp hΔ hd
       obtain ⟨X, hr, b, hb⟩ := hd

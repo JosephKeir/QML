@@ -242,6 +242,120 @@ theorem sat_fiveReflL (hM : M.IndInvariant) (hS : ModalSys.shaped = false) {w : 
   rw [interp_eta, interp_eta, Env.ref_extend_root, Env.ref_extend_extend _ (by decide)]
   exact (holeSat_ind hM χ (hM.pair (M.Ind_refl _) (sideOf_loop hV hN hM hS D a _))).mp h
 
+/-! ## The structural rules
+
+A link is its leg's modality with the slot carried along; `link_K` and `linkx_K` are sound as
+`K_box` and `K_dia` are (`Soundness`).  A map of tuples only rearranges possible objects, and moving
+across is componentwise, so the two commute (`mapVal_sideOf`): `link_map`.  A link to `()` binds
+the one point of `𝟙`: `link_oneI`, `link_oneE`. -/
+
+/-- The object at a place of a tuple. -/
+def posAt {w : M.frame.W} : {D : DShape} → {A : VarType} → D.Pos A →
+    M.frame.Dom D.ty w → M.frame.Dom (.VTypeDia A) w
+  | _, _, .here _, x => x
+  | _, _, .fst _ p, x => posAt p x.1
+  | _, _, .snd _ p, x => posAt p x.2
+
+/-- A tuple rearranged by a map of tuple shapes. -/
+def mapVal {w : M.frame.W} {D : DShape} : (E : DShape) → D.Map E →
+    M.frame.Dom D.ty w → M.frame.Dom E.ty w
+  | .one, _, _ => PUnit.unit
+  | .dia _, p, x => posAt p x
+  | .prod E₁ E₂, f, x => (mapVal E₁ f.1 x, mapVal E₂ f.2 x)
+
+theorem interp_posTm {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
+    ∀ {D : DShape} {A : VarType} (p : D.Pos A) (v : VarSymb) (h : Γ.ref v = some D.ty),
+      interp env (DShape.Pos.tm (σ := σ) p v h).2 = M.posAt p (env.ref v h)
+  | _, _, .here A, v, h => interp_eta env (T := .VTypeDia A) v h
+  | .prod D E, _, .fst _ p, v, h => by
+      refine (interp_posTm env p _ _).trans ?_
+      rw [Env.ref_fst (A := D.ty) (B := E.ty) env h]
+      rfl
+  | .prod D E, _, .snd _ p, v, h => by
+      refine (interp_posTm env p _ _).trans ?_
+      rw [Env.ref_snd (A := D.ty) (B := E.ty) env h]
+      rfl
+
+theorem interp_mapTm {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {D : DShape} (v : VarSymb)
+    (h : Γ.ref v = some D.ty) :
+    ∀ (E : DShape) (f : D.Map E),
+      interp env (DShape.Map.tm (σ := σ) v h E f).2 = M.mapVal E f (env.ref v h)
+  | .one, _ => rfl
+  | .dia _, p => interp_posTm env p v h
+  | .prod E₁ E₂, f => by
+      change (interp env (DShape.Map.tm (σ := σ) v h E₁ f.1).2,
+        interp env (DShape.Map.tm (σ := σ) v h E₂ f.2).2) = _
+      rw [interp_mapTm env v h E₁ f.1, interp_mapTm env v h E₂ f.2]
+      rfl
+
+/-- ⭐A map's hole term denotes the rearrangement. -/
+theorem holeVal_mapHole {D E : DShape} (f : D.Map E) {w : M.frame.W} (x : M.frame.Dom D.ty w) :
+    M.holeVal (DShape.Map.hole (σ := σ) f).2 x = M.mapVal E f x := by
+  unfold holeVal DShape.Map.hole
+  rw [interp_mapTm, Env.ref_extend_root]
+
+theorem posAt_sideOf {w : M.frame.W} (a : M.frame.Acc w) :
+    ∀ {D : DShape} {A : VarType} (p : D.Pos A) (x : M.frame.Dom D.ty w),
+      M.posAt p (M.sideOf hV D x a) = M.sideOf hV (.dia A) (M.posAt p x) a
+  | _, _, .here _, _ => rfl
+  | _, _, .fst _ p, x => posAt_sideOf a p x.1
+  | _, _, .snd _ p, x => posAt_sideOf a p x.2
+
+/-- ⭐**Rearranging commutes with moving across**: `sideOf` is componentwise. -/
+theorem mapVal_sideOf {w : M.frame.W} (a : M.frame.Acc w) {D : DShape} :
+    ∀ (E : DShape) (f : D.Map E) (x : M.frame.Dom D.ty w),
+      M.mapVal E f (M.sideOf hV D x a) = M.sideOf hV E (M.mapVal E f x) a
+  | .one, _, _ => rfl
+  | .dia _, p, x => posAt_sideOf hV a p x
+  | .prod E₁ E₂, f, x => by
+      change (M.mapVal E₁ f.1 (M.sideOf hV D x a), M.mapVal E₂ f.2 (M.sideOf hV D x a)) = _
+      rw [mapVal_sideOf a E₁ f.1 x, mapVal_sideOf a E₂ f.2 x]
+      rfl
+
+/-- ⭐`Proof.link_map` and `Proof.link_comap` are sound: along each arrow both sides read `Φ` of
+    the same rearranged objects (`mapVal_sideOf`). -/
+theorem sat_linkMap {Γ : Ctx} [Γ.NoSlots] (hnp : Γ.NoProjLast) {w : M.frame.W} (env : M.Env Γ w)
+    (O : OutLeg Γ) {D E : DShape} (f : D.Map E) {a : Ann D.ty} (t : Term σ Γ D.ty a)
+    (Φ : WFF σ (O.view.insert (.bnd 0) E.ty) 1) :
+    M.sat env (O.linkL hV hN t (WFF.bodyRepl
+        (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) D.ty) f.hole.2) Φ) : WFF σ Γ 0) ↔
+      M.sat env (O.linkL hV hN (D := E) (Term.holeRead t f.hole.2) Φ : WFF σ Γ 0) := by
+  have key : ∀ {w' : M.frame.W} (env' : M.Env O.view w') (x : M.frame.Dom D.ty w'),
+      M.sat (env'.extend (.bnd 0) x) (WFF.bodyRepl
+        (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) D.ty) f.hole.2) Φ) ↔
+        M.sat (env'.extend (.bnd 0) (M.mapVal E f x)) Φ := by
+    intro w' env' x
+    rw [sat_bodyRepl O.noProjLast, interp_mono (Env.extend_agree (h := Ctx.empty_le O.view)
+      (env := Env.empty _) (env' := env') (fun _ _ h => nomatch h) (.bnd 0) x),
+      ← holeVal_mapHole f x]
+    rfl
+  have ht : interp env (Term.holeRead t f.hole.2) = M.mapVal E f (interp env t) :=
+    (interp_holeRead hnp env t _).trans (holeVal_mapHole f _)
+  cases O with
+  | nec =>
+      change (∀ b : M.frame.Acc w, _) ↔ ∀ b : M.frame.Acc w, _
+      refine forall_congr' fun b => (key _ _).trans ?_
+      rw [ht, mapVal_sideOf]
+  | pos y hy =>
+      change (∃ (Y : VarType) (h : Γ.ref y = some (.VTypeDia Y))
+        (b : (M.posEval (env.ref y h)).1), _) ↔ ∃ (Y : VarType) (h : Γ.ref y = some (.VTypeDia Y))
+        (b : (M.posEval (env.ref y h)).1), _
+      refine exists_congr fun Y => exists_congr fun h => exists_congr fun b => (key _ _).trans ?_
+      rw [ht, mapVal_sideOf]
+
+/-- ⭐`Proof.link_oneI` and `Proof.link_oneE` are sound: `()` moved across is `()`. -/
+theorem sat_linkOne {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W} (env : M.Env Γ w) (O : OutLeg Γ)
+    (Φ : WFF σ (O.view.insert (.bnd 0) .VTypeOne) 1) :
+    M.sat env (O.linkL hV hN (D := .one) .unit Φ : WFF σ Γ 0) ↔
+      M.sat env (O.prim (WFF.instantiate Ctx.NoSlots.slots .unit Φ) : WFF σ Γ 0) := by
+  cases O with
+  | nec =>
+      exact forall_congr' fun b =>
+        (sat_instantiate (env.boxPush b) (Ctx.noProjLast_boxIn Γ) _ _ Φ).symm
+  | pos y hy =>
+      exact exists_congr fun Y => exists_congr fun h => exists_congr fun b =>
+        (sat_instantiate (env.diaPush y h b) (Ctx.noProjLast_diaIn Γ y) _ _ Φ).symm
+
 end Model
 
 end V12M

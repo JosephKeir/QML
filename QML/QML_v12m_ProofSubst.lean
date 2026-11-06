@@ -1574,6 +1574,76 @@ theorem OutLeg.subst_linkDia (hV : ModalSys.Five = true) (hN : ModalSys.Four = f
   | .nec, _, _, _, _ => rfl
   | .pos _ _, _, _, _, _ => rfl
 
+/-- The link along the leg under substitution, as `subst_linkDia`. -/
+theorem OutLeg.subst_linkL (hV : ModalSys.Five = true) (hN : ModalSys.Four = false)
+    {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
+    (hc : Subst.Coh ι Γ θ) {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (hΔ : Δ.SlotsFrom d') :
+    (O : OutLeg Γ) → {D : DShape} → {a : Ann D.ty} → (t : Term σ Γ D.ty a) →
+    (Φ : WFF σ (O.view.insert (.bnd d) D.ty) (d + 1)) →
+    WFF.subst ι θ hθ hc hΓ hΔ (O.linkL hV hN t Φ) =
+      (O.subst θ hθ hc).linkL hV hN (Term.subst ι θ hθ hc t)
+        (WFF.subst (VarSymb.shiftSlot ι d d')
+          ((O.viewSubst θ hθ hc).under d d' _ (OutLeg.slotsFrom hΔ (O.subst θ hθ hc)).root)
+          (Subst.ok_under (O.viewOk θ hθ hc) _ (OutLeg.slotsFrom hΔ (O.subst θ hθ hc)).root)
+          (Subst.coh_under (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) (OutLeg.slotsFrom hΓ O) _
+            (OutLeg.slotsFrom hΔ (O.subst θ hθ hc)).root)
+          ((OutLeg.slotsFrom hΓ O).insert _) ((OutLeg.slotsFrom hΔ (O.subst θ hθ hc)).insert _) Φ)
+  | .nec, _, _, _, _ => rfl
+  | .pos _ _, _, _, _, _ => rfl
+
+/-- The leg's modality under substitution. -/
+theorem OutLeg.subst_prim {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) {d d' : ℕ} (hΓ : Γ.SlotsFrom d)
+    (hΔ : Δ.SlotsFrom d') :
+    (O : OutLeg Γ) → (φ : WFF σ O.view d) →
+    WFF.subst ι θ hθ hc hΓ hΔ (O.prim φ) =
+      (O.subst θ hθ hc).prim (WFF.subst ι (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc)
+        (O.viewCoh θ hθ hc) (OutLeg.slotsFrom hΓ O) (OutLeg.slotsFrom hΔ (O.subst θ hθ hc)) φ)
+  | .nec, _ => rfl
+  | .pos _ _, _ => rfl
+
+theorem OutLeg.linkL_congr (hV : ModalSys.Five = true) (hN : ModalSys.Four = false)
+    {Γ : Ctx} {d : ℕ} (O : OutLeg Γ) {D : DShape} {a a' : Ann D.ty} {t : Term σ Γ D.ty a}
+    {t' : Term σ Γ D.ty a'} (h : (⟨a, t⟩ : Σ b, Term σ Γ D.ty b) = ⟨a', t'⟩)
+    (Φ : WFF σ (O.view.insert (.bnd d) D.ty) (d + 1)) :
+    O.linkL hV hN t Φ = O.linkL hV hN t' Φ := by
+  cases h
+  rfl
+
+/-- `WFF.subst_diaIn_mono` with an eigenvariable: a link's `□`-hypothesis moved into the `◇_y`
+    view with its slot opened as `u`, renamed to `u'`. -/
+theorem WFF.subst_diaIn_mono_rename {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) {x : VarSymb}
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (hw : (θ.at x).idxAlong [] = ι x)
+    (hΓ : Γ.SlotsFrom 0) (hΔb : Δ.boxIn.SlotsFrom 0) (hΔd : (Δ.diaIn (ι x)).SlotsFrom 0)
+    {u u' : ℕ} (hub : Γ.boxIn.RootFresh (.free u)) (hud : (Γ.diaIn x).RootFresh (.free u))
+    (hub' : Δ.boxIn.RootFresh (.free u')) (hud' : (Δ.diaIn (ι x)).RootFresh (.free u'))
+    (T : VarType) (χ : WFF σ (Γ.boxIn.insert (.free u) T) 0) :
+    WFF.subst (VarSymb.renameIdx ι u u') ((θ.dia x (ι x)).rename u u' T hud'.root)
+        (Subst.ok_rename (Subst.ok_dia hθ hx hw) T hud'.root)
+        (Subst.coh_rename (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) hud T hud'.root)
+        ((hΓ.diaIn x).insertFree u T) (hΔd.insertFree u' T)
+        (WFF.mono ((Ctx.le_boxIn_diaIn Γ x).insert (.free u) T) χ) =
+      WFF.mono ((Ctx.le_boxIn_diaIn Δ (ι x)).insert (.free u') T)
+        (WFF.subst (VarSymb.renameIdx ι u u') (θ.box.rename u u' T hub'.root)
+          (Subst.ok_rename (Subst.ok_box hθ) T hub'.root)
+          (Subst.coh_rename (Subst.ok_box hθ) (Subst.coh_box hθ hc) hub T hub'.root)
+          (hΓ.boxIn.insertFree u T) (hΔb.insertFree u' T) χ) := by
+  refine WFF.subst_mono_eq _ _ _ _ _ _ _ _ _ _ _ _ (Subst.sim_of fun v U hlp hv => ?_) χ
+  by_cases hvr : v = .root (.free u)
+  · subst hvr
+    rw [Subst.rename_root]
+    change SubE.Sim U _ (SubE.mono _ (θ.box.rename u u' T hub'.root (.root (.free u))))
+    rw [Subst.rename_root]
+    exact .refl _
+  · have hv' : Γ.boxIn v = some U := by simpa [Ctx.insert, hvr] using hv
+    rw [Subst.rename_ne _ _ _ _ hvr]
+    change SubE.Sim U _ (SubE.mono _ (θ.box.rename u u' T hub'.root v))
+    rw [Subst.rename_ne _ _ _ _ hvr, ← Subst.at_nonproj (θ.dia x (ι x)) hlp,
+      Subst.dia_eq_box_mono θ x (ι x) v U ((Ctx.ref_nonproj _ hlp).trans hv'),
+      Subst.at_nonproj _ hlp, SubE.mono_mono, SubE.mono_mono]
+    exact .refl _
+
 
 theorem VarSymb.inner_rt (u : VarSymb) : u.inner.rt = u.rt := by
   unfold VarSymb.inner
@@ -3235,6 +3305,119 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
   | _, _, _, @Proof.five_reflL _ _ Γ _ _ hV hN hS B D χ, Γ', _, ι, θ, hθ, hc, hΓ =>
       Proof.conv (WFF.subst_mono_empty _ (Ctx.empty_le Γ') θ hθ hc hΓ Ctx.NoSlots.slots _).symm
         (Proof.five_reflL hV hN hS χ)
+  | _, _, _, @Proof.link_K _ _ Γ _ hV hN D a t u hu Δs φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      have hu' : Γ'.boxIn.RootFresh (.free (Ctx.Presented.bound Γ'.boxIn)) :=
+        Ctx.Presented.fresh_bound _ le_rfl
+      have ih := Proof.subst p (Γ' := Γ'.boxIn.insert (.free (Ctx.Presented.bound Γ'.boxIn)) D.ty)
+        (θ.box.rename u _ D.ty hu'.root) (Subst.ok_rename (Subst.ok_box hθ) D.ty hu'.root)
+        (Subst.coh_rename (Subst.ok_box hθ) (Subst.coh_box hθ hc) hu D.ty hu'.root)
+        (hΓ.boxIn.insertFree u D.ty)
+      Proof.castHyps
+        (by
+          rw [List.map_map, List.map_map]
+          exact List.map_congr_left fun ψ _ => congrArg (WFF.link hV hN _)
+            (WFF.subst_bindFree θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn
+              hΓ'.boxIn hu hu' D.ty ψ).symm)
+        (Proof.conv (congrArg (WFF.link hV hN _)
+            (WFF.subst_bindFree θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn
+              hΓ'.boxIn hu hu' D.ty φ)).symm
+          (Proof.link_K hV hN (Term.subst ι θ hθ hc t) _ hu' ih))
+  | _, _, _, @Proof.linkx_K _ _ Γ _ hV hN y hy D a t u hu Δ₁ Δ₂ φ ψ p, Γ', _, ι, θ, hθ, hc,
+      hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
+      have hwy : ∃ Y, Γ'.ref (ι y) = some (.VTypeDia Y) :=
+        hy.elim fun _ hY => SubE.ref_witness (Subst.okRef_at hθ hY) hw
+      have hu' : (Γ'.diaIn (ι y)).RootFresh (.free (Ctx.Presented.bound (Γ'.diaIn (ι y)))) :=
+        Ctx.Presented.fresh_bound _ le_rfl
+      have hub' := hu'.of_le (Ctx.le_boxIn_diaIn Γ' (ι y))
+      have hub := hu.of_le (Ctx.le_boxIn_diaIn Γ y)
+      have hθd := Subst.ok_dia hθ hy hw
+      have hcd := Subst.coh_dia hθ hc hy
+      have ih := Proof.subst p
+        (Γ' := (Γ'.diaIn (ι y)).insert (.free (Ctx.Presented.bound (Γ'.diaIn (ι y)))) D.ty)
+        ((θ.dia y (ι y)).rename u _ D.ty hu'.root) (Subst.ok_rename hθd D.ty hu'.root)
+        (Subst.coh_rename hθd hcd hu D.ty hu'.root) ((hΓ.diaIn y).insertFree u D.ty)
+      Proof.castHyps
+        (by
+          simp only [List.map_cons, List.map_append, List.map_map]
+          congr 1
+          · exact congrArg (WFF.linkx hV hN (ι y) hwy _)
+              (WFF.subst_bindFree (θ.dia y (ι y)) hθd hcd (hΓ.diaIn y) (hΓ'.diaIn (ι y)) hu hu'
+                D.ty ψ).symm
+          · congr 1
+            · exact List.map_congr_left fun χ _ => congrArg (fun Φ => WFF.neg
+                (WFF.linkx hV hN (ι y) hwy (Term.subst ι θ hθ hc t) (WFF.neg Φ)))
+                (WFF.subst_bindFree (θ.dia y (ι y)) hθd hcd (hΓ.diaIn y) (hΓ'.diaIn (ι y)) hu
+                  hu' D.ty χ).symm
+            · exact List.map_congr_left fun χ _ => congrArg (WFF.link hV hN _)
+                (WFF.subst_bindFree θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn
+                  hΓ'.boxIn hub hub' D.ty χ).symm)
+        (Proof.conv (congrArg (WFF.linkx hV hN (ι y) hwy _)
+            (WFF.subst_bindFree (θ.dia y (ι y)) hθd hcd (hΓ.diaIn y) (hΓ'.diaIn (ι y)) hu hu'
+              D.ty φ)).symm
+          (Proof.linkx_K hV hN (ι y) hwy (Term.subst ι θ hθ hc t) _ hu'
+            (Δ₁ := Δ₁.map (WFF.subst (VarSymb.renameIdx ι u _) (θ.box.rename u _ D.ty hub'.root)
+              (Subst.ok_rename (Subst.ok_box hθ) D.ty hub'.root)
+              (Subst.coh_rename (Subst.ok_box hθ) (Subst.coh_box hθ hc) hub D.ty hub'.root)
+              (hΓ.boxIn.insertFree u D.ty) (hΓ'.boxIn.insertFree _ D.ty)))
+            (Δ₂ := Δ₂.map (WFF.subst (VarSymb.renameIdx ι u _)
+              ((θ.dia y (ι y)).rename u _ D.ty hu'.root) (Subst.ok_rename hθd D.ty hu'.root)
+              (Subst.coh_rename hθd hcd hu D.ty hu'.root) ((hΓ.diaIn y).insertFree u D.ty)
+              ((hΓ'.diaIn (ι y)).insertFree _ D.ty)))
+            (Proof.castHyps
+              (by
+                simp only [List.map_cons, List.map_append, List.map_map]
+                congr 2
+                exact List.map_congr_left fun χ _ =>
+                  WFF.subst_diaIn_mono_rename θ hθ hc hy hw hΓ hΓ'.boxIn (hΓ'.diaIn (ι y)) hub hu
+                    hub' hu' D.ty χ)
+              ih)))
+  | _, _, _, @Proof.link_map _ _ Γ _ _ hV hN O D E f a t Φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      Proof.conv ((OutLeg.subst_linkL hV hN θ hθ hc hΓ hΓ' O _ Φ).trans
+          (OutLeg.linkL_congr hV hN _ (Term.subst_holeRead_sig θ hθ hc t f.hole.2) _)).symm
+        (Proof.link_map hV hN (O.subst θ hθ hc) f (Term.subst ι θ hθ hc t) _
+          (Proof.conv ((OutLeg.subst_linkL hV hN θ hθ hc hΓ hΓ' O t _).trans
+            (congrArg (OutLeg.linkL hV hN (O.subst θ hθ hc) (Term.subst ι θ hθ hc t))
+              ((WFF.subst_bodyRepl (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)
+                  _ Φ).trans
+                (WFF.bodyRepl_congr (Term.subst_under_closed (O.viewSubst θ hθ hc)
+                  (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) (OutLeg.slotsFrom hΓ O)
+                  (OutLeg.slotsFrom hΓ' _) f.hole.2) _))))
+            (Proof.subst p θ hθ hc hΓ)))
+  | _, _, _, @Proof.link_comap _ _ Γ _ _ hV hN O D E f a t Φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      Proof.conv ((OutLeg.subst_linkL hV hN θ hθ hc hΓ hΓ' O t _).trans
+            (congrArg (OutLeg.linkL hV hN (O.subst θ hθ hc) (Term.subst ι θ hθ hc t))
+              ((WFF.subst_bodyRepl (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc)
+                  _ Φ).trans
+                (WFF.bodyRepl_congr (Term.subst_under_closed (O.viewSubst θ hθ hc)
+                  (O.viewOk θ hθ hc) (O.viewCoh θ hθ hc) (OutLeg.slotsFrom hΓ O)
+                  (OutLeg.slotsFrom hΓ' _) f.hole.2) _)))).symm
+        (Proof.link_comap hV hN (O.subst θ hθ hc) f (Term.subst ι θ hθ hc t) _
+          (Proof.conv ((OutLeg.subst_linkL hV hN θ hθ hc hΓ hΓ' O _ Φ).trans
+              (OutLeg.linkL_congr hV hN _ (Term.subst_holeRead_sig θ hθ hc t f.hole.2) _))
+            (Proof.subst p θ hθ hc hΓ)))
+  | _, _, _, @Proof.link_oneI _ _ Γ _ _ hV hN O Φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      Proof.conv (OutLeg.subst_linkL hV hN θ hθ hc hΓ hΓ' O (D := .one) .unit Φ).symm
+        (Proof.link_oneI hV hN (O.subst θ hθ hc) _
+          (Proof.conv ((OutLeg.subst_prim θ hθ hc hΓ hΓ' O _).trans
+              (congrArg (OutLeg.prim (O.subst θ hθ hc))
+                (WFF.subst_instantiate (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc)
+                  (O.viewCoh θ hθ hc) (OutLeg.slotsFrom hΓ O) (OutLeg.slotsFrom hΓ' _) .unit Φ)))
+            (Proof.subst p θ hθ hc hΓ)))
+  | _, _, _, @Proof.link_oneE _ _ Γ _ _ hV hN O Φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      Proof.conv ((OutLeg.subst_prim θ hθ hc hΓ hΓ' O _).trans
+          (congrArg (OutLeg.prim (O.subst θ hθ hc))
+            (WFF.subst_instantiate (O.viewSubst θ hθ hc) (O.viewOk θ hθ hc)
+              (O.viewCoh θ hθ hc) (OutLeg.slotsFrom hΓ O) (OutLeg.slotsFrom hΓ' _) .unit Φ))).symm
+        (Proof.link_oneE hV hN (O.subst θ hθ hc) _
+          (Proof.conv (OutLeg.subst_linkL hV hN θ hθ hc hΓ hΓ' O (D := .one) .unit Φ)
+            (Proof.subst p θ hθ hc hΓ)))
   | _, _, _, @Proof.five_boxL _ _ Γ _ _ hV hN hS D a t χ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hr := (Ctx.NoSlots.slots (Γ := Γ')).boxIn.root
       Proof.conv (WFF.subst_linkHole hV hN θ hθ hc hΓ Ctx.NoSlots.slots t χ).symm

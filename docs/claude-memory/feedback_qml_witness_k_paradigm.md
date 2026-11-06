@@ -21,6 +21,8 @@ the witnessed unit could not bring `x` back and the ∨ law along `x` was underi
 (returnable binders with `◇` parts, `e ⇝ u`; docs §11.17) made witness children uniform with
 plain ones.  The user said this should also be the pattern for 4 and 5.
 
+**Confirmed (2026-11-06):** the user is very sure `K_box` and `K_dia` are the correct shape for what they do, and approved the links' K rules in exactly those shapes (`link_K`, `linkx_K`, the slot opened as a fresh eigenvariable).  For a new modal operator's structural rules, propose K in these two shapes first.
+
 **How to apply:** when designing or checking a witnessed rule, ask what the K pair does and make
 the witnessed version carry the witness too.  If a derivation works on the plain leg but not along
 `x`, look for a binder or hole that only admits necessary objects.  Related:

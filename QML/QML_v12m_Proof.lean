@@ -286,6 +286,64 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       (hN : ModalSys.Four = false) (hS : ModalSys.shaped = false) {B : VarType} {D : DShape}
       (χ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd B D.ty)) 1) :
       Proof σ Γ Δ ((WFF.fiveReflL hV hN χ).closed Γ)
+  -- The links' structural rules (weak 5 without 4; docs "step 5: a gap, the links' structural
+  -- rules").  A link is a modality with its slot carried along: K as `K_box` and `K_dia`, β along
+  -- maps of tuples as `ret_map`, and a link to nothing is the leg's own modality.
+  /-- ⭐**K for links**, `K_box`'s shape with the slot a fresh name `u`: from `Δ ⊢ φ` in the `□`
+      view, `□[d ↦ t] Δ ⊢ □[d ↦ t] φ`. -/
+  | link_K {Γ : Ctx} [Γ.NoSlots] (hV : ModalSys.Five = true) (hN : ModalSys.Four = false)
+      {D : DShape} {a : Ann D.ty} (t : Term σ Γ D.ty a) (u : ℕ)
+      (hu : Γ.boxIn.RootFresh (.free u)) {Δ : List (WFF σ (Γ.boxIn.insert (.free u) D.ty) 0)}
+      {φ : WFF σ (Γ.boxIn.insert (.free u) D.ty) 0} :
+      Proof σ (Γ.boxIn.insert (.free u) D.ty) Δ φ →
+      Proof σ Γ (Δ.map fun ψ =>
+          .link hV hN t (WFF.bindFree u hu (Ctx.NoSlots.slots (Γ := Γ)).boxIn D.ty ψ))
+        (.link hV hN t (WFF.bindFree u hu (Ctx.NoSlots.slots (Γ := Γ)).boxIn D.ty φ))
+  /-- ⭐**K for links along a witness**, `K_dia`'s shape with the slot a fresh name `u`: from
+      `ψ, Δ₂, Δ₁ ⊢ φ` inside `◇_y`, `◇_y[d ↦ t] ψ, □_y[d ↦ t] Δ₂, □[d ↦ t] Δ₁ ⊢ ◇_y[d ↦ t] φ`. -/
+  | linkx_K {Γ : Ctx} [Γ.NoSlots] (hV : ModalSys.Five = true) (hN : ModalSys.Four = false)
+      (y : VarSymb) (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) {D : DShape} {a : Ann D.ty}
+      (t : Term σ Γ D.ty a) (u : ℕ) (hu : (Γ.diaIn y).RootFresh (.free u))
+      {Δ₁ : List (WFF σ (Γ.boxIn.insert (.free u) D.ty) 0)}
+      {Δ₂ : List (WFF σ ((Γ.diaIn y).insert (.free u) D.ty) 0)}
+      {φ ψ : WFF σ ((Γ.diaIn y).insert (.free u) D.ty) 0} :
+      Proof σ ((Γ.diaIn y).insert (.free u) D.ty)
+        (ψ :: (Δ₂ ++ Δ₁.map (WFF.mono ((Ctx.le_boxIn_diaIn Γ y).insert (.free u) D.ty)))) φ →
+      Proof σ Γ
+        (.linkx hV hN y hy t (WFF.bindFree u hu ((Ctx.NoSlots.slots (Γ := Γ)).diaIn y) D.ty ψ) ::
+          (Δ₂.map (fun χ => WFF.linkxBox hV hN y hy t
+              (WFF.bindFree u hu ((Ctx.NoSlots.slots (Γ := Γ)).diaIn y) D.ty χ)) ++
+            Δ₁.map fun χ => .link hV hN t (WFF.bindFree u (hu.of_le (Ctx.le_boxIn_diaIn Γ y))
+              (Ctx.NoSlots.slots (Γ := Γ)).boxIn D.ty χ)))
+        (.linkx hV hN y hy t (WFF.bindFree u hu ((Ctx.NoSlots.slots (Γ := Γ)).diaIn y) D.ty φ))
+  /-- ⭐**β along a map of tuples**, `ret_map`'s counterpart, along either leg: if the objects
+      moved across, rearranged by `f`, have `Φ`, then the rearranged objects, moved across, do. -/
+  | link_map {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hV : ModalSys.Five = true)
+      (hN : ModalSys.Four = false) (O : OutLeg Γ) {D E : DShape} (f : D.Map E) {a : Ann D.ty}
+      (t : Term σ Γ D.ty a) (Φ : WFF σ (O.view.insert (.bnd 0) E.ty) 1) :
+      Proof σ Γ Δ (O.linkL hV hN t (WFF.bodyRepl
+        (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) D.ty) f.hole.2) Φ)) →
+      Proof σ Γ Δ (O.linkL hV hN (D := E) (Term.holeRead t f.hole.2) Φ)
+  /-- The converse of `link_map`. -/
+  | link_comap {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hV : ModalSys.Five = true)
+      (hN : ModalSys.Four = false) (O : OutLeg Γ) {D E : DShape} (f : D.Map E) {a : Ann D.ty}
+      (t : Term σ Γ D.ty a) (Φ : WFF σ (O.view.insert (.bnd 0) E.ty) 1) :
+      Proof σ Γ Δ (O.linkL hV hN (D := E) (Term.holeRead t f.hole.2) Φ) →
+      Proof σ Γ Δ (O.linkL hV hN t (WFF.bodyRepl
+        (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) D.ty) f.hole.2) Φ))
+  /-- ⭐**A link to nothing is the leg's modality**: `□Φ(()) ⊢ □[d ↦ ()] Φ(d)`, and along a
+      witness `◇_y Φ(()) ⊢ ◇_y[d ↦ ()] Φ(d)`. -/
+  | link_oneI {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hV : ModalSys.Five = true)
+      (hN : ModalSys.Four = false) (O : OutLeg Γ)
+      (Φ : WFF σ (O.view.insert (.bnd 0) .VTypeOne) 1) :
+      Proof σ Γ Δ (O.prim (WFF.instantiate Ctx.NoSlots.slots .unit Φ)) →
+      Proof σ Γ Δ (O.linkL hV hN (D := .one) .unit Φ)
+  /-- The converse of `link_oneI`. -/
+  | link_oneE {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hV : ModalSys.Five = true)
+      (hN : ModalSys.Four = false) (O : OutLeg Γ)
+      (Φ : WFF σ (O.view.insert (.bnd 0) .VTypeOne) 1) :
+      Proof σ Γ Δ (O.linkL hV hN (D := .one) .unit Φ) →
+      Proof σ Γ Δ (O.prim (WFF.instantiate Ctx.NoSlots.slots .unit Φ))
   -- T + 4
   /-- ⭐**A possible object, kept, is realised at each member of its extent** (T + 4):
       `□_x Here(◇_{x.keep}(shift bd), bd)` (`WFF.hereKeep`), for any body `bd` of `x`'s view, as
