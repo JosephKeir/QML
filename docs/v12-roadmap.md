@@ -20,6 +20,21 @@ package.  Design detail stays in `v12-modal-extensions.md` (per axiom) and `v12-
 
 `here_beta` stays general: §10.18 is decided (keep).
 
+**How many systems (2026-11-06).**  `ModalSys` has 12 Boolean flags, 4 096 assignments.
+* **1 408** satisfy `ModalSys.CubeSys`, so `completenessCube` covers them.
+* **372** remain after merging assignments that differ only in a flag no rule or law can see: a strong form whose rules and laws all need its weak form off (`TStrong` without T, `BStrongW` without strong B, 4's lifts without 4, `FiveStrong` without 5).
+* **67** distinct logics remain after merging assignments whose model classes coincide.  The laws are implied, so by soundness and completeness of each the theorems coincide too:
+  * T gives D;
+  * strong T gives strong D;
+  * strong D gives D;
+  * D with strong B rows 3–4 gives strong D (`posSerial_of_posBack`);
+  * T with 5 gives B;
+  * 5 with T or B gives both of 4's lifts (`Model.boxLift_of_reached`);
+  * 5 with the `□`-lift gives the gather.
+* *By family:* K 1, D 2, T 3, KB 3, KDB 5, KTB 7, K4 4, KD4 8, S4 12, K45 4, KD45 8, KB5 1, KDB5 2, S5 7.  B with 4 is B with 4 and 5.
+* *Not covered:* KB5 with strong B, `FiveStrong` without `FourStrong` in K45/KD45, and 5 without 4 (K5, KD5, weak and strong).
+
+
 T is finished (§10.41): every component is sound and complete at every content type.
 
 ## The two canonical models

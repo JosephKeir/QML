@@ -6140,6 +6140,25 @@ Each is consistent with everything its world can state; jointly they are unreali
 
 **Decided (user, 2026-11-06):** recorded as the most promising direction, but likely a lot of work and probably not worth it at this point.  5 without 4 stays among the possible gaps.
 
+#### The cube's final review of the gaps *(2026-11-06; 5 without 4 already reviewed above)*
+
+**1. KB5 with strong B.**  Nothing has changed since "Strong B on KB5 and KDB5: the check".  It is S5 with strong B or a dead end (section 1 there), so as a logic it adds only the dead-end case.  Filling it needs the T-off stack: `back_self`, `back_own`, `back_leg`, a `Here` without T (a language extension), and about 10 000 lines redone.
+* *A cheaper route was looked for:* split on `◇⊤`.  The dead end is easy, and with `◇⊤` the frames are S5's.  But the T-off language is a different `ModalSys` instance, so the S5 result would have to be transported across instances, which was rejected for the hub at about 70 constructors with transports, plus a proof that T's rules are admissible below `◇⊤` in the T-off language.  Not cheaper.
+* *Recommendation:* close it as a recorded exception, not to be filled, with the reason "S5 with strong B or a dead end".
+
+**2. Could other rule sets have taken `K_box` and `K_dia`'s shape?**
+* *Where the shape applies:* to operators that bind a possibility or a necessity: `□` (`K_box`), `◇_x` (`K_dia`), the links (`link_K`, `linkx_K`), and the returning possibility `retS`/`retxS`.  The other rule sets are content, not K: T, D, 4's and 5's axioms and lifts, B's units and counits, U, and the `Here` and `Back` atoms, which are atoms rather than modalities.
+* *The one that deviates is the returning possibility.*  Its K-part is `ret_monoS`: from `O.retS t Φ` and `O.box ∀(Φ → Φ')`, infer `O.retS t Φ'`.  That is monotonicity with a boxed implication, not `K_dia`'s shape.
+* *A `K_dia`-shaped `ret_K` is equivalent to it.*  `ret_K` would be: from `ψ, Δ ⊢ φ` in the leg's view with the slot opened as a fresh name, infer `O.retS t ψ, O.box Δ ⊢ O.retS t φ`.
+  * From `ret_monoS`: close the derivation as `Δ ⊢ ∀u. ψ(u) → φ(u)`, box it with the leg's K, then apply `ret_monoS`.
+  * Conversely: take `Δ := [∀(Φ → Φ')]` and `ψ := Φ`.
+* So nothing changes logically.  It is a choice of presentation, and the `K_dia` shape is the more uniform one, matching `linkx_K`.
+* *`ret_diaS`* (a returning possibility is a possibility) and *`ret_map`/`ret_mapD`* (β along shape maps) already match the link rules (`link_map`).  `dia_bot`'s counterparts are derivable for links and for `retS`.
+* *Cost if changed in Lean:* `ret_K` with soundness and substitution, about 300 to 600 lines, mirroring `linkx_K`.  `ret_monoS` is used 31 times in 16 files, so it would become a derived rule rather than be removed.
+* *Recommendation:* present `ret_K` in the write-up, with `ret_monoS` derived.  In Lean it is optional and low priority.
+
+**Decided (user, 2026-11-06): both recommendations.**  KB5 with strong B is closed as a recorded exception, not to be filled.  `ret_K` is the presentation for the write-up, with `ret_monoS` derived; the Lean change is optional and low priority.
+
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
 **Verdict: no blocker found, and the plan gets smaller.**  `GKeep`'s root action is not needed, and

@@ -5,11 +5,11 @@ metadata:
   type: project
 ---
 
-**KB5 with strong B is a possible gap** (user's decision, 2026-11-01).  Once everything else is finished, review it with the user and decide whether it needs filling or does not seem worthwhile.  Do not start on it before that review.
+**KB5 with strong B: CLOSED as a recorded exception** (reviewed with the user, 2026-11-06): S5 with strong B or a dead end, not worth the T-off stack; not to be filled.  (Was a possible gap since 2026-11-01.)
 
 **Why:** strong B makes arrows unique, so with D the frames are S5's (`Frame.exists_unit_of_serial`) and KDB5 with strong B is read as S5 with strong B.  KB5 with strong B is S5 with strong B or a dead end, so it adds little, while filling it takes the T-off stack: `back_self`, `back_own`, `back_leg`, a `Here` without T (a language extension), and about 9 500 lines redone.
 
-**Also for the final review (user, 2026-11-06): could other rule sets have taken `K_box` and `K_dia`'s shape?**  The user is very sure those two shapes are right for what they do, and wondered whether other rule sets (e.g. the returning possibility's, the link rules of 5) could have been given that shape instead of the ones they have.  The links' K rules were given it (`link_K`, `linkx_K`).  Raise it at the end; don't start on it before.
+**Also for the final review (user, 2026-11-06): could other rule sets have taken `K_box` and `K_dia`'s shape?**  The user is very sure those two shapes are right for what they do, and wondered whether other rule sets (e.g. the returning possibility's, the link rules of 5) could have been given that shape instead of the ones they have.  The links' K rules were given it (`link_K`, `linkx_K`).  **Reviewed (2026-11-06):** only the returning possibility deviates (`ret_monoS`); a `K_dia`-shaped `ret_K` is inter-derivable with it.  Decided: present `ret_K` in the write-up, `ret_monoS` derived; Lean change optional, low priority.
 
 **Strong K5 and KD5 are possible gaps too** (user's decision, 2026-11-06).  Both strengths are incomplete as ruled (missing `five_rigid`, cluster rigidity of uniform formulas, plus its companion "5 for uniform formulas", both checked sound), and both meet the amalgamation obstruction: strong only at the root, whose necessary objects nothing names.  Most promising route: a saturation construction (decide every theory first, identify afterwards), which dissolves the obstruction but needs saturated models of one size (a set-theoretic hypothesis or monster models).  The user's view (2026-11-06): likely a lot of work, probably not worth it.  Details: `docs/v12-modal-extensions.md`, "5 without 4: a saturation construction, scoped" and the sections before it.
 
