@@ -626,6 +626,21 @@ def WFF.subst {σ : Signature} : (ι : VarSymb → VarSymb) → {Γ Δ : Ctx} �
           (Subst.coh_under (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) (hΓ.diaIn y) _
             (hΔ.diaIn (ι y)).root)
           ((hΓ.diaIn y).insert _) ((hΔ.diaIn (ι y)).insert _) Φ)
+  | ι, _, _, d, d', θ, hθ, hc, hΓ, hΔ, .link hV hF t Φ =>
+      .link hV hF (Term.subst ι θ hθ hc t)
+        (WFF.subst (VarSymb.shiftSlot ι d d') (θ.box.under d d' _ hΔ.boxIn.root)
+          (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
+          (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn _ hΔ.boxIn.root)
+          (hΓ.boxIn.insert _) (hΔ.boxIn.insert _) Φ)
+  | ι, _, _, d, d', θ, hθ, hc, hΓ, hΔ, .linkx hV hF y hy t Φ =>
+      have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
+      .linkx hV hF (ι y) (hy.elim fun _ hY => SubE.ref_witness (Subst.okRef_at hθ hY) hw)
+        (Term.subst ι θ hθ hc t)
+        (WFF.subst (VarSymb.shiftSlot ι d d') ((θ.dia y (ι y)).under d d' _ (hΔ.diaIn (ι y)).root)
+          (Subst.ok_under (Subst.ok_dia hθ hy hw) _ (hΔ.diaIn (ι y)).root)
+          (Subst.coh_under (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) (hΓ.diaIn y) _
+            (hΔ.diaIn (ι y)).root)
+          ((hΓ.diaIn y).insert _) ((hΔ.diaIn (ι y)).insert _) Φ)
 
 /-! ## Substituting one root -/
 

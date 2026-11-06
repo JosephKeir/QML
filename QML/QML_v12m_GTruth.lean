@@ -990,6 +990,8 @@ theorem gtruth_lt :
       | back hB _ _ _ => exact (absBS hB).elim
       | retS hB _ _ _ => exact (absBS hB).elim
       | retxS hB _ _ _ _ _ => exact (absBS hB).elim
+      | link hV _ _ _ => exact (ModalSys.NoFive.absurdFive hV).elim
+      | linkx hV _ _ _ _ _ => exact (ModalSys.NoFive.absurdFive hV).elim
       | and φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega

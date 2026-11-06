@@ -314,6 +314,22 @@ inductive WFF (σ : Signature) : Ctx → ℕ → Type where
   | retxS {Γ : Ctx} {d : ℕ} (hB : ModalSys.BStrong = true) (y : VarSymb)
       (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) (S : RShape) {a : Ann S.flat}
       (t : Term σ Γ S.flat a) (Φ : WFF σ ((Γ.diaIn y).insert (.bnd d) S.ty) (d + 1)) : WFF σ Γ d
+  /-- `□[d ↦ t] Φ(d)` (weak 5 without 4), the **link**: along every arrow `a`, `Φ` holds with `d`
+      the possible object `t` moved across, `posSide ⟦t⟧ a` (`docs/v12-modal-extensions.md`, "K5
+      and KD5: the substitution check, F2").  Without 4 a side image is named only so, never as an
+      address, so substitution acts on `t` where it lives; under 4 it is `x.keep` and the former
+      is off.  The body is `□∀d:◇A. Φ(d)`'s, so every recursion treats it as its `box` case
+      followed by its `all` case. -/
+  | link {Γ : Ctx} {d : ℕ} (hV : ModalSys.Five = true) (hF : ModalSys.Four = false)
+      {A : VarType} {a : Ann (.VTypeDia A)} (t : Term σ Γ (.VTypeDia A) a)
+      (Φ : WFF σ (Γ.boxIn.insert (.bnd d) (.VTypeDia A)) (d + 1)) : WFF σ Γ d
+  /-- `◇_y[d ↦ t] Φ(d)` (weak 5 without 4), the **link along a witness**: some arrow `b` of `y`'s
+      extent reaches a world where `Φ` holds (read in `y`'s view), with `d` the possible object
+      `t` moved across along `b`.  `link` is the same along every arrow. -/
+  | linkx {Γ : Ctx} {d : ℕ} (hV : ModalSys.Five = true) (hF : ModalSys.Four = false)
+      (y : VarSymb) (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) {A : VarType}
+      {a : Ann (.VTypeDia A)} (t : Term σ Γ (.VTypeDia A) a)
+      (Φ : WFF σ ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A)) (d + 1)) : WFF σ Γ d
 deriving DecidableEq
 
 /-- The returning possibility of a necessary object. -/
@@ -362,6 +378,44 @@ theorem WFF.retxS_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hB : ModalSys.BS
     (ht : t = t') (hΦ : Φ = Φ') :
     (WFF.retxS hB y hy S t Φ : WFF σ Γ d) = WFF.retxS hB y hy S t' Φ' := by
   rw [ht, hΦ]
+
+/-- Two links agree when their terms and bodies do. -/
+theorem WFF.link_congr {σ : Signature} {Γ : Ctx} {d : ℕ} (hV : ModalSys.Five = true)
+    (hF : ModalSys.Four = false) {A : VarType} {a a' : Ann (.VTypeDia A)}
+    {t : Term σ Γ (.VTypeDia A) a} {t' : Term σ Γ (.VTypeDia A) a'}
+    {Φ Φ' : WFF σ (Γ.boxIn.insert (.bnd d) (.VTypeDia A)) (d + 1)}
+    (ht : (⟨a, t⟩ : Σ a, Term σ Γ (.VTypeDia A) a) = ⟨a', t'⟩) (hΦ : Φ = Φ') :
+    (WFF.link hV hF t Φ : WFF σ Γ d) = WFF.link hV hF t' Φ' := by
+  cases ht
+  cases hΦ
+  rfl
+
+theorem WFF.link_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hV : ModalSys.Five = true)
+    (hF : ModalSys.Four = false) {A : VarType} {a : Ann (.VTypeDia A)}
+    {t t' : Term σ Γ (.VTypeDia A) a}
+    {Φ Φ' : WFF σ (Γ.boxIn.insert (.bnd d) (.VTypeDia A)) (d + 1)} (ht : t = t') (hΦ : Φ = Φ') :
+    (WFF.link hV hF t Φ : WFF σ Γ d) = WFF.link hV hF t' Φ' := by
+  rw [ht, hΦ]
+
+theorem WFF.linkx_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hV : ModalSys.Five = true)
+    (hF : ModalSys.Four = false) (y : VarSymb) (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y))
+    {A : VarType} {a : Ann (.VTypeDia A)} {t t' : Term σ Γ (.VTypeDia A) a}
+    {Φ Φ' : WFF σ ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A)) (d + 1)}
+    (ht : t = t') (hΦ : Φ = Φ') :
+    (WFF.linkx hV hF y hy t Φ : WFF σ Γ d) = WFF.linkx hV hF y hy t' Φ' := by
+  rw [ht, hΦ]
+
+/-- Two links along a witness agree when their terms and bodies do. -/
+theorem WFF.linkx_congr {σ : Signature} {Γ : Ctx} {d : ℕ} (hV : ModalSys.Five = true)
+    (hF : ModalSys.Four = false) (y : VarSymb) (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y))
+    {A : VarType} {a a' : Ann (.VTypeDia A)}
+    {t : Term σ Γ (.VTypeDia A) a} {t' : Term σ Γ (.VTypeDia A) a'}
+    {Φ Φ' : WFF σ ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A)) (d + 1)}
+    (ht : (⟨a, t⟩ : Σ a, Term σ Γ (.VTypeDia A) a) = ⟨a', t'⟩) (hΦ : Φ = Φ') :
+    (WFF.linkx hV hF y hy t Φ : WFF σ Γ d) = WFF.linkx hV hF y hy t' Φ' := by
+  cases ht
+  cases hΦ
+  rfl
 /-- Two `Here` formulas agree when their subjects do. -/
 theorem WFF.here_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true)
     {A : VarType} {b : Ann (.VTypeDia A)} {a : Ann A}
@@ -504,6 +558,10 @@ def WFF.mono {σ : Signature} : {Γ Γ' : Ctx} → {d : ℕ} → Γ.Le Γ' → W
   | _, _, _, h, .retS hB S t Φ => .retS hB S (Term.mono h t) (WFF.mono (h.boxIn.insert _ _) Φ)
   | _, _, _, h, .retxS hB y hy S t Φ =>
       .retxS hB y (hy.imp fun _ hY => h.ref hY) S (Term.mono h t)
+        (WFF.mono ((h.diaIn y).insert _ _) Φ)
+  | _, _, _, h, .link hV hF t Φ => .link hV hF (Term.mono h t) (WFF.mono (h.boxIn.insert _ _) Φ)
+  | _, _, _, h, .linkx hV hF y hy t Φ =>
+      .linkx hV hF y (hy.imp fun _ hY => h.ref hY) (Term.mono h t)
         (WFF.mono ((h.diaIn y).insert _ _) Φ)
 
 /-- Weakening by a fresh root. -/

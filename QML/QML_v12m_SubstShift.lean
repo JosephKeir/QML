@@ -332,6 +332,51 @@ theorem WFF.subst_shift : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {Γ �
             (hΔz.insert _) (Subst.preShift_under (Subst.preShift_dia hp hwz) (hΓ.diaIn y) _
               hΔz.root) Φ)
       exact key _ _ hι hw _ (hΔ.diaIn _) _ _ _ (hΔ.diaIn _) _ _
+  | _, _, _, _, _, _, d, d', C, hΓ, hΓ', Ψ, hΨ, hc, Ψ', hΨ', hc', hΔ, hp, .link hV hF t Φ =>
+      WFF.link_congr hV hF (Term.subst_shift C Ψ hΨ hc Ψ' hΨ' hc' hp t)
+        (WFF.subst_shift (C.boxIn.insert (hΓ.boxIn.rootFresh le_rfl) _) (hΓ.boxIn.insert _)
+          (hΓ'.boxIn.insert _) (Ψ.box.under d d' _ hΔ.boxIn.root)
+          (Subst.ok_under (Subst.ok_box hΨ) _ hΔ.boxIn.root)
+          (Subst.coh_under (Subst.ok_box hΨ) (Subst.coh_box hΨ hc) hΓ'.boxIn _ hΔ.boxIn.root)
+          (Ψ'.box.under d d' _ hΔ.boxIn.root) (Subst.ok_under (Subst.ok_box hΨ') _ hΔ.boxIn.root)
+          (Subst.coh_under (Subst.ok_box hΨ') (Subst.coh_box hΨ' hc') hΓ.boxIn _ hΔ.boxIn.root)
+          (hΔ.boxIn.insert _) (Subst.preShift_under (Subst.preShift_box hp) hΓ.boxIn _
+            hΔ.boxIn.root) Φ)
+  | k, ι, ι', Γ, Γ', Δ, d, d', C, hΓ, hΓ', Ψ, hΨ, hc, Ψ', hΨ', hc', hΔ, hp,
+      .linkx hV hF y hy (A := A) t Φ => by
+      have hw : (Ψ.at (y.shift k)).idxAlong [] = ι (y.shift k) :=
+        hy.elim fun _ hY => hc _ _ (C y _ hY) []
+      have hw' : (Ψ'.at y).idxAlong [] = ι' y := hy.elim fun _ hY => hc' y _ hY []
+      have hι : ι (y.shift k) = ι' y :=
+        hy.elim fun _ hY => hw.symm.trans (((hp y _ hY).idx).trans hw')
+      have key : ∀ (z z' : VarSymb) (_hz : z = z') (hwz : (Ψ.at (y.shift k)).idxAlong [] = z)
+          (P : ∃ Y, Δ.ref z = some (.VTypeDia Y)) (hΔz : (Δ.diaIn z).SlotsFrom d')
+          (p : Subst.Ok ((Γ'.diaIn (y.shift k)).insert (.bnd d) (.VTypeDia A))
+            ((Ψ.dia (y.shift k) z).under d d' _ hΔz.root))
+          (q : Subst.Coh (VarSymb.shiftSlot ι d d')
+            ((Γ'.diaIn (y.shift k)).insert (.bnd d) (.VTypeDia A))
+            ((Ψ.dia (y.shift k) z).under d d' _ hΔz.root))
+          (P' : ∃ Y, Δ.ref z' = some (.VTypeDia Y)) (hΔz' : (Δ.diaIn z').SlotsFrom d')
+          (p' : Subst.Ok ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A))
+            ((Ψ'.dia y z').under d d' _ hΔz'.root))
+          (q' : Subst.Coh (VarSymb.shiftSlot ι' d d') ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A))
+            ((Ψ'.dia y z').under d d' _ hΔz'.root)),
+          (WFF.linkx hV hF z P (Term.subst ι Ψ hΨ hc (Term.shift C t))
+              (WFF.subst (VarSymb.shiftSlot ι d d') ((Ψ.dia (y.shift k) z).under d d' _ hΔz.root)
+                p q ((hΓ'.diaIn (y.shift k)).insert _) (hΔz.insert _)
+                (WFF.shift ((C.diaIn y).insert ((hΓ.diaIn y).rootFresh le_rfl) _)
+                  ((hΓ.diaIn y).insert _) Φ)) : WFF σ Δ d') =
+            WFF.linkx hV hF z' P' (Term.subst ι' Ψ' hΨ' hc' t)
+              (WFF.subst (VarSymb.shiftSlot ι' d d') ((Ψ'.dia y z').under d d' _ hΔz'.root)
+                p' q' ((hΓ.diaIn y).insert _) (hΔz'.insert _) Φ) := by
+        intro z z' hz hwz P hΔz p q P' hΔz' p' q'
+        subst hz
+        exact WFF.linkx_congr hV hF _ _ (Term.subst_shift C Ψ hΨ hc Ψ' hΨ' hc' hp t)
+          (WFF.subst_shift ((C.diaIn y).insert ((hΓ.diaIn y).rootFresh le_rfl) _)
+            ((hΓ.diaIn y).insert _) ((hΓ'.diaIn (y.shift k)).insert _) _ p q _ p' q'
+            (hΔz.insert _) (Subst.preShift_under (Subst.preShift_dia hp hwz) (hΓ.diaIn y) _
+              hΔz.root) Φ)
+      exact key _ _ hι hw _ (hΔ.diaIn _) _ _ _ (hΔ.diaIn _) _ _
 
 end SubstShiftW
 

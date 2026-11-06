@@ -5751,6 +5751,14 @@ So there are two ways to build it:
 6. The model and truth lemma; weak K5 and KD5 complete; dispatch.
 7. Strong 5: the gather's lift.
 
+**Built (2026-11-06): step 1, the link syntax.**  Strict build clean, standard axioms, no rule yet, so nothing proves a link.  About 720 lines added in 37 files, almost all of them `retS`'s arms copied.
+* *The formers* (`QML_v12m_WFF`): ⭐`WFF.link hV hF t Φ`, `□[d ↦ t] Φ(d)`, and ⭐`WFF.linkx hV hF y hy t Φ`, `◇_y[d ↦ t] Φ(d)`, gated by `Five = true` and `Four = false`.  `t : Term Γ (◇A)`, and `Φ` is over `Γ.boxIn.insert (.bnd d) (◇A)` or `(Γ.diaIn y).insert (.bnd d) (◇A)`, as `retS` and `retxS`.  `WFF.link_congr`, `linkx_congr` and their primed forms.
+* *The semantics* (`Model.sat`, `QML_v12m_Interp`): `link` holds when `Φ` holds at every successor `a` with `d := necEval (posSide ⟦t⟧) a`; `linkx` when it holds at some arrow `b` of `y`'s extent with `d := necEval (posSide ⟦t⟧) b`.
+* *Every recursion over `WFF`*: weakening, shift, collapse, substitution and their composition and congruence lemmas, the codes (`Countable`), sizes (`Φ.size + 1`), and the semantic lemmas `sat_mono`, `sat_shift`, `sat_collapse`, ⭐`sat_subst` (by `interp_subst`, the link's value read through the substitution as `retS`'s return value is).
+* *Dismissed by flag:* the truth lemmas of `Canon` (`ModalSys.NoB.absurdLink`, new), B's network (`NoFour.absurdFive`), the grown tree (`NoFive.absurdFive`), the cluster and the hub (`Four`).
+* *One signature change:* `Model.ConeData.sat_cone` takes `Five = true → Four = true`, as the cone is used only with 4; `ConeApex` passes `fun _ => hF`.
+* *Next:* step 2, the rules (`five_box`, `five_dia`, `five_dia_back`, the gather, U) in link form, with `side_loop`, soundness and closure under substitution.
+
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
 **Verdict: no blocker found, and the plan gets smaller.**  `GKeep`'s root action is not needed, and

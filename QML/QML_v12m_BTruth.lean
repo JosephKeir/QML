@@ -180,6 +180,8 @@ theorem truth_lt :
           exact (hST hB).retS t Φ fun s' K ψ h => truth_lt n s' K ψ (by omega)
       | retxS hB y hy S t Φ =>
           exact (hST hB).retxS hy t Φ fun s' K ψ h => truth_lt n s' K ψ (by omega)
+      | link hV _ _ _ => exact (ModalSys.NoFour.absurdFive hV).elim
+      | linkx hV _ _ _ _ _ => exact (ModalSys.NoFour.absurdFive hV).elim
       | and φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega

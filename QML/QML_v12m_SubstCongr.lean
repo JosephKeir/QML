@@ -582,6 +582,36 @@ theorem WFF.subst_congr : {ι ι' : VarSymb → VarSymb} → {Γ Δ : Ctx} → {
               hΔz.root) q ((hΓ.diaIn y).insert _) (hΔz.insert _)
             (Subst.sim_under (Subst.sim_dia hs hw) _ hΔz.root) Φ)
       exact key (ι' y) (Subst.idx_eq hc hc' hs hy) _ (hΔ.diaIn _) _ _
+  | _, _, _, _, d, d', θ, θ', hθ, hθ', hc, hc', hΓ, hΔ, hs, .link hV hF t Φ =>
+      WFF.link_congr hV hF (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
+        (WFF.subst_congr (θ.box.under d d' _ hΔ.boxIn.root) (θ'.box.under d d' _ hΔ.boxIn.root)
+          (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
+          (Subst.ok_under (Subst.ok_box hθ') _ hΔ.boxIn.root)
+          (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn _ hΔ.boxIn.root)
+          (Subst.coh_under (Subst.ok_box hθ') (Subst.coh_box hθ' hc') hΓ.boxIn _ hΔ.boxIn.root)
+          (hΓ.boxIn.insert _) (hΔ.boxIn.insert _)
+          (Subst.sim_under (Subst.sim_box hs) _ hΔ.boxIn.root)
+          Φ)
+  | ι, ι', Γ, Δ, d, d', θ, θ', hθ, hθ', hc, hc', hΓ, hΔ, hs, .linkx hV hF y hy (A := A) t Φ => by
+      have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
+      have key : ∀ (z : VarSymb) (_hz : z = ι y) (P : ∃ Y, Δ.ref z = some (.VTypeDia Y))
+          (hΔz : (Δ.diaIn z).SlotsFrom d')
+          (p : Subst.Ok ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A))
+            ((θ'.dia y z).under d d' _ hΔz.root))
+          (q : Subst.Coh (VarSymb.shiftSlot ι' d d') ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A))
+            ((θ'.dia y z).under d d' _ hΔz.root)),
+          WFF.subst ι θ hθ hc hΓ hΔ (.linkx hV hF y hy t Φ) =
+            .linkx hV hF z P (Term.subst ι' θ' hθ' hc' t)
+              (WFF.subst (VarSymb.shiftSlot ι' d d') ((θ'.dia y z).under d d' _ hΔz.root) p q
+                ((hΓ.diaIn y).insert _) (hΔz.insert _) Φ) := by
+        intro z hz P hΔz p q
+        subst hz
+        exact WFF.linkx_congr hV hF _ _ (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
+          (WFF.subst_congr _ _ (Subst.ok_under (Subst.ok_dia hθ hy hw) _ hΔz.root) p
+            (Subst.coh_under (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) (hΓ.diaIn y) _
+              hΔz.root) q ((hΓ.diaIn y).insert _) (hΔz.insert _)
+            (Subst.sim_under (Subst.sim_dia hs hw) _ hΔz.root) Φ)
+      exact key (ι' y) (Subst.idx_eq hc hc' hs hy) _ (hΔ.diaIn _) _ _
 
 end Congr
 

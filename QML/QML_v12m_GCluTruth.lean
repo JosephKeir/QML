@@ -413,6 +413,8 @@ theorem ctruth_lt (hX : CluFlags) :
                 (fun s' K ψ hψ => IH s' K ψ (by omega)) IHe,
                 sat_ret_of_memW hM₀ hX hB (.pos y hy) N t Φ
                   (fun s' K ψ hψ => IH s' K ψ (by omega)) IHe⟩
+      | link _ hN _ _ => exact absurd (hN.symm.trans hF) Bool.false_ne_true
+      | linkx _ hN _ _ _ _ => exact absurd (hN.symm.trans hF) Bool.false_ne_true
       | and φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega

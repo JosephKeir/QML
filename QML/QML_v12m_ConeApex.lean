@@ -285,11 +285,11 @@ theorem sat_apex_box {Γ : Ctx} [Γ.NoSlots] {E : (c.cone hT hB hS hInd).Env Γ 
   constructor
   · intro H s
     exact (sat_shift Ctx.NoSlots.slots (shiftAgree_downBox hK s) ψ).mpr
-      ((sat_cone (envRel_downBox E s) ψ).mp (H _))
+      ((sat_cone (fun _ => hF) (envRel_downBox E s) ψ).mp (H _))
   · intro H a
     obtain ⟨_ | t, ⟨r⟩⟩ := a
     · exact False.elim r
-    exact (sat_cone (envRel_downBox E ⟨t, ⟨r⟩⟩) ψ).mpr
+    exact (sat_cone (fun _ => hF) (envRel_downBox E ⟨t, ⟨r⟩⟩) ψ).mpr
       ((sat_shift Ctx.NoSlots.slots (shiftAgree_downBox hK ⟨t, ⟨r⟩⟩) ψ).mp (H _))
 
 /-- ⭐⭐**`◇_x` at the apex is `◇_{x.keep}(shift ψ)` under `V`.** -/
@@ -308,7 +308,7 @@ theorem sat_apex_dia {Γ : Ctx} [Γ.NoSlots] {E : (c.cone hT hB hS hInd).Env Γ 
       exact h
     exact ⟨X, hxk, ⟨_, h'⟩, (sat_shift Ctx.NoSlots.slots
       (shiftAgree_downDia hK hr ⟨s, ⟨r⟩⟩ h hxk h') ψ).mpr
-      ((sat_cone (envRel_downDia E hr ⟨s, ⟨r⟩⟩ h) ψ).mp H)⟩
+      ((sat_cone (fun _ => hF) (envRel_downDia E hr ⟨s, ⟨r⟩⟩ h) ψ).mp H)⟩
   · rintro ⟨X, hxk, ⟨s, h'⟩, H⟩
     obtain ⟨X', hr⟩ := hx
     obtain rfl : X' = X := by
@@ -318,7 +318,7 @@ theorem sat_apex_dia {Γ : Ctx} [Γ.NoSlots] {E : (c.cone hT hB hS hInd).Env Γ 
       change s ∈ (N.posEval (pb (E.ref x hr))).1
       rw [hK.2 x X' hr]
       exact h'
-    exact ⟨X', hr, ⟨_, h⟩, (sat_cone (envRel_downDia E hr s h) ψ).mpr
+    exact ⟨X', hr, ⟨_, h⟩, (sat_cone (fun _ => hF) (envRel_downDia E hr s h) ψ).mpr
       ((sat_shift Ctx.NoSlots.slots (shiftAgree_downDia hK hr s h hxk h') ψ).mp H)⟩
 
 /-- ⭐A necessary term's object at the apex is its kept form's under `V`. -/

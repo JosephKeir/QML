@@ -139,6 +139,13 @@ theorem ModalSys.NoB.absurdStrong [ModalSys] [ModalSys.NoB] (hB : ModalSys.BStro
   rw [ModalSys.NoB.noBStrong] at hB
   cases hB
 
+/-- A link (5 without 4) is never formed under `NoB`: there 5 comes with 4. -/
+theorem ModalSys.NoB.absurdLink [ModalSys] [ModalSys.NoB] (hV : ModalSys.Five = true)
+    (hF : ModalSys.Four = false) : False := by
+  have h := (ModalSys.NoB.fiveCluster hV).1
+  rw [hF] at h
+  cases h
+
 /-- ⭐**The strong forms cohere** (`docs/v12-modal-extensions.md` §11.23): strong B with witnessed
     ways home contains strong T at the own arrow (`Model.posRet_of_posBack`), and only strong T's
     rule introduces `Here` atoms, so a system with it and T has strong T too; completeness under

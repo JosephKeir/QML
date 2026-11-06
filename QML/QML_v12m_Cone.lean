@@ -696,7 +696,8 @@ theorem relSat_cone {Γ : Ctx} {t : N.frame.W} {e : (c.cone hT hB hS hInd).Env �
 
 /-- ⭐⭐**Below the apex, a formula means what it means in `N`**: nothing there looks at the
     apex. -/
-theorem sat_cone : ∀ {Γ : Ctx} {d : ℕ} {t : N.frame.W}
+theorem sat_cone (hFV : ModalSys.Five = true → ModalSys.Four = true) :
+    ∀ {Γ : Ctx} {d : ℕ} {t : N.frame.W}
     {e : (c.cone hT hB hS hInd).Env Γ (some t)} {e' : N.Env Γ t},
     c.EnvRel hT hB hS hInd e e' → (φ : WFF σ Γ d) →
       ((c.cone hT hB hS hInd).sat e φ ↔ N.sat e' φ)
@@ -707,44 +708,46 @@ theorem sat_cone : ∀ {Γ : Ctx} {d : ℕ} {t : N.frame.W}
       exact ⟨c.toC_injective hT hB, congrArg _⟩
   | _, _, _, _, _, _, .top => Iff.rfl
   | _, _, _, _, _, _, .bot => Iff.rfl
-  | _, _, _, _, _, hag, .and φ ψ => and_congr (sat_cone hag φ) (sat_cone hag ψ)
-  | _, _, _, _, _, hag, .or φ ψ => or_congr (sat_cone hag φ) (sat_cone hag ψ)
-  | _, _, _, _, _, hag, .imp φ ψ => imp_congr (sat_cone hag φ) (sat_cone hag ψ)
+  | _, _, _, _, _, hag, .and φ ψ => and_congr (sat_cone hFV hag φ) (sat_cone hFV hag ψ)
+  | _, _, _, _, _, hag, .or φ ψ => or_congr (sat_cone hFV hag φ) (sat_cone hFV hag ψ)
+  | _, _, _, _, _, hag, .imp φ ψ => imp_congr (sat_cone hFV hag φ) (sat_cone hFV hag ψ)
   | _, d, t, _, _, hag, .all T φ => by
       constructor
       · intro H o
-        exact (sat_cone (hag.extend (.bnd d) o) φ).mp (H _)
+        exact (sat_cone hFV (hag.extend (.bnd d) o) φ).mp (H _)
       · intro H o
         rw [← c.toC_ofC hT hB T t o]
-        exact (sat_cone (hag.extend (.bnd d) _) φ).mpr (H _)
+        exact (sat_cone hFV (hag.extend (.bnd d) _) φ).mpr (H _)
   | _, d, t, _, _, hag, .ex T φ => by
       constructor
       · rintro ⟨o, ho⟩
         rw [← c.toC_ofC hT hB T t o] at ho
-        exact ⟨_, (sat_cone (hag.extend (.bnd d) _) φ).mp ho⟩
+        exact ⟨_, (sat_cone hFV (hag.extend (.bnd d) _) φ).mp ho⟩
       · rintro ⟨o, ho⟩
-        exact ⟨_, (sat_cone (hag.extend (.bnd d) o) φ).mpr ho⟩
+        exact ⟨_, (sat_cone hFV (hag.extend (.bnd d) o) φ).mpr ho⟩
   | _, _, _, _, _, hag, .box φ => by
       constructor
       · intro H a
-        exact (sat_cone (hag.boxPush a) φ).mp (H _)
+        exact (sat_cone hFV (hag.boxPush a) φ).mp (H _)
       · intro H a
         obtain ⟨_ | s, ⟨r⟩⟩ := a
         · exact False.elim r
-        exact (sat_cone (hag.boxPush ⟨s, ⟨r⟩⟩) φ).mpr (H _)
+        exact (sat_cone hFV (hag.boxPush ⟨s, ⟨r⟩⟩) φ).mpr (H _)
   | _, _, _, _, _, hag, .dia x _ φ => by
       constructor
       · rintro ⟨X, hr, ⟨⟨_ | s, ⟨r⟩⟩, h⟩, H⟩
         · exact False.elim r
         have hm := (hag.mem_ref hr s r).mp h
-        exact ⟨X, hr, ⟨_, hm⟩, (sat_cone (hag.diaPush hr s r h hm) φ).mp H⟩
+        exact ⟨X, hr, ⟨_, hm⟩, (sat_cone hFV (hag.diaPush hr s r h hm) φ).mp H⟩
       · rintro ⟨X, hr, ⟨⟨s, ⟨r⟩⟩, hm⟩, H⟩
         have h := (hag.mem_ref hr s r).mpr hm
-        exact ⟨X, hr, ⟨_, h⟩, (sat_cone (hag.diaPush hr s r h hm) φ).mpr H⟩
+        exact ⟨X, hr, ⟨_, h⟩, (sat_cone hFV (hag.diaPush hr s r h hm) φ).mpr H⟩
   | _, _, _, _, _, _, .here h _ _ => flagElim hT h
   | _, _, _, _, _, _, .back h _ _ _ => flagElim hS h
   | _, _, _, _, _, _, .retS h _ _ _ => flagElim hS h
   | _, _, _, _, _, _, .retxS h _ _ _ _ _ => flagElim hS h
+  | _, _, _, _, _, _, .link hV hF _ _ => flagElim hF (hFV hV)
+  | _, _, _, _, _, _, .linkx hV hF _ _ _ _ => flagElim hF (hFV hV)
 
 variable (c hT hB hS hInd) in
 /-- ⭐The cone is a model proper: its `Ind` is equality. -/

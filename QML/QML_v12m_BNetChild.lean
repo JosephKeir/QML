@@ -212,6 +212,8 @@ theorem Good.mkChild [ModalSys.NoFour] (hB : ModalSys.B = true) {N : NetSt σ} (
     | .back _ _ _ _ => exact hN
     | .retS _ _ _ _ => exact hN
     | .retxS _ _ _ _ _ _ => exact hN
+    | .link _ _ _ _ => exact hN
+    | .linkx _ _ _ _ _ _ => exact hN
   · exact hN
 
 end NetSt

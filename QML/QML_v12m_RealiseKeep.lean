@@ -117,6 +117,25 @@ theorem WFF.collapse_shift_same : ∀ {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx} {d : �
             ((hc.diaIn _).insert ((hs₂.diaIn _).rootFresh le_rfl) _) hle'
             ((hid.diaIn y).insert _ _) ((hs₁.diaIn y).insert _) ((hs₂.diaIn _).insert _) Φ)
       exact hy.elim fun _ hY => key y (hid y _ hY).symm _ _
+  | _, _, _, _, _, hs, hc, hle, hid, hs₁, hs₂, .link hV hF t Φ =>
+      WFF.link_congr hV hF (Term.collapse_shift_same hs hc hle hid t)
+        (WFF.collapse_shift_same (hs.boxIn.insert (hs₁.boxIn.rootFresh le_rfl) _)
+          (hc.boxIn.insert (hs₂.boxIn.rootFresh le_rfl) _) (hle.boxIn.insert _ _)
+          (hid.boxIn.insert _ _) (hs₁.boxIn.insert _) (hs₂.boxIn.insert _) Φ)
+  | m, Γ₁, _, Γ₃, _, hs, hc, hle, hid, hs₁, hs₂, .linkx hV hF y hy (A := A) t Φ => by
+      have key : ∀ (z : VarSymb) (_hz : z = (y.shift m).collapse m)
+          (P : ∃ Y, Γ₃.ref z = some (.VTypeDia Y))
+          (hle' : ((Γ₁.diaIn y).insert (.bnd _) (.VTypeDia A)).Le
+            ((Γ₃.diaIn z).insert (.bnd _) (.VTypeDia A))),
+          WFF.collapse hc hs₂ (WFF.shift hs hs₁ (.linkx hV hF y hy t Φ)) =
+            .linkx hV hF z P (Term.mono hle t) (WFF.mono hle' Φ) := by
+        intro z hz P hle'
+        subst hz
+        exact WFF.linkx_congr hV hF _ P (Term.collapse_shift_same hs hc hle hid t)
+          (WFF.collapse_shift_same ((hs.diaIn y).insert ((hs₁.diaIn y).rootFresh le_rfl) _)
+            ((hc.diaIn _).insert ((hs₂.diaIn _).rootFresh le_rfl) _) hle'
+            ((hid.diaIn y).insert _ _) ((hs₁.diaIn y).insert _) ((hs₂.diaIn _).insert _) Φ)
+      exact hy.elim fun _ hY => key y (hid y _ hY).symm _ _
 
 end CollapseShift
 

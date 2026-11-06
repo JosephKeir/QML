@@ -113,6 +113,27 @@ theorem WFF.subst_ren {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ :
           (WFF.subst_ren ((hle.diaIn y).insert _ _) _ p q _ _
             (Subst.ren_under (Subst.ren_dia hid y) _ hΔz.root) Φ)
       exact key (ι y) (Subst.idx_ren hc hid hy).symm _ (hΔ.diaIn _) _ _
+  | _, _, _, _, hle, θ, hθ, hc, hΓ, hΔ, hid, .link hV hF t Φ =>
+      WFF.link_congr hV hF (Term.subst_ren hle θ hθ hc hid t)
+        (WFF.subst_ren (hle.boxIn.insert _ _) _ _ _ _ _
+          (Subst.ren_under (Subst.ren_box hid) _ hΔ.boxIn.root) Φ)
+  | ι, Γ, Δ, d, hle, θ, hθ, hc, hΓ, hΔ, hid, .linkx hV hF y hy (A := A) t Φ => by
+      have key : ∀ (z : VarSymb) (_hz : y = z) (P : ∃ Y, Δ.ref z = some (.VTypeDia Y))
+          (hΔz : (Δ.diaIn z).SlotsFrom d)
+          (p : Subst.Ok ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A))
+            ((θ.dia y z).under d d _ hΔz.root))
+          (q : Subst.Coh (VarSymb.shiftSlot ι d d) ((Γ.diaIn y).insert (.bnd d) (.VTypeDia A))
+            ((θ.dia y z).under d d _ hΔz.root)),
+          WFF.linkx hV hF z P (Term.subst ι θ hθ hc t)
+              (WFF.subst (VarSymb.shiftSlot ι d d) ((θ.dia y z).under d d _ hΔz.root) p q
+                ((hΓ.diaIn y).insert _) (hΔz.insert _) Φ) =
+            WFF.mono hle (WFF.linkx hV hF y hy t Φ) := by
+        intro z hz P hΔz p q
+        subst hz
+        exact WFF.linkx_congr hV hF y _ (Term.subst_ren hle θ hθ hc hid t)
+          (WFF.subst_ren ((hle.diaIn y).insert _ _) _ p q _ _
+            (Subst.ren_under (Subst.ren_dia hid y) _ hΔz.root) Φ)
+      exact key (ι y) (Subst.idx_ren hc hid hy).symm _ (hΔ.diaIn _) _ _
 
 section Open
 

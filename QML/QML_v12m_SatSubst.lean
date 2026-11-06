@@ -188,6 +188,57 @@ theorem sat_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (�
           exact hsat
         · rw [interp_subst θ hθ hc hnp env t]
           exact hr
+  | _, Γ, _, d, d', θ, hθ, hc, hΓ, hΔ, hnp, _, env, .link hV hF t Φ =>
+      forall_congr' fun a => by
+        rw [interp_subst θ hθ hc hnp env t]
+        exact (sat_subst (θ.box.under d d' _ hΔ.boxIn.root)
+            (Subst.ok_under (Subst.ok_box hθ) _ hΔ.boxIn.root)
+            (Subst.coh_under (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn _ hΔ.boxIn.root)
+            (hΓ.boxIn.insert _) (hΔ.boxIn.insert _) ((Ctx.noProjLast_boxIn Γ).insert (.bnd d) _)
+            ((env.boxPush a).extend (.bnd d') _) Φ).trans
+          (iff_of_eq (congrArg (fun en => M.sat en Φ)
+            ((substEnv_under θ.box (Subst.ok_box hθ) (Ctx.noProjLast_boxIn Γ) (env.boxPush a)
+                _ hΔ.boxIn.root _).trans
+              (congrArg (fun en => Env.extend en (.bnd d) _) (substEnv_box θ hθ hnp env a)))))
+  | ι, Γ, _, d, d', θ, hθ, hc, hΓ, hΔ, hnp, _, env, .linkx hV hF y hy t Φ => by
+      have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
+      have hr₀ := (hΔ.diaIn (ι y)).root
+      constructor
+      · rintro ⟨Y, hr₁, a, hsat⟩
+        obtain ⟨X, hrX⟩ := hy
+        have hE : (M.posEval (env.ref (ι y) hr₁)).1 =
+            (M.posEval ((substEnv θ hθ hnp env).ref y hrX)).1 := by
+          rw [substEnv_ref θ hθ hnp env y hrX, entryVal_dia_ext env _ hw hr₁]
+        refine ⟨X, hrX, ⟨a.1, hE ▸ a.2⟩, ?_⟩
+        rw [interp_subst θ hθ hc hnp env t] at hsat
+        have h₁ := (sat_subst ((θ.dia y (ι y)).under d d' _ hr₀)
+          (Subst.ok_under (Subst.ok_dia hθ ⟨X, hrX⟩ hw) _ hr₀)
+          (Subst.coh_under (Subst.ok_dia hθ ⟨X, hrX⟩ hw) (Subst.coh_dia hθ hc ⟨X, hrX⟩)
+            (hΓ.diaIn y) _ hr₀)
+          ((hΓ.diaIn y).insert _) ((hΔ.diaIn (ι y)).insert _)
+          ((Ctx.noProjLast_diaIn Γ y).insert (.bnd d) _)
+          ((env.diaPush (ι y) hr₁ a).extend (.bnd d') _) Φ).mp hsat
+        rw [substEnv_under (θ.dia y (ι y)) (Subst.ok_dia hθ ⟨X, hrX⟩ hw)
+            (Ctx.noProjLast_diaIn Γ y) (env.diaPush (ι y) hr₁ a) _ hr₀ _,
+          substEnv_dia θ hθ hnp env ⟨X, hrX⟩ hrX hr₁ hw a _] at h₁
+        exact h₁
+      · rintro ⟨X, hrX, a, hsat⟩
+        obtain ⟨Y, hr₁⟩ := SubE.ref_witness (Subst.okRef_at hθ hrX) hw
+        have hE : (M.posEval (env.ref (ι y) hr₁)).1 =
+            (M.posEval ((substEnv θ hθ hnp env).ref y hrX)).1 := by
+          rw [substEnv_ref θ hθ hnp env y hrX, entryVal_dia_ext env _ hw hr₁]
+        refine ⟨Y, hr₁, ⟨a.1, hE.symm ▸ a.2⟩, ?_⟩
+        rw [interp_subst θ hθ hc hnp env t]
+        refine (sat_subst ((θ.dia y (ι y)).under d d' _ hr₀)
+          (Subst.ok_under (Subst.ok_dia hθ hy hw) _ hr₀)
+          (Subst.coh_under (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) (hΓ.diaIn y) _ hr₀)
+          ((hΓ.diaIn y).insert _) ((hΔ.diaIn (ι y)).insert _)
+          ((Ctx.noProjLast_diaIn Γ y).insert (.bnd d) _)
+          ((env.diaPush (ι y) hr₁ ⟨a.1, hE.symm ▸ a.2⟩).extend (.bnd d') _) Φ).mpr ?_
+        rw [substEnv_under (θ.dia y (ι y)) (Subst.ok_dia hθ hy hw) (Ctx.noProjLast_diaIn Γ y)
+            (env.diaPush (ι y) hr₁ ⟨a.1, hE.symm ▸ a.2⟩) _ hr₀ _,
+          substEnv_dia θ hθ hnp env hy hrX hr₁ hw ⟨a.1, hE.symm ▸ a.2⟩ a.2]
+        exact hsat
 
 end Model
 

@@ -556,6 +556,31 @@ theorem sat_shift : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ
             ((hag.diaPush hr' a _).extend ((hs.diaIn y).rootFresh le_rfl) e) Φ).mpr hsat, ?_⟩
         rw [interp_shift hag t]
         exact hr
+  | _, _, _, _, _, _, _, _, hs, hag, .link hV hF t Φ =>
+      forall_congr' fun a => by
+        rw [interp_shift hag t]
+        exact sat_shift (hs.boxIn.insert _) ((hag.boxPush a).extend (hs.boxIn.rootFresh le_rfl) _) Φ
+  | k, _, _, h, _, _, env₁, env₂, hs, hag, .linkx hV hF y hy t Φ => by
+      constructor
+      · rintro ⟨Y, h₂, a, hsat⟩
+        obtain ⟨Y₀, hy₀⟩ := hy
+        have hYY : Y₀ = Y := by
+          have e' := h y _ hy₀
+          rw [h₂] at e'
+          cases e'
+          rfl
+        subst hYY
+        have href := hag y _ hy₀
+        refine ⟨Y₀, hy₀, ⟨a.1, by rw [href]; exact a.2⟩, ?_⟩
+        rw [interp_shift hag t] at hsat
+        exact (sat_shift ((hs.diaIn y).insert _)
+          ((hag.diaPush hy₀ ⟨a.1, _⟩ a.2).extend ((hs.diaIn y).rootFresh le_rfl) _) Φ).mp hsat
+      · rintro ⟨Y, hr', a, hsat⟩
+        have href := hag y _ hr'
+        refine ⟨Y, h y _ hr', ⟨a.1, by rw [← href]; exact a.2⟩, ?_⟩
+        rw [interp_shift hag t]
+        exact (sat_shift ((hs.diaIn y).insert _)
+          ((hag.diaPush hr' a _).extend ((hs.diaIn y).rootFresh le_rfl) _) Φ).mpr hsat
 
 /-- ⭐The semantic content of the 4 rule: a shifted `□`-body holds two steps in exactly when the
     body holds at the composite step. -/
