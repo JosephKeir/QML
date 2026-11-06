@@ -5669,6 +5669,88 @@ What a paper check must settle before code:
 3. *The model.*  The world asked about is the apex over part of the cluster; each cluster world must name the side image of every possible term of its origin (for links).  Can `GClu*` be reused, or does K5 need a K5 cluster?  This is the old P3, now against the hub.
 4. *Size.*
 
+#### K5 and KD5: U and the gather without 4 *(2026-11-05, paper)*
+
+**Verdict.**
+* *The gather* is `five_box` with one necessary object carried: an ∃-elimination rule in link form, sound from `necSide_exists` and `side_side`.
+* *U with objects is needed, in a new form.*  Without 4 a `□`-object is never kept, so the K45 rule's hat (`k` read kept along the loop) cannot be written.  The K5 form reads the loop as T's collapse, with the collapsed values named by `∃`.
+* *It needs one law,* `side_loop`: `side (side a a) c = c`.  This is T-off `side_refl`.
+
+**The side view is a real restriction, and it costs nothing.**
+* Two views in, without 4, the origin's `□`-parameters reach only as `u.box.box` (for `u : □□B`).  That reads `u(a)` along `side a b`, which is unrelated to `u(b)` without 4.  So `five_box` and the gather say nothing about them.
+* There is nothing to say semantically.
+* For completeness, `u.box` is one of `v`'s own `□`-items, bound by `∃` or `∀` like the rest (the finite-piece lemma, item 3 of "5: scope and plan").
+
+**The gather (strong 5), link form.**
+* `◇[e⃗ ↦ x⃗] ∃n:□A. □[d⃗ ↦ e⃗] χ(n.box, d⃗) ⊢ ∃m:□A. □[d⃗ ↦ x⃗] χ(m.box, d⃗)`, with `m` fresh.  `χ` is over the side view plus the slot.
+* *Sound.*  Take `m := necSide n`, so `m(b) = n(side a b)` (with `Ind` as equality, since shapes are off in K5).  The links agree along `side a b` by `side_side`, as in `five_box`.
+* *Precedent.*  4's lifts: an ∃-elimination rule on a weak rule's shape, here with the witness a necessary object (the K paradigm).
+* `five_box` is the instance with no `n`.  The gather is the old "`◇∃n:□A. □(sideTr χ)(n.box) ⊢ ∃m:□A. □χ(m.box)`", now with its translation made explicit by links.
+
+**U with objects, K5 form.**
+* *Why it is needed.*  Every member `v` of the cluster has a loop, `e := side a a`.  So for each `□χ(n⃗.box, …) ∈ v`, `v` must name the values `n⃗(e)` and satisfy `χ` of them: the finite-piece lemma at `s = v`.  When `n⃗` is born at `v`, no rule at `w` reaches it.  This is the K45 finding ("The countermodel check") without 4.  That it is underivable is expected by the same argument, **not checked**.
+* *Statement (the `□` row).*  `□∀k⃗:□B⃗. ∀q⃗:◇C⃗. (□[d⃗ ↦ q⃗] χ(k⃗.box, d⃗) → ∃c⃗:B⃗. χ(c⃗, q⃗))`.  `χ` is over the slot and the links: what `v` sees inside its own `□`.  `v`'s `□`-items, including `u.box`, are instances of `k⃗`.
+* *Sound.*  At `v` along `a`, read the premise at `e`.  Then `c⃗ := k⃗(e)`, base objects at `v`, are witnesses provided `posSide q e = q`.
+  * On the image of `side a` that holds already: `side (side a a) (side a b) = side a b` by `side_side`.
+  * For `q` born at `v`, with extent outside that image, it needs `side_loop`: `side (side a a) c = c` for every `c : v → t`.
+  * `side_loop` holds by proof irrelevance on relational frames, so no completeness theorem changes.  It narrows the arrow class that soundness covers.
+  * Precedent: `side_refl` (`side (refl w) b = b`, T and 5), with the loop in `refl`'s place.  In the K45 case the corresponding fact was a lemma (`Frame.side_self_unit`, from `trans_side`); without `;` it has to be a law.
+* *Compared with `five_refl`.*  The same principle ("every reached world has a unit"), one rule over `OutLeg`.  The `◇_x` row, `□_x∀…(□_{…}[…] χ → ∃c⃗. χ)` with `x.dia` read along the loop as itself (`posSide_content`), should follow the K paradigm as `five_refl`'s does.  Its exact statement is **not written**.
+* *Compared with T.*  It is `T_box` under a `□`, with `here` (absent without T) replaced by `∃`.  Under T it would be derivable, but T + 5 has 4, so K5 and KD5 are its only users.
+
+**Still open.**
+1. *The model* (old P3, against the hub): the bulk.  Each cluster world names, by late roots indexed by (origin, item, target), the side images of every other member's `◇`-items and the values of its `□`-items.  The links of an origin's terms translate to the target's links (`side_side`).  Whether `GClu*`, built on keep paths and their round trips, can host this, or whether K5 needs a cluster of its own, needs a reading of `GClu*` against these items.
+2. The `◇_x` row of U, written out.
+3. *Size.*  Syntax (two formers, about `retS`'s cost) and rules (five `five_*` rules with soundness) can be estimated from `retS` and `five_refl`.  The model cannot be estimated until 1 is settled.
+
+#### K5 and KD5: the model, the check *(2026-11-06, paper)*
+
+**Verdict.**  The precedent is **B's network**, not the cluster model and not the hub.  K5's canonical model is B's network with a different set of arrows: the root's tree edges, and an arrow between every two non-root nodes, loops included.  Each arrow commits the source's variables as roots of the target, the plain ones by `five_box` and the labelled ones by `five_dia`, at the source's parent.  Without 4 nothing composes, so there is no round-trip coherence to prove.  That is the property that let B's network work ("6a", `v12-arrow-canonical.md`: "Round-trip coherence is not needed").  Strong 5, the gather, adds one operation, a lift into the parent, after GArrow's.
+
+**Why not `GClu*` or the hub.**
+* `GClu*` (23 files, about 13 500 lines) is built on `keep`: path translations, their round trips, and every item named through the tree's root by lifts (the 2026-10-30 P3 check: names by origin through `ρ`).  K5 has no `keep` and no lifts.
+* The hub works because its virtual root speaks 4's language (`keep`, lifts by `liftAx`), and K5's does not.
+* *An aside, not pursued.*  Semantically a K5 world is a K45 hub read along a witness: `w`'s `□` is `□_x` for an `x` with extent `R(w)`, and `w`'s objects are the hub's possible objects within that extent.  Using this would need a translation of K5 into K45 that is conservative, which is a proof-theoretic result of its own.
+
+**The network.**
+* *Nodes and arrows.*  A tree of nodes as now, born by `◇`-children and `□`-failures.  The arrows are the tree edges out of the root, plus `u → s` for all non-root `u` and `s`, `u → u` included.  So `R` is the frame of a generated K5 model: the root sees its children, and the rest is one universal reflexive cluster.
+* *Commitment, plain.*  `u → s` commits `s` to `{θ(Φ) | □[ds ↦ es] Φ ∈ M_u}`:
+  * `u`'s link roots `e` (the side images of its parent `p`'s possible terms along `p → u`) go to `s`'s link roots for the same terms along `p → s`, by `side_side`.  These entries are determined, as N2 of the 2026-10-30 check;
+  * every other `u`-item goes to a fresh root of `s`, named by (origin `u`, item, target `s`), as B's content roots.
+* *Consistency, plain:* 5's finite-piece lemma at `p`.  If `M_s ⊢ ∀ys ¬φ'(ys, links)`, then `p` has `◇[ds ↦ τs] ∀ys ¬φ'` through `p → s` (the `tr`/`ex` duality on links).  `p` has `◇[es ↦ τs] □[ds ↦ es] ∃ys φ'` through `p → u`.  `five_box` in link form turns the second into `□[ds ↦ τs] ∃ys φ'`, a contradiction.  So `p → s` must be committed on `p`'s links before `u → s` uses them: an order on the schedule, not a new invariant.
+* *The loop `u → u`:* the same argument, with U with objects in place of `five_box` (the previous check), and `side_loop` for the link entries.
+* *Labelled arrows (possible objects).*  A possible item `q` of `u` has a side image at `s`, the late root `r`, with extent the side image of `q`'s: `s → t` is labelled `r` exactly when `u → t` is labelled `q`, with the same content root (`cx s t r := cx u t q`).  These are B's "late labels", by origin.
+  * *Membership to truth:* `¬◇_q ψ ∈ M_u` gives `□[d ↦ q] ¬◇_d ψ` (`five_dia_back`), which commits `¬◇_r ψ` at `s`.
+  * *The labelled commitment* (`lb_trX`'s analogue): `□_r ψ ∈ M_s` must commit `ψ` along `s → t`.  Consistency is by the finite-piece lemma at `u`, through `◇[e ↦ q] □_e χ ⊢ □_q χ`, which is `five_dia`'s contrapositive.
+* *Root.*  The root (the world asked about) is outside the cluster, with tree edges only.  For KD5 `D` gives it a child, as in `Canon`.
+
+**`BData` is nearly the interface.**  It already takes an arbitrary `R`, arrows as root renamings (`img`, `stg`, `tr`, `ex`), and labels with content roots (`lb`, `cx`, `lb_trX`, `exX`).  What K5 changes:
+* `symm` and `irrefl` are B's.  K5's `R` is neither: edges out of the root are one way, and the cluster has loops.
+* The strong-B fields (`backRel`, `lab`, …) do not apply.
+* The links need a transfer field beside `tr`: `□[d ↦ τ] Φ ∈ M_s` gives `Φ[θ, d ↦ the link root]` at `t`.
+
+So there are two ways to build it:
+* **(G)** Generalise `BData`: make `symm` and `irrefl` conditional, add the link fields, and run B's model and truth lemma (`BCanon*`, `BTruth`, about 11 600 lines of network and model together) for both.
+* **(M)** Mirror it as a K5 network with its own data structure.
+* *Leaning (G) for the model half* (principled over minimal, one model for B and K5).  Mirror the network operations, whose schedule and invariants differ.  To be checked against the uses of `symm` and `irrefl` in `BCanon*` before deciding.
+
+**Strong 5, the gather.**  `necSide_exists` needs, for `u` with parent `p` and a necessary object `n` at `u`, a necessary object `m` at `p` with `m(b)` equal to `n` along `u → s`.  `p` names `m` by the gather rule, as a late `□`-root.  This is GArrow's lift (the parent names what first appears in a child), with `p → s` committing `m.box` to the root `u → s` gave `n`'s value (a term entry, as N2).  B's network has no lift, so this is new to the network.  Option A's staging applies: weak K5 and KD5 first, then strong 5.
+
+**Size (low confidence).**
+* *Syntax, rules, soundness, substitution:* about 3 000 to 5 000 lines.  Two formers at `retS`'s cost, five rules at `five_refl`'s (690 lines for its two rows), and `side_loop`.
+* *The network and model:* about 8 000 to 14 000 lines.  B's core is about 11 600, part reusable under (G).
+* *Strong 5's lift:* 1 500 to 3 000 lines.
+* *Total:* about 12 000 to 22 000 lines, the largest piece left.  The last two estimates were low by factors of 1.5 to 4.
+
+**Order (proposed).**
+1. Syntax: the link formers, gated `Five` and not `Four`, through every recursion over `WFF` as `retS`.
+2. The rules and `side_loop`, with soundness and closure under substitution.
+3. The `◇_x` row of U, written and checked.
+4. `BData`: decide (G) or (M) against `BCanon*`.
+5. The K5 network: plain and labelled cluster arrows, the schedule, fairness, the limit.
+6. The model and truth lemma; weak K5 and KD5 complete; dispatch.
+7. Strong 5: the gather's lift.
+
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
 **Verdict: no blocker found, and the plan gets smaller.**  `GKeep`'s root action is not needed, and
