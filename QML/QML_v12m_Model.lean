@@ -657,14 +657,6 @@ structure Model (σ : Signature) where
   posSide_ext : ∀ {A : VarType} {w : frame.W} (hV : ModalSys.Five = true) (x : frame.Pos A w)
     (a : frame.Acc w),
     (posFull (necEval (ops.posSide hV x) a)).1.1 = frame.sideAcc hV a '' (posFull x).1.1
-  /-- Under 5, a possible object moved across has at `side a b` the content `x` has at `b`.  Only
-      the section is stated: no syntax reads `posSide` in a shaped system yet (with 4 it is
-      `posKeep`, docs §3 5, "with 4, `x.side` is `x.keep`"), so the shape waits for S5. -/
-  posSide_content : ∀ {A : VarType} {w : frame.W} (hV : ModalSys.Five = true) (x : frame.Pos A w)
-    (a b : frame.Acc w) (hb : b ∈ (posFull x).1.1)
-    (hc : frame.sideAcc hV a b ∈ (posFull (necEval (ops.posSide hV x) a)).1.1),
-    (posFull (necEval (ops.posSide hV x) a)).1.2 ⟨frame.sideAcc hV a b, hc⟩ =
-      (posFull x).1.2 ⟨b, hb⟩
   /-- ⭐Strong D: some possible object has a nonempty extent.  Stated at `𝟙`, where the content
       carries nothing: `strength` then gives, for every necessary object, a possible object with
       the same extent whose content is that object's value — the `Nec → Pos` map, at every type. -/
@@ -676,6 +668,16 @@ structure Model (σ : Signature) where
       it is the separate condition `Model.IndInvariant` — a model proper is one satisfying it. -/
   Ind : {A : VarType} → {w : frame.W} → frame.Dom A w → frame.Dom A w → Prop
   Ind_refl : ∀ {A : VarType} {w : frame.W} (o : frame.Dom A w), Ind o o
+  /-- Under 5, a possible object moved across has at `side a b` the content `x` has at `b`, up to
+      `Ind`: the canonical model names a moved content by an alias of its term (docs, "K5 and
+      KD5, step 5: the network, design", (A)).  Only the section is stated: no syntax reads
+      `posSide` in a shaped system yet (with 4 it is `posKeep`, docs §3 5, "with 4, `x.side` is
+      `x.keep`"), so the shape waits for S5. -/
+  posSide_content : ∀ {A : VarType} {w : frame.W} (hV : ModalSys.Five = true) (x : frame.Pos A w)
+    (a b : frame.Acc w) (hb : b ∈ (posFull x).1.1)
+    (hc : frame.sideAcc hV a b ∈ (posFull (necEval (ops.posSide hV x) a)).1.1),
+    Ind ((posFull (necEval (ops.posSide hV x) a)).1.2 ⟨frame.sideAcc hV a b, hc⟩)
+      ((posFull x).1.2 ⟨b, hb⟩)
   /-- ⭐Strong 5, **the gather**, per arrow: a necessary object at `a`'s target, read along the
       arrows across, is (up to `Ind`) one at the source. -/
   necSide_exists : ∀ (hV : ModalSys.Five = true) (_hS : ModalSys.FiveStrong = true) {A : VarType}

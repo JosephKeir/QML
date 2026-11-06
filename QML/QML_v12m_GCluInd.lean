@@ -205,6 +205,8 @@ theorem cmodel_indInvariant (hF : ModalSys.Four = true) :
     · rw [hInd.2 (Bool.eq_false_iff.mpr hT)]
   toIndCongr := cindCongr hM₀ hX
   ret := fun hS => cmodel_retCongr hM₀ hX hS
+  posSide_side _ hN := absurd (hN.symm.trans hF) (by decide)
+  posSide_loop _ hN := absurd (hN.symm.trans hF) (by decide)
 
 end GArrow
 

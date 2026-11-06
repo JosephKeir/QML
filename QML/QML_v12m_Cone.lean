@@ -478,7 +478,7 @@ def cone : Model.{0, 0} σ where
     · exact False.elim r
     obtain ⟨_ | s, ⟨r'⟩⟩ := b
     · exact False.elim r'
-    exact congrArg (c.toC hT hB _ s) (N.posSide_content hV x.1 ⟨t, ⟨r⟩⟩ ⟨s, ⟨r'⟩⟩ hb hc)
+    exact congrArg (c.toC hT hB _ s) (hInd _ _ (N.posSide_content hV x.1 ⟨t, ⟨r⟩⟩ ⟨s, ⟨r'⟩⟩ hb hc))
   posSerial hD w := by
     cases w with
     | none =>

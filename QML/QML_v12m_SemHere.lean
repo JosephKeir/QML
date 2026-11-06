@@ -280,6 +280,85 @@ structure IndCongr : Prop where
   pair : ∀ {A B : VarType} {w : M.frame.W} {a a' : M.frame.Dom A w} {b b' : M.frame.Dom B w},
     M.Ind a a' → M.Ind b b' → M.Ind (A := .VTypeProd A B) (w := w) (a, b) (a', b')
 
+/-! ## Possible objects moved across, where `Ind` is equality -/
+
+/-- Two sections are equal when their extents are and their contents agree. -/
+theorem posSec_ext' {F : Frame.{u, v} σ} {A : VarType} {w : F.W} {X Y : F.PosSec A w}
+    (hE : X.1 = Y.1) (hf : ∀ a (h : a ∈ X.1) (h' : a ∈ Y.1), X.2 ⟨a, h⟩ = Y.2 ⟨a, h'⟩) :
+    X = Y := by
+  obtain ⟨E, f⟩ := X
+  obtain ⟨E', f'⟩ := Y
+  obtain rfl : E = E' := hE
+  exact congrArg (Sigma.mk E) (funext fun ⟨a, h⟩ => hf a h h)
+
+theorem posSec_of_eq {F : Frame.{u, v} σ} {A : VarType} {w : F.W} {X Y : F.PosSec A w}
+    (h : X = Y) : X.1 = Y.1 ∧ ∀ a (h : a ∈ X.1) (h' : a ∈ Y.1), X.2 ⟨a, h⟩ = Y.2 ⟨a, h'⟩ := by
+  subst h
+  exact ⟨rfl, fun _ _ _ => rfl⟩
+
+theorem sideAcc_side (hV : ModalSys.Five = true) {w : M.frame.W} (a b e : M.frame.Acc w) :
+    M.frame.sideAcc hV (M.frame.sideAcc hV a b) (M.frame.sideAcc hV a e) =
+      M.frame.sideAcc hV b e := by
+  change (⟨e.1, ⟨M.frame.side hV (M.frame.side hV a.2.down b.2.down)
+    (M.frame.side hV a.2.down e.2.down)⟩⟩ : M.frame.Acc b.1) =
+      ⟨e.1, ⟨M.frame.side hV b.2.down e.2.down⟩⟩
+  rw [M.frame.side_side]
+
+/-- Where `Ind` is equality, unshaped: **moved across `a`, then across `side a b`, is moved across
+    `b`** (`side_side`). -/
+theorem posSide_side_eq
+    (hI : ∀ {A : VarType} {w : M.frame.W} (o o' : M.frame.Dom A w), M.Ind o o' → o = o')
+    (hV : ModalSys.Five = true) (hS : ModalSys.shaped = false) {A : VarType} {w : M.frame.W}
+    (p : M.frame.Pos A w) (a b : M.frame.Acc w) :
+    M.necEval (M.ops.posSide hV (M.necEval (M.ops.posSide hV p) a)) (M.frame.sideAcc hV a b) =
+      M.necEval (M.ops.posSide hV p) b := by
+  refine M.pos_inj (posSec_ext' ?_ ?_) (fun h => absurd (hS.symm.trans h) Bool.false_ne_true)
+  · change (M.posFull _).1.1 = (M.posFull _).1.1
+    rw [M.posSide_ext, M.posSide_ext, M.posSide_ext, Set.image_image]
+    exact Set.image_congr fun e _ => sideAcc_side hV a b e
+  · intro c h h'
+    have h₀ := h'
+    change c ∈ (M.posFull _).1.1 at h₀
+    rw [M.posSide_ext] at h₀
+    obtain ⟨e, he, rfl⟩ := h₀
+    have hq : M.frame.sideAcc hV a e ∈
+        (M.posFull (M.necEval (M.ops.posSide hV p) a)).1.1 := by
+      rw [M.posSide_ext]
+      exact ⟨e, he, rfl⟩
+    rw [hI _ _ (M.posSide_content hV p b e he h')]
+    have key : ∀ (c' : M.frame.Acc b.1) (_ : M.frame.sideAcc hV (M.frame.sideAcc hV a b)
+        (M.frame.sideAcc hV a e) = c') (hc : c' ∈ (M.posEval (M.necEval (M.ops.posSide hV
+          (M.necEval (M.ops.posSide hV p) a)) (M.frame.sideAcc hV a b))).1),
+        HEq ((M.posEval _).2 ⟨c', hc⟩) ((M.posFull p).1.2 ⟨e, he⟩) := by
+      rintro c' rfl hc
+      exact heq_of_eq ((hI _ _ (M.posSide_content hV _ _ _ hq hc)).trans
+        (hI _ _ (M.posSide_content hV p a e he hq)))
+    exact eq_of_heq (key _ (sideAcc_side hV a b e) h)
+
+/-- Where `Ind` is equality, unshaped, without 4: **the loop moves a possible object of a
+    reached world to itself** (`side_loop`). -/
+theorem posSide_loop_eq
+    (hI : ∀ {A : VarType} {w : M.frame.W} (o o' : M.frame.Dom A w), M.Ind o o' → o = o')
+    (hV : ModalSys.Five = true) (hN : ModalSys.Four = false) (hS : ModalSys.shaped = false)
+    {A : VarType} {w : M.frame.W} (a : M.frame.Acc w) (p : M.frame.Pos A a.1) :
+    M.necEval (M.ops.posSide hV p) (M.frame.sideAcc hV a a) = p := by
+  have hl : ∀ c : M.frame.Acc a.1, M.frame.sideAcc hV (M.frame.sideAcc hV a a) c = c :=
+    fun c => by
+      change (⟨c.1, ⟨M.frame.side hV (M.frame.side hV a.2.down a.2.down) c.2.down⟩⟩ :
+        M.frame.Acc a.1) = c
+      rw [M.frame.side_loop hN hV]
+  refine M.pos_inj (posSec_ext' ?_ ?_) (fun h => absurd (hS.symm.trans h) Bool.false_ne_true)
+  · change (M.posFull _).1.1 = (M.posFull _).1.1
+    rw [M.posSide_ext, show M.frame.sideAcc hV (M.frame.sideAcc hV a a) = id from funext hl,
+      Set.image_id]
+  · intro c h h'
+    have key : ∀ (c' : M.frame.Acc a.1) (_ : M.frame.sideAcc hV (M.frame.sideAcc hV a a) c = c')
+        (hc : c' ∈ (M.posEval (M.necEval (M.ops.posSide hV p) (M.frame.sideAcc hV a a))).1),
+        HEq ((M.posEval _).2 ⟨c', hc⟩) ((M.posFull p).1.2 ⟨c, h'⟩) := by
+      rintro c' rfl hc
+      exact heq_of_eq (hI _ _ (M.posSide_content hV p _ c h' hc))
+    exact eq_of_heq (key _ (hl c) h)
+
 /-- ⭐**A model proper.**  `Ind` is **indistinguishability**: related objects satisfy the same
     formulas, whatever the rest of the environment (`inv`).  This is the semantic content of
     `Proof.here_subst` — co-named objects are interchangeable — and it is a condition on models
@@ -292,12 +371,29 @@ structure IndCongr : Prop where
     And `Ind` is a congruence (`IndCongr`: `map`, `pair`).
 
     Under strong B, "comes back as" (`Model.Ret`) is a congruence for the same two operations
-    (`ret`: `back_beta`, `back_pair`); its invariance under `Ind` is part of `inv`. -/
+    (`ret`: `back_beta`, `back_pair`); its invariance under `Ind` is part of `inv`.
+
+    Under 5 without 4, unshaped, possible objects moved across compose up to `Ind`
+    (`posSide_side`, `posSide_loop`): the canonical model names a moved content by an alias of
+    its term (docs, "K5 and KD5, step 5: the network, design", (A)); where `Ind` is equality they
+    follow from the frame's laws (`posSide_side_eq`, `posSide_loop_eq`). -/
 structure IndInvariant : Prop extends M.IndCongr where
   inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLast → ∀ {w : M.frame.W} (env : M.Env Γ w)
     {A : VarType} (φ : WFF σ (Γ.insert (.bnd 0) A) 1) (o o' : M.frame.Dom A w),
     M.Ind o o' → (M.sat (env.extend (.bnd 0) o) φ ↔ M.sat (env.extend (.bnd 0) o') φ)
   ret : ModalSys.BStrong = true → M.RetCongr
+  /-- Moved across `a`, then across `side a b`, is moved across `b`: what `five_boxL` and the
+      gather read. -/
+  posSide_side : ∀ (hV : ModalSys.Five = true), ModalSys.Four = false → ModalSys.shaped = false →
+    ∀ {A : VarType} {w : M.frame.W} (p : M.frame.Pos A w) (a b : M.frame.Acc w),
+      M.Ind (A := .VTypeDia A)
+        (M.necEval (M.ops.posSide hV (M.necEval (M.ops.posSide hV p) a)) (M.frame.sideAcc hV a b))
+        (M.necEval (M.ops.posSide hV p) b)
+  /-- The loop at a reached world moves its possible objects to themselves: what `five_reflL`
+      reads. -/
+  posSide_loop : ∀ (hV : ModalSys.Five = true), ModalSys.Four = false → ModalSys.shaped = false →
+    ∀ {A : VarType} {w : M.frame.W} (a : M.frame.Acc w) (q : M.frame.Pos A a.1),
+      M.Ind (A := .VTypeDia A) (M.necEval (M.ops.posSide hV q) (M.frame.sideAcc hV a a)) q
 
 /-- A model whose `Ind` is equality is a model proper, given that "comes back as" is a
     congruence. -/
@@ -317,6 +413,12 @@ theorem indInvariant_of_eq
     rw [h _ _ ha, h _ _ hb]
     exact M.Ind_refl _
   ret := hR
+  posSide_side := fun hV _ hS {_ _} p a b => by
+    rw [posSide_side_eq h hV hS p a b]
+    exact M.Ind_refl _
+  posSide_loop := fun hV hN hS {_ _} a q => by
+    rw [posSide_loop_eq h hV hN hS a q]
+    exact M.Ind_refl _
 
 /-! ## What the pinned form says -/
 

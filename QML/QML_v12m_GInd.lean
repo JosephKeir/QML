@@ -233,6 +233,8 @@ theorem gmodel_indInvariant : (gmodel hF hM₀).IndInvariant where
     · exact Prod.ext ((grden_lift (le_max_left u₁'.i u₂'.i) u₁'.t).trans h₁')
         ((grden_lift (le_max_right u₁'.i u₂'.i) u₂'.t).trans h₂')
   ret := fun hS => (absBS hS).elim
+  posSide_side _ hN := absurd (hN.symm.trans hF) (by decide)
+  posSide_loop _ hN := absurd (hN.symm.trans hF) (by decide)
 
 end GArrow
 

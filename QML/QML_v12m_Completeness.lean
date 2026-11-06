@@ -915,6 +915,8 @@ theorem indInvariant : (model w₀).IndInvariant where
     · exact Prod.ext ((rden_lift (le_sup_left : s₁'.i ≤ s₁'.i ⊔ s₂'.i) s₁'.t).trans h₁')
         ((rden_lift (le_sup_right : s₂'.i ≤ s₁'.i ⊔ s₂'.i) s₂'.t).trans h₂')
   ret hS := (ModalSys.NoB.absurdStrong hS).elim
+  posSide_side hV hN := (ModalSys.NoB.absurdLink hV hN).elim
+  posSide_loop hV hN := (ModalSys.NoB.absurdLink hV hN).elim
 
 end Canon
 

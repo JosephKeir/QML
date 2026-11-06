@@ -755,7 +755,7 @@ noncomputable def cmodel (hX : CluFlags) : Model.{0, 0} σ where
   posSide_ext _ x _ := by
     ext b
     exact ⟨fun hb => ⟨b, hb, rfl⟩, fun ⟨c, hc, e⟩ => by rw [← e]; exact hc⟩
-  posSide_content _ _ _ _ _ _ := rfl
+  posSide_content _ _ _ _ _ _ := ⟨fun _ => cInd_refl hM₀ hX _, fun _ => rfl⟩
   posSerial hDS s := cposSerial hM₀ hX hDS s
   Ind o o' := (ModalSys.T = true → cInd hM₀ hX o o') ∧ (ModalSys.T = false → o = o')
   Ind_refl o := ⟨fun _ => cInd_refl hM₀ hX o, fun _ => rfl⟩

@@ -7,8 +7,9 @@ import QML.QML_v12m_LinkSyntax
 A formula closed apart from its hole means what it means of the hole's value alone
 (`Model.sat_holeAt`).  So the link rules' soundness is about the objects moved across:
 
-* ⭐`Model.sideOf_side`: moved across `a` and then across `side a b` is moved across `b`
-  (`side_side`), with shapes off;
+* ⭐`Model.sideOf_side`, `Model.sideOf_loop`: moved across twice is moved across once, and along
+  the loop is itself, up to `Ind` in a model proper (`IndInvariant.posSide_side`, `posSide_loop`;
+  equalities where `Ind` is, `posSide_side_eq`, `posSide_loop_eq`);
 * ⭐`Model.sat_fiveDiaL`, `Model.sat_fiveDiaBackL`, `Model.sat_fiveBoxL`: the rules
   `Proof.five_diaL`, `Proof.five_dia_backL`, `Proof.five_boxL`.
 -/
@@ -20,20 +21,6 @@ variable [ModalSys]
 namespace Model
 
 variable {σ : Signature}
-
-/-- Two sections are equal when their extents are and their contents agree. -/
-theorem posSec_ext' {F : Frame.{u, v} σ} {A : VarType} {w : F.W} {X Y : F.PosSec A w}
-    (hE : X.1 = Y.1) (hf : ∀ a (h : a ∈ X.1) (h' : a ∈ Y.1), X.2 ⟨a, h⟩ = Y.2 ⟨a, h'⟩) :
-    X = Y := by
-  obtain ⟨E, f⟩ := X
-  obtain ⟨E', f'⟩ := Y
-  obtain rfl : E = E' := hE
-  exact congrArg (Sigma.mk E) (funext fun ⟨a, h⟩ => hf a h h)
-
-theorem posSec_of_eq {F : Frame.{u, v} σ} {A : VarType} {w : F.W} {X Y : F.PosSec A w}
-    (h : X = Y) : X.1 = Y.1 ∧ ∀ a (h : a ∈ X.1) (h' : a ∈ Y.1), X.2 ⟨a, h⟩ = Y.2 ⟨a, h'⟩ := by
-  subst h
-  exact ⟨rfl, fun _ _ _ => rfl⟩
 
 variable {M : Model.{u, v} σ}
 
@@ -66,60 +53,34 @@ theorem sat_sideDia {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {A : VarType}
     convert H using 4
     rw [hr]
 
-/-! ## Moved across twice -/
-
-theorem sideAcc_side (hV : ModalSys.Five = true) {w : M.frame.W} (a b e : M.frame.Acc w) :
-    M.frame.sideAcc hV (M.frame.sideAcc hV a b) (M.frame.sideAcc hV a e) =
-      M.frame.sideAcc hV b e := by
-  change (⟨e.1, ⟨M.frame.side hV (M.frame.side hV a.2.down b.2.down)
-    (M.frame.side hV a.2.down e.2.down)⟩⟩ : M.frame.Acc b.1) =
-      ⟨e.1, ⟨M.frame.side hV b.2.down e.2.down⟩⟩
-  rw [M.frame.side_side]
-
-/-- ⭐**Moved across `a`, then across `side a b`, is moved across `b`** (`side_side`), shapes off:
-    what `five_boxL` reads. -/
-theorem sideOf_side (hV : ModalSys.Five = true) (hS : ModalSys.shaped = false) :
-    ∀ (D : DShape) {w : M.frame.W} (x : M.frame.Dom D.ty w) (a b : M.frame.Acc w),
-      M.sideOf hV D (M.sideOf hV D x a) (M.frame.sideAcc hV a b) = M.sideOf hV D x b
-  | .one, _, _, _, _ => rfl
-  | .dia A, w, p, a, b => by
-      change M.necEval (M.ops.posSide hV (M.necEval (M.ops.posSide hV p) a))
-        (M.frame.sideAcc hV a b) = M.necEval (M.ops.posSide hV p) b
-      refine M.pos_inj (posSec_ext' ?_ ?_) (fun h => absurd (hS.symm.trans h) Bool.false_ne_true)
-      · change (M.posFull _).1.1 = (M.posFull _).1.1
-        rw [M.posSide_ext, M.posSide_ext, M.posSide_ext, Set.image_image]
-        exact Set.image_congr fun e _ => sideAcc_side hV a b e
-      · intro c h h'
-        have h₀ := h'
-        change c ∈ (M.posFull _).1.1 at h₀
-        rw [M.posSide_ext] at h₀
-        obtain ⟨e, he, rfl⟩ := h₀
-        have hq : M.frame.sideAcc hV a e ∈
-            (M.posFull (M.necEval (M.ops.posSide hV p) a)).1.1 := by
-          rw [M.posSide_ext]
-          exact ⟨e, he, rfl⟩
-        rw [M.posSide_content hV p b e he h']
-        have key : ∀ (c' : M.frame.Acc b.1) (_ : M.frame.sideAcc hV (M.frame.sideAcc hV a b)
-            (M.frame.sideAcc hV a e) = c') (hc : c' ∈ (M.posEval (M.necEval (M.ops.posSide hV
-              (M.necEval (M.ops.posSide hV p) a)) (M.frame.sideAcc hV a b))).1),
-            HEq ((M.posEval _).2 ⟨c', hc⟩) ((M.posFull p).1.2 ⟨e, he⟩) := by
-          rintro c' rfl hc
-          exact heq_of_eq ((M.posSide_content hV _ _ _ hq hc).trans
-            (M.posSide_content hV p a e he hq))
-        exact eq_of_heq (key _ (sideAcc_side hV a b e) h)
-  | .prod D E, w, x, a, b => by
-      change (M.sideOf hV D (M.sideOf hV D x.1 a) (M.frame.sideAcc hV a b),
-        M.sideOf hV E (M.sideOf hV E x.2 a) (M.frame.sideAcc hV a b)) =
-        (M.sideOf hV D x.1 b, M.sideOf hV E x.2 b)
-      rw [sideOf_side hV hS D, sideOf_side hV hS E]
-
 /-! ## The rules -/
 
 variable (hV : ModalSys.Five = true) (hN : ModalSys.Four = false)
 
+include hN in
+/-- ⭐**Moved across `a`, then across `side a b`, is moved across `b`**, up to `Ind`, in a model
+    proper (`IndInvariant.posSide_side`), componentwise: what `five_boxL` and the gather read. -/
+theorem sideOf_side (hM : M.IndInvariant) (hS : ModalSys.shaped = false) :
+    ∀ (D : DShape) {w : M.frame.W} (x : M.frame.Dom D.ty w) (a b : M.frame.Acc w),
+      M.Ind (M.sideOf hV D (M.sideOf hV D x a) (M.frame.sideAcc hV a b)) (M.sideOf hV D x b)
+  | .one, _, _, _, _ => M.Ind_refl _
+  | .dia _, _, p, a, b => hM.posSide_side hV hN hS p a b
+  | .prod D E, _, x, a, b => hM.pair (sideOf_side hM hS D x.1 a b) (sideOf_side hM hS E x.2 a b)
+
+include hN in
+/-- ⭐**The loop moves the possible objects of a reached world to themselves**, up to `Ind`, in a
+    model proper (`IndInvariant.posSide_loop`), componentwise: what `five_reflL` reads. -/
+theorem sideOf_loop (hM : M.IndInvariant) (hS : ModalSys.shaped = false) :
+    ∀ (D : DShape) {w : M.frame.W} (a : M.frame.Acc w) (x : M.frame.Dom D.ty a.1),
+      M.Ind (M.sideOf hV D x (M.frame.sideAcc hV a a)) x
+  | .one, _, _, _ => M.Ind_refl _
+  | .dia _, _, a, p => hM.posSide_loop hV hN hS a p
+  | .prod D E, _, a, x => hM.pair (sideOf_loop hM hS D a x.1) (sideOf_loop hM hS E a x.2)
+
 /-- ⭐`Proof.five_diaL` is sound: `y`'s arrow `b`, moved across `a`, is in the moved extent, with
     `h`'s value there (`posSide_ext`, `posSide_content`, `dia_beta`). -/
-theorem sat_fiveDiaL {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W} (env : M.Env Γ w) (y : VarSymb)
+theorem sat_fiveDiaL (hM : M.IndInvariant) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
+    (env : M.Env Γ w) (y : VarSymb)
     (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) {A : VarType} {a : Ann A}
     (h : Term σ (Γ.diaIn y) A a) (χ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1)
     (H : M.sat env (.dia y hy (WFF.holeAt Ctx.NoSlots.slots h χ))) :
@@ -136,13 +97,14 @@ theorem sat_fiveDiaL {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W} (env : M.Env Γ w) 
       (interp env (Term.diatm y hy h))) a')).1.1 := by
     rw [M.posSide_ext]
     exact ⟨_, hb, rfl⟩
-  refine ⟨⟨_, hc⟩, ?_⟩
-  rw [M.posSide_content hV _ a' b.1 hb hc, (posSec_of_eq hp).2 b.1 hb b.2]
+  refine ⟨⟨_, hc⟩, (holeSat_ind hM χ (M.posSide_content hV _ a' b.1 hb hc)).mpr ?_⟩
+  rw [(posSec_of_eq hp).2 b.1 hb b.2]
   exact Hb
 
 /-- ⭐`Proof.five_dia_backL` is sound: an arrow of the moved extent is an arrow of `y`'s moved
     across, with the same content. -/
-theorem sat_fiveDiaBackL {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W} (env : M.Env Γ w) (y : VarSymb)
+theorem sat_fiveDiaBackL (hM : M.IndInvariant) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
+    (env : M.Env Γ w) (y : VarSymb)
     (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) {A : VarType} {a : Ann A}
     (h : Term σ (Γ.diaIn y) A a) (χ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1)
     (H : M.sat env (WFF.neg (.link hV hN (D := .dia A) (Term.diatm y hy h)
@@ -162,14 +124,14 @@ theorem sat_fiveDiaBackL {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W} (env : M.Env Γ
   apply hno
   refine ⟨Y, hr, ⟨b, (posSec_of_eq hp).1 ▸ hb⟩, ?_⟩
   rw [sat_holeAt]
-  have e := (M.posSide_content hV _ a' b hb hc).trans
-    ((posSec_of_eq hp).2 b hb ((posSec_of_eq hp).1 ▸ hb))
-  rw [e] at Hc
-  exact Hc
+  have H' := (holeSat_ind hM χ (M.posSide_content hV _ a' b hb hc)).mp Hc
+  rw [(posSec_of_eq hp).2 b hb ((posSec_of_eq hp).1 ▸ hb)] at H'
+  exact H'
 
 /-- ⭐`Proof.five_boxL` is sound: any arrow `b` is the premise's arrow `a` followed by the arrow
     across, and what is moved across twice is moved across once (`sideOf_side`). -/
-theorem sat_fiveBoxL (hS : ModalSys.shaped = false) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
+theorem sat_fiveBoxL (hM : M.IndInvariant) (hS : ModalSys.shaped = false) {Γ : Ctx}
+    [Γ.NoSlots] {w : M.frame.W}
     (env : M.Env Γ w) {D : DShape} {a : Ann D.ty} (t : Term σ Γ D.ty a)
     (χ : WFF σ (Ctx.empty.insert (.bnd 0) D.ty) 1)
     (H : M.sat env (WFF.neg (.link hV hN t (WFF.neg (WFF.linkHole hV hN
@@ -181,11 +143,10 @@ theorem sat_fiveBoxL (hS : ModalSys.shaped = false) {Γ : Ctx} [Γ.NoSlots] {w :
   apply H
   intro a' ha
   have h₁ := ha (M.frame.sideAcc hV a' b)
-  rw [sat_holeAt, interp_eta, Env.ref_extend_root, interp_eta, Env.ref_extend_root,
-    sideOf_side hV hS] at h₁
+  rw [sat_holeAt, interp_eta, Env.ref_extend_root, interp_eta, Env.ref_extend_root] at h₁
   apply hb
   rw [sat_holeAt, interp_eta, Env.ref_extend_root]
-  exact h₁
+  exact (holeSat_ind hM χ (sideOf_side hV hN hM hS D _ a' b)).mp h₁
 
 /-! ## The gather -/
 
@@ -250,41 +211,10 @@ theorem sat_fiveGatherL (hM : M.IndInvariant) (hS : ModalSys.shaped = false)
   refine ⟨m, (sat_linkHoleN _ _ _ _ _ _ _ _).mpr fun b => ?_⟩
   rw [Env.ref_extend_root, interp_mono (Env.agree_extend _ Ctx.NoSlots.slots.root _)]
   refine (holeSat_ind hM χ (hM.pair (hm b) (M.Ind_refl _))).mpr ?_
-  have h := hn (M.frame.sideAcc hV a' b)
-  rwa [sideOf_side hV hS] at h
+  exact (holeSat_ind hM χ (hM.pair (M.Ind_refl _) (sideOf_side hV hN hM hS D _ a' b))).mp
+    (hn (M.frame.sideAcc hV a' b))
 
 /-! ## U with objects -/
-
-include hN in
-/-- ⭐**The loop moves the possible objects of a reached world to themselves** (`side_loop`),
-    shapes off. -/
-theorem sideOf_loop (hS : ModalSys.shaped = false) :
-    ∀ (D : DShape) {w : M.frame.W} (a : M.frame.Acc w) (x : M.frame.Dom D.ty a.1),
-      M.sideOf hV D x (M.frame.sideAcc hV a a) = x
-  | .one, _, _, _ => rfl
-  | .dia A, w, a, p => by
-      change M.necEval (M.ops.posSide hV p) (M.frame.sideAcc hV a a) = p
-      have hl : ∀ c : M.frame.Acc a.1, M.frame.sideAcc hV (M.frame.sideAcc hV a a) c = c :=
-        fun c => by
-          change (⟨c.1, ⟨M.frame.side hV (M.frame.side hV a.2.down a.2.down) c.2.down⟩⟩ :
-            M.frame.Acc a.1) = c
-          rw [M.frame.side_loop hN hV]
-      refine M.pos_inj (posSec_ext' ?_ ?_) (fun h => absurd (hS.symm.trans h) Bool.false_ne_true)
-      · change (M.posFull _).1.1 = (M.posFull _).1.1
-        rw [M.posSide_ext, show M.frame.sideAcc hV (M.frame.sideAcc hV a a) = id from funext hl,
-          Set.image_id]
-      · intro c h h'
-        have key : ∀ (c' : M.frame.Acc a.1) (_ : M.frame.sideAcc hV (M.frame.sideAcc hV a a) c = c')
-            (hc : c' ∈ (M.posEval (M.necEval (M.ops.posSide hV p) (M.frame.sideAcc hV a a))).1),
-            HEq ((M.posEval _).2 ⟨c', hc⟩) ((M.posFull p).1.2 ⟨c, h'⟩) := by
-          rintro c' rfl hc
-          exact heq_of_eq (M.posSide_content hV p _ c h' hc)
-        exact eq_of_heq (key _ (hl c) h)
-  | .prod D E, w, a, x => by
-      change (M.sideOf hV D x.1 (M.frame.sideAcc hV a a),
-        M.sideOf hV E x.2 (M.frame.sideAcc hV a a)) = x
-      rw [sideOf_loop hS D, sideOf_loop hS E]
-      rfl
 
 theorem Env.ref_extend_extend {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {r r' : Root}
     (hrr : r ≠ r') {T T' : VarType} (o : M.frame.Dom T w) (o' : M.frame.Dom T' w)
@@ -297,20 +227,20 @@ theorem Env.ref_extend_extend {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {r r
 /-- ⭐`Proof.five_reflL` is sound: at a reached world `a.1`, the loop `side a a` is an arrow; a
     necessary object's value along it is the witness, and the possible objects moved along it are
     themselves (`sideOf_loop`). -/
-theorem sat_fiveReflL (hS : ModalSys.shaped = false) {w : M.frame.W} (env : M.Env Ctx.empty w)
+theorem sat_fiveReflL (hM : M.IndInvariant) (hS : ModalSys.shaped = false) {w : M.frame.W}
+    (env : M.Env Ctx.empty w)
     {B : VarType} {D : DShape} (χ : WFF σ (Ctx.empty.insert (.bnd 0) (.VTypeProd B D.ty)) 1) :
     M.sat env (WFF.fiveReflL hV hN χ) := by
   intro a k q hk
   rw [sat_linkHoleN] at hk
   have h := hk (M.frame.sideAcc hV a a)
-  rw [Env.ref_extend_extend _ (by decide), interp_eta, Env.ref_extend_root,
-    sideOf_loop hV hN hS] at h
+  rw [Env.ref_extend_extend _ (by decide), interp_eta, Env.ref_extend_root] at h
   change ∃ o : M.frame.Dom B a.1, _
   refine ⟨M.necEval k (M.frame.sideAcc hV a a), ?_⟩
   rw [sat_holeAt]
   change M.holeSat χ (interp _ (Term.eta _ _ _), interp _ (Term.eta _ _ _))
   rw [interp_eta, interp_eta, Env.ref_extend_root, Env.ref_extend_extend _ (by decide)]
-  exact h
+  exact (holeSat_ind hM χ (hM.pair (M.Ind_refl _) (sideOf_loop hV hN hM hS D a _))).mp h
 
 end Model
 

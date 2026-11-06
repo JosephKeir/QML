@@ -5808,6 +5808,35 @@ So there are two ways to build it:
   * Why `Five = false` rather than B's flags: every use is in a `NoFour` context, where it is `NoFour.noFive`.  A K5 network, with 5 on, discharges the three by absurdity.
 * *Next:* step 5, the K5 network (mirroring `BNet*`, `BFair`, `BLimit`).
 
+#### K5 and KD5, step 5: the network, design *(2026-11-06, paper against the code)*
+
+**What carries over from B's network.**  Nodes form a tree, as in B (`NodeSt`, `NetSt`, `complete`).  Arrows are renamings of roots with necessity transfer (`Transfer`, `ImgOk`, `arrowS`), and witness arrows carry `□_x` transfer and a content root (`TransferX`, `arrowXS`, `cx`).  The operations are realising one more variable along an arrow, a Henkin step, and a new child, run on a fair schedule.  What differs:
+* *The arrows.*  B has, per child, a forward and a back arrow.  K5 has the root's tree edges, and an arrow `u → s` for every two non-root nodes, loops included.  The tree edges between non-root nodes are among these.  So the state keeps commitments per ordered pair: `ccl u s`, `cimg u s`.
+* *Consistency of a commitment* is by the finite-piece lemma at `u`'s parent `p`: `five_boxL` for plain arrows, `five_dia_backL` and its dual for labelled ones, `five_reflL` for loops.  This is the role `closed_back` plays in B.
+
+**The one new problem: side images of terms.**  A link `□[d ↦ τ] Φ(d) ∈ M_u` must commit `Φ` along `u → s` with `d` named at `s`.  Its value is `posSide ⟦τ⟧`.
+* For `τ` a `◇`-root `q` of `u`, `s` gets a late root `w` for `(u, q)`, labelled by `q`'s labels moved across: `s → t` is labelled `w` exactly when `u → t` is labelled `q`, and the content is `cx u t q`, a root of `t`.  All of this fits `BData` as it is.
+* For `τ = diatm y h` with `h` reading `u`'s `□`-parameters, the side image is **not definable at `s`**.  Its content at `s → t` is `h` read at `u → t`, which reads `u`'s `□`-objects' values at `t`.  `s` has names for their values at `s`, not at `t`, and without strong 5 nothing at `s` gathers them.  So `s` needs a fresh root for it, and that root's content at a labelled arrow is a *term* of `t`, `h`'s image along `u → t`, not a root.  `BData`'s `cx` is a root index, read so in about 50 places of the model half.
+
+**Two ways.**
+* **(A) Aliases (B's precedent, `QML_v12m_BAlias`).**  Name every term by a root first.  A node gets a fresh root `q_τ` that is an alias of its term `τ` (`ψ(q_τ) ↔ ψ(τ)` for every slot formula), consistent by substitution (`alias_consistent`).  Then links need side images of roots only, and every label content is a root (an alias at the target of `h`'s image).  `BData` is unchanged.
+  * *The cost:* an alias is indistinguishable from its term, not equal to it.  So `Model.posSide_content` becomes a law up to `Ind`, like `necSide_exists`, `Here` and `Back`.
+  * The soundness of the link rules then goes through `IndInvariant` (`holeSat_ind`), as the gather's already does.  `sideOf_side` and `sideOf_loop` become `Ind` relations.  About 200 to 400 lines reworked in `QML_v12m_SemLink`.
+* **(T) Term contents.**  Generalise `BData`'s label content `cx` from a root to a term.  The laws stay equalities, but the model half's roughly 50 uses of `cx`, `lb_hcx` and `arrowXS` change, B's included, which would read its roots as η-terms.
+* *Leaning (A):* it follows a built precedent, keeps `BData` and B's files as they are, and the law up to `Ind` is how every other cross-world law here is stated.  The cost is confined to soundness, which the gather has already shown works.
+
+**Decided (user, 2026-11-06): (A).  Built the same day: the laws up to `Ind`.**  Strict build clean.
+* `Model.posSide_content` is now up to `Ind`.  It moved below `Ind`, and the cone and the cluster model supply it as before, through their `Ind` being equality.  `posSide_eq_posKeep` takes that as a hypothesis, which the hub gives (`hub_ind`).
+* *A correction to (A) as written:* weakening `posSide_content` alone is not enough.
+  * `five_boxL`, the gather and U compare whole objects moved across, and chaining `Ind` through their contents would need `Ind` symmetric and transitive, which no model is asked.
+  * Instead a model proper (`IndInvariant`) states exactly what the rules read, gated by 5 on, 4 off and shapes off:
+    * ⭐`posSide_side`: moved across `a`, then across `side a b`, is `Ind` to moved across `b`;
+    * ⭐`posSide_loop`: moved along the loop is `Ind` to itself.
+  * Where `Ind` is equality they are lemmas from the frame's laws (`posSide_side_eq`, `posSide_loop_eq`, in `QML_v12m_SemHere`), so `indInvariant_of_eq` (the cone) supplies them.  B's, Canon's, the grown tree's and the cluster's models dismiss them by flag.
+  * The K5 model must prove them in step 6, from its aliases.
+* `QML_v12m_SemLink`: `sideOf_side` and `sideOf_loop` are now `Ind` relations, componentwise through `IndCongr.pair`.  All five rules' soundness goes through `holeSat_ind`.
+* *Next:* the K5 network itself.
+
 #### S5 steps 3–4: design pass against the code *(2026-10-30)*
 
 **Verdict: no blocker found, and the plan gets smaller.**  `GKeep`'s root action is not needed, and

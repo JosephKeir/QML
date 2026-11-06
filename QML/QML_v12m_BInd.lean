@@ -231,6 +231,8 @@ theorem indInvariant (hRC : ModalSys.BStrong = true → B.model.RetCongr) :
     · exact Prod.ext ((rden_lift (le_max_left u₁'.i u₂'.i) u₁'.t).trans h₁')
         ((rden_lift (le_max_right u₁'.i u₂'.i) u₂'.t).trans h₂')
   ret := hRC
+  posSide_side hV := (ModalSys.NoFour.absurdFive hV).elim
+  posSide_loop hV := (ModalSys.NoFour.absurdFive hV).elim
 
 end BData
 

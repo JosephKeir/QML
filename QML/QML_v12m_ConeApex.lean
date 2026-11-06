@@ -117,6 +117,7 @@ theorem interp_applyG (hSh : ModalSys.shaped = false) :
 /-- In a relational unshaped model a possible object moved across is the object kept (docs §3 5,
     "with 4, `x.side` is `x.keep`"). -/
 theorem posSide_eq_posKeep {M : Model.{u, 0} σ} (hSh : ModalSys.shaped = false)
+    (hInd : ∀ {A : VarType} {w : M.frame.W} (o o' : M.frame.Dom A w), M.Ind o o' → o = o')
     (hF : ModalSys.Four = true) (hV : ModalSys.Five = true) {A : VarType} {w : M.frame.W}
     (p : M.frame.Pos A w) : M.ops.posSide hV p = M.ops.posKeep hF p := by
   apply M.nec_inj
@@ -137,7 +138,7 @@ theorem posSide_eq_posKeep {M : Model.{u, 0} σ} (hSh : ModalSys.shaped = false)
   refine posSec_ext' (Set.ext fun b => (hmem b).trans (Set.ext_iff.mp hE b).symm) ?_
   intro b h h'
   have hb := (hmem b).mp h
-  exact (M.posSide_content hV p a ⟨b.1, ⟨M.frame.trans hF a.2.down b.2.down⟩⟩ hb h).trans
+  exact (hInd _ _ (M.posSide_content hV p a ⟨b.1, ⟨M.frame.trans hF a.2.down b.2.down⟩⟩ hb h)).trans
     (hf b h' hb).symm
 
 end Apply

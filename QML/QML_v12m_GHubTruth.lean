@@ -409,7 +409,7 @@ noncomputable def hubData (hFS : ModalSys.FiveStrong = true → ModalSys.FourStr
   posSide := by
     intro hV A p hp
     obtain ⟨i, _, t, rfl⟩ := hp
-    rw [posSide_eq_posKeep (hubSh hX hh) hF hV]
+    rw [posSide_eq_posKeep (hubSh hX hh) (fun o o' h => hub_ind hM₀ hX hh o o' h) hF hV]
     exact ⟨i, _, (Canon.applyG (.dkeep hF) t).2, by rw [interp_applyG (hubSh hX hh)]; rfl⟩
   posSerial hD := hubDefP_serial hM₀ hX hh hD
   keepLiftN hF' _ hl a o := by
