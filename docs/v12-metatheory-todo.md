@@ -138,7 +138,28 @@ Notes before starting:
 
 ## 4. Cut elimination
 
-**Status: CUT ADMISSIBLE IN GK, built (2026-11-07); the equivalence with ND is next.**
+**Status: ✅ CUT ELIMINATION FOR K, built (2026-11-07).**  ⭐`GK.provable_iff_der`
+(`QML_v12m_GKToND.lean`): over a presented context, with every flag off (`ModalSys.IsK`), a sequent
+is provable in natural deduction exactly when it has a **cut-free** GK derivation.  Sorry-free,
+standard axioms.  About 2 200 lines in all (estimate was 4 500 to 7 000).
+* `QML_v12m_GKEq.lean`: `ModalSys.IsK` (every flag off; instance for `ModalSys.K`); ⭐`GK.ident`
+  (`φ ⇒ φ` for every formula, by weight, quantifiers opened with `openFree`); ⭐`GK.replace` (ND's
+  `eq_elim` for any formula) from `GK.replaceGen`, stated for two substitutions agreeing except at
+  the slot `bnd 0` (sent to `t` and `s`, one index map since a base term carries no indices):
+  quantifiers by `bindFree_toFree`/`instantiate_toFree`, the `□`/`◇_x` views by
+  `Subst.sim_box_of_agree`/`sim_dia_of_agree` (both sides the same formula), atoms by the hole
+  formula `θ₁.under 0 0` (`instantiate_hole`, `Subst.coh_under_occ`); `GK.eq_symm`.
+* `QML_v12m_GKFromND.lean`: `GK.Der` (single-conclusion derivability); every ND rule of K derived
+  (`Der.and_elim_l`, `Der.K_dia` by `negRight`/`dropNeg`, …); ⭐`GK.ofProof`, the translation along
+  any substitution into a presented context (as `Proof.subst`: `weak_ctx`, `pair_elim` have
+  premises over contexts that need not be presented, and there they become a restriction and
+  `θ.pairSplit`); non-K rules by their flags (`kflag`); ⭐`GK.Der.ofProof`.
+* `QML_v12m_GKToND.lean`: ⭐`GK.toND` (`Δ ⇒ Θ` read as `Δ, ¬Θ ⊢ ⊥`, every system), `NDP` helpers,
+  ⭐`GK.provable_iff_der`.
+* *Next:* the subformula property (up to term instances) for cut-free GK derivations, then
+  interpolation (item 5).
+
+*Earlier status:* cut admissible in GK, built (2026-11-07).
 * `QML_v12m_GK.lean`: the calculus `GK σ n Γ Δ Θ` (a `Prop`, indexed by a height bound), `WFF.IsAtom`,
   `WFF.weight`; `GK.mono_height`; `GK.weaken` (weakening, exchange and contraction, by membership).
 * `QML_v12m_GKSubst.lean`: ⭐`GK.subst`, height-preserving substitution into a presented context,
