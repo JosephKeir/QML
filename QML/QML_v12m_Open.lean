@@ -176,6 +176,42 @@ theorem WFF.openFree_neg (u : ℕ) (hu : Γ.RootFresh (.free u)) (hs : Γ.SlotsF
     WFF.openFree u hu hs ψ.neg = (WFF.openFree u hu hs ψ).neg :=
   rfl
 
+/-- ⭐Opening a bound body at its own eigenvariable gives the body back (`bindFree_openFree`'s
+    converse): renaming the variable to the slot and the slot back to the variable composes to the
+    identity renaming. -/
+theorem WFF.openFree_bindFree (u : ℕ) (hu : Γ.RootFresh (.free u)) (hs : Γ.SlotsFrom 0)
+    (φ : WFF σ (Γ.insert (.free u) T) 0) :
+    WFF.openFree u hu hs (WFF.bindFree u hu hs T φ) = φ := by
+  unfold WFF.openFree WFF.bindFree WFF.renameRoot
+  rw [WFF.subst_comp _ _ (Subst.idRen _) _ _ _ _ Subst.ok_idRen Subst.coh_idRen _ _ _ ?_ φ]
+  · exact (WFF.subst_ren (Ctx.Le.refl _) _ _ _ _ _ (fun v _ _ => Subst.at_idRen v) φ).trans
+      (WFF.mono_refl _ φ)
+  refine Subst.sim_of ?_
+  intro v U hlp hv
+  by_cases hvr : v = .root (.free u)
+  · subst hvr
+    change SubE.Sim U (.ren _) ((Subst.single (σ := σ) (.free u) (.ren (.root (.bnd 0)))
+      (.root (.free u))).comp _ _ _)
+    rw [show Subst.single (σ := σ) (Δ := Γ.insert (.bnd 0) T) (.free u) (.ren (.root (.bnd 0)))
+      (.root (.free u)) = .ren (.root (.bnd 0)) from if_pos rfl]
+    change SubE.Sim U _ (((Subst.idRen Γ).toFree 0 u T hu.root) (.root (.bnd 0)))
+    rw [show ((Subst.idRen (σ := σ) Γ).toFree 0 u T hu.root) (.root (.bnd 0)) =
+      .ren (.root (.free u)) from if_pos rfl]
+    exact .refl _
+  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+    have hvb : v ≠ .root (.bnd 0) := fun h => by
+      rw [h, hs.root] at hv'
+      cases hv'
+    change SubE.Sim U (.ren _) ((Subst.single (σ := σ) (.free u) (.ren (.root (.bnd 0))) v).comp
+      _ _ _)
+    rw [show Subst.single (σ := σ) (Δ := Γ.insert (.bnd 0) T) (.free u) (.ren (.root (.bnd 0)))
+      v = .ren v from if_neg hvr]
+    change SubE.Sim U _ (((Subst.idRen Γ).toFree 0 u T hu.root).at v)
+    rw [Subst.at_nonproj _ hlp,
+      show (Subst.idRen (σ := σ) Γ).toFree 0 u T hu.root v =
+        ((Subst.idRen Γ) v).mono (Ctx.le_insert hu.root T) from if_neg hvb]
+    exact .refl _
+
 end Open
 
 end V12M

@@ -9,7 +9,8 @@ consists of subformulas of `Δ ⇒ Θ`** (`GKS`), in Gentzen's sense for predica
 * immediate subformulas of `∧`, `∨`, `→`, the bodies of `□` and `◇_x` (read in their views),
 * instances of a quantifier's body: at any term, or opened at an eigenvariable,
 * the bookkeeping of contexts: weakening by a fresh variable, a `□`-body moved into a `◇_x` view,
-* and atoms, which `ref` and `repl` introduce (as in Negri and von Plato's G3 with equality).
+* and the atoms `ref` and `repl` introduce: reflexive equations `t = t`, and `P(s)` from members
+  `t = s` and `P(t)` (as in Negri and von Plato's G3 with equality).
 
 `GSub.weight_le`: every member is an atom or no heavier than a formula of the end sequent.  With
 `GK.provable_iff_der`: every ND-provable sequent of K has such an analytic derivation
@@ -24,7 +25,11 @@ variable [ModalSys] {σ : Signature}
     derivation passes through. -/
 inductive GSub {Γ₀ : Ctx} (E : List (WFF σ Γ₀ 0)) : (Γ : Ctx) → WFF σ Γ 0 → Prop where
   | mem {φ : WFF σ Γ₀ 0} : φ ∈ E → GSub E Γ₀ φ
-  | atom {Γ : Ctx} {φ : WFF σ Γ 0} : φ.IsAtom → GSub E Γ φ
+  | refl_eq {Γ : Ctx} (t : Term σ Γ .Var .var) : GSub E Γ (.eq t t)
+  | repl {Γ : Ctx} [Γ.NoSlots] {Q : WFF σ (Γ.insert (.bnd 0) .Var) 1} (hQ : Q.IsAtom)
+      (t s : Term σ Γ .Var .var) : GSub E Γ (.eq t s) →
+      GSub E Γ (WFF.instantiate Ctx.NoSlots.slots t Q) →
+      GSub E Γ (WFF.instantiate Ctx.NoSlots.slots s Q)
   | and_l {Γ : Ctx} {φ ψ : WFF σ Γ 0} : GSub E Γ (φ.and ψ) → GSub E Γ φ
   | and_r {Γ : Ctx} {φ ψ : WFF σ Γ 0} : GSub E Γ (φ.and ψ) → GSub E Γ ψ
   | or_l {Γ : Ctx} {φ ψ : WFF σ Γ 0} : GSub E Γ (φ.or ψ) → GSub E Γ φ
@@ -95,7 +100,8 @@ theorem GSub.weight_le {Γ₀ : Ctx} {E : List (WFF σ Γ₀ 0)} {Γ : Ctx} {φ 
     (h : GSub E Γ φ) : φ.IsAtom ∨ ∃ ψ ∈ E, φ.weight ≤ ψ.weight := by
   induction h with
   | mem h => exact .inr ⟨_, h, le_rfl⟩
-  | atom h => exact .inl h
+  | refl_eq t => exact .inl trivial
+  | repl hQ t s _ _ _ _ => exact .inl hQ.instantiate
   | and_l _ ih | and_r _ ih | or_l _ ih | or_r _ ih | imp_l _ ih | imp_r _ ih =>
       rcases ih with h | ⟨ψ, hψ, hw⟩
       · simp [WFF.IsAtom] at h
@@ -304,12 +310,12 @@ theorem subformula {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (d : GK σ 
       intro hS
       refine .ref hS t (ih ⟨fun χ hχ => ?_, hS.2⟩)
       rcases List.mem_cons.mp hχ with rfl | hχ
-      exacts [.atom trivial, hS.1 χ hχ]
+      exacts [.refl_eq t, hS.1 χ hχ]
   | repl hQ t s h₁ h₂ _ ih =>
       intro hS
       refine .repl hS hQ t s h₁ h₂ (ih ⟨fun χ hχ => ?_, hS.2⟩)
       rcases List.mem_cons.mp hχ with rfl | hχ
-      exacts [.atom hQ.instantiate, hS.1 χ hχ]
+      exacts [.repl hQ t s (hS.1 _ h₁) (hS.1 _ h₂), hS.1 χ hχ]
   | boxR h₁ h₂ _ ih =>
       intro hS
       refine .boxR hS h₁ h₂ (ih ⟨fun χ hχ => (hS.1 _ (h₂ χ hχ)).box, fun χ hχ => ?_⟩)

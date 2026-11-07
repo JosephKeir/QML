@@ -164,9 +164,18 @@ standard axioms.  About 2 200 lines in all (estimate was 4 500 to 7 000).
   views), a quantifier's body instantiated at any term or opened at an eigenvariable, weakening by a
   fresh variable, a `□` body moved into a `◇_x` view, and atoms (`ref`/`repl` introduce them, as in
   Negri and von Plato).  `GSub.weight_le`: every member is an atom or no heavier than a formula of
-  `E`.  *Not done:* the sharper form "a single substitution instance of a syntactic subformula"
-  (needs composing substitutions, for which the codebase has no `Ok`/`Coh` lemmas), and
-  restricting the atoms to those built from the end sequent's terms.
+  `E`.
+* **Both sharpenings, built (2026-11-07).**  (1) `GSub`'s atoms are only those `ref` and `repl`
+  introduce: `t = t`, and `P(s)` from members `t = s` and `P(t)`.  (2) `QML_v12m_GKSubSharp.lean`:
+  ⭐`GK.subformula_sharp_of_provable`, every ND-provable sequent of K has a cut-free derivation in
+  which every formula is a **single substitution instance of a syntactic subformula** of the end
+  sequent (`WFF.SubF`, `SharpSub.inst`) or such an atom; ⭐`GSub.sharp` (`GSub ⊆ SharpSub`).  No
+  composition of substitutions was needed: instantiating after `θ.under` is substituting along
+  `θ.set (bnd d) t` (`WFF.instantiate_subst_under`, from the existing `Subst.set`); opening at an
+  eigenvariable is `θ.toFree` (`bindFree_toFree`, `openFree_bindFree`, which moved from
+  `BBackTruth` to `QML_v12m_Open`); weakening is `WFF.mono_subst`/`WFF.mono_instantiate`.
+  *Not done:* Negri–von Plato's subterm property (`ref` only at terms of the end sequent); the
+  quantifier rules instantiate at arbitrary terms anyway.
 * *Next:* interpolation (item 5).
 
 *Earlier status:* cut admissible in GK, built (2026-11-07).
