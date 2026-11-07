@@ -138,6 +138,106 @@ Notes before starting:
 
 ## 4. Cut elimination
 
+**Status: CUT ADMISSIBLE IN GK, built (2026-11-07); the equivalence with ND is next.**
+* `QML_v12m_GK.lean`: the calculus `GK σ n Γ Δ Θ` (a `Prop`, indexed by a height bound), `WFF.IsAtom`,
+  `WFF.weight`; `GK.mono_height`; `GK.weaken` (weakening, exchange and contraction, by membership).
+* `QML_v12m_GKSubst.lean`: ⭐`GK.subst`, height-preserving substitution into a presented context,
+  each rule to itself by `Proof.subst`'s formula lemmas; `GK.monoCtx`.
+* `QML_v12m_GKCut.lean`: ⭐`GK.cut` (and `GK.cut'` with separate contexts), over any presented
+  context; `WFF.weight_subst`/`_instantiate`/`_mono`; `GK.instEigenR`/`instEigenL` (eigenvariable
+  to term); `GK.LeftPrin` (the cut formula principal on the right, indexed by the formula so a case
+  analysis keeps the matching rules) and `GK.permRight`; `GK.cut_step`, `GK.cutIH_all` (weight,
+  then the sum of heights).  Sorry-free, standard axioms.  About 1 100 lines in all.
+* GK is stated for any `[ModalSys]`: the formers K lacks have no rules, so they act as opaque
+  formulas; the K restriction enters only in the equivalence with ND.
+* *Next:* ND → GK + cut (left rules from eliminations; `eq_elim` over any formula by induction on
+  it, the modal cases trivial; `K_dia`, `dia_bot`, `lem`, `weak_ctx` by `monoCtx`, `pair_elim` by
+  `GK.subst` with `θ.pairSplit`), and GK → ND (semantically or by derived rules); then the
+  subformula property and interpolation.
+
+*The scope as agreed:*  The user's
+aim: the subformula property and, from it, interpolation.  K only for now: the user is much less
+confident for the other systems (the literature agrees for B and 5; T, D and 4 usually have
+cut-free G3 calculi).  Of interest because cut elimination usually fails for QML.
+
+### The calculus GK (agreed with the user)
+
+Classical, two-sided, multi-succedent, G3-style; `◇` and `□_x` are notation (`¬□¬`, `¬◇_x¬`), as in
+the paper.
+* **Connectives and quantifiers:** G3c.  `∀R`/`∃L` with a fresh eigenvariable of any type;
+  `∀L`/`∃R` at a term of any type, `□`- and `◇`-terms included.
+* **Equality (user's decision):** Negri–von Plato's `Ref` and `Repl` on **atoms only**, at base
+  type.  ND's `eq_elim` over an arbitrary `φ` is a corollary: `t = s, φ(t) ⇒ φ(s)` is cut-free
+  derivable by induction on `φ`, with trivial modal cases (a `Var` slot is invisible in the `□` and
+  `◇_x` views).  The general rule as primitive would need a right-replacement lemma and a second
+  same-size cut against a derivation of unbounded height in the reduction where the cut formula is
+  used by `Repl`; atoms are never principal in a logical right rule, so cuts on them go up the left
+  derivation to an axiom.  Equivalent, awkward for writing proofs, but proofs are not the point.
+* **Modal rules (the user's, symmetric):**
+  * from `Δ ⇒ φ, Θ` infer `□Δ ⇒ □φ, ◇Θ`, all variables promoted to necessary ones (the premise in
+    the `□` view);
+  * from `x : E; Δ, φ ⇒ Θ` infer `x : ◇E; □Δ, ◇_x φ ⇒ ◇_x Θ`, every variable but `x` promoted (the
+    premise in the `◇_x` view, `x : E` its content).
+  With `◇` defined these are derivable from the one-sided forms `□R` (from `Δ ⇒ φ` in the `□` view,
+  `□Δ ⇒ □φ`) and `◇_xL` (from `ψ, Δ ⇒ Θ` in the `◇_x` view, `◇_x ψ, □Δ ⇒ ◇_x Θ`) by `¬L`/`¬R`, and
+  back.  If `◇` were primitive, the `◇_x` rule would also need `◇Θ'` on the right (`◇_x φ ⇒ ◇φ`
+  is valid, extents lie inside the accessible worlds); with `◇` notation it is derivable.  Not to
+  be added: `◇_x` on the right of the `□` rule (`□Δ ⇒ □φ, ◇_x χ` is invalid: the extent may be
+  empty).  ND's `K_dia` (`□_x Δ₂` on the left is `◇_x ¬Δ₂` on the right) and `dia_bot` (`Θ` empty)
+  are instances.
+* **Not primitive:** `pair_elim` (a substitution, as `Proof.subst` already treats it:
+  `θ.pairSplit`) and `weak_ctx` (`mono`).
+
+### Why QML usually fails, and why K here may not
+
+1. *Barcan / constant domains*, the usual failure: a world-level object is invisible under `□`, so
+   the Barcan formula can only be stated with necessary objects, `∀x:□Var. □φ(x.box) → □∀y φ(y)`,
+   which is not valid (comprehension, kept apart from the cube).
+2. *Identity under modalities:* replacement never passes into a modal context (item above).
+   Equality at `□`/`◇` types is the defined `eqRec`, contents under one modality and one witness.
+3. *Terms of modal type:* instantiation is a term substitution (`◇_z χ` at `z := diatm x bd` is
+   `◇_x χ[bd]`), so it preserves the **weight** (connective count), which the induction needs.
+
+### The reductions, checked on paper
+
+Lean-friendly form: **Kleene's G3 with principal formulas retained** and membership-based contexts
+(`φ ∧ ψ ∈ Δ` and `φ :: ψ :: Δ ⇒ Θ` give `Δ ⇒ Θ`).  Weakening, exchange and contraction are then
+free, and cut elimination needs **no inversion or contraction lemmas**: in a principal case one
+first cuts the original formula against the premises (smaller height), then the components
+(smaller weight).  Induction on (weight of the cut formula, sum of heights).
+* **∀ (and ∃) principal:** cut the `∀R` conclusion against the `∀L` premise (smaller height) to get
+  `φ[t], Δ ⇒ Θ`; substitute `u := t` in the `∀R` premise (height-preserving substitution) to get
+  `Δ ⇒ Θ, φ[t]`; cut on `φ[t]` (smaller weight).  For `u : ◇A`, `t := diatm y bd`, a `◇_uL`
+  instance becomes a `◇_yL` instance in `Γ.diaIn y` with `u.dia ↦ bd`; for `u : □A`, `t := boxtm s`,
+  `u.box ↦ s` in the `□` view.  Exactly what `Proof.subst`'s `K_box`/`K_dia` cases do.
+* **`□φ` principal on both sides:** right rule `□R`: cut on `φ` in the `□` view, then `□R`.  Right
+  rule `◇_xL` with `□φ` among its `□Δ`: move the left premise from `Γ.boxIn` to `Γ.diaIn x`
+  (`mono` along `Ctx.le_boxIn_diaIn`), cut on `φ` there, then `◇_xL`.
+* **`◇_x φ` principal on both sides:** the right rule is `◇_xL` with the same `x` (formula equality
+  forces it); cut on `φ` in the `◇_x` view, then `◇_xL`.  Different witnesses never meet.
+* **Cut formula in a modal rule's weakening context:** the cut vanishes (conclusion contexts are
+  arbitrary); otherwise permute upward (`∀R`/`∃L` need `mono` into the eigenvariable's context).
+* **Atoms:** go up the left derivation (an atom on the right is principal only in an axiom); at an
+  axiom `P ∈ Δ`, so the conclusion is the right derivation weakened.  `Repl` and `Ref` permute.
+No case found that fails.
+
+### Plan and cost
+
+* `GK` (an inductive with the K formers; `here`/`back`/`ret`/`link` are uninhabited under
+  `ModalSys.K`), weight, height: 400 lines.
+* Height-preserving weakening (easy, membership-based) and **substitution**: reuse the formula-level
+  lemmas of `ProofSubst` (`subst_instantiate`, `subst_bindFree`, the view substitutions
+  `θ.box`/`θ.dia`); only the ~15 rule cases are new.  `mono` and `pair_elim` as instances.
+  800 to 1 500 lines.
+* Cut admissibility: 1 500 to 2 500 lines.
+* ND → GK + cut (general replacement by induction on `φ`, `K_dia`, `lem`, ...): 800 to 1 200.
+  GK → ND: semantically (each rule preserves validity, then `provable_iff_validCube` at K) or
+  syntactically; 500 to 1 000.
+* Total about 4 500 to 7 000 lines.  Then the subformula property (up to term instances) and
+  interpolation (item 5).
+
+*The notes before scoping:*
+
 **Goal.** A sequent calculus equivalent to the natural-deduction system, with cut admissible.
 
 Notes before starting:
