@@ -9,11 +9,15 @@ consists of subformulas of `Δ ⇒ Θ`** (`GKS`), in Gentzen's sense for predica
 * immediate subformulas of `∧`, `∨`, `→`, the bodies of `□` and `◇_x` (read in their views),
 * instances of a quantifier's body: at any term, or opened at an eigenvariable,
 * the bookkeeping of contexts: weakening by a fresh variable, a `□`-body moved into a `◇_x` view,
+  and (under 4) a `□` view formula moved into a `◇_x` view,
+* under 4, the copies one view in: `□(shift φ)` of `□φ`, and `◇_{y.keep}(shift θ)` of `◇_y θ`
+  (`cp4`, `kp4`: K4's `□φ` in its own premise, shifted to the view),
 * and the atoms `ref` and `repl` introduce: reflexive equations `t = t`, and `P(s)` from members
   `t = s` and `P(t)` (as in Negri and von Plato's G3 with equality).
 
 `GSub.weight_le`: every member is an atom or no heavier than a formula of the end sequent.  With
-`GK.provable_iff_der`: every ND-provable sequent of K has such an analytic derivation
+`GK.provable_iff_der`: every ND-provable sequent of K, KD, K4 and KD4 has such an analytic
+derivation
 (`GK.subformula_of_provable`).
 -/
 
@@ -53,6 +57,16 @@ inductive GSub {Γ₀ : Ctx} (E : List (WFF σ Γ₀ 0)) : (Γ : Ctx) → WFF σ
       GSub E Γ (WFF.box (Γ := Γ) φ) → GSub E (Γ.diaIn x) (WFF.mono (Ctx.le_boxIn_diaIn Γ x) φ)
   | dia {Γ : Ctx} {x : VarSymb} {hx : ∃ X, Γ.ref x = some (.VTypeDia X)}
       {φ : WFF σ (Γ.diaIn x) 0} : GSub E Γ (.dia x hx φ) → GSub E (Γ.diaIn x) φ
+  | view_dia {Γ : Ctx} [Γ.NoSlots] {φ : WFF σ Γ.boxIn 0} (x : VarSymb) :
+      GSub E Γ.boxIn φ → GSub E (Γ.diaIn x) (WFF.mono (Ctx.le_boxIn_diaIn Γ x) φ)
+  | box_keep {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = true) {φ : WFF σ Γ.boxIn 0} :
+      GSub E Γ (WFF.box (Γ := Γ) φ) →
+      GSub E Γ.boxIn (WFF.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots φ))
+  | dia_keep {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = true) {y : VarSymb}
+      {hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)} {θ : WFF σ (Γ.diaIn y) 0} :
+      GSub E Γ (.dia y hy θ) →
+      GSub E Γ.boxIn (WFF.dia (.step y .keep) (Ctx.exists_keep_dia hF hy)
+        (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots θ))
 
 /-! ## Subformulas are no heavier -/
 
@@ -130,6 +144,46 @@ theorem GSub.weight_le {Γ₀ : Ctx} {E : List (WFF σ Γ₀ 0)} {Γ : Ctx} {φ 
         simp only [WFF.weight] at hw
         try rw [WFF.weight_mono']
         omega
+  | view_dia x _ ih =>
+      rcases ih with h | ⟨ψ, hψ, hw⟩
+      · left
+        revert h
+        rename_i φ _
+        cases φ <;> simp [WFF.IsAtom, WFF.mono]
+      · exact .inr ⟨ψ, hψ, by rw [WFF.weight_mono']; exact hw⟩
+  | box_keep hF _ ih | dia_keep hF _ ih =>
+      rcases ih with h | ⟨ψ, hψ, hw⟩
+      · simp [WFF.IsAtom] at h
+      · refine .inr ⟨ψ, hψ, ?_⟩
+        simp only [WFF.weight, WFF.weight_shift] at hw ⊢
+        omega
+
+/-- The boxed hypotheses' copies are subformulas. -/
+theorem GSub.copies_box {Γ₀ : Ctx} {E : List (WFF σ Γ₀ 0)} {Γ : Ctx} [Γ.NoSlots]
+    {Δ₁ : List (WFF σ Γ.boxIn 0)} (h : ∀ χ ∈ Δ₁, GSub E Γ (WFF.box (Γ := Γ) χ)) :
+    ∀ c ∈ cp4 Δ₁, GSub E Γ.boxIn c := by
+  intro c hc
+  unfold cp4 at hc
+  split at hc
+  · next hF =>
+    obtain ⟨χ, hχ, rfl⟩ := List.mem_map.mp hc
+    exact (h χ hχ).box_keep hF
+  · exact absurd hc List.not_mem_nil
+
+/-- The conclusions' copies are subformulas. -/
+theorem GSub.copies_dia {Γ₀ : Ctx} {E : List (WFF σ Γ₀ 0)} {Γ : Ctx} [Γ.NoSlots]
+    {L : List (WFF σ Γ 0)} (h : ∀ A ∈ L, GSub E Γ A) : ∀ c ∈ kp4 L, GSub E Γ.boxIn c := by
+  intro c hc
+  unfold kp4 at hc
+  split at hc
+  · next hF =>
+    obtain ⟨A, hA, hcA⟩ := List.mem_flatMap.mp hc
+    cases A
+    case dia y hy θ =>
+      rw [List.mem_singleton.mp hcA]
+      exact (h _ hA).dia_keep hF
+    all_goals exact absurd hcA List.not_mem_nil
+  · exact absurd hc List.not_mem_nil
 
 /-- Every formula of a sequent belongs to a family. -/
 def SeqIn (P : (Γ : Ctx) → WFF σ Γ 0 → Prop) (Γ : Ctx) (Δ Θ : List (WFF σ Γ 0)) : Prop :=
@@ -183,16 +237,22 @@ inductive GKS (σ : Signature) (P : (Γ : Ctx) → WFF σ Γ 0 → Prop) :
       {Q : WFF σ (Γ.insert (.bnd 0) .Var) 1} (hQ : Q.IsAtom) (t s : Term σ Γ .Var .var) :
       .eq t s ∈ Δ → WFF.instantiate Ctx.NoSlots.slots t Q ∈ Δ →
       GKS σ P n Γ (WFF.instantiate Ctx.NoSlots.slots s Q :: Δ) Θ → GKS σ P (n + 1) Γ Δ Θ
-  | boxR {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (hS : SeqIn P Γ Δ Θ)
-      {Δ₁ : List (WFF σ Γ.boxIn 0)} {φ : WFF σ Γ.boxIn 0} :
-      WFF.box (Γ := Γ) φ ∈ Θ → (∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) →
-      GKS σ P n Γ.boxIn Δ₁ [φ] → GKS σ P (n + 1) Γ Δ Θ
-  | diaL {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (hS : SeqIn P Γ Δ Θ) (x : VarSymb)
-      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {ψ : WFF σ (Γ.diaIn x) 0}
-      {Δ₁ : List (WFF σ Γ.boxIn 0)} {Θ₁ : List (WFF σ (Γ.diaIn x) 0)} :
+  | boxR {n : ℕ} {Γ : Ctx} [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (hS : SeqIn P Γ Δ Θ)
+      {Δ₁ : List (WFF σ Γ.boxIn 0)} {φ : WFF σ Γ.boxIn 0} {L : List (WFF σ Γ 0)} :
+      WFF.box (Γ := Γ) φ ∈ Θ → (∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) → L ⊆ Θ →
+      GKS σ P n Γ.boxIn (Δ₁ ++ cp4 Δ₁) (φ :: kp4 L) → GKS σ P (n + 1) Γ Δ Θ
+  | diaL {n : ℕ} {Γ : Ctx} [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (hS : SeqIn P Γ Δ Θ)
+      (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {ψ : WFF σ (Γ.diaIn x) 0}
+      {Δ₁ : List (WFF σ Γ.boxIn 0)} {Θ₁ : List (WFF σ (Γ.diaIn x) 0)} {L : List (WFF σ Γ 0)} :
       .dia x hx ψ ∈ Δ → (∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) → (∀ χ ∈ Θ₁, .dia x hx χ ∈ Θ) →
-      GKS σ P n (Γ.diaIn x) (ψ :: Δ₁.map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))) Θ₁ →
+      L ⊆ Θ →
+      GKS σ P n (Γ.diaIn x) (ψ :: (Δ₁ ++ cp4 Δ₁).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))
+        (Θ₁ ++ (kp4 L).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))) →
       GKS σ P (n + 1) Γ Δ Θ
+  | serial {n : ℕ} {Γ : Ctx} [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (hS : SeqIn P Γ Δ Θ)
+      (hD : ModalSys.D = true) {Δ₁ : List (WFF σ Γ.boxIn 0)} {L : List (WFF σ Γ 0)} :
+      (∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) → L ⊆ Θ →
+      GKS σ P n Γ.boxIn (Δ₁ ++ cp4 Δ₁) (kp4 L) → GKS σ P (n + 1) Γ Δ Θ
 
 namespace GKS
 
@@ -217,8 +277,9 @@ theorem toGK {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (d : GKS σ P n �
   | exR _ T t h _ ih => exact .exR T t h ih
   | ref _ t _ ih => exact .ref t ih
   | repl _ hQ t s h₁ h₂ _ ih => exact .repl hQ t s h₁ h₂ ih
-  | boxR _ h₁ h₂ _ ih => exact .boxR h₁ h₂ ih
-  | diaL _ x hx h₁ h₂ h₃ _ ih => exact .diaL x hx h₁ h₂ h₃ ih
+  | boxR _ h₁ h₂ h₃ _ ih => exact .boxR h₁ h₂ h₃ ih
+  | diaL _ x hx h₁ h₂ h₃ h₄ _ ih => exact .diaL x hx h₁ h₂ h₃ h₄ ih
+  | serial _ hD h₂ h₃ _ ih => exact .serial hD h₂ h₃ ih
 
 end GKS
 
@@ -316,22 +377,40 @@ theorem subformula {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (d : GK σ 
       refine .repl hS hQ t s h₁ h₂ (ih ⟨fun χ hχ => ?_, hS.2⟩)
       rcases List.mem_cons.mp hχ with rfl | hχ
       exacts [.repl hQ t s (hS.1 _ h₁) (hS.1 _ h₂), hS.1 χ hχ]
-  | boxR h₁ h₂ _ ih =>
+  | boxR h₁ h₂ h₃ _ ih =>
       intro hS
-      refine .boxR hS h₁ h₂ (ih ⟨fun χ hχ => (hS.1 _ (h₂ χ hχ)).box, fun χ hχ => ?_⟩)
-      rw [List.mem_singleton.mp hχ]
-      exact (hS.2 _ h₁).box
-  | diaL x hx h₁ h₂ h₃ _ ih =>
+      have hb := GSub.copies_box fun χ hχ => hS.1 _ (h₂ χ hχ)
+      have hk := GSub.copies_dia fun A hA => hS.2 _ (h₃ hA)
+      refine .boxR hS h₁ h₂ h₃ (ih ⟨fun χ hχ => ?_, fun χ hχ => ?_⟩)
+      · rcases List.mem_append.mp hχ with hχ | hχ
+        exacts [(hS.1 _ (h₂ χ hχ)).box, hb χ hχ]
+      · rcases List.mem_cons.mp hχ with rfl | hχ
+        exacts [(hS.2 _ h₁).box, hk χ hχ]
+  | serial hD h₂ h₃ _ ih =>
       intro hS
-      refine .diaL hS x hx h₁ h₂ h₃ (ih ⟨fun χ hχ => ?_, fun χ hχ => (hS.2 _ (h₃ χ hχ)).dia⟩)
-      rcases List.mem_cons.mp hχ with rfl | hχ
-      · exact (hS.1 _ h₁).dia
-      · obtain ⟨δ, hδ, rfl⟩ := List.mem_map.mp hχ
-        exact (hS.1 _ (h₂ δ hδ)).box_dia x
+      have hb := GSub.copies_box fun χ hχ => hS.1 _ (h₂ χ hχ)
+      have hk := GSub.copies_dia fun A hA => hS.2 _ (h₃ hA)
+      refine .serial hS hD h₂ h₃ (ih ⟨fun χ hχ => ?_, hk⟩)
+      rcases List.mem_append.mp hχ with hχ | hχ
+      exacts [(hS.1 _ (h₂ χ hχ)).box, hb χ hχ]
+  | diaL x hx h₁ h₂ h₃ h₄ _ ih =>
+      intro hS
+      have hb := GSub.copies_box fun χ hχ => hS.1 _ (h₂ χ hχ)
+      have hk := GSub.copies_dia fun A hA => hS.2 _ (h₄ hA)
+      refine .diaL hS x hx h₁ h₂ h₃ h₄ (ih ⟨fun χ hχ => ?_, fun χ hχ => ?_⟩)
+      · rcases List.mem_cons.mp hχ with rfl | hχ
+        · exact (hS.1 _ h₁).dia
+        · obtain ⟨δ, hδ, rfl⟩ := List.mem_map.mp hχ
+          rcases List.mem_append.mp hδ with hδ | hδ
+          exacts [(hS.1 _ (h₂ δ hδ)).box_dia x, (hb δ hδ).view_dia x]
+      · rcases List.mem_append.mp hχ with hχ | hχ
+        · exact (hS.2 _ (h₃ χ hχ)).dia
+        · obtain ⟨δ, hδ, rfl⟩ := List.mem_map.mp hχ
+          exact (hk δ hδ).view_dia x
 
-/-- ⭐**Analytic derivations of every ND-provable sequent** of K: a cut-free derivation whose every
-    sequent consists of subformulas of the end sequent. -/
-theorem subformula_of_provable [ModalSys.IsK] {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
+/-- ⭐**Analytic derivations of every ND-provable sequent** of K, KD, K4 and KD4: a cut-free
+    derivation whose every sequent consists of subformulas of the end sequent. -/
+theorem subformula_of_provable [ModalSys.GKSys] {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
     {φ : WFF σ Γ 0} (p : Provable Δ φ) : ∃ n, GKS σ (GSub (Δ ++ [φ])) n Γ Δ [φ] := by
   obtain ⟨n, d⟩ := provable_iff_der.mp p
   exact ⟨n, d.subformula ⟨fun χ hχ => .mem (List.mem_append_left _ hχ),

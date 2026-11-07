@@ -1,15 +1,16 @@
 import QML.QML_v12m_GKFromND
 
 /-!
-# QML v12m — GK into natural deduction, and the equivalence at K
+# QML v12m — GK into natural deduction; the equivalence for K, KD, K4 and KD4
 
 ⭐`GK.toND`: a GK derivation of `Δ ⇒ Θ` gives an ND proof of `⊥` from `Δ` and the negations of
-`Θ`, in every system (GK's rules are K's).  Left rules discharge their new hypotheses from the old
-ones; right rules work by contradiction; `diaL` is `K_dia` with the negated conclusions as `□_x`
+`Θ`, in every system with GK's rules (weak D for `serial`; weak 4 for the copies, `four_box` and,
+for `◇` copies, `NDP.box_neg_keep`).  Left rules discharge their new hypotheses from the old ones;
+right rules work by contradiction; `diaL` is `K_dia` with the negated conclusions as `□_x`
 hypotheses, then `dia_bot`.
 
-⭐`GK.provable_iff_der`: over a presented context, in K, a sequent is provable in natural
-deduction exactly when it has a **cut-free** GK derivation — **cut elimination** for the ND
+⭐`GK.provable_iff_der`: over a presented context, in K, KD, K4 and KD4, a sequent is provable in
+natural deduction exactly when it has a **cut-free** GK derivation — **cut elimination** for the ND
 system, through GK (`docs/v12-metatheory-todo.md`, item 4).
 -/
 
@@ -68,6 +69,64 @@ theorem boxx_neg (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
   obtain ⟨q⟩ := q
   exact sub (fun _ h => by rw [List.mem_singleton.mp h]; exact List.mem_cons_self)
     ⟨Proof.K_dia (Δ₁ := []) (Δ₂ := []) x hx q⟩
+
+/-- A `◇_y θ` refuted here is refuted, kept, one view in: `¬◇_y θ ⊢ □¬◇_{y.keep}(shift θ)`
+    (`four_dia`, then `K` inside the `□` view). -/
+theorem box_neg_keep [Γ.NoSlots] (hF : ModalSys.Four = true) (y : VarSymb)
+    (hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)) {θ : WFF σ (Γ.diaIn y) 0} {H : List (WFF σ Γ 0)}
+    (h : Provable H (WFF.dia y hy θ).neg) :
+    Provable H (WFF.box (WFF.dia (.step y .keep) (Ctx.exists_keep_dia hF hy)
+      (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots θ)).neg) := by
+  have h₁ : Provable H (WFF.boxx y hy θ.neg) :=
+    dis (L := [(WFF.dia y hy θ).neg]) (boxx_neg y hy List.mem_cons_self)
+      fun ℓ hℓ => by rw [List.mem_singleton.mp hℓ]; exact h
+  have h₂ := h₁.map (Proof.four_dia hF hy)
+  have q : Provable (σ := σ) (Γ := Γ.boxIn.diaIn (.step y .keep))
+      [WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots θ]
+      (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots θ.neg).neg :=
+    lam (contra List.mem_cons_self (lk (List.mem_cons_of_mem _ List.mem_cons_self)))
+  obtain ⟨q⟩ := q
+  have k : Provable (σ := σ) (Γ := Γ.boxIn)
+      [WFF.boxx (.step y .keep) (Ctx.exists_keep_dia hF hy)
+        (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots θ.neg)]
+      (WFF.dia (.step y .keep) (Ctx.exists_keep_dia hF hy)
+        (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots θ)).neg :=
+    lam (contra (List.mem_cons_of_mem _ List.mem_cons_self)
+      (sub (fun _ h => by rw [List.mem_singleton.mp h]; exact List.mem_cons_self)
+        ⟨Proof.K_dia (Δ₁ := []) (Δ₂ := []) _ _ q⟩))
+  obtain ⟨k⟩ := k
+  refine dis ⟨Proof.K_box k⟩ fun ℓ hℓ => ?_
+  rw [List.map_cons, List.map_nil, List.mem_singleton] at hℓ
+  rw [hℓ]
+  exact h₂
+
+/-- The boxed hypotheses of a modal rule's premise, copies included, are provable from the
+    conclusion's hypotheses and negated conclusions. -/
+theorem boxes_ok [Γ.NoSlots] {H : List (WFF σ Γ 0)} {Δ₁ : List (WFF σ Γ.boxIn 0)}
+    {L Θ : List (WFF σ Γ 0)} (h₂ : ∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ H) (h₃ : L ⊆ Θ)
+    (hΘ : ∀ χ ∈ Θ, χ.neg ∈ H) :
+    ∀ χ ∈ Δ₁ ++ cp4 Δ₁ ++ (kp4 L).map WFF.neg, Provable H (WFF.box (Γ := Γ) χ) := by
+  intro χ hχ
+  rcases List.mem_append.mp hχ with hχ | hχ
+  · rcases List.mem_append.mp hχ with hχ | hχ
+    · exact lk (h₂ χ hχ)
+    · unfold cp4 at hχ
+      split at hχ
+      · next hF =>
+        obtain ⟨χ₀, h, rfl⟩ := List.mem_map.mp hχ
+        exact (lk (h₂ χ₀ h)).map (Proof.four_box hF)
+      · exact absurd hχ List.not_mem_nil
+  · obtain ⟨C, hC, rfl⟩ := List.mem_map.mp hχ
+    unfold kp4 at hC
+    split at hC
+    · next hF =>
+      obtain ⟨A, hA, hCA⟩ := List.mem_flatMap.mp hC
+      cases A
+      case dia y hy θ =>
+        rw [List.mem_singleton.mp hCA]
+        exact box_neg_keep hF y hy (lk (hΘ _ (h₃ hA)))
+      all_goals exact absurd hCA List.not_mem_nil
+    · exact absurd hC List.not_mem_nil
 
 end NDP
 
@@ -164,18 +223,39 @@ theorem toND {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (d : GK σ n Γ �
       obtain ⟨p⟩ := lk (L := Δ ++ Θ.map WFF.neg) (List.mem_append_left _ h₁)
       obtain ⟨q⟩ := lk (L := Δ ++ Θ.map WFF.neg) (List.mem_append_left _ h₂)
       exact ⟨.eq_elim t s p q⟩
-  | @boxR _ Γ Δ Θ Δ₁ φ h₁ h₂ _ ih =>
-      obtain ⟨p⟩ := byContra (sub (L' := φ.neg :: Δ₁) (by lsub) ih)
+  | @boxR _ Γ _ Δ Θ Δ₁ φ L h₁ h₂ h₃ _ ih =>
+      have hb := boxes_ok (H := Δ ++ Θ.map WFF.neg) (Δ₁ := Δ₁)
+        (fun χ hχ => List.mem_append_left _ (h₂ χ hχ)) h₃
+        (fun χ hχ => List.mem_append_right _ (List.mem_map_of_mem hχ))
+      obtain ⟨p⟩ := byContra (sub (L' := φ.neg :: (Δ₁ ++ cp4 Δ₁ ++ (kp4 L).map WFF.neg))
+        (by lsub4) ih)
       refine contra (List.mem_append_right _ (List.mem_map_of_mem h₁))
-        (sub (fun ψ hψ => ?_) ⟨Proof.K_box p⟩)
-      obtain ⟨χ, hχ, rfl⟩ := List.mem_map.mp hψ
-      exact List.mem_append_left _ (h₂ χ hχ)
-  | @diaL _ Γ Δ Θ x hx ψ Δ₁ Θ₁ h₁ h₂ h₃ _ ih =>
+        (dis ⟨Proof.K_box p⟩ fun ℓ hℓ => ?_)
+      obtain ⟨χ, hχ, rfl⟩ := List.mem_map.mp hℓ
+      exact hb χ hχ
+  | @serial _ Γ _ Δ Θ hD Δ₁ L h₂ h₃ _ ih =>
+      have hb := boxes_ok (H := Δ ++ Θ.map WFF.neg) (Δ₁ := Δ₁)
+        (fun χ hχ => List.mem_append_left _ (h₂ χ hχ)) h₃
+        (fun χ hχ => List.mem_append_right _ (List.mem_map_of_mem hχ))
+      obtain ⟨p⟩ := sub (L' := Δ₁ ++ cp4 Δ₁ ++ (kp4 L).map WFF.neg) (by lsub4) ih
+      refine dis ⟨Proof.D_box hD (Proof.K_box p)⟩ fun ℓ hℓ => ?_
+      obtain ⟨χ, hχ, rfl⟩ := List.mem_map.mp hℓ
+      exact hb χ hχ
+  | @diaL _ Γ _ Δ Θ x hx ψ Δ₁ Θ₁ L h₁ h₂ h₃ h₄ _ ih =>
+      have hb := boxes_ok (H := Δ ++ Θ.map WFF.neg) (Δ₁ := Δ₁)
+        (fun χ hχ => List.mem_append_left _ (h₂ χ hχ)) h₄
+        (fun χ hχ => List.mem_append_right _ (List.mem_map_of_mem hχ))
+      have hm : ((kp4 L).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))).map WFF.neg =
+          ((kp4 L).map WFF.neg).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)) := by
+        rw [List.map_map, List.map_map]; rfl
+      simp only [List.map_append] at ih
+      rw [hm] at ih
       obtain ⟨p⟩ := sub (L' := ψ :: (Θ₁.map WFF.neg ++
-        Δ₁.map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))) (by lsub) ih
+        (Δ₁ ++ cp4 Δ₁ ++ (kp4 L).map WFF.neg).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))))
+        (by lsub4) ih
       refine dis (L := .dia x hx ψ :: ((Θ₁.map WFF.neg).map (WFF.boxx x hx) ++
-        Δ₁.map fun χ => WFF.box (Γ := Γ) χ)) ⟨.dia_bot x hx (Proof.K_dia x hx p)⟩
-        fun ℓ hℓ => ?_
+        (Δ₁ ++ cp4 Δ₁ ++ (kp4 L).map WFF.neg).map fun χ => WFF.box (Γ := Γ) χ))
+        ⟨.dia_bot x hx (Proof.K_dia x hx p)⟩ fun ℓ hℓ => ?_
       rcases List.mem_cons.mp hℓ with rfl | hℓ
       · exact lk (List.mem_append_left _ h₁)
       rcases List.mem_append.mp hℓ with hℓ | hℓ
@@ -183,11 +263,11 @@ theorem toND {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (d : GK σ n Γ �
         obtain ⟨χ, hχ, rfl⟩ := List.mem_map.mp hχ'
         exact boxx_neg x hx (List.mem_append_right _ (List.mem_map_of_mem (h₃ χ hχ)))
       · obtain ⟨χ, hχ, rfl⟩ := List.mem_map.mp hℓ
-        exact lk (List.mem_append_left _ (h₂ χ hχ))
+        exact hb χ hχ
 
-/-- ⭐**GK and natural deduction prove the same sequents**, over a presented context, in K: a
-    sequent is ND-provable exactly when it has a cut-free GK derivation. -/
-theorem provable_iff_der [ModalSys.IsK] {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
+/-- ⭐**GK and natural deduction prove the same sequents**, over a presented context, in K, KD,
+    K4 and KD4: a sequent is ND-provable exactly when it has a cut-free GK derivation. -/
+theorem provable_iff_der [ModalSys.GKSys] {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
     {φ : WFF σ Γ 0} : Provable Δ φ ↔ Der σ Γ Δ φ := by
   refine ⟨fun ⟨p⟩ => Der.ofProof p, fun ⟨n, d⟩ => byContra (sub (by lsub) (toND d))⟩
 

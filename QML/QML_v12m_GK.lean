@@ -3,7 +3,8 @@ import QML.QML_v12m_ProofSubst
 /-!
 # QML v12m — the sequent calculus GK
 
-A cut-free sequent calculus for K (`docs/v12-metatheory-todo.md`, item 4): classical, two-sided,
+A cut-free sequent calculus for K, KD, K4 and KD4 (`docs/v12-metatheory-todo.md`, item 4):
+classical, two-sided,
 multi-succedent, in **Kleene's G3 style** — every rule keeps its principal formula in the premise,
 and the contexts are lists read through membership.  Weakening, exchange and contraction are then
 free (`GK.weaken`), and the cut-elimination proof needs no inversion or contraction lemmas.
@@ -17,6 +18,11 @@ free (`GK.weaken`), and the cut-elimination proof needs no inversion or contract
   `◇_x` view, `◇_x ψ, □Δ ⇒ ◇_x Θ`).  `◇` and `□_x` are notation (`¬□¬`, `¬◇_x¬`), so the
   symmetric rules of the paper — from `Δ ⇒ φ, Θ`, `□Δ ⇒ □φ, ◇Θ`; from `x : E; Δ, φ ⇒ Θ`,
   `x : ◇E; □Δ, ◇_x φ ⇒ ◇_x Θ` — follow by `¬L`/`¬R`.
+* *4 (weak):* each modal rule's premise also has the **4-copies** (`cp4`, `kp4`, empty without 4):
+  a boxed hypothesis `□χ` is available one view further in as `□(shift χ)`, and a conclusion
+  `◇_y θ` as `◇_{y.keep}(shift θ)` (`y.keep`'s extent lies inside `y`'s).  This is `four_box` and
+  `four_dia` as sequent rules, K4's `□Γ, Γ ⇒ φ / □Γ ⇒ □φ` with witnesses.
+* *D (weak):* `serial`, `□R` without a principal formula: from `Δ₁ ⇒` in the `□` view, `□Δ₁ ⇒`.
 * *Not primitive:* `pair_elim` (a substitution, `θ.pairSplit`) and `weak_ctx` (`mono`).
 
 The derivability predicate is indexed by a **height bound**: `GK σ n Γ Δ Θ` says `Δ ⇒ Θ` over `Γ`
@@ -57,6 +63,51 @@ def WFF.weight {σ : Signature} : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → �
   | _, _, .retxS _ _ _ _ _ Φ => Φ.weight + 2
   | _, _, .link _ _ _ Φ => Φ.weight + 2
   | _, _, .linkx _ _ _ _ _ Φ => Φ.weight + 2
+
+/-! ## The 4-copies -/
+
+/-- ⭐Under 4, a boxed hypothesis `□χ` one view further in: `□(shift χ)`.  Empty without 4. -/
+def cp4 {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (Δ₁ : List (WFF σ Γ.boxIn 0)) :
+    List (WFF σ Γ.boxIn 0) :=
+  if hF : ModalSys.Four = true then
+    Δ₁.map fun χ => WFF.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots χ)
+  else []
+
+/-- A conclusion `◇_y θ` one view further in: `◇_{y.keep}(shift θ)`. -/
+def WFF.keepDia {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = true) :
+    WFF σ Γ 0 → List (WFF σ Γ.boxIn 0)
+  | .dia y hy θ => [WFF.dia (.step y .keep) (Ctx.exists_keep_dia hF hy)
+      (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots θ)]
+  | _ => []
+
+/-- ⭐Under 4, the conclusions `◇_y θ` of a list one view further in.  Empty without 4. -/
+def kp4 {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (L : List (WFF σ Γ 0)) : List (WFF σ Γ.boxIn 0) :=
+  if hF : ModalSys.Four = true then L.flatMap (WFF.keepDia hF) else []
+
+theorem cp4_of_not {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = false)
+    (Δ₁ : List (WFF σ Γ.boxIn 0)) : cp4 Δ₁ = [] := by
+  unfold cp4; rw [dif_neg (by simp [hF])]
+
+theorem kp4_of_not {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = false)
+    (L : List (WFF σ Γ 0)) : kp4 L = [] := by
+  unfold kp4; rw [dif_neg (by simp [hF])]
+
+theorem kp4_nil {σ : Signature} {Γ : Ctx} [Γ.NoSlots] : kp4 ([] : List (WFF σ Γ 0)) = [] := by
+  unfold kp4; split <;> rfl
+
+theorem cp4_sub {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {Δ₁ Δ₂ : List (WFF σ Γ.boxIn 0)}
+    (h : Δ₁ ⊆ Δ₂) : cp4 Δ₁ ⊆ cp4 Δ₂ := by
+  unfold cp4; split
+  · exact List.map_subset _ h
+  · exact fun _ h => h
+
+theorem kp4_sub {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {L₁ L₂ : List (WFF σ Γ 0)}
+    (h : L₁ ⊆ L₂) : kp4 L₁ ⊆ kp4 L₂ := by
+  unfold kp4; split
+  · intro a ha
+    obtain ⟨b, hb, ha⟩ := List.mem_flatMap.mp ha
+    exact List.mem_flatMap.mpr ⟨b, h hb, ha⟩
+  · exact fun _ h => h
 
 /-! ## The calculus -/
 
@@ -109,19 +160,28 @@ inductive GK (σ : Signature) : ℕ → (Γ : Ctx) → List (WFF σ Γ 0) → Li
       {P : WFF σ (Γ.insert (.bnd 0) .Var) 1} (hP : P.IsAtom) (t s : Term σ Γ .Var .var) :
       .eq t s ∈ Δ → WFF.instantiate Ctx.NoSlots.slots t P ∈ Δ →
       GK σ n Γ (WFF.instantiate Ctx.NoSlots.slots s P :: Δ) Θ → GK σ (n + 1) Γ Δ Θ
-  -- Modal K
-  /-- `□R`: from `Δ₁ ⇒ φ` in the `□` view, `□Δ₁ ⇒ □φ`, in any context. -/
-  | boxR {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} {Δ₁ : List (WFF σ Γ.boxIn 0)}
-      {φ : WFF σ Γ.boxIn 0} :
-      WFF.box (Γ := Γ) φ ∈ Θ → (∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) →
-      GK σ n Γ.boxIn Δ₁ [φ] → GK σ (n + 1) Γ Δ Θ
-  /-- `◇_xL`: from `ψ, Δ₁ ⇒ Θ₁` in the `◇_x` view, `◇_x ψ, □Δ₁ ⇒ ◇_x Θ₁`, in any context. -/
-  | diaL {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (x : VarSymb)
+  -- Modal: K, with 4's copies
+  /-- `□R`: from `Δ₁, □(shift Δ₁) ⇒ φ, ◇_{y.keep}(shift L)` in the `□` view (the copies only
+      under 4), `□Δ₁ ⇒ □φ, L`, in any context. -/
+  | boxR {n : ℕ} {Γ : Ctx} [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} {Δ₁ : List (WFF σ Γ.boxIn 0)}
+      {φ : WFF σ Γ.boxIn 0} {L : List (WFF σ Γ 0)} :
+      WFF.box (Γ := Γ) φ ∈ Θ → (∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) → L ⊆ Θ →
+      GK σ n Γ.boxIn (Δ₁ ++ cp4 Δ₁) (φ :: kp4 L) → GK σ (n + 1) Γ Δ Θ
+  /-- `◇_xL`: from `ψ, Δ₁, □(shift Δ₁) ⇒ Θ₁, ◇_{y.keep}(shift L)` in the `◇_x` view (the copies
+      only under 4), `◇_x ψ, □Δ₁ ⇒ ◇_x Θ₁, L`, in any context. -/
+  | diaL {n : ℕ} {Γ : Ctx} [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (x : VarSymb)
       (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {ψ : WFF σ (Γ.diaIn x) 0}
-      {Δ₁ : List (WFF σ Γ.boxIn 0)} {Θ₁ : List (WFF σ (Γ.diaIn x) 0)} :
+      {Δ₁ : List (WFF σ Γ.boxIn 0)} {Θ₁ : List (WFF σ (Γ.diaIn x) 0)} {L : List (WFF σ Γ 0)} :
       .dia x hx ψ ∈ Δ → (∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) → (∀ χ ∈ Θ₁, .dia x hx χ ∈ Θ) →
-      GK σ n (Γ.diaIn x) (ψ :: Δ₁.map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))) Θ₁ →
+      L ⊆ Θ →
+      GK σ n (Γ.diaIn x) (ψ :: (Δ₁ ++ cp4 Δ₁).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))
+        (Θ₁ ++ (kp4 L).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))) →
       GK σ (n + 1) Γ Δ Θ
+  /-- `serial` (D): from `Δ₁, □(shift Δ₁) ⇒ ◇_{y.keep}(shift L)` in the `□` view, `□Δ₁ ⇒ L`. -/
+  | serial {n : ℕ} {Γ : Ctx} [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (hD : ModalSys.D = true)
+      {Δ₁ : List (WFF σ Γ.boxIn 0)} {L : List (WFF σ Γ 0)} :
+      (∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) → L ⊆ Θ →
+      GK σ n Γ.boxIn (Δ₁ ++ cp4 Δ₁) (kp4 L) → GK σ (n + 1) Γ Δ Θ
 
 namespace GK
 
@@ -172,12 +232,15 @@ theorem mono_height {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (p : GK σ
   | repl hP t s h₁ h₂ _ ih =>
       intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
       exact .repl hP t s h₁ h₂ (ih (by omega))
-  | boxR h₁ h₂ _ ih =>
+  | boxR h₁ h₂ h₃ _ ih =>
       intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
-      exact .boxR h₁ h₂ (ih (by omega))
-  | diaL x hx h₁ h₂ h₃ _ ih =>
+      exact .boxR h₁ h₂ h₃ (ih (by omega))
+  | diaL x hx h₁ h₂ h₃ h₄ _ ih =>
       intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
-      exact .diaL x hx h₁ h₂ h₃ (ih (by omega))
+      exact .diaL x hx h₁ h₂ h₃ h₄ (ih (by omega))
+  | serial hD h₂ h₃ _ ih =>
+      intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
+      exact .serial hD h₂ h₃ (ih (by omega))
 
 /-- ⭐**Weakening, exchange and contraction**, height-preserving: the contexts are read through
     membership, so any larger lists do. -/
@@ -213,9 +276,13 @@ theorem weaken {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (p : GK σ n Γ
   | ref t _ ih => exact fun hΔ hΘ => .ref t (ih (List.cons_subset_cons _ hΔ) hΘ)
   | repl hP t s h₁ h₂ _ ih =>
       exact fun hΔ hΘ => .repl hP t s (hΔ h₁) (hΔ h₂) (ih (List.cons_subset_cons _ hΔ) hΘ)
-  | boxR h₁ h₂ p _ => exact fun hΔ hΘ => .boxR (hΘ h₁) (fun χ hχ => hΔ (h₂ χ hχ)) p
-  | diaL x hx h₁ h₂ h₃ p _ =>
-      exact fun hΔ hΘ => .diaL x hx (hΔ h₁) (fun χ hχ => hΔ (h₂ χ hχ)) (fun χ hχ => hΘ (h₃ χ hχ)) p
+  | boxR h₁ h₂ h₃ p _ =>
+      exact fun hΔ hΘ => .boxR (hΘ h₁) (fun χ hχ => hΔ (h₂ χ hχ)) (h₃.trans hΘ) p
+  | diaL x hx h₁ h₂ h₃ h₄ p _ =>
+      exact fun hΔ hΘ => .diaL x hx (hΔ h₁) (fun χ hχ => hΔ (h₂ χ hχ)) (fun χ hχ => hΘ (h₃ χ hχ))
+        (h₄.trans hΘ) p
+  | serial hD h₂ h₃ p _ =>
+      exact fun hΔ hΘ => .serial hD (fun χ hχ => hΔ (h₂ χ hχ)) (h₃.trans hΘ) p
 
 end GK
 

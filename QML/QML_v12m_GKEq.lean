@@ -20,12 +20,11 @@ namespace V12M
 
 variable [ModalSys] {σ : Signature}
 
-/-- ⭐**The system K**: every flag off. -/
-class ModalSys.IsK [ModalSys] : Prop where
+/-- ⭐**The systems of GK**: K, KD, K4 and KD4 — weak D and weak 4 either way, every other flag
+    off. -/
+class ModalSys.GKSys [ModalSys] : Prop where
   noT : ModalSys.T = false
-  noFour : ModalSys.Four = false
   noTStrong : ModalSys.TStrong = false
-  noD : ModalSys.D = false
   noDStrong : ModalSys.DStrong = false
   noB : ModalSys.B = false
   noBStrong : ModalSys.BStrong = false
@@ -35,8 +34,35 @@ class ModalSys.IsK [ModalSys] : Prop where
   noFive : ModalSys.Five = false
   noFiveStrong : ModalSys.FiveStrong = false
 
-instance : @ModalSys.IsK ModalSys.K :=
-  @ModalSys.IsK.mk ModalSys.K rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
+/-- KD: weak D. -/
+def ModalSys.KD : ModalSys :=
+  { T := false, Four := false, TStrong := false, D := true, DStrong := false, B := false,
+    BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
+    Five := false, FiveStrong := false }
+
+/-- K4: weak 4. -/
+def ModalSys.K4 : ModalSys :=
+  { T := false, Four := true, TStrong := false, D := false, DStrong := false, B := false,
+    BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
+    Five := false, FiveStrong := false }
+
+/-- KD4: weak D and weak 4. -/
+def ModalSys.KD4 : ModalSys :=
+  { T := false, Four := true, TStrong := false, D := true, DStrong := false, B := false,
+    BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
+    Five := false, FiveStrong := false }
+
+instance : @ModalSys.GKSys ModalSys.K :=
+  @ModalSys.GKSys.mk ModalSys.K rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
+
+instance : @ModalSys.GKSys ModalSys.KD :=
+  @ModalSys.GKSys.mk ModalSys.KD rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
+
+instance : @ModalSys.GKSys ModalSys.K4 :=
+  @ModalSys.GKSys.mk ModalSys.K4 rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
+
+instance : @ModalSys.GKSys ModalSys.KD4 :=
+  @ModalSys.GKSys.mk ModalSys.KD4 rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
 
 /-! ## Substitutions agreeing off the base-type addresses -/
 
@@ -212,7 +238,7 @@ theorem holeS_coh {θ : Subst σ Γ} (hθ : Subst.Ok Γ₀ θ) (hc : Subst.Coh �
   (Subst.coh_under_occ hθ hc .Var _ hS.ne_rt).restrict hS.le
 
 /-- The hole formula of `φ` along `θ₁`. -/
-abbrev hole (θ₁ : Subst σ Γ) (hθ₁ : Subst.Ok Γ₀ θ₁) (hc₁ : Subst.Coh ι Γ₀ θ₁)
+abbrev holeF (θ₁ : Subst σ Γ) (hθ₁ : Subst.Ok Γ₀ θ₁) (hc₁ : Subst.Coh ι Γ₀ θ₁)
     (hΓ₀ : Γ₀.SlotsFrom d) (hS : SlotOnly Γ₀) (φ : WFF σ Γ₀ d) :
     WFF σ (Γ.insert (.bnd 0) .Var) 1 :=
   WFF.subst (VarSymb.shiftSlot ι 0 0) (holeS θ₁) (holeS_ok hθ₁ hS) (holeS_coh hθ₁ hc₁ hS) hΓ₀
@@ -224,10 +250,10 @@ theorem instantiate_hole (θ₁ θ : Subst σ Γ) (hθ₁ : Subst.Ok Γ₀ θ₁
     (hθ : Subst.Ok Γ₀ θ) (hc : Subst.Coh ι Γ₀ θ) (hΓ₀ : Γ₀.SlotsFrom d) (hS : SlotOnly Γ₀)
     {t : Term σ Γ .Var .var} (h₀ : θ (.root (.bnd 0)) = .tm t)
     (hag : ∀ v, v ≠ .root (.bnd 0) → θ₁ v = θ v) (φ : WFF σ Γ₀ d) :
-    WFF.instantiate Ctx.NoSlots.slots t (hole θ₁ hθ₁ hc₁ hΓ₀ hS φ) =
+    WFF.instantiate Ctx.NoSlots.slots t (holeF θ₁ hθ₁ hc₁ hΓ₀ hS φ) =
       WFF.subst ι θ hθ hc hΓ₀ Ctx.NoSlots.slots φ := by
   have hrΓ : Γ.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ)).rootFresh le_rfl
-  unfold WFF.instantiate WFF.substRoot hole
+  unfold WFF.instantiate WFF.substRoot holeF
   refine WFF.subst_comp _ _ _ _ _ _ _ hθ hc _ _ _ ?_ φ
   refine Subst.sim_of ?_
   intro v U hlp hv
@@ -249,7 +275,7 @@ theorem instantiate_hole (θ₁ θ : Subst σ Γ) (hθ₁ : Subst.Ok Γ₀ θ₁
 
 theorem hole_isAtom (θ₁ : Subst σ Γ) (hθ₁ : Subst.Ok Γ₀ θ₁) (hc₁ : Subst.Coh ι Γ₀ θ₁)
     (hΓ₀ : Γ₀.SlotsFrom d) (hS : SlotOnly Γ₀) {φ : WFF σ Γ₀ d} (hφ : φ.IsAtom) :
-    (hole θ₁ hθ₁ hc₁ hΓ₀ hS φ).IsAtom :=
+    (holeF θ₁ hθ₁ hc₁ hΓ₀ hS φ).IsAtom :=
   WFF.IsAtom.subst hφ
 
 end Hole
@@ -258,7 +284,7 @@ end Hole
 
 namespace GK
 
-variable [ModalSys.IsK]
+variable [ModalSys.GKSys]
 
 /-- ⭐**Identity**: `φ ⇒ φ`, for every formula of K. -/
 theorem ident_aux : ∀ (w : ℕ) {Γ : Ctx} [Γ.Presented] (φ : WFF σ Γ 0) {Δ Θ : List (WFF σ Γ 0)},
@@ -327,19 +353,23 @@ theorem ident_aux : ∀ (w : ℕ) {Γ : Ctx} [Γ.Presented] (φ : WFF σ Γ 0) {
           simp only [WFF.weight] at hw
           obtain ⟨n, e⟩ := ident_aux w φ (Δ := [φ]) (Θ := [φ]) (by omega)
             List.mem_cons_self List.mem_cons_self
-          exact ⟨_, .boxR hΘ (fun χ hχ => by rw [List.mem_singleton.mp hχ]; exact hΔ) e⟩
+          exact ⟨_, .boxR (L := []) hΘ (fun χ hχ => by rw [List.mem_singleton.mp hχ]; exact hΔ)
+            (List.nil_subset _) (e.weaken (fun _ h => List.mem_append_left _ h)
+              (fun a ha => by rw [kp4_nil]; exact ha))⟩
       | dia x hx φ =>
           simp only [WFF.weight] at hw
           obtain ⟨n, e⟩ := ident_aux w φ (Δ := [φ]) (Θ := [φ]) (by omega)
             List.mem_cons_self List.mem_cons_self
-          exact ⟨_, .diaL x hx (Δ₁ := []) hΔ (fun _ h => absurd h List.not_mem_nil)
-            (fun χ hχ => by rw [List.mem_singleton.mp hχ]; exact hΘ) e⟩
-      | here hT _ _ => exact absurd hT (by rw [ModalSys.IsK.noT]; decide)
-      | back hB _ _ _ => exact absurd hB (by rw [ModalSys.IsK.noBStrong]; decide)
-      | retS hB _ _ _ => exact absurd hB (by rw [ModalSys.IsK.noBStrong]; decide)
-      | retxS hB _ _ _ _ _ => exact absurd hB (by rw [ModalSys.IsK.noBStrong]; decide)
-      | link hV _ _ _ => exact absurd hV (by rw [ModalSys.IsK.noFive]; decide)
-      | linkx hV _ _ _ _ _ => exact absurd hV (by rw [ModalSys.IsK.noFive]; decide)
+          refine ⟨_, .diaL x hx (Δ₁ := []) (L := []) hΔ (fun _ h => absurd h List.not_mem_nil)
+            (fun χ hχ => by rw [List.mem_singleton.mp hχ]; exact hΘ) (List.nil_subset _)
+            (e.weaken (fun a ha => ?_) (fun _ h => List.mem_append_left _ h))⟩
+          rw [List.mem_singleton.mp ha]; exact List.mem_cons_self
+      | here hT _ _ => exact absurd hT (by rw [ModalSys.GKSys.noT]; decide)
+      | back hB _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)
+      | retS hB _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)
+      | retxS hB _ _ _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)
+      | link hV _ _ _ => exact absurd hV (by rw [ModalSys.GKSys.noFive]; decide)
+      | linkx hV _ _ _ _ _ => exact absurd hV (by rw [ModalSys.GKSys.noFive]; decide)
 
 theorem ident {Γ : Ctx} [Γ.Presented] (φ : WFF σ Γ 0) {Δ Θ : List (WFF σ Γ 0)} (hΔ : φ ∈ Δ)
     (hΘ : φ ∈ Θ) : ∃ n, GK σ n Γ Δ Θ :=
@@ -516,12 +546,12 @@ theorem replaceGen {Γ₀ : Ctx} {d : ℕ} (φ : WFF σ Γ₀ d) :
         congrArg (WFF.dia (ι x) hwx)
           (WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_dia_of_agree hA x (ι x)) φ)
       exact ident _ (e ▸ hφ₁) hφ₂
-  | here hT _ _ => exact absurd hT (by rw [ModalSys.IsK.noT]; decide)
-  | back hB _ _ _ => exact absurd hB (by rw [ModalSys.IsK.noBStrong]; decide)
-  | retS hB _ _ _ _ => exact absurd hB (by rw [ModalSys.IsK.noBStrong]; decide)
-  | retxS hB _ _ _ _ _ _ => exact absurd hB (by rw [ModalSys.IsK.noBStrong]; decide)
-  | link hV _ _ _ _ => exact absurd hV (by rw [ModalSys.IsK.noFive]; decide)
-  | linkx hV _ _ _ _ _ _ => exact absurd hV (by rw [ModalSys.IsK.noFive]; decide)
+  | here hT _ _ => exact absurd hT (by rw [ModalSys.GKSys.noT]; decide)
+  | back hB _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)
+  | retS hB _ _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)
+  | retxS hB _ _ _ _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)
+  | link hV _ _ _ _ => exact absurd hV (by rw [ModalSys.GKSys.noFive]; decide)
+  | linkx hV _ _ _ _ _ _ => exact absurd hV (by rw [ModalSys.GKSys.noFive]; decide)
 
 /-- ⭐**Replacement**: `t = s, s = t, φ(t) ⇒ φ(s)`, for every formula `φ` with a base-type slot —
     ND's `eq_elim`. -/
@@ -544,7 +574,7 @@ theorem replace {Γ : Ctx} [Γ.Presented] (φ : WFF σ (Γ.insert (.bnd 0) .Var)
     (fun v hv => by rw [show Subst.single (.bnd 0) (.tm t) v = .ren v from if_neg hv,
       show Subst.single (.bnd 0) (.tm s) v = .ren v from if_neg hv]) h₁ h₂ h₃ h₄
 
-omit [ModalSys.IsK] in
+omit [ModalSys.GKSys] in
 /-- Symmetry of base equality. -/
 theorem eq_symm {Γ : Ctx} [Γ.Presented] (t s : Term σ Γ .Var .var) {Δ Θ : List (WFF σ Γ 0)}
     (h : .eq t s ∈ Δ) (h' : .eq s t ∈ Θ) : ∃ n, GK σ n Γ Δ Θ := by

@@ -4,17 +4,24 @@ import QML.QML_v12m_RetMono
 /-!
 # QML v12m — the sharp subformula property for GK
 
-⭐`GK.subformula_sharp_of_provable`: every ND-provable sequent of K has a cut-free derivation in
-which **every formula is a single substitution instance of a syntactic subformula of the end
-sequent** (`WFF.SubF`, `SharpSub.inst`), or an atom introduced by `ref` (`t = t`) or `repl` (from
-two members `t = s` and `P(t)`).
+⭐`GK.subformula_sharp_of_provable`: every ND-provable sequent of K, KD, K4 and KD4 has a cut-free
+derivation in which **every formula is a single substitution instance of a subformula of the end
+sequent up to copies** (`WFF.SubC`, `SharpSub.inst`), or an atom introduced by `ref` (`t = t`) or
+`repl` (from two members `t = s` and `P(t)`).  "Up to copies" is K4's: a syntactic subformula
+(`WFF.SubF`), its subformulas, and under 4 the copies one view in, `□(shift χ)` of `□χ` and
+`◇_{y.keep}(shift χ)` of `◇_y χ`.  Without 4 the copies do not arise and these are the syntactic
+subformulas.
 
 The step from `GSub` (`GSub.sharp`) shows each of its closure steps keeps a single instance:
 * connectives and views: substitution commutes with each former;
 * a quantifier's body at a term `t`: instantiating after `θ.under` is substituting along
   `θ.set (bnd d) t` (`WFF.instantiate_subst_under`);
 * at an eigenvariable: `bindFree_toFree` and `openFree_bindFree` give `θ.toFree`;
-* weakening: `WFF.mono_subst`, and for the atoms `WFF.mono_instantiate`.
+* weakening, and a `□` view formula moved into a `◇_x` view: `WFF.mono_subst`, and for the atoms
+  `WFF.mono_instantiate` (`SharpSub.mono`).
+* a copy: shifting commutes with substitution (`WFF.shift_subst` with `Subst.shiftCorr_box_box`,
+  `Subst.shiftCorr_dia_keep`), so the copy of an instance of `□χ` is an instance of the copy of
+  `□χ` (`SharpSub.box_keep`, `SharpSub.dia_keep`).
 -/
 
 namespace V12M
@@ -56,6 +63,31 @@ theorem WFF.SubF.trans {Γa Γb Γc : Ctx} {da db dc : ℕ} {a : WFF σ Γa da} 
   | ex _ ih => exact .ex ih
   | box _ ih => exact .box ih
   | dia _ ih => exact .dia ih
+
+/-- ⭐**Subformulas up to copies** of `ψ`: its syntactic subformulas, closed under taking
+    subformulas and, under 4, the copies one view in (`□(shift χ)` of `□χ`,
+    `◇_{y.keep}(shift χ)` of `◇_y χ`). -/
+inductive WFF.SubC {Γ₀ : Ctx} (ψ : WFF σ Γ₀ 0) : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → Prop where
+  | self : WFF.SubC ψ ψ
+  | sub {Γ Γ' : Ctx} {d d' : ℕ} {χ : WFF σ Γ d} {φ : WFF σ Γ' d'} :
+      WFF.SubF χ φ → WFF.SubC ψ φ → WFF.SubC ψ χ
+  | box_keep {Γ : Ctx} {d : ℕ} (hF : ModalSys.Four = true) (hs : Γ.boxIn.SlotsFrom d)
+      {φ : WFF σ Γ.boxIn d} : WFF.SubC ψ (WFF.box (Γ := Γ) φ) →
+      WFF.SubC ψ (WFF.box (Γ := Γ.boxIn) (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) hs φ))
+  | dia_keep {Γ : Ctx} {d : ℕ} (hF : ModalSys.Four = true) {y : VarSymb}
+      {hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)} (hs : (Γ.diaIn y).SlotsFrom d)
+      {φ : WFF σ (Γ.diaIn y) d} : WFF.SubC ψ (WFF.dia y hy φ) →
+      WFF.SubC ψ (WFF.dia (.step y .keep) (Ctx.exists_keep_dia hF hy)
+        (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) hs φ))
+
+/-- Without 4, the subformulas up to copies are the syntactic ones. -/
+theorem WFF.SubC.subF {Γ₀ : Ctx} {ψ : WFF σ Γ₀ 0} (hF : ModalSys.Four = false) {Γ : Ctx} {d : ℕ}
+    {χ : WFF σ Γ d} (h : WFF.SubC ψ χ) : WFF.SubF χ ψ := by
+  induction h with
+  | self => exact .refl
+  | sub h₁ _ ih => exact h₁.trans ih
+  | box_keep hF' => exact absurd hF' (by rw [hF]; decide)
+  | dia_keep hF' => exact absurd hF' (by rw [hF]; decide)
 
 /-! ## Instantiating after a substitution -/
 
@@ -103,7 +135,7 @@ theorem WFF.IsAtom.mono {Γ Γ' : Ctx} {d : ℕ} {h : Γ.Le Γ'} {P : WFF σ Γ 
 /-- ⭐**Single instances of subformulas** of `E`, and the atoms `ref` and `repl` introduce. -/
 inductive SharpSub {Γ₀ : Ctx} (E : List (WFF σ Γ₀ 0)) : (Γ : Ctx) → WFF σ Γ 0 → Prop where
   | inst {Γ : Ctx} {φ : WFF σ Γ 0} {ψ : WFF σ Γ₀ 0} (hψ : ψ ∈ E) {Γ₁ : Ctx} {d₁ : ℕ}
-      {χ : WFF σ Γ₁ d₁} (hχ : WFF.SubF χ ψ) {ι : VarSymb → VarSymb} (θ : Subst σ Γ)
+      {χ : WFF σ Γ₁ d₁} (hχ : WFF.SubC ψ χ) {ι : VarSymb → VarSymb} (θ : Subst σ Γ)
       (hθ : Subst.Ok Γ₁ θ) (hc : Subst.Coh ι Γ₁ θ) (hΓ₁ : Γ₁.SlotsFrom d₁) (hΓ : Γ.SlotsFrom 0) :
       φ = WFF.subst ι θ hθ hc hΓ₁ hΓ χ → SharpSub E Γ φ
   | refl_eq {Γ : Ctx} {φ : WFF σ Γ 0} (t : Term σ Γ .Var .var) : φ = .eq t t → SharpSub E Γ φ
@@ -118,7 +150,7 @@ variable {Γ₀ : Ctx} {E : List (WFF σ Γ₀ 0)} {Γ : Ctx}
 
 /-- A non-atomic member is an instance of a subformula. -/
 theorem inst_of {φ : WFF σ Γ 0} (h : SharpSub E Γ φ) (hn : ¬ φ.IsAtom) :
-    ∃ ψ ∈ E, ∃ (Γ₁ : Ctx) (d₁ : ℕ) (χ : WFF σ Γ₁ d₁), WFF.SubF χ ψ ∧
+    ∃ ψ ∈ E, ∃ (Γ₁ : Ctx) (d₁ : ℕ) (χ : WFF σ Γ₁ d₁), WFF.SubC ψ χ ∧
       ∃ (ι : VarSymb → VarSymb) (θ : Subst σ Γ) (hθ : Subst.Ok Γ₁ θ) (hc : Subst.Coh ι Γ₁ θ)
         (hΓ₁ : Γ₁.SlotsFrom d₁) (hΓ : Γ.SlotsFrom 0), φ = WFF.subst ι θ hθ hc hΓ₁ hΓ χ := by
   cases h with
@@ -127,7 +159,7 @@ theorem inst_of {φ : WFF σ Γ 0} (h : SharpSub E Γ φ) (hn : ¬ φ.IsAtom) :
   | repl hQ t s _ _ he => exact absurd (he ▸ hQ.instantiate) hn
 
 theorem mem [Γ₀.NoSlots] {ψ : WFF σ Γ₀ 0} (hψ : ψ ∈ E) : SharpSub E Γ₀ ψ :=
-  .inst hψ .refl (Subst.idRen Γ₀) Subst.ok_idRen Subst.coh_idRen Ctx.NoSlots.slots
+  .inst hψ .self (Subst.idRen Γ₀) Subst.ok_idRen Subst.coh_idRen Ctx.NoSlots.slots
     Ctx.NoSlots.slots
     ((WFF.subst_ren (Ctx.Le.refl _) _ _ _ _ _ (fun v _ _ => Subst.at_idRen v) ψ).trans
       (WFF.mono_refl _ ψ)).symm
@@ -139,7 +171,7 @@ theorem and_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.and ψ)) : SharpSub E
   case and χ₁ χ₂ =>
     simp only [WFF.subst] at he
     obtain ⟨rfl, -⟩ := WFF.and.inj he
-    exact .inst hψ₀ (WFF.SubF.trans (.and_l .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
+    exact .inst hψ₀ (WFF.SubC.sub (.and_l .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem and_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.and ψ)) : SharpSub E Γ ψ := by
@@ -149,7 +181,7 @@ theorem and_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.and ψ)) : SharpSub E
   case and χ₁ χ₂ =>
     simp only [WFF.subst] at he
     obtain ⟨-, rfl⟩ := WFF.and.inj he
-    exact .inst hψ₀ (WFF.SubF.trans (.and_r .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
+    exact .inst hψ₀ (WFF.SubC.sub (.and_r .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem or_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.or ψ)) : SharpSub E Γ φ := by
@@ -159,7 +191,7 @@ theorem or_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.or ψ)) : SharpSub E �
   case or χ₁ χ₂ =>
     simp only [WFF.subst] at he
     obtain ⟨rfl, -⟩ := WFF.or.inj he
-    exact .inst hψ₀ (WFF.SubF.trans (.or_l .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
+    exact .inst hψ₀ (WFF.SubC.sub (.or_l .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem or_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.or ψ)) : SharpSub E Γ ψ := by
@@ -169,7 +201,7 @@ theorem or_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.or ψ)) : SharpSub E �
   case or χ₁ χ₂ =>
     simp only [WFF.subst] at he
     obtain ⟨-, rfl⟩ := WFF.or.inj he
-    exact .inst hψ₀ (WFF.SubF.trans (.or_r .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
+    exact .inst hψ₀ (WFF.SubC.sub (.or_r .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem imp_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.imp ψ)) : SharpSub E Γ φ := by
@@ -179,7 +211,7 @@ theorem imp_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.imp ψ)) : SharpSub E
   case imp χ₁ χ₂ =>
     simp only [WFF.subst] at he
     obtain ⟨rfl, -⟩ := WFF.imp.inj he
-    exact .inst hψ₀ (WFF.SubF.trans (.imp_l .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
+    exact .inst hψ₀ (WFF.SubC.sub (.imp_l .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem imp_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.imp ψ)) : SharpSub E Γ ψ := by
@@ -189,7 +221,7 @@ theorem imp_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.imp ψ)) : SharpSub E
   case imp χ₁ χ₂ =>
     simp only [WFF.subst] at he
     obtain ⟨-, rfl⟩ := WFF.imp.inj he
-    exact .inst hψ₀ (WFF.SubF.trans (.imp_r .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
+    exact .inst hψ₀ (WFF.SubC.sub (.imp_r .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem all_inst [Γ.NoSlots] {T : VarType} {φ : WFF σ (Γ.insert (.bnd 0) T) 1} {a : Ann T}
@@ -202,7 +234,7 @@ theorem all_inst [Γ.NoSlots] {T : VarType} {φ : WFF σ (Γ.insert (.bnd 0) T) 
     simp only [WFF.subst] at he
     obtain ⟨rfl, he⟩ := WFF.all.inj he
     obtain rfl := eq_of_heq he
-    exact .inst hψ₀ (WFF.SubF.trans (.all .refl) hχ) _ _ _ _ _
+    exact .inst hψ₀ (WFF.SubC.sub (.all .refl) hχ) _ _ _ _ _
       (WFF.instantiate_subst_under θ hθ hc hΓ₁ hΓ t χ')
   all_goals (simp only [WFF.subst] at he; cases he)
 
@@ -216,7 +248,7 @@ theorem ex_inst [Γ.NoSlots] {T : VarType} {φ : WFF σ (Γ.insert (.bnd 0) T) 1
     simp only [WFF.subst] at he
     obtain ⟨rfl, he⟩ := WFF.ex.inj he
     obtain rfl := eq_of_heq he
-    exact .inst hψ₀ (WFF.SubF.trans (.ex .refl) hχ) _ _ _ _ _
+    exact .inst hψ₀ (WFF.SubC.sub (.ex .refl) hχ) _ _ _ _ _
       (WFF.instantiate_subst_under θ hθ hc hΓ₁ hΓ t χ')
   all_goals (simp only [WFF.subst] at he; cases he)
 
@@ -234,7 +266,7 @@ theorem all_eigen [Γ.NoSlots] {u : ℕ} {T : VarType} (hu : Γ.RootFresh (.free
     rw [← WFF.bindFree_toFree θ hθ hc hΓ₁ hΓ u hu T χ'] at he'
     have e := congrArg (WFF.openFree u hu Ctx.NoSlots.slots) he'
     rw [WFF.openFree_bindFree, WFF.openFree_bindFree] at e
-    exact .inst hψ₀ (WFF.SubF.trans (.all .refl) hχ) _ _ _ _ _ e
+    exact .inst hψ₀ (WFF.SubC.sub (.all .refl) hχ) _ _ _ _ _ e
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem ex_eigen [Γ.NoSlots] {u : ℕ} {T : VarType} (hu : Γ.RootFresh (.free u))
@@ -251,7 +283,7 @@ theorem ex_eigen [Γ.NoSlots] {u : ℕ} {T : VarType} (hu : Γ.RootFresh (.free 
     rw [← WFF.bindFree_toFree θ hθ hc hΓ₁ hΓ u hu T χ'] at he'
     have e := congrArg (WFF.openFree u hu Ctx.NoSlots.slots) he'
     rw [WFF.openFree_bindFree, WFF.openFree_bindFree] at e
-    exact .inst hψ₀ (WFF.SubF.trans (.ex .refl) hχ) _ _ _ _ _ e
+    exact .inst hψ₀ (WFF.SubC.sub (.ex .refl) hχ) _ _ _ _ _ e
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem weaken {δ : WFF σ Γ 0} (h : SharpSub E Γ δ) :
@@ -277,6 +309,28 @@ theorem weaken {δ : WFF σ Γ 0} (h : SharpSub E Γ δ) :
       rw [← e t]
       exact ih₂ hu
 
+/-- Weakening along any context inclusion. -/
+theorem mono {φ : WFF σ Γ 0} (h : SharpSub E Γ φ) :
+    ∀ {Γ' : Ctx} [Γ'.NoSlots] (hle : Γ.Le Γ'), SharpSub E Γ' (WFF.mono hle φ) := by
+  induction h with
+  | inst hψ hχ θ hθ hc hΓ₁ hΓ he =>
+      intro Γ' _ hle
+      subst he
+      exact .inst hψ hχ (θ.mono hle) _ _ hΓ₁ Ctx.NoSlots.slots
+        (WFF.mono_subst _ θ hθ hc hΓ₁ hΓ _ _)
+  | refl_eq t he =>
+      intro Γ' _ hle
+      subst he
+      exact .refl_eq (Term.mono hle t) rfl
+  | @repl _ φ Q hQ t s _ _ he ih₁ ih₂ =>
+      intro Γ' _ hle
+      subst he
+      have e := fun (r : Term σ _ .Var .var) =>
+        WFF.mono_instantiate hle Ctx.NoSlots.slots Ctx.NoSlots.slots r Q
+      refine .repl hQ.mono (Term.mono hle t) (Term.mono hle s) (ih₁ hle) ?_ (e s)
+      rw [← e t]
+      exact ih₂ hle
+
 theorem box {φ : WFF σ Γ.boxIn 0} (h : SharpSub E Γ (WFF.box (Γ := Γ) φ)) :
     SharpSub E Γ.boxIn φ := by
   obtain ⟨ψ₀, hψ₀, Γ₁, d₁, χ, hχ, ι, θ, hθ, hc, hΓ₁, hΓ, he⟩ :=
@@ -285,7 +339,7 @@ theorem box {φ : WFF σ Γ.boxIn 0} (h : SharpSub E Γ (WFF.box (Γ := Γ) φ))
   case box χ' =>
     simp only [WFF.subst] at he
     obtain rfl := WFF.box.inj he
-    exact .inst hψ₀ (WFF.SubF.trans (.box .refl) hχ) _ _ _ hΓ₁.boxIn hΓ.boxIn rfl
+    exact .inst hψ₀ (WFF.SubC.sub (.box .refl) hχ) _ _ _ hΓ₁.boxIn hΓ.boxIn rfl
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem box_dia {φ : WFF σ Γ.boxIn 0} (x : VarSymb) (h : SharpSub E Γ (WFF.box (Γ := Γ) φ)) :
@@ -296,7 +350,7 @@ theorem box_dia {φ : WFF σ Γ.boxIn 0} (x : VarSymb) (h : SharpSub E Γ (WFF.b
   case box χ' =>
     simp only [WFF.subst] at he
     obtain rfl := WFF.box.inj he
-    exact .inst hψ₀ (WFF.SubF.trans (.box .refl) hχ) _ _ _ hΓ₁.boxIn (hΓ.diaIn x)
+    exact .inst hψ₀ (WFF.SubC.sub (.box .refl) hχ) _ _ _ hΓ₁.boxIn (hΓ.diaIn x)
       (WFF.mono_subst _ _ _ _ _ _ _ _)
   all_goals (simp only [WFF.subst] at he; cases he)
 
@@ -310,7 +364,58 @@ theorem dia {x : VarSymb} {hx : ∃ X, Γ.ref x = some (.VTypeDia X)} {φ : WFF 
     change WFF.dia x hx φ = WFF.dia (ι y) _ (WFF.subst ι (θ.dia y (ι y)) (Subst.ok_dia hθ hy hw)
       (Subst.coh_dia hθ hc hy) (hΓ₁.diaIn y) (hΓ.diaIn (ι y)) χ') at he
     obtain ⟨rfl, he⟩ := WFF.dia.inj he
-    exact .inst hψ₀ (WFF.SubF.trans (.dia .refl) hχ) _ _ _ _ _ (eq_of_heq he)
+    exact .inst hψ₀ (WFF.SubC.sub (.dia .refl) hχ) _ _ _ _ _ (eq_of_heq he)
+  all_goals (simp only [WFF.subst] at he; cases he)
+
+theorem box_keep [Γ.NoSlots] (hF : ModalSys.Four = true) {φ : WFF σ Γ.boxIn 0}
+    (h : SharpSub E Γ (WFF.box (Γ := Γ) φ)) :
+    SharpSub E Γ.boxIn
+      (WFF.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots φ)) := by
+  obtain ⟨ψ₀, hψ₀, Γ₁, d₁, χ, hχ, ι, θ, hθ, hc, hΓ₁, hΓ, he⟩ :=
+    h.inst_of (by simp [WFF.IsAtom])
+  cases χ
+  case box χ' =>
+    simp only [WFF.subst] at he
+    obtain rfl := WFF.box.inj he
+    exact .inst hψ₀ (hχ.box_keep hF hΓ₁.boxIn) θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc)
+      hΓ₁.boxIn Ctx.NoSlots.slots (congrArg WFF.box (WFF.shift_subst (Ctx.shifts_boxIn_boxIn hF Γ₁)
+        (Ctx.shifts_boxIn_boxIn hF Γ) θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) θ.box.box
+        (Subst.ok_box (Subst.ok_box hθ)) (Subst.coh_box (Subst.ok_box hθ) (Subst.coh_box hθ hc))
+        hΓ₁.boxIn hΓ₁.boxIn.boxIn _ _ (Subst.shiftCorr_box_box hF hθ) χ'))
+  all_goals (simp only [WFF.subst] at he; cases he)
+
+theorem dia_keep [Γ.NoSlots] (hF : ModalSys.Four = true) {y : VarSymb}
+    {hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)} {φ : WFF σ (Γ.diaIn y) 0}
+    (h : SharpSub E Γ (.dia y hy φ)) :
+    SharpSub E Γ.boxIn (WFF.dia (.step y .keep) (Ctx.exists_keep_dia hF hy)
+      (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots φ)) := by
+  obtain ⟨ψ₀, hψ₀, Γ₁, d₁, χ, hχ, ι, θ, hθ, hc, hΓ₁, hΓ, he⟩ :=
+    h.inst_of (by simp [WFF.IsAtom])
+  cases χ
+  case dia z hz χ' =>
+    have hw : (θ.at z).idxAlong [] = ι z := hz.elim fun _ hZ => hc z _ hZ []
+    change WFF.dia y hy φ = WFF.dia (ι z) _ (WFF.subst ι (θ.dia z (ι z)) (Subst.ok_dia hθ hz hw)
+      (Subst.coh_dia hθ hc hz) (hΓ₁.diaIn z) (hΓ.diaIn (ι z)) χ') at he
+    obtain ⟨rfl, he⟩ := WFF.dia.inj he
+    obtain rfl := eq_of_heq he
+    have hz' : ∃ X, Γ.ref (ι z) = some (.VTypeDia X) :=
+      hz.elim fun _ hZ => SubE.ref_witness (Subst.okRef_at hθ hZ) hw
+    have hk₂ : ι (.step z .keep) = .step (ι z) .keep :=
+      hz.elim fun _ hZ => Subst.coh_keep_dia hθ hc hZ
+    have hwk : (θ.box.at (.step z .keep)).idxAlong [] = .step (ι z) .keep :=
+      hz.elim fun _ hZ => Subst.idx_box_keep_dia hF hθ hc hZ
+    refine .inst hψ₀ (hχ.dia_keep hF (hΓ₁.diaIn z)) θ.box (Subst.ok_box hθ)
+      (Subst.coh_box hθ hc) hΓ₁.boxIn Ctx.NoSlots.slots ?_
+    rw [WFF.subst_dia θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ₁.boxIn
+      Ctx.NoSlots.slots (Ctx.exists_keep_dia hF hz) _ hk₂ (Ctx.exists_keep_dia hF hz')
+      (Subst.ok_dia (Subst.ok_box hθ) (Ctx.exists_keep_dia hF hz) hwk)
+      (hk₂ ▸ Subst.coh_dia (Subst.ok_box hθ) (Subst.coh_box hθ hc)
+        (Ctx.exists_keep_dia hF hz))
+      Ctx.NoSlots.slots]
+    exact congrArg (WFF.dia _ _) (WFF.shift_subst (Ctx.shifts_diaIn_keep hF Γ₁ z)
+      (Ctx.shifts_diaIn_keep hF Γ (ι z)) (θ.dia z (ι z)) (Subst.ok_dia hθ hz hw)
+      (Subst.coh_dia hθ hc hz) _ _ _ (hΓ₁.diaIn z) _ _ _
+      (Subst.shiftCorr_dia_keep hF hθ hz hw) χ')
   all_goals (simp only [WFF.subst] at he; cases he)
 
 end SharpSub
@@ -337,6 +442,9 @@ theorem GSub.sharp {Γ₀ : Ctx} [Γ₀.NoSlots] {E : List (WFF σ Γ₀ 0)} {Γ
   | box _ ih => exact ih.box
   | box_dia x _ ih => exact ih.box_dia x
   | dia _ ih => exact ih.dia
+  | view_dia x _ ih => exact ih.mono _
+  | box_keep hF _ ih => exact ih.box_keep hF
+  | dia_keep hF _ ih => exact ih.dia_keep hF
 
 /-- A derivation in one family is one in any larger family. -/
 theorem GKS.mono {P Q : (Γ : Ctx) → WFF σ Γ 0 → Prop} (hPQ : ∀ Γ φ, P Γ φ → Q Γ φ)
@@ -359,13 +467,15 @@ theorem GKS.mono {P Q : (Γ : Ctx) → WFF σ Γ 0 → Prop} (hPQ : ∀ Γ φ, P
   | exR h T t h' _ ih => exact .exR (hS h) T t h' ih
   | ref h t _ ih => exact .ref (hS h) t ih
   | repl h hQ t s h₁ h₂ _ ih => exact .repl (hS h) hQ t s h₁ h₂ ih
-  | boxR h h₁ h₂ _ ih => exact .boxR (hS h) h₁ h₂ ih
-  | diaL h x hx h₁ h₂ h₃ _ ih => exact .diaL (hS h) x hx h₁ h₂ h₃ ih
+  | boxR h h₁ h₂ h₃ _ ih => exact .boxR (hS h) h₁ h₂ h₃ ih
+  | diaL h x hx h₁ h₂ h₃ h₄ _ ih => exact .diaL (hS h) x hx h₁ h₂ h₃ h₄ ih
+  | serial h hD h₂ h₃ _ ih => exact .serial (hS h) hD h₂ h₃ ih
 
-/-- ⭐**The sharp subformula property**: every ND-provable sequent of K has a cut-free
-    derivation in which every formula is a single substitution instance of a syntactic subformula
-    of the end sequent, or an atom introduced by `ref` or `repl`. -/
-theorem GK.subformula_sharp_of_provable [ModalSys.IsK] {Γ : Ctx} [Γ.Presented]
+/-- ⭐**The sharp subformula property**: every ND-provable sequent of K, KD, K4 and KD4 has a
+    cut-free derivation in which every formula is a single substitution instance of a subformula
+    of the end sequent up to copies (a syntactic one without 4, `WFF.SubC.subF`), or an atom
+    introduced by `ref` or `repl`. -/
+theorem GK.subformula_sharp_of_provable [ModalSys.GKSys] {Γ : Ctx} [Γ.Presented]
     {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : Provable Δ φ) :
     ∃ n, GKS σ (SharpSub (Δ ++ [φ])) n Γ Δ [φ] :=
   let ⟨n, d⟩ := GK.subformula_of_provable p

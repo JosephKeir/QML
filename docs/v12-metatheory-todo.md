@@ -138,8 +138,10 @@ Notes before starting:
 
 ## 4. Cut elimination
 
-**Status: ✅ CUT ELIMINATION FOR K, built (2026-11-07).**  ⭐`GK.provable_iff_der`
-(`QML_v12m_GKToND.lean`): over a presented context, with every flag off (`ModalSys.IsK`), a sequent
+**Status: ✅ CUT ELIMINATION FOR K, KD, K4 AND KD4, built (2026-11-07; K first, then KD and K4
+by extending GK, see "K4 and KD built" below).**  ⭐`GK.provable_iff_der`
+(`QML_v12m_GKToND.lean`): over a presented context, with weak D and weak 4 either way and every
+other flag off (`ModalSys.GKSys`; it replaced `ModalSys.IsK`), a sequent
 is provable in natural deduction exactly when it has a **cut-free** GK derivation.  Sorry-free,
 standard axioms.  About 2 200 lines in all (estimate was 4 500 to 7 000).
 * `QML_v12m_GKEq.lean`: `ModalSys.IsK` (every flag off; instance for `ModalSys.K`); ⭐`GK.ident`
@@ -294,6 +296,326 @@ Notes before starting:
 - Equality needs care: `eq_elim` rewrites under an arbitrary formula context, which is the usual
   obstacle to cut elimination with identity.
 
+### Other systems: priorities and the K4 paper check (2026-11-07)
+
+*The user's priority:* systems people care about, some version of 4 or T; cut elimination is not
+expected everywhere (it fails for some propositional systems already).  Assessment:
+* **KD** (weak D): one more modal rule, from `Δ₁ ⇒` (empty) in the `□` view infer `□Δ₁ ⇒`,
+  equivalent to `D_box`; one new principal case.  Cheap.
+* **K4** (weak 4): paper check below, passes.
+* **KT** (weak T): `T_box` alone is standard (a left rule adding the collapsed body; collapse is a
+  substitution, `WFF.collapse_subst`).  But the T flag brings `Here` with six rules: `here_intro`
+  becomes one right rule for `◇_x` (`here_elim` follows from it classically), whose reduction against
+  `◇_xL` reads a view derivation at the current world (by substitution); `here_beta` and `here_name`
+  look like Negri's geometric rules (atoms; an eigenvariable); `here_subst` and `here_eq` are
+  replacement over arbitrary formulas, the likeliest place for a failure.  Needs its own paper check.
+* **S4**: later (`here_keep`, views exposing only `keep`).
+
+**K4 paper check (weak 4: K plus `four_box`, `four_dia`; `keep_lift` needs the strong flags,
+`five_refl` needs 5).**  Under 4 the `□` view also has `u.keep : □A` and `x.keep : ◇X`, and
+`shift` (`u.box ↦ u.keep.box`, `u.keep ↦ u.keep.keep`, `x.dia ↦ x.keep.dia`) carries a view one
+level further in; it is a renaming substitution (`WFF.subst_shift`), so `GK.subst` shifts
+derivations.
+* **Rules.**  `□R⁴`: from `Δ₁, □(shift Δ₁) ⇒ φ, ◇_{y.keep}(shift Θ_y)` in the `□` view, infer
+  `□Δ₁ ⇒ □φ, ◇_y Θ_y` (for any witnesses `y`).  `◇_xL⁴`: from `ψ, Δ₁↑, □(shift Δ₁)↑ ⇒ Θ_x,
+  ◇_{y.keep}(shift Θ_y)↑` in the `◇_x` view, infer `◇_x ψ, □Δ₁ ⇒ ◇_x Θ_x, ◇_y Θ_y` (`y = x`
+  allowed: then both `Θ_x` and `◇_{x.keep}(shift Θ_x)`).  New against textbook K4: the
+  right-hand `◇_y` part — invalid in K (an extent may be empty), valid with 4 through `y.keep`,
+  whose extent lies inside `y`'s.  Sound by transitivity and restriction.
+* **ND into GK4.**  `four_box`: `□R⁴` with `L_Δ = [□φ]`, premise `φ, □shift φ ⇒ □shift φ`.
+  `four_dia` (`□_x φ ⊢ □□_{x.keep}(shift φ)`): `□_x φ` on the left is `◇_x ¬φ` on the right, so
+  `□R⁴` with `L_Θ = [◇_x ¬φ]` and premise `⇒ □_{x.keep}(shift φ), ◇_{x.keep}(shift ¬φ)`, an
+  identity.  **GK4 into ND**: `□R⁴` from `K_box` with `four_box`, `four_dia`.
+* **Cut, principal cases**, by the standard K4 argument: the cut formula's own 4-copy (`□(shift φ)`,
+  `◇_{x.keep}(shift θ)`) appears in a premise, at the same weight; it is cut against **the other
+  side's conclusion re-derived inside the view**, by shifting that side's premise (`GK.subst`) and
+  applying the 4-rule one level in; that re-derivation's height is the other side's, the premise's
+  smaller, so the induction on height applies; the components are cut at smaller weight.
+  - `□R⁴` against `□R⁴` (`□φ` among the boxed hypotheses): cut `□shift φ`, then `φ`.
+  - `□R⁴` against `◇_xL⁴`: the same, moved into the `◇_x` view (`monoCtx`).
+  - `◇_x θ` from a 4-part (`□R⁴`'s `Θ_x`, or `◇_yL⁴`'s) against `◇_xL⁴`: cut `◇_{x.keep}(shift θ)`
+    against the right conclusion shifted into the view (the `◇_x` view shifts into the
+    `◇_{x.keep}` view, `Ctx.shifts_diaIn_keep`); with `y = x`, also `θ` itself.
+  - Non-principal: the modal rules keep no context, so the cut vanishes.
+  No case found that fails.
+* **Lemmas needed:** shift commutes with itself where the 4-copy is re-shifted
+  (`shift₁ ∘ shift₀ = shift₀ ∘ shift₀` on the reachable addresses: checked on `u.box`, `u.keep`);
+  the inclusion of the shifted `□` view into the `◇_x` view's `□` view; weight kept by shift.
+* **Design question:** extend GK with flag-gated 4-rules (K the special case; every GK proof gains
+  two cases) or a separate calculus.  Estimate 2 000 to 3 000 lines; interpolation for K4 afterwards
+  (Maehara is known to work for propositional K4).
+
+### K4 and KD built (2026-11-07)
+
+Decided: **GK extended**, flag-gated (the copies `cp4`, `kp4` are empty without 4; `serial` needs
+`D`).  About 1 300 lines added; sorry-free.
+* `QML_v12m_GK.lean`: `cp4`, `kp4` (`WFF.keepDia`); `boxR` and `diaL` with the copies and a list `L`
+  of conclusions whose `◇` copies the premise gets; `serial` (D).
+* `QML_v12m_GKShift.lean`: `Ctx.Leveled` (every declared address `L r` levels below its root;
+  presented contexts are leveled, `Ctx.Presented.leveled`), `Subst.coh_atShiftL`, ⭐`GK.shiftD`
+  (shifting a derivation one view in, height kept, by `GK.subst`), `WFF.shift_mono`,
+  `WFF.weight_shift`, `shift_cp4`/`shift_kp4` (from `WFF.shift_shift_same`).
+* `QML_v12m_GKCut.lean`: `GK.Into` (the `□` view itself or a `◇_x` view), ⭐`GK.boxCut` (`□φ`
+  principal: cut its copy `□(shift φ)` against the left conclusion re-derived in the view, then
+  `φ`), ⭐`GK.copyCut` (a `◇_y θ`'s copy cut against the right conclusion re-derived in the view,
+  `diaL` at `y.keep`), `boxPrin`, `diaPrin*`, `left*`; `permRight` with the new rules.  The paper
+  check held exactly: no case failed.
+* Equivalence: `GKSys` with instances for `ModalSys.K`, `KD`, `K4`, `KD4` (new presets);
+  `Der.D_box`, `Der.four_box`, `Der.four_dia`; `keep_lift` excluded since no type is liftable
+  (`ModalSys.GKSys.liftableR`); `NDP.box_neg_keep` and `NDP.boxes_ok` for `toND`.
+* **Subformula property** for all four (`GSub.box_keep`, `GSub.dia_keep`: the copies;
+  `GSub.view_dia`).  **Sharp form for all four** (`GK.subformula_sharp_of_provable`): every formula
+  is a single substitution instance of a **subformula up to copies** (`WFF.SubC`: syntactic
+  subformulas, closed under subformulas and the two keep-shifts; without 4 exactly the syntactic
+  ones, `WFF.SubC.subF`).  The copy of an instance `θ(□χ)` is the instance `θ.box` of `□(shift χ)`
+  (`WFF.shift_subst` with `Subst.shiftCorr_box_box`; `shiftCorr_dia_keep` for `◇`).
+* **Craig interpolation** for all four (`GK.craig`): the copies split with their originals and keep
+  their relation symbols (`WFF.occ_shift`); `serial` has interpolant `◇χ'` with `□R` on its right.
+* `QML_v12m_GKEq.lean`'s `hole` renamed `holeF` (clash with `LeibnizSpine.hole` through the new
+  imports).
+* Next candidates: KT (paper check of the `Here` rules first); S4; S5 (see below).
+
+### KT paper check (2026-11-07)
+
+Weak T: `T = true`, `TStrong = false` (so no `T_dia`); 4, B, 5 off.  The T rules are `T_box` and the
+six `Here` rules (`here_elim`, `here_intro`, `here_beta`, `here_name`, `here_subst`, `here_eq`);
+`Here` atoms have weight 0.  Proposed GKT = GK plus:
+* **TL** (`T_box`): `□φ ∈ Δ`; premise `collapse φ, Δ ⇒ Θ`.  Principal cut against `□R`: cut `□φ`
+  into TL's premise (height), then `collapse φ` (lighter) against the `□R` premise **collapsed**
+  (collapse is a substitution: a `GK.shiftD`-style `collapseD`), whose hypotheses
+  `collapse Δ₁` come back by TL from `□Δ₁`.  Standard (Ohnishi–Matsumoto's G3 for KT).  **Fine.**
+* **◇R_T** (`here_intro`): `Here(⟨x;bd⟩, t) ∈ Δ`, `◇_x(viewReadTm bd ψ) ∈ Θ`; premise
+  `Δ ⇒ hereRead t ψ, Θ`.  `here_elim` is derivable from it classically (`□_x = ¬◇_x¬`, and both
+  readings commute with `¬`).  Principal cut against `◇_xL`: the `◇_x` view's derivation must be
+  read at this world.  `here_name` gives a content `c` of `x` here only existentially, so the
+  reduction takes `c` as an eigenvariable, reads the view derivation at `x.dia := c`,
+  `u.box := u.here` (a substitution), and matches `bd[c]` with `t` by `here_beta` and functionality.
+  **Fine if functionality (below) is.**
+* **HB** (`here_beta`) and **HN** (`here_name`): Negri-style geometric rules (atoms in, atoms out;
+  HN with an eigenvariable, its conclusion being `∃c. Here(…, c)`).  `Here` atoms are never
+  introduced on the right except in axioms, so, like `repl`, they need no reductions of their own.
+  **Fine.**
+* **HS** (`here_subst`, functionality) and **HE** (`here_eq`): replacement.  K's `repl` is atomic
+  because a base-type slot is invisible in every view, so `GK.replaceGen` passes views untouched.
+  A content of any type can be visible in views, so atomising needs more:
+  - *Contents without `◇` (`Var`, `𝟙`, products, `□`):* two contents of one subject are equal
+    (`here_fun` is an instance of `here_subst`), so HS reduces to replacement along `eqRec`, and
+    Leibniz along `eqRec` at every type is admissible by induction on the formula, carrying
+    `eqRec A t.unbox t'.unbox` into `□` views (the equality at `□A` is itself `□(…)`).  The atomic
+    case at a `Here` atom is HE.  HE's side formula `eqRec A t t'` is not atomic at compound `A`; at
+    `□A` it can be made a **modal rule** (`Here(s, box u), □Δ₁ ⇒ …` with a `□`-view premise
+    `Δ₁ ⇒ eqRec u u'`), whose cuts are those of `□R` against a boxed hypothesis; at `◇X` (one
+    witness, `eqRec = □_x(…)`) a `◇_x`-view premise.  **Plausible; to check.**
+  - ⚠️**Contents with `◇`: HS is not atomisable.**  Two contents `⟨y;b⟩`, `⟨y';b'⟩` of one subject
+    may stand over different witnesses, and HS at the formula `◇_{hole} χ` transfers `◇_y χ(b)` to
+    `◇_{y'} χ(b')`: a cross-fibre identification, which by design (§10.3, §10.10, the decision of
+    2026-10-01) has no formula, only the rule schema.  For cut elimination a non-atomic side formula
+    `φ(t)` of HS needs right-replacement to be height-preserving admissible (from `Δ ⇒ φ(t), Θ` and
+    the two `Here` atoms, `Δ ⇒ φ(t'), Θ`), proved by induction on the derivation; the induction
+    fails exactly where `◇_y χ(b)` is introduced by `◇_yL`, whose premise lives in the `◇_y` view and
+    cannot be moved to the `◇_{y'}` view (no term map between the fibres).  Treating HS as a
+    general rule in both polarities does not help: the cut on `φ(t')` then has the same weight and no
+    smaller height.  It is not derivable from the other `Here` rules either (functionality is why it
+    is primitive: `here_intro`/`here_elim` relate the content to `◇_z`/`□_z` of the subject's
+    witness, not to *this* world as a point of the extent).
+* **Verdict:** KT's cut elimination goes through on paper **except at `here_subst` for contents
+  containing `◇`**, where the calculus meets the cross-fibre gap the semantics settled by a model law
+  (`Ind`).  Options: (a) a structural way for a sequent to say "this world, as a point of `z`'s
+  extent" (hybrid-like, a label), so that two `Here`-linked contents can be compared in one view;
+  (b) reformulate functionality so its cross-fibre content is carried by the subject's view rather
+  than by a schema over formulas; (c) a counterexample search: a cut-free-underivable instance would
+  show KT, as ruled, has no cut elimination.  Restricting `Here` to `◇`-free contents is the kind of
+  restriction the user has rejected before (memory: "no ◇-free restrictions").  **Decision needed.**
+
+**Option (c) tried (2026-11-07): a counterexample.**  `s : ◇◇Var`, `y, y' : ◇Var`, unary function
+symbols `f`, `h`, unary relations `P, Q, R`; `t = ⟨y; f(y.dia)⟩`, `t' = ⟨y'; h(y'.dia)⟩`.
+  `S :  Here(s,t), Here(s,t'), ◇_y P(y.dia), □_y(P(y.dia) → Q(f(y.dia))),
+        □_{y'}(Q(h(y'.dia)) → R(y'.dia))  ⇒  ◇_{y'} R(y'.dia)`
+* *ND-provable, with a cut:* K gives `◇_y Q(f(y.dia))`; `here_subst` at `φ(z) = ◇_z Q(z.dia)` moves it
+  to `◇_{y'} Q(h(y'.dia))`; K with the `□_{y'}` hypothesis gives the goal.
+* *No cut-free GKT derivation, even with `here_subst` in both polarities:* the goal needs a `◇_{y'}`
+  formula on the left (`◇_{y'}L`) or a `Here` atom whose subject is over `y'` (`◇R_T`).  The `Here`
+  rules only produce subjects over `s`'s witness; `here_subst` produces `◇_{y'}` formulas only from
+  formulas `φ(t)` whose dependence on `y`'s content goes through `f(y.dia)` alone, and none is in the
+  sequent (`◇_y P(y.dia)`, `◇_y ¬(P → Q f)` read `y.dia` through `P`; symmetrically for `t'`, `R`).
+  Within the `y` fibre, `◇_yL` needs `Q(f(y.dia)) ⇒ ⊥`.
+* **Conclusion:** with `here_subst` the only cross-fibre link, every proof of `S` passes through a
+  transfer formula such as `◇_y Q(f(y.dia))`, which is not a subformula of `S` (it is `◇` of a view
+  subformula: an almost analytic cut).  **KT as ruled has no derivations with the subformula
+  property**, whatever the calculus, as long as the fibres are linked only by formula transfer.
+  `◇`-contents only; for `Var` contents functionality is equality and stays atomic.
+* **Diagnosis:** `here_subst` links two possibilities without pairing them, against the principle
+  that linking two possibilities must go through a paired one (memory, "joint possibility goes
+  through pairing").  A functionality rule over a paired possibility could give the joint view `S`
+  needs.  Next, if the user agrees: a paper check of that (soundness, `S` cut-free, the canonical
+  model); optionally `S` in Lean's ND.
+
+**Option (b), paired functionality, checked (2026-11-07): unsound under `Ind`.**  `Here` at
+`◇`-content reads `Ind`, Henkin-style indistinguishability (same slot formulas), not identity
+(modal-extensions §10.23).  Two `Ind`-related possible objects may stand over disjoint extents that
+no formula separates; no joint possibility, no world with both contents.  So a functionality rule
+producing a paired possibility is unsound for `Ind`-models, and making it sound means reading `Here`
+at `◇`-content as a join of witnesses: exactly the reading §10.23 rejected ("a joint possibility
+that did not come from pairing"; it broke the canonical model).  `here_subst` is unpaired by design.
+
+**The obstruction is the semantics, not the rule format.**  `Ind` is invariance under formulas, so
+every use of it in a proof transfers a formula, and the formula acts as an interpolant between the
+two fibres.  Refined counterexample `S₂`: as `S`, with `□_y(P → A(f y.dia))`, `□_y(P → B(f y.dia))`
+and `□_{y'}(A(h y'.dia) → (B(h y'.dia) → R(y'.dia)))`.  Transferring `◇_y A(b)` and `◇_y B(b)`
+separately gives two `y'` worlds; the proof must transfer `◇_y(A(b) ∧ B(b))`, which is not `◇` of a
+subformula.  So analytic cut fails too; a linked-component (hypersequent) calculus is not expected to
+help (components are worlds, `Ind` matches extents only by formulas).
+
+**Remaining options:** (1) cut elimination and interpolation for the **`Here`-free fragment** of KT
+and S4 (GK + TL, standard), with a conservativity check (do `Here`-free ND theorems need the `Here`
+rules?), via completeness of the fragment for K+T(+4) models; (2) revisit `Here` at `◇`-content
+(§10.23); (3) record as a finding: `Here` with indistinguishability buys T's expressiveness at the
+price of analyticity.  Recommended: (1), with (3) in the paper.  Awaiting the user.
+
+**Witness equality: not pursued (user, 2026-11-07).**  Tried before in some form; judged unworkable.
+
+**Bounded transfer (2026-11-07): refuted.**  Conjecture: GKT cut-free except a transfer rule
+`Tr` (`Here(s,t), Here(s,t')`; `Δ ⇒ ◇_t χ, Θ` and `◇_{t'} χ, Δ ⇒ Θ` give `Δ ⇒ Θ`) with `χ` a
+conjunction of literals over the subformulas closed under swapping linked contents.  (Unbounded
+`Tr` says nothing: with `t = t'` it is cut.)  Counterexample `S₄` (`t = ⟨y; f(y.dia)⟩`,
+`t' = ⟨y'; h(y'.dia)⟩`):
+  `Here(s,t), Here(s,t'), ◇_y ∃v A(y.dia,v), □_y ∀v(A(y.dia,v) → B(v)),
+   □_{y'} R(y'.dia), □_{y'} ∀v(R(y'.dia) → ¬B(v)) ⇒`
+ND-provable by transferring `◇_y ∃v B(v)`; no closed shared closure formula exists, so only `⊤`/`⊥`
+are available.  The transfer formula is an interpolant between the fibres (a modal variant `S₃`
+needs `□B` likewise).  Only "shared-language formulas of bounded rank" survives: finite up to
+equivalence, but useless for search.
+
+**Proposal: merged (joint) views.**  Strengthen `◇L`: when `◇_y φ` opens a view and
+`Here(s,⟨y;b⟩)`, `Here(s,⟨y';b'⟩)` are present, the premise is a *joint view* holding `φ`, the
+`□_y` and `□_{y'}` contents, the `◇_y` and `◇_{y'}` right formulas, and a fresh shared content `e`
+with `b = e`, `b' = e` (one-sided equations, for Maehara).  A proof device, not a formula: the
+language never asserts a joint possibility (a proof-level pairing made only from a `Here` link).
+* *Subformula property:* `S`, `S₂`, `S₄` close in one joint view; `here_subst` should be
+  admissible (its old failure, a right `◇_y` formula not reaching the `y'` view, is gone).
+* *Soundness via interpolation:* a closed joint view splits at `e` (`y`-side `⊢ I(e)`, `y'`-side
+  refutes it); outside, `◇_t I`, `here_subst` to `◇_{t'} I`, refuted.  Merge's Maehara case:
+  interpolant `∃u(Here(s,u) ∧ ◇_u I(u.dia))` (or its dual by partition), only logical symbols
+  added.  So soundness and Craig interpolation for KT are one induction.
+* *Corrects* the earlier remark that a linked-component calculus would not help (it assumed
+  components must be worlds of an `Ind`-model).
+* *To check:* (i) interpolation at `◇R_T` (`here_intro`) and `here_name`'s eigenvariable;
+  (ii) contents whose type contains `◇` (`b = e` is no `eqRec`; recursive merging of inner
+  witnesses); (iii) completeness (cut elimination with `here_subst` admissible, or failed search
+  giving a joint countermodel, `Ind = Eq` there, proper by `indInvariant_of_eq`); (iv) Lean cost:
+  a joint view is a new `Ctx` view, unprecedented.
+
+**Check (i), interpolation at the `Here` rules (2026-11-07).**  Interpolants restrict relation
+symbols only (`GK.Itp`); variables, function symbols, `Here` and `eqRec` are free.
+* *`Here` atoms cross the split for free:* if `H` (symbol-free) is on the left and `χ₀`
+  interpolates with `H` copied to the right, `H ∧ χ₀` interpolates; on the right, `H → χ₀`.  So
+  every rule with `Here` side atoms (`◇R_T`, `here_beta`, `here_eq`) has its atoms on both sides.
+  `◇R_T` with the atom and the `◇_x` formula on opposite sides: `χ = I ∧ Here(…)` or
+  `Here(…) → I`.  **Fine.**
+* *`here_name`'s eigenvariable `c`:* principal atom on the left, `χ = ∃c I(c)`; on the right,
+  `χ = ∀c I(c)` (quantifiers exist at every type).  **Fine.**  `TL`: one-sided, needs only
+  `Occ (collapse φ) = Occ φ`.  **Fine.**
+* ⚠️*The merge rule:* the joint view's interpolant may mention both contents `c = y.dia` and
+  `c' = y'.dia`, and no formula outside can say that (a joint possibility).  Examples decompose
+  (`◇_y γ ∨ ◇_{y'} δ`, possibly importing the other side's formulas), but in general they do not:
+
+**⚠️Craig interpolation fails for KT with `Here` at `◇`-content (paper, 2026-11-07).**
+`s : ◇◇Var`, `y, y' : ◇Var`, `t = ⟨y; f(y.dia)⟩`, `t' = ⟨y'; h(y'.dia)⟩`; `S` binary, `P`, `N`
+unary.
+  `φ = Here(s,t) ∧ Here(s,t') ∧ ◇_y P(y.dia) ∧ □_{y'} ∀v(P(v) → S(v, y'.dia))`
+  `ψ = ◇_y ∃w(S(y.dia,w) ∧ ¬N(w)) ∨ ◇_{y'} N(y'.dia)`
+* `φ ⊢ ψ`: from `¬ψ`, `◇_y K` for `K = ∃v(P(v) ∧ ∀w(S(v,w) → N(w)))`; `here_subst` at
+  `◇_z K` gives `◇_{y'} K`; there `S(v₀, y'.dia)`, so `N(y'.dia)`.  The transferred `K` is a
+  *joint property* (`P` from the left, `N` from the right): Fine's mechanism, here caused by
+  identification by indiscernibility.
+* No interpolant in `{S}`: worlds `w₀, a, b` (self-arrows, `w₀ → a, b`), `ext y = {a}`,
+  `ext y' = {b}`; `a` and `b` both the random graph `G`; `f`, `h` constantly `o`; `y.dia = p`;
+  the only necessary object constantly `o`; `Ind` least: `⟨a↦o⟩ ~ ⟨b↦o⟩`, the content of `s`.
+  `M₁`: `P = {p}` at `a` and `b`, `y'.dia = q₁ ∈ nbhd(p)`, so `M₁ ⊨ φ`.  `M₂`:
+  `N = nbhd(p)` at `a` and `b`, `y'.dia = q₂ ∉ nbhd(p)`, so `M₂ ⊨ ¬ψ`.  Choose `q₁`, `q₂` with
+  the same adjacency to `o`; an automorphism `π` of `(G, o)` with `π q₁ = q₂`, applied at `b` only,
+  is an isomorphism of the `{S}`-reducts (it fixes `o`, so the carriers, `Ind`, `f`, `h`).  Both
+  are models proper: `a`, `b` carry identical structure and the only visible parameter is `o`.
+* *To verify:* the models against the T model laws (carriers, realisation at self-arrows); the
+  extension to S4 and S5 (S5's frames join `a`, `b`, `w₀`).  `Here` at `◇`-free content is not
+  affected (two realised witnesses share the actual world; no indiscernibility transfer).
+
+**Consequences.**
+* *Merge soundness is easy:* `K(e) = ∃v(⋀Y(v) ∧ b(v) = e)` (the whole `y` side, `c` quantified)
+  is transferred by `here_subst`.  The joint view is `Γ.diaIn y` with `y'.dia` inserted as a fresh
+  variable, `□_{y'}` contents read through a substitution: probably no new `Ctx` view (to check).
+  `◇`-typed contents (no `b(v) = e`) stay open.  So a cut-free KT with the subformula property is
+  still plausible, without Craig: as for first-order S5 (cut-free hypersequents, no Craig; check
+  the reference).
+* ⭐*The `Here`-free fragment of weak KT is GK + TL:* replacing every `Here` atom by `⊥` maps ND
+  proofs to ND proofs (every `Here` rule has a `Here` premise, now `⊥`; `hereEx` becomes `∃c ⊥`;
+  the rest is schematic) and fixes `Here`-free formulas.  So conservativity is a syntactic
+  translation, and cut elimination, the sharp subformula property and Craig for `Here`-free
+  sequents follow the K4 route (TL's principal cut via a `collapseD` mirroring `GK.shiftD`).  Same
+  for weak S4.  Weak T only (strong T's `T_dia` realises without a `Here` premise).
+* *Proposal:* build GK + TL for KT and S4 on the `Here`-free fragment; record the Craig failure
+  (optionally `φ ⊢ ψ` in Lean); the merged calculus as later research.
+
+**Would witness equality repair Craig? (2026-11-07, paper.)**  *Not by itself.*  The
+counterexample survives the strongest identification, literal identity (the join reading §10.23
+rejected): let `y` and `y'` share the one-world extent `{a}`, `y.dia = p`, `y'.dia = q₁` (M₁) or
+`q₂` (M₂).  Every view sees one content, so an `{S}`-formula sees `(G,o,p)` and `(G,o,qᵢ)`
+separately, and an automorphism of `(G,o)` per view gives the same `{S}`-theories; `φ ⊨ ψ` still
+holds.  The `{S}`-interpolant would be the joint `S(y.dia, y'.dia)` at a common point, which no
+formula can state.
+* *Diagnosis:* completeness needs the identification only to be **respected** (truth invariant under
+  `Ind`), interpolation needs it to be **expressible**.  The T pattern (identification as a model
+  law, the language only substitutes) is exactly the first, so it is structurally at odds with Craig.
+  Same shape as Fine 1979 (QS5 etc. lack interpolation); the known repair is expressive, not a
+  change of identity criterion: Areces, Blackburn and Marx, *Repairing the interpolation theorem in
+  quantified modal logic* (APAL 2003): quantified *hybrid* logics have interpolation.
+* *Our analogue (option (a) of the KT check):* an operator inside a view, `at z as v. χ`: the current
+  arrow is in `z`'s extent and `v` is `z`'s content there (a `↓`/`@`-like binder for extents).
+  Interpolant here: `◇_y (at y' as v. S(y.dia, v))`.  Witness equality becomes *definable*
+  (`□_y at y' ⊤`, `□_{y'} at y ⊤`, content `□_y (at y' as v. eqRec b v)`), not primitive.  Each earlier
+  failure loses its cause: §10.9 (no view has both contents: `at` supplies one), §10.23 (a child for
+  `z` cannot name `x`'s content: now its language can), §10.25 (comparison across contexts
+  ill-defined: `at` is the map).  Not a join from a link (pairing principle): like `◇(p ∧ q)`, never
+  inferred from `◇_y`, `◇_{y'}` separately.
+* *Costs:* `Here` at `◇`-content back to identity (extents equal, `Ind` dropped); a new formula
+  former and view; children for sets of witnesses (B's network, `kd`, the precedent); completeness
+  redone across the cube.  Open: the vacuous case (empty extents identified across inner
+  annotations, §10.24–10.25), and whether Maehara closes (the merge interpolant is now a formula).
+
+**The arrow atom `In`: paper check done (2026-11-07)** — `docs/v12-modal-extensions.md` §12.
+`In(u↑, t)`: the arrow just taken is in `u`'s extent with content `t` ("`Here` along the arrow").
+Soundness easy (`Ind := Eq`, shapes dropped); tree completeness closes on paper; cut elimination
+and Craig for K/KT look plausible (the counterexample's interpolant is `◇_y ∃e(In(y'↑,e) ∧
+S(y.dia,e))`).  Needs the user's decision: identity (sharing forced) vs indiscernibility.
+
+### S5: prospects (discussed 2026-11-07)
+
+Fine 1979 (JSL 44): interpolation fails for every constant-domain first-order modal logic
+between K and S5, and for first-order S5.  Fitting 2002 (JSL 67) restores S5 interpolation by
+adding propositional quantifiers (the interpolant may need them); Areces, Blackburn and Marx
+restore it with nominals.  The failure looks like an expressive gap (the interpolant must bind an
+individual of another world), which our `◇X`-typed variables with `◇_c` may supply, so S5
+interpolation in our language would be a Fitting-style result with an independently motivated
+language; Fine's theorem itself (base-language interpolants) stands.  Our K-family results do not
+contradict known theorems (no Barcan, varying domains).
+
+**Step (1) done (2026-11-07): Fine's counterexample has an interpolant in our language**
+(`QML_v12m_FineExample.lean`, sorry-free).  Fine's valid entailment (varying domains, no Barcan)
+is `p ∧ □∀x□(p → Fx) ⊢ q → □∀x◇(q ∧ Fx)`.  Its classical validity predicates `F` at the actual
+world of objects of other worlds, possibly non-existent there.  In our language an object of `v`
+is read at a further world only through a modal type, so `x : □Var`, read as `x.keep.here` (T + 4
+expose only `keep`).  Translated so, `Fine.interpolant`: with T, 4 and B, `φ ⊢ χ` and `χ ⊢ ψ` for
+`χ = ∀y:□Var. F(y.here)` (every necessary object, as realised here, is `F`), whose only relation
+symbol `F` occurs in both; `Fine.interpolant_S5` for `ModalSys.S5`.  `φ ⊢ χ`: `T_box` twice.
+`χ ⊢ ψ`: `B_box` on the closed `q ∧ χ`, then in the `◇` view `χ` instantiated at `x.keep`
+(`SubE.proj_here_eta`).  The interpolant is of the kind Fitting's propositional quantifiers and
+the hybrid repairs supply, from the language's own means.  **Pinned (user, 2026-11-07):** S5 cut
+elimination and interpolation wait; KT and S4 first.  Plan: (1) translate Fine's counterexample
+and look for an interpolant by hand (needs the paper; the user may have it); (2) hypersequents,
+not analytic cut (cut formulas mix languages, so Maehara fails with analytic cut), components as
+views of the cluster, the paper check aimed at quantifier rules with an eigenvariable in another
+component; (3) prerequisites KT (Here rules), then weak S5, then the strong forms.
+
 ## 5. Craig interpolation
 
 **Goal.** If `φ ⊢ ψ`, there is `θ` using only the non-logical symbols common to `φ` and `ψ` with
@@ -316,10 +638,20 @@ method on cut-free GK, no paper surprises:
 * `repl` with `t = s` and `P(t)` on different sides: `t = s → χ'` (equality is logical).
 
 *"Common language" as decided:* relation symbols only; equality logical; function symbols, the
-declared variables and the witness addresses unrestricted (both sides share the context).  *Open:*
-a condition on function symbols (with equality they can occur in `t = s → χ'` and in instantiated
-terms; the usual route is to replace functions by their graphs), and the other systems of the cube
-(cut elimination is only proved for K).
+declared variables and the witness addresses unrestricted (both sides share the context).
+
+*Possible to-do, not urgent (user, 2026-11-07): the function-symbol condition.*  Foreign function
+symbols enter the interpolant through instantiation terms and `repl`'s `t = s → χ'`.  First-order
+logic abstracts them by a variable quantified at the top; here that fails, since a term like
+`f(x.dia)` inside `◇_x` cannot be named by any outer variable (only `x`'s own content is visible in
+its view).  Two routes: (a) Maehara with the abstraction done *inside* views (`◇_x ∃z R(z)`),
+plausible because function symbols are read per world (occurrences at different worlds are
+unrelated, those in one world merge into one scope); needs a term-abstraction operation and an
+anti-substitution lemma for GK, and a paper check that side 2 survives the local abstraction where
+`◇_xL` meets `□_x` hypotheses; (b) graphs `R_f` with totality and functionality axioms, which must
+hold at every world (hypotheses `□ᵏ Ax` up to the modal depth), plus signature extension.
+Estimate 2 000 to 4 000 lines.  Also open: the other systems of the cube (cut elimination is only
+proved for K).
 
 Notes before starting:
 - **Why it would be interesting.** Interpolation holds for the standard *propositional* normal modal

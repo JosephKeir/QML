@@ -1,4 +1,4 @@
-import QML.QML_v12m_GKSubst
+import QML.QML_v12m_GKShift
 import QML.QML_v12m_Stages
 
 /-!
@@ -15,8 +15,13 @@ the heights (`GK.CutIH`).
   principal formulas are kept), then on the components (a lighter formula).  At a quantifier the
   eigenvariable is replaced by the term (`GK.subst`, `GK.instEigenR`/`GK.instEigenL`), which
   keeps the weight (`WFF.weight_subst`).  At `□`/`◇_x` the premises are cut in the view, after
-  moving the `□`-view premise into the `◇_x` view (`GK.monoCtx`); two `◇` formulas meet only
+  moving the `□`-view premise into the `◇_x` view (`GK.Into`); two `◇` formulas meet only
   with the same witness.
+* Under 4 a premise also has the cut formula's 4-copy (`□(shift φ)` on the left, or
+  `◇_{y.keep}(shift θ)` on the right), as heavy as the cut formula.  It is cut first, against the
+  other side's conclusion **re-derived one view in**: that side's premise shifted (`GK.shiftD`),
+  the rule applied in the view (`GK.boxCut`, `GK.copyCut`).  The re-derivation is as high as the
+  other side's derivation and the copy's premise is lower, so the sum of heights drops.
 * Atoms are principal on the right only in axioms, where the atom is already a hypothesis; so
   `repl`, on atoms, never needs a reduction of its own.
 -/
@@ -180,6 +185,92 @@ macro "lsub" : tactic =>
          List.mem_singleton] at ha ⊢
        tauto))
 
+/-- Where the `□` view's derivations go: the `□` view itself, or a `◇_x` view (`GK.monoCtx`). -/
+structure Into (σ : Signature) (Γ V : Ctx) where
+  M : WFF σ Γ.boxIn 0 → WFF σ V 0
+  weight : ∀ χ, (M χ).weight = χ.weight
+  tr : ∀ {k : ℕ} {Δ Θ : List (WFF σ Γ.boxIn 0)}, GK σ k Γ.boxIn Δ Θ →
+    GK σ k V (Δ.map M) (Θ.map M)
+
+def Into.self (Γ : Ctx) : Into σ Γ Γ.boxIn :=
+  ⟨id, fun _ => rfl, fun p => by rw [List.map_id, List.map_id]; exact p⟩
+
+def Into.dia (Γ : Ctx) [Γ.Presented] (x : VarSymb) : Into σ Γ (Γ.diaIn x) :=
+  ⟨WFF.mono (Ctx.le_boxIn_diaIn Γ x), WFF.weight_mono _, fun p => p.monoCtx _⟩
+
+theorem Into.self_M (Γ : Ctx) : (Into.self (σ := σ) Γ).M = id := rfl
+
+theorem Into.dia_M (Γ : Ctx) [Γ.Presented] (x : VarSymb) :
+    (Into.dia (σ := σ) Γ x).M = WFF.mono (Ctx.le_boxIn_diaIn Γ x) := rfl
+
+/-- List inclusions between rearrangements with copies, optionally through one inclusion. -/
+macro "lsub4" : tactic =>
+  `(tactic|
+    (intro a ha
+     clear * - ha
+     try simp only [Into.self_M, Into.dia_M, List.map_id, id_eq, List.map_append, List.map_cons,
+       List.map_nil, cp4_append, kp4_append, List.mem_cons, List.mem_append,
+       List.mem_singleton] at ha ⊢
+     tauto))
+
+macro "lsub4" " using " h:term : tactic =>
+  `(tactic|
+    (intro a ha
+     have hh := @$h a
+     clear * - ha hh
+     try simp only [Into.self_M, Into.dia_M, List.map_id, id_eq, List.map_append, List.map_cons,
+       List.map_nil, cp4_append, kp4_append, List.mem_cons, List.mem_append,
+       List.mem_singleton] at ha hh ⊢
+     tauto))
+
+/-! ## The copies -/
+
+theorem mem_cp4 {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = true) {Δ₁ : List (WFF σ Γ.boxIn 0)}
+    {χ : WFF σ Γ.boxIn 0} (h : χ ∈ Δ₁) :
+    WFF.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots χ) ∈ cp4 Δ₁ := by
+  unfold cp4; rw [dif_pos hF]; exact List.mem_map_of_mem h
+
+theorem mem_kp4 {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = true) {L : List (WFF σ Γ 0)}
+    {y : VarSymb} {hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)} {θ : WFF σ (Γ.diaIn y) 0}
+    (h : WFF.dia y hy θ ∈ L) :
+    WFF.dia (.step y .keep) (Ctx.exists_keep_dia hF hy)
+      (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots θ) ∈ kp4 L := by
+  unfold kp4; rw [dif_pos hF]; exact List.mem_flatMap.mpr ⟨_, h, List.mem_singleton_self _⟩
+
+/-- The members of `L` in `Θ` carry every copy of `L` but `A`'s. -/
+theorem kp4_split {Γ : Ctx} [Γ.NoSlots] {A : WFF σ Γ 0} {L Θ : List (WFF σ Γ 0)}
+    (h : L ⊆ A :: Θ) : kp4 L ⊆ kp4 [A] ++ kp4 (L.filter fun χ => decide (χ ∈ Θ)) := by
+  unfold kp4; split
+  · intro a ha
+    obtain ⟨b, hb, ha⟩ := List.mem_flatMap.mp ha
+    by_cases hbΘ : b ∈ Θ
+    · exact List.mem_append_right _
+        (List.mem_flatMap.mpr ⟨b, List.mem_filter.mpr ⟨hb, decide_eq_true hbΘ⟩, ha⟩)
+    · have he := (List.mem_cons.mp (h hb)).resolve_right hbΘ
+      subst he
+      exact List.mem_append_left _ (List.mem_flatMap.mpr ⟨b, List.mem_singleton_self _, ha⟩)
+  · exact fun _ h => h
+
+theorem kp4_drop {Γ : Ctx} [Γ.NoSlots] {A : WFF σ Γ 0} {L Θ : List (WFF σ Γ 0)}
+    (h : L ⊆ A :: Θ) (hk : kp4 [A] = []) :
+    kp4 L ⊆ kp4 (L.filter fun χ => decide (χ ∈ Θ)) := by
+  have e := kp4_split h
+  rwa [hk, List.nil_append] at e
+
+theorem filter_sub {Γ : Ctx} {L Θ : List (WFF σ Γ 0)} :
+    L.filter (fun χ => decide (χ ∈ Θ)) ⊆ Θ :=
+  fun _ h => of_decide_eq_true (List.mem_filter.mp h).2
+
+/-- Only a `◇` formula has a copy. -/
+theorem kp4_single_ne {Γ : Ctx} [Γ.NoSlots] {A : WFF σ Γ 0} (h : kp4 [A] ≠ []) :
+    ∃ y hy θ, A = WFF.dia y hy θ := by
+  unfold kp4 at h
+  split at h
+  · cases A
+    case dia y hy θ => exact ⟨y, hy, θ, rfl⟩
+    all_goals exact absurd rfl h
+  · exact absurd rfl h
+
 /-! ## The induction -/
 
 /-- The induction hypothesis: cut on a lighter formula at any heights, or on one as heavy with a
@@ -213,25 +304,41 @@ inductive LeftPrin (σ : Signature) {Γ : Ctx} :
           (WFF.weaken hu.root T))
         (Θ.map (WFF.weaken hu.root T)) →
       LeftPrin σ (.ex T (WFF.bindFree u hu Ctx.NoSlots.slots T φ)) m Δ Θ
-  | box {φ φ' : WFF σ Γ.boxIn 0} {Δ₁ : List (WFF σ Γ.boxIn 0)} {m m' : ℕ}
-      {Δ Θ : List (WFF σ Γ 0)} :
+  | box [Γ.NoSlots] {φ : WFF σ Γ.boxIn 0} (φ' : WFF σ Γ.boxIn 0) (Δ₂ : List (WFF σ Γ.boxIn 0))
+      (L₂ : List (WFF σ Γ 0)) {m m' : ℕ} {Δ Θ : List (WFF σ Γ 0)} :
       m' < m → WFF.box (Γ := Γ) φ' ∈ Θ →
-      (∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ WFF.box (Γ := Γ) φ :: Δ) → GK σ m' Γ.boxIn Δ₁ [φ'] →
-      LeftPrin σ (WFF.box φ) m Δ Θ
-  | boxDia {φ : WFF σ Γ.boxIn 0} (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
-      {ψ : WFF σ (Γ.diaIn x) 0} {Δ₁ : List (WFF σ Γ.boxIn 0)}
-      {Θ₁ : List (WFF σ (Γ.diaIn x) 0)} {m m' : ℕ} {Δ Θ : List (WFF σ Γ 0)} :
+      (∀ χ ∈ Δ₂, WFF.box (Γ := Γ) χ ∈ WFF.box (Γ := Γ) φ :: Δ) → L₂ ⊆ Θ →
+      GK σ m' Γ.boxIn (Δ₂ ++ cp4 Δ₂) (φ' :: kp4 L₂) → LeftPrin σ (WFF.box φ) m Δ Θ
+  | boxSerial [Γ.NoSlots] {φ : WFF σ Γ.boxIn 0} (hD : ModalSys.D = true)
+      (Δ₂ : List (WFF σ Γ.boxIn 0)) (L₂ : List (WFF σ Γ 0)) {m m' : ℕ} {Δ Θ : List (WFF σ Γ 0)} :
+      m' < m → (∀ χ ∈ Δ₂, WFF.box (Γ := Γ) χ ∈ WFF.box (Γ := Γ) φ :: Δ) → L₂ ⊆ Θ →
+      GK σ m' Γ.boxIn (Δ₂ ++ cp4 Δ₂) (kp4 L₂) → LeftPrin σ (WFF.box φ) m Δ Θ
+  | boxDia [Γ.NoSlots] {φ : WFF σ Γ.boxIn 0} (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+      (ψ : WFF σ (Γ.diaIn x) 0) (Δ₂ : List (WFF σ Γ.boxIn 0)) (Θ₂ : List (WFF σ (Γ.diaIn x) 0))
+      (L₂ : List (WFF σ Γ 0)) {m m' : ℕ} {Δ Θ : List (WFF σ Γ 0)} :
       m' < m → .dia x hx ψ ∈ Δ →
-      (∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ WFF.box (Γ := Γ) φ :: Δ) →
-      (∀ χ ∈ Θ₁, .dia x hx χ ∈ Θ) →
-      GK σ m' (Γ.diaIn x) (ψ :: Δ₁.map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))) Θ₁ →
+      (∀ χ ∈ Δ₂, WFF.box (Γ := Γ) χ ∈ WFF.box (Γ := Γ) φ :: Δ) →
+      (∀ χ ∈ Θ₂, .dia x hx χ ∈ Θ) → L₂ ⊆ Θ →
+      GK σ m' (Γ.diaIn x) (ψ :: (Δ₂ ++ cp4 Δ₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))
+        (Θ₂ ++ (kp4 L₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))) →
       LeftPrin σ (WFF.box φ) m Δ Θ
-  | dia (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {ψ : WFF σ (Γ.diaIn x) 0}
-      {Δ₁ : List (WFF σ Γ.boxIn 0)} {Θ₁ : List (WFF σ (Γ.diaIn x) 0)} {m m' : ℕ}
-      {Δ Θ : List (WFF σ Γ 0)} :
-      m' < m → (∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) → (∀ χ ∈ Θ₁, .dia x hx χ ∈ Θ) →
-      GK σ m' (Γ.diaIn x) (ψ :: Δ₁.map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))) Θ₁ →
+  | dia [Γ.NoSlots] (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+      {ψ : WFF σ (Γ.diaIn x) 0} (Δ₂ : List (WFF σ Γ.boxIn 0)) (Θ₂ : List (WFF σ (Γ.diaIn x) 0))
+      (L₂ : List (WFF σ Γ 0)) {m m' : ℕ} {Δ Θ : List (WFF σ Γ 0)} :
+      m' < m → (∀ χ ∈ Δ₂, WFF.box (Γ := Γ) χ ∈ Δ) → (∀ χ ∈ Θ₂, .dia x hx χ ∈ Θ) → L₂ ⊆ Θ →
+      GK σ m' (Γ.diaIn x) (ψ :: (Δ₂ ++ cp4 Δ₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))
+        (Θ₂ ++ (kp4 L₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))) →
       LeftPrin σ (.dia x hx ψ) m Δ Θ
+
+/-- A rule's boxed hypotheses either avoid the cut formula or it is one of them. -/
+theorem split_boxes {Γ : Ctx} {A : WFF σ Γ 0} {Δ : List (WFF σ Γ 0)}
+    {Δ₁ : List (WFF σ Γ.boxIn 0)} (h : ∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ A :: Δ) :
+    (∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) ∨ ∃ φ, A = WFF.box φ := by
+  by_cases hall : ∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ
+  · exact .inl hall
+  · push_neg at hall
+    obtain ⟨χ, hχ, hn⟩ := hall
+    exact .inr ⟨χ, ((List.mem_cons.mp (h χ hχ)).resolve_right hn).symm⟩
 
 /-- ⭐**The cut moves up the right derivation** until the cut formula is principal there.  The
     cut formula is not an atom (those are settled at the left derivation's axioms) and not `⊥`
@@ -323,26 +430,22 @@ theorem permRight {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] (A :
       obtain ⟨k, e⟩ := ih A (Δ := WFF.instantiate Ctx.NoSlots.slots s' P :: Δ) (Θ := Θ)
         (.inr ⟨hw, by omega⟩) (d₁.weaken (by lsub) (by lsub)) (r.weaken (by lsub) (by lsub))
       exact .inl ⟨_, .repl hP t s' h₁' h₂' e⟩
-  | @boxR _ _ _ _ Δ₁ φ h₁ h₂ r =>
-      by_cases hall : ∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ
-      · exact .inl ⟨_, .boxR h₁ hall r⟩
-      · push_neg at hall
-        obtain ⟨χ, hχ, hn⟩ := hall
-        have he := (List.mem_cons.mp (h₂ χ hχ)).resolve_right hn
-        subst he
-        exact .inr (.box (Nat.lt_succ_self _) h₁ h₂ r)
-  | @diaL _ _ _ _ x hx ψ Δ₁ Θ₁ h₁ h₂ h₃ r =>
+  | boxR h₁ h₂ h₃ r =>
+      rcases split_boxes h₂ with hall | ⟨φ, rfl⟩
+      · exact .inl ⟨_, .boxR h₁ hall h₃ r⟩
+      · exact .inr (.box _ _ _ (Nat.lt_succ_self _) h₁ h₂ h₃ r)
+  | serial hD h₂ h₃ r =>
+      rcases split_boxes h₂ with hall | ⟨φ, rfl⟩
+      · exact .inl ⟨_, .serial hD hall h₃ r⟩
+      · exact .inr (.boxSerial hD _ _ (Nat.lt_succ_self _) h₂ h₃ r)
+  | diaL x hx h₁ h₂ h₃ h₄ r =>
       rcases List.mem_cons.mp h₁ with he | h₁'
       · subst he
-        refine .inr (.dia x hx (Nat.lt_succ_self _) (fun χ hχ => ?_) h₃ r)
+        refine .inr (.dia x hx _ _ _ (Nat.lt_succ_self _) (fun χ hχ => ?_) h₃ h₄ r)
         exact (List.mem_cons.mp (h₂ χ hχ)).resolve_left fun he => by cases he
-      · by_cases hall : ∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ
-        · exact .inl ⟨_, .diaL x hx h₁' hall h₃ r⟩
-        · push_neg at hall
-          obtain ⟨χ, hχ, hn⟩ := hall
-          have he := (List.mem_cons.mp (h₂ χ hχ)).resolve_right hn
-          subst he
-          exact .inr (.boxDia x hx (Nat.lt_succ_self _) h₁' h₂ h₃ r)
+      · rcases split_boxes h₂ with hall | ⟨φ, rfl⟩
+        · exact .inl ⟨_, .diaL x hx h₁' hall h₃ h₄ r⟩
+        · exact .inr (.boxDia x hx _ _ _ _ (Nat.lt_succ_self _) h₁' h₂ h₃ h₄ r)
 
 /-- The members of `Δ₁` whose box is in `Δ`. -/
 abbrev boxedIn {Γ : Ctx} (Δ : List (WFF σ Γ 0)) (Δ₁ : List (WFF σ Γ.boxIn 0)) :
@@ -360,6 +463,370 @@ theorem boxedIn_sub {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {Δ₁ : List (WFF σ �
 theorem boxedIn_mem {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {Δ₁ : List (WFF σ Γ.boxIn 0)}
     {χ : WFF σ Γ.boxIn 0} (h : χ ∈ boxedIn Δ Δ₁) : WFF.box (Γ := Γ) χ ∈ Δ :=
   of_decide_eq_true (List.mem_filter.mp h).2
+
+theorem box_hr {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ.boxIn 0}
+    {Δ₁ Δ₂ : List (WFF σ Γ.boxIn 0)}
+    (h : ∀ χ ∈ Δ₂, WFF.box (Γ := Γ) χ ∈ WFF.box (Γ := Γ) φ :: Δ) :
+    Δ₂ ++ cp4 Δ₂ ⊆ φ :: (cp4 [φ] ++ ((Δ₁ ++ boxedIn Δ Δ₂) ++ cp4 (Δ₁ ++ boxedIn Δ Δ₂))) := by
+  have h' : Δ₂ ⊆ [φ] ++ boxedIn Δ Δ₂ := fun χ hχ => by
+    rcases boxedIn_sub h χ hχ with rfl | hb
+    · exact List.mem_append_left _ (List.mem_singleton_self _)
+    · exact List.mem_append_right _ hb
+  have hc := cp4_sub h'
+  rw [cp4_append] at hc
+  intro a ha
+  rcases List.mem_append.mp ha with ha | ha
+  · rcases List.mem_append.mp (h' ha) with ha | ha
+    · rw [List.mem_singleton.mp ha]; exact List.mem_cons_self
+    · exact List.mem_cons_of_mem _
+        (List.mem_append_right _ (List.mem_append_left _ (List.mem_append_right _ ha)))
+  · rcases List.mem_append.mp (hc ha) with ha | ha
+    · exact List.mem_cons_of_mem _ (List.mem_append_left _ ha)
+    · refine List.mem_cons_of_mem _ (List.mem_append_right _ (List.mem_append_right _ ?_))
+      rw [cp4_append]; exact List.mem_append_right _ ha
+
+/-! ## The modal reductions -/
+
+/-- ⭐**`□φ` principal on both sides**, in the view `V` the right premise lives in.  Under 4 the
+    right premise also has `□(shift φ)`: cut it first, against the left conclusion re-derived
+    inside the `□` view (the left premise shifted, then `□R` there); then cut `φ`. -/
+theorem boxCut {w s : ℕ} (ih : CutIH σ w s) {Γ V : Ctx} [Γ.Presented] [V.Presented]
+    (I : Into σ Γ V) {φ : WFF σ Γ.boxIn 0} (hw : (WFF.box (Γ := Γ) φ).weight = w) {n' m' : ℕ}
+    (hs : n' + 1 + m' < s) {Δ₁ : List (WFF σ Γ.boxIn 0)} {L₁ : List (WFF σ Γ 0)}
+    (p : GK σ n' Γ.boxIn (Δ₁ ++ cp4 Δ₁) (φ :: kp4 L₁)) {Δ' Θ' Δr : List (WFF σ V 0)}
+    (h₁ : (Δ₁ ++ cp4 Δ₁).map I.M ⊆ Δ') (h₂ : (kp4 L₁).map I.M ⊆ Θ')
+    (hr : Δr ⊆ I.M φ :: ((cp4 [φ]).map I.M ++ Δ')) (r : GK σ m' V Δr Θ') :
+    ∃ k, GK σ k V Δ' Θ' := by
+  have hφ : (I.M φ).weight < w := by rw [I.weight, ← hw]; simp only [WFF.weight]; omega
+  have hp : GK σ n' V Δ' (I.M φ :: Θ') := (I.tr p).weaken h₁ (by
+    rw [List.map_cons]; exact List.cons_subset_cons _ h₂)
+  obtain ⟨k, e⟩ : ∃ k, GK σ k V (I.M φ :: Δ') Θ' := by
+    by_cases hF : ModalSys.Four = true
+    · have hc : cp4 [φ] =
+          [WFF.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots φ)] := by
+        unfold cp4; rw [dif_pos hF]; rfl
+      obtain ⟨Lv, hlv⟩ := Ctx.Presented.leveled Γ.boxIn
+      have q := p.shiftD (Ctx.shifts_boxIn_boxIn hF Γ) hlv
+      rw [List.map_append, shift_cp4 hF, List.map_cons, shift_kp4 hF] at q
+      have D : GK σ (n' + 1) Γ.boxIn (Δ₁ ++ cp4 Δ₁)
+          (WFF.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots φ) :: kp4 L₁) :=
+        .boxR List.mem_cons_self (fun χ hχ => by
+            obtain ⟨χ₀, hχ₀, rfl⟩ := List.mem_map.mp hχ
+            exact List.mem_append_right _ (mem_cp4 hF hχ₀))
+          (fun _ h => List.mem_cons_of_mem _ h) q
+      rw [hc] at hr
+      refine ih (I.M (WFF.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots φ)))
+        (Δ := I.M φ :: Δ') (Θ := Θ') (.inr ⟨?_, by omega⟩) ((I.tr D).weaken ?_ ?_)
+        (r.weaken ?_ (fun _ h => h))
+      · rw [I.weight, ← hw]; simp only [WFF.weight, WFF.weight_shift]
+      · exact fun a ha => List.mem_cons_of_mem _ (h₁ ha)
+      · rw [List.map_cons]; exact List.cons_subset_cons _ h₂
+      · intro a ha
+        rcases List.mem_cons.mp (hr ha) with rfl | h
+        · exact List.mem_cons_of_mem _ List.mem_cons_self
+        · rcases List.mem_append.mp h with h | h
+          · rw [List.map_cons, List.map_nil, List.mem_singleton] at h
+            subst h
+            exact List.mem_cons_self
+          · exact List.mem_cons_of_mem _ (List.mem_cons_of_mem _ h)
+    · rw [cp4_of_not (Bool.eq_false_iff.mpr hF), List.map_nil, List.nil_append] at hr
+      exact ⟨_, r.weaken hr (fun _ h => h)⟩
+  exact ih (I.M φ) (.inl hφ) hp e
+
+/-- ⭐**A `◇_y θ`'s copy `◇_{y.keep}(shift θ)` cut out of a premise** in the view `V`, against the
+    right conclusion re-derived inside the `□` view (its premise shifted into the `◇_{y.keep}`
+    view, then `◇_xL` there).  Without 4 there is no copy. -/
+theorem copyCut {w s : ℕ} (ih : CutIH σ w s) {Γ V : Ctx} [Γ.Presented] [V.Presented]
+    (I : Into σ Γ V) {y : VarSymb} {hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)}
+    {θ : WFF σ (Γ.diaIn y) 0} (hw : (WFF.dia y hy θ).weight = w) {n' m' : ℕ}
+    (hs : n' + (m' + 1) < s) {Δ₂ : List (WFF σ Γ.boxIn 0)} {Θ₂ : List (WFF σ (Γ.diaIn y) 0)}
+    {L₂ : List (WFF σ Γ 0)}
+    (r : GK σ m' (Γ.diaIn y) (θ :: (Δ₂ ++ cp4 Δ₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ y)))
+      (Θ₂ ++ (kp4 L₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ y))))
+    {Δp Θp Θ' : List (WFF σ V 0)} (hp : Θp ⊆ (kp4 [WFF.dia y hy θ]).map I.M ++ Θ')
+    (p : GK σ n' V Δp Θp) :
+    ∃ k, GK σ k V (Δp ++ (Δ₂ ++ cp4 Δ₂).map I.M)
+      (Θ' ++ (kp4 (Θ₂.map (WFF.dia y hy) ++ L₂)).map I.M) := by
+  by_cases hF : ModalSys.Four = true
+  swap
+  · rw [kp4_of_not (Bool.eq_false_iff.mpr hF), List.map_nil, List.nil_append] at hp
+    exact ⟨_, p.weaken (fun _ h => List.mem_append_left _ h)
+      (fun _ h => List.mem_append_left _ (hp h))⟩
+  -- the right premise one view further in
+  obtain ⟨Lv, hlv⟩ := Ctx.Presented.leveled (Γ.diaIn y)
+  have q := r.shiftD (Ctx.shifts_diaIn_keep hF Γ y) hlv
+  have hcomm : ∀ X : List (WFF σ Γ.boxIn 0),
+      (X.map (WFF.mono (Ctx.le_boxIn_diaIn Γ y))).map
+          (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots) =
+        (X.map (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots)).map
+          (WFF.mono (Ctx.le_boxIn_diaIn Γ.boxIn (.step y .keep))) := fun X => by
+    rw [List.map_map, List.map_map]
+    exact List.map_congr_left fun χ _ => shift_mono_diaIn hF y χ
+  have e₁ : (θ :: (Δ₂ ++ cp4 Δ₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ y))).map
+        (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots) =
+      WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots θ ::
+        (Δ₂.map (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots) ++
+          cp4 (Δ₂.map (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots))).map
+          (WFF.mono (Ctx.le_boxIn_diaIn Γ.boxIn (.step y .keep))) := by
+    rw [List.map_cons, hcomm]
+    congr 2
+    rw [List.map_append, shift_cp4 hF]
+  have e₂ : (Θ₂ ++ (kp4 L₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ y))).map
+        (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots) =
+      Θ₂.map (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots) ++
+        (kp4 (kp4 L₂)).map (WFF.mono (Ctx.le_boxIn_diaIn Γ.boxIn (.step y .keep))) := by
+    rw [List.map_append, hcomm, shift_kp4 hF]
+  rw [e₁, e₂] at q
+  -- the right conclusion, kept: `◇_{y.keep}(shift θ)` on the left
+  have E : GK σ (m' + 1) Γ.boxIn
+      (WFF.dia (.step y .keep) (Ctx.exists_keep_dia hF hy)
+        (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots θ) :: (Δ₂ ++ cp4 Δ₂))
+      (kp4 (Θ₂.map (WFF.dia y hy) ++ L₂)) :=
+    .diaL (.step y .keep) (Ctx.exists_keep_dia hF hy) List.mem_cons_self
+      (fun χ hχ => by
+        obtain ⟨χ₀, hχ₀, rfl⟩ := List.mem_map.mp hχ
+        exact List.mem_cons_of_mem _ (List.mem_append_right _ (mem_cp4 hF hχ₀)))
+      (fun χ hχ => by
+        obtain ⟨χ₀, hχ₀, rfl⟩ := List.mem_map.mp hχ
+        exact mem_kp4 hF (List.mem_append_left _ (List.mem_map_of_mem hχ₀)))
+      (kp4_sub fun _ h => List.mem_append_right _ h) q
+  have hk : kp4 [WFF.dia y hy θ] = [WFF.dia (.step y .keep) (Ctx.exists_keep_dia hF hy)
+      (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots θ)] := by
+    unfold kp4; rw [dif_pos hF]; rfl
+  rw [hk, List.map_cons, List.map_nil, List.singleton_append] at hp
+  refine ih (I.M (WFF.dia (.step y .keep) (Ctx.exists_keep_dia hF hy)
+      (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots θ)))
+    (Δ := Δp ++ (Δ₂ ++ cp4 Δ₂).map I.M)
+    (Θ := Θ' ++ (kp4 (Θ₂.map (WFF.dia y hy) ++ L₂)).map I.M) (.inr ⟨?_, by omega⟩)
+    (p.weaken (fun _ h => List.mem_append_left _ h) ?_) ((I.tr E).weaken ?_ ?_)
+  · rw [I.weight, ← hw]; simp only [WFF.weight, WFF.weight_shift]
+  · intro a ha
+    rcases List.mem_cons.mp (hp ha) with rfl | h
+    · exact List.mem_cons_self
+    · exact List.mem_cons_of_mem _ (List.mem_append_left _ h)
+  · rw [List.map_cons]
+    exact List.cons_subset_cons _ fun _ h => List.mem_append_right _ h
+  · exact fun _ h => List.mem_append_right _ h
+
+/-- `□φ` principal in a left `□R`: the right derivation's rule boxes `φ`. -/
+theorem boxPrin {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] {φ : WFF σ Γ.boxIn 0}
+    {n' m : ℕ} {Δ Θ : List (WFF σ Γ 0)} (hw : (WFF.box (Γ := Γ) φ).weight = w)
+    (hs : n' + 1 + m = s) {Δ₁ : List (WFF σ Γ.boxIn 0)} {L₁ : List (WFF σ Γ 0)}
+    (h₂ : ∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) (h₃ : L₁ ⊆ WFF.box φ :: Θ)
+    (p : GK σ n' Γ.boxIn (Δ₁ ++ cp4 Δ₁) (φ :: kp4 L₁)) (lp : LeftPrin σ (WFF.box φ) m Δ Θ) :
+    ∃ k, GK σ k Γ Δ Θ := by
+  have hL₁ := kp4_drop h₃ (by unfold kp4; split <;> rfl)
+  have hb : ∀ {Δ₂ : List (WFF σ Γ.boxIn 0)}, ∀ χ ∈ Δ₁ ++ boxedIn Δ Δ₂, WFF.box (Γ := Γ) χ ∈ Δ :=
+    fun χ hχ => (List.mem_append.mp hχ).elim (h₂ χ) fun h => boxedIn_mem h
+  have hL : ∀ {L₂ : List (WFF σ Γ 0)}, L₂ ⊆ Θ →
+      (L₁.filter fun χ => decide (χ ∈ Θ)) ++ L₂ ⊆ Θ := fun h a ha =>
+    (List.mem_append.mp ha).elim (fun h' => filter_sub h') (fun h' => h h')
+  cases lp with
+  | box φ' Δ₂ L₂ hm h₁' h₂' h₃' r =>
+      have U := box_hr (Δ₁ := Δ₁) h₂'
+      obtain ⟨k, e⟩ := boxCut ih (Into.self Γ) hw (by omega) p
+        (Δ' := (Δ₁ ++ boxedIn Δ Δ₂) ++ cp4 (Δ₁ ++ boxedIn Δ Δ₂))
+        (Θ' := φ' :: kp4 ((L₁.filter fun χ => decide (χ ∈ Θ)) ++ L₂))
+        (by lsub4) (by lsub4 using hL₁) (by simpa only [Into.self_M, List.map_id, id_eq] using U)
+        (r.weaken (fun _ h => h) (by lsub4))
+      exact ⟨_, .boxR h₁' hb (hL h₃') e⟩
+  | boxSerial hD Δ₂ L₂ hm h₂' h₃' r =>
+      have U := box_hr (Δ₁ := Δ₁) h₂'
+      obtain ⟨k, e⟩ := boxCut ih (Into.self Γ) hw (by omega) p
+        (Δ' := (Δ₁ ++ boxedIn Δ Δ₂) ++ cp4 (Δ₁ ++ boxedIn Δ Δ₂))
+        (Θ' := kp4 ((L₁.filter fun χ => decide (χ ∈ Θ)) ++ L₂))
+        (by lsub4) (by lsub4 using hL₁) (by simpa only [Into.self_M, List.map_id, id_eq] using U)
+        (r.weaken (fun _ h => h) (by lsub4))
+      exact ⟨_, .serial hD hb (hL h₃') e⟩
+  | boxDia x hx ψ Δ₂ Θ₂ L₂ hm hψ h₂' h₃' h₄' r =>
+      have U := List.map_subset (WFF.mono (Ctx.le_boxIn_diaIn Γ x)) (box_hr (Δ₁ := Δ₁) h₂')
+      have hL₁' := List.map_subset (WFF.mono (Ctx.le_boxIn_diaIn Γ x)) hL₁
+      obtain ⟨k, e⟩ := boxCut ih (Into.dia Γ x) hw (by omega) p
+        (Δ' := ψ :: ((Δ₁ ++ boxedIn Δ Δ₂) ++ cp4 (Δ₁ ++ boxedIn Δ Δ₂)).map
+          (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))
+        (Θ' := Θ₂ ++ (kp4 ((L₁.filter fun χ => decide (χ ∈ Θ)) ++ L₂)).map
+          (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))
+        (by lsub4) (by lsub4 using hL₁') (by lsub4 using U) (r.weaken (fun _ h => h) (by lsub4))
+      exact ⟨_, .diaL x hx hψ hb h₃' (hL h₄') e⟩
+
+/-- The new copy list's members are conclusions: a `◇_y θ`'s, and the right rule's. -/
+theorem dia_hL {Γ : Ctx} {y : VarSymb} {hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)}
+    {Θ L₁ L₂ : List (WFF σ Γ 0)} {Θ₂ : List (WFF σ (Γ.diaIn y) 0)}
+    (h₃' : ∀ χ ∈ Θ₂, WFF.dia y hy χ ∈ Θ) (h₄' : L₂ ⊆ Θ) :
+    (L₁.filter fun χ => decide (χ ∈ Θ)) ++ (Θ₂.map (WFF.dia y hy) ++ L₂) ⊆ Θ := by
+  intro a ha
+  rcases List.mem_append.mp ha with h | h
+  · exact filter_sub h
+  · rcases List.mem_append.mp h with h | h
+    · obtain ⟨b, hb, rfl⟩ := List.mem_map.mp h
+      exact h₃' b hb
+    · exact h₄' h
+
+/-- `◇_y θ` from a left `□R`'s copies, principal in a right `◇_yL`. -/
+theorem diaPrinBoxR {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] {y : VarSymb}
+    {hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)} {θ : WFF σ (Γ.diaIn y) 0} {n' m : ℕ}
+    {Δ Θ : List (WFF σ Γ 0)} (hw : (WFF.dia y hy θ).weight = w) (hs : n' + 1 + m = s)
+    {Δ₁ : List (WFF σ Γ.boxIn 0)} {φ : WFF σ Γ.boxIn 0} {L₁ : List (WFF σ Γ 0)}
+    (h₁ : WFF.box (Γ := Γ) φ ∈ Θ) (h₂ : ∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ)
+    (h₃ : L₁ ⊆ WFF.dia y hy θ :: Θ) (p : GK σ n' Γ.boxIn (Δ₁ ++ cp4 Δ₁) (φ :: kp4 L₁))
+    (lp : LeftPrin σ (WFF.dia y hy θ) m Δ Θ) : ∃ k, GK σ k Γ Δ Θ := by
+  cases lp with
+  | dia _ _ Δ₂ Θ₂ L₂ hm h₂' h₃' h₄' r =>
+      have hp : φ :: kp4 L₁ ⊆ (kp4 [WFF.dia y hy θ]).map (Into.self Γ).M ++
+          (φ :: kp4 (L₁.filter fun χ => decide (χ ∈ Θ))) := by
+        rw [Into.self_M, List.map_id]
+        intro a ha
+        rcases List.mem_cons.mp ha with rfl | ha
+        · exact List.mem_append_right _ List.mem_cons_self
+        · rcases List.mem_append.mp (kp4_split h₃ ha) with h | h
+          · exact List.mem_append_left _ h
+          · exact List.mem_append_right _ (List.mem_cons_of_mem _ h)
+      obtain ⟨k, e⟩ := copyCut ih (Into.self Γ) hw (by omega) r hp p
+      have hb : ∀ χ ∈ Δ₁ ++ Δ₂, WFF.box (Γ := Γ) χ ∈ Δ :=
+        fun χ hχ => (List.mem_append.mp hχ).elim (h₂ χ) (h₂' χ)
+      exact ⟨_, .boxR h₁ hb (dia_hL h₃' h₄') (e.weaken (by lsub4) (by lsub4))⟩
+
+/-- `◇_y θ` from a left `serial`'s copies, principal in a right `◇_yL`. -/
+theorem diaPrinSerial {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] {y : VarSymb}
+    {hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)} {θ : WFF σ (Γ.diaIn y) 0} {n' m : ℕ}
+    {Δ Θ : List (WFF σ Γ 0)} (hw : (WFF.dia y hy θ).weight = w) (hs : n' + 1 + m = s)
+    (hD : ModalSys.D = true) {Δ₁ : List (WFF σ Γ.boxIn 0)} {L₁ : List (WFF σ Γ 0)}
+    (h₂ : ∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) (h₃ : L₁ ⊆ WFF.dia y hy θ :: Θ)
+    (p : GK σ n' Γ.boxIn (Δ₁ ++ cp4 Δ₁) (kp4 L₁)) (lp : LeftPrin σ (WFF.dia y hy θ) m Δ Θ) :
+    ∃ k, GK σ k Γ Δ Θ := by
+  cases lp with
+  | dia _ _ Δ₂ Θ₂ L₂ hm h₂' h₃' h₄' r =>
+      have hp : kp4 L₁ ⊆ (kp4 [WFF.dia y hy θ]).map (Into.self Γ).M ++
+          kp4 (L₁.filter fun χ => decide (χ ∈ Θ)) := by
+        rw [Into.self_M, List.map_id]; exact kp4_split h₃
+      obtain ⟨k, e⟩ := copyCut ih (Into.self Γ) hw (by omega) r hp p
+      have hb : ∀ χ ∈ Δ₁ ++ Δ₂, WFF.box (Γ := Γ) χ ∈ Δ :=
+        fun χ hχ => (List.mem_append.mp hχ).elim (h₂ χ) (h₂' χ)
+      exact ⟨_, .serial hD hb (dia_hL h₃' h₄') (e.weaken (by lsub4) (by lsub4))⟩
+
+/-- `◇_y θ` from a left `◇_xL` (its copies, or `x = y` and `θ` among its conclusions), principal
+    in a right `◇_yL`: the copy is cut first, then `θ`. -/
+theorem diaPrinDiaL {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] {y : VarSymb}
+    {hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)} {θ : WFF σ (Γ.diaIn y) 0} {n' m : ℕ}
+    {Δ Θ : List (WFF σ Γ 0)} (hw : (WFF.dia y hy θ).weight = w) (hs : n' + 1 + m = s)
+    (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {ψ : WFF σ (Γ.diaIn x) 0}
+    {Δ₁ : List (WFF σ Γ.boxIn 0)} {Θ₁ : List (WFF σ (Γ.diaIn x) 0)} {L₁ : List (WFF σ Γ 0)}
+    (h₁ : WFF.dia x hx ψ ∈ Δ) (h₂ : ∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ)
+    (h₃ : ∀ χ ∈ Θ₁, WFF.dia x hx χ ∈ WFF.dia y hy θ :: Θ) (h₄ : L₁ ⊆ WFF.dia y hy θ :: Θ)
+    (p : GK σ n' (Γ.diaIn x) (ψ :: (Δ₁ ++ cp4 Δ₁).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))
+      (Θ₁ ++ (kp4 L₁).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))))
+    (lp : LeftPrin σ (WFF.dia y hy θ) m Δ Θ) : ∃ k, GK σ k Γ Δ Θ := by
+  cases lp with
+  | dia _ _ Δ₂ Θ₂ L₂ hm h₂' h₃' h₄' r =>
+      have hp : Θ₁ ++ (kp4 L₁).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)) ⊆
+          (kp4 [WFF.dia y hy θ]).map (Into.dia Γ x).M ++
+            (Θ₁ ++ (kp4 (L₁.filter fun χ => decide (χ ∈ Θ))).map
+              (WFF.mono (Ctx.le_boxIn_diaIn Γ x))) := by
+        rw [Into.dia_M]
+        intro a ha
+        rcases List.mem_append.mp ha with h | h
+        · exact List.mem_append_right _ (List.mem_append_left _ h)
+        · obtain ⟨b, hb, rfl⟩ := List.mem_map.mp h
+          rcases List.mem_append.mp (kp4_split h₄ hb) with h | h
+          · exact List.mem_append_left _ (List.mem_map_of_mem h)
+          · exact List.mem_append_right _ (List.mem_append_right _ (List.mem_map_of_mem h))
+      obtain ⟨k, p₁⟩ := copyCut ih (Into.dia Γ x) hw (by omega) r hp p
+      rw [Into.dia_M] at p₁
+      have hb : ∀ χ ∈ Δ₁ ++ Δ₂, WFF.box (Γ := Γ) χ ∈ Δ :=
+        fun χ hχ => (List.mem_append.mp hχ).elim (h₂ χ) (h₂' χ)
+      by_cases hK : ∀ χ ∈ Θ₁, WFF.dia x hx χ ∈ Θ
+      · exact ⟨_, .diaL x hx h₁ hb hK (dia_hL h₃' h₄') (p₁.weaken (by lsub4) (by lsub4))⟩
+      -- `x = y` and `θ` is among the left rule's conclusions: cut it too
+      push_neg at hK
+      obtain ⟨χ₀, hχ₀, hn⟩ := hK
+      obtain ⟨rfl, hχ⟩ := WFF.dia.inj ((List.mem_cons.mp (h₃ χ₀ hχ₀)).resolve_right hn)
+      cases eq_of_heq hχ
+      have hΘ₁ : Θ₁ ⊆ χ₀ :: Θ₁.filter fun χ => decide (WFF.dia x hx χ ∈ Θ) := fun χ hχ => by
+        by_cases hd : WFF.dia x hx χ ∈ Θ
+        · exact List.mem_cons_of_mem _ (List.mem_filter.mpr ⟨hχ, decide_eq_true hd⟩)
+        · rw [eq_of_heq (WFF.dia.inj ((List.mem_cons.mp (h₃ χ hχ)).resolve_right hd)).2]
+          exact List.mem_cons_self
+      have hΘf : ∀ χ ∈ (Θ₁.filter fun χ => decide (WFF.dia x hx χ ∈ Θ)) ++ Θ₂,
+          WFF.dia x hx χ ∈ Θ := fun χ hχ =>
+        (List.mem_append.mp hχ).elim (fun h => of_decide_eq_true (List.mem_filter.mp h).2)
+          (h₃' χ)
+      obtain ⟨k₂, e⟩ := ih χ₀ (Γ := Γ.diaIn x)
+        (Δ := ψ :: ((Δ₁ ++ Δ₂) ++ cp4 (Δ₁ ++ Δ₂)).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))
+        (Θ := ((Θ₁.filter fun χ => decide (WFF.dia x hx χ ∈ Θ)) ++ Θ₂) ++
+          (kp4 ((L₁.filter fun χ => decide (χ ∈ Θ)) ++ (Θ₂.map (WFF.dia x hx) ++ L₂))).map
+            (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))
+        (.inl (by rw [← hw]; simp only [WFF.weight]; omega))
+        (p₁.weaken (by lsub4) (by lsub4 using hΘ₁)) (r.weaken (by lsub4) (by lsub4))
+      exact ⟨_, .diaL x hx h₁ hb hΘf (dia_hL h₃' h₄') e⟩
+
+/-- A left `□R`: `□φ` principal, or a `◇` copy, or the cut vanishes. -/
+theorem leftBoxR {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] (A : WFF σ Γ 0)
+    {n' m : ℕ} {Δ Θ : List (WFF σ Γ 0)} (hw : A.weight = w) (hs : n' + 1 + m = s)
+    (D₁ : GK σ (n' + 1) Γ Δ (A :: Θ)) (d₂ : GK σ m Γ (A :: Δ) Θ)
+    {Δ₁ : List (WFF σ Γ.boxIn 0)} {φ : WFF σ Γ.boxIn 0} {L₁ : List (WFF σ Γ 0)}
+    (h₁ : WFF.box (Γ := Γ) φ ∈ A :: Θ) (h₂ : ∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ)
+    (h₃ : L₁ ⊆ A :: Θ) (p : GK σ n' Γ.boxIn (Δ₁ ++ cp4 Δ₁) (φ :: kp4 L₁)) :
+    ∃ k, GK σ k Γ Δ Θ := by
+  rcases List.mem_cons.mp h₁ with he | _
+  · subst he
+    rcases permRight ih _ hw hs (fun h => by simp [WFF.IsAtom] at h) (fun h => by cases h)
+      D₁ d₂ with done | lp
+    · exact done
+    · exact boxPrin ih hw hs h₂ h₃ p lp
+  · rename_i h₁'
+    by_cases hk : kp4 [A] = []
+    · exact ⟨_, .boxR h₁' h₂ filter_sub
+        (p.weaken (fun _ h => h) (List.cons_subset_cons _ (kp4_drop h₃ hk)))⟩
+    · obtain ⟨y, hy, θ, rfl⟩ := kp4_single_ne hk
+      rcases permRight ih _ hw hs (fun h => by simp [WFF.IsAtom] at h) (fun h => by cases h)
+        D₁ d₂ with done | lp
+      · exact done
+      · exact diaPrinBoxR ih hw hs h₁' h₂ h₃ p lp
+
+/-- A left `serial`: a `◇` copy, or the cut vanishes. -/
+theorem leftSerial {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] (A : WFF σ Γ 0)
+    {n' m : ℕ} {Δ Θ : List (WFF σ Γ 0)} (hw : A.weight = w) (hs : n' + 1 + m = s)
+    (D₁ : GK σ (n' + 1) Γ Δ (A :: Θ)) (d₂ : GK σ m Γ (A :: Δ) Θ) (hD : ModalSys.D = true)
+    {Δ₁ : List (WFF σ Γ.boxIn 0)} {L₁ : List (WFF σ Γ 0)}
+    (h₂ : ∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) (h₃ : L₁ ⊆ A :: Θ)
+    (p : GK σ n' Γ.boxIn (Δ₁ ++ cp4 Δ₁) (kp4 L₁)) : ∃ k, GK σ k Γ Δ Θ := by
+  by_cases hk : kp4 [A] = []
+  · exact ⟨_, .serial hD h₂ filter_sub (p.weaken (fun _ h => h) (kp4_drop h₃ hk))⟩
+  · obtain ⟨y, hy, θ, rfl⟩ := kp4_single_ne hk
+    rcases permRight ih _ hw hs (fun h => by simp [WFF.IsAtom] at h) (fun h => by cases h)
+      D₁ d₂ with done | lp
+    · exact done
+    · exact diaPrinSerial ih hw hs hD h₂ h₃ p lp
+
+/-- A left `◇_xL`: the cut formula among its conclusions or copies, or the cut vanishes. -/
+theorem leftDiaL {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] (A : WFF σ Γ 0)
+    {n' m : ℕ} {Δ Θ : List (WFF σ Γ 0)} (hw : A.weight = w) (hs : n' + 1 + m = s)
+    (D₁ : GK σ (n' + 1) Γ Δ (A :: Θ)) (d₂ : GK σ m Γ (A :: Δ) Θ)
+    (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {ψ : WFF σ (Γ.diaIn x) 0}
+    {Δ₁ : List (WFF σ Γ.boxIn 0)} {Θ₁ : List (WFF σ (Γ.diaIn x) 0)} {L₁ : List (WFF σ Γ 0)}
+    (h₁ : WFF.dia x hx ψ ∈ Δ) (h₂ : ∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ)
+    (h₃ : ∀ χ ∈ Θ₁, WFF.dia x hx χ ∈ A :: Θ) (h₄ : L₁ ⊆ A :: Θ)
+    (p : GK σ n' (Γ.diaIn x) (ψ :: (Δ₁ ++ cp4 Δ₁).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))
+      (Θ₁ ++ (kp4 L₁).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))) :
+    ∃ k, GK σ k Γ Δ Θ := by
+  have hcase : ((∀ χ ∈ Θ₁, WFF.dia x hx χ ∈ Θ) ∧ kp4 [A] = []) ∨
+      ∃ y hy θ, A = WFF.dia y hy θ := by
+    by_cases hK : ∀ χ ∈ Θ₁, WFF.dia x hx χ ∈ Θ
+    · by_cases hk : kp4 [A] = []
+      · exact .inl ⟨hK, hk⟩
+      · exact .inr (kp4_single_ne hk)
+    · push_neg at hK
+      obtain ⟨χ, hχ, hn⟩ := hK
+      exact .inr ⟨x, hx, χ, ((List.mem_cons.mp (h₃ χ hχ)).resolve_right hn).symm⟩
+  rcases hcase with ⟨hK, hk⟩ | ⟨y, hy, θ, rfl⟩
+  · refine ⟨_, .diaL x hx h₁ h₂ hK (filter_sub (L := L₁)) (p.weaken (fun _ h => h) fun a ha => ?_)⟩
+    rcases List.mem_append.mp ha with h | h
+    · exact List.mem_append_left _ h
+    · exact List.mem_append_right _ (List.map_subset _ (kp4_drop h₄ hk) h)
+  · rcases permRight ih _ hw hs (fun h => by simp [WFF.IsAtom] at h) (fun h => by cases h)
+      D₁ d₂ with done | lp
+    · exact done
+    · exact diaPrinDiaL ih hw hs x hx h₁ h₂ h₃ h₄ p lp
 
 /-- ⭐**One step of cut elimination**, given the induction hypothesis. -/
 theorem cut_step {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] (A : WFF σ Γ 0)
@@ -535,97 +1002,9 @@ theorem cut_step {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] (A : 
       obtain ⟨k, e⟩ := ih A (Δ := WFF.instantiate Ctx.NoSlots.slots s' P :: Δ) (Θ := Θ)
         (.inr ⟨hw, by omega⟩) p (d₂.weaken (by lsub) (by lsub))
       exact ⟨_, .repl hP t s' h₁ h₂ e⟩
-  | @boxR _ _ _ _ Δ₁ φ h₁ h₂ p =>
-      rcases List.mem_cons.mp h₁ with he | h₁
-      · subst he
-        rcases permRight ih _ hw hs (fun h => by simp [WFF.IsAtom] at h) (fun h => by cases h)
-          D₁ d₂ with done | lp
-        · exact done
-        · have hlt : φ.weight < w := by rw [← hw]; simp only [WFF.weight]; omega
-          cases lp with
-          | @box _ φ' Δ₂ _ _ _ _ hm h₁' h₂' r =>
-            have hr : Δ₂ ⊆ φ :: (Δ₁ ++ boxedIn Δ Δ₂) := fun χ hχ => by
-              rcases boxedIn_sub h₂' χ hχ with rfl | hχ
-              · exact List.mem_cons_self
-              · exact List.mem_cons_of_mem _ (List.mem_append_right _ hχ)
-            obtain ⟨k, e⟩ := ih φ (Γ := Γ.boxIn) (Δ := Δ₁ ++ boxedIn Δ Δ₂) (Θ := [φ'])
-              (.inl hlt) (p.weaken (by lsub) (by lsub)) (r.weaken hr (fun _ h => h))
-            refine ⟨_, .boxR h₁' (fun χ hχ => ?_) e⟩
-            rcases List.mem_append.mp hχ with hχ | hχ
-            exacts [h₂ χ hχ, boxedIn_mem hχ]
-          | @boxDia _ x hx ψ Δ₂ Θ₂ _ _ _ _ hm hψ h₂' h₃' r =>
-            have p' := p.monoCtx (Ctx.le_boxIn_diaIn Γ x)
-            have hl : Δ₁.map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)) ⊆
-                ψ :: (Δ₁ ++ boxedIn Δ Δ₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)) := fun a ha => by
-              obtain ⟨b, hb, rfl⟩ := List.mem_map.mp ha
-              exact List.mem_cons_of_mem _ (List.mem_map_of_mem (List.mem_append_left _ hb))
-            have hr : ψ :: Δ₂.map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)) ⊆
-                WFF.mono (Ctx.le_boxIn_diaIn Γ x) φ ::
-                  ψ :: (Δ₁ ++ boxedIn Δ Δ₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)) :=
-              fun a ha => by
-                rcases List.mem_cons.mp ha with rfl | ha
-                · exact List.mem_cons_of_mem _ List.mem_cons_self
-                · obtain ⟨b, hb, rfl⟩ := List.mem_map.mp ha
-                  rcases boxedIn_sub h₂' b hb with rfl | hb
-                  · exact List.mem_cons_self
-                  · exact List.mem_cons_of_mem _ (List.mem_cons_of_mem _
-                      (List.mem_map_of_mem (List.mem_append_right _ hb)))
-            obtain ⟨k, e⟩ := ih (WFF.mono (Ctx.le_boxIn_diaIn Γ x) φ) (Γ := Γ.diaIn x)
-              (Δ := ψ :: (Δ₁ ++ boxedIn Δ Δ₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))
-              (Θ := Θ₂) (.inl (by rw [WFF.weight_mono]; exact hlt))
-              (p'.weaken hl (by lsub)) (r.weaken hr (fun _ h => h))
-            refine ⟨_, .diaL x hx hψ (fun χ hχ => ?_) h₃' e⟩
-            rcases List.mem_append.mp hχ with hχ | hχ
-            exacts [h₂ χ hχ, boxedIn_mem hχ]
-      · exact ⟨_, .boxR h₁ h₂ p⟩
-  | @diaL _ _ _ _ x hx ψ Δ₁ Θ₁ h₁ h₂ h₃ p =>
-      by_cases hall : ∀ χ ∈ Θ₁, WFF.dia x hx χ ∈ Θ
-      · exact ⟨_, .diaL x hx h₁ h₂ hall p⟩
-      · push_neg at hall
-        obtain ⟨χ₀, hχ₀, hn⟩ := hall
-        have he := (List.mem_cons.mp (h₃ χ₀ hχ₀)).resolve_right hn
-        subst he
-        rcases permRight ih _ hw hs (fun h => by simp [WFF.IsAtom] at h) (fun h => by cases h)
-          D₁ d₂ with done | lp
-        · exact done
-        · cases lp with
-          | @dia _ _ _ Δ₂ Θ₂ _ _ _ _ hm h₂' h₃' r =>
-            have hsub : ∀ χ ∈ Θ₁,
-                χ = χ₀ ∨ χ ∈ Θ₁.filter fun χ => decide (WFF.dia x hx χ ∈ Θ) := by
-              intro χ hχ
-              by_cases hd : WFF.dia x hx χ ∈ Θ
-              · exact .inr (List.mem_filter.mpr ⟨hχ, decide_eq_true hd⟩)
-              · exact .inl (eq_of_heq (WFF.dia.inj
-                  ((List.mem_cons.mp (h₃ χ hχ)).resolve_right hd)).2)
-            have hl₁ : ψ :: Δ₁.map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)) ⊆
-                ψ :: (Δ₁ ++ Δ₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)) := fun a ha => by
-              rcases List.mem_cons.mp ha with rfl | ha
-              · exact List.mem_cons_self
-              · obtain ⟨b, hb, rfl⟩ := List.mem_map.mp ha
-                exact List.mem_cons_of_mem _ (List.mem_map_of_mem (List.mem_append_left _ hb))
-            have hl₂ : Θ₁ ⊆
-                χ₀ :: (Θ₁.filter (fun χ => decide (WFF.dia x hx χ ∈ Θ)) ++ Θ₂) := fun a ha => by
-              rcases hsub a ha with rfl | ha
-              · exact List.mem_cons_self
-              · exact List.mem_cons_of_mem _ (List.mem_append_left _ ha)
-            have hr : χ₀ :: Δ₂.map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)) ⊆
-                χ₀ :: ψ :: (Δ₁ ++ Δ₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)) := fun a ha => by
-              rcases List.mem_cons.mp ha with rfl | ha
-              · exact List.mem_cons_self
-              · obtain ⟨b, hb, rfl⟩ := List.mem_map.mp ha
-                exact List.mem_cons_of_mem _ (List.mem_cons_of_mem _
-                  (List.mem_map_of_mem (List.mem_append_right _ hb)))
-            obtain ⟨k, e⟩ := ih χ₀ (Γ := Γ.diaIn x)
-              (Δ := ψ :: (Δ₁ ++ Δ₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))
-              (Θ := Θ₁.filter (fun χ => decide (WFF.dia x hx χ ∈ Θ)) ++ Θ₂)
-              (.inl (by rw [← hw]; simp only [WFF.weight]; omega))
-              (p.weaken hl₁ hl₂) (r.weaken hr (by lsub))
-            refine ⟨_, .diaL x hx h₁ (fun χ hχ => ?_) (fun χ hχ => ?_) e⟩
-            · rcases List.mem_append.mp hχ with hχ | hχ
-              exacts [h₂ χ hχ, h₂' χ hχ]
-            · rcases List.mem_append.mp hχ with hχ | hχ
-              · exact of_decide_eq_true (List.mem_filter.mp hχ).2
-              · exact h₃' χ hχ
+  | boxR h₁ h₂ h₃ p => exact leftBoxR ih A hw hs D₁ d₂ h₁ h₂ h₃ p
+  | serial hD h₂ h₃ p => exact leftSerial ih A hw hs D₁ d₂ hD h₂ h₃ p
+  | diaL x hx h₁ h₂ h₃ h₄ p => exact leftDiaL ih A hw hs D₁ d₂ x hx h₁ h₂ h₃ h₄ p
 
 /-- The induction, on the weight and then on the sum of the heights. -/
 theorem cutIH_all : ∀ w s, CutIH σ w s := by

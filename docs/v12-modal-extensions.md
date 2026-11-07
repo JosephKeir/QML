@@ -14767,3 +14767,293 @@ Unshaped, `Shp` is trivial and `Pos ⊆ PosSec`.
   family leaves), and leaves move along arrows by collapse and shift, so globally the construction
   is indexed over worlds and arrows as well as types.
 
+
+## 12. The arrow atom `In` — paper check *(2026-11-07, paper only)*
+
+**Why.**  Craig interpolation fails for KT with `Here` at `◇`-content (metatheory todo, "KT paper
+check": `φ ⊢ ψ`, no `{S}`-interpolant, random-graph models `M₁`, `M₂`).  The user asked whether
+some witness equality could repair it.  This section checks the candidate against soundness,
+completeness, cut elimination and interpolation.  Nothing is built; if adopted, the build goes on a
+branch, since the present design (with the failure of interpolation accepted) stays a valid result.
+
+### 12.1 The repair must be expressive, and expressiveness forces sharing
+
+* *Under `Ind` no extension of the language helps* while `M₁` and `M₂` stay models proper: their
+  `{S}`-reducts are isomorphic (one automorphism of `(G,o)` at `b`), and truth is invariant under
+  isomorphism.  The extents of `y` and `y'` are disjoint there, so any repair must make co-named
+  witnesses *share* arrows.
+* *Identity (the join reading of §10.23) is not enough on its own:* with `y`, `y'` sharing the
+  one-world extent `{a}`, `y.dia = p`, `y'.dia = qᵢ`, each view still sees one content, and the
+  same automorphism argument, view by view, gives equal `{S}`-theories.  The interpolant is a
+  statement about both contents at one arrow, so the language must be able to make it.
+* *Precedent:* Fine 1979 (QS5 etc. lack interpolation); Areces, Blackburn and Marx, "Repairing the
+  interpolation theorem in quantified modal logic" (APAL 2003): quantified *hybrid* logics have it.
+  The repair is expressive (naming where one is), not a change of identity criterion.
+* *Sharing is then not a separate decision.*  With a membership test in the language, `Ind`'s own
+  invariance at the slot formula `□_z ∃v In(y↑, v)` (true of `⟨y; b⟩` by `in_self` below) gives
+  `□_{y'} ∃v In(y↑, v)`: co-named witnesses share their arrows.  So `Ind` collapses to identity on
+  everything the language can name, and is best dropped (12.4).
+
+### 12.2 The atom
+
+`In(u↑, t)`, formed inside a view (`□` or `◇_y`): `u : ◇X` a `◇`-address of the **enclosing**
+context, `t : X` a term of the view.  At the arrow `a` the view was entered by: `a ∈ ext u` and
+`u`'s content along `a` is `⟦t⟧`.  **`Here` along the arrow just taken**: under T, at the identity
+arrow, `collapse (In(u↑, t)) = Here(η u, collapse t)`.  Precedents: `Here` (the same six-rule
+pattern), and `linkx`/`retxS` (a view reading a value carried along the arrow just taken).
+* *Scope:* a view exposes the parent's `◇`-addresses only as `In` subjects, not as terms (no
+  possible object at the target is meant).  Needs a new address step or a subject sort; under 4 a
+  grandparent's witness is reached as `u.keep`, as now.
+* *Definability:* `◇_u φ ⟺ ◇ ∃v (In(u↑,v) ∧ φ(v))`, `□_u φ ⟺ □ ∀v (In(u↑,v) → φ(v))`.  The
+  witnessed modalities become `◇`/`□` restricted to `u`'s arrows.  Keep them primitive (no rewrite);
+  the equivalences are the rules.
+* *Heterogeneous equality becomes a formula* (recursion on the type, which closes):
+  `eqH` is `=` at `Var`, `⊤` at `𝟙`, componentwise at `×`, `□ eqH` at `□A`, and at `◇Z`
+  `eqH ⟨u;c⟩ ⟨u';c'⟩ := □_u ∃v (In(u'↑,v) ∧ eqH c c'[v]) ∧ □_{u'} ∃v (In(u↑,v) ∧ eqH c[v] c')`.
+  At one annotation it is `eqRec`.  It is §10.8's `eqDia` done right: the arrow supplies the map
+  between the two inner contexts, so no renaming and no §10.9 degeneracy
+  (`eqH (η x) (η y)` says same extent, same content; it is not reflexivity).  This answers the
+  objections of §10.25 and §11.16 ("comparison across witnesses is meaningful only along a map").
+
+### 12.3 Rules (K level; every system)
+
+* `in_box`: `□_u φ(u.dia) ⊣⊢ □ ∀v (In(u↑,v) → φ(v))` (`φ` over the box view and `v`), and its
+  `◇` dual; the same inside `□_y`/`◇_y` views.  `in_self` (`□_u In(u↑, u.dia)`) is an instance.
+* `in_fun`: `In(u↑,t), In(u↑,t') ⊢ eqH t t'` (one content per arrow).
+* `in_eq`: `In(u↑,t), eqH t t' ⊢ In(u↑,t')` (as `here_eq`).
+* *Leibniz along `eqH` is derivable*, by induction on the formula; the `◇` hole case:
+  `◇_u χ(c)` and `□_u ∃v(In(u'↑,v) ∧ eqH c c'[v])` give `◇_u ∃v(In(u'↑,v) ∧ χ(c'[v]))` (IH at the
+  smaller type, inside), then `◇_{u'} χ(c')` by `in_box`'s dual.  So **`here_subst` is derived**
+  from `here_fun` at every type (`Here(s,t), Here(s,t') ⊢ eqH t t'`) and Leibniz.
+* T: `Here` reads identity.  `here_intro`/`here_elim` look derivable from `in_box` and T's collapse
+  (`collapse In = Here`); `here_beta`, `here_name` stay or become `In` versions (to check).
+
+### 12.4 Soundness
+
+`In` as above; **`Ind := Eq`, carriers extensional** (`pos_inj` on extent and contents), **shapes
+dropped**.  The key lemma `sat_eqH`: `eqH` true iff equal denotations, by type recursion, the `◇`
+case being `pos_inj`.  Every rule is then immediate.  "Models proper" disappears
+(`indInvariant_of_eq`).  The two examples that forced shapes are now compared by the syntax:
+§10.35's `⟨x; x.dia.fst⟩` vs `⟨x; x.dia.snd⟩` (equal by `eqH` when the sections are), and the
+cluster's `Back c₂ z` (§ "The tag is too small", 2026-11-01), now derivable by Leibniz along `eqH`.
+**No deep risk; large deletion** (the shape layer and its uses).
+
+### 12.5 Completeness on the tree (K, D, T, 4)
+
+* *Extents decided by the theory:* `ext_w u := {children c | ∃v In(u↑,v) ∈ c.T}` (plus the identity
+  arrow under T when realised).  Still keyed to the witness, so `dia_beta` holds (§10.23's lesson).
+  Content: a Henkin `e` with `In(u↑,e) ∈ c.T`, well defined by `in_fun` and faithfulness of `eqH`.
+* `◇_u φ` truth ⇒ membership: `c` built for `y`, `In(u↑,e), φ(e) ∈ c.T`; else `□_y ¬∃v(In ∧ φ)` is in
+  the parent and reaches `c` by `BoxxContents`; so `◇_y ∃v(In(u↑,v) ∧ φ(v)) ∈ T`, then `◇_u φ` by
+  `in_box`'s dual.  Membership ⇒ truth: a child built for `u` has `In(u↑, u.dia)` (`in_self`).
+  `□_u` dually, via `in_box` and `BoxxContents`.
+* `In` case: as §10.25's `here` case (budget `A.eqRecSize + 1`; `in_fun`, faithfulness, `in_eq`).
+* *Faithfulness of `eqH` at `◇`:* in `T` ⇒ equal extents and contents (IH at the smaller type in the
+  children); not in `T` ⇒ Lindenbaum from `◇_u ¬∃v(…)` gives a separating child.  Empty extents:
+  vacuous on both sides.
+* §10.23's obstacle (a child built for `z` cannot name `x`'s content) is gone: it names it by `In`.
+  §10.33's objection ("a child's language is read off the parent plus the witness") still holds:
+  the extra `In` subjects are the parent's addresses.
+* *Removed:* `Interch`, `DTerm.Rel`, the canonical `Ind` and its `IndInvariant` proof, the tags.
+* *To check:* 4's `keep` (`In(u.keep↑, t)` at a grandchild is membership of the composite arrow;
+  whether the keep rules plus `in_box` derive what the truth lemma needs).
+
+### 12.6 The other constructions (B's network, 5's cluster, hub, loop)
+
+Each arrow must decide `In(u↑)` for every parent `◇`-address.  The network already labels arrows
+with sets of witnesses (what §10.9 found necessary).  `Back` at `◇`-content becomes identity, and
+§11.16's two mechanisms for the negative atom become one (`back_def` at every type, since `◇`-equality
+is now a formula).  **Unchecked, and where most of the rebuild is:** whether network commitments
+and `In` decisions can be made together (a §11.15-style joint obligation), and `In` along side
+arrows (5) and ways home (B).
+
+### 12.7 Cut elimination
+
+GK plus: the view-opening rules (`◇_yL`, `□R`) carry, for each `◇`-address `u` of the parent, the
+`In`-guarded `□_u` contents `∀v(In(u↑,v) → ψ(v))` on the left and `◇_u` formulas
+`∃v(In(u↑,v) ∧ χ(v))` on the right, and `In(y↑, y.dia)`; `in_fun`, `in_eq`, `here_fun` and the
+unfolding of `eqH` at `◇` as **geometric rules** (atoms in, atoms and `∃` out); TL as before.
+* The KT obstacle (`here_subst` not atomisable) is gone: identification travels as atoms, view by
+  view.  `S` closes cut-free: in the `y` view, `here_fun` gives `In(y'↑, e)`, `f(y.dia) = h(e)`; the
+  guarded `□_{y'}` content fires at `e`; `Q(f y.dia)` moves by `repl`; the guarded `◇_{y'} R` closes.
+  `S₄` likewise (`B(v₀)` and `¬B(v₀)` meet in the joint view).
+* Principal cuts: K-like, guarded forms included; `In` atoms are never principal on the right
+  except in axioms (as `Here`).
+* *Subformula property:* up to the `In` guarding (a fixed map on subformulas, like K4's sharp
+  form) and symbol-free atoms (`In`, `Here`, `=`) over the derivation's terms.
+
+### 12.8 Interpolation
+
+Maehara: a view's interpolant `I` goes out as `◇_y I`/`□_y I`; it may contain `In` atoms
+(symbol-free) and eigenvariables (quantified, as for `here_name`).
+* Guarded split checked: `◇_y φ | □_u ψ, ◇_u χ` gives `◇_y I`, and `◇_y I, □_u ψ ⊢ ◇_u χ` by `in_box`
+  and its dual.
+* The counterexample's interpolant: `◇_y ∃e (In(y'↑,e) ∧ S(y.dia, e))` (`φ` gives it through the
+  guarded `□_{y'}` content; it gives `ψ` by cases on `N(e)`).
+* Plausible for K, KT, K4, S4 with `In`.  B and 5: no cut-free calculus yet.
+
+### 12.9 Conservativity (open)
+
+Identity models are a subclass of `Ind` models proper, so the old logic is sound for them.  The
+converse (every `In`-free theorem of the new logic is an old theorem) would need amalgamating
+co-named witnesses' worlds, a Robinson-consistency argument (Craig in disguise).  Not checked.  If
+it fails, the new logic proves new `In`-free theorems; the old completeness results stand for the
+old semantics either way.
+
+### 12.10 The decision
+
+Does `Here(s,t) ∧ Here(s,t')` say that `t` and `t'` are **the same** possible object (their
+witnesses share arrows), or only **indiscernible** ones (§10.33: "identifying them should be
+consistent, not forced")?  12.1 shows the two cannot be had with interpolation: Craig needs
+sharing.  On the pairing principle: the link names *one* possibility twice; no joint possibility is
+inferred from two separate ones (`◇_y` and `◇_{y'}` alone still give nothing joint).
+
+**Simplifications:** `Ind`, models proper, shapes and tags, `Interch`/`Rel`, the `here_subst` schema,
+the two negative-atom mechanisms, the `◇`-free side conditions (`here_fun`, `back_def`).
+**Costs:** a WFF constructor (every recursion, as `link`/`linkx`), view scope for `In` subjects,
+theory-decided extents in every canonical construction, the soundness layer without shapes.  Rough
+size: comparable to the B track, much of it deletion.
+
+**Plan if adopted (branch).**  Paper first: 4's `keep` with `In`; network commitments with `In`;
+`In` along side arrows; conservativity.  Then M1: K with `In` (WFF, semantics, rules, soundness,
+tree completeness): tests theory-decided extents.  M2: KT, `Here` as identity, shapes and `Ind`
+removed on the tree track; `φ ⊢ ψ` and its interpolant.  M3: GK with `In`, cut elimination and Craig
+for K and KT.  M4: 4, then B and 5.  Stop if M1's truth lemma or M3's Maehara case fails.
+
+### 12.11 ⭐The identification principle, and `In` against it *(2026-11-07, user + paper)*
+
+**Decision (user).**  `Here(s,t) ∧ Here(s,t')` means `t` and `t'` are **the same object**, at every
+content type, as it already does for `◇`-free contents.  **Principle (user):** an identification of
+possible terms means an identification of their inner terms *at each world where they exist*; with
+different witnesses that is possible only if something supplies a map between the two inner
+contexts.  The earlier attempts each broke it:
+* §10.8's `eqDia` renamed `u'.dia` to `u.dia`: a map nothing supplied (hence §10.9's degeneracy);
+* §10.23/§10.33's `Ind` identified without identifying the inner terms (disjoint extents allowed);
+* §11.16's object-level `≈` composed two links through a middle object, with no map between them.
+
+**`In` meets it.**
+* *Where the map comes from:* at an arrow in both extents, both views are read **at the same
+  world**, so the world is their common ground; before `In` the syntax never knew two views were at
+  one world.  `In(u'↑, v)` in `u`'s view reads the map off the arrow: the shared box view is fixed,
+  `u'.dia ↦ v`.  So it is not a bijection given in advance but a **common context** both inner
+  contexts embed into (`diaIn u` as is, `diaIn u'` along `u'.dia ↦ v`), one per arrow, unique by
+  `in_fun`.  It is a bijection of the content addresses exactly when the contents coincide (pinned
+  terms: `eqH (η u) (η u')` says `v = u.dia`).
+* *At each world where they exist:* `eqH ⟨u;c⟩ ⟨u';c'⟩` is `□_u ∃v(In(u'↑,v) ∧ eqH c c'[v])` and its
+  converse: both exist at the same arrows (the two inclusions), and at each the inner terms `c`,
+  `c'[v]` are identified in the common context.
+* *Recursively:* inner contents of `◇`-type are compared one level in by the same clause, the
+  inner witnesses (addresses of the joint view, `v`'s included) being `In` subjects there.
+* *No identification elsewhere:* `in_fun`, `here_fun` compare terms of one context (the map is the
+  identity) and conclude `eqH`; `here_subst` is no longer a schema but Leibniz along `eqH`;
+  `in_box` defines `◇_u`/`□_u` and identifies nothing.  Strong B's `Back` already carries its map
+  (the way home, §11.16), so it fits the principle as stated there.
+
+**Consequence to confirm: impossible objects.**  With no world where they exist, two possible
+objects of one type with empty extents are identified (vacuously), whatever their inner
+annotations: e.g. `⟨x; x.dia.fst⟩ = ⟨x; x.dia.snd⟩` when `□_x ⊥`.  This reverses §10.25's skeleton
+decision and §10.35's example, and is what lets shapes go (12.4).  The principle seems to require it
+("at each world where they exist": none).
+
+### 12.12 Shapes, and the four open checks *(2026-11-07, paper)*
+
+**Decision (user):** identifying impossible objects is accepted.  Build on a branch; the present
+design stays working on `wip/four-dia`/`main`.
+
+#### Shapes: removable completely
+
+Systems with neither T nor strong B already run unshaped (`ModalSys.shaped := T || BStrong`), so
+removing shapes makes every system run as those do.  Every job shapes do is keeping apart objects the
+syntax could not compare, and `eqH` now compares them:
+1. *weakened `pos_inj`* (§10.24, §10.35) → extensional `pos_inj` (sections only), as before §10.24;
+2. *"tags determine annotations"* in T's canonical `here` case (§10.34 item 6) → faithfulness of
+   `eqH` and `here_eq`;
+3. *the cluster's `Ret` tag* ("The tag is too small", 2026-11-01) → Leibniz along `eqH` derives
+   `Back c₂ z` (`c₁`, `c₂` have one section, so `eqH c₁ c₂` is in the theory by faithfulness);
+4. *fresh roots distinct* for the negative `Back` atom (§11.16 risk 1) → `back_def` at every type,
+   `◇`-inequality being `¬eqH`.
+
+Goes with them: `Shp`, `Arrows.Leaf`, `RootPoss`, `RootKeep`/`RootKeepLaws`, `GFunc.shp`, `termShp`
+and S1/S2, `posFull`'s second component, `shape_posMap`/`shape_posStrength`, `CarrierTag`, the
+canonical tags (`RPos.tag`), `ModalSys.shaped`; also `Ind` (`:= Eq`), `IndInvariant`, and probably
+`Model.Ret` itself: with `back_def` at every type, `Ret_conv` holds at every type, so `Back` reads
+the round trip directly (`Ret` was primitive only because "at a `◇`-typed content no formula can
+single out the value a round trip brings back", §11.20).  The same family of keep-apart devices on
+B's network goes too: `sep` (labels separate witnesses) contradicts identity, and `unl` (an arrow
+not labelled `y`) contradicts theories that force labels (`□∃v In(y↑,v)`); their job (telling
+witnesses and legs apart) is done by faithfulness of `eqH` and the definite `Back`.  `five_refl`'s
+guard `shaped = false` disappears.  Measured now: "shape" in 101 v12m files (869 lines), `termShp`
+in 33 (450).
+
+#### (1) 4 with `In`: no new rule
+
+* *K4, KD4:* a grandparent's witness `u` is reached as `u.keep` in the child's box view;
+  `In(u.keep↑, t)` at a grandchild (arrow `b` from the child `c`, reached by `a`) is membership of
+  the composite `a ; b` in `ext u`, by `dkeep`'s semantics.  `In(u↑,·)` and `u.keep` at `c` are
+  independent (keep restricts along `a`, saying nothing of `a` itself), so no rule links them.
+  In-forms of 4's rules come from `four_box`/`four_dia` and `in_box`:
+  `□∀v(In(u↑,v) → φ(v)) ⊢ □□∀v(In(u.keep↑,v) → φ(v))` and the dual.  Canonically, `ext u` takes the
+  composites whose last target has `In(u.keep…keep↑)` in its theory: the staged tree's "built for
+  `u.keep`" read off the theory.  Each world still has **one incoming arrow to account for**
+  (composites factor through `u.keep`), which is why the tree is the easy case.
+* *S4 (T + 4):* `In(u↑, t)` is **definable** as `Here(u.keep, t)` (at the child's identity arrow,
+  `a ; id = a`), matching "under T + 4 views expose only keep".  `in_box` is then derivable:
+  `⇒` by `four_dia` and `here_elim`; `⇐` by `here_keep` (`□_u Here(u.keep, u.dia)`) and `□ψ ⊢ □_u ψ`.
+  `in_fun`, `in_eq` are `here_fun`, `here_eq`.
+* *KT:* `collapse` gains a case, `In(u↑, t) ↦ Here(η u, collapse t)` (sound at the identity arrow).
+
+#### (2) B's network with `In`: no new rule; the structure is already there
+
+* *Labels are `In`.*  `lb s t x = some X` with content root `cx s t x` is "`s → t` lies in `x`'s
+  extent with content `cx`", and `lb_trX` is the `In`-guarded transfer of `□_x` contents.  What
+  changes: labels must agree with the theories, which can now force them (`□∃v In(y↑,v)`), forbid
+  them, or correlate them (`□(In_y ↔ In_{y'})`, `Here`-linked witnesses sharing arrows).
+* *Forward arrows:* the child's Lindenbaum set contains the parent's `In`-guarded necessary truths
+  (in its language, `In` subjects being the parent's witnesses); labels and contents are read off
+  (`∃v In(y↑,v)`, a Henkin content).
+* *Back arrows `t → s` (into an older world):* `In` subjects of `t` are translated by the arrow's
+  substitution as **optional terms** (`cx` if labelled, else the atom is `⊥`): a witness is an
+  optional box item.  Obligation: a label set `L` and contents in `s` satisfying `t`'s necessary
+  truths `Φ`.  For a finite part `Φ₀`, at `t`: `□ ⋁_L ∃c̄ Φ₀[L, c̄]` (excluded middle on each
+  `∃v In(z↑,v)`, `in_fun`), a closed formula, so from `s` `◇□(…)` and weak B's `B_dia` give
+  `⋁_L ∃c̄ Φ₀[L, c̄]` at `s`.  A global `L` by compactness of the label space (a nested family of
+  nonempty closed sets in Cantor space); later-born witnesses are labelled when committed, as later
+  roots are now.  So the classical B argument covers it.
+* *Rows 3–4 (`lab`, `posBack_exists`):* "every arrow lies in some extent" is per arrow and not
+  expressible with `In` (an `∃` over enclosing witnesses cannot sit under `□`); its expressible
+  consequences (`∀z □¬∃v In(z↑,v)` refutes `◇⊤`) follow from route naming (`◇φ ⊢ ∃z ◇_z φ`, strong
+  D), and `lab` stays a construction choice (children built for named routes).
+* *Strong B:* `Back` at `◇`-content reads identity; `back_def` at every type; `Ret` definitional
+  (above).  Unchecked: the rows 1–4 invariants (`backRel`, `backRelX`) re-proved without `sep`.
+
+#### (3) 5's side arrows with `In`: no new rule; the cluster mapping is the risk
+
+* A side image is a `◇`-object at the side world (a `link`-bound `d`, or `x.keep` with 4), so
+  `In(d↑, ·)` is `In` of an ordinary witness; 5's laws need no new principle.  In-forms of
+  `five_box`/`five_dia`/`five_diaL`… come from them and `in_box`.
+* *Side arrows into existing worlds:* the same optional-item obligation as B's back arrows,
+  discharged by the euclidean argument (`◇□χ ⊢ □χ`, `five_box`; links without 4) on
+  `⋁_L ∃c̄ Φ₀[L, c̄]`.
+* *Risk:* mapping this onto the cluster/hub/loop constructions (`GClu*`: extents by path
+  preimages, the □ and ◇ uniformities) is unchecked and is the largest single item.  K5/KD5 stay
+  gaps.
+
+#### (4) Conservativity: no, and as intended
+
+* *Old ⊆ new:* identity models are `Ind := Eq` models with full `pos_inj`, which implies the
+  weakened one; every old rule's soundness used no more.  So every old theorem is a new theorem.
+* *Not conversely:* impossible objects.  `□_x⊥ ∧ □_z⊥ ∧ Here(q, η x) → Here(q, η z)` (§10.23) is
+  `In`-free, now derivable (`eqH (η x) (η z)` vacuously, `here_eq`), and not an old theorem (old
+  models' shapes differ).  This is the accepted identification.
+* *Beyond that:* sharing amalgamates two contents' worlds; an extra `In`-free consequence needs two
+  complete one-content types not realisable together at one world.  For first-order worlds Robinson
+  joint consistency forbids that, but our worlds can contain `Here` at `◇`-content, whose old logic
+  lacks Craig (joint consistency is Craig), so nested examples probably exist (not constructed).
+* *Effect:* the new logic is a proper extension (the intended one, by 12.11); the old results stay
+  true of the old semantics.  Nothing in the plan depends on conservativity.
+
+#### Status after 12.12
+
+No new modal rule found necessary for 4, B or 5.  Open: mapping theory-decided labels onto B's
+network stages and onto the cluster constructions (5); strong B's invariants without `sep`.  The
+branch plan of 12.10 stands, with M4 split: 4 (tree), then B (network), then 5 (cluster).

@@ -1,13 +1,14 @@
 import QML.QML_v12m_GKToND
 
 /-!
-# QML v12m — Craig interpolation for K
+# QML v12m — Craig interpolation for K, KD, K4 and KD4
 
 ⭐`GK.interp`: if a cut-free GK derivation proves `Δ ⇒ Θ` and the sequent is split into
 `Δ₁ ; Θ₁ | Δ₂ ; Θ₂`, there is an **interpolant** `χ` with `Δ₁ ⇒ Θ₁, χ` and `χ, Δ₂ ⇒ Θ₂` derivable,
 every relation symbol of `χ` occurring on both sides (`Itp`).  Maehara's method, by induction on
 the derivation; equality is logical, and free variables and function symbols are not restricted
-(both sides share the context).  ⭐`GK.craig`: for ND in K, from `φ ⊢ ψ`, an interpolant.
+(both sides share the context).  ⭐`GK.craig`: for ND in K, KD, K4 and KD4, from `φ ⊢ ψ`, an
+interpolant.
 
 The cases, with the principal formula in the first part (the second by `Itp.swap`, which turns an
 interpolant of the swapped split into its negation):
@@ -15,6 +16,9 @@ interpolant of the swapped split into its negation):
 * one-premise rules keep the interpolant; two-premise rules take the disjunction;
 * an eigenvariable rule binds the eigenvariable: `∃u χ'`;
 * `□R`: the boxed hypotheses split by side; `◇χ'` (`¬□¬χ'`); `◇_xL`: `◇_x χ'`;
+* `serial` (D): no principal formula, `◇χ'` again, with `□R` for its right part;
+* under 4 the premise's copies split with their originals and keep their relation symbols
+  (`WFF.occ_shift`), so the interpolants are the same;
 * `repl` with `t = s` on the other side: `t = s → χ'` (equality adds no relation symbol).
 -/
 
@@ -137,6 +141,63 @@ theorem WFF.occ_bindFree (r : σ.RelSyms) {Γ : Ctx} {d : ℕ} (u : ℕ) (hu : �
 theorem WFF.occ_box {r : σ.RelSyms} {Γ : Ctx} {d : ℕ} {φ : WFF σ Γ.boxIn d} :
     (WFF.box (Γ := Γ) φ).Occ r ↔ φ.Occ r := Iff.rfl
 
+theorem Rel.sym_shift {k : ℕ} {Γ Γ' : Ctx} (h : Ctx.Shifts k Γ Γ') :
+    ∀ {n : ℕ} (ρ : Rel σ Γ n), (Rel.shift h ρ).sym = ρ.sym
+  | _, .R _ => rfl
+  | _, .eval ρ _ => Rel.sym_shift h ρ
+
+/-- Shifting keeps the relation symbols. -/
+theorem WFF.occ_shift (r : σ.RelSyms) : ∀ {k : ℕ} {Γ Γ' : Ctx} {d : ℕ} (h : Ctx.Shifts k Γ Γ')
+    (hs : Γ.SlotsFrom d) (φ : WFF σ Γ d), (WFF.shift h hs φ).Occ r ↔ φ.Occ r
+  | _, _, _, _, h, _, .atom ρ => by
+      change (Rel.shift h ρ).sym = r ↔ ρ.sym = r
+      rw [Rel.sym_shift]
+  | _, _, _, _, _, _, .eq _ _ => Iff.rfl
+  | _, _, _, _, _, _, .top => Iff.rfl
+  | _, _, _, _, _, _, .bot => Iff.rfl
+  | _, _, _, _, h, hs, .and φ ψ => by
+      simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r h hs φ, WFF.occ_shift r h hs ψ]
+  | _, _, _, _, h, hs, .or φ ψ => by
+      simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r h hs φ, WFF.occ_shift r h hs ψ]
+  | _, _, _, _, h, hs, .imp φ ψ => by
+      simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r h hs φ, WFF.occ_shift r h hs ψ]
+  | _, _, _, _, _, _, .all _ φ => by simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r _ _ φ]
+  | _, _, _, _, _, _, .ex _ φ => by simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r _ _ φ]
+  | _, _, _, _, _, _, .box φ => by simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r _ _ φ]
+  | _, _, _, _, _, _, .dia _ _ φ => by simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r _ _ φ]
+  | _, _, _, _, _, _, .here _ _ _ => Iff.rfl
+  | _, _, _, _, _, _, .back _ _ _ _ => Iff.rfl
+  | _, _, _, _, _, _, .retS _ _ _ Φ => by
+      simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r _ _ Φ]
+  | _, _, _, _, _, _, .retxS _ _ _ _ _ Φ => by
+      simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r _ _ Φ]
+  | _, _, _, _, _, _, .link _ _ _ Φ => by
+      simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r _ _ Φ]
+  | _, _, _, _, _, _, .linkx _ _ _ _ _ Φ => by
+      simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r _ _ Φ]
+
+/-- A boxed hypothesis' copy has its symbols. -/
+theorem occ_cp4 {r : σ.RelSyms} {Γ : Ctx} [Γ.NoSlots] {Δ' : List (WFF σ Γ.boxIn 0)}
+    {c : WFF σ Γ.boxIn 0} (hc : c ∈ cp4 Δ') (ho : c.Occ r) : ∃ χ ∈ Δ', χ.Occ r := by
+  unfold cp4 at hc
+  split at hc
+  · obtain ⟨χ, hχ, rfl⟩ := List.mem_map.mp hc
+    exact ⟨χ, hχ, (WFF.occ_shift r _ _ χ).mp ho⟩
+  · exact absurd hc List.not_mem_nil
+
+/-- A conclusion's copy has its symbols. -/
+theorem occ_kp4 {r : σ.RelSyms} {Γ : Ctx} [Γ.NoSlots] {L : List (WFF σ Γ 0)}
+    {c : WFF σ Γ.boxIn 0} (hc : c ∈ kp4 L) (ho : c.Occ r) : ∃ A ∈ L, A.Occ r := by
+  unfold kp4 at hc
+  split at hc
+  · obtain ⟨A, hA, hcA⟩ := List.mem_flatMap.mp hc
+    cases A
+    case dia y hy θ =>
+      rw [List.mem_singleton.mp hcA] at ho
+      exact ⟨_, hA, (WFF.occ_shift r _ _ θ).mp ho⟩
+    all_goals exact absurd hcA List.not_mem_nil
+  · exact absurd hc List.not_mem_nil
+
 /-! ## Interpolants -/
 
 /-- The relation symbol `r` occurs in a list. -/
@@ -174,6 +235,27 @@ end LangLe
 theorem Lang.mem {Γ : Ctx} {L : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} {r : σ.RelSyms} (h : φ ∈ L)
     (ho : φ.Occ r) : Lang L r :=
   ⟨φ, h, ho⟩
+
+theorem Lang.inl {Γ : Ctx} {L M : List (WFF σ Γ 0)} {r : σ.RelSyms} (h : Lang L r) :
+    Lang (L ++ M) r :=
+  let ⟨φ, hφ, ho⟩ := h; ⟨φ, List.mem_append_left _ hφ, ho⟩
+
+theorem Lang.inr {Γ : Ctx} {L M : List (WFF σ Γ 0)} {r : σ.RelSyms} (h : Lang M r) :
+    Lang (L ++ M) r :=
+  let ⟨φ, hφ, ho⟩ := h; ⟨φ, List.mem_append_right _ hφ, ho⟩
+
+/-- A modal premise's `□`-view hypotheses and copies have their symbols in the conclusion. -/
+theorem lang_boxSide {Γ : Ctx} [Γ.NoSlots] {X Y : List (WFF σ Γ 0)}
+    {A : List (WFF σ Γ.boxIn 0)} {L₁ : List (WFF σ Γ 0)} (hA : ∀ χ ∈ A, WFF.box (Γ := Γ) χ ∈ X)
+    (hL : L₁ ⊆ Y) {r : σ.RelSyms} {c : WFF σ Γ.boxIn 0} (hc : c ∈ A ++ cp4 A ∨ c ∈ kp4 L₁)
+    (ho : c.Occ r) : Lang (X ++ Y) r := by
+  rcases hc with hc | hc
+  · rcases List.mem_append.mp hc with hc | hc
+    · exact (Lang.mem (hA c hc) ho).inl
+    · obtain ⟨χ, hχ, hoχ⟩ := occ_cp4 hc ho
+      exact (Lang.mem (hA χ hχ) hoχ).inl
+  · obtain ⟨B, hB, hoB⟩ := occ_kp4 hc ho
+    exact (Lang.mem (hL hB) hoB).inr
 
 /-- `χ` interpolates the split `Δ₁ ; Θ₁ | Δ₂ ; Θ₂`. -/
 def Itp (Γ : Ctx) (Δ₁ Θ₁ Δ₂ Θ₂ : List (WFF σ Γ 0)) (χ : WFF σ Γ 0) : Prop :=
@@ -399,56 +481,147 @@ theorem itp_repl [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} {Q : WFF σ (Γ.inser
 /-- `◇χ'` as `¬□¬χ'`. -/
 abbrev diaOf (χ : WFF σ Γ.boxIn 0) : WFF σ Γ 0 := (WFF.box (Γ := Γ) χ.neg).neg
 
-theorem itp_boxR {Δ : List (WFF σ Γ 0)} {Δ' : List (WFF σ Γ.boxIn 0)} {φ : WFF σ Γ.boxIn 0}
-    (h : WFF.box (Γ := Γ) φ ∈ Θ₁) (h₂ : ∀ χ ∈ Δ', WFF.box (Γ := Γ) χ ∈ Δ)
-    (ih : Interp Γ.boxIn Δ' [φ]) (hΔ : Δ ⊆ Δ₁ ++ Δ₂) : ∃ χ, Itp Γ Δ₁ Θ₁ Δ₂ Θ₂ χ := by
+/-- The split of a modal rule's boxed hypotheses and copies. -/
+theorem box_cover [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} {Δ' : List (WFF σ Γ.boxIn 0)}
+    (h₂ : ∀ χ ∈ Δ', WFF.box (Γ := Γ) χ ∈ Δ) (hΔ : Δ ⊆ Δ₁ ++ Δ₂) :
+    Δ' ++ cp4 Δ' ⊆
+      ((Δ'.filter fun χ => decide (WFF.box (Γ := Γ) χ ∈ Δ₁)) ++
+          cp4 (Δ'.filter fun χ => decide (WFF.box (Γ := Γ) χ ∈ Δ₁))) ++
+        ((Δ'.filter fun χ => decide (WFF.box (Γ := Γ) χ ∈ Δ₂)) ++
+          cp4 (Δ'.filter fun χ => decide (WFF.box (Γ := Γ) χ ∈ Δ₂))) := by
+  have h₀ : Δ' ⊆ (Δ'.filter fun χ => decide (WFF.box (Γ := Γ) χ ∈ Δ₁)) ++
+      (Δ'.filter fun χ => decide (WFF.box (Γ := Γ) χ ∈ Δ₂)) := fun χ hχ => by
+    rcases List.mem_append.mp (hΔ (h₂ χ hχ)) with hb | hb
+    · exact List.mem_append_left _ (List.mem_filter.mpr ⟨hχ, decide_eq_true hb⟩)
+    · exact List.mem_append_right _ (List.mem_filter.mpr ⟨hχ, decide_eq_true hb⟩)
+  have hc := cp4_sub h₀
+  rw [cp4_append] at hc
+  intro c hc'
+  rcases List.mem_append.mp hc' with h | h
+  · rcases List.mem_append.mp (h₀ h) with h | h
+    · exact List.mem_append_left _ (List.mem_append_left _ h)
+    · exact List.mem_append_right _ (List.mem_append_left _ h)
+  · rcases List.mem_append.mp (hc h) with h | h
+    · exact List.mem_append_left _ (List.mem_append_right _ h)
+    · exact List.mem_append_right _ (List.mem_append_right _ h)
+
+/-- The split of a modal rule's copied conclusions. -/
+theorem kp4_cover [Γ.NoSlots] {Θ L : List (WFF σ Γ 0)} (h₃ : L ⊆ Θ) (hΘ : Θ ⊆ Θ₁ ++ Θ₂) :
+    kp4 L ⊆ kp4 (L.filter fun χ => decide (χ ∈ Θ₁)) ++
+      kp4 (L.filter fun χ => decide (χ ∈ Θ₂)) := by
+  rw [← kp4_append]
+  refine kp4_sub fun χ hχ => ?_
+  rcases List.mem_append.mp (hΘ (h₃ hχ)) with h | h
+  · exact List.mem_append_left _ (List.mem_filter.mpr ⟨hχ, decide_eq_true h⟩)
+  · exact List.mem_append_right _ (List.mem_filter.mpr ⟨hχ, decide_eq_true h⟩)
+
+theorem cp4_neg_sub [Γ.NoSlots] (c : WFF σ Γ.boxIn 0) (A : List (WFF σ Γ.boxIn 0)) :
+    A ++ cp4 A ⊆ (c :: A) ++ cp4 (c :: A) := fun d hd => by
+  rcases List.mem_append.mp hd with h | h
+  · exact List.mem_append_left _ (List.mem_cons_of_mem _ h)
+  · exact List.mem_append_right _ (cp4_sub (fun _ h => List.mem_cons_of_mem _ h) h)
+
+/-- The left part's `□¬χ'` side of `◇χ'`, for `□R` (`some φ`) or `serial` (`none`). -/
+theorem itp_boxPart [Γ.NoSlots] {Δ' : List (WFF σ Γ.boxIn 0)} {L : List (WFF σ Γ 0)}
+    {χ' : WFF σ Γ.boxIn 0} {k : ℕ} (b : GK σ k Γ.boxIn (χ' :: (Δ' ++ cp4 Δ')) (kp4 L))
+    (hB : ∀ χ ∈ Δ', WFF.box (Γ := Γ) χ ∈ Δ₂) (hL : L ⊆ Θ₂) :
+    GK σ (k + 1 + 1 + 1) Γ (diaOf χ' :: Δ₂) Θ₂ :=
+  .impL List.mem_cons_self (.boxR (Δ₁ := Δ') (L := L) List.mem_cons_self
+      (fun χ hχ => List.mem_cons_of_mem _ (hB χ hχ)) (fun _ h => List.mem_cons_of_mem _ (hL h))
+      (.impR List.mem_cons_self (b.weaken (fun _ h => h)
+        (fun _ h => List.mem_cons_of_mem _ (List.mem_cons_of_mem _ h)))))
+    (.botL List.mem_cons_self)
+
+theorem itp_boxR [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} {Δ' : List (WFF σ Γ.boxIn 0)}
+    {φ : WFF σ Γ.boxIn 0} {L : List (WFF σ Γ 0)}
+    (h : WFF.box (Γ := Γ) φ ∈ Θ₁) (h₂ : ∀ χ ∈ Δ', WFF.box (Γ := Γ) χ ∈ Δ) (h₃ : L ⊆ Θ)
+    (ih : Interp Γ.boxIn (Δ' ++ cp4 Δ') (φ :: kp4 L)) (hΔ : Δ ⊆ Δ₁ ++ Δ₂)
+    (hΘ : Θ ⊆ Θ₁ ++ Θ₂) : ∃ χ, Itp Γ Δ₁ Θ₁ Δ₂ Θ₂ χ := by
   let A := Δ'.filter fun χ => decide (WFF.box (Γ := Γ) χ ∈ Δ₁)
   let B := Δ'.filter fun χ => decide (WFF.box (Γ := Γ) χ ∈ Δ₂)
+  let L₁ := L.filter fun χ => decide (χ ∈ Θ₁)
+  let L₂ := L.filter fun χ => decide (χ ∈ Θ₂)
   have hA : ∀ χ ∈ A, WFF.box (Γ := Γ) χ ∈ Δ₁ := fun χ hχ =>
     of_decide_eq_true (List.mem_filter.mp hχ).2
   have hB : ∀ χ ∈ B, WFF.box (Γ := Γ) χ ∈ Δ₂ := fun χ hχ =>
     of_decide_eq_true (List.mem_filter.mp hχ).2
-  have hcov : Δ' ⊆ A ++ B := fun χ hχ => by
-    rcases List.mem_append.mp (hΔ (h₂ χ hχ)) with hb | hb
-    · exact List.mem_append_left _ (List.mem_filter.mpr ⟨hχ, decide_eq_true hb⟩)
-    · exact List.mem_append_right _ (List.mem_filter.mpr ⟨hχ, decide_eq_true hb⟩)
-  obtain ⟨ka, a⟩ := (ih A B [φ] [] hcov (by simp)).choose_spec.1
-  obtain ⟨kb, b⟩ := (ih A B [φ] [] hcov (by simp)).choose_spec.2.1
-  have hl := (ih A B [φ] [] hcov (by simp)).choose_spec.2.2
-  set χ' := (ih A B [φ] [] hcov (by simp)).choose
+  obtain ⟨χ', ⟨_, a⟩, ⟨_, b⟩, hl⟩ := ih (A ++ cp4 A) (B ++ cp4 B) (φ :: kp4 L₁) (kp4 L₂)
+    (box_cover h₂ hΔ) (cover_cons (kp4_cover h₃ hΘ))
   have hbox : ∀ χ ∈ χ'.neg :: A, WFF.box (Γ := Γ) χ ∈ WFF.box (Γ := Γ) χ'.neg :: Δ₁ := by
     intro χ hχ
     rcases List.mem_cons.mp hχ with rfl | hχ
     · exact List.mem_cons_self
     · exact List.mem_cons_of_mem _ (hA χ hχ)
-  have p₁ : GK σ (ka + 1 + 1 + 1) Γ Δ₁ (diaOf χ' :: Θ₁) :=
-    .impR List.mem_cons_self (.boxR (Δ₁ := χ'.neg :: A)
+  have p₁ : GK σ _ Γ Δ₁ (diaOf χ' :: Θ₁) :=
+    .impR List.mem_cons_self (.boxR (Δ₁ := χ'.neg :: A) (L := L₁)
       (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ h)) hbox
-      (.impL List.mem_cons_self (a.weaken (by lsub) (by lsub)) (.botL List.mem_cons_self)))
-  have p₂ : GK σ (kb + 1 + 1 + 1) Γ (diaOf χ' :: Δ₂) Θ₂ :=
-    .impL List.mem_cons_self (.boxR (Δ₁ := B) List.mem_cons_self
-      (fun χ hχ => List.mem_cons_of_mem _ (hB χ hχ))
-      (.impR List.mem_cons_self (b.weaken (fun _ h => h) (by lsub))))
-      (.botL List.mem_cons_self)
-  refine ⟨diaOf χ', ⟨_, p₁⟩, ⟨_, p₂⟩, fun r ho => ?_⟩
-  · have ho' : χ'.Occ r := by simpa [WFF.Occ] using ho
-    refine ⟨LangLe.append (fun r ⟨ψ, hψ, ho⟩ => Lang.mem (List.mem_append_left _ (hA ψ hψ)) ho)
-      (fun r ⟨ψ, hψ, ho⟩ => ?_) r (hl r ho').1,
-      LangLe.append (fun r ⟨ψ, hψ, ho⟩ => Lang.mem (List.mem_append_left _ (hB ψ hψ)) ho)
-        (fun r ⟨ψ, hψ, ho⟩ => absurd hψ List.not_mem_nil) r (hl r ho').2⟩
-    rw [List.mem_singleton.mp hψ] at ho
-    exact Lang.mem (List.mem_append_right _ h) ho
+      (fun _ h' => List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (filter_sub h')))
+      (.impL List.mem_cons_self (a.weaken (cp4_neg_sub _ A) (fun _ h' => h'))
+        (.botL List.mem_cons_self)))
+  refine ⟨diaOf χ', ⟨_, p₁⟩, ⟨_, itp_boxPart b hB filter_sub⟩, fun r ho => ?_⟩
+  have ho' : χ'.Occ r := by simpa [WFF.Occ] using ho
+  obtain ⟨⟨c, hc, hoc⟩, ⟨d, hd, hod⟩⟩ := hl r ho'
+  refine ⟨?_, ?_⟩
+  · rcases List.mem_append.mp hc with hc | hc
+    · exact lang_boxSide hA (List.nil_subset Θ₁) (.inl hc) hoc
+    rcases List.mem_cons.mp hc with rfl | hc
+    · exact Lang.mem (List.mem_append_right _ h) hoc
+    · exact lang_boxSide hA filter_sub (.inr hc) hoc
+  · rcases List.mem_append.mp hd with hd | hd
+    · exact lang_boxSide hB (List.nil_subset Θ₂) (.inl hd) hod
+    · exact lang_boxSide hB filter_sub (.inr hd) hod
 
-theorem itp_diaL {Δ Θ : List (WFF σ Γ 0)} (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
-    {ψ : WFF σ (Γ.diaIn x) 0} {Δ' : List (WFF σ Γ.boxIn 0)} {Θ' : List (WFF σ (Γ.diaIn x) 0)}
+theorem itp_serial [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (hD : ModalSys.D = true)
+    {Δ' : List (WFF σ Γ.boxIn 0)} {L : List (WFF σ Γ 0)}
+    (h₂ : ∀ χ ∈ Δ', WFF.box (Γ := Γ) χ ∈ Δ) (h₃ : L ⊆ Θ)
+    (ih : Interp Γ.boxIn (Δ' ++ cp4 Δ') (kp4 L)) (hΔ : Δ ⊆ Δ₁ ++ Δ₂)
+    (hΘ : Θ ⊆ Θ₁ ++ Θ₂) : ∃ χ, Itp Γ Δ₁ Θ₁ Δ₂ Θ₂ χ := by
+  let A := Δ'.filter fun χ => decide (WFF.box (Γ := Γ) χ ∈ Δ₁)
+  let B := Δ'.filter fun χ => decide (WFF.box (Γ := Γ) χ ∈ Δ₂)
+  let L₁ := L.filter fun χ => decide (χ ∈ Θ₁)
+  let L₂ := L.filter fun χ => decide (χ ∈ Θ₂)
+  have hA : ∀ χ ∈ A, WFF.box (Γ := Γ) χ ∈ Δ₁ := fun χ hχ =>
+    of_decide_eq_true (List.mem_filter.mp hχ).2
+  have hB : ∀ χ ∈ B, WFF.box (Γ := Γ) χ ∈ Δ₂ := fun χ hχ =>
+    of_decide_eq_true (List.mem_filter.mp hχ).2
+  obtain ⟨χ', ⟨_, a⟩, ⟨_, b⟩, hl⟩ := ih (A ++ cp4 A) (B ++ cp4 B) (kp4 L₁) (kp4 L₂)
+    (box_cover h₂ hΔ) (kp4_cover h₃ hΘ)
+  have hbox : ∀ χ ∈ χ'.neg :: A, WFF.box (Γ := Γ) χ ∈ WFF.box (Γ := Γ) χ'.neg :: Δ₁ := by
+    intro χ hχ
+    rcases List.mem_cons.mp hχ with rfl | hχ
+    · exact List.mem_cons_self
+    · exact List.mem_cons_of_mem _ (hA χ hχ)
+  have p₁ : GK σ _ Γ Δ₁ (diaOf χ' :: Θ₁) :=
+    .impR List.mem_cons_self (.serial hD (Δ₁ := χ'.neg :: A) (L := L₁) hbox
+      (fun _ h' => List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (filter_sub h')))
+      (.impL List.mem_cons_self (a.weaken (cp4_neg_sub _ A) (fun _ h' => h'))
+        (.botL List.mem_cons_self)))
+  refine ⟨diaOf χ', ⟨_, p₁⟩, ⟨_, itp_boxPart b hB filter_sub⟩, fun r ho => ?_⟩
+  have ho' : χ'.Occ r := by simpa [WFF.Occ] using ho
+  obtain ⟨⟨c, hc, hoc⟩, ⟨d, hd, hod⟩⟩ := hl r ho'
+  refine ⟨?_, ?_⟩
+  · rcases List.mem_append.mp hc with hc | hc
+    · exact lang_boxSide hA (List.nil_subset Θ₁) (.inl hc) hoc
+    · exact lang_boxSide hA filter_sub (.inr hc) hoc
+  · rcases List.mem_append.mp hd with hd | hd
+    · exact lang_boxSide hB (List.nil_subset Θ₂) (.inl hd) hod
+    · exact lang_boxSide hB filter_sub (.inr hd) hod
+
+theorem itp_diaL [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (x : VarSymb)
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {ψ : WFF σ (Γ.diaIn x) 0}
+    {Δ' : List (WFF σ Γ.boxIn 0)} {Θ' : List (WFF σ (Γ.diaIn x) 0)} {L : List (WFF σ Γ 0)}
     (h : .dia x hx ψ ∈ Δ₁) (h₂ : ∀ χ ∈ Δ', WFF.box (Γ := Γ) χ ∈ Δ)
-    (h₃ : ∀ χ ∈ Θ', .dia x hx χ ∈ Θ)
-    (ih : Interp (Γ.diaIn x) (ψ :: Δ'.map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))) Θ')
+    (h₃ : ∀ χ ∈ Θ', .dia x hx χ ∈ Θ) (h₄ : L ⊆ Θ)
+    (ih : Interp (Γ.diaIn x) (ψ :: (Δ' ++ cp4 Δ').map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))
+      (Θ' ++ (kp4 L).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))))
     (hΔ : Δ ⊆ Δ₁ ++ Δ₂) (hΘ : Θ ⊆ Θ₁ ++ Θ₂) : ∃ χ, Itp Γ Δ₁ Θ₁ Δ₂ Θ₂ χ := by
+  let M : WFF σ Γ.boxIn 0 → WFF σ (Γ.diaIn x) 0 := WFF.mono (Ctx.le_boxIn_diaIn Γ x)
   let A := Δ'.filter fun χ => decide (WFF.box (Γ := Γ) χ ∈ Δ₁)
   let B := Δ'.filter fun χ => decide (WFF.box (Γ := Γ) χ ∈ Δ₂)
   let C := Θ'.filter fun χ => decide (WFF.dia x hx χ ∈ Θ₁)
   let D := Θ'.filter fun χ => decide (WFF.dia x hx χ ∈ Θ₂)
+  let L₁ := L.filter fun χ => decide (χ ∈ Θ₁)
+  let L₂ := L.filter fun χ => decide (χ ∈ Θ₂)
   have hA : ∀ χ ∈ A, WFF.box (Γ := Γ) χ ∈ Δ₁ := fun χ hχ =>
     of_decide_eq_true (List.mem_filter.mp hχ).2
   have hB : ∀ χ ∈ B, WFF.box (Γ := Γ) χ ∈ Δ₂ := fun χ hχ =>
@@ -457,48 +630,54 @@ theorem itp_diaL {Δ Θ : List (WFF σ Γ 0)} (x : VarSymb) (hx : ∃ X, Γ.ref 
     of_decide_eq_true (List.mem_filter.mp hχ).2
   have hD : ∀ χ ∈ D, WFF.dia x hx χ ∈ Θ₂ := fun χ hχ =>
     of_decide_eq_true (List.mem_filter.mp hχ).2
-  have hcov₁ : ψ :: Δ'.map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)) ⊆
-      (ψ :: A.map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))) ++
-        B.map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)) := by
+  have hcov₁ : ψ :: (Δ' ++ cp4 Δ').map M ⊆ (ψ :: (A ++ cp4 A).map M) ++ (B ++ cp4 B).map M :=
+    cover_cons (by rw [← List.map_append]; exact List.map_subset _ (box_cover h₂ hΔ))
+  have hcov₂ : Θ' ++ (kp4 L).map M ⊆ (C ++ (kp4 L₁).map M) ++ (D ++ (kp4 L₂).map M) := by
+    have hk := List.map_subset M (kp4_cover h₄ hΘ)
+    rw [List.map_append] at hk
     intro c hc
-    rcases List.mem_cons.mp hc with rfl | hc
-    · exact List.mem_cons_self
-    obtain ⟨χ, hχ, rfl⟩ := List.mem_map.mp hc
-    rcases List.mem_append.mp (hΔ (h₂ χ hχ)) with hb | hb
-    · exact List.mem_cons_of_mem _ (List.mem_append_left _
-        (List.mem_map_of_mem (List.mem_filter.mpr ⟨hχ, decide_eq_true hb⟩)))
-    · exact List.mem_append_right _
-        (List.mem_map_of_mem (List.mem_filter.mpr ⟨hχ, decide_eq_true hb⟩))
-  have hcov₂ : Θ' ⊆ C ++ D := fun χ hχ => by
-    rcases List.mem_append.mp (hΘ (h₃ χ hχ)) with hb | hb
-    · exact List.mem_append_left _ (List.mem_filter.mpr ⟨hχ, decide_eq_true hb⟩)
-    · exact List.mem_append_right _ (List.mem_filter.mpr ⟨hχ, decide_eq_true hb⟩)
-  obtain ⟨χ', ⟨_, a⟩, ⟨_, b⟩, hl⟩ := ih _ _ C D hcov₁ hcov₂
-  refine ⟨.dia x hx χ', ⟨_, .diaL x hx (Δ₁ := A) (Θ₁ := χ' :: C) h (fun χ hχ => hA χ hχ)
-      (fun χ hχ => ?_) a⟩,
-    ⟨_, .diaL x hx (Δ₁ := B) (Θ₁ := D) List.mem_cons_self
-      (fun χ hχ => List.mem_cons_of_mem _ (hB χ hχ)) (fun χ hχ => hD χ hχ) b⟩, fun r ho => ?_⟩
+    rcases List.mem_append.mp hc with hc | hc
+    · rcases List.mem_append.mp (hΘ (h₃ c hc)) with hb | hb
+      · exact List.mem_append_left _ (List.mem_append_left _
+          (List.mem_filter.mpr ⟨hc, decide_eq_true hb⟩))
+      · exact List.mem_append_right _ (List.mem_append_left _
+          (List.mem_filter.mpr ⟨hc, decide_eq_true hb⟩))
+    · rcases List.mem_append.mp (hk hc) with hc | hc
+      · exact List.mem_append_left _ (List.mem_append_right _ hc)
+      · exact List.mem_append_right _ (List.mem_append_right _ hc)
+  obtain ⟨χ', ⟨_, a⟩, ⟨_, b⟩, hl⟩ := ih _ _ _ _ hcov₁ hcov₂
+  refine ⟨.dia x hx χ', ⟨_, .diaL x hx (Δ₁ := A) (Θ₁ := χ' :: C) (L := L₁) h
+      (fun χ hχ => hA χ hχ) (fun χ hχ => ?_)
+      (fun _ h' => List.mem_cons_of_mem _ (filter_sub h')) a⟩,
+    ⟨_, .diaL x hx (Δ₁ := B) (Θ₁ := D) (L := L₂) List.mem_cons_self
+      (fun χ hχ => List.mem_cons_of_mem _ (hB χ hχ)) (fun χ hχ => hD χ hχ) filter_sub b⟩,
+    fun r ho => ?_⟩
   · rcases List.mem_cons.mp hχ with rfl | hχ
     · exact List.mem_cons_self
     · exact List.mem_cons_of_mem _ (hC χ hχ)
-  · have hm : ∀ (χ : WFF σ Γ.boxIn 0) r, (WFF.mono (Ctx.le_boxIn_diaIn Γ x) χ).Occ r →
-        (WFF.box (Γ := Γ) χ).Occ r :=
-      fun χ r ho => WFF.occ_box.mpr ((WFF.occ_mono r _ χ).mp ho)
-    have L₁ : LangLe ((ψ :: A.map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))) ++ C) (Δ₁ ++ Θ₁) := by
-      rintro r ⟨c, hc, ho⟩
-      rcases List.mem_append.mp hc with hc | hc
-      · rcases List.mem_cons.mp hc with rfl | hc
-        · exact Lang.mem (List.mem_append_left _ h) ho
-        · obtain ⟨χ, hχ, rfl⟩ := List.mem_map.mp hc
-          exact Lang.mem (List.mem_append_left _ (hA χ hχ)) (hm χ r ho)
-      · exact Lang.mem (List.mem_append_right _ (hC c hc)) ho
-    have L₂ : LangLe (B.map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)) ++ D) (Δ₂ ++ Θ₂) := by
-      rintro r ⟨c, hc, ho⟩
-      rcases List.mem_append.mp hc with hc | hc
-      · obtain ⟨χ, hχ, rfl⟩ := List.mem_map.mp hc
-        exact Lang.mem (List.mem_append_left _ (hB χ hχ)) (hm χ r ho)
-      · exact Lang.mem (List.mem_append_right _ (hD c hc)) ho
-    exact ⟨L₁ r (hl r ho).1, L₂ r (hl r ho).2⟩
+  have hm : ∀ {X Y : List (WFF σ Γ 0)} {A' : List (WFF σ Γ.boxIn 0)} {L' : List (WFF σ Γ 0)},
+      (∀ χ ∈ A', WFF.box (Γ := Γ) χ ∈ X) → L' ⊆ Y → ∀ {c : WFF σ (Γ.diaIn x) 0},
+      c ∈ (A' ++ cp4 A').map M ∨ c ∈ (kp4 L').map M → c.Occ r → Lang (X ++ Y) r := by
+    intro X Y A' L' hA' hL' c hc hoc
+    rcases hc with hc | hc
+    · obtain ⟨c₀, hc₀, rfl⟩ := List.mem_map.mp hc
+      exact lang_boxSide hA' hL' (.inl hc₀) ((WFF.occ_mono r _ c₀).mp hoc)
+    · obtain ⟨c₀, hc₀, rfl⟩ := List.mem_map.mp hc
+      exact lang_boxSide hA' hL' (.inr hc₀) ((WFF.occ_mono r _ c₀).mp hoc)
+  obtain ⟨⟨c, hc, hoc⟩, ⟨d, hd, hod⟩⟩ := hl r ho
+  refine ⟨?_, ?_⟩
+  · rcases List.mem_append.mp hc with hc | hc
+    · rcases List.mem_cons.mp hc with rfl | hc
+      · exact Lang.mem (List.mem_append_left _ h) hoc
+      · exact hm hA (List.nil_subset Θ₁) (.inl hc) hoc
+    · rcases List.mem_append.mp hc with hc | hc
+      · exact Lang.mem (List.mem_append_right _ (hC c hc)) hoc
+      · exact hm hA filter_sub (.inr hc) hoc
+  · rcases List.mem_append.mp hd with hd | hd
+    · exact hm hB (List.nil_subset Θ₂) (.inl hd) hod
+    · rcases List.mem_append.mp hd with hd | hd
+      · exact Lang.mem (List.mem_append_right _ (hD d hd)) hod
+      · exact hm hB filter_sub (.inr hd) hod
 
 theorem itp_allR [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (u : ℕ) (T : VarType)
     (hu : Γ.RootFresh (.free u)) {φ : WFF σ (Γ.insert (.free u) T) 0}
@@ -658,23 +837,26 @@ theorem interp {n : ℕ} {Δ Θ : List (WFF σ Γ 0)} (d : GK σ n Γ Δ Θ) : I
       · exact itp_repl hQ t s h₁ h ih hΔ hΘ
       · obtain ⟨χ, hχ⟩ := itp_repl hQ t s h₁ h ih (sub_swap hΔ) (sub_swap hΘ)
         exact ⟨_, hχ.swap⟩
-  | boxR h₁ h₂ _ ih =>
+  | boxR h₁ h₂ h₃ _ ih =>
       intro Δ₁ Δ₂ Θ₁ Θ₂ hΔ hΘ
       rcases List.mem_append.mp (hΘ h₁) with h | h
-      · exact itp_boxR h h₂ ih hΔ
-      · obtain ⟨χ, hχ⟩ := itp_boxR (Θ₂ := Θ₁) h h₂ ih (sub_swap hΔ)
+      · exact itp_boxR h h₂ h₃ ih hΔ hΘ
+      · obtain ⟨χ, hχ⟩ := itp_boxR h h₂ h₃ ih (sub_swap hΔ) (sub_swap hΘ)
         exact ⟨_, hχ.swap⟩
-  | diaL x hx h₁ h₂ h₃ _ ih =>
+  | serial hD h₂ h₃ _ ih =>
+      intro Δ₁ Δ₂ Θ₁ Θ₂ hΔ hΘ
+      exact itp_serial hD h₂ h₃ ih hΔ hΘ
+  | diaL x hx h₁ h₂ h₃ h₄ _ ih =>
       intro Δ₁ Δ₂ Θ₁ Θ₂ hΔ hΘ
       rcases List.mem_append.mp (hΔ h₁) with h | h
-      · exact itp_diaL x hx h h₂ h₃ ih hΔ hΘ
-      · obtain ⟨χ, hχ⟩ := itp_diaL x hx h h₂ h₃ ih (sub_swap hΔ) (sub_swap hΘ)
+      · exact itp_diaL x hx h h₂ h₃ h₄ ih hΔ hΘ
+      · obtain ⟨χ, hχ⟩ := itp_diaL x hx h h₂ h₃ h₄ ih (sub_swap hΔ) (sub_swap hΘ)
         exact ⟨_, hχ.swap⟩
 
-/-- ⭐**Craig interpolation for K**: if `φ ⊢ ψ` in natural deduction over a presented context,
-    there is `χ` with `φ ⊢ χ` and `χ ⊢ ψ`, every relation symbol of `χ` occurring in both `φ` and
-    `ψ`. -/
-theorem craig [ModalSys.IsK] [Γ.Presented] {φ ψ : WFF σ Γ 0} (p : Provable [φ] ψ) :
+/-- ⭐**Craig interpolation for K, KD, K4 and KD4**: if `φ ⊢ ψ` in natural deduction over a
+    presented context, there is `χ` with `φ ⊢ χ` and `χ ⊢ ψ`, every relation symbol of `χ`
+    occurring in both `φ` and `ψ`. -/
+theorem craig [ModalSys.GKSys] [Γ.Presented] {φ ψ : WFF σ Γ 0} (p : Provable [φ] ψ) :
     ∃ χ : WFF σ Γ 0, Provable [φ] χ ∧ Provable [χ] ψ ∧ ∀ r, χ.Occ r → φ.Occ r ∧ ψ.Occ r := by
   obtain ⟨n, d⟩ := provable_iff_der.mp p
   obtain ⟨χ, ⟨_, a⟩, ⟨_, b⟩, hl⟩ := interp d [φ] [] [] [ψ] (by simp) (by simp)
