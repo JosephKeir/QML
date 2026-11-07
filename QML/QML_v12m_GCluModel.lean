@@ -226,7 +226,6 @@ noncomputable def cframe (hX : CluFlags) : Frame.{0, 0} σ where
   Nec A s := {o : CRDom hM₀ (.VTypeBox A) s // CDefinable hM₀ hX (.VTypeBox A) s o}
   Pos A s := {o : CRDom hM₀ (.VTypeDia A) s // CDefinable hM₀ hX (.VTypeDia A) s o}
   funcInterp f s args := (gw hM₀ s).canonFunc f args
-  relInterp r s args := (gw hM₀ s).canonRel r args
 
 /-! ## Carriers -/
 
@@ -729,6 +728,7 @@ variable (hF) in
 /-- ⭐**The cluster model** (5 and both lifts of 4 on; T and D either way; weak B under T). -/
 noncomputable def cmodel (hX : CluFlags) : Model.{0, 0} σ where
   frame := cframe hF hM₀ hX
+  relInterp r s args := (gw hM₀ s).canonRel r args
   necEval := cnecEval hM₀ hX
   nec_inj := fun h => cnecEval_injective hM₀ hX h
   RootPoss _ := VarSymb

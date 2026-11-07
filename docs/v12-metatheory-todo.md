@@ -5,6 +5,12 @@ modal-extension work. The agreed order is: finish the modal extensions (strong T
 BF) and their completeness first, then the items here. Item 1 is close enough to done that it could
 be taken at any time; items 4 and 5 are research questions rather than routine jobs.
 
+**Two files (user, 2026-11-06).**  `QML_v12m_SemAdmissible.lean` holds rules shown admissible
+**semantically**, through soundness and completeness across the cube (`provable_iff_validCube`):
+quick, but only for the complete systems (not K5 or KD5), and they say nothing about the proofs.
+`QML_v12m_ProofAdmissible.lean` holds **proof-theoretic** arguments, which hold for every flag
+combination.  The semantic file is populated first; the proof-theoretic versions are item 7.
+
 ## 1. Strong completeness and compactness
 
 **Status: ✅ DONE (2026-09-19)** — `QML_v12m_Compactness.lean`: `model_existence` (every
@@ -40,6 +46,44 @@ What is missing (small):
 
 ## 2. Generalisation on constants (`all_intro` by replacing a constant)
 
+**Status: done for declared variables; open for constants (2026-11-06).**
+
+*Done, for declared variables* — `QML_v12m_ProofAdmissible.lean` (proof-theoretic, every flag
+combination): ⭐`Proof.genVar`, from `Δ ⊢ φ(c)` with `Δ` not mentioning the declared variable `c`,
+`Δ ⊢ ∀x. φ(x)`, `c` declared anywhere at the top level and kept declared; ⭐`WFF.genV_inst`,
+instantiating the bound formula at `c` gives `φ` back.  By `Proof.subst` (renaming `c` to the first
+fresh name, `genS`) and `all_intro`.  (First built as "generalisation on constants"; the user
+pointed out that a constant is a nullary function symbol, which is a different theorem.)
+
+*Open, for constants (nullary function symbols).*  The user's statement: take `ψ(x)` with a declared
+`x : □ᵏ Var` and a constant `f` occurring in neither `Δ` nor `ψ`, and promote `f` by `k` boxes so
+the types match; from `Δ ⊢ ψ(□ᵏ f)` infer `Δ ⊢ ∀x. ψ(x)`.  All tokens of `f` are then at depth `k`.
+* **It fails with T, 4 or strong B** (paper, 2026-11-06).  A function symbol is read per world, so
+  `□ᵏ f`'s value at the end of a path depends only on the world the path ends at.  An arbitrary
+  `x : □ᵏ Var` can depend on the whole path, and these systems can compare two paths to one world.
+  With `x : □□Var`:
+  * *T:* `ψ(x) := □(x.here.box = x.box.here)`.  The two sides read `x` along the paths
+    `(1_w, a)` and `(a, 1_u)`, with different middle worlds.  T's laws only say how one object is
+    read at the identity arrow; no composition is involved without 4.  Countermodel: `w R w`,
+    `w R u`, `u R u`, `Var = {0, 1}`, full domains, `x` giving `0` along `(1_w, a)` and `1` along
+    `(a, 1_u)`.  For `□□f` both sides are `f(u)`.
+  * *4:* `ψ(x) := ∃n:□Var. □□(n.keep.box = x.box.box)`: `n := □f` for the constant; an `x`
+    depending on the middle world has no such `n`.
+  * *Strong B:* `ψ(x) := ∃y:Var. Back(x, y)`: `□□f` comes back as `f(w)` along every round trip;
+    an arbitrary `x` need not.
+  * *5* probably fails like 4 (side images carry contents between paths); not checked.
+* **It should hold in K, D and weak B**, where nothing relates two paths to one world: no rule
+  moves a symbol between depths, and weak B's closed rule cannot produce single-depth tokens.  A
+  proof-theoretic argument: replace only the depth-`k` tokens of `f` in the proof by the matching
+  address of a fresh `x`, leaving other depths as the promoted `f`, check rule by rule that nothing
+  connects depth `k` with other depths, then bind `x` as `Proof.genVar` does.  The user has a
+  proof-theoretic proof in mind for K.
+* **Later (user, 2026-11-06):** look for a way to state "depends only on the end points", which
+  would give the right type to generalise over in the other systems.  The language has no such type
+  now; this is new design.
+
+The notes below are the plan as it was.
+
 **Goal.** A metatheorem: given a proof of `φ(c)` where `c` is a declared root of a fixed type,
 replace every occurrence of `c` by a variable and conclude the universally quantified formula. The
 point is to be able to take constants *out* of formulas, not only put them in (`all_elim`).
@@ -66,6 +110,17 @@ Notes before starting:
   explicitly: it is where a careless version would go wrong.
 
 ## 3. Uniform substitution
+
+**Status: done semantically for the cube (2026-11-07); proof-theoretic version is item 7.**
+`QML_v12m_SemAdmissible.lean`: ⭐`usubstCube`, for every `[ModalSys.CubeSys]` system, from
+`Δ ⊢ φ` infer `Δ[R := ψ] ⊢ φ[R := ψ]` (`WFF.usubst`), `ψ` a formula over the empty context with
+one hole, the tuple of `R`'s arguments (`VarType.varTup`), so it uses only the atom's own indices,
+as below.  The proof: `M.relSwap r ψ` is `M` with `R` read as `ψ`; ⭐`Model.sat_usubst` says it
+satisfies `φ` exactly when `M` satisfies `φ[R := ψ]`, and it is a model proper when `M` is
+(`indInvariant_relSwap`).  This needed `relInterp` moved from `Frame` to `Model`, so that the
+swapped model keeps its frame (`Frame.Dom` is not definitional under a frame update).  Reading the
+swapped model's operations as `M`'s needs smart unfolding off in those proofs: it won't unfold a
+recursion stuck on a variable, so it never reaches the shared fields.
 
 **Goal.** Replacing a relation symbol by a formula, uniformly through a proof: given `R` of arity
 `n` and a formula `ψ` with `n` holes, every proof maps to a proof with each atom `R(t₁, …, tₙ)`
@@ -121,6 +176,15 @@ Notes before starting:
 
 ## 6. Strong T: `T_dia∀` is equivalent to the positive-Φ rule
 
+**Status: set aside (user, 2026-11-07).**  The point was to show that an unnatural-looking rule,
+`T_dia∀` with its list of parameterised hypotheses, is equivalent to a natural one.  `T_dia∀` is
+no longer the rule: `Proof.T_dia` hands over the single atom `Here(c, t)`, and `here_intro` /
+`here_elim` read it, which is natural in itself (and gives every `T_dia∀` hypothesis by
+`here_intro`, `imp_intro` and `all_intro`).  If it is ever revived, the question is the current
+atom rule against the positive-Φ rule, and `Φ⟨x := t⟩` says nothing about a `Here(x, t)` atom, so
+first decide whether the paper rule stands in for `T_dia` alone (with `here_intro`/`here_elim`
+kept) or for all three.  The notes below are the plan as it was.
+
 **Goal.** Prove in Lean that the implemented rule `T_dia∀` and the rule the paper will state are
 interderivable (added 2026-09-18, after completeness for strong T):
 
@@ -146,3 +210,28 @@ Notes before starting:
   pinned down only one way (it realises `t`, but may not be the only object there).
 - A bare `◇_c ψ↑` hypothesis (no quantifiers around it) is equivalent only to the unparameterised
   `T_dia` (`∀y ∃c`), not to `T_dia∀` (`∃c ∀y`).
+
+## 7. Proof-theoretic versions of the semantic corollaries *(added 2026-11-06)*
+
+Also: **generalisation on constants** for K, D and weak B, and the "depends only on the end points" type for the other systems (item 2's notes).
+
+**Status: to do.**  Each holds semantically in every cube system (`QML_v12m_SemAdmissible`:
+`leibnizCube` and `usubstCube`, done 2026-11-07); the
+proof-theoretic version would hold for every flag combination, K5 and KD5 included, and is the
+proof theory proper.  Go into `QML_v12m_ProofAdmissible.lean`.
+
+- **Leibniz at every type.**  From `eqRec T t s` and `φ[t]`, `φ[s]`.  The K-only system has it
+  (`QML_v12_LeibnizMain.lean`: `Proof.substEq`, `Proof.leibniz`, by provably equal substitutions,
+  `SubE.EqE`); `QML_v12m_Leibniz*` hold the generalised infrastructure but not the theorem.  What
+  stopped the port (`QML_v12m_LeibnizSpine`'s note): under T the `here` component of a necessary
+  entry needs the equality read at the current world, which T proves but which is not among the
+  hypotheses, so the bookkeeping must carry those collapsed equalities too.  Then the formers K
+  lacks: `keep` (4), `here` (T), the links (5), `Back` and the returning possibility (strong B).
+  An induction over formulas, not proofs.  Estimate 2 000 to 4 000 lines.
+- **Uniform substitution.**  Every atom `R(t̄)` replaced by `ψ(t̄)`, `ψ` closed apart from the tuple
+  of arguments (`WFF.usubst`, defined in the semantic file).  An induction over all the proof
+  rules, each needing the substitution to commute with the rule's operations (`mono`, `subst`,
+  `instantiate`, `bindFree`, `collapse`, `shift`, `holeAt`, `bodyRepl`, the closed formulas of U
+  and `five_reflL`).  Sized like `Proof.subst`: 3 000 to 5 000 lines.
+- *Done proof-theoretically already:* **generalisation on declared variables** (item 2,
+  `Proof.genVar`, `WFF.genV_inst`, for declared variables).

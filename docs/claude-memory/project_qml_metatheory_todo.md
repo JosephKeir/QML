@@ -15,7 +15,7 @@ before starting any of them.
 
 1. **Strong completeness and compactness** — nearly free: `Theory.Derives` is already finitary and
    `World.ofHenkin` takes arbitrary sets.
-2. **Generalisation on constants** — replace a declared constant by a same-typed eigenvariable and
+2. **Generalisation on constants** (done for DECLARED VARIABLES 2026-11-06, `Proof.genVar`; for constants = nullary function symbols OPEN: generalising promoted `□ᵏ f` to `x : □ᵏ Var` FAILS with T, 4, strong B (counterexamples in the repo doc, item 2), should hold in K/D/weak B; user has a proof-theoretic proof in mind for K; later find a way to state 'depends only on the end points') — replace a declared constant by a same-typed eigenvariable and
    bind it; the declaration cannot be dropped (no non-empty domains).
 3. **Uniform substitution** — the substituted formula may use only the atom's own indices.
 4. **Cut elimination** (added 2026-09-18) — user already has the sequent calculus in mind; ND is close
@@ -23,7 +23,12 @@ before starting any of them.
 5. **Craig interpolation** (added 2026-09-18) — holds for propositional K/T/S4/S5 but fails for many
    *quantified* modal logics (Fine 1979, first-order S5 with constant domains). Would be a notable
    result here because the system makes possible objects expressible. Likely needs item 4.
-6. **`T_dia∀` ⇔ positive-Φ rule** (added 2026-09-18) — Lean keeps `T_dia∀`; the paper states "from
+7. **Proof-theoretic versions of the semantic corollaries** (added 2026-11-06): Leibniz at every
+   type and uniform substitution, done semantically for the cube in `QML_v12m_SemAdmissible`
+   (`leibnizCube`, `usubstCube`, built 2026-11-07); the
+   proof-theoretic versions (every flag, K5/KD5 included) go in `QML_v12m_ProofAdmissible`.
+   Generalisation on declared variables is already proof-theoretic there (`Proof.genVar`).
+6. **`T_dia∀` ⇔ positive-Φ rule** (added 2026-09-18; SET ASIDE by the user 2026-11-07: `T_dia∀` is no longer the rule, the `Here`-atom `T_dia` with `here_intro`/`here_elim` is natural itself, so the motivation is gone) — Lean keeps `T_dia∀`; the paper states "from
    `Φ⟨x:=t⟩` and `c:◇A; Φ(c) ⊢ φ` infer `φ`", `Φ` positive in `x`. Prove the equivalence in Lean
    once strong-T completeness is done.
 

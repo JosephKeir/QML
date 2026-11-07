@@ -122,7 +122,6 @@ structure Frame (σ : Signature) extends Arrows.{u, v} σ where
   Nec : VarType → W → Type u
   Pos : VarType → W → Type u
   funcInterp : (f : σ.FuncSyms) → (w : W) → (Fin (σ.funcArity f) → D w) → D w
-  relInterp : (r : σ.RelSyms) → (w : W) → (Fin (σ.relArity r) → D w) → Prop
 
 namespace Frame
 
@@ -577,6 +576,10 @@ def Frame.domShape {σ : Signature} {F : Frame.{u, v} σ} {Root : F.W → Type u
     function algebra. -/
 structure Model (σ : Signature) where
   frame : Frame.{u, v} σ
+  /-- The relations.  A field of the model rather than the frame, so that a model with its
+      relations replaced keeps its frame and everything built on it (uniform substitution,
+      `QML_v12m_SemAdmissible`). -/
+  relInterp : (r : σ.RelSyms) → (w : frame.W) → (Fin (σ.relArity r) → frame.D w) → Prop
   necEval : {A : VarType} → {w : frame.W} → frame.Nec A w → frame.NecSec A w
   nec_inj : ∀ {A : VarType} {w : frame.W}, Function.Injective (@necEval A w)
   /-- Under T or strong B, the root possibilities: what a possible object's shape is ultimately

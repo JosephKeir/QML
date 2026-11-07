@@ -277,7 +277,7 @@ end
 
 def relSat {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
     {n : ℕ} → Rel σ Δ n → (Fin n → M.frame.D w) → Prop
-  | _, .R r, args => M.frame.relInterp r.1 w (fun i => args (Fin.cast r.2 i))
+  | _, .R r, args => M.relInterp r.1 w (fun i => args (Fin.cast r.2 i))
   | _, .eval ρ t, args => relSat env ρ (Fin.cons (interp env t) args)
 /-- ⭐`p` is **realised here**, with value `o`: the identity arrow lies in `p`'s extent and `p`'s
     content there is **indistinguishable** from `o` (`Model.Ind`; docs §10.33).  At a `◇`-free type

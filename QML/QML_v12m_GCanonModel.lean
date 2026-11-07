@@ -81,7 +81,6 @@ noncomputable def gframe : Frame.{0, 0} σ where
   Nec A s := {o : GRDom hM₀ (.VTypeBox A) s // GDefinable hM₀ (.VTypeBox A) s o}
   Pos A s := {o : GRDom hM₀ (.VTypeDia A) s // GDefinable hM₀ (.VTypeDia A) s o}
   funcInterp f s args := (gw hM₀ s).canonFunc f args
-  relInterp r s args := (gw hM₀ s).canonRel r args
 
 /-- A definable raw object as a frame object. -/
 def gtoDom : (A : VarType) → (s : GW hF M₀) → (o : GRDom hM₀ A s) → GDefinable hM₀ A s o →

@@ -337,33 +337,6 @@ section Generic
 
 variable {σ : Signature} {T K : VarType}
 
-/-- Filling a bound variable, at a later context, is substituting the variable. -/
-theorem WFF.instantiate_bindFree {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (h : Γ.Le Γ') (c : ℕ)
-    (hc : Γ.RootFresh (.free c)) {T : VarType} {x₀ : Ann T} (x : Term σ Γ' T x₀)
-    (ψ : WFF σ (Γ.insert (.free c) T) 0) :
-    WFF.instantiate Ctx.NoSlots.slots x (WFF.mono (h.insert (.bnd 0) T)
-        (WFF.bindFree c hc Ctx.NoSlots.slots T ψ)) =
-      WFF.subst (Subst.singleIdx (.free c) (.tm x)) (Subst.single (.free c) (.tm x))
-        (Subst.ok_single h rfl) (Subst.coh_single hc h rfl)
-        ((Ctx.NoSlots.slots (Γ := Γ)).insertFree c T) Ctx.NoSlots.slots ψ := by
-  have hfr : Γ.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ)).rootFresh le_rfl
-  unfold WFF.instantiate WFF.substRoot
-  refine (WFF.subst_mono (h.insert (.bnd 0) T) _ _ _
-    ((Ctx.NoSlots.slots (Γ := Γ)).insert T) _ _ _).trans ?_
-  unfold WFF.bindFree WFF.renameRoot
-  refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ ψ
-  refine Subst.sim_of ?_
-  intro v U hlp hv
-  rw [Subst.comp_apply]
-  by_cases hvr : v = .root (.free c)
-  · subst hvr
-    rw [Subst.single_root, Subst.single_root, SubE.comp_ren, Subst.at_single_root]
-    exact .refl _
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
-    rw [Subst.single_ne _ hvr, Subst.single_ne _ hvr, SubE.comp_ren,
-      Subst.single_at_ne (Ctx.ref_rt_ne hfr ((Ctx.ref_nonproj Γ hlp).trans hv'))]
-    exact .refl _
-
 theorem Ctx.boxIn_empty_le : Ctx.empty.boxIn.Le Ctx.empty := by
   intro v U h
   exfalso

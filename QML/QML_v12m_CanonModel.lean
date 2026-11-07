@@ -47,7 +47,6 @@ noncomputable def frame (w₀ : World σ N₀) : Frame.{0, 0} σ where
   Nec A w := {o : RDom (.VTypeBox A) w // Definable (.VTypeBox A) w o}
   Pos A w := {o : RDom (.VTypeDia A) w // Definable (.VTypeDia A) w o}
   funcInterp f w args := canonFunc w f args
-  relInterp r w args := canonRel w r args
 
 variable (w₀ : World σ N₀)
 
@@ -280,6 +279,7 @@ theorem posShape_wf_canon (hT : ModalSys.T = true) {A : VarType} {w : World σ N
 /-- ⭐The canonical model. -/
 noncomputable def model : Model.{0, 0} σ where
   frame := frame w₀
+  relInterp r w args := canonRel w r args
   necEval := necEval w₀
   nec_inj := fun h => necEval_injective w₀ h
   RootPoss _ := VarSymb

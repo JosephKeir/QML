@@ -94,7 +94,6 @@ noncomputable def frame : Frame.{0, 0} σ where
   Nec A s := {o : B.RDom (.VTypeBox A) s // B.Definable (.VTypeBox A) s o}
   Pos A s := {o : B.RDom (.VTypeDia A) s // B.Definable (.VTypeDia A) s o}
   funcInterp f s args := (B.w s).canonFunc f args
-  relInterp r s args := (B.w s).canonRel r args
 
 /-- A definable raw object as a frame object. -/
 def toDom : (A : VarType) → (s : B.W) → (o : B.RDom A s) → B.Definable A s o →
@@ -805,6 +804,7 @@ theorem posShape_wf_canon (hSh : ModalSys.shaped = true) {A : VarType} {s : B.W}
 /-- ⭐The canonical model. -/
 noncomputable def model : Model.{0, 0} σ where
   frame := B.frame
+  relInterp r s args := (B.w s).canonRel r args
   necEval := B.necEval
   nec_inj := fun h => B.necEval_injective h
   RootPoss _ := VarSymb

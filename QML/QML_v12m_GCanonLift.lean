@@ -245,6 +245,7 @@ variable (hF hM₀) in
     D). -/
 noncomputable def gmodel : Model.{0, 0} σ where
   frame := gframe hF hM₀
+  relInterp r s args := (gw hM₀ s).canonRel r args
   necEval := gnecEval hM₀
   nec_inj := fun h => gnecEval_injective hM₀ h
   RootPoss _ := VarSymb

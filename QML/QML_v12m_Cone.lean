@@ -116,7 +116,7 @@ def fI (f : σ.FuncSyms) : (w : Option N.frame.W) → (Fin (σ.funcArity f) → 
 
 def rI (r : σ.RelSyms) : (w : Option N.frame.W) → (Fin (σ.relArity r) → c.Dw w) → Prop
   | none => c.relInterp r
-  | some s => N.frame.relInterp r s
+  | some s => N.relInterp r s
 
 /-- Which of the base world's necessary objects are the world's: all of them below the apex. -/
 def DN : (w : Option N.frame.W) → (A : VarType) → N.frame.Nec A (c.base w) → Prop
@@ -161,7 +161,6 @@ def frame : Frame.{0, 0} σ where
   Nec A w := {n : N.frame.Nec A (c.base w) // c.DN w A n}
   Pos A w := {p : N.frame.Pos A (c.base w) // c.DP w A p}
   funcInterp f w := c.fI f w
-  relInterp r w := c.rI r w
 
 /-- An arrow of the cone as one of `N`. -/
 def down {w : Option N.frame.W} : (c.frame hT hB).Acc w → N.frame.Acc (c.base w)
@@ -365,6 +364,7 @@ variable (hInd : ∀ {A : VarType} {w : N.frame.W} (o o' : N.frame.Dom A w), N.I
 /-- ⭐⭐**The cone** over `N`, with apex `none`. -/
 def cone : Model.{0, 0} σ where
   frame := c.frame hT hB
+  relInterp r w := c.rI r w
   necEval := c.necEval hT hB
   nec_inj h := c.necEval_injective hT hB h
   RootPoss _ := PEmpty
