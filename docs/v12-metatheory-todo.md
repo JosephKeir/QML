@@ -299,6 +299,28 @@ Notes before starting:
 **Goal.** If `φ ⊢ ψ`, there is `θ` using only the non-logical symbols common to `φ` and `ψ` with
 `φ ⊢ θ` and `θ ⊢ ψ`.
 
+**Status: ✅ DONE FOR K, relation symbols (2026-11-07).**  `QML_v12m_GKInterp.lean`: ⭐`GK.interp`,
+every split `Δ₁ ; Θ₁ | Δ₂ ; Θ₂` of a GK-derivable sequent has an interpolant `χ` (`Δ₁ ⇒ Θ₁, χ` and
+`χ, Δ₂ ⇒ Θ₂` cut-free derivable, every relation symbol of `χ` on both sides: `Itp`); ⭐`GK.craig`,
+for ND in K over a presented context: from `φ ⊢ ψ`, `χ` with `φ ⊢ χ`, `χ ⊢ ψ` and every relation
+symbol of `χ` in both `φ` and `ψ`.  Sorry-free, standard axioms; about 700 lines.  Maehara's
+method on cut-free GK, no paper surprises:
+* axioms give `⊥`, `⊤`, `P` or `¬P`; two-premise rules the disjunction of the premises'
+  interpolants (principal formula in the first part; the second part by `Itp.swap`, the negation of
+  the swapped split's interpolant);
+* an eigenvariable rule (`∀R`, `∃L`) binds the eigenvariable in the interpolant, `∃u χ'`;
+* `□R`: the boxed hypotheses split by side (`List.filter`); the interpolant is `◇χ'` (`¬□¬χ'`), or
+  `□χ'` by the swap;
+* `◇_xL`: hypotheses and conclusions split by side; `◇_x χ'`, or `□_x χ'` by the swap; the witness
+  `x` is a variable of the shared context;
+* `repl` with `t = s` and `P(t)` on different sides: `t = s → χ'` (equality is logical).
+
+*"Common language" as decided:* relation symbols only; equality logical; function symbols, the
+declared variables and the witness addresses unrestricted (both sides share the context).  *Open:*
+a condition on function symbols (with equality they can occur in `t = s → χ'` and in instantiated
+terms; the usual route is to replace functions by their graphs), and the other systems of the cube
+(cut elimination is only proved for K).
+
 Notes before starting:
 - **Why it would be interesting.** Interpolation holds for the standard *propositional* normal modal
   logics (K, T, S4, S5), but fails for many *quantified* ones: Fine (1979) showed first-order S5 with
