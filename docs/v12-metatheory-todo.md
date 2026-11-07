@@ -156,8 +156,18 @@ standard axioms.  About 2 200 lines in all (estimate was 4 500 to 7 000).
   `θ.pairSplit`); non-K rules by their flags (`kflag`); ⭐`GK.Der.ofProof`.
 * `QML_v12m_GKToND.lean`: ⭐`GK.toND` (`Δ ⇒ Θ` read as `Δ, ¬Θ ⊢ ⊥`, every system), `NDP` helpers,
   ⭐`GK.provable_iff_der`.
-* *Next:* the subformula property (up to term instances) for cut-free GK derivations, then
-  interpolation (item 5).
+* **Subformula property, built (2026-11-07)**, `QML_v12m_GKSubform.lean`: ⭐`GK.subformula`, a
+  cut-free derivation whose end sequent lies in `GSub E` has every sequent there (`GKS`, GK's rules
+  with each conclusion in a family); ⭐`GK.subformula_of_provable`, every ND-provable sequent of K
+  has such an analytic derivation.  `GSub E` is Gentzen's notion for predicate logic: the least
+  family containing `E`, closed under immediate subformulas (the bodies of `□`/`◇_x` read in their
+  views), a quantifier's body instantiated at any term or opened at an eigenvariable, weakening by a
+  fresh variable, a `□` body moved into a `◇_x` view, and atoms (`ref`/`repl` introduce them, as in
+  Negri and von Plato).  `GSub.weight_le`: every member is an atom or no heavier than a formula of
+  `E`.  *Not done:* the sharper form "a single substitution instance of a syntactic subformula"
+  (needs composing substitutions, for which the codebase has no `Ok`/`Coh` lemmas), and
+  restricting the atoms to those built from the end sequent's terms.
+* *Next:* interpolation (item 5).
 
 *Earlier status:* cut admissible in GK, built (2026-11-07).
 * `QML_v12m_GK.lean`: the calculus `GK σ n Γ Δ Θ` (a `Prop`, indexed by a height bound), `WFF.IsAtom`,
