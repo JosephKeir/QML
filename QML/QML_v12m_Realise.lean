@@ -44,19 +44,23 @@ namespace Subst
 variable [ModalSys] {σ : Signature} {Γ : Ctx}
 
 /-- The `◇_x` view realised at the current world by `t₀`. -/
-def realise (x : VarSymb) {A : VarType} {a : Ann A} (t₀ : Term σ Γ A a) : Subst σ Γ := fun v =>
-  match v with
-  | .step u .dia => if u = x then .tm t₀ else .hide
-  | .step u .box => .ren (.step u .here)
-  | .step u .keep => .ren u
-  | _ => .hide
+def realise (x : VarSymb) {A : VarType} {a : Ann A} (t₀ : Term σ Γ A a) : Subst σ Γ where
+  ty v :=
+    match v with
+    | .step u .dia => if u = x then .tm t₀ else .hide
+    | .step u .box => .ren (.step u .here)
+    | .step u .keep => .ren u
+    | _ => .hide
 
 /-- Realising is well-typed: the witness content takes the realising term, a necessary entry its
     value here, and a kept entry itself. -/
 theorem ok_realise (hT : ModalSys.T = true) {x : VarSymb} {A : VarType} {a : Ann A}
     (hx : Γ.ref x = some (.VTypeDia A)) (t₀ : Term σ Γ A a) :
     Subst.Ok (Γ.diaIn x) (realise x t₀) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, fun hO _ _ _ => ?_⟩
+  swap
+  · rw [ModalSys.noOpt_of_T hT] at hO
+    cases hO
   match v with
   | .step u .dia =>
       change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)

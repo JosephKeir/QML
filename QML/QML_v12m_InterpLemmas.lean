@@ -78,114 +78,13 @@ theorem refGF_eval {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (L : Supp Δ) :
       · rw [Supp.refGF, Env.ref, dif_neg hs, dif_neg hs]
         exact lookup_eval env L _ _ _
 
-theorem Env.boxObj_box {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {u : VarSymb} {T : VarType}
-    (h : Δ.boxIn (.step u .box) = some T) (hb : Δ.ref u = some (.VTypeBox T)) :
-    env.boxObj u h = env.ref u hb := by
-  unfold Env.boxObj
-  rw [dif_pos hb]
-
-theorem Env.boxObj_dia {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {u : VarSymb} {A : VarType}
-    (h : Δ.boxIn (.step u .box) = some (.VTypeOpt A)) (hu : Δ.ref u = some (.VTypeDia A)) :
-    env.boxObj u h = M.ops.posOpt (Ctx.boxIn_box_dia h hu).1 (env.ref u hu) := by
-  have hb : ¬ Δ.ref u = some (.VTypeBox (.VTypeOpt A)) := by rw [hu]; simp
-  unfold Env.boxObj
-  rw [dif_neg hb]
-  split
-  · rename_i A' hu'
-    rw [hu] at hu'
-    cases hu'
-    rfl
-  all_goals (rename_i hne; rw [hu] at hne; cases hne)
-
-/-- ⭐The necessary object behind `u.box`, read along an arrow, is `u.box`'s value there. -/
-theorem Env.boxObj_eval {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {u : VarSymb} {T : VarType}
-    (h : Δ.boxIn (.step u .box) = some T) (w' : M.frame.Acc w) :
-    M.necEval (env.boxObj u h) w' = env.boxVal u h w' := by
-  obtain ⟨-, hb | ⟨hO, A, hu, rfl⟩⟩ := Ctx.boxIn_box' h
-  · rw [env.boxObj_box h hb, env.boxVal_box h hb]
-  · rw [env.boxObj_dia h hu, M.posOpt_eval, env.boxVal_dia h hu]
-
-theorem boxEntry_eval {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (L : Supp Δ) (u : VarSymb)
-    {T : VarType} (h : Δ.boxIn (.step u .box) = some T) (hm : u.base ∈ List.map PSigma.fst L) :
-    GFunc.eval M.ops (Supp.boxEntry (σ := σ) L u h hm) w (env.bundle L) = env.boxObj u h := by
-  obtain ⟨-, hb | ⟨hO, A, hu, rfl⟩⟩ := Ctx.boxIn_box' h
-  · rw [env.boxObj_box h hb]
-    unfold Supp.boxEntry
-    rw [dif_pos hb, refGF_eval]
-  · rw [env.boxObj_dia h hu]
-    have hb : ¬ Δ.ref u = some (.VTypeBox (.VTypeOpt A)) := by rw [hu]; simp
-    unfold Supp.boxEntry
-    rw [dif_neg hb]
-    split
-    · rename_i A' hu'
-      rw [hu] at hu'
-      cases hu'
-      simp only [GFunc.eval, eval_ofEq, cast_eq]
-      rw [refGF_eval]
-    all_goals (rename_i hne; rw [hu] at hne; cases hne)
-
-theorem sub_eval {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (L : Supp Δ) :
-    ∀ (L' : Supp Δ) (hL : ∀ e ∈ L', e.1 ∈ List.map PSigma.fst L),
-      GFunc.eval M.ops (Supp.sub (σ := σ) L L' hL) w (env.bundle L) = env.bundle L'
-  | [], _ => rfl
-  | _ :: L', hL => by
-      simp only [Supp.sub, GFunc.eval, Env.bundle]
-      rw [lookup_eval, sub_eval env L L']
-
-theorem optAssemble_eval {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {y : VarSymb} {X : VarType}
-    (hy : Δ (.step y .box) = some (.VTypeOpt X)) (c : M.frame.Dom X w) :
-    ∀ (L : Supp (Δ.optIn y)),
-      GFunc.eval M.ops (Supp.optAssemble (σ := σ) hy L) w
-          ((env.bundle (Supp.optPart L), c) :
-            M.frame.Dom (.VTypeProd (Supp.ty (Supp.optPart L)) X) w) =
-        (env.optPush y hy c).bundle L
-  | [] => rfl
-  | ⟨.step _ .dia, T, h⟩ :: L => by
-      obtain ⟨hw, hT⟩ := Ctx.optIn_dia_entry hy h
-      have hw' := hw.symm
-      have hT' := hT.symm
-      subst hw' hT'
-      refine Prod.ext ?_ (optAssemble_eval env hy c L)
-      simp only [Supp.optAssemble, GFunc.eval, eval_ofEq, cast_eq, Env.bundle, Env.optPush,
-        dif_pos]
-  | ⟨.root _, _, _⟩ :: L => by
-      refine Prod.ext ?_ (optAssemble_eval env hy c L)
-      simp only [Supp.optAssemble, Supp.optPart, GFunc.eval, Env.bundle]
-      unfold Env.optPush
-      rw [dif_neg (by intro he; cases he)]
-  | ⟨.step _ .fst, _, _⟩ :: L => by
-      refine Prod.ext ?_ (optAssemble_eval env hy c L)
-      simp only [Supp.optAssemble, Supp.optPart, GFunc.eval, Env.bundle]
-      unfold Env.optPush
-      rw [dif_neg (by intro he; cases he)]
-  | ⟨.step _ .snd, _, _⟩ :: L => by
-      refine Prod.ext ?_ (optAssemble_eval env hy c L)
-      simp only [Supp.optAssemble, Supp.optPart, GFunc.eval, Env.bundle]
-      unfold Env.optPush
-      rw [dif_neg (by intro he; cases he)]
-  | ⟨.step _ .box, _, _⟩ :: L => by
-      refine Prod.ext ?_ (optAssemble_eval env hy c L)
-      simp only [Supp.optAssemble, Supp.optPart, GFunc.eval, Env.bundle]
-      unfold Env.optPush
-      rw [dif_neg (by intro he; cases he)]
-  | ⟨.step _ .here, _, _⟩ :: L => by
-      refine Prod.ext ?_ (optAssemble_eval env hy c L)
-      simp only [Supp.optAssemble, Supp.optPart, GFunc.eval, Env.bundle]
-      unfold Env.optPush
-      rw [dif_neg (by intro he; cases he)]
-  | ⟨.step _ .keep, _, _⟩ :: L => by
-      refine Prod.ext ?_ (optAssemble_eval env hy c L)
-      simp only [Supp.optAssemble, Supp.optPart, GFunc.eval, Env.bundle]
-      unfold Env.optPush
-      rw [dif_neg (by intro he; cases he)]
-
 theorem gatherBox_eval {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (L : Supp Δ) :
     ∀ (L' : Supp Δ.boxIn) (hL : ∀ e ∈ Supp.outerBox L', e.1 ∈ List.map PSigma.fst L),
       GFunc.eval M.ops (Supp.gatherBox (σ := σ) L L' hL) w (env.bundle L) = env.necBundle L'
   | [], _ => rfl
   | ⟨.step u .box, T, h⟩ :: L', hL => by
       simp only [Supp.gatherBox, GFunc.eval, Env.necBundle]
-      rw [boxEntry_eval, gatherBox_eval env L L']
+      rw [refGF_eval, gatherBox_eval env L L']
   | ⟨.step u .keep, T, h⟩ :: L', hL => by
       simp only [Supp.gatherBox, GFunc.eval, Env.necBundle]
       rw [refGF_eval, gatherBox_eval env L L']
@@ -198,7 +97,7 @@ theorem necBundle_eval {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (w' : M.fra
     ∀ (L : Supp Δ.boxIn), M.necEval (env.necBundle L) w' = (env.boxPush w').bundle L
   | [] => rfl
   | ⟨.step u .box, T, h⟩ :: L =>
-      (M.necPair_eval _ _ w').trans (Prod.ext (env.boxObj_eval h w') (necBundle_eval env w' L))
+      (M.necPair_eval _ _ w').trans (Prod.ext rfl (necBundle_eval env w' L))
   | ⟨.step u .keep, T, h⟩ :: L =>
       (M.necPair_eval _ _ w').trans (Prod.ext rfl (necBundle_eval env w' L))
   | ⟨.root _, _, h⟩ :: _ => by cases h
@@ -273,22 +172,6 @@ mutual
           rename_i heq
           exfalso
           obtain ⟨_, h⟩ := hx
-          rw [heq] at h
-          cases h
-    | _, _, .optm _ y hy t, hL => by
-        simp only [Term.compile, interp]
-        split
-        · rename_i X hr
-          simp only [GFunc.eval]
-          rw [sub_eval, lookup_eval, Part.map_map, Part.map_map]
-          congr 1
-          funext c
-          simp only [Function.comp]
-          rw [optAssemble_eval]
-        all_goals
-          rename_i heq
-          exfalso
-          obtain ⟨_, h⟩ := hy
           rw [heq] at h
           cases h
 end

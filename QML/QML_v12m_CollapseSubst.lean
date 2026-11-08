@@ -378,8 +378,8 @@ theorem at_under_ne {Δ : Ctx} (θ : Subst σ Δ) {d d' : ℕ} (T : VarType)
       simp only [Subst.at]
       split_ifs
       · rw [at_under_ne θ T h (v := v) hv, SubE.proj_mono]
-      · change (if VarSymb.step v s = .root (.bnd d) then _ else _) = _
-        rw [if_neg (fun he => by cases he)]
+      · exact if_neg (t := SubE.ren (.root (.bnd d')))
+          (fun (he : VarSymb.step v s = .root (.bnd d)) => by cases he)
 
 /-- `θ'` substitutes each collapsed address as `θ` substitutes the address, collapsed. -/
 def Corr {k : ℕ} (Γ : Ctx) {Δ Δ' : Ctx} (D : Ctx.Collapses k Δ Δ') (θ : Subst σ Δ)
@@ -676,6 +676,8 @@ theorem WFF.collapse_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {�
           (θ'.dia (x.collapse k) ((ι x).collapse k)) p q (hΓ.diaIn x) (hΓ'.diaIn (x.collapse k))
           (hΔ.diaIn (ι x)) hΔy (Subst.corr_dia hθ hcr hx hw hw') φ)
       exact key _ hwι _ _ _ _
+  | _, _, _, _, _, _, _, _, _, _, D, _, _, _, _, _, _, _, _, _, _, _, .optx hO _ _ _ =>
+      False.elim (by have := ModalSys.noOpt_of_T D.hT; rw [hO] at this; cases this)
   | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr, .here hT s t =>
       WFF.here_congr hT (Term.collapse_subst C D θ hθ hc θ' hθ' hc' hcr s)
         (Term.collapse_subst C D θ hθ hc θ' hθ' hc' hcr t)

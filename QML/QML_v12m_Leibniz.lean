@@ -151,12 +151,18 @@ variable {σ : Signature} {Δ : Ctx}
 
 /-- Under a binder, with the slot sent to the free root `u` instead of a target slot. -/
 def toFree (θ : Subst σ Δ) (d u : ℕ) (T : VarType) (h : Δ (.root (.free u)) = none) :
-    Subst σ (Δ.insert (.free u) T) := fun v =>
-  if v = .root (.bnd d) then .ren (.root (.free u)) else (θ v).mono (Ctx.le_insert h T)
+    Subst σ (Δ.insert (.free u) T) where
+  ty v := if v = .root (.bnd d) then .ren (.root (.free u)) else (θ v).mono (Ctx.le_insert h T)
+  wit y := (θ.wit y).mono (Ctx.le_insert h T)
+
+theorem toFree_slot (θ : Subst σ Δ) (d u : ℕ) (T : VarType) (h : Δ (.root (.free u)) = none) :
+    θ.toFree d u T h (.root (.bnd d)) = .ren (.root (.free u)) :=
+  if_pos (e := (θ (.root (.bnd d))).mono (Ctx.le_insert h T)) rfl
 
 theorem ok_toFree {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {d u : ℕ} (T : VarType)
     (h : Δ (.root (.free u)) = none) : Ok (Γ.insert (.bnd d) T) (θ.toFree d u T h) := by
-  intro v U hlp hv
+  refine ⟨fun v U hlp hv => ?_, fun hO y X hy =>
+    WitE.okW_mono (Ctx.le_insert h T) (hθ.wit hO y X hy)⟩
   by_cases hvr : v = .root (.bnd d)
   · subst hvr
     have hTU : T = U := by simpa [Ctx.insert] using hv
@@ -171,7 +177,28 @@ theorem coh_toFree {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ
     (hc : Coh ι Γ θ) {d u : ℕ} (hΓ : Γ.SlotsFrom d) (T : VarType)
     (h : Δ (.root (.free u)) = none) :
     Coh (VarSymb.slotToFree ι d u) (Γ.insert (.bnd d) T) (θ.toFree d u T h) := by
-  refine coh_of (ok_toFree hθ T h) ?_
+  refine coh_of (ok_toFree hθ T h) ?_ ?_ ?_
+  rotate_left
+  · intro hO y X hy p
+    have hrt : y.rt ≠ .bnd d := fun he => by
+      change Γ.wit y = some X at hy
+      rw [hΓ.wit y d he le_rfl] at hy; cases hy
+    change Γ.wit y = some X at hy
+    change ((θ.wit y).mono (Ctx.le_insert h T)).idxAlong p =
+      if (y.ext p).rt = .bnd d then _ else ι (y.ext p)
+    rw [WitE.idxAlong_mono, VarSymb.ext_rt, if_neg hrt]
+    exact hc.wit hO y X hy p
+  · intro hO y X z hy hyd hz
+    change Γ.wit y = some X at hy
+    have hne : VarSymb.step y .dia ≠ .root (.bnd d) := fun he => by cases he
+    rw [Ctx.insert_ne hne] at hyd
+    change ((θ.wit y).mono (Ctx.le_insert h T)).idxAlong [] = z at hz
+    rw [WitE.idxAlong_mono] at hz
+    rw [show θ.toFree d u T h (.step y .dia) = (θ (.step y .dia)).mono (Ctx.le_insert h T)
+        from if_neg (t := SubE.ren (.root (.free u))) hne,
+      show (θ.toFree d u T h).wit y = (θ.wit y).mono (Ctx.le_insert h T) from rfl,
+      ← WitE.optBody_mono, ← hc.opened hO y X z hy hyd hz]
+    simp only [SubE.mono_mono]
   intro v U hlp hv p
   by_cases hvr : v = .root (.bnd d)
   · subst hvr

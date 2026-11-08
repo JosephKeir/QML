@@ -40,13 +40,6 @@ mutual
     | diatm {Γ : Ctx} {A : VarType} {a : Ann A} (x : VarSymb)
         (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
         Term σ (Γ.diaIn x) A a → Term σ Γ (.VTypeDia A) (.dia x a)
-    /-- ⭐An `Opt` value read through a body (branch `wip/in-atom`, docs §12.13): `y.box : Opt X`
-        (the box view of `y : ◇X`) present, read through `t` with its content `y.dia : X` inside.
-        As `diatm` for `◇`, with the same body: `Γ.boxIn.optIn y` declares what `Γ.diaIn y` does,
-        so substitution sends `y ↦ diatm z b` to `y.box ↦ optm z b`. -/
-    | optm {Γ : Ctx} {A : VarType} {a : Ann A} (hO : ModalSys.Opt = true) (y : VarSymb)
-        (hy : ∃ X, Γ (.step y .box) = some (.VTypeOpt X)) :
-        Term σ (Γ.optIn y) A a → Term σ Γ (.VTypeOpt A) (.opt y a)
   deriving DecidableEq
 end
 
@@ -67,8 +60,40 @@ mutual
     | _, _, h, _, _, .boxtm t => .boxtm (Term.mono h.boxIn t)
     | _, _, h, _, _, .diatm x hx t =>
         .diatm x (hx.imp fun _ hX => h.ref hX) (Term.mono (h.diaIn x) t)
-    | _, _, h, _, _, .optm hO y hy t =>
-        .optm hO y (hy.imp fun _ hX => h _ _ hX) (Term.mono (h.optIn y) t)
+end
+
+mutual
+  theorem Func.mono_mono {σ : Signature} {Γ₁ Γ₂ Γ₃ : Ctx} (h₁ : Γ₁.Le Γ₂) (h₂ : Γ₂.Le Γ₃) :
+      {n : ℕ} → (f : Func σ Γ₁ n) → Func.mono h₂ (Func.mono h₁ f) = Func.mono (h₁.trans h₂) f
+    | _, .F _ => rfl
+    | _, .eval g t => by
+        change Func.eval (Func.mono h₂ (Func.mono h₁ g)) (Term.mono h₂ (Term.mono h₁ t)) = _
+        rw [Func.mono_mono h₁ h₂ g, Term.mono_mono h₁ h₂ t]
+        rfl
+    termination_by structural _ f => f
+
+  theorem Term.mono_mono {σ : Signature} {Γ₁ Γ₂ Γ₃ : Ctx} (h₁ : Γ₁.Le Γ₂) (h₂ : Γ₂.Le Γ₃) :
+      {T : VarType} → {a : Ann T} → (t : Term σ Γ₁ T a) →
+      Term.mono h₂ (Term.mono h₁ t) = Term.mono (h₁.trans h₂) t
+    | _, _, .var _ _ => rfl
+    | _, _, .func f => by
+        change Term.func (Func.mono h₂ (Func.mono h₁ f)) = _
+        rw [Func.mono_mono h₁ h₂ f]
+        rfl
+    | _, _, .unit => rfl
+    | _, _, .pair s t => by
+        change Term.pair (Term.mono h₂ (Term.mono h₁ s)) (Term.mono h₂ (Term.mono h₁ t)) = _
+        rw [Term.mono_mono h₁ h₂ s, Term.mono_mono h₁ h₂ t]
+        rfl
+    | _, _, .boxtm t => by
+        change Term.boxtm (Term.mono h₂.boxIn (Term.mono h₁.boxIn t)) = _
+        rw [Term.mono_mono h₁.boxIn h₂.boxIn t]
+        rfl
+    | _, _, .diatm x _ t => by
+        change Term.diatm x _ (Term.mono (h₂.diaIn x) (Term.mono (h₁.diaIn x) t)) = _
+        rw [Term.mono_mono (h₁.diaIn x) (h₂.diaIn x) t]
+        rfl
+    termination_by structural _ _ t => t
 end
 
 /-- Weakening by a fresh root. -/

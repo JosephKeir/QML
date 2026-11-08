@@ -117,6 +117,43 @@ theorem posSec_ext {X A : VarType} {w : M.frame.W} {p q : M.frame.Pos X w} (hpq 
   subst hpq
   exact congrArg (Sigma.mk _) (funext hfg)
 
+/-- Two environments' witnesses agree along an inclusion of contexts. -/
+def Env.WitAgree {Γ Γ' : Ctx} (h : Γ.Le Γ') {w : M.frame.W} (env : M.Env Γ w)
+    (env' : M.Env Γ' w) : Prop :=
+  ∀ y X (hy : Γ.wit y = some X), env.wit y X hy = env'.wit y X (h.wit y X hy)
+
+theorem posPart_congr {X : VarType} {w : M.frame.W} {p q : M.frame.Dom (.VTypeDia X) w}
+    (hpq : p = q) (w' : M.frame.Acc w) :
+    (⟨w' ∈ (M.posEval p).1, fun hm => (M.posEval p).2 ⟨w', hm⟩⟩ : Part (M.frame.Dom X w'.1)) =
+      ⟨w' ∈ (M.posEval q).1, fun hm => (M.posEval q).2 ⟨w', hm⟩⟩ := by
+  subst hpq
+  rfl
+
+/-- Into a `□` the witnesses are read off the possible objects, so they agree when these do. -/
+theorem Env.boxPush_witAgree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env Γ w}
+    {env' : M.Env Γ' w} (hag : Env.Agree h env env') (w' : M.frame.Acc w) :
+    Env.WitAgree h.boxIn (env.boxPush w') (env'.boxPush w') := fun y _ hy =>
+  posPart_congr (Env.ref_agree hag y (Ctx.boxIn_wit.mp hy).2) w'
+
+theorem Env.diaPush_witAgree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env Γ w}
+    {env' : M.Env Γ' w} (hag : Env.Agree h env env') {x : VarSymb} {X : VarType}
+    (hr : Γ.ref x = some (.VTypeDia X)) (w₁ : (M.posEval (env.ref x hr)).1)
+    (hm : w₁.1 ∈ (M.posEval (env'.ref x (h.ref hr))).1) :
+    Env.WitAgree (h.diaIn x) (env.diaPush x hr w₁) (env'.diaPush x (h.ref hr) ⟨w₁.1, hm⟩) :=
+  Env.boxPush_witAgree hag w₁.1
+
+theorem Env.optPush_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env Γ w}
+    {env' : M.Env Γ' w} (hag : Env.Agree h env env') {y : VarSymb} {X : VarType}
+    (hy : Γ.wit y = some X) (c : M.frame.Dom X w) :
+    Env.Agree (h.optIn y) (env.optPush y hy c) (env'.optPush y (h.wit y X hy) c) := by
+  intro v T hv
+  by_cases hvy : v = .step y .dia
+  · change (if hv' : v = .step y .dia then _ else _) = (if hv' : v = .step y .dia then _ else _)
+    rw [dif_pos hvy, dif_pos hvy]
+  · change (if hv' : v = .step y .dia then _ else _) = (if hv' : v = .step y .dia then _ else _)
+    rw [dif_neg hvy, dif_neg hvy]
+    exact hag _ _ _
+
 /-! ## Weakening -/
 
 mutual
@@ -176,24 +213,26 @@ theorem relSat_mono {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env 
 /-- ⭐Satisfaction is unchanged by weakening. -/
 theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} {env : M.Env Γ w}
     {env' : M.Env Γ' w}, Env.Agree h env env' → (φ : WFF σ Γ d) →
+    (_hw : ModalSys.Opt = true → Env.WitAgree h env env' := by wit_triv) →
     (M.sat env' (WFF.mono h φ) ↔ M.sat env φ)
-  | _, _, _, _, _, _, _, hag, .atom ρ => relSat_mono hag ρ Fin.elim0
-  | _, _, _, _, _, _, _, hag, .eq t s => by
+  | _, _, _, _, _, _, _, hag, .atom ρ, hw => relSat_mono hag ρ Fin.elim0
+  | _, _, _, _, _, _, _, hag, .eq t s, hw => by
       change interp _ (Term.mono _ t) = interp _ (Term.mono _ s) ↔ _
       rw [interp_mono hag t, interp_mono hag s]
       exact Iff.rfl
-  | _, _, _, _, _, _, _, _, .top => Iff.rfl
-  | _, _, _, _, _, _, _, _, .bot => Iff.rfl
-  | _, _, _, _, _, _, _, hag, .and φ ψ => and_congr (sat_mono hag φ) (sat_mono hag ψ)
-  | _, _, _, _, _, _, _, hag, .or φ ψ => or_congr (sat_mono hag φ) (sat_mono hag ψ)
-  | _, _, _, _, _, _, _, hag, .imp φ ψ => imp_congr (sat_mono hag φ) (sat_mono hag ψ)
-  | _, _, _, d, _, _, _, hag, .all _ φ =>
-      forall_congr' fun o => sat_mono (Env.extend_agree hag (.bnd d) o) φ
-  | _, _, _, d, _, _, _, hag, .ex _ φ =>
-      exists_congr fun o => sat_mono (Env.extend_agree hag (.bnd d) o) φ
-  | _, _, _, _, _, _, _, hag, .box φ =>
+  | _, _, _, _, _, _, _, _, .top, _ => Iff.rfl
+  | _, _, _, _, _, _, _, _, .bot, _ => Iff.rfl
+  | _, _, _, _, _, _, _, hag, .and φ ψ, hw => and_congr (sat_mono hag φ hw) (sat_mono hag ψ hw)
+  | _, _, _, _, _, _, _, hag, .or φ ψ, hw => or_congr (sat_mono hag φ hw) (sat_mono hag ψ hw)
+  | _, _, _, _, _, _, _, hag, .imp φ ψ, hw => imp_congr (sat_mono hag φ hw) (sat_mono hag ψ hw)
+  | _, _, _, d, _, _, _, hag, .all _ φ, hw =>
+      forall_congr' fun o => sat_mono (Env.extend_agree hag (.bnd d) o) φ hw
+  | _, _, _, d, _, _, _, hag, .ex _ φ, hw =>
+      exists_congr fun o => sat_mono (Env.extend_agree hag (.bnd d) o) φ hw
+  | _, _, _, _, _, _, _, hag, .box φ, hw =>
       forall_congr' fun w' => sat_mono (Env.boxPush_agree hag w') φ
-  | _, _, h, _, _, env, env', hag, .dia x hx φ => by
+        (fun _ => Env.boxPush_witAgree hag w')
+  | _, _, h, _, _, env, env', hag, .dia x hx φ, hw => by
       constructor
       · rintro ⟨X, h', w₂, hsat⟩
         obtain ⟨X₀, hr⟩ := hx
@@ -205,24 +244,52 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
         subst hXX
         have href := Env.ref_agree hag x hr
         refine ⟨X₀, hr, ⟨w₂.1, by rw [href]; exact w₂.2⟩, ?_⟩
-        exact (sat_mono (Env.diaPush_agree hag hr ⟨w₂.1, _⟩ w₂.2) φ).mp hsat
+        exact (sat_mono (Env.diaPush_agree hag hr ⟨w₂.1, _⟩ w₂.2) φ
+          (fun _ => Env.diaPush_witAgree hag hr _ _)).mp hsat
       · rintro ⟨X, hr, w₁, hsat⟩
         have href := Env.ref_agree hag x hr
         exact ⟨X, h.ref hr, ⟨w₁.1, by rw [← href]; exact w₁.2⟩,
-          (sat_mono (Env.diaPush_agree hag hr w₁ _) φ).mpr hsat⟩
-  | _, _, _, _, _, _, _, hag, .here hT s t => by
+          (sat_mono (Env.diaPush_agree hag hr w₁ _) φ
+          (fun _ => Env.diaPush_witAgree hag hr _ _)).mpr hsat⟩
+  | _, _, h, _, _, env, env', hag, .optx hO y hy φ, hw => by
+      have hw' := hw hO
+      obtain ⟨X₀, hy₀⟩ := hy
+      constructor
+      · rintro ⟨X, h', hd, hsat⟩
+        have hXX : X₀ = X := by
+          have h₂ := h.wit y X₀ hy₀
+          rw [h'] at h₂
+          cases h₂
+          rfl
+        subst hXX
+        have he := hw' y X₀ hy₀
+        have hd₀ : (env.wit y X₀ hy₀).Dom := by rw [he]; exact hd
+        have hc : (env'.wit y X₀ h').get hd = (env.wit y X₀ hy₀).get hd₀ :=
+          Part.get_eq_of_mem (he ▸ Part.get_mem hd₀) hd
+        rw [hc] at hsat
+        exact ⟨X₀, hy₀, hd₀, (sat_mono (Env.optPush_agree hag hy₀ _) φ (fun _ => hw')).mp hsat⟩
+      · rintro ⟨X, hy', hd, hsat⟩
+        have he := hw' y X hy'
+        have hd' : (env'.wit y X (h.wit y X hy')).Dom := by rw [← he]; exact hd
+        refine ⟨X, h.wit y X hy', hd', ?_⟩
+        have hc : (env'.wit y X (h.wit y X hy')).get hd' = (env.wit y X hy').get hd :=
+          Part.get_eq_of_mem (he ▸ Part.get_mem hd) hd'
+        rw [hc]
+        exact (sat_mono (Env.optPush_agree hag hy' _) φ (fun _ => hw')).mpr hsat
+  | _, _, _, _, _, _, _, hag, .here hT s t, hw => by
       change Model.Realised hT (interp _ (Term.mono _ s)) (interp _ (Term.mono _ t)) ↔ _
       rw [interp_mono hag s, interp_mono hag t]
       exact Iff.rfl
-  | _, _, _, _, _, _, _, hag, .back hB L s t => by
+  | _, _, _, _, _, _, _, hag, .back hB L s t, hw => by
       change Model.Backs L (interp _ (Term.mono _ s)) (interp _ (Term.mono _ t)) ↔ _
       rw [interp_mono hag s, interp_mono hag t]
       exact Iff.rfl
-  | _, _, _, d, _, _, _, hag, .retS hB S t Φ =>
+  | _, _, _, d, _, _, _, hag, .retS hB S t Φ, hw =>
       exists_congr fun a => exists_congr fun e =>
-        and_congr (sat_mono (Env.extend_agree (Env.boxPush_agree hag a) (.bnd d) e) Φ)
+        and_congr (sat_mono (Env.extend_agree (Env.boxPush_agree hag a) (.bnd d) e) Φ
+          (fun _ => Env.boxPush_witAgree hag a))
           (by rw [interp_mono hag t])
-  | _, _, h, d, _, env, env', hag, .retxS hB y hy S t Φ => by
+  | _, _, h, d, _, env, env', hag, .retxS hB y hy S t Φ, hw => by
       constructor
       · rintro ⟨Y, h', a, e, hsat, hr⟩
         obtain ⟨Y₀, hy₀⟩ := hy
@@ -235,20 +302,22 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
         have href := Env.ref_agree hag y hy₀
         refine ⟨Y₀, hy₀, ⟨a.1, by rw [href]; exact a.2⟩, e, ?_, ?_⟩
         · exact (sat_mono (Env.extend_agree (Env.diaPush_agree hag hy₀ ⟨a.1, _⟩ a.2) (.bnd d) e)
-            Φ).mp hsat
+            Φ (fun _ => Env.diaPush_witAgree hag hy₀ _ _)).mp hsat
         · rw [interp_mono hag t] at hr
           exact hr
       · rintro ⟨Y, hr', a, e, hsat, hr⟩
         have href := Env.ref_agree hag y hr'
         refine ⟨Y, h.ref hr', ⟨a.1, by rw [← href]; exact a.2⟩, e,
-          (sat_mono (Env.extend_agree (Env.diaPush_agree hag hr' a _) (.bnd d) e) Φ).mpr hsat, ?_⟩
+          (sat_mono (Env.extend_agree (Env.diaPush_agree hag hr' a _) (.bnd d) e) Φ
+            (fun _ => Env.diaPush_witAgree hag hr' _ _)).mpr hsat, ?_⟩
         rw [interp_mono hag t]
         exact hr
-  | _, _, _, d, _, _, _, hag, .link hV hF t Φ =>
+  | _, _, _, d, _, _, _, hag, .link hV hF t Φ, hw =>
       forall_congr' fun a => by
         rw [interp_mono hag t]
         exact sat_mono (Env.extend_agree (Env.boxPush_agree hag a) (.bnd d) _) Φ
-  | _, _, h, d, _, env, env', hag, .linkx hV hF y hy t Φ => by
+          (fun _ => Env.boxPush_witAgree hag a)
+  | _, _, h, d, _, env, env', hag, .linkx hV hF y hy t Φ, hw => by
       constructor
       · rintro ⟨Y, h', a, hsat⟩
         obtain ⟨Y₀, hy₀⟩ := hy
@@ -262,12 +331,13 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
         refine ⟨Y₀, hy₀, ⟨a.1, by rw [href]; exact a.2⟩, ?_⟩
         rw [interp_mono hag t] at hsat
         exact (sat_mono (Env.extend_agree (Env.diaPush_agree hag hy₀ ⟨a.1, _⟩ a.2) (.bnd d) _)
-          Φ).mp hsat
+          Φ (fun _ => Env.diaPush_witAgree hag hy₀ _ _)).mp hsat
       · rintro ⟨Y, hr', a, hsat⟩
         have href := Env.ref_agree hag y hr'
         refine ⟨Y, h.ref hr', ⟨a.1, by rw [← href]; exact a.2⟩, ?_⟩
         rw [interp_mono hag t]
-        exact (sat_mono (Env.extend_agree (Env.diaPush_agree hag hr' a _) (.bnd d) _) Φ).mpr hsat
+        exact (sat_mono (Env.extend_agree (Env.diaPush_agree hag hr' a _) (.bnd d) _) Φ
+          (fun _ => Env.diaPush_witAgree hag hr' _ _)).mpr hsat
 
 /-! ## Equality -/
 

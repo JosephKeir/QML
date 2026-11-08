@@ -389,8 +389,8 @@ namespace Subst
 
 /-- ⭐The abstraction of a `◇_x` view at an **arbitrary** address: the content goes to the hole, the
     `□`-view entries stay.  `Subst.diaAbs` is the case of a root. -/
-def diaAbsA (σ : Signature) (Δ : Ctx) (x : VarSymb) : Subst σ Δ := fun v =>
-  match v with
+def diaAbsA (σ : Signature) (Δ : Ctx) (x : VarSymb) : Subst σ Δ where
+  ty v := match v with
   | .step u .dia => if u = x then .ren (.root (.bnd 0)) else .hide
   | .step u .box => .ren (.step u .box)
   | .step u .keep => .ren (.step u .keep)
@@ -465,9 +465,9 @@ theorem diaIn_casesA (hxA : Γ.ref x = some (.VTypeDia A))
 /-- ⭐Well-typedness of the generalised abstraction. -/
 theorem ok_diaAbsA (hxA : Γ.ref x = some (.VTypeDia A))
     (hnb : ∀ p : List Step, Γ.ref ((VarSymb.step x .dia).ext p) = none)
-    (h₀ : Γ.boxIn (.root (.bnd 0)) = none) :
+    (h₀ : Γ.boxIn (.root (.bnd 0)) = none) (_hO : ModalSys.Opt = false := by opt_off) :
     Ok (Γ.diaIn x) (diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x) := by
-  intro v T hlp hv
+  refine ⟨fun v T hlp hv => ?_, by wit_triv⟩
   rcases diaIn_casesA (σ := σ) hxA hnb hv with ⟨rfl, rfl⟩ | ⟨_, hb, hen, _⟩
   · change (if x = x then SubE.ren (.root (.bnd 0)) else .hide).OkRef T
     rw [if_pos rfl]
@@ -482,7 +482,8 @@ theorem ok_diaAbsA (hxA : Γ.ref x = some (.VTypeDia A))
     of the view.  That is the whole of what the naming discipline buys here. -/
 theorem coh_diaAbsA (hxA : Γ.ref x = some (.VTypeDia A))
     (hnb : ∀ p : List Step, Γ.ref ((VarSymb.step x .dia).ext p) = none)
-    (hvf : Γ.ViewFresh) (h₀ : Γ.boxIn (.root (.bnd 0)) = none) :
+    (hvf : Γ.ViewFresh) (h₀ : Γ.boxIn (.root (.bnd 0)) = none)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Coh (VarSymb.absAddr x 0) (Γ.diaIn x) (diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x) := by
   refine coh_of (ok_diaAbsA hxA hnb h₀) ?_
   intro v T hlp hv p
@@ -529,7 +530,8 @@ def WFF.viewReadAtA {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (x : VarSymb) {A : 
     The only hypothesis is that `x` is declared at `◇A`: what the root version needed as freshness
     comes from the presentation (`Ctx.Presented.not_below`, `Ctx.Presented.viewFresh`). -/
 def WFF.diaAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb) {A : VarType}
-    (hxA : Γ.ref x = some (.VTypeDia A)) (χ : WFF σ (Γ.diaIn x) 0) :
+    (hxA : Γ.ref x = some (.VTypeDia A)) (χ : WFF σ (Γ.diaIn x) 0)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     WFF σ (Γ.boxIn.insert (.bnd 0) A) 1 :=
   WFF.subst (VarSymb.absAddr x 0) (Subst.diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x)
     (Subst.ok_diaAbsA hxA (hp.not_below hxA rfl) ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).root))
@@ -540,7 +542,7 @@ def WFF.diaAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb) {A
 /-- ⭐The same abstraction on a term of the view. -/
 def Term.diaAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb) {A : VarType}
     (hxA : Γ.ref x = some (.VTypeDia A)) {T : VarType} {b : Ann T}
-    (t : Term σ (Γ.diaIn x) T b) :
+    (t : Term σ (Γ.diaIn x) T b) (_hO : ModalSys.Opt = false := by opt_off) :
     Term σ (Γ.boxIn.insert (.bnd 0) A) T (b.mapIdx (VarSymb.absAddr x 0)) :=
   Term.subst (VarSymb.absAddr x 0) (Subst.diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x)
     (Subst.ok_diaAbsA hxA (hp.not_below hxA rfl) ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).root))
@@ -555,7 +557,8 @@ theorem Subst.sim_diaAbsA_viewRead {σ : Signature} {Γ : Ctx} {x : VarSymb} {A 
     (hθ₂ : Subst.Ok (Γ.boxIn.insert (.bnd 0) A)
       (Subst.single (σ := σ) (Δ := Γ.diaIn x) (.bnd 0) (.ren (.step x .dia))))
     (hc₂ : Subst.Coh ι₂ (Γ.boxIn.insert (.bnd 0) A)
-      (Subst.single (σ := σ) (Δ := Γ.diaIn x) (.bnd 0) (.ren (.step x .dia)))) :
+      (Subst.single (σ := σ) (Δ := Γ.diaIn x) (.bnd 0) (.ren (.step x .dia))))
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Subst.Sim (Γ.diaIn x) (Subst.idS σ (Γ.diaIn x))
       ((Subst.diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x).comp
         (Subst.single (.bnd 0) (.ren (.step x .dia))) hθ₂ hc₂) := by
@@ -583,7 +586,8 @@ theorem Subst.sim_diaAbsA_viewRead {σ : Signature} {Γ : Ctx} {x : VarSymb} {A 
     abstraction.  This is what the pinned realisation rules need in order to present a view formula
     as a hole formula. -/
 theorem WFF.viewReadAtA_diaAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb)
-    {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) (χ : WFF σ (Γ.diaIn x) 0) :
+    {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) (χ : WFF σ (Γ.diaIn x) 0)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     WFF.viewReadAtA x hxA (WFF.diaAbsA x hxA χ) = χ := by
   have h₀ : Γ.boxIn (.root (.bnd 0)) = none := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root
   refine (WFF.subst_comp _ _ (Subst.idS σ _)
@@ -623,7 +627,8 @@ theorem VarSymb.absAddr_dia_self (x : VarSymb) :
 theorem Subst.isRen_diaAbsA {σ : Signature} {Γ : Ctx} {x : VarSymb} {A : VarType}
     (hxA : Γ.ref x = some (.VTypeDia A))
     (hnb : ∀ p : List Step, Γ.ref ((VarSymb.step x .dia).ext p) = none)
-    (hvf : Γ.ViewFresh) (h₀ : Γ.boxIn (.root (.bnd 0)) = none) :
+    (hvf : Γ.ViewFresh) (h₀ : Γ.boxIn (.root (.bnd 0)) = none)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Subst.IsRen (VarSymb.absAddr x 0) (Γ.diaIn x)
       (Subst.diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x) := by
   refine Subst.isRen_of (Subst.coh_diaAbsA hxA hnb hvf h₀) ?_
@@ -669,13 +674,14 @@ theorem Term.mono_diaAbsA {σ : Signature} {Γ Γ' : Ctx} [Γ.Presented] [Γ'.Pr
     {A : VarType} (h : Γ.Le Γ')
     (hcA : Γ.ref x = some (.VTypeDia A))
     (hcA' : Γ'.ref x = some (.VTypeDia A))
-    {T : VarType} {b : Ann T} (t : Term σ (Γ.diaIn x) T b) :
+    {T : VarType} {b : Ann T} (t : Term σ (Γ.diaIn x) T b)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Term.mono (h.boxIn.insert (.bnd 0) A) (Term.diaAbsA x hcA t) =
       Term.diaAbsA x hcA' (Term.mono (h.diaIn x) t) := by
   unfold Term.diaAbsA
   rw [Term.mono_subst, Term.subst_mono]
   refine eq_of_heq (Sigma.mk.inj (Term.subst_congr _ _ _ _ _ _ ?_ t)).2
-  refine Subst.sim_of ?_
+  refine Subst.simT_of ?_
   intro v U _ _
   match v with
   | .step u .dia =>
@@ -709,9 +715,9 @@ theorem Term.mono_realiseAtA {σ : Signature} {Γ Γ' : Ctx} [Γ.Presented] [Γ'
 
 /-- Away from the witness content, abstraction is the identity. -/
 theorem Subst.sim_diaAbsA_idS {σ : Signature} {Γ : Ctx} (x : VarSymb) (A : VarType) :
-    Subst.Sim Γ.boxIn (Subst.diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x)
+    Subst.SimT Γ.boxIn (Subst.diaAbsA σ (Γ.boxIn.insert (.bnd 0) A) x)
       (Subst.idS σ (Γ.boxIn.insert (.bnd 0) A)) := by
-  refine Subst.sim_of ?_
+  refine Subst.simT_of ?_
   intro v T _ hv
   match v with
   | .step _ .box => exact .refl _

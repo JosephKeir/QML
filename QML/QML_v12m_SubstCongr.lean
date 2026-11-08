@@ -333,19 +333,104 @@ theorem Sim.diaBody {X : VarType} {ιx : VarSymb} {e e' : SubE σ Δ} (h : Sim (
 
 end SubE
 
+namespace WitE
+
+variable {σ : Signature} {Δ : Ctx}
+
+/-- Witness entries agreeing up to η: a witness against its content read through η. -/
+inductive Sim : VarType → WitE σ Δ → WitE σ Δ → Prop
+  | refl {X : VarType} (e : WitE σ Δ) : Sim X e e
+  | eta_ren {X : VarType} (w : VarSymb) (h : (Δ.optIn w).ref (.step w .dia) = some X) :
+      Sim X (.tm w (Term.eta (.step w .dia) X h)) (.ren w)
+  | ren_eta {X : VarType} (w : VarSymb) (h : (Δ.optIn w).ref (.step w .dia) = some X) :
+      Sim X (.ren w) (.tm w (Term.eta (.step w .dia) X h))
+
+theorem Sim.mono {Δ' : Ctx} (hle : Δ.Le Δ') {X : VarType} {e e' : WitE σ Δ} (h : Sim X e e') :
+    Sim X (e.mono hle) (e'.mono hle) := by
+  cases h with
+  | refl => exact .refl _
+  | eta_ren w h =>
+      change Sim X (.tm w (Term.mono (hle.optIn w) (Term.eta _ X h))) (.ren w)
+      rw [Term.mono_eta]
+      exact .eta_ren _ _
+  | ren_eta w h =>
+      change Sim X (.ren w) (.tm w (Term.mono (hle.optIn w) (Term.eta _ X h)))
+      rw [Term.mono_eta]
+      exact .ren_eta _ _
+
+theorem Sim.idx {X : VarType} {e e' : WitE σ Δ} (h : Sim X e e') :
+    e.idxAlong [] = e'.idxAlong [] := by
+  cases h <;> rfl
+
+theorem Sim.optBody {X : VarType} {z : VarSymb} {e e' : WitE σ Δ} (h : Sim X e e')
+    (hw : e.idxAlong [] = z) : SubE.Sim X (e.optBody z) (e'.optBody z) := by
+  cases h with
+  | refl => exact .refl _
+  | eta_ren w h =>
+      have hw' : w = z := hw
+      subst hw'
+      rw [show (WitE.tm w (Term.eta (σ := σ) (.step w .dia) X h)).optBody w =
+        SubE.tm (Term.mono (Ctx.Le.refl _) (Term.eta (.step w .dia) X h)) from dif_pos rfl,
+        Term.mono_eta]
+      exact .eta_ren _ _
+  | ren_eta w h =>
+      have hw' : w = z := hw
+      subst hw'
+      rw [show (WitE.tm w (Term.eta (σ := σ) (.step w .dia) X h)).optBody w =
+        SubE.tm (Term.mono (Ctx.Le.refl _) (Term.eta (.step w .dia) X h)) from dif_pos rfl,
+        Term.mono_eta]
+      exact .ren_eta _ _
+
+end WitE
+
+/-- The witness entries of entries agreeing up to η agree up to η. -/
+theorem SubE.Sim.toWit {σ : Signature} {Δ : Ctx} (hO : ModalSys.Opt = true) {X : VarType}
+    {e e' : SubE σ Δ} (h : SubE.Sim (.VTypeDia X) e e') : WitE.Sim X e.toWit e'.toWit := by
+  cases h with
+  | refl => exact .refl _
+  | eta_ren w h =>
+      change WitE.Sim X (if hO' : ModalSys.Opt = true then
+        WitE.tm w (Term.mono (Ctx.le_diaIn_boxIn_optIn hO' h)
+          (Term.eta (σ := σ) (.step w .dia) X (Ctx.ref_diaIn_of h))) else .hide) (.ren w)
+      rw [dif_pos hO, Term.mono_eta]
+      exact .eta_ren _ _
+  | ren_eta w h =>
+      change WitE.Sim X (.ren w) (if hO' : ModalSys.Opt = true then
+        WitE.tm w (Term.mono (Ctx.le_diaIn_boxIn_optIn hO' h)
+          (Term.eta (σ := σ) (.step w .dia) X (Ctx.ref_diaIn_of h))) else .hide)
+      rw [dif_pos hO, Term.mono_eta]
+      exact .ren_eta _ _
+
 /-! ## Agreement at every reachable address -/
 
 namespace Subst
 
 variable {σ : Signature} {Δ : Ctx}
 
-/-- Two substitutions agree up to η at every reachable address of `Γ`. -/
-def Sim (Γ : Ctx) (θ θ' : Subst σ Δ) : Prop :=
+/-- Two substitutions agree up to η at every reachable address of `Γ`: all a term reads. -/
+def SimT (Γ : Ctx) (θ θ' : Subst σ Δ) : Prop :=
   ∀ v T, Γ.ref v = some T → SubE.Sim T (θ.at v) (θ'.at v)
 
-theorem sim_of {Γ : Ctx} {θ θ' : Subst σ Δ}
+/-- Two substitutions agree up to η at every reachable address of `Γ`, and (with `Opt` on, the
+    only case a witness is read) at every witness of `Γ`. -/
+structure Sim (Γ : Ctx) (θ θ' : Subst σ Δ) : Prop where
+  ty : SimT Γ θ θ'
+  wit : ModalSys.Opt = true → ∀ y X, Γ.wit y = some X → WitE.Sim X (θ.wit y) (θ'.wit y)
+
+instance {Γ : Ctx} {θ θ' : Subst σ Δ} :
+    CoeFun (Sim Γ θ θ') (fun _ => ∀ v T, Γ.ref v = some T → SubE.Sim T (θ.at v) (θ'.at v)) :=
+  ⟨Sim.ty⟩
+
+instance {Γ : Ctx} {θ θ' : Subst σ Δ} : Coe (Sim Γ θ θ') (SimT Γ θ θ') := ⟨Sim.ty⟩
+
+/-- The witness clause where there is nothing to check: `Opt` off, or the same witness entries. -/
+macro "sim_wit" : tactic => `(tactic| first
+  | wit_triv
+  | exact fun _ _ _ _ => .refl _)
+
+theorem simT_of {Γ : Ctx} {θ θ' : Subst σ Δ}
     (hvis : ∀ v T, v.lastProj = false → Γ v = some T → SubE.Sim T (θ v) (θ' v)) :
-    Sim Γ θ θ' := by
+    SimT Γ θ θ' := by
   intro v
   induction v with
   | root r => intro T hv; exact hvis _ _ rfl hv
@@ -361,8 +446,16 @@ theorem sim_of {Γ : Ctx} {θ θ' : Subst σ Δ}
             exact (ih U hU).proj_step hs hv
       · exact hvis _ _ (show (VarSymb.step v s).lastProj = false from Bool.eq_false_iff.mpr hs) hv
 
-theorem sim_box {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') : Sim Γ.boxIn θ.box θ'.box := by
-  refine sim_of ?_
+theorem sim_of {Γ : Ctx} {θ θ' : Subst σ Δ}
+    (hvis : ∀ v T, v.lastProj = false → Γ v = some T → SubE.Sim T (θ v) (θ' v))
+    (hwit : ModalSys.Opt = true → ∀ y X, Γ.wit y = some X → WitE.Sim X (θ.wit y) (θ'.wit y) := by
+      sim_wit) :
+    Sim Γ θ θ' :=
+  ⟨simT_of hvis, hwit⟩
+
+theorem simT_box {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : SimT Γ θ θ') :
+    SimT Γ.boxIn θ.box θ'.box := by
+  refine simT_of ?_
   intro v T _ hv
   match v with
   | .step u .box => exact (hs u _ (Ctx.boxIn_step_box hv)).unbox
@@ -375,9 +468,12 @@ theorem sim_box {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') : Sim Γ.
   | .step _ .dia => cases hv
   | .step _ .here => cases hv
 
-theorem sim_dia {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') {x ιx : VarSymb}
-    (hw : (θ.at x).idxAlong [] = ιx) : Sim (Γ.diaIn x) (θ.dia x ιx) (θ'.dia x ιx) := by
-  refine sim_of ?_
+theorem sim_box {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') : Sim Γ.boxIn θ.box θ'.box :=
+  ⟨simT_box hs.ty, fun hO y _ hy => (hs y _ (Ctx.boxIn_wit.mp hy).2).toWit hO⟩
+
+theorem simT_dia {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : SimT Γ θ θ') {x ιx : VarSymb}
+    (hw : (θ.at x).idxAlong [] = ιx) : SimT (Γ.diaIn x) (θ.dia x ιx) (θ'.dia x ιx) := by
+  refine simT_of ?_
   intro v T _ hv
   match v with
   | .step u .dia =>
@@ -403,10 +499,15 @@ theorem sim_dia {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') {x ιx : 
   | .step _ .snd => cases hv
   | .step _ .here => cases hv
 
+theorem sim_dia {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') {x ιx : VarSymb}
+    (hw : (θ.at x).idxAlong [] = ιx) : Sim (Γ.diaIn x) (θ.dia x ιx) (θ'.dia x ιx) :=
+  ⟨simT_dia hs.ty hw, fun hO y _ hy =>
+    ((hs y _ (Ctx.boxIn_wit.mp hy).2).toWit hO).mono (Ctx.le_boxIn_diaIn Δ ιx)⟩
+
 theorem sim_under {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') {d d' : ℕ} (T : VarType)
     (h : Δ (.root (.bnd d')) = none) :
     Sim (Γ.insert (.bnd d) T) (θ.under d d' T h) (θ'.under d d' T h) := by
-  refine sim_of ?_
+  refine sim_of ?_ fun hO y X hy => (hs.wit hO y X hy).mono (Ctx.le_insert h T)
   intro v U hlp hv
   by_cases hvr : v = .root (.bnd d)
   · rw [show θ.under d d' T h v = .ren (.root (.bnd d')) from if_pos hvr,
@@ -416,6 +517,24 @@ theorem sim_under {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') {d d' :
     rw [show θ.under d d' T h v = (θ v).mono (Ctx.le_insert h T) from if_neg hvr,
       show θ'.under d d' T h v = (θ' v).mono (Ctx.le_insert h T) from if_neg hvr]
     have h₁ := hs v U ((Ctx.ref_nonproj Γ hlp).trans hv')
+    rw [Subst.at_nonproj θ hlp, Subst.at_nonproj θ' hlp] at h₁
+    exact h₁.mono _
+
+theorem sim_optIn {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') (hO : ModalSys.Opt = true)
+    {y z : VarSymb} {X : VarType} (hy : Γ.wit y = some X) (hw : (θ.wit y).idxAlong [] = z) :
+    Sim (Γ.optIn y) (θ.optIn y z) (θ'.optIn y z) := by
+  refine sim_of ?_ fun hO' y' X' hy' =>
+    (hs.wit hO' y' X' hy').mono (Ctx.le_optIn Δ z)
+  intro v U hlp hv
+  by_cases hc : v = .step y .dia
+  · subst hc
+    rw [Ctx.optIn_content hy] at hv
+    cases hv
+    rw [optIn_content, optIn_content]
+    exact (hs.wit hO y X hy).optBody hw
+  · rw [Ctx.optIn_ne hc] at hv
+    rw [optIn_ne θ z hc, optIn_ne θ' z hc]
+    have h₁ := hs v U ((Ctx.ref_nonproj Γ hlp).trans hv)
     rw [Subst.at_nonproj θ hlp, Subst.at_nonproj θ' hlp] at h₁
     exact h₁.mono _
 
@@ -429,7 +548,7 @@ variable {σ : Signature}
 
 /-- Coherent substitutions agreeing up to η pick the same witnesses. -/
 theorem Subst.idx_eq {ι ι' : VarSymb → VarSymb} {Γ Δ : Ctx} {θ θ' : Subst σ Δ}
-    (hc : Subst.Coh ι Γ θ) (hc' : Subst.Coh ι' Γ θ') (hs : Subst.Sim Γ θ θ') {x : VarSymb}
+    (hc : Subst.Coh ι Γ θ) (hc' : Subst.Coh ι' Γ θ') (hs : Subst.SimT Γ θ θ') {x : VarSymb}
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) : ι' x = ι x := by
   obtain ⟨X, hX⟩ := hx
   have h₁ : (θ.at x).idxAlong [] = ι x := hc x _ hX []
@@ -439,7 +558,7 @@ theorem Subst.idx_eq {ι ι' : VarSymb → VarSymb} {Γ Δ : Ctx} {θ θ' : Subs
 mutual
   theorem Func.subst_congr {ι ι' : VarSymb → VarSymb} {Γ Δ : Ctx} (θ θ' : Subst σ Δ)
       (hθ : Subst.Ok Γ θ) (hθ' : Subst.Ok Γ θ') (hc : Subst.Coh ι Γ θ)
-      (hc' : Subst.Coh ι' Γ θ') (hs : Subst.Sim Γ θ θ') :
+      (hc' : Subst.Coh ι' Γ θ') (hs : Subst.SimT Γ θ θ') :
       {n : ℕ} → (f : Func σ Γ n) → Func.subst ι θ hθ hc f = Func.subst ι' θ' hθ' hc' f
     | _, .F _ => rfl
     | _, .eval g t => by
@@ -452,7 +571,7 @@ mutual
   /-- ⭐Stated for `Σ`-packed terms: the annotation maps may differ. -/
   theorem Term.subst_congr {ι ι' : VarSymb → VarSymb} {Γ Δ : Ctx} (θ θ' : Subst σ Δ)
       (hθ : Subst.Ok Γ θ) (hθ' : Subst.Ok Γ θ') (hc : Subst.Coh ι Γ θ)
-      (hc' : Subst.Coh ι' Γ θ') (hs : Subst.Sim Γ θ θ') :
+      (hc' : Subst.Coh ι' Γ θ') (hs : Subst.SimT Γ θ θ') :
       {T : VarType} → {a : Ann T} → (t : Term σ Γ T a) →
       (⟨_, Term.subst ι θ hθ hc t⟩ : Σ b, Term σ Δ T b) = ⟨_, Term.subst ι' θ' hθ' hc' t⟩
     | _, _, .var v hv => congrArg (Sigma.mk _) ((hs v _ hv).toVar _ _)
@@ -466,7 +585,7 @@ mutual
           (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
     | _, _, .boxtm t =>
         sig_boxtm (Term.subst_congr θ.box θ'.box (Subst.ok_box hθ) (Subst.ok_box hθ')
-          (Subst.coh_box hθ hc) (Subst.coh_box hθ' hc') (Subst.sim_box hs) t)
+          (Subst.coh_box hθ hc) (Subst.coh_box hθ' hc') (Subst.simT_box hs) t)
     | _, _, .diatm x hx t => by
         have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
         have key : ∀ (y : VarSymb) (_hy : y = ι x) (P : ∃ Y, Δ.ref y = some (.VTypeDia Y))
@@ -477,20 +596,20 @@ mutual
           intro y hy P p q
           subst hy
           exact sig_diatm (Term.subst_congr (θ.dia x (ι x)) (θ'.dia x (ι x))
-            (Subst.ok_dia hθ hx hw) p (Subst.coh_dia hθ hc hx) q (Subst.sim_dia hs hw) t)
+            (Subst.ok_dia hθ hx hw) p (Subst.coh_dia hθ hc hx) q (Subst.simT_dia hs hw) t)
         exact key (ι' x) (Subst.idx_eq hc hc' hs hx) _ _ _
     termination_by structural _ _ t => t
 end
 
 theorem Term.subst_congr_var {ι ι' : VarSymb → VarSymb} {Γ Δ : Ctx} (θ θ' : Subst σ Δ)
     (hθ : Subst.Ok Γ θ) (hθ' : Subst.Ok Γ θ') (hc : Subst.Coh ι Γ θ)
-    (hc' : Subst.Coh ι' Γ θ') (hs : Subst.Sim Γ θ θ') (t : Term σ Γ .Var .var) :
+    (hc' : Subst.Coh ι' Γ θ') (hs : Subst.SimT Γ θ θ') (t : Term σ Γ .Var .var) :
     Term.subst ι θ hθ hc t = Term.subst ι' θ' hθ' hc' t :=
   eq_of_heq (Sigma.mk.inj (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)).2
 
 theorem Rel.subst_congr {ι ι' : VarSymb → VarSymb} {Γ Δ : Ctx} (θ θ' : Subst σ Δ)
     (hθ : Subst.Ok Γ θ) (hθ' : Subst.Ok Γ θ') (hc : Subst.Coh ι Γ θ)
-    (hc' : Subst.Coh ι' Γ θ') (hs : Subst.Sim Γ θ θ') :
+    (hc' : Subst.Coh ι' Γ θ') (hs : Subst.SimT Γ θ θ') :
     {n : ℕ} → (ρ : Rel σ Γ n) → Rel.subst ι θ hθ hc ρ = Rel.subst ι' θ' hθ' hc' ρ
   | _, .R _ => rfl
   | _, .eval ρ t => by
@@ -546,6 +665,22 @@ theorem WFF.subst_congr : {ι ι' : VarSymb → VarSymb} → {Γ Δ : Ctx} → {
           (Subst.ok_dia hθ hx hw) p (Subst.coh_dia hθ hc hx) q (hΓ.diaIn x) hΔy
           (Subst.sim_dia hs hw) φ)
       exact key (ι' x) (Subst.idx_eq hc hc' hs hx) _ _ _ _
+  | ι, ι', Γ, Δ, _, d', θ, θ', hθ, hθ', hc, hc', hΓ, hΔ, hs, .optx hO y hy φ => by
+      obtain ⟨X, hX⟩ := hy
+      have hw : (θ.wit y).idxAlong [] = ι y := hc.wit hO y X hX []
+      have hy' : ι' y = ι y :=
+        ((hc'.wit hO y X hX []).symm.trans (hs.wit hO y X hX).idx.symm).trans hw
+      have key : ∀ (z : VarSymb) (_hz : z = ι y) (P : ∃ Z, Δ.wit z = some Z)
+          (p : Subst.Ok (Γ.optIn y) (θ'.optIn y z))
+          (q : Subst.Coh ι' (Γ.optIn y) (θ'.optIn y z)) (hΔz : (Δ.optIn z).SlotsFrom d'),
+          WFF.subst ι θ hθ hc hΓ hΔ (.optx hO y ⟨X, hX⟩ φ) =
+            .optx hO z P (WFF.subst ι' (θ'.optIn y z) p q (hΓ.optIn y) hΔz φ) := by
+        intro z hz P p q hΔz
+        subst hz
+        exact congrArg (WFF.optx hO (ι y) _) (WFF.subst_congr (θ.optIn y (ι y))
+          (θ'.optIn y (ι y)) (Subst.ok_optIn hθ hO hX hw) p (Subst.coh_optIn hθ hc hO hX) q
+          (hΓ.optIn y) hΔz (Subst.sim_optIn hs hO hX hw) φ)
+      exact key (ι' y) hy' _ _ _ _
   | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .here hT s t =>
       WFF.here_congr hT (Term.subst_congr θ θ' hθ hθ' hc hc' hs s)
         (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)

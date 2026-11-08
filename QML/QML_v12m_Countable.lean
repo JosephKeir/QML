@@ -40,7 +40,6 @@ noncomputable def Ann.code : {T : VarType} → Ann T → Code
   | _, .prod a b => .node 0 a.code b.code
   | _, .box a => .node 1 a.code (.leaf 0)
   | _, .dia i a => .node 2 (.leaf (natCode i)) a.code
-  | _, .opt i a => .node 3 (.leaf (natCode i)) a.code
 
 theorem Ann.code_injective : ∀ {T : VarType}, Function.Injective (Ann.code (T := T))
   | .Var, .var, .var, _ => rfl
@@ -52,9 +51,6 @@ theorem Ann.code_injective : ∀ {T : VarType}, Function.Injective (Ann.code (T 
       simp only [Ann.code, Code.node.injEq, true_and, and_true] at h
       rw [Ann.code_injective h]
   | .VTypeDia _, .dia i a, .dia i' a', h => by
-      simp only [Ann.code, Code.node.injEq, Code.leaf.injEq, true_and] at h
-      rw [natCode_injective h.1, Ann.code_injective h.2]
-  | .VTypeOpt _, .opt i a, .opt i' a', h => by
       simp only [Ann.code, Code.node.injEq, Code.leaf.injEq, true_and] at h
       rw [natCode_injective h.1, Ann.code_injective h.2]
 
@@ -78,7 +74,6 @@ mutual
     | _, _, _, .pair s t => .node 5 (Term.code s) (Term.code t)
     | _, _, _, .boxtm t => .node 6 (Term.code t) (.leaf 0)
     | _, _, _, .diatm x _ t => .node 7 (.leaf (natCode x)) (Term.code t)
-    | _, _, _, .optm _ y _ t => .node 30 (.leaf (natCode y)) (Term.code t)
 end
 
 mutual
@@ -113,9 +108,6 @@ mutual
         simp only [Term.code, Code.node.injEq, and_true, true_and] at h
         rw [Term.code_inj t t' h]
     | _, _, _, .diatm _ _ t, .diatm _ _ t', h => by
-        simp only [Term.code, Code.node.injEq, true_and] at h
-        rw [Term.code_inj t t' h]
-    | _, _, _, .optm _ _ _ t, .optm _ _ _ t', h => by
         simp only [Term.code, Code.node.injEq, true_and] at h
         rw [Term.code_inj t t' h]
 end

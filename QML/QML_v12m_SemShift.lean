@@ -485,6 +485,8 @@ theorem sat_shift : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Shifts k Γ₁ Γ
     Env.ShiftAgree h env₁ env₂ → (φ : WFF σ Γ₁ d) →
     (M.sat env₂ (WFF.shift h hs φ) ↔ M.sat env₁ φ)
   | _, _, _, _, _, _, _, _, _, hag, .atom ρ => relSat_shift hag ρ Fin.elim0
+  | _, _, _, h, _, _, _, _, _, _, .optx hO _ _ _ =>
+      False.elim (by have := ModalSys.noOpt_of_Four h.hF; rw [hO] at this; cases this)
   | _, _, _, _, _, _, _, _, _, hag, .eq t s => by
       change interp _ (Term.shift _ t) = interp _ (Term.shift _ s) ↔ _
       rw [interp_shift hag t, interp_shift hag s]

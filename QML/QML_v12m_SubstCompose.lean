@@ -10,12 +10,31 @@ namespace V12M
 
 variable [ModalSys]
 
+theorem SubE.toWit_mono {σ : Signature} {Δ Δ' : Ctx} (h : Δ.Le Δ') :
+    ∀ e : SubE σ Δ, (e.mono h).toWit = e.toWit.mono h.boxIn
+  | .ren _ => rfl
+  | .hide => rfl
+  | .tm (.diatm z hz b) => by
+      change (if hO : ModalSys.Opt = true then _ else WitE.hide) =
+        WitE.mono h.boxIn (if hO : ModalSys.Opt = true then _ else WitE.hide)
+      split_ifs with hO
+      · change WitE.tm z _ = WitE.tm z _
+        rw [Term.mono_mono, Term.mono_mono]
+      · rfl
+  | .tm (.var _ _) => rfl
+  | .tm (.func _) => rfl
+  | .tm .unit => rfl
+  | .tm (.pair _ _) => rfl
+  | .tm (.boxtm _) => rfl
+
 namespace Subst
 
 variable {σ : Signature} {Δ Δ' : Ctx}
 
 /-- Weaken every entry. -/
-def mono (θ : Subst σ Δ) (h : Δ.Le Δ') : Subst σ Δ' := fun v => (θ v).mono h
+def mono (θ : Subst σ Δ) (h : Δ.Le Δ') : Subst σ Δ' where
+  ty v := (θ v).mono h
+  wit y := (θ.wit y).mono h
 
 theorem at_mono (θ : Subst σ Δ) (h : Δ.Le Δ') : ∀ v, (θ.mono h).at v = (θ.at v).mono h
   | .root _ => rfl
@@ -28,16 +47,28 @@ theorem at_mono (θ : Subst σ Δ) (h : Δ.Le Δ') : ∀ v, (θ.mono h).at v = (
       · rfl
 
 theorem ok_mono {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) (h : Δ.Le Δ') : Ok Γ (θ.mono h) :=
-  fun v T hlp hv => SubE.okRef_mono h (hθ v T hlp hv)
+  ⟨fun v T hlp hv => SubE.okRef_mono h (hθ v T hlp hv),
+    fun hO y X hy => WitE.okW_mono h (hθ.wit hO y X hy)⟩
 
 theorem coh_mono {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hc : Coh ι Γ θ)
-    (h : Δ.Le Δ') : Coh ι Γ (θ.mono h) := fun v T hv p => by
-  rw [at_mono, SubE.idxAlong_mono]
-  exact hc v T hv p
+    (h : Δ.Le Δ') : Coh ι Γ (θ.mono h) := by
+  refine ⟨fun v T hv p => ?_, fun hO y X hy p => ?_, fun hO y X z hy hyd hz => ?_⟩
+  · rw [at_mono, SubE.idxAlong_mono]
+    exact hc v T hv p
+  · rw [show (θ.mono h).wit y = (θ.wit y).mono h from rfl, WitE.idxAlong_mono]
+    exact hc.wit hO y X hy p
+  · rw [show (θ.mono h).wit y = (θ.wit y).mono h from rfl] at hz ⊢
+    rw [WitE.idxAlong_mono] at hz
+    rw [show (θ.mono h) (.step y .dia) = (θ (.step y .dia)).mono h from rfl,
+      ← WitE.optBody_mono, ← hc.opened hO y X z hy hyd hz]
+    simp only [SubE.mono_mono]
 
 theorem sim_box_mono {Γ : Ctx} (θ : Subst σ Δ) (h : Δ.Le Δ') :
     Sim Γ.boxIn (θ.box.mono h.boxIn) ((θ.mono h).box) := by
-  refine sim_of ?_
+  refine sim_of ?_ fun _ y X _ => by
+    change WitE.Sim X (WitE.mono h.boxIn (θ.at y).toWit) ((θ.mono h).at y).toWit
+    rw [at_mono, SubE.toWit_mono]
+    exact .refl _
   intro v T _ hv
   match v with
   | .step u .box =>
@@ -56,7 +87,11 @@ theorem sim_box_mono {Γ : Ctx} (θ : Subst σ Δ) (h : Δ.Le Δ') :
 
 theorem sim_dia_mono {Γ : Ctx} (θ : Subst σ Δ) (h : Δ.Le Δ') (x ιx : VarSymb) :
     Sim (Γ.diaIn x) ((θ.dia x ιx).mono (h.diaIn ιx)) ((θ.mono h).dia x ιx) := by
-  refine sim_of ?_
+  refine sim_of ?_ fun _ y X _ => by
+    change WitE.Sim X (WitE.mono (h.diaIn ιx) (WitE.mono (Ctx.le_boxIn_diaIn Δ ιx)
+      (θ.at y).toWit)) (WitE.mono (Ctx.le_boxIn_diaIn Δ' ιx) ((θ.mono h).at y).toWit)
+    rw [at_mono, SubE.toWit_mono, WitE.mono_mono, WitE.mono_mono]
+    exact .refl _
   intro v T _ hv
   match v with
   | .step u .dia =>
@@ -86,7 +121,11 @@ theorem sim_under_mono {Γ : Ctx} (θ : Subst σ Δ) (h : Δ.Le Δ') {d d' : ℕ
     (h₀ : Δ (.root (.bnd d')) = none) (h₁ : Δ' (.root (.bnd d')) = none) :
     Sim (Γ.insert (.bnd d) T) ((θ.under d d' T h₀).mono (h.insert _ T))
       ((θ.mono h).under d d' T h₁) := by
-  refine sim_of ?_
+  refine sim_of ?_ fun _ y X _ => by
+    change WitE.Sim X (WitE.mono (h.insert _ T) (WitE.mono (Ctx.le_insert h₀ T) (θ.wit y)))
+      (WitE.mono (Ctx.le_insert h₁ T) (WitE.mono h (θ.wit y)))
+    rw [WitE.mono_mono, WitE.mono_mono]
+    exact .refl _
   intro v U _ _
   change SubE.Sim U (SubE.mono _ (θ.under d d' T h₀ v)) _
   by_cases hvr : v = .root (.bnd d)
@@ -97,6 +136,23 @@ theorem sim_under_mono {Γ : Ctx} (θ : Subst σ Δ) (h : Δ.Le Δ') {d d' : ℕ
         if_neg hvr,
       show θ.under d d' T h₀ v = (θ v).mono (Ctx.le_insert h₀ T) from if_neg hvr,
       SubE.mono_mono, SubE.mono_mono]
+    exact .refl _
+
+theorem sim_optIn_mono {Γ : Ctx} (θ : Subst σ Δ) (h : Δ.Le Δ') (y z : VarSymb) :
+    Sim (Γ.optIn y) ((θ.optIn y z).mono (h.optIn z)) ((θ.mono h).optIn y z) := by
+  refine sim_of ?_ fun _ y' X _ => by
+    change WitE.Sim X (WitE.mono (h.optIn z) (WitE.mono (Ctx.le_optIn Δ z) (θ.wit y')))
+      (WitE.mono (Ctx.le_optIn Δ' z) (WitE.mono h (θ.wit y')))
+    rw [WitE.mono_mono, WitE.mono_mono]
+    exact .refl _
+  intro v U _ _
+  change SubE.Sim U (SubE.mono (h.optIn z) (θ.optIn y z v)) ((θ.mono h).optIn y z v)
+  by_cases hc : v = .step y .dia
+  · subst hc
+    rw [optIn_content, optIn_content, WitE.optBody_mono h z]
+    exact .refl _
+  · rw [optIn_ne θ z hc, optIn_ne (θ.mono h) z hc,
+      show (θ.mono h) v = (θ v).mono h from rfl, SubE.mono_mono, SubE.mono_mono]
     exact .refl _
 
 end Subst
@@ -123,7 +179,7 @@ theorem SubE.toVar_mono {σ : Signature} {Δ Δ' : Ctx} (hle : Δ.Le Δ') :
 /-- Congruence with one annotation map: an equation of terms. -/
 theorem Term.subst_congr_eq {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx}
     (θ θ' : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hθ' : Subst.Ok Γ θ') (hc : Subst.Coh ι Γ θ)
-    (hc' : Subst.Coh ι Γ θ') (hs : Subst.Sim Γ θ θ') {T : VarType} {a : Ann T}
+    (hc' : Subst.Coh ι Γ θ') (hs : Subst.SimT Γ θ θ') {T : VarType} {a : Ann T}
     (t : Term σ Γ T a) : Term.subst ι θ hθ hc t = Term.subst ι θ' hθ' hc' t :=
   eq_of_heq (Sigma.mk.inj (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)).2
 
@@ -165,7 +221,7 @@ mutual
         exact congrArg Term.boxtm (Term.subst_congr_eq _ _
           (Subst.ok_mono (Subst.ok_box hθ) h.boxIn) (Subst.ok_box (Subst.ok_mono hθ h))
           (Subst.coh_mono (Subst.coh_box hθ hc) h.boxIn)
-          (Subst.coh_box (Subst.ok_mono hθ h) (Subst.coh_mono hc h)) (Subst.sim_box_mono θ h) t)
+          (Subst.coh_box (Subst.ok_mono hθ h) (Subst.coh_mono hc h)) (Subst.sim_box_mono θ h).ty t)
     | _, _, .diatm x hx t => by
         have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
         have hw' : ((θ.mono h).at x).idxAlong [] = ι x :=
@@ -179,7 +235,7 @@ mutual
           (Subst.ok_dia (Subst.ok_mono hθ h) hx hw')
           (Subst.coh_mono (Subst.coh_dia hθ hc hx) (h.diaIn (ι x)))
           (Subst.coh_dia (Subst.ok_mono hθ h) (Subst.coh_mono hc h) hx)
-          (Subst.sim_dia_mono θ h x (ι x)) t)
+          (Subst.sim_dia_mono θ h x (ι x)).ty t)
     termination_by structural _ _ t => t
 end
 
@@ -246,6 +302,16 @@ theorem WFF.mono_subst {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ 
         (Subst.coh_dia hθ hc hx) (hΓ.diaIn x) (hΔ.diaIn (ι x)) (hΔ'.diaIn (ι x)) φ]
       exact congrArg (WFF.dia (ι x) _) (WFF.subst_congr _ _ _ _ _ _ _ _
         (Subst.sim_dia_mono θ h x (ι x)) φ)
+  | ι, _, _, _, _, _, h, θ, hθ, hc, hΓ, hΔ, hΔ', .optx hO y hy φ => by
+      obtain ⟨X, hX⟩ := hy
+      have hw : (θ.wit y).idxAlong [] = ι y := hc.wit hO y X hX []
+      change WFF.optx hO (ι y) _ (WFF.mono (h.optIn (ι y)) (WFF.subst ι (θ.optIn y (ι y))
+        (Subst.ok_optIn hθ hO hX hw) (Subst.coh_optIn hθ hc hO hX) (hΓ.optIn y) (hΔ.optIn (ι y))
+        φ)) = _
+      rw [WFF.mono_subst (h.optIn (ι y)) (θ.optIn y (ι y)) (Subst.ok_optIn hθ hO hX hw)
+        (Subst.coh_optIn hθ hc hO hX) (hΓ.optIn y) (hΔ.optIn (ι y)) (hΔ'.optIn (ι y)) φ]
+      exact congrArg (WFF.optx hO (ι y) _) (WFF.subst_congr _ _ _ _ _ _ _ _
+        (Subst.sim_optIn_mono θ h y (ι y)) φ)
   | ι, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .here hT s t =>
       WFF.here_congr' hT (Term.mono_subst h θ hθ hc s) (Term.mono_subst h θ hθ hc t)
   | ι, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .back hB L s t =>

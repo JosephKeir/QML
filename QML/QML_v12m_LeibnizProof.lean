@@ -61,7 +61,8 @@ def WFF.conjPath {σ : Signature} {Γ : Ctx} : {d : ℕ} → (ψ : WFF σ Γ d) 
   | _, .imp _ _, _, h | _, .all _ _, _, h | _, .ex _ _, _, h | _, .box _, _, h
   | _, .dia _ _ _, _, h | _, .here _ _ _, _, h | _, .back _ _ _ _, _, h
   | _, .retS _ _ _ _, _, h | _, .retxS _ _ _ _ _ _, _, h | _, .link _ _ _ _, _, h
-  | _, .linkx _ _ _ _ _ _, _, h => (List.mem_singleton.mp h).symm ▸ .self _
+  | _, .linkx _ _ _ _ _ _, _, h | _, .optx _ _ _ _, _, h =>
+      (List.mem_singleton.mp h).symm ▸ .self _
 
 def Proof.ofConjPath {σ : Signature} {Γ : Ctx} :
     {ψ c : WFF σ Γ 0} → WFF.ConjPath ψ c → Proof σ Γ [ψ] c

@@ -98,13 +98,19 @@ def WFF.linkxBox {Γ : Ctx} {d : ℕ} (y : VarSymb) (hy : ∃ Y, Γ.ref y = some
 omit [ModalSys] in
 theorem Ctx.RootFresh.of_le {Γ Γ' : Ctx} {r : Root} (hle : Γ.Le Γ') (h : Γ'.RootFresh r) :
     Γ.RootFresh r := by
-  intro v hv
-  cases hΓ : Γ v with
-  | none => rfl
-  | some T =>
-      have := hle v T hΓ
-      rw [h v hv] at this
-      cases this
+  refine ⟨fun v hv => ?_, fun y hy => ?_⟩
+  · cases hΓ : Γ v with
+    | none => rfl
+    | some T =>
+        have := hle v T hΓ
+        rw [h v hv] at this
+        cases this
+  · cases hΓ : Γ.wit y with
+    | none => rfl
+    | some X =>
+        have := hle.wit y X hΓ
+        rw [h.wit y hy] at this
+        cases this
 
 /-! ## Maps of tuples
 

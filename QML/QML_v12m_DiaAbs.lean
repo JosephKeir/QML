@@ -160,8 +160,8 @@ namespace Subst
 variable {σ : Signature}
 
 /-- The content of the `◇_c` view goes to the hole; everything else stays. -/
-def diaAbs (σ : Signature) (Δ : Ctx) (c : ℕ) : Subst σ Δ := fun v =>
-  match v with
+def diaAbs (σ : Signature) (Δ : Ctx) (c : ℕ) : Subst σ Δ where
+  ty v := match v with
   | .step u .dia => if u = .root (.free c) then .ren (.root (.bnd 0)) else .hide
   | .step u .box => .ren (.step u .box)
   | .step u .keep => .ren (.step u .keep)
@@ -267,10 +267,10 @@ theorem diaIn_cases (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
 
 theorem ok_diaAbs (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
-    (h₀ : Γ.boxIn (.root (.bnd 0)) = none) :
+    (h₀ : Γ.boxIn (.root (.bnd 0)) = none) (_hO : ModalSys.Opt = false := by opt_off) :
     Ok (Γ.diaIn (.root (.free c)))
       (diaAbs σ (Γ.boxIn.insert (.bnd 0) A) c) := by
-  intro v T hlp hv
+  refine ⟨fun v T hlp hv => ?_, by wit_triv⟩
   rcases diaIn_cases hcA hfr hv with ⟨rfl, rfl⟩ | ⟨_, hb, hen, _⟩
   · change (if (VarSymb.root (.free c)) = .root (.free c) then SubE.ren (.root (.bnd 0))
       else .hide).OkRef T
@@ -282,7 +282,7 @@ theorem ok_diaAbs (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
 
 theorem coh_diaAbs (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
-    (h₀ : Γ.boxIn (.root (.bnd 0)) = none) :
+    (h₀ : Γ.boxIn (.root (.bnd 0)) = none) (_hO : ModalSys.Opt = false := by opt_off) :
     Coh (diaAbsIdx c) (Γ.diaIn (.root (.free c)))
       (diaAbs σ (Γ.boxIn.insert (.bnd 0) A) c) := by
   refine coh_of (ok_diaAbs hcA hfr h₀) ?_
@@ -303,7 +303,7 @@ end Subst
 def WFF.diaAbs {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) {A : VarType}
     (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
-    (χ : WFF σ (Γ.diaIn (.root (.free c))) 0) :
+    (χ : WFF σ (Γ.diaIn (.root (.free c))) 0) (_hO : ModalSys.Opt = false := by opt_off) :
     WFF σ (Γ.boxIn.insert (.bnd 0) A) 1 :=
   WFF.subst (Subst.diaAbsIdx c) (Subst.diaAbs σ (Γ.boxIn.insert (.bnd 0) A) c)
     (Subst.ok_diaAbs hcA hfr ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).root))
@@ -314,7 +314,8 @@ def WFF.diaAbs {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) {A : VarType}
 def Term.diaAbs {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) {A : VarType}
     (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
-    {T : VarType} {b : Ann T} (t : Term σ (Γ.diaIn (.root (.free c))) T b) :
+    {T : VarType} {b : Ann T} (t : Term σ (Γ.diaIn (.root (.free c))) T b)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Term σ (Γ.boxIn.insert (.bnd 0) A) T (b.mapIdx (Subst.diaAbsIdx c)) :=
   Term.subst (Subst.diaAbsIdx c) (Subst.diaAbs σ (Γ.boxIn.insert (.bnd 0) A) c)
     (Subst.ok_diaAbs hcA hfr ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).root))
@@ -386,13 +387,14 @@ theorem Term.mono_diaAbs {σ : Signature} {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlo
     (hcA' : Γ'.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
     (hfr' : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ' v = none)
-    {T : VarType} {b : Ann T} (t : Term σ (Γ.diaIn (.root (.free c))) T b) :
+    {T : VarType} {b : Ann T} (t : Term σ (Γ.diaIn (.root (.free c))) T b)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Term.mono (h.boxIn.insert (.bnd 0) A) (Term.diaAbs c hcA hfr t) =
       Term.diaAbs c hcA' hfr' (Term.mono (h.diaIn (.root (.free c))) t) := by
   unfold Term.diaAbs
   rw [Term.mono_subst, Term.subst_mono]
   refine eq_of_heq (Sigma.mk.inj (Term.subst_congr _ _ _ _ _ _ ?_ t)).2
-  refine Subst.sim_of ?_
+  refine Subst.simT_of ?_
   intro v U _ _
   match v with
   | .step u .dia =>
@@ -424,12 +426,12 @@ theorem Term.mono_hereRead {σ : Signature} {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoS
         ((Ctx.NoSlots.slots (Γ := Γ'.boxIn)).rootFresh (le_refl 0)) A)
       (h.boxIn.insert (.bnd 0) A) (h.insert (.bnd 0) A) s, Term.subst_mono]
   refine eq_of_heq (Sigma.mk.inj (Term.subst_congr _ _ _ _ _ _ ?_ _)).2
-  refine Subst.sim_of ?_
+  refine Subst.simT_of ?_
   intro v U _ _
   by_cases hv : v = .root (.bnd 0)
   · subst hv
     change SubE.Sim U (SubE.mono h (.tm t₀)) (if (VarSymb.root (Root.bnd 0)) = .root (.bnd 0)
-      then SubE.tm (Term.mono h t₀) else .ren _)
+      then SubE.tm (Term.mono h t₀) else .ren (.root (.bnd 0)))
     rw [if_pos rfl]
     exact .refl _
   · change SubE.Sim U (SubE.mono h (if v = .root (.bnd 0) then .tm t₀ else .ren v))
@@ -454,9 +456,9 @@ theorem Term.mono_realiseAt {σ : Signature} {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.No
 
 /-- Away from the witness content, abstraction is the identity. -/
 theorem Subst.sim_diaAbs_idS {σ : Signature} {Γ : Ctx} (c : ℕ) (A : VarType) :
-    Subst.Sim Γ.boxIn (Subst.diaAbs σ (Γ.boxIn.insert (.bnd 0) A) c)
+    Subst.SimT Γ.boxIn (Subst.diaAbs σ (Γ.boxIn.insert (.bnd 0) A) c)
       (Subst.idS σ (Γ.boxIn.insert (.bnd 0) A)) := by
-  refine Subst.sim_of ?_
+  refine Subst.simT_of ?_
   intro v T _ hv
   match v with
   | .step _ .box => exact .refl _
@@ -470,8 +472,8 @@ theorem Subst.sim_diaAbs_idS {σ : Signature} {Γ : Ctx} (c : ℕ) (A : VarType)
 /-- The hole substitution is the identity away from the hole. -/
 theorem Subst.sim_single_idS {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A : VarType} {a₀ : Ann A}
     (t₀ : Term σ Γ A a₀) :
-    Subst.Sim Γ (Subst.single (.bnd 0) (.tm t₀)) (Subst.idS σ Γ) := by
-  refine Subst.sim_of ?_
+    Subst.SimT Γ (Subst.single (.bnd 0) (.tm t₀)) (Subst.idS σ Γ) := by
+  refine Subst.simT_of ?_
   intro v T _ hv
   have hne : v ≠ .root (.bnd 0) := by
     intro he
@@ -680,7 +682,8 @@ theorem Subst.sim_diaAbs_viewRead {σ : Signature} {Γ : Ctx} {c : ℕ} {A : Var
         (.bnd 0) (.ren (.step (.root (.free c)) .dia))))
     (hc₂ : Subst.Coh ι₂ (Γ.boxIn.insert (.bnd 0) A)
       (Subst.single (σ := σ) (Δ := Γ.diaIn (.root (.free c)))
-        (.bnd 0) (.ren (.step (.root (.free c)) .dia)))) :
+        (.bnd 0) (.ren (.step (.root (.free c)) .dia))))
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Subst.Sim (Γ.diaIn (.root (.free c)))
       (Subst.idS σ (Γ.diaIn (.root (.free c))))
       ((Subst.diaAbs σ (Γ.boxIn.insert (.bnd 0) A) c).comp
@@ -711,7 +714,7 @@ theorem Subst.sim_diaAbs_viewRead {σ : Signature} {Γ : Ctx} {c : ℕ} {A : Var
 theorem WFF.viewReadAt_diaAbs {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) {A : VarType}
     (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
-    (χ : WFF σ (Γ.diaIn (.root (.free c))) 0) :
+    (χ : WFF σ (Γ.diaIn (.root (.free c))) 0) (_hO : ModalSys.Opt = false := by opt_off) :
     WFF.viewReadAt c hcA (WFF.diaAbs c hcA hfr χ) = χ := by
   have h₀ : Γ.boxIn (.root (.bnd 0)) = none := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root
   refine (WFF.subst_comp _ _ (Subst.idS σ _) (Subst.ok_diaAbs hcA hfr h₀)

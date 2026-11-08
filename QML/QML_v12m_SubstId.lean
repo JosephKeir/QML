@@ -38,7 +38,9 @@ namespace Subst
 variable {σ : Signature} {Δ : Ctx}
 
 /-- The substitution that leaves every address alone. -/
-def idS (σ : Signature) (Δ : Ctx) : Subst σ Δ := fun v => .ren v
+def idS (σ : Signature) (Δ : Ctx) : Subst σ Δ where
+  ty v := .ren v
+  wit y := .ren y
 
 theorem at_idS : ∀ v : VarSymb, (idS σ Δ).at v = .ren v
   | .root _ => rfl
@@ -50,13 +52,25 @@ theorem at_idS : ∀ v : VarSymb, (idS σ Δ).at v = .ren v
       · rfl
 
 theorem ok_idS : Ok Δ (idS σ Δ) :=
-  fun _ _ hlp hv => (Ctx.ref_nonproj Δ hlp).trans hv
+  ⟨fun _ _ hlp hv => (Ctx.ref_nonproj Δ hlp).trans hv, fun _ _ _ hy => hy⟩
+
+/-- The identity's opened clause: a witness's content goes to itself. -/
+theorem idS_opened {Γ : Ctx} : ModalSys.Opt = true → ∀ y X z, Γ.wit y = some X →
+    Γ (.step y .dia) = some X → ((idS σ Δ).wit y).idxAlong [] = z →
+    ((idS σ Δ) (.step y .dia)).mono (Ctx.le_optIn Δ z) = ((idS σ Δ).wit y).optBody z := by
+  intro _ y _ z _ _ hz
+  have hz' : y = z := hz
+  subst hz'
+  rfl
 
 theorem coh_idS : Coh id Δ (idS σ Δ) :=
-  coh_of ok_idS (fun _ _ _ _ _ => rfl)
+  coh_of ok_idS (fun _ _ _ _ _ => rfl) (fun _ _ _ _ _ => rfl) idS_opened
 
 theorem sim_box_idS : Sim Δ.boxIn (idS σ Δ).box (idS σ Δ.boxIn) := by
-  refine sim_of ?_
+  refine sim_of ?_ fun _ y X _ => by
+    change WitE.Sim X ((idS σ Δ).at y).toWit (.ren y)
+    rw [at_idS]
+    exact .refl _
   intro v T _ hv
   match v with
   | .step u .box =>
@@ -78,7 +92,10 @@ theorem sim_box_idS : Sim Δ.boxIn (idS σ Δ).box (idS σ Δ.boxIn) := by
 
 theorem sim_dia_idS (x : VarSymb) :
     Sim (Δ.diaIn x) ((idS σ Δ).dia x x) (idS σ (Δ.diaIn x)) := by
-  refine sim_of ?_
+  refine sim_of ?_ fun _ y X _ => by
+    change WitE.Sim X (((idS σ Δ).at y).toWit.mono (Ctx.le_boxIn_diaIn Δ x)) (.ren y)
+    rw [at_idS]
+    exact .refl _
   intro v T _ hv
   match v with
   | .step u .dia =>
@@ -111,21 +128,32 @@ theorem sim_dia_idS (x : VarSymb) :
   | .step _ .here => cases hv
 
 theorem ok_idS_le {Γ : Ctx} (hle : Γ.Le Δ) : Ok Γ (idS σ Δ) :=
-  fun v T hlp hv => (Ctx.ref_nonproj Δ hlp).trans (hle v T hv)
+  ⟨fun v T hlp hv => (Ctx.ref_nonproj Δ hlp).trans (hle v T hv), fun _ y X hy => hle.wit y X hy⟩
 
 theorem coh_idS_le {Γ : Ctx} (hle : Γ.Le Δ) : Coh id Γ (idS σ Δ) :=
-  coh_of (ok_idS_le hle) (fun _ _ _ _ _ => rfl)
+  coh_of (ok_idS_le hle) (fun _ _ _ _ _ => rfl) (fun _ _ _ _ _ => rfl) idS_opened
 
 theorem Sim.restrict {Γ Δ Δ' : Ctx} {θ θ' : Subst σ Δ'} (h : Sim Δ θ θ')
     (hle : Γ.Le Δ) : Sim Γ θ θ' :=
-  fun v T hv => h v T (hle.ref hv)
+  ⟨fun v T hv => h v T (hle.ref hv), fun hO y X hy => h.wit hO y X (hle.wit y X hy)⟩
 
 theorem sim_under_idS (d : ℕ) (T : VarType) (h : Δ (.root (.bnd d)) = none) :
     Sim (Δ.insert (.bnd d) T) ((idS σ Δ).under d d T h) (idS σ (Δ.insert (.bnd d) T)) := by
-  refine sim_of ?_
+  refine sim_of ?_ fun _ _ _ _ => .refl _
   intro v U _ _
   change SubE.Sim U (if v = .root (.bnd d) then .ren (.root (.bnd d))
     else SubE.mono (Ctx.le_insert h T) (.ren v)) (.ren v)
+  split_ifs with hv
+  · subst hv
+    exact .refl _
+  · exact .refl _
+
+theorem sim_optIn_idS (y : VarSymb) :
+    Sim (Δ.optIn y) ((idS σ Δ).optIn y y) (idS σ (Δ.optIn y)) := by
+  refine sim_of ?_ fun _ _ _ _ => .refl _
+  intro v U _ _
+  change SubE.Sim U (if v = .step y .dia then (WitE.ren y : WitE σ Δ).optBody y
+    else SubE.mono (Ctx.le_optIn Δ y) (.ren v)) (.ren v)
   split_ifs with hv
   · subst hv
     exact .refl _
@@ -213,7 +241,7 @@ theorem Term.subst_idS_mono {σ : Signature} : {Γ Δ : Ctx} → (hle : Γ.Le Δ
         Σ c, Term σ Δ (.VTypeBox _) c) = _
       exact sig_boxtm ((Term.subst_congr (Subst.idS σ Δ).box (Subst.idS σ Δ.boxIn) _
         (Subst.ok_idS_le hle.boxIn) _ (Subst.coh_idS_le hle.boxIn)
-        (Subst.sim_box_idS.restrict hle.boxIn) b).trans
+        (Subst.sim_box_idS.restrict hle.boxIn).ty b).trans
         (Term.subst_idS_mono hle.boxIn (Subst.ok_idS_le hle.boxIn)
           (Subst.coh_idS_le hle.boxIn) b))
   | _, Δ, hle, hθ, hc, _, _, .diatm x hx b => by
@@ -221,7 +249,7 @@ theorem Term.subst_idS_mono {σ : Signature} : {Γ Δ : Ctx} → (hle : Γ.Le Δ
         Σ c, Term σ Δ (.VTypeDia _) c) = _
       exact sig_diatm ((Term.subst_congr ((Subst.idS σ Δ).dia x x) (Subst.idS σ (Δ.diaIn x)) _
         (Subst.ok_idS_le (hle.diaIn x)) _ (Subst.coh_idS_le (hle.diaIn x))
-        ((Subst.sim_dia_idS x).restrict (hle.diaIn x)) b).trans
+        ((Subst.sim_dia_idS x).restrict (hle.diaIn x)).ty b).trans
         (Term.subst_idS_mono (hle.diaIn x) (Subst.ok_idS_le (hle.diaIn x))
           (Subst.coh_idS_le (hle.diaIn x)) b))
   termination_by structural _ _ _ _ _ _ _ t => t
@@ -263,6 +291,11 @@ theorem WFF.subst_id {σ : Signature} : {Δ : Ctx} → {d : ℕ} → (hθ : Subs
       refine (WFF.subst_congr _ (Subst.idS σ (Δ.diaIn x)) _ Subst.ok_idS _ Subst.coh_idS
         (hΔ.diaIn x) (hΔ.diaIn x) (Subst.sim_dia_idS x) _).trans ?_
       exact WFF.subst_id Subst.ok_idS Subst.coh_idS (hΔ.diaIn x) _
+  | Δ, _, _, _, hΔ, .optx hO y _ φ => by
+      refine congrArg (WFF.optx hO y _) ?_
+      refine (WFF.subst_congr _ (Subst.idS σ (Δ.optIn y)) _ Subst.ok_idS _ Subst.coh_idS
+        (hΔ.optIn y) (hΔ.optIn y) (Subst.sim_optIn_idS y) _).trans ?_
+      exact WFF.subst_id Subst.ok_idS Subst.coh_idS (hΔ.optIn y) _
   | Δ, _, hθ, hc, _, .here hT s t =>
       WFF.here_congr hT
         ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc s).trans

@@ -90,24 +90,6 @@ theorem collapse_shift : ∀ (v : VarSymb) (k m : ℕ),
 
 end VarSymb
 
-/-- The witness of a collapsed `Opt` subject above the collapsed level. -/
-theorem VarSymb.unbox_collapse_box (i : VarSymb) (k : ℕ) :
-    ((VarSymb.step i .box).collapse (k + 1)).unbox = i.collapse k := by
-  rw [VarSymb.collapse_level_succ rfl]
-  rfl
-
-/-- The witness of a shifted `Opt` subject at the shifted level: kept. -/
-theorem VarSymb.unbox_shift_box_zero (i : VarSymb) :
-    ((VarSymb.step i .box).shift 0).unbox = .step i .keep := by
-  rw [VarSymb.shift_level_zero rfl]
-  rfl
-
-/-- The witness of a shifted `Opt` subject below the shifted level. -/
-theorem VarSymb.unbox_shift_box_succ (i : VarSymb) (k : ℕ) :
-    ((VarSymb.step i .box).shift (k + 1)).unbox = i.shift k := by
-  rw [VarSymb.shift_level_succ rfl]
-  rfl
-
 theorem Step.levels_cons (s : Step) (p : List Step) :
     Step.levels (s :: p) = (if s.isProj then 0 else 1) + Step.levels p := rfl
 
@@ -131,22 +113,6 @@ theorem Ann.collapse_shift : ∀ {T : VarType} (a : Ann T) (k m : ℕ),
       rw [show k + 1 + m + 1 = k + 1 + (m + 1) by omega,
         show k + 2 + m + 1 = k + 2 + (m + 1) by omega, Ann.collapse_shift a k (m + 1),
         VarSymb.collapse_shift i k m]
-  | _, .opt i a, k, m => by
-      have hi : ((VarSymb.step ((VarSymb.step i .box).collapse (k + 1 + m)).unbox .box).shift
-          m).unbox = ((VarSymb.step ((VarSymb.step i .box).shift m).unbox .box).collapse
-            (k + 2 + m)).unbox := by
-        rw [show k + 1 + m = (k + m) + 1 by omega, show k + 2 + m = (k + 1 + m) + 1 by omega,
-          VarSymb.unbox_collapse_box, VarSymb.unbox_collapse_box]
-        cases m with
-        | zero =>
-            rw [VarSymb.unbox_shift_box_zero, VarSymb.unbox_shift_box_zero, Nat.add_zero,
-              Nat.add_zero, VarSymb.collapse_level_succ (s := .keep) rfl]
-        | succ j =>
-            rw [VarSymb.unbox_shift_box_succ, VarSymb.unbox_shift_box_succ,
-              show k + 1 + (j + 1) = k + 2 + j by omega,
-              show k + (j + 1) = k + 1 + j by omega, VarSymb.collapse_shift i k j]
-      change Ann.opt _ _ = Ann.opt _ _
-      rw [hi, Ann.collapse_shift a k m]
 
 /-- The index a path reaches in a collapsed annotation. -/
 theorem Ann.idxAt_collapse : ∀ {T : VarType} (a : Ann T) (k : ℕ) (p : List Step),
@@ -204,8 +170,6 @@ theorem Ann.idxAt_collapse : ∀ {T : VarType} (a : Ann T) (k : ℕ) (p : List S
         (Ann.dia ((VarSymb.step i .keep).collapse (k + 1))
           ((a.shift 0).collapse (k + 2 + 0))).idxAt p
       rw [Ann.collapse_shift a k 0, VarSymb.collapse_level_succ (s := .keep) rfl]
-  | _, .opt _ _, _, [] => rfl
-  | _, .opt _ _, _, _ :: _ => rfl
 
 variable [ModalSys]
 
@@ -228,7 +192,7 @@ theorem VarSymb.inner_collapse_zero (u : VarSymb) : u.inner.collapse 0 = .step u
 
 namespace Ctx
 
-theorem boxIn_step_box [ModalSys.NoOpt] {Γ : Ctx} {u : VarSymb} {T : VarType}
+theorem boxIn_step_box {Γ : Ctx} {u : VarSymb} {T : VarType}
     (h : Γ.boxIn (.step u .box) = some T) : Γ.ref u = some (.VTypeBox T) :=
   (boxIn_box h).2
 
@@ -244,14 +208,23 @@ theorem ref_insert_ne {Γ : Ctx} {r : Root} (T : VarType) :
       · change (if VarSymb.step v s = .root r then some T else Γ (.step v s)) = _
         rw [if_neg (fun he => by cases he)]
 
-/-- `Γ₂` reaches everything `Γ₁` reaches, with the level `k` below collapsed. -/
-def Collapses (k : ℕ) (Γ₁ Γ₂ : Ctx) : Prop :=
-  ∀ v T, Γ₁.ref v = some T → Γ₂.ref (v.collapse k) = some T
+/-- `Γ₂` reaches everything `Γ₁` reaches, with the level `k` below collapsed.  Collapsing is T's,
+    and carries it: with T on the box view of possible objects is off (`ModalSys.optStage`), so no
+    formula being collapsed reads a witness (branch `wip/in-atom`; T reads them in M2). -/
+structure Collapses (k : ℕ) (Γ₁ Γ₂ : Ctx) : Prop where
+  hT : ModalSys.T = true
+  ty : ∀ v T, Γ₁.ref v = some T → Γ₂.ref (v.collapse k) = some T
+
+instance {k : ℕ} {Γ₁ Γ₂ : Ctx} :
+    CoeFun (Collapses k Γ₁ Γ₂)
+      (fun _ => ∀ v T, Γ₁.ref v = some T → Γ₂.ref (v.collapse k) = some T) :=
+  ⟨Collapses.ty⟩
 
 /-- It suffices to check the visible non-projection addresses. -/
-theorem Collapses.of_raw {k : ℕ} {Γ₁ Γ₂ : Ctx}
+theorem Collapses.of_raw {k : ℕ} {Γ₁ Γ₂ : Ctx} (hT : ModalSys.T = true)
     (h : ∀ v T, v.lastProj = false → Γ₁ v = some T → Γ₂.ref (v.collapse k) = some T) :
     Collapses k Γ₁ Γ₂ := by
+  refine ⟨hT, ?_⟩
   intro v
   induction v with
   | root r => intro T hv; exact h _ _ rfl hv
@@ -268,8 +241,7 @@ theorem Collapses.of_raw {k : ℕ} {Γ₁ Γ₂ : Ctx}
 
 /-- ⭐Under T the `□` view collapses onto the current level. -/
 theorem collapses_boxIn_self (hT : ModalSys.T = true) (Γ : Ctx) : Collapses 0 Γ.boxIn Γ := by
-  haveI : ModalSys.NoOpt := ⟨ModalSys.noOpt_of_T hT⟩
-  refine Collapses.of_raw ?_
+  refine Collapses.of_raw hT ?_
   intro v T _ hv
   match v with
   | .step u .box =>
@@ -287,15 +259,13 @@ theorem collapses_boxIn_self (hT : ModalSys.T = true) (Γ : Ctx) : Collapses 0 �
 
 theorem Collapses.boxIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ₂) :
     Collapses (k + 1) Γ₁.boxIn Γ₂.boxIn := by
-  refine Collapses.of_raw ?_
+  refine Collapses.of_raw h.hT ?_
   intro v T _ hv
   match v with
   | .step u .box =>
-      obtain ⟨hk, hu | ⟨hO, A, hu, rfl⟩⟩ := boxIn_box' hv
-      · rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
-        exact boxIn_box_of hk (h u _ hu)
-      · rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
-        exact boxIn_box_dia_of hk hO (h u _ hu)
+      obtain ⟨hk, hu⟩ := boxIn_box hv
+      rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
+      exact boxIn_box_of hk (h u _ hu)
   | .step u .keep =>
       obtain ⟨hF, hu, hk⟩ := boxIn_keep hv
       rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
@@ -308,7 +278,7 @@ theorem Collapses.boxIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ�
 
 theorem Collapses.diaIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ₂) (x : VarSymb) :
     Collapses (k + 1) (Γ₁.diaIn x) (Γ₂.diaIn (x.collapse k)) := by
-  refine Collapses.of_raw ?_
+  refine Collapses.of_raw h.hT ?_
   intro v T _ hv
   match v with
   | .step u .dia =>
@@ -327,11 +297,9 @@ theorem Collapses.diaIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ�
           rw [if_pos rfl, h u _ hx]
           exact hv
   | .step u .box =>
-      obtain ⟨hk, hu | ⟨hO, A, hu, rfl⟩⟩ := boxIn_box' (Γ := Γ₁) hv
-      · rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
-        exact boxIn_box_of (Γ := Γ₂) hk (h u _ hu)
-      · rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
-        exact boxIn_box_dia_of (Γ := Γ₂) hk hO (h u _ hu)
+      obtain ⟨hk, hu⟩ := boxIn_box (Γ := Γ₁) hv
+      rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
+      exact boxIn_box_of (Γ := Γ₂) hk (h u _ hu)
   | .step u .keep =>
       obtain ⟨hF, hu, hk⟩ := boxIn_keep (Γ := Γ₁) hv
       rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
@@ -341,72 +309,9 @@ theorem Collapses.diaIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ�
   | .step _ .snd => cases hv
   | .step _ .here => cases hv
 
-/-- ⭐**No `Opt` subject at the collapsed level**: there `y.box` would be read as `y.here`, which
-    takes T, and T is off while `Opt` is on (`ModalSys.optStage`). -/
-theorem Collapses.opt_pos {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ₂)
-    (hO : ModalSys.Opt = true) {y : VarSymb} {X : VarType}
-    (hy : Γ₁ (.step y .box) = some (.VTypeOpt X)) : ∃ j, k = j + 1 := by
-  cases k with
-  | succ j => exact ⟨j, rfl⟩
-  | zero =>
-      have h₀ := h _ _ ((Ctx.ref_nonproj Γ₁ rfl).trans hy)
-      rw [VarSymb.collapse_level_zero rfl (by decide), Ctx.ref_step_proj _ _ rfl] at h₀
-      cases hU : Γ₂.ref y with
-      | none => rw [hU] at h₀; cases h₀
-      | some U =>
-          rw [hU] at h₀
-          obtain ⟨hT, -⟩ := VarType.step_here (A := match U with
-            | .VTypeBox A => A
-            | _ => .Var) (by cases U <;> first | cases h₀ | exact h₀)
-          have := ModalSys.noOpt_of_T hT
-          rw [hO] at this
-          cases this
-
-/-- The subject a collapse leaves an `Opt` value: its witness collapsed one level less. -/
-theorem Collapses.opt_subj {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ₂)
-    (hO : ModalSys.Opt = true) {y : VarSymb} {X : VarType}
-    (hy : Γ₁ (.step y .box) = some (.VTypeOpt X)) :
-    Γ₂ (.step ((VarSymb.step y .box).collapse k).unbox .box) = some (.VTypeOpt X) := by
-  obtain ⟨j, rfl⟩ := h.opt_pos hO hy
-  rw [VarSymb.unbox_collapse_box, ← Ctx.ref_nonproj Γ₂ (rfl : (VarSymb.step _ .box).lastProj =
-    false), ← VarSymb.collapse_level_succ rfl]
-  exact h _ _ ((Ctx.ref_nonproj Γ₁ rfl).trans hy)
-
-/-- Collapsing passes into the view of an `Opt` value. -/
-theorem Collapses.optIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ₂)
-    (hO : ModalSys.Opt = true) {y : VarSymb} {X : VarType}
-    (hy : Γ₁ (.step y .box) = some (.VTypeOpt X)) :
-    Collapses k (Γ₁.optIn y) (Γ₂.optIn ((VarSymb.step y .box).collapse k).unbox) := by
-  have hsub := h.opt_subj hO hy
-  obtain ⟨j, rfl⟩ := h.opt_pos hO hy
-  rw [VarSymb.unbox_collapse_box] at hsub ⊢
-  refine Collapses.of_raw ?_
-  intro v T hlp hv
-  by_cases hc : v = .step y .dia
-  · subst hc
-    rw [Ctx.optIn_content hy] at hv
-    cases hv
-    rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
-    exact Ctx.optIn_content hsub
-  · obtain ⟨hd, hv⟩ := Ctx.optIn_of_ne hc hv
-    have h₂ := h v T ((Ctx.ref_nonproj Γ₁ hlp).trans hv)
-    match v, hlp, hd, hc with
-    | .root r, _, _, _ =>
-        rw [Ctx.ref_nonproj _ rfl] at h₂ ⊢
-        rwa [Ctx.optIn_ne (by intro he; cases he) rfl]
-    | .step w s, hlp, hd, hc =>
-        have hs : s.isProj = false := hlp
-        rw [VarSymb.collapse_level_succ hs] at h₂ ⊢
-        rw [Ctx.ref_nonproj _ (show (VarSymb.step _ s).lastProj = false from hs)] at h₂ ⊢
-        have hsd : s ≠ .dia := by intro he; subst he; cases hd
-        have hd' : (VarSymb.step (w.collapse j) s).lastDia = false := by
-          cases s <;> first | rfl | exact absurd rfl hsd
-        rw [Ctx.optIn_ne (fun he => hsd (VarSymb.step.inj he).2) hd']
-        exact h₂
-
 theorem Collapses.insert {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ₂) {r : Root}
     (hr : Γ₁.RootFresh r) (T : VarType) : Collapses k (Γ₁.insert r T) (Γ₂.insert r T) := by
-  refine Collapses.of_raw ?_
+  refine Collapses.of_raw h.hT ?_
   intro v U hlp hv
   by_cases hvr : v = .root r
   · subst hvr
@@ -438,9 +343,6 @@ mutual
     | _, _, h, _, _, .boxtm t => .boxtm (Term.collapse h.boxIn t)
     | _, _, h, _, _, .diatm x hx t =>
         .diatm (x.collapse k) (hx.imp fun _ hX => h x _ hX) (Term.collapse (h.diaIn x) t)
-    | _, _, h, _, _, .optm hO y hy t =>
-        .optm hO ((VarSymb.step y .box).collapse k).unbox (hy.imp fun _ hX => h.opt_subj hO hX)
-          (Term.collapse (by obtain ⟨X, hX⟩ := hy; exact h.optIn hO hX) t)
 end
 
 def Rel.collapse {σ : Signature} {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Collapses k Γ₁ Γ₂) :
@@ -481,9 +383,8 @@ def WFF.collapse {σ : Signature} : {k : ℕ} → {Γ₁ Γ₂ : Ctx} → {d : �
       .linkx hV hF (y.collapse k) (hy.imp fun _ hY => h y _ hY) (Term.collapse h t)
         (WFF.collapse ((h.diaIn y).insert ((hs.diaIn y).rootFresh le_rfl) _)
           ((hs.diaIn y).insert _) Φ)
-  | k, _, _, _, h, hs, .optx hO y hy φ =>
-      .optx hO ((VarSymb.step y .box).collapse k).unbox (hy.imp fun _ hX => h.opt_subj hO hX)
-        (WFF.collapse (by obtain ⟨X, hX⟩ := hy; exact h.optIn hO hX) (hs.optIn y) φ)
+  | _, _, _, _, h, _, .optx hO _ _ _ =>
+      False.elim (by have := ModalSys.noOpt_of_T h.hT; rw [hO] at this; cases this)
 
 
 /-- ⭐Collapsing commutes with equality at every type — `eqRec` is structural, so each clause is the
@@ -509,13 +410,6 @@ theorem eqRec_collapse {σ : Signature} {k : ℕ} {d : ℕ} : {Γ₁ Γ₂ : Ctx
       change WFF.imp (WFF.dia _ _ (WFF.imp (WFF.collapse (h.diaIn x) (hs.diaIn x)
         (eqRec A t s)) .bot)) .bot = _
       rw [eqRec_collapse (h.diaIn x) (hs.diaIn x) A]
-      rfl
-  | Γ₁, Γ₂, h, hs, .VTypeOpt A, .opt y _, .optm hO _ hy t, .optm _ _ _ s => by
-      have hc : Ctx.Collapses k (Γ₁.optIn y) (Γ₂.optIn ((VarSymb.step y .box).collapse k).unbox) :=
-        by obtain ⟨X, hX⟩ := hy; exact h.optIn hO hX
-      change WFF.imp (WFF.optx _ _ _ (WFF.imp (WFF.collapse hc (hs.optIn y)
-        (eqRec A t s)) .bot)) .bot = _
-      rw [eqRec_collapse hc (hs.optIn y) A]
       rfl
 
 end V12M

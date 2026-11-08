@@ -26,8 +26,9 @@ variable {σ : Signature} {Δ : Ctx}
 /-! ## Changing one root's entry -/
 
 /-- `r ↦ e`, every other address as in `θ`. -/
-def set (θ : Subst σ Δ) (r : Root) (e : SubE σ Δ) : Subst σ Δ :=
-  fun v => if v = .root r then e else θ v
+def set (θ : Subst σ Δ) (r : Root) (e : SubE σ Δ) : Subst σ Δ where
+  ty v := if v = .root r then e else θ v
+  wit := θ.wit
 
 def setIdx (ι : VarSymb → VarSymb) (r : Root) (e : SubE σ Δ) : VarSymb → VarSymb :=
   fun i => if i.rt = r then e.idxAlong i.path else ι i
@@ -37,11 +38,11 @@ theorem set_root (θ : Subst σ Δ) (r : Root) (e : SubE σ Δ) : θ.set r e (.r
 
 theorem set_ne (θ : Subst σ Δ) {r : Root} (e : SubE σ Δ) {v : VarSymb} (h : v ≠ .root r) :
     θ.set r e v = θ v :=
-  if_neg h
+  if_neg (t := e) h
 
 theorem ok_set {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {r : Root} {T : VarType}
     {e : SubE σ Δ} (he : e.OkRef T) : Ok (Γ.insert r T) (θ.set r e) := by
-  intro v U hlp hv
+  refine ⟨fun v U hlp hv => ?_, fun hO y X hy => hθ.wit hO y X hy⟩
   by_cases hvr : v = .root r
   · subst hvr
     have hTU : T = U := by simpa [Ctx.insert] using hv
@@ -55,7 +56,20 @@ theorem ok_set {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {r : Root} {T : Va
 theorem coh_set {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
     (hc : Coh ι Γ θ) {r : Root} {T : VarType} {e : SubE σ Δ} (hr : Γ.RootFresh r)
     (he : e.OkRef T) : Coh (setIdx ι r e) (Γ.insert r T) (θ.set r e) := by
-  refine coh_of (ok_set hθ he) ?_
+  refine coh_of (ok_set hθ he) ?_ ?_ ?_
+  rotate_left
+  · intro hO y X hy p
+    change Γ.wit y = some X at hy
+    have hrt : y.rt ≠ r := fun he' => by rw [hr.wit y he'] at hy; cases hy
+    change (θ.wit y).idxAlong p = if (y.ext p).rt = r then _ else ι (y.ext p)
+    rw [VarSymb.ext_rt, if_neg hrt]
+    exact hc.wit hO y X hy p
+  · intro hO y X z hy hyd hz
+    change Γ.wit y = some X at hy
+    have hne : VarSymb.step y .dia ≠ .root r := fun he' => by cases he'
+    rw [Ctx.insert_ne hne] at hyd
+    rw [set_ne _ _ hne]
+    exact hc.opened hO y X z hy hyd hz
   intro v U hlp hv p
   by_cases hvr : v = .root r
   · subst hvr
@@ -96,7 +110,8 @@ def Term.holeRead {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A : VarType} {a : An
 and unpacked forms, by substitutions of the body's slots. -/
 
 omit [ModalSys] in
-theorem Ctx.slotsFrom_empty : Ctx.empty.SlotsFrom 0 := fun _ _ _ _ => rfl
+theorem Ctx.slotsFrom_empty : Ctx.empty.SlotsFrom 0 :=
+  ⟨fun _ _ _ _ => rfl, fun _ _ _ _ => rfl⟩
 
 /-- A hole formula read at **any** binder depth, with `t` in the hole: a substitution from the
     hole's own context, so no weakening and no slot bookkeeping.  Inside a returning
@@ -543,8 +558,8 @@ def compsItemAddr (cs : List (List Step)) : List Step → VarSymb
 
 /-- ⭐**The companion renaming**: the view of a necessary object `d` (the slot `bnd 0`) read off
     its value with companions `cs`, each item to its component (`compsItemAddr`). -/
-def compsRen (σ : Signature) (Δ : Ctx) (cs : List (List Step)) : Subst σ Δ := fun v =>
-  match v with
+def compsRen (σ : Signature) (Δ : Ctx) (cs : List (List Step)) : Subst σ Δ where
+  ty v := match v with
   | .step u .box => if u.rt = .bnd 0 then .ren (compsItemAddr cs u.path) else .hide
   | _ => .hide
 
@@ -555,10 +570,10 @@ def compsRenIdx (cs : List (List Step)) (a : VarSymb) : VarSymb :=
   | none => a
 
 theorem ok_compsRen {σ : Signature} (hF : ModalSys.Four = false) (A : VarType) (b : Bool)
-    (hb : ModalSys.T = b) :
+    (hb : ModalSys.T = b) (_hO : ModalSys.Opt = false := by opt_off) :
     Subst.Ok (Ctx.empty.insert (.bnd 0) (.VTypeBox A)).boxIn
       (compsRen σ (Ctx.empty.insert (.bnd 0) (A.compsFlat (A.compsAllB b))) (A.compsAllB b)) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   match v with
   | .step u .box =>
       obtain ⟨-, hu⟩ := Ctx.boxIn_box hv
@@ -585,7 +600,7 @@ theorem ok_compsRen {σ : Signature} (hF : ModalSys.Four = false) (A : VarType) 
   | .step _ .here => cases hv
 
 theorem coh_compsRen {σ : Signature} (hF : ModalSys.Four = false) (A : VarType) (b : Bool)
-    (hb : ModalSys.T = b) :
+    (hb : ModalSys.T = b) (_hO : ModalSys.Opt = false := by opt_off) :
     Subst.Coh (compsRenIdx (A.compsAllB b)) (Ctx.empty.insert (.bnd 0) (.VTypeBox A)).boxIn
       (compsRen σ (Ctx.empty.insert (.bnd 0) (A.compsFlat (A.compsAllB b))) (A.compsAllB b)) := by
   refine Subst.coh_of (ok_compsRen hF A b hb) ?_
@@ -614,6 +629,13 @@ theorem VarType.CompOk.single {A : VarType} {cs : List (List Step)} (h : A.CompO
   · exact Or.inr ⟨hT, fun p' hp' => by rw [List.mem_singleton.mp hp']; exact hall p hp,
       List.nodup_singleton p⟩
 
+/-- Companions exist only under T. -/
+theorem VarType.CompOk.T_of_mem {A : VarType} {cs : List (List Step)} (h : A.CompOk cs)
+    {p : List Step} (hp : p ∈ cs) : ModalSys.T = true := by
+  rcases h with rfl | ⟨hT, -, -⟩
+  · exact absurd hp List.not_mem_nil
+  · exact hT
+
 /-- ⭐**`holeC`'s value**: the contents `s` of the source's contents, and each companion of
     `□s[d.inner]` as its contents (`compVal`) read off the source's value with **all** its
     companions (`compsRen`). -/
@@ -624,7 +646,9 @@ def holeCVal {σ : Signature} {A B : VarType} {bB : Ann B}
   compsBuild B ⟨_, Term.holeAt (Term.eta ((VarSymb.root (.bnd 0)).ext (compsFst (A.compsAllB b)))
       A (Ctx.ref_compsFst _ (Ctx.ref_insert_root _ _ _))) s⟩ cs
     fun q hq => ⟨_, Term.subst (compsRenIdx (A.compsAllB b))
-      (compsRen σ _ (A.compsAllB b)) (ok_compsRen hF A b hb) (coh_compsRen hF A b hb)
+      (compsRen σ _ (A.compsAllB b))
+      (ok_compsRen hF A b hb (ModalSys.noOpt_of_T (h.T_of_mem hq)))
+      (coh_compsRen hF A b hb (ModalSys.noOpt_of_T (h.T_of_mem hq)))
       (compVal (Γ := Ctx.empty.insert (.bnd 0) (.VTypeBox A))
         (Term.holeAt (Term.eta (VarSymb.root (.bnd 0)).inner A
           (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))) s) q (h.single hq)).2⟩

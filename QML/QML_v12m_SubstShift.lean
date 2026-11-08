@@ -282,6 +282,8 @@ theorem WFF.subst_shift : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {Γ �
         exact congrArg (WFF.dia y _) (WFF.subst_shift (C.diaIn x) (hΓ.diaIn x)
           (hΓ'.diaIn (x.shift k)) _ p q _ p' q' hΔy (Subst.preShift_dia hp hwy) φ)
       exact key _ _ hι hw _ _ _ _ _ _ _ _
+  | _, _, _, _, _, _, _, _, C, _, _, _, _, _, _, _, _, _, _, .optx hO _ _ _ =>
+      False.elim (by have := ModalSys.noOpt_of_Four C.hF; rw [hO] at this; cases this)
   | _, _, _, _, _, _, _, _, C, _, _, Ψ, hΨ, hc, Ψ', hΨ', hc', _, hp, .here hT s t =>
       WFF.here_congr hT (Term.subst_shift C Ψ hΨ hc Ψ' hΨ' hc' hp s)
         (Term.subst_shift C Ψ hΨ hc Ψ' hΨ' hc' hp t)

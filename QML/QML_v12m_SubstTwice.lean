@@ -296,14 +296,205 @@ theorem comp_mono {Δ₁' Δ₂' : Ctx} (h : Δ₁.Le Δ₁') (h₂ : Δ₂.Le �
 
 end SubE
 
+/-- `θ.dia` weakened into the witness view is the witness view of `θ.box`: the content's entry is
+    the body either way (`SubE.toWit_optBody`). -/
+theorem Subst.simT_dia_box_optIn {σ : Signature} {Δ₁ Δ₂ : Ctx} {θ₂ : Subst σ Δ₂}
+    (hθ₂ : Subst.Ok Δ₁ θ₂) (hO : ModalSys.Opt = true) {z ιz : VarSymb} {Z : VarType}
+    (hZ : Δ₁.ref z = some (.VTypeDia Z)) (L : (Δ₂.diaIn ιz).Le (Δ₂.boxIn.optIn ιz)) :
+    Subst.SimT (Δ₁.diaIn z) ((θ₂.dia z ιz).mono L) (θ₂.box.optIn z ιz) := by
+  refine Subst.simT_of ?_
+  intro v T _ hv
+  match v with
+  | .step u .dia =>
+      change (if u = z then (match Δ₁.ref z with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T at hv
+      split_ifs at hv with huz
+      subst huz
+      rw [hZ] at hv
+      cases hv
+      change SubE.Sim Z (SubE.mono L (if u = u then (θ₂.at u).diaBody ιz else SubE.hide))
+        (θ₂.box.optIn u ιz (.step u .dia))
+      rw [if_pos rfl, Subst.optIn_content]
+      change SubE.Sim Z _ (((θ₂.at u).toWit).optBody ιz)
+      rw [SubE.toWit_optBody hO ιz (Subst.okRef_at hθ₂ hZ) L]
+      exact .refl _
+  | .step u .box =>
+      change SubE.Sim T (SubE.mono L (((θ₂.at u).unbox).mono (Ctx.le_boxIn_diaIn Δ₂ ιz)))
+        (θ₂.box.optIn z ιz (.step u .box))
+      rw [Subst.optIn_ne θ₂.box ιz (fun h => by cases h)]
+      change SubE.Sim T _ (((θ₂.at u).unbox).mono _)
+      simp only [SubE.mono_mono]
+      exact .refl _
+  | .step u .keep =>
+      change SubE.Sim T (SubE.mono L (((θ₂.at u).keepE).mono (Ctx.le_boxIn_diaIn Δ₂ ιz)))
+        (θ₂.box.optIn z ιz (.step u .keep))
+      rw [Subst.optIn_ne θ₂.box ιz (fun h => by cases h)]
+      change SubE.Sim T _ (((θ₂.at u).keepE).mono _)
+      simp only [SubE.mono_mono]
+      exact .refl _
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .here => cases hv
+
+theorem WitE.tm_eq_of_sig {σ : Signature} {Δ : Ctx} {z : VarSymb} {A : VarType} {a a' : Ann A}
+    {t : Term σ (Δ.optIn z) A a} {t' : Term σ (Δ.optIn z) A a'}
+    (h : (⟨a, t⟩ : Σ c, Term σ (Δ.optIn z) A c) = ⟨a', t'⟩) : WitE.tm z t = WitE.tm z t' := by
+  cases h
+  rfl
+
+namespace WitE
+
+variable {σ : Signature} {ι₂ : VarSymb → VarSymb} {Δ₁ Δ₂ : Ctx}
+
+/-- Push a witness entry over `Δ₁` through `θ₂`: a witness to its entry, a body substituted in the
+    witness's view, its new name the index map's (as `SubE.comp`). -/
+def comp (θ₂ : Subst σ Δ₂) (hθ₂ : Subst.Ok Δ₁ θ₂) (hc₂ : Subst.Coh ι₂ Δ₁ θ₂) :
+    WitE σ Δ₁ → WitE σ Δ₂
+  | .hide => .hide
+  | .ren z => θ₂.wit z
+  | .tm z b =>
+      if h : ModalSys.Opt = true ∧ (Δ₁.wit z).isSome = true then
+        .tm (ι₂ z) (Term.subst ι₂ (θ₂.optIn z (ι₂ z))
+          (Subst.ok_optIn hθ₂ h.1 (Option.some_get h.2).symm
+            (hc₂.wit h.1 z _ (Option.some_get h.2).symm []))
+          (Subst.coh_optIn hθ₂ hc₂ h.1 (Option.some_get h.2).symm) b)
+      else .hide
+
+variable (θ₂ : Subst σ Δ₂) (hθ₂ : Subst.Ok Δ₁ θ₂) (hc₂ : Subst.Coh ι₂ Δ₁ θ₂)
+
+theorem comp_tm (hO : ModalSys.Opt = true) {z : VarSymb} {X : VarType} (hz : Δ₁.wit z = some X)
+    {A : VarType} {a : Ann A} (b : Term σ (Δ₁.optIn z) A a) :
+    (WitE.tm z b).comp θ₂ hθ₂ hc₂ = .tm (ι₂ z) (Term.subst ι₂ (θ₂.optIn z (ι₂ z))
+      (Subst.ok_optIn hθ₂ hO hz (hc₂.wit hO z X hz [])) (Subst.coh_optIn hθ₂ hc₂ hO hz) b) :=
+  dif_pos ⟨hO, by rw [hz]; rfl⟩
+
+theorem idxAlong_comp (hO : ModalSys.Opt = true) : ∀ {e : WitE σ Δ₁} {X : VarType}, e.OkW X →
+    (e.comp θ₂ hθ₂ hc₂).idxAlong [] = ι₂ (e.idxAlong [])
+  | .ren z, X, he => hc₂.wit hO z X he []
+  | .tm z b, _, he => by
+      obtain ⟨Z, hZ⟩ := he.1
+      rw [comp_tm θ₂ hθ₂ hc₂ hO hZ b]
+      rfl
+  | .hide, _, he => False.elim he
+
+/-- Weakening before `θ₂'` is weakening after `θ₂`, when `θ₂'` is `θ₂` weakened (as
+    `SubE.comp_mono`). -/
+theorem comp_mono (hO : ModalSys.Opt = true) {Δ₁' Δ₂' : Ctx} (h : Δ₁.Le Δ₁') (h₂ : Δ₂.Le Δ₂')
+    {ι₂' : VarSymb → VarSymb} (θ₂' : Subst σ Δ₂') (hθ₂' : Subst.Ok Δ₁' θ₂')
+    (hc₂' : Subst.Coh ι₂' Δ₁' θ₂')
+    (heq : ∀ w T, Δ₁.ref w = some T → θ₂'.at w = (θ₂.at w).mono h₂)
+    (hweq : ∀ z X, Δ₁.wit z = some X → θ₂'.wit z = (θ₂.wit z).mono h₂) :
+    ∀ {e : WitE σ Δ₁} {X : VarType}, e.OkW X →
+      (e.mono h).comp θ₂' hθ₂' hc₂' = (e.comp θ₂ hθ₂ hc₂).mono h₂
+  | .hide, _, _ => rfl
+  | .ren z, X, he => hweq z X he
+  | .tm z b, _, he => by
+      obtain ⟨Z, hZ⟩ := he.1
+      have hZ' : Δ₁'.wit z = some Z := h.wit z Z hZ
+      have hι : ι₂' z = ι₂ z := by
+        have h' := hc₂'.wit hO z Z hZ' []
+        rw [hweq z Z hZ, WitE.idxAlong_mono, hc₂.wit hO z Z hZ []] at h'
+        exact h'.symm
+      change (WitE.tm z (Term.mono (h.optIn z) b)).comp θ₂' hθ₂' hc₂' = _
+      rw [comp_tm θ₂' hθ₂' hc₂' hO hZ', comp_tm θ₂ hθ₂ hc₂ hO hZ b]
+      have key : ∀ (z' : VarSymb) (_hz : z' = ι₂ z) (p : Subst.Ok (Δ₁'.optIn z) (θ₂'.optIn z z'))
+          (q : Subst.Coh ι₂' (Δ₁'.optIn z) (θ₂'.optIn z z')),
+          WitE.tm z' (Term.subst ι₂' (θ₂'.optIn z z') p q (Term.mono (h.optIn z) b)) =
+            (WitE.tm (ι₂ z) (Term.subst ι₂ (θ₂.optIn z (ι₂ z))
+              (Subst.ok_optIn hθ₂ hO hZ (hc₂.wit hO z Z hZ []))
+              (Subst.coh_optIn hθ₂ hc₂ hO hZ) b)).mono h₂ := by
+        intro z' hz p q
+        subst hz
+        change _ = WitE.tm (ι₂ z) (Term.mono (h₂.optIn (ι₂ z)) _)
+        refine WitE.tm_eq_of_sig ?_
+        rw [Term.subst_mono, Term.mono_subst]
+        refine Term.subst_congr _ _ _ _ _ _ (Subst.simT_of fun v T hlp hv => ?_) b
+        change SubE.Sim T (θ₂'.optIn z (ι₂ z) v) (SubE.mono (h₂.optIn (ι₂ z)) (θ₂.optIn z (ι₂ z) v))
+        by_cases hc : v = .step z .dia
+        · subst hc
+          rw [Subst.optIn_content, Subst.optIn_content, hweq z Z hZ, ← WitE.optBody_mono]
+          exact .refl _
+        · rw [Ctx.optIn_ne hc] at hv
+          rw [Subst.optIn_ne θ₂' _ hc, Subst.optIn_ne θ₂ _ hc, ← Subst.at_nonproj θ₂' hlp,
+            heq v T ((Ctx.ref_nonproj Δ₁ hlp).trans hv), Subst.at_nonproj θ₂ hlp]
+          simp only [SubE.mono_mono]
+          exact .refl _
+      exact key (ι₂' z) hι _ _
+
+/-- The content of a re-opened witness, pushed through `θ₂`'s witness view, is the content of the
+    pushed witness (as `SubE.diaBody_comp`). -/
+theorem optBody_comp (hO : ModalSys.Opt = true) {x₁ : VarSymb} {X₁ : VarType}
+    (hx₁ : Δ₁.wit x₁ = some X₁) :
+    ∀ {e : WitE σ Δ₁} {X : VarType}, e.OkW X → e.idxAlong [] = x₁ →
+      (e.optBody x₁).comp (θ₂.optIn x₁ (ι₂ x₁))
+          (Subst.ok_optIn hθ₂ hO hx₁ (hc₂.wit hO x₁ X₁ hx₁ []))
+          (Subst.coh_optIn hθ₂ hc₂ hO hx₁) =
+        (e.comp θ₂ hθ₂ hc₂).optBody (ι₂ x₁)
+  | .ren w, _, _, hwx => by
+      have hwx' : w = x₁ := hwx
+      subst hwx'
+      change (θ₂.optIn w (ι₂ w)) (.step w .dia) = (θ₂.wit w).optBody (ι₂ w)
+      exact Subst.optIn_content θ₂ w (ι₂ w)
+  | .tm w b, _, _, hwx => by
+      have hwx' : w = x₁ := hwx
+      subst hwx'
+      rw [show (WitE.tm w b : WitE σ Δ₁).optBody w = SubE.tm (Term.mono (Ctx.Le.refl _) b)
+          from dif_pos rfl, Term.mono_refl, comp_tm θ₂ hθ₂ hc₂ hO hx₁ b,
+        show (WitE.tm (ι₂ w) (Term.subst ι₂ (θ₂.optIn w (ι₂ w))
+            (Subst.ok_optIn hθ₂ hO hx₁ (hc₂.wit hO w X₁ hx₁ []))
+            (Subst.coh_optIn hθ₂ hc₂ hO hx₁) b) : WitE σ Δ₂).optBody (ι₂ w) =
+          SubE.tm (Term.mono (Ctx.Le.refl _) (Term.subst ι₂ (θ₂.optIn w (ι₂ w))
+            (Subst.ok_optIn hθ₂ hO hx₁ (hc₂.wit hO w X₁ hx₁ []))
+            (Subst.coh_optIn hθ₂ hc₂ hO hx₁) b)) from dif_pos rfl, Term.mono_refl]
+      rfl
+  | .hide, _, he, _ => False.elim he
+
+end WitE
+
+/-- The witness entry of a pushed entry is the pushed witness entry, one view in. -/
+theorem SubE.toWit_comp {σ : Signature} {ι₂ : VarSymb → VarSymb} {Δ₁ Δ₂ : Ctx}
+    (θ₂ : Subst σ Δ₂) (hθ₂ : Subst.Ok Δ₁ θ₂) (hc₂ : Subst.Coh ι₂ Δ₁ θ₂)
+    (hO : ModalSys.Opt = true) : ∀ {e : SubE σ Δ₁} {X : VarType}, e.OkRef (.VTypeDia X) →
+      (e.comp θ₂ hθ₂ hc₂).toWit = e.toWit.comp θ₂.box (Subst.ok_box hθ₂) (Subst.coh_box hθ₂ hc₂)
+  | .ren _, _, _ => rfl
+  | .tm (.diatm z hz b), _, _ => by
+      obtain ⟨Z, hZ⟩ := hz
+      have hw : (θ₂.at z).idxAlong [] = ι₂ z := hc₂ z _ hZ []
+      obtain ⟨Y, hY⟩ := SubE.ref_witness (Subst.okRef_at hθ₂ hZ) hw
+      have hzb : Δ₁.boxIn.wit z = some Z := Ctx.boxIn_wit.mpr ⟨hO, hZ⟩
+      change SubE.toWit (SubE.tm (Term.diatm (ι₂ z) ⟨Y, hY⟩ (Term.subst ι₂ (θ₂.dia z (ι₂ z))
+          (Subst.ok_dia hθ₂ ⟨Z, hZ⟩ hw) (Subst.coh_dia hθ₂ hc₂ ⟨Z, hZ⟩) b))) =
+        WitE.comp θ₂.box (Subst.ok_box hθ₂) (Subst.coh_box hθ₂ hc₂)
+          (SubE.toWit (SubE.tm (Term.diatm z ⟨Z, hZ⟩ b)))
+      rw [show SubE.toWit (SubE.tm (Term.diatm (ι₂ z) ⟨Y, hY⟩ (Term.subst ι₂ (θ₂.dia z (ι₂ z))
+            (Subst.ok_dia hθ₂ ⟨Z, hZ⟩ hw) (Subst.coh_dia hθ₂ hc₂ ⟨Z, hZ⟩) b))) =
+          WitE.tm (ι₂ z) (Term.mono (Ctx.le_diaIn_boxIn_optIn hO hY)
+            (Term.subst ι₂ (θ₂.dia z (ι₂ z))
+              (Subst.ok_dia hθ₂ ⟨Z, hZ⟩ hw) (Subst.coh_dia hθ₂ hc₂ ⟨Z, hZ⟩) b)) from dif_pos hO,
+        show SubE.toWit (SubE.tm (Term.diatm z ⟨Z, hZ⟩ b)) =
+          WitE.tm z (Term.mono (Ctx.le_diaIn_boxIn_optIn hO hZ) b) from dif_pos hO,
+        WitE.comp_tm θ₂.box (Subst.ok_box hθ₂) (Subst.coh_box hθ₂ hc₂) hO hzb]
+      refine congrArg (WitE.tm (ι₂ z)) ?_
+      rw [Term.mono_subst, Term.subst_mono]
+      exact Term.subst_congr_eq _ _ _ _ _ _
+        (Subst.simT_dia_box_optIn hθ₂ hO hZ (Ctx.le_diaIn_boxIn_optIn hO hY)) b
+  | .tm (.var _ _), _, he => nomatch he
+  | .tm (.func _), _, he => nomatch he
+  | .tm .unit, _, he => nomatch he
+  | .tm (.pair _ _), _, he => nomatch he
+  | .tm (.boxtm _), _, he => nomatch he
+  | .hide, _, he => False.elim he
+
 namespace Subst
 
 variable {σ : Signature} {ι₁ ι₂ ι₃ : VarSymb → VarSymb} {Γ Δ₁ Δ₂ : Ctx}
 
 /-- The composite entries. -/
 def comp (θ₁ : Subst σ Δ₁) (θ₂ : Subst σ Δ₂) (hθ₂ : Ok Δ₁ θ₂) (hc₂ : Coh ι₂ Δ₁ θ₂) :
-    Subst σ Δ₂ :=
-  fun v => (θ₁ v).comp θ₂ hθ₂ hc₂
+    Subst σ Δ₂ where
+  ty v := (θ₁ v).comp θ₂ hθ₂ hc₂
+  wit y := (θ₁.wit y).comp θ₂ hθ₂ hc₂
 
 theorem at_comp {θ₁ : Subst σ Δ₁} (hθ₁ : Ok Γ θ₁) (θ₂ : Subst σ Δ₂) (hθ₂ : Ok Δ₁ θ₂)
     (hc₂ : Coh ι₂ Δ₁ θ₂) :
@@ -365,6 +556,33 @@ theorem under_eq_mono (θ₂ : Subst σ Δ₂) {d₁ d₂ : ℕ} (hΔ₁ : Δ₁
       cases hv
     exact if_neg hvr
 
+/-- `θ₂`'s witness view agrees with `θ₂` on `Δ₁`: at an opened witness's content by `Coh.opened`. -/
+theorem optIn_eq_mono (θ₂ : Subst σ Δ₂) (hc₂ : Coh ι₂ Δ₁ θ₂) (hO : ModalSys.Opt = true)
+    {x₁ : VarSymb} {X₁ : VarType} (hx₁ : Δ₁.wit x₁ = some X₁) :
+    ∀ v T, Δ₁.ref v = some T →
+      (θ₂.optIn x₁ (ι₂ x₁)).at v = (θ₂.at v).mono (Ctx.le_optIn Δ₂ (ι₂ x₁)) :=
+  at_eq_mono_of _ fun v T _ hv => by
+    by_cases hc : v = .step x₁ .dia
+    · subst hc
+      rw [optIn_content]
+      have hT : T = X₁ := by
+        rcases Δ₁.wit_dia x₁ X₁ hx₁ with h | h
+        · rw [h] at hv; cases hv
+        · rw [h] at hv; exact (Option.some.inj hv).symm
+      subst hT
+      exact (hc₂.opened hO x₁ T (ι₂ x₁) hx₁ hv (hc₂.wit hO x₁ T hx₁ [])).symm
+    · exact optIn_ne θ₂ _ hc
+
+/-- The witness of a composite lands where the two index maps send it. -/
+theorem idx_comp_wit {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (hθ₁ : Ok Γ θ₁)
+    (hc₁ : Coh ι₁ Γ θ₁) (hθ₂ : Ok Δ₁ θ₂) (hc₂ : Coh ι₂ Δ₁ θ₂) (hc₃ : Coh ι₃ Γ θ₃)
+    (hs : Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) (hO : ModalSys.Opt = true) {y : VarSymb} {X : VarType}
+    (hy : Γ.wit y = some X) : ι₃ y = ι₂ (ι₁ y) :=
+  calc ι₃ y = (θ₃.wit y).idxAlong [] := (hc₃.wit hO y X hy []).symm
+    _ = ((θ₁.wit y).comp θ₂ hθ₂ hc₂).idxAlong [] := (hs.wit hO y X hy).idx
+    _ = ι₂ ((θ₁.wit y).idxAlong []) := WitE.idxAlong_comp θ₂ hθ₂ hc₂ hO (hθ₁.wit hO y X hy)
+    _ = ι₂ (ι₁ y) := by rw [hc₁.wit hO y X hy []]; rfl
+
 theorem idx_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (hθ₁ : Ok Γ θ₁) (hc₁ : Coh ι₁ Γ θ₁)
     (hθ₂ : Ok Δ₁ θ₂) (hc₂ : Coh ι₂ Δ₁ θ₂) (hc₃ : Coh ι₃ Γ θ₃)
     (hs : Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
@@ -378,7 +596,13 @@ theorem idx_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (hθ₁
 theorem sim_box_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (hθ₁ : Ok Γ θ₁) (hθ₂ : Ok Δ₁ θ₂)
     (hc₂ : Coh ι₂ Δ₁ θ₂) (hs : Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) :
     Sim Γ.boxIn θ₃.box (θ₁.box.comp θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂)) := by
-  refine sim_of ?_
+  refine sim_of ?_ fun hO y X hy => ?_
+  swap
+  · obtain ⟨_, hu⟩ := Ctx.boxIn_wit.mp hy
+    change WitE.Sim X (θ₃.at y).toWit
+      (((θ₁.at y).toWit).comp θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂))
+    rw [← SubE.toWit_comp θ₂ hθ₂ hc₂ hO (okRef_at hθ₁ hu), ← at_comp hθ₁ θ₂ hθ₂ hc₂ hu]
+    exact (hs y _ hu).toWit hO
   intro v T _ hv
   match v with
   | .step u .box =>
@@ -409,7 +633,17 @@ theorem sim_dia_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (h�
       ((θ₁.dia x (ι₁ x)).comp (θ₂.dia (ι₁ x) (ι₂ (ι₁ x))) (ok_dia hθ₂ hx₁ hw₂)
         (coh_dia hθ₂ hc₂ hx₁)) := by
   have hw₁ : (θ₁.at x).idxAlong [] = ι₁ x := hx.elim fun _ hX => hc₁ x _ hX []
-  refine sim_of ?_
+  refine sim_of ?_ fun hO y X hy => ?_
+  swap
+  · obtain ⟨_, hu⟩ := Ctx.boxIn_wit.mp hy
+    change WitE.Sim X (((θ₃.at y).toWit).mono (Ctx.le_boxIn_diaIn Δ₂ (ι₂ (ι₁ x))))
+      ((((θ₁.at y).toWit).mono (Ctx.le_boxIn_diaIn Δ₁ (ι₁ x))).comp
+        (θ₂.dia (ι₁ x) (ι₂ (ι₁ x))) (ok_dia hθ₂ hx₁ hw₂) (coh_dia hθ₂ hc₂ hx₁))
+    rw [WitE.comp_mono θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂) hO (Ctx.le_boxIn_diaIn Δ₁ (ι₁ x))
+        (Ctx.le_boxIn_diaIn Δ₂ (ι₂ (ι₁ x))) _ _ _ (dia_eq_box_mono θ₂ (ι₁ x) (ι₂ (ι₁ x)))
+        (fun _ _ _ => rfl) (SubE.okW_toWit hO (okRef_at hθ₁ hu)),
+      ← SubE.toWit_comp θ₂ hθ₂ hc₂ hO (okRef_at hθ₁ hu), ← at_comp hθ₁ θ₂ hθ₂ hc₂ hu]
+    exact ((hs y _ hu).toWit hO).mono _
   intro v T _ hv
   match v with
   | .step u .dia =>
@@ -461,7 +695,15 @@ theorem sim_under_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (
     Sim (Γ.insert (.bnd d) T) (θ₃.under d d₂ T h₂)
       ((θ₁.under d d₁ T h₁).comp (θ₂.under d₁ d₂ T h₂) (ok_under hθ₂ T h₂)
         (coh_under hθ₂ hc₂ hΔ₁ T h₂)) := by
-  refine sim_of ?_
+  refine sim_of ?_ fun hO y X hy => ?_
+  swap
+  · change Γ.wit y = some X at hy
+    change WitE.Sim X ((θ₃.wit y).mono (Ctx.le_insert h₂ T))
+      (((θ₁.wit y).mono (Ctx.le_insert h₁ T)).comp (θ₂.under d₁ d₂ T h₂) (ok_under hθ₂ T h₂)
+        (coh_under hθ₂ hc₂ hΔ₁ T h₂))
+    rw [WitE.comp_mono θ₂ hθ₂ hc₂ hO (Ctx.le_insert h₁ T) (Ctx.le_insert h₂ T) _ _ _
+      (under_eq_mono θ₂ hΔ₁ T h₂) (fun _ _ _ => rfl) (hθ₁.wit hO y X hy)]
+    exact (hs.wit hO y X hy).mono _
   intro v U hlp hv
   by_cases hvr : v = .root (.bnd d)
   · rw [show θ₃.under d d₂ T h₂ v = .ren (.root (.bnd d₂)) from if_pos hvr]
@@ -477,6 +719,45 @@ theorem sim_under_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (
       SubE.comp_mono θ₂ hθ₂ hc₂ (Ctx.le_insert h₁ T) (Ctx.le_insert h₂ T) _ _ _
         (under_eq_mono θ₂ hΔ₁ T h₂) (hθ₁ v U hlp hv')]
     have h₃ := hs v U ((Ctx.ref_nonproj Γ hlp).trans hv')
+    rw [at_nonproj θ₃ hlp, at_nonproj _ hlp] at h₃
+    exact h₃.mono _
+
+theorem sim_optIn_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (hθ₁ : Ok Γ θ₁)
+    (hc₁ : Coh ι₁ Γ θ₁) (hθ₂ : Ok Δ₁ θ₂) (hc₂ : Coh ι₂ Δ₁ θ₂)
+    (hs : Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) (hO : ModalSys.Opt = true) {y : VarSymb} {X : VarType}
+    (hy : Γ.wit y = some X) {X₁ : VarType} (hx₁ : Δ₁.wit (ι₁ y) = some X₁)
+    (hw₃ : (θ₃.wit y).idxAlong [] = ι₂ (ι₁ y)) :
+    Sim (Γ.optIn y) (θ₃.optIn y (ι₂ (ι₁ y)))
+      ((θ₁.optIn y (ι₁ y)).comp (θ₂.optIn (ι₁ y) (ι₂ (ι₁ y)))
+        (ok_optIn hθ₂ hO hx₁ (hc₂.wit hO _ X₁ hx₁ [])) (coh_optIn hθ₂ hc₂ hO hx₁)) := by
+  have hw₁ : (θ₁.wit y).idxAlong [] = ι₁ y := hc₁.wit hO y X hy []
+  refine sim_of ?_ fun hO' y' X' hy' => ?_
+  swap
+  · change WitE.Sim X' ((θ₃.wit y').mono (Ctx.le_optIn Δ₂ (ι₂ (ι₁ y))))
+      (((θ₁.wit y').mono (Ctx.le_optIn Δ₁ (ι₁ y))).comp (θ₂.optIn (ι₁ y) (ι₂ (ι₁ y)))
+        (ok_optIn hθ₂ hO hx₁ (hc₂.wit hO _ X₁ hx₁ [])) (coh_optIn hθ₂ hc₂ hO hx₁))
+    rw [WitE.comp_mono θ₂ hθ₂ hc₂ hO' (Ctx.le_optIn Δ₁ (ι₁ y)) (Ctx.le_optIn Δ₂ (ι₂ (ι₁ y)))
+      _ _ _ (optIn_eq_mono θ₂ hc₂ hO hx₁) (fun _ _ _ => rfl) (hθ₁.wit hO' y' X' hy')]
+    exact (hs.wit hO' y' X' hy').mono _
+  intro v U hlp hv
+  by_cases hc : v = .step y .dia
+  · subst hc
+    rw [Ctx.optIn_content hy] at hv
+    cases hv
+    change SubE.Sim X (θ₃.optIn y (ι₂ (ι₁ y)) (.step y .dia))
+      ((θ₁.optIn y (ι₁ y) (.step y .dia)).comp (θ₂.optIn (ι₁ y) (ι₂ (ι₁ y)))
+        (ok_optIn hθ₂ hO hx₁ (hc₂.wit hO _ X₁ hx₁ [])) (coh_optIn hθ₂ hc₂ hO hx₁))
+    rw [optIn_content, optIn_content,
+      WitE.optBody_comp θ₂ hθ₂ hc₂ hO hx₁ (hθ₁.wit hO y X hy) hw₁]
+    exact (hs.wit hO y X hy).optBody hw₃
+  · rw [Ctx.optIn_ne hc] at hv
+    change SubE.Sim U (θ₃.optIn y (ι₂ (ι₁ y)) v)
+      ((θ₁.optIn y (ι₁ y) v).comp (θ₂.optIn (ι₁ y) (ι₂ (ι₁ y)))
+        (ok_optIn hθ₂ hO hx₁ (hc₂.wit hO _ X₁ hx₁ [])) (coh_optIn hθ₂ hc₂ hO hx₁))
+    rw [optIn_ne θ₃ _ hc, optIn_ne θ₁ _ hc,
+      SubE.comp_mono θ₂ hθ₂ hc₂ (Ctx.le_optIn Δ₁ (ι₁ y)) (Ctx.le_optIn Δ₂ (ι₂ (ι₁ y))) _ _ _
+        (optIn_eq_mono θ₂ hc₂ hO hx₁) (hθ₁ v U hlp hv)]
+    have h₃ := hs v U ((Ctx.ref_nonproj Γ hlp).trans hv)
     rw [at_nonproj θ₃ hlp, at_nonproj _ hlp] at h₃
     exact h₃.mono _
 
@@ -656,6 +937,27 @@ theorem WFF.subst_comp {σ : Signature} : {ι₁ ι₂ ι₃ : VarSymb → VarSy
           (hΓ.diaIn x) (hΔ₁.diaIn (ι₁ x)) hΔy
           (Subst.sim_dia_comp hθ₁ hc₁ hθ₂ hc₂ hs hx hx₁ hw₂ hw₃) φ)
       exact key (ι₃ x) hι _ _ _ _
+  | ι₁, ι₂, ι₃, Γ, Δ₁, Δ₂, _, _, d₂, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, hΓ, hΔ₁, hΔ₂,
+      hs, .optx hO y hy φ => by
+      obtain ⟨X, hX⟩ := hy
+      have hw₁ : (θ₁.wit y).idxAlong [] = ι₁ y := hc₁.wit hO y X hX []
+      obtain ⟨X₁, hx₁⟩ := WitE.wit_of (hθ₁.wit hO y X hX) hw₁
+      have hw₂ : (θ₂.wit (ι₁ y)).idxAlong [] = ι₂ (ι₁ y) := hc₂.wit hO _ X₁ hx₁ []
+      have hι : ι₃ y = ι₂ (ι₁ y) := Subst.idx_comp_wit hθ₁ hc₁ hθ₂ hc₂ hc₃ hs hO hX
+      have hw₃ : (θ₃.wit y).idxAlong [] = ι₂ (ι₁ y) := (hc₃.wit hO y X hX []).trans hι
+      have key : ∀ (z : VarSymb) (_hz : z = ι₂ (ι₁ y)) (P : ∃ Z, Δ₂.wit z = some Z)
+          (p : Subst.Ok (Γ.optIn y) (θ₃.optIn y z)) (q : Subst.Coh ι₃ (Γ.optIn y) (θ₃.optIn y z))
+          (hΔz : (Δ₂.optIn z).SlotsFrom d₂),
+          WFF.subst ι₂ θ₂ hθ₂ hc₂ hΔ₁ hΔ₂ (WFF.subst ι₁ θ₁ hθ₁ hc₁ hΓ hΔ₁ (.optx hO y ⟨X, hX⟩ φ)) =
+            .optx hO z P (WFF.subst ι₃ (θ₃.optIn y z) p q (hΓ.optIn y) hΔz φ) := by
+        intro z hz P p q hΔz
+        subst hz
+        exact congrArg (WFF.optx hO (ι₂ (ι₁ y)) _) (WFF.subst_comp (θ₁.optIn y (ι₁ y))
+          (θ₂.optIn (ι₁ y) (ι₂ (ι₁ y))) (θ₃.optIn y (ι₂ (ι₁ y))) (Subst.ok_optIn hθ₁ hO hX hw₁)
+          (Subst.coh_optIn hθ₁ hc₁ hO hX) (Subst.ok_optIn hθ₂ hO hx₁ hw₂)
+          (Subst.coh_optIn hθ₂ hc₂ hO hx₁) p q (hΓ.optIn y) (hΔ₁.optIn (ι₁ y)) hΔz
+          (Subst.sim_optIn_comp hθ₁ hc₁ hθ₂ hc₂ hs hO hX hx₁ hw₃) φ)
+      exact key (ι₃ y) hι _ _ _ _
   | _, _, _, _, _, _, _, _, _, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, _, _, _, hs,
       .here hT s t =>
       WFF.here_congr hT (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs s)

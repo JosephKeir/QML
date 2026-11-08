@@ -74,13 +74,13 @@ theorem Env.ref_of_nonproj {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
 theorem Env.extend_root {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (r : Root) {T : VarType}
     (o : M.frame.Dom T w) (h : (Γ.insert r T) (.root r) = some T) :
     env.extend r o (.root r) T h = o := by
-  unfold Env.extend
+  change (if hv : VarSymb.root r = .root r then _ else _) = o
   rw [dif_pos rfl]
 
 theorem Env.extend_ne {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (r : Root) {T : VarType}
     (o : M.frame.Dom T w) {v : VarSymb} {U : VarType} (h : (Γ.insert r T) v = some U)
     (hvr : v ≠ .root r) (h' : Γ v = some U) : env.extend r o v U h = env v U h' := by
-  unfold Env.extend
+  change (if hv : v = .root r then _ else _) = env v U h'
   rw [dif_neg hvr]
 
 /-- Declaring a root does not change the value of an address rooted elsewhere. -/
@@ -555,6 +555,8 @@ theorem sat_collapse : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses k Γ
     Env.CollapseAgree h env₁ env₂ → (φ : WFF σ Γ₁ d) →
     (M.sat env₂ (WFF.collapse h hs φ) ↔ M.sat env₁ φ)
   | _, _, _, _, _, _, _, _, _, hag, .atom ρ => relSat_collapse hag ρ Fin.elim0
+  | _, _, _, h, _, _, _, _, _, _, .optx hO _ _ _ =>
+      False.elim (by have := ModalSys.noOpt_of_T h.hT; rw [hO] at this; cases this)
   | _, _, _, _, _, _, _, _, _, hag, .eq t s => by
       change interp _ (Term.collapse _ t) = interp _ (Term.collapse _ s) ↔ _
       rw [interp_collapse hag t, interp_collapse hag s]

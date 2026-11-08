@@ -15,39 +15,6 @@ variable [ModalSys]
 
 /-! ## Weakening twice -/
 
-mutual
-  theorem Func.mono_mono {σ : Signature} {Γ₁ Γ₂ Γ₃ : Ctx} (h₁ : Γ₁.Le Γ₂) (h₂ : Γ₂.Le Γ₃) :
-      {n : ℕ} → (f : Func σ Γ₁ n) → Func.mono h₂ (Func.mono h₁ f) = Func.mono (h₁.trans h₂) f
-    | _, .F _ => rfl
-    | _, .eval g t => by
-        change Func.eval (Func.mono h₂ (Func.mono h₁ g)) (Term.mono h₂ (Term.mono h₁ t)) = _
-        rw [Func.mono_mono h₁ h₂ g, Term.mono_mono h₁ h₂ t]
-        rfl
-    termination_by structural _ f => f
-
-  theorem Term.mono_mono {σ : Signature} {Γ₁ Γ₂ Γ₃ : Ctx} (h₁ : Γ₁.Le Γ₂) (h₂ : Γ₂.Le Γ₃) :
-      {T : VarType} → {a : Ann T} → (t : Term σ Γ₁ T a) →
-      Term.mono h₂ (Term.mono h₁ t) = Term.mono (h₁.trans h₂) t
-    | _, _, .var _ _ => rfl
-    | _, _, .func f => by
-        change Term.func (Func.mono h₂ (Func.mono h₁ f)) = _
-        rw [Func.mono_mono h₁ h₂ f]
-        rfl
-    | _, _, .unit => rfl
-    | _, _, .pair s t => by
-        change Term.pair (Term.mono h₂ (Term.mono h₁ s)) (Term.mono h₂ (Term.mono h₁ t)) = _
-        rw [Term.mono_mono h₁ h₂ s, Term.mono_mono h₁ h₂ t]
-        rfl
-    | _, _, .boxtm t => by
-        change Term.boxtm (Term.mono h₂.boxIn (Term.mono h₁.boxIn t)) = _
-        rw [Term.mono_mono h₁.boxIn h₂.boxIn t]
-        rfl
-    | _, _, .diatm x _ t => by
-        change Term.diatm x _ (Term.mono (h₂.diaIn x) (Term.mono (h₁.diaIn x) t)) = _
-        rw [Term.mono_mono (h₁.diaIn x) (h₂.diaIn x) t]
-        rfl
-    termination_by structural _ _ t => t
-end
 
 mutual
   theorem Func.mono_refl {σ : Signature} {Γ : Ctx} (h : Γ.Le Γ) :
@@ -163,12 +130,6 @@ namespace SubE
 
 variable {σ : Signature}
 
-theorem mono_mono {Δ₁ Δ₂ Δ₃ : Ctx} (h₁ : Δ₁.Le Δ₂) (h₂ : Δ₂.Le Δ₃) :
-    ∀ (e : SubE σ Δ₁), (e.mono h₁).mono h₂ = e.mono (h₁.trans h₂)
-  | .hide => rfl
-  | .ren _ => rfl
-  | .tm t => congrArg SubE.tm (Term.mono_mono h₁ h₂ t)
-
 theorem proj_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') :
     ∀ (e : SubE σ Δ) (s : Step), (e.mono h).proj s = (e.proj s).mono h
   | .hide, _ => rfl
@@ -252,11 +213,13 @@ end SubE
 
 theorem Subst.Ok.restrict {σ : Signature} {Γ Γ' Δ : Ctx} {θ : Subst σ Δ} (hθ : Subst.Ok Γ' θ)
     (h : Γ.Le Γ') : Subst.Ok Γ θ :=
-  fun v T hlp hv => hθ v T hlp (h v T hv)
+  ⟨fun v T hlp hv => hθ v T hlp (h v T hv),
+    fun hO y X hy => hθ.wit hO y X (h.wit y X hy)⟩
 
 theorem Subst.Coh.restrict {σ : Signature} {ι : VarSymb → VarSymb} {Γ Γ' Δ : Ctx}
     {θ : Subst σ Δ} (hc : Subst.Coh ι Γ' θ) (h : Γ.Le Γ') : Subst.Coh ι Γ θ :=
-  fun v T hv p => hc v T (h.ref hv) p
+  ⟨fun v T hv p => hc v T (h.ref hv) p, fun hO y X hy p => hc.wit hO y X (h.wit y X hy) p,
+    fun hO y X z hy hyd hz => hc.opened hO y X z (h.wit y X hy) (h _ _ hyd) hz⟩
 
 mutual
   theorem Func.subst_mono {σ : Signature} {ι : VarSymb → VarSymb} {Γ Γ' Δ : Ctx}
@@ -345,6 +308,13 @@ theorem WFF.subst_mono {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Γ'
         (WFF.subst_mono (h.diaIn x) (θ.dia x (ι x))
           (Subst.ok_dia hθ hx' (hx'.elim fun _ hX => hc x _ hX [])) (Subst.coh_dia hθ hc hx')
           (hΓ.diaIn x) (hΓ'.diaIn x) (hΔ.diaIn (ι x)) φ)
+  | ι, _, Γ', _, _, _, h, θ, hθ, hc, hΓ, hΓ', hΔ, .optx hO y hy φ =>
+      have hy' : ∃ X, Γ'.wit y = some X := hy.imp fun _ hX => h.wit _ _ hX
+      congrArg (WFF.optx hO (ι y) _)
+        (WFF.subst_mono (h.optIn y) (θ.optIn y (ι y))
+          (hy'.elim fun X hX => Subst.ok_optIn hθ hO hX (hc.wit hO y X hX []))
+          (hy'.elim fun _ hX => Subst.coh_optIn hθ hc hO hX)
+          (hΓ.optIn y) (hΓ'.optIn y) (hΔ.optIn (ι y)) φ)
   | _, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .here hT s t =>
       WFF.here_congr' hT (Term.subst_mono h θ hθ hc s) (Term.subst_mono h θ hθ hc t)
   | _, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .back hB L s t =>

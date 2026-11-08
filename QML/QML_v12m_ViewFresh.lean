@@ -77,8 +77,7 @@ theorem levelDepth_boxIn {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ) :
   match v with
   | .root _ => cases hv
   | .step u .box =>
-      obtain ⟨U, hu⟩ : ∃ U, Γ.ref u = some U := by
-        obtain ⟨_, hu | ⟨_, _, hu, _⟩⟩ := Ctx.boxIn_box' hv <;> exact ⟨_, hu⟩
+      obtain ⟨_, hu⟩ := Ctx.boxIn_box hv
       rw [Step.levels_step_of_level (s := Step.box) rfl, h u _ hu]
       rfl
   | .step u .keep =>
@@ -187,8 +186,7 @@ theorem levelDepth_diaIn {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ) (x 
       rw [Step.levels_step_of_level (s := Step.dia) rfl, h u U hU]
       rfl
   | .step u .box =>
-      obtain ⟨U, hu⟩ : ∃ U, Γ.ref u = some U := by
-        obtain ⟨_, hu | ⟨_, _, hu, _⟩⟩ := Ctx.boxIn_box' (Γ := Γ) hv <;> exact ⟨_, hu⟩
+      obtain ⟨_, hu⟩ := Ctx.boxIn_box (Γ := Γ) hv
       rw [Step.levels_step_of_level (s := Step.box) rfl, h u _ hu]
       rfl
   | .step u .keep =>
@@ -228,7 +226,7 @@ theorem ref_insert_of_rt_ne {Γ : Ctx} {r : Root} {T : VarType} :
       simp only [Ctx.ref]
       split_ifs with hs
       · rw [ref_insert_of_rt_ne u hrt]
-      · exact if_neg (fun hcon => by cases hcon)
+      · exact Ctx.insert_ne (fun hcon => by cases hcon)
 
 /-- An address at a fresh root is visible only as the root itself and its projections, so it has no
     level steps. -/
@@ -249,7 +247,7 @@ theorem levels_zero_of_insert {Γ : Ctx} {r : Root} {T : VarType} (hr : Γ.RootF
           simp only [Ctx.ref, if_neg hs] at hv
           exact hv
         rw [show (Γ.insert r T) (.step u s) = Γ (.step u s) from
-          if_neg (fun hcon => by cases hcon), hr _ hrt] at hraw
+          Ctx.insert_ne (fun hcon => by cases hcon), hr _ hrt] at hraw
         cases hraw
 
 /-- Declaring a fresh root: that root starts at depth zero and the rest is unchanged. -/

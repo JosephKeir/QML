@@ -67,7 +67,7 @@ theorem fresh_of_bound : ∀ (e : CtxExpr) (n : ℕ), e.freeBound ≤ n → e.de
   | .diaIn e x, n, hn => (fresh_of_bound e n hn).diaIn x
 
 theorem slots : ∀ (e : CtxExpr), e.denote.SlotsFrom 0
-  | .empty => fun _ _ _ _ => rfl
+  | .empty => ⟨fun _ _ _ _ => rfl, fun _ _ _ _ => rfl⟩
   | .insertFree e u T => (slots e).insertFree u T
   | .boxIn e => (slots e).boxIn
   | .diaIn e x => (slots e).diaIn x

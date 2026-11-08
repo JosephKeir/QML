@@ -31,7 +31,6 @@ def VarType.sz : VarType → ℕ
   | .VTypeProd A B => A.sz + B.sz + 1
   | .VTypeBox A => A.sz + 1
   | .VTypeDia A => A.sz + 1
-  | .VTypeOpt A => A.sz + 1
 
 theorem VarSymb.step_ext (v : VarSymb) (s : Step) :
     ∀ p : List Step, (v.ext p).step s = v.ext (p ++ [s]) := by
@@ -118,7 +117,8 @@ theorem Fin.boxIn {Γ : Ctx} (h : Γ.Fin) : Γ.boxIn.Fin := by
   obtain ⟨T, hT⟩ := Option.isSome_iff_exists.mp hv
   match v, hT with
   | .step u .box, hT =>
-      exact Or.inl ⟨u, Ctx.boxIn_box_isSome hT, rfl⟩
+      obtain ⟨-, hu⟩ := Ctx.boxIn_box hT
+      exact Or.inl ⟨u, by change (Γ.ref u).isSome; rw [hu]; rfl, rfl⟩
   | .step u .keep, hT =>
       obtain ⟨-, hu, -⟩ := Ctx.boxIn_keep hT
       exact Or.inr ⟨u, by change (Γ.ref u).isSome; rw [hu]; rfl, rfl⟩

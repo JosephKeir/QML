@@ -15185,3 +15185,113 @@ What changed against 12.13 when the syntax met the existing machinery, and why.
 * **Built so far** (each module green): `Symbols`, `Terms`, `WFF`, `Model` (`Dom (Opt A) =
   Option (Dom A)`), `Countable`, `Collapse`.  Next: `ViewFresh`, then the rest of the syntax layer
   (shift, substitution, renaming), then semantics (`Env.boxPush`'s new case, `interp`, `sat`).
+
+### 12.16 The substitution hole, and the structural option sketched *(2026-11-08, paper)*
+
+**The hole.**  A subject is `y.box`, the box view of a witness; substitution must send it to another
+box view.  Every substitution built (`Subst.box`, `dia`, `under`, `single`, renamings) does, but
+`Term.subst` is stated for any substitution on any context, and a context is a function, so an
+`Opt`-typed address that is no box view (a root declared at `Opt X`) can be a target, and no `optm`
+can be built over it.  Every other naming of the content fails elsewhere (collapse, shift, the
+substitution's coherence), each time on such contexts.
+
+**Option 1:** a context invariant `Ctx.OptBox` (every `Opt`-typed address is a box view), a
+typeclass the substitution layer assumes of its target.  `Opt` stays a value type.
+
+**Option 2 (structural): witnesses as names, no `Opt` type.**
+* `structure Ctx where ty : VarSymb → Option VarType; wit : VarSymb → Option VarType`
+  (`CoeFun` to `ty`, so `Γ v` is unchanged).  `wit y = some X`: `y : ◇X` one level out, its value
+  along the arrow just taken is in view.  Only `boxIn` fills `wit` (gated by the flag); `insert`,
+  `diaIn`, `optIn` copy it.
+* `structure Env Γ w where val : ∀ v T, Γ.ty v = some T → Dom T w;
+  wit : ∀ y X, Γ.wit y = some X → Part (Dom X w)` (`CoeFun` to `val`).  `boxPush`'s `wit`:
+  `⟨a ∈ ext y, content⟩`.
+* `WFF.optx hO y (hy : Γ.wit y = some X) (φ : WFF (Γ.optIn y) d)`; `optIn y` adds `y.dia : X`
+  (other contents hidden); `sat`: `∃ hd : (env.wit y X hy).Dom, sat (env.optPush y (get hd)) φ`.
+* `structure Subst σ Δ where ty : VarSymb → SubE σ Δ; wit : VarSymb → WitE σ Δ` with
+  `WitE := ren z | tm z b` (`b` a body over `Δ.boxIn.optIn z`, i.e. a `diatm`'s); `Subst.box` fills
+  `wit` from the parent's entry for `y` (`ren w ↦ ren w`, `diatm z b ↦ tm z b`), and `optx`'s case
+  is `dia`'s (β for `tm`).  A wit name has no shape to keep, so the hole is gone: any `z` with
+  `Δ.wit z = some X` is a subject.  `Ok`/`Coh` gain a `wit` clause (structures, `CoeFun`).
+* Collapse/shift move wit names as the subject did (`((y.box).collapse k).unbox`); `Collapses 0`
+  requires no wits (T off with `Opt` on), so level 0 is ruled out structurally.
+* **Gone:** `VarType.VTypeOpt`, `Ann.opt`, `Term.optm`, `Dom (Opt)`, `posOpt`, `optMap`, `optStr`,
+  `Shp.opt`, `OType` on quantifiers (nothing to exclude), `boxVal`/`boxObj`/`boxEntry`, the `Opt`
+  supports.  Terms, interpretation, the function algebra and shapes are as before the branch.
+  `In(y, t)`, `eqH` and the Craig interpolant are formulas, so nothing needed `Opt` values.
+* **Not the same as option 1:** option 1 keeps `Opt` as a value type (`□(Opt X)` terms, `posOpt`),
+  which needs option A's restriction to avoid a second copy of `◇`; option 2 has no `Opt` values
+  at all, only the formula former over a witness name.
+* **Cost:** `Ctx`, `Env`, `Subst`, `Ok`, `Coh` become structures (applications unchanged through
+  `CoeFun`; constructions gain a `wit` field, mostly empty or copied: about 940 lines build or
+  name contexts, about 500 lines in 97 files build substitutions, about 300 definitions build
+  environments), and today's `Opt` work is mostly reverted.  Option 1 threads `[OptBox]` through
+  the substitution layer (`Term.subst` 104 files, possibly `Proof` itself).
+
+### 12.17 Option 2 in code: decisions made while building *(2026-11-08, branch `wip/in-atom`)*
+
+The user chose option 2.  The `Opt`-type work of 12.15 is reverted (the flag, `optStage` and
+`NoOpt` stay; `optStage` now also lists `BStrong`).  What the build settled:
+
+* **Coercions keep old code compiling.**  `Ctx`, `Env`, `Subst` get `CoeFun` to their main field
+  and a `Coe` from plain functions (no witnesses), so lambda definitions still elaborate; only
+  constructions that matter (`boxIn`, `Env.boxPush`, `Subst.box`) say what the witnesses are.
+  `Le`, `SlotsFrom`, `RootFresh`, `Ok`, `Coh` are structures with a `wit` clause.  A `match` in a
+  lambda doesn't coerce: those definitions are written `where ty v := …`.
+* **`Ctx.wit_dia`** (a field, defaulted for no witnesses): a witness's content address is free or
+  already holds its content type, so `Γ ≤ Γ.optIn y` (`Ctx.le_optIn`).  `optIn y` adds `y.dia : X`
+  and hides nothing (12.15's hiding was for collapse onto `y.dia`; with `Collapses` needing T,
+  which `optStage` keeps off, nothing collapses here).
+* **Freshness covers witnesses**: `RootFresh` and `SlotsFrom` have a `wit` clause, so a declared
+  root can't clash with a witness name.
+* **`Collapses` and `Shifts` carry `hT`/`hF`**: their `optx` cases are refuted by `optStage`.
+* **Substitution's witness entries** (`WitE := hide | ren z | tm z b`, `b` over `Δ.optIn z`):
+  `Subst.box` fills them from the parent's entries (`SubE.toWit`: `ren w ↦ ren w`,
+  `diatm z b ↦ tm z b`).  **The subject of the result is `ι y`, the index map's**, not a name read
+  off the entry (`Subst.optIn θ y z`, as `Subst.dia θ x ιx`): `Coh`'s witness clause says the
+  entry lands there, and two η-agreeing substitutions then give the same formula
+  (`WFF.subst_congr` needs one subject for both).  Content: `WitE.optBody z` (modal β for `tm`).
+* **η-agreement of witnesses** (`WitE.Sim`: `tm w (η w.dia) ~ ren w`; `SubE.Sim.toWit`):
+  `Subst.Sim` is a structure whose witness clause assumes `Opt` on (the only case an `optx`
+  exists); `Subst.sim_of` discharges it by the tactic `sim_wit` (`NoOpt`, equal entries, or no
+  witnesses), so its many callers are unchanged.
+* **Witness clauses are gated on `Opt`** (`Ok.wit`, `Coh.wit`, `Coh.opened`, `Sim.wit` all start
+  `ModalSys.Opt = true →`): only `◇⁰` reads them, and it carries that proof.  The tactic
+  `wit_triv` (`NoOpt`, or a T/4/B/5 flag in context, or no witnesses) is the default for
+  `Subst.coh_of`'s witness arguments, so the many Opt-free constructions are unchanged.
+* **`Coh.opened` — the one new coherence condition.**  A witness is *opened* when its content
+  `y.dia` is in view beside it: inside `◇_y` (`Γ.diaIn y` registers `y` as a witness of its own
+  `□` view, with the same object) and inside `◇⁰_y`.  The clause says the substitution's entry at
+  `y.dia` is the content of its entry for `y`, read in the witness view
+  (`(θ (y.dia)).mono = (θ.wit y).optBody z` for `z` the entry's name).  Without it, re-opening the
+  image witness (`Subst.optIn`) would override an entry nothing ties to the witness, and
+  substituting twice (`WFF.subst_comp`) fails for arbitrary substitutions.  Every substitution
+  built satisfies it (`dia` and `optIn` by construction: `SubE.toWit_optBody`; `box`
+  vacuously; the rest inherit it).
+* **`Subst.SimT`** (agreement at addresses only) is what terms need (`Term.subst_congr`);
+  `Subst.Sim` is a structure over it with the witness clause.
+* **Composition** (`WitE.comp`): a witness goes to its entry, a body is substituted in the
+  witness's view and named by the index map (`WitE.comp_tm`, `comp_mono`, `optBody_comp`,
+  `SubE.toWit_comp`).
+* **Pending for the semantic layer:** `sat_subst` will need environments to respect opened
+  witnesses (the value at `y.dia` is the witness's content); every environment built
+  (`diaPush`, `optPush`) does.
+* **The completeness side assumes `Opt` off** (as §12.15 decided), by an autoParam
+  `(_hO : ModalSys.Opt = false := by opt_off)` on the declarations that need it (abstractions
+  `diaAbs`/`diaAbsA` and their lemmas, `compsRen`); `opt_off` finds an assumption, `NoOpt`, or a
+  T/4/B/5 flag, so callers under those are unchanged.  `diaAbs` is genuinely incoherent with
+  `Opt` on (`c` stays a witness while its content leaves the view).
+* **Semantics:** `Env.WitAgree` (witnesses agree along an inclusion) beside `Env.Agree`;
+  `sat_mono` takes it as an autoParam gated on `Opt` (box and dia pushes give it for free:
+  `Env.boxPush_witAgree`); `Env.optPush_agree`; `sat_mono`'s `optx` case.
+* **Renamings:** `Subst.RenW` (witness entries fixed), with `renW_box/dia/under/optIn` and
+  `ren_optIn`; `WFF.subst_ren` takes it as an autoParam; its `optx` case.
+* Tactic gotcha: `show … from if_pos rfl` no longer elaborates on a structure-valued
+  substitution (the `else` branch isn't inferred through the projection): use the lemmas
+  `Subst.under_slot`, `Subst.single_self`, `Subst.toFree_slot`, or `if_pos (e := …) rfl`.
+  Proof placeholders aren't assigned by unification (proof irrelevance), so `Ok`/`Coh` proofs
+  of a named substitution must be given explicitly.
+* **Frontier (2026-11-08):** `SemSubst` (the substitution lemma: `substEnv` needs a witness
+  component — `ren z ↦ env.wit z`, `tm z b ↦` the body read through `optPush` — and the opened
+  invariant on environments), then `ProofSubst` (mostly mechanical: `Sim` witness clauses,
+  `if_pos` sites, `SlotsFrom` as a structure), then `Proof`, soundness and the rest.

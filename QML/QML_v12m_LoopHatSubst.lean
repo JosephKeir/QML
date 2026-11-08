@@ -69,6 +69,7 @@ theorem WFF.subst_hatGen {V Vp W V' Vp' W' : Ctx} (D : Ctx.Shifts 0 V Vp) (D' : 
         (hVp'.insert T) hW'
         (WFF.shift (D'.insert (hV'.rootFresh (le_refl 0)) T) (hV'.insert T)
           (WFF.subst ι₀ Θ hΘ hcΘ (hV.insert T) (hV'.insert T) φ)) := by
+  have _hOff : ModalSys.Opt = false := ModalSys.noOpt_of_Four D.hF
   have hO := hΘw.restrict hle
   have hC := hcw.restrict hle
   have hΨ := Subst.ok_set (r := .bnd 0) (T := T) (e := .tm K') hO rfl
@@ -84,8 +85,7 @@ theorem WFF.subst_hatGen {V Vp W V' Vp' W' : Ctx} (D : Ctx.Shifts 0 V Vp) (D' : 
     · subst hvr
       change SubE.Sim _ (Θw.set (.bnd 0) (.tm K') (.root (.bnd 0)))
         (SubE.comp _ _ _ (Subst.single (.bnd 0) (.tm K) (.root (.bnd 0))))
-      rw [Subst.set_root, show Subst.single (σ := σ) (Δ := W) (.bnd 0) (.tm K) (.root (.bnd 0)) =
-        .tm K from if_pos rfl]
+      rw [Subst.set_root, Subst.single_self]
       exact SubE.Sim.of_sig hKs.symm _
     · change SubE.Sim U (Θw.set (.bnd 0) (.tm K') v)
         (SubE.comp _ _ _ (Subst.single (.bnd 0) (.tm K) v))
@@ -187,7 +187,8 @@ theorem WFF.subst_loopHat_under (hF : ModalSys.Four = true) (hT : T.tup = true)
     (Subst.coh_under (Subst.ok_box hb) (Subst.coh_box hb hcb) hΓ.boxIn.boxIn T
       hΔ.boxIn.boxIn.root)
     (Subst.shiftCorr_under hb (Subst.shiftCorr_box_box hF hθ) hΓ.boxIn T hΔ.boxIn.root
-      hΔ.boxIn.boxIn.root (hΔ.boxIn.rootFresh (le_refl 0))) _ _ _ ?_ (if_pos rfl) ?_ φ
+      hΔ.boxIn.boxIn.root (hΔ.boxIn.rootFresh (le_refl 0))) _ _ _ ?_
+    (Subst.under_slot _ _ _ _ _) ?_ φ
   · refine (Term.subst_keepOf hF (θ.box.under 0 0 T hΔ.boxIn.root) _ _ _ (Ctx.Le.refl _)
       (fun p U hp _ _ => ?_) T hT _ _ (Ctx.ref_insert_root _ _ T) (if_pos rfl)).trans
       (congrArg (Sigma.mk _) (Term.mono_refl _ _))
@@ -269,11 +270,11 @@ theorem WFF.subst_loopHatX_under (hF : ModalSys.Four = true) (hT : T.tup = true)
     (Subst.ok_under hOd T hs.root) (Subst.coh_under hOd hCd hsG T hs.root)
     (Subst.shiftCorr_under (Subst.ok_dia hθ hx hw) (Subst.shiftCorr_dia_keep hF hθ hx hw)
       (hΓ.diaIn x) T (hΔ.diaIn (ι x)).root hs.root ((hΔ.diaIn (ι x)).rootFresh (le_refl 0)))
-    _ _ _ ?_ (if_pos rfl) ?_ φ
+    _ _ _ ?_ (Subst.under_slot _ _ _ _ _) ?_ φ
   · have hroot : ((θ.dia x (ι x)).under 0 0 T (hΔ.diaIn (ι x)).root).at (.root (.bnd 0)) =
         .ren (.root (.bnd 0)) := by
       rw [Subst.at_nonproj _ rfl]
-      exact if_pos rfl
+      exact Subst.under_slot _ _ _ _ _
     rw [Term.subst_mono]
     refine Term.subst_keepOf hF ((θ.dia x (ι x)).under 0 0 T (hΔ.diaIn (ι x)).root) _ _ _
       (Ctx.le_boxIn_diaIn _ _) (fun p U hp hv hkU => ?_) T hT _ _ _ hroot
