@@ -134,8 +134,9 @@ def Dom : VarType → F.W → Type u
   | .VTypeProd A B, w => Dom A w × Dom B w
   | .VTypeBox A, w => F.Nec A w
   | .VTypeDia A, w => F.Pos A w
-  -- A possible object's value along one arrow: present or not (docs §12.13).
-  | .VTypeOpt A, w => Option (Dom A w)
+  -- A possible object's value along one arrow: present or not, as a proposition with the value
+  -- under it (`Part`), so that reading it off an extent decides nothing (docs §12.13).
+  | .VTypeOpt A, w => Part (Dom A w)
 
 /-- What a necessary object delivers: an object at every accessible world. -/
 abbrev NecSec (A : VarType) (w : F.W) : Type (max u v) := (w' : F.Acc w) → F.Dom A w'.1
@@ -183,6 +184,17 @@ inductive GFunc (σ : Signature) : VarType → VarType → Type where
       docs §3 4, Finding 4). -/
   | dkeep {A : VarType} (hF : ModalSys.Four = true) :
       GFunc σ (.VTypeDia A) (.VTypeBox (.VTypeDia A))
+  /-- Apply a map inside an `Opt` value (docs §12.13), as `diaMap` inside a possible object. -/
+  | optMap {A B : VarType} : GFunc σ A B → GFunc σ (.VTypeOpt A) (.VTypeOpt B)
+  /-- An object rides along inside an `Opt` value, as `strength` for a possible object, but any
+      object, not only a necessary one: the `Opt` value is at the same world. -/
+  | optStr (A B : VarType) :
+      GFunc σ (.VTypeProd A (.VTypeOpt B)) (.VTypeOpt (.VTypeProd A B))
+  /-- With `Opt` on: **a possible object as a necessary partial one** (docs §12.14), its value
+      along each arrow present exactly when the arrow is in its extent.  What a `□` body reads
+      when it uses `u.box` for a possible `u`. -/
+  | posOpt {A : VarType} (hO : ModalSys.Opt = true) :
+      GFunc σ (.VTypeDia A) (.VTypeBox (.VTypeOpt A))
 
 /-- Under 4, keep an object of a keepable type: `dup` for a necessary object, `dkeep` for a
     possible one. -/
@@ -211,6 +223,9 @@ structure Frame.Ops {σ : Signature} (F : Frame.{u, v} σ) where
       along `side a`, with the same contents. -/
   posSide : {A : VarType} → {w : F.W} → ModalSys.Five = true →
     F.Pos A w → F.Nec (.VTypeDia A) w
+  /-- With `Opt` on, a possible object as a necessary partial object (`GFunc.posOpt`). -/
+  posOpt : {A : VarType} → {w : F.W} → ModalSys.Opt = true →
+    F.Pos A w → F.Nec (.VTypeOpt A) w
 
 /-- Evaluating a definable map at a world. -/
 def GFunc.eval {σ : Signature} {F : Frame.{u, v} σ} (ops : F.Ops) :
@@ -230,6 +245,9 @@ def GFunc.eval {σ : Signature} {F : Frame.{u, v} σ} (ops : F.Ops) :
   | _, _, .extract hT, _, n => ops.necExtract hT n
   | _, _, .dup hF, _, n => ops.necDup hF n
   | _, _, .dkeep hF, _, p => ops.posKeep hF p
+  | _, _, .optMap f, w, o => o.map (GFunc.eval ops f w)
+  | _, _, .optStr _ _, _, p => p.2.map (fun b => (p.1, b))
+  | _, _, .posOpt hO, _, p => ops.posOpt hO p
 
 /-! ## Semantic annotations
 
@@ -542,6 +560,9 @@ def GFunc.shp {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → Type u}
   | _, _, .dup hF, j, a => .box (.box (a.inner.map (Arrows.Leaf.shift hF j)))
   | _, _, .dkeep hF, j, a =>
       .box (.dia (Arrows.Leaf.dk hF j a.label) (a.body.map (Arrows.Leaf.dkB hF j)))
+  | _, _, .optMap _, _, _ => .opt
+  | _, _, .optStr _ _, _, _ => .opt
+  | _, _, .posOpt _, _, _ => .box .opt
 
 /-- `GFunc.shp` with the root action given explicitly, for statements made before an instance is
     available (a model's own laws). -/
@@ -669,6 +690,12 @@ structure Model (σ : Signature) where
   posSide_ext : ∀ {A : VarType} {w : frame.W} (hV : ModalSys.Five = true) (x : frame.Pos A w)
     (a : frame.Acc w),
     (posFull (necEval (ops.posSide hV x) a)).1.1 = frame.sideAcc hV a '' (posFull x).1.1
+  /-- With `Opt` on, **a possible object's value along an arrow** (docs §12.13): present exactly
+      when the arrow is in its extent, with its content there. -/
+  posOpt_eval : ∀ {A : VarType} {w : frame.W} (hO : ModalSys.Opt = true) (p : frame.Pos A w)
+    (a : frame.Acc w),
+    necEval (ops.posOpt hO p) a = (⟨a ∈ (posFull p).1.1, fun h => (posFull p).1.2 ⟨a, h⟩⟩ :
+      Part (frame.Dom A a.1))
   /-- ⭐Strong D: some possible object has a nonempty extent.  Stated at `𝟙`, where the content
       carries nothing: `strength` then gives, for every necessary object, a possible object with
       the same extent whose content is that object's value — the `Nec → Pos` map, at every type. -/

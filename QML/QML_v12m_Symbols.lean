@@ -77,9 +77,10 @@ class ModalSys where
       the constructions are extended, and goes when they all are. -/
   Opt : Bool := false
   /-- **The stage of the build** (branch `wip/in-atom`): the box view of possible objects is built
-      for K and D first (M1); T, 4, B and 5 each read it in their own milestone (docs §12.10), and
-      this field loses a disjunct with each.  Meanwhile their syntax may assume `Opt` off. -/
-  optStage : Opt = true → (T || Four || B || Five) = false := by decide
+      for K and D first (M1); T, 4, B (weak and strong) and 5 each read it in their own milestone
+      (docs §12.10), and this field loses a disjunct with each.  Meanwhile their syntax may assume
+      `Opt` off; in particular shapes (`ModalSys.shaped`, T or strong B) are off with `Opt` on. -/
+  optStage : Opt = true → (T || Four || B || BStrong || Five) = false := by decide
 
 /-- The system K. -/
 def ModalSys.K : ModalSys :=
@@ -100,6 +101,13 @@ theorem ModalSys.noOpt_of_Four [ModalSys] (hF : ModalSys.Four = true) : ModalSys
 
 /-- With B on, `Opt` is off (for now). -/
 theorem ModalSys.noOpt_of_B [ModalSys] (hB : ModalSys.B = true) : ModalSys.Opt = false := by
+  cases hO : ModalSys.Opt
+  · rfl
+  · have := ModalSys.optStage hO; simp [hB] at this
+
+/-- With strong B on, `Opt` is off (for now). -/
+theorem ModalSys.noOpt_of_BStrong [ModalSys] (hB : ModalSys.BStrong = true) :
+    ModalSys.Opt = false := by
   cases hO : ModalSys.Opt
   · rfl
   · have := ModalSys.optStage hO; simp [hB] at this
@@ -213,6 +221,14 @@ theorem ModalSys.shaped_of_T [ModalSys] (hT : ModalSys.T = true) : ModalSys.shap
 theorem ModalSys.shaped_of_BStrong [ModalSys] (hB : ModalSys.BStrong = true) :
     ModalSys.shaped = true := by
   simp [ModalSys.shaped, hB]
+
+/-- With shapes on, `Opt` is off (for now). -/
+theorem ModalSys.noOpt_of_shaped [ModalSys] (hS : ModalSys.shaped = true) :
+    ModalSys.Opt = false := by
+  cases hT : ModalSys.T
+  · have hB : ModalSys.BStrong = true := by simpa [ModalSys.shaped, hT] using hS
+    exact ModalSys.noOpt_of_BStrong hB
+  · exact ModalSys.noOpt_of_T hT
 
 theorem ModalSys.NoB.T_of_shaped [ModalSys] [ModalSys.NoB] (h : ModalSys.shaped = true) :
     ModalSys.T = true := by
@@ -791,6 +807,19 @@ theorem boxIn_box' {Γ : Ctx} {u : VarSymb} {T : VarType}
             exact .inr ⟨hO, A, rfl, rfl⟩
           · rw [if_neg hO] at h; cases h
       | _ => cases h
+
+/-- `u.box` is visible only for a visible `u`. -/
+theorem boxIn_box_isSome {Γ : Ctx} {u : VarSymb} {T : VarType}
+    (h : Γ.boxIn (.step u .box) = some T) : (Γ.ref u).isSome = true := by
+  obtain ⟨-, hu | ⟨-, A, hu, -⟩⟩ := boxIn_box' h <;> rw [hu] <;> rfl
+
+/-- `u.box` for a possible `u`: an `Opt` value, with `Opt` on. -/
+theorem boxIn_box_dia {Γ : Ctx} {u : VarSymb} {T A : VarType}
+    (h : Γ.boxIn (.step u .box) = some T) (hu : Γ.ref u = some (.VTypeDia A)) :
+    ModalSys.Opt = true ∧ T = .VTypeOpt A := by
+  obtain ⟨-, hu' | ⟨hO, A', hu', hT⟩⟩ := boxIn_box' h
+  · rw [hu] at hu'; cases hu'
+  · rw [hu] at hu'; cases hu'; exact ⟨hO, hT⟩
 
 theorem boxIn_box [ModalSys.NoOpt] {Γ : Ctx} {u : VarSymb} {T : VarType}
     (h : Γ.boxIn (.step u .box) = some T) :

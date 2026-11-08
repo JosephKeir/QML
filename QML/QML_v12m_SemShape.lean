@@ -1426,9 +1426,38 @@ def ShEnv.ref {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (j : ℕ) :
         | none => False.elim (by rw [Ctx.ref_step_proj Γ v hs, hU] at h; cases h)
       else ρ (.step v s) T (by rw [Ctx.ref_step_nonproj Γ v hs] at h; exact h)
 
+/-- The shape of the necessary object behind `u.box` (`Env.boxObj`): `u`'s, or for a possible `u`
+    (with `Opt` on, so shapes off) the one shape `□ opt`. -/
+def ShEnv.boxObjShp {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (j : ℕ) (u : VarSymb)
+    {T : VarType} (h : Γ.boxIn (.step u .box) = some T) : Shape F Root w (.VTypeBox T) :=
+  if hb : Γ.ref u = some (.VTypeBox T) then ρ.ref j u hb
+  else
+    match T, h with
+    | .VTypeOpt _, _ => .box .opt
+    | .Var, h => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, -, hT⟩⟩ := Ctx.boxIn_box' h
+        · exact hb h'
+        · cases hT)
+    | .VTypeOne, h => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, -, hT⟩⟩ := Ctx.boxIn_box' h
+        · exact hb h'
+        · cases hT)
+    | .VTypeProd _ _, h => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, -, hT⟩⟩ := Ctx.boxIn_box' h
+        · exact hb h'
+        · cases hT)
+    | .VTypeBox _, h => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, -, hT⟩⟩ := Ctx.boxIn_box' h
+        · exact hb h'
+        · cases hT)
+    | .VTypeDia _, h => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, -, hT⟩⟩ := Ctx.boxIn_box' h
+        · exact hb h'
+        · cases hT)
+
 /-- Into a `□`: the shapes of the contents, one level further in. -/
 def ShEnv.boxPush {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (j : ℕ) : ShEnv F Root Γ.boxIn w
-  | .step u .box, _, h => (ρ.ref j u (Ctx.boxIn_step_box h)).inner
+  | .step u .box, _, h => (ρ.boxObjShp j u h).inner
   | .step u .keep, _, h =>
       (GFunc.shp (GFunc.keep (σ := σ) (Ctx.boxIn_keep h).1 (Ctx.boxIn_keep h).2.2) j
         (ρ.ref j u (Ctx.boxIn_keep h).2.1)).inner
@@ -1478,7 +1507,9 @@ mutual
         | some .VTypeOne => False.elim (hx.elim fun _ h => by rw [hr] at h; cases h)
         | some (.VTypeProd _ _) => False.elim (hx.elim fun _ h => by rw [hr] at h; cases h)
         | some (.VTypeBox _) => False.elim (hx.elim fun _ h => by rw [hr] at h; cases h)
+        | some (.VTypeOpt _) => False.elim (hx.elim fun _ h => by rw [hr] at h; cases h)
         | none => False.elim (hx.elim fun _ h => by rw [hr] at h; cases h)
+    | _, _, .optm _ _ _ _ => .opt
 end
 
 /-! ## S1: compilation moves shapes as `termShp` computes them -/
@@ -1502,6 +1533,11 @@ omit [ModalSys] in
 omit [ModalSys] in
 @[simp] theorem _root_.V12M.Shp.inner_box {L : Type*} {A : VarType} (a : Shp L A) :
     (Shp.box a).inner = a := rfl
+
+omit [ModalSys] in
+/-- An `Opt` value has one shape, `opt`. -/
+theorem _root_.V12M.Shp.opt_eq {L : Type*} {A : VarType} : ∀ a b : Shp L (.VTypeOpt A), a = b
+  | .opt, .opt => rfl
 
 omit [Arrows.RootKeep F Root] [Arrows.RootKeepLaws F Root] in
 theorem shp_var_eq {w : F.W} : ∀ a b : Shape F Root w .Var, a = b
@@ -1559,6 +1595,30 @@ theorem refGF_shp {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) (L : S
       · rw [Supp.refGF, ShEnv.ref, dif_neg hs, dif_neg hs]
         exact lookup_shp ρ j L _ _ _
 
+omit [ModalSys] in
+/-- A necessary `Opt` value has one shape, `□ opt`. -/
+theorem _root_.V12M.Shp.boxOpt_eq {L : Type*} {A : VarType} :
+    ∀ a b : Shp L (.VTypeBox (.VTypeOpt A)), a = b
+  | .box .opt, .box .opt => rfl
+
+omit [Arrows.RootKeepLaws F Root] in
+theorem ShEnv.boxObjShp_box {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (j : ℕ) {u : VarSymb}
+    {T : VarType} (h : Γ.boxIn (.step u .box) = some T) (hb : Γ.ref u = some (.VTypeBox T)) :
+    ρ.boxObjShp j u h = ρ.ref j u hb := by
+  unfold ShEnv.boxObjShp
+  rw [dif_pos hb]
+
+omit [Arrows.RootKeepLaws F Root] in
+theorem boxEntry_shp {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) (L : Supp Δ)
+    (u : VarSymb) {T : VarType} (h : Δ.boxIn (.step u .box) = some T)
+    (hm : u.base ∈ List.map PSigma.fst L) :
+    GFunc.shp (Supp.boxEntry (σ := σ) L u h hm) j (ρ.bundle L) = ρ.boxObjShp j u h := by
+  obtain ⟨-, hb | ⟨-, A, -, rfl⟩⟩ := Ctx.boxIn_box' h
+  · rw [ρ.boxObjShp_box j h hb]
+    unfold Supp.boxEntry
+    rw [dif_pos hb, refGF_shp]
+  · exact Shp.boxOpt_eq _ _
+
 omit [Arrows.RootKeepLaws F Root] in
 theorem gatherBox_shp {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) (L : Supp Δ) :
     ∀ (L' : Supp Δ.boxIn) (hL : ∀ e ∈ Supp.outerBox L', e.1 ∈ List.map PSigma.fst L),
@@ -1567,7 +1627,7 @@ theorem gatherBox_shp {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) (L
   | [], _ => rfl
   | ⟨.step u .box, T, h⟩ :: L', hL => by
       simp only [Supp.gatherBox, GFunc.shp, Shp.fst, Shp.snd, Shp.inner]
-      rw [refGF_shp, gatherBox_shp ρ j L L']
+      rw [boxEntry_shp, gatherBox_shp ρ j L L']
       rfl
   | ⟨.step u .keep, T, h⟩ :: L', hL => by
       simp only [Supp.gatherBox, GFunc.shp, Shp.fst, Shp.snd, Shp.inner]
@@ -1646,6 +1706,7 @@ theorem termShp_compile {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) 
         obtain ⟨_, h⟩ := hx
         rw [heq] at h
         cases h
+  | _, _, .optm _ _ _ _, _ => Shp.opt_eq _ _
 
 /-! ## Transposition: shapes along every arrow at once -/
 
@@ -1702,6 +1763,7 @@ theorem transpose_map {w : F.W} (Φ : F.Leaf Root w → F.Leaf Root w)
     ∀ {A : VarType} (g : (s : F.Acc w) → Shape F Root s.1 A),
       (Arrows.transposeShp g).map Φ = Arrows.transposeShp fun s => (g s).map (G s)
   | .Var, _ => rfl
+  | .VTypeOpt _, _ => rfl
   | .VTypeOne, _ => rfl
   | .VTypeProd _ _, g => by
       simp only [Arrows.transposeShp, Shp.map]
@@ -1722,6 +1784,7 @@ theorem transpose_collapse_zero (hT : ModalSys.T = true) {w : F.W} :
     ∀ {A : VarType} (g : (s : F.Acc w) → Shape F Root s.1 A),
       (Arrows.transposeShp g).map (Arrows.Leaf.collapse hT 0) = g (F.reflAcc hT w)
   | .Var, g => shp_var_eq _ _
+  | .VTypeOpt _, g => Shp.opt_eq _ _
   | .VTypeOne, g => Shp.one_eq _ _
   | .VTypeProd _ _, g => by
       simp only [Arrows.transposeShp, Shp.map]
@@ -1744,6 +1807,7 @@ theorem transpose_shift_zero (hF : ModalSys.Four = true) {w : F.W} :
         Arrows.transposeShp fun s => Arrows.transposeShp fun t =>
           g ⟨t.1, ⟨F.trans hF s.2.down t.2.down⟩⟩
   | .Var, _ => rfl
+  | .VTypeOpt _, _ => rfl
   | .VTypeOne, _ => rfl
   | .VTypeProd _ _, g => by
       simp only [Arrows.transposeShp, Shp.map, Shp.fst_prod, Shp.snd_prod]
@@ -1763,6 +1827,7 @@ theorem transpose_map_const {w : F.W} (G : ∀ s : F.Acc w, F.Leaf Root w → F.
     ∀ {A : VarType} (a : Shape F Root w A),
       (Arrows.transposeShp fun s => a.map (G s)) = a.map fun ℓ => .fam fun s => G s ℓ
   | .Var, .var => rfl
+  | .VTypeOpt _, .opt => rfl
   | .VTypeOne, .one => rfl
   | .VTypeProd _ _, .prod a b => by
       simp only [Arrows.transposeShp, Shp.map, Shp.fst_prod, Shp.snd_prod]
@@ -1783,6 +1848,7 @@ theorem transposeShp_inj {w : F.W} :
       generalize g s = a
       generalize g' s = b
       cases a; cases b; rfl
+  | .VTypeOpt _, g, g', _ => funext fun s => Shp.opt_eq _ _
   | .VTypeOne, g, g', _ => funext fun s => by
       generalize g s = a
       generalize g' s = b
@@ -1822,6 +1888,9 @@ theorem shp_transpose {w : F.W} :
       rfl
   | _, _, .unit _, _, _ => rfl
   | _, _, .func _ _, _, _ => rfl
+  | _, _, .optMap _, _, _ => rfl
+  | _, _, .optStr _ _, _, _ => rfl
+  | _, _, .posOpt _, _, _ => rfl
   | _, _, .boxMap f, j, h => by
       simp only [GFunc.shp]
       rw [show (Arrows.transposeShp h).inner = Arrows.transposeShp fun s => (h s).inner from rfl,
@@ -1922,9 +1991,11 @@ theorem ShEnv.boxPush_transpose {Γ : Ctx} {w : F.W} (τ : ShEnv F Root Γ w)
     (hτ : ∀ v T h, τ v T h = Arrows.transposeShp fun s => ρ s v T h) :
     ∀ v T h, τ.boxPush (j + 1) v T h = Arrows.transposeShp fun s => (ρ s).boxPush j v T h
   | .step u .box, _, h => by
-      simp only [ShEnv.boxPush]
-      rw [ShEnv.ref_transpose τ ρ j hτ]
-      rfl
+      obtain ⟨-, hb | ⟨-, A, -, rfl⟩⟩ := Ctx.boxIn_box' h
+      · simp only [ShEnv.boxPush, ShEnv.boxObjShp_box (hb := hb)]
+        rw [ShEnv.ref_transpose τ ρ j hτ]
+        rfl
+      · exact Shp.opt_eq _ _
   | .step u .keep, _, h => by
       simp only [ShEnv.boxPush]
       rw [ShEnv.ref_transpose τ ρ j hτ, shp_transpose]
@@ -1965,6 +2036,7 @@ theorem termShp_transpose {Δ : Ctx} {w : F.W} (τ : ShEnv F Root Δ w)
   | _, _, .var _ _ => rfl
   | _, _, .func _ => rfl
   | _, _, .unit => rfl
+  | _, _, .optm _ _ _ _ => rfl
   | _, _, .pair s t => by
       simp only [termShp]
       rw [termShp_transpose τ ρ j hτ s, termShp_transpose τ ρ j hτ t]
@@ -2013,8 +2085,11 @@ theorem ShEnv.boxPush_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : F.W} {ρ : ShEnv
     {ρ' : ShEnv F Root Γ' w} (hag : ShEnv.Agree h ρ ρ') (j : ℕ) :
     ShEnv.Agree h.boxIn (ρ.boxPush j) (ρ'.boxPush j)
   | .step u .box, _, hv => by
-      simp only [ShEnv.boxPush]
-      rw [ShEnv.ref_agree hag j u]
+      obtain ⟨-, hb | ⟨-, A, -, rfl⟩⟩ := Ctx.boxIn_box' hv
+      · simp only [ShEnv.boxPush, ShEnv.boxObjShp_box (hb := hb),
+          ShEnv.boxObjShp_box (hb := h.ref hb)]
+        rw [ShEnv.ref_agree hag j u]
+      · exact Shp.opt_eq _ _
   | .step u .keep, _, hv => by
       simp only [ShEnv.boxPush]
       rw [ShEnv.ref_agree hag j u]
@@ -2049,6 +2124,7 @@ theorem termShp_mono {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : F.W} {ρ : ShEnv F Root
   | _, _, .var _ _ => rfl
   | _, _, .func _ => rfl
   | _, _, .unit => rfl
+  | _, _, .optm _ _ _ _ => rfl
   | _, _, .pair s t => by
       change Shp.prod (termShp ρ' j (Term.mono h s)) (termShp ρ' j (Term.mono h t)) = _
       rw [termShp_mono hag j s, termShp_mono hag j t]
@@ -2069,6 +2145,7 @@ omit [Arrows.RootKeepLaws F Root] in
 theorem termShp_ann {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) :
     ∀ {T : VarType} {a : Ann T} (t s : Term σ Δ T a), termShp ρ j t = termShp ρ j s
   | .Var, _, _, _ => shp_var_eq _ _
+  | .VTypeOpt _, _, _, _ => Shp.opt_eq _ _
   | .VTypeOne, _, _, _ => Shp.one_eq _ _
   | _, _, .pair t₁ t₂, .pair s₁ s₂ => by
       simp only [termShp]
@@ -2087,6 +2164,7 @@ omit [ModalSys] in
 theorem _root_.V12M.Shp.map_map {L L' L'' : Type y} (g : L → L') (g' : L' → L'') :
     ∀ {A : VarType} (a : Shp L A), (a.map g).map g' = a.map (g' ∘ g)
   | _, .var => rfl
+  | _, .opt => rfl
   | _, .one => rfl
   | _, .prod a b => by simp only [Shp.map]; rw [Shp.map_map g g' a, Shp.map_map g g' b]
   | _, .box a => by simp only [Shp.map]; rw [Shp.map_map g g' a]
@@ -2096,6 +2174,7 @@ omit [ModalSys] in
 theorem _root_.V12M.Shp.map_congr {L L' : Type y} {g g' : L → L'} (h : ∀ ℓ, g ℓ = g' ℓ) :
     ∀ {A : VarType} (a : Shp L A), a.map g = a.map g'
   | _, .var => rfl
+  | _, .opt => rfl
   | _, .one => rfl
   | _, .prod a b => by simp only [Shp.map]; rw [Shp.map_congr h a, Shp.map_congr h b]
   | _, .box a => by simp only [Shp.map]; rw [Shp.map_congr h a]
@@ -2104,6 +2183,7 @@ theorem _root_.V12M.Shp.map_congr {L L' : Type y} {g g' : L → L'} (h : ∀ ℓ
 omit [ModalSys] in
 theorem _root_.V12M.Shp.map_id {L : Type y} : ∀ {A : VarType} (a : Shp L A), a.map id = a
   | _, .var => rfl
+  | _, .opt => rfl
   | _, .one => rfl
   | _, .prod a b => by simp only [Shp.map]; rw [Shp.map_id a, Shp.map_id b]
   | _, .box a => by simp only [Shp.map]; rw [Shp.map_id a]
@@ -2122,6 +2202,7 @@ theorem _root_.V12M.Shp.wf_map {L : Type y} {P Q : List Bool → L → Prop} (g 
     ∀ {A : VarType} (r : List Bool) (a : Shp L A), Shp.WF P (pre ++ r) a →
       Shp.WF Q (pre' ++ r) (a.map g)
   | _, _, .var, _ => trivial
+  | _, _, .opt, _ => trivial
   | _, _, .one, _ => trivial
   | _, r, .prod a b, h => ⟨Shp.wf_map g pre pre' hg r a h.1, Shp.wf_map g pre pre' hg r b h.2⟩
   | _, r, .box a, h => by
@@ -2141,6 +2222,7 @@ theorem _root_.V12M.Shp.map_congr_wf {L : Type y} {P : List Bool → L → Prop}
     (pre : List Bool) (hg : ∀ r ℓ, P (pre ++ r) ℓ → g ℓ = g' ℓ) :
     ∀ {A : VarType} (r : List Bool) (a : Shp L A), Shp.WF P (pre ++ r) a → a.map g = a.map g'
   | _, _, .var, _ => rfl
+  | _, _, .opt, _ => rfl
   | _, _, .one, _ => rfl
   | _, r, .prod a b, h => by
       simp only [Shp.map]
@@ -2169,6 +2251,7 @@ theorem shWF_transpose {w : F.W} (c : Bool) :
     ∀ {A : VarType} (lw : List Bool) (g : (s : F.Acc w) → Shape F Root s.1 A),
       (∀ s, ShWF lw (g s)) → ShWF (c :: lw) (Arrows.transposeShp g)
   | .Var, _, _, _ => trivial
+  | .VTypeOpt _, _, _, _ => trivial
   | .VTypeOne, _, _, _ => trivial
   | .VTypeProd _ _, lw, g, h =>
       ⟨shWF_transpose c lw (fun s => (g s).fst) fun s => by
@@ -2207,6 +2290,9 @@ theorem shWF_shp : ∀ {A B : VarType} (f : GFunc σ A B) (lw : List Bool) {w : 
       exact h.2
   | _, _, .pair f g, lw, _, a, h => ⟨shWF_shp f lw a h, shWF_shp g lw a h⟩
   | _, _, .unit _, _, _, _, _ => trivial
+  | _, _, .optMap _, _, _, _, _ => trivial
+  | _, _, .optStr _ _, _, _, _, _ => trivial
+  | _, _, .posOpt _, _, _, _, _ => trivial
   | _, _, .func _ _, _, _, _, _ => trivial
   | _, _, .boxMap f, lw, _, a, h => by
       rw [Shp.box_eta a] at h
@@ -2290,9 +2376,16 @@ theorem ShEnv.wf_boxPush {Γ : Ctx} {w : F.W} {lw : List Bool} {ρ : ShEnv F Roo
   intro v T h
   match v, h with
   | .step u .box, h =>
-      have := ShEnv.wf_ref hρ u (Ctx.boxIn_step_box h)
-      rw [Shp.box_eta (ρ.ref lw.length u (Ctx.boxIn_step_box h))] at this
-      exact this
+      obtain ⟨-, hb | ⟨-, A, -, rfl⟩⟩ := Ctx.boxIn_box' h
+      · have := ShEnv.wf_ref hρ u hb
+        rw [Shp.box_eta (ρ.ref lw.length u hb)] at this
+        change ShWF _ (ρ.boxObjShp lw.length u h).inner
+        rw [ρ.boxObjShp_box _ h hb]
+        exact this
+      · change ShWF _ (ρ.boxObjShp lw.length u h).inner
+        generalize (ρ.boxObjShp lw.length u h).inner = a
+        cases a
+        trivial
   | .step u .keep, h =>
       have := shWF_shp (GFunc.keep (σ := σ) (Ctx.boxIn_keep h).1 (Ctx.boxIn_keep h).2.2) lw _
         (ShEnv.wf_ref hρ u (Ctx.boxIn_keep h).2.1)
@@ -2345,6 +2438,7 @@ theorem shWF_termShp : ∀ {Δ : Ctx} {w : F.W} {lw : List Bool} {ρ : ShEnv F R
   | _, _, _, _, _, _, _, .var _ _ => trivial
   | _, _, _, _, _, _, _, .func _ => trivial
   | _, _, _, _, _, _, _, .unit => trivial
+  | _, _, _, _, _, _, _, .optm _ _ _ _ => trivial
   | _, _, _, _, hρ, _, _, .pair s t => ⟨shWF_termShp hρ s, shWF_termShp hρ t⟩
   | _, _, lw, _, hρ, _, _, .boxtm t => by
       have := shWF_termShp (ShEnv.wf_boxPush hρ) t
@@ -2378,6 +2472,9 @@ theorem shp_mapCollapse (hT : ModalSys.T = true) (j : ℕ) {w : F.W} :
       simp only [GFunc.shp, Shp.map]
       rw [shp_mapCollapse hT j f d lw q hl hq a ha, shp_mapCollapse hT j g d lw q hl hq a ha]
   | _, _, .unit _, _, _, _, _, _, _, _ => rfl
+  | _, _, .optMap _, _, _, _, _, _, _, _ => rfl
+  | _, _, .optStr _ _, _, _, _, _, _, _, _ => rfl
+  | _, _, .posOpt _, _, _, _, _, _, _, _ => rfl
   | _, _, .func _ _, _, _, _, _, _, _, _ => rfl
   | _, _, .boxMap f, d, lw, q, hl, hq, a, ha => by
       simp only [GFunc.shp, Shp.map, Shp.map_inner]
@@ -2458,6 +2555,9 @@ theorem shp_mapIns {w : F.W} {j : ℕ} {g : F.Leaf Root w → F.Leaf Root w}
       simp only [GFunc.shp, Shp.map]
       rw [shp_mapIns hg f, shp_mapIns hg g₁]
   | _, _, .unit _, _, _ => rfl
+  | _, _, .optMap _, _, _ => rfl
+  | _, _, .optStr _ _, _, _ => rfl
+  | _, _, .posOpt _, _, _ => rfl
   | _, _, .func _ _, _, _ => rfl
   | _, _, .boxMap f, d, a => by
       simp only [GFunc.shp, Shp.map, Shp.map_inner]
@@ -2559,8 +2659,10 @@ theorem ShEnv.boxPush_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv
   funext v T h
   match v with
   | .step u .box =>
-      simp only [ShEnv.boxPush, ShEnv.mapLeaves]
-      rw [ShEnv.ref_mapCollapse hT j ρ d hl hq hρ, Shp.map_inner]
+      obtain ⟨-, hb | ⟨-, A, -, rfl⟩⟩ := Ctx.boxIn_box' h
+      · simp only [ShEnv.boxPush, ShEnv.mapLeaves, ShEnv.boxObjShp_box (hb := hb)]
+        rw [ShEnv.ref_mapCollapse hT j ρ d hl hq hρ, Shp.map_inner]
+      · exact Shp.opt_eq _ _
   | .step u .keep =>
       simp only [ShEnv.boxPush, ShEnv.mapLeaves]
       rw [ShEnv.ref_mapCollapse hT j ρ d hl hq hρ,
@@ -2581,8 +2683,10 @@ theorem ShEnv.boxPush_mapIns {j : ℕ} {g : F.Leaf Root w → F.Leaf Root w} (hg
   funext v T h
   match v with
   | .step u .box =>
-      simp only [ShEnv.boxPush, ShEnv.mapLeaves]
-      rw [ShEnv.ref_mapIns hg ρ d, Shp.map_inner]
+      obtain ⟨-, hb | ⟨-, A, -, rfl⟩⟩ := Ctx.boxIn_box' h
+      · simp only [ShEnv.boxPush, ShEnv.mapLeaves, ShEnv.boxObjShp_box (hb := hb)]
+        rw [ShEnv.ref_mapIns hg ρ d, Shp.map_inner]
+      · exact Shp.opt_eq _ _
   | .step u .keep =>
       simp only [ShEnv.boxPush, ShEnv.mapLeaves]
       rw [ShEnv.ref_mapIns hg ρ d, shp_mapIns hg, Shp.map_inner]
@@ -2665,6 +2769,7 @@ theorem termShp_mapCollapse (hT : ModalSys.T = true) (j : ℕ) :
   | _, _, _, _, _, _, _, _, _, _, _, .var _ _ => rfl
   | _, _, _, _, _, _, _, _, _, _, _, .func _ => rfl
   | _, _, _, _, _, _, _, _, _, _, _, .unit => rfl
+  | _, _, _, _, _, _, _, _, _, _, _, .optm _ _ _ _ => rfl
   | _, _, ρ, d, _, _, hl, hq, hρ, _, _, .pair s t => by
       simp only [termShp, Shp.map]
       rw [termShp_mapCollapse hT j ρ d hl hq hρ s, termShp_mapCollapse hT j ρ d hl hq hρ t]
@@ -2696,6 +2801,7 @@ theorem termShp_mapIns {w : F.W} {j : ℕ} {g : F.Leaf Root w → F.Leaf Root w}
   | _, _, _, _, _, .var _ _ => rfl
   | _, _, _, _, _, .func _ => rfl
   | _, _, _, _, _, .unit => rfl
+  | _, _, _, _, _, .optm _ _ _ _ => rfl
   | _, ρ, d, _, _, .pair s t => by
       simp only [termShp, Shp.map]
       rw [termShp_mapIns hg ρ d s, termShp_mapIns hg ρ d t]
@@ -2741,6 +2847,9 @@ theorem shp_mapDkB (hF : ModalSys.Four = true) (j : ℕ) {w : F.W} :
       simp only [GFunc.shp, Shp.map]
       rw [shp_mapDkB hF j f d lw q hl hq a ha, shp_mapDkB hF j g d lw q hl hq a ha]
   | _, _, .unit _, _, _, _, _, _, _, _ => rfl
+  | _, _, .optMap _, _, _, _, _, _, _, _ => rfl
+  | _, _, .optStr _ _, _, _, _, _, _, _, _ => rfl
+  | _, _, .posOpt _, _, _, _, _, _, _, _ => rfl
   | _, _, .func _ _, _, _, _, _, _, _, _ => rfl
   | _, _, .boxMap f, d, lw, q, hl, hq, a, ha => by
       simp only [GFunc.shp, Shp.map, Shp.map_inner]
@@ -2817,8 +2926,10 @@ theorem ShEnv.boxPush_mapDkB (hF : ModalSys.Four = true) (j : ℕ) (ρ : ShEnv F
   funext v T h
   match v with
   | .step u .box =>
-      simp only [ShEnv.boxPush, ShEnv.mapLeaves]
-      rw [ShEnv.ref_mapDkB hF j ρ d hl hq hρ, Shp.map_inner]
+      obtain ⟨-, hb | ⟨-, A, -, rfl⟩⟩ := Ctx.boxIn_box' h
+      · simp only [ShEnv.boxPush, ShEnv.mapLeaves, ShEnv.boxObjShp_box (hb := hb)]
+        rw [ShEnv.ref_mapDkB hF j ρ d hl hq hρ, Shp.map_inner]
+      · exact Shp.opt_eq _ _
   | .step u .keep =>
       simp only [ShEnv.boxPush, ShEnv.mapLeaves]
       rw [ShEnv.ref_mapDkB hF j ρ d hl hq hρ,
@@ -2869,6 +2980,7 @@ theorem termShp_mapDkB (hF : ModalSys.Four = true) (j : ℕ) :
   | _, _, _, _, _, _, _, _, _, _, _, .var _ _ => rfl
   | _, _, _, _, _, _, _, _, _, _, _, .func _ => rfl
   | _, _, _, _, _, _, _, _, _, _, _, .unit => rfl
+  | _, _, _, _, _, _, _, _, _, _, _, .optm _ _ _ _ => rfl
   | _, _, ρ, d, _, _, hl, hq, hρ, _, _, .pair s t => by
       simp only [termShp, Shp.map]
       rw [termShp_mapDkB hF j ρ d hl hq hρ s, termShp_mapDkB hF j ρ d hl hq hρ t]
@@ -2909,6 +3021,7 @@ theorem shWF_domSh (hSh : ModalSys.shaped = true) :
   | .VTypeBox _, _, n =>
       shWF_transpose true [] _ fun s => shWF_domSh hSh (M.necEval n s)
   | .VTypeDia _, _, p => M.posShape_wf hSh p
+  | .VTypeOpt _, _, _ => trivial
 
 /-- The shape of an object, when shaped. -/
 abbrev domSh (hSh : ModalSys.shaped = true) {A : VarType} {w : M.frame.W} (o : M.frame.Dom A w) :
@@ -2980,9 +3093,13 @@ theorem boxPush_envShape (hSh : ModalSys.shaped = true) {Γ : Ctx} {w : M.frame.
     ∀ v T h, (envShape hSh env).boxPush 0 v T h =
       Arrows.transposeShp fun s => envShape hSh (env.boxPush s) v T h
   | .step u .box, _, h => by
-      simp only [ShEnv.boxPush]
-      rw [ref_envShape]
-      rfl
+      obtain ⟨-, hb | ⟨hO, A, -, rfl⟩⟩ := Ctx.boxIn_box' h
+      · simp only [ShEnv.boxPush, ShEnv.boxObjShp_box (hb := hb)]
+        rw [ref_envShape]
+        change _ = Arrows.transposeShp fun s => domSh hSh (env.boxVal u h s)
+        simp only [Env.boxVal_box _ h hb]
+        rfl
+      · exact absurd hO (by rw [ModalSys.noOpt_of_shaped hSh]; decide)
   | .step u .keep, T, h => by
       obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep h
       cases T with
@@ -3060,6 +3177,7 @@ theorem domSh_interp (hSh : ModalSys.shaped = true) {Δ : Ctx} {w : M.frame.W} (
   | _, _, .var _ _ => shp_var_eq _ _
   | _, _, .func _ => shp_var_eq _ _
   | _, _, .unit => rfl
+  | _, _, .optm hO _ _ _ => absurd hO (by rw [ModalSys.noOpt_of_shaped hSh]; decide)
   | _, _, .pair s t => by
       change Shp.prod (domSh hSh (interp env s)) (domSh hSh (interp env t)) = _
       rw [domSh_interp hSh env s, domSh_interp hSh env t]

@@ -61,8 +61,8 @@ def Supp.ty {Δ : Ctx} : Supp Δ → VarType
 def Supp.outerBox {Δ : Ctx} : Supp Δ.boxIn → Supp Δ
   | [] => []
   | ⟨.step u .box, _, h⟩ :: L =>
-      ⟨u.base, (Ctx.baseOf Δ u (Ctx.boxIn_step_box h)).1,
-        (Ctx.baseOf Δ u (Ctx.boxIn_step_box h)).2⟩ :: Supp.outerBox L
+      ⟨u.base, (Ctx.baseOf Δ u (Option.some_get (Ctx.boxIn_box_isSome h)).symm).1,
+        (Ctx.baseOf Δ u (Option.some_get (Ctx.boxIn_box_isSome h)).symm).2⟩ :: Supp.outerBox L
   | ⟨.step u .keep, _, h⟩ :: L =>
       ⟨u.base, (Ctx.baseOf Δ u (Ctx.boxIn_keep h).2.1).1,
         (Ctx.baseOf Δ u (Ctx.boxIn_keep h).2.1).2⟩ :: Supp.outerBox L
@@ -120,6 +120,32 @@ def Supp.refGF {σ : Signature} {Δ : Ctx} (L : Supp Δ) : (v : VarSymb) → {T 
         Supp.lookup L (.step v s) (by rw [Ctx.ref_step_nonproj Δ v hs] at h; exact h)
           (by rw [show (VarSymb.step v s).base = .step v s from if_neg hs] at hm; exact hm)
 
+/-- The necessary object a `□`-view entry `u.box` is the value of: `u` itself, or (with `Opt` on,
+    for a possible `u`) `u` as a necessary partial object (`GFunc.posOpt`). -/
+def Supp.boxEntry {σ : Signature} {Δ : Ctx} (L : Supp Δ) (u : VarSymb) {T : VarType}
+    (h : Δ.boxIn (.step u .box) = some T) (hm : u.base ∈ List.map PSigma.fst L) :
+    GFunc σ (Supp.ty L) (.VTypeBox T) :=
+  if hb : Δ.ref u = some (.VTypeBox T) then Supp.refGF L u hb hm
+  else
+    match hu : Δ.ref u with
+    | some (.VTypeDia A) =>
+        .comp (GFunc.ofEq (by rw [(Ctx.boxIn_box_dia h hu).2]))
+          (.comp (.posOpt (Ctx.boxIn_box_dia h hu).1) (Supp.refGF L u hu hm))
+    | some .Var => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, h', -⟩⟩ := Ctx.boxIn_box' h <;> rw [hu] at h' <;> cases h')
+    | some .VTypeOne => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, h', -⟩⟩ := Ctx.boxIn_box' h <;> rw [hu] at h' <;> cases h')
+    | some (.VTypeProd _ _) => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, h', -⟩⟩ := Ctx.boxIn_box' h <;> rw [hu] at h' <;> cases h')
+    | some (.VTypeBox _) => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, h', -⟩⟩ := Ctx.boxIn_box' h
+        · exact hb h'
+        · rw [hu] at h'; cases h')
+    | some (.VTypeOpt _) => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, h', -⟩⟩ := Ctx.boxIn_box' h <;> rw [hu] at h' <;> cases h')
+    | none => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, h', -⟩⟩ := Ctx.boxIn_box' h <;> rw [hu] at h' <;> cases h')
+
 /-- The necessary tuple of a `□`-view support, out of an outer support tuple. -/
 def Supp.gatherBox {σ : Signature} {Δ : Ctx} (L : Supp Δ) : (L' : Supp Δ.boxIn) →
     (∀ e ∈ Supp.outerBox L', e.1 ∈ List.map PSigma.fst L) →
@@ -127,7 +153,7 @@ def Supp.gatherBox {σ : Signature} {Δ : Ctx} (L : Supp Δ) : (L' : Supp Δ.box
   | [], _ => .comp .boxUnit (.unit _)
   | ⟨.step u .box, T, h⟩ :: L', hL =>
       .comp (.boxPair T (Supp.ty L'))
-        (.pair (Supp.refGF L u (Ctx.boxIn_step_box h) (hL _ List.mem_cons_self))
+        (.pair (Supp.boxEntry L u h (hL _ List.mem_cons_self))
           (Supp.gatherBox L L' (fun e he => hL e (List.mem_cons_of_mem _ he))))
   | ⟨.step u .keep, T, h⟩ :: L', hL =>
       .comp (.boxPair T (Supp.ty L'))
@@ -154,6 +180,53 @@ def Supp.assemble {σ : Signature} {Δ : Ctx} {x : VarSymb} {X : VarType}
   | ⟨.step _ .fst, _, h⟩ :: _ => False.elim (by cases h)
   | ⟨.step _ .snd, _, h⟩ :: _ => False.elim (by cases h)
 
+/-- The outer part of a support of the view of `y.box`: everything but the content `y.dia` (the
+    only `dia` address the view declares, `Ctx.optIn`). -/
+def Supp.optPart {Δ : Ctx} {y : VarSymb} : Supp (Δ.optIn y) → Supp Δ
+  | [] => []
+  | ⟨.step _ .dia, _, _⟩ :: L => Supp.optPart L
+  | ⟨.root r, T, h⟩ :: L =>
+      ⟨(.root r), T, (Ctx.optIn_of_ne (by intro he; cases he) h).2⟩ :: Supp.optPart L
+  | ⟨.step w .fst, T, h⟩ :: L =>
+      ⟨(.step w .fst), T, (Ctx.optIn_of_ne (by intro he; cases he) h).2⟩ :: Supp.optPart L
+  | ⟨.step w .snd, T, h⟩ :: L =>
+      ⟨(.step w .snd), T, (Ctx.optIn_of_ne (by intro he; cases he) h).2⟩ :: Supp.optPart L
+  | ⟨.step w .box, T, h⟩ :: L =>
+      ⟨(.step w .box), T, (Ctx.optIn_of_ne (by intro he; cases he) h).2⟩ :: Supp.optPart L
+  | ⟨.step w .here, T, h⟩ :: L =>
+      ⟨(.step w .here), T, (Ctx.optIn_of_ne (by intro he; cases he) h).2⟩ :: Supp.optPart L
+  | ⟨.step w .keep, T, h⟩ :: L =>
+      ⟨(.step w .keep), T, (Ctx.optIn_of_ne (by intro he; cases he) h).2⟩ :: Supp.optPart L
+
+/-- A support's tuple, out of a larger support's tuple. -/
+def Supp.sub {σ : Signature} {Δ : Ctx} (L : Supp Δ) :
+    (L' : Supp Δ) → (∀ e ∈ L', e.1 ∈ List.map PSigma.fst L) → GFunc σ (Supp.ty L) (Supp.ty L')
+  | [], _ => .unit _
+  | e :: L', hL =>
+      .pair (Supp.lookup L e.1 e.2.2 (hL e List.mem_cons_self))
+        (Supp.sub L L' (fun e' he' => hL e' (List.mem_cons_of_mem _ he')))
+
+/-- Re-order (outer part, content) into the tuple of a support of the view of `y.box`, as
+    `Supp.assemble` does for a `◇_x` view. -/
+def Supp.optAssemble {σ : Signature} {Δ : Ctx} {y : VarSymb} {X : VarType}
+    (hy : Δ (.step y .box) = some (.VTypeOpt X)) :
+    (L : Supp (Δ.optIn y)) → GFunc σ (.VTypeProd (Supp.ty (Supp.optPart L)) X) (Supp.ty L)
+  | [] => .unit _
+  | ⟨.step _ .dia, _, h⟩ :: L =>
+      .pair (.comp (GFunc.ofEq (Ctx.optIn_dia_entry hy h).2.symm) .snd) (Supp.optAssemble hy L)
+  | ⟨.root _, _, _⟩ :: L =>
+      .pair (.comp .fst .fst) (.comp (Supp.optAssemble hy L) (.pair (.comp .snd .fst) .snd))
+  | ⟨.step _ .fst, _, _⟩ :: L =>
+      .pair (.comp .fst .fst) (.comp (Supp.optAssemble hy L) (.pair (.comp .snd .fst) .snd))
+  | ⟨.step _ .snd, _, _⟩ :: L =>
+      .pair (.comp .fst .fst) (.comp (Supp.optAssemble hy L) (.pair (.comp .snd .fst) .snd))
+  | ⟨.step _ .box, _, _⟩ :: L =>
+      .pair (.comp .fst .fst) (.comp (Supp.optAssemble hy L) (.pair (.comp .snd .fst) .snd))
+  | ⟨.step _ .here, _, _⟩ :: L =>
+      .pair (.comp .fst .fst) (.comp (Supp.optAssemble hy L) (.pair (.comp .snd .fst) .snd))
+  | ⟨.step _ .keep, _, _⟩ :: L =>
+      .pair (.comp .fst .fst) (.comp (Supp.optAssemble hy L) (.pair (.comp .snd .fst) .snd))
+
 /-! ## The support of a term, and its compilation -/
 
 mutual
@@ -174,6 +247,10 @@ mutual
           obtain ⟨X, h⟩ := hx
           have hb := (Ctx.baseOf Δ x h).2
           simp [hb]⟩ :: Supp.outerBox (Supp.boxPart (Term.bases t))
+    | Δ, _, _, .optm _ y _ t =>
+        ⟨.step y .box, (Δ (.step y .box)).getD .VTypeOne, by
+          obtain ⟨X, h⟩ := ‹∃ X, Δ (.step y .box) = some (.VTypeOpt X)›
+          simp [h]⟩ :: Supp.optPart (Term.bases t)
 end
 
 omit [ModalSys] in
@@ -215,7 +292,24 @@ mutual
         | some .VTypeOne => False.elim (hx.elim fun _ h => by rw [hr] at h; cases h)
         | some (.VTypeProd _ _) => False.elim (hx.elim fun _ h => by rw [hr] at h; cases h)
         | some (.VTypeBox _) => False.elim (hx.elim fun _ h => by rw [hr] at h; cases h)
+        | some (.VTypeOpt _) => False.elim (hx.elim fun _ h => by rw [hr] at h; cases h)
         | none => False.elim (hx.elim fun _ h => by rw [hr] at h; cases h)
+    | Δ, _, _, L, .optm _ y hy t, hL =>
+        match hr : Δ (.step y .box) with
+        | some (.VTypeOpt X) =>
+            .comp (.optMap (Term.compile (Term.bases t) t (Supp.mem_self _)))
+              (.comp (.optMap (Supp.optAssemble hr (Term.bases t)))
+                (.comp (.optStr _ X)
+                  (.pair
+                    (Supp.sub L (Supp.optPart (Term.bases t))
+                      (fun e he => hL e (List.mem_cons_of_mem _ he)))
+                    (Supp.lookup L (.step y .box) hr (hL _ List.mem_cons_self)))))
+        | some .Var => False.elim (hy.elim fun _ h => by rw [hr] at h; cases h)
+        | some .VTypeOne => False.elim (hy.elim fun _ h => by rw [hr] at h; cases h)
+        | some (.VTypeProd _ _) => False.elim (hy.elim fun _ h => by rw [hr] at h; cases h)
+        | some (.VTypeBox _) => False.elim (hy.elim fun _ h => by rw [hr] at h; cases h)
+        | some (.VTypeDia _) => False.elim (hy.elim fun _ h => by rw [hr] at h; cases h)
+        | none => False.elim (hy.elim fun _ h => by rw [hr] at h; cases h)
 end
 
 /-! ## Interpretation and satisfaction -/
@@ -230,12 +324,37 @@ def Env.bundle {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
   | [] => PUnit.unit
   | e :: L => (env e.1 e.2.1 e.2.2, Env.bundle env L)
 
+/-- ⭐The necessary object a `□`-view entry `u.box` is the value of: `u`, or (with `Opt` on, for a
+    possible `u`) `u` as a necessary partial object (`Ops.posOpt`). -/
+def Env.boxObj {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (u : VarSymb) {T : VarType}
+    (h : Δ.boxIn (.step u .box) = some T) : M.frame.Nec T w :=
+  if hb : Δ.ref u = some (.VTypeBox T) then env.ref u hb
+  else
+    match hu : Δ.ref u with
+    | some (.VTypeDia A) =>
+        cast (by rw [(Ctx.boxIn_box_dia h hu).2])
+          (M.ops.posOpt (Ctx.boxIn_box_dia h hu).1 (env.ref u hu))
+    | some .Var => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, h', -⟩⟩ := Ctx.boxIn_box' h <;> rw [hu] at h' <;> cases h')
+    | some .VTypeOne => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, h', -⟩⟩ := Ctx.boxIn_box' h <;> rw [hu] at h' <;> cases h')
+    | some (.VTypeProd _ _) => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, h', -⟩⟩ := Ctx.boxIn_box' h <;> rw [hu] at h' <;> cases h')
+    | some (.VTypeBox _) => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, h', -⟩⟩ := Ctx.boxIn_box' h
+        · exact hb h'
+        · rw [hu] at h'; cases h')
+    | some (.VTypeOpt _) => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, h', -⟩⟩ := Ctx.boxIn_box' h <;> rw [hu] at h' <;> cases h')
+    | none => False.elim (by
+        obtain ⟨-, h' | ⟨-, A, h', -⟩⟩ := Ctx.boxIn_box' h <;> rw [hu] at h' <;> cases h')
+
 /-- The necessary tuple of a `□`-view support. -/
 def Env.necBundle {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
     (L : Supp Δ.boxIn) → M.frame.Nec (Supp.ty L) w
   | [] => M.ops.necUnit
   | ⟨.step u .box, _, h⟩ :: L =>
-      M.ops.necPair (env.ref u (Ctx.boxIn_step_box h)) (Env.necBundle env L)
+      M.ops.necPair (env.boxObj u h) (Env.necBundle env L)
   | ⟨.step u .keep, _, h⟩ :: L =>
       M.ops.necPair
         (GFunc.eval M.ops (GFunc.keep (σ := σ) (Ctx.boxIn_keep h).1 (Ctx.boxIn_keep h).2.2) w
@@ -272,7 +391,20 @@ mutual
         | some .VTypeOne => False.elim (hx.elim fun _ h => by rw [hr] at h; cases h)
         | some (.VTypeProd _ _) => False.elim (hx.elim fun _ h => by rw [hr] at h; cases h)
         | some (.VTypeBox _) => False.elim (hx.elim fun _ h => by rw [hr] at h; cases h)
+        | some (.VTypeOpt _) => False.elim (hx.elim fun _ h => by rw [hr] at h; cases h)
         | none => False.elim (hx.elim fun _ h => by rw [hr] at h; cases h)
+    | _, _, .optm _ y hy t =>
+        match hr : Δ (.step y .box) with
+        | some (.VTypeOpt _) =>
+            (env (.step y .box) _ hr).map fun c =>
+              GFunc.eval M.ops (Term.compile (Term.bases t) t (Supp.mem_self _)) w
+                ((env.optPush y hr c).bundle (Term.bases t))
+        | some .Var => False.elim (hy.elim fun _ h => by rw [hr] at h; cases h)
+        | some .VTypeOne => False.elim (hy.elim fun _ h => by rw [hr] at h; cases h)
+        | some (.VTypeProd _ _) => False.elim (hy.elim fun _ h => by rw [hr] at h; cases h)
+        | some (.VTypeBox _) => False.elim (hy.elim fun _ h => by rw [hr] at h; cases h)
+        | some (.VTypeDia _) => False.elim (hy.elim fun _ h => by rw [hr] at h; cases h)
+        | none => False.elim (hy.elim fun _ h => by rw [hr] at h; cases h)
 end
 
 def relSat {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
@@ -345,6 +477,7 @@ def compBack : (A : VarType) → (p : List Step) → {v w : M.frame.W} → M.fra
   | .Var, _, _, _, _, _, _ => True
   | .VTypeOne, _, _, _, _, _, _ => True
   | .VTypeDia _, _, _, _, _, _, _ => True
+  | .VTypeOpt _, _, _, _, _, _, _ => True
   | .VTypeBox _, .fst :: _, _, _, _, _, _ => True
   | .VTypeBox _, .snd :: _, _, _, _, _, _ => True
   | .VTypeBox _, .box :: _, _, _, _, _, _ => True
@@ -368,6 +501,7 @@ def compRead (hT : ModalSys.T = true) : (A : VarType) → (p : List Step) → {v
   | .Var, _, _, _, _, _ => PUnit.unit
   | .VTypeOne, _, _, _, _, _ => PUnit.unit
   | .VTypeDia _, _, _, _, _, _ => PUnit.unit
+  | .VTypeOpt _, _, _, _, _, _ => PUnit.unit
   | .VTypeBox _, .fst :: _, _, _, _, _ => PUnit.unit
   | .VTypeBox _, .snd :: _, _, _, _, _ => PUnit.unit
   | .VTypeBox _, .box :: _, _, _, _, _ => PUnit.unit
@@ -393,6 +527,7 @@ theorem compBack_compRead (hT : ModalSys.T = true) : ∀ (A : VarType) (p : List
   | .Var, _, _, _, _, _ => trivial
   | .VTypeOne, _, _, _, _, _ => trivial
   | .VTypeDia _, _, _, _, _, _ => trivial
+  | .VTypeOpt _, _, _, _, _, _ => trivial
   | .VTypeBox _, .fst :: _, _, _, _, _ => trivial
   | .VTypeBox _, .snd :: _, _, _, _, _ => trivial
   | .VTypeBox _, .box :: _, _, _, _, _ => trivial
@@ -470,6 +605,10 @@ def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ
   | Γ, d, _, env, .linkx hV _ y _ (D := D) t Φ =>
       ∃ (Y : VarType) (h : Γ.ref y = some (.VTypeDia Y)) (b : (M.posEval (env.ref y h)).1),
         sat ((env.diaPush y h b).extend (.bnd d) (M.sideOf hV D (interp env t) b.1)) Φ
+  | Γ, _, _, env, .optx _ y _ φ =>
+      ∃ (X : VarType) (h : Γ (.step y .box) = some (.VTypeOpt X))
+        (hd : (env (.step y .box) _ h).Dom),
+          sat (env.optPush y h ((env (.step y .box) _ h).get hd)) φ
 
 end Model
 

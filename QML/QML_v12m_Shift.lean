@@ -178,6 +178,7 @@ theorem ref_inner {Γ : Ctx} {w : VarSymb} {A : VarType} (h : Γ.ref w = some (.
 /-- ⭐Under 4 the `□` view shifts one view further in. -/
 theorem shifts_boxIn_boxIn (hF : ModalSys.Four = true) (Γ : Ctx) :
     Shifts 0 Γ.boxIn Γ.boxIn.boxIn := by
+  haveI : ModalSys.NoOpt := ⟨ModalSys.noOpt_of_Four hF⟩
   refine Shifts.of_raw ?_
   intro v T _ hv
   match v with
@@ -232,9 +233,11 @@ theorem Shifts.boxIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Shifts k Γ₁ Γ₂) :
   intro v T _ hv
   match v with
   | .step u .box =>
-      obtain ⟨hk, hu⟩ := boxIn_box hv
-      rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]
-      exact boxIn_box_of hk (h u _ hu)
+      obtain ⟨hk, hu | ⟨hO, A, hu, rfl⟩⟩ := boxIn_box' hv
+      · rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]
+        exact boxIn_box_of hk (h u _ hu)
+      · rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]
+        exact boxIn_box_dia_of hk hO (h u _ hu)
   | .step u .keep =>
       obtain ⟨hF, hu, hk⟩ := boxIn_keep hv
       rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]
@@ -266,9 +269,11 @@ theorem Shifts.diaIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Shifts k Γ₁ Γ₂) (x
           rw [if_pos rfl, h u _ hx]
           exact hv
   | .step u .box =>
-      obtain ⟨hk, hu⟩ := boxIn_box (Γ := Γ₁) hv
-      rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]
-      exact boxIn_box_of (Γ := Γ₂) hk (h u _ hu)
+      obtain ⟨hk, hu | ⟨hO, A, hu, rfl⟩⟩ := boxIn_box' (Γ := Γ₁) hv
+      · rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]
+        exact boxIn_box_of (Γ := Γ₂) hk (h u _ hu)
+      · rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]
+        exact boxIn_box_dia_of (Γ := Γ₂) hk hO (h u _ hu)
   | .step u .keep =>
       obtain ⟨hF, hu, hk⟩ := boxIn_keep (Γ := Γ₁) hv
       rw [VarSymb.shift_level_succ rfl, Ctx.ref_nonproj _ rfl]
@@ -277,6 +282,59 @@ theorem Shifts.diaIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Shifts k Γ₁ Γ₂) (x
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
   | .step _ .here => cases hv
+
+omit [ModalSys] in
+/-- A shifted level step keeps its step: only the address above it moves. -/
+theorem _root_.V12M.VarSymb.shift_level (w : VarSymb) {s : Step} (hs : s.isProj = false)
+    (k : ℕ) : (VarSymb.step w s).shift k = .step ((VarSymb.step w s).shift k).unbox s := by
+  cases k with
+  | zero => rw [VarSymb.shift_level_zero hs]; rfl
+  | succ k => rw [VarSymb.shift_level_succ hs]; rfl
+
+/-- The subject a shift leaves an `Opt` value: its witness shifted (kept, at the shifted level). -/
+theorem Shifts.opt_subj {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Shifts k Γ₁ Γ₂) {y : VarSymb} {X : VarType}
+    (hy : Γ₁ (.step y .box) = some (.VTypeOpt X)) :
+    Γ₂ (.step ((VarSymb.step y .box).shift k).unbox .box) = some (.VTypeOpt X) := by
+  rw [← VarSymb.shift_level y rfl k, ← Ctx.ref_nonproj Γ₂ (v := (VarSymb.step y .box).shift k)
+    (by rw [VarSymb.shift_level y rfl k]; rfl)]
+  exact h _ _ ((Ctx.ref_nonproj Γ₁ rfl).trans hy)
+
+omit [ModalSys] in
+/-- The content of a shifted `Opt` subject is the shifted content. -/
+theorem _root_.V12M.VarSymb.shift_optContent (y : VarSymb) (k : ℕ) :
+    (VarSymb.step y .dia).shift k = .step ((VarSymb.step y .box).shift k).unbox .dia := by
+  cases k with
+  | zero => rw [VarSymb.shift_level_zero rfl, VarSymb.shift_level_zero rfl]; rfl
+  | succ k => rw [VarSymb.shift_level_succ rfl, VarSymb.shift_level_succ rfl]; rfl
+
+/-- Shifting passes into the view of an `Opt` value. -/
+theorem Shifts.optIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Shifts k Γ₁ Γ₂) {y : VarSymb} {X : VarType}
+    (hy : Γ₁ (.step y .box) = some (.VTypeOpt X)) :
+    Shifts k (Γ₁.optIn y) (Γ₂.optIn ((VarSymb.step y .box).shift k).unbox) := by
+  have hsub := h.opt_subj hy
+  refine Shifts.of_raw ?_
+  intro v T hlp hv
+  by_cases hc : v = .step y .dia
+  · subst hc
+    rw [Ctx.optIn_content hy] at hv
+    cases hv
+    rw [VarSymb.shift_optContent, Ctx.ref_nonproj _ rfl]
+    exact Ctx.optIn_content hsub
+  · obtain ⟨hd, hv⟩ := Ctx.optIn_of_ne hc hv
+    have h₂ := h v T ((Ctx.ref_nonproj Γ₁ hlp).trans hv)
+    match v, hlp, hd, hc with
+    | .root r, _, _, _ =>
+        rw [Ctx.ref_nonproj _ rfl] at h₂ ⊢
+        rwa [Ctx.optIn_ne (by intro he; cases he) rfl]
+    | .step w s, hlp, hd, hc =>
+        have hs : s.isProj = false := hlp
+        rw [VarSymb.shift_level w hs] at h₂ ⊢
+        rw [Ctx.ref_nonproj _ (show (VarSymb.step _ s).lastProj = false from hs)] at h₂ ⊢
+        have hsd : s ≠ .dia := by intro he; subst he; cases hd
+        have hd' : (VarSymb.step ((VarSymb.step w s).shift k).unbox s).lastDia = false := by
+          cases s <;> first | rfl | exact absurd rfl hsd
+        rw [Ctx.optIn_ne (fun he => hsd (VarSymb.step.inj he).2) hd']
+        exact h₂
 
 theorem Shifts.insert {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Shifts k Γ₁ Γ₂) {r : Root}
     (hr : Γ₁.RootFresh r) (T : VarType) : Shifts k (Γ₁.insert r T) (Γ₂.insert r T) := by
@@ -312,6 +370,9 @@ mutual
     | _, _, h, _, _, .boxtm t => .boxtm (Term.shift h.boxIn t)
     | _, _, h, _, _, .diatm x hx t =>
         .diatm (x.shift k) (hx.imp fun _ hX => h x _ hX) (Term.shift (h.diaIn x) t)
+    | _, _, h, _, _, .optm hO y hy t =>
+        .optm hO ((VarSymb.step y .box).shift k).unbox (hy.imp fun _ hX => h.opt_subj hX)
+          (Term.shift (by obtain ⟨X, hX⟩ := hy; exact h.optIn hX) t)
 end
 
 def Rel.shift {σ : Signature} {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂) :
@@ -352,6 +413,9 @@ def WFF.shift {σ : Signature} : {k : ℕ} → {Γ₁ Γ₂ : Ctx} → {d : ℕ}
       .linkx hV hF (y.shift k) (hy.imp fun _ hY => h y _ hY) (Term.shift h t)
         (WFF.shift ((h.diaIn y).insert ((hs.diaIn y).rootFresh le_rfl) _)
           ((hs.diaIn y).insert _) Φ)
+  | k, _, _, _, h, hs, .optx hO y hy φ =>
+      .optx hO ((VarSymb.step y .box).shift k).unbox (hy.imp fun _ hX => h.opt_subj hX)
+        (WFF.shift (by obtain ⟨X, hX⟩ := hy; exact h.optIn hX) (hs.optIn y) φ)
 
 
 /-- ⭐Shifting commutes with equality at every type, as `eqRec_collapse` does for collapsing: what a
@@ -375,6 +439,13 @@ theorem eqRec_shift {σ : Signature} {k : ℕ} {d : ℕ} : {Γ₁ Γ₂ : Ctx} �
       change WFF.imp (WFF.dia _ _ (WFF.imp (WFF.shift (h.diaIn x) (hs.diaIn x)
         (eqRec A t s)) .bot)) .bot = _
       rw [eqRec_shift (h.diaIn x) (hs.diaIn x) A]
+      rfl
+  | Γ₁, Γ₂, h, hs, .VTypeOpt A, .opt y _, .optm hO _ hy t, .optm _ _ _ s => by
+      have hc : Ctx.Shifts k (Γ₁.optIn y) (Γ₂.optIn ((VarSymb.step y .box).shift k).unbox) :=
+        by obtain ⟨X, hX⟩ := hy; exact h.optIn hX
+      change WFF.imp (WFF.optx _ _ _ (WFF.imp (WFF.shift hc (hs.optIn y)
+        (eqRec A t s)) .bot)) .bot = _
+      rw [eqRec_shift hc (hs.optIn y) A]
       rfl
 
 end V12M
