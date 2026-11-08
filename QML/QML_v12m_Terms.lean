@@ -40,6 +40,13 @@ mutual
     | diatm {Γ : Ctx} {A : VarType} {a : Ann A} (x : VarSymb)
         (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
         Term σ (Γ.diaIn x) A a → Term σ Γ (.VTypeDia A) (.dia x a)
+    /-- ⭐An `Opt` value read through a body (branch `wip/in-atom`, docs §12.13): `y.box : Opt X`
+        (the box view of `y : ◇X`) present, read through `t` with its content `y.dia : X` inside.
+        As `diatm` for `◇`, with the same body: `Γ.boxIn.optIn y` declares what `Γ.diaIn y` does,
+        so substitution sends `y ↦ diatm z b` to `y.box ↦ optm z b`. -/
+    | optm {Γ : Ctx} {A : VarType} {a : Ann A} (hO : ModalSys.Opt = true) (y : VarSymb)
+        (hy : ∃ X, Γ (.step y .box) = some (.VTypeOpt X)) :
+        Term σ (Γ.optIn y) A a → Term σ Γ (.VTypeOpt A) (.opt y a)
   deriving DecidableEq
 end
 
@@ -60,6 +67,8 @@ mutual
     | _, _, h, _, _, .boxtm t => .boxtm (Term.mono h.boxIn t)
     | _, _, h, _, _, .diatm x hx t =>
         .diatm x (hx.imp fun _ hX => h.ref hX) (Term.mono (h.diaIn x) t)
+    | _, _, h, _, _, .optm hO y hy t =>
+        .optm hO y (hy.imp fun _ hX => h _ _ hX) (Term.mono (h.optIn y) t)
 end
 
 /-- Weakening by a fresh root. -/

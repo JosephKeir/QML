@@ -82,6 +82,7 @@ theorem VarType.compAt_hereChains : ∀ (A : VarType) (p : List Step), p ∈ A.h
   | .Var, _, hp => by cases hp
   | .VTypeOne, _, hp => by cases hp
   | .VTypeDia _, _, hp => by cases hp
+  | .VTypeOpt _, _, hp => by cases hp
 
 omit [ModalSys] in
 theorem hereChains_nodup : ∀ A : VarType, A.hereChains.Nodup
@@ -94,6 +95,7 @@ theorem hereChains_nodup : ∀ A : VarType, A.hereChains.Nodup
   | .Var => List.nodup_nil
   | .VTypeOne => List.nodup_nil
   | .VTypeDia _ => List.nodup_nil
+  | .VTypeOpt _ => List.nodup_nil
 
 /-- All the companions for a value `b` of the T flag: none with T off.  The flag is an argument,
     as in `tupB`, so that at `false` this is `[]` definitionally. -/
@@ -128,6 +130,7 @@ def VarType.bcB (b : Bool) : VarType → VarType
   | .VTypeProd A B => .VTypeProd (VarType.bcB b A) (VarType.bcB b B)
   | .VTypeBox A => cond b (.VTypeProd A (VarType.bcB b A)) A
   | .VTypeDia _ => .VTypeOne
+  | .VTypeOpt _ => .VTypeOne
 
 /-- ⭐The type of what an arrow gives a variable of type `T` at the target: each `□A` component
     becomes `A`, every other leaf `𝟙`.  Under T a `□A` component also reaches its value here
@@ -165,6 +168,7 @@ theorem VarType.compAt_bcDec : ∀ (R : VarType) (q : List Step),
   | .Var, _, hq => by cases hq
   | .VTypeOne, _, hq => by cases hq
   | .VTypeDia _, _, hq => by cases hq
+  | .VTypeOpt _, _, hq => by cases hq
 
 omit [ModalSys] in
 /-- A tuple's companion decodes to a companion of the root. -/
@@ -185,6 +189,7 @@ theorem VarType.bcDec_mem : ∀ (R : VarType) (q : List Step),
   | .Var, _, hq => by cases hq
   | .VTypeOne, _, hq => by cases hq
   | .VTypeDia _, _, hq => by cases hq
+  | .VTypeOpt _, _, hq => by cases hq
 
 omit [ModalSys] in
 /-- At a `□A` root a tuple's companion decodes through `here` first. -/
@@ -279,8 +284,11 @@ inductive WFF (σ : Signature) : Ctx → ℕ → Type where
   | and {Γ : Ctx} {d : ℕ} : WFF σ Γ d → WFF σ Γ d → WFF σ Γ d
   | or {Γ : Ctx} {d : ℕ} : WFF σ Γ d → WFF σ Γ d → WFF σ Γ d
   | imp {Γ : Ctx} {d : ℕ} : WFF σ Γ d → WFF σ Γ d → WFF σ Γ d
-  | all {Γ : Ctx} {d : ℕ} (T : VarType) : WFF σ (Γ.insert (.bnd d) T) (d + 1) → WFF σ Γ d
-  | ex {Γ : Ctx} {d : ℕ} (T : VarType) : WFF σ (Γ.insert (.bnd d) T) (d + 1) → WFF σ Γ d
+  /-- Quantifiers bind `Opt`-free types only (`OType`): `Opt` is the view-level type of a possible
+      object's value along one arrow, never a type of its own, so `□(Opt A)` cannot duplicate `◇A`
+      (docs §12.14, option A). -/
+  | all {Γ : Ctx} {d : ℕ} (T : OType) : WFF σ (Γ.insert (.bnd d) T) (d + 1) → WFF σ Γ d
+  | ex {Γ : Ctx} {d : ℕ} (T : OType) : WFF σ (Γ.insert (.bnd d) T) (d + 1) → WFF σ Γ d
   | box {Γ : Ctx} {d : ℕ} : WFF σ Γ.boxIn d → WFF σ Γ d
   /-- `◇_x φ`: `x : ◇X` outside, its content `x.dia : X` inside. -/
   | dia {Γ : Ctx} {d : ℕ} (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
@@ -308,6 +316,14 @@ inductive WFF (σ : Signature) : Ctx → ℕ → Type where
   | here {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true) {A : VarType}
       {b : Ann (.VTypeDia A)} {a : Ann A} (s : Term σ Γ (.VTypeDia A) b) (t : Term σ Γ A a) :
       WFF σ Γ d
+  /-- ⭐`◇⁰_y φ` (branch `wip/in-atom`, docs §12.13): the `Opt` value `y.box` is present, and `φ`
+      holds of its content `y.dia`.  In a view: the arrow just taken lies in `y`'s extent and `φ`
+      holds with `y`'s content along it, so `◇_y φ` is `◇ ◇⁰_y φ`.  As `dia` with no level step;
+      `In(y, t)` is `◇⁰_y (y.dia = t)`: `Here` along the arrow rather than at the identity, at every
+      system. -/
+  | optx {Γ : Ctx} {d : ℕ} (hO : ModalSys.Opt = true) (y : VarSymb)
+      (hy : ∃ X, Γ (.step y .box) = some (.VTypeOpt X)) :
+      WFF σ (Γ.optIn y) d → WFF σ Γ d
   /-- `Back s t` (strong B): the carrier `s` comes back as `t` — its out leg is nonempty and from
       every arrow of it the way home returns (a value indistinguishable from) `t`
       (`docs/v12-modal-extensions.md` §11.1).  The leg `L` fixes the carrier type: `□□A` (row 1,
@@ -513,6 +529,11 @@ abbrev WFF.boxx {σ : Signature} {Γ : Ctx} {d : ℕ} (x : VarSymb)
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (φ : WFF σ (Γ.diaIn x) d) : WFF σ Γ d :=
   (WFF.dia x hx φ.neg).neg
 
+/-- `□⁰_y φ := ¬◇⁰_y¬φ`: if the `Opt` value `y.box` is present, `φ` holds of its content. -/
+abbrev WFF.optBox {σ : Signature} {Γ : Ctx} {d : ℕ} (hO : ModalSys.Opt = true) (y : VarSymb)
+    (hy : ∃ X, Γ (.step y .box) = some (.VTypeOpt X)) (φ : WFF σ (Γ.optIn y) d) : WFF σ Γ d :=
+  (WFF.optx hO y hy φ.neg).neg
+
 /-- ⭐Equality at every type, by extensionality, **within one fibre**: the two terms share their
     annotation.  An annotation of a fixed type varies only in its `.dia` witness indices, everything
     else being forced by the type, so sharing it means sharing the witness at every `◇` position —
@@ -529,6 +550,7 @@ def eqRec {σ : Signature} {d : ℕ} : {Γ : Ctx} → (T : VarType) → {a : Ann
       .and (eqRec A t₁ s₁) (eqRec B t₂ s₂)
   | _, .VTypeBox A, .box _, .boxtm t, .boxtm s => .box (eqRec A t s)
   | _, .VTypeDia A, .dia x _, .diatm _ hx t, .diatm _ _ s => .boxx x hx (eqRec A t s)
+  | _, .VTypeOpt A, .opt y _, .optm hO _ hy t, .optm _ _ _ s => .optBox hO y hy (eqRec A t s)
 
 
 /-- At base type the defined equality is the primitive one: `eqRec`’s `.Var` clause, as a
@@ -578,6 +600,7 @@ def WFF.mono {σ : Signature} : {Γ Γ' : Ctx} → {d : ℕ} → Γ.Le Γ' → W
   | _, _, _, h, .linkx hV hF y hy t Φ =>
       .linkx hV hF y (hy.imp fun _ hY => h.ref hY) (Term.mono h t)
         (WFF.mono ((h.diaIn y).insert _ _) Φ)
+  | _, _, _, h, .optx hO y hy φ => .optx hO y (hy.imp fun _ hX => h _ _ hX) (WFF.mono (h.optIn y) φ)
 
 /-- Weakening by a fresh root. -/
 def WFF.weaken {σ : Signature} {Γ : Ctx} {d : ℕ} {r : Root} (hr : Γ (.root r) = none)
@@ -603,6 +626,10 @@ theorem eqRec_mono {σ : Signature} {d : ℕ} : {Γ Γ' : Ctx} → (h : Γ.Le Γ
   | _, _, h, .VTypeDia A, .dia x _, .diatm _ _ t, .diatm _ _ s => by
       change WFF.imp (WFF.dia x _ (WFF.imp (WFF.mono (h.diaIn x) (eqRec A t s)) .bot)) .bot = _
       rw [eqRec_mono (h.diaIn x) A]
+      rfl
+  | _, _, h, .VTypeOpt A, .opt y _, .optm _ _ _ t, .optm _ _ _ s => by
+      change WFF.imp (WFF.optx _ y _ (WFF.imp (WFF.mono (h.optIn y) (eqRec A t s)) .bot)) .bot = _
+      rw [eqRec_mono (h.optIn y) A]
       rfl
 
 end V12M

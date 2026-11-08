@@ -77,7 +77,8 @@ theorem levelDepth_boxIn {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ) :
   match v with
   | .root _ => cases hv
   | .step u .box =>
-      obtain ⟨_, hu⟩ := Ctx.boxIn_box hv
+      obtain ⟨U, hu⟩ : ∃ U, Γ.ref u = some U := by
+        obtain ⟨_, hu | ⟨_, _, hu, _⟩⟩ := Ctx.boxIn_box' hv <;> exact ⟨_, hu⟩
       rw [Step.levels_step_of_level (s := Step.box) rfl, h u _ hu]
       rfl
   | .step u .keep =>
@@ -186,7 +187,8 @@ theorem levelDepth_diaIn {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ) (x 
       rw [Step.levels_step_of_level (s := Step.dia) rfl, h u U hU]
       rfl
   | .step u .box =>
-      obtain ⟨_, hu⟩ := Ctx.boxIn_box (Γ := Γ) hv
+      obtain ⟨U, hu⟩ : ∃ U, Γ.ref u = some U := by
+        obtain ⟨_, hu | ⟨_, _, hu, _⟩⟩ := Ctx.boxIn_box' (Γ := Γ) hv <;> exact ⟨_, hu⟩
       rw [Step.levels_step_of_level (s := Step.box) rfl, h u _ hu]
       rfl
   | .step u .keep =>

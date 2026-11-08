@@ -15057,3 +15057,131 @@ in 33 (450).
 No new modal rule found necessary for 4, B or 5.  Open: mapping theory-decided labels onto B's
 network stages and onto the cluster constructions (5); strong B's invariants without `sep`.  The
 branch plan of 12.10 stands, with M4 split: 4 (tree), then B (network), then 5 (cluster).
+
+### 12.13 M1 scoping: the code-level design *(2026-11-07, branch `wip/in-atom`, paper)*
+
+**The problem.**  An environment gives every visible address an object
+(`Env Γ w := ∀ v T, Γ v = some T → Dom T w`), but a parent witness's content along the arrow just
+taken exists only when the arrow is in its extent.  The partiality has to live somewhere.
+
+**Rejected: changing `Env`** (an `Option` at subject addresses).  303 `Env`-valued definitions and
+273 pointwise environment lambdas would need the case.
+
+**Rejected: the T shortcut** (`In(u↑, t) := Here(u.pt, t)`, `u.pt : ◇X` the restriction of `u` to
+the arrow, placed at the target's identity arrow, mirroring `dkeep`; two rules mirroring `four_dia`
+and `here_keep`; theory-decided membership via the existing "own arrow when realised").  It fails
+**closure under substitution**: `u ↦ ⟨y; b⟩` must send `u.pt` to `y.pt` read through `b`, and `b`
+reads the parent's necessary objects at the target (`n.box : A`), which the view of `y.pt`
+(`Γ.boxIn.diaIn (y.pt)`, two levels in) cannot see.  It would also leave strong B without T on
+`Ind` and shapes (no identity arrow there).
+
+**Adopted: the box view of a possible object.**  A necessary object `u : □A` has `u.box : A` in the
+box view (its value along the arrow); a possible object `u : ◇X` gets **`u.box : Opt X`**, its
+value along the arrow if the arrow is in its extent.
+* `VarType.VTypeOpt X`, `Dom (Opt X) w := Option (Dom X w)`.
+* `Ctx.boxIn`: `u.box : Opt X` for `u : ◇X` (not under `keepOnly`, as `u.box` for `□`).
+* `WFF.inAt (o : Term Δ (Opt X) _) (t : Term Δ X _)`, written `In(o, t)`: `o` is present with
+  value `t`.  **Mirrors `Here`** (subject a term of the lifted type, content a term), K-level, no
+  `hT`.  `sat`: `interp o = some (interp t)`.
+* `Term.optm (y.box) (b : Term (Δ.optIn y) X')`, the `Opt` value read through a body: **mirrors
+  `diatm`**.  `Δ.optIn y` adds `y.dia : X` to `Δ` when `y.box : Opt X` is in it, so
+  **`Γ.boxIn.optIn y = Γ.diaIn y`** and the body is literally `diatm`'s: substitution sends
+  `u ↦ diatm y b` at the parent to `u.box ↦ optm (y.box) b` in the view, as `u ↦ boxtm bd` sends
+  `u.box ↦ bd`.  `interp (optm o b) = (interp o).map (b's value)`.
+* `Env.boxPush`: one new case, `u.box ↦ if a ∈ ext u then some (content) else none` (classical).
+* Definability is then literal: `◇_u φ ⟺ ◇ ∃v (In(u.box, v) ∧ φ[u.dia ↦ v])`.
+* Later, not M1: under T, collapse closure needs `p.here : Opt X` for `p : ◇X` (the identity
+  arrow's value), and then `Here(s, t)` is `In(s.here, t)`, so `Here` may become derived (§12.3's
+  conjecture, now concrete).  Under 4, `shift` sends `u.box ↦ u.keep.box` (12.12 (1)).  Under
+  T + 4, `u.box := u.keep.here`.
+
+**Rules (K), mirroring `Here`'s.**  `in_box` (both directions of the definability);
+`in_fun` (`In(o,t), In(o,t') ⊢ eqH t t'`); `in_eq`; `in_beta` (`In(y.box, c) ⊢ In(optm y b, b[c])`,
+as `here_beta`); `in_name` (`In(optm y ⟨⟩, ⟨⟩) ⊢ ∃c In(y.box, c)`, as `here_name`).  `eqH` is defined
+by type recursion (12.2), with an `Opt` clause; at one annotation it is `eqRec`.
+
+**Open sub-questions.**
+1. *`Opt` first-class or internal?*  Recommended first-class (declarable, quantifiable): the
+   canonical domain of `Opt X` is decided by the theory (`In(c, ·)` present or not, Henkin value),
+   and restricting it would put a hypothesis on `WFF.all`/`ex` or `Ctx.Presented`.  Carriers at
+   `□(Opt X)`, `◇(Opt X)` come from the generic recursions.
+2. *Annotations:* `Ann (Opt X)` needs a constructor (`opt (i : VarSymb) (a : Ann X)`, as `dia`).
+3. *Names:* `Opt`, `inAt`/`In`, `optm`, `optIn` provisional.
+
+**M1 work items (K only; K is unshaped, so no shape work).**
+1. *Syntax:* `VTypeOpt` in every `VarType` recursion (31 functions, about 212 match arms in 65
+   files); `Ann.opt`; `Term.optm` in every `Term` recursion (`diatm` is in 110 files);
+   `WFF.inAt` in every `WFF` recursion (as `here`; `linkx` reached 47 files); `boxIn`, `optIn`.
+2. *Semantics:* `Dom`, `boxPush`, `interp`, `sat`; the agreement, substitution, collapse and shift
+   lemmas.
+3. `eqH` and `sat_eqH` (extensional `pos_inj` already holds in K).
+4. *Rules* and their soundness, closure under substitution (`Proof.subst`).
+5. *Completeness on the tree:* canonical `Opt` domains, the `boxPush` case for `◇` entries, extents
+   decided by children's theories, truth lemma cases (`inAt`, `◇_u`, `□_u`), faithfulness of `eqH`.
+   **The test of the design** (12.5).
+Rough size 10k–20k lines.  Items 1–2 are mechanical; 5 is where the design is tested.
+
+### 12.14 `Opt` and `◇`: one notion seen two ways *(2026-11-07, paper; answers the user)*
+
+* `Here` is T-only (`WFF.here` takes `hT`); M1 is K, so it has no `Here`.  `In` is K-level.
+* `Opt X` is a new type former over any `VarType X`, like `□` and `◇`.
+* **`◇X` and `□(Opt X)` have the same sections.**  `PosSec X w = Σ E, (a : E) → Dom X a.1` and
+  `NecSec (Opt X) w = (a : Acc w) → Option (Dom X a.1)` correspond exactly (`E` = where the value is
+  present).  A possible object *is* a necessary partial object, and `Opt X` is a possible object seen
+  along one arrow.  `◇`'s structure is `□`'s on `Opt`: `diaMap g` = `boxMap (Opt.map g)`;
+  `strength` = `boxPair` then pointwise `A × Opt B → Opt (A × B)`; 4's `dkeep` = `dup` (the value
+  along `a` then `b` is the value along `a ; b`, which is what restriction says); T's `p.here : Opt X`
+  = `extract`; `◇_x φ = ◇ ∃v (In(x.box, v) ∧ φ)`; `diatm y b` = `boxtm (optm (y.box) b)`.  (5's side
+  image of a necessary object is defined only on the image of `side a`, so it is partial too: it
+  lands in `□Opt`, i.e. it is a possible object, as the design already says.)
+* **So the status of `Opt` is a real choice:**
+  (A) *view-level only* (`u.box`, and `p.here` under T); kept out of declared and quantified types,
+      so no second copy of `◇`; costs a side condition.
+  (B) *first-class, `◇` kept separate*: no side condition, but `□(Opt X)` duplicates `◇X` with no
+      rule relating the two.
+  (C) *`◇X := □(Opt X)`*: `◇`, witnesses, `diatm`, `Ann.dia`, `posEval` all derived from `□` and
+      `Opt`; the most principled, but a re-foundation of the development (`◇` is in over 100
+      files), not M1.  A candidate end state, to judge after M1.
+  Recommendation: (A) for M1, keeping (C) in view.  Supersedes 12.13's sub-question 1.
+
+### 12.15 M1, item 1 in code: decisions made while building *(2026-11-08, branch `wip/in-atom`)*
+
+What changed against 12.13 when the syntax met the existing machinery, and why.
+
+* **`ModalSys.Opt` is a flag** (default `false`), with **`ModalSys.optStage : Opt → (T || Four || B
+  || Five) = false`** (a field with a `by decide` default).  `boxIn_box` is used in every canonical
+  construction; the flag keeps them as they are (`class ModalSys.NoOpt`, extended by `NoB` and
+  `WCoh`, so files under those classes find it), and the stage field lets T, 4, B and 5 code derive
+  `Opt` off from their own flag.  With the flag off the language is exactly the old one, so the
+  existing results stay as theorems of the `In`-free language.  Each milestone drops a disjunct.
+* **`u.box : Opt A` for `u : ◇A`** (`Ctx.boxIn`, gated by the flag); `boxIn_box'` states both
+  cases, `boxIn_box` keeps the old statement under `[NoOpt]`; `boxIn_box_dia_of`.  `.box` is reused
+  (66 uses of `boxIn_box` against about 200 match arms for a new step).
+* **The primitive is a binder, not the atom**: `WFF.optx hO y hy φ`, written `◇⁰_y φ` ("`y.box` is
+  present and `φ` holds of its content"), mirroring `WFF.dia`.  `eqRec` at `Opt` needs to compare
+  two bodies inside the subject's view, which needs a former that enters it; `In(y, t)` is then
+  `◇⁰_y (y.dia = t)` (with `eqH` at `◇`-typed contents).  `WFF.optBox` is its dual, as `boxx`.
+* **Subjects are always `y.box`, named by the witness `y`** (`Term.optm hO y hy b`, `WFF.optx`,
+  `Ann.opt y a`), content `y.dia`.  Shifting keeps the shape (`y.keep.box`, content `y.keep.dia`);
+  collapsing keeps it above the collapsed level; **at that level the subject would be `y.here`,
+  which needs T, and T is off while `Opt` is on** (`Ctx.Collapses.opt_pos`).  Every other naming of
+  the content failed at the collapsed level (checked: `o.dia`, roots, slots, changing
+  `VarSymb.collapse` at level 0, which breaks `collapse_collapse`).  M2 adds the subject `y.here`.
+* **`Ctx.optIn y` hides the other possible objects' contents** (addresses ending in `dia`):
+  otherwise an address of an arbitrary context can collapse onto `y.dia` (a `keep` removed at the
+  collapsed level).  Nothing is lost: a `□` view has none, so `Γ.boxIn.optIn y` declares what
+  `Γ.diaIn y` does, and inside another `◇_z` view `z.dia` is reached from outside,
+  `∃v (In(y, v) ∧ φ(v, z.dia))`.
+* **Annotation indices move with the subject**: `Ann.collapse k (.opt i a) =
+  .opt ((i.box).collapse k).unbox (a.collapse k)`, likewise `shift`, so `Term.collapse` lands on
+  the same expression with no casts.
+* **Quantifiers bind `OType`** (`{T : VarType // T.optFree}`): patterns are unchanged and the
+  coercion is automatic (tested); only construction sites at a concrete type need a proof.
+  **Pending:** `Opt`-free declared types in `Ctx.Presented` (a policy check; a declared `Opt` root
+  is inert, since subjects are `y.box` only).
+* **Shapes** get a constructor `Shp.opt` with no data (shapes are off wherever `Opt` is on); they go
+  in M2.  `bcB (Opt _) = 𝟙` for now (B's network stays under `NoOpt` until M4, where `bc (◇X)`
+  becomes `Opt X`).
+* **Built so far** (each module green): `Symbols`, `Terms`, `WFF`, `Model` (`Dom (Opt A) =
+  Option (Dom A)`), `Countable`, `Collapse`.  Next: `ViewFresh`, then the rest of the syntax layer
+  (shift, substitution, renaming), then semantics (`Env.boxPush`'s new case, `interp`, `sat`).

@@ -134,6 +134,8 @@ def Dom : VarType → F.W → Type u
   | .VTypeProd A B, w => Dom A w × Dom B w
   | .VTypeBox A, w => F.Nec A w
   | .VTypeDia A, w => F.Pos A w
+  -- A possible object's value along one arrow: present or not (docs §12.13).
+  | .VTypeOpt A, w => Option (Dom A w)
 
 /-- What a necessary object delivers: an object at every accessible world. -/
 abbrev NecSec (A : VarType) (w : F.W) : Type (max u v) := (w' : F.Acc w) → F.Dom A w'.1
@@ -251,6 +253,9 @@ inductive Shp (L : Type x) : VarType → Type x
   | prod {A B : VarType} (a : Shp L A) (b : Shp L B) : Shp L (.VTypeProd A B)
   | box {A : VarType} (a : Shp L A) : Shp L (.VTypeBox A)
   | dia {A : VarType} (ℓ : L) (a : Shp L A) : Shp L (.VTypeDia A)
+  /-- An `Opt` value's shape: none recorded.  Shapes are off wherever `Opt` is on
+      (`ModalSys.optStage`), and both go when T reads the box view of possible objects (M2). -/
+  | opt {A : VarType} : Shp L (.VTypeOpt A)
 
 namespace Shp
 
@@ -279,6 +284,7 @@ def map {L' : Type x} (g : L → L') : {A : VarType} → Shp L A → Shp L' A
   | _, .prod a b => .prod (a.map g) (b.map g)
   | _, .box a => .box (a.map g)
   | _, .dia ℓ a => .dia (g ℓ) (a.map g)
+  | _, .opt => .opt
 
 /-- ⭐**Well-formed shapes**, for a well-formedness of leaves by position: each leaf is
     well-formed at the level kinds from the anchor down to its node — `true` a `□`, `false` a
@@ -289,6 +295,7 @@ def WF (P : List Bool → L → Prop) : List Bool → {A : VarType} → Shp L A 
   | lw, _, .prod a b => WF P lw a ∧ WF P lw b
   | lw, _, .box a => WF P (lw ++ [true]) a
   | lw, _, .dia ℓ a => P lw ℓ ∧ WF P (lw ++ [false]) a
+  | _, _, .opt => True
 
 end Shp
 
@@ -555,6 +562,7 @@ def Arrows.transposeShp {σ : Signature} {F : Arrows.{u, v} σ} {Root : F.W → 
       .prod (Arrows.transposeShp fun s => (g s).fst) (Arrows.transposeShp fun s => (g s).snd)
   | .VTypeBox _, g => .box (Arrows.transposeShp fun s => (g s).inner)
   | .VTypeDia _, g => .dia (.fam fun s => (g s).label) (Arrows.transposeShp fun s => (g s).body)
+  | .VTypeOpt _, _ => .opt
 
 /-- The shape of any object, from the shapes of possible objects: componentwise at a product, and
     at a necessary object the family of its values' shapes. -/
@@ -569,6 +577,7 @@ def Frame.domShape {σ : Signature} {F : Frame.{u, v} σ} {Root : F.W → Type u
   | .VTypeBox _, _, n =>
       .box (Arrows.transposeShp fun s => Frame.domShape necEval shape (necEval n s))
   | .VTypeDia _, _, p => shape p
+  | .VTypeOpt _, _, _ => .opt
 
 /-! ## Models -/
 

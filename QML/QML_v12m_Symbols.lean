@@ -71,10 +71,44 @@ class ModalSys where
   /-- ⭐Strong 5, the **gather**: along any arrow `a : w → v`, every necessary object at `v`, read
       along the side arrows `side a b`, is one at `w`.  Needs weak 5, which the rule requires. -/
   FiveStrong : Bool
+  /-- **The box view of a possible object** (branch `wip/in-atom`, docs §12.13): `u.box : Opt A`
+      for `u : ◇A`, its value along the arrow just taken, read by `In`.  A language switch, not an
+      axiom: off, the language is the one every existing construction is built for; it is on while
+      the constructions are extended, and goes when they all are. -/
+  Opt : Bool := false
+  /-- **The stage of the build** (branch `wip/in-atom`): the box view of possible objects is built
+      for K and D first (M1); T, 4, B and 5 each read it in their own milestone (docs §12.10), and
+      this field loses a disjunct with each.  Meanwhile their syntax may assume `Opt` off. -/
+  optStage : Opt = true → (T || Four || B || Five) = false := by decide
 
 /-- The system K. -/
 def ModalSys.K : ModalSys :=
-  ⟨false, false, false, false, false, false, false, false, false, false, false, false⟩
+  ⟨false, false, false, false, false, false, false, false, false, false, false, false, false,
+    by decide⟩
+
+/-- With T on, `Opt` is off (for now: `ModalSys.optStage`). -/
+theorem ModalSys.noOpt_of_T [ModalSys] (hT : ModalSys.T = true) : ModalSys.Opt = false := by
+  cases hO : ModalSys.Opt
+  · rfl
+  · have := ModalSys.optStage hO; simp [hT] at this
+
+/-- With 4 on, `Opt` is off (for now). -/
+theorem ModalSys.noOpt_of_Four [ModalSys] (hF : ModalSys.Four = true) : ModalSys.Opt = false := by
+  cases hO : ModalSys.Opt
+  · rfl
+  · have := ModalSys.optStage hO; simp [hF] at this
+
+/-- With B on, `Opt` is off (for now). -/
+theorem ModalSys.noOpt_of_B [ModalSys] (hB : ModalSys.B = true) : ModalSys.Opt = false := by
+  cases hO : ModalSys.Opt
+  · rfl
+  · have := ModalSys.optStage hO; simp [hB] at this
+
+/-- With 5 on, `Opt` is off (for now). -/
+theorem ModalSys.noOpt_of_Five [ModalSys] (hV : ModalSys.Five = true) : ModalSys.Opt = false := by
+  cases hO : ModalSys.Opt
+  · rfl
+  · have := ModalSys.optStage hO; simp [hV] at this
 
 /-- 4's lifts are derivable: with T and 5 (`Proof.keep_lift_T`), or with 5, T and strong B off, from
     the closed sentences `Proof.five_refl` necessitates (`Proof.keep_lift_F`): weak B gives them
@@ -98,11 +132,17 @@ def ModalSys.fourL [ModalSys] : Bool := ModalSys.FourStrong || ModalSys.liftsPro
 /-- 4's `◇`-lift in force: `FourStrongW`, or derivable. -/
 def ModalSys.fourLW [ModalSys] : Bool := ModalSys.FourStrongW || ModalSys.liftsProved
 
+/-- The `In`-free language: `Opt` off, so `v.box` is only ever a necessary object's value.  What
+    every construction built before the box view of possible objects assumes (branch
+    `wip/in-atom`, docs §12.13). -/
+class ModalSys.NoOpt [ModalSys] : Prop where
+  noOpt : ModalSys.Opt = false
+
 /-- The systems without B.  B's accessible worlds lead back to their origin, against the order
     of construction; its canonical model is the arrow-based network (`BArrow`).  Strong B needs
     weak B, so it is off too.  Their canonical model is the staged tree (`Canon`) without 4's strong
     forms and the growing tree (`GArrow`) with 4. -/
-class ModalSys.NoB [ModalSys] : Prop where
+class ModalSys.NoB [ModalSys] : Prop extends ModalSys.NoOpt where
   noB : ModalSys.B = false
   noBStrong : ModalSys.BStrong = false
   /-- 5 is covered with 4 and both of 4's lifts — K45, KD45 and S5 (the cluster model,
@@ -152,7 +192,7 @@ theorem ModalSys.NoB.absurdLink [ModalSys] [ModalSys.NoB] (hV : ModalSys.Five = 
     `BStrongW` asks for this.  (It contains strong D as well, `Model.posSerial_of_posBack`, but
     there no flag is needed: strong D's law is asked of a model only under `DStrong`, and its
     formula is derivable by naming a route, itself derivable, `Proof.ret_route_node`.) -/
-class ModalSys.WCoh [ModalSys] : Prop where
+class ModalSys.WCoh [ModalSys] : Prop extends ModalSys.NoOpt where
   strongT : ModalSys.BStrongW = true → ModalSys.T = true → ModalSys.TStrong = true
 
 /-- Under T and 4 a view shows only kept objects: the contents of `u` are `u.keep.here`. -/
@@ -186,6 +226,11 @@ inductive VarType where
   | VTypeProd (A B : VarType)
   | VTypeBox (A : VarType)
   | VTypeDia (A : VarType)
+  /-- `Opt A`: a possible object of type `◇A` seen along one arrow — its content there if the
+      arrow lies in its extent, nothing otherwise (docs §12.13–12.14).  View-level only: it is the
+      type of `u.box` for `u : ◇A` in the `□` view, and never a declared or bound type
+      (`VarType.optFree`), so `□(Opt A)` cannot duplicate `◇A`. -/
+  | VTypeOpt (A : VarType)
 deriving DecidableEq
 
 inductive Step where
@@ -423,6 +468,11 @@ theorem insert_swap_le {Γ : Ctx} {r r' : Root} (hne : r ≠ r') (T T' : VarType
 
 end Ctx
 
+/-- The address one step out: an `Opt` subject `y.box` gives its witness `y`. -/
+def VarSymb.unbox : VarSymb → VarSymb
+  | .step v _ => v
+  | .root r => .root r
+
 /-! ## Witness annotations -/
 
 /-- ⭐A type with no `◇` in it.  `Ann` branches only at `.dia`, so at such a type the annotation is
@@ -435,7 +485,19 @@ def VarType.diaFree : VarType → Bool
   | .VTypeProd A B => A.diaFree && B.diaFree
   | .VTypeBox A => A.diaFree
   | .VTypeDia _ => false
+  | .VTypeOpt _ => false
 
+/-- A type with no `Opt` in it: the declared and bound types (docs §12.14, option A). -/
+def VarType.optFree : VarType → Bool
+  | .Var => true
+  | .VTypeOne => true
+  | .VTypeProd A B => A.optFree && B.optFree
+  | .VTypeBox A => A.optFree
+  | .VTypeDia A => A.optFree
+  | .VTypeOpt _ => false
+
+/-- The types a quantifier may bind or a context declare: those with no `Opt` in them. -/
+abbrev OType : Type := {T : VarType // T.optFree = true}
 
 /-- `◇`-freeness of a product, from its components. -/
 theorem VarType.diaFree_prod {A B : VarType} (hA : A.diaFree = true) (hB : B.diaFree = true) :
@@ -453,6 +515,8 @@ inductive Ann : VarType → Type where
   | prod {A B : VarType} (a : Ann A) (b : Ann B) : Ann (.VTypeProd A B)
   | box {A : VarType} (a : Ann A) : Ann (.VTypeBox A)
   | dia {A : VarType} (i : VarSymb) (a : Ann A) : Ann (.VTypeDia A)
+  /-- An `Opt` value's subject `i` (the `u.box` it reads) and its body's annotation, as `dia`. -/
+  | opt {A : VarType} (i : VarSymb) (a : Ann A) : Ann (.VTypeOpt A)
 deriving DecidableEq
 
 
@@ -472,14 +536,19 @@ def Ann.mapIdx (f : VarSymb → VarSymb) : {T : VarType} → Ann T → Ann T
   | _, .prod a b => .prod (a.mapIdx f) (b.mapIdx f)
   | _, .box a => .box (a.mapIdx f)
   | _, .dia i a => .dia (f i) (a.mapIdx f)
+  | _, .opt i a => .opt (f i) (a.mapIdx f)
 
-/-- Collapse the indices of an annotation found `k` levels below the collapsed one. -/
+/-- Collapse the indices of an annotation found `k` levels below the collapsed one.  An `Opt`
+    value's body sits at its own level (its view adds the content, not a level), and its index is
+    the witness `y` of its subject `y.box`, so it moves as the subject does. -/
 def Ann.collapse : ℕ → {T : VarType} → Ann T → Ann T
   | _, _, .var => .var
   | _, _, .one => .one
   | k, _, .prod a b => .prod (a.collapse k) (b.collapse k)
   | k, _, .box a => .box (a.collapse (k + 1))
   | k, _, .dia i a => .dia (i.collapse k) (a.collapse (k + 1))
+  | k, _, .opt i a =>
+      .opt ((VarSymb.step i .box).collapse k).unbox (a.collapse k)
 
 /-- Shift the indices of an annotation found `k` levels below the shifted one. -/
 def Ann.shift : ℕ → {T : VarType} → Ann T → Ann T
@@ -488,6 +557,8 @@ def Ann.shift : ℕ → {T : VarType} → Ann T → Ann T
   | k, _, .prod a b => .prod (a.shift k) (b.shift k)
   | k, _, .box a => .box (a.shift (k + 1))
   | k, _, .dia i a => .dia (i.shift k) (a.shift (k + 1))
+  | k, _, .opt i a =>
+      .opt ((VarSymb.step i .box).shift k).unbox (a.shift k)
 
 /-- The index at the `◇`-node a path reaches (junk otherwise).  Reading a necessary object at the
     current world (`here`) collapses the level it would have descended into; keeping it (`keep`)
@@ -607,9 +678,10 @@ def ref (Γ : Ctx) : VarSymb → Option VarType
   | .root r => Γ (.root r)
   | .step v s => if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)
 
-/-- Inside `□`: `v.box : A` exactly when `v : □A` is reachable, and under 4 also `v.keep : □A`
-    and, for `v : ◇A`, `v.keep : ◇A`.  Under T and 4 only `v.keep`: `v.box` would be
-    `v.keep.here`. -/
+/-- Inside `□`: `v.box : A` exactly when `v : □A` is reachable, `v.box : Opt A` when `v : ◇A`
+    is (its value along the arrow, if the arrow is in its extent: docs §12.13), and under 4 also
+    `v.keep : □A` and, for `v : ◇A`, `v.keep : ◇A`.  Under T and 4 only `v.keep`: `v.box` would
+    be `v.keep.here`. -/
 def boxIn (Γ : Ctx) : Ctx := fun v =>
   match v with
   | .step u .box =>
@@ -617,6 +689,7 @@ def boxIn (Γ : Ctx) : Ctx := fun v =>
       else
         match Γ.ref u with
         | some (.VTypeBox A) => some A
+        | some (.VTypeDia A) => if ModalSys.Opt then some (.VTypeOpt A) else none
         | _ => none
   | .step u .keep =>
       if ModalSys.Four then
@@ -689,29 +762,73 @@ theorem boxIn_keep_none {Γ : Ctx} {u : VarSymb} (hu : Γ.ref u = none) :
   rw [hu]
   split_ifs <;> rfl
 
-theorem boxIn_box {Γ : Ctx} {u : VarSymb} {T : VarType}
+/-- ⭐`v.box`: the value of a necessary object along the arrow, or (with `Opt` on) that of a
+    possible object, if the arrow is in its extent. -/
+theorem boxIn_box' {Γ : Ctx} {u : VarSymb} {T : VarType}
     (h : Γ.boxIn (.step u .box) = some T) :
-    ModalSys.keepOnly = false ∧ Γ.ref u = some (.VTypeBox T) := by
+    ModalSys.keepOnly = false ∧ (Γ.ref u = some (.VTypeBox T) ∨
+      ModalSys.Opt = true ∧ ∃ A, Γ.ref u = some (.VTypeDia A) ∧ T = .VTypeOpt A) := by
   change (if ModalSys.keepOnly = true then none
-    else (match Γ.ref u with | some (.VTypeBox A) => some A | _ => none)) = some T at h
-  split_ifs at h with hk
+    else (match Γ.ref u with
+      | some (.VTypeBox A) => some A
+      | some (.VTypeDia A) => if ModalSys.Opt then some (.VTypeOpt A) else none
+      | _ => none)) = some T at h
+  by_cases hk : ModalSys.keepOnly = true
+  · rw [if_pos hk] at h; cases h
+  rw [if_neg hk] at h
   refine ⟨Bool.eq_false_iff.mpr hk, ?_⟩
   cases hu : Γ.ref u with
   | none => rw [hu] at h; cases h
   | some U =>
       rw [hu] at h
-      cases U <;> first | (cases h; done) | (cases h; rfl)
+      cases U with
+      | VTypeBox A => cases h; exact .inl rfl
+      | VTypeDia A =>
+          dsimp only at h
+          by_cases hO : ModalSys.Opt = true
+          · rw [if_pos hO] at h
+            cases h
+            exact .inr ⟨hO, A, rfl, rfl⟩
+          · rw [if_neg hO] at h; cases h
+      | _ => cases h
+
+theorem boxIn_box [ModalSys.NoOpt] {Γ : Ctx} {u : VarSymb} {T : VarType}
+    (h : Γ.boxIn (.step u .box) = some T) :
+    ModalSys.keepOnly = false ∧ Γ.ref u = some (.VTypeBox T) := by
+  obtain ⟨hk, h | ⟨hO, -⟩⟩ := boxIn_box' h
+  · exact ⟨hk, h⟩
+  · rw [ModalSys.NoOpt.noOpt] at hO
+    cases hO
 
 theorem boxIn_box_of {Γ : Ctx} {u : VarSymb} {A : VarType} (hk : ModalSys.keepOnly = false)
     (hu : Γ.ref u = some (.VTypeBox A)) : Γ.boxIn (.step u .box) = some A := by
   change (if ModalSys.keepOnly = true then none
-    else (match Γ.ref u with | some (.VTypeBox B) => some B | _ => none)) = some A
+    else (match Γ.ref u with
+      | some (.VTypeBox B) => some B
+      | some (.VTypeDia B) => if ModalSys.Opt then some (.VTypeOpt B) else none
+      | _ => none)) = some A
   rw [if_neg (by simp [hk]), hu]
+
+/-- The box view of a possible object: `u.box : Opt A` for `u : ◇A`. -/
+theorem boxIn_box_dia_of {Γ : Ctx} {u : VarSymb} {A : VarType} (hk : ModalSys.keepOnly = false)
+    (hO : ModalSys.Opt = true) (hu : Γ.ref u = some (.VTypeDia A)) :
+    Γ.boxIn (.step u .box) = some (.VTypeOpt A) := by
+  change (if ModalSys.keepOnly = true then none
+    else (match Γ.ref u with
+      | some (.VTypeBox B) => some B
+      | some (.VTypeDia B) => if ModalSys.Opt then some (.VTypeOpt B) else none
+      | _ => none)) = some (.VTypeOpt A)
+  rw [if_neg (by simp [hk]), hu]
+  dsimp only
+  rw [if_pos hO]
 
 theorem boxIn_box_none {Γ : Ctx} {u : VarSymb} (hu : Γ.ref u = none) :
     Γ.boxIn (.step u .box) = none := by
   change (if ModalSys.keepOnly = true then none
-    else (match Γ.ref u with | some (.VTypeBox B) => some B | _ => none)) =
+    else (match Γ.ref u with
+      | some (.VTypeBox B) => some B
+      | some (.VTypeDia B) => if ModalSys.Opt then some (.VTypeOpt B) else none
+      | _ => none)) =
       (none : Option VarType)
   rw [hu]
   split_ifs <;> rfl
@@ -771,8 +888,9 @@ theorem Le.boxIn {Γ Γ' : Ctx} (h : Γ.Le Γ') : Γ.boxIn.Le Γ'.boxIn := by
   intro v T hv
   match v with
   | .step u .box =>
-      obtain ⟨hk, hu⟩ := boxIn_box hv
-      exact boxIn_box_of hk (h.ref hu)
+      obtain ⟨hk, hu | ⟨hO, A, hu, rfl⟩⟩ := boxIn_box' hv
+      · exact boxIn_box_of hk (h.ref hu)
+      · exact boxIn_box_dia_of hk hO (h.ref hu)
   | .step u .keep =>
       obtain ⟨hF, hu, hk⟩ := boxIn_keep hv
       exact boxIn_keep_of' hF (h.ref hu) hk
@@ -875,6 +993,92 @@ theorem RootFresh.diaIn {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) (x : VarSymb)
 instance {Γ : Ctx} [h : Γ.NoSlots] : Γ.boxIn.NoSlots := ⟨h.slots.boxIn⟩
 
 instance {Γ : Ctx} [h : Γ.NoSlots] {x : VarSymb} : (Γ.diaIn x).NoSlots := ⟨h.slots.diaIn x⟩
+
+/-! ### The view of an `Opt` value (branch `wip/in-atom`, docs §12.13) -/
+
+/-- An address naming a possible object's content: its last step is `dia`. -/
+def _root_.V12M.VarSymb.lastDia : VarSymb → Bool
+  | .step _ .dia => true
+  | _ => false
+
+/-- ⭐**The view of the `Opt` value `y.box`** (`y : ◇X` one level out, so `y.box : Opt X`): the same
+    level, with the content `y.dia : X` declared — what `Term.optm` reads its body in, as `diatm`
+    reads its body in `Γ.diaIn x`.  Other possible objects' contents are not visible inside (they
+    are reached from outside, `∃v (In(y, v) ∧ …)`), so no address of the view can be moved onto
+    `y.dia`; a `□` view has none, so `Γ.boxIn.optIn y` declares what `Γ.diaIn y` does.  The subject
+    is always a `box` address, so shifting keeps its shape (`y.keep.box`, content `y.keep.dia`), and
+    so does collapsing above the collapsed level; at that level it would be `y.here`, which T alone
+    gives, and T is off while `Opt` is on (`ModalSys.optStage`). -/
+def optIn (Γ : Ctx) (y : VarSymb) : Ctx := fun v =>
+  if v = .step y .dia then
+    match Γ (.step y .box) with
+    | some (.VTypeOpt X) => some X
+    | _ => none
+  else if v.lastDia then none
+  else Γ v
+
+omit [ModalSys] in
+theorem optIn_content {Γ : Ctx} {y : VarSymb} {X : VarType}
+    (h : Γ (.step y .box) = some (.VTypeOpt X)) : Γ.optIn y (.step y .dia) = some X := by
+  simp [optIn, h]
+
+omit [ModalSys] in
+theorem optIn_ne {Γ : Ctx} {y v : VarSymb} (hv : v ≠ .step y .dia) (hd : v.lastDia = false) :
+    Γ.optIn y v = Γ v := by
+  simp [optIn, hv, hd]
+
+omit [ModalSys] in
+theorem optIn_dia {Γ : Ctx} {y v : VarSymb} (hv : v ≠ .step y .dia) (hd : v.lastDia = true) :
+    Γ.optIn y v = none := by
+  simp [optIn, hv, hd]
+
+omit [ModalSys] in
+/-- What the view of `y.box` declares besides the content is declared outside. -/
+theorem optIn_of_ne {Γ : Ctx} {y v : VarSymb} {T : VarType} (hv : v ≠ .step y .dia)
+    (h : Γ.optIn y v = some T) : v.lastDia = false ∧ Γ v = some T := by
+  cases hd : v.lastDia
+  · exact ⟨rfl, by rwa [optIn_ne hv hd] at h⟩
+  · rw [optIn_dia hv hd] at h; cases h
+
+omit [ModalSys] in
+theorem Le.optIn {Γ Γ' : Ctx} (h : Γ.Le Γ') (y : VarSymb) : (Γ.optIn y).Le (Γ'.optIn y) := by
+  intro v T hv
+  by_cases hc : v = .step y .dia
+  · subst hc
+    cases hy : Γ (.step y .box) with
+    | none => simp [Ctx.optIn, hy] at hv
+    | some U =>
+        have hy' := h _ _ hy
+        cases U <;> simp_all [Ctx.optIn]
+  · obtain ⟨hd, hv⟩ := optIn_of_ne hc hv
+    rw [optIn_ne hc hd]
+    exact h _ _ hv
+
+omit [ModalSys] in
+theorem SlotsFrom.optIn {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (y : VarSymb) :
+    (Γ.optIn y).SlotsFrom d := by
+  intro v n hv hn
+  by_cases hc : v = .step y .dia
+  · subst hc
+    have hy : Γ (.step y .box) = none := h _ n hv hn
+    simp [Ctx.optIn, hy]
+  · cases hd : v.lastDia
+    · rw [optIn_ne hc hd]; exact h v n hv hn
+    · exact optIn_dia hc hd
+
+omit [ModalSys] in
+theorem RootFresh.optIn {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) (y : VarSymb) :
+    (Γ.optIn y).RootFresh r := by
+  intro v hv
+  by_cases hc : v = .step y .dia
+  · subst hc
+    have hy : Γ (.step y .box) = none := h _ hv
+    simp [Ctx.optIn, hy]
+  · cases hd : v.lastDia
+    · rw [optIn_ne hc hd]; exact h v hv
+    · exact optIn_dia hc hd
+
+instance {Γ : Ctx} [h : Γ.NoSlots] {y : VarSymb} : (Γ.optIn y).NoSlots := ⟨h.slots.optIn y⟩
 
 theorem ref_insert_root (Γ : Ctx) (r : Root) (T : VarType) :
     (Γ.insert r T).ref (.root r) = some T := by
