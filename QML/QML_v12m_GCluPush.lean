@@ -35,8 +35,8 @@ variable (hM₀ : Theory.IsMCS M₀)
 
 /-- An environment agreeing with a chain, by construction. -/
 noncomputable def cenvOf (hX : CluFlags) {Γ : Ctx} {t : GW hF M₀} {k : ℕ}
-    (D : GTr σ Γ (ctxOf (glat t k))) (hΓ : Γ.NoProjLast) : (cmodel hF hM₀ hX).Env Γ t where
-  val v T hv := ctoDom hM₀ hX T t (cden hM₀ hX t k (Ctx.Le.refl _)
+    (D : GTr σ Γ (ctxOf (glat t k))) (hΓ : Γ.NoProjLast) : (cmodel hF hM₀ hX).Env Γ t :=
+  Frame.Env.ofVal fun v T hv => ctoDom hM₀ hX T t (cden hM₀ hX t k (Ctx.Le.refl _)
     (D.app (Term.eta v T ((Ctx.ref_nonproj Γ (hΓ v T hv)).trans hv))).2) (cdefinable_den hX _ _)
 
 variable {hM₀}

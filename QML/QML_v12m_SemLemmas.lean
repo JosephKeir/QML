@@ -144,12 +144,18 @@ theorem Env.diaPush_witAgree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env
 
 theorem Env.optPush_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env Γ w}
     {env' : M.Env Γ' w} (hag : Env.Agree h env env') {y : VarSymb} {X : VarType}
-    (hy : Γ.wit y = some X) (c : M.frame.Dom X w) :
-    Env.Agree (h.optIn y) (env.optPush y hy c) (env'.optPush y (h.wit y X hy) c) := by
+    (hy : Γ.wit y = some X) (hd : (env.wit y X hy).Dom) (hd' : (env'.wit y X (h.wit y X hy)).Dom)
+    (hc : (env'.wit y X (h.wit y X hy)).get hd' = (env.wit y X hy).get hd) :
+    Env.Agree (h.optIn y) (env.optPush y hy hd) (env'.optPush y (h.wit y X hy) hd') := by
   intro v T hv
   by_cases hvy : v = .step y .dia
-  · change (if hv' : v = .step y .dia then _ else _) = (if hv' : v = .step y .dia then _ else _)
-    rw [dif_pos hvy, dif_pos hvy]
+  · subst hvy
+    change (if hv' : VarSymb.step y .dia = .step y .dia then _ else _) =
+      (if hv' : VarSymb.step y .dia = .step y .dia then _ else _)
+    rw [dif_pos rfl, dif_pos rfl]
+    have hXT : X = T := by rw [Ctx.optIn_content hy] at hv; exact Option.some.inj hv
+    subst hXT
+    exact hc.symm
   · change (if hv' : v = .step y .dia then _ else _) = (if hv' : v = .step y .dia then _ else _)
     rw [dif_neg hvy, dif_neg hvy]
     exact hag _ _ _
@@ -266,16 +272,15 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
         have hd₀ : (env.wit y X₀ hy₀).Dom := by rw [he]; exact hd
         have hc : (env'.wit y X₀ h').get hd = (env.wit y X₀ hy₀).get hd₀ :=
           Part.get_eq_of_mem (he ▸ Part.get_mem hd₀) hd
-        rw [hc] at hsat
-        exact ⟨X₀, hy₀, hd₀, (sat_mono (Env.optPush_agree hag hy₀ _) φ (fun _ => hw')).mp hsat⟩
+        exact ⟨X₀, hy₀, hd₀,
+          (sat_mono (Env.optPush_agree hag hy₀ hd₀ hd hc) φ (fun _ => hw')).mp hsat⟩
       · rintro ⟨X, hy', hd, hsat⟩
         have he := hw' y X hy'
         have hd' : (env'.wit y X (h.wit y X hy')).Dom := by rw [← he]; exact hd
         refine ⟨X, h.wit y X hy', hd', ?_⟩
         have hc : (env'.wit y X (h.wit y X hy')).get hd' = (env.wit y X hy').get hd :=
           Part.get_eq_of_mem (he ▸ Part.get_mem hd) hd'
-        rw [hc]
-        exact (sat_mono (Env.optPush_agree hag hy' _) φ (fun _ => hw')).mpr hsat
+        exact (sat_mono (Env.optPush_agree hag hy' hd hd' hc) φ (fun _ => hw')).mpr hsat
   | _, _, _, _, _, _, _, hag, .here hT s t, hw => by
       change Model.Realised hT (interp _ (Term.mono _ s)) (interp _ (Term.mono _ t)) ↔ _
       rw [interp_mono hag s, interp_mono hag t]

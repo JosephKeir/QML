@@ -200,7 +200,6 @@ theorem compactness {Γ : Ctx} [Γ.Presented] {S : Set (WFF σ Γ 0)}
     WFF.SetSatisfiable S := by
   refine model_existence fun Δ hΔ ⟨p⟩ => ?_
   obtain ⟨M, hM, w, env, hsat⟩ := hfin Δ hΔ
-  exact Model.soundness p M hM env (Ctx.Presented.tame Γ) (Ctx.Presented.noProjLast Γ)
-    (by env_opened) hsat
+  exact Model.soundness p M hM env (Ctx.Presented.tame Γ) (Ctx.Presented.noProjLast Γ) hsat
 
 end V12M

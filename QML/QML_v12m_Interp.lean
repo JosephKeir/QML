@@ -472,7 +472,7 @@ def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ
         sat ((env.diaPush y h b).extend (.bnd d) (M.sideOf hV D (interp env t) b.1)) Φ
   | Γ, _, _, env, .optx _ y _ φ =>
       ∃ (X : VarType) (h : Γ.wit y = some X) (hd : (env.wit y X h).Dom),
-        sat (env.optPush y h ((env.wit y X h).get hd)) φ
+        sat (env.optPush y h hd) φ
 
 end Model
 

@@ -121,8 +121,7 @@ theorem compactnessC [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hX : CluFlags
   letI : e.denote.Presented := ⟨e, he.1, rfl⟩
   refine model_existenceC hF hX hNH e he fun Δ hΔ ⟨p⟩ => ?_
   obtain ⟨M, hM, w, env, hsat⟩ := hfin Δ hΔ
-  exact Model.soundness p M hM env (Ctx.Presented.tame _) (Ctx.Presented.noProjLast _)
-    (by env_opened) hsat
+  exact Model.soundness p M hM env (Ctx.Presented.tame _) (Ctx.Presented.noProjLast _) hsat
 
 end GArrow
 

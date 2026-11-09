@@ -15344,5 +15344,28 @@ The user chose option 2.  The `Opt`-type work of 12.15 is reverted (the flag, `o
   condition only has content where a witness's content address is declared beside it: in a
   `◇_x` view (`x` opened) or a `◇⁰_y` view (`y` opened), never in a root-only context or a `□`
   view.
+* **Done (2026-11-10): `opened` is an invariant field of `Frame.Env`**, so soundness, the
+  substitution lemma and instantiation need nothing of the environment: `Env.Opened`,
+  `Env.OpenedFor`, `opened_tac` and `env_opened` are gone, and the validity statements are as
+  before option 2.  What it took:
+  - `Frame.Env.opened` (default tactic `opened_triv`: no witness, a `□` view, or a context of
+    declarations, `ctxOf_wit`); `Frame.Env.ofVal` builds an environment from its objects (a
+    witness whose content is in view is present with it), used by the coercion and by the
+    canonical environments over arbitrary contexts (`canonEnv`, `cenvOf`).
+  - `Env.optPush` takes the witness's presence (`hd : (env.wit y X hy).Dom`), not an arbitrary
+    content: the content is the witness's.
+  - **`Subst.Coh.openedTo`**: an opened witness goes to an opened one (`∃ Z, Δ.wit z = some Z ∧
+    Δ (z.dia) = some Z`).  Needed, not a convenience: for a body entry `tm z b` nothing else says
+    the image's content is in view, and without it the induced environment could have the
+    content present and the witness absent, so the substitution lemma fails over opened
+    environments.  Every construction meets it (`dia`: the image is `ι x`, opened in
+    `Δ.diaIn (ι x)`; `optIn`; `under`, `set`, `toFree`, `single`, the identity, restriction,
+    `mono`; `box` vacuously).
+  - `substEnv` reads an opened witness off its content (so it is opened by construction);
+    `substEnv_wit` (in `SatSubst`, from `openedTo` and `Coh.opened`) says that under coherence
+    this is the entry's value, and `substEnv_wit_substWit` covers the other witnesses.
+  - `Env.wit_opened` (an opened witness is its content, present) and `Env.ext_val` (environments
+    are equal when their objects are, and their witnesses away from content in view) keep the
+    environment equations short.
 * Tactics: `slot_rfl` (a substitution's entry at the root it sets; extended by `macro_rules`
   where the lemmas live), `wit_refl`, `opened_tac`.

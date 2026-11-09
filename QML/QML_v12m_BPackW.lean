@@ -159,6 +159,7 @@ theorem coh_packRootsS (A : VarType) (l : List VarType) :
   refine Subst.coh_of (ok_packRootsS A l) ?_
     (fun _ y _ h => by rw [ctxOf_insert_wit] at h; cases h)
     (fun _ y _ _ h => by rw [ctxOf_insert_wit] at h; cases h)
+    (fun _ y _ _ h => by rw [ctxOf_insert_wit] at h; cases h)
   intro v T _ hv p
   rcases vis_slotCtx hv with ⟨rfl, rfl⟩ | ⟨r, rfl, hr, rfl⟩
   · change (VarSymb.step (.root (.bnd 0)) .fst).ext p =

@@ -58,7 +58,7 @@ theorem ok_set {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {r : Root} {T : Va
 theorem coh_set {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
     (hc : Coh ι Γ θ) {r : Root} {T : VarType} {e : SubE σ Δ} (hr : Γ.RootFresh r)
     (he : e.OkRef T) : Coh (setIdx ι r e) (Γ.insert r T) (θ.set r e) := by
-  refine coh_of (ok_set hθ he) ?_ ?_ ?_
+  refine coh_of (ok_set hθ he) ?_ ?_ ?_ ?_
   rotate_left
   · intro hO y X hy p
     change Γ.wit y = some X at hy
@@ -72,6 +72,11 @@ theorem coh_set {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : 
     rw [Ctx.insert_ne hne] at hyd
     rw [set_ne _ _ hne]
     exact hc.opened hO y X z hy hyd hz
+  · intro hO y X z hy hyd hz
+    change Γ.wit y = some X at hy
+    have hne : VarSymb.step y .dia ≠ .root r := fun he' => by cases he'
+    rw [Ctx.insert_ne hne] at hyd
+    exact hc.openedTo hO y X z hy hyd hz
   intro v U hlp hv p
   by_cases hvr : v = .root r
   · subst hvr

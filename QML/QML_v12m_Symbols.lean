@@ -381,6 +381,11 @@ end VarSymb
 
 /-! ## Contexts: declarations and freshness -/
 
+/-- An environment's respect for its opened witnesses where there is nothing to check
+    (`Frame.Env.opened`); the rules are added where the contexts are (`QML_v12m_Env`,
+    `ctxOf_wit`). -/
+syntax "opened_triv" : tactic
+
 /-- ⭐**A context**: the visible addresses with their types (`ty`), and — inside a view, with the
     box view of possible objects on (`ModalSys.Opt`, branch `wip/in-atom`, docs §12.16) — the
     **witnesses** (`wit`): `wit y = some X` says that the possible object `y : ◇X` of the context

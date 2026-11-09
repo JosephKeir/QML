@@ -56,7 +56,8 @@ theorem ok_mono {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) (h : Δ.Le Δ') :
 
 theorem coh_mono {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hc : Coh ι Γ θ)
     (h : Δ.Le Δ') : Coh ι Γ (θ.mono h) := by
-  refine ⟨fun v T hv p => ?_, fun hO y X hy p => ?_, fun hO y X z hy hyd hz => ?_⟩
+  refine ⟨fun v T hv p => ?_, fun hO y X hy p => ?_, fun hO y X z hy hyd hz => ?_,
+    fun hO y X z hy hyd hz => ?_⟩
   · rw [at_mono, SubE.idxAlong_mono]
     exact hc v T hv p
   · rw [show (θ.mono h).wit y = (θ.wit y).mono h from rfl, WitE.idxAlong_mono]
@@ -66,6 +67,9 @@ theorem coh_mono {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hc : 
     rw [show (θ.mono h) (.step y .dia) = (θ (.step y .dia)).mono h from rfl,
       ← WitE.optBody_mono, ← hc.opened hO y X z hy hyd hz]
     simp only [SubE.mono_mono]
+  · rw [show (θ.mono h).wit y = (θ.wit y).mono h from rfl, WitE.idxAlong_mono] at hz
+    obtain ⟨Z, hZ, hZd⟩ := hc.openedTo hO y X z hy hyd hz
+    exact ⟨Z, h.wit _ _ hZ, h.ty _ _ hZd⟩
 
 theorem sim_box_mono {Γ : Ctx} (θ : Subst σ Δ) (h : Δ.Le Δ') :
     Sim Γ.boxIn (θ.box.mono h.boxIn) ((θ.mono h).box) := by

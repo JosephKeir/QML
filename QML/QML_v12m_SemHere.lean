@@ -207,7 +207,7 @@ theorem interp_eta {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
 
 /-- The environment of the empty context. -/
 def Env.empty (w : M.frame.W) : M.Env Ctx.empty w :=
-  ⟨fun _ _ h => (nomatch h), fun _ _ h => (nomatch h)⟩
+  ⟨fun _ _ h => (nomatch h), fun _ _ h => (nomatch h), fun _ _ h => (nomatch h)⟩
 
 /-- A hole term's value at an object: a term closed apart from its hole, evaluated with the object
     in the hole. -/

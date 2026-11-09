@@ -164,6 +164,10 @@ theorem ctxOf_wit : ∀ (l : List VarType) (y : VarSymb), (ctxOf l).wit y = none
       rw [ctxOf_cons]
       exact ctxOf_wit l y
 
+/-- An environment over a context of declarations has no witness to respect. -/
+macro_rules
+  | `(tactic| opened_triv) => `(tactic| (intro _ _ h _; rw [BArrow.ctxOf_wit] at h; cases h))
+
 omit [ModalSys] in
 theorem ctxOf_fresh {l : List VarType} {n : ℕ} (h : l.length ≤ n) :
     (ctxOf l).RootFresh (.free n) := by

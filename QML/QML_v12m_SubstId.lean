@@ -63,8 +63,18 @@ theorem idS_opened {Γ : Ctx} : ModalSys.Opt = true → ∀ y X z, Γ.wit y = so
   subst hz'
   rfl
 
+/-- The identity's witnesses go to themselves, so an opened one to an opened one. -/
+theorem idS_openedTo {Γ : Ctx} (hle : Γ.Le Δ) : ModalSys.Opt = true → ∀ y X z, Γ.wit y = some X →
+    Γ (.step y .dia) = some X → ((idS σ Δ).wit y).idxAlong [] = z →
+    ∃ Z, Δ.wit z = some Z ∧ Δ (.step z .dia) = some Z := by
+  intro _ y X z hy hyd hz
+  have hz' : y = z := hz
+  subst hz'
+  exact ⟨X, hle.wit y X hy, hle.ty _ _ hyd⟩
+
 theorem coh_idS : Coh id Δ (idS σ Δ) :=
   coh_of ok_idS (fun _ _ _ _ _ => rfl) (fun _ _ _ _ _ => rfl) idS_opened
+    (idS_openedTo (Ctx.Le.refl Δ))
 
 theorem sim_box_idS : Sim Δ.boxIn (idS σ Δ).box (idS σ Δ.boxIn) := by
   refine sim_of ?_ fun _ y X _ => by
@@ -132,6 +142,7 @@ theorem ok_idS_le {Γ : Ctx} (hle : Γ.Le Δ) : Ok Γ (idS σ Δ) :=
 
 theorem coh_idS_le {Γ : Ctx} (hle : Γ.Le Δ) : Coh id Γ (idS σ Δ) :=
   coh_of (ok_idS_le hle) (fun _ _ _ _ _ => rfl) (fun _ _ _ _ _ => rfl) idS_opened
+    (idS_openedTo hle)
 
 theorem Sim.restrict {Γ Δ Δ' : Ctx} {θ θ' : Subst σ Δ'} (h : Sim Δ θ θ')
     (hle : Γ.Le Δ) : Sim Γ θ θ' :=

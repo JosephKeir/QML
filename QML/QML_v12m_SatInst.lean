@@ -28,10 +28,7 @@ variable {σ : Signature} {M : Model.{u, v} σ}
 def Env.restrict {Γ Γ' : Ctx} (h : Γ.Le Γ') {w : M.frame.W} (env : M.Env Γ' w) : M.Env Γ w where
   val v T hv := env v T (h v T hv)
   wit y X hy := env.wit y X (h.wit y X hy)
-
-theorem Env.opened_restrict {Γ Γ' : Ctx} (h : Γ.Le Γ') {w : M.frame.W} {env : M.Env Γ' w}
-    (hop : env.Opened) : (env.restrict h).Opened := fun z Z hz hv =>
-  hop z Z (h.wit z Z hz) (h _ _ hv)
+  opened z Z hz hv := env.opened z Z (h.wit z Z hz) (h _ _ hv)
 
 theorem Env.agree_restrict {Γ Γ' : Ctx} (h : Γ.Le Γ') {w : M.frame.W} (env : M.Env Γ' w) :
     Env.Agree h (env.restrict h) env :=
@@ -50,9 +47,10 @@ theorem substEnv_single_tm {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (hnp : 
     (r : Root) {T : VarType} {a : Ann T} (s : Term σ Γ T a) :
     substEnv (Subst.single r (.tm s)) (Subst.ok_single (Ctx.Le.refl Γ) rfl) (hnp.insert r T) env =
       env.extend r (interp env s) := by
-  refine Env.ext' (fun v U hv => ?_) (fun y X hy => ?_)
+  refine Env.ext_val (fun v U hv => ?_) (fun y X hy hn => ?_)
   swap
-  · exact substEnv_wit _ _ _ env hy (show (WitE.ren y : WitE σ Γ).OkW X from hy)
+  · rw [substEnv_wit_substWit _ _ _ _ hy hn]
+    exact substWit_of env (show (WitE.ren y : WitE σ Γ).OkW X from hy)
   by_cases hvr : v = .root r
   · subst hvr
     have hTU : T = U := by simpa [Ctx.insert] using hv
@@ -70,20 +68,18 @@ theorem substEnv_single_tm {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (hnp : 
 theorem sat_substRoot {Γ : Ctx} {d d' : ℕ} {w : M.frame.W} (env : M.Env Γ w)
     (hnp : Γ.NoProjLast) (r : Root) {T : VarType} (hr : Γ.RootFresh r) (hs : Γ.SlotsFrom d)
     (hs' : (Γ.insert r T).SlotsFrom d') {a : Ann T} (s : Term σ Γ T a)
-    (φ : WFF σ (Γ.insert r T) d')
-    (henv : ModalSys.Opt = true → Env.OpenedFor Γ env := by opened_tac) :
+    (φ : WFF σ (Γ.insert r T) d') :
     M.sat env (WFF.substRoot r hr hs hs' s φ) ↔ M.sat (env.extend r (interp env s)) φ :=
   (sat_subst (Subst.single r (.tm s)) (Subst.ok_single (Ctx.Le.refl Γ) rfl)
-    (Subst.coh_single hr (Ctx.Le.refl Γ) rfl) hs' hs (hnp.insert r T) env φ henv).trans
+    (Subst.coh_single hr (Ctx.Le.refl Γ) rfl) hs' hs (hnp.insert r T) env φ).trans
     (iff_of_eq (congrArg (fun e => M.sat e φ) (substEnv_single_tm env hnp r s)))
 
 /-- ⭐Instantiating the slot. -/
 theorem sat_instantiate {Γ : Ctx} {d : ℕ} {w : M.frame.W} (env : M.Env Γ w)
     (hnp : Γ.NoProjLast) (hs : Γ.SlotsFrom d) {T : VarType} {a : Ann T} (t : Term σ Γ T a)
-    (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1))
-    (henv : ModalSys.Opt = true → Env.OpenedFor Γ env := by opened_tac) :
+    (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) :
     M.sat env (WFF.instantiate hs t φ) ↔ M.sat (env.extend (.bnd d) (interp env t)) φ :=
-  sat_substRoot env hnp (.bnd d) (hs.rootFresh le_rfl) hs (hs.insert T) t φ henv
+  sat_substRoot env hnp (.bnd d) (hs.rootFresh le_rfl) hs (hs.insert T) t φ
 
 /-! ## Renaming a root -/
 
@@ -91,9 +87,10 @@ theorem substEnv_single_ren {Γ Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (hn
     {r : Root} {T : VarType} (hle : Γ.Le Δ) (x : VarSymb) (hx : Δ.ref x = some T) :
     substEnv (Subst.single (σ := σ) r (.ren x)) (Subst.ok_single hle hx) (hnp.insert r T) env =
       (env.restrict hle).extend r (env.ref x hx) := by
-  refine Env.ext' (fun v U hv => ?_) (fun y X hy => ?_)
+  refine Env.ext_val (fun v U hv => ?_) (fun y X hy hn => ?_)
   swap
-  · exact substEnv_wit _ _ _ env hy (show (WitE.ren y : WitE σ Δ).OkW X from hle.wit y X hy)
+  · rw [substEnv_wit_substWit _ _ _ _ hy hn]
+    exact substWit_of env (show (WitE.ren y : WitE σ Δ).OkW X from hle.wit y X hy)
   by_cases hvr : v = .root r
   · subst hvr
     have hTU : T = U := by simpa [Ctx.insert] using hv
@@ -112,24 +109,21 @@ theorem substEnv_single_ren {Γ Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (hn
 theorem sat_renameRoot {Γ Δ : Ctx} {d d' : ℕ} {w : M.frame.W} (env : M.Env Δ w)
     (hnp : Γ.NoProjLast) (r : Root) {T : VarType} (hr : Γ.RootFresh r) (hle : Γ.Le Δ)
     (x : VarSymb) (hx : Δ.ref x = some T) (hs : (Γ.insert r T).SlotsFrom d)
-    (hs' : Δ.SlotsFrom d') (φ : WFF σ (Γ.insert r T) d)
-    (henv : ModalSys.Opt = true → Env.OpenedFor Γ env := by opened_tac) :
+    (hs' : Δ.SlotsFrom d') (φ : WFF σ (Γ.insert r T) d) :
     M.sat env (WFF.renameRoot r hr hle x hx hs hs' φ) ↔
       M.sat ((env.restrict hle).extend r (env.ref x hx)) φ :=
   (sat_subst (Subst.single r (.ren x)) (Subst.ok_single hle hx) (Subst.coh_single hr hle hx) hs hs'
-    (hnp.insert r T) env φ henv).trans
+    (hnp.insert r T) env φ).trans
     (iff_of_eq (congrArg (fun e => M.sat e φ) (substEnv_single_ren env hnp hle x hx)))
 
 /-- ⭐Binding a free variable to the slot. -/
 theorem sat_bindFree {Γ : Ctx} {d : ℕ} {w : M.frame.W} (env : M.Env Γ w) (hnp : Γ.NoProjLast)
     (u : ℕ) (hu : Γ.RootFresh (.free u)) (hs : Γ.SlotsFrom d) (T : VarType)
-    (o : M.frame.Dom T w) (φ : WFF σ (Γ.insert (.free u) T) d)
-    (henv : ModalSys.Opt = true → Env.OpenedFor Γ env := by opened_tac) :
+    (o : M.frame.Dom T w) (φ : WFF σ (Γ.insert (.free u) T) d) :
     M.sat (env.extend (.bnd d) o) (WFF.bindFree u hu hs T φ) ↔
       M.sat (env.extend (.free u) o) φ := by
   refine (sat_renameRoot (env.extend (.bnd d) o) hnp (.free u) hu (Ctx.le_insert hs.root T)
-    (.root (.bnd d)) (Ctx.ref_insert_root Γ _ T) (hs.insertFree u T) (hs.insert T) φ
-    (fun hO => (henv hO).imp id (fun h => Env.opened_extend h _ o))).trans ?_
+    (.root (.bnd d)) (Ctx.ref_insert_root Γ _ T) (hs.insertFree u T) (hs.insert T) φ).trans ?_
   rw [Env.restrict_extend env hs.root o]
   exact iff_of_eq (congrArg (fun o' => M.sat (env.extend (.free u) o') φ)
     (Env.extend_root env (.bnd d) o (Ctx.ref_insert_root Γ _ T)))
@@ -145,17 +139,6 @@ theorem sat_weaken_restrict {Γ : Ctx} {d : ℕ} {w : M.frame.W} {r : Root}
     (hr : Γ (.root r) = none) {T : VarType} (env : M.Env (Γ.insert r T) w) (φ : WFF σ Γ d) :
     M.sat env (WFF.weaken hr T φ) ↔ M.sat (env.restrict (Ctx.le_insert hr T)) φ :=
   sat_mono (Env.agree_restrict _ env) φ fun _ _ _ _ => rfl
-
-/-- An environment respecting its opened witnesses, by the push or restriction that built it. -/
-macro "env_opened" : tactic => `(tactic| first
-  | assumption
-  | exact fun h => absurd h (by rw [show ModalSys.Opt = false by opt_off]; decide)
-  | exact fun _ => Model.Env.opened_boxPush _ _
-  | exact fun _ => Model.Env.opened_diaPush _ _ _
-  | exact fun hO => Model.Env.opened_extend (‹ModalSys.Opt = true → Model.Env.Opened _› hO) _ _
-  | exact fun hO => Model.Env.opened_restrict _ (‹ModalSys.Opt = true → Model.Env.Opened _› hO)
-  | exact fun hO => Model.Env.opened_extend
-      (Model.Env.opened_restrict _ (‹ModalSys.Opt = true → Model.Env.Opened _› hO)) _ _)
 
 end Model
 

@@ -179,7 +179,7 @@ theorem coh_toFree {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ
     (hc : Coh ι Γ θ) {d u : ℕ} (hΓ : Γ.SlotsFrom d) (T : VarType)
     (h : Δ (.root (.free u)) = none) :
     Coh (VarSymb.slotToFree ι d u) (Γ.insert (.bnd d) T) (θ.toFree d u T h) := by
-  refine coh_of (ok_toFree hθ T h) ?_ ?_ ?_
+  refine coh_of (ok_toFree hθ T h) ?_ ?_ ?_ ?_
   rotate_left
   · intro hO y X hy p
     have hrt : y.rt ≠ .bnd d := fun he => by
@@ -201,6 +201,14 @@ theorem coh_toFree {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ
       show (θ.toFree d u T h).wit y = (θ.wit y).mono (Ctx.le_insert h T) from rfl,
       ← WitE.optBody_mono, ← hc.opened hO y X z hy hyd hz]
     simp only [SubE.mono_mono]
+  · intro hO y X z hy hyd hz
+    change Γ.wit y = some X at hy
+    have hne : VarSymb.step y .dia ≠ .root (.bnd d) := fun he => by cases he
+    rw [Ctx.insert_ne hne] at hyd
+    change ((θ.wit y).mono (Ctx.le_insert h T)).idxAlong [] = z at hz
+    rw [WitE.idxAlong_mono] at hz
+    obtain ⟨Z, hZ, hZd⟩ := hc.openedTo hO y X z hy hyd hz
+    exact ⟨Z, hZ, (Ctx.le_insert h T).ty _ _ hZd⟩
   intro v U hlp hv p
   by_cases hvr : v = .root (.bnd d)
   · subst hvr
