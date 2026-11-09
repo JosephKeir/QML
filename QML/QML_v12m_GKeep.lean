@@ -27,7 +27,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-- An address declared at some stage of a world, at a type. -/
 def DeclAt (s : GW hF M₀) (v : VarSymb) (T : VarType) : Prop :=
@@ -393,6 +393,7 @@ theorem gLab_keep (t : GW hF M₀) {v : VarSymb} (hv : PPath v.path) (r : List S
 
 /-! ## η-annotations -/
 
+omit [ModalSys.NoOpt] in
 /-- Shifting an η-annotation is η-expanding the shifted address. -/
 theorem Ann.eta_shift : ∀ (T : VarType) (v : VarSymb) (k : ℕ),
     (Ann.eta v T).shift k = Ann.eta (v.shift k) T
@@ -412,6 +413,7 @@ theorem Ann.eta_shift : ∀ (T : VarType) (v : VarSymb) (k : ℕ),
       rw [Ann.eta_shift A, VarSymb.shift_level_succ (by decide)]
       rfl
 
+omit [ModalSys.NoOpt] in
 /-- What a type step that applies is. -/
 theorem typeStep_some {T U : VarType} {s : Step} (h : Step.typeStep T s = some U) :
     (∃ A B, T = .VTypeProd A B ∧ ((s = .fst ∧ U = A) ∨ (s = .snd ∧ U = B))) ∨
@@ -438,6 +440,7 @@ theorem typeStep_some {T U : VarType} {s : Step} (h : Step.typeStep T s = some U
   · exact .inr (.inr ⟨_, rfl, .inl ⟨rfl, (Option.some.inj h).symm⟩⟩)
   · exact .inr (.inr ⟨_, rfl, .inr ⟨rfl, (Option.some.inj h).symm⟩⟩)
 
+omit [ModalSys.NoOpt] in
 /-- ⭐**An η-annotation names the address's own positions**: along a path typed in its type, it
     reaches the address extended by the path — a `keep` keeps the address, a `here` reads it. -/
 theorem Ann.idxAt_eta : ∀ (q : List Step) (w : VarSymb) (T X : VarType),
@@ -517,6 +520,7 @@ def itemsAnnF : (L : List (VarSymb × VarType)) → (VarSymb → VarSymb) → An
   | e :: L, f => .prod (Ann.eta (f e.1) e.2) (itemsAnnF L f)
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [ModalSys.NoOpt] in
 theorem itemsTm_ann {Γ : Ctx} :
     ∀ (L : List (VarSymb × VarType)) (h : ∀ e ∈ L, Γ.ref e.1 = some e.2),
     (itemsTm (σ := σ) L h).1 = itemsAnnF L id
@@ -526,6 +530,7 @@ theorem itemsTm_ann {Γ : Ctx} :
       rw [itemsTm_ann L]
       rfl
 
+omit [ModalSys.NoOpt] in
 theorem itemsAnnF_shift : ∀ (L : List (VarSymb × VarType)) (f : VarSymb → VarSymb) (k : ℕ),
     (itemsAnnF L f).shift k = itemsAnnF L fun v => (f v).shift k
   | [], _, _ => rfl
@@ -534,6 +539,7 @@ theorem itemsAnnF_shift : ∀ (L : List (VarSymb × VarType)) (f : VarSymb → V
       rw [Ann.eta_shift, itemsAnnF_shift L]
       rfl
 
+omit [ModalSys.NoOpt] in
 /-- A typed path into a tuple of items enters one item. -/
 theorem items_walk : ∀ (L : List (VarSymb × VarType)) (q : List Step) (X : VarType),
     Step.walkTy (itemsTy L) q = some (.VTypeDia X) →
@@ -555,6 +561,7 @@ theorem items_walk : ∀ (L : List (VarSymb × VarType)) (q : List Step) (X : Va
       · cases he
       · cases he
 
+omit [ModalSys.NoOpt] in
 theorem items_idxAt : ∀ (L : List (VarSymb × VarType)) (f : VarSymb → VarSymb) (k : ℕ)
     (hk : k < L.length) (r : List Step),
     (itemsAnnF L f).idxAt (itemPath k ++ r) = (Ann.eta (f L[k].1) L[k].2).idxAt r
@@ -573,6 +580,7 @@ def BTann (f : VarSymb → VarSymb) (L : List (VarSymb × VarType)) :
     Ann (.VTypeBox (itemsTy L)) :=
   .box (itemsAnnF L f)
 
+omit [ModalSys.NoOpt] in
 theorem vt_keep (z : VarSymb) (f : VarSymb → VarSymb) (L : List (VarSymb × VarType))
     (Z : VarType) (q : List Step) :
     (VTann z f L Z).idxAt (.keep :: q) =
@@ -582,12 +590,14 @@ theorem vt_keep (z : VarSymb) (f : VarSymb → VarSymb) (L : List (VarSymb × Va
   rw [Ann.eta_shift, itemsAnnF_shift, VarSymb.shift_level_zero (by decide)]
   rfl
 
+omit [ModalSys.NoOpt] in
 theorem bt_keep (f : VarSymb → VarSymb) (L : List (VarSymb × VarType)) (q : List Step) :
     (BTann f L).idxAt (.keep :: q) = (BTann (fun v => (f v).shift 0) L).idxAt q := by
   change (Ann.box ((itemsAnnF L f).shift 0)).idxAt q = _
   rw [itemsAnnF_shift]
   rfl
 
+omit [ModalSys.NoOpt] in
 theorem vt_keeps (z : VarSymb) (f : VarSymb → VarSymb) (L : List (VarSymb × VarType))
     (Z : VarType) : ∀ (n : ℕ) (q : List Step),
     (VTann z f L Z).idxAt (List.replicate n .keep ++ q) =
@@ -598,6 +608,7 @@ theorem vt_keeps (z : VarSymb) (f : VarSymb → VarSymb) (L : List (VarSymb × V
       rw [vt_keep]
       exact vt_keeps (.step z .keep) (fun v => (f v).shift 0) L Z n q
 
+omit [ModalSys.NoOpt] in
 theorem bt_keeps (f : VarSymb → VarSymb) (L : List (VarSymb × VarType)) :
     ∀ (n : ℕ) (q : List Step),
     (BTann f L).idxAt (List.replicate n .keep ++ q) =
@@ -608,6 +619,7 @@ theorem bt_keeps (f : VarSymb → VarSymb) (L : List (VarSymb × VarType)) :
       rw [bt_keep]
       exact bt_keeps (fun v => (f v).shift 0) L n q
 
+omit [ModalSys.NoOpt] in
 /-- ⭐**Where a view tuple's annotation leads**, along a typed path not starting with a `keep`:
     to the witness, into its content, or into an item. -/
 theorem vt_base (L : List (VarSymb × VarType)) (Z : VarType) (q : List Step) (X : VarType)
@@ -645,6 +657,7 @@ theorem vt_base (L : List (VarSymb × VarType)) (Z : VarType) (q : List Step) (X
             · cases he'
       · exact absurd rfl hq0
 
+omit [ModalSys.NoOpt] in
 /-- ⭐**Where a `□` view tuple's annotation leads**, along a typed path not starting with a
     `keep` (T + 4): after a `here`, into an item read at the world. -/
 theorem bt_base (hk : ModalSys.keepOnly = true) (L : List (VarSymb × VarType)) (q : List Step)
@@ -674,12 +687,14 @@ theorem bt_base (hk : ModalSys.keepOnly = true) (L : List (VarSymb × VarType)) 
 
 /-! ## Every edge translates kept addresses faithfully -/
 
+omit [ModalSys.NoOpt] in
 theorem walkTy_keep {U : VarType} (hU : U.keepable = true) (q : List Step) :
     Step.walkTy U (.keep :: q) = Step.walkTy U q := by
   change (if U.keepable = true then some U else none).bind _ = _
   rw [if_pos hU]
   rfl
 
+omit [ModalSys.NoOpt] in
 theorem walkTy_keeps {U : VarType} (hU : U.keepable = true) :
     ∀ (n : ℕ) (q : List Step), Step.walkTy U (List.replicate n .keep ++ q) = Step.walkTy U q
   | 0, _ => rfl
@@ -742,6 +757,7 @@ theorem noProjHead_rep (m : ℕ) : NoProjHead (List.replicate m .keep) := by
   have := noProjHead_keeps m (r := []) (fun _ h => by cases h)
   rwa [List.append_nil] at this
 
+omit [ModalSys.NoOpt] in
 /-- Under T + 4 a view's items are its kept items. -/
 theorem boxItems_kept (hk : ModalSys.keepOnly = true) (l : List VarType) :
     ∀ e ∈ boxItems l, ∃ w, e.1 = .step w .keep ∧ (ctxOf l).ref w = some e.2 ∧
@@ -894,18 +910,21 @@ theorem keptTr_ok (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (t : GW h
 
 /-! ## The translation's form: a middle piece rewritten -/
 
+omit [ModalSys.NoOpt] in
 /-- Walking into an item. -/
 theorem items_walk_eq : ∀ (L : List (VarSymb × VarType)) (k : ℕ) (hk : k < L.length)
     (r : List Step), Step.walkTy (itemsTy L) (itemPath k ++ r) = Step.walkTy L[k].2 r
   | _ :: _, 0, _, _ => rfl
   | _ :: L, k + 1, hk, r => items_walk_eq L k (by simpa using hk) r
 
+omit [ModalSys.NoOpt] in
 theorem vt_content (L : List (VarSymb × VarType)) (Z : VarType) (z : VarSymb)
     (f : VarSymb → VarSymb) (r : List Step) {X : VarType}
     (hr : Step.walkTy Z r = some (.VTypeDia X)) :
     (VTann z f L Z).idxAt (.dia :: .fst :: r) = (VarSymb.step z .dia).ext r :=
   Ann.idxAt_eta r _ _ X hr
 
+omit [ModalSys.NoOpt] in
 theorem vt_item (L : List (VarSymb × VarType)) (Z : VarType) (z : VarSymb)
     (f : VarSymb → VarSymb) (k : ℕ) (hk : k < L.length) (r : List Step) {X : VarType}
     (hr : Step.walkTy L[k].2 r = some (.VTypeDia X)) :
@@ -914,6 +933,7 @@ theorem vt_item (L : List (VarSymb × VarType)) (Z : VarType) (z : VarSymb)
   rw [items_idxAt]
   exact Ann.idxAt_eta r _ _ X hr
 
+omit [ModalSys.NoOpt] in
 theorem bt_item (L : List (VarSymb × VarType)) (f : VarSymb → VarSymb) (k : ℕ)
     (hk : k < L.length) (r : List Step) {X : VarType}
     (hr : Step.walkTy L[k].2 r = some (.VTypeDia X)) :
@@ -930,6 +950,7 @@ def ShapeOK (X X' : List Step) : Prop :=
   (PPath X ∧ PPath X') ∨
     ∃ Xp s' X'p, X = .dia :: Xp ∧ PPath Xp ∧ X' = s' :: X'p ∧ s'.isProj = false ∧ PPath X'p
 
+omit [ModalSys.NoOpt] in
 theorem walkTy_here (hT : ModalSys.T = true) (A : VarType) (p : List Step) :
     Step.walkTy (.VTypeBox A) (.here :: p) = Step.walkTy A p := by
   change ((VarType.VTypeBox A).step .here).bind _ = _
@@ -1499,6 +1520,7 @@ theorem gKA_gMem (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) :
       | cons c' P =>
           exact gKA_gMem hT hM₀ (c' :: P) h (List.cons_ne_nil _ _) hk' (hnp' hnp) b
 
+omit [ModalSys.NoOpt] in
 /-- A possible object's positions do not start with a projection. -/
 theorem noProjHead_of_dia {A X : VarType} {p : List Step}
     (h : Step.walkTy (.VTypeDia A) p = some (.VTypeDia X)) : NoProjHead p := by
@@ -1642,6 +1664,7 @@ theorem form_del {n i : ℕ} {X X' R : List Step} (hsh : ShapeOK X X')
         subst h
         cases hi
 
+omit [ModalSys.NoOpt] in
 /-- A path typed from a type walks on projections as the type does. -/
 theorem walkTy_ppath : ∀ (T : VarType) {q : List Step}, PPath q → Step.walkTy T q = T.walk q
   | _, [], _ => rfl
@@ -1838,6 +1861,7 @@ theorem lvlStep_lt : ∀ (i : ℕ) (q : List Step) {s : Step}, lvlStep i q = som
             have := lvlStep_lt i q h
             omega
 
+omit [ModalSys.NoOpt] in
 /-- Deleting a `keep` keeps a walk. -/
 theorem walkTy_delLvl : ∀ (i : ℕ) (q : List Step) (T Y : VarType), lvlStep i q = some .keep →
     Step.walkTy T q = some Y → Step.walkTy T (delLvl i q) = some Y
@@ -2110,6 +2134,7 @@ theorem boxOK_lvl : ∀ (p : List Step) (lw : List Bool) (i : ℕ), Step.BoxOK l
             rw [lvlStep_lvl_succ hs']
             exact boxOK_lvl p lw.tail i h.2 (by cases lw <;> simp_all)
 
+omit [ModalSys.NoOpt] in
 /-- Under T + 4 a typed path has no `box` step. -/
 theorem walkTy_no_box (hko : ModalSys.keepOnly = true) : ∀ (p : List Step) (T U : VarType),
     Step.walkTy T p = some U → Step.box ∉ p
@@ -2258,6 +2283,7 @@ theorem gKeep_shiftAt (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : 
       · rw [if_neg (mt (typedAt_shift_iff _).mp ht), if_neg ht]
         rfl
 
+omit [ModalSys.NoOpt] in
 /-- At a `□` level of a well-formed position, a root path's level step is a `keep` (T + 4). -/
 theorem lvlStep_keep_of_wf (hko : ModalSys.keepOnly = true) {lw : List Bool} {p : List Step}
     (hl : Step.levels p = lw.length) (hb : Step.BoxOK lw p) (hty : Step.Typable p) {i : ℕ}

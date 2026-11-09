@@ -29,7 +29,8 @@ section LiftRead
 variable {σ : Signature} {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] {A : VarType}
 
 /-- A substitution that is the identity on a view, into an instantiation weakened from the view. -/
-theorem WFF.subst_instantiate_ren {ι : VarSymb → VarSymb} {V V₁ V' : Ctx} [V.NoSlots]
+theorem WFF.subst_instantiate_ren [ModalSys.NoOpt]
+    {ι : VarSymb → VarSymb} {V V₁ V' : Ctx} [V.NoSlots]
     (hl : V.Le V₁) (hV : V.Le V') (θ : Subst σ V') (hθ : Subst.Ok V₁ θ) (hc : Subst.Coh ι V₁ θ)
     (hs : V₁.SlotsFrom 0) (hs' : V'.SlotsFrom 0)
     (hid : ∀ v U, V.ref v = some U → θ.at v = .ren v) {T : VarType} {u₀ : Ann T}
@@ -44,7 +45,8 @@ theorem WFF.subst_instantiate_ren {ι : VarSymb → VarSymb} {V V₁ V' : Ctx} [
   exact WFF.instantiate_congr_sig _ hu _
 
 /-- ⭐What `Proof.ret_lift` says, of a term in place of its fresh variable. -/
-theorem WFF.subst_lifted (h : Γ.Le Γ') (hS : ModalSys.BStrong = true) (hF : ModalSys.Four = true)
+theorem WFF.subst_lifted [ModalSys.NoOpt]
+    (h : Γ.Le Γ') (hS : ModalSys.BStrong = true) (hF : ModalSys.Four = true)
     (O : OutLeg Γ) {a₁ : Ann A} (t : Term σ Γ A a₁)
     (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1) (c : ℕ) (hc : Γ.RootFresh (.free c))
     {b₀ : Ann A} (b : Term σ Γ'.boxIn A b₀) :
@@ -110,7 +112,8 @@ end LiftRead
 
 /-- ⭐⭐**A returning possibility in a world's theory, at a term** (T + 4, strong B):
     `Proof.retN_lift` at a fresh variable, as an `∃`, witnessed (`exW_term`). -/
-theorem BArrow.BWorld.ret_term {σ : Signature} (w : BWorld σ) (hS : ModalSys.BStrong = true)
+theorem BArrow.BWorld.ret_term [ModalSys.NoOpt]
+    {σ : Signature} (w : BWorld σ) (hS : ModalSys.BStrong = true)
     (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {i : ℕ} (O : OutLeg (w.ctx i))
     {A : VarType} {cs : List (List Step)} (h : A.CompOk cs) {a : Ann (A.compsFlat cs)}
     (t : Term σ (w.ctx i) (A.compsFlat cs) a)
@@ -208,7 +211,7 @@ end Model
 namespace GArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 variable (hM₀ : Theory.IsMCS M₀)
 
@@ -360,7 +363,7 @@ noncomputable def farUpNec (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M
       (cpathOk hT a.2.down) c hJI
     exact ⟨L', hL, hK, (sig_mono _ (preC_app hM₀ hX s I a _ _)).trans e⟩
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- An arrow of a witness's extent is one at a later context. -/
 theorem mem_ext_lift {M : Model σ} {Γ Γ' : Ctx} (h : Γ.Le Γ') {w : M.frame.W}
     {env : M.Env Γ w} {env' : M.Env Γ' w} (hag : Model.Env.Agree h env env') {y : VarSymb}

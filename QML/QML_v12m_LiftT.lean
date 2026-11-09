@@ -149,6 +149,8 @@ theorem WFF.collapse_shift_self : ∀ {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx} {d : �
             ((hc.diaIn _).insert ((hs₂.diaIn _).rootFresh le_rfl) _) hle'
             ((hs₁.diaIn y).insert _) ((hs₂.diaIn _).insert _) Φ)
       exact key y (VarSymb.collapse_shift_self y m).symm _ _
+  | _, _, _, _, _, hs, _, _, _, _, .optx hO _ _ _ =>
+      False.elim (by have := ModalSys.noOpt_of_Four hs.hF; rw [hO] at this; cases this)
 
 theorem Rel.shift_shift_same {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx}
     (h₁₂ : Ctx.Shifts m Γ₁ Γ₂) (h₂₃ : Ctx.Shifts m Γ₂ Γ₃) (h₂₃' : Ctx.Shifts (m + 1) Γ₂ Γ₃) :
@@ -256,6 +258,8 @@ theorem WFF.shift_shift_same : ∀ {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx} {d : ℕ}
             ((h₂₃.diaIn _).insert ((hs₂.diaIn _).rootFresh le_rfl) _) h'
             ((hs₁.diaIn y).insert _) ((hs₂.diaIn _).insert _) Φ)
       exact key _ (VarSymb.shift_shift_same y m).symm _ _
+  | _, _, _, _, _, h₁₂, _, _, _, _, .optx hO _ _ _ =>
+      False.elim (by have := ModalSys.noOpt_of_Four h₁₂.hF; rw [hO] at this; cases this)
 
 end Forms
 
@@ -297,8 +301,8 @@ theorem corr_keepOf (hT : ModalSys.T = true) (hF : ModalSys.Four = true)
   · subst hvr
     have hU : T = U := by simpa [Ctx.insert] using hv
     subst hU
-    change SubE.Sim T (Subst.at _ (.root (.bnd 0))) (SubE.collapse _ (if _ then _ else _))
-    rw [if_pos rfl, Subst.at_single_root]
+    change SubE.Sim _ (Subst.at _ (.root (.bnd 0))) _
+    rw [Subst.single_self, Subst.at_single_root]
     exact SubE.Sim.of_sig (Term.collapse_keepOf hT hF hk ht _ _).symm T
   · have hv' : Ξ.boxIn v = some U := by
       have := hv
@@ -379,8 +383,8 @@ theorem WFF.shift_loopHat (hF : ModalSys.Four = true) (hk : T.keepable = true)
     · subst hvr
       have hU : T = U := by simpa [Ctx.insert] using hv
       subst hU
-      change SubE.Sim T (Subst.at _ (.root (.bnd 0))) (SubE.shift _ (if _ then _ else _))
-      rw [if_pos rfl, Subst.at_single_root]
+      change SubE.Sim _ (Subst.at _ (.root (.bnd 0))) _
+      rw [Subst.single_self, Subst.at_single_root]
       exact SubE.Sim.of_sig (Term.shift_keepOf_root hF hk ht _ _ _ _).symm T
     · have hv' : Γ.boxIn.boxIn v = some U := by
         have := hv
@@ -578,7 +582,7 @@ theorem WFF.readAt_congr {Λ Ω : Ctx} [Λ.NoSlots] {P : VarType} {d : ℕ} (hle
   rfl
 
 /-- ⭐A substitution fixing the body's old items moves only the term it is read at. -/
-theorem WFF.subst_readAt {Λ Ω Ω₂ : Ctx} [Λ.NoSlots] {P : VarType} {d d₂ : ℕ}
+theorem WFF.subst_readAt [ModalSys.NoOpt] {Λ Ω Ω₂ : Ctx} [Λ.NoSlots] {P : VarType} {d d₂ : ℕ}
     {ι : VarSymb → VarSymb} (hle : Λ.Le Ω) (hle₂ : Λ.Le Ω₂) (hs : Ω.SlotsFrom d)
     (hs₂ : Ω₂.SlotsFrom d₂) {a : Ann P} (u : Term σ Ω P a) (B : WFF σ (Λ.insert (.bnd 0) P) 1)
     (θ : Subst σ Ω₂) (hθ : Subst.Ok Ω θ) (hc : Subst.Coh ι Ω θ)
@@ -588,15 +592,13 @@ theorem WFF.subst_readAt {Λ Ω Ω₂ : Ctx} [Λ.NoSlots] {P : VarType} {d d₂ 
   have hr := (Ctx.NoSlots.slots (Γ := Λ)).rootFresh (le_refl 0)
   refine WFF.subst_comp _ _ (Subst.single (.bnd 0) (.tm (Term.subst ι θ hθ hc u))) _ _ _ _
     (Subst.ok_single hle₂ rfl) (Subst.coh_single hr hle₂ rfl) _ _ _ ?_ B
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v U hl hv
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     have hU : P = U := by simpa [Ctx.insert] using hv
     subst hU
-    change SubE.Sim P (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _)
-      (SubE.comp _ _ _ (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _))
-    rw [if_pos rfl, if_pos rfl]
+    rw [Subst.comp_apply, Subst.single_self, Subst.single_self]
     exact .refl _
   · have hv' : Λ v = some U := by
       have := hv
@@ -628,8 +630,8 @@ theorem WFF.shift_readAt {Λ Λ' Ω Ω' : Ctx} [Λ.NoSlots] [Λ'.NoSlots] {P : V
   · subst hvr
     have hU : P = U := by simpa [Ctx.insert] using hv
     subst hU
-    change SubE.Sim P (Subst.at _ (.root (.bnd 0))) (SubE.shift _ (if _ then _ else _))
-    rw [if_pos rfl, Subst.at_single_root]
+    change SubE.Sim _ (Subst.at _ (.root (.bnd 0))) _
+    rw [Subst.single_self, Subst.at_single_root]
     exact .refl _
   · have hv' : Λ v = some U := by
       have := hv
@@ -659,8 +661,8 @@ theorem WFF.collapse_readAt {Λ Λ' Ω Ω' : Ctx} [Λ.NoSlots] [Λ'.NoSlots] {P 
   · subst hvr
     have hU : P = U := by simpa [Ctx.insert] using hv
     subst hU
-    change SubE.Sim P (Subst.at _ (.root (.bnd 0))) (SubE.collapse _ (if _ then _ else _))
-    rw [if_pos rfl, Subst.at_single_root]
+    change SubE.Sim _ (Subst.at _ (.root (.bnd 0))) _
+    rw [Subst.single_self, Subst.at_single_root]
     exact .refl _
   · have hv' : Λ v = some U := by
       have := hv
@@ -726,7 +728,7 @@ abbrev Term.bdK (hF : ModalSys.Four = true) (hx : Γ.ref x = some (.VTypeDia X))
     (Term.eta (.step x .dia) X (Ctx.ref_diaIn_of hx))
 
 /-- The abstraction of a body along `◇_x`, one view in. -/
-def WFF.liftS (hF : ModalSys.Four = true) (hx : Γ.ref x = some (.VTypeDia X))
+def WFF.liftS [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hx : Γ.ref x = some (.VTypeDia X))
     (φ : WFF σ ((Γ.diaIn x).insert (.bnd 0) T) 1) :
     WFF σ (Γ.boxIn.boxIn.insert (.bnd 0) (.VTypeProd X T)) 1 :=
   WFF.shift (Ctx.shifts_loop hF Γ (.VTypeProd X T))
@@ -746,20 +748,18 @@ theorem WFF.viewBody_readAt {A : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd X 
   dsimp only [OutLeg.lift]
   rw [WFF.subst_mono]
   refine WFF.subst_congr _ _ _ _ _ _ _ _ ?_ A
-  refine Subst.sim_of fun v U hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : VarType.VTypeProd X T = U := by simpa [Ctx.insert] using hv
-    rw [Subst.set_root]
-    change SubE.Sim _ _ (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _)
-    rw [if_pos rfl]
+    rw [Subst.set_root, Subst.single_self]
     exact .refl _
   · change SubE.Sim U (if v = _ then _ else SubE.ren v) (if v = _ then _ else SubE.ren v)
     rw [if_neg hvr]
     exact .refl _
 
 /-- ⭐A body along `◇_x` read at a term is its abstraction read at the content and the term. -/
-theorem WFF.read_body (hx : Γ.ref x = some (.VTypeDia X))
+theorem WFF.read_body [ModalSys.NoOpt] (hx : Γ.ref x = some (.VTypeDia X))
     (φ : WFF σ ((Γ.diaIn x).insert (.bnd 0) T) 1) {Ω : Ctx} [Ω.NoSlots] (h : (Γ.diaIn x).Le Ω)
     {a : Ann T} (t : Term σ Ω T a) :
     WFF.instantiate Ctx.NoSlots.slots t (WFF.mono (h.insert (.bnd 0) T) φ) =
@@ -794,7 +794,7 @@ theorem WFF.read_body (hx : Γ.ref x = some (.VTypeDia X))
 
 /-- ⭐The body the `□` lift runs on: `◇_{x.keep}`, at `x.keep`'s content and the slot kept, of the
     body's abstraction one view in.  At a world of `x`'s extent it says the body holds there. -/
-def WFF.liftPos (hF : ModalSys.Four = true) (hk : T.keepable = true)
+def WFF.liftPos [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hk : T.keepable = true)
     (hx : Γ.ref x = some (.VTypeDia X)) (φ : WFF σ ((Γ.diaIn x).insert (.bnd 0) T) 1) :
     WFF σ (Γ.boxIn.insert (.bnd 0) T) 1 :=
   have hV : Γ.boxIn.Le (Γ.boxIn.insert (.bnd 0) T) :=
@@ -809,7 +809,7 @@ def WFF.liftPos (hF : ModalSys.Four = true) (hk : T.keepable = true)
       (WFF.liftS hF hx φ))
 
 /-- ⭐`liftPos` read at an address: `◇_{x.keep}` at the content and the address kept. -/
-theorem WFF.read_liftPos (hF : ModalSys.Four = true) (hk : T.keepable = true)
+theorem WFF.read_liftPos [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hk : T.keepable = true)
     (hx : Γ.ref x = some (.VTypeDia X)) (φ : WFF σ ((Γ.diaIn x).insert (.bnd 0) T) 1) {Ω : Ctx}
     [Ω.NoSlots] (h : Γ.boxIn.Le Ω) (w : VarSymb) (hw : Ω.ref w = some T) :
     WFF.instantiate Ctx.NoSlots.slots (Term.eta w T hw)
@@ -888,7 +888,7 @@ abbrev posK (Γ : Ctx) (x : VarSymb) (T : VarType) (c : ℕ) : Ctx :=
 
 /-- The hole formula `Proof.here_intro` is applied to: the abstraction one view in, at the hole and
     `c` kept. -/
-def WFF.liftψ (hF : ModalSys.Four = true) (hk : T.keepable = true)
+def WFF.liftψ [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hk : T.keepable = true)
     (hx : Γ.ref x = some (.VTypeDia X)) (φ : WFF σ ((Γ.diaIn x).insert (.bnd 0) T) 1) {c : ℕ}
     (hc : (Γ.diaIn x).RootFresh (.free c)) :
     WFF σ ((posK Γ x T c).boxIn.insert (.bnd 0) X) 1 :=
@@ -903,7 +903,7 @@ def WFF.liftψ (hF : ModalSys.Four = true) (hk : T.keepable = true)
     (WFF.liftS hF hx φ)
 
 /-- ⭐The hole formula read here, at `x`'s content, is the body at `c`. -/
-theorem WFF.hereRead_liftψ (hT : ModalSys.T = true) (hF : ModalSys.Four = true)
+theorem WFF.hereRead_liftψ [ModalSys.NoOpt] (hT : ModalSys.T = true) (hF : ModalSys.Four = true)
     (hk : T.keepable = true) (hx : Γ.ref x = some (.VTypeDia X))
     (φ : WFF σ ((Γ.diaIn x).insert (.bnd 0) T) 1) {c : ℕ}
     (hc : (Γ.diaIn x).RootFresh (.free c)) :
@@ -963,7 +963,7 @@ theorem WFF.hereRead_liftψ (hT : ModalSys.T = true) (hF : ModalSys.Four = true)
     exact congrArg (Sigma.mk _) (Term.mono_refl _ _)
 
 /-- ⭐The hole formula read along `x.keep`, at its content, is `liftPos` at `c`. -/
-theorem WFF.viewRead_liftψ (hF : ModalSys.Four = true) (hk : T.keepable = true)
+theorem WFF.viewRead_liftψ [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hk : T.keepable = true)
     (hx : Γ.ref x = some (.VTypeDia X)) (φ : WFF σ ((Γ.diaIn x).insert (.bnd 0) T) 1) {c : ℕ}
     (hc : (Γ.diaIn x).RootFresh (.free c)) :
     WFF.viewReadTm (x := .step x .keep)
@@ -998,7 +998,8 @@ theorem WFF.viewRead_liftψ (hF : ModalSys.Four = true) (hk : T.keepable = true)
 
 /-- ⭐**At a world of `x`'s extent, the body at `c` is `liftPos` at `c`**: `x` kept is realised
     there at its content (`here_keep`), so `Proof.here_intro` applies. -/
-def Proof.far_pos (hT : ModalSys.T = true) (hF : ModalSys.Four = true) (hk : T.keepable = true)
+def Proof.far_pos [ModalSys.NoOpt]
+    (hT : ModalSys.T = true) (hF : ModalSys.Four = true) (hk : T.keepable = true)
     (hx : Γ.ref x = some (.VTypeDia X)) (φ : WFF σ ((Γ.diaIn x).insert (.bnd 0) T) 1) {c : ℕ}
     (hc : (Γ.diaIn x).RootFresh (.free c)) :
     Proof σ (posK Γ x T c)
@@ -1072,7 +1073,8 @@ abbrev WFF.hereK (hT : ModalSys.T = true) (hF : ModalSys.Four = true)
     (Term.eta (.step x .dia) X (Ctx.ref_diaIn_of hx))
 
 /-- ⭐In `x`'s view, the body's `∃` gives `liftPos`'s, a formula of the `□` view. -/
-def Proof.pos_view (hT : ModalSys.T = true) (hF : ModalSys.Four = true) (hk : T.keepable = true)
+def Proof.pos_view [ModalSys.NoOpt]
+    (hT : ModalSys.T = true) (hF : ModalSys.Four = true) (hk : T.keepable = true)
     (hx : Γ.ref x = some (.VTypeDia X)) (φ : WFF σ ((Γ.diaIn x).insert (.bnd 0) T) 1) {c : ℕ}
     (hc : (Γ.diaIn x).RootFresh (.free c)) :
     Proof σ (Γ.diaIn x) [WFF.ex T φ, WFF.hereK hT hF hx]
@@ -1109,7 +1111,8 @@ def Proof.pos_view (hT : ModalSys.T = true) (hF : ModalSys.Four = true) (hk : T.
       (List.mem_cons_of_mem _ List.mem_cons_self))
 
 /-- ⭐The plain possibility `liftPos` needs, from `◇_x`. -/
-def Proof.pos_nec (hT : ModalSys.T = true) (hF : ModalSys.Four = true) (hk : T.keepable = true)
+def Proof.pos_nec [ModalSys.NoOpt]
+    (hT : ModalSys.T = true) (hF : ModalSys.Four = true) (hk : T.keepable = true)
     (hx : Γ.ref x = some (.VTypeDia X)) (hx' : ∃ X', Γ.ref x = some (.VTypeDia X'))
     (φ : WFF σ ((Γ.diaIn x).insert (.bnd 0) T) 1) {c : ℕ} (hc : Γ.RootFresh (.free c))
     {Δ : List (WFF σ Γ 0)} (p : Proof σ Γ Δ (.dia x hx' (WFF.ex T φ))) :
@@ -1131,7 +1134,7 @@ theorem VarType.tup_of_keepable [ModalSys] {T : VarType} (hk : T.keepable = true
   cases T <;> first | rfl | cases hk
 
 /-- ⭐The body at a kept object, shifted, is `liftPos`'s reading at it. -/
-theorem WFF.shift_read_body (hF : ModalSys.Four = true) (hk : T.keepable = true)
+theorem WFF.shift_read_body [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hk : T.keepable = true)
     (hx : Γ.ref x = some (.VTypeDia X)) (φ : WFF σ ((Γ.diaIn x).insert (.bnd 0) T) 1) {c : ℕ}
     (hc : Γ.RootFresh (.free c))
     (hw : ((Γ.insert (.free c) T).diaIn x).ref (.step (.root (.free c)) .keep) = some T)
@@ -1161,7 +1164,7 @@ theorem WFF.shift_read_body (hF : ModalSys.Four = true) (hk : T.keepable = true)
 
 /-- ⭐⭐**`keep_lift` along `◇_x` is derivable under T, 4 and 5**: `liftPos` carries the body through
     the lift along `□`, and `four_dia` brings it back into `x`'s extent. -/
-def Proof.keep_lift_posT (hT : ModalSys.T = true) (hF : ModalSys.Four = true)
+def Proof.keep_lift_posT [ModalSys.NoOpt] (hT : ModalSys.T = true) (hF : ModalSys.Four = true)
     (hV : ModalSys.Five = true) (hl : T.liftable = true)
     (hx : Γ.ref x = some (.VTypeDia X)) (hx' : ∃ X', Γ.ref x = some (.VTypeDia X'))
     {Δ : List (WFF σ Γ 0)} (φ : WFF σ ((Γ.diaIn x).insert (.bnd 0) T) 1) (c : ℕ)

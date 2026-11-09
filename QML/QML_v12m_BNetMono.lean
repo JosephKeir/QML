@@ -221,6 +221,7 @@ theorem Ext.henk [ModalSys.FourOff] {N : NetSt σ} (hN : N.Good) {s : Node} (hs 
     | .imp (.retxS _ _ _ _ _ _) _ => exact Ext.refl N
     | .imp (.link _ _ _ _) _ => exact Ext.refl N
     | .imp (.linkx _ _ _ _ _ _) _ => exact Ext.refl N
+    | .imp (.optx _ _ _ _) _ => exact Ext.refl N
     | .imp (.all _ _) (.atom _) => exact Ext.refl N
     | .imp (.all _ _) (.eq _ _) => exact Ext.refl N
     | .imp (.all _ _) .top => exact Ext.refl N
@@ -237,6 +238,7 @@ theorem Ext.henk [ModalSys.FourOff] {N : NetSt σ} (hN : N.Good) {s : Node} (hs 
     | .imp (.all _ _) (.retxS _ _ _ _ _ _) => exact Ext.refl N
     | .imp (.all _ _) (.link _ _ _ _) => exact Ext.refl N
     | .imp (.all _ _) (.linkx _ _ _ _ _ _) => exact Ext.refl N
+    | .imp (.all _ _) (.optx _ _ _ _) => exact Ext.refl N
     | .all _ _ => exact Ext.refl N
     | .box _ => exact Ext.refl N
     | .dia _ _ _ => exact Ext.refl N
@@ -246,6 +248,7 @@ theorem Ext.henk [ModalSys.FourOff] {N : NetSt σ} (hN : N.Good) {s : Node} (hs 
     | .retxS _ _ _ _ _ _ => exact Ext.refl N
     | .link _ _ _ _ => exact Ext.refl N
     | .linkx _ _ _ _ _ _ => exact Ext.refl N
+    | .optx _ _ _ _ => exact Ext.refl N
   · exact Ext.refl N
 
 theorem Ext.mkChild [ModalSys.FourOff] {N : NetSt σ} {s : Node} (hs : N.Live s) (o : Obl σ) :
@@ -281,6 +284,7 @@ theorem Ext.mkChild [ModalSys.FourOff] {N : NetSt σ} {s : Node} (hs : N.Live s)
     | .retxS _ _ _ _ _ _ => exact Ext.refl N
     | .link _ _ _ _ => exact Ext.refl N
     | .linkx _ _ _ _ _ _ => exact Ext.refl N
+    | .optx _ _ _ _ => exact Ext.refl N
   · exact Ext.refl N
 
 theorem Ext.applyOp [ModalSys.FourOff] {N : NetSt σ} (hN : N.Good) (o : Op σ) :

@@ -39,7 +39,7 @@ theorem WFF.holeAt_holeAt_fst {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {U V : 
     change (Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm (Term.pair s t)) (.root (.bnd 0))).proj
       .fst = _
     rw [show Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm (Term.pair s t)) (.root (.bnd 0)) =
-      .tm (Term.pair s t) from if_pos rfl]
+      .tm (Term.pair s t) from Subst.single_self _ _]
     rfl)
 
 omit [ModalSys.NoFour] in

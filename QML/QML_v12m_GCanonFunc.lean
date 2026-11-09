@@ -33,7 +33,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-! ## The frame -/
 
@@ -65,7 +65,7 @@ theorem gmem_noT [ModalSys.NoT] {s t : GW hF M₀} {P : List ℕ} {h : t.1 = nod
     fun hm => .inr ⟨ModalSys.NoT.noT, hm⟩⟩
 
 open Classical in
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- Without T no witness is realised, so a possible term's content is read by `pTrX`. -/
 theorem dite_noReal [ModalSys.NoT] {α : Sort*} {w : BWorld σ} {x : VarSymb}
     (t : w.Realised x → α)
@@ -531,7 +531,7 @@ theorem pTrX_pair : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.1 
   | s, t, c :: c' :: P, h, _, _, _, hm, _, _, _, _, _, _ =>
       pTrX_pair (stepW s c (born_step h)) t (c' :: P) h _ _ _ hm _ _
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- Keeping a `□` view's term into the kept witness's view is weakening its kept translation. -/
 theorem subst_dia_shift_mono {Γ Δ : Ctx} {ι : VarSymb → VarSymb} (θ : Subst σ Δ)
     (hθ : Subst.Ok Γ.boxIn θ) (hc : Subst.Coh ι Γ.boxIn θ) {x : VarSymb}

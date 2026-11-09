@@ -104,6 +104,7 @@ theorem Good.henk (hN : N.Good) {s : Node} (hs : N.Live s)
     | .imp (.retxS _ _ _ _ _ _) _ => exact hN
     | .imp (.link _ _ _ _) _ => exact hN
     | .imp (.linkx _ _ _ _ _ _) _ => exact hN
+    | .imp (.optx _ _ _ _) _ => exact hN
     | .imp (.all _ _) (.atom _) => exact hN
     | .imp (.all _ _) (.eq _ _) => exact hN
     | .imp (.all _ _) .top => exact hN
@@ -120,6 +121,7 @@ theorem Good.henk (hN : N.Good) {s : Node} (hs : N.Live s)
     | .imp (.all _ _) (.retxS _ _ _ _ _ _) => exact hN
     | .imp (.all _ _) (.link _ _ _ _) => exact hN
     | .imp (.all _ _) (.linkx _ _ _ _ _ _) => exact hN
+    | .imp (.all _ _) (.optx _ _ _ _) => exact hN
     | .all _ _ => exact hN
     | .box _ => exact hN
     | .dia _ _ _ => exact hN
@@ -129,6 +131,7 @@ theorem Good.henk (hN : N.Good) {s : Node} (hs : N.Live s)
     | .retxS _ _ _ _ _ _ => exact hN
     | .link _ _ _ _ => exact hN
     | .linkx _ _ _ _ _ _ => exact hN
+    | .optx _ _ _ _ => exact hN
   · exact hN
 
 open Classical in
@@ -203,6 +206,7 @@ theorem henkT_ok {t : NodeSt σ} (hM : Theory.IsMCS t.M)
     | .imp (.retxS _ _ _ _ _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .imp (.link _ _ _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .imp (.linkx _ _ _ _ _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.optx _ _ _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .imp (.all _ _) (.atom _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .imp (.all _ _) (.eq _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .imp (.all _ _) .top => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
@@ -219,6 +223,7 @@ theorem henkT_ok {t : NodeSt σ} (hM : Theory.IsMCS t.M)
     | .imp (.all _ _) (.retxS _ _ _ _ _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .imp (.all _ _) (.link _ _ _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .imp (.all _ _) (.linkx _ _ _ _ _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) (.optx _ _ _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .all _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .box _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .dia _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
@@ -228,6 +233,7 @@ theorem henkT_ok {t : NodeSt σ} (hM : Theory.IsMCS t.M)
     | .retxS _ _ _ _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .link _ _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .linkx _ _ _ _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .optx _ _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
   · subst hu
     exact ⟨hM, Grows.refl _⟩
 
@@ -315,7 +321,8 @@ theorem live_newChild {N : GNetSt σ} {s : Node} (hs : N.Live s) (kd : Option Va
           simp only [List.cons.injEq, hps, and_false, or_false]
 
 /-- ⭐A new child with a good edge keeps the invariants. -/
-theorem Good.newChild (hN : N.Good) {s : Node} (hs : N.Live s) {kd : Option VarSymb}
+theorem Good.newChild [ModalSys.NoOpt]
+    (hN : N.Good) {s : Node} (hs : N.Live s) {kd : Option VarSymb}
     {t : NodeSt σ} {f : VarSymb → LEnt σ} (ht : Theory.IsMCS t.M)
     (hf : FwdData (N.st s) t kd (N.st s).l f) : (N.newChild s kd t f).Good := by
   have hks : (N.nch s :: s : Node) ≠ s := NetSt.ne_parent _ s
@@ -425,12 +432,13 @@ theorem childSeed_ok (hF : ModalSys.Four = true) {L : List VarType}
         (ofRen (gchildMap L k)) := by
   obtain ⟨hS, ht⟩ := complete_spec (gchild_consistent hF hM hk hφ)
   refine ⟨ht, List.suffix_refl _, kDecl_of_kContent hk, entOk_ofRen (itemOk_gchild hF L hk), ?_⟩
-  intro ψ hψ
+  intro _ ψ hψ
   rw [WFF.mono_refl] at hψ
   exact hS (Or.inr ⟨ψ, hψ, rfl⟩)
 
 /-- ⭐Creating a child preserves the invariants. -/
-theorem Good.mkChild (hF : ModalSys.Four = true) (hN : N.Good) {s : Node} (hs : N.Live s)
+theorem Good.mkChild [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) (hN : N.Good) {s : Node} (hs : N.Live s)
     (o : Σ l : List VarType, WFF σ (ctxOf l) 0) : (N.mkChild hF s o).Good := by
   obtain ⟨l, φ⟩ := o
   simp only [GNetSt.mkChild]
@@ -469,12 +477,14 @@ theorem Good.mkChild (hF : ModalSys.Four = true) (hN : N.Good) {s : Node} (hs : 
     | .retxS _ _ _ _ _ _ => exact hN
     | .link _ _ _ _ => exact hN
     | .linkx _ _ _ _ _ _ => exact hN
+    | .optx _ _ _ _ => exact hN
   · exact hN
 
 /-! ## Lifts -/
 
 /-- The seed of a lifted root, over every proof of the edge's data. -/
-noncomputable def liftSeedE (hF : ModalSys.Four = true) (tp tk : NodeSt σ) (k : Option VarSymb)
+noncomputable def liftSeedE [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) (tp tk : NodeSt σ) (k : Option VarSymb)
     (f : VarSymb → LEnt σ) {T : VarType} {a : Ann T} (t : Term σ (ctxOf tk.l) T a)
     (hl : T.liftable = true) : Set (WFF σ ((ctxOf tp.l).insert (.free tp.l.length) T) 0) :=
   {φ | ∃ (hk : KDecl (ctxOf tp.l) k) (hf : EntOk ((ctxOf tp.l).kView k) (ctxOf tk.l) f),
@@ -491,21 +501,23 @@ noncomputable def liftRealSet (hF : ModalSys.Four = true) (tp tk : NodeSt σ)
       φ = gliftArrow hF (VarType.keepable_of_liftable hl) (kOld_of_kDecl hk) hf t ψ}
 
 /-- The lifted parent. -/
-noncomputable def liftPar (hF : ModalSys.Four = true) (tp tk : NodeSt σ) (k : Option VarSymb)
+noncomputable def liftPar [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) (tp tk : NodeSt σ) (k : Option VarSymb)
     (f : VarSymb → LEnt σ) {T : VarType} {a : Ann T} (t : Term σ (ctxOf tk.l) T a)
     (hl : T.liftable = true) : NodeSt σ :=
   ⟨T :: tp.l, complete (WFF.weaken (ctxOf_fresh (l := tp.l) le_rfl).root T '' tp.M ∪
     liftSeedE hF tp tk k f t hl)⟩
 
 /-- The child grown by the lifted root's residual. -/
-noncomputable def liftChild (hF : ModalSys.Four = true) (tp tk : NodeSt σ) (k : Option VarSymb)
+noncomputable def liftChild [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) (tp tk : NodeSt σ) (k : Option VarSymb)
     (f : VarSymb → LEnt σ) {T : VarType} {a : Ann T} (t : Term σ (ctxOf tk.l) T a)
     (hl : T.liftable = true) : NodeSt σ :=
   ⟨T.lr :: tk.l, complete (WFF.mono (ctxOf_le_append [T.lr] tk.l) '' tk.M ∪
     liftRealSet hF tp tk k f t hl (liftPar hF tp tk k f t hl).M)⟩
 
 /-- ⭐One lift of a term along an edge whose parent is fully committed. -/
-theorem lift_ok (hF : ModalSys.Four = true) {tp tk : NodeSt σ} {k : Option VarSymb}
+theorem lift_ok [ModalSys.NoOpt] (hF : ModalSys.Four = true) {tp tk : NodeSt σ} {k : Option VarSymb}
     {f : VarSymb → LEnt σ} {T : VarType} {a : Ann T} (t : Term σ (ctxOf tk.l) T a)
     (hl : T.liftable = true) (hp : Theory.IsMCS tp.M) (ht : Theory.IsMCS tk.M)
     (hd : FwdData tp tk k tp.l f) (hax : T.liftableR = false → ModalSys.T = false → AxOk tp.M) :
@@ -534,7 +546,7 @@ theorem lift_ok (hF : ModalSys.Four = true) {tp tk : NodeSt σ} {k : Option VarS
     ⟨⟨[T.lr], rfl⟩, fun φ hφ => hS₂ (Or.inl ⟨φ, hφ, rfl⟩)⟩, List.suffix_refl _,
     kDecl_mono (ctxOf_le_append [T] tp.l) hk,
     itemOk_gliftZ hF (VarType.keepable_of_liftable hl) (kOld_of_kDecl hk) hf t, ?_⟩
-  intro ψ hψ
+  intro _ ψ hψ
   rw [WFF.mono_refl] at hψ
   exact hS₂ (Or.inr ⟨hk, hf, ψ, hψ, rfl⟩)
 
@@ -559,7 +571,8 @@ open Classical in
     D5 (a), D-H1).  At the root, with the hub, the same clause from the world asked about, at every
     term of a type lifted by flag (docs, "the hub", step 6): the rule needs no closed sentence
     there. -/
-noncomputable def lift (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → LTerm σ → GNetSt σ
+noncomputable def lift [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → LTerm σ → GNetSt σ
   | [], ⟨l, T, a, t⟩ =>
       if N.hb ∧ N.fcl [] = N.src.l then
         if h : l <:+ (N.st []).l then
@@ -594,7 +607,8 @@ noncomputable def lift (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → LT
       else N
 
 /-- ⭐Lifting preserves the invariants. -/
-theorem Good.lift (hF : ModalSys.Four = true) (hN : N.Good) {k : Node} (hk : N.Live k)
+theorem Good.lift [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) (hN : N.Good) {k : Node} (hk : N.Live k)
     (o : LTerm σ) : (N.lift hF k o).Good := by
   match k, o with
   | [], ⟨l, T, a, t⟩ =>

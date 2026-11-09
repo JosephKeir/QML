@@ -372,7 +372,7 @@ namespace GNetSt
 
 variable {N : GNetSt σ}
 
-theorem NamesInj.realF (hF : ModalSys.Four = true) (hN : N.Good)
+theorem NamesInj.realF [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hN : N.Good)
     (hI : N.NamesInj) {k : Node} (hk : N.Live k) : (N.realF hF k).NamesInj := by
   match k with
   | [] =>
@@ -389,7 +389,7 @@ theorem NamesInj.realF (hF : ModalSys.Four = true) (hN : N.Good)
           (keepInj_gextF hF (kOld_of_kDecl hkd) hf (hI c p hk) _)
       · exact hI
 
-theorem NamesInj.iterate_realF (hF : ModalSys.Four = true) (k : Node) :
+theorem NamesInj.iterate_realF [ModalSys.NoOpt] (hF : ModalSys.Four = true) (k : Node) :
     ∀ (j : ℕ) {N : GNetSt σ}, N.Good → N.Live k → N.NamesInj →
       ((fun N' => N'.realF hF k)^[j] N).NamesInj
   | 0, _, _, _, hI => hI
@@ -398,7 +398,7 @@ theorem NamesInj.iterate_realF (hF : ModalSys.Four = true) (k : Node) :
       exact NamesInj.iterate_realF hF k j (hN.realF hF hk)
         ((live_of_nch (nch_realF hF _ k) k).mpr hk) (hI.realF hF hN hk)
 
-theorem NamesInj.catchUp (hF : ModalSys.Four = true) (hN : N.Good)
+theorem NamesInj.catchUp [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hN : N.Good)
     (hI : N.NamesInj) {k : Node} (hk : N.Live k) : (N.catchUp hF k).NamesInj := by
   match k with
   | [] =>
@@ -537,7 +537,8 @@ namespace GNetSt
 
 variable {N : GNetSt σ}
 
-theorem NamesInj.lift (hV : ModalSys.Five = true) (hF : ModalSys.Four = true) (hN : N.Good)
+theorem NamesInj.lift [ModalSys.NoOpt]
+    (hV : ModalSys.Five = true) (hF : ModalSys.Four = true) (hN : N.Good)
     (hI : N.NamesInj) {k : Node} (hk : N.Live k) (o : LTerm σ) : (N.lift hF k o).NamesInj := by
   match k, o with
   | [], ⟨l, T, a, t⟩ =>
@@ -580,7 +581,8 @@ namespace GNetSt
 
 variable {N : GNetSt σ}
 
-theorem NamesInj.applyOp (hV : ModalSys.Five = true) (hF : ModalSys.Four = true) (hN : N.Good)
+theorem NamesInj.applyOp [ModalSys.NoOpt]
+    (hV : ModalSys.Five = true) (hF : ModalSys.Four = true) (hN : N.Good)
     (hI : N.NamesInj) (o : GOp σ) :
     (N.applyOp hF o).NamesInj := by
   rcases o with ⟨s, o⟩ | ⟨s, o⟩ | k | ⟨k, n⟩
@@ -608,7 +610,8 @@ theorem namesInj_init {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0))
 end GNetSt
 
 /-- ⭐**Names are unique along every edge of every network of the chain** (under 5). -/
-theorem namesInj_gnet [Countable σ.FuncSyms] [Countable σ.RelSyms] (hV : ModalSys.Five = true)
+theorem namesInj_gnet [ModalSys.NoOpt]
+    [Countable σ.FuncSyms] [Countable σ.RelSyms] (hV : ModalSys.Five = true)
     (hF : ModalSys.Four = true) {l₀ : List VarType}
     {M₀ : Set (WFF σ (ctxOf l₀) 0)} (hM₀ : Theory.IsMCS M₀) : ∀ n, (gnet hF M₀ n).NamesInj
   | 0 => GNetSt.namesInj_init M₀
@@ -616,7 +619,7 @@ theorem namesInj_gnet [Countable σ.FuncSyms] [Countable σ.RelSyms] (hV : Modal
       (namesInj_gnet hV hF hM₀ n).applyOp hV hF (good_gnet hF hM₀ n) (gsched n)
 
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-- ⭐**Names are unique in the limit** (`docs/v12-modal-extensions.md` §3 5, (N1)): two kept
     items of a parent that name one address of the child, at an η-faithful type, are one item. -/

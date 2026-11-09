@@ -57,7 +57,8 @@ def Flat.comp {Γ Δ E : Ctx} (F : Flat σ Γ Δ) (G : Flat σ Δ E) : Flat σ �
     rw [F.bot, G.bot]
 
 /-- ⭐A substitution with an inverse that cancels it is a translation. -/
-def Flat.ofPair {Γ Δ : Ctx} [Γ.Presented] [Δ.NoSlots] (hnp : Γ.NoProjLast)
+noncomputable def Flat.ofPair [ModalSys.NoOpt] {Γ Δ : Ctx} [Γ.Presented] [Δ.NoSlots]
+  (hnp : Γ.NoProjLast)
     {ι ι' : VarSymb → VarSymb} (θ : Subst σ Δ) (θ' : Subst σ Γ) (hθ : Subst.Ok Γ θ)
     (hc : Subst.Coh ι Γ θ) (hθ' : Subst.Ok Δ θ') (hc' : Subst.Coh ι' Δ θ')
     (cancel : ∀ φ : WFF σ Γ 0,
@@ -79,21 +80,21 @@ def Flat.ofPair {Γ Δ : Ctx} [Γ.Presented] [Δ.NoSlots] (hnp : Γ.NoProjLast)
 /-! ## Pairs of substitutions, and pushing them under a view -/
 
 /-- A substitution similar to the identity stays so under `□`. -/
-theorem sim_box_of {Γ : Ctx} {θ : Subst σ Γ} (h : Subst.Sim Γ θ (Subst.idS σ Γ)) :
+theorem sim_box_of [ModalSys.NoOpt] {Γ : Ctx} {θ : Subst σ Γ} (h : Subst.Sim Γ θ (Subst.idS σ Γ)) :
     Subst.Sim Γ.boxIn θ.box (Subst.idS σ Γ.boxIn) := by
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T _ hv
   match v with
   | .step u .box =>
       obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv
-      have hs := (h u _ hu).unbox
+      have hs := (h.ty u _ hu).unbox
       rw [Subst.at_idS] at hs
       change SubE.Sim T ((θ.at u).unbox) (.ren (.step u .box))
       rw [← VarSymb.inner_box hk]
       exact hs
   | .step u .keep =>
       obtain ⟨hF, hu, hkp⟩ := Ctx.boxIn_keep hv
-      have hs := (h u _ hu).keepE' hF hkp
+      have hs := (h.ty u _ hu).keepE' hF hkp
       rw [Subst.at_idS] at hs
       exact hs
   | .root _ => cases hv
@@ -139,12 +140,13 @@ theorem Pair.cancel [Γ.NoSlots] [Δ.NoSlots] (P : Pair σ Γ Δ) (φ : WFF σ �
   exact WFF.subst_id _ _ _ φ
 
 /-- A pair is a translation. -/
-def Pair.toFlat [Γ.Presented] [Δ.NoSlots] (P : Pair σ Γ Δ) (hnp : Γ.NoProjLast) :
+noncomputable def Pair.toFlat [ModalSys.NoOpt]
+    [Γ.Presented] [Δ.NoSlots] (P : Pair σ Γ Δ) (hnp : Γ.NoProjLast) :
     Flat σ Γ Δ :=
   Flat.ofPair hnp P.θ P.θ' P.hθ P.hc P.hθ' P.hc' P.cancel
 
 /-- ⭐A pair pushed under `□`. -/
-def Pair.box (P : Pair σ Γ Δ) : Pair σ Γ.boxIn Δ.boxIn where
+def Pair.box [ModalSys.NoOpt] (P : Pair σ Γ Δ) : Pair σ Γ.boxIn Δ.boxIn where
   ι := P.ι
   ι' := P.ι'
   ι₃ := P.ι₃
@@ -187,11 +189,11 @@ def extS {Δ Δ' : Ctx} (θ : Subst σ Δ) (hle : Δ.Le Δ') (u v : ℕ) : Subst
 def extIdx (ι : VarSymb → VarSymb) (u v : ℕ) (a : VarSymb) : VarSymb :=
   if a.rt = .free u then a.reroot (.free v) else ι a
 
-theorem ok_extS {Γ Δ Δ' : Ctx} {θ : Subst σ Δ} (hθ : Subst.Ok Γ θ) (hle : Δ.Le Δ')
+theorem ok_extS [ModalSys.NoOpt] {Γ Δ Δ' : Ctx} {θ : Subst σ Δ} (hθ : Subst.Ok Γ θ) (hle : Δ.Le Δ')
     {u v : ℕ} {T : VarType} (hfr : Γ.RootFresh (.free u))
     (hv : Δ'.ref (.root (.free v)) = some T) :
     Subst.Ok (Γ.insert (.free u) T) (extS θ hle u v) := by
-  intro w U hlp hw
+  refine ⟨fun w U hlp hw => ?_, by wit_triv⟩
   simp only [Ctx.insert] at hw
   by_cases hwu : w = .root (.free u)
   · subst hwu
@@ -206,7 +208,8 @@ theorem ok_extS {Γ Δ Δ' : Ctx} {θ : Subst σ Δ} (hθ : Subst.Ok Γ θ) (hle
     rw [if_neg hrt]
     exact SubE.okRef_mono hle (hθ w U hlp hw)
 
-theorem coh_extS {ι : VarSymb → VarSymb} {Γ Δ Δ' : Ctx} {θ : Subst σ Δ} (hθ : Subst.Ok Γ θ)
+theorem coh_extS [ModalSys.NoOpt]
+    {ι : VarSymb → VarSymb} {Γ Δ Δ' : Ctx} {θ : Subst σ Δ} (hθ : Subst.Ok Γ θ)
     (hc : Subst.Coh ι Γ θ) (hle : Δ.Le Δ') {u v : ℕ} {T : VarType}
     (hfr : Γ.RootFresh (.free u)) (hv : Δ'.ref (.root (.free v)) = some T) :
     Subst.Coh (extIdx ι u v) (Γ.insert (.free u) T) (extS θ hle u v) := by
@@ -232,11 +235,12 @@ theorem coh_extS {ι : VarSymb → VarSymb} {Γ Δ Δ' : Ctx} {θ : Subst σ Δ}
 
 
 /-- The extension of a substitution similar to the identity is similar to the identity. -/
-theorem simId_extS {Γ : Ctx} {θ : Subst σ Γ} {u : ℕ} {T : VarType} (hfr : Γ.RootFresh (.free u))
+theorem simId_extS [ModalSys.NoOpt]
+    {Γ : Ctx} {θ : Subst σ Γ} {u : ℕ} {T : VarType} (hfr : Γ.RootFresh (.free u))
     (h : Subst.Sim Γ θ (Subst.idS σ Γ)) :
     Subst.Sim (Γ.insert (.free u) T) (extS θ (Ctx.le_insert hfr.root T) u u)
       (Subst.idS σ (Γ.insert (.free u) T)) := by
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro w U hlp hw
   simp only [Ctx.insert] at hw
   by_cases hwu : w = .root (.free u)
@@ -265,7 +269,8 @@ theorem at_extS_of_ne {Δ Δ' : Ctx} {θ : Subst σ Δ} {hle : Δ.Le Δ'} {u v :
     (fun z hz => by simp only [extS]; rw [if_neg hz]) y hy, Subst.at_mono]
 
 /-- ⭐Going out and back along extended substitutions is the extended composite. -/
-theorem sim_extS {Γ Δ : Ctx} {ι' : VarSymb → VarSymb} {θ : Subst σ Δ} {θ' : Subst σ Γ}
+theorem sim_extS [ModalSys.NoOpt]
+    {Γ Δ : Ctx} {ι' : VarSymb → VarSymb} {θ : Subst σ Δ} {θ' : Subst σ Γ}
     {θ₃ : Subst σ Γ} (hθ : Subst.Ok Γ θ) (hθ' : Subst.Ok Δ θ') (hc' : Subst.Coh ι' Δ θ')
     {u v : ℕ} {T : VarType} (hu : Γ.RootFresh (.free u)) (hv : Δ.RootFresh (.free v))
     (hsim : Subst.Sim Γ θ₃ (θ.comp θ' hθ' hc')) :
@@ -277,7 +282,7 @@ theorem sim_extS {Γ Δ : Ctx} {ι' : VarSymb → VarSymb} {θ : Subst σ Δ} {�
   have heq : ∀ (y : VarSymb) (U : VarType), Δ.ref y = some U →
       (extS θ' (Ctx.le_insert hu.root T) v u).at y = (θ'.at y).mono (Ctx.le_insert hu.root T) :=
     fun y U hy => at_extS_of_ne (rt_ne_of_fresh hv hy)
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro w U hlp hw
   simp only [Ctx.insert] at hw
   have hlu := Ctx.le_insert hu.root T
@@ -310,7 +315,7 @@ theorem sim_extS {Γ Δ : Ctx} {ι' : VarSymb → VarSymb} {θ : Subst σ Δ} {�
     exact hs.mono hlu
 
 /-- ⭐A pair extended by a root declared on each side. -/
-def Pair.insertRoot (P : Pair σ Γ Δ) {u v : ℕ} {T : VarType}
+def Pair.insertRoot [ModalSys.NoOpt] (P : Pair σ Γ Δ) {u v : ℕ} {T : VarType}
     (hu : Γ.RootFresh (.free u)) (hv : Δ.RootFresh (.free v)) :
     Pair σ (Γ.insert (.free u) T) (Δ.insert (.free v) T) where
   ι := extIdx P.ι u v
@@ -338,7 +343,7 @@ variable [ModalSys.NoFour]
 theorem sim_arrow_pull (l : List VarType) :
     Subst.Sim (ctxOf l).boxIn (Subst.idS σ (ctxOf l).boxIn)
       ((arrowS σ (ctxOf (l.map VarType.bc)) id).comp (pullS σ l) (ok_pullS l) (coh_pullS l)) := by
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T _ hv
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   obtain ⟨-, r, hr⟩ := reach_ppath hu
@@ -363,7 +368,7 @@ def pairBox (l : List VarType) : Pair σ (ctxOf l).boxIn (ctxOf (l.map VarType.b
   hθ₃ := Subst.ok_idS
   hc₃ := Subst.coh_idS
   sim := sim_arrow_pull l
-  simId := fun _ _ _ => .refl _
+  simId := ⟨fun _ _ _ => .refl _, fun _ _ _ _ => by wit_refl⟩
 
 omit [ModalSys.NoFour] in
 /-- Views stacked on a context. -/
@@ -387,7 +392,7 @@ def Pair.boxN : (n : ℕ) → {Γ' Δ' : Ctx} → Pair σ Γ' Δ' →
 
 omit [ModalSys.NoFour] in
 /-- The identity pair. -/
-def Pair.id (Γ : Ctx) : Pair σ Γ Γ where
+def Pair.id [ModalSys.NoOpt] (Γ : Ctx) : Pair σ Γ Γ where
   ι := _root_.id
   ι' := _root_.id
   ι₃ := _root_.id
@@ -401,12 +406,12 @@ def Pair.id (Γ : Ctx) : Pair σ Γ Γ where
   hθ₃ := Subst.ok_idS
   hc₃ := Subst.coh_idS
   sim := by
-    intro v T hv
+    refine ⟨fun v T hv => ?_, fun _ _ _ _ => by wit_refl⟩
     rw [Subst.at_comp Subst.ok_idS _ Subst.ok_idS Subst.coh_idS hv, Subst.at_idS]
     change SubE.Sim T (SubE.ren v) ((Subst.idS σ Γ).at v)
     rw [Subst.at_idS]
     exact .refl _
-  simId := fun _ _ _ => .refl _
+  simId := ⟨fun _ _ _ => .refl _, fun _ _ _ _ => by wit_refl⟩
 
 omit [ModalSys.NoFour] in
 instance presented_boxInN : ∀ (n : ℕ) {Γ : Ctx} [Γ.Presented], (Ctx.boxInN n Γ).Presented
@@ -414,7 +419,7 @@ instance presented_boxInN : ∀ (n : ℕ) {Γ : Ctx} [Γ.Presented], (Ctx.boxInN
   | n + 1, Γ, _ => presented_boxInN n (Γ := Γ.boxIn)
 
 /-- ⭐Any number of `□` views over a world language is flattened into one. -/
-def flatBoxN : (n : ℕ) → (l : List VarType) →
+noncomputable def flatBoxN : (n : ℕ) → (l : List VarType) →
     Flat σ (Ctx.boxInN n (ctxOf l)) (ctxOf (bcN n l))
   | 0, l => (Pair.id (ctxOf l)).toFlat (Ctx.Presented.noProjLast _)
   | n + 1, l =>
@@ -443,11 +448,11 @@ theorem completenessB_flat [ModalSys.NoFour] (hB : ModalSys.B = true) {Γ : Ctx}
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 /-- A substitution similar to the identity stays so under `◇_x`. -/
-theorem sim_dia_of {Γ : Ctx} {θ : Subst σ Γ} {x : VarSymb} {X : VarType}
+theorem sim_dia_of [ModalSys.NoOpt] {Γ : Ctx} {θ : Subst σ Γ} {x : VarSymb} {X : VarType}
     (hx : Γ.ref x = some (.VTypeDia X)) (hw : (θ.at x).idxAlong [] = x)
     (h : Subst.Sim Γ θ (Subst.idS σ Γ)) :
     Subst.Sim (Γ.diaIn x) (θ.dia x x) (Subst.idS σ (Γ.diaIn x)) := by
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T _ hv
   match v with
   | .step u .dia =>
@@ -464,14 +469,14 @@ theorem sim_dia_of {Γ : Ctx} {θ : Subst σ Γ} {x : VarSymb} {X : VarType}
         exact hs
   | .step u .box =>
       obtain ⟨_, hu⟩ := Ctx.boxIn_box (Γ := Γ) hv
-      have hs := ((h u _ hu).unbox).mono (Ctx.le_boxIn_diaIn Γ x)
+      have hs := ((h.ty u _ hu).unbox).mono (Ctx.le_boxIn_diaIn Γ x)
       rw [Subst.at_idS] at hs
       change SubE.Sim T ((θ.at u).unbox.mono (Ctx.le_boxIn_diaIn Γ x)) (.ren (.step u .box))
       rw [← VarSymb.inner_box (Ctx.boxIn_box (Γ := Γ) hv).1]
       exact hs
   | .step u .keep =>
       obtain ⟨hF, hu, hkp⟩ := Ctx.boxIn_keep (Γ := Γ) hv
-      have hs := ((h u _ hu).keepE' hF hkp).mono (Ctx.le_boxIn_diaIn Γ x)
+      have hs := ((h.ty u _ hu).keepE' hF hkp).mono (Ctx.le_boxIn_diaIn Γ x)
       rw [Subst.at_idS] at hs
       exact hs
   | .root _ => cases hv
@@ -517,7 +522,8 @@ theorem Pair.hw₃ (hx : Γ.ref x = some (.VTypeDia X)) : (P.θ₃.at x).idxAlon
 variable {P}
 
 /-- ⭐A pair pushed under `◇_x`: the witness goes to its image. -/
-def Pair.dia (P : Pair σ Γ Δ) {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) :
+def Pair.dia [ModalSys.NoOpt]
+    (P : Pair σ Γ Δ) {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) :
     Pair σ (Γ.diaIn x) (Δ.diaIn (P.ι x)) where
   ι := P.ι
   ι' := P.ι'
@@ -569,7 +575,7 @@ def Chain.srcPresented : {Γ Δ : Ctx} → Chain σ Γ Δ → Γ.Presented
   | _, _, .cons hΓ _ _ => hΓ
 
 /-- ⭐A chain is a translation: compose the links. -/
-def Chain.toFlat : {Γ Δ : Ctx} → (C : Chain σ Γ Δ) → Flat σ Γ Δ
+noncomputable def Chain.toFlat [ModalSys.NoOpt] : {Γ Δ : Ctx} → (C : Chain σ Γ Δ) → Flat σ Γ Δ
   | _, _, .nil hΓ =>
       letI := hΓ
       (Pair.id _).toFlat (Ctx.Presented.noProjLast _)
@@ -579,7 +585,7 @@ def Chain.toFlat : {Γ Δ : Ctx} → (C : Chain σ Γ Δ) → Flat σ Γ Δ
       (P.toFlat (Ctx.Presented.noProjLast _)).comp C.toFlat
 
 /-- ⭐A chain pushed under `□`: box every link. -/
-def Chain.box : {Γ Δ : Ctx} → Chain σ Γ Δ → Chain σ Γ.boxIn Δ.boxIn
+def Chain.box [ModalSys.NoOpt] : {Γ Δ : Ctx} → Chain σ Γ Δ → Chain σ Γ.boxIn Δ.boxIn
   | _, _, .nil hΓ =>
       letI := hΓ
       .nil inferInstance
@@ -590,7 +596,7 @@ def Chain.box : {Γ Δ : Ctx} → Chain σ Γ Δ → Chain σ Γ.boxIn Δ.boxIn
 
 /-- ⭐A chain extended by a declared root: extend every link.  The endpoints' names are given; each
     intermediate context uses its own presentation's fresh name, so adjacent links agree. -/
-def Chain.insertRoot (T : VarType) : {Γ Δ : Ctx} → Chain σ Γ Δ → (u v : ℕ) →
+def Chain.insertRoot [ModalSys.NoOpt] (T : VarType) : {Γ Δ : Ctx} → Chain σ Γ Δ → (u v : ℕ) →
     Γ.RootFresh (.free u) → Δ.RootFresh (.free v) →
     Chain σ (Γ.insert (.free u) T) (Δ.insert (.free v) T)
   | _, _, .nil hΓ, _, _, hu, hv =>
@@ -626,7 +632,8 @@ theorem Chain.witness : {Γ Δ : Ctx} → (C : Chain σ Γ Δ) → {x : VarSymb}
       exact C.witness hY
 
 /-- ⭐A chain pushed under `◇_x`: the witness travels along the links. -/
-noncomputable def Chain.dia : {Γ Δ : Ctx} → (C : Chain σ Γ Δ) → {x : VarSymb} → {X : VarType} →
+noncomputable def Chain.dia [ModalSys.NoOpt]
+    : {Γ Δ : Ctx} → (C : Chain σ Γ Δ) → {x : VarSymb} → {X : VarType} →
     Γ.ref x = some (.VTypeDia X) → Chain σ (Γ.diaIn x) (Δ.diaIn (C.diaIdx x))
   | _, _, .nil hΓ, _, _, _ =>
       letI := hΓ
@@ -640,7 +647,7 @@ noncomputable def Chain.dia : {Γ Δ : Ctx} → (C : Chain σ Γ Δ) → {x : Va
 variable [ModalSys.NoFour]
 
 /-- ⭐A `□` view over a world language is flattened by the arrow into a new child. -/
-def flatBox (l : List VarType) : Flat σ (ctxOf l).boxIn (ctxOf (l.map VarType.bc)) :=
+noncomputable def flatBox (l : List VarType) : Flat σ (ctxOf l).boxIn (ctxOf (l.map VarType.bc)) :=
   Flat.ofPair (Ctx.noProjLast_boxIn _) _ (pullS σ l) (ok_arrowS (childImg l))
     (coh_arrowS (childImg l)) (ok_pullS l) (coh_pullS l) (subst_pull_arrow l)
 
@@ -660,7 +667,7 @@ theorem sim_arrowX_pull (l : List VarType) {x : VarSymb} {X : VarType}
     Subst.Sim ((ctxOf l).diaIn x) (Subst.idS σ ((ctxOf l).diaIn x))
       ((arrowXS σ (ctxOf (X :: l.map VarType.bc)) id x l.length).comp (pullXS σ l x)
         (ok_pullXS l hx) (coh_pullXS l hx)) := by
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T _ hv
   rcases diaIn_item hv with ⟨u, rfl, hu⟩ | ⟨rfl, _⟩
   · obtain ⟨-, r, hr⟩ := reach_ppath hu
@@ -692,7 +699,7 @@ noncomputable def pairDia (l : List VarType) {x : VarSymb} {X : VarType}
   hθ₃ := Subst.ok_idS
   hc₃ := Subst.coh_idS
   sim := sim_arrowX_pull l hx
-  simId := fun _ _ _ => .refl _
+  simId := ⟨fun _ _ _ => .refl _, fun _ _ _ _ => by wit_refl⟩
 
 /-- ⭐Completeness in the `□` view of a world language. -/
 theorem completenessB_boxIn (hB : ModalSys.B = true) {l : List VarType}

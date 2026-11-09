@@ -24,7 +24,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 omit [ModalSys] [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 theorem Ann.mapIdx_mapIdx (f g : VarSymb → VarSymb) :
@@ -170,6 +170,7 @@ theorem VForm.step {x y : VarSymb} (h : VForm x y) (st : Step) : VForm x (.step 
 def VInv (x : VarSymb) (Δ : Ctx) : Prop :=
   ∀ (y : VarSymb) {T : VarType}, Δ.ref y = some T → VForm x y
 
+omit [ModalSys.NoOpt] in
 theorem vInv_of_items {x : VarSymb} {Δ : Ctx}
     (hitem : ∀ (v : VarSymb) (T : VarType), Δ v = some T → VForm x v) : VInv x Δ
   | .root r, T, h => hitem _ T (by rwa [Ctx.ref_nonproj _ rfl] at h)
@@ -183,6 +184,7 @@ theorem vInv_of_items {x : VarSymb} {Δ : Ctx}
         exact (vInv_of_items hitem v hU).step st
       · exact hitem _ T (by rwa [Ctx.ref_step_nonproj _ v hs] at h)
 
+omit [ModalSys.NoOpt] in
 theorem vInv_box_item {x : VarSymb} {Δ : Ctx} (hko : ModalSys.keepOnly = true) (hI : VInv x Δ)
     (v : VarSymb) (T : VarType) (h : Δ.boxIn v = some T) : VForm x v := by
   match v, h with
@@ -197,10 +199,12 @@ theorem vInv_box_item {x : VarSymb} {Δ : Ctx} (hko : ModalSys.keepOnly = true) 
   | .step _ .dia, h => cases h
   | .step _ .here, h => cases h
 
+omit [ModalSys.NoOpt] in
 theorem VInv.box {x : VarSymb} {Δ : Ctx} (hko : ModalSys.keepOnly = true) (hI : VInv x Δ) :
     VInv x Δ.boxIn :=
   vInv_of_items (vInv_box_item hko hI)
 
+omit [ModalSys.NoOpt] in
 theorem VInv.dia {x : VarSymb} {Δ : Ctx} (hko : ModalSys.keepOnly = true) (hI : VInv x Δ)
     {y : VarSymb} {Y : VarType} (hy : Δ.ref y = some (.VTypeDia Y)) : VInv x (Δ.diaIn y) := by
   refine vInv_of_items fun v T h => ?_
@@ -230,7 +234,7 @@ theorem vInv_base {s : GW hF M₀} {i : ℕ} {Γ : Ctx} (hko : ModalSys.keepOnly
     | .step _ .dia, hb => cases hb
     | .step _ .here, hb => cases hb
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- A term's indices, mapped by two maps agreeing on `x`'s view. -/
 theorem mapIdx_of_vInv {x : VarSymb} {ι ι' : VarSymb → VarSymb}
     (hko : ModalSys.keepOnly = true) (hag : ∀ y, VForm x y → ι y = ι' y) :
@@ -260,7 +264,7 @@ theorem eIdx_preIX_form (s : GW hF M₀) {x y : VarSymb} (h : VForm x y) :
   change ((preIX (rorig s) x) (.step z st)).ext r = _
   rcases hst with rfl | ⟨rfl, rfl⟩
   · rw [show preIX (rorig s) x (.step z .keep) = .step (rorig s z) .keep from if_neg (by simp)]
-  · rw [show preIX (rorig s) z (.step z .dia) = .step (rorig s z) .dia from if_pos rfl]
+  · rw [show preIX (rorig s) z (.step z .dia) = .step (rorig s z) .dia from by slot_rfl]
 
 /-- ⭐**A `◇_x`-view preimage's annotation is the annotation read at the root.** -/
 theorem mapIdx_eIdx_preIX (hko : ModalSys.keepOnly = true) (s : GW hF M₀) {i : ℕ} {Γ : Ctx}

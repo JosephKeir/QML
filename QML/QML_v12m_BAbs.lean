@@ -64,8 +64,8 @@ abbrev tup [ModalSys.FourOff] {Γ : Ctx} (u : VarSymb) (R : VarType) (h : Γ.ref
 /-! ## Abstraction -/
 
 /-- Abstracting the variable `c`: its items go to the components of `bnd 0`, the others stay. -/
-def absS (σ : Signature) (Δ : Ctx) (c : ℕ) : Subst σ Δ := fun v =>
-  match v with
+def absS (σ : Signature) (Δ : Ctx) (c : ℕ) : Subst σ Δ where
+  ty v := match v with
   | .step u .box => if u.rt = .free c then .ren (itemAt (.bnd 0) u) else .ren (.step u .box)
   | _ => .hide
 
@@ -92,7 +92,7 @@ theorem ctxOf_ref_old {A : VarType} {l : List VarType} {u : VarSymb}
 
 theorem ok_absS [ModalSys.FourOff] (A : VarType) (l : List VarType) :
     Subst.Ok (ctxOf (A :: l)).boxIn (absS σ (absCtx A l) l.length) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   change (if u.rt = .free l.length then SubE.ren (itemAt (.bnd 0) u)
     else .ren (.step u .box)).OkRef T
@@ -253,7 +253,7 @@ theorem at_single_tupB [ModalSys.FourOff] (b : Bool) (hb : ModalSys.T = b) {A : 
       rw [ctxOf_ref_new] at hu
       cases hu
       change Subst.single (.bnd 0) _ (.root (.bnd 0)) = _
-      exact if_pos rfl
+      slot_rfl
   | .step u s, U, hu, hrt => by
       have hproj : s.isProj = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
       have hu' := hu
@@ -377,7 +377,7 @@ theorem at_toFree_reroot {Δ : Ctx} (θ : Subst σ Δ) (z : ℕ) (T : VarType)
       (θ.toFree 0 z T h).at (u.reroot (.bnd 0)) = .ren (u.reroot (.free z))
   | .root _, _ => by
       change θ.toFree 0 z T h (.root (.bnd 0)) = .ren (.root (.free z))
-      exact if_pos rfl
+      slot_rfl
   | .step u s, hp => by
       have hproj : s.isProj = true := hp s (by simp [VarSymb.path])
       change (θ.toFree 0 z T h).at (.step (u.reroot (.bnd 0)) s) = .ren (.step (u.reroot _) s)
@@ -421,7 +421,7 @@ theorem subst_arrow_abs [ModalSys.FourOff] {A : VarType} {ls lt : List VarType} 
     exact .refl _
   · change SubE.Sim T _ ((Subst.toFree _ 0 lt.length A.bc _).at (.step u .box))
     rw [Subst.at_nonproj _ (rfl : (VarSymb.step u .box).lastProj = false)]
-    change SubE.Sim T _ (if VarSymb.step u .box = .root (.bnd 0) then _ else _)
+    simp only [Subst.toFree]
     rw [if_neg (fun h => by cases h)]
     change SubE.Sim T _ (.ren (itemAt (imgRoot img u.rt) u))
     rw [hr]

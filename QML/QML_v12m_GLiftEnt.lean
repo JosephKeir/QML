@@ -37,11 +37,13 @@ namespace GNetSt
 def LiftEntOk (hF : ModalSys.Four = true) (N : GNetSt σ) : Prop :=
   ∀ k v e, N.fmap k v = .inr e → (k = [] → ¬ N.hb) → AdmEnt hF e
 
-variable {hF : ModalSys.Four = true} {N : GNetSt σ}
+variable {hF : ModalSys.Four = true} {N : GNetSt σ} [ModalSys.NoOpt]
 
+omit [ModalSys.NoOpt] in
 theorem LiftEntOk.setSt (hL : N.LiftEntOk hF) (s : Node) (t : NodeSt σ) :
     (N.setSt s t).LiftEntOk hF := hL
 
+omit [ModalSys.NoOpt] in
 theorem LiftEntOk.setFwd (hL : N.LiftEntOk hF) (k : Node) (cl : List VarType)
     {f : VarSymb → LEnt σ} (hf : ∀ v e, f v = .inr e → (k = [] → ¬ N.hb) → AdmEnt hF e) :
     (N.setFwd k cl f).LiftEntOk hF := by
@@ -54,9 +56,11 @@ theorem LiftEntOk.setFwd (hL : N.LiftEntOk hF) (k : Node) (cl : List VarType)
   · rw [Function.update_of_ne hk] at he
     exact hL k' v e he hk'
 
+omit [ModalSys.NoOpt] in
 theorem LiftEntOk.henkSrc (hL : N.LiftEntOk hF) (s : Node)
     (o : Σ l : List VarType, WFF σ (ctxOf l) 0) : (N.henkSrc s o).LiftEntOk hF := hL
 
+omit [ModalSys.NoOpt] in
 theorem LiftEntOk.newChild (hL : N.LiftEntOk hF) (s : Node) (kd : Option VarSymb)
     (t : NodeSt σ) (g : VarSymb → VarSymb) : (N.newChild s kd t (ofRen g)).LiftEntOk hF := by
   intro k' v e he hk'
@@ -139,6 +143,7 @@ theorem LiftEntOk.lift (hL : N.LiftEntOk hF) (k : Node) (o : LTerm σ) :
             · exact hL _ _ e he hk
       all_goals exact hL
 
+omit [ModalSys.NoOpt] in
 theorem LiftEntOk.henk (hL : N.LiftEntOk hF) (s : Node)
     (o : Σ l : List VarType, WFF σ (ctxOf l) 0) : (N.henk s o).LiftEntOk hF := by
   obtain ⟨l, φ⟩ := o
@@ -154,6 +159,7 @@ theorem LiftEntOk.henk (hL : N.LiftEntOk hF) (s : Node)
     · exact hL
   · exact hL
 
+omit [ModalSys.NoOpt] in
 theorem LiftEntOk.mkChild (hL : N.LiftEntOk hF) (s : Node)
     (o : Σ l : List VarType, WFF σ (ctxOf l) 0) : (N.mkChild hF s o).LiftEntOk hF := by
   obtain ⟨l, φ⟩ := o
@@ -190,6 +196,7 @@ theorem LiftEntOk.applyOp (hL : N.LiftEntOk hF) (o : GOp σ) : (N.applyOp hF o).
     · exact (hL.catchUp k).lift k n
     · exact hL
 
+omit [ModalSys.NoOpt] in
 theorem liftEntOk_init {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) :
     (init M₀).LiftEntOk hF :=
   fun _ _ _ he _ => nomatch he
@@ -197,13 +204,14 @@ theorem liftEntOk_init {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)
 end GNetSt
 
 /-- ⭐Every network of the chain has admissible term entries. -/
-theorem liftEntOk_gnet [Countable σ.FuncSyms] [Countable σ.RelSyms] (hF : ModalSys.Four = true)
+theorem liftEntOk_gnet [ModalSys.NoOpt]
+    [Countable σ.FuncSyms] [Countable σ.RelSyms] (hF : ModalSys.Four = true)
     {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0)) : ∀ n, (gnet hF M₀ n).LiftEntOk hF
   | 0 => GNetSt.liftEntOk_init M₀
   | n + 1 => (liftEntOk_gnet hF M₀ n).applyOp (gsched n)
 
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-- ⭐**In the limit, every term entry is an admissible lifted term**, weakened: but the hub's
     edge. -/

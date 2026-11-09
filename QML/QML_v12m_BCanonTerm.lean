@@ -39,8 +39,8 @@ theorem noProjLast (s : B.W) (i : ℕ) : ((B.w s).ctx i).NoProjLast :=
 variable (B)
 
 /-- ⭐The canonical environment: every visible address denotes its η-expansion. -/
-noncomputable def canonEnv (s : B.W) (i : ℕ) : B.model.Env ((B.w s).ctx i) s :=
-  fun v T hv => B.toDom T s
+noncomputable def canonEnv (s : B.W) (i : ℕ) : B.model.Env ((B.w s).ctx i) s where
+  val v T hv := B.toDom T s
     (B.rden s i (Ctx.Le.refl _) (Term.eta v T ((Ctx.ref_nonproj _ (noProjLast s i v T hv)).trans
       hv))) (definable_rden _ _)
 
@@ -158,7 +158,8 @@ theorem boxPush_canon (s : B.W) (i : ℕ) (a : B.Acc s) (hR : B.R s a.1) :
     (B.canonEnv s i).boxPush a = Model.substEnv (arrowS σ _ (B.img s a.1))
       (B.arOk hR i) (Ctx.noProjLast_boxIn _)
       (B.canonEnv a.1 (B.stg s a.1 i)) := by
-  funext v T hv
+  refine Model.Env.ext' (fun v T hv => ?_) fun _ _ h =>
+    absurd (Ctx.boxIn_wit.mp h).1 (by rw [ModalSys.NoOpt.noOpt]; decide)
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   have hk := ModalSys.FourOff.keepOnly
   have hw : ((B.w a.1).ctx (B.stg s a.1 i)).ref (itemAt (imgRoot (B.img s a.1) u.rt) u) =
@@ -194,10 +195,12 @@ theorem diaPush_canon (s : B.W) (i : ℕ) {x : VarSymb} {X : VarType}
   have hXX := B.lb_hxX hk i X hr
   subst hXX
   have hcx := B.lb_hcx hk i
-  funext v T hv
+  refine Model.Env.ext' (fun v T hv => ?_) fun _ _ h =>
+    absurd (Ctx.boxIn_wit.mp h).1 (by rw [ModalSys.NoOpt.noOpt]; decide)
   rcases diaIn_item hv with ⟨u, rfl, hu⟩ | ⟨rfl, hxT⟩
   · have hv' : ((B.w s).ctx i).boxIn (.step u .box) = some T := hv
-    exact congrFun (congrFun (congrFun (boxPush_canon s i a.1 (B.lbR hk)) (.step u .box)) T) hv'
+    exact congrArg (fun e : B.model.Env _ _ => e.val (.step u .box) T hv')
+      (boxPush_canon s i a.1 (B.lbR hk))
   · have hTX : T = X := by
       rw [hr] at hxT
       cases hxT
@@ -335,7 +338,7 @@ mutual
           rw [boxPush_canon s i a hR] at hag'
           rw [← Model.interp_mono hag' t, ← Model.interp_subst _ _ (B.arCoh hR i),
             Term.subst_mono]
-          exact interp_canon _ (fun _ _ _ => rfl)
+          exact interp_canon _ (e := Ctx.Le.refl _) (fun _ _ _ => rfl)
         · obtain ⟨hT, hs⟩ := self_of_not_R hR
           obtain ⟨s', ha⟩ := a
           change s = s' at hs
@@ -361,7 +364,7 @@ mutual
           rw [diaPush_canon s i (e.ref hr) ⟨a.1, hm⟩ hk] at hag'
           rw [← Model.interp_mono hag' t]
           rw [← Model.interp_subst _ _ (B.arXCoh hk i ⟨X, e.ref hr⟩), Term.subst_mono]
-          refine (interp_canon _ (fun _ _ _ => rfl)).trans (toDom_congr ?_ _ _)
+          refine (interp_canon _ (e := Ctx.Le.refl _) (fun _ _ _ => rfl)).trans (toDom_congr ?_ _ _)
           exact (rden_diatm_net e ⟨X, hr⟩ t ⟨a.1, hmx⟩ hk).symm
         · obtain ⟨hnR, hrx⟩ := mem_extent_self hmx hk
           obtain ⟨hT, hs⟩ := self_of_not_R hnR

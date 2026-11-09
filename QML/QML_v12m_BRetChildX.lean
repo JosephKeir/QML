@@ -86,12 +86,11 @@ theorem subst_retPull_liftBodyX (Ξ : WFF σ (bodyCtxX [.VTypeBox A] l x) 1) :
       WFF.openFree l.length (pullCtxX_fresh l x) Ctx.NoSlots.slots Ξ := by
   unfold liftBodyX WFF.openFree
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Ξ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = .VTypeBox (bcT [.VTypeBox A]) := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     rw [Subst.toFree_root]
     dsimp only [Subst.comp]

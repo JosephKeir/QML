@@ -35,21 +35,19 @@ theorem WFF.mono_retSlot {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (h : Γ.Le Γ
   rw [WFF.mono_subst _ _ _ _ _ _ (slots_insert_boxIn (Γ := Γ').insert _),
     WFF.subst_mono _ _ _ _ ((Ctx.NoSlots.slots (Γ := Γ)).boxIn.insert _)]
   refine OutLeg.retS_congr (O := .nec) hS S (congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _)) ?_
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v U hlp hv => ?_) Φ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
+    fun v U hlp hv => ?_) Φ
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
-    change SubE.Sim U (SubE.mono _ (if (VarSymb.root (.bnd 0)) = .root (.bnd 0) then _ else _))
-      (if (VarSymb.root (.bnd 0)) = .root (.bnd 0) then _ else _)
-    rw [if_pos rfl, if_pos rfl]
+    rw [Subst.mono_apply, Subst.under_slot, Subst.under_slot]
     exact .refl _
-  · change SubE.Sim U (SubE.mono _ (if v = .root (.bnd 0) then _ else _))
-      (if v = .root (.bnd 0) then _ else _)
-    rw [if_neg hvr, if_neg hvr]
+  · dsimp only [Subst.mono_apply, Subst.under]; rw [if_neg hvr, if_neg hvr]
     exact .refl _
 
 omit [ModalSys.NoFour] in
 /-- Instantiating a slot formula of a returning possibility whose value was replaced. -/
-theorem WFF.instantiate_compSlot {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+theorem WFF.instantiate_compSlot [ModalSys.NoOpt]
+    {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
     (S : RShape) {C : VarType} {b : Ann S.flat} (X : Term σ (Γ.insert (.bnd 0) C) S.flat b)
     (Φ : WFF σ (Γ.boxIn.insert (.bnd 0) S.ty) 1) {c : Ann C} (z : Term σ Γ C c) :
     WFF.instantiate Ctx.NoSlots.slots z (WFF.bodyRepl X (WFF.retSlot hS S Φ)) =
@@ -74,16 +72,13 @@ theorem WFF.mono_retxSlot {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (h : Γ.Le �
     WFF.subst_mono _ _ _ _ (((Ctx.NoSlots.slots (Γ := Γ)).diaIn y).insert _)]
   refine OutLeg.retS_congr (O := .pos y _) hS S
     (congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _)) ?_
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v U hlp hv => ?_) Φ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
+    fun v U hlp hv => ?_) Φ
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
-    change SubE.Sim U (SubE.mono _ (if (VarSymb.root (.bnd 0)) = .root (.bnd 0) then _ else _))
-      (if (VarSymb.root (.bnd 0)) = .root (.bnd 0) then _ else _)
-    rw [if_pos rfl, if_pos rfl]
+    rw [Subst.mono_apply, Subst.under_slot, Subst.under_slot]
     exact .refl _
-  · change SubE.Sim U (SubE.mono _ (if v = .root (.bnd 0) then _ else _))
-      (if v = .root (.bnd 0) then _ else _)
-    rw [if_neg hvr, if_neg hvr]
+  · dsimp only [Subst.mono_apply, Subst.under]; rw [if_neg hvr, if_neg hvr]
     exact .refl _
 
 /-! ## The slot formula along a leg -/
@@ -115,7 +110,8 @@ theorem _root_.V12M.OutLeg.mono_retSlot {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots
 
 omit [ModalSys.NoFour] in
 /-- Instantiating a slot formula along a leg whose value was replaced. -/
-theorem _root_.V12M.OutLeg.instantiate_compSlot {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
+theorem _root_.V12M.OutLeg.instantiate_compSlot [ModalSys.NoOpt]
+    {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.BStrong = true)
     (O : OutLeg Γ) (S : RShape) {C : VarType} {b : Ann S.flat}
     (X : Term σ (Γ.insert (.bnd 0) C) S.flat b) (Φ : WFF σ (O.view.insert (.bnd 0) S.ty) 1)
     {c : Ann C} (z : Term σ Γ C c) :
@@ -142,7 +138,8 @@ def compSlot (O : OutLeg Γ) {a : Ann (A.compsFlat cs)} (V : Term σ Γ (A.comps
 omit [ModalSys.NoFour] in
 /-- ⭐The slot formula, weakened and instantiated: the returning possibility at one more
     companion, valued at the weakened value and the term. -/
-theorem instantiate_compSlot_mono {Γ' : Ctx} [Γ'.NoSlots] (hle : Γ.Le Γ') (O : OutLeg Γ)
+theorem instantiate_compSlot_mono [ModalSys.NoOpt]
+    {Γ' : Ctx} [Γ'.NoSlots] (hle : Γ.Le Γ') (O : OutLeg Γ)
     {a : Ann (A.compsFlat cs)} (V : Term σ Γ (A.compsFlat cs) a)
     (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1) {c : Ann ((A.compAt p).getD .VTypeOne)}
     (z : Term σ Γ' ((A.compAt p).getD .VTypeOne) c) :
@@ -171,7 +168,7 @@ omit [ModalSys.NoFour] in
 /-- ⭐⭐**Naming a companion's return, in a world** (any leg): `◇^{boxC A cs}[d ↦ V] Φ` at a
     stage gives, at a later one, `◇^{boxC A (p :: cs)}[d ↦ ⟨V, z⟩] Φ` for some term `z` —
     `ret_compS` at a fresh root, as `∃z` (`ex_intro`), witnessed (`exW_term`). -/
-theorem BWorld.ret_comp_named (w : BWorld σ) {i : ℕ} (O : OutLeg (w.ctx i))
+theorem BWorld.ret_comp_named [ModalSys.NoOpt] (w : BWorld σ) {i : ℕ} (O : OutLeg (w.ctx i))
     {a : Ann (A.compsFlat cs)} (V : Term σ (w.ctx i) (A.compsFlat cs) a)
     (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1)
     (hm : O.retS hS (.nec (.boxC A cs h)) V Φ ∈ w.M i) :
@@ -212,7 +209,8 @@ omit [ModalSys.NoFour] in
 /-- ⭐⭐**Naming several companions' returns, in a world** (any leg): `◇^{boxC A cs}[d ↦ V] Φ` at
     a stage gives, at a later one, `◇^{boxC A (Q ++ cs)}[d ↦ V'] Φ` for some value `V'` that has
     `V` in front of the new companions (`V'` read along `|Q|` first components is `V`). -/
-theorem BWorld.ret_comps_named (w : BWorld σ) (hS : ModalSys.BStrong = true) {A : VarType}
+theorem BWorld.ret_comps_named [ModalSys.NoOpt]
+    (w : BWorld σ) (hS : ModalSys.BStrong = true) {A : VarType}
     {cs : List (List Step)} {h : A.CompOk cs} :
     ∀ (Q : List (List Step)) (hQ : A.CompOk (Q ++ cs)) {i : ℕ} (O : OutLeg (w.ctx i))
       {a : Ann (A.compsFlat cs)} (V : Term σ (w.ctx i) (A.compsFlat cs) a)
@@ -274,7 +272,8 @@ def compSlotW (O : OutLeg Γ) {a : Ann (A.compsFlat cs)} {b : Ann X}
 
 omit [ModalSys.NoFour] in
 /-- The witnessed slot formula, weakened and instantiated. -/
-theorem instantiate_compSlotW_mono {Γ' : Ctx} [Γ'.NoSlots] (hle : Γ.Le Γ') (O : OutLeg Γ)
+theorem instantiate_compSlotW_mono [ModalSys.NoOpt]
+    {Γ' : Ctx} [Γ'.NoSlots] (hle : Γ.Le Γ') (O : OutLeg Γ)
     {a : Ann (A.compsFlat cs)} {b : Ann X} (V : Term σ Γ (A.compsFlat cs) a)
     (t : Term σ Γ X b) (Φ : WFF σ (O.view.insert (.bnd 0) (RShape.wit (.box A) X).ty) 1)
     {c : Ann ((A.compAt p).getD .VTypeOne)} (z : Term σ Γ' ((A.compAt p).getD .VTypeOne) c) :
@@ -310,7 +309,7 @@ omit [ModalSys.NoFour] in
 /-- ⭐⭐**Naming a companion's return at a witnessed shape, in a world** (any leg):
     `◇^{boxC A cs × ◇X}[d ↦ ⟨V, t⟩] Φ` at a stage gives, at a later one,
     `◇^{boxC A (p :: cs) × ◇X}[d ↦ ⟨⟨V, z⟩, t⟩] Φ` for some term `z`. -/
-theorem BWorld.ret_comp_namedW (w : BWorld σ) {i : ℕ} (O : OutLeg (w.ctx i))
+theorem BWorld.ret_comp_namedW [ModalSys.NoOpt] (w : BWorld σ) {i : ℕ} (O : OutLeg (w.ctx i))
     {a : Ann (A.compsFlat cs)} {b : Ann X} (V : Term σ (w.ctx i) (A.compsFlat cs) a)
     (t : Term σ (w.ctx i) X b)
     (Φ : WFF σ (O.view.insert (.bnd 0) (RShape.wit (.box A) X).ty) 1)
@@ -342,7 +341,8 @@ end CompNamedW
 omit [ModalSys.NoFour] in
 /-- ⭐⭐**Naming several companions' returns at a witnessed shape, in a world** (any leg): as
     `ret_comps_named`, the possible part's value kept. -/
-theorem BWorld.ret_comps_namedW (w : BWorld σ) (hS : ModalSys.BStrong = true) {A X : VarType}
+theorem BWorld.ret_comps_namedW [ModalSys.NoOpt]
+    (w : BWorld σ) (hS : ModalSys.BStrong = true) {A X : VarType}
     {cs : List (List Step)} {h : A.CompOk cs} :
     ∀ (Q : List (List Step)) (hQ : A.CompOk (Q ++ cs)) {i : ℕ} (O : OutLeg (w.ctx i))
       {a : Ann (A.compsFlat cs)} {b : Ann X} (V : Term σ (w.ctx i) (A.compsFlat cs) a)

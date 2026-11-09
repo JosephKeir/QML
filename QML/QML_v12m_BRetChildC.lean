@@ -83,8 +83,8 @@ abbrev pullCtxC (V : Ctx) (l : List VarType) (A : VarType) : Ctx :=
     type. -/
 def retPullC (σ : Signature) (l : List VarType) (A : VarType)
     {V : Ctx} (hV : (ctxOf l).boxIn.Le V) (hu : V.RootFresh (.free l.length))
-    (e : SubE σ (pullCtxC V l A)) : Subst σ (pullCtxC V l A) := fun v =>
-  match v with
+    (e : SubE σ (pullCtxC V l A)) : Subst σ (pullCtxC V l A) where
+  ty v := match v with
   | .root (.free 0) => .ren (.root (.free l.length))
   | .root (.free (r + 1)) =>
       if h : r < l.length then .tm (Term.mono (hV.trans (Ctx.le_insert hu.root _))
@@ -128,7 +128,7 @@ theorem retPullC_okRef {r : ℕ} (hr : r < (rcl l A).length) :
       rfl
 
 theorem ok_retPullC : Subst.Ok (ctxOf (rcl l A)) (retPullC σ l A hV hu e) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   obtain ⟨r, rfl⟩ := ctxOf_decl hv
   have hr : r < (rcl l A).length := by
     by_contra hge
@@ -141,7 +141,7 @@ theorem ok_retPullC : Subst.Ok (ctxOf (rcl l A)) (retPullC σ l A hV hu e) := by
 /-- A witness child's content root, after the parent's, is pulled back to `e`, of its type. -/
 theorem ok_retPullC_X {X : VarType} (he : e.OkRef X) :
     Subst.Ok (ctxOf (X :: rcl l A)) (retPullC σ l A hV hu e) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   obtain ⟨r, rfl⟩ := ctxOf_decl hv
   have hr : r < (rcl l A).length + 1 := by
     by_contra hge
@@ -215,8 +215,7 @@ end Pull
 theorem body_itemT {clt : List VarType} {T : VarType} {v : VarSymb} {U : VarType}
     (hv : ((ctxOf clt).boxIn.insert (.bnd 0) T) v = some U) (hvr : v ≠ .root (.bnd 0)) :
     ∃ u, v = .step u .box ∧ (ctxOf clt).ref u = some (.VTypeBox U) := by
-  change (if v = VarSymb.root (.bnd 0) then _ else (ctxOf clt).boxIn v) = _ at hv
-  rw [if_neg hvr] at hv
+  rw [Ctx.insert_ne hvr] at hv
   exact boxIn_item hv
 
 /-- ⭐**Pulling back opens the slot**: a body over the born root read at the child, pulled back
@@ -230,12 +229,11 @@ theorem subst_retPullC_liftBodyR (l : List VarType) (A : VarType)
       WFF.openFree l.length (pullCtx_fresh l) Ctx.NoSlots.slots Ξ := by
   unfold liftBodyR WFF.openFree
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Ξ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = .VTypeBox A := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     rw [Subst.toFree_root]
     dsimp only [Subst.comp]
@@ -675,12 +673,11 @@ theorem liftBodyR_tupC (l : List VarType) (A : VarType) (b : Bool) (hb : ModalSy
         (ShapeMap.tupC (σ := σ) A b hb).obj.2) Φ) = liftBody1B l A b hb Φ := by
   unfold liftBodyR WFF.bodyRepl liftBody1B
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = .VTypeBox (tupOneTy A b) := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     dsimp only [Subst.comp]
     rw [Subst.set_root, Subst.set_root]
@@ -830,7 +827,7 @@ theorem liftBodyR_unitBodyC_thetaF (hS : ModalSys.BStrong = true) (l : List VarT
   · rw [Term.subst_mono]
     refine (Term.subst_congr _ (arrowS σ (ctxOf (rcl l A)) Nat.succ) _ (ok_arrowS (rclImg l A)) _
       (coh_arrowS (rclImg l A)) ?_ _).trans (subst_arrow_compsVal l (rclImg l A) cs h)
-    refine Subst.sim_of fun v T _ hv => ?_
+    refine Subst.simT_of fun v T _ hv => ?_
     obtain ⟨u, rfl, _⟩ := boxIn_item hv
     rw [Subst.set_ne _ _ (fun h => by cases h)]
     exact .refl _

@@ -74,7 +74,8 @@ theorem subst_alias_mono {a : Ann A} (t : Term σ (ctxOf l) A a) (φ : WFF σ (c
     WFF.subst _ (aliasS t) (ok_aliasS t) (coh_aliasS t) Ctx.NoSlots.slots Ctx.NoSlots.slots
       (WFF.mono (aliasLe A l) φ) = φ := by
   rw [WFF.subst_mono _ _ _ _ Ctx.NoSlots.slots,
-    WFF.subst_ren (Ctx.Le.refl _) _ _ _ _ _ (aliasS_at_old t) φ, WFF.mono_refl]
+    WFF.subst_ren (Ctx.Le.refl _) _ _ _ _ _ (aliasS_at_old t) φ (fun _ _ _ _ => rfl),
+    WFF.mono_refl]
 
 /-- An old term, substituted, is itself. -/
 theorem subst_alias_mono_tm {a : Ann A} (t : Term σ (ctxOf l) A a) {B : VarType} {b : Ann B}
@@ -96,7 +97,8 @@ theorem subst_alias_mono_under {a : Ann A} (t : Term σ (ctxOf l) A a)
       (WFF.mono ((aliasLe A l).insert (.bnd 0) A) ψ) = ψ := by
   rw [WFF.subst_mono _ _ _ _ (Ctx.NoSlots.slots.insert A),
     WFF.subst_ren (Ctx.Le.refl _) _ _ _ _ _
-      (Subst.ren_under (aliasS_at_old t) A (Ctx.NoSlots.slots (Γ := ctxOf l)).root) ψ,
+      (Subst.ren_under (aliasS_at_old t) A (Ctx.NoSlots.slots (Γ := ctxOf l)).root) ψ
+      (fun _ _ _ _ => rfl),
     WFF.mono_refl]
 
 /-- ⭐An alias formula, substituted, is `χ ↔ χ`. -/

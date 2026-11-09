@@ -70,7 +70,8 @@ section Witnessed
 variable {Γ : Ctx} [Γ.NoSlots] {F X : VarType}
 
 /-- `ret_keep`'s premise, instantiated: the slot's object paired with the kept possible object. -/
-theorem RShape.instantiate_keepL (hF : ModalSys.Four = true) (O : OutLeg Γ) (N : NShape)
+theorem RShape.instantiate_keepL [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) (O : OutLeg Γ) (N : NShape)
     {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {b₀ : Ann X}
     (bd : Term σ (Γ.diaIn x) X b₀) {a : Ann N.ty} (z : Term σ O.view N.ty a)
     (Ψ : WFF σ (O.view.insert (.bnd 0) (RShape.wit N X).ty) 1) :
@@ -85,7 +86,7 @@ theorem RShape.instantiate_keepL (hF : ModalSys.Four = true) (O : OutLeg Γ) (N 
 
 /-- ⭐⭐**Unlifting a witnessed returning possibility** (T + 4, strong B), the converse of
     `Proof.retW_lift`, along either leg, at terms. -/
-def Proof.retW_unlift (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.retW_unlift [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} (O : OutLeg Γ) {a₀ : Ann F}
     (b : Term σ Γ.boxIn F a₀) {a₁ : Ann F} (t₁ : Term σ Γ F a₁) (x : VarSymb)
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {b₀ : Ann X} (bd : Term σ (Γ.diaIn x) X b₀)
@@ -106,7 +107,7 @@ variable {c₁ c₂ : VarSymb}
 
 /-- ⭐⭐**The exact converse of `Proof.retW_lift`**: from what `WFF.liftedW` says of `⟨c₁, c₂⟩`, the
     witnessed returning possibility. -/
-def Proof.retW_unlift_at (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.retW_unlift_at [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} (O : OutLeg Γ) {a₁ : Ann F} {a₂ : Ann X}
     (t₁ : Term σ Γ F a₁) (h₁ : Γ.ref c₁ = some (.VTypeBox F))
     (h₂ : Γ.ref c₂ = some (.VTypeDia X)) (t₂ : Term σ Γ X a₂)

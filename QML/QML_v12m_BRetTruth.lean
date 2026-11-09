@@ -24,7 +24,7 @@ theorem substEnv_set_tm {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : 
     {a : Ann T} (g : Term σ Δ T a) :
     substEnv (θ.set r (.tm g)) (Subst.ok_set hθ rfl) (hnp.insert r T) env =
       (substEnv θ hθ hnp env).extend r (interp env g) := by
-  funext v U hv
+  refine Env.ext' (fun v U hv => ?_) fun _ _ _ => rfl
   by_cases hvr : v = .root r
   · subst hvr
     have hTU : T = U := by simpa [Ctx.insert] using hv
@@ -58,7 +58,7 @@ theorem holeRead_tupT_packT (l : List VarType) {A : VarType} {b : Ann A}
   rw [Term.subst_mono]
   refine (Term.subst_comp_sig _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS ?_ u).trans
     ((Term.subst_idS_mono (Ctx.Le.refl _) _ _ u).trans (congrArg (Sigma.mk _) (Term.mono_refl _ u)))
-  refine Subst.sim_of ?_
+  refine Subst.simT_of ?_
   intro v T _ hv
   obtain ⟨w, rfl, hw⟩ := boxIn_item hv
   obtain ⟨r, hr, hlt, _⟩ := ref_rt hw
@@ -72,7 +72,7 @@ theorem holeRead_tupT_packT (l : List VarType) {A : VarType} {b : Ann A}
       (.tm (tupT l).2)).at (.root (.bnd 0)) = .tm (Term.mono (Ctx.Le.refl _) (tupT l).2) := by
     rw [Term.mono_refl]
     change Subst.single (.bnd 0) _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    exact Subst.single_self _ _
   obtain ⟨R, hR, h1⟩ := at_tupPath_tupT _ l _ h0 hlt
   rw [Term.mono_refl] at h1
   have h2 := at_enc_tupB _ ModalSys.T rfl hR h1 hw hr
@@ -87,7 +87,7 @@ theorem holeRead_tupImgT_packT {l : List VarType} {Δ : Ctx} [Δ.NoSlots] {img :
   unfold Term.holeRead packT
   rw [Term.subst_mono]
   refine Term.subst_comp_sig _ _ (arrowS σ Δ img) _ _ _ _ (ok_arrowS himg) (coh_arrowS himg) ?_ u
-  refine Subst.sim_of ?_
+  refine Subst.simT_of ?_
   intro v T _ hv
   obtain ⟨w, rfl, hw⟩ := boxIn_item hv
   obtain ⟨r, hr, hlt, hR⟩ := ref_rt hw
@@ -104,7 +104,7 @@ theorem holeRead_tupImgT_packT {l : List VarType} {Δ : Ctx} [Δ.NoSlots] {img :
   have h0 : (Subst.single (σ := σ) (Δ := Δ) (.bnd 0)
       (.tm (tupImgT l img himg).2)).at (.root (.bnd 0)) = .tm (tupImgT l img himg).2 := by
     change Subst.single (.bnd 0) _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    exact Subst.single_self _ _
   obtain ⟨T', hT', h1⟩ := at_tupPath_tupImgT _ l himg h0 hlt
   refine sim_ren_at_ext _ _ ((PPath.encPath (reach_ppath hw).1).append PPath.itemTail) hT' hT ?_
   rw [h1]
@@ -118,7 +118,7 @@ theorem holeAt_tupT_packT_mono {l : List VarType} {Δ : Ctx} (hle : (ctxOf l).bo
   unfold Term.holeAt packT
   refine (Term.subst_comp_sig _ _ (Subst.idS σ _) _ _ _ _ (Subst.ok_idS_le hle)
     (Subst.coh_idS_le hle) ?_ u).trans (Term.subst_idS_mono hle _ _ u)
-  refine Subst.sim_of ?_
+  refine Subst.simT_of ?_
   intro v T _ hv
   obtain ⟨w, rfl, hw⟩ := boxIn_item hv
   obtain ⟨r, hr, hlt, _⟩ := ref_rt hw
@@ -131,7 +131,7 @@ theorem holeAt_tupT_packT_mono {l : List VarType} {Δ : Ctx} (hle : (ctxOf l).bo
   have h0 : (Subst.single (σ := σ) (Δ := Δ) (.bnd 0)
       (.tm (Term.mono hle (tupT l).2))).at (.root (.bnd 0)) = .tm (Term.mono hle (tupT l).2) := by
     change Subst.single (.bnd 0) _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    exact Subst.single_self _ _
   obtain ⟨R, hR, h1⟩ := at_tupPath_tupT _ l hle h0 hlt
   have h2 := at_enc_tupB_mono hle _ ModalSys.T rfl hR h1 hw hr
   rw [at_item_of_tupB_base_mono hle _ _ hw ModalSys.T rfl h2, Term.mono_eta]
@@ -284,7 +284,7 @@ theorem holeAt_tupCompsImg_holeCVal {cls : List VarType} {Δ : Ctx} [Δ.NoSlots]
       have hcR := coh_compsRen (σ := σ) ModalSys.FourOff.noFour (bcT cls) b hb
       have hL₃ : Subst.Ok (Ctx.empty.insert (.bnd 0) (.VTypeBox (bcT cls))).boxIn
           ((compsRen σ _ ((bcT cls).compsAllB b)).comp θW hθW hcθW) :=
-        fun v T hl hv => SubE.okRef_comp θW hθW hcθW (hR v T hl hv)
+        ⟨fun v T hl hv => SubE.okRef_comp θW hθW hcθW (hR v T hl hv), by wit_triv⟩
       have eL : (⟨_, Term.holeAt W (Term.subst (compsRenIdx _) (compsRen σ _ _) hR hcR X)⟩ :
           Σ c, Term σ Δ _ c) = ⟨_, Term.subst _ _ hL₃ (coh_itemIdx hL₃ hpp) X⟩ :=
         Term.subst_comp_sig _ θW _ hR hcR hθW hcθW hL₃ (coh_itemIdx hL₃ hpp)
@@ -292,7 +292,7 @@ theorem holeAt_tupCompsImg_holeCVal {cls : List VarType} {Δ : Ctx} [Δ.NoSlots]
       -- the right side: the tuple object, then the arrow
       have hR₃ : Subst.Ok (Ctx.empty.insert (.bnd 0) (.VTypeBox (bcT cls))).boxIn
           (θ.box.comp (arrowS σ Δ img) (ok_arrowS himg) (coh_arrowS himg)) :=
-        fun v T hl hv => SubE.okRef_comp _ _ _ (Subst.ok_box hθ v T hl hv)
+        ⟨fun v T hl hv => SubE.okRef_comp _ _ _ (Subst.ok_box hθ v T hl hv), by wit_triv⟩
       have hub : (⟨_, Term.subst _ θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hcθ) sb⟩ :
           Σ c, Term σ (ctxOf cls).boxIn A c) = ⟨_, u⟩ := by
         refine (Term.subst_holeAt_sig _ _ _ _ _).trans ?_
@@ -309,7 +309,7 @@ theorem holeAt_tupCompsImg_holeCVal {cls : List VarType} {Δ : Ctx} [Δ.NoSlots]
         exact Term.subst_comp_sig _ _ _ _ _ _ _ hR₃ (coh_itemIdx hR₃ hpp) (fun _ _ _ => .refl _) X
       refine eL.trans (Eq.trans ?_ eR.symm)
       -- the two agree on every item of the view
-      refine Term.subst_congr _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) X
+      refine Term.subst_congr _ _ _ _ _ _ (Subst.simT_of fun v T _ hv => ?_) X
       match v with
       | .step w .box =>
           obtain ⟨-, hw⟩ := Ctx.boxIn_box hv
@@ -453,17 +453,16 @@ theorem WFF.instantiate_retSlot (hS : ModalSys.BStrong = true) (S : RShape)
     (Term.subst_eta_tm _ _ _ _ _ _ z (Subst.at_single_root _ _)) ?_
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS _ _ _ ?_ Φ).trans
     (WFF.subst_id _ _ _ Φ)
-  refine Subst.sim_of fun v U hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
-    change SubE.Sim U (Subst.idS σ _ (.root (.bnd 0)))
-      ((Subst.under _ 0 1 _ _ (.root (.bnd 0))).comp _ _ _)
+    rw [Subst.comp_apply]
     rw [show Subst.under (Subst.idS σ (Γ.insert (.bnd 0) S.flat).boxIn) 0 1 S.ty
-      slots_insert_boxIn.root (.root (.bnd 0)) = .ren (.root (.bnd 1)) from if_pos rfl]
+      slots_insert_boxIn.root (.root (.bnd 0)) = .ren (.root (.bnd 1)) from by slot_rfl]
     dsimp only [SubE.comp]
     change SubE.Sim U _ (Subst.under _ 1 0 _ _ (.root (.bnd 1)))
     rw [show ∀ θ h, Subst.under (σ := σ) (Δ := Γ.boxIn) θ 1 0 S.ty h (.root (.bnd 1)) =
-      .ren (.root (.bnd 0)) from fun _ _ => if_pos rfl]
+      .ren (.root (.bnd 0)) from fun _ _ => Subst.under_slot _ _ _ _ _]
     exact .refl _
   · have hv' : Γ.boxIn v = some U := by simpa [Ctx.insert, hvr] using hv
     have hrt : v.rt ≠ .bnd 0 := Ctx.ref_rt_ne
@@ -591,17 +590,16 @@ theorem WFF.instantiate_retxSlot (hS : ModalSys.BStrong = true) (y : VarSymb)
   unfold bodyUpX
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS _ _ _ ?_ Φ).trans
     (WFF.subst_id _ _ _ Φ)
-  refine Subst.sim_of fun v U hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
-    change SubE.Sim U (Subst.idS σ _ (.root (.bnd 0)))
-      ((Subst.under _ 0 1 _ _ (.root (.bnd 0))).comp _ _ _)
+    rw [Subst.comp_apply]
     rw [show ∀ θ h, Subst.under (σ := σ) (Δ := (Γ.insert (.bnd 0) S.flat).diaIn y) θ 0 1 S.ty h
-      (.root (.bnd 0)) = .ren (.root (.bnd 1)) from fun _ _ => if_pos rfl]
+      (.root (.bnd 0)) = .ren (.root (.bnd 1)) from fun _ _ => Subst.under_slot _ _ _ _ _]
     dsimp only [SubE.comp]
     change SubE.Sim U _ (Subst.under _ 1 0 _ _ (.root (.bnd 1)))
     rw [show ∀ θ h, Subst.under (σ := σ) (Δ := Γ.diaIn y) θ 1 0 S.ty h (.root (.bnd 1)) =
-      .ren (.root (.bnd 0)) from fun _ _ => if_pos rfl]
+      .ren (.root (.bnd 0)) from fun _ _ => Subst.under_slot _ _ _ _ _]
     exact .refl _
   · have hv' : (Γ.diaIn y) v = some U := by simpa [Ctx.insert, hvr] using hv
     have hrt : v.rt ≠ .bnd 0 := Ctx.ref_rt_ne
@@ -674,16 +672,13 @@ theorem liftBody_bodyRepl_packMapC {bb : Bool} {hbb : ModalSys.T = bb}
       readArrow himgt (n.mono (ctxOf_le_of_suffix hs)).obj.2 Φ := by
   unfold liftBody WFF.bodyRepl readArrow
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  refine Subst.sim_of fun v T _ hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T _ hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = N.ty := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
-    change SubE.Sim _ ((arrowS σ (ctxOf lv) imgt).set (.bnd 0) _ (.root (.bnd 0)))
-      ((((Subst.idS σ _).set (.bnd 0) _) (.root (.bnd 0))).comp _ _ _)
-    rw [Subst.set_root, Subst.set_root]
+    rw [Subst.comp_apply, Subst.set_root, Subst.set_root]
     dsimp only [SubE.comp]
     refine SubE.sim_tm_sigma (Eq.symm ?_)
     rw [Term.subst_mono]
@@ -691,12 +686,9 @@ theorem liftBody_bodyRepl_packMapC {bb : Bool} {hbb : ModalSys.T = bb}
       change Subst.set _ _ _ (.root (.bnd 0)) = _
       exact Subst.set_root _ _ _) n
   · have hv' : (ctxOf clt).boxIn v = some T := by
-      change (if v = VarSymb.root (.bnd 0) then _ else _) = _ at hv
-      rwa [if_neg hvr] at hv
+      rwa [Ctx.insert_ne hvr] at hv
     obtain ⟨w, rfl, hw⟩ := boxIn_item' hv'
-    change SubE.Sim T ((arrowS σ (ctxOf lv) imgt).set (.bnd 0) _ (.step w .box))
-      ((((Subst.idS σ _).set (.bnd 0) _) (.step w .box)).comp _ _ _)
-    rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
+    rw [Subst.comp_apply, Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
     change SubE.Sim T _ ((Subst.set _ _ _).at (.step w .box))
     rw [Subst.at_set_of_rt_ne _ _ (Ctx.ref_rt_ne
       ((Ctx.NoSlots.slots (Γ := (ctxOf clt).boxIn)).rootFresh (le_refl 0))
@@ -748,21 +740,17 @@ theorem readArrow_mono_congr {l l' : List VarType} (hl : l <:+ l') {Δ Δ' : Ctx
         (WFF.mono ((ctxOf_le_of_suffix hl).boxIn.insert (.bnd 0) B) Φ) := by
   unfold readArrow
   rw [WFF.mono_subst, WFF.subst_mono]
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) Φ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
+    fun v T _ hv => ?_) Φ
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
-    change SubE.Sim T (SubE.mono hΔ (Subst.set _ _ _ (.root (.bnd 0))))
-      (Subst.set _ _ _ (.root (.bnd 0)))
-    rw [Subst.set_root, Subst.set_root]
+    rw [Subst.mono_apply, Subst.set_root, Subst.set_root]
     exact .refl _
   · have hv' : (ctxOf l).boxIn v = some T := by
-      change (if v = VarSymb.root (.bnd 0) then _ else _) = _ at hv
-      rwa [if_neg hvr] at hv
+      rwa [Ctx.insert_ne hvr] at hv
     obtain ⟨w, rfl, hw⟩ := boxIn_item hv'
     obtain ⟨r, hr, hlt, _⟩ := ref_rt hw
-    change SubE.Sim T (SubE.mono hΔ (Subst.set _ _ _ (.step w .box)))
-      (Subst.set _ _ _ (.step w .box))
-    rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
+    rw [Subst.mono_apply, Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
     change SubE.Sim T (.ren (itemAt (imgRoot img w.rt) w)) (.ren (itemAt (imgRoot img' w.rt) w))
     rw [hr, imgRoot, imgRoot, hag r hlt]
     exact .refl _
@@ -791,7 +779,8 @@ theorem boxPush_canon_at (s : B.W) (i : ℕ) (a : B.Acc s) (hR : B.R s a.1) {j :
       (ok_arrowS ((B.imgOk hR i).mono ((B.w a.1).le hj))) (Ctx.noProjLast_boxIn _)
       (B.canonEnv a.1 j) := by
   rw [boxPush_canon s i a hR]
-  funext v T hv
+  refine Model.Env.ext' (fun v T hv => ?_) fun _ _ h =>
+    absurd (Ctx.boxIn_wit.mp h).1 (by rw [ModalSys.NoOpt.noOpt]; decide)
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   exact Model.Env.ref_agree (canonEnv_le a.1 hj) _ _
 
@@ -867,7 +856,8 @@ theorem diaPush_canon_at (s : B.W) (i : ℕ) {y : VarSymb} {Y : VarType}
         (((B.w a.1.1).le hj).ref (B.lb_hcx hk i)))
       (Ctx.noProjLast_diaIn _ y) (B.canonEnv a.1.1 j) := by
   rw [diaPush_canon s i hr a ⟨Y, hk⟩]
-  funext v T hv
+  refine Model.Env.ext' (fun v T hv => ?_) fun _ _ h =>
+    absurd (Ctx.boxIn_wit.mp h).1 (by rw [ModalSys.NoOpt.noOpt]; decide)
   rcases diaIn_item hv with ⟨w, rfl, hw⟩ | ⟨rfl, _⟩
   · exact Model.Env.ref_agree (canonEnv_le a.1.1 hj) _ _
   · simp only [Model.substEnv, arrowXS]
@@ -979,16 +969,14 @@ theorem readArrowX_mono_congr {l l' : List VarType} (hl : l <:+ l') {Δ Δ' : Ct
         (WFF.mono (((ctxOf_le_of_suffix hl).diaIn x).insert (.bnd 0) B) Φ) := by
   unfold readArrowX
   rw [WFF.mono_subst, WFF.subst_mono]
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) Φ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
+    fun v T _ hv => ?_) Φ
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
-    change SubE.Sim T (SubE.mono hΔ (Subst.set _ _ _ (.root (.bnd 0))))
-      (Subst.set _ _ _ (.root (.bnd 0)))
-    rw [Subst.set_root, Subst.set_root]
+    rw [Subst.mono_apply, Subst.set_root, Subst.set_root]
     exact .refl _
   · have hv' : ((ctxOf l).diaIn x) v = some T := by
-      change (if v = VarSymb.root (.bnd 0) then _ else _) = _ at hv
-      rwa [if_neg hvr] at hv
+      rwa [Ctx.insert_ne hvr] at hv
     change SubE.Sim T (SubE.mono hΔ (Subst.set _ _ _ v)) (Subst.set _ _ _ v)
     rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
     rcases diaIn_item hv' with ⟨w, rfl, hw⟩ | ⟨rfl, _⟩
@@ -1023,16 +1011,13 @@ theorem liftBodyX_bodyRepl_packMapC {bb : Bool} {hbb : ModalSys.T = bb}
       readArrowX himgt hx hcx (n.mono (ctxOf_le_of_suffix hs)).obj.2 Φ := by
   unfold liftBodyX WFF.bodyRepl readArrowX
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = N.ty := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
-    change SubE.Sim _ ((arrowXS σ (ctxOf lv) imgt x cx).set (.bnd 0) _ (.root (.bnd 0)))
-      ((((Subst.idS σ _).set (.bnd 0) _) (.root (.bnd 0))).comp _ _ _)
-    rw [Subst.set_root, Subst.set_root]
+    rw [Subst.comp_apply, Subst.set_root, Subst.set_root]
     dsimp only [SubE.comp]
     refine SubE.sim_tm_sigma (Eq.symm ?_)
     rw [Term.subst_mono]
@@ -1040,8 +1025,7 @@ theorem liftBodyX_bodyRepl_packMapC {bb : Bool} {hbb : ModalSys.T = bb}
       change Subst.set _ _ _ (.root (.bnd 0)) = _
       exact Subst.set_root _ _ _) n
   · have hv' : ((ctxOf clt).diaIn x) v = some T := by
-      change (if v = VarSymb.root (.bnd 0) then _ else _) = _ at hv
-      rwa [if_neg hvr] at hv
+      rwa [Ctx.insert_ne hvr] at hv
     change SubE.Sim T ((arrowXS σ (ctxOf lv) imgt x cx).set (.bnd 0) _ v)
       ((((Subst.idS σ _).set (.bnd 0) _) v).comp _ _ _)
     rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]

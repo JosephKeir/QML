@@ -75,6 +75,9 @@ theorem WFF.weight_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : 
   | _, _, _, _, _, _, _, _, _, _, .linkx _ _ _ _ _ Φ => by
       simp only [WFF.subst, WFF.weight]
       rw [WFF.weight_subst _ _ _ _ _ Φ]
+  | _, _, _, _, _, _, _, _, _, _, .optx _ _ _ φ => by
+      simp only [WFF.subst, WFF.weight]
+      rw [WFF.weight_subst _ _ _ _ _ φ]
 
 theorem WFF.weight_instantiate {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {T : VarType} {a : Ann T}
     (t : Term σ Γ T a) (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) :
@@ -85,7 +88,8 @@ theorem WFF.weight_instantiate {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {T : V
 theorem WFF.weight_mono {Γ Γ' : Ctx} [Γ'.NoSlots] (h : Γ.Le Γ') (φ : WFF σ Γ 0) :
     (WFF.mono h φ).weight = φ.weight := by
   rw [← WFF.subst_ren h (Subst.idRen Γ') (Subst.ok_idRen.restrict h) (Subst.coh_idRen.restrict h)
-    ((Ctx.NoSlots.slots (Γ := Γ')).of_le h) Ctx.NoSlots.slots (fun v _ _ => Subst.at_idRen v) φ]
+    ((Ctx.NoSlots.slots (Γ := Γ')).of_le h) Ctx.NoSlots.slots (fun v _ _ => Subst.at_idRen v) φ
+    (fun _ _ _ _ => rfl)]
   exact WFF.weight_subst _ _ _ _ _ φ
 
 theorem WFF.IsAtom.instantiate {Γ : Ctx} {d : ℕ} {hs : Γ.SlotsFrom d} {T : VarType} {a : Ann T}
@@ -112,7 +116,8 @@ theorem eigenS_weaken (δ : WFF σ Γ 0) : eigenS hu t (WFF.weaken hu.root T δ)
   have hs : Γ.SlotsFrom 0 := Ctx.NoSlots.slots
   unfold eigenS WFF.weaken
   rw [WFF.subst_mono _ _ _ _ hs]
-  refine (WFF.subst_ren (Ctx.Le.refl Γ) _ _ _ _ _ (fun v U hv => ?_) δ).trans (WFF.mono_refl _ δ)
+  refine (WFF.subst_ren (Ctx.Le.refl Γ) _ _ _ _ _ (fun v U hv => ?_) δ (fun _ _ _ _ => rfl)).trans
+    (WFF.mono_refl _ δ)
   exact Subst.single_at_ne (Ctx.ref_rt_ne hu hv)
 
 /-- `u ↦ t` on the body of `∀u`/`∃u` is instantiating at `t`. -/

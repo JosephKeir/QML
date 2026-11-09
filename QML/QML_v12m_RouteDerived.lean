@@ -113,7 +113,7 @@ theorem holeAt_kThetaR {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) {a : Ann S.fla
   have h0 : (Subst.single (σ := σ) (Δ := Δ) (.bnd 0) (.tm (Term.pair y (Term.boxtm s)))).at
       (.root (.bnd 0)) = .tm (Term.pair y (Term.boxtm s)) := by
     change Subst.single _ _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    exact Subst.single_self _ _
   have hθ₀ := Subst.ok_single (σ := σ) (Ctx.empty_le Δ) (r := .bnd 0)
     (e := .tm (Term.pair y (Term.boxtm s)))
     (T := .VTypeProd S.flat (.VTypeBox C)) rfl
@@ -214,7 +214,7 @@ theorem instantiate_routeBody {Γ : Ctx} [Γ.NoSlots] {a : Ann S.flat}
     obtain ⟨u, rfl, hu⟩ := boxIn_item_route hv
     have hu0 : u.rt ≠ .bnd 0 :=
       Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) hu
-    change (if VarSymb.step u .box = .root (.bnd (0 + 1)) then _ else _) = _
+    dsimp only [Subst.under]
     rw [if_neg (fun h => by cases h)]
     change (((Subst.single _ _).at u).unbox.mono _).mono _ = _
     rw [Subst.single_at_ne hu0]

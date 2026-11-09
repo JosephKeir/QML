@@ -94,14 +94,13 @@ theorem liftBodyWD_ex_pairUpS_memB {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.
   rw [WFF.subst_comp _ _ (midSWDB hs hx A imgt e cxv) _ _ _ _ (ok_midSWDB hs hx himgt he hcxv)
     (coh_midSWDB hs hx himgt he hcxv) _ _ _ ?simA]
   case simA =>
-    refine Subst.sim_of fun v U hlp hv => ?_
+    refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
     by_cases hvr : v = .root (.bnd 0)
     · subst hvr
       obtain rfl : U = (RShape.wit (.boxC (VarType.VTypeProd (bcT cls) (A.bcB false))
           (pairComps ((bcT cls).compsAllB ModalSys.T) [])
           (VarType.compOk_pairComps (VarType.compOk_compsAllB _ rfl _) (Or.inl rfl))) X).ty := by
-        change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-        rw [if_pos rfl] at hv
+        rw [Ctx.insert_apply, if_pos rfl] at hv
         exact (Option.some.inj hv).symm
       dsimp only [Subst.comp]
       rw [show midSWDB (σ := σ) hs hx A imgt e cxv (.root (.bnd 0)) =
@@ -124,7 +123,8 @@ theorem liftBodyWD_ex_pairUpS_memB {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.
         (Term.subst_eta_tm _ _ _ _ _ _ _ (by rw [Subst.at_proj _ _ rfl, h0]; rfl))) _
     · dsimp only [Subst.comp]
       rw [show midSWDB (σ := σ) hs hx A imgt e cxv v =
-        SubE.mono _ (arrowXS σ (ctxOf lv) imgt e cxv v) from Subst.set_ne _ _ hvr,
+        SubE.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lv)).root _)
+          (arrowXS σ (ctxOf lv) imgt e cxv v) from Subst.set_ne _ _ hvr,
         Subst.set_ne _ _ hvr]
       dsimp only [Subst.idS, SubE.comp]
       rw [Subst.at_nonproj _ hlp]
@@ -135,14 +135,13 @@ theorem liftBodyWD_ex_pairUpS_memB {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.
       exact .refl _
   unfold liftBodyXAt
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Ψ
-  refine Subst.sim_of fun v U hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : U = (RShape.wit (.boxC (VarType.VTypeProd (bcT cls) (A.bcB false))
         (pairComps ((bcT cls).compsAllB ModalSys.T) [])
         (VarType.compOk_pairComps (VarType.compOk_compsAllB _ rfl _) (Or.inl rfl))) X).ty := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     dsimp only [Subst.comp]
     rw [show midSWDB (σ := σ) hs hx A imgt e cxv (.root (.bnd 0)) = .tm (midTermWB hs hx A).2
@@ -151,7 +150,7 @@ theorem liftBodyWD_ex_pairUpS_memB {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.
     have hsg : (Subst.single (σ := σ) (.bnd 0) (.tm (Term.boxtm w))).at (.root (.bnd 0)) =
         .tm (Term.boxtm w) := by
       change Subst.single (.bnd 0) _ (.root (.bnd 0)) = _
-      exact if_pos rfl
+      exact Subst.single_self _ _
     refine SubE.sim_tm_sigma (Eq.symm ((Term.subst_holeAt_sig _ _ _ _ _).trans ?_))
     refine (Term.holeAt_congr_sig (sig_pair (sig_pair (Term.subst_single_mono_sig _ _)
       (Term.subst_eta_tm _ _ _ _ _ _ _ hsg)) (Term.subst_single_mono_sig _ _)) _).trans ?_
@@ -161,7 +160,8 @@ theorem liftBodyWD_ex_pairUpS_memB {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.
         (hX := VarType.compOk_compsAllB _ rfl _) (hY := Or.inl rfl) _ _) rfl)
   · dsimp only [Subst.comp]
     rw [show midSWDB (σ := σ) hs hx A imgt e cxv v =
-      SubE.mono _ (arrowXS σ (ctxOf lv) imgt e cxv v) from Subst.set_ne _ _ hvr,
+      SubE.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lv)).root _)
+        (arrowXS σ (ctxOf lv) imgt e cxv v) from Subst.set_ne _ _ hvr,
       Subst.set_ne _ _ hvr]
     rcases bodyXT_item hv hvr with ⟨u, rfl, hu⟩ | ⟨rfl, _⟩
     · obtain ⟨r, hr, _, _⟩ := ref_rt hu
@@ -429,14 +429,14 @@ theorem liftBodyWD_unitBodyWDC {lv cls clt : List VarType} (hs : cls <:+ lv) {im
   · rw [Term.subst_mono]
     refine (Term.subst_congr _ (arrowS σ (ctxOf lv) imgt) _ (ok_arrowS himgt) _
       (coh_arrowS himgt) ?_ _).trans (subst_arrow_compsVal clt himgt cs hcs)
-    refine Subst.sim_of fun v T _ hv => ?_
+    refine Subst.simT_of fun v T _ hv => ?_
     obtain ⟨u, rfl, _⟩ := boxIn_item hv
     rw [Subst.set_ne _ _ (fun h => by cases h)]
     exact .refl _
   · rw [Term.subst_mono]
     refine Term.subst_eta_renAt _ _ _ _ _ _ _ _ ?_
     rw [Subst.at_nonproj _ rfl, Subst.set_ne _ _ (fun h => by cases h)]
-    exact if_pos rfl
+    slot_rfl
   · rw [WFF.subst_holeAt]
     refine (WFF.holeAt_packC2X _ hx _ _ _ (P' := Term.mono
       (((Ctx.le_boxIn_diaIn _ x).trans (hle.diaIn x)).trans

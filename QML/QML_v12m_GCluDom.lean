@@ -39,7 +39,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-- The flags of the cluster model: 5 and both lifts on. -/
 structure CluFlags : Prop where
@@ -257,7 +257,7 @@ theorem preTD_lift (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) 
     _ (coh_eS_kView (k := some x) (entOk_ofRen
       (itemOk_rpreX_le hX hM₀ s hk (hx.imp fun _ h => ek.ref h))))
     (sim_eS_mono (l := glat s k) (k := some x) _
-      (entOk_ofRen (itemOk_rpreX hX hM₀ s k (hx.imp fun _ h => ek.ref h)))) _).trans ?_
+      (entOk_ofRen (itemOk_rpreX hX hM₀ s k (hx.imp fun _ h => ek.ref h)))).ty _).trans ?_
   rw [Term.subst_mono]
 
 /-- ⭐**The denotation does not depend on the stage it is computed at.**  The root stages of two
@@ -297,7 +297,7 @@ theorem cden_congr (hX : CluFlags) : ∀ {A : VarType} {a : Ann A} {Γ : Ctx} (t
           _ (coh_eS_kView (k := none)
             (entOk_ofRen (itemOk_preI (rpre_le hX hM₀ s hk))))
           (sim_eS_mono (l := glat s k) (k := none) _
-            (entOk_ofRen (itemOk_preI (rpre hX hM₀ s k)))) _).trans ?_
+            (entOk_ofRen (itemOk_preI (rpre hX hM₀ s k)))).ty _).trans ?_
         rw [Term.subst_mono]
       by_cases hne : PathOk (cpath a.2.down)
       · simp only [dif_pos hne]
@@ -461,7 +461,7 @@ theorem cden_dia_c_pos' (hX : CluFlags) {A : VarType} {a : Ann A} {Γ : Ctx} (s 
 
 /-! ## At the root, and a world's denotation through the root -/
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- The identity renaming of a `□`-view term is the term. -/
 theorem subst_preI_id {l : List VarType} {A : VarType} {a : Ann A}
     (b : Term σ (ctxOf l).boxIn A a)
@@ -471,7 +471,7 @@ theorem subst_preI_id {l : List VarType} {A : VarType} {a : Ann A}
     (⟨_, Term.subst (eIdx (ofRen (σ := σ) (preI id))) (eS σ (ctxOf l).boxIn (ofRen (preI id)))
         hθ hc b⟩ : Σ c, Term σ (ctxOf l).boxIn A c) = ⟨a, b⟩ := by
   refine (Term.subst_congr _ (Subst.idS σ _) hθ (Subst.ok_idS_le (Ctx.Le.refl _)) hc
-    (Subst.coh_idS_le (Ctx.Le.refl _)) (Subst.sim_of fun v T hl hv => ?_) b).trans ?_
+    (Subst.coh_idS_le (Ctx.Le.refl _)) (Subst.simT_of fun v T hl hv => ?_) b).trans ?_
   · match v, hl with
     | .root _, _ => cases hv
     | .step u st, hl =>
@@ -481,7 +481,7 @@ theorem subst_preI_id {l : List VarType} {A : VarType} {a : Ann A}
         exact .refl _
   · rw [Term.subst_idS_mono (Ctx.Le.refl _) _ _ b, Term.mono_refl]
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- The identity renaming of a `◇_x`-view term is the term. -/
 theorem subst_preIX_id {l : List VarType} {x : VarSymb} {A : VarType} {a : Ann A}
     (b : Term σ ((ctxOf l).diaIn x) A a)
@@ -492,7 +492,7 @@ theorem subst_preIX_id {l : List VarType} {x : VarSymb} {A : VarType} {a : Ann A
         (eS σ ((ctxOf l).diaIn x) (ofRen (preIX id x))) hθ hc b⟩ :
         Σ c, Term σ ((ctxOf l).diaIn x) A c) = ⟨a, b⟩ := by
   refine (Term.subst_congr _ (Subst.idS σ _) hθ (Subst.ok_idS_le (Ctx.Le.refl _)) hc
-    (Subst.coh_idS_le (Ctx.Le.refl _)) (Subst.sim_of fun v T hl hv => ?_) b).trans ?_
+    (Subst.coh_idS_le (Ctx.Le.refl _)) (Subst.simT_of fun v T hl hv => ?_) b).trans ?_
   · match v, hl with
     | .root _, _ => cases hv
     | .step u st, hl =>
@@ -731,7 +731,7 @@ theorem cden_named_box (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
         (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hrtr))) b⟩ := by
     simp only [preTB, Term.mono_refl]
     refine Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
-      fun u st _ hst _ => ?_) b
+      fun u st _ hst _ => ?_).ty b
     obtain ⟨u', e⟩ := preI_step (pnm (rpath s) (groot hF M₀) s (rpath_eq s)) u st
     exact ⟨u', st, e, hst, by rw [← e, preI_comp]⟩
   have e1 := congrArg (fun p : Σ c, Term σ (ctxOf (glat (groot hF M₀) r)).boxIn A c =>
@@ -745,7 +745,7 @@ theorem cden_named_box (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
     (ι' := eIdx (ofRen (preI (rorig s ∘ pnm (rpath s) (groot hF M₀) s (rpath_eq s))))) _ _ _
     (ok_eS_kView (k := none) (entOk_ofRen hKo)) _ (coh_eS_kView (k := none) (entOk_ofRen hKo))
     (sim_eS_mono (l := glat (groot hF M₀) i) (k := none) _
-      (entOk_ofRen (itemOk_preI hrtr))) b).trans ?_
+      (entOk_ofRen (itemOk_preI hrtr))).ty b).trans ?_
   exact round_trip hX.five hM₀ (rpath s) (groot hF M₀) s (rpath_eq s) i hrtK
     (le_max_left i r) b
 
@@ -778,7 +778,7 @@ theorem cdefinable_dia_root (hX : CluFlags) {A : VarType} (s : GW hF M₀)
   | diatm x hx b =>
       exact ⟨rstg s i, _, _, (cden_dia_eq hX s i _ x hx b).symm⟩
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- A renaming of a `◇_x` view fixing `x` and every η-faithful item is weakening.  The witness's
     image is a variable `y` with `y = x`, so that the target view can be rewritten. -/
 theorem ren_dia_fix {l l' : List VarType} (hle : (ctxOf l).Le (ctxOf l')) (f : VarSymb → VarSymb)
@@ -912,7 +912,7 @@ theorem cden_named_dia (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
         (coh_eS_kView (k := some y) (entOk_ofRen (itemOk_preIX hY hrtr))) b⟩ := by
     simp only [preTD, Term.mono_refl]
     refine Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
-      fun u st _ hst hv => ?_) b
+      fun u st _ hst hv => ?_).ty b
     have hc := preIX_comp (rorig s) (pnm (rpath s) (groot hF M₀) s (rpath_eq s))
       (v := .step u st) hst hv
     by_cases hvx : VarSymb.step u st = .step y .dia
@@ -940,7 +940,7 @@ theorem cden_named_dia (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M�
     _ _ _ (ok_eS_kView (k := some y) (entOk_ofRen hKo)) _
     (coh_eS_kView (k := some y) (entOk_ofRen hKo))
     (sim_eS_mono (l := glat (groot hF M₀) i) (k := some y) _
-      (entOk_ofRen (itemOk_preIX hY hrtr))) b
+      (entOk_ofRen (itemOk_preIX hY hrtr))).ty b
 
 /-- ⭐**What the root defines at a `◇` type, every world defines** (R4): the root term named at
     the world (`cden_named_dia`). -/

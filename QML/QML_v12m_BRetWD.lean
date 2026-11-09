@@ -72,8 +72,7 @@ theorem bodyWD_item {cl clt : List VarType} {e : VarSymb} {X : VarType} {v : Var
     {U : VarType} (hv : bodyCtxWD cl clt e X v = some U) (hvr : v ≠ .root (.bnd 0)) :
     (∃ u, v = .step u .box ∧ (ctxOf clt).ref u = some (.VTypeBox U)) ∨
       (v = .step e .dia ∧ (ctxOf clt).ref e = some (.VTypeDia U)) := by
-  change (if v = VarSymb.root (.bnd 0) then _ else ((ctxOf clt).diaIn e) v) = _ at hv
-  rw [if_neg hvr] at hv
+  rw [Ctx.insert_ne hvr] at hv
   exact diaIn_item hv
 
 /-- ⭐A body packed along `e`, read at the reverse arrow's images, `cxv` and the pair of the
@@ -105,7 +104,8 @@ theorem liftBodyWD_slotUp {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt : 
         Ctx.NoSlots.slots ψ := by
   unfold liftBodyWD
   refine (WFF.subst_slotUp _ _ _ _ _ _).trans ?_
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) ψ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
+    fun v T _ hv => ?_) ψ
   have hvr : v ≠ .root (.bnd 0) := fun h => by
     subst h
     rw [(Ctx.NoSlots.slots (Γ := (ctxOf clt).diaIn e)).root] at hv
@@ -166,7 +166,7 @@ theorem TransferX.toTransfer {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)} (
   have h := htr _ hb
   rw [WFF.subst_mono _ _ _ _ Ctx.NoSlots.slots] at h
   have hsim : Subst.Sim (ctxOf ls).boxIn (arrowXS σ Δ img x cx) (arrowS σ Δ img) :=
-    Subst.sim_of fun v T _ hv => by
+    Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T _ hv => by
       obtain ⟨u, rfl, _⟩ := boxIn_item hv
       exact .refl _
   rwa [WFF.subst_congr _ _ _ (ok_arrowS himg) _ (coh_arrowS himg) _ _ hsim ψ] at h
@@ -212,10 +212,10 @@ theorem liftBodyWD_mono {lv lv' cls clt : List VarType} (hs : cls <:+ lv) (hl : 
         ((ctxOf_le_of_suffix hl).ref hcxv) Φ := by
   unfold liftBodyWD
   rw [WFF.mono_subst _ _ _ _ _ _ Ctx.NoSlots.slots]
-  have heq : ((arrowXS σ (ctxOf lv) imgt e cxv).set (.bnd 0) (liftEntryW hs hx)).mono
-      (ctxOf_le_of_suffix hl) =
-        (arrowXS σ (ctxOf lv') imgt e cxv).set (.bnd 0) (liftEntryW (hs.trans hl) hx) := by
-    funext v
+  have heq : ∀ v, ((arrowXS σ (ctxOf lv) imgt e cxv).set (.bnd 0) (liftEntryW hs hx)).mono
+      (ctxOf_le_of_suffix hl) v =
+        (arrowXS σ (ctxOf lv') imgt e cxv).set (.bnd 0) (liftEntryW (hs.trans hl) hx) v := by
+    intro v
     change SubE.mono _ (Subst.set _ _ _ v) = Subst.set _ _ _ v
     by_cases hv : v = .root (.bnd 0)
     · subst hv
@@ -235,7 +235,8 @@ theorem liftBodyWD_mono {lv lv' cls clt : List VarType} (hs : cls <:+ lv) (hl : 
       | .step _ .here => rfl
       | .step _ .keep => rfl
   exact WFF.subst_congr _ _ _ _ _ _ _ _
-    (Subst.sim_of fun v U _ _ => by rw [congrFun heq v]; exact .refl _) Φ
+    (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
+      fun v U _ _ => by rw [heq v]; exact .refl _) Φ
 
 /-- A source growing conservatively keeps the invariant. -/
 theorem RetInvWD.grow_src {hS : ModalSys.BStrong = true} {tv tv' tw : NodeSt σ}
@@ -303,12 +304,11 @@ theorem liftBodyWD_ex_pairUpS_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.I
   rw [WFF.subst_comp _ _ (midSWD hs hx A imgt e cxv) _ _ _ _ (ok_midSWD hs hx himgt he hcxv)
     (coh_midSWD hs hx himgt he hcxv) _ _ _ ?simA]
   case simA =>
-    refine Subst.sim_of fun v U hlp hv => ?_
+    refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
     by_cases hvr : v = .root (.bnd 0)
     · subst hvr
       obtain rfl : U = (RShape.wit (.box (bcT (A :: cls))) X).ty := by
-        change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-        rw [if_pos rfl] at hv
+        rw [Ctx.insert_apply, if_pos rfl] at hv
         exact (Option.some.inj hv).symm
       dsimp only [Subst.comp]
       rw [show midSWD (σ := σ) hs hx A imgt e cxv (.root (.bnd 0)) =
@@ -341,12 +341,11 @@ theorem liftBodyWD_ex_pairUpS_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.I
       rw [if_neg hv1, Subst.set_ne _ _ hvr]
       exact .refl _
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  refine Subst.sim_of fun v U hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : U = (RShape.wit (.box (bcT (A :: cls))) X).ty := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     dsimp only [Subst.comp]
     rw [show midSWD (σ := σ) hs hx A imgt e cxv (.root (.bnd 0)) =
@@ -355,7 +354,7 @@ theorem liftBodyWD_ex_pairUpS_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.I
     have hsg : (Subst.single (σ := σ) (.bnd 0) (.tm (newItem hs'))).at (.root (.bnd 0)) =
         .tm (newItem hs') := by
       change Subst.single (.bnd 0) _ (.root (.bnd 0)) = _
-      exact if_pos rfl
+      exact Subst.single_self _ _
     refine SubE.sim_tm_sigma (Eq.symm ((Term.subst_holeAt_sig _ _ _ _ _).trans ?_))
     refine (Term.holeAt_congr_sig (sig_pair (sig_pair (Term.subst_single_mono_sig _ _)
       (Term.subst_eta_tm _ _ _ _ _ _ _ hsg)) (Term.subst_single_mono_sig _ _)) _).trans ?_
@@ -619,14 +618,14 @@ theorem liftBodyWD_unitBodyWD {lv cls clt : List VarType} (hs : cls <:+ lv) {img
   · rw [Term.subst_mono]
     refine (Term.subst_congr _ (arrowS σ (ctxOf lv) imgt) _ (ok_arrowS himgt) _
       (coh_arrowS himgt) ?_ _).trans (subst_arrow_tupT clt himgt)
-    refine Subst.sim_of fun v T _ hv => ?_
+    refine Subst.simT_of fun v T _ hv => ?_
     obtain ⟨u, rfl, _⟩ := boxIn_item hv
     rw [Subst.set_ne _ _ (fun h => by cases h)]
     exact .refl _
   · rw [Term.subst_mono]
     refine Term.subst_eta_renAt _ _ _ _ _ _ _ _ ?_
     rw [Subst.at_nonproj _ rfl, Subst.set_ne _ _ (fun h => by cases h)]
-    exact if_pos rfl
+    slot_rfl
   · rw [WFF.subst_holeAt]
     refine (WFF.holeAt_congr _ ?_ _).trans (holeAt_tupT_pack2X (hle.diaIn x) hx Φ)
     refine sig_pair (sig_pair ?_ ?_) ?_

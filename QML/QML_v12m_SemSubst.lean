@@ -621,10 +621,64 @@ def entryVal {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
   | .tm s, _, h => h ▸ interp env s
   | .hide, _, h => False.elim h
 
-/-- The environment a substitution induces on its source. -/
-def substEnv {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
-    (hnp : Γ.NoProjLast) (env : M.Env Δ w) : M.Env Γ w :=
-  fun v T hv => entryVal env (θ v) (hθ v T (hnp v T hv) hv)
+/-- A body read in the view of the witness `z`: present where `z` is, the body's value there. -/
+def witPart {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (z : VarSymb) {Z : VarType}
+    (hz : Δ.wit z = some Z) {A : VarType} {a : Ann A} (b : Term σ (Δ.optIn z) A a) :
+    Part (M.frame.Dom A w) :=
+  ⟨(env.wit z Z hz).Dom, fun hd => interp (env.optPush z hz ((env.wit z Z hz).get hd)) b⟩
+
+/-- ⭐The value of a witness entry: a witness's own value, or a body read through it. -/
+def witVal {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) :
+    (e : WitE σ Δ) → {X : VarType} → e.OkW X → Part (M.frame.Dom X w)
+  | .ren z, X, h => env.wit z X h
+  | .tm z (A := A) b, X, h =>
+      (h.2 : A = X) ▸ (if hz : (Δ.wit z).isSome then
+        witPart env z (Option.some_get hz).symm b else Part.none)
+  | .hide, _, h => False.elim h
+
+theorem witVal_tm {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {z : VarSymb} {Z : VarType}
+    (hz : Δ.wit z = some Z) {A : VarType} {a : Ann A} (b : Term σ (Δ.optIn z) A a)
+    (h : (WitE.tm z b).OkW A) : witVal env (.tm z b) h = witPart env z hz b := by
+  have hs : (Δ.wit z).isSome = true := by rw [hz]; rfl
+  change (if hz' : (Δ.wit z).isSome then witPart env z (Option.some_get hz').symm b
+    else Part.none) = _
+  rw [dif_pos hs]
+  have hZ : (Δ.wit z).get hs = Z := Option.some.inj ((Option.some_get hs).trans hz)
+  subst hZ
+  rfl
+
+open Classical in
+/-- A witness entry's value where it fits (`witVal`), and absent elsewhere. -/
+noncomputable def substWit {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (e : WitE σ Δ)
+    (X : VarType) : Part (M.frame.Dom X w) :=
+  if h : e.OkW X then witVal env e h else Part.none
+
+theorem substWit_of {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {e : WitE σ Δ} {X : VarType}
+    (h : e.OkW X) : substWit env e X = witVal env e h :=
+  dif_pos h
+
+/-- The environment a substitution induces on its source: its witnesses are the witness
+    entries' values. -/
+noncomputable def substEnv {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
+    (hnp : Γ.NoProjLast) (env : M.Env Δ w) : M.Env Γ w where
+  val v T hv := entryVal env (θ v) (hθ v T (hnp v T hv) hv)
+  wit y X _ := substWit env (θ.wit y) X
+
+theorem substEnv_val {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
+    (hnp : Γ.NoProjLast) (env : M.Env Δ w) (v : VarSymb) (T : VarType) (hv : Γ v = some T) :
+    (substEnv θ hθ hnp env).val v T hv = entryVal env (θ v) (hθ v T (hnp v T hv) hv) :=
+  rfl
+
+theorem substEnv_wit {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
+    (hnp : Γ.NoProjLast) (env : M.Env Δ w) {y : VarSymb} {X : VarType} (hy : Γ.wit y = some X)
+    (h : (θ.wit y).OkW X) : (substEnv θ hθ hnp env).wit y X hy = witVal env (θ.wit y) h :=
+  substWit_of env h
+
+theorem witVal_congr {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {e e' : WitE σ Δ}
+    {X : VarType} (he : e = e') (h : e.OkW X) (h' : e'.OkW X) :
+    witVal env e h = witVal env e' h' := by
+  subst he
+  rfl
 
 theorem entryVal_congr {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {e e' : SubE σ Δ}
     {T : VarType} (he : e = e') (h : e.OkRef T) (h' : e'.OkRef T) :
@@ -885,11 +939,75 @@ theorem entryVal_keepE_dia {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (w' : M
           exact interp_shift (Env.shiftAgree_diaKeep hF env hr w' b.1 hm hyk b.2) t
   | .hide, _, he => False.elim he
 
+/-- ⭐The witness entry of a possible entry, one view in, is worth the entry read along the arrow. -/
+theorem witVal_toWit {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (w' : M.frame.Acc w)
+    (hO : ModalSys.Opt = true) :
+    ∀ {e : SubE σ Δ} {X : VarType} (he : e.OkRef (.VTypeDia X)),
+      witVal (env.boxPush w') e.toWit (SubE.okW_toWit hO he) = posPart (entryVal env e he) w'
+  | .ren _, _, _ => rfl
+  | .tm (.diatm z hz b), X, he => by
+      obtain ⟨Z, hZ⟩ := hz
+      cases he
+      have hzb : Δ.boxIn.wit z = some Z := Ctx.boxIn_wit.mpr ⟨hO, hZ⟩
+      have hok : (WitE.tm z (Term.mono (Ctx.le_diaIn_boxIn_optIn hO hZ) b) :
+          WitE σ Δ.boxIn).OkW _ := ⟨⟨Z, hzb⟩, rfl⟩
+      rw [witVal_congr (env.boxPush w') (show (SubE.tm (Term.diatm z ⟨Z, hZ⟩ b)).toWit =
+          WitE.tm z (Term.mono (Ctx.le_diaIn_boxIn_optIn hO hZ) b) from dif_pos hO) _ hok,
+        witVal_tm _ hzb]
+      have H := dia_beta env ⟨Z, hZ⟩ hZ b
+      apply Part.ext'
+      · change w' ∈ (M.posEval (env.ref z hZ)).1 ↔
+          w' ∈ (M.posEval (interp env (Term.diatm z ⟨Z, hZ⟩ b))).1
+        rw [H]
+      · intro h₁ h₂
+        change interp ((env.boxPush w').optPush z hzb (posPart (env.ref z hZ) w' |>.get h₁))
+            (Term.mono (Ctx.le_diaIn_boxIn_optIn hO hZ) b) =
+          (M.posEval (interp env (Term.diatm z ⟨Z, hZ⟩ b))).2 ⟨w', h₂⟩
+        rw [sec_apply H ⟨w', h₂⟩ h₁]
+        refine interp_mono ?_ b
+        intro v T hv
+        match v with
+        | .step u .dia =>
+            have hu : u = z := by
+              change (if u = z then _ else none) = some T at hv
+              split_ifs at hv with h
+              exact h
+            subst hu
+            have hXT := Ctx.diaIn_step_dia hZ hv
+            subst hXT
+            change _ = (if hv' : VarSymb.step u .dia = .step u .dia then _ else _)
+            rw [dif_pos rfl]
+            rfl
+        | .step u .box =>
+            change _ = (if hv' : VarSymb.step u .box = .step z .dia then _ else _)
+            rw [dif_neg (fun h => by cases h)]
+            rfl
+        | .step u .keep =>
+            change _ = (if hv' : VarSymb.step u .keep = .step z .dia then _ else _)
+            rw [dif_neg (fun h => by cases h)]
+            rfl
+        | .root _ => cases hv
+        | .step _ .fst => cases hv
+        | .step _ .snd => cases hv
+        | .step _ .here => cases hv
+  | .tm (.var _ _), _, he => nomatch he
+  | .tm (.func _), _, he => nomatch he
+  | .tm .unit, _, he => nomatch he
+  | .tm (.pair _ _), _, he => nomatch he
+  | .tm (.boxtm _), _, he => nomatch he
+  | .hide, _, he => False.elim he
+
 theorem substEnv_box {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
     (hnp : Γ.NoProjLast) (env : M.Env Δ w) (w' : M.frame.Acc w) :
     substEnv θ.box (Subst.ok_box hθ) (Ctx.noProjLast_boxIn Γ) (env.boxPush w') =
       (substEnv θ hθ hnp env).boxPush w' := by
-  funext v T hv
+  refine Env.ext' (fun v T hv => ?_) (fun y X hy => ?_)
+  swap
+  · obtain ⟨hO, hu⟩ := Ctx.boxIn_wit.mp hy
+    change substWit (env.boxPush w') ((θ.at y).toWit) X =
+      posPart ((substEnv θ hθ hnp env).ref y hu) w'
+    rw [substWit_of _ (SubE.okW_toWit hO (Subst.okRef_at hθ hu)),
+      witVal_toWit env w' hO (Subst.okRef_at hθ hu), substEnv_ref]
   match v with
   | .step u .box =>
       change entryVal (env.boxPush w') ((θ.at u).unbox) _ =
@@ -982,6 +1100,49 @@ theorem entryVal_dia_content {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {ιx 
   | .tm (.boxtm _), he, _, _, _ => nomatch he
   | .hide, he, _, _, _ => False.elim he
 
+/-- Witness values are unchanged by weakening, for environments agreeing in objects and
+    witnesses. -/
+theorem witVal_mono {Δ Δ' : Ctx} {h : Δ.Le Δ'} {w : M.frame.W} {env : M.Env Δ w}
+    {env' : M.Env Δ' w} (hag : Env.Agree h env env') (hwa : Env.WitAgree h env env') :
+    ∀ (e : WitE σ Δ) {X : VarType} (he : e.OkW X),
+      witVal env' (e.mono h) (WitE.okW_mono h he) = witVal env e he
+  | .ren z, _, he => (hwa z _ he).symm
+  | .tm z b, _, he => by
+      obtain ⟨⟨Z, hZ⟩, rfl⟩ := he
+      change witVal env' (WitE.tm z (Term.mono (h.optIn z) b)) ⟨⟨Z, h.wit z Z hZ⟩, rfl⟩ = _
+      rw [witVal_tm _ (h.wit z Z hZ), witVal_tm _ hZ]
+      have he := hwa z Z hZ
+      apply Part.ext'
+      · change (env'.wit z Z _).Dom ↔ (env.wit z Z hZ).Dom
+        rw [he]
+      · intro h₁ h₂
+        change interp (env'.optPush z _ ((env'.wit z Z _).get h₁)) (Term.mono (h.optIn z) b) =
+          interp (env.optPush z hZ ((env.wit z Z hZ).get h₂)) b
+        have hc : (env'.wit z Z (h.wit z Z hZ)).get h₁ = (env.wit z Z hZ).get h₂ :=
+          Part.get_eq_of_mem (he ▸ Part.get_mem (show (env.wit z Z hZ).Dom from h₂))
+            (show (env'.wit z Z (h.wit z Z hZ)).Dom from h₁)
+        rw [hc]
+        exact interp_mono (Env.optPush_agree hag hZ _) b
+  | .hide, _, he => False.elim he
+
+theorem WitE.okW_of_mono {Δ Δ' : Ctx} {h : Δ.Le Δ'} (hwit : ∀ z, Δ'.wit z = Δ.wit z) :
+    ∀ {e : WitE σ Δ} {X : VarType}, (e.mono h).OkW X → e.OkW X
+  | .ren z, _, he => (hwit z).symm.trans he
+  | .tm z _, _, he => ⟨he.1.imp fun _ hZ => (hwit z).symm.trans hZ, he.2⟩
+  | .hide, _, he => he
+
+/-- Witness values are unchanged by a weakening that keeps the witnesses. -/
+theorem substWit_mono {Δ Δ' : Ctx} {h : Δ.Le Δ'} {w : M.frame.W} {env : M.Env Δ w}
+    {env' : M.Env Δ' w} (hag : Env.Agree h env env') (hwa : Env.WitAgree h env env')
+    (hwit : ∀ z, Δ'.wit z = Δ.wit z) (e : WitE σ Δ) (X : VarType) :
+    substWit env' (e.mono h) X = substWit env e X := by
+  by_cases he : e.OkW X
+  · rw [substWit_of _ (WitE.okW_mono h he), substWit_of _ he]
+    exact witVal_mono hag hwa e he
+  · have he' : ¬ (e.mono h).OkW X := fun h' => he (WitE.okW_of_mono hwit h')
+    unfold substWit
+    rw [dif_neg he', dif_neg he]
+
 theorem substEnv_dia {Γ Δ : Ctx} {ι : VarSymb → VarSymb} {w : M.frame.W} (θ : Subst σ Δ)
     (hθ : Subst.Ok Γ θ) (hnp : Γ.NoProjLast) (env : M.Env Δ w) {x : VarSymb} {X Y : VarType}
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (hr : Γ.ref x = some (.VTypeDia X))
@@ -991,7 +1152,16 @@ theorem substEnv_dia {Γ Δ : Ctx} {ι : VarSymb → VarSymb} {w : M.frame.W} (�
     substEnv (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Ctx.noProjLast_diaIn Γ x)
         (env.diaPush (ι x) hr₁ w') =
       (substEnv θ hθ hnp env).diaPush x hr ⟨w'.1, hm⟩ := by
-  funext v T hv
+  refine Env.ext' (fun v T hv => ?_) (fun y X' hy => ?_)
+  swap
+  · obtain ⟨hO, hu⟩ := Ctx.boxIn_wit.mp hy
+    change substWit (env.diaPush (ι x) hr₁ w')
+      (((θ.at y).toWit).mono (Ctx.le_boxIn_diaIn Δ (ι x))) X' =
+      posPart ((substEnv θ hθ hnp env).ref y hu) w'.1
+    rw [substWit_of _ (WitE.okW_mono _ (SubE.okW_toWit hO (Subst.okRef_at hθ hu))),
+      witVal_mono (Env.box_dia_agree env hr₁ w') (fun _ _ _ => rfl) _
+      (SubE.okW_toWit hO (Subst.okRef_at hθ hu)),
+      witVal_toWit env w'.1 hO (Subst.okRef_at hθ hu), substEnv_ref]
   match v with
   | .step u .dia =>
       have hux : u = x := by

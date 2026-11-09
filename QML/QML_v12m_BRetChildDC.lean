@@ -81,16 +81,16 @@ abbrev pullCtxDC (l : List VarType) (A X : VarType) : Ctx :=
     `c` to `u.fst`, `e` to `u.snd`, and root `r + 2` to the tuple of root `r`'s items.  No fact
     about `bc` is used. -/
 def retPullDC (σ : Signature) (l : List VarType) (A X : VarType) :
-    Subst σ (pullCtxDC l A X) := fun v =>
-  match v with
-  | .root (.free 0) => .ren (.step (.root (.free l.length)) .fst)
-  | .root (.free 1) => .ren (.step (.root (.free l.length)) .snd)
-  | .root (.free (r + 2)) =>
-      if h : r < l.length then .tm (Term.mono (Ctx.le_insert (pullCtx_fresh l).root _)
-        (tup (.root (.free r)) (rootTy l r) (by
-          rw [Ctx.ref_nonproj _ rfl]; exact ctxOf_root_lt h)))
-      else .hide
-  | _ => .hide
+    Subst σ (pullCtxDC l A X) where
+  ty v := match v with
+    | .root (.free 0) => .ren (.step (.root (.free l.length)) .fst)
+    | .root (.free 1) => .ren (.step (.root (.free l.length)) .snd)
+    | .root (.free (r + 2)) =>
+        if h : r < l.length then .tm (Term.mono (Ctx.le_insert (pullCtx_fresh l).root _)
+          (tup (.root (.free r)) (rootTy l r) (by
+            rw [Ctx.ref_nonproj _ rfl]; exact ctxOf_root_lt h)))
+        else .hide
+    | _ => .hide
 
 /-- Where pulling back sends annotation indices: along the entry at the index's root. -/
 def retPullDCIdx (σ : Signature) (l : List VarType) (A X : VarType) (a : VarSymb) : VarSymb :=
@@ -119,7 +119,7 @@ theorem pullCtxDC_ref_snd :
   Ctx.ref_snd_of (Ctx.ref_insert_root _ _ _)
 
 theorem ok_retPullDC : Subst.Ok (ctxOf (rclD l A X)) (retPullDC σ l A X) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   obtain ⟨r, rfl⟩ := ctxOf_decl hv
   have hr : r < (rclD l A X).length := by
     by_contra hge
@@ -211,12 +211,11 @@ theorem subst_retPullDC_liftBodyDR
       WFF.openFree l.length (pullCtx_fresh l) Ctx.NoSlots.slots Ξ := by
   unfold liftBodyDR WFF.openFree
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Ξ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = (RShape.wit (bornShape A) X).ty := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     rw [Subst.toFree_root]
     dsimp only [Subst.comp]
@@ -485,7 +484,7 @@ theorem subst_arrow_mono {l l' : List VarType} (hl : (ctxOf l).Le (ctxOf l')) {�
         (Term.mono hl.boxIn t)⟩ : Σ c, Term σ Δ T c) =
       ⟨_, Term.subst (arrowIdx img) (arrowS σ Δ img) (ok_arrowS himg) (coh_arrowS himg) t⟩ := by
   rw [Term.subst_mono]
-  refine Term.subst_congr _ _ _ _ _ _ (Subst.sim_of fun v U _ hv => ?_) t
+  refine Term.subst_congr _ _ _ _ _ _ (Subst.simT_of fun v U _ hv => ?_) t
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   obtain ⟨r, hr, hlt, -⟩ := ref_rt hu
   change SubE.Sim U (.ren (itemAt (imgRoot img' u.rt) u)) (.ren (itemAt (imgRoot img u.rt) u))
@@ -623,12 +622,11 @@ theorem liftBodyDR_mapD (l : List VarType) (A X : VarType)
       liftBodyW (rclD_suffix l A X) (rclDImg l A X) (bclD_e A X) Φ := by
   unfold liftBodyDR WFF.bodyRepl liftBodyW
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = (RShape.wit (.box (bcT (bclD A X))) X).ty := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     dsimp only [Subst.comp]
     rw [Subst.set_root, Subst.set_root]
@@ -816,7 +814,7 @@ theorem liftBodyDR_unitBodyDC_thetaD (hS : ModalSys.BStrong = true) (l : List Va
     refine (Term.subst_congr _ (arrowS σ (ctxOf (rclD l A X)) (· + 2)) _
       (ok_arrowS (rclDImg l A X)) _ (coh_arrowS (rclDImg l A X)) ?_ _).trans
       (subst_arrow_compsVal l (rclDImg l A X) cs h)
-    refine Subst.sim_of fun v T _ hv => ?_
+    refine Subst.simT_of fun v T _ hv => ?_
     obtain ⟨u, rfl, _⟩ := boxIn_item hv
     rw [Subst.set_ne _ _ (fun h => by cases h)]
     exact .refl _

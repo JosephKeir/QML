@@ -37,11 +37,14 @@ theorem Env.substEnv_diaAbsA (hT : ModalSys.T = true) {Γ : Ctx} [Γ.Presented] 
         (Ctx.noProjLast_diaIn Γ x)
         ((env.boxPush (M.frame.reflAcc hT w)).extend (.bnd 0) (interp env t₀)) =
       env.diaPush x hcA ⟨M.frame.reflAcc hT w, hmem⟩ := by
-  funext v T hv
+  refine Env.ext' (fun v T hv => ?_) (fun _ _ hy => ?_)
+  swap
+  · exact absurd (Ctx.boxIn_wit.mp hy).1 (by rw [ModalSys.noOpt_of_T hT]; decide)
   rcases Subst.diaIn_casesA hcA (Ctx.Presented.not_below inferInstance hcA rfl) hv with
     ⟨rfl, rfl⟩ | ⟨_, hb, hen, hroot⟩
   · refine (entryVal_congr _ (show Subst.diaAbsA σ (Γ.boxIn.insert (.bnd 0) T) x
-        (.step x .dia) = .ren (.root (.bnd 0)) from if_pos rfl) _
+        (.step x .dia) = .ren (.root (.bnd 0)) from
+          if_pos (c := x = x) (t := SubE.ren (.root (.bnd 0))) (e := SubE.hide) rfl) _
       (Ctx.ref_insert_root _ (.bnd 0) T)).trans ?_
     refine (Env.extend_root (env.boxPush (M.frame.reflAcc hT w)) (.bnd 0) (interp env t₀)
       (by simp [Ctx.insert])).trans ?_

@@ -55,6 +55,7 @@ def WFF.size {σ : Signature} : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → ℕ
   | _, _, .retxS _ _ _ S _ Φ => Φ.size + S.flat.eqRecSize + 1
   | _, _, .link _ _ _ Φ => Φ.size + 1
   | _, _, .linkx _ _ _ _ _ Φ => Φ.size + 1
+  | _, _, .optx _ _ _ φ => φ.size + 1
 
 /-- ⭐The size of an equality is the size of its type: nothing in `eqRec`'s clauses looks at the
     terms.  So the `here` clause of `WFF.size` above dominates the equation `Proof.here_fun`
@@ -95,6 +96,7 @@ theorem WFF.size_mono {σ : Signature} : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le
   | _, _, _, h, .link _ _ _ Φ => congrArg (· + 1) (WFF.size_mono (h.boxIn.insert _ _) Φ)
   | _, _, _, h, .linkx _ _ y _ _ Φ =>
       congrArg (· + 1) (WFF.size_mono ((h.diaIn y).insert _ _) Φ)
+  | _, _, _, h, .optx _ y _ φ => congrArg (· + 1) (WFF.size_mono (h.optIn y) φ)
 
 theorem WFF.size_subst {σ : Signature} : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ}
     (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d)
@@ -123,6 +125,8 @@ theorem WFF.size_subst {σ : Signature} : ∀ {ι : VarSymb → VarSymb} {Γ Δ 
       congrArg (· + 1) (WFF.size_subst _ _ _ _ _ Φ)
   | _, _, _, _, _, _, _, _, _, _, .linkx _ _ _ _ _ Φ =>
       congrArg (· + 1) (WFF.size_subst _ _ _ _ _ Φ)
+  | _, _, _, _, _, _, _, _, _, _, .optx _ _ _ φ =>
+      congrArg (· + 1) (WFF.size_subst _ _ _ _ _ φ)
 
 theorem WFF.size_instantiate {σ : Signature} {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {T : VarType}
     {a : Ann T} (t : Term σ Γ T a) (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) :
@@ -154,6 +158,8 @@ theorem WFF.size_collapse {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {
       congrArg (· + S.flat.eqRecSize + 1) (WFF.size_collapse _ _ Φ)
   | _, _, _, _, _, _, .link _ _ _ Φ => congrArg (· + 1) (WFF.size_collapse _ _ Φ)
   | _, _, _, _, _, _, .linkx _ _ _ _ _ Φ => congrArg (· + 1) (WFF.size_collapse _ _ Φ)
+  | _, _, _, _, h, _, .optx hO _ _ _ =>
+      False.elim (by have := ModalSys.noOpt_of_T h.hT; rw [hO] at this; cases this)
 
 theorem WFF.size_shift {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d : ℕ}
     (h : Ctx.Shifts k Γ₁ Γ₂) (hs : Γ₁.SlotsFrom d) (φ : WFF σ Γ₁ d),
@@ -180,9 +186,11 @@ theorem WFF.size_shift {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d :
       congrArg (· + S.flat.eqRecSize + 1) (WFF.size_shift _ _ Φ)
   | _, _, _, _, _, _, .link _ _ _ Φ => congrArg (· + 1) (WFF.size_shift _ _ Φ)
   | _, _, _, _, _, _, .linkx _ _ _ _ _ Φ => congrArg (· + 1) (WFF.size_shift _ _ Φ)
+  | _, _, _, _, h, _, .optx hO _ _ _ =>
+      False.elim (by have := ModalSys.noOpt_of_Four h.hF; rw [hO] at this; cases this)
 
 /-- Abstracting a witness is a substitution, so it leaves the logical structure alone. -/
-theorem WFF.size_diaAbs {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) {A : VarType}
+theorem WFF.size_diaAbs [ModalSys.NoOpt] {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (c : ℕ) {A : VarType}
     (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
     (χ : WFF σ (Γ.diaIn (.root (.free c))) 0) : (WFF.diaAbs c hcA hfr χ).size = χ.size :=
@@ -201,17 +209,19 @@ theorem WFF.size_realiseAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalS
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
     {a₀ : Ann A} (t₀ : Term σ Γ A a₀) (χ : WFF σ (Γ.diaIn (.root (.free c))) 0) :
     (WFF.realiseAt hT c hcA hfr t₀ χ).size = χ.size :=
+  haveI : ModalSys.NoOpt := ⟨ModalSys.noOpt_of_T hT⟩
   (WFF.size_hereRead hT t₀ _).trans (WFF.size_diaAbs c hcA hfr χ)
 
 /-- The same at an arbitrary declared address. -/
-theorem WFF.size_diaAbsA {σ : Signature} {Γ : Ctx} [Γ.Presented] (x : VarSymb) {A : VarType}
-    (hxA : Γ.ref x = some (.VTypeDia A)) (χ : WFF σ (Γ.diaIn x) 0) :
+theorem WFF.size_diaAbsA [ModalSys.NoOpt] {σ : Signature} {Γ : Ctx} [Γ.Presented] (x : VarSymb)
+    {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) (χ : WFF σ (Γ.diaIn x) 0) :
     (WFF.diaAbsA x hxA χ).size = χ.size :=
   WFF.size_subst _ _ _ _ _ χ
 
 /-- ⭐And realising at an arbitrary address keeps the logical size, which is what keeps the truth
     lemma's induction going through the realised case. -/
-theorem WFF.size_realiseAtA {σ : Signature} {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true)
+theorem WFF.size_realiseAtA [ModalSys.NoOpt]
+    {σ : Signature} {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true)
     (x : VarSymb) {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) {a₀ : Ann A}
     (t₀ : Term σ Γ A a₀) (χ : WFF σ (Γ.diaIn x) 0) :
     (WFF.realiseAtA hT x hxA t₀ χ).size = χ.size :=
@@ -820,6 +830,7 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
       | retxS hB _ _ _ _ _ => exact (ModalSys.NoB.absurdStrong hB).elim
       | link hV hF _ _ => exact (ModalSys.NoB.absurdLink hV hF).elim
       | linkx hV hF _ _ _ _ => exact (ModalSys.NoB.absurdLink hV hF).elim
+      | optx hO _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
 
 /-- ⭐**The truth lemma.** -/
 theorem truth (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF σ (w.L.ctx i) 0) :
@@ -855,13 +866,14 @@ theorem indInvariant_inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLas
             (WFF.mono ((w.L.ctx_le hK).insert (.bnd 0) A) φ')⟩ : w.L.sys.Sentence σ) ∈ w.T) := by
     intro o₁ s hs₁ K' hK hs
     have hval : Model.interp (canonEnv w₀ w K') (s.lift K' hs) = o₁ := by
-      rw [interp_canon w₀ _ (fun _ _ _ => rfl)]
+      rw [interp_canon w₀ _ (e := Ctx.Le.refl _) (fun _ _ _ => rfl)]
       refine Eq.trans ?_ (toDom_fromDom w₀ A w o₁)
       exact toDom_congr w₀ ((rden_lift hs s.t).trans hs₁) _ _
     calc (model w₀).sat (env.extend (.bnd 0) o₁) φ
         ↔ (model w₀).sat ((Model.substEnv (repSubst w₀ env hfin) hθ hnp
             (canonEnv w₀ w (repSup w₀ env hfin))).extend (.bnd 0) o₁) φ := by
-          rw [substEnv_repSubst w₀ env hfin hnp]
+          exact Model.sat_congr_val (fun v T h => by
+            simp only [Model.Env.extend, substEnv_repSubst w₀ env hfin hnp]) φ
       _ ↔ (model w₀).sat (Model.substEnv ((repSubst w₀ env hfin).under 0 0 A h0)
             (Subst.ok_under hθ A h0) (hnp.insert (.bnd 0) A)
             ((canonEnv w₀ w (repSup w₀ env hfin)).extend (.bnd 0) o₁)) φ := by
@@ -963,6 +975,7 @@ theorem completeness {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : W
 theorem provable_iff_valid {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
     Provable Δ φ ↔ ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
       Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ :=
-  ⟨fun ⟨p⟩ M hM _ env => Model.soundness p M hM env (Ctx.Presented.tame Γ), completeness⟩
+  ⟨fun ⟨p⟩ M hM _ env hnp => Model.soundness p M hM env (Ctx.Presented.tame Γ) hnp (by env_opened),
+    completeness⟩
 
 end V12M

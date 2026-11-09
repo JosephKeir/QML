@@ -54,8 +54,8 @@ theorem splitLevel_ppath : ∀ {q : List Step}, PPath q → ∀ {s : Step}, s.is
 
 /-- ⭐The renaming of an arrow given by an item map `f`: an item (an address ending in a level
     step) goes to its image. -/
-def itemS (σ : Signature) (Δ : Ctx) (f : VarSymb → VarSymb) : Subst σ Δ := fun v =>
-  match v with
+def itemS (σ : Signature) (Δ : Ctx) (f : VarSymb → VarSymb) : Subst σ Δ where
+  ty v := match v with
   | .step u s => if s.isProj then .hide else .ren (f (.step u s))
   | .root _ => .hide
 
@@ -71,9 +71,10 @@ def ItemOk (Γ Δ : Ctx) (f : VarSymb → VarSymb) : Prop :=
   ∀ v T, v.lastProj = false → Γ v = some T → Δ.ref (f v) = some T
 
 theorem ok_itemS {σ : Signature} {Γ Δ : Ctx} {f : VarSymb → VarSymb} (hf : ItemOk Γ Δ f)
-    (hit : ∀ v T, v.lastProj = false → Γ v = some T → ∃ u s, v = .step u s) :
+    (hit : ∀ v T, v.lastProj = false → Γ v = some T → ∃ u s, v = .step u s)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Subst.Ok Γ (itemS σ Δ f) := by
-  intro v T hv hT
+  refine ⟨fun v T hv hT => ?_, by wit_triv⟩
   obtain ⟨u, s, rfl⟩ := hit v T hv hT
   have hs : s.isProj = false := hv
   change (if s.isProj then SubE.hide else .ren (f (.step u s))).OkRef T
@@ -96,7 +97,8 @@ theorem itemIdx_item (f : VarSymb → VarSymb) {u : VarSymb} (hu : PPath u.path)
 /-- ⭐An item map is coherent with its index map, given the items are projection paths followed
     by a level step. -/
 theorem coh_itemS {σ : Signature} {Γ Δ : Ctx} {f : VarSymb → VarSymb} (hf : ItemOk Γ Δ f)
-    (hit : ∀ v T, v.lastProj = false → Γ v = some T → ∃ u s, v = .step u s ∧ PPath u.path) :
+    (hit : ∀ v T, v.lastProj = false → Γ v = some T → ∃ u s, v = .step u s ∧ PPath u.path)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Subst.Coh (itemIdx f) Γ (itemS σ Δ f) := by
   refine Subst.coh_of (ok_itemS hf fun v T hv hT => ?_) ?_
   · obtain ⟨u, s, rfl, _⟩ := hit v T hv hT
@@ -148,14 +150,15 @@ theorem diaIn_item {l : List VarType} {x v : VarSymb} {T : VarType}
   | .step u .here => exact boxIn_item (l := l) h
 
 theorem coh_itemS_boxIn {σ : Signature} {l : List VarType} {Δ : Ctx} {f : VarSymb → VarSymb}
-    (hf : ItemOk (ctxOf l).boxIn Δ f) :
+    (hf : ItemOk (ctxOf l).boxIn Δ f) (_hO : ModalSys.Opt = false := by opt_off) :
     Subst.Coh (itemIdx f) (ctxOf l).boxIn (itemS σ Δ f) :=
   coh_itemS hf fun _ _ _ hT => by
     obtain ⟨u, s, e, hu, _⟩ := boxIn_item hT
     exact ⟨u, s, e, hu⟩
 
 theorem coh_itemS_diaIn {σ : Signature} {l : List VarType} {x : VarSymb} {Δ : Ctx}
-    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf l).diaIn x) Δ f) :
+    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf l).diaIn x) Δ f)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Subst.Coh (itemIdx f) ((ctxOf l).diaIn x) (itemS σ Δ f) :=
   coh_itemS hf fun _ _ _ hT => by
     obtain ⟨u, s, e, hu, _⟩ := diaIn_item hT

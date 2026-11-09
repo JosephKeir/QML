@@ -25,11 +25,12 @@ namespace GArrow
 open BArrow Model
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-! ## The flags -/
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [ModalSys.NoOpt] in
 theorem hubOn_T (hh : GNetSt.HubOn M₀) : ModalSys.T = false := by
   have h := hh.1
   cases hT : ModalSys.T
@@ -37,6 +38,7 @@ theorem hubOn_T (hh : GNetSt.HubOn M₀) : ModalSys.T = false := by
   · simp [ModalSys.hubFlags, ModalSys.axNeed, hT] at h
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [ModalSys.NoOpt] in
 theorem hubOn_B (hh : GNetSt.HubOn M₀) : ModalSys.B = false := by
   have h := hh.1
   cases hB : ModalSys.B
@@ -44,6 +46,7 @@ theorem hubOn_B (hh : GNetSt.HubOn M₀) : ModalSys.B = false := by
   · simp [ModalSys.hubFlags, hB] at h
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [ModalSys.NoOpt] in
 theorem hubOn_BS (hX : CluFlags) (hh : GNetSt.HubOn M₀) : ModalSys.BStrong = false :=
   Bool.eq_false_iff.mpr fun hS => Bool.false_ne_true ((hubOn_B hh).symm.trans (hX.bS hS))
 
@@ -250,6 +253,7 @@ end Apex
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 include hX hh in
+omit [ModalSys.NoOpt] in
 theorem hubSh : ModalSys.shaped = false := shaped_false_of (hubOn_T hh) (hubOn_BS hX hh)
 
 theorem hubNb_mono {i j : ℕ} (hij : i ≤ j) {A : VarType} {a : Ann (.VTypeBox A)}
@@ -587,6 +591,7 @@ theorem hubTruth_lt : ∀ (n i : ℕ) (φ : WFF σ (ctxOf (gnet hF M₀ i).src.l
       | retxS hB _ _ _ _ _ => exact flagElim (hubOn_BS hX hh) hB
       | link _ hN _ _ => exact flagElim hN hF
       | linkx _ hN _ _ _ _ => exact flagElim hN hF
+      | optx hO _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
       | and φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega

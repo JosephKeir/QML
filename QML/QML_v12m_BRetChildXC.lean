@@ -129,12 +129,11 @@ theorem subst_retPullC_liftBodyXR
       WFF.openFree l.length (pullCtxX_fresh l x) Ctx.NoSlots.slots Ξ := by
   unfold liftBodyXR WFF.openFree
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Ξ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = .VTypeBox A := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     rw [Subst.toFree_root]
     dsimp only [Subst.comp]
@@ -145,9 +144,7 @@ theorem subst_retPullC_liftBodyXR
     rw [Subst.set_ne _ _ hvr]
     have hv' : (((ctxOf l).diaIn x).insert (.bnd 0) (.VTypeBox (bcT [.VTypeBox A]))) v =
         some T := by
-      change (if v = VarSymb.root (.bnd 0) then _ else _) = _
-      change (if v = VarSymb.root (.bnd 0) then _ else _) = _ at hv
-      rw [if_neg hvr] at hv ⊢
+      rw [Ctx.insert_ne hvr] at hv ⊢
       exact hv
     rcases bodyX_item hv' hvr with ⟨w, rfl, hw⟩ | ⟨rfl, _⟩
     · change SubE.Sim T (((Subst.idRen _) (.step w .box)).mono _)
@@ -320,12 +317,11 @@ theorem liftBodyXR_tupC (l : List VarType) (A : VarType) {x : VarSymb} {X : VarT
         (ShapeMap.tupC (σ := σ) A b hb).obj.2) Φ) = liftBodyX1B l A b hb hX Φ := by
   unfold liftBodyXR WFF.bodyRepl liftBodyX1B
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = .VTypeBox (tupOneTy A b) := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     dsimp only [Subst.comp]
     rw [Subst.set_root, Subst.set_root]
@@ -381,14 +377,14 @@ theorem liftBodyXR_unitBodyWC_thetaG (hS : ModalSys.BStrong = true) (l : List Va
     refine (Term.subst_congr _ (arrowS σ (ctxOf (X :: rcl l A)) Nat.succ) _
       (ok_arrowS (rclXImg l A X)) _ (coh_arrowS (rclXImg l A X)) ?_ _).trans
       (subst_arrow_compsVal l (rclXImg l A X) cs h)
-    refine Subst.sim_of fun v T _ hv => ?_
+    refine Subst.simT_of fun v T _ hv => ?_
     obtain ⟨u, rfl, _⟩ := boxIn_item hv
     rw [Subst.set_ne _ _ (fun h => by cases h)]
     exact .refl _
   · rw [Term.subst_mono]
     refine Term.subst_eta_renAt _ _ _ _ _ _ _ _ ?_
     rw [Subst.at_nonproj _ rfl, Subst.set_ne _ _ (fun h => by cases h)]
-    exact if_pos rfl
+    slot_rfl
   · rw [WFF.subst_holeAt]
     refine (WFF.holeAt_congr _ (sig_pair
       (Term.subst_compsSlot _ _ (rclX_born_ref l A X)

@@ -30,7 +30,8 @@ namespace Subst
 variable {σ : Signature} {Δ : Ctx}
 
 /-- `Ψ` read at the addresses shifted at `0`. -/
-def atShift (Ψ : Subst σ Δ) : Subst σ Δ := fun v => Ψ.at (v.shift 0)
+def atShift (Ψ : Subst σ Δ) : Subst σ Δ where
+  ty v := Ψ.at (v.shift 0)
 
 theorem at_atShift (Ψ : Subst σ Δ) : ∀ v : VarSymb, (atShift Ψ).at v = Ψ.at (v.shift 0)
   | .root _ => rfl
@@ -46,13 +47,16 @@ theorem at_atShift (Ψ : Subst σ Δ) : ∀ v : VarSymb, (atShift Ψ).at v = Ψ.
 
 theorem ok_atShift {Γ Γ' : Ctx} (C : Ctx.Shifts 0 Γ Γ') {Ψ : Subst σ Δ} (hΨ : Ok Γ' Ψ) :
     Ok Γ (atShift Ψ) :=
-  fun v T hlp hv => okRef_at hΨ (C v T ((Ctx.ref_nonproj Γ hlp).trans hv))
+  ⟨fun v T hlp hv => okRef_at hΨ (C v T ((Ctx.ref_nonproj Γ hlp).trans hv)),
+    fun hO => absurd hO (by rw [ModalSys.noOpt_of_Four C.hF]; decide)⟩
 
 theorem coh_atShift {Γ Γ' : Ctx} (C : Ctx.Shifts 0 Γ Γ') {Ψ : Subst σ Δ} (hΨ : Ok Γ' Ψ)
     {ι : VarSymb → VarSymb} (hc : Coh ι Γ' Ψ)
     (hlv : ∀ v T, v.lastProj = false → Γ v = some T → Step.levels v.path = 1) :
     Coh (fun y => ι (y.shift (Step.levels y.path - 1))) Γ (atShift Ψ) := by
-  refine coh_of (ok_atShift C hΨ) fun v T hlp hv p => ?_
+  refine coh_of (ok_atShift C hΨ) (fun v T hlp hv p => ?_)
+    (fun hO => absurd hO (by rw [ModalSys.noOpt_of_Four C.hF]; decide))
+    (fun hO => absurd hO (by rw [ModalSys.noOpt_of_Four C.hF]; decide))
   change (Ψ.at (v.shift 0)).idxAlong p = _
   rw [hc _ _ (C v T ((Ctx.ref_nonproj Γ hlp).trans hv)) p, VarSymb.ext_path, Step.levels_append,
     hlv v T hlp hv, show 1 + Step.levels p - 1 = 0 + Step.levels p by omega, VarSymb.shift_ext]
@@ -238,7 +242,7 @@ theorem subst_shift_pullS (hF : ModalSys.Four = true) {l l' : List VarType} {Δ 
     have cohA := Subst.coh_atShift C p q hlv
     have hsim : Subst.Sim ((ctxOf l).diaIn z) (Subst.idS σ (Δ.diaIn z))
         ((pullS l z x).comp (Subst.atShift (E.dia (.step x .keep) z)) okA cohA) := by
-      refine Subst.sim_of fun v T _ hv => ?_
+      refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T _ hv => ?_
       change SubE.Sim T (.ren v) ((pullS l z x v).comp _ okA cohA)
       by_cases hvz : v = .step z .dia
       · subst hvz
@@ -351,7 +355,7 @@ theorem subst_shift_pullBox (hF : ModalSys.Four = true) {l l' : List VarType} {�
   have cohA := Subst.coh_atShift C (Subst.ok_box hE) (Subst.coh_box hE hcE) levels_boxIn_ctxOf
   have hsim : Subst.Sim (ctxOf l).boxIn (Subst.idS σ Δ.boxIn)
       ((pullBoxS l r).comp (Subst.atShift E.box) okA cohA) := by
-    refine Subst.sim_of fun v T _ hb => ?_
+    refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T _ hb => ?_
     change SubE.Sim T (.ren v) ((pullBoxS l r v).comp _ okA cohA)
     have hm := mem_boxItems hb
     have hany : (boxItems l).any (·.1 == v) = true := List.any_eq_true.mpr ⟨_, hm, by simp⟩
@@ -459,7 +463,7 @@ theorem subst_shift_pullD (hF : ModalSys.Four = true) {l l' : List VarType} {Δ 
     have cohA := Subst.coh_atShift C p q hlv
     have hsim : Subst.Sim ((ctxOf l).diaIn z) (Subst.idS σ (Δ.diaIn z))
         ((pullD l z x r).comp (Subst.atShift (E.dia (.step x .keep) z)) okA cohA) := by
-      refine Subst.sim_of fun v T _ hv => ?_
+      refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T _ hv => ?_
       change SubE.Sim T (.ren v) ((pullD l z x r v).comp _ okA cohA)
       by_cases hvz : v = .step z .dia
       · subst hvz

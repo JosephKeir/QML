@@ -126,15 +126,16 @@ theorem le_repSup {v : VarSymb} {T : VarType} (h : Γ v = some T) :
   exact Finset.le_sup (hfin.mem_toFinset.mpr (by change (Γ v).isSome = true; rw [h]; rfl))
 
 /-- ⭐The substitution sending each declared address to its representative, at `repSup`. -/
-noncomputable def repSubst : Subst σ (w.L.ctx (repSup w₀ env hfin)) := fun v =>
-  match h : Γ v with
-  | some T => .tm (Term.mono (w.L.ctx_le (le_repSup w₀ env hfin h)) (rep w₀ (env v T h)).t)
-  | none => .hide
+noncomputable def repSubst : Subst σ (w.L.ctx (repSup w₀ env hfin)) where
+  ty v := match h : Γ v with
+    | some T => .tm (Term.mono (w.L.ctx_le (le_repSup w₀ env hfin h)) (rep w₀ (env v T h)).t)
+    | none => .hide
+  wit _ := .hide
 
 theorem repSubst_eq {v : VarSymb} {T : VarType} (h : Γ v = some T) :
     repSubst w₀ env hfin v =
       .tm (Term.mono (w.L.ctx_le (le_repSup w₀ env hfin h)) (rep w₀ (env v T h)).t) := by
-  unfold repSubst
+  dsimp only [repSubst]
   split
   · rename_i T' h'
     obtain rfl : T' = T := Option.some.inj (h'.symm.trans h)
@@ -143,7 +144,8 @@ theorem repSubst_eq {v : VarSymb} {T : VarType} (h : Γ v = some T) :
     rw [h'] at h
     cases h
 
-theorem repSubst_ok : Subst.Ok Γ (repSubst w₀ env hfin) := fun _ _ _ h => by
+theorem repSubst_ok : Subst.Ok Γ (repSubst w₀ env hfin) := by
+  refine ⟨fun _ _ _ h => ?_, by wit_triv⟩
   rw [repSubst_eq w₀ env hfin h]
   rfl
 
@@ -169,16 +171,16 @@ theorem repSubst_coh {d : Root → ℕ} (hd : Γ.LevelDepth d) :
   obtain ⟨e₁, e₂⟩ := Ctx.decomp_unique hd hv hv' hl hl' he'
   rw [← e₁, ← e₂]
 
-/-- ⭐**Every environment over a tame context is the canonical one read through a substitution.** -/
-theorem substEnv_repSubst (hnp : Γ.NoProjLast) :
+/-- ⭐**Every environment over a tame context is the canonical one read through a substitution**
+    (its objects: the witnesses play no part with `Opt` off). -/
+theorem substEnv_repSubst (hnp : Γ.NoProjLast) (v : VarSymb) (T : VarType) (hv : Γ v = some T) :
     Model.substEnv (repSubst w₀ env hfin) (repSubst_ok w₀ env hfin) hnp
-      (canonEnv w₀ w (repSup w₀ env hfin)) = env := by
-  funext v T hv
+      (canonEnv w₀ w (repSup w₀ env hfin)) v T hv = env v T hv := by
   change Model.entryVal _ (repSubst w₀ env hfin v) _ = env v T hv
   rw [Model.entryVal_congr _ (repSubst_eq w₀ env hfin hv) _ rfl]
   change Model.interp (canonEnv w₀ w (repSup w₀ env hfin))
     (Term.mono (w.L.ctx_le (le_repSup w₀ env hfin hv)) (rep w₀ (env v T hv)).t) = env v T hv
-  rw [interp_canon w₀ _ (fun _ _ _ => rfl)]
+  rw [interp_canon w₀ _ (e := Ctx.Le.refl _) (fun _ _ _ => rfl)]
   refine Eq.trans ?_ (toDom_fromDom w₀ T w (env v T hv))
   exact toDom_congr w₀ ((rden_lift (le_repSup w₀ env hfin hv) _).trans (rep_spec w₀ _)) _ _
 

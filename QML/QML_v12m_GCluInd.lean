@@ -24,7 +24,7 @@ open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
   {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
-  (hM₀ : Theory.IsMCS M₀) (hX : CluFlags)
+  (hM₀ : Theory.IsMCS M₀) (hX : CluFlags) [ModalSys.NoOpt]
 
 /-! ## Representatives -/
 
@@ -70,15 +70,16 @@ theorem le_crepSup {v : VarSymb} {T : VarType} (h : Γ v = some T) :
   exact Finset.le_sup (hfin.mem_toFinset.mpr (by change (Γ v).isSome = true; rw [h]; rfl))
 
 /-- ⭐The substitution sending each declared address to its representative, at `crepSup`. -/
-noncomputable def crepSubst : Subst σ (ctxOf (glat s (crepSup hM₀ hX env hfin))) := fun v =>
-  match h : Γ v with
-  | some T => .tm (Term.mono (gle hM₀ s (le_crepSup hM₀ hX env hfin h)) (crep hM₀ hX (env v T h)).t)
-  | none => .hide
+noncomputable def crepSubst : Subst σ (ctxOf (glat s (crepSup hM₀ hX env hfin))) where
+  ty v := match h : Γ v with
+    | some T =>
+        .tm (Term.mono (gle hM₀ s (le_crepSup hM₀ hX env hfin h)) (crep hM₀ hX (env v T h)).t)
+    | none => .hide
 
 theorem crepSubst_eq {v : VarSymb} {T : VarType} (h : Γ v = some T) :
     crepSubst hM₀ hX env hfin v =
       .tm (Term.mono (gle hM₀ s (le_crepSup hM₀ hX env hfin h)) (crep hM₀ hX (env v T h)).t) := by
-  unfold crepSubst
+  dsimp only [crepSubst]
   split
   · rename_i T' h'
     obtain rfl : T' = T := Option.some.inj (h'.symm.trans h)
@@ -87,7 +88,8 @@ theorem crepSubst_eq {v : VarSymb} {T : VarType} (h : Γ v = some T) :
     rw [h'] at h
     cases h
 
-theorem crepSubst_ok : Subst.Ok Γ (crepSubst hM₀ hX env hfin) := fun _ _ _ h => by
+theorem crepSubst_ok : Subst.Ok Γ (crepSubst hM₀ hX env hfin) := by
+  refine ⟨fun _ _ _ h => ?_, by wit_triv⟩
   rw [crepSubst_eq hM₀ hX env hfin h]
   rfl
 
@@ -113,11 +115,11 @@ theorem crepSubst_coh {d : Root → ℕ} (hd : Γ.LevelDepth d) :
   obtain ⟨e₁, e₂⟩ := Ctx.decomp_unique hd hv hv' hl hl' he'
   rw [← e₁, ← e₂]
 
-/-- ⭐**Every environment over a tame context is the canonical one read through a substitution.** -/
-theorem substEnv_crepSubst (hnp : Γ.NoProjLast) :
+/-- ⭐**Every environment over a tame context is the canonical one read through a substitution**
+    (its objects: the witnesses play no part with `Opt` off). -/
+theorem substEnv_crepSubst (hnp : Γ.NoProjLast) (v : VarSymb) (T : VarType) (hv : Γ v = some T) :
     Model.substEnv (crepSubst hM₀ hX env hfin) (crepSubst_ok hM₀ hX env hfin) hnp
-      (ccanonEnv hM₀ hX s (crepSup hM₀ hX env hfin)) = env := by
-  funext v T hv
+      (ccanonEnv hM₀ hX s (crepSup hM₀ hX env hfin)) v T hv = env v T hv := by
   change Model.entryVal _ (crepSubst hM₀ hX env hfin v) _ = env v T hv
   rw [Model.entryVal_congr _ (crepSubst_eq hM₀ hX env hfin hv) _ rfl]
   change Model.interp (ccanonEnv hM₀ hX s (crepSup hM₀ hX env hfin))
@@ -167,7 +169,8 @@ theorem cindInvariant_inv :
     calc (cmodel hF hM₀ hX).sat (env.extend (.bnd 0) o₁) φ
         ↔ (cmodel hF hM₀ hX).sat ((Model.substEnv (crepSubst hM₀ hX env hfin) hθ hnp
             (ccanonEnv hM₀ hX s (crepSup hM₀ hX env hfin))).extend (.bnd 0) o₁) φ := by
-          rw [substEnv_crepSubst hM₀ hX env hfin hnp]
+          exact Model.sat_congr_val (fun v T h => by
+            simp only [Model.Env.extend, substEnv_crepSubst hM₀ hX env hfin hnp]) φ
       _ ↔ (cmodel hF hM₀ hX).sat (Model.substEnv ((crepSubst hM₀ hX env hfin).under 0 0 A h0)
             (Subst.ok_under hθ A h0) (hnp.insert (.bnd 0) A)
             ((ccanonEnv hM₀ hX s (crepSup hM₀ hX env hfin)).extend (.bnd 0) o₁)) φ := by

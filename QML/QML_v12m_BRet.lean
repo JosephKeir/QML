@@ -42,18 +42,16 @@ theorem WFF.mono_holeAt {Γ Γ' : Ctx} (h : Γ.Le Γ') {d : ℕ} (hs : Γ.SlotsF
     WFF.mono h (WFF.holeAt hs t ψ) = WFF.holeAt hs' (Term.mono h t) ψ := by
   unfold WFF.holeAt
   rw [WFF.mono_subst h _ _ _ _ hs hs']
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of ?_) ψ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_) ψ
   intro v T _ hv
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     change SubE.Sim T
       (SubE.mono h (Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm t) (.root (.bnd 0))))
       (Subst.single (σ := σ) (Δ := Γ') (.bnd 0) (.tm (Term.mono h t)) (.root (.bnd 0)))
-    unfold Subst.single
-    rw [if_pos rfl, if_pos rfl]
+    rw [Subst.single_self, Subst.single_self]
     exact .refl _
-  · change (if v = VarSymb.root (.bnd 0) then _ else Ctx.empty v) = _ at hv
-    rw [if_neg hvr] at hv
+  · rw [Ctx.insert_ne hvr] at hv
     cases hv
 
 variable [ModalSys.NoFour]
@@ -93,7 +91,8 @@ def RetInv (hS : ModalSys.BStrong = true) (tv tw : NodeSt σ) (cls : List VarTyp
 
 omit [ModalSys.NoFour] in
 /-- Replacing a body's slot by its own η-expansion leaves it alone. -/
-theorem WFF.bodyRepl_eta {V : Ctx} [V.NoSlots] {A : VarType} (Φ : WFF σ (V.insert (.bnd 0) A) 1) :
+theorem WFF.bodyRepl_eta [ModalSys.NoOpt]
+    {V : Ctx} [V.NoSlots] {A : VarType} (Φ : WFF σ (V.insert (.bnd 0) A) 1) :
     WFF.bodyRepl (Term.mono ((Ctx.empty_le V).insert (.bnd 0) A)
       (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root _ _ _))) Φ = Φ := by
   unfold WFF.bodyRepl
@@ -101,12 +100,11 @@ theorem WFF.bodyRepl_eta {V : Ctx} [V.NoSlots] {A : VarType} (Φ : WFF σ (V.ins
     (Subst.coh_idS_le (Ctx.Le.refl _)) _ _ ?_ Φ).trans
     ((WFF.subst_ren (Ctx.Le.refl _) _ _ _ _ _ (fun v _ _ => Subst.at_idS v) Φ).trans
       (WFF.mono_refl _ Φ))
-  refine Subst.sim_of fun v T _ hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T _ hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = A := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     change SubE.Sim _ (((Subst.idS σ _).set (.bnd 0) _) (.root (.bnd 0))) (.ren _)
     rw [Subst.set_root, Term.mono_eta]
@@ -301,10 +299,10 @@ theorem liftBody_mono {lv lv' cls clt : List VarType} (hs : cls <:+ lv) (hl : lv
       liftBody (hs.trans hl) (himgt.mono (ctxOf_le_of_suffix hl)) Φ := by
   unfold liftBody
   rw [WFF.mono_subst _ _ _ _ _ _ Ctx.NoSlots.slots]
-  have heq : ((arrowS σ (ctxOf lv) imgt).set (.bnd 0) (liftEntry hs)).mono
-      (ctxOf_le_of_suffix hl) =
-        (arrowS σ (ctxOf lv') imgt).set (.bnd 0) (liftEntry (hs.trans hl)) := by
-    funext v
+  have heq : ∀ v, ((arrowS σ (ctxOf lv) imgt).set (.bnd 0) (liftEntry hs)).mono
+      (ctxOf_le_of_suffix hl) v =
+        (arrowS σ (ctxOf lv') imgt).set (.bnd 0) (liftEntry (hs.trans hl)) v := by
+    intro v
     change SubE.mono _ (Subst.set _ _ _ v) = Subst.set _ _ _ v
     by_cases hv : v = .root (.bnd 0)
     · subst hv
@@ -321,7 +319,8 @@ theorem liftBody_mono {lv lv' cls clt : List VarType} (hs : cls <:+ lv) (hl : lv
       | .step _ .here => rfl
       | .step _ .keep => rfl
   exact WFF.subst_congr _ _ _ _ _ _ _ _
-    (Subst.sim_of fun v U _ _ => by rw [congrFun heq v]; exact .refl _) Φ
+    (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U _ _ => by rw [heq v]; exact .refl _)
+    Φ
 
 /-- A source growing conservatively keeps the invariant. -/
 theorem RetInv.grow_src {hS : ModalSys.BStrong = true} {tv tv' tw : NodeSt σ}
@@ -445,7 +444,7 @@ theorem WFF.bodySplit_pairUp {X Y : VarType}
   unfold WFF.bodySplit WFF.pairUp
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS _ _ _ ?_ Φ).trans
     (WFF.subst_id _ _ _ Φ)
-  refine Subst.sim_of fun v U hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
   have hb1 : v ≠ .root (.bnd 1) → v ≠ .root (.bnd 0) →
       (((Subst.idS σ (V.insert (.bnd 0) (.VTypeBox (.VTypeProd X Y)))).set (.bnd 0)
         (.tm (Term.boxFst (Ctx.ref_insert_root V (.bnd 0) (.VTypeBox (.VTypeProd X Y)))))).set
@@ -456,8 +455,7 @@ theorem WFF.bodySplit_pairUp {X Y : VarType}
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : U = .VTypeBox (.VTypeProd X Y) := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else V _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     change SubE.Sim _ (.ren (.root (.bnd 0)))
       ((((Subst.idS σ _).set (.bnd 0) (.tm (pairItem X Y))) (.root (.bnd 0))).comp _ _ _)
@@ -468,8 +466,7 @@ theorem WFF.bodySplit_pairUp {X Y : VarType}
     · change (Subst.set _ _ _) (.root (.bnd 1)) = _
       rw [Subst.set_root]
   · have hv' : V v = some U := by
-      change (if v = VarSymb.root (.bnd 0) then _ else V v) = _ at hv
-      rwa [if_neg hvr] at hv
+      rwa [Ctx.insert_ne hvr] at hv
     have hv1 : v ≠ .root (.bnd 1) := fun h => by
       subst h
       rw [((Ctx.NoSlots.slots (Γ := V)).rootFresh (Nat.zero_le 1)).root] at hv'
@@ -526,8 +523,7 @@ theorem coh_midS (hs : cls <:+ lv) {imgt : ℕ → ℕ} (himgt : ImgOk clt (ctxO
 theorem body_item {cl clt : List VarType} {v : VarSymb} {U : VarType} (_hlp : v.lastProj = false)
     (hv : bodyCtx cl clt v = some U) (hvr : v ≠ .root (.bnd 0)) :
     ∃ u, v = .step u .box ∧ (ctxOf clt).ref u = some (.VTypeBox U) := by
-  change (if v = VarSymb.root (.bnd 0) then _ else (ctxOf clt).boxIn v) = _ at hv
-  rw [if_neg hvr] at hv
+  rw [Ctx.insert_ne hvr] at hv
   exact boxIn_item hv
 
 /-- ⭐**A new root's body is an `∃`-introduction of the older roots' body.**  Read at the source,
@@ -558,12 +554,11 @@ theorem liftBody_ex_pairUp_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.IsMC
             (coh_arrowS himgt)
             ((Ctx.NoSlots.slots (Γ := (ctxOf clt).boxIn)).rootFresh (le_refl 0)) rfl)
           ((Ctx.NoSlots.slots (Γ := (ctxOf clt).boxIn)).insert _) _ hfr)) := by
-    refine Subst.sim_of fun v U hlp hv => ?_
+    refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
     by_cases hvr : v = .root (.bnd 0)
     · subst hvr
       obtain rfl : U = .VTypeBox (bcT (A :: cls)) := by
-        change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-        rw [if_pos rfl] at hv
+        rw [Ctx.insert_apply, if_pos rfl] at hv
         exact (Option.some.inj hv).symm
       dsimp only [Subst.comp]
       rw [show midS (σ := σ) hs A imgt (.root (.bnd 0)) = .tm (midTerm hs A).2 from
@@ -584,7 +579,8 @@ theorem liftBody_ex_pairUp_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.IsMC
     · obtain ⟨u, rfl, hu⟩ := body_item hlp hv hvr
       dsimp only [Subst.comp]
       rw [show midS (σ := σ) hs A imgt (.step u .box) =
-        SubE.mono _ (arrowS σ (ctxOf lv) imgt (.step u .box)) from Subst.set_ne _ _ hvr,
+        SubE.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lv)).root _)
+          (arrowS σ (ctxOf lv) imgt (.step u .box)) from Subst.set_ne _ _ hvr,
         Subst.set_ne _ _ hvr]
       dsimp only [Subst.idS, SubE.comp]
       rw [Subst.at_nonproj _ hlp]
@@ -595,12 +591,11 @@ theorem liftBody_ex_pairUp_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.IsMC
     _ _ _ simA]
   -- Step B: then the new root's object in the `∃`'s slot is the reading over all the roots.
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  refine Subst.sim_of fun v U hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : U = .VTypeBox (bcT (A :: cls)) := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     dsimp only [Subst.comp]
     rw [show midS (σ := σ) hs A imgt (.root (.bnd 0)) = .tm (midTerm hs A).2 from
@@ -609,11 +604,11 @@ theorem liftBody_ex_pairUp_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.IsMC
     have hsg : (Subst.single (σ := σ) (.bnd 0) (.tm (newItem hs'))).at (.root (.bnd 0)) =
         .tm (newItem hs') := by
       change Subst.single (.bnd 0) _ (.root (.bnd 0)) = _
-      exact if_pos rfl
-    have hsim : Subst.Sim (ctxOf cls).boxIn
+      slot_rfl
+    have hsim : Subst.SimT (ctxOf cls).boxIn
         (Subst.single (σ := σ) (Δ := ctxOf lv) (.bnd 0) (.tm (newItem hs'))).box
         (Subst.idS σ (ctxOf lv).boxIn) := by
-      refine Subst.sim_of fun v U _ hv => ?_
+      refine Subst.simT_of fun v U _ hv => ?_
       obtain ⟨u, rfl, hu⟩ := boxIn_item hv
       obtain ⟨r, hr, _, _⟩ := ref_rt hu
       change SubE.Sim U ((Subst.single _ _).at u).unbox (.ren (.step u .box))
@@ -631,7 +626,8 @@ theorem liftBody_ex_pairUp_mem {M : Set (WFF σ (ctxOf lv) 0)} (hM : Theory.IsMC
     obtain ⟨r, hr, _, _⟩ := ref_rt hu
     dsimp only [Subst.comp]
     rw [show midS (σ := σ) hs A imgt (.step u .box) =
-      SubE.mono _ (arrowS σ (ctxOf lv) imgt (.step u .box)) from Subst.set_ne _ _ hvr,
+      SubE.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := ctxOf lv)).root _)
+        (arrowS σ (ctxOf lv) imgt (.step u .box)) from Subst.set_ne _ _ hvr,
       Subst.set_ne _ _ hvr]
     change SubE.Sim U (.ren (itemImg imgt u)) ((Subst.single _ _).at (itemImg imgt u))
     rw [Subst.single_at_ne (by rw [itemAt_rt, hr]; exact fun h => by cases h)]
@@ -707,7 +703,8 @@ theorem tupImgT_ext {A : VarType} {cl lt : List VarType} {img : ℕ → ℕ}
 omit [ModalSys.NoFour] in
 /-- `bodySplit_pairUp` through a weakening of the view: splitting the weakened split body is the
     weakened body. -/
-theorem WFF.bodySplit_mono_pairUp {V V' : Ctx} [V.NoSlots] [V'.NoSlots] (h : V.Le V')
+theorem WFF.bodySplit_mono_pairUp [ModalSys.NoOpt]
+    {V V' : Ctx} [V.NoSlots] [V'.NoSlots] (h : V.Le V')
     {X Y : VarType} (Φ : WFF σ (V.insert (.bnd 0) (.VTypeBox (.VTypeProd X Y))) 1) :
     WFF.bodySplit (Term.boxFst (Ctx.ref_insert_root V' (.bnd 0) (.VTypeBox (.VTypeProd X Y))))
       (Term.boxSnd (Ctx.ref_insert_root V' (.bnd 0) (.VTypeBox (.VTypeProd X Y))))
@@ -718,12 +715,11 @@ theorem WFF.bodySplit_mono_pairUp {V V' : Ctx} [V.NoSlots] [V'.NoSlots] (h : V.L
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ (Subst.ok_idS_le (h.insert (.bnd 0) _))
     (Subst.coh_idS_le (h.insert (.bnd 0) _)) _ _ _ ?_ Φ).trans
     (WFF.subst_ren (h.insert (.bnd 0) _) _ _ _ _ _ (fun v _ _ => Subst.at_idS v) Φ)
-  refine Subst.sim_of fun v U hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : U = .VTypeBox (.VTypeProd X Y) := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else V _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     dsimp only [Subst.comp, Subst.mono]
     rw [Subst.set_root]
@@ -735,8 +731,7 @@ theorem WFF.bodySplit_mono_pairUp {V V' : Ctx} [V.NoSlots] [V'.NoSlots] (h : V.L
     · change (Subst.set _ _ _) (.root (.bnd 1)) = _
       rw [Subst.set_root]
   · have hv' : V v = some U := by
-      change (if v = VarSymb.root (.bnd 0) then _ else V v) = _ at hv
-      rwa [if_neg hvr] at hv
+      rwa [Ctx.insert_ne hvr] at hv
     have hv1 : v ≠ .root (.bnd 1) := fun h => by
       subst h
       rw [((Ctx.NoSlots.slots (Γ := V)).rootFresh (Nat.zero_le 1)).root] at hv'
@@ -913,7 +908,7 @@ theorem liftBody_unitBody {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt : 
   · rw [Term.subst_mono]
     refine (Term.subst_congr _ (arrowS σ (ctxOf lv) imgt) _ (ok_arrowS himgt) _
       (coh_arrowS himgt) ?_ _).trans (subst_arrow_tupT clt himgt)
-    refine Subst.sim_of fun v T _ hv => ?_
+    refine Subst.simT_of fun v T _ hv => ?_
     obtain ⟨u, rfl, _⟩ := boxIn_item hv
     rw [Subst.set_ne _ _ (fun h => by cases h)]
     exact .refl _
@@ -1008,7 +1003,7 @@ theorem liftBody_eq_instantiate {lv cls clt : List VarType} (hs : cls <:+ lv) {i
         ((Ctx.NoSlots.slots (Γ := ctxOf lv)).insert _) Φ) := by
   unfold WFF.instantiate WFF.substRoot liftBody
   refine (WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ).symm
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     dsimp only [Subst.comp, Subst.under]
@@ -1017,7 +1012,7 @@ theorem liftBody_eq_instantiate {lv cls clt : List VarType} (hs : cls <:+ lv) {i
     change SubE.Sim T _ (Subst.single _ _ (.root (.bnd 0)))
     rw [show Subst.single (σ := σ) (Δ := ctxOf lv) (.bnd 0)
       (.tm (Term.boxtm (Term.mono (ctxOf_le_of_suffix hs).boxIn (tupT cls).2)))
-        (.root (.bnd 0)) = _ from if_pos rfl]
+        (.root (.bnd 0)) = _ from by slot_rfl]
     exact .refl _
   · obtain ⟨u, rfl, hu⟩ := body_item hlp hv hvr
     obtain ⟨r, hr, _, _⟩ := ref_rt hu
@@ -1084,7 +1079,7 @@ theorem WFF.holeAt_pair_holeSnd {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {C A 
   rw [Subst.at_proj _ _ rfl]
   change SubE.proj (Subst.single (.bnd 0) _ (.root (.bnd 0))) .snd = _
   rw [show Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm (Term.pair s t)) (.root (.bnd 0)) =
-    .tm (Term.pair s t) from if_pos rfl]
+    .tm (Term.pair s t) from by slot_rfl]
   rfl
 
 omit [ModalSys.NoFour] in
@@ -1104,13 +1099,12 @@ theorem WFF.instantiate_unitBody_holeSnd {Γ : Ctx} [Γ.NoSlots] (hS : ModalSys.
     refine (Term.subst_congr _ (Subst.idS σ _) _ (Subst.ok_idS_le (Ctx.Le.refl _)) _
       (Subst.coh_idS_le (Ctx.Le.refl _)) ?_ sb).trans
       ((Term.subst_idS_mono (Ctx.Le.refl _) _ _ sb).trans (by rw [Term.mono_refl]))
-    refine Subst.sim_of fun v T _ hv => ?_
+    refine Subst.simT_of fun v T _ hv => ?_
     have hvr : v ≠ .root (.bnd 0) := fun h => by
       subst h
       rw [(Ctx.NoSlots.slots (Γ := Γ.boxIn)).root] at hv
       cases hv
-    change SubE.Sim T (if v = .root (.bnd 0) then _ else _) _
-    rw [if_neg hvr]
+    rw [Subst.single_ne _ hvr]
     exact .refl _
   · rw [WFF.subst_holeAt]
     refine WFF.holeAt_congr _ ?_ θ
@@ -1181,7 +1175,7 @@ theorem WFF.holeAt_holeAt_pairUnit {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {U
   refine WFF.holeAt_congr _ (sig_pair rfl ?_) P
   exact Term.subst_eta_tm _ _ _ _ _ _ t (by
     change Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm t) (.root (.bnd 0)) = _
-    exact if_pos rfl)
+    exact Subst.single_self _ _)
 
 /-- ⭐**The forward arrow at birth has the invariant**: with nothing committed back, a body true
     at the parent of the committed roots' necessary object is, by `ret_unit_base`, necessarily a

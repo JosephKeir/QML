@@ -110,16 +110,16 @@ abbrev pullCtxXDC (V : Ctx) (l : List VarType) (A Xe : VarType) : Ctx :=
     content) to `ex`. -/
 def retPullXDC (σ : Signature) (l : List VarType) (A Xe : VarType)
     {V : Ctx} (hV : (ctxOf l).boxIn.Le V) (hu : V.RootFresh (.free l.length))
-    (ex : SubE σ (pullCtxXDC V l A Xe)) : Subst σ (pullCtxXDC V l A Xe) := fun v =>
-  match v with
-  | .root (.free 0) => .ren (.step (.root (.free l.length)) .fst)
-  | .root (.free 1) => .ren (.step (.root (.free l.length)) .snd)
-  | .root (.free (r + 2)) =>
-      if h : r < l.length then .tm (Term.mono (hV.trans (Ctx.le_insert hu.root _))
-        (tup (.root (.free r)) (rootTy l r) (by
-          rw [Ctx.ref_nonproj _ rfl]; exact ctxOf_root_lt h)))
-      else if r = l.length then ex else .hide
-  | _ => .hide
+    (ex : SubE σ (pullCtxXDC V l A Xe)) : Subst σ (pullCtxXDC V l A Xe) where
+  ty v := match v with
+    | .root (.free 0) => .ren (.step (.root (.free l.length)) .fst)
+    | .root (.free 1) => .ren (.step (.root (.free l.length)) .snd)
+    | .root (.free (r + 2)) =>
+        if h : r < l.length then .tm (Term.mono (hV.trans (Ctx.le_insert hu.root _))
+          (tup (.root (.free r)) (rootTy l r) (by
+            rw [Ctx.ref_nonproj _ rfl]; exact ctxOf_root_lt h)))
+        else if r = l.length then ex else .hide
+    | _ => .hide
 
 /-- Where pulling back sends annotation indices: along the entry at the index's root. -/
 def retPullXDCIdx (σ : Signature) (l : List VarType) (A Xe : VarType)
@@ -158,7 +158,7 @@ theorem pullCtxXDC_ref_snd :
 
 theorem ok_retPullXDC {X : VarType} (hex : ex.OkRef X) :
     Subst.Ok (ctxOf (X :: rclD l A Xe)) (retPullXDC σ l A Xe hV hu ex) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   obtain ⟨r, rfl⟩ := ctxOf_decl hv
   have hr : r < (rclD l A Xe).length + 1 := by
     by_contra hge
@@ -284,12 +284,11 @@ theorem subst_retPullXDC_liftBodyXDR
       WFF.openFree l.length (pullCtxX_fresh l x) Ctx.NoSlots.slots Ξ := by
   unfold liftBodyXDR WFF.openFree
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Ξ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = (RShape.wit (bornShape A) Xe).ty := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     rw [Subst.toFree_root]
     dsimp only [Subst.comp]
@@ -301,9 +300,7 @@ theorem subst_retPullXDC_liftBodyXDR
     dsimp only [Subst.comp]
     rw [Subst.set_ne _ _ hvr]
     have hv' : bodyCtxWD (bclD A Xe) l x Xe v = some T := by
-      change (if v = VarSymb.root (.bnd 0) then _ else _) = _
-      change (if v = VarSymb.root (.bnd 0) then _ else _) = _ at hv
-      rw [if_neg hvr] at hv ⊢
+      rw [Ctx.insert_ne hvr] at hv ⊢
       exact hv
     rcases bodyWD_item hv' hvr with ⟨w, rfl, hw⟩ | ⟨rfl, _⟩
     · change SubE.Sim T (((Subst.idRen _) (.step w .box)).mono _)
@@ -417,12 +414,11 @@ theorem liftBodyXDR_mapD (l : List VarType) (A Xe : VarType) {x : VarSymb} {X : 
         (rclXD_cx l A X Xe) Φ := by
   unfold liftBodyXDR WFF.bodyRepl liftBodyWD
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = (RShape.wit (.box (bcT (bclD A Xe))) Xe).ty := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     dsimp only [Subst.comp]
     rw [Subst.set_root, Subst.set_root]
@@ -487,14 +483,14 @@ theorem liftBodyXDR_unitBodyWDC_thetaD (hS : ModalSys.BStrong = true) (l : List 
     refine (Term.subst_congr _ (arrowS σ (ctxOf (X :: rclD l A Xe)) (· + 2)) _
       (ok_arrowS (rclXDImg l A X Xe)) _ (coh_arrowS (rclXDImg l A X Xe)) ?_ _).trans
       (subst_arrow_compsVal l (rclXDImg l A X Xe) cs h)
-    refine Subst.sim_of fun v T _ hv => ?_
+    refine Subst.simT_of fun v T _ hv => ?_
     obtain ⟨u, rfl, _⟩ := boxIn_item hv
     rw [Subst.set_ne _ _ (fun h => by cases h)]
     exact .refl _
   · rw [Term.subst_mono]
     refine Term.subst_eta_renAt _ _ _ _ _ _ _ _ ?_
     rw [Subst.at_nonproj _ rfl, Subst.set_ne _ _ (fun h => by cases h)]
-    exact if_pos rfl
+    slot_rfl
   · rw [WFF.subst_holeAt]
     refine (WFF.holeAt_congr _ (sig_pair (sig_pair
       (Term.subst_compsSlot_tm (Ctx.ref_fst_of hu) _ (rclXD_c l A X Xe) hle₂ _ _ _

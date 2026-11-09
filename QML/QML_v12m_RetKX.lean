@@ -92,7 +92,7 @@ theorem holeAt_kThetaW {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys
       (.root (.bnd 0)) = .tm (Term.pair w (Term.pair (Term.boxtm s)
         (Term.diatm v ⟨X, hv⟩ (Term.eta (v.step .dia) X (Ctx.ref_diaIn_of hv))))) := by
     change Subst.single _ _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    exact Subst.single_self _ _
   have hθ : Subst.Ok (Ctx.empty.insert (.bnd 0) (.VTypeProd C (RShape.wit (.box A) X).ty))
       (Subst.single (σ := σ) (Δ := Δ) (.bnd 0) (.tm (Term.pair w (Term.pair (Term.boxtm s)
         (Term.diatm v ⟨X, hv⟩ (Term.eta (v.step .dia) X (Ctx.ref_diaIn_of hv))))))) :=
@@ -327,7 +327,7 @@ theorem holeAt_kThetaWC {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSy
       (.root (.bnd 0)) = .tm (Term.pair w (Term.pair (Term.boxtm s)
         (Term.diatm v ⟨X, hv⟩ (Term.eta (v.step .dia) X (Ctx.ref_diaIn_of hv))))) := by
     change Subst.single _ _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    exact Subst.single_self _ _
   have hθ : Subst.Ok
       (Ctx.empty.insert (.bnd 0) (.VTypeProd (C.compsFlat co) (RShape.wit (.box A) X).ty))
       (Subst.single (σ := σ) (Δ := Δ) (.bnd 0) (.tm (Term.pair w (Term.pair (Term.boxtm s)

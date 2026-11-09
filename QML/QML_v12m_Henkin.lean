@@ -164,7 +164,7 @@ theorem WFF.mono_openFree {σ : Signature} {Γ Γ' : Ctx} {T : VarType} (h : Γ.
   unfold WFF.openFree
   rw [WFF.mono_subst, WFF.subst_mono]
   refine WFF.subst_congr _ _ _ _ _ _ _ _ ?_ ψ
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v U _ _
   rw [Subst.mono_apply]
   by_cases hvr : v = .root (.bnd 0)

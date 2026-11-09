@@ -138,7 +138,7 @@ theorem holeAt_unpackAt_obj (hT : ModalSys.T = true) {Γ : Ctx} {P : VarType} {a
       refine (sig_holeAt (Term.subst_eta_tm _ _ _ _ _ _ _
         (Subst.box_at_inner_boxtm _ ?_)) _).trans hq
       change Subst.single _ _ (.root (.bnd 0)) = _
-      exact if_pos rfl
+      exact Subst.single_self _ _
   | .prod R S, _, q, (n₁, n₂), hq =>
       sig_pair
         (holeAt_unpackAt_obj hT sb R _ n₁ ((Term.holeAt_holeAt_sig _ _ _).trans

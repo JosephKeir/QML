@@ -44,7 +44,7 @@ theorem WFF.holeAt_pair_inst {Δ : Ctx} [Δ.NoSlots] {Y U : VarType} {p : Ann Y}
           (Term.eta (.root (.bnd 0)) U (Ctx.ref_insert_root Δ (.bnd 0) U))) G) := by
   unfold WFF.instantiate WFF.substRoot WFF.holeAt
   refine (WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ G).symm
-  refine Subst.sim_of fun v T _ hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T _ hv => ?_
   have hvr : v = .root (.bnd 0) := by
     by_contra hne
     simp [Ctx.insert, hne, Ctx.empty] at hv
@@ -117,7 +117,7 @@ theorem liftBody_counitBodyC {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt
       change Subst.set _ _ _ (.root (.bnd 0)) = _
       exact Subst.set_root _ _ _))
   · rw [Term.subst_mono]
-    refine Term.subst_congr _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) bd
+    refine Term.subst_congr _ _ _ _ _ _ (Subst.simT_of fun v T _ hv => ?_) bd
     obtain ⟨u, rfl, hu⟩ := boxIn_item' hv
     change SubE.Sim T ((Subst.at _ u).unbox) ((Subst.at _ u).unbox)
     rw [Subst.at_set_of_rt_ne _ _ (Ctx.ref_rt_ne
@@ -139,17 +139,16 @@ theorem holeAt_tupT_pack2_repl {l : List VarType} {U T : VarType} {V : Ctx} [V.N
   unfold WFF.holeAt pack2 WFF.bodyRepl
   rw [WFF.subst_mono]
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  refine Subst.sim_of fun v S hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v S hlp hv => ?_
   have h0 : (Subst.single (σ := σ) (Δ := V.insert (.bnd 0) T) (.bnd 0)
       (.tm (Term.pair (Term.mono hle (tupT l).2) X))).at (.root (.bnd 0)) =
       .tm (Term.pair (Term.mono hle (tupT l).2) X) := by
     change Subst.single _ _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    exact Subst.single_self _ _
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : S = U := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     dsimp only [Subst.comp, pack2S]
     rw [Subst.set_root, Subst.set_root]
@@ -157,8 +156,7 @@ theorem holeAt_tupT_pack2_repl {l : List VarType} {U T : VarType} {V : Ctx} [V.N
     rw [Subst.at_proj _ _ rfl, h0]
     exact .refl _
   · have hv' : (ctxOf l).boxIn v = some S := by
-      change (if v = VarSymb.root (.bnd 0) then _ else _) = _ at hv
-      rwa [if_neg hvr] at hv
+      rwa [Ctx.insert_ne hvr] at hv
     obtain ⟨u, rfl, hu⟩ := boxIn_item hv'
     obtain ⟨r, hr, hlt, _⟩ := ref_rt hu
     dsimp only [Subst.comp, pack2S]
@@ -203,12 +201,11 @@ theorem liftBodyW_repl {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt : ℕ
     liftBodyW hs himgt hx (WFF.bodyRepl (fstEta (bcT cls) X) Φ) = liftBody hs himgt Φ := by
   unfold liftBodyW liftBody WFF.bodyRepl
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = .VTypeBox (bcT cls) := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     dsimp only [Subst.comp]
     rw [Subst.set_root, Subst.set_root]
@@ -238,12 +235,11 @@ theorem liftBodyWD_repl {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt : �
   rw [WFF.subst_mono (hΓ := (Ctx.NoSlots.slots (Γ := (ctxOf clt).boxIn)).insert _)]
   unfold WFF.bodyRepl
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = .VTypeBox (bcT cls) := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     dsimp only [Subst.comp]
     rw [Subst.set_root, Subst.set_root]
@@ -406,7 +402,7 @@ theorem subst_tailBody {cls : List VarType} {Δ : Ctx} [Δ.NoSlots] {img : ℕ �
   rw [WFF.subst_holeAt]
   refine WFF.holeAt_congr _ (sig_pair ?_ ?_) _
   · rw [Term.subst_mono]
-    refine Term.subst_congr _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) bdk
+    refine Term.subst_congr _ _ _ _ _ _ (Subst.simT_of fun v T _ hv => ?_) bdk
     obtain ⟨u, rfl, -⟩ := boxIn_item' hv
     rw [Subst.set_ne _ _ (fun e => by cases e)]
     exact .refl _
@@ -471,7 +467,7 @@ theorem holeAt_tupT_pack2X_repl {l : List VarType} {x : VarSymb} {X U T : VarTyp
   unfold WFF.holeAt pack2X WFF.bodyRepl
   rw [WFF.subst_mono]
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  refine Subst.sim_of fun v S hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v S hlp hv => ?_
   have h0 : (Subst.single (σ := σ) (Δ := V.insert (.bnd 0) T) (.bnd 0)
       (.tm (Term.pair (Term.pair (Term.mono hle (tupT l).2)
           (Term.eta (x.step .dia) X ((h.trans (Ctx.le_insert (Ctx.NoSlots.slots (Γ := V)).root
@@ -480,12 +476,11 @@ theorem holeAt_tupT_pack2X_repl {l : List VarType} {x : VarSymb} {X U T : VarTyp
           (Term.eta (x.step .dia) X ((h.trans (Ctx.le_insert (Ctx.NoSlots.slots (Γ := V)).root
             T)).ref (Ctx.ref_diaIn_of hx)))) Y) := by
     change Subst.single _ _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    exact Subst.single_self _ _
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : S = U := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     dsimp only [Subst.comp, pack2XS]
     rw [Subst.set_root, Subst.set_root]
@@ -493,8 +488,7 @@ theorem holeAt_tupT_pack2X_repl {l : List VarType} {x : VarSymb} {X U T : VarTyp
     rw [Subst.at_proj _ _ rfl, h0]
     exact .refl _
   · have hv' : ((ctxOf l).diaIn x) v = some S := by
-      change (if v = VarSymb.root (.bnd 0) then _ else _) = _ at hv
-      rwa [if_neg hvr] at hv
+      rwa [Ctx.insert_ne hvr] at hv
     rcases diaIn_item hv' with ⟨u, rfl, hu⟩ | ⟨rfl, hxT⟩
     · obtain ⟨r, hr, hlt, _⟩ := ref_rt hu
       dsimp only [Subst.comp, pack2XS]
@@ -558,12 +552,11 @@ theorem liftBodyWD_replX {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt : �
       liftBodyX hs himgt he hcxv Φ := by
   unfold liftBodyWD liftBodyX WFF.bodyRepl
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = .VTypeBox (bcT cls) := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     dsimp only [Subst.comp]
     rw [Subst.set_root, Subst.set_root]
@@ -709,7 +702,7 @@ theorem liftBodyX_counitBodyC {lv cls clt : List VarType} (hs : cls <:+ lv) {img
       change Subst.set _ _ _ (.root (.bnd 0)) = _
       exact Subst.set_root _ _ _))
   · rw [Term.subst_mono]
-    refine Term.subst_congr _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) bd
+    refine Term.subst_congr _ _ _ _ _ _ (Subst.simT_of fun v T _ hv => ?_) bd
     obtain ⟨u, rfl, hu⟩ := boxIn_item' hv
     change SubE.Sim T ((Subst.at _ u).unbox) ((Subst.at _ u).unbox)
     rw [Subst.at_set_of_rt_ne _ _ (Ctx.ref_rt_ne
@@ -849,9 +842,9 @@ theorem lbackRel {s k : LW C.toFairChain} (h : LR C.toFairChain s k) {i : ℕ} {
     rw [Term.subst_mono, Term.mono_mono, Term.mono_subst]
     refine (Term.subst_congr (ι' := arrowIdx (limg C.toFairChain s k)) _ _ _
       (Subst.ok_box (ok_arrowS hok)) _ (Subst.coh_box (ok_arrowS hok) (coh_arrowS hok))
-      (Subst.sim_box (sim_arrowS hiag)) bd).trans (Term.subst_congr _ _ _ _ _ _ ?_ bd).symm
+      (Subst.sim_box (sim_arrowS hiag)).ty bd).trans (Term.subst_congr _ _ _ _ _ _ ?_ bd).symm
     rw [← arrowS_mono (ctxOf_le_of_suffix (hJs.trans hcs))]
-    exact Subst.sim_box_mono _ _
+    exact (Subst.sim_box_mono _ _).ty
   case hback =>
     have hm := (nodeWorld C.toFairChain s.1 s.2).sub hii _ hmem
     rw [Term.mono_mono]
@@ -862,7 +855,7 @@ theorem lbackRel {s k : LW C.toFairChain} (h : LR C.toFairChain s k) {i : ℕ} {
   refine (congrArg (· ∈ _) (WFF.holeAt_congr _ (sig_pair ?_ ?_) _)).mp hKj
   · refine sig_mono _ ?_
     rw [Term.subst_mono]
-    exact Term.subst_congr _ _ _ _ _ _ (sim_arrowS hJag) _
+    exact Term.subst_congr _ _ _ _ _ _ (sim_arrowS hJag).ty _
   · rw [Term.mono_mono]
 
 /-- ⭐⭐**Row 2 at the limit** (`BData.backRelX`): along an edge `s → k` of the extent of `s`'s
@@ -927,9 +920,9 @@ theorem lbackRelX {s k : LW C.toFairChain} {i : ℕ} {A : VarType} {a₀ : Ann A
     refine (Term.subst_congr (ι' := arrowXIdx (limg C.toFairChain s k) y (lcx C.toFairChain s k))
       _ _ _ (Subst.ok_box (ok_arrowXS hok hy hcx')) _
       (Subst.coh_box (ok_arrowXS hok hy hcx') (coh_arrowXS hok hy hcx'))
-      (Subst.sim_box (sim_arrowXS hiag)) bd).trans (Term.subst_congr _ _ _ _ _ _ ?_ bd).symm
+      (Subst.sim_box (sim_arrowXS hiag)).ty bd).trans (Term.subst_congr _ _ _ _ _ _ ?_ bd).symm
     rw [← arrowXS_mono (ctxOf_le_of_suffix (hJs.trans hcs))]
-    exact Subst.sim_box_mono _ _
+    exact (Subst.sim_box_mono _ _).ty
   case hback =>
     have hm := (nodeWorld C.toFairChain s.1 s.2).sub hii _ hmem
     rw [Term.mono_mono]
@@ -940,7 +933,7 @@ theorem lbackRelX {s k : LW C.toFairChain} {i : ℕ} {A : VarType} {a₀ : Ann A
   refine (congrArg (· ∈ _) (WFF.holeAt_congr _ (sig_pair ?_ ?_) _)).mp hKj
   · refine sig_mono _ ?_
     rw [Term.subst_mono]
-    exact Term.subst_congr _ _ _ _ _ _ (sim_arrowS hJag) _
+    exact Term.subst_congr _ _ _ _ _ _ (sim_arrowS hJag).ty _
   · rw [Term.mono_mono]
 
 /-- ⭐**Rows 3–4: every edge of the limit is labelled**, by a declared witness: forward, the

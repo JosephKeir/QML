@@ -93,9 +93,8 @@ abbrev packRootsCtx (A : VarType) (l : List VarType) : Ctx :=
 
 /-- ⭐Packing a slot formula: the slot goes to the hole's first component, root `r` to its place
     in the second. -/
-def packRootsS (σ : Signature) (A : VarType) (l : List VarType) : Subst σ (packRootsCtx A l) :=
-  fun v =>
-    match v with
+def packRootsS (σ : Signature) (A : VarType) (l : List VarType) : Subst σ (packRootsCtx A l) where
+  ty v := match v with
     | .root (.bnd _) => .ren (.step (.root (.bnd 0)) .fst)
     | .root (.free r) => .ren ((VarSymb.step (.root (.bnd 0)) .snd).ext (tupPath l r))
     | _ => .hide
@@ -143,9 +142,14 @@ theorem vis_slotCtx {A : VarType} {l : List VarType} {v : VarSymb} {T : VarType}
     rw [ctxOf_root_lt hlt] at hv'
     exact (Option.some.inj hv').symm
 
+omit [ModalSys] in
+theorem ctxOf_insert_wit (l : List VarType) (r : Root) (A : VarType) (y : VarSymb) :
+    ((ctxOf l).insert r A).wit y = none :=
+  ctxOf_wit l y
+
 theorem ok_packRootsS (A : VarType) (l : List VarType) :
     Subst.Ok ((ctxOf l).insert (.bnd 0) A) (packRootsS σ A l) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, fun _ y _ h => by rw [ctxOf_insert_wit] at h; cases h⟩
   rcases vis_slotCtx hv with ⟨rfl, rfl⟩ | ⟨r, rfl, hr, rfl⟩
   · exact ref_packRoots_slot T l
   · exact ref_packRoots_root A hr
@@ -153,6 +157,8 @@ theorem ok_packRootsS (A : VarType) (l : List VarType) :
 theorem coh_packRootsS (A : VarType) (l : List VarType) :
     Subst.Coh (packRootsIdx l) ((ctxOf l).insert (.bnd 0) A) (packRootsS σ A l) := by
   refine Subst.coh_of (ok_packRootsS A l) ?_
+    (fun _ y _ h => by rw [ctxOf_insert_wit] at h; cases h)
+    (fun _ y _ _ h => by rw [ctxOf_insert_wit] at h; cases h)
   intro v T _ hv p
   rcases vis_slotCtx hv with ⟨rfl, rfl⟩ | ⟨r, rfl, hr, rfl⟩
   · change (VarSymb.step (.root (.bnd 0)) .fst).ext p =
@@ -178,7 +184,7 @@ theorem holeAt_pair_tupW_packRoots {A : VarType} {a : Ann A} (l : List VarType)
       WFF.instantiate Ctx.NoSlots.slots s χ := by
   unfold WFF.holeAt WFF.instantiate WFF.substRoot packRoots
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ χ
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ y _ h => by rw [ctxOf_insert_wit] at h; cases h) ?_
   intro v T _ hv
   rcases vis_slotCtx hv with ⟨rfl, rfl⟩ | ⟨r, rfl, hr, rfl⟩
   · change SubE.Sim T (Subst.single (.bnd 0) (.tm s) (.root (.bnd 0)))

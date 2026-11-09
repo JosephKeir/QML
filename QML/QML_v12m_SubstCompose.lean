@@ -46,6 +46,10 @@ theorem at_mono (θ : Subst σ Δ) (h : Δ.Le Δ') : ∀ v, (θ.mono h).at v = (
       · exact SubE.proj_mono h _ s
       · rfl
 
+theorem mono_apply (θ : Subst σ Δ) (h : Δ.Le Δ') (v : VarSymb) :
+    θ.mono h v = (θ v).mono h :=
+  rfl
+
 theorem ok_mono {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) (h : Δ.Le Δ') : Ok Γ (θ.mono h) :=
   ⟨fun v T hlp hv => SubE.okRef_mono h (hθ v T hlp hv),
     fun hO y X hy => WitE.okW_mono h (hθ.wit hO y X hy)⟩

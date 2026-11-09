@@ -37,7 +37,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-! ## Reading families at an arrow -/
 
@@ -386,7 +386,7 @@ theorem boxPush_cEnv (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : G
   | VTypeOne => cases hk
   | VTypeProd _ _ => cases hk
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- A keepable address's kept item in the `□` view. -/
 theorem item_keep (hF : ModalSys.Four = true) {Γ : Ctx} {u : VarSymb} {U : VarType}
     (hu : Γ.ref u = some U) (hk : U.keepable = true) : Γ.kView none (.step u .keep) = some U :=
@@ -670,7 +670,7 @@ theorem restrictBox_wf {s : GW hF M₀} (a : (garrows hF M₀).Acc s) {B : VarTy
   rw [Shp.box_eta S] at hS
   exact Model.shWF_transpose true [] _ fun b => shWF_unT _ [] _ hS
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- An item of a `□` view under T and 4 is a kept item. -/
 theorem box_item (hF : ModalSys.Four = true) (hT : ModalSys.T = true) {Γ : Ctx} {w : VarSymb}
     {W : VarType} (hw : Γ.boxIn w = some W) :
@@ -738,7 +738,7 @@ theorem comp_pull (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) :
       rw [Model.ShEnv.ref_nonproj _ _ (by decide)]
       unfold Model.substShEnv
       have hok : (θ (.step u .keep)).OkRef W :=
-        ok_eS_kView (gentOk_box hM₀ (t := t₁) ⟨c, rfl⟩ i) _ W rfl (item_keep hF hu hk)
+        (ok_eS_kView (gentOk_box hM₀ (t := t₁) ⟨c, rfl⟩ i)).ty _ W rfl (item_keep hF hu hk)
       rw [Model.entryShp_congr _ 0
         (show θ.box (.step (.step u .keep) .keep) = (θ (.step u .keep)).keepE from rfl) _
         (SubE.okRef_keepE' hF hk hok)]

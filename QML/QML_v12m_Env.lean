@@ -30,19 +30,23 @@ theorem Ctx.diaIn_step_dia {Γ : Ctx} {x u : VarSymb} {X T : VarType}
   rw [hx] at h
   exact Option.some.inj h
 
+/-- ⭐An environment: an object for every visible address (`val`), and for every witness in view
+    (branch `wip/in-atom`, docs §12.16) its value along the arrow just taken — present exactly when
+    the arrow is in its extent, as a `Part` (`wit`).  It needs only the frame, so a model with its
+    relations replaced has the same environments (`QML_v12m_SemAdmissible`). -/
+structure Frame.Env {σ : Signature} (F : Frame.{u, v} σ) (Γ : Ctx) (w : F.W) : Type u where
+  val : ∀ v T, Γ v = some T → F.Dom T w
+  wit : ∀ y X, Γ.wit y = some X → Part (F.Dom X w) := fun _ _ _ => Part.none
+
 namespace Model
 
 variable {σ : Signature} (M : Model.{u, v} σ)
 
-/-- ⭐An environment: an object for every visible address (`val`), and for every witness in view
-    (branch `wip/in-atom`, docs §12.16) its value along the arrow just taken — present exactly when
-    the arrow is in its extent, as a `Part` (`wit`). -/
-structure Env (Γ : Ctx) (w : M.frame.W) : Type u where
-  val : ∀ v T, Γ v = some T → M.frame.Dom T w
-  wit : ∀ y X, Γ.wit y = some X → Part (M.frame.Dom X w) := fun _ _ _ => Part.none
+/-- An environment of the model: one of its frame. -/
+abbrev Env (Γ : Ctx) (w : M.frame.W) : Type u := M.frame.Env Γ w
 
 instance {Γ : Ctx} {w : M.frame.W} :
-    CoeFun (M.Env Γ w) (fun _ => ∀ v T, Γ v = some T → M.frame.Dom T w) := ⟨Env.val⟩
+    CoeFun (M.Env Γ w) (fun _ => ∀ v T, Γ v = some T → M.frame.Dom T w) := ⟨Frame.Env.val⟩
 
 /-- An environment written as a function: no witness is present. -/
 instance {Γ : Ctx} {w : M.frame.W} :
@@ -57,6 +61,24 @@ def stepObj {w : M.frame.W} {U T : VarType} {s : Step} (hs : s.isProj = true)
   · exact (VarType.step_here h).2 ▸ M.necEval a ⟨w, ⟨M.frame.refl (VarType.step_here h).1 w⟩⟩
 
 variable {M}
+
+/-- ⭐A possible object read along an arrow: present exactly when the arrow is in its extent, with
+    its content there.  What a witness is worth one view in. -/
+def posPart {X : VarType} {w : M.frame.W} (p : M.frame.Dom (.VTypeDia X) w) (w' : M.frame.Acc w) :
+    Part (M.frame.Dom X w'.1) :=
+  ⟨w' ∈ (M.posEval p).1, fun hm => (M.posEval p).2 ⟨w', hm⟩⟩
+
+/-- Environments are equal when their objects and their witnesses are. -/
+theorem Env.ext' {Γ : Ctx} {w : M.frame.W} {e₁ e₂ : M.Env Γ w}
+    (hv : ∀ v T (h : Γ v = some T), e₁ v T h = e₂ v T h)
+    (hw : ∀ y X (h : Γ.wit y = some X), e₁.wit y X h = e₂.wit y X h) : e₁ = e₂ := by
+  cases e₁
+  cases e₂
+  congr
+  · funext v T h
+    exact hv v T h
+  · funext y X h
+    exact hw y X h
 
 /-- The object at a reachable address: projection components from the parent. -/
 def Env.ref {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
@@ -89,9 +111,7 @@ def Env.boxPushVal {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (w' : M.frame.A
 def Env.boxPush {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (w' : M.frame.Acc w) :
     M.Env Γ.boxIn w'.1 where
   val := env.boxPushVal w'
-  wit y _ h :=
-    have hy := (Ctx.boxIn_wit.mp h).2
-    ⟨w' ∈ (M.posEval (env.ref y hy)).1, fun hm => (M.posEval (env.ref y hy)).2 ⟨w', hm⟩⟩
+  wit y _ h := posPart (env.ref y (Ctx.boxIn_wit.mp h).2) w'
 
 /-- Into a `◇_x`, at a world of the extent of the possible object `x`: the objects. -/
 def Env.diaPushVal {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (x : VarSymb) {X : VarType}

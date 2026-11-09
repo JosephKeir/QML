@@ -25,7 +25,7 @@ variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
 /-- ⭐⭐**The cluster model over a maximal consistent theory**: its root satisfies, at its first
     stage, exactly its theory, which contains `M₀`. -/
-theorem exists_canonC (hF : ModalSys.Four = true) (hX : CluFlags)
+theorem exists_canonC [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hX : CluFlags)
     {l₀ : List VarType}
     {M₀ : Set (WFF σ (ctxOf l₀) 0)} (hM₀ : Theory.IsMCS M₀) (hnh : ¬ GNetSt.HubOn M₀) :
     ∃ hle : (ctxOf l₀).Le (ctxOf (glat (groot hF M₀) 0)),
@@ -43,7 +43,7 @@ theorem exists_canonC (hF : ModalSys.Four = true) (hX : CluFlags)
     satisfies the set at its root, or, with the hub, the cone over it at its apex
     (`exists_canonHub`).  `hNH`: with the hub, strong 5 comes with strong 4; without it strong 5
     is incomplete as ruled (docs, "K45 and KD45 without both lifts: the hub", 6). -/
-theorem model_existenceC_ctxOf (hF : ModalSys.Four = true) (hX : CluFlags)
+theorem model_existenceC_ctxOf [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hX : CluFlags)
     (hNH : ModalSys.hubFlags = true → ModalSys.FiveStrong = true → ModalSys.FourStrong = true)
     {l₀ : List VarType}
     {S : Set (WFF σ (ctxOf l₀) 0)} (hS : WFF.SetConsistent S) : WFF.SetSatisfiable S := by
@@ -62,7 +62,7 @@ theorem model_existenceC_ctxOf (hF : ModalSys.Four = true) (hX : CluFlags)
 
 /-- ⭐**Model existence for K45, KD45 and S5** in every presented context whose presentation is
     well-formed. -/
-theorem model_existenceC (hF : ModalSys.Four = true) (hX : CluFlags)
+theorem model_existenceC [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hX : CluFlags)
     (hNH : ModalSys.hubFlags = true → ModalSys.FiveStrong = true → ModalSys.FourStrong = true)
     (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)} (hS : WFF.SetConsistent S) : WFF.SetSatisfiable S :=
@@ -72,7 +72,7 @@ theorem model_existenceC (hF : ModalSys.Four = true) (hX : CluFlags)
 
 /-- ⭐**Strong completeness for K45, KD45 and S5**: a formula true in every model, world and
     environment satisfying a set of premises is derivable from finitely many of them. -/
-theorem strong_completenessC (hF : ModalSys.Four = true) (hX : CluFlags)
+theorem strong_completenessC [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hX : CluFlags)
     (hNH : ModalSys.hubFlags = true → ModalSys.FiveStrong = true → ModalSys.FourStrong = true)
     (e : CtxExpr)
     (he : e.Wf) {S : Set (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
@@ -95,7 +95,7 @@ theorem strong_completenessC (hF : ModalSys.Four = true) (hX : CluFlags)
 
 /-- ⭐**Completeness for K45, KD45 and S5** in every presented context whose presentation is
     well-formed: a sequent valid in every model is provable. -/
-theorem completenessC_presented (hF : ModalSys.Four = true) (hX : CluFlags)
+theorem completenessC_presented [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hX : CluFlags)
     (hNH : ModalSys.hubFlags = true → ModalSys.FiveStrong = true → ModalSys.FourStrong = true)
     (e : CtxExpr)
     (he : e.Wf) {Δ : List (WFF σ e.denote 0)} {φ : WFF σ e.denote 0}
@@ -110,7 +110,7 @@ theorem completenessC_presented (hF : ModalSys.Four = true) (hX : CluFlags)
 
 /-- ⭐**Compactness for K45, KD45 and S5**: a set of formulas is satisfiable when every finite subset
     is — in models of any universe. -/
-theorem compactnessC (hF : ModalSys.Four = true) (hX : CluFlags)
+theorem compactnessC [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hX : CluFlags)
     (hNH : ModalSys.hubFlags = true → ModalSys.FiveStrong = true → ModalSys.FourStrong = true)
     (e : CtxExpr) (he : e.Wf)
     {S : Set (WFF σ e.denote 0)}
@@ -121,7 +121,8 @@ theorem compactnessC (hF : ModalSys.Four = true) (hX : CluFlags)
   letI : e.denote.Presented := ⟨e, he.1, rfl⟩
   refine model_existenceC hF hX hNH e he fun Δ hΔ ⟨p⟩ => ?_
   obtain ⟨M, hM, w, env, hsat⟩ := hfin Δ hΔ
-  exact Model.soundness p M hM env (Ctx.Presented.tame _) (Ctx.Presented.noProjLast _) hsat
+  exact Model.soundness p M hM env (Ctx.Presented.tame _) (Ctx.Presented.noProjLast _)
+    (by env_opened) hsat
 
 end GArrow
 

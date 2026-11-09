@@ -209,7 +209,7 @@ theorem WFF.loopHat_read {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (hF : ModalSy
     ((WFF.subst_comp _ _ (Subst.single (.bnd 0) (.tm (Term.shift D t))) _ _ _ _ hOk₃ hCo₃
       _ _ _ ?_ _).trans (Eq.symm ((congrArg (WFF.shift D _) (WFF.subst_mono _ _ _ _ _ _ _ _)).trans
         (WFF.shift_subst (Ctx.shifts_loop hF Γ T) D _ hOk hCo _ hOk₃ hCo₃ _ _ _ _ ?_ φ)))))
-  · refine Subst.sim_of ?_
+  · refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
     intro v U hl hv
     by_cases hvr : v = .root (.bnd 0)
     · subst hvr
@@ -217,18 +217,14 @@ theorem WFF.loopHat_read {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (hF : ModalSy
       subst hU
       have e := Term.Kept.read hF (Subst.single (.bnd 0) (.tm t)) hOk hCo D ht hT (.root (.bnd 0))
         (Ctx.ref_insert_root Γ.boxIn (.bnd 0) T) (Subst.at_single_root _ _)
-      change SubE.Sim T (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _)
-        (SubE.comp _ _ _ (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _))
-      rw [if_pos rfl, if_pos rfl]
+      rw [Subst.comp_apply, Subst.single_self, Subst.single_self]
       change SubE.Sim T _ (.tm (Term.subst _ _ _ _ _))
       rw [SubE.tm_eq_of_sig e]
       exact .refl _
     · have hv' : Γ.boxIn.boxIn v = some U := by
         have := hv
         simpa [Ctx.insert, hvr] using this
-      change SubE.Sim U (if v = .root (.bnd 0) then _ else _)
-        (SubE.comp _ _ _ (if v = .root (.bnd 0) then _ else _))
-      rw [if_neg hvr, if_neg hvr]
+      rw [Subst.comp_apply, Subst.single_ne _ hvr, Subst.single_ne _ hvr]
       change SubE.Sim U _ (Subst.at _ v)
       rw [Subst.ren_box hid v U ((Ctx.ref_nonproj _ hl).trans hv')]
       exact .refl _
@@ -239,8 +235,7 @@ theorem WFF.loopHat_read {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (hF : ModalSy
       change SubE.Sim U (Subst.single (σ := σ) (Δ := Γ'.boxIn.boxIn) (.bnd 0)
           (.tm (Term.shift D t)) (.root (.bnd 0)))
         (SubE.shift D (Subst.single (σ := σ) (Δ := Γ'.boxIn) (.bnd 0) (.tm t) (.root (.bnd 0))))
-      unfold Subst.single
-      rw [if_pos rfl, if_pos rfl]
+      rw [Subst.single_self, Subst.single_self]
       exact .refl _
     · have hv' : Γ.boxIn v = some U := by
         have := hv
@@ -305,7 +300,7 @@ theorem WFF.instantiate_ex_slotPair {V' : Ctx} [V'.NoSlots] (h : V.Le V')
     Subst.coh_set (Subst.ok_idS_le hle) (Subst.coh_idS_le hle) hfr rfl
   refine congrArg (WFF.ex Y) ((WFF.subst_mono _ _ _ _ _ _ _ _).trans
     ((WFF.subst_comp _ _ _ _ _ _ _ hOk hCo _ _ _ ?_ ρ).trans (WFF.subst_mono _ _ _ _ _ _ _ _).symm))
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v U hl hv
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
@@ -317,13 +312,12 @@ theorem WFF.instantiate_ex_slotPair {V' : Ctx} [V'.NoSlots] (h : V.Le V')
     refine SubE.Sim.of_sig (sig_pair (Term.subst_eta_tm _ _ _ _ _ _ (Term.mono (body_le Y) a) ?_)
       (Term.subst_eta_renAt _ _ _ _ _ _ _ (Ctx.ref_insert_root V' (.bnd 0) Y) ?_)).symm _
     · change Subst.under _ _ _ _ _ (VarSymb.root (.bnd 0)) = _
-      unfold Subst.under
-      rw [if_neg (by simp), show Subst.single (.bnd 0) (.tm a) (.root (.bnd 0)) = .tm a from
-        if_pos rfl]
+      simp only [Subst.under, Subst.single_self, VarSymb.root.injEq, Root.bnd.injEq]
+      rw [if_neg (by omega)]
       rfl
     · change Subst.under _ _ _ _ _ (VarSymb.root (.bnd 1)) = _
       unfold Subst.under
-      exact if_pos rfl
+      slot_rfl
   · have hv' : V.ref v = some U := by
       have := hv
       rw [Ctx.ref_nonproj _ hl]
@@ -359,14 +353,14 @@ theorem WFF.instantiate_bodyRepl_pair {V' : Ctx} [V'.NoSlots] (h : V.Le V') {a�
     Subst.coh_single hfr h rfl
   refine (WFF.subst_mono _ _ _ _ _ _ _ _).trans
     ((WFF.subst_comp _ _ _ _ _ _ _ hOk hCo _ _ _ ?_ ρ).trans (WFF.subst_mono _ _ _ _ _ _ _ _).symm)
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v U hl hv
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     change SubE.Sim _ (Subst.single (.bnd 0) (.tm (Term.pair (Term.mono h a) b)) (.root (.bnd 0)))
       (SubE.comp _ _ _ ((Subst.idS σ _).set (.bnd 0) (.tm (slotTm a Y)) (.root (.bnd 0))))
     rw [Subst.set_root, show Subst.single (.bnd 0) (.tm (Term.pair (Term.mono h a) b))
-      (.root (.bnd 0)) = .tm (Term.pair (Term.mono h a) b) from if_pos rfl]
+      (.root (.bnd 0)) = .tm (Term.pair (Term.mono h a) b) from by slot_rfl]
     change SubE.Sim _ _ (.tm (Term.pair (Term.subst _ _ _ _ (Term.mono (body_le Y) a))
       (Term.subst _ _ _ _ (Term.eta (.root (.bnd 0)) Y (Ctx.ref_insert_root V (.bnd 0) Y)))))
     refine SubE.Sim.of_sig (sig_pair ?_

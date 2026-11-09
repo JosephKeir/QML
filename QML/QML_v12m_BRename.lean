@@ -99,24 +99,24 @@ theorem ref_reroot {Γ Δ : Ctx} (hΓ : RootOnly Γ) {z : Root} {R : VarType} :
 /-! ## The renaming -/
 
 /-- ⭐The substitution renaming each root `free r` to `free (ν r)`. -/
-def renS (σ : Signature) (Δ : Ctx) (ν : ℕ → ℕ) : Subst σ Δ :=
-  fun v => .ren (v.reroot (imgRoot ν v.rt))
+def renS (σ : Signature) (Δ : Ctx) (ν : ℕ → ℕ) : Subst σ Δ where
+  ty v := .ren (v.reroot (imgRoot ν v.rt))
 
 /-- Where it sends annotation indices. -/
 def renIdx (ν : ℕ → ℕ) (a : VarSymb) : VarSymb := a.reroot (imgRoot ν a.rt)
 
 omit [ModalSys.NoFour] in
 /-- The renaming lands in `Δ` when `Δ` declares every image. -/
-theorem ok_renS {Γ Δ : Ctx} (hΓ : RootOnly Γ) {ν : ℕ → ℕ}
+theorem ok_renS [ModalSys.NoOpt] {Γ Δ : Ctx} (hΓ : RootOnly Γ) {ν : ℕ → ℕ}
     (hν : ∀ r R, Γ (.root (.free r)) = some R → Δ (.root (.free (ν r))) = some R) :
     Subst.Ok Γ (renS σ Δ ν) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   obtain ⟨r, rfl⟩ := hΓ hv
   change Δ.ref (.root (.free (ν r))) = some T
   exact hν r T hv
 
 omit [ModalSys.NoFour] in
-theorem coh_renS {Γ Δ : Ctx} (hΓ : RootOnly Γ) {ν : ℕ → ℕ}
+theorem coh_renS [ModalSys.NoOpt] {Γ Δ : Ctx} (hΓ : RootOnly Γ) {ν : ℕ → ℕ}
     (hν : ∀ r R, Γ (.root (.free r)) = some R → Δ (.root (.free (ν r))) = some R) :
     Subst.Coh (renIdx ν) Γ (renS σ Δ ν) := by
   refine Subst.coh_of (ok_renS hΓ hν) ?_
@@ -129,7 +129,8 @@ theorem coh_renS {Γ Δ : Ctx} (hΓ : RootOnly Γ) {ν : ℕ → ℕ}
 
 omit [ModalSys.NoFour] in
 /-- ⭐A renaming and the inverse renaming cancel on formulas of the source. -/
-theorem subst_renS_renS {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots] (hΓ : RootOnly Γ) (hΔ : RootOnly Δ)
+theorem subst_renS_renS [ModalSys.NoOpt]
+    {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots] (hΓ : RootOnly Γ) (hΔ : RootOnly Δ)
     {ν ν' : ℕ → ℕ}
     (hν : ∀ r R, Γ (.root (.free r)) = some R → Δ (.root (.free (ν r))) = some R)
     (hν' : ∀ r R, Δ (.root (.free r)) = some R → Γ (.root (.free (ν' r))) = some R)
@@ -140,7 +141,7 @@ theorem subst_renS_renS {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots] (hΓ : RootOnly 
         Ctx.NoSlots.slots Ctx.NoSlots.slots φ) = φ := by
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS _ _ _ ?_ φ).trans
     (WFF.subst_id _ _ _ φ)
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T _ hv
   obtain ⟨r, rfl⟩ := hΓ hv
   change SubE.Sim T (.ren (.root (.free r))) (.ren (.root (.free (ν' (ν r)))))

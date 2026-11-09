@@ -30,7 +30,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-! ## Origins along an edge -/
 
@@ -165,6 +165,7 @@ theorem preI_comp (f g : VarSymb → VarSymb) (v : VarSymb) :
   · rfl
   · cases st <;> rfl
 
+omit [ModalSys.NoOpt] in
 /-- The `◇_x` item maps compose, on the items of the view. -/
 theorem preIX_comp (f g : VarSymb → VarSymb) {l : List VarType} {x v : VarSymb}
     {T : VarType} (hl : v.lastProj = false) (hv : (ctxOf l).diaIn x v = some T) :
@@ -193,7 +194,7 @@ theorem sim_eS_ren_comp {Γ Δ₁ Δ₂ : Ctx} {ι : VarSymb → VarSymb} (f g h
     (hg : ∀ u st T, st.isProj = false → Γ (.step u st) = some T → ∃ u' st',
       g (.step u st) = .step u' st' ∧ st'.isProj = false ∧ h (.step u st) = f (.step u' st')) :
     Subst.Sim Γ (eS σ Δ₂ (ofRen h)) ((eS σ Δ₁ (ofRen g)).comp (eS σ Δ₂ (ofRen f)) hθ hc) := by
-  refine Subst.sim_of fun v T hl hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hl hv => ?_
   match v, hl, hv with
   | .root _, _, _ => exact .refl _
   | .step u st, hl, hv =>
@@ -270,7 +271,7 @@ theorem preWP_nil {l : List VarType} (ψ : WFF σ (ctxOf l).boxIn 0)
   rw [WFF.subst_congr _ (Subst.idS σ _) hθ (Subst.ok_idS_le (Ctx.Le.refl _)) hc
       (Subst.coh_idS_le (Ctx.Le.refl _)) _ _ ?_ ψ, subst_idS_le (Ctx.Le.refl _) ψ,
     WFF.mono_refl]
-  refine Subst.sim_of fun v T hl hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hl hv => ?_
   match v, hl with
   | .root _, _ => cases hv
   | .step u st, hl =>
@@ -291,7 +292,7 @@ theorem preWPX_nil {l : List VarType} {x : VarSymb} (ψ : WFF σ ((ctxOf l).diaI
   rw [WFF.subst_congr _ (Subst.idS σ _) hθ (Subst.ok_idS_le (Ctx.Le.refl _)) hc
       (Subst.coh_idS_le (Ctx.Le.refl _)) _ _ ?_ ψ, subst_idS_le (Ctx.Le.refl _) ψ,
     WFF.mono_refl]
-  refine Subst.sim_of fun v T hl hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hl hv => ?_
   match v, hl with
   | .root _, _ => cases hv
   | .step u st, hl =>

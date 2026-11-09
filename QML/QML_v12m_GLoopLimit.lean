@@ -19,7 +19,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-- The flag is fixed along the chain. -/
 theorem lp_gnet (hM₀ : Theory.IsMCS M₀) (n : ℕ) : (gnet hF M₀ n).lp = GNetSt.LoopOn M₀ :=
@@ -147,7 +147,7 @@ theorem gltr_loop (hM₀ : Theory.IsMCS M₀) (hl : GNetSt.LoopOn M₀) (i : ℕ
   have hle := (lstg_spec (hF := hF) hM₀ hl i).1
   have hψ' := (ggrow_stage hM₀ (groot hF M₀) i hle).sub _ hψ
   obtain ⟨hsuf, hag, ⟨⟨hsuf', hk, hf, htr⟩, -⟩⟩ := gloop_at (hF := hF) hM₀ hl i
-  have h₁ := htr (WFF.mono (ctxOf_le_of_suffix hsuf).boxIn ψ) (by
+  have h₁ := htr (ModalSys.noOpt_of_Four hF) (WFF.mono (ctxOf_le_of_suffix hsuf).boxIn ψ) (by
     convert hψ' using 1
     simp only [kBox, WFF.mono, WFF.mono_mono])
   rw [WFF.subst_mono _ _ _ _ Ctx.NoSlots.slots] at h₁
@@ -191,7 +191,7 @@ theorem loopTm_mono (hM₀ : Theory.IsMCS M₀) (hl : GNetSt.LoopOn M₀) {i i' 
   change (⟨_, Term.mono _ (Term.subst _ _ _ _ b)⟩ : Σ c, Term σ _ _ c) =
     ⟨_, Term.subst _ _ _ _ (Term.mono _ b)⟩
   rw [Term.mono_subst, Term.subst_mono]
-  exact Term.subst_congr _ _ _ _ _ _ (sim_eS_mono _ (gloopOk hM₀ hl i)) b
+  exact Term.subst_congr _ _ _ _ _ _ (sim_eS_mono _ (gloopOk hM₀ hl i)).ty b
 
 end GArrow
 

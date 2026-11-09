@@ -585,7 +585,7 @@ theorem idx_comp_wit {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (h�
 
 theorem idx_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (hθ₁ : Ok Γ θ₁) (hc₁ : Coh ι₁ Γ θ₁)
     (hθ₂ : Ok Δ₁ θ₂) (hc₂ : Coh ι₂ Δ₁ θ₂) (hc₃ : Coh ι₃ Γ θ₃)
-    (hs : Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
+    (hs : SimT Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
     ι₃ x = ι₂ (ι₁ x) := by
   obtain ⟨X, hX⟩ := hx
   have h₃ : (θ₃.at x).idxAlong [] = ι₃ x := hc₃ x _ hX []
@@ -593,16 +593,10 @@ theorem idx_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (hθ₁
   rw [← h₃, (hs x _ hX).idx, at_comp hθ₁ θ₂ hθ₂ hc₂ hX,
     SubE.idxAlong_comp θ₂ hθ₂ hc₂ (okRef_at hθ₁ hX), h₁]
 
-theorem sim_box_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (hθ₁ : Ok Γ θ₁) (hθ₂ : Ok Δ₁ θ₂)
-    (hc₂ : Coh ι₂ Δ₁ θ₂) (hs : Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) :
-    Sim Γ.boxIn θ₃.box (θ₁.box.comp θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂)) := by
-  refine sim_of ?_ fun hO y X hy => ?_
-  swap
-  · obtain ⟨_, hu⟩ := Ctx.boxIn_wit.mp hy
-    change WitE.Sim X (θ₃.at y).toWit
-      (((θ₁.at y).toWit).comp θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂))
-    rw [← SubE.toWit_comp θ₂ hθ₂ hc₂ hO (okRef_at hθ₁ hu), ← at_comp hθ₁ θ₂ hθ₂ hc₂ hu]
-    exact (hs y _ hu).toWit hO
+theorem simT_box_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (hθ₁ : Ok Γ θ₁) (hθ₂ : Ok Δ₁ θ₂)
+    (hc₂ : Coh ι₂ Δ₁ θ₂) (hs : SimT Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) :
+    SimT Γ.boxIn θ₃.box (θ₁.box.comp θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂)) := by
+  refine simT_of ?_
   intro v T _ hv
   match v with
   | .step u .box =>
@@ -623,27 +617,27 @@ theorem sim_box_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (h�
   | .step _ .dia => cases hv
   | .step _ .here => cases hv
 
-theorem sim_dia_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (hθ₁ : Ok Γ θ₁)
+theorem sim_box_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (hθ₁ : Ok Γ θ₁) (hθ₂ : Ok Δ₁ θ₂)
+    (hc₂ : Coh ι₂ Δ₁ θ₂) (hs : Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) :
+    Sim Γ.boxIn θ₃.box (θ₁.box.comp θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂)) := by
+  refine ⟨simT_box_comp hθ₁ hθ₂ hc₂ hs.ty, fun hO y X hy => ?_⟩
+  obtain ⟨_, hu⟩ := Ctx.boxIn_wit.mp hy
+  change WitE.Sim X (θ₃.at y).toWit
+    (((θ₁.at y).toWit).comp θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂))
+  rw [← SubE.toWit_comp θ₂ hθ₂ hc₂ hO (okRef_at hθ₁ hu), ← at_comp hθ₁ θ₂ hθ₂ hc₂ hu]
+  exact (hs y _ hu).toWit hO
+
+theorem simT_dia_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (hθ₁ : Ok Γ θ₁)
     (hc₁ : Coh ι₁ Γ θ₁) (hθ₂ : Ok Δ₁ θ₂) (hc₂ : Coh ι₂ Δ₁ θ₂)
-    (hs : Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) {x : VarSymb}
+    (hs : SimT Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) {x : VarSymb}
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (hx₁ : ∃ X, Δ₁.ref (ι₁ x) = some (.VTypeDia X))
     (hw₂ : (θ₂.at (ι₁ x)).idxAlong [] = ι₂ (ι₁ x))
     (hw₃ : (θ₃.at x).idxAlong [] = ι₂ (ι₁ x)) :
-    Sim (Γ.diaIn x) (θ₃.dia x (ι₂ (ι₁ x)))
+    SimT (Γ.diaIn x) (θ₃.dia x (ι₂ (ι₁ x)))
       ((θ₁.dia x (ι₁ x)).comp (θ₂.dia (ι₁ x) (ι₂ (ι₁ x))) (ok_dia hθ₂ hx₁ hw₂)
         (coh_dia hθ₂ hc₂ hx₁)) := by
   have hw₁ : (θ₁.at x).idxAlong [] = ι₁ x := hx.elim fun _ hX => hc₁ x _ hX []
-  refine sim_of ?_ fun hO y X hy => ?_
-  swap
-  · obtain ⟨_, hu⟩ := Ctx.boxIn_wit.mp hy
-    change WitE.Sim X (((θ₃.at y).toWit).mono (Ctx.le_boxIn_diaIn Δ₂ (ι₂ (ι₁ x))))
-      ((((θ₁.at y).toWit).mono (Ctx.le_boxIn_diaIn Δ₁ (ι₁ x))).comp
-        (θ₂.dia (ι₁ x) (ι₂ (ι₁ x))) (ok_dia hθ₂ hx₁ hw₂) (coh_dia hθ₂ hc₂ hx₁))
-    rw [WitE.comp_mono θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂) hO (Ctx.le_boxIn_diaIn Δ₁ (ι₁ x))
-        (Ctx.le_boxIn_diaIn Δ₂ (ι₂ (ι₁ x))) _ _ _ (dia_eq_box_mono θ₂ (ι₁ x) (ι₂ (ι₁ x)))
-        (fun _ _ _ => rfl) (SubE.okW_toWit hO (okRef_at hθ₁ hu)),
-      ← SubE.toWit_comp θ₂ hθ₂ hc₂ hO (okRef_at hθ₁ hu), ← at_comp hθ₁ θ₂ hθ₂ hc₂ hu]
-    exact ((hs y _ hu).toWit hO).mono _
+  refine simT_of ?_
   intro v T _ hv
   match v with
   | .step u .dia =>
@@ -687,6 +681,27 @@ theorem sim_dia_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (h�
   | .step _ .fst => cases hv
   | .step _ .snd => cases hv
   | .step _ .here => cases hv
+
+theorem sim_dia_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (hθ₁ : Ok Γ θ₁)
+    (hc₁ : Coh ι₁ Γ θ₁) (hθ₂ : Ok Δ₁ θ₂) (hc₂ : Coh ι₂ Δ₁ θ₂)
+    (hs : Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) {x : VarSymb}
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (hx₁ : ∃ X, Δ₁.ref (ι₁ x) = some (.VTypeDia X))
+    (hw₂ : (θ₂.at (ι₁ x)).idxAlong [] = ι₂ (ι₁ x))
+    (hw₃ : (θ₃.at x).idxAlong [] = ι₂ (ι₁ x)) :
+    Sim (Γ.diaIn x) (θ₃.dia x (ι₂ (ι₁ x)))
+      ((θ₁.dia x (ι₁ x)).comp (θ₂.dia (ι₁ x) (ι₂ (ι₁ x))) (ok_dia hθ₂ hx₁ hw₂)
+        (coh_dia hθ₂ hc₂ hx₁)) := by
+  have hw₁ : (θ₁.at x).idxAlong [] = ι₁ x := hx.elim fun _ hX => hc₁ x _ hX []
+  refine ⟨simT_dia_comp hθ₁ hc₁ hθ₂ hc₂ hs.ty hx hx₁ hw₂ hw₃, fun hO y X hy => ?_⟩
+  obtain ⟨_, hu⟩ := Ctx.boxIn_wit.mp hy
+  change WitE.Sim X (((θ₃.at y).toWit).mono (Ctx.le_boxIn_diaIn Δ₂ (ι₂ (ι₁ x))))
+    ((((θ₁.at y).toWit).mono (Ctx.le_boxIn_diaIn Δ₁ (ι₁ x))).comp
+      (θ₂.dia (ι₁ x) (ι₂ (ι₁ x))) (ok_dia hθ₂ hx₁ hw₂) (coh_dia hθ₂ hc₂ hx₁))
+  rw [WitE.comp_mono θ₂.box (ok_box hθ₂) (coh_box hθ₂ hc₂) hO (Ctx.le_boxIn_diaIn Δ₁ (ι₁ x))
+      (Ctx.le_boxIn_diaIn Δ₂ (ι₂ (ι₁ x))) _ _ _ (dia_eq_box_mono θ₂ (ι₁ x) (ι₂ (ι₁ x)))
+      (fun _ _ _ => rfl) (SubE.okW_toWit hO (okRef_at hθ₁ hu)),
+    ← SubE.toWit_comp θ₂ hθ₂ hc₂ hO (okRef_at hθ₁ hu), ← at_comp hθ₁ θ₂ hθ₂ hc₂ hu]
+  exact ((hs y _ hu).toWit hO).mono _
 
 theorem sim_under_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (hθ₁ : Ok Γ θ₁) (hθ₂ : Ok Δ₁ θ₂)
     (hc₂ : Coh ι₂ Δ₁ θ₂) (hs : Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) {d d₁ d₂ : ℕ}
@@ -776,7 +791,7 @@ mutual
   theorem Func.subst_comp {σ : Signature} {ι₁ ι₂ ι₃ : VarSymb → VarSymb} {Γ Δ₁ Δ₂ : Ctx}
       (θ₁ : Subst σ Δ₁) (θ₂ θ₃ : Subst σ Δ₂) (hθ₁ : Subst.Ok Γ θ₁) (hc₁ : Subst.Coh ι₁ Γ θ₁)
       (hθ₂ : Subst.Ok Δ₁ θ₂) (hc₂ : Subst.Coh ι₂ Δ₁ θ₂) (hθ₃ : Subst.Ok Γ θ₃)
-      (hc₃ : Subst.Coh ι₃ Γ θ₃) (hs : Subst.Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) :
+      (hc₃ : Subst.Coh ι₃ Γ θ₃) (hs : Subst.SimT Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) :
       {n : ℕ} → (f : Func σ Γ n) →
       Func.subst ι₂ θ₂ hθ₂ hc₂ (Func.subst ι₁ θ₁ hθ₁ hc₁ f) = Func.subst ι₃ θ₃ hθ₃ hc₃ f
     | _, .F _ => rfl
@@ -794,7 +809,7 @@ mutual
   theorem Term.subst_comp_sig {σ : Signature} {ι₁ ι₂ ι₃ : VarSymb → VarSymb} {Γ Δ₁ Δ₂ : Ctx}
       (θ₁ : Subst σ Δ₁) (θ₂ θ₃ : Subst σ Δ₂) (hθ₁ : Subst.Ok Γ θ₁) (hc₁ : Subst.Coh ι₁ Γ θ₁)
       (hθ₂ : Subst.Ok Δ₁ θ₂) (hc₂ : Subst.Coh ι₂ Δ₁ θ₂) (hθ₃ : Subst.Ok Γ θ₃)
-      (hc₃ : Subst.Coh ι₃ Γ θ₃) (hs : Subst.Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) :
+      (hc₃ : Subst.Coh ι₃ Γ θ₃) (hs : Subst.SimT Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) :
       {T : VarType} → {a : Ann T} → (t : Term σ Γ T a) →
       (⟨_, Term.subst ι₂ θ₂ hθ₂ hc₂ (Term.subst ι₁ θ₁ hθ₁ hc₁ t)⟩ : Σ b, Term σ Δ₂ T b) =
         ⟨_, Term.subst ι₃ θ₃ hθ₃ hc₃ t⟩
@@ -815,7 +830,7 @@ mutual
     | _, _, .boxtm t =>
         sig_boxtm (Term.subst_comp_sig θ₁.box θ₂.box θ₃.box (Subst.ok_box hθ₁)
           (Subst.coh_box hθ₁ hc₁) (Subst.ok_box hθ₂) (Subst.coh_box hθ₂ hc₂) (Subst.ok_box hθ₃)
-          (Subst.coh_box hθ₃ hc₃) (Subst.sim_box_comp hθ₁ hθ₂ hc₂ hs) t)
+          (Subst.coh_box hθ₃ hc₃) (Subst.simT_box_comp hθ₁ hθ₂ hc₂ hs) t)
     | _, _, .diatm x hx t => by
         have hw₁ : (θ₁.at x).idxAlong [] = ι₁ x := hx.elim fun _ hX => hc₁ x _ hX []
         have hx₁ : ∃ X, Δ₁.ref (ι₁ x) = some (.VTypeDia X) :=
@@ -834,7 +849,7 @@ mutual
           exact sig_diatm (Term.subst_comp_sig (θ₁.dia x (ι₁ x)) (θ₂.dia (ι₁ x) (ι₂ (ι₁ x)))
             (θ₃.dia x (ι₂ (ι₁ x))) (Subst.ok_dia hθ₁ hx hw₁) (Subst.coh_dia hθ₁ hc₁ hx)
             (Subst.ok_dia hθ₂ hx₁ hw₂) (Subst.coh_dia hθ₂ hc₂ hx₁) p q
-            (Subst.sim_dia_comp hθ₁ hc₁ hθ₂ hc₂ hs hx hx₁ hw₂ hw₃) t)
+            (Subst.simT_dia_comp hθ₁ hc₁ hθ₂ hc₂ hs hx hx₁ hw₂ hw₃) t)
         exact key (ι₃ x) hι _ _ _
     termination_by structural _ _ t => t
 end
@@ -842,7 +857,7 @@ end
 theorem Term.subst_comp {σ : Signature} {ι₁ ι₂ ι₃ : VarSymb → VarSymb} {Γ Δ₁ Δ₂ : Ctx}
     (θ₁ : Subst σ Δ₁) (θ₂ θ₃ : Subst σ Δ₂) (hθ₁ : Subst.Ok Γ θ₁) (hc₁ : Subst.Coh ι₁ Γ θ₁)
     (hθ₂ : Subst.Ok Δ₁ θ₂) (hc₂ : Subst.Coh ι₂ Δ₁ θ₂) (hθ₃ : Subst.Ok Γ θ₃)
-    (hc₃ : Subst.Coh ι₃ Γ θ₃) (hs : Subst.Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂))
+    (hc₃ : Subst.Coh ι₃ Γ θ₃) (hs : Subst.SimT Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂))
     (t : Term σ Γ .Var .var) :
     Term.subst ι₂ θ₂ hθ₂ hc₂ (Term.subst ι₁ θ₁ hθ₁ hc₁ t) = Term.subst ι₃ θ₃ hθ₃ hc₃ t :=
   eq_of_heq (Sigma.mk.inj (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)).2
@@ -850,7 +865,7 @@ theorem Term.subst_comp {σ : Signature} {ι₁ ι₂ ι₃ : VarSymb → VarSym
 theorem Rel.subst_comp {σ : Signature} {ι₁ ι₂ ι₃ : VarSymb → VarSymb} {Γ Δ₁ Δ₂ : Ctx}
     (θ₁ : Subst σ Δ₁) (θ₂ θ₃ : Subst σ Δ₂) (hθ₁ : Subst.Ok Γ θ₁) (hc₁ : Subst.Coh ι₁ Γ θ₁)
     (hθ₂ : Subst.Ok Δ₁ θ₂) (hc₂ : Subst.Coh ι₂ Δ₁ θ₂) (hθ₃ : Subst.Ok Γ θ₃)
-    (hc₃ : Subst.Coh ι₃ Γ θ₃) (hs : Subst.Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) :
+    (hc₃ : Subst.Coh ι₃ Γ θ₃) (hs : Subst.SimT Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) :
     {n : ℕ} → (ρ : Rel σ Γ n) →
     Rel.subst ι₂ θ₂ hθ₂ hc₂ (Rel.subst ι₁ θ₁ hθ₁ hc₁ ρ) = Rel.subst ι₃ θ₃ hθ₃ hc₃ ρ
   | _, .R _ => rfl

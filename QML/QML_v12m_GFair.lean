@@ -133,7 +133,8 @@ theorem Ext.newChild {N : GNetSt σ} {s : Node} (hs : N.Live s) (kd : Option Var
 
 /-! ## Each operation extends -/
 
-theorem Ext.realF (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k : Node}
+theorem Ext.realF [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k : Node}
     (hk : N.Live k) : Ext N (N.realF hF k) := by
   match k with
   | [] =>
@@ -204,6 +205,7 @@ theorem Ext.henk {N : GNetSt σ} (hN : N.Good) {s : Node} (hs : N.Live s) (o : O
     | .imp (.retxS _ _ _ _ _ _) _ => exact Ext.refl N
     | .imp (.link _ _ _ _) _ => exact Ext.refl N
     | .imp (.linkx _ _ _ _ _ _) _ => exact Ext.refl N
+    | .imp (.optx _ _ _ _) _ => exact Ext.refl N
     | .imp (.all _ _) (.atom _) => exact Ext.refl N
     | .imp (.all _ _) (.eq _ _) => exact Ext.refl N
     | .imp (.all _ _) .top => exact Ext.refl N
@@ -220,6 +222,7 @@ theorem Ext.henk {N : GNetSt σ} (hN : N.Good) {s : Node} (hs : N.Live s) (o : O
     | .imp (.all _ _) (.retxS _ _ _ _ _ _) => exact Ext.refl N
     | .imp (.all _ _) (.link _ _ _ _) => exact Ext.refl N
     | .imp (.all _ _) (.linkx _ _ _ _ _ _) => exact Ext.refl N
+    | .imp (.all _ _) (.optx _ _ _ _) => exact Ext.refl N
     | .all _ _ => exact Ext.refl N
     | .box _ => exact Ext.refl N
     | .dia _ _ _ => exact Ext.refl N
@@ -229,6 +232,7 @@ theorem Ext.henk {N : GNetSt σ} (hN : N.Good) {s : Node} (hs : N.Live s) (o : O
     | .retxS _ _ _ _ _ _ => exact Ext.refl N
     | .link _ _ _ _ => exact Ext.refl N
     | .linkx _ _ _ _ _ _ => exact Ext.refl N
+    | .optx _ _ _ _ => exact Ext.refl N
   · exact Ext.refl N
 
 theorem Ext.henkSrc {N : GNetSt σ} (hN : N.Good) (s : Node) (o : Obl σ) :
@@ -275,11 +279,12 @@ theorem Ext.mkChild (hF : ModalSys.Four = true) {N : GNetSt σ} {s : Node} (hs :
     | .retxS _ _ _ _ _ _ => exact Ext.refl N
     | .link _ _ _ _ => exact Ext.refl N
     | .linkx _ _ _ _ _ _ => exact Ext.refl N
+    | .optx _ _ _ _ => exact Ext.refl N
   · exact Ext.refl N
 
 /-! ## Catching up, then lifting -/
 
-theorem nch_realF (hF : ModalSys.Four = true) (N : GNetSt σ) (k : Node) :
+theorem nch_realF [ModalSys.NoOpt] (hF : ModalSys.Four = true) (N : GNetSt σ) (k : Node) :
     (N.realF hF k).nch = N.nch := by
   match k with
   | [] =>
@@ -289,14 +294,15 @@ theorem nch_realF (hF : ModalSys.Four = true) (N : GNetSt σ) (k : Node) :
       simp only [GNetSt.realF]
       split_ifs <;> rfl
 
-theorem realF_st_par (hF : ModalSys.Four = true) (N : GNetSt σ) (c : ℕ) (p : Node) :
+theorem realF_st_par [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) (N : GNetSt σ) (c : ℕ) (p : Node) :
     (N.realF hF (c :: p)).st p = N.st p := by
   simp only [GNetSt.realF]
   split_ifs
   · exact setSt_ne _ _ (fun h => NetSt.ne_parent c p h.symm)
   · rfl
 
-theorem realF_fcl (hF : ModalSys.Four = true) (N : GNetSt σ) (c : ℕ) (p : Node) :
+theorem realF_fcl [ModalSys.NoOpt] (hF : ModalSys.Four = true) (N : GNetSt σ) (c : ℕ) (p : Node) :
     (N.realF hF (c :: p)).fcl (c :: p) =
       if (N.fcl (c :: p)).length < (N.st p).l.length then
         nextTy (N.st p).l (N.fcl (c :: p)) :: N.fcl (c :: p)
@@ -309,11 +315,12 @@ theorem realF_fcl (hF : ModalSys.Four = true) (N : GNetSt σ) (c : ℕ) (p : Nod
 open Classical in
 /-- Realise forward along the edge into `k` until its parent is fully committed; at the root,
     with the hub, along the edge from the world asked about. -/
-noncomputable def catchUp (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → GNetSt σ
+noncomputable def catchUp [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → GNetSt σ
   | [] => if N.hb then (fun N' => N'.realF hF [])^[N.src.l.length - (N.fcl []).length] N else N
   | c :: p => (fun N' => N'.realF hF (c :: p))^[(N.st p).l.length - (N.fcl (c :: p)).length] N
 
-theorem iterate_realF (hF : ModalSys.Four = true) (c : ℕ) (p : Node) :
+theorem iterate_realF [ModalSys.NoOpt] (hF : ModalSys.Four = true) (c : ℕ) (p : Node) :
     ∀ (j : ℕ) (N : GNetSt σ), (N.fcl (c :: p)).length + j ≤ (N.st p).l.length →
       ((fun N' => N'.realF hF (c :: p))^[j] N).st p = N.st p ∧
         (((fun N' => N'.realF hF (c :: p))^[j] N).fcl (c :: p)).length =
@@ -328,7 +335,7 @@ theorem iterate_realF (hF : ModalSys.Four = true) (c : ℕ) (p : Node) :
       obtain ⟨ih₁, ih₂⟩ := iterate_realF hF c p j (N.realF hF (c :: p)) (by rw [h₁, h₂]; omega)
       exact ⟨ih₁.trans h₁, by rw [ih₂, h₂]; omega⟩
 
-theorem Good.iterate_realF (hF : ModalSys.Four = true) (k : Node) :
+theorem Good.iterate_realF [ModalSys.NoOpt] (hF : ModalSys.Four = true) (k : Node) :
     ∀ (j : ℕ) {N : GNetSt σ}, N.Good → N.Live k →
       ((fun N' => N'.realF hF k)^[j] N).Good ∧ ((fun N' => N'.realF hF k)^[j] N).Live k ∧
         Ext N ((fun N' => N'.realF hF k)^[j] N)
@@ -340,7 +347,8 @@ theorem Good.iterate_realF (hF : ModalSys.Four = true) (k : Node) :
       obtain ⟨h₁, h₂, h₃⟩ := Good.iterate_realF hF k j hN' hk'
       exact ⟨h₁, h₂, (Ext.realF hF hN hk).trans h₃⟩
 
-theorem Good.catchUp (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k : Node}
+theorem Good.catchUp [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k : Node}
     (hk : N.Live k) :
     (N.catchUp hF k).Good ∧ (N.catchUp hF k).Live k ∧ Ext N (N.catchUp hF k) := by
   match k with
@@ -352,7 +360,8 @@ theorem Good.catchUp (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {
   | c :: p => exact Good.iterate_realF hF (c :: p) _ hN hk
 
 /-- ⭐After catching up, the parent is fully committed along the edge. -/
-theorem catchUp_full (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {c : ℕ}
+theorem catchUp_full [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {c : ℕ}
     {p : Node} (hk : N.Live (c :: p)) :
     (N.catchUp hF (c :: p)).fcl (c :: p) = ((N.catchUp hF (c :: p)).st p).l := by
   obtain ⟨hsuf, -⟩ := hN.fwd c p hk
@@ -369,7 +378,8 @@ theorem catchUp_full (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {
   rw [h₂, h₁]
   omega
 
-theorem nch_lift (hF : ModalSys.Four = true) (N : GNetSt σ) (k : Node) (o : LTerm σ) :
+theorem nch_lift [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) (N : GNetSt σ) (k : Node) (o : LTerm σ) :
     (N.lift hF k o).nch = N.nch := by
   match k, o with
   | [], ⟨l, T, a, t⟩ =>
@@ -380,7 +390,7 @@ theorem nch_lift (hF : ModalSys.Four = true) (N : GNetSt σ) (k : Node) (o : LTe
       split_ifs <;> rfl
 
 /-- What a lift does, when it applies. -/
-theorem lift_spec (hF : ModalSys.Four = true) {N : GNetSt σ} {c : ℕ} {p : Node}
+theorem lift_spec [ModalSys.NoOpt] (hF : ModalSys.Four = true) {N : GNetSt σ} {c : ℕ} {p : Node}
     {l : List VarType} {T : VarType} {a : Ann T} {t : Term σ (ctxOf l) T a}
     (hcl : N.fcl (c :: p) = (N.st p).l) (h : l <:+ (N.st (c :: p)).l) (hl : T.liftable = true)
     (hv : LiftAdm hF ⟨l, T, a, t⟩ ∧
@@ -401,7 +411,8 @@ theorem Ext.withSrc {N : GNetSt σ} {t : NodeSt σ} (hg : N.hb → Grows N.src t
   ⟨fun k h => (hl k).mpr h, fun _ _ => Grows.refl _, fun _ _ => rfl,
     fun _ _ => List.suffix_refl _, fun _ _ _ _ _ => rfl, rfl, hg, rfl⟩
 
-theorem Ext.lift (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k : Node}
+theorem Ext.lift [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) {k : Node}
     (hk : N.Live k) (o : LTerm σ) : Ext N (N.lift hF k o) := by
   match k, o with
   | [], ⟨l, T, a, t⟩ =>
@@ -490,13 +501,15 @@ instance : Nonempty (GOp σ) := ⟨.inr (.inr (.inl []))⟩
 
 open Classical in
 /-- Perform one operation, at a live node only. -/
-noncomputable def applyOp (hF : ModalSys.Four = true) (N : GNetSt σ) : GOp σ → GNetSt σ
+noncomputable def applyOp [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) (N : GNetSt σ) : GOp σ → GNetSt σ
   | .inl (s, o) => if N.Live s then (N.henk s o).henkSrc s o else N
   | .inr (.inl (s, o)) => if N.Live s then N.mkChild hF s o else N
   | .inr (.inr (.inl k)) => if N.Live k then N.realF hF k else N
   | .inr (.inr (.inr (k, n))) => if N.Live k then (N.catchUp hF k).lift hF k n else N
 
-theorem Good.applyOp (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) (o : GOp σ) :
+theorem Good.applyOp [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) (o : GOp σ) :
     (N.applyOp hF o).Good := by
   rcases o with ⟨s, o⟩ | ⟨s, o⟩ | k | ⟨k, n⟩
   · simp only [GNetSt.applyOp]
@@ -517,7 +530,8 @@ theorem Good.applyOp (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) (
       exact h₁.lift hF h₂ n
     · exact hN
 
-theorem Ext.applyOp (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) (o : GOp σ) :
+theorem Ext.applyOp [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) {N : GNetSt σ} (hN : N.Good) (o : GOp σ) :
     Ext N (N.applyOp hF o) := by
   rcases o with ⟨s, o⟩ | ⟨s, o⟩ | k | ⟨k, n⟩
   · simp only [GNetSt.applyOp]
@@ -584,7 +598,7 @@ theorem hubSt_fwd {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} (hM
   have hf : EntOk ((ctxOf []).kView none) (ctxOf (hubSt M₀).l) f := fun v T _ hv => by
     rw [show (ctxOf []).kView none v = none from boxIn_empty v] at hv
     cases hv
-  refine ⟨List.nil_suffix, kDecl_none _, hf, fun ψ hψ => ?_⟩
+  refine ⟨List.nil_suffix, kDecl_none _, hf, fun _ ψ hψ => ?_⟩
   have hψ' : WFF.mono (ctxOf_le_of_suffix List.nil_suffix) (.box ψ) ∈ M₀ := hψ
   rw [eq_closed_boxIn_empty ψ] at hψ' ⊢
   rw [WFF.closed, WFF.subst_mono_empty _ (Ctx.empty_le _)]
@@ -678,26 +692,26 @@ theorem gsched_after (o : GNetSt.GOp σ) (m : ℕ) : ∃ n, m ≤ n ∧ gsched n
   simp [gsched, Nat.unpair_pair, he]
 
 /-- ⭐The chain of growing trees from a root theory `M₀`. -/
-noncomputable def gnet (hF : ModalSys.Four = true) {l₀ : List VarType}
+noncomputable def gnet [ModalSys.NoOpt] (hF : ModalSys.Four = true) {l₀ : List VarType}
     (M₀ : Set (WFF σ (ctxOf l₀) 0)) : ℕ → GNetSt σ
   | 0 => GNetSt.init M₀
   | n + 1 => (gnet hF M₀ n).applyOp hF (gsched n)
 
 /-- ⭐Every network of the chain is good. -/
-theorem good_gnet (hF : ModalSys.Four = true) {l₀ : List VarType}
+theorem good_gnet [ModalSys.NoOpt] (hF : ModalSys.Four = true) {l₀ : List VarType}
     {M₀ : Set (WFF σ (ctxOf l₀) 0)} (h : Theory.IsMCS M₀) : ∀ n, (gnet hF M₀ n).Good
   | 0 => GNetSt.Good.init hF h
   | n + 1 => (good_gnet hF h n).applyOp hF (gsched n)
 
 /-- ⭐Along the chain, later networks extend earlier ones. -/
-theorem ext_gnet (hF : ModalSys.Four = true) {l₀ : List VarType}
+theorem ext_gnet [ModalSys.NoOpt] (hF : ModalSys.Four = true) {l₀ : List VarType}
     {M₀ : Set (WFF σ (ctxOf l₀) 0)} (h : Theory.IsMCS M₀) {n m : ℕ} (hnm : n ≤ m) :
     GNetSt.Ext (gnet hF M₀ n) (gnet hF M₀ m) := by
   induction hnm with
   | refl => exact GNetSt.Ext.refl _
   | step _ ih => exact ih.trans (GNetSt.Ext.applyOp hF (good_gnet hF h _) _)
 
-theorem gnet_succ_of (hF : ModalSys.Four = true) {l₀ : List VarType}
+theorem gnet_succ_of [ModalSys.NoOpt] (hF : ModalSys.Four = true) {l₀ : List VarType}
     {M₀ : Set (WFF σ (ctxOf l₀) 0)} {n : ℕ} {o : GNetSt.GOp σ} (h : gsched n = o) :
     gnet hF M₀ (n + 1) = (gnet hF M₀ n).applyOp hF o := by
   rw [← h]

@@ -321,7 +321,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 theorem Pushed.not_ppath {s : GW hF M₀} {i : ℕ} {Δ : Ctx} {ρ : GEnv hF M₀ Δ s} {j : ℕ}
     (hP : Pushed hF M₀ s i Δ ρ (j + 1)) : ∀ v T, Δ.ref v = some T → ¬ PPath v.path :=
@@ -374,6 +374,7 @@ theorem Pushed.kpart {s : GW hF M₀} {i : ℕ} {Δ : Ctx} {ρ : GEnv hF M₀ Δ
 
 /-! ## The two kinds of addresses -/
 
+omit [ModalSys.NoOpt] in
 /-- Reachable addresses have a property closed under projections when the declared ones do. -/
 theorem ref_induct {Δ : Ctx} {P : VarSymb → Prop}
     (hd : ∀ v T, v.lastProj = false → Δ v = some T → P v)
@@ -654,7 +655,7 @@ theorem edge_shp (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s t : GW 
 
 /-! ## The late edge's images are injective -/
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- ⭐**Along an edge whose entries are images, the index map is injective on keep-first
     addresses** below the base's kept items. -/
 theorem late_inj (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {l L : List VarType}

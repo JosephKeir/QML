@@ -105,14 +105,16 @@ theorem sat_ret (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
   have hval : (env'.diaPush (.root (.free c)) hrc ⟨M.frame.reflAcc hT w, hmem'⟩).ref
       (.step (.root (.free c)) .dia) (Ctx.ref_diaIn_of hrc) = interp env t := by
     rw [Env.ref, dif_neg (by decide : ¬ Step.dia.isProj = true)]
-    simp only [Env.diaPush]
+    change (M.posEval (env'.ref (.root (.free c)) hrc)).2 ⟨M.frame.reflAcc hT w, hmem'⟩ = _
     rw [posEval_snd_congr hpe ⟨M.frame.reflAcc hT w, hmem'⟩ hmem]
     exact hcont
   have henvs : Env.restrict ((Ctx.le_insert hc.root (.VTypeDia A)).boxIn.trans
         (Ctx.le_boxIn_diaIn _ (.root (.free c))))
       (env'.diaPush (.root (.free c)) hrc ⟨M.frame.reflAcc hT w, hmem'⟩) =
         env.boxPush (M.frame.reflAcc hT w) := by
-    funext v T hv
+    refine Env.ext' (fun v T hv => ?_) (fun _ _ hy => ?_)
+    swap
+    · exact absurd (Ctx.boxIn_wit.mp hy).1 (by rw [ModalSys.noOpt_of_T hT]; decide)
     exact (Env.diaPush_ret env hc p (M.frame.refl hT w) hrc hmem' v T hv).symm
   refine (sat_renameRoot _ (Ctx.noProjLast_boxIn Γ) (.bnd 0)
     ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) _ _ _ _ Ctx.NoSlots.slots ψ).mpr ?_
@@ -166,14 +168,17 @@ theorem sat_viewRead_ret (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
       ⟨M.frame.reflAcc hT w, hmem'⟩).ref
       (.step (.root (.free c)) .dia) (Ctx.ref_diaIn_of hrc) = interp env t := by
     rw [Env.ref, dif_neg (by decide : ¬ Step.dia.isProj = true)]
-    simp only [Env.diaPush]
+    change (M.posEval ((env.extend (.free c) p).ref (.root (.free c)) hrc)).2
+      ⟨M.frame.reflAcc hT w, hmem'⟩ = _
     rw [posEval_snd_congr hpe ⟨M.frame.reflAcc hT w, hmem'⟩ hmem]
     exact hcont
   have henvs : Env.restrict ((Ctx.le_insert hc.root (.VTypeDia A)).boxIn.trans
         (Ctx.le_boxIn_diaIn _ (.root (.free c))))
       ((env.extend (.free c) p).diaPush (.root (.free c)) hrc ⟨M.frame.reflAcc hT w, hmem'⟩) =
       env.boxPush (M.frame.reflAcc hT w) := by
-    funext v T hv
+    refine Env.ext' (fun v T hv => ?_) (fun _ _ hy => ?_)
+    swap
+    · exact absurd (Ctx.boxIn_wit.mp hy).1 (by rw [ModalSys.noOpt_of_T hT]; decide)
     exact (Env.diaPush_ret env hc p (M.frame.refl hT w) hrc hmem' v T hv).symm
   refine (sat_renameRoot _ (Ctx.noProjLast_boxIn Γ) (.bnd 0)
     ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) _ _ _ _ Ctx.NoSlots.slots ψ).trans
@@ -207,10 +212,14 @@ theorem Env.substEnv_diaAbs (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w 
         (Ctx.noProjLast_diaIn Γ (.root (.free c)))
         ((env.boxPush (M.frame.reflAcc hT w)).extend (.bnd 0) (interp env t₀)) =
       env.diaPush (.root (.free c)) hcA ⟨M.frame.reflAcc hT w, hmem⟩ := by
-  funext v T hv
+  refine Env.ext' (fun v T hv => ?_) (fun _ _ hy => ?_)
+  swap
+  · exact absurd (Ctx.boxIn_wit.mp hy).1 (by rw [ModalSys.noOpt_of_T hT]; decide)
   rcases Subst.diaIn_cases hcA hfr hv with ⟨rfl, rfl⟩ | ⟨_, hb, hen, hroot⟩
   · refine (entryVal_congr _ (show Subst.diaAbs σ (Γ.boxIn.insert (.bnd 0) T) c
-        (.step (.root (.free c)) .dia) = .ren (.root (.bnd 0)) from if_pos rfl) _
+        (.step (.root (.free c)) .dia) = .ren (.root (.bnd 0)) from
+          if_pos (c := VarSymb.root (.free c) = .root (.free c))
+            (t := SubE.ren (.root (.bnd 0))) (e := SubE.hide) rfl) _
       (Ctx.ref_insert_root _ (.bnd 0) T)).trans ?_
     refine (Env.extend_root (env.boxPush (M.frame.reflAcc hT w)) (.bnd 0) (interp env t₀)
       (by simp [Ctx.insert])).trans ?_

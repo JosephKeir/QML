@@ -63,6 +63,7 @@ def WFF.weight {σ : Signature} : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → �
   | _, _, .retxS _ _ _ _ _ Φ => Φ.weight + 2
   | _, _, .link _ _ _ Φ => Φ.weight + 2
   | _, _, .linkx _ _ _ _ _ Φ => Φ.weight + 2
+  | _, _, .optx _ _ _ φ => φ.weight + 1
 
 /-! ## The 4-copies -/
 

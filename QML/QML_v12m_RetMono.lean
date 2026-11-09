@@ -24,10 +24,6 @@ namespace Subst
 
 variable {σ : Signature} {Δ : Ctx}
 
-theorem mono_apply {Δ' : Ctx} (θ : Subst σ Δ) (h : Δ.Le Δ') (v : VarSymb) :
-    θ.mono h v = (θ v).mono h :=
-  rfl
-
 end Subst
 
 variable {σ : Signature}
@@ -77,6 +73,8 @@ theorem WFF.collapse_mono : ∀ {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx} {d :
       simp only [WFF.collapse, WFF.mono]
       rw [WFF.collapse_mono (h.diaIn x) (h'.diaIn x) (l₁.diaIn x) (l₂.diaIn _) (hs.diaIn x)
         (hs'.diaIn x) φ]
+  | _, _, _, _, _, _, h, _, _, _, _, _, .optx hO _ _ _ =>
+      False.elim (by have := ModalSys.noOpt_of_T h.hT; rw [hO] at this; cases this)
   | _, _, _, _, _, _, h, h', l₁, l₂, _, _, .here hT s t =>
       WFF.here_congr' hT (Term.collapse_mono h h' l₁ l₂ s) (Term.collapse_mono h h' l₁ l₂ t)
   | _, _, _, _, _, _, h, h', l₁, l₂, _, _, .back hB L s t =>
@@ -113,7 +111,7 @@ theorem WFF.mono_instantiate {Γ Γ' : Ctx} (h : Γ.Le Γ') (hs : Γ.SlotsFrom 0
   unfold WFF.instantiate WFF.substRoot
   rw [WFF.mono_subst, WFF.subst_mono]
   refine WFF.subst_congr _ _ _ _ _ _ _ _ ?_ φ
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v U _ _
   rw [Subst.mono_apply]
   by_cases hvr : v = .root (.bnd 0)
@@ -143,7 +141,7 @@ theorem WFF.mono_viewRead {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (h : Γ.Le �
   unfold WFF.viewRead WFF.renameRoot
   rw [WFF.mono_subst, WFF.subst_mono]
   refine WFF.subst_congr _ _ _ _ _ _ _ _ ?_ ψ
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v U _ _
   rw [Subst.mono_apply]
   by_cases hvr : v = .root (.bnd 0)
@@ -161,7 +159,7 @@ theorem WFF.mono_bindFree {Γ Γ' : Ctx} (h : Γ.Le Γ') {u : ℕ} (hu : Γ.Root
   unfold WFF.bindFree WFF.renameRoot
   rw [WFF.mono_subst, WFF.subst_mono]
   refine WFF.subst_congr _ _ _ _ _ _ _ _ ?_ φ
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v U _ _
   rw [Subst.mono_apply]
   by_cases hvr : v = .root (.free u)

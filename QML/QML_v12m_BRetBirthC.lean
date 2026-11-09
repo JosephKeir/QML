@@ -301,7 +301,7 @@ theorem RetInvWB.birth (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true)
   refine WFF.retS_congr hS _ (sig_pair ?_ ?_) ?_
   · rw [Term.subst_mono]
     refine (Term.subst_congr _ (arrowS σ _ imgs) _ (ok_arrowS himgs) _ (coh_arrowS himgs)
-      (Subst.sim_of fun v T _ hv => ?_) _).trans (subst_arrow_compsVal cls himgs _ _)
+      (Subst.simT_of fun v T _ hv => ?_) _).trans (subst_arrow_compsVal cls himgs _ _)
     obtain ⟨u, rfl, _⟩ := boxIn_item hv
     exact .refl _
   · exact Term.subst_eta_renAt _ _ _ _ _ _ _ _ (by rw [Subst.at_nonproj _ rfl]; exact if_pos rfl)
@@ -455,7 +455,7 @@ theorem RetInvWDB.grow_src {hS : ModalSys.BStrong = true} {b : Bool} {hb : Modal
 
 omit [ModalSys.NoFour] in
 /-- Forgetting companions at a witnessed shape leaves a body as it was. -/
-theorem WFF.bodyRepl_liftObj_wit_forgetC {V : Ctx} [V.NoSlots] (A : VarType)
+theorem WFF.bodyRepl_liftObj_wit_forgetC [ModalSys.NoOpt] {V : Ctx} [V.NoSlots] (A : VarType)
     (cs : List (List Step)) (h : A.CompOk cs) (X : VarType)
     (Φ : WFF σ (V.insert (.bnd 0) (RShape.wit (.box A) X).ty) 1) :
     WFF.bodyRepl (Term.mono ((Ctx.empty_le _).insert (.bnd 0) _)

@@ -90,22 +90,22 @@ theorem sat_singleAt {Λ Ω : Ctx} {T : VarType} {d d' : ℕ} (hle : Λ.Le Ω)
     (hr : Λ.RootFresh (.bnd 0)) (hΛ : (Λ.insert (.bnd 0) T).SlotsFrom d) (hs : Ω.SlotsFrom d')
     (hnp : Λ.NoProjLast) {w : M.frame.W} (env : M.Env Ω w) (env₀ : M.Env Λ w)
     (hag : Env.Agree hle env₀ env) {a : Ann T} (u : Term σ Ω T a)
-    (B : WFF σ (Λ.insert (.bnd 0) T) d) :
+    (B : WFF σ (Λ.insert (.bnd 0) T) d) (_hO : ModalSys.Opt = false := by opt_off) :
     M.sat env (WFF.subst (Subst.singleIdx (.bnd 0) (.tm u)) (Subst.single (.bnd 0) (.tm u))
         (Subst.ok_single hle rfl) (Subst.coh_single hr hle rfl) hΛ hs B) ↔
       M.sat (env₀.extend (.bnd 0) (interp env u)) B := by
-  refine (sat_subst _ _ _ _ _ (hnp.insert _ T) env B).trans
-    (iff_of_eq (congrArg (fun e => M.sat e B) ?_))
-  funext v U hv
+  refine (sat_subst _ _ _ _ _ (hnp.insert _ T) env B).trans (sat_congr_val (fun v U hv => ?_) B)
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     have hTU : T = U := by simpa [Ctx.insert] using hv
     subst hTU
+    rw [substEnv_val]
     exact (entryVal_congr env
-      (show Subst.single (.bnd 0) (.tm u) (.root (.bnd 0)) = .tm u from if_pos rfl) _ rfl).trans
+      (show Subst.single (.bnd 0) (.tm u) (.root (.bnd 0)) = .tm u from by slot_rfl) _ rfl).trans
       (Env.extend_root env₀ (.bnd 0) _ hv).symm
   · have hv' : Λ v = some U := by simpa [Ctx.insert, hvr] using hv
     have hl := hnp v U hv'
+    rw [substEnv_val]
     exact (entryVal_congr env (show Subst.single (.bnd 0) (.tm u) v = .ren v from if_neg hvr) _
       ((Ctx.ref_nonproj Ω hl).trans (hle v U hv'))).trans
       ((Env.ref_of_nonproj env hl _ _).trans

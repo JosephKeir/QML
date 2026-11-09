@@ -473,7 +473,8 @@ theorem WFF.mono_tiedW {V' : Ctx} [V'.NoSlots] (h : V.Le V') (hS : ModalSys.BStr
   · rw [WFF.mono_holeAt _ _ ((Ctx.NoSlots.slots (Γ := V')).insert _), Term.mono_eta]
 
 /-- ⭐The tied body at a packed object. -/
-theorem WFF.instantiate_tiedW (hS : ModalSys.BStrong = true) (hF : ModalSys.Four = true)
+theorem WFF.instantiate_tiedW [ModalSys.NoOpt]
+    (hS : ModalSys.BStrong = true) (hF : ModalSys.Four = true)
     (Ψ : WFF σ (V.insert (.bnd 0) (wTy F X)) 1) {a₀ : Ann F} {b₀ : Ann (wTy F X)}
     {x₀ : Ann (.VTypeDia X)} (a : Term σ V.boxIn F a₀) (Z : Term σ V.boxIn (wTy F X) b₀)
     (x : Term σ V (.VTypeDia X) x₀) :
@@ -981,7 +982,7 @@ section Concl
 variable {F X : VarType}
 
 /-- The tied body opened at a fresh root. -/
-theorem WFF.openFree_tiedW {V : Ctx} [V.NoSlots] (hS : ModalSys.BStrong = true)
+theorem WFF.openFree_tiedW [ModalSys.NoOpt] {V : Ctx} [V.NoSlots] (hS : ModalSys.BStrong = true)
     (hF : ModalSys.Four = true) (Ψ : WFF σ (V.insert (.bnd 0) (wTy F X)) 1) (u : ℕ)
     (hu : V.RootFresh (.free u)) :
     WFF.openFree u hu Ctx.NoSlots.slots (WFF.tiedW hS hF Ψ) =
@@ -1012,7 +1013,7 @@ variable {Γ : Ctx} [Γ.NoSlots] {c₁ c₂ : VarSymb}
 
 /-- ⭐**The first conclusion**: the necessary part comes back, and the possible part is realised
     here with the content. -/
-def Proof.liftW_back (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.liftW_back [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} (O : OutLeg Γ) {a₁ : Ann F} {a₂ : Ann X}
     (t₁ : Term σ Γ F a₁) (h₁ : Γ.ref c₁ = some (.VTypeBox F))
     (h₂ : Γ.ref c₂ = some (.VTypeDia X)) (t₂ : Term σ Γ X a₂)
@@ -1039,7 +1040,7 @@ def Proof.liftW_back (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
   exact hb
 
 /-- ⭐**The second conclusion**: the kept object has `Ψ`, possibly. -/
-def Proof.liftW_dia (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.liftW_dia [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} (O : OutLeg Γ) {a₁ : Ann F} {a₂ : Ann X}
     (t₁ : Term σ Γ F a₁) (h₁ : Γ.ref c₁ = some (.VTypeBox F))
     (h₂ : Γ.ref c₂ = some (.VTypeDia X)) (t₂ : Term σ Γ X a₂)
@@ -1116,21 +1117,19 @@ theorem WFF.mono_pairUpW {V V' : Ctx} [V.NoSlots] [V'.NoSlots] (h : V.Le V')
         (WFF.mono (h.insert (.bnd 0) _) Φ) := by
   unfold WFF.pairUpS
   rw [WFF.mono_subst, WFF.subst_mono]
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) Φ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
+    fun v T _ hv => ?_) Φ
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = (RShape.wit (.box (.VTypeProd F B)) X).ty := by
       simpa [Ctx.insert] using hv.symm
-    change SubE.Sim _ (SubE.mono _ (Subst.set _ _ _ (.root (.bnd 0))))
-      (Subst.set _ _ _ (.root (.bnd 0)))
-    rw [Subst.set_root, Subst.set_root]
+    rw [Subst.mono_apply, Subst.set_root, Subst.set_root]
     change SubE.Sim _ (.tm (Term.mono _ _)) _
     refine SubE.sim_tm_sigma ((Term.mono_holeAt_sig _ _ _).trans (Term.holeAt_congr_sig ?_ _))
     exact sig_pair (sig_pair (congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _))
       (congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _)))
       (congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _))
-  · change SubE.Sim T (SubE.mono _ (Subst.set _ _ _ v)) (Subst.set _ _ _ v)
-    rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
+  · rw [Subst.mono_apply, Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
     exact .refl _
 
 /-- ⭐**`∃`-introduction at a companion of the witnessed shape.** -/
@@ -1165,7 +1164,7 @@ def Proof.ex_pairUpW {Δ : List (WFF σ W 0)} {a₀ : Ann F} {c₀ : Ann B} {x�
     (T := (RShape.wit (.box (.VTypeProd F B)) X).ty) (e := .tm s₁₂) hfresh hl rfl
   refine Eq.trans (congrArg (WFF.subst _ _ _ _ _ _)
     (WFF.subst_comp _ _ (Subst.single (.bnd 0) (.tm s₁₂)) _ _ _ _ ok₁₂ coh₁₂ _ _ _ ?_ Y)) ?_
-  · refine Subst.sim_of fun v U hlp hv => ?_
+  · refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
     by_cases hvr : v = .root (.bnd 0)
     · subst hvr
       obtain rfl : U = (RShape.wit (.box (.VTypeProd F B)) X).ty := by
@@ -1193,7 +1192,7 @@ def Proof.ex_pairUpW {Δ : List (WFF σ W 0)} {a₀ : Ann F} {c₀ : Ann B} {x�
       rw [Subst.at_under_ne _ _ _ h1, Subst.single_at_ne h0]
       exact .refl _
   · refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Y
-    refine Subst.sim_of fun v U hlp hv => ?_
+    refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
     by_cases hvr : v = .root (.bnd 0)
     · subst hvr
       obtain rfl : U = (RShape.wit (.box (.VTypeProd F B)) X).ty := by
@@ -1226,7 +1225,7 @@ section Main
 variable {Γ : Ctx} [Γ.NoSlots] {F X : VarType}
 
 /-- ⭐**The ties come for free**: the object has its companion, its kept form, tied. -/
-def Proof.retW_tied (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.retW_tied [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} (O : OutLeg Γ)
     {a : Ann (RShape.wit (.box F) X).flat} (y : Term σ Γ (RShape.wit (.box F) X).flat a)
     (Ψ : WFF σ (O.view.insert (.bnd 0) (wTy F X)) 1) (r : ℕ) (hr : O.view.RootFresh (.free r))
@@ -1274,7 +1273,7 @@ def WFF.liftedW (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
 
 /-- ⭐⭐**Lifting a witnessed returning possibility** (T + 4, strong B), along either leg, as an
     `∃`-elimination at a fresh `c : □F × ◇X`. -/
-def Proof.retW_lift (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.retW_lift [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (O : OutLeg Γ)
     {a₁ : Ann F} {a₂ : Ann X} (t₁ : Term σ Γ F a₁) (t₂ : Term σ Γ X a₂)
     (Ψ : WFF σ (O.view.insert (.bnd 0) (wTy F X)) 1) (c : ℕ) (hc : Γ.RootFresh (.free c))
@@ -1368,7 +1367,8 @@ theorem WFF.mono_packedBodyW {V' : Ctx} [V'.NoSlots] (h : V.Le V') (hS : ModalSy
   · rw [WFF.mono_holeAt _ _ ((Ctx.NoSlots.slots (Γ := V')).insert _), Term.mono_mono]
 
 /-- ⭐The packed body at an object's own packing. -/
-theorem WFF.instantiate_packedBodyW (hS : ModalSys.BStrong = true) (hF : ModalSys.Four = true)
+theorem WFF.instantiate_packedBodyW [ModalSys.NoOpt]
+    (hS : ModalSys.BStrong = true) (hF : ModalSys.Four = true)
     (Φ : WFF σ (V.insert (.bnd 0) (RShape.wit N X).ty) 1) (u x : VarSymb)
     (hu : V.ref u = some N.ty) (hx : V.ref x = some (.VTypeDia X)) :
     WFF.instantiate Ctx.NoSlots.slots
@@ -1418,7 +1418,7 @@ section MainN
 variable {Γ : Ctx} [Γ.NoSlots] {X : VarType}
 
 /-- ⭐**Packing a witnessed returning possibility.** -/
-def Proof.retWN_packed (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.retWN_packed [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} (O : OutLeg Γ) (N : NShape)
     {a₁ : Ann N.flat} {a₂ : Ann X} (t₁ : Term σ Γ N.flat a₁) (t₂ : Term σ Γ X a₂)
     (Φ : WFF σ (O.view.insert (.bnd 0) (RShape.wit N X).ty) 1) (u : ℕ)
@@ -1470,7 +1470,7 @@ def Proof.retWN_packed (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
 
 /-- ⭐⭐**Lifting at every witnessed shape** (T + 4, strong B), along either leg: `Proof.retW_lift`
     at the packed object.  With `Proof.retN_lift`, every returnable shape. -/
-def Proof.retWN_lift (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.retWN_lift [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (O : OutLeg Γ) (N : NShape)
     {a₁ : Ann N.flat} {a₂ : Ann X} (t₁ : Term σ Γ N.flat a₁) (t₂ : Term σ Γ X a₂)
     (Φ : WFF σ (O.view.insert (.bnd 0) (RShape.wit N X).ty) 1) (c : ℕ)

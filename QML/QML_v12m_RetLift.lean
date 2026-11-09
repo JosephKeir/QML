@@ -397,6 +397,7 @@ theorem WFF.instantiate_tiedBody (hS : ModalSys.BStrong = true) (hF : ModalSys.F
       WFF.and (WFF.instantiate Ctx.NoSlots.slots (Term.boxtm a) Φ)
         (WFF.holeAt Ctx.NoSlots.slots (Term.pair (Term.boxtm a) (Term.boxtm (Term.boxtm c)))
           (WFF.ties A hS hF)) := by
+  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   have hat := Subst.at_single_root (σ := σ) (Δ := V) (.bnd 0)
     (.tm (Term.boxtm (Term.pair a (Term.boxtm c))))
   have h₁ := Subst.box_at_inner_boxtm _ hat
@@ -842,19 +843,17 @@ theorem WFF.mono_pairUp {V V' : Ctx} [V.NoSlots] [V'.NoSlots] (h : V.Le V')
       WFF.pairUp (WFF.mono (h.insert (.bnd 0) _) Φ) := by
   unfold WFF.pairUp
   rw [WFF.mono_subst, WFF.subst_mono]
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) Φ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _
+    (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T _ hv => ?_) Φ
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = .VTypeBox (.VTypeProd X Y) := by simpa [Ctx.insert] using hv.symm
-    change SubE.Sim _ (SubE.mono _ (Subst.set _ _ _ (.root (.bnd 0))))
-      (Subst.set _ _ _ (.root (.bnd 0)))
-    rw [Subst.set_root, Subst.set_root]
+    rw [Subst.mono_apply, Subst.set_root, Subst.set_root]
     change SubE.Sim _ (.tm (Term.mono _ _)) _
     unfold pairItem
     exact SubE.sim_tm_sigma (sig_boxtm (sig_pair (congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _))
       (congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _))))
-  · change SubE.Sim T (SubE.mono _ (Subst.set _ _ _ v)) (Subst.set _ _ _ v)
-    rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
+  · rw [Subst.mono_apply, Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
     exact .refl _
 
 /-- ⭐**`∃`-introduction at a companion**: a body about the paired object `□⟨a, c⟩` gives
@@ -886,7 +885,7 @@ def Proof.ex_pairUp {Δ : List (WFF σ W 0)} {x₀ : Ann X} {y₀ : Ann Y} (a : 
     (T := .VTypeBox (.VTypeProd X Y)) (e := .tm s₁₂) hfresh hl rfl
   refine Eq.trans (congrArg (WFF.subst _ _ _ _ _ _)
     (WFF.subst_comp _ _ (Subst.single (.bnd 0) (.tm s₁₂)) _ _ _ _ ok₁₂ coh₁₂ _ _ _ ?_ Ψ)) ?_
-  · refine Subst.sim_of fun v U hlp hv => ?_
+  · refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
     by_cases hvr : v = .root (.bnd 0)
     · subst hvr
       obtain rfl : U = .VTypeBox (.VTypeProd X Y) := by simpa [Ctx.insert] using hv.symm
@@ -908,7 +907,7 @@ def Proof.ex_pairUp {Δ : List (WFF σ W 0)} {x₀ : Ann X} {y₀ : Ann Y} (a : 
       rw [Subst.at_under_ne _ _ _ h1, Subst.single_at_ne h0]
       exact .refl _
   · refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Ψ
-    refine Subst.sim_of fun v U hlp hv => ?_
+    refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
     by_cases hvr : v = .root (.bnd 0)
     · subst hvr
       obtain rfl : U = .VTypeBox (.VTypeProd X Y) := by simpa [Ctx.insert] using hv.symm

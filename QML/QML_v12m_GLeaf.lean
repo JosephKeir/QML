@@ -22,7 +22,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-! ## Generic content shapes under keeping and collapsing -/
 
@@ -109,6 +109,7 @@ theorem rootSh_collapse (hT : ModalSys.T = true) (s : GW hF M₀) (v : VarSymb) 
       simp
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [ModalSys.NoOpt] in
 theorem innerPath_keepOnly (hT : ModalSys.T = true) (hF' : ModalSys.Four = true) :
     Step.innerPath = [.keep, .here] := by
   simp [Step.innerPath, ModalSys.keepOnly, hT, hF']
@@ -159,6 +160,7 @@ inductive Pushed (s : GW hF M₀) (i : ℕ) : (Δ : Ctx) → GEnv hF M₀ Δ s �
       (hx : Δ.ref x = some (.VTypeDia X)) :
       Pushed s i Δ ρ j → Pushed s i (Δ.diaIn x) (ρ.diaPush j x hx) (j + 1)
 
+omit [ModalSys.NoOpt] in
 /-- Reachable addresses have the levels of the declared ones. -/
 theorem levels_of_decl {Δ : Ctx} {j : ℕ}
     (h : ∀ v T, v.lastProj = false → Δ v = some T → Step.levels v.path = j) :
@@ -287,7 +289,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-- ⭐**Inside a possible root's content the pushed canonical environment is generic**: every
     address `pre.dia.q` reads `rootSh s pre (dia :: q)` — the root's canonical shape is generic

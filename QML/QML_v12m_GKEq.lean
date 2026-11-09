@@ -21,8 +21,8 @@ namespace V12M
 variable [ModalSys] {σ : Signature}
 
 /-- ⭐**The systems of GK**: K, KD, K4 and KD4 — weak D and weak 4 either way, every other flag
-    off. -/
-class ModalSys.GKSys [ModalSys] : Prop where
+    off, and (for now) `Opt` off. -/
+class ModalSys.GKSys [ModalSys] : Prop extends ModalSys.NoOpt where
   noT : ModalSys.T = false
   noTStrong : ModalSys.TStrong = false
   noDStrong : ModalSys.DStrong = false
@@ -53,16 +53,20 @@ def ModalSys.KD4 : ModalSys :=
     Five := false, FiveStrong := false }
 
 instance : @ModalSys.GKSys ModalSys.K :=
-  @ModalSys.GKSys.mk ModalSys.K rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
+  @ModalSys.GKSys.mk ModalSys.K (@ModalSys.NoOpt.mk ModalSys.K rfl)
+    rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
 
 instance : @ModalSys.GKSys ModalSys.KD :=
-  @ModalSys.GKSys.mk ModalSys.KD rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
+  @ModalSys.GKSys.mk ModalSys.KD (@ModalSys.NoOpt.mk ModalSys.KD rfl)
+    rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
 
 instance : @ModalSys.GKSys ModalSys.K4 :=
-  @ModalSys.GKSys.mk ModalSys.K4 rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
+  @ModalSys.GKSys.mk ModalSys.K4 (@ModalSys.NoOpt.mk ModalSys.K4 rfl)
+    rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
 
 instance : @ModalSys.GKSys ModalSys.KD4 :=
-  @ModalSys.GKSys.mk ModalSys.KD4 rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
+  @ModalSys.GKSys.mk ModalSys.KD4 (@ModalSys.NoOpt.mk ModalSys.KD4 rfl)
+    rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
 
 /-! ## Substitutions agreeing off the base-type addresses -/
 
@@ -72,7 +76,7 @@ variable {Δ : Ctx}
 
 /-- Two substitutions agreeing at every address of a type other than `Var` agree in the `□`
     view. -/
-theorem sim_box_of_agree {Γ₀ : Ctx} {θ₁ θ₂ : Subst σ Δ}
+theorem sim_box_of_agree [ModalSys.NoOpt] {Γ₀ : Ctx} {θ₁ θ₂ : Subst σ Δ}
     (hA : ∀ u X, Γ₀.ref u = some X → X ≠ .Var → θ₁.at u = θ₂.at u) :
     Sim Γ₀.boxIn θ₁.box θ₂.box :=
   sim_of fun v T _ hv => by
@@ -94,7 +98,7 @@ theorem sim_box_of_agree {Γ₀ : Ctx} {θ₁ θ₂ : Subst σ Δ}
     | .step _ .here => cases hv
 
 /-- The same in a `◇_x` view. -/
-theorem sim_dia_of_agree {Γ₀ : Ctx} {θ₁ θ₂ : Subst σ Δ}
+theorem sim_dia_of_agree [ModalSys.NoOpt] {Γ₀ : Ctx} {θ₁ θ₂ : Subst σ Δ}
     (hA : ∀ u X, Γ₀.ref u = some X → X ≠ .Var → θ₁.at u = θ₂.at u) (x ιx : VarSymb) :
     Sim (Γ₀.diaIn x) (θ₁.dia x ιx) (θ₂.dia x ιx) :=
   sim_of fun v T _ hv => by
@@ -128,7 +132,8 @@ theorem sim_dia_of_agree {Γ₀ : Ctx} {θ₁ θ₂ : Subst σ Δ}
 
 /-- `under`'s coherence, for a source context that already declares the slot, provided no other
     address declared there has the slot's root. -/
-theorem coh_under_occ {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
+theorem coh_under_occ [ModalSys.NoOpt]
+    {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
     (hc : Coh ι Γ θ) {d d' : ℕ} (T : VarType) (h : Δ (.root (.bnd d')) = none)
     (hrt : ∀ v U, Γ v = some U → v ≠ .root (.bnd d) → v.rt ≠ .bnd d) :
     Coh (VarSymb.shiftSlot ι d d') (Γ.insert (.bnd d) T) (θ.under d d' T h) := by
@@ -136,7 +141,7 @@ theorem coh_under_occ {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (
   intro v U hlp hv p
   by_cases hvr : v = .root (.bnd d)
   · subst hvr
-    rw [show θ.under d d' T h (.root (.bnd d)) = .ren (.root (.bnd d')) from if_pos rfl]
+    rw [show θ.under d d' T h (.root (.bnd d)) = .ren (.root (.bnd d')) from by slot_rfl]
     change (VarSymb.root (.bnd d')).ext p =
       (if ((VarSymb.root (.bnd d)).ext p).rt = .bnd d then
         ((VarSymb.root (.bnd d)).ext p).reroot (.bnd d') else ι _)
@@ -199,8 +204,9 @@ theorem SlotOnly.ne_rt (h : SlotOnly Γ₀) :
   fun v U hv hne he => by rw [h.2 v he hne] at hv; cases hv
 
 omit [ModalSys] in
-theorem SlotOnly.le (h : SlotOnly Γ₀) : Γ₀.Le (Γ₀.insert (.bnd 0) .Var) := fun v T hv => by
-  change (if v = .root (.bnd 0) then some .Var else Γ₀ v) = some T
+theorem SlotOnly.le (h : SlotOnly Γ₀) : Γ₀.Le (Γ₀.insert (.bnd 0) .Var) := by
+  refine ⟨fun v T hv => ?_, fun _ _ h => h⟩
+  rw [Ctx.insert_apply]
   split_ifs with hvr
   · subst hvr; rw [h.1] at hv; exact hv
   · exact hv
@@ -233,12 +239,12 @@ theorem holeS_ok {θ : Subst σ Γ} (hθ : Subst.Ok Γ₀ θ) (hS : SlotOnly Γ�
     Subst.Ok Γ₀ (holeS θ) :=
   (Subst.ok_under hθ .Var _).restrict hS.le
 
-theorem holeS_coh {θ : Subst σ Γ} (hθ : Subst.Ok Γ₀ θ) (hc : Subst.Coh ι Γ₀ θ)
+theorem holeS_coh [ModalSys.NoOpt] {θ : Subst σ Γ} (hθ : Subst.Ok Γ₀ θ) (hc : Subst.Coh ι Γ₀ θ)
     (hS : SlotOnly Γ₀) : Subst.Coh (VarSymb.shiftSlot ι 0 0) Γ₀ (holeS θ) :=
   (Subst.coh_under_occ hθ hc .Var _ hS.ne_rt).restrict hS.le
 
 /-- The hole formula of `φ` along `θ₁`. -/
-abbrev holeF (θ₁ : Subst σ Γ) (hθ₁ : Subst.Ok Γ₀ θ₁) (hc₁ : Subst.Coh ι Γ₀ θ₁)
+abbrev holeF [ModalSys.NoOpt] (θ₁ : Subst σ Γ) (hθ₁ : Subst.Ok Γ₀ θ₁) (hc₁ : Subst.Coh ι Γ₀ θ₁)
     (hΓ₀ : Γ₀.SlotsFrom d) (hS : SlotOnly Γ₀) (φ : WFF σ Γ₀ d) :
     WFF σ (Γ.insert (.bnd 0) .Var) 1 :=
   WFF.subst (VarSymb.shiftSlot ι 0 0) (holeS θ₁) (holeS_ok hθ₁ hS) (holeS_coh hθ₁ hc₁ hS) hΓ₀
@@ -246,7 +252,8 @@ abbrev holeF (θ₁ : Subst σ Γ) (hθ₁ : Subst.Ok Γ₀ θ₁) (hc₁ : Subs
 
 /-- ⭐Filling the hole with `t` substitutes along any `θ` sending the slot to `t` and agreeing with
     `θ₁` elsewhere. -/
-theorem instantiate_hole (θ₁ θ : Subst σ Γ) (hθ₁ : Subst.Ok Γ₀ θ₁) (hc₁ : Subst.Coh ι Γ₀ θ₁)
+theorem instantiate_hole [ModalSys.NoOpt]
+    (θ₁ θ : Subst σ Γ) (hθ₁ : Subst.Ok Γ₀ θ₁) (hc₁ : Subst.Coh ι Γ₀ θ₁)
     (hθ : Subst.Ok Γ₀ θ) (hc : Subst.Coh ι Γ₀ θ) (hΓ₀ : Γ₀.SlotsFrom d) (hS : SlotOnly Γ₀)
     {t : Term σ Γ .Var .var} (h₀ : θ (.root (.bnd 0)) = .tm t)
     (hag : ∀ v, v ≠ .root (.bnd 0) → θ₁ v = θ v) (φ : WFF σ Γ₀ d) :
@@ -255,12 +262,12 @@ theorem instantiate_hole (θ₁ θ : Subst σ Γ) (hθ₁ : Subst.Ok Γ₀ θ₁
   have hrΓ : Γ.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ)).rootFresh le_rfl
   unfold WFF.instantiate WFF.substRoot holeF
   refine WFF.subst_comp _ _ _ _ _ _ _ hθ hc _ _ _ ?_ φ
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v U hlp hv
   rw [Subst.comp_apply]
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
-    rw [show holeS θ₁ (.root (.bnd 0)) = .ren (.root (.bnd 0)) from if_pos rfl, SubE.comp_ren,
+    rw [show holeS θ₁ (.root (.bnd 0)) = .ren (.root (.bnd 0)) from by slot_rfl, SubE.comp_ren,
       Subst.at_single_root, h₀]
     exact .refl _
   · rw [show holeS θ₁ v = (θ₁ v).mono (Ctx.le_insert hrΓ.root .Var) from if_neg hvr,
@@ -273,7 +280,8 @@ theorem instantiate_hole (θ₁ θ : Subst σ Γ) (hθ₁ : Subst.Ok Γ₀ θ₁
       SubE.comp_idRen, SubE.mono_refl, hag v hvr]
     exact .refl _
 
-theorem hole_isAtom (θ₁ : Subst σ Γ) (hθ₁ : Subst.Ok Γ₀ θ₁) (hc₁ : Subst.Coh ι Γ₀ θ₁)
+theorem hole_isAtom [ModalSys.NoOpt]
+    (θ₁ : Subst σ Γ) (hθ₁ : Subst.Ok Γ₀ θ₁) (hc₁ : Subst.Coh ι Γ₀ θ₁)
     (hΓ₀ : Γ₀.SlotsFrom d) (hS : SlotOnly Γ₀) {φ : WFF σ Γ₀ d} (hφ : φ.IsAtom) :
     (holeF θ₁ hθ₁ hc₁ hΓ₀ hS φ).IsAtom :=
   WFF.IsAtom.subst hφ
@@ -370,6 +378,7 @@ theorem ident_aux : ∀ (w : ℕ) {Γ : Ctx} [Γ.Presented] (φ : WFF σ Γ 0) {
       | retxS hB _ _ _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)
       | link hV _ _ _ => exact absurd hV (by rw [ModalSys.GKSys.noFive]; decide)
       | linkx hV _ _ _ _ _ => exact absurd hV (by rw [ModalSys.GKSys.noFive]; decide)
+      | optx hO _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
 
 theorem ident {Γ : Ctx} [Γ.Presented] (φ : WFF σ Γ 0) {Δ Θ : List (WFF σ Γ 0)} (hΔ : φ ∈ Δ)
     (hΘ : φ ∈ Θ) : ∃ n, GK σ n Γ Δ Θ :=
@@ -552,6 +561,7 @@ theorem replaceGen {Γ₀ : Ctx} {d : ℕ} (φ : WFF σ Γ₀ d) :
   | retxS hB _ _ _ _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)
   | link hV _ _ _ _ => exact absurd hV (by rw [ModalSys.GKSys.noFive]; decide)
   | linkx hV _ _ _ _ _ _ => exact absurd hV (by rw [ModalSys.GKSys.noFive]; decide)
+  | optx hO _ _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
 
 /-- ⭐**Replacement**: `t = s, s = t, φ(t) ⇒ φ(s)`, for every formula `φ` with a base-type slot —
     ND's `eq_elim`. -/
@@ -561,18 +571,16 @@ theorem replace {Γ : Ctx} [Γ.Presented] (φ : WFF σ (Γ.insert (.bnd 0) .Var)
     (h₄ : WFF.instantiate Ctx.NoSlots.slots s φ ∈ Θ) : ∃ n, GK σ n Γ Δ Θ := by
   have hr : Γ.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ)).rootFresh le_rfl
   have hS : SlotOnly (Γ.insert (.bnd 0) .Var) :=
-    ⟨if_pos rfl, fun v hv hne => by
-      change (if v = .root (.bnd 0) then some .Var else Γ v) = none
-      rw [if_neg hne]
-      exact hr v hv⟩
+    ⟨Ctx.ref_insert_root _ _ _, fun v hv hne => by
+      rw [Ctx.insert_ne hne]
+      exact hr.ty v hv⟩
   exact replaceGen φ (Subst.single (.bnd 0) (.tm t)) (Subst.single (.bnd 0) (.tm s))
     (Subst.ok_single (Ctx.Le.refl Γ) rfl) (Subst.ok_single (Ctx.Le.refl Γ) rfl)
     (Subst.coh_single hr (Ctx.Le.refl Γ) rfl)
     (Subst.coh_single (e := .tm s) hr (Ctx.Le.refl Γ) rfl :
       Subst.Coh (Subst.singleIdx (.bnd 0) (.tm t)) _ (Subst.single (.bnd 0) (.tm s)))
-    ((Ctx.NoSlots.slots (Γ := Γ)).insert .Var) hS (if_pos rfl) (if_pos rfl)
-    (fun v hv => by rw [show Subst.single (.bnd 0) (.tm t) v = .ren v from if_neg hv,
-      show Subst.single (.bnd 0) (.tm s) v = .ren v from if_neg hv]) h₁ h₂ h₃ h₄
+    ((Ctx.NoSlots.slots (Γ := Γ)).insert .Var) hS (Subst.single_self _ _) (Subst.single_self _ _)
+    (fun v hv => by rw [Subst.single_ne _ hv, Subst.single_ne _ hv]) h₁ h₂ h₃ h₄
 
 omit [ModalSys.GKSys] in
 /-- Symmetry of base equality. -/

@@ -117,8 +117,8 @@ def packBase (l : List VarType) (b : VarSymb) : Root → VarSymb
 
 /-- ⭐Packing the roots: the item `u.box` goes to `u`'s projections encoded, read from its root's
     entry of the tuple at `b` (as `itemAt` reads them from a root). -/
-def packS (σ : Signature) (Δ : Ctx) (l : List VarType) (b : VarSymb) : Subst σ Δ := fun v =>
-  match v with
+def packS (σ : Signature) (Δ : Ctx) (l : List VarType) (b : VarSymb) : Subst σ Δ where
+  ty v := match v with
   | .step u .box => .ren ((packBase l b u.rt).ext (encPath u.path ++ itemTail))
   | _ => .hide
 
@@ -167,7 +167,7 @@ theorem ref_itemB {l : List VarType} {Δ : Ctx} {b : VarSymb} {R : VarType} {u :
 theorem ok_packS [ModalSys.NoFour] (l : List VarType) {Δ : Ctx} {b : VarSymb}
     (hb : Δ.ref b = some (bcT l)) :
     Subst.Ok (ctxOf l).boxIn (packS σ Δ l b) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   obtain ⟨r, hr, hlt, hR⟩ := ref_rt hu
   change Δ.ref ((packBase l b u.rt).ext (encPath u.path ++ itemTail)) = some T
@@ -307,7 +307,7 @@ theorem holeRead_tupT_pack [ModalSys.NoFour] (l : List VarType) (ψ : WFF σ (ct
   rw [WFF.subst_mono ((Ctx.empty_le _).insert (.bnd 0) _) _ _ _ (Ctx.slotsFrom_empty.insert _) hs]
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS _ _ _ ?_ ψ).trans
     (WFF.subst_id _ _ _ ψ)
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T _ hv
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   obtain ⟨r, hr, hlt, _⟩ := ref_rt hu
@@ -321,7 +321,7 @@ theorem holeRead_tupT_pack [ModalSys.NoFour] (l : List VarType) (ψ : WFF σ (ct
       (.tm (tupT l).2)).at (.root (.bnd 0)) = .tm (Term.mono (Ctx.Le.refl _) (tupT l).2) := by
     rw [Term.mono_refl]
     change Subst.single (.bnd 0) _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    slot_rfl
   obtain ⟨R, hR, h1⟩ := at_tupPath_tupT _ l _ h0 hlt
   rw [Term.mono_refl] at h1
   have h2 := at_enc_tupB _ ModalSys.T rfl hR h1 hu hr
@@ -399,7 +399,7 @@ theorem holeRead_tupImgT_pack [ModalSys.NoFour] {l : List VarType} {Δ : Ctx} [�
   rw [WFF.subst_mono ((Ctx.empty_le _).insert (.bnd 0) _) _ _ _ (Ctx.slotsFrom_empty.insert _) hs]
   refine WFF.subst_comp _ _ (arrowS σ Δ img) _ _ _ _ (ok_arrowS himg) (coh_arrowS himg) _ _ _
     ?_ ψ
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T _ hv
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   obtain ⟨r, hr, hlt, hR⟩ := ref_rt hu
@@ -416,7 +416,7 @@ theorem holeRead_tupImgT_pack [ModalSys.NoFour] {l : List VarType} {Δ : Ctx} [�
   have h0 : (Subst.single (σ := σ) (Δ := Δ) (.bnd 0)
       (.tm (tupImgT l img himg).2)).at (.root (.bnd 0)) = .tm (tupImgT l img himg).2 := by
     change Subst.single (.bnd 0) _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    slot_rfl
   obtain ⟨T', hT', h1⟩ := at_tupPath_tupImgT _ l himg h0 hlt
   refine sim_ren_at_ext _ _ ((PPath.encPath (reach_ppath hu).1).append PPath.itemTail) hT' hT ?_
   rw [h1]
@@ -526,19 +526,18 @@ theorem holeAt_tupT_pack2 [ModalSys.NoFour] {l : List VarType} {U : VarType} {Δ
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ (Subst.ok_idS_le (h.insert (.bnd 0) U))
     (Subst.coh_idS_le (h.insert (.bnd 0) U)) _ _ _ ?_ Φ).trans
     (WFF.subst_ren (h.insert (.bnd 0) U) _ _ _ _ _ (fun v _ _ => Subst.at_idS v) Φ)
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   have h0 : (Subst.single (σ := σ) (Δ := Δ.insert (.bnd 0) U) (.bnd 0)
       (.tm (Term.pair (Term.mono hle (tupT l).2)
         (Term.eta (.root (.bnd 0)) U (Ctx.ref_insert_root Δ (.bnd 0) U))))).at
         (.root (.bnd 0)) = .tm (Term.pair (Term.mono hle (tupT l).2)
           (Term.eta (.root (.bnd 0)) U (Ctx.ref_insert_root Δ (.bnd 0) U))) := by
     change Subst.single _ _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    slot_rfl
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = U := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      simp only [Ctx.insert, if_pos] at hv
       exact (Option.some.inj hv).symm
     dsimp only [Subst.comp, pack2S]
     rw [Subst.set_root]
@@ -583,12 +582,12 @@ theorem holeRead_tupImgT_pack2 [ModalSys.NoFour] {l : List VarType} {U : VarType
   unfold WFF.holeRead WFF.instantiate WFF.substRoot pack2
   rw [WFF.subst_mono ((Ctx.empty_le _).insert (.bnd 0) _) _ _ _ (Ctx.slotsFrom_empty.insert _) hs]
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   have h0 : (Subst.single (σ := σ) (Δ := Δ) (.bnd 0)
       (.tm (Term.pair (tupImgT l img himg).2 X))).at (.root (.bnd 0)) =
         .tm (Term.pair (tupImgT l img himg).2 X) := by
     change Subst.single _ _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    slot_rfl
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     dsimp only [Subst.comp, pack2S]

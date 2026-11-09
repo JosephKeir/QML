@@ -25,7 +25,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-! ## Paths as chains -/
 
@@ -356,7 +356,7 @@ theorem gagree_diaPush {Γ : Ctx} {w : GW hF M₀} {k : ℕ} (C : GTr σ Γ (ctx
       subst hu
       have hXT := Ctx.diaIn_step_dia hr hv
       subst hXT
-      simp only [Model.Env.diaPush]
+      simp only [Model.Env.diaPush, Model.Env.diaPushVal]
       have hpq := hag u _ hr
       have hm₁ : a.1 ∈ ((gmodel hF hM₀).posEval (gtoDom hM₀ _ w (grden hM₀ w k (Ctx.Le.refl _)
           (C.app (Term.eta u _ hr)).2) (gdefinable_rden _ _))).1 := hpq ▸ a.2
@@ -431,7 +431,7 @@ theorem gagree_diaPushR {Γ : Ctx} {w : GW hF M₀} {k : ℕ} (C : GTr σ Γ (ct
       subst hu
       have hXT := Ctx.diaIn_step_dia hr hv
       subst hXT
-      simp only [Model.Env.diaPush]
+      simp only [Model.Env.diaPush, Model.Env.diaPushVal]
       have hpq := hag u _ hr
       have hm₁ : a.1 ∈ ((gmodel hF hM₀).posEval (gtoDom hM₀ _ w (grden hM₀ w k (Ctx.Le.refl _)
           (C.app (Term.eta u _ hr)).2) (gdefinable_rden _ _))).1 := hpq ▸ a.2
@@ -608,8 +608,8 @@ end
 
 variable (hM₀) in
 /-- ⭐The canonical environment: every visible address denotes its η-expansion. -/
-noncomputable def gcanonEnv (s : GW hF M₀) (i : ℕ) : (gmodel hF hM₀).Env (ctxOf (glat s i)) s :=
-  fun v T hv => gtoDom hM₀ T s (grden hM₀ s i (Ctx.Le.refl _) (Term.eta v T
+noncomputable def gcanonEnv (s : GW hF M₀) (i : ℕ) : (gmodel hF hM₀).Env (ctxOf (glat s i)) s where
+  val v T hv := gtoDom hM₀ T s (grden hM₀ s i (Ctx.Le.refl _) (Term.eta v T
     ((Ctx.ref_nonproj _ (Ctx.Presented.noProjLast _ v T hv)).trans hv))) (gdefinable_rden _ _)
 
 theorem gagree_canon (s : GW hF M₀) (i : ℕ) : GAgree hM₀ (.nil _) (gcanonEnv hM₀ s i) :=

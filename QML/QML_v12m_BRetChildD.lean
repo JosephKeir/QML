@@ -103,18 +103,19 @@ variable [ModalSys.NoFour]
     `c` goes to `□(u.fst.box.fst.snd)`, `e` to `u.snd`, and root `r + 2` to the tuple of root
     `r`'s items. -/
 def retPullD (hT : ModalSys.T = false) (σ : Signature) (l : List VarType) (A X : VarType) :
-    Subst σ (pullCtxD l A X) := fun v =>
-  match v with
-  | .root (.free 0) => .tm (Term.boxtm
-      (Term.eta (.step (.step (VarSymb.step (.root (.free l.length)) .fst).inner .fst) .snd) A
-        ((pullCtxD_ref_c l A X).trans (congrArg some (bc_box_noT hT A)))))
-  | .root (.free 1) => .ren (.step (.root (.free l.length)) .snd)
-  | .root (.free (r + 2)) =>
-      if h : r < l.length then .tm (Term.mono (Ctx.le_insert (pullCtx_fresh l).root _)
-        (tup (.root (.free r)) (rootTy l r) (by
-          rw [Ctx.ref_nonproj _ rfl]; exact ctxOf_root_lt h)))
-      else .hide
-  | _ => .hide
+    Subst σ (pullCtxD l A X) where
+  ty v := match v with
+    | .root (.free 0) => .tm (Term.boxtm
+        (Term.eta (.step (.step (VarSymb.step (.root (.free l.length)) .fst).inner .fst) .snd) A
+          ((pullCtxD_ref_c l A X).trans (congrArg some (bc_box_noT hT A)))))
+    | .root (.free 1) => .ren (.step (.root (.free l.length)) .snd)
+    | .root (.free (r + 2)) =>
+        if h : r < l.length then .tm (Term.mono (Ctx.le_insert (pullCtx_fresh l).root _)
+          (tup (.root (.free r)) (rootTy l r) (by
+            rw [Ctx.ref_nonproj _ rfl]; exact ctxOf_root_lt h)))
+        else .hide
+    | _ => .hide
+  wit _ := .hide
 
 /-- Where pulling back sends annotation indices: along the entry at the index's root. -/
 def retPullDIdx (hT : ModalSys.T = false) (σ : Signature) (l : List VarType) (A X : VarType)
@@ -134,7 +135,7 @@ theorem retPullD_add {r : ℕ} (h : r < l.length) :
   dif_pos h
 
 theorem ok_retPullD : Subst.Ok (ctxOf (rclD l A X)) (retPullD hT σ l A X) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   obtain ⟨r, rfl⟩ := ctxOf_decl hv
   have hr : r < (rclD l A X).length := by
     by_contra hge
@@ -240,12 +241,11 @@ theorem subst_retPullD_liftBodyW (Ξ : WFF σ (bodyCtxW (bclD A X) l X) 1) :
       WFF.openFree l.length (pullCtx_fresh l) Ctx.NoSlots.slots Ξ := by
   unfold liftBodyW WFF.openFree
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Ξ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = (RShape.wit (.box (bcT (bclD A X))) X).ty := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     rw [Subst.toFree_root]
     dsimp only [Subst.comp]

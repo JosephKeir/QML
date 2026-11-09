@@ -27,7 +27,8 @@ namespace V12M
 variable [ModalSys] {σ : Signature}
 
 /-- ⭐Reading a hole formula back at the content, then abstracting, gives it back. -/
-theorem WFF.diaAbsA_viewReadAtA {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb) {A : VarType}
+theorem WFF.diaAbsA_viewReadAtA [ModalSys.NoOpt]
+    {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb) {A : VarType}
     (hxA : Γ.ref x = some (.VTypeDia A)) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
     WFF.diaAbsA x hxA (WFF.viewReadAtA x hxA ψ) = ψ := by
   have h₀ : Γ.boxIn (.root (.bnd 0)) = none := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root
@@ -60,7 +61,8 @@ theorem WFF.diaAbsA_viewReadAtA {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb) {A 
     abstraction read back at the content (`WFF.viewReadAtA_diaAbsA`), the substitution reads the
     substituted hole formula at the image's content (`WFF.subst_viewReadTm`, the content renamed),
     and abstracting that reading gives the hole formula back (`WFF.diaAbsA_viewReadAtA`). -/
-theorem WFF.subst_diaAbsA {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.Presented] [Δ.Presented]
+theorem WFF.subst_diaAbsA [ModalSys.NoOpt]
+    {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.Presented] [Δ.Presented]
     (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) {x : VarSymb} {A : VarType}
     (hxA : Γ.ref x = some (.VTypeDia A)) (hxA' : Δ.ref (ι x) = some (.VTypeDia A))
     (hren : θ.at x = .ren (ι x)) (χ : WFF σ (Γ.diaIn x) 0) :
@@ -104,6 +106,7 @@ theorem WFF.subst_realiseAtA {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.Presen
       WFF.realiseAtA hT (ι x) hxA' (Term.subst ι θ hθ hc t₀)
         (WFF.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ ⟨A, hxA⟩ (by rw [hren]; rfl))
           (Subst.coh_dia hθ hc ⟨A, hxA⟩) Ctx.NoSlots.slots Ctx.NoSlots.slots χ) := by
+  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   unfold WFF.realiseAtA
   rw [WFF.subst_hereRead hT θ hθ hc Ctx.NoSlots.slots Ctx.NoSlots.slots t₀ (WFF.diaAbsA x hxA χ),
     WFF.subst_diaAbsA θ hθ hc hxA hxA' hren χ]
@@ -115,6 +118,7 @@ theorem WFF.mono_realiseAtA {Γ Γ' : Ctx} [Γ.Presented] [Γ'.Presented] (hT : 
     (χ : WFF σ (Γ.diaIn x) 0) :
     WFF.mono h (WFF.realiseAtA hT x hxA t₀ χ) =
       WFF.realiseAtA hT x hxA' (Term.mono h t₀) (WFF.mono (h.diaIn x) χ) := by
+  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   unfold WFF.realiseAtA
   rw [WFF.mono_hereRead, WFF.mono_diaAbsA h hxA hxA']
 

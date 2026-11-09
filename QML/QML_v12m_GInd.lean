@@ -24,7 +24,7 @@ open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
   {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
-  [ModalSys.GrowSys] (hM₀ : Theory.IsMCS M₀)
+  [ModalSys.GrowSys] (hM₀ : Theory.IsMCS M₀) [ModalSys.NoOpt]
 
 /-! ## Representatives -/
 
@@ -70,15 +70,15 @@ theorem le_grepSup {v : VarSymb} {T : VarType} (h : Γ v = some T) :
   exact Finset.le_sup (hfin.mem_toFinset.mpr (by change (Γ v).isSome = true; rw [h]; rfl))
 
 /-- ⭐The substitution sending each declared address to its representative, at `grepSup`. -/
-noncomputable def grepSubst : Subst σ (ctxOf (glat s (grepSup hM₀ env hfin))) := fun v =>
-  match h : Γ v with
-  | some T => .tm (Term.mono (gle hM₀ s (le_grepSup hM₀ env hfin h)) (grep hM₀ (env v T h)).t)
-  | none => .hide
+noncomputable def grepSubst : Subst σ (ctxOf (glat s (grepSup hM₀ env hfin))) where
+  ty v := match h : Γ v with
+    | some T => .tm (Term.mono (gle hM₀ s (le_grepSup hM₀ env hfin h)) (grep hM₀ (env v T h)).t)
+    | none => .hide
 
 theorem grepSubst_eq {v : VarSymb} {T : VarType} (h : Γ v = some T) :
     grepSubst hM₀ env hfin v =
       .tm (Term.mono (gle hM₀ s (le_grepSup hM₀ env hfin h)) (grep hM₀ (env v T h)).t) := by
-  unfold grepSubst
+  dsimp only [grepSubst]
   split
   · rename_i T' h'
     obtain rfl : T' = T := Option.some.inj (h'.symm.trans h)
@@ -87,7 +87,8 @@ theorem grepSubst_eq {v : VarSymb} {T : VarType} (h : Γ v = some T) :
     rw [h'] at h
     cases h
 
-theorem grepSubst_ok : Subst.Ok Γ (grepSubst hM₀ env hfin) := fun _ _ _ h => by
+theorem grepSubst_ok : Subst.Ok Γ (grepSubst hM₀ env hfin) := by
+  refine ⟨fun _ _ _ h => ?_, by wit_triv⟩
   rw [grepSubst_eq hM₀ env hfin h]
   rfl
 
@@ -113,11 +114,11 @@ theorem grepSubst_coh {d : Root → ℕ} (hd : Γ.LevelDepth d) :
   obtain ⟨e₁, e₂⟩ := Ctx.decomp_unique hd hv hv' hl hl' he'
   rw [← e₁, ← e₂]
 
-/-- ⭐**Every environment over a tame context is the canonical one read through a substitution.** -/
-theorem substEnv_grepSubst (hnp : Γ.NoProjLast) :
+/-- ⭐**Every environment over a tame context is the canonical one read through a substitution**
+    (its objects: the witnesses play no part with `Opt` off). -/
+theorem substEnv_grepSubst (hnp : Γ.NoProjLast) (v : VarSymb) (T : VarType) (hv : Γ v = some T) :
     Model.substEnv (grepSubst hM₀ env hfin) (grepSubst_ok hM₀ env hfin) hnp
-      (gcanonEnv hM₀ s (grepSup hM₀ env hfin)) = env := by
-  funext v T hv
+      (gcanonEnv hM₀ s (grepSup hM₀ env hfin)) v T hv = env v T hv := by
   change Model.entryVal _ (grepSubst hM₀ env hfin v) _ = env v T hv
   rw [Model.entryVal_congr _ (grepSubst_eq hM₀ env hfin hv) _ rfl]
   change Model.interp (gcanonEnv hM₀ s (grepSup hM₀ env hfin))
@@ -164,7 +165,8 @@ theorem gindInvariant_inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLa
     calc (gmodel hF hM₀).sat (env.extend (.bnd 0) o₁) φ
         ↔ (gmodel hF hM₀).sat ((Model.substEnv (grepSubst hM₀ env hfin) hθ hnp
             (gcanonEnv hM₀ s (grepSup hM₀ env hfin))).extend (.bnd 0) o₁) φ := by
-          rw [substEnv_grepSubst hM₀ env hfin hnp]
+          exact Model.sat_congr_val (fun v T h => by
+            simp only [Model.Env.extend, substEnv_grepSubst hM₀ env hfin hnp]) φ
       _ ↔ (gmodel hF hM₀).sat (Model.substEnv ((grepSubst hM₀ env hfin).under 0 0 A h0)
             (Subst.ok_under hθ A h0) (hnp.insert (.bnd 0) A)
             ((gcanonEnv hM₀ s (grepSup hM₀ env hfin)).extend (.bnd 0) o₁)) φ := by

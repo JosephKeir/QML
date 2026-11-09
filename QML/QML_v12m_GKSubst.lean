@@ -210,7 +210,7 @@ theorem monoCtx {n : ℕ} {Γ Γ' : Ctx} [Γ'.Presented] {Δ Θ : List (WFF σ �
   have hΓ : Γ.SlotsFrom 0 := (Ctx.NoSlots.slots (Γ := Γ')).of_le h
   have key : ∀ ψ : WFF σ Γ 0, WFF.subst id (Subst.idRen Γ') (Subst.ok_idRen.restrict h)
       (Subst.coh_idRen.restrict h) hΓ Ctx.NoSlots.slots ψ = WFF.mono h ψ :=
-    fun ψ => WFF.subst_ren h _ _ _ hΓ _ (fun v _ _ => Subst.at_idRen v) ψ
+    fun ψ => WFF.subst_ren h _ _ _ hΓ _ (fun v _ _ => Subst.at_idRen v) ψ fun _ _ _ _ => rfl
   have := p.subst (Subst.idRen Γ') (Subst.ok_idRen.restrict h) (Subst.coh_idRen.restrict h) hΓ
   rwa [List.map_congr_left (l := Δ) fun ψ _ => key ψ,
     List.map_congr_left (l := Θ) fun ψ _ => key ψ] at this

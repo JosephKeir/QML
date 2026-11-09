@@ -81,7 +81,8 @@ theorem liftBody_restrict (hs : cls <:+ lv) (himgt : ImgOk clt (ctxOf lv) imgt)
       liftBody hs himgt' Φ := by
   unfold liftBody
   rw [WFF.subst_mono]
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T hlp hv => ?_) Φ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
+    fun v T hlp hv => ?_) Φ
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     rw [Subst.set_root, Subst.set_root]
@@ -98,7 +99,8 @@ theorem liftBodyW_restrict (hs : cls <:+ lv) (himgt : ImgOk clt (ctxOf lv) imgt)
       liftBodyW hs himgt' hx Φ := by
   unfold liftBodyW
   rw [WFF.subst_mono]
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T hlp hv => ?_) Φ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
+    fun v T hlp hv => ?_) Φ
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     rw [Subst.set_root, Subst.set_root]
@@ -118,7 +120,8 @@ theorem liftBodyX_restrict (hs : cls <:+ lv) (himgt : ImgOk clt (ctxOf lv) imgt)
       liftBodyX hs himgt' hx' hcx Φ := by
   unfold liftBodyX
   rw [WFF.subst_mono]
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T hlp hv => ?_) Φ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
+    fun v T hlp hv => ?_) Φ
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     rw [Subst.set_root, Subst.set_root]
@@ -140,7 +143,8 @@ theorem liftBodyWD_restrict (hs : cls <:+ lv) (himgt : ImgOk clt (ctxOf lv) imgt
       liftBodyWD hs himgt' hx he' hcxv Φ := by
   unfold liftBodyWD
   rw [WFF.subst_mono]
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T hlp hv => ?_) Φ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
+    fun v T hlp hv => ?_) Φ
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     rw [Subst.set_root, Subst.set_root]
@@ -285,7 +289,7 @@ theorem tupCompsImg_congr_eq {Δ : Ctx} (cls : List VarType) {img img' : ℕ →
       tupCompsImg (σ := σ) cls img himg cs hc = tupCompsImg cls img' himg' cs hc
   | [], _ => tupImgT_congr cls himg himg' hag
   | _ :: ps, hc => sig_pair (tupCompsImg_congr_eq cls himg himg' hag ps hc.tail)
-      (Term.subst_congr _ _ _ _ _ _ (sim_arrowS hag) _)
+      (Term.subst_congr _ _ _ _ _ _ (sim_arrowS hag).ty _)
 
 theorem tupCompsImg_congr {Δ : Ctx} (cls : List VarType) {img img' : ℕ → ℕ}
     (himg : ImgOk cls Δ img) (himg' : ImgOk cls Δ img')

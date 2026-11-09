@@ -44,11 +44,11 @@ noncomputable def gpair (hF : ModalSys.Four = true) (l : List VarType) (k : Opti
   hθ₃ := Subst.ok_idS
   hc₃ := Subst.coh_idS
   sim := sim_gchild_pull hF l hk
-  simId := fun _ _ _ => .refl _
+  simId := ⟨fun _ _ _ => .refl _, fun _ _ _ _ => by wit_refl⟩
 
 /-- ⭐**Every well-formed presentation flattens into a world language**, as for B: a declared
     root by `Chain.insertRoot`, a view by the chain pushed under it and then the child edge. -/
-noncomputable def _root_.V12M.CtxExpr.gchain (hF : ModalSys.Four = true) :
+noncomputable def _root_.V12M.CtxExpr.gchain [ModalSys.NoOpt] (hF : ModalSys.Four = true) :
     (e : CtxExpr) → e.Fresh → e.Views → Σ l : List VarType, Chain σ e.denote (ctxOf l)
   | .empty, _, _ => ⟨[], .nil ⟨.empty, trivial, rfl⟩⟩
   | .insertFree e u T, h, hv =>
@@ -149,7 +149,8 @@ theorem compactnessG (hF : ModalSys.Four = true) (e : CtxExpr) (he : e.Wf)
   letI : e.denote.Presented := ⟨e, he.1, rfl⟩
   refine model_existenceG hF e he fun Δ hΔ ⟨p⟩ => ?_
   obtain ⟨M, hM, w, env, hsat⟩ := hfin Δ hΔ
-  exact Model.soundness p M hM env (Ctx.Presented.tame _) (Ctx.Presented.noProjLast _) hsat
+  exact Model.soundness p M hM env (Ctx.Presented.tame _) (Ctx.Presented.noProjLast _)
+    (by env_opened) hsat
 
 end GArrow
 

@@ -108,7 +108,7 @@ theorem WFF.genS_weaken (δ : WFF σ Γ₁ 0) :
     (Ctx.le_insert hc.root T)
   unfold WFF.weaken
   rw [WFF.subst_mono _ _ _ _ hs₁, WFF.mono_mono]
-  refine WFF.subst_ren (genCtx_le c T hc) _ _ _ _ _ (fun v U hv => ?_) δ
+  refine WFF.subst_ren (genCtx_le c T hc) _ _ _ _ _ (fun v U hv => ?_) δ (fun _ _ _ _ => rfl)
   have hrt : v.rt ≠ .free c := fun he => by
     rw [Ctx.ref_none_of_rootFresh hc v he] at hv
     cases hv
@@ -128,7 +128,7 @@ theorem WFF.genV_inst (φ : WFF σ (Γ₁.insert (.free c) T) 0) :
   rw [WFF.genV, e]
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ (Subst.ok_idS_le hG) (Subst.coh_idS_le hG)
     _ _ _ ?_ φ).trans (WFF.subst_id _ _ _ φ)
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v U hlp hv
   rw [Subst.comp_apply]
   by_cases hvr : v = .root (.free c)

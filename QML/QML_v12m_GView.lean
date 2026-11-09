@@ -286,8 +286,8 @@ theorem Step.splitLvl_append : ∀ {pre : List Step} (_ : PPath pre) {s : Step} 
 
 /-- ⭐**The pull-back of `z`'s view** to the view of a root `x` whose content is `z`'s view tuple:
     `z.dia ↦ x.dia.fst`, the `k`-th item of the `□` view `↦` the `k`-th item of `x.dia.snd`. -/
-def pullS {σ : Signature} {Δ : Ctx} (l : List VarType) (z x : VarSymb) : Subst σ Δ := fun v =>
-  if v = .step z .dia then .ren (x.ext [.dia, .fst])
+def pullS {σ : Signature} {Δ : Ctx} (l : List VarType) (z x : VarSymb) : Subst σ Δ where
+  ty v := if v = .step z .dia then .ren (x.ext [.dia, .fst])
   else if (boxItems l).any (·.1 == v) then
     .ren (x.ext (.dia :: .snd :: itemPath ((boxItems l).findIdx (·.1 == v))))
   else .hide
@@ -329,7 +329,7 @@ theorem ok_pullS (hF : ModalSys.Four = true) {σ : Signature} {Γ : Ctx} {l : Li
     Subst.Ok ((ctxOf l).diaIn z) (pullS (σ := σ) (Δ := Γ.diaIn x) l z x) := by
   have hxd : (Γ.diaIn x).ref (.step x .dia) = some (.VTypeProd Z (itemsTy (boxItems l))) :=
     Ctx.ref_diaIn_of hx
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   by_cases hvz : v = .step z .dia
   · subst hvz
     have hZ : T = Z := by
@@ -431,8 +431,8 @@ theorem coh_pullS (hF : ModalSys.Four = true) {σ : Signature} {Γ : Ctx} {l : L
 
 /-- ⭐**The pull-back of the `□` view** to the `□` view of a root `r` whose value is the `□` view
     tuple: the `k`-th item `↦` the `k`-th component of `r`'s contents. -/
-def pullBoxS {σ : Signature} {Δ : Ctx} (l : List VarType) (r : VarSymb) : Subst σ Δ := fun v =>
-  if (boxItems l).any (·.1 == v) then
+def pullBoxS {σ : Signature} {Δ : Ctx} (l : List VarType) (r : VarSymb) : Subst σ Δ where
+  ty v := if (boxItems l).any (·.1 == v) then
     .ren (r.inner.ext (itemPath ((boxItems l).findIdx (·.1 == v))))
   else .hide
 
@@ -453,7 +453,7 @@ theorem pullBoxS_item {σ : Signature} {Δ : Ctx} {l : List VarType} {r v : VarS
 theorem ok_pullBoxS (hF : ModalSys.Four = true) {σ : Signature} {Γ : Ctx} {l : List VarType}
     {r : VarSymb} (hr : Γ.ref r = some (.VTypeBox (itemsTy (boxItems l)))) :
     Subst.Ok (ctxOf l).boxIn (pullBoxS (σ := σ) (Δ := Γ.boxIn) l r) := by
-  intro v T _ hb
+  refine ⟨fun v T _ hb => ?_, by wit_triv⟩
   have hm := mem_boxItems hb
   have hany : (boxItems l).any (·.1 == v) = true := List.any_eq_true.mpr ⟨_, hm, by simp⟩
   rw [pullBoxS_item hany]
@@ -498,8 +498,8 @@ theorem coh_pullBoxS (hF : ModalSys.Four = true) {σ : Signature} {Γ : Ctx} {l 
 /-- ⭐**The pull-back of `z`'s view** to the view of a root `x` lifted to `η(z)`, the items of the
     `□` view read from a root `r` lifted to the `□` view tuple: `z.dia ↦ x.dia`, the `k`-th item
     `↦` the `k`-th component of `r`'s contents. -/
-def pullD {σ : Signature} {Δ : Ctx} (l : List VarType) (z x r : VarSymb) : Subst σ Δ := fun v =>
-  if v = .step z .dia then .ren (.step x .dia)
+def pullD {σ : Signature} {Δ : Ctx} (l : List VarType) (z x r : VarSymb) : Subst σ Δ where
+  ty v := if v = .step z .dia then .ren (.step x .dia)
   else if (boxItems l).any (·.1 == v) then
     .ren (r.inner.ext (itemPath ((boxItems l).findIdx (·.1 == v))))
   else .hide
@@ -544,7 +544,7 @@ theorem ok_pullD (hF : ModalSys.Four = true) {σ : Signature} {Γ : Ctx} {l : Li
     (hx : Γ.ref x = some (.VTypeDia Z))
     (hr : Γ.ref r = some (.VTypeBox (itemsTy (boxItems l)))) :
     Subst.Ok ((ctxOf l).diaIn z) (pullD (σ := σ) (Δ := Γ.diaIn x) l z x r) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   by_cases hvz : v = .step z .dia
   · subst hvz
     have hZ : T = Z := by

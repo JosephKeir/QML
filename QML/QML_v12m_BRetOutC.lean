@@ -202,9 +202,10 @@ theorem holeAt_packG_unpackG_val : (N : NShape) → {Γ : Ctx} → {c : Ann N.fl
           (packCC_sndC_val _ _ _ _ _ _ _ _) _).trans ?_)
         exact holeAt_packG_unpackG_val S w₂
 
+omit [ModalSys.NoFour] in
 /-- ⭐**A returning possibility at a necessary shape is one at its packed shape**: `ret_map` along
     `packG`, the body read back through `unpackG`. -/
-def retS_packG (hS : ModalSys.BStrong = true) {Γ : Ctx} [Γ.NoSlots] (O : OutLeg Γ)
+def retS_packG [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) {Γ : Ctx} [Γ.NoSlots] (O : OutLeg Γ)
     {Δ : List (WFF σ Γ 0)} {N : NShape} {a : Ann N.flat} (t : Term σ Γ N.flat a)
     (Φ : WFF σ (O.view.insert (.bnd 0) N.ty) 1)
     (p : Proof σ Γ Δ (O.retS hS (.nec N) t Φ)) :

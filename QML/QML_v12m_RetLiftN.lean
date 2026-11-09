@@ -295,7 +295,8 @@ theorem WFF.mono_packedBody {V' : Ctx} [V'.NoSlots] (h : V.Le V') (hS : ModalSys
   · rw [WFF.mono_holeAt _ _ ((Ctx.NoSlots.slots (Γ := V')).insert _), Term.mono_mono]
 
 /-- ⭐The packed body at an object's own packing. -/
-theorem WFF.instantiate_packedBody (hS : ModalSys.BStrong = true) (hF : ModalSys.Four = true)
+theorem WFF.instantiate_packedBody [ModalSys.NoOpt]
+    (hS : ModalSys.BStrong = true) (hF : ModalSys.Four = true)
     (Φ : WFF σ (V.insert (.bnd 0) N.ty) 1) (u : VarSymb) (hu : V.ref u = some N.ty) :
     WFF.instantiate Ctx.NoSlots.slots (Term.boxtm (NShape.contents (Ctx.Le.refl _) N u hu).2)
         (WFF.packedBody hS hF Φ) =
@@ -331,7 +332,7 @@ variable {Γ : Ctx} [Γ.NoSlots]
 
 /-- ⭐**Packing a returning possibility**: at a necessary shape it is a returning possibility of
     one necessary object, with the same value, whose body reads the object back with its ties. -/
-def Proof.retN_packed (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.retN_packed [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} (O : OutLeg Γ) (N : NShape)
     {a : Ann N.flat} (t : Term σ Γ N.flat a) (Φ : WFF σ (O.view.insert (.bnd 0) N.ty) 1) (u : ℕ)
     (hu : O.view.RootFresh (.free u)) (H : Proof σ Γ Δ (O.retS hS (.nec N) t Φ)) :
@@ -358,7 +359,7 @@ def Proof.retN_packed (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
 
 /-- ⭐⭐**Lifting at every necessary shape** (T + 4, strong B): `Proof.ret_lift` at the packed
     object. -/
-def Proof.retN_lift (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.retN_lift [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (O : OutLeg Γ) (N : NShape)
     {a : Ann N.flat} (t : Term σ Γ N.flat a) (Φ : WFF σ (O.view.insert (.bnd 0) N.ty) 1)
     (c : ℕ) (hc : Γ.RootFresh (.free c)) (hc₁ : Γ.RootFresh (.free (c + 1)))

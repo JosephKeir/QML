@@ -27,7 +27,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 variable (hM₀ : Theory.IsMCS M₀)
 
@@ -35,8 +35,8 @@ variable (hM₀ : Theory.IsMCS M₀)
 
 /-- An environment agreeing with a chain, by construction. -/
 noncomputable def cenvOf (hX : CluFlags) {Γ : Ctx} {t : GW hF M₀} {k : ℕ}
-    (D : GTr σ Γ (ctxOf (glat t k))) (hΓ : Γ.NoProjLast) : (cmodel hF hM₀ hX).Env Γ t :=
-  fun v T hv => ctoDom hM₀ hX T t (cden hM₀ hX t k (Ctx.Le.refl _)
+    (D : GTr σ Γ (ctxOf (glat t k))) (hΓ : Γ.NoProjLast) : (cmodel hF hM₀ hX).Env Γ t where
+  val v T hv := ctoDom hM₀ hX T t (cden hM₀ hX t k (Ctx.Le.refl _)
     (D.app (Term.eta v T ((Ctx.ref_nonproj Γ (hΓ v T hv)).trans hv))).2) (cdefinable_den hX _ _)
 
 variable {hM₀}
@@ -46,14 +46,27 @@ theorem cagree_envOf (hX : CluFlags) {Γ : Ctx} {t : GW hF M₀} {k : ℕ}
     CAgree hM₀ hX D (cenvOf hM₀ hX D hΓ) :=
   cagree_of_raw hX _ _ fun _ _ _ _ => rfl
 
-/-- An environment agreeing with a substitution link is the substituted environment. -/
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+/-- With `Opt` off a `□` view has no witnesses. -/
+theorem _root_.V12M.Ctx.noWit_boxIn {Γ : Ctx} : ∀ y X, Γ.boxIn.wit y = some X → False :=
+  fun _ _ h => absurd (Ctx.boxIn_wit.mp h).1 (by rw [ModalSys.NoOpt.noOpt]; decide)
+
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+/-- Nor does a `◇_x` view (its witnesses are the `□` view's). -/
+theorem _root_.V12M.Ctx.noWit_diaIn {Γ : Ctx} {x : VarSymb} :
+    ∀ y X, (Γ.diaIn x).wit y = some X → False :=
+  Ctx.noWit_boxIn (Γ := Γ)
+
+/-- An environment agreeing with a substitution link is the substituted environment (on a
+    context without witnesses: the views, with `Opt` off). -/
 theorem eq_substEnv_of_cagree (hX : CluFlags) {Γ Δ : Ctx} (hnp : Γ.NoProjLast)
     {t : GW hF M₀} {j : ℕ} {ι : VarSymb → VarSymb} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
     (hc : Subst.Coh ι Γ θ) (D : GTr σ Δ (ctxOf (glat t j))) (hD : D.NPL) (hΔ : Δ.NoProjLast)
     (env : (cmodel hF hM₀ hX).Env Γ t) (hag : CAgree hM₀ hX (.sub θ hθ hc D) env)
-    (env' : (cmodel hF hM₀ hX).Env Δ t) (hag' : CAgree hM₀ hX D env') :
+    (env' : (cmodel hF hM₀ hX).Env Δ t) (hag' : CAgree hM₀ hX D env')
+    (hw : ∀ y X, Γ.wit y = some X → False) :
     env = Model.substEnv θ hθ hnp env' := by
-  funext v T hv
+  refine Model.Env.ext' (fun v T hv => ?_) fun y X h => (hw y X h).elim
   have hlp := hnp v T hv
   have href : Γ.ref v = some T := (Ctx.ref_nonproj Γ hlp).trans hv
   rw [← Model.Env.ref_of_nonproj env hlp href hv, hag v T href,
@@ -96,7 +109,8 @@ theorem sat_ptrC (hX : CluFlags) : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.
       rw [Term.mono_refl]
       exact cden_sigma hX _ (Term.collapse_eta _ _ _ _)
   | s, t, [c], h, _, i, env, hag, φ => by
-      rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_boxIn _) _ _ _ (.nil _) (by trivial)
+      rw [eq_substEnv_of_cagree hX (hw := Ctx.noWit_boxIn) (Ctx.noProjLast_boxIn _) _ _ _ (.nil _)
+        (by trivial)
         (Ctx.Presented.noProjLast _) env hag _ (cagree_canon hX t _)]
       exact (Model.sat_subst _ _ (coh_eS_kView (gentOk_box hM₀ ⟨c, h⟩ i)) Ctx.NoSlots.slots
         Ctx.NoSlots.slots _ _ φ).symm
@@ -113,7 +127,7 @@ theorem sat_ptrC (hX : CluFlags) : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.
         (shiftAgree_of_cagree hX _ D₁ env hag _ hag₁) φ).symm.trans ?_
       have hag₂ := cagree_envOf (hM₀ := hM₀) hX (ptrC hM₀ (stepW s c hb) t (c' :: P) h pathOk_cons
         (glstg s (stepW s c hb) i)) (Ctx.noProjLast_boxIn _)
-      rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_boxIn _) _ _ _ _ hD
+      rw [eq_substEnv_of_cagree hX (hw := Ctx.noWit_boxIn) (Ctx.noProjLast_boxIn _) _ _ _ _ hD
         (Ctx.noProjLast_boxIn _) _ hag₁ _ hag₂]
       refine (Model.sat_subst _ _ (Subst.coh_box hθ hc) Ctx.NoSlots.slots Ctx.NoSlots.slots _ _
         _).symm.trans ?_
@@ -132,7 +146,8 @@ theorem sat_ptrXC (hX : CluFlags) : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t
           (pTrXW hM₀ s t P h i x hx hm φ))
   | _, _, [], _, _, _, _, hm, _, _, _ => hm.elim
   | s, t, [c], h, i, x, _, hm, env, hag, φ => by
-      rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_diaIn _ _) _ _ _ (.nil _) (by trivial)
+      rw [eq_substEnv_of_cagree hX (hw := Ctx.noWit_diaIn) (Ctx.noProjLast_diaIn _ _) _ _ _
+        (.nil _) (by trivial)
         (Ctx.Presented.noProjLast _) env hag _ (cagree_canon hX t _)]
       exact (Model.sat_subst _ _ (coh_eS_kView (hm ▸ gentOk hM₀ ⟨c, h⟩ i)) Ctx.NoSlots.slots
         Ctx.NoSlots.slots _ _ φ).symm
@@ -154,7 +169,7 @@ theorem sat_ptrXC (hX : CluFlags) : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t
       have hag₂ := cagree_envOf (hM₀ := hM₀) hX (ptrXC hM₀ (stepW s c hb) t (c' :: P) h
         (glstg s (stepW s c hb) i) (wit (stepW s c hb) x) (wit_ref hM₀ hb i hx) hm)
         (Ctx.noProjLast_diaIn _ _)
-      rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_diaIn _ _) _ _ _ _ hD
+      rw [eq_substEnv_of_cagree hX (hw := Ctx.noWit_diaIn) (Ctx.noProjLast_diaIn _ _) _ _ _ _ hD
         (Ctx.noProjLast_diaIn _ _) _ hag₁ _ hag₂]
       refine (Model.sat_subst _ _ (Subst.coh_dia hθ hc (Ctx.exists_keep_dia hF hx))
         Ctx.NoSlots.slots Ctx.NoSlots.slots _ _ _).symm.trans ?_
@@ -193,7 +208,7 @@ theorem sat_ptrXKC (hX : CluFlags) : ∀ (s t : GW hF M₀) (P : List ℕ) (h : 
       have hag₁ := cagree_envOf (hM₀ := hM₀) hX D₁ (Ctx.noProjLast_diaIn _ _)
       refine (Model.sat_shift Ctx.NoSlots.slots
         (shiftAgree_of_cagree hX _ D₁ env hag _ hag₁) φ).symm.trans ?_
-      rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_diaIn _ _) _ _ _ _ hD
+      rw [eq_substEnv_of_cagree hX (hw := Ctx.noWit_diaIn) (Ctx.noProjLast_diaIn _ _) _ _ _ _ hD
         (Ctx.noProjLast_diaIn _ _) _ hag₁ _ hag₂]
       exact (Model.sat_subst _ _ (Subst.coh_dia hθ hc (Ctx.exists_keep_dia hF hx))
         Ctx.NoSlots.slots Ctx.NoSlots.slots _ _ _).symm
@@ -216,7 +231,7 @@ theorem sat_ptrXKC (hX : CluFlags) : ∀ (s t : GW hF M₀) (P : List ℕ) (h : 
       have hag₃ := cagree_envOf (hM₀ := hM₀) hX ((ptrXKC hM₀ (stepW s c hb) t (c' :: P) h
         (glstg s (stepW s c hb) i) (wit (stepW s c hb) x) (wit_ref hM₀ hb i hx)).comp D)
         (Ctx.noProjLast_diaIn _ _)
-      rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_diaIn _ _) _ _ _ _ hD'
+      rw [eq_substEnv_of_cagree hX (hw := Ctx.noWit_diaIn) (Ctx.noProjLast_diaIn _ _) _ _ _ _ hD'
         (Ctx.noProjLast_diaIn _ _) _ hag₁ _ hag₃]
       refine (Model.sat_subst _ _ (Subst.coh_dia hθ hc (Ctx.exists_keep_dia hF hx))
         Ctx.NoSlots.slots Ctx.NoSlots.slots _ _ _).symm.trans ?_
@@ -238,7 +253,8 @@ theorem sat_boxPush_c (hX : CluFlags) (s : GW hF M₀) (i : ℕ) (a : CAcc hF M�
     cagree_boxPush hX (.nil _) _ (cagree_canon hX s i) a hP
   have hag' := cagree_envOf (hM₀ := hM₀) hX (ptrC hM₀ (groot hF M₀) a.1 (cpath a.2.down)
     (cpath_eq a.2.down) hP (rstg s i)) (Ctx.noProjLast_boxIn _)
-  rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_boxIn _) _ _ _ _ (npl_ptrC hM₀ _ _ _ _ _ _)
+  rw [eq_substEnv_of_cagree hX (hw := Ctx.noWit_boxIn) (Ctx.noProjLast_boxIn _) _ _ _ _
+    (npl_ptrC hM₀ _ _ _ _ _ _)
     (Ctx.noProjLast_boxIn _) _ hag _ hag']
   refine (Model.sat_subst _ _ (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI
     (rpre hX hM₀ s i)))) Ctx.NoSlots.slots Ctx.NoSlots.slots _ _ χ).symm.trans ?_
@@ -269,11 +285,12 @@ theorem sat_boxPush_loop (hX : CluFlags) (s : GW hF M₀) (i : ℕ) (hR : CR (gr
   have hag' := cagree_envOf (hM₀ := hM₀) hX (.sub (eS σ _ (fmapL hF M₀ []))
     (ok_eS_kView (gloopOk hM₀ hl (rstg s i))) (coh_eS_kView (gloopOk hM₀ hl (rstg s i)))
     (.nil _)) (Ctx.noProjLast_boxIn _)
-  rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_boxIn _) _ _ _ _ hD
+  rw [eq_substEnv_of_cagree hX (hw := Ctx.noWit_boxIn) (Ctx.noProjLast_boxIn _) _ _ _ _ hD
     (Ctx.noProjLast_boxIn _) _ hag _ hag']
   refine (Model.sat_subst _ _ (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI
     (rpre hX hM₀ s i)))) Ctx.NoSlots.slots Ctx.NoSlots.slots _ _ χ).symm.trans ?_
-  rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_boxIn _) _ _ _ (.nil _) (by trivial)
+  rw [eq_substEnv_of_cagree hX (hw := Ctx.noWit_boxIn) (Ctx.noProjLast_boxIn _) _ _ _ (.nil _)
+    (by trivial)
     (Ctx.Presented.noProjLast _) _ hag' _ (cagree_canon hX _ _)]
   exact (Model.sat_subst _ _ (coh_eS_kView (gloopOk hM₀ hl (rstg s i))) Ctx.NoSlots.slots
     Ctx.NoSlots.slots _ _ _).symm
@@ -335,7 +352,8 @@ theorem sat_diaPush_c (hX : CluFlags) (s : GW hF M₀) (i : ℕ) {x : VarSymb} {
   have hag' := cagree_envOf (hM₀ := hM₀) hX (ptrXC hM₀ (groot hF M₀) a.1.1 (cpath a.1.2.down)
     (cpath_eq a.1.2.down) (rstg s i) (rorig s x) (rorig_ref hX hM₀ s i ⟨X, hr⟩) hm)
     (Ctx.noProjLast_diaIn _ _)
-  rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_diaIn _ _) _ _ _ _ (npl_ptrXC hM₀ _ _ _ _ _ _ _ hm)
+  rw [eq_substEnv_of_cagree hX (hw := Ctx.noWit_diaIn) (Ctx.noProjLast_diaIn _ _) _ _ _ _
+    (npl_ptrXC hM₀ _ _ _ _ _ _ _ hm)
     (Ctx.noProjLast_diaIn _ _) _ hag _ hag']
   refine (Model.sat_subst _ _ (coh_eS_kView (k := some x) (entOk_ofRen
     (itemOk_rpreX hX hM₀ s i ⟨X, hr⟩))) Ctx.NoSlots.slots Ctx.NoSlots.slots _ _ χ).symm.trans ?_
@@ -369,7 +387,7 @@ theorem sat_diaPush_cK (hX : CluFlags) (s : GW hF M₀) (i : ℕ) {x : VarSymb} 
   have hag' := cagree_envOf (hM₀ := hM₀) hX ((ptrXKC hM₀ (groot hF M₀) a.1.1 (cpath a.1.2.down)
     (cpath_eq a.1.2.down) (rstg s i) (rorig s x) (rorig_ref hX hM₀ s i ⟨X, hr⟩)).comp
       (grealC hM₀ hrl _ ⟨Z, hz⟩)) (Ctx.noProjLast_diaIn _ _)
-  rw [eq_substEnv_of_cagree hX (Ctx.noProjLast_diaIn _ _) _ _ _ _
+  rw [eq_substEnv_of_cagree hX (hw := Ctx.noWit_diaIn) (Ctx.noProjLast_diaIn _ _) _ _ _ _
     (GTr.npl_comp _ _ (npl_ptrXKC hM₀ _ _ _ _ _ _ _) hD) (Ctx.noProjLast_diaIn _ _) _ hag _ hag']
   refine (Model.sat_subst _ _ (coh_eS_kView (k := some x) (entOk_ofRen
     (itemOk_rpreX hX hM₀ s i ⟨X, hr⟩))) Ctx.NoSlots.slots Ctx.NoSlots.slots _ _ χ).symm.trans ?_
@@ -543,14 +561,14 @@ theorem cdia_mem_child (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M₀)
     grealised_wit hM₀ hT ⟨c, hc⟩ hk (rstg s i) hrx
   have hwd : (ctxOf (glat t (glstg (groot hF M₀) t (rstg s i)))).ref (wit t (rorig s x)) =
       some (.VTypeDia X) := by
-    have := ok_eS_kView (gentOk_box hM₀ ⟨c, hc⟩ (rstg s i)) (.step (rorig s x) .keep)
+    have := (ok_eS_kView (gentOk_box hM₀ ⟨c, hc⟩ (rstg s i))).ty (.step (rorig s x) .keep)
       (.VTypeDia X) rfl ((Ctx.ref_nonproj _ rfl).symm.trans (Ctx.ref_keep_of' hF hrx
         VarType.keepable_dia))
     rw [eS_item _ rfl, hfk] at this
     exact this
   have hbd : (ctxOf (glat t (glstg (groot hF M₀) t (rstg s i)))).ref b = some X := by
-    have := ok_eS_kView (l := glat (groot hF M₀) (rstg s i)) (k := some (rorig s x))
-      (hk ▸ gentOk hM₀ ⟨c, hc⟩ (rstg s i)) (.step (rorig s x) .dia) X rfl
+    have := (ok_eS_kView (l := glat (groot hF M₀) (rstg s i)) (k := some (rorig s x))
+      (hk ▸ gentOk hM₀ ⟨c, hc⟩ (rstg s i))).ty (.step (rorig s x) .dia) X rfl
       ((Ctx.ref_nonproj _ rfl).symm.trans (Ctx.ref_diaIn_of hrx))
     rw [eS_item _ rfl, hfd] at this
     exact this

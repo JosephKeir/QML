@@ -179,14 +179,14 @@ theorem WFF.subst_fill1 {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [�
     WFF.subst ι θ hθ hc Ctx.NoSlots.slots Ctx.NoSlots.slots (WFF.fill1 s χ) =
       WFF.fill1 (Term.subst ι θ hθ hc s) χ := by
   have hE : (Ctx.empty.insert (.bnd 0) B).SlotsFrom 1 :=
-    Ctx.SlotsFrom.insert (Γ := Ctx.empty) (d := 0) (fun _ _ _ _ => rfl) B
-  have hr : Ctx.empty.RootFresh (.bnd 0) := fun _ _ => rfl
+    Ctx.SlotsFrom.insert (Γ := Ctx.empty) (d := 0) ⟨fun _ _ _ _ => rfl, fun _ _ _ _ => rfl⟩ B
+  have hr : Ctx.empty.RootFresh (.bnd 0) := .empty _
   -- Both sides are one substitution of `χ`: its hole to `θ(s)`.
   refine ((congrArg (fun φ => WFF.subst ι θ hθ hc Ctx.NoSlots.slots Ctx.NoSlots.slots φ)
     (WFF.subst_mono _ _ _ _ hE _ _ χ)).trans ?_).trans (WFF.subst_mono _ _ _ _ hE _ _ χ).symm
   refine WFF.subst_comp _ _ (Subst.single (.bnd 0) (.tm (Term.subst ι θ hθ hc s))) _ _ _ _
     (Subst.ok_single (Ctx.empty_le _) rfl) (Subst.coh_single hr (Ctx.empty_le _) rfl) hE _ _
-    (Subst.sim_of fun v T _ hv => ?_) χ
+    (Subst.sim_of (hwit := fun _ _ _ h => (nomatch h)) fun v T _ hv => ?_) χ
   by_cases hv0 : v = .root (.bnd 0)
   · subst hv0
     have hTB : B = T := by simpa [Ctx.insert] using hv

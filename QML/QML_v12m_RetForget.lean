@@ -139,7 +139,7 @@ theorem holeAt_kThetaF {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys
       (.tm (Term.pair (Term.pair y z) (Term.boxtm s)))).at (.root (.bnd 0)) =
       .tm (Term.pair (Term.pair y z) (Term.boxtm s)) := by
     change Subst.single _ _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    exact Subst.single_self _ _
   refine congrArg (fun φ => WFF.imp φ WFF.bot) (WFF.ret_congr hS ?_ ?_)
   · exact Term.subst_eta_tm _ _ _ _ _ _ y
       (by rw [Subst.at_proj _ _ rfl, Subst.at_proj _ _ rfl, h0]; rfl)
@@ -436,7 +436,7 @@ theorem holeAt_kThetaWF {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSy
       (.root (.bnd 0)) = .tm (Term.pair (Term.pair y z) (Term.pair (Term.boxtm s)
         (Term.diatm v ⟨X, hv⟩ (Term.eta (v.step .dia) X (Ctx.ref_diaIn_of hv))))) := by
     change Subst.single _ _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    exact Subst.single_self _ _
   have hθ : Subst.Ok (Ctx.empty.insert (.bnd 0)
       (.VTypeProd (.VTypeProd C Xe) (RShape.wit (.box A) X).ty))
       (Subst.single (σ := σ) (Δ := Δ) (.bnd 0) (.tm (Term.pair (Term.pair y z)
@@ -762,7 +762,7 @@ theorem holeAt_kThetaFC {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSy
       (.tm (Term.pair (Term.pair y z) (Term.boxtm s)))).at (.root (.bnd 0)) =
       .tm (Term.pair (Term.pair y z) (Term.boxtm s)) := by
     change Subst.single _ _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    exact Subst.single_self _ _
   refine congrArg (fun φ => WFF.imp φ WFF.bot) (WFF.retS_congr hS _ ?_ ?_)
   · exact Term.subst_eta_tm _ _ _ _ _ _ y
       (by rw [Subst.at_proj _ _ rfl, Subst.at_proj _ _ rfl, h0]; rfl)
@@ -1043,7 +1043,7 @@ theorem holeAt_kThetaWFC {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalS
       (.root (.bnd 0)) = .tm (Term.pair (Term.pair y z) (Term.pair (Term.boxtm s)
         (Term.diatm v ⟨X, hv⟩ (Term.eta (v.step .dia) X (Ctx.ref_diaIn_of hv))))) := by
     change Subst.single _ _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    exact Subst.single_self _ _
   have hθ : Subst.Ok (Ctx.empty.insert (.bnd 0)
       (.VTypeProd (.VTypeProd (C.compsFlat co) Xe) (RShape.wit (.box A) X).ty))
       (Subst.single (σ := σ) (Δ := Δ) (.bnd 0) (.tm (Term.pair (Term.pair y z)

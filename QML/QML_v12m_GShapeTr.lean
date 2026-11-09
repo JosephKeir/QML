@@ -20,7 +20,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 variable (hF M₀) in
 /-- Shape environments over the growing tree. -/
@@ -35,6 +35,7 @@ omit [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
 variable {F : Arrows.{0, 0} σ} {Root : F.W → Type} [Arrows.RootKeep F Root]
 
+omit [ModalSys.NoOpt] in
 theorem entryShp_wf [Arrows.RootKeepLaws F Root] {Δ : Ctx} {t : F.W}
     {ρ : Model.ShEnv F Root Δ t} (hρ : ρ.WF []) :
     ∀ (e : SubE σ Δ) {T : VarType} (h : e.OkRef T),
@@ -45,6 +46,7 @@ theorem entryShp_wf [Arrows.RootKeepLaws F Root] {Δ : Ctx} {t : F.W}
       exact Model.shWF_termShp hρ s
   | .hide, _, h => h.elim
 
+omit [ModalSys.NoOpt] in
 theorem substShEnv_wf [Arrows.RootKeepLaws F Root] {Γ Δ : Ctx} {t : F.W} (θ : Subst σ Δ)
     (hθ : Subst.Ok Γ θ) (hnp : Γ.NoProjLast) {ρ : Model.ShEnv F Root Δ t} (hρ : ρ.WF []) :
     (Model.substShEnv θ hθ hnp ρ 0).WF [] :=
@@ -55,11 +57,13 @@ noncomputable def shiftPull {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ�
     {t : F.W} (ρ : Model.ShEnv F Root Γ₂ t) : Model.ShEnv F Root Γ₁ t :=
   fun v T hv => ρ.ref 0 (v.shift k) (h v T ((Ctx.ref_nonproj Γ₁ (hnp v T hv)).trans hv))
 
+omit [ModalSys.NoOpt] in
 theorem shiftPull_agree {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂) (hnp : Γ₁.NoProjLast)
     {t : F.W} (ρ : Model.ShEnv F Root Γ₂ t) :
     Model.ShEnv.ShiftAgree h (shiftPull h hnp ρ) ρ 0 :=
   Model.ShEnv.ShiftAgree.of_raw fun _ _ _ _ => rfl
 
+omit [ModalSys.NoOpt] in
 theorem shiftPull_wf [Arrows.RootKeepLaws F Root] {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Shifts k Γ₁ Γ₂)
     (hnp : Γ₁.NoProjLast) {t : F.W} {ρ : Model.ShEnv F Root Γ₂ t} (hρ : ρ.WF []) :
     (shiftPull h hnp ρ).WF [] :=

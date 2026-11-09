@@ -15295,3 +15295,54 @@ The user chose option 2.  The `Opt`-type work of 12.15 is reverted (the flag, `o
   component — `ren z ↦ env.wit z`, `tm z b ↦` the body read through `optPush` — and the opened
   invariant on environments), then `ProofSubst` (mostly mechanical: `Sim` witness clauses,
   `if_pos` sites, `SlotsFrom` as a structure), then `Proof`, soundness and the rest.
+* **The substitution lemma with witnesses** (2026-11-08, later): the substituted environment's
+  witness is `substWit env e X` — the entry's value (`witVal`: a witness's own value, or a body
+  read through `optPush`) where the entry fits, absent elsewhere (chosen classically, so no proof
+  of `Opt` is needed and exact environment equations survive).  `sat_subst` needs
+  `Env.OpenedFor Γ env`: `Γ` has no witness, or the environment **respects its opened witnesses**
+  (`Env.Opened`: an opened witness's content slot holds its content).  Every push preserves it;
+  it is genuinely needed (a body term may mention a witness's content, which re-opening
+  overrides).  `sat_congr_val` (environments agreeing on objects, and with `Opt` on on
+  witnesses, satisfy the same formulas) replaces exact equations where witnesses can't be equal.
+* **More Opt-off assumptions** (interim, as for strong T): strong D's schema
+  (`Proof.D_schema`), the `□`/`◇`-view and item renamings of the B and G networks, B's body
+  lemmas (`sat_bodyRepl`, `sat_bodySplit`: an instance `[ModalSys.NoOpt]`, supplied at their
+  callers from the B flag by `haveI`).
+* **Soundness is over environments respecting opened witnesses** (2026-11-08): `Model.soundness`
+  takes `ModalSys.Opt = true → env.Opened`.  It is needed, not an artefact: `∀`-elimination at
+  `t = y.dia` followed by a `◇⁰_y` that re-opens `y` reads `y.dia` twice, and only an opened
+  environment makes the two readings agree.  So **validity, with `Opt` on, quantifies over opened
+  environments**; every environment the semantics builds is one (`Env.opened_*`).  The validity
+  statements (`provable_iff_valid`, `provable_iff_validB`, the two compactness theorems) are
+  unchanged: they pass `by env_opened`, which with `Opt` off is the trivial branch.  When M1 turns
+  `Opt` on for K and D, their statements gain the hypothesis.
+* **The interim `Opt`-off scope, after the rebuild** (each to be revisited in its milestone):
+  the staged tree `Canon*` and `Completeness` (`StagedSys` gives `NoOpt` through `NoB`; the
+  canonical environment has no witnesses; `substEnv_repSubst` is now an equation of objects,
+  used through `sat_congr_val`); B's network and canonical model (`NoFour` gives it: `BFlat`,
+  `BodyAbs`, `BRet*`, `BStep*`, the push equations `boxPush_canon`/`diaPush_canon`, whose witness
+  parts are vacuous); the growing tree `G*` (a section instance `[ModalSys.NoOpt]` beside `hF`;
+  `GTransfer` is gated `∀ hO`, `FwdData.axOk` takes the instance); GK (`ModalSys.GKSys` extends
+  `NoOpt`); the lifts `LiftT`, `LiftB`; `Cone.sat_cone`.  Where a T/4/B/5 flag is in hand the
+  instance comes from `ModalSys.noOpt_of_*`; elsewhere it is a binder, satisfied at the top
+  (`NoB`, `NoFour`, `CubeSys`).
+* **Tooling notes:** a structure-valued `Le`/`Ok`/`Sim` no longer accepts a bare lambda (wrap as
+  `⟨…, by wit_triv⟩` or use `simT_of`); `Term.subst_congr` takes `Subst.SimT` (project a `Sim`
+  with `.ty`); equalities of environments go through `Env.ext'`, whose witness part is vacuous on
+  `□`/`◇` views with `Opt` off (`Ctx.boxIn_wit`).
+* **Environments are the frame's** (2026-11-09): the structure is `Frame.Env F Γ w`, and
+  `Model.Env M` is a reducible alias for `M.frame.Env`.  As a structure over the whole model,
+  `M.Env` and `(M.relSwap r ψ).Env` were different types, breaking uniform substitution's model
+  swap (`QML_v12m_SemAdmissible`); over the frame they coincide, as `Model`'s docstring intends.
+  Cost: a lemma can't recover the model from an environment's type (a frame doesn't determine its
+  model), so an occasional `(M := …)` is needed.
+* **Green (2026-11-09):** the whole v12m tree builds under option 2 (`qbuild --strict`: 40
+  targets, no messages, no `sorry`).  The cube (`ModalSys.CubeSys`) and GK (`ModalSys.GKSys`)
+  now extend `NoOpt` (interim).  **Decided next** (the user agreed): make `Env.Opened` an invariant
+  field of `Env`, discharged by default for witness-free contexts and pushes, so soundness drops
+  its extra hypothesis and validity keeps its shape with `Opt` on.  In context terms the
+  condition only has content where a witness's content address is declared beside it: in a
+  `◇_x` view (`x` opened) or a `◇⁰_y` view (`y` opened), never in a root-only context or a `□`
+  view.
+* Tactics: `slot_rfl` (a substitution's entry at the root it sets; extended by `macro_rules`
+  where the lemmas live), `wit_refl`, `opened_tac`.

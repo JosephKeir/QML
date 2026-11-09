@@ -23,12 +23,13 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-- The preimage item map of a `◇_x` view: `x.dia` to `(pre x).dia`, the rest as `preI`. -/
 def preIX (pre : VarSymb → VarSymb) (x : VarSymb) (v : VarSymb) : VarSymb :=
   if v = .step x .dia then .step (pre x) .dia else preI pre v
 
+omit [ModalSys.NoOpt] in
 /-- The preimage item map of a `◇_x` view is well typed. -/
 theorem itemOk_preIX {ls lt : List VarType} {pre : VarSymb → VarSymb}
     {x : VarSymb} {X : VarType}
@@ -91,7 +92,7 @@ theorem ok_edgeDia (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M�
     (hn : Names t z x) :
     Subst.Ok ((ctxOf (glat s i)).boxIn.diaIn (.step z .keep)) (edgeDia s t i z x) :=
   Subst.ok_dia (ok_eS_kView (gentOk_box hM₀ h i)) (Ctx.exists_keep_dia hF ⟨X, hz⟩)
-    ((coh_eS_kView (gentOk_box hM₀ h i) _ _ (Ctx.exists_keep_dia hF ⟨X, hz⟩).choose_spec
+    (((coh_eS_kView (gentOk_box hM₀ h i)).ty _ _ (Ctx.exists_keep_dia hF ⟨X, hz⟩).choose_spec
       []).trans (idx_names hM₀ h i hz hn))
 
 theorem coh_edgeDia (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s t) (i : ℕ)
@@ -102,6 +103,7 @@ theorem coh_edgeDia (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M
   idx_names hM₀ h i hz hn ▸ Subst.coh_dia (ok_eS_kView (gentOk_box hM₀ h i))
     (coh_eS_kView (gentOk_box hM₀ h i)) (Ctx.exists_keep_dia hF ⟨X, hz⟩)
 
+omit [ModalSys.NoOpt] in
 theorem levels_diaIn (l : List VarType) (z : VarSymb) :
     ∀ v T, v.lastProj = false → (ctxOf l).diaIn z v = some T → Step.levels v.path = 1 := by
   intro v T hl hv
@@ -136,7 +138,7 @@ theorem sim_preX_edge (hM₀ : Theory.IsMCS M₀)
           (coh_edgeDia hM₀ h i (hpre x _ hx rfl).1 (hpre x _ hx rfl).2) (levels_diaIn _ _)))
       (Subst.idS σ ((ctxOf (glat t (glstg s t i))).diaIn x)) := by
   obtain ⟨hz, hn⟩ := hpre x _ hx rfl
-  refine Subst.sim_of fun v T hl hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hl hv => ?_
   change SubE.Sim T ((eS σ ((ctxOf (glat s i)).diaIn (pre x)) (ofRen (preIX pre x)) v).comp
     _ _ _) (.ren v)
   obtain ⟨u, st, rfl, -, -⟩ := kView_item (k := some x) hv
@@ -149,7 +151,7 @@ theorem sim_preX_edge (hM₀ : Theory.IsMCS M₀)
     have hT : T = X := Option.some.inj (hv.symm.trans
       ((Ctx.ref_nonproj _ (v := .step x .dia) rfl).symm.trans (Ctx.ref_diaIn_of hx)))
     subst hT
-    rw [show preIX pre x (.step x .dia) = .step (pre x) .dia from if_pos rfl,
+    rw [show preIX pre x (.step x .dia) = .step (pre x) .dia from by slot_rfl,
       VarSymb.shift_level_zero rfl, Subst.at_nonproj _ rfl]
     change SubE.Sim T (if VarSymb.step (pre x) .keep = .step (pre x) .keep then
       ((edgeS s t i).at (.step (pre x) .keep)).diaBody x else .hide) _

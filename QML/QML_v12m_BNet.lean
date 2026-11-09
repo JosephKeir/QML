@@ -65,7 +65,7 @@ theorem WFF.subst_eq_of_eq {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ}
 
 theorem arrowS_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') (img : ℕ → ℕ) :
     (arrowS σ Δ img).mono h = arrowS σ Δ' img := by
-  funext v
+  refine Subst.ext' (fun v => ?_) (fun _ => rfl)
   match v with
   | .step u .box => rfl
   | .root _ => rfl
@@ -77,7 +77,7 @@ theorem arrowS_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') (img : ℕ → ℕ) :
 
 theorem arrowXS_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') (img : ℕ → ℕ) (x : VarSymb) (cx : ℕ) :
     (arrowXS σ Δ img x cx).mono h = arrowXS σ Δ' img x cx := by
-  funext v
+  refine Subst.ext' (fun v => ?_) (fun _ => rfl)
   match v with
   | .step u .box => rfl
   | .step u .dia =>
@@ -94,7 +94,7 @@ theorem arrowXS_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') (img : ℕ → ℕ) (x : Var
 theorem sim_arrowXS_arrowS [ModalSys.FourOff] {l : List VarType} {Δ : Ctx}
     {img img' : ℕ → ℕ} {x : VarSymb} {cx : ℕ} (h : ∀ r < l.length, img r = img' r) :
     Subst.Sim (ctxOf l).boxIn (arrowXS σ Δ img x cx) (arrowS σ Δ img') :=
-  Subst.sim_of fun v T _ hv => by
+  Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T _ hv => by
     obtain ⟨u, rfl, hu⟩ := boxIn_item hv
     obtain ⟨r, hr, hlt, _⟩ := ref_rt hu
     change SubE.Sim T (.ren (itemAt (imgRoot img u.rt) u)) (.ren (itemAt (imgRoot img' u.rt) u))

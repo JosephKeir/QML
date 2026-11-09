@@ -120,7 +120,7 @@ theorem instantiate_tailAt {Γ : Ctx} [Γ.NoSlots] {a : Ann A} (v : Term σ Γ A
   rw [WFF.subst_holeAt]
   refine WFF.holeAt_congr _ (sig_pair (subst_single_mono_tm u v) ?_) H
   exact Term.subst_eta_tm _ _ _ T _ _ u
-    (by change Subst.single _ _ (.root (.bnd 0)) = _; exact if_pos rfl)
+    (Subst.single_self _ _)
 
 /-- ⭐**`K` holds of every diagonal pair**: both sides are one formula. -/
 def provable_tailK_diag {l : List VarType} {a : Ann A} (w : Term σ (ctxOf l) A a)
@@ -157,7 +157,7 @@ theorem instantiate_tailψ {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (h : Γ.Le 
   refine WFF.holeAt_congr _ (sig_pair ?_ ?_) _
   · rw [Term.mono_eta]
     exact Term.subst_eta_tm _ _ _ A _ _ s
-      (by change Subst.single _ _ (.root (.bnd 0)) = _; exact if_pos rfl)
+      (Subst.single_self _ _)
   · rw [Term.mono_mono]
     have e : Term.mono ((Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root A).trans
         (h.insert (.bnd 0) A)) t =

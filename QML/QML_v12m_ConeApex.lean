@@ -281,6 +281,7 @@ theorem sat_apex_box {Γ : Ctx} [Γ.NoSlots] {E : (c.cone hT hB hS hInd).Env Γ 
     {V : N.Env Γ.boxIn c.ρ} (hK : Keyed hF E V) (ψ : WFF σ Γ.boxIn 0) :
     (c.cone hT hB hS hInd).sat E (.box ψ) ↔
       N.sat V (.box (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots ψ)) := by
+  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   change (∀ a, (c.cone hT hB hS hInd).sat (E.boxPush a) ψ) ↔
     ∀ s, N.sat (V.boxPush s) (WFF.shift (Ctx.shifts_boxIn_boxIn hF Γ) Ctx.NoSlots.slots ψ)
   constructor
@@ -300,6 +301,7 @@ theorem sat_apex_dia {Γ : Ctx} [Γ.NoSlots] {E : (c.cone hT hB hS hInd).Env Γ 
     (c.cone hT hB hS hInd).sat E (.dia x hx ψ) ↔
       N.sat V (.dia (.step x .keep) (Ctx.exists_keep_dia hF hx)
         (WFF.shift (Ctx.shifts_diaIn_keep hF Γ x) Ctx.NoSlots.slots ψ)) := by
+  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   constructor
   · rintro ⟨X, hr, ⟨⟨_ | s, ⟨r⟩⟩, h⟩, H⟩
     · exact False.elim r

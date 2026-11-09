@@ -23,7 +23,7 @@ open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
   (hF : ModalSys.Four = true) {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
-  (hM₀ : Theory.IsMCS M₀)
+  (hM₀ : Theory.IsMCS M₀) [ModalSys.NoOpt]
 
 include hM₀
 
@@ -290,7 +290,7 @@ theorem lift_total {n c : ℕ} {p : Node} (hk : (gnet hF M₀ n).Live (c :: p)) 
 
 /-! ## Names by origin (5) -/
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] hM₀ in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] hM₀ [ModalSys.NoOpt] in
 /-- An edge's naming of an address survives growth. -/
 theorem GNetSt.KeepImage.ext {N N' : GNetSt σ} (h : GNetSt.Ext N N') {k : Node} (hk : N.Live k)
     {z : VarSymb} (hz : N.KeepImage k z) : N'.KeepImage k z := by

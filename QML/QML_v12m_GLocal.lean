@@ -90,8 +90,9 @@ def GTransfer {Γ : Ctx} (M : Set (WFF σ Γ 0)) (ls : List VarType) (hle : (ctx
     (k : Option VarSymb) (hk : KDecl (ctxOf ls) k) {lt : List VarType}
     (N : Set (WFF σ (ctxOf lt) 0)) (f : VarSymb → LEnt σ)
     (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) : Prop :=
-  ∀ ψ : WFF σ ((ctxOf ls).kView k) 0, WFF.mono hle (kBox k hk ψ) ∈ M →
-    WFF.subst (eIdx f) (eS σ (ctxOf lt) f) (ok_eS_kView hf) (coh_eS_kView hf)
+  ∀ (hO : ModalSys.Opt = false) (ψ : WFF σ ((ctxOf ls).kView k) 0),
+    WFF.mono hle (kBox k hk ψ) ∈ M →
+    WFF.subst (eIdx f) (eS σ (ctxOf lt) f) (ok_eS_kView hf hO) (coh_eS_kView hf hO)
       Ctx.NoSlots.slots Ctx.NoSlots.slots ψ ∈ N
 
 /-! ## Realising the next variable -/
@@ -137,7 +138,7 @@ theorem grealise_one (hF : ModalSys.Four = true) {Γ : Ctx} [Γ.Presented]
     rw [← WFF.mono_mono (ctxOf_le_append [A] ls) hle, e]
     exact h
   -- The transfer puts the existential into the target, and its witness realises `ψ`.
-  have hN' := htr _ hex
+  have hN' := htr (ModalSys.noOpt_of_Four hF) _ hex
   have hsub := subst_gext_gabs hF hko hf ψ
   rw [← WFF.instantiate_toFree (eS σ (ctxOf lt) f) (ok_eS_kView hf) (coh_eS_kView hf)
       Ctx.NoSlots.slots Ctx.NoSlots.slots lt.length (ctxOf_fresh le_rfl) A.gc Ctx.NoSlots.slots

@@ -71,7 +71,7 @@ theorem subst_arrowX_box {Γ : Ctx} {Δ : Ctx} {img : ℕ → ℕ} {x : VarSymb}
         (Term.mono (Ctx.le_boxIn_diaIn Γ x) b)⟩ : Σ a', Term σ Δ A a') =
       ⟨_, Term.subst (arrowIdx img) (arrowS σ Δ img) hθ' hc' b⟩ := by
   rw [Term.subst_mono]
-  refine Term.subst_congr _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) b
+  refine Term.subst_congr _ _ _ _ _ _ (Subst.simT_of fun v T _ hv => ?_) b
   match v with
   | .step u .box => exact .refl _
   | .step u .keep =>

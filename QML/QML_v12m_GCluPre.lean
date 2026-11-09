@@ -25,7 +25,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-- The edge into `t` **names** `z` by the parent's address `v`: the entry of `v.keep` is `z`, or
     `z`'s η-term (`glorigin`). -/
@@ -40,6 +40,7 @@ def preI (pre : VarSymb → VarSymb) : VarSymb → VarSymb
   | .step z .keep => .step (pre z) .keep
   | v => v
 
+omit [ModalSys.NoOpt] in
 /-- An item of a `□` view has one level step. -/
 theorem levels_boxIn_item {l : List VarType} {v : VarSymb} {T : VarType}
     (hl : v.lastProj = false) (h : (ctxOf l).boxIn v = some T) : Step.levels v.path = 1 := by
@@ -49,6 +50,7 @@ theorem levels_boxIn_item {l : List VarType} {v : VarSymb} {T : VarType}
   rw [Step.levels_append, levels_ppath hu, Step.levels_cons, if_neg (by simp [hs])]
   rfl
 
+omit [ModalSys.NoOpt] in
 /-- ⭐**The preimage item map is well typed**, when `pre` keeps the type of every reachable
     keepable address. -/
 theorem itemOk_preI {ls lt : List VarType} {pre : VarSymb → VarSymb}
@@ -87,6 +89,7 @@ theorem coh_edgeBox (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M
     Subst.Coh (eIdx (fmapL hF M₀ t.1)) (ctxOf (glat s i)).boxIn.boxIn (edgeBox s t i) :=
   Subst.coh_box (ok_eS_kView (gentOk_box hM₀ h i)) (coh_eS_kView (gentOk_box hM₀ h i))
 
+omit [ModalSys.NoOpt] in
 theorem levels_boxIn (l : List VarType) :
     ∀ v T, v.lastProj = false → (ctxOf l).boxIn v = some T → Step.levels v.path = 1 :=
   fun _ _ hl h => levels_boxIn_item hl h
@@ -111,7 +114,7 @@ theorem entOf_names_tm (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh h
     .tm (Term.mono hL (Term.eta z T hz)) from dif_pos hL, Term.mono_eta] at hok ⊢
   exact ⟨hok, _, rfl⟩
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- A kept η-term is the η-term of the kept address, up to η. -/
 theorem keepE_eta_sim {Δ : Ctx} (hF' : ModalSys.Four = true) {u : VarSymb} {T : VarType}
     (hu : Δ.ref u = some T) (hkp : T.keepable = true) :
@@ -146,7 +149,7 @@ theorem sim_pre_edge (hM₀ : Theory.IsMCS M₀)
         (Subst.coh_atShift (Ctx.shifts_boxIn_boxIn hF _) (ok_edgeBox hM₀ h i)
           (coh_edgeBox hM₀ h i) (levels_boxIn _)))
       (Subst.idS σ (ctxOf (glat t (glstg s t i))).boxIn) := by
-  refine Subst.sim_of fun v T hl hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hl hv => ?_
   change SubE.Sim T ((eS σ (ctxOf (glat s i)).boxIn (ofRen (preI pre)) v).comp _ _ _) (.ren v)
   obtain ⟨u, st, rfl, -, -⟩ := boxIn_item hv
   rw [eS_item _ hl]
@@ -191,6 +194,7 @@ theorem sim_pre_edge (hM₀ : Theory.IsMCS M₀)
   | .here, hv => cases hv
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [ModalSys.NoOpt] in
 theorem simE_symm {Δ : Ctx} {T : VarType} {e e' : SubE σ Δ} (h : SubE.Sim T e e') :
     SubE.Sim T e' e := by
   cases h with
@@ -200,7 +204,7 @@ theorem simE_symm {Δ : Ctx} {T : VarType} {e e' : SubE σ Δ} (h : SubE.Sim T e
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 theorem simS_symm {Γ Δ : Ctx} {θ θ' : Subst σ Δ} (h : Subst.Sim Γ θ θ') : Subst.Sim Γ θ' θ :=
-  fun v T hv => simE_symm (h v T hv)
+  ⟨fun v T hv => simE_symm (h.ty v T hv), fun _ _ _ _ => by wit_refl⟩
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 /-- Substituting every address for itself into a larger context is weakening. -/
@@ -210,7 +214,8 @@ theorem subst_idS_le {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots] (hle : Γ.Le Δ) (�
   have h := WFF.subst_mono_eq (Ctx.Le.refl Γ) hle (Subst.idS σ Γ) Subst.ok_idS Subst.coh_idS
     (Subst.idS σ Δ) (Subst.ok_idS_le hle) (Subst.coh_idS_le hle) Ctx.NoSlots.slots
     Ctx.NoSlots.slots Ctx.NoSlots.slots Ctx.NoSlots.slots
-    (fun v T _ => by rw [Subst.at_idS, Subst.at_mono, Subst.at_idS]; exact .refl _) ψ
+    ⟨fun v T _ => by rw [Subst.at_idS, Subst.at_mono, Subst.at_idS]; exact .refl _,
+      fun _ _ _ _ => by wit_refl⟩ ψ
   rwa [WFF.mono_refl, WFF.subst_id] at h
 
 /-- The preimage of a formula of the child's `□` view, in the parent's `□` view. -/

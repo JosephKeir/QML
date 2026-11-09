@@ -137,7 +137,7 @@ theorem holeAt_gtup_gpack (hF : ModalSys.Four = true) {l : List VarType} {U : Va
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ (Subst.ok_idS_le (h.insert (.bnd 0) U))
     (Subst.coh_idS_le (h.insert (.bnd 0) U)) _ _ _ ?_ Φ).trans
     (WFF.subst_ren (h.insert (.bnd 0) U) _ _ _ _ _ (fun v _ _ => Subst.at_idS v) Φ)
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   have h0 := Subst.at_single_root (σ := σ) (Δ := Δ.insert (.bnd 0) U) (.bnd 0)
     (.tm (Term.pair (Term.mono hle (viewTup (σ := σ) hF l).2)
       (Term.eta (.root (.bnd 0)) U (Ctx.ref_insert_root Δ (.bnd 0) U))))
@@ -183,13 +183,13 @@ theorem holeAt_gtup_gpack_at (hF : ModalSys.Four = true) {l : List VarType} {U :
 
 section HoleRead
 
-theorem Ctx.shifts_hole (k : ℕ) (H : VarType) :
+theorem Ctx.shifts_hole (hF : ModalSys.Four = true) (k : ℕ) (H : VarType) :
     Ctx.Shifts k (Ctx.empty.insert (.bnd 0) H) (Ctx.empty.insert (.bnd 0) H) :=
-  Ctx.Shifts.insert (Ctx.Shifts.of_raw fun _ _ _ hv => by cases hv) (Ctx.RootFresh.empty _) H
+  Ctx.Shifts.insert (Ctx.Shifts.of_raw hF fun _ _ _ hv => by cases hv) (Ctx.RootFresh.empty _) H
 
-theorem Ctx.collapses_hole (k : ℕ) (H : VarType) :
+theorem Ctx.collapses_hole (hT : ModalSys.T = true) (k : ℕ) (H : VarType) :
     Ctx.Collapses k (Ctx.empty.insert (.bnd 0) H) (Ctx.empty.insert (.bnd 0) H) :=
-  Ctx.Collapses.insert (Ctx.Collapses.of_raw fun _ _ _ hv => by cases hv)
+  Ctx.Collapses.insert (Ctx.Collapses.of_raw hT fun _ _ _ hv => by cases hv)
     (Ctx.RootFresh.empty _) H
 
 theorem Ctx.shiftCollapseId_hole (m : ℕ) (H : VarType) :
@@ -198,17 +198,18 @@ theorem Ctx.shiftCollapseId_hole (m : ℕ) (H : VarType) :
 
 /-- ⭐**A hole formula is closed, so shifting it does nothing**: the hole's own addresses have no
     level for the shift to act on. -/
-theorem WFF.shift_hole (k : ℕ) {H : VarType} (ψ : WFF σ (Ctx.empty.insert (.bnd 0) H) 1) :
-    WFF.shift (Ctx.shifts_hole k H) (Ctx.slotsFrom_empty.insert H) ψ = ψ := by
+theorem WFF.shift_hole {k : ℕ} {H : VarType}
+    (D : Ctx.Shifts k (Ctx.empty.insert (.bnd 0) H) (Ctx.empty.insert (.bnd 0) H))
+    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) H) 1) :
+    WFF.shift D (Ctx.slotsFrom_empty.insert H) ψ = ψ := by
   have hs := Ctx.slotsFrom_empty.insert (d := 0) H
-  have e := WFF.subst_shift (Ctx.shifts_hole k H) hs hs (Subst.idS σ _) Subst.ok_idS Subst.coh_idS
+  have e := WFF.subst_shift D hs hs (Subst.idS σ _) Subst.ok_idS Subst.coh_idS
     (Subst.idS σ _) Subst.ok_idS Subst.coh_idS hs
     (Subst.preShift_of fun v T hl hv => by
       by_cases hvr : v = .root (.bnd 0)
       · subst hvr
         exact .refl _
-      · change (if v = VarSymb.root (.bnd 0) then _ else Ctx.empty v) = _ at hv
-        rw [if_neg hvr] at hv
+      · rw [Ctx.insert_ne hvr] at hv
         cases hv) ψ
   rwa [WFF.subst_id, WFF.subst_id] at e
 
@@ -217,9 +218,9 @@ theorem WFF.shift_holeAt {k : ℕ} {Γ Γ' : Ctx} {d : ℕ} (D : Ctx.Shifts k Γ
     (hs : Γ.SlotsFrom d) (hs' : Γ'.SlotsFrom d) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
     (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
     WFF.shift D hs (WFF.holeAt hs t ψ) = WFF.holeAt hs' (Term.shift D t)
-      (WFF.shift (Ctx.shifts_hole k A) (Ctx.slotsFrom_empty.insert A) ψ) := by
+      (WFF.shift (Ctx.shifts_hole D.hF k A) (Ctx.slotsFrom_empty.insert A) ψ) := by
   unfold WFF.holeAt
-  refine WFF.shift_subst (Ctx.shifts_hole k A) D _ _ _ _ _ _ _ _ _ _
+  refine WFF.shift_subst (Ctx.shifts_hole D.hF k A) D _ _ _ _ _ _ _ _ _ _
     (Subst.shiftCorr_of (Subst.ok_single (e := .tm t) (Ctx.empty_le Γ) rfl) ?_) ψ
   intro v T _ hv
   by_cases hvr : v = .root (.bnd 0)
@@ -227,11 +228,9 @@ theorem WFF.shift_holeAt {k : ℕ} {Γ Γ' : Ctx} {d : ℕ} (D : Ctx.Shifts k Γ
     change SubE.Sim T
       (Subst.single (σ := σ) (Δ := Γ') (.bnd 0) (.tm (Term.shift D t)) (.root (.bnd 0)))
       (SubE.shift D (Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm t) (.root (.bnd 0))))
-    unfold Subst.single
-    rw [if_pos rfl, if_pos rfl]
+    rw [Subst.single_self, Subst.single_self]
     exact .refl _
-  · change (if v = VarSymb.root (.bnd 0) then _ else Ctx.empty v) = _ at hv
-    rw [if_neg hvr] at hv
+  · rw [Ctx.insert_ne hvr] at hv
     cases hv
 
 /-- Collapsing a hole read collapses the term and the hole formula. -/
@@ -239,9 +238,9 @@ theorem WFF.collapse_holeAt {k : ℕ} {Γ Γ' : Ctx} {d : ℕ} (D : Ctx.Collapse
     (hs : Γ.SlotsFrom d) (hs' : Γ'.SlotsFrom d) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
     (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
     WFF.collapse D hs (WFF.holeAt hs t ψ) = WFF.holeAt hs' (Term.collapse D t)
-      (WFF.collapse (Ctx.collapses_hole k A) (Ctx.slotsFrom_empty.insert A) ψ) := by
+      (WFF.collapse (Ctx.collapses_hole D.hT k A) (Ctx.slotsFrom_empty.insert A) ψ) := by
   unfold WFF.holeAt
-  refine WFF.collapse_subst (Ctx.collapses_hole k A) D _ _ _ _ _ _ _ _ _ _
+  refine WFF.collapse_subst (Ctx.collapses_hole D.hT k A) D _ _ _ _ _ _ _ _ _ _
     (Subst.corr_of (Subst.ok_single (e := .tm t) (Ctx.empty_le Γ) rfl) ?_) ψ
   intro v T _ hv
   by_cases hvr : v = .root (.bnd 0)
@@ -249,20 +248,20 @@ theorem WFF.collapse_holeAt {k : ℕ} {Γ Γ' : Ctx} {d : ℕ} (D : Ctx.Collapse
     change SubE.Sim T
       (Subst.single (σ := σ) (Δ := Γ') (.bnd 0) (.tm (Term.collapse D t)) (.root (.bnd 0)))
       (SubE.collapse D (Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm t) (.root (.bnd 0))))
-    unfold Subst.single
-    rw [if_pos rfl, if_pos rfl]
+    rw [Subst.single_self, Subst.single_self]
     exact .refl _
-  · change (if v = VarSymb.root (.bnd 0) then _ else Ctx.empty v) = _ at hv
-    rw [if_neg hvr] at hv
+  · rw [Ctx.insert_ne hvr] at hv
     cases hv
 
 /-- A hole formula is closed, so collapsing it does nothing: collapsing undoes the shift, and the
     shift does nothing. -/
-theorem WFF.collapse_hole (k : ℕ) {H : VarType} (ψ : WFF σ (Ctx.empty.insert (.bnd 0) H) 1) :
-    WFF.collapse (Ctx.collapses_hole k H) (Ctx.slotsFrom_empty.insert H) ψ = ψ := by
-  have e := WFF.collapse_shift_same (Ctx.shifts_hole k H) (Ctx.collapses_hole k H) (Ctx.Le.refl _)
+theorem WFF.collapse_hole (hF : ModalSys.Four = true) {k : ℕ} {H : VarType}
+    (D : Ctx.Collapses k (Ctx.empty.insert (.bnd 0) H) (Ctx.empty.insert (.bnd 0) H))
+    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) H) 1) :
+    WFF.collapse D (Ctx.slotsFrom_empty.insert H) ψ = ψ := by
+  have e := WFF.collapse_shift_same (Ctx.shifts_hole hF k H) D (Ctx.Le.refl _)
     (Ctx.shiftCollapseId_hole k H) (Ctx.slotsFrom_empty.insert H) (Ctx.slotsFrom_empty.insert H) ψ
-  rwa [WFF.shift_hole, WFF.mono_refl] at e
+  rwa [WFF.shift_hole (Ctx.shifts_hole hF k H), WFF.mono_refl] at e
 
 /-- A hole read that does not mention the slot, with the slot filled. -/
 theorem WFF.instantiate_holeAt_mono {Ω : Ctx} [Ω.NoSlots] {B : VarType} {b₀ : Ann B}
@@ -289,7 +288,7 @@ def keepRead (hF : ModalSys.Four = true) (X : VarType) (s : Term σ Γ.boxIn H s
   WFF.holeAt ((Ctx.NoSlots.slots (Γ := Γ.boxIn.boxIn)).insert X)
     (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ.boxIn.boxIn)).root X)
       (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) s))
-    (WFF.shift (Ctx.shifts_hole 0 H) (Ctx.slotsFrom_empty.insert H) Θ)
+    (WFF.shift (Ctx.shifts_hole hF 0 H) (Ctx.slotsFrom_empty.insert H) Θ)
 
 /-- Read in the `◇_{x.keep}` view, `keepRead` is the shifted formula, whatever the content. -/
 theorem WFF.viewRead_keepRead (hF : ModalSys.Four = true) (x : VarSymb) {X : VarType} {b₀ : Ann X}

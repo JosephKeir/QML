@@ -30,6 +30,7 @@ open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
   (hF : ModalSys.Four = true) {l₀ : List VarType} (M₀ : Set (WFF σ (ctxOf l₀) 0))
+  [ModalSys.NoOpt]
 
 /-! ## Worlds -/
 
@@ -208,11 +209,11 @@ theorem gfwd_at (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} {c : ℕ} (hc : t
   rw [hkd]
   exact ((ctxOf_le_of_suffix hsuf').kView _) v T hv
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 theorem EntOk.restrict {Γ Γ' Δ : Ctx} {g : VarSymb → LEnt σ} (hle : Γ'.Le Γ)
     (hg : EntOk Γ Δ g) : EntOk Γ' Δ g := fun v T hl hv => hg v T hl (hle v T hv)
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 theorem EntOk.congr {Γ Δ : Ctx} {g g' : VarSymb → LEnt σ}
     (hag : ∀ v T, Γ v = some T → g v = g' v) (hg : EntOk Γ Δ g) : EntOk Γ Δ g' :=
   fun v T hl hv => by rw [← hag v T hv]; exact hg v T hl hv
@@ -236,7 +237,7 @@ theorem ggrow_stage (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ) {m : 
     Grows ((gnet hF M₀ (gbirth hF M₀ s.2 + i)).st s.1) ((gnet hF M₀ m).st s.1) :=
   (ext_gnet hF hM₀ hm).grows s.1 (live_gbirth hF hM₀ s.2 (Nat.le_add_right _ i))
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- What is necessary is `□_k`-necessary, for either kind. -/
 theorem kBox_of_box {Γ Γ₀ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)} (hM : Theory.IsMCS M)
     (hle : Γ₀.Le Γ) (kd : Option VarSymb) (hk : KDecl Γ₀ kd) (ψ : WFF σ Γ₀.boxIn 0)
@@ -273,7 +274,7 @@ theorem gltr (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s t
     (WFF.mono (ctxOf_le_of_suffix hsuf).boxIn ψ) (by
       convert hψ' using 1
       simp only [WFF.mono, WFF.mono_mono])
-  have h₁ := htr _ hk'
+  have h₁ := htr ModalSys.NoOpt.noOpt _ hk'
   rw [WFF.mono_mono, WFF.subst_mono _ _ _ _ Ctx.NoSlots.slots] at h₁
   rwa [WFF.subst_congr _ _ _ (ok_eS_kView (gentOk_box hM₀ h i)) _
     (coh_eS_kView (gentOk_box hM₀ h i)) _ _
@@ -299,7 +300,7 @@ theorem gltrX (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (h : GCh hF M₀ s 
       ((gnet hF M₀ (grnd s t i)).st s.1).M := by
     convert hψ' using 1
     simp only [kBox, WFF.boxx, WFF.neg, WFF.mono, WFF.mono_mono]
-  have h₁ := htr _ hk'
+  have h₁ := htr ModalSys.NoOpt.noOpt _ hk'
   rw [WFF.subst_mono _ _ _ _ Ctx.NoSlots.slots] at h₁
   rwa [WFF.subst_congr _ _ _ (ok_eS_kView (hkd ▸ gentOk hM₀ h i)) _
     (coh_eS_kView (hkd ▸ gentOk hM₀ h i)) _ _

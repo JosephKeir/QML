@@ -35,13 +35,13 @@ variable {σ : Signature}
 
 /-- ⭐**The abstraction of a body along `◇_x`**: the content `x.dia` to the hole's first
     component, the bound item to its second, the `□`-view entries kept. -/
-def bodyAbsA (σ : Signature) (Δ : Ctx) (x : VarSymb) : Subst σ Δ := fun v =>
-  match v with
-  | .root (.bnd 0) => .ren (.step (.root (.bnd 0)) .snd)
-  | .step u .dia => if u = x then .ren (.step (.root (.bnd 0)) .fst) else .hide
-  | .step u .box => .ren (.step u .box)
-  | .step u .keep => .ren (.step u .keep)
-  | _ => .hide
+def bodyAbsA (σ : Signature) (Δ : Ctx) (x : VarSymb) : Subst σ Δ where
+  ty v := match v with
+    | .root (.bnd 0) => .ren (.step (.root (.bnd 0)) .snd)
+    | .step u .dia => if u = x then .ren (.step (.root (.bnd 0)) .fst) else .hide
+    | .step u .box => .ren (.step u .box)
+    | .step u .keep => .ren (.step u .keep)
+    | _ => .hide
 
 variable {Γ : Ctx} [Γ.NoSlots] {x : VarSymb} {A T : VarType}
 
@@ -69,12 +69,12 @@ theorem bodyAbsA_eq_ren {Δ : Ctx} {v : VarSymb} (hv : ∀ r : Root, v ≠ .root
   | .step _ .here => exact h
 
 /-- ⭐Well-typedness of the body abstraction. -/
-theorem ok_bodyAbsA (hxA : Γ.ref x = some (.VTypeDia A))
+theorem ok_bodyAbsA [ModalSys.NoOpt] (hxA : Γ.ref x = some (.VTypeDia A))
     (hnb : ∀ p : List Step, Γ.ref ((VarSymb.step x .dia).ext p) = none) :
     Ok ((Γ.diaIn x).insert (.bnd 0) T)
       (bodyAbsA σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd A T)) x) := by
   have h₀ : Γ.boxIn (.root (.bnd 0)) = none := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root
-  intro v U hlp hv
+  refine ⟨fun v U hlp hv => ?_, by wit_triv⟩
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = U := by simpa [Ctx.insert] using hv
@@ -86,11 +86,11 @@ theorem ok_bodyAbsA (hxA : Γ.ref x = some (.VTypeDia A))
       exact Ctx.ref_fst_of (Ctx.ref_insert_root _ (.bnd 0) _)
     · rw [bodyAbsA_eq_ren hroot hbl (hen (Γ.boxIn.insert (.bnd 0) (.VTypeProd A T)))]
       change (Γ.boxIn.insert (.bnd 0) (.VTypeProd A T)).ref v = some U
-      exact (Ctx.ref_nonproj _ hlp).trans (Ctx.le_insert h₀ _ v U hb)
+      exact (Ctx.ref_nonproj _ hlp).trans ((Ctx.le_insert h₀ _).ty v U hb)
 
 /-- ⭐Coherence of the body abstraction: as `coh_diaAbsA`, with the bound item's addresses under
     the hole's second component (no address of the view has the slot's root). -/
-theorem coh_bodyAbsA (hxA : Γ.ref x = some (.VTypeDia A))
+theorem coh_bodyAbsA [ModalSys.NoOpt] (hxA : Γ.ref x = some (.VTypeDia A))
     (hnb : ∀ p : List Step, Γ.ref ((VarSymb.step x .dia).ext p) = none)
     (hvf : Γ.ViewFresh) :
     Coh (VarSymb.bodyAbsAddr x) ((Γ.diaIn x).insert (.bnd 0) T)
@@ -155,7 +155,8 @@ end Subst
 
 /-- ⭐**A body along `◇_x` abstracted** into a hole formula over the `□` view, whose hole pairs the
     content with the bound item. -/
-def WFF.bodyAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb) {A T : VarType}
+def WFF.bodyAbsA [ModalSys.NoOpt]
+    {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb) {A T : VarType}
     (hxA : Γ.ref x = some (.VTypeDia A)) (Φ : WFF σ ((Γ.diaIn x).insert (.bnd 0) T) 1) :
     WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd A T)) 1 :=
   WFF.subst (VarSymb.bodyAbsAddr x) (Subst.bodyAbsA σ _ x)
@@ -166,7 +167,8 @@ def WFF.bodyAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb) {
 
 /-- ⭐**The round trip**: every body along `◇_x` is the view body of its abstraction, at the
     content itself. -/
-theorem WFF.viewBody_bodyAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb)
+theorem WFF.viewBody_bodyAbsA [ModalSys.NoOpt]
+    {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb)
     {A T : VarType} (hxA : Γ.ref x = some (.VTypeDia A))
     (Φ : WFF σ ((Γ.diaIn x).insert (.bnd 0) T) 1) :
     WFF.viewBody ⟨A, hxA⟩ (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of hxA))
@@ -177,7 +179,7 @@ theorem WFF.viewBody_bodyAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x
   rw [WFF.subst_mono]
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS _ _ _ ?_ Φ).trans
     (WFF.subst_id Subst.ok_idS Subst.coh_idS _ Φ)
-  refine Subst.sim_of fun v U hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = U := by simpa [Ctx.insert] using hv
@@ -205,7 +207,7 @@ namespace Model
 variable {σ : Signature} {M : Model σ} {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
 
 /-- `sat_viewBody_here` at an explicit declaration `h` of the witness, as the truth lemma has it. -/
-theorem sat_viewBody_here' (env : M.Env Γ w) (hT : ModalSys.T = true) {x : VarSymb}
+theorem sat_viewBody_here' [ModalSys.NoOpt] (env : M.Env Γ w) (hT : ModalSys.T = true) {x : VarSymb}
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {Y : VarType} (h : Γ.ref x = some (.VTypeDia Y))
     {X T : VarType} {a₁ : Ann X}
     (bd : Term σ (Γ.diaIn x) X a₁) (χ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd X T)) 1)

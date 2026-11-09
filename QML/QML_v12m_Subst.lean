@@ -542,6 +542,16 @@ structure Subst (σ : Signature) (Δ : Ctx) where
   ty : VarSymb → SubE σ Δ
   wit : VarSymb → WitE σ Δ := fun _ => .hide
 
+theorem Subst.ext' {σ : Signature} {Δ : Ctx} {θ θ' : Subst σ Δ} (hty : ∀ v, θ.ty v = θ'.ty v)
+    (hwit : ∀ y, θ.wit y = θ'.wit y) : θ = θ' := by
+  cases θ
+  cases θ'
+  congr
+  · funext v
+    exact hty v
+  · funext y
+    exact hwit y
+
 instance {σ : Signature} {Δ : Ctx} : CoeFun (Subst σ Δ) (fun _ => VarSymb → SubE σ Δ) :=
   ⟨Subst.ty⟩
 
@@ -1041,6 +1051,13 @@ def single (r : Root) (e : SubE σ Δ) : Subst σ Δ where
 
 theorem single_self (r : Root) (e : SubE σ Δ) : single r e (.root r) = e :=
   if_pos (e := SubE.ren (.root r)) rfl
+
+/-- A substitution's entry at the root it sets, by that construction's lemma (more constructions
+    add rules: `toFree_slot`, `set_root`). -/
+syntax "slot_rfl" : tactic
+macro_rules | `(tactic| slot_rfl) => `(tactic| exact if_pos rfl)
+macro_rules | `(tactic| slot_rfl) => `(tactic| exact Subst.under_slot _ _ _ _ _)
+macro_rules | `(tactic| slot_rfl) => `(tactic| exact Subst.single_self _ _)
 
 def singleIdx (r : Root) (e : SubE σ Δ) : VarSymb → VarSymb :=
   fun i => if i.rt = r then e.idxAlong i.path else i

@@ -93,7 +93,7 @@ theorem WFF.SubC.subF {Γ₀ : Ctx} {ψ : WFF σ Γ₀ 0} (hF : ModalSys.Four = 
 
 /-- ⭐Instantiating a body substituted under its binder at `t` is substituting along `θ` with the
     binder's slot sent to `t`. -/
-theorem WFF.instantiate_subst_under {ι : VarSymb → VarSymb} {Γ₁ Γ : Ctx} {d : ℕ}
+theorem WFF.instantiate_subst_under [ModalSys.NoOpt] {ι : VarSymb → VarSymb} {Γ₁ Γ : Ctx} {d : ℕ}
     (θ : Subst σ Γ) (hθ : Subst.Ok Γ₁ θ) (hc : Subst.Coh ι Γ₁ θ) (hΓ₁ : Γ₁.SlotsFrom d)
     (hΓ : Γ.SlotsFrom 0) {T : VarType} {a : Ann T} (t : Term σ Γ T a)
     (χ : WFF σ (Γ₁.insert (.bnd d) T) (d + 1)) :
@@ -106,13 +106,13 @@ theorem WFF.instantiate_subst_under {ι : VarSymb → VarSymb} {Γ₁ Γ : Ctx} 
   have hrΓ : Γ.RootFresh (.bnd 0) := hΓ.rootFresh le_rfl
   unfold WFF.instantiate WFF.substRoot
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ χ
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v U hlp hv
   rw [Subst.comp_apply]
   by_cases hvr : v = .root (.bnd d)
   · subst hvr
     rw [Subst.set_root, show θ.under d 0 T hΓ.root (.root (.bnd d)) = .ren (.root (.bnd 0))
-      from if_pos rfl, SubE.comp_ren, Subst.at_single_root]
+      from by slot_rfl, SubE.comp_ren, Subst.at_single_root]
     exact .refl _
   · have hv' : Γ₁ v = some U := by simpa [Ctx.insert, hvr] using hv
     rw [Subst.set_ne _ _ hvr,
@@ -161,7 +161,8 @@ theorem inst_of {φ : WFF σ Γ 0} (h : SharpSub E Γ φ) (hn : ¬ φ.IsAtom) :
 theorem mem [Γ₀.NoSlots] {ψ : WFF σ Γ₀ 0} (hψ : ψ ∈ E) : SharpSub E Γ₀ ψ :=
   .inst hψ .self (Subst.idRen Γ₀) Subst.ok_idRen Subst.coh_idRen Ctx.NoSlots.slots
     Ctx.NoSlots.slots
-    ((WFF.subst_ren (Ctx.Le.refl _) _ _ _ _ _ (fun v _ _ => Subst.at_idRen v) ψ).trans
+    ((WFF.subst_ren (Ctx.Le.refl _) _ _ _ _ _ (fun v _ _ => Subst.at_idRen v) ψ
+      (fun _ _ _ _ => rfl)).trans
       (WFF.mono_refl _ ψ)).symm
 
 theorem and_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.and ψ)) : SharpSub E Γ φ := by
@@ -224,7 +225,8 @@ theorem imp_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.imp ψ)) : SharpSub E
     exact .inst hψ₀ (WFF.SubC.sub (.imp_r .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
   all_goals (simp only [WFF.subst] at he; cases he)
 
-theorem all_inst [Γ.NoSlots] {T : VarType} {φ : WFF σ (Γ.insert (.bnd 0) T) 1} {a : Ann T}
+theorem all_inst [ModalSys.NoOpt]
+    [Γ.NoSlots] {T : VarType} {φ : WFF σ (Γ.insert (.bnd 0) T) 1} {a : Ann T}
     (t : Term σ Γ T a) (h : SharpSub E Γ (.all T φ)) :
     SharpSub E Γ (WFF.instantiate Ctx.NoSlots.slots t φ) := by
   obtain ⟨ψ₀, hψ₀, Γ₁, d₁, χ, hχ, ι, θ, hθ, hc, hΓ₁, hΓ, he⟩ :=
@@ -238,7 +240,8 @@ theorem all_inst [Γ.NoSlots] {T : VarType} {φ : WFF σ (Γ.insert (.bnd 0) T) 
       (WFF.instantiate_subst_under θ hθ hc hΓ₁ hΓ t χ')
   all_goals (simp only [WFF.subst] at he; cases he)
 
-theorem ex_inst [Γ.NoSlots] {T : VarType} {φ : WFF σ (Γ.insert (.bnd 0) T) 1} {a : Ann T}
+theorem ex_inst [ModalSys.NoOpt]
+    [Γ.NoSlots] {T : VarType} {φ : WFF σ (Γ.insert (.bnd 0) T) 1} {a : Ann T}
     (t : Term σ Γ T a) (h : SharpSub E Γ (.ex T φ)) :
     SharpSub E Γ (WFF.instantiate Ctx.NoSlots.slots t φ) := by
   obtain ⟨ψ₀, hψ₀, Γ₁, d₁, χ, hχ, ι, θ, hθ, hc, hΓ₁, hΓ, he⟩ :=
@@ -422,7 +425,8 @@ end SharpSub
 
 /-- ⭐**Gentzen's subformulas are single instances**: every member of `GSub E` is an instance of a
     syntactic subformula of `E`, or an atom `ref` or `repl` introduces. -/
-theorem GSub.sharp {Γ₀ : Ctx} [Γ₀.NoSlots] {E : List (WFF σ Γ₀ 0)} {Γ : Ctx} {φ : WFF σ Γ 0}
+theorem GSub.sharp [ModalSys.NoOpt]
+    {Γ₀ : Ctx} [Γ₀.NoSlots] {E : List (WFF σ Γ₀ 0)} {Γ : Ctx} {φ : WFF σ Γ 0}
     (h : GSub E Γ φ) : SharpSub E Γ φ := by
   induction h with
   | mem h => exact .mem h

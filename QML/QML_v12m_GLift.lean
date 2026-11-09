@@ -460,7 +460,7 @@ theorem instantiate_liftChi (hF : ModalSys.Four = true) (k : Option VarSymb) (T 
   unfold liftAbs liftRes
   rw [WFF.subst_mono _ _ _ _ (lCtx2_slots k T ls)]
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ ψ
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T' hl hv
   obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
   have hs' : s.isProj = false := hl
@@ -501,7 +501,7 @@ theorem instantiate_rtup_liftRes (hF : ModalSys.Four = true) (k : Option VarSymb
   unfold WFF.instantiate WFF.substRoot liftRes
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS _ _ _ ?_ ψ).trans
     (WFF.subst_id _ _ _ ψ)
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T' hl hv
   obtain ⟨u, s, rfl, hup, U, hU⟩ := kView_item hv
   have hs' : s.isProj = false := hl
@@ -545,7 +545,7 @@ theorem instantiate_rtup_liftRes (hF : ModalSys.Four = true) (k : Option VarSymb
 
 /-- ⭐A slot formula `χ(e)` about the kept object, read in the target at `n`: the body of the
     edge's translation of `∃e. χ(e)`, instantiated at `n`. -/
-noncomputable def liftTgt {k : Option VarSymb} {T : VarType} {ls lt : List VarType}
+noncomputable def liftTgt [ModalSys.NoOpt] {k : Option VarSymb} {T : VarType} {ls lt : List VarType}
     {f : VarSymb → LEnt σ}
     (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) {a : Ann T}
     (t : Term σ (ctxOf lt) T a) (χ : WFF σ (((ctxOf ls).kView k).insert (.bnd 0) T) 1) :
@@ -559,7 +559,8 @@ noncomputable def liftTgt {k : Option VarSymb} {T : VarType} {ls lt : List VarTy
       ((Ctx.NoSlots.slots (Γ := ctxOf lt)).insert T) χ)
 
 /-- The target's reading of `χ(e)` at `n` gives the translation of `∃e. χ(e)`. -/
-theorem provable_ex_liftTgt {k : Option VarSymb} {T : VarType} {ls lt : List VarType}
+theorem provable_ex_liftTgt [ModalSys.NoOpt]
+    {k : Option VarSymb} {T : VarType} {ls lt : List VarType}
     {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) {a : Ann T}
     (t : Term σ (ctxOf lt) T a) (χ : WFF σ (((ctxOf ls).kView k).insert (.bnd 0) T) 1) :
     Provable [liftTgt hf t χ]
@@ -603,7 +604,8 @@ theorem itemOk_liftMid (hF : ModalSys.Four = true) {k : Option VarSymb} {T : Var
     (Ctx.ref_insert_root _ _ _)
 
 /-- ⭐**The target's reading of the seed formula**: `χ(n) = ¬∃y. ψ(n, y)`. -/
-theorem liftTgt_liftChi (hF : ModalSys.Four = true) {k : Option VarSymb} {T : VarType}
+theorem liftTgt_liftChi [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) {k : Option VarSymb} {T : VarType}
     (hT : T.keepable = true) {ls lt : List VarType} (hko : KOld k ls.length)
     {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) {a : Ann T}
     (t : Term σ (ctxOf lt) T a) (ψ : WFF σ ((ctxOf (T :: ls)).kView k) 0) :
@@ -619,7 +621,7 @@ theorem liftTgt_liftChi (hF : ModalSys.Four = true) {k : Option VarSymb} {T : Va
   rw [WFF.subst_comp _ _ (eS σ _ (gliftG f T ls.length (.inl (.root (.bnd 0))) (.bnd 1))) _ _ _ _
     (ok_eS_kView hM) (coh_eS_kView hM) _ _ hMs ?sim1 ψ]
   · refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?sim2 ψ
-    refine Subst.sim_of ?_
+    refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
     intro v T' hl hv
     obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
     have hs' : s.isProj = false := hl
@@ -652,7 +654,7 @@ theorem liftTgt_liftChi (hF : ModalSys.Four = true) {k : Option VarSymb} {T : Va
             single_raw_ne (fun h => by rw [h] at hw'; rw [hr] at hw'; cases hw')]
           rfl) (hf _ T' hl hv)
   case sim1 =>
-    refine Subst.sim_of ?_
+    refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
     intro v T' hl hv
     obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
     have hs' : s.isProj = false := hl
@@ -716,7 +718,7 @@ theorem gliftArrow_openFree (hF : ModalSys.Four = true) {k : Option VarSymb} {T 
         (liftTr hF hT hko hf t ψ) := by
   unfold WFF.openFree liftTr
   refine (WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ ψ).symm
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T' hl hv
   obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
   have hs' : s.isProj = false := hl
@@ -805,7 +807,7 @@ theorem mem_box_of_necThm {l : List VarType} {M : Set (WFF σ (ctxOf l) 0)}
     ⟨Proof.conv (congrArg WFF.box (WFF.mono_mono _ _ _)) q⟩⟩
 
 /-- ⭐**An edge hands them on**: the target holds every necessitated closed sentence. -/
-theorem FwdData.axOk {tp tk : NodeSt σ} {k : Option VarSymb} {cl : List VarType}
+theorem FwdData.axOk [ModalSys.NoOpt] {tp tk : NodeSt σ} {k : Option VarSymb} {cl : List VarType}
     {f : VarSymb → LEnt σ} (hd : FwdData tp tk k cl f) (hp : Theory.IsMCS tp.M) : AxOk tk.M := by
   obtain ⟨hsuf, hk, hf, htr⟩ := hd
   refine Or.inl fun ψ ⟨pf⟩ => ?_
@@ -820,7 +822,7 @@ theorem FwdData.axOk {tp tk : NodeSt σ} {k : Option VarSymb} {cl : List VarType
             (Proof.imp_intro (BArrow.Proof.box_boxx (hk x rfl) _))) q')⟩
   have hm := hp.closed ⟨[], (fun _ hx => by cases hx),
     Provable.monoCtx (Δs := []) (ctxOf_le_of_suffix hsuf) hb⟩
-  have ht := htr _ hm
+  have ht := htr ModalSys.NoOpt.noOpt _ hm
   rwa [WFF.subst_mono_empty _ (Ctx.empty_le (ctxOf tk.l))] at ht
 
 /-- ⭐**Weak B gives them at any world** (`Proof.closed_T`). -/
@@ -876,14 +878,15 @@ theorem not_kDia_of_box_bot {Γ : Ctx} {M : Set (WFF σ Γ 0)} (hM : Theory.IsMC
 
 /-- ⭐The closed sentence `kKeepLift`'s third way reads: `liftAx` at the body along `□`, or at
     `liftPos` along `◇_x`. -/
-noncomputable def kLiftAx (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable = true)
+noncomputable def kLiftAx [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable = true)
     {ls : List VarType} : (k : Option VarSymb) → KDecl (ctxOf ls) k →
     WFF σ (((ctxOf ls).kView k).insert (.bnd 0) T) 1 → WFF σ Ctx.empty 0
   | none, _, χ => WFF.liftAx hF (VarType.tup_of_keepable (VarType.keepable_of_liftable hl)) χ
   | some x, hk, χ => WFF.liftAx hF (VarType.tup_of_keepable (VarType.keepable_of_liftable hl))
       (WFF.liftPos hF (VarType.keepable_of_liftable hl) (hk x rfl).choose_spec χ)
 
-theorem kLiftAx_nec (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
+theorem kLiftAx_nec [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
     (hN : ModalSys.shaped = false) {T : VarType} (hl : T.liftable = true) {ls : List VarType}
     (k : Option VarSymb) (hk : KDecl (ctxOf ls) k)
     (χ : WFF σ (((ctxOf ls).kView k).insert (.bnd 0) T) 1) : NecThm (kLiftAx hF hl k hk χ) := by
@@ -893,7 +896,7 @@ theorem kLiftAx_nec (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
 
 /-- ⭐**Strong 4 along an edge's kind**: `Proof.keep_lift` at the leg `□` or `◇_x`, or where the
     flags may be off, its derivation, by T and 5, or by 5 from the closed sentence `kLiftAx`. -/
-noncomputable def Proof.kKeepLift (hF : ModalSys.Four = true) {T : VarType}
+noncomputable def Proof.kKeepLift [ModalSys.NoOpt] (hF : ModalSys.Four = true) {T : VarType}
     (hl : T.liftable = true) {ls : List VarType} {Δ : List (WFF σ (ctxOf ls) 0)} :
     (k : Option VarSymb) → (hk : KDecl (ctxOf ls) k) →
     (χ : WFF σ (((ctxOf ls).kView k).insert (.bnd 0) T) 1) →
@@ -1028,7 +1031,8 @@ theorem list_reduce_d {α : Type} {Δ : Ctx} (P : α → Prop) (top : α) (cj : 
 
 /-- ⭐The lifted root's **seed**: `◇_k χ(m.keep)` for every `χ(e)` whose reading at `n` the
     target holds. -/
-noncomputable def liftSeed (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable = true)
+noncomputable def liftSeed [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable = true)
     {ls lt : List VarType} {k : Option VarSymb} (hk : KDecl (ctxOf ls) k)
     {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) {a : Ann T}
     (t : Term σ (ctxOf lt) T a) (N : Set (WFF σ (ctxOf lt) 0)) :
@@ -1052,7 +1056,8 @@ theorem kLiftRead_and (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable
 
 /-- ⭐**The lift's seed is consistent with the source** (`Proof.keep_lift`): given the edge's
     transfer, every `χ(e)` true of `n` in the target is `◇_k`-true of a fresh `m.keep`. -/
-theorem glift_consistent (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable = true)
+theorem glift_consistent [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) {T : VarType} (hl : T.liftable = true)
     {ls lt : List VarType} {M : Set (WFF σ (ctxOf ls) 0)} (hM : Theory.IsMCS M)
     {N : Set (WFF σ (ctxOf lt) 0)} (hN : Theory.IsMCS N) {k : Option VarSymb}
     (hk : KDecl (ctxOf ls) k) {f : VarSymb → LEnt σ}
@@ -1078,7 +1083,7 @@ theorem glift_consistent (hF : ModalSys.Four = true) {T : VarType} (hl : T.lifta
   have hdia : kDia k hk (WFF.ex T χ) ∈ M := by
     by_contra hnd
     have hb := not_kDia_mem hM k hk hnd
-    have ht := htr _ (by rw [WFF.mono_refl]; exact hb)
+    have ht := htr (ModalSys.noOpt_of_Four hF) _ (by rw [WFF.mono_refl]; exact hb)
     have hex := hN.closed ⟨[liftTgt hf t χ], fun x hx => by
       rw [List.mem_singleton.mp hx]; exact hχ, provable_ex_liftTgt hf t χ⟩
     exact hN.neg_mem_iff.mp ht hex
@@ -1136,7 +1141,7 @@ theorem kLiftRead_liftChi (hF : ModalSys.Four = true) {T : VarType} (hl : T.lift
 /-- ⭐**The lifted root's residual is realised** along the edge: in a source theory holding the
     seed, whatever is `□_k`-necessary of the lifted root is consistent with the target, `m.keep`
     read as `n` and the residual as a fresh variable. -/
-theorem gliftRealise_consistent (hF : ModalSys.Four = true) {T : VarType}
+theorem gliftRealise_consistent [ModalSys.NoOpt] (hF : ModalSys.Four = true) {T : VarType}
     (hl : T.liftable = true) {ls lt : List VarType} {N : Set (WFF σ (ctxOf lt) 0)}
     (hN : Theory.IsMCS N) {k : Option VarSymb} (hk : KDecl (ctxOf ls) k)
     {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f) {a : Ann T}

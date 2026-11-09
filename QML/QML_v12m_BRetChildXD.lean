@@ -74,8 +74,8 @@ variable [ModalSys.NoFour]
     `r + 2` to the tuple of root `r`'s items, and the root after those (`x`'s content) to `ex`. -/
 def retPullXD (hT : ModalSys.T = false) (σ : Signature) (l : List VarType) (A Xe : VarType)
     {V : Ctx} (hV : (ctxOf l).boxIn.Le V) (hu : V.RootFresh (.free l.length))
-    (ex : SubE σ (pullCtxXD V l A Xe)) : Subst σ (pullCtxXD V l A Xe) := fun v =>
-  match v with
+    (ex : SubE σ (pullCtxXD V l A Xe)) : Subst σ (pullCtxXD V l A Xe) where
+  ty v := match v with
   | .root (.free 0) => .tm (Term.boxtm
       (Term.eta (.step (.step (VarSymb.step (.root (.free l.length)) .fst).inner .fst) .snd) A
         ((pullCtxXD_ref_c V l A Xe).trans (congrArg some (bc_box_noT hT A)))))
@@ -113,7 +113,7 @@ theorem retPullXD_last : retPullXD hT σ l A Xe hV hu ex (.root (.free (l.length
 
 theorem ok_retPullXD {X : VarType} (hex : ex.OkRef X) :
     Subst.Ok (ctxOf (X :: rclD l A Xe)) (retPullXD hT σ l A Xe hV hu ex) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   obtain ⟨r, rfl⟩ := ctxOf_decl hv
   have hr : r < (rclD l A Xe).length + 1 := by
     by_contra hge
@@ -255,12 +255,11 @@ theorem subst_retPullXD_liftBodyWD (Ξ : WFF σ (bodyCtxWD (bclD A Xe) l x Xe) 1
       WFF.openFree l.length (pullCtxX_fresh l x) Ctx.NoSlots.slots Ξ := by
   unfold liftBodyWD WFF.openFree
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Ξ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = (RShape.wit (.box (bcT (bclD A Xe))) Xe).ty := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     rw [Subst.toFree_root]
     dsimp only [Subst.comp]

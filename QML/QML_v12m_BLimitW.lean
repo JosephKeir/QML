@@ -30,8 +30,8 @@ theorem WFF.instantiate_slotUp {Γ : Ctx} [Γ.NoSlots] {T : VarType} {a : Ann T}
     WFF.instantiate Ctx.NoSlots.slots t (WFF.slotUp Ctx.NoSlots.slots T ψ) = ψ := by
   unfold WFF.instantiate WFF.substRoot
   rw [WFF.subst_slotUp, WFF.subst_ren (Ctx.Le.refl _) _ _ _ _ _ (fun v U hv =>
-    Subst.single_at_ne (Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) hv)),
-    WFF.mono_refl]
+    Subst.single_at_ne (Ctx.ref_rt_ne ((Ctx.NoSlots.slots (Γ := Γ)).rootFresh (le_refl 0)) hv))
+    _ (fun _ _ _ _ => rfl), WFF.mono_refl]
 
 omit [ModalSys.NoFour] in
 /-- Replacing the bound item of a body that does not use it changes nothing but its type. -/
@@ -41,7 +41,8 @@ theorem WFF.bodyRepl_slotUp {V : Ctx} [V.NoSlots] {A B : VarType} {b : Ann B}
   unfold WFF.bodyRepl
   rw [WFF.subst_slotUp]
   unfold WFF.slotUp
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) ψ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
+    fun v T _ hv => ?_) ψ
   have hvr : v ≠ .root (.bnd 0) := fun h => by
     subst h
     rw [(Ctx.NoSlots.slots (Γ := V)).root] at hv
@@ -59,7 +60,8 @@ theorem readArrowX_slotUp {l : List VarType} {Δ : Ctx} [Δ.NoSlots] {img : ℕ 
         (coh_arrowXS himg hx hcx) Ctx.NoSlots.slots Ctx.NoSlots.slots ψ := by
   unfold readArrowX
   rw [WFF.subst_slotUp]
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) ψ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
+    fun v T _ hv => ?_) ψ
   have hvr : v ≠ .root (.bnd 0) := fun h => by
     subst h
     rw [(Ctx.NoSlots.slots (Γ := (ctxOf l).diaIn x)).root] at hv

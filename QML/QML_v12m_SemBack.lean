@@ -88,7 +88,7 @@ def holeSat {A : VarType} (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) {v : M.f
 /-- A hole formula read in a context says the same of the value in its hole. -/
 theorem sat_holeRead {Γ : Ctx} [Γ.NoSlots] (hnp : Γ.NoProjLast) {w : M.frame.W}
     (env : M.Env Γ w) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
-    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
+    (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) (_hO : ModalSys.Opt = false := by opt_off) :
     M.sat env (WFF.holeRead t ψ) ↔ M.holeSat ψ (interp env t) :=
   (sat_instantiate env hnp Ctx.NoSlots.slots t _).trans
     (sat_mono (Env.extend_agree (h := Ctx.empty_le Γ) (env := Env.empty w) (env' := env)
@@ -687,13 +687,16 @@ theorem substEnv_hole {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {A : VarType
     (t : Term σ Γ A a) :
     substEnv (Subst.single (.bnd 0) (.tm t)) (Subst.ok_single (Ctx.empty_le Γ) rfl)
       (noProjLast_hole A) env = (Env.empty w).extend (.bnd 0) (interp env t) := by
-  funext v U hv
+  refine Env.ext' (fun v U hv => ?_) (fun _ _ hy => ?_)
+  swap
+  · cases hy
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     have hTU : A = U := by simpa [Ctx.insert] using hv
     subst hTU
+    rw [substEnv_val]
     exact (entryVal_congr env
-      (show Subst.single (.bnd 0) (.tm t) (.root (.bnd 0)) = .tm t from if_pos rfl) _ rfl).trans
+      (show Subst.single (.bnd 0) (.tm t) (.root (.bnd 0)) = .tm t from by slot_rfl) _ rfl).trans
       (Env.extend_root (Env.empty w) (.bnd 0) _ hv).symm
   · simp [Ctx.insert, hvr, Ctx.empty] at hv
 
@@ -752,7 +755,7 @@ theorem boxFst_necPair {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {A B : VarT
 
 section Body
 
-variable {V : Ctx} [V.NoSlots]
+variable {V : Ctx} [V.NoSlots] [ModalSys.NoOpt]
 
 /-- ⭐Replacing the bound item: the body holds of `d` exactly when the old body holds of `X(d)`. -/
 theorem sat_bodyRepl (hnp : V.NoProjLast) {w : M.frame.W} (env : M.Env V w)
@@ -763,18 +766,19 @@ theorem sat_bodyRepl (hnp : V.NoProjLast) {w : M.frame.W} (env : M.Env V w)
       M.sat (env.extend (.bnd 0) (interp (env.extend (.bnd 0) d) X)) Φ := by
   unfold WFF.bodyRepl
   rw [sat_subst _ _ _ _ _ (hnp.insert _ _)]
-  refine iff_of_eq (congrArg (fun E => M.sat E Φ) ?_)
-  funext v U hv
+  refine sat_congr_val (fun v U hv => ?_) Φ
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     have hTU : B = U := by simpa [Ctx.insert] using hv
     subst hTU
+    rw [substEnv_val]
     exact (entryVal_congr _
-      (show ((Subst.idS σ _).set (.bnd 0) (.tm X)) (.root (.bnd 0)) = .tm X from if_pos rfl)
+      (show ((Subst.idS σ _).set (.bnd 0) (.tm X)) (.root (.bnd 0)) = .tm X from by slot_rfl)
       _ rfl).trans (Env.extend_root _ (.bnd 0) _ hv).symm
   · have hv' : V v = some U := by simpa [Ctx.insert, hvr] using hv
     have hlp := hnp v U hv'
     have hE : (V.insert (.bnd 0) A) v = some U := body_le _ v U hv'
+    rw [substEnv_val]
     refine (entryVal_congr _
       (show ((Subst.idS σ _).set (.bnd 0) (.tm X)) v = .ren v from if_neg hvr) _
       ((Ctx.ref_nonproj _ hlp).trans hE)).trans ?_
@@ -794,12 +798,12 @@ theorem sat_bodySplit (hnp : V.NoProjLast) {w : M.frame.W} (env : M.Env V w)
         (.bnd 1) (interp (env.extend (.bnd 0) e) X₁)) Φ := by
   unfold WFF.bodySplit
   rw [sat_subst _ _ _ _ _ ((hnp.insert _ _).insert _ _)]
-  refine iff_of_eq (congrArg (fun E => M.sat E Φ) ?_)
-  funext v U hv
+  refine sat_congr_val (fun v U hv => ?_) Φ
   by_cases hv1 : v = .root (.bnd 1)
   · subst hv1
     have hTU : B = U := by simpa [Ctx.insert] using hv
     subst hTU
+    rw [substEnv_val]
     exact (entryVal_congr _
       (show (((Subst.idS σ _).set (.bnd 0) (.tm X₀)).set (.bnd 1) (.tm X₁)) (.root (.bnd 1)) =
         .tm X₁ from Subst.set_root _ _ _) _ rfl).trans
@@ -810,6 +814,7 @@ theorem sat_bodySplit (hnp : V.NoProjLast) {w : M.frame.W} (env : M.Env V w)
         simpa [Ctx.insert, hv1] using hv
       have hTU : A = U := by simpa [Ctx.insert] using hv0'
       subst hTU
+      rw [substEnv_val]
       refine (entryVal_congr _
         (show (((Subst.idS σ _).set (.bnd 0) (.tm X₀)).set (.bnd 1) (.tm X₁)) (.root (.bnd 0)) =
           .tm X₀ from (Subst.set_ne _ _ hv1).trans (Subst.set_root _ _ _)) _ rfl).trans ?_
@@ -820,6 +825,7 @@ theorem sat_bodySplit (hnp : V.NoProjLast) {w : M.frame.W} (env : M.Env V w)
         simpa [Ctx.insert, hv1] using hv
       have hlp := hnp v U hv'
       have hE : (V.insert (.bnd 0) C) v = some U := body_le _ v U hv'
+      rw [substEnv_val]
       refine (entryVal_congr _
         (show (((Subst.idS σ _).set (.bnd 0) (.tm X₀)).set (.bnd 1) (.tm X₁)) v = .ren v from
           (Subst.set_ne _ _ hv1).trans (Subst.set_ne _ _ hv0)) _
@@ -862,7 +868,8 @@ theorem agree_push {w : M.frame.W} (env : M.Env Γ w) :
     there. -/
 theorem sat_bodyRead [Γ.NoSlots] {w : M.frame.W} (env : M.Env Γ w) (O : OutLeg Γ)
     (i : O.Arr env) {A : VarType} {b : Ann (.VTypeBox A)} (c : Term σ O.view (.VTypeBox A) b)
-    (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1) :
+    (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     M.sat (O.push env i) (O.bodyRead c Φ) ↔
       M.sat ((O.push env i).extend (.bnd 0) (Model.interp (O.push env i) c)) Φ :=
   Model.sat_instantiate _ O.noProjLast Ctx.NoSlots.slots c _
@@ -957,6 +964,7 @@ theorem sat_lift {d : ℕ} {w : M.frame.W} (env : M.Env Γ w) :
   | .nec, _, _, _, _ => Iff.rfl
   | .pos y hy, i, _, o, φ =>
       Model.sat_mono (Model.Env.extend_agree (agree_push env (.pos y hy) i) (.bnd d) o) φ
+        fun _ _ _ _ => rfl
 
 end OutLeg
 
@@ -1436,6 +1444,7 @@ theorem sat_viewBody_here (hT : ModalSys.T = true) {x : VarSymb}
         (WFF.viewBody hx bd χ) ↔
       M.sat ((env.boxPush (M.frame.reflAcc hT w)).extend (T := .VTypeProd X T) (.bnd 0)
         (interp (env.diaPush x hx.choose_spec ⟨M.frame.reflAcc hT w, hm⟩) bd, e)) χ := by
+  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   set en := env.diaPush x hx.choose_spec ⟨M.frame.reflAcc hT w, hm⟩
   unfold WFF.viewBody
   rw [sat_bodyRepl (Ctx.noProjLast_diaIn Γ x)]
@@ -1886,7 +1895,8 @@ omit [Γ.NoSlots] in
     read at `d`'s value with companions there. -/
 theorem agree_compsRen (hF : ModalSys.Four = false) (A : VarType) (b : Bool)
     (hb : ModalSys.T = b) {w : M.frame.W}
-    (E : M.Env (Ctx.empty.insert (.bnd 0) (.VTypeBox A)).boxIn w) :
+    (E : M.Env (Ctx.empty.insert (.bnd 0) (.VTypeBox A)).boxIn w)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Env.Agree (Ctx.Le.refl _)
       (substEnv (compsRen σ _ (A.compsAllB b)) (ok_compsRen hF A b hb) (Ctx.noProjLast_boxIn _)
         ((Env.empty w).extend (.bnd 0) (interp E (compsSlot (Ctx.ref_insert_root Ctx.empty (.bnd 0)
@@ -1913,7 +1923,7 @@ theorem agree_compsRen (hF : ModalSys.Four = false) (A : VarType) (b : Bool)
         dsimp only [compsRen]
         rw [if_pos hrt]
       change entryVal _ _ _ = E.ref (.step u .box) hv
-      rw [entryVal_congr _ hθ _ (by rw [← hθ]; exact ok_compsRen hF A b hb _ _ rfl hv)]
+      rw [entryVal_congr _ hθ _ (by rw [← hθ]; exact (ok_compsRen hF A b hb) _ _ rfl hv)]
       change Env.ref _ (compsItemAddr _ u.path) _ = _
       have hu₀ := VarSymb.root_ext_path u
       rcases hc with ⟨hpath, rfl⟩ | ⟨hT, p, hpath, hp⟩
@@ -2556,6 +2566,7 @@ theorem sat_ret_extS (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape}
           (Term.eta (.root (.free c)) B (Ctx.ref_insert_root Γ (.free c) B))).2
         (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root B)).insert (.bnd 0) _)
           (WFF.bodySplit (S.extL O.view B).2 (S.extR O.view B).2 Φ))) := by
+  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   set o := M.necEval (b : M.frame.Nec B (O.acc env i).1) ⟨w, ⟨r⟩⟩
   have hag := Env.agree_extend env hc.root o
   have hslot : (env.extend (.free c) o).ref (.root (.free c)) (Ctx.ref_insert_root Γ (.free c) B) =
@@ -2623,6 +2634,7 @@ theorem sat_ret_compS (hS : ModalSys.BStrong = true) (O : OutLeg Γ) (S : RShape
             (Term.eta (.root (.free c)) _ (Ctx.ref_insert_root Γ (.free c) _))).2
           (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root _)).insert (.bnd 0) _)
             (WFF.bodyRepl (RShape.compL O.view A cs h p h' S).2 Φ))) := by
+  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   have hT := (h'.resolve_left (List.cons_ne_nil _ _)).1
   have ip : ∀ {Δ : Ctx} {v : M.frame.W} (en : M.Env Δ v) {A C : VarType} {a : Ann A}
       {c : Ann C} (s : Term σ Δ A a) (u : Term σ Δ C c),
@@ -2826,6 +2838,7 @@ theorem sat_ret_mapD (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {C X Z : Var
         WFF σ Γ 0)) :
     M.sat env (O.retS hS (.wit (.boxC C cs hcs) Z)
       (Term.holeRead y (ShapeMap.possValC h cs hcs).2) Φ : WFF σ Γ 0) := by
+  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   obtain ⟨i, e, hΦ, r, hr⟩ := (OutLeg.sat_retS hS env O _ y _).mp hs
   rw [sat_bodyRepl O.noProjLast] at hΦ
   refine (OutLeg.sat_retS hS env O (.wit (.boxC C cs hcs) Z) _ Φ).mpr ⟨i, _, hΦ, r, ?_⟩
@@ -2844,6 +2857,7 @@ theorem sat_ret_map (hS : ModalSys.BStrong = true) (O : OutLeg Γ) {S : RShape} 
         WFF σ Γ 0)) :
     M.sat env (O.retS hS (S.withNec T) (Term.holeRead y (ShapeMap.liftVal S F).2) Φ :
       WFF σ Γ 0) := by
+  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   obtain ⟨i, e, hΦ, r, hr⟩ := (OutLeg.sat_retS hS env O S y _).mp h
   rw [sat_bodyRepl O.noProjLast] at hΦ
   refine (OutLeg.sat_retS hS env O (S.withNec T) _ Φ).mpr ⟨i, _, hΦ, r, ?_⟩

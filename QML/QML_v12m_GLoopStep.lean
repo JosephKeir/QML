@@ -332,7 +332,7 @@ theorem entOk_gloopF (hT : ModalSys.T = false) {A : VarType} {cl l : List VarTyp
     exact okRef_entOf_mono (ctxOf_le_append [VarType.lc A] l) (hf _ T hl hv)
 
 /-- ⭐The abstraction of a formula of the new variable's `□` view: `c`'s items in one slot. -/
-def gpairAbs (hT : ModalSys.T = false) (A : VarType) (l : List VarType)
+def gpairAbs [ModalSys.NoOpt] (hT : ModalSys.T = false) (A : VarType) (l : List VarType)
     (ψ : WFF σ ((ctxOf (A :: l)).kView none) 0) : WFF σ (gpairCtx A l) 1 :=
   WFF.subst (itemIdx (gpairF l.length)) (itemS σ (gpairCtx A l) (gpairF l.length))
     (ok_itemS_kView (itemOk_gpairF hT A l)) (coh_itemS_kView (itemOk_gpairF hT A l))
@@ -356,7 +356,7 @@ abbrev keptTup (hF : ModalSys.Four = true) (A : VarType) (l : List VarType) :
     (.root (.free l.length)) (ctxOf_ref_new A l)
 
 /-- ⭐A formula of the new variable's view is its abstraction read at the variable's own items. -/
-theorem instantiate_gpairAbs (hF : ModalSys.Four = true) (hT : ModalSys.T = false)
+theorem instantiate_gpairAbs [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hT : ModalSys.T = false)
     (hb : ModalSys.keepOnly = false) (A : VarType) (l : List VarType)
     (ψ : WFF σ ((ctxOf (A :: l)).kView none) 0) :
     WFF.instantiate Ctx.NoSlots.slots
@@ -369,7 +369,7 @@ theorem instantiate_gpairAbs (hF : ModalSys.Four = true) (hT : ModalSys.T = fals
     ((Ctx.NoSlots.slots (Γ := (ctxOf l).kView none)).insert _) hs]
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS _ _ _ ?_ ψ).trans
     (WFF.subst_id _ _ _ ψ)
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T hl hv
   obtain ⟨u, s, rfl, hup, U, hU⟩ := kView_item hv
   have hs' : s.isProj = false := hl
@@ -503,8 +503,15 @@ theorem comp_single_mono {Δ' : Ctx} [Δ'.NoSlots] (h : Δ.Le Δ') {b₀ : Ann Y
       rw [Term.subst_mono]
       exact Term.subst_ren h _ _ _ (fun v _ hv => Subst.single_at_ne (Ctx.ref_rt_ne hfr hv)) s
 
+omit [Δ.NoSlots] in
+/-- Away from the slot, the substitution under a binder is the substitution, weakened. -/
+theorem Subst.under_ne (θ : Subst σ Δ) (d d' : ℕ) (T : VarType) (h : Δ (.root (.bnd d')) = none)
+    {v : VarSymb} (hv : v ≠ .root (.bnd d)) :
+    θ.under d d' T h v = (θ v).mono (Ctx.le_insert h T) :=
+  if_neg hv
+
 /-- ⭐Filling a slot under a substitution sets the slot in it. -/
-theorem WFF.instantiate_subst_under {ι : VarSymb → VarSymb} (θ : Subst σ Δ)
+theorem WFF.instantiate_subst_under [ModalSys.NoOpt] {ι : VarSymb → VarSymb} (θ : Subst σ Δ)
     (hθ : Subst.Ok V θ) (hc : Subst.Coh ι V θ) {t₀ : Ann T} (t : Term σ Δ T t₀)
     (B : WFF σ (V.insert (.bnd 0) T) 1) :
     WFF.instantiate Ctx.NoSlots.slots t
@@ -516,31 +523,26 @@ theorem WFF.instantiate_subst_under {ι : VarSymb → VarSymb} (θ : Subst σ Δ
           ((Ctx.NoSlots.slots (Γ := V)).rootFresh (le_refl 0)) rfl)
         ((Ctx.NoSlots.slots (Γ := V)).insert T) Ctx.NoSlots.slots B := by
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ B
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v U hl hv
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
-    rw [Subst.set_root]
-    change SubE.Sim U _ (SubE.comp _ _ _ (Subst.under _ _ _ _ _ (.root (.bnd 0))))
-    unfold Subst.under
-    rw [if_pos rfl]
+    rw [Subst.set_root, Subst.comp_apply, Subst.under_slot]
     change SubE.Sim U _ (Subst.at _ _)
     rw [Subst.at_single_root]
     exact .refl _
   · have hv' : V v = some U := by
       have := hv
       simpa [Ctx.insert, hvr] using this
-    rw [Subst.set_ne _ _ hvr]
-    change SubE.Sim U _ (SubE.comp _ _ _ (Subst.under _ _ _ _ _ v))
-    unfold Subst.under
-    rw [if_neg hvr]
+    rw [Subst.set_ne _ _ hvr, Subst.comp_apply, Subst.under_ne _ _ _ _ _ hvr]
     have e := comp_single_mono (Ctx.Le.refl Δ) t (Subst.ok_single (Ctx.Le.refl Δ) rfl)
       (Subst.coh_single ((Ctx.NoSlots.slots (Γ := Δ)).rootFresh (le_refl 0)) (Ctx.Le.refl Δ) rfl)
       (θ v) (hθ v U hl hv')
     rwa [SubE.mono_refl'] at e
 
 /-- ⭐A substitution through a split slot's first component. -/
-theorem WFF.subst_ex_slotPair {ι : VarSymb → VarSymb} (θ : Subst σ Δ) (hθ : Subst.Ok V θ)
+theorem WFF.subst_ex_slotPair [ModalSys.NoOpt]
+    {ι : VarSymb → VarSymb} (θ : Subst σ Δ) (hθ : Subst.Ok V θ)
     (hc : Subst.Coh ι V θ) (ρ : WFF σ (V.insert (.bnd 0) (.VTypeProd X Y)) 1) {a₀ : Ann X}
     (t : Term σ Δ X a₀) :
     WFF.subst (Subst.setIdx ι (.bnd 0) (.tm t)) (θ.set (.bnd 0) (.tm t))
@@ -553,7 +555,7 @@ theorem WFF.subst_ex_slotPair {ι : VarSymb → VarSymb} (θ : Subst σ Δ) (hθ
           (Subst.coh_mono hc _) ((Ctx.NoSlots.slots (Γ := V)).rootFresh (le_refl 0)) rfl)
         ((Ctx.NoSlots.slots (Γ := V)).insert _) ((Ctx.NoSlots.slots (Γ := Δ)).insert Y) ρ) := by
   refine congrArg (WFF.ex Y) (WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ ρ)
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v U hl hv
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
@@ -565,12 +567,11 @@ theorem WFF.subst_ex_slotPair {ι : VarSymb → VarSymb} (θ : Subst σ Δ) (hθ
     refine SubE.Sim.of_sig (sig_pair (Term.subst_eta_tm _ _ _ _ _ _ (Term.mono (body_le Y) t) ?_)
       (Term.subst_eta_renAt _ _ _ _ _ _ _ (Ctx.ref_insert_root Δ (.bnd 0) Y) ?_)).symm _
     · change Subst.under _ _ _ _ _ (VarSymb.root (.bnd 0)) = _
-      unfold Subst.under
-      rw [if_neg (by simp), Subst.set_root]
+      simp only [Subst.under, Subst.set_root, VarSymb.root.injEq, Root.bnd.injEq]
+      rw [if_neg (by omega)]
       rfl
     · change Subst.under _ _ _ _ _ (VarSymb.root (.bnd 1)) = _
-      unfold Subst.under
-      exact if_pos rfl
+      slot_rfl
   · have hv' : V.ref v = some U := by
       have := hv
       rw [Ctx.ref_nonproj _ hl]
@@ -587,7 +588,7 @@ theorem WFF.subst_ex_slotPair {ι : VarSymb → VarSymb} (θ : Subst σ Δ) (hθ
     exact .refl _
 
 /-- ⭐Filling the second component, under a substitution. -/
-theorem WFF.instantiate_mono_pairSet {Δ' : Ctx} [Δ'.NoSlots] (h : Δ.Le Δ')
+theorem WFF.instantiate_mono_pairSet [ModalSys.NoOpt] {Δ' : Ctx} [Δ'.NoSlots] (h : Δ.Le Δ')
     {ι : VarSymb → VarSymb} (θ : Subst σ Δ) (hθ : Subst.Ok V θ) (hc : Subst.Coh ι V θ)
     {a₀ : Ann X} (a : Term σ Δ X a₀) (ρ : WFF σ (V.insert (.bnd 0) (.VTypeProd X Y)) 1)
     {b₀ : Ann Y} (b : Term σ Δ' Y b₀) :
@@ -604,7 +605,7 @@ theorem WFF.instantiate_mono_pairSet {Δ' : Ctx} [Δ'.NoSlots] (h : Δ.Le Δ')
         ((Ctx.NoSlots.slots (Γ := V)).insert _) Ctx.NoSlots.slots ρ := by
   have hfr := (Ctx.NoSlots.slots (Γ := Δ)).rootFresh (le_refl 0)
   refine (WFF.subst_mono _ _ _ _ _ _ _ _).trans (WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ ρ)
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v U hl hv
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
@@ -658,7 +659,7 @@ theorem WFF.subst_loopHat {Γ Γ₁ : Ctx} [Γ.NoSlots] [Γ₁.NoSlots] (hF : Mo
   refine (WFF.subst_comp _ _ _ _ _ _ _ hΨ hcΨ _ _ _ ?_ _).trans
     ((WFF.subst_shift (Ctx.shifts_loop hF Γ T) _ _ _ hΨ hcΨ _ hΨ' hcΨ' _ ?_ φ).trans
       (WFF.subst_mono _ _ _ _ _ _ _ _).symm)
-  · refine Subst.sim_of ?_
+  · refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
     intro v U hl hv
     by_cases hvr : v = .root (.bnd 0)
     · subst hvr
@@ -666,7 +667,7 @@ theorem WFF.subst_loopHat {Γ Γ₁ : Ctx} [Γ.NoSlots] [Γ₁.NoSlots] (hF : Mo
         (SubE.comp _ _ _ (Subst.single (.bnd 0) (.tm _) (.root (.bnd 0))))
       rw [Subst.set_root, show Subst.single (σ := σ) (Δ := (Γ.boxIn.insert (.bnd 0) T).boxIn)
         (.bnd 0) (.tm (Term.keepOf hF T hT (.root (.bnd 0))
-          (Ctx.ref_insert_root Γ.boxIn (.bnd 0) T))) (.root (.bnd 0)) = _ from if_pos rfl]
+          (Ctx.ref_insert_root Γ.boxIn (.bnd 0) T))) (.root (.bnd 0)) = _ from by slot_rfl]
       exact SubE.Sim.of_sig hk.symm _
     · change SubE.Sim U (θ.box.set (.bnd 0) (.tm k) v)
         (SubE.comp _ _ _ (Subst.single (.bnd 0) (.tm _) v))
@@ -681,7 +682,7 @@ theorem WFF.subst_loopHat {Γ Γ₁ : Ctx} [Γ.NoSlots] [Γ₁.NoSlots] (hF : Mo
     · subst hvr
       change SubE.Sim U (Subst.at _ (.root (.bnd 0)))
         (Subst.single (.bnd 0) (.tm k) (.root (.bnd 0)))
-      rw [show Subst.single (σ := σ) (.bnd 0) (.tm k) (.root (.bnd 0)) = .tm k from if_pos rfl]
+      rw [show Subst.single (σ := σ) (.bnd 0) (.tm k) (.root (.bnd 0)) = .tm k from by slot_rfl]
       change SubE.Sim U (θ.box.set (.bnd 0) (.tm k) (.root (.bnd 0))) _
       rw [Subst.set_root]
       exact .refl _
@@ -716,7 +717,8 @@ abbrev gloopTm {A : VarType} {cl l : List VarType} (hle : (ctxOf (A :: cl)).Le (
     (Term.eta (.root (.free l.length)) (VarType.lc A) (ctxOf_ref_new _ l))
 
 /-- The extended entries applied to a formula. -/
-noncomputable abbrev gloopArrow (hT : ModalSys.T = false) {A : VarType} {cl l : List VarType}
+noncomputable abbrev gloopArrow [ModalSys.NoOpt]
+    (hT : ModalSys.T = false) {A : VarType} {cl l : List VarType}
     (hle : (ctxOf (A :: cl)).Le (ctxOf l)) {f : VarSymb → LEnt σ}
     (hf : EntOk ((ctxOf cl).kView none) (ctxOf l) f)
     (ψ : WFF σ ((ctxOf (A :: cl)).kView none) 0) : WFF σ (ctxOf (VarType.lc A :: l)) 0 :=
@@ -727,7 +729,7 @@ noncomputable abbrev gloopArrow (hT : ModalSys.T = false) {A : VarType} {cl l : 
 
 /-- ⭐The extended entries are the old ones on the abstraction, with the slot read at the
     variable's kept part and the fresh root. -/
-theorem gloopArrow_eq (hT : ModalSys.T = false) {A : VarType} {cl l : List VarType}
+theorem gloopArrow_eq [ModalSys.NoOpt] (hT : ModalSys.T = false) {A : VarType} {cl l : List VarType}
     (hle : (ctxOf (A :: cl)).Le (ctxOf l)) {f : VarSymb → LEnt σ}
     (hf : EntOk ((ctxOf cl).kView none) (ctxOf l) f)
     (ψ : WFF σ ((ctxOf (A :: cl)).kView none) 0) :
@@ -741,7 +743,7 @@ theorem gloopArrow_eq (hT : ModalSys.T = false) {A : VarType} {cl l : List VarTy
         ((Ctx.NoSlots.slots (Γ := (ctxOf cl).kView none)).insert _) Ctx.NoSlots.slots
         (gpairAbs hT A cl ψ) := by
   refine (WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ ψ).symm
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T hl hv
   obtain ⟨u, s, rfl, hup, U, hU⟩ := kView_item hv
   have hs' : s.isProj = false := hl
@@ -800,13 +802,13 @@ theorem gloopArrow_eq (hT : ModalSys.T = false) {A : VarType} {cl l : List VarTy
     exact .refl _
 
 /-- What `Proof.five_refl` reflects for `ψ`: its `□` contents existentially closed. -/
-def gloopBody (hT : ModalSys.T = false) (A : VarType) (cl : List VarType)
+def gloopBody [ModalSys.NoOpt] (hT : ModalSys.T = false) (A : VarType) (cl : List VarType)
     (ψ : WFF σ ((ctxOf (A :: cl)).kView none) 0) :
     WFF σ ((ctxOf cl).boxIn.insert (.bnd 0) (VarType.kc A)) 1 :=
   .ex (VarType.lc A) (WFF.slotPair (gpairAbs hT A cl ψ))
 
 /-- `ψ` gives the body at the variable's kept part. -/
-def gloop_kept (hF : ModalSys.Four = true) (hT : ModalSys.T = false)
+def gloop_kept [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hT : ModalSys.T = false)
     (hb : ModalSys.keepOnly = false) (A : VarType) (cl : List VarType)
     (ψ : WFF σ ((ctxOf (A :: cl)).kView none) 0) :
     Proof σ (ctxOf (A :: cl)).boxIn [ψ] (WFF.instantiate Ctx.NoSlots.slots (keptTup hF A cl)
@@ -859,7 +861,7 @@ theorem keepFix_shift (hF : ModalSys.Four = true) (hb : ModalSys.keepOnly = fals
 /-- ⭐**One necessity about the root's next variable is consistent with the root**: `◇¬` of the
     hat is refuted (`Proof.five_refl`), so the transfer reflects `□ψ` at the variable's kept part,
     and the Henkin witness of its contents is the fresh root. -/
-theorem gloop_one (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
+theorem gloop_one [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
     (hS : ModalSys.BStrong = false) (hT : ModalSys.T = false) {A : VarType} {cl l : List VarType}
     {M : Set (WFF σ (ctxOf l) 0)} (hM : Theory.IsMCS M) (hle : (ctxOf (A :: cl)).Le (ctxOf l))
     {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf cl).kView none) (ctxOf l) f)
@@ -882,7 +884,7 @@ theorem gloop_one (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
   have hE : WFF.mono hle₀ (.box (.all _ (.imp (.box (WFF.loopHat hF hTt (gloopBody hT A cl ψ)))
       (gloopBody hT A cl ψ)))) ∈ M := hM.closed ⟨[], (fun _ hx => by cases hx),
     Provable.monoCtx (Δs := []) hle₀ ⟨Proof.five_refl hF hV hN .nec hTt _⟩⟩
-  have him := htr _ hE
+  have him := htr (ModalSys.noOpt_of_Four hF) _ hE
   have eI := WFF.instantiate_subst_under (V := (ctxOf cl).boxIn) _ hO hC (objTup (σ := σ) hle)
     (.imp (.box (WFF.loopHat hF hTt (gloopBody hT A cl ψ))) (gloopBody hT A cl ψ))
   have h₂ := hM.closed ⟨[_], fun x hx => by rw [List.mem_singleton.mp hx]; exact him,
@@ -931,7 +933,7 @@ theorem gloop_one (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
 /-- ⭐**Committing the root's next variable.**  Everything the root necessitates about its
     variables up to the next one is consistent with the root, the next one's `□` contents going to
     a fresh variable. -/
-theorem gloop_consistent (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
+theorem gloop_consistent [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
     (hS : ModalSys.BStrong = false) (hT : ModalSys.T = false) {A : VarType} {cl l : List VarType}
     {M : Set (WFF σ (ctxOf l) 0)} (hM : Theory.IsMCS M) (hle : (ctxOf (A :: cl)).Le (ctxOf l))
     {f : VarSymb → LEnt σ} (hf : EntOk ((ctxOf cl).kView none) (ctxOf l) f)
@@ -953,7 +955,8 @@ def LoopData (t : NodeSt σ) (cl : List VarType) (f : VarSymb → LEnt σ) : Pro
   FwdData t t none cl f ∧ KeepFix cl f
 
 /-- What committing the next variable `A` puts into the root. -/
-noncomputable def gloopSet (t : NodeSt σ) (cl : List VarType) (f : VarSymb → LEnt σ)
+noncomputable def gloopSet [ModalSys.NoOpt]
+    (t : NodeSt σ) (cl : List VarType) (f : VarSymb → LEnt σ)
     (A : VarType) : Set (WFF σ (ctxOf (VarType.lc A :: t.l)) 0) :=
   {φ | ∃ (hT : ModalSys.T = false) (hle : (ctxOf (A :: cl)).Le (ctxOf t.l))
     (hf : EntOk ((ctxOf cl).kView none) (ctxOf t.l) f)
@@ -961,7 +964,8 @@ noncomputable def gloopSet (t : NodeSt σ) (cl : List VarType) (f : VarSymb → 
     WFF.mono hle (.box ψ) ∈ t.M ∧ φ = gloopArrow hT hle hf ψ}
 
 /-- The root grown by committing its next variable. -/
-noncomputable def gloopStep (t : NodeSt σ) (cl : List VarType) (f : VarSymb → LEnt σ) :
+noncomputable def gloopStep [ModalSys.NoOpt]
+    (t : NodeSt σ) (cl : List VarType) (f : VarSymb → LEnt σ) :
     NodeSt σ :=
   ⟨VarType.lc (nextTy t.l cl) :: t.l,
     complete (WFF.mono (ctxOf_le_append [VarType.lc (nextTy t.l cl)] t.l) '' t.M ∪
@@ -996,7 +1000,7 @@ theorem keepFix_gloopF {A : VarType} {cl : List VarType} {f : VarSymb → LEnt �
     exact hkf v U ((kView_old hrt none .keep).symm.trans hv)
 
 /-- ⭐One step along the root's self-edge. -/
-theorem gloopStep_ok (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
+theorem gloopStep_ok [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
     (hS : ModalSys.BStrong = false) (hT : ModalSys.T = false) {t : NodeSt σ} {cl : List VarType}
     {f : VarSymb → LEnt σ}
     (hs : Theory.IsMCS t.M) (hd : LoopData t cl f) (hlt : cl.length < t.l.length) :
@@ -1017,7 +1021,7 @@ theorem gloopStep_ok (hF : ModalSys.Four = true) (hV : ModalSys.Five = true)
   have hg : Grows t (gloopStep t cl f) := ⟨⟨[_], rfl⟩, fun φ hφ => hS' (Or.inl ⟨φ, hφ, rfl⟩)⟩
   have hfd : FwdData t (gloopStep t cl f) none (nextTy t.l cl :: cl)
       (gloopF f cl.length t.l.length) :=
-    ⟨hsuf', kDecl_none _, entOk_gloopF hT hle hf, fun ψ hψ =>
+    ⟨hsuf', kDecl_none _, entOk_gloopF hT hle hf, fun _ ψ hψ =>
       hS' (Or.inr ⟨hT, hle, hf, ψ, hψ, rfl⟩)⟩
   exact ⟨hmcs, hg, hfd.grow_src hs hmcs hg, keepFix_gloopF hkf _⟩
 
@@ -1028,7 +1032,7 @@ theorem loopData_nil (hB : ModalSys.B = true) (hF : ModalSys.Four = true) {t : N
   have hf : EntOk ((ctxOf []).kView none) (ctxOf t.l) f := fun v T _ hv => by
     rw [show (ctxOf []).kView none v = none from boxIn_empty v] at hv
     cases hv
-  refine ⟨⟨List.nil_suffix, kDecl_none _, hf, fun ψ hψ => ?_⟩, fun v U hv => ?_⟩
+  refine ⟨⟨List.nil_suffix, kDecl_none _, hf, fun _ ψ hψ => ?_⟩, fun v U hv => ?_⟩
   · have hψ' : WFF.mono (ctxOf_le_of_suffix List.nil_suffix) (.box ψ) ∈ t.M := hψ
     rw [eq_closed_boxIn_empty ψ] at hψ' ⊢
     rw [WFF.closed, WFF.subst_mono_empty _ (Ctx.empty_le _)]

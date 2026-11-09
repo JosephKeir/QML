@@ -28,7 +28,8 @@ section LiftRead
 variable {σ : Signature} {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] {F X : VarType}
 
 /-- ⭐What `Proof.retW_lift` says, of a term in place of its fresh variable. -/
-theorem WFF.subst_liftedW (h : Γ.Le Γ') (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+theorem WFF.subst_liftedW [ModalSys.NoOpt]
+    (h : Γ.Le Γ') (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) (O : OutLeg Γ) {a₁ : Ann F} {a₂ : Ann X} (t₁ : Term σ Γ F a₁)
     (t₂ : Term σ Γ X a₂) (Ψ : WFF σ (O.view.insert (.bnd 0) (wTy F X)) 1) (c : ℕ)
     (hc : Γ.RootFresh (.free c)) {b₀ : Ann F} (b : Term σ Γ'.boxIn F b₀) {x : VarSymb}
@@ -116,7 +117,8 @@ end LiftRead
 
 /-- ⭐⭐**A witnessed returning possibility in a world's theory, at terms** (T + 4, strong B):
     `Proof.retWN_lift` at a fresh variable, as an `∃`, witnessed (`exW_term`). -/
-theorem BArrow.BWorld.retW_term {σ : Signature} (w : BWorld σ) (hS : ModalSys.BStrong = true)
+theorem BArrow.BWorld.retW_term [ModalSys.NoOpt]
+    {σ : Signature} (w : BWorld σ) (hS : ModalSys.BStrong = true)
     (hT : ModalSys.T = true) (hF : ModalSys.Four = true) {i : ℕ} (O : OutLeg (w.ctx i))
     {A Z : VarType} {cs : List (List Step)} (h : A.CompOk cs) {a₁ : Ann (A.compsFlat cs)}
     {a₂ : Ann Z} (t₁ : Term σ (w.ctx i) (A.compsFlat cs) a₁) (t₂ : Term σ (w.ctx i) Z a₂)
@@ -173,7 +175,7 @@ theorem holeAt_unpack₀_boxC {σ : Signature} {V : Ctx} {A : VarType} {cs : Lis
 
 /-- ⭐The packed body at a witnessed boxed object: `Φ` of the base and the possible object, with the
     ties (`WFF.instantiate_packedBody_boxC`). -/
-theorem WFF.instantiate_packedBodyW_boxC {σ : Signature} {V : Ctx} [V.NoSlots]
+theorem WFF.instantiate_packedBodyW_boxC [ModalSys.NoOpt] {σ : Signature} {V : Ctx} [V.NoSlots]
     (hS : ModalSys.BStrong = true) (hF : ModalSys.Four = true) {A Z : VarType}
     {cs : List (List Step)} (h : A.CompOk cs)
     (Φ : WFF σ (V.insert (.bnd 0) (RShape.wit (.boxC A cs h) Z).ty) 1)
@@ -250,7 +252,7 @@ theorem Term.collapse_keptDia {σ : Signature} {Γ : Ctx} (hT : ModalSys.T = tru
 namespace GArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 variable (hM₀ : Theory.IsMCS M₀)
 

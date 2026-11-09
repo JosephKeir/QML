@@ -20,9 +20,9 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- The root's Henkin step leaves the world asked about, and the hub flag, alone. -/
 theorem GNetSt.henk_src (N : GNetSt σ) (s : Node) (o : Obl σ) :
     (N.henk s o).src = N.src ∧ (N.henk s o).hb = N.hb := by
@@ -254,7 +254,7 @@ theorem gltr_hub (hM₀ : Theory.IsMCS M₀) (hh : GNetSt.HubOn M₀) (i : ℕ)
   have hle := (hstg_spec (hF := hF) hM₀ hh i).1
   have hψ' := (src_grows hM₀ hh hle).sub _ hψ
   obtain ⟨hsuf, hag, ⟨hsuf', hk, hf, htr⟩⟩ := hub_at (hF := hF) hM₀ hh i
-  have h₁ := htr (WFF.mono (ctxOf_le_of_suffix hsuf).boxIn ψ) (by
+  have h₁ := htr ModalSys.NoOpt.noOpt (WFF.mono (ctxOf_le_of_suffix hsuf).boxIn ψ) (by
     convert hψ' using 1
     simp only [kBox, WFF.mono, WFF.mono_mono])
   rw [WFF.subst_mono _ _ _ _ Ctx.NoSlots.slots] at h₁
@@ -280,7 +280,7 @@ theorem hubTm_mono (hM₀ : Theory.IsMCS M₀) (hh : GNetSt.HubOn M₀) {i i' : 
   change (⟨_, Term.mono _ (Term.subst _ _ _ _ b)⟩ : Σ c, Term σ _ _ c) =
     ⟨_, Term.subst _ _ _ _ (Term.mono _ b)⟩
   rw [Term.mono_subst, Term.subst_mono]
-  exact Term.subst_congr _ _ _ _ _ _ (sim_eS_mono _ (hubOk hM₀ hh i)) b
+  exact Term.subst_congr _ _ _ _ _ _ (sim_eS_mono _ (hubOk hM₀ hh i)).ty b
 
 /-! ## Lifts into the world asked about (docs, "the hub", step 6) -/
 

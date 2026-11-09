@@ -167,7 +167,7 @@ theorem Subst.diaAbsIdx_dia_self (c : ℕ) :
   Subst.diaAbsIdx_dia c []
 
 /-- The abstraction is a renaming by `Subst.diaAbsIdx`. -/
-theorem Subst.isRen_diaAbs {σ : Signature} {Γ : Ctx} {c : ℕ} {A : VarType}
+theorem Subst.isRen_diaAbs [ModalSys.NoOpt] {σ : Signature} {Γ : Ctx} {c : ℕ} {A : VarType}
     (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
     (h₀ : Γ.boxIn (.root (.bnd 0)) = none) :
@@ -190,6 +190,7 @@ theorem Term.realiseAt_eta {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalS
     (⟨_, Term.realiseAt hT c hcA hfr t₀
         (Term.eta (.step (.root (.free c)) .dia) A (Ctx.ref_diaIn_of hcA))⟩ :
       Σ b, Term σ Γ A b) = ⟨a₀, t₀⟩ := by
+  haveI : ModalSys.NoOpt := ⟨ModalSys.noOpt_of_T hT⟩
   have h₀ : Γ.boxIn (.root (.bnd 0)) = none := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root
   have hrf : Γ.boxIn.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)
   -- the abstraction sends the witness content's η-expansion to the hole's

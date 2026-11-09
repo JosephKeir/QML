@@ -92,8 +92,8 @@ theorem boxx_top_mem {Γ : Ctx} [Γ.Presented] {M : Set (WFF σ Γ 0)} (hM : The
 /-! ## Abstraction in a witness view -/
 
 /-- Abstracting the variable `c` in the `◇_x` view: `x.dia` stays. -/
-def absXS (σ : Signature) (Δ : Ctx) (c : ℕ) (x : VarSymb) : Subst σ Δ := fun v =>
-  match v with
+def absXS (σ : Signature) (Δ : Ctx) (c : ℕ) (x : VarSymb) : Subst σ Δ where
+  ty v := match v with
   | .step u .box => if u.rt = .free c then .ren (itemAt (.bnd 0) u) else .ren (.step u .box)
   | .step u .dia => if u = x then .ren (.step x .dia) else .hide
   | _ => .hide
@@ -109,7 +109,7 @@ theorem absXCtx_slots (A : VarType) (l : List VarType) (x : VarSymb) :
 theorem ok_absXS [ModalSys.FourOff] {A : VarType} {l : List VarType} {x : VarSymb} {X : VarType}
     (hx : (ctxOf l).ref x = some (.VTypeDia X)) :
     Subst.Ok ((ctxOf (A :: l)).diaIn x) (absXS σ (absXCtx A l x) l.length x) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   rcases diaIn_item hv with ⟨u, rfl, hu⟩ | ⟨rfl, hxT⟩
   · change (if u.rt = .free l.length then SubE.ren (itemAt (.bnd 0) u)
       else .ren (.step u .box)).OkRef T
@@ -196,7 +196,7 @@ theorem at_single_tup_mono [ModalSys.FourOff] {A : VarType} {l : List VarType} {
       rw [ctxOf_ref_new] at hu
       cases hu
       change Subst.single (.bnd 0) _ (.root (.bnd 0)) = _
-      exact if_pos rfl
+      slot_rfl
   | .step u s, U, hu, hrt => by
       have hproj : s.isProj = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
       have hu' := hu
@@ -225,7 +225,7 @@ theorem instantiate_tup_absX [ModalSys.FourOff] (A : VarType) (l : List VarType)
   rw [WFF.subst_mono (absXCtx_le A l x) _ _ _ (absXCtx_slots A l x) hs]
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS _ _ _ ?_ ψ).trans
     (WFF.subst_id _ _ _ ψ)
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T _ hv
   rcases diaIn_item hv with ⟨u, rfl, hu⟩ | ⟨rfl, _⟩
   · change SubE.Sim T (.ren (.step u .box)) ((if u.rt = .free l.length then
@@ -279,7 +279,7 @@ theorem subst_arrowX_abs [ModalSys.FourOff] {A : VarType} {ls lt : List VarType}
           A.bc _)
         (absXCtx_slots A ls x) Ctx.NoSlots.slots (absX A ls hx ψ) := by
   refine (WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ ψ).symm
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T _ hv
   rcases diaIn_item hv with ⟨u, rfl, hu⟩ | ⟨rfl, _⟩
   · obtain ⟨hup, r, hr⟩ := reach_ppath hu
@@ -297,7 +297,7 @@ theorem subst_arrowX_abs [ModalSys.FourOff] {A : VarType} {ls lt : List VarType}
       exact .refl _
     · change SubE.Sim T _ ((Subst.toFree _ 0 lt.length A.bc _).at (.step u .box))
       rw [Subst.at_nonproj _ (rfl : (VarSymb.step u .box).lastProj = false)]
-      change SubE.Sim T _ (if VarSymb.step u .box = .root (.bnd 0) then _ else _)
+      simp only [Subst.toFree]
       rw [if_neg (fun h => by cases h)]
       change SubE.Sim T _ (.ren (itemAt (imgRoot img u.rt) u))
       rw [hr]
@@ -310,7 +310,7 @@ theorem subst_arrowX_abs [ModalSys.FourOff] {A : VarType} {ls lt : List VarType}
     rw [if_pos rfl, if_pos rfl]
     change SubE.Sim T _ ((Subst.toFree _ 0 lt.length A.bc _).at (.step x .dia))
     rw [Subst.at_nonproj _ (rfl : (VarSymb.step x .dia).lastProj = false)]
-    change SubE.Sim T _ (if VarSymb.step x .dia = .root (.bnd 0) then _ else _)
+    simp only [Subst.toFree]
     rw [if_neg (fun h => by cases h)]
     change SubE.Sim T _ (SubE.mono _ (if x = x then SubE.ren (.root (.free cx)) else .hide))
     rw [if_pos rfl]
@@ -431,8 +431,8 @@ theorem childX_cx (l : List VarType) (X : VarType) :
 
 /-- Pulling back a witness child: its variables to tuples, the content to `x.dia`. -/
 def pullXS [ModalSys.FourOff] (σ : Signature) (l : List VarType) (x : VarSymb) :
-    Subst σ ((ctxOf l).diaIn x) :=
-  fun v => match v with
+    Subst σ ((ctxOf l).diaIn x) where
+  ty v := match v with
   | .root (.free r) =>
       if h : r < l.length then .tm (Term.mono (Ctx.le_boxIn_diaIn _ x)
         (tup (.root (.free r)) (rootTy l r) (by
@@ -462,7 +462,7 @@ theorem pullX_cx [ModalSys.FourOff] (l : List VarType) (x : VarSymb) :
 theorem ok_pullXS [ModalSys.FourOff] (l : List VarType) {x : VarSymb} {X : VarType}
     (hx : (ctxOf l).ref x = some (.VTypeDia X)) :
     Subst.Ok (ctxOf (X :: l.map VarType.bc)) (pullXS σ l x) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   obtain ⟨r, rfl⟩ := ctxOf_decl hv
   by_cases hr : r < l.length
   · rw [ctxOf_root_lt (by simp; omega), rootTy_old (by simpa using hr),
@@ -547,7 +547,7 @@ theorem subst_pullX_arrowX [ModalSys.FourOff] (l : List VarType) {x : VarSymb} {
         χ) = χ := by
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS _ _ _ ?_ χ).trans
     (WFF.subst_id _ _ _ χ)
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T _ hv
   rcases diaIn_item hv with ⟨u, rfl, hu⟩ | ⟨rfl, _⟩
   · obtain ⟨-, r, hr⟩ := reach_ppath hu

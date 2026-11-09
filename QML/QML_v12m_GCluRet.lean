@@ -30,7 +30,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 variable (hM₀ : Theory.IsMCS M₀)
 
@@ -193,7 +193,7 @@ noncomputable def farPos (hX : CluFlags) (hT : ModalSys.T = true) (s : GW hF M�
 
 section Ties
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- A companion's entry, from a necessary object's. -/
 theorem at_ext_tm (hT : ModalSys.T = true) {Δ : Ctx} (θ : Subst σ Δ) (p : List Step) :
     ∀ {A : VarType} {v : VarSymb} {a : Ann A} (s : Term σ Δ A a) {C : VarType},
@@ -218,7 +218,7 @@ theorem at_ext_tm (hT : ModalSys.T = true) {Δ : Ctx} (θ : Subst σ Δ) (p : Li
             exact ih (Term.collapse (Ctx.collapses_boxIn_self hT Δ) w) hC
               (by rw [Subst.at_proj θ v rfl, hv]; exact SubE.proj_boxtm_here w hT)
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- Two substitutions agreeing at an address agree along a companion's path. -/
 theorem at_ext_congr {Δ : Ctx} (θ θ' : Subst σ Δ) (p : List Step) :
     ∀ {A : VarType} {v v' : VarSymb} {C : VarType}, A.compAt p = some C → θ.at v = θ'.at v' →
@@ -232,7 +232,7 @@ theorem at_ext_congr {Δ : Ctx} (θ θ' : Subst σ Δ) (p : List Step) :
       · exact ih hC (by rw [Subst.at_proj θ v rfl, Subst.at_proj θ' v' rfl, hv])
       · exact ih hC (by rw [Subst.at_proj θ v rfl, Subst.at_proj θ' v' rfl, hv])
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- ⭐One companion's tie, read at a term: the value's last part, with the object's own companion
     kept. -/
 theorem cTies_step {Γ Ω : Ctx} [Γ.NoSlots] {d : ℕ} {ι : VarSymb → VarSymb} (θ : Subst σ Γ)
@@ -276,7 +276,7 @@ theorem cTies_step {Γ Ω : Ctx} [Γ.NoSlots] {d : ℕ} {ι : VarSymb → VarSym
       ((Term.subst_eta_tm _ _ _ _ _ _ _ hb).trans
         (sig_boxtm (sig_shift_cong _ hcv.symm)))) _)))
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- ⭐Each companion's tie, at a term: `Proof.back_shift` at the companion's contents. -/
 theorem cTies_tm {Γ Ω : Ctx} [Γ.NoSlots] {d : ℕ} {ι : VarSymb → VarSymb} (θ : Subst σ Γ)
     (hθ : Subst.Ok Ω θ) (hc : Subst.Coh ι Ω θ) (hs : Ω.SlotsFrom d) (hs' : Γ.SlotsFrom 0)
@@ -296,7 +296,7 @@ theorem cTies_tm {Γ Ω : Ctx} [Γ.NoSlots] {d : ℕ} {ι : VarSymb → VarSymb}
       exact Proof.nec (Proof.conv (WFF.holeAt_backDup hS hF _ _ _).symm
         (Proof.back_shift hS hT hF _))
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- ⭐**An object's ties to its own packing**, at any term. -/
 theorem packTies_tm (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} {A : VarType}
@@ -310,13 +310,14 @@ theorem packTies_tm (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (Subst.box_at_inner_boxtm _ (by rw [Subst.at_proj _ _ rfl, hr]; rfl))
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [ModalSys.NoOpt] in
 theorem compsBase_compsVal {Γ : Ctx} {A : VarType} {a₀ : Ann A} (E₀ : Term σ Γ.boxIn A a₀) :
     ∀ (cs : List (List Step)) (h : A.CompOk cs),
       compsBase cs (compsVal E₀ cs h).2 = ⟨_, E₀⟩
   | [], _ => rfl
   | _ :: ps, h => compsBase_compsVal E₀ ps h.tail
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- The base object goes through a chain. -/
 theorem app_compsBase {Γ Δ : Ctx} {A : VarType} (C : GTr σ Γ Δ) :
     ∀ (cs : List (List Step)) {b : Ann (A.compsFlat cs)} (s : Term σ Γ (A.compsFlat cs) b),
@@ -360,7 +361,7 @@ theorem sat_eqRec_liftC (hX : CluFlags) {s : GW hF M₀} {A : VarType} {i i' K :
   exact ctoDom_congr hX ((cden_lift hX hK t).trans ((ctoDom_inj hX h).trans
     (cden_lift hX hK' t').symm)) _ _
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- Weakening a leg twice is weakening it once. -/
 theorem retS_mono_mono {Γ₁ Γ₂ Γ₃ : Ctx} (h₁ : Γ₁.Le Γ₂) (h₂ : Γ₂.Le Γ₃)
     (hS : ModalSys.BStrong = true) (O : OutLeg Γ₁) (R : RShape) {b : Ann R.flat}
@@ -653,6 +654,7 @@ theorem cindCongr (hX : CluFlags) : (cmodel hF hM₀ hX).IndCongr where
 /-! ## From the far world to here -/
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [ModalSys.NoOpt] in
 theorem compsBase_sig {Δ : Ctx} {A : VarType} (cs : List (List Step))
     {p q : Σ b, Term σ Δ (A.compsFlat cs) b} (h : p = q) :
     compsBase cs p.2 = compsBase cs q.2 := by

@@ -129,14 +129,14 @@ def gpullCx (σ : Signature) (l : List VarType) : (k : Option VarSymb) → (X : 
 /-- Each child variable back to the tuple of the corresponding variable's items, the content
     to `x.dia`. -/
 def gpullS (hF : ModalSys.Four = true) (σ : Signature) (l : List VarType) (k : Option VarSymb)
-    (X : VarType) (hk : KContent (ctxOf l) k X) : Subst σ ((ctxOf l).kView k) := fun v =>
-  match v with
-  | .root (.free r) =>
-      if h : r < l.length then
-        .tm (Term.mono (Ctx.le_boxIn_kView _ k)
-          (gtup hF (.root (.free r)) (rootTy l r) (ref_root_lt h)))
-      else gpullCx σ l k X hk r
-  | _ => .hide
+    (X : VarType) (hk : KContent (ctxOf l) k X) : Subst σ ((ctxOf l).kView k) where
+  ty v := match v with
+    | .root (.free r) =>
+        if h : r < l.length then
+          .tm (Term.mono (Ctx.le_boxIn_kView _ k)
+            (gtup hF (.root (.free r)) (rootTy l r) (ref_root_lt h)))
+        else gpullCx σ l k X hk r
+    | _ => .hide
 
 /-- Where pulling back sends annotation indices: along the entries' annotations. -/
 def gpullIdx (l : List VarType) (k : Option VarSymb) (X : VarType) (a : VarSymb) : VarSymb :=
@@ -162,12 +162,12 @@ theorem gpull_cx (hF : ModalSys.Four = true) (l : List VarType) (x : VarSymb) (X
       .tm (Term.eta (.step x .dia) X (Ctx.ref_diaIn_of (hk x rfl))) := by
   change (if h : l.length < l.length then _ else gpullCx σ l (some x) X hk l.length) = _
   rw [dif_neg (lt_irrefl _)]
-  exact if_pos rfl
+  slot_rfl
 
 theorem ok_gpullS (hF : ModalSys.Four = true) (l : List VarType) (k : Option VarSymb)
     (X : VarType) (hk : KContent (ctxOf l) k X) :
     Subst.Ok (ctxOf (childL l k X)) (gpullS hF σ l k X hk) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   obtain ⟨r, rfl⟩ := ctxOf_decl hv
   by_cases hr : r < l.length
   · rw [childL_lt l k X hr] at hv
@@ -242,7 +242,7 @@ theorem sim_gchild_pull (hF : ModalSys.Four = true) (l : List VarType) {k : Opti
     Subst.Sim ((ctxOf l).kView k) (Subst.idS σ ((ctxOf l).kView k))
       ((eS σ (ctxOf (childL l k X)) (ofRen (gchildMap l k))).comp (gpullS hF σ l k X hk)
         (ok_gpullS hF l k X hk) (coh_gpullS hF l k X hk)) := by
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T hl hv
   obtain ⟨u, s, rfl, hup, U, hU⟩ := kView_item hv
   have hs' : s.isProj = false := hl
@@ -252,7 +252,7 @@ theorem sim_gchild_pull (hF : ModalSys.Four = true) (l : List VarType) {k : Opti
   by_cases hx : ∃ x, k = some x ∧ u = x ∧ s = .dia
   · obtain ⟨x, rfl, rfl, rfl⟩ := hx
     change SubE.Sim T _ ((gpullS hF σ l (some u) X hk).at (gImgX l id u l.length (.step u .dia)))
-    rw [show gImgX l id u l.length (.step u .dia) = .root (.free l.length) from if_pos rfl]
+    rw [show gImgX l id u l.length (.step u .dia) = .root (.free l.length) from by slot_rfl]
     change SubE.Sim T _ (gpullS hF σ l (some u) X hk (.root (.free l.length)))
     rw [gpull_cx hF l u X hk]
     have hT : T = X := by

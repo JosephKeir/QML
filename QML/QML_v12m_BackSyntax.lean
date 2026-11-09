@@ -36,6 +36,8 @@ def setIdx (ι : VarSymb → VarSymb) (r : Root) (e : SubE σ Δ) : VarSymb → 
 theorem set_root (θ : Subst σ Δ) (r : Root) (e : SubE σ Δ) : θ.set r e (.root r) = e :=
   if_pos rfl
 
+macro_rules | `(tactic| slot_rfl) => `(tactic| exact Subst.set_root _ _ _)
+
 theorem set_ne (θ : Subst σ Δ) {r : Root} (e : SubE σ Δ) {v : VarSymb} (h : v ≠ .root r) :
     θ.set r e v = θ v :=
   if_neg (t := e) h

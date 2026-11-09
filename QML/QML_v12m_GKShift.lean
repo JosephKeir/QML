@@ -124,6 +124,7 @@ variable {Δ : Ctx}
 theorem coh_atShiftL {Γ Γ' : Ctx} (C : Ctx.Shifts 0 Γ Γ') {Ψ : Subst σ Δ} (hΨ : Ok Γ' Ψ)
     {ι : VarSymb → VarSymb} (hc : Coh ι Γ' Ψ) {L : Root → ℕ} (hlv : Γ.Leveled L) :
     Coh (fun y => ι (y.shift (Step.levels y.path - L y.rt))) Γ (atShift Ψ) := by
+  haveI : ModalSys.NoOpt := ⟨ModalSys.noOpt_of_Four C.hF⟩
   refine coh_of (ok_atShift C hΨ) fun v T hlp hv p => ?_
   change (Ψ.at (v.shift 0)).idxAlong p = _
   rw [hc _ _ (C v T ((Ctx.ref_nonproj Γ hlp).trans hv)) p, VarSymb.ext_path, VarSymb.ext_rt,
@@ -203,6 +204,8 @@ theorem WFF.shift_mono : ∀ {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx} {d : �
         (WFF.shift_mono ((h.diaIn y).insert ((hs.diaIn y).rootFresh le_rfl) _)
           ((h'.diaIn y).insert ((hs'.diaIn y).rootFresh le_rfl) _) ((l₁.diaIn y).insert _ _)
           ((l₂.diaIn _).insert _ _) ((hs.diaIn y).insert _) ((hs'.diaIn y).insert _) Φ)
+  | _, _, _, _, _, _, h, _, _, _, _, _, .optx hO _ _ _ =>
+      False.elim (by have := ModalSys.noOpt_of_Four h.hF; rw [hO] at this; cases this)
 
 /-- Shifting keeps the weight. -/
 theorem WFF.weight_shift : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d : ℕ} (h : Ctx.Shifts k Γ₁ Γ₂)
@@ -246,6 +249,8 @@ theorem WFF.weight_shift : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d : ℕ} (h : Ctx.
   | _, _, _, _, _, _, .linkx _ _ _ _ _ Φ => by
       simp only [WFF.shift, WFF.weight]
       rw [WFF.weight_shift _ _ Φ]
+  | _, _, _, _, h, _, .optx hO _ _ _ =>
+      False.elim (by have := ModalSys.noOpt_of_Four h.hF; rw [hO] at this; cases this)
 
 /-! ## Shifting a derivation -/
 
@@ -257,6 +262,7 @@ theorem shiftD {n : ℕ} {Γ₁ Γ₂ : Ctx} [Γ₁.NoSlots] [Γ₂.Presented] (
     {L : Root → ℕ} (hlv : Γ₁.Leveled L) {Δ Θ : List (WFF σ Γ₁ 0)} (p : GK σ n Γ₁ Δ Θ) :
     GK σ n Γ₂ (Δ.map (WFF.shift C Ctx.NoSlots.slots))
       (Θ.map (WFF.shift C Ctx.NoSlots.slots)) := by
+  haveI : ModalSys.NoOpt := ⟨ModalSys.noOpt_of_Four C.hF⟩
   have hθ := Subst.ok_atShift C (Subst.ok_idRen (σ := σ) (Δ := Γ₂))
   have hc := Subst.coh_atShiftL C (Subst.ok_idRen (σ := σ) (Δ := Γ₂)) Subst.coh_idRen hlv
   have key : ∀ φ : WFF σ Γ₁ 0,

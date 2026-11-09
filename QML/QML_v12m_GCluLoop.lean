@@ -18,20 +18,20 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 theorem le_lstg (hM₀ : Theory.IsMCS M₀) (hl : GNetSt.LoopOn M₀) (i : ℕ) :
     i ≤ lstg hF M₀ i := by
   have := (lstg_spec (hF := hF) hM₀ hl i).1
   omega
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- With the self-edge, kept items are the object's: T is off. -/
 theorem keepOnly_of_loop (hl : GNetSt.LoopOn M₀) : ModalSys.keepOnly = false := by
   have hT : ModalSys.T = false := hl.2.1.2.2.2
   simp [ModalSys.keepOnly, hT]
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- A kept item's entry, under entries fixing kept items. -/
 theorem eS_keep_at {cl : List VarType} {Δ : Ctx} {f : VarSymb → LEnt σ} (hkf : KeepFix cl f)
     {u : VarSymb} {W : VarType} (h : (ctxOf cl).boxIn (.step u .keep) = some W) :
@@ -39,7 +39,7 @@ theorem eS_keep_at {cl : List VarType} {Δ : Ctx} {f : VarSymb → LEnt σ} (hkf
   rw [Subst.at_nonproj _ rfl, eS_item _ rfl, hkf u W h]
   rfl
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- Entries fixing kept items undo the shift on a `◇_x` view, at the kept witness. -/
 theorem dia_shift_ren (hF : ModalSys.Four = true) (hb : ModalSys.keepOnly = false)
     {cl : List VarType} {Δ : Ctx} {f : VarSymb → LEnt σ} (hkf : KeepFix cl f) {x : VarSymb}
@@ -99,7 +99,7 @@ theorem tr_loop (hM₀ : Theory.IsMCS M₀) (hl : GNetSt.LoopOn M₀) (i : ℕ) 
     (Subst.coh_atShift (Ctx.shifts_boxIn_boxIn hF _) hO hC (levels_boxIn _))
     (Subst.preShift_atShift _ _) b).trans ?_
   refine (Term.subst_congr _ (Subst.idS σ _) _ (Subst.ok_idS_le hle) _ (Subst.coh_idS_le hle)
-    (Subst.sim_of fun v U hl' hv => ?_) b).trans (Term.subst_idS_mono hle _ _ b)
+    (Subst.simT_of fun v U hl' hv => ?_) b).trans (Term.subst_idS_mono hle _ _ b)
   exact box_shift_ren hF (keepOnly_of_loop hl)
     (fun _ _ h => eS_keep_at (gloopFix hM₀ hl i) h) hl' hv
 
@@ -152,7 +152,7 @@ theorem tr_loopX (hM₀ : Theory.IsMCS M₀) (hl : GNetSt.LoopOn M₀) (i : ℕ)
   refine (Term.subst_shift hC' _ hOd hCd (Subst.atShift _) (Subst.ok_atShift hC' hOd)
     (Subst.coh_atShift hC' hOd hCd (levels_diaIn _ _)) (Subst.preShift_atShift _ _) c).trans ?_
   refine (Term.subst_congr _ (Subst.idS σ _) _ (Subst.ok_idS_le (hG.diaIn x)) _
-    (Subst.coh_idS_le (hG.diaIn x)) (Subst.sim_of fun v U hl' hv => ?_) c).trans
+    (Subst.coh_idS_le (hG.diaIn x)) (Subst.simT_of fun v U hl' hv => ?_) c).trans
     (Term.subst_idS_mono (hG.diaIn x) _ _ c)
   exact dia_shift_ren hF (keepOnly_of_loop hl) (gloopFix hM₀ hl i) hx hl' hv
 

@@ -60,7 +60,7 @@ theorem holeAt_kTheta {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys.
   have h0 : (Subst.single (σ := σ) (Δ := Δ) (.bnd 0) (.tm (Term.pair y (Term.boxtm s)))).at
       (.root (.bnd 0)) = .tm (Term.pair y (Term.boxtm s)) := by
     change Subst.single _ _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    exact Subst.single_self _ _
   refine congrArg (fun φ => WFF.imp φ WFF.bot) (WFF.ret_congr hS ?_ ?_)
   · exact Term.subst_eta_tm _ _ _ _ _ _ y (by rw [Subst.at_proj _ _ rfl, h0]; rfl)
   · rw [WFF.subst_holeAt]
@@ -289,7 +289,7 @@ theorem holeAt_kThetaC {Δ : Ctx} {d : ℕ} (hs : Δ.SlotsFrom d) (hS : ModalSys
   have h0 : (Subst.single (σ := σ) (Δ := Δ) (.bnd 0) (.tm (Term.pair y (Term.boxtm s)))).at
       (.root (.bnd 0)) = .tm (Term.pair y (Term.boxtm s)) := by
     change Subst.single _ _ (.root (.bnd 0)) = _
-    exact if_pos rfl
+    exact Subst.single_self _ _
   refine congrArg (fun φ => WFF.imp φ WFF.bot) (WFF.retS_congr hS _ ?_ ?_)
   · exact Term.subst_eta_tm _ _ _ _ _ _ y (by rw [Subst.at_proj _ _ rfl, h0]; rfl)
   · rw [WFF.subst_holeAt]

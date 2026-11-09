@@ -23,9 +23,9 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- Keeping an η-expanded address is the η-expansion of its kept item, inside `□`. -/
 theorem applyG_keep_eta {Γ : Ctx} : ∀ {T : VarType} (hk : T.keepable = true) (r : VarSymb)
     (h : Γ.ref r = some T),
@@ -236,6 +236,7 @@ theorem graw_keepLift (hV : ModalSys.Five = false) {T : VarType} (hl : T.liftabl
 
 variable [ModalSys.GrowSys]
 
+omit [ModalSys.NoOpt] in
 theorem absBS (h : ModalSys.BStrong = true) : False := by
   rw [ModalSys.NoB.noBStrong] at h
   cases h

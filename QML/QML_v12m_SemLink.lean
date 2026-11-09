@@ -320,6 +320,7 @@ theorem sat_linkMap {Γ : Ctx} [Γ.NoSlots] (hnp : Γ.NoProjLast) {w : M.frame.W
     M.sat env (O.linkL hV hN t (WFF.bodyRepl
         (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) D.ty) f.hole.2) Φ) : WFF σ Γ 0) ↔
       M.sat env (O.linkL hV hN (D := E) (Term.holeRead t f.hole.2) Φ : WFF σ Γ 0) := by
+  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   have key : ∀ {w' : M.frame.W} (env' : M.Env O.view w') (x : M.frame.Dom D.ty w'),
       M.sat (env'.extend (.bnd 0) x) (WFF.bodyRepl
         (Term.mono ((Ctx.empty_le O.view).insert (.bnd 0) D.ty) f.hole.2) Φ) ↔

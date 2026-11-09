@@ -28,7 +28,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-! ## Paths -/
 
@@ -61,6 +61,7 @@ theorem nodeOf_append (s : Node) : ∀ (P Q : List ℕ), nodeOf s (P ++ Q) = nod
   | c :: P, Q => nodeOf_append (c :: s) P Q
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [ModalSys.NoOpt] in
 theorem live_of_suffix {N : GNetSt σ} : ∀ {q k : Node}, N.Live (q ++ k) → N.Live k
   | [], _, h => h
   | _ :: q, _, h => live_of_suffix (q := q) h.1
@@ -73,8 +74,10 @@ theorem gborn_of_suffix {k k' : Node} (hk : GBorn hF M₀ k') (h : k <:+ k') : G
 /-- A path that is an arrow: nonempty, or empty under T (the identity arrow). -/
 abbrev PathOk (P : List ℕ) : Prop := P ≠ [] ∨ ModalSys.T = true
 
+omit [ModalSys.NoOpt] in
 theorem PathOk.T_of_nil (h : PathOk []) : ModalSys.T = true := h.resolve_left fun e => e rfl
 
+omit [ModalSys.NoOpt] in
 theorem pathOk_cons {c : ℕ} {P : List ℕ} : PathOk (c :: P) := Or.inl (List.cons_ne_nil _ _)
 
 /-- ⭐Accessibility: a descendant along a path — a strict one, or, under T, the world itself. -/
@@ -144,7 +147,7 @@ def InExt : (s t : GW hF M₀) → (P : List ℕ) → t.1 = nodeOf s.1 P → Var
   | s, t, c :: c' :: P, h, x =>
       InExt (stepW s c (born_step h)) t (c' :: P) h (wit (stepW s c (born_step h)) x)
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- What an entry of possible type names as its witness is declared, at a possible type. -/
 theorem wit_decl {Δ : Ctx} {e : LEnt σ} {X : VarType} (he : (entOf Δ e).OkRef (.VTypeDia X)) :
     ∃ Z, Δ.ref (entIdx e []) = some (.VTypeDia Z) := by
@@ -270,7 +273,7 @@ noncomputable def pTrXK (hM₀ : Theory.IsMCS M₀) :
 
 /-! ## Later stages -/
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- An edge's substitution, weakened, is the substitution into the larger context, at every
     address of the view. -/
 theorem eS_mono_at {l : List VarType} {k : Option VarSymb} {Δ Δ' : Ctx} (h : Δ.Le Δ')
@@ -297,7 +300,7 @@ omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 theorem sim_box_eS_mono {l : List VarType} {Δ Δ' : Ctx} (h : Δ.Le Δ')
     {g : VarSymb → LEnt σ} (hg : EntOk ((ctxOf l).kView none) Δ g) :
     Subst.Sim ((ctxOf l).kView none).boxIn ((eS σ Δ g).box.mono h.boxIn) ((eS σ Δ' g).box) := by
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T _ hv
   match v with
   | .step u .box =>
@@ -320,7 +323,7 @@ theorem sim_dia_eS_mono {l : List VarType} {Δ Δ' : Ctx} (h : Δ.Le Δ')
     (hx : ∃ X, ((ctxOf l).kView none).ref x = some (.VTypeDia X)) :
     Subst.Sim (((ctxOf l).kView none).diaIn x) (((eS σ Δ g).dia x ιx).mono (h.diaIn ιx))
       ((eS σ Δ' g).dia x ιx) := by
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T _ hv
   match v with
   | .step u .dia =>
@@ -396,7 +399,7 @@ theorem pTr_mono (hM₀ : Theory.IsMCS M₀) :
         ⟨_, Term.subst _ _ _ _ (Term.mono _ b)⟩
       rw [Term.mono_subst, Term.subst_mono]
       exact Term.subst_congr _ _ _ _ _ _
-        (sim_eS_mono _ (gentOk_box hM₀ ⟨c, h⟩ i)) b
+        (sim_eS_mono _ (gentOk_box hM₀ ⟨c, h⟩ i)).ty b
   | s, t, c :: c' :: P, h, _, i, i', hii, _, _, b => by
       have hw := born_step h
       have hg := glstg_monotone hM₀ (t := stepW s c hw) ⟨c, rfl⟩ hii
@@ -407,6 +410,7 @@ theorem pTr_mono (hM₀ : Theory.IsMCS M₀) :
         (Ctx.shifts_boxIn_boxIn hF _) ((gle hM₀ s hii).kView none) ((gle hM₀ s hii).boxIn.boxIn),
         Term.subst_mono]
       refine Term.subst_congr _ _ _ _ _ _ ?_ _
+      refine Subst.Sim.ty ?_
       exact sim_box_eS_mono (gle hM₀ (stepW s c hw) hg)
         (gentOk_box hM₀ (t := stepW s c hw) ⟨c, rfl⟩ i)
 
@@ -436,7 +440,7 @@ theorem pTrX_mono (hM₀ : Theory.IsMCS M₀) :
         ⟨_, Term.subst _ _ _ _ (Term.mono _ u)⟩
       rw [Term.mono_subst, Term.subst_mono]
       exact Term.subst_congr _ _ _ _ _ _
-        (sim_eS_mono _ (hm ▸ gentOk hM₀ ⟨c, h⟩ i)) u
+        (sim_eS_mono _ (hm ▸ gentOk hM₀ ⟨c, h⟩ i)).ty u
   | s, t, c :: c' :: P, h, i, i', hii, x, hx, hm, _, _, u => by
       have hw := born_step h
       have hg := glstg_monotone hM₀ (t := stepW s c hw) ⟨c, rfl⟩ hii
@@ -447,6 +451,7 @@ theorem pTrX_mono (hM₀ : Theory.IsMCS M₀) :
         (Ctx.shifts_diaIn_keep hF _ x) ((gle hM₀ s hii).kView (some x))
         ((gle hM₀ s hii).boxIn.diaIn _), Term.subst_mono]
       refine Term.subst_congr _ _ _ _ _ _ ?_ _
+      refine Subst.Sim.ty ?_
       exact sim_dia_eS_mono (gle hM₀ (stepW s c hw) hg)
         (gentOk_box hM₀ (t := stepW s c hw) ⟨c, rfl⟩ i) _ _
         (Ctx.exists_keep_dia hF hx)
@@ -483,8 +488,8 @@ theorem pTrXK_mono (hM₀ : Theory.IsMCS M₀) :
         (Ctx.shifts_diaIn_keep hF _ x) ((gle hM₀ s hii).kView (some x))
         ((gle hM₀ s hii).boxIn.diaIn _), Term.subst_mono]
       refine Term.subst_congr _ _ _ _ _ _ ?_ _
-      exact sim_dia_eS_mono (gle hM₀ t hg) (gentOk_box hM₀ ⟨c, h⟩ i) _ _
-        (Ctx.exists_keep_dia hF hx)
+      exact (sim_dia_eS_mono (gle hM₀ t hg) (gentOk_box hM₀ ⟨c, h⟩ i) _ _
+        (Ctx.exists_keep_dia hF hx)).ty
   | s, t, c :: c' :: P, h, i, i', hii, x, hx, _, _, u => by
       have hw := born_step h
       have hg := glstg_monotone hM₀ (t := stepW s c hw) ⟨c, rfl⟩ hii
@@ -495,6 +500,7 @@ theorem pTrXK_mono (hM₀ : Theory.IsMCS M₀) :
         (Ctx.shifts_diaIn_keep hF _ x) ((gle hM₀ s hii).kView (some x))
         ((gle hM₀ s hii).boxIn.diaIn _), Term.subst_mono]
       refine Term.subst_congr _ _ _ _ _ _ ?_ _
+      refine Subst.Sim.ty ?_
       exact sim_dia_eS_mono (gle hM₀ (stepW s c hw) hg)
         (gentOk_box hM₀ (t := stepW s c hw) ⟨c, rfl⟩ i) _ _
         (Ctx.exists_keep_dia hF hx)

@@ -38,8 +38,8 @@ theorem childImg (l : List VarType) : ImgOk l (ctxOf (l.map VarType.bc)) id := b
 /-! ## Pulling back -/
 
 /-- Each variable of the child goes back to the tuple of the corresponding variable's items. -/
-def pullS [ModalSys.FourOff] (σ : Signature) (l : List VarType) : Subst σ (ctxOf l).boxIn :=
-  fun v => match v with
+def pullS [ModalSys.FourOff] (σ : Signature) (l : List VarType) : Subst σ (ctxOf l).boxIn where
+  ty v := match v with
   | .root (.free r) =>
       if h : r < l.length then .tm (tup (.root (.free r)) (rootTy l r) (by
         rw [Ctx.ref_nonproj _ rfl]; exact ctxOf_root_lt h)) else .hide
@@ -58,7 +58,7 @@ theorem pull_tm [ModalSys.FourOff] {l : List VarType} {r : ℕ} (h : r < l.lengt
 
 theorem ok_pullS [ModalSys.FourOff] (l : List VarType) :
     Subst.Ok (ctxOf (l.map VarType.bc)) (pullS σ l) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   obtain ⟨r, rfl⟩ := ctxOf_decl hv
   have hr : r < l.length := by
     by_contra hge
@@ -122,7 +122,7 @@ theorem subst_pull_arrow [ModalSys.FourOff] (l : List VarType) (χ : WFF σ (ctx
         χ) = χ := by
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS _ _ _ ?_ χ).trans
     (WFF.subst_id _ _ _ χ)
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T _ hv
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   obtain ⟨-, r, hr⟩ := reach_ppath hu
@@ -182,9 +182,11 @@ theorem boxIn_empty (v : VarSymb) : Ctx.empty.boxIn v = none := by
   | .step _ .dia => rfl
   | .step _ .here => rfl
 
-theorem boxIn_empty_le : Ctx.empty.boxIn.Le Ctx.empty := fun v T h => by
-  rw [boxIn_empty v] at h
-  cases h
+theorem boxIn_empty_le : Ctx.empty.boxIn.Le Ctx.empty :=
+  ⟨fun v T h => (by
+    rw [boxIn_empty v] at h
+    cases h),
+   fun _ _ h => absurd (Ctx.boxIn_wit.mp h).2 (by rw [Ctx.ref_empty]; simp)⟩
 
 /-- A formula of the empty context's view is closed. -/
 theorem eq_closed_boxIn_empty (ψ : WFF σ Ctx.empty.boxIn 0) :

@@ -157,9 +157,17 @@ theorem ctxOf_root : ∀ (l : List VarType) (r : ℕ), ctxOf l (.root (.free r))
           rw [if_neg (by omega)]
 
 omit [ModalSys] in
+/-- A context of declarations has no witnesses. -/
+theorem ctxOf_wit : ∀ (l : List VarType) (y : VarSymb), (ctxOf l).wit y = none
+  | [], _ => rfl
+  | A :: l, y => by
+      rw [ctxOf_cons]
+      exact ctxOf_wit l y
+
+omit [ModalSys] in
 theorem ctxOf_fresh {l : List VarType} {n : ℕ} (h : l.length ≤ n) :
     (ctxOf l).RootFresh (.free n) := by
-  intro v hv
+  refine ⟨fun v hv => ?_, fun y _ => ctxOf_wit l y⟩
   cases hc : ctxOf l v with
   | none => rfl
   | some T =>
@@ -380,8 +388,8 @@ def imgRoot (img : ℕ → ℕ) : Root → Root
 abbrev itemImg (img : ℕ → ℕ) (u : VarSymb) : VarSymb := itemAt (imgRoot img u.rt) u
 
 /-- ⭐The renaming of an arrow: the item `u.box` goes to its image (`itemImg`). -/
-def arrowS (σ : Signature) (Δ : Ctx) (img : ℕ → ℕ) : Subst σ Δ := fun v =>
-  match v with
+def arrowS (σ : Signature) (Δ : Ctx) (img : ℕ → ℕ) : Subst σ Δ where
+  ty v := match v with
   | .step u .box => .ren (itemImg img u)
   | _ => .hide
 
@@ -439,7 +447,7 @@ theorem ref_rt {l : List VarType} {u : VarSymb} {T : VarType}
 
 theorem ok_arrowS [ModalSys.FourOff] {σ : Signature} {l : List VarType} {Δ : Ctx} {img : ℕ → ℕ}
     (himg : ImgOk l Δ img) : Subst.Ok (ctxOf l).boxIn (arrowS σ Δ img) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   obtain ⟨r, hr, hlt, hR⟩ := ref_rt hu
   change Δ.ref (itemImg img u) = some T
@@ -494,8 +502,9 @@ theorem coh_arrowS [ModalSys.FourOff] {σ : Signature} {l : List VarType} {Δ : 
 
 /-- ⭐The renaming of an arrow into the extent of `x`: items as for `□`, and `x.dia` to the
     variable `cx` holding `x`'s content. -/
-def arrowXS (σ : Signature) (Δ : Ctx) (img : ℕ → ℕ) (x : VarSymb) (cx : ℕ) : Subst σ Δ := fun v =>
-  match v with
+def arrowXS (σ : Signature) (Δ : Ctx) (img : ℕ → ℕ) (x : VarSymb) (cx : ℕ) :
+    Subst σ Δ where
+  ty v := match v with
   | .step u .box => .ren (itemImg img u)
   | .step u .dia => if u = x then .ren (.root (.free cx)) else .hide
   | _ => .hide
@@ -535,7 +544,7 @@ theorem ok_arrowXS [ModalSys.FourOff] {σ : Signature} {l : List VarType} {Δ : 
     (himg : ImgOk l Δ img) {x : VarSymb} {X : VarType} (hx : (ctxOf l).ref x = some (.VTypeDia X))
     {cx : ℕ} (hcx : Δ.ref (.root (.free cx)) = some X) :
     Subst.Ok ((ctxOf l).diaIn x) (arrowXS σ Δ img x cx) := by
-  intro v T _ hv
+  refine ⟨fun v T _ hv => ?_, by wit_triv⟩
   rcases diaIn_item hv with ⟨u, rfl, hu⟩ | ⟨rfl, hxT⟩
   · exact ok_arrowS (σ := σ) himg (.step u .box) T rfl
       (by rw [Ctx.boxIn_box_of ModalSys.FourOff.keepOnly hu])

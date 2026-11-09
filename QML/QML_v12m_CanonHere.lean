@@ -100,7 +100,7 @@ theorem here_truth (hT : ModalSys.T = true) {w : World σ N₀} {i : ℕ × ℕ}
       Model.interp ((canonEnv w₀ w i).diaPush x h ⟨(model w₀).frame.reflAcc hT w, hm⟩) bd =
         toDom w₀ A w (rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _)
           (realisedTerm w hr (Ctx.Le.refl _) hx bd).2) (definable_rden _ _) :=
-    fun hr hm => interp_dia_self w₀ hr.data (hr.data.declType i hx)
+    fun hr hm => interp_dia_self (e := Ctx.Le.refl _) w₀ hr.data (hr.data.declType i hx)
       (fun {_Γ'} {_b} s {_k} {_e'} {_env'} hag' => interp_canon w₀ s hag') (fun _ _ _ => rfl) h
       (World.real_of_realised hr) (realisedDecl hr (Ctx.Le.refl _) hx)
       (realisedLe w hr (Ctx.Le.refl _)) hT hm bd

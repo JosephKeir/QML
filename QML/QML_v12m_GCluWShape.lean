@@ -26,7 +26,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-- Reading at the root commutes with a level step, and with any step below one. -/
 theorem preIx_step (s : GW hF M₀) (z : VarSymb) {st : Step}
@@ -201,7 +201,7 @@ theorem termShp_annW {w : GW hF M₀} : ∀ {Δ : Ctx}
         ((hI x hr).2.2 (.inr rfl)).2]
       rfl
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- Below a level step the type before it is keepable (keep-only views). -/
 theorem keepable_of_level (hko : ModalSys.keepOnly = true) {U X : VarType} {st : Step}
     {r : List Step} (hs : st.isProj = false)

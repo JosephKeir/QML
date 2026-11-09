@@ -48,9 +48,10 @@ theorem holeAt_packG_unpackGW_val (N : NShape) (Z : VarType) : {Γ : Ctx} →
         ((holeAt_liftVal_wit (unpackG N) _ w₂).trans
           (sig_pair (holeAt_packG_unpackG_val N w₁) rfl))
 
+omit [ModalSys.NoFour] in
 /-- ⭐A returning possibility at a witnessed shape is one at its packed shape: `ret_map` along
     `packG`, the possible part carried along. -/
-def retS_packGW (hS : ModalSys.BStrong = true) {Γ : Ctx} [Γ.NoSlots] (O : OutLeg Γ)
+def retS_packGW [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) {Γ : Ctx} [Γ.NoSlots] (O : OutLeg Γ)
     {Δ : List (WFF σ Γ 0)} {N : NShape} {Z : VarType} {a : Ann (RShape.wit N Z).flat}
     (t : Term σ Γ (RShape.wit N Z).flat a)
     (Φ : WFF σ (O.view.insert (.bnd 0) (RShape.wit N Z).ty) 1)

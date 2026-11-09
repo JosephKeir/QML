@@ -249,14 +249,16 @@ theorem kView_item {l : List VarType} {k : Option VarSymb} {v : VarSymb} {T : Va
   | some x => exact diaIn_item h
 
 theorem ok_itemS_kView {l : List VarType} {k : Option VarSymb} {Δ : Ctx}
-    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf l).kView k) Δ f) :
+    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf l).kView k) Δ f)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Subst.Ok ((ctxOf l).kView k) (itemS σ Δ f) :=
   ok_itemS hf fun _ _ _ hT => by
     obtain ⟨u, s, e, -, -⟩ := kView_item hT
     exact ⟨u, s, e⟩
 
 theorem coh_itemS_kView {l : List VarType} {k : Option VarSymb} {Δ : Ctx}
-    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf l).kView k) Δ f) :
+    {f : VarSymb → VarSymb} (hf : ItemOk ((ctxOf l).kView k) Δ f)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Subst.Coh (itemIdx f) ((ctxOf l).kView k) (itemS σ Δ f) :=
   coh_itemS hf fun _ _ _ hT => by
     obtain ⟨u, s, e, hu, _⟩ := kView_item hT
@@ -373,7 +375,7 @@ theorem instantiate_gtup_gabs (hF : ModalSys.Four = true) (k : Option VarSymb) (
   rw [WFF.subst_mono (gabsCtx_le k A l) _ _ _ (gabsCtx_slots k A l) hs]
   refine (WFF.subst_comp _ _ (Subst.idS σ _) _ _ _ _ Subst.ok_idS Subst.coh_idS _ _ _ ?_ ψ).trans
     (WFF.subst_id _ _ _ ψ)
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T hl hv
   obtain ⟨u, s, rfl, hup, U, hU⟩ := kView_item hv
   have hs' : s.isProj = false := hl
@@ -393,7 +395,7 @@ theorem instantiate_gtup_gabs (hF : ModalSys.Four = true) (k : Option VarSymb) (
       exact kView_boxIn hk hrt hv
     rw [at_gPath_gtupB hF (Ctx.le_boxIn_kView _ k) _ ModalSys.keepOnly rfl hs' A u.path
       (.root (.free l.length)) (.root (.bnd 0)) (ctxOf_ref_new A l) hup hwalk
-      (by change Subst.single (.bnd 0) _ (.root (.bnd 0)) = _; exact if_pos rfl) u
+      (by change Subst.single (.bnd 0) _ (.root (.bnd 0)) = _; slot_rfl) u
       (by rw [← hrt]; exact VarSymb.eq_root_ext u) hit, Term.mono_eta]
     exact .ren_eta _ _
   · rw [gabsF_old hrt]
@@ -421,8 +423,8 @@ noncomputable def entOf (Δ : Ctx) : LEnt σ → SubE σ Δ
   | .inr ⟨l, _, _, t⟩ => if h : (ctxOf l).Le Δ then .tm (Term.mono h t) else .hide
 
 /-- ⭐The renaming of an edge given by an entry map `g`. -/
-noncomputable def eS (σ : Signature) (Δ : Ctx) (g : VarSymb → LEnt σ) : Subst σ Δ := fun v =>
-  match v with
+noncomputable def eS (σ : Signature) (Δ : Ctx) (g : VarSymb → LEnt σ) : Subst σ Δ where
+  ty v := match v with
   | .step u s => if s.isProj then .hide else entOf Δ (g (.step u s))
   | .root _ => .hide
 
@@ -494,9 +496,10 @@ theorem EntOk.le {Γ Δ Δ' : Ctx} {g : VarSymb → LEnt σ} (hg : EntOk Γ Δ g
     EntOk Γ Δ' g := fun v T hl hv => okRef_entOf_mono hle (hg v T hl hv)
 
 theorem ok_eS_kView {l : List VarType} {k : Option VarSymb} {Δ : Ctx}
-    {g : VarSymb → LEnt σ} (hg : EntOk ((ctxOf l).kView k) Δ g) :
+    {g : VarSymb → LEnt σ} (hg : EntOk ((ctxOf l).kView k) Δ g)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Subst.Ok ((ctxOf l).kView k) (eS σ Δ g) := by
-  intro v T hl hT
+  refine ⟨fun v T hl hT => ?_, by wit_triv⟩
   obtain ⟨u, s, rfl, -, -⟩ := kView_item hT
   rw [eS_item g hl]
   exact hg _ T hl hT
@@ -514,7 +517,8 @@ theorem eIdx_item (g : VarSymb → LEnt σ) {u : VarSymb} (hu : PPath u.path) {s
   rw [← VarSymb.eq_root_ext u]
 
 theorem coh_eS_kView {l : List VarType} {k : Option VarSymb} {Δ : Ctx}
-    {g : VarSymb → LEnt σ} (hg : EntOk ((ctxOf l).kView k) Δ g) :
+    {g : VarSymb → LEnt σ} (hg : EntOk ((ctxOf l).kView k) Δ g)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Subst.Coh (eIdx g) ((ctxOf l).kView k) (eS σ Δ g) := by
   refine Subst.coh_of (ok_eS_kView hg) ?_
   intro v T hl hT p
@@ -525,7 +529,7 @@ theorem coh_eS_kView {l : List VarType} {k : Option VarSymb} {Δ : Ctx}
 theorem sim_eS_mono {l : List VarType} {k : Option VarSymb} {Δ Δ' : Ctx} (h : Δ.Le Δ')
     {g : VarSymb → LEnt σ} (hg : EntOk ((ctxOf l).kView k) Δ g) :
     Subst.Sim ((ctxOf l).kView k) ((eS σ Δ g).mono h) (eS σ Δ' g) :=
-  Subst.sim_of fun v T hl hv => by
+  Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hl hv => by
     obtain ⟨u, s, rfl, -, -⟩ := kView_item hv
     change SubE.Sim T (SubE.mono h (eS σ Δ g (.step u s))) _
     rw [eS_item g hl, eS_item g hl, entOf_mono h (hg _ T hl hv)]
@@ -536,7 +540,7 @@ theorem sim_eS_congr {l : List VarType} {k : Option VarSymb} {Δ : Ctx}
     {g g' : VarSymb → LEnt σ}
     (hag : ∀ v T, v.lastProj = false → (ctxOf l).kView k v = some T → g' v = g v) :
     Subst.Sim ((ctxOf l).kView k) (eS σ Δ g) (eS σ Δ g') :=
-  Subst.sim_of fun v T hl hv => by
+  Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hl hv => by
     obtain ⟨u, s, rfl, -, -⟩ := kView_item hv
     rw [eS_item g hl, eS_item g' hl, hag _ T hl hv]
     exact .refl _
@@ -591,7 +595,7 @@ theorem subst_gext_gabs (hF : ModalSys.Four = true) {k : Option VarSymb} {A : Va
         (Subst.coh_toFree (ok_eS_kView hf) (coh_eS_kView hf) Ctx.NoSlots.slots A.gc _)
         (gabsCtx_slots k A ls) Ctx.NoSlots.slots (gabs hF k A ls hk ψ) := by
   refine (WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ ψ).symm
-  refine Subst.sim_of ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T hl hv
   obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
   have hs' : s.isProj = false := hl
@@ -613,7 +617,7 @@ theorem subst_gext_gabs (hF : ModalSys.Four = true) {k : Option VarSymb} {A : Va
   · rw [gextF_old hrt, gabsF_old hrt]
     change SubE.Sim T _ ((Subst.toFree _ 0 lt.length A.gc _).at (.step u s))
     rw [Subst.at_nonproj _ hl]
-    change SubE.Sim T _ (if VarSymb.step u s = .root (.bnd 0) then _ else _)
+    simp only [Subst.toFree]
     rw [if_neg (fun h => by cases h)]
     change SubE.Sim T _ (SubE.mono _ (eS σ (ctxOf lt) f (.step u s)))
     rw [kView_old hrt] at hv

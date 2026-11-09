@@ -27,7 +27,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-! ## Translating formulas along a path -/
 
@@ -107,9 +107,9 @@ theorem gagree_boxPush_path {Γ : Ctx} {w : GW hF M₀} {k : ℕ} (C : GTr σ Γ
 theorem eq_substEnv_of_gagree {Γ : Ctx} [Γ.NoSlots] (hnp : Γ.NoProjLast) {t : GW hF M₀} {j : ℕ}
     {ι : VarSymb → VarSymb} (θ : Subst σ (ctxOf (glat t j))) (hθ : Subst.Ok Γ θ)
     (hc : Subst.Coh ι Γ θ) (env : (gmodel hF hM₀).Env Γ t)
-    (hag : GAgree hM₀ (.sub θ hθ hc (.nil _)) env) :
+    (hag : GAgree hM₀ (.sub θ hθ hc (.nil _)) env) (hw : ∀ y X, Γ.wit y = some X → False) :
     env = Model.substEnv θ hθ hnp (gcanonEnv hM₀ t j) := by
-  funext v T hv
+  refine Model.Env.ext' (fun v T hv => ?_) fun y X h => (hw y X h).elim
   have hlp := hnp v T hv
   have href : Γ.ref v = some T := (Ctx.ref_nonproj Γ hlp).trans hv
   rw [← Model.Env.ref_of_nonproj env hlp href hv, hag v T href,
@@ -127,6 +127,7 @@ theorem gcanon_boxPush_edge (s t : GW hF M₀) (c : ℕ) (h : t.1 = nodeOf s.1 [
         (Ctx.noProjLast_boxIn _) (gcanonEnv hM₀ t (glstg s t i)) :=
   eq_substEnv_of_gagree _ _ _ (coh_eS_kView (gentOk_box hM₀ ⟨c, h⟩ i)) _
     (gagree_boxPush_path (.nil _) _ (gagree_canon s i) t hR [c] h (pathOk_cons))
+    (fun _ _ h => absurd (Ctx.boxIn_wit.mp h).1 (by rw [ModalSys.NoOpt.noOpt]; decide))
 
 /-- ⭐**Along a path, the `□` view satisfies a formula exactly when the end satisfies its
     translation.** -/
@@ -268,6 +269,7 @@ theorem gcanon_diaPush_edge (hnT : ModalSys.T = false) (s t : GW hF M₀) (c : �
         (Ctx.noProjLast_diaIn (ctxOf (glat s i)) x) (gcanonEnv hM₀ t (glstg s t i)) :=
   eq_substEnv_of_gagree _ _ _ (coh_eS_kView (hk ▸ gentOk hM₀ ⟨c, h⟩ i)) _
     (gagree_diaPush_path hnT (.nil _) _ (gagree_canon s i) hr t hR hmt [c] h hk)
+    (fun _ _ h => absurd (Ctx.boxIn_wit.mp h).1 (by rw [ModalSys.NoOpt.noOpt]; decide))
 
 theorem sat_diaPush_congr {Γ : Ctx} {w : GW hF M₀} {env₁ env₂ : (gmodel hF hM₀).Env Γ w}
     (e : env₁ = env₂) {y : VarSymb} {Y : VarType} (hy : Γ.ref y = some (.VTypeDia Y))
@@ -757,12 +759,12 @@ theorem gdia_sat_child (hT : ModalSys.T = true) {n : ℕ}
     (gcanon_mem_iff s i h _).mpr ((gmem_path hR (P := [c]) hc).mpr (Or.inl hrl))
   refine ⟨⟨_, hmt⟩, ?_⟩
   have hwd : (ctxOf (glat t (glstg s t i))).ref (wit t x) = some (.VTypeDia X) := by
-    have := ok_eS_kView (gentOk_box hM₀ ⟨c, hc⟩ i) (.step x .keep) (.VTypeDia X) rfl
+    have := (ok_eS_kView (gentOk_box hM₀ ⟨c, hc⟩ i)).ty (.step x .keep) (.VTypeDia X) rfl
       ((Ctx.ref_nonproj _ rfl).symm.trans (Ctx.ref_keep_of' hF h VarType.keepable_dia))
     rw [eS_item _ rfl, hfk] at this
     exact this
   have hbd : (ctxOf (glat t (glstg s t i))).ref b = some X := by
-    have := ok_eS_kView (l := glat s i) (k := some x) (hk ▸ gentOk hM₀ ⟨c, hc⟩ i)
+    have := (ok_eS_kView (l := glat s i) (k := some x) (hk ▸ gentOk hM₀ ⟨c, hc⟩ i)).ty
       (.step x .dia) X rfl ((Ctx.ref_nonproj _ rfl).symm.trans (Ctx.ref_diaIn_of h))
     rw [eS_item _ rfl, hfd] at this
     exact this
@@ -992,6 +994,7 @@ theorem gtruth_lt :
       | retxS hB _ _ _ _ _ => exact (absBS hB).elim
       | link hV _ _ _ => exact (ModalSys.NoFive.absurdFive hV).elim
       | linkx hV _ _ _ _ _ => exact (ModalSys.NoFive.absurdFive hV).elim
+      | optx hO _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
       | and φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega

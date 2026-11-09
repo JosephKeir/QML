@@ -70,7 +70,8 @@ theorem Ctx.rt_ne_bnd_of_ref {Γ : Ctx} [Γ.NoSlots] {w : VarSymb} {T : VarType}
     witness `x` gives `◇_x ψ(u.box)`, the hole formula carried into `x`'s view. -/
 theorem WFF.instantiate_exDia {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots] (hle : Γ.Le Δ) {A : VarType}
     {u : VarSymb} (hu : Γ.ref u = some (.VTypeBox A)) (x : VarSymb)
-    (hx : ∃ X, Δ.ref x = some (.VTypeDia X)) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
+    (hx : ∃ X, Δ.ref x = some (.VTypeDia X)) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     WFF.instantiate Ctx.NoSlots.slots
         (Term.diatm x hx (Term.eta u.inner A
           ((hle.boxIn.trans (Ctx.le_boxIn_diaIn Δ x)).ref (Ctx.ref_inner hu))))
@@ -141,7 +142,7 @@ theorem WFF.instantiate_exDia {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots] (hle : Γ.
   -- And that is the instantiation, weakened.
   have e := WFF.subst_mono_eq (Ctx.Le.refl _) hL _ hθ₃' hc₃' _ (Subst.ok_mono hθ₃' hL)
     (Subst.coh_mono hc₃' hL) hΓ₀ hΓ₀ hΓb ((Ctx.NoSlots.slots (Γ := Δ)).diaIn x)
-    (fun _ _ _ => .refl _) ψ
+    ⟨fun _ _ _ => .refl _, by wit_triv⟩ ψ
   rw [WFF.mono_refl] at e
   exact e
 
@@ -157,7 +158,7 @@ theorem WFF.dia_top_congr {Γ : Ctx} {d : ℕ} {x y : VarSymb} (h : x = y)
     carries `□φ(u.box)` into `◇_z φ(u.box)`.  The eigenvariable `z` only has to be fresh. -/
 def Proof.D_schema (hDS : ModalSys.DStrong = true) {Γ : Ctx} [Γ.NoSlots] {A : VarType}
     {u : VarSymb} (hu : Γ.ref u = some (.VTypeBox A)) (z : ℕ) (hz : Γ.RootFresh (.free z))
-    (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
+    (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) (_hO : ModalSys.Opt = false := by opt_off) :
     Proof σ Γ [WFF.boxHole hu ψ] (WFF.exDia A ψ) := by
   have hzd : ∃ X, (Γ.insert (.free z) (.VTypeDia .VTypeOne)).ref (.root (.free z)) =
       some (.VTypeDia X) := ⟨_, Ctx.ref_insert_root Γ (.free z) _⟩
@@ -184,7 +185,8 @@ def Proof.D_schema (hDS : ModalSys.DStrong = true) {Γ : Ctx} [Γ.NoSlots] {A : 
 
 /-- The schema in a presented context, with its eigenvariable chosen fresh. -/
 def Proof.D_schema' (hDS : ModalSys.DStrong = true) {Γ : Ctx} [Γ.Presented] {A : VarType}
-    {u : VarSymb} (hu : Γ.ref u = some (.VTypeBox A)) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
+    {u : VarSymb} (hu : Γ.ref u = some (.VTypeBox A)) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1)
+    (_hO : ModalSys.Opt = false := by opt_off) :
     Proof σ Γ [WFF.boxHole hu ψ] (WFF.exDia A ψ) :=
   Proof.D_schema hDS hu (Ctx.Presented.bound Γ) (Ctx.Presented.fresh_bound _ le_rfl) ψ
 

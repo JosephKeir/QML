@@ -136,6 +136,8 @@ theorem WFF.collapse_shift_same : ∀ {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx} {d : �
             ((hc.diaIn _).insert ((hs₂.diaIn _).rootFresh le_rfl) _) hle'
             ((hid.diaIn y).insert _ _) ((hs₁.diaIn y).insert _) ((hs₂.diaIn _).insert _) Φ)
       exact hy.elim fun _ hY => key y (hid y _ hY).symm _ _
+  | _, _, _, _, _, hs, _, _, _, _, _, .optx hO _ _ _ =>
+      False.elim (by have := ModalSys.noOpt_of_Four hs.hF; rw [hO] at this; cases this)
 
 end CollapseShift
 
@@ -152,7 +154,7 @@ theorem WFF.realiseAtA_neg {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true) (x
     WFF.realiseAtA hT x hxA t₀ χ.neg = (WFF.realiseAtA hT x hxA t₀ χ).neg := rfl
 
 /-- Abstraction commutes with weakening (the formula form of `Term.mono_diaAbsA`). -/
-theorem WFF.mono_diaAbsA {Γ Γ' : Ctx} [Γ.Presented] [Γ'.Presented] {x : VarSymb}
+theorem WFF.mono_diaAbsA [ModalSys.NoOpt] {Γ Γ' : Ctx} [Γ.Presented] [Γ'.Presented] {x : VarSymb}
     {A : VarType} (h : Γ.Le Γ') (hcA : Γ.ref x = some (.VTypeDia A))
     (hcA' : Γ'.ref x = some (.VTypeDia A)) (χ : WFF σ (Γ.diaIn x) 0) :
     WFF.mono (h.boxIn.insert (.bnd 0) A) (WFF.diaAbsA x hcA χ) =
@@ -222,7 +224,8 @@ theorem Subst.shiftCorr_diaAbsA_keep (hF : ModalSys.Four = true) {Γ : Ctx} {x :
     abstraction commutes with the shift (`Subst.shiftCorr_diaAbsA_keep`), the realisation's
     collapse undoes the shift (`WFF.collapse_shift_same`, every `□` view being kept-only), and
     reading the abstraction back at the content is the round trip (`WFF.viewReadAtA_diaAbsA`). -/
-theorem WFF.realiseAtA_shift_keep (hT : ModalSys.T = true) (hF : ModalSys.Four = true)
+theorem WFF.realiseAtA_shift_keep [ModalSys.NoOpt]
+    (hT : ModalSys.T = true) (hF : ModalSys.Four = true)
     {Γ Δ : Ctx} [hp : Γ.Presented] [Δ.Presented] {x : VarSymb} {X : VarType}
     (hx : Γ.ref x = some (.VTypeDia X)) (hle : (Γ.diaIn x).Le Δ)
     (hk : Δ.ref (.step x .keep) = some (.VTypeDia X)) (hdia : Δ.ref (.step x .dia) = some X)
@@ -272,16 +275,9 @@ theorem WFF.realiseAtA_shift_keep (hT : ModalSys.T = true) (hF : ModalSys.Four =
   intro v U _ hv
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
-    have hU : U = X := by
-      change (if VarSymb.root (Root.bnd 0) = .root (.bnd 0) then some X else _) = some U at hv
-      rw [if_pos rfl] at hv
-      exact (Option.some.inj hv).symm
+    have hU : U = X := Option.some.inj (hv.symm.trans (Ctx.ref_insert_root _ _ _))
     subst hU
-    change SubE.Sim U (if VarSymb.root (Root.bnd 0) = .root (.bnd 0) then
-        SubE.tm (Term.eta (.step x .dia) U hdia) else _)
-      (SubE.mono _ (if VarSymb.root (Root.bnd 0) = .root (.bnd 0) then
-        SubE.ren (.step x .dia) else _))
-    rw [if_pos rfl, if_pos rfl]
+    rw [Subst.single_self, Subst.mono_apply, Subst.single_self]
     exact .eta_ren _ hdia
   · change SubE.Sim U (if v = .root (.bnd 0) then _ else SubE.ren v)
       (SubE.mono _ (if v = .root (.bnd 0) then _ else SubE.ren v))

@@ -83,7 +83,7 @@ theorem liftBodyX_eq_instantiate {lv cls clt : List VarType} (hs : cls <:+ lv) {
         ((Ctx.NoSlots.slots (Γ := ctxOf lv)).insert _) Φ) := by
   unfold WFF.instantiate WFF.substRoot liftBodyX
   refine (WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ).symm
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     dsimp only [Subst.comp, Subst.under]
@@ -92,7 +92,7 @@ theorem liftBodyX_eq_instantiate {lv cls clt : List VarType} (hs : cls <:+ lv) {
     change SubE.Sim T _ (Subst.single _ _ (.root (.bnd 0)))
     rw [show Subst.single (σ := σ) (Δ := ctxOf lv) (.bnd 0)
       (.tm (Term.boxtm (Term.mono (ctxOf_le_of_suffix hs).boxIn (tupT cls).2)))
-        (.root (.bnd 0)) = _ from if_pos rfl]
+        (.root (.bnd 0)) = _ from by slot_rfl]
     exact .refl _
   · rcases bodyX_item hv hvr with ⟨u, rfl, hu⟩ | ⟨rfl, _⟩
     · obtain ⟨r, hr, _, _⟩ := ref_rt hu
@@ -129,7 +129,7 @@ theorem WFF.subst_slotUp {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d : ℕ} (hs 
         (hc.restrict (Ctx.le_insert hs.root T)) hs hΔ ψ :=
   WFF.subst_comp (Subst.idS σ _) θ θ _ _ hθ hc (hθ.restrict (Ctx.le_insert hs.root T))
     (hc.restrict (Ctx.le_insert hs.root T)) hs (hs.insert T) hΔ
-    (Subst.sim_of fun v _ hlp _ => by
+    (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v _ hlp _ => by
       change SubE.Sim _ _ (θ.at v)
       rw [Subst.at_nonproj θ hlp]
       exact .refl _) ψ
@@ -152,7 +152,7 @@ theorem WFF.openFree_mono_slotUp {Γ Γ' : Ctx} {T : VarType} (h : Γ.Le Γ') (u
         rw [Subst.toFree_ne _ _ _ _ hvr]
         change ((Subst.idRen Γ') v).mono _ = _
         rw [← Subst.at_nonproj (Subst.idRen Γ') hlp, Subst.at_idRen]
-        rfl) ψ, WFF.mono_mono]
+        rfl) ψ (fun _ _ _ _ => rfl), WFF.mono_mono]
 
 /-- A witness body that does not use the bound object, read at the child: the arrow's reading. -/
 theorem liftBodyX_slotUp {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt : ℕ → ℕ}
@@ -164,7 +164,8 @@ theorem liftBodyX_slotUp {lv cls clt : List VarType} (hs : cls <:+ lv) {imgt : �
         (coh_arrowXS himgt hx hcx) Ctx.NoSlots.slots Ctx.NoSlots.slots ψ := by
   unfold liftBodyX
   rw [WFF.subst_slotUp]
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) ψ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _
+    (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T _ hv => ?_) ψ
   have hvr : v ≠ .root (.bnd 0) := fun h => by
     subst h
     rw [(Ctx.NoSlots.slots (Γ := (ctxOf clt).diaIn x)).root] at hv

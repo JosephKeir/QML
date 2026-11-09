@@ -113,8 +113,9 @@ theorem Model.diaLift_of_reached {σ : Signature} (M : Model σ) (hF : ModalSys.
     B with 5 without T is left out: KDB5
     there is S5 (`Frame.exists_unit_of_serial`), and KB5 there is a possible gap, to review (docs,
     "Strong B on KB5 and KDB5").  `strongT` is `ModalSys.WCoh`, which the network and the cluster
-    ask for. -/
-class ModalSys.CubeSys [ModalSys] : Prop where
+    ask for.  `Opt` is off (for now: every canonical model is built without the box view of
+    possible objects; M1 brings it to K and D). -/
+class ModalSys.CubeSys [ModalSys] : Prop extends ModalSys.NoOpt where
   /-- 5 comes with 4 and both of 4's lifts in force: by flag, or under T or weak B, either of which
       with 5 proves them. -/
   five_lifts : ModalSys.Five = true →
@@ -141,7 +142,8 @@ omit [ModalSys] in
 /-- ⭐S5 is in the cube. -/
 theorem ModalSys.S5_cube : @ModalSys.CubeSys ModalSys.S5 :=
   letI := ModalSys.S5
-  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+  { noOpt := rfl
+    five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ _ => rfl
     four_B := fun _ _ => rfl
     hub_fiveS := fun h => Bool.noConfusion ((rfl : ModalSys.hubFlags = false).symm.trans h)
@@ -158,7 +160,8 @@ omit [ModalSys] in
 /-- ⭐S5 with every strong form is in the cube. -/
 theorem ModalSys.S5Strong_cube : @ModalSys.CubeSys ModalSys.S5Strong :=
   letI := ModalSys.S5Strong
-  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+  { noOpt := rfl
+    five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ _ => rfl
     four_B := fun _ _ => rfl
     hub_fiveS := fun h => Bool.noConfusion ((rfl : ModalSys.hubFlags = false).symm.trans h)
@@ -175,7 +178,8 @@ omit [ModalSys] in
 /-- ⭐S5 with no strong form is in the cube: T and 5 prove 4's lifts. -/
 theorem ModalSys.S5NoLift_cube : @ModalSys.CubeSys ModalSys.S5NoLift :=
   letI := ModalSys.S5NoLift
-  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+  { noOpt := rfl
+    five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ _ => rfl
     four_B := fun _ _ => rfl
     hub_fiveS := fun h => Bool.noConfusion ((rfl : ModalSys.hubFlags = false).symm.trans h)
@@ -192,7 +196,8 @@ omit [ModalSys] in
 /-- ⭐S5 with every strong form but the lifts is in the cube. -/
 theorem ModalSys.S5StrongNoLift_cube : @ModalSys.CubeSys ModalSys.S5StrongNoLift :=
   letI := ModalSys.S5StrongNoLift
-  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+  { noOpt := rfl
+    five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ _ => rfl
     four_B := fun _ _ => rfl
     hub_fiveS := fun h => Bool.noConfusion ((rfl : ModalSys.hubFlags = false).symm.trans h)
@@ -209,7 +214,8 @@ omit [ModalSys] in
 /-- ⭐KB5 is in the cube. -/
 theorem ModalSys.KB5_cube : @ModalSys.CubeSys ModalSys.KB5 :=
   letI := ModalSys.KB5
-  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+  { noOpt := rfl
+    five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ h => (Bool.false_ne_true h).elim
     four_B := fun _ _ => rfl
     hub_fiveS := fun h => Bool.noConfusion ((rfl : ModalSys.hubFlags = false).symm.trans h)
@@ -226,7 +232,8 @@ omit [ModalSys] in
 /-- ⭐KDB5 is in the cube. -/
 theorem ModalSys.KDB5_cube : @ModalSys.CubeSys ModalSys.KDB5 :=
   letI := ModalSys.KDB5
-  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+  { noOpt := rfl
+    five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ h => (Bool.false_ne_true h).elim
     four_B := fun _ _ => rfl
     hub_fiveS := fun h => Bool.noConfusion ((rfl : ModalSys.hubFlags = false).symm.trans h)
@@ -243,7 +250,8 @@ omit [ModalSys] in
 /-- ⭐KB5 with no strong form is in the cube: 5 and weak B prove 4's lifts. -/
 theorem ModalSys.KB5NoLift_cube : @ModalSys.CubeSys ModalSys.KB5NoLift :=
   letI := ModalSys.KB5NoLift
-  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+  { noOpt := rfl
+    five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ h => (Bool.false_ne_true h).elim
     four_B := fun _ _ => rfl
     hub_fiveS := fun h => Bool.noConfusion ((rfl : ModalSys.hubFlags = false).symm.trans h)
@@ -260,7 +268,8 @@ omit [ModalSys] in
 /-- ⭐KDB5 without 4's lifts is in the cube. -/
 theorem ModalSys.KDB5NoLift_cube : @ModalSys.CubeSys ModalSys.KDB5NoLift :=
   letI := ModalSys.KDB5NoLift
-  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+  { noOpt := rfl
+    five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ h => (Bool.false_ne_true h).elim
     four_B := fun _ _ => rfl
     hub_fiveS := fun h => Bool.noConfusion ((rfl : ModalSys.hubFlags = false).symm.trans h)
@@ -277,7 +286,8 @@ omit [ModalSys] in
 /-- ⭐K45 with no strong form is in the cube: the hub. -/
 theorem ModalSys.K45NoLift_cube : @ModalSys.CubeSys ModalSys.K45NoLift :=
   letI := ModalSys.K45NoLift
-  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+  { noOpt := rfl
+    five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ h => (Bool.false_ne_true h).elim
     four_B := fun h => (Bool.false_ne_true h).elim
     hub_fiveS := fun _ h => (Bool.false_ne_true h).elim
@@ -294,7 +304,8 @@ omit [ModalSys] in
 /-- ⭐KD45 without 4's lifts is in the cube: the hub, with strong D at the world asked about. -/
 theorem ModalSys.KD45NoLift_cube : @ModalSys.CubeSys ModalSys.KD45NoLift :=
   letI := ModalSys.KD45NoLift
-  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+  { noOpt := rfl
+    five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ h => (Bool.false_ne_true h).elim
     four_B := fun h => (Bool.false_ne_true h).elim
     hub_fiveS := fun _ h => (Bool.false_ne_true h).elim
@@ -311,7 +322,8 @@ omit [ModalSys] in
 /-- ⭐K45 with the `□`-lift alone is in the cube: the hub, the world asked about lifting by flag. -/
 theorem ModalSys.K45BoxLift_cube : @ModalSys.CubeSys ModalSys.K45BoxLift :=
   letI := ModalSys.K45BoxLift
-  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+  { noOpt := rfl
+    five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ h => (Bool.false_ne_true h).elim
     four_B := fun h => (Bool.false_ne_true h).elim
     hub_fiveS := fun _ h => (Bool.false_ne_true h).elim
@@ -328,7 +340,8 @@ omit [ModalSys] in
 /-- ⭐K45 with the `◇`-lift alone is in the cube. -/
 theorem ModalSys.K45DiaLift_cube : @ModalSys.CubeSys ModalSys.K45DiaLift :=
   letI := ModalSys.K45DiaLift
-  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+  { noOpt := rfl
+    five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ h => (Bool.false_ne_true h).elim
     four_B := fun h => (Bool.false_ne_true h).elim
     hub_fiveS := fun _ h => (Bool.false_ne_true h).elim
@@ -345,7 +358,8 @@ omit [ModalSys] in
 /-- ⭐K45 with strong 5 and the `□`-lift is in the cube: the gather at the world asked about. -/
 theorem ModalSys.K45Strong5_cube : @ModalSys.CubeSys ModalSys.K45Strong5 :=
   letI := ModalSys.K45Strong5
-  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+  { noOpt := rfl
+    five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ h => (Bool.false_ne_true h).elim
     four_B := fun h => (Bool.false_ne_true h).elim
     hub_fiveS := fun _ _ => rfl
@@ -362,7 +376,8 @@ omit [ModalSys] in
 /-- ⭐KD45 with every strong form but the `◇`-lift is in the cube. -/
 theorem ModalSys.KD45Strong5_cube : @ModalSys.CubeSys ModalSys.KD45Strong5 :=
   letI := ModalSys.KD45Strong5
-  { five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
+  { noOpt := rfl
+    five_lifts := fun _ => ⟨rfl, rfl, rfl⟩
     five_B := fun _ h => (Bool.false_ne_true h).elim
     four_B := fun h => (Bool.false_ne_true h).elim
     hub_fiveS := fun _ _ => rfl
@@ -379,13 +394,15 @@ theorem cluFlags_of_cube (hV : ModalSys.Five = true) : GArrow.CluFlags :=
 
 /-- With B and without 5 the network applies. -/
 theorem noFour_of_cube (hV : ¬ ModalSys.Five = true) (hB : ModalSys.B = true) : ModalSys.NoFour :=
-  { strongT := ModalSys.CubeSys.strongT
+  { noOpt := ModalSys.NoOpt.noOpt
+    strongT := ModalSys.CubeSys.strongT
     noFour := Bool.eq_false_iff.mpr fun hF => hV (ModalSys.CubeSys.four_B hB hF)
     noFive := Bool.eq_false_iff.mpr hV }
 
 /-- Without B and without 5, `NoBComplete` applies. -/
 theorem noB_of_cube (hV : ¬ ModalSys.Five = true) (hB : ¬ ModalSys.B = true) : ModalSys.NoB :=
-  { noB := Bool.eq_false_iff.mpr hB
+  { noOpt := ModalSys.NoOpt.noOpt
+    noB := Bool.eq_false_iff.mpr hB
     noBStrong := Bool.eq_false_iff.mpr fun hS => hB (ModalSys.CubeSys.strongB hS)
     fiveCluster := fun h => absurd h hV
     hubFiveS := ModalSys.CubeSys.hub_fiveS }
@@ -414,7 +431,8 @@ theorem provable_iff_validCube (e : CtxExpr) (he : e.Wf)
       (env : M.Env e.denote w),
       e.denote.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ := by
   letI : e.denote.Presented := ⟨e, he.1, rfl⟩
-  exact ⟨fun ⟨p⟩ M hM _ env => Model.soundness p M hM env (Ctx.Presented.tame _),
+  exact ⟨fun ⟨p⟩ M hM _ env hnp =>
+    Model.soundness p M hM env (Ctx.Presented.tame _) hnp (by env_opened),
     completenessCube e he⟩
 
 /-- ⭐**Model existence across the cube.** -/

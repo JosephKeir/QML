@@ -777,7 +777,7 @@ theorem posBack_exists_canon (hS : ModalSys.BStrong = true)
     rw [Term.subst_mono, Term.mono_subst]
     refine Term.subst_congr _ _ _ _ _ _ ?_ u₀
     rw [arrowS_mono]
-    exact sim_arrowXS_arrowS (fun _ _ => rfl)
+    exact (sim_arrowXS_arrowS (fun _ _ => rfl)).ty
   refine ⟨⟨B.rden v K (Ctx.Le.refl _) (Term.diatm ω ⟨Ω, hωK⟩ (Term.mono hL u₀)),
       definable_rden _ _⟩, hmem,
     ⟨B.stg v w K, _, Term.subst (arrowXIdx (B.img v w) ω (B.cx v w ω))

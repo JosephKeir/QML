@@ -280,14 +280,15 @@ theorem grealStep_ok (hF : ModalSys.Four = true) {ts tt : NodeSt σ} {k : Option
   obtain ⟨hS, hmcs⟩ := complete_spec (hcons.mono hsub)
   refine ⟨hmcs, ⟨⟨[_], rfl⟩, fun φ hφ => hS (Or.inl ⟨φ, hφ, rfl⟩)⟩, hsuf',
     kDecl_mono (ctxOf_le_append [_] cl) hk, itemOk_gextF hF (kOld_of_kDecl hk) hf, ?_⟩
-  intro ψ hψ
+  intro _ ψ hψ
   rw [mono_kBox] at hψ
   exact hS (Or.inr ⟨hle, hk, hf, ψ, by rw [mono_kBox]; exact hψ, rfl⟩)
 
 open Classical in
 /-- ⭐Commit the parent's next variable along the edge into `k`, or the root's along its
     self-edge. -/
-noncomputable def realF (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → GNetSt σ
+noncomputable def realF [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → GNetSt σ
   | [] =>
       if N.lp ∧ (N.fcl []).length < (N.st []).l.length then
         (N.setSt [] (gloopStep (N.st []) (N.fcl []) (N.fmap []))).setFwd []
@@ -308,7 +309,8 @@ noncomputable def realF (hF : ModalSys.Four = true) (N : GNetSt σ) : Node → G
       else N
 
 /-- ⭐Realising forward preserves the invariants. -/
-theorem Good.realF (hF : ModalSys.Four = true) (hN : N.Good) {k : Node} (hk : N.Live k) :
+theorem Good.realF [ModalSys.NoOpt]
+    (hF : ModalSys.Four = true) (hN : N.Good) {k : Node} (hk : N.Live k) :
     (N.realF hF k).Good := by
   match k with
   | [] =>

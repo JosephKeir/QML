@@ -24,21 +24,23 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 section Flags
 
 variable [ModalSys.NoT] [ModalSys.GrowSys]
 
 omit [ModalSys.NoT] in
+omit [ModalSys.NoOpt] in
 theorem absB (hB : ModalSys.B = true) : False := by
   rw [ModalSys.NoB.noB] at hB
   cases hB
 
+omit [ModalSys.NoOpt] in
 theorem absShaped (h : ModalSys.shaped = true) : False := by
   simp [ModalSys.shaped, ModalSys.NoT.noT, ModalSys.NoB.noBStrong] at h
 
-omit [ModalSys.NoT] in
+omit [ModalSys.NoT] [ModalSys.NoOpt] in
 /-- Without B the only shaped flag is T. -/
 theorem gT_of_shaped (h : ModalSys.shaped = true) : ModalSys.T = true := by
   simpa [ModalSys.shaped, ModalSys.NoB.noBStrong] using h

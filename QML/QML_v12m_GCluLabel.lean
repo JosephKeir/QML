@@ -23,7 +23,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-! ## Paths from the root -/
 
@@ -419,6 +419,7 @@ theorem cLab_wf (hT : ModalSys.T = true) : ∀ (n : ℕ) {v : VarSymb} {U : VarT
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] hV hM₀ in
 include hS hW in
+omit [ModalSys.NoOpt] in
 theorem liftable_of_keepable {T : VarType} (h : T.keepable = true) : T.liftable = true := by
   cases T <;> simp_all [VarType.liftable, VarType.keepable]
 
@@ -470,6 +471,7 @@ theorem rorig_rnm (b : GW hF M₀) {v : VarSymb} {U : VarType} (hv : DeclAt (gro
   exact porig_pnm hV hM₀ (rpath b) (groot hF M₀) b (rpath_eq b) i v U hi hk he
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [ModalSys.NoOpt] in
 theorem etaInj_of_step {U W : VarType} {s : Step} (h : U.step s = some W)
     (hW : W.etaInj = true) : U.etaInj = true := by
   cases U with
@@ -489,7 +491,7 @@ theorem etaInj_of_step {U W : VarType} {s : Step} (h : U.step s = some W)
       all_goals cases h
   | VTypeDia A => rfl
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- A type with a possible position is η-faithful. -/
 theorem etaInj_of_walkTy : ∀ (π : List Step) {U : VarType} {X : VarType},
     Step.walkTy U π = some (.VTypeDia X) → U.etaInj = true

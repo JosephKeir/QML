@@ -27,7 +27,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 variable (hM₀ : Theory.IsMCS M₀)
 
@@ -348,7 +348,7 @@ theorem cagree_diaPush (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
       subst hu
       have hXT := Ctx.diaIn_step_dia hr hv
       subst hXT
-      simp only [Model.Env.diaPush]
+      simp only [Model.Env.diaPush, Model.Env.diaPushVal]
       have hpq := hag u _ hr
       have hm₁ : a.1 ∈ ((cmodel hF hM₀ hX).posEval (ctoDom hM₀ hX _ w
           (cden hM₀ hX w k (Ctx.Le.refl _) (C.app (Term.eta u _ hr)).2)
@@ -438,7 +438,7 @@ theorem cagree_diaPushR (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
       subst hu
       have hXT := Ctx.diaIn_step_dia hr hv
       subst hXT
-      simp only [Model.Env.diaPush]
+      simp only [Model.Env.diaPush, Model.Env.diaPushVal]
       have hpq := hag u _ hr
       have hm₁ : a.1 ∈ ((cmodel hF hM₀ hX).posEval (ctoDom hM₀ hX _ w
           (cden hM₀ hX w k (Ctx.Le.refl _) (C.app (Term.eta u _ hr)).2)
@@ -475,8 +475,8 @@ theorem cagree_diaPushR (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
 variable (hM₀) in
 /-- ⭐The canonical environment: every visible address denotes its η-expansion. -/
 noncomputable def ccanonEnv (hX : CluFlags) (s : GW hF M₀) (i : ℕ) :
-    (cmodel hF hM₀ hX).Env (ctxOf (glat s i)) s :=
-  fun v T hv => ctoDom hM₀ hX T s (cden hM₀ hX s i (Ctx.Le.refl _) (Term.eta v T
+    (cmodel hF hM₀ hX).Env (ctxOf (glat s i)) s where
+  val v T hv := ctoDom hM₀ hX T s (cden hM₀ hX s i (Ctx.Le.refl _) (Term.eta v T
     ((Ctx.ref_nonproj _ (Ctx.Presented.noProjLast _ v T hv)).trans hv))) (cdefinable_den hX _ _)
 
 theorem cagree_canon (hX : CluFlags) (s : GW hF M₀) (i : ℕ) :
@@ -485,7 +485,7 @@ theorem cagree_canon (hX : CluFlags) (s : GW hF M₀) (i : ℕ) :
 
 /-! ## Shapes -/
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- An η-annotation renamed along its positions is the renamed address's. -/
 theorem Ann.mapIdx_eta_of (hko : ModalSys.keepOnly = true) (g : VarSymb → VarSymb) :
     ∀ (T : VarType) (y y' : VarSymb), (∀ π : List Step, g (y.ext π) = y'.ext π) →

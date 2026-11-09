@@ -33,7 +33,7 @@ variable [ModalSys]
 namespace Ctx
 
 omit [ModalSys] in
-theorem le_of_eq {Γ Γ' : Ctx} (E : Γ = Γ') : Γ.Le Γ' := fun _ _ h => E ▸ h
+theorem le_of_eq {Γ Γ' : Ctx} (E : Γ = Γ') : Γ.Le Γ' := E ▸ Ctx.Le.refl Γ
 
 end Ctx
 

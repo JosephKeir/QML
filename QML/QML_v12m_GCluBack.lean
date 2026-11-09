@@ -43,14 +43,15 @@ theorem WFF.holeAt_boxHole {σ : Signature} {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsF
 
 /-- Realising a hole formula's reading is reading it at the realised term. -/
 theorem WFF.realiseAtA_holeAt {σ : Signature} {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true)
-    (x : VarSymb) {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) {a₀ : Ann A}
+    (hF : ModalSys.Four = true) (x : VarSymb) {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A))
+    {a₀ : Ann A}
     (t₀ : Term σ Γ A a₀) {T : VarType} {b : Ann T} (u : Term σ (Γ.diaIn x) T b)
     (ψ : WFF σ (Ctx.empty.insert (.bnd 0) T) 1) :
     WFF.realiseAtA hT x hxA t₀ (WFF.holeAt Ctx.NoSlots.slots u ψ) =
       WFF.holeAt Ctx.NoSlots.slots (Term.realiseAtA hT x hxA t₀ u) ψ := by
   unfold WFF.realiseAtA WFF.hereRead WFF.diaAbsA
   rw [WFF.subst_holeAt, WFF.collapse_holeAt _ _ ((Ctx.NoSlots.slots (Γ := Γ)).insert A),
-    WFF.collapse_hole]
+    WFF.collapse_hole hF]
   exact WFF.subst_holeAt _ _ _ _ _ _ ψ
 
 namespace GArrow
@@ -58,7 +59,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-! ## Hole formulas along a path -/
 
@@ -73,7 +74,7 @@ theorem pTrW_holeAt : ∀ (s t : GW hF M₀) (P : List ℕ) (h : t.1 = nodeOf s.
   | _, _, [], _, _, _, _, _, u, ψ => by
       change WFF.mono _ (WFF.collapse _ _ (WFF.holeAt _ u ψ)) =
         WFF.holeAt _ (Term.mono _ (Term.collapse _ u)) ψ
-      rw [WFF.collapse_holeAt _ _ Ctx.NoSlots.slots, WFF.collapse_hole,
+      rw [WFF.collapse_holeAt _ _ Ctx.NoSlots.slots, WFF.collapse_hole hF,
         WFF.mono_holeAt _ Ctx.NoSlots.slots Ctx.NoSlots.slots]
   | _, _, [_], _, _, _, _, _, u, ψ => WFF.subst_holeAt _ _ _ _ _ u ψ
   | s, t, c :: c' :: P, h, _, i, _, _, u, ψ => by
@@ -114,7 +115,7 @@ theorem dia_mem_of_path (hX : CluFlags) (s : GW hF M₀) (i : ℕ) (v : GW hF M�
 
 /-! ## Terms along a path -/
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- A pair under `□` goes through a chain componentwise. -/
 theorem GTr.app_boxtm_pair {Γ Δ : Ctx} (C : GTr σ Γ Δ) {A B : VarType} {a a' : Ann A}
     {c c' : Ann B} {x : Term σ Γ.boxIn A a} {y : Term σ Γ.boxIn B c} {x' : Term σ Δ.boxIn A a'}
@@ -156,7 +157,7 @@ theorem preTB_at (hX : CluFlags) (s : GW hF M₀) {i j R : ℕ} (hR : rstg s j �
     (ok_eS_kView (k := none) (entOk_ofRen (itemOk_preI (rpre_le hX hM₀ s hR))))
     _ (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI (rpre_le hX hM₀ s hR))))
     (sim_eS_mono (l := glat s j) (k := none) _
-      (entOk_ofRen (itemOk_preI (rpre hX hM₀ s j)))) _).trans ?_
+      (entOk_ofRen (itemOk_preI (rpre hX hM₀ s j)))).ty _).trans ?_
   rw [Term.subst_mono]
 
 /-- A term's preimage does not depend on the stage it is taken at. -/
@@ -204,7 +205,7 @@ theorem preTB_pTrK (hX : CluFlags) (s : GW hF M₀) {I R R₀ : ℕ} (hR : rstg 
   refine (preTB_at hM₀ hX s hR e _).trans ?_
   refine (sig_subst_cong _ _ _ (tr_pathK hX hM₀ _ _ _ _ _ r)).trans ?_
   refine (Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
-    fun u st _ hst _ => ?_) r).trans (round_trip hX.five hM₀ (rpath s) (groot hF M₀) s
+    fun u st _ hst _ => ?_).ty r).trans (round_trip hX.five hM₀ (rpath s) (groot hF M₀) s
       (rpath_eq s) R₀ hrt hR₀ r)
   obtain ⟨u', e'⟩ := preI_step (rnm s) u st
   exact ⟨u', st, e', hst, by rw [← e', preI_comp]⟩
@@ -221,7 +222,7 @@ theorem pTrK_mono (hX : CluFlags) (P : List ℕ) (s t : GW hF M₀) (h : t.1 = n
     ⟨_, Term.subst _ _ _ _ (Term.mono _ b)⟩
   rw [Term.mono_subst, Term.subst_mono]
   exact Term.subst_congr _ _ _ _ _ _ (sim_eS_mono (l := glat s i) (k := none) _
-    (entOk_ofRen (itemOk_preI (pnm_ok hX hM₀ P s t h i)))) b
+    (entOk_ofRen (itemOk_preI (pnm_ok hX hM₀ P s t h i)))).ty b
 
 /-- What a world's term is, kept from its root preimage, at a later root stage. -/
 theorem pTrK_home (hX : CluFlags) (v : GW hF M₀) (h : v.1 = nodeOf (groot hF M₀).1 (rpath v))
@@ -273,7 +274,7 @@ theorem tr_kept (hX : CluFlags) (P : List ℕ) (s t : GW hF M₀) (h : t.1 = nod
     (Ctx.shifts_boxIn_boxIn hF _) _ _ _ _ _ _ (shiftCorr_preI (hF := hF) _ (ok_eS_kView (k := none)
       (entOk_ofRen (itemOk_preI (pnm_ok hX hM₀ P s t h i))))) r).symm)
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- Weakening a kept carrier keeps the weakening. -/
 theorem mono_kept {Γ Γ' : Ctx} (h : Γ.Le Γ') {C : VarType} {k₀ : Ann C}
     (k : Term σ Γ.boxIn C k₀) :
@@ -418,7 +419,7 @@ theorem tie_nec (hX : CluFlags) (hS : ModalSys.BStrong = true) (hT : ModalSys.T 
       ⟨Proof.K_box (Δ := []) (Proof.back_shift hS hT hF g')⟩
   · exact cden_home hM₀ hX s v hJI g
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- A term of a `□` type is a `boxtm`. -/
 theorem exists_boxtm {Γ : Ctx} {A : VarType} (p : Σ c, Term σ Γ (.VTypeBox A) c) :
     ∃ (g₀ : Ann A) (g : Term σ Γ.boxIn A g₀), p = ⟨_, .boxtm g⟩ := by
@@ -519,7 +520,8 @@ theorem grealW_holeAt {t : GW hF M₀} {y : VarSymb} (hr : (gw hM₀ t).Realised
     grealW hM₀ hr hy (WFF.holeAt Ctx.NoSlots.slots u ψ) =
       WFF.holeAt Ctx.NoSlots.slots (grealT hr (Ctx.Le.refl _) hy u).2 ψ := by
   unfold grealW
-  rw [WFF.mono_holeAt _ Ctx.NoSlots.slots Ctx.NoSlots.slots, WFF.realiseAtA_holeAt]
+  rw [WFF.mono_holeAt _ Ctx.NoSlots.slots Ctx.NoSlots.slots,
+    WFF.realiseAtA_holeAt (hF := hF)]
   rfl
 
 /-- What is necessary along a realised witness is true, realised (`Proof.here_elimAtA`). -/

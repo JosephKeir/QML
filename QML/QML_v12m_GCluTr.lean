@@ -29,7 +29,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 /-- The names along an edge depend only on the child's node. -/
 theorem nm_congr {t t' : GW hF M₀} (e : t.1 = t'.1) : nm t = nm t' := by
@@ -58,7 +58,7 @@ theorem sim_edge_nm (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M�
     (h : GCh hF M₀ s t) (i : ℕ) :
     Subst.Sim (ctxOf (glat s i)).boxIn (Subst.atShift (edgeBox s t i))
       (eS σ (ctxOf (glat t (glstg s t i))).boxIn (ofRen (preI (nm t)))) := by
-  refine Subst.sim_of fun v T hl hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hl hv => ?_
   obtain ⟨u, st, rfl, -, -⟩ := boxIn_item hv
   rw [show eS σ (ctxOf (glat t (glstg s t i))).boxIn (ofRen (preI (nm t))) (.step u st) =
     .ren (preI (nm t) (.step u st)) from eS_item _ hl]
@@ -119,6 +119,7 @@ theorem tr_edge (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} (
   (Term.subst_congr _ _ _ _ _ _ (sim_edge_nm hX hM₀ h i) b)
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [ModalSys.NoOpt] in
 theorem sig_subst_cong {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
     (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) {T : VarType} {a a' : Ann T}
     {x : Term σ Γ T a} {y : Term σ Γ T a'} (e : (⟨a, x⟩ : Σ c, Term σ Γ T c) = ⟨a', y⟩) :
@@ -127,6 +128,7 @@ theorem sig_subst_cong {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ �
   rfl
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [ModalSys.NoOpt] in
 theorem sig_shift_cong {k : ℕ} {Γ Γ' : Ctx} (C : Ctx.Shifts k Γ Γ') {T : VarType}
     {a a' : Ann T} {x : Term σ Γ T a} {y : Term σ Γ T a'}
     (e : (⟨a, x⟩ : Σ c, Term σ Γ T c) = ⟨a', y⟩) :
@@ -203,7 +205,7 @@ theorem tr_path (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) :
       refine (pTr_sigma hM₀ _ t (c' :: P) h pathOk_cons _ key).trans ?_
       refine (tr_path hX hM₀ (c' :: P) (stepW s c (born_step h)) t h pathOk_cons _ _).trans ?_
       refine sig_boxtm (Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
-        fun u st _ hst _ => ?_) b)
+        fun u st _ hst _ => ?_).ty b)
       obtain ⟨u', e⟩ := preI_step (nm (stepW s c (born_step h))) u st
       exact ⟨u', st, e, hst, by rw [← e, preI_comp]; rfl⟩
 
@@ -224,6 +226,7 @@ theorem cden_tr (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (t : GW hF M₀) (P 
 /-! ## Kept translations, and reading a world's own terms along its path -/
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [ModalSys.NoOpt] in
 theorem sig_collapse_cong {k : ℕ} {Γ Γ' : Ctx} (C : Ctx.Collapses k Γ Γ') {T : VarType}
     {a a' : Ann T} {x : Term σ Γ T a} {y : Term σ Γ T a'}
     (e : (⟨a, x⟩ : Σ c, Term σ Γ T c) = ⟨a', y⟩) :
@@ -269,7 +272,7 @@ theorem tr_pathK (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) :
       refine (pTrK_sigma hM₀ _ t (c' :: P) h _ (tr_edge hX hM₀ hch i b)).trans ?_
       refine (tr_pathK hX hM₀ (c' :: P) (stepW s c (born_step h)) t h _ _).trans ?_
       refine Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
-        fun u st _ hst _ => ?_) b
+        fun u st _ hst _ => ?_).ty b
       obtain ⟨u', e⟩ := preI_step (nm (stepW s c (born_step h))) u st
       exact ⟨u', st, e, hst, by rw [← e, preI_comp]; rfl⟩
 
@@ -314,7 +317,7 @@ theorem pTrK_pre (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i
         (coh_eS_kView (k := none) (entOk_ofRen (itemOk_preI hrt))) b⟩ := by
     rw [tr_pathK hX hM₀]
     refine Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
-      fun u st _ hst _ => ?_) b
+      fun u st _ hst _ => ?_).ty b
     obtain ⟨u', e⟩ := preI_step (rorig s) u st
     exact ⟨u', st, e, hst, by rw [← e, preI_comp]⟩
   refine e0.trans ((Term.subst_congrF _ (Subst.idS σ _) _ (Subst.ok_idS_le hle) _
@@ -364,7 +367,7 @@ theorem cden_collapse (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (hT : ModalSys
 
 /-! ## The `◇` half -/
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- Substituting into a possible term, with the witness's image as a variable (its index is
     known only propositionally). -/
 theorem sig_subst_diatm {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
@@ -386,7 +389,7 @@ theorem sim_edge_nmX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M�
     Subst.Sim ((ctxOf (glat s i)).diaIn x) (Subst.atShift (edgeDia s t i x (nm t x)))
       (eS σ ((ctxOf (glat t (glstg s t i))).diaIn (nm t x)) (ofRen (preIX (nm t) x))) := by
   have hn := nm_spec hX.five t x h.ne_nil
-  refine Subst.sim_of fun v T hl hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hl hv => ?_
   obtain ⟨u, st, rfl, -, -⟩ := kView_item (k := some x) hv
   rw [eS_item _ hl]
   generalize hvs : VarSymb.step u st = v at *
@@ -396,7 +399,7 @@ theorem sim_edge_nmX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M�
     have hT : T = X := Option.some.inj (hv.symm.trans
       ((Ctx.ref_nonproj _ (v := .step x .dia) rfl).symm.trans (Ctx.ref_diaIn_of hx)))
     subst hT
-    rw [show preIX (nm t) x (.step x .dia) = .step (nm t x) .dia from if_pos rfl,
+    rw [show preIX (nm t) x (.step x .dia) = .step (nm t x) .dia from by slot_rfl,
       VarSymb.shift_level_zero rfl, Subst.at_nonproj _ rfl]
     change SubE.Sim T (if VarSymb.step x .keep = .step x .keep then
       ((edgeS s t i).at (.step x .keep)).diaBody (nm t x) else .hide) _
@@ -466,7 +469,7 @@ theorem tr_edgeX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {s t : GW hF M₀} 
     (coh_edgeDia hM₀ h i hx (nm_spec hX.five t x h.ne_nil))).trans
   (sig_diatm (tr_edgeX_body hX hM₀ h i hx c))
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- A possible term renamed by equal maps is one term. -/
 theorem sig_diatm_ren_congr {Γ Δ : Ctx} {x : VarSymb} {A : VarType} {a : Ann A}
     (c : Term σ (Γ.diaIn x) A a) :
@@ -584,7 +587,7 @@ theorem tr_pathX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) :
       refine (tr_pathX hX hM₀ (c' :: P) (stepW s c (born_step h)) t h pathOk_cons _ hnx
         _).trans ?_
       refine sig_diatm (Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
-        fun u st _ hst hv => ?_) b)
+        fun u st _ hst hv => ?_).ty b)
       have hcomp := preIX_comp (pnm (c' :: P) (stepW s c (born_step h)) t h)
         (nm (stepW s c (born_step h))) (v := .step u st) hst hv
       by_cases hvx : VarSymb.step u st = .step x .dia
@@ -615,7 +618,7 @@ theorem cden_trX (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (t : GW hF M₀) (P
 
 /-! ## The contents at a world's own arrow -/
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- A possible term's witness is read off the term. -/
 theorem sig_diatm_wit {Γ : Ctx} {x y : VarSymb} {hx : ∃ X, Γ.ref x = some (.VTypeDia X)}
     {hy : ∃ X, Γ.ref y = some (.VTypeDia X)} {A : VarType} {b b' : Ann A}
@@ -624,7 +627,7 @@ theorem sig_diatm_wit {Γ : Ctx} {x y : VarSymb} {hx : ∃ X, Γ.ref x = some (.
   cases h
   rfl
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- Renaming possible terms that are one term, by one map. -/
 theorem sig_diatm_ren_term (f : VarSymb → VarSymb) {Γ Δ : Ctx} {y y' : VarSymb} {A : VarType}
     {b b' : Ann A} {u : Term σ (Γ.diaIn y) A b} {u' : Term σ (Γ.diaIn y') A b'}
@@ -644,7 +647,7 @@ theorem sig_diatm_ren_term (f : VarSymb → VarSymb) {Γ Δ : Ctx} {y y' : VarSy
   cases E
   rfl
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- A possible term whose body's entries are read in the view of an equal witness. -/
 theorem sig_diatm_view_congr {Γ Δ : Ctx} {x : VarSymb} {A : VarType} {a : Ann A}
     (c : Term σ (Γ.diaIn x) A a) (ι : VarSymb → VarSymb) (g : VarSymb → LEnt σ) :
@@ -729,7 +732,7 @@ theorem tr_pathXK (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) :
         (coh_eS_kView (k := some _) (entOk_ofRen (itemOk_preIX hnx
           (pnm_ok hX hM₀ (c' :: P) (stepW s c (born_step h)) t h _))))).trans ?_
       refine sig_diatm (Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
-        fun u st _ hst hv => ?_) b)
+        fun u st _ hst hv => ?_).ty b)
       have hcomp := preIX_comp (pnm (c' :: P) (stepW s c (born_step h)) t h)
         (nm (stepW s c (born_step h))) (v := .step u st) hst hv
       by_cases hvx : VarSymb.step u st = .step x .dia
@@ -788,7 +791,7 @@ theorem pTrXK_pre (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (
         (ok_eS_kView (k := some x) (entOk_ofRen hit))
         (coh_eS_kView (k := some x) (entOk_ofRen hit)) c⟩ := by
     refine Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (sim_eS_ren_comp _ _ _ _ _
-      fun u st _ hst hv => ?_) c
+      fun u st _ hst hv => ?_).ty c
     have hcomp := preIX_comp (rnm s) (rorig s) (v := .step u st) hst hv
     by_cases hvx : VarSymb.step u st = .step x .dia
     · have e : preIX (rorig s) x (.step u st) = .step (rorig s x) .dia := by

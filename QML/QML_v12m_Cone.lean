@@ -552,14 +552,14 @@ theorem EnvRel.boxPush {Γ : Ctx} {t : N.frame.W} {e : (c.cone hT hB hS hInd).En
   intro v T hv
   match v with
   | .step u .box =>
-      change (c.cone hT hB hS hInd).necEval (e.ref u (Ctx.boxIn_step_box hv)) _ = _
+      simp only [Env.boxPush, Env.boxPushVal]
       rw [hag.ref u (Ctx.boxIn_step_box hv)]
       rfl
   | .step u .keep =>
       have hk := Ctx.boxIn_keep hv
-      change (c.cone hT hB hS hInd).necEval (GFunc.eval (c.ops hT hB)
-        (GFunc.keep (σ := σ) hk.1 hk.2.2) (some t) (e.ref u hk.2.1)) _ = _
-      rw [hag.ref u hk.2.1, c.eval_toC]
+      simp only [Env.boxPush, Env.boxPushVal]
+      rw [hag.ref u hk.2.1]
+      erw [c.eval_toC]
       rfl
   | .root _ => cases hv
   | .step _ .fst => cases hv
@@ -599,7 +599,7 @@ theorem EnvRel.diaPush {Γ : Ctx} {t : N.frame.W} {e : (c.cone hT hB hS hInd).En
   intro v T hv
   match v with
   | .step u .dia =>
-      simp only [Env.diaPush]
+      simp only [Env.diaPush, Env.diaPushVal]
       have hXT := Ctx.diaIn_step_dia hr hv
       subst hXT
       have href := hag.ref x hr
@@ -684,7 +684,7 @@ theorem relSat_cone {Γ : Ctx} {t : N.frame.W} {e : (c.cone hT hB hS hInd).Env �
 
 /-- ⭐⭐**Below the apex, a formula means what it means in `N`**: nothing there looks at the
     apex. -/
-theorem sat_cone (hFV : ModalSys.Five = true → ModalSys.Four = true) :
+theorem sat_cone [ModalSys.NoOpt] (hFV : ModalSys.Five = true → ModalSys.Four = true) :
     ∀ {Γ : Ctx} {d : ℕ} {t : N.frame.W}
     {e : (c.cone hT hB hS hInd).Env Γ (some t)} {e' : N.Env Γ t},
     c.EnvRel hT hB hS hInd e e' → (φ : WFF σ Γ d) →
@@ -736,6 +736,7 @@ theorem sat_cone (hFV : ModalSys.Five = true → ModalSys.Four = true) :
   | _, _, _, _, _, _, .retxS h _ _ _ _ _ => flagElim hS h
   | _, _, _, _, _, _, .link hV hF _ _ => flagElim hF (hFV hV)
   | _, _, _, _, _, _, .linkx hV hF _ _ _ _ => flagElim hF (hFV hV)
+  | _, _, _, _, _, _, .optx hO _ _ _ => absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
 
 variable (c hT hB hS hInd) in
 /-- ⭐The cone is a model proper: its `Ind` is equality. -/

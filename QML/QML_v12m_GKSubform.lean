@@ -101,6 +101,8 @@ theorem WFF.weight_mono' : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (φ : WF
       simp only [WFF.mono, WFF.weight]; rw [WFF.weight_mono' _ Φ]
   | _, _, _, h, .linkx _ _ _ _ _ Φ => by
       simp only [WFF.mono, WFF.weight]; rw [WFF.weight_mono' _ Φ]
+  | _, _, _, _, .optx _ _ _ φ => by
+      simp only [WFF.mono, WFF.weight]; rw [WFF.weight_mono' _ φ]
 
 theorem WFF.weight_bindFree {Γ : Ctx} {d : ℕ} (u : ℕ) (hu : Γ.RootFresh (.free u))
     (hs : Γ.SlotsFrom d) (T : VarType) (φ : WFF σ (Γ.insert (.free u) T) d) :

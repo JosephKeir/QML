@@ -53,7 +53,7 @@ theorem sim_single_eta {Δ : Ctx} {y : VarSymb} {T : VarType} (hy : Δ.ref y = s
     Subst.Sim (Ctx.empty.insert (.free 0) T)
       (Subst.single (σ := σ) (Δ := Δ) (.free 0) (.tm (Term.eta y T hy)))
       (Subst.single (.free 0) (.ren y)) := by
-  refine Subst.sim_of fun v U _ hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U _ hv => ?_
   by_cases hvr : v = .root (.free 0)
   · subst hvr
     obtain rfl : T = U := by simpa [Ctx.insert] using hv
@@ -75,9 +75,9 @@ theorem unarrAt_eta {l : List VarType} {A : VarType} {y : ℕ}
       (Ctx.empty.insert (.free 0) (VarType.VTypeBox A).bc)
       (Subst.single (σ := σ) (Δ := ctxOf l) (.free 0) (.ren (.root (.free y)))) :=
     Subst.coh_single (Ctx.RootFresh.empty _) (Ctx.empty_le _) hy
-  refine (Term.subst_congr _ _ _ hok _ hcoh (sim_single_eta hy) _).trans ?_
+  refine (Term.subst_congr _ _ _ hok _ hcoh (sim_single_eta hy).ty _).trans ?_
   refine Term.subst_comp_sig _ _ _ _ _ hok hcoh (ok_arrowS (retBackImg l A hy))
-    (coh_arrowS (retBackImg l A hy)) (Subst.sim_of fun v T _ hv => ?_) _
+    (coh_arrowS (retBackImg l A hy)) (Subst.simT_of fun v T _ hv => ?_) _
   obtain ⟨u, rfl, hu⟩ := boxIn_item hv
   obtain ⟨r, hr, hlt, -⟩ := ref_rt hu
   obtain rfl : r = 0 := by simpa using hlt
@@ -384,7 +384,7 @@ theorem holeAt_unarrHole {Γ : Ctx} (A : VarType) {a : Ann (VarType.VTypeBox A).
     (⟨_, Term.holeAt w (unarrHole (σ := σ) A).2⟩ :
       Σ c, Term σ Γ (A.compsFlat (bornComps A)) c) = unarrAt A w := by
   unfold unarrHole unarrAt Term.holeAt
-  refine Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) _
+  refine Term.subst_comp_sig _ _ _ _ _ _ _ _ _ (Subst.simT_of fun v T _ hv => ?_) _
   by_cases hvr : v = .root (.free 0)
   · subst hvr
     obtain rfl : (VarType.VTypeBox A).bc = T := by simpa [Ctx.insert] using hv

@@ -119,7 +119,8 @@ end MCS
     needs when an arrow of a class-keyed extent was contributed by another member: read
     interchangeability at the test formula `WFF.diaSlot ψ`, whose instances are the two `◇`-facts
     (`WFF.instantiate_diaSlot`). -/
-theorem Interch.dia_iff {S : StageSys I} {T : Set (S.Sentence σ)} {A : VarType} {i : I}
+theorem Interch.dia_iff [ModalSys.NoOpt]
+    {S : StageSys I} {T : Set (S.Sentence σ)} {A : VarType} {i : I}
     {y z : VarSymb} (hy : ∃ X, (S.ctx i).ref y = some (.VTypeDia X))
     (hz : ∃ X, (S.ctx i).ref z = some (.VTypeDia X)) {β β' : Ann A}
     {bd : Term σ ((S.ctx i).diaIn y) A β} {b : Term σ ((S.ctx i).diaIn z) A β'}
@@ -219,7 +220,8 @@ variable [ModalSys]
 
 /-- ⭐**The round trip, for terms**: a term of the `◇_x` view is its abstraction read back with the
     content address's η-expansion in the hole. -/
-theorem Term.viewReadTm_eta_diaAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb)
+theorem Term.viewReadTm_eta_diaAbsA [ModalSys.NoOpt]
+    {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (x : VarSymb)
     {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) {T : VarType} {b : Ann T}
     (t : Term σ (Γ.diaIn x) T b) :
     (⟨_, Term.viewReadTm (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of hxA))
@@ -229,7 +231,7 @@ theorem Term.viewReadTm_eta_diaAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Present
   unfold Term.diaAbsA
   refine (Term.subst_comp_sig _ _ (Subst.idS σ (Γ.diaIn x)) _ _ _ _ Subst.ok_idS Subst.coh_idS
     ?_ t).trans ?_
-  · refine Subst.sim_of ?_
+  · refine Subst.simT_of ?_
     intro v T' hlp hv
     rcases Subst.diaIn_casesA (σ := σ) hxA (hp.not_below hxA rfl) hv with
       ⟨rfl, rfl⟩ | ⟨_, _, hen, hroot⟩
@@ -304,7 +306,8 @@ theorem datum_of_here [Fact (StageSys.IsMCS T)] (hex : RootWitnessed S T)
 /-- ⭐**A datum's possible object has its realisation as content here**: from the datum's atom
     `Here (η x) t₀`, `here_beta` with the body abstracted, and the round trip — at any stage `k`
     above both the body's and the datum's. -/
-theorem mem_here_datum [IsDirected I (· ≤ ·)] [hmcs : Fact (StageSys.IsMCS T)] {x : VarSymb}
+theorem mem_here_datum
+    [IsDirected I (· ≤ ·)] [hmcs : Fact (StageSys.IsMCS T)] {x : VarSymb}
     (d : RealDatum σ S T x) {i k : I} (hik : i ≤ k) (hdk : d.i₀ ≤ k) {X : VarType}
     (hx : (S.ctx i).ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B}
     (bd : Term σ ((S.ctx i).diaIn x) B β) :
@@ -312,6 +315,7 @@ theorem mem_here_datum [IsDirected I (· ≤ ·)] [hmcs : Fact (StageSys.IsMCS T
         (Term.realiseAtA d.hT x (d.hdeclOf k ⟨X, (S.le hik).ref hx⟩)
           (Term.mono (S.le hdk) d.t₀) (Term.mono ((S.le hik).diaIn x) bd))⟩ :
       S.Sentence σ) ∈ T := by
+  haveI : ModalSys.NoOpt := ⟨ModalSys.noOpt_of_T d.hT⟩
   have hdecl : (S.ctx k).ref x = some (.VTypeDia d.A) := d.hdeclOf k ⟨X, (S.le hik).ref hx⟩
   have hat := d.hhereAt hmcs.out k hdk hdecl
   have hmem := mem_of_provable' (T := T) (Δ := [_]) (fun ψ hψ => by
@@ -332,7 +336,8 @@ interchangeability, and that is a congruence for any term over a slot: the test 
 `X(s)` is the test formula with its slot replaced by `X` (`WFF.bodyRepl`), instantiated at `s`. -/
 
 /-- ⭐**Filling a replaced slot** is filling the original slot with the replacement, filled. -/
-theorem WFF.instantiate_bodyRepl {σ : Signature} {V : Ctx} [V.NoSlots] {A B : VarType}
+theorem WFF.instantiate_bodyRepl [ModalSys.NoOpt]
+    {σ : Signature} {V : Ctx} [V.NoSlots] {A B : VarType}
     {b : Ann B} (X : Term σ (V.insert (.bnd 0) A) B b) (φ : WFF σ (V.insert (.bnd 0) B) 1)
     {a : Ann A} (t : Term σ V A a) :
     WFF.instantiate Ctx.NoSlots.slots t (WFF.bodyRepl X φ) =
@@ -341,13 +346,12 @@ theorem WFF.instantiate_bodyRepl {σ : Signature} {V : Ctx} [V.NoSlots] {A B : V
         (Subst.coh_single ((Ctx.NoSlots.slots (Γ := V)).rootFresh (le_refl 0)) (Ctx.Le.refl V)
           rfl) X) φ := by
   unfold WFF.bodyRepl WFF.instantiate WFF.substRoot
-  refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ (Subst.sim_of fun v U hlp hv => ?_) φ
+  refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _
+    (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U hlp hv => ?_) φ
   rw [Subst.comp_apply]
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
-    rw [Subst.set_root]
-    change SubE.Sim U (if (VarSymb.root (.bnd 0)) = .root (.bnd 0) then _ else _) _
-    rw [if_pos rfl]
+    rw [Subst.set_root, Subst.single_self]
     exact .refl _
   · rw [Subst.set_ne _ _ hvr, show (Subst.idS σ (V.insert (.bnd 0) A) v) = .ren v from rfl,
       SubE.comp_ren, Subst.at_nonproj _ hlp]
@@ -364,7 +368,8 @@ namespace Interch
 variable {S : StageSys I} {T : Set (S.Sentence σ)} {A : VarType} {i : I}
 
 /-- ⭐**Interchangeable terms stay interchangeable in any term over a slot.** -/
-theorem subst_slot {a a' : Ann A} {s : Term σ (S.ctx i) A a} {s' : Term σ (S.ctx i) A a'}
+theorem subst_slot [ModalSys.NoOpt]
+    {a a' : Ann A} {s : Term σ (S.ctx i) A a} {s' : Term σ (S.ctx i) A a'}
     (h : Interch T s s') {B : VarType} {b : Ann B}
     (X : Term σ ((S.ctx i).insert (.bnd 0) A) B b) :
     Interch T
@@ -390,14 +395,16 @@ theorem of_sig {a₁ a₂ a₁' a₂' : Ann A} {s₁ : Term σ (S.ctx i) A a₁}
   exact h
 
 /-- Under a hole term. -/
-theorem holeAt {a a' : Ann A} {s : Term σ (S.ctx i) A a} {s' : Term σ (S.ctx i) A a'}
+theorem holeAt [ModalSys.NoOpt]
+    {a a' : Ann A} {s : Term σ (S.ctx i) A a} {s' : Term σ (S.ctx i) A a'}
     (h : Interch T s s') {B : VarType} {b : Ann B} (hh : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
     Interch T (Term.holeAt s hh) (Term.holeAt s' hh) := by
   rw [← Term.holeRead_eq_holeAt, ← Term.holeRead_eq_holeAt]
   exact h.subst_slot _
 
 /-- Under pairing. -/
-theorem pair {a₁ a₁' : Ann A} {s₁ : Term σ (S.ctx i) A a₁} {s₁' : Term σ (S.ctx i) A a₁'}
+theorem pair [ModalSys.NoOpt]
+    {a₁ a₁' : Ann A} {s₁ : Term σ (S.ctx i) A a₁} {s₁' : Term σ (S.ctx i) A a₁'}
     (h₁ : Interch T s₁ s₁') {B : VarType} {b₂ b₂' : Ann B} {s₂ : Term σ (S.ctx i) B b₂}
     {s₂' : Term σ (S.ctx i) B b₂'} (h₂ : Interch T s₂ s₂') :
     Interch T (Term.pair s₁ s₂) (Term.pair s₁' s₂') := by
@@ -423,7 +430,7 @@ namespace DTerm
 variable {S : StageSys I} {T : Set (S.Sentence σ)} {A : VarType}
 
 /-- ⭐Related terms stay related under a hole term. -/
-theorem Rel.holeAt {s s' : DTerm S T A} (h : s.Rel s') {B : VarType} {b : Ann B}
+theorem Rel.holeAt [ModalSys.NoOpt] {s s' : DTerm S T A} (h : s.Rel s') {B : VarType} {b : Ann B}
     (hh : Term σ (Ctx.empty.insert (.bnd 0) A) B b) :
     Rel (⟨s.i, _, Term.holeAt s.t hh⟩ : DTerm S T B) ⟨s'.i, _, Term.holeAt s'.t hh⟩ := by
   intro j hj hj'
@@ -431,7 +438,8 @@ theorem Rel.holeAt {s s' : DTerm S T A} (h : s.Rel s') {B : VarType} {b : Ann B}
     ((h j hj hj').holeAt hh)
 
 /-- ⭐Related terms stay related under pairing, read at stages above both components. -/
-theorem Rel.pair {s₁ s₁' : DTerm S T A} (h₁ : s₁.Rel s₁') {B : VarType} {s₂ s₂' : DTerm S T B}
+theorem Rel.pair [ModalSys.NoOpt]
+    {s₁ s₁' : DTerm S T A} (h₁ : s₁.Rel s₁') {B : VarType} {s₂ s₂' : DTerm S T B}
     (h₂ : s₂.Rel s₂') (k : I) (hk₁ : s₁.i ≤ k) (hk₂ : s₂.i ≤ k) (k' : I) (hk₁' : s₁'.i ≤ k')
     (hk₂' : s₂'.i ≤ k') :
     Rel (⟨k, _, Term.pair (s₁.lift k hk₁) (s₂.lift k hk₂)⟩ : DTerm S T (.VTypeProd A B))

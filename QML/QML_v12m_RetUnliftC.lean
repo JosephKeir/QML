@@ -128,7 +128,7 @@ section Step
 variable {Γ : Ctx} [Γ.NoSlots] {A : VarType} {cs : List (List Step)}
 
 /-- The companion's slot formula, filled. -/
-theorem instantiate_compSlot_self (hS : ModalSys.BStrong = true) (q : List Step)
+theorem instantiate_compSlot_self [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (q : List Step)
     (h' : A.CompOk (q :: cs)) (O : OutLeg Γ) {a : Ann (A.compsFlat cs)}
     (V : Term σ Γ (A.compsFlat cs) a) (Φ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1)
     {c : Ann (compTy A q)} (z : Term σ Γ (compTy A q) c) :
@@ -141,7 +141,7 @@ theorem instantiate_compSlot_self (hS : ModalSys.BStrong = true) (q : List Step)
 
 /-- ⭐**Swapping a companion's value**: if the object says `compTie` of the carrier of `k`, the
     named value `z` is `k`'s value, and so is `u`. -/
-def Proof.ret_comp_swap (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.ret_comp_swap [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} (O : OutLeg Γ) (q : List Step)
     (h' : A.CompOk (q :: cs)) {v₀ : Ann (A.compsFlat cs)} (V : Term σ Γ (A.compsFlat cs) v₀)
     {z₀ : Ann (compTy A q)} (z : Term σ Γ (compTy A q) z₀) {k₀ : Ann (compTy A q)}
@@ -177,7 +177,7 @@ def Proof.ret_comp_swap (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
 
 /-- ⭐⭐**One more companion, with its value given** (T + 4, strong B): `ret_compS` names the value,
     and `Proof.ret_comp_swap` identifies it. -/
-def Proof.ret_comp_value (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.ret_comp_value [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} (O : OutLeg Γ) {h : A.CompOk cs}
     (q : List Step) (h' : A.CompOk (q :: cs)) {v₀ : Ann (A.compsFlat cs)}
     (V : Term σ Γ (A.compsFlat cs) v₀) {k₀ : Ann (compTy A q)}
@@ -429,7 +429,7 @@ theorem le_freeView (O : OutLeg Γ) {u : ℕ} (hu : O.view.RootFresh (.free u)) 
   O.le_view.trans (Ctx.le_insert hu.root T)
 
 /-- ⭐The object's tie at one companion gives `compTie`, at the fresh object of `Ctx.insert`. -/
-def Proof.compTie_of (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.compTie_of [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) (O : OutLeg Γ) {cs : List (List Step)} (q : List Step)
     (h' : A.CompOk (q :: cs)) {k₀ : Ann (compTy A q)} (k : Term σ Γ.boxIn (compTy A q) k₀)
     (u : ℕ) (hu : O.view.RootFresh (.free u))
@@ -496,7 +496,7 @@ def Proof.back_snd (hS : ModalSys.BStrong = true) {Δ : List (WFF σ Γ 0)} {F C
 
 /-- ⭐**The companions, one by one**: from the base object's returning possibility, add each
     companion with the value given by the carrier's component, its tie from the body. -/
-def Proof.retC_aux (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.retC_aux [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} (O : OutLeg Γ)
     (Ψ : WFF σ (O.view.insert (.bnd 0) (.VTypeBox A)) 1) (c : ℕ) (hc : Γ.RootFresh (.free c))
     (u : ℕ) (hu : O.view.RootFresh (.free u)) :
@@ -521,7 +521,8 @@ def Proof.retC_aux (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
         (Proof.back_snd hS _ _ _ _ hb)
 
 /-- ⭐The packed body at a boxed object: `Φ` of the base, with the ties. -/
-theorem WFF.instantiate_packedBody_boxC (hS : ModalSys.BStrong = true) (hF : ModalSys.Four = true)
+theorem WFF.instantiate_packedBody_boxC [ModalSys.NoOpt]
+    (hS : ModalSys.BStrong = true) (hF : ModalSys.Four = true)
     {V : Ctx} [V.NoSlots] {cs : List (List Step)} (h : A.CompOk cs)
     (Φ : WFF σ (V.insert (.bnd 0) (.VTypeBox A)) 1) {b : Ann (A.compsFlat cs)}
     (s : Term σ V.boxIn (A.compsFlat cs) b) :
@@ -550,7 +551,7 @@ theorem WFF.instantiate_packedBody_boxC (hS : ModalSys.BStrong = true) (hF : Mod
 
 /-- ⭐⭐**Unlifting at a companion shape** (T + 4, strong B), the converse of `Proof.retN_lift` at
     `.boxC`, along either leg. -/
-def Proof.retC_unlift (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.retC_unlift [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} (O : OutLeg Γ) {cs : List (List Step)}
     (h : A.CompOk cs) {b₀ : Ann (A.compsFlat cs)} (b : Term σ Γ.boxIn (A.compsFlat cs) b₀)
     {a : Ann (A.compsFlat cs)} (t : Term σ Γ (A.compsFlat cs) a)
@@ -602,7 +603,7 @@ variable {Γ : Ctx} [Γ.NoSlots]
 
 /-- ⭐⭐**Unlifting at every necessary shape** (T + 4, strong B): `Proof.retC_unlift` at the packed
     shape, then `ret_map` along `unpackG`.  The value is the packed value unpacked. -/
-def Proof.retN_unlift (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.retN_unlift [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} (O : OutLeg Γ) (N : NShape)
     {b₀ : Ann N.packed.flat} (b : Term σ Γ.boxIn N.packed.flat b₀) {a : Ann N.packed.flat}
     (t : Term σ Γ N.packed.flat a) (Φ : WFF σ (O.view.insert (.bnd 0) N.ty) 1) (c : ℕ)
@@ -619,7 +620,7 @@ def Proof.retN_unlift (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
 
 /-- ⭐⭐**Unlifting at every witnessed shape** (T + 4, strong B): `ret_keep` on top of
     `Proof.retN_unlift`. -/
-def Proof.retWN_unlift (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
+def Proof.retWN_unlift [ModalSys.NoOpt] (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) {Δ : List (WFF σ Γ 0)} (O : OutLeg Γ) (N : NShape) {X : VarType}
     {b₀ : Ann N.packed.flat} (b : Term σ Γ.boxIn N.packed.flat b₀) {a : Ann N.packed.flat}
     (t : Term σ Γ N.packed.flat a) (x : VarSymb) (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))

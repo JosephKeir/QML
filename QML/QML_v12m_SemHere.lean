@@ -1,5 +1,6 @@
 import QML.QML_v12m_SemStrongT
 import QML.QML_v12m_CtxFin
+import QML.QML_v12m_Stages
 
 /-!
 # QML v12m — the realisation predicate, and the soundness of its rules
@@ -158,7 +159,7 @@ theorem termShp_holeRead [Arrows.RootKeepLaws F Root] {Δ : Ctx} [Δ.NoSlots] (h
   rw [termShp_subst _ _ _ (hnp.insert (.bnd 0) A) ρ j hj hwf]
   refine termShp_mono (fun v T hv => ?_) j s
   obtain ⟨rfl, rfl⟩ := hole_decl hv
-  exact (entryShp_congr ρ j (e' := .tm bd) (if_pos rfl) _ rfl).symm
+  exact (entryShp_congr ρ j (e' := .tm bd) (Subst.single_self _ _) _ rfl).symm
 
 end Model
 
@@ -205,7 +206,8 @@ theorem interp_eta {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
 /-! ## Indistinguishability -/
 
 /-- The environment of the empty context. -/
-def Env.empty (w : M.frame.W) : M.Env Ctx.empty w := fun _ _ h => nomatch h
+def Env.empty (w : M.frame.W) : M.Env Ctx.empty w :=
+  ⟨fun _ _ h => (nomatch h), fun _ _ h => (nomatch h)⟩
 
 /-- A hole term's value at an object: a term closed apart from its hole, evaluated with the object
     in the hole. -/
@@ -715,6 +717,17 @@ theorem sat_here_ex (hS : ModalSys.TStrong = true) {A : VarType} {a : Ann A}
   exact ⟨p, (sat_hereAt_extend hT env (.bnd 0) hr p t).mpr ⟨hm, hcon⟩⟩
 
 end
+/-- Environments agreeing on their objects (and, with `Opt` on, on their witnesses) satisfy the
+    same formulas. -/
+theorem sat_congr_val {Γ : Ctx} {d : ℕ} {w : M.frame.W} {e₁ e₂ : M.Env Γ w}
+    (hv : ∀ v T (h : Γ v = some T), e₁ v T h = e₂ v T h) (φ : WFF σ Γ d)
+    (hw : ModalSys.Opt = true → ∀ y X (h : Γ.wit y = some X), e₁.wit y X h = e₂.wit y X h := by
+      wit_triv) :
+    M.sat e₁ φ ↔ M.sat e₂ φ := by
+  have h := sat_mono (h := Ctx.Le.refl Γ) (env := e₁) (env' := e₂) hv φ hw
+  rw [WFF.mono_refl] at h
+  exact h.symm
+
 end Model
 
 end V12M

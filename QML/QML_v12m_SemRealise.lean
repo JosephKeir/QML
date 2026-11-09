@@ -34,6 +34,7 @@ theorem sat_ret_realise {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W} (env : M.Env Γ 
     (Φ : WFF σ (O.view.insert (.bnd 0) N.ty) 1) (h : M.sat env (O.retS hS (.nec N) y Φ)) :
     M.sat env (O.retS hS (.wit N X) (Term.pair y c)
       (WFF.bodyRepl (RShape.realL O.view N X).2 Φ)) := by
+  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   obtain ⟨i, d, hΦ, r, hr⟩ := (OutLeg.sat_retS hS env O (.nec N) y Φ).mp h
   obtain ⟨p, hm, hI⟩ := M.posBack_exists hS hW r (interp env c)
   refine (OutLeg.sat_retS hS env O (.wit N X) _ _).mpr
@@ -95,6 +96,7 @@ theorem sat_ret_keep {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W} (env : M.Env Γ w)
     (hh : M.sat env (WFF.here hT (Term.diatm x hx bd) c : WFF σ Γ 0))
     (h : M.sat env (O.retS hS (.nec N) y (WFF.bodyRepl (RShape.keepL hF O N hx bd).2 Φ))) :
     M.sat env (O.retS hS (.wit N A) (Term.pair y c) Φ) := by
+  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   obtain ⟨i, d, hΦ, r, hr⟩ := (OutLeg.sat_retS hS env O (.nec N) y _).mp h
   obtain ⟨hm, hI⟩ := realised_keep env hS hT hF hx bd (O.acc env i) r (o := interp env c) hh
   rw [sat_bodyRepl O.noProjLast] at hΦ
@@ -121,6 +123,7 @@ theorem sat_ret_unrealise {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W} (env : M.Env �
     (h : M.sat env (O.retS hS (.wit N X) (Term.pair y c)
       (WFF.bodyRepl (RShape.realL O.view N X).2 Φ))) :
     M.sat env (O.retS hS (.nec N) y Φ) := by
+  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   obtain ⟨i, ⟨d, p⟩, hΦ, r, hr⟩ := (OutLeg.sat_retS hS env O (.wit N X) _ _).mp h
   refine (OutLeg.sat_retS hS env O (.nec N) y Φ).mpr ⟨i, d, ?_, r, hr.1⟩
   rw [sat_bodyRepl O.noProjLast] at hΦ

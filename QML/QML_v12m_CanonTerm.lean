@@ -96,9 +96,10 @@ theorem World.noProjLast (w : World σ N₀) (i : ℕ × ℕ) : (w.L.ctx i).NoPr
 
 variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.StagedSys]
 
-/-- ⭐The canonical environment: every visible address denotes its η-expansion. -/
-noncomputable def canonEnv (w : World σ N₀) (i : ℕ × ℕ) : (model w₀).Env (w.L.ctx i) w :=
-  fun v T hv => toDom w₀ T w
+/-- ⭐The canonical environment: every visible address denotes its η-expansion.  (No witness is
+    present: the staged tree is built with `Opt` off for now.) -/
+noncomputable def canonEnv (w : World σ N₀) (i : ℕ × ℕ) : (model w₀).Env (w.L.ctx i) w where
+  val v T hv := toDom w₀ T w
     (rden w i (Ctx.Le.refl _) (Term.eta v T ((Ctx.ref_nonproj _ (w.noProjLast i v T hv)).trans hv)))
     (definable_rden _ _)
 

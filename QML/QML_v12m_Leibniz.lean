@@ -159,6 +159,8 @@ theorem toFree_slot (θ : Subst σ Δ) (d u : ℕ) (T : VarType) (h : Δ (.root 
     θ.toFree d u T h (.root (.bnd d)) = .ren (.root (.free u)) :=
   if_pos (e := (θ (.root (.bnd d))).mono (Ctx.le_insert h T)) rfl
 
+macro_rules | `(tactic| slot_rfl) => `(tactic| exact Subst.toFree_slot _ _ _ _ _)
+
 theorem ok_toFree {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {d u : ℕ} (T : VarType)
     (h : Δ (.root (.free u)) = none) : Ok (Γ.insert (.bnd d) T) (θ.toFree d u T h) := by
   refine ⟨fun v U hlp hv => ?_, fun hO y X hy =>

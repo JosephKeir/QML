@@ -28,8 +28,8 @@ theorem GTransfer.mono_tgt {Γ : Ctx} {M : Set (WFF σ Γ 0)} {ls : List VarType
     {N' : Set (WFF σ (ctxOf lt') 0)} (hN : ∀ φ ∈ N, WFF.mono h φ ∈ N')
     {f : VarSymb → LEnt σ} {hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f}
     (htr : GTransfer M ls hle k hk N f hf) : GTransfer M ls hle k hk N' f (hf.le h) := by
-  intro ψ hψ
-  have h' := hN _ (htr ψ hψ)
+  intro hO ψ hψ
+  have h' := hN _ (htr hO ψ hψ)
   rw [WFF.mono_subst] at h'
   rwa [WFF.subst_congr _ _ _ (ok_eS_kView (hf.le h)) _ (coh_eS_kView (hf.le h)) _ _
     (sim_eS_mono h hf) ψ] at h'
@@ -42,8 +42,8 @@ theorem GTransfer.mono_src {Γ Γ' : Ctx} (h : Γ.Le Γ') {M : Set (WFF σ Γ 0)
     {N : Set (WFF σ (ctxOf lt) 0)} {f : VarSymb → LEnt σ}
     {hf : EntOk ((ctxOf ls).kView k) (ctxOf lt) f} (htr : GTransfer M ls hle k hk N f hf) :
     GTransfer M' ls (hle.trans h) k hk N f hf := by
-  intro ψ hψ
-  refine htr ψ (mem_of_mono_mem h hM hM' hsub ?_)
+  intro hO ψ hψ
+  refine htr hO ψ (mem_of_mono_mem h hM hM' hsub ?_)
   rwa [WFF.mono_mono]
 
 /-! ## Edges -/

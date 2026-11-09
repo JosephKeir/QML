@@ -23,7 +23,7 @@ namespace GArrow
 open BArrow
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)}
+  {hF : ModalSys.Four = true} {l₀ : List VarType} {M₀ : Set (WFF σ (ctxOf l₀) 0)} [ModalSys.NoOpt]
 
 variable (hM₀ : Theory.IsMCS M₀)
 
@@ -57,7 +57,7 @@ variable {hM₀}
 
 /-! ## A world's preimage commutes with 4's shift -/
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- A renaming of `□`-view items commutes with 4's shift. -/
 theorem shiftCorr_preI {l L : List VarType}
     (f : VarSymb → VarSymb)
@@ -88,7 +88,7 @@ theorem shiftCorr_preI {l L : List VarType}
   | .step _ .dia, _, hv => cases hv
   | .step _ .here, _, hv => cases hv
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.NoOpt] in
 /-- A renaming of `◇_x`-view items commutes with `four_dia`'s shift. -/
 theorem shiftCorr_preIX {l L : List VarType}
     (f : VarSymb → VarSymb) {x : VarSymb}
@@ -107,7 +107,7 @@ theorem shiftCorr_preIX {l L : List VarType}
           (.step (f u) .keep) else .hide)
       ((SubE.ren (preIX f u (.step u .dia))).shift _)
     rw [if_pos rfl, Subst.at_nonproj _ rfl, eS_item _ rfl,
-      show preIX f u (.step u .dia) = .step (f u) .dia from if_pos rfl]
+      show preIX f u (.step u .dia) = .step (f u) .dia from by slot_rfl]
     change SubE.Sim T (.ren (.step (.step (f u) .keep) .dia))
       (.ren ((VarSymb.step (f u) .dia).shift 0))
     rw [VarSymb.shift_level_zero rfl]
@@ -240,7 +240,7 @@ theorem preTD_box (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) {Γ : Ctx} {s : GW
         (preTB hX hM₀ s i (Term.mono e.boxIn b)).2⟩ := by
   simp only [preTD, preTB]
   rw [Term.mono_mono, Term.mono_subst, Term.subst_mono, Term.subst_mono]
-  refine Term.subst_congr _ _ _ _ _ _ (Subst.sim_of fun v T hl hv => ?_) b
+  refine Term.subst_congr _ _ _ _ _ _ (Subst.simT_of fun v T hl hv => ?_) b
   match v, hl with
   | .root _, _ => exact .refl _
   | .step u st, hl =>

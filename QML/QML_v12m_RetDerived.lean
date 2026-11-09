@@ -64,7 +64,7 @@ theorem WFF.bodyRepl_pack_bodySplit {A B : VarType}
       (.tm (Term.mono ((Ctx.empty_le V).insert (.bnd 0) _) (ShapeMap.pack (σ := σ) A B).obj.2))).at
         (.root (.bnd 0)) = .tm (Term.mono ((Ctx.empty_le V).insert (.bnd 0) _)
           (ShapeMap.pack (σ := σ) A B).obj.2) := Subst.set_root _ _ _
-  refine Subst.sim_of fun v T _ hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T _ hv => ?_
   by_cases h1 : v = .root (.bnd 1)
   · subst h1
     obtain rfl : T = .VTypeBox B := by simpa [Ctx.insert] using hv.symm
@@ -107,15 +107,13 @@ theorem WFF.mono_bodyRepl {V' : Ctx} [V'.NoSlots] (h : V.Le V') {A B : VarType} 
       WFF.bodyRepl (Term.mono (h.insert (.bnd 0) A) X) (WFF.mono (h.insert (.bnd 0) B) Ψ) := by
   unfold WFF.bodyRepl
   rw [WFF.mono_subst, WFF.subst_mono]
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) Ψ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _
+    (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T _ hv => ?_) Ψ
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
-    change SubE.Sim T (SubE.mono _ (Subst.set _ _ _ (.root (.bnd 0))))
-      (Subst.set _ _ _ (.root (.bnd 0)))
-    rw [Subst.set_root, Subst.set_root]
+    rw [Subst.mono_apply, Subst.set_root, Subst.set_root]
     exact .refl _
-  · change SubE.Sim T (SubE.mono _ (Subst.set _ _ _ v)) (Subst.set _ _ _ v)
-    rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
+  · rw [Subst.mono_apply, Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
     exact .refl _
 
 end Body
@@ -129,7 +127,7 @@ theorem Term.holeRead_eta_root {Γ : Ctx} [Γ.NoSlots] {A : VarType} {a : Ann A}
   rw [Term.mono_eta]
   exact Term.subst_eta_tm _ _ _ _ _ _ t (by
     change Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm t) (.root (.bnd 0)) = _
-    exact if_pos rfl)
+    slot_rfl)
 
 /-! ## The `□` forms, derived -/
 

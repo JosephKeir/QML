@@ -39,16 +39,13 @@ theorem WFF.bodyRepl_bodyRepl {A B C : VarType} {b : Ann B} {c : Ann C}
       WFF.bodyRepl (Term.mono ((Ctx.empty_le V).insert (.bnd 0) A) (Term.holeAt X Y)) Φ := by
   unfold WFF.bodyRepl
   refine WFF.subst_comp _ _ _ _ _ _ _ _ _ _ _ _ ?_ Φ
-  refine Subst.sim_of fun v T hlp hv => ?_
+  refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hlp hv => ?_
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = C := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
-    change SubE.Sim _ (((Subst.idS σ _).set (.bnd 0) _) (.root (.bnd 0)))
-      ((((Subst.idS σ _).set (.bnd 0) _) (.root (.bnd 0))).comp _ _ _)
-    rw [Subst.set_root, Subst.set_root]
+    rw [Subst.comp_apply, Subst.set_root, Subst.set_root]
     dsimp only [SubE.comp]
     refine SubE.sim_tm_sigma (Eq.symm ?_)
     refine (Term.subst_closed_sig _ _ _ _ (Subst.set_root _ _ _) Y).trans ?_
@@ -58,8 +55,7 @@ theorem WFF.bodyRepl_bodyRepl {A B C : VarType} {b : Ann B} {c : Ann C}
     rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
     change SubE.Sim T _ ((Subst.set _ _ _).at v)
     have hv' : V v = some T := by
-      change (if v = VarSymb.root (.bnd 0) then _ else _) = _ at hv
-      rwa [if_neg hvr] at hv
+      rwa [Ctx.insert_ne hvr] at hv
     rw [Subst.at_set_of_rt_ne _ _ (Ctx.ref_rt_ne
       ((Ctx.NoSlots.slots (Γ := V)).rootFresh (le_refl 0))
       ((Ctx.ref_nonproj _ hlp).trans hv')), Subst.at_idS]
@@ -73,7 +69,7 @@ variable {V : Ctx} [V.NoSlots] {A Z : VarType}
 
 omit [ModalSys.NoFour] in
 /-- The slot formula for a pair's first item: `χ(⟨d, u⟩)`. -/
-theorem WFF.instantiate_pairFst {c : Ann Z} (u : Term σ V Z c)
+theorem WFF.instantiate_pairFst [ModalSys.NoOpt] {c : Ann Z} (u : Term σ V Z c)
     (χ : WFF σ (V.insert (.bnd 0) (.VTypeProd A Z)) 1) {a : Ann A} (s : Term σ V A a) :
     WFF.instantiate Ctx.NoSlots.slots s (WFF.bodyRepl
       (Term.pair (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root _ _ _))
@@ -85,7 +81,7 @@ theorem WFF.instantiate_pairFst {c : Ann Z} (u : Term σ V Z c)
 
 omit [ModalSys.NoFour] in
 /-- The slot formula for a pair's second item: `χ(⟨u, d⟩)`. -/
-theorem WFF.instantiate_pairSnd {c : Ann A} (u : Term σ V A c)
+theorem WFF.instantiate_pairSnd [ModalSys.NoOpt] {c : Ann A} (u : Term σ V A c)
     (χ : WFF σ (V.insert (.bnd 0) (.VTypeProd A Z)) 1) {a : Ann Z} (s : Term σ V Z a) :
     WFF.instantiate Ctx.NoSlots.slots s (WFF.bodyRepl
       (Term.pair (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := V)).root Z) u)
@@ -152,12 +148,12 @@ theorem liftBodyR_eq_readArrow (l : List VarType) (A : VarType)
     liftBodyR l A Ξ = readArrow (rclImg l A)
       (Term.eta (.root (.free 0)) (.VTypeBox A) (rcl_born_ref l A)) Ξ := by
   unfold liftBodyR readArrow
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) Ξ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
+    fun v T _ hv => ?_) Ξ
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = .VTypeBox A := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     rw [Subst.set_root, Subst.set_root]
     exact .ren_eta _ _
@@ -351,12 +347,12 @@ theorem liftBodyXR_eq_readArrowX (l : List VarType) (A : VarType) {x : VarSymb} 
     liftBodyXR l A hX Ξ = readArrowX (rclXImg l A X) hX (rclX_cx l A X)
       (Term.eta (.root (.free 0)) (.VTypeBox A) (rclX_born_ref l A X)) Ξ := by
   unfold liftBodyXR readArrowX
-  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of fun v T _ hv => ?_) Ξ
+  refine WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
+    fun v T _ hv => ?_) Ξ
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     obtain rfl : T = .VTypeBox A := by
-      change (if VarSymb.root (.bnd 0) = .root (.bnd 0) then _ else _) = _ at hv
-      rw [if_pos rfl] at hv
+      rw [Ctx.insert_apply, if_pos rfl] at hv
       exact (Option.some.inj hv).symm
     rw [Subst.set_root, Subst.set_root]
     exact .ren_eta _ _
@@ -846,7 +842,7 @@ theorem holeAt_box_fst {Γ : Ctx} {A B : VarType} {a : Ann A} {b : Ann B}
   refine sig_boxtm (Term.subst_eta_tm _ _ _ _ _ _ s ?_)
   rw [Subst.at_proj _ _ rfl, Subst.box_at_inner_boxtm _ (by
     change Subst.single _ _ (.root (.bnd 0)) = _
-    exact if_pos rfl)]
+    exact Subst.single_self _ _)]
   rfl
 
 omit [ModalSys.NoFour] in
@@ -859,7 +855,7 @@ theorem holeAt_box_snd {Γ : Ctx} {A B : VarType} {a : Ann A} {b : Ann B}
   refine sig_boxtm (Term.subst_eta_tm _ _ _ _ _ _ t ?_)
   rw [Subst.at_proj _ _ rfl, Subst.box_at_inner_boxtm _ (by
     change Subst.single _ _ (.root (.bnd 0)) = _
-    exact if_pos rfl)]
+    exact Subst.single_self _ _)]
   rfl
 
 omit [ModalSys.NoFour] in
@@ -913,7 +909,7 @@ theorem necEval_boxFst {k : B.W} {X Y : VarType}
   rw [Model.box_beta, Model.interp_eta, Model.Env.ref_fst _ (Ctx.ref_inner hu) h,
     Model.Env.ref_inner _ _ hu]
   have he : ((Model.Env.empty (M := B.model) k).extend (.bnd 0) E).ref (.root (.bnd 0)) hu = E :=
-    Model.Env.extend_root _ _ _ _
+    Model.Env.extend_root (M := B.model) _ _ _ _
   rw [he]
 
 /-- A necessary pair's second item, read along an arrow. -/
@@ -927,7 +923,7 @@ theorem necEval_boxSnd {k : B.W} {X Y : VarType}
   rw [Model.box_beta, Model.interp_eta, Model.Env.ref_snd _ (Ctx.ref_inner hu) h,
     Model.Env.ref_inner _ _ hu]
   have he : ((Model.Env.empty (M := B.model) k).extend (.bnd 0) E).ref (.root (.bnd 0)) hu = E :=
-    Model.Env.extend_root _ _ _ _
+    Model.Env.extend_root (M := B.model) _ _ _ _
   rw [he]
 
 /-- ⭐**A canonical witness variable's possible object comes back** along the witness edge home:
@@ -967,7 +963,7 @@ theorem posEval_eta_home {k s : B.W} {j : ℕ} {e : VarSymb} {Z : VarType}
   change (if Step.isProj .dia then _ else _) = _
   rw [if_neg (by decide)]
   change (if e = e then _ else _) = _
-  exact if_pos rfl
+  slot_rfl
 
 end BData
 
