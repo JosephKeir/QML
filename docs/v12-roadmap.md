@@ -396,6 +396,43 @@ complete, or the exceptions are understood and recorded.
   want of equality at `◇` types.  Strong D itself (`D_ex`, the map `Nec → Pos`) is complete.  A
   relation form, like `Here`, is possible but has no present use (§2c).
 
+## After the `Opt` refactor — the strong forms' pattern (user, 2026-11-10)
+
+**When:** next, once the `Opt` refactor (branch `wip/in-atom`) is through and shapes are, with
+luck, removed.  **Why:** the model laws tell one story.  Weak forms are frame conditions plus maps
+already determined by existing objects (outward).  Strong forms are existence laws (inward,
+"diagonal": an object at the end of the axiom's path is realised by one here, a level up), one law
+for necessary objects and one for possible objects.  Two cells of that grid are empty.
+
+| | necessary objects | possible objects |
+|---|---|---|
+| D | trivially satisfied (`necUnit`) | `DStrong` (`posSerial`) |
+| T | **empty** | `TStrong` (`posRet_exists`) |
+| B | `BStrong` (`backRet_exists`: □-BF) | `BStrongW` (`posBack_exists`: ◇-BF) |
+| 4 | `FourStrong` (□-lift) | `FourStrongW` (◇-lift) |
+| 5 | `FiveStrong` (the gather, `necSide_exists`) | **empty** |
+
+1. **T's necessary form (NecT): fill the cell.**  `P(a) ⊢ ∃u:□A. P(u.here)`, law "every object is
+   `necExtract` of a necessary object" (`v12-modal-extensions.md`, "Candidate: necessary-object
+   strong T", 2026-09-19; `T_dia` factorises through it there).  Strong B with T validates it
+   (`backRet_exists` at the identity arrow, `homeUnique`), as `BStrongW` with T gives `TStrong`
+   (`Model.posRet_of_posBack`, `WCoh.strongT`).  Expected not hard; worth doing to complete the
+   pattern.
+2. **5's possible form: investigate.**  The ◇-gather, `posSide` onto along every arrow: every
+   possible object at a successor is, up to `Ind`, the side image of one here.  Already known to
+   hold at every cluster world in every model, not at the root, and very likely underivable (weak
+   K5 incomplete as ruled; `v12-modal-extensions.md`, "K5 and KD5", the `◇`-gather).  Unchecked:
+   (a) the relativised ◇-gather as weak 5's missing rule; (b) a `FiveStrongW` flag, the ◇-gather at
+   every world (root included), and whether naming every possible object at the root removes the
+   network's incremental clash; with 4 it should coincide with `FourStrongW` (`x.side` is
+   `x.keep`).  Every strong-5 repair tried so far was about necessary objects.
+   *Also:* the gather is the one strong law that is not diagonal (it meets `□A` at `w` and `□A` at
+   `v` at a third world).  Without 4 there is no necessary transport across for it to make onto;
+   moved across, a necessary object is defined only on `side a`'s image, i.e. a possible object.
+   A diagonal form would add that transport (`m.side : □A → □◇A`) and state the gather as its
+   surjectivity; check it against F2 first (a view item and a former failed there for a related
+   transport).
+
 ## Afterwards — general metatheory (`v12-metatheory-todo.md`)
 
 Generalisation on constants, uniform substitution, cut elimination (scope open beyond K), Craig

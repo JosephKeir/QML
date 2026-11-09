@@ -6871,13 +6871,14 @@ with a base quantifier inside.
 | □-BF | `∀x:□A. □φ(x.box) ⊢ □∀y:A. φ(y)` | flag; necessary objects at `w` cover each successor's domain |
 | ◇-BF | `◇∃y:A. φ(y) ⊢ ∃x:◇A. ◇_x φ(x.dia)` | flag; possible objects at `w` cover each successor's domain |
 
-- **□-BF** is independent of every flag *(sketch countermodel: two worlds, universal `R`,
-  `D(v) = {b₁, b₂}`, one necessary object missing `b₂`, full possible objects)*. It spreads
+- **□-BF** is independent of every weak flag *(sketch countermodel: two worlds, universal `R`,
+  `D(v) = {b₁, b₂}`, one necessary object missing `b₂`, full possible objects)*; strong B gives it
+  (§4's table: the countermodel violates `backRet_exists`). It spreads
   non-emptiness. It has a link already in K (all box contents are visible together at a successor),
   so the textbook BF completeness argument should adapt: successors reuse the parent's box contents
   as witnesses.
-- **◇-BF** follows from strong B, and from strong T + strong 4, hence from strong S5. Weak flags
-  never give it. **Alone it is open**: a successor sits inside only one `◇_x` at a time, so several
+- **◇-BF** follows from strong B with witnessed ways home (`BStrongW`), and from strong T +
+  strong 4, hence from strong S5.  Weak flags never give it. **Alone it is open**: a successor sits inside only one `◇_x` at a time, so several
   witnesses cannot be linked jointly.
 
 ## 4. Combinations
@@ -6898,9 +6899,10 @@ Known edges *(all sketch)*:
 | T + 5 ⇒ B, 4 (frames) | ✓ | propositional ✓; object level via closure |
 | B + 4 ⇒ 5 (frames) | ✓ | propositional ✓; object level via closure — the component `◇□χ(u.keep.box) ⊢ □χ(u.box)`, valid on B+4 frames but not derivable from closed B + weak 4; conjecturally what makes the canonical round trips coherent (`v12-arrow-canonical.md` §4) |
 | strong T + strong 5 ⇒ strong B, strong 4 | ✓ (symmetry turns 5's inclusion around) | ? |
-| strong B ⇒ ◇-BF | ✓ | parameter-free ✓; parameterised: open (the return-path collapse once proposed here is ill-defined, §3 B) |
+| strong B ⇒ ◇-BF | only with witnessed ways home (`BStrongW`): `Model.posBack_exists` is ◇-BF along each arrow; rows 1–2 alone ✗ (sketch: possible objects with empty extents only) | with `BStrongW`, ✓ by completeness |
 | strong T + strong 4 ⇒ ◇-BF | ✓ | ? |
-| anything ⇒ □-BF | ✗ (countermodel) | ✗ |
+| strong B ⇒ □-BF | ✓, parameters included: `symm`, then `backRet_exists` at the target, `homeUnique`, `IndInvariant` (2026-11-10) | ✓ by completeness; the parameter-free derivation is §11.7's core with `B_box` and K |
+| weak flags ⇒ □-BF | ✗ (the countermodel under □-BF above; it violates `backRet_exists`) | ✗ |
 
 ## 5. Expected status of the modal cube
 
