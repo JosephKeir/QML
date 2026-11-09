@@ -182,6 +182,10 @@ mutual
     | _, .eval g t => by
         change Func.eval (Func.subst id _ hθ hc g) (Term.subst id _ hθ hc t) = _
         rw [Func.subst_id hθ hc g, Term.subst_id_var hθ hc t]
+    termination_by _ f => sizeOf f
+    -- Spelled out: the default `decreasing_tactic` goes through Mathlib's ordered-monoid lemmas,
+    -- which use `Classical.choice`.
+    decreasing_by all_goals (rw [Func.eval.sizeOf_spec]; omega)
 
   theorem Term.subst_id_var {σ : Signature} {Δ : Ctx} (hθ : Subst.Ok Δ (Subst.idS σ Δ))
       (hc : Subst.Coh id Δ (Subst.idS σ Δ)) (t : Term σ Δ .Var .var) :
@@ -195,6 +199,8 @@ mutual
     | .func f =>
         change Term.func (Func.subst id _ hθ hc f) = _
         rw [Func.subst_id hθ hc f]
+    termination_by sizeOf t
+    decreasing_by rw [Term.func.sizeOf_spec]; omega
 end
 
 theorem Rel.subst_id {σ : Signature} {Δ : Ctx} (hθ : Subst.Ok Δ (Subst.idS σ Δ))
@@ -216,6 +222,10 @@ mutual
         change Func.eval (Func.subst id _ hθ hc g) (Term.subst id _ hθ hc t) = _
         rw [Func.subst_idS_mono hle hθ hc g, Term.subst_idS_mono_var hle hθ hc t]
         rfl
+    termination_by _ f => sizeOf f
+    -- Spelled out: the default `decreasing_tactic` goes through Mathlib's ordered-monoid lemmas,
+    -- which use `Classical.choice`.
+    decreasing_by all_goals (rw [Func.eval.sizeOf_spec]; omega)
 
   theorem Term.subst_idS_mono_var {σ : Signature} {Γ Δ : Ctx} (hle : Γ.Le Δ)
       (hθ : Subst.Ok Γ (Subst.idS σ Δ)) (hc : Subst.Coh id Γ (Subst.idS σ Δ))
@@ -231,6 +241,8 @@ mutual
         change Term.func (Func.subst id _ hθ hc f) = _
         rw [Func.subst_idS_mono hle hθ hc f]
         rfl
+    termination_by sizeOf t
+    decreasing_by rw [Term.func.sizeOf_spec]; omega
 end
 
 /-- ⭐Substituting every address for itself into a larger context is weakening. -/

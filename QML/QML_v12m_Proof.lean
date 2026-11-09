@@ -1101,8 +1101,10 @@ def opt_out (hO : ModalSys.Opt = true) (y : VarSymb) (hy : ∃ X, Γ.wit y = som
   .or_elim (.lem φ) (lookup List.mem_cons_self)
     (.bot_elim _ (.opt_bot hO y hy (.imp_elim
       (.imp_intro (ofSubset (fun _ h => by
-        simp only [List.mem_cons, List.not_mem_nil, or_false] at h ⊢
-        tauto) k))
+        rcases List.mem_cons.mp h with rfl | h
+        · exact List.mem_cons_self
+        · rw [List.mem_singleton.mp h]
+          exact List.mem_cons_of_mem _ List.mem_cons_self) k))
       (Proof.weak _ p))))
 
 /-- ⭐One content per arrow: `◇⁰_y φ, ◇⁰_y ψ ⊢ ◇⁰_y (φ ∧ ψ)`.  `K_opt` opens `◇⁰_y φ` and carries
