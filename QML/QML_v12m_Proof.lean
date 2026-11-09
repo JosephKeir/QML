@@ -80,6 +80,13 @@ def WFF.liftRead {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = 
           (Ctx.ref_insert_root Γ (.free c) T) (VarType.keepable_of_liftable hl))))
       (WFF.mono ((O.le_view_mono (Ctx.le_insert hc.root T)).insert (.bnd 0) T) φ))
 
+/-- ⭐`◇ ◇⁰_u φ`: into an accessible world in the extent of `u`, then into the view of its witness
+    there — the witnessed modality factored (`Proof.dia_opt`, `Proof.opt_dia`; docs §12.18). -/
+abbrev WFF.diaOpt {σ : Signature} {Γ : Ctx} {d : ℕ} (hO : ModalSys.Opt = true) (u : VarSymb)
+    (hu : ∃ X, Γ.ref u = some (.VTypeDia X)) (φ : WFF σ (Γ.diaIn u) d) : WFF σ Γ d :=
+  (WFF.box (WFF.optx hO u (hu.imp fun _ h => Ctx.boxIn_wit.mpr ⟨hO, h⟩)
+    (WFF.mono (hu.elim fun _ h => Ctx.le_diaIn_boxIn_optIn hO h) φ)).neg).neg
+
 inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ Γ 0 → Type where
   -- Structural
   | ax {Γ : Ctx} (φ : WFF σ Γ 0) : Proof σ Γ [φ] φ
@@ -167,6 +174,34 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
   | dia_bot {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (x : VarSymb)
       (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
       Proof σ Γ Δ (.dia x hx .bot) → Proof σ Γ Δ .bot
+  -- The box view of possible objects (`Opt`, docs §12.18)
+  /-- ⭐`K⁰`: from `ψ, Δ₂, Δ₁ ⊢ φ` in the view of the witness `y` conclude
+      `◇⁰_y ψ, □⁰_y Δ₂, Δ₁ ⊢ ◇⁰_y φ`.  As `K_dia`, except that `Δ₁` comes in unboxed: `◇⁰` crosses
+      no world. -/
+  | K_opt {Γ : Ctx} (hO : ModalSys.Opt = true) (y : VarSymb) (hy : ∃ X, Γ.wit y = some X)
+      {Δ₁ : List (WFF σ Γ 0)} {Δ₂ : List (WFF σ (Γ.optIn y) 0)}
+      {φ ψ : WFF σ (Γ.optIn y) 0} :
+      Proof σ (Γ.optIn y) (ψ :: (Δ₂ ++ Δ₁.map (WFF.mono (Ctx.le_optIn Γ y)))) φ →
+      Proof σ Γ (.optx hO y hy ψ :: (Δ₂.map (WFF.optBox hO y hy) ++ Δ₁)) (.optx hO y hy φ)
+  | opt_bot {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hO : ModalSys.Opt = true) (y : VarSymb)
+      (hy : ∃ X, Γ.wit y = some X) :
+      Proof σ Γ Δ (.optx hO y hy .bot) → Proof σ Γ Δ .bot
+  /-- ⭐**Reopening**: where the witness `y` is already opened (its content `y.dia` in view),
+      whatever holds holds of its content, re-opened.  Sound because environments respect their
+      opened witnesses (`Frame.Env.opened`); the converse is derivable (`Proof.opt_out`). -/
+  | opt_reopen {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hO : ModalSys.Opt = true) (y : VarSymb)
+      (hy : ∃ X, Γ.wit y = some X ∧ Γ (.step y .dia) = some X) {ψ : WFF σ Γ 0} :
+      Proof σ Γ Δ ψ →
+      Proof σ Γ Δ (.optx hO y (hy.imp fun _ h => h.1) (WFF.mono (Ctx.le_optIn Γ y) ψ))
+  /-- ⭐**The bridge**, one way: `◇_u φ ⊢ ◇ ◇⁰_u φ`, the witnessed modality factored into a step
+      and the witness's view at its target (docs §12.18). -/
+  | dia_opt {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hO : ModalSys.Opt = true) (u : VarSymb)
+      (hu : ∃ X, Γ.ref u = some (.VTypeDia X)) {φ : WFF σ (Γ.diaIn u) 0} :
+      Proof σ Γ Δ (.dia u hu φ) → Proof σ Γ Δ (WFF.diaOpt hO u hu φ)
+  /-- ⭐**The bridge**, the other way: `◇ ◇⁰_u φ ⊢ ◇_u φ`. -/
+  | opt_dia {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hO : ModalSys.Opt = true) (u : VarSymb)
+      (hu : ∃ X, Γ.ref u = some (.VTypeDia X)) {φ : WFF σ (Γ.diaIn u) 0} :
+      Proof σ Γ Δ (WFF.diaOpt hO u hu φ) → Proof σ Γ Δ (.dia u hu φ)
   -- Weak D
   /-- Something is accessible, so not everything is impossible: `□⊥ ⊢ ⊥`.  The familiar
       `□φ ⊢ ◇φ` is derived from it (`Proof.D_dia`). -/
@@ -1053,6 +1088,32 @@ def D_box_of_dia {Δ : List (WFF σ Γ 0)}
     (.imp_elim (ofSubset (fun _ h => by simp at h) (.imp_intro hdia)) p)
     (ofSubset (fun _ h => by simp at h)
       (Proof.K_box (Δ := []) (.imp_intro (lookup List.mem_cons_self))))
+
+/-- ⭐The content changes nothing outside: `◇⁰_y φ↑ ⊢ φ` for `φ` over `Γ`.  By excluded middle on
+    `φ`: against `¬φ`, `K_opt` carries `¬φ` into the view, where it meets `φ↑`, and `opt_bot`. -/
+def opt_out (hO : ModalSys.Opt = true) (y : VarSymb) (hy : ∃ X, Γ.wit y = some X)
+    {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0}
+    (p : Proof σ Γ Δ (.optx hO y hy (WFF.mono (Ctx.le_optIn Γ y) φ))) : Proof σ Γ Δ φ :=
+  have k : Proof σ Γ [.optx hO y hy (WFF.mono (Ctx.le_optIn Γ y) φ), φ.neg]
+      (.optx hO y hy .bot) :=
+    Proof.K_opt hO y hy (Δ₁ := [φ.neg]) (Δ₂ := [])
+      (.imp_elim (lookup (List.mem_cons_of_mem _ List.mem_cons_self)) (lookup List.mem_cons_self))
+  .or_elim (.lem φ) (lookup List.mem_cons_self)
+    (.bot_elim _ (.opt_bot hO y hy (.imp_elim
+      (.imp_intro (ofSubset (fun _ h => by
+        simp only [List.mem_cons, List.not_mem_nil, or_false] at h ⊢
+        tauto) k))
+      (Proof.weak _ p))))
+
+/-- ⭐One content per arrow: `◇⁰_y φ, ◇⁰_y ψ ⊢ ◇⁰_y (φ ∧ ψ)`.  `K_opt` opens `◇⁰_y φ` and carries
+    `◇⁰_y ψ` in, where `y` is opened, so `opt_out` takes it apart. -/
+def opt_fun (hO : ModalSys.Opt = true) (y : VarSymb) (hy : ∃ X, Γ.wit y = some X)
+    (φ ψ : WFF σ (Γ.optIn y) 0) :
+    Proof σ Γ [.optx hO y hy φ, .optx hO y hy ψ] (.optx hO y hy (φ.and ψ)) :=
+  Proof.K_opt hO y hy (Δ₁ := [.optx hO y hy ψ]) (Δ₂ := [])
+    (.and_intro (lookup List.mem_cons_self)
+      (opt_out (Γ := Γ.optIn y) hO y hy (φ := ψ)
+        (lookup (List.mem_cons_of_mem _ List.mem_cons_self))))
 
 /-- ⭐Weak B in its familiar form, `ψ ⊢ □◇ψ` for a closed `ψ`, with `◇` the dual `¬□¬`.  Its
     negation `¬□◇ψ` is, as a formula, `◇□¬ψ`, which the rule `B_dia` turns into `¬ψ`. -/

@@ -145,7 +145,7 @@ theorem cindInvariant_inv :
       ((cmodel hF hM₀ hX).sat (env.extend (.bnd 0) o) φ ↔
         (cmodel hF hM₀ hX).sat (env.extend (.bnd 0) o') φ) := by
   intro Γ _ htame hnp s env A φ o o' hInd
-  obtain ⟨hfin, d, hd⟩ := htame
+  obtain ⟨hfin, d, hd, -⟩ := htame
   have hθ := crepSubst_ok hM₀ hX env hfin
   have hc := crepSubst_coh hM₀ hX env hfin hd
   have h0 : (ctxOf (glat s (crepSup hM₀ hX env hfin))) (.root (.bnd 0)) = none :=

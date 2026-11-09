@@ -151,6 +151,16 @@ theorem Fin.empty : Ctx.empty.Fin := by
   refine Set.finite_empty.subset fun v hv => ?_
   cases hv
 
+omit [ModalSys] in
+theorem Fin.optIn {Γ : Ctx} (h : Γ.Fin) (y : VarSymb) : (Γ.optIn y).Fin := by
+  refine (Set.Finite.insert (VarSymb.step y .dia) h).subset ?_
+  intro v hv
+  by_cases hc : v = .step y .dia
+  · exact Or.inl hc
+  · right
+    change (Γ.optIn y v).isSome at hv
+    rwa [Ctx.optIn_ne hc] at hv
+
 end Ctx
 
 theorem CtxExpr.fin : ∀ e : CtxExpr, e.denote.Fin
@@ -158,6 +168,7 @@ theorem CtxExpr.fin : ∀ e : CtxExpr, e.denote.Fin
   | .insertFree e u T => (CtxExpr.fin e).insert (.free u) T
   | .boxIn e => (CtxExpr.fin e).boxIn
   | .diaIn e x => (CtxExpr.fin e).diaIn x
+  | .optIn e y => (CtxExpr.fin e).optIn y
 
 /-- ⭐Every presented context is finite. -/
 theorem Ctx.Presented.fin (Γ : Ctx) [h : Γ.Presented] : Γ.Fin :=
@@ -167,25 +178,33 @@ theorem Ctx.Presented.fin (Γ : Ctx) [h : Γ.Presented] : Γ.Fin :=
 
 namespace Ctx
 
-/-- ⭐A context a proof can live in, as models proper see it: finitely many declared addresses, and
-    every address at one view depth (`Ctx.LevelDepth`).  Every presented context is tame
-    (`Ctx.Presented.tame`), and tameness passes to weakenings, fresh insertions and both views.
-    Finiteness lets the canonical model name an environment at one stage; one view depth makes the
-    naming coherent (no declared address extends another). -/
-def Tame (Γ : Ctx) : Prop := Γ.Fin ∧ ∃ d, Γ.LevelDepth d
+/-- ⭐A context a proof can live in, as models proper see it: finitely many declared addresses,
+    every address at one view depth (`Ctx.LevelDepth`), and every witness's content at that depth
+    with them (`Ctx.WitDepth`).  Every presented context is tame (`Ctx.Presented.tame`), and
+    tameness passes to weakenings, fresh insertions and the views.  Finiteness lets the canonical
+    model name an environment at one stage; one view depth makes the naming coherent (no declared
+    address extends another). -/
+def Tame (Γ : Ctx) : Prop := Γ.Fin ∧ ∃ d, Γ.LevelDepth d ∧ Γ.WitDepth d
 
 theorem Tame.mono {Γ Γ' : Ctx} (h : Γ.Le Γ') (h' : Γ'.Tame) : Γ.Tame :=
-  ⟨h'.1.mono h, h'.2.imp fun _ hd v T hv => hd v T (h.ref hv)⟩
+  ⟨h'.1.mono h, h'.2.imp fun _ ⟨hd, hw⟩ => ⟨fun v T hv => hd v T (h.ref hv), witDepth_mono h hw⟩⟩
 
 theorem Tame.insert {Γ : Ctx} (h : Γ.Tame) {r : Root} (hr : Γ.RootFresh r) (T : VarType) :
     (Γ.insert r T).Tame :=
-  ⟨h.1.insert r T, h.2.elim fun _ hd => ⟨_, Ctx.levelDepth_insert hd hr T⟩⟩
+  ⟨h.1.insert r T, h.2.elim fun _ ⟨hd, hw⟩ =>
+    ⟨_, Ctx.levelDepth_insert hd hr T, Ctx.witDepth_insert hw hr T⟩⟩
 
 theorem Tame.boxIn {Γ : Ctx} (h : Γ.Tame) : Γ.boxIn.Tame :=
-  ⟨h.1.boxIn, h.2.elim fun _ hd => ⟨_, Ctx.levelDepth_boxIn hd⟩⟩
+  ⟨h.1.boxIn, h.2.elim fun _ ⟨hd, _⟩ => ⟨_, Ctx.levelDepth_boxIn hd, Ctx.witDepth_boxIn hd⟩⟩
 
 theorem Tame.diaIn {Γ : Ctx} (h : Γ.Tame) (x : VarSymb) : (Γ.diaIn x).Tame :=
-  ⟨h.1.diaIn x, h.2.elim fun _ hd => ⟨_, Ctx.levelDepth_diaIn hd x⟩⟩
+  ⟨h.1.diaIn x, h.2.elim fun _ ⟨hd, _⟩ =>
+    ⟨_, Ctx.levelDepth_diaIn hd x, Ctx.witDepth_diaIn hd x⟩⟩
+
+/-- ⭐The view of a witness is tame: its content is at the witness's depth. -/
+theorem Tame.optIn {Γ : Ctx} (h : Γ.Tame) (y : VarSymb) : (Γ.optIn y).Tame :=
+  ⟨h.1.optIn y, h.2.elim fun _ ⟨hd, hw⟩ =>
+    ⟨_, Ctx.levelDepth_optIn hd hw y, Ctx.witDepth_optIn hw y⟩⟩
 
 end Ctx
 

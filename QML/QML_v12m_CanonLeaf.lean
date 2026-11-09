@@ -194,12 +194,41 @@ theorem Ctx.DeclOK.diaIn (hT : ModalSys.T = true) {Γ : Ctx} (h : Γ.DeclOK) (x 
     (Γ.diaIn x).DeclOK :=
   h.diaIn_of (.inl hT) x
 
-theorem CtxExpr.declOK_of (hTF : ModalSys.T = true ∨ ModalSys.Four = false) :
-    ∀ e : CtxExpr, e.denote.DeclOK
-  | .empty => fun _ _ h => by cases h
-  | .insertFree e u T => (CtxExpr.declOK_of hTF e).insert (.free u) T
-  | .boxIn e => (CtxExpr.declOK_of hTF e).boxIn_of hTF
-  | .diaIn e x => (CtxExpr.declOK_of hTF e).diaIn_of hTF x
+/-- Every witness is an allowed address: what the view of a witness needs to stay allowed. -/
+def Ctx.WitOK (Γ : Ctx) : Prop := ∀ y X, Γ.wit y = some X → y.OK
+
+theorem Ctx.DeclOK.witOK_boxIn {Γ : Ctx} (h : Γ.DeclOK) : Γ.boxIn.WitOK := fun y _ hy =>
+  h.ref y (Ctx.boxIn_wit.mp hy).2
+
+/-- The view of a witness declares its content, allowed when the witness is. -/
+theorem Ctx.DeclOK.optIn {Γ : Ctx} (h : Γ.DeclOK) (hw : Γ.WitOK) (y : VarSymb) :
+    (Γ.optIn y).DeclOK := by
+  intro v T hv
+  by_cases hc : v = .step y .dia
+  · subst hc
+    cases hX : Γ.wit y with
+    | some X => exact VarSymb.ok_step.mpr ⟨hw y X hX, Step.ok_dia⟩
+    | none =>
+        rw [Ctx.optIn_content_none hX] at hv
+        exact h _ T hv
+  · rw [Ctx.optIn_ne hc] at hv
+    exact h v T hv
+
+theorem CtxExpr.declOK_witOK (hTF : ModalSys.T = true ∨ ModalSys.Four = false) :
+    ∀ e : CtxExpr, e.denote.DeclOK ∧ e.denote.WitOK
+  | .empty => ⟨fun _ _ h => (by cases h), fun _ _ h => (by cases h)⟩
+  | .insertFree e u T =>
+      ⟨(CtxExpr.declOK_witOK hTF e).1.insert (.free u) T, (CtxExpr.declOK_witOK hTF e).2⟩
+  | .boxIn e => ⟨(CtxExpr.declOK_witOK hTF e).1.boxIn_of hTF,
+      (CtxExpr.declOK_witOK hTF e).1.witOK_boxIn⟩
+  | .diaIn e x => ⟨(CtxExpr.declOK_witOK hTF e).1.diaIn_of hTF x,
+      (CtxExpr.declOK_witOK hTF e).1.witOK_boxIn⟩
+  | .optIn e y => ⟨(CtxExpr.declOK_witOK hTF e).1.optIn (CtxExpr.declOK_witOK hTF e).2 y,
+      (CtxExpr.declOK_witOK hTF e).2⟩
+
+theorem CtxExpr.declOK_of (hTF : ModalSys.T = true ∨ ModalSys.Four = false) (e : CtxExpr) :
+    e.denote.DeclOK :=
+  (CtxExpr.declOK_witOK hTF e).1
 
 /-- ⭐Under T or without 4, a presented context reaches only allowed addresses. -/
 theorem Ctx.Presented.declOK_of (hTF : ModalSys.T = true ∨ ModalSys.Four = false) (Γ : Ctx)

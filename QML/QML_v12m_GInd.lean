@@ -141,7 +141,7 @@ theorem gindInvariant_inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLa
       ((gmodel hF hM₀).sat (env.extend (.bnd 0) o) φ ↔
         (gmodel hF hM₀).sat (env.extend (.bnd 0) o') φ) := by
   intro Γ _ htame hnp s env A φ o o' hInd
-  obtain ⟨hfin, d, hd⟩ := htame
+  obtain ⟨hfin, d, hd, -⟩ := htame
   have hθ := grepSubst_ok hM₀ env hfin
   have hc := grepSubst_coh hM₀ env hfin hd
   have h0 : (ctxOf (glat s (grepSup hM₀ env hfin))) (.root (.bnd 0)) = none :=

@@ -287,6 +287,43 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M hM w env hfin hnp hΔ
       obtain ⟨_, _, _, h⟩ := ih M hM env hfin hnp hΔ
       exact h
+  | @K_opt Γ hO y hy Δ₁ Δ₂ φ ψ p ih =>
+      intro M hM w env hfin hnp hΔ
+      obtain ⟨X, hX, hd, hψ⟩ := hΔ _ List.mem_cons_self
+      refine ⟨X, hX, hd, ih M hM (env.optPush y hX hd) (hfin.optIn y) (hnp.optIn y)
+        (hyps_cons hψ (fun χ hχ => ?_))⟩
+      rcases List.mem_append.mp hχ with h₂ | h₁
+      · have hb := hΔ (WFF.optBox hO y hy χ)
+          (List.mem_cons_of_mem _ (List.mem_append_left _ (List.mem_map.mpr ⟨χ, h₂, rfl⟩)))
+        by_contra hne
+        exact hb ⟨X, hX, hd, hne⟩
+      · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₁
+        have hb := hΔ χ' (List.mem_cons_of_mem _ (List.mem_append_right _ hχ'))
+        exact (sat_mono (Env.agree_optPush env hX hd) χ' fun _ _ _ _ => rfl).mpr hb
+  | @opt_bot Γ Δ hO y hy p ih =>
+      intro M hM w env hfin hnp hΔ
+      obtain ⟨_, _, _, h⟩ := ih M hM env hfin hnp hΔ
+      exact h
+  | @opt_reopen Γ Δ hO y hy ψ p ih =>
+      intro M hM w env hfin hnp hΔ
+      obtain ⟨X, hX, hXd⟩ := hy
+      obtain ⟨hd, -⟩ := env.opened y X hX hXd
+      exact ⟨X, hX, hd, (sat_mono (Env.agree_optPush env hX hd) ψ fun _ _ _ _ => rfl).mpr
+        (ih M hM env hfin hnp hΔ)⟩
+  | @dia_opt Γ Δ hO u hu φ p ih =>
+      intro M hM w env hfin hnp hΔ hb
+      obtain ⟨X, hr, w', hφ⟩ := ih M hM env hfin hnp hΔ
+      exact hb w'.1 ⟨X, Ctx.boxIn_wit.mpr ⟨hO, hr⟩, w'.2,
+        (sat_mono (Env.diaPush_agree_optPush env hO hr w') φ fun _ _ _ _ => rfl).mpr hφ⟩
+  | @opt_dia Γ Δ hO u hu φ p ih =>
+      intro M hM w env hfin hnp hΔ
+      have h := ih M hM env hfin hnp hΔ
+      by_contra hne
+      refine h fun w' hw => hne ?_
+      obtain ⟨X, hX, hd, hφ⟩ := hw
+      have hr := (Ctx.boxIn_wit.mp hX).2
+      exact ⟨X, hr, ⟨w', hd⟩, (sat_mono (Env.diaPush_agree_optPush env hO hr ⟨w', hd⟩) φ
+        fun _ _ _ _ => rfl).mp hφ⟩
   | @D_box Γ Δ hD p ih =>
       intro M hM w env hfin hnp hΔ
       obtain ⟨v, ⟨hv⟩⟩ := M.frame.serial hD w

@@ -280,6 +280,7 @@ macro "kflag" : tactic => `(tactic| first
   | exact absurd ‹ModalSys.FourStrongW = true› (by simp [ModalSys.GKSys.noFourStrongW])
   | exact absurd ‹ModalSys.Five = true› (by simp [ModalSys.GKSys.noFive])
   | exact absurd ‹ModalSys.FiveStrong = true› (by simp [ModalSys.GKSys.noFiveStrong])
+  | exact absurd ‹ModalSys.Opt = true› (by simp [ModalSys.NoOpt.noOpt])
   | exact absurd ‹VarType.liftableR _ = true› (by rw [ModalSys.GKSys.liftableR]; decide))
 
 /-- ⭐**Natural deduction into GK**, along any substitution into a presented context. -/

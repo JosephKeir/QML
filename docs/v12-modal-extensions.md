@@ -15367,5 +15367,151 @@ The user chose option 2.  The `Opt`-type work of 12.15 is reverted (the flag, `o
   - `Env.wit_opened` (an opened witness is its content, present) and `Env.ext_val` (environments
     are equal when their objects are, and their witnesses away from content in view) keep the
     environment equations short.
+* **⭐The end state (user, 2026-11-10): `Opt` a semi-independent flag.**  Shapes are deleted and
+  **interpolation holds in every case**, if it can be done.  `Opt` then works as the other modal
+  flags do: a requirement field (`optStage`'s replacement, in the pattern of `CubeSys.strongB`)
+  forces it on where the system needs it, and elsewhere it is an independent choice ("you can have
+  this machinery if you want").  Which combinations require it is decided by that target: T and
+  strong B (no semantics without shapes, and KT lacks Craig without `In`) certainly; weak B and 5
+  according to whether their interpolation needs it.  K, D and 4 keep their Opt-off results
+  (completeness, GK, cut elimination, Craig) as the Opt-off half of the cube.  Order: M1 (K with
+  `Opt` on: `In` rules, soundness, tree completeness with theory-decided extents), M2 (KT: `Here`
+  through `In`, shapes and `Ind` gone on the tree, `φ ⊢ ψ`'s interpolant), M3 (GK with `In`: cut
+  elimination and Craig for K and KT), then 4, B, 5 and the requirement fields.
 * Tactics: `slot_rfl` (a substitution's entry at the root it sets; extended by `macro_rules`
   where the lemmas live), `wit_refl`, `opened_tac`.
+
+### 12.18 M1's rules under option 2 *(2026-11-10, paper)*
+
+Option 2's primitive is the binder `◇⁰_y φ` ("the witness `y` is present along the arrow just
+taken, and `φ` holds of its content `y.dia`"), at the **same world**; `□⁰_y φ := ¬◇⁰_y ¬φ`.
+§12.13's `in_*` rules were stated for an `Opt`-typed atom; here they become rules for the binder,
+following the K paradigm (`K_dia`, `dia_bot`), with the one difference that `◇⁰` moves no world.
+
+**Candidate rules** (K level, every system, gated by `Opt`):
+1. `K_opt`: from `ψ, Δ₂, Δ₁↑ ⊢ φ` in `Γ.optIn y` conclude `◇⁰_y ψ, □⁰_y Δ₂, Δ₁ ⊢ ◇⁰_y φ`.  As
+   `K_dia`, except that `Δ₁` (formulas of `Γ` itself) comes in unboxed: no world is crossed.
+2. `opt_bot`: `◇⁰_y ⊥ ⊢ ⊥` (as `dia_bot`).
+3. `opt_fun` (one content per arrow): `◇⁰_y φ, ◇⁰_y ψ ⊢ ◇⁰_y (φ ∧ ψ)`.
+4. `opt_out` (the content changes nothing outside): `◇⁰_y (φ↑) ⊢ φ` for `φ` over `Γ`.  (The
+   converse, `◇⁰_y ⊤, φ ⊢ ◇⁰_y φ↑`, is `K_opt` with `Δ₁ = [φ]`.)
+5. `dia_opt` / `opt_dia` (§12.3's `in_box`): `◇_u φ ⊣⊢ ◇ ◇⁰_u φ`, `φ` read in `Γ.boxIn.optIn u`,
+   which declares what `Γ.diaIn u` does.  The bridge between the witnessed modalities and the
+   new binder; it is what lets the canonical model decide extents by the theories.
+6. `opt_name` (the content has a name in the view): `◇⁰_y ⊤ ⊢ ∃e ◇⁰_y (y.dia ≡ e)`, `≡` the
+   heterogeneous equality `eqH` of §12.2 (at `Var`, `=`; componentwise at `×`; `□ eqH` at `□`; at
+   `◇Z`, mutual inclusion of the two witnesses' arrows with `eqH` contents, through nested `◇⁰`,
+   which option 2 allows since `optIn` hides nothing).  Leibniz along `eqH` is derived by
+   induction on the formula (§12.3).
+
+All six are sound by unfolding `sat` (`◇⁰` reads `env.wit`; one content per arrow is the `Part`;
+`dia_opt` is `sat_dia` against `boxPush`'s witness).  Closure under substitution: the binder's
+case is `optIn`'s (built).
+
+**What the K tree's truth lemma needs, checked:**
+* *Extents by the theories:* `ext_w(u) := {children c | ◇⁰_u ⊤ ∈ c.T}`; content: the Henkin `e` of
+  `opt_name`.  The children are still made for `◇`-formulas; "built for `u`" goes.
+* `◇⁰_u φ` at `c`: present and `φ[u.dia := e]` ⇔ `◇⁰_u φ ∈ c.T`, by `opt_fun`, Leibniz along
+  `≡` inside the view, and `opt_out` (⇒); `K_opt` with `Δ₁ = [φ[e]]` and Leibniz (⇐); absent ⇒
+  `◇⁰_u φ ∉ c.T` since `◇⁰_u φ ⊢ ◇⁰_u ⊤`.
+* `◇_u φ` at `w`: `dia_opt` gives `◇ ◇⁰_u φ`, a child with `◇⁰_u φ` in its theory, which lies in
+  the extent; conversely truth at a child in the extent gives `◇⁰_u φ` there, so `◇ ◇⁰_u φ` at
+  `w`, then `opt_dia`.  `□_u` dually.
+* `eqH`'s faithfulness at `◇` (in the theory ⇔ equal extents and contents): by the IH at the
+  smaller type, in the children (§12.5).
+
+**Not needed in K:** `in_beta` (substitution does β) and `in_eq` (Leibniz).  **Open:** whether
+`opt_fun` and `opt_out` are derivable from the others (they don't look it), and whether `dia_opt`
+makes `K_dia` and `dia_bot` derivable (`K_dia` then follows from `K_box`, `K_opt` and
+`dia_opt`), which would make the witnessed modalities definable rather than primitive.
+
+#### Against cut elimination, and the choice of (b) *(2026-11-10, paper; user: (b))*
+
+**`◇⁰` in GK.**  A same-world, functional modality: one rule `optL` (from `◇⁰_y ψ ∈ Δ`, open the
+view at the same world, the whole sequent carried in, any chosen `◇⁰_y` formulas of either side
+opened together: one content).  Principal cuts reduce to a cut on the body in one joint view.
+`K_opt`, `opt_bot`, `opt_fun`, `opt_out` are derivable.  Naming (`opt_name`) was the risk: a rule
+introducing a compound formula with a fresh name is not geometric (Negri's route needs atoms).
+Options were (a) `In` as a primitive atom, (b) a reopen rule, (c) a bespoke cut case.
+
+**(b) `opt_reopen`, chosen.**  When `y` is already opened in `Γ` (`Γ.wit y = some X` and
+`Γ (y.dia) = some X`, so `Γ.optIn y` is `Γ`): `◇⁰_y χ ⊣⊢ χ`.  Sound exactly because environments
+respect opened witnesses (`Env.wit_opened`, `Env.ext_val`: `optPush` changes nothing); closed
+under substitution by `Coh.openedTo` (the image is opened) and `Coh.opened` (`θ.optIn` and `θ`
+agree at `y.dia`).
+* *ND primitives:* `K_opt`, `opt_bot`, `opt_reopen`, `dia_opt`, `opt_dia`.  *Derived:* `opt_out`
+  (excluded middle on `φ`; `K_opt` carries `¬φ` in, `opt_bot`); `opt_fun` (open `◇⁰_y ψ`, carry
+  `◇⁰_y φ` in, reopen it); `opt_name` (inside the view, `y.dia ≡ y.dia`, reopen to
+  `◇⁰_y (y.dia ≡ y.dia)`, `∃`-introduce at `e := y.dia`, then `K_opt` and `opt_out`; the
+  instantiation under the re-opening binder is the substitution `Opened` made sound).
+* *GK:* `optL` (in an opened context it is reopen on the left) and `reopenR` (`◇⁰_y χ ∈ Θ`,
+  `y` opened: from `Δ ⇒ χ, Θ`), T's `◇R` at an identity arrow, only for opened witnesses (a `□` view
+  opens none).  Cuts `optL`/`optL` and `reopenR`/`optL` reduce to cuts on `χ`; nothing appears from
+  nowhere, no geometric rule, the subformula property exact.
+* *Costs:* `Γ.optIn y = Γ` for opened `y` (a structure equality, and transport along it);
+  reflexivity of `≡` at every type (derived by type recursion; at `◇` through nested `◇⁰` and
+  reopen).
+
+**Folding the bridge into GK.**  `◇_u p ⇒ ◇ ◇⁰_u p`: unfold the right (`□¬◇⁰_u p` on the left),
+`◇_uL` carries it into `Γ.diaIn u` (where `u` is opened): `p, ¬◇⁰_u p ⇒`, `¬L`, `reopenR`, axiom.
+`◇ ◇⁰_u p ⇒ ◇_u p`: unfold (`⇒ □¬◇⁰_u p, ◇_u p`), `□R`; the plain rule drops `◇_u p`, the
+**folded** one brings `◇⁰_u χ` into the `□` view's succedent for each `◇_u χ` of the parent's:
+`⇒ ¬◇⁰_u p, ◇⁰_u p`, `¬R`, `optL`.  Sound: `◇⁰_u χ` along an arrow of the view is that arrow
+witnessing `◇_u χ`.  Precedent: 4's `kp4` copies; applies alike to `□R`, `serial`, `◇_uL`; on the
+left `□_u χ` (`¬◇_u¬χ`) lands on the right and folds as `◇⁰_u ¬χ`.  *Measure:* a cut on `◇_u χ`
+between a fold and `◇_uL` reduces to a cut on `◇⁰_u χ` in the `□` view, so `◇_u χ` must weigh
+`χ + 2` (it is `◇` then `◇⁰`; `link` already weighs `+2`).  GK then needs no bridge rule, and
+`◇_uL` is `◇L` into the `□` view followed by `optL`: the witnessed modalities definable in GK.
+
+**For the writeup: the factoring, and its analogues** *(2026-11-10, user's question)*.  `◇_u φ =
+◇ ◇⁰_u φ` factors the witnessed modality into a world-change (`◇`) and a same-world
+**test-and-bind** (`◇⁰_u`: the arrow is in `u`'s extent, and its content is named `u.dia`).
+* *Linear logic:* not the additive/multiplicative split (variants that coincide under the
+  structural rules) but the **decomposition** `A → B = !A ⊸ B`: one connective factored into two,
+  each with clean rules, the old rules derivable, cut elimination proved for the finer calculus.
+  Here GK's `◇_uL` is `◇L` followed by `optL`.
+* *PDL / relation algebra (the closest):* composition with a test, `⟨α;β⟩φ = ⟨α⟩⟨β⟩φ`, a test
+  being a sub-identity; `◇_u`'s accessibility is `R ; 1_u`.  The rules match: functional
+  (`opt_fun`) as a sub-identity is deterministic, `opt_reopen` as tests are idempotent, `reopenR`
+  as the identity step.  The difference: `◇⁰_u` also binds its content, as hybrid logic's `↓x`.
+* *Labelled calculi* (Negri): the same split, `◇φ` as a relational atom plus forcing at the target;
+  here the relational part stays in the object language.  *Hybrid logic* (Areces, Blackburn, Marx
+  2003, §12.1): the same move, an operator about where one is, which is what Craig needs.
+
+
+### 12.19 M1's rules in code: decisions made while building *(2026-11-09, branch `wip/in-atom`)*
+
+* **The five primitives are in `Proof`** (`QML_v12m_Proof.lean`): `K_opt`, `opt_bot`,
+  `opt_reopen`, `dia_opt`, `opt_dia`, all gated by `hO : Opt = true`.  The bridge formula is an
+  abbrev, `WFF.diaOpt hO u hu φ` (`◇ ◇⁰_u φ`, `φ` weakened along `Ctx.le_diaIn_boxIn_optIn`);
+  `□⁰_y` is `WFF.optBox`.
+* **Existential side conditions, as `K_dia`.**  `opt_reopen` takes
+  `∃ X, Γ.wit y = some X ∧ Γ (y.dia) = some X` and the bridge rules `∃ X, Γ.ref u = some (◇X)`,
+  not an explicit `X`: substitution only knows the image's type as an `∃` (`Coh.openedTo`,
+  `SubE.ref_witness`), and `Proof.subst` is computable.
+* **Soundness** (`QML_v12m_Soundness.lean`): by unfolding `sat`.  `K_opt` recurses into
+  `env.optPush` (`Tame.optIn`, `NoProjLast.optIn`; `Δ₁` by `Env.agree_optPush`); `opt_reopen` reads
+  presence off `Frame.Env.opened`; the bridge is `Env.diaPush_agree_optPush`
+  (`QML_v12m_SemSubst.lean`): into a `◇_x` is into the `□` and then into the view of `x`'s witness,
+  present because the arrow is in `x`'s extent.
+* **Closure under substitution** (`QML_v12m_ProofSubst.lean`): `WFF.subst_optIn_mono` (a
+  hypothesis moved into the view, by `Subst.optIn_eq_mono`) and `WFF.subst_diaOpt_mono` (the
+  bridge, by `Subst.simT_dia_box_optIn`); `opt_reopen`'s image is opened by `Coh.openedTo`.
+* ⭐**Presentations take `◇⁰` views** (`CtxExpr.optIn`, `QML_v12m_Presented.lean`).  `K_opt`'s
+  premise lives in `Γ.optIn y`, and `Proof.subst` asks for a presented target, so presentations
+  follow the proof rules here as they do for `□` and `◇_x`.  `CtxExpr.Views` asks for the witness
+  (`∃ X, e.denote.wit y = some X`); without `Opt` no presentation has a witness
+  (`CtxExpr.wit_none`), so the `◇⁰` case of B's and G's flattenings (`CtxExpr.chain`,
+  `CtxExpr.gchain`, both under `NoOpt`) is vacuous (`CtxExpr.views_optIn_false`).  Recursions over
+  presentations got the case: freshness, slots, `fin`, `noProjLast`; `CtxExpr.levelDepth` now
+  returns the witness depth with the level depth (`Ctx.WitDepth` moved to
+  `QML_v12m_ViewFresh.lean`, `CtxExpr.witDepth` merged into it), and `CtxExpr.leveled` is read off
+  it; `CtxExpr.declOK_of` carries `Ctx.WitOK` (every witness an allowed address), which is what
+  `y.dia` needs to be allowed (`Ctx.DeclOK.optIn`).
+* **Derived** (`QML_v12m_Proof.lean`, after `D_box_of_dia`): `Proof.opt_out` (excluded middle on
+  `φ`, `K_opt` carrying `¬φ` in, `opt_bot`) and `Proof.opt_fun` (`K_opt` opens `◇⁰_y φ` and
+  carries `◇⁰_y ψ` in, where `opt_out` at the opened context takes it apart).  So `opt_fun` needs
+  no reopening; `opt_reopen` is used only for presence (`φ ⊢ ◇⁰_y φ↑` where `y` is opened), which
+  is what `opt_name` needs.  Still to do: `≡` (`eqH`) by type recursion with reflexivity, then
+  `opt_name`, then the K tree with `Opt` on.
+* Build: 40 targets green, 0 sorry (2026-11-09).

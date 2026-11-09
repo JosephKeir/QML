@@ -264,27 +264,106 @@ theorem levelDepth_insert {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ) {r
 
 end Ctx
 
+/-! ## Witnesses at their depth -/
+
+namespace Ctx
+
+/-- ⭐**A witness's content sits at its root's depth**: what its view (`Ctx.optIn`) declares is at
+    one view depth with the rest.  Every witness arises from a `□` view, where this holds
+    (`Ctx.witDepth_boxIn`). -/
+def WitDepth (d : Root → ℕ) (Γ : Ctx) : Prop :=
+  ∀ (y : VarSymb) (X : VarType), Γ.wit y = some X → Step.levels (VarSymb.step y .dia).path = d y.rt
+
+omit [ModalSys] in
+theorem witDepth_empty (d : Root → ℕ) : WitDepth d Ctx.empty := fun _ _ h => by cases h
+
+omit [ModalSys] in
+theorem witDepth_insert {d : Root → ℕ} {Γ : Ctx} (h : WitDepth d Γ) {r : Root}
+    (hr : Γ.RootFresh r) (T : VarType) : WitDepth (Function.update d r 0) (Γ.insert r T) := by
+  intro y X hy
+  have hrt : y.rt ≠ r := fun he => by
+    change Γ.wit y = some X at hy
+    rw [hr.wit y he] at hy
+    cases hy
+  rw [Function.update_of_ne hrt]
+  exact h y X hy
+
+theorem witDepth_boxIn {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ) :
+    WitDepth (fun r => d r + 1) Γ.boxIn := by
+  intro y X hy
+  obtain ⟨_, hu⟩ := Ctx.boxIn_wit.mp hy
+  rw [Step.levels_step_of_level rfl, h y _ hu]
+
+theorem witDepth_diaIn {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ) (x : VarSymb) :
+    WitDepth (fun r => d r + 1) (Γ.diaIn x) :=
+  witDepth_boxIn (Γ := Γ) h
+
+omit [ModalSys] in
+theorem witDepth_mono {d : Root → ℕ} {Γ Γ' : Ctx} (hle : Γ.Le Γ') (h : WitDepth d Γ') :
+    WitDepth d Γ := fun y X hy => h y X (hle.wit y X hy)
+
+omit [ModalSys] in
+theorem witDepth_optIn {d : Root → ℕ} {Γ : Ctx} (h : WitDepth d Γ) (y : VarSymb) :
+    WitDepth d (Γ.optIn y) := h
+
+/-- ⭐The view of a witness keeps the view depth: its content is at the witness's depth. -/
+theorem levelDepth_optIn {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ) (hw : WitDepth d Γ)
+    (y : VarSymb) : LevelDepth d (Γ.optIn y) := by
+  intro v
+  induction v with
+  | root r =>
+      intro T hv
+      rw [show (Γ.optIn y).ref (.root r) = Γ (.root r) from
+        Ctx.optIn_ne (fun he => by cases he)] at hv
+      exact h _ T hv
+  | step v s ih =>
+      intro T hv
+      by_cases hs : s.isProj = true
+      · rw [Ctx.ref_step_proj _ v hs] at hv
+        cases hU : (Γ.optIn y).ref v with
+        | none => rw [hU] at hv; cases hv
+        | some U =>
+            rw [Step.levels_step_of_proj hs]
+            exact ih U hU
+      · rw [Ctx.ref_step_nonproj _ v hs] at hv
+        by_cases hc : VarSymb.step v s = .step y .dia
+        · rw [hc] at hv ⊢
+          cases hX : Γ.wit y with
+          | some X => exact hw y X hX
+          | none =>
+              rw [Ctx.optIn_content_none hX] at hv
+              exact h _ T ((Ctx.ref_step_nonproj Γ y (by decide)).trans hv)
+        · rw [Ctx.optIn_ne hc] at hv
+          exact h _ T ((Ctx.ref_step_nonproj Γ v hs).trans hv)
+
+end Ctx
+
 /-- ⭐**A presentation has a depth assignment**, by induction on how it is built: the empty context
     takes any, a fresh declaration starts its root at zero, and a view raises every depth by one.
     This is the whole content of "an address belongs to one view depth" — and it is read off the
     naming discipline the user already owes (`CtxExpr.Fresh`), not assumed. -/
-theorem CtxExpr.levelDepth : ∀ (e : CtxExpr), e.Fresh → ∃ d : Root → ℕ, Ctx.LevelDepth d e.denote
-  | .empty, _ => ⟨fun _ => 0, Ctx.levelDepth_empty _⟩
+theorem CtxExpr.levelDepth : ∀ (e : CtxExpr), e.Fresh →
+    ∃ d : Root → ℕ, Ctx.LevelDepth d e.denote ∧ Ctx.WitDepth d e.denote
+  | .empty, _ => ⟨fun _ => 0, Ctx.levelDepth_empty _, Ctx.witDepth_empty _⟩
   | .insertFree e u T, hf => by
-      obtain ⟨d, hd⟩ := CtxExpr.levelDepth e hf.1
-      exact ⟨Function.update d (.free u) 0, Ctx.levelDepth_insert hd hf.2 T⟩
+      obtain ⟨d, hd, hw⟩ := CtxExpr.levelDepth e hf.1
+      exact ⟨Function.update d (.free u) 0, Ctx.levelDepth_insert hd hf.2 T,
+        Ctx.witDepth_insert hw hf.2 T⟩
   | .boxIn e, hf => by
-      obtain ⟨d, hd⟩ := CtxExpr.levelDepth e hf
-      exact ⟨fun r => d r + 1, Ctx.levelDepth_boxIn hd⟩
+      obtain ⟨d, hd, -⟩ := CtxExpr.levelDepth e hf
+      exact ⟨fun r => d r + 1, Ctx.levelDepth_boxIn hd, Ctx.witDepth_boxIn hd⟩
   | .diaIn e x, hf => by
-      obtain ⟨d, hd⟩ := CtxExpr.levelDepth e hf
-      exact ⟨fun r => d r + 1, Ctx.levelDepth_diaIn hd x⟩
+      obtain ⟨d, hd, -⟩ := CtxExpr.levelDepth e hf
+      exact ⟨fun r => d r + 1, Ctx.levelDepth_diaIn hd x, Ctx.witDepth_diaIn hd x⟩
+  | .optIn e y, hf => by
+      obtain ⟨d, hd, hw⟩ := CtxExpr.levelDepth e hf
+      exact ⟨d, Ctx.levelDepth_optIn hd hw y, Ctx.witDepth_optIn hw y⟩
 
 /-- ⭐**So a presented context never names an address at two view depths.**  This is what the
     abstraction of a `◇` view at an arbitrary address needs, and it comes from the presentation
     rather than from a side condition (§2d, §9). -/
 theorem Ctx.Presented.viewFresh {Γ : Ctx} (h : Γ.Presented) : Γ.ViewFresh := by
-  obtain ⟨d, hd⟩ := h.expr.levelDepth h.fresh
+  obtain ⟨d, hd, -⟩ := h.expr.levelDepth h.fresh
   rw [← h.denote_eq] at *
   exact hd.viewFresh
 
@@ -294,7 +373,7 @@ namespace Ctx
 theorem Presented.not_below {Γ : Ctx} (h : Γ.Presented) {x : VarSymb} {X : VarType}
     (hx : Γ.ref x = some X) {s : Step} (hs : s.isProj = false) (p : List Step) :
     Γ.ref ((VarSymb.step x s).ext p) = none := by
-  obtain ⟨d, hd⟩ := h.expr.levelDepth h.fresh
+  obtain ⟨d, hd, -⟩ := h.expr.levelDepth h.fresh
   rw [← h.denote_eq] at *
   exact hd.not_below hx hs p
 

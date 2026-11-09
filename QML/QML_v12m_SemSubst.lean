@@ -1062,6 +1062,39 @@ theorem Env.box_dia_agree {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {x : Var
   | .step _ .snd => cases hv
   | .step _ .dia => cases hv
 
+/-- ⭐The bridge, semantically: into a `◇_x` is into the `□` and then into the view of the witness
+    `x` there, present because the arrow is in the extent of `x`. -/
+theorem Env.diaPush_agree_optPush {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w)
+    (hO : ModalSys.Opt = true) {x : VarSymb} {X : VarType} (hr : Δ.ref x = some (.VTypeDia X))
+    (w' : (M.posEval (env.ref x hr)).1) :
+    Env.Agree (Ctx.le_diaIn_boxIn_optIn hO hr) (env.diaPush x hr w')
+      ((env.boxPush w'.1).optPush x (Ctx.boxIn_wit.mpr ⟨hO, hr⟩) w'.2) := by
+  intro v T hv
+  match v with
+  | .step u .dia =>
+      have hux : u = x := by
+        change (if u = x then (match Δ.ref x with | some (.VTypeDia X) => some X | _ => none)
+          else none) = some T at hv
+        split_ifs at hv with h
+        exact h
+      subst hux
+      obtain rfl := Ctx.diaIn_step_dia hr hv
+      change _ = dite _ _ _
+      rw [dif_pos rfl]
+      rfl
+  | .step u .box =>
+      change _ = dite _ _ _
+      rw [dif_neg (by intro h; cases h)]
+      rfl
+  | .step u .keep =>
+      change _ = dite _ _ _
+      rw [dif_neg (by intro h; cases h)]
+      rfl
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .here => cases hv
+
 /-- A possible entry has the extent of the new witness. -/
 theorem entryVal_dia_ext {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {ιx : VarSymb}
     {X Y : VarType} :

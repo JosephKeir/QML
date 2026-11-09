@@ -14,9 +14,9 @@ context by declaring free variables and taking modal views, whose denotation is 
   is the locally nameless discipline's own obligation on the user, and the only one — so it belongs
   to what "presented" means rather than travelling as a side condition on the metatheorems.  It is
   what `Ctx.LevelFlat` (hence the view renaming of §2d) is read off.
-* Instances follow the proof rules: the empty context, declaring a *fresh* free variable, `□` and
-  `◇_x` views.  Declaring a name the context may already have is no longer a presentation, so
-  `Ctx.Presented.insertFree` asks for the freshness the rule itself asks for.
+* Instances follow the proof rules: the empty context, declaring a *fresh* free variable, `□`,
+  `◇_x` and `◇⁰_y` views.  Declaring a name the context may already have is no longer a
+  presentation, so `Ctx.Presented.insertFree` asks for the freshness the rule itself asks for.
 * `Ctx.ofDecls` builds a context from a finite list of declarations `(u, T)`; the head of the list
   is declared last, so it is presented when the names are distinct (`Ctx.presentedOfDecls`).
 -/
@@ -29,6 +29,8 @@ inductive CtxExpr where
   | insertFree (e : CtxExpr) (u : ℕ) (T : VarType)
   | boxIn (e : CtxExpr)
   | diaIn (e : CtxExpr) (x : VarSymb)
+  /-- The view of the witness `y` (`◇⁰_y`). -/
+  | optIn (e : CtxExpr) (y : VarSymb)
 
 /-- Every free variable from here on is unused. -/
 def CtxExpr.freeBound : CtxExpr → ℕ
@@ -36,6 +38,7 @@ def CtxExpr.freeBound : CtxExpr → ℕ
   | .insertFree e u _ => max e.freeBound (u + 1)
   | .boxIn e => e.freeBound
   | .diaIn e _ => e.freeBound
+  | .optIn e _ => e.freeBound
 
 /-- Declare the free variables of a finite list; the head is declared last. -/
 def Ctx.ofDecls : List (ℕ × VarType) → Ctx
@@ -55,6 +58,7 @@ def denote : CtxExpr → Ctx
   | .insertFree e u T => e.denote.insert (.free u) T
   | .boxIn e => e.denote.boxIn
   | .diaIn e x => e.denote.diaIn x
+  | .optIn e y => e.denote.optIn y
 
 theorem fresh_of_bound : ∀ (e : CtxExpr) (n : ℕ), e.freeBound ≤ n → e.denote.RootFresh (.free n)
   | .empty, _, _ => Ctx.RootFresh.empty _
@@ -65,12 +69,14 @@ theorem fresh_of_bound : ∀ (e : CtxExpr) (n : ℕ), e.freeBound ≤ n → e.de
           exact absurd (Nat.max_le.mp hn).2 (Nat.not_succ_le_self _)) T
   | .boxIn e, n, hn => (fresh_of_bound e n hn).boxIn
   | .diaIn e x, n, hn => (fresh_of_bound e n hn).diaIn x
+  | .optIn e y, n, hn => (fresh_of_bound e n hn).optIn y
 
 theorem slots : ∀ (e : CtxExpr), e.denote.SlotsFrom 0
   | .empty => ⟨fun _ _ _ _ => rfl, fun _ _ _ _ => rfl⟩
   | .insertFree e u T => (slots e).insertFree u T
   | .boxIn e => (slots e).boxIn
   | .diaIn e x => (slots e).diaIn x
+  | .optIn e y => (slots e).optIn y
 
 /-- ⭐**The one non-shadowing condition**: a presentation **declares no name already in scope** —
     each free variable is fresh for its own prefix.  This is the *only* obligation on the user, the
@@ -90,6 +96,7 @@ def Fresh : CtxExpr → Prop
   | .insertFree e u _ => e.Fresh ∧ e.denote.RootFresh (.free u)
   | .boxIn e => e.Fresh
   | .diaIn e _ => e.Fresh
+  | .optIn e _ => e.Fresh
 
 /-- Views are taken at declared witnesses: a `◇_x` view needs `x` declared at a `◇`-type.  Not a
     freshness condition — it is the side condition of the `◇`-rule itself — and needed only where a
@@ -99,6 +106,28 @@ def Views : CtxExpr → Prop
   | .insertFree e _ _ => e.Views
   | .boxIn e => e.Views
   | .diaIn e x => e.Views ∧ ∃ X, e.denote.ref x = some (.VTypeDia X)
+  | .optIn e y => e.Views ∧ ∃ X, e.denote.wit y = some X
+
+/-- Without the box view of possible objects a presentation has no witnesses, so it takes no
+    `◇⁰` view (`CtxExpr.Views`). -/
+theorem wit_none (hO : ModalSys.Opt = false) (y : VarSymb) : ∀ e : CtxExpr, e.denote.wit y = none
+  | .empty => rfl
+  | .insertFree e _ _ => wit_none hO y e
+  | .boxIn e => Option.eq_none_iff_forall_ne_some.mpr fun _ h => by
+      have h' := (Ctx.boxIn_wit (Γ := e.denote).mp h).1
+      rw [hO] at h'
+      cases h'
+  | .diaIn e _ => Option.eq_none_iff_forall_ne_some.mpr fun _ h => by
+      have h' := (Ctx.boxIn_wit (Γ := e.denote).mp h).1
+      rw [hO] at h'
+      cases h'
+  | .optIn e _ => wit_none hO y e
+
+theorem views_optIn_false (hO : ModalSys.Opt = false) {e : CtxExpr} {y : VarSymb} :
+    ¬ (CtxExpr.optIn e y).Views := fun h => by
+  obtain ⟨X, hX⟩ := h.2
+  rw [wit_none hO y e] at hX
+  cases hX
 
 /-- A presentation built the way the proof rules build one: non-shadowing, views at witnesses. -/
 def Wf (e : CtxExpr) : Prop := e.Fresh ∧ e.Views
@@ -142,6 +171,9 @@ instance {Γ : Ctx} [h : Γ.Presented] : Γ.boxIn.Presented :=
 
 instance {Γ : Ctx} [h : Γ.Presented] {x : VarSymb} : (Γ.diaIn x).Presented :=
   ⟨.diaIn h.expr x, h.fresh, congrArg (fun Δ => Ctx.diaIn Δ x) h.denote_eq⟩
+
+instance {Γ : Ctx} [h : Γ.Presented] {y : VarSymb} : (Γ.optIn y).Presented :=
+  ⟨.optIn h.expr y, h.fresh, congrArg (fun Δ => Ctx.optIn Δ y) h.denote_eq⟩
 
 instance (priority := low) {Γ : Ctx} [h : Γ.Presented] : Γ.NoSlots :=
   ⟨h.denote_eq ▸ h.expr.slots⟩

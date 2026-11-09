@@ -24,3 +24,4 @@
 - [QML: follow proven paths](feedback_qml_follow_proven_paths.md) — prefer designs that repeat constructions already found to work (returning possibility, keepE, staging); name the precedent, flag the unprecedented as a cost
 - [QML possible gaps](project_qml_possible_gaps.md) — reviewed 2026-11-06: KB5 strong B closed; K5/KD5 weak+strong remain gaps (saturation route recorded, judged not worth it); ret_K presentation decided
 - [QML: identification needs inner terms + a map](feedback_qml_identification_inner_terms.md) — identifying possible terms = identifying inner terms at each shared world, along a map between contexts; Here(s,t)∧Here(s,t') = same object
+- [QML: Opt end state](project_qml_opt_end_state.md) — target: shapes deleted, interpolation in every system; Opt a semi-independent flag, required only where needed (T, strong B; weak B/5 as interpolation decides)

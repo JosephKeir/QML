@@ -669,6 +669,53 @@ theorem WFF.subst_diaIn_mono {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subs
       rw [Subst.dia_eq_box_mono θ x (ι x) v T hv, Subst.at_mono]
       exact .refl _), fun _ _ _ _ => .refl _⟩ χ
 
+/-- Substituting into a hypothesis moved into the view of the witness `y`: the view's
+    substitution is the weakened one away from the content (`Subst.optIn_eq_mono`). -/
+theorem WFF.subst_optIn_mono {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hO : ModalSys.Opt = true) {y : VarSymb}
+    {X : VarType} (hy : Γ.wit y = some X) (hΓ : Γ.SlotsFrom 0) (hΔ : Δ.SlotsFrom 0)
+    (hΔo : (Δ.optIn (ι y)).SlotsFrom 0) (χ : WFF σ Γ 0) :
+    WFF.subst ι (θ.optIn y (ι y)) (Subst.ok_optIn hθ hO hy (hc.wit hO y X hy []))
+        (Subst.coh_optIn hθ hc hO hy) (hΓ.optIn y) hΔo (WFF.mono (Ctx.le_optIn Γ y) χ) =
+      WFF.mono (Ctx.le_optIn Δ (ι y)) (WFF.subst ι θ hθ hc hΓ hΔ χ) :=
+  WFF.subst_mono_eq _ _ θ hθ hc (θ.optIn y (ι y)) _ _ hΓ (hΓ.optIn y) hΔ hΔo
+    ⟨fun v T hv => (by
+      rw [Subst.optIn_eq_mono θ hc hO hy v T hv, Subst.at_mono]
+      exact .refl _), fun _ _ _ _ => .refl _⟩ χ
+
+theorem SubE.Sim.symm {Δ : Ctx} {U : VarType} {e e' : SubE σ Δ} (h : SubE.Sim U e e') :
+    SubE.Sim U e' e := by
+  cases h with
+  | refl => exact .refl _
+  | eta_ren w h => exact .ren_eta w h
+  | ren_eta w h => exact .eta_ren w h
+
+/-- ⭐Substituting into the bridge: into the `□` and then the view of the witness `u` is into the
+    `◇_u`, weakened (`Subst.simT_dia_box_optIn`). -/
+theorem WFF.subst_diaOpt_mono {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hO : ModalSys.Opt = true) {u : VarSymb}
+    {X : VarType} (hu : Γ.ref u = some (.VTypeDia X)) (hw : (θ.at u).idxAlong [] = ι u)
+    {Y : VarType} (hY : Δ.ref (ι u) = some (.VTypeDia Y)) (hΓ : Γ.SlotsFrom 0)
+    (hΔd : (Δ.diaIn (ι u)).SlotsFrom 0) (hΔo : (Δ.boxIn.optIn (ι u)).SlotsFrom 0)
+    (φ : WFF σ (Γ.diaIn u) 0) :
+    WFF.subst ι (θ.box.optIn u (ι u))
+        (Subst.ok_optIn (Subst.ok_box hθ) hO (Ctx.boxIn_wit.mpr ⟨hO, hu⟩)
+          ((Subst.coh_box hθ hc).wit hO u X (Ctx.boxIn_wit.mpr ⟨hO, hu⟩) []))
+        (Subst.coh_optIn (Subst.ok_box hθ) (Subst.coh_box hθ hc) hO (Ctx.boxIn_wit.mpr ⟨hO, hu⟩))
+        (hΓ.boxIn.optIn u) hΔo (WFF.mono (Ctx.le_diaIn_boxIn_optIn hO hu) φ) =
+      WFF.mono (Ctx.le_diaIn_boxIn_optIn hO hY)
+        (WFF.subst ι (θ.dia u (ι u)) (Subst.ok_dia hθ ⟨X, hu⟩ hw) (Subst.coh_dia hθ hc ⟨X, hu⟩)
+          (hΓ.diaIn u) hΔd φ) :=
+  WFF.subst_mono_eq _ _ (θ.dia u (ι u)) _ _ (θ.box.optIn u (ι u)) _ _ (hΓ.diaIn u)
+    (hΓ.boxIn.optIn u) hΔd hΔo
+    ⟨fun v T hv => (Subst.simT_dia_box_optIn hθ hO hu (Ctx.le_diaIn_boxIn_optIn hO hY) v T
+      hv).symm, fun _ _ _ _ => by
+        change WitE.Sim _ ((θ.box.wit _).mono (Ctx.le_optIn Δ.boxIn (ι u)))
+          ((((θ.at _).toWit).mono (Ctx.le_boxIn_diaIn Δ (ι u))).mono
+            (Ctx.le_diaIn_boxIn_optIn hO hY))
+        rw [WitE.mono_mono]
+        exact .refl _⟩ φ
+
 /-- Substituting into pair elimination's formula: the components go to the projections. -/
 theorem WFF.subst_bindPair {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (u₁ u₂ z : ℕ) (hu : u₁ ≠ u₂)
     (hz₁ : z ≠ u₁) (hu₁ : Γ.RootFresh (.free u₁)) (hu₂ : Γ.RootFresh (.free u₂))
@@ -3168,6 +3215,62 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw
       .dia_bot (ι x) hwx (Proof.subst p θ hθ hc hΓ)
   | _, _, _, .D_box hD p, _, _, _, θ, hθ, hc, hΓ => .D_box hD (Proof.subst p θ hθ hc hΓ)
+  | _, _, _, @Proof.K_opt _ _ _ hO y hy Δ₁ Δ₂ φ ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hwy : ∃ X, Γ'.wit (ι y) = some X :=
+        hy.elim fun X hX => WitE.wit_of (hθ.wit hO y X hX) (hc.wit hO y X hX [])
+      have hθy := hy.elim fun X hX => Subst.ok_optIn hθ hO hX (hc.wit hO y X hX [])
+      have hcy := hy.elim fun _ hX => Subst.coh_optIn hθ hc hO hX
+      have ih := Proof.subst p (θ.optIn y (ι y)) hθy hcy (hΓ.optIn y)
+      Proof.castHyps
+        (by
+          simp only [List.map_cons, List.map_append, List.map_map]
+          rfl)
+        (Proof.K_opt (Γ := Γ') hO (ι y) hwy
+          (Δ₁ := Δ₁.map (WFF.subst ι θ hθ hc hΓ Ctx.NoSlots.slots))
+          (Δ₂ := Δ₂.map (WFF.subst ι (θ.optIn y (ι y)) hθy hcy (hΓ.optIn y) Ctx.NoSlots.slots))
+          (Proof.castHyps
+            (by
+              obtain ⟨X, hX⟩ := hy
+              simp only [List.map_cons, List.map_append, List.map_map]
+              congr 2
+              exact List.map_congr_left fun χ _ =>
+                WFF.subst_optIn_mono θ hθ hc hO hX hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots χ)
+            ih))
+  | _, _, _, .opt_bot hO y hy p, _, _, ι, θ, hθ, hc, hΓ =>
+      .opt_bot hO (ι y) (hy.elim fun X hX => WitE.wit_of (hθ.wit hO y X hX) (hc.wit hO y X hX []))
+        (Proof.subst p θ hθ hc hΓ)
+  | _, _, _, @Proof.opt_reopen _ _ _ _ hO y hy ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      Proof.conv
+        (by
+          obtain ⟨X, hX, hXd⟩ := hy
+          exact congrArg (WFF.optx hO (ι y) _)
+            (WFF.subst_optIn_mono θ hθ hc hO hX hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots ψ).symm)
+        (Proof.opt_reopen hO (ι y)
+          (hy.elim fun X h => hc.openedTo hO y X (ι y) h.1 h.2 (hc.wit hO y X h.1 []))
+          (Proof.subst p θ hθ hc hΓ))
+  | _, _, _, @Proof.dia_opt _ _ _ _ hO u hu φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hw : (θ.at u).idxAlong [] = ι u := hu.elim fun _ hX => hc u _ hX []
+      have hwu : ∃ X, Γ'.ref (ι u) = some (.VTypeDia X) :=
+        hu.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw
+      Proof.conv
+        (by
+          obtain ⟨X, hX⟩ := hu
+          obtain ⟨Y, hY⟩ := hwu
+          exact congrArg (fun χ => (WFF.box (WFF.optx hO (ι u) _ χ).neg).neg)
+            (WFF.subst_diaOpt_mono θ hθ hc hO hX hw hY hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots
+              φ).symm)
+        (Proof.dia_opt hO (ι u) hwu (Proof.subst p θ hθ hc hΓ))
+  | _, _, _, @Proof.opt_dia _ _ _ _ hO u hu φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hw : (θ.at u).idxAlong [] = ι u := hu.elim fun _ hX => hc u _ hX []
+      have hwu : ∃ X, Γ'.ref (ι u) = some (.VTypeDia X) :=
+        hu.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw
+      Proof.opt_dia hO (ι u) hwu (Proof.conv
+        (by
+          obtain ⟨X, hX⟩ := hu
+          obtain ⟨Y, hY⟩ := hwu
+          exact congrArg (fun χ => (WFF.box (WFF.optx hO (ι u) _ χ).neg).neg)
+            (WFF.subst_diaOpt_mono θ hθ hc hO hX hw hY hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots φ))
+        (Proof.subst p θ hθ hc hΓ))
   | _, _, _, .D_ex hDS, _, _, _, _, _, _, _ => .D_ex hDS
   | _, _, _, .B_dia hB ψ p, _, _, _, θ, hθ, hc, hΓ =>
       Proof.conv

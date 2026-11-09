@@ -97,17 +97,11 @@ theorem Leveled.insert {Γ : Ctx} {L : Root → ℕ} (h : Γ.Leveled L) {r : Roo
 
 end Ctx
 
-theorem CtxExpr.leveled : ∀ e : CtxExpr, e.Fresh → ∃ L, e.denote.Leveled L
-  | .empty, _ => ⟨fun _ => 0, fun _ _ _ hv => by cases hv⟩
-  | .insertFree e u T, ⟨he, hu⟩ => by
-      obtain ⟨L, hL⟩ := e.leveled he
-      exact ⟨_, hL.insert hu T⟩
-  | .boxIn e, he => by
-      obtain ⟨L, hL⟩ := e.leveled he
-      exact ⟨_, hL.boxIn⟩
-  | .diaIn e x, he => by
-      obtain ⟨L, hL⟩ := e.leveled he
-      exact ⟨_, hL.diaIn x⟩
+/-- A presentation is leveled: its depth assignment (`CtxExpr.levelDepth`) at the declared
+    addresses. -/
+theorem CtxExpr.leveled (e : CtxExpr) (he : e.Fresh) : ∃ L, e.denote.Leveled L := by
+  obtain ⟨d, hd, -⟩ := e.levelDepth he
+  exact ⟨d, fun v T hlp hv => hd v T ((Ctx.ref_nonproj _ hlp).trans hv)⟩
 
 /-- A presented context is leveled. -/
 theorem Ctx.Presented.leveled (Γ : Ctx) [h : Γ.Presented] : ∃ L, Γ.Leveled L :=

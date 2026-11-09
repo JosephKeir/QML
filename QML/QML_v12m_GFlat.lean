@@ -67,6 +67,7 @@ noncomputable def _root_.V12M.CtxExpr.gchain [ModalSys.NoOpt] (hF : ModalSys.Fou
             cases e'
             exact ((e.gchain hF h hv.1).2.witness hv.2.choose_spec).choose_spec)
           inferInstance⟩
+  | .optIn _ _, _, hv => absurd hv (CtxExpr.views_optIn_false ModalSys.NoOpt.noOpt)
 
 /-! ## Completeness in every presented context -/
 

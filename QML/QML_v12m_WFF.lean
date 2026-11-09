@@ -520,6 +520,11 @@ abbrev WFF.boxx {σ : Signature} {Γ : Ctx} {d : ℕ} (x : VarSymb)
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (φ : WFF σ (Γ.diaIn x) d) : WFF σ Γ d :=
   (WFF.dia x hx φ.neg).neg
 
+/-- `□⁰_y φ := ¬◇⁰_y¬φ`: if the witness `y` is present, `φ` holds of its content. -/
+abbrev WFF.optBox {σ : Signature} {Γ : Ctx} {d : ℕ} (hO : ModalSys.Opt = true) (y : VarSymb)
+    (hy : ∃ X, Γ.wit y = some X) (φ : WFF σ (Γ.optIn y) d) : WFF σ Γ d :=
+  (WFF.optx hO y hy φ.neg).neg
+
 /-- ⭐Equality at every type, by extensionality, **within one fibre**: the two terms share their
     annotation.  An annotation of a fixed type varies only in its `.dia` witness indices, everything
     else being forced by the type, so sharing it means sharing the witness at every `◇` position —
