@@ -15517,3 +15517,24 @@ between a fold and `◇_uL` reduces to a cut on `◇⁰_u χ` in the `□` view,
   is what `opt_name` needs.  Still to do: `≡` (`eqH`) by type recursion with reflexivity, then
   `opt_name`, then the K tree with `Opt` on.
 * Build: 40 targets green, 0 sorry (2026-11-09).
+
+### 12.20 `≡` under option 2, and the content's name *(2026-11-11, branch `wip/in-atom`)*
+
+* **`eqH` (`≡`) with the binder in place of `In`** (`QML_v12m_EqH.lean`).  §12.2's clause at `◇`
+  types used the atom `In(u↑, v)`; option 2 has no atom, and the `□` view sees both witnesses at
+  once, so the clause becomes
+  `⟨x; c⟩ ≡ ⟨x'; c'⟩ := □((◇⁰_x ⊤ ∨ ◇⁰_{x'} ⊤) → ◇⁰_x ◇⁰_{x'} (c ≡ c'))`: along every arrow,
+  either witness present only with the other, contents `≡` in the view with both opened (option 2
+  hides nothing, so `x` and then `x'` can both be opened, also when `x = x'`).  Elsewhere `≡` has
+  `eqRec`'s clauses; it takes `hO : Opt = true` throughout.
+* **Built, choice-free:** `eqH`, `eqH_mono` (weakening), `WFF.subst_eqH` (substitution; the `◇`
+  case by `Subst.simT_optIn₂_dia` and `Subst.simT_optIn₂_dia'`: on each content's own `◇` view, the
+  `□` view of `θ` with both witnesses opened is `θ.dia` weakened, `SubE.toWit_optBody` and, when
+  `x = x'`, `WitE.optBody_mono`), `Proof.eqH_refl` (at `◇`: open, re-open, `K_opt`), and the
+  derived rule **`Proof.opt_name`**: `◇⁰_y ⊤ ⊢ ∃e. ◇⁰_y (y.dia ≡ e)` (`WFF.optName`), by §12.18's
+  route: reflexivity in the view, `opt_reopen`, `∃`-introduction at `y.dia`, `K_opt`, `opt_out`.
+  `WFF.subst_optx_eq` handles the instantiation under `◇⁰_y` (the substitution's image of `y` is
+  `y` only propositionally).
+* **Next:** Leibniz along `≡` (by induction on the formula; at a `◇` hole, §12.3's argument with
+  `◇⁰` for `In`), symmetry and transitivity, `sat_eqH` (true iff equal denotations, by type
+  recursion), then the K tree with `Opt` on.
