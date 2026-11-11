@@ -433,6 +433,29 @@ for necessary objects and one for possible objects.  Two cells of that grid are 
    surjectivity; check it against F2 first (a view item and a former failed there for a related
    transport).
 
+3. **Redundancy among the rules: the unit-type instances** (user, 2026-11-11).  Found by setting the
+   parameter of the parameterised □-BF derivation to `u : □𝟙`: it does not become the
+   parameter-free derivation, and the difference shows the `Back` rules as the parameter-free
+   (`𝟙`-typed) cases of the returning possibility's rules with a carrier.
+   * *`back_counit`:* very likely derivable from `ret_counitC` with the returned value at `𝟙`, its
+     first premise from `◇□ψ(bd)` by `ret_new` at `□𝟙` (`∃d:□𝟙` is free, and the fresh `c : 𝟙` is
+     not in the conclusion).  Derive it in Lean; if it goes through, make it a derived rule, as
+     `ret_unit` is `ret_unitC` without companions.
+   * *`back_unit` against `ret_unitC`:* unclear.  `back_unit` concludes along every arrow (`□◇`),
+     the ret rules along the one arrow found; check whether an argument by contradiction and a
+     match between `back_unit`'s carrier and `ret_unitC`'s `sb` give it.
+   * *Weak B under strong B:* `ret_unit` at a `𝟙`-typed returning possibility gives
+     `θ, ◇Ψ ⊢ ◇(Ψ ∧ ◇θ)` for closed `θ`, interderivable with `B_box`.  Expected (strong ⇒ weak), not
+     a redundancy: `B_dia` is still needed without strong B.  Worth stating as a derived fact.
+   * *A sweep through the other rules* for the same pattern: specialise each rule's parameters,
+     companions, carriers or witnessed parts to `𝟙` (or to `[]`, `.nec`, the identity arrow) and
+     ask whether it becomes another primitive.  Candidates to look at first: the rest of strong B's
+     `back_*` and `ret_*` families (`back_ne` against `ret_diaS`, `back_beta`/`back_pair` against
+     `ret_map`, the witnessed units against the plain ones), strong T's `ret_here*` and `T_dia`,
+     strong 4's lifts against `keep_lift`, and 5's links (`link_oneI`/`link_oneE` already make a
+     link to `()` the leg's modality).  Record each as derivable, independent, or open; demote only
+     what is derived in Lean.
+
 ## Afterwards — general metatheory (`v12-metatheory-todo.md`)
 
 Generalisation on constants, uniform substitution, cut elimination (scope open beyond K), Craig
