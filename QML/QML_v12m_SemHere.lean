@@ -35,7 +35,7 @@ variable {σ : Signature} {M : Model.{u, v} σ}
 theorem Env.ref_fst {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {u : VarSymb} {A B : VarType}
     (hu : Γ.ref u = some (.VTypeProd A B)) (h : Γ.ref (.step u .fst) = some A) :
     env.ref (.step u .fst) h = (env.ref u hu).1 := by
-  have hhs : Step.fst.isProj = true := rfl
+  have hhs : Step.fst.isStruct = true := rfl
   rw [Env.ref, dif_pos hhs]
   split
   · rename_i U hU
@@ -48,7 +48,7 @@ theorem Env.ref_fst {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {u : VarSymb} 
 theorem Env.ref_snd {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {u : VarSymb} {A B : VarType}
     (hu : Γ.ref u = some (.VTypeProd A B)) (h : Γ.ref (.step u .snd) = some B) :
     env.ref (.step u .snd) h = (env.ref u hu).2 := by
-  have hhs : Step.snd.isProj = true := rfl
+  have hhs : Step.snd.isStruct = true := rfl
   rw [Env.ref, dif_pos hhs]
   split
   · rename_i U hU
@@ -63,7 +63,7 @@ theorem Env.ref_dia {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {x : VarSymb} 
     (hx : Γ.ref x = some (.VTypeDia X)) (w' : (M.posEval (env.ref x hx)).1)
     (h : (Γ.diaIn x).ref (.step x .dia) = some X) :
     (env.diaPush x hx w').ref (.step x .dia) h = (M.posEval (env.ref x hx)).2 w' := by
-  rw [Env.ref, dif_neg (by decide : ¬ Step.dia.isProj = true)]
+  rw [Env.ref, dif_neg (by decide : ¬ Step.dia.isStruct = true)]
   rfl
 
 end Model
@@ -89,8 +89,8 @@ theorem ShEnv.ref_inner {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (j : ℕ)
       rw [← VarSymb.inner_keepOnly hk]
       exact Ctx.ref_inner h
     rw [ShEnv.ref_congr _ _ (VarSymb.inner_keepOnly hk) _ hh,
-      ShEnv.ref_proj _ _ (rfl : Step.here.isProj = true) hkr,
-      ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
+      ShEnv.ref_proj _ _ (rfl : Step.here.isStruct = true) hkr,
+      ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isStruct = true)]
     change ((ρ.ref j u h).inner.map (Arrows.Leaf.shift hF j)).map
       (Arrows.Leaf.collapse hT (j + 1)) = _
     rw [Shp.map_map]
@@ -98,7 +98,7 @@ theorem ShEnv.ref_inner {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (j : ℕ)
       (g' := id) (fun ℓ => Arrows.Leaf.collapse_shift_succ hT hF j ℓ) _).trans (Shp.map_id _)
   · have hk' : ModalSys.keepOnly = false := by simpa using hk
     rw [ShEnv.ref_congr _ _ (VarSymb.inner_box hk') _ (Ctx.ref_boxIn_of hk' h),
-      ShEnv.ref_nonproj _ _ (by decide : ¬ Step.box.isProj = true)]
+      ShEnv.ref_nonproj _ _ (by decide : ¬ Step.box.isStruct = true)]
     rfl
 
 /-- ⭐**η for shapes**: an address's η-expansion has the address's shape. -/
@@ -121,7 +121,7 @@ theorem termShp_eta :
   | _, _, ρ, j, .VTypeDia A, x, h => by
       change termShp ρ j (Term.diatm x ⟨A, h⟩ (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of h))) = _
       rw [termShp_diatm ρ j h, termShp_eta (ρ.diaPush j x h) (j + 1) (.step x .dia),
-        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.dia.isProj = true)]
+        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.dia.isStruct = true)]
       exact (Shp.dia_eta _).symm
 
 end Model

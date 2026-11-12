@@ -685,6 +685,7 @@ theorem typeStep_level_keepable {T U : VarType} {s : Step} (hs : s.isProj = fals
   | fst => cases hs
   | snd => cases hs
   | here => cases hs
+  | «at» => cases hs
   | box =>
       change (if ModalSys.keepOnly = true then none else T.step .box) = some U at h
       split at h
@@ -814,6 +815,7 @@ theorem walkTy_collapseAt (hT : ModalSys.T = true) : ∀ (i : ℕ) (lw q : List 
               | fst => cases hs'
               | snd => cases hs'
               | here => cases hs'
+              | «at» => cases hs'
               | dia => exact absurd rfl hd
               | keep => exact absurd rfl hk
               | box =>
@@ -1418,7 +1420,7 @@ def ShEnv.ref {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (j : ℕ) :
     (v : VarSymb) → {T : VarType} → Γ.ref v = some T → Shape F Root w T
   | .root r, _, h => ρ (.root r) _ h
   | .step v s, T, h =>
-      if hs : s.isProj = true then
+      if hs : s.isStruct = true then
         match hU : Γ.ref v with
         | some _ =>
             GFunc.shp (GFunc.proj (σ := σ) hs (by rw [Ctx.ref_step_proj Γ v hs, hU] at h; exact h))
@@ -1537,7 +1539,7 @@ theorem refGF_shp {Δ : Ctx} {w : F.W} (ρ : ShEnv F Root Δ w) (j : ℕ) (L : S
       GFunc.shp (Supp.refGF (σ := σ) L v h hm) j (ρ.bundle L) = ρ.ref j v h
   | .root r, _, h, hm => lookup_shp ρ j L (.root r) h hm
   | .step v s, T, h, hm => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Supp.refGF, ShEnv.ref, dif_pos hs, dif_pos hs]
         split
         · rename_i U hU
@@ -1854,7 +1856,7 @@ theorem shp_transpose {w : F.W} :
 
 omit [Arrows.RootKeepLaws F Root] in
 theorem ShEnv.ref_proj {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (j : ℕ) {v : VarSymb}
-    {s : Step} (hs : s.isProj = true) {U T : VarType} (hU : Γ.ref v = some U)
+    {s : Step} (hs : s.isStruct = true) {U T : VarType} (hU : Γ.ref v = some U)
     (h : Γ.ref (.step v s) = some T) :
     ρ.ref j (.step v s) h =
       GFunc.shp (GFunc.proj (σ := σ) hs (by rw [Ctx.ref_step_proj Γ v hs, hU] at h; exact h)) j
@@ -1871,7 +1873,7 @@ theorem ShEnv.ref_proj {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (j : ℕ) {
 
 omit [Arrows.RootKeepLaws F Root] in
 theorem ShEnv.ref_nonproj {Γ : Ctx} {w : F.W} (ρ : ShEnv F Root Γ w) (j : ℕ) {v : VarSymb}
-    {s : Step} (hs : ¬ s.isProj = true) {T : VarType} (h : Γ.ref (.step v s) = some T) :
+    {s : Step} (hs : ¬ s.isStruct = true) {T : VarType} (h : Γ.ref (.step v s) = some T) :
     ρ.ref j (.step v s) h = ρ (.step v s) T (by rw [Ctx.ref_step_nonproj Γ v hs] at h; exact h) :=
   by rw [ShEnv.ref, dif_neg hs]
 
@@ -1905,7 +1907,7 @@ theorem ShEnv.ref_transpose {Γ : Ctx} {w : F.W} (τ : ShEnv F Root Γ w)
       τ.ref (j + 1) v h = Arrows.transposeShp fun s => (ρ s).ref j v h
   | .root _, _, h => hτ _ _ h
   | .step v s, T, h => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
           rw [Ctx.ref_step_proj Γ v hs] at h
           cases hU : Γ.ref v with
@@ -1997,7 +1999,7 @@ theorem ShEnv.ref_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : F.W} {ρ : ShEnv F R
     ∀ (v : VarSymb) {T : VarType} (hv : Γ.ref v = some T), ρ.ref j v hv = ρ'.ref j v (h.ref hv)
   | .root r, _, hv => hag (.root r) _ hv
   | .step v s, T, hv => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
           rw [Ctx.ref_step_proj Γ v hs] at hv
           cases hU : Γ.ref v with
@@ -2274,7 +2276,7 @@ theorem ShEnv.wf_ref {Γ : Ctx} {w : F.W} {lw : List Bool} {ρ : ShEnv F Root Γ
       ShWF lw (ρ.ref lw.length v h)
   | .root _, _, h => hρ _ _ h
   | .step v s, T, h => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
           rw [Ctx.ref_step_proj Γ v hs] at h
           cases hU : Γ.ref v with
@@ -2512,7 +2514,7 @@ theorem ShEnv.ref_mapCollapse (hT : ModalSys.T = true) (j : ℕ) (ρ : ShEnv F R
         (ρ.ref (j + d + 1) v h).map (Arrows.Leaf.collapse hT j)
   | .root _, _, _ => rfl
   | .step v s, T, h => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
           rw [Ctx.ref_step_proj Γ v hs] at h
           cases hU : Γ.ref v with
@@ -2533,7 +2535,7 @@ theorem ShEnv.ref_mapIns {j : ℕ} {g : F.Leaf Root w → F.Leaf Root w} (hg : L
         (ρ.ref (j + d + 1) v h).map g
   | .root _, _, _ => rfl
   | .step v s, T, h => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
           rw [Ctx.ref_step_proj Γ v hs] at h
           cases hU : Γ.ref v with
@@ -2796,7 +2798,7 @@ theorem ShEnv.ref_mapDkB (hF : ModalSys.Four = true) (j : ℕ) (ρ : ShEnv F Roo
         (ρ.ref (j + d + 1) v h).map (Arrows.Leaf.dkB hF j)
   | .root _, _, _ => rfl
   | .step v s, T, h => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
           rw [Ctx.ref_step_proj Γ v hs] at h
           cases hU : Γ.ref v with
@@ -2926,7 +2928,7 @@ theorem envShape_wf (hSh : ModalSys.shaped = true) {Γ : Ctx} {w : M.frame.W} (e
   fun v T h => shWF_domSh hSh (env v T h)
 
 theorem Env.ref_proj' {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {v : VarSymb} {s : Step}
-    (hs : s.isProj = true) {U T : VarType} (hU : Γ.ref v = some U)
+    (hs : s.isStruct = true) {U T : VarType} (hU : Γ.ref v = some U)
     (h : Γ.ref (.step v s) = some T) :
     env.ref (.step v s) h =
       M.stepObj hs (by rw [Ctx.ref_step_proj Γ v hs, hU] at h; exact h) (env.ref v hU) := by
@@ -2941,12 +2943,12 @@ theorem Env.ref_proj' {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {v : VarSymb
     cases hU'
 
 theorem Env.ref_nonproj' {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {v : VarSymb} {s : Step}
-    (hs : ¬ s.isProj = true) {T : VarType} (h : Γ.ref (.step v s) = some T) :
+    (hs : ¬ s.isStruct = true) {T : VarType} (h : Γ.ref (.step v s) = some T) :
     env.ref (.step v s) h = env (.step v s) T (by rw [Ctx.ref_step_nonproj Γ v hs] at h; exact h) :=
   by rw [Env.ref, dif_neg hs]
 
 theorem domSh_stepObj (hSh : ModalSys.shaped = true) {w : M.frame.W} {U T : VarType} {s : Step}
-    (hs : s.isProj = true) (h : U.step s = some T) (a : M.frame.Dom U w) :
+    (hs : s.isStruct = true) (h : U.step s = some T) (a : M.frame.Dom U w) :
     domSh hSh (M.stepObj hs h a) = GFunc.shp (GFunc.proj (σ := σ) hs h) 0 (domSh hSh a) := by
   cases U <;> cases s <;> (try cases hs) <;> (try cases h)
   · rfl
@@ -2962,7 +2964,7 @@ theorem ref_envShape (hSh : ModalSys.shaped = true) {Γ : Ctx} {w : M.frame.W} (
       (envShape hSh env).ref 0 v h = domSh hSh (env.ref v h)
   | .root _, _, _ => rfl
   | .step v s, T, h => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
           rw [Ctx.ref_step_proj Γ v hs] at h
           cases hU : Γ.ref v with

@@ -715,6 +715,7 @@ theorem dia_at_ren {Λ Δ : Ctx} {θ : Subst σ Δ}
           | fst => exact hv
           | snd => exact hv
           | here => exact hv
+          | «at» => exact hv
     have e := Subst.dia_eq_box_mono (Δ₁ := Λ) θ y y v U ((Ctx.ref_nonproj _ hlp).trans hb)
     rw [Subst.at_nonproj _ hlp] at e
     rw [e, Subst.ren_box hid v U ((Ctx.ref_nonproj _ hlp).trans hb)]

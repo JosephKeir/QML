@@ -235,6 +235,7 @@ theorem kView_boxIn' {l : List VarType} {k : Option VarSymb} {u : VarSymb} {s : 
       | fst => exact h
       | snd => exact h
       | here => exact h
+      | «at» => exact h
 
 /-- ⭐The child's map followed by pulling back is the identity, up to η. -/
 theorem sim_gchild_pull (hF : ModalSys.Four = true) (l : List VarType) {k : Option VarSymb}
@@ -245,9 +246,9 @@ theorem sim_gchild_pull (hF : ModalSys.Four = true) (l : List VarType) {k : Opti
   refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T hl hv
   obtain ⟨u, s, rfl, hup, U, hU⟩ := kView_item hv
-  have hs' : s.isProj = false := hl
+  have hs' : s.isStruct = false := hl
   change SubE.Sim T (.ren (.step u s))
-    ((if s.isProj then SubE.hide else .ren (gchildMap l k (.step u s))).comp _ _ _)
+    ((if s.isStruct then SubE.hide else .ren (gchildMap l k (.step u s))).comp _ _ _)
   rw [if_neg (by simp [hs'])]
   by_cases hx : ∃ x, k = some x ∧ u = x ∧ s = .dia
   · obtain ⟨x, rfl, rfl, rfl⟩ := hx

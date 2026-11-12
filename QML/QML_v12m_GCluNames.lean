@@ -121,12 +121,12 @@ theorem gPath_keep_inj_noT (hT : ModalSys.T = false) :
   | U, [], s :: q, _, hp', A, A', hw, hw', hA, _, _ => by
       obtain rfl : U = A := Option.some.inj hw
       obtain ⟨U₁, h₁, -⟩ := walk_cons_some hw'
-      rw [step_proj_keepable hT hA (hp' s List.mem_cons_self)] at h₁
+      rw [step_proj_keepable hT hA (Step.isProj_of_isStruct (hp' s List.mem_cons_self))] at h₁
       cases h₁
   | U, s :: q, [], hp, _, A, A', hw, hw', _, hA', _ => by
       obtain rfl : U = A' := Option.some.inj hw'
       obtain ⟨U₁, h₁, -⟩ := walk_cons_some hw
-      rw [step_proj_keepable hT hA' (hp s List.mem_cons_self)] at h₁
+      rw [step_proj_keepable hT hA' (Step.isProj_of_isStruct (hp s List.mem_cons_self))] at h₁
       cases h₁
   | U, s :: q, s' :: q', hp, hp', A, A', hw, hw', hA, hA', e => by
       obtain ⟨U₁, h₁, hq⟩ := walk_cons_some hw
@@ -439,11 +439,11 @@ theorem lift_item_cases {cl : List VarType} {k : Option VarSymb} {T : VarType}
               obtain ⟨-, rfl⟩ := VarType.step_here h₁'
               exact .inr ⟨_, q, rfl, rfl, hpq, hq, hk⟩
           | fst | snd => cases h₁'
-          | box | dia | keep => exact absurd hs (by decide)
+          | box | dia | keep | «at» => exact absurd hs (by decide)
       | VTypeDia Z =>
           cases s with
           | fst | snd | here => cases h₁'
-          | box | dia | keep => exact absurd hs (by decide)
+          | box | dia | keep | «at» => exact absurd hs (by decide)
       | Var | VTypeOne | VTypeProd _ _ => simp [VarType.liftable] at hl
 
 /-- A residual kept item of a lifted root lands under the fresh variable. -/

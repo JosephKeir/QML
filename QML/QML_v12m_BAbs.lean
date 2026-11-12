@@ -148,7 +148,7 @@ theorem encStep_here (hT : ModalSys.T = true) : encStep .here = .snd := by
     address: a product's tuple is a pair, and under T a `□` component's tuple has its value
     here's tuple second. -/
 theorem proj_tupB [ModalSys.FourOff] {Γ : Ctx} {u : VarSymb} {U U' : VarType} {b : Bool}
-    (hb : ModalSys.T = b) (hu : Γ.ref u = some U) {s : Step} (hs : s.isProj = true)
+    (hb : ModalSys.T = b) (hu : Γ.ref u = some U) {s : Step} (hs : s.isStruct = true)
     (h' : U.step s = some U') (hu' : Γ.ref (.step u s) = some U') :
     (SubE.tm (tupB (σ := σ) u U b hb hu) : SubE σ Γ.boxIn).proj (encStep s) =
       .tm (tupB (.step u s) U' b hb hu') := by
@@ -195,7 +195,7 @@ theorem at_item_of_tupB [ModalSys.FourOff] {Γ : Ctx} (θ : Subst σ Γ.boxIn) (
 /-- `proj_tupB` for a tuple weakened into a larger context. -/
 theorem proj_tupB_mono [ModalSys.FourOff] {Γ Δ : Ctx} (hle : Γ.boxIn.Le Δ) {u : VarSymb}
     {U U' : VarType} {b : Bool} (hb : ModalSys.T = b) (hu : Γ.ref u = some U) {s : Step}
-    (hs : s.isProj = true) (h' : U.step s = some U') (hu' : Γ.ref (.step u s) = some U') :
+    (hs : s.isStruct = true) (h' : U.step s = some U') (hu' : Γ.ref (.step u s) = some U') :
     (SubE.tm (Term.mono hle (tupB (σ := σ) u U b hb hu)) : SubE σ Δ).proj (encStep s) =
       .tm (Term.mono hle (tupB (.step u s) U' b hb hu')) := by
   cases s with
@@ -255,7 +255,7 @@ theorem at_single_tupB [ModalSys.FourOff] (b : Bool) (hb : ModalSys.T = b) {A : 
       change Subst.single (.bnd 0) _ (.root (.bnd 0)) = _
       slot_rfl
   | .step u s, U, hu, hrt => by
-      have hproj : s.isProj = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
+      have hproj : s.isStruct = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
       have hu' := hu
       simp only [Ctx.ref, if_pos hproj] at hu'
       cases hU : (ctxOf (A :: l)).ref u with
@@ -379,7 +379,7 @@ theorem at_toFree_reroot {Δ : Ctx} (θ : Subst σ Δ) (z : ℕ) (T : VarType)
       change θ.toFree 0 z T h (.root (.bnd 0)) = .ren (.root (.free z))
       slot_rfl
   | .step u s, hp => by
-      have hproj : s.isProj = true := hp s (by simp [VarSymb.path])
+      have hproj : s.isStruct = true := hp s (by simp [VarSymb.path])
       change (θ.toFree 0 z T h).at (.step (u.reroot (.bnd 0)) s) = .ren (.step (u.reroot _) s)
       rw [Subst.at_proj _ _ hproj,
         at_toFree_reroot θ z T h u (fun s' hs' => hp s' (by simp [VarSymb.path, hs']))]

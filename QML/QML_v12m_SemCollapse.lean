@@ -40,12 +40,12 @@ theorem Env.ref_inner {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (w' : M.fram
   cases hk : ModalSys.keepOnly with
   | false =>
       rw [Env.ref_congr _ (VarSymb.inner_box hk) _ (Ctx.ref_boxIn_of hk hu), Env.ref,
-        dif_neg (by decide : ¬ Step.box.isProj = true)]
+        dif_neg (by decide : ¬ Step.box.isStruct = true)]
       rfl
   | true =>
       obtain ⟨hT, hF⟩ := ModalSys.keepOnly_flags hk
       have hkeep : Γ.boxIn.ref (.step u .keep) = some (.VTypeBox A) := Ctx.ref_keep_of hF hu
-      have hhs : Step.here.isProj = true := rfl
+      have hhs : Step.here.isStruct = true := rfl
       rw [Env.ref_congr _ (VarSymb.inner_keepOnly hk) _ (Ctx.ref_here_of hT hkeep), Env.ref,
         dif_pos hhs]
       split
@@ -65,8 +65,8 @@ theorem Env.ref_of_nonproj {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
       (h' : Γ v = some T), env.ref v h = env v T h'
   | .root _, _, _, _, _ => rfl
   | .step v s, T, hlp, h, h' => by
-      have hs : ¬ s.isProj = true := fun hh => by
-        change s.isProj = false at hlp
+      have hs : ¬ s.isStruct = true := fun hh => by
+        change s.isStruct = false at hlp
         rw [hh] at hlp
         cases hlp
       rw [Env.ref, dif_neg hs]
@@ -93,7 +93,7 @@ theorem Env.ref_extend_ne {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {r : Roo
       exact Env.extend_ne env r o hv (fun he => hne (by cases he; rfl)) hv'
   | .step v s, U, hv, hv', hne => by
       have hne' : v.rt ≠ r := hne
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Env.ref, Env.ref, dif_pos hs, dif_pos hs]
         split
         · rename_i U₁ hU₁
@@ -136,11 +136,12 @@ theorem Env.CollapseAgree.of_raw
   | root r => intro T hv; exact hvis _ _ rfl hv
   | step v s ih =>
       intro T hv
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · have hv₂ : Γ₂.ref (.step (v.collapse k) s) = some T := by
-          rw [← VarSymb.collapse_proj hs]
+          rw [← VarSymb.collapse_proj (Step.isProj_of_isStruct hs)]
           exact h _ T hv
-        rw [Env.ref_congr env₂ (VarSymb.collapse_proj hs) _ hv₂, Env.ref, Env.ref, dif_pos hs,
+        rw [Env.ref_congr env₂ (VarSymb.collapse_proj (Step.isProj_of_isStruct hs)) _ hv₂,
+          Env.ref, Env.ref, dif_pos hs,
           dif_pos hs]
         split
         · rename_i U hU
@@ -170,14 +171,14 @@ theorem Env.CollapseAgree.boxPush (hag : Env.CollapseAgree h env₁ env₂) (w' 
       obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv
       rw [Env.ref_congr _ (VarSymb.collapse_level_succ (s := .box) rfl) _
         (Ctx.ref_boxIn_of hk (h u _ hu)), Env.ref,
-        dif_neg (by decide : ¬ Step.box.isProj = true)]
+        dif_neg (by decide : ¬ Step.box.isStruct = true)]
       change M.necEval (env₁.ref u hu) w' = M.necEval (env₂.ref (u.collapse k) (h u _ hu)) w'
       rw [hag u _ hu]
   | .step u .keep =>
       obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
       rw [Env.ref_congr _ (VarSymb.collapse_level_succ (s := .keep) rfl) _
         (Ctx.ref_keep_of' hF (h u _ hu) hk), Env.ref,
-        dif_neg (by decide : ¬ Step.keep.isProj = true)]
+        dif_neg (by decide : ¬ Step.keep.isStruct = true)]
       change M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF hk) w (env₁.ref u hu)) w' =
         M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF hk) w
           (env₂.ref (u.collapse k) (h u _ hu))) w'
@@ -205,14 +206,14 @@ theorem Env.CollapseAgree.diaPush (hag : Env.CollapseAgree h env₁ env₂) {x :
       have hXT := Ctx.diaIn_step_dia hr hv
       subst hXT
       rw [Env.ref_congr _ (VarSymb.collapse_level_succ (s := .dia) rfl) _
-        (Ctx.ref_diaIn_of (h u _ hr)), Env.ref, dif_neg (by decide : ¬ Step.dia.isProj = true)]
+        (Ctx.ref_diaIn_of (h u _ hr)), Env.ref, dif_neg (by decide : ¬ Step.dia.isStruct = true)]
       simp only [Env.diaPush]
       exact posEval_snd_congr (hag u _ hr) w₁ hm
   | .step u .box =>
       obtain ⟨hk, hu⟩ := Ctx.boxIn_box (Γ := Γ₁) hv
       rw [Env.ref_congr _ (VarSymb.collapse_level_succ (s := .box) rfl) _
         ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_boxIn_of hk (h u _ hu))), Env.ref,
-        dif_neg (by decide : ¬ Step.box.isProj = true)]
+        dif_neg (by decide : ¬ Step.box.isStruct = true)]
       change M.necEval (env₁.ref u hu) w₁.1 =
         M.necEval (env₂.ref (u.collapse k) (h u _ hu)) w₁.1
       rw [hag u _ hu]
@@ -220,7 +221,7 @@ theorem Env.CollapseAgree.diaPush (hag : Env.CollapseAgree h env₁ env₂) {x :
       obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep (Γ := Γ₁) hv
       rw [Env.ref_congr _ (VarSymb.collapse_level_succ (s := .keep) rfl) _
         ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_keep_of' hF (h u _ hu) hk)), Env.ref,
-        dif_neg (by decide : ¬ Step.keep.isProj = true)]
+        dif_neg (by decide : ¬ Step.keep.isStruct = true)]
       change M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF hk) w (env₁.ref u hu)) w₁.1 =
         M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF hk) w
           (env₂.ref (u.collapse k) (h u _ hu))) w₁.1
@@ -296,8 +297,8 @@ theorem Env.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} (env : M.Env 
   match v with
   | .step u .box =>
       have hu := Ctx.boxIn_step_box hv
-      have hhs : Step.here.isProj = true := rfl
-      rw [Env.ref_congr env (VarSymb.collapse_level_zero (s := .box) rfl (by decide)) _
+      have hhs : Step.here.isStruct = true := rfl
+      rw [Env.ref_congr env (VarSymb.collapse_level_zero (s := .box) rfl (by decide) (by decide)) _
         (Ctx.ref_here_of hT hu), Env.ref, dif_pos hhs]
       split
       · rename_i U hU
@@ -360,16 +361,17 @@ theorem ShEnv.CollapseAgree.of_raw {ρ₁ : ShEnv F Root Γ₁ w}
   | root r => intro T hv; exact hvis _ _ rfl hv
   | step v s ih =>
       intro T hv
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Γ₁.ref v = some U := by
           rw [Ctx.ref_step_proj Γ₁ v hs] at hv
           cases hU : Γ₁.ref v with
           | none => rw [hU] at hv; cases hv
           | some U => exact ⟨U, rfl⟩
         have hv₂ : Γ₂.ref (.step (v.collapse k) s) = some T := by
-          rw [← VarSymb.collapse_proj hs]
+          rw [← VarSymb.collapse_proj (Step.isProj_of_isStruct hs)]
           exact h _ T hv
-        rw [ShEnv.ref_congr ρ₂ j (VarSymb.collapse_proj hs) _ hv₂, ShEnv.ref_proj ρ₁ j hs hU hv,
+        rw [ShEnv.ref_congr ρ₂ j (VarSymb.collapse_proj (Step.isProj_of_isStruct hs)) _ hv₂,
+          ShEnv.ref_proj ρ₁ j hs hU hv,
           ShEnv.ref_proj ρ₂ j hs (h v U hU) hv₂, ih U hU]
       · have hlp : (VarSymb.step v s).lastProj = false := Bool.eq_false_iff.mpr hs
         rw [ShEnv.ref_nonproj ρ₁ j hs hv]
@@ -386,14 +388,14 @@ theorem ShEnv.CollapseAgree.boxPush {ρ₁ : ShEnv F Root Γ₁ w}
       obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv
       rw [ShEnv.ref_congr _ _ (VarSymb.collapse_level_succ (s := .box) rfl) _
         (Ctx.ref_boxIn_of hk (h u _ hu)),
-        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.box.isProj = true)]
+        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.box.isStruct = true)]
       change (ρ₁.ref j u hu).inner = (ρ₂.ref j (u.collapse k) (h u _ hu)).inner
       rw [hag u _ hu]
   | .step u .keep =>
       obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
       rw [ShEnv.ref_congr _ _ (VarSymb.collapse_level_succ (s := .keep) rfl) _
         (Ctx.ref_keep_of' hF (h u _ hu) hk),
-        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
+        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isStruct = true)]
       change (GFunc.shp (GFunc.keep (σ := σ) hF hk) j (ρ₁.ref j u hu)).inner =
         (GFunc.shp (GFunc.keep (σ := σ) hF hk) j (ρ₂.ref j (u.collapse k) (h u _ hu))).inner
       rw [hag u _ hu]
@@ -422,21 +424,21 @@ theorem ShEnv.CollapseAgree.diaPush {ρ₁ : ShEnv F Root Γ₁ w}
       subst hXT
       rw [ShEnv.ref_congr _ _ (VarSymb.collapse_level_succ (s := .dia) rfl) _
         (Ctx.ref_diaIn_of (h u _ hr)),
-        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.dia.isProj = true)]
+        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.dia.isStruct = true)]
       simp only [ShEnv.diaPush]
       rw [hag u _ hr]
   | .step u .box =>
       obtain ⟨hk, hu⟩ := Ctx.boxIn_box (Γ := Γ₁) hv
       rw [ShEnv.ref_congr _ _ (VarSymb.collapse_level_succ (s := .box) rfl) _
         ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_boxIn_of hk (h u _ hu))),
-        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.box.isProj = true)]
+        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.box.isStruct = true)]
       change (ρ₁.ref j u hu).inner = (ρ₂.ref j (u.collapse k) (h u _ hu)).inner
       rw [hag u _ hu]
   | .step u .keep =>
       obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep (Γ := Γ₁) hv
       rw [ShEnv.ref_congr _ _ (VarSymb.collapse_level_succ (s := .keep) rfl) _
         ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_keep_of' hF (h u _ hu) hk)),
-        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
+        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isStruct = true)]
       change (GFunc.shp (GFunc.keep (σ := σ) hF hk) j (ρ₁.ref j u hu)).inner =
         (GFunc.shp (GFunc.keep (σ := σ) hF hk) j (ρ₂.ref j (u.collapse k) (h u _ hu))).inner
       rw [hag u _ hu]

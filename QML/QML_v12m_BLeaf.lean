@@ -38,20 +38,26 @@ theorem VarSymb.lv_ext (v : VarSymb) (p : List Step) : (v.ext p).lv = v.lv + Ste
   simp only [VarSymb.lv, VarSymb.ext_path, Step.levels_append]
 
 omit [ModalSys] in
-theorem levels_eq_zero_iff : ∀ {p : List Step}, Step.levels p = 0 ↔ PPath p
-  | [] => by simp [Step.levels, PPath]
-  | s :: p => by
-      rw [Step.levels_cons]
-      constructor
-      · intro h t ht
-        rcases List.mem_cons.mp ht with rfl | ht
-        · by_contra hs
-          rw [if_neg hs] at h
+theorem levels_eq_zero_of_ppath : ∀ {p : List Step}, PPath p → Step.levels p = 0
+  | [] => fun _ => rfl
+  | s :: p => fun h => by
+      rw [Step.levels_cons, if_pos (Step.isProj_of_isStruct (h s List.mem_cons_self)),
+        levels_eq_zero_of_ppath fun t ht => h t (List.mem_cons_of_mem _ ht)]
+
+/-- Without `Opt` (B's network throughout) an allowed level-free path is a projection path. -/
+theorem ppath_of_levels_eq_zero (hO : ModalSys.Opt = false) :
+    ∀ {p : List Step}, (∀ s ∈ p, s.OK) → Step.levels p = 0 → PPath p
+  | [] => fun _ _ => by simp [PPath]
+  | s :: p => fun hok h => by
+      rw [Step.levels_cons] at h
+      intro t ht
+      rcases List.mem_cons.mp ht with rfl | ht
+      · by_cases hs : t.isProj = true
+        · exact Step.isStruct_of_ok (hok t List.mem_cons_self) hO hs
+        · rw [if_neg hs] at h
           omega
-        · exact levels_eq_zero_iff.mp (by split_ifs at h <;> omega) t ht
-      · intro h
-        rw [if_pos (h s List.mem_cons_self),
-          levels_eq_zero_iff.mpr fun t ht => h t (List.mem_cons_of_mem _ ht)]
+      · exact ppath_of_levels_eq_zero hO (fun u hu => hok u (List.mem_cons_of_mem _ hu))
+          (by split_ifs at h <;> omega) t ht
 
 /-! ## Exact levels -/
 
@@ -66,15 +72,15 @@ theorem Ctx.Exact.of_decl {Δ : Ctx} {j : ℕ} (h : ∀ y T, Δ y = some T → y
   | root r => intro T hy; exact h _ T hy
   | step v s ih =>
       intro T hy
-      by_cases hs : s.isProj = true
-      · change (if s.isProj then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hy
+      by_cases hs : s.isStruct = true
+      · change (if s.isStruct then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hy
         rw [if_pos hs] at hy
         cases hU : Δ.ref v with
         | none => rw [hU] at hy; cases hy
         | some U =>
-            rw [Canon.lv_step, if_pos hs]
+            rw [Canon.lv_step, if_pos (Step.isProj_of_isStruct hs)]
             exact ih U hU
-      · change (if s.isProj then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hy
+      · change (if s.isStruct then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hy
         rw [if_neg hs] at hy
         exact h _ T hy
 
@@ -142,7 +148,6 @@ theorem exact_ctxOf (l : List VarType) : (ctxOf l).Exact 0 :=
 
 /-! ## Addresses past their first `□` -/
 
-omit [ModalSys] in
 /-- Collapsing inside a path does not look at what comes before it. -/
 theorem collapse_ext_indep : ∀ (q : List Step) (l : ℕ), l < Step.levels q →
     ∃ q', ∀ a : VarSymb, (a.ext q).collapse l = a.ext q' := by
@@ -166,9 +171,14 @@ theorem collapse_ext_indep : ∀ (q : List Step) (l : ℕ), l < Step.levels q �
             by_cases hk : s = .keep
             · subst hk
               exact ⟨r, fun a => by rw [VarSymb.ext_append_ext]; exact VarSymb.collapse_keep_zero⟩
-            · refine ⟨r ++ [.here], fun a => ?_⟩
-              rw [VarSymb.ext_append_ext, VarSymb.ext_append_ext]
-              exact VarSymb.collapse_level_zero hs' hk
+            · by_cases hd : s = .dia
+              · subst hd
+                refine ⟨r ++ [Step.diaZero], fun a => ?_⟩
+                rw [VarSymb.ext_append_ext, VarSymb.ext_append_ext]
+                exact VarSymb.collapse_dia_zero
+              · refine ⟨r ++ [.here], fun a => ?_⟩
+                rw [VarSymb.ext_append_ext, VarSymb.ext_append_ext]
+                exact VarSymb.collapse_level_zero hs' hk hd
         | succ l =>
             obtain ⟨q', e⟩ := ih l (by omega)
             refine ⟨q' ++ [s], fun a => ?_⟩
@@ -216,7 +226,7 @@ theorem arrowIdx_boxExt (img : ℕ → ℕ) {u : VarSymb} (hu : PPath u.path) (p
   rfl
 
 theorem lv_itemAt {u : VarSymb} (hu : PPath u.path) (z : Root) : (itemAt z u).lv = 0 :=
-  levels_eq_zero_iff.mpr (itemAt_ppath hu z)
+  levels_eq_zero_of_ppath (itemAt_ppath hu z)
 
 theorem ok_itemAt {u : VarSymb} (hu : PPath u.path) (z : Root) : (itemAt z u).OK :=
   fun _ hs => Step.ok_of_proj (itemAt_ppath hu z _ hs)
@@ -426,7 +436,7 @@ theorem ppath_succAddr {s : B.W} (a : B.Acc s) {v : VarSymb} (hv : PPath v.path)
   by_cases hR : B.R s a.1
   · rw [succAddr_net hR, arrowIdx_item hv]
     exact itemAt_ppath hv _
-  · rw [succAddr_self hR, VarSymb.collapse_level_zero (s := .box) rfl (by decide)]
+  · rw [succAddr_self hR, VarSymb.collapse_level_zero (s := .box) rfl (by decide) (by decide)]
     exact hv.append fun t ht => by rw [List.mem_singleton.mp ht]; rfl
 
 /-- ⭐**The canonical shape of a level-free address is its η-annotation read canonically.** -/
@@ -466,20 +476,21 @@ theorem cut_first {x pre : VarSymb} {m : ℕ} {t : Step} {rest : List Step} (hok
       | rfl
       | exact absurd htp (by decide)
       | exact absurd rfl ht
-      | exact (noFour (htok.2 rfl)).elim
+      | exact (noFour (htok.2.1 rfl)).elim
   subst htb
   rw [VarSymb.lv_ext, Step.levels_cons, if_neg (by decide), hl] at hlv
-  exact ⟨rfl, levels_eq_zero_iff.mp (show Step.levels pre.path = 0 by
+  exact ⟨rfl, ppath_of_levels_eq_zero ModalSys.NoOpt.noOpt (VarSymb.ok_ext.mp hok).1
+    (show Step.levels pre.path = 0 by
     unfold VarSymb.lv at hlv; omega), rfl, hl⟩
 
-omit [ModalSys] [ModalSys.NoFour] in
+omit [ModalSys.NoFour] in
 /-- Collapsing the cut `box` makes it a `here`. -/
 theorem collapse_cut (pre : VarSymb) (rest : List Step) :
     ((VarSymb.step pre .box).ext rest).collapse (Step.levels rest) =
       (VarSymb.step pre .here).ext rest := by
   have e := VarSymb.collapse_ext (VarSymb.step pre .box) rest 0
   rw [Nat.zero_add] at e
-  rw [e, VarSymb.collapse_level_zero (s := .box) rfl (by decide)]
+  rw [e, VarSymb.collapse_level_zero (s := .box) rfl (by decide) (by decide)]
 
 /-- Read along any arrow, a label cut at its first level step stays allowed, loses that level,
     and keeps its cuts further in. -/
@@ -506,7 +517,7 @@ theorem succAddrK_cut {s : B.W} (a : B.Acc s) {x pre : VarSymb} {m : ℕ} {rest 
     refine ⟨Canon.VarSymb.ok_collapse _ _ hok, ?_,
       fun hlm h => ⟨_, Canon.splitAt_collapse_above h hlm⟩⟩
     rw [collapse_cut, VarSymb.lv_ext, Canon.lv_step]
-    simp [Step.isProj, VarSymb.lv, levels_eq_zero_iff.mpr hpre]
+    simp [Step.isProj, VarSymb.lv, levels_eq_zero_of_ppath hpre]
 
 /-- Reading along an arrow commutes with collapsing further in. -/
 theorem succAddrK_collapse {s : B.W} (a : B.Acc s) {x pre : VarSymb} {rest : List Step}
@@ -635,7 +646,7 @@ def Canonical {Δ : Ctx} {s : B.W} (ρ : B.CShEnv Δ s) (j : ℕ) : Prop :=
 
 /-- A projection moves a canonical η-annotation to the projected address's. -/
 theorem shp_proj_annShp {Δ : Ctx} (hok : Δ.DeclOK) {j : ℕ} (hex : Δ.Exact j) (s : B.W)
-    {v : VarSymb} {U T : VarType} {st : Step} (hs : st.isProj = true) (hU : Δ.ref v = some U)
+    {v : VarSymb} {U T : VarType} {st : Step} (hs : st.isStruct = true) (hU : Δ.ref v = some U)
     (h : U.step st = some T) :
     GFunc.shp (GFunc.proj (σ := σ) hs h) j (B.annShp s j (Ann.eta v U)) =
       B.annShp s j (Ann.eta (.step v st) T) := by
@@ -660,7 +671,7 @@ theorem Canonical.of_decl {Δ : Ctx} (hok : Δ.DeclOK) {j : ℕ} (hex : Δ.Exact
   | root r => intro T hy; exact h _ T hy
   | step v st ih =>
       intro T hy
-      by_cases hs : st.isProj = true
+      by_cases hs : st.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Δ.ref v = some U := by
           rw [Ctx.ref_step_proj Δ v hs] at hy
           cases hU : Δ.ref v with
@@ -750,9 +761,11 @@ theorem termShp_canonical {s : B.W} :
       rfl
 
 /-- The canonical shape environment of a level-free context reads every address canonically. -/
-theorem cEnv_canonical {Γ : Ctx} (hex : Γ.Exact 0) (s : B.W) : B.Canonical (B.cEnv Γ s) 0 := by
+theorem cEnv_canonical {Γ : Ctx} (hok : Γ.DeclOK) (hex : Γ.Exact 0) (s : B.W) :
+    B.Canonical (B.cEnv Γ s) 0 := by
   intro y T h
-  rw [B.cEnv_ref, canonSh_eq T s y (levels_eq_zero_iff.mp (hex y T h))]
+  rw [B.cEnv_ref, canonSh_eq T s y
+    (ppath_of_levels_eq_zero ModalSys.NoOpt.noOpt (hok.ref y h) (hex y T h))]
 
 /-! ## Tags determine annotations -/
 
@@ -856,8 +869,8 @@ theorem ann_eq_of_termShp (hT : ModalSys.T = true) {Γ : Ctx} (hok : Γ.DeclOK) 
     (h : Model.termShp (B.cEnv Γ s) 0 t = Model.termShp (B.cEnv Γ s) 0 t') : a = a' := by
   refine annShp_injective hT s 0 a a' (Term.ann_exact hok hex t)
     (Term.ann_exact hok hex t') ?_
-  rw [← termShp_canonical hok hex (cEnv_canonical hex s) t,
-    ← termShp_canonical hok hex (cEnv_canonical hex s) t', h]
+  rw [← termShp_canonical hok hex (cEnv_canonical hok hex s) t,
+    ← termShp_canonical hok hex (cEnv_canonical hok hex s) t', h]
 
 /-- ⭐⭐**Tags determine annotations**: two terms with one denotation have one annotation. -/
 theorem ann_eq_of_rden (hT : ModalSys.T = true) {Γ : Ctx} (hok : Γ.DeclOK) (hex : Γ.Exact 0)

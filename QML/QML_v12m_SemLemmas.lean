@@ -33,7 +33,7 @@ theorem Env.ref_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.En
     ∀ (v : VarSymb) {T : VarType} (hv : Γ.ref v = some T), env.ref v hv = env'.ref v (h.ref hv)
   | .root r, _, hv => hag (.root r) _ hv
   | .step v s, T, hv => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Env.ref, Env.ref, dif_pos hs, dif_pos hs]
         split
         · rename_i U hU

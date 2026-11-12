@@ -166,7 +166,7 @@ theorem gLab_wf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : GW hF 
     (hk : ∀ j, lw[j]? = some true → lvlStep j π = some .keep) :
     Arrows.Leaf.WF lw (gLab s (v.ext π)) := by
   by_cases h0 : Step.levels π = 0
-  · have hπ := ppath_of_levels0 h0
+  · have hπ := ppath_of_levels0 (Step.at_not_mem_of_walkTy hw) h0
     have hpre : PPath (v.ext π).path := by
       rw [VarSymb.ext_path]
       exact fun x hx => (List.mem_append.mp hx).elim (hv x) (hπ x)
@@ -174,7 +174,8 @@ theorem gLab_wf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : GW hF 
     obtain rfl : lw = [] := List.eq_nil_of_length_eq_zero (by omega)
     exact (Arrows.Leaf.wf_root _ []).mpr ⟨rfl, by simp, trivial,
       ⟨.VTypeDia .VTypeOne, .VTypeOne, rfl⟩⟩
-  · obtain ⟨π₀, st, r, rfl, hπ₀, hst⟩ := split_first π (by omega)
+  · obtain ⟨π₀, st, r, rfl, hπ₀, hst⟩ :=
+      split_first π (Step.at_not_mem_of_walkTy hw) (by omega)
     have hpre : PPath (v.ext π₀).path := by
       rw [VarSymb.ext_path]
       exact fun x hx => (List.mem_append.mp hx).elim (hv x) (hπ₀ x)
@@ -191,6 +192,7 @@ theorem gLab_wf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : GW hF 
     | fst => cases hst
     | snd => cases hst
     | here => cases hst
+    | «at» => cases hst
     | box =>
         have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
         obtain ⟨W, hW, -⟩ := Option.bind_eq_some_iff.mp hw₀

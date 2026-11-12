@@ -151,7 +151,7 @@ theorem holeAt_gtup_gpack (hF : ModalSys.Four = true) {l : List VarType} {U : Va
     exact .ren_eta _ _
   · have hv' : (ctxOf l).boxIn v = some T := by simpa [Ctx.insert, hvr] using hv
     obtain ⟨u, s, rfl, -, -⟩ := kView_item (k := none) hv'
-    have hs : s.isProj = false := hlp
+    have hs : s.isStruct = false := hlp
     have hb : (Subst.single (σ := σ) (Δ := Δ.insert (.bnd 0) U) (.bnd 0)
         (.tm (Term.pair (Term.mono hle (viewTup (σ := σ) hF l).2)
           (Term.eta (.root (.bnd 0)) U (Ctx.ref_insert_root Δ (.bnd 0) U))))).at
@@ -161,7 +161,7 @@ theorem holeAt_gtup_gpack (hF : ModalSys.Four = true) {l : List VarType} {U : Va
     have hit := (Ctx.ref_nonproj (ctxOf l).boxIn hlp).trans hv'
     dsimp only [Subst.comp, gpackS]
     rw [Subst.set_ne _ _ hvr]
-    change SubE.Sim T _ (SubE.comp _ _ _ (if s.isProj then SubE.hide else
+    change SubE.Sim T _ (SubE.comp _ _ _ (if s.isStruct then SubE.hide else
       .ren (gpackF l (.step u s))))
     rw [if_neg (by simp [hs])]
     change SubE.Sim T (.ren _) (Subst.at _ (itemsAt (boxItems l) _ _))

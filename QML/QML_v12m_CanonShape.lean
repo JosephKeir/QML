@@ -271,7 +271,7 @@ theorem canonSh_wf : ∀ (T : VarType) (w : World σ N₀) (v : VarSymb),
 
 /-- A projection step moves a canonical shape to the projected address's. -/
 theorem canonSh_proj (w : World σ N₀) (v : VarSymb) {U T : VarType} {s : Step}
-    (hs : s.isProj = true) (h : U.step s = some T) :
+    (hs : s.isStruct = true) (h : U.step s = some T) :
     GFunc.shp (GFunc.proj (σ := σ) hs h) 0 (canonSh w v U) = canonSh w (.step v s) T := by
   cases U <;> cases s <;> (try cases hs) <;> (try cases h)
   · rfl
@@ -305,14 +305,14 @@ theorem canonEnvF_ref (Γ : Ctx) (w : World σ N₀) {f : VarSymb → VarSymb}
       (canonEnvF Γ w f).ref 0 v h = canonSh w (f v) T
   | .root _, _, _ => rfl
   | .step v s, T, h => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Γ.ref v = some U := by
           rw [Ctx.ref_step_proj Γ v hs] at h
           cases hU : Γ.ref v with
           | none => rw [hU] at h; cases h
           | some U => exact ⟨U, rfl⟩
         rw [Model.ShEnv.ref_proj _ 0 hs hU h, canonEnvF_ref Γ w hf v hU, canonSh_proj,
-          hf v s hs]
+          hf v s (Step.isProj_of_isStruct hs)]
       · rw [Model.ShEnv.ref_nonproj _ 0 hs h]
         rfl
 

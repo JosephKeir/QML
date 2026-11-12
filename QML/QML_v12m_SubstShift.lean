@@ -38,15 +38,15 @@ theorem preShift_of {k : ℕ} {Γ : Ctx} {Ψ Ψ' : Subst σ Δ}
   | root r => intro T hv; exact hvis _ _ rfl hv
   | step v s ih =>
       intro T hv
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Ctx.ref_step_proj _ _ hs] at hv
         cases hU : Γ.ref v with
         | none => rw [hU] at hv; cases hv
         | some U =>
             rw [hU] at hv
-            rw [VarSymb.shift_proj hs]
-            change SubE.Sim T (if s.isProj then (Ψ.at (v.shift k)).proj s else Ψ _)
-              (if s.isProj then (Ψ'.at v).proj s else Ψ' _)
+            rw [VarSymb.shift_proj (Step.isProj_of_isStruct hs)]
+            change SubE.Sim T (if s.isStruct then (Ψ.at (v.shift k)).proj s else Ψ _)
+              (if s.isStruct then (Ψ'.at v).proj s else Ψ' _)
             rw [if_pos hs, if_pos hs]
             exact (ih U hU).proj_step hs hv
       · have hlp : (VarSymb.step v s).lastProj = false := Bool.eq_false_iff.mpr hs

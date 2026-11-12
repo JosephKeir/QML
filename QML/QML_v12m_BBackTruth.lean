@@ -161,13 +161,13 @@ theorem Ctx.Under.of_decl {Δ : Ctx} (h : ∀ v T, Δ v = some T → Q v) : Δ.U
   | root r => intro T hv; exact h _ T hv
   | step v s ih =>
       intro T hv
-      by_cases hs : s.isProj = true
-      · change (if s.isProj then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hv
+      by_cases hs : s.isStruct = true
+      · change (if s.isStruct then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hv
         rw [if_pos hs] at hv
         cases hU : Δ.ref v with
         | none => rw [hU] at hv; cases hv
         | some U => exact hQ v s (ih U hU)
-      · change (if s.isProj then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hv
+      · change (if s.isStruct then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hv
         rw [if_neg hs] at hv
         exact h _ T hv
 
@@ -226,8 +226,8 @@ theorem ctxOf_addr {l : List VarType} :
       obtain ⟨n, rfl, hn⟩ := BData.root_of_ctxOf h
       exact ⟨fun _ hs => by simp [VarSymb.path] at hs, n, T, rfl, hn, h⟩
   | .step v s, T, h => by
-      by_cases hs : s.isProj = true
-      · change (if s.isProj then ((ctxOf l).ref v).bind (·.step s) else
+      by_cases hs : s.isStruct = true
+      · change (if s.isStruct then ((ctxOf l).ref v).bind (·.step s) else
           ctxOf l (.step v s)) = some T at h
         rw [if_pos hs] at h
         cases hU : (ctxOf l).ref v with
@@ -239,7 +239,7 @@ theorem ctxOf_addr {l : List VarType} :
             rcases ht with ht | rfl
             · exact hp t ht
             · exact hs
-      · change (if s.isProj then ((ctxOf l).ref v).bind (·.step s) else
+      · change (if s.isStruct then ((ctxOf l).ref v).bind (·.step s) else
           ctxOf l (.step v s)) = some T at h
         rw [if_neg hs] at h
         obtain ⟨r, hr⟩ := ctxOf_decl h
@@ -258,7 +258,7 @@ theorem ppath_split {p p' : List Step} {s s' : Step} {t t' : List Step} (hp : PP
           simp only [List.nil_append, List.cons_append, List.cons.injEq] at h
           have := hp' a List.mem_cons_self
           rw [← h.1] at this
-          rw [this] at hs
+          rw [Step.isProj_of_isStruct this] at hs
           cases hs
   | cons a p ih =>
       cases p' with
@@ -266,7 +266,7 @@ theorem ppath_split {p p' : List Step} {s s' : Step} {t t' : List Step} (hp : PP
           simp only [List.nil_append, List.cons_append, List.cons.injEq] at h
           have := hp a List.mem_cons_self
           rw [h.1] at this
-          rw [this] at hs'
+          rw [Step.isProj_of_isStruct this] at hs'
           cases hs'
       | cons a' p' =>
           simp only [List.cons_append, List.cons.injEq] at h

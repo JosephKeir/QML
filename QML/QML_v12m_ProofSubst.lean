@@ -1431,8 +1431,8 @@ theorem Term.subst_boxSnd {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst �
 
 /-- A substitution read at a projection is its entry projected. -/
 theorem Subst.at_proj {Δ : Ctx} (θ : Subst σ Δ) (v : VarSymb) {s : Step}
-    (hs : s.isProj = true) : θ.at (.step v s) = (θ.at v).proj s := by
-  change (if s.isProj then (θ.at v).proj s else θ (.step v s)) = _
+    (hs : s.isStruct = true) : θ.at (.step v s) = (θ.at v).proj s := by
+  change (if s.isStruct then (θ.at v).proj s else θ (.step v s)) = _
   rw [if_pos hs]
 
 /-- Weakening a hole term's reading is reading the weakened term. -/
@@ -1884,7 +1884,7 @@ theorem subst_compsVal_sig {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst 
 omit [ModalSys] in
 /-- A companion path is made of projections. -/
 theorem VarType.compAt_isProj : ∀ (A : VarType) (p : List Step), (A.compAt p).isSome = true →
-    ∀ s ∈ p, s.isProj = true
+    ∀ s ∈ p, s.isStruct = true
   | _, [], _, _, hs => absurd hs List.not_mem_nil
   | A, t :: p, h, s, hs => by
       cases A <;> cases t <;> simp only [VarType.compAt, Option.isSome_none,
@@ -1896,7 +1896,7 @@ theorem VarType.compAt_isProj : ∀ (A : VarType) (p : List Step), (A.compAt p).
 
 /-- A substitution renaming an address renames its extensions by projections alike. -/
 theorem Subst.at_ext_ren {Δ : Ctx} (θ : Subst σ Δ) : ∀ (q : List Step) {u u' : VarSymb},
-    θ.at u = .ren u' → (∀ s ∈ q, s.isProj = true) → θ.at (u.ext q) = .ren (u'.ext q)
+    θ.at u = .ren u' → (∀ s ∈ q, s.isStruct = true) → θ.at (u.ext q) = .ren (u'.ext q)
   | [], _, _, h, _ => h
   | s :: q, u, u', h, hq => Subst.at_ext_ren θ q
       (by rw [Subst.at_proj θ u (hq s List.mem_cons_self), h]; rfl)
@@ -1907,7 +1907,7 @@ theorem Term.subst_compsSlot {ι : VarSymb → VarSymb} {Δ₀ Δ₀' Δ₁ Δ�
     {C : VarType} (hu₁ : Δ₀.ref u₁ = some (.VTypeBox C)) (hle₁ : Δ₀.boxIn.Le Δ₁)
     (hu₂ : Δ₀'.ref u₂ = some (.VTypeBox C)) (hle₂ : Δ₀'.boxIn.Le Δ₂) (θ : Subst σ Δ₂)
     (hθ : Subst.Ok Δ₁ θ) (hc : Subst.Coh ι Δ₁ θ)
-    (hat : ∀ (q : List Step) (C' : VarType), (∀ s ∈ q, s.isProj = true) →
+    (hat : ∀ (q : List Step) (C' : VarType), (∀ s ∈ q, s.isStruct = true) →
       Δ₀.ref (u₁.ext q) = some (.VTypeBox C') → θ.at (u₁.ext q).inner = .ren (u₂.ext q).inner) :
     ∀ (cs : List (List Step)) (h : C.CompOk cs),
       (⟨_, Term.subst ι θ hθ hc (compsSlot hu₁ hle₁ cs h).2⟩ :

@@ -17,7 +17,7 @@ what substituting twice and the renaming of proofs need at a `here` step and at 
 
 namespace V12M
 
-theorem VarSymb.collapse_ext : ∀ (w : VarSymb) (p : List Step) (k : ℕ),
+theorem VarSymb.collapse_ext [ModalSys] : ∀ (w : VarSymb) (p : List Step) (k : ℕ),
     (w.ext p).collapse (k + Step.levels p) = (w.collapse k).ext p
   | _, [], _ => rfl
   | w, s :: p, k => by
@@ -293,10 +293,10 @@ theorem keepE_collapse' : ∀ {e : SubE σ Δ} {T : VarType}, T.keepable = true 
 
 /-- The `here` projection of a collapsed entry. -/
 theorem proj_collapse : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef U →
-    s.isProj = true → U.step s = some T → (e.proj s).collapse D = (e.collapse D).proj s
+    s.isStruct = true → U.step s = some T → (e.proj s).collapse D = (e.collapse D).proj s
   | .ren w, _, _, s, _, hs, _ => by
       change SubE.ren ((VarSymb.step w s).collapse k) = SubE.ren (.step (w.collapse k) s)
-      rw [VarSymb.collapse_proj hs]
+      rw [VarSymb.collapse_proj (Step.isProj_of_isStruct hs)]
   | .hide, _, _, _, he, _, _ => False.elim he
   | .tm (T := U') s₀, U, T, s, he, hs, hst => by
       have hU : U' = U := he
@@ -311,6 +311,7 @@ theorem proj_collapse : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef
       | box => cases hs
       | dia => cases hs
       | keep => cases hs
+      | «at» => cases hs
       | here =>
           cases s₀ with
           | boxtm t =>
@@ -397,15 +398,15 @@ theorem corr_of (hθ : Ok Γ θ)
   | root r => intro T hv; exact hvis _ _ rfl hv
   | step v s ih =>
       intro T hv
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Ctx.ref_step_proj _ _ hs] at hv
         cases hU : Γ.ref v with
         | none => rw [hU] at hv; cases hv
         | some U =>
             rw [hU] at hv
-            rw [VarSymb.collapse_proj hs]
-            change SubE.Sim T (if s.isProj then (θ'.at (v.collapse k)).proj s else θ' _)
-              ((if s.isProj then (θ.at v).proj s else θ _).collapse D)
+            rw [VarSymb.collapse_proj (Step.isProj_of_isStruct hs)]
+            change SubE.Sim T (if s.isStruct then (θ'.at (v.collapse k)).proj s else θ' _)
+              ((if s.isStruct then (θ.at v).proj s else θ _).collapse D)
             rw [if_pos hs, if_pos hs, SubE.proj_collapse D (okRef_at hθ hU) hs hv]
             exact (ih U hU).proj_step hs hv
       · have hlp : (VarSymb.step v s).lastProj = false := Bool.eq_false_iff.mpr hs

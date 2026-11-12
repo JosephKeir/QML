@@ -98,7 +98,7 @@ theorem shiftCorr_preIX {l L : List VarType}
       ((eS σ (ctxOf L).boxIn (ofRen (preI f))).dia (.step x .keep) (.step (f x) .keep)) := by
   refine Subst.shiftCorr_of hθ fun v T hl hv => ?_
   obtain ⟨u, st, rfl, -, -⟩ := kView_item (k := some x) hv
-  rw [eS_item _ hl, VarSymb.shift_level_zero hl,
+  rw [eS_item _ hl, VarSymb.shift_level_zero (Ctx.diaIn_level hv),
     Subst.at_nonproj _ (v := VarSymb.step (VarSymb.step u .keep) st) hl]
   by_cases hvx : VarSymb.step u st = .step x .dia
   · obtain ⟨rfl, rfl⟩ := VarSymb.step.inj hvx

@@ -32,20 +32,18 @@ variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
 theorem preIx_step (s : GW hF M₀) (z : VarSymb) {st : Step}
     (hl : 0 < Step.levels z.path ∨ st.isProj = false) :
     preIx s (.step z st) = .step (preIx s z) st := by
-  by_cases h0 : Step.levels z.path = 0
-  · have hz := ppath_of_levels0 h0
-    have hst : st.isProj = false := hl.resolve_left (by omega)
-    rw [preIx_ppath s hz]
-    exact preIx_lvl s hz hst []
-  · obtain ⟨q, st', r, hq, hq₀, hst'⟩ := split_first z.path (by omega)
-    have e : z = (VarSymb.step ((VarSymb.root z.rt).ext q) st').ext r := by
-      conv_lhs => rw [VarSymb.eq_root_ext z, hq, VarSymb.ext_append]
+  cases hz : splitLevel z.path with
+  | none =>
+      have hp := ppath_of_splitLevel_none hz
+      have hst : st.isProj = false := hl.resolve_left (by rw [levels_pp hp]; omega)
+      rw [preIx_ppath s hp]
+      exact preIx_lvl s hp hst []
+  | some t =>
+      obtain ⟨q, st', r⟩ := t
+      have hpath : (VarSymb.step z st).path = z.path ++ [st] := rfl
+      simp only [preIx, hpath, splitLevel_snoc _ st hz, hz]
+      rw [VarSymb.ext_append]
       rfl
-    have hp : PPath ((VarSymb.root z.rt).ext q).path := by
-      rw [VarSymb.ext_path]
-      simpa [VarSymb.path] using hq₀
-    rw [e, ← VarSymb.ext_append_single, preIx_lvl _ hp hst', preIx_lvl _ hp hst',
-      VarSymb.ext_append_single]
 
 /-- ⭐**A world's environment, pushed**: every reachable address (at the first level, every
     keepable one) reads as the shape of its root reading. -/
@@ -74,7 +72,7 @@ theorem cInvW_of_items {w : GW hF M₀} {Δ : Ctx}
       obtain ⟨hl, hw', hf, he⟩ := hitem _ T h'
       exact ⟨hl, hw', fun _ => ⟨hf, he⟩⟩
   | .step v st, T, h => by
-      by_cases hs : st.isProj = true
+      by_cases hs : st.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Δ.ref v = some U := by
           rw [Ctx.ref_step_proj _ v hs] at h
           cases hU : Δ.ref v with
@@ -89,7 +87,7 @@ theorem cInvW_of_items {w : GW hF M₀} {Δ : Ctx}
         refine ⟨?_, hw'.proj hs hst, fun _ => ⟨?_, ?_⟩⟩
         · change Step.levels (v.path ++ [st]) = j
           rw [Step.levels_append, hl]
-          simp [Step.levels, hs]
+          simp [Step.levels, Step.isProj_of_isStruct hs]
         · rw [e]
           exact hf.proj hs hst
         · rw [e, Model.ShEnv.ref_proj _ j hs hU h, he]
@@ -211,6 +209,7 @@ theorem keepable_of_level (hko : ModalSys.keepOnly = true) {U X : VarType} {st :
   | fst => cases hs
   | snd => cases hs
   | here => cases hs
+  | «at» => cases hs
   | box =>
       change (if ModalSys.keepOnly = true then none else U.step .box) = some W at hW
       rw [if_pos hko] at hW
@@ -232,13 +231,13 @@ theorem postIx_preIx (w : GW hF M₀) {j : ℕ} {y : VarSymb} {X : VarType}
   obtain ⟨v, U, π, hd, hv, rfl, hw, hn⟩ := hf
   by_cases h0 : j = 0
   · subst h0
-    have hπ := ppath_of_levels0 hn
+    have hπ := ppath_of_levels0 (Step.at_not_mem_of_walkTy hw) hn
     have hp := ppath_ext hv hπ
     have hdp := declAt_ext hd hπ hw
     obtain ⟨i, hi⟩ := declAt_rorig hV hS hW hM₀ w hdp rfl
     rw [preIx_ppath w hp, postIx_ppath w (reach_ppath hi).1]
     exact rnm_rorig hV hS hW hM₀ w hdp rfl rfl
-  · obtain ⟨q, st, r, rfl, hq, hst⟩ := split_first π (by omega)
+  · obtain ⟨q, st, r, rfl, hq, hst⟩ := split_first π (Step.at_not_mem_of_walkTy hw) (by omega)
     have hp := ppath_ext hv hq
     rw [Step.walkTy_append] at hw
     cases hU : Step.walkTy U q with

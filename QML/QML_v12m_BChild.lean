@@ -101,7 +101,7 @@ theorem at_pull_tup [ModalSys.FourOff] {l : List VarType} :
       exact pull_tm hr'
   | .root (.bnd _), _, hu, _, hrt => by cases hrt
   | .step u s, U, hu, r, hrt => by
-      have hproj : s.isProj = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
+      have hproj : s.isStruct = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
       have hu' := hu
       simp only [Ctx.ref, if_pos hproj] at hu'
       cases hU : (ctxOf l).ref u with
@@ -181,6 +181,7 @@ theorem boxIn_empty (v : VarSymb) : Ctx.empty.boxIn v = none := by
   | .step _ .snd => rfl
   | .step _ .dia => rfl
   | .step _ .here => rfl
+  | .step _ .at => rfl
 
 theorem boxIn_empty_le : Ctx.empty.boxIn.Le Ctx.empty :=
   ⟨fun v T h => (by

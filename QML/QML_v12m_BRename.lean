@@ -85,7 +85,7 @@ theorem ref_reroot {Γ Δ : Ctx} (hΓ : RootOnly Γ) {z : Root} {R : VarType} :
       cases h
       exact hz
   | .step u s, T, h, hR, hz => by
-      have hproj : s.isProj = true := (ppath_of_rootOnly hΓ h).1 s (by simp [VarSymb.path])
+      have hproj : s.isStruct = true := (ppath_of_rootOnly hΓ h).1 s (by simp [VarSymb.path])
       simp only [Ctx.ref, if_pos hproj] at h
       cases hU : Γ.ref u with
       | none => rw [hU] at h; cases h

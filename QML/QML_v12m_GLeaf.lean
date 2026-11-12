@@ -137,7 +137,7 @@ theorem rootSh_keep_shp (hT : ModalSys.T = true) (s : GW hF M₀) (v : VarSymb) 
 
 /-- A projection of a generic content shape is the generic shape one step further. -/
 theorem rootSh_proj (hT : ModalSys.T = true) (s : GW hF M₀) (v : VarSymb) {p : List Step}
-    {j : ℕ} (hp : Step.levels p = j) {U T : VarType} {st : Step} (hs : st.isProj = true)
+    {j : ℕ} (hp : Step.levels p = j) {U T : VarType} {st : Step} (hs : st.isStruct = true)
     (h : U.step st = some T) :
     GFunc.shp (GFunc.proj (σ := σ) hs h) j (rootSh s v p U) = rootSh s v (p ++ [st]) T := by
   cases U <;> cases st <;> (try cases hs) <;> (try cases h)
@@ -167,14 +167,14 @@ theorem levels_of_decl {Δ : Ctx} {j : ℕ}
     ∀ (y : VarSymb) {T : VarType}, Δ.ref y = some T → Step.levels y.path = j
   | .root r, T, hy => h _ T rfl hy
   | .step v st, T, hy => by
-      by_cases hs : st.isProj = true
+      by_cases hs : st.isStruct = true
       · rw [Ctx.ref_step_proj _ v hs] at hy
         cases hU : Δ.ref v with
         | none => rw [hU] at hy; cases hy
         | some U =>
             change Step.levels (v.path ++ [st]) = j
             rw [Step.levels_append, levels_of_decl h v hU]
-            simp [Step.levels, hs]
+            simp [Step.levels, Step.isProj_of_isStruct hs]
       · exact h _ T (Bool.eq_false_iff.mpr hs) (by rwa [Ctx.ref_step_nonproj _ v hs] at hy)
 
 /-- ⭐**Exactness**: in the canonical environment pushed `j` views in, every reachable address has
@@ -259,7 +259,7 @@ theorem ref_rootSh_of_decl (hT : ModalSys.T = true) {s : GW hF M₀} {Δ : Ctx}
       · rw [List.concat_eq_append, ← List.cons_append, ext_append_step] at hy
         cases hy
   | .step v st, T, h, q, hy => by
-      by_cases hs : st.isProj = true
+      by_cases hs : st.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Δ.ref v = some U := by
           rw [Ctx.ref_step_proj Δ v hs] at h
           cases hU : Δ.ref v with

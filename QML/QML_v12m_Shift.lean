@@ -56,7 +56,7 @@ theorem shift_shift_same : ∀ (v : VarSymb) (m : ℕ),
             rw [shift_shift_same v m]
 
 /-- A shift outside a collapse commutes with it (the shift moves in by one). -/
-theorem shift_collapse : ∀ (v : VarSymb) (k m : ℕ),
+theorem shift_collapse [ModalSys] : ∀ (v : VarSymb) (k m : ℕ),
     (v.shift (k + 1 + m)).collapse m = (v.collapse m).shift (k + m)
   | root _, _, _ => rfl
   | step v s, k, m => by
@@ -68,8 +68,12 @@ theorem shift_collapse : ∀ (v : VarSymb) (k m : ℕ),
             by_cases hk : s = .keep
             · subst hk
               simp only [Nat.add_zero, shift_level_succ (s := Step.keep) rfl, collapse_keep_zero]
-            · simp only [Nat.add_zero, shift_level_succ hs', collapse_level_zero hs' hk,
-                shift_proj (s := Step.here) rfl]
+            · by_cases hd : s = .dia
+              · subst hd
+                simp only [Nat.add_zero, shift_level_succ (s := Step.dia) rfl, collapse_dia_zero,
+                  shift_proj Step.diaZero_isProj]
+              · simp only [Nat.add_zero, shift_level_succ hs', collapse_level_zero hs' hk hd,
+                  shift_proj (s := Step.here) rfl]
         | succ m =>
             rw [show k + 1 + (m + 1) = (k + 1 + m) + 1 by omega,
               show k + (m + 1) = (k + m) + 1 by omega]
@@ -77,7 +81,7 @@ theorem shift_collapse : ∀ (v : VarSymb) (k m : ℕ),
             rw [shift_collapse v k m]
 
 /-- Collapsing just outside a shift removes the inserted `keep`. -/
-theorem collapse_shift_self : ∀ (v : VarSymb) (m : ℕ), (v.shift m).collapse (m + 1) = v
+theorem collapse_shift_self [ModalSys] : ∀ (v : VarSymb) (m : ℕ), (v.shift m).collapse (m + 1) = v
   | root _, _ => rfl
   | step v s, m => by
       by_cases hs : s.isProj = true
@@ -146,13 +150,13 @@ theorem Shifts.of_raw {k : ℕ} {Γ₁ Γ₂ : Ctx} (hF : ModalSys.Four = true)
   | root r => intro T hv; exact h _ _ rfl hv
   | step v s ih =>
       intro T hv
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Ctx.ref_step_proj _ _ hs] at hv
-        rw [VarSymb.shift_proj hs, Ctx.ref_step_proj _ _ hs]
+        rw [VarSymb.shift_proj (Step.isProj_of_isStruct hs), Ctx.ref_step_proj _ _ hs]
         cases hU : Γ₁.ref v with
         | none => rw [hU] at hv; cases hv
         | some U => rw [hU] at hv; rw [ih U hU]; exact hv
-      · exact h _ _ (show s.isProj = false from Bool.eq_false_iff.mpr hs)
+      · exact h _ _ (show s.isStruct = false from Bool.eq_false_iff.mpr hs)
           (by rwa [Ctx.ref_step_nonproj _ _ hs] at hv)
 
 /-- Under 4, a reachable necessary address is kept inside `□`. -/

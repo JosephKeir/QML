@@ -75,7 +75,7 @@ instance {Γ : Ctx} {w : M.frame.W} :
     Coe (∀ v T, Γ v = some T → M.frame.Dom T w) (M.Env Γ w) := ⟨Frame.Env.ofVal⟩
 
 /-- The component of an object along a projection step. -/
-def stepObj {w : M.frame.W} {U T : VarType} {s : Step} (hs : s.isProj = true)
+def stepObj {w : M.frame.W} {U T : VarType} {s : Step} (hs : s.isStruct = true)
     (h : U.step s = some T) (a : M.frame.Dom U w) : M.frame.Dom T w := by
   cases U <;> cases s <;> (try cases hs) <;> (try cases h)
   · exact a.1
@@ -125,7 +125,7 @@ def Env.ref {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
     (v : VarSymb) → {T : VarType} → Γ.ref v = some T → M.frame.Dom T w
   | .root r, _, h => env (.root r) _ h
   | .step v s, T, h =>
-      if hs : s.isProj = true then
+      if hs : s.isStruct = true then
         match hU : Γ.ref v with
         | some U =>
             M.stepObj hs (by rw [Ctx.ref_step_proj Γ v hs, hU] at h; exact h)

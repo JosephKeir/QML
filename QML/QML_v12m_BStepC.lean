@@ -884,19 +884,19 @@ theorem single_box_under_ren {l lt : List VarType} {Δ : Ctx} (hl : l.length ≤
         rw [if_neg (fun he => hr (by cases he; rfl))] at hv
         cases hv
   | .step w s, U, hv => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · have hv' := hv
         simp only [Ctx.ref, if_pos hs] at hv'
         cases hw : ((ctxOf l).boxIn.insert (.bnd 0) T).ref w with
         | none =>
-            change (if s.isProj then (Ctx.ref _ w).bind (·.step s) else _) = _ at hv
+            change (if s.isStruct then (Ctx.ref _ w).bind (·.step s) else _) = _ at hv
             rw [if_pos hs, hw] at hv
             cases hv
         | some U' =>
             rw [Subst.at_proj _ w hs, single_box_under_ren hl h w U' hw]
             rfl
       · have hv' : ((ctxOf l).boxIn.insert (.bnd 0) T) (.step w s) = some U := by
-          change (if s.isProj then _ else _) = _ at hv
+          change (if s.isStruct then _ else _) = _ at hv
           rwa [if_neg hs] at hv
         rw [Ctx.insert_ne (fun he => by cases he)] at hv'
         obtain ⟨u, he, hu⟩ := boxIn_item hv'
@@ -932,17 +932,17 @@ theorem single_dia_under_ren {l lt : List VarType} (hl : l.length ≤ lt.length)
         rw [if_neg (fun he => hr (by cases he; rfl))] at hv
         cases hv
   | .step w s, U, hv => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · cases hw : (((ctxOf l).diaIn y).insert (.bnd 0) T).ref w with
         | none =>
-            change (if s.isProj then (Ctx.ref _ w).bind (·.step s) else _) = _ at hv
+            change (if s.isStruct then (Ctx.ref _ w).bind (·.step s) else _) = _ at hv
             rw [if_pos hs, hw] at hv
             cases hv
         | some U' =>
             rw [Subst.at_proj _ w hs, single_dia_under_ren hl h w U' hw]
             rfl
       · have hv' : (((ctxOf l).diaIn y).insert (.bnd 0) T) (.step w s) = some U := by
-          change (if s.isProj then _ else _) = _ at hv
+          change (if s.isStruct then _ else _) = _ at hv
           rwa [if_neg hs] at hv
         rw [Ctx.insert_ne (fun he => by cases he)] at hv'
         rcases diaIn_item hv' with ⟨u, he, hu⟩ | ⟨he, hyr⟩
@@ -1300,7 +1300,7 @@ theorem ref_ext_some {Δ : Ctx} : ∀ (π : List Step), FS π → ∀ {v : VarSy
   | [], _, _, C, h => ⟨C, h⟩
   | s :: π, hπ, v, C, h => by
       obtain ⟨T', hT'⟩ := ref_ext_some π (fun s' hs' => hπ s' (List.mem_cons_of_mem _ hs')) h
-      have hs : s.isProj = true := by rcases hπ s List.mem_cons_self with rfl | rfl <;> rfl
+      have hs : s.isStruct = true := by rcases hπ s List.mem_cons_self with rfl | rfl <;> rfl
       rw [Ctx.ref_step_proj _ _ hs] at hT'
       cases hv : Δ.ref v with
       | none =>

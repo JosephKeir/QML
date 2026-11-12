@@ -42,8 +42,8 @@ theorem at_set_of_rt_ne (θ : Subst σ Δ) (r : Root) (e : SubE σ Δ) :
     ∀ v : VarSymb, v.rt ≠ r → (θ.set r e).at v = θ.at v
   | .root r', h => set_ne θ e (fun he => h (by cases he; rfl))
   | .step v s, h => by
-      change (if s.isProj then ((θ.set r e).at v).proj s else θ.set r e (.step v s)) =
-        (if s.isProj then (θ.at v).proj s else θ (.step v s))
+      change (if s.isStruct then ((θ.set r e).at v).proj s else θ.set r e (.step v s)) =
+        (if s.isStruct then (θ.at v).proj s else θ (.step v s))
       rw [at_set_of_rt_ne θ r e v h, set_ne θ e (fun he => VarSymb.noConfusion he)]
 
 end Subst

@@ -418,7 +418,7 @@ theorem termShp_applyG {F : Arrows.{u, v} σ} {Root : F.W → Type u} [Arrows.Ro
           (Model.termShp ρ lw.length (Term.diatm x hx c))
       rw [Model.termShp_diatm _ _ hxk, Model.termShp_diatm _ _ hr,
         Model.termShp_shift_diaKeep hF ρ (hwf hF) hr hxk c,
-        Model.ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
+        Model.ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isStruct = true)]
       rfl
 
 theorem varTerm_collapse {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Collapses k Γ₁ Γ₂) :

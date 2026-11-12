@@ -126,10 +126,10 @@ theorem keepE_dia_off {A : VarType} {a : Ann A} (y : VarSymb)
     (SubE.tm (Term.diatm y hy t)).keepE = .hide :=
   dif_neg hF
 
-theorem okRef_proj : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef U → s.isProj = true →
+theorem okRef_proj : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef U → s.isStruct = true →
     U.step s = some T → (e.proj s).OkRef T
   | .ren w, U, T, s, he, hs, hst => by
-      change (if s.isProj then (Δ.ref w).bind (·.step s) else Δ (.step w s)) = some T
+      change (if s.isStruct then (Δ.ref w).bind (·.step s) else Δ (.step w s)) = some T
       rw [if_pos hs, he]
       exact hst
   | .hide, _, _, _, he, _, _ => False.elim he
@@ -146,6 +146,7 @@ theorem okRef_proj : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef U 
       | box => cases hs
       | dia => cases hs
       | keep => cases hs
+      | «at» => cases hs
       | here =>
           cases s₀ with
           | boxtm t =>
@@ -156,7 +157,7 @@ theorem okRef_proj : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef U 
           | _ => cases hst
 
 theorem idxAlong_proj : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step} (p : List Step),
-    e.OkRef U → s.isProj = true → U.step s = some T →
+    e.OkRef U → s.isStruct = true → U.step s = some T →
       (e.proj s).idxAlong p = e.idxAlong (s :: p)
   | .ren _, _, _, _, _, _, _, _ => rfl
   | .hide, _, _, _, _, he, _, _ => False.elim he
@@ -169,6 +170,7 @@ theorem idxAlong_proj : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step} (p : Lis
       | box => cases hs
       | dia => cases hs
       | keep => cases hs
+      | «at» => cases hs
       | here =>
           cases s₀ with
           | boxtm t =>
@@ -566,7 +568,7 @@ variable {σ : Signature} {Δ : Ctx}
 /-- The entry reachable at an address: projection components by projection. -/
 def «at» (θ : Subst σ Δ) : VarSymb → SubE σ Δ
   | .root r => θ (.root r)
-  | .step v s => if s.isProj then (θ.at v).proj s else θ (.step v s)
+  | .step v s => if s.isStruct then (θ.at v).proj s else θ (.step v s)
 
 /-- `Opt` is off: an assumption, `NoOpt`, or a flag in context that excludes it (`optStage`).
     The default for constructions that exist only in the `◇⁰`-free language. -/
@@ -655,8 +657,8 @@ theorem optIn_ne (θ : Subst σ Δ) {y v : VarSymb} (z : VarSymb) (hv : v ≠ .s
 theorem at_nonproj (θ : Subst σ Δ) : ∀ {v : VarSymb}, v.lastProj = false → θ.at v = θ v
   | .root _, _ => rfl
   | .step v s, h => by
-      change (if s.isProj then (θ.at v).proj s else θ (.step v s)) = _
-      have hs : s.isProj = false := h
+      change (if s.isStruct then (θ.at v).proj s else θ (.step v s)) = _
+      have hs : s.isStruct = false := h
       rw [if_neg (Bool.eq_false_iff.mp hs)]
 
 theorem okRef_at {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) :
@@ -1263,8 +1265,8 @@ theorem at_single_of_rt_ne {σ : Signature} {Δ : Ctx} {r : Root} {e : SubE σ �
       change (if (VarSymb.root r') = .root r then e else SubE.ren (.root r')) = _
       exact if_neg (fun he => h (VarSymb.root.inj he))
   | .step v s, h => by
-      change (if s.isProj then ((single r e).at v).proj s else single r e (.step v s)) = _
-      by_cases hs : s.isProj = true
+      change (if s.isStruct then ((single r e).at v).proj s else single r e (.step v s)) = _
+      by_cases hs : s.isStruct = true
       · rw [if_pos hs, at_single_of_rt_ne (v := v) h]
         rfl
       · rw [if_neg hs]

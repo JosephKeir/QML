@@ -101,7 +101,8 @@ noncomputable def grepIdx (y : VarSymb) : VarSymb :=
   else y
 
 /-- ⭐The representing substitution is coherent, at one view depth per address. -/
-theorem grepSubst_coh {d : Root → ℕ} (hd : Γ.LevelDepth d) :
+theorem grepSubst_coh {d : Root → ℕ} (hd : Γ.LevelDepth d)
+    (hat : ∀ u, Γ (.step u .at) = none) :
     Subst.Coh (grepIdx hM₀ env hfin) Γ (grepSubst hM₀ env hfin) := by
   refine Subst.coh_of (grepSubst_ok hM₀ env hfin) fun v T hl hv p => ?_
   have hex : ∃ q : VarSymb × List Step,
@@ -111,7 +112,7 @@ theorem grepSubst_coh {d : Root → ℕ} (hd : Γ.LevelDepth d) :
   rw [dif_pos hex]
   obtain ⟨hl', hs', he'⟩ := hex.choose_spec
   obtain ⟨T', hv'⟩ := Option.isSome_iff_exists.mp hs'
-  obtain ⟨e₁, e₂⟩ := Ctx.decomp_unique hd hv hv' hl hl' he'
+  obtain ⟨e₁, e₂⟩ := Ctx.decomp_unique hd hat hv hv' hl hl' he'
   rw [← e₁, ← e₂]
 
 /-- ⭐**Every environment over a tame context is the canonical one read through a substitution**
@@ -141,9 +142,11 @@ theorem gindInvariant_inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLa
       ((gmodel hF hM₀).sat (env.extend (.bnd 0) o) φ ↔
         (gmodel hF hM₀).sat (env.extend (.bnd 0) o') φ) := by
   intro Γ _ htame hnp s env A φ o o' hInd
-  obtain ⟨hfin, d, hd, -⟩ := htame
+  obtain ⟨hfin, ⟨d, hd, -⟩, hat₀⟩ := htame
+  have hat : ∀ u, Γ (.step u .at) = none :=
+    hat₀.resolve_left (by rw [ModalSys.NoOpt.noOpt]; decide)
   have hθ := grepSubst_ok hM₀ env hfin
-  have hc := grepSubst_coh hM₀ env hfin hd
+  have hc := grepSubst_coh hM₀ env hfin hd hat
   have h0 : (ctxOf (glat s (grepSup hM₀ env hfin))) (.root (.bnd 0)) = none :=
     (Ctx.NoSlots.slots (Γ := ctxOf (glat s (grepSup hM₀ env hfin)))).root
   let φ' : WFF σ ((ctxOf (glat s (grepSup hM₀ env hfin))).insert (.bnd 0) A) 1 :=

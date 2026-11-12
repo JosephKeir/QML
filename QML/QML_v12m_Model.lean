@@ -362,6 +362,17 @@ def Step.walkTy : VarType → List Step → Option VarType
   | T, [] => some T
   | T, s :: p => (Step.typeStep T s).bind fun U => Step.walkTy U p
 
+/-- A typed path has no `at`: types are walked by projections and level steps only. -/
+theorem Step.at_not_mem_of_walkTy : ∀ {T : VarType} {p : List Step} {V : VarType},
+    Step.walkTy T p = some V → Step.at ∉ p
+  | _, [], _, _ => List.not_mem_nil
+  | T, s :: p, V, h => by
+      obtain ⟨U, hU, hp⟩ := Option.bind_eq_some_iff.mp h
+      intro hm
+      rcases List.mem_cons.mp hm with rfl | hm
+      · cases T <;> simp [Step.typeStep, VarType.step] at hU
+      · exact Step.at_not_mem_of_walkTy hp hm
+
 /-- A path is typed in `T` when each step applies and it ends at a possibility. -/
 def Step.Typed (T : VarType) (p : List Step) : Prop := ∃ X, Step.walkTy T p = some (.VTypeDia X)
 

@@ -43,7 +43,7 @@ theorem ref_tupPathW {Δ : Ctx} : ∀ (l : List VarType) {r : ℕ}, r < l.length
       · subst hr
         rw [rootTy_new]
         change Δ.ref (.step b .snd) = _
-        simp only [Ctx.ref, Step.isProj, if_true, hb, Option.bind_some]
+        simp only [Ctx.ref, hb, Option.bind_some]
         rfl
       · have hr' : r < l.length := by
           have : r < l.length + 1 := h
@@ -51,7 +51,7 @@ theorem ref_tupPathW {Δ : Ctx} : ∀ (l : List VarType) {r : ℕ}, r < l.length
         rw [rootTy_old hr']
         change Δ.ref ((VarSymb.step b .fst).ext (tupPath l r)) = _
         exact ref_tupPathW l hr' (by
-          simp only [Ctx.ref, Step.isProj, if_true, hb, Option.bind_some]
+          simp only [Ctx.ref, hb, Option.bind_some]
           rfl)
 
 /-- ⭐`l`'s roots, as one term. -/
@@ -111,14 +111,14 @@ theorem ref_packRoots_hole (A : VarType) (l : List VarType) :
 
 theorem ref_packRoots_slot (A : VarType) (l : List VarType) :
     (packRootsCtx A l).ref (.step (.root (.bnd 0)) .fst) = some A := by
-  simp only [Ctx.ref, Step.isProj, if_true]
+  simp only [Ctx.ref]
   rfl
 
 theorem ref_packRoots_root (A : VarType) {l : List VarType} {r : ℕ} (hr : r < l.length) :
     (packRootsCtx A l).ref ((VarSymb.step (.root (.bnd 0)) .snd).ext (tupPath l r)) =
       some (rootTy l r) :=
   ref_tupPathW l hr (by
-    simp only [Ctx.ref, Step.isProj, if_true]
+    simp only [Ctx.ref]
     rfl)
 
 omit [ModalSys] in

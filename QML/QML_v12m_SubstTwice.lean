@@ -139,11 +139,11 @@ theorem idxAlong_comp : ∀ {e : SubE σ Δ₁} {X : VarType}, e.OkRef (.VTypeDi
   | .hide, _, he => False.elim he
 
 theorem proj_comp : ∀ {e : SubE σ Δ₁} {U T : VarType} {s : Step}, e.OkRef U →
-    s.isProj = true → U.step s = some T →
+    s.isStruct = true → U.step s = some T →
     (e.comp θ₂ hθ₂ hc₂).proj s = (e.proj s).comp θ₂ hθ₂ hc₂
   | .ren w, _, _, s, _, hs, _ => by
       change (θ₂.at w).proj s = θ₂.at (.step w s)
-      change _ = (if s.isProj then (θ₂.at w).proj s else θ₂ (.step w s))
+      change _ = (if s.isStruct then (θ₂.at w).proj s else θ₂ (.step w s))
       rw [if_pos hs]
   | .hide, _, _, _, he, _, _ => False.elim he
   | .tm (T := U') s₀, U, T, s, he, hs, hst => by
@@ -159,6 +159,7 @@ theorem proj_comp : ∀ {e : SubE σ Δ₁} {U T : VarType} {s : Step}, e.OkRef 
       | box => cases hs
       | dia => cases hs
       | keep => cases hs
+      | «at» => cases hs
       | here =>
           cases s₀ with
           | boxtm t =>

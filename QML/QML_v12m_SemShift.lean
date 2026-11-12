@@ -100,11 +100,12 @@ theorem Env.ShiftAgree.of_raw
   | root r => intro T hv; exact hvis _ _ rfl hv
   | step v s ih =>
       intro T hv
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · have hv₂ : Γ₂.ref (.step (v.shift k) s) = some T := by
-          rw [← VarSymb.shift_proj hs]
+          rw [← VarSymb.shift_proj (Step.isProj_of_isStruct hs)]
           exact h _ T hv
-        rw [Env.ref_congr env₂ (VarSymb.shift_proj hs) _ hv₂, Env.ref, Env.ref, dif_pos hs,
+        rw [Env.ref_congr env₂ (VarSymb.shift_proj (Step.isProj_of_isStruct hs)) _ hv₂, Env.ref,
+          Env.ref, dif_pos hs,
           dif_pos hs]
         split
         · rename_i U hU
@@ -134,14 +135,14 @@ theorem Env.ShiftAgree.boxPush (hag : Env.ShiftAgree h env₁ env₂) (w' : M.fr
       obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv
       rw [Env.ref_congr _ (VarSymb.shift_level_succ (s := .box) rfl) _
         (Ctx.ref_boxIn_of hk (h u _ hu)), Env.ref,
-        dif_neg (by decide : ¬ Step.box.isProj = true)]
+        dif_neg (by decide : ¬ Step.box.isStruct = true)]
       change M.necEval (env₁.ref u hu) w' = M.necEval (env₂.ref (u.shift k) (h u _ hu)) w'
       rw [hag u _ hu]
   | .step u .keep =>
       obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
       rw [Env.ref_congr _ (VarSymb.shift_level_succ (s := .keep) rfl) _
         (Ctx.ref_keep_of' hF (h u _ hu) hk), Env.ref,
-        dif_neg (by decide : ¬ Step.keep.isProj = true)]
+        dif_neg (by decide : ¬ Step.keep.isStruct = true)]
       change M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF hk) w (env₁.ref u hu)) w' =
         M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF hk) w
           (env₂.ref (u.shift k) (h u _ hu))) w'
@@ -169,21 +170,21 @@ theorem Env.ShiftAgree.diaPush (hag : Env.ShiftAgree h env₁ env₂) {x : VarSy
       have hXT := Ctx.diaIn_step_dia hr hv
       subst hXT
       rw [Env.ref_congr _ (VarSymb.shift_level_succ (s := .dia) rfl) _
-        (Ctx.ref_diaIn_of (h u _ hr)), Env.ref, dif_neg (by decide : ¬ Step.dia.isProj = true)]
+        (Ctx.ref_diaIn_of (h u _ hr)), Env.ref, dif_neg (by decide : ¬ Step.dia.isStruct = true)]
       simp only [Env.diaPush]
       exact posEval_snd_congr (hag u _ hr) w₁ hm
   | .step u .box =>
       obtain ⟨hk, hu⟩ := Ctx.boxIn_box (Γ := Γ₁) hv
       rw [Env.ref_congr _ (VarSymb.shift_level_succ (s := .box) rfl) _
         ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_boxIn_of hk (h u _ hu))), Env.ref,
-        dif_neg (by decide : ¬ Step.box.isProj = true)]
+        dif_neg (by decide : ¬ Step.box.isStruct = true)]
       change M.necEval (env₁.ref u hu) w₁.1 = M.necEval (env₂.ref (u.shift k) (h u _ hu)) w₁.1
       rw [hag u _ hu]
   | .step u .keep =>
       obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep (Γ := Γ₁) hv
       rw [Env.ref_congr _ (VarSymb.shift_level_succ (s := .keep) rfl) _
         ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_keep_of' hF (h u _ hu) hk)), Env.ref,
-        dif_neg (by decide : ¬ Step.keep.isProj = true)]
+        dif_neg (by decide : ¬ Step.keep.isStruct = true)]
       change M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF hk) w (env₁.ref u hu)) w₁.1 =
         M.necEval (GFunc.eval M.ops (GFunc.keep (σ := σ) hF hk) w
           (env₂.ref (u.shift k) (h u _ hu))) w₁.1
@@ -226,10 +227,10 @@ theorem Env.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} (env : M.En
       obtain ⟨hk, hu⟩ := Ctx.boxIn_box hx
       rw [Env.ref_congr _ (VarSymb.shift_level_zero (s := .box) rfl) _
         (Ctx.ref_boxIn_of hk (Ctx.ref_keep_of hF hu)), Env.ref,
-        dif_neg (by decide : ¬ Step.box.isProj = true)]
+        dif_neg (by decide : ¬ Step.box.isStruct = true)]
       change M.necEval (env.ref u hu) ⟨s.1, _⟩ =
         M.necEval ((env.boxPush v).ref (.step u .keep) (Ctx.ref_keep_of hF hu)) s
-      rw [Env.ref, dif_neg (by decide : ¬ Step.keep.isProj = true)]
+      rw [Env.ref, dif_neg (by decide : ¬ Step.keep.isStruct = true)]
       change _ = M.necEval (M.necEval (M.ops.necDup hF (env.ref u hu)) v) s
       rw [M.necDup_eval]
   | .step u .keep =>
@@ -238,22 +239,22 @@ theorem Env.shiftAgree_twoBox (hF : ModalSys.Four = true) {Γ : Ctx} (env : M.En
       | VTypeDia A =>
           rw [Env.ref_congr _ (VarSymb.shift_level_zero (s := .keep) rfl) _
             (Ctx.ref_keep_of' hF (Ctx.ref_keep_of' hF hu hk) hk), Env.ref,
-            dif_neg (by decide : ¬ Step.keep.isProj = true)]
+            dif_neg (by decide : ¬ Step.keep.isStruct = true)]
           change M.necEval (M.ops.posKeep hF (env.ref u hu)) ⟨s.1, _⟩ =
             M.necEval (M.ops.posKeep hF ((env.boxPush v).ref (.step u .keep)
               (Ctx.ref_keep_of' hF hu hk))) s
-          rw [Env.ref, dif_neg (by decide : ¬ Step.keep.isProj = true)]
+          rw [Env.ref, dif_neg (by decide : ¬ Step.keep.isStruct = true)]
           change _ = M.necEval (M.ops.posKeep hF
             (M.necEval (M.ops.posKeep hF (env.ref u hu)) v)) s
           rw [posKeep_posKeep]
       | VTypeBox A =>
       rw [Env.ref_congr _ (VarSymb.shift_level_zero (s := .keep) rfl) _
         (Ctx.ref_keep_of hF (Ctx.ref_keep_of hF hu)), Env.ref,
-        dif_neg (by decide : ¬ Step.keep.isProj = true)]
+        dif_neg (by decide : ¬ Step.keep.isStruct = true)]
       change M.necEval (M.ops.necDup hF (env.ref u hu)) ⟨s.1, _⟩ =
         M.necEval (M.ops.necDup hF ((env.boxPush v).ref (.step u .keep)
           (Ctx.ref_keep_of hF hu))) s
-      rw [Env.ref, dif_neg (by decide : ¬ Step.keep.isProj = true)]
+      rw [Env.ref, dif_neg (by decide : ¬ Step.keep.isStruct = true)]
       change _ = M.necEval (M.ops.necDup hF (M.necEval (M.ops.necDup hF (env.ref u hu)) v)) s
       apply M.nec_inj
       funext t
@@ -290,16 +291,17 @@ theorem ShEnv.ShiftAgree.of_raw {ρ₁ : ShEnv F Root Γ₁ w}
   | root r => intro T hv; exact hvis _ _ rfl hv
   | step v s ih =>
       intro T hv
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Γ₁.ref v = some U := by
           rw [Ctx.ref_step_proj Γ₁ v hs] at hv
           cases hU : Γ₁.ref v with
           | none => rw [hU] at hv; cases hv
           | some U => exact ⟨U, rfl⟩
         have hv₂ : Γ₂.ref (.step (v.shift k) s) = some T := by
-          rw [← VarSymb.shift_proj hs]
+          rw [← VarSymb.shift_proj (Step.isProj_of_isStruct hs)]
           exact h _ T hv
-        rw [ShEnv.ref_congr ρ₂ j (VarSymb.shift_proj hs) _ hv₂, ShEnv.ref_proj ρ₁ j hs hU hv,
+        rw [ShEnv.ref_congr ρ₂ j (VarSymb.shift_proj (Step.isProj_of_isStruct hs)) _ hv₂,
+          ShEnv.ref_proj ρ₁ j hs hU hv,
           ShEnv.ref_proj ρ₂ j hs (h v U hU) hv₂, ih U hU]
       · have hlp : (VarSymb.step v s).lastProj = false := Bool.eq_false_iff.mpr hs
         rw [ShEnv.ref_nonproj ρ₁ j hs hv]
@@ -316,14 +318,14 @@ theorem ShEnv.ShiftAgree.boxPush {ρ₁ : ShEnv F Root Γ₁ w}
       obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv
       rw [ShEnv.ref_congr _ _ (VarSymb.shift_level_succ (s := .box) rfl) _
         (Ctx.ref_boxIn_of hk (h u _ hu)),
-        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.box.isProj = true)]
+        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.box.isStruct = true)]
       change (ρ₁.ref j u hu).inner = (ρ₂.ref j (u.shift k) (h u _ hu)).inner
       rw [hag u _ hu]
   | .step u .keep =>
       obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep hv
       rw [ShEnv.ref_congr _ _ (VarSymb.shift_level_succ (s := .keep) rfl) _
         (Ctx.ref_keep_of' hF (h u _ hu) hk),
-        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
+        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isStruct = true)]
       change (GFunc.shp (GFunc.keep (σ := σ) hF hk) j (ρ₁.ref j u hu)).inner =
         (GFunc.shp (GFunc.keep (σ := σ) hF hk) j (ρ₂.ref j (u.shift k) (h u _ hu))).inner
       rw [hag u _ hu]
@@ -352,21 +354,21 @@ theorem ShEnv.ShiftAgree.diaPush {ρ₁ : ShEnv F Root Γ₁ w}
       subst hXT
       rw [ShEnv.ref_congr _ _ (VarSymb.shift_level_succ (s := .dia) rfl) _
         (Ctx.ref_diaIn_of (h u _ hr)),
-        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.dia.isProj = true)]
+        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.dia.isStruct = true)]
       simp only [ShEnv.diaPush]
       rw [hag u _ hr]
   | .step u .box =>
       obtain ⟨hk, hu⟩ := Ctx.boxIn_box (Γ := Γ₁) hv
       rw [ShEnv.ref_congr _ _ (VarSymb.shift_level_succ (s := .box) rfl) _
         ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_boxIn_of hk (h u _ hu))),
-        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.box.isProj = true)]
+        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.box.isStruct = true)]
       change (ρ₁.ref j u hu).inner = (ρ₂.ref j (u.shift k) (h u _ hu)).inner
       rw [hag u _ hu]
   | .step u .keep =>
       obtain ⟨hF, hu, hk⟩ := Ctx.boxIn_keep (Γ := Γ₁) hv
       rw [ShEnv.ref_congr _ _ (VarSymb.shift_level_succ (s := .keep) rfl) _
         ((Ctx.le_boxIn_diaIn Γ₂ _).ref (Ctx.ref_keep_of' hF (h u _ hu) hk)),
-        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isProj = true)]
+        ShEnv.ref_nonproj _ _ (by decide : ¬ Step.keep.isStruct = true)]
       change (GFunc.shp (GFunc.keep (σ := σ) hF hk) j (ρ₁.ref j u hu)).inner =
         (GFunc.shp (GFunc.keep (σ := σ) hF hk) j (ρ₂.ref j (u.shift k) (h u _ hu))).inner
       rw [hag u _ hu]

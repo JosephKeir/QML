@@ -160,8 +160,8 @@ theorem at_agree {θ₁ θ₂ : Subst σ Δ} {c : Root} (hag : ∀ v, v ≠ .roo
     ∀ u : VarSymb, u.rt ≠ c → θ₁.at u = θ₂.at u
   | .root r, h => hag _ fun he => h (by cases he; rfl)
   | .step w s, h => by
-      change (if s.isProj then (θ₁.at w).proj s else θ₁ (.step w s)) =
-        (if s.isProj then (θ₂.at w).proj s else θ₂ (.step w s))
+      change (if s.isStruct then (θ₁.at w).proj s else θ₁ (.step w s)) =
+        (if s.isStruct then (θ₂.at w).proj s else θ₂ (.step w s))
       rw [at_agree hag w h, hag _ (fun he => by cases he)]
 
 end Subst

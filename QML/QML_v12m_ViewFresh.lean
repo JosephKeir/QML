@@ -150,7 +150,8 @@ theorem LevelDepth.viewFresh {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ)
 theorem ref_empty : ∀ v : VarSymb, Ctx.empty.ref v = none
   | .root _ => rfl
   | .step v s => by
-      change (if s.isProj then (Ctx.empty.ref v).bind (·.step s) else Ctx.empty (.step v s)) = none
+      change (if s.isStruct then (Ctx.empty.ref v).bind (·.step s)
+        else Ctx.empty (.step v s)) = none
       split_ifs with hs
       · rw [ref_empty v]
         rfl
@@ -235,12 +236,12 @@ theorem levels_zero_of_insert {Γ : Ctx} {r : Root} {T : VarType} (hr : Γ.RootF
       Step.levels v.path = 0
   | .root _, _, _, _ => rfl
   | .step u s, S, hv, hrt => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · simp only [Ctx.ref, if_pos hs] at hv
         cases hu : (Γ.insert r T).ref u with
         | none => rw [hu] at hv; cases hv
         | some U =>
-            rw [Step.levels_step_of_proj hs]
+            rw [Step.levels_step_of_proj (Step.isProj_of_isStruct hs)]
             exact levels_zero_of_insert hr u U hu hrt
       · exfalso
         have hraw : (Γ.insert r T) (.step u s) = some S := by
@@ -318,12 +319,12 @@ theorem levelDepth_optIn {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ) (hw
       exact h _ T hv
   | step v s ih =>
       intro T hv
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Ctx.ref_step_proj _ v hs] at hv
         cases hU : (Γ.optIn y).ref v with
         | none => rw [hU] at hv; cases hv
         | some U =>
-            rw [Step.levels_step_of_proj hs]
+            rw [Step.levels_step_of_proj (Step.isProj_of_isStruct hs)]
             exact ih U hU
       · rw [Ctx.ref_step_nonproj _ v hs] at hv
         by_cases hc : VarSymb.step v s = .step y .dia

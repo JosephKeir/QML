@@ -191,8 +191,8 @@ omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 /-- Two renamings in a row are one, when the first sends items to items. -/
 theorem sim_eS_ren_comp {Γ Δ₁ Δ₂ : Ctx} {ι : VarSymb → VarSymb} (f g h : VarSymb → VarSymb)
     (hθ : Subst.Ok Δ₁ (eS σ Δ₂ (ofRen f))) (hc : Subst.Coh ι Δ₁ (eS σ Δ₂ (ofRen f)))
-    (hg : ∀ u st T, st.isProj = false → Γ (.step u st) = some T → ∃ u' st',
-      g (.step u st) = .step u' st' ∧ st'.isProj = false ∧ h (.step u st) = f (.step u' st')) :
+    (hg : ∀ u st T, st.isStruct = false → Γ (.step u st) = some T → ∃ u' st',
+      g (.step u st) = .step u' st' ∧ st'.isStruct = false ∧ h (.step u st) = f (.step u' st')) :
     Subst.Sim Γ (eS σ Δ₂ (ofRen h)) ((eS σ Δ₁ (ofRen g)).comp (eS σ Δ₂ (ofRen f)) hθ hc) := by
   refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v T hl hv => ?_
   match v, hl, hv with

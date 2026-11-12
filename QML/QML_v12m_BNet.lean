@@ -74,6 +74,7 @@ theorem arrowS_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') (img : ℕ → ℕ) :
   | .step _ .dia => rfl
   | .step _ .here => rfl
   | .step _ .keep => rfl
+  | .step _ .at => rfl
 
 theorem arrowXS_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') (img : ℕ → ℕ) (x : VarSymb) (cx : ℕ) :
     (arrowXS σ Δ img x cx).mono h = arrowXS σ Δ' img x cx := by
@@ -89,6 +90,7 @@ theorem arrowXS_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') (img : ℕ → ℕ) (x : Var
   | .step _ .snd => rfl
   | .step _ .here => rfl
   | .step _ .keep => rfl
+  | .step _ .at => rfl
 
 /-- On the `□` view a witness arrow is the plain arrow. -/
 theorem sim_arrowXS_arrowS [ModalSys.FourOff] {l : List VarType} {Δ : Ctx}

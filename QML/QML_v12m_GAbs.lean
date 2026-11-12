@@ -54,6 +54,7 @@ theorem diaIn_step_congr {Γ Γ' : Ctx} {u : VarSymb} (h : Γ.ref u = Γ'.ref u)
   | fst => exact boxIn_step_congr h .fst
   | snd => exact boxIn_step_congr h .snd
   | here => exact boxIn_step_congr h .here
+  | «at» => exact boxIn_step_congr h .at
 
 /-- ⭐The view an edge translates: the `□` view, or for a child made for `◇_x` the `◇_x` view
     (B's edge kinds). -/
@@ -113,6 +114,8 @@ theorem ppath_gPath : ∀ (R : VarType) (q : List Step) (s : Step), PPath (gPath
   | .VTypeBox _, .fst :: _, _ | .VTypeBox _, .snd :: _, _ | .VTypeBox _, .box :: _, _
   | .VTypeBox _, .dia :: _, _ | .VTypeBox _, .keep :: _, _ => fun _ ht => by cases ht
   | .VTypeDia _, _, _ | .Var, _, _ | .VTypeOne, _, _ => fun _ ht => by cases ht
+  | .VTypeProd _ _, .at :: _, _ | .VTypeBox _, .at :: _, _ => fun _ ht => by cases ht
+  | .VTypeBox _, [], .at => fun _ ht => by cases ht
 
 /-! ## The tuple of a variable's items -/
 
@@ -153,7 +156,7 @@ abbrev gtup (hF : ModalSys.Four = true) {Γ : Ctx} (u : VarSymb) (R : VarType)
 /-- ⭐An entry holding the tuple of `u : U` (weakened into a larger context), read where `gPath`
     sends the item `v.s` of `v = u.q`, is the item itself. -/
 theorem at_gPath_gtupB (hF : ModalSys.Four = true) {Γ Δ : Ctx} (hle : Γ.boxIn.Le Δ)
-    (θ : Subst σ Δ) (b : Bool) (hb : ModalSys.keepOnly = b) {s : Step} (hs : s.isProj = false)
+    (θ : Subst σ Δ) (b : Bool) (hb : ModalSys.keepOnly = b) {s : Step} (hs : s.isStruct = false)
     {T : VarType} :
     ∀ (U : VarType) (q : List Step) {U' : VarType} (u w : VarSymb) (hu : Γ.ref u = some U),
       PPath q → U.walk q = some U' → θ.at w = .tm (Term.mono hle (gtupB hF u U b hb hu)) →
@@ -195,6 +198,7 @@ theorem at_gPath_gtupB (hF : ModalSys.Four = true) {Γ Δ : Ctx} (hle : Γ.boxIn
               cases b <;> exact hw
           | _ => cases hk
       | dia => cases hit
+      | «at» => cases hit
       | _ => cases hs
   | U, t :: q, U', u, w, hu, hp, hq, hw, v, hv, hit => by
       have hq' : PPath q := fun s' hs' => hp s' (by simp [hs'])
@@ -237,6 +241,7 @@ theorem at_gPath_gtupB (hF : ModalSys.Four = true) {Γ Δ : Ctx} (hle : Γ.boxIn
       | box => exact absurd (hp .box (by simp)) (by decide)
       | dia => exact absurd (hp .dia (by simp)) (by decide)
       | keep => exact absurd (hp .keep (by simp)) (by decide)
+      | «at» => exact absurd (hp .at (by simp)) (by decide)
 
 /-! ## The views of an edge -/
 
@@ -296,6 +301,7 @@ theorem kView_boxIn {L : List VarType} {k : Option VarSymb} {c : ℕ} (hk : KOld
       | fst => exact h
       | snd => exact h
       | here => exact h
+      | «at» => exact h
 
 /-- An item of an older variable is in the older view. -/
 theorem kView_old {A : VarType} {l : List VarType} {u : VarSymb} (h : u.rt ≠ .free l.length)
@@ -378,9 +384,9 @@ theorem instantiate_gtup_gabs (hF : ModalSys.Four = true) (k : Option VarSymb) (
   refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T hl hv
   obtain ⟨u, s, rfl, hup, U, hU⟩ := kView_item hv
-  have hs' : s.isProj = false := hl
+  have hs' : s.isStruct = false := hl
   change SubE.Sim T (.ren (.step u s))
-    ((if s.isProj then SubE.hide else .ren (gabsF A l.length (.step u s))).comp _ _ _)
+    ((if s.isStruct then SubE.hide else .ren (gabsF A l.length (.step u s))).comp _ _ _)
   rw [if_neg (by simp [hs'])]
   by_cases hrt : u.rt = .free l.length
   · rw [gabsF_new hrt]
@@ -425,7 +431,7 @@ noncomputable def entOf (Δ : Ctx) : LEnt σ → SubE σ Δ
 /-- ⭐The renaming of an edge given by an entry map `g`. -/
 noncomputable def eS (σ : Signature) (Δ : Ctx) (g : VarSymb → LEnt σ) : Subst σ Δ where
   ty v := match v with
-  | .step u s => if s.isProj then .hide else entOf Δ (g (.step u s))
+  | .step u s => if s.isStruct then .hide else entOf Δ (g (.step u s))
   | .root _ => .hide
 
 /-- Where an entry sends annotation indices below it. -/
@@ -451,8 +457,8 @@ theorem entOk_ofRen {Γ Δ : Ctx} {f : VarSymb → VarSymb} (hf : ItemOk Γ Δ f
     EntOk Γ Δ (ofRen (σ := σ) f) := hf
 
 theorem eS_item {Δ : Ctx} (g : VarSymb → LEnt σ) {u : VarSymb} {s : Step}
-    (hs : s.isProj = false) : eS σ Δ g (.step u s) = entOf Δ (g (.step u s)) := by
-  change (if s.isProj then SubE.hide else _) = _
+    (hs : s.isStruct = false) : eS σ Δ g (.step u s) = entOf Δ (g (.step u s)) := by
+  change (if s.isStruct then SubE.hide else _) = _
   rw [if_neg (by simp [hs])]
 
 open Classical in
@@ -506,7 +512,7 @@ theorem ok_eS_kView {l : List VarType} {k : Option VarSymb} {Δ : Ctx}
 
 /-- The index map of an entry map at an item `u.s`, followed by `p`, for `u` a projection path. -/
 theorem eIdx_item (g : VarSymb → LEnt σ) {u : VarSymb} (hu : PPath u.path) {s : Step}
-    (hs : s.isProj = false) (p : List Step) :
+    (hs : s.isStruct = false) (p : List Step) :
     eIdx g ((VarSymb.step u s).ext p) = entIdx (g (.step u s)) p := by
   unfold eIdx
   rw [VarSymb.ext_path, VarSymb.ext_rt]
@@ -598,10 +604,10 @@ theorem subst_gext_gabs (hF : ModalSys.Four = true) {k : Option VarSymb} {A : Va
   refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T hl hv
   obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
-  have hs' : s.isProj = false := hl
+  have hs' : s.isStruct = false := hl
   rw [eS_item _ hs']
   change SubE.Sim T _
-    ((if s.isProj then SubE.hide else .ren (gabsF A ls.length (.step u s))).comp _ _ _)
+    ((if s.isStruct then SubE.hide else .ren (gabsF A ls.length (.step u s))).comp _ _ _)
   rw [if_neg (by simp [hs'])]
   by_cases hrt : u.rt = .free ls.length
   · rw [gextF_new hrt, gabsF_new hrt]

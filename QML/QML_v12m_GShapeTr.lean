@@ -148,7 +148,7 @@ theorem pull_item {Γ : Ctx} {t : GW hF M₀} (hnp : Γ.NoProjLast) {ρ' : GEnv 
   match w, hw, hnp w T hw with
   | .root _, _, _ => rfl
   | .step v st, hw', e =>
-      have e' : st.isProj = false := e
+      have e' : st.isStruct = false := e
       exact (Model.ShEnv.ref_nonproj _ _ (by rw [e']; decide) _).symm
 
 end GArrow

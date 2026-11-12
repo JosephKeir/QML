@@ -15,6 +15,7 @@ package.  Design detail stays in `v12-modal-extensions.md` (per axiom) and `v12-
 | strong B, rows 3–4 (row 3: B's unit `A → □◇A` read per arrow; row 4 the same along `◇_y`; flag `BStrongW`), with T (strong form, `WCoh`) and D (either strength), 4 off | ✓ | ✓ (+ strong completeness, compactness; every presented context; 2026-10-22, `v12-modal-extensions.md` §11.23: the per-arrow reading — model law `posBack_exists`, rule `ret_realise` (`ret_route` derived, `Proof.ret_route_node`, and removed), every edge doubly witnessed; the uniform-carrier design with named back witnesses abandoned, record branch `record/b2-named-witnesses`) | the network, strong chain (`bdataS`, `LimitEx.ofW`) |
 | 4 with its strong forms (the lift `FourStrong`, `FourStrongW`, either or both, independently), T and D (either strength), B off | ✓ | ✓ (+ strong completeness, compactness; every presented context; `GArrow.completenessG_presented`, 2026-10-25; T by D-H3 and the leaf calculus; `FourStrongW` without `FourStrong` under T by the leaf-valued root action, `RootKeepLaws`) | the growing tree (`GArrow.*`, `gmodel`) |
 | 5 with 4 (K45, KD45 with any lifts; S5 with every strong form; KB5, KDB5 weak, with or without lifts); B with 4 means 5 | ✓ | ✓ (`completenessCube`; the cluster model `GArrow.cmodel`, the hub `Model.cone` for K45/KD45 without both lifts, the root's loop for KB5/KDB5) | the cluster on the growing tree |
+| **`Opt` on** (branch `wip/in-atom`): K, D (either strength) | ✓ | ✓ (`OCanon.completeness`, 2026-11-12; every presented context) | the `Opt` tree (`OCanon.*`), `Ind` equality, no shapes |
 | *Exceptions (recorded, possible gaps):* KB5 with strong B (KDB5 strong read as S5 strong); `FiveStrong` without `FourStrong` in K45/KD45 (incomplete as ruled, outside the cube); **5 without 4, K5 and KD5, weak and strong** (sound; incomplete as ruled, missing `five_rigid`; no construction: an amalgamation obstruction, saturation the most promising route, judged not worth it) | ✓ where stated | — | — |
 | 4's converse (`□□A → □A`, density; beyond the cube, see milestone 4) | not stated | — | — |
 
@@ -395,6 +396,41 @@ complete, or the exceptions are understood and recorded.
 * *D's graph form:* `∀u:□A. ∃x:◇A. ◇_x(x.dia = u.box)`, rejected as a statement of strong D for
   want of equality at `◇` types.  Strong D itself (`D_ex`, the map `Nec → Pos`) is complete.  A
   relation form, like `Here`, is possible but has no present use (§2c).
+
+## Milestone 5 — the `Opt` refactor (branch `wip/in-atom`)  ← now *(order agreed 2026-11-12)*
+
+**Goal:** the end state of `v12-modal-extensions.md` §12.17: shapes deleted, interpolation in every
+system if possible, and `Opt` a semi-independent flag (required where a system needs it).  Design:
+§12.10–12.22.
+
+* **M1, K and D with `Opt` on: done (2026-11-12).**  Rules, soundness, Leibniz along `≡`, and
+  completeness for the tree (`QML_v12m_OCanon*`, `OCanon.completeness`).
+* **M2, KT** ← next.  `Here` through `◇⁰` at the identity arrow; shapes and `Ind` off the tree;
+  `φ ⊢ ψ` and its interpolant.  T's necessary form (NecT, item 1 of the next section) goes here,
+  since T is being reworked anyway.  Scoped (2026-11-12, `v12-modal-extensions.md` §12.23): the crux is
+  `T_box`'s collapse of `◇⁰_u` at the identity arrow; candidates (H) collapse into a binder with
+  `Here` primitive as identity, (S) a new identity-reading step; paper check of (H) first.  **(H) checked (§12.24): it fails substitution closure** (the body lands in `Here`'s subject on one side and in the formula on the other).  **Recommended: (S):** a step `y.at` that is neither a projection nor a level step; identity witnesses derived from `ref`; the collapse a homomorphism; `Here` definable, with its weak rules derivable.  **(S) passes the second check (§12.25):** steps get a third class (`Step.isLevel` beside `isProj`), witnesses a kind (arrow, identity) on `optx`, `optIn` and M1's rules, the identity kind derived from `ref`; `T_box` sound with a homomorphic collapse; all seven weak `Here` rules derived.  Decisions taken (2026-11-12): kind parameter, `WFF.here` gated to `Opt` off, `Step.at`.
+  **Step 1 of 7 built (2026-11-12): `Step.at`**, the strict build green (§12.26: `isProj` means
+  "no level", the new `isStruct` "read off the parent"; a `dia` collapses to `.at` only with
+  `Opt` on).  Next: step 2, the witness kind on `optx`, `optIn` and M1's rules.
+* **M3, GK with `◇⁰`.**  Cut elimination and Craig for K and KT.  Stop if the interpolation proof's
+  `◇⁰` case fails.
+* **M4a, 4 on the tree.**  No new rule on paper (§12.12).
+* **M4b, B on the network.**  Theory-decided labels replace `sep` and `unl`; strong B's invariants
+  without `sep` to check.  The redundancy sweep (item 3 of the next section) goes here, since it is
+  mostly about strong B's `ret`/`back` rules and `Ret` may go.
+* **M4c, 5 redesigned, on paper first** (user, 2026-11-12: don't port the current 5 and then remake
+  it).  Item 2 of the next section: the diagonal transport `m.side : □A → □◇A` with the gather as
+  its surjectivity, the `◇`-gather (`FiveStrongW`), whether they close the K5/KD5 gaps, and whether
+  5 needs `Opt` at all.  Check first whether `Opt`'s witnesses (values along the arrow just taken)
+  get past F2's obstruction ("an environment holds only objects at its own world"): a necessary
+  object moved across is defined only on `side a`'s image, which is what a witness is.  If 5 does
+  not need `Opt`, decide whether the new rules belong on the `Opt`-off side too.
+* **M4d, 5 built once,** in the form M4c settles.
+* **Finally:** the requirement fields (`Opt` required for T and strong B; weak B and 5 as
+  interpolation decides), then delete shapes (`Shp`, `Arrows.Leaf`, `RootPoss`, `GFunc.shp`,
+  `termShp`, `CarrierTag`, `IndInvariant`, probably `Model.Ret`) and the files the refactor made
+  redundant.  Shapes can go only here: strong B and S5 use them until M4b and M4d.
 
 ## After the `Opt` refactor — the strong forms' pattern (user, 2026-11-10)
 

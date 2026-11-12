@@ -202,18 +202,18 @@ abbrev pack2XCtx : Ctx := Ctx.empty.insert (.bnd 0) (.VTypeProd (.VTypeProd (bcT
 omit [ModalSys.NoFour] in
 theorem pack2XCtx_ff :
     (pack2XCtx l X U).ref (.step (.step (.root (.bnd 0)) .fst) .fst) = some (bcT l) := by
-  simp only [Ctx.ref, Step.isProj, if_true]
+  simp only [Ctx.ref]
   rfl
 
 omit [ModalSys.NoFour] in
 theorem pack2XCtx_fs :
     (pack2XCtx l X U).ref (.step (.step (.root (.bnd 0)) .fst) .snd) = some X := by
-  simp only [Ctx.ref, Step.isProj, if_true]
+  simp only [Ctx.ref]
   rfl
 
 omit [ModalSys.NoFour] in
 theorem pack2XCtx_snd : (pack2XCtx l X U).ref (.step (.root (.bnd 0)) .snd) = some U := by
-  simp only [Ctx.ref, Step.isProj, if_true]
+  simp only [Ctx.ref]
   rfl
 
 /-- ⭐Packing a body over `l`'s view along `x` and a slot `e : U`. -/
@@ -1613,6 +1613,7 @@ theorem liftBodyW_mono {lv lv' cls clt : List VarType} (hs : cls <:+ lv) (hl : l
       | .step _ .dia => rfl
       | .step _ .here => rfl
       | .step _ .keep => rfl
+      | .step _ .at => rfl
   exact WFF.subst_congr _ _ _ _ _ _ _ _
     (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
       fun v U _ _ => by rw [heq v]; exact .refl _) Φ
@@ -1674,6 +1675,7 @@ theorem liftBodyX_mono {lv lv' cls clt : List VarType} (hs : cls <:+ lv) (hl : l
           split <;> rfl
       | .step _ .here => rfl
       | .step _ .keep => rfl
+      | .step _ .at => rfl
   exact WFF.subst_congr _ _ _ _ _ _ _ _
     (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
       fun v U _ _ => by rw [heq v]; exact .refl _) Φ

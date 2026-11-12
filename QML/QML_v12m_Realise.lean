@@ -76,7 +76,7 @@ theorem ok_realise (hT : ModalSys.T = true) {x : VarSymb} {A : VarType} {a : Ann
       have hu := Ctx.boxIn_step_box hv
       change ((SubE.ren (.step u .here) : SubE σ Γ)).OkRef T
       change Γ.ref (.step u .here) = some T
-      rw [Ctx.ref_step_proj Γ u (rfl : Step.here.isProj = true), hu]
+      rw [Ctx.ref_step_proj Γ u (rfl : Step.here.isStruct = true), hu]
       change (if ModalSys.T then some T else none) = some T
       rw [if_pos hT]
   | .step u .keep =>
@@ -178,13 +178,14 @@ theorem ext_snoc (v : VarSymb) (p : List Step) (s : Step) :
     of the proof system — the Henkin construction already names `∃`-witnesses this way — so the
     `y.ret` objection, which was about substituting a compound term leaving no address, does not
     arise. -/
-def realiseAddr (x d : VarSymb) (k : ℕ) (v : VarSymb) : VarSymb :=
+def realiseAddr [ModalSys] (x d : VarSymb) (k : ℕ) (v : VarSymb) : VarSymb :=
   match belowDia x v with
   | some p => d.ext p
   | none => v.collapse k
 
 /-- Realisation passes through projections. -/
-theorem realiseAddr_proj {x d : VarSymb} {k : ℕ} {v : VarSymb} {s : Step} (hs : s.isProj = true) :
+theorem realiseAddr_proj [ModalSys] {x d : VarSymb} {k : ℕ} {v : VarSymb} {s : Step}
+    (hs : s.isProj = true) :
     realiseAddr x d k (.step v s) = .step (realiseAddr x d k v) s := by
   have hsd : s ≠ .dia := by
     intro he
@@ -207,7 +208,7 @@ end VarSymb
 
 /-- Realising an annotation, mirroring `Ann.collapse`: the level `k` is threaded, rising by one on
     each descent into a view. -/
-def Ann.realise (x d : VarSymb) : ℕ → {T : VarType} → Ann T → Ann T
+def Ann.realise [ModalSys] (x d : VarSymb) : ℕ → {T : VarType} → Ann T → Ann T
   | _, _, .var => .var
   | _, _, .one => .one
   | k, _, .prod a b => .prod (Ann.realise x d k a) (Ann.realise x d k b)
@@ -221,7 +222,7 @@ def Ctx.Realises [ModalSys] (k : ℕ) (x d : VarSymb) (Γ₁ Γ₂ : Ctx) : Prop
 
 /-- Realisation passes through a level step other than the realised `dia`, dropping the level by
     one — the analogue of `VarSymb.collapse_level_succ`. -/
-theorem VarSymb.realiseAddr_level {x d : VarSymb} {k : ℕ} {v : VarSymb} {s : Step}
+theorem VarSymb.realiseAddr_level [ModalSys] {x d : VarSymb} {k : ℕ} {v : VarSymb} {s : Step}
     (hs : s.isProj = false) (hsd : s ≠ .dia) :
     VarSymb.realiseAddr x d (k + 1) (.step v s) = .step (VarSymb.realiseAddr x d k v) s := by
   have hne : (VarSymb.step v s) ≠ .step x .dia := by
@@ -249,13 +250,13 @@ theorem Ctx.Realises.of_raw [ModalSys] {k : ℕ} {x d : VarSymb} {Γ₁ Γ₂ : 
   | root r => intro T hv; exact h _ _ rfl hv
   | step v s ih =>
       intro T hv
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Ctx.ref_step_proj _ _ hs] at hv
-        rw [VarSymb.realiseAddr_proj hs, Ctx.ref_step_proj _ _ hs]
+        rw [VarSymb.realiseAddr_proj (Step.isProj_of_isStruct hs), Ctx.ref_step_proj _ _ hs]
         cases hU : Γ₁.ref v with
         | none => rw [hU] at hv; cases hv
         | some U => rw [hU] at hv; rw [ih U hU]; exact hv
-      · exact h _ _ (show s.isProj = false from Bool.eq_false_iff.mpr hs)
+      · exact h _ _ (show s.isStruct = false from Bool.eq_false_iff.mpr hs)
           (by rwa [Ctx.ref_step_nonproj _ _ hs] at hv)
 
 /-! ## The `diaIn` side condition: a root is invisible in a view
@@ -314,7 +315,7 @@ theorem Ctx.Realises.boxIn [ModalSys] {k : ℕ} {x d : VarSymb} {Γ₁ Γ₂ : C
 
 /-- Realisation passes through a `dia` step on a *different* witness.  The hypothesis `u ≠ x` is
     what the root condition supplies: see `Ctx.ne_root_of_ref_boxIn`. -/
-theorem VarSymb.realiseAddr_dia_ne {x d : VarSymb} {k : ℕ} {u : VarSymb} (hu : u ≠ x) :
+theorem VarSymb.realiseAddr_dia_ne [ModalSys] {x d : VarSymb} {k : ℕ} {u : VarSymb} (hu : u ≠ x) :
     VarSymb.realiseAddr x d (k + 1) (.step u .dia) =
       .step (VarSymb.realiseAddr x d k u) .dia := by
   have hne : (VarSymb.step u .dia) ≠ .step x .dia := by

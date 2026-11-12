@@ -219,7 +219,7 @@ theorem gagree_of_raw {Γ : Ctx} {w : GW hF M₀} {k : ℕ} (C : GTr σ Γ (ctxO
   | root r => intro T hv; exact h _ _ rfl hv
   | step v st ih =>
       intro T hv
-      by_cases hs : st.isProj = true
+      by_cases hs : st.isStruct = true
       · rw [Model.Env.ref, dif_pos hs]
         split
         · rename_i U hU
@@ -258,6 +258,7 @@ theorem gagree_of_raw {Γ : Ctx} {w : GW hF M₀} {k : ℕ} (C : GTr σ Γ (ctxO
           | box => cases hs
           | dia => cases hs
           | keep => cases hs
+          | «at» => cases hs
         · rename_i hU
           rw [Ctx.ref_step_proj _ _ hs, hU] at hv
           cases hv
@@ -468,7 +469,7 @@ theorem env_ref_raw {Γ : Ctx} {w : GW hF M₀} (env : (gmodel hF hM₀).Env Γ 
   match v, hlp with
   | .root _, _ => rfl
   | .step v st, e =>
-      have e' : st.isProj = false := e
+      have e' : st.isStruct = false := e
       exact Model.Env.ref_nonproj' env (by rw [e']; decide) _
 
 /-- ⭐Under T, **the shapes of an environment agreeing with a chain are the canonical shapes
@@ -488,7 +489,7 @@ theorem envShape_gtr (hSh : ModalSys.shaped = true) {Γ : Ctx} {w : GW hF M₀} 
   match v, hlp with
   | .root _, _ => rfl
   | .step v' st, e =>
-      have e' : st.isProj = false := e
+      have e' : st.isStruct = false := e
       exact Model.ShEnv.ref_nonproj _ _ (by rw [e']; decide) _
 
 /-! ## The truth lemma for terms -/

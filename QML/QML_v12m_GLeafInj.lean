@@ -158,16 +158,18 @@ theorem Wr.mdepth_wrap {σ : Signature} {Γ : Ctx} : ∀ {Δ : Ctx} (w : Wr Γ �
 /-! ## Keep-first addresses -/
 
 omit [ModalSys] in
-theorem ppath_of_levels_zero : ∀ {p : List Step}, Step.levels p = 0 → PPath p
-  | [], _ => fun _ h => by cases h
-  | s :: p, h => by
+theorem ppath_of_levels_zero : ∀ {p : List Step}, Step.at ∉ p → Step.levels p = 0 → PPath p
+  | [], _, _ => fun _ h => by cases h
+  | s :: p, hat, h => by
       change (if s.isProj then 0 else 1) + Step.levels p = 0 at h
       intro t ht
       rcases List.mem_cons.mp ht with rfl | ht
-      · by_contra hs
+      · refine Step.isStruct_of_isProj ?_ (fun e => hat (e ▸ List.mem_cons_self))
+        by_contra hs
         rw [if_neg hs] at h
         omega
-      · exact ppath_of_levels_zero (by split_ifs at h <;> omega) t ht
+      · exact ppath_of_levels_zero (fun hm => hat (List.mem_cons_of_mem _ hm))
+          (by split_ifs at h <;> omega) t ht
 
 /-- ⭐An address whose first level step is a `keep`. -/
 def KF (y : VarSymb) : Prop :=
@@ -226,7 +228,7 @@ theorem KLe.of_decl {Δ' Δ : Ctx}
     (h : ∀ y T, KF y → y.lastProj = false → Δ y = some T → Δ'.ref y = some T) : KLe Δ' Δ
   | .root r, _, hy, _ => absurd hy (not_KF_root r)
   | .step v st, T, hy, hr => by
-      by_cases hs : st.isProj = true
+      by_cases hs : st.isStruct = true
       · rw [Ctx.ref_step_proj Δ v hs] at hr
         rw [Ctx.ref_step_proj Δ' v hs]
         rcases KF.of_step hy with ⟨-, rfl⟩ | hv
@@ -330,59 +332,15 @@ theorem Pushed.not_ppath {s : GW hF M₀} {i : ℕ} {Δ : Ctx} {ρ : GEnv hF M�
     rw [levels_ppath hp] at this
     cases this
 
-/-- ⭐**The keep-first part of a pushed environment is a chain of views from the `□` view**: the
-    canonical environment pushed along it agrees with the pushed one, and declares every
-    keep-first address. -/
-theorem Pushed.kpart {s : GW hF M₀} {i : ℕ} {Δ : Ctx} {ρ : GEnv hF M₀ Δ s} {j : ℕ}
-    (hP : Pushed hF M₀ s i Δ ρ (j + 1)) :
-    ∃ (Δ' : Ctx) (w : Wr (ctxOf (glat s i)) Δ') (hle : Δ'.Le Δ), w.len = j ∧
-      Model.ShEnv.Agree hle ((famEnv cEnv (ctxOf (glat s i)) s).pushAlong w) ρ ∧ KLe Δ' Δ := by
-  generalize hn : j + 1 = n at hP
-  induction hP generalizing j with
-  | base => cases hn
-  | @box Δ ρ j₀ hP ih =>
-      obtain rfl : j₀ = j := by omega
-      cases j₀ with
-      | zero =>
-          cases hP with
-          | base => exact ⟨_, .nil, Ctx.Le.refl _, rfl, fun _ _ _ => rfl, KLe.refl _⟩
-      | succ j' =>
-          obtain ⟨Δ', w, hle, hlen, hag, hk⟩ := ih rfl
-          subst hlen
-          exact ⟨_, .box w, hle.boxIn, rfl, Model.ShEnv.boxPush_agree hag _,
-            KLe.boxIn hk hP.not_ppath⟩
-  | @dia Δ ρ j₀ x X hx hP ih =>
-      obtain rfl : j₀ = j := by omega
-      cases j₀ with
-      | zero =>
-          cases hP with
-          | base =>
-              refine ⟨_, .nil, Ctx.le_boxIn_diaIn _ x, rfl,
-                Model.ShEnv.box_dia_agree _ 0 hx, KLe.boxIn_diaIn _ (not_KF_of_ppath ?_)⟩
-              exact ppath_of_levels_zero ((Pushed.base (i := i)).levels x hx)
-      | succ j' =>
-          obtain ⟨Δ', w, hle, hlen, hag, hk⟩ := ih rfl
-          subst hlen
-          by_cases hKF : KF x
-          · have hx' := hk x _ hKF hx
-            exact ⟨_, .dia w x X hx', hle.diaIn x, rfl,
-              Model.ShEnv.diaPush_agree hag _ hx', KLe.diaIn hk hP.not_ppath x⟩
-          · exact ⟨_, .box w, hle.boxIn.trans (Ctx.le_boxIn_diaIn Δ x), rfl,
-              (Model.ShEnv.boxPush_agree hag _).trans (Model.ShEnv.box_dia_agree ρ _ hx),
-              (KLe.boxIn hk hP.not_ppath).trans (KLe.boxIn_diaIn Δ hKF)⟩
-
-
-/-! ## The two kinds of addresses -/
-
 omit [ModalSys.NoOpt] in
 /-- Reachable addresses have a property closed under projections when the declared ones do. -/
 theorem ref_induct {Δ : Ctx} {P : VarSymb → Prop}
     (hd : ∀ v T, v.lastProj = false → Δ v = some T → P v)
-    (hp : ∀ v st, st.isProj = true → P v → P (.step v st)) :
+    (hp : ∀ v st, st.isStruct = true → P v → P (.step v st)) :
     ∀ (y : VarSymb) {T : VarType}, Δ.ref y = some T → P y
   | .root r, T, hy => hd _ T rfl hy
   | .step v st, T, hy => by
-      by_cases hs : st.isProj = true
+      by_cases hs : st.isStruct = true
       · rw [Ctx.ref_step_proj _ v hs] at hy
         cases hU : Δ.ref v with
         | none => rw [hU] at hy; cases hy
@@ -393,7 +351,7 @@ theorem ref_induct {Δ : Ctx} {P : VarSymb → Prop}
 theorem Pushed.nobox (hko : ModalSys.keepOnly = true) {s : GW hF M₀} {i : ℕ} {Δ : Ctx}
     {ρ : GEnv hF M₀ Δ s} {j : ℕ} (hP : Pushed hF M₀ s i Δ ρ j) :
     ∀ (y : VarSymb) {T : VarType}, Δ.ref y = some T → Step.box ∉ y.path := by
-  have hp : ∀ (v : VarSymb) (st : Step), st.isProj = true → Step.box ∉ v.path →
+  have hp : ∀ (v : VarSymb) (st : Step), st.isStruct = true → Step.box ∉ v.path →
       Step.box ∉ (VarSymb.step v st).path := fun v st hs hv h => by
     change Step.box ∈ v.path ++ [st] at h
     rcases List.mem_append.mp h with h | h
@@ -446,21 +404,115 @@ theorem Pushed.nobox (hko : ModalSys.keepOnly = true) {s : GW hF M₀} {i : ℕ}
       | .step _ .snd, hv => cases hv
       | .step _ .here, hv => cases hv
 
+/-- No reachable address of a pushed context has an `at` step: no view declares one. -/
+theorem Pushed.noat {s : GW hF M₀} {i : ℕ} {Δ : Ctx} {ρ : GEnv hF M₀ Δ s} {j : ℕ}
+    (hP : Pushed hF M₀ s i Δ ρ j) :
+    ∀ (y : VarSymb) {T : VarType}, Δ.ref y = some T → Step.at ∉ y.path := by
+  have hp : ∀ (v : VarSymb) (st : Step), st.isStruct = true → Step.at ∉ v.path →
+      Step.at ∉ (VarSymb.step v st).path := fun v st hs hv h => by
+    change Step.at ∈ v.path ++ [st] at h
+    rcases List.mem_append.mp h with h | h
+    · exact hv h
+    · rw [← List.mem_singleton.mp h] at hs
+      cases hs
+  have hl : ∀ {u : VarSymb} {st : Step}, st ≠ .at → Step.at ∉ u.path →
+      Step.at ∉ (VarSymb.step u st).path := fun hst hu h => by
+    change Step.at ∈ _ ++ [_] at h
+    rcases List.mem_append.mp h with h | h
+    · exact hu h
+    · exact hst (List.mem_singleton.mp h).symm
+  induction hP with
+  | base =>
+      refine ref_induct (fun v T _ hv => ?_) hp
+      obtain ⟨r, rfl⟩ := ctxOf_decl hv
+      exact List.not_mem_nil
+  | @box Δ ρ j hP ih =>
+      refine ref_induct (fun v T _ hv => ?_) hp
+      match v, hv with
+      | .step u .keep, hv => exact hl nofun (ih u (Ctx.boxIn_keep hv).2.1)
+      | .step u .box, hv => exact hl nofun (ih u (Ctx.boxIn_box hv).2)
+      | .root _, hv => cases hv
+      | .step _ .fst, hv => cases hv
+      | .step _ .snd, hv => cases hv
+      | .step _ .dia, hv => cases hv
+      | .step _ .here, hv => cases hv
+  | @dia Δ ρ j x X hx hP ih =>
+      refine ref_induct (fun v T _ hv => ?_) hp
+      match v, hv with
+      | .step u .dia, hv =>
+          obtain ⟨rfl, -⟩ := Ctx.diaIn_dia_inv hv
+          exact hl nofun (ih u hx)
+      | .step u .keep, hv => exact hl nofun (ih u (Ctx.boxIn_keep (Γ := Δ) hv).2.1)
+      | .step u .box, hv => exact hl nofun (ih u (Ctx.boxIn_box (Γ := Δ) hv).2)
+      | .root _, hv => cases hv
+      | .step _ .fst, hv => cases hv
+      | .step _ .snd, hv => cases hv
+      | .step _ .here, hv => cases hv
+
+/-- ⭐**The keep-first part of a pushed environment is a chain of views from the `□` view**: the
+    canonical environment pushed along it agrees with the pushed one, and declares every
+    keep-first address. -/
+theorem Pushed.kpart {s : GW hF M₀} {i : ℕ} {Δ : Ctx} {ρ : GEnv hF M₀ Δ s} {j : ℕ}
+    (hP : Pushed hF M₀ s i Δ ρ (j + 1)) :
+    ∃ (Δ' : Ctx) (w : Wr (ctxOf (glat s i)) Δ') (hle : Δ'.Le Δ), w.len = j ∧
+      Model.ShEnv.Agree hle ((famEnv cEnv (ctxOf (glat s i)) s).pushAlong w) ρ ∧ KLe Δ' Δ := by
+  generalize hn : j + 1 = n at hP
+  induction hP generalizing j with
+  | base => cases hn
+  | @box Δ ρ j₀ hP ih =>
+      obtain rfl : j₀ = j := by omega
+      cases j₀ with
+      | zero =>
+          cases hP with
+          | base => exact ⟨_, .nil, Ctx.Le.refl _, rfl, fun _ _ _ => rfl, KLe.refl _⟩
+      | succ j' =>
+          obtain ⟨Δ', w, hle, hlen, hag, hk⟩ := ih rfl
+          subst hlen
+          exact ⟨_, .box w, hle.boxIn, rfl, Model.ShEnv.boxPush_agree hag _,
+            KLe.boxIn hk hP.not_ppath⟩
+  | @dia Δ ρ j₀ x X hx hP ih =>
+      obtain rfl : j₀ = j := by omega
+      cases j₀ with
+      | zero =>
+          cases hP with
+          | base =>
+              refine ⟨_, .nil, Ctx.le_boxIn_diaIn _ x, rfl,
+                Model.ShEnv.box_dia_agree _ 0 hx, KLe.boxIn_diaIn _ (not_KF_of_ppath ?_)⟩
+              exact ppath_of_levels_zero ((Pushed.base (i := i)).noat x hx)
+                ((Pushed.base (i := i)).levels x hx)
+      | succ j' =>
+          obtain ⟨Δ', w, hle, hlen, hag, hk⟩ := ih rfl
+          subst hlen
+          by_cases hKF : KF x
+          · have hx' := hk x _ hKF hx
+            exact ⟨_, .dia w x X hx', hle.diaIn x, rfl,
+              Model.ShEnv.diaPush_agree hag _ hx', KLe.diaIn hk hP.not_ppath x⟩
+          · exact ⟨_, .box w, hle.boxIn.trans (Ctx.le_boxIn_diaIn Δ x), rfl,
+              (Model.ShEnv.boxPush_agree hag _).trans (Model.ShEnv.box_dia_agree ρ _ hx),
+              (KLe.boxIn hk hP.not_ppath).trans (KLe.boxIn_diaIn Δ hKF)⟩
+
+
+/-! ## The two kinds of addresses -/
+
 omit [ModalSys] in
 /-- An address without `box` steps is level-free, root-level, or keep-first. -/
-theorem addr_cases : ∀ (y : VarSymb), Step.box ∉ y.path →
+theorem addr_cases : ∀ (y : VarSymb), Step.box ∉ y.path → Step.at ∉ y.path →
     PPath y.path ∨ (∃ (pre : VarSymb) (q : List Step), PPath pre.path ∧
       y = pre.ext (.dia :: q)) ∨ KF y
-  | .root _, _ => Or.inl fun _ h => by cases h
-  | .step v st, hb => by
+  | .root _, _, _ => Or.inl fun _ h => by cases h
+  | .step v st, hb, hat => by
       have hb' : Step.box ∉ v.path := fun h => hb (List.mem_append_left _ h)
-      rcases addr_cases v hb' with hv | ⟨pre, q, hpre, rfl⟩ | hv
+      have hat' : Step.at ∉ v.path := fun h => hat (List.mem_append_left _ h)
+      have hst : st ≠ .at := fun e => hat (by
+        subst e
+        exact List.mem_append_right _ (List.mem_singleton_self _))
+      rcases addr_cases v hb' hat' with hv | ⟨pre, q, hpre, rfl⟩ | hv
       · by_cases hs : st.isProj = true
         · refine Or.inl fun t ht => ?_
           rcases List.mem_append.mp ht with ht | ht
           · exact hv t ht
           · rw [List.mem_singleton.mp ht]
-            exact hs
+            exact Step.isStruct_of_isProj hs hst
         · cases st with
           | dia => exact Or.inr (Or.inl ⟨v, [], hv, rfl⟩)
           | keep => exact Or.inr (Or.inr ⟨v, [], hv, rfl⟩)
@@ -502,7 +554,7 @@ theorem Pushed.label_cases (hT : ModalSys.T = true)
         (ρ.ref (j + 1) y h).label = .root pre (.dia :: q)) ∨
       (KF y ∧ IsFam (ρ.ref (j + 1) y h).label) := by
   have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
-  rcases addr_cases y (hP.nobox hko y h) with hy | ⟨pre, q, hpre, rfl⟩ | hy
+  rcases addr_cases y (hP.nobox hko y h) (hP.noat y h) with hy | ⟨pre, q, hpre, rfl⟩ | hy
   · exact absurd hy (hP.not_ppath y _ h)
   · refine Or.inl ⟨pre, q, hpre, rfl, ?_⟩
     rw [hP.rootSh hT hM₀ pre hpre _ h q rfl]
@@ -550,7 +602,7 @@ theorem Pushed.kf_prefix {s : GW hF M₀} {i : ℕ} {Δ : Ctx} {ρ : GEnv hF M�
     ∀ (y : VarSymb) {T : VarType}, Δ.ref y = some T → ∀ (u : VarSymb) (rest : List Step),
       PPath u.path → y = (VarSymb.step u .keep).ext rest →
         ∃ U, (ctxOf (glat s i)).ref u = some U ∧ U.keepable = true := by
-  have hp : ∀ (v : VarSymb) (st : Step), st.isProj = true →
+  have hp : ∀ (v : VarSymb) (st : Step), st.isStruct = true →
       (∀ (u : VarSymb) (rest : List Step), PPath u.path → v = (VarSymb.step u .keep).ext rest →
         ∃ U, (ctxOf (glat s i)).ref u = some U ∧ U.keepable = true) →
       ∀ (u : VarSymb) (rest : List Step), PPath u.path →

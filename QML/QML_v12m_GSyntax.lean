@@ -29,22 +29,23 @@ open BArrow
 
 /-! ## Splitting an address at its first level step -/
 
-/-- The first level step of a path, with the projections before it and the steps after. -/
+/-- The first non-structural step of a path (a level step, or `at`), with the projections before
+    it and the steps after. -/
 def splitLevel : List Step → Option (List Step × Step × List Step)
   | [] => none
   | s :: p =>
-      if s.isProj then (splitLevel p).map fun t => (s :: t.1, t.2.1, t.2.2)
+      if s.isStruct then (splitLevel p).map fun t => (s :: t.1, t.2.1, t.2.2)
       else some ([], s, p)
 
 omit [ModalSys] in
 /-- ⭐A projection path followed by a level step splits there. -/
-theorem splitLevel_ppath : ∀ {q : List Step}, PPath q → ∀ {s : Step}, s.isProj = false →
+theorem splitLevel_ppath : ∀ {q : List Step}, PPath q → ∀ {s : Step}, s.isStruct = false →
     ∀ k : List Step, splitLevel (q ++ s :: k) = some (q, s, k)
   | [], _, s, hs, k => by
-      change (if s.isProj then _ else _) = _
+      change (if s.isStruct then _ else _) = _
       rw [if_neg (by simp [hs])]
   | a :: q, h, s, hs, k => by
-      change (if a.isProj then _ else _) = _
+      change (if a.isStruct then _ else _) = _
       rw [if_pos (h a (by simp))]
       change Option.map _ (splitLevel (q ++ s :: k)) = _
       rw [splitLevel_ppath (fun s' hs' => h s' (by simp [hs'])) hs k]
@@ -56,7 +57,7 @@ theorem splitLevel_ppath : ∀ {q : List Step}, PPath q → ∀ {s : Step}, s.is
     step) goes to its image. -/
 def itemS (σ : Signature) (Δ : Ctx) (f : VarSymb → VarSymb) : Subst σ Δ where
   ty v := match v with
-  | .step u s => if s.isProj then .hide else .ren (f (.step u s))
+  | .step u s => if s.isStruct then .hide else .ren (f (.step u s))
   | .root _ => .hide
 
 /-- Where an item map sends annotation indices: the item before the first level step to its
@@ -76,15 +77,15 @@ theorem ok_itemS {σ : Signature} {Γ Δ : Ctx} {f : VarSymb → VarSymb} (hf : 
     Subst.Ok Γ (itemS σ Δ f) := by
   refine ⟨fun v T hv hT => ?_, by wit_triv⟩
   obtain ⟨u, s, rfl⟩ := hit v T hv hT
-  have hs : s.isProj = false := hv
-  change (if s.isProj then SubE.hide else .ren (f (.step u s))).OkRef T
+  have hs : s.isStruct = false := hv
+  change (if s.isStruct then SubE.hide else .ren (f (.step u s))).OkRef T
   rw [if_neg (by simp [hs])]
   exact hf _ T hv hT
 
 omit [ModalSys] in
 /-- The index map of an item map at an item `u.s`, followed by `p`, for `u` a projection path. -/
 theorem itemIdx_item (f : VarSymb → VarSymb) {u : VarSymb} (hu : PPath u.path) {s : Step}
-    (hs : s.isProj = false) (p : List Step) :
+    (hs : s.isStruct = false) (p : List Step) :
     itemIdx f ((VarSymb.step u s).ext p) = (f (.step u s)).ext p := by
   unfold itemIdx
   rw [VarSymb.ext_path, VarSymb.ext_rt]
@@ -105,8 +106,8 @@ theorem coh_itemS {σ : Signature} {Γ Δ : Ctx} {f : VarSymb → VarSymb} (hf :
     exact ⟨u, s, rfl⟩
   intro v T hv hT p
   obtain ⟨u, s, rfl, hu⟩ := hit v T hv hT
-  have hs : s.isProj = false := hv
-  change (if s.isProj then SubE.hide else .ren (f (.step u s))).idxAlong p = _
+  have hs : s.isStruct = false := hv
+  change (if s.isStruct then SubE.hide else .ren (f (.step u s))).idxAlong p = _
   rw [if_neg (by simp [hs]), itemIdx_item f hu hs p]
   rfl
 

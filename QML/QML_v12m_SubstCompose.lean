@@ -39,8 +39,8 @@ def mono (θ : Subst σ Δ) (h : Δ.Le Δ') : Subst σ Δ' where
 theorem at_mono (θ : Subst σ Δ) (h : Δ.Le Δ') : ∀ v, (θ.mono h).at v = (θ.at v).mono h
   | .root _ => rfl
   | .step v s => by
-      change (if s.isProj then ((θ.mono h).at v).proj s else (θ.mono h) (.step v s)) =
-        SubE.mono h (if s.isProj then (θ.at v).proj s else θ (.step v s))
+      change (if s.isStruct then ((θ.mono h).at v).proj s else (θ.mono h) (.step v s)) =
+        SubE.mono h (if s.isStruct then (θ.at v).proj s else θ (.step v s))
       rw [at_mono θ h v]
       split_ifs
       · exact SubE.proj_mono h _ s

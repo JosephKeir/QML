@@ -198,7 +198,7 @@ theorem at_single_tup_mono [ModalSys.FourOff] {A : VarType} {l : List VarType} {
       change Subst.single (.bnd 0) _ (.root (.bnd 0)) = _
       slot_rfl
   | .step u s, U, hu, hrt => by
-      have hproj : s.isProj = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
+      have hproj : s.isStruct = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
       have hu' := hu
       simp only [Ctx.ref, if_pos hproj] at hu'
       cases hU : (ctxOf (A :: l)).ref u with
@@ -523,7 +523,7 @@ theorem at_pullX_tup [ModalSys.FourOff] {l : List VarType} (x : VarSymb) :
       obtain ⟨r₀, e, -⟩ := ref_rt hu
       cases e
   | .step u s, U, hu => by
-      have hproj : s.isProj = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
+      have hproj : s.isStruct = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
       have hu' := hu
       simp only [Ctx.ref, if_pos hproj] at hu'
       cases hU : (ctxOf l).ref u with

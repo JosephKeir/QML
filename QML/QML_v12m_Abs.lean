@@ -156,8 +156,8 @@ theorem Ctx.Abstracts.of_raw {x : VarSymb} {k : ℕ} {Γ₁ Γ₂ : Ctx}
   | root r => intro T hv; exact h j hj _ _ rfl hv
   | step v s ih =>
       intro T hv
-      by_cases hs : s.isProj = true
-      · rw [VarSymb.absAddr_proj hs]
+      by_cases hs : s.isStruct = true
+      · rw [VarSymb.absAddr_proj (Step.isProj_of_isStruct hs)]
         have hv' : (Γ₁.ref v).bind (·.step s) = some T := by
           rw [Ctx.ref] at hv
           rwa [if_pos hs] at hv

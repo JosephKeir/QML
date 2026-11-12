@@ -263,7 +263,7 @@ theorem levels_pp : ∀ {p : List Step}, PPath p → Step.levels p = 0
   | [], _ => rfl
   | s :: p, h => by
       change (if s.isProj then 0 else 1) + Step.levels p = 0
-      rw [if_pos (h s List.mem_cons_self),
+      rw [if_pos (Step.isProj_of_isStruct (h s List.mem_cons_self)),
         levels_pp (fun s' hs => h s' (List.mem_cons_of_mem _ hs))]
 
 omit [ModalSys] in
@@ -291,7 +291,7 @@ theorem shift_kept (v : VarSymb) (q : List Step) :
   rw [Nat.zero_add] at e
   rw [e, VarSymb.shift_level_zero (by decide)]
 
-omit [ModalSys] in
+omit [ModalSys.NoOpt] in
 /-- Collapsing a kept address at its top level drops its `keep`. -/
 theorem collapse_kept (v : VarSymb) (q : List Step) :
     ((VarSymb.step v .keep).ext q).collapse (Step.levels q) = v.ext q := by
@@ -305,18 +305,18 @@ omit [ModalSys] in
 theorem splitLevel_ppath_none : ∀ {q : List Step}, PPath q → splitLevel q = none
   | [], _ => rfl
   | a :: q, h => by
-      change (if a.isProj then _ else _) = _
+      change (if a.isStruct then _ else _) = _
       rw [if_pos (h a (by simp)), splitLevel_ppath_none (fun s' hs' => h s' (by simp [hs']))]
       rfl
 
 omit [ModalSys] in
 /-- What a split path is made of. -/
 theorem splitLevel_spec : ∀ (q : List Step) {pre r : List Step} {s : Step},
-    splitLevel q = some (pre, s, r) → q = pre ++ s :: r ∧ PPath pre ∧ s.isProj = false
+    splitLevel q = some (pre, s, r) → q = pre ++ s :: r ∧ PPath pre ∧ s.isStruct = false
   | [], _, _, _, h => by cases h
   | a :: q, pre, r, s, h => by
-      change (if a.isProj then _ else _) = _ at h
-      by_cases ha : a.isProj = true
+      change (if a.isStruct then _ else _) = _ at h
+      by_cases ha : a.isStruct = true
       · rw [if_pos ha] at h
         obtain ⟨⟨pre', s', r'⟩, hq, he⟩ := Option.map_eq_some_iff.mp h
         simp only [Prod.mk.injEq] at he
@@ -329,6 +329,41 @@ theorem splitLevel_spec : ∀ (q : List Step) {pre r : List Step} {s : Step},
       · rw [if_neg ha] at h
         cases h
         exact ⟨rfl, fun x hx => absurd hx List.not_mem_nil, Bool.eq_false_iff.mpr ha⟩
+
+omit [ModalSys] in
+/-- A path that does not split is structural. -/
+theorem ppath_of_splitLevel_none : ∀ {q : List Step}, splitLevel q = none → PPath q
+  | [], _ => fun _ h => by cases h
+  | a :: q, h => by
+      change (if a.isStruct then _ else _) = _ at h
+      by_cases ha : a.isStruct = true
+      · rw [if_pos ha] at h
+        intro t ht
+        rcases List.mem_cons.mp ht with rfl | ht
+        · exact ha
+        · exact ppath_of_splitLevel_none (Option.map_eq_none_iff.mp h) t ht
+      · rw [if_neg ha] at h
+        cases h
+
+omit [ModalSys] in
+/-- A split survives a step appended at the end. -/
+theorem splitLevel_snoc : ∀ (q : List Step) {pre r : List Step} {s : Step} (st : Step),
+    splitLevel q = some (pre, s, r) → splitLevel (q ++ [st]) = some (pre, s, r ++ [st])
+  | [], _, _, _, _, h => by cases h
+  | a :: q, pre, r, s, st, h => by
+      change (if a.isStruct then _ else _) = _ at h
+      change (if a.isStruct then _ else _) = _
+      by_cases ha : a.isStruct = true
+      · rw [if_pos ha] at h ⊢
+        obtain ⟨⟨pre', s', r'⟩, hq, he⟩ := Option.map_eq_some_iff.mp h
+        simp only [Prod.mk.injEq] at he
+        obtain ⟨rfl, rfl, rfl⟩ := he
+        change Option.map _ (splitLevel (q ++ [st])) = _
+        rw [splitLevel_snoc q st hq]
+        rfl
+      · rw [if_neg ha] at h ⊢
+        cases h
+        rfl
 
 /-- ⭐**Where an edge sends a kept address kept once more**: to the entry of its item, read at the
     doubled path. -/
@@ -729,6 +764,7 @@ theorem keeps_decomp : ∀ q : List Step,
   | .box :: q => ⟨0, _, rfl, by simp⟩
   | .dia :: q => ⟨0, _, rfl, by simp⟩
   | .here :: q => ⟨0, _, rfl, by simp⟩
+  | .at :: q => ⟨0, _, rfl, by simp⟩
 
 omit [ModalSys] in
 theorem keeps_assoc (n m : ℕ) (q : List Step) :
@@ -1243,21 +1279,21 @@ omit [ModalSys] in
 theorem shiftAt_ppath : ∀ (i : ℕ) {p : List Step}, PPath p → Step.shiftAt i p = p
   | _, [], _ => rfl
   | i, s :: p, h => by
-      rw [Step.shiftAt_proj (h s List.mem_cons_self),
+      rw [Step.shiftAt_proj (Step.isProj_of_isStruct (h s List.mem_cons_self)),
         shiftAt_ppath i (fun x hx => h x (List.mem_cons_of_mem _ hx))]
 
 omit [ModalSys] in
 theorem delLvl_ppath : ∀ (i : ℕ) {p : List Step}, PPath p → delLvl i p = p
   | _, [], _ => rfl
   | i, s :: p, h => by
-      rw [delLvl_proj (h s List.mem_cons_self),
+      rw [delLvl_proj (Step.isProj_of_isStruct (h s List.mem_cons_self)),
         delLvl_ppath i (fun x hx => h x (List.mem_cons_of_mem _ hx))]
 
 omit [ModalSys] in
 theorem lvlStep_ppath : ∀ (i : ℕ) {p : List Step}, PPath p → lvlStep i p = none
   | _, [], _ => rfl
   | i, s :: p, h => by
-      rw [lvlStep_proj (h s List.mem_cons_self),
+      rw [lvlStep_proj (Step.isProj_of_isStruct (h s List.mem_cons_self)),
         lvlStep_ppath i (fun x hx => h x (List.mem_cons_of_mem _ hx))]
 
 omit [ModalSys] in
@@ -1373,6 +1409,11 @@ theorem levels_rep (n : ℕ) : Step.levels (List.replicate n .keep) = n := by
     it from the `keep`. -/
 def KOk (t : GW hF M₀) (v : VarSymb) (q : List Step) : Prop :=
   PPath v.path ∧ ∃ U X, DeclAt t v U ∧ Step.walkTy U (.keep :: q) = some (.VTypeDia X)
+
+theorem KOk.at_free {t : GW hF M₀} {v : VarSymb} {q : List Step} (hk : KOk t v q) :
+    Step.at ∉ q := by
+  obtain ⟨-, U, X, -, hw⟩ := hk
+  exact fun hm => Step.at_not_mem_of_walkTy hw (List.mem_cons_of_mem _ hm)
 
 /-- ⭐**A typed kept address's members along `c :: P` are its translation's members along
     `P`**, whatever keeps come first. -/
@@ -1737,16 +1778,17 @@ noncomputable abbrev gdkB (j : ℕ) {s : GW hF M₀} (ℓ : GLeaf hF M₀ s) : G
 
 omit [ModalSys] in
 /-- A path with a level step splits at its first one. -/
-theorem split_first : ∀ q : List Step, 0 < Step.levels q →
+theorem split_first : ∀ q : List Step, Step.at ∉ q → 0 < Step.levels q →
     ∃ q₀ s r, q = q₀ ++ s :: r ∧ PPath q₀ ∧ s.isProj = false
-  | [], h => absurd h (by simp [Step.levels])
-  | s :: q, h => by
+  | [], _, h => absurd h (by simp [Step.levels])
+  | s :: q, hat, h => by
       by_cases hs : s.isProj = true
       · rw [Step.levels_cons, if_pos hs, Nat.zero_add] at h
-        obtain ⟨q₀, s', r, rfl, hq₀, hs'⟩ := split_first q h
+        obtain ⟨q₀, s', r, rfl, hq₀, hs'⟩ :=
+          split_first q (fun hm => hat (List.mem_cons_of_mem _ hm)) h
         refine ⟨s :: q₀, s', r, rfl, fun x hx => ?_, hs'⟩
         rcases List.mem_cons.mp hx with rfl | hx
-        · exact hs
+        · exact Step.isStruct_of_isProj hs (fun e => hat (e ▸ List.mem_cons_self))
         · exact hq₀ x hx
       · exact ⟨[], s, q, rfl, ppath_nil, Bool.eq_false_iff.mpr hs⟩
 
@@ -1779,7 +1821,7 @@ theorem gMem_shift (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (i : ℕ
       intro t t' h v q hk hi
       obtain rfl : t' = t := gw_eq h
       rw [gMem_kept_nil _ _ _ hk.1, gMem_kept_nil _ _ _ hk.1]
-      obtain ⟨q₀, s, r, rfl, hq₀, hs⟩ := split_first q (by omega)
+      obtain ⟨q₀, s, r, rfl, hq₀, hs⟩ := split_first q hk.at_free (by omega)
       rw [shiftAt_append, levels_pp hq₀, if_neg (by omega), Nat.sub_zero]
       have hpre : PPath (v.ext q₀).path := by
         rw [VarSymb.ext_path]
@@ -1802,6 +1844,7 @@ theorem gMem_shift (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (i : ℕ
           | fst => cases hs
           | snd => cases hs
           | here => cases hs
+          | «at» => cases hs
           | box => exact (kOk_no_box hT hk).elim
           | dia =>
               rw [show (v.ext q₀).ext (Step.dia :: Step.shiftAt i r) =
@@ -1892,9 +1935,9 @@ theorem walkTy_delLvl : ∀ (i : ℕ) (q : List Step) (T Y : VarType), lvlStep i
             exact Option.bind_eq_some_iff.mpr ⟨V, hV, walkTy_delLvl i q V Y h hq⟩
 
 omit [ModalSys] in
-theorem ppath_of_levels0 : ∀ {p : List Step}, Step.levels p = 0 → PPath p
-  | [], _ => ppath_nil
-  | s :: p, h => by
+theorem ppath_of_levels0 : ∀ {p : List Step}, Step.at ∉ p → Step.levels p = 0 → PPath p
+  | [], _, _ => ppath_nil
+  | s :: p, hat, h => by
       rw [Step.levels_cons] at h
       have hs : s.isProj = true := by
         by_contra hs
@@ -1903,8 +1946,8 @@ theorem ppath_of_levels0 : ∀ {p : List Step}, Step.levels p = 0 → PPath p
       rw [if_pos hs, Nat.zero_add] at h
       intro x hx
       rcases List.mem_cons.mp hx with rfl | hx
-      · exact hs
-      · exact ppath_of_levels0 h x hx
+      · exact Step.isStruct_of_isProj hs (fun e => hat (e ▸ List.mem_cons_self))
+      · exact ppath_of_levels0 (fun hm => hat (List.mem_cons_of_mem _ hm)) h x hx
 
 /-- A typed kept address with no level step after its `keep`: the address itself is a possible
     root, kept. -/
@@ -1935,7 +1978,8 @@ theorem gMem_del (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (i : ℕ) 
       intro t t' h v q hk hi
       obtain rfl : t' = t := gw_eq h
       rw [gMem_kept_nil _ _ _ hk.1, gMem_kept_nil _ _ _ hk.1]
-      obtain ⟨q₀, s, r, rfl, hq₀, hs⟩ := split_first q (by have := lvlStep_lt i q hi; omega)
+      obtain ⟨q₀, s, r, rfl, hq₀, hs⟩ :=
+        split_first q hk.at_free (by have := lvlStep_lt i q hi; omega)
       rw [delLvl_append, levels_pp hq₀, if_neg (by omega), Nat.sub_zero]
       rw [lvlStep_append, levels_pp hq₀, if_neg (by omega), Nat.sub_zero] at hi
       have hpre : PPath (v.ext q₀).path := by
@@ -1958,6 +2002,7 @@ theorem gMem_del (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (i : ℕ) 
           | fst => cases hs
           | snd => cases hs
           | here => cases hs
+          | «at» => cases hs
           | box => exact (kOk_no_box hT hk).elim
           | dia =>
               rw [show (v.ext q₀).ext (Step.dia :: delLvl i r) =
@@ -2014,7 +2059,7 @@ theorem gMem_app (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (m : ℕ) 
       rw [gMem_kept_nil _ _ _ hk.1, gMem_kept_nil _ _ _ hk.1]
       cases m with
       | zero =>
-          have hq := ppath_of_levels0 hm
+          have hq := ppath_of_levels0 hk.at_free hm
           have hpre : PPath (v.ext q).path := by
             rw [VarSymb.ext_path]
             exact fun x hx => (List.mem_append.mp hx).elim (hk.1 x) (hq x)
@@ -2027,7 +2072,7 @@ theorem gMem_app (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (m : ℕ) 
           rw [keepAlong_gRK, ← gLab_ppath _ hpre]
           exact (gKA_gLab hT hM₀ (kOk_end hk hq) (fun _ h => by cases h) b).symm
       | succ m =>
-          obtain ⟨q₀, s, r, rfl, hq₀, hs⟩ := split_first q (by omega)
+          obtain ⟨q₀, s, r, rfl, hq₀, hs⟩ := split_first q hk.at_free (by omega)
           have hpre : PPath (v.ext q₀).path := by
             rw [VarSymb.ext_path]
             exact fun x hx => (List.mem_append.mp hx).elim (hk.1 x) (hq₀ x)
@@ -2039,6 +2084,7 @@ theorem gMem_app (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (m : ℕ) 
           | fst => cases hs
           | snd => cases hs
           | here => cases hs
+          | «at» => cases hs
           | box => exact (kOk_no_box hT hk).elim
           | dia =>
               rw [show (v.ext q₀).ext (Step.dia :: (r ++ [.keep])) =
@@ -2318,6 +2364,7 @@ theorem lvlStep_keep_of_wf (hko : ModalSys.keepOnly = true) {lw : List Bool} {p 
   | fst => cases hs
   | snd => cases hs
   | here => cases hs
+  | «at» => cases hs
   | box => exact absurd (List.mem_append_right A List.mem_cons_self) hnb
   | dia => exact absurd rfl hd
   | keep => rfl
@@ -2410,7 +2457,7 @@ theorem gMem_wf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (m : ℕ) :
       obtain rfl : t' = t := gw_eq h
       rw [gMem_kept_nil _ _ _ hk.1]
       by_cases h0 : Step.levels q = 0
-      · have hq := ppath_of_levels0 h0
+      · have hq := ppath_of_levels0 hk.at_free h0
         have hpre : PPath (v.ext q).path := by
           rw [VarSymb.ext_path]
           exact fun x hx => (List.mem_append.mp hx).elim (hk.1 x) (hq x)
@@ -2418,7 +2465,7 @@ theorem gMem_wf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (m : ℕ) :
         obtain rfl : lw = [] := List.eq_nil_of_length_eq_zero (by omega)
         exact (Arrows.Leaf.wf_root _ []).mpr ⟨rfl, by simp, trivial,
           ⟨.VTypeDia .VTypeOne, .VTypeOne, rfl⟩⟩
-      · obtain ⟨q₀, s, r, rfl, hq₀, hs⟩ := split_first q (by omega)
+      · obtain ⟨q₀, s, r, rfl, hq₀, hs⟩ := split_first q hk.at_free (by omega)
         have hpre : PPath (v.ext q₀).path := by
           rw [VarSymb.ext_path]
           exact fun x hx => (List.mem_append.mp hx).elim (hk.1 x) (hq₀ x)
@@ -2432,6 +2479,7 @@ theorem gMem_wf (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) (m : ℕ) :
         | fst => cases hs
         | snd => cases hs
         | here => cases hs
+        | «at» => cases hs
         | box => exact (kOk_no_box hT hk).elim
         | dia =>
             rw [show (v.ext q₀).ext (Step.dia :: r) = (VarSymb.step (v.ext q₀) .dia).ext r

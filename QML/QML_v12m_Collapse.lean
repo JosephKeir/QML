@@ -22,17 +22,43 @@ namespace V12M
 
 namespace VarSymb
 
-theorem collapse_proj {k : ℕ} {v : VarSymb} {s : Step} (hs : s.isProj = true) :
+theorem collapse_proj [ModalSys] {k : ℕ} {v : VarSymb} {s : Step} (hs : s.isProj = true) :
     (step v s).collapse k = step (v.collapse k) s := by
   simp only [collapse, if_pos hs]
 
-theorem collapse_level_zero {v : VarSymb} {s : Step} (hs : s.isProj = false) (hk : s ≠ .keep) :
-    (step v s).collapse 0 = step v .here := by
-  simp only [collapse, hs, Bool.false_eq_true, if_false, if_neg hk]
+theorem collapse_level_zero [ModalSys] {v : VarSymb} {s : Step} (hs : s.isProj = false)
+    (hk : s ≠ .keep) (hd : s ≠ .dia) : (step v s).collapse 0 = step v .here := by
+  simp only [collapse, hs, Bool.false_eq_true, if_false, if_neg hk, if_neg hd]
 
-theorem collapse_keep_zero {v : VarSymb} : (step v .keep).collapse 0 = v := rfl
+/-- A content collapsed onto the identity arrow: with `Opt` on, the content read there. -/
+theorem collapse_dia_zero [ModalSys] {v : VarSymb} :
+    (step v .dia).collapse 0 = step v Step.diaZero := rfl
 
-theorem collapse_level_succ {k : ℕ} {v : VarSymb} {s : Step} (hs : s.isProj = false) :
+theorem _root_.V12M.Step.diaZero_isProj [ModalSys] : Step.diaZero.isProj = true := by
+  unfold Step.diaZero; split <;> rfl
+
+theorem collapse_dia_zero_opt [ModalSys] {v : VarSymb} (hO : ModalSys.Opt = true) :
+    (step v .dia).collapse 0 = step v .at := by
+  rw [collapse_dia_zero, Step.diaZero, if_pos hO]
+
+theorem collapse_dia_zero_noOpt [ModalSys] {v : VarSymb} (hO : ModalSys.Opt = false) :
+    (step v .dia).collapse 0 = step v .here := by
+  rw [collapse_dia_zero, Step.diaZero, if_neg (by rw [hO]; decide)]
+
+/-- With `Opt` off every level step but `keep` collapses to `here`, as before `Opt`. -/
+theorem collapse_level_zero_noOpt [ModalSys] {v : VarSymb} {s : Step} (hs : s.isProj = false)
+    (hk : s ≠ .keep) (hO : ModalSys.Opt = false) : (step v s).collapse 0 = step v .here := by
+  by_cases hd : s = .dia
+  · subst hd; exact collapse_dia_zero_noOpt hO
+  · exact collapse_level_zero hs hk hd
+
+theorem collapse_at [ModalSys] {k : ℕ} {v : VarSymb} :
+    (step v .at).collapse k = step (v.collapse k) .at :=
+  collapse_proj rfl
+
+theorem collapse_keep_zero [ModalSys] {v : VarSymb} : (step v .keep).collapse 0 = v := rfl
+
+theorem collapse_level_succ [ModalSys] {k : ℕ} {v : VarSymb} {s : Step} (hs : s.isProj = false) :
     (step v s).collapse (k + 1) = step (v.collapse k) s := by
   simp only [collapse, hs, Bool.false_eq_true, if_false]
 
@@ -49,7 +75,7 @@ theorem shift_level_succ {k : ℕ} {v : VarSymb} {s : Step} (hs : s.isProj = fal
   simp only [shift, hs, Bool.false_eq_true, if_false]
 
 /-- Collapses at two levels commute (the outer one shifts by one). -/
-theorem collapse_collapse : ∀ (v : VarSymb) (k m : ℕ),
+theorem collapse_collapse [ModalSys] : ∀ (v : VarSymb) (k m : ℕ),
     (v.collapse (k + 1 + m)).collapse m = (v.collapse m).collapse (k + m)
   | root _, _, _ => rfl
   | step v s, k, m => by
@@ -62,8 +88,12 @@ theorem collapse_collapse : ∀ (v : VarSymb) (k m : ℕ),
             by_cases hk : s = .keep
             · subst hk
               simp only [Nat.add_zero, collapse_level_succ (s := Step.keep) rfl, collapse_keep_zero]
-            · simp only [Nat.add_zero, collapse_level_succ hs', collapse_level_zero hs' hk,
-                collapse_proj (s := Step.here) rfl]
+            · by_cases hd : s = .dia
+              · subst hd
+                simp only [Nat.add_zero, collapse_level_succ (s := Step.dia) rfl, collapse_dia_zero,
+                  collapse_proj Step.diaZero_isProj]
+              · simp only [Nat.add_zero, collapse_level_succ hs', collapse_level_zero hs' hk hd,
+                  collapse_proj (s := Step.here) rfl]
         | succ m =>
             rw [show k + 1 + (m + 1) = (k + 1 + m) + 1 by omega,
               show k + (m + 1) = (k + m) + 1 by omega]
@@ -71,7 +101,7 @@ theorem collapse_collapse : ∀ (v : VarSymb) (k m : ℕ),
             rw [collapse_collapse v k m]
 
 /-- A collapse outside a shift commutes with it (the collapse moves out by one). -/
-theorem collapse_shift : ∀ (v : VarSymb) (k m : ℕ),
+theorem collapse_shift [ModalSys] : ∀ (v : VarSymb) (k m : ℕ),
     (v.collapse (k + 1 + m)).shift m = (v.shift m).collapse (k + 2 + m)
   | root _, _, _ => rfl
   | step v s, k, m => by
@@ -94,7 +124,7 @@ theorem Step.levels_cons (s : Step) (p : List Step) :
     Step.levels (s :: p) = (if s.isProj then 0 else 1) + Step.levels p := rfl
 
 /-- A collapse outside a shift commutes with it, on annotations. -/
-theorem Ann.collapse_shift : ∀ {T : VarType} (a : Ann T) (k m : ℕ),
+theorem Ann.collapse_shift [ModalSys] : ∀ {T : VarType} (a : Ann T) (k m : ℕ),
     (a.collapse (k + 1 + m)).shift m = (a.shift m).collapse (k + 2 + m)
   | _, .var, _, _ => rfl
   | _, .one, _, _ => rfl
@@ -115,7 +145,7 @@ theorem Ann.collapse_shift : ∀ {T : VarType} (a : Ann T) (k m : ℕ),
         VarSymb.collapse_shift i k m]
 
 /-- The index a path reaches in a collapsed annotation. -/
-theorem Ann.idxAt_collapse : ∀ {T : VarType} (a : Ann T) (k : ℕ) (p : List Step),
+theorem Ann.idxAt_collapse [ModalSys] : ∀ {T : VarType} (a : Ann T) (k : ℕ) (p : List Step),
     (a.collapse k).idxAt p = (a.idxAt p).collapse (k + Step.levels p)
   | _, .var, _, [] => rfl
   | _, .var, _, _ :: _ => rfl
@@ -152,6 +182,7 @@ theorem Ann.idxAt_collapse : ∀ {T : VarType} (a : Ann T) (k : ℕ) (p : List S
   | _, .box _, _, .fst :: _ => rfl
   | _, .box _, _, .snd :: _ => rfl
   | _, .box _, _, .dia :: _ => rfl
+  | _, .box _, _, .at :: _ => rfl
   | _, .dia _ _, _, [] => rfl
   | _, .dia _ a, k, .dia :: p => by
       change (a.collapse (k + 1)).idxAt p = _
@@ -162,6 +193,7 @@ theorem Ann.idxAt_collapse : ∀ {T : VarType} (a : Ann T) (k : ℕ) (p : List S
   | _, .dia _ _, _, .snd :: _ => rfl
   | _, .dia _ _, _, .box :: _ => rfl
   | _, .dia _ _, _, .here :: _ => rfl
+  | _, .dia _ _, _, .at :: _ => rfl
   | _, .dia i a, k, .keep :: p => by
       change (Ann.dia (.step (i.collapse k) .keep) ((a.collapse (k + 1)).shift 0)).idxAt p =
         ((Ann.dia (.step i .keep) (a.shift 0)).idxAt p).collapse (k + (1 + Step.levels p))
@@ -170,6 +202,7 @@ theorem Ann.idxAt_collapse : ∀ {T : VarType} (a : Ann T) (k : ℕ) (p : List S
         (Ann.dia ((VarSymb.step i .keep).collapse (k + 1))
           ((a.shift 0).collapse (k + 2 + 0))).idxAt p
       rw [Ann.collapse_shift a k 0, VarSymb.collapse_level_succ (s := .keep) rfl]
+  | _, .prod _ _, _, .at :: _ => rfl
 
 variable [ModalSys]
 
@@ -186,7 +219,7 @@ theorem VarSymb.inner_collapse_zero (u : VarSymb) : u.inner.collapse 0 = .step u
   unfold VarSymb.inner
   split_ifs
   · rw [VarSymb.collapse_proj (s := .here) rfl, VarSymb.collapse_keep_zero]
-  · exact VarSymb.collapse_level_zero rfl (by decide)
+  · exact VarSymb.collapse_level_zero (s := .box) rfl (by decide) (by decide)
 
 /-! ## Collapsing contexts -/
 
@@ -230,13 +263,13 @@ theorem Collapses.of_raw {k : ℕ} {Γ₁ Γ₂ : Ctx} (hT : ModalSys.T = true)
   | root r => intro T hv; exact h _ _ rfl hv
   | step v s ih =>
       intro T hv
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Ctx.ref_step_proj _ _ hs] at hv
-        rw [VarSymb.collapse_proj hs, Ctx.ref_step_proj _ _ hs]
+        rw [VarSymb.collapse_proj (Step.isProj_of_isStruct hs), Ctx.ref_step_proj _ _ hs]
         cases hU : Γ₁.ref v with
         | none => rw [hU] at hv; cases hv
         | some U => rw [hU] at hv; rw [ih U hU]; exact hv
-      · exact h _ _ (show s.isProj = false from Bool.eq_false_iff.mpr hs)
+      · exact h _ _ (show s.isStruct = false from Bool.eq_false_iff.mpr hs)
           (by rwa [Ctx.ref_step_nonproj _ _ hs] at hv)
 
 /-- ⭐Under T the `□` view collapses onto the current level. -/
@@ -245,7 +278,7 @@ theorem collapses_boxIn_self (hT : ModalSys.T = true) (Γ : Ctx) : Collapses 0 �
   intro v T _ hv
   match v with
   | .step u .box =>
-      rw [VarSymb.collapse_level_zero rfl (by decide), Ctx.ref_step_proj _ _ rfl,
+      rw [VarSymb.collapse_level_zero rfl (by decide) (by decide), Ctx.ref_step_proj _ _ rfl,
         boxIn_step_box hv]
       simp only [Option.bind_some, VarType.step, hT, if_true]
   | .step u .keep =>

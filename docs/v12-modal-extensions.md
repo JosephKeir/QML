@@ -15686,3 +15686,362 @@ Five files, sorry-free.  No new rule, and nothing in the `Opt`-off tree changed.
   * `Here` through `◇⁰` at the identity arrow.
   * Shapes and `Ind` gone on the tree.
   * `φ ⊢ ψ`'s interpolant.
+
+### 12.23 M2 (KT with `Opt`): scope *(2026-11-12, reading the code, nothing built)*
+
+**Order agreed (user, 2026-11-12; roadmap, "Milestone 5"):** M2 (KT), M3 (GK and Craig for K and KT),
+M4a (4), M4b (B, with the redundancy sweep), M4c (5 redesigned on paper first: the diagonal
+transport and the `◇`-gather, before any port), M4d (5 built once), then the requirement fields and
+the deletion of shapes.  T's necessary form (NecT) goes into M2.
+
+**What M2 must deliver.**  KT (and KTD, strong T) with `Opt` on: soundness, completeness on the tree
+without shapes or `Ind`, NecT, and the KT counterexample's sequent `φ ⊢ ψ` with its interpolant
+derived in Lean (the test that `◇⁰` repairs Craig, ahead of M3's general proof).
+
+**The crux: T's collapse meets a witness.**  `T_box` reads a `□` view at the identity arrow
+(`□φ ⊢ collapse φ`).  In `Γ.boxIn` the witnesses are `Γ`'s possible addresses `u`, so `φ` may
+contain `◇⁰_u ψ`, which at the identity arrow says "the world itself is in `u`'s extent, and `ψ` of
+`u`'s content here".  Today `WFF.collapse` refutes the case by flag (`optx` under T,
+`Collapse.lean`).  The collapsed formula needs a name, at level 0, for `u`'s content at the identity
+arrow, and `VarSymb.collapse 0` already sends `u.dia` to `u.here`.  But `.here` is a projection
+step (total, read off the parent), and a possible object's content at the identity arrow is
+partial, so `u.here` cannot simply be declared.  §12.15 recorded that every simple naming failed at
+this level (`o.dia`, roots, slots, changing `VarSymb.collapse` at level 0, which breaks
+`collapse_collapse`).  Candidates, none checked:
+* **(S) a new step** for "read at the identity arrow", non-projection, so that level-0 witnesses
+  `u` have content address `u.at` (collapse `u.dia ↦ u.at` at level 0).  `Ctx.wit` at level 0 under
+  T then holds every possible address.  Cost: a `Step` constructor (every match on steps), and
+  `collapse_collapse`/`collapse_shift` re-proved; the risk is the one §12.15 met.
+* **(H) collapse into a binder**: `collapse (◇⁰_u ψ) := ∃v:X. Here(η u, v) ∧ collapse ψ [u.dia ↦ v]`,
+  with `Here` kept primitive and read as identity (`Ind := Eq`).  No new step and no level-0
+  witnesses; `WFF.collapse` gains a substitution in one case (as `retS`'s body is instantiated).
+  `Here`'s rules stay, the derivable ones (`here_subst` from Leibniz along `≡`, `here_fun` from
+  `opt_fun`'s pattern) demoted.  Closest to the existing code.
+* **(W) level-0 witnesses named by the address itself, content by `opt_name`**: collapse to
+  `◇⁰_u` at level 0 with content reached only through `≡` to a fresh name.  Probably reduces to (H).
+Recommendation: check (H) first on paper.  It needs no new syntax, keeps T's Opt-off machinery's
+shape, and its one new piece (collapse through a substitution) has a precedent.  (S) is the
+principled end state if `Here` is to stop being primitive; check whether (H) makes `Here`'s
+remaining rules derivable, which would decide between them.
+
+**The other parts (each mirrors something built):**
+1. *Flags.*  `optStage` drops T; `ModalSys.shaped` becomes false with `Opt` on; the old T code that
+   assumed `Opt` off (18 files use `noOpt_of_T`: `SemStrongT`, `SemCollapse`, `Completeness`,
+   `BackSyntax`, `Subst`, `RetMono`, `SemAbs`, …) takes `Opt = false` explicitly, as the B and G
+   trees did in §12.17.
+2. *Syntax and semantics of the collapse case* (per the crux), `sat_collapse`'s case, `T_box`'s
+   soundness with witnesses; `collapse_collapse`, `collapse_shift` and `CollapseSubst` for it.
+3. *`Here` with `Opt` on*: semantics is identity (`Ind := Eq`); rules derived where possible
+   (Leibniz along `≡` for `here_subst`; `here_eq` from `leibnizH`); strong T (`T_dia`) unchanged in
+   form.  `here_keep` waits for M4a.
+4. *NecT*: `P(a) ⊢ ∃u:□A. P(u.here)`, law "every object is `necExtract` of a necessary object";
+   soundness, and the tree's case.
+5. *The tree.*  Generalise `OCanon` rather than copy it: `R w w' := AccO w w' ∨ (T ∧ w' = w)`.
+   The identity arrow is in `x`'s extent iff the theory has `x` realised (the collapsed `◇⁰_x ⊤`,
+   in form (H) `∃v. Here(η x, v)`).  Its content cannot be opened (Henkin constants of `◇`-type
+   appear at later stages), so it is **named**: a Henkin constant `e` with `Here(η x, η e)`, as
+   `RealDatum` does now.  That brings in what M1 avoided: **faithfulness of `≡` at every type**
+   (`≡` in the theory ⇒ equal denotations, so two names of one content agree), which replaces
+   `DTerm.Rel`, `Interch` and the canonical `Ind`.  Strong T: `posRet_exists` with equality.
+6. *The test*: the KT counterexample (metatheory to-do, "KT paper check") as a Lean derivation of
+   `φ ⊢ I` and `I ⊢ ψ`, `I := ◇_y ∃e (In(y'↑,e) ∧ S(y.dia, e))` with `In` as `◇⁰`.
+
+**Size (rough):** the crux and parts 1–3 some 1 500–3 000 lines; the tree 2 000–4 000
+(faithfulness the largest single piece); NecT and the test a few hundred.  **Risk:** the crux; if
+(H) and (S) both fail on paper, T with `Opt` needs a different reading of `T_box`, and M2 stops
+there.
+
+**Next:** the paper check of the crux, (H) first.
+
+### 12.24 The crux on paper: (H) checked, and (S) recommended *(2026-11-12, paper)*
+
+**Setting.**  T on, `Opt` on.  `T_box : □φ ⊢ collapse φ`.  Inside `Γ.boxIn` the witnesses are `Γ`'s
+possible addresses `y`.  Collapsing at level 0 reads the view at the identity arrow, so `◇⁰_y ψ`
+must become "the world itself is in `y`'s extent, and `ψ` holds of `y`'s content here".  The level
+fixes which arrow a `◇⁰_y` reads:
+* at `Collapses 0`, every witness of the innermost view is read along the collapsed arrow (the
+  identity case);
+* at `Collapses (k+1)`, along an arrow that stays: rename `y ↦ y.collapse k`, content
+  `(y.collapse k).dia`.  This case is structural and unproblematic.
+
+**(H): `collapse₀ (◇⁰_y ψ) := ∃v:X. Here(η y, v) ∧ ψ̂(v)`, `ψ̂` being `ψ` collapsed with `y.dia ↦ v`.**
+
+* *Semantics: sound.*  With `Here` read as identity (`Ind := Eq`, which `Opt` gives), the two sides
+  agree in every environment: `v` must be `y`'s content at the identity arrow.  With `Ind` other
+  than equality it needs `IndInvariant`, as now.
+* *Nested witnesses need a generalised collapse.*  `ψ` may itself contain `◇⁰_y χ`, or `◇⁰_z χ`
+  for other witnesses of the same view.  So the collapse of `ψ` must send `y.dia` to the bound slot
+  `v`, not to an address that `VarSymb.collapse` produces.  `Ctx.Collapses` would carry a map from
+  the contents of identity-read witnesses to roots.  Every collapse lemma (`collapse_collapse`,
+  `collapse_shift`, `CollapseSubst`, `sat_collapse`) gains that case.  Workable.
+* ⭐*Substitution: not closed.  This is where (H) fails.*
+  * `Proof.subst` must carry `T_box`, and today does it by an equation:
+    `subst (collapse φ) = collapse (subst' φ)`.
+  * Let `θ` send `y` to the possible term `diatm x b`.  In the `□` view the witness `y` then gets
+    the body entry `WitE.tm x b`.
+  * One side: `subst' (◇⁰_y ψ) = ◇⁰_x ψ[y.dia ↦ b]`, whose collapse is
+    `∃v. Here(η x, v) ∧ ψ̂(b(v))`.
+  * The other side: `subst (∃v. Here(η y, v) ∧ ψ̂(v)) = ∃v. Here(diatm x b, v) ∧ ψ̂(v)`.
+  * The body `b` ends up in `Here`'s subject on one side and in the formula on the other.  The two
+    formulas are provably equivalent (`here_beta`, `here_name`, `here_fun`, Leibniz along `≡`), but
+    not equal.
+  * So `Proof.subst`'s `T_box` case would need a replacement-of-equivalents derivation through
+    `ψ̂`, one for each identity-read witness, under every former.  That is a new general lemma.
+  * Every repair of the shape (putting the body in the subject on both sides) amounts to `◇⁰` read
+    at the identity arrow with `ψ` unchanged, which is (S).
+* *Further costs:*
+  * `Here` stays primitive, with its seven weak rules.
+  * The collapse stops being a homomorphism (it inserts `∃` and `∧`), which M3's GK would have to
+    account for in T's subformula bookkeeping.
+* **Verdict: (H) works semantically and fails the substitution test.  Making it closed leads back
+  to (S).**
+
+**(S), sketched against the same tests.**
+
+* *A step for "read at the identity arrow"*, `y.at`, of a **third class**:
+  * not a projection: `Ctx.ref` reads it from the declarations, since it is partial;
+  * not a level step: `collapse` and `shift` pass it through as they do projections, and
+    `Step.levels` does not count it.
+
+  `collapse₀ (y.dia) = y.at`; `.keep`, `.box` and `.here` behave as now.
+  * `collapse_collapse` at `m = 0`, `s = dia`: both sides are `(v.collapse k).at`.
+  * Steps that are already `.at` commute with `collapse` and `shift`.
+  * The level-depth invariant (`Ctx.LevelDepth`, which presented contexts and `ViewFresh` rest on)
+    holds, since `y.at` has `y`'s depth.
+  * This is why the content must be such a step: declaring `y.dia` at level 0 would put `y` and
+    `y.dia` at two depths in one context, which is what §12.15's attempt ran into.
+* *Identity witnesses at level 0, derived rather than stored.*
+  * Under T with `Opt`, every possible address `y` visible in a context is an identity witness.
+  * `optx` and `Ctx.optIn` take a kind: arrow (content `y.dia`) or identity (content `y.at`).  The
+    kind version reuses all of M1's rules; the alternative is a sibling former.
+  * An environment reads an identity witness off `env.ref y` at `reflAcc`, so there is no new
+    environment data.  `Frame.Env` does gain an `opened` invariant for `y.at`, beside the one for
+    `y.dia`.
+* *Collapse is a homomorphism:* `collapse₀ (◇⁰_y ψ) = ◇⁰ᵀ_y (collapse₀ ψ)`.
+  * Substitution commutes with it as with every other case: the witness entry `tm x b` collapses
+    to an identity entry with body `collapse₀ b` (M1's `WitE.tm` machinery).
+  * `T_box`'s case in `Proof.subst` stays a cast.
+* ⭐*`Here` becomes definable, and its weak rules derivable.*  The definition:
+  `Here(diatm x bd, t) := ◇⁰ᵀ_x (collapse₀ bd ≡ t)`, with `bd`'s view collapsed onto `Γ` and `x`
+  opened at the identity arrow.
+  * `here_elim` (`Here(x,t), □_x χ ⊢ χ(t)`): `□_x χ` gives `□□⁰_x χ` (the bridge), and `T_box`
+    gives `□⁰ᵀ_x (collapse₀ χ)`.  With `◇⁰ᵀ_x (x.at ≡ t)`, apply `K_opt`, then Leibniz along `≡`,
+    then `opt_out`.
+  * `here_intro`: by contradiction, the same route with `¬χ`.
+  * `here_fun`: from `opt_fun`, with symmetry and transitivity of `≡`.
+  * `here_eq` and `here_subst`: from Leibniz along `≡`.
+  * `here_name`: from `opt_name` (a view term's content is an outer term with `y.at` replaced).
+  * `here_beta`: from `≡`'s congruence under term formation.
+  * Strong T (`T_dia`) stays a rule, an existence law, with `Here` in this form.
+  * `here_keep` waits for M4a.
+* *Costs:*
+  * a `Step` constructor (about 200 match arms, §12.15's count, mostly mechanical) and a three-way
+    classification of steps;
+  * the identity kind carried through `optIn`, the rules, soundness and substitution;
+  * the new `opened` invariant;
+  * `Here`'s seven rules re-proved as derived;
+  * the old `WFF.here` gated to `Opt` off, or defined away, once the T tree no longer needs it.
+
+**Recommendation: (S).**
+* It is closed under substitution by construction.
+* It turns T's `Here` package into `◇⁰` at the identity arrow.  That is the plan's end state
+  ("`Here` through `◇⁰` at the identity arrow"), and what "prefer admissibility to new rules" asks.
+* It keeps the collapse a homomorphism, which M3 needs.
+
+**Next paper check, before any code:**
+1. the three-way step classification, against every function that dispatches on `isProj`
+   (`ref`, `collapse`, `shift`, `levels`, `keepIter`, `inner`, the renamings);
+2. the identity kind's rules, the new `opened` invariant, and soundness of `T_box` with them;
+3. presented contexts (whether `CtxExpr.optIn` gets the kind), the derived `Here` rules above
+   written out, and strong T's rule restated.
+
+### 12.25 (S) on paper: the second check *(2026-11-12, paper)*
+
+**Verdict: (S) passes.**  No rule beyond M1's `◇⁰` rules is needed, made generic over a witness
+**kind**.  All seven weak `Here` rules become derivable.  Three decisions are listed at the end.
+
+#### 1. Steps: a third class
+
+`Step.isProj` serves two purposes today:
+* "read off the parent": `Ctx.ref`, `VarSymb.lastProj` (hence `NoProjLast`), `Env.ref` /
+  `stepObj`;
+* "not a level step": `Step.levels`, `VarSymb.collapse`, `VarSymb.shift`.
+
+`y.at` must be on the declaration side for the first (it is partial) and on the non-level side for
+the second (it sits at `y`'s depth).  So:
+* `isProj` keeps its meaning and its constructors (`fst`, `snd`, `here`).
+* A new `Step.isLevel` (`box`, `dia`, `keep`) drives `levels`, `collapse` and `shift`.
+* `.at` is in neither.
+* `collapse₀`: `box ↦ here` (as now), `dia ↦ at` (was `here`), `keep ↦` removed (as now).
+
+Checks:
+* *No existing use of `collapse₀ (x.dia) = x.here`.*  Every level-0 collapse in the code is
+  `collapses_boxIn_self` (of `Γ.boxIn`, or of `(Γ.diaIn x).boxIn`), where no `dia` step sits at the
+  collapsed level.  Changing that clause breaks nothing.
+* *`collapse_collapse`*, case `m = 0`:
+  * `s = box`: both sides `(v.collapse k).here`;
+  * `s = dia`: both sides `(v.collapse k).at`;
+  * `s = keep`: as now;
+  * `s = at`: passes through on both sides.
+* *`collapse_shift`*: the collapsed level is at least 1 there, so `dia ↦ at` never fires.  `.at`
+  passes through `shift`.
+* *Level depth*: `levels (y.at) = levels y`, so `Ctx.LevelDepth` holds.  `Ctx.WitDepth` for the
+  identity kind reads the content at the witness's own depth.
+* *`Ctx.boxIn` and `Ctx.diaIn`* expose only `box` and `keep` steps (plus `x.dia`).  A declared
+  `y.at : □A` is seen in the `□` view as `(y.at).box`, an ordinary necessary object.  A declared
+  `y.at : ◇Z` is an arrow witness there.  Both are as intended.
+
+**Cost (measured):** 113 case splits on `isProj` in 45 files (where the "else" branch assumed a
+level step, it now splits); about 200 explicit step match arms and about 170 `cases s` gain an
+`.at` goal.  Most are trivial, and most sit in the shape and old-T files (`CanonLeaf`, `SemShape`,
+`GKeep`, `BLeaf`, the `GClu*` shape files) that are deleted at the end.
+
+#### 2. The identity kind
+
+* *Witnesses, derived:*
+  `Γ.witT y := if T ∧ Opt then (match Γ.ref y with some (◇X) => some X | _ => none) else none`.
+  * Every possible address in view is one, in any view: the identity arrow belongs to every world.
+  * Nothing is stored, so `Ctx.Le`, `insert` and the views need no change.
+  * With `Opt` off, `witT = none`: the old code sees nothing.
+* *Former and view, with a kind:* `optx (k : arrow | ident)` and `Ctx.optIn k`.
+  * The identity view `Γ.optIn ident y` declares `y.at : X` and hides nothing.  Hiding other
+    `.at` contents would make `Collapses` fail, since a declared `(w.at).box` in the source
+    collapses to `(w.at).here`.
+  * The arrow view is as now.
+  * `CtxExpr.optIn` takes the kind, so identity views are presented.
+* *Rules:* M1's `K_opt`, `opt_bot`, `opt_reopen` (and the derived `opt_out`, `opt_fun`,
+  `opt_name`, `unopen`), generic over the kind.  The bridge (`dia_opt`, `opt_dia`) is arrow-only.
+  The link between the kinds is `T_box`, through the collapse.
+* *The collapse case:* `collapse₀ (◇⁰_y ψ) = ◇⁰ᵀ_y (collapse₀ ψ)`.  It is a homomorphism because
+  `Collapses 0 (Γ.boxIn.optIn y) (Γ.optIn ident y)` holds: `y.dia ↦ y.at` is declared, `u.box ↦
+  u.here` is structural.  The same holds for `Collapses 0 (Γ.diaIn x) (Γ.optIn ident x)`, which
+  `Here`'s definition uses.
+* *Semantics:* an environment's identity witness is computed, not stored:
+  `env.witT y := posPart (env.ref y) reflAcc`.
+  * `(env.boxPush reflAcc).wit y = env.witT y` holds by definition.
+  * Agreeing environments agree on identity witnesses, by `Env.ref_agree`, so there is no new
+    `WitAgree`.
+  * `Frame.Env` gains an `opened` invariant for `y.at`, beside the one for `y.dia`: a declared
+    `y.at` is present at `reflAcc` with that content.  It defaults to vacuous whenever `T ∧ Opt`
+    is off.
+  * `optPush ident` sets `y.at` from the content.
+  * `extend`, `boxPush` and `diaPush` see no `.at`-ending address, so the invariant holds there
+    trivially.
+* *Soundness of `T_box`:* the existing `sat (boxPush reflAcc) φ ↔ sat (collapse₀ φ)` gains its
+  `optx` case.  The two pushes agree, `y.dia` and `y.at` both holding the content.  Immediate.
+* *Substitution:* identity entries are derived from `θ`'s entry at `y`.
+  * A renaming `y ↦ y'` gives `y'`.
+  * `y ↦ diatm x b` gives the identity body `collapse₀ b`, over `Δ.optIn ident x`.  This mirrors
+    `WitE.tm` and `Subst.optIn`; nothing new is stored in `Subst`.
+  * Coherence for opened identity witnesses mirrors `Coh.opened` and `Coh.openedTo`.
+* *Completeness on the tree (preview):* the identity arrow is in `x`'s extent iff `◇⁰ᵀ_x ⊤ ∈ T`.
+  * `□` case: children by `exists_box_failO`, identity by `T_box` and `sat_collapse`.
+  * `◇_x` case: `◇⁰ᵀ_x χ' ⊢ ◇_x χ` is derivable (`T_box` on `□_x ¬χ` via the bridge, then
+    `K_opt`).
+  * No new rule.
+
+#### 3. `Here`, written out, and strong T
+
+**Definition.**
+`Here(diatm x bd, t) := ◇⁰ᵀ_x (collapse₀ bd ≡ t↑)`, with `collapse₀ : Collapses 0 (Γ.diaIn x)
+(Γ.optIn ident x)`.  `cbd` below is `collapse₀ bd`.
+
+**The old rules, derived:**
+* `here_elim` (`Here(diatm x bd, t), □_x viewReadTm bd ψ ⊢ hereRead t ψ`):
+  1. `□_x χ ⊢ □□⁰_x χ↑`, by the bridge.
+  2. `T_box` and the homomorphism give `□⁰ᵀ_x (collapse₀ χ↑)`, and
+     `collapse₀ (viewReadTm bd ψ) = viewReadTm cbd (collapse₀ ψ)`.  So inside the identity view
+     this is `hereRead cbd ψ`.
+  3. `K_opt` with `◇⁰ᵀ_x (cbd ≡ t)`, then Leibniz along `≡`, gives `◇⁰ᵀ_x hereRead t ψ`.
+  4. `opt_out` gives `hereRead t ψ`.
+* `here_intro`: by contradiction.  `¬◇_x χ` is `□_x ¬χ`, which as above gives
+  `□⁰ᵀ_x ¬hereRead cbd ψ`.  `K_opt` carries the outer `hereRead t ψ` in unboxed (its `Δ₁`).
+  Leibniz then gives `⊥` inside, and `opt_bot` gives `⊥` outside.
+* `here_beta`: `≡` is a congruence under the hole term `s` (Leibniz with `s[cbd] ≡ s[·]`, and
+  `eqH_refl`).
+* `here_name`: `opt_name` at the identity kind gives a name `e₀` for the content `x.at`.  The term
+  `cbd[x.at := e₀]` names `cbd`'s value, by Leibniz.
+* `here_subst`: `opt_fun` and `opt_out` give `t ≡ t'` outside; then `leibnizH`.
+* `here_eq`: `eqRec t t' ⊢ t ≡ t'` (Leibniz for `eqRec`, with `eqH_refl`), then as `here_subst`.
+
+**Strong T:** `T_dia` keeps its form (fresh `c : ◇A`, hypothesis `◇⁰ᵀ_c (c.at ≡ t)`).  Its law is
+`posRet_exists` with `Ind` equality.  `here_keep` (T + 4) is M4a.
+
+#### Decisions
+
+1. **Kind parameter** on `optx`, `Ctx.optIn`, `CtxExpr.optIn` and M1's rules (recommended).  The
+   alternative is a sibling former with duplicated rules and recursions.
+2. **`WFF.here` gated to `Opt` off**, so that with `Opt` on `Here` is the definition above
+   (recommended).  About 240 mechanical sites.  The alternative keeps the primitive and adds a
+   definitional rule `Here ⊣⊢ ◇⁰ᵀ`, a new rule where none is needed.  At the end, when the `Opt`-off
+   T code goes, the primitive goes with it.
+3. *(Superseded when built: the encoding is the other way round, §12.26.)*
+   **`Step.at` with `isLevel`**, `isProj` unchanged (the smaller side: the declaration-side uses
+   `ref_nonproj`, `lastProj` and `NoProjLast` number over 500 and stay as they are).
+
+**Size (revised):**
+* the step ripple: 400 to 500 sites, mostly mechanical;
+* the kind through the syntax, substitution and rules: 1 500 to 2 500 lines;
+* `Here` derived, and the gate: about 1 000;
+* the tree: 2 000 to 4 000.
+
+**Order of building:** the step, then the kind with M1's files re-checked (K/D completeness must
+stay green), then `T_box`'s collapse case and its soundness, then `Here` and the gate, then NecT,
+then the tree, then the KT interpolant test.
+
+### 12.26 Building the step: what changed from §12.25 *(2026-11-12, built)*
+
+**Step 1 is built: `Step.at` is in.**  Three things differ from §12.25.
+
+**1. The encoding is the other way round.**  Decision 3 (`isProj` unchanged, a new `isLevel`) was
+started and reverted: `isProj` drives `levels`, `collapse` and `shift` in far more places than the
+declaration side drives `Ctx.ref`.  So:
+* `Step.isProj` now means *not a level step*.  It is `fst`, `snd`, `here` and `at`, and it still
+  drives `levels`, `collapse`, `shift` and the shape paths.
+* The new `Step.isStruct` means *read off the parent*.  It is `fst`, `snd` and `here`.  It drives
+  `Ctx.ref`, `VarSymb.lastProj` (hence `NoProjLast`), `Subst.at`, `Env.ref`, `stepObj`,
+  `GFunc.proj`, `ShEnv.ref`, `PPath`, the items of the G and B syntax, and `itemS`.
+* Lemmas: `Step.isProj_of_isStruct`, `Step.isStruct_of_isProj (h) (ha : s ≠ .at)`.
+
+**2. The level-0 collapse of a `dia` depends on `Opt`.**  The legacy shape code (`CanonLeaf`,
+`BLeaf`) relied on the junk `dia ↦ here`: "collapsing keeps a path allowed", "a level-free path is
+a projection path".  The user chose (2026-11-12) to make the clause flag-dependent rather than
+patch each legacy lemma:
+* `Step.diaZero := if Opt then .at else .here`, and `collapse₀ (v.dia) = v.diaZero`.
+* With `Opt` off every construction sees what it saw before.  With `Opt` on a collapsed `dia` is
+  the content at the identity arrow, as §12.25 wants.
+* Cost: `VarSymb.collapse`, `Ann.collapse`, `Ann.idxAt` and `realiseAddr` take `[ModalSys]`.
+* Lemmas: `collapse_dia_zero` (general, with `diaZero`); `collapse_dia_zero_opt` and
+  `collapse_dia_zero_noOpt`; `collapse_level_zero_noOpt` (the old "every level step but `keep`
+  becomes `here`").
+
+**3. Two side conditions, so that the old invariants survive.**
+* `Step.OK` gains a third conjunct, `s = .at → Opt = true`.
+  * `Step.ok_diaZero`: a collapsed `dia` is allowed under every flag.
+  * `Step.isStruct_of_ok`: with `Opt` off, an allowed step with no level is structural.
+  * B's network has `Opt` off (`FourOff` extends `WCoh`, which extends `NoOpt`).  So
+    `levels_eq_zero_iff` splits into `levels_eq_zero_of_ppath` (always) and
+    `ppath_of_levels_eq_zero` (allowed steps, `Opt` off).  `cEnv_canonical` takes `DeclOK`.
+* `Ctx.Tame` gains `Ctx.AtOK`: `Opt` on, or no `.at` address is declared.  Every presentation
+  satisfies it (`CtxExpr.at_none`).  `Ctx.decomp_unique` ("no two declared addresses, one
+  extending the other by projections") is false once `y` and `y.at` are both declared, so it
+  takes that hypothesis, and so do the `repSubst_coh` lemmas of the staged, B, G and cluster
+  trees.
+* `Ctx.boxIn_level`: an address the `□` view declares ends in a level step.  It replaces the old
+  "the last step is not a projection" where a level step was really meant.
+
+**4. `.at`-freedom where a legacy lemma reads "no level step" as "structural".**  Three copies of
+"a level-free path is a projection path" (`split_first`, `ppath_of_levels0` in `GKeep`,
+`ppath_of_levels_zero` in `GLeafInj`) and `addr_cases` take `Step.at ∉ q`.  Callers get it from:
+* a typed path: `Step.at_not_mem_of_walkTy` (types are walked by projections and level steps
+  only; `KOk.at_free` packages it for kept addresses);
+* a pushed context: `Pushed.noat` (no view declares an `.at`, mirroring `Pushed.nobox`).
+
+Two lemmas that took an arbitrary address (`preIx_root`, `preIx_step`) are now proved straight
+from `splitLevel` (`ppath_of_splitLevel_none`, `splitLevel_snoc`), which already splits at the
+first non-structural step.  Item maps (`itemS`, `eS_item`, `sim_eS_ren_comp`, `ref_induct`) state
+their steps with `isStruct`; where a level step is really meant, `Ctx.boxIn_level` and
+`Ctx.diaIn_level` supply it from the view's declaration.
+
+**Status:** `python scripts/qbuild.py --strict` green (41 targets, no message, no `sorry`, no long
+line), M1's K/D completeness (`OCanonCompleteness`) included.

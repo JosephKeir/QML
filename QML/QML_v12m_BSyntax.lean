@@ -94,7 +94,7 @@ theorem reroot_path : ∀ (u : VarSymb) (r : Root), (u.reroot r).path = u.path
 end VarSymb
 
 /-- A path of projections: `fst`, `snd`, and under T `here`. -/
-def PPath (p : List Step) : Prop := ∀ s ∈ p, s.isProj = true
+def PPath (p : List Step) : Prop := ∀ s ∈ p, s.isStruct = true
 
 omit [ModalSys] in
 theorem PPath.box_not_mem {p : List Step} (h : PPath p) : Step.box ∉ p := fun hm =>
@@ -284,12 +284,12 @@ theorem itemPath_item {u : VarSymb} (hu : PPath u.path) (p : List Step) :
   rw [List.append_assoc, itemPath_append_ppath hu, List.append_assoc]
   rfl
 
-theorem encStep_proj {s : Step} (hs : s.isProj = true) : (encStep s).isProj = true := by
+theorem encStep_proj {s : Step} (hs : s.isStruct = true) : (encStep s).isStruct = true := by
   unfold encStep
   split_ifs <;> cases s <;> first | rfl | exact absurd hs (by decide)
 
 /-- One projection step, read in the `bc` type. -/
-theorem bc_encStep {T U : VarType} {s : Step} (hs : s.isProj = true) (h : T.step s = some U) :
+theorem bc_encStep {T U : VarType} {s : Step} (hs : s.isStruct = true) (h : T.step s = some U) :
     T.bc.step (encStep s) = some U.bc := by
   cases s with
   | fst =>
@@ -319,7 +319,7 @@ theorem ref_enc_bc {l : List VarType} {Δ : Ctx} {z : Root} {R : VarType} :
       cases h
       exact hz
   | .step u s, T, h, hR, hz => by
-      have hproj : s.isProj = true := (reach_ppath h).1 s (by simp [VarSymb.path])
+      have hproj : s.isStruct = true := (reach_ppath h).1 s (by simp [VarSymb.path])
       simp only [Ctx.ref, if_pos hproj] at h
       cases hU : (ctxOf l).ref u with
       | none => rw [hU] at h; cases h
@@ -375,7 +375,7 @@ theorem ref_item {l : List VarType} {Δ : Ctx} {z : Root} {R : VarType} {u : Var
   by_cases hT : ModalSys.T = true
   · rw [if_pos hT]
     change Δ.ref (.step ((VarSymb.root z).ext (encPath u.path)) .fst) = _
-    simp only [Ctx.ref, Step.isProj, if_true, h, Option.bind_some, VarType.bc, hT, VarType.bcB]
+    simp only [Ctx.ref, Step.isStruct, if_true, h, Option.bind_some, VarType.bc, hT, VarType.bcB]
     rfl
   · rw [if_neg hT]
     simpa [VarType.bc, VarType.bcB, hT] using h
@@ -464,7 +464,7 @@ omit [ModalSys] in
 /-- Two projection paths, each followed by a level step, agree only if the paths and the steps
     do. -/
 theorem ppath_level : ∀ {p q : List Step} {s t : Step} {k m : List Step}, PPath p → PPath q →
-    s.isProj = false → t.isProj = false → p ++ s :: k = q ++ t :: m →
+    s.isStruct = false → t.isStruct = false → p ++ s :: k = q ++ t :: m →
       p = q ∧ s = t ∧ k = m
   | [], [], _, _, _, _, _, _, _, _, h => by
       simp only [List.nil_append, List.cons.injEq] at h

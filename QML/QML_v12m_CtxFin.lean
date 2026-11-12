@@ -21,7 +21,8 @@ namespace V12M
 
 instance : Finite Step :=
   Finite.of_injective (fun s : Step => (match s with
-      | .fst => 0 | .snd => 1 | .box => 2 | .dia => 3 | .here => 4 | .keep => 5 : Fin 6))
+      | .fst => 0 | .snd => 1 | .box => 2 | .dia => 3 | .here => 4 | .keep => 5
+      | .at => 6 : Fin 7))
     (fun a b h => by cases a <;> cases b <;> first | rfl | exact absurd h (by decide))
 
 /-- The number of constructors of a type. -/
@@ -81,8 +82,8 @@ theorem ref_decomp (Γ : Ctx) : ∀ (v : VarSymb) {T : VarType}, Γ.ref v = some
       π.length + T.sz ≤ U.sz
   | .root r, T, h => ⟨.root r, T, h, [], rfl, by simp⟩
   | .step v s, T, h => by
-      by_cases hs : s.isProj = true
-      · change (if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = some T at h
+      by_cases hs : s.isStruct = true
+      · change (if s.isStruct then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = some T at h
         rw [if_pos hs] at h
         cases hv : Γ.ref v with
         | none => rw [hv] at h; cases h
@@ -93,7 +94,7 @@ theorem ref_decomp (Γ : Ctx) : ∀ (v : VarSymb) {T : VarType}, Γ.ref v = some
             refine ⟨d, U, hd, π ++ [s], VarSymb.step_ext d s π, ?_⟩
             simp only [List.length_append, List.length_singleton]
             omega
-      · change (if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = some T at h
+      · change (if s.isStruct then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = some T at h
         rw [if_neg hs] at h
         exact ⟨.step v s, T, h, [], rfl, by simp⟩
 
@@ -178,38 +179,64 @@ theorem Ctx.Presented.fin (Γ : Ctx) [h : Γ.Presented] : Γ.Fin :=
 
 namespace Ctx
 
+/-- With `Opt` off, **no content at the identity arrow is declared** (no address ends in `at`):
+    only an identity view (T with `Opt`) declares one. -/
+def AtOK (Γ : Ctx) : Prop := ModalSys.Opt = true ∨ ∀ u, Γ (.step u .at) = none
+
+theorem AtOK.mono {Γ Γ' : Ctx} (h : Γ.Le Γ') (h' : Γ'.AtOK) : Γ.AtOK :=
+  h'.imp id fun hn u => by
+    cases hv : Γ (.step u .at) with
+    | none => rfl
+    | some T =>
+        have h₁ := h _ _ hv
+        rw [hn u] at h₁
+        cases h₁
+
 /-- ⭐A context a proof can live in, as models proper see it: finitely many declared addresses,
-    every address at one view depth (`Ctx.LevelDepth`), and every witness's content at that depth
-    with them (`Ctx.WitDepth`).  Every presented context is tame (`Ctx.Presented.tame`), and
-    tameness passes to weakenings, fresh insertions and the views.  Finiteness lets the canonical
-    model name an environment at one stage; one view depth makes the naming coherent (no declared
-    address extends another). -/
-def Tame (Γ : Ctx) : Prop := Γ.Fin ∧ ∃ d, Γ.LevelDepth d ∧ Γ.WitDepth d
+    every address at one view depth (`Ctx.LevelDepth`), every witness's content at that depth
+    with them (`Ctx.WitDepth`), and, with `Opt` off, no identity content declared (`Ctx.AtOK`).
+    Every presented context is tame (`Ctx.Presented.tame`), and tameness passes to weakenings,
+    fresh insertions and the views.  Finiteness lets the canonical model name an environment at
+    one stage; one view depth makes the naming coherent (no declared address extends another). -/
+def Tame (Γ : Ctx) : Prop := Γ.Fin ∧ (∃ d, Γ.LevelDepth d ∧ Γ.WitDepth d) ∧ Γ.AtOK
 
 theorem Tame.mono {Γ Γ' : Ctx} (h : Γ.Le Γ') (h' : Γ'.Tame) : Γ.Tame :=
-  ⟨h'.1.mono h, h'.2.imp fun _ ⟨hd, hw⟩ => ⟨fun v T hv => hd v T (h.ref hv), witDepth_mono h hw⟩⟩
+  ⟨h'.1.mono h, h'.2.1.imp fun _ ⟨hd, hw⟩ => ⟨fun v T hv => hd v T (h.ref hv),
+    witDepth_mono h hw⟩, h'.2.2.mono h⟩
 
 theorem Tame.insert {Γ : Ctx} (h : Γ.Tame) {r : Root} (hr : Γ.RootFresh r) (T : VarType) :
     (Γ.insert r T).Tame :=
-  ⟨h.1.insert r T, h.2.elim fun _ ⟨hd, hw⟩ =>
-    ⟨_, Ctx.levelDepth_insert hd hr T, Ctx.witDepth_insert hw hr T⟩⟩
+  ⟨h.1.insert r T, h.2.1.elim fun _ ⟨hd, hw⟩ =>
+    ⟨_, Ctx.levelDepth_insert hd hr T, Ctx.witDepth_insert hw hr T⟩,
+    h.2.2.imp id fun hn u => (Ctx.insert_ne (fun he => by cases he)).trans (hn u)⟩
 
 theorem Tame.boxIn {Γ : Ctx} (h : Γ.Tame) : Γ.boxIn.Tame :=
-  ⟨h.1.boxIn, h.2.elim fun _ ⟨hd, _⟩ => ⟨_, Ctx.levelDepth_boxIn hd, Ctx.witDepth_boxIn hd⟩⟩
+  ⟨h.1.boxIn, h.2.1.elim fun _ ⟨hd, _⟩ => ⟨_, Ctx.levelDepth_boxIn hd, Ctx.witDepth_boxIn hd⟩,
+    h.2.2.imp id fun _ _ => rfl⟩
 
 theorem Tame.diaIn {Γ : Ctx} (h : Γ.Tame) (x : VarSymb) : (Γ.diaIn x).Tame :=
-  ⟨h.1.diaIn x, h.2.elim fun _ ⟨hd, _⟩ =>
-    ⟨_, Ctx.levelDepth_diaIn hd x, Ctx.witDepth_diaIn hd x⟩⟩
+  ⟨h.1.diaIn x, h.2.1.elim fun _ ⟨hd, _⟩ =>
+    ⟨_, Ctx.levelDepth_diaIn hd x, Ctx.witDepth_diaIn hd x⟩, h.2.2.imp id fun _ _ => rfl⟩
 
 /-- ⭐The view of a witness is tame: its content is at the witness's depth. -/
 theorem Tame.optIn {Γ : Ctx} (h : Γ.Tame) (y : VarSymb) : (Γ.optIn y).Tame :=
-  ⟨h.1.optIn y, h.2.elim fun _ ⟨hd, hw⟩ =>
-    ⟨_, Ctx.levelDepth_optIn hd hw y, Ctx.witDepth_optIn hw y⟩⟩
+  ⟨h.1.optIn y, h.2.1.elim fun _ ⟨hd, hw⟩ =>
+    ⟨_, Ctx.levelDepth_optIn hd hw y, Ctx.witDepth_optIn hw y⟩,
+    h.2.2.imp id fun hn u => (Ctx.optIn_ne (fun he => by cases he)).trans (hn u)⟩
 
 end Ctx
 
+/-- No presentation declares a content at the identity arrow. -/
+theorem CtxExpr.at_none : ∀ (e : CtxExpr) (u : VarSymb), e.denote (.step u .at) = none
+  | .empty, _ => rfl
+  | .insertFree e _ _, u => (Ctx.insert_ne (fun he => by cases he)).trans (CtxExpr.at_none e u)
+  | .boxIn _, _ => rfl
+  | .diaIn _ _, _ => rfl
+  | .optIn e _, u => (Ctx.optIn_ne (fun he => by cases he)).trans (CtxExpr.at_none e u)
+
 /-- ⭐Every presented context is tame. -/
 theorem Ctx.Presented.tame (Γ : Ctx) [h : Γ.Presented] : Γ.Tame :=
-  ⟨Ctx.Presented.fin Γ, h.denote_eq ▸ h.expr.levelDepth h.fresh⟩
+  ⟨Ctx.Presented.fin Γ, h.denote_eq ▸ h.expr.levelDepth h.fresh,
+    Or.inr fun u => h.denote_eq ▸ CtxExpr.at_none h.expr u⟩
 
 end V12M

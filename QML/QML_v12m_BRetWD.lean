@@ -234,6 +234,7 @@ theorem liftBodyWD_mono {lv lv' cls clt : List VarType} (hs : cls <:+ lv) (hl : 
           split <;> rfl
       | .step _ .here => rfl
       | .step _ .keep => rfl
+      | .step _ .at => rfl
   exact WFF.subst_congr _ _ _ _ _ _ _ _
     (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl)
       fun v U _ _ => by rw [heq v]; exact .refl _) Φ

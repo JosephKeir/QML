@@ -81,7 +81,7 @@ theorem entryVal_optBody {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {z : VarS
       subst hXZ
       change Env.ref (env.optPush w' hz hd) (.step w' .dia)
         (WitE.okRef_optBody (X := X) (e := WitE.ren w') he rfl) = (env.wit w' X he).get hd'
-      rw [Env.ref, dif_neg (by decide : ¬ Step.dia.isProj = true)]
+      rw [Env.ref, dif_neg (by decide : ¬ Step.dia.isStruct = true)]
       change (if hv : VarSymb.step w' .dia = .step w' .dia then _ else _) = _
       rw [dif_pos rfl]
   | .tm w' b, X, he, hw, hd' => by

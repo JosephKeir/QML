@@ -421,7 +421,7 @@ theorem ind_of_tie (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true)
     rwa [interp_eta] at this
   have hc : c = M.necEval (M.ops.necDup hF (env.ref Y hY)) a := by
     change interp (env.boxPush a) (Term.eta (σ := σ) _ _ _) = _
-    rw [interp_eta, Env.ref, dif_neg (by decide : ¬ Step.keep.isProj = true)]
+    rw [interp_eta, Env.ref, dif_neg (by decide : ¬ Step.keep.isStruct = true)]
     rfl
   rw [interp_eta_slot_fst, interp_shift (Env.shiftAgree_twoBox hF env₀ _ _), interp_eta,
     Env.ref_inner _ _ hsnd, e₂, hc, M.necDup_eval] at hown'

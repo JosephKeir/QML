@@ -257,6 +257,12 @@ inductive Step where
   | here
   /-- Under 4: a necessary object kept, restricted, one level further in. -/
   | keep
+  /-- Under T with `Opt`: a possible object's content **at the identity arrow**, declared when the
+      witness is opened there.  Not a level step (it sits at its parent's depth, so `collapse`,
+      `shift` and `levels` pass it like a projection), but not structural either: it is partial,
+      so `Ctx.ref` reads it from the declarations (`Step.isStruct`).  The collapse sends `y.dia`
+      to `y.at` (docs §12.24–12.25). -/
+  | at
 deriving DecidableEq
 
 /-- Projection steps stay at the current level; the others are level steps. -/
@@ -264,7 +270,26 @@ def Step.isProj : Step → Bool
   | .fst => true
   | .snd => true
   | .here => true
+  | .at => true
   | _ => false
+
+/-- **Structural** steps are read off the parent's value (`Ctx.ref`, environments): the
+    projections proper.  `at` is not a level step but is declared, not structural. -/
+def Step.isStruct : Step → Bool
+  | .fst => true
+  | .snd => true
+  | .here => true
+  | _ => false
+
+theorem Step.isProj_of_isStruct {s : Step} (h : s.isStruct = true) : s.isProj = true := by
+  cases s <;> first | rfl | cases h
+
+theorem Step.isStruct_of_isProj {s : Step} (h : s.isProj = true) (ha : s ≠ .at) :
+    s.isStruct = true := by
+  cases s <;> first | rfl | exact absurd rfl ha | cases h
+
+theorem Step.not_isStruct_of_not_isProj {s : Step} (h : ¬ s.isProj = true) :
+    ¬ s.isStruct = true := fun h' => h (Step.isProj_of_isStruct h')
 
 /-- The number of level steps of a path. -/
 def Step.levels : List Step → ℕ
@@ -283,6 +308,11 @@ inductive VarSymb where
   | root (r : Root)
   | step (v : VarSymb) (s : Step)
 deriving DecidableEq
+
+/-- What a `dia` becomes when collapsed with no level step after it.  With `Opt` on it is its
+    content read at the identity arrow (`at`).  With `Opt` off nothing reads a witness at the
+    current world, and the junk `here` keeps every construction built before `Opt` as it was. -/
+def Step.diaZero [ModalSys] : Step := if ModalSys.Opt then .at else .here
 
 namespace VarSymb
 
@@ -303,20 +333,21 @@ def reroot (r' : Root) : VarSymb → VarSymb
   | root _ => root r'
   | step v s => step (v.reroot r') s
 
-/-- The last step is a projection. -/
+/-- The last step is structural (read off the parent). -/
 def lastProj : VarSymb → Bool
   | root _ => false
-  | step _ s => s.isProj
+  | step _ s => s.isStruct
 
 /-- Collapse the level step with exactly `k` level steps after it: a `box` becomes `here`, and a
     `keep` disappears (a kept object read at the world it was kept from is the object).  (On a
-    `dia` this is junk, chosen so that collapses at different levels commute.) -/
-def collapse : ℕ → VarSymb → VarSymb
+    `dia` this is `Step.diaZero`: with `Opt` on the content at the identity arrow, junk
+    otherwise.) -/
+def collapse [ModalSys] : ℕ → VarSymb → VarSymb
   | _, root r => root r
   | k, step v s =>
       if s.isProj then step (collapse k v) s
       else match k with
-        | 0 => if s = .keep then v else step v .here
+        | 0 => if s = .keep then v else if s = .dia then step v Step.diaZero else step v .here
         | k + 1 => step (collapse k v) s
 
 /-- Insert a level below the level step with exactly `k` level steps after it: that step is then
@@ -345,7 +376,7 @@ theorem reroot_ext (r' : Root) :
   | _, [] => rfl
   | v, s :: p => reroot_ext r' (.step v s) p
 
-theorem collapse_rt : ∀ (k : ℕ) (v : VarSymb), (v.collapse k).rt = v.rt
+theorem collapse_rt [ModalSys] : ∀ (k : ℕ) (v : VarSymb), (v.collapse k).rt = v.rt
   | _, root _ => rfl
   | k, step v s => by
       by_cases hs : s.isProj = true
@@ -587,7 +618,7 @@ def Ann.mapIdx (f : VarSymb → VarSymb) : {T : VarType} → Ann T → Ann T
   | _, .dia i a => .dia (f i) (a.mapIdx f)
 
 /-- Collapse the indices of an annotation found `k` levels below the collapsed one. -/
-def Ann.collapse : ℕ → {T : VarType} → Ann T → Ann T
+def Ann.collapse [ModalSys] : ℕ → {T : VarType} → Ann T → Ann T
   | _, _, .var => .var
   | _, _, .one => .one
   | k, _, .prod a b => .prod (a.collapse k) (b.collapse k)
@@ -605,7 +636,7 @@ def Ann.shift : ℕ → {T : VarType} → Ann T → Ann T
 /-- The index at the `◇`-node a path reaches (junk otherwise).  Reading a necessary object at the
     current world (`here`) collapses the level it would have descended into; keeping it (`keep`)
     shifts its body one view further in. -/
-def Ann.idxAt : {T : VarType} → Ann T → List Step → VarSymb
+def Ann.idxAt [ModalSys] : {T : VarType} → Ann T → List Step → VarSymb
   | _, .dia i _, [] => i
   | _, .prod a _, .fst :: p => a.idxAt p
   | _, .prod _ b, .snd :: p => b.idxAt p
@@ -718,7 +749,7 @@ namespace Ctx
 /-- The type reachable at an address: projections from the parent, level steps must be visible. -/
 def ref (Γ : Ctx) : VarSymb → Option VarType
   | .root r => Γ (.root r)
-  | .step v s => if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)
+  | .step v s => if s.isStruct then (Γ.ref v).bind (·.step s) else Γ (.step v s)
 
 /-- Inside `□`: `v.box : A` exactly when `v : □A` is reachable, and under 4 also `v.keep : □A`
     and, for `v : ◇A`, `v.keep : ◇A`.  Under T and 4 only `v.keep`: `v.box` would be
@@ -830,6 +861,16 @@ theorem boxIn_keep_none {Γ : Ctx} {u : VarSymb} (hu : Γ.ref u = none) :
   rw [hu]
   split_ifs <;> rfl
 
+/-- An address the `□` view declares ends in a level step (`box` or `keep`). -/
+theorem boxIn_level {Γ : Ctx} {u : VarSymb} {s : Step} {T : VarType}
+    (h : Γ.boxIn (.step u s) = some T) : s.isProj = false := by
+  cases s <;> first | rfl | cases h
+
+/-- An address the `◇_x` view declares ends in a level step. -/
+theorem diaIn_level {Γ : Ctx} {x u : VarSymb} {s : Step} {T : VarType}
+    (h : Γ.diaIn x (.step u s) = some T) : s.isProj = false := by
+  cases s <;> first | rfl | exact boxIn_level (Γ := Γ) (u := u) h
+
 theorem boxIn_box {Γ : Ctx} {u : VarSymb} {T : VarType}
     (h : Γ.boxIn (.step u .box) = some T) :
     ModalSys.keepOnly = false ∧ Γ.ref u = some (.VTypeBox T) := by
@@ -860,18 +901,18 @@ theorem boxIn_box_none {Γ : Ctx} {u : VarSymb} (hu : Γ.ref u = none) :
 theorem ref_nonproj (Γ : Ctx) : ∀ {v : VarSymb}, v.lastProj = false → Γ.ref v = Γ v
   | .root _, _ => rfl
   | .step v s, h => by
-      change (if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = _
-      have hs : s.isProj = false := h
+      change (if s.isStruct then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = _
+      have hs : s.isStruct = false := h
       rw [if_neg (Bool.eq_false_iff.mp hs)]
 
-theorem ref_step_proj (Γ : Ctx) (v : VarSymb) {s : Step} (hs : s.isProj = true) :
+theorem ref_step_proj (Γ : Ctx) (v : VarSymb) {s : Step} (hs : s.isStruct = true) :
     Γ.ref (.step v s) = (Γ.ref v).bind (·.step s) := by
-  change (if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = _
+  change (if s.isStruct then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = _
   rw [if_pos hs]
 
-theorem ref_step_nonproj (Γ : Ctx) (v : VarSymb) {s : Step} (hs : ¬ s.isProj = true) :
+theorem ref_step_nonproj (Γ : Ctx) (v : VarSymb) {s : Step} (hs : ¬ s.isStruct = true) :
     Γ.ref (.step v s) = Γ (.step v s) := by
-  change (if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = _
+  change (if s.isStruct then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = _
   rw [if_neg hs]
 
 /-- The content of a reachable possible address is reachable in its view. -/
@@ -992,6 +1033,7 @@ theorem SlotsFrom.boxIn {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) : Γ.boxIn.Slo
   | .step _ .snd => rfl
   | .step _ .dia => rfl
   | .step _ .here => rfl
+  | .step _ .at => rfl
 
 theorem SlotsFrom.diaIn {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (x : VarSymb) :
     (Γ.diaIn x).SlotsFrom d := by
@@ -1011,6 +1053,7 @@ theorem SlotsFrom.diaIn {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (x : VarSymb) 
   | .step _ .fst => rfl
   | .step _ .snd => rfl
   | .step _ .here => rfl
+  | .step _ .at => rfl
 
 theorem RootFresh.boxIn {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) : Γ.boxIn.RootFresh r := by
   refine ⟨fun v hv => ?_, fun y hy => ?_⟩
@@ -1028,6 +1071,7 @@ theorem RootFresh.boxIn {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) : Γ.boxIn.Ro
   | .step _ .snd => rfl
   | .step _ .dia => rfl
   | .step _ .here => rfl
+  | .step _ .at => rfl
 
 theorem RootFresh.diaIn {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) (x : VarSymb) :
     (Γ.diaIn x).RootFresh r := by
@@ -1046,6 +1090,7 @@ theorem RootFresh.diaIn {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) (x : VarSymb)
   | .step _ .fst => rfl
   | .step _ .snd => rfl
   | .step _ .here => rfl
+  | .step _ .at => rfl
 
 instance {Γ : Ctx} [h : Γ.NoSlots] : Γ.boxIn.NoSlots := ⟨h.slots.boxIn⟩
 
@@ -1180,11 +1225,11 @@ theorem ref_insert_root (Γ : Ctx) (r : Root) (T : VarType) :
 
 theorem ref_insert_fst (Γ : Ctx) (r : Root) (A B : VarType) :
     (Γ.insert r (.VTypeProd A B)).ref (.step (.root r) .fst) = some A := by
-  simp [Ctx.ref, Ctx.insert, Step.isProj, VarType.step]
+  simp [Ctx.ref, Ctx.insert, Step.isStruct, VarType.step]
 
 theorem ref_insert_snd (Γ : Ctx) (r : Root) (A B : VarType) :
     (Γ.insert r (.VTypeProd A B)).ref (.step (.root r) .snd) = some B := by
-  simp [Ctx.ref, Ctx.insert, Step.isProj, VarType.step]
+  simp [Ctx.ref, Ctx.insert, Step.isStruct, VarType.step]
 
 end Ctx
 

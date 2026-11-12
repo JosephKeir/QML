@@ -104,7 +104,7 @@ theorem sat_ret (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
   -- The `↑` side: the hole takes the witness content, which is `t`'s value.
   have hval : (env'.diaPush (.root (.free c)) hrc ⟨M.frame.reflAcc hT w, hmem'⟩).ref
       (.step (.root (.free c)) .dia) (Ctx.ref_diaIn_of hrc) = interp env t := by
-    rw [Env.ref, dif_neg (by decide : ¬ Step.dia.isProj = true)]
+    rw [Env.ref, dif_neg (by decide : ¬ Step.dia.isStruct = true)]
     change (M.posEval (env'.ref (.root (.free c)) hrc)).2 ⟨M.frame.reflAcc hT w, hmem'⟩ = _
     rw [posEval_snd_congr hpe ⟨M.frame.reflAcc hT w, hmem'⟩ hmem]
     exact hcont
@@ -167,7 +167,7 @@ theorem sat_viewRead_ret (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
   have hval : ((env.extend (.free c) p).diaPush (.root (.free c)) hrc
       ⟨M.frame.reflAcc hT w, hmem'⟩).ref
       (.step (.root (.free c)) .dia) (Ctx.ref_diaIn_of hrc) = interp env t := by
-    rw [Env.ref, dif_neg (by decide : ¬ Step.dia.isProj = true)]
+    rw [Env.ref, dif_neg (by decide : ¬ Step.dia.isStruct = true)]
     change (M.posEval ((env.extend (.free c) p).ref (.root (.free c)) hrc)).2
       ⟨M.frame.reflAcc hT w, hmem'⟩ = _
     rw [posEval_snd_congr hpe ⟨M.frame.reflAcc hT w, hmem'⟩ hmem]

@@ -28,7 +28,7 @@ def idRen (Δ : Ctx) : Subst σ Δ where
 theorem at_idRen {Δ : Ctx} : ∀ v, (idRen (σ := σ) Δ).at v = .ren v
   | .root _ => rfl
   | .step v s => by
-      change (if s.isProj then ((idRen (σ := σ) Δ).at v).proj s else SubE.ren (.step v s)) = _
+      change (if s.isStruct then ((idRen (σ := σ) Δ).at v).proj s else SubE.ren (.step v s)) = _
       rw [at_idRen v]
       split_ifs <;> rfl
 

@@ -318,6 +318,7 @@ theorem liftBody_mono {lv lv' cls clt : List VarType} (hs : cls <:+ lv) (hl : lv
       | .step _ .dia => rfl
       | .step _ .here => rfl
       | .step _ .keep => rfl
+      | .step _ .at => rfl
   exact WFF.subst_congr _ _ _ _ _ _ _ _
     (Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) fun v U _ _ => by rw [heq v]; exact .refl _)
     Φ
@@ -1055,7 +1056,7 @@ theorem RetInv.nil (hS : ModalSys.BStrong = true) (hB : ModalSys.B = true) {tv t
 omit [ModalSys.NoFour] in
 theorem pairHole_snd_ref {C A : VarType} :
     (Ctx.empty.insert (.bnd 0) (.VTypeProd C A)).ref (.step (.root (.bnd 0)) .snd) = some A := by
-  simp only [Ctx.ref, Step.isProj, if_true]
+  simp only [Ctx.ref]
   rfl
 
 omit [ModalSys.NoFour] in

@@ -521,7 +521,7 @@ def EnvRel {Γ : Ctx} {t : N.frame.W} (e : (c.cone hT hB hS hInd).Env Γ (some t
 
 variable {c hT hB hS hInd}
 
-theorem stepObj_toC {t : N.frame.W} {U T : VarType} {s : Step} (hs : s.isProj = true)
+theorem stepObj_toC {t : N.frame.W} {U T : VarType} {s : Step} (hs : s.isStruct = true)
     (h : U.step s = some T) (a : N.frame.Dom U t) :
     (c.cone hT hB hS hInd).stepObj hs h (c.toC hT hB U t a) =
       c.toC hT hB T t (N.stepObj hs h a) := by
@@ -534,7 +534,7 @@ theorem EnvRel.ref {Γ : Ctx} {t : N.frame.W} {e : (c.cone hT hB hS hInd).Env Γ
       e.ref v hv = c.toC hT hB T t (e'.ref v hv)
   | .root r, _, hv => hag (.root r) _ hv
   | .step v s, T, hv => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Env.ref, Env.ref, dif_pos hs, dif_pos hs]
         split
         · rename_i U hU

@@ -146,6 +146,7 @@ theorem ref_gPath (hF : ModalSys.Four = true) {Δ : Ctx} {s : Step} {T : VarType
       | box => exact absurd (hp .box (by simp)) (by decide)
       | dia => exact absurd (hp .dia (by simp)) (by decide)
       | keep => exact absurd (hp .keep (by simp)) (by decide)
+      | «at» => exact absurd (hp .at (by simp)) (by decide)
 
 /-- ⭐An item of a world's `□` view, of a root `r`, lands at its type in a variable `z` of
     `r`'s `gc` type. -/

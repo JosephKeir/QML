@@ -1104,7 +1104,7 @@ theorem Env.ref_here {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (hT : ModalSy
     (h : Δ.ref (.step u .here) = some A) :
     env.ref (.step u .here) h =
       M.necEval (env.ref u hu : M.frame.Nec A w) (M.frame.reflAcc hT w) := by
-  have hhs : Step.here.isProj = true := rfl
+  have hhs : Step.here.isStruct = true := rfl
   rw [Env.ref, dif_pos hhs]
   split
   · rename_i U hU

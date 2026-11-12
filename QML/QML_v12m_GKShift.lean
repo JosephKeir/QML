@@ -34,14 +34,14 @@ theorem Leveled.ref {Γ : Ctx} {L : Root → ℕ} (h : Γ.Leveled L) :
     ∀ {v : VarSymb} {T : VarType}, Γ.ref v = some T → Step.levels v.path = L v.rt
   | .root _, T, hv => h _ T rfl hv
   | .step v s, T, hv => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Γ.ref_step_proj v hs] at hv
         cases hT : Γ.ref v with
         | none => rw [hT] at hv; cases hv
         | some T' =>
             change Step.levels (v.path ++ [s]) = L v.rt
             rw [Step.levels_append, h.ref hT]
-            simp [Step.levels, hs]
+            simp [Step.levels, Step.isProj_of_isStruct hs]
       · rw [Γ.ref_step_nonproj v hs] at hv
         exact h _ T (Bool.eq_false_iff.mpr hs) hv
 

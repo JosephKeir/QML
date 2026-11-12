@@ -28,9 +28,10 @@ theorem VarSymb.eq_of_rt_path {v v' : VarSymb} (hr : v.rt = v'.rt) (hp : v.path 
   rw [VarSymb.eq_root_ext_path v, VarSymb.eq_root_ext_path v', hr, hp]
 
 omit [ModalSys] in
-/-- An address whose path ends in a nonempty run of projections ends in a projection. -/
+/-- An address whose path ends in a nonempty run of non-level steps ends in a projection, or in a
+    content read at the identity arrow. -/
 theorem VarSymb.lastProj_of_path {v : VarSymb} {pre a : List Step} (h : v.path = pre ++ a)
-    (ha : a ≠ []) (hl : Step.levels a = 0) : v.lastProj = true := by
+    (ha : a ≠ []) (hl : Step.levels a = 0) : v.lastProj = true ∨ ∃ u, v = .step u .at := by
   obtain ⟨a', s', rfl⟩ := (List.eq_nil_or_concat a).resolve_left ha
   rw [List.concat_eq_append] at h hl
   cases v with
@@ -44,7 +45,11 @@ theorem VarSymb.lastProj_of_path {v : VarSymb} {pre a : List Step} (h : v.path =
       simp only [List.cons.injEq, and_true] at hs
       subst hs
       rw [Step.levels_append, Step.levels_single] at hl
-      change s.isProj = true
+      by_cases hat : s = .at
+      · exact Or.inr ⟨u, by rw [hat]⟩
+      left
+      change s.isStruct = true
+      refine Step.isStruct_of_isProj ?_ hat
       by_contra hp
       rw [if_neg hp] at hl
       omega
@@ -52,6 +57,7 @@ theorem VarSymb.lastProj_of_path {v : VarSymb} {pre a : List Step} (h : v.path =
 /-- ⭐**At one view depth per address, an address extends at most one declared address**: a
     declared address extended by projections only ends in a projection, so is not declared. -/
 theorem Ctx.decomp_unique {Γ : Ctx} {d : Root → ℕ} (hd : Γ.LevelDepth d) {v v' : VarSymb}
+    (hat : ∀ u, Γ (.step u .at) = none)
     {T T' : VarType} (hv : Γ v = some T) (hv' : Γ v' = some T') (hl : v.lastProj = false)
     (hl' : v'.lastProj = false) {p p' : List Step} (h : v.ext p = v'.ext p') :
     v = v' ∧ p = p' := by
@@ -67,7 +73,9 @@ theorem Ctx.decomp_unique {Γ : Ctx} {d : Root → ℕ} (hd : Γ.LevelDepth d) {
     · subst ha
       simp only [List.append_nil, List.nil_append] at h₁ h₂
       exact ⟨VarSymb.eq_of_rt_path hrt h₁.symm, h₂⟩
-    · exact absurd (VarSymb.lastProj_of_path h₁ ha ha0) (by simp [hl'])
+    · rcases VarSymb.lastProj_of_path h₁ ha ha0 with hp | ⟨u, rfl⟩
+      · exact absurd hp (by simp [hl'])
+      · exact absurd hv' (by rw [hat u]; simp)
   · have hc0 : Step.levels c = 0 := by
       rw [h₁, Step.levels_append, lv', ← hrt] at lv
       omega
@@ -75,7 +83,9 @@ theorem Ctx.decomp_unique {Γ : Ctx} {d : Root → ℕ} (hd : Γ.LevelDepth d) {
     · subst hc
       simp only [List.append_nil, List.nil_append] at h₁ h₂
       exact ⟨VarSymb.eq_of_rt_path hrt h₁, h₂.symm⟩
-    · exact absurd (VarSymb.lastProj_of_path h₁ hc hc0) (by simp [hl])
+    · rcases VarSymb.lastProj_of_path h₁ hc hc0 with hp | ⟨u, rfl⟩
+      · exact absurd hp (by simp [hl])
+      · exact absurd hv (by rw [hat u]; simp)
 
 namespace Canon
 
@@ -158,7 +168,8 @@ noncomputable def repIdx (y : VarSymb) : VarSymb :=
   else y
 
 /-- ⭐The representing substitution is coherent, at one view depth per address. -/
-theorem repSubst_coh {d : Root → ℕ} (hd : Γ.LevelDepth d) :
+theorem repSubst_coh {d : Root → ℕ} (hd : Γ.LevelDepth d)
+    (hat : ∀ u, Γ (.step u .at) = none) :
     Subst.Coh (repIdx w₀ env hfin) Γ (repSubst w₀ env hfin) := by
   refine Subst.coh_of (repSubst_ok w₀ env hfin) fun v T hl hv p => ?_
   have hex : ∃ q : VarSymb × List Step,
@@ -168,7 +179,7 @@ theorem repSubst_coh {d : Root → ℕ} (hd : Γ.LevelDepth d) :
   rw [dif_pos hex]
   obtain ⟨hl', hs', he'⟩ := hex.choose_spec
   obtain ⟨T', hv'⟩ := Option.isSome_iff_exists.mp hs'
-  obtain ⟨e₁, e₂⟩ := Ctx.decomp_unique hd hv hv' hl hl' he'
+  obtain ⟨e₁, e₂⟩ := Ctx.decomp_unique hd hat hv hv' hl hl' he'
   rw [← e₁, ← e₂]
 
 /-- ⭐**Every environment over a tame context is the canonical one read through a substitution**

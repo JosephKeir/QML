@@ -812,7 +812,8 @@ theorem ren_dia_fix {l l' : List VarType} (hle : (ctxOf l).Le (ctxOf l')) (f : V
       · rw [show preIX f y (.step u st) = .step u st by
           unfold preIX
           rw [if_neg hvx]
-          exact hfix u st T hl (diaIn_boxIn_of_ne' hv hvx) hT]
+          exact hfix u st T (Ctx.boxIn_level (diaIn_boxIn_of_ne' hv hvx))
+            (diaIn_boxIn_of_ne' hv hvx) hT]
         exact .refl _
 
 /-- Two root denotations of possible terms agree when their witnesses do and their bodies do

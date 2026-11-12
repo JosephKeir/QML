@@ -89,15 +89,30 @@ theorem VarSymb.splitAt_ext (pre : VarSymb) {s : Step} (hs : s.isProj = false) :
 
 variable [ModalSys]
 
-/-- A step a view can produce under the current flags: `box` only without 4, `keep` only with it.
-    Under T, `keepOnly` is 4, so `box` and `keep` never meet. -/
+/-- A step a view can produce under the current flags: `box` only without 4, `keep` only with it,
+    `at` only with `Opt`.  Under T, `keepOnly` is 4, so `box` and `keep` never meet. -/
 abbrev Step.OK (s : Step) : Prop :=
-  (s = .box → ModalSys.Four = false) ∧ (s = .keep → ModalSys.Four = true)
+  (s = .box → ModalSys.Four = false) ∧ (s = .keep → ModalSys.Four = true) ∧
+    (s = .at → ModalSys.Opt = true)
 
-theorem Step.ok_of_proj {s : Step} (hs : s.isProj = true) : s.OK := by
-  constructor <;> intro h <;> subst h <;> cases hs
+theorem Step.ok_of_proj {s : Step} (hs : s.isStruct = true) : s.OK := by
+  refine ⟨?_, ?_, ?_⟩ <;> intro h <;> subst h <;> cases hs
 
-theorem Step.ok_dia : Step.OK .dia := ⟨nofun, nofun⟩
+theorem Step.ok_dia : Step.OK .dia := ⟨nofun, nofun, nofun⟩
+
+theorem Step.ok_at (hO : ModalSys.Opt = true) : Step.OK .at := ⟨nofun, nofun, fun _ => hO⟩
+
+/-- A collapsed `dia` is allowed under every flag. -/
+theorem Step.ok_diaZero : Step.diaZero.OK := by
+  unfold Step.diaZero
+  split
+  · exact Step.ok_at ‹_›
+  · exact Step.ok_of_proj rfl
+
+/-- Without `Opt` an allowed step with no level is structural. -/
+theorem Step.isStruct_of_ok {s : Step} (hok : s.OK) (hO : ModalSys.Opt = false)
+    (hs : s.isProj = true) : s.isStruct = true := by
+  cases s <;> first | rfl | exact absurd (hok.2.2 rfl) (by rw [hO]; decide) | cases hs
 
 /-- Every step of an address is allowed. -/
 def VarSymb.OK (y : VarSymb) : Prop := ∀ s ∈ y.path, s.OK
@@ -127,13 +142,13 @@ theorem Ctx.DeclOK.ref {Γ : Ctx} (h : Γ.DeclOK) : ∀ (v : VarSymb) {T : VarTy
     Γ.ref v = some T → v.OK
   | .root r, T, hv => h _ T hv
   | .step v s, T, hv => by
-      by_cases hs : s.isProj = true
-      · change (if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = some T at hv
+      by_cases hs : s.isStruct = true
+      · change (if s.isStruct then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = some T at hv
         rw [if_pos hs] at hv
         cases hU : Γ.ref v with
         | none => rw [hU] at hv; cases hv
         | some U => exact VarSymb.ok_step.mpr ⟨Ctx.DeclOK.ref h v hU, Step.ok_of_proj hs⟩
-      · change (if s.isProj then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = some T at hv
+      · change (if s.isStruct then (Γ.ref v).bind (·.step s) else Γ (.step v s)) = some T at hv
         rw [if_neg hs] at hv
         exact h _ T hv
 
@@ -155,13 +170,13 @@ theorem Ctx.DeclOK.boxIn_of (hTF : ModalSys.T = true ∨ ModalSys.Four = false) 
   match v, hv with
   | .step u .box, hv =>
       obtain ⟨hk, hu⟩ := Ctx.boxIn_box hv
-      refine VarSymb.ok_step.mpr ⟨h.ref u hu, fun _ => ?_, nofun⟩
+      refine VarSymb.ok_step.mpr ⟨h.ref u hu, fun _ => ?_, nofun, nofun⟩
       rcases hTF with hT | hF
       · simpa [ModalSys.keepOnly, hT] using hk
       · exact hF
   | .step u .keep, hv =>
       obtain ⟨hF, hu, -⟩ := Ctx.boxIn_keep hv
-      exact VarSymb.ok_step.mpr ⟨h.ref u hu, nofun, fun _ => hF⟩
+      exact VarSymb.ok_step.mpr ⟨h.ref u hu, nofun, fun _ => hF, nofun⟩
   | .root _, hv => cases hv
   | .step _ .fst, hv => cases hv
   | .step _ .snd, hv => cases hv
@@ -293,7 +308,8 @@ theorem VarSymb.collapse_agree :
           · subst hk
             rw [if_pos rfl]
             rfl
-          · rw [if_neg hk, VarSymb.collapse_level_zero hs' hk]
+          · rw [if_neg hk, VarSymb.collapse_level_zero hs' hk
+              (hnd _ _ _ (VarSymb.splitAt_ext pre hs' q))]
             rfl
         · rw [show 1 + Step.levels q - 1 - l = (Step.levels q - 1 - l) + 1 by omega,
             Step.collapseAt_succ hs']
@@ -316,10 +332,11 @@ theorem VarSymb.collapse_agree :
                   cases t
                   · cases ht
                   · cases ht
-                  · exact absurd (hokk.2 rfl) (by rw [hokt.1 rfl]; decide)
+                  · exact absurd (hokk.2.1 rfl) (by rw [hokt.1 rfl]; decide)
                   · exact absurd rfl htd
                   · cases ht
                   · rfl
+                  · cases ht
                 subst htk
                 have e := VarSymb.collapse_ext
                   (VarSymb.step (VarSymb.step pre .keep) .keep) q' 0
@@ -590,7 +607,6 @@ theorem splitAt_exists (a : VarSymb) : ∀ (q : List Step) (k : ℕ), k < Step.l
             exact ⟨pre, t, rest ++ [s], by
               simp only [VarSymb.splitAt, hs', Bool.false_eq_true, if_false, h', Option.map_some]⟩
 
-omit [ModalSys] in
 /-- Collapsing below the end of a path keeps the address a prefix followed by a path with one
     level fewer. -/
 theorem collapse_ext_lt (a : VarSymb) : ∀ (q : List Step) (l : ℕ), l < Step.levels q →
@@ -616,9 +632,14 @@ theorem collapse_ext_lt (a : VarSymb) : ∀ (q : List Step) (l : ℕ), l < Step.
             by_cases hk : s = .keep
             · subst hk
               exact ⟨r, by rw [VarSymb.collapse_keep_zero], by omega⟩
-            · refine ⟨r ++ [.here], ?_, ?_⟩
-              · rw [VarSymb.collapse_level_zero hs' hk, VarSymb.ext_append_ext]; rfl
-              · rw [Step.levels_append]; simp [Step.levels, Step.isProj]
+            · by_cases hd : s = .dia
+              · subst hd
+                refine ⟨r ++ [Step.diaZero], ?_, ?_⟩
+                · rw [VarSymb.collapse_dia_zero, VarSymb.ext_append_ext]; rfl
+                · rw [Step.levels_append]; simp [Step.levels, Step.diaZero_isProj]
+              · refine ⟨r ++ [.here], ?_, ?_⟩
+                · rw [VarSymb.collapse_level_zero hs' hk hd, VarSymb.ext_append_ext]; rfl
+                · rw [Step.levels_append]; simp [Step.levels, Step.isProj]
         | succ l =>
             obtain ⟨q', e, hl⟩ := ih l (by omega)
             refine ⟨q' ++ [s], ?_, ?_⟩
@@ -658,7 +679,6 @@ theorem shift_ext_lt (a : VarSymb) : ∀ (q : List Step) (l : ℕ), l < Step.lev
             · rw [VarSymb.shift_level_succ hs', e, VarSymb.ext_append_ext]; rfl
             · rw [Step.levels_append, Step.levels_single, if_neg hs]; omega
 
-omit [ModalSys] in
 /-- Collapsing below a cut keeps the cut. -/
 theorem splitAt_collapse_below {x pre : VarSymb} {k l : ℕ} {t : Step} {rest : List Step}
     (h : VarSymb.splitAt x (k + 1) = some (pre, t, rest)) (hl : l ≤ k) :
@@ -703,7 +723,6 @@ theorem splitAt_shift_at {x pre : VarSymb} {l : ℕ} {t : Step} {rest : List Ste
   · rw [e, ← hlv]
     exact VarSymb.splitAt_ext (VarSymb.step pre .keep) ht rest
 
-omit [ModalSys] in
 /-- Collapsing or shifting above a cut keeps the cut step and what follows it. -/
 theorem splitAt_collapse_above {x a : VarSymb} {l m : ℕ} {t : Step} {b : List Step}
     (h : VarSymb.splitAt x l = some (a, t, b)) (hm : l < m) :
@@ -794,8 +813,12 @@ theorem VarSymb.ok_collapse : ∀ (x : VarSymb) (k : ℕ), x.OK → (x.collapse 
             · subst hk
               rw [VarSymb.collapse_keep_zero]
               exact hv
-            · rw [VarSymb.collapse_level_zero hp' hk]
-              exact VarSymb.ok_step.mpr ⟨hv, Step.ok_of_proj rfl⟩
+            · by_cases hd : s = .dia
+              · subst hd
+                rw [VarSymb.collapse_dia_zero]
+                exact VarSymb.ok_step.mpr ⟨hv, Step.ok_diaZero⟩
+              · rw [VarSymb.collapse_level_zero hp' hk hd]
+                exact VarSymb.ok_step.mpr ⟨hv, Step.ok_of_proj rfl⟩
         | succ k =>
             rw [VarSymb.collapse_level_succ hp']
             exact VarSymb.ok_step.mpr ⟨VarSymb.ok_collapse v k hv, hs⟩
@@ -813,7 +836,7 @@ theorem VarSymb.ok_shift (hF : ModalSys.Four = true) : ∀ (x : VarSymb) (k : �
         | zero =>
             rw [VarSymb.shift_level_zero hp']
             exact VarSymb.ok_step.mpr
-              ⟨VarSymb.ok_step.mpr ⟨hv, nofun, fun _ => hF⟩, hs⟩
+              ⟨VarSymb.ok_step.mpr ⟨hv, nofun, fun _ => hF, nofun⟩, hs⟩
         | succ k =>
             rw [VarSymb.shift_level_succ hp']
             exact VarSymb.ok_step.mpr ⟨VarSymb.ok_shift hF v k hv, hs⟩
@@ -886,7 +909,6 @@ theorem levels_shiftAt : ∀ (i : ℕ) (q : List Step), i < Step.levels q →
 
 /-! ### Reading at a successor commutes with collapsing and shifting further in -/
 
-omit [ModalSys] in
 theorem shiftIterK_collapse (l j : ℕ) : ∀ (n : ℕ) (x : VarSymb),
     (shiftIterK (l + j + 1) n x).collapse l = shiftIterK (l + j) n (x.collapse l)
   | 0, _ => rfl
@@ -953,7 +975,6 @@ theorem splitAt_shiftIterK_at (l : ℕ) : ∀ (n : ℕ) {x a : VarSymb} {t : Ste
   | 0, _, a, _, _, h => ⟨a, h⟩
   | n + 1, _, _, _, _, h => splitAt_shiftIterK_at l n (splitAt_shift_at h).2.2
 
-omit [ModalSys] in
 /-- Collapsing a kept `keep` gives it back. -/
 theorem shift_collapse_keep {y a : VarSymb} {l : ℕ} {b : List Step}
     (h : VarSymb.splitAt y l = some (a, .keep, b)) : (y.shift l).collapse l = y := by
@@ -1001,6 +1022,7 @@ theorem succAddrK_keep (hF : ModalSys.Four = true) {w s t : World σ N₀} (hs :
         · exact absurd rfl ht₀
         · cases hp
         · rfl
+        · cases hp
       subst htk
       exact shift_collapse_keep ha'
     · have e₃ : t.depth - w.depth = (d + 1 + d') + 1 := by omega
@@ -1280,11 +1302,11 @@ theorem ok_inner {v : VarSymb} (hT : ModalSys.T = true) (h : v.OK) : v.inner.OK 
   split_ifs with hk
   · have hF : ModalSys.Four = true := by
       simpa [ModalSys.keepOnly, hT] using hk
-    exact VarSymb.ok_step.mpr ⟨VarSymb.ok_step.mpr ⟨h, nofun, fun _ => hF⟩,
+    exact VarSymb.ok_step.mpr ⟨VarSymb.ok_step.mpr ⟨h, nofun, fun _ => hF, nofun⟩,
       Step.ok_of_proj rfl⟩
   · have hF : ModalSys.Four = false := by
       simpa [ModalSys.keepOnly, hT] using hk
-    exact VarSymb.ok_step.mpr ⟨h, fun _ => hF, nofun⟩
+    exact VarSymb.ok_step.mpr ⟨h, fun _ => hF, nofun, nofun⟩
 
 theorem lv_inner (v : VarSymb) : v.inner.lv = v.lv + 1 := by
   unfold VarSymb.inner
@@ -1462,15 +1484,15 @@ theorem _root_.V12M.Ctx.Deep.of_decl {Δ : Ctx} {j : ℕ}
   | root r => intro T hy; exact h _ T hy
   | step v s ih =>
       intro T hy
-      by_cases hs : s.isProj = true
-      · change (if s.isProj then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hy
+      by_cases hs : s.isStruct = true
+      · change (if s.isStruct then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hy
         rw [if_pos hs] at hy
         cases hU : Δ.ref v with
         | none => rw [hU] at hy; cases hy
         | some U =>
-            rw [lv_step, if_pos hs]
+            rw [lv_step, if_pos (Step.isProj_of_isStruct hs)]
             exact ih U hU
-      · change (if s.isProj then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hy
+      · change (if s.isStruct then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hy
         rw [if_neg hs] at hy
         exact h _ T hy
 
@@ -1518,7 +1540,7 @@ def Canonical {Δ : Ctx} {w : World σ N₀} (ρ : CShEnv Δ w) (j : ℕ) : Prop
 /-- A projection moves a canonical η-annotation to the projected address's. -/
 theorem shp_proj_annShp {Δ : Ctx} (hok : Δ.DeclOK) {j : ℕ}
     (hdeep : Δ.Deep j) (w : World σ N₀) {v : VarSymb} {U T : VarType} {s : Step}
-    (hs : s.isProj = true) (hU : Δ.ref v = some U) (h : U.step s = some T) :
+    (hs : s.isStruct = true) (hU : Δ.ref v = some U) (h : U.step s = some T) :
     GFunc.shp (GFunc.proj (σ := σ) hs h) j (annShp w j (Ann.eta v U)) =
       annShp w j (Ann.eta (.step v s) T) := by
   cases U <;> cases s <;> (try cases hs) <;> (try cases h)
@@ -1543,7 +1565,7 @@ theorem Canonical.of_decl {Δ : Ctx} (hok : Δ.DeclOK) {j : ℕ}
   | root r => intro T hy; exact h _ T hy
   | step v s ih =>
       intro T hy
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Δ.ref v = some U := by
           rw [Ctx.ref_step_proj Δ v hs] at hy
           cases hU : Δ.ref v with

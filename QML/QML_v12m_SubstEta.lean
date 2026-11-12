@@ -28,9 +28,10 @@ theorem Ctx.ShiftCollapseId.of_raw {m : ℕ} {Γ : Ctx}
   | root r => intro T hv; exact h _ _ rfl hv
   | step v s ih =>
       intro T hv
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Ctx.ref_step_proj _ _ hs] at hv
-        rw [VarSymb.shift_proj hs, VarSymb.collapse_proj hs]
+        rw [VarSymb.shift_proj (Step.isProj_of_isStruct hs),
+          VarSymb.collapse_proj (Step.isProj_of_isStruct hs)]
         cases hU : Γ.ref v with
         | none => rw [hU] at hv; cases hv
         | some U => rw [ih U hU]

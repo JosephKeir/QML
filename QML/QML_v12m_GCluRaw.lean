@@ -51,7 +51,7 @@ def KForm (s : GW hF M₀) (k : ℕ) (y : VarSymb) (T : VarType) : Prop :=
     Step.levels r = k
 
 theorem KForm.proj {s : GW hF M₀} {k : ℕ} {y : VarSymb} {U T : VarType} (h : KForm s k y U)
-    {st : Step} (hs : st.isProj = true) (hst : U.step st = some T) :
+    {st : Step} (hs : st.isStruct = true) (hst : U.step st = some T) :
     KForm s k (.step y st) T := by
   obtain ⟨z, U₀, r, hd, hv, hk, rfl, hw, hn⟩ := h
   refine ⟨z, U₀, r ++ [st], hd, hv, hk, (VarSymb.ext_append_single _ r st).symm, ?_, ?_⟩
@@ -63,8 +63,9 @@ theorem KForm.proj {s : GW hF M₀} {k : ℕ} {y : VarSymb} {U T : VarType} (h :
     | box => cases hs
     | dia => cases hs
     | keep => cases hs
+    | «at» => cases hs
   · rw [Step.levels_append, hn]
-    simp [Step.levels, hs]
+    simp [Step.levels, Step.isProj_of_isStruct hs]
 
 theorem KForm.keep {s : GW hF M₀} {k : ℕ} {y : VarSymb} {U : VarType} (h : KForm s k y U)
     (hkU : U.keepable = true) : KForm s (k + 1) (.step y .keep) U := by
@@ -93,7 +94,7 @@ theorem kInv_of_items {s : GW hF M₀} {Δ : Ctx} {k : ℕ}
     (hitem : ∀ (v : VarSymb) (T : VarType), Δ v = some T → KForm s k v T) : KInv s Δ k
   | .root r, T, h => hitem _ T (by rwa [Ctx.ref_nonproj _ rfl] at h)
   | .step v st, T, h => by
-      by_cases hs : st.isProj = true
+      by_cases hs : st.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Δ.ref v = some U := by
           rw [Ctx.ref_step_proj _ v hs] at h
           cases hU : Δ.ref v with
@@ -175,7 +176,7 @@ theorem vInv_of_items {x : VarSymb} {Δ : Ctx}
     (hitem : ∀ (v : VarSymb) (T : VarType), Δ v = some T → VForm x v) : VInv x Δ
   | .root r, T, h => hitem _ T (by rwa [Ctx.ref_nonproj _ rfl] at h)
   | .step v st, T, h => by
-      by_cases hs : st.isProj = true
+      by_cases hs : st.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Δ.ref v = some U := by
           rw [Ctx.ref_step_proj _ v hs] at h
           cases hU : Δ.ref v with
@@ -260,7 +261,9 @@ theorem eIdx_preIX_form (s : GW hF M₀) {x y : VarSymb} (h : VForm x y) :
   obtain ⟨z, st, r, rfl, hz, hst⟩ := h
   have hs : st.isProj = false := by
     rcases hst with rfl | ⟨rfl, -⟩ <;> rfl
-  rw [eIdx_item _ hz hs, preIx_lvl _ hz hs]
+  have hs' : st.isStruct = false := by
+    rcases hst with rfl | ⟨rfl, -⟩ <;> rfl
+  rw [eIdx_item _ hz hs', preIx_lvl _ hz hs]
   change ((preIX (rorig s) x) (.step z st)).ext r = _
   rcases hst with rfl | ⟨rfl, rfl⟩
   · rw [show preIX (rorig s) x (.step z .keep) = .step (rorig s z) .keep from if_neg (by simp)]

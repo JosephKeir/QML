@@ -284,7 +284,7 @@ theorem eS_mono_at {l : List VarType} {k : Option VarSymb} {Δ Δ' : Ctx} (h : �
       obtain ⟨u, s, e, -⟩ := kView_item (show (ctxOf l).kView k (.root r) = some T from hu)
       cases e
   | .step u s, T, hu => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Subst.at_proj _ _ hs, Subst.at_proj _ _ hs]
         rw [Ctx.ref_step_proj _ _ hs] at hu
         cases hU : ((ctxOf l).kView k).ref u with

@@ -115,6 +115,7 @@ theorem ref_lItem (hF : ModalSys.Four = true) {L : List VarType} {Δ : Ctx} {ρ 
       | box => exact absurd (hp .box (by simp)) (by decide)
       | dia => exact absurd (hp .dia (by simp)) (by decide)
       | keep => exact absurd (hp .keep (by simp)) (by decide)
+      | «at» => exact absurd (hp .at (by simp)) (by decide)
 
 /-! ## Entries -/
 
@@ -260,7 +261,7 @@ abbrev rtup (hF : ModalSys.Four = true) {Γ : Ctx} (u : VarSymb) (T : VarType)
 /-- ⭐An entry holding the residual tuple of a liftable `u : T` (weakened), read where `lPath`
     sends a residual item `v.s` of `v = u.q`, is the item itself. -/
 theorem at_lPath_rtupB (hF : ModalSys.Four = true) {Γ Δ : Ctx} (hle : Γ.boxIn.Le Δ)
-    (θ : Subst σ Δ) (b : Bool) (hb : ModalSys.keepOnly = b) {s : Step} (hs : s.isProj = false)
+    (θ : Subst σ Δ) (b : Bool) (hb : ModalSys.keepOnly = b) {s : Step} (hs : s.isStruct = false)
     {T' : VarType} (T : VarType) (hT : T.keepable = true) (q : List Step) {U' : VarType}
     (u w : VarSymb) (hu : Γ.ref u = some T) (hq : PPath q) (hwk : T.walk q = some U')
     (hθ : θ.at w = .tm (Term.mono hle (rtupB hF u T b hb hu))) (hnk : ¬ (q = [] ∧ s = .keep))
@@ -281,6 +282,7 @@ theorem at_lPath_rtupB (hF : ModalSys.Four = true) {Γ Δ : Ctx} (hle : Γ.boxIn
           exact hθ
       | keep => exact absurd ⟨rfl, rfl⟩ hnk
       | dia => cases hit'
+      | «at» => cases hit'
       | _ => cases hs
   | t :: q, hq, hwk, _ =>
       have hq' : PPath q := fun s' hs' => hq s' (by simp [hs'])
@@ -304,6 +306,7 @@ theorem at_lPath_rtupB (hF : ModalSys.Four = true) {Γ Δ : Ctx} (hle : Γ.boxIn
       | box => exact absurd (hq .box (by simp)) (by decide)
       | dia => exact absurd (hq .dia (by simp)) (by decide)
       | keep => exact absurd (hq .keep (by simp)) (by decide)
+      | «at» => exact absurd (hq .at (by simp)) (by decide)
 
 /-! ## Reading substitutions along paths -/
 
@@ -313,7 +316,7 @@ theorem at_ext_ren {Δ : Ctx} (θ : Subst σ Δ) :
       θ.at (w.ext p) = .ren (w'.ext p)
   | [], _, _, _, h => h
   | s :: p, w, w', hp, h => by
-      have hs : s.isProj = true := hp s (by simp)
+      have hs : s.isStruct = true := hp s (by simp)
       refine at_ext_ren θ p (w := .step w s) (w' := .step w' s)
         (fun s' hs' => hp s' (by simp [hs'])) ?_
       rw [Subst.at_proj _ _ hs, h]
@@ -324,7 +327,7 @@ theorem at_ren_of {Δ : Ctx} (θ : Subst σ Δ) :
     ∀ w : VarSymb, (∀ v : VarSymb, v.rt = w.rt → θ v = .ren v) → θ.at w = .ren w
   | .root r, h => h (.root r) rfl
   | .step w s, h => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Subst.at_proj _ _ hs, at_ren_of θ w h]
         rfl
       · rw [Subst.at_nonproj _ (Bool.eq_false_iff.mpr hs : (VarSymb.step w s).lastProj = false)]
@@ -463,7 +466,7 @@ theorem instantiate_liftChi (hF : ModalSys.Four = true) (k : Option VarSymb) (T 
   refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T' hl hv
   obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
-  have hs' : s.isProj = false := hl
+  have hs' : s.isStruct = false := hl
   change SubE.Sim T' (eS σ _ (gliftG (ofRen id) T ls.length (.inl (mKeep ls)) (.bnd 0)) (.step u s))
     ((eS σ _ (gliftG (ofRen id) T ls.length (.inl (.root (.bnd 0))) (.bnd 1))
       (.step u s)).comp _ _ _)
@@ -504,7 +507,7 @@ theorem instantiate_rtup_liftRes (hF : ModalSys.Four = true) (k : Option VarSymb
   refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T' hl hv
   obtain ⟨u, s, rfl, hup, U, hU⟩ := kView_item hv
-  have hs' : s.isProj = false := hl
+  have hs' : s.isStruct = false := hl
   change SubE.Sim T' (.ren (.step u s))
     ((eS σ _ (gliftG (ofRen id) T ls.length (.inl (mKeep ls)) (.bnd 0)) (.step u s)).comp _ _ _)
   rw [eS_item _ hs']
@@ -624,7 +627,7 @@ theorem liftTgt_liftChi [ModalSys.NoOpt]
     refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
     intro v T' hl hv
     obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
-    have hs' : s.isProj = false := hl
+    have hs' : s.isStruct = false := hl
     change SubE.Sim T' (eS σ _ (gliftG f T ls.length (.inr ⟨lt, T, a, t⟩) (.bnd 0)) (.step u s))
       ((eS σ _ (gliftG f T ls.length (.inl (.root (.bnd 0))) (.bnd 1)) (.step u s)).comp _ _ _)
     rw [eS_item _ hs', eS_item _ hs']
@@ -657,7 +660,7 @@ theorem liftTgt_liftChi [ModalSys.NoOpt]
     refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
     intro v T' hl hv
     obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
-    have hs' : s.isProj = false := hl
+    have hs' : s.isStruct = false := hl
     change SubE.Sim T' (eS σ _ (gliftG f T ls.length (.inl (.root (.bnd 0))) (.bnd 1)) (.step u s))
       ((eS σ _ (gliftG (ofRen id) T ls.length (.inl (.root (.bnd 0))) (.bnd 1))
         (.step u s)).comp _ _ _)
@@ -721,7 +724,7 @@ theorem gliftArrow_openFree (hF : ModalSys.Four = true) {k : Option VarSymb} {T 
   refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T' hl hv
   obtain ⟨u, s, rfl, -, U, hU⟩ := kView_item hv
-  have hs' : s.isProj = false := hl
+  have hs' : s.isStruct = false := hl
   change SubE.Sim T'
     (eS σ _ (gliftG f T ls.length (.inr ⟨lt, T, a, t⟩) (.free lt.length)) (.step u s))
     ((eS σ _ (gliftG f T ls.length (.inr ⟨lt, T, a, t⟩) (.bnd 0)) (.step u s)).comp _ _ _)

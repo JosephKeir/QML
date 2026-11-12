@@ -45,7 +45,7 @@ def idS (σ : Signature) (Δ : Ctx) : Subst σ Δ where
 theorem at_idS : ∀ v : VarSymb, (idS σ Δ).at v = .ren v
   | .root _ => rfl
   | .step v s => by
-      change (if s.isProj then ((idS σ Δ).at v).proj s else SubE.ren (.step v s)) = _
+      change (if s.isStruct then ((idS σ Δ).at v).proj s else SubE.ren (.step v s)) = _
       split_ifs with hs
       · rw [at_idS v]
         rfl

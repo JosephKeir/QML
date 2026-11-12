@@ -183,7 +183,7 @@ theorem at_retPullC_tup : ∀ {u : VarSymb} {U : VarType} (hu' : (ctxOf l).ref u
       exact retPullC_succ l A hV hu e hr'
   | .root (.bnd _), _, _, _, hrt => by cases hrt
   | .step u s, U, hu', r, hrt => by
-      have hproj : s.isProj = true := (reach_ppath hu').1 s (by simp [VarSymb.path])
+      have hproj : s.isStruct = true := (reach_ppath hu').1 s (by simp [VarSymb.path])
       have hu'' := hu'
       simp only [Ctx.ref, if_pos hproj] at hu''
       cases hU : (ctxOf l).ref u with

@@ -228,11 +228,12 @@ inductive Sim : VarType → SubE σ Δ → SubE σ Δ → Prop
       Sim T (.ren w) (.tm (Term.eta w T h))
 
 theorem Sim.proj_step {U T : VarType} {s : Step} {e e' : SubE σ Δ} (h : Sim U e e')
-    (hs : s.isProj = true) (hst : U.step s = some T) : Sim T (e.proj s) (e'.proj s) := by
+    (hs : s.isStruct = true) (hst : U.step s = some T) : Sim T (e.proj s) (e'.proj s) := by
   cases s with
   | box => cases hs
   | dia => cases hs
   | keep => cases hs
+  | «at» => cases hs
   | here =>
       cases U <;> try cases hst
       obtain ⟨hT, hAT⟩ := VarType.step_here hst

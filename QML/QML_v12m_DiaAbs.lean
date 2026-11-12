@@ -104,7 +104,7 @@ theorem ref_insert_dia {Γ : Ctx} {c : ℕ} (_hc : Γ.RootFresh (.free c)) (A : 
         change (if (VarSymb.step u s) = .root (.free c) then some (.VTypeDia A)
           else Γ (.step u s)) = _
         rw [if_neg (fun he => by cases he)]
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Ctx.ref_step_proj _ _ hs] at h
         cases hU : (Γ.insert (.free c) (.VTypeDia A)).ref u with
         | none => rw [hU] at h; cases h
@@ -119,6 +119,7 @@ theorem ref_insert_dia {Γ : Ctx} {c : ℕ} (_hc : Γ.RootFresh (.free c)) (A : 
               | box => exact absurd hs (by decide)
               | dia => exact absurd hs (by decide)
               | keep => exact absurd hs (by decide)
+              | «at» => exact absurd hs (by decide)
             · refine Or.inr ?_
               rw [Ctx.ref_step_proj _ _ hs, hu]
               exact h
@@ -134,7 +135,7 @@ theorem ref_none_of_dia_root {Γ : Ctx} {c : ℕ} {A : VarType}
     ∀ {u : VarSymb}, u.rt = .free c → u ≠ .root (.free c) → Γ.ref u = none
   | .root r, hrt, hne => absurd (congrArg VarSymb.root (show r = .free c from hrt)) hne
   | .step u s, hrt, _ => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Ctx.ref_step_proj _ _ hs]
         by_cases hu : u = .root (.free c)
         · subst hu
@@ -146,6 +147,7 @@ theorem ref_none_of_dia_root {Γ : Ctx} {c : ℕ} {A : VarType}
           | box => exact absurd hs (by decide)
           | dia => exact absurd hs (by decide)
           | keep => exact absurd hs (by decide)
+          | «at» => exact absurd hs (by decide)
         · rw [ref_none_of_dia_root hcA hfr (u := u) hrt hu]
           rfl
       · rw [Ctx.ref_step_nonproj _ _ hs]
@@ -559,7 +561,7 @@ theorem Subst.isRen_of {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx}
   | root r => intro U hu; exact hvis _ _ rfl hu
   | step u s ih =>
       intro U hu
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · have hu' := hu
         rw [Ctx.ref_step_proj _ _ hs] at hu'
         cases hU : Γ.ref u with
@@ -569,7 +571,7 @@ theorem Subst.isRen_of {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx}
               have h := hc u _ hU [s]
               rw [ih W hU] at h
               exact h.symm
-            change (if s.isProj then (θ.at u).proj s else _) = _
+            change (if s.isStruct then (θ.at u).proj s else _) = _
             rw [if_pos hs, ih W hU, hstep]
             rfl
       · have hlp : (VarSymb.step u s).lastProj = false := Bool.eq_false_iff.mpr hs

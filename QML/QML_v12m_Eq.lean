@@ -54,7 +54,7 @@ theorem Subst.single_at_ne {σ : Signature} {Δ : Ctx} {r : Root} {e : SubE σ �
       rw [if_neg (fun he => h' (VarSymb.root.inj he))]
   | .step v s, h => by
       have ih := Subst.single_at_ne (r := r) (e := e) (v := v) h
-      change (if s.isProj then ((Subst.single r e).at v).proj s
+      change (if s.isStruct then ((Subst.single r e).at v).proj s
         else (if VarSymb.step v s = .root r then e else .ren (.step v s))) = _
       rw [ih]
       split_ifs with h₁ h₂

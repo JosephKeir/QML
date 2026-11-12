@@ -159,7 +159,7 @@ def itemIdx {Δ : Ctx} (θ : Subst σ Δ) (a : VarSymb) : VarSymb :=
     index map. -/
 theorem coh_itemIdx {Γ Δ : Ctx} {θ : Subst σ Δ} (hθ : Subst.Ok Γ.boxIn θ)
     (hpp : ∀ (u : VarSymb) (T : VarType), Γ.ref u = some (.VTypeBox T) →
-      ∀ s ∈ u.path, s.isProj = true) :
+      ∀ s ∈ u.path, s.isStruct = true) :
     Subst.Coh (itemIdx θ) Γ.boxIn θ := by
   refine Subst.coh_of hθ ?_
   intro v T _ hv q
@@ -215,7 +215,7 @@ omit [ModalSys.NoFour] in
 /-- The items of the view of `d : □A` have projection paths. -/
 theorem ref_insert_box_ppath (A : VarType) (u : VarSymb) (T : VarType)
     (hu : (Ctx.empty.insert (.bnd 0) (.VTypeBox A)).ref u = some (.VTypeBox T)) :
-    ∀ s ∈ u.path, s.isProj = true :=
+    ∀ s ∈ u.path, s.isStruct = true :=
   (Ctx.ref_insert_box hu).2.1
 
 omit [ModalSys.NoFour] in

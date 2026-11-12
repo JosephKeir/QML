@@ -81,8 +81,8 @@ theorem Subst.at_set_of_rt_ne {Δ : Ctx} (θ : Subst σ Δ) {r : Root} (E : SubE
       change Subst.set θ r E (.root r') = θ (.root r')
       exact Subst.set_ne _ _ (fun e => h (by cases e; rfl))
   | .step u s, h => by
-      change (if s.isProj then ((θ.set r E).at u).proj s else (θ.set r E) (.step u s)) =
-        (if s.isProj then (θ.at u).proj s else θ (.step u s))
+      change (if s.isStruct then ((θ.set r E).at u).proj s else (θ.set r E) (.step u s)) =
+        (if s.isStruct then (θ.at u).proj s else θ (.step u s))
       rw [Subst.at_set_of_rt_ne θ E (u := u) h, Subst.set_ne _ _ (fun e => by cases e)]
 
 /-! ## The counit with a carrier, at the plain leg -/

@@ -69,6 +69,7 @@ theorem dia_shift_ren (hF : ModalSys.Four = true) (hb : ModalSys.keepOnly = fals
         rw [eS_keep_at hkf hv']
         exact .refl _
     | dia => cases hv'
+    | «at» => cases hv'
     | fst => cases hl
     | snd => cases hl
     | here => cases hl

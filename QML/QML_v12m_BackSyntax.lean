@@ -429,7 +429,7 @@ theorem VarType.walk_append (T : VarType) (p q : List Step) :
     path walks to. -/
 theorem Ctx.ref_insert_one {r : Root} {R : VarType} : ∀ (u : VarSymb) {U : VarType},
     (Ctx.empty.insert r R).ref u = some U →
-      u.rt = r ∧ (∀ s ∈ u.path, s.isProj = true) ∧ R.walk u.path = some U
+      u.rt = r ∧ (∀ s ∈ u.path, s.isStruct = true) ∧ R.walk u.path = some U
   | .root r', U, h => by
       change (if VarSymb.root r' = .root r then some R else Ctx.empty (.root r')) = some U at h
       split_ifs at h with he
@@ -454,15 +454,15 @@ theorem Ctx.ref_insert_one {r : Root} {R : VarType} : ∀ (u : VarSymb) {U : Var
 
 /-- A path walking a type to a necessary type reaches a companion there. -/
 theorem VarType.compAt_of_walk : ∀ (A : VarType) (p : List Step) {C : VarType},
-    (∀ s ∈ p, s.isProj = true) → A.walk p = some (.VTypeBox C) → A.compAt p = some C
+    (∀ s ∈ p, s.isStruct = true) → A.walk p = some (.VTypeBox C) → A.compAt p = some C
   | A, [], C, _, h => by
       cases A <;> simp only [VarType.walk, Option.some.injEq, reduceCtorEq] at h
       rw [VarType.VTypeBox.inj h]
       rfl
   | A, s :: p, C, hp, h => by
       have hs := hp s List.mem_cons_self
-      have hp' : ∀ t ∈ p, t.isProj = true := fun t ht => hp t (List.mem_cons_of_mem _ ht)
-      cases A <;> cases s <;> simp only [Step.isProj, Bool.false_eq_true] at hs <;>
+      have hp' : ∀ t ∈ p, t.isStruct = true := fun t ht => hp t (List.mem_cons_of_mem _ ht)
+      cases A <;> cases s <;> simp only [Step.isStruct, Bool.false_eq_true] at hs <;>
         simp only [VarType.walk, VarType.step, Option.bind_none, Option.bind_some,
           reduceCtorEq] at h
       · exact VarType.compAt_of_walk _ p hp' h
@@ -503,7 +503,7 @@ theorem VarType.mem_hereChains : ∀ (A : VarType) (p : List Step) {C : VarType}
     `d.here.p` (`p` among all of `A`'s companions). -/
 theorem Ctx.ref_insert_box {A : VarType} {u : VarSymb} {T : VarType}
     (hu : (Ctx.empty.insert (.bnd 0) (.VTypeBox A)).ref u = some (.VTypeBox T)) :
-    u.rt = .bnd 0 ∧ (∀ s ∈ u.path, s.isProj = true) ∧
+    u.rt = .bnd 0 ∧ (∀ s ∈ u.path, s.isStruct = true) ∧
       ((u.path = [] ∧ T = A) ∨
         (ModalSys.T = true ∧ ∃ p, u.path = .here :: p ∧ A.compAt p = some T)) := by
   obtain ⟨hrt, hp, hw⟩ := Ctx.ref_insert_one u hu
@@ -517,8 +517,8 @@ theorem Ctx.ref_insert_box {A : VarType} {u : VarSymb} {T : VarType}
   | cons s p =>
       intro hp hw
       have hs := hp s List.mem_cons_self
-      have hp' : ∀ t ∈ p, t.isProj = true := fun t ht => hp t (List.mem_cons_of_mem _ ht)
-      cases s <;> simp only [Step.isProj, Bool.false_eq_true] at hs <;>
+      have hp' : ∀ t ∈ p, t.isStruct = true := fun t ht => hp t (List.mem_cons_of_mem _ ht)
+      cases s <;> simp only [Step.isStruct, Bool.false_eq_true] at hs <;>
         simp only [VarType.walk, VarType.step, Option.bind_none, reduceCtorEq] at hw
       by_cases hT : ModalSys.T = true
       · rw [if_pos hT, Option.bind_some] at hw
@@ -548,13 +548,13 @@ def cutBox : List Step → Option (List Step × List Step)
   | s :: q => (cutBox q).map fun pq => (s :: pq.1, pq.2)
 
 omit [ModalSys] in
-theorem cutBox_proj : ∀ (p : List Step) (q : List Step), (∀ s ∈ p, s.isProj = true) →
+theorem cutBox_proj : ∀ (p : List Step) (q : List Step), (∀ s ∈ p, s.isStruct = true) →
     cutBox (p ++ .box :: q) = some (p, q)
   | [], q, _ => rfl
   | s :: p, q, hp => by
       have hs := hp s List.mem_cons_self
       have ih := cutBox_proj p q (fun t ht => hp t (List.mem_cons_of_mem _ ht))
-      cases s <;> simp [Step.isProj] at hs <;> simp [cutBox, ih]
+      cases s <;> simp [Step.isStruct] at hs <;> simp [cutBox, ih]
 
 /-- Where an item of `d`'s view lands in `d`'s value with companions `cs`: `d.box` at the
     contents, `d.here.p.box` at companion `p`. -/

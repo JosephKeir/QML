@@ -35,12 +35,12 @@ theorem cut_unique (hT : ModalSys.T = false) :
   | _, [], [], _, _, _, _, _, _, h => ⟨rfl, h⟩
   | R, [], s' :: p', q, q', _, hp', hw, hw', h => by
       exfalso
-      have hs' : s'.isProj = true := hp' s' List.mem_cons_self
-      cases R <;> cases s' <;> simp_all [VarType.walk, VarType.step, Step.isProj]
+      have hs' : s'.isStruct = true := hp' s' List.mem_cons_self
+      cases R <;> cases s' <;> simp_all [VarType.walk, VarType.step, Step.isStruct]
   | R, s :: p, [], q, q', hp, _, hw, hw', h => by
       exfalso
-      have hs : s.isProj = true := hp s List.mem_cons_self
-      cases R <;> cases s <;> simp_all [VarType.walk, VarType.step, Step.isProj]
+      have hs : s.isStruct = true := hp s List.mem_cons_self
+      cases R <;> cases s <;> simp_all [VarType.walk, VarType.step, Step.isStruct]
   | R, s :: p, s' :: p', q, q', hp, hp', hw, hw', h => by
       simp only [List.cons_append, List.cons.injEq] at h
       obtain ⟨rfl, h⟩ := h
@@ -64,24 +64,24 @@ theorem cut_unique_T (hT : ModalSys.T = true) :
   | _, [], [], _, _, _, _, _, _, h => ⟨rfl, List.cons.inj h |>.2⟩
   | R, [], s' :: p', q, q', _, hp', hw, hw', h => by
       exfalso
-      have hs' : s'.isProj = true := hp' s' List.mem_cons_self
+      have hs' : s'.isStruct = true := hp' s' List.mem_cons_self
       cases R <;> cases s' <;>
-        simp_all [VarType.walk, VarType.step, Step.isProj, BArrow.encPath, BArrow.encStep]
+        simp_all [VarType.walk, VarType.step, BArrow.encPath, BArrow.encStep]
   | R, s :: p, [], q, q', hp, _, hw, hw', h => by
       exfalso
-      have hs : s.isProj = true := hp s List.mem_cons_self
+      have hs : s.isStruct = true := hp s List.mem_cons_self
       cases R <;> cases s <;>
-        simp_all [VarType.walk, VarType.step, Step.isProj, BArrow.encPath, BArrow.encStep]
+        simp_all [VarType.walk, VarType.step, BArrow.encPath, BArrow.encStep]
   | R, s :: p, s' :: p', q, q', hp, hp', hw, hw', h => by
-      have hs : s.isProj = true := hp s List.mem_cons_self
-      have hs' : s'.isProj = true := hp' s' List.mem_cons_self
+      have hs : s.isStruct = true := hp s List.mem_cons_self
+      have hs' : s'.isStruct = true := hp' s' List.mem_cons_self
       change BArrow.encStep s :: (BArrow.encPath p ++ .fst :: q) =
         BArrow.encStep s' :: (BArrow.encPath p' ++ .fst :: q') at h
       obtain ⟨hss, htl⟩ := List.cons.inj h
       simp only [List.cons_append, VarType.walk] at hw hw'
       obtain rfl : s = s' := by
         cases R <;> cases s <;> cases s' <;>
-          simp_all [VarType.step, Step.isProj, BArrow.encStep]
+          simp_all [VarType.step, BArrow.encStep]
       cases hU : R.step s with
       | none => rw [hU] at hw; exact absurd rfl hw
       | some U =>
@@ -103,7 +103,7 @@ theorem walk_bc (hT : ModalSys.T = false) :
   | .VTypeProd _ _, [], _, q, h => by simp [VarType.walk, VarType.step] at h
   | .VTypeDia _, [], _, q, h => by simp [VarType.walk, VarType.step] at h
   | R, s :: p, hp, q, h => by
-      have hs : s.isProj = true := hp s List.mem_cons_self
+      have hs : s.isStruct = true := hp s List.mem_cons_self
       have hp' : PPath p := fun t ht => hp t (List.mem_cons_of_mem _ ht)
       cases R with
       | VTypeProd A C =>
@@ -117,10 +117,10 @@ theorem walk_bc (hT : ModalSys.T = false) :
               rw [show (VarType.VTypeProd A C).bc = .VTypeProd A.bc C.bc from rfl]
               exact walk_bc hT C hp' q h
           | here => simp [VarType.walk, VarType.step] at h
-          | _ => simp [Step.isProj] at hs
+          | _ => simp [Step.isStruct] at hs
       | _ =>
           exfalso
-          cases s <;> simp_all [VarType.walk, VarType.step, Step.isProj]
+          cases s <;> simp_all [VarType.walk, VarType.step, Step.isStruct]
 
 
 namespace BArrow
@@ -283,8 +283,8 @@ theorem Ctx.Walks.of_decl {Γ₀ Δ : Ctx}
   | root r => intro T hy; exact h _ T hy
   | step v s ih =>
       intro T hy
-      by_cases hs : s.isProj = true
-      · change (if s.isProj then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hy
+      by_cases hs : s.isStruct = true
+      · change (if s.isStruct then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hy
         rw [if_pos hs] at hy
         cases hU : Δ.ref v with
         | none => rw [hU] at hy; cases hy
@@ -295,7 +295,7 @@ theorem Ctx.Walks.of_decl {Γ₀ Δ : Ctx}
             change R.walk (v.path ++ [s]) = some T
             rw [VarType.walk_append, hw]
             simpa [VarType.walk] using hy
-      · change (if s.isProj then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hy
+      · change (if s.isStruct then (Δ.ref v).bind (·.step s) else Δ (.step v s)) = some T at hy
         rw [if_neg hs] at hy
         exact h _ T hy
 
@@ -416,8 +416,8 @@ theorem ann_eq_of_rden_noT (hT : ModalSys.T = false) (hSh : ModalSys.shaped = tr
     (h : B.rden s i e t = B.rden s i e t') : a = a' := by
   refine annShp_injective_noT hT hInj s harr 0 a a' (Term.ann_exact hok hex t)
     (Term.ann_exact hok hex t') (Term.annTy hW t) (Term.annTy hW t') ?_
-  rw [← termShp_canonical hok hex (cEnv_canonical hex s) t,
-    ← termShp_canonical hok hex (cEnv_canonical hex s) t', ← B.rawShape_rden hSh s i e t,
+  rw [← termShp_canonical hok hex (cEnv_canonical hok hex s) t,
+    ← termShp_canonical hok hex (cEnv_canonical hok hex s) t', ← B.rawShape_rden hSh s i e t,
     ← B.rawShape_rden hSh s i e t', h]
 
 /-- Tags determine annotations without T, for terms of a world's language. -/

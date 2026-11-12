@@ -28,14 +28,14 @@ variable [ModalSys]
 /-- The address with its trailing product steps removed. -/
 def VarSymb.base : VarSymb → VarSymb
   | .root r => .root r
-  | .step v s => if s.isProj then v.base else .step v s
+  | .step v s => if s.isStruct then v.base else .step v s
 
 /-- A reachable address's base is visible. -/
 def Ctx.baseOf (Δ : Ctx) : (v : VarSymb) → {T : VarType} → Δ.ref v = some T →
     Σ' U : VarType, Δ v.base = some U
   | .root _, T, h => ⟨T, h⟩
   | .step v s, T, h =>
-      if hs : s.isProj = true then
+      if hs : s.isStruct = true then
         match hU : Δ.ref v with
         | some _ =>
             have r := Ctx.baseOf Δ v hU
@@ -87,7 +87,7 @@ def GFunc.ofEq {σ : Signature} : {A B : VarType} → A = B → GFunc σ A B
   | _, _, rfl => .id _
 
 /-- The projection along a product step. -/
-def GFunc.proj {σ : Signature} {U T : VarType} {s : Step} (hs : s.isProj = true)
+def GFunc.proj {σ : Signature} {U T : VarType} {s : Step} (hs : s.isStruct = true)
     (h : U.step s = some T) : GFunc σ U T := by
   cases U <;> cases s <;> (try cases hs) <;> (try cases h)
   · exact .fst
@@ -109,7 +109,7 @@ def Supp.refGF {σ : Signature} {Δ : Ctx} (L : Supp Δ) : (v : VarSymb) → {T 
     Δ.ref v = some T → v.base ∈ List.map PSigma.fst L → GFunc σ (Supp.ty L) T
   | .root r, _, h, hm => Supp.lookup L (.root r) h hm
   | .step v s, _, h, hm =>
-      if hs : s.isProj = true then
+      if hs : s.isStruct = true then
         match hU : Δ.ref v with
         | some _ =>
             .comp (GFunc.proj hs (by rw [Ctx.ref_step_proj Δ v hs, hU] at h; exact h))
@@ -350,11 +350,13 @@ def compBack : (A : VarType) → (p : List Step) → {v w : M.frame.W} → M.fra
   | .VTypeBox _, .box :: _, _, _, _, _, _ => True
   | .VTypeBox _, .dia :: _, _, _, _, _, _ => True
   | .VTypeBox _, .keep :: _, _, _, _, _, _ => True
+  | .VTypeBox _, .at :: _, _, _, _, _, _ => True
   | .VTypeProd _ _, [], _, _, _, _, _ => True
   | .VTypeProd _ _, .box :: _, _, _, _, _, _ => True
   | .VTypeProd _ _, .dia :: _, _, _, _, _, _ => True
   | .VTypeProd _ _, .here :: _, _, _, _, _, _ => True
   | .VTypeProd _ _, .keep :: _, _, _, _, _, _ => True
+  | .VTypeProd _ _, .at :: _, _, _, _, _, _ => True
 
 /-- Under T, the reading along the way home `r` of the companion of a value `x : A` at the path
     `p` (the unit value at a path reaching no necessary object). -/
@@ -373,11 +375,13 @@ def compRead (hT : ModalSys.T = true) : (A : VarType) → (p : List Step) → {v
   | .VTypeBox _, .box :: _, _, _, _, _ => PUnit.unit
   | .VTypeBox _, .dia :: _, _, _, _, _ => PUnit.unit
   | .VTypeBox _, .keep :: _, _, _, _, _ => PUnit.unit
+  | .VTypeBox _, .at :: _, _, _, _, _ => PUnit.unit
   | .VTypeProd _ _, [], _, _, _, _ => PUnit.unit
   | .VTypeProd _ _, .box :: _, _, _, _, _ => PUnit.unit
   | .VTypeProd _ _, .dia :: _, _, _, _, _ => PUnit.unit
   | .VTypeProd _ _, .here :: _, _, _, _, _ => PUnit.unit
   | .VTypeProd _ _, .keep :: _, _, _, _, _ => PUnit.unit
+  | .VTypeProd _ _, .at :: _, _, _, _, _ => PUnit.unit
 
 /-- A companion comes back as its own reading along the way home. -/
 theorem compBack_compRead (hT : ModalSys.T = true) : ∀ (A : VarType) (p : List Step)
@@ -398,11 +402,13 @@ theorem compBack_compRead (hT : ModalSys.T = true) : ∀ (A : VarType) (p : List
   | .VTypeBox _, .box :: _, _, _, _, _ => trivial
   | .VTypeBox _, .dia :: _, _, _, _, _ => trivial
   | .VTypeBox _, .keep :: _, _, _, _, _ => trivial
+  | .VTypeBox _, .at :: _, _, _, _, _ => trivial
   | .VTypeProd _ _, [], _, _, _, _ => trivial
   | .VTypeProd _ _, .box :: _, _, _, _, _ => trivial
   | .VTypeProd _ _, .dia :: _, _, _, _, _ => trivial
   | .VTypeProd _ _, .here :: _, _, _, _, _ => trivial
   | .VTypeProd _ _, .keep :: _, _, _, _, _ => trivial
+  | .VTypeProd _ _, .at :: _, _, _, _, _ => trivial
 
 /-- A necessary object `e : □A` and its companions `cs` come back as `o` along `r`: `e`'s reading
     along `r`, and each companion of `e`'s value here (`compBack`). -/

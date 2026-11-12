@@ -39,7 +39,7 @@ theorem Ann.shift_shift : ∀ {T : VarType} (a : Ann T) (k m : ℕ),
         VarSymb.shift_shift i k m]
 
 /-- The index a path reaches in a shifted annotation. -/
-theorem Ann.idxAt_shift : ∀ {T : VarType} (a : Ann T) (k : ℕ) (p : List Step),
+theorem Ann.idxAt_shift [ModalSys] : ∀ {T : VarType} (a : Ann T) (k : ℕ) (p : List Step),
     (a.shift k).idxAt p = (a.idxAt p).shift (k + Step.levels p)
   | _, .var, _, [] => rfl
   | _, .var, _, _ :: _ => rfl
@@ -94,6 +94,9 @@ theorem Ann.idxAt_shift : ∀ {T : VarType} (a : Ann T) (k : ℕ) (p : List Step
         (Ann.dia ((VarSymb.step i .keep).shift (k + 1))
           ((a.shift 0).shift (k + 2 + 0))).idxAt p
       rw [Ann.shift_shift a k 0, VarSymb.shift_level_succ (s := .keep) rfl]
+  | _, .prod _ _, _, .at :: _ => rfl
+  | _, .box _, _, .at :: _ => rfl
+  | _, .dia _ _, _, .at :: _ => rfl
 
 variable [ModalSys]
 
@@ -425,10 +428,10 @@ theorem keepE_shift' : ∀ {e : SubE σ Δ} {T : VarType}, T.keepable = true →
 
 /-- The projections of a shifted entry. -/
 theorem proj_shift : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef U →
-    s.isProj = true → U.step s = some T → (e.proj s).shift D = (e.shift D).proj s
+    s.isStruct = true → U.step s = some T → (e.proj s).shift D = (e.shift D).proj s
   | .ren w, _, _, s, _, hs, _ => by
       change SubE.ren ((VarSymb.step w s).shift k) = SubE.ren (.step (w.shift k) s)
-      rw [VarSymb.shift_proj hs]
+      rw [VarSymb.shift_proj (Step.isProj_of_isStruct hs)]
   | .hide, _, _, _, he, _, _ => False.elim he
   | .tm (T := U') s₀, U, T, s, he, hs, hst => by
       have hU : U' = U := he
@@ -443,6 +446,7 @@ theorem proj_shift : ∀ {e : SubE σ Δ} {U T : VarType} {s : Step}, e.OkRef U 
       | box => cases hs
       | dia => cases hs
       | keep => cases hs
+      | «at» => cases hs
       | here =>
           cases s₀ with
           | boxtm t =>
@@ -514,15 +518,15 @@ theorem shiftCorr_box_box_of {Γ Δ : Ctx} (hF : ModalSys.Four = true) {θ : Sub
   | root r => intro T hv; exact hvis _ _ rfl hv
   | step v s ih =>
       intro T hv
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Ctx.ref_step_proj _ _ hs] at hv
         cases hU : Γ.boxIn.ref v with
         | none => rw [hU] at hv; cases hv
         | some U =>
             rw [hU] at hv
-            rw [VarSymb.shift_proj hs]
-            change SubE.Sim T (if s.isProj then (θ.box.box.at (v.shift 0)).proj s else _)
-              ((if s.isProj then (θ.box.at v).proj s else _).shift _)
+            rw [VarSymb.shift_proj (Step.isProj_of_isStruct hs)]
+            change SubE.Sim T (if s.isStruct then (θ.box.box.at (v.shift 0)).proj s else _)
+              ((if s.isStruct then (θ.box.at v).proj s else _).shift _)
             rw [if_pos hs, if_pos hs,
               SubE.proj_shift (Ctx.shifts_boxIn_boxIn hF Δ) (okRef_at (ok_box hθ) hU) hs hv]
             exact (ih U hU).proj_step hs hv
@@ -562,15 +566,15 @@ theorem shiftCorr_of (hθ : Ok Γ θ)
   | root r => intro T hv; exact hvis _ _ rfl hv
   | step v s ih =>
       intro T hv
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Ctx.ref_step_proj _ _ hs] at hv
         cases hU : Γ.ref v with
         | none => rw [hU] at hv; cases hv
         | some U =>
             rw [hU] at hv
-            rw [VarSymb.shift_proj hs]
-            change SubE.Sim T (if s.isProj then (θ'.at (v.shift k)).proj s else θ' _)
-              ((if s.isProj then (θ.at v).proj s else θ _).shift D)
+            rw [VarSymb.shift_proj (Step.isProj_of_isStruct hs)]
+            change SubE.Sim T (if s.isStruct then (θ'.at (v.shift k)).proj s else θ' _)
+              ((if s.isStruct then (θ.at v).proj s else θ _).shift D)
             rw [if_pos hs, if_pos hs, SubE.proj_shift D (okRef_at hθ hU) hs hv]
             exact (ih U hU).proj_step hs hv
       · have hlp : (VarSymb.step v s).lastProj = false := Bool.eq_false_iff.mpr hs

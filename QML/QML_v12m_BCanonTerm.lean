@@ -53,7 +53,7 @@ theorem canonEnv_ref (s : B.W) (i : ℕ) :
         B.toDom T s (B.rden s i (Ctx.Le.refl _) (Term.eta v T h)) (definable_rden _ _)
   | .root _, _, _ => rfl
   | .step v st, T, h => by
-      by_cases hs : st.isProj = true
+      by_cases hs : st.isStruct = true
       · rw [Model.Env.ref, dif_pos hs]
         split
         · rename_i U hU
@@ -84,6 +84,7 @@ theorem canonEnv_ref (s : B.W) (i : ℕ) :
           | box => cases hs
           | dia => cases hs
           | keep => cases hs
+          | «at» => cases hs
         · rename_i hU
           rw [Ctx.ref_step_proj _ _ hs, hU] at h
           cases h

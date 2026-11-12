@@ -25,7 +25,7 @@ theorem eval_ofEq {A B : VarType} (h : A = B) {w : M.frame.W} (a : M.frame.Dom A
   subst h
   rfl
 
-theorem eval_proj {U T : VarType} {s : Step} (hs : s.isProj = true) (h : U.step s = some T)
+theorem eval_proj {U T : VarType} {s : Step} (hs : s.isStruct = true) (h : U.step s = some T)
     {w : M.frame.W} (a : M.frame.Dom U w) :
     GFunc.eval M.ops (GFunc.proj (σ := σ) hs h) w a = M.stepObj hs h a := by
   cases U <;> cases s <;> (try cases hs) <;> (try cases h)
@@ -56,7 +56,7 @@ theorem refGF_eval {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (L : Supp Δ) :
       GFunc.eval M.ops (Supp.refGF (σ := σ) L v h hm) w (env.bundle L) = env.ref v h
   | .root r, _, h, hm => lookup_eval env L (.root r) h hm
   | .step v s, T, h, hm => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Supp.refGF, Env.ref, dif_pos hs, dif_pos hs]
         split
         · rename_i U hU

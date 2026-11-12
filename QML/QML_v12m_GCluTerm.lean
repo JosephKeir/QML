@@ -187,7 +187,7 @@ theorem cagree_of_raw (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
   | root r => intro T hv; exact h _ _ rfl hv
   | step v st ih =>
       intro T hv
-      by_cases hs : st.isProj = true
+      by_cases hs : st.isStruct = true
       · rw [Model.Env.ref, dif_pos hs]
         split
         · rename_i U hU
@@ -222,6 +222,7 @@ theorem cagree_of_raw (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} {k : ℕ}
           | box => cases hs
           | dia => cases hs
           | keep => cases hs
+          | «at» => cases hs
         · rename_i hU
           rw [Ctx.ref_step_proj _ _ hs, hU] at hv
           cases hv
@@ -579,7 +580,7 @@ theorem cenv_ref_raw (hX : CluFlags) {Γ : Ctx} {w : GW hF M₀} (env : (cmodel 
   match v, hlp with
   | .root _, _ => rfl
   | .step v st, e =>
-      have e' : st.isProj = false := e
+      have e' : st.isStruct = false := e
       exact Model.Env.ref_nonproj' env (by rw [e']; decide) _
 
 /-- ⭐Under T, **the shapes of an environment agreeing with a chain are the canonical shapes
@@ -605,7 +606,7 @@ theorem envShape_ctr (hX : CluFlags) (hSh : ModalSys.shaped = true) {Γ : Ctx} {
   match v, hlp with
   | .root _, _ => rfl
   | .step v' st, e =>
-      have e' : st.isProj = false := e
+      have e' : st.isStruct = false := e
       exact Model.ShEnv.ref_nonproj _ _ (by rw [e']; decide) _
 
 /-! ## The truth lemma for terms -/

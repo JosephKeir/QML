@@ -108,7 +108,8 @@ noncomputable def repIdx (y : VarSymb) : VarSymb :=
   else y
 
 /-- ⭐The representing substitution is coherent, at one view depth per address. -/
-theorem repSubst_coh {d : Root → ℕ} (hd : Γ.LevelDepth d) :
+theorem repSubst_coh {d : Root → ℕ} (hd : Γ.LevelDepth d)
+    (hat : ∀ u, Γ (.step u .at) = none) :
     Subst.Coh (repIdx env hfin) Γ (repSubst env hfin) := by
   refine Subst.coh_of (repSubst_ok env hfin) fun v T hl hv p => ?_
   have hex : ∃ q : VarSymb × List Step,
@@ -118,7 +119,7 @@ theorem repSubst_coh {d : Root → ℕ} (hd : Γ.LevelDepth d) :
   rw [dif_pos hex]
   obtain ⟨hl', hs', he'⟩ := hex.choose_spec
   obtain ⟨T', hv'⟩ := Option.isSome_iff_exists.mp hs'
-  obtain ⟨e₁, e₂⟩ := Ctx.decomp_unique hd hv hv' hl hl' he'
+  obtain ⟨e₁, e₂⟩ := Ctx.decomp_unique hd hat hv hv' hl hl' he'
   rw [← e₁, ← e₂]
 
 /-- ⭐**Every environment over a tame context is the canonical one read through a substitution**
@@ -149,9 +150,11 @@ theorem indInvariant_inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLas
       (φ : WFF σ (Γ.insert (.bnd 0) A) 1) (o o' : B.model.frame.Dom A s), B.model.Ind o o' →
       (B.model.sat (env.extend (.bnd 0) o) φ ↔ B.model.sat (env.extend (.bnd 0) o') φ) := by
   intro Γ _ htame hnp s env A φ o o' hInd
-  obtain ⟨hfin, d, hd, -⟩ := htame
+  obtain ⟨hfin, ⟨d, hd, -⟩, hat₀⟩ := htame
+  have hat : ∀ u, Γ (.step u .at) = none :=
+    hat₀.resolve_left (by rw [ModalSys.NoOpt.noOpt]; decide)
   have hθ := repSubst_ok env hfin
-  have hc := repSubst_coh env hfin hd
+  have hc := repSubst_coh env hfin hd hat
   have h0 : ((B.w s).ctx (repSup env hfin)) (.root (.bnd 0)) = none :=
     (Ctx.NoSlots.slots (Γ := (B.w s).ctx (repSup env hfin))).root
   let φ' : WFF σ (((B.w s).ctx (repSup env hfin)).insert (.bnd 0) A) 1 :=

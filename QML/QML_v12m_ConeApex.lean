@@ -209,7 +209,7 @@ theorem shiftAgree_downBox {Γ : Ctx} {E : (c.cone hT hB hS hInd).Env Γ none}
       obtain ⟨hk, hu⟩ := Ctx.boxIn_box hx
       rw [Env.ref_congr _ (VarSymb.shift_level_zero (s := .box) rfl) _
         (Ctx.ref_boxIn_of hk (Ctx.ref_keep_of hF hu)), Env.ref,
-        dif_neg (by decide : ¬ Step.box.isProj = true)]
+        dif_neg (by decide : ¬ Step.box.isStruct = true)]
       change c.ofC hT hB T s.1 (c.toC hT hB T s.1 (N.necEval (nb (E.ref u hu)) s)) =
         N.necEval (V.ref (.step u .keep) (Ctx.ref_keep_of hF hu)) s
       rw [c.ofC_toC, hK.1 u T hu]
@@ -219,7 +219,7 @@ theorem shiftAgree_downBox {Γ : Ctx} {E : (c.cone hT hB hS hInd).Env Γ none}
       | VTypeDia A =>
           rw [Env.ref_congr _ (VarSymb.shift_level_zero (s := .keep) rfl) _
             (Ctx.ref_keep_of' hF (Ctx.ref_keep_of' hF hu hk) hk), Env.ref,
-            dif_neg (by decide : ¬ Step.keep.isProj = true)]
+            dif_neg (by decide : ¬ Step.keep.isStruct = true)]
           change c.ofC hT hB _ s.1 (c.toC hT hB _ s.1
               (N.necEval (N.ops.posKeep hF (pb (E.ref u hu))) s)) =
             N.necEval (N.ops.posKeep hF (V.ref (.step u .keep) (Ctx.ref_keep_of' hF hu hk))) s
@@ -227,7 +227,7 @@ theorem shiftAgree_downBox {Γ : Ctx} {E : (c.cone hT hB hS hInd).Env Γ none}
       | VTypeBox A =>
           rw [Env.ref_congr _ (VarSymb.shift_level_zero (s := .keep) rfl) _
             (Ctx.ref_keep_of hF (Ctx.ref_keep_of hF hu)), Env.ref,
-            dif_neg (by decide : ¬ Step.keep.isProj = true)]
+            dif_neg (by decide : ¬ Step.keep.isStruct = true)]
           change c.ofC hT hB _ s.1 (c.toC hT hB _ s.1
               (N.necEval (N.ops.necDup hF (nb (E.ref u hu))) s)) =
             N.necEval (N.ops.necDup hF (V.ref (.step u .keep) (Ctx.ref_keep_of hF hu))) s
@@ -262,7 +262,7 @@ theorem shiftAgree_downDia {Γ : Ctx} {E : (c.cone hT hB hS hInd).Env Γ none}
       have hXT := Ctx.diaIn_step_dia hr hv
       subst hXT
       rw [Env.ref_congr _ (VarSymb.shift_level_zero (s := .dia) rfl) _ (Ctx.ref_diaIn_of hxk),
-        Env.ref, dif_neg (by decide : ¬ Step.dia.isProj = true)]
+        Env.ref, dif_neg (by decide : ¬ Step.dia.isStruct = true)]
       refine (c.ofC_toC hT hB _ s.1 ((N.posEval (pb (E.ref u hr))).2 ⟨s, h⟩)).trans ?_
       exact posEval_snd_congr (hK.2 u _ hr) ⟨s, h⟩ h'
   | .step u .box =>
@@ -412,7 +412,7 @@ theorem stepObj_apexVal {bv : ∀ v, Γ.ref v = some .Var → c.D} {V : N.Env Γ
       c.DefN A (V.ref (.step v .keep) (Ctx.ref_keep_of hF h))}
     {hP : ∀ v A (h : Γ.ref v = some (.VTypeDia A)),
       c.DefP A (V.ref (.step v .keep) (Ctx.ref_keep_of' hF h VarType.keepable_dia))}
-    {U T : VarType} {s : Step} (hs : s.isProj = true) (hst : U.step s = some T) (v : VarSymb)
+    {U T : VarType} {s : Step} (hs : s.isStruct = true) (hst : U.step s = some T) (v : VarSymb)
     (hU : Γ.ref v = some U) (hv : Γ.ref (.step v s) = some T) :
     (c.cone hT hB hS hInd).stepObj hs hst (apexVal c hT hB hS hInd hF bv V hN hP U v hU) =
       apexVal c hT hB hS hInd hF bv V hN hP T (.step v s) hv := by
@@ -431,7 +431,7 @@ theorem apexEnv_ref {hnp : Γ.NoProjLast} {bv : ∀ v, Γ.ref v = some .Var → 
         apexVal c hT hB hS hInd hF bv V hN hP T v h
   | .root _, _, _ => rfl
   | .step v s, T, hv => by
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · rw [Env.ref, dif_pos hs]
         split
         · rename_i U hU

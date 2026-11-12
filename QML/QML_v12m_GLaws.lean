@@ -293,7 +293,7 @@ theorem collapse_gLab (hT : ModalSys.T = true) {s : GW hF M₀} {v : VarSymb} (h
 
 /-- A projection of an address shape is the address shape of the projection. -/
 theorem proj_annSh (hT : ModalSys.T = true) {s : GW hF M₀} {v : VarSymb} (hv : PPath v.path)
-    {U T : VarType} {st : Step} (hs : st.isProj = true) (h : U.step st = some T) :
+    {U T : VarType} {st : Step} (hs : st.isStruct = true) (h : U.step st = some T) :
     GFunc.shp (GFunc.proj (σ := σ) hs h) 0 (annSh s (Ann.eta v U)) =
       annSh s (Ann.eta (.step v st) T) := by
   have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
@@ -319,7 +319,7 @@ theorem cEnv_ref (hT : ModalSys.T = true) (hM₀ : Theory.IsMCS M₀) {s : GW hF
       (famEnv cEnv (ctxOf l) s).ref 0 v h = cEnv s v T
   | .root _, _, _ => rfl
   | .step v st, T, h => by
-      by_cases hs : st.isProj = true
+      by_cases hs : st.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, (ctxOf l).ref v = some U := by
           rw [Ctx.ref_step_proj _ v hs] at h
           cases hU : (ctxOf l).ref v with

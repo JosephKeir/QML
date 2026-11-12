@@ -107,7 +107,7 @@ def CFormAt (g : GW hF M₀) (j : ℕ) (y : VarSymb) (T : VarType) : Prop :=
 abbrev CForm (j : ℕ) (y : VarSymb) (T : VarType) : Prop := CFormAt (groot hF M₀) j y T
 
 theorem CFormAt.proj {g : GW hF M₀} {j : ℕ} {y : VarSymb} {U T : VarType}
-    (h : CFormAt g j y U) {st : Step} (hs : st.isProj = true) (hst : U.step st = some T) :
+    (h : CFormAt g j y U) {st : Step} (hs : st.isStruct = true) (hst : U.step st = some T) :
     CFormAt g j (.step y st) T := by
   obtain ⟨v, U₀, π, hd, hv, rfl, hw, hn⟩ := h
   refine ⟨v, U₀, π ++ [st], hd, hv, (VarSymb.ext_append_single v π st).symm, ?_, ?_⟩
@@ -119,8 +119,9 @@ theorem CFormAt.proj {g : GW hF M₀} {j : ℕ} {y : VarSymb} {U T : VarType}
     | box => cases hs
     | dia => cases hs
     | keep => cases hs
+    | «at» => cases hs
   · rw [Step.levels_append, hn]
-    simp [Step.levels, hs]
+    simp [Step.levels, Step.isProj_of_isStruct hs]
 
 theorem CFormAt.keep {g : GW hF M₀} {j : ℕ} {y : VarSymb} {U : VarType} (h : CFormAt g j y U)
     (hk : U.keepable = true) : CFormAt g (j + 1) (.step y .keep) U := by
@@ -152,19 +153,15 @@ theorem rorig_root : rorig (groot hF M₀) = id := rfl
 
 /-- The root's own addresses are read as they are. -/
 theorem preIx_root (z : VarSymb) : preIx (groot hF M₀) z = z := by
-  by_cases h0 : Step.levels z.path = 0
-  · have hz := ppath_of_levels0 h0
-    rw [preIx_ppath _ hz]
-    rfl
-  · obtain ⟨q, st, r, hq, hq₀, hst⟩ := split_first z.path (by omega)
-    have e : z = (VarSymb.step ((VarSymb.root z.rt).ext q) st).ext r := by
-      conv_lhs => rw [VarSymb.eq_root_ext z, hq, VarSymb.ext_append]
+  unfold preIx
+  cases hs : splitLevel z.path with
+  | none => rfl
+  | some t =>
+      obtain ⟨q, st, r⟩ := t
+      obtain ⟨hq, -, -⟩ := splitLevel_spec _ hs
+      change (VarSymb.step ((VarSymb.root z.rt).ext q) st).ext r = z
+      conv_rhs => rw [VarSymb.eq_root_ext z, hq, VarSymb.ext_append]
       rfl
-    have hp : PPath ((VarSymb.root z.rt).ext q).path := by
-      rw [VarSymb.ext_path]
-      simpa [VarSymb.path] using hq₀
-    rw [e, preIx_lvl _ hp hst]
-    rfl
 
 theorem cNext_root (v : VarSymb) (r : List Step) : cNext (groot hF M₀) v r = v.ext r :=
   preIx_root _
@@ -208,7 +205,7 @@ include hV hS hW hM₀ hT in
     anchor: at the first level a `here` reads the anchor's own arrow. -/
 theorem proj_annC {j : ℕ} {y : VarSymb} {U T : VarType} {g : GW hF M₀}
     (h0 : j = 0 → g = groot hF M₀)
-    (hf : CForm (hF := hF) (M₀ := M₀) j y U) {st : Step} (hs : st.isProj = true)
+    (hf : CForm (hF := hF) (M₀ := M₀) j y U) {st : Step} (hs : st.isStruct = true)
     (h : U.step st = some T) :
     GFunc.shp (GFunc.proj (σ := σ) hs h) j (annC g (Ann.eta y U)) =
       annC g (Ann.eta (.step y st) T) := by
@@ -229,7 +226,7 @@ theorem proj_annC {j : ℕ} {y : VarSymb} {U T : VarType} {g : GW hF M₀}
     cases j with
     | zero =>
         obtain rfl := h0 rfl
-        have hπ₀ := ppath_of_levels0 hn
+        have hπ₀ := ppath_of_levels0 (Step.at_not_mem_of_walkTy hw) hn
         rw [cLab_collapse_zero hV hS hW hM₀ hT' hπ (declAt_ext hd hπ₀ hw) (ppath_ext hv hπ₀),
           cNext_root]
     | succ n =>
@@ -279,7 +276,7 @@ theorem cInv_of_items {Δ : Ctx}
       have h' : Δ (.root r) = some T := by rwa [Ctx.ref_nonproj _ rfl] at h
       exact hitem _ T h'
   | .step v st, T, h => by
-      by_cases hs : st.isProj = true
+      by_cases hs : st.isStruct = true
       · obtain ⟨U, hU⟩ : ∃ U, Δ.ref v = some U := by
           rw [Ctx.ref_step_proj _ v hs] at h
           cases hU : Δ.ref v with
@@ -384,7 +381,7 @@ theorem postIx_lvl (s : GW hF M₀) {y : VarSymb} (hy : PPath y.path) {st : Step
       rw [VarSymb.ext_path]
       change (y.path ++ [st]) ++ r = _
       simp,
-    splitLevel_ppath hy hs]
+    splitLevel_ppath hy (Bool.eq_false_iff.mpr (Step.not_isStruct_of_not_isProj (by simp [hs])))]
   simp only [VarSymb.ext_rt]
   rw [show (VarSymb.step y st).rt = y.rt from rfl, VarSymb.root_ext_path]
 
@@ -403,14 +400,14 @@ theorem postIx_cNext (b : GW hF M₀) {v : VarSymb} {U : VarType}
   obtain ⟨j, hj⟩ := id (declAt_rnm hV hM₀ b hd hk)
   have hpz := (reach_ppath hj).1
   by_cases h0 : Step.levels r = 0
-  · have hr := ppath_of_levels0 h0
+  · have hr := ppath_of_levels0 (Step.at_not_mem_of_walkTy hw) h0
     have hdz : DeclAt b ((rnm b v).ext r) (.VTypeDia A) := declAt_ext ⟨j, hj⟩ hr hw
     have hdo := declAt_rorig hV hS hW hM₀ b hdz rfl
     obtain ⟨i, hi⟩ := id hdo
     unfold cNext
     rw [preIx_ppath _ (ppath_ext hpz hr), postIx_ppath _ (reach_ppath hi).1]
     exact rnm_rorig hV hS hW hM₀ b hdz rfl rfl
-  · obtain ⟨π₀, st, r', rfl, hπ₀, hst⟩ := split_first r (by omega)
+  · obtain ⟨π₀, st, r', rfl, hπ₀, hst⟩ := split_first r (Step.at_not_mem_of_walkTy hw) (by omega)
     rw [Step.walkTy_append, walkTy_ppath U hπ₀] at hw
     obtain ⟨U₁, hU₁, hw₀⟩ := Option.bind_eq_some_iff.mp hw
     have hdz : DeclAt b ((rnm b v).ext π₀) U₁ :=
@@ -421,6 +418,7 @@ theorem postIx_cNext (b : GW hF M₀) {v : VarSymb} {U : VarType}
       | fst => cases hst
       | snd => cases hst
       | here => cases hst
+      | «at» => cases hst
       | box =>
           change (if ModalSys.keepOnly = true then none else U₁.step .box) = some W' at hW'
           rw [if_pos hko] at hW'
@@ -467,13 +465,14 @@ theorem cLab_inj (j : ℕ) : ∀ {y y' : VarSymb} {A A' : VarType},
   induction j with
   | zero =>
       rintro y y' A A' ⟨v, U, π, hd, hv, rfl, hw, hn⟩ ⟨v', U', π', hd', hv', rfl, hw', hn'⟩ g h
-      rw [cLab_ppath (ppath_ext hv (ppath_of_levels0 hn)),
-        cLab_ppath (ppath_ext hv' (ppath_of_levels0 hn'))] at h
+      rw [cLab_ppath (ppath_ext hv (ppath_of_levels0 (Step.at_not_mem_of_walkTy hw) hn)),
+        cLab_ppath (ppath_ext hv' (ppath_of_levels0 (Step.at_not_mem_of_walkTy hw') hn'))] at h
       injection h
   | succ j IH =>
       rintro y y' A A' ⟨v, U, π, hd, hv, rfl, hw, hn⟩ ⟨v', U', π', hd', hv', rfl, hw', hn'⟩ g h
-      obtain ⟨π₀, st, r, rfl, hπ₀, hst⟩ := split_first π (by omega)
-      obtain ⟨π₀', st', r', rfl, hπ₀', hst'⟩ := split_first π' (by omega)
+      obtain ⟨π₀, st, r, rfl, hπ₀, hst⟩ := split_first π (Step.at_not_mem_of_walkTy hw) (by omega)
+      obtain ⟨π₀', st', r', rfl, hπ₀', hst'⟩ :=
+        split_first π' (Step.at_not_mem_of_walkTy hw') (by omega)
       have hlr : Step.levels r = j := by
         rw [Step.levels_append, levels_pp hπ₀, Step.levels_cons, if_neg (by simp [hst])] at hn
         omega
@@ -507,6 +506,7 @@ theorem cLab_inj (j : ℕ) : ∀ {y y' : VarSymb} {A A' : VarType},
       | fst => cases hst
       | snd => cases hst
       | here => cases hst
+      | «at» => cases hst
       | box =>
           obtain ⟨W, hW', -⟩ := Option.bind_eq_some_iff.mp hw₀
           exact (hbox' hW').elim
@@ -515,6 +515,7 @@ theorem cLab_inj (j : ℕ) : ∀ {y y' : VarSymb} {A A' : VarType},
           | fst => cases hst'
           | snd => cases hst'
           | here => cases hst'
+          | «at» => cases hst'
           | box =>
               obtain ⟨W, hW', -⟩ := Option.bind_eq_some_iff.mp hw₀'
               exact (hbox' hW').elim
@@ -538,6 +539,7 @@ theorem cLab_inj (j : ℕ) : ∀ {y y' : VarSymb} {A A' : VarType},
           | fst => cases hst'
           | snd => cases hst'
           | here => cases hst'
+          | «at» => cases hst'
           | box =>
               obtain ⟨W', hW'', -⟩ := Option.bind_eq_some_iff.mp hw₀'
               exact (hbox' hW'').elim

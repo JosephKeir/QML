@@ -174,7 +174,7 @@ theorem preIx_lvl (s : GW hF M₀) {z : VarSymb} (hz : PPath z.path) {st : Step}
       rw [VarSymb.ext_path]
       change (z.path ++ [st]) ++ r = _
       simp,
-    splitLevel_ppath hz hs]
+    splitLevel_ppath hz (Bool.eq_false_iff.mpr (Step.not_isStruct_of_not_isProj (by simp [hs])))]
   simp only [VarSymb.ext_rt]
   rw [show (VarSymb.step z st).rt = z.rt from rfl, VarSymb.root_ext_path]
 
@@ -268,7 +268,7 @@ theorem cNext_cases (hT : ModalSys.T = true) (b : GW hF M₀) {v : VarSymb} {U :
   obtain ⟨j, hj⟩ := hz
   have hpz : PPath (rnm b v).path := (reach_ppath hj).1
   by_cases h0 : Step.levels r = 0
-  · have hr := ppath_of_levels0 h0
+  · have hr := ppath_of_levels0 (Step.at_not_mem_of_walkTy hw) h0
     have hd : DeclAt b ((rnm b v).ext r) V := declAt_ext ⟨j, hj⟩ hr hw
     have hd' := declAt_rorig hV hS hW hM₀ b hd hkV
     obtain ⟨i, hi⟩ := id hd'
@@ -280,7 +280,7 @@ theorem cNext_cases (hT : ModalSys.T = true) (b : GW hF M₀) {v : VarSymb} {U :
         rw [VarSymb.ext_path]
         exact fun x hx => (List.mem_append.mp hx).elim (hpz x) (hr x))]
       rfl
-  · obtain ⟨π₀, st, r', rfl, hπ₀, hst⟩ := split_first r (by omega)
+  · obtain ⟨π₀, st, r', rfl, hπ₀, hst⟩ := split_first r (Step.at_not_mem_of_walkTy hw) (by omega)
     rw [Step.walkTy_append, walkTy_ppath U hπ₀] at hw
     obtain ⟨U₀, hU₀, hw₀⟩ := Option.bind_eq_some_iff.mp hw
     have hd₀ : DeclAt b ((rnm b v).ext π₀) U₀ :=
@@ -294,6 +294,7 @@ theorem cNext_cases (hT : ModalSys.T = true) (b : GW hF M₀) {v : VarSymb} {U :
       | fst => cases hst
       | snd => cases hst
       | here => cases hst
+      | «at» => cases hst
       | box =>
           change (if ModalSys.keepOnly = true then none else U₀.step .box) = some W at hW'
           rw [if_pos hko] at hW'
@@ -329,7 +330,7 @@ theorem cLab_wf (hT : ModalSys.T = true) : ∀ (n : ℕ) {v : VarSymb} {U : VarT
   intro v U π A lw hd hv hw hn hl hk w
   have hko : ModalSys.keepOnly = true := by simp [ModalSys.keepOnly, hT, hF]
   by_cases h0 : Step.levels π = 0
-  · have hπ := ppath_of_levels0 h0
+  · have hπ := ppath_of_levels0 (Step.at_not_mem_of_walkTy hw) h0
     have hpre : PPath (v.ext π).path := by
       rw [VarSymb.ext_path]
       exact fun x hx => (List.mem_append.mp hx).elim (hv x) (hπ x)
@@ -337,7 +338,7 @@ theorem cLab_wf (hT : ModalSys.T = true) : ∀ (n : ℕ) {v : VarSymb} {U : VarT
     obtain rfl : lw = [] := List.eq_nil_of_length_eq_zero (by omega)
     exact (Arrows.Leaf.wf_root _ []).mpr ⟨rfl, by simp, trivial,
       ⟨.VTypeDia .VTypeOne, .VTypeOne, rfl⟩⟩
-  · obtain ⟨π₀, st, r, rfl, hπ₀, hst⟩ := split_first π (by omega)
+  · obtain ⟨π₀, st, r, rfl, hπ₀, hst⟩ := split_first π (Step.at_not_mem_of_walkTy hw) (by omega)
     have hpre : PPath (v.ext π₀).path := by
       rw [VarSymb.ext_path]
       exact fun x hx => (List.mem_append.mp hx).elim (hv x) (hπ₀ x)
@@ -355,6 +356,7 @@ theorem cLab_wf (hT : ModalSys.T = true) : ∀ (n : ℕ) {v : VarSymb} {U : VarT
     | fst => cases hst
     | snd => cases hst
     | here => cases hst
+    | «at» => cases hst
     | box =>
         obtain ⟨W, hW', -⟩ := Option.bind_eq_some_iff.mp hw₀
         change (if ModalSys.keepOnly = true then none else U₀.step .box) = some W at hW'
@@ -515,6 +517,7 @@ theorem etaInj_of_walkTy : ∀ (π : List Step) {U : VarType} {X : VarType},
       | snd => exact etaInj_of_step hW ih
       | dia => exact etaInj_of_step hW ih
       | here => exact etaInj_of_step hW ih
+      | «at» => exact etaInj_of_step hW ih
 
 /-! ## Reading along an arrow -/
 
@@ -526,17 +529,18 @@ theorem ppath_ext {z : VarSymb} {r : List Step} (hz : PPath z.path) (hr : PPath 
 
 /-- What follows the first level step is kept by `cNext`. -/
 theorem cNext_append (b : GW hF M₀) (v : VarSymb) (hz : PPath (rnm b v).path) (r s : List Step)
+    (hat : Step.at ∉ r)
     (h : 0 < Step.levels r ∨ ∃ st t, s = st :: t ∧ st.isProj = false) :
     cNext b v (r ++ s) = (cNext b v r).ext s := by
   unfold cNext
   rw [VarSymb.ext_append]
   by_cases h0 : Step.levels r = 0
   · obtain ⟨st, t, rfl, hst⟩ := h.resolve_left (by omega)
-    have hz' := ppath_ext hz (ppath_of_levels0 h0)
+    have hz' := ppath_ext hz (ppath_of_levels0 hat h0)
     rw [show ((rnm b v).ext r).ext (st :: t) = (VarSymb.step ((rnm b v).ext r) st).ext t from rfl,
       preIx_lvl _ hz' hst, preIx_ppath _ hz']
     rfl
-  · obtain ⟨π₀, st, r', rfl, hπ₀, hst⟩ := split_first r (by omega)
+  · obtain ⟨π₀, st, r', rfl, hπ₀, hst⟩ := split_first r hat (by omega)
     have hz' := ppath_ext hz hπ₀
     rw [VarSymb.ext_append,
       show ((rnm b v).ext π₀).ext (st :: r') =
@@ -544,12 +548,13 @@ theorem cNext_append (b : GW hF M₀) (v : VarSymb) (hz : PPath (rnm b v).path) 
       ← VarSymb.ext_append, preIx_lvl _ hz' hst, preIx_lvl _ hz' hst, VarSymb.ext_append]
 
 theorem cNext_append' (b : GW hF M₀) (v : VarSymb) (hz : PPath (rnm b v).path) (r s : List Step)
+    (hat : Step.at ∉ r)
     (h : s = [] ∨ ∃ st t, s = st :: t ∧ st.isProj = false) :
     cNext b v (r ++ s) = (cNext b v r).ext s := by
   rcases h with rfl | h
   · rw [List.append_nil]
     rfl
-  · exact cNext_append b v hz r s (.inr h)
+  · exact cNext_append b v hz r s hat (.inr h)
 
 include hV hM₀ in
 /-- Read back at the root, the address itself. -/
@@ -610,12 +615,12 @@ theorem cLab_edit (hT : ModalSys.T = true)
   induction j with
   | zero =>
       intro v U₀ π hd hv hw hn g
-      have hπ := ppath_of_levels0 hn
+      have hπ := ppath_of_levels0 (Step.at_not_mem_of_walkTy hw) hn
       rw [VarSymb.ext_append, VarSymb.ext_append]
       exact hbase _ (declAt_ext hd hπ hw) (ppath_ext hv hπ) g
   | succ j IH =>
       intro v U₀ π hd hv hw hn g
-      obtain ⟨π₀, st, r, rfl, hπ₀, hst⟩ := split_first π (by omega)
+      obtain ⟨π₀, st, r, rfl, hπ₀, hst⟩ := split_first π (Step.at_not_mem_of_walkTy hw) (by omega)
       have hpre := ppath_ext hv hπ₀
       rw [Step.walkTy_append, walkTy_ppath U₀ hπ₀] at hw
       obtain ⟨U₁, hU₁, hw₀⟩ := Option.bind_eq_some_iff.mp hw
@@ -633,6 +638,7 @@ theorem cLab_edit (hT : ModalSys.T = true)
       | fst => cases hst
       | snd => cases hst
       | here => cases hst
+      | «at» => cases hst
       | box =>
           obtain ⟨W, hW', -⟩ := Option.bind_eq_some_iff.mp hw₀
           change (if ModalSys.keepOnly = true then none else U₁.step .box) = some W at hW'
@@ -663,7 +669,8 @@ theorem cLab_edit (hT : ModalSys.T = true)
             cNext_cases hV hS hW hM₀ hT b.1 hd₀ hkU₁ hr hkU
           obtain ⟨jz, hjz⟩ := id (declAt_rnm hV hM₀ b.1 hd₀ hkU₁)
           have hzp := (reach_ppath hjz).1
-          rw [cNext_append' b.1 _ hzp r s₁ happ₁, cNext_append' b.1 _ hzp r s₂ happ₂, e,
+          rw [cNext_append' b.1 _ hzp r s₁ (Step.at_not_mem_of_walkTy hr) happ₁,
+            cNext_append' b.1 _ hzp r s₂ (Step.at_not_mem_of_walkTy hr) happ₂, e,
             ← VarSymb.ext_append, ← VarSymb.ext_append]
           exact IH hd' hv' hw' (hlπ.trans hlr) b.1
 
@@ -785,7 +792,7 @@ theorem cLab_collapse (hT : ModalSys.T = true) {A X : VarType} {ρ₁ : List Ste
   induction n using Nat.strong_induction_on with
   | _ n IH =>
   intro v U₀ π hd hv hw hn g
-  obtain ⟨π₀, st, r, rfl, hπ₀, hst⟩ := split_first π (by omega)
+  obtain ⟨π₀, st, r, rfl, hπ₀, hst⟩ := split_first π (Step.at_not_mem_of_walkTy hw) (by omega)
   have hpre := ppath_ext hv hπ₀
   rw [Step.walkTy_append, walkTy_ppath U₀ hπ₀] at hw
   obtain ⟨U₁, hU₁, hw₀⟩ := Option.bind_eq_some_iff.mp hw
@@ -803,6 +810,7 @@ theorem cLab_collapse (hT : ModalSys.T = true) {A X : VarType} {ρ₁ : List Ste
   | fst => cases hst
   | snd => cases hst
   | here => cases hst
+  | «at» => cases hst
   | box =>
       obtain ⟨W, hW', -⟩ := Option.bind_eq_some_iff.mp hw₀
       change (if ModalSys.keepOnly = true then none else U₁.step .box) = some W at hW'
@@ -836,12 +844,12 @@ theorem cLab_collapse (hT : ModalSys.T = true) {A X : VarType} {ρ₁ : List Ste
       obtain ⟨v', U', π', hd', hv', hw', hlπ, -, e⟩ :=
         cNext_cases hV hS hW hM₀ hT b.1 hd₀ hkU₁ hr rfl
       beta_reduce
-      rw [cNext_append b.1 _ hzp r _ (.inr ⟨.keep, _, rfl, rfl⟩)]
+      rw [cNext_append b.1 _ hzp r _ (Step.at_not_mem_of_walkTy hr) (.inr ⟨.keep, _, rfl, rfl⟩)]
       rcases Nat.eq_zero_or_pos n with h0 | hpos
       · -- no level left: read at the arrow's end
         subst h0
-        have hr0 : PPath r := ppath_of_levels0 hlr
-        have hπ' : PPath π' := ppath_of_levels0 (hlπ.trans hlr)
+        have hr0 : PPath r := ppath_of_levels0 (Step.at_not_mem_of_walkTy hr) hlr
+        have hπ' : PPath π' := ppath_of_levels0 (Step.at_not_mem_of_walkTy hw') (hlπ.trans hlr)
         have hdz : DeclAt b.1 ((rnm b.1 (v.ext π₀)).ext r) (.VTypeBox A) :=
           declAt_ext ⟨jz, hjz⟩ hr0 hr
         have hc : cNext b.1 (v.ext π₀) r = rorig b.1 ((rnm b.1 (v.ext π₀)).ext r) := by
@@ -859,7 +867,8 @@ theorem cLab_collapse (hT : ModalSys.T = true) {A X : VarType} {ρ₁ : List Ste
         unfold cNext
         rw [rnm_rorig hV hS hW hM₀ b.1 hdz rfl he, VarSymb.ext_append]
       · obtain ⟨m, rfl⟩ : ∃ m, n = m + 1 := ⟨n - 1, by omega⟩
-        rw [cNext_append b.1 _ hzp r _ (.inl (by omega)), e, ← VarSymb.ext_append,
+        rw [cNext_append b.1 _ hzp r _ (Step.at_not_mem_of_walkTy hr) (.inl (by omega)), e,
+          ← VarSymb.ext_append,
           ← VarSymb.ext_append]
         exact IH m (by omega) hd' hv' hw' (hlπ.trans hlr) b.1
 

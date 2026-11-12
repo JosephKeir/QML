@@ -211,7 +211,7 @@ theorem at_retPullXDC_tup : ∀ {u : VarSymb} {U : VarType} (hu' : (ctxOf l).ref
       exact retPullXDC_add l A Xe hV hu ex hr'
   | .root (.bnd _), _, _, _, hrt => by cases hrt
   | .step u s, U, hu', r, hrt => by
-      have hproj : s.isProj = true := (reach_ppath hu').1 s (by simp [VarSymb.path])
+      have hproj : s.isStruct = true := (reach_ppath hu').1 s (by simp [VarSymb.path])
       have hu'' := hu'
       simp only [Ctx.ref, if_pos hproj] at hu''
       cases hU : (ctxOf l).ref u with

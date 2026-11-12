@@ -48,7 +48,7 @@ theorem ref_tupPath {Δ : Ctx} : ∀ (l : List VarType) {r : ℕ}, r < l.length 
       · subst hr
         rw [rootTy_new]
         change Δ.ref (.step b .snd) = _
-        simp only [Ctx.ref, Step.isProj, if_true, hb, Option.bind_some]
+        simp only [Ctx.ref, hb, Option.bind_some]
         rfl
       · have hr' : r < l.length := by
           have : r < l.length + 1 := h
@@ -56,7 +56,7 @@ theorem ref_tupPath {Δ : Ctx} : ∀ (l : List VarType) {r : ℕ}, r < l.length 
         rw [rootTy_old hr']
         change Δ.ref ((VarSymb.step b .fst).ext (tupPath l r)) = _
         exact ref_tupPath l hr' (by
-          simp only [Ctx.ref, Step.isProj, if_true, hb, Option.bind_some]
+          simp only [Ctx.ref, hb, Option.bind_some]
           rfl)
 
 /-- ⭐The items of `l`'s roots, as one term of the `□` view. -/
@@ -135,7 +135,7 @@ theorem ref_encB {l : List VarType} {Δ : Ctx} {b : VarSymb} {R : VarType} :
       cases h
       exact hb
   | .step u s, T, h, hR, hb => by
-      have hproj : s.isProj = true := (reach_ppath h).1 s (by simp [VarSymb.path])
+      have hproj : s.isStruct = true := (reach_ppath h).1 s (by simp [VarSymb.path])
       simp only [Ctx.ref, if_pos hproj] at h
       cases hU : (ctxOf l).ref u with
       | none => rw [hU] at h; cases h
@@ -159,7 +159,7 @@ theorem ref_itemB {l : List VarType} {Δ : Ctx} {b : VarSymb} {R : VarType} {u :
   by_cases hT : ModalSys.T = true
   · rw [if_pos hT]
     change Δ.ref (.step (b.ext (encPath u.path)) .fst) = _
-    simp only [Ctx.ref, Step.isProj, if_true, h, Option.bind_some, VarType.bc, hT, VarType.bcB]
+    simp only [Ctx.ref, h, Option.bind_some, VarType.bc, hT, VarType.bcB]
     rfl
   · rw [if_neg hT]
     simpa [VarType.bc, VarType.bcB, hT] using h
@@ -248,7 +248,7 @@ theorem at_enc_tupB [ModalSys.NoFour] {l : List VarType} (θ : Subst σ (ctxOf l
       obtain rfl : U = R := Option.some.inj (hu.symm.trans hR)
       exact hb
   | .step u s, U, hu, hrt => by
-      have hproj : s.isProj = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
+      have hproj : s.isStruct = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
       have hu' := hu
       simp only [Ctx.ref, if_pos hproj] at hu'
       cases hU : (ctxOf l).ref u with
@@ -356,7 +356,7 @@ theorem ref_ext_none {Δ : Ctx} : ∀ (q : List Step), PPath q → ∀ {v : VarS
     Δ.ref v = none → Δ.ref (v.ext q) = none
   | [], _, _, h => h
   | s :: q, hq, v, h => by
-      have hs : s.isProj = true := hq s List.mem_cons_self
+      have hs : s.isStruct = true := hq s List.mem_cons_self
       refine ref_ext_none q (fun s' h' => hq s' (List.mem_cons_of_mem _ h')) ?_
       simp only [Ctx.ref, if_pos hs, h, Option.bind_none]
 
@@ -368,7 +368,7 @@ theorem sim_ren_at_ext {Δ : Ctx} (θ : Subst σ Δ) : ∀ (q : List Step), PPat
       obtain rfl : _ = _ := Option.some.inj (hy.symm.trans hy')
       exact h
   | s :: q, hq, b, y, U, U', hy, hy', h => by
-      have hs : s.isProj = true := hq s List.mem_cons_self
+      have hs : s.isStruct = true := hq s List.mem_cons_self
       have hq' : PPath q := fun s' h' => hq s' (List.mem_cons_of_mem _ h')
       have hys : Δ.ref (VarSymb.step y s) = U.step s := by
         simp only [Ctx.ref, if_pos hs, hy, Option.bind_some]
@@ -437,7 +437,7 @@ theorem at_enc_tupB_mono [ModalSys.NoFour] {l : List VarType} {Δ : Ctx}
       obtain rfl : U = R := Option.some.inj (hu.symm.trans hR)
       exact hb
   | .step u s, U, hu, hrt => by
-      have hproj : s.isProj = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
+      have hproj : s.isStruct = true := (reach_ppath hu).1 s (by simp [VarSymb.path])
       have hu' := hu
       simp only [Ctx.ref, if_pos hproj] at hu'
       cases hU : (ctxOf l).ref u with
@@ -479,12 +479,12 @@ abbrev pack2Ctx : Ctx := Ctx.empty.insert (.bnd 0) (.VTypeProd (bcT l) U)
 
 omit [ModalSys.NoFour] in
 theorem pack2Ctx_fst : (pack2Ctx l U).ref (.step (.root (.bnd 0)) .fst) = some (bcT l) := by
-  simp only [Ctx.ref, Step.isProj, if_true]
+  simp only [Ctx.ref]
   rfl
 
 omit [ModalSys.NoFour] in
 theorem pack2Ctx_snd : (pack2Ctx l U).ref (.step (.root (.bnd 0)) .snd) = some U := by
-  simp only [Ctx.ref, Step.isProj, if_true]
+  simp only [Ctx.ref]
   rfl
 
 /-- ⭐Packing a body over `l`'s `□` view and a slot `e : U`: the roots' items go to the first
@@ -653,12 +653,12 @@ theorem subst_arrow_tupB [ModalSys.NoFour] {l : List VarType} {Δ : Ctx} {img : 
       have h₁ : Δ.ref ((VarSymb.root (.free (img n))).ext (encPath (VarSymb.step u .fst).path)) =
           some (A.bcB bb) := by
         rw [ext_enc_step, encStep_fst]
-        simp only [Ctx.ref, Step.isProj, if_true, h, Option.bind_some]
+        simp only [Ctx.ref, h, Option.bind_some]
         rfl
       have h₂ : Δ.ref ((VarSymb.root (.free (img n))).ext (encPath (VarSymb.step u .snd).path)) =
           some (B.bcB bb) := by
         rw [ext_enc_step, encStep_snd]
-        simp only [Ctx.ref, Step.isProj, if_true, h, Option.bind_some]
+        simp only [Ctx.ref, h, Option.bind_some]
         rfl
       exact sig_pair
         ((subst_arrow_tupB himg bb hbb _ A (Ctx.ref_fst_of hu) hrt h₁).trans
@@ -676,7 +676,7 @@ theorem subst_arrow_tupB [ModalSys.NoFour] {l : List VarType} {Δ : Ctx} {img : 
       have h₂ : Δ.ref ((VarSymb.root (.free (img n))).ext (encPath (VarSymb.step u .here).path)) =
           some (A.bcB true) := by
         rw [ext_enc_step, encStep_here hbb]
-        simp only [Ctx.ref, Step.isProj, if_true, h, Option.bind_some]
+        simp only [Ctx.ref, h, Option.bind_some]
         rfl
       refine sig_pair ((Term.subst_eta_renAt _ _ _ A _ _ _ hw hat).trans
         (eta_addr_congr ?_ _ _))

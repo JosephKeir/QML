@@ -279,8 +279,8 @@ theorem Step.splitLvl_append : ∀ {pre : List Step} (_ : PPath pre) {s : Step} 
     (q : List Step), Step.splitLvl (pre ++ s :: q) = some (pre, s, q)
   | [], _, s, hs, q => by simp [Step.splitLvl, hs]
   | t :: pre, hp, s, hs, q => by
-      have ht : t.isProj = true := hp t List.mem_cons_self
-      simp only [List.cons_append, Step.splitLvl, ht, if_true]
+      have ht : t.isStruct = true := hp t List.mem_cons_self
+      simp only [List.cons_append, Step.splitLvl, Step.isProj_of_isStruct ht, if_true]
       rw [Step.splitLvl_append (fun s' h => hp s' (List.mem_cons_of_mem _ h)) hs q]
       rfl
 

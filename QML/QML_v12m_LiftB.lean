@@ -357,6 +357,7 @@ theorem Ctx.boxIn_empty_le : Ctx.empty.boxIn.Le Ctx.empty := by
       | fst => cases h
       | snd => cases h
       | here => cases h
+      | «at» => cases h
 
 /-- ⭐**The rule, closed by closed T** (the only use of B): with `□⊥` refuted, `∀k. □ζ̂(k) → ζ(k)`
     holds here, for `ζ` closed apart from its slot. -/
@@ -407,7 +408,7 @@ theorem genR_only [ModalSys] (hT : ModalSys.T = false) (hK : K.keepable = true) 
         simp [Ctx.insert, hx, Ctx.empty] at h'
   | .step u s, U, h => by
       exfalso
-      by_cases hs : s.isProj = true
+      by_cases hs : s.isStruct = true
       · have h' : ((ctxOf [K]).ref u).bind (·.step s) = some U := by
           have := h
           simpa [Ctx.ref, hs] using this

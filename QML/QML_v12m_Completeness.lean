@@ -848,9 +848,11 @@ theorem indInvariant_inv : ∀ {Γ : Ctx} [Γ.NoSlots], Γ.Tame → Γ.NoProjLas
       (φ : WFF σ (Γ.insert (.bnd 0) A) 1) (o o' : (model w₀).frame.Dom A w), (model w₀).Ind o o' →
       ((model w₀).sat (env.extend (.bnd 0) o) φ ↔ (model w₀).sat (env.extend (.bnd 0) o') φ) := by
   intro Γ _ htame hnp w env A φ o o' hInd
-  obtain ⟨hfin, d, hd, -⟩ := htame
+  obtain ⟨hfin, ⟨d, hd, -⟩, hat₀⟩ := htame
+  have hat : ∀ u, Γ (.step u .at) = none :=
+    hat₀.resolve_left (by rw [ModalSys.NoOpt.noOpt]; decide)
   have hθ := repSubst_ok w₀ env hfin
-  have hc := repSubst_coh w₀ env hfin hd
+  have hc := repSubst_coh w₀ env hfin hd hat
   have h0 : (w.L.ctx (repSup w₀ env hfin)) (.root (.bnd 0)) = none :=
     (Ctx.NoSlots.slots (Γ := w.L.ctx (repSup w₀ env hfin))).root
   let φ' : WFF σ ((w.L.ctx (repSup w₀ env hfin)).insert (.bnd 0) A) 1 :=

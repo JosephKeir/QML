@@ -45,7 +45,7 @@ omit [ModalSys.NoOpt] in
 theorem levels_boxIn_item {l : List VarType} {v : VarSymb} {T : VarType}
     (hl : v.lastProj = false) (h : (ctxOf l).boxIn v = some T) : Step.levels v.path = 1 := by
   obtain ⟨u, s, rfl, hu, -⟩ := boxIn_item h
-  have hs : s.isProj = false := hl
+  have hs : s.isProj = false := Ctx.boxIn_level h
   change Step.levels (u.path ++ [s]) = 1
   rw [Step.levels_append, levels_ppath hu, Step.levels_cons, if_neg (by simp [hs])]
   rfl

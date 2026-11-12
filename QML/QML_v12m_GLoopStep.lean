@@ -165,6 +165,7 @@ theorem projs_kcTup {Γ Ω : Ctx} (hT : ModalSys.T = false) (g : VarSymb → Var
       | box => exact absurd (hp .box (by simp)) (by decide)
       | dia => exact absurd (hp .dia (by simp)) (by decide)
       | keep => exact absurd (hp .keep (by simp)) (by decide)
+      | «at» => exact absurd (hp .at (by simp)) (by decide)
 
 theorem projs_lcTm {Γ : Ctx} (hT : ModalSys.T = false) (hb : ModalSys.keepOnly = false) :
     ∀ (q : List Step) (A : VarType) (u : VarSymb) (h : Γ.ref u = some A) {B : VarType},
@@ -191,6 +192,7 @@ theorem projs_lcTm {Γ : Ctx} (hT : ModalSys.T = false) (hb : ModalSys.keepOnly 
       | box => exact absurd (hp .box (by simp)) (by decide)
       | dia => exact absurd (hp .dia (by simp)) (by decide)
       | keep => exact absurd (hp .keep (by simp)) (by decide)
+      | «at» => exact absurd (hp .at (by simp)) (by decide)
 
 /-! ## The abstraction -/
 
@@ -225,6 +227,7 @@ theorem gpairF_old {c : ℕ} {u : VarSymb} (h : ¬ u.rt = .free c) :
   | .snd => rfl
   | .dia => rfl
   | .here => rfl
+  | .at => rfl
 
 omit [ModalSys] in
 theorem gpairF_box {c : ℕ} {u : VarSymb} (h : u.rt = .free c) :
@@ -242,6 +245,7 @@ theorem gloopF_old {f : VarSymb → LEnt σ} {c z : ℕ} {u : VarSymb} (h : ¬ u
   | .snd => rfl
   | .dia => rfl
   | .here => rfl
+  | .at => rfl
 
 theorem gloopF_box {f : VarSymb → LEnt σ} {c z : ℕ} {u : VarSymb} (h : u.rt = .free c) :
     gloopF f c z (.step u .box) = .inl ((VarSymb.root (.free z)).ext u.path) := if_pos h
@@ -289,6 +293,7 @@ theorem itemOk_gpairF (hT : ModalSys.T = false) (A : VarType) (l : List VarType)
     | fst => cases hl
     | snd => cases hl
     | here => cases hl
+    | «at» => cases hv'
   · obtain ⟨r, hr⟩ := (reach_ppath hU).2
     rw [gpairF_old hrt, Ctx.ref_insert_ne _ (fun h => by
       change u.rt = _ at h
@@ -327,6 +332,7 @@ theorem entOk_gloopF (hT : ModalSys.T = false) {A : VarType} {cl l : List VarTyp
     | fst => cases hl
     | snd => cases hl
     | here => cases hl
+    | «at» => cases hv'
   · rw [gloopF_old hrt]
     rw [kView_old hrt] at hv
     exact okRef_entOf_mono (ctxOf_le_append [VarType.lc A] l) (hf _ T hl hv)
@@ -372,9 +378,9 @@ theorem instantiate_gpairAbs [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hT : 
   refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T hl hv
   obtain ⟨u, s, rfl, hup, U, hU⟩ := kView_item hv
-  have hs' : s.isProj = false := hl
+  have hs' : s.isStruct = false := hl
   change SubE.Sim T (.ren (.step u s))
-    ((if s.isProj then SubE.hide else .ren (gpairF l.length (.step u s))).comp _ _ _)
+    ((if s.isStruct then SubE.hide else .ren (gpairF l.length (.step u s))).comp _ _ _)
   rw [if_neg (by simp [hs'])]
   by_cases hrt : u.rt = .free l.length
   · have hwalk := walk_of_new hup hU hrt
@@ -412,6 +418,7 @@ theorem instantiate_gpairAbs [ModalSys.NoOpt] (hF : ModalSys.Four = true) (hT : 
     | fst => cases hl
     | snd => cases hl
     | here => cases hl
+    | «at» => cases hv'
   · rw [gpairF_old hrt]
     change SubE.Sim T _ ((Subst.single (.bnd 0) _).at (.step u s))
     rw [Subst.single_at_ne (by
@@ -694,8 +701,8 @@ theorem WFF.subst_loopHat {Γ Γ₁ : Ctx} [Γ.NoSlots] [Γ₁.NoSlots] (hF : Mo
       match v, hl with
       | .root _, _ => cases hv'
       | .step u s, hl =>
-          have hs : s.isProj = false := hl
-          have hs₂ : (VarSymb.step (.step u .keep) s).lastProj = false := hs
+          have hs : s.isProj = false := Ctx.boxIn_level hv'
+          have hs₂ : (VarSymb.step (.step u .keep) s).lastProj = false := hl
           rw [VarSymb.shift_level_zero hs] at h ⊢
           rw [Subst.at_nonproj _ hs₂, Subst.set_ne _ _ (fun e => by cases e)]
           rwa [Subst.at_nonproj _ hs₂] at h
@@ -746,9 +753,9 @@ theorem gloopArrow_eq [ModalSys.NoOpt] (hT : ModalSys.T = false) {A : VarType} {
   refine Subst.sim_of (hwit := fun _ _ _ _ => by wit_refl) ?_
   intro v T hl hv
   obtain ⟨u, s, rfl, hup, U, hU⟩ := kView_item hv
-  have hs' : s.isProj = false := hl
+  have hs' : s.isStruct = false := hl
   rw [eS_item _ hs']
-  change SubE.Sim T _ ((if s.isProj then SubE.hide else
+  change SubE.Sim T _ ((if s.isStruct then SubE.hide else
     .ren (gpairF cl.length (.step u s))).comp _ _ _)
   rw [if_neg (by simp [hs'])]
   by_cases hrt : u.rt = .free cl.length
@@ -793,6 +800,7 @@ theorem gloopArrow_eq [ModalSys.NoOpt] (hT : ModalSys.T = false) {A : VarType} {
     | fst => cases hl
     | snd => cases hl
     | here => cases hl
+    | «at» => cases hv'
   · rw [gloopF_old hrt, gpairF_old hrt]
     rw [kView_old hrt] at hv
     change SubE.Sim T _ (Subst.at _ (.step u s))
@@ -846,6 +854,7 @@ theorem box_shift_ren (hF : ModalSys.Four = true) (hb : ModalSys.keepOnly = fals
   | fst => cases hl
   | snd => cases hl
   | here => cases hl
+  | «at» => cases hv
 
 /-- Entries fixing kept items, with a slot set, undo the shift. -/
 theorem keepFix_shift (hF : ModalSys.Four = true) (hb : ModalSys.keepOnly = false)
@@ -989,6 +998,7 @@ theorem gloopF_inr {f : VarSymb → LEnt σ} {c z : ℕ} {v : VarSymb} {e : LTer
         | fst => exact h
         | snd => exact h
         | here => exact h
+        | «at» => exact h
       · rwa [gloopF_old hrt] at h
 
 theorem keepFix_gloopF {A : VarType} {cl : List VarType} {f : VarSymb → LEnt σ}

@@ -39,7 +39,7 @@ def VarType.isProd : VarType → Bool
   | _ => false
 
 theorem VarType.isProd_of_step (hT : ModalSys.T = false) {U T : VarType} {s : Step}
-    (hs : s.isProj = true) (hst : U.step s = some T) : U.isProd = true := by
+    (hs : s.isStruct = true) (hst : U.step s = some T) : U.isProd = true := by
   cases s <;> cases U <;> (try cases hs) <;> (try cases hst) <;> (try rfl)
   exact absurd (VarType.step_here hst).1 (by simp [hT])
 
@@ -136,7 +136,7 @@ theorem WitE.EqH.sub {E' : List (WFF σ Δ 0)} (hE : ∀ φ ∈ E, φ ∈ E') {X
   | mem hz hz' c c' hm => exact .mem hz hz' c c' (hE _ hm)
 
 theorem SubE.EqH.proj_step {U T : VarType} {s : Step} {e e' : SubE σ Δ}
-    (h : SubE.EqH hO E U e e') (hs : s.isProj = true) (hst : U.step s = some T) :
+    (h : SubE.EqH hO E U e e') (hs : s.isStruct = true) (hst : U.step s = some T) :
     SubE.EqH hO E T (e.proj s) (e'.proj s) := by
   cases h with
   | same => exact .same _

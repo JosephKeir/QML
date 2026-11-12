@@ -36,10 +36,10 @@ def atShift (Ψ : Subst σ Δ) : Subst σ Δ where
 theorem at_atShift (Ψ : Subst σ Δ) : ∀ v : VarSymb, (atShift Ψ).at v = Ψ.at (v.shift 0)
   | .root _ => rfl
   | .step v s => by
-      by_cases hs : s.isProj = true
-      · change (if s.isProj then ((atShift Ψ).at v).proj s else _) = _
-        rw [if_pos hs, at_atShift Ψ v, VarSymb.shift_proj hs]
-        change _ = (if s.isProj then (Ψ.at (v.shift 0)).proj s else _)
+      by_cases hs : s.isStruct = true
+      · change (if s.isStruct then ((atShift Ψ).at v).proj s else _) = _
+        rw [if_pos hs, at_atShift Ψ v, VarSymb.shift_proj (Step.isProj_of_isStruct hs)]
+        change _ = (if s.isStruct then (Ψ.at (v.shift 0)).proj s else _)
         rw [if_pos hs]
       · rw [at_nonproj _ (show (VarSymb.step v s).lastProj = false from
           Bool.eq_false_iff.mpr hs)]
@@ -88,7 +88,7 @@ theorem Subst.at_ext_ppath {σ : Signature} {Δ : Ctx} (θ : Subst σ Δ) :
   | w, s :: q, hq => by
       change θ.at ((VarSymb.step w s).ext q) = _
       rw [Subst.at_ext_ppath θ (.step w s) q (fun s' h => hq s' (List.mem_cons_of_mem _ h))]
-      change ((if s.isProj then (θ.at w).proj s else θ _)).projs q = _
+      change ((if s.isStruct then (θ.at w).proj s else θ _)).projs q = _
       rw [if_pos (hq s List.mem_cons_self)]
       rfl
 
@@ -97,7 +97,7 @@ theorem levels_ppath : ∀ {p : List Step}, PPath p → Step.levels p = 0
   | [], _ => rfl
   | s :: p, h => by
       change (if s.isProj then 0 else 1) + Step.levels p = 0
-      rw [if_pos (h s List.mem_cons_self),
+      rw [if_pos (Step.isProj_of_isStruct (h s List.mem_cons_self)),
         levels_ppath (fun s' hs => h s' (List.mem_cons_of_mem _ hs))]
 
 omit [ModalSys] in
