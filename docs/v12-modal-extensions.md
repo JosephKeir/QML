@@ -15594,3 +15594,22 @@ places.  What changes:
    `opt_out`, `K_opt`), and the `◇_x` case's converse now from any member (via `dia_opt`/`opt_dia`).
 Expected size: large (a refactor of `CanonDom`'s `rden` and its lemmas, `CanonTerm`, `CanonModel`,
 `Completeness`), several thousand lines; it is M1's core.
+
+#### Revised (2026-11-12): children open their present witnesses
+
+A simpler construction than items 1–3, found while reading the code.  Under `Opt` a `◇_x` view is
+the `□` view with `x` opened (`Γ.diaIn x` and `Γ.boxIn.optIn x` declare the same addresses), so
+**every child is a `□` view with the witnesses present at it opened in its language**:
+* *Presence first.*  A first Henkin pass over the plain `□` view (the existing construction)
+  decides `◇⁰_x ⊤` for every witness `x`; the child's language opens those decided present
+  (`Ctx.optIns`, finitely many per stage, so presented).
+* *Opening is conservative*: with `◇⁰_x ⊤` among the hypotheses, a contradiction in the opened
+  language gives `◇⁰_x ⊥` by `K_opt`, so `⊥` by `opt_bot`.  So the starting set, the decisions
+  included, stays consistent in the opened language, and the second Henkin pass builds the child.
+* *Extents are the children that open `x`*, with content `x.dia` itself: a possible term's body
+  embeds into a member's language as it does into a `◇_x` child's now.  No naming, no
+  substitution inside `rden`, no faithfulness of `≡` needed for the tree.
+* *Truth at `◇⁰_x`*: opened, `◇⁰_x φ ⊣⊢ φ` (`opt_reopen`, `opt_out`); not opened, `¬◇⁰_x ⊤` is in
+  the theory.  `◇_x` through the bridge as before.  The root opens its present witnesses the same
+  way, so completeness covers presented contexts with witnesses.
+The `◇_x` children of the old tree are the case `x` opened; one kind of child under `Opt`.
