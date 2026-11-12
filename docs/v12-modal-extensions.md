@@ -15568,3 +15568,29 @@ there is no completeness with `Opt` on yet, so not `leibnizCube`'s semantic rout
   `ModalSys.optStage`.
 * **Next:** symmetry and transitivity of `≡` (instances of `leibnizH`), then the K tree with `Opt`
   on.
+* **Built (2026-11-12):** `Proof.eqH_symm` and `Proof.eqH_trans`, instances of `leibnizH` at the
+  hole formulas `e ≡ t` and `t ≡ e` (`eqHHoleL`, `eqHHoleR`, `instantiate_eqHHoleL/R`), choice-free.
+
+### 12.22 The K tree with `Opt` on: scope *(2026-11-12, reading the code, nothing built)*
+
+Under `Opt`, `optStage` turns off T, 4, B, strong B and 5, so the tree needed is the plain one
+(K, D, strong D): no realised or kept members, no shapes.  The truth lemma already dismisses `◇⁰`
+only by flag (`Completeness`, the `optx` case), and `Canon*` assume `Opt` off in a handful of T-only
+places.  What changes:
+1. **Extents decided by the theories** (§12.18): `extent w x` with `Opt` on is the proper successors
+   `w'` (of either view) with `◇⁰_x ⊤ ∈ w'.T`.  The `◇_x` children are members by `opt_reopen`;
+   `□` children and other `◇_y` children can now be members too.
+2. **Contents by a name** (`opt_name`'s Henkin witness): at a member `w'`, `x`'s content is `e`
+   with `◇⁰_x (x.dia ≡ e) ∈ w'.T`.  So `rden`'s `◇` clause reads the body at `w'` with `x.dia`
+   replaced by `e` (a substitution into `w'`'s language), not `t` itself: at a `□` child `t`'s
+   context does not embed.  The type is smaller, so `rden` stays a recursion on the type.
+3. **Faithfulness of `≡`**: provably `≡` terms have equal denotations, at every type (at `◇`: equal
+   extents and contents, by the induction at the smaller type inside the doubly opened view).  It
+   makes the choice of `e` immaterial and gives the `◇_x` children's content as `x.dia`'s.
+4. **The canonical environment's witnesses**: `canonEnv` gives a witness `y` its posPart along the
+   arrow (present iff `◇⁰_y ⊤ ∈ T`, content the class of the name); `boxPush_agree_canon` and
+   `diaPush_agree_canon` then cover witnesses, and `Frame.Env.opened` holds by item 3.
+5. **Truth lemma**: the `◇⁰_y` case (present and `φ[e]` ⇔ `◇⁰_y φ ∈ T`, by `opt_fun`, `leibnizH`,
+   `opt_out`, `K_opt`), and the `◇_x` case's converse now from any member (via `dia_opt`/`opt_dia`).
+Expected size: large (a refactor of `CanonDom`'s `rden` and its lemmas, `CanonTerm`, `CanonModel`,
+`Completeness`), several thousand lines; it is M1's core.

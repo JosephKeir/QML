@@ -688,4 +688,64 @@ def Proof.leibnizH {σ : Signature} (hO : ModalSys.Opt = true) {Γ : Ctx} [Γ.Pr
   Proof.dischargeAll key.1 (.cons hφ (Proofs.ofMem _ fun _ hc =>
     Proof.cut (Proof.weakenTail Δ (Proof.conjunct _ hc)) hts))
 
+/-! ## Symmetry and transitivity -/
+
+section EqHHoles
+
+variable {σ : Signature} {Γ : Ctx} [Γ.NoSlots]
+
+/-- Instantiating the slot leaves a weakened term of the outer context as it was. -/
+theorem Term.subst_single_mono {T U : VarType} {a : Ann T} (u : Term σ Γ T a) {b : Ann U}
+    (t : Term σ Γ U b) :
+    (⟨_, Term.subst (Subst.singleIdx (.bnd 0) (.tm u)) (Subst.single (.bnd 0) (.tm u))
+        (Subst.ok_single (Ctx.Le.refl Γ) rfl)
+        (Subst.coh_single (Ctx.NoSlots.slots.rootFresh le_rfl) (Ctx.Le.refl Γ) rfl)
+        (Term.mono (Ctx.le_insert Ctx.NoSlots.slots.root T) t)⟩ : Σ c, Term σ Γ U c) = ⟨b, t⟩ := by
+  rw [Term.subst_mono, Term.subst_ren (Ctx.Le.refl Γ) _ _ _
+    (fun v _ hv => Subst.single_at_ne (Ctx.NoSlots.ref_bnd0 hv)) t, Term.mono_refl]
+
+/-- The hole on the left of `≡`. -/
+abbrev eqHHoleL (hO : ModalSys.Opt = true) (T : VarType) {b : Ann T} (t : Term σ Γ T b) :
+    WFF σ (Γ.insert (.bnd 0) T) 1 :=
+  eqH hO T (Term.eta (.root (.bnd 0)) T (Ctx.ref_insert_root Γ _ T))
+    (Term.mono (Ctx.le_insert Ctx.NoSlots.slots.root T) t)
+
+/-- The hole on the right of `≡`. -/
+abbrev eqHHoleR (hO : ModalSys.Opt = true) (T : VarType) {b : Ann T} (t : Term σ Γ T b) :
+    WFF σ (Γ.insert (.bnd 0) T) 1 :=
+  eqH hO T (Term.mono (Ctx.le_insert Ctx.NoSlots.slots.root T) t)
+    (Term.eta (.root (.bnd 0)) T (Ctx.ref_insert_root Γ _ T))
+
+theorem instantiate_eqHHoleL (hO : ModalSys.Opt = true) (T : VarType) {a b : Ann T}
+    (u : Term σ Γ T a) (t : Term σ Γ T b) :
+    WFF.instantiate Ctx.NoSlots.slots u (eqHHoleL hO T t) = (eqH hO T u t : WFF σ Γ 0) := by
+  rw [WFF.instantiate, WFF.substRoot, WFF.subst_eqH]
+  exact eqH_congr hO (Term.subst_eta_tm _ _ _ T _ _ u (Subst.single_root _ _))
+    (Term.subst_single_mono u t)
+
+theorem instantiate_eqHHoleR (hO : ModalSys.Opt = true) (T : VarType) {a b : Ann T}
+    (u : Term σ Γ T a) (t : Term σ Γ T b) :
+    WFF.instantiate Ctx.NoSlots.slots u (eqHHoleR hO T t) = (eqH hO T t u : WFF σ Γ 0) := by
+  rw [WFF.instantiate, WFF.substRoot, WFF.subst_eqH]
+  exact eqH_congr hO (Term.subst_single_mono u t)
+    (Term.subst_eta_tm _ _ _ T _ _ u (Subst.single_root _ _))
+
+end EqHHoles
+
+/-- ⭐**Symmetry** of `≡`: Leibniz at `e ≡ t`, from `t ≡ t`. -/
+def Proof.eqH_symm {σ : Signature} (hO : ModalSys.Opt = true) {Γ : Ctx} [Γ.Presented]
+    {Δ : List (WFF σ Γ 0)} (T : VarType) {a b : Ann T} {t : Term σ Γ T a} {s : Term σ Γ T b}
+    (h : Proof σ Γ Δ (eqH hO T t s)) : Proof σ Γ Δ (eqH hO T s t) :=
+  Proof.conv (instantiate_eqHHoleL hO T s t)
+    (Proof.leibnizH hO T h
+      (Proof.conv (instantiate_eqHHoleL hO T t t).symm (Proof.eqH_refl hO T t)))
+
+/-- ⭐**Transitivity** of `≡`: Leibniz at `t ≡ e`, from `t ≡ s` along `s ≡ r`. -/
+def Proof.eqH_trans {σ : Signature} (hO : ModalSys.Opt = true) {Γ : Ctx} [Γ.Presented]
+    {Δ : List (WFF σ Γ 0)} (T : VarType) {a b c : Ann T} {t : Term σ Γ T a}
+    {s : Term σ Γ T b} {r : Term σ Γ T c} (h₁ : Proof σ Γ Δ (eqH hO T t s))
+    (h₂ : Proof σ Γ Δ (eqH hO T s r)) : Proof σ Γ Δ (eqH hO T t r) :=
+  Proof.conv (instantiate_eqHHoleR hO T r t)
+    (Proof.leibnizH hO T h₂ (Proof.conv (instantiate_eqHHoleR hO T s t).symm h₁))
+
 end V12M
