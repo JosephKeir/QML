@@ -15538,3 +15538,33 @@ between a fold and `◇_uL` reduces to a cut on `◇⁰_u χ` in the `□` view,
 * **Next:** Leibniz along `≡` (by induction on the formula; at a `◇` hole, §12.3's argument with
   `◇⁰` for `In`), symmetry and transitivity, `sat_eqH` (true iff equal denotations, by type
   recursion), then the K tree with `Opt` on.
+
+### 12.21 Leibniz along `≡`, syntactically *(2026-11-11, branch `wip/in-atom`)*
+
+Needed by the K tree's truth lemma at `◇⁰` (from `◇⁰_u (u.dia ≡ e)` and `◇⁰_u φ(u.dia)`, `φ(e)`);
+there is no completeness with `Opt` on yet, so not `leibnizCube`'s semantic route.
+* **Built, sorry-free and choice-free** (`QML_v12m_LeibnizHRel.lean`, `QML_v12m_LeibnizH.lean`):
+  `Proof.substEqH`, two substitutions with provably `≡` entries send a formula to formulas that
+  prove each other, and **`Proof.leibnizH`**: from `t ≡ s` and `φ[t]`, `φ[s]`, at every type, the
+  two terms over possibly different witnesses.
+* **`≡` at `◇` refactored** to `□ witEq`: `witEq hO X hz hz' c c'` is
+  `(◇⁰_z ⊤ ∨ ◇⁰_{z'} ⊤) → ◇⁰_z ◇⁰_{z'} (c ≡ c')` for two witness entries (contents in the views of
+  the witnesses), and `eqH_dia` unfolds `≡` at `◇` to `□` of it, so the relation finds it among the
+  `□` view's hypotheses by membership.
+* **The relation** (`Subst.EqRelH`): term entries related by `≡` (`SubE.EqH`: equal, componentwise
+  at `×`, or a hypothesis) and witness entries by `witEq` (`WitE.EqH`).  **Oriented**: the induction
+  proves both directions at once, so neither `≡` nor the relation needs symmetry (symmetry of `≡`
+  would itself need Leibniz).  It passes to `□` (`boxConjs`), a fresh eigenvariable (`toFree`) and
+  the views of a witness or possible object with one entry (`eqRelH_optIn`, `eqRelH_dia`) or two
+  (`eqRelH_optIn₂`, `eqRelH_dia₂`).
+* **Two witness maps.**  `≡` relates possible objects over different witnesses, so the two
+  substitutions have different `ι`.  Where a witness or possible object goes to two different
+  witnesses, the two views are different contexts; the case goes through the `□` view with both
+  opened: `Proof.optTwoFwd`/`optTwoBwd` (from `◇⁰_{z₁} χ₁` and `witEq` to `◇⁰_{z₂} χ₂`, by
+  `opt_fun`, `K_opt` twice, the induction hypothesis in the doubly opened view, `opt_out`), and for
+  `◇_x` the bridge (`Proof.diaBridge`: `dia_opt`, `K_box`, `opt_dia`).  The case split is by data
+  (derived `DecidableEq` on `SubE`, `WitE`), since `Proof` is data and the relation a `Prop`.
+* Under `Opt` the shaped formers (`here`, `back`, `retS`, `retxS`, links) are refuted by
+  `ModalSys.optStage`.
+* **Next:** symmetry and transitivity of `≡` (instances of `leibnizH`), then the K tree with `Opt`
+  on.
