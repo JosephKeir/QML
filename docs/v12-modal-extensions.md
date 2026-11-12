@@ -15613,3 +15613,22 @@ the `□` view with `x` opened (`Γ.diaIn x` and `Γ.boxIn.optIn x` declare the 
   the theory.  `◇_x` through the bridge as before.  The root opens its present witnesses the same
   way, so completeness covers presented contexts with witnesses.
 The `◇_x` children of the old tree are the case `x` opened; one kind of child under `Opt`.
+
+#### Built (2026-11-12): the children (`QML_v12m_OCanonView`, `QML_v12m_OCanonChild`)
+
+* `Ctx.optIns` (opening a list of witnesses), `Proof.unopen`/`unopens` (opening a present witness is
+  conservative).
+* `presentList`, `openLang` (the child's language: the parent's `□` views with the present
+  witnesses opened; presented, fresh names as `boxLang`).
+* Two passes: the first is `Canon.boxWorld`, unchanged; `present` reads its decisions; the second
+  starts from its whole theory at the base stages, carried into the opened language (`openStart`,
+  consistent by `unopens`), and builds `child`.
+* `AccO`: proper accessibility under `Opt`, stated by what the tree uses (depth, parent, the `□` view
+  embedded with the same witnesses, each witness opened or absent by the theory, everything
+  necessary held).  `child_acc`, `child_not`; ⭐`exists_box_failO`; `exists_succO` (D).
+* **One kind of child.**  `◇_x χ` needs no construction of its own: it is `◇ ◇⁰_x χ` (`dia_opt`), so
+  `□¬◇⁰_x χ` fails and `exists_box_failO` gives a child with `◇⁰_x χ`, where `x` is therefore present,
+  hence opened, and `χ` holds (`opt_out`).
+* **Next:** extents (`x` opened), raw objects and `rden` (the `◇` clause embeds the body through
+  `Γ.diaIn x ≤ Γ.boxIn.optIn x`; opened at one stage means opened at all), the model (`Ind := Eq`, no
+  shapes), the canonical environment with witnesses, the truth lemma and completeness for K/D.
