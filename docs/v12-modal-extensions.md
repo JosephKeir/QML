@@ -15632,3 +15632,57 @@ The `◇_x` children of the old tree are the case `x` opened; one kind of child 
 * **Next:** extents (`x` opened), raw objects and `rden` (the `◇` clause embeds the body through
   `Γ.diaIn x ≤ Γ.boxIn.optIn x`; opened at one stage means opened at all), the model (`Ind := Eq`, no
   shapes), the canonical environment with witnesses, the truth lemma and completeness for K/D.
+
+#### Built (2026-11-12): ⭐M1's completeness — K and D with `Opt` on are complete
+
+Five files, sorry-free.  No new rule, and nothing in the `Opt`-off tree changed.
+
+* `QML_v12m_OCanonDom`: the domains and denotations.
+  * `DecidesO`: a world decides its witnesses (at each base stage, opened or `¬◇⁰_y ⊤`).
+    Children do (`AccO.decides`).
+  * ⭐`DecidesO.stable`: opened at one stage means opened at every stage where it is a witness.
+    The proof: reopening refutes `¬◇⁰_y ⊤` wherever the content is declared.
+  * `extentO w x`: the children that opened `x`.
+  * `extentO_le`: the `◇_x` view embeds in a member through the `□` view with `x` opened.
+  * `RDomO`: raw objects, with no shapes.
+  * `rdenO`: denotation; the `□` clause at each child, the `◇` clause at each child that opened
+    the witness.
+  * Weakening, stage independence, definability and the function algebra (`rawEvalO`,
+    `rdenO_applyG`).  `extract`, `dup` and `dkeep` are absurd by flag.
+* `QML_v12m_OCanonModel`: the frame and the model.
+  * ⭐`exists_diaO`: `◇_x χ` holds at a member of `x`'s extent.  The bridge gives a `□`-failure
+    child with `◇⁰_x χ`.  The child decides `x`, so `x` is opened there, and `opt_out` gives `χ`.
+  * `exists_extentO`: strong D.
+  * `frameO`: `R := AccO`; serial under D; every other flag is absurd.
+  * `OCanon.model`:
+    * `Ind` is equality;
+    * no shapes (`RootPoss := PEmpty`, the root action by `RootKeepLaws.ofRoot`);
+    * `Ret` is `False`.
+* `QML_v12m_OCanonTerm`: the canonical environment and the truth lemma for terms.
+  * `canonEnvO`: η-expansions, and a witness present exactly when its content is declared at the
+    stage.  Stages add only roots (`Ctx.stage_step`, `Ctx.stage_wit`).
+  * `canonEnvO_le_wit`: changing the stage keeps the witnesses in a deciding world.
+  * ⭐`boxPush_witAgree_canonO`: a witness read along the arrow to a child is present exactly when
+    the child opened it.
+  * `diaPush_agree_canonO`.
+  * `interp_canonO`: by induction on terms alone, since T and 4 are off.
+* `QML_v12m_OCanonTruth`: the truth lemma at deciding worlds (`OCanon.truth`), and
+  `OCanon.indInvariant` (`indInvariant_of_eq`).
+  * `◇_x`, one way: `exists_diaO`.
+  * `◇_x`, the other way: were `◇_x χ` missing, `□¬◇⁰_x χ` (`opt_dia`) would reach the member,
+    where reopening `x` refutes it.
+  * `◇⁰_y`: where the content is declared, `◇⁰_y χ` is `χ` read in the stage (`opt_reopen`,
+    `opt_out`).  Otherwise the decision `¬◇⁰_y ⊤` and `K_opt` refute it.
+* `QML_v12m_OCanonCompleteness`: ⭐`OCanon.completeness` and `OCanon.provable_iff_valid`
+  (`[Γ.Presented]`, countable signature, every system with `Opt` on: K and D, weak or strong).
+  * The root is built as a child is, in two passes. The first is the plain world refuting the
+    sequent; the second opens the witnesses it finds present.
+  * There are finitely many witnesses to open: `Ctx.Presented.wit_finite`, by induction on the
+    presentation.
+  * The canonical environment is read back over `Γ` by `Env.restrict`.
+  * Axioms: `propext`, `Classical.choice`, `Quot.sound`.  Choice is the Henkin construction's, as in
+    the `Opt`-off tree.
+* **Next: M2 (KT with `Opt`).**
+  * `Here` through `◇⁰` at the identity arrow.
+  * Shapes and `Ind` gone on the tree.
+  * `φ ⊢ ψ`'s interpolant.
