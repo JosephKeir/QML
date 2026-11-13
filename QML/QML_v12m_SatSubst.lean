@@ -195,11 +195,10 @@ theorem substEnv_under {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : S
 
 /-! ## Into the identity view (M2, docs §12.30) -/
 
-/-- `Opt` and T are not both on, or the environment respects its identity contents.  (While
-    M2 step 3 is in progress it falls back on `ModalSys.optStage`.) -/
+/-- `Opt` and T are not both on (`Opt` off, or T off). -/
 macro "witT_off" : tactic => `(tactic| first
   | exact fun _ hO => absurd hO (by rw [show ModalSys.Opt = false by opt_off]; decide)
-  | exact fun hT hO => (by have := ModalSys.optStage hO; simp [hT] at this))
+  | exact fun hT _ => (ModalSys.NoT.absurd hT).elim)
 
 /-- A possible object's entry is present at the identity arrow where its image is. -/
 theorem posPart_entryVal_dom (hT : ModalSys.T = true) (hO : ModalSys.Opt = true) {Δ : Ctx}

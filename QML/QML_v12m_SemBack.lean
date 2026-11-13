@@ -702,10 +702,11 @@ theorem substEnv_hole {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {A : VarType
 
 /-- A hole formula read at any depth says the same of the value in its hole. -/
 theorem sat_holeAt {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {w : M.frame.W} (env : M.Env Γ w)
-    {A : VarType} {a : Ann A} (t : Term σ Γ A a) (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1) :
+    {A : VarType} {a : Ann A} (t : Term σ Γ A a) (ψ : WFF σ (Ctx.empty.insert (.bnd 0) A) 1)
+    (hop : ModalSys.T = true → ModalSys.Opt = true → env.OpenedT := by witT_off) :
     M.sat env (WFF.holeAt hs t ψ) ↔ M.holeSat ψ (interp env t) := by
   unfold WFF.holeAt
-  rw [sat_subst _ _ _ _ _ (noProjLast_hole A) env ψ, substEnv_hole env t]
+  rw [sat_subst _ _ _ _ _ (noProjLast_hole A) env ψ hop, substEnv_hole env t]
   rfl
 
 /-- A hole term read at any depth is its value at the value in its hole. -/
@@ -839,13 +840,17 @@ end Body
 /-- The `□`-view formula read at the current world, with `t` in its hole (T). -/
 theorem sat_hereRead {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) (hnp : Γ.NoProjLast)
     {w : M.frame.W} (env : M.Env Γ w) {A : VarType} {a : Ann A} (t : Term σ Γ A a)
-    (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) :
+    (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1)
+    (hop : ModalSys.T = true → ModalSys.Opt = true → env.OpenedT := by witT_off) :
     M.sat env (WFF.hereRead hT t ψ) ↔
       M.sat ((env.boxPush (M.frame.reflAcc hT w)).extend (.bnd 0) (interp env t)) ψ :=
-  (sat_instantiate env hnp Ctx.NoSlots.slots t _).trans
+  (sat_instantiate env hnp Ctx.NoSlots.slots t _ hop).trans
     (sat_collapse ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A)
       ((Env.collapseAgree_self hT env).extend
-        ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) (interp env t)) ψ)
+        ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) (interp env t)) ψ
+      fun hO => (Env.collapseOpt_self hT env (hop hT hO) Ctx.NoSlots.slots).extend
+        ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) Ctx.NoSlots.slots.root
+        ((Ctx.NoSlots.slots (Γ := Γ)).insert A) _)
 
 end Model
 
@@ -1435,7 +1440,7 @@ theorem sat_ret_hereWC (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) {
 
 /-- A body along `◇_x` given by a hole formula, at the identity in `x`'s extent: the hole formula
     read in the `□` view there, with the content's value and the object in its hole. -/
-theorem sat_viewBody_here (hT : ModalSys.T = true) {x : VarSymb}
+theorem sat_viewBody_here [ModalSys.NoOpt] (hT : ModalSys.T = true) {x : VarSymb}
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {X T : VarType} {a₁ : Ann X}
     (bd : Term σ (Γ.diaIn x) X a₁) (χ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd X T)) 1)
     (hm : M.frame.reflAcc hT w ∈ (M.posEval (env.ref x hx.choose_spec)).1)
@@ -1444,7 +1449,6 @@ theorem sat_viewBody_here (hT : ModalSys.T = true) {x : VarSymb}
         (WFF.viewBody hx bd χ) ↔
       M.sat ((env.boxPush (M.frame.reflAcc hT w)).extend (T := .VTypeProd X T) (.bnd 0)
         (interp (env.diaPush x hx.choose_spec ⟨M.frame.reflAcc hT w, hm⟩) bd, e)) χ := by
-  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   set en := env.diaPush x hx.choose_spec ⟨M.frame.reflAcc hT w, hm⟩
   unfold WFF.viewBody
   rw [sat_bodyRepl (Ctx.noProjLast_diaIn Γ x)]
@@ -1463,7 +1467,7 @@ theorem sat_viewBody_here (hT : ModalSys.T = true) {x : VarSymb}
 include hnp hfin hM in
 /-- The `◇_x` reading of a hole formula at the identity, moved from the content's value to `t₀`
     (`Ind`, from a `Here` atom), the object kept: `sat_viewReadTm` at a pair. -/
-theorem sat_viewBody_of_here (hT : ModalSys.T = true) {x : VarSymb}
+theorem sat_viewBody_of_here [ModalSys.NoOpt] (hT : ModalSys.T = true) {x : VarSymb}
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {X T : VarType} {a₁ : Ann X}
     (bd : Term σ (Γ.diaIn x) X a₁) {a' : Ann X} (t₀ : Term σ Γ X a')
     (χ : WFF σ (Γ.boxIn.insert (.bnd 0) (.VTypeProd X T)) 1)
@@ -1493,6 +1497,7 @@ theorem sat_ret_hereXC (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) (
     M.sat env (WFF.retxS hS x hx (.nec (.boxC A cs hcs))
       (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs hcs).2)
       (WFF.viewBody hx bd χ) : WFF σ Γ 0) := by
+  haveI : ModalSys.NoOpt := ⟨ModalSys.noOpt_of_BStrong hS⟩
   obtain ⟨hm, hval⟩ := (sat_here_diatm hT env hx hx.choose_spec t₀ bd).mp hh
   refine ⟨_, hx.choose_spec, ⟨M.frame.reflAcc hT w, hm⟩, interp env (Term.boxtm sb),
     sat_viewBody_of_here env hnp hfin hM hT hx bd t₀ χ hm hval _ h, M.frame.refl hT w, ?_⟩
@@ -1515,6 +1520,7 @@ theorem sat_ret_hereXWC (hS : ModalSys.BStrong = true) (hT : ModalSys.T = true) 
     M.sat env (WFF.retxS hS x hx (.wit (.boxC A cs hcs) Y)
       (Term.pair (Term.collapse (Ctx.collapses_boxIn_self hT Γ) (compsVal sb cs hcs).2) u)
       (WFF.viewBody hx bd χ) : WFF σ Γ 0) := by
+  haveI : ModalSys.NoOpt := ⟨ModalSys.noOpt_of_BStrong hS⟩
   obtain ⟨hm, hval⟩ := (sat_here_diatm hT env hx hx.choose_spec t₀ bd).mp hh
   refine ⟨_, hx.choose_spec, ⟨M.frame.reflAcc hT w, hm⟩,
     interp env (Term.pair (Term.boxtm sb) p),
@@ -1977,11 +1983,12 @@ omit [Γ.NoSlots] in
     value (`compsSlot_ind`) and so, mapped, to `holeC`'s. -/
 theorem holeC_back {A B : VarType} {bB : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B bB)
     (b : Bool) (hb : ModalSys.T = b) (hF : ModalSys.Four = false) (cs : List (List Step))
-    (h : B.CompOk cs) {v w : M.frame.W} (e : M.frame.Dom (.VTypeBox A) v) (r : M.frame.R v w)
+    (h : B.CompOk cs) (hO : ModalSys.Opt = false) {v w : M.frame.W}
+    (e : M.frame.Dom (.VTypeBox A) v) (r : M.frame.R v w)
     (o : M.frame.Dom (A.compsFlat (A.compsAllB b)) w)
     (hback : M.compsBack A (A.compsAllB b) e r o) :
-    M.compsBack B cs (M.holeVal (ShapeMap.holeC s b hb hF cs h).obj.2 e) r
-      (M.holeVal (ShapeMap.holeC s b hb hF cs h).val.2 o) := by
+    M.compsBack B cs (M.holeVal (ShapeMap.holeC s b hb hF cs h hO).obj.2 e) r
+      (M.holeVal (ShapeMap.holeC s b hb hF cs h hO).val.2 o) := by
   have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeBox A)
   have he₀ : ((Env.empty v).extend (.bnd 0) e).ref (.root (.bnd 0)) hu = e :=
     Env.extend_root _ _ _ _
@@ -1998,7 +2005,8 @@ theorem holeC_back {A B : VarType} {bB : Ann B} (s : Term σ (Ctx.empty.insert (
     (fun _ _ _ => rfl) _ _ o (by rw [he₀]; exact hback)
   set sb : Term σ (Ctx.empty.insert (.bnd 0) (.VTypeBox A)).boxIn B _ :=
     Term.holeAt (Term.eta (VarSymb.root (.bnd 0)).inner A (Ctx.ref_inner hu)) s
-  change M.compsBack B cs (interp env₀ (Term.boxtm sb)) r (interp env₁ (holeCVal s b hb hF cs h).2)
+  change M.compsBack B cs (interp env₀ (Term.boxtm sb)) r
+    (interp env₁ (holeCVal s b hb hF cs h hO).2)
   refine compsBack_build _ r env₁ _ cs _ ?_ ?_
   · -- the contents, as for `hole`
     rw [box_beta, interp_holeAt, interp_holeAt]
@@ -2183,11 +2191,12 @@ omit [Γ.NoSlots] in
 /-- ⭐**`holeC` at readings**: its value at the source's readings is the image's readings. -/
 theorem holeC_compsRead {A B : VarType} {bB : Ann B}
     (s : Term σ (Ctx.empty.insert (.bnd 0) A) B bB) (b : Bool) (hb : ModalSys.T = b)
-    (hF : ModalSys.Four = false) (cs : List (List Step)) (h : B.CompOk cs) {v w : M.frame.W}
+    (hF : ModalSys.Four = false) (cs : List (List Step)) (h : B.CompOk cs)
+    (hO : ModalSys.Opt = false) {v w : M.frame.W}
     (e : M.frame.Dom (.VTypeBox A) v) (r : M.frame.R v w) :
-    M.holeVal (ShapeMap.holeC s b hb hF cs h).val.2
+    M.holeVal (ShapeMap.holeC s b hb hF cs h hO).val.2
         (M.compsRead A (A.compsAllB b) (VarType.compOk_compsAllB b hb A) e r) =
-      M.compsRead B cs h (M.holeVal (ShapeMap.holeC s b hb hF cs h).obj.2 e) r := by
+      M.compsRead B cs h (M.holeVal (ShapeMap.holeC s b hb hF cs h hO).obj.2 e) r := by
   have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (.VTypeBox A)
   have he₀ : ((Env.empty v).extend (.bnd 0) e).ref (.root (.bnd 0)) hu = e :=
     Env.extend_root _ _ _ _
@@ -2205,7 +2214,7 @@ theorem holeC_compsRead {A B : VarType} {bB : Ann B}
     Env.extend_root _ _ _ _
   set sb : Term σ (Ctx.empty.insert (.bnd 0) (.VTypeBox A)).boxIn B _ :=
     Term.holeAt (Term.eta (VarSymb.root (.bnd 0)).inner A (Ctx.ref_inner hu)) s
-  change interp ((Env.empty w).extend (.bnd 0) R) (holeCVal s b hb hF cs h).2 =
+  change interp ((Env.empty w).extend (.bnd 0) R) (holeCVal s b hb hF cs h hO).2 =
     M.compsRead B cs h (interp env₀ (Term.boxtm sb)) r
   refine interp_compsBuild_compsRead _ r _ _ ?_ cs h _ ?_
   · rw [box_beta, interp_holeAt, interp_holeAt]
@@ -2327,7 +2336,7 @@ theorem ShapeMap.comesBack : ∀ {S T : NShape} (F : ShapeMap σ S T) {v w : M.f
           Env.extend_root _ _ _ _]
       exact h
   | _, _, .tupC A true hb, v, w, e, r, o, h => tupC_back hC A hb e r o h _ _
-  | _, _, .holeC s b hb hF cs hc, _, _, e, r, o, h => holeC_back hC s b hb hF cs hc e r o h
+  | _, _, .holeC s b hb hF cs hc hO, _, _, e, r, o, h => holeC_back hC s b hb hF cs hc hO e r o h
   | _, _, .padC Z false hb, v, w, e, r, o, h => by
       have hu := Ctx.ref_insert_root Ctx.empty (.bnd 0) (VarType.VTypeBox Z)
       change M.Ind (M.necEval (interp ((Env.empty v).extend (.bnd 0) e) (Term.boxtm _)) ⟨w, ⟨r⟩⟩)

@@ -20,7 +20,11 @@ denotation.  T and 4 are off, so every successor is a child and the induction is
 
 namespace V12M
 
-variable [ModalSys]
+/- M1's construction is for K and D with `Opt` on: T off (`ModalSys.NoT`) until M2 step 6
+   generalises it, so the class is in scope throughout. -/
+set_option linter.unusedSectionVars false
+
+variable [ModalSys] [ModalSys.NoT]
 
 omit [ModalSys] in
 /-- Stages add only roots: a step address other than an identity content reads as in the
@@ -122,7 +126,7 @@ theorem canonEnvO_ref (w : World σ N₀) (i : ℕ × ℕ) :
               rfl
           | here =>
               cases U <;> simp only [VarType.step, reduceCtorEq] at hT
-              exact (ModalSys.opt_absurd hO (ModalSys.noOpt_of_T (VarType.step_here hT).1)).elim
+              exact (ModalSys.NoT.absurd (VarType.step_here hT).1).elim
           | box => cases hs
           | dia => cases hs
           | keep => cases hs
@@ -288,7 +292,7 @@ theorem interp_canonO : ∀ {Γ : Ctx} {A : VarType} {a : Ann A} (t : Term σ Γ
   | _, _, _, .diatm x hx t, w, i, e, env, hag => by
       obtain ⟨X, hr⟩ := hx
       refine (model hO w₀).pos_inj ?_
-        fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped hS)).elim
+        fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped ModalSys.NoT.noT hS)).elim
       rw [Model.dia_beta env ⟨X, hr⟩ hr t]
       have hpq₀ : env.ref x hr = (canonEnvO hO w₀ w i).ref x (e.ref hr) :=
         Model.Env.ref_agree hag x hr

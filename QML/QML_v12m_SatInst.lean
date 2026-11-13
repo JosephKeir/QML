@@ -68,18 +68,20 @@ theorem substEnv_single_tm {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (hnp : 
 theorem sat_substRoot {Γ : Ctx} {d d' : ℕ} {w : M.frame.W} (env : M.Env Γ w)
     (hnp : Γ.NoProjLast) (r : Root) {T : VarType} (hr : Γ.RootFresh r) (hs : Γ.SlotsFrom d)
     (hs' : (Γ.insert r T).SlotsFrom d') {a : Ann T} (s : Term σ Γ T a)
-    (φ : WFF σ (Γ.insert r T) d') :
+    (φ : WFF σ (Γ.insert r T) d') (hop : ModalSys.T = true → ModalSys.Opt = true → env.OpenedT :=
+        by witT_off) :
     M.sat env (WFF.substRoot r hr hs hs' s φ) ↔ M.sat (env.extend r (interp env s)) φ :=
   (sat_subst (Subst.single r (.tm s)) (Subst.ok_single (Ctx.Le.refl Γ) rfl)
-    (Subst.coh_single hr (Ctx.Le.refl Γ) rfl) hs' hs (hnp.insert r T) env φ).trans
+    (Subst.coh_single hr (Ctx.Le.refl Γ) rfl) hs' hs (hnp.insert r T) env φ hop).trans
     (iff_of_eq (congrArg (fun e => M.sat e φ) (substEnv_single_tm env hnp r s)))
 
 /-- ⭐Instantiating the slot. -/
 theorem sat_instantiate {Γ : Ctx} {d : ℕ} {w : M.frame.W} (env : M.Env Γ w)
     (hnp : Γ.NoProjLast) (hs : Γ.SlotsFrom d) {T : VarType} {a : Ann T} (t : Term σ Γ T a)
-    (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) :
+    (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) (hop : ModalSys.T = true → ModalSys.Opt = true →
+        env.OpenedT := by witT_off) :
     M.sat env (WFF.instantiate hs t φ) ↔ M.sat (env.extend (.bnd d) (interp env t)) φ :=
-  sat_substRoot env hnp (.bnd d) (hs.rootFresh le_rfl) hs (hs.insert T) t φ
+  sat_substRoot env hnp (.bnd d) (hs.rootFresh le_rfl) hs (hs.insert T) t φ hop
 
 /-! ## Renaming a root -/
 
@@ -109,21 +111,24 @@ theorem substEnv_single_ren {Γ Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (hn
 theorem sat_renameRoot {Γ Δ : Ctx} {d d' : ℕ} {w : M.frame.W} (env : M.Env Δ w)
     (hnp : Γ.NoProjLast) (r : Root) {T : VarType} (hr : Γ.RootFresh r) (hle : Γ.Le Δ)
     (x : VarSymb) (hx : Δ.ref x = some T) (hs : (Γ.insert r T).SlotsFrom d)
-    (hs' : Δ.SlotsFrom d') (φ : WFF σ (Γ.insert r T) d) :
+    (hs' : Δ.SlotsFrom d') (φ : WFF σ (Γ.insert r T) d) (hop : ModalSys.T = true → ModalSys.Opt =
+        true → env.OpenedT := by witT_off) :
     M.sat env (WFF.renameRoot r hr hle x hx hs hs' φ) ↔
       M.sat ((env.restrict hle).extend r (env.ref x hx)) φ :=
   (sat_subst (Subst.single r (.ren x)) (Subst.ok_single hle hx) (Subst.coh_single hr hle hx) hs hs'
-    (hnp.insert r T) env φ).trans
+    (hnp.insert r T) env φ hop).trans
     (iff_of_eq (congrArg (fun e => M.sat e φ) (substEnv_single_ren env hnp hle x hx)))
 
 /-- ⭐Binding a free variable to the slot. -/
 theorem sat_bindFree {Γ : Ctx} {d : ℕ} {w : M.frame.W} (env : M.Env Γ w) (hnp : Γ.NoProjLast)
     (u : ℕ) (hu : Γ.RootFresh (.free u)) (hs : Γ.SlotsFrom d) (T : VarType)
-    (o : M.frame.Dom T w) (φ : WFF σ (Γ.insert (.free u) T) d) :
+    (o : M.frame.Dom T w) (φ : WFF σ (Γ.insert (.free u) T) d) (hop : ModalSys.T = true →
+        ModalSys.Opt = true → env.OpenedT := by witT_off) :
     M.sat (env.extend (.bnd d) o) (WFF.bindFree u hu hs T φ) ↔
       M.sat (env.extend (.free u) o) φ := by
   refine (sat_renameRoot (env.extend (.bnd d) o) hnp (.free u) hu (Ctx.le_insert hs.root T)
-    (.root (.bnd d)) (Ctx.ref_insert_root Γ _ T) (hs.insertFree u T) (hs.insert T) φ).trans ?_
+    (.root (.bnd d)) (Ctx.ref_insert_root Γ _ T) (hs.insertFree u T) (hs.insert T) φ
+    fun hT hO => (hop hT hO).extend hs.root o).trans ?_
   rw [Env.restrict_extend env hs.root o]
   exact iff_of_eq (congrArg (fun o' => M.sat (env.extend (.free u) o') φ)
     (Env.extend_root env (.bnd d) o (Ctx.ref_insert_root Γ _ T)))

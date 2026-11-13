@@ -18,7 +18,11 @@ so there are no others (docs §12.22).
 
 namespace V12M
 
-variable [ModalSys]
+/- M1's construction is for K and D with `Opt` on: T off (`ModalSys.NoT`) until M2 step 6
+   generalises it, so the class is in scope throughout. -/
+set_option linter.unusedSectionVars false
+
+variable [ModalSys] [ModalSys.NoT]
 
 namespace OCanon
 
@@ -251,7 +255,7 @@ noncomputable def rawEvalO :
   | _, _, .boxUnit, _, _ => fun _ => PUnit.unit
   | _, _, .diaMap f, _, o => ⟨o.1, fun w' => rawEvalO f w'.1.1 (o.2 w')⟩
   | _, _, .strength _ _, _, o => ⟨o.2.1, fun w' => (o.1 w'.1, o.2.2 w')⟩
-  | _, _, .extract hT, _, _ => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_T hT)).elim
+  | _, _, .extract hT, _, _ => (ModalSys.NoT.absurd hT).elim
   | _, _, .dup hF, _, _ => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
   | _, _, .dkeep hF, _, _ => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
 
@@ -284,7 +288,7 @@ theorem rdenO_applyG :
       congrArg (Sigma.mk (extentO w x)) (funext fun w' => rdenO_applyG f c w'.1.1 _ _)
   | _, _, .strength _ _, _, _, .pair (.boxtm b) (.diatm x _ _), w, _, _ =>
       congrArg (Sigma.mk (extentO w x)) (funext fun w' => Prod.ext (rdenO_mono _ b _ _ _) rfl)
-  | _, _, .extract hT, _, _, _, _, _, _ => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_T hT)).elim
+  | _, _, .extract hT, _, _, _, _, _, _ => (ModalSys.NoT.absurd hT).elim
   | _, _, .dup hF, _, _, _, _, _, _ => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
   | _, _, .dkeep hF, _, _, _, _, _, _ =>
       (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim

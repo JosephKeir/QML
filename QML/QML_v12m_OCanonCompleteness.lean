@@ -16,7 +16,11 @@ is provable — in every system `Opt` allows (K and D, weak and strong D).
 
 namespace V12M
 
-variable [ModalSys]
+/- M1's construction is for K and D with `Opt` on: T off (`ModalSys.NoT`) until M2 step 6
+   generalises it, so the class is in scope throughout. -/
+set_option linter.unusedSectionVars false
+
+variable [ModalSys] [ModalSys.NoT]
 
 /-- The witnesses of a presented context are finitely many: a view's are the reachable possible
     addresses below it. -/
@@ -155,7 +159,7 @@ theorem provable_iff_valid {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {
       Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ :=
   ⟨fun ⟨p⟩ M hM _ env hnp =>
     Model.soundness p M hM env (Ctx.Presented.tame Γ) hnp
-      (env.openedT_off fun h => absurd (ModalSys.noOpt_of_T h.1) (by rw [hO]; decide)),
+      (env.openedT_off fun h => ModalSys.NoT.absurd h.1),
     completeness hO⟩
 
 end OCanon

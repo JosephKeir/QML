@@ -160,6 +160,8 @@ theorem coh_packRootsS (A : VarType) (l : List VarType) :
     (fun _ y _ h => by rw [ctxOf_insert_wit] at h; cases h)
     (fun _ y _ _ h => by rw [ctxOf_insert_wit] at h; cases h)
     (fun _ y _ _ h => by rw [ctxOf_insert_wit] at h; cases h)
+    (fun _ _ _ _ hyd => by rcases vis_slotCtx hyd with ⟨he, -⟩ | ⟨_, he, -⟩ <;> cases he)
+    (fun _ _ _ _ hyd => by rcases vis_slotCtx hyd with ⟨he, -⟩ | ⟨_, he, -⟩ <;> cases he)
   intro v T _ hv p
   rcases vis_slotCtx hv with ⟨rfl, rfl⟩ | ⟨r, rfl, hr, rfl⟩
   · change (VarSymb.step (.root (.bnd 0)) .fst).ext p =

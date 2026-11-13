@@ -17,7 +17,11 @@ the `□` view with both witnesses opened (`Proof.optTwoFwd`, `Proof.optTwoBwd`)
 
 namespace V12M
 
-variable [ModalSys]
+/- M1's construction is for K and D with `Opt` on: T off (`ModalSys.NoT`) until M2 step 6
+   generalises it, so the class is in scope throughout. -/
+set_option linter.unusedSectionVars false
+
+variable [ModalSys] [ModalSys.NoT]
 
 deriving instance DecidableEq for SubE
 deriving instance DecidableEq for WitE

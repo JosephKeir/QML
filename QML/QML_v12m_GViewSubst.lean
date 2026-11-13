@@ -58,6 +58,8 @@ theorem coh_atShift {Γ Γ' : Ctx} (C : Ctx.Shifts 0 Γ Γ') {Ψ : Subst σ Δ} 
     (fun hO => absurd hO (by rw [ModalSys.noOpt_of_Four C.hF]; decide))
     (fun hO => absurd hO (by rw [ModalSys.noOpt_of_Four C.hF]; decide))
     (fun hO => absurd hO (by rw [ModalSys.noOpt_of_Four C.hF]; decide))
+    (fun _ _ _ hy => absurd (Ctx.witT_spec hy).2.1 (by rw [ModalSys.noOpt_of_Four C.hF]; decide))
+    (fun _ _ _ hy => absurd (Ctx.witT_spec hy).2.1 (by rw [ModalSys.noOpt_of_Four C.hF]; decide))
   change (Ψ.at (v.shift 0)).idxAlong p = _
   rw [hc _ _ (C v T ((Ctx.ref_nonproj Γ hlp).trans hv)) p, VarSymb.ext_path, Step.levels_append,
     hlv v T hlp hv, show 1 + Step.levels p - 1 = 0 + Step.levels p by omega, VarSymb.shift_ext]

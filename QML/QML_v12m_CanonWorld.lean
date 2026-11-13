@@ -241,7 +241,8 @@ theorem RealDatum.declType {I : Type} [Preorder I] [IsDirected I (· ≤ ·)] {S
     field is not data the construction has to arrange, but a consequence of one sentence being in
     the theory.  At every `◇`-free content type, as `WFF.here` is (§2d). -/
 theorem spec_of_here {I : Type} [Preorder I] {S : StageSys I} {T : Set (S.Sentence σ)}
-    (hmcs : StageSys.IsMCS T) (hT : ModalSys.T = true) {x : VarSymb} {i₀ : I} {A : VarType}
+    (hmcs : StageSys.IsMCS T) [ModalSys.NoOpt] (hT : ModalSys.T = true) {x : VarSymb} {i₀ : I}
+    {A : VarType}
     {a₀ : Ann A} (t₀ : Term σ (S.ctx i₀) A a₀)
     (hhere : ∀ (i : I) (hi : i₀ ≤ i) (hd : (S.ctx i).ref x = some (.VTypeDia A)),
       (⟨i, WFF.hereAt hT x hd (Term.mono (S.le hi) t₀)⟩ : S.Sentence σ) ∈ T) :
@@ -265,7 +266,8 @@ theorem spec_of_here {I : Type} [Preorder I] {S : StageSys I} {T : Set (S.Senten
 /-- ⭐What used to be the `spec` field, now **derived** from the `Here` atom the datum carries: a
     maximal consistent theory closed under provability turns the realisation reading of a view
     formula into the `◇` one. -/
-theorem RealDatum.spec {I : Type} [Preorder I] [IsDirected I (· ≤ ·)] {S : StageSys I}
+theorem RealDatum.spec [ModalSys.NoOpt] {I : Type} [Preorder I] [IsDirected I (· ≤ ·)]
+    {S : StageSys I}
     {T : Set (S.Sentence σ)} {x : VarSymb} (d : RealDatum σ S T x) (hmcs : StageSys.IsMCS T) :
     ∀ (i : I) (hi : d.i₀ ≤ i) (hd : (S.ctx i).ref x = some (.VTypeDia d.A))
       (χ : WFF σ ((S.ctx i).diaIn x) 0),

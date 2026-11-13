@@ -24,7 +24,8 @@ namespace Model
 
 /-- The environment abstraction induces, at the world where the witness is realised, is the
     environment pushed into its `◇` view there. -/
-theorem Env.substEnv_diaAbsA (hT : ModalSys.T = true) {Γ : Ctx} [Γ.Presented] {w : M.frame.W}
+theorem Env.substEnv_diaAbsA [ModalSys.NoOpt] (hT : ModalSys.T = true) {Γ : Ctx} [Γ.Presented] {w :
+    M.frame.W}
     (env : M.Env Γ w) {x : VarSymb} {A : VarType}
     (hcA : Γ.ref x = some (.VTypeDia A))
     {a₀ : Ann A} (t₀ : Term σ Γ A a₀)
@@ -39,7 +40,7 @@ theorem Env.substEnv_diaAbsA (hT : ModalSys.T = true) {Γ : Ctx} [Γ.Presented] 
       env.diaPush x hcA ⟨M.frame.reflAcc hT w, hmem⟩ := by
   refine Env.ext' (fun v T hv => ?_) (fun _ _ hy => ?_)
   swap
-  · exact absurd (Ctx.boxIn_wit.mp hy).1 (by rw [ModalSys.noOpt_of_T hT]; decide)
+  · exact absurd (Ctx.boxIn_wit.mp hy).1 (by rw [ModalSys.NoOpt.noOpt]; decide)
   rcases Subst.diaIn_casesA hcA (Ctx.Presented.not_below inferInstance hcA rfl) hv with
     ⟨rfl, rfl⟩ | ⟨_, hb, hen, hroot⟩
   · refine (entryVal_congr _ (show Subst.diaAbsA σ (Γ.boxIn.insert (.bnd 0) T) x
@@ -67,7 +68,8 @@ theorem Env.substEnv_diaAbsA (hT : ModalSys.T = true) {Γ : Ctx} [Γ.Presented] 
 
 /-- ⭐At the world where the witness is realised, a term of its `◇` view denotes what its
     realisation denotes here. -/
-theorem interp_realiseAtA (hT : ModalSys.T = true) {Γ : Ctx} [Γ.Presented] {w : M.frame.W}
+theorem interp_realiseAtA [ModalSys.NoOpt] (hT : ModalSys.T = true) {Γ : Ctx} [Γ.Presented]
+    {w : M.frame.W}
     (env : M.Env Γ w) (hnp : Γ.NoProjLast) {x : VarSymb} {A : VarType}
     (hcA : Γ.ref x = some (.VTypeDia A))
     {a₀ : Ann A} (t₀ : Term σ Γ A a₀)
@@ -87,7 +89,8 @@ theorem interp_realiseAtA (hT : ModalSys.T = true) {Γ : Ctx} [Γ.Presented] {w 
 /-- ⭐The same for formulas: at the world where the witness is realised, a formula of its `◇` view
     holds exactly when its realisation holds here.  This is what the canonical model's truth lemma
     needs at the world itself. -/
-theorem sat_realiseAtA (hT : ModalSys.T = true) {Γ : Ctx} [Γ.Presented] {w : M.frame.W}
+theorem sat_realiseAtA [ModalSys.NoOpt] (hT : ModalSys.T = true) {Γ : Ctx} [Γ.Presented]
+    {w : M.frame.W}
     (env : M.Env Γ w) (hnp : Γ.NoProjLast) {x : VarSymb} {A : VarType}
     (hcA : Γ.ref x = some (.VTypeDia A))
     {a₀ : Ann A} (t₀ : Term σ Γ A a₀)

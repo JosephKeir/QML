@@ -596,7 +596,6 @@ def «at» (θ : Subst σ Δ) : VarSymb → SubE σ Δ
 macro "opt_off" : tactic => `(tactic| first
   | assumption
   | exact ModalSys.NoOpt.noOpt
-  | exact ModalSys.noOpt_of_T ‹_›
   | exact ModalSys.noOpt_of_Four ‹_›
   | exact ModalSys.noOpt_of_B ‹_›
   | exact ModalSys.noOpt_of_BStrong ‹_›
@@ -608,12 +607,11 @@ macro "wit_triv" : tactic => `(tactic| first
   | exact fun _ _ _ h => nomatch h
   | exact fun _ _ _ _ h => nomatch h)
 
-/-- An identity-content clause with nothing to check: `Opt` off (`opt_off`).  (While M2 step 3
-    is in progress it falls back on `Ctx.witT_stage`.) -/
+/-- An identity-content clause with nothing to check: `Opt` off (`opt_off`), or T off. -/
 macro "witT_triv" : tactic => `(tactic| first
   | exact fun _ _ _ h => absurd (Ctx.witT_spec h).2.1
       (by rw [show ModalSys.Opt = false by opt_off]; decide)
-  | exact fun _ _ _ h => (Ctx.witT_stage h).elim)
+  | exact fun _ _ _ h => ModalSys.NoT.absurd (Ctx.witT_spec h).1)
 
 /-! ### The identity view (M2, docs §12.30) -/
 
@@ -694,7 +692,7 @@ structure Coh (ι : VarSymb → VarSymb) (Γ : Ctx) (θ : Subst σ Δ) : Prop wh
     (θ.wit y).idxAlong [] = z → ∃ Z, Δ.wit z = some Z ∧ Δ (.step z .dia) = some Z
   /-- ⭐An opened **identity** content (`y.at` in view, inside `◇⁰ᵀ_y`) has its entry read through
       its possible object's entry (`SubE.atBody`), as `opened` for a witness's content (M2).  The
-      default holds while no identity witness exists (`Ctx.witT_stage`; M2 step 3). -/
+      default holds with `Opt` or T off (`witT_triv`). -/
   openedT : ∀ y X z, Γ.witT y = some X → Γ (.step y .at) = some X →
     (θ.at y).idxAlong [] = z →
       (θ (.step y .at)).mono (Ctx.le_optInT Δ z) = (θ.at y).atBody z := by

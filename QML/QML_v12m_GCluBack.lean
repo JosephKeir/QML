@@ -42,7 +42,8 @@ theorem WFF.holeAt_boxHole {σ : Signature} {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsF
     (Term.subst_eta_tm _ _ _ _ _ _ t (Subst.box_at_inner_boxtm _ hat)) ψ))
 
 /-- Realising a hole formula's reading is reading it at the realised term. -/
-theorem WFF.realiseAtA_holeAt {σ : Signature} {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true)
+theorem WFF.realiseAtA_holeAt {σ : Signature} {Γ : Ctx} [Γ.Presented] [ModalSys.NoOpt]
+    (hT : ModalSys.T = true)
     (hF : ModalSys.Four = true) (x : VarSymb) {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A))
     {a₀ : Ann A}
     (t₀ : Term σ Γ A a₀) {T : VarType} {b : Ann T} (u : Term σ (Γ.diaIn x) T b)

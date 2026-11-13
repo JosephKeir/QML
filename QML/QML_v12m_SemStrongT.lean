@@ -75,7 +75,7 @@ theorem Env.diaPush_ret {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {c : ℕ}
 
 /-- ⭐Strong T: what holds of `t` here holds of the witness content in the `◇` view of the
     possible object realised here. -/
-theorem sat_ret (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
+theorem sat_ret [ModalSys.NoOpt] (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
     {w : M.frame.W} (env : M.Env Γ w) (hnp : Γ.NoProjLast) {A : VarType} {a : Ann A}
     (t : Term σ Γ A a) (c : ℕ) (hc : Γ.RootFresh (.free c))
     (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) (p : M.frame.Dom (.VTypeDia A) w)
@@ -114,7 +114,7 @@ theorem sat_ret (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
         env.boxPush (M.frame.reflAcc hT w) := by
     refine Env.ext' (fun v T hv => ?_) (fun _ _ hy => ?_)
     swap
-    · exact absurd (Ctx.boxIn_wit.mp hy).1 (by rw [ModalSys.noOpt_of_T hT]; decide)
+    · exact absurd (Ctx.boxIn_wit.mp hy).1 (by rw [ModalSys.NoOpt.noOpt]; decide)
     exact (Env.diaPush_ret env hc p (M.frame.refl hT w) hrc hmem' v T hv).symm
   refine (sat_renameRoot _ (Ctx.noProjLast_boxIn Γ) (.bnd 0)
     ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) _ _ _ _ Ctx.NoSlots.slots ψ).mpr ?_
@@ -148,7 +148,7 @@ theorem Env.extend_swap_agree {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {r r
 /-- ⭐At the world where the witness is realised, a hole formula read in the `◇` view holds exactly
     when it holds here with `t` in its hole.  This is `sat_ret` as an equivalence, at that one
     member of the extent: the canonical model's truth lemma needs both directions. -/
-theorem sat_viewRead_ret (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
+theorem sat_viewRead_ret [ModalSys.NoOpt] (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
     {w : M.frame.W} (env : M.Env Γ w) (hnp : Γ.NoProjLast) {A : VarType} {a : Ann A}
     (t : Term σ Γ A a) (c : ℕ) (hc : Γ.RootFresh (.free c))
     (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) (p : M.frame.Dom (.VTypeDia A) w)
@@ -178,7 +178,7 @@ theorem sat_viewRead_ret (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots]
       env.boxPush (M.frame.reflAcc hT w) := by
     refine Env.ext' (fun v T hv => ?_) (fun _ _ hy => ?_)
     swap
-    · exact absurd (Ctx.boxIn_wit.mp hy).1 (by rw [ModalSys.noOpt_of_T hT]; decide)
+    · exact absurd (Ctx.boxIn_wit.mp hy).1 (by rw [ModalSys.NoOpt.noOpt]; decide)
     exact (Env.diaPush_ret env hc p (M.frame.refl hT w) hrc hmem' v T hv).symm
   refine (sat_renameRoot _ (Ctx.noProjLast_boxIn Γ) (.bnd 0)
     ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) _ _ _ _ Ctx.NoSlots.slots ψ).trans
@@ -199,7 +199,8 @@ equation between environments. -/
 
 /-- The environment abstraction induces, at the world where the witness is realised, is the
     environment pushed into its `◇` view there. -/
-theorem Env.substEnv_diaAbs (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
+theorem Env.substEnv_diaAbs [ModalSys.NoOpt] (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w :
+    M.frame.W}
     (env : M.Env Γ w) {c : ℕ} {A : VarType}
     (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
@@ -214,7 +215,7 @@ theorem Env.substEnv_diaAbs (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w 
       env.diaPush (.root (.free c)) hcA ⟨M.frame.reflAcc hT w, hmem⟩ := by
   refine Env.ext' (fun v T hv => ?_) (fun _ _ hy => ?_)
   swap
-  · exact absurd (Ctx.boxIn_wit.mp hy).1 (by rw [ModalSys.noOpt_of_T hT]; decide)
+  · exact absurd (Ctx.boxIn_wit.mp hy).1 (by rw [ModalSys.NoOpt.noOpt]; decide)
   rcases Subst.diaIn_cases hcA hfr hv with ⟨rfl, rfl⟩ | ⟨_, hb, hen, hroot⟩
   · refine (entryVal_congr _ (show Subst.diaAbs σ (Γ.boxIn.insert (.bnd 0) T) c
         (.step (.root (.free c)) .dia) = .ren (.root (.bnd 0)) from
@@ -242,7 +243,8 @@ theorem Env.substEnv_diaAbs (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w 
 
 /-- ⭐At the world where the witness is realised, a term of its `◇` view denotes what its
     realisation denotes here. -/
-theorem interp_realiseAt (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
+theorem interp_realiseAt [ModalSys.NoOpt] (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w :
+    M.frame.W}
     (env : M.Env Γ w) (hnp : Γ.NoProjLast) {c : ℕ} {A : VarType}
     (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
@@ -263,7 +265,8 @@ theorem interp_realiseAt (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M
 /-- ⭐The same for formulas: at the world where the witness is realised, a formula of its `◇` view
     holds exactly when its realisation holds here.  This is what the canonical model's truth lemma
     needs at the world itself. -/
-theorem sat_realiseAt (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W}
+theorem sat_realiseAt [ModalSys.NoOpt] (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w :
+    M.frame.W}
     (env : M.Env Γ w) (hnp : Γ.NoProjLast) {c : ℕ} {A : VarType}
     (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)

@@ -589,6 +589,17 @@ theorem Env.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} (env : M.Env 
   | .step _ .dia => cases hv
   | .step _ .here => cases hv
 
+/-- With `Opt` on, the `□` view pushed to the current world itself collapses onto an environment
+    respecting its identity contents: a `◇⁰` witness there is the identity witness here. -/
+theorem Env.collapseOpt_self (hT : ModalSys.T = true) {Γ : Ctx} (env : M.Env Γ w)
+    (hop : env.OpenedT) {d : ℕ} (hs : Γ.SlotsFrom d) :
+    Env.CollapseOpt (Ctx.collapses_boxIn_self hT Γ) d (env.boxPush ⟨w, ⟨M.frame.refl hT w⟩⟩)
+      env where
+  zero _ _ _ _ := rfl
+  succ _ _ _ _ hk := absurd hk.symm (Nat.succ_ne_zero _)
+  opened := hop
+  slots := hs
+
 /-- ⭐Under T with `Opt`, the `◇_x` view at the identity arrow agrees with `x`'s identity view
     across the collapse (`Ctx.collapses_diaIn_optInT`): a possible term's body read at the
     current world. -/

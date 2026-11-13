@@ -175,11 +175,44 @@ theorem ok_toFree {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {d u : ℕ} (T 
     rw [show θ.toFree d u T h v = (θ v).mono (Ctx.le_insert h T) from if_neg hvr]
     exact SubE.okRef_mono _ (hθ v U hlp hv')
 
+theorem at_toFree_ne (θ : Subst σ Δ) {d u : ℕ} (T : VarType) (h : Δ (.root (.free u)) = none) :
+    ∀ {v : VarSymb}, v.rt ≠ .bnd d → (θ.toFree d u T h).at v = (θ.at v).mono (Ctx.le_insert h T)
+  | .root r, hv => by
+      change (if VarSymb.root r = .root (.bnd d) then _ else _) = _
+      rw [if_neg (fun he => hv (by cases he; rfl))]
+      rfl
+  | .step v s, hv => by
+      simp only [Subst.at]
+      split_ifs
+      · rw [at_toFree_ne θ T h (v := v) hv, SubE.proj_mono]
+      · exact if_neg (t := SubE.ren (.root (.free u)))
+          (fun (he : VarSymb.step v s = .root (.bnd d)) => by cases he)
+
 theorem coh_toFree {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
     (hc : Coh ι Γ θ) {d u : ℕ} (hΓ : Γ.SlotsFrom d) (T : VarType)
     (h : Δ (.root (.free u)) = none) :
     Coh (VarSymb.slotToFree ι d u) (Γ.insert (.bnd d) T) (θ.toFree d u T h) := by
+  have hT' : ∀ {y : VarSymb} {X : VarType}, (Γ.insert (.bnd d) T).witT y = some X →
+      (Γ.insert (.bnd d) T) (.step y .at) = some X →
+      Γ.witT y = some X ∧ Γ (.step y .at) = some X ∧ y.rt ≠ .bnd d := by
+    intro y X hy hyd
+    obtain ⟨hT, hO, -⟩ := Ctx.witT_spec hy
+    have hyd' := Ctx.insert_ne_some hyd (fun he => by cases he)
+    have hrt : y.rt ≠ .bnd d := by
+      intro he
+      have h₀ := hΓ (.step y .at) d he le_rfl
+      rw [h₀] at hyd'
+      cases hyd'
+    exact ⟨Ctx.witT_of_at hT hO hyd', hyd', hrt⟩
   refine coh_of (ok_toFree hθ T h) ?_ ?_ ?_ ?_
+    (fun y X z hy hyd hz => by
+      obtain ⟨hy', hyd', hrt⟩ := hT' hy hyd
+      exact openedT_of_mono (Ctx.le_insert h T) hc hy' hyd' (at_toFree_ne θ T h hrt)
+        (if_neg (t := SubE.ren (.root (.free u)))
+          (show VarSymb.step y .at ≠ .root (.bnd d) from fun he => by cases he)) hz)
+    (fun y X z hy hyd hz => by
+      obtain ⟨hy', hyd', hrt⟩ := hT' hy hyd
+      exact openedToT_of_mono (Ctx.le_insert h T) hc hy' hyd' (at_toFree_ne θ T h hrt) hz)
   rotate_left
   · intro hO y X hy p
     have hrt : y.rt ≠ .bnd d := fun he => by

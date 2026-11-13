@@ -55,10 +55,42 @@ theorem ok_set {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {r : Root} {T : Va
     rw [set_ne _ _ hvr]
     exact hθ v U hlp hv'
 
+theorem at_set_ne {θ : Subst σ Δ} {r : Root} {e : SubE σ Δ} :
+    ∀ {v : VarSymb}, v.rt ≠ r → (θ.set r e).at v = θ.at v
+  | .root _, h => if_neg (t := e) (fun he => h (VarSymb.root.inj he))
+  | .step v s, h => by
+      change (if s.isStruct then ((θ.set r e).at v).proj s else θ.set r e (.step v s)) =
+        (if s.isStruct then (θ.at v).proj s else θ (.step v s))
+      by_cases hs : s.isStruct = true
+      · rw [if_pos hs, if_pos hs, at_set_ne (v := v) h]
+      · rw [if_neg hs, if_neg hs]
+        exact if_neg (t := e) (show VarSymb.step v s ≠ .root r from fun he => by cases he)
+
 theorem coh_set {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
     (hc : Coh ι Γ θ) {r : Root} {T : VarType} {e : SubE σ Δ} (hr : Γ.RootFresh r)
     (he : e.OkRef T) : Coh (setIdx ι r e) (Γ.insert r T) (θ.set r e) := by
+  have hT' : ∀ {y : VarSymb} {X : VarType}, (Γ.insert r T).witT y = some X →
+      (Γ.insert r T) (.step y .at) = some X →
+      Γ.witT y = some X ∧ Γ (.step y .at) = some X ∧ y.rt ≠ r := by
+    intro y X hy hyd
+    obtain ⟨hT, hO, -⟩ := Ctx.witT_spec hy
+    have hyd' := Ctx.insert_ne_some hyd (fun he => by cases he)
+    have hrt : y.rt ≠ r := by
+      intro he
+      have h₀ := hr.ty (.step y .at) he
+      rw [h₀] at hyd'
+      cases hyd'
+    exact ⟨Ctx.witT_of_at hT hO hyd', hyd', hrt⟩
   refine coh_of (ok_set hθ he) ?_ ?_ ?_ ?_
+    (fun y X z hy hyd hz => by
+      obtain ⟨hy', hyd', hrt⟩ := hT' hy hyd
+      rw [at_set_ne hrt] at hz ⊢
+      rw [set_ne _ _ (show VarSymb.step y .at ≠ .root r from fun he => by cases he)]
+      exact hc.openedT y X z hy' hyd' hz)
+    (fun y X z hy hyd hz => by
+      obtain ⟨hy', hyd', hrt⟩ := hT' hy hyd
+      rw [at_set_ne hrt] at hz
+      exact hc.openedToT y X z hy' hyd' hz)
   rotate_left
   · intro hO y X hy p
     change Γ.wit y = some X at hy
@@ -647,14 +679,15 @@ theorem VarType.CompOk.T_of_mem {A : VarType} {cs : List (List Step)} (h : A.Com
     companions (`compsRen`). -/
 def holeCVal {σ : Signature} {A B : VarType} {bB : Ann B}
     (s : Term σ (Ctx.empty.insert (.bnd 0) A) B bB) (b : Bool) (hb : ModalSys.T = b)
-    (hF : ModalSys.Four = false) (cs : List (List Step)) (h : B.CompOk cs) :
+    (hF : ModalSys.Four = false) (cs : List (List Step)) (h : B.CompOk cs)
+    (hO : ModalSys.Opt = false) :
     Σ c, Term σ (Ctx.empty.insert (.bnd 0) (A.compsFlat (A.compsAllB b))) (B.compsFlat cs) c :=
   compsBuild B ⟨_, Term.holeAt (Term.eta ((VarSymb.root (.bnd 0)).ext (compsFst (A.compsAllB b)))
       A (Ctx.ref_compsFst _ (Ctx.ref_insert_root _ _ _))) s⟩ cs
     fun q hq => ⟨_, Term.subst (compsRenIdx (A.compsAllB b))
       (compsRen σ _ (A.compsAllB b))
-      (ok_compsRen hF A b hb (ModalSys.noOpt_of_T (h.T_of_mem hq)))
-      (coh_compsRen hF A b hb (ModalSys.noOpt_of_T (h.T_of_mem hq)))
+      (ok_compsRen hF A b hb hO)
+      (coh_compsRen hF A b hb hO)
       (compVal (Γ := Ctx.empty.insert (.bnd 0) (.VTypeBox A))
         (Term.holeAt (Term.eta (VarSymb.root (.bnd 0)).inner A
           (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))) s) q (h.single hq)).2⟩
@@ -724,7 +757,7 @@ inductive ShapeMap (σ : Signature) : NShape → NShape → Type where
       condition: the coherent instance of `holeH`.  With T off it is `hole s` up to `η`. -/
   | holeC {A B : VarType} {bB : Ann B} (s : Term σ (Ctx.empty.insert (.bnd 0) A) B bB)
       (b : Bool) (hb : ModalSys.T = b) (hF : ModalSys.Four = false) (cs : List (List Step))
-      (h : B.CompOk cs) :
+      (h : B.CompOk cs) (hO : ModalSys.Opt = false) :
       ShapeMap σ (.boxC A (A.compsAllB b) (VarType.compOk_compsAllB b hb A)) (.boxC B cs h)
 
 /-- The map on the object out there, as a hole term. -/
@@ -766,7 +799,7 @@ def ShapeMap.obj {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
       (Term.eta (VarSymb.root (.bnd 0)).inner A (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))))⟩
   | _, _, .tupC A true hb => ⟨_, Term.boxtm (Term.pair Term.unit
       (itemsTree hb (.root (.bnd 0)) (.VTypeBox A) (Ctx.ref_insert_root _ _ _)).2)⟩
-  | _, _, .holeC (A := A) s _ _ _ _ _ => ⟨_, Term.boxtm (Term.holeAt
+  | _, _, .holeC (A := A) s _ _ _ _ _ _ => ⟨_, Term.boxtm (Term.holeAt
       (Term.eta (VarSymb.root (.bnd 0)).inner A (Ctx.ref_inner (Ctx.ref_insert_root _ _ _))) s)⟩
 
 /-- The map on the value it comes back as, as a hole term. -/
@@ -818,7 +851,7 @@ def ShapeMap.val {σ : Signature} : {S T : NShape} → ShapeMap σ S T →
   | _, _, .tupC A false _ =>
       ⟨_, Term.pair Term.unit (Term.eta (.root (.bnd 0)) A (Ctx.ref_insert_root _ _ _))⟩
   | _, _, .tupC A true hb => tupCVal A hb _ fun _ hp => hp
-  | _, _, .holeC s b hb hF cs h => holeCVal s b hb hF cs h
+  | _, _, .holeC s b hb hF cs h hO => holeCVal s b hb hF cs h hO
 
 /-- The map on the object out there, at a returnable shape: on the necessary part, the witness
     carried along. -/

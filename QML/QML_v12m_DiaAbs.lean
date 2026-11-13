@@ -335,7 +335,8 @@ def Term.hereRead {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = tr
 
 /-- ⭐The realisation of a view term: what it denotes at the world where the witness is realised
     by `t₀`.  Abstraction followed by `Term.hereRead`, so it needs no new recursion. -/
-def Term.realiseAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) (c : ℕ)
+def Term.realiseAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] [ModalSys.NoOpt] (hT : ModalSys.T = true)
+    (c : ℕ)
     {A : VarType} (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
     {a₀ : Ann A} (t₀ : Term σ Γ A a₀) {T : VarType} {b : Ann T}
@@ -346,7 +347,8 @@ def Term.realiseAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = t
   Term.hereRead hT t₀ (Term.diaAbs c hcA hfr t)
 
 /-- ⭐The realisation of a view formula. -/
-def WFF.realiseAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) (c : ℕ)
+def WFF.realiseAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] [ModalSys.NoOpt] (hT : ModalSys.T = true)
+    (c : ℕ)
     {A : VarType} (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
     {a₀ : Ann A} (t₀ : Term σ Γ A a₀)
@@ -441,7 +443,7 @@ theorem Term.mono_hereRead {σ : Signature} {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoS
 
 /-- Realisation commutes with weakening. -/
 theorem Term.mono_realiseAt {σ : Signature} {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots]
-    (hT : ModalSys.T = true) (h : Γ.Le Γ') {c : ℕ} {A : VarType}
+    [ModalSys.NoOpt] (hT : ModalSys.T = true) (h : Γ.Le Γ') {c : ℕ} {A : VarType}
     (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hcA' : Γ'.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
@@ -491,7 +493,8 @@ theorem Term.hereRead_sigma {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : Modal
   rfl
 
 /-- ⭐Realising a term of the `□` view is collapsing it: the witness content does not occur. -/
-theorem Term.realiseAt_mono_boxIn {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true)
+theorem Term.realiseAt_mono_boxIn {σ : Signature} {Γ : Ctx} [Γ.NoSlots] [ModalSys.NoOpt] (hT :
+    ModalSys.T = true)
     (c : ℕ) {A : VarType} (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
     {a₀ : Ann A} (t₀ : Term σ Γ A a₀) {T : VarType} {b : Ann T} (s : Term σ Γ.boxIn T b) :

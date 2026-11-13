@@ -598,7 +598,8 @@ theorem WFF.viewReadAtA_diaAbsA {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] 
   exact WFF.subst_id Subst.ok_idS Subst.coh_idS Ctx.NoSlots.slots χ
 
 /-- ⭐The realisation of a view **term** at an arbitrary declared address. -/
-def Term.realiseAtA {σ : Signature} {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true) (x : VarSymb)
+def Term.realiseAtA {σ : Signature} {Γ : Ctx} [Γ.Presented] [ModalSys.NoOpt] (hT : ModalSys.T =
+    true) (x : VarSymb)
     {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) {a₀ : Ann A} (t₀ : Term σ Γ A a₀)
     {T : VarType} {b : Ann T} (t : Term σ (Γ.diaIn x) T b) :
     Term σ Γ T
@@ -607,7 +608,8 @@ def Term.realiseAtA {σ : Signature} {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T 
   Term.hereRead hT t₀ (Term.diaAbsA x hxA t)
 
 /-- ⭐The realisation of a view **formula** at an arbitrary declared address. -/
-def WFF.realiseAtA {σ : Signature} {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true) (x : VarSymb)
+def WFF.realiseAtA {σ : Signature} {Γ : Ctx} [Γ.Presented] [ModalSys.NoOpt] (hT : ModalSys.T =
+    true) (x : VarSymb)
     {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) {a₀ : Ann A} (t₀ : Term σ Γ A a₀)
     (χ : WFF σ (Γ.diaIn x) 0) : WFF σ Γ 0 :=
   WFF.hereRead hT t₀ (WFF.diaAbsA x hxA χ)
@@ -641,7 +643,8 @@ theorem Subst.isRen_diaAbsA {σ : Signature} {Γ : Ctx} {x : VarSymb} {A : VarTy
 /-- ⭐Realising the witness's own content gives the realising term back, at an arbitrary declared
     address: the canonical model reads a realised witness's content off the η-expansion of its
     address. -/
-theorem Term.realiseAtA_eta {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] (hT : ModalSys.T = true)
+theorem Term.realiseAtA_eta {σ : Signature} {Γ : Ctx} [hp : Γ.Presented] [ModalSys.NoOpt] (hT :
+    ModalSys.T = true)
     (x : VarSymb) {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) {a₀ : Ann A}
     (t₀ : Term σ Γ A a₀) :
     (⟨_, Term.realiseAtA hT x hxA t₀ (Term.eta (.step x .dia) A (Ctx.ref_diaIn_of hxA))⟩ :
@@ -701,7 +704,7 @@ theorem Term.mono_diaAbsA {σ : Signature} {Γ Γ' : Ctx} [Γ.Presented] [Γ'.Pr
 
 /-- Realisation commutes with weakening. -/
 theorem Term.mono_realiseAtA {σ : Signature} {Γ Γ' : Ctx} [Γ.Presented] [Γ'.Presented]
-    (hT : ModalSys.T = true) (h : Γ.Le Γ') {x : VarSymb} {A : VarType}
+    [ModalSys.NoOpt] (hT : ModalSys.T = true) (h : Γ.Le Γ') {x : VarSymb} {A : VarType}
     (hcA : Γ.ref x = some (.VTypeDia A))
     (hcA' : Γ'.ref x = some (.VTypeDia A))
     {a₀ : Ann A} (t₀ : Term σ Γ A a₀) {T : VarType} {b : Ann T}
@@ -729,7 +732,8 @@ theorem Subst.sim_diaAbsA_idS {σ : Signature} {Γ : Ctx} (x : VarSymb) (A : Var
   | .step _ .here => cases hv
 
 /-- ⭐Realising a term of the `□` view is collapsing it: the witness content does not occur. -/
-theorem Term.realiseAtA_mono_boxIn {σ : Signature} {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true)
+theorem Term.realiseAtA_mono_boxIn {σ : Signature} {Γ : Ctx} [Γ.Presented] [ModalSys.NoOpt] (hT :
+    ModalSys.T = true)
     (x : VarSymb) {A : VarType} (hcA : Γ.ref x = some (.VTypeDia A))
     {a₀ : Ann A} (t₀ : Term σ Γ A a₀) {T : VarType} {b : Ann T} (s : Term σ Γ.boxIn T b) :
     (⟨_, Term.realiseAtA hT x hcA t₀

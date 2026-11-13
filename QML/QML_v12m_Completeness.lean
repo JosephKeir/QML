@@ -161,8 +161,9 @@ theorem WFF.size_collapse {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {
       congrArg (· + S.flat.eqRecSize + 1) (WFF.size_collapse _ _ Φ)
   | _, _, _, _, _, _, .link _ _ _ Φ => congrArg (· + 1) (WFF.size_collapse _ _ Φ)
   | _, _, _, _, _, _, .linkx _ _ _ _ _ Φ => congrArg (· + 1) (WFF.size_collapse _ _ Φ)
-  | _, _, _, _, h, _, .optx hO _ _ _ _ =>
-      False.elim (by have := ModalSys.noOpt_of_T h.hT; rw [hO] at this; cases this)
+  | 0, _, _, _, _, _, .optx _ .arrow _ _ φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
+  | _ + 1, _, _, _, _, _, .optx _ .arrow _ _ φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
+  | _, _, _, _, _, _, .optx _ .ident _ _ φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
 
 theorem WFF.size_shift {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d : ℕ}
     (h : Ctx.Shifts k Γ₁ Γ₂) (hs : Γ₁.SlotsFrom d) (φ : WFF σ Γ₁ d),
@@ -207,12 +208,12 @@ theorem WFF.size_hereRead {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSy
 /-- ⭐So does realising one: `WFF.size` counts connectives, and the realisation only substitutes
     terms.  This is what keeps the truth lemma's induction going through the realised case, where
     the formula grows but its logical structure does not. -/
-theorem WFF.size_realiseAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) (c : ℕ)
+theorem WFF.size_realiseAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] [ModalSys.NoOpt] (hT : ModalSys.T
+    = true) (c : ℕ)
     {A : VarType} (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
     {a₀ : Ann A} (t₀ : Term σ Γ A a₀) (χ : WFF σ (Γ.diaIn (.root (.free c))) 0) :
     (WFF.realiseAt hT c hcA hfr t₀ χ).size = χ.size :=
-  haveI : ModalSys.NoOpt := ⟨ModalSys.noOpt_of_T hT⟩
   (WFF.size_hereRead hT t₀ _).trans (WFF.size_diaAbs c hcA hfr χ)
 
 /-- The same at an arbitrary declared address. -/

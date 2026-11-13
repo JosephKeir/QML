@@ -17,7 +17,11 @@ syntax of that:
 
 namespace V12M
 
-variable [ModalSys]
+/- M1's construction is for K and D with `Opt` on: T off (`ModalSys.NoT`) until M2 step 6
+   generalises it, so the class is in scope throughout. -/
+set_option linter.unusedSectionVars false
+
+variable [ModalSys] [ModalSys.NoT]
 
 namespace Ctx
 

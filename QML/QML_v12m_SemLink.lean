@@ -42,14 +42,14 @@ theorem sat_sideDia {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {A : VarType}
       cases h
       rfl
     have hr := Env.ref_extend_root env (.bnd d) (show M.frame.Dom (.VTypeDia A) v from o)
-    rw [sat_holeAt, interp_eta, Env.ref_dia] at H
+    rw [sat_holeAt (hop := fun _ _ => Env.openedT_diaPush _ _ _ _), interp_eta, Env.ref_dia] at H
     revert c H
     rw [hr]
     exact fun c H => ⟨c, H⟩
   · rintro ⟨c, H⟩
     have hr := Env.ref_extend_root env (.bnd d) (show M.frame.Dom (.VTypeDia A) v from o)
     refine ⟨A, Ctx.ref_insert_root _ _ _, ⟨c.1, by rw [hr]; exact c.2⟩, ?_⟩
-    rw [sat_holeAt, interp_eta, Env.ref_dia]
+    rw [sat_holeAt (hop := fun _ _ => Env.openedT_diaPush _ _ _ _), interp_eta, Env.ref_dia]
     convert H using 4
     rw [hr]
 

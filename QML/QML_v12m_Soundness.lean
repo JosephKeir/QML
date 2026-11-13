@@ -51,17 +51,17 @@ theorem sat_bindPair {M : Model.{u, v} σ} {Γ : Ctx} {d : ℕ} {w : M.frame.W} 
   let E₂ := (E₁'.restrict
     (Ctx.le_insert (hzf.insert_ne hne_z₁.symm A).root (.VTypeProd A B))).extend
     (.free u₂) (E₁'.ref (.step (.root (.free z)) .snd) (Ctx.ref_insert_snd _ _ A B))
-  refine ⟨E₂, ?_, fun φ => ?_⟩
-  · exact ((((hop.restrict (Ctx.Le.refl _)).extend (hu₁.insert_ne hne_z₁ _).root _).restrict
-      _).restrict _).extend (hu₂.insert_ne hne₁₂ A).root _
+  have hop₁ : E₁'.OpenedT :=
+    ((hop.restrict (Ctx.Le.refl _)).extend (hu₁.insert_ne hne_z₁ _).root _).restrict _
+  refine ⟨E₂, (hop₁.restrict _).extend (hu₂.insert_ne hne₁₂ A).root _, fun φ => ?_⟩
   exact (sat_renameRoot envZ (hnp.insert _ _) (.free u₁) (hu₁.insert_ne hne_z₁ _) (Ctx.Le.refl _)
       (.step (.root (.free z)) .fst) (Ctx.ref_insert_fst _ _ A B)
-      ((hs.insertFree z _).insertFree u₁ A) (hs.insertFree z _) _).trans
+      ((hs.insertFree z _).insertFree u₁ A) (hs.insertFree z _) _ fun _ _ => hop).trans
     ((sat_mono (env := E₁') (Env.agree_restrict _ E₁) _ fun _ _ _ _ => rfl).trans
       (sat_renameRoot E₁' (hnp.insert _ A) (.free u₂) (hu₂.insert_ne hne₁₂ A)
         (Ctx.le_insert (hzf.insert_ne hne_z₁.symm A).root _) (.step (.root (.free z)) .snd)
         (Ctx.ref_insert_snd _ _ A B) ((hs.insertFree u₁ A).insertFree u₂ B)
-        ((hs.insertFree u₁ A).insertFree z _) φ))
+        ((hs.insertFree u₁ A).insertFree z _) φ fun _ _ => hop₁))
 
 /-- A closed formula's truth depends only on the world. -/
 theorem sat_closed {M : Model.{u, v} σ} {Γ Γ' : Ctx} {w : M.frame.W} (env : M.Env Γ w)
@@ -231,23 +231,24 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       exact Classical.em (M.sat env φ)
   | @all_intro Γ _ Δ u T hu φ p ih =>
       intro M hM w env hfin hnp hop hΔ o
-      exact (sat_bindFree env hnp u hu Ctx.NoSlots.slots T o φ).mpr
+      exact (sat_bindFree env hnp u hu Ctx.NoSlots.slots T o φ fun _ _ => hop).mpr
         (ih M hM (env.extend (.free u) o) (hfin.insert hu T) (hnp.insert _ T)
           (hop.extend hu.root o) (fun ψ hψ => by
           obtain ⟨χ, hχ, rfl⟩ := List.mem_map.mp hψ
           exact (sat_weaken env hu.root o χ).mpr (hΔ χ hχ)))
   | @all_elim Γ _ Δ T φ a t p ih =>
       intro M hM w env hfin hnp hop hΔ
-      exact (sat_instantiate env hnp Ctx.NoSlots.slots t φ).mpr
+      exact (sat_instantiate env hnp Ctx.NoSlots.slots t φ fun _ _ => hop).mpr
         (ih M hM env hfin hnp hop hΔ (interp env t))
   | @ex_intro Γ _ Δ T φ a t p ih =>
       intro M hM w env hfin hnp hop hΔ
       exact ⟨interp env t,
-        (sat_instantiate env hnp Ctx.NoSlots.slots t φ).mp (ih M hM env hfin hnp hop hΔ)⟩
+        (sat_instantiate env hnp Ctx.NoSlots.slots t φ fun _ _ => hop).mp
+          (ih M hM env hfin hnp hop hΔ)⟩
   | @ex_elim Γ _ Δ u T hu φ ψ p q ihp ihq =>
       intro M hM w env hfin hnp hop hΔ
       obtain ⟨o, ho⟩ := ihp M hM env hfin hnp hop hΔ
-      have h₁ := (sat_bindFree env hnp u hu Ctx.NoSlots.slots T o φ).mp ho
+      have h₁ := (sat_bindFree env hnp u hu Ctx.NoSlots.slots T o φ fun _ _ => hop).mp ho
       exact (sat_weaken env hu.root o ψ).mp
         (ihq M hM (env.extend (.free u) o) (hfin.insert hu T) (hnp.insert _ T)
           (hop.extend hu.root o) (hyps_cons h₁ (fun χ hχ => by
@@ -259,9 +260,10 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
   | @eq_elim Γ _ Δ φ t s p q ihp ihq =>
       intro M hM w env hfin hnp hop hΔ
       have he : interp env t = interp env s := ihp M hM env hfin hnp hop hΔ
-      refine (sat_instantiate env hnp Ctx.NoSlots.slots s φ).mpr ?_
+      refine (sat_instantiate env hnp Ctx.NoSlots.slots s φ fun _ _ => hop).mpr ?_
       rw [← he]
-      exact (sat_instantiate env hnp Ctx.NoSlots.slots t φ).mp (ihq M hM env hfin hnp hop hΔ)
+      exact (sat_instantiate env hnp Ctx.NoSlots.slots t φ fun _ _ => hop).mp
+        (ihq M hM env hfin hnp hop hΔ)
   | @pair_elim Γ _ A B u₁ u₂ z hu hz₁ hu₁ hu₂ hzf Δ φ p ih =>
       intro M hM w env hfin hnp hop hΔ
       have hnpΓ := hnp.of_insert hzf.root
@@ -511,11 +513,11 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
         exact (sat_weaken (T := .VTypeDia A) env hc.root q χ').mpr (hΔ χ' hχ')
   | @here_elim Γ _ Δ hT x hx A a t a₁ bd ψ ph pb ihh ihb =>
       intro M hM w env hfin hnp hop hΔ
-      exact sat_here_elim hT env hnp hfin hM hx t bd ψ (ihh M hM env hfin hnp hop hΔ)
+      exact sat_here_elim hT env hnp hfin hM hop hx t bd ψ (ihh M hM env hfin hnp hop hΔ)
         (ihb M hM env hfin hnp hop hΔ)
   | @here_intro Γ _ Δ hT x hx A a t a₁ bd ψ ph pr ihh ihr =>
       intro M hM w env hfin hnp hop hΔ
-      exact sat_here_intro hT env hnp hfin hM hx t bd ψ (ihh M hM env hfin hnp hop hΔ)
+      exact sat_here_intro hT env hnp hfin hM hop hx t bd ψ (ihh M hM env hfin hnp hop hΔ)
         (ihr M hM env hfin hnp hop hΔ)
   | @here_beta Γ _ Δ hT x hx A a t a₁ bd B b s ph ihh =>
       intro M hM w env hfin hnp hop hΔ
@@ -527,7 +529,7 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       exact sat_here_name hT env hx h bd (ih M hM env hfin hnp hop hΔ)
   | @here_subst Γ _ Δ hT A b s a a' t t' φ ph ph' pf ihh ihh' ihf =>
       intro M hM w env hfin hnp hop hΔ
-      exact sat_here_subst hT env hnp hfin hM s t t' φ (ihh M hM env hfin hnp hop hΔ)
+      exact sat_here_subst hT env hnp hfin hM hop s t t' φ (ihh M hM env hfin hnp hop hΔ)
         (ihh' M hM env hfin hnp hop hΔ)
         (ihf M hM env hfin hnp hop hΔ)
   | @here_eq Γ _ Δ hT A b s a t t' ph pe ihh ihe =>

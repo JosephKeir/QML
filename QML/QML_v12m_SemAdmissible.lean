@@ -148,8 +148,9 @@ set_option maxHeartbeats 800000 in
 -- through the shared fields without smart unfolding: slow, not stuck.
 /-- ⭐**The model that reads `R` as `ψ` satisfies a formula exactly when `M` satisfies its
     substitution.** -/
-theorem sat_usubst : ∀ {Γ : Ctx} {d : ℕ} {w : M.frame.W} (env : M.Env Γ w) (hs : Γ.SlotsFrom d)
-    (φ : WFF σ Γ d), (M.relSwap r ψ).sat env φ ↔ M.sat env (WFF.usubst r ψ hs φ)
+theorem sat_usubst [ModalSys.NoOpt] : ∀ {Γ : Ctx} {d : ℕ} {w : M.frame.W} (env : M.Env Γ w)
+    (hs : Γ.SlotsFrom d) (φ : WFF σ Γ d),
+    (M.relSwap r ψ).sat env φ ↔ M.sat env (WFF.usubst r ψ hs φ)
   | _, _, w, env, hs, .atom ρ => by
       set_option smartUnfolding false in
       have e₁ := relSat_toSpine (N := M.relSwap r ψ) env ρ .nil
@@ -223,7 +224,8 @@ theorem sat_usubst : ∀ {Γ : Ctx} {d : ℕ} {w : M.frame.W} (env : M.Env Γ w)
 
 set_option smartUnfolding false in
 /-- The model reading `R` as `ψ` is a model proper when `M` is. -/
-theorem indInvariant_relSwap (hM : M.IndInvariant) : (M.relSwap r ψ).IndInvariant where
+theorem indInvariant_relSwap [ModalSys.NoOpt] (hM : M.IndInvariant) :
+    (M.relSwap r ψ).IndInvariant where
   toIndCongr := by
     constructor
     · intro A B b s w o o' h; exact hM.map s h

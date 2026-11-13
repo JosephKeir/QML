@@ -78,22 +78,15 @@ class ModalSys where
       the constructions are extended, and goes when they all are. -/
   Opt : Bool := false
   /-- **The stage of the build** (branch `wip/in-atom`): the box view of possible objects is built
-      for K and D first (M1); T, 4, B (weak and strong) and 5 each read it in their own milestone
-      (docs §12.10), and this field loses a disjunct with each.  Meanwhile their syntax may assume
-      `Opt` off; in particular shapes (`ModalSys.shaped`, T or strong B) are off with `Opt` on. -/
-  optStage : Opt = true → (T || Four || B || BStrong || Five) = false := by decide
+      for K and D first (M1), then T (M2); 4, B (weak and strong) and 5 each read it in their own
+      milestone (docs §12.10), and this field loses a disjunct with each.  Meanwhile their syntax
+      may assume `Opt` off. -/
+  optStage : Opt = true → (Four || B || BStrong || Five) = false := by decide
 
 /-- The system K. -/
 def ModalSys.K : ModalSys :=
   ⟨false, false, false, false, false, false, false, false, false, false, false, false, false,
     by decide⟩
-
-/-- With T on, `Opt` is off (for now: `ModalSys.optStage`). -/
-theorem ModalSys.noOpt_of_T [ModalSys] (h : ModalSys.T = true) :
-    ModalSys.Opt = false := by
-  cases hO : ModalSys.Opt
-  · rfl
-  · have := ModalSys.optStage hO; simp [h] at this
 
 /-- With 4 on, `Opt` is off (for now: `ModalSys.optStage`). -/
 theorem ModalSys.noOpt_of_Four [ModalSys] (h : ModalSys.Four = true) :
@@ -149,6 +142,15 @@ def ModalSys.fourLW [ModalSys] : Bool := ModalSys.FourStrongW || ModalSys.liftsP
     What every construction built before it assumes (branch `wip/in-atom`, docs §12.16). -/
 class ModalSys.NoOpt [ModalSys] : Prop where
   noOpt : ModalSys.Opt = false
+
+/-- The systems without T: the growing tree's first canonical model (`GCanon*`), and M1's tree
+    (`OCanon*`) and its Leibniz (`LeibnizH`) until M2 step 6 generalises them. -/
+class ModalSys.NoT [ModalSys] : Prop where
+  noT : ModalSys.T = false
+
+theorem ModalSys.NoT.absurd [ModalSys] [ModalSys.NoT] (h : ModalSys.T = true) : False := by
+  rw [ModalSys.NoT.noT] at h
+  cases h
 
 /-- The systems without B.  B's accessible worlds lead back to their origin, against the order
     of construction; its canonical model is the arrow-based network (`BArrow`).  Strong B needs
@@ -226,13 +228,11 @@ theorem ModalSys.shaped_of_BStrong [ModalSys] (hB : ModalSys.BStrong = true) :
     ModalSys.shaped = true := by
   simp [ModalSys.shaped, hB]
 
-/-- With shapes on, `Opt` is off (for now). -/
-theorem ModalSys.noOpt_of_shaped [ModalSys] (hS : ModalSys.shaped = true) :
-    ModalSys.Opt = false := by
-  cases hT : ModalSys.T
-  · have hB : ModalSys.BStrong = true := by simpa [ModalSys.shaped, hT] using hS
-    exact ModalSys.noOpt_of_BStrong hB
-  · exact ModalSys.noOpt_of_T hT
+/-- Without T, shapes come only from strong B, so `Opt` is off. -/
+theorem ModalSys.noOpt_of_shaped [ModalSys] (hT : ModalSys.T = false)
+    (hS : ModalSys.shaped = true) : ModalSys.Opt = false := by
+  have hB : ModalSys.BStrong = true := by simpa [ModalSys.shaped, hT] using hS
+  exact ModalSys.noOpt_of_BStrong hB
 
 theorem ModalSys.NoB.T_of_shaped [ModalSys] [ModalSys.NoB] (h : ModalSys.shaped = true) :
     ModalSys.T = true := by
@@ -1536,13 +1536,6 @@ theorem Le.witT {Γ Γ' : Ctx} (h : Γ.Le Γ') {y : VarSymb} {X : VarType}
   obtain ⟨hT, hO, hr⟩ := witT_spec hy
   exact witT_of hT hO (h.ref hr)
 
-/-- For now (`ModalSys.optStage`: T is off with `Opt` on) no identity witness exists; M2 step 3
-    lifts this. -/
-theorem witT_stage {Γ : Ctx} {y : VarSymb} {X : VarType} (h : Γ.witT y = some X) : False := by
-  obtain ⟨hT, hO, -⟩ := witT_spec h
-  have := ModalSys.optStage hO
-  simp [hT] at this
-
 /-- The declarations of the identity view of `y`. -/
 def optInTTy (Γ : Ctx) (y v : VarSymb) : Option VarType :=
   if v = .step y .at then
@@ -1597,20 +1590,6 @@ def optInT (Γ : Ctx) (y : VarSymb) : Ctx where
           exact hmono (refAll_of_ref Γ z (witT_spec hw).2.2)
     · rw [if_neg (fun he => hz (VarSymb.step.inj he).1)] at h
       exact hmono (Γ.at_coh z T h)
-
-/-- For now (`Ctx.witT_stage`) the identity view of any address is the context itself; M2 step 3
-    lifts this. -/
-theorem optInT_stage (Γ : Ctx) (y : VarSymb) : Γ.optInT y = Γ := by
-  have hw : Γ.witT y = none := Option.eq_none_iff_forall_ne_some.mpr fun _ h => witT_stage h
-  have hty : Γ.optInTTy y = Γ.ty := funext fun v => by
-    unfold optInTTy
-    rw [hw]
-    split_ifs with h
-    · subst h; rfl
-    · rfl
-  cases Γ
-  simp only [optInT, Ctx.mk.injEq] at hty ⊢
-  exact ⟨hty, trivial⟩
 
 theorem optInT_ne {Γ : Ctx} {y v : VarSymb} (hv : v ≠ .step y .at) : Γ.optInT y v = Γ v := by
   simp [optInT, optInTTy, hv]
@@ -1737,9 +1716,6 @@ theorem RootFresh.optInK {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) :
 theorem optInK_wit (Γ : Ctx) : ∀ (k : WitKind) (y : VarSymb), (Γ.optInK k y).wit = Γ.wit
   | .arrow, _ => rfl
   | .ident, _ => rfl
-
-/-- For now the identity view is the context itself (`Ctx.optInT_stage`). -/
-theorem optInK_ident (Γ : Ctx) (y : VarSymb) : Γ.optInK .ident y = Γ := optInT_stage Γ y
 
 /-- The witness's content in its view, at its kind's step. -/
 theorem optInK_content {Γ : Ctx} : ∀ {k : WitKind} {y : VarSymb} {X : VarType},

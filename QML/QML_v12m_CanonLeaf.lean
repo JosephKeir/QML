@@ -1782,7 +1782,8 @@ theorem ann_eq_of_termShp (hT : ModalSys.T = true) {Γ : Ctx} (hok : Γ.DeclOK)
     ← termShp_canonical hT hok (Γ.deep_zero) (cEnv_canonical Γ w) t', h]
 
 /-- ⭐⭐**Tags determine annotations**: two terms with one denotation have one annotation. -/
-theorem ann_eq_of_rden (hT : ModalSys.T = true) {Γ : Ctx} (hok : Γ.DeclOK) {w : World σ N₀}
+theorem ann_eq_of_rden [ModalSys.NoOpt] (hT : ModalSys.T = true) {Γ : Ctx} (hok : Γ.DeclOK)
+    {w : World σ N₀}
     {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {A : VarType} {a a' : Ann A} (t : Term σ Γ A a)
     (t' : Term σ Γ A a') (h : rden w i e t = rden w i e t') : a = a' :=
   ann_eq_of_termShp hT hok w t t'

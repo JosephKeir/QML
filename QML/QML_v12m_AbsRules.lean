@@ -24,7 +24,8 @@ namespace V12M
 variable [ModalSys] {σ : Signature}
 
 /-- ⭐**Elimination, pinned at an arbitrary address**: `Here x t, □_x χ ⊢ χ(t)`. -/
-def Proof.here_elimAtA {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+def Proof.here_elimAtA {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} [ModalSys.NoOpt]
+    (hT : ModalSys.T = true)
     (x : VarSymb) {A : VarType}
     (hxA : Γ.ref x = some (.VTypeDia A)) {a : Ann A} (t : Term σ Γ A a)
     (χ : WFF σ (Γ.diaIn x) 0)
@@ -39,7 +40,8 @@ def Proof.here_elimAtA {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} (hT :
         (WFF.viewReadTm_eta hxA (WFF.diaAbsA x hxA χ)).symm)) pb)
 
 /-- ⭐**Introduction, pinned at an arbitrary address**: `Here x t, χ(t) ⊢ ◇_x χ`. -/
-def Proof.here_introAtA {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+def Proof.here_introAtA {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} [ModalSys.NoOpt]
+    (hT : ModalSys.T = true)
     (x : VarSymb) {A : VarType}
     (hxA : Γ.ref x = some (.VTypeDia A)) {a : Ann A} (t : Term σ Γ A a)
     (χ : WFF σ (Γ.diaIn x) 0)

@@ -18,10 +18,8 @@ namespace V12M
 
 variable [ModalSys]
 
-/-- T is off: the growing tree's first canonical model has no identity arrows (T + 4 is to
-    follow, as for B). -/
-class ModalSys.NoT [ModalSys] : Prop where
-  noT : ModalSys.T = false
+/- T is off (`ModalSys.NoT`): the growing tree's first canonical model has no identity arrows
+   (T + 4 is to follow, as for B). -/
 
 omit [ModalSys] in
 theorem absT [ModalSys] [ModalSys.NoT] (hT : ModalSys.T = true) : False := by

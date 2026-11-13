@@ -19,7 +19,11 @@ holds in the canonical environment exactly when it is in the theory.  The new ca
 
 namespace V12M
 
-variable [ModalSys]
+/- M1's construction is for K and D with `Opt` on: T off (`ModalSys.NoT`) until M2 step 6
+   generalises it, so the class is in scope throughout. -/
+set_option linter.unusedSectionVars false
+
+variable [ModalSys] [ModalSys.NoT]
 
 namespace OCanon
 
@@ -251,7 +255,8 @@ theorem truth_ltO : ∀ (n : ℕ) (w : World σ N₀), DecidesO hO w → ∀ (i 
             exact ⟨X, h, ⟨a, (canonEnvO_extent hO w₀ w i h).symm ▸ ha⟩, (key h _).mpr hmem'⟩
       | optx hO' k y hy χ =>
           obtain rfl : k = .arrow := by
-            cases k <;> first | rfl | exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+            cases k <;> first | rfl | exact (hy.elim fun _ h => ModalSys.NoT.absurd (Ctx.witT_spec
+                h).1).elim
           have hχs : χ.size < n := by simp only [WFF.size] at hφ; omega
           change (∃ (X : VarType) (h : (w.L.ctx i).wit y = some X)
             (hd : ((canonEnvO hO w₀ w i).wit y X h).Dom),
@@ -321,7 +326,7 @@ theorem truth_ltO : ∀ (n : ℕ) (w : World σ N₀), DecidesO hO w → ∀ (i 
                 · rw [List.mem_singleton.mp hψ]
                   exact hmem
             exact ⟨X, h, hdecl, ((key h hdecl).1).mpr (((key h hdecl).2).mp hmem)⟩
-      | here hT _ _ => exact (ModalSys.opt_absurd hO (ModalSys.noOpt_of_T hT)).elim
+      | here hT _ _ => exact (ModalSys.NoT.absurd hT).elim
       | back hB _ _ _ => exact (ModalSys.opt_absurd hO (ModalSys.noOpt_of_BStrong hB)).elim
       | retS hB _ _ _ => exact (ModalSys.opt_absurd hO (ModalSys.noOpt_of_BStrong hB)).elim
       | retxS hB _ _ _ _ _ => exact (ModalSys.opt_absurd hO (ModalSys.noOpt_of_BStrong hB)).elim

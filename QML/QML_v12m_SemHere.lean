@@ -494,7 +494,8 @@ include hnp hfin in
     preserves truth (`Model.sat_instantiate`, then `IndInvariant` twice).  This is what makes
     `Proof.here_subst` sound where no equation is available — the annotations need not agree, since
     the two instances are simply two formulas (§10.11). -/
-theorem sat_here_subst (hM : M.IndInvariant) {A : VarType} {b : Ann (.VTypeDia A)}
+theorem sat_here_subst (hM : M.IndInvariant) (hop : env.OpenedT) {A : VarType}
+    {b : Ann (.VTypeDia A)}
     (s : Term σ Γ (.VTypeDia A) b)
     {a a' : Ann A} (t : Term σ Γ A a) (t' : Term σ Γ A a')
     (φ : WFF σ (Γ.insert (.bnd 0) A) 1)
@@ -504,9 +505,10 @@ theorem sat_here_subst (hM : M.IndInvariant) {A : VarType} {b : Ann (.VTypeDia A
     M.sat env (WFF.instantiate Ctx.NoSlots.slots t' φ) := by
   obtain ⟨_, hc⟩ := h
   obtain ⟨_, hc'⟩ := h'
-  refine (sat_instantiate env hnp Ctx.NoSlots.slots t' φ).mpr ?_
+  refine (sat_instantiate env hnp Ctx.NoSlots.slots t' φ fun _ _ => hop).mpr ?_
   refine (hM.inv hfin hnp env φ _ _ hc').mp ?_
-  exact (hM.inv hfin hnp env φ _ _ hc).mpr ((sat_instantiate env hnp Ctx.NoSlots.slots t φ).mp hφ)
+  exact (hM.inv hfin hnp env φ _ _ hc).mpr
+    ((sat_instantiate env hnp Ctx.NoSlots.slots t φ fun _ _ => hop).mp hφ)
 
 omit [Γ.NoSlots] in
 /-- ⭐**Leibniz for the content is sound**: the defined equality holds exactly when the two contents
@@ -544,7 +546,8 @@ include hnp hfin in
     indistinguishable from `bd`'s value there.  The `□` part of the view is read at the identity
     arrow either way — `Env.diaPush_boxIn` and `Env.collapseAgree_self` — and `IndInvariant` moves
     the hole from `bd`'s value to `t`'s. -/
-theorem sat_viewReadTm (hM : M.IndInvariant) (h : Γ.ref x = some (.VTypeDia X)) {A : VarType}
+theorem sat_viewReadTm (hM : M.IndInvariant) (hop : env.OpenedT) (h : Γ.ref x = some (.VTypeDia X))
+    {A : VarType}
     {a : Ann A} (t : Term σ Γ A a) {b : Ann A} (bd : Term σ (Γ.diaIn x) A b)
     (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1)
     (hmem : M.frame.reflAcc hT w ∈ (M.posEval (env.ref x h)).1)
@@ -552,15 +555,20 @@ theorem sat_viewReadTm (hM : M.IndInvariant) (h : Γ.ref x = some (.VTypeDia X))
     M.sat (env.diaPush x h ⟨M.frame.reflAcc hT w, hmem⟩) (WFF.viewReadTm bd ψ) ↔
       M.sat env (WFF.hereRead hT t ψ) := by
   refine (sat_instantiate (env.diaPush x h ⟨M.frame.reflAcc hT w, hmem⟩)
-    (Ctx.noProjLast_diaIn Γ x) (Ctx.NoSlots.slots (Γ := Γ.diaIn x)) bd _).trans ?_
+    (Ctx.noProjLast_diaIn Γ x) (Ctx.NoSlots.slots (Γ := Γ.diaIn x)) bd _
+    (hop := fun _ _ => env.openedT_diaPush x h ⟨M.frame.reflAcc hT w, hmem⟩)).trans ?_
   refine (sat_mono (Env.extend_agree (Env.diaPush_boxIn env h ⟨M.frame.reflAcc hT w, hmem⟩)
-    (.bnd 0) (interp (env.diaPush x h ⟨M.frame.reflAcc hT w, hmem⟩) bd)) ψ).trans ?_
+    (.bnd 0) (interp (env.diaPush x h ⟨M.frame.reflAcc hT w, hmem⟩) bd)) ψ
+    fun _ _ _ _ => rfl).trans ?_
   refine (sat_collapse ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).insert A)
     ((Env.collapseAgree_self hT env).extend
       ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0))
-      (interp (env.diaPush x h ⟨M.frame.reflAcc hT w, hmem⟩) bd)) ψ).symm.trans ?_
+      (interp (env.diaPush x h ⟨M.frame.reflAcc hT w, hmem⟩) bd)) ψ
+    fun _ => (Env.collapseOpt_self hT env hop Ctx.NoSlots.slots).extend
+      ((Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)) Ctx.NoSlots.slots.root
+      ((Ctx.NoSlots.slots (Γ := Γ)).insert A) _).symm.trans ?_
   refine (hM.inv hfin hnp env _ _ _ hval).trans ?_
-  exact (sat_instantiate env hnp Ctx.NoSlots.slots t _).symm
+  exact (sat_instantiate env hnp Ctx.NoSlots.slots t _ fun _ _ => hop).symm
 
 /-- The value of a hole term read inside `◇_x` with the body in its hole, at the identity arrow:
     the hole term's value in the `□` view there, with the body's value in the hole. -/
@@ -644,7 +652,8 @@ theorem sat_here_beta (hM : M.IndInvariant) (hx : ∃ Y, Γ.ref x = some (.VType
 include hnp hfin in
 /-- ⭐**Elimination** is sound: what is necessary over the witness's extent holds of the realisation
     here.  This is weak T relativised to the witness. -/
-theorem sat_here_elim (hM : M.IndInvariant) (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
+theorem sat_here_elim (hM : M.IndInvariant) (hop : env.OpenedT)
+    (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
     {A : VarType} {a : Ann A} (t : Term σ Γ A a) {a₁ : Ann A}
     (bd : Term σ (Γ.diaIn x) A a₁) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1)
     (hhere : M.sat env (WFF.here hT (Term.diatm x hx bd) t : WFF σ Γ 0))
@@ -654,12 +663,13 @@ theorem sat_here_elim (hM : M.IndInvariant) (hx : ∃ Y, Γ.ref x = some (.VType
   obtain ⟨hmem, hval⟩ := (sat_here_diatm hT env ⟨Y, h⟩ h t bd).mp hhere
   by_contra hno
   exact hbox ⟨Y, h, ⟨M.frame.reflAcc hT w, hmem⟩, fun hχ =>
-    hno ((sat_viewReadTm hT env hnp hfin hM h t bd ψ hmem hval).mp hχ)⟩
+    hno ((sat_viewReadTm hT env hnp hfin hM hop h t bd ψ hmem hval).mp hχ)⟩
 
 include hnp hfin in
 /-- ⭐**Introduction** is sound: what holds of the realisation here is possible for the witness,
     this very world witnessing it. -/
-theorem sat_here_intro (hM : M.IndInvariant) (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
+theorem sat_here_intro (hM : M.IndInvariant) (hop : env.OpenedT)
+    (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
     {A : VarType} {a : Ann A} (t : Term σ Γ A a) {a₁ : Ann A}
     (bd : Term σ (Γ.diaIn x) A a₁) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1)
     (hhere : M.sat env (WFF.here hT (Term.diatm x hx bd) t : WFF σ Γ 0))
@@ -668,7 +678,7 @@ theorem sat_here_intro (hM : M.IndInvariant) (hx : ∃ Y, Γ.ref x = some (.VTyp
   obtain ⟨Y, h⟩ := hx
   obtain ⟨hmem, hval⟩ := (sat_here_diatm hT env ⟨Y, h⟩ h t bd).mp hhere
   exact ⟨Y, h, ⟨M.frame.reflAcc hT w, hmem⟩,
-    (sat_viewReadTm hT env hnp hfin hM h t bd ψ hmem hval).mpr hφ⟩
+    (sat_viewReadTm hT env hnp hfin hM hop h t bd ψ hmem hval).mpr hφ⟩
 
 /-! ## What has to introduce a `Here` -/
 

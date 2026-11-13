@@ -73,8 +73,21 @@ theorem WFF.collapse_mono : ∀ {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx} {d :
       simp only [WFF.collapse, WFF.mono]
       rw [WFF.collapse_mono (h.diaIn x) (h'.diaIn x) (l₁.diaIn x) (l₂.diaIn _) (hs.diaIn x)
         (hs'.diaIn x) φ]
-  | _, _, _, _, _, _, h, _, _, _, _, _, .optx hO _ _ _ _ =>
-      False.elim (by have := ModalSys.noOpt_of_T h.hT; rw [hO] at this; cases this)
+  | 0, _, _, _, _, _, h, h', l₁, l₂, hs, hs', .optx hO .arrow y hy φ => by
+      obtain ⟨X, hX⟩ := hy
+      simp only [WFF.collapse, WFF.mono]
+      rw [WFF.collapse_mono (h.optIn_zero hO hX) (h'.optIn_zero hO (l₁.wit _ _ hX)) (l₁.optIn y)
+        (l₂.optInT y) (hs.optIn y) (hs'.optIn y) φ]
+  | _ + 1, _, _, _, _, _, h, h', l₁, l₂, hs, hs', .optx _ .arrow y hy φ => by
+      obtain ⟨X, hX⟩ := hy
+      simp only [WFF.collapse, WFF.mono]
+      rw [WFF.collapse_mono (h.optIn_succ hX) (h'.optIn_succ (l₁.wit _ _ hX)) (l₁.optIn y)
+        (l₂.optIn _) (hs.optIn y) (hs'.optIn y) φ]
+  | _, _, _, _, _, _, h, h', l₁, l₂, hs, hs', .optx _ .ident y hy φ => by
+      obtain ⟨X, hX⟩ := hy
+      simp only [WFF.collapse, WFF.mono]
+      rw [WFF.collapse_mono (h.optInT hX) (h'.optInT (l₁.witT hX)) (l₁.optInT y)
+        (l₂.optInT _) (hs.optInT y) (hs'.optInT y) φ]
   | _, _, _, _, _, _, h, h', l₁, l₂, _, _, .here hT s t =>
       WFF.here_congr' hT (Term.collapse_mono h h' l₁ l₂ s) (Term.collapse_mono h h' l₁ l₂ t)
   | _, _, _, _, _, _, h, h', l₁, l₂, _, _, .back hB L s t =>

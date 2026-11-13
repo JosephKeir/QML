@@ -306,7 +306,7 @@ theorem datum_of_here [Fact (StageSys.IsMCS T)] (hex : RootWitnessed S T)
 /-- ⭐**A datum's possible object has its realisation as content here**: from the datum's atom
     `Here (η x) t₀`, `here_beta` with the body abstracted, and the round trip — at any stage `k`
     above both the body's and the datum's. -/
-theorem mem_here_datum
+theorem mem_here_datum [ModalSys.NoOpt]
     [IsDirected I (· ≤ ·)] [hmcs : Fact (StageSys.IsMCS T)] {x : VarSymb}
     (d : RealDatum σ S T x) {i k : I} (hik : i ≤ k) (hdk : d.i₀ ≤ k) {X : VarType}
     (hx : (S.ctx i).ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B}
@@ -315,7 +315,6 @@ theorem mem_here_datum
         (Term.realiseAtA d.hT x (d.hdeclOf k ⟨X, (S.le hik).ref hx⟩)
           (Term.mono (S.le hdk) d.t₀) (Term.mono ((S.le hik).diaIn x) bd))⟩ :
       S.Sentence σ) ∈ T := by
-  haveI : ModalSys.NoOpt := ⟨ModalSys.noOpt_of_T d.hT⟩
   have hdecl : (S.ctx k).ref x = some (.VTypeDia d.A) := d.hdeclOf k ⟨X, (S.le hik).ref hx⟩
   have hat := d.hhereAt hmcs.out k hdk hdecl
   have hmem := mem_of_provable' (T := T) (Δ := [_]) (fun ψ hψ => by

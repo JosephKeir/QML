@@ -236,7 +236,8 @@ theorem holeAt_tupCompsImg_holeCVal {cls : List VarType} {Δ : Ctx} [Δ.NoSlots]
     ∀ (cs : List (List Step)) (h : A.CompOk cs),
       (⟨_, Term.holeAt (tupCompsImg cls img himg ((bcT cls).compsAllB b)
           (VarType.compOk_compsAllB b hb (bcT cls))).2
-          (holeCVal (packT cls u) b hb ModalSys.FourOff.noFour cs h).2⟩ :
+          (holeCVal (packT cls u) b hb ModalSys.FourOff.noFour cs h
+            ModalSys.NoOpt.noOpt).2⟩ :
         Σ c, Term σ Δ (A.compsFlat cs) c) =
         ⟨_, Term.subst (arrowIdx img) (arrowS σ Δ img) (ok_arrowS himg) (coh_arrowS himg)
           (compsVal u cs h).2⟩
@@ -372,7 +373,8 @@ theorem holeAt_tupCompsImg_holeCVal {cls : List VarType} {Δ : Ctx} [Δ.NoSlots]
     items make — `holeC` of `packT` at each `□`. -/
 def packMapC (b : Bool) (hb : ModalSys.T = b) (cls : List VarType) : {N : NShape} →
     NItems σ (ctxOf cls).boxIn N → ShapeMap σ (tupShape b hb cls) N
-  | .boxC _ cs h, ⟨_, u⟩ => .holeC (packT cls u) b hb ModalSys.FourOff.noFour cs h
+  | .boxC _ cs h, ⟨_, u⟩ =>
+    .holeC (packT cls u) b hb ModalSys.FourOff.noFour cs h ModalSys.NoOpt.noOpt
   | .prod _ _, (n₁, n₂) => .pair (packMapC b hb cls n₁) (packMapC b hb cls n₂)
 
 /-- ⭐The packing map's object, read where the bound object is the roots' items: the object the

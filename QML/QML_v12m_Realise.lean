@@ -54,12 +54,12 @@ def realise (x : VarSymb) {A : VarType} {a : Ann A} (t₀ : Term σ Γ A a) : Su
 
 /-- Realising is well-typed: the witness content takes the realising term, a necessary entry its
     value here, and a kept entry itself. -/
-theorem ok_realise (hT : ModalSys.T = true) {x : VarSymb} {A : VarType} {a : Ann A}
+theorem ok_realise [ModalSys.NoOpt] (hT : ModalSys.T = true) {x : VarSymb} {A : VarType} {a : Ann A}
     (hx : Γ.ref x = some (.VTypeDia A)) (t₀ : Term σ Γ A a) :
     Subst.Ok (Γ.diaIn x) (realise x t₀) := by
   refine ⟨fun v T _ hv => ?_, fun hO _ _ _ => ?_⟩
   swap
-  · rw [ModalSys.noOpt_of_T hT] at hO
+  · rw [ModalSys.NoOpt.noOpt] at hO
     cases hO
   match v with
   | .step u .dia =>

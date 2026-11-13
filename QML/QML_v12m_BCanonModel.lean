@@ -26,7 +26,8 @@ variable {σ : Signature}
     necessary term `□W`, and `W` collapsed is the realisation of `s` collapsed — collapsing
     commutes with the realisation's two substitutions (`Subst.corr_box_self`), and the two
     collapses of `s`'s levels commute (`Term.collapse_collapse`). -/
-theorem _root_.V12M.Term.realiseAtA_boxtm {Γ : Ctx} [hp : Γ.Presented] (hT : ModalSys.T = true)
+theorem _root_.V12M.Term.realiseAtA_boxtm {Γ : Ctx} [hp : Γ.Presented] [ModalSys.NoOpt]
+    (hT : ModalSys.T = true)
     (x : VarSymb) {A : VarType} (hcA : Γ.ref x = some (.VTypeDia A)) {a₀ : Ann A}
     (t₀ : Term σ Γ A a₀) {T : VarType} {b : Ann T} (s : Term σ (Γ.diaIn x).boxIn T b) :
     ∃ (c : Ann T) (W : Term σ Γ.boxIn T c),

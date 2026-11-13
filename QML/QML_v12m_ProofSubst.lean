@@ -825,7 +825,8 @@ theorem WFF.subst_hereRead {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots]
       (hΓ.boxIn.insert A) (hΓ.insert A) (hΔ.boxIn.insert A) (hΔ.insert A)
       (Subst.corr_under (Subst.ok_box hθ) (Subst.corr_box_self hT hθ) hΓ.boxIn A
         hΔ.boxIn.root hΔ.root (hΔ.boxIn.rootFresh le_rfl))
-      ψ).symm
+      ψ (fun _ => (Subst.corrW_box_self hT hθ).under hΓ.boxIn A hΔ.boxIn.root hΔ.root
+        (hΔ.boxIn.rootFresh le_rfl))).symm
 
 /-- The `.dia` arm of `WFF.subst`, stated with the target witness address as a *variable*.
 
@@ -1103,7 +1104,8 @@ theorem WFF.viewReadTm_eta {Γ : Ctx} [Γ.NoSlots] {x : VarSymb} {A : VarType}
 /-- ⭐**Elimination, pinned at an address**: `Here x t, □_x χ ⊢ χ(t)`, the rule strong T's canonical
     model states as `RealDatum.spec`.  Every view formula is its abstraction read back
     (`WFF.viewReadAt_diaAbs`), so the hole formula is `WFF.diaAbs`. -/
-def Proof.here_elimAt {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+def Proof.here_elimAt {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} [ModalSys.NoOpt] (hT :
+    ModalSys.T = true)
     (c : ℕ) {A : VarType}
     (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
@@ -1119,7 +1121,8 @@ def Proof.here_elimAt {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : Mo
         (WFF.viewReadTm_eta hcA (WFF.diaAbs c hcA hfr χ)).symm))) pb)
 
 /-- ⭐**Introduction, pinned at an address**: `Here x t, χ(t) ⊢ ◇_x χ`. -/
-def Proof.here_introAt {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+def Proof.here_introAt {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} [ModalSys.NoOpt] (hT :
+    ModalSys.T = true)
     (c : ℕ) {A : VarType}
     (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)

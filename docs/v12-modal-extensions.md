@@ -16215,10 +16215,49 @@ frame-level only because it relates two stored fields, `val` and `wit`.)  So:
   ⭐`SubE.atBody_comp` (through `Term.collapse_subst`), `sim_optInT_comp`, `subst_comp`'s identity
   case.
 
-Left: drop T from `optStage`.  `witT_stage`, `optInT_stage`, `optInK_ident` and the fallbacks in
-`witT_triv`/`witT_off` go; `ModalSys.shaped` becomes `(T || BStrong) && !Opt` (shapes off with
-`Opt` on); the old T code (`noOpt_of_T`) takes `NoOpt`; M1's tree (`OCanon*`, `OCanonTruth`'s
-`k = .arrow`) and `LeibnizH` take a `T = false` class until step 6.
+Committed as `086bfff`.
+
+**The flag drop (2026-11-13, built, strict build green; uncommitted).**  `ModalSys.optStage` is now
+`Opt → (Four || B || BStrong || Five) = false`: KT with `Opt` is a system.
+* *Gone:* `noOpt_of_T`, `Ctx.witT_stage`, `Ctx.optInT_stage`, `Ctx.optInK_ident`, and the
+  fallbacks on them in `opt_off`, `witT_triv`, `witT_off`.  `witT_triv`'s and `witT_off`'s second
+  alternative is now T off through the new class `ModalSys.NoT` (`NoT.absurd`).
+* *The old T machinery states `Opt` off* as `[ModalSys.NoOpt]` (an instance argument, so positional
+  arguments are undisturbed and `opt_off` finds it): realisation by abstraction (`DiaAbs`, `Abs`,
+  `AbsRules`, `SemAbs`, `SemStrongT`, `Realise`, `CanonFunc`, `CanonInterch`,
+  `WFF.size_realiseAt`, `CanonWorld`'s `spec_of_here`/`RealDatum.spec`, `SubstRealise`, and the
+  T canonical model's denotation `rden`, `realisedTerm`, `Definable` and what is built on them in
+  `CanonDom`, `CanonFunc`, `CanonLeaf`, `CanonHere`, `RealiseKeep`, `BCanonModel` —
+  per declaration, since `World.D`, `cls` and the function algebra are shared with M1), `Proof.here_elimAt`/`here_introAt`, and the view-body lemmas behind
+  strong B's `ret` rules (`sat_viewBody_here`, `sat_viewBody_of_here`; their soundness lemmas get
+  it from strong B).  Strong B's shape map `ShapeMap.holeC` carries `Opt = false` as a field
+  (`holeCVal`, `holeC_back`, `holeC_compsRead` take it; its two construction sites have it).
+* *M1's tree assumes T off* (`[ModalSys.NoT]` on `OCanon*`, `LeibnizH`, `LeibnizHRel`, with the
+  unused-section-variable linter off there) until step 6 generalises it.  `ModalSys.NoT` moved
+  from `GCanonFunc` (the growing tree's first model) to `Symbols`.
+* *Real identity clauses* for `coh_set` (`at_set_ne`), `coh_toFree` (`at_toFree_ne`),
+  `coh_packRootsS` (no `.at` in `ctxOf`), `coh_atShift` (4 forces `Opt` off);
+  `WFF.size_collapse` and `WFF.collapse_mono` get their three `optx` cases.
+* *`OpenedT` threaded* where an instantiation reads the outer environment: `sat_substRoot`,
+  `sat_instantiate`, `sat_renameRoot`, `sat_bindFree`, `sat_holeAt`, `sat_hereRead` take it, gated
+  on T and `Opt` and defaulted by `witT_off`; `Here`'s soundness lemmas (`sat_here_subst`,
+  `sat_viewReadTm`, `sat_here_elim`, `sat_here_intro`) take it plainly, and soundness passes its
+  own.  ⭐`Env.collapseOpt_self`: the `□` view pushed to the current world collapses onto an
+  environment respecting its identity contents (a `◇⁰` witness there is the identity witness here,
+  by definition).  So `Here` stays sound with `Opt` on; it is not gated, since step 4 replaces it.
+* *Kept:* `ModalSys.shaped` stays `T || BStrong` (so it is on for KT with `Opt`);
+  `noOpt_of_shaped` takes `T = false`.  Nothing needs shapes off with `Opt` yet; the KT tree
+  (step 6) decides, and the end state deletes shapes.
+* *Uniform substitution* (`sat_usubst`, `indInvariant_relSwap`) takes `NoOpt`: the swapped model
+  must satisfy `IndInvariant.inv` at *every* environment, and with `Opt` on the hole case needs the
+  environment to respect its identity contents.  Admissibility of uniform substitution is stated
+  for `CubeSys` only, so nothing is lost now; for systems with `Opt` either `inv` takes `OpenedT`
+  (a weaker law, which the canonical models satisfy a fortiori) or `OpenedT` becomes part of the
+  environment (next point).
+* *To consider:* `OpenedT` is now a hypothesis of a dozen lemmas.  Making it a field of `Env` (as
+  `opened` is for `◇⁰`) would remove them, but §12.30's reason stands (a possible object's content
+  is read through the model's `posFull`, and `Env` is frame-level); a model-level environment
+  structure would be needed.
 
 ### 12.31 Interpolation for B and 5, and the relation primitives *(2026-11-13, paper)*
 

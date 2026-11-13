@@ -146,7 +146,8 @@ section Abs
 variable {σ : Signature}
 
 /-- Realising a negation is negating the realisation: the three operations are structural. -/
-theorem WFF.realiseAtA_neg {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true) (x : VarSymb)
+theorem WFF.realiseAtA_neg {Γ : Ctx} [Γ.Presented] [ModalSys.NoOpt] (hT : ModalSys.T = true)
+    (x : VarSymb)
     {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A)) {a₀ : Ann A} (t₀ : Term σ Γ A a₀)
     (χ : WFF σ (Γ.diaIn x) 0) :
     WFF.realiseAtA hT x hxA t₀ χ.neg = (WFF.realiseAtA hT x hxA t₀ χ).neg := rfl

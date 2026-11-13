@@ -98,7 +98,8 @@ theorem WFF.subst_diaAbsA [ModalSys.NoOpt]
 /-- ⭐**Substituting into a realisation at a witness the substitution renames is realising the
     image** at the substituted content, of the formula substituted in the witness's view. -/
 theorem WFF.subst_realiseAtA {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.Presented] [Δ.Presented]
-    (hT : ModalSys.T = true) (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ)
+    [ModalSys.NoOpt] (hT : ModalSys.T = true) (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
+    (hc : Subst.Coh ι Γ θ)
     {x : VarSymb} {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A))
     (hxA' : Δ.ref (ι x) = some (.VTypeDia A)) (hren : θ.at x = .ren (ι x)) {a₀ : Ann A}
     (t₀ : Term σ Γ A a₀) (χ : WFF σ (Γ.diaIn x) 0) :
@@ -106,19 +107,18 @@ theorem WFF.subst_realiseAtA {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.Presen
       WFF.realiseAtA hT (ι x) hxA' (Term.subst ι θ hθ hc t₀)
         (WFF.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ ⟨A, hxA⟩ (by rw [hren]; rfl))
           (Subst.coh_dia hθ hc ⟨A, hxA⟩) Ctx.NoSlots.slots Ctx.NoSlots.slots χ) := by
-  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   unfold WFF.realiseAtA
   rw [WFF.subst_hereRead hT θ hθ hc Ctx.NoSlots.slots Ctx.NoSlots.slots t₀ (WFF.diaAbsA x hxA χ),
     WFF.subst_diaAbsA θ hθ hc hxA hxA' hren χ]
 
 /-- Weakening commutes with realisation. -/
-theorem WFF.mono_realiseAtA {Γ Γ' : Ctx} [Γ.Presented] [Γ'.Presented] (hT : ModalSys.T = true)
-    (h : Γ.Le Γ') {x : VarSymb} {A : VarType} (hxA : Γ.ref x = some (.VTypeDia A))
+theorem WFF.mono_realiseAtA {Γ Γ' : Ctx} [Γ.Presented] [Γ'.Presented] [ModalSys.NoOpt]
+    (hT : ModalSys.T = true) (h : Γ.Le Γ') {x : VarSymb} {A : VarType}
+    (hxA : Γ.ref x = some (.VTypeDia A))
     (hxA' : Γ'.ref x = some (.VTypeDia A)) {a₀ : Ann A} (t₀ : Term σ Γ A a₀)
     (χ : WFF σ (Γ.diaIn x) 0) :
     WFF.mono h (WFF.realiseAtA hT x hxA t₀ χ) =
       WFF.realiseAtA hT x hxA' (Term.mono h t₀) (WFF.mono (h.diaIn x) χ) := by
-  haveI : ModalSys.NoOpt := ⟨by opt_off⟩
   unfold WFF.realiseAtA
   rw [WFF.mono_hereRead, WFF.mono_diaAbsA h hxA hxA']
 

@@ -183,14 +183,14 @@ theorem Subst.isRen_diaAbs [ModalSys.NoOpt] {σ : Signature} {Γ : Ctx} {c : ℕ
 
 /-- ⭐Realising the witness's own content gives the realising term back: the canonical model reads
     the content off the η-expansion of the witness's address. -/
-theorem Term.realiseAt_eta {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true)
+theorem Term.realiseAt_eta {σ : Signature} {Γ : Ctx} [Γ.NoSlots] [ModalSys.NoOpt] (hT : ModalSys.T
+    = true)
     (c : ℕ) {A : VarType} (hcA : Γ.ref (.root (.free c)) = some (.VTypeDia A))
     (hfr : ∀ v : VarSymb, v.rt = .free c → v ≠ .root (.free c) → Γ v = none)
     {a₀ : Ann A} (t₀ : Term σ Γ A a₀) :
     (⟨_, Term.realiseAt hT c hcA hfr t₀
         (Term.eta (.step (.root (.free c)) .dia) A (Ctx.ref_diaIn_of hcA))⟩ :
       Σ b, Term σ Γ A b) = ⟨a₀, t₀⟩ := by
-  haveI : ModalSys.NoOpt := ⟨ModalSys.noOpt_of_T hT⟩
   have h₀ : Γ.boxIn (.root (.bnd 0)) = none := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).root
   have hrf : Γ.boxIn.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ.boxIn)).rootFresh (le_refl 0)
   -- the abstraction sends the witness content's η-expansion to the hole's
@@ -764,7 +764,7 @@ theorem applyG_mono :
 /-- ⭐Applying a definable map commutes with realisation (strong T): realisation is a
     substitution, a collapse and a substitution. -/
 theorem applyG_realiseAtA {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} [Γ.Presented]
-    (hT : ModalSys.T = true) (x : VarSymb) {X : VarType}
+    [ModalSys.NoOpt] (hT : ModalSys.T = true) (x : VarSymb) {X : VarType}
     (hcA : Γ.ref x = some (.VTypeDia X))
     {a₀ : Ann X} (t₀ : Term σ Γ X a₀) {a : Ann A}
     (t : Term σ (Γ.diaIn x) A a) :
@@ -777,7 +777,8 @@ theorem applyG_realiseAtA {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} [Γ.Pres
 
 
 /-- ⭐Applying a definable map commutes with the realised content of a witness. -/
-theorem applyG_realisedTerm {A B : VarType} (g : GFunc σ A B) {w : World σ N₀} {x : VarSymb}
+theorem applyG_realisedTerm [ModalSys.NoOpt] {A B : VarType} (g : GFunc σ A B) {w : World σ N₀}
+    {x : VarSymb}
     (hr : w.Realised x) {Γ : Ctx} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i))
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {a : Ann A} (t : Term σ (Γ.diaIn x) A a) :
     realisedTerm w hr e hx (applyG g t).2 = applyG g (realisedTerm w hr e hx t).2 := by
@@ -872,11 +873,13 @@ theorem Term.shiftDia_mono_boxIn : ∀ (n : ℕ) (hK : KeepOK n) (hF : n ≠ 0 �
       exact Term.shiftDia_mono_boxIn n _ (fun _ => hF') (Γ := Γ.boxIn)
         (Term.shift (Ctx.shifts_boxIn_boxIn hF' Γ) b) hle
 
-theorem rden_varTerm {Γ : Ctx} (w : World σ N₀) (i : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)) :
+theorem rden_varTerm [ModalSys.NoOpt] {Γ : Ctx} (w : World σ N₀) (i : ℕ × ℕ)
+    (e : Γ.Le (w.L.ctx i)) :
     ∀ p : (Σ b : Ann .Var, Term σ Γ .Var b), rden w i e (varTerm p) = rden w i e p.2
   | ⟨.var, _⟩ => rfl
 
-theorem rden_var_mono {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) :
+theorem rden_var_mono [ModalSys.NoOpt] {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
+    (e : Γ.Le (w.L.ctx i)) :
     ∀ u : Term σ Γ .Var .var, rden w i e u = w.cls i (Term.mono e u)
   | .var _ _ => rfl
   | .func _ => rfl
@@ -887,7 +890,8 @@ theorem Succ.depth_le {w : World σ N₀} (w' : Succ w) : w.depth ≤ w'.1.depth
 
 /-- ⭐Under 4, `□□` of the shifted body reads, two steps on, what `□` of the body reads at the
     composite successor. -/
-theorem rden_dup (hF : ModalSys.Four = true) : ∀ (p : ℕ) {A : VarType} {a : Ann A} {Γ : Ctx}
+theorem rden_dup [ModalSys.NoOpt] (hF : ModalSys.Four = true) : ∀ (p : ℕ) {A : VarType}
+    {a : Ann A} {Γ : Ctx}
     (b : Term σ Γ.boxIn A a) (w : World σ N₀) (i : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)) (v : Succ w),
     v.1.depth - w.depth = p → ∀ (s : Succ v.1),
       rden w i e (.boxtm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Γ) b))) v s =
@@ -934,7 +938,8 @@ theorem rden_dup (hF : ModalSys.Four = true) : ∀ (p : ℕ) {A : VarType} {a : 
 
 /-- Under 4, at any successor past a proper successor `u` — under T + 4 `u` itself among
     them — a necessary term denotes what its body shifted denotes from `u`. -/
-theorem rden_boxtm_step' (hF : ModalSys.Four = true) {A : VarType} {a : Ann A} {Γ : Ctx}
+theorem rden_boxtm_step' [ModalSys.NoOpt] (hF : ModalSys.Four = true) {A : VarType} {a : Ann A}
+    {Γ : Ctx}
     {w : World σ N₀} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (t : Term σ Γ.boxIn A a) (w' : Succ w)
     {u : World σ N₀} (hu : Acc' w u) (hr : R u w'.1) :
     rden w i e (.boxtm t) w' =
@@ -955,7 +960,8 @@ theorem rden_boxtm_step' (hF : ModalSys.Four = true) {A : VarType} {a : Ann A} {
   · exact rden_boxtm_step hF e t w' hu hr (by omega)
 
 /-- Realisation respects equality of the view term, annotations and all. -/
-theorem realisedTerm_sigma {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
+theorem realisedTerm_sigma [ModalSys.NoOpt] {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
+    {Γ : Ctx}
     {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
     {p q : Σ b : Ann A, Term σ (Γ.diaIn x) A b} (h : p = q) :
     realisedTerm w hr e hx p.2 = realisedTerm w hr e hx q.2 := by
@@ -965,7 +971,8 @@ theorem realisedTerm_sigma {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
 /-- ⭐Under T + 4, a necessary body moved into a `◇_x` view reads at each member of `x`'s extent
     what it reads there as a necessary term — by the distance, through the kept witness; at the
     world itself the realisation collapses it (`rden_realisedTerm_mono_boxIn`). -/
-theorem rden_diatm_mono_boxIn_tFour (h4 : TFour) : ∀ (d : ℕ) {A : VarType} {a : Ann A}
+theorem rden_diatm_mono_boxIn_tFour [ModalSys.NoOpt] (h4 : TFour) : ∀ (d : ℕ) {A : VarType}
+    {a : Ann A}
     {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {x : VarSymb}
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (b : Term σ Γ.boxIn A a) (w' : extent w x),
     w'.1.1.depth - w.depth = d →
@@ -1023,7 +1030,7 @@ theorem rawEval_dkeep_comp {A : VarType} {w : World σ N₀} (o : RDom (.VTypeDi
 /-- ⭐**The stored shapes of a kept possible object** are the object's, kept along each arrow:
     read off at once for every successor through the transposition (`Model.transposeShp_inj`),
     from the symbolic shapes (`rawShape_rden`, `termShp_applyG`). -/
-theorem rden_dkeep_tag (hT : ModalSys.T = true) {A : VarType} {a : Ann A} {Γ : Ctx}
+theorem rden_dkeep_tag [ModalSys.NoOpt] (hT : ModalSys.T = true) {A : VarType} {a : Ann A} {Γ : Ctx}
     {w : World σ N₀} {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) {x : VarSymb}
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (c : Term σ (Γ.diaIn x) A a) (v : Succ w) :
     (rden w i e (.boxtm (.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
@@ -1048,7 +1055,8 @@ theorem rden_dkeep_tag (hT : ModalSys.T = true) {A : VarType} {a : Ann A} {Γ : 
 /-- ⭐**Keeping a possible object along a proper step is denoting the kept witness there**: the
     extents agree by `extent_keep` (under T + 4 `extent_keep_tFour`), the contents by
     `rden_diatm_step` (`rden_diatm_step_tFour`), the shapes by `rden_dkeep_tag`. -/
-theorem rden_dkeep_acc {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
+theorem rden_dkeep_acc [ModalSys.NoOpt] {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
+    {i : ℕ × ℕ}
     (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
     (c : Term σ (Γ.diaIn x) A a) {u : World σ N₀} (hu : Acc' w u)
     (e' : Γ.boxIn.Le (u.L.ctx (childStage i))) :
@@ -1074,7 +1082,8 @@ theorem rden_dkeep_acc {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} 
 
 /-- Keeping along a proper step, then along an arrow from there, is keeping along the
     composite. -/
-theorem rawEval_dkeep_step {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀} {i : ℕ × ℕ}
+theorem rawEval_dkeep_step [ModalSys.NoOpt] {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N₀}
+    {i : ℕ × ℕ}
     (e : Γ.Le (w.L.ctx i)) {x : VarSymb} (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
     (c : Term σ (Γ.diaIn x) A a) {u : World σ N₀} (hu : Acc' w u)
     (e' : Γ.boxIn.Le (u.L.ctx (childStage i))) (v : Succ u) :
@@ -1088,7 +1097,7 @@ theorem rawEval_dkeep_step {A : VarType} {a : Ann A} {Γ : Ctx} {w : World σ N�
 /-- ⭐Under 4, `□◇_{x.keep}` of the shifted body reads at every successor what keeping `◇_x` of the
     body gives there — by the distance, as `rden_dup`.  At the world itself (T + 4) the collapse
     undoes the shift and keeping along the identity is the identity. -/
-theorem rden_dkeep : ∀ (p : ℕ) {A : VarType} {a : Ann A} {Γ : Ctx} {x : VarSymb}
+theorem rden_dkeep [ModalSys.NoOpt] : ∀ (p : ℕ) {A : VarType} {a : Ann A} {Γ : Ctx} {x : VarSymb}
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (c : Term σ (Γ.diaIn x) A a) (w : World σ N₀)
     (i : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)) (v : Succ w), v.1.depth - w.depth = p →
       rden w i e (.boxtm (.diatm (.step x .keep) (Ctx.exists_keep_dia hF hx)
@@ -1149,7 +1158,7 @@ theorem rawEval_transport {A B : VarType} (g : GFunc σ A B) {w₁ w₂ : World 
 /-- ⭐The denotation of an applied map is its raw evaluation.  Under strong T the extent has the
     world itself in it, where the content is a realisation (`applyG_realisedTerm`,
     `rden_realisedTerm_mono_boxIn`). -/
-theorem rden_applyG :
+theorem rden_applyG [ModalSys.NoOpt] :
     ∀ {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} {a : Ann A} (t : Term σ Γ A a)
       (w : World σ N₀) (i : ℕ × ℕ) (e : Γ.Le (w.L.ctx i)),
     rden w i e (applyG g t).2 = rawEval g w (rden w i e t)
@@ -1251,7 +1260,7 @@ theorem rden_applyG :
 /-- ⭐Definable objects are closed under the function algebra. -/
 -- (`applyG_realisedTerm`, `rawEval_transport` and `strength_self` above are the strong-T gap;
 -- see the note before `rden_applyG`.)
-theorem definable_rawEval {A B : VarType} (g : GFunc σ A B) {w : World σ N₀}
+theorem definable_rawEval [ModalSys.NoOpt] {A B : VarType} (g : GFunc σ A B) {w : World σ N₀}
     {o : RDom A w}
     (h : Definable A w o) : Definable B w (rawEval g w o) := by
   obtain ⟨i, a, t, rfl⟩ := h
@@ -1261,7 +1270,7 @@ theorem definable_rawEval {A B : VarType} (g : GFunc σ A B) {w : World σ N₀}
 /-! ### The witness's own content -/
 
 /-- Realisation respects equality of the view term, annotations and all. -/
-theorem Term.realiseAtA_sigma {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true)
+theorem Term.realiseAtA_sigma {Γ : Ctx} [Γ.Presented] [ModalSys.NoOpt] (hT : ModalSys.T = true)
     (x : VarSymb) {A : VarType} (hcA : Γ.ref x = some (.VTypeDia A))
     {a₀ : Ann A} (t₀ : Term σ Γ A a₀) {T : VarType} {b b' : Ann T}
     {t : Term σ (Γ.diaIn x) T b} {t' : Term σ (Γ.diaIn x) T b'}
@@ -1273,7 +1282,8 @@ theorem Term.realiseAtA_sigma {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true)
 
 /-- ⭐The realised content of the witness's own content is the realising term: this is what makes
     every object the content, at the world itself, of a possible object. -/
-theorem rden_realisedTerm_eta {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
+theorem rden_realisedTerm_eta [ModalSys.NoOpt] {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
+    {Γ : Ctx}
     {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
     (hdia : (Γ.diaIn x).ref (.step x .dia) = some hr.data.A) :
     rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _)
@@ -1293,7 +1303,8 @@ theorem rden_realisedTerm_eta {w : World σ N₀} {x : VarSymb} (hr : w.Realised
   exact rden_congr _ _ _ _ _ _
 
 /-- The same, with the type of the content given separately. -/
-theorem rden_realisedTerm_eta_sigma {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {Γ : Ctx}
+theorem rden_realisedTerm_eta_sigma [ModalSys.NoOpt] {w : World σ N₀} {x : VarSymb}
+    (hr : w.Realised x) {Γ : Ctx}
     {i : ℕ × ℕ} (e : Γ.Le (w.L.ctx i)) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
     (hA : hr.data.A = A) (hdia : (Γ.diaIn x).ref (.step x .dia) = some A) :
     (⟨A, rden w (i ⊔ hr.data.i₀) (Ctx.Le.refl _)
@@ -1304,7 +1315,7 @@ theorem rden_realisedTerm_eta_sigma {w : World σ N₀} {x : VarSymb} (hr : w.Re
 
 /-- ⭐The content, at the world itself, of the possible object a realised witness names: what its
     realising term denotes.  Stated in terms of the world's own choice. -/
-theorem rden_eta_realised {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
+theorem rden_eta_realised [ModalSys.NoOpt] {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
     {k : ℕ × ℕ} (hdecl : (w.L.ctx k).ref x = some (.VTypeDia hr.data.A)) :
     (rden w k (Ctx.Le.refl _) (Term.eta x (.VTypeDia hr.data.A) hdecl)).2
         ⟨⟨w, ⟨R.refl hr.T w⟩⟩, self_mem_extent hr⟩ =
@@ -1322,7 +1333,7 @@ theorem rden_eta_realised {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
 /-- The same for any datum the world's choice is known to be.  Taking the datum as a variable with
     an equation turns the identification into a `subst`, so callers never have to rewrite under
     `realisedTerm`, where it sits in dependent positions. -/
-theorem rden_eta_realised_of_eq {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
+theorem rden_eta_realised_of_eq [ModalSys.NoOpt] {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
     (D : RealDatum σ w.L.sys w.T x) (hD : hr.data = D) {k : ℕ × ℕ}
     (hdecl : (w.L.ctx k).ref x = some (.VTypeDia D.A)) :
     (rden w k (Ctx.Le.refl _) (Term.eta x (.VTypeDia D.A) hdecl)).2
@@ -1333,7 +1344,8 @@ theorem rden_eta_realised_of_eq {w : World σ N₀} {x : VarSymb} (hr : w.Realis
 
 /-- ⭐What a world names at an address, as the model uses it: the content, at the world itself, of
     the possible object that address denotes is what the named realising term denotes. -/
-theorem rden_eta_of_real {w : World σ N₀} {x : VarSymb} {d : RealDatum σ w.L.sys w.T x}
+theorem rden_eta_of_real [ModalSys.NoOpt] {w : World σ N₀} {x : VarSymb}
+    {d : RealDatum σ w.L.sys w.T x}
     (hsome : w.real x = some d) {k : ℕ × ℕ}
     (hdecl : (w.L.ctx k).ref x = some (.VTypeDia d.A)) :
     (rden w k (Ctx.Le.refl _) (Term.eta x (.VTypeDia d.A) hdecl)).2

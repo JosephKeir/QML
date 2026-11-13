@@ -14,7 +14,11 @@ import QML.QML_v12m_OCanonDom
 
 namespace V12M
 
-variable [ModalSys]
+/- M1's construction is for K and D with `Opt` on: T off (`ModalSys.NoT`) until M2 step 6
+   generalises it, so the class is in scope throughout. -/
+set_option linter.unusedSectionVars false
+
+variable [ModalSys] [ModalSys.NoT]
 
 namespace OCanon
 
@@ -95,10 +99,10 @@ theorem exists_extentO (hDS : ModalSys.DStrong = true) (w : World σ N₀) :
 noncomputable def frameO (w₀ : World σ N₀) : Frame.{0, 0} σ where
   W := World σ N₀
   R := AccO hO
-  refl := fun hT => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_T hT)).elim
+  refl := fun hT => (ModalSys.NoT.absurd hT).elim
   trans := fun hF => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
-  refl_trans := fun hT => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_T hT)).elim
-  trans_refl := fun hT => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_T hT)).elim
+  refl_trans := fun hT => (ModalSys.NoT.absurd hT).elim
+  trans_refl := fun hT => (ModalSys.NoT.absurd hT).elim
   trans_assoc := fun hF => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
   actual := w₀
   serial := fun hD w => (exists_succO hO hD w).imp fun _ ha => ⟨ha⟩
@@ -109,7 +113,7 @@ noncomputable def frameO (w₀ : World σ N₀) : Frame.{0, 0} σ where
   side_side := fun hV => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Five hV)).elim
   trans_side := fun hF => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
   side_trans := fun hF => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
-  side_refl := fun hT => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_T hT)).elim
+  side_refl := fun hT => (ModalSys.NoT.absurd hT).elim
   side_loop := fun _ hV => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Five hV)).elim
   D w := w.D
   Nec A w := {o : RDomO hO (.VTypeBox A) w // DefinableO hO (.VTypeBox A) w o}
@@ -223,7 +227,7 @@ noncomputable def opsO : (frameO hO w₀).Ops where
   posStrength n p := ⟨rawEvalO hO (.strength _ _) _
       ((n.1, p.1) : RDomO hO (.VTypeProd (.VTypeBox _) (.VTypeDia _)) _),
     definableO_rawEval (.strength _ _) (definableO_pair n.2 p.2)⟩
-  necExtract hT := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_T hT)).elim
+  necExtract hT := (ModalSys.NoT.absurd hT).elim
   necDup hF := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
   posKeep hF := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
   posSide hV := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Five hV)).elim
@@ -247,7 +251,7 @@ theorem eval_toDomO : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀)
   | _, _, .boxUnit, _, _, _ => rfl
   | _, _, .diaMap _, _, _, _ => rfl
   | _, _, .strength _ _, _, _, _ => rfl
-  | _, _, .extract hT, _, _, _ => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_T hT)).elim
+  | _, _, .extract hT, _, _, _ => (ModalSys.NoT.absurd hT).elim
   | _, _, .dup hF, _, _, _ => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
   | _, _, .dkeep hF, _, _, _ => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
 
@@ -275,20 +279,21 @@ noncomputable def model : Model.{0, 0} σ where
   rootKeepLaws := Arrows.RootKeepLaws.ofRoot (F := (frameO hO w₀).toArrows)
     (Root := fun _ => PEmpty) (rootKeepO hO w₀)
     (fun hF => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim)
-    (fun hT => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_T hT)).elim)
+    (fun hT => (ModalSys.NoT.absurd hT).elim)
   posFull p := (posEvalO hO w₀ p,
-    fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped hS)).elim)
+    fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped ModalSys.NoT.noT hS)).elim)
   posFull_inj := fun h => posEvalO_injective hO w₀ (congrArg Prod.fst h)
-  posShape_wf := fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped hS)).elim
+  posShape_wf := fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped ModalSys.NoT.noT
+      hS)).elim
   ops := opsO hO w₀
   necMap_eval g _ w' := (eval_toDomO hO w₀ g w'.1 _ _).symm
   necPair_eval _ _ _ := rfl
   posMap_full g _ := Prod.ext
     (congrArg (Sigma.mk _) (funext fun w' => (eval_toDomO hO w₀ g w'.1.1 _ _).symm))
-    (funext fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped hS)).elim)
+    (funext fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped ModalSys.NoT.noT hS)).elim)
   posStrength_full _ _ := Prod.ext rfl
-    (funext fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped hS)).elim)
-  necExtract_eval hT := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_T hT)).elim
+    (funext fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped ModalSys.NoT.noT hS)).elim)
+  necExtract_eval hT := (ModalSys.NoT.absurd hT).elim
   necDup_eval hF := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
   keepLift hF := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
   posKeep_full hF := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
@@ -298,7 +303,7 @@ noncomputable def model : Model.{0, 0} σ where
   Ind_refl _ := rfl
   posSide_content hV := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Five hV)).elim
   necSide_exists hV := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Five hV)).elim
-  posRet_exists hT := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_T hT)).elim
+  posRet_exists hT := (ModalSys.NoT.absurd hT).elim
   Ret _ _ _ _ := False
   Ret_fwd := by intro _ _ _ _ _ _ _ h; exact h.elim
   Ret_conv hS := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_BStrong hS)).elim

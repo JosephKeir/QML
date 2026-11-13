@@ -24,7 +24,8 @@ variable {σ : Signature} {N₀ : ℕ}
 
 /-- ⭐**A realised witness's possible object has its realisation as content here**: from the
     datum's atom `Here (η x) t₀`, `here_beta` with the body abstracted, and the round trip. -/
-theorem mem_here_realised {w : World σ N₀} {x : VarSymb} (hr : w.Realised x) {i : ℕ × ℕ}
+theorem mem_here_realised [ModalSys.NoOpt] {w : World σ N₀} {x : VarSymb} (hr : w.Realised x)
+    {i : ℕ × ℕ}
     {X : VarType} (hx : (w.L.ctx i).ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B}
     (bd : Term σ ((w.L.ctx i).diaIn x) B β) :
     (⟨i ⊔ hr.data.i₀, WFF.here hr.T
@@ -70,7 +71,8 @@ theorem here_transfer (hT : ModalSys.T = true) {w : World σ N₀} {A : VarType}
 
 omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.StagedSys] in
 /-- A term and its lift to a later stage denote alike. -/
-theorem rden_lift {w : World σ N₀} {i K : ℕ × ℕ} (h : i ≤ K) {A : VarType} {a : Ann A}
+theorem rden_lift [ModalSys.NoOpt] {w : World σ N₀} {i K : ℕ × ℕ} (h : i ≤ K) {A : VarType}
+    {a : Ann A}
     (t : Term σ (w.L.ctx i) A a) :
     rden w K (Ctx.Le.refl _) (Term.mono (w.L.ctx_le h) t) = rden w i (Ctx.Le.refl _) t := by
   rw [rden_mono]

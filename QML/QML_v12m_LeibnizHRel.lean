@@ -21,12 +21,14 @@ possible object, with one witness (`eqRelH_optIn`, `eqRelH_dia`) or two opened t
 
 namespace V12M
 
-variable [ModalSys]
+/- M1's construction is for K and D with `Opt` on: T off (`ModalSys.NoT`) until M2 step 6
+   generalises it, so the class is in scope throughout. -/
+set_option linter.unusedSectionVars false
 
-theorem ModalSys.T_false_of_opt (hO : ModalSys.Opt = true) : ModalSys.T = false := by
-  cases h : ModalSys.T
-  · rfl
-  · exact absurd (ModalSys.noOpt_of_T h) (by simp [hO])
+variable [ModalSys] [ModalSys.NoT]
+
+theorem ModalSys.T_false_of_opt (_hO : ModalSys.Opt = true) : ModalSys.T = false :=
+  ModalSys.NoT.noT
 
 theorem ModalSys.Four_false_of_opt (hO : ModalSys.Opt = true) : ModalSys.Four = false := by
   cases h : ModalSys.Four
