@@ -108,6 +108,27 @@ theorem proj_boxtm_here {A : VarType} {a : Ann A} (t : Term σ Δ.boxIn A a)
     (SubE.tm (Term.boxtm t)).proj .here = .tm (Term.collapse (Ctx.collapses_boxIn_self hT Δ) t) :=
   dif_pos hT
 
+theorem proj_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') :
+    ∀ (e : SubE σ Δ) (s : Step), (e.mono h).proj s = (e.proj s).mono h
+  | .hide, _ => rfl
+  | .ren _, _ => rfl
+  | .tm t, s => by
+      cases t with
+      | boxtm t =>
+          cases s with
+          | here =>
+              change (SubE.tm (Term.boxtm (Term.mono h.boxIn t))).proj .here =
+                ((SubE.tm (Term.boxtm t)).proj .here).mono h
+              by_cases hT : ModalSys.T = true
+              · rw [proj_boxtm_here _ hT, proj_boxtm_here _ hT]
+                exact congrArg SubE.tm (Term.collapse_mono _ _ h.boxIn h t)
+              · rw [show (SubE.tm (Term.boxtm (Term.mono h.boxIn t))).proj .here = .hide from
+                    dif_neg hT,
+                  show (SubE.tm (Term.boxtm t)).proj .here = .hide from dif_neg hT]
+                rfl
+          | _ => rfl
+      | _ => cases s <;> rfl
+
 theorem keepE_tm {A : VarType} {a : Ann A} (t : Term σ Δ.boxIn A a)
     (hF : ModalSys.Four = true) :
     (SubE.tm (Term.boxtm t)).keepE = .tm (.boxtm (Term.shift (Ctx.shifts_boxIn_boxIn hF Δ) t)) :=
@@ -587,6 +608,13 @@ macro "wit_triv" : tactic => `(tactic| first
   | exact fun _ _ _ h => nomatch h
   | exact fun _ _ _ _ h => nomatch h)
 
+/-- An identity-content clause with nothing to check: `Opt` off (`opt_off`).  (While M2 step 3
+    is in progress it falls back on `Ctx.witT_stage`.) -/
+macro "witT_triv" : tactic => `(tactic| first
+  | exact fun _ _ _ h => absurd (Ctx.witT_spec h).2.1
+      (by rw [show ModalSys.Opt = false by opt_off]; decide)
+  | exact fun _ _ _ h => (Ctx.witT_stage h).elim)
+
 /-! ### The identity view (M2, docs §12.30) -/
 
 /-- ⭐**The entry at an identity content**, for the identity witness `z`, read off the entry at
@@ -599,6 +627,27 @@ def _root_.V12M.SubE.atBody (z : VarSymb) : SubE σ Δ → SubE σ (Δ.optInT z)
         .tm (Term.collapse (Ctx.collapses_diaIn_optInT' h hx) b)
       else .hide
   | _ => .hide
+
+theorem _root_.V12M.SubE.atBody_mono {Δ' : Ctx} (h : Δ.Le Δ') (z : VarSymb) :
+    ∀ e : SubE σ Δ, (e.atBody z).mono (h.optInT z) = (e.mono h).atBody z
+  | .hide => rfl
+  | .ren _ => rfl
+  | .tm s => by
+      cases s with
+      | diatm x hx b =>
+          change (if hc : ModalSys.T = true ∧ ModalSys.Opt = true ∧ x = z then
+              SubE.tm (Term.collapse (Ctx.collapses_diaIn_optInT' hc hx) b) else SubE.hide).mono
+                (h.optInT z) =
+            (if hc : ModalSys.T = true ∧ ModalSys.Opt = true ∧ x = z then
+              SubE.tm (Term.collapse (Ctx.collapses_diaIn_optInT' hc
+                (hx.imp fun _ hX => h.ref hX)) (Term.mono (h.diaIn x) b))
+              else SubE.hide)
+          by_cases hc : ModalSys.T = true ∧ ModalSys.Opt = true ∧ x = z
+          · rw [dif_pos hc, dif_pos hc]
+            exact congrArg SubE.tm (Term.collapse_mono _ _ (h.diaIn x) (h.optInT z) b).symm
+          · rw [dif_neg hc, dif_neg hc]
+            rfl
+      | _ => rfl
 
 theorem _root_.V12M.SubE.okRef_atBody (hT : ModalSys.T = true) (hO : ModalSys.Opt = true)
     {z : VarSymb} {X : VarType} :
@@ -649,11 +698,11 @@ structure Coh (ι : VarSymb → VarSymb) (Γ : Ctx) (θ : Subst σ Δ) : Prop wh
   openedT : ∀ y X z, Γ.witT y = some X → Γ (.step y .at) = some X →
     (θ.at y).idxAlong [] = z →
       (θ (.step y .at)).mono (Ctx.le_optInT Δ z) = (θ.at y).atBody z := by
-    intro _ _ _ h; exact (Ctx.witT_stage h).elim
+    witT_triv
   /-- An opened identity content goes to an opened one. -/
   openedToT : ∀ y X z, Γ.witT y = some X → Γ (.step y .at) = some X →
     (θ.at y).idxAlong [] = z → ∃ Z, Δ.witT z = some Z ∧ Δ (.step z .at) = some Z := by
-    intro _ _ _ h; exact (Ctx.witT_stage h).elim
+    witT_triv
 
 instance {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} :
     CoeFun (Coh ι Γ θ) (fun _ => ∀ v T, Γ.ref v = some T → ∀ p,
@@ -733,10 +782,10 @@ theorem coh_of {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : O
     (hopenT : ∀ y X z, Γ.witT y = some X → Γ (.step y .at) = some X →
       (θ.at y).idxAlong [] = z →
         (θ (.step y .at)).mono (Ctx.le_optInT Δ z) = (θ.at y).atBody z := by
-      intro _ _ _ h; exact (Ctx.witT_stage h).elim)
+      witT_triv)
     (hopenToT : ∀ y X z, Γ.witT y = some X → Γ (.step y .at) = some X →
       (θ.at y).idxAlong [] = z → ∃ Z, Δ.witT z = some Z ∧ Δ (.step z .at) = some Z := by
-      intro _ _ _ h; exact (Ctx.witT_stage h).elim) :
+      witT_triv) :
     Coh ι Γ θ := by
   refine ⟨?_, hwit, hopen, hopenTo, hopenT, hopenToT⟩
   intro v
@@ -755,6 +804,28 @@ theorem coh_of {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : O
             rfl
       · exact hvis _ _ (show (VarSymb.step v s).lastProj = false from Bool.eq_false_iff.mpr hs)
           hv p
+
+/-- An opened identity content of the source, for a substitution that weakens `θ` at the
+    possible object and at its content. -/
+theorem openedT_of_mono {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} {Δ' : Ctx}
+    {θ' : Subst σ Δ'} (hle : Δ.Le Δ') (hc : Coh ι Γ θ) {y z : VarSymb} {X : VarType}
+    (hwT : Γ.witT y = some X) (hyd : Γ (.step y .at) = some X)
+    (hat : θ'.at y = (θ.at y).mono hle) (hent : θ' (.step y .at) = (θ (.step y .at)).mono hle)
+    (hz : (θ'.at y).idxAlong [] = z) :
+    (θ' (.step y .at)).mono (Ctx.le_optInT Δ' z) = (θ'.at y).atBody z := by
+  rw [hat] at hz ⊢
+  rw [SubE.idxAlong_mono] at hz
+  rw [hent, ← SubE.atBody_mono, ← hc.openedT y X z hwT hyd hz]
+  simp only [SubE.mono_mono]
+
+theorem openedToT_of_mono {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} {Δ' : Ctx}
+    {θ' : Subst σ Δ'} (hle : Δ.Le Δ') (hc : Coh ι Γ θ) {y z : VarSymb} {X : VarType}
+    (hwT : Γ.witT y = some X) (hyd : Γ (.step y .at) = some X)
+    (hat : θ'.at y = (θ.at y).mono hle) (hz : (θ'.at y).idxAlong [] = z) :
+    ∃ Z, Δ'.witT z = some Z ∧ Δ' (.step z .at) = some Z := by
+  rw [hat, SubE.idxAlong_mono] at hz
+  obtain ⟨Z, hZ, hZd⟩ := hc.openedToT y X z hwT hyd hz
+  exact ⟨Z, hle.witT hZ, hle.ty _ _ hZd⟩
 
 theorem ok_box {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) : Ok Γ.boxIn θ.box := by
   refine ⟨fun v T _ hv => ?_, fun _ y X hy => ?_⟩
@@ -775,6 +846,7 @@ theorem ok_box {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) : Ok Γ.boxIn θ.b
 theorem coh_box {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
     (hc : Coh ι Γ θ) : Coh ι Γ.boxIn θ.box := by
   refine coh_of (ok_box hθ) ?_ ?_ (fun _ _ _ _ _ h => by cases h) (fun _ _ _ _ _ h => by cases h)
+    (fun _ _ _ _ h => by cases h) (fun _ _ _ _ h => by cases h)
   swap
   · intro _ y X hy p
     obtain ⟨hO, hu⟩ := Ctx.boxIn_wit.mp hy
@@ -826,7 +898,8 @@ theorem coh_dia {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : 
   have hw : (θ.at x).idxAlong [] = ι x := by
     obtain ⟨X, hX⟩ := hx
     exact hc x _ hX []
-  refine coh_of (ok_dia hθ hx hw) ?_ ?_ ?_ ?_
+  refine coh_of (ok_dia hθ hx hw) ?_ ?_ ?_ ?_ (fun _ _ _ _ h => by cases h)
+    (fun _ _ _ _ h => by cases h)
   rotate_left
   · intro hO y Y hy p
     rw [show (θ.dia x (ι x)).wit y = ((θ.box).wit y).mono (Ctx.le_boxIn_diaIn Δ (ι x)) from rfl,
@@ -922,11 +995,45 @@ theorem ok_under {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {d d' : ℕ} (T 
     rw [show θ.under d d' T h v = (θ v).mono (Ctx.le_insert h T) from if_neg hvr]
     exact SubE.okRef_mono _ (hθ v U hlp hv')
 
+theorem at_under_ne (θ : Subst σ Δ) {d d' : ℕ} (T : VarType)
+    (h : Δ (.root (.bnd d')) = none) :
+    ∀ {v : VarSymb}, v.rt ≠ .bnd d → (θ.under d d' T h).at v = (θ.at v).mono (Ctx.le_insert h T)
+  | .root r, hv => by
+      change (if VarSymb.root r = .root (.bnd d) then _ else _) = _
+      rw [if_neg (fun he => hv (by cases he; rfl))]
+      rfl
+  | .step v s, hv => by
+      simp only [Subst.at]
+      split_ifs
+      · rw [at_under_ne θ T h (v := v) hv, SubE.proj_mono]
+      · exact if_neg (t := SubE.ren (.root (.bnd d')))
+          (fun (he : VarSymb.step v s = .root (.bnd d)) => by cases he)
+
 theorem coh_under {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
     (hc : Coh ι Γ θ) {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (T : VarType)
     (h : Δ (.root (.bnd d')) = none) :
     Coh (VarSymb.shiftSlot ι d d') (Γ.insert (.bnd d) T) (θ.under d d' T h) := by
+  have hT' : ∀ {y : VarSymb} {X : VarType}, (Γ.insert (.bnd d) T).witT y = some X →
+      (Γ.insert (.bnd d) T) (.step y .at) = some X →
+      Γ.witT y = some X ∧ Γ (.step y .at) = some X ∧ y.rt ≠ .bnd d := by
+    intro y X hy hyd
+    obtain ⟨hT, hO, -⟩ := Ctx.witT_spec hy
+    have hyd' := Ctx.insert_ne_some hyd (fun he => by cases he)
+    have hrt : y.rt ≠ .bnd d := by
+      intro he
+      have h₀ := hΓ (.step y .at) d he le_rfl
+      rw [h₀] at hyd'
+      cases hyd'
+    exact ⟨Ctx.witT_of_at hT hO hyd', hyd', hrt⟩
   refine coh_of (ok_under hθ T h) ?_ ?_ ?_ ?_
+    (fun y X z hy hyd hz => by
+      obtain ⟨hy', hyd', hrt⟩ := hT' hy hyd
+      exact openedT_of_mono (Ctx.le_insert h T) hc hy' hyd' (at_under_ne θ T h hrt)
+        (if_neg (t := SubE.ren (.root (.bnd d')))
+          (show VarSymb.step y .at ≠ .root (.bnd d) from fun he => by cases he)) hz)
+    (fun y X z hy hyd hz => by
+      obtain ⟨hy', hyd', hrt⟩ := hT' hy hyd
+      exact openedToT_of_mono (Ctx.le_insert h T) hc hy' hyd' (at_under_ne θ T h hrt) hz)
   rotate_left
   · intro hO y X hy p
     have hrt : y.rt ≠ .bnd d := fun he => by
@@ -990,11 +1097,49 @@ theorem ok_optIn {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) (hO : ModalSys.O
     rw [optIn_ne θ z hc]
     exact SubE.okRef_mono _ (hθ v T hlp hv)
 
+/-- Inside the view of the witness `y`, every address the source reaches keeps its entry, weakened:
+    an opened content already agrees with the body (`Coh.opened`). -/
+theorem at_optIn_of {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hc : Coh ι Γ θ)
+    (hO : ModalSys.Opt = true) {y z : VarSymb} {X : VarType} (hy : Γ.wit y = some X)
+    (hz : (θ.wit y).idxAlong [] = z) :
+    ∀ (v : VarSymb) (T : VarType), Γ.ref v = some T →
+      (θ.optIn y z).at v = (θ.at v).mono (Ctx.le_optIn Δ z)
+  | .root _, _, _ => optIn_ne θ z (fun he => by cases he)
+  | .step v s, T, hv => by
+      simp only [Subst.at]
+      split_ifs with hs
+      · rw [Ctx.ref_step_proj _ v hs] at hv
+        obtain ⟨U, hU, -⟩ := Option.bind_eq_some_iff.mp hv
+        rw [at_optIn_of hc hO hy hz v _ hU, SubE.proj_mono]
+      · rw [Ctx.ref_step_nonproj _ v hs] at hv
+        by_cases hc' : VarSymb.step v s = .step y .dia
+        · rw [hc'] at hv ⊢
+          rw [optIn_content]
+          rcases Γ.wit_dia y X hy with h | h
+          · cases h.symm.trans hv
+          · cases h.symm.trans hv
+            exact (hc.opened hO y X z hy hv hz).symm
+        · exact optIn_ne θ z hc'
+
 theorem coh_optIn {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
     (hc : Coh ι Γ θ) (hO : ModalSys.Opt = true) {y : VarSymb} {X : VarType}
     (hy : Γ.wit y = some X) : Coh ι (Γ.optIn y) (θ.optIn y (ι y)) := by
   have hw : (θ.wit y).idxAlong [] = ι y := hc.wit hO y X hy []
   refine coh_of (ok_optIn hθ hO hy hw) ?_ ?_ ?_ ?_
+    (fun y' X' z' hy' hyd hz => by
+      obtain ⟨hT, hO', -⟩ := Ctx.witT_spec hy'
+      have hne : VarSymb.step y' .at ≠ .step y .dia := fun he => by cases he
+      rw [Ctx.optIn_ne hne] at hyd
+      have hw' := Ctx.witT_of_at hT hO' hyd
+      exact openedT_of_mono (Ctx.le_optIn Δ _) hc hw' hyd
+        (at_optIn_of hc hO hy hw _ _ (Ctx.witT_spec hw').2.2) (optIn_ne θ _ hne) hz)
+    (fun y' X' z' hy' hyd hz => by
+      obtain ⟨hT, hO', -⟩ := Ctx.witT_spec hy'
+      have hne : VarSymb.step y' .at ≠ .step y .dia := fun he => by cases he
+      rw [Ctx.optIn_ne hne] at hyd
+      have hw' := Ctx.witT_of_at hT hO' hyd
+      exact openedToT_of_mono (Ctx.le_optIn Δ _) hc hw' hyd
+        (at_optIn_of hc hO hy hw _ _ (Ctx.witT_spec hw').2.2) hz)
   · intro v T hlp hv p
     by_cases hc' : v = .step y .dia
     · subst hc'
@@ -1087,12 +1232,63 @@ theorem ok_optInT {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {y z : VarSymb}
     rw [optInT_ne θ z hc]
     exact SubE.okRef_mono _ (hθ v T hlp hv)
 
+/-- Inside the identity view of `y`, every address the source reaches keeps its entry, weakened:
+    an opened identity content already agrees with the body (`Coh.openedT`). -/
+theorem at_optInT_of {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hc : Coh ι Γ θ)
+    {y z : VarSymb} {X : VarType} (hy : Γ.witT y = some X) (hz : (θ.at y).idxAlong [] = z) :
+    ∀ (v : VarSymb) (T : VarType), Γ.ref v = some T →
+      (θ.optInT y z).at v = (θ.at v).mono (Ctx.le_optInT Δ z)
+  | .root _, _, _ => optInT_ne θ z (fun he => by cases he)
+  | .step v s, T, hv => by
+      simp only [Subst.at]
+      split_ifs with hs
+      · rw [Ctx.ref_step_proj _ v hs] at hv
+        obtain ⟨U, hU, -⟩ := Option.bind_eq_some_iff.mp hv
+        rw [at_optInT_of hc hy hz v _ hU, SubE.proj_mono]
+      · rw [Ctx.ref_step_nonproj _ v hs] at hv
+        by_cases hc' : VarSymb.step v s = .step y .at
+        · rw [hc'] at hv ⊢
+          rw [optInT_content]
+          have h₁ := Ctx.refAll_of_ref Γ y (Ctx.witT_spec hy).2.2
+          rw [Γ.at_coh y _ hv] at h₁
+          cases h₁
+          exact (hc.openedT y _ z hy hv hz).symm
+        · exact optInT_ne θ z hc'
+
 theorem coh_optInT {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
     (hc : Coh ι Γ θ) {y : VarSymb} {X : VarType} (hy : Γ.witT y = some X) :
     Coh ι (Γ.optInT y) (θ.optInT y (ι y)) := by
   obtain ⟨hT, hO, hr⟩ := Ctx.witT_spec hy
   have hw : (θ.at y).idxAlong [] = ι y := hc y _ hr []
   refine coh_of (ok_optInT hθ hy hw) ?_ ?_ ?_ ?_
+    (fun y' X' z' hy' hyd hz => by
+      by_cases hc' : y' = y
+      · subst hc'
+        rw [at_optInT_of hc hy hw y' _ hr] at hz ⊢
+        rw [SubE.idxAlong_mono, hw] at hz
+        subst hz
+        rw [optInT_content]
+        exact SubE.atBody_mono _ _ _
+      · obtain ⟨hT', hO', -⟩ := Ctx.witT_spec hy'
+        have hne : VarSymb.step y' .at ≠ .step y .at := fun he => hc' (by cases he; rfl)
+        rw [Ctx.optInT_ne hne] at hyd
+        have hw' := Ctx.witT_of_at hT' hO' hyd
+        exact openedT_of_mono (Ctx.le_optInT Δ _) hc hw' hyd
+          (at_optInT_of hc hy hw _ _ (Ctx.witT_spec hw').2.2) (optInT_ne θ _ hne) hz)
+    (fun y' X' z' hy' hyd hz => by
+      by_cases hc' : y' = y
+      · subst hc'
+        rw [at_optInT_of hc hy hw y' _ hr, SubE.idxAlong_mono, hw] at hz
+        subst hz
+        obtain ⟨Y, hY⟩ := SubE.ref_witness (okRef_at hθ hr) (hc y' _ hr [])
+        have hYT := Ctx.witT_of hT hO hY
+        exact ⟨Y, (Ctx.le_optInT Δ _).witT hYT, Ctx.optInT_content hYT⟩
+      · obtain ⟨hT', hO', -⟩ := Ctx.witT_spec hy'
+        have hne : VarSymb.step y' .at ≠ .step y .at := fun he => hc' (by cases he; rfl)
+        rw [Ctx.optInT_ne hne] at hyd
+        have hw' := Ctx.witT_of_at hT' hO' hyd
+        exact openedToT_of_mono (Ctx.le_optInT Δ _) hc hw' hyd
+          (at_optInT_of hc hy hw _ _ (Ctx.witT_spec hw').2.2) hz)
   · intro v T hlp hv p
     by_cases hc' : v = .step y .at
     · subst hc'
@@ -1269,9 +1465,50 @@ theorem ok_single {Γ : Ctx} {r : Root} {T : VarType} {e : SubE σ Δ} (hle : Γ
     rw [show single r e v = .ren v from if_neg hvr]
     exact (Ctx.ref_nonproj Δ hlp).trans (hle v U hv')
 
+/-- Away from the replaced root, a single-root substitution is the identity renaming. -/
+theorem at_single_of_rt_ne {r : Root} {e : SubE σ Δ} :
+    ∀ {v : VarSymb}, v.rt ≠ r → (single r e).at v = .ren v
+  | .root r', h => by
+      change (if (VarSymb.root r') = .root r then e else SubE.ren (.root r')) = _
+      exact if_neg (fun he => h (VarSymb.root.inj he))
+  | .step v s, h => by
+      change (if s.isStruct then ((single r e).at v).proj s else single r e (.step v s)) = _
+      by_cases hs : s.isStruct = true
+      · rw [if_pos hs, at_single_of_rt_ne (v := v) h]
+        rfl
+      · rw [if_neg hs]
+        change (if (VarSymb.step v s) = .root r then e else SubE.ren (.step v s)) = _
+        exact if_neg (fun he => by cases he)
+
 theorem coh_single {Γ : Ctx} {r : Root} {T : VarType} {e : SubE σ Δ} (hr : Γ.RootFresh r)
     (hle : Γ.Le Δ) (he : e.OkRef T) : Coh (singleIdx r e) (Γ.insert r T) (single r e) := by
+  have hT' : ∀ {y : VarSymb} {X : VarType}, (Γ.insert r T).witT y = some X →
+      (Γ.insert r T) (.step y .at) = some X →
+      Γ.witT y = some X ∧ Γ (.step y .at) = some X ∧ y.rt ≠ r := by
+    intro y X hy hyd
+    obtain ⟨hT, hO, -⟩ := Ctx.witT_spec hy
+    have hyd' := Ctx.insert_ne_some hyd (fun he => by cases he)
+    have hrt : y.rt ≠ r := by
+      intro he
+      have h₀ := hr.ty (.step y .at) he
+      rw [h₀] at hyd'
+      cases hyd'
+    exact ⟨Ctx.witT_of_at hT hO hyd', hyd', hrt⟩
   refine coh_of (ok_single hle he) ?_ ?_ ?_ ?_
+    (fun y X z hy hyd hz => by
+      obtain ⟨-, -, hrt⟩ := hT' hy hyd
+      rw [at_single_of_rt_ne hrt] at hz ⊢
+      have hz' : y = z := hz
+      subst hz'
+      rw [show single r e (.step y .at) = .ren (.step y .at) from if_neg (t := e)
+        (show VarSymb.step y .at ≠ .root r from fun he => by cases he)]
+      rfl)
+    (fun y X z hy hyd hz => by
+      obtain ⟨hy', hyd', hrt⟩ := hT' hy hyd
+      rw [at_single_of_rt_ne hrt] at hz
+      have hz' : y = z := hz
+      subst hz'
+      exact ⟨X, hle.witT hy', hle.ty _ _ hyd'⟩)
   rotate_left
   · intro _ y X hy p
     have hrt : y.rt ≠ r := fun he' => by
@@ -1396,21 +1633,6 @@ theorem WFF.subst_eqRec {σ : Signature} {ι : VarSymb → VarSymb} :
 
 
 namespace Subst
-
-/-- Away from the replaced root, a single-root substitution is the identity renaming. -/
-theorem at_single_of_rt_ne {σ : Signature} {Δ : Ctx} {r : Root} {e : SubE σ Δ} :
-    ∀ {v : VarSymb}, v.rt ≠ r → (single r e).at v = .ren v
-  | .root r', h => by
-      change (if (VarSymb.root r') = .root r then e else SubE.ren (.root r')) = _
-      exact if_neg (fun he => h (VarSymb.root.inj he))
-  | .step v s, h => by
-      change (if s.isStruct then ((single r e).at v).proj s else single r e (.step v s)) = _
-      by_cases hs : s.isStruct = true
-      · rw [if_pos hs, at_single_of_rt_ne (v := v) h]
-        rfl
-      · rw [if_neg hs]
-        change (if (VarSymb.step v s) = .root r then e else SubE.ren (.step v s)) = _
-        exact if_neg (fun he => by cases he)
 
 /-- At the replaced root it is the entry. -/
 theorem at_single_root {σ : Signature} {Δ : Ctx} (r : Root) (e : SubE σ Δ) :

@@ -55,8 +55,7 @@ def WFF.size {σ : Signature} : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → ℕ
   | _, _, .retxS _ _ _ S _ Φ => Φ.size + S.flat.eqRecSize + 1
   | _, _, .link _ _ _ Φ => Φ.size + 1
   | _, _, .linkx _ _ _ _ _ Φ => Φ.size + 1
-  | _, _, .optx _ .arrow _ _ φ => φ.size + 1
-  | _, _, .optx _ .ident _ hyI _ => (hyI.elim fun _ h => Ctx.witT_stage h).elim
+  | _, _, .optx _ _ _ _ φ => φ.size + 1
 
 /-- ⭐The size of an equality is the size of its type: nothing in `eqRec`'s clauses looks at the
     terms.  So the `here` clause of `WFF.size` above dominates the equation `Proof.here_fun`
@@ -98,7 +97,7 @@ theorem WFF.size_mono {σ : Signature} : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le
   | _, _, _, h, .linkx _ _ y _ _ Φ =>
       congrArg (· + 1) (WFF.size_mono ((h.diaIn y).insert _ _) Φ)
   | _, _, _, h, .optx _ .arrow y _ φ => congrArg (· + 1) (WFF.size_mono (h.optIn y) φ)
-  | _, _, _, _, .optx _ .ident _ hyI _ => (hyI.elim fun _ h => Ctx.witT_stage h).elim
+  | _, _, _, h, .optx _ .ident y _ φ => congrArg (· + 1) (WFF.size_mono (h.optInT y) φ)
 
 theorem WFF.size_subst {σ : Signature} : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ}
     (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d)
@@ -129,8 +128,8 @@ theorem WFF.size_subst {σ : Signature} : ∀ {ι : VarSymb → VarSymb} {Γ Δ 
       congrArg (· + 1) (WFF.size_subst _ _ _ _ _ Φ)
   | _, _, _, _, _, _, _, _, _, _, .optx _ .arrow _ _ φ =>
       congrArg (· + 1) (WFF.size_subst _ _ _ _ _ φ)
-  | _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _ =>
-      (hyI.elim fun _ h => Ctx.witT_stage h).elim
+  | _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ _ φ =>
+      congrArg (· + 1) (WFF.size_subst _ _ _ _ _ φ)
 
 theorem WFF.size_instantiate {σ : Signature} {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {T : VarType}
     {a : Ann T} (t : Term σ Γ T a) (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) :
@@ -981,7 +980,8 @@ theorem completeness {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : W
 theorem provable_iff_valid {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
     Provable Δ φ ↔ ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
       Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ :=
-  ⟨fun ⟨p⟩ M hM _ env => Model.soundness p M hM env (Ctx.Presented.tame Γ),
+  ⟨fun ⟨p⟩ M hM _ env hnp =>
+    Model.soundness p M hM env (Ctx.Presented.tame Γ) hnp env.openedT_noOpt,
     completeness⟩
 
 end V12M

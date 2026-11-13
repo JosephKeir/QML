@@ -93,6 +93,147 @@ theorem Subst.corr_box_self {σ : Signature} {Γ Δ : Ctx} (hT : ModalSys.T = tr
   | .step _ .dia => cases hv
   | .step _ .here => cases hv
 
+/-- A witness entry's content one view in, collapsed back at level 0, is the entry's identity
+    content (M2). -/
+theorem SubE.toWit_optBody_collapse_self {σ : Signature} {Δ : Ctx} (hT : ModalSys.T = true)
+    (hO : ModalSys.Opt = true) {z : VarSymb} {Z : VarType} (hz : Δ.boxIn.wit z = some Z) :
+    ∀ {e : SubE σ Δ} {X : VarType}, e.OkRef (.VTypeDia X) → e.idxAlong [] = z →
+      (e.toWit.optBody z).collapse ((Ctx.collapses_boxIn_self hT Δ).optIn_zero hO hz) =
+        e.atBody z
+  | .ren w, _, _, hw => by
+      have hw' : w = z := hw
+      subst hw'
+      change SubE.ren ((VarSymb.step w .dia).collapse 0) = SubE.ren (.step w .at)
+      rw [VarSymb.collapse_dia_zero_opt hO]
+  | .tm (.diatm x hx b), _, _, hw => by
+      have hxz : x = z := hw
+      subst hxz
+      obtain ⟨Y, hY⟩ := id hx
+      rw [show (SubE.tm (Term.diatm x hx b) : SubE σ Δ).toWit =
+          WitE.tm x (Term.mono (Ctx.le_diaIn_boxIn_optIn hO hY) b) from dif_pos hO,
+        show (WitE.tm x (Term.mono (Ctx.le_diaIn_boxIn_optIn hO hY) b) :
+            WitE σ Δ.boxIn).optBody x =
+          SubE.tm (Term.mono (Ctx.Le.refl _) (Term.mono (Ctx.le_diaIn_boxIn_optIn hO hY) b))
+          from dif_pos rfl, Term.mono_refl,
+        show (SubE.tm (Term.diatm x hx b) : SubE σ Δ).atBody x =
+          SubE.tm (Term.collapse (Ctx.collapses_diaIn_optInT' ⟨hT, hO, rfl⟩ hx) b)
+          from dif_pos ⟨hT, hO, rfl⟩]
+      change SubE.tm (Term.collapse _ (Term.mono _ b)) = _
+      rw [Term.collapse_mono (Ctx.collapses_diaIn_optInT' ⟨hT, hO, rfl⟩ hx) _ _ (Ctx.Le.refl _) b,
+        Term.mono_refl]
+  | .tm (.var _ _), _, he, _ => nomatch he
+  | .tm (.func _), _, he, _ => nomatch he
+  | .tm .unit, _, he, _ => nomatch he
+  | .tm (.pair _ _), _, he, _ => nomatch he
+  | .tm (.boxtm _), _, he, _ => nomatch he
+  | .hide, _, he, _ => False.elim he
+
+/-- ⭐At the T rule the `□` view's witnesses correspond to the possible objects' identity
+    contents (M2). -/
+theorem Subst.corrW_box_self {σ : Signature} {Γ Δ : Ctx} (hT : ModalSys.T = true)
+    {θ : Subst σ Δ} (hθ : Subst.Ok Γ θ) :
+    Subst.CorrW Γ.boxIn (Ctx.collapses_boxIn_self hT Δ) θ.box θ := by
+  intro y X hy hO z hzi
+  obtain ⟨-, hr⟩ := Ctx.boxIn_wit.mp hy
+  have he := Subst.okRef_at hθ hr
+  have hzi' : (θ.at y).idxAlong [] = z := (SubE.idxAlong_toWit hO [] he).symm.trans hzi
+  refine ⟨hzi', ?_⟩
+  obtain ⟨Z, hZ⟩ := WitE.wit_of (SubE.okW_toWit hO he) hzi
+  refine ⟨Z, hZ, ?_⟩
+  change SubE.Sim X ((θ.at y).atBody z) (((θ.at y).toWit.optBody z).collapse _)
+  rw [SubE.toWit_optBody_collapse_self hT hO hZ he hzi']
+  exact .refl _
+
+/-- A possible object's content one view in, collapsed at level 0 onto its identity view, is its
+    identity content (M2). -/
+theorem SubE.diaBody_collapse_zero {σ : Signature} {Δ : Ctx} (hT : ModalSys.T = true)
+    (hO : ModalSys.Opt = true) {z : VarSymb} {Y : VarType} (hz : Δ.ref z = some (.VTypeDia Y)) :
+    ∀ {e : SubE σ Δ} {X : VarType}, e.OkRef (.VTypeDia X) → e.idxAlong [] = z →
+      (e.diaBody z).collapse (Ctx.collapses_diaIn_optInT hT hO Δ hz) = e.atBody z
+  | .ren w, _, _, hw => by
+      have hw' : w = z := hw
+      subst hw'
+      change SubE.ren ((VarSymb.step w .dia).collapse 0) = SubE.ren (.step w .at)
+      rw [VarSymb.collapse_dia_zero_opt hO]
+  | .tm (.diatm x hx b), _, _, hw => by
+      have hxz : x = z := hw
+      subst hxz
+      rw [SubE.diaBody_diatm, show (SubE.tm (Term.diatm x hx b) : SubE σ Δ).atBody x =
+        SubE.tm (Term.collapse (Ctx.collapses_diaIn_optInT' ⟨hT, hO, rfl⟩ hx) b)
+        from dif_pos ⟨hT, hO, rfl⟩]
+      rfl
+  | .tm (.var _ _), _, he, _ => nomatch he
+  | .tm (.func _), _, he, _ => nomatch he
+  | .tm .unit, _, he, _ => nomatch he
+  | .tm (.pair _ _), _, he, _ => nomatch he
+  | .tm (.boxtm _), _, he, _ => nomatch he
+  | .hide, _, he, _ => False.elim he
+
+/-- A necessary object's content in the `◇_z` view, collapsed onto `z`'s identity view, is its
+    value here (M2). -/
+theorem SubE.unbox_collapse_zero {σ : Signature} {Δ : Ctx} (hT : ModalSys.T = true)
+    (hO : ModalSys.Opt = true) {z : VarSymb} {Y : VarType} (hz : Δ.ref z = some (.VTypeDia Y)) :
+    ∀ {e : SubE σ Δ} {A : VarType}, e.OkRef (.VTypeBox A) →
+      (e.unbox.mono (Ctx.le_boxIn_diaIn Δ z)).collapse (Ctx.collapses_diaIn_optInT hT hO Δ hz) =
+        (e.proj .here).mono (Ctx.le_optInT Δ z)
+  | .ren w, _, _ => by
+      have hF : ModalSys.Four = false := by
+        cases h : ModalSys.Four
+        · rfl
+        · exact absurd (ModalSys.noOpt_of_Four h) (by rw [hO]; decide)
+      have hk : ModalSys.keepOnly = false := by simp [ModalSys.keepOnly, hF]
+      change SubE.ren ((VarSymb.inner w).collapse 0) = SubE.ren (.step w .here)
+      rw [VarSymb.inner, if_neg (by rw [hk]; decide),
+        VarSymb.collapse_level_zero rfl (by decide) (by decide)]
+  | .tm (.boxtm t), _, _ => by
+      rw [SubE.proj_boxtm_here _ hT]
+      exact congrArg SubE.tm (Term.collapse_mono (Ctx.collapses_boxIn_self hT Δ) _ _ _ t)
+  | .tm (.var _ _), _, he => nomatch he
+  | .tm (.func _), _, he => nomatch he
+  | .tm .unit, _, he => nomatch he
+  | .tm (.pair _ _), _, he => nomatch he
+  | .tm (.diatm _ _ _), _, he => nomatch he
+  | .hide, _, he => False.elim he
+
+/-- ⭐At level 0 the `◇_z` view of a substitution corresponds to its identity view (M2). -/
+theorem Subst.corr_dia_optInT {σ : Signature} {ι₂ : VarSymb → VarSymb} {Δ₁ Δ₂ : Ctx}
+    (hT : ModalSys.T = true) (hO : ModalSys.Opt = true) {θ₂ : Subst σ Δ₂}
+    (hθ₂ : Subst.Ok Δ₁ θ₂) (hc₂ : Subst.Coh ι₂ Δ₁ θ₂) {x₁ : VarSymb} {X₁ : VarType}
+    (hx₁ : Δ₁.ref x₁ = some (.VTypeDia X₁)) {z₂ : VarSymb} (hw₂ : (θ₂.at x₁).idxAlong [] = z₂)
+    {Y : VarType} (hz₂ : Δ₂.ref z₂ = some (.VTypeDia Y)) :
+    Subst.Corr (Δ₁.diaIn x₁) (Ctx.collapses_diaIn_optInT hT hO Δ₂ hz₂) (θ₂.dia x₁ z₂)
+      (θ₂.optInT x₁ z₂) := by
+  have hxT : Δ₁.witT x₁ = some X₁ := Ctx.witT_of hT hO hx₁
+  refine Subst.corr_of (Subst.ok_dia hθ₂ ⟨X₁, hx₁⟩ hw₂) ?_
+  intro v T _ hv
+  match v with
+  | .step u .dia =>
+      change (if u = x₁ then (match Δ₁.ref x₁ with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T at hv
+      split_ifs at hv with hux
+      subst hux
+      rw [hx₁] at hv
+      cases hv
+      rw [VarSymb.collapse_dia_zero_opt hO, Subst.at_nonproj _ rfl, Subst.optInT_content]
+      change SubE.Sim _ _ ((if u = u then (θ₂.at u).diaBody z₂ else SubE.hide).collapse _)
+      rw [if_pos rfl, SubE.diaBody_collapse_zero hT hO hz₂ (Subst.okRef_at hθ₂ hx₁) hw₂]
+      exact .refl _
+  | .step u .box =>
+      have hu := Ctx.boxIn_step_box (Γ := Δ₁) hv
+      rw [VarSymb.collapse_level_zero rfl (by decide) (by decide)]
+      change SubE.Sim T (((θ₂.optInT x₁ z₂).at u).proj .here)
+        ((((θ₂.at u).unbox).mono (Ctx.le_boxIn_diaIn Δ₂ z₂)).collapse _)
+      rw [Subst.at_optInT_of hc₂ hxT hw₂ u _ hu, SubE.proj_mono,
+        SubE.unbox_collapse_zero hT hO hz₂ (Subst.okRef_at hθ₂ hu)]
+      exact .refl _
+  | .step u .keep =>
+      exact absurd hO (by rw [ModalSys.noOpt_of_Four (Ctx.boxIn_keep (Γ := Δ₁) hv).1]; decide)
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .here => cases hv
+  | .step _ .at => cases hv
+
 namespace SubE
 
 variable {σ : Signature} {ι₂ : VarSymb → VarSymb} {Δ₁ Δ₂ : Ctx}
@@ -294,6 +435,48 @@ theorem comp_mono {Δ₁' Δ₂' : Ctx} (h : Δ₁.Le Δ₁') (h₂ : Δ₂.Le �
       rw [Term.subst_mono, Term.mono_subst]
       exact tm_eq_of_sig (Term.subst_congr _ _ _ _ _ _
         (fun w T hw => by rw [heq w T hw, Subst.at_mono]; exact .refl _) s)
+
+/-- ⭐**A substituted possible object's identity content**: the entry's identity content pushed
+    through `θ₂`'s identity view is the pushed entry's identity content (M2). -/
+theorem atBody_comp (hT : ModalSys.T = true) (hO : ModalSys.Opt = true) (θ₂ : Subst σ Δ₂)
+    (hθ₂ : Subst.Ok Δ₁ θ₂) (hc₂ : Subst.Coh ι₂ Δ₁ θ₂) {x₁ : VarSymb} {X₁ : VarType}
+    (hx₁ : Δ₁.witT x₁ = some X₁) (hw₂ : (θ₂.at x₁).idxAlong [] = ι₂ x₁) :
+    ∀ {e : SubE σ Δ₁} {X : VarType}, e.OkRef (.VTypeDia X) → e.idxAlong [] = x₁ →
+      (e.atBody x₁).comp (θ₂.optInT x₁ (ι₂ x₁)) (Subst.ok_optInT hθ₂ hx₁ hw₂)
+          (Subst.coh_optInT hθ₂ hc₂ hx₁) =
+        (e.comp θ₂ hθ₂ hc₂).atBody (ι₂ x₁)
+  | .ren w, _, _, hw => by
+      have hw' : w = x₁ := hw
+      subst hw'
+      change (θ₂.optInT w (ι₂ w)).at (.step w .at) = (θ₂.at w).atBody (ι₂ w)
+      rw [Subst.at_nonproj _ rfl, Subst.optInT_content]
+  | .tm (.diatm x hx b), _, _, hw => by
+      have hxz : x = x₁ := hw
+      subst hxz
+      obtain ⟨X₀, hr⟩ := id hx
+      obtain ⟨Y, hY⟩ := SubE.ref_witness (Subst.okRef_at hθ₂ hr) hw₂
+      rw [show (SubE.tm (Term.diatm x hx b) : SubE σ Δ₁).atBody x =
+        SubE.tm (Term.collapse (Ctx.collapses_diaIn_optInT' ⟨hT, hO, rfl⟩ hx) b)
+        from dif_pos ⟨hT, hO, rfl⟩]
+      change SubE.tm (Term.subst ι₂ _ _ _ _) =
+        (SubE.tm (Term.diatm (ι₂ x) _ (Term.subst ι₂ (θ₂.dia x (ι₂ x))
+          (Subst.ok_dia hθ₂ hx hw₂) (Subst.coh_dia hθ₂ hc₂ hx) b))).atBody (ι₂ x)
+      rw [show (SubE.tm (Term.diatm (ι₂ x) ⟨Y, hY⟩ (Term.subst ι₂ (θ₂.dia x (ι₂ x))
+          (Subst.ok_dia hθ₂ hx hw₂) (Subst.coh_dia hθ₂ hc₂ hx) b)) : SubE σ Δ₂).atBody (ι₂ x) =
+        SubE.tm (Term.collapse (Ctx.collapses_diaIn_optInT hT hO Δ₂ hY)
+          (Term.subst ι₂ (θ₂.dia x (ι₂ x)) (Subst.ok_dia hθ₂ hx hw₂) (Subst.coh_dia hθ₂ hc₂ hx) b))
+        from dif_pos ⟨hT, hO, rfl⟩]
+      exact tm_eq_of_sig (Term.collapse_subst (Ctx.collapses_diaIn_optInT hT hO Δ₁ hr)
+        (Ctx.collapses_diaIn_optInT hT hO Δ₂ hY) (θ₂.dia x (ι₂ x)) (Subst.ok_dia hθ₂ hx hw₂)
+        (Subst.coh_dia hθ₂ hc₂ hx) (θ₂.optInT x (ι₂ x)) (Subst.ok_optInT hθ₂ hx₁ hw₂)
+        (Subst.coh_optInT hθ₂ hc₂ hx₁)
+        (Subst.corr_dia_optInT hT hO hθ₂ hc₂ hr hw₂ hY) b).symm
+  | .tm (.var _ _), _, he, _ => nomatch he
+  | .tm (.func _), _, he, _ => nomatch he
+  | .tm .unit, _, he, _ => nomatch he
+  | .tm (.pair _ _), _, he, _ => nomatch he
+  | .tm (.boxtm _), _, he, _ => nomatch he
+  | .hide, _, he, _ => False.elim he
 
 end SubE
 
@@ -777,6 +960,51 @@ theorem sim_optIn_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (
     rw [at_nonproj θ₃ hlp, at_nonproj _ hlp] at h₃
     exact h₃.mono _
 
+theorem sim_optInT_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (hθ₁ : Ok Γ θ₁)
+    (hc₁ : Coh ι₁ Γ θ₁) (hθ₂ : Ok Δ₁ θ₂) (hc₂ : Coh ι₂ Δ₁ θ₂)
+    (hs : Sim Γ θ₃ (θ₁.comp θ₂ hθ₂ hc₂)) {y : VarSymb} {X : VarType} (hy : Γ.witT y = some X)
+    {X₁ : VarType} (hx₁ : Δ₁.witT (ι₁ y) = some X₁)
+    (hw₂ : (θ₂.at (ι₁ y)).idxAlong [] = ι₂ (ι₁ y))
+    (hw₃ : (θ₃.at y).idxAlong [] = ι₂ (ι₁ y)) :
+    Sim (Γ.optInT y) (θ₃.optInT y (ι₂ (ι₁ y)))
+      ((θ₁.optInT y (ι₁ y)).comp (θ₂.optInT (ι₁ y) (ι₂ (ι₁ y)))
+        (ok_optInT hθ₂ hx₁ hw₂) (coh_optInT hθ₂ hc₂ hx₁)) := by
+  obtain ⟨hT, hO, hr⟩ := Ctx.witT_spec hy
+  have hw₁ : (θ₁.at y).idxAlong [] = ι₁ y := hc₁ y _ hr []
+  have heq : ∀ v T, Δ₁.ref v = some T →
+      (θ₂.optInT (ι₁ y) (ι₂ (ι₁ y))).at v = (θ₂.at v).mono (Ctx.le_optInT Δ₂ (ι₂ (ι₁ y))) :=
+    fun v T hv => at_optInT_of hc₂ hx₁ hw₂ v T hv
+  refine sim_of ?_ fun hO' y' X' hy' => ?_
+  swap
+  · change WitE.Sim X' ((θ₃.wit y').mono (Ctx.le_optInT Δ₂ (ι₂ (ι₁ y))))
+      (((θ₁.wit y').mono (Ctx.le_optInT Δ₁ (ι₁ y))).comp (θ₂.optInT (ι₁ y) (ι₂ (ι₁ y)))
+        (ok_optInT hθ₂ hx₁ hw₂) (coh_optInT hθ₂ hc₂ hx₁))
+    rw [WitE.comp_mono θ₂ hθ₂ hc₂ hO' (Ctx.le_optInT Δ₁ (ι₁ y)) (Ctx.le_optInT Δ₂ (ι₂ (ι₁ y)))
+      _ _ _ heq (fun _ _ _ => rfl) (hθ₁.wit hO' y' X' hy')]
+    exact (hs.wit hO' y' X' hy').mono _
+  intro v U hlp hv
+  by_cases hc : v = .step y .at
+  · subst hc
+    rw [Ctx.optInT_content hy] at hv
+    cases hv
+    change SubE.Sim _ (θ₃.optInT y (ι₂ (ι₁ y)) (.step y .at))
+      ((θ₁.optInT y (ι₁ y) (.step y .at)).comp (θ₂.optInT (ι₁ y) (ι₂ (ι₁ y)))
+        (ok_optInT hθ₂ hx₁ hw₂) (coh_optInT hθ₂ hc₂ hx₁))
+    rw [optInT_content, optInT_content,
+      SubE.atBody_comp hT hO θ₂ hθ₂ hc₂ hx₁ hw₂ (okRef_at hθ₁ hr) hw₁,
+      ← at_comp hθ₁ θ₂ hθ₂ hc₂ hr]
+    exact (hs y _ hr).atBody hT hO hw₃
+  · rw [Ctx.optInT_ne hc] at hv
+    change SubE.Sim U (θ₃.optInT y (ι₂ (ι₁ y)) v)
+      ((θ₁.optInT y (ι₁ y) v).comp (θ₂.optInT (ι₁ y) (ι₂ (ι₁ y)))
+        (ok_optInT hθ₂ hx₁ hw₂) (coh_optInT hθ₂ hc₂ hx₁))
+    rw [optInT_ne θ₃ _ hc, optInT_ne θ₁ _ hc,
+      SubE.comp_mono θ₂ hθ₂ hc₂ (Ctx.le_optInT Δ₁ (ι₁ y)) (Ctx.le_optInT Δ₂ (ι₂ (ι₁ y))) _ _ _
+        heq (hθ₁ v U hlp hv)]
+    have h₃ := hs v U ((Ctx.ref_nonproj Γ hlp).trans hv)
+    rw [at_nonproj θ₃ hlp, at_nonproj _ hlp] at h₃
+    exact h₃.mono _
+
 end Subst
 
 theorem SubE.Sim.okRef {σ : Signature} {Δ : Ctx} {T : VarType} {e e' : SubE σ Δ}
@@ -975,8 +1203,30 @@ theorem WFF.subst_comp {σ : Signature} : {ι₁ ι₂ ι₃ : VarSymb → VarSy
           (Subst.coh_optIn hθ₂ hc₂ hO hx₁) p q (hΓ.optIn y) (hΔ₁.optIn (ι₁ y)) hΔz
           (Subst.sim_optIn_comp hθ₁ hc₁ hθ₂ hc₂ hs hO hX hx₁ hw₃) φ)
       exact key (ι₃ y) hι _ _ _ _
-  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _ =>
-      (hyI.elim fun _ h => Ctx.witT_stage h).elim
+  | ι₁, ι₂, ι₃, Γ, Δ₁, Δ₂, _, _, d₂, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, hΓ, hΔ₁, hΔ₂,
+      hs, .optx hO .ident y hy φ => by
+      obtain ⟨X, hX⟩ := hy
+      obtain ⟨hT, -, hr⟩ := Ctx.witT_spec hX
+      have hw₁ : (θ₁.at y).idxAlong [] = ι₁ y := hc₁ y _ hr []
+      obtain ⟨X₁, hr₁⟩ := SubE.ref_witness (Subst.okRef_at hθ₁ hr) hw₁
+      have hx₁ : Δ₁.witT (ι₁ y) = some X₁ := Ctx.witT_of hT hO hr₁
+      have hw₂ : (θ₂.at (ι₁ y)).idxAlong [] = ι₂ (ι₁ y) := hc₂ _ _ hr₁ []
+      have hι : ι₃ y = ι₂ (ι₁ y) := Subst.idx_comp hθ₁ hc₁ hθ₂ hc₂ hc₃ hs.ty ⟨X, hr⟩
+      have hw₃ : (θ₃.at y).idxAlong [] = ι₂ (ι₁ y) := (hc₃ y _ hr []).trans hι
+      have key : ∀ (z : VarSymb) (_hz : z = ι₂ (ι₁ y)) (P : ∃ Z, Δ₂.witT z = some Z)
+          (p : Subst.Ok (Γ.optInT y) (θ₃.optInT y z))
+          (q : Subst.Coh ι₃ (Γ.optInT y) (θ₃.optInT y z)) (hΔz : (Δ₂.optInT z).SlotsFrom d₂),
+          WFF.subst ι₂ θ₂ hθ₂ hc₂ hΔ₁ hΔ₂
+              (WFF.subst ι₁ θ₁ hθ₁ hc₁ hΓ hΔ₁ (.optx hO .ident y ⟨X, hX⟩ φ)) =
+            .optx hO .ident z P (WFF.subst ι₃ (θ₃.optInT y z) p q (hΓ.optInT y) hΔz φ) := by
+        intro z hz P p q hΔz
+        subst hz
+        exact congrArg (WFF.optx hO .ident (ι₂ (ι₁ y)) _) (WFF.subst_comp (θ₁.optInT y (ι₁ y))
+          (θ₂.optInT (ι₁ y) (ι₂ (ι₁ y))) (θ₃.optInT y (ι₂ (ι₁ y))) (Subst.ok_optInT hθ₁ hX hw₁)
+          (Subst.coh_optInT hθ₁ hc₁ hX) (Subst.ok_optInT hθ₂ hx₁ hw₂)
+          (Subst.coh_optInT hθ₂ hc₂ hx₁) p q (hΓ.optInT y) (hΔ₁.optInT (ι₁ y)) hΔz
+          (Subst.sim_optInT_comp hθ₁ hc₁ hθ₂ hc₂ hs hX hx₁ hw₂ hw₃) φ)
+      exact key (ι₃ y) hι _ _ _ _
   | _, _, _, _, _, _, _, _, _, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, _, _, _, hs,
       .here hT s t =>
       WFF.here_congr hT (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs s)

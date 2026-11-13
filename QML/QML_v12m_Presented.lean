@@ -132,7 +132,9 @@ theorem views_optIn_false (hO : ModalSys.Opt = false) {e : CtxExpr} {k : WitKind
   · change e.denote.wit y = some X at hX
     rw [wit_none hO y e] at hX
     cases hX
-  · exact Ctx.witT_stage hX
+  · obtain ⟨-, hO', -⟩ := Ctx.witT_spec hX
+    rw [hO] at hO'
+    cases hO'
 
 /-- A presentation built the way the proof rules build one: non-shadowing, views at witnesses. -/
 def Wf (e : CtxExpr) : Prop := e.Fresh ∧ e.Views

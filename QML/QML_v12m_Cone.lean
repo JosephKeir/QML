@@ -737,7 +737,7 @@ theorem sat_cone [ModalSys.NoOpt] (hFV : ModalSys.Five = true → ModalSys.Four 
   | _, _, _, _, _, _, .link hV hF _ _ => flagElim hF (hFV hV)
   | _, _, _, _, _, _, .linkx hV hF _ _ _ _ => flagElim hF (hFV hV)
   | _, _, _, _, _, _, .optx hO .arrow _ _ _ => absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
-  | _, _, _, _, _, _, .optx _ .ident _ hyI _ => (hyI.elim fun _ h => Ctx.witT_stage h).elim
+  | _, _, _, _, _, _, .optx hO .ident _ _ _ => absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
 
 variable (c hT hB hS hInd) in
 /-- ⭐The cone is a model proper: its `Ind` is equality. -/

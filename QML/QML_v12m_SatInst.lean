@@ -140,6 +140,12 @@ theorem sat_weaken_restrict {Γ : Ctx} {d : ℕ} {w : M.frame.W} {r : Root}
     M.sat env (WFF.weaken hr T φ) ↔ M.sat (env.restrict (Ctx.le_insert hr T)) φ :=
   sat_mono (Env.agree_restrict _ env) φ fun _ _ _ _ => rfl
 
+/-! ## Identity contents under restriction (M2, docs §12.30) -/
+
+theorem Env.OpenedT.restrict {Γ Γ' : Ctx} (h : Γ.Le Γ') {w : M.frame.W} {env : M.Env Γ' w}
+    (hop : env.OpenedT) : (env.restrict h).OpenedT :=
+  Env.OpenedT.mono (Env.agree_restrict h env) hop
+
 end Model
 
 end V12M

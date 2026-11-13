@@ -153,7 +153,9 @@ include hO in
 theorem provable_iff_valid {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
     Provable Δ φ ↔ ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
       Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ :=
-  ⟨fun ⟨p⟩ M hM _ env => Model.soundness p M hM env (Ctx.Presented.tame Γ),
+  ⟨fun ⟨p⟩ M hM _ env hnp =>
+    Model.soundness p M hM env (Ctx.Presented.tame Γ) hnp
+      (env.openedT_off fun h => absurd (ModalSys.noOpt_of_T h.1) (by rw [hO]; decide)),
     completeness hO⟩
 
 end OCanon

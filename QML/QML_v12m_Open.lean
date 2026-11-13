@@ -62,6 +62,24 @@ theorem renW_optIn {Γ : Ctx} {θ : Subst σ Δ} (hw : RenW Γ θ) (y : VarSymb)
   rw [hw hO y' X hy]
   rfl
 
+theorem renW_optInT {Γ : Ctx} {θ : Subst σ Δ} (hw : RenW Γ θ) (y : VarSymb) :
+    RenW (Γ.optInT y) (θ.optInT y y) := fun hO y' X hy => by
+  change (θ.wit y').mono (Ctx.le_optInT Δ y) = _
+  rw [hw hO y' X hy]
+  rfl
+
+theorem ren_optInT {Γ : Ctx} {θ : Subst σ Δ} (hid : ∀ v T, Γ.ref v = some T → θ.at v = .ren v)
+    {y : VarSymb} {X : VarType} (hy : Γ.witT y = some X) :
+    ∀ v U, (Γ.optInT y).ref v = some U → (θ.optInT y y).at v = .ren v :=
+  at_ren_of fun v U hlp hv => by
+    by_cases hc : v = .step y .at
+    · subst hc
+      rw [optInT_content, hid y _ (Ctx.witT_spec hy).2.2]
+      rfl
+    · rw [Ctx.optInT_ne hc] at hv
+      rw [optInT_ne θ y hc, ← Subst.at_nonproj θ hlp, hid v U ((Ctx.ref_nonproj Γ hlp).trans hv)]
+      rfl
+
 theorem ren_optIn {Γ : Ctx} {θ : Subst σ Δ} (hid : ∀ v T, Γ.ref v = some T → θ.at v = .ren v)
     (hw : RenW Γ θ) (hO : ModalSys.Opt = true) {y : VarSymb} {X : VarType}
     (hy : Γ.wit y = some X) :
@@ -149,8 +167,24 @@ theorem WFF.subst_ren {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ :
           (WFF.subst_ren (hle.optIn y) (θ.optIn y y) p q _ _ (Subst.ren_optIn hid hw hO hX) φ
             (Subst.renW_optIn hw y))
       exact key (ι y) hιy.symm _ _ _ _
-  | _, _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _, _ =>
-      (hyI.elim fun _ h => Ctx.witT_stage h).elim
+  | ι, Γ, Δ, d, hle, θ, hθ, hc, hΓ, hΔ, hid, .optx hO .ident y hy φ, hw => by
+      obtain ⟨X, hX⟩ := hy
+      have hr := (Ctx.witT_spec hX).2.2
+      have hιy : ι y = y := by
+        have h₁ := hc y _ hr []
+        rw [hid y _ hr] at h₁
+        exact h₁.symm
+      have key : ∀ (z : VarSymb) (_hz : y = z) (P : ∃ Z, Δ.witT z = some Z)
+          (p : Subst.Ok (Γ.optInT y) (θ.optInT y z))
+          (q : Subst.Coh ι (Γ.optInT y) (θ.optInT y z)) (hΔ' : (Δ.optInT z).SlotsFrom d),
+          WFF.optx hO .ident z P (WFF.subst ι (θ.optInT y z) p q (hΓ.optInT y) hΔ' φ) =
+            WFF.mono hle (WFF.optx hO .ident y ⟨X, hX⟩ φ) := by
+        intro z hz P p q hΔ'
+        subst hz
+        exact congrArg (WFF.optx hO .ident y _)
+          (WFF.subst_ren (hle.optInT y) (θ.optInT y y) p q _ _ (Subst.ren_optInT hid hX) φ
+            (Subst.renW_optInT hw y))
+      exact key (ι y) hιy.symm _ _ _ _
   | _, _, _, _, hle, θ, hθ, hc, _, _, hid, .here hT s t, hw =>
       WFF.here_congr hT (Term.subst_ren hle θ hθ hc hid s)
         (Term.subst_ren hle θ hθ hc hid t)

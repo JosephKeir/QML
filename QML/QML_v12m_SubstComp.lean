@@ -44,47 +44,6 @@ mutual
     termination_by structural _ _ t => t
 end
 
-/-! ## Collapsing commutes with weakening -/
-
-mutual
-  theorem Func.collapse_mono {σ : Signature} {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx}
-      (h : Ctx.Collapses k Γ₁ Γ₂) (h' : Ctx.Collapses k Γ₁' Γ₂') (l₁ : Γ₁.Le Γ₁')
-      (l₂ : Γ₂.Le Γ₂') :
-      {n : ℕ} → (f : Func σ Γ₁ n) →
-      Func.collapse h' (Func.mono l₁ f) = Func.mono l₂ (Func.collapse h f)
-    | _, .F _ => rfl
-    | _, .eval g t => by
-        change Func.eval (Func.collapse h' (Func.mono l₁ g)) (Term.collapse h' (Term.mono l₁ t)) = _
-        rw [Func.collapse_mono h h' l₁ l₂ g, Term.collapse_mono h h' l₁ l₂ t]
-        rfl
-    termination_by structural _ f => f
-
-  theorem Term.collapse_mono {σ : Signature} {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx}
-      (h : Ctx.Collapses k Γ₁ Γ₂) (h' : Ctx.Collapses k Γ₁' Γ₂') (l₁ : Γ₁.Le Γ₁')
-      (l₂ : Γ₂.Le Γ₂') :
-      {T : VarType} → {a : Ann T} → (t : Term σ Γ₁ T a) →
-      Term.collapse h' (Term.mono l₁ t) = Term.mono l₂ (Term.collapse h t)
-    | _, _, .var _ _ => rfl
-    | _, _, .func f => by
-        change Term.func (Func.collapse h' (Func.mono l₁ f)) = _
-        rw [Func.collapse_mono h h' l₁ l₂ f]
-        rfl
-    | _, _, .unit => rfl
-    | _, _, .pair s t => by
-        change Term.pair (Term.collapse h' (Term.mono l₁ s)) (Term.collapse h' (Term.mono l₁ t)) = _
-        rw [Term.collapse_mono h h' l₁ l₂ s, Term.collapse_mono h h' l₁ l₂ t]
-        rfl
-    | _, _, .boxtm t => by
-        change Term.boxtm (Term.collapse h'.boxIn (Term.mono l₁.boxIn t)) = _
-        rw [Term.collapse_mono h.boxIn h'.boxIn l₁.boxIn l₂.boxIn t]
-        rfl
-    | _, _, .diatm x _ t => by
-        change Term.diatm _ _ (Term.collapse (h'.diaIn x) (Term.mono (l₁.diaIn x) t)) = _
-        rw [Term.collapse_mono (h.diaIn x) (h'.diaIn x) (l₁.diaIn x) (l₂.diaIn _) t]
-        rfl
-    termination_by structural _ _ t => t
-end
-
 /-! ## Shifting commutes with weakening -/
 
 mutual
@@ -129,27 +88,6 @@ end
 namespace SubE
 
 variable {σ : Signature}
-
-theorem proj_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') :
-    ∀ (e : SubE σ Δ) (s : Step), (e.mono h).proj s = (e.proj s).mono h
-  | .hide, _ => rfl
-  | .ren _, _ => rfl
-  | .tm t, s => by
-      cases t with
-      | boxtm t =>
-          cases s with
-          | here =>
-              change (SubE.tm (Term.boxtm (Term.mono h.boxIn t))).proj .here =
-                ((SubE.tm (Term.boxtm t)).proj .here).mono h
-              by_cases hT : ModalSys.T = true
-              · rw [proj_boxtm_here _ hT, proj_boxtm_here _ hT]
-                exact congrArg SubE.tm (Term.collapse_mono _ _ h.boxIn h t)
-              · rw [show (SubE.tm (Term.boxtm (Term.mono h.boxIn t))).proj .here = .hide from
-                    dif_neg hT,
-                  show (SubE.tm (Term.boxtm t)).proj .here = .hide from dif_neg hT]
-                rfl
-          | _ => rfl
-      | _ => cases s <;> rfl
 
 theorem unbox_mono {Δ Δ' : Ctx} (h : Δ.Le Δ') :
     ∀ (e : SubE σ Δ), (e.mono h).unbox = e.unbox.mono h.boxIn
@@ -318,8 +256,13 @@ theorem WFF.subst_mono {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Γ'
           (hy'.elim fun X hX => Subst.ok_optIn hθ hO hX (hc.wit hO y X hX []))
           (hy'.elim fun _ hX => Subst.coh_optIn hθ hc hO hX)
           (hΓ.optIn y) (hΓ'.optIn y) (hΔ.optIn (ι y)) φ)
-  | _, _, _, _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _ =>
-      (hyI.elim fun _ h => Ctx.witT_stage h).elim
+  | ι, _, Γ', _, _, _, h, θ, hθ, hc, hΓ, hΓ', hΔ, .optx hO .ident y hy φ =>
+      have hy' : ∃ X, Γ'.witT y = some X := hy.imp fun _ hX => h.witT hX
+      congrArg (WFF.optx hO .ident (ι y) _)
+        (WFF.subst_mono (h.optInT y) (θ.optInT y (ι y))
+          (hy'.elim fun _ hX => Subst.ok_optInT hθ hX (hc y _ (Ctx.witT_spec hX).2.2 []))
+          (hy'.elim fun _ hX => Subst.coh_optInT hθ hc hX)
+          (hΓ.optInT y) (hΓ'.optInT y) (hΔ.optInT (ι y)) φ)
   | _, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .here hT s t =>
       WFF.here_congr' hT (Term.subst_mono h θ hθ hc s) (Term.subst_mono h θ hθ hc t)
   | _, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .back hB L s t =>

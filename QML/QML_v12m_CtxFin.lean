@@ -162,6 +162,15 @@ theorem Fin.optIn {Γ : Ctx} (h : Γ.Fin) (y : VarSymb) : (Γ.optIn y).Fin := by
     change (Γ.optIn y v).isSome at hv
     rwa [Ctx.optIn_ne hc] at hv
 
+theorem Fin.optInT {Γ : Ctx} (h : Γ.Fin) (y : VarSymb) : (Γ.optInT y).Fin := by
+  refine (Set.Finite.insert (VarSymb.step y .at) h).subset ?_
+  intro v hv
+  by_cases hc : v = .step y .at
+  · exact Or.inl hc
+  · right
+    change (Γ.optInT y v).isSome at hv
+    rwa [Ctx.optInT_ne hc] at hv
+
 end Ctx
 
 theorem CtxExpr.fin : ∀ e : CtxExpr, e.denote.Fin
@@ -170,7 +179,7 @@ theorem CtxExpr.fin : ∀ e : CtxExpr, e.denote.Fin
   | .boxIn e => (CtxExpr.fin e).boxIn
   | .diaIn e x => (CtxExpr.fin e).diaIn x
   | .optIn e .arrow y => (CtxExpr.fin e).optIn y
-  | .optIn e .ident _ => by simp only [CtxExpr.denote, Ctx.optInK_ident]; exact CtxExpr.fin e
+  | .optIn e .ident y => (CtxExpr.fin e).optInT y
 
 /-- ⭐Every presented context is finite. -/
 theorem Ctx.Presented.fin (Γ : Ctx) [h : Γ.Presented] : Γ.Fin :=
@@ -225,26 +234,57 @@ theorem Tame.optIn {Γ : Ctx} (h : Γ.Tame) (y : VarSymb) : (Γ.optIn y).Tame :=
     ⟨_, Ctx.levelDepth_optIn hd hw y, Ctx.witDepth_optIn hw y⟩,
     h.2.2.imp id fun hn u => (Ctx.optIn_ne (fun he => by cases he)).trans (hn u)⟩
 
+/-- The identity view is tame: its content is at its possible object's depth, and declaring it
+    needs `Opt`. -/
+theorem Tame.optInT {Γ : Ctx} (h : Γ.Tame) (y : VarSymb) : (Γ.optInT y).Tame :=
+  ⟨h.1.optInT y, h.2.1.elim fun _ ⟨hd, hw⟩ =>
+    ⟨_, Ctx.levelDepth_optInT hd y, Ctx.witDepth_optInT hw y⟩, by
+    cases hO : ModalSys.Opt
+    · refine Or.inr fun u => ?_
+      have hn := h.2.2.resolve_left (by rw [hO]; decide) u
+      by_cases hc : VarSymb.step u .at = .step y .at
+      · obtain rfl : u = y := (VarSymb.step.inj hc).1
+        have hw : Γ.witT u = none :=
+          Option.eq_none_iff_forall_ne_some.mpr fun _ h' => by
+            rw [(Ctx.witT_spec h').2.1] at hO; cases hO
+        rw [Ctx.optInT_content_none hw]; exact hn
+      · rw [Ctx.optInT_ne hc]; exact hn
+    · exact Or.inl hO⟩
+
 end Ctx
 
-/-- No presentation declares a content at the identity arrow. -/
-theorem CtxExpr.at_none : ∀ (e : CtxExpr) (u : VarSymb), e.denote (.step u .at) = none
+/-- With `Opt` off, no presentation declares a content at the identity arrow. -/
+theorem CtxExpr.at_none (hO : ModalSys.Opt = false) :
+    ∀ (e : CtxExpr) (u : VarSymb), e.denote (.step u .at) = none
   | .empty, _ => rfl
   | .insertFree e _ _, u => by
       change (Ctx.insert _ _ _) (.step u .at) = none
       rw [Ctx.insert_apply, if_neg (fun he => by cases he)]
       split_ifs
       · rfl
-      · exact CtxExpr.at_none e u
+      · exact CtxExpr.at_none hO e u
   | .boxIn _, _ => rfl
   | .diaIn _ _, _ => rfl
-  | .optIn e .arrow _, u => (Ctx.optIn_ne (fun he => by cases he)).trans (CtxExpr.at_none e u)
-  | .optIn e .ident _, u => by
-      simp only [CtxExpr.denote, Ctx.optInK_ident]; exact CtxExpr.at_none e u
+  | .optIn e .arrow _, u => (Ctx.optIn_ne (fun he => by cases he)).trans (CtxExpr.at_none hO e u)
+  | .optIn e .ident y, u => by
+      change (e.denote.optInT y) (.step u .at) = none
+      by_cases hc : VarSymb.step u .at = .step y .at
+      · obtain rfl : u = y := (VarSymb.step.inj hc).1
+        have hw : e.denote.witT u = none :=
+          Option.eq_none_iff_forall_ne_some.mpr fun _ h' => by
+            rw [(Ctx.witT_spec h').2.1] at hO; cases hO
+        rw [Ctx.optInT_content_none hw]; exact CtxExpr.at_none hO e u
+      · rw [Ctx.optInT_ne hc]; exact CtxExpr.at_none hO e u
+
+/-- Every presentation has `Ctx.AtOK`. -/
+theorem CtxExpr.atOK (e : CtxExpr) : e.denote.AtOK := by
+  cases hO : ModalSys.Opt
+  · exact Or.inr (CtxExpr.at_none hO e)
+  · exact Or.inl hO
 
 /-- ⭐Every presented context is tame. -/
 theorem Ctx.Presented.tame (Γ : Ctx) [h : Γ.Presented] : Γ.Tame :=
   ⟨Ctx.Presented.fin Γ, h.denote_eq ▸ h.expr.levelDepth h.fresh,
-    Or.inr fun u => h.denote_eq ▸ CtxExpr.at_none h.expr u⟩
+    h.denote_eq ▸ CtxExpr.atOK h.expr⟩
 
 end V12M

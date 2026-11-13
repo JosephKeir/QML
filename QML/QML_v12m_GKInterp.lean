@@ -103,8 +103,8 @@ theorem WFF.occ_subst (r : σ.RelSyms) : ∀ {ι : VarSymb → VarSymb} {Γ Δ :
       simp only [WFF.subst, WFF.Occ]; rw [WFF.occ_subst r _ _ _ _ _ Φ]
   | _, _, _, _, _, _, _, _, _, _, .optx _ .arrow _ _ φ => by
       simp only [WFF.subst, WFF.Occ]; rw [WFF.occ_subst r _ _ _ _ _ φ]
-  | _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _ =>
-      (hyI.elim fun _ h => Ctx.witT_stage h).elim
+  | _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ _ φ => by
+      simp only [WFF.subst, WFF.Occ]; rw [WFF.occ_subst r _ _ _ _ _ φ]
 
 /-- Weakening keeps the relation symbols. -/
 theorem WFF.occ_mono (r : σ.RelSyms) : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (φ : WFF σ Γ d),

@@ -250,6 +250,266 @@ theorem Env.CollapseAgree.extend (hag : Env.CollapseAgree h env₁ env₂) {r : 
     rw [Env.extend_ne env₁ r o hv hvr hv', ← Env.ref_of_nonproj env₁ hlp href hv', hag v U href,
       Env.ref_extend_ne env₂ o _ (h v U href) (by rwa [VarSymb.collapse_rt])]
 
+/-! ## Environments respecting their contents (M2, docs §12.30) -/
+
+/-- Into the view of a witness, an environment respecting it agrees with itself. -/
+theorem Env.agree_optPush {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w)
+    {z : VarSymb} {Z : VarType} (hz : Δ.wit z = some Z) (hd : (env.wit z Z hz).Dom) :
+    Env.Agree (Ctx.le_optIn Δ z) env (env.optPush z hz hd) := by
+  intro v T hv
+  by_cases hvz : v = .step z .dia
+  · subst hvz
+    have hTZ : T = Z := by
+      rcases Δ.wit_dia z Z hz with h' | h'
+      · rw [h'] at hv
+        cases hv
+      · rw [h'] at hv
+        exact (Option.some.inj hv).symm
+    subst hTZ
+    obtain ⟨hd', he⟩ := env.opened z T hz hv
+    rw [he]
+    change _ = (if hv' : VarSymb.step z .dia = .step z .dia then _ else _)
+    rw [dif_pos rfl]
+  · change _ = (if hv' : v = .step z .dia then _ else _)
+    rw [dif_neg hvz]
+
+theorem Env.agree_extend {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) {r : Root}
+    (h : Δ (.root r) = none) {T : VarType} (o : M.frame.Dom T w) :
+    Env.Agree (Ctx.le_insert h T) env (env.extend r o) := fun v U hv =>
+  (Env.extend_ne env r o _ (fun he => by subst he; rw [h] at hv; cases hv) hv).symm
+
+
+/-- Without T and `Opt` together there is no identity content to respect. -/
+theorem Env.openedT_off {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w)
+    (h : ¬ (ModalSys.T = true ∧ ModalSys.Opt = true)) : env.OpenedT :=
+  fun _ _ hz _ => absurd ⟨(Ctx.witT_spec hz).1, (Ctx.witT_spec hz).2.1⟩ h
+
+/-- With `Opt` off there is no identity content to respect. -/
+theorem Env.openedT_noOpt [ModalSys.NoOpt] {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
+    env.OpenedT :=
+  env.openedT_off fun h => absurd h.2 (by rw [ModalSys.NoOpt.noOpt]; decide)
+
+theorem Env.OpenedT.extend {Γ : Ctx} {w : M.frame.W} {env : M.Env Γ w} (hop : env.OpenedT)
+    {r : Root} (h : Γ (.root r) = none) {T : VarType} (o : M.frame.Dom T w) :
+    (env.extend r o).OpenedT :=
+  Env.OpenedT.of_agree (Env.agree_extend env h o)
+    (fun _ _ hv => Ctx.insert_ne_some hv (fun he => by cases he)) hop
+
+theorem Env.openedT_boxPush {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (w' : M.frame.Acc w) :
+    (env.boxPush w').OpenedT := fun _ _ _ hv => by cases hv
+
+theorem Env.openedT_diaPush {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (x : VarSymb)
+    {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) (w' : (M.posEval (env.ref x hx)).1) :
+    (env.diaPush x hx w').OpenedT := fun _ _ _ hv => by cases hv
+
+theorem Env.OpenedT.optPush {Γ : Ctx} {w : M.frame.W} {env : M.Env Γ w} (hop : env.OpenedT)
+    {y : VarSymb} {X : VarType} (hy : Γ.wit y = some X) (hd : (env.wit y X hy).Dom) :
+    (env.optPush y hy hd).OpenedT :=
+  Env.OpenedT.of_agree (Env.agree_optPush env hy hd)
+    (fun _ _ hv => by rwa [Ctx.optIn_ne (fun he => by cases he)] at hv) hop
+
+/-- Into the identity view, an environment respecting its identity contents agrees with itself. -/
+theorem Env.agree_optPushT {Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (hop : env.OpenedT)
+    {z : VarSymb} {Z : VarType} (hz : Δ.witT z = some Z) (hd : (env.witT z hz).Dom) :
+    Env.Agree (Ctx.le_optInT Δ z) env (env.optPushT z hz hd) := by
+  intro v T hv
+  by_cases hvz : v = .step z .at
+  · subst hvz
+    have h₁ := Ctx.refAll_of_ref Δ z (Ctx.witT_spec hz).2.2
+    rw [Δ.at_coh z _ hv] at h₁
+    cases h₁
+    obtain ⟨hd', he⟩ := hop z _ hz hv
+    rw [he]
+    change _ = (if hv' : VarSymb.step z .at = .step z .at then _ else _)
+    rw [dif_pos rfl]
+  · change _ = (if hv' : v = .step z .at then _ else _)
+    rw [dif_neg hvz]
+
+/-- The identity view respects its identity contents: the new one by construction. -/
+theorem Env.OpenedT.optPushT {Γ : Ctx} {w : M.frame.W} {env : M.Env Γ w} (hop : env.OpenedT)
+    {y : VarSymb} {X : VarType} (hy : Γ.witT y = some X) (hd : (env.witT y hy).Dom) :
+    (env.optPushT y hy hd).OpenedT := by
+  have hag := Env.agree_optPushT env hop hy hd
+  intro z Z hz hv
+  by_cases hzy : z = y
+  · subst hzy
+    have hZX : X = Z := Option.some.inj (((Ctx.le_optInT Γ z).witT hy).symm.trans hz)
+    subst hZX
+    have he := Env.witT_agree hag hy hz
+    refine ⟨he.symm ▸ hd, ?_⟩
+    change (if hv' : VarSymb.step z .at = .step z .at then _ else _) = _
+    rw [dif_pos rfl]
+    exact (Part.get_eq_of_mem (he.symm ▸ Part.get_mem hd) _).symm
+  · have hne : VarSymb.step z .at ≠ .step y .at := fun he => hzy (by cases he; rfl)
+    exact hop.of_agree_at hag hz hv (by rwa [Ctx.optInT_ne hne] at hv)
+
+/-! ## Witnesses across a collapse (M2, docs §12.30) -/
+
+/-- ⭐**What a collapse needs with `Opt` on**, beyond the objects: along the collapsed arrow a
+    witness's value is the identity witness's (`◇⁰_y` collapses to `◇⁰ᵀ_y`), further in the
+    collapsed witness's; and the target respects its identity contents and has no slot from `d`
+    on (so its own insertions are fresh). -/
+structure Env.CollapseOpt {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Ctx.Collapses k Γ₁ Γ₂) (d : ℕ)
+    {w : M.frame.W} (env₁ : M.Env Γ₁ w) (env₂ : M.Env Γ₂ w) : Prop where
+  zero : ∀ y X (hy : Γ₁.wit y = some X) (hk : k = 0),
+    env₁.wit y X hy = env₂.witT y ((h.wit y X hy).1 hk)
+  succ : ∀ y X (hy : Γ₁.wit y = some X) k' (hk : k = k' + 1),
+    env₁.wit y X hy = env₂.wit (y.collapse k') X ((h.wit y X hy).2 k' hk)
+  opened : env₂.OpenedT
+  slots : Γ₂.SlotsFrom d
+
+theorem Env.CollapseOpt.boxPush {d : ℕ} (hag : Env.CollapseAgree h env₁ env₂)
+    (ho : Env.CollapseOpt h d env₁ env₂) (w' : M.frame.Acc w) :
+    Env.CollapseOpt h.boxIn d (env₁.boxPush w') (env₂.boxPush w') where
+  zero _ _ _ hk := absurd hk (Nat.succ_ne_zero k)
+  succ y X hy k' hk := by
+    obtain rfl : k = k' := Nat.succ.inj hk
+    change posPart (env₁.ref y _) w' = posPart (env₂.ref (y.collapse k) _) w'
+    rw [hag y _ (Ctx.boxIn_wit.mp hy).2]
+  opened := env₂.openedT_boxPush w'
+  slots := ho.slots.boxIn
+
+theorem Env.CollapseOpt.diaPush {d : ℕ} (hag : Env.CollapseAgree h env₁ env₂)
+    (ho : Env.CollapseOpt h d env₁ env₂) {x : VarSymb} {X : VarType}
+    (hr : Γ₁.ref x = some (.VTypeDia X)) (w₁ : (M.posEval (env₁.ref x hr)).1)
+    (hm : w₁.1 ∈ (M.posEval (env₂.ref (x.collapse k) (h x _ hr))).1) :
+    Env.CollapseOpt (h.diaIn x) d (env₁.diaPush x hr w₁)
+      (env₂.diaPush (x.collapse k) (h x _ hr) ⟨w₁.1, hm⟩) where
+  zero _ _ _ hk := absurd hk (Nat.succ_ne_zero k)
+  succ y X hy k' hk := by
+    obtain rfl : k = k' := Nat.succ.inj hk
+    change posPart (env₁.ref y _) w₁.1 = posPart (env₂.ref (y.collapse k) _) w₁.1
+    rw [hag y _ (Ctx.boxIn_wit.mp hy).2]
+  opened := env₂.openedT_diaPush _ _ _
+  slots := ho.slots.diaIn _
+
+theorem Env.CollapseOpt.extend {d d' : ℕ} (ho : Env.CollapseOpt h d env₁ env₂) {r : Root}
+    (hr : Γ₁.RootFresh r) (hr₂ : Γ₂ (.root r) = none) {T : VarType}
+    (hs' : (Γ₂.insert r T).SlotsFrom d') (o : M.frame.Dom T w) :
+    Env.CollapseOpt (h.insert hr T) d' (env₁.extend r o) (env₂.extend r o) where
+  zero y X hy hk := (ho.zero y X hy hk).trans
+    (Env.witT_agree (Env.agree_extend env₂ hr₂ o) _ _).symm
+  succ y X hy k' hk := ho.succ y X hy k' hk
+  opened := ho.opened.extend hr₂ o
+  slots := hs'
+
+theorem Env.CollapseAgree.optPush_succ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses (k + 1) Γ₁ Γ₂}
+    {env₁ : M.Env Γ₁ w} {env₂ : M.Env Γ₂ w} {d : ℕ} (hag : Env.CollapseAgree h env₁ env₂)
+    (ho : Env.CollapseOpt h d env₁ env₂) {y : VarSymb} {X : VarType} (hy : Γ₁.wit y = some X)
+    (hd₁ : (env₁.wit y X hy).Dom) (hd₂ : (env₂.wit (y.collapse k) X ((h.wit y X hy).2 k rfl)).Dom) :
+    Env.CollapseAgree (h.optIn_succ hy) (env₁.optPush y hy hd₁)
+      (env₂.optPush (y.collapse k) ((h.wit y X hy).2 k rfl) hd₂) := by
+  have he := ho.succ y X hy k rfl
+  refine Env.CollapseAgree.of_raw ?_
+  intro v T hlp hv
+  by_cases hc : v = .step y .dia
+  · subst hc
+    have hXT : X = T := by rw [Ctx.optIn_content hy] at hv; exact Option.some.inj hv
+    subst hXT
+    rw [Env.ref_congr _ (VarSymb.collapse_level_succ (s := .dia) rfl) _
+        ((Ctx.ref_nonproj _ rfl).trans (Ctx.optIn_content ((h.wit y X hy).2 k rfl))), Env.ref,
+      dif_neg (by decide : ¬ Step.dia.isStruct = true)]
+    change (if hv' : VarSymb.step y .dia = .step y .dia then _ else _) =
+      (if hv' : VarSymb.step (y.collapse k) .dia = .step (y.collapse k) .dia then _ else _)
+    rw [dif_pos rfl, dif_pos rfl]
+    exact (Part.get_eq_of_mem (he ▸ Part.get_mem hd₁) hd₂).symm
+  · have hv₁ : Γ₁ v = some T := by rwa [Ctx.optIn_ne hc] at hv
+    change (if hv' : v = .step y .dia then _ else _) = _
+    rw [dif_neg hc]
+    have href : Γ₁.ref v = some T := (Ctx.ref_nonproj Γ₁ hlp).trans hv₁
+    rw [← Env.ref_of_nonproj env₁ hlp href hv₁, hag v T href]
+    exact Env.ref_agree (Env.agree_optPush env₂ _ hd₂) _ (h v T href)
+
+theorem Env.CollapseOpt.optPush_succ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses (k + 1) Γ₁ Γ₂}
+    {env₁ : M.Env Γ₁ w} {env₂ : M.Env Γ₂ w} {d : ℕ} (ho : Env.CollapseOpt h d env₁ env₂)
+    {y : VarSymb} {X : VarType} (hy : Γ₁.wit y = some X) (hd₁ : (env₁.wit y X hy).Dom)
+    (hd₂ : (env₂.wit (y.collapse k) X ((h.wit y X hy).2 k rfl)).Dom) :
+    Env.CollapseOpt (h.optIn_succ hy) d (env₁.optPush y hy hd₁)
+      (env₂.optPush (y.collapse k) ((h.wit y X hy).2 k rfl) hd₂) where
+  zero _ _ _ hk := absurd hk (Nat.succ_ne_zero k)
+  succ y' X' hy' k' hk := ho.succ y' X' hy' k' hk
+  opened := ho.opened.optPush _ hd₂
+  slots := ho.slots.optIn _
+
+theorem Env.CollapseAgree.optPush_zero {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses 0 Γ₁ Γ₂}
+    {env₁ : M.Env Γ₁ w} {env₂ : M.Env Γ₂ w} {d : ℕ} (hag : Env.CollapseAgree h env₁ env₂)
+    (ho : Env.CollapseOpt h d env₁ env₂) (hO : ModalSys.Opt = true) {y : VarSymb} {X : VarType}
+    (hy : Γ₁.wit y = some X) (hd₁ : (env₁.wit y X hy).Dom)
+    (hd₂ : (env₂.witT y ((h.wit y X hy).1 rfl)).Dom) :
+    Env.CollapseAgree (h.optIn_zero hO hy) (env₁.optPush y hy hd₁)
+      (env₂.optPushT y ((h.wit y X hy).1 rfl) hd₂) := by
+  have he := ho.zero y X hy rfl
+  refine Env.CollapseAgree.of_raw ?_
+  intro v T hlp hv
+  by_cases hc : v = .step y .dia
+  · subst hc
+    have hXT : X = T := by rw [Ctx.optIn_content hy] at hv; exact Option.some.inj hv
+    subst hXT
+    rw [Env.ref_congr _ (VarSymb.collapse_dia_zero_opt hO) _
+        ((Ctx.ref_nonproj _ rfl).trans (Ctx.optInT_content ((h.wit y X hy).1 rfl))), Env.ref,
+      dif_neg (by decide : ¬ Step.at.isStruct = true)]
+    change (if hv' : VarSymb.step y .dia = .step y .dia then _ else _) =
+      (if hv' : VarSymb.step y .at = .step y .at then _ else _)
+    rw [dif_pos rfl, dif_pos rfl]
+    exact (Part.get_eq_of_mem (he ▸ Part.get_mem hd₁) hd₂).symm
+  · have hv₁ : Γ₁ v = some T := by rwa [Ctx.optIn_ne hc] at hv
+    change (if hv' : v = .step y .dia then _ else _) = _
+    rw [dif_neg hc]
+    have href : Γ₁.ref v = some T := (Ctx.ref_nonproj Γ₁ hlp).trans hv₁
+    rw [← Env.ref_of_nonproj env₁ hlp href hv₁, hag v T href]
+    exact Env.ref_agree (Env.agree_optPushT env₂ ho.opened _ hd₂) _ (h v T href)
+
+theorem Env.CollapseOpt.optPush_zero {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses 0 Γ₁ Γ₂}
+    {env₁ : M.Env Γ₁ w} {env₂ : M.Env Γ₂ w} {d : ℕ} (ho : Env.CollapseOpt h d env₁ env₂)
+    (hO : ModalSys.Opt = true) {y : VarSymb} {X : VarType} (hy : Γ₁.wit y = some X)
+    (hd₁ : (env₁.wit y X hy).Dom) (hd₂ : (env₂.witT y ((h.wit y X hy).1 rfl)).Dom) :
+    Env.CollapseOpt (h.optIn_zero hO hy) d (env₁.optPush y hy hd₁)
+      (env₂.optPushT y ((h.wit y X hy).1 rfl) hd₂) where
+  zero y' X' hy' hk := (ho.zero y' X' hy' hk).trans
+    (Env.witT_agree (Env.agree_optPushT env₂ ho.opened _ hd₂) _ _).symm
+  succ _ _ _ k' hk := absurd hk.symm (Nat.succ_ne_zero k')
+  opened := ho.opened.optPushT _ hd₂
+  slots := ho.slots.optInT _
+
+theorem Env.CollapseAgree.optPushT {d : ℕ} (hag : Env.CollapseAgree h env₁ env₂)
+    (ho : Env.CollapseOpt h d env₁ env₂) {y : VarSymb} {X : VarType} (hy : Γ₁.witT y = some X)
+    (hd₁ : (env₁.witT y hy).Dom) (hd₂ : (env₂.witT (y.collapse k) (h.witT hy)).Dom) :
+    Env.CollapseAgree (h.optInT hy) (env₁.optPushT y hy hd₁)
+      (env₂.optPushT (y.collapse k) (h.witT hy) hd₂) := by
+  have he : env₁.witT y hy = env₂.witT (y.collapse k) (h.witT hy) := by
+    unfold Env.witT
+    rw [hag y _ (Ctx.witT_spec hy).2.2]
+  refine Env.CollapseAgree.of_raw ?_
+  intro v T hlp hv
+  by_cases hc : v = .step y .at
+  · subst hc
+    have hXT : X = T := by rw [Ctx.optInT_content hy] at hv; exact Option.some.inj hv
+    subst hXT
+    rw [Env.ref_congr _ (VarSymb.collapse_proj (s := .at) rfl) _
+        ((Ctx.ref_nonproj _ rfl).trans (Ctx.optInT_content (h.witT hy))), Env.ref,
+      dif_neg (by decide : ¬ Step.at.isStruct = true)]
+    change (if hv' : VarSymb.step y .at = .step y .at then _ else _) =
+      (if hv' : VarSymb.step (y.collapse k) .at = .step (y.collapse k) .at then _ else _)
+    rw [dif_pos rfl, dif_pos rfl]
+    exact (Part.get_eq_of_mem (he ▸ Part.get_mem hd₁) hd₂).symm
+  · have hv₁ : Γ₁ v = some T := by rwa [Ctx.optInT_ne hc] at hv
+    change (if hv' : v = .step y .at then _ else _) = _
+    rw [dif_neg hc]
+    have href : Γ₁.ref v = some T := (Ctx.ref_nonproj Γ₁ hlp).trans hv₁
+    rw [← Env.ref_of_nonproj env₁ hlp href hv₁, hag v T href]
+    exact Env.ref_agree (Env.agree_optPushT env₂ ho.opened _ hd₂) _ (h v T href)
+
+theorem Env.CollapseOpt.optPushT {d : ℕ} (ho : Env.CollapseOpt h d env₁ env₂) {y : VarSymb}
+    {X : VarType} (hy : Γ₁.witT y = some X) (hd₁ : (env₁.witT y hy).Dom)
+    (hd₂ : (env₂.witT (y.collapse k) (h.witT hy)).Dom) :
+    Env.CollapseOpt (h.optInT hy) d (env₁.optPushT y hy hd₁)
+      (env₂.optPushT (y.collapse k) (h.witT hy) hd₂) where
+  zero y' X' hy' hk := (ho.zero y' X' hy' hk).trans
+    (Env.witT_agree (Env.agree_optPushT env₂ ho.opened _ hd₂) _ _).symm
+  succ y' X' hy' k' hk := ho.succ y' X' hy' k' hk
+  opened := ho.opened.optPushT _ hd₂
+  slots := ho.slots.optInT _
+
 omit [ModalSys] in
 /-- Two sections with the same extent and the same contents are equal. -/
 theorem sec_ext {α : Type*} {β : α → Type*} {E₁ E₂ : Set α} {f₁ : (b : E₁) → β b.1}
@@ -328,6 +588,47 @@ theorem Env.collapseAgree_self (hT : ModalSys.T = true) {Γ : Ctx} (env : M.Env 
   | .step _ .snd => cases hv
   | .step _ .dia => cases hv
   | .step _ .here => cases hv
+
+/-- ⭐Under T with `Opt`, the `◇_x` view at the identity arrow agrees with `x`'s identity view
+    across the collapse (`Ctx.collapses_diaIn_optInT`): a possible term's body read at the
+    current world. -/
+theorem Env.collapseAgree_diaIn_optInT (hT : ModalSys.T = true) (hO : ModalSys.Opt = true)
+    {Γ : Ctx} (env : M.Env Γ w) (hop : env.OpenedT) {x : VarSymb} {X : VarType}
+    (hr : Γ.ref x = some (.VTypeDia X))
+    (hm : M.frame.reflAcc hT w ∈ (M.posEval (env.ref x hr)).1)
+    (hd : (env.witT x (Ctx.witT_of hT hO hr)).Dom) :
+    Env.CollapseAgree (Ctx.collapses_diaIn_optInT hT hO Γ hr) (env.diaPush x hr ⟨_, hm⟩)
+      (env.optPushT x (Ctx.witT_of hT hO hr) hd) := by
+  refine Env.CollapseAgree.of_raw ?_
+  intro v T _ hv
+  match v with
+  | .step u .dia =>
+      have hux : u = x := by
+        change (if u = x then _ else none) = some T at hv
+        split_ifs at hv with h'
+        exact h'
+      subst hux
+      have hXT := Ctx.diaIn_step_dia hr hv
+      subst hXT
+      rw [Env.ref_congr _ (VarSymb.collapse_dia_zero_opt hO) _
+          ((Ctx.ref_nonproj _ rfl).trans (Ctx.optInT_content (Ctx.witT_of hT hO hr))), Env.ref,
+        dif_neg (by decide : ¬ Step.at.isStruct = true)]
+      change _ = (if hv' : VarSymb.step u .at = .step u .at then _ else _)
+      rw [dif_pos rfl]
+      rfl
+  | .step u .box =>
+      have hvb : Γ.boxIn (.step u .box) = some T := hv
+      have hrb : Γ.boxIn.ref (.step u .box) = some T := (Ctx.ref_nonproj _ rfl).trans hvb
+      have h₁ := Env.collapseAgree_self hT env (.step u .box) T hrb
+      rw [Env.ref_of_nonproj (env.boxPush (M.frame.reflAcc hT w)) rfl hrb hvb] at h₁
+      exact h₁.trans (Env.ref_agree (Env.agree_optPushT env hop _ hd) _ _)
+  | .step u .keep =>
+      exact absurd hO (by rw [ModalSys.noOpt_of_Four (Ctx.boxIn_keep (Γ := Γ) hv).1]; decide)
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .here => cases hv
+  | .step _ .at => cases hv
 
 end Model
 
@@ -555,29 +856,87 @@ theorem relSat_collapse {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses k Γ₁
 theorem sat_collapse : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses k Γ₁ Γ₂} {d : ℕ}
     {w : M.frame.W} {env₁ : M.Env Γ₁ w} {env₂ : M.Env Γ₂ w} (hs : Γ₁.SlotsFrom d),
     Env.CollapseAgree h env₁ env₂ → (φ : WFF σ Γ₁ d) →
+    (_ho : ModalSys.Opt = true → Env.CollapseOpt h d env₁ env₂ := by wit_triv) →
     (M.sat env₂ (WFF.collapse h hs φ) ↔ M.sat env₁ φ)
-  | _, _, _, _, _, _, _, _, _, hag, .atom ρ => relSat_collapse hag ρ Fin.elim0
-  | _, _, _, h, _, _, _, _, _, _, .optx hO _ _ _ _ =>
-      False.elim (by have := ModalSys.noOpt_of_T h.hT; rw [hO] at this; cases this)
-  | _, _, _, _, _, _, _, _, _, hag, .eq t s => by
+  | _, _, _, _, _, _, _, _, _, hag, .atom ρ, _ => relSat_collapse hag ρ Fin.elim0
+  | 0, _, _, h, _, _, env₁, env₂, hs, hag, .optx hO .arrow y hy φ, ho => by
+      have hO' := ho hO
+      obtain ⟨X₀, hy₀⟩ := hy
+      have he := hO'.zero y X₀ hy₀ rfl
+      constructor
+      · rintro ⟨X, h₂, hd, hsat⟩
+        obtain rfl : X₀ = X := Option.some.inj (((h.wit y X₀ hy₀).1 rfl).symm.trans h₂)
+        have hd₁ : (env₁.wit y X₀ hy₀).Dom := by rw [he]; exact hd
+        refine ⟨X₀, hy₀, hd₁, ?_⟩
+        exact (sat_collapse (hs.optIn y) (hag.optPush_zero hO' hO hy₀ hd₁ hd) φ
+          (fun _ => hO'.optPush_zero hO hy₀ hd₁ hd)).mp hsat
+      · rintro ⟨X, hy', hd₁, hsat⟩
+        obtain rfl : X₀ = X := Option.some.inj (hy₀.symm.trans hy')
+        have hd : (env₂.witT y ((h.wit y X₀ hy₀).1 rfl)).Dom := by rw [← he]; exact hd₁
+        refine ⟨X₀, (h.wit y X₀ hy₀).1 rfl, hd, ?_⟩
+        exact (sat_collapse (hs.optIn y) (hag.optPush_zero hO' hO hy₀ hd₁ hd) φ
+          (fun _ => hO'.optPush_zero hO hy₀ hd₁ hd)).mpr hsat
+  | k + 1, _, _, h, _, _, env₁, env₂, hs, hag, .optx hO .arrow y hy φ, ho => by
+      have hO' := ho hO
+      obtain ⟨X₀, hy₀⟩ := hy
+      have he := hO'.succ y X₀ hy₀ k rfl
+      constructor
+      · rintro ⟨X, h₂, hd, hsat⟩
+        obtain rfl : X₀ = X := Option.some.inj (((h.wit y X₀ hy₀).2 k rfl).symm.trans h₂)
+        have hd₁ : (env₁.wit y X₀ hy₀).Dom := by rw [he]; exact hd
+        refine ⟨X₀, hy₀, hd₁, ?_⟩
+        exact (sat_collapse (hs.optIn y) (hag.optPush_succ hO' hy₀ hd₁ hd) φ
+          (fun _ => hO'.optPush_succ hy₀ hd₁ hd)).mp hsat
+      · rintro ⟨X, hy', hd₁, hsat⟩
+        obtain rfl : X₀ = X := Option.some.inj (hy₀.symm.trans hy')
+        have hd : (env₂.wit (y.collapse k) X₀ ((h.wit y X₀ hy₀).2 k rfl)).Dom := by
+          rw [← he]; exact hd₁
+        refine ⟨X₀, (h.wit y X₀ hy₀).2 k rfl, hd, ?_⟩
+        exact (sat_collapse (hs.optIn y) (hag.optPush_succ hO' hy₀ hd₁ hd) φ
+          (fun _ => hO'.optPush_succ hy₀ hd₁ hd)).mpr hsat
+  | k, _, _, h, _, _, env₁, env₂, hs, hag, .optx hO .ident y hy φ, ho => by
+      have hO' := ho hO
+      obtain ⟨X₀, hy₀⟩ := hy
+      have he : env₁.witT y hy₀ = env₂.witT (y.collapse k) (h.witT hy₀) := by
+        unfold Env.witT
+        rw [hag y _ (Ctx.witT_spec hy₀).2.2]
+      constructor
+      · rintro ⟨X, h₂, hd, hsat⟩
+        obtain rfl : X₀ = X := Option.some.inj ((h.witT hy₀).symm.trans h₂)
+        have hd₁ : (env₁.witT y hy₀).Dom := by rw [he]; exact hd
+        refine ⟨X₀, hy₀, hd₁, ?_⟩
+        exact (sat_collapse (hs.optInT y) (hag.optPushT hO' hy₀ hd₁ hd) φ
+          (fun _ => hO'.optPushT hy₀ hd₁ hd)).mp hsat
+      · rintro ⟨X, hy', hd₁, hsat⟩
+        obtain rfl : X₀ = X := Option.some.inj (hy₀.symm.trans hy')
+        have hd : (env₂.witT (y.collapse k) (h.witT hy₀)).Dom := by rw [← he]; exact hd₁
+        refine ⟨X₀, h.witT hy₀, hd, ?_⟩
+        exact (sat_collapse (hs.optInT y) (hag.optPushT hO' hy₀ hd₁ hd) φ
+          (fun _ => hO'.optPushT hy₀ hd₁ hd)).mpr hsat
+  | _, _, _, _, _, _, _, _, _, hag, .eq t s, _ => by
       change interp _ (Term.collapse _ t) = interp _ (Term.collapse _ s) ↔ _
       rw [interp_collapse hag t, interp_collapse hag s]
       exact Iff.rfl
-  | _, _, _, _, _, _, _, _, _, _, .top => Iff.rfl
-  | _, _, _, _, _, _, _, _, _, _, .bot => Iff.rfl
-  | _, _, _, _, _, _, _, _, hs, hag, .and φ ψ =>
-      and_congr (sat_collapse hs hag φ) (sat_collapse hs hag ψ)
-  | _, _, _, _, _, _, _, _, hs, hag, .or φ ψ =>
-      or_congr (sat_collapse hs hag φ) (sat_collapse hs hag ψ)
-  | _, _, _, _, _, _, _, _, hs, hag, .imp φ ψ =>
-      imp_congr (sat_collapse hs hag φ) (sat_collapse hs hag ψ)
-  | _, _, _, _, _, _, _, _, hs, hag, .all _ φ =>
+  | _, _, _, _, _, _, _, _, _, _, .top, _ => Iff.rfl
+  | _, _, _, _, _, _, _, _, _, _, .bot, _ => Iff.rfl
+  | _, _, _, _, _, _, _, _, hs, hag, .and φ ψ, ho =>
+      and_congr (sat_collapse hs hag φ ho) (sat_collapse hs hag ψ ho)
+  | _, _, _, _, _, _, _, _, hs, hag, .or φ ψ, ho =>
+      or_congr (sat_collapse hs hag φ ho) (sat_collapse hs hag ψ ho)
+  | _, _, _, _, _, _, _, _, hs, hag, .imp φ ψ, ho =>
+      imp_congr (sat_collapse hs hag φ ho) (sat_collapse hs hag ψ ho)
+  | _, _, _, _, _, _, _, _, hs, hag, .all _ φ, ho =>
       forall_congr' fun o => sat_collapse (hs.insert _) (hag.extend (hs.rootFresh le_rfl) o) φ
-  | _, _, _, _, _, _, _, _, hs, hag, .ex _ φ =>
+        fun hO => (ho hO).extend (hs.rootFresh le_rfl) ((ho hO).slots.rootFresh le_rfl).root
+          ((ho hO).slots.insert _) o
+  | _, _, _, _, _, _, _, _, hs, hag, .ex _ φ, ho =>
       exists_congr fun o => sat_collapse (hs.insert _) (hag.extend (hs.rootFresh le_rfl) o) φ
-  | _, _, _, _, _, _, _, _, hs, hag, .box φ =>
+        fun hO => (ho hO).extend (hs.rootFresh le_rfl) ((ho hO).slots.rootFresh le_rfl).root
+          ((ho hO).slots.insert _) o
+  | _, _, _, _, _, _, _, _, hs, hag, .box φ, ho =>
       forall_congr' fun w' => sat_collapse hs.boxIn (hag.boxPush w') φ
-  | k, _, _, h, _, _, env₁, env₂, hs, hag, .dia x hx φ => by
+        fun hO => (ho hO).boxPush hag w'
+  | k, _, _, h, _, _, env₁, env₂, hs, hag, .dia x hx φ, ho => by
       constructor
       · rintro ⟨X, h₂, w₂, hsat⟩
         obtain ⟨X₀, hr⟩ := hx
@@ -589,25 +948,27 @@ theorem sat_collapse : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses k Γ
         subst hXX
         have href := hag x _ hr
         refine ⟨X₀, hr, ⟨w₂.1, by rw [href]; exact w₂.2⟩, ?_⟩
-        exact (sat_collapse (hs.diaIn x) (hag.diaPush hr ⟨w₂.1, _⟩ w₂.2) φ).mp hsat
+        exact (sat_collapse (hs.diaIn x) (hag.diaPush hr ⟨w₂.1, _⟩ w₂.2) φ
+          fun hO => (ho hO).diaPush hag hr ⟨w₂.1, _⟩ w₂.2).mp hsat
       · rintro ⟨X, hr, w₁, hsat⟩
         have href := hag x _ hr
         exact ⟨X, h x _ hr, ⟨w₁.1, by rw [← href]; exact w₁.2⟩,
-          (sat_collapse (hs.diaIn x) (hag.diaPush hr w₁ _) φ).mpr hsat⟩
-  | _, _, _, _, _, _, _, _, _, hag, .here hT s t => by
+          (sat_collapse (hs.diaIn x) (hag.diaPush hr w₁ _) φ
+            fun hO => (ho hO).diaPush hag hr w₁ _).mpr hsat⟩
+  | _, _, _, _, _, _, _, _, _, hag, .here hT s t, _ => by
       change Model.Realised hT (interp _ (Term.collapse _ s)) (interp _ (Term.collapse _ t)) ↔ _
       rw [interp_collapse hag s, interp_collapse hag t]
       exact Iff.rfl
-  | _, _, _, _, _, _, _, _, _, hag, .back hB L s t => by
+  | _, _, _, _, _, _, _, _, _, hag, .back hB L s t, _ => by
       change Model.Backs L (interp _ (Term.collapse _ s)) (interp _ (Term.collapse _ t)) ↔ _
       rw [interp_collapse hag s, interp_collapse hag t]
       exact Iff.rfl
-  | _, _, _, _, _, _, _, _, hs, hag, .retS hB S t Φ =>
+  | _, _, _, _, _, _, _, _, hs, hag, .retS hB S t Φ, _ =>
       exists_congr fun a => exists_congr fun e =>
         and_congr (sat_collapse (hs.boxIn.insert _)
             ((hag.boxPush a).extend (hs.boxIn.rootFresh le_rfl) e) Φ)
           (by rw [interp_collapse hag t])
-  | k, _, _, h, _, _, env₁, env₂, hs, hag, .retxS hB y hy S t Φ => by
+  | k, _, _, h, _, _, env₁, env₂, hs, hag, .retxS hB y hy S t Φ, _ => by
       constructor
       · rintro ⟨Y, h₂, a, e, hsat, hr⟩
         obtain ⟨Y₀, hy₀⟩ := hy
@@ -630,12 +991,12 @@ theorem sat_collapse : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses k Γ
             ((hag.diaPush hr' a _).extend ((hs.diaIn y).rootFresh le_rfl) e) Φ).mpr hsat, ?_⟩
         rw [interp_collapse hag t]
         exact hr
-  | _, _, _, _, _, _, _, _, hs, hag, .link hV hF t Φ =>
+  | _, _, _, _, _, _, _, _, hs, hag, .link hV hF t Φ, _ =>
       forall_congr' fun a => by
         rw [interp_collapse hag t]
         exact sat_collapse (hs.boxIn.insert _)
           ((hag.boxPush a).extend (hs.boxIn.rootFresh le_rfl) _) Φ
-  | k, _, _, h, _, _, env₁, env₂, hs, hag, .linkx hV hF y hy t Φ => by
+  | k, _, _, h, _, _, env₁, env₂, hs, hag, .linkx hV hF y hy t Φ, _ => by
       constructor
       · rintro ⟨Y, h₂, a, hsat⟩
         obtain ⟨Y₀, hy₀⟩ := hy
@@ -660,10 +1021,13 @@ theorem sat_collapse : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses k Γ
 /-- ⭐The semantic content of the T rule: a collapsed `□`-body holds exactly when the body holds
     at the current world. -/
 theorem sat_boxHere (hT : ModalSys.T = true) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w)
-    (hs : Γ.boxIn.SlotsFrom 0) (φ : WFF σ Γ.boxIn 0) :
+    (hs : Γ.boxIn.SlotsFrom 0) (φ : WFF σ Γ.boxIn 0)
+    (ho : ModalSys.Opt = true → env.OpenedT ∧ Γ.SlotsFrom 0 := by wit_triv) :
     M.sat env (WFF.collapse (Ctx.collapses_boxIn_self hT Γ) hs φ) ↔
       M.sat (env.boxPush ⟨w, ⟨M.frame.refl hT w⟩⟩) φ :=
-  sat_collapse hs (Env.collapseAgree_self hT env) φ
+  sat_collapse hs (Env.collapseAgree_self hT env) φ fun hO =>
+    ⟨fun _ _ _ _ => rfl, fun _ _ _ k' hk => absurd hk.symm (Nat.succ_ne_zero k'), (ho hO).1,
+      (ho hO).2⟩
 
 end Model
 

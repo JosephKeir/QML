@@ -228,6 +228,21 @@ theorem Ctx.DeclOK.optIn {Γ : Ctx} (h : Γ.DeclOK) (hw : Γ.WitOK) (y : VarSymb
   · rw [Ctx.optIn_ne hc] at hv
     exact h v T hv
 
+/-- The identity view declares its content, allowed when the possible object is. -/
+theorem Ctx.DeclOK.optInT {Γ : Ctx} (h : Γ.DeclOK) (y : VarSymb) : (Γ.optInT y).DeclOK := by
+  intro v T hv
+  by_cases hc : v = .step y .at
+  · subst hc
+    cases hX : Γ.witT y with
+    | some X =>
+        obtain ⟨-, hO, hr⟩ := Ctx.witT_spec hX
+        exact VarSymb.ok_step.mpr ⟨h.ref y hr, Step.ok_at hO⟩
+    | none =>
+        rw [Ctx.optInT_content_none hX] at hv
+        exact h _ T hv
+  · rw [Ctx.optInT_ne hc] at hv
+    exact h v T hv
+
 theorem CtxExpr.declOK_witOK (hTF : ModalSys.T = true ∨ ModalSys.Four = false) :
     ∀ e : CtxExpr, e.denote.DeclOK ∧ e.denote.WitOK
   | .empty => ⟨fun _ _ h => (by cases h), fun _ _ h => (by cases h)⟩
@@ -239,8 +254,8 @@ theorem CtxExpr.declOK_witOK (hTF : ModalSys.T = true ∨ ModalSys.Four = false)
       (CtxExpr.declOK_witOK hTF e).1.witOK_boxIn⟩
   | .optIn e .arrow y => ⟨(CtxExpr.declOK_witOK hTF e).1.optIn (CtxExpr.declOK_witOK hTF e).2 y,
       (CtxExpr.declOK_witOK hTF e).2⟩
-  | .optIn e .ident _ => by
-      simp only [CtxExpr.denote, Ctx.optInK_ident]; exact CtxExpr.declOK_witOK hTF e
+  | .optIn e .ident y => ⟨(CtxExpr.declOK_witOK hTF e).1.optInT y,
+      (CtxExpr.declOK_witOK hTF e).2⟩
 
 theorem CtxExpr.declOK_of (hTF : ModalSys.T = true ∨ ModalSys.Four = false) (e : CtxExpr) :
     e.denote.DeclOK :=

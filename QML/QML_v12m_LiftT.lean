@@ -654,7 +654,7 @@ theorem WFF.collapse_readAt {Λ Λ' Ω Ω' : Ctx} [Λ.NoSlots] [Λ'.NoSlots] {P 
   have hr' := (Ctx.NoSlots.slots (Γ := Λ')).rootFresh (le_refl 0)
   refine WFF.collapse_subst (C.insert hr P) D _ _ _
     (Subst.single (.bnd 0) (.tm (Term.collapse D u))) (Subst.ok_single hle' rfl)
-    (Subst.coh_single hr' hle' rfl) _ _ _ _ ?_ B
+    (Subst.coh_single hr' hle' rfl) _ _ _ _ ?_ B (fun _ => Subst.CorrW.single_zero hr hle)
   refine Subst.corr_of (Subst.ok_single hle rfl) ?_
   intro v U hlp hv
   by_cases hvr : v = .root (.bnd 0)

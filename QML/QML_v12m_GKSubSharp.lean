@@ -176,7 +176,7 @@ theorem and_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.and ψ)) : SharpSub E
   case optx k _ hy _ =>
     cases k
     · simp only [WFF.subst] at he; cases he
-    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+    · simp only [WFF.subst] at he; cases he
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem and_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.and ψ)) : SharpSub E Γ ψ := by
@@ -190,7 +190,7 @@ theorem and_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.and ψ)) : SharpSub E
   case optx k _ hy _ =>
     cases k
     · simp only [WFF.subst] at he; cases he
-    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+    · simp only [WFF.subst] at he; cases he
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem or_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.or ψ)) : SharpSub E Γ φ := by
@@ -204,7 +204,7 @@ theorem or_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.or ψ)) : SharpSub E �
   case optx k _ hy _ =>
     cases k
     · simp only [WFF.subst] at he; cases he
-    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+    · simp only [WFF.subst] at he; cases he
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem or_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.or ψ)) : SharpSub E Γ ψ := by
@@ -218,7 +218,7 @@ theorem or_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.or ψ)) : SharpSub E �
   case optx k _ hy _ =>
     cases k
     · simp only [WFF.subst] at he; cases he
-    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+    · simp only [WFF.subst] at he; cases he
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem imp_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.imp ψ)) : SharpSub E Γ φ := by
@@ -232,7 +232,7 @@ theorem imp_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.imp ψ)) : SharpSub E
   case optx k _ hy _ =>
     cases k
     · simp only [WFF.subst] at he; cases he
-    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+    · simp only [WFF.subst] at he; cases he
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem imp_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.imp ψ)) : SharpSub E Γ ψ := by
@@ -246,7 +246,7 @@ theorem imp_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.imp ψ)) : SharpSub E
   case optx k _ hy _ =>
     cases k
     · simp only [WFF.subst] at he; cases he
-    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+    · simp only [WFF.subst] at he; cases he
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem all_inst [ModalSys.NoOpt]
@@ -265,7 +265,7 @@ theorem all_inst [ModalSys.NoOpt]
   case optx k _ hy _ =>
     cases k
     · simp only [WFF.subst] at he; cases he
-    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+    · simp only [WFF.subst] at he; cases he
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem ex_inst [ModalSys.NoOpt]
@@ -284,7 +284,7 @@ theorem ex_inst [ModalSys.NoOpt]
   case optx k _ hy _ =>
     cases k
     · simp only [WFF.subst] at he; cases he
-    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+    · simp only [WFF.subst] at he; cases he
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem all_eigen [Γ.NoSlots] {u : ℕ} {T : VarType} (hu : Γ.RootFresh (.free u))
@@ -305,7 +305,7 @@ theorem all_eigen [Γ.NoSlots] {u : ℕ} {T : VarType} (hu : Γ.RootFresh (.free
   case optx k _ hy _ =>
     cases k
     · simp only [WFF.subst] at he; cases he
-    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+    · simp only [WFF.subst] at he; cases he
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem ex_eigen [Γ.NoSlots] {u : ℕ} {T : VarType} (hu : Γ.RootFresh (.free u))
@@ -326,7 +326,7 @@ theorem ex_eigen [Γ.NoSlots] {u : ℕ} {T : VarType} (hu : Γ.RootFresh (.free 
   case optx k _ hy _ =>
     cases k
     · simp only [WFF.subst] at he; cases he
-    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+    · simp only [WFF.subst] at he; cases he
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem weaken {δ : WFF σ Γ 0} (h : SharpSub E Γ δ) :
@@ -386,7 +386,7 @@ theorem box {φ : WFF σ Γ.boxIn 0} (h : SharpSub E Γ (WFF.box (Γ := Γ) φ))
   case optx k _ hy _ =>
     cases k
     · simp only [WFF.subst] at he; cases he
-    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+    · simp only [WFF.subst] at he; cases he
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem box_dia {φ : WFF σ Γ.boxIn 0} (x : VarSymb) (h : SharpSub E Γ (WFF.box (Γ := Γ) φ)) :
@@ -402,7 +402,7 @@ theorem box_dia {φ : WFF σ Γ.boxIn 0} (x : VarSymb) (h : SharpSub E Γ (WFF.b
   case optx k _ hy _ =>
     cases k
     · simp only [WFF.subst] at he; cases he
-    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+    · simp only [WFF.subst] at he; cases he
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem dia {x : VarSymb} {hx : ∃ X, Γ.ref x = some (.VTypeDia X)} {φ : WFF σ (Γ.diaIn x) 0}
@@ -419,7 +419,7 @@ theorem dia {x : VarSymb} {hx : ∃ X, Γ.ref x = some (.VTypeDia X)} {φ : WFF 
   case optx k _ hy _ =>
     cases k
     · simp only [WFF.subst] at he; cases he
-    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+    · simp only [WFF.subst] at he; cases he
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem box_keep [Γ.NoSlots] (hF : ModalSys.Four = true) {φ : WFF σ Γ.boxIn 0}
@@ -440,7 +440,7 @@ theorem box_keep [Γ.NoSlots] (hF : ModalSys.Four = true) {φ : WFF σ Γ.boxIn 
   case optx k _ hy _ =>
     cases k
     · simp only [WFF.subst] at he; cases he
-    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+    · simp only [WFF.subst] at he; cases he
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem dia_keep [Γ.NoSlots] (hF : ModalSys.Four = true) {y : VarSymb}
@@ -478,7 +478,7 @@ theorem dia_keep [Γ.NoSlots] (hF : ModalSys.Four = true) {y : VarSymb}
   case optx k _ hy _ =>
     cases k
     · simp only [WFF.subst] at he; cases he
-    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
+    · simp only [WFF.subst] at he; cases he
   all_goals (simp only [WFF.subst] at he; cases he)
 
 end SharpSub

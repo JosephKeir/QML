@@ -582,4 +582,45 @@ theorem eqRec_collapse {σ : Signature} {k : ℕ} {d : ℕ} : {Γ₁ Γ₂ : Ctx
       rw [eqRec_collapse (h.diaIn x) (hs.diaIn x) A]
       rfl
 
+/-! ## Collapsing commutes with weakening -/
+
+mutual
+  theorem Func.collapse_mono {σ : Signature} {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx}
+      (h : Ctx.Collapses k Γ₁ Γ₂) (h' : Ctx.Collapses k Γ₁' Γ₂') (l₁ : Γ₁.Le Γ₁')
+      (l₂ : Γ₂.Le Γ₂') :
+      {n : ℕ} → (f : Func σ Γ₁ n) →
+      Func.collapse h' (Func.mono l₁ f) = Func.mono l₂ (Func.collapse h f)
+    | _, .F _ => rfl
+    | _, .eval g t => by
+        change Func.eval (Func.collapse h' (Func.mono l₁ g)) (Term.collapse h' (Term.mono l₁ t)) = _
+        rw [Func.collapse_mono h h' l₁ l₂ g, Term.collapse_mono h h' l₁ l₂ t]
+        rfl
+    termination_by structural _ f => f
+
+  theorem Term.collapse_mono {σ : Signature} {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx}
+      (h : Ctx.Collapses k Γ₁ Γ₂) (h' : Ctx.Collapses k Γ₁' Γ₂') (l₁ : Γ₁.Le Γ₁')
+      (l₂ : Γ₂.Le Γ₂') :
+      {T : VarType} → {a : Ann T} → (t : Term σ Γ₁ T a) →
+      Term.collapse h' (Term.mono l₁ t) = Term.mono l₂ (Term.collapse h t)
+    | _, _, .var _ _ => rfl
+    | _, _, .func f => by
+        change Term.func (Func.collapse h' (Func.mono l₁ f)) = _
+        rw [Func.collapse_mono h h' l₁ l₂ f]
+        rfl
+    | _, _, .unit => rfl
+    | _, _, .pair s t => by
+        change Term.pair (Term.collapse h' (Term.mono l₁ s)) (Term.collapse h' (Term.mono l₁ t)) = _
+        rw [Term.collapse_mono h h' l₁ l₂ s, Term.collapse_mono h h' l₁ l₂ t]
+        rfl
+    | _, _, .boxtm t => by
+        change Term.boxtm (Term.collapse h'.boxIn (Term.mono l₁.boxIn t)) = _
+        rw [Term.collapse_mono h.boxIn h'.boxIn l₁.boxIn l₂.boxIn t]
+        rfl
+    | _, _, .diatm x _ t => by
+        change Term.diatm _ _ (Term.collapse (h'.diaIn x) (Term.mono (l₁.diaIn x) t)) = _
+        rw [Term.collapse_mono (h.diaIn x) (h'.diaIn x) (l₁.diaIn x) (l₂.diaIn _) t]
+        rfl
+    termination_by structural _ _ t => t
+end
+
 end V12M

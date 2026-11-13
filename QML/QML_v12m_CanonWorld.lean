@@ -52,7 +52,7 @@ theorem CtxExpr.noProjLast : ∀ e : CtxExpr, e.denote.NoProjLast
   | .boxIn _ => Ctx.noProjLast_boxIn _
   | .diaIn _ x => Ctx.noProjLast_diaIn _ x
   | .optIn e .arrow y => (CtxExpr.noProjLast e).optIn y
-  | .optIn e .ident _ => by simp only [CtxExpr.denote, Ctx.optInK_ident]; exact CtxExpr.noProjLast e
+  | .optIn e .ident y => (CtxExpr.noProjLast e).optInT y
 
 /-- ⭐**Every world context names no address at two view depths, with nothing extra to assume.**  A
     `WorldLang`'s bases are presented by construction (`WorldLang.basePres`) and the own-variable

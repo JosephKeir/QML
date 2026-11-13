@@ -58,8 +58,8 @@ theorem coh_mono {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hc : 
     (h : Δ.Le Δ') : Coh ι Γ (θ.mono h) := by
   refine ⟨fun v T hv p => ?_, fun hO y X hy p => ?_, fun hO y X z hy hyd hz => ?_,
     fun hO y X z hy hyd hz => ?_,
-    -- provisional (`Ctx.witT_stage`; M2 step 3 part 4: `SubE.atBody` commutes with weakening)
-    fun _ _ _ hy _ _ => (Ctx.witT_stage hy).elim, fun y X z hy hyd hz => ?_⟩
+    fun y X z hy hyd hz => openedT_of_mono h hc hy hyd (at_mono θ h y) rfl hz,
+    fun y X z hy hyd hz => ?_⟩
   · rw [at_mono, SubE.idxAlong_mono]
     exact hc v T hv p
   · rw [show (θ.mono h).wit y = (θ.wit y).mono h from rfl, WitE.idxAlong_mono]
@@ -165,6 +165,23 @@ theorem sim_optIn_mono {Γ : Ctx} (θ : Subst σ Δ) (h : Δ.Le Δ') (y z : VarS
     rw [optIn_content, optIn_content, WitE.optBody_mono h z]
     exact .refl _
   · rw [optIn_ne θ z hc, optIn_ne (θ.mono h) z hc,
+      show (θ.mono h) v = (θ v).mono h from rfl, SubE.mono_mono, SubE.mono_mono]
+    exact .refl _
+
+theorem sim_optInT_mono {Γ : Ctx} (θ : Subst σ Δ) (h : Δ.Le Δ') (y z : VarSymb) :
+    Sim (Γ.optInT y) ((θ.optInT y z).mono (h.optInT z)) ((θ.mono h).optInT y z) := by
+  refine sim_of ?_ fun _ y' X _ => by
+    change WitE.Sim X (WitE.mono (h.optInT z) (WitE.mono (Ctx.le_optInT Δ z) (θ.wit y')))
+      (WitE.mono (Ctx.le_optInT Δ' z) (WitE.mono h (θ.wit y')))
+    rw [WitE.mono_mono, WitE.mono_mono]
+    exact .refl _
+  intro v U _ _
+  change SubE.Sim U (SubE.mono (h.optInT z) (θ.optInT y z v)) ((θ.mono h).optInT y z v)
+  by_cases hc : v = .step y .at
+  · subst hc
+    rw [optInT_content, optInT_content, at_mono, SubE.atBody_mono h z]
+    exact .refl _
+  · rw [optInT_ne θ z hc, optInT_ne (θ.mono h) z hc,
       show (θ.mono h) v = (θ v).mono h from rfl, SubE.mono_mono, SubE.mono_mono]
     exact .refl _
 
@@ -325,8 +342,16 @@ theorem WFF.mono_subst {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ 
         (Subst.coh_optIn hθ hc hO hX) (hΓ.optIn y) (hΔ.optIn (ι y)) (hΔ'.optIn (ι y)) φ]
       exact congrArg (WFF.optx hO .arrow (ι y) _) (WFF.subst_congr _ _ _ _ _ _ _ _
         (Subst.sim_optIn_mono θ h y (ι y)) φ)
-  | _, _, _, _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _ =>
-      (hyI.elim fun _ h => Ctx.witT_stage h).elim
+  | ι, _, _, _, _, _, h, θ, hθ, hc, hΓ, hΔ, hΔ', .optx hO .ident y hy φ => by
+      obtain ⟨X, hX⟩ := hy
+      have hw : (θ.at y).idxAlong [] = ι y := hc y _ (Ctx.witT_spec hX).2.2 []
+      change WFF.optx hO .ident (ι y) _ (WFF.mono (h.optInT (ι y)) (WFF.subst ι
+        (θ.optInT y (ι y)) (Subst.ok_optInT hθ hX hw) (Subst.coh_optInT hθ hc hX) (hΓ.optInT y)
+        (hΔ.optInT (ι y)) φ)) = _
+      rw [WFF.mono_subst (h.optInT (ι y)) (θ.optInT y (ι y)) (Subst.ok_optInT hθ hX hw)
+        (Subst.coh_optInT hθ hc hX) (hΓ.optInT y) (hΔ.optInT (ι y)) (hΔ'.optInT (ι y)) φ]
+      exact congrArg (WFF.optx hO .ident (ι y) _) (WFF.subst_congr _ _ _ _ _ _ _ _
+        (Subst.sim_optInT_mono θ h y (ι y)) φ)
   | ι, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .here hT s t =>
       WFF.here_congr' hT (Term.mono_subst h θ hθ hc s) (Term.mono_subst h θ hθ hc t)
   | ι, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .back hB L s t =>

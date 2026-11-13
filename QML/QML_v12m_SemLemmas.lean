@@ -160,6 +160,62 @@ theorem Env.optPush_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : 
     rw [dif_neg hvy, dif_neg hvy]
     exact hag _ _ _
 
+/-- An identity witness's value agrees across agreeing environments. -/
+theorem Env.witT_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env Γ w}
+    {env' : M.Env Γ' w} (hag : Env.Agree h env env') {y : VarSymb} {X : VarType}
+    (hy : Γ.witT y = some X) (hy' : Γ'.witT y = some X) : env'.witT y hy' = env.witT y hy := by
+  unfold Env.witT
+  rw [← Env.ref_agree hag y (Ctx.witT_spec hy).2.2]
+
+/-- Into the identity view, agreeing environments with the same content there agree. -/
+theorem Env.optPushT_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env Γ w}
+    {env' : M.Env Γ' w} (hag : Env.Agree h env env') {y : VarSymb} {X : VarType}
+    (hy : Γ.witT y = some X) (hd : (env.witT y hy).Dom) (hd' : (env'.witT y (h.witT hy)).Dom)
+    (hc : (env'.witT y (h.witT hy)).get hd' = (env.witT y hy).get hd) :
+    Env.Agree (h.optInT y) (env.optPushT y hy hd) (env'.optPushT y (h.witT hy) hd') := by
+  intro v T hv
+  by_cases hvy : v = .step y .at
+  · subst hvy
+    change (if hv' : VarSymb.step y .at = .step y .at then _ else _) =
+      (if hv' : VarSymb.step y .at = .step y .at then _ else _)
+    rw [dif_pos rfl, dif_pos rfl]
+    have hXT : X = T := by rw [Ctx.optInT_content hy] at hv; exact Option.some.inj hv
+    subst hXT
+    exact hc.symm
+  · change (if hv' : v = .step y .at then _ else _) = (if hv' : v = .step y .at then _ else _)
+    rw [dif_neg hvy, dif_neg hvy]
+    exact hag _ _ _
+
+/-- An identity content the smaller context declares too is respected in the larger. -/
+theorem Env.OpenedT.of_agree_at {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env Γ w}
+    {env' : M.Env Γ' w} (hag : Env.Agree h env env') (hop : env.OpenedT) {z : VarSymb}
+    {Z : VarType} (hz : Γ'.witT z = some Z) (hv : Γ' (.step z .at) = some Z)
+    (hv' : Γ (.step z .at) = some Z) :
+    ∃ hd : (env'.witT z hz).Dom, env' (.step z .at) Z hv = (env'.witT z hz).get hd := by
+  obtain ⟨hT, hO, -⟩ := Ctx.witT_spec hz
+  have hz₀ := Ctx.witT_of_at hT hO hv'
+  obtain ⟨hd, he⟩ := hop z Z hz₀ hv'
+  have he' := Env.witT_agree hag hz₀ hz
+  have hd' : (env'.witT z hz).Dom := he' ▸ hd
+  exact ⟨hd', ((hag _ _ hv').symm.trans he).trans
+    (Part.get_eq_of_mem (he' ▸ Part.get_mem hd') hd)⟩
+
+/-- Respecting identity contents passes along agreement, when the larger context declares no
+    new identity content. -/
+theorem Env.OpenedT.of_agree {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env Γ w}
+    {env' : M.Env Γ' w} (hag : Env.Agree h env env')
+    (hat : ∀ z Z, Γ' (.step z .at) = some Z → Γ (.step z .at) = some Z) (hop : env.OpenedT) :
+    env'.OpenedT := fun _ _ hz hv => hop.of_agree_at hag hz hv (hat _ _ hv)
+
+/-- Respecting identity contents passes to a smaller agreeing environment. -/
+theorem Env.OpenedT.mono {Γ Γ' : Ctx} {h : Γ.Le Γ'} {w : M.frame.W} {env : M.Env Γ w}
+    {env' : M.Env Γ' w} (hag : Env.Agree h env env') (hop : env'.OpenedT) : env.OpenedT := by
+  intro z Z hz hv
+  obtain ⟨hd, he⟩ := hop z Z (h.witT hz) (h _ _ hv)
+  have he' := Env.witT_agree hag hz (h.witT hz)
+  exact ⟨he' ▸ hd,
+    ((hag _ _ hv).trans he).trans (Part.get_eq_of_mem (he' ▸ Part.get_mem hd) _).symm⟩
+
 /-! ## Weakening -/
 
 mutual
@@ -281,7 +337,29 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
         have hc : (env'.wit y X (h.wit y X hy')).get hd' = (env.wit y X hy').get hd :=
           Part.get_eq_of_mem (he ▸ Part.get_mem hd) hd'
         exact (sat_mono (Env.optPush_agree hag hy' hd hd' hc) φ (fun _ => hw')).mpr hsat
-  | _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _, _ => (hyI.elim fun _ h => Ctx.witT_stage h).elim
+  | _, _, h, _, _, env, env', hag, .optx hO .ident y hy φ, hw => by
+      obtain ⟨X₀, hy₀⟩ := hy
+      have he := (Env.witT_agree hag hy₀ (h.witT hy₀)).symm
+      constructor
+      · rintro ⟨X, h', hd, hsat⟩
+        have hXX : X₀ = X := by
+          have h₂ := h.witT hy₀
+          rw [h'] at h₂
+          cases h₂
+          rfl
+        subst hXX
+        have hd₀ : (env.witT y hy₀).Dom := by rw [he]; exact hd
+        have hc : (env'.witT y (h.witT hy₀)).get hd = (env.witT y hy₀).get hd₀ :=
+          Part.get_eq_of_mem (he ▸ Part.get_mem hd₀) hd
+        exact ⟨X₀, hy₀, hd₀,
+          (sat_mono (Env.optPushT_agree hag hy₀ hd₀ hd hc) φ hw).mp hsat⟩
+      · rintro ⟨X, hy', hd, hsat⟩
+        obtain rfl : X₀ = X := Option.some.inj (hy₀.symm.trans hy')
+        have hd' : (env'.witT y (h.witT hy₀)).Dom := by rw [← he]; exact hd
+        refine ⟨X₀, h.witT hy₀, hd', ?_⟩
+        have hc : (env'.witT y (h.witT hy₀)).get hd' = (env.witT y hy₀).get hd :=
+          Part.get_eq_of_mem (he ▸ Part.get_mem hd) hd'
+        exact (sat_mono (Env.optPushT_agree hag hy₀ hd hd' hc) φ hw).mpr hsat
   | _, _, _, _, _, _, _, hag, .here hT s t, hw => by
       change Model.Realised hT (interp _ (Term.mono _ s)) (interp _ (Term.mono _ t)) ↔ _
       rw [interp_mono hag s, interp_mono hag t]

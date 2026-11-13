@@ -431,7 +431,8 @@ theorem provable_iff_validCube (e : CtxExpr) (he : e.Wf)
       (env : M.Env e.denote w),
       e.denote.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ := by
   letI : e.denote.Presented := ⟨e, he.1, rfl⟩
-  exact ⟨fun ⟨p⟩ M hM _ env => Model.soundness p M hM env (Ctx.Presented.tame _),
+  exact ⟨fun ⟨p⟩ M hM _ env hnp =>
+    Model.soundness p M hM env (Ctx.Presented.tame _) hnp env.openedT_noOpt,
     completenessCube e he⟩
 
 /-- ⭐**Model existence across the cube.** -/

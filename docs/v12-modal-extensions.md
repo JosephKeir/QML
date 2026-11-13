@@ -16173,6 +16173,53 @@ frame-level only because it relates two stored fields, `val` and `wit`.)  So:
 4. *Drop T from `ModalSys.optStage`.*  The old T machinery takes `NoOpt` explicitly, and every
    provisional identity case (§12.28) gets its real proof.
 
+**Progress (2026-11-13).**  Parts 1–3 committed (`34f5be1`).  Part 4, built so far (strict green):
+* *Presentations:* `DeclOK.optInT`, `NoProjLast.optInT`, `Fin.optInT`, `levelDepth_optInT`,
+  `Tame.optInT`; `CtxExpr.at_none` now takes `Opt = false` and `CtxExpr.atOK` replaces it in
+  `Presented.tame`.
+* *Substitution:* `Coh.openedT`/`openedToT` are real for every generic substitution (`box`, `dia`,
+  `under`, `single`, `optIn`, `optInT`, `mono`, `restrict`, the identity), through
+  `openedT_of_mono`, `at_optIn_of`, `at_optInT_of` and `SubE.atBody_mono` (`Term.collapse_mono`
+  and `SubE.proj_mono` moved up into `Collapse`/`Subst`, `at_under_ne` and `at_single_of_rt_ne`
+  before their first use).  Identity cases of `subst_mono`, `mono_subst`, `subst_congr`
+  (`SubE.Sim.atBody`), `subst_id`, `subst_ren`, `Proof.subst` (`WFF.subst_optInT_mono`).
+  `witT_triv` replaces the defaults (Opt off; meanwhile it falls back on `witT_stage`).
+* *Semantics:* `Env.witT_agree`, `Env.optPushT_agree`, `sat_mono`'s identity case;
+  `OpenedT.of_agree(_at)`, `.mono`, `.restrict`, `.extend`, `.optPush`, `.optPushT`,
+  `openedT_boxPush`/`diaPush`, `Env.agree_optPushT`; `openedT_off`, `openedT_noOpt` for the
+  completeness theorems.  **Soundness takes `env.OpenedT`**; `K_opt`, `opt_bot`, `opt_reopen` sound
+  at the identity kind.
+* *The collapse:* `Env.CollapseOpt` (witness values across the collapse, the target's `OpenedT`
+  and slots), preserved by every view; `sat_collapse`'s three `optx` cases (level 0 arrow to
+  identity, deeper arrow, identity); `sat_boxHere` passes it, so `T_box` is sound with `Opt` on
+  once `optStage` allows it.
+
+* *Semantic substitution:* `posPart_entryVal_dom`, ⭐`entryVal_atBody` (a possible term's body,
+  collapsed onto the identity view, is its content at the identity arrow: `dia_beta` with
+  `Env.collapseAgree_diaIn_optInT`), `substEnv_optInT`; `sat_subst` takes the target's
+  `OpenedT` gated on T and `Opt` (`witT_off`, which meanwhile falls back on `optStage`) and has
+  its identity case.
+
+* *Collapse and substitution* (`CollapseSubst`): ⭐`Subst.CorrW` (the witnesses of a
+  correspondence: at level 0, `θ'.at y` read at the identity arrow against `θ.wit y`'s content
+  collapsed; further in, `θ'.wit (y.collapse k)` against it), stated with the witness image as a
+  variable (rewriting it under the existential's dependent proof fails); `CorrW.transfer` (every
+  view whose witnesses are weakened ones: binders, the arrow view at both levels, the identity
+  view), `CorrW.box`/`dia` from `Corr` (`SubE.toWit_optBody_collapse`), `CorrW.single_zero`;
+  `corr_optIn_zero`, `corr_optIn_succ`, `corr_optInT` (`SubE.atBody_collapse` through
+  `Term.collapse_collapse`); `WFF.collapse_subst` takes `CorrW` (gated on `Opt`) and has its three
+  `optx` cases; `Subst.corrW_box_self` (`SubE.toWit_optBody_collapse_self`), so `Proof.subst`'s
+  `T_box` case holds with `Opt` on.
+* *Composition* (`SubstTwice`): `SubE.diaBody_collapse_zero`, `SubE.unbox_collapse_zero`,
+  `Subst.corr_dia_optInT` (the `◇_z` view against the identity view at level 0),
+  ⭐`SubE.atBody_comp` (through `Term.collapse_subst`), `sim_optInT_comp`, `subst_comp`'s identity
+  case.
+
+Left: drop T from `optStage`.  `witT_stage`, `optInT_stage`, `optInK_ident` and the fallbacks in
+`witT_triv`/`witT_off` go; `ModalSys.shaped` becomes `(T || BStrong) && !Opt` (shapes off with
+`Opt` on); the old T code (`noOpt_of_T`) takes `NoOpt`; M1's tree (`OCanon*`, `OCanonTruth`'s
+`k = .arrow`) and `LeibnizH` take a `T = false` class until step 6.
+
 ### 12.31 Interpolation for B and 5, and the relation primitives *(2026-11-13, paper)*
 
 **Goal (user, 2026-11-13):** all primitive relations should go, replaced by modal operators read

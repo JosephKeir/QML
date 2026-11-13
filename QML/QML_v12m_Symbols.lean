@@ -1503,6 +1503,34 @@ theorem witT_of {Γ : Ctx} {y : VarSymb} {X : VarType} (hT : ModalSys.T = true)
   unfold witT
   rw [if_pos ⟨hT, hO⟩, h]
 
+theorem _root_.V12M.VarType.step_of_pstep (hT : ModalSys.T = true) {A B : VarType} {s : Step}
+    (h : A.pstep s = some B) : A.step s = some B := by
+  cases A <;> cases s <;> simp only [VarType.pstep, reduceCtorEq] at h <;>
+    first
+    | exact h
+    | (simp only [VarType.step, hT, if_true]; exact h)
+
+/-- Under T, what the flag-free walk reaches, `Ctx.ref` reaches. -/
+theorem ref_of_refAll (hT : ModalSys.T = true) (Γ : Ctx) : ∀ (y : VarSymb) {R : VarType},
+    y.refAll Γ.ty = some R → Γ.ref y = some R
+  | .root _, _, h => h
+  | .step v s, R, h => by
+      by_cases hs : s.isStruct = true
+      · simp only [VarSymb.refAll, if_pos hs] at h
+        simp only [Ctx.ref, if_pos hs]
+        obtain ⟨U, hU, hR⟩ := Option.bind_eq_some_iff.mp h
+        rw [ref_of_refAll hT Γ v hU, Option.bind_some]
+        exact VarType.step_of_pstep hT hR
+      · simp only [VarSymb.refAll, if_neg hs] at h
+        simp only [Ctx.ref, if_neg hs]
+        exact h
+
+/-- Under T with `Opt`, a declared identity content makes its possible object an identity
+    witness (`Ctx.at_coh`). -/
+theorem witT_of_at {Γ : Ctx} {y : VarSymb} {X : VarType} (hT : ModalSys.T = true)
+    (hO : ModalSys.Opt = true) (h : Γ (.step y .at) = some X) : Γ.witT y = some X :=
+  witT_of hT hO (ref_of_refAll hT Γ y (Γ.at_coh y X h))
+
 theorem Le.witT {Γ Γ' : Ctx} (h : Γ.Le Γ') {y : VarSymb} {X : VarType}
     (hy : Γ.witT y = some X) : Γ'.witT y = some X := by
   obtain ⟨hT, hO, hr⟩ := witT_spec hy

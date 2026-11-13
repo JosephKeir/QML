@@ -242,6 +242,7 @@ theorem WFF.collapse_holeAt {k : ℕ} {Γ Γ' : Ctx} {d : ℕ} (D : Ctx.Collapse
   unfold WFF.holeAt
   refine WFF.collapse_subst (Ctx.collapses_hole D.hT k A) D _ _ _ _ _ _ _ _ _ _
     (Subst.corr_of (Subst.ok_single (e := .tm t) (Ctx.empty_le Γ) rfl) ?_) ψ
+    (fun _ => Subst.CorrW.of_noWit fun _ => rfl)
   intro v T _ hv
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr

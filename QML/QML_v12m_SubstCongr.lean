@@ -332,6 +332,33 @@ theorem Sim.diaBody {X : VarType} {ιx : VarSymb} {e e' : SubE σ Δ} (h : Sim (
         from dif_pos rfl, Term.mono_eta]
       exact .ren_eta _ _
 
+theorem Sim.atBody (hT : ModalSys.T = true) (hO : ModalSys.Opt = true) {X : VarType}
+    {z : VarSymb} {e e' : SubE σ Δ} (h : Sim (.VTypeDia X) e e') (hw : e.idxAlong [] = z) :
+    Sim X (e.atBody z) (e'.atBody z) := by
+  have key : ∀ (w : VarSymb) (h : Δ.ref w = some (.VTypeDia X)),
+      (SubE.tm (Term.eta (σ := σ) w (.VTypeDia X) h)).atBody w =
+        SubE.tm (Term.eta (.step w .at) X
+          ((Ctx.ref_nonproj _ rfl).trans (Ctx.optInT_content (Ctx.witT_of hT hO h)))) := by
+    intro w h
+    change (if hc : ModalSys.T = true ∧ ModalSys.Opt = true ∧ w = w then
+      SubE.tm (Term.collapse (Ctx.collapses_diaIn_optInT' hc ⟨X, h⟩)
+        (Term.eta (.step w .dia) X (Ctx.ref_diaIn_of h))) else .hide) = _
+    rw [dif_pos ⟨hT, hO, rfl⟩]
+    exact SubE.tm_eq_of_sig ((Term.collapse_eta _ _ X _).trans
+      (Term.eta_congr (VarSymb.collapse_dia_zero_opt hO) X _ _))
+  cases h with
+  | refl => exact .refl _
+  | eta_ren w h =>
+      have hw' : w = z := hw
+      subst hw'
+      rw [key w h]
+      exact .eta_ren _ _
+  | ren_eta w h =>
+      have hw' : w = z := hw
+      subst hw'
+      rw [key w h]
+      exact .ren_eta _ _
+
 end SubE
 
 namespace WitE
@@ -539,6 +566,25 @@ theorem sim_optIn {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') (hO : M
     rw [Subst.at_nonproj θ hlp, Subst.at_nonproj θ' hlp] at h₁
     exact h₁.mono _
 
+theorem sim_optInT {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') {y z : VarSymb} {X : VarType}
+    (hy : Γ.witT y = some X) (hw : (θ.at y).idxAlong [] = z) :
+    Sim (Γ.optInT y) (θ.optInT y z) (θ'.optInT y z) := by
+  obtain ⟨hT, hO, hr⟩ := Ctx.witT_spec hy
+  refine sim_of ?_ fun hO' y' X' hy' =>
+    (hs.wit hO' y' X' hy').mono (Ctx.le_optInT Δ z)
+  intro v U hlp hv
+  by_cases hc : v = .step y .at
+  · subst hc
+    rw [Ctx.optInT_content hy] at hv
+    cases hv
+    rw [optInT_content, optInT_content]
+    exact (hs y _ hr).atBody hT hO hw
+  · rw [Ctx.optInT_ne hc] at hv
+    rw [optInT_ne θ z hc, optInT_ne θ' z hc]
+    have h₁ := hs v U ((Ctx.ref_nonproj Γ hlp).trans hv)
+    rw [Subst.at_nonproj θ hlp, Subst.at_nonproj θ' hlp] at h₁
+    exact h₁.mono _
+
 end Subst
 
 /-! ## Congruence -/
@@ -682,8 +728,22 @@ theorem WFF.subst_congr : {ι ι' : VarSymb → VarSymb} → {Γ Δ : Ctx} → {
           (θ'.optIn y (ι y)) (Subst.ok_optIn hθ hO hX hw) p (Subst.coh_optIn hθ hc hO hX) q
           (hΓ.optIn y) hΔz (Subst.sim_optIn hs hO hX hw) φ)
       exact key (ι' y) hy' _ _ _ _
-  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _ =>
-      (hyI.elim fun _ h => Ctx.witT_stage h).elim
+  | ι, ι', Γ, Δ, _, d', θ, θ', hθ, hθ', hc, hc', hΓ, hΔ, hs, .optx hO .ident y hy φ => by
+      obtain ⟨X, hX⟩ := hy
+      have hr := (Ctx.witT_spec hX).2.2
+      have hw : (θ.at y).idxAlong [] = ι y := hc y _ hr []
+      have hy' : ι' y = ι y := Subst.idx_eq hc hc' hs ⟨X, hr⟩
+      have key : ∀ (z : VarSymb) (_hz : z = ι y) (P : ∃ Z, Δ.witT z = some Z)
+          (p : Subst.Ok (Γ.optInT y) (θ'.optInT y z))
+          (q : Subst.Coh ι' (Γ.optInT y) (θ'.optInT y z)) (hΔz : (Δ.optInT z).SlotsFrom d'),
+          WFF.subst ι θ hθ hc hΓ hΔ (.optx hO .ident y ⟨X, hX⟩ φ) =
+            .optx hO .ident z P (WFF.subst ι' (θ'.optInT y z) p q (hΓ.optInT y) hΔz φ) := by
+        intro z hz P p q hΔz
+        subst hz
+        exact congrArg (WFF.optx hO .ident (ι y) _) (WFF.subst_congr (θ.optInT y (ι y))
+          (θ'.optInT y (ι y)) (Subst.ok_optInT hθ hX hw) p (Subst.coh_optInT hθ hc hX) q
+          (hΓ.optInT y) hΔz (Subst.sim_optInT hs hX hw) φ)
+      exact key (ι' y) hy' _ _ _ _
   | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .here hT s t =>
       WFF.here_congr hT (Term.subst_congr θ θ' hθ hθ' hc hc' hs s)
         (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)

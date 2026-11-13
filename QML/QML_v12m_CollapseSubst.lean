@@ -347,6 +347,93 @@ theorem diaBody_collapse {ιx : VarSymb} : ∀ {e : SubE σ Δ} {X : VarType},
   | .tm (.boxtm _), _, he, _ => nomatch he
   | .hide, _, he, _ => False.elim he
 
+/-- A witness entry's content, read one view in and collapsed further in, is the collapsed
+    entry's (M2). -/
+theorem toWit_optBody_collapse (hO : ModalSys.Opt = true) {z : VarSymb} {Z : VarType}
+    (hz : Δ.boxIn.wit z = some Z) :
+    ∀ {e : SubE σ Δ} {X : VarType}, e.OkRef (.VTypeDia X) → e.idxAlong [] = z →
+      (e.toWit.optBody z).collapse (D.boxIn.optIn_succ hz) =
+        (e.collapse D).toWit.optBody (z.collapse k)
+  | .ren w, _, _, hw => by
+      have hw' : w = z := hw
+      subst hw'
+      change SubE.ren ((VarSymb.step w .dia).collapse (k + 1)) =
+        SubE.ren (.step (w.collapse k) .dia)
+      rw [VarSymb.collapse_level_succ rfl]
+  | .tm (.diatm x hx b), _, _, hw => by
+      have hxz : x = z := hw
+      subst hxz
+      obtain ⟨Y, hY⟩ := id hx
+      have hY' : Δ'.ref (x.collapse k) = some (.VTypeDia Y) := D x _ hY
+      rw [show (SubE.tm (Term.diatm x hx b) : SubE σ Δ).toWit =
+          WitE.tm x (Term.mono (Ctx.le_diaIn_boxIn_optIn hO hY) b) from dif_pos hO,
+        show (WitE.tm x (Term.mono (Ctx.le_diaIn_boxIn_optIn hO hY) b) :
+            WitE σ Δ.boxIn).optBody x =
+          SubE.tm (Term.mono (Ctx.Le.refl _) (Term.mono (Ctx.le_diaIn_boxIn_optIn hO hY) b))
+          from dif_pos rfl]
+      change SubE.tm (Term.collapse _ _) =
+        (SubE.tm (Term.diatm (x.collapse k) ⟨Y, hY'⟩ (Term.collapse (D.diaIn x) b))).toWit.optBody
+          (x.collapse k)
+      rw [show (SubE.tm (Term.diatm (x.collapse k) ⟨Y, hY'⟩ (Term.collapse (D.diaIn x) b)) :
+            SubE σ Δ').toWit = WitE.tm (x.collapse k)
+            (Term.mono (Ctx.le_diaIn_boxIn_optIn hO hY') (Term.collapse (D.diaIn x) b))
+          from dif_pos hO,
+        show (WitE.tm (x.collapse k)
+            (Term.mono (Ctx.le_diaIn_boxIn_optIn hO hY') (Term.collapse (D.diaIn x) b)) :
+            WitE σ Δ'.boxIn).optBody (x.collapse k) =
+          SubE.tm (Term.mono (Ctx.Le.refl _)
+            (Term.mono (Ctx.le_diaIn_boxIn_optIn hO hY') (Term.collapse (D.diaIn x) b)))
+          from dif_pos rfl,
+        Term.mono_refl, Term.mono_refl]
+      exact congrArg SubE.tm (Term.collapse_mono (D.diaIn x) _ _ _ b)
+  | .tm (.var _ _), _, he, _ => nomatch he
+  | .tm (.func _), _, he, _ => nomatch he
+  | .tm .unit, _, he, _ => nomatch he
+  | .tm (.pair _ _), _, he, _ => nomatch he
+  | .tm (.boxtm _), _, he, _ => nomatch he
+  | .hide, _, he, _ => False.elim he
+
+/-- A possible object's identity content, collapsed further in, is the collapsed entry's (M2). -/
+theorem atBody_collapse {z : VarSymb} {Z : VarType} (hz : Δ.witT z = some Z) :
+    ∀ {e : SubE σ Δ} {X : VarType}, e.OkRef (.VTypeDia X) → e.idxAlong [] = z →
+      (e.atBody z).collapse (D.optInT hz) = (e.collapse D).atBody (z.collapse k)
+  | .ren w, _, _, hw => by
+      have hw' : w = z := hw
+      subst hw'
+      change SubE.ren ((VarSymb.step w .at).collapse k) = SubE.ren (.step (w.collapse k) .at)
+      rw [VarSymb.collapse_proj rfl]
+  | .tm (.diatm x hx b), _, _, hw => by
+      have hxz : x = z := hw
+      subst hxz
+      obtain ⟨hT, hO, -⟩ := Ctx.witT_spec hz
+      obtain ⟨Y, hY⟩ := id hx
+      have hY' : Δ'.ref (x.collapse k) = some (.VTypeDia Y) := D x _ hY
+      rw [show (SubE.tm (Term.diatm x hx b) : SubE σ Δ).atBody x =
+          SubE.tm (Term.collapse (Ctx.collapses_diaIn_optInT' ⟨hT, hO, rfl⟩ hx) b)
+          from dif_pos ⟨hT, hO, rfl⟩]
+      change SubE.tm (Term.collapse _ _) =
+        (SubE.tm (Term.diatm (x.collapse k) ⟨Y, hY'⟩ (Term.collapse (D.diaIn x) b))).atBody
+          (x.collapse k)
+      rw [show (SubE.tm (Term.diatm (x.collapse k) ⟨Y, hY'⟩ (Term.collapse (D.diaIn x) b)) :
+            SubE σ Δ').atBody (x.collapse k) =
+          SubE.tm (Term.collapse (Ctx.collapses_diaIn_optInT' ⟨hT, hO, rfl⟩ ⟨Y, hY'⟩)
+            (Term.collapse (D.diaIn x) b)) from dif_pos ⟨hT, hO, rfl⟩]
+      exact SubE.tm_eq_of_sig (Term.collapse_collapse (k := k) (m := 0) (D.diaIn x) _ _
+        (D.optInT hz) b).symm
+  | .tm (.var _ _), _, he, _ => nomatch he
+  | .tm (.func _), _, he, _ => nomatch he
+  | .tm .unit, _, he, _ => nomatch he
+  | .tm (.pair _ _), _, he, _ => nomatch he
+  | .tm (.boxtm _), _, he, _ => nomatch he
+  | .hide, _, he, _ => False.elim he
+
+theorem Sim.okRef_left {T : VarType} {e e' : SubE σ Δ} (h : Sim T e e') (he : e'.OkRef T) :
+    e.OkRef T := by
+  cases h with
+  | refl => exact he
+  | eta_ren w h => rfl
+  | ren_eta w h => exact h
+
 theorem Sim.collapse {T : VarType} {e e' : SubE σ Δ} (h : Sim T e e') :
     Sim T (e.collapse D) (e'.collapse D) := by
   cases h with
@@ -367,20 +454,6 @@ end SubE
 namespace Subst
 
 variable {σ : Signature}
-
-theorem at_under_ne {Δ : Ctx} (θ : Subst σ Δ) {d d' : ℕ} (T : VarType)
-    (h : Δ (.root (.bnd d')) = none) :
-    ∀ {v : VarSymb}, v.rt ≠ .bnd d → (θ.under d d' T h).at v = (θ.at v).mono (Ctx.le_insert h T)
-  | .root r, hv => by
-      change (if VarSymb.root r = .root (.bnd d) then _ else _) = _
-      rw [if_neg (fun he => hv (by cases he; rfl))]
-      rfl
-  | .step v s, hv => by
-      simp only [Subst.at]
-      split_ifs
-      · rw [at_under_ne θ T h (v := v) hv, SubE.proj_mono]
-      · exact if_neg (t := SubE.ren (.root (.bnd d')))
-          (fun (he : VarSymb.step v s = .root (.bnd d)) => by cases he)
 
 /-- `θ'` substitutes each collapsed address as `θ` substitutes the address, collapsed. -/
 def Corr {k : ℕ} (Γ : Ctx) {Δ Δ' : Ctx} (D : Ctx.Collapses k Δ Δ') (θ : Subst σ Δ)
@@ -500,6 +573,236 @@ theorem corr_under (hθ : Ok Γ θ) (hcr : Corr Γ D θ θ') {d d' : ℕ} (hΓ :
     rw [at_nonproj θ hlp] at h₁
     exact h₁.mono _
 
+/-! ### Witnesses (M2, docs §12.30) -/
+
+/-- ⭐**The witnesses of a correspondence** (M2): along the collapsed arrow, the image of a
+    possible object read at the identity arrow is the witness's content collapsed; further in,
+    the collapsed witness's content is the witness's content collapsed. -/
+def CorrW : {k : ℕ} → Ctx → {Δ Δ' : Ctx} → Ctx.Collapses k Δ Δ' → Subst σ Δ → Subst σ Δ' →
+    Prop
+  | 0, Γ, Δ, _, D, θ, θ' => ∀ y X, Γ.wit y = some X → ∀ (hO : ModalSys.Opt = true) (z : VarSymb),
+      (θ.wit y).idxAlong [] = z → (θ'.at y).idxAlong [] = z ∧
+      ∃ (Z : VarType) (hz : Δ.wit z = some Z),
+        SubE.Sim X ((θ'.at y).atBody z) (((θ.wit y).optBody z).collapse (D.optIn_zero hO hz))
+  | k + 1, Γ, Δ, _, D, θ, θ' => ∀ y X, Γ.wit y = some X → ∀ z : VarSymb,
+      (θ.wit y).idxAlong [] = z → (θ'.wit (y.collapse k)).idxAlong [] = z.collapse k ∧
+      ∃ (Z : VarType) (hz : Δ.wit z = some Z),
+        SubE.Sim X ((θ'.wit (y.collapse k)).optBody (z.collapse k))
+          (((θ.wit y).optBody z).collapse (D.optIn_succ hz))
+
+/-- ⭐A correspondence's witnesses pass to weakened substitutions with the same witnesses: every
+    view but the `□` and `◇` ones. -/
+theorem CorrW.transfer {k : ℕ} {Γ Γ₁ Δ₀ Δ₀' Δ₁ Δ₁' : Ctx} {D₀ : Ctx.Collapses k Δ₀ Δ₀'}
+    {D₁ : Ctx.Collapses k Δ₁ Δ₁'} {θ₀ : Subst σ Δ₀} {θ₀' : Subst σ Δ₀'} {θ₁ : Subst σ Δ₁}
+    {θ₁' : Subst σ Δ₁'} (l : Δ₀.Le Δ₁) (l' : Δ₀'.Le Δ₁') (hcw : CorrW Γ D₀ θ₀ θ₀')
+    (hΓ : ∀ y, Γ₁.wit y = Γ.wit y) (hw : ∀ y, θ₁.wit y = (θ₀.wit y).mono l)
+    (h0 : k = 0 → ∀ y X, Γ.wit y = some X → θ₁'.at y = (θ₀'.at y).mono l')
+    (hs : ∀ k', k = k' + 1 → ∀ y X, Γ.wit y = some X →
+      θ₁'.wit (y.collapse k') = (θ₀'.wit (y.collapse k')).mono l') :
+    CorrW Γ₁ D₁ θ₁ θ₁' := by
+  cases k with
+  | zero =>
+      intro y X hy hO z hzi
+      rw [hΓ] at hy
+      rw [hw y, WitE.idxAlong_mono] at hzi
+      obtain ⟨hi, Z, hz, hsim⟩ := hcw y X hy hO z hzi
+      refine ⟨by rw [h0 rfl y X hy, SubE.idxAlong_mono]; exact hi, Z, l.wit _ _ hz, ?_⟩
+      rw [h0 rfl y X hy, hw y, ← SubE.atBody_mono, ← WitE.optBody_mono,
+        SubE.collapse_mono (D₀.optIn_zero hO hz) (D₁.optIn_zero hO (l.wit _ _ hz)) (l.optIn _)
+          (l'.optInT _)]
+      exact hsim.mono _
+  | succ k =>
+      intro y X hy z hzi
+      rw [hΓ] at hy
+      rw [hw y, WitE.idxAlong_mono] at hzi
+      obtain ⟨hi, Z, hz, hsim⟩ := hcw y X hy z hzi
+      refine ⟨by rw [hs k rfl y X hy, WitE.idxAlong_mono]; exact hi, Z, l.wit _ _ hz, ?_⟩
+      rw [hs k rfl y X hy, hw y, ← WitE.optBody_mono, ← WitE.optBody_mono,
+        SubE.collapse_mono (D₀.optIn_succ hz) (D₁.optIn_succ (l.wit _ _ hz)) (l.optIn _)
+          (l'.optIn _)]
+      exact hsim.mono _
+
+
+/-- The `□` view's witnesses correspond: they are the possible objects' entries. -/
+theorem CorrW.box (hθ : Ok Γ θ) (hcr : Corr Γ D θ θ') :
+    CorrW Γ.boxIn D.boxIn θ.box θ'.box := by
+  intro y X hy z hzi
+  obtain ⟨hO, hr⟩ := Ctx.boxIn_wit.mp hy
+  have hsim := hcr y _ hr
+  have he := okRef_at hθ hr
+  have he' : (θ'.at (y.collapse k)).OkRef (.VTypeDia X) :=
+    hsim.okRef_left (SubE.okRef_collapse D he)
+  have hzi' : (θ.at y).idxAlong [] = z := (SubE.idxAlong_toWit hO [] he).symm.trans hzi
+  have hi : (θ'.at (y.collapse k)).idxAlong [] = z.collapse k := by
+    rw [hsim.idx, SubE.idxAlong_collapse, hzi']
+    rfl
+  have hi' : (θ'.at (y.collapse k)).toWit.idxAlong [] = z.collapse k :=
+    (SubE.idxAlong_toWit hO [] he').trans hi
+  refine ⟨hi', ?_⟩
+  obtain ⟨Z, hZ⟩ := WitE.wit_of (SubE.okW_toWit hO he) hzi
+  refine ⟨Z, hZ, ?_⟩
+  change SubE.Sim X ((θ'.at (y.collapse k)).toWit.optBody (z.collapse k))
+    (((θ.at y).toWit.optBody z).collapse (D.boxIn.optIn_succ hZ))
+  rw [SubE.toWit_optBody_collapse D hO hZ he hzi']
+  exact (hsim.toWit hO).optBody hi'
+
+/-- The `◇_x` view's witnesses are the `□` view's. -/
+theorem CorrW.dia (hθ : Ok Γ θ) (hcr : Corr Γ D θ θ') (x ιx : VarSymb) :
+    CorrW (Γ.diaIn x) (D.diaIn ιx) (θ.dia x ιx) (θ'.dia (x.collapse k) (ιx.collapse k)) :=
+  CorrW.transfer (Ctx.le_boxIn_diaIn Δ ιx) (Ctx.le_boxIn_diaIn Δ' (ιx.collapse k))
+    (CorrW.box hθ hcr) (fun _ => rfl) (fun _ => rfl) (fun hk => absurd hk (Nat.succ_ne_zero k))
+    (fun _ _ _ _ _ => rfl)
+
+theorem CorrW.under (hcw : CorrW Γ D θ θ') {d d' : ℕ} (hΓ : Γ.SlotsFrom d) (T : VarType)
+    (h : Δ (.root (.bnd d')) = none) (h' : Δ' (.root (.bnd d')) = none)
+    (hr : Δ.RootFresh (.bnd d')) :
+    CorrW (Γ.insert (.bnd d) T) (D.insert hr T) (θ.under d d' T h) (θ'.under d d' T h') :=
+  CorrW.transfer (Ctx.le_insert h T) (Ctx.le_insert h' T) hcw (fun _ => rfl) (fun _ => rfl)
+    (fun _ y X hy => at_under_ne θ' T h' (fun he => by
+      rw [hΓ.wit y d he le_rfl] at hy
+      cases hy))
+    (fun _ _ _ _ _ => rfl)
+
+/-- ⭐**At level 0 a witness's view corresponds to its identity view** (`◇⁰_y` collapsing to
+    `◇⁰ᵀ_y`). -/
+theorem corr_optIn_zero {Γ' Δ Δ' : Ctx} {D : Ctx.Collapses 0 Δ Δ'} {θ : Subst σ Δ}
+    {θ' : Subst σ Δ'} {ι' : VarSymb → VarSymb} (C : Ctx.Collapses 0 Γ Γ') (hθ : Ok Γ θ)
+    (hc' : Coh ι' Γ' θ') (hcr : Corr Γ D θ θ') (hcw : CorrW Γ D θ θ')
+    (hO : ModalSys.Opt = true) {y : VarSymb} {X : VarType} (hy : Γ.wit y = some X)
+    {z : VarSymb} (hzi : (θ.wit y).idxAlong [] = z) {Z : VarType} (hz : Δ.wit z = some Z) :
+    Corr (Γ.optIn y) (D.optIn_zero hO hz) (θ.optIn y z) (θ'.optInT y z) := by
+  have hyT : Γ'.witT y = some X := (C.wit y X hy).1 rfl
+  have hi : (θ'.at y).idxAlong [] = z := (hcw y X hy hO z hzi).1
+  refine corr_of (ok_optIn hθ hO hy hzi) ?_
+  intro v T hlp hv
+  by_cases hc : v = .step y .dia
+  · subst hc
+    rw [Ctx.optIn_content hy] at hv
+    cases hv
+    rw [VarSymb.collapse_dia_zero_opt hO, at_nonproj _ rfl, optInT_content, optIn_content]
+    obtain ⟨-, Z', hz', hsim⟩ := hcw y _ hy hO z hzi
+    exact hsim
+  · rw [Ctx.optIn_ne hc] at hv
+    have href : Γ.ref v = some T := (Ctx.ref_nonproj Γ hlp).trans hv
+    rw [at_optInT_of hc' hyT hi _ _ (C v T href), optIn_ne θ z hc,
+      SubE.collapse_mono D (D.optIn_zero hO hz) (Ctx.le_optIn Δ z) (Ctx.le_optInT Δ' z)]
+    have h₁ := hcr v T href
+    rw [at_nonproj θ hlp] at h₁
+    exact h₁.mono _
+
+/-- Further in, a witness's view corresponds to the collapsed witness's. -/
+theorem corr_optIn_succ {Γ' Δ Δ' : Ctx} {D : Ctx.Collapses (k + 1) Δ Δ'} {θ : Subst σ Δ}
+    {θ' : Subst σ Δ'} {ι' : VarSymb → VarSymb} (C : Ctx.Collapses (k + 1) Γ Γ') (hθ : Ok Γ θ)
+    (hc' : Coh ι' Γ' θ') (hcr : Corr Γ D θ θ') (hcw : CorrW Γ D θ θ')
+    (hO : ModalSys.Opt = true) {y : VarSymb} {X : VarType} (hy : Γ.wit y = some X)
+    {z : VarSymb} (hzi : (θ.wit y).idxAlong [] = z) {Z : VarType} (hz : Δ.wit z = some Z) :
+    Corr (Γ.optIn y) (D.optIn_succ hz) (θ.optIn y z) (θ'.optIn (y.collapse k) (z.collapse k)) := by
+  have hy' : Γ'.wit (y.collapse k) = some X := (C.wit y X hy).2 k rfl
+  have hi : (θ'.wit (y.collapse k)).idxAlong [] = z.collapse k := (hcw y X hy z hzi).1
+  refine corr_of (ok_optIn hθ hO hy hzi) ?_
+  intro v T hlp hv
+  by_cases hc : v = .step y .dia
+  · subst hc
+    rw [Ctx.optIn_content hy] at hv
+    cases hv
+    rw [VarSymb.collapse_level_succ rfl, at_nonproj _ rfl, optIn_content, optIn_content]
+    obtain ⟨-, Z', hz', hsim⟩ := hcw y _ hy z hzi
+    exact hsim
+  · rw [Ctx.optIn_ne hc] at hv
+    have href : Γ.ref v = some T := (Ctx.ref_nonproj Γ hlp).trans hv
+    rw [at_optIn_of hc' hO hy' hi _ _ (C v T href), optIn_ne θ z hc,
+      SubE.collapse_mono D (D.optIn_succ hz) (Ctx.le_optIn Δ z) (Ctx.le_optIn Δ' _)]
+    have h₁ := hcr v T href
+    rw [at_nonproj θ hlp] at h₁
+    exact h₁.mono _
+
+/-- An identity view corresponds to the collapsed possible object's. -/
+theorem corr_optInT {Γ' : Ctx} {ι' : VarSymb → VarSymb} (C : Ctx.Collapses k Γ Γ')
+    (hθ : Ok Γ θ) (hc' : Coh ι' Γ' θ') (hcr : Corr Γ D θ θ') {y : VarSymb} {X : VarType}
+    (hy : Γ.witT y = some X) {z : VarSymb} (hzi : (θ.at y).idxAlong [] = z) {Z : VarType}
+    (hz : Δ.witT z = some Z) :
+    Corr (Γ.optInT y) (D.optInT hz) (θ.optInT y z) (θ'.optInT (y.collapse k) (z.collapse k)) := by
+  obtain ⟨hT, hO, hr⟩ := Ctx.witT_spec hy
+  have hy' : Γ'.witT (y.collapse k) = some X := C.witT hy
+  have hsim := hcr y _ hr
+  have he := okRef_at hθ hr
+  have hi : (θ'.at (y.collapse k)).idxAlong [] = z.collapse k := by
+    rw [hsim.idx, SubE.idxAlong_collapse, hzi]
+    rfl
+  refine corr_of (ok_optInT hθ hy hzi) ?_
+  intro v T hlp hv
+  by_cases hc : v = .step y .at
+  · subst hc
+    rw [Ctx.optInT_content hy] at hv
+    cases hv
+    rw [VarSymb.collapse_proj rfl, at_nonproj _ rfl, optInT_content, optInT_content,
+      SubE.atBody_collapse D hz he hzi]
+    exact hsim.atBody hT hO hi
+  · rw [Ctx.optInT_ne hc] at hv
+    have href : Γ.ref v = some T := (Ctx.ref_nonproj Γ hlp).trans hv
+    rw [at_optInT_of hc' hy' hi _ _ (C v T href), optInT_ne θ z hc,
+      SubE.collapse_mono D (D.optInT hz) (Ctx.le_optInT Δ z) (Ctx.le_optInT Δ' _)]
+    have h₁ := hcr v T href
+    rw [at_nonproj θ hlp] at h₁
+    exact h₁.mono _
+
+theorem CorrW.optIn_zero {Γ' Δ Δ' : Ctx} {D : Ctx.Collapses 0 Δ Δ'} {θ : Subst σ Δ}
+    {θ' : Subst σ Δ'} {ι' : VarSymb → VarSymb} (C : Ctx.Collapses 0 Γ Γ') (hc' : Coh ι' Γ' θ')
+    (hcw : CorrW Γ D θ θ') (hO : ModalSys.Opt = true) {y : VarSymb} {X : VarType}
+    (hy : Γ.wit y = some X) {z : VarSymb} (hzi : (θ.wit y).idxAlong [] = z) {Z : VarType}
+    (hz : Δ.wit z = some Z) :
+    CorrW (Γ.optIn y) (D.optIn_zero hO hz) (θ.optIn y z) (θ'.optInT y z) :=
+  CorrW.transfer (Ctx.le_optIn Δ z) (Ctx.le_optInT Δ' z) hcw (fun _ => rfl) (fun _ => rfl)
+    (fun _ y' X' hy' => at_optInT_of hc' ((C.wit y X hy).1 rfl) (hcw y X hy hO z hzi).1 _ _
+      (Ctx.witT_spec ((C.wit y' X' hy').1 rfl)).2.2)
+    (fun _ hk => absurd hk.symm (Nat.succ_ne_zero _))
+
+theorem CorrW.optIn_succ {Δ Δ' : Ctx} {D : Ctx.Collapses (k + 1) Δ Δ'} {θ : Subst σ Δ}
+    {θ' : Subst σ Δ'} (hcw : CorrW Γ D θ θ') (y : VarSymb) {z : VarSymb} {Z : VarType}
+    (hz : Δ.wit z = some Z) :
+    CorrW (Γ.optIn y) (D.optIn_succ hz) (θ.optIn y z) (θ'.optIn (y.collapse k) (z.collapse k)) :=
+  CorrW.transfer (Ctx.le_optIn Δ z) (Ctx.le_optIn Δ' _) hcw (fun _ => rfl) (fun _ => rfl)
+    (fun hk => absurd hk (Nat.succ_ne_zero k)) (fun _ _ _ _ _ => rfl)
+
+theorem CorrW.optInT {Γ' : Ctx} {ι' : VarSymb → VarSymb} (C : Ctx.Collapses k Γ Γ')
+    (hc' : Coh ι' Γ' θ') (hcr : Corr Γ D θ θ') (hcw : CorrW Γ D θ θ') {y : VarSymb}
+    {X : VarType} (hy : Γ.witT y = some X) {z : VarSymb} (hzi : (θ.at y).idxAlong [] = z)
+    {Z : VarType} (hz : Δ.witT z = some Z) :
+    CorrW (Γ.optInT y) (D.optInT hz) (θ.optInT y z) (θ'.optInT (y.collapse k) (z.collapse k)) := by
+  obtain ⟨-, -, hr⟩ := Ctx.witT_spec hy
+  have hi : (θ'.at (y.collapse k)).idxAlong [] = z.collapse k := by
+    rw [(hcr y _ hr).idx, SubE.idxAlong_collapse, hzi]
+    rfl
+  exact CorrW.transfer (Ctx.le_optInT Δ z) (Ctx.le_optInT Δ' _) hcw (fun _ => rfl)
+    (fun _ => rfl)
+    (fun hk y' X' hy' => at_optInT_of hc' (C.witT hy) hi _ _
+      (Ctx.witT_spec ((C.wit y' X' hy').1 hk)).2.2)
+    (fun _ _ _ _ _ => rfl)
+
+/-- A source without witnesses has nothing to correspond. -/
+theorem CorrW.of_noWit {k : ℕ} {Γ Δ Δ' : Ctx} {D : Ctx.Collapses k Δ Δ'} {θ : Subst σ Δ}
+    {θ' : Subst σ Δ'} (h : ∀ y, Γ.wit y = none) : CorrW Γ D θ θ' := by
+  cases k with
+  | zero => intro y X hy; rw [h] at hy; cases hy
+  | succ k => intro y X hy; rw [h] at hy; cases hy
+
+/-- A single-root substitution's witnesses go to themselves, so at level 0 they correspond. -/
+theorem CorrW.single_zero {Λ Ω Ω' : Ctx} {r : Root} {T : VarType} {D : Ctx.Collapses 0 Ω Ω'}
+    (hr : Λ.RootFresh r) (hle : Λ.Le Ω) {e : SubE σ Ω} {e' : SubE σ Ω'} :
+    CorrW (Λ.insert r T) D (single r e) (single r e') := by
+  intro y X hy hO z hzi
+  have hz : y = z := hzi
+  subst hz
+  have hrt : y.rt ≠ r := fun he => by
+    change Λ.wit y = some X at hy
+    rw [hr.wit y he] at hy
+    cases hy
+  refine ⟨by rw [at_single_of_rt_ne hrt]; rfl, X, hle.wit y X hy, ?_⟩
+  rw [at_single_of_rt_ne hrt]
+  change SubE.Sim X (SubE.ren (.step y .at)) (SubE.ren ((VarSymb.step y .dia).collapse 0))
+  rw [VarSymb.collapse_dia_zero_opt hO]
+  exact .refl _
+
 end Subst
 
 /-! ## Collapsing a substituted term -/
@@ -608,52 +911,56 @@ theorem WFF.collapse_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {�
     (θ' : Subst σ Δ') → (hθ' : Subst.Ok Γ' θ') → (hc' : Subst.Coh ι' Γ' θ') →
     (hΓ : Γ.SlotsFrom d) → (hΓ' : Γ'.SlotsFrom d) → (hΔ : Δ.SlotsFrom d') →
     (hΔ' : Δ'.SlotsFrom d') → Subst.Corr Γ D θ θ' → (φ : WFF σ Γ d) →
+    (_hcw : ModalSys.Opt = true → Subst.CorrW Γ D θ θ' := by wit_triv) →
     WFF.collapse D hΔ (WFF.subst ι θ hθ hc hΓ hΔ φ) =
       WFF.subst ι' θ' hθ' hc' hΓ' hΔ' (WFF.collapse C hΓ φ)
-  | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr, .atom ρ =>
+  | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr, .atom ρ, _ =>
       congrArg WFF.atom (Rel.collapse_subst C D θ hθ hc θ' hθ' hc' hcr ρ)
-  | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr, .eq t s =>
+  | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr, .eq t s, _ =>
       congrArg₂ WFF.eq (Term.collapse_subst_var C D θ hθ hc θ' hθ' hc' hcr t)
         (Term.collapse_subst_var C D θ hθ hc θ' hθ' hc' hcr s)
-  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, .top => rfl
-  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, .bot => rfl
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, .top, _ => rfl
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, .bot, _ => rfl
   | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .and φ ψ =>
-      congrArg₂ WFF.and (WFF.collapse_subst C D θ hθ hc θ' hθ' hc' hΓ hΓ' hΔ hΔ' hcr φ)
-        (WFF.collapse_subst C D θ hθ hc θ' hθ' hc' hΓ hΓ' hΔ hΔ' hcr ψ)
+      .and φ ψ, hcw =>
+      congrArg₂ WFF.and (WFF.collapse_subst C D θ hθ hc θ' hθ' hc' hΓ hΓ' hΔ hΔ' hcr φ hcw)
+        (WFF.collapse_subst C D θ hθ hc θ' hθ' hc' hΓ hΓ' hΔ hΔ' hcr ψ hcw)
   | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .or φ ψ =>
-      congrArg₂ WFF.or (WFF.collapse_subst C D θ hθ hc θ' hθ' hc' hΓ hΓ' hΔ hΔ' hcr φ)
-        (WFF.collapse_subst C D θ hθ hc θ' hθ' hc' hΓ hΓ' hΔ hΔ' hcr ψ)
+      .or φ ψ, hcw =>
+      congrArg₂ WFF.or (WFF.collapse_subst C D θ hθ hc θ' hθ' hc' hΓ hΓ' hΔ hΔ' hcr φ hcw)
+        (WFF.collapse_subst C D θ hθ hc θ' hθ' hc' hΓ hΓ' hΔ hΔ' hcr ψ hcw)
   | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .imp φ ψ =>
-      congrArg₂ WFF.imp (WFF.collapse_subst C D θ hθ hc θ' hθ' hc' hΓ hΓ' hΔ hΔ' hcr φ)
-        (WFF.collapse_subst C D θ hθ hc θ' hθ' hc' hΓ hΓ' hΔ hΔ' hcr ψ)
+      .imp φ ψ, hcw =>
+      congrArg₂ WFF.imp (WFF.collapse_subst C D θ hθ hc θ' hθ' hc' hΓ hΓ' hΔ hΔ' hcr φ hcw)
+        (WFF.collapse_subst C D θ hθ hc θ' hθ' hc' hΓ hΓ' hΔ hΔ' hcr ψ hcw)
   | _, _, _, _, _, _, _, d, d', C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .all T φ =>
+      .all T φ, hcw =>
       congrArg (WFF.all T) (WFF.collapse_subst (C.insert (hΓ.rootFresh le_rfl) T)
         (D.insert (hΔ.rootFresh le_rfl) T) (θ.under d d' T hΔ.root)
         (Subst.ok_under hθ T hΔ.root) (Subst.coh_under hθ hc hΓ T hΔ.root)
         (θ'.under d d' T hΔ'.root) (Subst.ok_under hθ' T hΔ'.root)
         (Subst.coh_under hθ' hc' hΓ' T hΔ'.root) (hΓ.insert T) (hΓ'.insert T) (hΔ.insert T)
         (hΔ'.insert T)
-        (Subst.corr_under hθ hcr hΓ T hΔ.root hΔ'.root (hΔ.rootFresh le_rfl)) φ)
+        (Subst.corr_under hθ hcr hΓ T hΔ.root hΔ'.root (hΔ.rootFresh le_rfl)) φ
+        fun hO => (hcw hO).under hΓ T hΔ.root hΔ'.root (hΔ.rootFresh le_rfl))
   | _, _, _, _, _, _, _, d, d', C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .ex T φ =>
+      .ex T φ, hcw =>
       congrArg (WFF.ex T) (WFF.collapse_subst (C.insert (hΓ.rootFresh le_rfl) T)
         (D.insert (hΔ.rootFresh le_rfl) T) (θ.under d d' T hΔ.root)
         (Subst.ok_under hθ T hΔ.root) (Subst.coh_under hθ hc hΓ T hΔ.root)
         (θ'.under d d' T hΔ'.root) (Subst.ok_under hθ' T hΔ'.root)
         (Subst.coh_under hθ' hc' hΓ' T hΔ'.root) (hΓ.insert T) (hΓ'.insert T) (hΔ.insert T)
         (hΔ'.insert T)
-        (Subst.corr_under hθ hcr hΓ T hΔ.root hΔ'.root (hΔ.rootFresh le_rfl)) φ)
+        (Subst.corr_under hθ hcr hΓ T hΔ.root hΔ'.root (hΔ.rootFresh le_rfl)) φ
+        fun hO => (hcw hO).under hΓ T hΔ.root hΔ'.root (hΔ.rootFresh le_rfl))
   | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .box φ =>
+      .box φ, hcw =>
       congrArg WFF.box (WFF.collapse_subst C.boxIn D.boxIn θ.box (Subst.ok_box hθ)
         (Subst.coh_box hθ hc) θ'.box (Subst.ok_box hθ') (Subst.coh_box hθ' hc') hΓ.boxIn
-        hΓ'.boxIn hΔ.boxIn hΔ'.boxIn (Subst.corr_box hθ hcr) φ)
+        hΓ'.boxIn hΔ.boxIn hΔ'.boxIn (Subst.corr_box hθ hcr) φ
+        fun _ => Subst.CorrW.box hθ hcr)
   | k, ι, ι', Γ, Γ', Δ, Δ', _, d', C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .dia x hx φ => by
+      .dia x hx φ, hcw => by
       have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
       have hwι : ι' (x.collapse k) = (ι x).collapse k := hx.elim fun _ hX => by
         have h₁ := hc' (x.collapse k) _ (C x _ hX) []
@@ -675,19 +982,95 @@ theorem WFF.collapse_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {�
         exact congrArg (WFF.dia ((ι x).collapse k) _) (WFF.collapse_subst (C.diaIn x)
           (D.diaIn (ι x)) (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx)
           (θ'.dia (x.collapse k) ((ι x).collapse k)) p q (hΓ.diaIn x) (hΓ'.diaIn (x.collapse k))
-          (hΔ.diaIn (ι x)) hΔy (Subst.corr_dia hθ hcr hx hw hw') φ)
+          (hΔ.diaIn (ι x)) hΔy (Subst.corr_dia hθ hcr hx hw hw') φ
+          fun _ => Subst.CorrW.dia hθ hcr x (ι x))
       exact key _ hwι _ _ _ _
-  | _, _, _, _, _, _, _, _, _, _, D, _, _, _, _, _, _, _, _, _, _, _, .optx hO _ _ _ _ =>
-      False.elim (by have := ModalSys.noOpt_of_T D.hT; rw [hO] at this; cases this)
-  | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr, .here hT s t =>
+  | 0, ι, ι', Γ, Γ', Δ, Δ', _, d', C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
+      .optx hO .arrow y hy φ, hcw => by
+      obtain ⟨X, hX⟩ := hy
+      have hzi : (θ.wit y).idxAlong [] = ι y := hc.wit hO y X hX []
+      obtain ⟨Z, hz⟩ := WitE.wit_of (hθ.wit hO y X hX) hzi
+      have hyT : Γ'.witT y = some X := (C.wit y X hX).1 rfl
+      have hι : ι' y = ι y :=
+        (hc' y _ (Ctx.witT_spec hyT).2.2 []).symm.trans ((hcw hO) y X hX hO (ι y) hzi).1
+      have key : ∀ (z : VarSymb) (_hz : z = ι y) (P : ∃ Z, Δ'.witT z = some Z)
+          (p : Subst.Ok (Γ'.optInT y) (θ'.optInT y z))
+          (q : Subst.Coh ι' (Γ'.optInT y) (θ'.optInT y z)) (hΔz : (Δ'.optInT z).SlotsFrom d'),
+          WFF.collapse D hΔ (WFF.subst ι θ hθ hc hΓ hΔ (.optx hO .arrow y ⟨X, hX⟩ φ)) =
+            .optx hO .ident z P (WFF.subst ι' (θ'.optInT y z) p q (hΓ'.optInT y) hΔz
+              (WFF.collapse (C.optIn_zero hO hX) (hΓ.optIn y) φ)) := by
+        intro z hz' P p q hΔz
+        subst hz'
+        exact congrArg (WFF.optx hO .ident (ι y) _) (WFF.collapse_subst (C.optIn_zero hO hX)
+          (D.optIn_zero hO hz) (θ.optIn y (ι y)) (Subst.ok_optIn hθ hO hX hzi)
+          (Subst.coh_optIn hθ hc hO hX) (θ'.optInT y (ι y)) p q (hΓ.optIn y) (hΓ'.optInT y)
+          (hΔ.optIn (ι y)) hΔz
+          (Subst.corr_optIn_zero C hθ hc' hcr (hcw hO) hO hX hzi hz) φ
+          (fun _ => Subst.CorrW.optIn_zero C hc' (hcw hO) hO hX hzi hz))
+      exact key (ι' y) hι _ _ _ _
+  | k + 1, ι, ι', Γ, Γ', Δ, Δ', _, d', C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
+      .optx hO .arrow y hy φ, hcw => by
+      obtain ⟨X, hX⟩ := hy
+      have hzi : (θ.wit y).idxAlong [] = ι y := hc.wit hO y X hX []
+      obtain ⟨Z, hz⟩ := WitE.wit_of (hθ.wit hO y X hX) hzi
+      have hy' : Γ'.wit (y.collapse k) = some X := (C.wit y X hX).2 k rfl
+      have hι : ι' (y.collapse k) = (ι y).collapse k :=
+        (hc'.wit hO _ X hy' []).symm.trans ((hcw hO) y X hX (ι y) hzi).1
+      have key : ∀ (z : VarSymb) (_hz : z = (ι y).collapse k) (P : ∃ Z, Δ'.wit z = some Z)
+          (p : Subst.Ok (Γ'.optIn (y.collapse k)) (θ'.optIn (y.collapse k) z))
+          (q : Subst.Coh ι' (Γ'.optIn (y.collapse k)) (θ'.optIn (y.collapse k) z))
+          (hΔz : (Δ'.optIn z).SlotsFrom d'),
+          WFF.collapse D hΔ (WFF.subst ι θ hθ hc hΓ hΔ (.optx hO .arrow y ⟨X, hX⟩ φ)) =
+            .optx hO .arrow z P (WFF.subst ι' (θ'.optIn (y.collapse k) z) p q
+              (hΓ'.optIn (y.collapse k)) hΔz
+              (WFF.collapse (C.optIn_succ hX) (hΓ.optIn y) φ)) := by
+        intro z hz' P p q hΔz
+        subst hz'
+        exact congrArg (WFF.optx hO .arrow ((ι y).collapse k) _) (WFF.collapse_subst
+          (C.optIn_succ hX) (D.optIn_succ hz) (θ.optIn y (ι y)) (Subst.ok_optIn hθ hO hX hzi)
+          (Subst.coh_optIn hθ hc hO hX) (θ'.optIn (y.collapse k) ((ι y).collapse k)) p q
+          (hΓ.optIn y) (hΓ'.optIn (y.collapse k)) (hΔ.optIn (ι y)) hΔz
+          (Subst.corr_optIn_succ C hθ hc' hcr (hcw hO) hO hX hzi hz) φ
+          (fun _ => Subst.CorrW.optIn_succ (hcw hO) y hz))
+      exact key _ hι _ _ _ _
+  | k, ι, ι', Γ, Γ', Δ, Δ', _, d', C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
+      .optx hO .ident y hy φ, hcw => by
+      obtain ⟨X, hX⟩ := hy
+      obtain ⟨hT, -, hr⟩ := Ctx.witT_spec hX
+      have hzi : (θ.at y).idxAlong [] = ι y := hc y _ hr []
+      obtain ⟨Z, hZ₀⟩ := SubE.ref_witness (Subst.okRef_at hθ hr) hzi
+      have hz : Δ.witT (ι y) = some Z := Ctx.witT_of hT hO hZ₀
+      have hι : ι' (y.collapse k) = (ι y).collapse k := by
+        have h₁ := hc' (y.collapse k) _ (C y _ hr) []
+        have h₂ := (hcr y _ hr).idx
+        rw [SubE.idxAlong_collapse, hzi] at h₂
+        exact h₁.symm.trans h₂
+      have key : ∀ (z : VarSymb) (_hz : z = (ι y).collapse k) (P : ∃ Z, Δ'.witT z = some Z)
+          (p : Subst.Ok (Γ'.optInT (y.collapse k)) (θ'.optInT (y.collapse k) z))
+          (q : Subst.Coh ι' (Γ'.optInT (y.collapse k)) (θ'.optInT (y.collapse k) z))
+          (hΔz : (Δ'.optInT z).SlotsFrom d'),
+          WFF.collapse D hΔ (WFF.subst ι θ hθ hc hΓ hΔ (.optx hO .ident y ⟨X, hX⟩ φ)) =
+            .optx hO .ident z P (WFF.subst ι' (θ'.optInT (y.collapse k) z) p q
+              (hΓ'.optInT (y.collapse k)) hΔz
+              (WFF.collapse (C.optInT hX) (hΓ.optInT y) φ)) := by
+        intro z hz' P p q hΔz
+        subst hz'
+        exact congrArg (WFF.optx hO .ident ((ι y).collapse k) _) (WFF.collapse_subst
+          (C.optInT hX) (D.optInT hz) (θ.optInT y (ι y)) (Subst.ok_optInT hθ hX hzi)
+          (Subst.coh_optInT hθ hc hX) (θ'.optInT (y.collapse k) ((ι y).collapse k)) p q
+          (hΓ.optInT y) (hΓ'.optInT (y.collapse k)) (hΔ.optInT (ι y)) hΔz
+          (Subst.corr_optInT C hθ hc' hcr hX hzi hz) φ
+          (fun hO' => Subst.CorrW.optInT C hc' hcr (hcw hO') hX hzi hz))
+      exact key _ hι _ _ _ _
+  | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr, .here hT s t, _ =>
       WFF.here_congr hT (Term.collapse_subst C D θ hθ hc θ' hθ' hc' hcr s)
         (Term.collapse_subst C D θ hθ hc θ' hθ' hc' hcr t)
   | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr,
-      .back hB L s t =>
+      .back hB L s t, _ =>
       WFF.back_congr hB L (Term.collapse_subst C D θ hθ hc θ' hθ' hc' hcr s)
         (Term.collapse_subst C D θ hθ hc θ' hθ' hc' hcr t)
   | _, _, _, _, _, _, _, d, d', C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .retS hB S t Φ =>
+      .retS hB S t Φ, _ =>
       WFF.retS_congr hB S (Term.collapse_subst C D θ hθ hc θ' hθ' hc' hcr t)
         (WFF.collapse_subst (C.boxIn.insert (hΓ.boxIn.rootFresh le_rfl) _)
           (D.boxIn.insert (hΔ.boxIn.rootFresh le_rfl) _) (θ.box.under d d' _ hΔ.boxIn.root)
@@ -699,7 +1082,7 @@ theorem WFF.collapse_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {�
           (Subst.corr_under (Subst.ok_box hθ) (Subst.corr_box hθ hcr) hΓ.boxIn _ hΔ.boxIn.root
             hΔ'.boxIn.root (hΔ.boxIn.rootFresh le_rfl)) Φ)
   | k, ι, ι', Γ, Γ', Δ, Δ', d, d', C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .retxS hB y hy S t Φ => by
+      .retxS hB y hy S t Φ, _ => by
       have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
       have hwι : ι' (y.collapse k) = (ι y).collapse k := hy.elim fun _ hY => by
         have h₁ := hc' (y.collapse k) _ (C y _ hY) []
@@ -736,7 +1119,7 @@ theorem WFF.collapse_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {�
               (hΓ.diaIn y) _ hr hΔz.root ((hΔ.diaIn (ι y)).rootFresh le_rfl)) Φ)
       exact key _ hwι _ (hΔ'.diaIn _) _ _
   | _, _, _, _, _, _, _, d, d', C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .link hV hF t Φ =>
+      .link hV hF t Φ, _ =>
       WFF.link_congr hV hF (Term.collapse_subst C D θ hθ hc θ' hθ' hc' hcr t)
         (WFF.collapse_subst (C.boxIn.insert (hΓ.boxIn.rootFresh le_rfl) _)
           (D.boxIn.insert (hΔ.boxIn.rootFresh le_rfl) _) (θ.box.under d d' _ hΔ.boxIn.root)
@@ -748,7 +1131,7 @@ theorem WFF.collapse_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {�
           (Subst.corr_under (Subst.ok_box hθ) (Subst.corr_box hθ hcr) hΓ.boxIn _ hΔ.boxIn.root
             hΔ'.boxIn.root (hΔ.boxIn.rootFresh le_rfl)) Φ)
   | k, ι, ι', Γ, Γ', Δ, Δ', d, d', C, D, θ, hθ, hc, θ', hθ', hc', hΓ, hΓ', hΔ, hΔ', hcr,
-      .linkx hV hF y hy (D := Ds) t Φ => by
+      .linkx hV hF y hy (D := Ds) t Φ, _ => by
       have hw : (θ.at y).idxAlong [] = ι y := hy.elim fun _ hY => hc y _ hY []
       have hwι : ι' (y.collapse k) = (ι y).collapse k := hy.elim fun _ hY => by
         have h₁ := hc' (y.collapse k) _ (C y _ hY) []

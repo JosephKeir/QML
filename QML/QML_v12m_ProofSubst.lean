@@ -683,6 +683,20 @@ theorem WFF.subst_optIn_mono {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subs
       rw [Subst.optIn_eq_mono θ hc hO hy v T hv, Subst.at_mono]
       exact .refl _), fun _ _ _ _ => .refl _⟩ χ
 
+/-- Substituting into the identity view of `y`, weakened, is weakening the substituted formula. -/
+theorem WFF.subst_optInT_mono {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst σ Δ)
+    (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) {y : VarSymb} {X : VarType}
+    (hy : Γ.witT y = some X) (hΓ : Γ.SlotsFrom 0) (hΔ : Δ.SlotsFrom 0)
+    (hΔo : (Δ.optInT (ι y)).SlotsFrom 0) (χ : WFF σ Γ 0) :
+    WFF.subst ι (θ.optInT y (ι y)) (Subst.ok_optInT hθ hy (hc y _ (Ctx.witT_spec hy).2.2 []))
+        (Subst.coh_optInT hθ hc hy) (hΓ.optInT y) hΔo (WFF.mono (Ctx.le_optInT Γ y) χ) =
+      WFF.mono (Ctx.le_optInT Δ (ι y)) (WFF.subst ι θ hθ hc hΓ hΔ χ) :=
+  WFF.subst_mono_eq _ _ θ hθ hc (θ.optInT y (ι y)) _ _ hΓ (hΓ.optInT y) hΔ hΔo
+    ⟨fun v T hv => (by
+      rw [Subst.at_optInT_of (z := ι y) hc hy (hc y _ (Ctx.witT_spec hy).2.2 []) v T hv,
+        Subst.at_mono]
+      exact .refl _), fun _ _ _ _ => .refl _⟩ χ
+
 theorem SubE.Sim.symm {Δ : Ctx} {U : VarType} {e e' : SubE σ Δ} (h : SubE.Sim U e e') :
     SubE.Sim U e' e := by
   cases h with
@@ -3236,14 +3250,43 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
               exact List.map_congr_left fun χ _ =>
                 WFF.subst_optIn_mono θ hθ hc hO hX hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots χ)
             ih))
-  | _, _, _, @Proof.K_opt _ _ _ _ .ident _ hy _ _ _ _ _, _, _, _, _, _, _, _ =>
-      (hy.elim fun _ h => Ctx.witT_stage h).elim
+  | _, _, _, @Proof.K_opt _ _ _ hO .ident y hy Δ₁ Δ₂ φ ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hwy : ∃ X, Γ'.witT (ι y) = some X :=
+        hy.elim fun X hX => by
+          obtain ⟨hT, hO', hr⟩ := Ctx.witT_spec hX
+          obtain ⟨Y, hY⟩ := SubE.ref_witness (Subst.okRef_at hθ hr) (hc y _ hr [])
+          exact ⟨Y, Ctx.witT_of hT hO' hY⟩
+      have hθy := hy.elim fun X hX =>
+        Subst.ok_optInT hθ hX (hc y _ (Ctx.witT_spec hX).2.2 [])
+      have hcy := hy.elim fun _ hX => Subst.coh_optInT hθ hc hX
+      have ih := Proof.subst p (θ.optInT y (ι y)) hθy hcy (hΓ.optInT y)
+      Proof.castHyps
+        (by
+          simp only [List.map_cons, List.map_append, List.map_map]
+          rfl)
+        (Proof.K_opt (Γ := Γ') hO .ident (ι y) hwy
+          (Δ₁ := Δ₁.map (WFF.subst ι θ hθ hc hΓ Ctx.NoSlots.slots))
+          (Δ₂ := Δ₂.map (WFF.subst ι (θ.optInT y (ι y)) hθy hcy (hΓ.optInT y)
+            Ctx.NoSlots.slots))
+          (Proof.castHyps
+            (by
+              obtain ⟨X, hX⟩ := hy
+              simp only [List.map_cons, List.map_append, List.map_map]
+              congr 2
+              exact List.map_congr_left fun χ _ =>
+                WFF.subst_optInT_mono θ hθ hc hX hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots χ)
+            ih))
   | _, _, _, .opt_bot hO .arrow y hy p, _, _, ι, θ, hθ, hc, hΓ =>
       .opt_bot hO .arrow (ι y)
         (hy.elim fun X hX => WitE.wit_of (hθ.wit hO y X hX) (hc.wit hO y X hX []))
         (Proof.subst p θ hθ hc hΓ)
-  | _, _, _, .opt_bot _ .ident _ hy _, _, _, _, _, _, _, _ =>
-      (hy.elim fun _ h => Ctx.witT_stage h).elim
+  | _, _, _, .opt_bot hO .ident y hy p, _, _, ι, θ, hθ, hc, hΓ =>
+      .opt_bot hO .ident (ι y)
+        (hy.elim fun X hX => by
+          obtain ⟨hT, hO', hr⟩ := Ctx.witT_spec hX
+          obtain ⟨Y, hY⟩ := SubE.ref_witness (Subst.okRef_at hθ hr) (hc y _ hr [])
+          exact ⟨Y, Ctx.witT_of hT hO' hY⟩)
+        (Proof.subst p θ hθ hc hΓ)
   | _, _, _, @Proof.opt_reopen _ _ _ _ hO .arrow y hy ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       Proof.conv
         (by
@@ -3253,8 +3296,16 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         (Proof.opt_reopen hO .arrow (ι y)
           (hy.elim fun X h => hc.openedTo hO y X (ι y) h.1 h.2 (hc.wit hO y X h.1 []))
           (Proof.subst p θ hθ hc hΓ))
-  | _, _, _, @Proof.opt_reopen _ _ _ _ _ .ident _ hy _ _, _, _, _, _, _, _, _ =>
-      (hy.elim fun _ h => Ctx.witT_stage h.1).elim
+  | _, _, _, @Proof.opt_reopen _ _ _ _ hO .ident y hy ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      Proof.conv
+        (by
+          obtain ⟨X, hX, hXd⟩ := hy
+          exact congrArg (WFF.optx hO .ident (ι y) _)
+            (WFF.subst_optInT_mono θ hθ hc hX hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots ψ).symm)
+        (Proof.opt_reopen hO .ident (ι y)
+          (hy.elim fun X h =>
+            hc.openedToT y X (ι y) h.1 h.2 (hc y _ (Ctx.witT_spec h.1).2.2 []))
+          (Proof.subst p θ hθ hc hΓ))
   | _, _, _, @Proof.dia_opt _ _ _ _ hO u hu φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hw : (θ.at u).idxAlong [] = ι u := hu.elim fun _ hX => hc u _ hX []
       have hwu : ∃ X, Γ'.ref (ι u) = some (.VTypeDia X) :=
@@ -3292,7 +3343,7 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
       Proof.conv
         (WFF.collapse_subst (Ctx.collapses_boxIn_self hT _) (Ctx.collapses_boxIn_self hT Γ')
           θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) θ hθ hc hΓ.boxIn hΓ Ctx.NoSlots.slots
-          Ctx.NoSlots.slots (Subst.corr_box_self hT hθ) φ)
+          Ctx.NoSlots.slots (Subst.corr_box_self hT hθ) φ fun _ => Subst.corrW_box_self hT hθ)
         (Proof.T_box hT (Proof.subst p θ hθ hc hΓ))
   | _, _, _, @Proof.four_box _ _ _ _ hF _ φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       Proof.conv

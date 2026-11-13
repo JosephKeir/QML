@@ -651,7 +651,9 @@ def Proof.substEqH {σ : Signature} (hO : ModalSys.Opt = true) : {Γ : Ctx} → 
       Proof.diaCaseH hO hΓ x hx ψ (Proof.substEqH hO (hΓ.diaIn x) ψ)
   | _, _, _, _, hΓ, .optx hO' .arrow y hy ψ =>
       Proof.optCaseH hO hΓ hO' y hy ψ (Proof.substEqH hO (hΓ.optIn y) ψ)
-  | _, _, _, _, _, .optx _ .ident _ hyI _ => (hyI.elim fun _ h => Ctx.witT_stage h).elim
+  | _, _, _, _, _, .optx _ .ident _ hyI _ => fun _ _ _ _ _ _ _ _ _ _ =>
+      absurd (hyI.elim fun _ h => (Ctx.witT_spec h).1 : ModalSys.T = true)
+        (by simp [ModalSys.T_false_of_opt hO])
   | _, _, _, _, _, .here hT _ _ => fun _ _ _ _ _ _ _ _ _ _ =>
       absurd hT (by simp [ModalSys.T_false_of_opt hO])
   | _, _, _, _, _, .back hB _ _ _ => fun _ _ _ _ _ _ _ _ _ _ =>

@@ -326,6 +326,41 @@ theorem levelDepth_optIn {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ) (hw
         · rw [Ctx.optIn_ne hc] at hv
           exact h _ T ((Ctx.ref_step_nonproj Γ v hs).trans hv)
 
+/-- The identity view keeps the view depth: its content is at its possible object's depth. -/
+theorem levelDepth_optInT {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ) (y : VarSymb) :
+    LevelDepth d (Γ.optInT y) := by
+  intro v
+  induction v with
+  | root r =>
+      intro T hv
+      rw [show (Γ.optInT y).ref (.root r) = Γ (.root r) from
+        Ctx.optInT_ne (fun he => by cases he)] at hv
+      exact h _ T hv
+  | step v s ih =>
+      intro T hv
+      by_cases hs : s.isStruct = true
+      · rw [Ctx.ref_step_proj _ v hs] at hv
+        cases hU : (Γ.optInT y).ref v with
+        | none => rw [hU] at hv; cases hv
+        | some U =>
+            rw [Step.levels_step_of_proj (Step.isProj_of_isStruct hs)]
+            exact ih U hU
+      · rw [Ctx.ref_step_nonproj _ v hs] at hv
+        by_cases hc : VarSymb.step v s = .step y .at
+        · rw [hc] at hv ⊢
+          cases hX : Γ.witT y with
+          | some X =>
+              rw [Step.levels_step_of_proj rfl]
+              exact h y _ (Ctx.witT_spec hX).2.2
+          | none =>
+              rw [Ctx.optInT_content_none hX] at hv
+              exact h _ T ((Ctx.ref_step_nonproj Γ y (by decide)).trans hv)
+        · rw [Ctx.optInT_ne hc] at hv
+          exact h _ T ((Ctx.ref_step_nonproj Γ v hs).trans hv)
+
+theorem witDepth_optInT {d : Root → ℕ} {Γ : Ctx} (h : WitDepth d Γ) (y : VarSymb) :
+    WitDepth d (Γ.optInT y) := h
+
 end Ctx
 
 /-- ⭐**A presentation has a depth assignment**, by induction on how it is built: the empty context
@@ -348,8 +383,9 @@ theorem CtxExpr.levelDepth : ∀ (e : CtxExpr), e.Fresh →
   | .optIn e .arrow y, hf => by
       obtain ⟨d, hd, hw⟩ := CtxExpr.levelDepth e hf
       exact ⟨d, Ctx.levelDepth_optIn hd hw y, Ctx.witDepth_optIn hw y⟩
-  | .optIn e .ident _, hf => by
-      simp only [CtxExpr.denote, Ctx.optInK_ident]; exact CtxExpr.levelDepth e hf
+  | .optIn e .ident y, hf => by
+      obtain ⟨d, hd, hw⟩ := CtxExpr.levelDepth e hf
+      exact ⟨d, Ctx.levelDepth_optInT hd y, Ctx.witDepth_optInT hw y⟩
 
 /-- ⭐**So a presented context never names an address at two view depths.**  This is what the
     abstraction of a `◇` view at an arbitrary address needs, and it comes from the presentation
