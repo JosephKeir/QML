@@ -834,6 +834,7 @@ def Ann.idxAt [ModalSys] : {T : VarType} → Ann T → List Step → VarSymb
   | _, .prod _ b, .snd :: p => b.idxAt p
   | _, .box a, .box :: p => a.idxAt p
   | _, .box a, .here :: p => (a.idxAt p).collapse (Step.levels p)
+  | _, .dia _ a, .at :: p => (a.idxAt p).collapse (Step.levels p)
   | _, .box a, .keep :: p => (Ann.box (a.shift 0)).idxAt p
   | _, .dia i a, .keep :: p => (Ann.dia (.step i .keep) (a.shift 0)).idxAt p
   | _, .dia _ a, .dia :: p => a.idxAt p

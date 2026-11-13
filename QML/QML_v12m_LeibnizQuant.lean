@@ -40,13 +40,21 @@ theorem ok_idRen {Δ : Ctx} : Ok Δ (idRen (σ := σ) Δ) := by
 
 theorem coh_idRen {Δ : Ctx} : Coh id Δ (idRen (σ := σ) Δ) := by
   refine ⟨fun v _ _ p => ?_, fun _ _ _ _ _ => rfl, fun _ y _ z _ _ hz => ?_,
-    fun _ y X z hy hyd hz => ?_⟩
+    fun _ y X z hy hyd hz => ?_, fun y _ z _ _ hz => ?_, fun y X z hy hyd hz => ?_⟩
   · rw [at_idRen]
     rfl
   · have hz' : y = z := hz
     subst hz'
     rfl
   · have hz' : y = z := hz
+    subst hz'
+    exact ⟨X, hy, hyd⟩
+  · rw [at_idRen] at hz ⊢
+    have hz' : y = z := hz
+    subst hz'
+    rfl
+  · rw [at_idRen] at hz
+    have hz' : y = z := hz
     subst hz'
     exact ⟨X, hy, hyd⟩
 

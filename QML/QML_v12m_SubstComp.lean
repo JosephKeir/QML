@@ -220,7 +220,9 @@ theorem Subst.Coh.restrict {σ : Signature} {ι : VarSymb → VarSymb} {Γ Γ' �
     {θ : Subst σ Δ} (hc : Subst.Coh ι Γ' θ) (h : Γ.Le Γ') : Subst.Coh ι Γ θ :=
   ⟨fun v T hv p => hc v T (h.ref hv) p, fun hO y X hy p => hc.wit hO y X (h.wit y X hy) p,
     fun hO y X z hy hyd hz => hc.opened hO y X z (h.wit y X hy) (h _ _ hyd) hz,
-    fun hO y X z hy hyd hz => hc.openedTo hO y X z (h.wit y X hy) (h _ _ hyd) hz⟩
+    fun hO y X z hy hyd hz => hc.openedTo hO y X z (h.wit y X hy) (h _ _ hyd) hz,
+    fun y X z hy hyd hz => hc.openedT y X z (h.witT hy) (h _ _ hyd) hz,
+    fun y X z hy hyd hz => hc.openedToT y X z (h.witT hy) (h _ _ hyd) hz⟩
 
 mutual
   theorem Func.subst_mono {σ : Signature} {ι : VarSymb → VarSymb} {Γ Γ' Δ : Ctx}

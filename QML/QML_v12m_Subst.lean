@@ -587,6 +587,37 @@ macro "wit_triv" : tactic => `(tactic| first
   | exact fun _ _ _ h => nomatch h
   | exact fun _ _ _ _ h => nomatch h)
 
+/-! ### The identity view (M2, docs §12.30) -/
+
+/-- ⭐**The entry at an identity content**, for the identity witness `z`, read off the entry at
+    its possible object: a renaming goes to the image's identity content, a possible term
+    `diatm z b` to its body collapsed onto the identity view (`Ctx.collapses_diaIn_optInT`). -/
+def _root_.V12M.SubE.atBody (z : VarSymb) : SubE σ Δ → SubE σ (Δ.optInT z)
+  | .ren _ => .ren (.step z .at)
+  | .tm (.diatm x hx b) =>
+      if h : ModalSys.T = true ∧ ModalSys.Opt = true ∧ x = z then
+        .tm (Term.collapse (Ctx.collapses_diaIn_optInT' h hx) b)
+      else .hide
+  | _ => .hide
+
+theorem _root_.V12M.SubE.okRef_atBody (hT : ModalSys.T = true) (hO : ModalSys.Opt = true)
+    {z : VarSymb} {X : VarType} :
+    ∀ {e : SubE σ Δ}, e.OkRef (.VTypeDia X) → e.idxAlong [] = z → (e.atBody z).OkRef X
+  | .ren w, he, hz => by
+      have hw : w = z := hz
+      subst hw
+      exact (Ctx.ref_nonproj _ rfl).trans (Ctx.optInT_content (Ctx.witT_of hT hO he))
+  | .tm s, he, hz => by
+      cases s with
+      | diatm x hx b =>
+          have hxz : x = z := hz
+          change (if h : ModalSys.T = true ∧ ModalSys.Opt = true ∧ x = z then
+            SubE.tm (Term.collapse (Ctx.collapses_diaIn_optInT' h hx) b) else .hide).OkRef X
+          rw [dif_pos ⟨hT, hO, hxz⟩]
+          exact VarType.VTypeDia.inj he
+      | _ => cases he
+  | .hide, he, _ => he.elim
+
 /-- The entries fit the visible non-projection addresses (projections follow by projection). -/
 structure Ok (Γ : Ctx) (θ : Subst σ Δ) : Prop where
   ty : ∀ v T, v.lastProj = false → Γ v = some T → (θ v).OkRef T
@@ -612,6 +643,17 @@ structure Coh (ι : VarSymb → VarSymb) (Γ : Ctx) (θ : Subst σ Δ) : Prop wh
       (`Model.substEnv`). -/
   openedTo : ModalSys.Opt = true → ∀ y X z, Γ.wit y = some X → Γ (.step y .dia) = some X →
     (θ.wit y).idxAlong [] = z → ∃ Z, Δ.wit z = some Z ∧ Δ (.step z .dia) = some Z
+  /-- ⭐An opened **identity** content (`y.at` in view, inside `◇⁰ᵀ_y`) has its entry read through
+      its possible object's entry (`SubE.atBody`), as `opened` for a witness's content (M2).  The
+      default holds while no identity witness exists (`Ctx.witT_stage`; M2 step 3). -/
+  openedT : ∀ y X z, Γ.witT y = some X → Γ (.step y .at) = some X →
+    (θ.at y).idxAlong [] = z →
+      (θ (.step y .at)).mono (Ctx.le_optInT Δ z) = (θ.at y).atBody z := by
+    intro _ _ _ h; exact (Ctx.witT_stage h).elim
+  /-- An opened identity content goes to an opened one. -/
+  openedToT : ∀ y X z, Γ.witT y = some X → Γ (.step y .at) = some X →
+    (θ.at y).idxAlong [] = z → ∃ Z, Δ.witT z = some Z ∧ Δ (.step z .at) = some Z := by
+    intro _ _ _ h; exact (Ctx.witT_stage h).elim
 
 instance {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} :
     CoeFun (Coh ι Γ θ) (fun _ => ∀ v T, Γ.ref v = some T → ∀ p,
@@ -687,9 +729,16 @@ theorem coh_of {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : O
       (θ (.step y .dia)).mono (Ctx.le_optIn Δ z) = (θ.wit y).optBody z := by wit_triv)
     (hopenTo : ModalSys.Opt = true → ∀ y X z, Γ.wit y = some X → Γ (.step y .dia) = some X →
       (θ.wit y).idxAlong [] = z → ∃ Z, Δ.wit z = some Z ∧ Δ (.step z .dia) = some Z := by
-      wit_triv) :
+      wit_triv)
+    (hopenT : ∀ y X z, Γ.witT y = some X → Γ (.step y .at) = some X →
+      (θ.at y).idxAlong [] = z →
+        (θ (.step y .at)).mono (Ctx.le_optInT Δ z) = (θ.at y).atBody z := by
+      intro _ _ _ h; exact (Ctx.witT_stage h).elim)
+    (hopenToT : ∀ y X z, Γ.witT y = some X → Γ (.step y .at) = some X →
+      (θ.at y).idxAlong [] = z → ∃ Z, Δ.witT z = some Z ∧ Δ (.step z .at) = some Z := by
+      intro _ _ _ h; exact (Ctx.witT_stage h).elim) :
     Coh ι Γ θ := by
-  refine ⟨?_, hwit, hopen, hopenTo⟩
+  refine ⟨?_, hwit, hopen, hopenTo, hopenT, hopenToT⟩
   intro v
   induction v with
   | root r => intro T hv p; exact hvis _ _ rfl hv p
@@ -991,6 +1040,86 @@ theorem coh_optIn {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ 
           exact hZd
     exact hZ
 
+theorem _root_.V12M.SubE.idxAlong_atBody (hT : ModalSys.T = true) (hO : ModalSys.Opt = true)
+    {z : VarSymb} {X : VarType} (p : List Step) :
+    ∀ {e : SubE σ Δ}, e.OkRef (.VTypeDia X) → e.idxAlong [] = z →
+      (e.atBody z).idxAlong p = e.idxAlong (.at :: p)
+  | .ren w, _, hz => by
+      have hw : w = z := hz
+      subst hw
+      rfl
+  | .tm s, he, hz => by
+      cases s with
+      | diatm x hx b =>
+          have hxz : x = z := hz
+          change (if h : ModalSys.T = true ∧ ModalSys.Opt = true ∧ x = z then
+            SubE.tm (Term.collapse (Ctx.collapses_diaIn_optInT' h hx) b) else .hide).idxAlong p = _
+          rw [dif_pos ⟨hT, hO, hxz⟩]
+          exact (Ann.idxAt_collapse _ 0 p).trans (by rw [Nat.zero_add]; rfl)
+      | _ => cases he
+  | .hide, he, _ => he.elim
+
+/-- ⭐Into the identity view of the witness `y`, its image `z`: the identity content goes to the
+    entry read off `y`'s (`SubE.atBody`); everything else is weakened.  As `Subst.optIn`. -/
+def optInT (θ : Subst σ Δ) (y z : VarSymb) : Subst σ (Δ.optInT z) where
+  ty v := if v = .step y .at then (θ.at y).atBody z else (θ v).mono (Ctx.le_optInT Δ z)
+  wit y' := (θ.wit y').mono (Ctx.le_optInT Δ z)
+
+theorem optInT_content (θ : Subst σ Δ) (y z : VarSymb) :
+    θ.optInT y z (.step y .at) = (θ.at y).atBody z := if_pos rfl
+
+theorem optInT_ne (θ : Subst σ Δ) {y v : VarSymb} (z : VarSymb) (hv : v ≠ .step y .at) :
+    θ.optInT y z v = (θ v).mono (Ctx.le_optInT Δ z) := if_neg hv
+
+theorem ok_optInT {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {y z : VarSymb} {X : VarType}
+    (hy : Γ.witT y = some X) (hw : (θ.at y).idxAlong [] = z) :
+    Ok (Γ.optInT y) (θ.optInT y z) := by
+  obtain ⟨hT, hO, hr⟩ := Ctx.witT_spec hy
+  refine ⟨fun v T hlp hv => ?_, fun hO' y' X' hy' =>
+    WitE.okW_mono (Ctx.le_optInT Δ z) (hθ.wit hO' y' X' hy')⟩
+  by_cases hc : v = .step y .at
+  · subst hc
+    rw [Ctx.optInT_content hy] at hv
+    cases hv
+    rw [optInT_content]
+    exact SubE.okRef_atBody hT hO (okRef_at hθ hr) hw
+  · rw [Ctx.optInT_ne hc] at hv
+    rw [optInT_ne θ z hc]
+    exact SubE.okRef_mono _ (hθ v T hlp hv)
+
+theorem coh_optInT {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ)
+    (hc : Coh ι Γ θ) {y : VarSymb} {X : VarType} (hy : Γ.witT y = some X) :
+    Coh ι (Γ.optInT y) (θ.optInT y (ι y)) := by
+  obtain ⟨hT, hO, hr⟩ := Ctx.witT_spec hy
+  have hw : (θ.at y).idxAlong [] = ι y := hc y _ hr []
+  refine coh_of (ok_optInT hθ hy hw) ?_ ?_ ?_ ?_
+  · intro v T hlp hv p
+    by_cases hc' : v = .step y .at
+    · subst hc'
+      rw [optInT_content, SubE.idxAlong_atBody hT hO p (okRef_at hθ hr) hw]
+      exact hc y _ hr (.at :: p)
+    · rw [Ctx.optInT_ne hc'] at hv
+      rw [optInT_ne θ _ hc', SubE.idxAlong_mono, ← at_nonproj θ hlp]
+      exact hc v T ((Ctx.ref_nonproj Γ hlp).trans hv) p
+  · intro hO' y' X' hy' p
+    rw [show (θ.optInT y (ι y)).wit y' = (θ.wit y').mono (Ctx.le_optInT Δ _) from rfl,
+      WitE.idxAlong_mono]
+    exact hc.wit hO' y' X' hy' p
+  · intro hO' y' X' z hy' hyd hz
+    rw [show (θ.optInT y (ι y)).wit y' = (θ.wit y').mono (Ctx.le_optInT Δ _) from rfl] at hz ⊢
+    rw [WitE.idxAlong_mono] at hz
+    have hne : VarSymb.step y' .dia ≠ .step y .at := fun he => by cases he
+    rw [Ctx.optInT_ne hne] at hyd
+    rw [optInT_ne θ _ hne, ← WitE.optBody_mono, ← hc.opened hO' y' X' z hy' hyd hz]
+    simp only [SubE.mono_mono]
+  · intro hO' y' X' z hy' hyd hz
+    rw [show (θ.optInT y (ι y)).wit y' = (θ.wit y').mono (Ctx.le_optInT Δ _) from rfl] at hz
+    rw [WitE.idxAlong_mono] at hz
+    have hne : VarSymb.step y' .dia ≠ .step y .at := fun he => by cases he
+    rw [Ctx.optInT_ne hne] at hyd
+    obtain ⟨Z, hZ, hZd⟩ := hc.openedTo hO' y' X' z hy' hyd hz
+    exact ⟨Z, hZ, by rw [Ctx.optInT_ne (fun he => by cases he)]; exact hZd⟩
+
 end Subst
 
 /-! ## Substitution in terms and formulas -/
@@ -1093,9 +1222,15 @@ def WFF.subst {σ : Signature} : (ι : VarSymb → VarSymb) → {Γ Δ : Ctx} �
         (WFF.subst ι (θ.optIn y (ι y))
           (hy.elim fun X hX => Subst.ok_optIn hθ hO hX (hc.wit hO y X hX []))
           (hy.elim fun _ hX => Subst.coh_optIn hθ hc hO hX) (hΓ.optIn y) (hΔ.optIn (ι y)) φ)
-  -- the identity kind: no identity witness exists yet (`Ctx.witT_stage`; M2 step 3)
-  | _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hy _ =>
-      (hy.elim fun _ h => Ctx.witT_stage h).elim
+  | ι, _, _, _, _, θ, hθ, hc, hΓ, hΔ, .optx hO .ident y hy φ =>
+      .optx hO .ident (ι y)
+        (hy.elim fun X hX => by
+          obtain ⟨hT, hO', hr⟩ := Ctx.witT_spec hX
+          obtain ⟨Y, hY⟩ := SubE.ref_witness (Subst.okRef_at hθ hr) (hc y _ hr [])
+          exact ⟨Y, Ctx.witT_of hT hO' hY⟩)
+        (WFF.subst ι (θ.optInT y (ι y))
+          (hy.elim fun X hX => Subst.ok_optInT hθ hX (hc y _ (Ctx.witT_spec hX).2.2 []))
+          (hy.elim fun _ hX => Subst.coh_optInT hθ hc hX) (hΓ.optInT y) (hΔ.optInT (ι y)) φ)
 
 /-! ## Substituting one root -/
 

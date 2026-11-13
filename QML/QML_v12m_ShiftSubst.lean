@@ -96,7 +96,10 @@ theorem Ann.idxAt_shift [ModalSys] : ∀ {T : VarType} (a : Ann T) (k : ℕ) (p 
       rw [Ann.shift_shift a k 0, VarSymb.shift_level_succ (s := .keep) rfl]
   | _, .prod _ _, _, .at :: _ => rfl
   | _, .box _, _, .at :: _ => rfl
-  | _, .dia _ _, _, .at :: _ => rfl
+  | _, .dia _ a, k, .at :: p => by
+      change ((a.shift (k + 1)).idxAt p).collapse (Step.levels p) =
+        ((a.idxAt p).collapse (Step.levels p)).shift (k + (0 + Step.levels p))
+      rw [Ann.idxAt_shift a (k + 1) p, Nat.zero_add, VarSymb.shift_collapse]
 
 variable [ModalSys]
 

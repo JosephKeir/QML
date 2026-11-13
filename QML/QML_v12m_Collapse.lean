@@ -193,7 +193,10 @@ theorem Ann.idxAt_collapse [ModalSys] : ∀ {T : VarType} (a : Ann T) (k : ℕ) 
   | _, .dia _ _, _, .snd :: _ => rfl
   | _, .dia _ _, _, .box :: _ => rfl
   | _, .dia _ _, _, .here :: _ => rfl
-  | _, .dia _ _, _, .at :: _ => rfl
+  | _, .dia _ a, k, .at :: p => by
+      change ((a.collapse (k + 1)).idxAt p).collapse (Step.levels p) =
+        ((a.idxAt p).collapse (Step.levels p)).collapse (k + (0 + Step.levels p))
+      rw [Ann.idxAt_collapse a (k + 1) p, Nat.zero_add, VarSymb.collapse_collapse]
   | _, .dia i a, k, .keep :: p => by
       change (Ann.dia (.step (i.collapse k) .keep) ((a.collapse (k + 1)).shift 0)).idxAt p =
         ((Ann.dia (.step i .keep) (a.shift 0)).idxAt p).collapse (k + (1 + Step.levels p))
@@ -239,11 +242,14 @@ theorem ref_insert_ne {Γ : Ctx} {r : Root} (T : VarType) :
       · exact Ctx.insert_ne_rt h
 
 /-- `Γ₂` reaches everything `Γ₁` reaches, with the level `k` below collapsed.  Collapsing is T's,
-    and carries it: with T on the box view of possible objects is off (`ModalSys.optStage`), so no
-    formula being collapsed reads a witness (branch `wip/in-atom`; T reads them in M2). -/
+    and carries it. -/
 structure Collapses (k : ℕ) (Γ₁ Γ₂ : Ctx) : Prop where
   hT : ModalSys.T = true
   ty : ∀ v T, Γ₁.ref v = some T → Γ₂.ref (v.collapse k) = some T
+  /-- ⭐**Witnesses** (M2, docs §12.30): one along the collapsed arrow becomes an identity witness
+      (`◇⁰_y` collapses to `◇⁰ᵀ_y`, as `y.dia` collapses to `y.at`); one further in maps along. -/
+  wit : ∀ y X, Γ₁.wit y = some X →
+    (k = 0 → Γ₂.witT y = some X) ∧ (∀ k', k = k' + 1 → Γ₂.wit (y.collapse k') = some X)
 
 instance {k : ℕ} {Γ₁ Γ₂ : Ctx} :
     CoeFun (Collapses k Γ₁ Γ₂)
@@ -252,9 +258,12 @@ instance {k : ℕ} {Γ₁ Γ₂ : Ctx} :
 
 /-- It suffices to check the visible non-projection addresses. -/
 theorem Collapses.of_raw {k : ℕ} {Γ₁ Γ₂ : Ctx} (hT : ModalSys.T = true)
-    (h : ∀ v T, v.lastProj = false → Γ₁ v = some T → Γ₂.ref (v.collapse k) = some T) :
+    (h : ∀ v T, v.lastProj = false → Γ₁ v = some T → Γ₂.ref (v.collapse k) = some T)
+    (hwit : ∀ y X, Γ₁.wit y = some X →
+      (k = 0 → Γ₂.witT y = some X) ∧ (∀ k', k = k' + 1 → Γ₂.wit (y.collapse k') = some X) := by
+      intro _ _ h; cases h) :
     Collapses k Γ₁ Γ₂ := by
-  refine ⟨hT, ?_⟩
+  refine ⟨hT, ?_, hwit⟩
   intro v
   induction v with
   | root r => intro T hv; exact h _ _ rfl hv
@@ -271,7 +280,10 @@ theorem Collapses.of_raw {k : ℕ} {Γ₁ Γ₂ : Ctx} (hT : ModalSys.T = true)
 
 /-- ⭐Under T the `□` view collapses onto the current level. -/
 theorem collapses_boxIn_self (hT : ModalSys.T = true) (Γ : Ctx) : Collapses 0 Γ.boxIn Γ := by
-  refine Collapses.of_raw hT ?_
+  refine Collapses.of_raw hT ?_ fun y X hy => ?_
+  swap
+  · obtain ⟨hO, hr⟩ := boxIn_wit.mp hy
+    exact ⟨fun _ => witT_of hT hO hr, fun _ h => absurd h (by omega)⟩
   intro v T _ hv
   match v with
   | .step u .box =>
@@ -289,7 +301,12 @@ theorem collapses_boxIn_self (hT : ModalSys.T = true) (Γ : Ctx) : Collapses 0 �
 
 theorem Collapses.boxIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ₂) :
     Collapses (k + 1) Γ₁.boxIn Γ₂.boxIn := by
-  refine Collapses.of_raw h.hT ?_
+  refine Collapses.of_raw h.hT ?_ fun y X hy => ?_
+  swap
+  · obtain ⟨hO, hr⟩ := boxIn_wit.mp hy
+    exact ⟨fun h0 => absurd h0 (by omega), fun k' hk => by
+      obtain rfl : k = k' := by omega
+      exact boxIn_wit.mpr ⟨hO, h y _ hr⟩⟩
   intro v T _ hv
   match v with
   | .step u .box =>
@@ -308,7 +325,12 @@ theorem Collapses.boxIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ�
 
 theorem Collapses.diaIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ₂) (x : VarSymb) :
     Collapses (k + 1) (Γ₁.diaIn x) (Γ₂.diaIn (x.collapse k)) := by
-  refine Collapses.of_raw h.hT ?_
+  refine Collapses.of_raw h.hT ?_ fun y X hy => ?_
+  swap
+  · obtain ⟨hO, hr⟩ := (boxIn_wit (Γ := Γ₁)).mp hy
+    exact ⟨fun h0 => absurd h0 (by omega), fun k' hk => by
+      obtain rfl : k = k' := by omega
+      exact (boxIn_wit (Γ := Γ₂)).mpr ⟨hO, h y _ hr⟩⟩
   intro v T _ hv
   match v with
   | .step u .dia =>
@@ -341,7 +363,14 @@ theorem Collapses.diaIn {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ�
 
 theorem Collapses.insert {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ₂) {r : Root}
     (hr : Γ₁.RootFresh r) (T : VarType) : Collapses k (Γ₁.insert r T) (Γ₂.insert r T) := by
-  refine Collapses.of_raw h.hT ?_
+  refine Collapses.of_raw h.hT ?_ fun y X hy => ?_
+  swap
+  · change Γ₁.wit y = some X at hy
+    have hrt : y.rt ≠ r := fun he => by rw [hr.wit y he] at hy; cases hy
+    obtain ⟨h₀, hs⟩ := h.wit y X hy
+    refine ⟨fun hk => ?_, hs⟩
+    obtain ⟨hT, hO, hy'⟩ := witT_spec (h₀ hk)
+    exact witT_of hT hO (by rw [ref_insert_ne T hrt]; exact hy')
   intro v U hlp hv
   by_cases hvr : v = .root r
   · subst hvr
@@ -352,6 +381,110 @@ theorem Collapses.insert {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ
     have hrt : v.rt ≠ r := fun he => by rw [hr v he] at hv'; cases hv'
     rw [ref_insert_ne T (by rwa [VarSymb.collapse_rt])]
     exact h v U ((Ctx.ref_nonproj Γ₁ hlp).trans hv')
+
+/-- Identity witnesses map along: they are read off the context (`Ctx.witT`). -/
+theorem Collapses.witT {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ₂) {y : VarSymb} {X : VarType}
+    (hy : Γ₁.witT y = some X) : Γ₂.witT (y.collapse k) = some X := by
+  obtain ⟨hT, hO, hr⟩ := witT_spec hy
+  exact witT_of hT hO (h y _ hr)
+
+/-- ⭐**`T_box`'s collapse of a witness's view** (M2, docs §12.25): at level 0, the view of a
+    witness along the collapsed arrow collapses onto its identity view — `y.dia` to `y.at`. -/
+theorem Collapses.optIn_zero {Γ₁ Γ₂ : Ctx} (h : Collapses 0 Γ₁ Γ₂) (hO : ModalSys.Opt = true)
+    {y : VarSymb} {X : VarType} (hy : Γ₁.wit y = some X) :
+    Collapses 0 (Γ₁.optIn y) (Γ₂.optInT y) := by
+  refine Collapses.of_raw h.hT ?_ fun z Z hz => ?_
+  swap
+  · obtain ⟨h₀, hs⟩ := h.wit z Z hz
+    exact ⟨fun hk => (le_optInT Γ₂ y).witT (h₀ hk),
+      fun k' hk => (le_optInT Γ₂ y).wit _ _ (hs k' hk)⟩
+  intro v T hlp hv
+  by_cases hc : v = .step y .dia
+  · subst hc
+    rw [optIn_content hy] at hv
+    cases hv
+    rw [VarSymb.collapse_dia_zero_opt hO, Ctx.ref_nonproj _ rfl]
+    exact optInT_content ((h.wit y _ hy).1 rfl)
+  · rw [optIn_ne hc] at hv
+    exact (le_optInT Γ₂ y).ref (h v T ((Ctx.ref_nonproj Γ₁ hlp).trans hv))
+
+/-- A witness's view further in collapses onto the view of the collapsed witness. -/
+theorem Collapses.optIn_succ {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses (k + 1) Γ₁ Γ₂) {y : VarSymb}
+    {X : VarType} (hy : Γ₁.wit y = some X) :
+    Collapses (k + 1) (Γ₁.optIn y) (Γ₂.optIn (y.collapse k)) := by
+  refine Collapses.of_raw h.hT ?_ fun z Z hz => ?_
+  swap
+  · obtain ⟨h₀, hs⟩ := h.wit z Z hz
+    exact ⟨fun hk => (le_optIn Γ₂ _).witT (h₀ hk),
+      fun k' hk => (le_optIn Γ₂ _).wit _ _ (hs k' hk)⟩
+  intro v T hlp hv
+  by_cases hc : v = .step y .dia
+  · subst hc
+    rw [optIn_content hy] at hv
+    cases hv
+    rw [VarSymb.collapse_level_succ rfl, Ctx.ref_nonproj _ rfl]
+    exact optIn_content ((h.wit y _ hy).2 k rfl)
+  · rw [optIn_ne hc] at hv
+    exact (le_optIn Γ₂ _).ref (h v T ((Ctx.ref_nonproj Γ₁ hlp).trans hv))
+
+/-- An identity view collapses onto the identity view of the collapsed witness. -/
+theorem Collapses.optInT {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ₂) {y : VarSymb}
+    {X : VarType} (hy : Γ₁.witT y = some X) :
+    Collapses k (Γ₁.optInT y) (Γ₂.optInT (y.collapse k)) := by
+  refine Collapses.of_raw h.hT ?_ fun z Z hz => ?_
+  swap
+  · obtain ⟨h₀, hs⟩ := h.wit z Z hz
+    exact ⟨fun hk => (le_optInT Γ₂ _).witT (h₀ hk),
+      fun k' hk => (le_optInT Γ₂ _).wit _ _ (hs k' hk)⟩
+  intro v T hlp hv
+  by_cases hc : v = .step y .at
+  · subst hc
+    rw [optInT_content hy] at hv
+    cases hv
+    rw [VarSymb.collapse_at, Ctx.ref_nonproj _ rfl]
+    exact optInT_content (h.witT hy)
+  · rw [optInT_ne hc] at hv
+    exact (le_optInT Γ₂ _).ref (h v T ((Ctx.ref_nonproj Γ₁ hlp).trans hv))
+
+/-- ⭐Under T with `Opt`, the `◇_x` view collapses onto `x`'s identity view: `x.dia` to `x.at` and
+    `u.box` to `u.here`.  A possible term's body, read at the identity arrow (docs §12.30). -/
+theorem collapses_diaIn_optInT (hT : ModalSys.T = true) (hO : ModalSys.Opt = true) (Γ : Ctx)
+    {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) :
+    Collapses 0 (Γ.diaIn x) (Γ.optInT x) := by
+  refine Collapses.of_raw hT ?_ fun y Y hy => ?_
+  swap
+  · obtain ⟨hO', hr⟩ := (boxIn_wit (Γ := Γ)).mp hy
+    exact ⟨fun _ => (le_optInT Γ x).witT (witT_of hT hO' hr), fun _ h => absurd h (by omega)⟩
+  intro v T _ hv
+  match v with
+  | .step u .dia =>
+      change (if u = x then (match Γ.ref x with | some (.VTypeDia X) => some X | _ => none)
+        else none) = some T at hv
+      split_ifs at hv with hux
+      subst hux
+      rw [hx] at hv
+      cases hv
+      rw [VarSymb.collapse_dia_zero_opt hO, Ctx.ref_nonproj _ rfl]
+      exact optInT_content (witT_of hT hO hx)
+  | .step u .box =>
+      rw [VarSymb.collapse_level_zero rfl (by decide) (by decide), Ctx.ref_step_proj _ _ rfl,
+        (le_optInT Γ x).ref (boxIn_step_box (Γ := Γ) hv)]
+      simp only [Option.bind_some, VarType.step, hT, if_true]
+  | .step u .keep =>
+      exact absurd hO (by rw [ModalSys.noOpt_of_Four (boxIn_keep (Γ := Γ) hv).1]; decide)
+  | .root _ => cases hv
+  | .step _ .fst => cases hv
+  | .step _ .snd => cases hv
+  | .step _ .here => cases hv
+  | .step _ .at => cases hv
+
+/-- `collapses_diaIn_optInT` at a named identity witness. -/
+theorem collapses_diaIn_optInT' {Γ : Ctx} {x z : VarSymb}
+    (h : ModalSys.T = true ∧ ModalSys.Opt = true ∧ x = z)
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) : Collapses 0 (Γ.diaIn x) (Γ.optInT z) := by
+  obtain ⟨hT, hO, rfl⟩ := h
+  obtain ⟨X, hX⟩ := hx
+  exact collapses_diaIn_optInT hT hO Γ hX
 
 end Ctx
 
@@ -413,8 +546,15 @@ def WFF.collapse {σ : Signature} : {k : ℕ} → {Γ₁ Γ₂ : Ctx} → {d : �
       .linkx hV hF (y.collapse k) (hy.imp fun _ hY => h y _ hY) (Term.collapse h t)
         (WFF.collapse ((h.diaIn y).insert ((hs.diaIn y).rootFresh le_rfl) _)
           ((hs.diaIn y).insert _) Φ)
-  | _, _, _, _, h, _, .optx hO _ _ _ _ =>
-      False.elim (by have := ModalSys.noOpt_of_T h.hT; rw [hO] at this; cases this)
+  | 0, _, _, _, h, hs, .optx hO .arrow y hy φ =>
+      .optx hO .ident y (hy.imp fun _ hX => (h.wit y _ hX).1 rfl)
+        (WFF.collapse (hy.elim fun _ hX => h.optIn_zero hO hX) (hs.optIn y) φ)
+  | k + 1, _, _, _, h, hs, .optx hO .arrow y hy φ =>
+      .optx hO .arrow (y.collapse k) (hy.imp fun _ hX => (h.wit y _ hX).2 k rfl)
+        (WFF.collapse (hy.elim fun _ hX => h.optIn_succ hX) (hs.optIn y) φ)
+  | k, _, _, _, h, hs, .optx hO .ident y hy φ =>
+      .optx hO .ident (y.collapse k) (hy.imp fun _ hX => h.witT hX)
+        (WFF.collapse (hy.elim fun _ hX => h.optInT hX) (hs.optInT y) φ)
 
 
 /-- ⭐Collapsing commutes with equality at every type — `eqRec` is structural, so each clause is the

@@ -222,6 +222,40 @@ def Env.optPush {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (y : VarSymb) {X :
       obtain ⟨hd', he⟩ := env.opened z Z hz hv'
       exact ⟨hd', by rw [dif_neg hne]; exact he⟩
 
+/-! ### Identity witnesses (M2, docs §12.30) -/
+
+/-- ⭐**An identity witness's value**: its possible object read at the identity arrow, present
+    exactly when the identity arrow is in its extent.  Computed, not stored: `(env.boxPush
+    reflAcc).wit y` is it by definition (docs §12.30). -/
+def Env.witT {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (y : VarSymb) {X : VarType}
+    (h : Γ.witT y = some X) : Part (M.frame.Dom X w) :=
+  posPart (env.ref y (Ctx.witT_spec h).2.2) (M.frame.reflAcc (Ctx.witT_spec h).1 w)
+
+/-- ⭐The environment **respects its identity contents**: a declared `z.at` holds `z`'s content at
+    the identity arrow, which is present.  A content is read through the model, so this is a
+    hypothesis of soundness rather than a field of `Frame.Env` (docs §12.30). -/
+def Env.OpenedT {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) : Prop :=
+  ∀ z Z (hz : Γ.witT z = some Z) (hv : Γ (.step z .at) = some Z),
+    ∃ hd : (env.witT z hz).Dom, env (.step z .at) Z hv = (env.witT z hz).get hd
+
+/-- ⭐Into the identity view of `y` (`◇⁰ᵀ_y`), at the same world, where `y` is present at the
+    identity arrow: its content there in view. -/
+def Env.optPushT {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (y : VarSymb) {X : VarType}
+    (hy : Γ.witT y = some X) (hd : (env.witT y hy).Dom) : M.Env (Γ.optInT y) w where
+  val v T h :=
+    if hv : v = .step y .at then
+      (show X = T by
+        subst hv
+        rw [Ctx.optInT_content hy] at h
+        exact Option.some.inj h) ▸ (env.witT y hy).get hd
+    else env v T (by rwa [Ctx.optInT_ne hv] at h)
+  wit := env.wit
+  opened z Z hz hv := by
+    have hne : VarSymb.step z .dia ≠ .step y .at := fun he => by cases he
+    have hv' : Γ (.step z .dia) = some Z := by rwa [Ctx.optInT_ne hne] at hv
+    obtain ⟨hd', he⟩ := env.opened z Z hz hv'
+    exact ⟨hd', by rw [dif_neg hne]; exact he⟩
+
 end Model
 
 end V12M

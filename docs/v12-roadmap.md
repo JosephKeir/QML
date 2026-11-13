@@ -400,7 +400,10 @@ complete, or the exceptions are understood and recorded.
 ## Milestone 5 — the `Opt` refactor (branch `wip/in-atom`)  ← now *(order agreed 2026-11-12)*
 
 **Goal:** the end state of `v12-modal-extensions.md` §12.17: shapes deleted, interpolation in every
-system if possible, and `Opt` a semi-independent flag (required where a system needs it).  Design:
+system if possible, and `Opt` a semi-independent flag (required where a system needs it).
+**And (user, 2026-11-13): every primitive relation goes**, replaced by modal operators read along
+canonical arrows: `Here` (M2), `Back`/`ret` (M4b, `⟪back⟫`), the links (M4c, side view); `Ind` with
+`≡` (§12.29, §12.31).  Design:
 §12.10–12.22.
 
 * **M1, K and D with `Opt` on: done (2026-11-12).**  Rules, soundness, Leibniz along `≡`, and
@@ -419,11 +422,23 @@ system if possible, and `Opt` a semi-independent flag (required where a system n
 * **M3, GK with `◇⁰`.**  Cut elimination and Craig for K and KT.  Stop if the interpolation proof's
   `◇⁰` case fails.
 * **M4a, 4 on the tree.**  No new rule on paper (§12.12).
-* **M4b, B on the network.**  Theory-decided labels replace `sep` and `unl`; strong B's invariants
-  without `sep` to check.  The redundancy sweep (item 3 of the next section) goes here, since it is
-  mostly about strong B's `ret`/`back` rules and `Ret` may go.
+* **M4b, B on the network.**  **First, on paper: B by a far-world operator instead of relations**
+  (user, 2026-11-13: modal operators rather than relations, before adding `Opt` to B and 5;
+  `v12-modal-extensions.md` §12.29).  At the far world the way home of the arrow just taken is
+  canonical under strong B (`symm` + `homeUnique`), so a view `⟪back⟫ψ` can read along it, with `w`'s
+  addresses stored in the `□` view as home names and their values carried by the environment, as
+  `Ctx.wit`/`Env.wit` already do for witnesses (the precedent past F2's obstruction).  Then `Back`
+  and the returning possibility become definable (`Back(c,t) := □⟪back⟫(c.box.box ≡ t)`,
+  `◇[d ↦ t]Φ := ◇∃d.(Φ(d) ∧ ⟪back⟫(d.box ≡ t))`), weak B follows from "home is home", and most
+  `ret`/`back` rules should become derived.  Check: the rules, soundness, the truth lemma along the
+  network's back edges, cut elimination.  Then: theory-decided labels replace `sep` and `unl`;
+  strong B's invariants without `sep` to check.  The redundancy sweep (item 3 of the next section)
+  goes here, since it is mostly about strong B's `ret`/`back` rules and `Ret` may go.
 * **M4c, 5 redesigned, on paper first** (user, 2026-11-12: don't port the current 5 and then remake
-  it).  Item 2 of the next section: the diagonal transport `m.side : □A → □◇A` with the gather as
+  it).  Includes the far-world operator for 5 (§12.29): a *side* view at `v` along `side a b` for
+  every `b` out of `w`, which might make the links `□[d ↦ t]` definable.  F2 rejected view formers
+  for 5 assuming the far world cannot name `w`'s objects; the witness mechanism removes that premise,
+  so recheck F2 first.  Item 2 of the next section: the diagonal transport `m.side : □A → □◇A` with the gather as
   its surjectivity, the `◇`-gather (`FiveStrongW`), whether they close the K5/KD5 gaps, and whether
   5 needs `Opt` at all.  Check first whether `Opt`'s witnesses (values along the arrow just taken)
   get past F2's obstruction ("an environment holds only objects at its own world"): a necessary

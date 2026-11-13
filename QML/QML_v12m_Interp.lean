@@ -479,8 +479,9 @@ def sat : {Γ : Ctx} → {d : ℕ} → {w : M.frame.W} → M.Env Γ w → WFF σ
   | Γ, _, _, env, .optx _ .arrow y _ φ =>
       ∃ (X : VarType) (h : Γ.wit y = some X) (hd : (env.wit y X h).Dom),
         sat (env.optPush y h hd) φ
-  -- the identity kind: no identity witness exists yet (`Ctx.witT_stage`; M2 step 3)
-  | _, _, _, _, .optx _ .ident _ hy _ => (hy.elim fun _ h => Ctx.witT_stage h).elim
+  | Γ, _, _, env, .optx _ .ident y _ φ =>
+      ∃ (X : VarType) (h : Γ.witT y = some X) (hd : (env.witT y h).Dom),
+        sat (env.optPushT y h hd) φ
 
 end Model
 

@@ -16110,3 +16110,148 @@ dispose of the identity kind by `Ctx.witT_stage` and must then get real cases:
 
 `grep -n "witT_stage\|optInK_ident\|optInT_stage"` lists them all.  Strict build green, and K/D
 completeness with `Opt` on still builds.
+
+### 12.29 Far-world operators for B and 5 *(2026-11-13, paper sketch; user's proposal)*
+
+**Decision (user, 2026-11-13):** prefer modal operators to relations wherever they work.  They
+should help cut elimination and remove primitives from the syntax.  So B and 5 are looked at this
+way, on paper, before `Opt` is added to them (roadmap M4b, M4c).
+
+**The sketch, for B.**  Earlier (M2's scoping) `Back`, the returning possibility and the links were
+judged out of reach of `◇⁰`-style operators: they relate two arrows, "nothing names the way home",
+and the home value `t` has no name at the far world.  The user's point: state it at the far world.
+* *The way home is canonical.*  At `v`, reached by `a : w → v`, strong B gives an arrow `v → w`
+  (`symm`) and only one (`homeUnique`).  So `⟪back⟫ψ`, "along the way home of the arrow just taken",
+  is well defined and functional (its `□` and `◇` agree).  Under weak B alone it would range over
+  all arrows `v → w`.
+* *Home objects can be named at the far world.*  F2's obstruction was that an environment holds
+  only objects at its own world.  `Opt` already gets past it for possible objects: the `□` view
+  stores `w`'s possible objects as witness names (`Ctx.wit`), and the environment at `v` carries
+  data about them (`Env.wit`).  The same move would store `w`'s addresses as home names in the view,
+  and their values at `w` in the environment.
+* *The back view* at `v` would declare `w`'s addresses, visible again, and the round-trip images of
+  `v`'s necessary objects (`n.box` for `n : □A`).
+* *Definable:* `Back(c, t) := □⟪back⟫(c.box.box ≡ t)`, and
+  `◇[d ↦ t]Φ(d) := ◇∃d.(Φ(d) ∧ ⟪back⟫(d.box ≡ t))`.
+* *Rules:* K and functionality for `⟪back⟫`; "home is home", `⟪back⟫ψ↑ ↔ ψ` for `ψ` over home names
+  only, which gives weak B (`◇□ψ ⊢ ψ`); and `B_strong` as the remaining existence principle, phrased
+  with `⟪back⟫`.  Most `ret`/`back` rules should become derived.
+
+**For 5.**  A *side* view at `v`, along `side a b` for every `b` out of `w`, might make the links
+`□[d ↦ t]` definable.  F2 rejected view formers for 5 on the premise above, so recheck it first.
+
+**To check on paper:**
+* the rules, and their soundness;
+* contexts remembering their parent's names without changing `Ctx`'s shape (as `wit` does);
+* the truth lemma along the canonical network's back edges;
+* cut elimination;
+* B with 4 (`⟪back⟫` after composed arrows).
+
+### 12.30 Step 3: plan, and the identity witnesses' semantics *(2026-11-13)*
+
+**One change from §12.25.**  §12.25 put an `opened` invariant for `y.at` into `Frame.Env`, beside
+the one for `y.dia`.  That cannot be stated there: a possible object's content is read through
+`Model.posFull`, a model field, while `Frame.Env` is frame-level.  (`opened` for the arrow kind is
+frame-level only because it relates two stored fields, `val` and `wit`.)  So:
+* identity witnesses stay computed, as §12.25 says:
+  `env.witT y := posPart (env.ref y) (reflAcc w)`.  `(env.boxPush reflAcc).wit y = env.witT y`
+  holds by definition, and agreeing environments agree on them;
+* their invariant is a model-level predicate, `Env.OpenedT`: a declared `z.at` holds `z`'s content
+  at the identity arrow, which is present.  It is a hypothesis of soundness, beside `Γ.Tame` and
+  `Γ.NoProjLast`, and every push preserves it (`□` and `◇_x` views declare no `.at`; `insert` hides
+  the `.at` it would change; the arrow view declares only `y.dia`; the identity view sets `y.at` to
+  the content).
+
+**Order:**
+1. *Semantics:* `Env.witT`, `Env.OpenedT`, `Env.optPushT`, and `sat`'s identity case.
+2. *Substitution at the identity kind:* the entry for `y.at` is derived from the substitution's
+   entry at `y`: `y ↦ y'` gives `y'.at`, and `y ↦ diatm x b` gives `collapse₀ b` over
+   `Δ.optInT x`.
+3. *The collapse:* `Collapses` gains witness clauses.  At level 0, `◇⁰_y` along the arrow collapses
+   to `◇⁰ᵀ_y`, and deeper witnesses map along.  `T_box`'s soundness is the semantic collapse lemma's
+   new case.
+4. *Drop T from `ModalSys.optStage`.*  The old T machinery takes `NoOpt` explicitly, and every
+   provisional identity case (§12.28) gets its real proof.
+
+### 12.31 Interpolation for B and 5, and the relation primitives *(2026-11-13, paper)*
+
+**Goal (user, 2026-11-13):** all primitive relations should go, replaced by modal operators read
+along canonical arrows ("it is supposed to be modal logic after all").  For 5 there is much to
+redesign in any case.
+
+**What broke T** (metatheory todo, "KT paper check").  Two things combined:
+* `Here` at `◇`-content is read by `Ind`, which identifies possible objects over different witnesses
+  by formulas alone, without sharing arrows;
+* `here_subst` moves formulas across that link.
+
+So the counterexample `S` needs a transfer formula that is not a subformula of `S`, and the
+`Ind`-models `M₁`, `M₂` refute Craig.  The repair was expressive: sharing through `◇⁰` and `≡`
+(precedent: Areces, Blackburn and Marx's hybrid repair).
+
+**Strong B: very likely the same failure** (paper, instance not built).
+* `Back` and the returning possibility read `Model.Ret`, which at `◇`-content is `ComesBack`, that
+  is, `M.Ind`.
+* The counits move formulas across that link: `back_counit` takes `Back(bd, t)` and `◇□ψ(bd)` to
+  `ψ(t)` for any hole formula `ψ`, and `ret_counitC` likewise.
+* So `S` should transplant: `Back(c, t)` and `Back(c, t')` in place of the two `Here` atoms, with
+  contents over different witnesses, and the transfer going through unit and counit.
+* At `◇`-free contents there is no problem: `Back` is a definite description there (`Ret_conv`).
+* *The fix* is §12.29's: `Back(c, t) := □⟪back⟫(c.box.box ≡ t)`, with `≡` sharing arrows.  Its rules
+  look cut-friendly: K, functionality, and "home is home", a substitution rule like T's collapse.
+
+**Weak B: a different gap.**  There is no relation atom, only `B_dia` on closed formulas, so there
+is no `Ind`-transfer.  The obstacle is the missing cut-free calculus: propositional KB has
+interpolation but needs nested sequents with a parent pointer (Brünnler).  `⟪back⟫` is that pointer
+in the formulas, as tense logic's converse is, so it may give B its analytic calculus.
+
+**5.**
+* *With 4 (K45, KD45, S5):* there are no relation atoms.  `five_box` and `five_dia` carry the same
+  witness across (`x.keep` is `x.side`): pairing, not `Ind`.  So there is no T-type failure.
+  Fine's QS5 failure is for constant domains with Barcan, kept separate here, and the status is
+  open until there is a cut-free calculus.  That needs hypersequents, whose formula-level
+  counterpart would be the side view.
+* *Without 4 (K5, KD5):* the links are two-arrow relations, but read by the functional `posSide`
+  (`sideOf`), not `Ind`.  So there is no `Ind`-transfer failure, but they remain primitives for the
+  side view to define (M4c).
+
+**The relation primitives:**
+
+| Primitive | System | Read by `Ind`? | Fate |
+|---|---|---|---|
+| `Here` | T | yes, at `◇`-content | `◇⁰ᵀ` + `≡` (M2) |
+| `Ind` (model law) | T, strong B | — | goes once `≡` is identity (§12.4) |
+| `Back`, `retS`, `retxS` | strong B | yes, at `◇`-content | `⟪back⟫` + `≡` (M4b) |
+| `link`, `linkx` | 5 without 4 | no (`posSide`) | side view (M4c) |
+| `In` | — | — | never built; `◇⁰` along the arrow |
+
+* 4 has none: `keep` is a view item (a name) with functional semantics (`GFunc.keep`, frame
+  composition).  Strong 4's lifts are existence rules over `keep`.  `here_keep` goes with `Here` in
+  M4a.
+* D has none (`D_box`, `D_ex`).  Strong T's `T_dia` becomes `◇⁰ᵀ_c (c.at ≡ t)`.
+
+**Pattern:** where the model reads `Ind`, interpolation is at risk, and the fix is an operator along
+a canonical arrow, plus `≡`.  Elsewhere the issue is an analytic calculus, where the same operators
+may help.
+
+**Progress (2026-11-13, built, strict build green):**
+* *Part 1, semantics:* `Env.witT`, `Env.OpenedT`, `Env.optPushT`, and `sat`'s identity case.
+  (`OpenedT`'s preservation lemmas are left for part 4, where soundness uses them.)
+* *Part 2, substitution:*
+  * `SubE.atBody` (`ren y'` ↦ `ren y'.at`; `diatm x b` ↦ `b` collapsed by
+    `Ctx.collapses_diaIn_optInT`);
+  * `Subst.optInT`, `ok_optInT`, `coh_optInT`, `SubE.okRef_atBody`, `SubE.idxAlong_atBody`;
+  * `Subst.Coh` gains `openedT` and `openedToT`, whose defaults (and `coh_of`'s) are still
+    `Ctx.witT_stage`; `coh_mono`'s `openedT` is provisional the same way, waiting for
+    `SubE.atBody` to commute with weakening;
+  * `WFF.subst`'s identity case is real.  The image of an identity witness `y ↦ diatm x b` is
+    `x`, whose content type may differ from `b`'s.
+* *Part 3, collapse:* `Collapses` gains a witness clause, with view lemmas
+  `Collapses.optIn_zero`, `optIn_succ`, `optInT` and `witT`, and `WFF.collapse`'s `optx` cases are
+  real: `◇⁰_y` at level 0 becomes `◇⁰ᵀ_y`, since `y.dia` collapses to `y.at`.
+* `Ann.idxAt` gains its `.at` clause (as `.here`: a `◇` annotation's body read collapsed), with
+  `idxAt_collapse` and `idxAt_shift` cases.
+* *Left for part 4:* drop T from `optStage`; then every `witT_stage`, `optInK_ident` and
+  `optInT_stage` use gets its real proof (`grep -n "witT_stage\|optInK_ident\|optInT_stage"`).
+  That covers the substitution lemmas, `sat`'s lemmas, `OpenedT`'s preservation, soundness (with
+  `T_box`'s identity case in the semantic collapse lemma), the presentation lemmas, M1's tree, and
+  the old T machinery taking `NoOpt`.
