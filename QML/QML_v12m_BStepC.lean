@@ -393,7 +393,7 @@ theorem subst_set_bodyRepl {V Δ : Ctx} [V.NoSlots] {ι : VarSymb → VarSymb} (
       rw [show Subst.single (σ := σ) (Δ := Δ) (.bnd 0) (.tm X) (.root (.bnd 0)) = .tm X
         from by slot_rfl]
       exact .refl _
-    · rw [Ctx.insert_ne hwr] at hw
+    · replace hw := Ctx.insert_ne_some hw hwr
       cases hw
   · dsimp only [Subst.comp]
     rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr, show (Subst.idS σ _ v) = .ren v from rfl,
@@ -651,7 +651,7 @@ theorem WFF.bodySplit_mono_pairUp_packCC {V V' : Ctx} [V.NoSlots] [V'.NoSlots] (
       ((congrArg (Sigma.mk _) (Term.mono_eta _ _ _ _)).trans
         (Term.subst_eta_tm _ _ _ _ _ _ _ (Subst.box_at_inner_boxtm _ h1)).symm)))
   · have hv' : V v = some U := by
-      rwa [Ctx.insert_ne hvr] at hv
+      exact Ctx.insert_ne_some hv hvr
     have hv1 : v ≠ .root (.bnd 1) := fun h => by
       subst h
       rw [((Ctx.NoSlots.slots (Γ := V)).rootFresh (Nat.zero_le 1)).root] at hv'
@@ -898,7 +898,7 @@ theorem single_box_under_ren {l lt : List VarType} {Δ : Ctx} (hl : l.length ≤
       · have hv' : ((ctxOf l).boxIn.insert (.bnd 0) T) (.step w s) = some U := by
           change (if s.isStruct then _ else _) = _ at hv
           rwa [if_neg hs] at hv
-        rw [Ctx.insert_ne (fun he => by cases he)] at hv'
+        replace hv' := Ctx.insert_ne_some hv' (fun he => by cases he)
         obtain ⟨u, he, hu⟩ := boxIn_item hv'
         injection he with hwu hsb
         subst hwu
@@ -944,7 +944,7 @@ theorem single_dia_under_ren {l lt : List VarType} (hl : l.length ≤ lt.length)
       · have hv' : (((ctxOf l).diaIn y).insert (.bnd 0) T) (.step w s) = some U := by
           change (if s.isStruct then _ else _) = _ at hv
           rwa [if_neg hs] at hv
-        rw [Ctx.insert_ne (fun he => by cases he)] at hv'
+        replace hv' := Ctx.insert_ne_some hv' (fun he => by cases he)
         rcases diaIn_item hv' with ⟨u, he, hu⟩ | ⟨he, hyr⟩
         · cases he
           obtain ⟨r, hr, hlt, -⟩ := ref_rt hu

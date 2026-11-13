@@ -100,10 +100,8 @@ theorem ref_insert_dia {Γ : Ctx} {c : ℕ} (_hc : Γ.RootFresh (.free c)) (A : 
         rwa [Ctx.ref_insert_ne (Γ := Γ) (.VTypeDia A) (v := .root r) hr] at h
   | step u s ih =>
       intro T h
-      have hstep : (Γ.insert (.free c) (.VTypeDia A)) (.step u s) = Γ (.step u s) := by
-        change (if (VarSymb.step u s) = .root (.free c) then some (.VTypeDia A)
-          else Γ (.step u s)) = _
-        rw [if_neg (fun he => by cases he)]
+      have hstep : (Γ.insert (.free c) (.VTypeDia A)) (.step u s) = Γ (.step u s) :=
+        Ctx.insert_ne_of_fresh (fun he => by cases he) _hc.root
       by_cases hs : s.isStruct = true
       · rw [Ctx.ref_step_proj _ _ hs] at h
         cases hU : (Γ.insert (.free c) (.VTypeDia A)).ref u with

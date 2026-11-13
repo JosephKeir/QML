@@ -869,7 +869,7 @@ theorem ok_under {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {d d' : ℕ} (T 
     subst hTU
     rw [show θ.under d d' T h (.root (.bnd d)) = .ren (.root (.bnd d')) from if_pos rfl]
     exact Ctx.ref_insert_root Δ _ T
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     rw [show θ.under d d' T h v = (θ v).mono (Ctx.le_insert h T) from if_neg hvr]
     exact SubE.okRef_mono _ (hθ v U hlp hv')
 
@@ -891,7 +891,7 @@ theorem coh_under {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ 
   · intro hO y X z hy hyd hz
     change Γ.wit y = some X at hy
     have hne : VarSymb.step y .dia ≠ .root (.bnd d) := fun he => by cases he
-    rw [Ctx.insert_ne hne] at hyd
+    replace hyd := Ctx.insert_ne_some hyd hne
     change ((θ.wit y).mono (Ctx.le_insert h T)).idxAlong [] = z at hz
     rw [WitE.idxAlong_mono] at hz
     rw [show θ.under d d' T h (.step y .dia) = (θ (.step y .dia)).mono (Ctx.le_insert h T)
@@ -902,7 +902,7 @@ theorem coh_under {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ 
   · intro hO y X z hy hyd hz
     change Γ.wit y = some X at hy
     have hne : VarSymb.step y .dia ≠ .root (.bnd d) := fun he => by cases he
-    rw [Ctx.insert_ne hne] at hyd
+    replace hyd := Ctx.insert_ne_some hyd hne
     change ((θ.wit y).mono (Ctx.le_insert h T)).idxAlong [] = z at hz
     rw [WitE.idxAlong_mono] at hz
     obtain ⟨Z, hZ, hZd⟩ := hc.openedTo hO y X z hy hyd hz
@@ -917,7 +917,7 @@ theorem coh_under {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ 
     have hc0 : (VarSymb.root (Root.bnd d)).rt = Root.bnd d := rfl
     rw [VarSymb.ext_rt, if_pos hc0]
     exact (VarSymb.reroot_ext (.bnd d') (.root (.bnd d)) p).symm
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     have hrt : v.rt ≠ .bnd d := fun he => by
       rw [hΓ v d he le_rfl] at hv'
       cases hv'
@@ -1126,7 +1126,7 @@ theorem ok_single {Γ : Ctx} {r : Root} {T : VarType} {e : SubE σ Δ} (hle : Γ
     subst hTU
     rw [show single r e (.root r) = e from if_pos rfl]
     exact he
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     rw [show single r e v = .ren v from if_neg hvr]
     exact (Ctx.ref_nonproj Δ hlp).trans (hle v U hv')
 
@@ -1150,7 +1150,7 @@ theorem coh_single {Γ : Ctx} {r : Root} {T : VarType} {e : SubE σ Δ} (hr : Γ
     have hz' : y = z := hz
     subst hz'
     change Γ.wit y = some X at hy
-    rw [Ctx.insert_ne (fun he => by cases he)] at hyd
+    replace hyd := Ctx.insert_ne_some hyd (fun he => by cases he)
     exact ⟨X, hle.wit y X hy, hle.ty _ _ hyd⟩
   intro v U hlp hv p
   by_cases hvr : v = .root r
@@ -1160,7 +1160,7 @@ theorem coh_single {Γ : Ctx} {r : Root} {T : VarType} {e : SubE σ Δ} (hr : Γ
       e.idxAlong ((VarSymb.root r).ext p).path else _
     simp only [VarSymb.ext_rt, VarSymb.ext_path, VarSymb.rt, VarSymb.path, List.nil_append,
       if_true]
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     have hrt : v.rt ≠ r := fun he' => by
       rw [hr v he'] at hv'
       cases hv'

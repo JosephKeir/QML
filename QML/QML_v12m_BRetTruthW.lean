@@ -37,7 +37,7 @@ theorem Term.subst_closed_sig {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {A : VarT
     rw [h0, show Subst.single (σ := σ) (Δ := Δ) (.bnd 0) (.tm t) (.root (.bnd 0)) = .tm t from
       Subst.single_self _ _]
     exact .refl _
-  · rw [Ctx.insert_ne hvr] at hv
+  · replace hv := Ctx.insert_ne_some hv hvr
     cases hv
 
 /-- ⭐A body with its slot replaced by a hole term, read along an arrow with the slot filled by
@@ -60,7 +60,7 @@ theorem readArrow_bodyRepl {l : List VarType} {Δ : Ctx} [Δ.NoSlots] {img : ℕ
     dsimp only [SubE.comp]
     exact SubE.sim_tm_sigma (Eq.symm (Term.subst_closed_sig _ _ _ _ (Subst.set_root _ _ _) s))
   · have hv' : (ctxOf l).boxIn v = some T := by
-      rwa [Ctx.insert_ne hvr] at hv
+      exact Ctx.insert_ne_some hv hvr
     obtain ⟨w, rfl, hw⟩ := boxIn_item' hv'
     rw [Subst.comp_apply, Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
     change SubE.Sim T _ ((Subst.set _ _ _).at (.step w .box))
@@ -397,7 +397,7 @@ theorem readArrowX_bodyRepl {l : List VarType} {Δ : Ctx} [Δ.NoSlots] {img : �
     dsimp only [SubE.comp]
     exact SubE.sim_tm_sigma (Eq.symm (Term.subst_closed_sig _ _ _ _ (Subst.set_root _ _ _) s))
   · have hv' : ((ctxOf l).diaIn x) v = some T := by
-      rwa [Ctx.insert_ne hvr] at hv
+      exact Ctx.insert_ne_some hv hvr
     change SubE.Sim T ((arrowXS σ Δ img x cx).set (.bnd 0) _ v)
       ((((Subst.idS σ _).set (.bnd 0) _) v).comp _ _ _)
     rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]

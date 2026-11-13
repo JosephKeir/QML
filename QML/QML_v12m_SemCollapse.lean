@@ -242,7 +242,7 @@ theorem Env.CollapseAgree.extend (hag : Env.CollapseAgree h env₁ env₂) {r : 
     subst hTU
     change (env₁.extend r o) (.root r) T hv = (env₂.extend r o) (.root r) T _
     rw [Env.extend_root, Env.extend_root]
-  · have hv' : Γ₁ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ₁ v = some U := Ctx.insert_ne_some hv hvr
     have hrt : v.rt ≠ r := fun he => by
       rw [hr v he] at hv'
       cases hv'

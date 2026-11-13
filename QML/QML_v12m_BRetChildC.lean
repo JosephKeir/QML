@@ -215,7 +215,7 @@ end Pull
 theorem body_itemT {clt : List VarType} {T : VarType} {v : VarSymb} {U : VarType}
     (hv : ((ctxOf clt).boxIn.insert (.bnd 0) T) v = some U) (hvr : v ≠ .root (.bnd 0)) :
     ∃ u, v = .step u .box ∧ (ctxOf clt).ref u = some (.VTypeBox U) := by
-  rw [Ctx.insert_ne hvr] at hv
+  replace hv := Ctx.insert_ne_some hv hvr
   exact boxIn_item hv
 
 /-- ⭐**Pulling back opens the slot**: a body over the born root read at the child, pulled back

@@ -69,11 +69,11 @@ theorem Fin.mono {Γ Γ' : Ctx} (h : Γ.Le Γ') (h' : Γ'.Fin) : Γ.Fin := by
 omit [ModalSys] in
 theorem Fin.insert {Γ : Ctx} (h : Γ.Fin) (r : Root) (T : VarType) : (Γ.insert r T).Fin := by
   refine (Set.Finite.insert (VarSymb.root r) h).subset fun v hv => ?_
-  change (if v = .root r then some T else Γ v).isSome at hv
+  change ((Γ.insert r T) v).isSome at hv
   by_cases hvr : v = .root r
   · exact Or.inl hvr
-  · rw [if_neg hvr] at hv
-    exact Or.inr hv
+  · obtain ⟨U, hU⟩ := Option.isSome_iff_exists.mp hv
+    exact Or.inr (show (Γ v).isSome by rw [Ctx.insert_ne_some hU hvr]; rfl)
 
 /-- Every reachable address is a declared one followed by projections, no more of them than the
     declared type has room for. -/
@@ -208,7 +208,7 @@ theorem Tame.insert {Γ : Ctx} (h : Γ.Tame) {r : Root} (hr : Γ.RootFresh r) (T
     (Γ.insert r T).Tame :=
   ⟨h.1.insert r T, h.2.1.elim fun _ ⟨hd, hw⟩ =>
     ⟨_, Ctx.levelDepth_insert hd hr T, Ctx.witDepth_insert hw hr T⟩,
-    h.2.2.imp id fun hn u => (Ctx.insert_ne (fun he => by cases he)).trans (hn u)⟩
+    h.2.2.imp id fun hn u => (Ctx.insert_ne_of_fresh (fun he => by cases he) hr.root).trans (hn u)⟩
 
 theorem Tame.boxIn {Γ : Ctx} (h : Γ.Tame) : Γ.boxIn.Tame :=
   ⟨h.1.boxIn, h.2.1.elim fun _ ⟨hd, _⟩ => ⟨_, Ctx.levelDepth_boxIn hd, Ctx.witDepth_boxIn hd⟩,
@@ -229,7 +229,12 @@ end Ctx
 /-- No presentation declares a content at the identity arrow. -/
 theorem CtxExpr.at_none : ∀ (e : CtxExpr) (u : VarSymb), e.denote (.step u .at) = none
   | .empty, _ => rfl
-  | .insertFree e _ _, u => (Ctx.insert_ne (fun he => by cases he)).trans (CtxExpr.at_none e u)
+  | .insertFree e _ _, u => by
+      change (Ctx.insert _ _ _) (.step u .at) = none
+      rw [Ctx.insert_apply, if_neg (fun he => by cases he)]
+      split_ifs
+      · rfl
+      · exact CtxExpr.at_none e u
   | .boxIn _, _ => rfl
   | .diaIn _ _, _ => rfl
   | .optIn e _, u => (Ctx.optIn_ne (fun he => by cases he)).trans (CtxExpr.at_none e u)

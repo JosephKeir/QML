@@ -136,9 +136,11 @@ theorem Ctx.stage_only_root {B : Ctx} {τ : ℕ → VarType} (ρ : ℕ → ℕ) 
       (B.stage τ ρ j) v = none
   | 0, v, hv, _ => hB k v hv
   | j + 1, v, hv, hne => by
-      change (if v = .root (.free (ρ j)) then some (τ j) else (B.stage τ ρ j) v) = none
-      rw [if_neg ?_]
-      · exact Ctx.stage_only_root ρ hρ hB j v hv hne
+      change ((B.stage τ ρ j).insert (.free (ρ j)) (τ j)) v = none
+      rw [Ctx.insert_apply, if_neg ?_]
+      · split_ifs
+        · rfl
+        · exact Ctx.stage_only_root ρ hρ hB j v hv hne
       · intro he
         subst he
         exact hne (congrArg (fun r => VarSymb.root (Root.free r)) (Root.free.inj hv))

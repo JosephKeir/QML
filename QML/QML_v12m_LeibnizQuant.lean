@@ -124,7 +124,7 @@ theorem WFF.bindFree_toFree {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ :
     rw [show Subst.single (σ := σ) (Δ := Δ.insert (.bnd 0) T) (.free u)
       (.ren (.root (.bnd 0))) (.root (.free u)) = .ren (.root (.bnd 0)) from if_pos rfl]
     exact .refl _
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     rw [show θ.under d 0 T hΔ.root v = (θ v).mono (Ctx.le_insert hΔ.root T) from if_neg hvr]
     change SubE.Sim U _ ((θ.toFree d u T hu.root v).comp _ _ _)
     rw [show θ.toFree d u T hu.root v = (θ v).mono (Ctx.le_insert hu.root T) from if_neg hvr,
@@ -189,7 +189,7 @@ theorem WFF.instantiate_toFree {σ : Signature} {ι : VarSymb → VarSymb} {Γ �
         (t := SubE.tm (Term.eta (σ := σ) (.root (.free u)) T (Ctx.ref_insert_root Δ _ T)))
         (e := SubE.ren (.root (.bnd 0))) rfl]
     exact .ren_eta _ _
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     rw [show θ.toFree d u T hu.root v = (θ v).mono (Ctx.le_insert hu.root T) from if_neg hvr]
     change SubE.Sim U _ ((θ.under d 0 T hΔ.root v).comp _ _ _)
     rw [show θ.under d 0 T hΔ.root v = (θ v).mono (Ctx.le_insert hΔ.root T) from if_neg hvr,

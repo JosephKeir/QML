@@ -112,7 +112,7 @@ theorem WFF.keptBody_read {Γ Ω : Ctx} [Γ.NoSlots] [Ω.NoSlots] (hF : ModalSys
     exact SubE.Sim.of_sig e.symm _
   · have hv' : Γ.boxIn v = some U := by
       have := hv
-      simpa [Ctx.insert, hvr] using this
+      exact Ctx.insert_ne_some this hvr
     have hid : ∀ y W, Γ.ref y = some W →
         (Subst.single (σ := σ) (Δ := Ω) (.bnd 0) (.tm (Term.eta w T hw))).at y = .ren y :=
       fun _ _ hy => Subst.single_at_ne
@@ -204,7 +204,7 @@ theorem WFF.subst_keptBody (hF : ModalSys.Four = true) (ht : T.tup = true)
       exact .refl _
     · have hv' : Γ.boxIn v = some U := by
         have := hv
-        simpa [Ctx.insert, hvr] using this
+        exact Ctx.insert_ne_some this hvr
       rw [Subst.comp_apply]
       rw [Subst.set_ne _ _ hvr, Subst.box_under_eq θ hΓ hΔ.root hv',
         show Subst.under θ.box 0 0 T hΔ.boxIn.root v = (θ.box v).mono _ from if_neg hvr]

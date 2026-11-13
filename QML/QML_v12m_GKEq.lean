@@ -148,7 +148,7 @@ theorem coh_under_occ [ModalSys.NoOpt]
     have hc0 : (VarSymb.root (Root.bnd d)).rt = Root.bnd d := rfl
     rw [VarSymb.ext_rt, if_pos hc0]
     exact (VarSymb.reroot_ext (.bnd d') (.root (.bnd d)) p).symm
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     have hrt' := hrt v U hv' hvr
     rw [show θ.under d d' T h v = (θ v).mono (Ctx.le_insert h T) from if_neg hvr,
       SubE.idxAlong_mono, ← at_nonproj θ hlp, hc v U ((Ctx.ref_nonproj Γ hlp).trans hv') p]
@@ -207,8 +207,9 @@ omit [ModalSys] in
 theorem SlotOnly.le (h : SlotOnly Γ₀) : Γ₀.Le (Γ₀.insert (.bnd 0) .Var) := by
   refine ⟨fun v T hv => ?_, fun _ _ h => h⟩
   rw [Ctx.insert_apply]
-  split_ifs with hvr
+  split_ifs with hvr hb
   · subst hvr; rw [h.1] at hv; exact hv
+  · rw [h.2 v (VarSymb.atBelow_rt hb) hvr] at hv; cases hv
   · exact hv
 
 omit [ModalSys] in
@@ -219,9 +220,11 @@ theorem SlotOnly.insert (h : SlotOnly Γ₀) {d : ℕ} (hd : d ≠ 0) (T : VarTy
   · change (if VarSymb.root (.bnd 0) = .root (.bnd d) then some T else _) = _
     rw [if_neg (fun he => hd (by cases he; rfl))]
     exact h.1
-  · change (if v = .root (.bnd d) then some T else Γ₀ v) = none
-    rw [if_neg (fun he => by subst he; cases hv; exact hd rfl)]
-    exact h.2 v hv hne
+  · show (Γ₀.insert (.bnd d) T) v = none
+    rw [Ctx.insert_apply, if_neg (fun he => by subst he; cases hv; exact hd rfl)]
+    split_ifs
+    · rfl
+    · exact h.2 v hv hne
 
 end Slot
 
@@ -572,7 +575,7 @@ theorem replace {Γ : Ctx} [Γ.Presented] (φ : WFF σ (Γ.insert (.bnd 0) .Var)
   have hr : Γ.RootFresh (.bnd 0) := (Ctx.NoSlots.slots (Γ := Γ)).rootFresh le_rfl
   have hS : SlotOnly (Γ.insert (.bnd 0) .Var) :=
     ⟨Ctx.ref_insert_root _ _ _, fun v hv hne => by
-      rw [Ctx.insert_ne hne]
+      rw [Ctx.insert_ne_of_fresh hne hr.root]
       exact hr.ty v hv⟩
   exact replaceGen φ (Subst.single (.bnd 0) (.tm t)) (Subst.single (.bnd 0) (.tm s))
     (Subst.ok_single (Ctx.Le.refl Γ) rfl) (Subst.ok_single (Ctx.Le.refl Γ) rfl)

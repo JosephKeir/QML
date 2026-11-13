@@ -156,7 +156,7 @@ theorem holeAt_tupT_pack2_repl {l : List VarType} {U T : VarType} {V : Ctx} [V.N
     rw [Subst.at_proj _ _ rfl, h0]
     exact .refl _
   · have hv' : (ctxOf l).boxIn v = some S := by
-      rwa [Ctx.insert_ne hvr] at hv
+      exact Ctx.insert_ne_some hv hvr
     obtain ⟨u, rfl, hu⟩ := boxIn_item hv'
     obtain ⟨r, hr, hlt, _⟩ := ref_rt hu
     dsimp only [Subst.comp, pack2S]
@@ -488,7 +488,7 @@ theorem holeAt_tupT_pack2X_repl {l : List VarType} {x : VarSymb} {X U T : VarTyp
     rw [Subst.at_proj _ _ rfl, h0]
     exact .refl _
   · have hv' : ((ctxOf l).diaIn x) v = some S := by
-      rwa [Ctx.insert_ne hvr] at hv
+      exact Ctx.insert_ne_some hv hvr
     rcases diaIn_item hv' with ⟨u, rfl, hu⟩ | ⟨rfl, hxT⟩
     · obtain ⟨r, hr, hlt, _⟩ := ref_rt hu
       dsimp only [Subst.comp, pack2XS]

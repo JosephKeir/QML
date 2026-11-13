@@ -109,7 +109,7 @@ theorem WFF.instantiate_exDia {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots] (hle : Γ.
       rw [SubE.diaBody_diatm_self, Term.mono_eta]
       exact .refl _
     · -- A `□`-item of `Γ`: left alone by both.
-      have hv' : Γ.boxIn v = some T := by simpa [Ctx.insert, hv0] using hv
+      have hv' : Γ.boxIn v = some T := Ctx.insert_ne_some hv hv0
       have hsw : ∀ {w : VarSymb} {U : VarType}, Γ.ref w = some U →
           (Subst.single (σ := σ) (Δ := Δ) (.bnd 0)
             (.tm (Term.diatm x hx (Term.eta u.inner A (hL.ref (Ctx.ref_inner hu)))))).at w =

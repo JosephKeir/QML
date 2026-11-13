@@ -514,7 +514,7 @@ theorem sim_under {Γ : Ctx} {θ θ' : Subst σ Δ} (hs : Sim Γ θ θ') {d d' :
   · rw [show θ.under d d' T h v = .ren (.root (.bnd d')) from if_pos hvr,
       show θ'.under d d' T h v = .ren (.root (.bnd d')) from if_pos hvr]
     exact .refl _
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     rw [show θ.under d d' T h v = (θ v).mono (Ctx.le_insert h T) from if_neg hvr,
       show θ'.under d d' T h v = (θ' v).mono (Ctx.le_insert h T) from if_neg hvr]
     have h₁ := hs v U ((Ctx.ref_nonproj Γ hlp).trans hv')

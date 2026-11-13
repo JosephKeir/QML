@@ -283,7 +283,7 @@ theorem holeRead_tupImgT_pack2X {l : List VarType} {x : VarSymb} {X U : VarType}
     rw [Subst.at_proj _ _ rfl, h0]
     exact .refl _
   · have hv' : ((ctxOf l).diaIn x) v = some T := by
-      rwa [Ctx.insert_ne hvr] at hv
+      exact Ctx.insert_ne_some hv hvr
     rcases diaIn_item hv' with ⟨u, rfl, hu⟩ | ⟨rfl, hxT⟩
     · obtain ⟨r, hr, hlt, hR⟩ := ref_rt hu
       dsimp only [Subst.comp, pack2XS]
@@ -362,7 +362,7 @@ theorem holeAt_tupT_pack2X {l : List VarType} {x : VarSymb} {X U : VarType} {Δ 
     rw [Subst.at_proj _ _ rfl, h0]
     exact .ren_eta _ _
   · have hv' : ((ctxOf l).diaIn x) v = some T := by
-      rwa [Ctx.insert_ne hvr] at hv
+      exact Ctx.insert_ne_some hv hvr
     rcases diaIn_item hv' with ⟨u, rfl, hu⟩ | ⟨rfl, hxT⟩
     · obtain ⟨r, hr, hlt, _⟩ := ref_rt hu
       dsimp only [Subst.comp, pack2XS]
@@ -645,7 +645,7 @@ theorem WFF.bodySplit_mono_pairUpS {V' : Ctx} [V'.NoSlots] (h : V.Le V') (S : RS
         · rw [Subst.at_proj _ _ rfl, h0]
           rfl
   · have hv' : V v = some U := by
-      rwa [Ctx.insert_ne hvr] at hv
+      exact Ctx.insert_ne_some hv hvr
     have hv1 : v ≠ .root (.bnd 1) := fun h => by
       subst h
       rw [((Ctx.NoSlots.slots (Γ := V)).rootFresh (Nat.zero_le 1)).root] at hv'
@@ -707,7 +707,7 @@ theorem coh_midSW (hs : cls <:+ lv) (hx : (ctxOf cls).ref x = some (.VTypeDia X)
 theorem bodyW_item {cl clt : List VarType} {X : VarType} {v : VarSymb} {U : VarType}
     (hv : bodyCtxW cl clt X v = some U) (hvr : v ≠ .root (.bnd 0)) :
     ∃ u, v = .step u .box ∧ (ctxOf clt).ref u = some (.VTypeBox U) := by
-  rw [Ctx.insert_ne hvr] at hv
+  replace hv := Ctx.insert_ne_some hv hvr
   exact boxIn_item hv
 
 /-- ⭐**A new root's witness body is an `∃`-introduction of the older roots' one.**  Read at the

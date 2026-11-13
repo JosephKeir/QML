@@ -203,6 +203,7 @@ theorem ok_extS [ModalSys.NoOpt] {Γ Δ Δ' : Ctx} {θ : Subst σ Δ} (hθ : Sub
     rw [if_pos (show (VarSymb.root (Root.free u)).rt = Root.free u from rfl)]
     exact hv
   · rw [if_neg hwu] at hw
+    split_ifs at hw
     have hrt : w.rt ≠ .free u := fun he => by rw [hfr w he] at hw; cases hw
     simp only [extS]
     rw [if_neg hrt]
@@ -226,6 +227,7 @@ theorem coh_extS [ModalSys.NoOpt]
     rw [VarSymb.reroot_eq, VarSymb.ext_path]
     rfl
   · rw [if_neg hwu] at hw
+    split_ifs at hw
     have hrt : w.rt ≠ .free u := fun he => by rw [hfr w he] at hw; cases hw
     simp only [extS, extIdx]
     rw [if_neg hrt, if_neg (show ¬ (w.ext p).rt = Root.free u by rw [VarSymb.ext_rt]; exact hrt)]
@@ -249,6 +251,7 @@ theorem simId_extS [ModalSys.NoOpt]
     rw [if_pos (show (VarSymb.root (Root.free u)).rt = Root.free u from rfl)]
     exact .refl _
   · rw [if_neg hwu] at hw
+    split_ifs at hw
     have hrt : w.rt ≠ .free u := fun he => by rw [hfr w he] at hw; cases hw
     simp only [extS]
     rw [if_neg hrt]
@@ -301,6 +304,7 @@ theorem sim_extS [ModalSys.NoOpt]
     rw [if_pos (show (VarSymb.root (Root.free v)).rt = Root.free v from rfl)]
     exact .refl _
   · rw [if_neg hwu] at hw
+    split_ifs at hw
     have hrt : w.rt ≠ .free u := fun he => by rw [hu w he] at hw; cases hw
     have hwr : Γ.ref w = some U := (Ctx.ref_nonproj Γ hlp).trans hw
     have hs := hsim w U hwr

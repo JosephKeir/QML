@@ -85,9 +85,10 @@ theorem ctxOf_step : ∀ (l : List VarType) (v : VarSymb) (st : Step), ctxOf l (
   | [], _, _ => rfl
   | A :: l, v, st => by
       rw [ctxOf_cons]
-      change (if VarSymb.step v st = .root (.free l.length) then some A else ctxOf l _) = none
-      rw [if_neg (by simp)]
-      exact ctxOf_step l v st
+      rw [Ctx.insert_apply, if_neg (by simp)]
+      split_ifs
+      · rfl
+      · exact ctxOf_step l v st
 
 /-- The kept witness of an address whose kept item is an address is that address. -/
 theorem wit_of_inl {t : GW hF M₀} {x y : VarSymb} (hx : PPath x.path)

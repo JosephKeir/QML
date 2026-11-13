@@ -51,7 +51,7 @@ theorem WFF.mono_holeAt {Γ Γ' : Ctx} (h : Γ.Le Γ') {d : ℕ} (hs : Γ.SlotsF
       (Subst.single (σ := σ) (Δ := Γ') (.bnd 0) (.tm (Term.mono h t)) (.root (.bnd 0)))
     rw [Subst.single_self, Subst.single_self]
     exact .refl _
-  · rw [Ctx.insert_ne hvr] at hv
+  · replace hv := Ctx.insert_ne_some hv hvr
     cases hv
 
 variable [ModalSys.NoFour]
@@ -467,7 +467,7 @@ theorem WFF.bodySplit_pairUp {X Y : VarType}
     · change (Subst.set _ _ _) (.root (.bnd 1)) = _
       rw [Subst.set_root]
   · have hv' : V v = some U := by
-      rwa [Ctx.insert_ne hvr] at hv
+      exact Ctx.insert_ne_some hv hvr
     have hv1 : v ≠ .root (.bnd 1) := fun h => by
       subst h
       rw [((Ctx.NoSlots.slots (Γ := V)).rootFresh (Nat.zero_le 1)).root] at hv'
@@ -524,7 +524,7 @@ theorem coh_midS (hs : cls <:+ lv) {imgt : ℕ → ℕ} (himgt : ImgOk clt (ctxO
 theorem body_item {cl clt : List VarType} {v : VarSymb} {U : VarType} (_hlp : v.lastProj = false)
     (hv : bodyCtx cl clt v = some U) (hvr : v ≠ .root (.bnd 0)) :
     ∃ u, v = .step u .box ∧ (ctxOf clt).ref u = some (.VTypeBox U) := by
-  rw [Ctx.insert_ne hvr] at hv
+  replace hv := Ctx.insert_ne_some hv hvr
   exact boxIn_item hv
 
 /-- ⭐**A new root's body is an `∃`-introduction of the older roots' body.**  Read at the source,
@@ -732,7 +732,7 @@ theorem WFF.bodySplit_mono_pairUp [ModalSys.NoOpt]
     · change (Subst.set _ _ _) (.root (.bnd 1)) = _
       rw [Subst.set_root]
   · have hv' : V v = some U := by
-      rwa [Ctx.insert_ne hvr] at hv
+      exact Ctx.insert_ne_some hv hvr
     have hv1 : v ≠ .root (.bnd 1) := fun h => by
       subst h
       rw [((Ctx.NoSlots.slots (Γ := V)).rootFresh (Nat.zero_le 1)).root] at hv'

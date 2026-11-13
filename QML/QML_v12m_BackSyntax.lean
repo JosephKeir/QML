@@ -51,7 +51,7 @@ theorem ok_set {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {r : Root} {T : Va
     subst hTU
     rw [set_root]
     exact he
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     rw [set_ne _ _ hvr]
     exact hθ v U hlp hv'
 
@@ -69,13 +69,13 @@ theorem coh_set {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : 
   · intro hO y X z hy hyd hz
     change Γ.wit y = some X at hy
     have hne : VarSymb.step y .dia ≠ .root r := fun he' => by cases he'
-    rw [Ctx.insert_ne hne] at hyd
+    replace hyd := Ctx.insert_ne_some hyd hne
     rw [set_ne _ _ hne]
     exact hc.opened hO y X z hy hyd hz
   · intro hO y X z hy hyd hz
     change Γ.wit y = some X at hy
     have hne : VarSymb.step y .dia ≠ .root r := fun he' => by cases he'
-    rw [Ctx.insert_ne hne] at hyd
+    replace hyd := Ctx.insert_ne_some hyd hne
     exact hc.openedTo hO y X z hy hyd hz
   intro v U hlp hv p
   by_cases hvr : v = .root r
@@ -85,7 +85,7 @@ theorem coh_set {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ : 
       e.idxAlong ((VarSymb.root r).ext p).path else _
     simp only [VarSymb.ext_rt, VarSymb.ext_path, VarSymb.rt, VarSymb.path, List.nil_append,
       if_true]
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     have hrt : v.rt ≠ r := fun he' => by
       rw [hr v he'] at hv'
       cases hv'
@@ -448,9 +448,8 @@ theorem Ctx.ref_insert_one {r : Root} {R : VarType} : ∀ (u : VarSymb) {U : Var
         · change R.walk (v.path ++ [s]) = some U
           rw [VarType.walk_append, hw]
           simpa [VarType.walk] using hst
-      · change (if VarSymb.step v s = .root r then some R else Ctx.empty (.step v s)) = some U at h
-        rw [if_neg (by simp)] at h
-        cases h
+      · have h' := Ctx.insert_ne_some h (fun he => by cases he)
+        cases h'
 
 /-- A path walking a type to a necessary type reaches a companion there. -/
 theorem VarType.compAt_of_walk : ∀ (A : VarType) (p : List Step) {C : VarType},

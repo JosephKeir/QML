@@ -775,7 +775,7 @@ theorem sat_bodyRepl (hnp : V.NoProjLast) {w : M.frame.W} (env : M.Env V w)
     exact (entryVal_congr _
       (show ((Subst.idS σ _).set (.bnd 0) (.tm X)) (.root (.bnd 0)) = .tm X from by slot_rfl)
       _ rfl).trans (Env.extend_root _ (.bnd 0) _ hv).symm
-  · have hv' : V v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : V v = some U := Ctx.insert_ne_some hv hvr
     have hlp := hnp v U hv'
     have hE : (V.insert (.bnd 0) A) v = some U := body_le _ v U hv'
     rw [substEnv_val]
@@ -811,7 +811,7 @@ theorem sat_bodySplit (hnp : V.NoProjLast) {w : M.frame.W} (env : M.Env V w)
   · by_cases hv0 : v = .root (.bnd 0)
     · subst hv0
       have hv0' : (V.insert (.bnd 0) A) (.root (.bnd 0)) = some U := by
-        simpa [Ctx.insert, hv1] using hv
+        exact Ctx.insert_ne_some hv hv1
       have hTU : A = U := by simpa [Ctx.insert] using hv0'
       subst hTU
       rw [substEnv_val]
@@ -820,9 +820,9 @@ theorem sat_bodySplit (hnp : V.NoProjLast) {w : M.frame.W} (env : M.Env V w)
           .tm X₀ from (Subst.set_ne _ _ hv1).trans (Subst.set_root _ _ _)) _ rfl).trans ?_
       rw [Env.extend_ne _ (.bnd 1) _ hv hv1 hv0', Env.extend_root _ (.bnd 0) _ hv0']
       rfl
-    · have hv' : V v = some U := by simpa [Ctx.insert, hv0, hv1] using hv
+    · have hv' : V v = some U := Ctx.insert_ne_some (Ctx.insert_ne_some hv hv1) hv0
       have hv0' : (V.insert (.bnd 0) A) v = some U := by
-        simpa [Ctx.insert, hv1] using hv
+        exact Ctx.insert_ne_some hv hv1
       have hlp := hnp v U hv'
       have hE : (V.insert (.bnd 0) C) v = some U := body_le _ v U hv'
       rw [substEnv_val]

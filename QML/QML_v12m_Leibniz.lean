@@ -171,7 +171,7 @@ theorem ok_toFree {Γ : Ctx} {θ : Subst σ Δ} (hθ : Ok Γ θ) {d u : ℕ} (T 
     subst hTU
     rw [show θ.toFree d u T h (.root (.bnd d)) = .ren (.root (.free u)) from if_pos rfl]
     exact Ctx.ref_insert_root Δ _ T
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     rw [show θ.toFree d u T h v = (θ v).mono (Ctx.le_insert h T) from if_neg hvr]
     exact SubE.okRef_mono _ (hθ v U hlp hv')
 
@@ -193,7 +193,7 @@ theorem coh_toFree {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ
   · intro hO y X z hy hyd hz
     change Γ.wit y = some X at hy
     have hne : VarSymb.step y .dia ≠ .root (.bnd d) := fun he => by cases he
-    rw [Ctx.insert_ne hne] at hyd
+    replace hyd := Ctx.insert_ne_some hyd hne
     change ((θ.wit y).mono (Ctx.le_insert h T)).idxAlong [] = z at hz
     rw [WitE.idxAlong_mono] at hz
     rw [show θ.toFree d u T h (.step y .dia) = (θ (.step y .dia)).mono (Ctx.le_insert h T)
@@ -204,7 +204,7 @@ theorem coh_toFree {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ
   · intro hO y X z hy hyd hz
     change Γ.wit y = some X at hy
     have hne : VarSymb.step y .dia ≠ .root (.bnd d) := fun he => by cases he
-    rw [Ctx.insert_ne hne] at hyd
+    replace hyd := Ctx.insert_ne_some hyd hne
     change ((θ.wit y).mono (Ctx.le_insert h T)).idxAlong [] = z at hz
     rw [WitE.idxAlong_mono] at hz
     obtain ⟨Z, hZ, hZd⟩ := hc.openedTo hO y X z hy hyd hz
@@ -219,7 +219,7 @@ theorem coh_toFree {ι : VarSymb → VarSymb} {Γ : Ctx} {θ : Subst σ Δ} (hθ
     have hc0 : (VarSymb.root (Root.bnd d)).rt = Root.bnd d := rfl
     rw [VarSymb.ext_rt, if_pos hc0]
     exact (VarSymb.reroot_ext (.free u) (.root (.bnd d)) p).symm
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     have hrt : v.rt ≠ .bnd d := fun he => by
       rw [hΓ v d he le_rfl] at hv'
       cases hv'

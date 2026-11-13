@@ -190,7 +190,7 @@ theorem preShift_under {k : ℕ} {Γ : Ctx} {Ψ Ψ' : Subst σ Δ} (hp : PreShif
     rw [show (Ψ.under d d' T h).at (.root (.bnd d)) = .ren (.root (.bnd d')) from if_pos rfl,
       show Ψ'.under d d' T h (.root (.bnd d)) = .ren (.root (.bnd d')) from if_pos rfl]
     exact .refl _
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     have hrt : v.rt ≠ .bnd d := fun he => by
       rw [hΓ v d he le_rfl] at hv'
       cases hv'

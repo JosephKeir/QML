@@ -31,7 +31,7 @@ theorem substEnv_set_tm {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : 
     subst hTU
     rw [Env.extend_root _ _ _ hv]
     exact entryVal_congr env (Subst.set_root θ r (.tm g)) _ (show (SubE.tm g).OkRef T from rfl)
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     rw [Env.extend_ne (substEnv θ hθ hnp env) _ _ hv hvr hv']
     exact entryVal_congr env (Subst.set_ne θ _ hvr) _ _
 
@@ -464,7 +464,7 @@ theorem WFF.instantiate_retSlot (hS : ModalSys.BStrong = true) (S : RShape)
     rw [show ∀ θ h, Subst.under (σ := σ) (Δ := Γ.boxIn) θ 1 0 S.ty h (.root (.bnd 1)) =
       .ren (.root (.bnd 0)) from fun _ _ => Subst.under_slot _ _ _ _ _]
     exact .refl _
-  · have hv' : Γ.boxIn v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ.boxIn v = some U := Ctx.insert_ne_some hv hvr
     have hrt : v.rt ≠ .bnd 0 := Ctx.ref_rt_ne
       ((Ctx.NoSlots.slots (Γ := Γ)).boxIn.rootFresh (le_refl 0))
       ((Ctx.ref_nonproj _ hlp).trans hv')
@@ -601,7 +601,7 @@ theorem WFF.instantiate_retxSlot (hS : ModalSys.BStrong = true) (y : VarSymb)
     rw [show ∀ θ h, Subst.under (σ := σ) (Δ := Γ.diaIn y) θ 1 0 S.ty h (.root (.bnd 1)) =
       .ren (.root (.bnd 0)) from fun _ _ => Subst.under_slot _ _ _ _ _]
     exact .refl _
-  · have hv' : (Γ.diaIn y) v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : (Γ.diaIn y) v = some U := Ctx.insert_ne_some hv hvr
     have hrt : v.rt ≠ .bnd 0 := Ctx.ref_rt_ne
       ((Ctx.NoSlots.slots (Γ := Γ)).diaIn y |>.rootFresh (le_refl 0))
       ((Ctx.ref_nonproj _ hlp).trans hv')
@@ -686,7 +686,7 @@ theorem liftBody_bodyRepl_packMapC {bb : Bool} {hbb : ModalSys.T = bb}
       change Subst.set _ _ _ (.root (.bnd 0)) = _
       exact Subst.set_root _ _ _) n
   · have hv' : (ctxOf clt).boxIn v = some T := by
-      rwa [Ctx.insert_ne hvr] at hv
+      exact Ctx.insert_ne_some hv hvr
     obtain ⟨w, rfl, hw⟩ := boxIn_item' hv'
     rw [Subst.comp_apply, Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
     change SubE.Sim T _ ((Subst.set _ _ _).at (.step w .box))
@@ -747,7 +747,7 @@ theorem readArrow_mono_congr {l l' : List VarType} (hl : l <:+ l') {Δ Δ' : Ctx
     rw [Subst.mono_apply, Subst.set_root, Subst.set_root]
     exact .refl _
   · have hv' : (ctxOf l).boxIn v = some T := by
-      rwa [Ctx.insert_ne hvr] at hv
+      exact Ctx.insert_ne_some hv hvr
     obtain ⟨w, rfl, hw⟩ := boxIn_item hv'
     obtain ⟨r, hr, hlt, _⟩ := ref_rt hw
     rw [Subst.mono_apply, Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
@@ -976,7 +976,7 @@ theorem readArrowX_mono_congr {l l' : List VarType} (hl : l <:+ l') {Δ Δ' : Ct
     rw [Subst.mono_apply, Subst.set_root, Subst.set_root]
     exact .refl _
   · have hv' : ((ctxOf l).diaIn x) v = some T := by
-      rwa [Ctx.insert_ne hvr] at hv
+      exact Ctx.insert_ne_some hv hvr
     change SubE.Sim T (SubE.mono hΔ (Subst.set _ _ _ v)) (Subst.set _ _ _ v)
     rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
     rcases diaIn_item hv' with ⟨w, rfl, hw⟩ | ⟨rfl, _⟩
@@ -1025,7 +1025,7 @@ theorem liftBodyX_bodyRepl_packMapC {bb : Bool} {hbb : ModalSys.T = bb}
       change Subst.set _ _ _ (.root (.bnd 0)) = _
       exact Subst.set_root _ _ _) n
   · have hv' : ((ctxOf clt).diaIn x) v = some T := by
-      rwa [Ctx.insert_ne hvr] at hv
+      exact Ctx.insert_ne_some hv hvr
     change SubE.Sim T ((arrowXS σ (ctxOf lv) imgt x cx).set (.bnd 0) _ v)
       ((((Subst.idS σ _).set (.bnd 0) _) v).comp _ _ _)
     rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]

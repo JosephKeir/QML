@@ -25,16 +25,6 @@ namespace V12M
 variable [ModalSys]
 
 omit [ModalSys] in
-theorem Step.levels_append : ∀ (p q : List Step),
-    Step.levels (p ++ q) = Step.levels p + Step.levels q
-  | [], q => by simp [Step.levels]
-  | s :: p, q => by
-      change (if s.isProj then 0 else 1) + Step.levels (p ++ q) =
-        ((if s.isProj then 0 else 1) + Step.levels p) + Step.levels q
-      rw [Step.levels_append p q]
-      omega
-
-omit [ModalSys] in
 theorem Step.levels_le_ext : ∀ (v : VarSymb) (p : List Step),
     Step.levels v.path ≤ Step.levels (v.ext p).path
   | _, [] => le_rfl
@@ -221,13 +211,12 @@ theorem levelDepth_diaIn {d : Root → ℕ} {Γ : Ctx} (h : LevelDepth d Γ) (x 
 theorem ref_insert_of_rt_ne {Γ : Ctx} {r : Root} {T : VarType} :
     ∀ (v : VarSymb), v.rt ≠ r → (Γ.insert r T).ref v = Γ.ref v
   | .root r', hrt => by
-      have hne : (VarSymb.root r') ≠ .root r := fun hcon => hrt (by injection hcon)
-      simp only [Ctx.ref, Ctx.insert, if_neg hne]
+      exact Ctx.insert_ne_rt hrt
   | .step u s, hrt => by
       simp only [Ctx.ref]
       split_ifs with hs
       · rw [ref_insert_of_rt_ne u hrt]
-      · exact Ctx.insert_ne (fun hcon => by cases hcon)
+      · exact Ctx.insert_ne_rt hrt
 
 /-- An address at a fresh root is visible only as the root itself and its projections, so it has no
     level steps. -/
@@ -248,7 +237,7 @@ theorem levels_zero_of_insert {Γ : Ctx} {r : Root} {T : VarType} (hr : Γ.RootF
           simp only [Ctx.ref, if_neg hs] at hv
           exact hv
         rw [show (Γ.insert r T) (.step u s) = Γ (.step u s) from
-          Ctx.insert_ne (fun hcon => by cases hcon), hr _ hrt] at hraw
+          Ctx.insert_ne_of_fresh (fun hcon => by cases hcon) hr.root, hr _ hrt] at hraw
         cases hraw
 
 /-- Declaring a fresh root: that root starts at depth zero and the rest is unchanged. -/

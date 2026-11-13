@@ -71,7 +71,7 @@ theorem bodyXT_item {clt : List VarType} {x v : VarSymb} {T U : VarType}
     (hv : (((ctxOf clt).diaIn x).insert (.bnd 0) T) v = some U) (hvr : v ≠ .root (.bnd 0)) :
     (∃ u, v = .step u .box ∧ (ctxOf clt).ref u = some (.VTypeBox U)) ∨
       (v = .step x .dia ∧ (ctxOf clt).ref x = some (.VTypeDia U)) := by
-  rw [Ctx.insert_ne hvr] at hv
+  replace hv := Ctx.insert_ne_some hv hvr
   exact diaIn_item hv
 
 section FlatRootX

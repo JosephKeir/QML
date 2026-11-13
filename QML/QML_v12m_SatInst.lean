@@ -58,7 +58,7 @@ theorem substEnv_single_tm {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (hnp : 
     exact (entryVal_congr env
       (Subst.single_self r (.tm s)) _ rfl).trans
       (Env.extend_root env r _ hv).symm
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     exact (entryVal_congr env (show Subst.single r (.tm s) v = .ren v from
       if_neg (t := SubE.tm s) hvr) _
       ((Ctx.ref_nonproj Γ (hnp v U hv')).trans hv')).trans
@@ -98,7 +98,7 @@ theorem substEnv_single_ren {Γ Δ : Ctx} {w : M.frame.W} (env : M.Env Δ w) (hn
     exact (entryVal_congr env
       (Subst.single_self (σ := σ) r (.ren x)) _ hx).trans
       (Env.extend_root (env.restrict hle) r _ hv).symm
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     exact (entryVal_congr env
       (show Subst.single (σ := σ) r (.ren x) v = .ren v from if_neg (t := SubE.ren x) hvr) _
       ((Ctx.ref_nonproj Δ (hnp v U hv')).trans (hle v U hv'))).trans

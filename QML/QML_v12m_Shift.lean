@@ -299,7 +299,7 @@ theorem Shifts.insert {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Shifts k Γ₁ Γ₂) {
     have hTU : T = U := by simpa [Ctx.insert] using hv
     subst hTU
     exact ref_insert_root Γ₂ r T
-  · have hv' : Γ₁ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ₁ v = some U := Ctx.insert_ne_some hv hvr
     have hrt : v.rt ≠ r := fun he => by rw [hr v he] at hv'; cases hv'
     rw [ref_insert_ne T (by rwa [VarSymb.shift_rt])]
     exact h v U ((Ctx.ref_nonproj Γ₁ hlp).trans hv')

@@ -79,7 +79,7 @@ theorem ok_bodyAbsA [ModalSys.NoOpt] (hxA : Γ.ref x = some (.VTypeDia A))
   · subst hvr
     obtain rfl : T = U := by simpa [Ctx.insert] using hv
     exact Ctx.ref_snd_of (Ctx.ref_insert_root _ (.bnd 0) _)
-  · have hv' : (Γ.diaIn x) v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : (Γ.diaIn x) v = some U := Ctx.insert_ne_some hv hvr
     rcases diaIn_casesA (σ := σ) hxA hnb hv' with ⟨rfl, rfl⟩ | ⟨hbl, hb, hen, hroot⟩
     · change (if x = x then SubE.ren (.step (.root (.bnd 0)) .fst) else .hide).OkRef _
       rw [if_pos rfl]
@@ -116,7 +116,7 @@ theorem coh_bodyAbsA [ModalSys.NoOpt] (hxA : Γ.ref x = some (.VTypeDia A))
     dsimp only
     rw [if_pos (by rw [VarSymb.ext_rt]; rfl), VarSymb.ext_path]
     rfl
-  · have hv' : (Γ.diaIn x) v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : (Γ.diaIn x) v = some U := Ctx.insert_ne_some hv hvr
     rcases diaIn_casesA (σ := σ) hxA hnb hv' with ⟨rfl, rfl⟩ | ⟨hbl, hb, hen, hroot⟩
     · change (if x = x then SubE.ren (.step (.root (.bnd 0)) .fst) else .hide).idxAlong p = _
       rw [if_pos rfl]
@@ -186,7 +186,7 @@ theorem WFF.viewBody_bodyAbsA [ModalSys.NoOpt]
     dsimp only [Subst.comp, Subst.bodyAbsA, Subst.idS, SubE.comp]
     rw [Subst.at_proj _ _ rfl, Subst.at_nonproj _ rfl, Subst.set_root]
     exact .ren_eta _ _
-  · have hv' : (Γ.diaIn x) v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : (Γ.diaIn x) v = some U := Ctx.insert_ne_some hv hvr
     rcases Subst.diaIn_casesA (σ := σ) hxA (hp.not_below hxA rfl) hv' with
       ⟨rfl, rfl⟩ | ⟨hbl, hb, hen, hroot⟩
     · dsimp only [Subst.comp, Subst.bodyAbsA, Subst.idS]

@@ -544,9 +544,7 @@ theorem holeAt_tupT_pack2 [ModalSys.NoFour] {l : List VarType} {U : VarType} {Δ
     dsimp only [SubE.comp]
     rw [Subst.at_proj _ _ rfl, h0]
     exact .ren_eta _ _
-  · have hv' : (ctxOf l).boxIn v = some T := by
-      change (if v = VarSymb.root (.bnd 0) then _ else _) = _ at hv
-      rwa [if_neg hvr] at hv
+  · have hv' : (ctxOf l).boxIn v = some T := Ctx.insert_ne_some hv hvr
     obtain ⟨u, rfl, hu⟩ := boxIn_item hv'
     obtain ⟨r, hr, hlt, _⟩ := ref_rt hu
     dsimp only [Subst.comp, pack2S]
@@ -595,9 +593,7 @@ theorem holeRead_tupImgT_pack2 [ModalSys.NoFour] {l : List VarType} {U : VarType
     dsimp only [SubE.comp]
     rw [Subst.at_proj _ _ rfl, h0]
     exact .refl _
-  · have hv' : (ctxOf l).boxIn v = some T := by
-      change (if v = VarSymb.root (.bnd 0) then _ else _) = _ at hv
-      rwa [if_neg hvr] at hv
+  · have hv' : (ctxOf l).boxIn v = some T := Ctx.insert_ne_some hv hvr
     obtain ⟨u, rfl, hu⟩ := boxIn_item hv'
     obtain ⟨r, hr, hlt, hR⟩ := ref_rt hu
     dsimp only [Subst.comp, pack2S]

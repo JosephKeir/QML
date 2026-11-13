@@ -304,7 +304,7 @@ theorem truth_ltO : ∀ (n : ℕ) (w : World σ N₀), DecidesO hO w → ∀ (i 
             have hdecl : w.L.ctx i (.step y .dia) = some X := by
               have hb : (w.L.base i.1).wit y = some X := (ctx_wit w i y).symm.trans h
               rcases hdec i.1 y X hb with hd | hneg
-              · rw [ctx_step]
+              · rw [ctx_step (s := .dia) _ _ _ nofun]
                 exact hd
               · exfalso
                 have hneg' := (World.mem_lift (w := w)

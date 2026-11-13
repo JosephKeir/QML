@@ -139,9 +139,8 @@ theorem hole_decl {A T : VarType} {v : VarSymb}
   by_cases hvr : v = .root (.bnd 0)
   · subst hvr
     exact ⟨rfl, by simpa [Ctx.insert] using hv⟩
-  · change (if v = VarSymb.root (.bnd 0) then _ else Ctx.empty v) = _ at hv
-    rw [if_neg hvr] at hv
-    cases hv
+  · have := Ctx.insert_ne_some hv hvr
+    cases this
 
 omit [Arrows.RootKeep F Root] in
 /-- The shape environment of a hole holding a shape. -/

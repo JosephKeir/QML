@@ -540,7 +540,7 @@ theorem WFF.instantiate_subst_under [ModalSys.NoOpt] {ι : VarSymb → VarSymb} 
     exact .refl _
   · have hv' : V v = some U := by
       have := hv
-      simpa [Ctx.insert, hvr] using this
+      exact Ctx.insert_ne_some this hvr
     rw [Subst.set_ne _ _ hvr, Subst.comp_apply, Subst.under_ne _ _ _ _ _ hvr]
     have e := comp_single_mono (Ctx.Le.refl Δ) t (Subst.ok_single (Ctx.Le.refl Δ) rfl)
       (Subst.coh_single ((Ctx.NoSlots.slots (Γ := Δ)).rootFresh (le_refl 0)) (Ctx.Le.refl Δ) rfl)
@@ -582,7 +582,7 @@ theorem WFF.subst_ex_slotPair [ModalSys.NoOpt]
   · have hv' : V.ref v = some U := by
       have := hv
       rw [Ctx.ref_nonproj _ hl]
-      simpa [Ctx.insert, hvr] using this
+      exact Ctx.insert_ne_some this hvr
     have hne : v ≠ .root (.bnd 1) := fun e => Ctx.ref_rt_ne
       ((Ctx.NoSlots.slots (Γ := V)).rootFresh (Nat.zero_le 1)) hv' (by rw [e]; rfl)
     change SubE.Sim U ((θ.mono (body_le Y)).set (.bnd 0) (.tm (slotTm t Y)) v)
@@ -627,7 +627,7 @@ theorem WFF.instantiate_mono_pairSet [ModalSys.NoOpt] {Δ' : Ctx} [Δ'.NoSlots] 
     exact Term.subst_ren h _ _ _ (fun v _ hv => Subst.single_at_ne (Ctx.ref_rt_ne hfr hv)) a
   · have hv' : V v = some U := by
       have := hv
-      simpa [Ctx.insert, hvr] using this
+      exact Ctx.insert_ne_some this hvr
     change SubE.Sim U ((θ.mono h).set (.bnd 0) (.tm (Term.pair (Term.mono h a) b)) v)
       (SubE.comp _ _ _ ((θ.mono (body_le Y)).set (.bnd 0) (.tm (slotTm a Y)) v))
     rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
@@ -695,7 +695,7 @@ theorem WFF.subst_loopHat {Γ Γ₁ : Ctx} [Γ.NoSlots] [Γ₁.NoSlots] (hF : Mo
       exact .refl _
     · have hv' : Γ.boxIn v = some U := by
         have := hv
-        simpa [Ctx.insert, hvr] using this
+        exact Ctx.insert_ne_some this hvr
       rw [show Subst.single (σ := σ) (.bnd 0) (.tm k) v = .ren v from if_neg hvr]
       have h := hfix v U hl hv'
       match v, hl with

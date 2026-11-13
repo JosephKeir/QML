@@ -46,7 +46,7 @@ theorem WFF.diaAbsA_viewReadAtA [ModalSys.NoOpt]
       (if x = x then SubE.ren (.root (.bnd 0)) else .hide)
     rw [if_pos rfl]
     exact .refl _
-  · have hv' : Γ.boxIn v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ.boxIn v = some U := Ctx.insert_ne_some hv hvr
     rw [Subst.single_ne _ hvr, SubE.comp_ren, Subst.at_nonproj _ hlp]
     match v, hv' with
     | .step u .box, _ => exact .refl _

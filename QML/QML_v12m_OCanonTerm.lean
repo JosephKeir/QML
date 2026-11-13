@@ -23,14 +23,15 @@ namespace V12M
 variable [ModalSys]
 
 omit [ModalSys] in
-/-- Stages add only roots: a step address reads as in the base. -/
+/-- Stages add only roots: a step address other than an identity content reads as in the
+    base. -/
 theorem Ctx.stage_step {B : Ctx} {τ : ℕ → VarType} {ρ : ℕ → ℕ} :
-    ∀ (k : ℕ) (v : VarSymb) (s : Step), B.stage τ ρ k (.step v s) = B (.step v s)
-  | 0, _, _ => rfl
-  | k + 1, v, s => by
+    ∀ (k : ℕ) (v : VarSymb) (s : Step), s ≠ .at → B.stage τ ρ k (.step v s) = B (.step v s)
+  | 0, _, _, _ => rfl
+  | k + 1, v, s, hs => by
       change (Ctx.insert (B.stage τ ρ k) (.free (ρ k)) (τ k)) (.step v s) = _
-      rw [Ctx.insert_ne (fun h => by cases h)]
-      exact Ctx.stage_step k v s
+      rw [Ctx.insert_ne (fun h => by cases h) (by cases s <;> first | rfl | exact absurd rfl hs)]
+      exact Ctx.stage_step k v s hs
 
 omit [ModalSys] in
 /-- Stages keep the witnesses. -/
@@ -45,9 +46,9 @@ open Canon
 
 variable {σ : Signature} {N₀ : ℕ}
 
-theorem ctx_step (w : World σ N₀) (i : ℕ × ℕ) (v : VarSymb) (s : Step) :
+theorem ctx_step (w : World σ N₀) (i : ℕ × ℕ) (v : VarSymb) {s : Step} (hs : s ≠ .at) :
     w.L.ctx i (.step v s) = w.L.base i.1 (.step v s) :=
-  Ctx.stage_step _ v s
+  Ctx.stage_step _ v s hs
 
 theorem ctx_wit (w : World σ N₀) (i : ℕ × ℕ) (y : VarSymb) :
     (w.L.ctx i).wit y = (w.L.base i.1).wit y :=
@@ -58,7 +59,7 @@ theorem ctx_wit (w : World σ N₀) (i : ℕ × ℕ) (y : VarSymb) :
 theorem DecidesO.ctx_stable {hO : ModalSys.Opt = true} {w : World σ N₀} (hdec : DecidesO hO w)
     {i j : ℕ × ℕ} {y : VarSymb} {X : VarType} (hy : (w.L.ctx i).wit y = some X)
     (h : w.L.ctx j (.step y .dia) = some X) : w.L.ctx i (.step y .dia) = some X := by
-  rw [ctx_step] at h ⊢
+  rw [ctx_step (s := .dia) _ _ _ nofun] at h ⊢
   rw [ctx_wit] at hy
   exact hdec.stable h hy
 

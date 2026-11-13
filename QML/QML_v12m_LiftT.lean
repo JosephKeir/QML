@@ -306,7 +306,7 @@ theorem corr_keepOf (hT : ModalSys.T = true) (hF : ModalSys.Four = true)
     exact SubE.Sim.of_sig (Term.collapse_keepOf hT hF hk ht _ _).symm T
   · have hv' : Ξ.boxIn v = some U := by
       have := hv
-      simpa [Ctx.insert, hvr] using this
+      exact Ctx.insert_ne_some this hvr
     have hne := Ctx.ref_rt_ne hr ((Ctx.ref_nonproj _ hlp).trans hv')
     change SubE.Sim U (Subst.at _ _) (SubE.collapse _ (if v = _ then _ else _))
     rw [if_neg hvr, Subst.single_at_ne (by rwa [VarSymb.collapse_rt])]
@@ -388,7 +388,7 @@ theorem WFF.shift_loopHat (hF : ModalSys.Four = true) (hk : T.keepable = true)
       exact SubE.Sim.of_sig (Term.shift_keepOf_root hF hk ht _ _ _ _).symm T
     · have hv' : Γ.boxIn.boxIn v = some U := by
         have := hv
-        simpa [Ctx.insert, hvr] using this
+        exact Ctx.insert_ne_some this hvr
       have hne := Ctx.ref_rt_ne hr₂ ((Ctx.ref_nonproj _ hlp).trans hv')
       change SubE.Sim U (Subst.at _ _) (SubE.shift _ (if v = _ then _ else _))
       rw [if_neg hvr, Subst.single_at_ne (by rwa [VarSymb.shift_rt])]
@@ -602,7 +602,7 @@ theorem WFF.subst_readAt [ModalSys.NoOpt] {Λ Ω Ω₂ : Ctx} [Λ.NoSlots] {P : 
     exact .refl _
   · have hv' : Λ v = some U := by
       have := hv
-      simpa [Ctx.insert, hvr] using this
+      exact Ctx.insert_ne_some this hvr
     change SubE.Sim U (if v = .root (.bnd 0) then _ else _)
       (SubE.comp _ _ _ (if v = .root (.bnd 0) then _ else _))
     rw [if_neg hvr, if_neg hvr]
@@ -635,7 +635,7 @@ theorem WFF.shift_readAt {Λ Λ' Ω Ω' : Ctx} [Λ.NoSlots] [Λ'.NoSlots] {P : V
     exact .refl _
   · have hv' : Λ v = some U := by
       have := hv
-      simpa [Ctx.insert, hvr] using this
+      exact Ctx.insert_ne_some this hvr
     have hne := Ctx.ref_rt_ne hr ((Ctx.ref_nonproj _ hlp).trans hv')
     change SubE.Sim U (Subst.at _ _) (SubE.shift _ (if v = _ then _ else _))
     rw [if_neg hvr, Subst.single_at_ne (by rwa [VarSymb.shift_rt])]
@@ -666,7 +666,7 @@ theorem WFF.collapse_readAt {Λ Λ' Ω Ω' : Ctx} [Λ.NoSlots] [Λ'.NoSlots] {P 
     exact .refl _
   · have hv' : Λ v = some U := by
       have := hv
-      simpa [Ctx.insert, hvr] using this
+      exact Ctx.insert_ne_some this hvr
     have hne := Ctx.ref_rt_ne hr ((Ctx.ref_nonproj _ hlp).trans hv')
     change SubE.Sim U (Subst.at _ _) (SubE.collapse _ (if v = _ then _ else _))
     rw [if_neg hvr, Subst.single_at_ne (by rwa [VarSymb.collapse_rt])]

@@ -189,7 +189,7 @@ def Env.extend {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (r : Root) {T : Var
   val v U h :=
     if hv : v = .root r then
       (show T = U by rw [hv] at h; simpa [Ctx.insert] using h) ▸ o
-    else env v U (by simpa [Ctx.insert, hv] using h)
+    else env v U (Ctx.insert_ne_some h hv)
   wit := env.wit
   opened z Z hz hv := by
     have hne : VarSymb.step z .dia ≠ .root r := fun he => by cases he

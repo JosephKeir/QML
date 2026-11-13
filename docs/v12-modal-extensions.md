@@ -16045,3 +16045,35 @@ their steps with `isStruct`; where a level step is really meant, `Ctx.boxIn_leve
 
 **Status:** `python scripts/qbuild.py --strict` green (41 targets, no message, no `sorry`, no long
 line), M1's K/D completeness (`OCanonCompleteness`) included.
+
+### 12.27 Identity contents stay coherent: `at_coh` and a hiding `insert` *(2026-11-13, built)*
+
+§12.25 said identity witnesses are derived from `Γ.ref` and "nothing is stored, so `Ctx.Le`,
+`insert` and the views need no change".  Building it showed a gap.  The identity view declares
+`y.at : X` for `y : ◇X`, and the rules carry formulas into it along `Ctx.le_optIn` while weakening
+needs `Le.optIn`, both for every context.  A context declaring `y.at` at another type defeats one
+or the other, and `Ctx.insert r T` produces such contexts: it rebinds `r`, changing `y`'s type for
+`y` under `r`, but keeps a declared `y.at`.  Storing identity witnesses (as M1 stores arrow ones)
+does not help: `T_box` needs every possible address of every context to be one, which is the
+derived set again.
+
+**Decision (user, 2026-11-13): option 2.**
+* `Ctx` gains a field, mirroring `wit_dia`:
+  `at_coh : ty (y.at) = some T → VarSymb.refAll ty y = some (◇T)`.
+  `VarSymb.refAll` is `Ctx.ref`'s walk on a bare declaration function, with the flag-free
+  `VarType.pstep` (`here` always available), so `Ctx` does not depend on the flags.
+* `Ctx.insert r T` hides the identity contents whose type it changes: `v.atBelow r`, an `.at`
+  address under `r` reached without a level step.  Anything reached through a level step is looked
+  up directly and keeps its type.
+* Consequences:
+  * `le_insert` keeps its hypothesis (`Γ (root r) = none`): by `at_coh` nothing is hidden below an
+    undeclared root (`Ctx.refAll_none_below`, `Ctx.atBelow_none`).
+  * `Ctx.insert_ne` takes `v.lastAt = false`, by `rfl` for any address with a known last step.
+    New lemmas: `insert_ne_of_fresh`, `insert_ne_some` (what `insert` declares off the root, `Γ`
+    did), `insert_ne_atBelow`, `insert_some`, `insert_ne_rt`.
+  * The coercion from a bare function drops `.at` entries.  The arrow view keeps `at_coh` by
+    `VarSymb.refAll_mono`.
+  * `Ctx.stage_step` (M1's tree) holds for steps other than `.at`.
+
+Nothing changes for presented contexts: their roots are fresh, so `insert` hides nothing.  The
+change touched about 60 sites, all mechanical; strict build green.

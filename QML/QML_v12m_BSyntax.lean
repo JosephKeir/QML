@@ -144,7 +144,8 @@ theorem ctxOf_root : ∀ (l : List VarType) (r : ℕ), ctxOf l (.root (.free r))
   | [], _ => rfl
   | A :: l, r => by
       rw [ctxOf_cons]
-      simp only [Ctx.insert, VarSymb.root.injEq, Root.free.injEq, List.reverse_cons]
+      simp only [Ctx.insert, VarSymb.root.injEq, Root.free.injEq, List.reverse_cons,
+        VarSymb.atBelow_root, Bool.false_eq_true, ↓reduceIte]
       split_ifs with hr
       · subst hr
         simp

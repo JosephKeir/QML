@@ -149,7 +149,7 @@ theorem holeAt_gtup_gpack (hF : ModalSys.Four = true) {l : List VarType} {U : Va
     dsimp only [SubE.comp]
     rw [Subst.at_proj _ _ rfl, h0]
     exact .ren_eta _ _
-  · have hv' : (ctxOf l).boxIn v = some T := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : (ctxOf l).boxIn v = some T := Ctx.insert_ne_some hv hvr
     obtain ⟨u, s, rfl, -, -⟩ := kView_item (k := none) hv'
     have hs : s.isStruct = false := hlp
     have hb : (Subst.single (σ := σ) (Δ := Δ.insert (.bnd 0) U) (.bnd 0)
@@ -209,7 +209,7 @@ theorem WFF.shift_hole {k : ℕ} {H : VarType}
       by_cases hvr : v = .root (.bnd 0)
       · subst hvr
         exact .refl _
-      · rw [Ctx.insert_ne hvr] at hv
+      · replace hv := Ctx.insert_ne_some hv hvr
         cases hv) ψ
   rwa [WFF.subst_id, WFF.subst_id] at e
 
@@ -230,7 +230,7 @@ theorem WFF.shift_holeAt {k : ℕ} {Γ Γ' : Ctx} {d : ℕ} (D : Ctx.Shifts k Γ
       (SubE.shift D (Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm t) (.root (.bnd 0))))
     rw [Subst.single_self, Subst.single_self]
     exact .refl _
-  · rw [Ctx.insert_ne hvr] at hv
+  · replace hv := Ctx.insert_ne_some hv hvr
     cases hv
 
 /-- Collapsing a hole read collapses the term and the hole formula. -/
@@ -250,7 +250,7 @@ theorem WFF.collapse_holeAt {k : ℕ} {Γ Γ' : Ctx} {d : ℕ} (D : Ctx.Collapse
       (SubE.collapse D (Subst.single (σ := σ) (Δ := Γ) (.bnd 0) (.tm t) (.root (.bnd 0))))
     rw [Subst.single_self, Subst.single_self]
     exact .refl _
-  · rw [Ctx.insert_ne hvr] at hv
+  · replace hv := Ctx.insert_ne_some hv hvr
     cases hv
 
 /-- A hole formula is closed, so collapsing it does nothing: collapsing undoes the shift, and the

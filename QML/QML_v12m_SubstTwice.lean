@@ -728,7 +728,7 @@ theorem sim_under_comp {θ₁ : Subst σ Δ₁} {θ₂ θ₃ : Subst σ Δ₂} (
     change SubE.Sim U _ ((θ₂.under d₁ d₂ T h₂) (.root (.bnd d₁)))
     rw [show θ₂.under d₁ d₂ T h₂ (.root (.bnd d₁)) = .ren (.root (.bnd d₂)) from if_pos rfl]
     exact .refl _
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     rw [show θ₃.under d d₂ T h₂ v = (θ₃ v).mono (Ctx.le_insert h₂ T) from if_neg hvr]
     change SubE.Sim U _ ((θ₁.under d d₁ T h₁ v).comp _ _ _)
     rw [show θ₁.under d d₁ T h₁ v = (θ₁ v).mono (Ctx.le_insert h₁ T) from if_neg hvr,

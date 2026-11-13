@@ -299,9 +299,8 @@ theorem subst_retPullXDC_liftBodyXDR
   · rw [Subst.toFree_ne _ _ _ _ hvr]
     dsimp only [Subst.comp]
     rw [Subst.set_ne _ _ hvr]
-    have hv' : bodyCtxWD (bclD A Xe) l x Xe v = some T := by
-      rw [Ctx.insert_ne hvr] at hv ⊢
-      exact hv
+    have hv' : bodyCtxWD (bclD A Xe) l x Xe v = some T :=
+      Ctx.insert_some hvr (Ctx.insert_ne_atBelow hv hvr) (Ctx.insert_ne_some hv hvr)
     rcases bodyWD_item hv' hvr with ⟨w, rfl, hw⟩ | ⟨rfl, _⟩
     · change SubE.Sim T (((Subst.idRen _) (.step w .box)).mono _)
         ((retPullXDC σ l A Xe (Ctx.le_boxIn_diaIn _ x) (pullCtxX_fresh l x)

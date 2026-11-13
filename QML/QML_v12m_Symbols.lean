@@ -296,6 +296,15 @@ def Step.levels : List Step → ℕ
   | [] => 0
   | s :: p => (if s.isProj then 0 else 1) + Step.levels p
 
+theorem Step.levels_append : ∀ (p q : List Step),
+    Step.levels (p ++ q) = Step.levels p + Step.levels q
+  | [], q => by simp [Step.levels]
+  | s :: p, q => by
+      change (if s.isProj then 0 else 1) + Step.levels (p ++ q) =
+        ((if s.isProj then 0 else 1) + Step.levels p) + Step.levels q
+      rw [Step.levels_append p q]
+      omega
+
 /-! ## Addresses -/
 
 inductive Root where
@@ -410,6 +419,90 @@ def shiftSlot (ι : VarSymb → VarSymb) (d d' : ℕ) : VarSymb → VarSymb :=
 
 end VarSymb
 
+/-! ## Reading addresses off a declaration function -/
+
+/-- A step on types with every projection available (`here` whatever T says): what a bare
+    declaration function supports, flag-free.  `VarType.step` agrees with it where it is defined
+    (`VarType.pstep_of_step`). -/
+def VarType.pstep : VarType → Step → Option VarType
+  | .VTypeProd A _, .fst => some A
+  | .VTypeProd _ B, .snd => some B
+  | .VTypeBox A, .box => some A
+  | .VTypeBox A, .here => some A
+  | .VTypeDia A, .dia => some A
+  | _, _ => none
+
+/-- The type an address reaches through a declaration function, flag-free: `Ctx.ref` with every
+    projection available.  It states the coherence of identity contents (`Ctx.at_coh`) without
+    making `Ctx` depend on the flags. -/
+def VarSymb.refAll (f : VarSymb → Option VarType) : VarSymb → Option VarType
+  | .root r => f (.root r)
+  | .step v s => if s.isStruct then (refAll f v).bind (·.pstep s) else f (.step v s)
+
+/-- The last step is `at`: an identity content. -/
+def VarSymb.lastAt : VarSymb → Bool
+  | .step _ .at => true
+  | _ => false
+
+/-- An identity content below the root `r`, reached from it without a level step: what
+    rebinding `r` changes the type of (`Ctx.insert` hides it). -/
+def VarSymb.atBelow (r : Root) (v : VarSymb) : Bool :=
+  v.lastAt && decide (v.rt = r) && decide (Step.levels v.path = 0)
+
+/-- Rebinding the root `r` leaves the type of an address that leaves the root by a level step,
+    or has another root, as it was. -/
+theorem VarSymb.refAll_congr {f g : VarSymb → Option VarType} {r : Root}
+    (hfg : ∀ v, v ≠ .root r → v.atBelow r = false → f v = g v) :
+    ∀ y : VarSymb, ¬ (y.rt = r ∧ Step.levels y.path = 0) → y.refAll f = y.refAll g
+  | .root r', h => by
+      have hne : VarSymb.root r' ≠ .root r := fun he => h ⟨by cases he; rfl, rfl⟩
+      exact hfg _ hne rfl
+  | .step v s, h => by
+      by_cases hs : s.isStruct = true
+      · have hv : ¬ (v.rt = r ∧ Step.levels v.path = 0) := fun ⟨h₁, h₂⟩ => h ⟨h₁, by
+          simp only [VarSymb.path, Step.levels_append, h₂, Step.levels,
+            Step.isProj_of_isStruct hs, if_true]⟩
+        simp only [VarSymb.refAll, if_pos hs, VarSymb.refAll_congr hfg v hv]
+      · simp only [VarSymb.refAll, if_neg hs]
+        refine hfg _ (fun he => by cases he) ?_
+        cases s with
+        | «at» =>
+            simp only [VarSymb.atBelow, VarSymb.lastAt, Bool.true_and, Bool.and_eq_false_iff,
+              decide_eq_false_iff_not]
+            by_cases hr : v.rt = r
+            · right
+              intro hl
+              exact h ⟨hr, by simpa [VarSymb.path, Step.levels_append, Step.levels,
+                Step.isProj] using hl⟩
+            · left
+              exact hr
+        | fst => exact absurd rfl hs
+        | snd => exact absurd rfl hs
+        | here => exact absurd rfl hs
+        | box => rfl
+        | dia => rfl
+        | keep => rfl
+
+/-- Declaring more keeps what an address reaches. -/
+theorem VarSymb.refAll_mono {f g : VarSymb → Option VarType}
+    (h : ∀ v T, f v = some T → g v = some T) :
+    ∀ (y : VarSymb) {R : VarType}, y.refAll f = some R → y.refAll g = some R
+  | .root _, _, hy => h _ _ hy
+  | .step v s, R, hy => by
+      by_cases hs : s.isStruct = true
+      · simp only [VarSymb.refAll, if_pos hs] at hy ⊢
+        cases hv : v.refAll f with
+        | none => rw [hv] at hy; cases hy
+        | some U => rw [hv] at hy; rw [VarSymb.refAll_mono h v hv]; exact hy
+      · simp only [VarSymb.refAll, if_neg hs] at hy ⊢
+        exact h _ _ hy
+
+@[simp] theorem VarSymb.atBelow_root (r r' : Root) : (VarSymb.root r').atBelow r = false := rfl
+
+theorem VarSymb.atBelow_rt {r : Root} {v : VarSymb} (h : v.atBelow r = true) : v.rt = r := by
+  simp only [VarSymb.atBelow, Bool.and_eq_true, decide_eq_true_eq] at h
+  exact h.1.2
+
 /-! ## Contexts: declarations and freshness -/
 
 /-- An environment's respect for its opened witnesses where there is nothing to check
@@ -432,27 +525,122 @@ structure Ctx where
       agrees with what is there already (in `y`'s own `◇_y` view, `y.dia`). -/
   wit_dia : ∀ y X, wit y = some X → ty (.step y .dia) = none ∨ ty (.step y .dia) = some X := by
     intro _ _ h; cases h
+  /-- ⭐An identity content is its possible object's content: a declared `y.at` has the type
+      that `y : ◇X` gives it (`Ctx.optIn` at the identity kind, docs §12.27).  `Ctx.insert` keeps
+      this by hiding the identity contents whose type a rebound root changes. -/
+  at_coh : ∀ y T, ty (.step y .at) = some T → VarSymb.refAll ty y = some (.VTypeDia T) := by
+    intro _ _ h; cases h
 
 instance : CoeFun Ctx (fun _ => VarSymb → Option VarType) := ⟨Ctx.ty⟩
 
-/-- A context written as a function: no witnesses. -/
-instance : Coe (VarSymb → Option VarType) Ctx := ⟨fun f => { ty := f }⟩
+/-- A context written as a function: no witnesses, and no identity contents. -/
+instance : Coe (VarSymb → Option VarType) Ctx :=
+  ⟨fun f => { ty := fun v => if v.lastAt then none else f v
+              at_coh := fun _ _ h => by simp [VarSymb.lastAt] at h }⟩
 
 namespace Ctx
 
-/-- Declare a root.  The witnesses stay. -/
+/-- Declare a root.  The witnesses stay; the identity contents below `r` reached without a level
+    step are hidden, since rebinding `r` changes their possible object (`Ctx.at_coh`).  Below a
+    fresh root there are none (`Ctx.insert_ne_of_fresh`). -/
 def insert (Γ : Ctx) (r : Root) (T : VarType) : Ctx where
-  ty := fun v => if v = .root r then some T else Γ v
+  ty := fun v => if v = .root r then some T else if v.atBelow r then none else Γ v
   wit := Γ.wit
   wit_dia y X h := by
-    simp only [if_neg (show VarSymb.step y .dia ≠ .root r from fun he => by cases he)]
+    simp only [if_neg (show VarSymb.step y .dia ≠ .root r from fun he => by cases he),
+      show (VarSymb.step y .dia).atBelow r = false from rfl, Bool.false_eq_true, if_false]
     exact Γ.wit_dia y X h
+  at_coh y U h := by
+    simp only [if_neg (show VarSymb.step y .at ≠ .root r from fun he => by cases he)] at h
+    split_ifs at h with hb
+    have hy : ¬ (y.rt = r ∧ Step.levels y.path = 0) := fun ⟨h₁, h₂⟩ => hb (by
+      simp [VarSymb.atBelow, VarSymb.lastAt, VarSymb.rt, h₁, VarSymb.path, Step.levels_append,
+        h₂, Step.levels, Step.isProj])
+    rw [VarSymb.refAll_congr (g := Γ.ty) (r := r) (fun v hv hb' => by
+      simp only [if_neg hv, hb', Bool.false_eq_true, if_false]) y hy]
+    exact Γ.at_coh y U h
 
 theorem insert_apply (Γ : Ctx) (r : Root) (T : VarType) (v : VarSymb) :
-    Γ.insert r T v = if v = .root r then some T else Γ v := rfl
+    Γ.insert r T v = if v = .root r then some T else if v.atBelow r then none else Γ v := rfl
 
-theorem insert_ne {Γ : Ctx} {r : Root} {T : VarType} {v : VarSymb} (h : v ≠ .root r) :
-    Γ.insert r T v = Γ v := if_neg h
+/-- Below a root undeclared in `Γ`, no identity content is reached without a level step. -/
+theorem refAll_none_below {Γ : Ctx} {r : Root} (hr : Γ (.root r) = none) :
+    ∀ y : VarSymb, y.rt = r → Step.levels y.path = 0 → y.refAll Γ.ty = none
+  | .root r', h, _ => by cases h; exact hr
+  | .step v s, h, hl => by
+      have hl' : Step.levels v.path = 0 ∧ s.isProj = true := by
+        simp only [VarSymb.path, Step.levels_append] at hl
+        change Step.levels v.path + ((if s.isProj then 0 else 1) + 0) = 0 at hl
+        by_cases hs : s.isProj = true
+        · rw [if_pos hs] at hl
+          exact ⟨by omega, hs⟩
+        · rw [if_neg hs] at hl
+          omega
+      have ih := refAll_none_below hr v h hl'.1
+      by_cases hs : s.isStruct = true
+      · simp only [VarSymb.refAll, if_pos hs, ih, Option.bind_none]
+      · simp only [VarSymb.refAll, if_neg hs]
+        have hat : s = .at := by
+          cases s <;> first | rfl | exact absurd rfl hs | cases hl'.2
+        subst hat
+        cases hU : Γ (.step v .at) with
+        | none => rfl
+        | some U => rw [Γ.at_coh v U hU] at ih; cases ih
+
+/-- An identity content `insert r` hides is undeclared when `r` is fresh. -/
+theorem atBelow_none {Γ : Ctx} {r : Root} (hr : Γ (.root r) = none) {v : VarSymb}
+    (hb : v.atBelow r = true) : Γ v = none := by
+  match v, hb with
+  | .step y .at, hb =>
+      simp only [VarSymb.atBelow, VarSymb.lastAt, Bool.true_and, Bool.and_eq_true,
+        decide_eq_true_eq] at hb
+      cases hU : Γ (.step y .at) with
+      | none => rfl
+      | some U =>
+          have := Γ.at_coh y U hU
+          rw [refAll_none_below hr y hb.1 (by
+            simpa [VarSymb.path, Step.levels_append, Step.levels, Step.isProj] using hb.2)] at this
+          cases this
+
+/-- Off the root, `insert` changes nothing but hidden identity contents (`v.lastAt` rules them
+    out, by `rfl` for any address with a known last step). -/
+theorem insert_ne {Γ : Ctx} {r : Root} {T : VarType} {v : VarSymb} (h : v ≠ .root r)
+    (ha : v.lastAt = false := by rfl) : Γ.insert r T v = Γ v := by
+  rw [insert_apply, if_neg h, if_neg (by simp [VarSymb.atBelow, ha])]
+
+/-- Below a fresh root, `insert` changes nothing off the root. -/
+theorem insert_ne_of_fresh {Γ : Ctx} {r : Root} {T : VarType} {v : VarSymb} (h : v ≠ .root r)
+    (hr : Γ (.root r) = none) : Γ.insert r T v = Γ v := by
+  rw [insert_apply, if_neg h]
+  split_ifs with hb
+  · exact (atBelow_none hr hb).symm
+  · rfl
+
+/-- What `insert` declares off the root, `Γ` declared. -/
+theorem insert_ne_some {Γ : Ctx} {r : Root} {T U : VarType} {v : VarSymb}
+    (hv : Γ.insert r T v = some U) (h : v ≠ .root r) : Γ v = some U := by
+  rw [insert_apply, if_neg h] at hv
+  split_ifs at hv
+  exact hv
+
+/-- What `insert` declares off the root is not hidden. -/
+theorem insert_ne_atBelow {Γ : Ctx} {r : Root} {T U : VarType} {v : VarSymb}
+    (hv : Γ.insert r T v = some U) (h : v ≠ .root r) : v.atBelow r = false := by
+  rw [insert_apply, if_neg h] at hv
+  split_ifs at hv with hb
+  exact Bool.eq_false_iff.mpr hb
+
+/-- What `Γ` declares off the root and `insert` does not hide, `insert` declares. -/
+theorem insert_some {Γ : Ctx} {r : Root} {T U : VarType} {v : VarSymb} (h : v ≠ .root r)
+    (hb : v.atBelow r = false) (hv : Γ v = some U) : Γ.insert r T v = some U := by
+  rw [insert_apply, if_neg h, if_neg (by simp [hb])]
+  exact hv
+
+/-- Under another root, `insert` changes nothing. -/
+theorem insert_ne_rt {Γ : Ctx} {r : Root} {T : VarType} {v : VarSymb} (h : v.rt ≠ r) :
+    Γ.insert r T v = Γ v := by
+  rw [insert_apply, if_neg (fun he => h (by subst he; rfl)),
+    if_neg (by simp [VarSymb.atBelow, h])]
 
 /-- ⭐`Γ'` shows everything `Γ` shows: its addresses at their types, and its witnesses. -/
 structure Le (Γ Γ' : Ctx) : Prop where
@@ -471,18 +659,18 @@ theorem Le.insert {Γ Γ' : Ctx} (h : Γ.Le Γ') (r : Root) (T : VarType) :
     (Γ.insert r T).Le (Γ'.insert r T) := by
   refine ⟨fun v U hv => ?_, fun y X hy => h.wit y X hy⟩
   simp only [Ctx.insert] at hv ⊢
-  split_ifs at hv ⊢
-  · exact hv
-  · exact h v U hv
+  split_ifs at hv ⊢ <;> first | exact hv | exact h v U hv
 
 /-- Weakening by a fresh root. -/
 theorem le_insert {Γ : Ctx} {r : Root} (hr : Γ (.root r) = none) (T : VarType) :
     Γ.Le (Γ.insert r T) := by
   refine ⟨fun v U hv => ?_, fun y X hy => hy⟩
   simp only [Ctx.insert]
-  split_ifs with h
+  split_ifs with h hb
   · subst h
     rw [hr] at hv
+    cases hv
+  · rw [atBelow_none hr hb] at hv
     cases hv
   · exact hv
 
@@ -506,6 +694,7 @@ theorem SlotsFrom.insert {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (T : VarType)
   · subst hvr
     cases hv
     omega
+  · rfl
   · exact h v n hv (by omega)
 
 theorem SlotsFrom.insertFree {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (u : ℕ) (T : VarType) :
@@ -515,6 +704,7 @@ theorem SlotsFrom.insertFree {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (u : ℕ)
   split_ifs with hvr
   · subst hvr
     cases hv
+  · rfl
   · exact h v n hv hn
 
 /-- Every address with root `r` is hidden. -/
@@ -536,6 +726,7 @@ theorem RootFresh.insert_ne {Γ : Ctx} {r r' : Root} (h : Γ.RootFresh r) (hne :
   split_ifs with hvr
   · subst hvr
     exact absurd hv hne
+  · rfl
   · exact h v hv
 
 theorem SlotsFrom.rootFresh {Γ : Ctx} {d n : ℕ} (h : Γ.SlotsFrom d) (hn : d ≤ n) :
@@ -563,7 +754,8 @@ theorem insert_swap_le {Γ : Ctx} {r r' : Root} (hne : r ≠ r') (T T' : VarType
     ((Γ.insert r T).insert r' T').Le ((Γ.insert r' T').insert r T) := by
   refine ⟨fun v U hv => ?_, fun _ _ hy => hy⟩
   simp only [Ctx.insert] at hv ⊢
-  by_cases h₁ : v = .root r' <;> by_cases h₂ : v = .root r <;> simp_all
+  by_cases h₁ : v = .root r' <;> by_cases h₂ : v = .root r <;>
+    by_cases h₃ : v.atBelow r = true <;> by_cases h₄ : v.atBelow r' = true <;> simp_all
 
 end Ctx
 
@@ -1098,6 +1290,22 @@ instance {Γ : Ctx} [h : Γ.NoSlots] {x : VarSymb} : (Γ.diaIn x).NoSlots := ⟨
 
 /-! ### The view of a witness (branch `wip/in-atom`, docs §12.16) -/
 
+omit [ModalSys] in
+/-- The arrow view keeps every declaration. -/
+theorem optIn_ty_le (Γ : Ctx) (y v : VarSymb) {U : VarType} (hv : Γ v = some U) :
+    (if v = .step y .dia then (match Γ.wit y with | some X => some X | none => Γ v)
+      else Γ v) = some U := by
+  by_cases hc : v = .step y .dia
+  · subst hc
+    rw [if_pos rfl]
+    cases hw : Γ.wit y with
+    | none => exact hv
+    | some X =>
+        rcases Γ.wit_dia y X hw with h | h
+        · rw [h] at hv; cases hv
+        · rw [h] at hv; exact hv
+  · rw [if_neg hc]; exact hv
+
 /-- ⭐**The view of the witness `y`** (`WFF.optx`): the same level, with `y`'s content along the
     arrow declared at `y.dia`.  Nothing is hidden and nothing changes type: a witness's content
     address is free or holds its content already (`Ctx.wit_dia`), so `Γ` sits inside the view
@@ -1110,6 +1318,9 @@ def optIn (Γ : Ctx) (y : VarSymb) : Ctx where
       | none => Γ v
     else Γ v
   wit := Γ.wit
+  at_coh z T h := by
+    rw [if_neg (show VarSymb.step z .at ≠ .step y .dia from fun he => by cases he)] at h
+    exact VarSymb.refAll_mono (fun v U hv => optIn_ty_le Γ y v hv) z (Γ.at_coh z T h)
   wit_dia y' X h := by
     by_cases hy : y' = y
     · subst hy

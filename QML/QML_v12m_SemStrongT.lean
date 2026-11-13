@@ -139,10 +139,10 @@ theorem Env.extend_swap_agree {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) {r r
       subst hU
       rw [Env.extend_ne _ _ _ _ hne'.symm (by simp [Ctx.insert]), Env.extend_root,
         Env.extend_root]
-    · have hv' : Γ v = some U := by simpa [Ctx.insert, h₁, h₂] using hv
-      rw [Env.extend_ne _ _ _ _ h₁ (by simpa [Ctx.insert, h₂] using hv'),
+    · have hv' : Γ v = some U := Ctx.insert_ne_some (Ctx.insert_ne_some hv h₁) h₂
+      rw [Env.extend_ne _ _ _ _ h₁ (Ctx.insert_ne_some hv h₁),
         Env.extend_ne _ _ _ _ h₂ hv',
-        Env.extend_ne _ _ _ _ h₂ (by simpa [Ctx.insert, h₁] using hv'),
+        Env.extend_ne _ _ _ _ h₂ (Ctx.insert_some h₁ (Ctx.insert_ne_atBelow hv h₁) hv'),
         Env.extend_ne _ _ _ _ h₁ hv']
 
 /-- ⭐At the world where the witness is realised, a hole formula read in the `◇` view holds exactly
@@ -224,10 +224,8 @@ theorem Env.substEnv_diaAbs (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w 
     refine (Env.extend_root (env.boxPush (M.frame.reflAcc hT w)) (.bnd 0) (interp env t₀)
       (by simp [Ctx.insert])).trans ?_
     exact hcont.symm
-  · have hbr : (Γ.boxIn.insert (.bnd 0) A) v = some T := by
-      change (if v = .root (.bnd 0) then some A else Γ.boxIn v) = some T
-      rw [if_neg (hroot (.bnd 0))]
-      exact hb
+  · have hbr : (Γ.boxIn.insert (.bnd 0) A) v = some T :=
+      (Ctx.insert_ne_of_fresh (hroot (.bnd 0)) rfl).trans hb
     refine (entryVal_congr _ (hen (Γ.boxIn.insert (.bnd 0) A)) _
       ((Ctx.ref_nonproj _ (Ctx.noProjLast_diaIn Γ (.root (.free c)) v T hv)).trans hbr)).trans ?_
     refine (Env.ref_of_nonproj _ (Ctx.noProjLast_diaIn Γ (.root (.free c)) v T hv) _ hbr).trans ?_

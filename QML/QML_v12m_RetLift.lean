@@ -875,7 +875,7 @@ def Proof.ex_pairUp {Δ : List (WFF σ W 0)} {x₀ : Ann X} {y₀ : Ann Y} (a : 
         ((Ctx.ref_nonproj W hlp).trans hv)⟩
   have hw : ∀ {v : VarSymb} {U : VarType}, v.lastProj = false →
       (W.insert (.bnd 0) (.VTypeBox (.VTypeProd X Y))) v = some U → v ≠ .root (.bnd 0) →
-      W v = some U := fun _ hv hvr => by simpa [Ctx.insert, hvr] using hv
+      W v = some U := fun _ hv hvr => Ctx.insert_ne_some hv hvr
   let s₁₂ : Term σ (W.insert (.bnd 0) (.VTypeBox Y)) (.VTypeBox (.VTypeProd X Y)) _ :=
     Term.boxtm (Term.pair (Term.mono hl.boxIn a)
       (Term.eta (VarSymb.root (.bnd 0)).inner Y (Ctx.ref_inner (Ctx.ref_insert_root W (.bnd 0) _))))

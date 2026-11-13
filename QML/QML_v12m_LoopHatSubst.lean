@@ -104,7 +104,7 @@ theorem WFF.subst_hatGen {V Vp W V' Vp' W' : Ctx} (D : Ctx.Shifts 0 V Vp) (D' : 
       exact .refl _
     · have hv' : Vp v = some U := by
         have := hv
-        simpa [Ctx.insert, hvr] using this
+        exact Ctx.insert_ne_some this hvr
       change SubE.Sim U (Θw.set (.bnd 0) (.tm K') v) (SubE.comp _ _ _ (Θp v))
       rw [Subst.set_ne _ _ hvr]
       exact hfix v U hl hv'

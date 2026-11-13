@@ -20,7 +20,7 @@ theorem Ctx.NoProjLast.insert {Γ : Ctx} (h : Γ.NoProjLast) (r : Root) (T : Var
   by_cases hvr : v = .root r
   · subst hvr
     rfl
-  · exact h v U (by simpa [Ctx.insert, hvr] using hv)
+  · exact h v U (Ctx.insert_ne_some hv hvr)
 
 omit [ModalSys] in
 theorem Ctx.NoProjLast.optIn {Γ : Ctx} (h : Γ.NoProjLast) (y : VarSymb) :
@@ -203,7 +203,7 @@ theorem substEnv_under {Γ Δ : Ctx} {w : M.frame.W} (θ : Subst σ Δ) (hθ : S
     exact (entryVal_congr _
       (show θ.under d d' T h (.root (.bnd d)) = .ren (.root (.bnd d')) from if_pos rfl) _
       (Ctx.ref_insert_root Δ _ T)).trans (Env.extend_root env _ o (Ctx.ref_insert_root Δ _ T))
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     rw [Env.extend_ne (substEnv θ hθ hnp env) _ o hv hvr hv']
     exact (entryVal_congr _
       (show θ.under d d' T h v = (θ v).mono (Ctx.le_insert h T) from if_neg hvr) _

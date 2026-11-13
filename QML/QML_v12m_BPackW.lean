@@ -131,7 +131,7 @@ theorem vis_slotCtx {A : VarType} {l : List VarType} {v : VarSymb} {T : VarType}
     left
     exact ⟨rfl, by simpa [Ctx.insert] using hv.symm⟩
   · right
-    have hv' : ctxOf l v = some T := by simpa [Ctx.insert, h0] using hv
+    have hv' : ctxOf l v = some T := Ctx.insert_ne_some hv h0
     obtain ⟨r, rfl⟩ := ctxOf_decl hv'
     have hlt : r < l.length := by
       rw [ctxOf_root] at hv'

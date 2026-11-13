@@ -27,7 +27,7 @@ theorem ren_under {Γ : Ctx} {θ : Subst σ Δ} (hid : ∀ v T, Γ.ref v = some 
     by_cases hvr : v = .root (.bnd d)
     · subst hvr
       exact if_pos rfl
-    · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+    · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
       rw [show θ.under d d T h v = (θ v).mono (Ctx.le_insert h T) from if_neg hvr,
         ← Subst.at_nonproj θ hlp, hid v U ((Ctx.ref_nonproj Γ hlp).trans hv')]
       rfl
@@ -266,7 +266,7 @@ theorem WFF.openFree_bindFree (u : ℕ) (hu : Γ.RootFresh (.free u)) (hs : Γ.S
     change SubE.Sim U _ (((Subst.idRen Γ).toFree 0 u T hu.root) (.root (.bnd 0)))
     rw [Subst.toFree_slot]
     exact .refl _
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     have hvb : v ≠ .root (.bnd 0) := fun h => by
       rw [h, hs.root] at hv'
       cases hv'

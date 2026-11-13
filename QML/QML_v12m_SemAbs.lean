@@ -49,10 +49,8 @@ theorem Env.substEnv_diaAbsA (hT : ModalSys.T = true) {Γ : Ctx} [Γ.Presented] 
     refine (Env.extend_root (env.boxPush (M.frame.reflAcc hT w)) (.bnd 0) (interp env t₀)
       (by simp [Ctx.insert])).trans ?_
     exact hcont.symm
-  · have hbr : (Γ.boxIn.insert (.bnd 0) A) v = some T := by
-      change (if v = .root (.bnd 0) then some A else Γ.boxIn v) = some T
-      rw [if_neg (hroot (.bnd 0))]
-      exact hb
+  · have hbr : (Γ.boxIn.insert (.bnd 0) A) v = some T :=
+      (Ctx.insert_ne_of_fresh (hroot (.bnd 0)) rfl).trans hb
     refine (entryVal_congr _ (hen (Γ.boxIn.insert (.bnd 0) A)) _
       ((Ctx.ref_nonproj _ (Ctx.noProjLast_diaIn Γ x v T hv)).trans hbr)).trans ?_
     refine (Env.ref_of_nonproj _ (Ctx.noProjLast_diaIn Γ x v T hv) _ hbr).trans ?_

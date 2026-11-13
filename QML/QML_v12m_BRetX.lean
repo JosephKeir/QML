@@ -62,9 +62,7 @@ theorem bodyX_item {cl clt : List VarType} {x v : VarSymb} {U : VarType}
     (hv : bodyCtxX cl clt x v = some U) (hvr : v ≠ .root (.bnd 0)) :
     (∃ u, v = .step u .box ∧ (ctxOf clt).ref u = some (.VTypeBox U)) ∨
       (v = .step x .dia ∧ (ctxOf clt).ref x = some (.VTypeDia U)) := by
-  change (if v = VarSymb.root (.bnd 0) then _ else ((ctxOf clt).diaIn x) v) = _ at hv
-  rw [if_neg hvr] at hv
-  exact diaIn_item hv
+  exact diaIn_item (Ctx.insert_ne_some hv hvr)
 
 /-- `liftBodyX` is the body sent along the forward arrow under the slot, instantiated at the
     back-committed roots' necessary object. -/

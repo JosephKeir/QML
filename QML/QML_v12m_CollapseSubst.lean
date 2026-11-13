@@ -489,7 +489,7 @@ theorem corr_under (hθ : Ok Γ θ) (hcr : Corr Γ D θ θ') {d d' : ℕ} (hΓ :
     rw [show θ'.under d d' T h' (.root (.bnd d)) = .ren (.root (.bnd d')) from if_pos rfl,
       show θ.under d d' T h (.root (.bnd d)) = .ren (.root (.bnd d')) from if_pos rfl]
     exact .refl _
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     have hrt : v.rt ≠ .bnd d := fun he => by
       rw [hΓ v d he le_rfl] at hv'
       cases hv'

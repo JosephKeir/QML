@@ -231,15 +231,12 @@ theorem boxIn_step_box {Γ : Ctx} {u : VarSymb} {T : VarType}
 
 theorem ref_insert_ne {Γ : Ctx} {r : Root} (T : VarType) :
     ∀ {v : VarSymb}, v.rt ≠ r → (Γ.insert r T).ref v = Γ.ref v
-  | .root r', h => by
-      change (if VarSymb.root r' = .root r then some T else Γ (.root r')) = Γ (.root r')
-      rw [if_neg (fun he => h (by cases he; rfl))]
+  | .root r', h => Ctx.insert_ne_rt h
   | .step v s, h => by
       simp only [Ctx.ref]
       split_ifs
       · rw [ref_insert_ne T (v := v) h]
-      · change (if VarSymb.step v s = .root r then some T else Γ (.step v s)) = _
-        rw [if_neg (fun he => by cases he)]
+      · exact Ctx.insert_ne_rt h
 
 /-- `Γ₂` reaches everything `Γ₁` reaches, with the level `k` below collapsed.  Collapsing is T's,
     and carries it: with T on the box view of possible objects is off (`ModalSys.optStage`), so no
@@ -351,7 +348,7 @@ theorem Collapses.insert {k : ℕ} {Γ₁ Γ₂ : Ctx} (h : Collapses k Γ₁ Γ
     have hTU : T = U := by simpa [Ctx.insert] using hv
     subst hTU
     exact ref_insert_root Γ₂ r T
-  · have hv' : Γ₁ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ₁ v = some U := Ctx.insert_ne_some hv hvr
     have hrt : v.rt ≠ r := fun he => by rw [hr v he] at hv'; cases hv'
     rw [ref_insert_ne T (by rwa [VarSymb.collapse_rt])]
     exact h v U ((Ctx.ref_nonproj Γ₁ hlp).trans hv')

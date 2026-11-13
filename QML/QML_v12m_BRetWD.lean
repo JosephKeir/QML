@@ -72,7 +72,7 @@ theorem bodyWD_item {cl clt : List VarType} {e : VarSymb} {X : VarType} {v : Var
     {U : VarType} (hv : bodyCtxWD cl clt e X v = some U) (hvr : v ≠ .root (.bnd 0)) :
     (∃ u, v = .step u .box ∧ (ctxOf clt).ref u = some (.VTypeBox U)) ∨
       (v = .step e .dia ∧ (ctxOf clt).ref e = some (.VTypeDia U)) := by
-  rw [Ctx.insert_ne hvr] at hv
+  replace hv := Ctx.insert_ne_some hv hvr
   exact diaIn_item hv
 
 /-- ⭐A body packed along `e`, read at the reverse arrow's images, `cxv` and the pair of the

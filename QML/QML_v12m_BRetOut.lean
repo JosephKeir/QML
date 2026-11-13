@@ -55,7 +55,7 @@ theorem WFF.bodyRepl_bodyRepl {A B C : VarType} {b : Ann B} {c : Ann C}
     rw [Subst.set_ne _ _ hvr, Subst.set_ne _ _ hvr]
     change SubE.Sim T _ ((Subst.set _ _ _).at v)
     have hv' : V v = some T := by
-      rwa [Ctx.insert_ne hvr] at hv
+      exact Ctx.insert_ne_some hv hvr
     rw [Subst.at_set_of_rt_ne _ _ (Ctx.ref_rt_ne
       ((Ctx.NoSlots.slots (Γ := V)).rootFresh (le_refl 0))
       ((Ctx.ref_nonproj _ hlp).trans hv')), Subst.at_idS]

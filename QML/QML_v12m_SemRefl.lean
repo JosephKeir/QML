@@ -103,7 +103,7 @@ theorem sat_singleAt {Λ Ω : Ctx} {T : VarType} {d d' : ℕ} (hle : Λ.Le Ω)
     exact (entryVal_congr env
       (show Subst.single (.bnd 0) (.tm u) (.root (.bnd 0)) = .tm u from by slot_rfl) _ rfl).trans
       (Env.extend_root env₀ (.bnd 0) _ hv).symm
-  · have hv' : Λ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Λ v = some U := Ctx.insert_ne_some hv hvr
     have hl := hnp v U hv'
     rw [substEnv_val]
     exact (entryVal_congr env (show Subst.single (.bnd 0) (.tm u) v = .ren v from if_neg hvr) _

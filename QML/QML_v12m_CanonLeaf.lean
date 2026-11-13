@@ -155,12 +155,11 @@ theorem Ctx.DeclOK.ref {Γ : Ctx} (h : Γ.DeclOK) : ∀ (v : VarSymb) {T : VarTy
 theorem Ctx.DeclOK.insert {Γ : Ctx} (h : Γ.DeclOK) (r : Root) (T : VarType) :
     (Γ.insert r T).DeclOK := by
   intro v U hv
-  change (if v = .root r then some T else Γ v) = some U at hv
-  split_ifs at hv with hvr
+  by_cases hvr : v = .root r
   · subst hvr
     intro s hs
     cases hs
-  · exact h v U hv
+  · exact h v U (Ctx.insert_ne_some hv hvr)
 
 /-- The `□` view reaches only allowed addresses, under T or without 4: either way a `box` step is
     produced only without 4. -/

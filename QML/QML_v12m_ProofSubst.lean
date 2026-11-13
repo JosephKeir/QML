@@ -343,7 +343,7 @@ theorem WFF.subst_instantiate {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Sub
       change SubE.Sim U _ (Subst.single (.bnd 0) (.tm (Term.subst ι θ hθ hc t)) (.root (.bnd 0)))
       rw [Subst.single_root]
       exact .refl _
-    · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+    · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
       rw [Subst.set_ne _ _ hvr,
         show θ.under 0 0 T hΔ.root v = (θ v).mono (Ctx.le_insert hΔ.root T) from if_neg hvr,
         SubE.comp_mono (Subst.idRen Δ) Subst.ok_idRen Subst.coh_idRen (Ctx.le_insert hΔ.root T)
@@ -435,7 +435,7 @@ theorem Term.subst_single_tm_sig {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : 
       change SubE.Sim U _ (Subst.single (.bnd 0) (.tm (Term.subst ι θ hθ hc t)) (.root (.bnd 0)))
       rw [Subst.single_root]
       exact .refl _
-    · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+    · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
       rw [Subst.set_ne _ _ hvr,
         show θ.under 0 0 T hΔ.root v = (θ v).mono (Ctx.le_insert hΔ.root T) from if_neg hvr,
         SubE.comp_mono (Subst.idRen Δ) Subst.ok_idRen Subst.coh_idRen (Ctx.le_insert hΔ.root T)
@@ -534,7 +534,7 @@ theorem Term.subst_viewReadTm_sig {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.N
       hma _ _ _,
       Subst.under_slot _ _ _ _ _]
     exact .refl _
-  · have hv' : Γ.boxIn v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ.boxIn v = some U := Ctx.insert_ne_some hv hvr
     have hvr' : Γ.boxIn.ref v = some U := (Ctx.ref_nonproj Γ.boxIn hlp).trans hv'
     rw [show (θ.dia x y).under 0 0 A hsy.root v = ((θ.dia x y) v).mono
           (Ctx.le_insert hsy.root A) from if_neg hvr,
@@ -598,7 +598,7 @@ theorem WFF.subst_bindFree {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst 
       change SubE.Sim U _ (θ.under 0 0 T hΔ.root (.root (.bnd 0)))
       rw [Subst.under_slot θ 0 0 T hΔ.root]
       exact .refl _
-    · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+    · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
       rw [Subst.set_ne _ _ hvr, Subst.single_ne _ hvr, SubE.comp_ren,
         Subst.under_eq_mono θ hΓ T hΔ.root v U ((Ctx.ref_nonproj Γ hlp).trans hv'),
         Subst.at_nonproj θ hlp]
@@ -620,7 +620,7 @@ theorem WFF.subst_bindFree {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst 
       change SubE.Sim U _ (Subst.single (.free u') (.ren (.root (.bnd 0))) (.root (.free u')))
       rw [Subst.single_root]
       exact .refl _
-    · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+    · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
       rw [Subst.set_ne _ _ hvr, Subst.rename_ne _ _ _ _ hvr,
         SubE.comp_mono (Subst.idRen Δ) Subst.ok_idRen Subst.coh_idRen
           (Ctx.le_insert hu'.root T) hle _ _ _
@@ -904,7 +904,7 @@ theorem WFF.subst_viewReadTm {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlot
       hma _ _ _,
       Subst.under_slot _ _ _ _ _]
     exact .refl _
-  · have hv' : Γ.boxIn v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ.boxIn v = some U := Ctx.insert_ne_some hv hvr
     have hvr' : Γ.boxIn.ref v = some U := (Ctx.ref_nonproj Γ.boxIn hlp).trans hv'
     rw [show (θ.dia x y).under 0 0 A hsy.root v = ((θ.dia x y) v).mono
           (Ctx.le_insert hsy.root A) from if_neg hvr,
@@ -1027,7 +1027,7 @@ theorem WFF.subst_diaViewRead {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlo
       rw [if_pos rfl, show (θ.rename c c' (.VTypeDia A) hcf'.root).at (.root (.free c)) =
         SubE.ren (.root (.free c')) from Subst.rename_root θ c c' (.VTypeDia A) hcf'.root]
       exact .refl _
-    · have hv' : Γ.boxIn v = some U := by simpa [Ctx.insert, hvr] using hv
+    · have hv' : Γ.boxIn v = some U := Ctx.insert_ne_some hv hvr
       have hvr' : Γ.boxIn.ref v = some U := (Ctx.ref_nonproj Γ.boxIn hlp).trans hv'
       rw [Subst.set_ne _ _ hvr, Subst.single_ne _ hvr, SubE.comp_ren,
         Subst.dia_eq_box_mono _ _ _ v U
@@ -1043,7 +1043,7 @@ theorem WFF.subst_diaViewRead {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlo
       rw [Subst.set_root,
         Subst.under_slot _ _ _ _ _, SubE.comp_ren, Subst.at_nonproj _ hlp, Subst.single_root]
       exact .refl _
-    · have hv' : Γ.boxIn v = some U := by simpa [Ctx.insert, hvr] using hv
+    · have hv' : Γ.boxIn v = some U := Ctx.insert_ne_some hv hvr
       rw [Subst.set_ne _ _ hvr,
         show θ.box.under 0 0 A hΔ.boxIn.root v = (θ.box v).mono
           (Ctx.le_insert hΔ.boxIn.root A) from if_neg hvr,
@@ -1730,7 +1730,7 @@ theorem WFF.subst_diaIn_mono_rename {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ
     change SubE.Sim U _ (SubE.mono _ (θ.box.rename u u' T hub'.root (.root (.free u))))
     rw [Subst.rename_root]
     exact .refl _
-  · have hv' : Γ.boxIn v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ.boxIn v = some U := Ctx.insert_ne_some hv hvr
     rw [Subst.rename_ne _ _ _ _ hvr]
     change SubE.Sim U _ (SubE.mono _ (θ.box.rename u u' T hub'.root v))
     rw [Subst.rename_ne _ _ _ _ hvr, ← Subst.at_nonproj (θ.dia x (ι x)) hlp,
@@ -2461,7 +2461,7 @@ theorem OutLeg.subst_lift {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (θ : Subst �
         rw [Subst.under_slot _ _ _ _ _, hma _ _ _,
           Subst.under_slot _ _ _ _ _]
         exact .refl _
-      · have hv' : Γ.boxIn v = some U := by simpa [Ctx.insert, hvr] using hv
+      · have hv' : Γ.boxIn v = some U := Ctx.insert_ne_some hv hvr
         have hvr' : Γ.boxIn.ref v = some U := (Ctx.ref_nonproj Γ.boxIn hlp).trans hv'
         rw [show (θ.dia y (ι y)).under 0 0 T hsy.root v = ((θ.dia y (ι y)) v).mono
               (Ctx.le_insert hsy.root T) from if_neg hvr,
@@ -2556,7 +2556,7 @@ theorem WFF.subst_bodyRepl {ι : VarSymb → VarSymb} {V W : Ctx} [V.NoSlots] [W
       change SubE.Sim _ _ ((Subst.idS σ _).set (.bnd 0) (.tm X') (.root (.bnd 0)))
       rw [Subst.set_root]
       exact .refl _
-    · have hv' : V v = some U := by simpa [Ctx.insert, hvr] using hv
+    · have hv' : V v = some U := Ctx.insert_ne_some hv hvr
       rw [Subst.set_ne _ _ hvr,
         show θ.under 0 0 A hW v = (θ v).mono (Ctx.le_insert hW A)
           from if_neg hvr,
@@ -2652,7 +2652,7 @@ theorem WFF.subst_bodySplit {ι : VarSymb → VarSymb} {V W : Ctx} [V.NoSlots] [
           (.root (.bnd 0)))
         rw [Subst.set_ne _ _ (Ne.symm h10), Subst.set_root]
         exact .refl _
-      · have hv' : V v = some U := by simpa [Ctx.insert, hv0, hv1] using hv
+      · have hv' : V v = some U := Ctx.insert_ne_some (Ctx.insert_ne_some hv hv1) hv0
         rw [Subst.set_ne _ _ hv1, Subst.set_ne _ _ hv0,
           show θ.under 0 0 C hW v = (θ v).mono (Ctx.le_insert hW C)
             from if_neg hv0,
@@ -4356,7 +4356,7 @@ theorem WFF.instantiate_diaSlot {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A : Va
       change SubE.Sim _ (.tm bd) (if h : y = y then .tm (Term.mono _ bd) else .hide)
       rw [dif_pos rfl, Term.mono_refl]
       exact .refl _
-    · have hv' : Γ.boxIn v = some U := by simpa [Ctx.insert, hvr] using hv
+    · have hv' : Γ.boxIn v = some U := Ctx.insert_ne_some hv hvr
       have hvr' : Γ.boxIn.ref v = some U := (Ctx.ref_nonproj Γ.boxIn hlp).trans hv'
       rw [Subst.single_ne _ hvr, Subst.single_ne _ hvr, SubE.comp_ren,
         Subst.dia_eq_box_mono _ _ y v U hvr', Subst.at_nonproj _ hlp]
@@ -4450,7 +4450,7 @@ theorem WFF.instantiate_bindFree {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (h : 
   · subst hvr
     rw [Subst.single_root, Subst.single_root, SubE.comp_ren, Subst.at_single_root]
     exact .refl _
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     rw [Subst.single_ne _ hvr, Subst.single_ne _ hvr, SubE.comp_ren,
       Subst.single_at_ne (Ctx.ref_rt_ne hfr ((Ctx.ref_nonproj Γ hlp).trans hv'))]
     exact .refl _

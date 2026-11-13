@@ -30,9 +30,7 @@ theorem Ctx.ShiftCollapseId.insert {m : ℕ} {Γ : Ctx} (h : Γ.ShiftCollapseId 
   by_cases hvr : v = .root r
   · subst hvr
     rfl
-  · have hv' : Γ v = some U := by
-      change (if v = .root r then some T else Γ v) = some U at hv
-      rwa [if_neg hvr] at hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     exact h v U ((Ctx.ref_nonproj _ hlp).trans hv')
 
 section CollapseShift

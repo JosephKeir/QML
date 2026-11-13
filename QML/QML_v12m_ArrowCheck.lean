@@ -192,7 +192,7 @@ theorem WFF.subst_fill1 {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [�
     have hTB : B = T := by simpa [Ctx.insert] using hv
     subst hTB
     exact .refl _
-  · have : Ctx.empty v = some T := by simpa [Ctx.insert, hv0] using hv
+  · have : Ctx.empty v = some T := Ctx.insert_ne_some hv hv0
     exact nomatch this
 
 /-- ⭐**An arrow's images realise complete forward types**: whatever `w` necessitates of a term

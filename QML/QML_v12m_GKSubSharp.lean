@@ -114,7 +114,7 @@ theorem WFF.instantiate_subst_under [ModalSys.NoOpt] {ι : VarSymb → VarSymb} 
     rw [Subst.set_root, show θ.under d 0 T hΓ.root (.root (.bnd d)) = .ren (.root (.bnd 0))
       from by slot_rfl, SubE.comp_ren, Subst.at_single_root]
     exact .refl _
-  · have hv' : Γ₁ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ₁ v = some U := Ctx.insert_ne_some hv hvr
     rw [Subst.set_ne _ _ hvr,
       show θ.under d 0 T hΓ.root v = (θ v).mono (Ctx.le_insert hΓ.root T) from if_neg hvr,
       SubE.comp_mono (Subst.idRen Γ) Subst.ok_idRen Subst.coh_idRen (Ctx.le_insert hΓ.root T)

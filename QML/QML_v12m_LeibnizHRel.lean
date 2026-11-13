@@ -279,7 +279,7 @@ theorem eqRelH_toFree {Γ : Ctx} {θ θ' : Subst σ Δ} (h : EqRelH hO E Γ θ �
   · rw [show θ.toFree d u T hh v = .ren (.root (.free u)) from if_pos hvr,
       show θ'.toFree d u T hh v = .ren (.root (.free u)) from if_pos hvr]
     exact .same _
-  · have hv' : Γ v = some U := by simpa [Ctx.insert, hvr] using hv
+  · have hv' : Γ v = some U := Ctx.insert_ne_some hv hvr
     rw [show θ.toFree d u T hh v = (θ v).mono (Ctx.le_insert hh T) from if_neg hvr,
       show θ'.toFree d u T hh v = (θ' v).mono (Ctx.le_insert hh T) from if_neg hvr]
     have h₁ := h.ty v U ((Ctx.ref_nonproj Γ hlp).trans hv')

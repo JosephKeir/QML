@@ -143,9 +143,8 @@ theorem subst_retPullC_liftBodyXR
     dsimp only [Subst.comp]
     rw [Subst.set_ne _ _ hvr]
     have hv' : (((ctxOf l).diaIn x).insert (.bnd 0) (.VTypeBox (bcT [.VTypeBox A]))) v =
-        some T := by
-      rw [Ctx.insert_ne hvr] at hv ⊢
-      exact hv
+        some T :=
+      Ctx.insert_some hvr (Ctx.insert_ne_atBelow hv hvr) (Ctx.insert_ne_some hv hvr)
     rcases bodyX_item hv' hvr with ⟨w, rfl, hw⟩ | ⟨rfl, _⟩
     · change SubE.Sim T (((Subst.idRen _) (.step w .box)).mono _)
         ((retPullC σ l A (Ctx.le_boxIn_diaIn _ x) (pullCtxX_fresh l x)

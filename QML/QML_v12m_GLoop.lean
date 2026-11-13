@@ -223,7 +223,7 @@ theorem WFF.loopHat_read {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (hF : ModalSy
       exact .refl _
     · have hv' : Γ.boxIn.boxIn v = some U := by
         have := hv
-        simpa [Ctx.insert, hvr] using this
+        exact Ctx.insert_ne_some this hvr
       rw [Subst.comp_apply, Subst.single_ne _ hvr, Subst.single_ne _ hvr]
       change SubE.Sim U _ (Subst.at _ v)
       rw [Subst.ren_box hid v U ((Ctx.ref_nonproj _ hl).trans hv')]
@@ -239,7 +239,7 @@ theorem WFF.loopHat_read {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (hF : ModalSy
       exact .refl _
     · have hv' : Γ.boxIn v = some U := by
         have := hv
-        simpa [Ctx.insert, hvr] using this
+        exact Ctx.insert_ne_some this hvr
       change SubE.Sim U _ (SubE.shift D (if v = .root (.bnd 0) then _ else _))
       rw [if_neg hvr, Subst.single_at_ne (r := .bnd 0) (e := .tm (Term.shift D t))
         (Ctx.ref_rt_ne hfr₂ (Ctx.shifts_boxIn_boxIn hF Γ v U ((Ctx.ref_nonproj _ hl).trans hv')))]
@@ -321,7 +321,7 @@ theorem WFF.instantiate_ex_slotPair {V' : Ctx} [V'.NoSlots] (h : V.Le V')
   · have hv' : V.ref v = some U := by
       have := hv
       rw [Ctx.ref_nonproj _ hl]
-      simpa [Ctx.insert, hvr] using this
+      exact Ctx.insert_ne_some this hvr
     have hne : v ≠ .root (.bnd 1) := fun e => Ctx.ref_rt_ne
       ((Ctx.NoSlots.slots (Γ := V)).rootFresh (Nat.zero_le 1)) hv' (by rw [e]; rfl)
     change SubE.Sim U ((Subst.idS σ _).set (.bnd 0) (.tm (slotTm a Y)) v)
@@ -370,7 +370,7 @@ theorem WFF.instantiate_bodyRepl_pair {V' : Ctx} [V'.NoSlots] (h : V.Le V') {a�
   · have hv' : V.ref v = some U := by
       have := hv
       rw [Ctx.ref_nonproj _ hl]
-      simpa [Ctx.insert, hvr] using this
+      exact Ctx.insert_ne_some this hvr
     change SubE.Sim U (Subst.single (.bnd 0) (.tm (Term.pair (Term.mono h a) b)) v)
       (SubE.comp _ _ _ ((Subst.idS σ _).set (.bnd 0) (.tm (slotTm a Y)) v))
     rw [Subst.set_ne _ _ hvr, show Subst.single (.bnd 0)
