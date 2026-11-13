@@ -591,7 +591,7 @@ theorem hubTruth_lt : ∀ (n i : ℕ) (φ : WFF σ (ctxOf (gnet hF M₀ i).src.l
       | retxS hB _ _ _ _ _ => exact flagElim (hubOn_BS hX hh) hB
       | link _ hN _ _ => exact flagElim hN hF
       | linkx _ hN _ _ _ _ => exact flagElim hN hF
-      | optx hO _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
+      | optx hO _ _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
       | and φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega

@@ -75,9 +75,11 @@ theorem WFF.weight_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : 
   | _, _, _, _, _, _, _, _, _, _, .linkx _ _ _ _ _ Φ => by
       simp only [WFF.subst, WFF.weight]
       rw [WFF.weight_subst _ _ _ _ _ Φ]
-  | _, _, _, _, _, _, _, _, _, _, .optx _ _ _ φ => by
+  | _, _, _, _, _, _, _, _, _, _, .optx _ .arrow _ _ φ => by
       simp only [WFF.subst, WFF.weight]
       rw [WFF.weight_subst _ _ _ _ _ φ]
+  | _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _ =>
+      (hyI.elim fun _ h => Ctx.witT_stage h).elim
 
 theorem WFF.weight_instantiate {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {T : VarType} {a : Ann T}
     (t : Term σ Γ T a) (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) :

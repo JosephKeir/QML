@@ -71,7 +71,9 @@ theorem subst_keepDia (hF : ModalSys.Four = true) (φ : WFF σ Γ 0) :
       (θ.dia y (ι y)) (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) _ _ _ (hΓ.diaIn y)
       Ctx.NoSlots.slots Ctx.NoSlots.slots Ctx.NoSlots.slots
       (Subst.shiftCorr_dia_keep hF hθ hy hw) θ').symm
-  all_goals rfl
+  all_goals first
+    | rfl
+    | exact absurd ‹ModalSys.Opt = true› (by rw [ModalSys.noOpt_of_Four hF]; decide)
 
 theorem subst_kp4 (L : List (WFF σ Γ 0)) :
     (kp4 L).map (WFF.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn

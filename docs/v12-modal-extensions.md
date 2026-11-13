@@ -16077,3 +16077,36 @@ derived set again.
 
 Nothing changes for presented contexts: their roots are fresh, so `insert` hides nothing.  The
 change touched about 60 sites, all mechanical; strict build green.
+
+### 12.28 Step 2 built: the witness kind *(2026-11-13, built)*
+
+`◇⁰` now names the arrow it asks along.
+* `WitKind` (`arrow`, `ident`) with `WitKind.step` (`dia`, `at`).
+* `Ctx.witT y` derives identity witnesses: under T with `Opt`, `y : ◇X` in reach gives `X`.
+  `Ctx.witK` dispatches: `wit` for the arrow, `witT` for the identity.
+* `Ctx.optInT y`, the identity view, declares `y.at : X`.  It is coherent by `Ctx.at_coh`
+  (§12.27), so `le_optInT`, `Le.optInT`, `SlotsFrom.optInT` and `RootFresh.optInT` hold for every
+  context.  `Ctx.optInK` dispatches; the generic lemmas are `le_optInK`, `Le.optInK`,
+  `SlotsFrom.optInK`, `RootFresh.optInK`, `Le.witK`, `optInK_wit` and `optInK_content`.
+* `WFF.optx hO k y hy φ`, with `hy : ∃ X, Γ.witK k y = some X` and `φ` over `Γ.optInK k y`;
+  `WFF.optBox` likewise.  `CtxExpr.optIn e k y`, so identity views are presented.
+* M1's rules take the kind: `K_opt`, `opt_bot`, `opt_reopen` (its hypothesis is
+  `Γ (.step y k.step) = some X`), and the derived `opt_out` and `opt_fun`.  The bridge
+  (`dia_opt`, `opt_dia`) stays arrow-only.
+
+**What is still provisional.**  `ModalSys.optStage` still gives `Opt → T = false`, so no identity
+witness exists yet (`Ctx.witT_stage`), and the identity view of any context is the context itself
+(`Ctx.optInT_stage`, `Ctx.optInK_ident`).  Step 3 drops T from `optStage`.  These places currently
+dispose of the identity kind by `Ctx.witT_stage` and must then get real cases:
+* the recursions over formulas with a T-dependent identity case: `WFF.subst` and the lemmas about
+  it (`SubstCongr`, `SubstComp`, `SubstCompose`, `SubstTwice`, `SubstId`, `SatSubst`, `Open`,
+  `SemAdmissible`), `Model.sat` (`Interp`), the GK files (`GKCut`, `GKSubform`, `GKInterp`,
+  `GKSubSharp`), `Cone`, `Completeness`, `LeibnizH`, `SemLemmas`;
+* the rules' soundness (`Soundness`: `obtain rfl : k = .arrow`) and substitution closure
+  (`ProofSubst`);
+* the presentation lemmas, through `Ctx.optInK_ident` (`CanonLeaf`, `CanonWorld`, `CtxFin`,
+  `ViewFresh`);
+* M1's tree (`OCanonTruth`: `obtain rfl : k = .arrow`).
+
+`grep -n "witT_stage\|optInK_ident\|optInT_stage"` lists them all.  Strict build green, and K/D
+completeness with `Opt` on still builds.

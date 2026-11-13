@@ -309,13 +309,15 @@ theorem WFF.subst_mono {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Γ'
         (WFF.subst_mono (h.diaIn x) (θ.dia x (ι x))
           (Subst.ok_dia hθ hx' (hx'.elim fun _ hX => hc x _ hX [])) (Subst.coh_dia hθ hc hx')
           (hΓ.diaIn x) (hΓ'.diaIn x) (hΔ.diaIn (ι x)) φ)
-  | ι, _, Γ', _, _, _, h, θ, hθ, hc, hΓ, hΓ', hΔ, .optx hO y hy φ =>
+  | ι, _, Γ', _, _, _, h, θ, hθ, hc, hΓ, hΓ', hΔ, .optx hO .arrow y hy φ =>
       have hy' : ∃ X, Γ'.wit y = some X := hy.imp fun _ hX => h.wit _ _ hX
-      congrArg (WFF.optx hO (ι y) _)
+      congrArg (WFF.optx hO .arrow (ι y) _)
         (WFF.subst_mono (h.optIn y) (θ.optIn y (ι y))
           (hy'.elim fun X hX => Subst.ok_optIn hθ hO hX (hc.wit hO y X hX []))
           (hy'.elim fun _ hX => Subst.coh_optIn hθ hc hO hX)
           (hΓ.optIn y) (hΓ'.optIn y) (hΔ.optIn (ι y)) φ)
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _ =>
+      (hyI.elim fun _ h => Ctx.witT_stage h).elim
   | _, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .here hT s t =>
       WFF.here_congr' hT (Term.subst_mono h θ hθ hc s) (Term.subst_mono h θ hθ hc t)
   | _, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .back hB L s t =>

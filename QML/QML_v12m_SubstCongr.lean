@@ -666,7 +666,7 @@ theorem WFF.subst_congr : {ι ι' : VarSymb → VarSymb} → {Γ Δ : Ctx} → {
           (Subst.ok_dia hθ hx hw) p (Subst.coh_dia hθ hc hx) q (hΓ.diaIn x) hΔy
           (Subst.sim_dia hs hw) φ)
       exact key (ι' x) (Subst.idx_eq hc hc' hs hx) _ _ _ _
-  | ι, ι', Γ, Δ, _, d', θ, θ', hθ, hθ', hc, hc', hΓ, hΔ, hs, .optx hO y hy φ => by
+  | ι, ι', Γ, Δ, _, d', θ, θ', hθ, hθ', hc, hc', hΓ, hΔ, hs, .optx hO .arrow y hy φ => by
       obtain ⟨X, hX⟩ := hy
       have hw : (θ.wit y).idxAlong [] = ι y := hc.wit hO y X hX []
       have hy' : ι' y = ι y :=
@@ -674,14 +674,16 @@ theorem WFF.subst_congr : {ι ι' : VarSymb → VarSymb} → {Γ Δ : Ctx} → {
       have key : ∀ (z : VarSymb) (_hz : z = ι y) (P : ∃ Z, Δ.wit z = some Z)
           (p : Subst.Ok (Γ.optIn y) (θ'.optIn y z))
           (q : Subst.Coh ι' (Γ.optIn y) (θ'.optIn y z)) (hΔz : (Δ.optIn z).SlotsFrom d'),
-          WFF.subst ι θ hθ hc hΓ hΔ (.optx hO y ⟨X, hX⟩ φ) =
-            .optx hO z P (WFF.subst ι' (θ'.optIn y z) p q (hΓ.optIn y) hΔz φ) := by
+          WFF.subst ι θ hθ hc hΓ hΔ (.optx hO .arrow y ⟨X, hX⟩ φ) =
+            .optx hO .arrow z P (WFF.subst ι' (θ'.optIn y z) p q (hΓ.optIn y) hΔz φ) := by
         intro z hz P p q hΔz
         subst hz
-        exact congrArg (WFF.optx hO (ι y) _) (WFF.subst_congr (θ.optIn y (ι y))
+        exact congrArg (WFF.optx hO .arrow (ι y) _) (WFF.subst_congr (θ.optIn y (ι y))
           (θ'.optIn y (ι y)) (Subst.ok_optIn hθ hO hX hw) p (Subst.coh_optIn hθ hc hO hX) q
           (hΓ.optIn y) hΔz (Subst.sim_optIn hs hO hX hw) φ)
       exact key (ι' y) hy' _ _ _ _
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _ =>
+      (hyI.elim fun _ h => Ctx.witT_stage h).elim
   | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .here hT s t =>
       WFF.here_congr hT (Term.subst_congr θ θ' hθ hθ' hc hc' hs s)
         (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)

@@ -237,8 +237,10 @@ theorem CtxExpr.declOK_witOK (hTF : ModalSys.T = true ∨ ModalSys.Four = false)
       (CtxExpr.declOK_witOK hTF e).1.witOK_boxIn⟩
   | .diaIn e x => ⟨(CtxExpr.declOK_witOK hTF e).1.diaIn_of hTF x,
       (CtxExpr.declOK_witOK hTF e).1.witOK_boxIn⟩
-  | .optIn e y => ⟨(CtxExpr.declOK_witOK hTF e).1.optIn (CtxExpr.declOK_witOK hTF e).2 y,
+  | .optIn e .arrow y => ⟨(CtxExpr.declOK_witOK hTF e).1.optIn (CtxExpr.declOK_witOK hTF e).2 y,
       (CtxExpr.declOK_witOK hTF e).2⟩
+  | .optIn e .ident _ => by
+      simp only [CtxExpr.denote, Ctx.optInK_ident]; exact CtxExpr.declOK_witOK hTF e
 
 theorem CtxExpr.declOK_of (hTF : ModalSys.T = true ∨ ModalSys.Four = false) (e : CtxExpr) :
     e.denote.DeclOK :=

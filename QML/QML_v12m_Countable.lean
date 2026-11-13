@@ -56,6 +56,14 @@ theorem Ann.code_injective : ∀ {T : VarType}, Function.Injective (Ann.code (T 
 
 instance (T : VarType) : Countable (Ann T) := Ann.code_injective.countable
 
+/-- A kind's number, for codes. -/
+def WitKind.toNat : WitKind → ℕ
+  | .arrow => 0
+  | .ident => 1
+
+theorem WitKind.toNat_inj {k k' : WitKind} (h : k.toNat = k'.toNat) : k = k' := by
+  cases k <;> cases k' <;> first | rfl | cases h
+
 variable [ModalSys]
 
 section Terms
@@ -163,7 +171,8 @@ noncomputable def WFF.code : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → Code
   | _, _, @WFF.linkx _ _ _ _ _ _ y _ D a t Φ =>
       .node 26 (.node 0 (.leaf (natCode D)) (.node 0 (.leaf (natCode y)) (Ann.code a)))
         (.node 0 (Term.code t) (WFF.code Φ))
-  | _, _, .optx _ y _ φ => .node 27 (.leaf (natCode y)) (WFF.code φ)
+  | _, _, .optx _ k y _ φ =>
+      .node 27 (.node k.toNat (.leaf (natCode y)) (.leaf 0)) (WFF.code φ)
 
 theorem Rel.code_inj : {Γ : Ctx} → {n : ℕ} → (ρ ρ' : Rel σ Γ n) → ρ.code = ρ'.code → ρ = ρ'
   | _, _, .R r, .R r', h => by
@@ -293,11 +302,12 @@ theorem WFF.code_inj {Γ : Ctx} {d : ℕ} (φ ψ : WFF σ Γ d) (h : φ.code = �
       cases natCode_injective hy'
       cases Ann.code_injective ha
       rw [Term.code_inj t _ ht, ih _ hΦ]
-  | optx hO y hy φ ih =>
+  | optx hO k y hy φ ih =>
       intro ψ h
       cases ψ <;> simp only [WFF.code, Code.node.injEq, Code.leaf.injEq, Nat.reduceEqDiff,
-        false_and, true_and] at h
-      obtain ⟨h₁, h₂⟩ := h
+        false_and, true_and, and_true] at h
+      obtain ⟨⟨hk, h₁⟩, h₂⟩ := h
+      cases WitKind.toNat_inj hk
       cases natCode_injective h₁
       rw [ih _ h₂]
 

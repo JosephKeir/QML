@@ -62,7 +62,7 @@ def WFF.Occ (r : σ.RelSyms) : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → Prop
   | _, _, .retxS _ _ _ _ _ Φ => Φ.Occ r
   | _, _, .link _ _ _ Φ => Φ.Occ r
   | _, _, .linkx _ _ _ _ _ Φ => Φ.Occ r
-  | _, _, .optx _ _ _ φ => φ.Occ r
+  | _, _, .optx _ _ _ _ φ => φ.Occ r
 
 /-- Substitution keeps the relation symbols. -/
 theorem WFF.occ_subst (r : σ.RelSyms) : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ}
@@ -101,8 +101,10 @@ theorem WFF.occ_subst (r : σ.RelSyms) : ∀ {ι : VarSymb → VarSymb} {Γ Δ :
       simp only [WFF.subst, WFF.Occ]; rw [WFF.occ_subst r _ _ _ _ _ Φ]
   | _, _, _, _, _, _, _, _, _, _, .linkx _ _ _ _ _ Φ => by
       simp only [WFF.subst, WFF.Occ]; rw [WFF.occ_subst r _ _ _ _ _ Φ]
-  | _, _, _, _, _, _, _, _, _, _, .optx _ _ _ φ => by
+  | _, _, _, _, _, _, _, _, _, _, .optx _ .arrow _ _ φ => by
       simp only [WFF.subst, WFF.Occ]; rw [WFF.occ_subst r _ _ _ _ _ φ]
+  | _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _ =>
+      (hyI.elim fun _ h => Ctx.witT_stage h).elim
 
 /-- Weakening keeps the relation symbols. -/
 theorem WFF.occ_mono (r : σ.RelSyms) : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (φ : WFF σ Γ d),
@@ -129,7 +131,7 @@ theorem WFF.occ_mono (r : σ.RelSyms) : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le 
   | _, _, _, _, .retxS _ _ _ _ _ Φ => by simp only [WFF.mono, WFF.Occ]; rw [WFF.occ_mono r _ Φ]
   | _, _, _, _, .link _ _ _ Φ => by simp only [WFF.mono, WFF.Occ]; rw [WFF.occ_mono r _ Φ]
   | _, _, _, _, .linkx _ _ _ _ _ Φ => by simp only [WFF.mono, WFF.Occ]; rw [WFF.occ_mono r _ Φ]
-  | _, _, _, _, .optx _ _ _ φ => by simp only [WFF.mono, WFF.Occ]; rw [WFF.occ_mono r _ φ]
+  | _, _, _, _, .optx _ _ _ _ φ => by simp only [WFF.mono, WFF.Occ]; rw [WFF.occ_mono r _ φ]
 
 theorem WFF.occ_instantiate (r : σ.RelSyms) {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {T : VarType}
     {a : Ann T} (t : Term σ Γ T a) (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) :
@@ -179,7 +181,7 @@ theorem WFF.occ_shift (r : σ.RelSyms) : ∀ {k : ℕ} {Γ Γ' : Ctx} {d : ℕ} 
       simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r _ _ Φ]
   | _, _, _, _, _, _, .linkx _ _ _ _ _ Φ => by
       simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r _ _ Φ]
-  | _, _, _, _, h, _, .optx hO _ _ _ =>
+  | _, _, _, _, h, _, .optx hO _ _ _ _ =>
       False.elim (by have := ModalSys.noOpt_of_Four h.hF; rw [hO] at this; cases this)
 
 /-- A boxed hypothesis' copy has its symbols. -/

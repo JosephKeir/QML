@@ -412,7 +412,10 @@ system if possible, and `Opt` a semi-independent flag (required where a system n
   `Here` primitive as identity, (S) a new identity-reading step; paper check of (H) first.  **(H) checked (§12.24): it fails substitution closure** (the body lands in `Here`'s subject on one side and in the formula on the other).  **Recommended: (S):** a step `y.at` that is neither a projection nor a level step; identity witnesses derived from `ref`; the collapse a homomorphism; `Here` definable, with its weak rules derivable.  **(S) passes the second check (§12.25):** steps get a third class (`Step.isLevel` beside `isProj`), witnesses a kind (arrow, identity) on `optx`, `optIn` and M1's rules, the identity kind derived from `ref`; `T_box` sound with a homomorphic collapse; all seven weak `Here` rules derived.  Decisions taken (2026-11-12): kind parameter, `WFF.here` gated to `Opt` off, `Step.at`.
   **Step 1 of 7 built (2026-11-12): `Step.at`**, the strict build green (§12.26: `isProj` means
   "no level", the new `isStruct` "read off the parent"; a `dia` collapses to `.at` only with
-  `Opt` on).  Next: step 2, the witness kind on `optx`, `optIn` and M1's rules.
+  `Opt` on).  **Step 2 built (2026-11-13): the witness kind** (§12.27 `at_coh` and a hiding
+  `insert`; §12.28 `WitKind`, `witT`, `optInT`, `optx`/`CtxExpr.optIn`/M1's rules over the kind;
+  identity cases provisional, disposed of by `Ctx.witT_stage`).  Next: step 3, `T_box`'s collapse
+  case and its soundness, dropping T from `optStage`.
 * **M3, GK with `◇⁰`.**  Cut elimination and Craig for K and KT.  Stop if the interpolation proof's
   `◇⁰` case fails.
 * **M4a, 4 on the tree.**  No new rule on paper (§12.12).

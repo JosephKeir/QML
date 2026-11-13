@@ -44,7 +44,7 @@ theorem exists_diaO (w : World σ N₀) {i : ℕ × ℕ} {x : VarSymb}
   have hw' : (w'.L.ctx (childStage i)).wit x = some X :=
     (ha.wit M x).trans (hM.wit x X hwit)
   -- the child has `◇⁰_x χ`
-  have hpos : (⟨childStage i, WFF.optx hO x ⟨X, hw'⟩
+  have hpos : (⟨childStage i, WFF.optx hO .arrow x ⟨X, hw'⟩
       (WFF.mono ((ha.boxIn_le i).optIn x) (WFF.mono (Ctx.le_diaIn_boxIn_optIn hO hX) χ))⟩ :
       w'.L.sys.Sentence σ) ∈ w'.T := by
     by_contra h
@@ -56,7 +56,7 @@ theorem exists_diaO (w : World σ N₀) {i : ℕ × ℕ} {x : VarSymb}
     · exfalso
       refine w'.mcs.bot_not_mem (i := childStage i) (World.mem_of_provable (Δ := [_, _])
         (fun ψ hψ => ?_) ⟨.imp_elim (Proof.lookup List.mem_cons_self)
-          (Proof.weak _ (Proof.K_opt hO x ⟨X, hw'⟩ (Δ₁ := []) (Δ₂ := []) (φ := .top)
+          (Proof.weak _ (Proof.K_opt hO .arrow x ⟨X, hw'⟩ (Δ₁ := []) (Δ₂ := []) (φ := .top)
             (ψ := WFF.mono ((ha.boxIn_le i).optIn x)
               (WFF.mono (Ctx.le_diaIn_boxIn_optIn hO hX) χ)) .top_intro))⟩)
       rcases List.mem_cons.mp hψ with rfl | hψ
@@ -64,7 +64,7 @@ theorem exists_diaO (w : World σ N₀) {i : ℕ × ℕ} {x : VarSymb}
       · rw [List.mem_singleton.mp hψ]
         exact hpos
   refine ⟨⟨w', ⟨ha⟩⟩, hm, World.mem_of_provable (Δ := [_]) (fun ψ hψ => ?_)
-    ⟨Proof.opt_out hO x ⟨X, hw'⟩ (Proof.lookup List.mem_cons_self)⟩⟩
+    ⟨Proof.opt_out hO .arrow x ⟨X, hw'⟩ (Proof.lookup List.mem_cons_self)⟩⟩
   rw [List.mem_singleton.mp hψ, WFF.mono_mono]
   rw [WFF.mono_mono] at hpos
   exact hpos

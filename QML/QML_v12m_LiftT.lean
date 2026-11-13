@@ -149,7 +149,7 @@ theorem WFF.collapse_shift_self : ∀ {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx} {d : �
             ((hc.diaIn _).insert ((hs₂.diaIn _).rootFresh le_rfl) _) hle'
             ((hs₁.diaIn y).insert _) ((hs₂.diaIn _).insert _) Φ)
       exact key y (VarSymb.collapse_shift_self y m).symm _ _
-  | _, _, _, _, _, hs, _, _, _, _, .optx hO _ _ _ =>
+  | _, _, _, _, _, hs, _, _, _, _, .optx hO _ _ _ _ =>
       False.elim (by have := ModalSys.noOpt_of_Four hs.hF; rw [hO] at this; cases this)
 
 theorem Rel.shift_shift_same {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx}
@@ -258,7 +258,7 @@ theorem WFF.shift_shift_same : ∀ {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx} {d : ℕ}
             ((h₂₃.diaIn _).insert ((hs₂.diaIn _).rootFresh le_rfl) _) h'
             ((hs₁.diaIn y).insert _) ((hs₂.diaIn _).insert _) Φ)
       exact key _ (VarSymb.shift_shift_same y m).symm _ _
-  | _, _, _, _, _, h₁₂, _, _, _, _, .optx hO _ _ _ =>
+  | _, _, _, _, _, h₁₂, _, _, _, _, .optx hO _ _ _ _ =>
       False.elim (by have := ModalSys.noOpt_of_Four h₁₂.hF; rw [hO] at this; cases this)
 
 end Forms

@@ -257,7 +257,7 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
         exact ⟨X, h.ref hr, ⟨w₁.1, by rw [← href]; exact w₁.2⟩,
           (sat_mono (Env.diaPush_agree hag hr w₁ _) φ
           (fun _ => Env.diaPush_witAgree hag hr _ _)).mpr hsat⟩
-  | _, _, h, _, _, env, env', hag, .optx hO y hy φ, hw => by
+  | _, _, h, _, _, env, env', hag, .optx hO .arrow y hy φ, hw => by
       have hw' := hw hO
       obtain ⟨X₀, hy₀⟩ := hy
       constructor
@@ -281,6 +281,7 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
         have hc : (env'.wit y X (h.wit y X hy')).get hd' = (env.wit y X hy').get hd :=
           Part.get_eq_of_mem (he ▸ Part.get_mem hd) hd'
         exact (sat_mono (Env.optPush_agree hag hy' hd hd' hc) φ (fun _ => hw')).mpr hsat
+  | _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _, _ => (hyI.elim fun _ h => Ctx.witT_stage h).elim
   | _, _, _, _, _, _, _, hag, .here hT s t, hw => by
       change Model.Realised hT (interp _ (Term.mono _ s)) (interp _ (Term.mono _ t)) ↔ _
       rw [interp_mono hag s, interp_mono hag t]

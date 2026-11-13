@@ -56,9 +56,9 @@ def eqH {σ : Signature} {d : ℕ} (hO : ModalSys.Opt = true) : {Γ : Ctx} → (
       .and (eqH hO A t₁ s₁) (eqH hO B t₂ s₂)
   | _, .VTypeBox A, .box _, .box _, .boxtm t, .boxtm s => .box (eqH hO A t s)
   | _, .VTypeDia A, .dia x _, .dia x' _, .diatm _ hx t, .diatm _ hx' s =>
-      .box (.imp (.or (.optx hO x (Ctx.boxIn_wit_of hO hx) .top)
-          (.optx hO x' (Ctx.boxIn_wit_of hO hx') .top))
-        (.optx hO x (Ctx.boxIn_wit_of hO hx) (.optx hO x' (Ctx.boxIn_wit_of hO hx')
+      .box (.imp (.or (.optx hO .arrow x (Ctx.boxIn_wit_of hO hx) .top)
+          (.optx hO .arrow x' (Ctx.boxIn_wit_of hO hx') .top))
+        (.optx hO .arrow x (Ctx.boxIn_wit_of hO hx) (.optx hO .arrow x' (Ctx.boxIn_wit_of hO hx')
           (eqH hO A (Term.mono (Ctx.le_optIn _ x') (Term.mono (Ctx.le_diaIn_boxIn_optIn' hO hx) t))
             (Term.mono ((Ctx.le_optIn _ x).optIn x')
               (Term.mono (Ctx.le_diaIn_boxIn_optIn' hO hx') s))))))
@@ -68,8 +68,8 @@ def eqH {σ : Signature} {d : ℕ} (hO : ModalSys.Opt = true) : {Γ : Ctx} → (
 abbrev witEq {σ : Signature} {d : ℕ} (hO : ModalSys.Opt = true) {Γ : Ctx} (X : VarType)
     {z z' : VarSymb} (hz : ∃ Z, Γ.wit z = some Z) (hz' : ∃ Z, Γ.wit z' = some Z) {a b : Ann X}
     (c : Term σ (Γ.optIn z) X a) (c' : Term σ (Γ.optIn z') X b) : WFF σ Γ d :=
-  .imp (.or (.optx hO z hz .top) (.optx hO z' hz' .top))
-    (.optx hO z hz (.optx hO z' hz' (eqH hO X (Term.mono (Ctx.le_optIn _ z') c)
+  .imp (.or (.optx hO .arrow z hz .top) (.optx hO .arrow z' hz' .top))
+    (.optx hO .arrow z hz (.optx hO .arrow z' hz' (eqH hO X (Term.mono (Ctx.le_optIn _ z') c)
       (Term.mono ((Ctx.le_optIn Γ z).optIn z') c'))))
 
 /-- At `◇` types, `≡` is `□` of the witnesses' equality. -/
@@ -107,10 +107,10 @@ theorem eqH_mono {σ : Signature} {d : ℕ} (hO : ModalSys.Opt = true) : {Γ Γ'
       have e := eqH_mono (d := d) hO ((h.boxIn.optIn x).optIn x') A
         (Term.mono (Ctx.le_optIn _ x') (Term.mono (Ctx.le_diaIn_boxIn_optIn' hO hx) t))
         (Term.mono ((Ctx.le_optIn _ x).optIn x') (Term.mono (Ctx.le_diaIn_boxIn_optIn' hO hx') s))
-      change WFF.box (WFF.imp (WFF.or _ _) (WFF.optx _ _ _ (WFF.optx _ _ _
+      change WFF.box (WFF.imp (WFF.or _ _) (WFF.optx _ .arrow _ _ (WFF.optx _ .arrow _ _
         (WFF.mono ((h.boxIn.optIn x).optIn x') (eqH hO A _ _))))) = _
       rw [e]
-      change _ = WFF.box (WFF.imp (WFF.or _ _) (WFF.optx _ _ _ (WFF.optx _ _ _
+      change _ = WFF.box (WFF.imp (WFF.or _ _) (WFF.optx _ .arrow _ _ (WFF.optx _ .arrow _ _
         (eqH hO A (Term.mono _ (Term.mono _ (Term.mono (h.diaIn x) t)))
           (Term.mono _ (Term.mono _ (Term.mono (h.diaIn x') s)))))))
       simp only [Term.mono_mono]
@@ -280,10 +280,10 @@ theorem WFF.subst_eqH {σ : Signature} {ι : VarSymb → VarSymb} (hO : ModalSys
               (Subst.ok_dia hθ hx' hw') (Subst.coh_dia hθ hc hx') s)) from
           (Term.mono_mono _ _ _).symm] at ih
       exact congrArg (fun χ => WFF.box (WFF.imp
-        (WFF.or (WFF.optx hO (ι x) (Ctx.boxIn_wit_of hO ⟨Y, hY⟩) .top)
-          (WFF.optx hO (ι x') (Ctx.boxIn_wit_of hO ⟨Y', hY'⟩) .top))
-        (WFF.optx hO (ι x) (Ctx.boxIn_wit_of hO ⟨Y, hY⟩)
-          (WFF.optx hO (ι x') (Ctx.boxIn_wit_of hO ⟨Y', hY'⟩) χ)))) ih
+        (WFF.or (WFF.optx hO .arrow (ι x) (Ctx.boxIn_wit_of hO ⟨Y, hY⟩) .top)
+          (WFF.optx hO .arrow (ι x') (Ctx.boxIn_wit_of hO ⟨Y', hY'⟩) .top))
+        (WFF.optx hO .arrow (ι x) (Ctx.boxIn_wit_of hO ⟨Y, hY⟩)
+          (WFF.optx hO .arrow (ι x') (Ctx.boxIn_wit_of hO ⟨Y', hY'⟩) χ)))) ih
 
 /-- `≡` of terms equal with their annotations. -/
 theorem eqH_congr {σ : Signature} {Γ : Ctx} {d : ℕ} (hO : ModalSys.Opt = true) {T : VarType}
@@ -302,8 +302,8 @@ theorem WFF.subst_optx_eq {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : C
     (hy : ∃ X, Γ.wit y = some X) (φ : WFF σ (Γ.optIn y) d) {z : VarSymb} (hz : ι y = z)
     (hz' : ∃ X, Δ.wit z = some X) (hθz : Subst.Ok (Γ.optIn y) (θ.optIn y z))
     (hcz : Subst.Coh ι (Γ.optIn y) (θ.optIn y z)) :
-    WFF.subst ι θ hθ hc hΓ hΔ (.optx hO y hy φ) =
-      .optx hO z hz' (WFF.subst ι (θ.optIn y z) hθz hcz (hΓ.optIn y) (hΔ.optIn z) φ) := by
+    WFF.subst ι θ hθ hc hΓ hΔ (.optx hO .arrow y hy φ) =
+      .optx hO .arrow z hz' (WFF.subst ι (θ.optIn y z) hθz hcz (hΓ.optIn y) (hΔ.optIn z) φ) := by
   subst hz
   rfl
 
@@ -315,7 +315,7 @@ theorem Ctx.ref_optIn_content {Γ : Ctx} {y : VarSymb} {X : VarType} (hy : Γ.wi
 /-- `◇⁰_y (y.dia ≡ e)`, `e` the slot: the witness `y` is present, with content `e`. -/
 abbrev WFF.optName {σ : Signature} {Γ : Ctx} (hO : ModalSys.Opt = true) {y : VarSymb}
     {X : VarType} (hy : Γ.wit y = some X) : WFF σ (Γ.insert (.bnd 0) X) 1 :=
-  WFF.optx hO y ⟨X, hy⟩ (eqH hO X
+  WFF.optx hO .arrow y ⟨X, hy⟩ (eqH hO X
     (Term.eta (.step y .dia) X (Ctx.ref_optIn_content (Γ := Γ.insert (.bnd 0) X) hy))
     (Term.eta (.root (.bnd 0)) X
       ((Ctx.le_optIn _ y).ref (Ctx.ref_insert_root Γ (.bnd 0) X))))
@@ -341,15 +341,15 @@ def eqH_refl {σ : Signature} (hO : ModalSys.Opt = true) : {Γ : Ctx} → [Γ.No
           (Γ.boxIn.optIn x) (.step x .dia) = some X :=
         hw.imp fun _ h => ⟨h, Ctx.optIn_content h⟩
       have inner : Proof σ (Γ.boxIn.optIn x) [.top]
-          (.optx hO x hw (eqH hO A
+          (.optx hO .arrow x hw (eqH hO A
             (Term.mono (Ctx.le_optIn _ x) (Term.mono (Ctx.le_diaIn_boxIn_optIn' hO hx) t))
             (Term.mono ((Ctx.le_optIn _ x).optIn x)
               (Term.mono (Ctx.le_diaIn_boxIn_optIn' hO hx) t)))) :=
         Proof.weak _ (Proof.conv (by rw [eqH_mono])
-          (Proof.opt_reopen hO x hre (eqH_refl hO A
+          (Proof.opt_reopen hO .arrow x hre (eqH_refl hO A
             (Term.mono (Ctx.le_diaIn_boxIn_optIn' hO hx) t))))
-      have k := Proof.K_opt hO x hw (Δ₁ := []) (Δ₂ := []) inner
-      have hor : Proof σ Γ.boxIn [.or (.optx hO x hw .top) (.optx hO x hw .top)] _ :=
+      have k := Proof.K_opt hO .arrow x hw (Δ₁ := []) (Δ₂ := []) inner
+      have hor : Proof σ Γ.boxIn [.or (.optx hO .arrow x hw .top) (.optx hO .arrow x hw .top)] _ :=
         .or_elim (.ax _) (Proof.ofSubset (fun _ h => by
             rw [List.mem_singleton.mp h]
             exact List.mem_cons_self) k)
@@ -364,18 +364,18 @@ def eqH_refl {σ : Signature} (hO : ModalSys.Opt = true) : {Γ : Ctx} → [Γ.No
     `y.dia`; carried out by `K_opt` and `opt_out`. -/
 def opt_name {σ : Signature} (hO : ModalSys.Opt = true) {Γ : Ctx} [Γ.NoSlots] {y : VarSymb}
     {X : VarType} (hy : Γ.wit y = some X) :
-    Proof σ Γ [.optx hO y ⟨X, hy⟩ .top] (.ex X (WFF.optName hO hy)) :=
+    Proof σ Γ [.optx hO .arrow y ⟨X, hy⟩ .top] (.ex X (WFF.optName hO hy)) :=
   have h₀ : (Γ.optIn y).ref (.step y .dia) = some X := Ctx.ref_optIn_content hy
   have hre : ∃ X', (Γ.optIn y).wit y = some X' ∧ (Γ.optIn y) (.step y .dia) = some X' :=
     ⟨X, hy, Ctx.optIn_content hy⟩
-  have reop := Proof.opt_reopen (Δ := []) hO y hre
+  have reop := Proof.opt_reopen (Δ := []) hO .arrow y hre
     (Proof.eqH_refl hO X (Term.eta (σ := σ) (.step y .dia) X h₀))
   have hne : ¬ y.rt = .bnd 0 := fun h => by
     rw [(Ctx.NoSlots.slots (Γ := Γ)).wit y 0 h le_rfl] at hy
     cases hy
   have key : WFF.instantiate Ctx.NoSlots.slots (Term.eta (σ := σ) (.step y .dia) X h₀)
       (WFF.mono ((Ctx.le_optIn Γ y).insert (.bnd 0) X) (WFF.optName hO hy)) =
-      .optx hO y (hre.imp fun _ h => h.1)
+      .optx hO .arrow y (hre.imp fun _ h => h.1)
         (WFF.mono (Ctx.le_optIn _ y) (eqH hO X (Term.eta (.step y .dia) X h₀)
           (Term.eta (.step y .dia) X h₀))) := by
     rw [WFF.instantiate, WFF.substRoot,
@@ -415,7 +415,7 @@ def opt_name {σ : Signature} (hO : ModalSys.Opt = true) {Γ : Ctx} [Γ.NoSlots]
       eqH_mono, Term.mono_eta]
   have p₁ : Proof σ (Γ.optIn y) [.top] (WFF.mono (Ctx.le_optIn Γ y) (.ex X (WFF.optName hO hy))) :=
     Proof.weak _ (Proof.ex_intro X (Term.eta (.step y .dia) X h₀) (Proof.conv key.symm reop))
-  Proof.opt_out hO y ⟨X, hy⟩ (Proof.K_opt hO y ⟨X, hy⟩ (Δ₁ := []) (Δ₂ := []) p₁)
+  Proof.opt_out hO .arrow y ⟨X, hy⟩ (Proof.K_opt hO .arrow y ⟨X, hy⟩ (Δ₁ := []) (Δ₂ := []) p₁)
 
 end Proof
 

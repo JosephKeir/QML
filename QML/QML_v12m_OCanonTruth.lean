@@ -224,7 +224,7 @@ theorem truth_ltO : ∀ (n : ℕ) (w : World σ N₀), DecidesO hO w → ∀ (i 
               hnot (World.mem_of_provable (Δ := [_])
                 (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hd)
                 ⟨Proof.opt_dia hO x hx (Proof.lookup List.mem_cons_self)⟩)
-            have hbox : (⟨i, .box (WFF.optx hO x ⟨X, hwit⟩
+            have hbox : (⟨i, .box (WFF.optx hO .arrow x ⟨X, hwit⟩
                 (WFF.mono (Ctx.le_diaIn_boxIn_optIn hO h) χ)).neg⟩ :
                 w.L.sys.Sentence σ) ∈ w.T := by
               by_contra hb
@@ -238,9 +238,9 @@ theorem truth_ltO : ∀ (n : ℕ) (w : World σ N₀), DecidesO hO w → ∀ (i 
               a.1.2.down.opened_at hm (hM.wit x X hwit)
             have hre := World.mem_of_provable (Δ := [_])
               (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hχ')
-              ⟨Proof.opt_reopen hO x ⟨X, hw', hd'⟩ (Proof.lookup List.mem_cons_self)⟩
+              ⟨Proof.opt_reopen hO .arrow x ⟨X, hw', hd'⟩ (Proof.lookup List.mem_cons_self)⟩
             refine (a.1.1.mcs.neg_mem_iff.mp hc) ?_
-            change (⟨childStage i, WFF.optx hO x _ (WFF.mono _ (WFF.mono _ χ))⟩ :
+            change (⟨childStage i, WFF.optx hO .arrow x _ (WFF.mono _ (WFF.mono _ χ))⟩ :
               a.1.1.L.sys.Sentence σ) ∈ a.1.1.T
             rw [WFF.mono_mono]
             rw [WFF.mono_mono] at hre
@@ -249,7 +249,9 @@ theorem truth_ltO : ∀ (n : ℕ) (w : World σ N₀), DecidesO hO w → ∀ (i 
             obtain ⟨X, h⟩ := hx
             obtain ⟨a, ha, hmem'⟩ := exists_diaO hO w ⟨X, h⟩ χ hmem
             exact ⟨X, h, ⟨a, (canonEnvO_extent hO w₀ w i h).symm ▸ ha⟩, (key h _).mpr hmem'⟩
-      | optx hO' y hy χ =>
+      | optx hO' k y hy χ =>
+          obtain rfl : k = .arrow := by
+            cases k <;> first | rfl | exact (hy.elim fun _ h => Ctx.witT_stage h).elim
           have hχs : χ.size < n := by simp only [WFF.size] at hφ; omega
           change (∃ (X : VarType) (h : (w.L.ctx i).wit y = some X)
             (hd : ((canonEnvO hO w₀ w i).wit y X h).Dom),
@@ -259,7 +261,7 @@ theorem truth_ltO : ∀ (n : ℕ) (w : World σ N₀), DecidesO hO w → ∀ (i 
               (hd : w.L.ctx i (.step y .dia) = some X),
               ((model hO w₀).sat ((canonEnvO hO w₀ w i).optPush y h hd) χ ↔
                 (⟨i, WFF.mono (optIn_le_of_declared h hd) χ⟩ : w.L.sys.Sentence σ) ∈ w.T) ∧
-              ((⟨i, WFF.optx hO' y hy χ⟩ : w.L.sys.Sentence σ) ∈ w.T ↔
+              ((⟨i, WFF.optx hO' .arrow y hy χ⟩ : w.L.sys.Sentence σ) ∈ w.T ↔
                 (⟨i, WFF.mono (optIn_le_of_declared h hd) χ⟩ : w.L.sys.Sentence σ) ∈ w.T) := by
             intro X h hd
             have hle := optIn_le_of_declared h hd
@@ -279,20 +281,21 @@ theorem truth_ltO : ∀ (n : ℕ) (w : World σ N₀), DecidesO hO w → ∀ (i 
                 rw [dif_neg hvy]
             refine ⟨(Model.sat_mono hag χ (fun _ _ _ _ => rfl)).symm.trans
               (truth_ltO n w hdec i _ (by rw [WFF.size_mono]; exact hχs)), ?_⟩
-            have hform : WFF.optx hO y ⟨X, h⟩ (WFF.mono (Ctx.le_optIn _ y) (WFF.mono hle χ)) =
-                WFF.optx hO' y hy χ := by
+            have hform :
+                WFF.optx hO .arrow y ⟨X, h⟩ (WFF.mono (Ctx.le_optIn _ y) (WFF.mono hle χ)) =
+                WFF.optx hO' .arrow y hy χ := by
               rw [WFF.mono_mono, WFF.mono_refl]
             constructor
             · intro hm
               refine World.mem_of_provable (Δ := [_])
                 (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hm)
-                ⟨Proof.opt_out hO y ⟨X, h⟩ (Proof.lookup ?_)⟩
+                ⟨Proof.opt_out hO .arrow y ⟨X, h⟩ (Proof.lookup ?_)⟩
               rw [hform]
               exact List.mem_cons_self
             · intro hm
               have hre := World.mem_of_provable (Δ := [_])
                 (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hm)
-                ⟨Proof.opt_reopen hO y ⟨X, h, hd⟩ (Proof.lookup List.mem_cons_self)⟩
+                ⟨Proof.opt_reopen hO .arrow y ⟨X, h, hd⟩ (Proof.lookup List.mem_cons_self)⟩
               rw [hform] at hre
               exact hre
           constructor
@@ -311,7 +314,7 @@ theorem truth_ltO : ∀ (n : ℕ) (w : World σ N₀), DecidesO hO w → ∀ (i 
                   (show ((i.1, 0) : ℕ × ℕ) ≤ i from ⟨le_rfl, Nat.zero_le _⟩)).mp hneg
                 refine w.mcs.bot_not_mem (i := i) (World.mem_of_provable (Δ := [_, _])
                   (fun ψ hψ => ?_) ⟨.imp_elim (Proof.lookup List.mem_cons_self)
-                    (Proof.weak _ (Proof.K_opt hO y ⟨X, h⟩ (Δ₁ := []) (Δ₂ := []) (φ := .top)
+                    (Proof.weak _ (Proof.K_opt hO .arrow y ⟨X, h⟩ (Δ₁ := []) (Δ₂ := []) (φ := .top)
                       (ψ := χ) .top_intro))⟩)
                 rcases List.mem_cons.mp hψ with rfl | hψ
                 · exact hneg'

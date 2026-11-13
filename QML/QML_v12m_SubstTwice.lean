@@ -954,7 +954,7 @@ theorem WFF.subst_comp {σ : Signature} : {ι₁ ι₂ ι₃ : VarSymb → VarSy
           (Subst.sim_dia_comp hθ₁ hc₁ hθ₂ hc₂ hs hx hx₁ hw₂ hw₃) φ)
       exact key (ι₃ x) hι _ _ _ _
   | ι₁, ι₂, ι₃, Γ, Δ₁, Δ₂, _, _, d₂, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, hΓ, hΔ₁, hΔ₂,
-      hs, .optx hO y hy φ => by
+      hs, .optx hO .arrow y hy φ => by
       obtain ⟨X, hX⟩ := hy
       have hw₁ : (θ₁.wit y).idxAlong [] = ι₁ y := hc₁.wit hO y X hX []
       obtain ⟨X₁, hx₁⟩ := WitE.wit_of (hθ₁.wit hO y X hX) hw₁
@@ -964,16 +964,19 @@ theorem WFF.subst_comp {σ : Signature} : {ι₁ ι₂ ι₃ : VarSymb → VarSy
       have key : ∀ (z : VarSymb) (_hz : z = ι₂ (ι₁ y)) (P : ∃ Z, Δ₂.wit z = some Z)
           (p : Subst.Ok (Γ.optIn y) (θ₃.optIn y z)) (q : Subst.Coh ι₃ (Γ.optIn y) (θ₃.optIn y z))
           (hΔz : (Δ₂.optIn z).SlotsFrom d₂),
-          WFF.subst ι₂ θ₂ hθ₂ hc₂ hΔ₁ hΔ₂ (WFF.subst ι₁ θ₁ hθ₁ hc₁ hΓ hΔ₁ (.optx hO y ⟨X, hX⟩ φ)) =
-            .optx hO z P (WFF.subst ι₃ (θ₃.optIn y z) p q (hΓ.optIn y) hΔz φ) := by
+          WFF.subst ι₂ θ₂ hθ₂ hc₂ hΔ₁ hΔ₂
+              (WFF.subst ι₁ θ₁ hθ₁ hc₁ hΓ hΔ₁ (.optx hO .arrow y ⟨X, hX⟩ φ)) =
+            .optx hO .arrow z P (WFF.subst ι₃ (θ₃.optIn y z) p q (hΓ.optIn y) hΔz φ) := by
         intro z hz P p q hΔz
         subst hz
-        exact congrArg (WFF.optx hO (ι₂ (ι₁ y)) _) (WFF.subst_comp (θ₁.optIn y (ι₁ y))
+        exact congrArg (WFF.optx hO .arrow (ι₂ (ι₁ y)) _) (WFF.subst_comp (θ₁.optIn y (ι₁ y))
           (θ₂.optIn (ι₁ y) (ι₂ (ι₁ y))) (θ₃.optIn y (ι₂ (ι₁ y))) (Subst.ok_optIn hθ₁ hO hX hw₁)
           (Subst.coh_optIn hθ₁ hc₁ hO hX) (Subst.ok_optIn hθ₂ hO hx₁ hw₂)
           (Subst.coh_optIn hθ₂ hc₂ hO hx₁) p q (hΓ.optIn y) (hΔ₁.optIn (ι₁ y)) hΔz
           (Subst.sim_optIn_comp hθ₁ hc₁ hθ₂ hc₂ hs hO hX hx₁ hw₃) φ)
       exact key (ι₃ y) hι _ _ _ _
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _ =>
+      (hyI.elim fun _ h => Ctx.witT_stage h).elim
   | _, _, _, _, _, _, _, _, _, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, _, _, _, hs,
       .here hT s t =>
       WFF.here_congr hT (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs s)

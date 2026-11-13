@@ -1087,11 +1087,15 @@ def WFF.subst {σ : Signature} : (ι : VarSymb → VarSymb) → {Γ Δ : Ctx} �
           (Subst.coh_under (Subst.ok_dia hθ hy hw) (Subst.coh_dia hθ hc hy) (hΓ.diaIn y) _
             (hΔ.diaIn (ι y)).root)
           ((hΓ.diaIn y).insert _) ((hΔ.diaIn (ι y)).insert _) Φ)
-  | ι, _, _, _, _, θ, hθ, hc, hΓ, hΔ, .optx hO y hy φ =>
-      .optx hO (ι y) (hy.elim fun X hX => WitE.wit_of (hθ.wit hO y X hX) (hc.wit hO y X hX []))
+  | ι, _, _, _, _, θ, hθ, hc, hΓ, hΔ, .optx hO .arrow y hy φ =>
+      .optx hO .arrow (ι y)
+        (hy.elim fun X hX => WitE.wit_of (hθ.wit hO y X hX) (hc.wit hO y X hX []))
         (WFF.subst ι (θ.optIn y (ι y))
           (hy.elim fun X hX => Subst.ok_optIn hθ hO hX (hc.wit hO y X hX []))
           (hy.elim fun _ hX => Subst.coh_optIn hθ hc hO hX) (hΓ.optIn y) (hΔ.optIn (ι y)) φ)
+  -- the identity kind: no identity witness exists yet (`Ctx.witT_stage`; M2 step 3)
+  | _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hy _ =>
+      (hy.elim fun _ h => Ctx.witT_stage h).elim
 
 /-! ## Substituting one root -/
 

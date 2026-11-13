@@ -310,16 +310,18 @@ theorem WFF.mono_subst {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ 
         (Subst.coh_dia hθ hc hx) (hΓ.diaIn x) (hΔ.diaIn (ι x)) (hΔ'.diaIn (ι x)) φ]
       exact congrArg (WFF.dia (ι x) _) (WFF.subst_congr _ _ _ _ _ _ _ _
         (Subst.sim_dia_mono θ h x (ι x)) φ)
-  | ι, _, _, _, _, _, h, θ, hθ, hc, hΓ, hΔ, hΔ', .optx hO y hy φ => by
+  | ι, _, _, _, _, _, h, θ, hθ, hc, hΓ, hΔ, hΔ', .optx hO .arrow y hy φ => by
       obtain ⟨X, hX⟩ := hy
       have hw : (θ.wit y).idxAlong [] = ι y := hc.wit hO y X hX []
-      change WFF.optx hO (ι y) _ (WFF.mono (h.optIn (ι y)) (WFF.subst ι (θ.optIn y (ι y))
+      change WFF.optx hO .arrow (ι y) _ (WFF.mono (h.optIn (ι y)) (WFF.subst ι (θ.optIn y (ι y))
         (Subst.ok_optIn hθ hO hX hw) (Subst.coh_optIn hθ hc hO hX) (hΓ.optIn y) (hΔ.optIn (ι y))
         φ)) = _
       rw [WFF.mono_subst (h.optIn (ι y)) (θ.optIn y (ι y)) (Subst.ok_optIn hθ hO hX hw)
         (Subst.coh_optIn hθ hc hO hX) (hΓ.optIn y) (hΔ.optIn (ι y)) (hΔ'.optIn (ι y)) φ]
-      exact congrArg (WFF.optx hO (ι y) _) (WFF.subst_congr _ _ _ _ _ _ _ _
+      exact congrArg (WFF.optx hO .arrow (ι y) _) (WFF.subst_congr _ _ _ _ _ _ _ _
         (Subst.sim_optIn_mono θ h y (ι y)) φ)
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _ =>
+      (hyI.elim fun _ h => Ctx.witT_stage h).elim
   | ι, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .here hT s t =>
       WFF.here_congr' hT (Term.mono_subst h θ hθ hc s) (Term.mono_subst h θ hθ hc t)
   | ι, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .back hB L s t =>

@@ -59,7 +59,7 @@ def boxConj {c : WFF σ Γ.boxIn 0} : (a : WFF σ Γ 0) → c ∈ a.boxConjs →
   | .atom _, h | .eq _ _, h | .top, h | .bot, h | .and _ _, h | .or _ _, h | .imp _ _, h
   | .all _ _, h | .ex _ _, h | .dia _ _ _, h | .here _ _ _, h | .back _ _ _ _, h
   | .retS _ _ _ _, h | .retxS _ _ _ _ _ _, h | .link _ _ _ _, h | .linkx _ _ _ _ _ _, h
-  | .optx _ _ _ _, h => absurd h List.not_mem_nil
+  | .optx _ _ _ _ _, h => absurd h List.not_mem_nil
 
 /-- ⭐The hypotheses prove the box of each conjunct under a box among them. -/
 def boxedConj : (E : List (WFF σ Γ 0)) → {c : WFF σ Γ.boxIn 0} →
@@ -81,10 +81,10 @@ theorem witEq_mono {σ : Signature} {d : ℕ} (hO : ModalSys.Opt = true) {Δ Δ'
     WFF.mono hle (witEq hO X hz hz' c c' : WFF σ Δ d) =
       witEq hO X (hz.imp fun _ h => hle.wit _ _ h) (hz'.imp fun _ h => hle.wit _ _ h)
         (Term.mono (hle.optIn z) c) (Term.mono (hle.optIn z') c') := by
-  change WFF.imp (WFF.or _ _) (WFF.optx _ _ _ (WFF.optx _ _ _
+  change WFF.imp (WFF.or _ _) (WFF.optx _ .arrow _ _ (WFF.optx _ .arrow _ _
     (WFF.mono ((hle.optIn z).optIn z') (eqH hO X _ _)))) = _
   rw [eqH_mono]
-  change _ = WFF.imp (WFF.or _ _) (WFF.optx _ _ _ (WFF.optx _ _ _
+  change _ = WFF.imp (WFF.or _ _) (WFF.optx _ .arrow _ _ (WFF.optx _ .arrow _ _
     (eqH hO X (Term.mono _ (Term.mono (hle.optIn z) c))
       (Term.mono _ (Term.mono (hle.optIn z') c')))))
   simp only [Term.mono_mono]

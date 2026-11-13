@@ -125,9 +125,9 @@ def Proof.optTwoFwd (hW : witEq hO X hz₁ hz₂ c₁ c₂ ∈ H) {χ₁ : WFF �
     (inner : Proof σ ((G.optIn z₁).optIn z₂)
       (WFF.mono (Ctx.le_optIn _ z₂) χ₁ :: optTwoHyps hO c₁ c₂ H)
       (WFF.mono ((Ctx.le_optIn G z₁).optIn z₂) χ₂)) :
-    Proof σ G (.optx hO z₁ hz₁ χ₁ :: H) (.optx hO z₂ hz₂ χ₂) :=
+    Proof σ G (.optx hO .arrow z₁ hz₁ χ₁ :: H) (.optx hO .arrow z₂ hz₂ χ₂) :=
   -- In the doubly opened view: the contents' `≡`, `χ₁` and the outer hypotheses.
-  have stepA := Proof.K_opt (Γ := G.optIn z₁) hO z₂ hz₂ (Δ₂ := [])
+  have stepA := Proof.K_opt (Γ := G.optIn z₁) hO .arrow z₂ hz₂ (Δ₂ := [])
     (Δ₁ := χ₁ :: H.map (WFF.mono (Ctx.le_optIn G z₁)))
     (Proof.dischargeAll inner (.cons
       (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
@@ -136,24 +136,24 @@ def Proof.optTwoFwd (hW : witEq hO X hz₁ hz₂ c₁ c₂ ∈ H) {χ₁ : WFF �
           (List.mem_map_of_mem (List.mem_map_of_mem hh))))))
   -- In the view of `z₁`: from the conjunction.
   have stepB : Proof σ (G.optIn z₁)
-      ((χ₁.and (.optx hO z₂ hz₂ (eqH hO X (Term.mono (Ctx.le_optIn _ z₂) c₁)
+      ((χ₁.and (.optx hO .arrow z₂ hz₂ (eqH hO X (Term.mono (Ctx.le_optIn _ z₂) c₁)
         (Term.mono ((Ctx.le_optIn G z₁).optIn z₂) c₂)))) ::
         ([] ++ H.map (WFF.mono (Ctx.le_optIn G z₁))))
-      (WFF.mono (Ctx.le_optIn G z₁) (.optx hO z₂ hz₂ χ₂)) :=
+      (WFF.mono (Ctx.le_optIn G z₁) (.optx hO .arrow z₂ hz₂ χ₂)) :=
     .imp_elim (.imp_elim (Proof.ofSubset (fun _ h => List.mem_cons_of_mem _ h)
         (.imp_intro (.imp_intro stepA)))
       (.and_elim_l (Proof.lookup List.mem_cons_self)))
       (.and_elim_r (Proof.lookup List.mem_cons_self))
-  have stepC := Proof.opt_out hO z₁ hz₁
-    (Proof.K_opt hO z₁ hz₁ (Δ₂ := []) (Δ₁ := H) stepB)
+  have stepC := Proof.opt_out hO .arrow z₁ hz₁
+    (Proof.K_opt hO .arrow z₁ hz₁ (Δ₂ := []) (Δ₁ := H) stepB)
   -- At `G`: the conjunction, from `χ₁` and the witnesses' equality.
-  have hpres : Proof σ G (.optx hO z₁ hz₁ χ₁ :: H) (.optx hO z₁ hz₁ .top) :=
+  have hpres : Proof σ G (.optx hO .arrow z₁ hz₁ χ₁ :: H) (.optx hO .arrow z₁ hz₁ .top) :=
     Proof.ofSubset (fun _ h => by
         rw [List.mem_singleton.mp h]
         exact List.mem_cons_self)
-      (Proof.K_opt hO z₁ hz₁ (Δ₂ := []) (Δ₁ := []) (φ := .top) (ψ := χ₁) .top_intro)
+      (Proof.K_opt hO .arrow z₁ hz₁ (Δ₂ := []) (Δ₁ := []) (φ := .top) (ψ := χ₁) .top_intro)
   have hQ := Proof.imp_elim (Proof.lookup (List.mem_cons_of_mem _ hW)) (.or_intro_l _ hpres)
-  have hconj := Proof.dischargeAll (Proof.opt_fun hO z₁ hz₁ χ₁ _)
+  have hconj := Proof.dischargeAll (Proof.opt_fun hO .arrow z₁ hz₁ χ₁ _)
     (.cons (Proof.lookup List.mem_cons_self) (.cons hQ .nil))
   Proof.cut (Proof.ofSubset (List.sub_cons_cons _ _ _) stepC) hconj
 
@@ -164,11 +164,11 @@ def Proof.optTwoBwd (hW : witEq hO X hz₁ hz₂ c₁ c₂ ∈ H) {χ₁ : WFF �
     (inner : Proof σ ((G.optIn z₁).optIn z₂)
       (WFF.mono ((Ctx.le_optIn G z₁).optIn z₂) χ₂ :: optTwoHyps hO c₁ c₂ H)
       (WFF.mono (Ctx.le_optIn _ z₂) χ₁)) :
-    Proof σ G (.optx hO z₂ hz₂ χ₂ :: H) (.optx hO z₁ hz₁ χ₁) :=
+    Proof σ G (.optx hO .arrow z₂ hz₂ χ₂ :: H) (.optx hO .arrow z₁ hz₁ χ₁) :=
   let eqF : WFF σ ((G.optIn z₁).optIn z₂) 0 := eqH hO X (Term.mono (Ctx.le_optIn _ z₂) c₁)
     (Term.mono ((Ctx.le_optIn G z₁).optIn z₂) c₂)
   -- In the doubly opened view, from the conjunction of the contents' `≡` and `χ₂`.
-  have stepA := Proof.K_opt (Γ := G.optIn z₁) hO z₂ hz₂ (Δ₂ := [])
+  have stepA := Proof.K_opt (Γ := G.optIn z₁) hO .arrow z₂ hz₂ (Δ₂ := [])
     (Δ₁ := H.map (WFF.mono (Ctx.le_optIn G z₁)))
     (ψ := (eqH hO X (Term.mono (Ctx.le_optIn _ z₂) c₁)
       (Term.mono ((Ctx.le_optIn G z₁).optIn z₂) c₂)).and
@@ -178,24 +178,25 @@ def Proof.optTwoBwd (hW : witEq hO X hz₁ hz₂ c₁ c₂ ∈ H) {χ₁ : WFF �
         List.mem_cons_of_mem _ (List.mem_map_of_mem (List.mem_map_of_mem hh)))))
   -- In the view of `z₁`: `χ₁`.
   have stepB : Proof σ (G.optIn z₁)
-      (.optx hO z₂ hz₂ eqF :: ([] ++ (WFF.optx hO z₂ hz₂ χ₂ :: H).map
+      (.optx hO .arrow z₂ hz₂ eqF :: ([] ++ (WFF.optx hO .arrow z₂ hz₂ χ₂ :: H).map
         (WFF.mono (Ctx.le_optIn G z₁)))) χ₁ :=
-    Proof.opt_out (Γ := G.optIn z₁) hO z₂ hz₂ (Proof.cut (Proof.ofSubset (fun _ h => by
+    Proof.opt_out (Γ := G.optIn z₁) hO .arrow z₂ hz₂ (Proof.cut (Proof.ofSubset (fun _ h => by
         rcases List.mem_cons.mp h with rfl | h
         · exact List.mem_cons_self
         · exact List.mem_cons_of_mem _ (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ h)))
         stepA)
-      (Proof.dischargeAll (Proof.opt_fun (Γ := G.optIn z₁) hO z₂ hz₂ eqF
+      (Proof.dischargeAll (Proof.opt_fun (Γ := G.optIn z₁) hO .arrow z₂ hz₂ eqF
           (WFF.mono ((Ctx.le_optIn G z₁).optIn z₂) χ₂))
         (.cons (Proof.lookup List.mem_cons_self)
           (.cons (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self)) .nil))))
-  have stepC := Proof.K_opt hO z₁ hz₁ (Δ₂ := []) (Δ₁ := WFF.optx hO z₂ hz₂ χ₂ :: H) stepB
+  have stepC :=
+    Proof.K_opt hO .arrow z₁ hz₁ (Δ₂ := []) (Δ₁ := WFF.optx hO .arrow z₂ hz₂ χ₂ :: H) stepB
   -- At `G`: both present, from `χ₂` and the witnesses' equality.
-  have hpres : Proof σ G (.optx hO z₂ hz₂ χ₂ :: H) (.optx hO z₂ hz₂ .top) :=
+  have hpres : Proof σ G (.optx hO .arrow z₂ hz₂ χ₂ :: H) (.optx hO .arrow z₂ hz₂ .top) :=
     Proof.ofSubset (fun _ h => by
         rw [List.mem_singleton.mp h]
         exact List.mem_cons_self)
-      (Proof.K_opt hO z₂ hz₂ (Δ₂ := []) (Δ₁ := []) (φ := .top) (ψ := χ₂) .top_intro)
+      (Proof.K_opt hO .arrow z₂ hz₂ (Δ₂ := []) (Δ₁ := []) (φ := .top) (ψ := χ₂) .top_intro)
   have hQ := Proof.imp_elim (Proof.lookup (List.mem_cons_of_mem _ hW)) (.or_intro_r _ hpres)
   Proof.cut stepC hQ
 
@@ -233,7 +234,7 @@ def Proof.optCaseH {σ : Signature} (hO : ModalSys.Opt = true) {Γ : Ctx} {d : �
     {ι₁ ι₂ : VarSymb → VarSymb} (hΓ : Γ.SlotsFrom d) (hO' : ModalSys.Opt = true) (y : VarSymb)
     (hy : ∃ X, Γ.wit y = some X) (ψ : WFF σ (Γ.optIn y) d)
     (ih : SubstEqHAt hO ι₁ ι₂ (hΓ.optIn y) ψ) :
-    SubstEqHAt hO ι₁ ι₂ hΓ (.optx hO' y hy ψ) := by
+    SubstEqHAt hO ι₁ ι₂ hΓ (.optx hO' .arrow y hy ψ) := by
   intro Δ _ θ₁ θ₂ hθ₁ hθ₂ hc₁ hc₂ E hrel
   have hw₁ : (θ₁.wit y).idxAlong [] = ι₁ y := hy.elim fun X hX => hc₁.wit hO y X hX []
   have hw₂ : (θ₂.wit y).idxAlong [] = ι₂ y := hy.elim fun X hX => hc₂.wit hO y X hX []
@@ -262,9 +263,9 @@ def Proof.optCaseH {σ : Signature} (hO : ModalSys.Opt = true) {Γ : Ctx} {d : �
     have ih' := ih (Δ := Δ.optIn (ι₁ y)) (θ₁.optIn y (ι₁ y)) (θ₂.optIn y (ι₁ y)) (hok₁ hw₁)
       (hok₂ hw₂') (hcoh₁ rfl) (hcoh₂ hz) _ (Subst.eqRelH_optIn hrel hsame)
     exact (Proof.conv e₂.symm
-        (Proof.K_opt hO' (ι₁ y) (hwit₁ hw₁) (Δ₂ := []) (Δ₁ := E) ih'.1),
+        (Proof.K_opt hO' .arrow (ι₁ y) (hwit₁ hw₁) (Δ₂ := []) (Δ₁ := E) ih'.1),
       Proof.castHyps (congrArg (· :: E) e₂.symm)
-        (Proof.K_opt hO' (ι₁ y) (hwit₁ hw₁) (Δ₂ := []) (Δ₁ := E) ih'.2))
+        (Proof.K_opt hO' .arrow (ι₁ y) (hwit₁ hw₁) (Δ₂ := []) (Δ₁ := E) ih'.2))
   · -- Two witness entries, related by their equality: both opened.
     cases h₁ : θ₁.wit y with
     | hide => exact False.elim (hy.elim fun X hX => by
@@ -350,14 +351,16 @@ def Proof.diaBridge {σ : Signature} (hO : ModalSys.Opt = true) {Δ : Ctx}
     (hx₂ : ∃ X, Δ.ref x₂ = some (.VTypeDia X)) {ψ₁ : WFF σ (Δ.diaIn x₁) 0}
     {ψ₂ : WFF σ (Δ.diaIn x₂) 0}
     (step : Proof σ Δ.boxIn
-      (.optx hO x₁ (Ctx.boxIn_wit_of hO hx₁) (WFF.mono (Ctx.le_diaIn_boxIn_optIn' hO hx₁) ψ₁) ::
+      (.optx hO .arrow x₁ (Ctx.boxIn_wit_of hO hx₁)
+        (WFF.mono (Ctx.le_diaIn_boxIn_optIn' hO hx₁) ψ₁) ::
         E.flatMap WFF.boxConjs)
-      (.optx hO x₂ (Ctx.boxIn_wit_of hO hx₂) (WFF.mono (Ctx.le_diaIn_boxIn_optIn' hO hx₂) ψ₂))) :
+      (.optx hO .arrow x₂ (Ctx.boxIn_wit_of hO hx₂)
+        (WFF.mono (Ctx.le_diaIn_boxIn_optIn' hO hx₂) ψ₂))) :
     Proof σ Δ (.dia x₁ hx₁ ψ₁ :: E) (.dia x₂ hx₂ ψ₂) :=
   have neg : Proof σ Δ.boxIn
-      ((WFF.optx hO x₂ (Ctx.boxIn_wit_of hO hx₂)
+      ((WFF.optx hO .arrow x₂ (Ctx.boxIn_wit_of hO hx₂)
         (WFF.mono (Ctx.le_diaIn_boxIn_optIn' hO hx₂) ψ₂)).neg :: E.flatMap WFF.boxConjs)
-      (WFF.optx hO x₁ (Ctx.boxIn_wit_of hO hx₁)
+      (WFF.optx hO .arrow x₁ (Ctx.boxIn_wit_of hO hx₁)
         (WFF.mono (Ctx.le_diaIn_boxIn_optIn' hO hx₁) ψ₁)).neg :=
     .imp_intro (.imp_elim (Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self))
       (Proof.ofSubset (List.sub_cons_cons _ _ _) step))
@@ -646,8 +649,9 @@ def Proof.substEqH {σ : Signature} (hO : ModalSys.Opt = true) : {Γ : Ctx} → 
           (Proof.boxedWith E _ _ List.mem_cons_self fun _ h => List.mem_cons_of_mem _ h))
   | _, _, _, _, hΓ, .dia x hx ψ =>
       Proof.diaCaseH hO hΓ x hx ψ (Proof.substEqH hO (hΓ.diaIn x) ψ)
-  | _, _, _, _, hΓ, .optx hO' y hy ψ =>
+  | _, _, _, _, hΓ, .optx hO' .arrow y hy ψ =>
       Proof.optCaseH hO hΓ hO' y hy ψ (Proof.substEqH hO (hΓ.optIn y) ψ)
+  | _, _, _, _, _, .optx _ .ident _ hyI _ => (hyI.elim fun _ h => Ctx.witT_stage h).elim
   | _, _, _, _, _, .here hT _ _ => fun _ _ _ _ _ _ _ _ _ _ =>
       absurd hT (by simp [ModalSys.T_false_of_opt hO])
   | _, _, _, _, _, .back hB _ _ _ => fun _ _ _ _ _ _ _ _ _ _ =>

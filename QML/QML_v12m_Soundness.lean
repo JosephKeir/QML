@@ -287,24 +287,30 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       intro M hM w env hfin hnp hΔ
       obtain ⟨_, _, _, h⟩ := ih M hM env hfin hnp hΔ
       exact h
-  | @K_opt Γ hO y hy Δ₁ Δ₂ φ ψ p ih =>
+  | @K_opt Γ hO k y hy Δ₁ Δ₂ φ ψ p ih =>
+      obtain rfl : k = .arrow := by
+        cases k <;> first | rfl | exact (hy.elim fun _ h => Ctx.witT_stage h).elim
       intro M hM w env hfin hnp hΔ
       obtain ⟨X, hX, hd, hψ⟩ := hΔ _ List.mem_cons_self
       refine ⟨X, hX, hd, ih M hM (env.optPush y hX hd) (hfin.optIn y) (hnp.optIn y)
         (hyps_cons hψ (fun χ hχ => ?_))⟩
       rcases List.mem_append.mp hχ with h₂ | h₁
-      · have hb := hΔ (WFF.optBox hO y hy χ)
+      · have hb := hΔ (WFF.optBox hO .arrow y hy χ)
           (List.mem_cons_of_mem _ (List.mem_append_left _ (List.mem_map.mpr ⟨χ, h₂, rfl⟩)))
         by_contra hne
         exact hb ⟨X, hX, hd, hne⟩
       · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₁
         have hb := hΔ χ' (List.mem_cons_of_mem _ (List.mem_append_right _ hχ'))
         exact (sat_mono (Env.agree_optPush env hX hd) χ' fun _ _ _ _ => rfl).mpr hb
-  | @opt_bot Γ Δ hO y hy p ih =>
+  | @opt_bot Γ Δ hO k y hy p ih =>
+      obtain rfl : k = .arrow := by
+        cases k <;> first | rfl | exact (hy.elim fun _ h => Ctx.witT_stage h).elim
       intro M hM w env hfin hnp hΔ
       obtain ⟨_, _, _, h⟩ := ih M hM env hfin hnp hΔ
       exact h
-  | @opt_reopen Γ Δ hO y hy ψ p ih =>
+  | @opt_reopen Γ Δ hO k y hy ψ p ih =>
+      obtain rfl : k = .arrow := by
+        cases k <;> first | rfl | exact (hy.elim fun _ h => Ctx.witT_stage h.1).elim
       intro M hM w env hfin hnp hΔ
       obtain ⟨X, hX, hXd⟩ := hy
       obtain ⟨hd, -⟩ := env.opened y X hX hXd

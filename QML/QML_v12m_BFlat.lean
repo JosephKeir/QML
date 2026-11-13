@@ -759,7 +759,7 @@ noncomputable def _root_.V12M.CtxExpr.chain : (e : CtxExpr) → e.Fresh → e.Vi
       ⟨((e.chain h hv.1).2.witness hv.2.choose_spec).choose :: (e.chain h hv.1).1.map VarType.bc,
         ((e.chain h hv.1).2.dia hv.2.choose_spec).snoc
           (pairDia _ ((e.chain h hv.1).2.witness hv.2.choose_spec).choose_spec) inferInstance⟩
-  | .optIn _ _, _, hv => absurd hv (CtxExpr.views_optIn_false ModalSys.NoOpt.noOpt)
+  | .optIn _ _ _, _, hv => absurd hv (CtxExpr.views_optIn_false ModalSys.NoOpt.noOpt)
 
 /-- ⭐**Completeness for B in every presented context** whose views are at declared
     witnesses. -/

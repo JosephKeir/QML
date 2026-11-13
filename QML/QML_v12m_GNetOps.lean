@@ -104,7 +104,7 @@ theorem Good.henk (hN : N.Good) {s : Node} (hs : N.Live s)
     | .imp (.retxS _ _ _ _ _ _) _ => exact hN
     | .imp (.link _ _ _ _) _ => exact hN
     | .imp (.linkx _ _ _ _ _ _) _ => exact hN
-    | .imp (.optx _ _ _ _) _ => exact hN
+    | .imp (.optx _ _ _ _ _) _ => exact hN
     | .imp (.all _ _) (.atom _) => exact hN
     | .imp (.all _ _) (.eq _ _) => exact hN
     | .imp (.all _ _) .top => exact hN
@@ -121,7 +121,7 @@ theorem Good.henk (hN : N.Good) {s : Node} (hs : N.Live s)
     | .imp (.all _ _) (.retxS _ _ _ _ _ _) => exact hN
     | .imp (.all _ _) (.link _ _ _ _) => exact hN
     | .imp (.all _ _) (.linkx _ _ _ _ _ _) => exact hN
-    | .imp (.all _ _) (.optx _ _ _ _) => exact hN
+    | .imp (.all _ _) (.optx _ _ _ _ _) => exact hN
     | .all _ _ => exact hN
     | .box _ => exact hN
     | .dia _ _ _ => exact hN
@@ -131,7 +131,7 @@ theorem Good.henk (hN : N.Good) {s : Node} (hs : N.Live s)
     | .retxS _ _ _ _ _ _ => exact hN
     | .link _ _ _ _ => exact hN
     | .linkx _ _ _ _ _ _ => exact hN
-    | .optx _ _ _ _ => exact hN
+    | .optx _ _ _ _ _ => exact hN
   · exact hN
 
 open Classical in
@@ -206,7 +206,7 @@ theorem henkT_ok {t : NodeSt σ} (hM : Theory.IsMCS t.M)
     | .imp (.retxS _ _ _ _ _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .imp (.link _ _ _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .imp (.linkx _ _ _ _ _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
-    | .imp (.optx _ _ _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.optx _ _ _ _ _) _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .imp (.all _ _) (.atom _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .imp (.all _ _) (.eq _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .imp (.all _ _) .top => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
@@ -223,7 +223,7 @@ theorem henkT_ok {t : NodeSt σ} (hM : Theory.IsMCS t.M)
     | .imp (.all _ _) (.retxS _ _ _ _ _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .imp (.all _ _) (.link _ _ _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .imp (.all _ _) (.linkx _ _ _ _ _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
-    | .imp (.all _ _) (.optx _ _ _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .imp (.all _ _) (.optx _ _ _ _ _) => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .all _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .box _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .dia _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
@@ -233,7 +233,7 @@ theorem henkT_ok {t : NodeSt σ} (hM : Theory.IsMCS t.M)
     | .retxS _ _ _ _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .link _ _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
     | .linkx _ _ _ _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
-    | .optx _ _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
+    | .optx _ _ _ _ _ => intro hu; subst hu; exact ⟨hM, Grows.refl _⟩
   · subst hu
     exact ⟨hM, Grows.refl _⟩
 
@@ -477,7 +477,7 @@ theorem Good.mkChild [ModalSys.NoOpt]
     | .retxS _ _ _ _ _ _ => exact hN
     | .link _ _ _ _ => exact hN
     | .linkx _ _ _ _ _ _ => exact hN
-    | .optx _ _ _ _ => exact hN
+    | .optx _ _ _ _ _ => exact hN
   · exact hN
 
 /-! ## Lifts -/

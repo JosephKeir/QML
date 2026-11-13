@@ -36,7 +36,7 @@ variable (hO) in
     must the root. -/
 def DecidesO (hO : ModalSys.Opt = true) (w : World σ N₀) : Prop :=
   ∀ m y X (hX : (w.L.base m).wit y = some X), w.L.base m (.step y .dia) = some X ∨
-    (⟨(m, 0), (WFF.optx hO y ⟨X, hX⟩ .top).neg⟩ : w.L.sys.Sentence σ) ∈ w.T
+    (⟨(m, 0), (WFF.optx hO .arrow y ⟨X, hX⟩ .top).neg⟩ : w.L.sys.Sentence σ) ∈ w.T
 
 variable {hO : ModalSys.Opt = true}
 
@@ -66,7 +66,7 @@ theorem DecidesO.stable {w : World σ N₀} (hdec : DecidesO hO w) {y : VarSymb}
   refine w.mcs.bot_not_mem (i := (max m' m, 0)) (World.mem_of_provable (Δ := [_])
     (fun ψ hψ => by rw [List.mem_singleton.mp hψ]; exact hneg') ⟨?_⟩)
   exact .imp_elim (Proof.lookup List.mem_cons_self)
-    (Proof.opt_reopen hO y ⟨X, hw, hd⟩ (ψ := .top) .top_intro)
+    (Proof.opt_reopen hO .arrow y ⟨X, hw, hd⟩ (ψ := .top) .top_intro)
 
 /-- A child that opened `x` has it opened at every stage of the parent's `□` view. -/
 theorem AccO.opened_at {w w' : World σ N₀} (h : AccO hO w w') {x : VarSymb}

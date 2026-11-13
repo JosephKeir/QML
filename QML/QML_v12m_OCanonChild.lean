@@ -97,7 +97,8 @@ structure AccO (hO : ModalSys.Opt = true) (w w' : World σ N₀) : Prop where
   wit : ∀ m y, (w'.L.base m).wit y = (bview w m).wit y
   decide : ∀ m y X (hX : (bview w m).wit y = some X),
     w'.L.base m (.step y .dia) = some X ∨
-      (⟨(m, 0), (WFF.optx hO y ⟨X, (wit m y).trans hX⟩ .top).neg⟩ : w'.L.sys.Sentence σ) ∈ w'.T
+      (⟨(m, 0), (WFF.optx hO .arrow y ⟨X, (wit m y).trans hX⟩ .top).neg⟩ :
+        w'.L.sys.Sentence σ) ∈ w'.T
   box : BoxContents w w'
 
 /-- A stage's `□` view sits in a proper successor's child stage. -/
@@ -115,13 +116,13 @@ variable (hO : ModalSys.Opt = true) [Countable σ.FuncSyms] [Countable σ.RelSym
     (`Canon.boxWorld`), whose theory decides `◇⁰_y ⊤` for every witness `y`. -/
 def present (y : VarSymb) : Prop :=
   ∃ (m : ℕ) (hy : ∃ X, (bview w m).wit y = some X),
-    (⟨(m, 0), WFF.optx hO y hy .top⟩ : (boxWorld w χ hχ).L.sys.Sentence σ) ∈
+    (⟨(m, 0), WFF.optx hO .arrow y hy .top⟩ : (boxWorld w χ hχ).L.sys.Sentence σ) ∈
       (boxWorld w χ hχ).T
 
 /-- Presence does not depend on the stage it is read at. -/
 theorem present_at {y : VarSymb} {m : ℕ} (hy : ∃ X, (bview w m).wit y = some X)
     (hp : present hO w χ hχ y) :
-    (⟨(m, 0), WFF.optx hO y hy .top⟩ : (boxWorld w χ hχ).L.sys.Sentence σ) ∈
+    (⟨(m, 0), WFF.optx hO .arrow y hy .top⟩ : (boxWorld w χ hχ).L.sys.Sentence σ) ∈
       (boxWorld w χ hχ).T := by
   obtain ⟨m₀, _, hm₀⟩ := hp
   have h₁ := (World.mem_lift (w := boxWorld w χ hχ)
@@ -187,7 +188,7 @@ theorem child_acc : AccO hO w (child hO w χ hχ) where
     by_cases hp : present hO w χ hχ y
     · exact Or.inl (Ctx.optIns_content (mem_presentList.mpr ⟨⟨X, hX⟩, hp⟩) hX)
     · right
-      have hn : (⟨(m, 0), WFF.optx hO y ⟨X, hX⟩ .top⟩ :
+      have hn : (⟨(m, 0), WFF.optx hO .arrow y ⟨X, hX⟩ .top⟩ :
           (boxWorld w χ hχ).L.sys.Sentence σ) ∉ (boxWorld w χ hχ).T :=
         fun h => hp ⟨m, ⟨X, hX⟩, h⟩
       exact child_of_first hO w χ hχ (((boxWorld w χ hχ).mcs.neg_mem_iff).mpr hn)

@@ -173,6 +173,10 @@ theorem and_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.and ψ)) : SharpSub E
     simp only [WFF.subst] at he
     obtain ⟨rfl, -⟩ := WFF.and.inj he
     exact .inst hψ₀ (WFF.SubC.sub (.and_l .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
+  case optx k _ hy _ =>
+    cases k
+    · simp only [WFF.subst] at he; cases he
+    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem and_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.and ψ)) : SharpSub E Γ ψ := by
@@ -183,6 +187,10 @@ theorem and_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.and ψ)) : SharpSub E
     simp only [WFF.subst] at he
     obtain ⟨-, rfl⟩ := WFF.and.inj he
     exact .inst hψ₀ (WFF.SubC.sub (.and_r .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
+  case optx k _ hy _ =>
+    cases k
+    · simp only [WFF.subst] at he; cases he
+    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem or_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.or ψ)) : SharpSub E Γ φ := by
@@ -193,6 +201,10 @@ theorem or_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.or ψ)) : SharpSub E �
     simp only [WFF.subst] at he
     obtain ⟨rfl, -⟩ := WFF.or.inj he
     exact .inst hψ₀ (WFF.SubC.sub (.or_l .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
+  case optx k _ hy _ =>
+    cases k
+    · simp only [WFF.subst] at he; cases he
+    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem or_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.or ψ)) : SharpSub E Γ ψ := by
@@ -203,6 +215,10 @@ theorem or_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.or ψ)) : SharpSub E �
     simp only [WFF.subst] at he
     obtain ⟨-, rfl⟩ := WFF.or.inj he
     exact .inst hψ₀ (WFF.SubC.sub (.or_r .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
+  case optx k _ hy _ =>
+    cases k
+    · simp only [WFF.subst] at he; cases he
+    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem imp_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.imp ψ)) : SharpSub E Γ φ := by
@@ -213,6 +229,10 @@ theorem imp_l {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.imp ψ)) : SharpSub E
     simp only [WFF.subst] at he
     obtain ⟨rfl, -⟩ := WFF.imp.inj he
     exact .inst hψ₀ (WFF.SubC.sub (.imp_l .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
+  case optx k _ hy _ =>
+    cases k
+    · simp only [WFF.subst] at he; cases he
+    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem imp_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.imp ψ)) : SharpSub E Γ ψ := by
@@ -223,6 +243,10 @@ theorem imp_r {φ ψ : WFF σ Γ 0} (h : SharpSub E Γ (φ.imp ψ)) : SharpSub E
     simp only [WFF.subst] at he
     obtain ⟨-, rfl⟩ := WFF.imp.inj he
     exact .inst hψ₀ (WFF.SubC.sub (.imp_r .refl) hχ) θ hθ hc hΓ₁ hΓ rfl
+  case optx k _ hy _ =>
+    cases k
+    · simp only [WFF.subst] at he; cases he
+    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem all_inst [ModalSys.NoOpt]
@@ -238,6 +262,10 @@ theorem all_inst [ModalSys.NoOpt]
     obtain rfl := eq_of_heq he
     exact .inst hψ₀ (WFF.SubC.sub (.all .refl) hχ) _ _ _ _ _
       (WFF.instantiate_subst_under θ hθ hc hΓ₁ hΓ t χ')
+  case optx k _ hy _ =>
+    cases k
+    · simp only [WFF.subst] at he; cases he
+    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem ex_inst [ModalSys.NoOpt]
@@ -253,6 +281,10 @@ theorem ex_inst [ModalSys.NoOpt]
     obtain rfl := eq_of_heq he
     exact .inst hψ₀ (WFF.SubC.sub (.ex .refl) hχ) _ _ _ _ _
       (WFF.instantiate_subst_under θ hθ hc hΓ₁ hΓ t χ')
+  case optx k _ hy _ =>
+    cases k
+    · simp only [WFF.subst] at he; cases he
+    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem all_eigen [Γ.NoSlots] {u : ℕ} {T : VarType} (hu : Γ.RootFresh (.free u))
@@ -270,6 +302,10 @@ theorem all_eigen [Γ.NoSlots] {u : ℕ} {T : VarType} (hu : Γ.RootFresh (.free
     have e := congrArg (WFF.openFree u hu Ctx.NoSlots.slots) he'
     rw [WFF.openFree_bindFree, WFF.openFree_bindFree] at e
     exact .inst hψ₀ (WFF.SubC.sub (.all .refl) hχ) _ _ _ _ _ e
+  case optx k _ hy _ =>
+    cases k
+    · simp only [WFF.subst] at he; cases he
+    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem ex_eigen [Γ.NoSlots] {u : ℕ} {T : VarType} (hu : Γ.RootFresh (.free u))
@@ -287,6 +323,10 @@ theorem ex_eigen [Γ.NoSlots] {u : ℕ} {T : VarType} (hu : Γ.RootFresh (.free 
     have e := congrArg (WFF.openFree u hu Ctx.NoSlots.slots) he'
     rw [WFF.openFree_bindFree, WFF.openFree_bindFree] at e
     exact .inst hψ₀ (WFF.SubC.sub (.ex .refl) hχ) _ _ _ _ _ e
+  case optx k _ hy _ =>
+    cases k
+    · simp only [WFF.subst] at he; cases he
+    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem weaken {δ : WFF σ Γ 0} (h : SharpSub E Γ δ) :
@@ -343,6 +383,10 @@ theorem box {φ : WFF σ Γ.boxIn 0} (h : SharpSub E Γ (WFF.box (Γ := Γ) φ))
     simp only [WFF.subst] at he
     obtain rfl := WFF.box.inj he
     exact .inst hψ₀ (WFF.SubC.sub (.box .refl) hχ) _ _ _ hΓ₁.boxIn hΓ.boxIn rfl
+  case optx k _ hy _ =>
+    cases k
+    · simp only [WFF.subst] at he; cases he
+    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem box_dia {φ : WFF σ Γ.boxIn 0} (x : VarSymb) (h : SharpSub E Γ (WFF.box (Γ := Γ) φ)) :
@@ -355,6 +399,10 @@ theorem box_dia {φ : WFF σ Γ.boxIn 0} (x : VarSymb) (h : SharpSub E Γ (WFF.b
     obtain rfl := WFF.box.inj he
     exact .inst hψ₀ (WFF.SubC.sub (.box .refl) hχ) _ _ _ hΓ₁.boxIn (hΓ.diaIn x)
       (WFF.mono_subst _ _ _ _ _ _ _ _)
+  case optx k _ hy _ =>
+    cases k
+    · simp only [WFF.subst] at he; cases he
+    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem dia {x : VarSymb} {hx : ∃ X, Γ.ref x = some (.VTypeDia X)} {φ : WFF σ (Γ.diaIn x) 0}
@@ -368,6 +416,10 @@ theorem dia {x : VarSymb} {hx : ∃ X, Γ.ref x = some (.VTypeDia X)} {φ : WFF 
       (Subst.coh_dia hθ hc hy) (hΓ₁.diaIn y) (hΓ.diaIn (ι y)) χ') at he
     obtain ⟨rfl, he⟩ := WFF.dia.inj he
     exact .inst hψ₀ (WFF.SubC.sub (.dia .refl) hχ) _ _ _ _ _ (eq_of_heq he)
+  case optx k _ hy _ =>
+    cases k
+    · simp only [WFF.subst] at he; cases he
+    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem box_keep [Γ.NoSlots] (hF : ModalSys.Four = true) {φ : WFF σ Γ.boxIn 0}
@@ -385,6 +437,10 @@ theorem box_keep [Γ.NoSlots] (hF : ModalSys.Four = true) {φ : WFF σ Γ.boxIn 
         (Ctx.shifts_boxIn_boxIn hF Γ) θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) θ.box.box
         (Subst.ok_box (Subst.ok_box hθ)) (Subst.coh_box (Subst.ok_box hθ) (Subst.coh_box hθ hc))
         hΓ₁.boxIn hΓ₁.boxIn.boxIn _ _ (Subst.shiftCorr_box_box hF hθ) χ'))
+  case optx k _ hy _ =>
+    cases k
+    · simp only [WFF.subst] at he; cases he
+    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
   all_goals (simp only [WFF.subst] at he; cases he)
 
 theorem dia_keep [Γ.NoSlots] (hF : ModalSys.Four = true) {y : VarSymb}
@@ -419,6 +475,10 @@ theorem dia_keep [Γ.NoSlots] (hF : ModalSys.Four = true) {y : VarSymb}
       (Ctx.shifts_diaIn_keep hF Γ (ι z)) (θ.dia z (ι z)) (Subst.ok_dia hθ hz hw)
       (Subst.coh_dia hθ hc hz) _ _ _ (hΓ₁.diaIn z) _ _ _
       (Subst.shiftCorr_dia_keep hF hθ hz hw) χ')
+  case optx k _ hy _ =>
+    cases k
+    · simp only [WFF.subst] at he; cases he
+    · exact (hy.elim fun _ h => Ctx.witT_stage h).elim
   all_goals (simp only [WFF.subst] at he; cases he)
 
 end SharpSub

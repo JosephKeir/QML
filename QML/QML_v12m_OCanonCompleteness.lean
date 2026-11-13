@@ -31,7 +31,9 @@ theorem CtxExpr.wit_finite : ∀ e : CtxExpr, {y | ∃ X, e.denote.wit y = some 
       change (e.denote.ref y).isSome
       rw [(Ctx.boxIn_wit.mp hX).2]
       rfl
-  | .optIn e _ => CtxExpr.wit_finite e
+  | .optIn e k y => by
+      change {z | ∃ X, (e.denote.optInK k y).wit z = some X}.Finite
+      rw [Ctx.optInK_wit]; exact CtxExpr.wit_finite e
 
 theorem Ctx.Presented.wit_finite (Γ : Ctx) [h : Γ.Presented] :
     {y | ∃ X, Γ.wit y = some X}.Finite :=
@@ -82,7 +84,7 @@ theorem completeness {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : W
     Canon.World.ofHenkin 0 L₀ (fun _ => rfl) (fun _ d n _ => hfresh d n) S₀ hS₀ none
   -- presence, as the first pass decides it
   let P : VarSymb → Prop := fun y => ∃ hy : ∃ X, Γ.wit y = some X,
-    (⟨(0, 0), WFF.optx hO y hy .top⟩ : w₁.L.sys.Sentence σ) ∈ w₁.T
+    (⟨(0, 0), WFF.optx hO .arrow y hy .top⟩ : w₁.L.sys.Sentence σ) ∈ w₁.T
   let Lr := witList Γ P
   have hlift : ∀ m : ℕ, ((0, 0) : ℕ × ℕ) ≤ (m, 0) := fun _ => ⟨Nat.zero_le _, le_rfl⟩
   -- the second pass: the present witnesses opened
@@ -128,7 +130,7 @@ theorem completeness {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : W
     by_cases hp : P y
     · exact Or.inl (Ctx.optIns_content (mem_witList.mpr ⟨⟨X, hXΓ⟩, hp⟩) hXΓ)
     · right
-      have hn : (⟨(m, 0), WFF.optx hO y ⟨X, hXΓ⟩ .top⟩ : w₁.L.sys.Sentence σ) ∉ w₁.T :=
+      have hn : (⟨(m, 0), WFF.optx hO .arrow y ⟨X, hXΓ⟩ .top⟩ : w₁.L.sys.Sentence σ) ∉ w₁.T :=
         fun h => hp ⟨⟨X, hXΓ⟩, (World.mem_lift (w := w₁) (hlift m)).mpr h⟩
       exact hfirst (w₁.mcs.neg_mem_iff.mpr hn)
   -- the canonical environment read back over `Γ`

@@ -55,7 +55,8 @@ def WFF.size {σ : Signature} : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → ℕ
   | _, _, .retxS _ _ _ S _ Φ => Φ.size + S.flat.eqRecSize + 1
   | _, _, .link _ _ _ Φ => Φ.size + 1
   | _, _, .linkx _ _ _ _ _ Φ => Φ.size + 1
-  | _, _, .optx _ _ _ φ => φ.size + 1
+  | _, _, .optx _ .arrow _ _ φ => φ.size + 1
+  | _, _, .optx _ .ident _ hyI _ => (hyI.elim fun _ h => Ctx.witT_stage h).elim
 
 /-- ⭐The size of an equality is the size of its type: nothing in `eqRec`'s clauses looks at the
     terms.  So the `here` clause of `WFF.size` above dominates the equation `Proof.here_fun`
@@ -96,7 +97,8 @@ theorem WFF.size_mono {σ : Signature} : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le
   | _, _, _, h, .link _ _ _ Φ => congrArg (· + 1) (WFF.size_mono (h.boxIn.insert _ _) Φ)
   | _, _, _, h, .linkx _ _ y _ _ Φ =>
       congrArg (· + 1) (WFF.size_mono ((h.diaIn y).insert _ _) Φ)
-  | _, _, _, h, .optx _ y _ φ => congrArg (· + 1) (WFF.size_mono (h.optIn y) φ)
+  | _, _, _, h, .optx _ .arrow y _ φ => congrArg (· + 1) (WFF.size_mono (h.optIn y) φ)
+  | _, _, _, _, .optx _ .ident _ hyI _ => (hyI.elim fun _ h => Ctx.witT_stage h).elim
 
 theorem WFF.size_subst {σ : Signature} : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ}
     (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d)
@@ -125,8 +127,10 @@ theorem WFF.size_subst {σ : Signature} : ∀ {ι : VarSymb → VarSymb} {Γ Δ 
       congrArg (· + 1) (WFF.size_subst _ _ _ _ _ Φ)
   | _, _, _, _, _, _, _, _, _, _, .linkx _ _ _ _ _ Φ =>
       congrArg (· + 1) (WFF.size_subst _ _ _ _ _ Φ)
-  | _, _, _, _, _, _, _, _, _, _, .optx _ _ _ φ =>
+  | _, _, _, _, _, _, _, _, _, _, .optx _ .arrow _ _ φ =>
       congrArg (· + 1) (WFF.size_subst _ _ _ _ _ φ)
+  | _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _ =>
+      (hyI.elim fun _ h => Ctx.witT_stage h).elim
 
 theorem WFF.size_instantiate {σ : Signature} {Γ : Ctx} {d : ℕ} (hs : Γ.SlotsFrom d) {T : VarType}
     {a : Ann T} (t : Term σ Γ T a) (φ : WFF σ (Γ.insert (.bnd d) T) (d + 1)) :
@@ -158,7 +162,7 @@ theorem WFF.size_collapse {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {
       congrArg (· + S.flat.eqRecSize + 1) (WFF.size_collapse _ _ Φ)
   | _, _, _, _, _, _, .link _ _ _ Φ => congrArg (· + 1) (WFF.size_collapse _ _ Φ)
   | _, _, _, _, _, _, .linkx _ _ _ _ _ Φ => congrArg (· + 1) (WFF.size_collapse _ _ Φ)
-  | _, _, _, _, h, _, .optx hO _ _ _ =>
+  | _, _, _, _, h, _, .optx hO _ _ _ _ =>
       False.elim (by have := ModalSys.noOpt_of_T h.hT; rw [hO] at this; cases this)
 
 theorem WFF.size_shift {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d : ℕ}
@@ -186,7 +190,7 @@ theorem WFF.size_shift {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d :
       congrArg (· + S.flat.eqRecSize + 1) (WFF.size_shift _ _ Φ)
   | _, _, _, _, _, _, .link _ _ _ Φ => congrArg (· + 1) (WFF.size_shift _ _ Φ)
   | _, _, _, _, _, _, .linkx _ _ _ _ _ Φ => congrArg (· + 1) (WFF.size_shift _ _ Φ)
-  | _, _, _, _, h, _, .optx hO _ _ _ =>
+  | _, _, _, _, h, _, .optx hO _ _ _ _ =>
       False.elim (by have := ModalSys.noOpt_of_Four h.hF; rw [hO] at this; cases this)
 
 /-- Abstracting a witness is a substitution, so it leaves the logical structure alone. -/
@@ -830,7 +834,7 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
       | retxS hB _ _ _ _ _ => exact (ModalSys.NoB.absurdStrong hB).elim
       | link hV hF _ _ => exact (ModalSys.NoB.absurdLink hV hF).elim
       | linkx hV hF _ _ _ _ => exact (ModalSys.NoB.absurdLink hV hF).elim
-      | optx hO _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
+      | optx hO _ _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
 
 /-- ⭐**The truth lemma.** -/
 theorem truth (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF σ (w.L.ctx i) 0) :

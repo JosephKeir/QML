@@ -81,7 +81,8 @@ def WFF.usubst : {Γ : Ctx} → {d : ℕ} → Γ.SlotsFrom d → WFF σ Γ d →
   | _, _, hs, .retxS hB y hy S t Φ => .retxS hB y hy S t (WFF.usubst ((hs.diaIn y).insert _) Φ)
   | _, _, hs, .link hV hF t Φ => .link hV hF t (WFF.usubst (hs.boxIn.insert _) Φ)
   | _, _, hs, .linkx hV hF y hy t Φ => .linkx hV hF y hy t (WFF.usubst ((hs.diaIn y).insert _) Φ)
-  | _, _, hs, .optx hO y hy φ => .optx hO y hy (WFF.usubst (hs.optIn y) φ)
+  | _, _, hs, .optx hO .arrow y hy φ => .optx hO .arrow y hy (WFF.usubst (hs.optIn y) φ)
+  | _, _, _, .optx _ .ident _ hyI _ => (hyI.elim fun _ h => Ctx.witT_stage h).elim
 
 end USubst
 
@@ -211,10 +212,11 @@ theorem sat_usubst : ∀ {Γ : Ctx} {d : ℕ} {w : M.frame.W} (env : M.Env Γ w)
       set_option smartUnfolding false in
       exact exists_congr fun _ => exists_congr fun h => exists_congr fun b =>
         sat_usubst ((env.diaPush y h b).extend _ _) ((hs.diaIn y).insert _) Φ
-  | _, _, _, env, hs, .optx _ y _ φ => by
+  | _, _, _, env, hs, .optx _ .arrow y _ φ => by
       set_option smartUnfolding false in
       exact exists_congr fun _ => exists_congr fun h => exists_congr fun _ =>
         sat_usubst (env.optPush y h _) (hs.optIn y) φ
+  | _, _, _, _, _, .optx _ .ident _ hyI _ => (hyI.elim fun _ h => Ctx.witT_stage h).elim
 
 set_option smartUnfolding false in
 /-- The model reading `R` as `ψ` is a model proper when `M` is. -/

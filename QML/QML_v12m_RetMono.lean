@@ -73,7 +73,7 @@ theorem WFF.collapse_mono : ∀ {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx} {d :
       simp only [WFF.collapse, WFF.mono]
       rw [WFF.collapse_mono (h.diaIn x) (h'.diaIn x) (l₁.diaIn x) (l₂.diaIn _) (hs.diaIn x)
         (hs'.diaIn x) φ]
-  | _, _, _, _, _, _, h, _, _, _, _, _, .optx hO _ _ _ =>
+  | _, _, _, _, _, _, h, _, _, _, _, _, .optx hO _ _ _ _ =>
       False.elim (by have := ModalSys.noOpt_of_T h.hT; rw [hO] at this; cases this)
   | _, _, _, _, _, _, h, h', l₁, l₂, _, _, .here hT s t =>
       WFF.here_congr' hT (Term.collapse_mono h h' l₁ l₂ s) (Term.collapse_mono h h' l₁ l₂ t)

@@ -381,7 +381,7 @@ theorem ident_aux : ∀ (w : ℕ) {Γ : Ctx} [Γ.Presented] (φ : WFF σ Γ 0) {
       | retxS hB _ _ _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)
       | link hV _ _ _ => exact absurd hV (by rw [ModalSys.GKSys.noFive]; decide)
       | linkx hV _ _ _ _ _ => exact absurd hV (by rw [ModalSys.GKSys.noFive]; decide)
-      | optx hO _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
+      | optx hO _ _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
 
 theorem ident {Γ : Ctx} [Γ.Presented] (φ : WFF σ Γ 0) {Δ Θ : List (WFF σ Γ 0)} (hΔ : φ ∈ Δ)
     (hΘ : φ ∈ Θ) : ∃ n, GK σ n Γ Δ Θ :=
@@ -564,7 +564,7 @@ theorem replaceGen {Γ₀ : Ctx} {d : ℕ} (φ : WFF σ Γ₀ d) :
   | retxS hB _ _ _ _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)
   | link hV _ _ _ _ => exact absurd hV (by rw [ModalSys.GKSys.noFive]; decide)
   | linkx hV _ _ _ _ _ _ => exact absurd hV (by rw [ModalSys.GKSys.noFive]; decide)
-  | optx hO _ _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
+  | optx hO _ _ _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
 
 /-- ⭐**Replacement**: `t = s, s = t, φ(t) ⇒ φ(s)`, for every formula `φ` with a base-type slot —
     ND's `eq_elim`. -/

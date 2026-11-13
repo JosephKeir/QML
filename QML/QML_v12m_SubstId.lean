@@ -314,11 +314,12 @@ theorem WFF.subst_id {σ : Signature} : {Δ : Ctx} → {d : ℕ} → (hθ : Subs
       refine (WFF.subst_congr _ (Subst.idS σ (Δ.diaIn x)) _ Subst.ok_idS _ Subst.coh_idS
         (hΔ.diaIn x) (hΔ.diaIn x) (Subst.sim_dia_idS x) _).trans ?_
       exact WFF.subst_id Subst.ok_idS Subst.coh_idS (hΔ.diaIn x) _
-  | Δ, _, _, _, hΔ, .optx hO y _ φ => by
-      refine congrArg (WFF.optx hO y _) ?_
+  | Δ, _, _, _, hΔ, .optx hO .arrow y _ φ => by
+      refine congrArg (WFF.optx hO .arrow y _) ?_
       refine (WFF.subst_congr _ (Subst.idS σ (Δ.optIn y)) _ Subst.ok_idS _ Subst.coh_idS
         (hΔ.optIn y) (hΔ.optIn y) (Subst.sim_optIn_idS y) _).trans ?_
       exact WFF.subst_id Subst.ok_idS Subst.coh_idS (hΔ.optIn y) _
+  | _, _, _, _, _, .optx _ .ident _ hyI _ => (hyI.elim fun _ h => Ctx.witT_stage h).elim
   | Δ, _, hθ, hc, _, .here hT s t =>
       WFF.here_congr hT
         ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc s).trans

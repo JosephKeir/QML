@@ -132,7 +132,7 @@ theorem WFF.subst_ren {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ :
           (WFF.subst_ren (hle.diaIn x) (θ.dia x x) p q _ _ (Subst.ren_dia hid x) φ
             (Subst.renW_dia hid x))
       exact key (ι x) (Subst.idx_ren hc hid hx).symm _ _ _ _
-  | ι, Γ, Δ, d, hle, θ, hθ, hc, hΓ, hΔ, hid, .optx hO y hy φ, hw => by
+  | ι, Γ, Δ, d, hle, θ, hθ, hc, hΓ, hΔ, hid, .optx hO .arrow y hy φ, hw => by
       obtain ⟨X, hX⟩ := hy
       have hιy : ι y = y := by
         have h₁ := hc.wit hO y X hX []
@@ -141,14 +141,16 @@ theorem WFF.subst_ren {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ :
       have key : ∀ (z : VarSymb) (_hz : y = z) (P : ∃ Z, Δ.wit z = some Z)
           (p : Subst.Ok (Γ.optIn y) (θ.optIn y z)) (q : Subst.Coh ι (Γ.optIn y) (θ.optIn y z))
           (hΔ' : (Δ.optIn z).SlotsFrom d),
-          WFF.optx hO z P (WFF.subst ι (θ.optIn y z) p q (hΓ.optIn y) hΔ' φ) =
-            WFF.mono hle (WFF.optx hO y ⟨X, hX⟩ φ) := by
+          WFF.optx hO .arrow z P (WFF.subst ι (θ.optIn y z) p q (hΓ.optIn y) hΔ' φ) =
+            WFF.mono hle (WFF.optx hO .arrow y ⟨X, hX⟩ φ) := by
         intro z hz P p q hΔ'
         subst hz
-        exact congrArg (WFF.optx hO y _)
+        exact congrArg (WFF.optx hO .arrow y _)
           (WFF.subst_ren (hle.optIn y) (θ.optIn y y) p q _ _ (Subst.ren_optIn hid hw hO hX) φ
             (Subst.renW_optIn hw y))
       exact key (ι y) hιy.symm _ _ _ _
+  | _, _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _, _ =>
+      (hyI.elim fun _ h => Ctx.witT_stage h).elim
   | _, _, _, _, hle, θ, hθ, hc, _, _, hid, .here hT s t, hw =>
       WFF.here_congr hT (Term.subst_ren hle θ hθ hc hid s)
         (Term.subst_ren hle θ hθ hc hid t)

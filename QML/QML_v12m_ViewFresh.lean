@@ -345,9 +345,11 @@ theorem CtxExpr.levelDepth : ∀ (e : CtxExpr), e.Fresh →
   | .diaIn e x, hf => by
       obtain ⟨d, hd, -⟩ := CtxExpr.levelDepth e hf
       exact ⟨fun r => d r + 1, Ctx.levelDepth_diaIn hd x, Ctx.witDepth_diaIn hd x⟩
-  | .optIn e y, hf => by
+  | .optIn e .arrow y, hf => by
       obtain ⟨d, hd, hw⟩ := CtxExpr.levelDepth e hf
       exact ⟨d, Ctx.levelDepth_optIn hd hw y, Ctx.witDepth_optIn hw y⟩
+  | .optIn e .ident _, hf => by
+      simp only [CtxExpr.denote, Ctx.optInK_ident]; exact CtxExpr.levelDepth e hf
 
 /-- ⭐**So a presented context never names an address at two view depths.**  This is what the
     abstraction of a `◇` view at an arbitrary address needs, and it comes from the presentation

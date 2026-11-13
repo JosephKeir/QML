@@ -557,7 +557,7 @@ theorem sat_collapse : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses k Γ
     Env.CollapseAgree h env₁ env₂ → (φ : WFF σ Γ₁ d) →
     (M.sat env₂ (WFF.collapse h hs φ) ↔ M.sat env₁ φ)
   | _, _, _, _, _, _, _, _, _, hag, .atom ρ => relSat_collapse hag ρ Fin.elim0
-  | _, _, _, h, _, _, _, _, _, _, .optx hO _ _ _ =>
+  | _, _, _, h, _, _, _, _, _, _, .optx hO _ _ _ _ =>
       False.elim (by have := ModalSys.noOpt_of_T h.hT; rw [hO] at this; cases this)
   | _, _, _, _, _, _, _, _, _, hag, .eq t s => by
       change interp _ (Term.collapse _ t) = interp _ (Term.collapse _ s) ↔ _

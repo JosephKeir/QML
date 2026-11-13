@@ -364,7 +364,7 @@ def WFF.shift {σ : Signature} : {k : ℕ} → {Γ₁ Γ₂ : Ctx} → {d : ℕ}
       .linkx hV hF (y.shift k) (hy.imp fun _ hY => h y _ hY) (Term.shift h t)
         (WFF.shift ((h.diaIn y).insert ((hs.diaIn y).rootFresh le_rfl) _)
           ((hs.diaIn y).insert _) Φ)
-  | _, _, _, _, h, _, .optx hO _ _ _ =>
+  | _, _, _, _, h, _, .optx hO _ _ _ _ =>
       False.elim (by have := ModalSys.noOpt_of_Four h.hF; rw [hO] at this; cases this)
 
 

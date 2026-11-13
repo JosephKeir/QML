@@ -282,7 +282,7 @@ theorem sat_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (�
           (env.diaPush (ι x) hr₁ ⟨w₂.1, hE.symm ▸ w₂.2⟩) φ).mpr ?_
         rw [substEnv_dia θ hθ hnp env hx hr hr₁ hw ⟨w₂.1, hE.symm ▸ w₂.2⟩ w₂.2]
         exact hsat
-  | ι, Γ, Δ, _, _, θ, hθ, hc, hΓ, hΔ, hnp, _, env, .optx hO y hy φ => by
+  | ι, Γ, Δ, _, _, θ, hθ, hc, hΓ, hΔ, hnp, _, env, .optx hO .arrow y hy φ => by
       obtain ⟨X, hX⟩ := hy
       have hw : (θ.wit y).idxAlong [] = ι y := hc.wit hO y X hX []
       obtain ⟨Z, hZ⟩ := WitE.wit_of (hθ.wit hO y X hX) hw
@@ -307,6 +307,8 @@ theorem sat_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (�
           (env.optPush (ι y) hZ (hdom.mp hd')) φ).mpr ?_
         rw [substEnv_optIn θ hθ hc hnp env hO hX hw hZ (hdom.mp hd') hd']
         exact hsat
+  | _, _, _, _, _, _, _, _, _, _, _, _, _, .optx _ .ident _ hyI _ =>
+      (hyI.elim fun _ h => Ctx.witT_stage h).elim
   | _, _, _, _, _, θ, hθ, hc, _, _, hnp, _, env, .here hT s t => by
       change Model.Realised hT (interp env (Term.subst _ θ hθ hc s))
         (interp env (Term.subst _ θ hθ hc t)) ↔ _

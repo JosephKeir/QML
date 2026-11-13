@@ -350,8 +350,8 @@ inductive WFF (σ : Signature) : Ctx → ℕ → Type where
       `◇_y φ` is `◇ ◇⁰_y φ`, and `In(y, t)` is `◇⁰_y (y.dia = t)`: `Here` along the arrow rather
       than at the identity, at every system.  A formula former over a witness name, as `dia` is over
       an address: no value of an `Opt` type exists. -/
-  | optx {Γ : Ctx} {d : ℕ} (hO : ModalSys.Opt = true) (y : VarSymb)
-      (hy : ∃ X, Γ.wit y = some X) : WFF σ (Γ.optIn y) d → WFF σ Γ d
+  | optx {Γ : Ctx} {d : ℕ} (hO : ModalSys.Opt = true) (k : WitKind) (y : VarSymb)
+      (hy : ∃ X, Γ.witK k y = some X) : WFF σ (Γ.optInK k y) d → WFF σ Γ d
 deriving DecidableEq
 
 /-- The returning possibility of a necessary object. -/
@@ -521,9 +521,9 @@ abbrev WFF.boxx {σ : Signature} {Γ : Ctx} {d : ℕ} (x : VarSymb)
   (WFF.dia x hx φ.neg).neg
 
 /-- `□⁰_y φ := ¬◇⁰_y¬φ`: if the witness `y` is present, `φ` holds of its content. -/
-abbrev WFF.optBox {σ : Signature} {Γ : Ctx} {d : ℕ} (hO : ModalSys.Opt = true) (y : VarSymb)
-    (hy : ∃ X, Γ.wit y = some X) (φ : WFF σ (Γ.optIn y) d) : WFF σ Γ d :=
-  (WFF.optx hO y hy φ.neg).neg
+abbrev WFF.optBox {σ : Signature} {Γ : Ctx} {d : ℕ} (hO : ModalSys.Opt = true) (k : WitKind)
+    (y : VarSymb) (hy : ∃ X, Γ.witK k y = some X) (φ : WFF σ (Γ.optInK k y) d) : WFF σ Γ d :=
+  (WFF.optx hO k y hy φ.neg).neg
 
 /-- ⭐Equality at every type, by extensionality, **within one fibre**: the two terms share their
     annotation.  An annotation of a fixed type varies only in its `.dia` witness indices, everything
@@ -590,8 +590,8 @@ def WFF.mono {σ : Signature} : {Γ Γ' : Ctx} → {d : ℕ} → Γ.Le Γ' → W
   | _, _, _, h, .linkx hV hF y hy t Φ =>
       .linkx hV hF y (hy.imp fun _ hY => h.ref hY) (Term.mono h t)
         (WFF.mono ((h.diaIn y).insert _ _) Φ)
-  | _, _, _, h, .optx hO y hy φ =>
-      .optx hO y (hy.imp fun _ hX => h.wit _ _ hX) (WFF.mono (h.optIn y) φ)
+  | _, _, _, h, .optx hO k y hy φ =>
+      .optx hO k y (hy.imp fun _ hX => h.witK hX) (WFF.mono (h.optInK k y) φ)
 
 /-- Weakening by a fresh root. -/
 def WFF.weaken {σ : Signature} {Γ : Ctx} {d : ℕ} {r : Root} (hr : Γ (.root r) = none)

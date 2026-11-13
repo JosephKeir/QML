@@ -134,7 +134,7 @@ theorem WFF.collapse_shift_same : ∀ {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx} {d : �
             ((hc.diaIn _).insert ((hs₂.diaIn _).rootFresh le_rfl) _) hle'
             ((hid.diaIn y).insert _ _) ((hs₁.diaIn y).insert _) ((hs₂.diaIn _).insert _) Φ)
       exact hy.elim fun _ hY => key y (hid y _ hY).symm _ _
-  | _, _, _, _, _, hs, _, _, _, _, _, .optx hO _ _ _ =>
+  | _, _, _, _, _, hs, _, _, _, _, _, .optx hO _ _ _ _ =>
       False.elim (by have := ModalSys.noOpt_of_Four hs.hF; rw [hO] at this; cases this)
 
 end CollapseShift

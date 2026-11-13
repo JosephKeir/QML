@@ -169,7 +169,8 @@ theorem CtxExpr.fin : ∀ e : CtxExpr, e.denote.Fin
   | .insertFree e u T => (CtxExpr.fin e).insert (.free u) T
   | .boxIn e => (CtxExpr.fin e).boxIn
   | .diaIn e x => (CtxExpr.fin e).diaIn x
-  | .optIn e y => (CtxExpr.fin e).optIn y
+  | .optIn e .arrow y => (CtxExpr.fin e).optIn y
+  | .optIn e .ident _ => by simp only [CtxExpr.denote, Ctx.optInK_ident]; exact CtxExpr.fin e
 
 /-- ⭐Every presented context is finite. -/
 theorem Ctx.Presented.fin (Γ : Ctx) [h : Γ.Presented] : Γ.Fin :=
@@ -237,7 +238,9 @@ theorem CtxExpr.at_none : ∀ (e : CtxExpr) (u : VarSymb), e.denote (.step u .at
       · exact CtxExpr.at_none e u
   | .boxIn _, _ => rfl
   | .diaIn _ _, _ => rfl
-  | .optIn e _, u => (Ctx.optIn_ne (fun he => by cases he)).trans (CtxExpr.at_none e u)
+  | .optIn e .arrow _, u => (Ctx.optIn_ne (fun he => by cases he)).trans (CtxExpr.at_none e u)
+  | .optIn e .ident _, u => by
+      simp only [CtxExpr.denote, Ctx.optInK_ident]; exact CtxExpr.at_none e u
 
 /-- ⭐Every presented context is tame. -/
 theorem Ctx.Presented.tame (Γ : Ctx) [h : Γ.Presented] : Γ.Tame :=

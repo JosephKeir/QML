@@ -994,7 +994,7 @@ theorem gtruth_lt :
       | retxS hB _ _ _ _ _ => exact (absBS hB).elim
       | link hV _ _ _ => exact (ModalSys.NoFive.absurdFive hV).elim
       | linkx hV _ _ _ _ _ => exact (ModalSys.NoFive.absurdFive hV).elim
-      | optx hO _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
+      | optx hO _ _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
       | and φ ψ =>
           have h₁ : φ.size < n := by simp only [WFF.size] at hφ; omega
           have h₂ : ψ.size < n := by simp only [WFF.size] at hφ; omega

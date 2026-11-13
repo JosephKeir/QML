@@ -112,17 +112,18 @@ variable {σ : Signature} (hO : ModalSys.Opt = true)
     rest). -/
 def unopen {Γ : Ctx} {y : VarSymb} (hy : ∃ X, Γ.wit y = some X) {Δ : List (WFF σ Γ 0)}
     (p : Proof σ (Γ.optIn y) (Δ.map (WFF.mono (Ctx.le_optIn Γ y))) .bot) :
-    Proof σ Γ (.optx hO y hy .top :: Δ) .bot :=
-  .opt_bot hO y hy (Proof.K_opt hO y hy (Δ₂ := []) (Δ₁ := Δ) (ψ := .top) (Proof.weak _ p))
+    Proof σ Γ (.optx hO .arrow y hy .top :: Δ) .bot :=
+  .opt_bot hO .arrow y hy
+    (Proof.K_opt hO .arrow y hy (Δ₂ := []) (Δ₁ := Δ) (ψ := .top) (Proof.weak _ p))
 
 /-- `◇⁰_y ⊤` where `y` is a witness, `⊤` otherwise: the presence of `y`. -/
 def presence {Γ : Ctx} (y : VarSymb) : WFF σ Γ 0 :=
   match hw : Γ.wit y with
-  | some X => .optx hO y ⟨X, hw⟩ .top
+  | some X => .optx hO .arrow y ⟨X, hw⟩ .top
   | none => .top
 
 theorem presence_eq {Γ : Ctx} {y : VarSymb} {X : VarType} (hw : Γ.wit y = some X) :
-    presence (σ := σ) hO (Γ := Γ) y = .optx hO y ⟨X, hw⟩ .top := by
+    presence (σ := σ) hO (Γ := Γ) y = .optx hO .arrow y ⟨X, hw⟩ .top := by
   unfold presence
   split
   · rfl
@@ -140,13 +141,13 @@ def unopens {Γ : Ctx} {Δ : List (WFF σ Γ 0)} :
   | y :: L, hL, p =>
       have hy : ∃ X, (Γ.optIns L).wit y = some X := (hL y List.mem_cons_self).imp
         fun _ h => (Ctx.optIns_wit Γ L y).trans h
-      have p' : Proof σ (Γ.optIns L) (.optx hO y hy .top ::
+      have p' : Proof σ (Γ.optIns L) (.optx hO .arrow y hy .top ::
           Δ.map (WFF.mono (Ctx.le_optIns Γ L))) .bot :=
         unopen hO hy (Proof.castHyps (by
           rw [List.map_map]
           exact List.map_congr_left fun φ _ => (WFF.mono_mono _ _ φ).symm) p)
       have hpres : WFF.mono (Ctx.le_optIns Γ L) (presence (σ := σ) hO (Γ := Γ) y) =
-          .optx hO y hy .top := by
+          .optx hO .arrow y hy .top := by
         obtain ⟨X, hX⟩ := hL y List.mem_cons_self
         rw [presence_eq hO hX]
         rfl

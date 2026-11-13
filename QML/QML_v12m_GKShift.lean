@@ -198,7 +198,7 @@ theorem WFF.shift_mono : ∀ {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx} {d : �
         (WFF.shift_mono ((h.diaIn y).insert ((hs.diaIn y).rootFresh le_rfl) _)
           ((h'.diaIn y).insert ((hs'.diaIn y).rootFresh le_rfl) _) ((l₁.diaIn y).insert _ _)
           ((l₂.diaIn _).insert _ _) ((hs.diaIn y).insert _) ((hs'.diaIn y).insert _) Φ)
-  | _, _, _, _, _, _, h, _, _, _, _, _, .optx hO _ _ _ =>
+  | _, _, _, _, _, _, h, _, _, _, _, _, .optx hO _ _ _ _ =>
       False.elim (by have := ModalSys.noOpt_of_Four h.hF; rw [hO] at this; cases this)
 
 /-- Shifting keeps the weight. -/
@@ -243,7 +243,7 @@ theorem WFF.weight_shift : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d : ℕ} (h : Ctx.
   | _, _, _, _, _, _, .linkx _ _ _ _ _ Φ => by
       simp only [WFF.shift, WFF.weight]
       rw [WFF.weight_shift _ _ Φ]
-  | _, _, _, _, h, _, .optx hO _ _ _ =>
+  | _, _, _, _, h, _, .optx hO _ _ _ _ =>
       False.elim (by have := ModalSys.noOpt_of_Four h.hF; rw [hO] at this; cases this)
 
 /-! ## Shifting a derivation -/

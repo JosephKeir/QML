@@ -1442,6 +1442,282 @@ theorem ref_insert_snd (Γ : Ctx) (r : Root) (A B : VarType) :
     (Γ.insert r (.VTypeProd A B)).ref (.step (.root r) .snd) = some B := by
   simp [Ctx.ref, Ctx.insert, Step.isStruct, VarType.step]
 
+/-! ### The identity view (M2, docs §12.25–12.27) -/
+
+theorem _root_.V12M.VarType.pstep_of_step {A B : VarType} {s : Step} (h : A.step s = some B) :
+    A.pstep s = some B := by
+  cases A <;> cases s <;> simp only [VarType.step, reduceCtorEq] at h <;>
+    first
+    | exact h
+    | (split_ifs at h; exact h)
+
+/-- What `Ctx.ref` reaches, the flag-free walk reaches too. -/
+theorem refAll_of_ref (Γ : Ctx) : ∀ (y : VarSymb) {R : VarType}, Γ.ref y = some R →
+    y.refAll Γ.ty = some R
+  | .root _, _, h => h
+  | .step v s, R, h => by
+      by_cases hs : s.isStruct = true
+      · simp only [Ctx.ref, if_pos hs] at h
+        simp only [VarSymb.refAll, if_pos hs]
+        obtain ⟨U, hU, hR⟩ := Option.bind_eq_some_iff.mp h
+        rw [refAll_of_ref Γ v hU, Option.bind_some]
+        exact VarType.pstep_of_step hR
+      · simp only [Ctx.ref, if_neg hs] at h
+        simp only [VarSymb.refAll, if_neg hs]
+        exact h
+
+/-- Nothing is reachable below a root none of whose addresses is declared. -/
+theorem ref_none_of_rt {Γ : Ctx} {r : Root} (h : ∀ v, v.rt = r → Γ v = none) :
+    ∀ y : VarSymb, y.rt = r → Γ.ref y = none
+  | .root _, hy => h _ hy
+  | .step v s, hy => by
+      by_cases hs : s.isStruct = true
+      · simp only [Ctx.ref, if_pos hs, ref_none_of_rt h v hy, Option.bind_none]
+      · simp only [Ctx.ref, if_neg hs]
+        exact h _ hy
+
+/-- ⭐**Identity witnesses** (M2, docs §12.25): under T with `Opt`, every reachable possible object
+    `y : ◇X` can be asked about at the identity arrow, its content there of type `X`.  Derived from
+    the context, not stored: the identity arrow belongs to every world. -/
+def witT (Γ : Ctx) (y : VarSymb) : Option VarType :=
+  if ModalSys.T = true ∧ ModalSys.Opt = true then
+    match Γ.ref y with
+    | some (.VTypeDia X) => some X
+    | _ => none
+  else none
+
+theorem witT_spec {Γ : Ctx} {y : VarSymb} {X : VarType} (h : Γ.witT y = some X) :
+    ModalSys.T = true ∧ ModalSys.Opt = true ∧ Γ.ref y = some (.VTypeDia X) := by
+  unfold witT at h
+  split_ifs at h with hTO
+  refine ⟨hTO.1, hTO.2, ?_⟩
+  split at h
+  · rename_i hr
+    cases h
+    exact hr
+  · cases h
+
+theorem witT_of {Γ : Ctx} {y : VarSymb} {X : VarType} (hT : ModalSys.T = true)
+    (hO : ModalSys.Opt = true) (h : Γ.ref y = some (.VTypeDia X)) : Γ.witT y = some X := by
+  unfold witT
+  rw [if_pos ⟨hT, hO⟩, h]
+
+theorem Le.witT {Γ Γ' : Ctx} (h : Γ.Le Γ') {y : VarSymb} {X : VarType}
+    (hy : Γ.witT y = some X) : Γ'.witT y = some X := by
+  obtain ⟨hT, hO, hr⟩ := witT_spec hy
+  exact witT_of hT hO (h.ref hr)
+
+/-- For now (`ModalSys.optStage`: T is off with `Opt` on) no identity witness exists; M2 step 3
+    lifts this. -/
+theorem witT_stage {Γ : Ctx} {y : VarSymb} {X : VarType} (h : Γ.witT y = some X) : False := by
+  obtain ⟨hT, hO, -⟩ := witT_spec h
+  have := ModalSys.optStage hO
+  simp [hT] at this
+
+/-- The declarations of the identity view of `y`. -/
+def optInTTy (Γ : Ctx) (y v : VarSymb) : Option VarType :=
+  if v = .step y .at then
+    match Γ.witT y with
+    | some X => some X
+    | none => Γ v
+  else Γ v
+
+/-- The identity view keeps every declaration: a declared identity content is the content
+    already (`Ctx.at_coh`). -/
+theorem optInT_ty_le (Γ : Ctx) (y v : VarSymb) {U : VarType} (hv : Γ v = some U) :
+    Γ.optInTTy y v = some U := by
+  unfold optInTTy
+  by_cases hc : v = .step y .at
+  · subst hc
+    rw [if_pos rfl]
+    cases hw : Γ.witT y with
+    | none => exact hv
+    | some X =>
+        obtain ⟨-, -, hr⟩ := witT_spec hw
+        have h₁ := Γ.at_coh y U hv
+        rw [refAll_of_ref Γ y hr] at h₁
+        cases h₁
+        rfl
+  · rw [if_neg hc]; exact hv
+
+/-- ⭐**The identity view of `y`** (`WFF.optx` at the identity kind, M2): the same world, with `y`'s
+    content at the identity arrow declared at `y.at`.  Its type is `y`'s possibility's content, so
+    a declared `y.at` agrees with it already (`Ctx.at_coh`) and `Γ` sits inside the view
+    (`Ctx.le_optInT`). -/
+def optInT (Γ : Ctx) (y : VarSymb) : Ctx where
+  ty := Γ.optInTTy y
+  wit := Γ.wit
+  wit_dia y' X h := by
+    unfold optInTTy
+    rw [if_neg (show VarSymb.step y' .dia ≠ .step y .at from fun he => by cases he)]
+    exact Γ.wit_dia y' X h
+  at_coh z T h := by
+    have hmono : ∀ {R : VarType}, z.refAll Γ.ty = some R → z.refAll (Γ.optInTTy y) = some R :=
+      fun hr => VarSymb.refAll_mono (fun v U hv => optInT_ty_le Γ y v hv) z hr
+    unfold optInTTy at h
+    by_cases hz : z = y
+    · subst hz
+      rw [if_pos rfl] at h
+      cases hw : Γ.witT z with
+      | none =>
+          rw [hw] at h
+          exact hmono (Γ.at_coh z T h)
+      | some X =>
+          rw [hw] at h
+          cases h
+          exact hmono (refAll_of_ref Γ z (witT_spec hw).2.2)
+    · rw [if_neg (fun he => hz (VarSymb.step.inj he).1)] at h
+      exact hmono (Γ.at_coh z T h)
+
+/-- For now (`Ctx.witT_stage`) the identity view of any address is the context itself; M2 step 3
+    lifts this. -/
+theorem optInT_stage (Γ : Ctx) (y : VarSymb) : Γ.optInT y = Γ := by
+  have hw : Γ.witT y = none := Option.eq_none_iff_forall_ne_some.mpr fun _ h => witT_stage h
+  have hty : Γ.optInTTy y = Γ.ty := funext fun v => by
+    unfold optInTTy
+    rw [hw]
+    split_ifs with h
+    · subst h; rfl
+    · rfl
+  cases Γ
+  simp only [optInT, Ctx.mk.injEq] at hty ⊢
+  exact ⟨hty, trivial⟩
+
+theorem optInT_ne {Γ : Ctx} {y v : VarSymb} (hv : v ≠ .step y .at) : Γ.optInT y v = Γ v := by
+  simp [optInT, optInTTy, hv]
+
+/-- The content of the identity witness `y`, in its view. -/
+theorem optInT_content {Γ : Ctx} {y : VarSymb} {X : VarType} (h : Γ.witT y = some X) :
+    Γ.optInT y (.step y .at) = some X := by
+  simp [optInT, optInTTy, h]
+
+theorem optInT_content_none {Γ : Ctx} {y : VarSymb} (hw : Γ.witT y = none) :
+    Γ.optInT y (.step y .at) = Γ (.step y .at) := by
+  simp [optInT, optInTTy, hw]
+
+/-- ⭐A context sits inside the identity view of any address. -/
+theorem le_optInT (Γ : Ctx) (y : VarSymb) : Γ.Le (Γ.optInT y) :=
+  ⟨fun v _ hv => optInT_ty_le Γ y v hv, fun _ _ hy => hy⟩
+
+theorem Le.optInT {Γ Γ' : Ctx} (h : Γ.Le Γ') (y : VarSymb) : (Γ.optInT y).Le (Γ'.optInT y) := by
+  refine ⟨fun v T hv => ?_, h.wit⟩
+  by_cases hc : v = .step y .at
+  · subst hc
+    cases hw : Γ.witT y with
+    | none =>
+        rw [optInT_content_none hw] at hv
+        exact le_optInT Γ' y _ _ (h _ _ hv)
+    | some X =>
+        rw [optInT_content hw] at hv
+        cases hv
+        exact optInT_content (h.witT hw)
+  · rw [optInT_ne hc] at hv ⊢
+    exact h _ _ hv
+
+theorem SlotsFrom.optInT {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) (y : VarSymb) :
+    (Γ.optInT y).SlotsFrom d := by
+  refine ⟨fun v n hv hn => ?_, h.wit⟩
+  by_cases hc : v = .step y .at
+  · subst hc
+    have hw : Γ.witT y = none := by
+      cases hw : Γ.witT y with
+      | none => rfl
+      | some X =>
+          have hr := (witT_spec hw).2.2
+          rw [ref_none_of_rt (fun v hv' => h v n hv' hn) y hv] at hr
+          cases hr
+    rw [optInT_content_none hw]
+    exact h _ n hv hn
+  · rw [optInT_ne hc]
+    exact h v n hv hn
+
+instance {Γ : Ctx} [h : Γ.NoSlots] {y : VarSymb} : (Γ.optInT y).NoSlots := ⟨h.slots.optInT y⟩
+
+theorem RootFresh.optInT {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) (y : VarSymb) :
+    (Γ.optInT y).RootFresh r := by
+  refine ⟨fun v hv => ?_, h.wit⟩
+  by_cases hc : v = .step y .at
+  · subst hc
+    have hw : Γ.witT y = none := by
+      cases hw : Γ.witT y with
+      | none => rfl
+      | some X =>
+          have hr := (witT_spec hw).2.2
+          rw [ref_none_of_rt h.ty y hv] at hr
+          cases hr
+    rw [optInT_content_none hw]
+    exact h _ hv
+  · rw [optInT_ne hc]
+    exact h v hv
+
+end Ctx
+
+/-- ⭐**Which arrow a witness is asked about along** (M2, docs §12.25): the arrow just taken
+    (`y.dia`, the witnesses `Ctx.wit` of a view) or, under T, the identity arrow (`y.at`, the
+    witnesses `Ctx.witT`, every possible object in view). -/
+inductive WitKind where
+  | arrow
+  | ident
+deriving DecidableEq
+
+/-- The step declaring a witness's content at its kind's arrow. -/
+def WitKind.step : WitKind → Step
+  | .arrow => .dia
+  | .ident => .at
+
+namespace Ctx
+
+/-- The witnesses of a kind. -/
+def witK (Γ : Ctx) : WitKind → VarSymb → Option VarType
+  | .arrow, y => Γ.wit y
+  | .ident, y => Γ.witT y
+
+/-- The view of a witness of a kind: `Ctx.optIn` along the arrow, `Ctx.optInT` at the identity. -/
+def optInK (Γ : Ctx) : WitKind → VarSymb → Ctx
+  | .arrow, y => Γ.optIn y
+  | .ident, y => Γ.optInT y
+
+theorem Le.witK {Γ Γ' : Ctx} (h : Γ.Le Γ') {k : WitKind} {y : VarSymb} {X : VarType}
+    (hy : Γ.witK k y = some X) : Γ'.witK k y = some X := by
+  cases k
+  · exact h.wit y X hy
+  · exact h.witT hy
+
+theorem le_optInK (Γ : Ctx) : ∀ (k : WitKind) (y : VarSymb), Γ.Le (Γ.optInK k y)
+  | .arrow, y => le_optIn Γ y
+  | .ident, y => le_optInT Γ y
+
+theorem Le.optInK {Γ Γ' : Ctx} (h : Γ.Le Γ') : ∀ (k : WitKind) (y : VarSymb),
+    (Γ.optInK k y).Le (Γ'.optInK k y)
+  | .arrow, y => h.optIn y
+  | .ident, y => h.optInT y
+
+theorem SlotsFrom.optInK {Γ : Ctx} {d : ℕ} (h : Γ.SlotsFrom d) :
+    ∀ (k : WitKind) (y : VarSymb), (Γ.optInK k y).SlotsFrom d
+  | .arrow, y => h.optIn y
+  | .ident, y => h.optInT y
+
+instance {Γ : Ctx} [h : Γ.NoSlots] {k : WitKind} {y : VarSymb} : (Γ.optInK k y).NoSlots :=
+  ⟨h.slots.optInK k y⟩
+
+theorem RootFresh.optInK {Γ : Ctx} {r : Root} (h : Γ.RootFresh r) :
+    ∀ (k : WitKind) (y : VarSymb), (Γ.optInK k y).RootFresh r
+  | .arrow, y => h.optIn y
+  | .ident, y => h.optInT y
+
+theorem optInK_wit (Γ : Ctx) : ∀ (k : WitKind) (y : VarSymb), (Γ.optInK k y).wit = Γ.wit
+  | .arrow, _ => rfl
+  | .ident, _ => rfl
+
+/-- For now the identity view is the context itself (`Ctx.optInT_stage`). -/
+theorem optInK_ident (Γ : Ctx) (y : VarSymb) : Γ.optInK .ident y = Γ := optInT_stage Γ y
+
+/-- The witness's content in its view, at its kind's step. -/
+theorem optInK_content {Γ : Ctx} : ∀ {k : WitKind} {y : VarSymb} {X : VarType},
+    Γ.witK k y = some X → Γ.optInK k y (.step y k.step) = some X
+  | .arrow, _, _, h => optIn_content h
+  | .ident, _, _, h => optInT_content h
+
 end Ctx
 
 end V12M

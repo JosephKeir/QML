@@ -3215,7 +3215,7 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw
       .dia_bot (ι x) hwx (Proof.subst p θ hθ hc hΓ)
   | _, _, _, .D_box hD p, _, _, _, θ, hθ, hc, hΓ => .D_box hD (Proof.subst p θ hθ hc hΓ)
-  | _, _, _, @Proof.K_opt _ _ _ hO y hy Δ₁ Δ₂ φ ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.K_opt _ _ _ hO .arrow y hy Δ₁ Δ₂ φ ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hwy : ∃ X, Γ'.wit (ι y) = some X :=
         hy.elim fun X hX => WitE.wit_of (hθ.wit hO y X hX) (hc.wit hO y X hX [])
       have hθy := hy.elim fun X hX => Subst.ok_optIn hθ hO hX (hc.wit hO y X hX [])
@@ -3225,7 +3225,7 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         (by
           simp only [List.map_cons, List.map_append, List.map_map]
           rfl)
-        (Proof.K_opt (Γ := Γ') hO (ι y) hwy
+        (Proof.K_opt (Γ := Γ') hO .arrow (ι y) hwy
           (Δ₁ := Δ₁.map (WFF.subst ι θ hθ hc hΓ Ctx.NoSlots.slots))
           (Δ₂ := Δ₂.map (WFF.subst ι (θ.optIn y (ι y)) hθy hcy (hΓ.optIn y) Ctx.NoSlots.slots))
           (Proof.castHyps
@@ -3236,18 +3236,25 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
               exact List.map_congr_left fun χ _ =>
                 WFF.subst_optIn_mono θ hθ hc hO hX hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots χ)
             ih))
-  | _, _, _, .opt_bot hO y hy p, _, _, ι, θ, hθ, hc, hΓ =>
-      .opt_bot hO (ι y) (hy.elim fun X hX => WitE.wit_of (hθ.wit hO y X hX) (hc.wit hO y X hX []))
+  | _, _, _, @Proof.K_opt _ _ _ _ .ident _ hy _ _ _ _ _, _, _, _, _, _, _, _ =>
+      (hy.elim fun _ h => Ctx.witT_stage h).elim
+  | _, _, _, .opt_bot hO .arrow y hy p, _, _, ι, θ, hθ, hc, hΓ =>
+      .opt_bot hO .arrow (ι y)
+        (hy.elim fun X hX => WitE.wit_of (hθ.wit hO y X hX) (hc.wit hO y X hX []))
         (Proof.subst p θ hθ hc hΓ)
-  | _, _, _, @Proof.opt_reopen _ _ _ _ hO y hy ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, .opt_bot _ .ident _ hy _, _, _, _, _, _, _, _ =>
+      (hy.elim fun _ h => Ctx.witT_stage h).elim
+  | _, _, _, @Proof.opt_reopen _ _ _ _ hO .arrow y hy ψ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       Proof.conv
         (by
           obtain ⟨X, hX, hXd⟩ := hy
-          exact congrArg (WFF.optx hO (ι y) _)
+          exact congrArg (WFF.optx hO .arrow (ι y) _)
             (WFF.subst_optIn_mono θ hθ hc hO hX hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots ψ).symm)
-        (Proof.opt_reopen hO (ι y)
+        (Proof.opt_reopen hO .arrow (ι y)
           (hy.elim fun X h => hc.openedTo hO y X (ι y) h.1 h.2 (hc.wit hO y X h.1 []))
           (Proof.subst p θ hθ hc hΓ))
+  | _, _, _, @Proof.opt_reopen _ _ _ _ _ .ident _ hy _ _, _, _, _, _, _, _, _ =>
+      (hy.elim fun _ h => Ctx.witT_stage h.1).elim
   | _, _, _, @Proof.dia_opt _ _ _ _ hO u hu φ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hw : (θ.at u).idxAlong [] = ι u := hu.elim fun _ hX => hc u _ hX []
       have hwu : ∃ X, Γ'.ref (ι u) = some (.VTypeDia X) :=
@@ -3256,7 +3263,7 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         (by
           obtain ⟨X, hX⟩ := hu
           obtain ⟨Y, hY⟩ := hwu
-          exact congrArg (fun χ => (WFF.box (WFF.optx hO (ι u) _ χ).neg).neg)
+          exact congrArg (fun χ => (WFF.box (WFF.optx hO .arrow (ι u) _ χ).neg).neg)
             (WFF.subst_diaOpt_mono θ hθ hc hO hX hw hY hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots
               φ).symm)
         (Proof.dia_opt hO (ι u) hwu (Proof.subst p θ hθ hc hΓ))
@@ -3268,7 +3275,7 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         (by
           obtain ⟨X, hX⟩ := hu
           obtain ⟨Y, hY⟩ := hwu
-          exact congrArg (fun χ => (WFF.box (WFF.optx hO (ι u) _ χ).neg).neg)
+          exact congrArg (fun χ => (WFF.box (WFF.optx hO .arrow (ι u) _ χ).neg).neg)
             (WFF.subst_diaOpt_mono θ hθ hc hO hX hw hY hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots φ))
         (Proof.subst p θ hθ hc hΓ))
   | _, _, _, .D_ex hDS, _, _, _, _, _, _, _ => .D_ex hDS
