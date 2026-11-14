@@ -246,6 +246,7 @@ theorem indInvariant_relSwap [ModalSys.NoOpt] (hM : M.IndInvariant) :
     · intro hT hF A w ℓ S n hS hc hsh; exact (hM.ret hB).keep hT hF n hS hc hsh
   posSide_side := hM.posSide_side
   posSide_loop := hM.posSide_loop
+  eq_of_opt := fun hO => absurd hO (by rw [show ModalSys.Opt = false by opt_off]; decide)
 
 end Model
 

@@ -239,6 +239,7 @@ theorem indInvariant (hRC : ModalSys.BStrong = true → B.model.RetCongr) :
   ret := hRC
   posSide_side hV := (ModalSys.NoFour.absurdFive hV).elim
   posSide_loop hV := (ModalSys.NoFour.absurdFive hV).elim
+  eq_of_opt := fun hO => absurd hO (by rw [show ModalSys.Opt = false by opt_off]; decide)
 
 end BData
 

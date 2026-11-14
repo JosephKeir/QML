@@ -226,27 +226,36 @@ theorem ModalSys.keepOnly_flags [ModalSys] (hk : ModalSys.keepOnly = true) :
     ModalSys.T = true ∧ ModalSys.Four = true := by
   simpa [ModalSys.keepOnly] using hk
 
-/-- Possible objects carry a **shape** (their semantic annotation, docs §10.27) under T or strong B:
+/-- Possible objects carry a **shape** (their semantic annotation, docs §10.27) under T or strong B,
+    **with `Opt` off**:
     T's `extract` and strong B's round trips both read a possibility back at its origin, so both
     need to know where the possibilities inside an object come from (§11.15, phase L3). -/
-def ModalSys.shaped [ModalSys] : Bool := ModalSys.T || ModalSys.BStrong
+def ModalSys.shaped [ModalSys] : Bool := (ModalSys.T || ModalSys.BStrong) && !ModalSys.Opt
 
-theorem ModalSys.shaped_of_T [ModalSys] (hT : ModalSys.T = true) : ModalSys.shaped = true := by
-  simp [ModalSys.shaped, hT]
+theorem ModalSys.shaped_of_T [ModalSys] (hT : ModalSys.T = true)
+    (hO : ModalSys.Opt = false := by opt_off) : ModalSys.shaped = true := by
+  simp [ModalSys.shaped, hT, hO]
 
 theorem ModalSys.shaped_of_BStrong [ModalSys] (hB : ModalSys.BStrong = true) :
     ModalSys.shaped = true := by
-  simp [ModalSys.shaped, hB]
+  simp [ModalSys.shaped, hB, ModalSys.noOpt_of_BStrong hB]
 
-/-- Without T, shapes come only from strong B, so `Opt` is off. -/
-theorem ModalSys.noOpt_of_shaped [ModalSys] (hT : ModalSys.T = false)
-    (hS : ModalSys.shaped = true) : ModalSys.Opt = false := by
-  have hB : ModalSys.BStrong = true := by simpa [ModalSys.shaped, hT] using hS
-  exact ModalSys.noOpt_of_BStrong hB
+/-- Shapes are off with `Opt` on: `≡` compares what shapes kept apart (docs §12.12, review §2). -/
+theorem ModalSys.noOpt_of_shaped [ModalSys] (hS : ModalSys.shaped = true) :
+    ModalSys.Opt = false := by
+  cases hO : ModalSys.Opt
+  · rfl
+  · simp [ModalSys.shaped, hO] at hS
+
+theorem ModalSys.shaped_false_of_opt [ModalSys] (hO : ModalSys.Opt = true) :
+    ModalSys.shaped = false := by
+  simp [ModalSys.shaped, hO]
 
 theorem ModalSys.NoB.T_of_shaped [ModalSys] [ModalSys.NoB] (h : ModalSys.shaped = true) :
     ModalSys.T = true := by
-  simpa [ModalSys.shaped, ModalSys.NoB.noBStrong] using h
+  have h' : ModalSys.T = true ∧ ModalSys.Opt = false := by
+    simpa [ModalSys.shaped, ModalSys.NoB.noBStrong] using h
+  exact h'.1
 
 /-! ## Types and steps -/
 

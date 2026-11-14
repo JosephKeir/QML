@@ -34,7 +34,7 @@ theorem interp_varTerm {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) :
 
 /-- ⭐**The value of a map applied to a term is the map applied to the value** (unshaped: the
     `interp` form of `cden_applyG`). -/
-theorem interp_applyG (hSh : ModalSys.shaped = false) :
+theorem interp_applyG [ModalSys.NoOpt] (hSh : ModalSys.shaped = false) :
     ∀ {A B : VarType} (g : GFunc σ A B) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w)
       {a : Ann A} (t : Term σ Γ A a),
       interp env (Canon.applyG g t).2 = GFunc.eval M.ops g w (interp env t)

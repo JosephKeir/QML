@@ -281,18 +281,17 @@ noncomputable def model : Model.{0, 0} σ where
     (fun hF => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim)
     (fun hT => (ModalSys.NoT.absurd hT).elim)
   posFull p := (posEvalO hO w₀ p,
-    fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped ModalSys.NoT.noT hS)).elim)
+    fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped hS)).elim)
   posFull_inj := fun h => posEvalO_injective hO w₀ (congrArg Prod.fst h)
-  posShape_wf := fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped ModalSys.NoT.noT
-      hS)).elim
+  posShape_wf := fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped hS)).elim
   ops := opsO hO w₀
   necMap_eval g _ w' := (eval_toDomO hO w₀ g w'.1 _ _).symm
   necPair_eval _ _ _ := rfl
   posMap_full g _ := Prod.ext
     (congrArg (Sigma.mk _) (funext fun w' => (eval_toDomO hO w₀ g w'.1.1 _ _).symm))
-    (funext fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped ModalSys.NoT.noT hS)).elim)
+    (funext fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped hS)).elim)
   posStrength_full _ _ := Prod.ext rfl
-    (funext fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped ModalSys.NoT.noT hS)).elim)
+    (funext fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped hS)).elim)
   necExtract_eval hT := (ModalSys.NoT.absurd hT).elim
   necDup_eval hF := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
   keepLift hF := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim

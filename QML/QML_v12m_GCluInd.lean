@@ -213,6 +213,7 @@ theorem cmodel_indInvariant (hF : ModalSys.Four = true) :
   ret := fun hS => cmodel_retCongr hM₀ hX hS
   posSide_side _ hN := absurd (hN.symm.trans hF) (by decide)
   posSide_loop _ hN := absurd (hN.symm.trans hF) (by decide)
+  eq_of_opt := fun hO => absurd hO (by rw [show ModalSys.Opt = false by opt_off]; decide)
 
 end GArrow
 

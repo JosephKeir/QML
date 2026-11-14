@@ -551,7 +551,7 @@ theorem ann_eq_of_toDom (hS : ModalSys.BStrong = true) (hInj : B.ImgInj) {s : B.
     exact toDom_inj h
   by_cases hT : ModalSys.T = true
   · exact ann_eq_of_rden_ctx hT _ _ e
-  · exact ann_eq_of_rden_ctx_noT (Bool.eq_false_iff.mpr hT) (by simp [ModalSys.shaped, hS])
+  · exact ann_eq_of_rden_ctx_noT (Bool.eq_false_iff.mpr hT) (ModalSys.shaped_of_BStrong hS)
       hInj harr _ _ e
 
 /-- Denotations equal at a common stage make the equation true there. -/

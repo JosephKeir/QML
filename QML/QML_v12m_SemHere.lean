@@ -395,6 +395,12 @@ structure IndInvariant : Prop extends M.IndCongr where
   posSide_loop : ∀ (hV : ModalSys.Five = true), ModalSys.Four = false → ModalSys.shaped = false →
     ∀ {A : VarType} {w : M.frame.W} (a : M.frame.Acc w) (q : M.frame.Pos A a.1),
       M.Ind (A := .VTypeDia A) (M.necEval (M.ops.posSide hV q) (M.frame.sideAcc hV a a)) q
+  /-- ⭐**With `Opt` on, indistinguishable objects are equal.**  The language compares possible
+      objects over different witnesses by `≡`, which is true of equal objects only, so the model
+      class with `Opt` is the one where `Ind` is identity (docs §12.4, review §2).  It is what makes
+      strong T sound with `Here` read as `◇⁰ᵀ_c (c.at ≡ t)`. -/
+  eq_of_opt : ModalSys.Opt = true → ∀ {A : VarType} {w : M.frame.W} (o o' : M.frame.Dom A w),
+    M.Ind o o' → o = o'
 
 /-- A model whose `Ind` is equality is a model proper, given that "comes back as" is a
     congruence. -/
@@ -420,6 +426,7 @@ theorem indInvariant_of_eq
   posSide_loop := fun hV hN hS {_ _} a q => by
     rw [posSide_loop_eq h hV hN hS a q]
     exact M.Ind_refl _
+  eq_of_opt := fun _ => h
 
 /-! ## What the pinned form says -/
 

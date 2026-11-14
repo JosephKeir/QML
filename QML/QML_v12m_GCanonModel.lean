@@ -42,8 +42,8 @@ theorem absShaped (h : ModalSys.shaped = true) : False := by
 
 omit [ModalSys.NoT] [ModalSys.NoOpt] in
 /-- Without B the only shaped flag is T. -/
-theorem gT_of_shaped (h : ModalSys.shaped = true) : ModalSys.T = true := by
-  simpa [ModalSys.shaped, ModalSys.NoB.noBStrong] using h
+theorem gT_of_shaped (h : ModalSys.shaped = true) : ModalSys.T = true :=
+  ModalSys.NoB.T_of_shaped h
 
 end Flags
 

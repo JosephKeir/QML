@@ -16502,3 +16502,15 @@ B, 4 and 5 are off under `optStage`.  What changed from the paper plan:
     value of `t`.  `≡` is true of equal objects, not of `Ind` ones, so this waits for the model
     class with `Opt` on (`Ind := Eq`; review §2), which is the next step anyway.
 
+**The model class with `Opt` on (review §2), built (2026-11-14).**
+* **Shapes are off with `Opt`:** `ModalSys.shaped := (T || BStrong) && !Opt`.  `shaped_of_T` takes
+  `Opt = false` (by `opt_off`); `noOpt_of_shaped` needs no T hypothesis; `shaped_false_of_opt`.
+  The ripple was small: five lemmas that unfolded the definition, and the hub's `interp_applyG`
+  (its `extract` case) now states `NoOpt`.  So a KT model with `Opt` carries no shape, and
+  `pos_inj` is extensional there.
+* **`Ind` is equality with `Opt`:** `IndInvariant.eq_of_opt : Opt = true → Ind o o' → o = o'`.  The
+  old canonical models fill it vacuously (`Opt` off); `indInvariant_of_eq` (M1's tree, the cone)
+  fills it.  Soundness for `Opt` systems may now use it.
+* *Next:* `sat_eqH` (`t ≡ s` true iff equal denotations, by type recursion, the `◇` case by the
+  extensional `pos_inj`; §12.4), then the dispatching `T_dia` and its soundness, then GK with `◇⁰`.
+

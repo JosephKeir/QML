@@ -935,6 +935,7 @@ theorem indInvariant : (model w₀).IndInvariant where
   ret hS := (ModalSys.NoB.absurdStrong hS).elim
   posSide_side hV hN := (ModalSys.NoB.absurdLink hV hN).elim
   posSide_loop hV hN := (ModalSys.NoB.absurdLink hV hN).elim
+  eq_of_opt := fun hO => absurd hO (by rw [show ModalSys.Opt = false by opt_off]; decide)
 
 end Canon
 

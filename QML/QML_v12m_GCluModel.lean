@@ -36,7 +36,9 @@ omit [ModalSys.NoOpt] in
 theorem CluFlags.T_of_shaped (hX : CluFlags) (h : ModalSys.shaped = true) : ModalSys.T = true := by
   by_cases hB : ModalSys.BStrong = true
   · exact hX.bT hB
-  · simpa [ModalSys.shaped, hB] using h
+  · have h' : ModalSys.T = true ∧ ModalSys.Opt = false := by
+      simpa [ModalSys.shaped, hB] using h
+    exact h'.1
 
 /-! ## Moving shapes between anchors -/
 

@@ -292,7 +292,7 @@ theorem interp_canonO : ∀ {Γ : Ctx} {A : VarType} {a : Ann A} (t : Term σ Γ
   | _, _, _, .diatm x hx t, w, i, e, env, hag => by
       obtain ⟨X, hr⟩ := hx
       refine (model hO w₀).pos_inj ?_
-        fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped ModalSys.NoT.noT hS)).elim
+        fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_shaped hS)).elim
       rw [Model.dia_beta env ⟨X, hr⟩ hr t]
       have hpq₀ : env.ref x hr = (canonEnvO hO w₀ w i).ref x (e.ref hr) :=
         Model.Env.ref_agree hag x hr
