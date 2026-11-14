@@ -75,6 +75,23 @@ theorem subst_keepDia (hF : ModalSys.Four = true) (φ : WFF σ Γ 0) :
     | rfl
     | exact absurd ‹ModalSys.Opt = true› (by rw [ModalSys.noOpt_of_Four hF]; decide)
 
+omit [Γ.NoSlots] in
+/-- Substitution commutes with a conclusion's fold. -/
+theorem subst_optDia (hO : ModalSys.Opt = true) (φ : WFF σ Γ 0) :
+    (WFF.optDia hO φ).map (WFF.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn
+      Ctx.NoSlots.slots) =
+    WFF.optDia hO (WFF.subst ι θ hθ hc hΓ Ctx.NoSlots.slots φ) := by
+  cases φ
+  case dia y hy θ' =>
+    obtain ⟨X, hX⟩ := id hy
+    have hw : (θ.at y).idxAlong [] = ι y := hc y _ hX []
+    obtain ⟨Y, hY⟩ := SubE.ref_witness (Subst.okRef_at hθ hX) hw
+    change [WFF.optx hO .arrow (ι y) _ _] = [WFF.optx hO .arrow (ι y) _ _]
+    exact congrArg (fun χ => [WFF.optx hO .arrow (ι y) _ χ])
+      (WFF.subst_diaOpt_mono θ hθ hc hO hX hw hY hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots θ')
+  case optx k _ _ _ => cases k <;> rfl
+  all_goals rfl
+
 theorem subst_kp4 (L : List (WFF σ Γ 0)) :
     (kp4 L).map (WFF.subst ι θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) hΓ.boxIn
       Ctx.NoSlots.slots) = kp4 (L.map (WFF.subst ι θ hθ hc hΓ Ctx.NoSlots.slots)) := by
@@ -83,7 +100,11 @@ theorem subst_kp4 (L : List (WFF σ Γ 0)) :
   · next hF =>
     rw [List.map_flatMap, List.flatMap_map]
     exact List.flatMap_congr fun φ _ => subst_keepDia θ hθ hc hΓ hF φ
-  · rfl
+  · split
+    · next hO =>
+      rw [List.map_flatMap, List.flatMap_map]
+      exact List.flatMap_congr fun φ _ => subst_optDia θ hθ hc hΓ hO φ
+    · rfl
 
 end Copies
 

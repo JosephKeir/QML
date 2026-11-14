@@ -204,7 +204,14 @@ theorem occ_kp4 {r : σ.RelSyms} {Γ : Ctx} [Γ.NoSlots] {L : List (WFF σ Γ 0)
       rw [List.mem_singleton.mp hcA] at ho
       exact ⟨_, hA, (WFF.occ_shift r _ _ θ).mp ho⟩
     all_goals exact absurd hcA List.not_mem_nil
-  · exact absurd hc List.not_mem_nil
+  · split at hc
+    · obtain ⟨A, hA, hcA⟩ := List.mem_flatMap.mp hc
+      cases A
+      case dia y hy θ =>
+        rw [List.mem_singleton.mp hcA] at ho
+        exact ⟨_, hA, (WFF.occ_mono r _ θ).mp ho⟩
+      all_goals exact absurd hcA List.not_mem_nil
+    · exact absurd hc List.not_mem_nil
 
 /-! ## Interpolants -/
 
@@ -754,15 +761,6 @@ theorem itp_exL [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (u : ℕ) (T : VarType
         (hl r ho').2⟩
 
 /-! ## The witness views -/
-
-/-- In its own view a witness is opened. -/
-theorem _root_.V12M.Ctx.opened_optInK {Γ : Ctx} {κ : WitKind} {y : VarSymb}
-    (hy : ∃ X, Γ.witK κ y = some X) :
-    ∃ X, (Γ.optInK κ y).witK κ y = some X ∧ (Γ.optInK κ y) (.step y κ.step) = some X := by
-  obtain ⟨X, hX⟩ := hy
-  cases κ with
-  | arrow => exact ⟨X, hX, Ctx.optIn_content hX⟩
-  | ident => exact ⟨X, (Ctx.le_optInT Γ y).witT hX, Ctx.optInT_content hX⟩
 
 /-- ⭐`optL`, the witness formula in the first part: the view's interpolant `χ'` leaves as
     `◇⁰_y χ'`.  On the left `optL` then `reopenR` (the witness is opened in its view); on the

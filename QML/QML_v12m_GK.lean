@@ -56,7 +56,7 @@ def WFF.weight {σ : Signature} : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → �
   | _, _, .all _ φ => φ.weight + 1
   | _, _, .ex _ φ => φ.weight + 1
   | _, _, .box φ => φ.weight + 1
-  | _, _, .dia _ _ φ => φ.weight + 1
+  | _, _, .dia _ _ φ => φ.weight + 2
   | _, _, .here _ _ _ _ => 0
   | _, _, .back _ _ _ _ => 0
   | _, _, .retS _ _ _ Φ => Φ.weight + 2
@@ -81,20 +81,37 @@ def WFF.keepDia {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = t
       (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots θ)]
   | _ => []
 
-/-- ⭐Under 4, the conclusions `◇_y θ` of a list one view further in.  Empty without 4. -/
+/-- ⭐**The fold** (`Opt`, docs §12.33): a conclusion `◇_y θ` seen from inside the view, where `y`
+    is a witness: `◇⁰_y θ`.  The bridge `◇_y = ◇ ◇⁰_y` as a copy. -/
+def WFF.optDia {σ : Signature} {Γ : Ctx} (hO : ModalSys.Opt = true) :
+    WFF σ Γ 0 → List (WFF σ Γ.boxIn 0)
+  | .dia y hy θ => [WFF.optx hO .arrow y (hy.imp fun _ h => Ctx.boxIn_wit.mpr ⟨hO, h⟩)
+      (WFF.mono (hy.elim fun _ h => Ctx.le_diaIn_boxIn_optIn hO h) θ)]
+  | _ => []
+
+/-- ⭐The conclusions `◇_y θ` of a list, one view further in: under 4 their kept copies, with
+    `Opt` their folds `◇⁰_y θ` (the two flags exclude each other), otherwise nothing. -/
 def kp4 {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (L : List (WFF σ Γ 0)) : List (WFF σ Γ.boxIn 0) :=
-  if hF : ModalSys.Four = true then L.flatMap (WFF.keepDia hF) else []
+  if hF : ModalSys.Four = true then L.flatMap (WFF.keepDia hF)
+  else if hO : ModalSys.Opt = true then L.flatMap (WFF.optDia hO) else []
 
 theorem cp4_of_not {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = false)
     (Δ₁ : List (WFF σ Γ.boxIn 0)) : cp4 Δ₁ = [] := by
   unfold cp4; rw [dif_neg (by simp [hF])]
 
 theorem kp4_of_not {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hF : ModalSys.Four = false)
-    (L : List (WFF σ Γ 0)) : kp4 L = [] := by
-  unfold kp4; rw [dif_neg (by simp [hF])]
+    (hO : ModalSys.Opt = false) (L : List (WFF σ Γ 0)) : kp4 L = [] := by
+  unfold kp4; rw [dif_neg (by simp [hF]), dif_neg (by simp [hO])]
+
+theorem kp4_of_opt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hO : ModalSys.Opt = true)
+    (L : List (WFF σ Γ 0)) : kp4 L = L.flatMap (WFF.optDia hO) := by
+  unfold kp4
+  rw [dif_neg (fun hF => by rw [ModalSys.noOpt_of_Four hF] at hO; cases hO), dif_pos hO]
 
 theorem kp4_nil {σ : Signature} {Γ : Ctx} [Γ.NoSlots] : kp4 ([] : List (WFF σ Γ 0)) = [] := by
-  unfold kp4; split <;> rfl
+  unfold kp4; split
+  · rfl
+  · split <;> rfl
 
 theorem cp4_sub {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {Δ₁ Δ₂ : List (WFF σ Γ.boxIn 0)}
     (h : Δ₁ ⊆ Δ₂) : cp4 Δ₁ ⊆ cp4 Δ₂ := by
@@ -108,7 +125,11 @@ theorem kp4_sub {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {L₁ L₂ : List (WFF 
   · intro a ha
     obtain ⟨b, hb, ha⟩ := List.mem_flatMap.mp ha
     exact List.mem_flatMap.mpr ⟨b, h hb, ha⟩
-  · exact fun _ h => h
+  · split
+    · intro a ha
+      obtain ⟨b, hb, ha⟩ := List.mem_flatMap.mp ha
+      exact List.mem_flatMap.mpr ⟨b, h hb, ha⟩
+    · exact fun _ h => h
 
 /-! ## The calculus -/
 

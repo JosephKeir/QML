@@ -16611,3 +16611,15 @@ both witness kinds:
   subformula property stated for K and KD with `Opt`.  Until then the equivalence with ND is
   stated for `Opt` off only.
 
+**§12.33, the folds built (2026-11-14, strict build green).**
+* `kp4` has an `Opt` branch: `WFF.optDia hO (◇_y θ) = [◇⁰_y θ↑]` (the same formula `diaOpt` uses).
+  `kp4_of_opt`; `kp4_of_not` now needs `Opt` off too.  `◇_u χ` weighs `χ + 2`.
+* ⭐`GKCut.copyCut`, the `Opt` branch: the cut against a fold.  The right conclusion is rebuilt in
+  the `□` view with the fold on the left (`optL`, the right premise moved along
+  `Γ.diaIn y ≤ Γ.boxIn.optIn y`, then `GK.reopenAll`, `reopenR` for a list), and the cut is on
+  the lighter `◇⁰_y θ` (`.inl`, so heights are free).  **Cut is admissible for GK with the
+  bridge folded in.**  No other reduction changed.
+* `subst_optDia` (`WFF.subst_diaOpt_mono`); `boxes_ok`'s fold case (`opt_dia`); `occ_kp4`;
+  `GSub.dia_fold`.
+* *Left:* ND into GK for the `Opt` rules, `GKSys` allowing `Opt` without 4, and the statements.
+

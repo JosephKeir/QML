@@ -282,7 +282,9 @@ theorem kp4_append {Γ : Ctx} [Γ.NoSlots] (L₁ L₂ : List (WFF σ Γ 0)) :
     kp4 (L₁ ++ L₂) = kp4 L₁ ++ kp4 L₂ := by
   unfold kp4; split
   · exact List.flatMap_append
-  · rfl
+  · split
+    · exact List.flatMap_append
+    · rfl
 
 section Copies
 

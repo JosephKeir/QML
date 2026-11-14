@@ -67,6 +67,12 @@ inductive GSub {Γ₀ : Ctx} (E : List (WFF σ Γ₀ 0)) : (Γ : Ctx) → WFF σ
       GSub E Γ (.dia y hy θ) →
       GSub E Γ.boxIn (WFF.dia (.step y .keep) (Ctx.exists_keep_dia hF hy)
         (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots θ))
+  /-- The fold of a conclusion `◇_y θ`: `◇⁰_y θ` in the view (the bridge, as a copy). -/
+  | dia_fold {Γ : Ctx} (hO : ModalSys.Opt = true) {y : VarSymb}
+      {hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)} {θ : WFF σ (Γ.diaIn y) 0} :
+      GSub E Γ (.dia y hy θ) →
+      GSub E Γ.boxIn (WFF.optx hO .arrow y (hy.imp fun _ h => Ctx.boxIn_wit.mpr ⟨hO, h⟩)
+        (WFF.mono (hy.elim fun _ h => Ctx.le_diaIn_boxIn_optIn hO h) θ))
   /-- The body of `◇⁰_y φ`, in the witness's view. -/
   | opt {Γ : Ctx} {hO : ModalSys.Opt = true} {κ : WitKind} {y : VarSymb}
       {hy : ∃ X, Γ.witK κ y = some X} {φ : WFF σ (Γ.optInK κ y) 0} :
@@ -176,6 +182,12 @@ theorem GSub.weight_le {Γ₀ : Ctx} {E : List (WFF σ Γ₀ 0)} {Γ : Ctx} {φ 
       rcases ih with h | ⟨ψ, hψ, hw⟩
       · simp [WFF.IsAtom] at h
       · exact .inr ⟨ψ, hψ, by simp only [WFF.weight] at hw; omega⟩
+  | dia_fold hO _ ih =>
+      rcases ih with h | ⟨ψ, hψ, hw⟩
+      · simp [WFF.IsAtom] at h
+      · refine .inr ⟨ψ, hψ, ?_⟩
+        simp only [WFF.weight, WFF.weight_mono'] at hw ⊢
+        omega
   | view_opt hO κ y _ ih =>
       rcases ih with h | ⟨ψ, hψ, hw⟩
       · left
@@ -215,7 +227,15 @@ theorem GSub.copies_dia {Γ₀ : Ctx} {E : List (WFF σ Γ₀ 0)} {Γ : Ctx} [Γ
       rw [List.mem_singleton.mp hcA]
       exact (h _ hA).dia_keep hF
     all_goals exact absurd hcA List.not_mem_nil
-  · exact absurd hc List.not_mem_nil
+  · split at hc
+    · next hO =>
+      obtain ⟨A, hA, hcA⟩ := List.mem_flatMap.mp hc
+      cases A
+      case dia y hy θ =>
+        rw [List.mem_singleton.mp hcA]
+        exact (h _ hA).dia_fold hO
+      all_goals exact absurd hcA List.not_mem_nil
+    · exact absurd hc List.not_mem_nil
 
 /-- Every formula of a sequent belongs to a family. -/
 def SeqIn (P : (Γ : Ctx) → WFF σ Γ 0 → Prop) (Γ : Ctx) (Δ Θ : List (WFF σ Γ 0)) : Prop :=

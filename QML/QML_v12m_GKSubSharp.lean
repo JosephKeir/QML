@@ -509,6 +509,7 @@ theorem GSub.sharp [ModalSys.NoOpt]
   | view_dia x _ ih => exact ih.mono _
   | box_keep hF _ ih => exact ih.box_keep hF
   | dia_keep hF _ ih => exact ih.dia_keep hF
+  | dia_fold hO _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
   | @opt _ hO _ _ _ _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
   | view_opt hO κ y _ ih => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
   | @reopen _ hO _ _ _ _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)

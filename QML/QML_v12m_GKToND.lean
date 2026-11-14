@@ -126,7 +126,17 @@ theorem boxes_ok [Γ.NoSlots] {H : List (WFF σ Γ 0)} {Δ₁ : List (WFF σ Γ.
         rw [List.mem_singleton.mp hCA]
         exact box_neg_keep hF y hy (lk (hΘ _ (h₃ hA)))
       all_goals exact absurd hCA List.not_mem_nil
-    · exact absurd hC List.not_mem_nil
+    · split at hC
+      · next hO =>
+        -- the fold: `¬◇_y θ` gives `□¬◇⁰_y θ`, by the bridge (`opt_dia`)
+        obtain ⟨A, hA, hCA⟩ := List.mem_flatMap.mp hC
+        cases A
+        case dia y hy θ =>
+          rw [List.mem_singleton.mp hCA]
+          exact byContra (contra (List.mem_cons_of_mem _ (hΘ _ (h₃ hA)))
+            ⟨.opt_dia hO y hy (Proof.lookup List.mem_cons_self)⟩)
+        all_goals exact absurd hCA List.not_mem_nil
+      · exact absurd hC List.not_mem_nil
 
 end NDP
 

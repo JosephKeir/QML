@@ -158,7 +158,35 @@ theorem unopen {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} {κ : WitKind} 
       (Θ.map (WFF.mono (Ctx.le_optInK Γ κ y)))) : GK σ n Γ Δ Θ :=
   ofEq (Ctx.optInK_eq_of_opened hy) _ p
 
+/-- ⭐`reopenR` for a list: where `y` is opened, formulas whose re-opened `◇⁰_y` forms are among
+    the conclusions can be dropped from them. -/
+theorem reopenAll {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hO : ModalSys.Opt = true) (κ : WitKind)
+    (y : VarSymb) (hy : ∃ X, Γ.witK κ y = some X ∧ Γ (.step y κ.step) = some X) :
+    ∀ (X : List (WFF σ Γ 0)) {Θ : List (WFF σ Γ 0)} {k : ℕ}, GK σ k Γ Δ (X ++ Θ) →
+      (∀ χ ∈ X, WFF.optx hO κ y (hy.imp fun _ h => h.1)
+        (WFF.mono (Ctx.le_optInK Γ κ y) χ) ∈ Θ) → ∃ k', GK σ k' Γ Δ Θ
+  | [], _, k, p, _ => ⟨k, p⟩
+  | χ :: X, Θ, _, p, h => by
+      obtain ⟨k', e⟩ := reopenAll hO κ y hy X (Θ := χ :: Θ)
+        (p.weaken (fun _ h => h) (fun a ha => by
+          rcases List.mem_cons.mp ha with rfl | ha
+          · exact List.mem_append_right _ List.mem_cons_self
+          · rcases List.mem_append.mp ha with ha | ha
+            · exact List.mem_append_left _ ha
+            · exact List.mem_append_right _ (List.mem_cons_of_mem _ ha)))
+        (fun χ' h' => List.mem_cons_of_mem _ (h χ' (List.mem_cons_of_mem _ h')))
+      exact ⟨_, .reopenR hO κ y hy (h χ List.mem_cons_self) e⟩
+
 end GK
+
+/-- In its own view a witness is opened. -/
+theorem Ctx.opened_optInK {Γ : Ctx} {κ : WitKind} {y : VarSymb}
+    (hy : ∃ X, Γ.witK κ y = some X) :
+    ∃ X, (Γ.optInK κ y).witK κ y = some X ∧ (Γ.optInK κ y) (.step y κ.step) = some X := by
+  obtain ⟨X, hX⟩ := hy
+  cases κ with
+  | arrow => exact ⟨X, hX, Ctx.optIn_content hX⟩
+  | ident => exact ⟨X, (Ctx.le_optInT Γ y).witT hX, Ctx.optInT_content hX⟩
 
 /-! ## Replacing an eigenvariable by a term -/
 
@@ -316,7 +344,16 @@ theorem kp4_split {Γ : Ctx} [Γ.NoSlots] {A : WFF σ Γ 0} {L Θ : List (WFF σ
     · have he := (List.mem_cons.mp (h hb)).resolve_right hbΘ
       subst he
       exact List.mem_append_left _ (List.mem_flatMap.mpr ⟨b, List.mem_singleton_self _, ha⟩)
-  · exact fun _ h => h
+  · split
+    · intro a ha
+      obtain ⟨b, hb, ha⟩ := List.mem_flatMap.mp ha
+      by_cases hbΘ : b ∈ Θ
+      · exact List.mem_append_right _
+          (List.mem_flatMap.mpr ⟨b, List.mem_filter.mpr ⟨hb, decide_eq_true hbΘ⟩, ha⟩)
+      · have he := (List.mem_cons.mp (h hb)).resolve_right hbΘ
+        subst he
+        exact List.mem_append_left _ (List.mem_flatMap.mpr ⟨b, List.mem_singleton_self _, ha⟩)
+    · exact fun _ h => h
 
 theorem kp4_drop {Γ : Ctx} [Γ.NoSlots] {A : WFF σ Γ 0} {L Θ : List (WFF σ Γ 0)}
     (h : L ⊆ A :: Θ) (hk : kp4 [A] = []) :
@@ -336,7 +373,11 @@ theorem kp4_single_ne {Γ : Ctx} [Γ.NoSlots] {A : WFF σ Γ 0} (h : kp4 [A] ≠
   · cases A
     case dia y hy θ => exact ⟨y, hy, θ, rfl⟩
     all_goals exact absurd rfl h
-  · exact absurd rfl h
+  · split at h
+    · cases A
+      case dia y hy θ => exact ⟨y, hy, θ, rfl⟩
+      all_goals exact absurd rfl h
+    · exact absurd rfl h
 
 /-! ## The induction -/
 
@@ -638,9 +679,70 @@ theorem copyCut {w s : ℕ} (ih : CutIH σ w s) {Γ V : Ctx} [Γ.Presented] [V.P
       (Θ' ++ (kp4 (Θ₂.map (WFF.dia y hy) ++ L₂)).map I.M) := by
   by_cases hF : ModalSys.Four = true
   swap
-  · rw [kp4_of_not (Bool.eq_false_iff.mpr hF), List.map_nil, List.nil_append] at hp
-    exact ⟨_, p.weaken (fun _ h => List.mem_append_left _ h)
-      (fun _ h => List.mem_append_left _ (hp h))⟩
+  · by_cases hO : ModalSys.Opt = true
+    swap
+    · rw [kp4_of_not (Bool.eq_false_iff.mpr hF) (Bool.eq_false_iff.mpr hO), List.map_nil,
+        List.nil_append] at hp
+      exact ⟨_, p.weaken (fun _ h => List.mem_append_left _ h)
+        (fun _ h => List.mem_append_left _ (hp h))⟩
+    -- `Opt`: the copy is the fold `◇⁰_y θ`.  The right conclusion in the `□` view, with the
+    -- fold on the left: open `y` there, where the right premise lives too.
+    obtain ⟨Y, hY⟩ := id hy
+    have hwy : Γ.boxIn.wit y = some Y := Ctx.boxIn_wit.mpr ⟨hO, hY⟩
+    have Lle : (Γ.diaIn y).Le (Γ.boxIn.optIn y) := Ctx.le_diaIn_boxIn_optIn hO hY
+    have hop := Ctx.opened_optInK (κ := .arrow) (y := y) ⟨Y, hwy⟩
+    have r' := r.monoCtx Lle
+    have e₁ : ((Δ₂ ++ cp4 Δ₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ y))).map (WFF.mono Lle) =
+        (Δ₂ ++ cp4 Δ₂).map (WFF.mono (Ctx.le_optIn Γ.boxIn y)) := by
+      rw [List.map_map]
+      exact List.map_congr_left fun χ _ => WFF.mono_mono _ _ χ
+    have e₂ : ((kp4 L₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ y))).map (WFF.mono Lle) =
+        (kp4 L₂).map (WFF.mono (Ctx.le_optIn Γ.boxIn y)) := by
+      rw [List.map_map]
+      exact List.map_congr_left fun χ _ => WFF.mono_mono _ _ χ
+    have e₃ : (Θ₂ ++ (kp4 L₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ y))).map (WFF.mono Lle) =
+        Θ₂.map (WFF.mono Lle) ++ (kp4 L₂).map (WFF.mono (Ctx.le_optIn Γ.boxIn y)) := by
+      rw [List.map_append, e₂]
+    rw [List.map_cons, e₁, e₃] at r'
+    obtain ⟨k, e⟩ := reopenAll hO .arrow y hop (Θ₂.map (WFF.mono Lle))
+      (Δ := WFF.mono Lle θ :: (WFF.optx hO .arrow y ⟨Y, hwy⟩ (WFF.mono Lle θ) ::
+        (Δ₂ ++ cp4 Δ₂)).map (WFF.mono (Ctx.le_optIn Γ.boxIn y)))
+      (Θ := (kp4 (Θ₂.map (WFF.dia y hy) ++ L₂)).map (WFF.mono (Ctx.le_optIn Γ.boxIn y)))
+      (r'.weaken (fun a ha => by
+          rcases List.mem_cons.mp ha with rfl | ha
+          · exact List.mem_cons_self
+          · rw [List.map_cons]
+            exact List.mem_cons_of_mem _ (List.mem_cons_of_mem _ ha))
+        (fun a ha => by
+          rcases List.mem_append.mp ha with ha | ha
+          · exact List.mem_append_left _ ha
+          · rw [kp4_append, List.map_append]
+            exact List.mem_append_right _ (List.mem_append_right _ ha)))
+      (fun χ hχ => by
+        obtain ⟨θ₂, hθ₂, rfl⟩ := List.mem_map.mp hχ
+        refine List.mem_map.mpr ⟨WFF.optx hO .arrow y ⟨Y, hwy⟩ (WFF.mono Lle θ₂), ?_, rfl⟩
+        rw [kp4_of_opt hO]
+        exact List.mem_flatMap.mpr ⟨WFF.dia y hy θ₂,
+          List.mem_append_left _ (List.mem_map_of_mem hθ₂), List.mem_singleton_self _⟩)
+    have E : GK σ (k + 1) Γ.boxIn
+        (WFF.optx hO .arrow y ⟨Y, hwy⟩ (WFF.mono Lle θ) :: (Δ₂ ++ cp4 Δ₂))
+        (kp4 (Θ₂.map (WFF.dia y hy) ++ L₂)) :=
+      .optL hO .arrow y ⟨Y, hwy⟩ List.mem_cons_self e
+    have hk : kp4 [WFF.dia y hy θ] = [WFF.optx hO .arrow y ⟨Y, hwy⟩ (WFF.mono Lle θ)] := by
+      rw [kp4_of_opt hO]; rfl
+    rw [hk, List.map_cons, List.map_nil, List.singleton_append] at hp
+    refine ih (I.M (WFF.optx hO .arrow y ⟨Y, hwy⟩ (WFF.mono Lle θ)))
+      (Δ := Δp ++ (Δ₂ ++ cp4 Δ₂).map I.M)
+      (Θ := Θ' ++ (kp4 (Θ₂.map (WFF.dia y hy) ++ L₂)).map I.M) (.inl ?_)
+      (p.weaken (fun _ h => List.mem_append_left _ h) ?_) ((I.tr E).weaken ?_ ?_)
+    · rw [I.weight, ← hw]; simp only [WFF.weight, WFF.weight_mono]; omega
+    · intro a ha
+      rcases List.mem_cons.mp (hp ha) with rfl | h
+      · exact List.mem_cons_self
+      · exact List.mem_cons_of_mem _ (List.mem_append_left _ h)
+    · rw [List.map_cons]
+      exact List.cons_subset_cons _ fun _ h => List.mem_append_right _ h
+    · exact fun _ h => List.mem_append_right _ h
   -- the right premise one view further in
   obtain ⟨Lv, hlv⟩ := Ctx.Presented.leveled (Γ.diaIn y)
   have q := r.shiftD (Ctx.shifts_diaIn_keep hF Γ y) hlv
@@ -704,7 +806,7 @@ theorem boxPrin {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] {φ : 
     (h₂ : ∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) (h₃ : L₁ ⊆ WFF.box φ :: Θ)
     (p : GK σ n' Γ.boxIn (Δ₁ ++ cp4 Δ₁) (φ :: kp4 L₁)) (lp : LeftPrin σ (WFF.box φ) m Δ Θ) :
     ∃ k, GK σ k Γ Δ Θ := by
-  have hL₁ := kp4_drop h₃ (by unfold kp4; split <;> rfl)
+  have hL₁ := kp4_drop h₃ (by unfold kp4; split <;> first | rfl | (split <;> rfl))
   have hb : ∀ {Δ₂ : List (WFF σ Γ.boxIn 0)}, ∀ χ ∈ Δ₁ ++ boxedIn Δ Δ₂, WFF.box (Γ := Γ) χ ∈ Δ :=
     fun χ hχ => (List.mem_append.mp hχ).elim (h₂ χ) fun h => boxedIn_mem h
   have hL : ∀ {L₂ : List (WFF σ Γ 0)}, L₂ ⊆ Θ →
