@@ -21,29 +21,22 @@ possible object, with one witness (`eqRelH_optIn`, `eqRelH_dia`) or two opened t
 
 namespace V12M
 
-/- M1's construction is for K and D with `Opt` on: T off (`ModalSys.NoT`) until M2 step 6
-   generalises it, so the class is in scope throughout. -/
-set_option linter.unusedSectionVars false
-
-variable [ModalSys] [ModalSys.NoT]
-
-theorem ModalSys.T_false_of_opt (_hO : ModalSys.Opt = true) : ModalSys.T = false :=
-  ModalSys.NoT.noT
+variable [ModalSys]
 
 theorem ModalSys.Four_false_of_opt (hO : ModalSys.Opt = true) : ModalSys.Four = false := by
   cases h : ModalSys.Four
   · rfl
   · exact absurd (ModalSys.noOpt_of_Four h) (by simp [hO])
 
-/-- A product type. -/
-def VarType.isProd : VarType → Bool
+/-- A type with projections: a product (`fst`, `snd`) or, under T, a box (`here`). -/
+def VarType.hasProj : VarType → Bool
   | .VTypeProd _ _ => true
+  | .VTypeBox _ => true
   | _ => false
 
-theorem VarType.isProd_of_step (hT : ModalSys.T = false) {U T : VarType} {s : Step}
-    (hs : s.isStruct = true) (hst : U.step s = some T) : U.isProd = true := by
-  cases s <;> cases U <;> (try cases hs) <;> (try cases hst) <;> (try rfl)
-  exact absurd (VarType.step_here hst).1 (by simp [hT])
+theorem VarType.hasProj_of_step {U T : VarType} {s : Step}
+    (hs : s.isStruct = true) (hst : U.step s = some T) : U.hasProj = true := by
+  cases s <;> cases U <;> (try cases hs) <;> (try cases hst) <;> rfl
 
 /-! ## Hypotheses under a box -/
 
@@ -99,16 +92,91 @@ theorem SubE.toWit_diatm {σ : Signature} {Δ : Ctx} (hO : ModalSys.Opt = true) 
     SubE.toWit (.tm (.diatm x hx b)) = WitE.tm x (Term.mono (Ctx.le_diaIn_boxIn_optIn' hO hx) b) :=
   dif_pos hO
 
+/-! ## What `≡` gives -/
+
+/-- Proofs from one hypothesis, with the hypothesis proved. -/
+def Proofs.cutOne {σ : Signature} {Γ : Ctx} {φ : WFF σ Γ 0} {Δ : List (WFF σ Γ 0)} :
+    {L : List (WFF σ Γ 0)} → Proofs σ Γ [φ] L → Proof σ Γ Δ φ → Proofs σ Γ Δ L
+  | [], .nil, _ => .nil
+  | _ :: _, .cons p ps, q => .cons (Proof.cut (Proof.weakenTail Δ p) q) (Proofs.cutOne ps q)
+
+/-- Proofs inside `□`, boxed. -/
+def Proofs.boxAll {σ : Signature} {Γ : Ctx} {φ : WFF σ Γ.boxIn 0} :
+    {L : List (WFF σ Γ.boxIn 0)} → Proofs σ Γ.boxIn [φ] L →
+      Proofs σ Γ [WFF.box φ] (L.map fun c => WFF.box (Γ := Γ) c)
+  | [], .nil => .nil
+  | _ :: _, .cons p ps => .cons (Proof.K_box p) (Proofs.boxAll ps)
+
+/-- ⭐**Every member of `eqHSat` follows from the equality**: conjuncts by `∧`-elimination, the
+    boxed ones by `K_box` inside, and the world's own reading by `T_box` and `collapse_eqH`. -/
+def Proof.eqHSatProofs {σ : Signature} (hO : ModalSys.Opt = true) : {Γ : Ctx} → [Γ.NoSlots] →
+    (T : VarType) → {a b : Ann T} → (t : Term σ Γ T a) → (s : Term σ Γ T b) →
+    Proofs σ Γ [eqH hO T t s] (eqHSat hO T t s)
+  | _, _, .VTypeProd A B, .prod _ _, .prod _ _, .pair t₁ t₂, .pair s₁ s₂ =>
+      Proofs.append
+        (Proofs.cutOne (Proof.eqHSatProofs hO A t₁ s₁)
+          (.and_elim_l (Proof.lookup List.mem_cons_self)))
+        (Proofs.cutOne (Proof.eqHSatProofs hO B t₂ s₂)
+          (.and_elim_r (Proof.lookup List.mem_cons_self)))
+  | Γ, _, .VTypeBox A, .box _, .box _, .boxtm t, .boxtm s => by
+      refine Proofs.append (Proofs.boxAll (Proof.eqHSatProofs hO A t s)) ?_
+      by_cases hT : ModalSys.T = true
+      · rw [dif_pos hT]
+        exact Proofs.cutOne (Proof.eqHSatProofs hO A _ _)
+          (Proof.conv (WFF.collapse_eqH hO _ _ A t s)
+            (Proof.T_box hT (Proof.lookup List.mem_cons_self)))
+      · rw [dif_neg hT]
+        exact .nil
+  | _, _, .Var, .var, .var, _, _ => .cons (Proof.lookup List.mem_cons_self) .nil
+  | _, _, .VTypeOne, _, _, _, _ => .cons (Proof.lookup List.mem_cons_self) .nil
+  | _, _, .VTypeDia _, _, _, _, _ => .cons (Proof.lookup List.mem_cons_self) .nil
+
+/-- No member of `eqHSat` is a conjunction, so each is its own conjunct (and its box's, read in
+    the `□` view). -/
+theorem mem_conjuncts_of_eqHSat {σ : Signature} (hO : ModalSys.Opt = true) : {Γ : Ctx} →
+    (T : VarType) → {a b : Ann T} → (t : Term σ Γ T a) → (s : Term σ Γ T b) →
+    ∀ {c : WFF σ Γ 0}, c ∈ eqHSat hO T t s → c ∈ c.conjuncts
+  | _, .VTypeProd A B, .prod _ _, .prod _ _, .pair t₁ t₂, .pair s₁ s₂, _, hc => by
+      rcases List.mem_append.mp hc with h | h
+      · exact mem_conjuncts_of_eqHSat hO A t₁ s₁ h
+      · exact mem_conjuncts_of_eqHSat hO B t₂ s₂ h
+  | _, .VTypeBox A, .box _, .box _, .boxtm t, .boxtm s, _, hc => by
+      rcases List.mem_append.mp hc with h | h
+      · obtain ⟨c', _, rfl⟩ := List.mem_map.mp h
+        exact List.mem_singleton_self _
+      · by_cases hT : ModalSys.T = true
+        · rw [dif_pos hT] at h
+          exact mem_conjuncts_of_eqHSat hO A _ _ h
+        · rw [dif_neg hT] at h
+          cases h
+  | _, .Var, .var, .var, t, s, _, hc => by
+      rw [List.mem_singleton.mp hc, eqH_Var]
+      exact List.mem_singleton_self _
+  | _, .VTypeOne, _, _, _, _, _, hc => by
+      rw [List.mem_singleton.mp hc]
+      exact List.mem_singleton_self _
+  | _, .VTypeDia _, .dia _ _, .dia _ _, .diatm _ _ _, .diatm _ _ _, _, hc => by
+      rw [List.mem_singleton.mp hc]
+      exact List.mem_singleton_self _
+
 /-! ## Provably `≡` entries -/
 
-/-- Term entries that are equal, componentwise so at a product, or whose `≡` is a hypothesis. -/
+/-- Term entries that are equal, componentwise so at a product, boxed at `□` with T's reading at
+    the world itself (`u.here`), or whose `≡` is a hypothesis.  At `□` the hypotheses are the boxed
+    members of `eqHSat`, so that the `□` view and the projection both find theirs (§12.32). -/
 inductive SubE.EqH {σ : Signature} {Δ : Ctx} (hO : ModalSys.Opt = true) (E : List (WFF σ Δ 0)) :
     VarType → SubE σ Δ → SubE σ Δ → Prop
   | same {T : VarType} (e : SubE σ Δ) : EqH hO E T e e
   | prod {A B : VarType} {e e' : SubE σ Δ} :
       EqH hO E A (e.proj .fst) (e'.proj .fst) → EqH hO E B (e.proj .snd) (e'.proj .snd) →
       EqH hO E (.VTypeProd A B) e e'
-  | mem {T : VarType} {a b : Ann T} (t : Term σ Δ T a) (s : Term σ Δ T b) : T.isProd = false →
+  | box {A : VarType} {a b : Ann A} (t : Term σ Δ.boxIn A a) (s : Term σ Δ.boxIn A b) :
+      (∀ c ∈ eqHSat hO A t s, WFF.box (Γ := Δ) c ∈ E) →
+      (∀ hT : ModalSys.T = true,
+        EqH hO E A (.tm (Term.collapse (Ctx.collapses_boxIn_self hT Δ) t))
+          (.tm (Term.collapse (Ctx.collapses_boxIn_self hT Δ) s))) →
+      EqH hO E (.VTypeBox A) (.tm (.boxtm t)) (.tm (.boxtm s))
+  | mem {T : VarType} {a b : Ann T} (t : Term σ Δ T a) (s : Term σ Δ T b) : T.hasProj = false →
       eqH hO T t s ∈ E → EqH hO E T (.tm t) (.tm s)
 
 /-- Witness entries that are equal, or whose `witEq` is a hypothesis. -/
@@ -129,6 +197,7 @@ theorem SubE.EqH.sub {E' : List (WFF σ Δ 0)} (hE : ∀ φ ∈ E, φ ∈ E') {T
   induction h with
   | same e => exact .same e
   | prod _ _ ih₁ ih₂ => exact .prod ih₁ ih₂
+  | box t s hm _ ih => exact .box t s (fun c hc => hE _ (hm c hc)) ih
   | mem t s hT hm => exact .mem t s hT (hE _ hm)
 
 theorem WitE.EqH.sub {E' : List (WFF σ Δ 0)} (hE : ∀ φ ∈ E, φ ∈ E') {X : VarType}
@@ -143,8 +212,14 @@ theorem SubE.EqH.proj_step {U T : VarType} {s : Step} {e e' : SubE σ Δ}
   cases h with
   | same => exact .same _
   | prod h₁ h₂ => cases s <;> (try cases hs) <;> cases hst <;> assumption
-  | mem _ _ hT _ =>
-      exact nomatch (VarType.isProd_of_step (ModalSys.T_false_of_opt hO) hs hst).symm.trans hT
+  | box t₀ s₀ _ hh =>
+      cases s <;> (try cases hs) <;> (try cases hst)
+      obtain ⟨hT, rfl⟩ := VarType.step_here hst
+      change SubE.EqH hO E _ (if hT : ModalSys.T = true then _ else _)
+        (if hT : ModalSys.T = true then _ else _)
+      rw [dif_pos hT, dif_pos hT]
+      exact hh hT
+  | mem _ _ hT _ => exact nomatch (VarType.hasProj_of_step hs hst).symm.trans hT
 
 theorem SubE.EqH.mono {Δ' : Ctx} (hle : Δ.Le Δ') {T : VarType} {e e' : SubE σ Δ}
     (h : SubE.EqH hO E T e e') :
@@ -157,6 +232,15 @@ theorem SubE.EqH.mono {Δ' : Ctx} (hle : Δ.Le Δ') {T : VarType} {e e' : SubE �
         exact ih₁
       · rw [SubE.proj_mono, SubE.proj_mono]
         exact ih₂
+  | box t s hm _ ih =>
+      refine .box (Term.mono hle.boxIn t) (Term.mono hle.boxIn s) (fun c hc => ?_) fun hT => ?_
+      · rw [← eqHSat_mono hO hle.boxIn] at hc
+        obtain ⟨c', hc', rfl⟩ := List.mem_map.mp hc
+        exact List.mem_map.mpr ⟨_, hm c' hc', rfl⟩
+      · have := ih hT
+        rwa [SubE.mono, SubE.mono, ← Term.collapse_mono (Ctx.collapses_boxIn_self hT _)
+          (Ctx.collapses_boxIn_self hT _) hle.boxIn hle, ← Term.collapse_mono
+          (Ctx.collapses_boxIn_self hT _) (Ctx.collapses_boxIn_self hT _) hle.boxIn hle] at this
   | mem t s hT hm => exact .mem _ _ hT (List.mem_map.mpr ⟨_, hm, eqH_mono hO hle _ t s⟩)
 
 theorem WitE.EqH.mono {Δ' : Ctx} (hle : Δ.Le Δ') {X : VarType} {w w' : WitE σ Δ}
@@ -168,30 +252,30 @@ theorem WitE.EqH.mono {Δ' : Ctx} (hle : Δ.Le Δ') {X : VarType} {w w' : WitE �
       exact .mem (hz.imp fun _ h => hle.wit _ _ h) (hz'.imp fun _ h => hle.wit _ _ h) _ _
         (List.mem_map.mpr ⟨_, hm, witEq_mono hO hle X hz hz' c c'⟩)
 
-/-- Hypotheses containing all conjuncts of `t ≡ s` relate `t` and `s`. -/
-theorem SubE.eqH_of_conj {L : List (WFF σ Δ 0)} : (T : VarType) → {a b : Ann T} →
+/-- ⭐Hypotheses containing what `t ≡ s` gives (`eqHSat`) relate `t` and `s`. -/
+theorem SubE.eqH_of_sat : {Δ : Ctx} → {L : List (WFF σ Δ 0)} → (T : VarType) → {a b : Ann T} →
     (t : Term σ Δ T a) → (s : Term σ Δ T b) →
-    (∀ c ∈ (eqH hO T t s : WFF σ Δ 0).conjuncts, c ∈ L) → SubE.EqH hO L T (.tm t) (.tm s)
-  | .Var, .var, .var, t, s, h =>
-      .mem t s rfl (h _ (by rw [eqH_Var]; exact List.mem_singleton_self _))
-  | .VTypeOne, _, _, t, s, h => .mem t s rfl (h _ (List.mem_singleton_self _))
-  | .VTypeProd A B, .prod _ _, .prod _ _, .pair t₁ t₂, .pair s₁ s₂, h =>
-      .prod (SubE.eqH_of_conj A t₁ s₁ fun c hc => h c (List.mem_append_left _ hc))
-        (SubE.eqH_of_conj B t₂ s₂ fun c hc => h c (List.mem_append_right _ hc))
-  | .VTypeBox _, .box _, .box _, .boxtm _, .boxtm _, h =>
-      .mem _ _ rfl (h _ (List.mem_singleton_self _))
-  | .VTypeDia _, .dia _ _, .dia _ _, .diatm _ _ _, .diatm _ _ _, h =>
+    (∀ c ∈ eqHSat hO T t s, c ∈ L) → SubE.EqH hO L T (.tm t) (.tm s)
+  | _, _, .Var, .var, .var, t, s, h => .mem t s rfl (h _ (List.mem_singleton_self _))
+  | _, _, .VTypeOne, _, _, t, s, h => .mem t s rfl (h _ (List.mem_singleton_self _))
+  | _, _, .VTypeProd A B, .prod _ _, .prod _ _, .pair t₁ t₂, .pair s₁ s₂, h =>
+      .prod (SubE.eqH_of_sat A t₁ s₁ fun c hc => h c (List.mem_append_left _ hc))
+        (SubE.eqH_of_sat B t₂ s₂ fun c hc => h c (List.mem_append_right _ hc))
+  | _, _, .VTypeBox A, .box _, .box _, .boxtm t, .boxtm s, h =>
+      .box t s (fun c hc => h _ (List.mem_append_left _ (List.mem_map_of_mem hc))) fun hT =>
+        SubE.eqH_of_sat A _ _ fun c hc => h c
+        (List.mem_append_right _ (by rw [dif_pos hT]; exact hc))
+  | _, _, .VTypeDia _, .dia _ _, .dia _ _, .diatm _ _ _, .diatm _ _ _, h =>
       .mem _ _ rfl (h _ (List.mem_singleton_self _))
 
 theorem SubE.EqH.unbox {A : VarType} {e e' : SubE σ Δ} (h : SubE.EqH hO E (.VTypeBox A) e e') :
     SubE.EqH hO (E.flatMap WFF.boxConjs) A e.unbox e'.unbox := by
   cases h with
   | same => exact .same _
-  | mem t s _ hm =>
-      cases t with
-      | boxtm t' =>
-          cases s with
-          | boxtm s' => exact SubE.eqH_of_conj A t' s' fun c hc => List.mem_flatMap.mpr ⟨_, hm, hc⟩
+  | box t s hm _ =>
+      exact SubE.eqH_of_sat A t s fun c hc =>
+        List.mem_flatMap.mpr ⟨_, hm c hc, mem_conjuncts_of_eqHSat hO A t s hc⟩
+  | mem t s hT _ => exact nomatch hT
 
 theorem SubE.EqH.toWit {X : VarType} {e e' : SubE σ Δ} (h : SubE.EqH hO E (.VTypeDia X) e e') :
     WitE.EqH hO (E.flatMap WFF.boxConjs) X e.toWit e'.toWit := by
@@ -309,8 +393,8 @@ theorem eqRelH_optIn {Γ : Ctx} {θ θ' : Subst σ Δ} (h : EqRelH hO E Γ θ θ
 theorem eqRelH_optIn₂ {Γ : Ctx} {θ θ' : Subst σ Δ} (h : EqRelH hO E Γ θ θ') {y z₁ z₂ : VarSymb}
     {X : VarType} (hy : Γ.wit y = some X) {a₁ a₂ : Ann X} {c₁ : Term σ (Δ.optIn z₁) X a₁}
     {c₂ : Term σ (Δ.optIn z₂) X a₂} (hw₁ : θ.wit y = .tm z₁ c₁) (hw₂ : θ'.wit y = .tm z₂ c₂) :
-    EqRelH hO ((eqH hO X (Term.mono (Ctx.le_optIn _ z₂) c₁)
-          (Term.mono ((Ctx.le_optIn Δ z₁).optIn z₂) c₂) : WFF σ _ 0).conjuncts ++
+    EqRelH hO (eqHSat hO X (Term.mono (Ctx.le_optIn _ z₂) c₁)
+          (Term.mono ((Ctx.le_optIn Δ z₁).optIn z₂) c₂) ++
         E.map (WFF.mono ((Ctx.le_optIn Δ z₁).trans (Ctx.le_optIn _ z₂))))
       (Γ.optIn y) ((θ.optIn y z₁).mono (Ctx.le_optIn _ z₂))
       ((θ'.optIn y z₂).mono ((Ctx.le_optIn Δ z₁).optIn z₂)) := by
@@ -328,7 +412,7 @@ theorem eqRelH_optIn₂ {Γ : Ctx} {θ θ' : Subst σ Δ} (h : EqRelH hO E Γ θ
       change SubE.EqH _ _ _ (SubE.tm (Term.mono _ (Term.mono _ c₁)))
         (SubE.tm (Term.mono _ (Term.mono _ c₂)))
       rw [Term.mono_mono, Term.mono_mono]
-      exact SubE.eqH_of_conj X _ _ fun c hc => List.mem_append_left _ hc
+      exact SubE.eqH_of_sat X _ _ fun c hc => List.mem_append_left _ hc
     · change SubE.EqH _ _ _ ((θ.optIn y z₁ v).mono _) ((θ'.optIn y z₂ v).mono _)
       rw [Subst.optIn_ne _ _ hc, Subst.optIn_ne _ _ hc, SubE.mono_mono, SubE.mono_mono]
       rw [Ctx.optIn_ne hc] at hv
@@ -337,6 +421,55 @@ theorem eqRelH_optIn₂ {Γ : Ctx} {θ θ' : Subst σ Δ} (h : EqRelH hO E Γ θ
       exact (h₁.mono _).sub fun φ hφ => List.mem_append_right _ hφ
   · change WitE.EqH _ _ _ (((θ.wit y').mono (Ctx.le_optIn Δ z₁)).mono (Ctx.le_optIn _ z₂))
       (((θ'.wit y').mono (Ctx.le_optIn Δ z₂)).mono ((Ctx.le_optIn Δ z₁).optIn z₂))
+    rw [WitE.mono_mono, WitE.mono_mono]
+    exact ((h.wit y' X' hy').mono _).sub fun φ hφ => List.mem_append_right _ hφ
+
+/-- Into the identity view of a possible object with one entry under both substitutions. -/
+theorem eqRelH_optInT {Γ : Ctx} {θ θ' : Subst σ Δ} (h : EqRelH hO E Γ θ θ') {y z : VarSymb}
+    (hsame : θ.at y = θ'.at y) :
+    EqRelH hO (E.map (WFF.mono (Ctx.le_optInT Δ z))) (Γ.optInT y) (θ.optInT y z)
+      (θ'.optInT y z) := by
+  refine eqRelH_of ?_ fun y' X hy' => (h.wit y' X hy').mono _
+  intro v T hlp hv
+  by_cases hc : v = .step y .at
+  · subst hc
+    rw [Subst.optInT_content, Subst.optInT_content, hsame]
+    exact .same _
+  · rw [Subst.optInT_ne _ _ hc, Subst.optInT_ne _ _ hc]
+    rw [Ctx.optInT_ne hc] at hv
+    have h₁ := h.ty v T ((Ctx.ref_nonproj Γ hlp).trans hv)
+    rw [Subst.at_nonproj θ hlp, Subst.at_nonproj θ' hlp] at h₁
+    exact h₁.mono _
+
+/-- ⭐Into the identity views of two possible objects, both opened: the identity contents are
+    related by their `≡`, which the caller supplies as hypotheses (as `eqRelH_optIn₂`). -/
+theorem eqRelH_optInT₂ {Γ : Ctx} {θ θ' : Subst σ Δ} (h : EqRelH hO E Γ θ θ')
+    {y z₁ z₂ : VarSymb} {X : VarType} (hy : Γ.witT y = some X) {a₁ a₂ : Ann X}
+    {c₁ : Term σ (Δ.optInT z₁) X a₁} {c₂ : Term σ (Δ.optInT z₂) X a₂}
+    (hw₁ : (θ.at y).atBody z₁ = .tm c₁) (hw₂ : (θ'.at y).atBody z₂ = .tm c₂) :
+    EqRelH hO (eqHSat hO X (Term.mono (Ctx.le_optInT _ z₂) c₁)
+          (Term.mono ((Ctx.le_optInT Δ z₁).optInT z₂) c₂) ++
+        E.map (WFF.mono ((Ctx.le_optInT Δ z₁).trans (Ctx.le_optInT _ z₂))))
+      (Γ.optInT y) ((θ.optInT y z₁).mono (Ctx.le_optInT _ z₂))
+      ((θ'.optInT y z₂).mono ((Ctx.le_optInT Δ z₁).optInT z₂)) := by
+  refine eqRelH_of ?_ fun y' X' hy' => ?_
+  · intro v T hlp hv
+    by_cases hc : v = .step y .at
+    · subst hc
+      rw [Ctx.optInT_content hy] at hv
+      cases hv
+      change SubE.EqH _ _ _ ((θ.optInT y z₁ (.step y .at)).mono _)
+        ((θ'.optInT y z₂ (.step y .at)).mono _)
+      rw [Subst.optInT_content, Subst.optInT_content, hw₁, hw₂]
+      exact SubE.eqH_of_sat X _ _ fun c hc => List.mem_append_left _ hc
+    · change SubE.EqH _ _ _ ((θ.optInT y z₁ v).mono _) ((θ'.optInT y z₂ v).mono _)
+      rw [Subst.optInT_ne _ _ hc, Subst.optInT_ne _ _ hc, SubE.mono_mono, SubE.mono_mono]
+      rw [Ctx.optInT_ne hc] at hv
+      have h₁ := h.ty v T ((Ctx.ref_nonproj Γ hlp).trans hv)
+      rw [Subst.at_nonproj θ hlp, Subst.at_nonproj θ' hlp] at h₁
+      exact (h₁.mono _).sub fun φ hφ => List.mem_append_right _ hφ
+  · change WitE.EqH _ _ _ (((θ.wit y').mono (Ctx.le_optInT Δ z₁)).mono (Ctx.le_optInT _ z₂))
+      (((θ'.wit y').mono (Ctx.le_optInT Δ z₂)).mono ((Ctx.le_optInT Δ z₁).optInT z₂))
     rw [WitE.mono_mono, WitE.mono_mono]
     exact ((h.wit y' X' hy').mono _).sub fun φ hφ => List.mem_append_right _ hφ
 
@@ -373,8 +506,8 @@ theorem eqRelH_dia₂ {Γ : Ctx} {θ θ' : Subst σ Δ} (h : EqRelH hO E Γ θ �
     (hx₁ : ∃ Y, Δ.ref x₁ = some (.VTypeDia Y)) (hx₂ : ∃ Y, Δ.ref x₂ = some (.VTypeDia Y))
     {a₁ a₂ : Ann X} {b₁ : Term σ (Δ.diaIn x₁) X a₁} {b₂ : Term σ (Δ.diaIn x₂) X a₂}
     (he₁ : θ.at x = .tm (.diatm x₁ hx₁ b₁)) (he₂ : θ'.at x = .tm (.diatm x₂ hx₂ b₂)) :
-    EqRelH hO ((eqH hO X (Term.mono (Ctx.le_diaIn_optIn₂ hO hx₁ x₂) b₁)
-          (Term.mono (Ctx.le_diaIn_optIn₂' hO x₁ hx₂) b₂) : WFF σ _ 0).conjuncts ++
+    EqRelH hO (eqHSat hO X (Term.mono (Ctx.le_diaIn_optIn₂ hO hx₁ x₂) b₁)
+          (Term.mono (Ctx.le_diaIn_optIn₂' hO x₁ hx₂) b₂) ++
         (E.flatMap WFF.boxConjs).map
           (WFF.mono ((Ctx.le_optIn Δ.boxIn x₁).trans (Ctx.le_optIn _ x₂))))
       (Γ.diaIn x) ((θ.dia x x₁).mono (Ctx.le_diaIn_optIn₂ hO hx₁ x₂))
@@ -398,7 +531,7 @@ theorem eqRelH_dia₂ {Γ : Ctx} {θ θ' : Subst σ Δ} (h : EqRelH hO E Γ θ �
         change SubE.EqH _ _ _ (SubE.tm (Term.mono _ (Term.mono _ b₁)))
           (SubE.tm (Term.mono _ (Term.mono _ b₂)))
         rw [Term.mono_mono, Term.mono_mono]
-        exact SubE.eqH_of_conj X _ _ fun c hc => List.mem_append_left _ hc
+        exact SubE.eqH_of_sat X _ _ fun c hc => List.mem_append_left _ hc
     | .step u .box =>
         change SubE.EqH _ _ _
           ((((θ.at u).unbox).mono (Ctx.le_boxIn_diaIn Δ x₁)).mono

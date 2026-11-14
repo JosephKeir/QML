@@ -116,6 +116,145 @@ theorem eqH_mono {σ : Signature} {d : ℕ} (hO : ModalSys.Opt = true) : {Γ Γ'
       simp only [Term.mono_mono]
       rfl
 
+/-! ## Collapse -/
+
+/-- ⭐**Collapsing commutes with `≡`** at every type: each clause is the corresponding clause of
+    `WFF.collapse`.  At `◇` types the witnesses sit under `□`, one level further in, and collapse
+    along the arrow there.  With `T_box` this reads a `□`-hypothesis `□ (t ≡ s)` at the world
+    itself (Leibniz along `≡` with T on, docs §12.32). -/
+theorem WFF.collapse_eqH {σ : Signature} {d : ℕ} (hO : ModalSys.Opt = true) : {k : ℕ} →
+    {Γ₁ Γ₂ : Ctx} → (h : Ctx.Collapses k Γ₁ Γ₂) → (hs : Γ₁.SlotsFrom d) → (T : VarType) →
+    {a b : Ann T} → (t : Term σ Γ₁ T a) → (s : Term σ Γ₁ T b) →
+    WFF.collapse h hs (eqH hO T t s : WFF σ Γ₁ d) =
+      eqH hO T (Term.collapse h t) (Term.collapse h s)
+  | _, _, _, h, hs, .Var, .var, .var, t, s =>
+      (congrArg (WFF.collapse h hs) (eqH_Var hO t s)).trans (eqH_Var hO _ _).symm
+  | _, _, _, _, _, .VTypeOne, _, _, .unit, .unit => rfl
+  | _, _, _, h, hs, .VTypeProd A B, .prod _ _, .prod _ _, .pair t₁ t₂, .pair s₁ s₂ => by
+      change WFF.and (WFF.collapse h hs (eqH hO A t₁ s₁)) (WFF.collapse h hs (eqH hO B t₂ s₂)) = _
+      rw [WFF.collapse_eqH hO h hs A, WFF.collapse_eqH hO h hs B]
+      rfl
+  | _, _, _, h, hs, .VTypeBox A, .box _, .box _, .boxtm t, .boxtm s => by
+      change WFF.box (WFF.collapse h.boxIn hs.boxIn (eqH hO A t s)) = _
+      rw [WFF.collapse_eqH hO h.boxIn hs.boxIn A]
+      rfl
+  | k, Γ₁, Γ₂, h, hs, .VTypeDia A, .dia x _, .dia x' _, .diatm _ hx t, .diatm _ hx' s => by
+      obtain ⟨X, hX⟩ := Ctx.boxIn_wit_of hO hx
+      obtain ⟨X', hX'⟩ := Ctx.boxIn_wit_of hO hx'
+      have C : Ctx.Collapses (k + 1) ((Γ₁.boxIn.optIn x).optIn x')
+          ((Γ₂.boxIn.optIn (x.collapse k)).optIn (x'.collapse k)) :=
+        (h.boxIn.optIn_succ hX).optIn_succ ((Ctx.le_optIn _ x).wit _ _ hX')
+      have hxc : ∃ Y, Γ₂.ref (x.collapse k) = some (.VTypeDia Y) := hx.imp fun _ hY => h x _ hY
+      have hxc' : ∃ Y, Γ₂.ref (x'.collapse k) = some (.VTypeDia Y) :=
+        hx'.imp fun _ hY => h x' _ hY
+      have ht : Term.collapse C (Term.mono (Ctx.le_optIn _ x')
+            (Term.mono (Ctx.le_diaIn_boxIn_optIn' hO hx) t)) =
+          Term.mono (Ctx.le_optIn _ (x'.collapse k))
+            (Term.mono (Ctx.le_diaIn_boxIn_optIn' hO hxc) (Term.collapse (h.diaIn x) t)) := by
+        rw [Term.mono_mono, Term.mono_mono, Term.collapse_mono (h.diaIn x) C _
+          ((Ctx.le_diaIn_boxIn_optIn' hO hxc).trans (Ctx.le_optIn _ _))]
+      have hs' : Term.collapse C (Term.mono ((Ctx.le_optIn _ x).optIn x')
+            (Term.mono (Ctx.le_diaIn_boxIn_optIn' hO hx') s)) =
+          Term.mono ((Ctx.le_optIn _ (x.collapse k)).optIn (x'.collapse k))
+            (Term.mono (Ctx.le_diaIn_boxIn_optIn' hO hxc') (Term.collapse (h.diaIn x') s)) := by
+        rw [Term.mono_mono, Term.mono_mono, Term.collapse_mono (h.diaIn x') C _
+          ((Ctx.le_diaIn_boxIn_optIn' hO hxc').trans ((Ctx.le_optIn _ _).optIn _))]
+      change WFF.box (WFF.imp (WFF.or _ _) (WFF.optx hO .arrow _ _ (WFF.optx hO .arrow _ _
+        (WFF.collapse C _ (eqH hO A _ _))))) = _
+      rw [WFF.collapse_eqH hO C _ A, ht, hs']
+      rfl
+
+/-- ⭐**Two witnesses of one kind are equal**: present together, with `≡` contents.  `witEq` is
+    the arrow kind; at the identity kind it is what `T_box` makes of `□ witEq`
+    (`WFF.collapse_witEq`), the two-entry case of Leibniz in the identity view (§12.32). -/
+abbrev witEqK {σ : Signature} {d : ℕ} (hO : ModalSys.Opt = true) (κ : WitKind) {Γ : Ctx}
+    (X : VarType) {z z' : VarSymb} (hz : ∃ Z, Γ.witK κ z = some Z)
+    (hz' : ∃ Z, Γ.witK κ z' = some Z) {a b : Ann X} (c : Term σ (Γ.optInK κ z) X a)
+    (c' : Term σ (Γ.optInK κ z') X b) : WFF σ Γ d :=
+  .imp (.or (.optx hO κ z hz .top) (.optx hO κ z' hz' .top))
+    (.optx hO κ z hz (.optx hO κ z' (hz'.imp fun _ h => (Ctx.le_optInK Γ κ z).witK h)
+      (eqH hO X (Term.mono (Ctx.le_optInK _ κ z') c)
+        (Term.mono ((Ctx.le_optInK Γ κ z).optInK κ z') c'))))
+
+/-- ⭐**At level 0 the witnesses' equality collapses to the identity witnesses'**: each `◇⁰` along
+    the arrow becomes `◇⁰ᵀ`, and the contents collapse into the identity views. -/
+theorem WFF.collapse_witEq {σ : Signature} (hO : ModalSys.Opt = true) {Γ₁ Γ₂ : Ctx}
+    (h : Ctx.Collapses 0 Γ₁ Γ₂) (hs : Γ₁.SlotsFrom 0) (X : VarType) {z z' : VarSymb}
+    {Z Z' : VarType} (hZ : Γ₁.wit z = some Z) (hZ' : Γ₁.wit z' = some Z') {a b : Ann X}
+    (c : Term σ (Γ₁.optIn z) X a) (c' : Term σ (Γ₁.optIn z') X b) :
+    WFF.collapse h hs (witEq hO X ⟨Z, hZ⟩ ⟨Z', hZ'⟩ c c' : WFF σ Γ₁ 0) =
+      witEqK hO .ident X ⟨Z, (h.wit z Z hZ).1 rfl⟩ ⟨Z', (h.wit z' Z' hZ').1 rfl⟩
+        (Term.collapse (h.optIn_zero hO hZ) c) (Term.collapse (h.optIn_zero hO hZ') c') := by
+  have C : Ctx.Collapses 0 ((Γ₁.optIn z).optIn z') ((Γ₂.optInT z).optInT z') :=
+    (h.optIn_zero hO hZ).optIn_zero hO ((Ctx.le_optIn _ z).wit _ _ hZ')
+  change WFF.imp (WFF.or (WFF.optx hO .ident z _ .top) (WFF.optx hO .ident z' _ .top))
+    (WFF.optx hO .ident z _ (WFF.optx hO .ident z' _
+      (WFF.collapse C _ (eqH hO X (Term.mono (Ctx.le_optIn _ z') c)
+        (Term.mono ((Ctx.le_optIn Γ₁ z).optIn z') c'))))) = _
+  rw [WFF.collapse_eqH hO C _ X,
+    Term.collapse_mono (h.optIn_zero hO hZ) C (Ctx.le_optIn _ z') (Ctx.le_optInT _ z') c,
+    Term.collapse_mono (h.optIn_zero hO hZ') C ((Ctx.le_optIn Γ₁ z).optIn z')
+      ((Ctx.le_optInT Γ₂ z).optInT z') c']
+
+/-! ## The conjuncts of `≡`, with T's readings -/
+
+/-- ⭐**What `t ≡ s` gives as atoms**: its conjuncts, split at products and boxed at `□`, and
+    under T also the equality read at the world itself (`T_box`, `collapse_eqH`), recursively.  The
+    relation Leibniz carries (`SubE.EqH`) is built from these: T's projection `u.here` of a
+    necessary object reads the collapsed equality (docs §12.32). -/
+def eqHSat {σ : Signature} (hO : ModalSys.Opt = true) : {Γ : Ctx} → (T : VarType) →
+    {a b : Ann T} → Term σ Γ T a → Term σ Γ T b → List (WFF σ Γ 0)
+  | _, .VTypeProd A B, .prod _ _, .prod _ _, .pair t₁ t₂, .pair s₁ s₂ =>
+      eqHSat hO A t₁ s₁ ++ eqHSat hO B t₂ s₂
+  | Γ, .VTypeBox A, .box _, .box _, .boxtm t, .boxtm s =>
+      (eqHSat hO A t s).map (fun c => WFF.box (Γ := Γ) c) ++
+        (if hT : ModalSys.T = true then
+          eqHSat hO A (Term.collapse (Ctx.collapses_boxIn_self hT Γ) t)
+            (Term.collapse (Ctx.collapses_boxIn_self hT Γ) s)
+        else [])
+  | _, T, _, _, t, s => [eqH hO T t s]
+
+/-- Weakening commutes with `eqHSat`. -/
+theorem eqHSat_mono {σ : Signature} (hO : ModalSys.Opt = true) : {Γ Γ' : Ctx} → (h : Γ.Le Γ') →
+    (T : VarType) → {a b : Ann T} → (t : Term σ Γ T a) → (s : Term σ Γ T b) →
+    (eqHSat hO T t s).map (WFF.mono h) = eqHSat hO T (Term.mono h t) (Term.mono h s)
+  | _, _, h, .VTypeProd A B, .prod _ _, .prod _ _, .pair t₁ t₂, .pair s₁ s₂ => by
+      change (eqHSat hO A t₁ s₁ ++ eqHSat hO B t₂ s₂).map _ =
+        eqHSat hO A (Term.mono h t₁) (Term.mono h s₁) ++
+          eqHSat hO B (Term.mono h t₂) (Term.mono h s₂)
+      rw [List.map_append, eqHSat_mono hO h A, eqHSat_mono hO h B]
+  | Γ, Γ', h, .VTypeBox A, .box _, .box _, .boxtm t, .boxtm s => by
+      change ((eqHSat hO A t s).map (fun c => WFF.box (Γ := Γ) c) ++
+          (if hT : ModalSys.T = true then
+            eqHSat hO A (Term.collapse (Ctx.collapses_boxIn_self hT Γ) t)
+              (Term.collapse (Ctx.collapses_boxIn_self hT Γ) s) else [])).map (WFF.mono h) =
+        (eqHSat hO A (Term.mono h.boxIn t) (Term.mono h.boxIn s)).map
+            (fun c => WFF.box (Γ := Γ') c) ++
+          (if hT : ModalSys.T = true then
+            eqHSat hO A (Term.collapse (Ctx.collapses_boxIn_self hT Γ') (Term.mono h.boxIn t))
+              (Term.collapse (Ctx.collapses_boxIn_self hT Γ') (Term.mono h.boxIn s)) else [])
+      rw [List.map_append, List.map_map, ← eqHSat_mono hO h.boxIn A, List.map_map]
+      congr 1
+      by_cases hT : ModalSys.T = true
+      · rw [dif_pos hT, dif_pos hT, eqHSat_mono hO h A,
+          Term.collapse_mono (Ctx.collapses_boxIn_self hT Γ) (Ctx.collapses_boxIn_self hT Γ')
+            h.boxIn h t,
+          Term.collapse_mono (Ctx.collapses_boxIn_self hT Γ) (Ctx.collapses_boxIn_self hT Γ')
+            h.boxIn h s]
+      · rw [dif_neg hT, dif_neg hT]
+        rfl
+  | _, _, h, .Var, .var, .var, t, s => by
+      change [WFF.mono h (eqH hO .Var t s)] = [eqH hO .Var (Term.mono h t) (Term.mono h s)]
+      rw [eqH_mono]
+  | _, _, h, .VTypeOne, _, _, t, s => by
+      change [WFF.mono h (eqH hO .VTypeOne t s)] =
+        [eqH hO .VTypeOne (Term.mono h t) (Term.mono h s)]
+      rw [eqH_mono]
+  | _, _, h, .VTypeDia A, _, _, t, s => by
+      change [WFF.mono h (eqH hO (.VTypeDia A) t s)] =
+        [eqH hO (.VTypeDia A) (Term.mono h t) (Term.mono h s)]
+      rw [eqH_mono]
+
 /-! ## Substitution -/
 
 /-- On the `◇_z` view, the `□` view of `θ` with `z` and then `z'` opened is `θ.dia`, weakened: the

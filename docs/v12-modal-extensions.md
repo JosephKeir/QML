@@ -16423,3 +16423,28 @@ mirroring the arrow case 200 to 300).
   `Proof.retEx` and `BWorld.retW` take `NoOpt`.
 * *So with `Opt` on there is no `Here` and no strong T* until part 2 derives them.  KT with `Opt`
   is a system, but nothing about it is claimed beyond soundness yet.
+
+**Leibniz with T on (part 1), built (2026-11-14).**  `LeibnizH` and `LeibnizHRel` no longer
+assume T off.  `Proof.substEqH` and `Proof.leibnizH` hold in every system with `Opt`, since
+B, 4 and 5 are off under `optStage`.  What changed from the paper plan:
+* *T's projection, by a relation constructor rather than saturating every list.*  `eqHSat hO T t s`
+  is what `t ≡ s` gives as atoms: its conjuncts, split at products, boxed at `□`, and under T also
+  the collapsed equality, recursively.  `Proof.eqHSatProofs` derives each member (`K_box` inside,
+  `T_box` with `WFF.collapse_eqH`).
+  * `SubE.EqH` gains a `box` constructor: the boxed members are hypotheses, and under T it carries
+    the relation of the collapsed entries.  `proj_step` at `.here` reads that relation, and `unbox`
+    reads the boxed members.
+  * `mem` is now only for types without projections (`VarType.hasProj`).  `SubE.eqH_of_sat`
+    replaces `eqH_of_conj`.
+  * The lists that start a relation (`leibnizH`, both two-witness views) are `eqHSat` lists,
+    discharged by `Proofs.cutOne`.
+  * So the saturation stays inside `≡`'s own conjuncts, and no other list changes.
+* *The identity view* (`Proof.optCaseHT`):
+  * *One entry:* `K_opt` at the identity kind, with `eqRelH_optInT`.
+  * *Two possible terms:* `T_box` reads the hypothesis `□ witEq` at the world itself.
+    `WFF.collapse_witEq` turns it into `witEqK .ident`, the kind-generic witness equality, whose
+    contents are the substitution's identity entries (`Term.collapse_witContent`).  Then the arrow
+    case's `Proof.optTwoFwd` and `optTwoBwd` (now kind-generic, taking the equality as a proof)
+    apply, with `eqRelH_optInT₂`.
+* *The primitive `Here`* is refuted by its gate.  `T_false_of_opt` and the `NoT` instance in these
+  files are gone.
