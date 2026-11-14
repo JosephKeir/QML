@@ -406,6 +406,13 @@ canonical arrows: `Here` (M2), `Back`/`ret` (M4b, `⟪back⟫`), the links (M4c,
 `≡` (§12.29, §12.31).  Design:
 §12.10–12.22.
 
+**Review of the whole programme (2026-11-14): `docs/v12-opt-review.md`.**  Read it before planning
+further.  In short: the tree systems (K, D, T, 4) should go through, B and 5 are open research on
+the proof-theoretic side, and the gate (M3: cut elimination and Craig with `◇⁰`) does not depend on
+completeness, so it should be tested **before** the KT tree.  Its proposed order: step 4's `Here`
+rules, the model class with `Opt` on (`Ind := Eq`, shapes off), GK with `◇⁰` for K and D, GKT, then
+the KT tree.  **Agreed by the user (2026-11-14).**
+
 * **M1, K and D with `Opt` on: done (2026-11-12).**  Rules, soundness, Leibniz along `≡`, and
   completeness for the tree (`QML_v12m_OCanon*`, `OCanon.completeness`).
 * **M2, KT** ← next.  `Here` through `◇⁰` at the identity arrow; shapes and `Ind` off the tree;

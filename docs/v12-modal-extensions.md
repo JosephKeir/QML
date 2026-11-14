@@ -16448,3 +16448,57 @@ B, 4 and 5 are off under `optStage`.  What changed from the paper plan:
     apply, with `eqRelH_optInT₂`.
 * *The primitive `Here`* is refuted by its gate.  `T_false_of_opt` and the `NoT` instance in these
   files are gone.
+
+**Part 2 begun (2026-11-14): `QML_v12m_HereOpt`** (a new top module).
+* *Built:* ⭐`WFF.hereO` is `◇⁰ᵀ_x (collapse₀ bd ≡ t)`.
+  * `Proof.hereO_fun`: two realisations are `≡` (`opt_fun`, symmetry and transitivity, `opt_out`).
+  * `Proof.hereO_subst`: `here_subst`, by Leibniz along that `≡`.
+  * `Proof.hereO_eqH`: `here_eq` with `≡` in place of `eqRec`.
+* *Route for the rest:*
+  * `here_elim`, `here_intro` and `here_beta` read `viewReadTm bd ψ` as `WFF.readAt` of the `□`
+    view.  `WFF.collapse_readAt` (`LiftT`) then turns `T_box` of `□□⁰_x (viewReadTm bd ψ)` into
+    `□⁰ᵀ_x` of the same hole formula read at `collapse₀ bd`.  Leibniz along `≡` in the identity
+    view moves it to `t`, and `opt_out` brings it out.
+  * `here_name` needs `opt_name` at the identity kind.
+  * The `eqRec` form of `here_eq` needs `eqRec t t' ⊢ t ≡ t'`, by induction on the type through
+    the bridge.  There is no Leibniz for `eqRec` in v12m.
+* *Open: strong T with `Opt`.*  `T_dia` is a rule (an existence law), gated off with `Opt` on.
+  With `Opt` it needs its premise to be `WFF.hereO`.  One option is to let `T_dia`'s premise
+  dispatch on `Opt` (the primitive `Here` off, `hereO` on), keeping one rule.  That needs its
+  soundness and its substitution case at `hereO`.
+
+**Part 2, continued (2026-11-14, built).**  ⭐`Proof.hereO_elim` and `Proof.hereO_intro`.
+* `Proof.boxx_optBoxT`: `□_x χ ⊢ □⁰ᵀ_x (collapse₀ χ)`, by the bridge (`opt_dia`, contraposed) and
+  `T_box`; the arrow witness collapses to the identity witness by `WFF.collapse_mono`.
+* `WFF.collapse_viewReadTm`: the collapse of `viewReadTm bd ψ` is `ψ` (collapsed onto the world)
+  read at `collapse₀ bd`, by `WFF.collapse_readAt` (`LiftT`) and `WFF.collapse_mono`.
+* `hereO_elim`: `K_opt` at the identity kind with the realisation's `≡` opened and the `□⁰ᵀ`
+  hypothesis brought in, `Proof.leibnizH` in the identity view, `WFF.mono_instantiate`, `opt_out`.
+* `hereO_intro`: by contradiction through `hereO_elim` at `¬ψ` (both readings commute with `¬` by
+  `rfl`).
+* `HereOpt` imports `LiftT`; `LeibnizH`'s local `Term.subst_single_mono` is renamed
+  `Term.subst_single_mono_slot` (it clashed with `RetLift`'s, a different statement).
+* *Left in part 2:* `here_beta`, `here_name` (needs `opt_name` at the identity kind), the `eqRec`
+  form of `here_eq`, and strong T's rule.
+
+**Review of the whole programme: `docs/v12-opt-review.md` (2026-11-14).**
+
+**Part 2, finished as far as it goes without the model class (2026-11-14, built).**
+* ⭐`Proof.hereO_beta`, from `Proof.eqH_readCong` (`u ≡ v ⊢ s[u] ≡ s[v]`, Leibniz at the hole
+  formula `s[u] ≡ s[·]`) and `Term.collapse_viewReadTm` (`Term.collapse_subst` at a single-root
+  substitution).
+* ⭐`Proof.opt_nameT`: `◇⁰ᵀ_y ⊤ ⊢ ∃e. ◇⁰ᵀ_y (y.at ≡ e)`, mirroring `opt_name` at the identity kind
+  (`WFF.optNameT`, `Ctx.ref_optInT_content`).  This is `here_name` at the pinned subject `η y`,
+  the form the tree consumes.
+* *Deferred, with reasons:*
+  * **`here_name` at an arbitrary body.**  The old derivation of the general form from the pinned
+    one goes through abstraction (`diaAbsA`), which is `NoOpt` machinery.  Needed only for closure
+    under substitution of a *primitive* rule; here the rule is derived, so the pinned form may be
+    all that is ever used.  Revisit if the KT tree asks for it.
+  * **The `eqRec` form of `here_eq`.**  Needs `eqRec t t' ⊢ t ≡ t'`.  `hereO_eqH` (with `≡`) is the
+    natural statement with `Opt`; `eqRec` may simply not be used with `Opt` on.
+  * **Strong T's dispatching `T_dia`** (decided: one rule).  Its soundness needs
+    `◇⁰ᵀ_c (c.at ≡ t)` true of the object `posRet_exists` gives, whose content is only `Ind` the
+    value of `t`.  `≡` is true of equal objects, not of `Ind` ones, so this waits for the model
+    class with `Opt` on (`Ind := Eq`; review §2), which is the next step anyway.
+

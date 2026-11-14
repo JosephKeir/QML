@@ -897,7 +897,7 @@ section EqHHoles
 variable {σ : Signature} {Γ : Ctx} [Γ.NoSlots]
 
 /-- Instantiating the slot leaves a weakened term of the outer context as it was. -/
-theorem Term.subst_single_mono {T U : VarType} {a : Ann T} (u : Term σ Γ T a) {b : Ann U}
+theorem Term.subst_single_mono_slot {T U : VarType} {a : Ann T} (u : Term σ Γ T a) {b : Ann U}
     (t : Term σ Γ U b) :
     (⟨_, Term.subst (Subst.singleIdx (.bnd 0) (.tm u)) (Subst.single (.bnd 0) (.tm u))
         (Subst.ok_single (Ctx.Le.refl Γ) rfl)
@@ -923,13 +923,13 @@ theorem instantiate_eqHHoleL (hO : ModalSys.Opt = true) (T : VarType) {a b : Ann
     WFF.instantiate Ctx.NoSlots.slots u (eqHHoleL hO T t) = (eqH hO T u t : WFF σ Γ 0) := by
   rw [WFF.instantiate, WFF.substRoot, WFF.subst_eqH]
   exact eqH_congr hO (Term.subst_eta_tm _ _ _ T _ _ u (Subst.single_root _ _))
-    (Term.subst_single_mono u t)
+    (Term.subst_single_mono_slot u t)
 
 theorem instantiate_eqHHoleR (hO : ModalSys.Opt = true) (T : VarType) {a b : Ann T}
     (u : Term σ Γ T a) (t : Term σ Γ T b) :
     WFF.instantiate Ctx.NoSlots.slots u (eqHHoleR hO T t) = (eqH hO T t u : WFF σ Γ 0) := by
   rw [WFF.instantiate, WFF.substRoot, WFF.subst_eqH]
-  exact eqH_congr hO (Term.subst_single_mono u t)
+  exact eqH_congr hO (Term.subst_single_mono_slot u t)
     (Term.subst_eta_tm _ _ _ T _ _ u (Subst.single_root _ _))
 
 end EqHHoles

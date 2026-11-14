@@ -28,3 +28,4 @@
 - [QML: B's domains, three cases](project_qml_b_domains_split.md) — writeup framing: weak B frame only; strong B necessary objects cover (□-BF); BStrongW possible objects cover (◇-BF)
 - [QML: operators over relations](feedback_qml_operators_over_relations.md) — prefer view formers (◇⁰-style, far-world ⟪back⟫/side) to primitive relations (Back, Ret, links); check on paper before adding Opt to B/5
 - [QML: structural invariants](feedback_qml_structural_invariants.md) — invariants every user-writable object has and every construction preserves (Presented, OpenedT) ideally structural; hypothesis route OK mid-milestone, record the cleanup, don't polish forever
+- [QML: Opt programme review](project_qml_opt_review.md) — 2026-11-14 verdict + risks (docs/v12-opt-review.md): trees likely, B/5 calculus open; test GK+◇⁰ gate before the KT tree (agreed 2026-11-14)
