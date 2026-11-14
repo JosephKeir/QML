@@ -983,7 +983,7 @@ theorem gtruth_lt :
           rw [Term.mono_refl, Term.mono_refl]
       | top => exact ⟨fun _ => ((gw hM₀ s).mcs i).top_mem, fun _ => trivial⟩
       | bot => exact ⟨False.elim, fun h => ((gw hM₀ s).mcs i).bot_not_mem h⟩
-      | here hT S t =>
+      | here hT S t _ =>
           cases S with
           | diatm x hx bd =>
               exact ghere_truth hT hx bd t

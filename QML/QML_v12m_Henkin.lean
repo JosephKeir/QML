@@ -383,7 +383,8 @@ variable (L) in
     `Here` is then in the theory, so `Canon.spec_of_here` derives `RealDatum.spec` and the truth
     lemma's `here` case has something to match (§2d; nothing else introduces a `Here`, see
     `Model.sat_here_ex`). -/
-def retSet (hT : ModalSys.T = true) (l : List VarType) (m : ℕ) {A : VarType} {a : Ann A}
+def retSet (hT : ModalSys.T = true) (hO : ModalSys.Opt = false) (l : List VarType) (m : ℕ)
+    {A : VarType} {a : Ann A}
     (t : Term σ (L.ctxL m l) A a) :
     Set ((L.pre (.VTypeDia A :: l)).Sentence σ) :=
   {s | ∃ (m' : ℕ) (hm : m ≤ m'),
@@ -396,11 +397,12 @@ def retSet (hT : ModalSys.T = true) (l : List VarType) (m : ℕ) {A : VarType} {
     of its hypotheses, each lifted to one stage, where they are all the one `Here` atom
     (`WFF.mono_hereAt`) and `T_dia` discharges the witness. -/
 theorem consistent_grow_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true)
+    (hO : ModalSys.Opt = false)
     {l : List VarType} {S : Set ((L.pre l).Sentence σ)} (hS : StageSys.Consistent S) {m : ℕ}
     {A : VarType} {a : Ann A} (t : Term σ (L.ctxL m l) A a) :
-    StageSys.Consistent (grow l (.VTypeDia A) S ∪ L.retSet hT l m t) := by
+    StageSys.Consistent (grow l (.VTypeDia A) S ∪ L.retSet hT hO l m t) := by
   have key : ∀ M, m ≤ M →
-      Theory.Consistent (StageSys.atStage (grow l (.VTypeDia A) S ∪ L.retSet hT l m t) M) := by
+      Theory.Consistent (StageSys.atStage (grow l (.VTypeDia A) S ∪ L.retSet hT hO l m t) M) := by
     rintro M hM ⟨Δ, hΔ, p⟩
     have hc : (L.ctxL M l).RootFresh (.free (L.ρ l.length)) := L.ctxL_fresh le_rfl
     let g : Unit → WFF σ (L.ctxL M (.VTypeDia A :: l)) 0 := fun _ =>
@@ -420,7 +422,7 @@ theorem consistent_grow_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = t
     obtain ⟨Ψ, Δ₀, h₀, h₁⟩ := exists_hyps_two (P := fun x => x ∈ StageSys.atStage S M)
       (fun x => WFF.mono (L.ctxL_le_cons M (.VTypeDia A) l) x) g Δ hcases
     obtain ⟨q⟩ := Provable.mono h₁ p
-    refine hS M ⟨Δ₀, h₀, ⟨Proof.T_dia hT hTS A (Term.mono (L.ctxL_base_le hM l) t) _ hc
+    refine hS M ⟨Δ₀, h₀, ⟨Proof.T_dia hT hTS (hO := hO) A (Term.mono (L.ctxL_base_le hM l) t) _ hc
       (φ := .bot) (Proof.ofSubset (fun χ hχ => ?_) q)⟩⟩
     rcases List.mem_append.mp hχ with h | h
     · obtain ⟨_, _, rfl⟩ := List.mem_map.mp h
@@ -447,19 +449,21 @@ open Classical in
     the query's term, with the `Here` atom; otherwise a variable of unit type. -/
 noncomputable def retStep (m : ℕ) (l : List VarType) (q : L.RetQ σ m) :
     Σ A : VarType, Set ((L.pre (A :: l)).Sentence σ) :=
-  if h : ModalSys.T = true ∧ ModalSys.TStrong = true ∧ (L.ctxL m q.1).Le (L.ctxL m l) then
-    ⟨.VTypeDia q.2.1, L.retSet h.1 l m (Term.mono h.2.2 q.2.2.2)⟩
+  if h : ModalSys.T = true ∧ ModalSys.TStrong = true ∧ ModalSys.Opt = false ∧
+      (L.ctxL m q.1).Le (L.ctxL m l) then
+    ⟨.VTypeDia q.2.1, L.retSet h.1 h.2.2.1 l m (Term.mono h.2.2.2 q.2.2.2)⟩
   else ⟨.VTypeOne, ∅⟩
 
 open Classical in
 theorem consistent_retStep {l : List VarType} {S : Set ((L.pre l).Sentence σ)}
     (hS : StageSys.Consistent S) (m : ℕ) (q : L.RetQ σ m) :
     StageSys.Consistent (grow l (L.retStep m l q).1 S ∪ (L.retStep m l q).2) := by
-  by_cases h : ModalSys.T = true ∧ ModalSys.TStrong = true ∧ (L.ctxL m q.1).Le (L.ctxL m l)
+  by_cases h : ModalSys.T = true ∧ ModalSys.TStrong = true ∧ ModalSys.Opt = false ∧
+      (L.ctxL m q.1).Le (L.ctxL m l)
   · have e : L.retStep m l q =
-        ⟨.VTypeDia q.2.1, L.retSet h.1 l m (Term.mono h.2.2 q.2.2.2)⟩ := dif_pos h
+        ⟨.VTypeDia q.2.1, L.retSet h.1 h.2.2.1 l m (Term.mono h.2.2.2 q.2.2.2)⟩ := dif_pos h
     rw [e]
-    exact consistent_grow_ret h.1 h.2.1 hS (Term.mono h.2.2 q.2.2.2)
+    exact consistent_grow_ret h.1 h.2.1 h.2.2.1 hS (Term.mono h.2.2.2 q.2.2.2)
   · have e : L.retStep (σ := σ) m l q = ⟨.VTypeOne, ∅⟩ := dif_neg h
     rw [e]
     exact consistent_grow_unit hS

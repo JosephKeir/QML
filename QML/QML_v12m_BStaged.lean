@@ -71,7 +71,8 @@ theorem rootWitnessed : Canon.RootWitnessed w.sys w.T := fun h => by
   exact ⟨j, hij, c, hc, hm⟩
 
 /-- A `Here` atom in a network world's theory gives its witness a datum. -/
-theorem datum_of_here (hT : ModalSys.T = true) {x : VarSymb} {i : ℕ} {X : VarType}
+theorem datum_of_here (hT : ModalSys.T = true) {hO : ModalSys.Opt = false} {x : VarSymb} {i : ℕ}
+    {X : VarType}
     (hx : (w.ctx i).ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B}
     (bd : Term σ ((w.ctx i).diaIn x) B β) {a : Ann B} (t : Term σ (w.ctx i) B a)
     (h : WFF.here hT (Term.diatm x ⟨X, hx⟩ bd) t ∈ w.M i) :
@@ -108,7 +109,8 @@ end BArrow
 /-- ⭐Filling the subject slot of `∃y:◇A. Here y t`: the slot's η-expansion becomes the term, and
     `t`, weakened past the slot, comes back unchanged (cf. `WFF.instantiate_here_slot`). -/
 theorem WFF.instantiate_hereAt_slot {σ : Signature} {Γ : Ctx} [Γ.NoSlots]
-    (hT : ModalSys.T = true) {A : VarType} {a : Ann A} (t : Term σ Γ A a) {b : Ann (.VTypeDia A)}
+    (hT : ModalSys.T = true) {hO : ModalSys.Opt = false} {A : VarType} {a : Ann A}
+    (t : Term σ Γ A a) {b : Ann (.VTypeDia A)}
     (u : Term σ Γ (.VTypeDia A) b) :
     WFF.instantiate (d := 0) Ctx.NoSlots.slots u
         (WFF.here hT
@@ -128,7 +130,7 @@ theorem WFF.instantiate_hereAt_slot {σ : Signature} {Γ : Ctx} [Γ.NoSlots]
 /-- `∃y:◇A. Here y t`: some possible object is realised here by `t` — `Model.sat_here_ex`'s
     formula. -/
 abbrev WFF.retEx {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {A : VarType}
-    {a : Ann A} (t : Term σ Γ A a) : WFF σ Γ 0 :=
+    {a : Ann A} (t : Term σ Γ A a) (hO : ModalSys.Opt = false := by opt_off) : WFF σ Γ 0 :=
   .ex (.VTypeDia A) (WFF.here hT
     (Term.eta (.root (.bnd 0)) (.VTypeDia A) (Ctx.ref_insert_root Γ (.bnd 0) (.VTypeDia A)))
     (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root (.VTypeDia A)) t))
@@ -136,11 +138,11 @@ abbrev WFF.retEx {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = tru
 /-- ⭐**Strong T, as a theorem**: `⊢ ∃y:◇A. Here y t`.  `T_dia` at a fresh root `c` leaves
     `Here c t ⊢ ∃y:◇A. Here y t`, which is `∃`-introduction at `c`.  So a theory with Henkin
     witnesses has a `Here` atom for every term without a dedicated step for it. -/
-def Proof.retEx {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)}
+def Proof.retEx [ModalSys.NoOpt] {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)}
     (hT : ModalSys.T = true) (hS : ModalSys.TStrong = true) {A : VarType} {a : Ann A}
     (t : Term σ Γ A a) (c : ℕ) (hc : Γ.RootFresh (.free c)) :
     Proof σ Γ Δ (WFF.retEx hT t) := by
-  refine Proof.T_dia hT hS A t c hc ?_
+  refine Proof.T_dia hT hS (hO := ModalSys.NoOpt.noOpt) A t c hc ?_
   refine Proof.ex_intro (.VTypeDia A)
     (Term.eta (.root (.free c)) (.VTypeDia A) (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A))) ?_
   refine Proof.conv ?_ (Proof.lookup List.mem_cons_self)
@@ -157,7 +159,8 @@ variable {σ : Signature}
     the theory's own word — a `Here` atom about a declared root, at a later stage.  The theory
     contains `∃y:◇A. Here y t` (`Proof.retEx`), and Henkin witnessing (`exW`) declares the root:
     unlike the tree's chain, the network needs no term query (the tree's `World.retW`). -/
-theorem BWorld.retW (w : BWorld σ) (hT : ModalSys.T = true) (hS : ModalSys.TStrong = true)
+theorem BWorld.retW [ModalSys.NoOpt] (w : BWorld σ) (hT : ModalSys.T = true)
+    (hS : ModalSys.TStrong = true)
     (i : ℕ) {A : VarType} {a : Ann A} (t : Term σ (w.ctx i) A a) :
     ∃ (i' : ℕ) (hi : i ≤ i') (y : VarSymb) (hy : (w.ctx i').ref y = some (.VTypeDia A)),
       WFF.hereAt hT y hy (Term.mono (w.le hi) t) ∈ w.M i' := by

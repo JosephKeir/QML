@@ -185,7 +185,7 @@ theorem WFF.subst_ren {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ :
           (WFF.subst_ren (hle.optInT y) (θ.optInT y y) p q _ _ (Subst.ren_optInT hid hX) φ
             (Subst.renW_optInT hw y))
       exact key (ι y) hιy.symm _ _ _ _
-  | _, _, _, _, hle, θ, hθ, hc, _, _, hid, .here hT s t, hw =>
+  | _, _, _, _, hle, θ, hθ, hc, _, _, hid, .here hT s t _, hw =>
       WFF.here_congr hT (Term.subst_ren hle θ hθ hc hid s)
         (Term.subst_ren hle θ hθ hc hid t)
   | _, _, _, _, hle, θ, hθ, hc, _, _, hid, .back hB L s t, hw =>

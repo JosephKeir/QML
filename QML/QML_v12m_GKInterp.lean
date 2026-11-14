@@ -56,7 +56,7 @@ def WFF.Occ (r : σ.RelSyms) : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → Prop
   | _, _, .ex _ φ => φ.Occ r
   | _, _, .box φ => φ.Occ r
   | _, _, .dia _ _ φ => φ.Occ r
-  | _, _, .here _ _ _ => False
+  | _, _, .here _ _ _ _ => False
   | _, _, .back _ _ _ _ => False
   | _, _, .retS _ _ _ Φ => Φ.Occ r
   | _, _, .retxS _ _ _ _ _ Φ => Φ.Occ r
@@ -91,7 +91,7 @@ theorem WFF.occ_subst (r : σ.RelSyms) : ∀ {ι : VarSymb → VarSymb} {Γ Δ :
       simp only [WFF.subst, WFF.Occ]; rw [WFF.occ_subst r _ _ _ _ _ φ]
   | _, _, _, _, _, _, _, _, _, _, .dia _ _ φ => by
       simp only [WFF.subst, WFF.Occ]; rw [WFF.occ_subst r _ _ _ _ _ φ]
-  | _, _, _, _, _, _, _, _, _, _, .here _ _ _ => Iff.rfl
+  | _, _, _, _, _, _, _, _, _, _, .here _ _ _ _ => Iff.rfl
   | _, _, _, _, _, _, _, _, _, _, .back _ _ _ _ => Iff.rfl
   | _, _, _, _, _, _, _, _, _, _, .retS _ _ _ Φ => by
       simp only [WFF.subst, WFF.Occ]; rw [WFF.occ_subst r _ _ _ _ _ Φ]
@@ -125,7 +125,7 @@ theorem WFF.occ_mono (r : σ.RelSyms) : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le 
   | _, _, _, _, .ex _ φ => by simp only [WFF.mono, WFF.Occ]; rw [WFF.occ_mono r _ φ]
   | _, _, _, _, .box φ => by simp only [WFF.mono, WFF.Occ]; rw [WFF.occ_mono r _ φ]
   | _, _, _, _, .dia _ _ φ => by simp only [WFF.mono, WFF.Occ]; rw [WFF.occ_mono r _ φ]
-  | _, _, _, _, .here _ _ _ => Iff.rfl
+  | _, _, _, _, .here _ _ _ _ => Iff.rfl
   | _, _, _, _, .back _ _ _ _ => Iff.rfl
   | _, _, _, _, .retS _ _ _ Φ => by simp only [WFF.mono, WFF.Occ]; rw [WFF.occ_mono r _ Φ]
   | _, _, _, _, .retxS _ _ _ _ _ Φ => by simp only [WFF.mono, WFF.Occ]; rw [WFF.occ_mono r _ Φ]
@@ -171,7 +171,7 @@ theorem WFF.occ_shift (r : σ.RelSyms) : ∀ {k : ℕ} {Γ Γ' : Ctx} {d : ℕ} 
   | _, _, _, _, _, _, .ex _ φ => by simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r _ _ φ]
   | _, _, _, _, _, _, .box φ => by simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r _ _ φ]
   | _, _, _, _, _, _, .dia _ _ φ => by simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r _ _ φ]
-  | _, _, _, _, _, _, .here _ _ _ => Iff.rfl
+  | _, _, _, _, _, _, .here _ _ _ _ => Iff.rfl
   | _, _, _, _, _, _, .back _ _ _ _ => Iff.rfl
   | _, _, _, _, _, _, .retS _ _ _ Φ => by
       simp only [WFF.shift, WFF.Occ]; rw [WFF.occ_shift r _ _ Φ]

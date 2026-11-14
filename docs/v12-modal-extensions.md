@@ -16254,7 +16254,9 @@ Committed as `086bfff`.
   for `CubeSys` only, so nothing is lost now; for systems with `Opt` either `inv` takes `OpenedT`
   (a weaker law, which the canonical models satisfy a fortiori) or `OpenedT` becomes part of the
   environment (next point).
-* *To consider:* `OpenedT` is now a hypothesis of a dozen lemmas.  Making it a field of `Env` (as
+* *To consider (user, 2026-11-13: like `Presented`, it holds of everything a user can write and
+  every construction preserves it, so ideally structural; a cleanup item, not urgent):* `OpenedT`
+  is now a hypothesis of a dozen lemmas.  Making it a field of `Env` (as
   `opened` is for `◇⁰`) would remove them, but §12.30's reason stands (a possible object's content
   is read through the model's `posFull`, and `Env` is frame-level); a model-level environment
   structure would be needed.
@@ -16341,3 +16343,83 @@ may help.
   That covers the substitution lemmas, `sat`'s lemmas, `OpenedT`'s preservation, soundness (with
   `T_box`'s identity case in the semantic collapse lemma), the presentation lemmas, M1's tree, and
   the old T machinery taking `NoOpt`.
+
+### 12.32 Step 4, part 1: Leibniz along `≡` with T on *(2026-11-13, paper)*
+
+`Proof.substEqH` (`QML_v12m_LeibnizH`) is M1's: two substitutions whose entries are provably `≡`
+send a formula to formulas that prove each other.  It assumes T off (`ModalSys.NoT`) in three
+places, and each has to become a real case.
+
+**1. The identity view `◇⁰ᵀ_y ψ`** (now the provisional absurd branch).  The substitution derives
+`y.at`'s entry from `y`'s (`SubE.atBody`): `ren y'` gives `y'.at`, and `diatm x b` gives
+`cbd := collapse₀ b` over `Δ.optInT x`.
+* *One entry* (`θ₁.at y = θ₂.at y`): `K_opt` at the identity kind, with the relation passed to the
+  identity view.  `eqRelH_optInT` mirrors `eqRelH_optIn`: `Δ ≤ Δ.optInT z`, so the hypotheses are
+  weakened, and the two `y.at` entries are one entry (`.same`).
+* *Two entries* (`θᵢ.at y = diatm xᵢ bᵢ`, related by `eqH (◇X) … ∈ E`, which is `□ witEq`).  `T_box`
+  gives `collapse₀ (witEq x₁ x₂ c₁ c₂)`.  The collapse is a homomorphism, and at level 0 an arrow
+  witness collapses to the identity witness (§12.30).  So this is **`witEq` at the identity kind**:
+  `(◇⁰ᵀ_{x₁} ⊤ ∨ ◇⁰ᵀ_{x₂} ⊤) → ◇⁰ᵀ_{x₁} ◇⁰ᵀ_{x₂} (cbd₁ ≡ cbd₂)`, whose contents are exactly the
+  identity entries the substitution uses (`collapse₀` of `cᵢ = bᵢ↑` is `cbdᵢ↑`, `Term.collapse_mono`).
+  The rest is the arrow case verbatim:
+  * `Proof.optTwoFwd`/`optTwoBwd` take the kind as a parameter, since `K_opt`, `opt_out` and
+    `opt_fun` already do;
+  * `eqRelH_optInT₂` mirrors `eqRelH_optIn₂`;
+  * a renaming against a possible term is impossible, as in the arrow case.
+  
+  *New lemmas:* `WFF.collapse_eqH` (collapse commutes with `≡`, by induction on the type as
+  `eqH_mono`; at `◇` types the inner witnesses sit under `□`, at level `k + 1`, and collapse
+  along the arrow) and its `witEq` form at level 0.  *No new rule.*
+
+**2. T's projection of necessary objects, `u.here`** (`SubE.EqH.proj_step`, now refuted by
+`isProd_of_step`).  Under T, `u : □A` has `u.here : A`, and `(boxtm t).proj .here = collapse₀ t`.
+Related `□A` entries are related by membership, `□(t ≡ s) ∈ E`.  The projected entries need
+`collapse₀ t ≡ collapse₀ s`, which is `collapse₀ (t ≡ s)` by `WFF.collapse_eqH`.  It is
+derivable by `T_box`, but it is not a member of `E`.
+* *Fix: saturate the hypotheses* (`hereSat E`), adding `collapse₀ ψ` for every `□ψ` among the
+  `≡`-conjuncts of `E`, repeated down the type, since `u.here.here` needs the next level.  Each
+  added formula is provable from `E` by `T_box`, so the proofs cut them away.  This mirrors
+  `boxConjs` and `Proof.boxedWith`, the existing pattern for the `□` view.  Relations are built on
+  saturated lists (`leibnizH`, and the `□` view after `boxConjs`), so `proj_step` at `.here` is a
+  membership.
+* *Rejected:* relating entries by `Nonempty (Proof … E (t ≡ s))` instead of membership.  It fails
+  at `unbox`: `E ⊢ □χ` does not give `boxConjs E ⊢ χ` (for example `E = [p → □χ, p]`), which is
+  why the relation is a membership in the first place.
+
+**3. The primitive `Here`** (now refuted by T off).  It has no Leibniz case to give.  Its content
+relation is `Ind`, and moving formulas across it is exactly the rule `here_subst` that step 4
+replaces.  So **the gate comes first**: with `WFF.here` carrying `Opt = false`, this case is
+refuted by `Opt` as `back`, `link` and the rest are.  *Revised order of step 4:* the gate (part 3),
+then Leibniz (part 1), then the derived rules (part 2).
+
+**Not affected.**
+* The `◇_x` case (`diaCaseH`, through the arrow bridge);
+* `eqH_refl`;
+* the `□` view and eigenvariables;
+* the semantics (Leibniz is proof-theoretic).
+
+`LeibnizH`/`LeibnizHRel` drop `ModalSys.NoT`; `T_false_of_opt` goes, while `Four_false_of_opt`
+and the others stay.
+
+**Size:** 400 to 700 lines (`collapse_eqH` about 100, saturation 150 to 250, the identity case
+mirroring the arrow case 200 to 300).
+
+**The gate (part 3), built (2026-11-14).**  `WFF.here` takes a final field
+`hO : ModalSys.Opt = false := by opt_off`.  `opt_off` moved from `Subst` to `Symbols`, ahead of
+`WFF`.
+* *Constructions* need no change: the default finds `NoOpt`, a flag that turns `Opt` off, or an
+  `hO` in context, by assumption.
+* *Patterns* name the field explicitly, since a pattern that leaves it out tries to fill it: `_`,
+  or `hO` in the 19 arms that rebuild a `Here` (substitution, weakening, collapse, shift, …).
+* *Statements* about `WFF.here` (`here_congr`, `subst_hereEx`, `sat_here_*`, …) take an implicit
+  `{hO}`, which callers fill by unification.  `hereAt`, `hereEx` and `retEx` take a trailing
+  `hO := by opt_off`, as the constructor does.
+* *The rules:* `here_elim`, `here_intro`, `here_beta`, `here_name`, `here_subst`, `here_eq` and
+  strong T's `T_dia` take an implicit `{hO}`, which their `Here` premises fix.
+* *The T canonical model:* `RealDatum` has a field `hO`.  `World.retW` takes `Opt = false` as a
+  premise; the construction M1 shares (`CanonExist`) supplies `NoOpt` from it, so M1 is unaffected.
+  Henkin's strong T step (`retStep`) adds its `Here` atom only when T, strong T **and** `Opt` off
+  hold (`retSet` and `consistent_grow_ret` take `hO`); `HenkinRet`'s strong T lemmas,
+  `Proof.retEx` and `BWorld.retW` take `NoOpt`.
+* *So with `Opt` on there is no `Here` and no strong T* until part 2 derives them.  KT with `Opt`
+  is a system, but nothing about it is claimed beyond soundness yet.

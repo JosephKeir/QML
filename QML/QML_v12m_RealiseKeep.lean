@@ -91,7 +91,7 @@ theorem WFF.collapse_shift_same : ∀ {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx} {d : �
         exact congrArg (WFF.dia _ P) (WFF.collapse_shift_same (hs.diaIn x) (hc.diaIn _) hle'
           (hid.diaIn x) (hs₁.diaIn x) (hs₂.diaIn _) φ)
       exact hx.elim fun _ hX => key x (hid x _ hX).symm _ _
-  | _, _, _, _, _, hs, hc, hle, hid, _, _, .here hT s t =>
+  | _, _, _, _, _, hs, hc, hle, hid, _, _, .here hT s t hO =>
       WFF.here_congr hT (Term.collapse_shift_same hs hc hle hid s)
         (Term.collapse_shift_same hs hc hle hid t)
   | _, _, _, _, _, hs, hc, hle, hid, _, _, .back hB L s t =>

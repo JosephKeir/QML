@@ -49,7 +49,7 @@ def WFF.size {σ : Signature} : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → ℕ
   | _, _, .ex _ φ => φ.size + 1
   | _, _, .box φ => φ.size + 1
   | _, _, .dia _ _ φ => φ.size + 1
-  | _, _, .here (A := A) _ _ _ => A.eqRecSize + 1
+  | _, _, .here (A := A) _ _ _ _ => A.eqRecSize + 1
   | _, _, .back (A := A) _ L _ _ => (L.carrier A).eqRecSize + 2 * A.eqRecSize + 3
   | _, _, .retS _ S _ Φ => Φ.size + S.flat.eqRecSize + 1
   | _, _, .retxS _ _ _ S _ Φ => Φ.size + S.flat.eqRecSize + 1
@@ -87,7 +87,7 @@ theorem WFF.size_mono {σ : Signature} : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le
   | _, _, _, h, .ex T φ => congrArg (· + 1) (WFF.size_mono (h.insert _ T) φ)
   | _, _, _, h, .box φ => congrArg (· + 1) (WFF.size_mono h.boxIn φ)
   | _, _, _, h, .dia x _ φ => congrArg (· + 1) (WFF.size_mono (h.diaIn x) φ)
-  | _, _, _, _, .here _ _ _ => rfl
+  | _, _, _, _, .here _ _ _ _ => rfl
   | _, _, _, _, .back _ _ _ _ => rfl
   | _, _, _, h, .retS _ S _ Φ =>
       congrArg (· + S.flat.eqRecSize + 1) (WFF.size_mono (h.boxIn.insert _ _) Φ)
@@ -116,7 +116,7 @@ theorem WFF.size_subst {σ : Signature} : ∀ {ι : VarSymb → VarSymb} {Γ Δ 
   | _, _, _, _, _, _, _, _, _, _, .ex _ φ => congrArg (· + 1) (WFF.size_subst _ _ _ _ _ φ)
   | _, _, _, _, _, _, _, _, _, _, .box φ => congrArg (· + 1) (WFF.size_subst _ _ _ _ _ φ)
   | _, _, _, _, _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_subst _ _ _ _ _ φ)
-  | _, _, _, _, _, _, _, _, _, _, .here _ _ _ => rfl
+  | _, _, _, _, _, _, _, _, _, _, .here _ _ _ _ => rfl
   | _, _, _, _, _, _, _, _, _, _, .back _ _ _ _ => rfl
   | _, _, _, _, _, _, _, _, _, _, .retS _ S _ Φ =>
       congrArg (· + S.flat.eqRecSize + 1) (WFF.size_subst _ _ _ _ _ Φ)
@@ -153,7 +153,7 @@ theorem WFF.size_collapse {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {
   | _, _, _, _, _, _, .ex _ φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
   | _, _, _, _, _, _, .box φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
   | _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_collapse _ _ φ)
-  | _, _, _, _, _, _, .here _ _ _ => rfl
+  | _, _, _, _, _, _, .here _ _ _ _ => rfl
   | _, _, _, _, _, _, .back _ _ _ _ => rfl
   | _, _, _, _, _, _, .retS _ S _ Φ =>
       congrArg (· + S.flat.eqRecSize + 1) (WFF.size_collapse _ _ Φ)
@@ -182,7 +182,7 @@ theorem WFF.size_shift {σ : Signature} : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d :
   | _, _, _, _, _, _, .ex _ φ => congrArg (· + 1) (WFF.size_shift _ _ φ)
   | _, _, _, _, _, _, .box φ => congrArg (· + 1) (WFF.size_shift _ _ φ)
   | _, _, _, _, _, _, .dia _ _ φ => congrArg (· + 1) (WFF.size_shift _ _ φ)
-  | _, _, _, _, _, _, .here _ _ _ => rfl
+  | _, _, _, _, _, _, .here _ _ _ _ => rfl
   | _, _, _, _, _, _, .back _ _ _ _ => rfl
   | _, _, _, _, _, _, .retS _ S _ Φ =>
       congrArg (· + S.flat.eqRecSize + 1) (WFF.size_shift _ _ Φ)
@@ -824,7 +824,7 @@ theorem truth_lt : ∀ (n : ℕ) (w : World σ N₀) (i : ℕ × ℕ) (φ : WFF 
             obtain ⟨X, h⟩ : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X) := hx
             obtain ⟨w', hw', hd, hv, -, hmem'⟩ := exists_dia w x ⟨X, h⟩ χ hmem
             exact ⟨X, h, ⟨w', (canonEnv_extent w₀ w i h).symm ▸ hw'⟩, (key h _ hd).mpr hmem'⟩
-      | here hT s t =>
+      | here hT s t _ =>
           cases s with
           | diatm x hx bd =>
               exact here_truth w₀ hT hx bd t (fun K _ u u' => truth_lt n w K _ (by

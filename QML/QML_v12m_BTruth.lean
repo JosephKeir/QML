@@ -169,7 +169,7 @@ theorem truth_lt :
           rw [Term.mono_refl, Term.mono_refl]
       | top => exact ⟨fun _ => ((B.w s).mcs i).top_mem, fun _ => trivial⟩
       | bot => exact ⟨False.elim, fun h => ((B.w s).mcs i).bot_not_mem h⟩
-      | here hT S t =>
+      | here hT S t _ =>
           cases S with
           | diatm x hx bd =>
               exact here_truth hT hx bd t (fun K _ u u' => truth_lt n s K _ (by

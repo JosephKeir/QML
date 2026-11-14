@@ -591,16 +591,6 @@ def «at» (θ : Subst σ Δ) : VarSymb → SubE σ Δ
   | .root r => θ (.root r)
   | .step v s => if s.isStruct then (θ.at v).proj s else θ (.step v s)
 
-/-- `Opt` is off: an assumption, `NoOpt`, or a flag in context that excludes it (`optStage`).
-    The default for constructions that exist only in the `◇⁰`-free language. -/
-macro "opt_off" : tactic => `(tactic| first
-  | assumption
-  | exact ModalSys.NoOpt.noOpt
-  | exact ModalSys.noOpt_of_Four ‹_›
-  | exact ModalSys.noOpt_of_B ‹_›
-  | exact ModalSys.noOpt_of_BStrong ‹_›
-  | exact ModalSys.noOpt_of_Five ‹_›)
-
 /-- A witness clause with nothing to check: `Opt` off (`opt_off`), or no witnesses. -/
 macro "wit_triv" : tactic => `(tactic| first
   | exact fun hO => absurd hO (by rw [show ModalSys.Opt = false by opt_off]; decide)
@@ -1376,7 +1366,7 @@ def WFF.subst {σ : Signature} : (ι : VarSymb → VarSymb) → {Γ Δ : Ctx} �
       .dia (ι x) (hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw)
         (WFF.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx)
           (hΓ.diaIn x) (hΔ.diaIn (ι x)) φ)
-  | ι, _, _, _, _, θ, hθ, hc, _, _, .here hT s t =>
+  | ι, _, _, _, _, θ, hθ, hc, _, _, .here hT s t hO =>
       .here hT (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
   | ι, _, _, _, _, θ, hθ, hc, _, _, .back hB L s t =>
       .back hB L (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)

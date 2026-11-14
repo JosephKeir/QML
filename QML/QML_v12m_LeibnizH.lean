@@ -658,7 +658,7 @@ def Proof.substEqH {σ : Signature} (hO : ModalSys.Opt = true) : {Γ : Ctx} → 
   | _, _, _, _, _, .optx _ .ident _ hyI _ => fun _ _ _ _ _ _ _ _ _ _ =>
       absurd (hyI.elim fun _ h => (Ctx.witT_spec h).1 : ModalSys.T = true)
         (by simp [ModalSys.T_false_of_opt hO])
-  | _, _, _, _, _, .here hT _ _ => fun _ _ _ _ _ _ _ _ _ _ =>
+  | _, _, _, _, _, .here hT _ _ _ => fun _ _ _ _ _ _ _ _ _ _ =>
       absurd hT (by simp [ModalSys.T_false_of_opt hO])
   | _, _, _, _, _, .back hB _ _ _ => fun _ _ _ _ _ _ _ _ _ _ =>
       absurd hB (by simp [ModalSys.BStrong_false_of_opt hO])

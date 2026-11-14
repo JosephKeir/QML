@@ -95,6 +95,8 @@ variable (σ : Signature) (N₀ : ℕ)
 structure RealDatum {I : Type} [Preorder I] (S : StageSys I) (T : Set (S.Sentence σ)) (x : VarSymb)
     where
   hT : ModalSys.T = true
+  /-- `Here` is the `Opt`-off primitive (`WFF.here`'s gate). -/
+  hO : ModalSys.Opt = false
   /-- The content type: any type, as `WFF.here`'s is (§10.16).  Weak T realises a witness too,
       whenever the theory says so; strong T only guarantees that there are enough of them. -/
   A : VarType
@@ -152,7 +154,8 @@ structure World where
       `posRet_exists` needs: the atom makes the witness realised (`Canon.realised_of_here`) and
       its content indistinguishable from the term's value (`DTerm.rel_of_coname`), so no naming is
       involved and `◇`-typed contents are covered too (§10.41). -/
-  retW : (hT : ModalSys.T = true) → ModalSys.TStrong = true → ∀ (i : ℕ × ℕ) {A : VarType}
+  retW : (hT : ModalSys.T = true) → ModalSys.TStrong = true → (hO : ModalSys.Opt = false) →
+      ∀ (i : ℕ × ℕ) {A : VarType}
       {a : Ann A} (t : Term σ (L.ctx i) A a),
       ∃ (i' : ℕ × ℕ) (hi : i ≤ i') (y : VarSymb) (hy : (L.ctx i').ref y = some (.VTypeDia A)),
         (⟨i', WFF.hereAt hT y hy (Term.mono (L.ctx_le hi) t)⟩ : L.sys.Sentence σ) ∈ T
@@ -223,7 +226,7 @@ theorem RealDatum.hhereAt {I : Type} [Preorder I] [IsDirected I (· ≤ ·)] {S 
     {T : Set (S.Sentence σ)} {x : VarSymb} (d : RealDatum σ S T x) (hmcs : StageSys.IsMCS T)
     (i : I) (hi : d.i₀ ≤ i) (hd : (S.ctx i).ref x = some (.VTypeDia d.A)) :
     (⟨i, WFF.hereAt d.hT x hd
-        (Term.mono (S.le hi) d.t₀)⟩ : S.Sentence σ) ∈ T := by
+        (Term.mono (S.le hi) d.t₀) d.hO⟩ : S.Sentence σ) ∈ T := by
   refine Eq.mp (congrArg (fun φ => (⟨i, φ⟩ : S.Sentence σ) ∈ T) ?_)
     ((hmcs.mem_lift_iff hi).mpr d.hhere)
   exact WFF.mono_hereAt_of_le d.hT _ _ _ hd _

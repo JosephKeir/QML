@@ -912,7 +912,7 @@ theorem WFF.shift_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {Γ �
       exact key _ hwι _ _ _ _
   | _, _, _, _, _, _, _, _, _, _, D, _, _, _, _, _, _, _, _, _, _, _, .optx hO _ _ _ _ =>
       False.elim (by have := ModalSys.noOpt_of_Four D.hF; rw [hO] at this; cases this)
-  | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr, .here hT s t =>
+  | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr, .here hT s t hO =>
       WFF.here_congr hT (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr s)
         (Term.shift_subst C D θ hθ hc θ' hθ' hc' hcr t)
   | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr,

@@ -1228,7 +1228,7 @@ theorem WFF.subst_comp {σ : Signature} : {ι₁ ι₂ ι₃ : VarSymb → VarSy
           (Subst.sim_optInT_comp hθ₁ hc₁ hθ₂ hc₂ hs hX hx₁ hw₂ hw₃) φ)
       exact key (ι₃ y) hι _ _ _ _
   | _, _, _, _, _, _, _, _, _, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, _, _, _, hs,
-      .here hT s t =>
+      .here hT s t hO =>
       WFF.here_congr hT (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs s)
         (Term.subst_comp_sig θ₁ θ₂ θ₃ hθ₁ hc₁ hθ₂ hc₂ hθ₃ hc₃ hs t)
   | _, _, _, _, _, _, _, _, _, θ₁, θ₂, θ₃, hθ₁, hc₁, hθ₂, hc₂, hθ₃, hc₃, _, _, _, hs,

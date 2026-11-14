@@ -59,7 +59,7 @@ variable {σ : Signature} {Γ : Ctx}
 def boxConj {c : WFF σ Γ.boxIn 0} : (a : WFF σ Γ 0) → c ∈ a.boxConjs → Proof σ Γ [a] (.box c)
   | .box ψ, h => Proof.box_mono (Proof.conjunct ψ h)
   | .atom _, h | .eq _ _, h | .top, h | .bot, h | .and _ _, h | .or _ _, h | .imp _ _, h
-  | .all _ _, h | .ex _ _, h | .dia _ _ _, h | .here _ _ _, h | .back _ _ _ _, h
+  | .all _ _, h | .ex _ _, h | .dia _ _ _, h | .here _ _ _ _, h | .back _ _ _ _, h
   | .retS _ _ _ _, h | .retxS _ _ _ _ _ _, h | .link _ _ _ _, h | .linkx _ _ _ _ _ _, h
   | .optx _ _ _ _ _, h => absurd h List.not_mem_nil
 

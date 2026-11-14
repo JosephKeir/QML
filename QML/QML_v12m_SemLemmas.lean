@@ -360,7 +360,7 @@ theorem sat_mono : ∀ {Γ Γ' : Ctx} {h : Γ.Le Γ'} {d : ℕ} {w : M.frame.W} 
         have hc : (env'.witT y (h.witT hy₀)).get hd' = (env.witT y hy₀).get hd :=
           Part.get_eq_of_mem (he ▸ Part.get_mem hd) hd'
         exact (sat_mono (Env.optPushT_agree hag hy₀ hd hd' hc) φ hw).mpr hsat
-  | _, _, _, _, _, _, _, hag, .here hT s t, hw => by
+  | _, _, _, _, _, _, _, hag, .here hT s t _, hw => by
       change Model.Realised hT (interp _ (Term.mono _ s)) (interp _ (Term.mono _ t)) ↔ _
       rw [interp_mono hag s, interp_mono hag t]
       exact Iff.rfl

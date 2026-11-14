@@ -75,7 +75,7 @@ def WFF.usubst : {Γ : Ctx} → {d : ℕ} → Γ.SlotsFrom d → WFF σ Γ d →
   | _, _, hs, .ex T φ => .ex T (WFF.usubst (hs.insert T) φ)
   | _, _, hs, .box φ => .box (WFF.usubst hs.boxIn φ)
   | _, _, hs, .dia x hx φ => .dia x hx (WFF.usubst (hs.diaIn x) φ)
-  | _, _, _, .here hT s t => .here hT s t
+  | _, _, _, .here hT s t hO => .here hT s t
   | _, _, _, .back hB L s t => .back hB L s t
   | _, _, hs, .retS hB S t Φ => .retS hB S t (WFF.usubst (hs.boxIn.insert _) Φ)
   | _, _, hs, .retxS hB y hy S t Φ => .retxS hB y hy S t (WFF.usubst ((hs.diaIn y).insert _) Φ)
@@ -191,7 +191,7 @@ theorem sat_usubst [ModalSys.NoOpt] : ∀ {Γ : Ctx} {d : ℕ} {w : M.frame.W} (
       set_option smartUnfolding false in
       exact exists_congr fun _ => exists_congr fun h => exists_congr fun w' =>
         sat_usubst (env.diaPush x h w') (hs.diaIn x) φ
-  | _, _, _, _, _, .here _ _ _ => by
+  | _, _, _, _, _, .here _ _ _ _ => by
       set_option smartUnfolding false in
       exact Iff.rfl
   | _, _, _, _, _, .back _ _ _ _ => by

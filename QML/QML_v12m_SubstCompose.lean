@@ -352,7 +352,7 @@ theorem WFF.mono_subst {σ : Signature} : {ι : VarSymb → VarSymb} → {Γ Δ 
         (Subst.coh_optInT hθ hc hX) (hΓ.optInT y) (hΔ.optInT (ι y)) (hΔ'.optInT (ι y)) φ]
       exact congrArg (WFF.optx hO .ident (ι y) _) (WFF.subst_congr _ _ _ _ _ _ _ _
         (Subst.sim_optInT_mono θ h y (ι y)) φ)
-  | ι, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .here hT s t =>
+  | ι, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .here hT s t hO =>
       WFF.here_congr' hT (Term.mono_subst h θ hθ hc s) (Term.mono_subst h θ hθ hc t)
   | ι, _, _, _, _, _, h, θ, hθ, hc, _, _, _, .back hB L s t =>
       WFF.back_congr' hB L (Term.mono_subst h θ hθ hc s) (Term.mono_subst h θ hθ hc t)

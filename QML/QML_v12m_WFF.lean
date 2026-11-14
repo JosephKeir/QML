@@ -304,9 +304,13 @@ inductive WFF (σ : Signature) : Ctx → ℕ → Type where
       term of the view* (`∃a. Here (diatm x hx bd) a` for a base-typed body `bd`), which need not
       exist: the view is the content address plus `Γ.boxIn`, so with no base entry in scope and no
       constant in the signature there is no such `bd`.  `◇_x ⊤` will not do — it says only that the
-      extent is non-empty. -/
+      extent is non-empty.
+
+      *Gated to `Opt` off* (`hO`, filled by `opt_off`): with `Opt` on, `Here` is the identity view,
+      `◇⁰ᵀ_x (collapse₀ bd ≡ t)`, and its rules are derived (docs §12.25, §12.32). -/
   | here {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true) {A : VarType}
-      {b : Ann (.VTypeDia A)} {a : Ann A} (s : Term σ Γ (.VTypeDia A) b) (t : Term σ Γ A a) :
+      {b : Ann (.VTypeDia A)} {a : Ann A} (s : Term σ Γ (.VTypeDia A) b) (t : Term σ Γ A a)
+      (hO : ModalSys.Opt = false := by opt_off) :
       WFF σ Γ d
   /-- `Back s t` (strong B): the carrier `s` comes back as `t` — its out leg is nonempty and from
       every arrow of it the way home returns (a value indistinguishable from) `t`
@@ -440,6 +444,7 @@ theorem WFF.linkx_congr {σ : Signature} {Γ : Ctx} {d : ℕ} (hV : ModalSys.Fiv
   rfl
 /-- Two `Here` formulas agree when their subjects do. -/
 theorem WFF.here_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true)
+    {hO : ModalSys.Opt = false}
     {A : VarType} {b : Ann (.VTypeDia A)} {a : Ann A}
     {s s' : Term σ Γ (.VTypeDia A) b} {t t' : Term σ Γ A a} (hs : s = s') (ht : t = t') :
     (WFF.here hT s t : WFF σ Γ d) = WFF.here hT s' t' := by
@@ -447,6 +452,7 @@ theorem WFF.here_congr' {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T =
 
 /-- Two `Here` formulas agree when their subjects do, annotations included on both sides. -/
 theorem WFF.here_congr {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true)
+    {hO : ModalSys.Opt = false}
     {A : VarType} {b b' : Ann (.VTypeDia A)} {a a' : Ann A}
     {s : Term σ Γ (.VTypeDia A) b} {s' : Term σ Γ (.VTypeDia A) b'}
     {t : Term σ Γ A a} {t' : Term σ Γ A a'}
@@ -580,7 +586,7 @@ def WFF.mono {σ : Signature} : {Γ Γ' : Ctx} → {d : ℕ} → Γ.Le Γ' → W
   | _, _, _, h, .ex T φ => .ex T (WFF.mono (h.insert _ T) φ)
   | _, _, _, h, .box φ => .box (WFF.mono h.boxIn φ)
   | _, _, _, h, .dia x hx φ => .dia x (hx.imp fun _ hX => h.ref hX) (WFF.mono (h.diaIn x) φ)
-  | _, _, _, h, .here hT s t => .here hT (Term.mono h s) (Term.mono h t)
+  | _, _, _, h, .here hT s t hO => .here hT (Term.mono h s) (Term.mono h t)
   | _, _, _, h, .back hB L s t => .back hB L (Term.mono h s) (Term.mono h t)
   | _, _, _, h, .retS hB S t Φ => .retS hB S (Term.mono h t) (WFF.mono (h.boxIn.insert _ _) Φ)
   | _, _, _, h, .retxS hB y hy S t Φ =>

@@ -199,7 +199,7 @@ theorem Ext.henk {N : GNetSt σ} (hN : N.Good) {s : Node} (hs : N.Live s) (o : O
     | .imp (.ex _ _) _ => exact Ext.refl N
     | .imp (.box _) _ => exact Ext.refl N
     | .imp (.dia _ _ _) _ => exact Ext.refl N
-    | .imp (.here _ _ _) _ => exact Ext.refl N
+    | .imp (.here _ _ _ _) _ => exact Ext.refl N
     | .imp (.back _ _ _ _) _ => exact Ext.refl N
     | .imp (.retS _ _ _ _) _ => exact Ext.refl N
     | .imp (.retxS _ _ _ _ _ _) _ => exact Ext.refl N
@@ -216,7 +216,7 @@ theorem Ext.henk {N : GNetSt σ} (hN : N.Good) {s : Node} (hs : N.Live s) (o : O
     | .imp (.all _ _) (.ex _ _) => exact Ext.refl N
     | .imp (.all _ _) (.box _) => exact Ext.refl N
     | .imp (.all _ _) (.dia _ _ _) => exact Ext.refl N
-    | .imp (.all _ _) (.here _ _ _) => exact Ext.refl N
+    | .imp (.all _ _) (.here _ _ _ _) => exact Ext.refl N
     | .imp (.all _ _) (.back _ _ _ _) => exact Ext.refl N
     | .imp (.all _ _) (.retS _ _ _ _) => exact Ext.refl N
     | .imp (.all _ _) (.retxS _ _ _ _ _ _) => exact Ext.refl N
@@ -226,7 +226,7 @@ theorem Ext.henk {N : GNetSt σ} (hN : N.Good) {s : Node} (hs : N.Live s) (o : O
     | .all _ _ => exact Ext.refl N
     | .box _ => exact Ext.refl N
     | .dia _ _ _ => exact Ext.refl N
-    | .here _ _ _ => exact Ext.refl N
+    | .here _ _ _ _ => exact Ext.refl N
     | .back _ _ _ _ => exact Ext.refl N
     | .retS _ _ _ _ => exact Ext.refl N
     | .retxS _ _ _ _ _ _ => exact Ext.refl N
@@ -273,7 +273,7 @@ theorem Ext.mkChild (hF : ModalSys.Four = true) {N : GNetSt σ} {s : Node} (hs :
     | .imp _ _ => exact Ext.refl N
     | .all _ _ => exact Ext.refl N
     | .ex _ _ => exact Ext.refl N
-    | .here _ _ _ => exact Ext.refl N
+    | .here _ _ _ _ => exact Ext.refl N
     | .back _ _ _ _ => exact Ext.refl N
     | .retS _ _ _ _ => exact Ext.refl N
     | .retxS _ _ _ _ _ _ => exact Ext.refl N

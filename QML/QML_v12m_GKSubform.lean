@@ -91,7 +91,7 @@ theorem WFF.weight_mono' : ∀ {Γ Γ' : Ctx} {d : ℕ} (h : Γ.Le Γ') (φ : WF
       simp only [WFF.mono, WFF.weight]; rw [WFF.weight_mono' _ φ]
   | _, _, _, h, .dia x hx φ => by
       simp only [WFF.mono, WFF.weight]; rw [WFF.weight_mono' _ φ]
-  | _, _, _, _, .here _ _ _ => rfl
+  | _, _, _, _, .here _ _ _ _ => rfl
   | _, _, _, _, .back _ _ _ _ => rfl
   | _, _, _, h, .retS _ _ _ Φ => by
       simp only [WFF.mono, WFF.weight]; rw [WFF.weight_mono' _ Φ]

@@ -730,7 +730,7 @@ theorem sat_cone [ModalSys.NoOpt] (hFV : ModalSys.Five = true → ModalSys.Four 
       · rintro ⟨X, hr, ⟨⟨s, ⟨r⟩⟩, hm⟩, H⟩
         have h := (hag.mem_ref hr s r).mpr hm
         exact ⟨X, hr, ⟨_, h⟩, (sat_cone hFV (hag.diaPush hr s r h hm) φ).mpr H⟩
-  | _, _, _, _, _, _, .here h _ _ => flagElim hT h
+  | _, _, _, _, _, _, .here h _ _ _ => flagElim hT h
   | _, _, _, _, _, _, .back h _ _ _ => flagElim hS h
   | _, _, _, _, _, _, .retS h _ _ _ => flagElim hS h
   | _, _, _, _, _, _, .retxS h _ _ _ _ _ => flagElim hS h

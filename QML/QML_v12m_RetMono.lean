@@ -88,7 +88,7 @@ theorem WFF.collapse_mono : ∀ {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx} {d :
       simp only [WFF.collapse, WFF.mono]
       rw [WFF.collapse_mono (h.optInT hX) (h'.optInT (l₁.witT hX)) (l₁.optInT y)
         (l₂.optInT _) (hs.optInT y) (hs'.optInT y) φ]
-  | _, _, _, _, _, _, h, h', l₁, l₂, _, _, .here hT s t =>
+  | _, _, _, _, _, _, h, h', l₁, l₂, _, _, .here hT s t hO =>
       WFF.here_congr' hT (Term.collapse_mono h h' l₁ l₂ s) (Term.collapse_mono h h' l₁ l₂ t)
   | _, _, _, _, _, _, h, h', l₁, l₂, _, _, .back hB L s t =>
       WFF.back_congr' hB L (Term.collapse_mono h h' l₁ l₂ s) (Term.collapse_mono h h' l₁ l₂ t)
@@ -186,7 +186,8 @@ theorem WFF.mono_bindFree {Γ Γ' : Ctx} (h : Γ.Le Γ') {u : ℕ} (hu : Γ.Root
     declared: `mono` of `here` is `here` of the two `mono`s, and the subject is an η-expansion
     (`Term.mono_eta`).  The declarations are propositions, so which proof each side carries does not
     matter.  This is all the old `WFF.mono_retHyp` amounted to, for the new rule. -/
-theorem WFF.mono_hereAt_of_le {Γ Γ' : Ctx} (hT : ModalSys.T = true) (h : Γ.Le Γ') {A : VarType}
+theorem WFF.mono_hereAt_of_le {Γ Γ' : Ctx} (hT : ModalSys.T = true) {hO : ModalSys.Opt = false}
+    (h : Γ.Le Γ') {A : VarType}
     (x : VarSymb) (hx : Γ.ref x = some (.VTypeDia A))
     (hx' : Γ'.ref x = some (.VTypeDia A))
     {a : Ann A} (t : Term σ Γ A a) :
@@ -194,7 +195,8 @@ theorem WFF.mono_hereAt_of_le {Γ Γ' : Ctx} (hT : ModalSys.T = true) (h : Γ.Le
   WFF.here_congr' hT (Term.mono_eta _ _ _ _) rfl
 
 /-- The same at a declaration the inclusion itself makes, as `Proof.T_dia` states it. -/
-theorem WFF.mono_hereAt {Γ Γ' : Ctx} (hT : ModalSys.T = true) (h : Γ.Le Γ') {A : VarType}
+theorem WFF.mono_hereAt {Γ Γ' : Ctx} (hT : ModalSys.T = true) {hO : ModalSys.Opt = false}
+    (h : Γ.Le Γ') {A : VarType}
     {a : Ann A} (t : Term σ Γ A a) {c : ℕ} (hc : Γ.RootFresh (.free c))
     (hc' : Γ'.RootFresh (.free c)) :
     WFF.mono (h.insert (.free c) (.VTypeDia A))

@@ -744,7 +744,7 @@ theorem WFF.subst_congr : {ι ι' : VarSymb → VarSymb} → {Γ Δ : Ctx} → {
           (θ'.optInT y (ι y)) (Subst.ok_optInT hθ hX hw) p (Subst.coh_optInT hθ hc hX) q
           (hΓ.optInT y) hΔz (Subst.sim_optInT hs hX hw) φ)
       exact key (ι' y) hy' _ _ _ _
-  | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .here hT s t =>
+  | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .here hT s t hO =>
       WFF.here_congr hT (Term.subst_congr θ θ' hθ hθ' hc hc' hs s)
         (Term.subst_congr θ θ' hθ hθ' hc hc' hs t)
   | _, _, _, _, _, _, θ, θ', hθ, hθ', hc, hc', _, _, hs, .back hB L s t =>

@@ -355,7 +355,7 @@ theorem WFF.subst_id {σ : Signature} : {Δ : Ctx} → {d : ℕ} → (hθ : Subs
       refine (WFF.subst_congr _ (Subst.idS σ (Δ.optInT y)) _ Subst.ok_idS _ Subst.coh_idS
         (hΔ.optInT y) (hΔ.optInT y) (Subst.sim_optInT_idS y) _).trans ?_
       exact WFF.subst_id Subst.ok_idS Subst.coh_idS (hΔ.optInT y) _
-  | Δ, _, hθ, hc, _, .here hT s t =>
+  | Δ, _, hθ, hc, _, .here hT s t hO =>
       WFF.here_congr hT
         ((Term.subst_idS_mono (Ctx.Le.refl Δ) hθ hc s).trans
           (congrArg (Sigma.mk _) (Term.mono_refl _ s)))

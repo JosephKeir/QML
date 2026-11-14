@@ -57,7 +57,7 @@ def WFF.weight {σ : Signature} : {Γ : Ctx} → {d : ℕ} → WFF σ Γ d → �
   | _, _, .ex _ φ => φ.weight + 1
   | _, _, .box φ => φ.weight + 1
   | _, _, .dia _ _ φ => φ.weight + 1
-  | _, _, .here _ _ _ => 0
+  | _, _, .here _ _ _ _ => 0
   | _, _, .back _ _ _ _ => 0
   | _, _, .retS _ _ _ Φ => Φ.weight + 2
   | _, _, .retxS _ _ _ _ _ Φ => Φ.weight + 2

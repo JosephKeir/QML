@@ -966,7 +966,7 @@ theorem sat_collapse : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {h : Ctx.Collapses k Γ
         exact ⟨X, h x _ hr, ⟨w₁.1, by rw [← href]; exact w₁.2⟩,
           (sat_collapse (hs.diaIn x) (hag.diaPush hr w₁ _) φ
             fun hO => (ho hO).diaPush hag hr w₁ _).mpr hsat⟩
-  | _, _, _, _, _, _, _, _, _, hag, .here hT s t, _ => by
+  | _, _, _, _, _, _, _, _, _, hag, .here hT s t _, _ => by
       change Model.Realised hT (interp _ (Term.collapse _ s)) (interp _ (Term.collapse _ t)) ↔ _
       rw [interp_collapse hag s, interp_collapse hag t]
       exact Iff.rfl

@@ -64,7 +64,8 @@ noncomputable def ofHenkin (d : ℕ) (L₀ : WorldLang) (hρ : ∀ n, L₀.ρ n 
   allW := WorldLang.finalT_all_witness
   -- ⭐No realisation field: the world realises whatever its theory says (`World.real`, §2d step 4).
   -- What the chain still provides is that *every term* is some strong T step's content.
-  retW := fun hTb hTS i _ _ t => by
+  retW := fun hTb hTS hO i _ _ t => by
+    haveI : ModalSys.NoOpt := ⟨hO⟩
     obtain ⟨m, j⟩ := i
     exact WorldLang.exists_retW (L := L₀) hTb hTS hS₀ m j t
 
@@ -318,7 +319,8 @@ omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 /-- ⭐**A `Here` atom about a possible object makes its witness realised.**  `here_beta` at the unit
     reduces the atom to realisedness, `here_name` names the witness's content, and the witnessed
     theory declares the name: a `RealDatum`. -/
-theorem realised_of_here (hT : ModalSys.T = true) {w : World σ N₀} {x : VarSymb} {i : ℕ × ℕ}
+theorem realised_of_here (hT : ModalSys.T = true) {hO : ModalSys.Opt = false} {w : World σ N₀}
+    {x : VarSymb} {i : ℕ × ℕ}
     {X : VarType} (hx : (w.L.ctx i).ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B}
     (bd : Term σ ((w.L.ctx i).diaIn x) B β) {a : Ann B} (t : Term σ (w.L.ctx i) B a)
     (h : (⟨i, WFF.here hT (Term.diatm x ⟨X, hx⟩ bd) t⟩ : w.L.sys.Sentence σ) ∈ w.T) :

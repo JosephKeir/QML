@@ -809,7 +809,8 @@ theorem WFF.holeAt_wCounit (hS : ModalSys.BStrong = true) (hT : ModalSys.T = tru
   rfl
 
 /-- Filling a pair into a `Here` about its second half. -/
-theorem WFF.instantiate_here_snd {Ω : Ctx} [Ω.NoSlots] (hT : ModalSys.T = true) {B : VarType}
+theorem WFF.instantiate_here_snd {Ω : Ctx} [Ω.NoSlots] (hT : ModalSys.T = true)
+    {hO : ModalSys.Opt = false} {B : VarType}
     {c₀ : Ann X} (c : Term σ Ω X c₀) {u₀ : Ann B} {v₀ : Ann (.VTypeDia X)} (u : Term σ Ω B u₀)
     (v : Term σ Ω (.VTypeDia X) v₀) :
     WFF.instantiate Ctx.NoSlots.slots (Term.pair u v) (WFF.here hT

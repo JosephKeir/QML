@@ -1062,7 +1062,7 @@ theorem WFF.collapse_subst : {k : ℕ} → {ι ι' : VarSymb → VarSymb} → {�
           (Subst.corr_optInT C hθ hc' hcr hX hzi hz) φ
           (fun hO' => Subst.CorrW.optInT C hc' hcr (hcw hO') hX hzi hz))
       exact key _ hι _ _ _ _
-  | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr, .here hT s t, _ =>
+  | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr, .here hT s t _, _ =>
       WFF.here_congr hT (Term.collapse_subst C D θ hθ hc θ' hθ' hc' hcr s)
         (Term.collapse_subst C D θ hθ hc θ' hθ' hc' hcr t)
   | _, _, _, _, _, _, _, _, _, C, D, θ, hθ, hc, θ', hθ', hc', _, _, _, _, hcr,

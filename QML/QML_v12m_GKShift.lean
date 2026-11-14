@@ -170,7 +170,7 @@ theorem WFF.shift_mono : ∀ {k : ℕ} {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx} {d : �
   | _, _, _, _, _, _, h, h', l₁, l₂, hs, hs', .dia x _ φ =>
       congrArg (WFF.dia _ _) (WFF.shift_mono (h.diaIn x) (h'.diaIn x) (l₁.diaIn x)
         (l₂.diaIn _) (hs.diaIn x) (hs'.diaIn x) φ)
-  | _, _, _, _, _, _, h, h', l₁, l₂, _, _, .here hT s t => by
+  | _, _, _, _, _, _, h, h', l₁, l₂, _, _, .here hT s t hO => by
       change WFF.here hT (Term.shift h' (Term.mono l₁ s)) (Term.shift h' (Term.mono l₁ t)) = _
       rw [Term.shift_mono h h' l₁ l₂ s, Term.shift_mono h h' l₁ l₂ t]
       rfl
@@ -229,7 +229,7 @@ theorem WFF.weight_shift : ∀ {k : ℕ} {Γ₁ Γ₂ : Ctx} {d : ℕ} (h : Ctx.
   | _, _, _, _, _, _, .dia _ _ φ => by
       simp only [WFF.shift, WFF.weight]
       rw [WFF.weight_shift _ _ φ]
-  | _, _, _, _, _, _, .here _ _ _ => rfl
+  | _, _, _, _, _, _, .here _ _ _ _ => rfl
   | _, _, _, _, _, _, .back _ _ _ _ => rfl
   | _, _, _, _, _, _, .retS _ _ _ Φ => by
       simp only [WFF.shift, WFF.weight]

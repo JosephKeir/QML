@@ -1150,6 +1150,7 @@ def Proof.here_introAt {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} [ModalS
     component facts cannot be assembled into one about the pair — and nothing needs them to be: the
     chain hands over a compound `Here` directly at the witness's full content type. -/
 def Proof.here_fst {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+    {hO : ModalSys.Opt = false}
     (x : VarSymb)
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A B : VarType} {a : Ann A} {b : Ann B}
     (t₁ : Term σ Γ A a) (t₂ : Term σ Γ B b) {a' : Ann A} {b' : Ann B}
@@ -1165,6 +1166,7 @@ def Proof.here_fst {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : Modal
 
 /-- The second component, by the slot's `.snd` address. -/
 def Proof.here_snd {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+    {hO : ModalSys.Opt = false}
     (x : VarSymb)
     (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A B : VarType} {a : Ann A} {b : Ann B}
     (t₁ : Term σ Γ A a) (t₂ : Term σ Γ B b) {a' : Ann A} {b' : Ann B}
@@ -1208,6 +1210,7 @@ theorem Term.subst_mono_renameTm_sigma {ι : VarSymb → VarSymb} {Γ Δ : Ctx} 
     value travels by `Term.subst_mono_renameTm_sigma`, and `WFF.here_congr` takes both sides as
     `Sigma`s because substitution moves the annotations. -/
 theorem WFF.subst_hereAt_renameTm {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (hT : ModalSys.T = true)
+    {hO : ModalSys.Opt = false}
     (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0)
     (hΔ : Δ.SlotsFrom 0) {u u' : ℕ} (hu : Γ.RootFresh (.free u)) (hu' : Δ.RootFresh (.free u'))
     {A : VarType} {a : Ann A} (t : Term σ Γ A a) :
@@ -1240,7 +1243,8 @@ theorem WFF.hereRead_congr {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {A :
     This is what makes `Proof.here_name`'s conclusion survive substitution, and so why the rule is
     stated at an arbitrary body (§10.11). -/
 theorem WFF.subst_hereEx {ι : VarSymb → VarSymb} {Γ Δ : Ctx} [Γ.NoSlots] [Δ.NoSlots]
-    (hT : ModalSys.T = true) (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ)
+    (hT : ModalSys.T = true) {hO : ModalSys.Opt = false} (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ)
+    (hc : Subst.Coh ι Γ θ)
     (hΓ : Γ.SlotsFrom 0) (hΔ : Δ.SlotsFrom 0) {B : VarType} {b : Ann (.VTypeDia B)}
     (s : Term σ Γ (.VTypeDia B) b) :
     WFF.subst ι θ hθ hc hΓ hΔ (WFF.hereEx hT s) = WFF.hereEx hT (Term.subst ι θ hθ hc s) := by
@@ -3668,7 +3672,7 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
                 (List.map_congr_left fun χ _ =>
                   WFF.subst_weaken_rename θ hθ hc hΓ hΓ' cfr hu' T χ))
             ihq))
-  | _, _, _, @Proof.T_dia _ _ _ _ hT hS A _ t c hcf _ _ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.T_dia _ _ _ _ hT hS hO A _ t c hcf _ _ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       have hcf' : Γ'.RootFresh (.free (Ctx.Presented.bound Γ')) :=
         Ctx.Presented.fresh_bound _ le_rfl
@@ -3684,7 +3688,7 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
               (List.map_congr_left fun χ _ =>
                 WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' (.VTypeDia A) χ))
           (Proof.conv (WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' (.VTypeDia A) _) ih))
-  | _, _, _, @Proof.here_elim _ _ Γ _ _ hT x hx A a t a₁ bd ψ ph pb, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.here_elim _ _ Γ _ _ hT hO x hx A a t a₁ bd ψ ph pb, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
       have hy : ∃ X, Γ'.ref (ι x) = some (.VTypeDia X) :=
@@ -3697,7 +3701,7 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
             (WFF.subst_viewReadTm θ hθ hc hΓ hΓ' (ι x) (Subst.ok_dia hθ hx hw)
               (Subst.coh_dia hθ hc hx) (hΓ'.diaIn (ι x)) bd ψ))
             (Proof.subst pb θ hθ hc hΓ)))
-  | _, _, _, @Proof.here_intro _ _ Γ _ _ hT x hx A a t a₁ bd ψ ph pr, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.here_intro _ _ Γ _ _ hT hO x hx A a t a₁ bd ψ ph pr, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
       have hy : ∃ X, Γ'.ref (ι x) = some (.VTypeDia X) :=
@@ -3709,7 +3713,7 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
           (Term.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) bd) _
           (Proof.subst ph θ hθ hc hΓ)
           (Proof.conv (WFF.subst_hereRead hT θ hθ hc hΓ hΓ' t ψ) (Proof.subst pr θ hθ hc hΓ)))
-  | _, _, _, @Proof.here_beta _ _ Γ _ _ hT x hx A a t a₁ bd B b s ph, Γ', _, ι, θ, hθ,
+  | _, _, _, @Proof.here_beta _ _ Γ _ _ hT hO x hx A a t a₁ bd B b s ph, Γ', _, ι, θ, hθ,
       hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
@@ -3724,7 +3728,7 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         (Proof.here_beta hT (ι x) hy (Term.subst ι θ hθ hc t)
           (Term.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) bd) _
           (Proof.subst ph θ hθ hc hΓ))
-  | _, _, _, @Proof.here_name _ _ Γ _ _ hT x hx B β bd p, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.here_name _ _ Γ _ _ hT hO x hx B β bd p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
       have hy : ∃ X, Γ'.ref (ι x) = some (.VTypeDia X) :=
@@ -3733,13 +3737,14 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
         (Proof.here_name hT (ι x) hy
           (Term.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) bd)
           (Proof.subst p θ hθ hc hΓ))
-  | _, _, _, @Proof.here_subst _ _ Γ _ _ hT A b s a a' t t' φ ph ph' pf, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.here_subst _ _ Γ _ _ hT hO A b s a a' t t' φ ph ph' pf, Γ', _, ι, θ, hθ, hc,
+      hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       Proof.conv (WFF.subst_instantiate θ hθ hc hΓ hΓ' t' φ).symm
         (Proof.here_subst hT (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
           (Term.subst ι θ hθ hc t') _ (Proof.subst ph θ hθ hc hΓ) (Proof.subst ph' θ hθ hc hΓ)
           (Proof.conv (WFF.subst_instantiate θ hθ hc hΓ hΓ' t φ) (Proof.subst pf θ hθ hc hΓ)))
-  | _, _, _, @Proof.here_eq _ _ Γ _ _ hT A b s a t t' ph pe, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.here_eq _ _ Γ _ _ hT hO A b s a t t' ph pe, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       Proof.here_eq hT (Term.subst ι θ hθ hc s) (Term.subst ι θ hθ hc t)
         (Term.subst ι θ hθ hc t') (Proof.subst ph θ hθ hc hΓ)
@@ -4322,6 +4327,7 @@ def Proof.exists_eqRec_eta {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {Δ : List (
     `WFF.hereEx hT s` contains the atom `Here s (η b₀)` at a declared root — which is what
     `Canon.RealDatum` is made of (§10.13). -/
 theorem WFF.instantiate_here_slot {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true)
+    {hO : ModalSys.Opt = false}
     {B : VarType} {b : Ann (.VTypeDia B)} (s : Term σ Γ (.VTypeDia B) b) {β : Ann B}
     (u : Term σ Γ B β) :
     WFF.instantiate (d := 0) Ctx.NoSlots.slots u
@@ -4454,7 +4460,8 @@ theorem WFF.instantiate_diaSlot {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {A : Va
     (`Ann.eq_of_diaFree`) and at a `◇`-typed one would mean one witness.  Where the annotations may
     differ, functionality is `here_subst` itself. -/
 def Proof.here_fun {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)}
-    (hT : ModalSys.T = true) {A : VarType} (hA : A.diaFree = true) {b : Ann (.VTypeDia A)}
+    (hT : ModalSys.T = true) {hO : ModalSys.Opt = false} {A : VarType} (hA : A.diaFree = true)
+    {b : Ann (.VTypeDia A)}
     (s : Term σ Γ (.VTypeDia A) b) {a : Ann A} (t t' : Term σ Γ A a)
     (p : Proof σ Γ Δ (WFF.here hT s t)) (p' : Proof σ Γ Δ (WFF.here hT s t')) :
     Proof σ Γ Δ (eqRec A t t') := by

@@ -238,7 +238,7 @@ theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T =
     ∃ (p : (frame w₀).Pos A w) (hm : (frame w₀).reflAcc hT w ∈ (posEval w₀ p).1),
       Ind w₀ ((posEval w₀ p).2 ⟨(frame w₀).reflAcc hT w, hm⟩) a := by
   obtain ⟨i, a', t, ht⟩ := definable_fromDom w₀ A w a
-  obtain ⟨i', hi, y, hy, hmem⟩ := w.retW hT hS i t
+  obtain ⟨i', hi, y, hy, hmem⟩ := w.retW hT hS ModalSys.NoOpt.noOpt i t
   have hr : w.Realised y :=
     realised_of_here hT hy (Term.eta (.step y .dia) A (Ctx.ref_diaIn_of hy)) _ hmem
   obtain rfl : hr.data.A = A := by

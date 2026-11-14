@@ -47,7 +47,7 @@ theorem WFF.mono_mono {σ : Signature} : ∀ {Γ₁ Γ₂ Γ₃ : Ctx} {d : ℕ}
       congrArg (WFF.dia x _) (WFF.mono_mono (h₁.diaIn x) (h₂.diaIn x) φ)
   | _, _, _, _, h₁, h₂, .optx hO k y _ φ =>
       congrArg (WFF.optx hO k y _) (WFF.mono_mono (h₁.optInK k y) (h₂.optInK k y) φ)
-  | _, _, _, _, h₁, h₂, .here hT s t =>
+  | _, _, _, _, h₁, h₂, .here hT s t _ =>
       WFF.here_congr' hT (Term.mono_mono h₁ h₂ s) (Term.mono_mono h₁ h₂ t)
   | _, _, _, _, h₁, h₂, .back hB L s t =>
       WFF.back_congr' hB L (Term.mono_mono h₁ h₂ s) (Term.mono_mono h₁ h₂ t)
@@ -86,7 +86,7 @@ theorem WFF.mono_refl {σ : Signature} : ∀ {Γ : Ctx} {d : ℕ} (h : Γ.Le Γ)
   | _, _, h, .dia x hx φ => congrArg (WFF.dia x hx) (WFF.mono_refl (h.diaIn x) φ)
   | _, _, h, .optx hO k y hy φ =>
       congrArg (WFF.optx hO k y hy) (WFF.mono_refl (h.optInK k y) φ)
-  | _, _, h, .here hT s t => WFF.here_congr' hT (Term.mono_refl h s) (Term.mono_refl h t)
+  | _, _, h, .here hT s t _ => WFF.here_congr' hT (Term.mono_refl h s) (Term.mono_refl h t)
   | _, _, h, .back hB L s t =>
       WFF.back_congr' hB L (Term.mono_refl h s) (Term.mono_refl h t)
   | _, _, h, .retS hB S t Φ =>

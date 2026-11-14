@@ -431,7 +431,7 @@ variable (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {w : M.frame.W} (env :
 omit [Γ.NoSlots] in
 /-- ⭐The pinned form says that the identity arrow lies in the address's extent, and that the
     content there is indistinguishable from `t`. -/
-theorem sat_hereAt {A : VarType} (hx : Γ.ref x = some (.VTypeDia A))
+theorem sat_hereAt {hO : ModalSys.Opt = false} {A : VarType} (hx : Γ.ref x = some (.VTypeDia A))
     {a : Ann A}
     (t : Term σ Γ A a) :
     M.sat env (WFF.hereAt hT x hx t : WFF σ Γ 0) ↔
@@ -445,7 +445,7 @@ omit [Γ.NoSlots] in
 /-- ⭐What the general form says: the identity arrow lies in the witness's extent, and the body's
     value there is indistinguishable from `t`.  By `Model.dia_beta`, a `◇`-term has its witness's
     extent. -/
-theorem sat_here_diatm (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
+theorem sat_here_diatm {hO : ModalSys.Opt = false} (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
     (h : Γ.ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A}
     (t : Term σ Γ A a)
     {a₁ : Ann A} (bd : Term σ (Γ.diaIn x) A a₁) :
@@ -462,7 +462,7 @@ theorem sat_here_diatm (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
     domain, and that element is the existential's witness.  No condition on the type: this is the
     totality half of the pair whose other half, surjectivity, is `Model.posRet_exists` and
     `Proof.T_dia` (§10.15). -/
-theorem sat_here_name (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
+theorem sat_here_name {hO : ModalSys.Opt = false} (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
     (h : Γ.ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B} (bd : Term σ (Γ.diaIn x) B β)
     (hunit : M.sat env (WFF.here hT (Term.diatm x hx Term.unit) Term.unit : WFF σ Γ 0)) :
     M.sat env (WFF.hereEx hT (Term.diatm x hx bd)) := by
@@ -494,7 +494,8 @@ include hnp hfin in
     preserves truth (`Model.sat_instantiate`, then `IndInvariant` twice).  This is what makes
     `Proof.here_subst` sound where no equation is available — the annotations need not agree, since
     the two instances are simply two formulas (§10.11). -/
-theorem sat_here_subst (hM : M.IndInvariant) (hop : env.OpenedT) {A : VarType}
+theorem sat_here_subst {hO : ModalSys.Opt = false} (hM : M.IndInvariant) (hop : env.OpenedT)
+    {A : VarType}
     {b : Ann (.VTypeDia A)}
     (s : Term σ Γ (.VTypeDia A) b)
     {a a' : Ann A} (t : Term σ Γ A a) (t' : Term σ Γ A a')
@@ -513,7 +514,8 @@ theorem sat_here_subst (hM : M.IndInvariant) (hop : env.OpenedT) {A : VarType}
 omit [Γ.NoSlots] in
 /-- ⭐**Leibniz for the content is sound**: the defined equality holds exactly when the two contents
     denote one object (`sat_eqRec`), and `Realised` receives the same object. -/
-theorem sat_here_eq {A : VarType} {b : Ann (.VTypeDia A)} (s : Term σ Γ (.VTypeDia A) b)
+theorem sat_here_eq {hO : ModalSys.Opt = false} {A : VarType} {b : Ann (.VTypeDia A)}
+    (s : Term σ Γ (.VTypeDia A) b)
     {a : Ann A} (t t' : Term σ Γ A a)
     (h : M.sat env (WFF.here hT s t : WFF σ Γ 0))
     (he : M.sat env (eqRec A t t' : WFF σ Γ 0)) :
@@ -605,7 +607,8 @@ include hnp hfin in
     content is `s` read with `t`'s value in the hole (`interp_hereRead`).  So the atom "`Here`(new
     subject, `s` read with the hole)" holds with `c` in the hole, by reflexivity, and `IndInvariant`
     carries it to `t`'s value, `c` and `t` being indistinguishable. -/
-theorem sat_here_beta (hM : M.IndInvariant) (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
+theorem sat_here_beta {hO : ModalSys.Opt = false} (hM : M.IndInvariant)
+    (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
     (h : Γ.ref x = some (.VTypeDia X)) {A : VarType} {a : Ann A}
     (t : Term σ Γ A a) {a₁ : Ann A} (bd : Term σ (Γ.diaIn x) A a₁)
     {B : VarType} {b : Ann B}
@@ -652,7 +655,7 @@ theorem sat_here_beta (hM : M.IndInvariant) (hx : ∃ Y, Γ.ref x = some (.VType
 include hnp hfin in
 /-- ⭐**Elimination** is sound: what is necessary over the witness's extent holds of the realisation
     here.  This is weak T relativised to the witness. -/
-theorem sat_here_elim (hM : M.IndInvariant) (hop : env.OpenedT)
+theorem sat_here_elim {hO : ModalSys.Opt = false} (hM : M.IndInvariant) (hop : env.OpenedT)
     (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
     {A : VarType} {a : Ann A} (t : Term σ Γ A a) {a₁ : Ann A}
     (bd : Term σ (Γ.diaIn x) A a₁) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1)
@@ -668,7 +671,7 @@ theorem sat_here_elim (hM : M.IndInvariant) (hop : env.OpenedT)
 include hnp hfin in
 /-- ⭐**Introduction** is sound: what holds of the realisation here is possible for the witness,
     this very world witnessing it. -/
-theorem sat_here_intro (hM : M.IndInvariant) (hop : env.OpenedT)
+theorem sat_here_intro {hO : ModalSys.Opt = false} (hM : M.IndInvariant) (hop : env.OpenedT)
     (hx : ∃ Y, Γ.ref x = some (.VTypeDia Y))
     {A : VarType} {a : Ann A} (t : Term σ Γ A a) {a₁ : Ann A}
     (bd : Term σ (Γ.diaIn x) A a₁) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1)
@@ -698,7 +701,7 @@ omit [Γ.NoSlots] in
     existential, which is what "`real` driven by `Here`" means; the present `retHyp` hypotheses
     are then derivable from the atom by `here_intro`, so that replaces `T_dia`'s hypotheses
     rather than adding a rule. -/
-theorem sat_hereAt_extend {A : VarType} (r : Root)
+theorem sat_hereAt_extend {hO : ModalSys.Opt = false} {A : VarType} (r : Root)
     (hr : Γ.RootFresh r) (p : M.frame.Dom (.VTypeDia A) w) {a : Ann A} (t : Term σ Γ A a) :
     M.sat (env.extend r p) (WFF.hereAt hT (.root r)
         (Ctx.ref_insert_root Γ r (.VTypeDia A))
@@ -717,13 +720,14 @@ theorem sat_hereAt_extend {A : VarType} (r : Root)
 
 omit [Γ.NoSlots] in
 /-- The existential, as `WFF.ex` binds it. -/
-theorem sat_here_ex (hS : ModalSys.TStrong = true) {A : VarType} {a : Ann A}
+theorem sat_here_ex {hO : ModalSys.Opt = false} (hS : ModalSys.TStrong = true) {A : VarType}
+    {a : Ann A}
     (t : Term σ Γ A a) (hr : Γ.RootFresh (.bnd 0)) :
     M.sat env (WFF.ex (.VTypeDia A)
       (WFF.hereAt hT (.root (.bnd 0)) (Ctx.ref_insert_root Γ (.bnd 0) (.VTypeDia A))
         (Term.weaken hr.root (.VTypeDia A) t)) : WFF σ Γ 0) := by
   obtain ⟨p, hm, hcon⟩ := M.posRet_exists hT hS (interp env t)
-  exact ⟨p, (sat_hereAt_extend hT env (.bnd 0) hr p t).mpr ⟨hm, hcon⟩⟩
+  exact ⟨p, (sat_hereAt_extend hT env (hO := hO) (.bnd 0) hr p t).mpr ⟨hm, hcon⟩⟩
 
 end
 /-- Environments agreeing on their objects (and, with `Opt` on, on their witnesses) satisfy the

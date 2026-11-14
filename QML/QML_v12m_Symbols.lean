@@ -143,6 +143,16 @@ def ModalSys.fourLW [ModalSys] : Bool := ModalSys.FourStrongW || ModalSys.liftsP
 class ModalSys.NoOpt [ModalSys] : Prop where
   noOpt : ModalSys.Opt = false
 
+/-- `Opt` is off: an assumption, `NoOpt`, or a flag in context that excludes it (`optStage`).
+    The default for constructions that exist only in the `◇⁰`-free language. -/
+macro "opt_off" : tactic => `(tactic| first
+  | assumption
+  | exact ModalSys.NoOpt.noOpt
+  | exact ModalSys.noOpt_of_Four ‹_›
+  | exact ModalSys.noOpt_of_B ‹_›
+  | exact ModalSys.noOpt_of_BStrong ‹_›
+  | exact ModalSys.noOpt_of_Five ‹_›)
+
 /-- The systems without T: the growing tree's first canonical model (`GCanon*`), and M1's tree
     (`OCanon*`) and its Leibniz (`LeibnizH`) until M2 step 6 generalises them. -/
 class ModalSys.NoT [ModalSys] : Prop where

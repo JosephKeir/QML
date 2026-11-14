@@ -27,3 +27,4 @@
 - [QML: Opt end state](project_qml_opt_end_state.md) — target: shapes deleted, interpolation in every system; Opt a semi-independent flag, required only where needed (T, strong B; weak B/5 as interpolation decides)
 - [QML: B's domains, three cases](project_qml_b_domains_split.md) — writeup framing: weak B frame only; strong B necessary objects cover (□-BF); BStrongW possible objects cover (◇-BF)
 - [QML: operators over relations](feedback_qml_operators_over_relations.md) — prefer view formers (◇⁰-style, far-world ⟪back⟫/side) to primitive relations (Back, Ret, links); check on paper before adding Opt to B/5
+- [QML: structural invariants](feedback_qml_structural_invariants.md) — invariants every user-writable object has and every construction preserves (Presented, OpenedT) ideally structural; hypothesis route OK mid-milestone, record the cleanup, don't polish forever

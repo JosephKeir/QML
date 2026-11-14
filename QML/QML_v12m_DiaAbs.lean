@@ -363,7 +363,7 @@ def WFF.realiseAt {σ : Signature} {Γ : Ctx} [Γ.NoSlots] [ModalSys.NoOpt] (hT 
 abbrev WFF.hereAt {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true)
     (x : VarSymb)
     {A : VarType} (hx : Γ.ref x = some (.VTypeDia A)) {a : Ann A}
-    (t : Term σ Γ A a) :
+    (t : Term σ Γ A a) (hO : ModalSys.Opt = false := by opt_off) :
     WFF σ Γ d :=
   WFF.here hT (Term.eta x (.VTypeDia A) hx) t
 
@@ -376,7 +376,8 @@ abbrev WFF.hereAt {σ : Signature} {Γ : Ctx} {d : ℕ} (hT : ModalSys.T = true)
     names `x`'s own content, and at `s = diatm x bd` the content of that possible object — the form
     the rule is stated at, being the one substitution preserves. -/
 abbrev WFF.hereEx {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {B : VarType}
-    {b : Ann (.VTypeDia B)} (s : Term σ Γ (.VTypeDia B) b) : WFF σ Γ 0 :=
+    {b : Ann (.VTypeDia B)} (s : Term σ Γ (.VTypeDia B) b)
+    (hO : ModalSys.Opt = false := by opt_off) : WFF σ Γ 0 :=
   .ex B (WFF.here hT (Term.mono (Ctx.le_insert (Ctx.NoSlots.slots (Γ := Γ)).root B) s)
     (Term.eta (.root (.bnd 0)) B (Ctx.ref_insert_root Γ (.bnd 0) B)))
 

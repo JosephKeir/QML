@@ -449,7 +449,7 @@ theorem sat_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ} (�
           (env.optPushT (ι y) hZ (hdom.mp hd')) φ fun _ _ => hop'.optPushT hZ _).mpr ?_
         rw [substEnv_optInT θ hθ hnp env hop' hX hw hZ (hdom.mp hd') hd']
         exact hsat
-  | _, _, _, _, _, θ, hθ, hc, _, _, hnp, _, env, .here hT s t, _ => by
+  | _, _, _, _, _, θ, hθ, hc, _, _, hnp, _, env, .here hT s t _, _ => by
       change Model.Realised hT (interp env (Term.subst _ θ hθ hc s))
         (interp env (Term.subst _ θ hθ hc t)) ↔ _
       rw [interp_subst θ hθ hc hnp env s, interp_subst θ hθ hc hnp env t]

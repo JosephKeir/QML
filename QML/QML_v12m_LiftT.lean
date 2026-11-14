@@ -106,7 +106,7 @@ theorem WFF.collapse_shift_self : ∀ {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx} {d : �
         exact congrArg (WFF.dia _ P) (WFF.collapse_shift_self (hs.diaIn x) (hc.diaIn _) hle'
           (hs₁.diaIn x) (hs₂.diaIn _) φ)
       exact key x (VarSymb.collapse_shift_self x m).symm _ _
-  | _, _, _, _, _, hs, hc, hle, _, _, .here hT s t =>
+  | _, _, _, _, _, hs, hc, hle, _, _, .here hT s t hO =>
       WFF.here_congr hT (Term.collapse_shift_self hs hc hle s)
         (Term.collapse_shift_self hs hc hle t)
   | _, _, _, _, _, hs, hc, hle, _, _, .back hB L s t =>
@@ -206,7 +206,7 @@ theorem WFF.shift_shift_same : ∀ {m : ℕ} {Γ₁ Γ₂ Γ₃ : Ctx} {d : ℕ}
         exact congrArg (WFF.dia _ P) (WFF.shift_shift_same (h₁₂.diaIn x) (h₂₃.diaIn _) h'
           (hs₁.diaIn x) (hs₂.diaIn _) _)
       exact key _ (VarSymb.shift_shift_same x m).symm _ _
-  | _, _, _, _, _, h₁₂, h₂₃, h₂₃', _, _, .here hT s t =>
+  | _, _, _, _, _, h₁₂, h₂₃, h₂₃', _, _, .here hT s t hO =>
       WFF.here_congr hT (Term.shift_shift_same h₁₂ h₂₃ h₂₃' s)
         (Term.shift_shift_same h₁₂ h₂₃ h₂₃' t)
   | _, _, _, _, _, h₁₂, h₂₃, h₂₃', _, _, .back hB L s t =>

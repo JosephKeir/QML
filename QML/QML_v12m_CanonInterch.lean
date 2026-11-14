@@ -78,7 +78,7 @@ theorem mem_of_provable' {i : I} {Δ : List (WFF σ (S.ctx i) 0)} {φ : WFF σ (
     membership.  This is `Proof.here_subst` under the theory's closure, and it is how the relation
     is established at a `◇` type — the two possibilities are joined by `p`, which is what §2d asks
     for before they may be compared. -/
-theorem interch_of_coname (hT : ModalSys.T = true) {A : VarType} {i : I}
+theorem interch_of_coname (hT : ModalSys.T = true) {hO : ModalSys.Opt = false} {A : VarType} {i : I}
     {b : Ann A} {s : Term σ (S.ctx i) A b} {b' : Ann A} {s' : Term σ (S.ctx i) A b'}
     {c : Ann (.VTypeDia A)} (p : Term σ (S.ctx i) (.VTypeDia A) c)
     (h : (⟨i, WFF.here hT p s⟩ : S.Sentence σ) ∈ T)
@@ -202,7 +202,7 @@ theorem rel_lift (s : DTerm S T A) {k : I} (hk : s.i ≤ k) : Rel s ⟨k, s.a, s
 /-- ⭐**Co-naming implies stage-free interchangeability**: the two `Here` atoms lift to every later
     stage, where `interch_of_coname` applies. -/
 theorem rel_of_coname [IsDirected I (· ≤ ·)] [hmcs : Fact (StageSys.IsMCS T)]
-    (hT : ModalSys.T = true) {i : I} {b b' : Ann A}
+    (hT : ModalSys.T = true) {hO : ModalSys.Opt = false} {i : I} {b b' : Ann A}
     {s : Term σ (S.ctx i) A b} {s' : Term σ (S.ctx i) A b'}
     {c : Ann (.VTypeDia A)} (p : Term σ (S.ctx i) (.VTypeDia A) c)
     (h : (⟨i, WFF.here hT p s⟩ : S.Sentence σ) ∈ T)
@@ -277,7 +277,7 @@ variable {S : StageSys I} {T : Set (S.Sentence σ)}
     reduces the atom to realisedness, `here_name` names the witness's content, and root witnessing
     declares the name. -/
 theorem datum_of_here [Fact (StageSys.IsMCS T)] (hex : RootWitnessed S T)
-    (hT : ModalSys.T = true) {x : VarSymb} {i : I} {X : VarType}
+    (hT : ModalSys.T = true) {hO : ModalSys.Opt = false} {x : VarSymb} {i : I} {X : VarType}
     (hx : (S.ctx i).ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B}
     (bd : Term σ ((S.ctx i).diaIn x) B β) {a : Ann B} (t : Term σ (S.ctx i) B a)
     (h : (⟨i, WFF.here hT (Term.diatm x ⟨X, hx⟩ bd) t⟩ : S.Sentence σ) ∈ T) :
@@ -301,7 +301,7 @@ theorem datum_of_here [Fact (StageSys.IsMCS T)] (hex : RootWitnessed S T)
       (Term.eta x (.VTypeDia X) hx)) (Term.eta (.root (.bnd 0)) X _)))⟩ :
     S.Sentence σ) ∈ T at hmem
   rw [e, WFF.instantiate_here_slot] at hmem
-  exact ⟨⟨hT, X, i', .root (.free c), hc, (S.le hi).ref hx, hmem⟩⟩
+  exact ⟨⟨hT, hO, X, i', .root (.free c), hc, (S.le hi).ref hx, hmem⟩⟩
 
 /-- ⭐**A datum's possible object has its realisation as content here**: from the datum's atom
     `Here (η x) t₀`, `here_beta` with the body abstracted, and the round trip — at any stage `k`

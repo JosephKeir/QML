@@ -61,7 +61,7 @@ theorem WFF.weight_subst : ∀ {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : 
   | _, _, _, _, _, _, _, _, _, _, .dia _ _ φ => by
       simp only [WFF.subst, WFF.weight]
       rw [WFF.weight_subst _ _ _ _ _ φ]
-  | _, _, _, _, _, _, _, _, _, _, .here _ _ _ => rfl
+  | _, _, _, _, _, _, _, _, _, _, .here _ _ _ _ => rfl
   | _, _, _, _, _, _, _, _, _, _, .back _ _ _ _ => rfl
   | _, _, _, _, _, _, _, _, _, _, .retS _ _ _ Φ => by
       simp only [WFF.subst, WFF.weight]

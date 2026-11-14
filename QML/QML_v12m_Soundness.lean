@@ -495,7 +495,7 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
         exact sat_liftRead hF (VarType.liftable_of_R hl) env hc O φ i m hm ho
       · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken env hc.root m χ').mpr (hΔ χ' hχ')
-  | @T_dia Γ _ hT hS A a t c hc Δ φ p ih =>
+  | @T_dia Γ _ hT hS hO A a t c hc Δ φ p ih =>
       -- Interpret the eigenvariable as some possible object realised here — `posRet_exists` says
       -- there is one, and that *is* the hypothesis the subproof gets.
       intro M hM w env hfin hnp hop hΔ
@@ -511,28 +511,28 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       · -- An old hypothesis, merely weakened by the eigenvariable.
         obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken (T := .VTypeDia A) env hc.root q χ').mpr (hΔ χ' hχ')
-  | @here_elim Γ _ Δ hT x hx A a t a₁ bd ψ ph pb ihh ihb =>
+  | @here_elim Γ _ Δ hT hO x hx A a t a₁ bd ψ ph pb ihh ihb =>
       intro M hM w env hfin hnp hop hΔ
       exact sat_here_elim hT env hnp hfin hM hop hx t bd ψ (ihh M hM env hfin hnp hop hΔ)
         (ihb M hM env hfin hnp hop hΔ)
-  | @here_intro Γ _ Δ hT x hx A a t a₁ bd ψ ph pr ihh ihr =>
+  | @here_intro Γ _ Δ hT hO x hx A a t a₁ bd ψ ph pr ihh ihr =>
       intro M hM w env hfin hnp hop hΔ
       exact sat_here_intro hT env hnp hfin hM hop hx t bd ψ (ihh M hM env hfin hnp hop hΔ)
         (ihr M hM env hfin hnp hop hΔ)
-  | @here_beta Γ _ Δ hT x hx A a t a₁ bd B b s ph ihh =>
+  | @here_beta Γ _ Δ hT hO x hx A a t a₁ bd B b s ph ihh =>
       intro M hM w env hfin hnp hop hΔ
       obtain ⟨Y, h⟩ := id hx
       exact sat_here_beta hT env hnp hfin hM hx h t bd s (ihh M hM env hfin hnp hop hΔ)
-  | @here_name Γ _ Δ hT x hx B β bd p ih =>
+  | @here_name Γ _ Δ hT hO x hx B β bd p ih =>
       intro M hM w env hfin hnp hop hΔ
       obtain ⟨Y, h⟩ := id hx
       exact sat_here_name hT env hx h bd (ih M hM env hfin hnp hop hΔ)
-  | @here_subst Γ _ Δ hT A b s a a' t t' φ ph ph' pf ihh ihh' ihf =>
+  | @here_subst Γ _ Δ hT hO A b s a a' t t' φ ph ph' pf ihh ihh' ihf =>
       intro M hM w env hfin hnp hop hΔ
       exact sat_here_subst hT env hnp hfin hM hop s t t' φ (ihh M hM env hfin hnp hop hΔ)
         (ihh' M hM env hfin hnp hop hΔ)
         (ihf M hM env hfin hnp hop hΔ)
-  | @here_eq Γ _ Δ hT A b s a t t' ph pe ihh ihe =>
+  | @here_eq Γ _ Δ hT hO A b s a t t' ph pe ihh ihe =>
       intro M hM w env hfin hnp hop hΔ
       exact sat_here_eq hT env s t t' (ihh M hM env hfin hnp hop hΔ) (ihe M hM env hfin hnp hop hΔ)
   | @B_dia Γ Δ hB ψ p ih =>

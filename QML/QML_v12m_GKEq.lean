@@ -375,7 +375,7 @@ theorem ident_aux : ∀ (w : ℕ) {Γ : Ctx} [Γ.Presented] (φ : WFF σ Γ 0) {
             (fun χ hχ => by rw [List.mem_singleton.mp hχ]; exact hΘ) (List.nil_subset _)
             (e.weaken (fun a ha => ?_) (fun _ h => List.mem_append_left _ h))⟩
           rw [List.mem_singleton.mp ha]; exact List.mem_cons_self
-      | here hT _ _ => exact absurd hT (by rw [ModalSys.GKSys.noT]; decide)
+      | here hT _ _ _ => exact absurd hT (by rw [ModalSys.GKSys.noT]; decide)
       | back hB _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)
       | retS hB _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)
       | retxS hB _ _ _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)
@@ -558,7 +558,7 @@ theorem replaceGen {Γ₀ : Ctx} {d : ℕ} (φ : WFF σ Γ₀ d) :
         congrArg (WFF.dia (ι x) hwx)
           (WFF.subst_congr _ _ _ _ _ _ _ _ (Subst.sim_dia_of_agree hA x (ι x)) φ)
       exact ident _ (e ▸ hφ₁) hφ₂
-  | here hT _ _ => exact absurd hT (by rw [ModalSys.GKSys.noT]; decide)
+  | here hT _ _ _ => exact absurd hT (by rw [ModalSys.GKSys.noT]; decide)
   | back hB _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)
   | retS hB _ _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)
   | retxS hB _ _ _ _ _ _ => exact absurd hB (by rw [ModalSys.GKSys.noBStrong]; decide)

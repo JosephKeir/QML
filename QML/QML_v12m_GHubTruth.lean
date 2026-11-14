@@ -585,7 +585,7 @@ theorem hubTruth_lt : ∀ (n i : ℕ) (φ : WFF σ (ctxOf (gnet hF M₀ i).src.l
           rw [Term.mono_refl, Term.mono_refl]
       | top => exact ⟨fun _ => ((gsrcWorld hF M₀ hM₀ hh).mcs i).top_mem, fun _ => trivial⟩
       | bot => exact ⟨False.elim, fun h => ((gsrcWorld hF M₀ hM₀ hh).mcs i).bot_not_mem h⟩
-      | here hT _ _ => exact flagElim (hubOn_T hh) hT
+      | here hT _ _ _ => exact flagElim (hubOn_T hh) hT
       | back hB _ _ _ => exact flagElim (hubOn_BS hX hh) hB
       | retS hB _ _ _ => exact flagElim (hubOn_BS hX hh) hB
       | retxS hB _ _ _ _ _ => exact flagElim (hubOn_BS hX hh) hB

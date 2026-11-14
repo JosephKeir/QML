@@ -421,6 +421,7 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       `Model.sat_here_ex`).  The chain now adds exactly that atom (`WorldLang.retSet`), and
       `Canon.spec_of_here` derives `RealDatum.spec` from it. -/
   | T_dia {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) (hS : ModalSys.TStrong = true)
+      {hO : ModalSys.Opt = false}
       (A : VarType) {a : Ann A} (t : Term σ Γ A a) (c : ℕ)
       (hc : Γ.RootFresh (.free c))
       {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
@@ -440,7 +441,8 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       substitution: an entry for a `◇`-typed address is such a term, and its body takes the
       content's place.  The pinned case `bd = x.dia` is the rule one expects, `Here x t, □_x χ ⊢
       χ(t)` (`Proof.here_elimAt`), since every view formula is its abstraction read back. -/
-  | here_elim {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) (x : VarSymb)
+  | here_elim {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+      {hO : ModalSys.Opt = false} (x : VarSymb)
       (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
       {a : Ann A} (t : Term σ Γ A a)
       {a' : Ann A} (bd : Term σ (Γ.diaIn x) A a')
@@ -451,7 +453,8 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
   /-- ⭐**Introduction**: what holds of the realisation here is possible for the witness, this very
       world witnessing it.  The converse of `here_elim` across the same two readings, so the pair is
       one biconditional (`Model.sat_viewReadTm`) split by polarity. -/
-  | here_intro {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) (x : VarSymb)
+  | here_intro {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+      {hO : ModalSys.Opt = false} (x : VarSymb)
       (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
       {a : Ann A} (t : Term σ Γ A a)
       {a' : Ann A} (bd : Term σ (Γ.diaIn x) A a')
@@ -464,7 +467,8 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       own realisation decide every `Here` formula about it: with `bd` the witness content, `s`
       ranges over the view terms (`Term.diaAbs` abstracts one), and the value on the right is
       `Term.realiseAt`. -/
-  | here_beta {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) (x : VarSymb)
+  | here_beta {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+      {hO : ModalSys.Opt = false} (x : VarSymb)
       (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {A : VarType}
       {a : Ann A} (t : Term σ Γ A a)
       {a' : Ann A} (bd : Term σ (Γ.diaIn x) A a')
@@ -491,7 +495,8 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       arbitrary the image of the conclusion is the rule's own conclusion at the substituted body,
       and
       the pinned instance, `bd := η x.dia`, is the one the canonical model consumes. -/
-  | here_name {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true) (x : VarSymb)
+  | here_name {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+      {hO : ModalSys.Opt = false} (x : VarSymb)
       (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {B : VarType} {β : Ann B}
       (bd : Term σ (Γ.diaIn x) B β) :
       Proof σ Γ Δ (WFF.here hT (Term.diatm x hx Term.unit) Term.unit) →
@@ -512,6 +517,7 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       formula only inside a `Here` atom — as its subject or within its content — so substitution for
       the slot covers every occurrence there is. -/
   | here_subst {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+      {hO : ModalSys.Opt = false}
       {A : VarType} {b : Ann (.VTypeDia A)} (s : Term σ Γ (.VTypeDia A) b)
       {a a' : Ann A} (t : Term σ Γ A a) (t' : Term σ Γ A a')
       (φ : WFF σ (Γ.insert (.bnd 0) A) 1) :
@@ -524,6 +530,7 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       is only ever used inside a `◇` with its own witness.  `eqRec` compares terms of one
       annotation only, so this never relates contents over different witnesses. -/
   | here_eq {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+      {hO : ModalSys.Opt = false}
       {A : VarType} {b : Ann (.VTypeDia A)} (s : Term σ Γ (.VTypeDia A) b)
       {a : Ann A} (t t' : Term σ Γ A a) :
       Proof σ Γ Δ (WFF.here hT s t) → Proof σ Γ Δ (eqRec A t t') →

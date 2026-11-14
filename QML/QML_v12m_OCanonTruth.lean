@@ -326,7 +326,7 @@ theorem truth_ltO : ∀ (n : ℕ) (w : World σ N₀), DecidesO hO w → ∀ (i 
                 · rw [List.mem_singleton.mp hψ]
                   exact hmem
             exact ⟨X, h, hdecl, ((key h hdecl).1).mpr (((key h hdecl).2).mp hmem)⟩
-      | here hT _ _ => exact (ModalSys.NoT.absurd hT).elim
+      | here hT _ _ _ => exact (ModalSys.NoT.absurd hT).elim
       | back hB _ _ _ => exact (ModalSys.opt_absurd hO (ModalSys.noOpt_of_BStrong hB)).elim
       | retS hB _ _ _ => exact (ModalSys.opt_absurd hO (ModalSys.noOpt_of_BStrong hB)).elim
       | retxS hB _ _ _ _ _ => exact (ModalSys.opt_absurd hO (ModalSys.noOpt_of_BStrong hB)).elim
