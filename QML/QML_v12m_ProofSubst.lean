@@ -1857,6 +1857,90 @@ theorem sig_mono {Γ Γ' : Ctx} (h : Γ.Le Γ') {T : VarType} {a a' : Ann T} {t 
   cases e
   rfl
 
+/-- `WFF.subst` at `◇⁰ᵀ_y` where the image of `y` is known to be `z`. -/
+theorem WFF.subst_optxT_eq {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ}
+    (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d)
+    (hΔ : Δ.SlotsFrom d') (hO : ModalSys.Opt = true) (y : VarSymb)
+    (hy : ∃ X, Γ.witT y = some X) (φ : WFF σ (Γ.optInT y) d) {z : VarSymb} (hz : ι y = z)
+    (hz' : ∃ X, Δ.witT z = some X) (hθz : Subst.Ok (Γ.optInT y) (θ.optInT y z))
+    (hcz : Subst.Coh ι (Γ.optInT y) (θ.optInT y z)) :
+    WFF.subst ι θ hθ hc hΓ hΔ (.optx hO .ident y hy φ) =
+      .optx hO .ident z hz'
+        (WFF.subst ι (θ.optInT y z) hθz hcz (hΓ.optInT y) (hΔ.optInT z) φ) := by
+  subst hz
+  rfl
+
+/-- ⭐**Strong T's hypothesis is closed under substitution**, in both its forms (`WFF.realHyp`):
+    the eigenvariable's entry is the η-expansion of the new one.  With `Opt` on, its identity
+    content `c.at` goes to the new one's (`SubE.atBody` of an η-expansion, `Term.collapse_eta`),
+    and the value travels as in `WFF.subst_hereAt_renameTm`. -/
+theorem WFF.subst_realHyp_renameTm {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (hT : ModalSys.T = true)
+    (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom 0)
+    (hΔ : Δ.SlotsFrom 0) {u u' : ℕ} (hu : Γ.RootFresh (.free u)) (hu' : Δ.RootFresh (.free u'))
+    {A : VarType} {a : Ann A} (t : Term σ Γ A a) :
+    WFF.subst (Subst.renameTmIdx σ ι u u' (.VTypeDia A) hu'.root)
+        (θ.renameTm u u' (.VTypeDia A) hu'.root)
+        (Subst.ok_renameTm hθ (.VTypeDia A) hu'.root)
+        (Subst.coh_renameTm hθ hc hu (.VTypeDia A) hu'.root)
+        (hΓ.insertFree u (.VTypeDia A)) (hΔ.insertFree u' (.VTypeDia A))
+        (WFF.realHyp hT (.root (.free u)) (Ctx.ref_insert_root Γ (.free u) (.VTypeDia A))
+          (Term.weaken hu.root (.VTypeDia A) t)) =
+      WFF.realHyp hT (.root (.free u')) (Ctx.ref_insert_root Δ (.free u') (.VTypeDia A))
+        (Term.weaken hu'.root (.VTypeDia A) (Term.subst ι θ hθ hc t)) := by
+  by_cases hO : ModalSys.Opt = true
+  swap
+  · rw [WFF.realHyp_noOpt hT (Bool.eq_false_iff.mpr hO),
+      WFF.realHyp_noOpt hT (Bool.eq_false_iff.mpr hO)]
+    exact WFF.subst_hereAt_renameTm hT θ hθ hc hΓ hΔ hu hu' t
+  rw [WFF.realHyp_opt hT hO, WFF.realHyp_opt hT hO]
+  have hθr := Subst.ok_renameTm (u := u) hθ (.VTypeDia A) hu'.root
+  have hcr := Subst.coh_renameTm hθ hc hu (.VTypeDia A) hu'.root
+  have hwΓ := Ctx.witT_of hT hO (Ctx.ref_insert_root Γ (.free u) (.VTypeDia A))
+  have hwΔ := Ctx.witT_of hT hO (Ctx.ref_insert_root Δ (.free u') (.VTypeDia A))
+  have hat := Subst.at_renameTm_root θ u u' (.VTypeDia A) hu'.root
+  have hidx : ((θ.renameTm u u' (.VTypeDia A) hu'.root).at (.root (.free u))).idxAlong [] =
+      .root (.free u') := by
+    rw [hat]
+    rfl
+  have hz : Subst.renameTmIdx σ ι u u' (.VTypeDia A) hu'.root (.root (.free u)) =
+      .root (.free u') := (hcr _ _ (Ctx.ref_insert_root Γ (.free u) (.VTypeDia A)) []).symm.trans
+        hidx
+  have hcz : Subst.Coh (Subst.renameTmIdx σ ι u u' (.VTypeDia A) hu'.root)
+      ((Γ.insert (.free u) (.VTypeDia A)).optInT (.root (.free u)))
+      ((θ.renameTm u u' (.VTypeDia A) hu'.root).optInT (.root (.free u)) (.root (.free u'))) := by
+    have := Subst.coh_optInT hθr hcr hwΓ
+    rwa [hz] at this
+  refine (WFF.subst_optxT_eq (θ.renameTm u u' (.VTypeDia A) hu'.root) hθr hcr
+    (hΓ.insertFree u (.VTypeDia A)) (hΔ.insertFree u' (.VTypeDia A)) hO (.root (.free u))
+    ⟨A, hwΓ⟩ _ hz ⟨A, hwΔ⟩ (Subst.ok_optInT hθr hwΓ hidx) hcz).trans ?_
+  rw [WFF.subst_eqH]
+  have tmOf : ∀ {Ω : Ctx} {b b' : Ann A} {s : Term σ Ω A b} {s' : Term σ Ω A b'},
+      (⟨b, s⟩ : Σ c, Term σ Ω A c) = ⟨b', s'⟩ → SubE.tm s = SubE.tm s' := by
+    intro Ω b b' s s' e
+    cases e
+    rfl
+  have hcol : (VarSymb.step (.root (.free u')) .dia).collapse 0 =
+      .step (.root (.free u')) .at := by
+    simp [VarSymb.collapse, Step.diaZero, Step.isProj, hO]
+  have hat₁ : ((θ.renameTm u u' (.VTypeDia A) hu'.root).optInT (.root (.free u))
+      (.root (.free u'))).at (.step (.root (.free u)) .at) =
+      .tm (Term.eta (.step (.root (.free u')) .at) A (Ctx.ref_optInT_content hwΔ)) := by
+    rw [Subst.at_nonproj _ rfl, Subst.optInT_content, hat]
+    change (if h : ModalSys.T = true ∧ ModalSys.Opt = true ∧
+        VarSymb.root (.free u') = .root (.free u') then _ else _) = _
+    rw [dif_pos ⟨hT, hO, rfl⟩]
+    exact tmOf ((Term.collapse_eta _ _ A _).trans (Term.eta_congr hcol A _ _))
+  refine congrArg (WFF.optx hO .ident _ _) (eqH_congr hO
+    (Term.subst_eta_tm _ _ _ A _ _ _ hat₁) ?_)
+  rw [Term.subst_mono]
+  refine (Term.subst_congr _ ((θ.renameTm u u' (.VTypeDia A) hu'.root).mono
+      (Ctx.le_optInT _ (.root (.free u')))) _ (Subst.ok_mono hθr _) _ (Subst.coh_mono hcr _)
+    (fun v T hv => by
+      rw [Subst.at_optInT_of hcr hwΓ hidx v T hv, Subst.at_mono]
+      exact .refl _) _).trans ?_
+  rw [← Term.mono_subst _ _ hθr hcr]
+  exact sig_mono _ (Term.subst_mono_renameTm_sigma θ hθ hc hu hu' (.VTypeDia A) t)
+
 theorem sig_collapse {k : ℕ} {Γ₁ Γ₂ : Ctx} (hk : Ctx.Collapses k Γ₁ Γ₂) {A : VarType}
     {a a' : Ann A} {t : Term σ Γ₁ A a} {t' : Term σ Γ₁ A a'}
     (h : (⟨a, t⟩ : Σ b, Term σ Γ₁ A b) = ⟨a', t'⟩) :
@@ -3672,7 +3756,7 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
                 (List.map_congr_left fun χ _ =>
                   WFF.subst_weaken_rename θ hθ hc hΓ hΓ' cfr hu' T χ))
             ihq))
-  | _, _, _, @Proof.T_dia _ _ _ _ hT hS hO A _ t c hcf _ _ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+  | _, _, _, @Proof.T_dia _ _ _ _ hT hS A _ t c hcf _ _ p, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       have hcf' : Γ'.RootFresh (.free (Ctx.Presented.bound Γ')) :=
         Ctx.Presented.fresh_bound _ le_rfl
@@ -3684,7 +3768,7 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
           (by
             simp only [List.map_cons, List.map_map, Function.comp_def]
             exact congrArg₂ List.cons
-              (WFF.subst_hereAt_renameTm hT θ hθ hc hΓ hΓ' hcf hcf' t)
+              (WFF.subst_realHyp_renameTm hT θ hθ hc hΓ hΓ' hcf hcf' t)
               (List.map_congr_left fun χ _ =>
                 WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' (.VTypeDia A) χ))
           (Proof.conv (WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' (.VTypeDia A) _) ih))

@@ -16514,3 +16514,19 @@ B, 4 and 5 are off under `optStage`.  What changed from the paper plan:
 * *Next:* `sat_eqH` (`t ≡ s` true iff equal denotations, by type recursion, the `◇` case by the
   extensional `pos_inj`; §12.4), then the dispatching `T_dia` and its soundness, then GK with `◇⁰`.
 
+**Strong T with `Opt` on: one rule, built (2026-11-14).**
+* ⭐`Model.sat_eqH` (`QML_v12m_SemEqH`, a top module): with `Opt` on, `t ≡ s` is true iff the terms
+  denote the same object, by type recursion.  The `◇` case uses the extensional `pos_inj` (no
+  shapes with `Opt`) and `Env.diaPush_agree_optPush`.
+* `QML_v12m_EqHDef`: `eqH`'s definition and its syntactic lemmas (weakening, collapse,
+  substitution, `eqHSat`, `witEqK`) moved ahead of the proof system; `QML_v12m_EqH` keeps the
+  derived rules.
+* ⭐`WFF.realHyp hT x hx t`: "`x` is realised here by `t`": the `Here` atom with `Opt` off,
+  `◇⁰ᵀ_x (x.at ≡ t)` with `Opt` on (`realHyp_noOpt`, `realHyp_opt`).  **`Proof.T_dia` states its
+  hypothesis with it** and has lost its `hO` argument: one rule in every system with strong T.
+* Soundness: `Model.sat_realHyp_extend` (`posRet_exists`, then `eq_of_opt` and `sat_eqH` with
+  `Opt` on).  Substitution: `WFF.subst_realHyp_renameTm` (the identity content `c.at` goes to the
+  new eigenvariable's through `SubE.atBody` of an η-expansion and `Term.collapse_eta`).
+* The old-language users (`Henkin`, `BStaged`) rewrite by `realHyp_noOpt`.
+* *So KT with strong T and `Opt` is a sound system with its strong rule.*  Next: GK with `◇⁰`.
+

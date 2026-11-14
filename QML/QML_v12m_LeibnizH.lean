@@ -339,19 +339,6 @@ def Proof.optCaseH {σ : Signature} (hO : ModalSys.Opt = true) {Γ : Ctx} {d : �
             (Proof.optTwoBwd hO (κ := .arrow) hzw₁ hzw₂ c₁ c₂ E (Proof.lookup hW)
               (Proof.castHyps (congrArg (· :: _) m₂) (Proof.conv m₁ ih'.2)))))
 
-/-- `WFF.subst_optx_eq` at the identity kind. -/
-theorem WFF.subst_optxT_eq {σ : Signature} {ι : VarSymb → VarSymb} {Γ Δ : Ctx} {d d' : ℕ}
-    (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ) (hΓ : Γ.SlotsFrom d)
-    (hΔ : Δ.SlotsFrom d') (hO : ModalSys.Opt = true) (y : VarSymb)
-    (hy : ∃ X, Γ.witT y = some X) (φ : WFF σ (Γ.optInT y) d) {z : VarSymb} (hz : ι y = z)
-    (hz' : ∃ X, Δ.witT z = some X) (hθz : Subst.Ok (Γ.optInT y) (θ.optInT y z))
-    (hcz : Subst.Coh ι (Γ.optInT y) (θ.optInT y z)) :
-    WFF.subst ι θ hθ hc hΓ hΔ (.optx hO .ident y hy φ) =
-      .optx hO .ident z hz'
-        (WFF.subst ι (θ.optInT y z) hθz hcz (hΓ.optInT y) (hΔ.optInT z) φ) := by
-  subst hz
-  rfl
-
 /-- The content of `□ witEq`, read at the world itself, is the identity entry the substitution
     makes of a possible term (`SubE.atBody`). -/
 theorem Term.collapse_witContent {σ : Signature} (hT : ModalSys.T = true)

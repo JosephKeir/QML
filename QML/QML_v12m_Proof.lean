@@ -3,6 +3,7 @@ import QML.QML_v12m_Presented
 import QML.QML_v12m_BackSyntax
 import QML.QML_v12m_LoopHat
 import QML.QML_v12m_LinkSyntax
+import QML.QML_v12m_EqHDef
 
 /-!
 # QML v12m — the proof system
@@ -86,6 +87,32 @@ abbrev WFF.diaOpt {σ : Signature} {Γ : Ctx} {d : ℕ} (hO : ModalSys.Opt = tru
     (hu : ∃ X, Γ.ref u = some (.VTypeDia X)) (φ : WFF σ (Γ.diaIn u) d) : WFF σ Γ d :=
   (WFF.box (WFF.optx hO .arrow u (hu.imp fun _ h => Ctx.boxIn_wit.mpr ⟨hO, h⟩)
     (WFF.mono (hu.elim fun _ h => Ctx.le_diaIn_boxIn_optIn hO h) φ)).neg).neg
+
+/-- ⭐**"The possible object at `x` is realised here by `t`"**, in the form the system has it
+    (strong T's hypothesis, `Proof.T_dia`): with `Opt` off the primitive `Here` atom, and with
+    `Opt` on the identity view `◇⁰ᵀ_x (x.at ≡ t)` (docs §12.32; one rule for both). -/
+def WFF.realHyp {σ : Signature} {Γ : Ctx} (hT : ModalSys.T = true) (x : VarSymb) {A : VarType}
+    (hx : Γ.ref x = some (.VTypeDia A)) {a : Ann A} (t : Term σ Γ A a) : WFF σ Γ 0 :=
+  if hO : ModalSys.Opt = true then
+    .optx hO .ident x ⟨A, Ctx.witT_of hT hO hx⟩
+      (eqH hO A (Term.eta (.step x .at) A (Ctx.ref_optInT_content (Ctx.witT_of hT hO hx)))
+        (Term.mono (Ctx.le_optInT Γ x) t))
+  else WFF.hereAt hT x hx t (Bool.eq_false_iff.mpr hO)
+
+theorem WFF.realHyp_noOpt {σ : Signature} {Γ : Ctx} (hT : ModalSys.T = true)
+    (hO : ModalSys.Opt = false) (x : VarSymb) {A : VarType}
+    (hx : Γ.ref x = some (.VTypeDia A)) {a : Ann A} (t : Term σ Γ A a) :
+    WFF.realHyp hT x hx t = WFF.hereAt hT x hx t hO :=
+  dif_neg (by rw [hO]; decide)
+
+theorem WFF.realHyp_opt {σ : Signature} {Γ : Ctx} (hT : ModalSys.T = true)
+    (hO : ModalSys.Opt = true) (x : VarSymb) {A : VarType}
+    (hx : Γ.ref x = some (.VTypeDia A)) {a : Ann A} (t : Term σ Γ A a) :
+    WFF.realHyp hT x hx t =
+      .optx hO .ident x ⟨A, Ctx.witT_of hT hO hx⟩
+        (eqH hO A (Term.eta (.step x .at) A (Ctx.ref_optInT_content (Ctx.witT_of hT hO hx)))
+          (Term.mono (Ctx.le_optInT Γ x) t)) :=
+  dif_pos hO
 
 inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ Γ 0 → Type where
   -- Structural
@@ -421,12 +448,11 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       `Model.sat_here_ex`).  The chain now adds exactly that atom (`WorldLang.retSet`), and
       `Canon.spec_of_here` derives `RealDatum.spec` from it. -/
   | T_dia {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) (hS : ModalSys.TStrong = true)
-      {hO : ModalSys.Opt = false}
       (A : VarType) {a : Ann A} (t : Term σ Γ A a) (c : ℕ)
       (hc : Γ.RootFresh (.free c))
       {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
       Proof σ (Γ.insert (.free c) (.VTypeDia A))
-        (WFF.hereAt hT (.root (.free c)) (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A))
+        (WFF.realHyp hT (.root (.free c)) (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A))
             (Term.weaken hc.root (.VTypeDia A) t) ::
           Δ.map (WFF.weaken hc.root (.VTypeDia A)))
           (φ.weaken hc.root (.VTypeDia A)) →

@@ -142,7 +142,8 @@ def Proof.retEx [ModalSys.NoOpt] {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {Δ : 
     (hT : ModalSys.T = true) (hS : ModalSys.TStrong = true) {A : VarType} {a : Ann A}
     (t : Term σ Γ A a) (c : ℕ) (hc : Γ.RootFresh (.free c)) :
     Proof σ Γ Δ (WFF.retEx hT t) := by
-  refine Proof.T_dia hT hS (hO := ModalSys.NoOpt.noOpt) A t c hc ?_
+  refine Proof.T_dia hT hS A t c hc ?_
+  rw [WFF.realHyp_noOpt hT ModalSys.NoOpt.noOpt]
   refine Proof.ex_intro (.VTypeDia A)
     (Term.eta (.root (.free c)) (.VTypeDia A) (Ctx.ref_insert_root Γ (.free c) (.VTypeDia A))) ?_
   refine Proof.conv ?_ (Proof.lookup List.mem_cons_self)

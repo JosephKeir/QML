@@ -110,11 +110,6 @@ theorem Term.collapse_viewReadTm {σ : Signature} (hO : ModalSys.Opt = true)
     ((Ctx.le_boxIn_diaIn Γ x).insert (.bnd 0) A) ((Ctx.le_optInT Γ x).insert (.bnd 0) A) s] at e
   exact e
 
-/-- In the identity view of a possible object its content there is a visible address. -/
-theorem Ctx.ref_optInT_content {Γ : Ctx} {y : VarSymb} {X : VarType} (hy : Γ.witT y = some X) :
-    (Γ.optInT y).ref (.step y .at) = some X :=
-  (Ctx.ref_nonproj _ rfl).trans (Ctx.optInT_content hy)
-
 /-- `◇⁰ᵀ_y (y.at ≡ e)`, `e` the slot: `y` is realised here, with content `e`.  This is
     `Here (η y) e` with `Opt` on. -/
 abbrev WFF.optNameT {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hO : ModalSys.Opt = true)

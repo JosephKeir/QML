@@ -5,6 +5,7 @@ import QML.QML_v12m_SemBack
 import QML.QML_v12m_SemRealise
 import QML.QML_v12m_SemRefl
 import QML.QML_v12m_SemLink
+import QML.QML_v12m_SemEqH
 
 /-!
 # QML v12m — soundness
@@ -62,6 +63,44 @@ theorem sat_bindPair {M : Model.{u, v} σ} {Γ : Ctx} {d : ℕ} {w : M.frame.W} 
         (Ctx.le_insert (hzf.insert_ne hne_z₁.symm A).root _) (.step (.root (.free z)) .snd)
         (Ctx.ref_insert_snd _ _ A B) ((hs.insertFree u₁ A).insertFree u₂ B)
         ((hs.insertFree u₁ A).insertFree z _) φ fun _ _ => hop₁))
+
+/-- ⭐**Strong T's hypothesis holds of a possible object realised here by `t`**, in both forms: the
+    `Here` atom with `Opt` off; with `Opt` on the identity view `◇⁰ᵀ_c (c.at ≡ t)`, where `Ind`
+    is equality (`IndInvariant.eq_of_opt`) and `≡` is identity (`sat_eqH`). -/
+theorem sat_realHyp_extend {M : Model.{u, v} σ} (hM : M.IndInvariant) (hT : ModalSys.T = true)
+    {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (hop : env.OpenedT) (r : Root)
+    (hr : Γ.RootFresh r) {A : VarType} (p : M.frame.Dom (.VTypeDia A) w) {a : Ann A}
+    (t : Term σ Γ A a) (hm : M.frame.reflAcc hT w ∈ (M.posEval p).1)
+    (hc : M.Ind ((M.posEval p).2 ⟨M.frame.reflAcc hT w, hm⟩) (interp env t)) :
+    M.sat (env.extend r p) (WFF.realHyp hT (.root r) (Ctx.ref_insert_root Γ r (.VTypeDia A))
+      (Term.weaken hr.root (.VTypeDia A) t)) := by
+  by_cases hO : ModalSys.Opt = true
+  · rw [WFF.realHyp_opt hT hO]
+    have hslot : (env.extend r p).ref (.root r) (Ctx.ref_insert_root Γ r (.VTypeDia A)) = p :=
+      Env.extend_root env r p (Ctx.ref_insert_root Γ r (.VTypeDia A))
+    have hw := Ctx.witT_of hT hO (Ctx.ref_insert_root Γ r (.VTypeDia A))
+    have hd : ((env.extend r p).witT (.root r) hw).Dom := by
+      change M.frame.reflAcc hT w ∈ (M.posEval (A := A)
+        ((env.extend r p).ref (.root r) (Ctx.ref_insert_root Γ r (.VTypeDia A)))).1
+      rw [hslot]
+      exact hm
+    refine ⟨A, hw, hd, ?_⟩
+    rw [sat_eqH hO, interp_eta,
+      interp_mono (Env.agree_optPushT _ (hop.extend hr.root p) hw hd)]
+    have key : ∀ (q : M.frame.Dom (.VTypeDia A) w) (_ : q = p)
+        (h : M.frame.reflAcc hT w ∈ (M.posEval q).1),
+        (M.posEval q).2 ⟨M.frame.reflAcc hT w, h⟩ =
+          (M.posEval p).2 ⟨M.frame.reflAcc hT w, hm⟩ := by
+      intro q hq h
+      subst hq
+      rfl
+    refine Eq.trans ?_ ((hM.eq_of_opt hO _ _ hc).trans
+      (interp_mono (Env.agree_extend env hr.root p) t).symm)
+    change (if hv : VarSymb.step (.root r) .at = .step (.root r) .at then _ else _) = _
+    rw [dif_pos rfl]
+    exact key _ hslot hd
+  · rw [WFF.realHyp_noOpt hT (Bool.eq_false_iff.mpr hO)]
+    exact (sat_hereAt_extend hT env r hr p t).mpr ⟨hm, hc⟩
 
 /-- A closed formula's truth depends only on the world. -/
 theorem sat_closed {M : Model.{u, v} σ} {Γ Γ' : Ctx} {w : M.frame.W} (env : M.Env Γ w)
@@ -495,7 +534,7 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
         exact sat_liftRead hF (VarType.liftable_of_R hl) env hc O φ i m hm ho
       · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken env hc.root m χ').mpr (hΔ χ' hχ')
-  | @T_dia Γ _ hT hS hO A a t c hc Δ φ p ih =>
+  | @T_dia Γ _ hT hS A a t c hc Δ φ p ih =>
       -- Interpret the eigenvariable as some possible object realised here — `posRet_exists` says
       -- there is one, and that *is* the hypothesis the subproof gets.
       intro M hM w env hfin hnp hop hΔ
@@ -507,7 +546,7 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       rcases List.mem_cons.mp hχ with h₁ | h₂
       · -- The `Here` hypothesis: the witness is realised here, by `t`.
         subst h₁
-        refine (sat_hereAt_extend hT env (.free c) hc q t).mpr ⟨hmem, hcont⟩
+        exact sat_realHyp_extend hM hT env hop (.free c) hc q t hmem hcont
       · -- An old hypothesis, merely weakened by the eigenvariable.
         obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken (T := .VTypeDia A) env hc.root q χ').mpr (hΔ χ' hχ')

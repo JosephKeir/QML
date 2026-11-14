@@ -422,8 +422,9 @@ theorem consistent_grow_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = t
     obtain ⟨Ψ, Δ₀, h₀, h₁⟩ := exists_hyps_two (P := fun x => x ∈ StageSys.atStage S M)
       (fun x => WFF.mono (L.ctxL_le_cons M (.VTypeDia A) l) x) g Δ hcases
     obtain ⟨q⟩ := Provable.mono h₁ p
-    refine hS M ⟨Δ₀, h₀, ⟨Proof.T_dia hT hTS (hO := hO) A (Term.mono (L.ctxL_base_le hM l) t) _ hc
-      (φ := .bot) (Proof.ofSubset (fun χ hχ => ?_) q)⟩⟩
+    refine hS M ⟨Δ₀, h₀, ⟨Proof.T_dia hT hTS A (Term.mono (L.ctxL_base_le hM l) t) _ hc
+      (φ := .bot) (Proof.castHyps (congrArg (· :: _) (WFF.realHyp_noOpt hT hO _ _ _).symm)
+        (Proof.ofSubset (fun χ hχ => ?_) q))⟩⟩
     rcases List.mem_append.mp hχ with h | h
     · obtain ⟨_, _, rfl⟩ := List.mem_map.mp h
       exact List.mem_cons_self
