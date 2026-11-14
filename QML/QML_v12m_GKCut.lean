@@ -101,6 +101,65 @@ theorem WFF.IsAtom.instantiate {Γ : Ctx} {d : ℕ} {hs : Γ.SlotsFrom d} {T : V
   unfold WFF.instantiate WFF.substRoot
   exact WFF.IsAtom.subst hP
 
+/-! ## An opened witness's view is the context -/
+
+/-- ⭐Where the witness `y` is opened (its content in view), its view is the context itself: the
+    one declaration the view adds is there already.  An equality of contexts, not a definitional
+    one; `GK.unopen` transports derivations along it. -/
+theorem Ctx.optInK_eq_of_opened {Γ : Ctx} {κ : WitKind} {y : VarSymb}
+    (hy : ∃ X, Γ.witK κ y = some X ∧ Γ (.step y κ.step) = some X) : Γ.optInK κ y = Γ := by
+  obtain ⟨X, hw, hd⟩ := hy
+  have hty : (Γ.optInK κ y).ty = Γ.ty := by
+    funext v
+    cases κ with
+    | arrow =>
+        change (if v = .step y .dia then (match Γ.wit y with | some X => some X | none => Γ v)
+          else Γ v) = Γ v
+        split_ifs with hv
+        · subst hv
+          have hw' : Γ.wit y = some X := hw
+          rw [hw']
+          exact hd.symm
+        · rfl
+    | ident =>
+        change (if v = .step y .at then (match Γ.witT y with | some X => some X | none => Γ v)
+          else Γ v) = Γ v
+        split_ifs with hv
+        · subst hv
+          have hw' : Γ.witT y = some X := hw
+          rw [hw']
+          exact hd.symm
+        · rfl
+  have hwit : (Γ.optInK κ y).wit = Γ.wit := by cases κ <;> rfl
+  cases hΓ : Γ.optInK κ y
+  cases Γ
+  rw [hΓ] at hty hwit
+  cases hty
+  cases hwit
+  rfl
+
+namespace GK
+
+/-- A derivation over a context equal to `Γ`, of a sequent weakened into it, is one over `Γ`. -/
+theorem ofEq {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} : ∀ {Γ' : Ctx} (_ : Γ' = Γ)
+    (le : Γ.Le Γ'), GK σ n Γ' (Δ.map (WFF.mono le)) (Θ.map (WFF.mono le)) → GK σ n Γ Δ Θ := by
+  rintro _ rfl le p
+  have hΔ : Δ.map (WFF.mono le) = Δ :=
+    (List.map_congr_left fun ψ _ => WFF.mono_refl le ψ).trans (List.map_id' Δ)
+  have hΘ : Θ.map (WFF.mono le) = Θ :=
+    (List.map_congr_left fun ψ _ => WFF.mono_refl le ψ).trans (List.map_id' Θ)
+  rwa [hΔ, hΘ] at p
+
+/-- ⭐**Leaving the view of an opened witness**: a derivation there of a sequent weakened into
+    it is a derivation of the sequent. -/
+theorem unopen {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} {κ : WitKind} {y : VarSymb}
+    (hy : ∃ X, Γ.witK κ y = some X ∧ Γ (.step y κ.step) = some X)
+    (p : GK σ n (Γ.optInK κ y) (Δ.map (WFF.mono (Ctx.le_optInK Γ κ y)))
+      (Θ.map (WFF.mono (Ctx.le_optInK Γ κ y)))) : GK σ n Γ Δ Θ :=
+  ofEq (Ctx.optInK_eq_of_opened hy) _ p
+
+end GK
+
 /-! ## Replacing an eigenvariable by a term -/
 
 section Eigen
@@ -337,6 +396,14 @@ inductive LeftPrin (σ : Signature) {Γ : Ctx} :
       GK σ m' (Γ.diaIn x) (ψ :: (Δ₂ ++ cp4 Δ₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))
         (Θ₂ ++ (kp4 L₂).map (WFF.mono (Ctx.le_boxIn_diaIn Γ x))) →
       LeftPrin σ (.dia x hx ψ) m Δ Θ
+  | opt (hO : ModalSys.Opt = true) (κ : WitKind) (y : VarSymb)
+      (hy : ∃ X, Γ.witK κ y = some X) {ψ : WFF σ (Γ.optInK κ y) 0} {m m' : ℕ}
+      {Δ Θ : List (WFF σ Γ 0)} :
+      m' < m →
+      GK σ m' (Γ.optInK κ y)
+        (ψ :: (WFF.optx hO κ y hy ψ :: Δ).map (WFF.mono (Ctx.le_optInK Γ κ y)))
+        (Θ.map (WFF.mono (Ctx.le_optInK Γ κ y))) →
+      LeftPrin σ (.optx hO κ y hy ψ) m Δ Θ
 
 /-- A rule's boxed hypotheses either avoid the cut formula or it is one of them. -/
 theorem split_boxes {Γ : Ctx} {A : WFF σ Γ 0} {Δ : List (WFF σ Γ 0)}
@@ -454,6 +521,20 @@ theorem permRight {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] (A :
       · rcases split_boxes h₂ with hall | ⟨φ, rfl⟩
         · exact .inl ⟨_, .diaL x hx h₁' hall h₃ h₄ r⟩
         · exact .inr (.boxDia x hx _ _ _ _ (Nat.lt_succ_self _) h₁' h₂ h₃ h₄ r)
+  | @optL _ _ _ _ hO κ y hy ψ h r =>
+      rcases List.mem_cons.mp h with he | h
+      · subst he; exact .inr (.opt hO κ y hy (Nat.lt_succ_self _) r)
+      · obtain ⟨k, e⟩ := ih (WFF.mono (Ctx.le_optInK Γ κ y) A)
+          (Δ := ψ :: Δ.map (WFF.mono (Ctx.le_optInK Γ κ y)))
+          (Θ := Θ.map (WFF.mono (Ctx.le_optInK Γ κ y)))
+          (.inr ⟨(WFF.weight_mono _ A).trans hw, by omega⟩)
+          ((d₁.monoCtx (Ctx.le_optInK Γ κ y)).weaken (by lsub) (fun _ h => h))
+          (r.weaken (by lsub) (fun _ h => h))
+        exact .inl ⟨_, .optL hO κ y hy h e⟩
+  | @reopenR _ _ _ _ hO κ y hy χ h r =>
+      obtain ⟨k, e⟩ := ih A (Δ := Δ) (Θ := χ :: Θ) (.inr ⟨hw, by omega⟩)
+        (d₁.weaken (by lsub) (by lsub)) r
+      exact .inl ⟨_, .reopenR hO κ y hy h e⟩
 
 /-- The members of `Δ₁` whose box is in `Δ`. -/
 abbrev boxedIn {Γ : Ctx} (Δ : List (WFF σ Γ 0)) (Δ₁ : List (WFF σ Γ.boxIn 0)) :
@@ -1013,6 +1094,38 @@ theorem cut_step {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] (A : 
   | boxR h₁ h₂ h₃ p => exact leftBoxR ih A hw hs D₁ d₂ h₁ h₂ h₃ p
   | serial hD h₂ h₃ p => exact leftSerial ih A hw hs D₁ d₂ hD h₂ h₃ p
   | diaL x hx h₁ h₂ h₃ h₄ p => exact leftDiaL ih A hw hs D₁ d₂ x hx h₁ h₂ h₃ h₄ p
+  | @optL _ _ _ _ hO κ y hy ψ h p =>
+      -- The cut formula is a side formula: cut in the view.
+      obtain ⟨k, e⟩ := ih (WFF.mono (Ctx.le_optInK Γ κ y) A)
+        (Δ := ψ :: Δ.map (WFF.mono (Ctx.le_optInK Γ κ y)))
+        (Θ := Θ.map (WFF.mono (Ctx.le_optInK Γ κ y)))
+        (.inr ⟨(WFF.weight_mono _ A).trans hw, by omega⟩)
+        (p.weaken (fun _ h => h) (by lsub))
+        ((d₂.monoCtx (Ctx.le_optInK Γ κ y)).weaken (by lsub) (fun _ h => h))
+      exact ⟨_, .optL hO κ y hy h e⟩
+  | @reopenR _ _ _ _ hO κ y hy χ h p =>
+      rcases List.mem_cons.mp h with he | h
+      · subst he
+        rcases permRight ih _ hw hs (fun h => by simp [WFF.IsAtom] at h) (fun h => by cases h)
+          D₁ d₂ with done | lp
+        · exact done
+        · cases lp with
+          | opt _ _ _ _ hm r =>
+            -- `reopenR` against `optL`: leave the opened view, cut on the body.
+            obtain ⟨k₁, e₁⟩ := ih _ (Δ := Δ) (Θ := χ :: Θ) (.inr ⟨hw, by omega⟩)
+              (p.weaken (by lsub) (by lsub)) (d₂.weaken (by lsub) (by lsub))
+            obtain ⟨k₂, e₂⟩ := ih (WFF.mono (Ctx.le_optInK Γ κ y) _)
+              (Δ := (χ :: Δ).map (WFF.mono (Ctx.le_optInK Γ κ y)))
+              (Θ := Θ.map (WFF.mono (Ctx.le_optInK Γ κ y)))
+              (.inr ⟨(WFF.weight_mono _ _).trans hw, by omega⟩)
+              ((D₁.monoCtx (Ctx.le_optInK Γ κ y)).weaken (by lsub) (fun _ h => h))
+              (r.weaken (by lsub) (fun _ h => h))
+            exact ih χ (Δ := Δ) (Θ := Θ)
+              (.inl (by rw [← hw]; simp only [WFF.weight]; rw [WFF.weight_mono]; omega))
+              e₁ (unopen hy e₂)
+      · obtain ⟨k, e⟩ := ih A (Δ := Δ) (Θ := χ :: Θ) (.inr ⟨hw, by omega⟩)
+          (p.weaken (by lsub) (by lsub)) (d₂.weaken (by lsub) (by lsub))
+        exact ⟨_, .reopenR hO κ y hy h e⟩
 
 /-- The induction, on the weight and then on the sum of the heights. -/
 theorem cutIH_all : ∀ w s, CutIH σ w s := by

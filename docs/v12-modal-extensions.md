@@ -16530,3 +16530,84 @@ B, 4 and 5 are off under `optStage`.  What changed from the paper plan:
 * The old-language users (`Henkin`, `BStaged`) rewrite by `realHyp_noOpt`.
 * *So KT with strong T and `Opt` is a sound system with its strong rule.*  Next: GK with `◇⁰`.
 
+
+### 12.33 GK with `◇⁰`: the design in Lean terms *(2026-11-14, paper, from reading `QML_v12m_GK*`)*
+
+The gate (review §1).  K and KD with `Opt` on; 4 excludes `Opt` (`optStage`), so the 4-copies are
+empty wherever the new rules fire.  GK's theorems (`GK.cut`, `GK.subst`, `GK.interp`, …) assume no
+flag, so the new rules need real cases in every induction; nothing can be made vacuous.
+
+**Rules added** (both gated by `hO : Opt = true` in the formulas themselves, as `optx` is):
+* `optL` (any kind `κ`): `◇⁰_y ψ ∈ Δ`; premise over `Γ.optInK κ y`:
+  `ψ :: Δ.map (mono le) ⇒ Θ.map (mono le)`, `le := Ctx.le_optInK Γ κ y`.  The whole sequent goes
+  into the view; no world is crossed.
+* `reopenR` (any kind): `y` opened in `Γ` (`Γ.witK κ y = some X` and `Γ (y.step κ) = some X`, as
+  `Proof.opt_reopen`), `◇⁰_y (mono le χ) ∈ Θ`; premise `Δ ⇒ χ :: Θ`.
+  * The principal formula has the form `mono le χ`.  After `optL`, a formula `◇⁰_y ψ'` of the
+    sequent has become `◇⁰_y (mono (le.optInK κ y) ψ')`.  The two embeddings
+    `Γ.optInK κ y ≤ (Γ.optInK κ y).optInK κ y` are proofs of one `Prop`, so the forms agree
+    definitionally: "any `◇⁰_y` formulas of either side opened together" needs no joint rule.
+  * There is no right rule for `◇⁰_y` where `y` is not opened, and none is needed
+    (`◇⁰_y p ⇒ ◇⁰_y p` is `optL`, then `reopenR`).
+* **Folding** (`boxR`, `diaL`, `serial`): for `◇_u χ` among the chosen conclusions `L ⊆ Θ`, the
+  premise's succedent also has `◇⁰_u (mono χ)` (the witness `u` of the view).  Implement by
+  extending `kp4` (the "copies one view in"): with 4 the keep copies, with `Opt` the folds, else
+  empty; the two never coexist.  Its lemmas (`kp4_of_not`, `kp4_sub`, …) are restated.
+* **Weight:** `◇_u χ` weighs `χ + 2` (it is `◇` then `◇⁰`); `◇⁰_y χ` stays `χ + 1`.
+
+**Derivable with these:** the bridge both ways (`diaL` then `reopenR`; `boxR` with a fold), `K_opt`,
+`opt_bot`, `opt_reopen`.  Identity on `◇⁰_y ψ`: `optL`, `reopenR`, identity on `ψ`.
+
+**Cut reductions** (checked by hand):
+* *`reopenR` against `optL`* on `◇⁰_y χ`: left premise `Δ ⇒ χ₀, Θ` with the cut formula
+  `◇⁰_y (mono χ₀)`; right premise over `Γ.optInK κ y`: `mono χ₀, Δ↑ ⇒ Θ↑`.  `y` is opened, so
+  `Γ.optInK κ y = Γ` (a provable equality of contexts, not definitional): transport the right
+  premise to `Γ`, cut on `χ₀`.  **Needs:** `Ctx.optInK_eq_of_opened` and the transport of a
+  derivation along it (with `mono le` becoming the identity, `WFF.mono_refl`).
+* *A fold against `diaL`* on `◇_u χ`: left premise (in the view) `Δ₁ ⇒ φ, ◇⁰_u χ↑`; right premise
+  over `Γ.diaIn u`: `χ, Δ₁'↑ ⇒ Θ₁', …`.  Lift the right premise into `Γ.boxIn.optIn u`, conclude
+  `◇⁰_u χ↑, Δ₁' ⇒ ◇⁰_u Θ₁'↑` in the `□` view (`optL`, then `reopenR` for each), cut on `◇⁰_u χ↑`
+  there (weight `χ + 1 < χ + 2`), and close with `boxR` folding `◇_u Θ₁'`.
+* *The cut formula not principal on the left, the left rule `optL`:* weaken the right derivation
+  into the view (`GK.mono`) and cut there.  *The left rule modal:* as now (its premise does not
+  see the conclusion's context).
+
+**Maehara** (review §1): `optL` principal in the left part gives `◇⁰_y I`, in the right part
+`□⁰_y I`; `reopenR` keeps the interpolant; the folded `□R` is the standard case with the folds
+splitting with their `◇_u χ`.
+
+**What each file needs:**
+
+| File | New cases |
+|---|---|
+| `GK` | the two rules, folds in three, `weaken`, `mono_height`, the weight |
+| `GKSubst` | `optL` (`θ.optIn`/`optInT`), `reopenR` (`Coh.openedTo`, as `Proof.subst`'s `opt_reopen`), folds under substitution |
+| `GKShift` | none real (4 only: refuted by `noOpt_of_Four`) |
+| `GKCut` | the two principal reductions, the permutations, the transport |
+| `GKToND`, `GKFromND` | `K_opt`, `opt_reopen`, the bridge; `GKSys` to allow `Opt` without 4 |
+| `GKSubform` | members of the family: `◇⁰` bodies, folds |
+| `GKInterp` | the three cases above |
+
+**Order:** rules and structural lemmas with the build green at each file; `GKSubst`; `GKCut`;
+ND equivalence; subformula; interpolation.  **Size:** 1 500 to 3 000 lines.  **Stop** if the
+`reopenR`/`optL` transport or Maehara's `optL` case fails in Lean.
+
+**§12.33, first half built (2026-11-14, strict build green).**  GK with `optL` and `reopenR`, for
+both witness kinds:
+* `GK`: the two rules, `mono_height`, `weaken`.
+* `GKSubst`: both cases (`θ.optIn`/`optInT`, `WFF.subst_optIn_mono`; `Coh.openedTo`/`openedToT`).
+* ⭐`GKCut`: **cut is admissible.**  `LeftPrin.opt`; the cut passes over `optL` on either side by
+  `GK.monoCtx` into the view; `reopenR` against `optL` leaves the opened view by
+  `Ctx.optInK_eq_of_opened` and `GK.unopen` (`GK.ofEq`, `WFF.mono_refl`) and cuts on the body.
+  The transport feared in §12.33 was short.
+* `GKToND`: `optL` is `K_opt` then `opt_bot`; `reopenR` is `opt_reopen`.
+* ⭐`GKInterp`: **Maehara's cases go through.**  `itp_optL`: the view's interpolant `χ'` leaves as
+  `◇⁰_y χ'` (left: `optL` then `reopenR`, the witness being opened in its own view,
+  `Ctx.opened_optInK`; right: `optL`); the other part by `Itp.swap`.  `itp_reopenR` keeps the
+  interpolant.
+* `GKSubform`, `GKSubSharp`: `GSub` gains `opt`, `view_opt`, `reopen`; `GKS` the two rules.
+* *Left:* the folds in `boxR`/`diaL`/`serial` (the bridge inside GK) and the weight `+2`; ND into
+  GK for the `Opt` rules (`GKFromND`); `GKSys` allowing `Opt` without 4; then Craig and the
+  subformula property stated for K and KD with `Opt`.  Until then the equivalence with ND is
+  stated for `Opt` off only.
+

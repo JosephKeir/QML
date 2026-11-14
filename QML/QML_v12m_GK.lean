@@ -183,6 +183,22 @@ inductive GK (σ : Signature) : ℕ → (Γ : Ctx) → List (WFF σ Γ 0) → Li
       {Δ₁ : List (WFF σ Γ.boxIn 0)} {L : List (WFF σ Γ 0)} :
       (∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) → L ⊆ Θ →
       GK σ n Γ.boxIn (Δ₁ ++ cp4 Δ₁) (kp4 L) → GK σ (n + 1) Γ Δ Θ
+  -- The witness views (`Opt`, docs §12.33)
+  /-- `optL`: from `ψ, Δ ⇒ Θ` in the view of the witness `y` (of either kind), `◇⁰_y ψ, Δ ⇒ Θ`.
+      The whole sequent goes into the view: no world is crossed. -/
+  | optL {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (hO : ModalSys.Opt = true) (κ : WitKind)
+      (y : VarSymb) (hy : ∃ X, Γ.witK κ y = some X) {ψ : WFF σ (Γ.optInK κ y) 0} :
+      .optx hO κ y hy ψ ∈ Δ →
+      GK σ n (Γ.optInK κ y) (ψ :: Δ.map (WFF.mono (Ctx.le_optInK Γ κ y)))
+        (Θ.map (WFF.mono (Ctx.le_optInK Γ κ y))) →
+      GK σ (n + 1) Γ Δ Θ
+  /-- `reopenR`: where `y` is already opened, `◇⁰_y χ` on the right is `χ` (`Proof.opt_reopen`).
+      After `optL` every `◇⁰_y` formula of the sequent has this form. -/
+  | reopenR {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (hO : ModalSys.Opt = true) (κ : WitKind)
+      (y : VarSymb) (hy : ∃ X, Γ.witK κ y = some X ∧ Γ (.step y κ.step) = some X)
+      {χ : WFF σ Γ 0} :
+      .optx hO κ y (hy.imp fun _ h => h.1) (WFF.mono (Ctx.le_optInK Γ κ y) χ) ∈ Θ →
+      GK σ n Γ Δ (χ :: Θ) → GK σ (n + 1) Γ Δ Θ
 
 namespace GK
 
@@ -242,6 +258,12 @@ theorem mono_height {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (p : GK σ
   | serial hD h₂ h₃ _ ih =>
       intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
       exact .serial hD h₂ h₃ (ih (by omega))
+  | optL hO κ y hy h _ ih =>
+      intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
+      exact .optL hO κ y hy h (ih (by omega))
+  | reopenR hO κ y hy h _ ih =>
+      intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
+      exact .reopenR hO κ y hy h (ih (by omega))
 
 /-- ⭐**Weakening, exchange and contraction**, height-preserving: the contexts are read through
     membership, so any larger lists do. -/
@@ -284,6 +306,11 @@ theorem weaken {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (p : GK σ n Γ
         (h₄.trans hΘ) p
   | serial hD h₂ h₃ p _ =>
       exact fun hΔ hΘ => .serial hD (fun χ hχ => hΔ (h₂ χ hχ)) (h₃.trans hΘ) p
+  | optL hO κ y hy h _ ih =>
+      exact fun hΔ hΘ => .optL hO κ y hy (hΔ h)
+        (ih (List.cons_subset_cons _ (List.map_subset _ hΔ)) (List.map_subset _ hΘ))
+  | reopenR hO κ y hy h _ ih =>
+      exact fun hΔ hΘ => .reopenR hO κ y hy (hΘ h) (ih hΔ (List.cons_subset_cons _ hΘ))
 
 end GK
 

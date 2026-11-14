@@ -753,6 +753,59 @@ theorem itp_exL [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (u : ℕ) (T : VarType
       LangLe.append (LangLe.map hw (L' := Δ₂ ++ Θ₂) (by lsub)) (LangLe.map hw (by lsub)) r
         (hl r ho').2⟩
 
+/-! ## The witness views -/
+
+/-- In its own view a witness is opened. -/
+theorem _root_.V12M.Ctx.opened_optInK {Γ : Ctx} {κ : WitKind} {y : VarSymb}
+    (hy : ∃ X, Γ.witK κ y = some X) :
+    ∃ X, (Γ.optInK κ y).witK κ y = some X ∧ (Γ.optInK κ y) (.step y κ.step) = some X := by
+  obtain ⟨X, hX⟩ := hy
+  cases κ with
+  | arrow => exact ⟨X, hX, Ctx.optIn_content hX⟩
+  | ident => exact ⟨X, (Ctx.le_optInT Γ y).witT hX, Ctx.optInT_content hX⟩
+
+/-- ⭐`optL`, the witness formula in the first part: the view's interpolant `χ'` leaves as
+    `◇⁰_y χ'`.  On the left `optL` then `reopenR` (the witness is opened in its view); on the
+    right `optL`. -/
+theorem itp_optL {Δ Θ : List (WFF σ Γ 0)} (hO : ModalSys.Opt = true) (κ : WitKind)
+    (y : VarSymb) (hy : ∃ X, Γ.witK κ y = some X) {ψ : WFF σ (Γ.optInK κ y) 0}
+    (h : .optx hO κ y hy ψ ∈ Δ₁)
+    (ih : Interp (Γ.optInK κ y) (ψ :: Δ.map (WFF.mono (Ctx.le_optInK Γ κ y)))
+      (Θ.map (WFF.mono (Ctx.le_optInK Γ κ y))))
+    (hΔ : Δ ⊆ Δ₁ ++ Δ₂) (hΘ : Θ ⊆ Θ₁ ++ Θ₂) : ∃ χ, Itp Γ Δ₁ Θ₁ Δ₂ Θ₂ χ := by
+  obtain ⟨χ', ⟨ka, a⟩, ⟨_, b⟩, hl⟩ := ih (ψ :: Δ₁.map (WFF.mono (Ctx.le_optInK Γ κ y))) _ _ _
+    (cover_cons (cover_map _ hΔ)) (cover_map _ hΘ)
+  have hw : ∀ (δ : WFF σ Γ 0) r, (WFF.mono (Ctx.le_optInK Γ κ y) δ).Occ r → δ.Occ r :=
+    fun δ r ho => (WFF.occ_mono r _ δ).mp ho
+  have left : GK σ (ka + 1) (Γ.optInK κ y) (ψ :: Δ₁.map (WFF.mono (Ctx.le_optInK Γ κ y)))
+      ((WFF.optx hO κ y hy χ' :: Θ₁).map (WFF.mono (Ctx.le_optInK Γ κ y))) :=
+    .reopenR (χ := χ') hO κ y (Ctx.opened_optInK hy) List.mem_cons_self
+      (a.weaken (fun _ h => h) (by lsub))
+  refine ⟨.optx hO κ y hy χ', ⟨_, .optL hO κ y hy h left⟩,
+    ⟨_, .optL hO κ y hy List.mem_cons_self (b.weaken (by lsub) (fun _ h => h))⟩,
+    fun r ho => ?_⟩
+  · have ho' : χ'.Occ r := ho
+    refine ⟨LangLe.append (LangLe.cons (a := ψ)
+          (fun r ho => Lang.mem (φ := .optx hO κ y hy ψ) (List.mem_append_left _ h) ho)
+          (LangLe.map hw (L' := Δ₁ ++ Θ₁) (by lsub)))
+        (LangLe.map hw (by lsub)) r (hl r ho').1,
+      LangLe.append (LangLe.map hw (L' := Δ₂ ++ Θ₂) (by lsub)) (LangLe.map hw (by lsub)) r
+        (hl r ho').2⟩
+
+/-- ⭐`reopenR`, the witness formula in the first part: the premise's interpolant. -/
+theorem itp_reopenR {Δ Θ : List (WFF σ Γ 0)} (hO : ModalSys.Opt = true) (κ : WitKind)
+    (y : VarSymb) (hy : ∃ X, Γ.witK κ y = some X ∧ Γ (.step y κ.step) = some X)
+    {χ : WFF σ Γ 0}
+    (h : .optx hO κ y (hy.imp fun _ h => h.1) (WFF.mono (Ctx.le_optInK Γ κ y) χ) ∈ Θ₁)
+    (ih : Interp Γ Δ (χ :: Θ)) (hΔ : Δ ⊆ Δ₁ ++ Δ₂) (hΘ : Θ ⊆ Θ₁ ++ Θ₂) :
+    ∃ χ, Itp Γ Δ₁ Θ₁ Δ₂ Θ₂ χ := by
+  obtain ⟨I, ⟨k₁, e₁⟩, e₂, hl⟩ := ih Δ₁ Δ₂ (χ :: Θ₁) Θ₂ hΔ (cover_cons hΘ)
+  refine ⟨I, ⟨_, .reopenR hO κ y hy (List.mem_cons_of_mem _ h)
+      (e₁.weaken (fun _ h => h) (by lsub))⟩, e₂, fun r ho => ⟨?_, (hl r ho).2⟩⟩
+  refine LangLe.append (LangLe.sub (by lsub)) (LangLe.cons (fun r ho => ?_)
+    (LangLe.sub (by lsub))) r (hl r ho).1
+  exact Lang.mem (List.mem_append_right _ h) ((WFF.occ_mono r _ χ).mpr ho)
+
 /-! ## The induction -/
 
 /-- ⭐**Interpolation for GK**: every split of a derivable sequent has an interpolant. -/
@@ -859,6 +912,18 @@ theorem interp {n : ℕ} {Δ Θ : List (WFF σ Γ 0)} (d : GK σ n Γ Δ Θ) : I
       rcases List.mem_append.mp (hΔ h₁) with h | h
       · exact itp_diaL x hx h h₂ h₃ h₄ ih hΔ hΘ
       · obtain ⟨χ, hχ⟩ := itp_diaL x hx h h₂ h₃ h₄ ih (sub_swap hΔ) (sub_swap hΘ)
+        exact ⟨_, hχ.swap⟩
+  | optL hO κ y hy h _ ih =>
+      intro Δ₁ Δ₂ Θ₁ Θ₂ hΔ hΘ
+      rcases List.mem_append.mp (hΔ h) with h | h
+      · exact itp_optL hO κ y hy h ih hΔ hΘ
+      · obtain ⟨χ, hχ⟩ := itp_optL hO κ y hy h ih (sub_swap hΔ) (sub_swap hΘ)
+        exact ⟨_, hχ.swap⟩
+  | reopenR hO κ y hy h _ ih =>
+      intro Δ₁ Δ₂ Θ₁ Θ₂ hΔ hΘ
+      rcases List.mem_append.mp (hΘ h) with h | h
+      · exact itp_reopenR hO κ y hy h ih hΔ hΘ
+      · obtain ⟨χ, hχ⟩ := itp_reopenR hO κ y hy h ih (sub_swap hΔ) (sub_swap hΘ)
         exact ⟨_, hχ.swap⟩
 
 /-- ⭐**Craig interpolation for K, KD, K4 and KD4**: if `φ ⊢ ψ` in natural deduction over a

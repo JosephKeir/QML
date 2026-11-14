@@ -67,6 +67,17 @@ inductive GSub {Γ₀ : Ctx} (E : List (WFF σ Γ₀ 0)) : (Γ : Ctx) → WFF σ
       GSub E Γ (.dia y hy θ) →
       GSub E Γ.boxIn (WFF.dia (.step y .keep) (Ctx.exists_keep_dia hF hy)
         (WFF.shift (Ctx.shifts_diaIn_keep hF Γ y) Ctx.NoSlots.slots θ))
+  /-- The body of `◇⁰_y φ`, in the witness's view. -/
+  | opt {Γ : Ctx} {hO : ModalSys.Opt = true} {κ : WitKind} {y : VarSymb}
+      {hy : ∃ X, Γ.witK κ y = some X} {φ : WFF σ (Γ.optInK κ y) 0} :
+      GSub E Γ (.optx hO κ y hy φ) → GSub E (Γ.optInK κ y) φ
+  /-- A formula carried into a witness's view (`optL` crosses no world). -/
+  | view_opt {Γ : Ctx} {φ : WFF σ Γ 0} (hO : ModalSys.Opt = true) (κ : WitKind) (y : VarSymb) :
+      GSub E Γ φ → GSub E (Γ.optInK κ y) (WFF.mono (Ctx.le_optInK Γ κ y) φ)
+  /-- The body of a re-opened `◇⁰_y`, where `y` is opened already. -/
+  | reopen {Γ : Ctx} {hO : ModalSys.Opt = true} {κ : WitKind} {y : VarSymb}
+      {hy : ∃ X, Γ.witK κ y = some X} {χ : WFF σ Γ 0} :
+      GSub E Γ (.optx hO κ y hy (WFF.mono (Ctx.le_optInK Γ κ y) χ)) → GSub E Γ χ
 
 /-! ## Subformulas are no heavier -/
 
@@ -160,6 +171,23 @@ theorem GSub.weight_le {Γ₀ : Ctx} {E : List (WFF σ Γ₀ 0)} {Γ : Ctx} {φ 
       · simp [WFF.IsAtom] at h
       · refine .inr ⟨ψ, hψ, ?_⟩
         simp only [WFF.weight, WFF.weight_shift] at hw ⊢
+        omega
+  | opt _ ih =>
+      rcases ih with h | ⟨ψ, hψ, hw⟩
+      · simp [WFF.IsAtom] at h
+      · exact .inr ⟨ψ, hψ, by simp only [WFF.weight] at hw; omega⟩
+  | view_opt hO κ y _ ih =>
+      rcases ih with h | ⟨ψ, hψ, hw⟩
+      · left
+        revert h
+        rename_i φ _
+        cases φ <;> simp [WFF.IsAtom, WFF.mono]
+      · exact .inr ⟨ψ, hψ, by rw [WFF.weight_mono']; exact hw⟩
+  | reopen _ ih =>
+      rcases ih with h | ⟨ψ, hψ, hw⟩
+      · simp [WFF.IsAtom] at h
+      · refine .inr ⟨ψ, hψ, ?_⟩
+        simp only [WFF.weight, WFF.weight_mono'] at hw
         omega
 
 /-- The boxed hypotheses' copies are subformulas. -/
@@ -257,6 +285,18 @@ inductive GKS (σ : Signature) (P : (Γ : Ctx) → WFF σ Γ 0 → Prop) :
       (hD : ModalSys.D = true) {Δ₁ : List (WFF σ Γ.boxIn 0)} {L : List (WFF σ Γ 0)} :
       (∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) → L ⊆ Θ →
       GKS σ P n Γ.boxIn (Δ₁ ++ cp4 Δ₁) (kp4 L) → GKS σ P (n + 1) Γ Δ Θ
+  | optL {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (hS : SeqIn P Γ Δ Θ)
+      (hO : ModalSys.Opt = true) (κ : WitKind) (y : VarSymb) (hy : ∃ X, Γ.witK κ y = some X)
+      {ψ : WFF σ (Γ.optInK κ y) 0} :
+      .optx hO κ y hy ψ ∈ Δ →
+      GKS σ P n (Γ.optInK κ y) (ψ :: Δ.map (WFF.mono (Ctx.le_optInK Γ κ y)))
+        (Θ.map (WFF.mono (Ctx.le_optInK Γ κ y))) →
+      GKS σ P (n + 1) Γ Δ Θ
+  | reopenR {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (hS : SeqIn P Γ Δ Θ)
+      (hO : ModalSys.Opt = true) (κ : WitKind) (y : VarSymb)
+      (hy : ∃ X, Γ.witK κ y = some X ∧ Γ (.step y κ.step) = some X) {χ : WFF σ Γ 0} :
+      .optx hO κ y (hy.imp fun _ h => h.1) (WFF.mono (Ctx.le_optInK Γ κ y) χ) ∈ Θ →
+      GKS σ P n Γ Δ (χ :: Θ) → GKS σ P (n + 1) Γ Δ Θ
 
 namespace GKS
 
@@ -284,6 +324,8 @@ theorem toGK {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (d : GKS σ P n �
   | boxR _ h₁ h₂ h₃ _ ih => exact .boxR h₁ h₂ h₃ ih
   | diaL _ x hx h₁ h₂ h₃ h₄ _ ih => exact .diaL x hx h₁ h₂ h₃ h₄ ih
   | serial _ hD h₂ h₃ _ ih => exact .serial hD h₂ h₃ ih
+  | optL _ hO κ y hy h _ ih => exact .optL hO κ y hy h ih
+  | reopenR _ hO κ y hy h _ ih => exact .reopenR hO κ y hy h ih
 
 end GKS
 
@@ -411,6 +453,20 @@ theorem subformula {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (d : GK σ 
         · exact (hS.2 _ (h₃ χ hχ)).dia
         · obtain ⟨δ, hδ, rfl⟩ := List.mem_map.mp hχ
           exact (hk δ hδ).view_dia x
+  | optL hO κ y hy h _ ih =>
+      intro hS
+      refine .optL hS hO κ y hy h (ih ⟨fun χ hχ => ?_, fun χ hχ => ?_⟩)
+      · rcases List.mem_cons.mp hχ with rfl | hχ
+        · exact (hS.1 _ h).opt
+        · obtain ⟨δ, hδ, rfl⟩ := List.mem_map.mp hχ
+          exact (hS.1 δ hδ).view_opt hO κ y
+      · obtain ⟨δ, hδ, rfl⟩ := List.mem_map.mp hχ
+        exact (hS.2 δ hδ).view_opt hO κ y
+  | reopenR hO κ y hy h _ ih =>
+      intro hS
+      refine .reopenR hS hO κ y hy h (ih ⟨hS.1, fun χ hχ => ?_⟩)
+      rcases List.mem_cons.mp hχ with rfl | hχ
+      exacts [(hS.2 _ h).reopen, hS.2 χ hχ]
 
 /-- ⭐**Analytic derivations of every ND-provable sequent** of K, KD, K4 and KD4: a cut-free
     derivation whose every sequent consists of subformulas of the end sequent. -/

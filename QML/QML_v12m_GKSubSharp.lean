@@ -509,6 +509,9 @@ theorem GSub.sharp [ModalSys.NoOpt]
   | view_dia x _ ih => exact ih.mono _
   | box_keep hF _ ih => exact ih.box_keep hF
   | dia_keep hF _ ih => exact ih.dia_keep hF
+  | @opt _ hO _ _ _ _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
+  | view_opt hO κ y _ ih => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
+  | @reopen _ hO _ _ _ _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
 
 /-- A derivation in one family is one in any larger family. -/
 theorem GKS.mono {P Q : (Γ : Ctx) → WFF σ Γ 0 → Prop} (hPQ : ∀ Γ φ, P Γ φ → Q Γ φ)
@@ -534,6 +537,8 @@ theorem GKS.mono {P Q : (Γ : Ctx) → WFF σ Γ 0 → Prop} (hPQ : ∀ Γ φ, P
   | boxR h h₁ h₂ h₃ _ ih => exact .boxR (hS h) h₁ h₂ h₃ ih
   | diaL h x hx h₁ h₂ h₃ h₄ _ ih => exact .diaL (hS h) x hx h₁ h₂ h₃ h₄ ih
   | serial h hD h₂ h₃ _ ih => exact .serial (hS h) hD h₂ h₃ ih
+  | optL h hO κ y hy h' _ ih => exact .optL (hS h) hO κ y hy h' ih
+  | reopenR h hO κ y hy h' _ ih => exact .reopenR (hS h) hO κ y hy h' ih
 
 /-- ⭐**The sharp subformula property**: every ND-provable sequent of K, KD, K4 and KD4 has a
     cut-free derivation in which every formula is a single substitution instance of a subformula

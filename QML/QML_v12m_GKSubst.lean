@@ -205,6 +205,70 @@ theorem subst {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (p : GK σ n Γ 
       · intro χ hχ
         obtain ⟨χ₀, hχ₀, rfl⟩ := List.mem_map.mp hχ
         exact List.mem_map_of_mem (h₃ χ₀ hχ₀)
+  | @optL n Γ Δ Θ hO κ y hy ψ h _ ih =>
+      intro Γ' _ ι θ hθ hc hΓ
+      cases κ with
+      | arrow =>
+          have hwy : ∃ X, Γ'.wit (ι y) = some X :=
+            hy.elim fun X hX => WitE.wit_of (hθ.wit hO y X hX) (hc.wit hO y X hX [])
+          have hθy := hy.elim fun X hX => Subst.ok_optIn hθ hO hX (hc.wit hO y X hX [])
+          have hcy := hy.elim fun _ hX => Subst.coh_optIn hθ hc hO hX
+          have ih' := ih (θ.optIn y (ι y)) hθy hcy (hΓ.optIn y)
+          have hf : (WFF.subst ι (θ.optIn y (ι y)) hθy hcy (hΓ.optIn y) Ctx.NoSlots.slots ∘
+              WFF.mono (Ctx.le_optIn Γ y)) =
+              WFF.mono (Ctx.le_optIn Γ' (ι y)) ∘ WFF.subst ι θ hθ hc hΓ Ctx.NoSlots.slots :=
+            funext fun χ => by
+              obtain ⟨X, hX⟩ := hy
+              exact WFF.subst_optIn_mono θ hθ hc hO hX hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots χ
+          simp only [List.map_cons, List.map_map] at ih'
+          erw [hf] at ih'
+          simp only [← List.map_map] at ih'
+          exact .optL hO .arrow (ι y) hwy (List.mem_map_of_mem h) ih'
+      | ident =>
+          have hwy : ∃ X, Γ'.witT (ι y) = some X :=
+            hy.elim fun X hX => by
+              obtain ⟨hT, hO', hr⟩ := Ctx.witT_spec hX
+              obtain ⟨Y, hY⟩ := SubE.ref_witness (Subst.okRef_at hθ hr) (hc y _ hr [])
+              exact ⟨Y, Ctx.witT_of hT hO' hY⟩
+          have hθy := hy.elim fun X hX =>
+            Subst.ok_optInT hθ hX (hc y _ (Ctx.witT_spec hX).2.2 [])
+          have hcy := hy.elim fun _ hX => Subst.coh_optInT hθ hc hX
+          have ih' := ih (θ.optInT y (ι y)) hθy hcy (hΓ.optInT y)
+          have hf : (WFF.subst ι (θ.optInT y (ι y)) hθy hcy (hΓ.optInT y) Ctx.NoSlots.slots ∘
+              WFF.mono (Ctx.le_optInT Γ y)) =
+              WFF.mono (Ctx.le_optInT Γ' (ι y)) ∘ WFF.subst ι θ hθ hc hΓ Ctx.NoSlots.slots :=
+            funext fun χ => by
+              obtain ⟨X, hX⟩ := hy
+              exact WFF.subst_optInT_mono θ hθ hc hX hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots χ
+          simp only [List.map_cons, List.map_map] at ih'
+          erw [hf] at ih'
+          simp only [← List.map_map] at ih'
+          exact .optL hO .ident (ι y) hwy (List.mem_map_of_mem h) ih'
+  | @reopenR n Γ Δ Θ hO κ y hy χ h _ ih =>
+      intro Γ' _ ι θ hθ hc hΓ
+      have ih' := ih θ hθ hc hΓ
+      rw [List.map_cons] at ih'
+      cases κ with
+      | arrow =>
+          refine .reopenR hO .arrow (ι y)
+            (hy.elim fun X h => hc.openedTo hO y X (ι y) h.1 h.2 (hc.wit hO y X h.1 [])) ?_ ih'
+          obtain ⟨X, hX, -⟩ := id hy
+          have e := congrArg (WFF.optx hO .arrow (ι y)
+              (WitE.wit_of (hθ.wit hO y X hX) (hc.wit hO y X hX [])))
+            (WFF.subst_optIn_mono θ hθ hc hO hX hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots χ)
+          exact e ▸ List.mem_map_of_mem h
+      | ident =>
+          refine .reopenR hO .ident (ι y)
+            (hy.elim fun X h =>
+              hc.openedToT y X (ι y) h.1 h.2 (hc y _ (Ctx.witT_spec h.1).2.2 [])) ?_ ih'
+          obtain ⟨X, hX, -⟩ := id hy
+          have e := congrArg (WFF.optx hO .ident (ι y)
+              (by
+                obtain ⟨hT, hO', hr⟩ := Ctx.witT_spec hX
+                obtain ⟨Y, hY⟩ := SubE.ref_witness (Subst.okRef_at hθ hr) (hc y _ hr [])
+                exact ⟨Y, Ctx.witT_of hT hO' hY⟩))
+            (WFF.subst_optInT_mono θ hθ hc hX hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots χ)
+          exact e ▸ List.mem_map_of_mem h
 
 /-- ⭐**Weakening along a context inclusion**, height-preserving, into a presented context. -/
 theorem monoCtx {n : ℕ} {Γ Γ' : Ctx} [Γ'.Presented] {Δ Θ : List (WFF σ Γ 0)} (h : Γ.Le Γ')

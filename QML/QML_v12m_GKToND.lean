@@ -264,6 +264,22 @@ theorem toND {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (d : GK σ n Γ �
         exact boxx_neg x hx (List.mem_append_right _ (List.mem_map_of_mem (h₃ χ hχ)))
       · obtain ⟨χ, hχ, rfl⟩ := List.mem_map.mp hℓ
         exact hb χ hχ
+  | @optL _ Γ Δ Θ hO κ y hy ψ h _ ih =>
+      have hm : (Θ.map (WFF.mono (Ctx.le_optInK Γ κ y))).map WFF.neg =
+          (Θ.map WFF.neg).map (WFF.mono (Ctx.le_optInK Γ κ y)) := by
+        rw [List.map_map, List.map_map]; rfl
+      rw [List.cons_append, hm, ← List.map_append] at ih
+      obtain ⟨p⟩ := ih
+      refine dis (L := .optx hO κ y hy ψ :: (([] : List (WFF σ (Γ.optInK κ y) 0)).map
+          (WFF.optBox hO κ y hy) ++ (Δ ++ Θ.map WFF.neg)))
+        ⟨.opt_bot hO κ y hy (Proof.K_opt hO κ y hy (Δ₂ := []) p)⟩ fun ℓ hℓ => ?_
+      rcases List.mem_cons.mp hℓ with rfl | hℓ
+      · exact lk (List.mem_append_left _ h)
+      · exact lk hℓ
+  | @reopenR _ Γ Δ Θ hO κ y hy χ h _ ih =>
+      obtain ⟨p⟩ := byContra (sub (L' := χ.neg :: (Δ ++ Θ.map WFF.neg)) (by lsub) ih)
+      exact contra (List.mem_append_right _ (List.mem_map_of_mem h))
+        ⟨Proof.opt_reopen hO κ y hy p⟩
 
 /-- ⭐**GK and natural deduction prove the same sequents**, over a presented context, in K, KD,
     K4 and KD4: a sequent is ND-provable exactly when it has a cut-free GK derivation. -/
