@@ -17442,3 +17442,218 @@ the parent, before the children), so it is no evidence for `⇑`.
   should transfer to strong B unchanged in its positive half; the negative half needs domains
   that strong B's existence laws allow (`P` and `Q` have empty modal domains at `w`, which strong B
   may forbid), so **strong B needs its own check**, as item 4 already said.
+
+### 12.42 What the separating example says about a proof of Craig for B *(2026-11-16, paper)*
+
+**Scope (user, 2026-11-16).**  Soundness and completeness are not negotiable; cut elimination and
+interpolation are highly desirable but not dealbreakers.  `⇑` is in the object language.  `⇓` may
+be added too if it is what those results need.
+
+**1. What the `P`/`Q` example refutes.**  Craig for the language **without** `⇑` (paper).  It does
+not touch the language with `⇑`: `⇑D(m.back)` is true at `(P, w)` and false at `(Q, w)`, so the two
+models are not equivalent there.  The attempt-2 models refuted nothing (`φ` was false in `M₁`).  For
+the language with `⇑` there is still no counterexample.
+
+**2. The failure is a failed amalgamation.**  The usual semantic proof of Craig (Robinson joint
+consistency) takes a model of `φ`, a model of `¬ψ` and a bisimulation between them for the common
+language, and builds one model of both: the **product**, whose worlds are related pairs and whose
+domains are related pairs of elements.  In `P`/`Q` the plain bisimulation relates `w` to `v` and
+`c` to `c`.  The pair `(c, c)` then needs one converse edge back to the pair it was entered from,
+and `m`'s value along it, but `P` sends it to `w` and `Q` to `v`.  A plain bisimulation **does not
+respect converse edges**, so its product is not closed under symmetry and is not a KB model.
+
+**3. With `⇑`, it does.**  `⇑`-equivalence forces the bisimulation to relate the worlds a view was
+entered from, together with the back values of related objects.  That suggests:
+1. *Two-way unravelling.*  Unravel a KB model into a tree of histories, keeping each tree edge's
+   converse (the B arrow of `Frame.symm`).  The tree is symmetric, so it is a KB frame, and `⇑` is
+   the parent.  Truth of `⇑`-formulas is preserved.  This is the semantics of the nested calculus's
+   labels (§12.37) and of the walks of `GKN` (§12.39).
+2. *`⇑`-bisimulation.*  Related pairs of nodes with related parents, and at each pair a system of
+   partial isomorphisms between the typed contexts (Fraïssé-style, for first-class objects:
+   objects of modal types related with their `box` and `back` views).
+3. *Product.*  Along such a bisimulation the product of two two-way trees is again a two-way tree,
+   hence symmetric.  Domains are varying, so the paired domains need no further condition.  Both
+   expansions are true in it, which gives joint consistency, and Craig follows by compactness.
+**`⇓` does not appear in this route.**  A node reached by going up and then down again is a new
+pair in the product.  Nothing forces it to coincide with the child one came from, and varying
+domains impose no coherence between the two.  That is the semantic reason behind §12.41's
+conjecture (Craig with `⇑`, without `⇓`), and the first idea for an actual proof.
+
+**4. Where it can break.**
+* *Strong B.*  Its existence law (every object of the parent is the back value of a necessary
+  object of the child) must hold in the product.  For a pair `(a, a′)` the two witnesses exist
+  separately, but they need not be related by the bisimulation.  This is the shape of Fine's
+  failure for constant-domain S5: an existence condition the product cannot keep.  So strong B is
+  where `⇓` (or a richer bisimulation) might be needed.  **Check this first.**
+* *T, 4, 5.*  The unravelling is not a tree for 5 (clusters), and T and 4 need the loop and the
+  composite in the product.  Separate checks.
+* *Compactness for the language with `⇑`.*  It needs strong completeness with `⇑` (`BArrow` has it
+  for the plain language).  `⇑`'s ND rules and their canonical-model case come first.
+* *The witness machinery* (`◇_x`, `◇⁰`, `Opt`) must be part of the bisimulation's clauses.
+* The route proves Craig **semantically**: it gives no interpolant and no cut elimination.  Cut
+  elimination for B stays the job of `GKN` (the propositional cut is done, §12.37); a syntactic
+  interpolation proof could follow from it later.
+
+**5. Suggested order.**  (a) On paper, strong B's existence law against the product (item 4,
+first bullet): it decides whether `⇓` is needed at all.  (b) Define `⇑`-bisimulation on paper
+for the real `WFF` and check the induction (§12.41 continued's caveat).  (c) Then the semantic
+proof for weak B, after `⇑`'s ND rules and completeness with `⇑`.
+
+### 12.43 Strong B against the product: is `⇓` needed? *(2026-11-16, paper)*
+
+The check §12.42 item 5(a) asked for.  A sanity check of what interpolation needs; the user's
+preferred route to it stays proof-theoretic (cut elimination in `GKN`), and §12.43.5 says what the
+check means there.
+
+**0. The laws** (`QML_v12m_Model.lean`).
+* `Frame.symm` under B: **existence only** (`Nonempty (R v w)`).  Under strong B,
+  `Frame.homeUnique`: at most one arrow between two worlds.
+* Row 1, `Model.backRet_exists` (strong B): if `w` has an arrow out, every `o : A` at `w` is what
+  some `c : □□A` at `w` comes back as, `Ret` over every arrow out (at `◇`-free `A`, `Ret_conv`: the
+  round-trip value is `Ind` to `o`).
+* Rows 3–4, `Model.posBack_exists` (`BStrongW`): along **any given arrow** `b : v → w`, every `o`
+  at `w` is `Ind` to the content at `b` of some possible object of `v` whose extent contains `b`.
+
+**1. A consequence for `⇑` first: weak B has no canonical way home.**  `m.back` is "`m`'s value
+along the way home", and under weak B there may be several.  `homeUnique` makes it definite only
+under strong B.  So `⇑`'s semantics under weak B needs **a chosen converse per arrow** (a function
+`R w v → R v w` in the frame, validity over all choices; B's rule `□χ ⊢ ⇑χ′` is sound for any
+choice, since `□χ` holds along every arrow).  Relational frames, and strong B, need nothing.
+Every weak-B model has such a choice, so no theorem about the plain language changes.
+
+**2. Row 1 survives, and needs only `⇑`.**  `⇑` "only remembers" (§12.37 item 2): under `⇑` the
+parent's **whole context** is back in scope, with the `back` views of the child's objects added.
+So a parent variable can be compared with a round-trip value, and row 1 at `◇`-free `A` is a
+sentence:
+**`∀x:A.(◇⊤ → ∃c:□□A.□⇑(c.box.back ≡ x))`**
+(`□` to a successor, which is "entered from" `w`, so `⇑` is `w` again).
+* *Product:* at a pair `(h₁, h₂)` with related `(o₁, o₂)`, take `c₁` from the first model; the
+  bisimulation's forth clause at type `□□A` gives a related `c₂`, and since the sentence's matrix
+  is a `⇑`-formula in `x, c`, it holds of `(o₂, c₂)`.  So `(c₁, c₂)` is the product's witness,
+  along every arrow out of the pair, the converse edge to its parent included.  `homeUnique` holds
+  in the two-way tree (let the parent edge replace the unique converse child).
+* *Canonical pairs (the implementable form of the product: Gabbay–Maksimova's inseparable pairs,
+  worlds are pairs of theories that no common formula separates):* the witness condition
+  `□⇑(c.box.back ≡ o)` uses only `≡` and `⇑`, which are logical, so it is in the **common**
+  language, and the usual argument keeps the pair inseparable (an interpolant `I(c)` for the
+  extended pair gives `∃c.I(c)` for the old one, by strong B on the left and `c` fresh on the
+  right).
+* **Why this is not Fine's failure.**  Fine's constant-domain law is global ("the same objects at
+  every world") and no formula states it, so the product cannot keep it.  Strong B's law is local
+  to one edge, and **with `⇑` it is a formula**.  Without `⇑` it is not (the round trip can't be
+  compared with `x`), which is a **second, independent reason for `⇑`** besides §12.41's example.
+* *Open within row 1:* contents with `◇` (there `Ret` is primitive, with shape tags).  §12.34 says
+  `Back`, `retS`, `retxS` become definable with the wrapper; if so the same argument applies.  Not
+  checked.
+
+*(Item 3 and the table below are corrected by §12.44: rooted at the target, rows 3–4 are a
+sentence with `⇑`'s witnessed form; no `⇓`.)*
+**3. Rows 3–4 are where `⇓` could be needed.**  `posBack_exists` is about **one given arrow**: "of
+the world I came from, some possible object reaches **me**, with content `≡ x`".  From `w` it reads
+`∀x:A.⇑∃p:◇A.⇓(b ∈ p ∧ p.here ≡ x)`: up, then back to **the** child, which is `⇓`'s job.  The
+existential "reaches some child" (`◇_p`) is weaker.
+* *Product picture:* it still survives.  The child pair is chosen after the parent's matching, to
+  realise the child's type **over the parent's parameters**, and because every child object is a
+  parent possible object's content, the child's matching is just the parent's read along the arrow
+  pair.  Rooted at the parent all of this is `⇑`-free (joint possibility goes through pairing).
+  But the step realises a type over the parent's **whole** domain, which needs saturation beyond
+  what a model can have over itself: not the implementable form.
+* *Canonical pairs:* the commitment "`p` reaches **this** arrow" is not a formula without `⇓`, so
+  inseparability does not control it.  This is exactly where an existence law tied to one arrow
+  meets a language that cannot name arrows.
+* *Possible rescue without `⇓`:* possible objects already name routes (`Proof.ret_route_node`).
+  Describing the child from the parent as the content of a route object paired with the others
+  makes `⇓φ` roughly `◇_r φ`.  That is exact only if a route object's extent can be cut down to
+  the one arrow, which nothing provides today.
+* **Verdict: rows 3–4 (`BStrongW`) are the only place found where `⇓` may be needed.**  Not
+  decided.
+
+**4. Summary.**
+| system | needs | status |
+|---|---|---|
+| weak B | `⇑` (§12.41), a chosen converse in the frame (item 1) | product works on paper |
+| strong B, rows 1–2 | `⇑`, which makes the law a formula | survives the product and the pair construction (◇-free contents; ◇ contents unchecked) |
+| `BStrongW`, rows 3–4 | `⇑` and possibly `⇓`, or route objects cut to one arrow | survives the idealised product, not the pair construction |
+
+**5. What it means for the proof-theoretic route.**  In `GKN` strong B is an existence rule with
+no principal formula (§12.37 item 4).  For Maehara-style interpolation such a rule is harmless when
+its side formula is in the common language: the interpolant gets `∃c`/`∀c` around it.  Row 1's
+side formula is (item 2); rows 3–4's mention one arrow, a **label**, so on the tree they are
+label-level rules, and turning their interpolant into a formula needs `⇓` or a route name.  So the
+two routes agree: **rows 1–2 need `⇑` only; `BStrongW` is the open case.**  It is also the
+smallest one to test by hand: a sequent whose derivation uses `posBack` along an arrow created
+before the object it realises, then try to read its interpolant without `⇓`.
+
+**6. A design consequence of item 2 to record.**  If `⇑` re-exposes the parent's context, a view
+must **remember the context it came from** (a stack, not just `Γ.boxIn`).  §12.40 said `⇓` would
+need `Ctx` to remember the child; `⇑` already needs it to remember the parent.  This touches
+`Ctx.boxIn` and every recursion over views, so it belongs in `GKN`'s representation decision
+(roadmap item 2).
+
+### 12.44 The `BStrongW` hand test: `⇓` is not needed *(2026-11-16, paper)*
+
+The test §12.43.5 asked for.  **Result: no `⇓`.**  §12.43 item 3 rooted the law at the wrong end
+of the arrow; rooted at the target it is a sentence, with the **witnessed form of `⇑`**.  The
+table of §12.43.4 is corrected below.
+
+**1. The test sequent** (the arrow exists before the object it realises).
+* `φ := ◇(K ∧ ∃y:Var.Ay) ∧ ∀p:◇Var.□_p((K ∧ A(p.here)) → D(p.here))`
+* `ψ := ∀p:◇Var.□_p(D(p.here) → E(p.here)) → ◇∃y:Var.Ey`
+* *Derivation shape:* the left's `◇` creates the child `c`; then `y` is born at `c`; then
+  `posBack` along the old arrow `τ → c` creates `p` at `τ` with `c` in its extent and content `y`.
+  So `p` is a parent object born **after** the child and used **in** it: §12.40's case 2, the
+  shape that seemed to need `⇓`.  `φ ⊢ ψ` holds under `BStrongW` (`□_p` at `c` gives `D(y)`, then
+  `E(y)`), and fails without it.
+* *Interpolant:* **`∃p:◇Var.◇_p D(p.here)`**: plain, no wrapper at all.  The child's facts are
+  folded under `◇_p` at the parent.  Specificity is not lost because nothing on either side can
+  name the arrow `τ → c` itself: `ψ`'s premise covers **every** arrow of `p` (`□_p`), so any arrow
+  where `◇_p` lands will do.
+
+**2. Why the fold always works: under `BStrongW` the child is named from the parent.**  Every
+object of a child is the content of a possible object of the parent along that arrow
+(`posBack_exists`, at every type).  So the interleaving that made case 2 hard (`p` bound at `τ`
+after the child, `q` bound at the child after `p`, `r` at `τ` after `q`, …) can always be
+re-ordered with **all binders at the parent**: bind the parent possible object whose content is
+`q`, and read `q` as its `here`.  Several of them reach the same arrow jointly through a
+possibility of product type (`posBack` at `A × B`, the pairing route of
+`feedback_qml_joint_possibility_pairing`).  The child's component then sits under one `◇` of
+the paired object.  This is the product picture of §12.43 item 3 ("the child's matching is the
+parent's read along the arrow"), and it needs **neither `⇓` nor saturation** once it is stated as
+a fold.
+
+**3. The law as a sentence: root it at the target.**  §12.43 item 3 read `posBack` from the
+target `w` towards the source `v` as "go up, then come back to **this** child", which is `⇓`.
+But under strong B (`homeUnique`) every arrow `b : v → w` is the **way home** of the arrow
+`w → v` that B provides, so from `w` the source is just a successor, entered from `w`, and `⇑`
+returns along `b` itself.  What is missing is only the view of a **possible** object along the
+way home:
+* **`⇑⁰_p φ`**: "the way home is in `p`'s extent, and `φ` holds at home with `p`'s content
+  there named".  It is to `⇑` what `◇⁰_p` is to `◇` (the witnessed form, the K paradigm of
+  `feedback_qml_witness_k_paradigm`).  It is §12.34's returning possibility (`retxS`) as an
+  operator, as `⇑` is `retS`/`Back` (§12.40).
+* Rows 3–4 as a sentence: **`∀x:A.□∃p:◇A.⇑⁰_p(p.here ≡ x)`**.  At `w`, `□` reaches every
+  source `v` of an arrow into `w` (by B); `⇑⁰_p` comes back along that very arrow, with `x` in
+  scope because `⇑` restores `w`'s context.  Row 1's sentence (§12.43 item 2) has the same shape:
+  both laws are about arrows **into** the world that states them.
+* With the sentence, the canonical-pairs argument of §12.43 item 2 applies unchanged: the
+  witness condition uses only logical symbols (`≡`, `⇑⁰`), so it lies in the common language.
+
+**4. Corrected table** (replaces §12.43.4).
+| system | needs | status |
+|---|---|---|
+| weak B | `⇑` (§12.41), a chosen converse in the frame (§12.43.1) | product works on paper |
+| strong B, rows 1–2 | `⇑` | law is a sentence; survives products and pairs (◇-free contents) |
+| `BStrongW`, rows 3–4 | `⇑` and its witnessed form `⇑⁰_p` | law is a sentence; survives; the fold of item 2 needs neither |
+**No case found that needs `⇓`.**
+
+**5. What stays open.**
+* *Contents with `◇`* in rows 1–2 (`Ret` with shape tags), as in §12.43: whether `⇑`/`⇑⁰` define
+  it.  It is the last unchecked corner of strong B.
+* *Whether `⇑⁰` is needed already in weak B:* case 1 of §12.40 with a **possible** object of the
+  child read at the parent along the way home.  The `P`/`Q` example of §12.41 should transfer
+  with `p : ◇Var` in place of `m : □Var`; not checked.  If it does, `⇑⁰` belongs to the language
+  for B in general, not only for `BStrongW`.
+* *For `GKN`:* `posBack` is an existence rule whose side formula is item 3's sentence, in the
+  common language, so in Maehara's construction it contributes an `∃p`/`∀p`, as row 1 does
+  (§12.43.5).  The representation decision for `GKN` now has to provide views that remember the
+  parent context **and** a witnessed up-move.
