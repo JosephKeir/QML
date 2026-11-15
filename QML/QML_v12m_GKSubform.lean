@@ -84,6 +84,14 @@ inductive GSub {Γ₀ : Ctx} (E : List (WFF σ Γ₀ 0)) : (Γ : Ctx) → WFF σ
   | reopen {Γ : Ctx} {hO : ModalSys.Opt = true} {κ : WitKind} {y : VarSymb}
       {hy : ∃ X, Γ.witK κ y = some X} {χ : WFF σ Γ 0} :
       GSub E Γ (.optx hO κ y hy (WFF.mono (Ctx.le_optInK Γ κ y) χ)) → GSub E Γ χ
+  /-- T's collapse of a boxed formula (`TL`). -/
+  | box_T {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) {φ : WFF σ Γ.boxIn 0} :
+      GSub E Γ (WFF.box (Γ := Γ) φ) →
+      GSub E Γ (WFF.collapse (Ctx.collapses_boxIn_self hT Γ) Ctx.NoSlots.slots φ)
+  /-- `◇_x φ` read at the identity arrow (`diaT`). -/
+  | dia_T {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) (hO : ModalSys.Opt = true)
+      {x : VarSymb} {hx : ∃ X, Γ.ref x = some (.VTypeDia X)} {φ : WFF σ (Γ.diaIn x) 0} :
+      GSub E Γ (.dia x hx φ) → GSub E Γ (WFF.diaId hT hO x hx φ)
 
 /-! ## Subformulas are no heavier -/
 
@@ -201,6 +209,20 @@ theorem GSub.weight_le {Γ₀ : Ctx} {E : List (WFF σ Γ₀ 0)} {Γ : Ctx} {φ 
       · refine .inr ⟨ψ, hψ, ?_⟩
         simp only [WFF.weight, WFF.weight_mono'] at hw
         omega
+  | box_T hT _ ih =>
+      rcases ih with h | ⟨ψ, hψ, hw⟩
+      · simp [WFF.IsAtom] at h
+      · refine .inr ⟨ψ, hψ, ?_⟩
+        simp only [WFF.weight] at hw
+        rw [WFF.weight_collapse]
+        omega
+  | dia_T hT hO _ ih =>
+      rcases ih with h | ⟨ψ, hψ, hw⟩
+      · simp [WFF.IsAtom] at h
+      · refine .inr ⟨ψ, hψ, ?_⟩
+        simp only [WFF.weight] at hw
+        simp only [WFF.diaId, WFF.weight, WFF.weight_collapse]
+        omega
 
 /-- The boxed hypotheses' copies are subformulas. -/
 theorem GSub.copies_box {Γ₀ : Ctx} {E : List (WFF σ Γ₀ 0)} {Γ : Ctx} [Γ.NoSlots]
@@ -317,6 +339,15 @@ inductive GKS (σ : Signature) (P : (Γ : Ctx) → WFF σ Γ 0 → Prop) :
       (hy : ∃ X, Γ.witK κ y = some X ∧ Γ (.step y κ.step) = some X) {χ : WFF σ Γ 0} :
       .optx hO κ y (hy.imp fun _ h => h.1) (WFF.mono (Ctx.le_optInK Γ κ y) χ) ∈ Θ →
       GKS σ P n Γ Δ (χ :: Θ) → GKS σ P (n + 1) Γ Δ Θ
+  | TL {n : ℕ} {Γ : Ctx} [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (hS : SeqIn P Γ Δ Θ)
+      (hT : ModalSys.T = true) {φ : WFF σ Γ.boxIn 0} :
+      .box φ ∈ Δ →
+      GKS σ P n Γ (WFF.collapse (Ctx.collapses_boxIn_self hT Γ) Ctx.NoSlots.slots φ :: Δ) Θ →
+      GKS σ P (n + 1) Γ Δ Θ
+  | diaT {n : ℕ} {Γ : Ctx} [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (hS : SeqIn P Γ Δ Θ)
+      (hT : ModalSys.T = true) (hO : ModalSys.Opt = true) (x : VarSymb)
+      (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {φ : WFF σ (Γ.diaIn x) 0} :
+      .dia x hx φ ∈ Θ → GKS σ P n Γ Δ (WFF.diaId hT hO x hx φ :: Θ) → GKS σ P (n + 1) Γ Δ Θ
 
 namespace GKS
 
@@ -346,6 +377,8 @@ theorem toGK {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (d : GKS σ P n �
   | serial _ hD h₂ h₃ _ ih => exact .serial hD h₂ h₃ ih
   | optL _ hO κ y hy h _ ih => exact .optL hO κ y hy h ih
   | reopenR _ hO κ y hy h _ ih => exact .reopenR hO κ y hy h ih
+  | TL _ hT h _ ih => exact .TL hT h ih
+  | diaT _ hT hO x hx h _ ih => exact .diaT hT hO x hx h ih
 
 end GKS
 
@@ -487,10 +520,21 @@ theorem subformula {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (d : GK σ 
       refine .reopenR hS hO κ y hy h (ih ⟨hS.1, fun χ hχ => ?_⟩)
       rcases List.mem_cons.mp hχ with rfl | hχ
       exacts [(hS.2 _ h).reopen, hS.2 χ hχ]
+  | TL hT h _ ih =>
+      intro hS
+      refine .TL hS hT h (ih ⟨fun χ hχ => ?_, hS.2⟩)
+      rcases List.mem_cons.mp hχ with rfl | hχ
+      exacts [(hS.1 _ h).box_T hT, hS.1 χ hχ]
+  | diaT hT hO x hx h _ ih =>
+      intro hS
+      refine .diaT hS hT hO x hx h (ih ⟨hS.1, fun χ hχ => ?_⟩)
+      rcases List.mem_cons.mp hχ with rfl | hχ
+      exacts [(hS.2 _ h).dia_T hT hO, hS.2 χ hχ]
 
-/-- ⭐**Analytic derivations of every ND-provable sequent** of K, KD, K4 and KD4: a cut-free
-    derivation whose every sequent consists of subformulas of the end sequent. -/
-theorem subformula_of_provable [ModalSys.GKSys] {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
+/-- ⭐**Analytic derivations of every ND-provable sequent** of K, KD, K4 and KD4, and of K, KD,
+    KT and KDT with `Opt` on: a cut-free derivation whose every sequent consists of subformulas of
+    the end sequent, up to T's collapses (`GSub.box_T`, `GSub.dia_T`). -/
+theorem subformula_of_provable [ModalSys.GKBase] {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
     {φ : WFF σ Γ 0} (p : Provable Δ φ) : ∃ n, GKS σ (GSub (Δ ++ [φ])) n Γ Δ [φ] := by
   obtain ⟨n, d⟩ := provable_iff_der.mp p
   exact ⟨n, d.subformula ⟨fun χ hχ => .mem (List.mem_append_left _ hχ),

@@ -485,7 +485,7 @@ end SharpSub
 
 /-- ⭐**Gentzen's subformulas are single instances**: every member of `GSub E` is an instance of a
     syntactic subformula of `E`, or an atom `ref` or `repl` introduces. -/
-theorem GSub.sharp [ModalSys.NoOpt]
+theorem GSub.sharp [ModalSys.NoOpt] [ModalSys.NoT]
     {Γ₀ : Ctx} [Γ₀.NoSlots] {E : List (WFF σ Γ₀ 0)} {Γ : Ctx} {φ : WFF σ Γ 0}
     (h : GSub E Γ φ) : SharpSub E Γ φ := by
   induction h with
@@ -513,6 +513,8 @@ theorem GSub.sharp [ModalSys.NoOpt]
   | @opt _ hO _ _ _ _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
   | view_opt hO κ y _ ih => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
   | @reopen _ hO _ _ _ _ _ _ => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
+  | box_T hT _ _ => exact (ModalSys.NoT.absurd hT).elim
+  | dia_T hT _ _ _ => exact (ModalSys.NoT.absurd hT).elim
 
 /-- A derivation in one family is one in any larger family. -/
 theorem GKS.mono {P Q : (Γ : Ctx) → WFF σ Γ 0 → Prop} (hPQ : ∀ Γ φ, P Γ φ → Q Γ φ)
@@ -540,11 +542,13 @@ theorem GKS.mono {P Q : (Γ : Ctx) → WFF σ Γ 0 → Prop} (hPQ : ∀ Γ φ, P
   | serial h hD h₂ h₃ _ ih => exact .serial (hS h) hD h₂ h₃ ih
   | optL h hO κ y hy h' _ ih => exact .optL (hS h) hO κ y hy h' ih
   | reopenR h hO κ y hy h' _ ih => exact .reopenR (hS h) hO κ y hy h' ih
+  | TL h hT h' _ ih => exact .TL (hS h) hT h' ih
+  | diaT h hT hO x hx h' _ ih => exact .diaT (hS h) hT hO x hx h' ih
 
 /-- ⭐**The sharp subformula property**: every ND-provable sequent of K, KD, K4 and KD4 has a
     cut-free derivation in which every formula is a single substitution instance of a subformula
     of the end sequent up to copies (a syntactic one without 4, `WFF.SubC.subF`), or an atom
-    introduced by `ref` or `repl`. -/
+    introduced by `ref` or `repl`.  With `Opt` on still to do (`GSub.sharp`'s witness clauses). -/
 theorem GK.subformula_sharp_of_provable [ModalSys.GKSys] {Γ : Ctx} [Γ.Presented]
     {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : Provable Δ φ) :
     ∃ n, GKS σ (SharpSub (Δ ++ [φ])) n Γ Δ [φ] :=

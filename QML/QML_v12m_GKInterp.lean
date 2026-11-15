@@ -184,6 +184,52 @@ theorem WFF.occ_shift (r : σ.RelSyms) : ∀ {k : ℕ} {Γ Γ' : Ctx} {d : ℕ} 
   | _, _, _, _, h, _, .optx hO _ _ _ _ =>
       False.elim (by have := ModalSys.noOpt_of_Four h.hF; rw [hO] at this; cases this)
 
+theorem Rel.sym_collapse {k : ℕ} {Γ Γ' : Ctx} (h : Ctx.Collapses k Γ Γ') :
+    ∀ {n : ℕ} (ρ : Rel σ Γ n), (Rel.collapse h ρ).sym = ρ.sym
+  | _, .R _ => rfl
+  | _, .eval ρ _ => Rel.sym_collapse h ρ
+
+/-- Collapsing keeps the relation symbols. -/
+theorem WFF.occ_collapse (r : σ.RelSyms) : ∀ {k : ℕ} {Γ Γ' : Ctx} {d : ℕ}
+    (h : Ctx.Collapses k Γ Γ') (hs : Γ.SlotsFrom d) (φ : WFF σ Γ d),
+    (WFF.collapse h hs φ).Occ r ↔ φ.Occ r
+  | _, _, _, _, h, _, .atom ρ => by
+      change (Rel.collapse h ρ).sym = r ↔ ρ.sym = r
+      rw [Rel.sym_collapse]
+  | _, _, _, _, _, _, .eq _ _ => Iff.rfl
+  | _, _, _, _, _, _, .top => Iff.rfl
+  | _, _, _, _, _, _, .bot => Iff.rfl
+  | _, _, _, _, h, hs, .and φ ψ => by
+      simp only [WFF.collapse, WFF.Occ]; rw [WFF.occ_collapse r h hs φ, WFF.occ_collapse r h hs ψ]
+  | _, _, _, _, h, hs, .or φ ψ => by
+      simp only [WFF.collapse, WFF.Occ]; rw [WFF.occ_collapse r h hs φ, WFF.occ_collapse r h hs ψ]
+  | _, _, _, _, h, hs, .imp φ ψ => by
+      simp only [WFF.collapse, WFF.Occ]; rw [WFF.occ_collapse r h hs φ, WFF.occ_collapse r h hs ψ]
+  | _, _, _, _, _, _, .all _ φ => by
+      simp only [WFF.collapse, WFF.Occ]; rw [WFF.occ_collapse r _ _ φ]
+  | _, _, _, _, _, _, .ex _ φ => by
+      simp only [WFF.collapse, WFF.Occ]; rw [WFF.occ_collapse r _ _ φ]
+  | _, _, _, _, _, _, .box φ => by
+      simp only [WFF.collapse, WFF.Occ]; rw [WFF.occ_collapse r _ _ φ]
+  | _, _, _, _, _, _, .dia _ _ φ => by
+      simp only [WFF.collapse, WFF.Occ]; rw [WFF.occ_collapse r _ _ φ]
+  | _, _, _, _, _, _, .here _ _ _ _ => Iff.rfl
+  | _, _, _, _, _, _, .back _ _ _ _ => Iff.rfl
+  | _, _, _, _, _, _, .retS _ _ _ Φ => by
+      simp only [WFF.collapse, WFF.Occ]; rw [WFF.occ_collapse r _ _ Φ]
+  | _, _, _, _, _, _, .retxS _ _ _ _ _ Φ => by
+      simp only [WFF.collapse, WFF.Occ]; rw [WFF.occ_collapse r _ _ Φ]
+  | _, _, _, _, _, _, .link _ _ _ Φ => by
+      simp only [WFF.collapse, WFF.Occ]; rw [WFF.occ_collapse r _ _ Φ]
+  | _, _, _, _, _, _, .linkx _ _ _ _ _ Φ => by
+      simp only [WFF.collapse, WFF.Occ]; rw [WFF.occ_collapse r _ _ Φ]
+  | 0, _, _, _, _, _, .optx _ .arrow _ _ φ => by
+      simp only [WFF.collapse, WFF.Occ]; rw [WFF.occ_collapse r _ _ φ]
+  | _ + 1, _, _, _, _, _, .optx _ .arrow _ _ φ => by
+      simp only [WFF.collapse, WFF.Occ]; rw [WFF.occ_collapse r _ _ φ]
+  | _, _, _, _, _, _, .optx _ .ident _ _ φ => by
+      simp only [WFF.collapse, WFF.Occ]; rw [WFF.occ_collapse r _ _ φ]
+
 /-- A boxed hypothesis' copy has its symbols. -/
 theorem occ_cp4 {r : σ.RelSyms} {Γ : Ctx} [Γ.NoSlots] {Δ' : List (WFF σ Γ.boxIn 0)}
     {c : WFF σ Γ.boxIn 0} (hc : c ∈ cp4 Δ') (ho : c.Occ r) : ∃ χ ∈ Δ', χ.Occ r := by
@@ -804,6 +850,29 @@ theorem itp_reopenR {Δ Θ : List (WFF σ Γ 0)} (hO : ModalSys.Opt = true) (κ 
     (LangLe.sub (by lsub))) r (hl r ho).1
   exact Lang.mem (List.mem_append_right _ h) ((WFF.occ_mono r _ χ).mpr ho)
 
+/-- `TL` keeps the interpolant: the collapse has the boxed formula's symbols. -/
+theorem itp_TL [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+    {φ : WFF σ Γ.boxIn 0} (h : WFF.box φ ∈ Δ₁)
+    (ih : Interp Γ (WFF.collapse (Ctx.collapses_boxIn_self hT Γ) Ctx.NoSlots.slots φ :: Δ) Θ)
+    (hΔ : Δ ⊆ Δ₁ ++ Δ₂) (hΘ : Θ ⊆ Θ₁ ++ Θ₂) : ∃ χ, Itp Γ Δ₁ Θ₁ Δ₂ Θ₂ χ := by
+  obtain ⟨χ, ⟨k₁, e₁⟩, e₂, hl⟩ := ih _ Δ₂ Θ₁ Θ₂ (cover_cons hΔ) hΘ
+  refine ⟨χ, ⟨_, .TL hT h e₁⟩, e₂, fun r ho => ⟨?_, (hl r ho).2⟩⟩
+  exact langLe_cons_mem (List.mem_append_left _ h)
+    (fun r ho => (WFF.occ_collapse r _ _ φ).mp ho) (LangLe.sub fun _ h => h) r (hl r ho).1
+
+/-- `diaT` keeps the interpolant. -/
+theorem itp_diaT [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+    (hO : ModalSys.Opt = true) (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    {φ : WFF σ (Γ.diaIn x) 0} (h : WFF.dia x hx φ ∈ Θ₁)
+    (ih : Interp Γ Δ (WFF.diaId hT hO x hx φ :: Θ)) (hΔ : Δ ⊆ Δ₁ ++ Δ₂) (hΘ : Θ ⊆ Θ₁ ++ Θ₂) :
+    ∃ χ, Itp Γ Δ₁ Θ₁ Δ₂ Θ₂ χ := by
+  obtain ⟨χ, ⟨k₁, e₁⟩, e₂, hl⟩ := ih Δ₁ Δ₂ _ Θ₂ hΔ (cover_cons hΘ)
+  refine ⟨χ, ⟨_, .diaT hT hO x hx (List.mem_cons_of_mem _ h)
+    (e₁.weaken (fun _ h => h) (by lsub))⟩, e₂, fun r ho => ⟨?_, (hl r ho).2⟩⟩
+  refine LangLe.append (LangLe.sub (by lsub)) ?_ r (hl r ho).1
+  exact langLe_cons_mem (List.mem_append_right _ h)
+    (fun r ho => (WFF.occ_collapse r _ _ φ).mp ho) (LangLe.sub (by lsub))
+
 /-! ## The induction -/
 
 /-- ⭐**Interpolation for GK**: every split of a derivable sequent has an interpolant. -/
@@ -923,11 +992,23 @@ theorem interp {n : ℕ} {Δ Θ : List (WFF σ Γ 0)} (d : GK σ n Γ Δ Θ) : I
       · exact itp_reopenR hO κ y hy h ih hΔ hΘ
       · obtain ⟨χ, hχ⟩ := itp_reopenR hO κ y hy h ih (sub_swap hΔ) (sub_swap hΘ)
         exact ⟨_, hχ.swap⟩
+  | TL hT h _ ih =>
+      intro Δ₁ Δ₂ Θ₁ Θ₂ hΔ hΘ
+      rcases List.mem_append.mp (hΔ h) with h | h
+      · exact itp_TL hT h ih hΔ hΘ
+      · obtain ⟨χ, hχ⟩ := itp_TL hT h ih (sub_swap hΔ) (sub_swap hΘ)
+        exact ⟨_, hχ.swap⟩
+  | diaT hT hO x hx h _ ih =>
+      intro Δ₁ Δ₂ Θ₁ Θ₂ hΔ hΘ
+      rcases List.mem_append.mp (hΘ h) with h | h
+      · exact itp_diaT hT hO x hx h ih hΔ hΘ
+      · obtain ⟨χ, hχ⟩ := itp_diaT hT hO x hx h ih (sub_swap hΔ) (sub_swap hΘ)
+        exact ⟨_, hχ.swap⟩
 
-/-- ⭐**Craig interpolation for K, KD, K4 and KD4**: if `φ ⊢ ψ` in natural deduction over a
-    presented context, there is `χ` with `φ ⊢ χ` and `χ ⊢ ψ`, every relation symbol of `χ`
-    occurring in both `φ` and `ψ`. -/
-theorem craig [ModalSys.GKSys] [Γ.Presented] {φ ψ : WFF σ Γ 0} (p : Provable [φ] ψ) :
+/-- ⭐**Craig interpolation for K, KD, K4 and KD4, and for K, KD, KT and KDT with `Opt` on**
+    (`ModalSys.GKBase`): if `φ ⊢ ψ` in natural deduction over a presented context, there is `χ`
+    with `φ ⊢ χ` and `χ ⊢ ψ`, every relation symbol of `χ` occurring in both `φ` and `ψ`. -/
+theorem craig [ModalSys.GKBase] [Γ.Presented] {φ ψ : WFF σ Γ 0} (p : Provable [φ] ψ) :
     ∃ χ : WFF σ Γ 0, Provable [φ] χ ∧ Provable [χ] ψ ∧ ∀ r, χ.Occ r → φ.Occ r ∧ ψ.Occ r := by
   obtain ⟨n, d⟩ := provable_iff_der.mp p
   obtain ⟨χ, ⟨_, a⟩, ⟨_, b⟩, hl⟩ := interp d [φ] [] [] [ψ] (by simp) (by simp)
@@ -937,6 +1018,37 @@ theorem craig [ModalSys.GKSys] [Γ.Presented] {φ ψ : WFF σ Γ 0} (p : Provabl
   subst ha' hb'
   exact ⟨oa, ob⟩
 
+/-- ⭐**Interpolation for cut-free derivations, in every system** (`Opt` on or off): a GK
+    derivation of `φ ⇒ ψ` has an interpolant `χ`, with `φ ⊢ χ` and `χ ⊢ ψ` in natural deduction
+    and every relation symbol of `χ` in both.  With the witness views the interpolant of a view
+    leaves as `◇⁰_y χ'` (`itp_optL`).  Over a presented context every ND-provable entailment of
+    `ModalSys.GKBase` is GK-derivable (`GK.Der.ofProof`), which gives `GK.craig`. -/
+theorem craig_of_der {φ ψ : WFF σ Γ 0} (h : Der σ Γ [φ] ψ) :
+    ∃ χ : WFF σ Γ 0, Provable [φ] χ ∧ Provable [χ] ψ ∧ ∀ r, χ.Occ r → φ.Occ r ∧ ψ.Occ r := by
+  obtain ⟨n, d⟩ := h
+  obtain ⟨χ, ⟨_, a⟩, ⟨_, b⟩, hl⟩ := interp d [φ] [] [] [ψ] (by simp) (by simp)
+  refine ⟨χ, provable_of_der ⟨_, a⟩, provable_of_der ⟨_, b⟩, fun r ho => ?_⟩
+  obtain ⟨⟨a', ha', oa⟩, ⟨b', hb', ob⟩⟩ := hl r ho
+  simp only [List.append_nil, List.mem_singleton, List.nil_append] at ha' hb'
+  subst ha' hb'
+  exact ⟨oa, ob⟩
+
 end GK
+
+end V12M
+
+namespace V12M
+
+section KTOpt
+
+attribute [local instance] ModalSys.KTOpt
+
+/-- ⭐**Craig interpolation for KT** (with `Opt`, the language of T's identity views): `GK.craig`
+    at `ModalSys.KTOpt` (docs §12.35). -/
+example {σ : Signature} {Γ : Ctx} [Γ.Presented] {φ ψ : WFF σ Γ 0} (p : Provable [φ] ψ) :
+    ∃ χ : WFF σ Γ 0, Provable [φ] χ ∧ Provable [χ] ψ ∧ ∀ r, χ.Occ r → φ.Occ r ∧ ψ.Occ r :=
+  GK.craig p
+
+end KTOpt
 
 end V12M

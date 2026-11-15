@@ -290,10 +290,36 @@ theorem toND {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (d : GK σ n Γ �
       obtain ⟨p⟩ := byContra (sub (L' := χ.neg :: (Δ ++ Θ.map WFF.neg)) (by lsub) ih)
       exact contra (List.mem_append_right _ (List.mem_map_of_mem h))
         ⟨Proof.opt_reopen hO κ y hy p⟩
+  | @TL _ Γ _ Δ Θ hT φ h _ ih =>
+      refine extra (E := [WFF.collapse (Ctx.collapses_boxIn_self hT Γ) Ctx.NoSlots.slots φ])
+        (sub (by lsub) ih) fun e he => ?_
+      rw [List.mem_singleton.mp he]
+      exact (lk (List.mem_append_left _ h)).map (.T_box hT)
+  | @diaT _ Γ _ Δ Θ hT hO x hx φ h _ ih =>
+      -- `¬◇_x φ` gives `□¬◇⁰_x φ` (the bridge), whose collapse is `¬ diaId φ` (`T_box`)
+      have hn : (WFF.dia x hx φ).neg ∈ Δ ++ Θ.map WFF.neg :=
+        List.mem_append_right _ (List.mem_map_of_mem h)
+      refine extra (E := [(WFF.diaId hT hO x hx φ).neg]) (sub (by lsub) ih) fun e he => ?_
+      rw [List.mem_singleton.mp he]
+      have hb : Provable (Δ ++ Θ.map WFF.neg) (WFF.box (WFF.optx hO .arrow x
+          (hx.imp fun _ h => Ctx.boxIn_wit.mpr ⟨hO, h⟩)
+          (WFF.mono (hx.elim fun _ h => Ctx.le_diaIn_boxIn_optIn hO h) φ)).neg) :=
+        byContra (contra (List.mem_cons_of_mem _ hn)
+          ((lk List.mem_cons_self).map (Proof.opt_dia hO x hx)))
+      exact (congrArg (fun χ => Provable (Δ ++ Θ.map WFF.neg) (WFF.neg χ))
+        (WFF.collapse_fold hT hO x hx φ)).mp (hb.map (Proof.T_box hT))
+
+/-- ⭐**GK is sound for natural deduction, in every system**: a cut-free derivation of `Δ ⇒ φ`
+    gives an ND proof, the witness-view rules and the folds included (`Opt` on or off). -/
+theorem provable_of_der {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0}
+    (h : Der σ Γ Δ φ) : Provable Δ φ :=
+  let ⟨_, d⟩ := h
+  byContra (sub (by lsub) (toND d))
 
 /-- ⭐**GK and natural deduction prove the same sequents**, over a presented context, in K, KD,
-    K4 and KD4: a sequent is ND-provable exactly when it has a cut-free GK derivation. -/
-theorem provable_iff_der [ModalSys.GKSys] {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
+    K4 and KD4, and in K, KD, KT and KDT with `Opt` on (`ModalSys.GKBase`): a sequent is ND-provable
+    exactly when it has a cut-free GK derivation. -/
+theorem provable_iff_der [ModalSys.GKBase] {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)}
     {φ : WFF σ Γ 0} : Provable Δ φ ↔ Der σ Γ Δ φ := by
   refine ⟨fun ⟨p⟩ => Der.ofProof p, fun ⟨n, d⟩ => byContra (sub (by lsub) (toND d))⟩
 

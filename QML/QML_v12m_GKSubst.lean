@@ -108,6 +108,19 @@ theorem subst_kp4 (L : List (WFF σ Γ 0)) :
 
 end Copies
 
+/-- ⭐At level 0 the `◇_x` view's witnesses correspond to the identity view's possible objects
+    (`diaT`'s premise along a substitution): `corrW_box_self`, weakened into the views. -/
+theorem Subst.corrW_dia_optInT {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (hT : ModalSys.T = true)
+    (hO : ModalSys.Opt = true) {θ : Subst σ Δ} (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ)
+    {x : VarSymb} {X : VarType} (hx : Γ.ref x = some (.VTypeDia X)) {z : VarSymb}
+    (hw : (θ.at x).idxAlong [] = z) {Y : VarType} (hz : Δ.ref z = some (.VTypeDia Y)) :
+    Subst.CorrW (Γ.diaIn x) (Ctx.collapses_diaIn_optInT hT hO Δ hz) (θ.dia x z)
+      (θ.optInT x z) :=
+  Subst.CorrW.transfer (Ctx.le_boxIn_diaIn Δ z) (Ctx.le_optInT Δ z) (Subst.corrW_box_self hT hθ)
+    (fun _ => rfl) (fun _ => rfl)
+    (fun _ y _ hy => Subst.at_optInT_of hc (Ctx.witT_of hT hO hx) hw y _ (Ctx.boxIn_wit.mp hy).2)
+    (fun k' h => absurd h (Nat.zero_ne_add_one k'))
+
 namespace GK
 
 /-- ⭐**Substitution**, height-preserving: a substitution from the context of a derivation into a
@@ -290,6 +303,35 @@ theorem subst {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (p : GK σ n Γ 
                 exact ⟨Y, Ctx.witT_of hT hO' hY⟩))
             (WFF.subst_optInT_mono θ hθ hc hX hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots χ)
           exact e ▸ List.mem_map_of_mem h
+  | @TL n Γ _ Δ Θ hT φ h _ ih =>
+      intro Γ' _ ι θ hθ hc hΓ
+      have ih' := ih θ hθ hc hΓ
+      rw [List.map_cons, ← WFF.collapse_subst (Ctx.collapses_boxIn_self hT _)
+        (Ctx.collapses_boxIn_self hT Γ') θ.box (Subst.ok_box hθ) (Subst.coh_box hθ hc) θ hθ hc
+        hΓ.boxIn hΓ Ctx.NoSlots.slots Ctx.NoSlots.slots (Subst.corr_box_self hT hθ) φ
+        fun _ => Subst.corrW_box_self hT hθ] at ih'
+      exact .TL hT (List.mem_map_of_mem h) ih'
+  | @diaT n Γ _ Δ Θ hT hO x hx φ h _ ih =>
+      intro Γ' _ ι θ hθ hc hΓ
+      have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
+      have hwx : ∃ X, Γ'.ref (ι x) = some (.VTypeDia X) :=
+        hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw
+      have ih' := ih θ hθ hc hΓ
+      rw [List.map_cons] at ih'
+      refine .diaT hT hO (ι x) hwx (List.mem_map_of_mem h) ?_
+      obtain ⟨X, hX⟩ := id hx
+      obtain ⟨Y, hY⟩ := id hwx
+      have hxT : Γ.witT x = some X := Ctx.witT_of hT hO hX
+      have e : WFF.subst ι θ hθ hc hΓ Ctx.NoSlots.slots (WFF.diaId hT hO x hx φ) =
+          WFF.diaId hT hO (ι x) hwx (WFF.subst ι (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw)
+            (Subst.coh_dia hθ hc hx) (hΓ.diaIn x) Ctx.NoSlots.slots φ) :=
+        congrArg (WFF.optx hO .ident (ι x) _) (WFF.collapse_subst
+          (Ctx.collapses_diaIn_optInT hT hO Γ hX) (Ctx.collapses_diaIn_optInT hT hO Γ' hY)
+          (θ.dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx) (θ.optInT x (ι x))
+          (Subst.ok_optInT hθ hxT hw) (Subst.coh_optInT hθ hc hxT) (hΓ.diaIn x) (hΓ.optInT x)
+          Ctx.NoSlots.slots Ctx.NoSlots.slots (Subst.corr_dia_optInT hT hO hθ hc hX hw hY) φ
+          fun _ => Subst.corrW_dia_optInT hT hO hθ hc hX hw hY).symm
+      exact e ▸ ih'
 
 /-- ⭐**Weakening along a context inclusion**, height-preserving, into a presented context. -/
 theorem monoCtx {n : ℕ} {Γ Γ' : Ctx} [Γ'.Presented] {Δ Θ : List (WFF σ Γ 0)} (h : Γ.Le Γ')

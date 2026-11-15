@@ -16623,3 +16623,304 @@ both witness kinds:
   `GSub.dia_fold`.
 * *Left:* ND into GK for the `Opt` rules, `GKSys` allowing `Opt` without 4, and the statements.
 
+**§12.33, where the gate stands (2026-11-15, strict build green).**
+* `ModalSys.GKBase`: the flags GK's systems turn off, with `Opt` free.  `GKSys` (the `Opt`-off
+  systems K, KD, K4, KD4) extends it and `NoOpt`.
+* `GK.ident` is under `GKBase`, with a real `◇⁰` case (`optL`, `reopenR`, identity on the body).
+* ⭐**Stated for every system, `Opt` on or off:**
+  * `GK.cut`: cut is admissible, with the witness views and the folds;
+  * `GK.provable_of_der`: a cut-free derivation gives an ND proof;
+  * `GK.craig_of_der`: a GK derivation of `φ ⇒ ψ` has an interpolant `χ`, with ND proofs of
+    `φ ⊢ χ` and `χ ⊢ ψ`, its relation symbols in both.
+  **So the gate passes in the form the review asked:** the calculus with `◇⁰` has cut
+  elimination and Maehara's interpolation.
+* **Still open: ND into GK with `Opt` on** (`Der.ofProof` under `GKBase`), which turns
+  `craig_of_der` into Craig for every ND-provable entailment of K and KD with `Opt`.  What it needs:
+  1. *Replacement under `◇⁰`* (`replaceGen`, GK's `eq_elim`).  Unlike `□` and `◇_x`, the view of
+     `◇⁰_y` crosses no world, so the base-type slot stays visible there and the case must recurse
+     (`optL`, `reopenR`, the induction hypothesis in the view) instead of being an identity.
+     The supporting coherence lemmas (`Subst.coh_under_occ`, `holeS_coh`, `sim_box_of_agree`,
+     `sim_dia_of_agree`) assume `Opt` off for their witness clauses and need real ones.
+  2. *The `Opt` rules in `ofProof`:* `K_opt` (`optL`, negations of the `□⁰` hypotheses moved
+     right, `reopenR`), `opt_bot`, `opt_reopen`, `dia_opt` and `opt_dia` (`diaL`/`boxR` with a
+     fold), each along a substitution.
+  Estimated 400 to 700 lines.  No design question is left in it; it is the same kind of work as
+  the cases already done.
+
+**§12.33, ND into GK with `Opt` on: done (2026-11-15, strict build green, about 250 lines).**
+* *Replacement* (`GK.replaceGen`, now under `GKBase`).  Two hypotheses were added, both needed only
+  for the witness views: the two substitutions agree on their **witness entries** (`θ₁.wit = θ₂.wit`;
+  `Subst.single` and `toFree` keep it), and `SlotOnly` has a **witness clause** (no witness has the
+  slot's root; `RootFresh.wit` gives it).  `Subst.coh_under_occ` takes the matching `hwrt` and gets
+  `coh_under`'s witness, opened and identity clauses; `sim_box_of_agree`, `sim_dia_of_agree`,
+  `holeS_coh` and `instantiate_hole` lose `NoOpt`.  The `◇⁰_y` case recurses as planned: `optL`
+  on the left, `reopenR` on the right, the induction hypothesis in `Γ.optIn (ι y)` along
+  `θ.optIn y (ι y)` (`SlotOnly.optIn`).  The identity kind is excluded by T off.
+* *The rules* (`GK.Der`): `optBoxIn` (a `□⁰_y δ` moved into the view gives `δ`: `impL`, `reopenR`,
+  `impR`), `K_opt`, `opt_bot`, `opt_reopen`, `opt_dia` (`□R` with the conclusion's fold) and
+  `dia_opt` (`◇_uL` with `□¬◇⁰_u φ` moved in, where `u` is opened, and `reopenR` after
+  `WFF.mono_mono`).  `ofProof`'s cases mirror `Proof.subst`'s.
+* ⭐**So, for every system of `ModalSys.GKBase` (K, KD, K4, KD4; K and KD with `Opt` on):**
+  `GK.Der.ofProof` (every ND-provable sequent over a presented context has a cut-free derivation),
+  `GK.provable_iff_der`, `GK.craig` (**Craig interpolation**) and `GK.subformula_of_provable`.
+* *Left with `Opt` off only:* the sharp subformula property (`GK.subformula_sharp_of_provable`):
+  `GSub.sharp` and its instantiation lemmas refute their `Opt` clauses.  Not needed for anything
+  downstream.
+
+
+### 12.34 B and 5: sketch of the operators, rules and semantics *(2026-11-15, sketch only)*
+
+Supersedes §12.29's sketch in detail; nothing here is checked.
+
+**One mechanism: the view remembers its parent (`home`).**  `Ctx.boxIn` keeps the whole parent
+context, `Env` the parent environment and the arrow taken; `wit` becomes derived from `home`.
+Build once, for `◇⁰`, `⟪back⟫` and `[sib]`.
+
+**B: `⟪back⟫φ` / `[back]φ`** at the far world, `φ` over the back view (the parent's addresses as
+home names; values at home of the far world's necessary objects; the far world's possible objects
+as witnesses of the arrow home, read by `◇⁰`).
+* Weak B: (1) K for back; (2) a way home exists, `[back]φ ⊢ ⟪back⟫φ` (symmetry); (3) the way home
+  is an arrow, `□χ ⊢ [back] ret(χ)`, `ret` a third homomorphism beside collapse and shift;
+  (4) home is home, `φ ⊢ □[back]φ°` and `◇⟪back⟫φ° ⊢ φ`.  `B_dia` from (3) and (4).
+* Strong B (`BStrong`): uniqueness `⟪back⟫φ ⊢ [back]φ`; existence for necessary objects,
+  `□∃d:□A. ⟪back⟫(d.box ≡ t°)` (diagonal: an object at home is realised by a necessary object of
+  the far world).  The `◇` form, with `◇⁰_d`, is the possible-object cell and stays its own flag
+  (`BStrongW`), as in the roadmap's grid.  `Back`, `retS`, `retxS` defined; their rules derived.
+* GK: `□R` carries the parent's sequent wrapped in `[back]`/`⟪back⟫` (folds); entering the back
+  view needs a "forth" wrapping, so sequents are a path with a focus.  **Open:** whether a path
+  suffices for a symmetric logic or siblings (full nested sequents) are needed.  Paper first.
+
+**5: `[sib]φ` / `⟨sib⟩φ`** at a child, "at every child of my parent"; `φ` is over the same
+context (every sibling sees the parent alike), so no new view, only `home`.
+* Weak 5: (1) `[sib]` is an S5 box over the siblings; (2) bridge, `□φ` at the parent is `[sib]φ`
+  in the view (a fold); (3) Euclid, `□χ ⊢ [sib] side(χ)`.  Links definable.
+* *The maps, against the roadmap's grid ("diagonal and down"; corrected 2026-11-15).*  Because
+  `φ` is over the same view context, the parent's objects are read at each sibling with no rule:
+  `◇⁰_x` inside `[sib]` is `posSide` (`◇A → □◇A`), and `n.box` inside `[sib]` is the missing map
+  `m.side : □A → □◇A`.  `side` in (3) must **lower** the child's own objects: they enter the
+  `[sib]` view as witnesses of the side arrow, read by `◇⁰`, not as necessary objects (without 4
+  a necessary object moved across is only a possible one).  The first version of this sketch had
+  `side` keep them necessary, the horizontal shape the roadmap rejects.
+* Strong 5, by cell: necessary objects, the gather as "`m.side` is onto" (the diagonal form);
+  possible objects, the `◇`-gather (every possible object at a sibling is the side image of one
+  of the parent's), the grid's empty cell.  Stating the `◇`-gather needs a quantifier over the
+  parent's objects from inside the view; whether `home` can give one is **unchecked**.
+  **Open:** the K5/KD5 gaps.
+* GK: `[sib]` is an S5 modality, so no cut-free ordinary sequent calculus: the judgement becomes
+  a **hypersequent** of sibling sequents sharing one `home` (interpolation by hypersequents:
+  Kuznets, for S5).  A change of judgement form; the largest risk of the programme.
+
+**Semantics to check:** environments with a parent (universe levels, every push); `⟪back⟫` over
+arrows `v → w` (symmetry; `homeUnique` for strong B); `ret` and `side` as the existing transports,
+their laws consequences of `≡` being identity; `[sib]` as `∀ b, sat (parentEnv.boxPush b) φ`,
+Euclid by `sideAcc`; canonical models: B's network back edges (labels by theories, `sep`/`unl`
+and `Ret` tags gone), 5's clusters read locally.
+
+**T's empty cell.**  NecT, `∃u:□A. u.here ≡ a` (the map `necExtract` exists; the law is
+missing).  It belongs in the KT stage beside the one-rule `T_dia`, the possible cell.
+
+**Order:** `home` (no new logic) → weak B in ND → strong B and completeness → paper check of B's
+GK → `[sib]` in ND and the K5 question → hypersequent GK, paper first.  The ND steps stand even
+if the calculi fail.
+
+### 12.35 GKT: weak T in the sequent calculus, with `Opt` on *(2026-11-15, paper, then built in steps)*
+
+**Scope.**  T on, `Opt` on (so 4, B and 5 off, `ModalSys.optStage`), D either way; strong forms
+off.  With `Opt` off, T's language has the `Here` atom and its rules, the old KT obstacle; GKT
+does not cover that case.  In ND, weak T with `Opt` on is `T_box` alone (the `Here` rules are
+gated off, `here_keep` needs 4).
+
+**Two rules**, both one-premise, both collapses at the identity arrow:
+* `TL`: from `collapse φ, Δ ⇒ Θ` infer `Δ ⇒ Θ`, where `□φ ∈ Δ` (`Ctx.collapses_boxIn_self`).
+* `diaT` (T on the right, for the witnessed modality): from `Δ ⇒ ◇⁰ᵀ_x (collapse φ), Θ` infer
+  `Δ ⇒ Θ`, where `◇_x φ ∈ Θ` (`Ctx.collapses_diaIn_optInT`: `x.dia` to `x.at`).  It is needed
+  because `◇_x` is primitive: with TL alone `◇⁰ᵀ_x ψ ⇒ ◇_x φ` has no cut-free derivation.  In ND
+  it is derived (bridge, then `T_box` on `□¬◇⁰_x φ'`, whose collapse is `¬◇⁰ᵀ_x (collapse φ)`).
+  Its premise formula is **the collapse of `◇_x φ`'s fold** (`WFF.optDia`), which is what makes
+  the cut reductions syntactic.
+
+**Cut, the principal cases** (checked by hand):
+* *`□φ`, `□R` against `TL`.*  Cut `□φ` into TL's premise (lower height), then cut `collapse φ`
+  (lower weight) against the **collapsed `□R` premise** (`collapseD`):
+  `collapse Δ₁ ⇒ collapse φ, collapse (kp4 L)`.  The `collapse Δ₁` come from `□Δ₁ ⊆ Δ` by TL;
+  each collapsed fold `collapse (◇⁰_u χ') = ◇⁰ᵀ_u (collapse χ')` is removed by `diaT` at
+  `◇_u χ ∈ L ⊆ Θ`.
+* *`◇_x φ`, `diaT` against `◇_xL`.*  Cut `◇_x φ` into diaT's premise, then cut `◇⁰ᵀ_x ψ`
+  (weight `φ + 1 < φ + 2`, the reason `◇_u` weighs `χ + 2`) against `◇⁰ᵀ_x ψ, Δ ⇒ Θ`, built from
+  the **collapsed `◇_xL` premise** (along `diaIn x → optInT x`): in `Γ`, TL adds `collapse Δ₁`,
+  diaT adds `◇⁰ᵀ_x (collapse θ)` for `θ ∈ Θ₁` and the collapsed folds for `L`; then `optL` at the
+  identity kind moves everything into `x`'s identity view, and `reopenR` turns each `◇⁰ᵀ_x`
+  formula back into its body.
+* *`◇⁰ᵀ_x`:* `optL` against `reopenR`, as for `◇⁰` (kind-generic already).
+* *Permutations:* TL and diaT have one premise and keep the context; they permute.
+**What it needs:** ⭐`GK.collapseD`, a height-preserving collapse of derivations at every level
+(the `□R` premise is collapsed at level 1).  Unlike `shiftD` it is **not** a substitution
+(collapse turns `◇⁰_y` into `◇⁰ᵀ_y`, a change of kind), so it goes by induction on the height, with
+the eigenvariable rules renamed to a root fresh for the target first (`GK.subst`).  Lemmas:
+`weight_collapse`, `collapse_collapse` (collapses at two levels commute, for TL and diaT inside a
+collapsed derivation), `collapse_mono` (have), collapse of `instantiate`, `bindFree`, `weaken`,
+of the folds (`collapse ∘ optDia` at level `k + 1` is `optDia ∘ collapse`), `Occ`, atoms.
+
+**Interpolation:** both rules have one premise and keep the side; the interpolant passes through
+(relation symbols: `collapse` keeps them).  **Subformula property:** up to collapse (`GSub` gets a
+collapse clause, as it has the folds).  **ND into GKT:** `T_box` is `TL` and identity.
+
+**Then:** the counterexample `S` cut-free in GKT (the review's cheapest real test), Craig for KT.
+
+**Order of the build:** (1) the rules, height and weakening, substitution, GK to ND, interpolation
+and subformula cases, `ofProof`'s `T_box`; cut stated with T off meanwhile; (2) the collapse
+lemmas and `collapseD`; (3) cut with T on; (4) `S`; (5) Craig for KT.
+
+**§12.35, step 1 built (2026-11-15, strict build green).**
+* `GK.TL`, `GK.diaT` (and `WFF.diaId`, the identity reading of `◇_x φ`); `WFF.collapse_fold` (the
+  collapse of `◇_x φ`'s fold is `diaId`; imports `RetMono` for `WFF.collapse_mono`).
+* Height, weakening; **substitution** (`TL` by `WFF.collapse_subst` with `corr_box_self`; `diaT`
+  with `Subst.corr_dia_optInT`, built for M2, and the new `Subst.corrW_dia_optInT`, from
+  `corrW_box_self` by `CorrW.transfer`); **GK to ND** (`TL` is `T_box`; `diaT` is the bridge
+  `opt_dia`, then `T_box` on `□¬◇⁰_x φ`); **interpolation** (`itp_TL`, `itp_diaT`, with
+  `WFF.occ_collapse`); **subformulas** (`GSub.box_T`, `GSub.dia_T`, `WFF.weight_collapse`).
+* *Cut:* every permutation case for both rules is done (`permRight`, `cut_step`), and
+  `LeftPrin.boxT` records a principal `TL`.  The two principal T reductions (`boxPrin`'s `boxT`
+  arm, `cut_step`'s principal `diaT`) are refuted by `[ModalSys.NoT]`, which `cut`, `cut'`, the
+  `Der` lemmas built on cut and `GSub.sharp` now take; `ModalSys.GKBase.toNoT` supplies it.  So
+  nothing proved before is lost, and cut for KT waits only on those two arms.
+* *Next:* step 2, the collapse of derivations (`GK.collapseD`) and its lemmas (§12.35 list), then
+  the two arms, then a class for KT with `Opt` (T and `Opt` on, the rest off but D) for
+  `ofProof` (`T_box` is `TL` and identity), `S` and Craig.
+
+**§12.35, steps 2–3 built: cut and Craig for KT (2026-11-15, strict build green).**
+* ⭐`GK.collapseD` (new file `QML_v12m_GKCollapse.lean`): a derivation collapsed at any level `k`,
+  height kept, with `Opt` on.  By induction on the height.  The eigenvariable rules are renamed
+  first to a root fresh for both contexts (`GK.eigenRename`, from `GK.subst` along the identity's
+  rename), since a root fresh for the `□` view need not be fresh for the world.  Lemmas:
+  `WFF.collapse_single` (any single-root substitution, with `Subst.CorrW.single` at every level;
+  `collapse_instantiate` and `collapse_bindFree` are instances), `WFF.collapse_collapse` (with
+  `Opt` on, where the relation primitives are off), `collapse_kp4`, `map_collapse_mono`,
+  `map_collapse_weaken`, `WFF.IsAtom.collapse`, `WFF.weight_collapse` (moved here).  About 550 lines.
+* *The two principal reductions* (`GKCut`): `boxPrin`'s `boxT` arm and `diaTPrin`, as on paper,
+  with `dropColls` (TL), `dropFolds` (`diaT` at the collapsed folds, `WFF.collapse_fold`) and
+  `dropDiaIds`.  `[ModalSys.NoT]` on cut is replaced by the requirement class `ModalSys.TOpt`
+  (T needs `Opt`), which every T-off system has.
+* *The systems:* `ModalSys.GKBase` now asks `T = true → Opt = true` instead of T off, so it covers
+  K, KD, K4, KD4 and, with `Opt`, K, KD, KT, KDT.  The identity-kind cases (`◇⁰ᵀ`) of replacement
+  (`SlotOnly.optInT`) and of `ofProof` (`K_opt`, `opt_bot`, `opt_reopen`) are real now, and
+  `ofProof` has `T_box` (`Der.T_box`: `TL` and identity).  `ModalSys.KTOpt` is KT with `Opt`.
+* ⭐**So for KT and KDT with `Opt`:** `GK.cut`, `GK.Der.ofProof`, `GK.provable_iff_der`, `GK.craig`
+  (Craig interpolation; the example at `ModalSys.KTOpt` closes `GKInterp`),
+  `GK.subformula_of_provable` (up to T's collapses).  The old KT obstacle (`here_subst` not
+  atomisable, §10) is gone as the review expected: nothing in the calculus is about `Here`.
+* *Not done:* the counterexample `S` derived cut-free by hand (now implied by Craig for KT; still
+  a useful worked example); the sharp subformula property with `Opt` (`GSub.sharp`); T with `Opt`
+  off is outside GK (its `Here` rules), as intended (Opt end state).
+
+### 12.36 The KT tree with `Opt` (M2's tree): plan on paper *(2026-11-15, paper)*
+
+**Shape: M1 generalised, as §12.23 part 5 said.**
+* *Frame.*  `RT w w' := AccO w w' ∨ (T ∧ w' = w)`; `refl` is the self arrow.  4, B, 5 off (`Opt`).
+* *Identity presence* is decided by the world's own theory: `◇⁰ᵀ_x ⊤` is a sentence of every stage
+  where `x` is a possible address (`Ctx.witT_of`), and stable across stages (`mem_lift`).  No
+  second pass is needed for it, unlike the children's arrow witnesses.
+* *Names.*  `◇⁰ᵀ_x ⊤ ⊢ ∃e. ◇⁰ᵀ_x (x.at ≡ e)` is `Proof.opt_nameT` (built for this), so the worlds'
+  `∃`-witness property (`World.exW`, `finalT_ex_witness`) gives a Henkin root `c` with
+  `◇⁰ᵀ_x (x.at ≡ c)` at some stage: an **identity name**, chosen as `World.real` chooses (the choice
+  is immaterial, two names being `≡`, `Proof.hereO_fun`).
+* *Extent:* M1's children that opened `x`, and the world itself when `x` is identity-present.
+* *Denotations:* at the self arrow a necessary term is its body collapsed (`rden_boxtm_self`'s
+  pattern), a possible term its body **read at the name** of its witness.
+* *Truth lemma, by weight:*
+  * `□`: the self arrow by `T_box` and the semantic `sat_boxHere` (already there for soundness);
+    the children as M1.
+  * `◇_x` at the self arrow: `diaT`'s chain in ND (the bridge, `T_box`), with
+    `collapses_diaIn_optInT` and `sat_collapse`.
+  * ⭐**`◇⁰ᵀ_x χ` — the crux.**  `χ` lives in `x`'s identity view, which no stage declares (a
+    `◇`-typed Henkin root appears at a later stage than its presence could be decided at, so the
+    stages cannot open identity contents the way children open arrow witnesses).  The IH must be
+    applied to a stage formula.  Replacing `x.at` by its name is **not a substitution**:
+    `Coh.openedT` pins an opened identity content to itself (the structural form of `OpenedT`).  So
+    it needs a **dedicated recursion** `readAtT x c` (as `Term.collapse` and the Opt-off era's
+    `Term.realise` are), sending `x.at.p ↦ c.p` through the views, with two ND facts,
+    `◇⁰ᵀ_x (x.at ≡ c), ◇⁰ᵀ_x χ ⊢ readAtT χ` and the converse, by Leibniz along `≡` (`substEqH`
+    needs the slot form, so an abstraction of `x.at`, the Opt-on analogue of `WFF.diaAbsA`).  A
+    "virtual opening" (truth lemma over identity views with `◇⁰ᵀ`-membership) was considered and
+    reduces to the same operation at its `□` case (`x.at.box` has no counterpart at a child).
+  * `◇⁰_y` (arrow kind): as M1.
+* *Terms:* `interp_canon` at the self arrow through `readAtT` on terms (no formula truth lemma
+  needed, as M1: names are fixed per address, so no faithfulness of `≡` is needed; `≡` is a
+  formula and the truth lemma handles it compositionally).
+* *Completeness:* M1's two passes; the root's identity presence comes with its theory.
+
+**Order:** (1) identity names (datum, existence, stability); (2) `readAtT` on terms and formulas,
+its typing and its interaction with `collapse`/`mono`; (3) the abstraction and the two ND facts;
+(4) the frame generalised (`RT`, `SuccT`, extent, `RDomT`, `rdenT`), M1's files over it;
+(5) the term lemma; (6) the truth lemma's new cases; (7) completeness for KT and KDT.  Strong T
+(`posRet_exists`) and NecT afterwards.  **Size:** 2 000–3 500 lines; (2)–(3) the risk, since
+§12.15 met naming problems at this level (but `Step.at` is the step §12.24 made for it).
+
+**§12.36, step 1 built: identity names** (`QML_v12m_TCanonName.lean`):
+`TCanon.idPresent`, `IdName` (stages, Henkin root, the `optNameT` sentence), ⭐`exists_idName`
+(`opt_nameT` then `World.exW`), `IdPres`, `IdPres.name`, `idPresent_lift`.  Builds; not yet in
+`TOP`.
+
+**§12.36, the crux checked further (2026-11-15, paper): two routes, a decision needed.**
+* *Why neither a substitution nor an abstraction is available.*  Out of `x`'s identity view every
+  substitution must send `x.at` to the image's identity content (`Coh.openedT`), so `x.at ↦ c` is
+  illegal; so is the abstraction `x.at ↦ bnd 0` (same clause).  The clause is right: a re-opened
+  `◇⁰ᵀ_x` inside `χ` reads `x.at` as the content again, so the renaming is meaning-preserving only
+  under the hypothesis `c` = the content.  The **converse** direction is legal: `c ↦ x.at` out of a
+  stage context (no opened identity witnesses there).
+* **(N) A conditional renaming.**  `readAtT x c`: a dedicated recursion renaming the addresses
+  `x.at.p ↦ c.p` (no level counting: views never rename `x`).  Syntax as `WFF.collapse` (~400
+  lines), semantics as `sat_collapse` under "`c`'s value is the identity content" (~300), and the
+  ND facts `◇⁰ᵀ_x (x.at ≡ c) ⊢ ◇⁰ᵀ_x χ ↔ readAtT χ` from the existing Leibniz along `≡`: with the
+  name a fresh root, `bindFree c (readAtT χ)` is a slot formula whose instance at `x.at` is `χ`
+  (a round trip through the legal `c ↦ x.at`), so `substEqH` applies (~400).  Uses step 1's names.
+* **(O) Worlds open their identity-present witnesses**, as M1's children open their present arrow
+  witnesses: when the Henkin chain decides `◇⁰ᵀ_y ⊤` it extends the language by `y.at` (conservative,
+  as `Proof.unopen` at the identity kind).  Then `◇⁰ᵀ_x χ` is `χ` at a later stage (`opt_reopen`,
+  `opt_out`), M1's truth case verbatim, and no renaming, Leibniz round trip or names are needed.
+  Cost: the Henkin chain's language becomes theory-dependent mid-chain (`WorldLang`'s added-constant
+  list gains "openings"), which is shared by every canonical construction (K, B, the growing tree);
+  M1 avoided it with two passes because its witness set was fixed in advance, which identity
+  witnesses (Henkin roots of `◇`-type) are not.
+* *Comparison.*  (O) follows M1's proven path and is uniform ("a world opens what is present at it,
+  along the arrow just taken and at the identity"); its risk is in shared infrastructure.  (N) is
+  local to the KT tree and reuses Leibniz; its risk is the new recursion and its semantics.
+  Leaning (N): it touches nothing shared, and the operation is a plain renaming.
+
+**§12.36, decision (user, 2026-11-15): (N), in the general form, as groundwork for B and 5.**
+The KT crux is one instance of what every canonical construction with far-world readings meets:
+a world must read a view whose extra addresses its language cannot declare — T's identity contents
+(`x.at`); B's far-world possible objects along the way home, read at the home world (built
+**before** the far world, so (O) cannot open them there); 5's objects moved across to siblings.
+Canonical domains are definable, so each such content is denoted by a term of the world's language,
+fixed only by another theory: a **name**.  So the machinery is general: **reading opened contents
+at names**,
+* `ν`: a map from content addresses (`y.at`, later `y.dia` and the B/5 home or side contents) to
+  addresses of the target; `VarSymb.readNames ν` renames along it, recursively (a renamed address
+  maps to its name, everything else step by step);
+* `Ctx.ReadsNames ν Γ Γ'`: typing, as `Ctx.Collapses`, passing into every view and binder;
+* `Term.readNames`, `WFF.readNames`: dedicated recursions (not substitutions: `Coh.openedT`);
+* semantics: satisfaction kept when the names' values are the contents (as `sat_collapse`);
+* ND: `◇⁰_κ,y (content ≡ name), ◇⁰_κ,y χ ⊢ readNames χ` and back, by Leibniz along `≡`.
+Fable's `home` mechanism (§12.34) is the **syntax** side (views remember their parent, so the B/5
+operators can say home's addresses); this is the **canonical-model** side (a world reads such a view
+at names).  Complementary.
+
+**§12.36, refined (2026-11-15, paper): names as a slot, semantics by soundness.**
+* *Built:* `QML_v12m_ReadNames.lean` — `VarSymb.readNames ν k` (level-indexed, as `collapse k`),
+  `Ann.readNames`, `Ctx.ReadsNames` (`ty`, witnesses one level out `readNamesW`, `named` at level
+  0) with `of_raw`, `boxIn`, `diaIn`, `insert`, `optIn`, `optInT`, `witT`; `Func/Term/Rel/
+  WFF.readNames`.  Strict build clean.  General in `ν` (any set of named witnesses), as decided.
+* *Refinement.*  Read `x.at` at the **slot** (`ν x := bnd 0`, target `Γ.insert (bnd 0) A`): the
+  result `Φ := readNames χ` is a slot formula outright, so no Henkin root has to be abstracted.
+  Then
+  1. *round trip* (syntax): `Φ` instantiated at `x.at` in the view is `χ`, through the **legal**
+     substitution `bnd 0 ↦ x.at` (its source declares no opened `x.at`); from a composition lemma
+     "substituting after reading at names", as `WFF.collapse_subst`;
+  2. *ND:* `◇⁰ᵀ_x (x.at ≡ t), ◇⁰ᵀ_x χ ⊣⊢ ◇⁰ᵀ_x (x.at ≡ t), Φ[t]` for every term `t`: Leibniz along
+     `≡` in the view (`Proof.leibnizH`), `Φ[t]` being the view weakening of an outer formula, and
+     `K_opt`/`opt_out` out of the view;
+  3. *the truth case* `◇⁰ᵀ_x χ`: with `t` the name, `◇⁰ᵀ_x χ ∈ T ⟺ Φ[t] ∈ T` (2.), `⟺ Φ[t]` true
+     (IH, same weight), `⟺ ◇⁰ᵀ_x χ` true by **soundness** of 2., the name sentence being true in
+     the canonical environment by construction (the content *is* the name's value; `sat_eqH`).
+  **No semantic lemma for the renaming is needed**, only 1.

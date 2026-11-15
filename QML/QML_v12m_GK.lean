@@ -1,9 +1,11 @@
 import QML.QML_v12m_ProofSubst
+import QML.QML_v12m_RetMono
 
 /-!
 # QML v12m — the sequent calculus GK
 
-A cut-free sequent calculus for K, KD, K4 and KD4 (`docs/v12-metatheory-todo.md`, item 4):
+A cut-free sequent calculus for K, KD, K4 and KD4, and with `Opt` for K, KD, KT and KDT
+(`docs/v12-metatheory-todo.md`, item 4; T's rules `TL`, `diaT`, docs §12.35):
 classical, two-sided,
 multi-succedent, in **Kleene's G3 style** — every rule keeps its principal formula in the premise,
 and the contexts are lists read through membership.  Weakening, exchange and contraction are then
@@ -88,6 +90,37 @@ def WFF.optDia {σ : Signature} {Γ : Ctx} (hO : ModalSys.Opt = true) :
   | .dia y hy θ => [WFF.optx hO .arrow y (hy.imp fun _ h => Ctx.boxIn_wit.mpr ⟨hO, h⟩)
       (WFF.mono (hy.elim fun _ h => Ctx.le_diaIn_boxIn_optIn hO h) θ)]
   | _ => []
+
+/-- ⭐**T needs `Opt`** (a requirement field, docs §12.35): with T on the identity views are
+    there.  GK's cut needs it, since T's reductions collapse derivations, which with `Opt` off would
+    meet the `Here` atom. -/
+class ModalSys.TOpt [ModalSys] : Prop where
+  tOpt : ModalSys.T = true → ModalSys.Opt = true
+
+instance ModalSys.TOpt.of_noT [ModalSys] [ModalSys.NoT] : ModalSys.TOpt :=
+  ⟨fun h => (ModalSys.NoT.absurd h).elim⟩
+
+/-- ⭐**`◇_x φ` read at the identity arrow** (T with `Opt`, docs §12.35): `◇⁰ᵀ_x` of the body
+    collapsed onto `x`'s identity view (`x.dia` to `x.at`).  The premise formula of `diaT`. -/
+def WFF.diaId {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true)
+    (hO : ModalSys.Opt = true) (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    (φ : WFF σ (Γ.diaIn x) 0) : WFF σ Γ 0 :=
+  WFF.optx hO .ident x (hx.imp fun _ h => Ctx.witT_of hT hO h)
+    (WFF.collapse (hx.elim fun _ h => Ctx.collapses_diaIn_optInT hT hO Γ h) Ctx.NoSlots.slots φ)
+
+/-- ⭐**The collapse of `◇_x φ`'s fold is `diaId`**: `◇⁰_x φ` in the `□` view, collapsed at the
+    identity arrow, is `◇⁰ᵀ_x` of the body collapsed onto the identity view. -/
+theorem WFF.collapse_fold {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true)
+    (hO : ModalSys.Opt = true) (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    (φ : WFF σ (Γ.diaIn x) 0) :
+    WFF.collapse (Ctx.collapses_boxIn_self hT Γ) Ctx.NoSlots.slots
+        (WFF.optx hO .arrow x (hx.imp fun _ h => Ctx.boxIn_wit.mpr ⟨hO, h⟩)
+          (WFF.mono (hx.elim fun _ h => Ctx.le_diaIn_boxIn_optIn hO h) φ)) =
+      WFF.diaId hT hO x hx φ := by
+  obtain ⟨X, hX⟩ := hx
+  refine congrArg (WFF.optx hO .ident x _) ?_
+  rw [WFF.collapse_mono (Ctx.collapses_diaIn_optInT hT hO Γ hX) _ _ (Ctx.Le.refl _)
+    Ctx.NoSlots.slots, WFF.mono_refl]
 
 /-- ⭐The conclusions `◇_y θ` of a list, one view further in: under 4 their kept copies, with
     `Opt` their folds `◇⁰_y θ` (the two flags exclude each other), otherwise nothing. -/
@@ -220,6 +253,19 @@ inductive GK (σ : Signature) : ℕ → (Γ : Ctx) → List (WFF σ Γ 0) → Li
       {χ : WFF σ Γ 0} :
       .optx hO κ y (hy.imp fun _ h => h.1) (WFF.mono (Ctx.le_optInK Γ κ y) χ) ∈ Θ →
       GK σ n Γ Δ (χ :: Θ) → GK σ (n + 1) Γ Δ Θ
+  -- Weak T (docs §12.35)
+  /-- `TL`: what is necessary holds here, `□φ` adds its collapse onto the current level. -/
+  | TL {n : ℕ} {Γ : Ctx} [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+      {φ : WFF σ Γ.boxIn 0} :
+      .box φ ∈ Δ →
+      GK σ n Γ (WFF.collapse (Ctx.collapses_boxIn_self hT Γ) Ctx.NoSlots.slots φ :: Δ) Θ →
+      GK σ (n + 1) Γ Δ Θ
+  /-- `diaT`: `◇_x φ` holds if its body holds of `x`'s content at the identity arrow
+      (`WFF.diaId`).  With `Opt` on; the dual of `TL` for the primitive witnessed modality. -/
+  | diaT {n : ℕ} {Γ : Ctx} [Γ.NoSlots] {Δ Θ : List (WFF σ Γ 0)} (hT : ModalSys.T = true)
+      (hO : ModalSys.Opt = true) (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+      {φ : WFF σ (Γ.diaIn x) 0} :
+      .dia x hx φ ∈ Θ → GK σ n Γ Δ (WFF.diaId hT hO x hx φ :: Θ) → GK σ (n + 1) Γ Δ Θ
 
 namespace GK
 
@@ -285,6 +331,12 @@ theorem mono_height {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (p : GK σ
   | reopenR hO κ y hy h _ ih =>
       intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
       exact .reopenR hO κ y hy h (ih (by omega))
+  | TL hT h _ ih =>
+      intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
+      exact .TL hT h (ih (by omega))
+  | diaT hT hO x hx h _ ih =>
+      intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
+      exact .diaT hT hO x hx h (ih (by omega))
 
 /-- ⭐**Weakening, exchange and contraction**, height-preserving: the contexts are read through
     membership, so any larger lists do. -/
@@ -332,6 +384,9 @@ theorem weaken {n : ℕ} {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)} (p : GK σ n Γ
         (ih (List.cons_subset_cons _ (List.map_subset _ hΔ)) (List.map_subset _ hΘ))
   | reopenR hO κ y hy h _ ih =>
       exact fun hΔ hΘ => .reopenR hO κ y hy (hΘ h) (ih hΔ (List.cons_subset_cons _ hΘ))
+  | TL hT h _ ih => exact fun hΔ hΘ => .TL hT (hΔ h) (ih (List.cons_subset_cons _ hΔ) hΘ)
+  | diaT hT hO x hx h _ ih =>
+      exact fun hΔ hΘ => .diaT hT hO x hx (hΘ h) (ih hΔ (List.cons_subset_cons _ hΘ))
 
 end GK
 

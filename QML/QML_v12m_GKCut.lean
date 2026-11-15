@@ -1,4 +1,4 @@
-import QML.QML_v12m_GKShift
+import QML.QML_v12m_GKCollapse
 import QML.QML_v12m_Stages
 
 /-!
@@ -445,6 +445,13 @@ inductive LeftPrin (σ : Signature) {Γ : Ctx} :
         (ψ :: (WFF.optx hO κ y hy ψ :: Δ).map (WFF.mono (Ctx.le_optInK Γ κ y)))
         (Θ.map (WFF.mono (Ctx.le_optInK Γ κ y))) →
       LeftPrin σ (.optx hO κ y hy ψ) m Δ Θ
+  /-- `TL` principal: `□φ` adds its collapse (docs §12.35). -/
+  | boxT [Γ.NoSlots] (hT : ModalSys.T = true) {φ : WFF σ Γ.boxIn 0} {m m' : ℕ}
+      {Δ Θ : List (WFF σ Γ 0)} :
+      m' < m →
+      GK σ m' Γ (WFF.collapse (Ctx.collapses_boxIn_self hT Γ) Ctx.NoSlots.slots φ ::
+        WFF.box φ :: Δ) Θ →
+      LeftPrin σ (.box φ) m Δ Θ
 
 /-- A rule's boxed hypotheses either avoid the cut formula or it is one of them. -/
 theorem split_boxes {Γ : Ctx} {A : WFF σ Γ 0} {Δ : List (WFF σ Γ 0)}
@@ -464,6 +471,17 @@ theorem permRight {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] (A :
     (hb : A ≠ .bot) (d₁ : GK σ n Γ Δ (A :: Θ)) (d₂ : GK σ m Γ (A :: Δ) Θ) :
     (∃ k, GK σ k Γ Δ Θ) ∨ LeftPrin σ A m Δ Θ := by
   cases d₂ with
+  | @TL _ _ _ _ _ hT φ h r =>
+      rcases List.mem_cons.mp h with he | h
+      · subst he; exact .inr (.boxT hT (Nat.lt_succ_self _) r)
+      · obtain ⟨k, e⟩ := ih A
+          (Δ := WFF.collapse (Ctx.collapses_boxIn_self hT Γ) Ctx.NoSlots.slots φ :: Δ) (Θ := Θ)
+          (.inr ⟨hw, by omega⟩) (d₁.weaken (by lsub) (by lsub)) (r.weaken (by lsub) (by lsub))
+        exact .inl ⟨_, .TL hT h e⟩
+  | @diaT _ _ _ _ _ hT hO x hx φ h r =>
+      obtain ⟨k, e⟩ := ih A (Δ := Δ) (Θ := WFF.diaId hT hO x hx φ :: Θ) (.inr ⟨hw, by omega⟩)
+        (d₁.weaken (by lsub) (by lsub)) r
+      exact .inl ⟨_, .diaT hT hO x hx h e⟩
   | ax P hP h₁ h₂ =>
       rcases List.mem_cons.mp h₁ with he | h₁
       · exact absurd (he ▸ hP) hA
@@ -799,8 +817,131 @@ theorem copyCut {w s : ℕ} (ih : CutIH σ w s) {Γ V : Ctx} [Γ.Presented] [V.P
     exact List.cons_subset_cons _ fun _ h => List.mem_append_right _ h
   · exact fun _ h => List.mem_append_right _ h
 
+/-! ### T's principal reductions (docs §12.35) -/
+
+/-- Collapsed boxed hypotheses can be dropped: `TL` adds them. -/
+theorem dropColls (hT : ModalSys.T = true) {Γ : Ctx} [Γ.NoSlots] {Θ : List (WFF σ Γ 0)} :
+    ∀ (L : List (WFF σ Γ.boxIn 0)) {Δ : List (WFF σ Γ 0)} {n : ℕ},
+      (∀ χ ∈ L, WFF.box (Γ := Γ) χ ∈ Δ) →
+      GK σ n Γ (L.map (WFF.collapse (Ctx.collapses_boxIn_self hT Γ) Ctx.NoSlots.slots) ++ Δ) Θ →
+      ∃ k, GK σ k Γ Δ Θ
+  | [], _, _, _, p => ⟨_, p⟩
+  | χ :: L, Δ, _, h, p => by
+      obtain ⟨k, e⟩ := dropColls hT L
+        (Δ := WFF.collapse (Ctx.collapses_boxIn_self hT Γ) Ctx.NoSlots.slots χ :: Δ)
+        (fun c hc => List.mem_cons_of_mem _ (h c (List.mem_cons_of_mem _ hc)))
+        (p.weaken (by lsub) (fun _ h => h))
+      exact ⟨_, .TL hT (h χ List.mem_cons_self) e⟩
+
+/-- Collapsed folds of conclusions can be dropped: `diaT` adds them (`WFF.collapse_fold`). -/
+theorem dropFolds (hT : ModalSys.T = true) (hO : ModalSys.Opt = true) {Γ : Ctx} [Γ.NoSlots]
+    {Δ : List (WFF σ Γ 0)} :
+    ∀ (L : List (WFF σ Γ 0)) {Θ : List (WFF σ Γ 0)} {n : ℕ}, L ⊆ Θ →
+      GK σ n Γ Δ
+        ((kp4 L).map (WFF.collapse (Ctx.collapses_boxIn_self hT Γ) Ctx.NoSlots.slots) ++ Θ) →
+      ∃ k, GK σ k Γ Δ Θ
+  | [], _, _, _, p => ⟨_, by rw [kp4_nil] at p; exact p⟩
+  | A :: L, Θ, _, h, p => by
+      have hk : kp4 (A :: L) = WFF.optDia hO A ++ kp4 L := by
+        rw [kp4_of_opt hO, kp4_of_opt hO, List.flatMap_cons]
+      rw [hk, List.map_append, List.append_assoc] at p
+      obtain ⟨k, e⟩ := dropFolds hT hO L
+        (Θ := (WFF.optDia hO A).map
+          (WFF.collapse (Ctx.collapses_boxIn_self hT Γ) Ctx.NoSlots.slots) ++ Θ)
+        (fun a ha => List.mem_append_right _ (h (List.mem_cons_of_mem _ ha)))
+        (p.weaken (fun _ h => h) (by lsub))
+      cases A with
+      | dia y hy θ =>
+          have e' : GK σ k Γ Δ (WFF.diaId hT hO y hy θ :: Θ) := by
+            rw [← WFF.collapse_fold hT hO y hy θ]
+            exact e
+          exact ⟨_, .diaT hT hO y hy (h List.mem_cons_self) e'⟩
+      | _ => exact ⟨_, e⟩
+
+/-- Identity readings of `◇_x` conclusions can be dropped: `diaT` adds them. -/
+theorem dropDiaIds (hT : ModalSys.T = true) (hO : ModalSys.Opt = true) {Γ : Ctx} [Γ.NoSlots]
+    {Δ : List (WFF σ Γ 0)} (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) :
+    ∀ (L : List (WFF σ (Γ.diaIn x) 0)) {Θ : List (WFF σ Γ 0)} {n : ℕ},
+      (∀ θ ∈ L, WFF.dia x hx θ ∈ Θ) →
+      GK σ n Γ Δ (L.map (WFF.diaId hT hO x hx) ++ Θ) → ∃ k, GK σ k Γ Δ Θ
+  | [], _, _, _, p => ⟨_, p⟩
+  | θ :: L, Θ, _, h, p => by
+      obtain ⟨k, e⟩ := dropDiaIds hT hO x hx L (Θ := WFF.diaId hT hO x hx θ :: Θ)
+        (fun c hc => List.mem_cons_of_mem _ (h c (List.mem_cons_of_mem _ hc)))
+        (p.weaken (fun _ h => h) (by lsub))
+      exact ⟨_, .diaT hT hO x hx (h θ List.mem_cons_self) e⟩
+
+/-- ⭐**`diaT` against `◇_xL`**: cut `◇_x φ` out of `diaT`'s premise, then cut `diaId φ` against
+    the `◇_xL` premise collapsed onto `x`'s identity view (`GK.collapseD`), re-derived in `Γ` by
+    `TL`, `diaT`, `optL` and `reopenR`. -/
+theorem diaTPrin {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] (hT : ModalSys.T = true)
+    (hO : ModalSys.Opt = true) (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    {φ : WFF σ (Γ.diaIn x) 0} {n' m : ℕ} {Δ Θ : List (WFF σ Γ 0)}
+    (hw : (WFF.dia x hx φ).weight = w) (hs : n' + 1 + m = s)
+    (p : GK σ n' Γ Δ (WFF.diaId hT hO x hx φ :: WFF.dia x hx φ :: Θ))
+    (d₂ : GK σ m Γ (WFF.dia x hx φ :: Δ) Θ) (lp : LeftPrin σ (WFF.dia x hx φ) m Δ Θ) :
+    ∃ k, GK σ k Γ Δ Θ := by
+  have hF : ModalSys.Four = false := by
+    cases h4 : ModalSys.Four
+    · rfl
+    · rw [ModalSys.noOpt_of_Four h4] at hO; cases hO
+  cases lp with
+  | dia _ _ Δ₂ Θ₂ L₂ hm h₂' h₃' h₄' r =>
+      obtain ⟨k₁, e₁⟩ := ih (WFF.dia x hx φ) (Δ := Δ) (Θ := WFF.diaId hT hO x hx φ :: Θ)
+        (.inr ⟨hw, by omega⟩) (p.weaken (fun _ h => h) (by lsub))
+        (d₂.weaken (fun _ h => h) (by lsub))
+      obtain ⟨X, hX⟩ := id hx
+      have hXT : Γ.witT x = some X := Ctx.witT_of hT hO hX
+      have D := Ctx.collapses_diaIn_optInT hT hO Γ hX
+      have C₀ := Ctx.collapses_boxIn_self hT Γ
+      have q := collapseD hO _ D r
+      rw [cp4_of_not hF, List.append_nil, List.map_cons, List.map_append,
+        map_collapse_mono C₀ D (Ctx.le_boxIn_diaIn Γ x) (Ctx.le_optInK Γ .ident x),
+        map_collapse_mono C₀ D (Ctx.le_boxIn_diaIn Γ x) (Ctx.le_optInK Γ .ident x)] at q
+      -- the sequent in `Γ`, before `TL`, `diaT` and the folds' `diaT` are undone
+      have hop := Ctx.opened_optInK (κ := .ident) (y := x) ⟨X, hXT⟩
+      have q' := q.weaken
+        (Δ' := WFF.collapse D Ctx.NoSlots.slots φ ::
+          (Δ₂.map (WFF.collapse C₀ Ctx.NoSlots.slots) ++ (WFF.diaId hT hO x hx φ :: Δ)).map
+            (WFF.mono (Ctx.le_optInK Γ .ident x)))
+        (Θ' := (Θ₂.map (WFF.collapse D Ctx.NoSlots.slots) : List (WFF σ (Γ.optInK .ident x) 0)) ++
+          (Θ₂.map (WFF.diaId hT hO x hx) ++
+          ((kp4 L₂).map (WFF.collapse C₀ Ctx.NoSlots.slots) ++ Θ)).map
+            (WFF.mono (Ctx.le_optInK Γ .ident x)))
+        (fun a ha => by
+          rcases List.mem_cons.mp ha with rfl | ha
+          · exact List.mem_cons_self
+          · obtain ⟨b, hb, rfl⟩ := List.mem_map.mp ha
+            exact List.mem_cons_of_mem _ (List.mem_map_of_mem (List.mem_append_left _ hb)))
+        (fun a ha => by
+          rcases List.mem_append.mp ha with ha | ha
+          · exact List.mem_append_left _ ha
+          · obtain ⟨b, hb, rfl⟩ := List.mem_map.mp ha
+            exact List.mem_append_right _ (List.mem_map_of_mem
+              (List.mem_append_right _ (List.mem_append_left _ hb))))
+      obtain ⟨k₃, e₃⟩ := reopenAll hO .ident x hop
+        (Θ₂.map (WFF.collapse D Ctx.NoSlots.slots) : List (WFF σ (Γ.optInK .ident x) 0)) q'
+        (fun χ hχ => by
+        obtain ⟨θ, hθ, rfl⟩ := List.mem_map.mp hχ
+        exact List.mem_map_of_mem (f := WFF.mono (Ctx.le_optInK Γ .ident x))
+          (List.mem_append_left _ (List.mem_map_of_mem (f := WFF.diaId hT hO x hx) hθ)))
+      have e₄ : GK σ (k₃ + 1) Γ
+          (Δ₂.map (WFF.collapse C₀ Ctx.NoSlots.slots) ++ (WFF.diaId hT hO x hx φ :: Δ))
+          (Θ₂.map (WFF.diaId hT hO x hx) ++
+            ((kp4 L₂).map (WFF.collapse C₀ Ctx.NoSlots.slots) ++ Θ)) :=
+        .optL hO .ident x ⟨X, hXT⟩
+          (List.mem_append_right _ List.mem_cons_self) e₃
+      obtain ⟨k₅, e₅⟩ := dropDiaIds hT hO x hx Θ₂
+        (fun θ hθ => List.mem_append_right _ (h₃' θ hθ)) e₄
+      obtain ⟨k₆, e₆⟩ := dropFolds hT hO L₂ h₄' e₅
+      obtain ⟨k₇, e₇⟩ := dropColls hT Δ₂ (Δ := WFF.diaId hT hO x hx φ :: Δ)
+        (fun χ hχ => List.mem_cons_of_mem _ (h₂' χ hχ)) e₆
+      exact ih (WFF.diaId hT hO x hx φ) (.inl (by
+        rw [← hw]; simp only [WFF.diaId, WFF.weight, WFF.weight_collapse]; omega)) e₁ e₇
+
 /-- `□φ` principal in a left `□R`: the right derivation's rule boxes `φ`. -/
-theorem boxPrin {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] {φ : WFF σ Γ.boxIn 0}
+theorem boxPrin [ModalSys.TOpt] {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented]
+    {φ : WFF σ Γ.boxIn 0}
     {n' m : ℕ} {Δ Θ : List (WFF σ Γ 0)} (hw : (WFF.box (Γ := Γ) φ).weight = w)
     (hs : n' + 1 + m = s) {Δ₁ : List (WFF σ Γ.boxIn 0)} {L₁ : List (WFF σ Γ 0)}
     (h₂ : ∀ χ ∈ Δ₁, WFF.box (Γ := Γ) χ ∈ Δ) (h₃ : L₁ ⊆ WFF.box φ :: Θ)
@@ -839,6 +980,35 @@ theorem boxPrin {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] {φ : 
           (WFF.mono (Ctx.le_boxIn_diaIn Γ x)))
         (by lsub4) (by lsub4 using hL₁') (by lsub4 using U) (r.weaken (fun _ h => h) (by lsub4))
       exact ⟨_, .diaL x hx hψ hb h₃' (hL h₄') e⟩
+  | boxT hT hm r =>
+      -- `□R` against `TL`: cut `□φ` out of TL's premise, then cut `collapse φ` against the
+      -- collapsed `□R` premise (`collapseD`, docs §12.35)
+      have hO := ModalSys.TOpt.tOpt hT
+      have hF : ModalSys.Four = false := by
+        cases h4 : ModalSys.Four
+        · rfl
+        · rw [ModalSys.noOpt_of_Four h4] at hO; cases hO
+      have C₀ := Ctx.collapses_boxIn_self hT Γ
+      have D₁ : GK σ (n' + 1) Γ Δ (WFF.box φ :: Θ) := .boxR List.mem_cons_self h₂ h₃ p
+      obtain ⟨k₁, e₁⟩ := ih (WFF.box φ)
+        (Δ := WFF.collapse C₀ Ctx.NoSlots.slots φ :: Δ) (Θ := Θ) (.inr ⟨hw, by omega⟩)
+        (D₁.weaken (by lsub) (fun _ h => h)) (r.weaken (by lsub) (fun _ h => h))
+      have q := collapseD hO _ C₀ p
+      rw [cp4_of_not hF, List.append_nil, List.map_cons] at q
+      have q' := q.weaken
+        (Δ' := Δ₁.map (WFF.collapse C₀ Ctx.NoSlots.slots) ++ Δ)
+        (Θ' := (kp4 (L₁.filter fun χ => decide (χ ∈ Θ))).map
+          (WFF.collapse C₀ Ctx.NoSlots.slots) ++ (WFF.collapse C₀ Ctx.NoSlots.slots φ :: Θ))
+        (fun a ha => List.mem_append_left _ ha)
+        (fun a ha => by
+          rcases List.mem_cons.mp ha with rfl | ha
+          · exact List.mem_append_right _ List.mem_cons_self
+          · obtain ⟨b, hb, rfl⟩ := List.mem_map.mp ha
+            exact List.mem_append_left _ (List.mem_map_of_mem (hL₁ hb)))
+      obtain ⟨k₂, e₂⟩ := dropFolds hT hO _ (fun a ha => List.mem_cons_of_mem _ (filter_sub ha)) q'
+      obtain ⟨k₃, e₃⟩ := dropColls hT Δ₁ h₂ e₂
+      exact ih (WFF.collapse C₀ Ctx.NoSlots.slots φ) (.inl (by
+        rw [WFF.weight_collapse, ← hw]; simp only [WFF.weight]; omega)) e₃ e₁
 
 /-- The new copy list's members are conclusions: a `◇_y θ`'s, and the right rule's. -/
 theorem dia_hL {Γ : Ctx} {y : VarSymb} {hy : ∃ Y, Γ.ref y = some (.VTypeDia Y)}
@@ -951,7 +1121,8 @@ theorem diaPrinDiaL {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] {y
       exact ⟨_, .diaL x hx h₁ hb hΘf (dia_hL h₃' h₄') e⟩
 
 /-- A left `□R`: `□φ` principal, or a `◇` copy, or the cut vanishes. -/
-theorem leftBoxR {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] (A : WFF σ Γ 0)
+theorem leftBoxR [ModalSys.TOpt] {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented]
+    (A : WFF σ Γ 0)
     {n' m : ℕ} {Δ Θ : List (WFF σ Γ 0)} (hw : A.weight = w) (hs : n' + 1 + m = s)
     (D₁ : GK σ (n' + 1) Γ Δ (A :: Θ)) (d₂ : GK σ m Γ (A :: Δ) Θ)
     {Δ₁ : List (WFF σ Γ.boxIn 0)} {φ : WFF σ Γ.boxIn 0} {L₁ : List (WFF σ Γ 0)}
@@ -1020,7 +1191,8 @@ theorem leftDiaL {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] (A : 
     · exact diaPrinDiaL ih hw hs x hx h₁ h₂ h₃ h₄ p lp
 
 /-- ⭐**One step of cut elimination**, given the induction hypothesis. -/
-theorem cut_step {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] (A : WFF σ Γ 0)
+theorem cut_step [ModalSys.TOpt] {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented]
+    (A : WFF σ Γ 0)
     {n m : ℕ} {Δ Θ : List (WFF σ Γ 0)} (hw : A.weight = w) (hs : n + m = s)
     (d₁ : GK σ n Γ Δ (A :: Θ)) (d₂ : GK σ m Γ (A :: Δ) Θ) : ∃ k, GK σ k Γ Δ Θ := by
   have D₁ := d₁
@@ -1228,9 +1400,24 @@ theorem cut_step {w s : ℕ} (ih : CutIH σ w s) {Γ : Ctx} [Γ.Presented] (A : 
       · obtain ⟨k, e⟩ := ih A (Δ := Δ) (Θ := χ :: Θ) (.inr ⟨hw, by omega⟩)
           (p.weaken (by lsub) (by lsub)) (d₂.weaken (by lsub) (by lsub))
         exact ⟨_, .reopenR hO κ y hy h e⟩
+  | @TL _ _ _ _ _ hT φ h p =>
+      obtain ⟨k, e⟩ := ih A
+        (Δ := WFF.collapse (Ctx.collapses_boxIn_self hT Γ) Ctx.NoSlots.slots φ :: Δ) (Θ := Θ)
+        (.inr ⟨hw, by omega⟩) p (d₂.weaken (by lsub) (by lsub))
+      exact ⟨_, .TL hT h e⟩
+  | @diaT _ _ _ _ _ hT hO x hx φ h p =>
+      rcases List.mem_cons.mp h with he | h
+      · subst he
+        rcases permRight ih _ hw hs (fun h => by simp [WFF.IsAtom] at h) (fun h => by cases h)
+          D₁ d₂ with done | lp
+        · exact done
+        · exact diaTPrin ih hT hO x hx hw hs p d₂ lp
+      · obtain ⟨k, e⟩ := ih A (Δ := Δ) (Θ := WFF.diaId hT hO x hx φ :: Θ)
+          (.inr ⟨hw, by omega⟩) (p.weaken (by lsub) (by lsub)) (d₂.weaken (by lsub) (by lsub))
+        exact ⟨_, .diaT hT hO x hx h e⟩
 
 /-- The induction, on the weight and then on the sum of the heights. -/
-theorem cutIH_all : ∀ w s, CutIH σ w s := by
+theorem cutIH_all [ModalSys.TOpt] : ∀ w s, CutIH σ w s := by
   intro w
   induction w using Nat.strong_induction_on with
   | _ w ihw =>
@@ -1243,13 +1430,15 @@ theorem cutIH_all : ∀ w s, CutIH σ w s := by
       · exact cut_step (ihs _ hlt) A heq rfl d₁ d₂
 
 /-- ⭐**Cut is admissible** in GK: from `Δ ⇒ A, Θ` and `A, Δ ⇒ Θ`, `Δ ⇒ Θ`, over any presented
-    context. -/
-theorem cut {Γ : Ctx} [Γ.Presented] (A : WFF σ Γ 0) {n m : ℕ} {Δ Θ : List (WFF σ Γ 0)}
+    context, in every system where T comes with `Opt` (`ModalSys.TOpt`): T's principal
+    reductions collapse a derivation (`GK.collapseD`, docs §12.35). -/
+theorem cut [ModalSys.TOpt] {Γ : Ctx} [Γ.Presented] (A : WFF σ Γ 0) {n m : ℕ}
+    {Δ Θ : List (WFF σ Γ 0)}
     (d₁ : GK σ n Γ Δ (A :: Θ)) (d₂ : GK σ m Γ (A :: Δ) Θ) : ∃ k, GK σ k Γ Δ Θ :=
   cut_step (cutIH_all _ _) A rfl rfl d₁ d₂
 
 /-- Cut with separate contexts: from `Δ₁ ⇒ A, Θ₁` and `A, Δ₂ ⇒ Θ₂`, `Δ₁, Δ₂ ⇒ Θ₁, Θ₂`. -/
-theorem cut' {Γ : Ctx} [Γ.Presented] (A : WFF σ Γ 0) {n m : ℕ}
+theorem cut' [ModalSys.TOpt] {Γ : Ctx} [Γ.Presented] (A : WFF σ Γ 0) {n m : ℕ}
     {Δ₁ Θ₁ Δ₂ Θ₂ : List (WFF σ Γ 0)} (d₁ : GK σ n Γ Δ₁ (A :: Θ₁)) (d₂ : GK σ m Γ (A :: Δ₂) Θ₂) :
     ∃ k, GK σ k Γ (Δ₁ ++ Δ₂) (Θ₁ ++ Θ₂) :=
   cut A (d₁.weaken (by lsub) (by lsub)) (d₂.weaken (by lsub) (by lsub))
