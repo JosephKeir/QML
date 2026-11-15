@@ -16972,6 +16972,117 @@ it.
   (the name sentence true by construction, `sat_eqH`).
 * *Completeness:* M1's two passes; `NoAt` for the stages (or the weakened hypothesis).
 
+**§12.36, step 4 started (2026-11-16): the frame and domains, as a parallel file.**
+* *Process change:* generalising M1's files in place would break M1's sorry-free completeness
+  (a CI top module) until all five are redone.  So the generalisation is built **beside** them:
+  `QML_v12m_TCanonDom.lean` (domains), then `TCanonModel`, `TCanonTerm`, `TCanonTruth`,
+  `TCanonCompleteness`; when they cover the T-off case, M1's `OCanon{Dom,Model,Term,Truth,
+  Completeness}` go.  `OCanonView`/`OCanonChild` lost their unused `[ModalSys.NoT]` and are shared;
+  `TCanonName` now imports `OCanonChild` (it used nothing of `OCanonModel`), so the domains can
+  import `TCanonRead`.
+* *Built in `TCanonRead`:* `TCanon.readsNameIn` (reading at a name **declared** in the stage, the
+  target the stage itself) and `Term.readNames_mono` (reading at names commutes with weakening, as
+  `Term.collapse_mono`).
+* *`TCanonDom` (compiles; two `sorry`, recorded below):* `RT := AccO ∨ (T ∧ w' = w)`, `SuccO`
+  over it, the self arrow told apart by depth (`SuccO.self`, `SuccO.acc`, as `Canon`);
+  `StagesNoAt`; `SelfIn` (identity-present **and** the stages declare no `at` step: the extent
+  carries the hypothesis `readsNameIn` needs, so the denotation can use it); `extentO` with the
+  self member; `selfTermAt`/`selfTerm` (the body collapsed onto the identity view, then read at the
+  identity name), `selfTermAt_mono`, `selfTerm_mono`; `rdenO` with both self cases and
+  `rdenO_boxtm_self/acc`, `rdenO_diatm_self/acc`; `rdenO_mono`, `rdenO_congr` (the self case
+  through a common stage); definability (`definableO_box_apply`/`dia_apply` at the self arrow);
+  `rawEvalO` with `extract` at the self arrow; `rdenO_applyG` for every case but two.
+* **The two `sorry`s** (`rdenO_applyG`, `diaMap` and `strength` at the self arrow) need plumbing
+  that does not exist yet:
+  1. *`applyG_readNames`*: applying a definable map commutes with reading at names, as
+     `applyG_collapse` (with `Spine`/`fill` helpers).  Its `extract` case needs **reading at names to
+     commute with collapsing** (`readNames ν m ∘ collapse m = collapse m ∘ readNames ν (m + 1)`).
+     That is **not** true of all addresses: collapsing turns `u.dia` into `u.at`, which a later
+     reading renames when `u` is the named witness.  It holds when no `x.dia` occurs at the collapsed
+     level, which is the case for the terms read here (bodies of the identity view, whose `◇`
+     contents are other witnesses').  So the lemma needs that invariant as a hypothesis, or a
+     formulation that excludes it structurally.
+  2. *Reading at names fixes a term with no `at` step* (the `strength` case's box component), with
+     `Ctx.NoAt` passing into views.
+  3. A transport lemma for `rawEvalO` along `w'.1 = w` (trivial).
+* *Flagged for the term lemma (next file):* the self case of `interp_canonO` for a possible term
+  evaluates a term **read at the name** in the canonical environment; that needs a semantic lemma
+  for `readNames` on terms ("interpretation is kept when the name's value is the content"), the term
+  counterpart of what §12.36's refinement avoided for formulas.  Expected small (terms have no
+  witness views), but it is new.
+
+**§12.36, steps 4–5 built (2026-11-16): domains, model, term lemma with the self arrow — sorry-free.**
+* `QML_v12m_ReadNamesFunc.lean`: `Ctx.RefNoAt` (+ views), `Term.readNames_noAt`;
+  `VarSymb.RNC` (the side condition) and ⭐`VarSymb/Term.readNames_collapse` (reading at names
+  commutes with collapsing under `RNC`, which every `□`-view address satisfies at level 0,
+  `Ctx.refRNC_boxIn_zero`, and which passes into views); ⭐`applyG_readNames`; `Term.readNames_eta`.
+  The two `sorry`s of step 4 are gone.
+* `QML_v12m_SemReadNames.lean`: `Model.Env.ReadAgree` (+ `boxPush`, `diaPush`), ⭐
+  `Model.interp_readNames` (terms; with `Opt` on no shapes).
+* `QML_v12m_TCanonDom.lean` (sorry-free): `selfTerm_applyG`, `rdenO_selfTerm_boxIn`,
+  `rawEvalO_transport`, `rdenO_applyG` complete.
+* `QML_v12m_TCanonModel.lean`: `ModalSys.WeakTO` (strong T off for now; instance from `NoT`),
+  `frameO` with `refl` the self arrow, `necExtract` read there, ⭐`modelT`.
+* `QML_v12m_TCanonTerm.lean`: `canonEnvO` (`here` case at the self arrow), the child agreements,
+  ⭐`canon_selfContent` (a realised witness's content at the world itself is its identity name's
+  value), ⭐`interp_dia_selfO`, ⭐`interp_canonO` (induction on the type first, as in `Canon`).
+* *Cleanup to do when M1's files go:* `TCanon*` reuse M1's names in namespace `OCanon`
+  (`ModalSys.opt_absurd`, `Ctx.stage_step`, …), so the two families must not be imported together.
+* *Next:* the formula truth lemma (`TCanonTruth`: `□` at the self arrow by `T_box`, `◇_x` at it by
+  `diaT`'s chain, `◇⁰ᵀ_x` by `optT_named`/`named_optT` and soundness), then completeness for KT and
+  KDT (`StagesNoAt` for the root from a `Ctx.NoAt` hypothesis on the user's context).
+
+**§12.36, the arrows carry "no identity reading" (2026-11-16, built).**  The truth lemma must hold
+at every successor, and the self member of an extent needs `StagesNoAt` (it is what reading at the
+name needs).  `AccO` does not record it, so the arrows do:
+`RT w w' := (AccO w w' ∧ (StagesNoAt w → StagesNoAt w')) ∨ (T ∧ w' = w)`.  The implication keeps
+seriality at worlds without the property; the `□`-failure child inherits it (`child_noAt`, through
+`boxIn`, `optIn` and the stages; `exists_box_failT`, `exists_succT`).  Built and sorry-free;
+`WFF.size_readNames` added.
+
+**§12.36, the truth lemma (`TCanonTruth`): design, to build next.**  Invariants at a world:
+`DecidesO` and `StagesNoAt` (children: `AccO.decides`, `SuccO.noAt`).  New cases:
+* *`◇⁰ᵀ_y χ` (identity kind), as a lemma `identCase` taking the induction hypothesis below a size
+  bound, so that the `◇_x` case can use it at `collapse χ`.*  If `SelfIn w y` fails, both sides are
+  false (truth: the self arrow is not in `y`'s extent; membership: `K_opt` would give `◇⁰ᵀ_y ⊤`,
+  hence `IdPres`).  If it holds, with the name at stage `i₀` and `K := i ⊔ i₀`:
+  membership at `i` ⟺ at `K` (lift) ⟺ `Φ(t)` at `K` (`optT_named`, `named_optT` with
+  `nameSent_mem`; `Φ := readSlot` at a root fresh for stage `K`, `t` the name's η-expansion) ⟺
+  `Φ(t)` true (IH: `size_instantiate`, `size_subst` for `bindFree`, `size_readNames`, `size_mono`)
+  ⟺ `◇⁰ᵀ_y χ` true at `K` (**soundness** of `optT_named`/`named_optT`; the name sentence is true
+  in the canonical environment by `sat_eqH` and `canon_selfContent`; side conditions: stages
+  `Tame`, `NoProjLast`, `canonEnvO_openedT`, `indInvariant`) ⟺ true at `i` (`sat_mono`,
+  `canonEnvO_le_wit`).  A fresh root for stage `K` is still to be located.
+* *`□χ`.*  Children as M1.  The self arrow: `T_box` puts `collapse χ` in the theory; IH at
+  `collapse χ` (`size_collapse`); `sat_collapse` with `collapseAgree_self` and `collapseOpt_self`.
+* *`◇_x χ`.*  Membership → truth: `exists_diaO` (a child).  Truth at the self member → membership:
+  were `◇_x χ` missing, `¬ diaId χ` is in the theory (`opt_dia`, `T_box`, `WFF.collapse_fold`, as in
+  `GKToND`'s `diaT` case), contradicting `identCase` at `collapse χ`, made true from the self
+  member by `sat_collapse` with `collapseAgree_diaIn_optInT` and a `CollapseOpt` for it (its `zero`
+  field: the `◇_x` view's witness at the self arrow is the identity witness; to prove, expected
+  by definition).
+* *`here`*: gated to `Opt` off, absurd.
+Then `TCanonCompleteness`: M1's two passes; the root's `StagesNoAt` from a `Ctx.NoAt` hypothesis on
+the user's context (presented contexts with T off satisfy it; with T on, a user context that opens
+an identity view is the open generalisation noted in step 3).
+
+**§12.36, identity-opened root contexts: options and decision (2026-11-16).**  Within the
+construction, identity-opened contexts occur only as the contexts of `◇⁰ᵀ` bodies in the truth
+lemma, and are turned back into stage contexts by reading at a name; no world (root or child)
+declares an `at` step unless the user's context does.  So completeness is first stated for
+`Ctx.NoAt` contexts.  Options for the rest:
+1. *In the tree:* at a root declaring `x.at`, `x.at` is its own name (no Henkin root); a second
+   branch in `selfTerm`/`rdenO`/the identity case, mirroring M1's declared arrow contents.
+2. *Reduction (chosen):* a sequent over `Γ.optInT y` says what `◇⁰ᵀ_y ⊤` and `◇⁰ᵀ_y` of its formulas
+   say over `Γ`: opening a present identity witness is conservative (the identity counterpart of
+   `Proof.unopen`), and an environment over `Γ.optInT y` respecting identity contents is one over
+   `Γ` with `y` present at the identity arrow, extended by `optPushT`.  Iterated, this gives
+   completeness for every presented context from the `NoAt` case.
+3. *Recorded, not adopted:* no rule enters the identity view (name rules, as for `∃`, with
+   `Here(y, e)` primitive or the only body; `CtxExpr.optIn` back to the arrow kind), so no
+   sequent context declares `at`.  **User (2026-11-16):** it trades identity contexts for an extra
+   primitive relation, and the design is built around modal contexts; option 2 is simpler.
+
 ### 12.37 The sequent calculus for B (and 5): paper check of the judgement form *(2026-11-16, paper)*
 
 The question §12.34 left open and the review called the programme's largest risk: is "a path with

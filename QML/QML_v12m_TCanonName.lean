@@ -1,4 +1,4 @@
-import QML.QML_v12m_OCanonModel
+import QML.QML_v12m_OCanonChild
 import QML.QML_v12m_HereOpt
 
 /-!

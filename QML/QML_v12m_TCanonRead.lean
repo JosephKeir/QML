@@ -248,6 +248,71 @@ theorem IdName.nameSent_mem {w : World σ N₀} {x : VarSymb} (d : IdName hT hO 
   rw [instantiate_optNameT hO (w.L.ctx_le d.hi) (Ctx.witT_of hT hO d.hx)] at h
   exact h
 
+variable (hT hO) in
+include hT hO in
+/-- ⭐Reading `x`'s identity view at a name **already declared** in the context (a Henkin root of a
+    later stage than `x`'s, as in the canonical model): the target is the context itself. -/
+theorem readsNameIn {Γ : Ctx} (hfree : Γ.NoAt) {x : VarSymb} {A : VarType}
+    (hx : Γ.ref x = some (.VTypeDia A)) {c : ℕ} (hc : Γ.ref (.root (.free c)) = some A) :
+    Ctx.ReadsNames (nameAt x c) 0 (Γ.optInT x) Γ := by
+  have hxT := Ctx.witT_of hT hO hx
+  refine Ctx.ReadsNames.of_raw (fun v T hlp hv => ?_) (fun y X hy => hy) (fun _ y n hyn => ?_)
+  · by_cases hvx : v = .step x .at
+    · subst hvx
+      rw [Ctx.optInT_content hxT] at hv
+      cases hv
+      rw [VarSymb.readNames_at_named (nameAt_self x c)]
+      exact hc
+    · rw [Ctx.optInT_ne hvx] at hv
+      rw [VarSymb.readNames_noAt (hfree v T hv), Ctx.ref_nonproj Γ hlp]
+      exact hv
+  · obtain ⟨rfl, rfl⟩ := nameAt_eq hyn
+    exact ⟨A, (Ctx.le_optInT Γ y).ref hx, hc⟩
+
 end TCanon
+
+/-! ## Reading at names commutes with weakening -/
+
+mutual
+  theorem Func.readNames_mono {σ : Signature} {ν : VarSymb → Option VarSymb} {k : ℕ}
+      {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx} (h : Ctx.ReadsNames ν k Γ₁ Γ₂) (h' : Ctx.ReadsNames ν k Γ₁' Γ₂')
+      (l₁ : Γ₁.Le Γ₁') (l₂ : Γ₂.Le Γ₂') :
+      {n : ℕ} → (f : Func σ Γ₁ n) →
+      Func.readNames h' (Func.mono l₁ f) = Func.mono l₂ (Func.readNames h f)
+    | _, .F _ => rfl
+    | _, .eval g t => by
+        change Func.eval (Func.readNames h' (Func.mono l₁ g))
+          (Term.readNames h' (Term.mono l₁ t)) = _
+        rw [Func.readNames_mono h h' l₁ l₂ g, Term.readNames_mono h h' l₁ l₂ t]
+        rfl
+    termination_by structural _ f => f
+
+  /-- ⭐Reading at names commutes with weakening, as `Term.collapse_mono`. -/
+  theorem Term.readNames_mono {σ : Signature} {ν : VarSymb → Option VarSymb} {k : ℕ}
+      {Γ₁ Γ₂ Γ₁' Γ₂' : Ctx} (h : Ctx.ReadsNames ν k Γ₁ Γ₂) (h' : Ctx.ReadsNames ν k Γ₁' Γ₂')
+      (l₁ : Γ₁.Le Γ₁') (l₂ : Γ₂.Le Γ₂') :
+      {T : VarType} → {a : Ann T} → (t : Term σ Γ₁ T a) →
+      Term.readNames h' (Term.mono l₁ t) = Term.mono l₂ (Term.readNames h t)
+    | _, _, .var _ _ => rfl
+    | _, _, .func f => by
+        change Term.func (Func.readNames h' (Func.mono l₁ f)) = _
+        rw [Func.readNames_mono h h' l₁ l₂ f]
+        rfl
+    | _, _, .unit => rfl
+    | _, _, .pair s t => by
+        change Term.pair (Term.readNames h' (Term.mono l₁ s))
+          (Term.readNames h' (Term.mono l₁ t)) = _
+        rw [Term.readNames_mono h h' l₁ l₂ s, Term.readNames_mono h h' l₁ l₂ t]
+        rfl
+    | _, _, .boxtm t => by
+        change Term.boxtm (Term.readNames h'.boxIn (Term.mono l₁.boxIn t)) = _
+        rw [Term.readNames_mono h.boxIn h'.boxIn l₁.boxIn l₂.boxIn t]
+        rfl
+    | _, _, .diatm x _ t => by
+        change Term.diatm _ _ (Term.readNames (h'.diaIn x) (Term.mono (l₁.diaIn x) t)) = _
+        rw [Term.readNames_mono (h.diaIn x) (h'.diaIn x) (l₁.diaIn x) (l₂.diaIn _) t]
+        rfl
+    termination_by structural _ _ t => t
+end
 
 end V12M
