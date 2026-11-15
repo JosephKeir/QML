@@ -17083,6 +17083,23 @@ declares an `at` step unless the user's context does.  So completeness is first 
    sequent context declares `at`.  **User (2026-11-16):** it trades identity contexts for an extra
    primitive relation, and the design is built around modal contexts; option 2 is simpler.
 
+**§12.36, steps 6–7 built (2026-11-16): ⭐KT AND KDT WITH `Opt` ARE COMPLETE** (weak T, for contexts
+declaring no identity reading).  Sorry-free, standard axioms only.
+* `QML_v12m_TCanonTruth.lean`: `indInvariantT`, `nameSent_mono`, ⭐`sat_nameSent` (the name sentence
+  is true: `sat_eqH`, `canon_selfContent`), ⭐`identCase` (the `◇⁰ᵀ` case, by the ND facts and
+  **soundness**, as designed), `collapseOpt_diaIn_optInT_self` (the `◇_x` view's witnesses at the
+  self arrow are the identity witnesses), ⭐`truth_ltO`/`truth` (`□` at the self arrow by `T_box`
+  and `sat_collapse`; `◇_x` at the self member by the `diaT` argument against `identCase` at the
+  collapsed body; `◇⁰ᵀ` by `identCase`).
+* `QML_v12m_TCanonCompleteness.lean`: `Ctx.NoAtW` (no `at` step in the context or in its witnesses'
+  addresses), ⭐`completenessT`, ⭐`provable_iff_validT` (`[ModalSys.WeakTO]`, any system `Opt`
+  allows: K, D, KT, KDT, weak and strong D).  In `TOP` in place of `TCanonTerm`.
+* **Next, in order:** (a) route 2: completeness for identity-opened presented contexts (the
+  conservativity of opening a present identity witness); (b) `NoAtW` for every presented context
+  with T off, so that `TCanon*` supersede M1's `OCanon{Dom,Model,Term,Truth,Completeness}`, which
+  then go (names are shared, see the cleanup note above); (c) a `WeakTO` instance and corollary for
+  `ModalSys.KTOpt`; (d) strong T (`posRet_exists`) and NecT; then M4a (4) per the roadmap.
+
 ### 12.37 The sequent calculus for B (and 5): paper check of the judgement form *(2026-11-16, paper)*
 
 The question §12.34 left open and the review called the programme's largest risk: is "a path with
