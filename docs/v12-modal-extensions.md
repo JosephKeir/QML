@@ -17811,3 +17811,141 @@ reach them, and a frame cannot have path-dependent arrows.
 **Next check (paper):** item 4 in its smallest form, a KB5 or S5 sequent where a formula reaches
 a sibling and uses `⇑` there, to see whether the interpolant needs a sibling wrapper or whether
 the formula can always be re-used from a fresh node.
+
+**§12.46: scope note (2026-11-16, after the user's question).**  §12.46 was argued against the
+**current** 5 (relational `Frame.side`, the term former `x.side`, links, the gather as
+`necSide_exists`), with `⇑` only for B.  The **planned** 5 (§12.34: `[sib]`/`⟨sib⟩`, "at every
+child of my parent", over the same view context, Euclid as `□χ ⊢ [sib] side(χ)`, the child's
+objects lowered to witnesses of the side arrow by `m.side`) changes it:
+* *With `⇑` decided, `[sib]` is `⇑□` and `⟨sib⟩` is `⇑◇`*: `⇑` restores the parent's context and
+  `□` from there gives the parent's box view at each child, the context §12.34 asks `[sib]` to be
+  over.  Euclid becomes **`□χ ⊢ ⇑□ side(χ)`**, the twin of B's `□χ ⊢ ⇑ ret(χ)`.  (To confirm:
+  nothing in §12.34 needs `[sib]` beyond this.)
+* *Item 1 holds for frames only.*  The planned semantics keeps the side arrows (§12.34: "Euclid by
+  `sideAcc`"), so the equational laws and their products are unchanged.  But `[sib]` reads "my
+  parent", so it **depends on the path in every 5 system**: "no unravelling" held only for the
+  current language, and **item 4's risk applies to K45 and KD45 as well**.
+* *Item 2 must be redone.*  Its argument used two facts: the root is invisible from the cluster,
+  and a child's objects have no values at the parent.  Under `⇑` the parent is visible (as the
+  world entered from); without B the child's objects still have no values there, but under
+  `⇑□ side(χ)` they **do** have values at the siblings.  So the candidate shared, specific world
+  is now the sibling a node was entered from, and K45's "no new operator" is open again for the
+  planned language.
+* *Item 3 is unchanged* (it uses only `⇑`, B's operator).
+
+### 12.47 5 against the planned language: risks *(2026-11-16, paper)*
+
+§12.46 redone for the planned 5 (§12.34, with §12.46's scope note): `⇑` with optional `back`
+entries (§12.45), `[sib] := ⇑□`, `⟨sib⟩ := ⇑◇`, Euclid as `□χ ⊢ ⇑□ side(χ)` with the child's
+objects lowered by `side`.  **The user considers 5's whole design tentative**; this section scopes
+risks, it does not fix a design.  Paper only, `Opt` on.
+
+**1. Two facts about the planned language.**
+* *(a) Lowering only bites without 4.*  `side` lowers a necessary object to a possible one
+  because "without 4 a necessary object moved across is only a possible one".  Every 5 system of
+  the cube that is complete has 4 (K45, KD45, and KB5, KDB5, S5, since B and 5 give 4), where a
+  moved necessary object stays necessary (`keep`).  So the tentative part of the design (lowering,
+  `m.side`, the `◇`-gather) matters only for K5/KD5, where completeness is open anyway.  With 4,
+  `[sib]` at a child `c` ranges over `c`'s own successors (the cluster is the root's successor
+  set, and `c` sees all of it), so the planned operators add **`⇑` and nothing else** there.
+* *(b) Below the root every 5 frame is B-like.*  A reached world `c` is reflexive (`w → c` twice
+  gives `c → c` by Euclid), and then every arrow `c → b` has a way back (`c → b`, `c → c` give
+  `b → c`).  In the planned rules: at `b` entered from `c`, `□χ ⊢ ⇑□ side(χ)` read at the loop
+  `c → c` gives `χ` at `c` along `b → c`, i.e. **B's transfer `□χ ⊢ ⇑ ret(χ)`, valid from depth 2
+  in every 5 system**.  At depth 1 without B (K45, KD45) there is no arrow home, `⇑` carries no
+  `back` values, and `◇(⇑ψ ∧ χ) ≡ ψ ∧ ◇χ`: `⇑` is eliminable there.
+
+**2. K45, KD45: §12.46 item 2 survives, by a sharper argument.**  A `P`/`Q` counterexample needs a
+world that both sides speak about **specifically**: in §12.41 the evaluation point, seen from below
+through B.  In K45 the root is never reached.  Could a child `c` play the evaluation point,
+since the cluster below it is B-like (fact (b))?  Only if both sides' facts about `c` are
+specific, and a side reaches `c` either by its own `◇` (specific to that side) or by a `□`
+(uniform over all children).  With `□` on both sides, `c`'s facts hold at **every** child, and
+since the grandchild `b` sees exactly the root's children (with 4), `b`'s object `m` satisfies them
+everywhere it has values: the plain `□◇∃m:□Var.□D(m.box)` interpolates (checked on
+`□φ_c ⊢ □ψ_c`, §12.41's pair placed at each child).  In KB the same trick fails because a child's
+successors include its **own** children, where the root's uniform facts do not reach (no 4).
+* **Working principle (unproved): only the evaluation point is shared and specific.**  Everything
+  else either side can single out is pinned by common vocabulary or by a root possible object,
+  and those are visible throughout the cluster.  It explains every example so far (§12.41–12.46).
+  It is the statement a proof of Craig for the 5 systems would have to establish.
+* So **K45 and KD45 need `⇑` in interpolants only because it is in the language**, not to repair a
+  counterexample, and its depth-1 uses are eliminable.
+
+**3. KB5, KDB5, S5: two readings of `⇑` at one node, and a coherence law.**  The root is in the
+cluster, so §12.46 item 3 stands (weak forms need `⇑`).  The new question is §12.46 item 4's mixed
+readings.  With 4, depth collapses: every node is a child of the root, so the interpolant can try
+to keep `⇑` pointing at the root (the shared, specific world) and fold every other node
+existentially (`◇` from wherever it is seen: the cluster sees everything, and by the principle no
+other node needs to stay specific).  One case does not fold that way:
+* *Two nodes' objects used jointly at the root.*  `m` born at `b`, `n` born at `c` (`c` below `b`),
+  and a common relation `S(m@w, n@w)` at the root that the right side needs.  Both values must be
+  in one context at `w`.  From the stack `[w, b, c]`, `⇑⇑` reaches `w`, and with 4 the values arrive
+  as `m.back` and `n.keep.back.back` (`n` along `c → b → w`, the second `⇑` reading the first
+  `⇑`'s new entries as `b`'s objects).  So `⇑⇑S(m.back, n.keep.back.back)` **would** say it, **if**
+  `n`'s value along the composite `c → b → w` is its value along the arrow the right side reads,
+  the way home from `c` entered directly from `w`.
+* **The coherence law this needs: the chosen way home must commute with the frame operations.**
+  Write `conv` for the chosen converse (§12.43.1).  Re-rooting `⇑`-formulas between paths needs
+  `conv (conv a) = a`, `conv (a ; b) = conv b ; conv a` under 4, and `side` compatibility under 5.
+  Relational frames have them, and strong B has them for free (`homeUnique`).  Under **weak** B with
+  arrow-indexed frames they are **new frame laws**, and the canonical models (KB5's and KDB5's
+  cluster with the root's loop, the B network) would have to meet them.  The involution is needed
+  already in B alone, by the two-way unravelling (§12.42 item 3).  **Concrete risk, cheap to
+  check:** whether the existing weak-B canonical models can choose ways home coherently.
+* *Composition of `back` views* ("the second `⇑` reads the first `⇑`'s entries as objects of the
+  middle world") is a design choice for `⇑`'s view, to confirm; without it `⇑⇑` cannot carry a
+  grandchild's object home.
+
+**4. Unchanged.**  The semantic product route for 5 with `⇑` (path-dependent `⇑` against
+non-tree frames, §12.46 item 4) stays unresolved; on the user's proof-theoretic route it becomes
+the question of item 3 (folding with relative wrappers in the tree calculus with `Acc` closure).
+
+**5. Risk table for 5 (planned language).**
+| risk | where | status |
+|---|---|---|
+| lowering, `m.side`, `◇`-gather | K5, KD5 only (fact (a)) | tied to the completeness gap |
+| only the evaluation point is shared and specific | all 5 systems | working principle, unproved |
+| coherence of the chosen way home (involution, `;`, `side`) | weak B with 4 or 5: KB5, KDB5 (and weak B alone: involution) | **new frame laws; check against canonical models** |
+| composition of `back` views under iterated `⇑` | KB5, KDB5, S5 | design choice for `⇑`'s view, to confirm |
+| semantic product route with `⇑` | all 5 systems | unresolved; not the planned route |
+| `⇓` | — | no case found |
+**Suggested next check:** the coherence of ways home in the existing weak-B canonical models (B's
+network; the KB5/KDB5 cluster with the root's loop).  It is the one risk that could force a change
+to the semantics, and it can be read off the constructions that are already built.
+
+### 12.48 The coherence of ways home against the canonical models *(2026-11-16, paper check of the code)*
+
+The check §12.47 asked for: can the existing weak-B canonical models choose ways home that are
+involutive and commute with `trans` and `side`?
+
+**Result: yes, trivially: every canonical frame in the project is relational.**
+* *B's network* (`BData.frame`, `QML_v12m_BCanonModel.lean`): `R s t` is a `Prop` (a disjunction),
+  `symm` is `B.symmB` on it, `homeUnique := fun _ => ⟨fun _ _ => rfl⟩`.
+* *The cluster* (`cframe`, `QML_v12m_GCluModel.lean`, KB5 and KDB5 with the root's loop, and S5):
+  `R _ t := CR t`, a `Prop` that does not even depend on the source; `trans` returns its second
+  arrow, `side a b := b`, every side law is `rfl`, `homeUnique` by `rfl`.
+* *Every other frame that defines `symm`* (`CanonModel`, `GCanonModel`, `OCanonModel`) has
+  `homeUnique` by `rfl` as well.  The arrow-indexed generality (`Frame.R : W → W → Sort v`) is used
+  by no canonical model.
+So between two worlds there is at most one arrow, the way home is that arrow, and
+`conv (conv a) = a`, `conv (a ; b) = conv b ; conv a` and every `side` compatibility hold by
+proof irrelevance.
+
+**Consequence for the design of `⇑`.**  The cheapest sound choice is to ask **`homeUnique` under
+every B**, not only strong B (or, more generally, a converse operation `conv` in `Frame` under B
+with the three laws).  This changes no theorem of the present language: the canonical models are
+in the smaller class, so completeness still holds, and soundness over the larger class implies it
+over the smaller.  It makes `m.back` definite under weak B (§12.43.1: no chosen converse needed),
+and it gives the coherence that re-rooting `⇑`-formulas needs (§12.47 item 3).
+* *Caveat:* a future model with genuine arrow data in a system with B would have to provide it.
+  None is planned: the K5/KD5 work, where arrows may need to be terms, has no B.
+* *Not checkable against models:* the composition of `back` views under iterated `⇑` (§12.47
+  item 3) is a choice about `⇑`'s view, to be made when `⇑` is built.  The natural reading (an
+  entry added by one `⇑` is an object of that world for the next) is the one the analysis used.
+
+**Status of the paper checks (2026-11-16).**  The semantic sanity checks for interpolation are as
+far as is useful before building.  Open, for later: the working principle "only the evaluation
+point is shared and specific" (§12.47 item 2; proving it is the Craig proof itself), strong B with
+`Opt` (§12.12's checks, when strong B moves to `Opt` on), and K5/KD5 (gap).  **Next: the mechanical
+KT canonical model work (§12.36 plan).**
