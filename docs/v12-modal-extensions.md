@@ -17234,7 +17234,8 @@ representation first**; the second is closer to how `Ctx` works now (a function 
 **7. Does the ND system need to change?**  Not for cut elimination (`GKN` is equivalent to ND for
 the standard language as `GK` is).  For Craig with B the interpolant uses `⇑`, so the theorem is
 about the language with `⇑`, and ND needs `⇑` with its rules (self-dual, K-normal, "home is home",
-and B's transfer).  The relations `Back`, `retS`, `retxS` then become definable (§12.34).  So the
+and B's transfer).  The relations `Back`, `retS`, `retxS` then become definable (§12.34)
+*(with `Opt` on, §12.45)*.  So the
 operator programme for B is **driven by interpolation only**, and can come last.
 
 ### 12.40 `⇑` decided; interpolation on the tree re-examined *(2026-11-16, paper)*
@@ -17538,6 +17539,8 @@ sentence:
   language, and the usual argument keeps the pair inseparable (an interpolant `I(c)` for the
   extended pair gives `∃c.I(c)` for the old one, by strong B on the left and `c` fresh on the
   right).
+* *(§12.45 item 2: `Back` already makes the law a sentence; the "second reason for `⇑`" below is
+  withdrawn.)*
 * **Why this is not Fine's failure.**  Fine's constant-domain law is global ("the same objects at
   every world") and no formula states it, so the product cannot keep it.  Strong B's law is local
   to one edge, and **with `⇑` it is a formula**.  Without `⇑` it is not (the round trip can't be
@@ -17627,6 +17630,7 @@ But under strong B (`homeUnique`) every arrow `b : v → w` is the **way home** 
 `w → v` that B provides, so from `w` the source is just a successor, entered from `w`, and `⇑`
 returns along `b` itself.  What is missing is only the view of a **possible** object along the
 way home:
+* *(§12.45: with `Opt` on this is `⇑◇⁰_{p.back}`, not a new operator.)*
 * **`⇑⁰_p φ`**: "the way home is in `p`'s extent, and `φ` holds at home with `p`'s content
   there named".  It is to `⇑` what `◇⁰_p` is to `◇` (the witnessed form, the K paradigm of
   `feedback_qml_witness_k_paradigm`).  It is §12.34's returning possibility (`retxS`) as an
@@ -17657,3 +17661,153 @@ way home:
   common language, so in Maehara's construction it contributes an `∃p`/`∀p`, as row 1 does
   (§12.43.5).  The representation decision for `GKN` now has to provide views that remember the
   parent context **and** a witnessed up-move.
+
+### 12.45 Two follow-up checks: possible objects under `⇑`, and strong B at `◇`-contents *(2026-11-16, paper)*
+
+The two open items of §12.44.5.  Both are read in the **`Opt`-on end state** (§12.11–12.12:
+`Ind := Eq`, `≡` at every type as `eqH`, shapes and probably `Model.Ret` deleted), which is where
+`⇑` will live; a first draft argued item 2 from today's `Opt`-off strong B and was corrected by the
+user.
+
+**1. Weak B with `Opt` on: `⇑`'s view must carry the child's possible objects.**  §12.41's `P`/`Q`
+example, with a possible object of the child in place of the necessary one.
+* `φ := ◇∃p:◇Var.□◇⁰_p A(p.here) ∧ ∀y(Ay → Dy)`,
+  `ψ := ∀y(Dy → Ey) → ◇∃p:◇Var.◇_p E(p.here)`.  Common vocabulary: `D`.
+  (`□◇⁰_p θ` at `c`: every arrow out of `c` is in `p`'s extent, with `θ` at its content.)
+* *`φ ⊢ ψ` in weak B:* at the child `c`, the way home `c → w` (B) is in `p`'s extent, so `A`,
+  hence `D`, hence `E` holds of `p`'s content at `w`, and `◇_p E(p.here)`.
+* *Interpolant:* **`◇∃p:◇Var.⇑◇⁰_{p.back} D(p.here)`**: inside `⇑`'s view, `p`'s optional entry
+  along the way home is opened by `◇⁰`, exactly as a possible object of the parent is opened in a
+  `□`-view (`Γ.boxIn.optIn`).  So **§12.44's `⇑⁰_p` is not a new operator: it is `⇑◇⁰_{p.back}`**,
+  provided `⇑`'s view is built like a box view, with the child's necessary objects as `back`
+  entries and its possible objects as optional `back` entries.  B's transfer `□χ ⊢ ⇑χ′` already
+  treats `⇑`'s view as the box view along the way home, so this is the same rule read with `Opt`.
+* *Without the optional entries there is no interpolant:* the frame `w – c – v` of §12.41, at `c`
+  one possible object `p` with extent both arrows; `P`: `p` is `a` (`D`) at `w`, `b′` at `v`; `Q`:
+  `a′` at `w`, `b` (`D`) at `v`; `A`, `E` as before.  `φ` holds at `(P, w)`, `ψ` fails at `(Q, w)`,
+  `Q`'s `D`-reduct is `P`'s with `w ↔ v` swapped, so it suffices that `(P, w)` and `(P, v)` agree.
+  The bisimulation of §12.41, on **zipper states** (a history, each position related, the top
+  `(w, v)` by the local isomorphism and everything else by the identity), works if `⇑`'s view has
+  only the necessary objects' `back` entries: `p`'s content then never meets the top's variables.
+* **So with `Opt` on, `⇑`'s view must include optional `back` entries** (a design requirement on
+  `⇑`, not a second operator).  With `Opt` off, `φ` cannot be written (no `◇⁰`) and the question
+  does not arise.
+
+**2. Strong B at `◇`-contents: `Back` becomes definable, as planned.**
+* *Correction to §12.43 item 2 (stands).*  The law of row 1 is **already a sentence** in today's
+  language: `Back` (`WFF.back`) is a logical former, `∀x:A.(◇⊤ → ∃c:□□A.Back c x)`, at every
+  content type.  So "without `⇑` it is not a formula" was wrong, and "a second, independent reason
+  for `⇑`" is withdrawn.  What the pair argument needs is a **logical** expression of the law, and
+  `Back` already is one.
+* *Definability with `Opt` on.*  `≡` exists at every type (`eqH`, the identification principle:
+  compared at each arrow in both extents, the shared world supplying the map), `Ind := Eq`, and
+  §12.12 already expects `Model.Ret` to go because `back_def` at every type gives `Ret_conv` at
+  every type.  Then **`Back c x ⟺ □⇑(c.box.back ≡ x)` at every content type**: both terms live in
+  `⇑`'s view at `w` (one context, so the map is the identity, as for `in_fun`/`here_fun`).
+  `retS`/`retxS` likewise, with `◇⁰` inside `⇑`'s view for the witnessed one.  **§12.40's
+  "`Back`, `retS`, `retxS` become definable" stands**, in the `Opt`-on end state.
+* *What does not hold:* with `Opt` off (today's strong B, `ModalSys.noOpt_of_BStrong`) there is no
+  `≡` at `◇`-types and `Ret` is finer than the round trip, so there `Back` stays primitive.  That
+  is a reason to leave today's strong B alone until it moves to `Opt` on, not a limit of the plan.
+* *For interpolation* nothing changes: `Back`, `retS`, `retxS` are logical, whether primitive or
+  defined.  *For completeness:* strong B has to move to `Opt` on anyway (shapes are deleted), and
+  `⇑` replacing `Back` fits that move; the round trip at `◇`-contents is then controlled by
+  `c.box.back`, a term, rather than by a primitive relation.  Whether the canonical model can make
+  that term's value right is the completeness check for strong B with `Opt` (§12.12's checks).
+
+**3. Where the operator design for B stands** (replaces the "needs" column of §12.44.4).
+| system | needs for Craig (paper) |
+|---|---|
+| weak B, `Opt` off | `⇑` (§12.41) |
+| weak B, `Opt` on | `⇑`, with optional `back` entries in its view (item 1) |
+| strong B, `BStrongW` | the same; their laws are sentences (`Back`/`retxS` today, `⇑` with `≡` at `Opt` on) |
+| all | a chosen way home per arrow under weak B (§12.43.1); views remembering their parent context |
+`⇓`: no case found.  No second operator: `⇑⁰_p` is `⇑◇⁰_{p.back}`.
+
+### 12.46 5 against the product, with `Opt` on *(2026-11-16, paper)*
+
+The semantic sanity check of §12.42 for the 5 systems of the cube, in the `Opt`-on end state
+(`Ind := Eq`, `≡` at every type).  K5/KD5 are left out (completeness gap).  **Result:** without B,
+no new operator is needed and nothing obstructs the product; with B (KB5, KDB5, S5) `⇑` is needed
+in the weak forms, as in B, and there is one new risk: `⇑` depends on the path, and 5's frames are
+not trees.
+
+**1. 5's laws are equations, so products keep them.**  The frame laws (`Frame.side`, `side_inj`,
+`side_side`, `trans_side`, `side_trans`, `side_refl`, `side_loop`, and `homeUnique`) are equations
+or Horn conditions on the arrow operations.  A product of two models along a bisimulation, with
+worlds the related pairs, arrows the pairs of arrows between them, and `side`, `trans`, `refl`
+taken componentwise, satisfies all of them.  (The arrow-indexed frames help here: the operations
+are functions, so "componentwise" is a definition.)  Weak 5 on objects is a **term former**
+(`x.side`, `Frame.Ops.posSide`) with equational laws.  `posSide_ext` holds in the product by
+`side_inj`: a product arrow `(c₁, c₂)` in the image of `side (a₁, a₂)` has a unique preimage
+`(b₁, b₂)`, whose ends are `c`'s and whose contents are `c`'s (`posSide_content`, an equation
+once `Ind := Eq`).  So the product is a 5-model, with no unravelling: unlike B, nothing in the
+language without `⇑` depends on the path.  Seriality is `◇⊤`, a formula, so D survives.  Strong 5
+(the gather, `necSide_exists`) is an existence law that names a successor's necessary object at
+the source; in the fold it moves binders to the root, as `BStrongW` did (§12.44 item 2).
+
+**2. K45 and KD45: no `⇑`, and no `P`/`Q` analogue.**  §12.41's example needs a world that is
+**shared by both sides and specific**: the evaluation point, which under B the child can see.  In
+K45 the root is not visible from the cluster.  Every cluster node is reached by one side's `◇`
+(specific to that side) or by a `□` (uniform), so what the two sides share about a node is said
+through common vocabulary or through a root possible object, and both are available inside the
+cluster: common predicates directly, a root possible object through its moved view (`x.keep`,
+`x.side`: global in the cluster, §12.38 item 3).  The test cases all close with plain
+interpolants:
+* `φ := □(G → (∀y(Ay → Dy) ∧ ◇∃m:□Var.□A(m.box)))`,
+  `ψ := □((G ∧ ∀y(Dy → Ey)) → ◇∃m:□Var.◇E(m.box))`: interpolant
+  **`□(G → ◇∃m:□Var.□(G → D(m.box)))`**.  `G` does the pinning that the evaluation point did
+  in B.  (K45's cluster is the root's set of successors, so `c` sees every node, `b` included.)
+* The same with `□_x`/`◇_x` for a root possible object `x` in place of `G`: interpolant
+  `□_x◇∃m:□Var.□_{x♯}D(m.box)`, `x♯` the moved view of `x` at `c`.
+* The two variants that would need the specific node (`◇` on the left and `□` on the right at the
+  same node) are not valid entailments: a `□` on the right reaches nodes where the left said
+  nothing.  An existential right side is trivialised by choosing its private predicates.
+**So §12.38 item 4 stands for K45 and KD45**, now with a reason: the root is invisible, and what is
+visible is named globally.  §12.40's "mixed case" does not arise there.
+
+**3. KB5, KDB5, S5: `⇑` is needed in the weak forms.**  With B (or T, which gives B with 5) the
+root is in the cluster, so the child sees it, and §12.41's example transfers.
+* *S5:* cluster `{w, c, v}`, every arrow present.  `P`: one necessary object `m` at `c`, `a` at `w`
+  (`D`), `b′` at `v`, some `e` at `c`; `A` holds of all three values.  `Q`: `m` is `a′` at `w`, `b`
+  (`D`) at `v`.  `φ`, `ψ` and `I₁ := ◇∃m:□Var.⇑D(m.back)` as in §12.41.  `Q`'s `D`-reduct is
+  `P`'s with `w ↔ v` swapped, and `(P, w)`, `(P, v)` agree on plain sentences by the same trivial
+  bisimulation: under `□` from the top no base item survives (with T, base items don't enter the
+  view, §1 of this document), so below the top every pair can be the identity, and the top's
+  successors are the whole cluster on both sides.  **So weak S5 lacks Craig in the plain language
+  and `⇑` repairs this instance**: consistent with Fine's theorem (QS5 lacks Craig), and a
+  different example from Fine's own, which has an interpolant in our language (`FineExample`).
+* *Strong forms dissolve it.*  With the gather (`FiveStrong`), `m` is one of the root's necessary
+  objects, so `∃u:□Var.D(u.here)` (with `◇⊤`) is a plain interpolant.  With `BStrongW`, the
+  possible-object version has `∃y.Dy ∧ ◇⊤` (`posBack` along `c → w` names `y` from `c`).  So, as for
+  B, **`⇑` is needed for the weak forms**: strong forms make everything nameable from the root.
+
+**4. The new risk: `⇑` depends on the path, and clusters are not trees.**  In B the product route
+needed the two-way unravelling (§12.42 item 3), because `⇑` reads the world a view was entered
+from.  Unravelling destroys Euclid: a tree of histories is not a cluster.  And evaluating at paths
+over the original cluster does not help: whether two worlds are related depends on the paths that
+reach them, and a frame cannot have path-dependent arrows.
+* *Where it shows up in the calculus:* under 5, `□χ` at `c` sends `χ` to the sibling `b`, and
+  inside `χ` a `⇑` means `c`, while formulas that reached `b` from its parent `w` read `⇑` as `w`.
+  Per-node interpolants at `b` would mix the two readings.  Combining them into one formula at
+  `b` needs either a relative wrapper for the sibling (§12.37 item 3 "wrappers are relative paths",
+  i.e. something like `⇓`, or a sibling step), or a normal form in which a sibling's formulas are
+  only used under a fresh `◇`.  This is where §12.40's mixed case lives for the clusters.
+* *On the completeness side, the same:* a canonical model with `⇑` has path-dependent theories
+  (a world's `⇑`-formulas depend on where it was entered from), so the cluster model's worlds would
+  be theories at a path, identified on their `⇑`-free part.  Not checked; the S5 model
+  (`GArrow.cmodel`) would have to say what `⇑` reads at a side arrow.
+* *Precedent:* Areces, Blackburn and Marx (APAL 2003) repair Craig for quantified hybrid logics
+  with `↓` and `@`, over frame classes defined by pure formulas (S5 among them).  `⇑` is a weak
+  hybrid device: every modal step binds its source, and `⇑` returns to the last one.  Their result
+  says full hybrid power suffices; whether the one-step return does under 5 is exactly item 4.
+
+**5. Summary.**
+| system | operator for Craig (weak forms) | product route |
+|---|---|---|
+| K45, KD45 | none | works on paper, no unravelling |
+| KB5, KDB5, S5 | `⇑` (with optional `back` entries, §12.45) | open: path-dependent `⇑` against clusters (item 4) |
+| strong forms (gather, `BStrongW`) | the examples dissolve | as the weak forms, plus existence rules with logical side formulas |
+**Next check (paper):** item 4 in its smallest form, a KB5 or S5 sequent where a formula reaches
+a sibling and uses `⇑` there, to see whether the interpolant needs a sibling wrapper or whether
+the formula can always be re-used from a fresh node.
