@@ -413,6 +413,41 @@ completeness, so it should be tested **before** the KT tree.  Its proposed order
 rules, the model class with `Opt` on (`Ind := Eq`, shapes off), GK with `◇⁰` for K and D, GKT, then
 the KT tree.  **Agreed by the user (2026-11-14).**
 
+**Status and replanning (2026-11-16).**  Read this before the milestone list below, which it
+updates.
+* *Done since the review:* M3 in full (GK with `◇⁰`: cut, ND equivalence, Craig, for K, KD, K4,
+  KD4 and with `Opt` K, KD, **KT, KDT**; `v12-modal-extensions.md` §12.33, §12.35).  The KT
+  obstacle is gone.
+* *M2's tree (KT completeness with `Opt`):* the crux is closed syntactically (reading an identity
+  view at a name; §12.36); the frame generalisation of M1's files is planned there and is
+  mechanical.  NecT and strong T's tree case follow it.
+* *B and 5 are no longer open on the proof-theoretic side at the propositional level:*
+  `QML/KBNestedProto.lean` proves cut admissibility for a nested (labelled) calculus for every
+  combination of T, B, 4, 5 by one proof.  The judgement is a **tree** of nodes, not a path and not
+  a hypersequent (§12.37, §12.38).
+* *First-order design:* `GKN`, contexts computed on the tree, an address being an object and a
+  walk; the step `.back k` for B; relabellings act as step renamings, of which `collapse`, `shift`
+  and `ret` are instances (§12.39).  **Not built.**
+* **Revised order for the rest of Milestone 5:**
+  1. M2's tree (KT, KDT completeness with `Opt`), NecT.  Mechanical; plan in §12.36.
+  2. `GKN` for K, then with `Opt`: the first-order tree calculus, equivalent to `GK` (§12.39 steps
+     1–2).  Decide the representation of "a formula at a node" first.
+  3. M4a (4): unchanged; in `GKN` it is the `.keep` walk.
+  4. Weak B in `GKN` (§12.39 step 3), then its completeness on the network with `Opt`.
+  5. S5, K45, KD45 in `GKN` with cluster contexts (§12.38).
+  6. Interpolation in `GKN`; for B the operator `⇑` and its ND rules (the old M4b "far-world
+     operator" work, now driven by interpolation only and placed last).
+  7. Strong forms as existence rules (cut permutes); K5/KD5 only after the completeness gap.
+  8. The requirement fields and the deletion of shapes, as before.
+* *Decided (2026-11-16):* `⇑` replaces the planned `⟪back⟫`/`[back]`.  *Reopened the same day
+  (§12.40):* Craig for first-order B and for the clusters; cut elimination is unaffected.  Item 6
+  starts with the paper test named there.
+* *Decisions waiting for the user:* the representation in item 2; whether `⇑` (item 6) is wanted
+  in the object language at all, or Craig for B is stated only for the calculus.  *Evidence
+  (§12.41 continued, paper):* the plain language of weak B lacks Craig (a case-1 pair with a
+  trivial bisimulation), and `⇑` supplies the interpolant; so if Craig for B is a goal, `⇑` is
+  needed in the language.
+
 * **M1, K and D with `Opt` on: done (2026-11-12).**  Rules, soundness, Leibniz along `≡`, and
   completeness for the tree (`QML_v12m_OCanon*`, `OCanon.completeness`).
 * **M2, KT** ← next.  `Here` through `◇⁰` at the identity arrow; shapes and `Ind` off the tree;

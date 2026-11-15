@@ -17030,7 +17030,8 @@ hypersequents are needed, contrary to §12.34.
   Brünnler's B structural rule, and the one new lemma of real size.  Checked on the rule list
   above; not on every case.
 
-**6. Interpolation (Maehara).**  Crossings have one premise; the interpolant crosses with the same
+**6. Interpolation (Maehara).**  *(Only one case of three: see §12.40, which reopens this.)*
+Crossings have one premise; the interpolant crosses with the same
 wrapper swap.  `new` with interpolant `I` at the fresh child (`⇑`-parts and local parts): in K the
 `⇑`-parts pull out (`◇(⇑ψ ∧ χ) ≡ ψ ∧ ◇χ`), giving a wrapper-free interpolant.  **With B they do
 not** when `ψ` mentions a child's object moved home: `◇∃m.(χ(m) ∧ ⇑ψ(m.back))`.  So Craig for B
@@ -17113,7 +17114,8 @@ typed eigenvariables entering the shared context.  Cut: the prototype's proof; r
 node to an existing one is weakening of the local part.  The root, when outside the cluster (K45,
 KD45), has its own context, read downward only: K's existing treatment.
 
-**4. Interpolation with 4 and 5: plausible without any new operator.**  Maehara over the tree
+**4. Interpolation with 4 and 5: plausible without any new operator.**  *(Partly argued only:
+see §12.40.)*  Maehara over the tree
 gives one interpolant per node; they must become one formula at the root.  Inside a cluster every
 node sees every node, so the component at `c` is reached from `b` by `◇`, and a shared object
 bound at `b` (`∃m:□A`) is read at `c` through the `□` view: `◇∃m.(I_b(m) ∧ ◇ I_c(m.box))`.  No
@@ -17145,3 +17147,298 @@ for K45/KD45; to check.
 existing S5 completeness; a first-order nested calculus `GKN` with the shared-plus-local contexts.
 (b) K45/KD45: add the outside root.  (c) B alone (KB, KTB, KDB): the computed contexts of §12.37.
 (d) K5/KD5 after the gap.  T's `TL` and the collapse carry over node by node.
+
+### 12.39 The first-order nested calculus `GKN`: contexts on a tree *(2026-11-16, paper)*
+
+The propositional prototype (§12.37–38) settles the judgement and the cut proof.  What it leaves
+open is everything first-order: which context a node has, where eigenvariables live, and what a
+relabelling does to the objects.  Nothing here is in Lean.
+
+**1. The problem.**  In `GK` a sequent has one context and a rule moves to a view of it
+(`Γ.boxIn`).  On a tree every node needs a context, and they are not independent:
+* an eigenvariable `u : □A` introduced at a node **after** its children exist must appear in them
+  (`u.box`), and in their children if `A` is again a `□` type;
+* with B a child's necessary object `m : □A` has a value at the parent, which must be nameable
+  there, and that value (if `A` is a `□` type) flows down again to every child;
+* the cut proof relabels nodes (`Der.subst`), so a relabelling must act on contexts.
+Choosing a context per node and imposing inclusions fails on the first point (contexts would have
+to be re-chosen at every eigenvariable rule).  Contexts must be **computed**.
+
+**2. The design: an address is an object and a walk.**  Every object is **born** at one node (an
+eigenvariable, or a declaration of the end sequent at the root), under a root name that is fresh
+for the **whole tree** (finite, so one exists; this replaces per-context freshness).  At another
+node the object is visible through a **walk** in the tree from its birthplace, each step consuming
+one `□` of its type:
+* a step **down** to a child is the existing `.box`;
+* a step **up** to the parent is new, `.back k`, `k` the index of the child left.  The index is
+  needed: `n.box.back k` and `n.box.back k'` are `n` carried to two different children and back,
+  two different objects of the parent.  (Down needs no index: the node determines its parent.)
+So **the context of a node is: the objects born anywhere, with the well-typed walks ending here**,
+plus the structural projections as now.  It is finite because each step shortens the type.  A
+possible object does not walk; it is read at a child by `◇⁰` (a witness of the edge), as now.
+* Without B there are no up-steps, and a node's context is the iterated `boxIn` of its ancestors'
+  declarations plus its own: exactly what `GK` builds along a branch.  So `GKN` restricted to one
+  branch is `GK`, which gives a first test (item 6).
+* The uniform picture of the review ("an operator per axiom's canonical arrow") becomes a statement
+  about addresses: **the level steps are the generators of the arrows of `Acc`**: `.box` an edge,
+  `.back k` its converse (B), `.here` the loop (T), `.keep` a composite (4), a side step (5).  The
+  frame laws are equations between walks.
+
+**3. Relabellings act on walks.**  A label map `f` that sends edges to accessibilities (`AdjPres`)
+sends a walk to a walk.  For K and B, where `Acc` is adjacency, each step maps to one step: down
+to down or up, up to up or down.  So `f` acts on addresses step by step, and on a formula as a
+**renaming of level steps**, a homomorphism like `collapse` and `shift`.  Retargeting a fresh child
+`c` of `τ` to the parent of `τ` (the B case of cut) renames, in `c`'s subtree, the first step
+`.box` out of `τ` to `.back i`.  This is the `ret` of §12.34, now derived from the relabelling
+instead of postulated.  With T, 4, 5 an edge may map to a composite or a loop, and the renaming
+sends one step to a short walk (`.here`, `.keep`); the existing `collapse` and `shift` are the
+instances "child retargeted to its own parent" (T) and "to a grandchild" (4).  **This is the
+principled reading of the three homomorphisms: each is the action of a relabelling.**
+
+**4. Semantics of a tree sequent.**  An interpretation sends each node to a world, each edge to an
+arrow (and under B its converse to `Frame.symm` of it), and each born object to an element at its
+birthplace; walks are then evaluated by `necEval` along the arrows.  The sequent holds if under
+every interpretation some left formula fails or some right formula holds, at its node.  Soundness
+of the relabelling lemma is that an interpretation of the image tree pulls back along `f`.
+
+**5. What changes in the rules.**
+* *Local rules:* at a node, in its context.  Eigenvariable rules take a tree-fresh name; every
+  formula at a descendant (and, with B, wherever the new walks reach) is weakened along the
+  context inclusion, as `allR` weakens today.
+* *`□`, `◇_x`:* `box` creates a child (for `◇_x`, with `◇⁰_x ⊤`); `□χ` on the left at `τ` puts
+  `χ`, read along the step, at any node `τ` sees.  This replaces `□R`'s unboxing and the folds:
+  the fold `◇_y θ ↦ ◇⁰_y θ` becomes "`◇_y θ` on the right at `τ` puts `◇⁰_y θ` at a child".
+* *Witness views (`◇⁰`, `◇⁰ᵀ`):* not nodes.  They stay as they are, inside a node: `optL` moves
+  the node's formulas into the view.  **Open:** whether the other nodes' formulas must be weakened
+  too (the opened content is local to the node, so I expect not), and how an opened view meets a
+  later relabelling of its node.
+* *T:* `TL` and `diaT` are the `□`/`◇_x` propagation along the loop, with the collapse as the
+  step renaming (item 3).  No separate rule.
+
+**6. Order of the build, each step a test.**
+1. `GKN` for K with `Opt` off, contexts computed downward only; cut by the prototype's proof;
+   equivalence with `GK` (a branch of the tree).  Tests computed contexts and tree-fresh names.
+2. Add `Opt` (witnesses, folds as propagation).  Tests item 5's open point.
+3. Weak B: the step `.back k`, the step-renaming lemma (item 3), cut.  The first new logic.
+4. S5 and K45/KD45 with the cluster contexts of §12.38 (a special case: walks inside a cluster
+   are identified by the uniformity laws, so the context is shared).
+5. Interpolation: per-node interpolants, then one formula; for B the operator `⇑` enters the
+   language here, with its ND rules.
+**Size:** step 1 is of the order of the existing `GK` files (2 000–3 000 lines, much of it
+adaptable); steps 2–3 about as much again.  **Risk:** Lean's dependent typing of "a formula over
+the context of its node" when the tree changes; mitigations: index formulas by the node's local
+declarations list instead of the computed context, or keep one global context of all addresses
+(object, walk) and a well-formedness predicate "this formula lives at node `τ`".  **Decide this
+representation first**; the second is closer to how `Ctx` works now (a function on addresses).
+
+**7. Does the ND system need to change?**  Not for cut elimination (`GKN` is equivalent to ND for
+the standard language as `GK` is).  For Craig with B the interpolant uses `⇑`, so the theorem is
+about the language with `⇑`, and ND needs `⇑` with its rules (self-dual, K-normal, "home is home",
+and B's transfer).  The relations `Back`, `retS`, `retxS` then become definable (§12.34).  So the
+operator programme for B is **driven by interpolation only**, and can come last.
+
+### 12.40 `⇑` decided; interpolation on the tree re-examined *(2026-11-16, paper)*
+
+**Decision (user, 2026-11-16): `⇑` replaces the planned `⟪back⟫`/`[back]`** (§12.29, §12.34), which
+were never built.  `⇑φ` in a view: `φ` at the world the view was entered from; self-dual; K-valid;
+B is the one rule `□χ ⊢ ⇑χ'` (`m.box ↦ m.back`).  `[back]` may return beside it if strong B's
+uniqueness needs stating.
+
+**Then: is "Craig for B holds in the language with `⇑`" (§12.37 item 6) true?  Not established;
+the argument there covered one case of three.**  Paper analysis, no Lean.
+
+*Setting.*  On a tree, Maehara gives an interpolant **per node** (a combination of labelled
+formulas).  Going down the derivation two things happen to it: at the rule that created a node
+`c`, the node is **eliminated** (its component becomes a `◇` or `□` formula of the parent); at the
+rule that introduced an eigen-object `z`, it is **bound** (`∀z` or `∃z`).  A single formula results
+only if every binder can be given a scope containing every use.
+
+*Case 1: the object is born at the child, used at the parent* (`m` at `c`, `m.back` at `τ`).
+This is what §12.37 treated.  When `c` is eliminated the parent's component moves into the child
+under `⇑`: `τ : ◇∃m.(C(m) ∧ ⇑D(m.back))`.  **`⇑` suffices.**  If `m.back` is also used further
+away (it is an object of `τ`, visible at `τ`'s other children), name it at `τ`:
+`∃z.(… ∧ ◇∃m.(C(m) ∧ ⇑(m.back ≡ z)))`, the returning possibility; this turns case 1 into the
+binding of a `τ`-object `z`, i.e. into case 2 or 3.
+
+*Case 2: the object is born at the parent **after** the child exists, and used in the child*
+(`z` at `τ`, `z.box` at the older child `c`).  Without B this never happens in `GK` (a child is
+finished before its parent continues).  With B it must: the parent learns from the child, names
+something, and the child uses it.  Binding `z` needs one formula scoping over `τ`'s component and
+`c`'s.  Rooted at `c` it reads `c : ⇑∀z.(D(z) ∨ ⇓C(z.box))`, where **`⇓` returns to the child the
+`⇑` came from**.  So the interpolant language needs **both directions along an edge**: formulas
+about a pair (parent, child) that may switch end, quantifying at either end.  `⇓` is not definable
+from `⇑`, `□`, `◇`: it means *that* child, and `◇` only says *some* child.
+* Under **strong B** every object of the parent is the home value of a necessary object of the
+  child (`backRet_exists`), so `⇑∀z…⇓…` can be rewritten with a quantifier of the child and `⇑`
+  alone.  So strong B may be exactly what makes `⇑` sufficient here.  Unchecked.  *(Retracted, §12.41 item 4.)*
+
+*Case 3: a parent object born after **two** children exist and used in both.*  The binder must
+scope over two specific children: "there are children `c′`, `c″` such that for all `z` …".  An
+edge formula reaches one child.  Either such derivations can always be rearranged (the object
+enters through one child's formula, so there may be a normal form in which the other child is
+created afterwards), or the interpolant language needs more than edges, or interpolation fails.
+**Open, and this is where a Fine-style counterexample for B would live.**
+
+*The same pattern in 5.*  §12.38 item 4 said clusters need no new operator because every node
+reaches every node by `◇`.  That reaches *some* node.  The existential and universal blocks are
+fine (`◇∃m.(I_b ∧ ◇I_c)`, `□∀m.(I_b ∨ □I_c)`), and since necessary objects are global in a
+cluster, a binder can sit at any node.  The mixed case, a specific node inside a universal object
+quantifier, is not covered.  **So §12.38 item 4 is also only partly argued.**
+
+**Consequences.**
+* The `⇑` decision stands: it is what the calculus uses and what B's ND rule is.
+* **Craig for first-order B (and for the clusters) is open again**, with the question now
+  precise: the binding of an object born at a node after one (case 2) or two (case 3) of its
+  neighbours exist.  Cut elimination is unaffected.
+* *Cheapest next test, paper:* write the smallest case-3 sequent (a child sends `∃z:□A` up, the
+  parent's `□`s send `z` into both children, the two sides of the split use it differently) and
+  either find its interpolant by hand or show there is none by a model argument, as Fine does.
+  A counterexample here would say the cube's B systems lack Craig even with first-class objects,
+  and would settle that `⇑` belongs to the calculus and ND only.
+* *If case 3 can be normalised away:* the object language needs `⇑` and `⇓` (edge formulas), a
+  larger change than `⇑` alone: `Ctx` must remember the child a `⇑` came from.
+
+### 12.41 Looking for a counterexample to Craig in first-order B *(2026-11-16, paper)*
+
+The test §12.40 asked for.  Weak B, varying domains, the object language with necessary objects,
+with and without `⇑`.  Paper only; "no interpolant" claims below are **not proved** (no model
+argument was completed), "interpolant" claims are checked by hand.
+
+**0. A correction of viewpoint first.**  In a KB model accessibility is symmetric, so a world's
+successors include the world it was reached from.  The tree's parent/child orientation is
+bookkeeping.  Two consequences used throughout:
+* a `□` at a child `c` already speaks about the parent `τ`, but only as **one of `c`'s
+  neighbours**, never specifically;
+* which objects have values where: a necessary object of type `□Var` has `Var`-values at its
+  world's neighbours and **not at its own world** (no T).  So nothing has values at both ends of
+  one edge; comparisons are between two neighbours of one world (`m.back` at `τ` and `m.box` at a
+  child of `c`), or after a **round trip** (`m : □□Var` at `c`, carried to `τ` and back to `c`).
+
+**1. First attempt: Fine's shape** ("some world where the `F`s are exactly the `G`s of here",
+which needs a rigid auxiliary predicate on each side).  Transplanted, the right-hand formula has
+to state "for every object of the middle world, at *that* grandchild …", and it cannot: the same
+inexpressibility that would block the interpolant blocks the premise.  Weakening the right side
+until it is expressible gives a pair whose interpolant is plain case 1
+(`◇∃m.(⇑G(m.back) ∧ ◇F(m.box)) ∨ …`).  **No counterexample.**
+
+**2. Second attempt: the `∀c ∃z_c` shape** (case 2 of §12.40).
+`φ := □[ □∃z:□Var.(□G(z.box) ∧ □R(z.box)) ∧ ∀y(Ry → Fy) ]`,
+`ψ := □[ ∀y(Fy → R′y) → ◇∃z:□Var.(□G(z.box) ∧ ◇R′(z.box)) ]`.
+`φ ⊢ ψ` in KB: the inner `□` at a child `c` reaches `τ`, giving `z` at `τ` with `G` everywhere
+and `R`, hence `F`, at `c`.  Common vocabulary `F`, `G`; both formulas are in the **plain**
+language (no `⇑`).  The fact in between, "for every child `c` some `z` of `τ` with `□G(z.box)` has
+`F(z.box)` at `c`", has the forbidden shape.  **But `φ` proves more**, because it spoke through
+`c`'s `□`: the same holds at **every** neighbour `n` of `c`, not only `τ`.  Seen from `n`, the
+world `c` is where the view was entered from, so
+**`I := □□∃z:□Var.(□G(z.box) ∧ ⇑F(z.back))`** is an interpolant (checked both ways).  It is
+case 1 again, re-rooted: the binder sits at the far end of the edge and `⇑` reaches back.
+* *(Withdrawn: a plain interpolant exists; see "§12.41 continued" below.)*
+  *So `⇑` earns its place here:* I see no interpolant in the plain language (the natural
+  candidate with `◇F(z.box)` in place of `⇑F(z.back)` does not imply `ψ`).  If that is right, the
+  **current B language fails Craig and `⇑` repairs this instance**.  Unproved; a bisimulation
+  argument between a one-child and a two-child model looks feasible.
+
+**3. Third attempt: force the specific parent.**  Give the left a formula true at `τ` only
+(`∀z(□R(z.box) → □G(z.box))`) so the generic strengthening of attempt 2 is lost.  Then
+uniformity returns from the other side: the only way `τ` talks about its children is a `□`, the
+same for all of them, so the left now proves `∃z.(□G(z.box) ∧ □F(z.box))`, binder before the
+children.  **No counterexample.**
+
+**4. Why the attempts fail: nobody can name a round trip.**  To make a `τ`-object depend on a
+particular child `c` and then be used at `c`, some formula would have to mention a value that
+went from `c` to `τ` and back to `c`.  In the object language (with `⇑`, without `⇓`) no formula
+context contains both that value and an atom of `c`: under `⇑` one cannot return.  So neither
+side of an entailment can state a fact of the forbidden shape; what a side proves about a
+parent-and-child pair is either **generic in the parent** (said through the child's `□`, so true
+of all its neighbours: re-root, use `⇑`) or **uniform in the child** (said through the parent's
+`□`: binder first).  The tree calculus *can* name round trips (its addresses are walks, §12.39),
+which is why naive Maehara on the tree produces `⇓`-shaped interpolants: they are, on this
+evidence, artefacts of the calculus being finer than the language.
+* **Conjecture: Craig holds for weak B in the language with `⇑` and without `⇓`.**
+* *Retraction:* §12.40 said strong B might make `⇑` sufficient by trading the parent's quantifier
+  for the child's.  It does not help: the round-trip value is still not nameable.  Strong B needs
+  its own check.
+* *Case 3* (two children) is the same phenomenon: a `τ`-object tied to two specific children
+  would need two round trips.
+
+**5. Comparison with propositional B.**  Propositional KB has Craig (standard; by nested sequents
+in the literature, from memory), and the reason is visible in the prototype's shape: an
+interpolant is one formula per node, a node is folded into its parent by `◇` or `□`, and with no
+binders nothing has to scope over two nodes.  B's rule moves a formula to the parent; it never
+ties the parent to *which* child sent it.  First-order B adds binders, and the only new question
+is whether a binder must scope over a specific pair of nodes.  Sections 2–4 say: only in the
+re-rootable way.  So the first-order proof should be the propositional one **plus a re-rooting
+step**, not a richer language.
+
+**6. Two ways to prove it.**
+* *Syntactic:* in the tree calculus, restrict B's transfer so that a formula sent up from `c` is
+  first used at a **fresh generic neighbour** of `c`, and at the real parent only together with
+  the parent's own formulas; show such derivations suffice; then Maehara meets only case 1 and
+  the uniform case.  The risk is the mixed step.
+* *Semantic:* Robinson joint consistency by amalgamating two KB models that agree on the common
+  language (symmetric frames are closed under the products bisimulation gives).  First-class
+  objects need their domains amalgamated, with `⇑` supplying the coherence of home values.  This
+  avoids binder scoping altogether and may be the shorter proof; it gives no interpolant.
+**Suggested:** before either, finish attempt 2 into a **theorem**: `φ ⊢ ψ`, `I` interpolates, and
+no plain formula does.  It is small, it is the first evidence that `⇑` is necessary rather than
+convenient, and its positive half can be checked in Lean once `⇑` has rules.
+*(Superseded: attempt 2 fails; the separating example is the case-1 pair below.)*
+
+**§12.41 continued: attempt 2 withdrawn, and a separating example of case 1 (2026-11-16, Opus,
+paper).**
+
+*Attempt 2 has a plain interpolant.*  `φ`'s inner `□∃z` is evaluated at **every** neighbour of a
+child `c`, and the parent `τ` is one of them.  So `φ` at `τ` says, as soon as `τ` has a child, that
+`τ` itself has `z` with `□G(z.box) ∧ □R(z.box)`, one `z` for **all** children; with `R ⊆ F` at
+each child,
+**`I₀ := □⊥ ∨ ∃z:□Var.□(G(z.box) ∧ F(z.box))`**
+interpolates (`I₀ ⊢ ψ`: at a child `c` with `F ⊆ R′`, the neighbour `τ` has `z` with `F`, hence `R′`,
+at `c`).  `I` is also an interpolant, but it is not needed.  The models `M₁`/`M₂` of the first
+re-check were wrong: in `M₁`, `□R(z.box)` at `τ` ranges over **both** children, and neither `zᵢ`
+is `F` at both, so `φ` fails there.  This is attempt 3's "uniform in the child" again (binder at
+the parent, before the children), so it is no evidence for `⇑`.
+
+*A separating example: case 1 (object born at the child, read at the parent).*
+* `φ := ◇∃m:□Var.□A(m.box) ∧ ∀y(Ay → Dy)`,
+  `ψ := ∀y(Dy → Ey) → ◇∃m:□Var.◇E(m.box)`.  Common vocabulary: `D`.
+* *`φ ⊢ ψ` in weak B:* the child `c` has `m` with `A` at all of `c`'s neighbours, `τ` among them
+  (B), so `A`, hence `D`, hence `E` holds of `m`'s value at `τ`, and `c` sees `τ`.  Not valid in K.
+* *Interpolant with `⇑`:* **`I₁ := ◇∃m:□Var.⇑D(m.back)`** (at `c`, `⇑` is `τ` and `m.back` is
+  `m`'s value there).  Both directions are immediate.
+* *Propositional shadow:* `◇□A ∧ (A → D) ⊢ (D → E) → ◇◇E` has the plain interpolant `D ∧ ◇⊤`.  The
+  first-order case differs only in that the `D`-fact is about **`m`'s** value at `τ`, and a plain
+  formula has no way to keep that link: from `c` the parent is just one of `c`'s neighbours, and
+  from `τ` the child's objects are out of scope (variables of type `Var` have no `box` view).
+* *No plain interpolant.*  Frame: `w – c – v` (symmetric, so weak B), evaluated at `w`.
+  Var-domains `w : {a, a′}`, `v : {b, b′}`, `c : ∅`; at `c` one necessary object `m : □Var`; every
+  other domain of a modal type empty (possible objects of `w` and `v`, if computed from the frame,
+  are `⟨→c, m⟩` on both sides and are matched by the identity below).  `D` is `{a}` at `w`, `{b}` at
+  `v`.
+  * `P`: `m` is `a` at `w`, `b′` at `v`; `A` is `{a}` at `w`, `{b′}` at `v`.  Then `φ` holds at `w`.
+  * `Q`: `m` is `a′` at `w`, `b` at `v`; `E` is `{a}` at `w`, empty at `v`.  At `w`, `D ⊆ E`, and
+    `m`'s values `a′` (not `E`) and `b` (`E` empty at `v`) refute the consequent: `ψ` fails.
+  * The `D`-reduct of `(Q, w)` is isomorphic to that of `(P, v)` (swap `w ↔ v`, `a ↔ b`,
+    `a′ ↔ b′`).  So it suffices that `(P, w)` and `(P, v)` satisfy the same plain `D`-sentences.
+  * *Bisimulation:* relate `w` to `v` by the local isomorphism `a ↔ b`, `a′ ↔ b′`, and every other
+    world to itself by the identity.  At the pair `(w, v)` a context holds only `Var`-variables
+    (the modal types are empty there), so moving to `c` (both sides have exactly that one
+    successor) leaves **nothing** of the assignment: `Var` has no `box` view.  From `c` on, both
+    sides are the identity.  Atoms, `≡` and quantifiers at `(w, v)` are preserved by the
+    isomorphism; everything below is identical.  So by induction on formulas the two pointed
+    models agree on every plain sentence.  (The induction is the routine one; what makes it work
+    is that the only non-identity pair is the top one, and nothing crosses its edge.)
+* **So the plain object language of weak B lacks Craig, and `⇑` restores this instance.**  This
+  is the "round trip is unnameable" phenomenon of item 4 from the other side: here the round trip
+  `τ → c → τ` must be named, and `⇑` is exactly the name.  The example is smaller than attempt 2
+  and uses only case 1, which §12.40 already showed `⇑` handles.
+* *Caveats (paper):* `P` and `Q` must be legitimate weak-B models in the project's semantics
+  (arrow-indexed `Frame.symm`, varying domains, empty modal domains allowed; possible objects as
+  the semantics defines them).  I see no obstruction, but the semantics has not been checked
+  against this in Lean.  The induction should be stated for the real `WFF` (with `◇_x`, `◇⁰`,
+  `≡` at modal types); its only non-trivial case is the one above.
+* *Consequences.*  `⇑` is **necessary** for Craig in weak B, not only convenient: if interpolation
+  is a goal for B, `⇑` belongs to the object language (roadmap item 6 decided in its favour, on
+  this evidence).  The conjecture of item 4 (Craig with `⇑`, without `⇓`) stands.  The example
+  should transfer to strong B unchanged in its positive half; the negative half needs domains
+  that strong B's existence laws allow (`P` and `Q` have empty modal domains at `w`, which strong B
+  may forbid), so **strong B needs its own check**, as item 4 already said.
