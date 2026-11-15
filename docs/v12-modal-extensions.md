@@ -16971,3 +16971,177 @@ it.
   the name, the IH at `readSlot`'s instance (same weight), and soundness for the semantic side
   (the name sentence true by construction, `sat_eqH`).
 * *Completeness:* M1's two passes; `NoAt` for the stages (or the weakened hypothesis).
+
+### 12.37 The sequent calculus for B (and 5): paper check of the judgement form *(2026-11-16, paper)*
+
+The question §12.34 left open and the review called the programme's largest risk: is "a path with
+a focus" enough for B, and does cut elimination survive?  Nothing here is in Lean.  Literature
+claims are from memory and unverified (Brünnler's nested sequents for the cube; Fitting–Kuznets and
+Lyon et al. for interpolation by nested sequents; Fine 1979 for the failures).
+
+**1. What B forces.**  Today `□R` forgets the parent's sequent except boxed hypotheses and folds.
+With B a child can send information back (`□χ` at the child gives `χ` at the parent), so the
+parent's sequent must stay available: the premise of `□R` carries **all** of it.  The fold
+(`◇_y θ ↦ ◇⁰_y θ`, §12.33) is the special case already built.
+
+**2. The carrier is not `[back]`/`⟪back⟫` but a self-dual "at the other end".**  Carrying `Δ ⇒ Θ`
+as `[back]Δ° ⇒ ⟪back⟫Θ°` breaks cut: a side formula `A` arrives as `⟪back⟫A°` on one side and
+`[back]A°` on the other, two different formulas.  Use one wrapper `⇑φ` ("`φ` at the world this
+view was entered from"), with `¬⇑φ ≡ ⇑¬φ`.  It is **K-valid** (it only remembers; this is §12.34's
+`home` mechanism, no arrow home is used), and `[back]`/`⟪back⟫` are needed only for what depends on
+the arrow home (the values `m.back`).  Dually `↓ᵢφ`: "`φ` at my `i`-th remembered child".
+
+**3. A path is not enough; the sequent is a tree with a focus.**  Going back up must keep the
+child's sequent (example: `◇(p ∧ □□¬p)` is KB-unsatisfiable; the refutation goes child, parent,
+child, and needs `p` again).  So the up-move wraps the child's formulas as `↓ᵢ`.  Two children of
+one world then need distinct indices: after `root → c₁ → root → c₂ → root` both are remembered.
+So: **contexts and sequents are finite trees with a focus** (a zipper), wrappers are relative
+paths.  This is a nested sequent written with formulas, as `@` internalises labels in hybrid logic.
+
+**4. The rules.**  Local rules as now, at the focus.  Three crossing rules, each moving the focus
+along one edge, wrapping every local formula and unwrapping the ones about the target:
+* `new` (`□R`, `◇_xL`, `serial`): to a fresh child; unboxes the boxed hypotheses (K).
+* `down i`: to the remembered child `i`; unboxes likewise (K: the edge is an arrow).
+* `up`: to the parent.  **Sound in K** as a pure refocus.  **B adds one thing: `up` also unboxes
+  the child's boxed hypotheses**, renamed by `ret` (`m.box ↦ m.back`, the value along
+  `Frame.symm a`, which is a function, so the way home is canonical per edge).
+Strong B, `BStrongW`: existence rules with no principal formula, as `T_dia` (§12.35 correction).
+**5 fits the same judgement:** a fourth crossing, child to sibling, unboxing (Euclid); no
+hypersequents are needed, contrary to §12.34.
+
+**5. Cut: the naive measure fails, a prefixed statement repairs it.**
+* *Failure:* a cut on a side formula of `new` must be done in the premise, at the child, against
+  the right derivation **lifted** there.  Lifting is one `up` application, so the left height
+  drops by one and the right rises by one: `n + m` does not decrease.  Lifting cannot be made
+  height-preserving (unlike `shiftD`): the lifted derivation acts at the parent, and the focus
+  calculus has no rule acting away from the focus.
+* *Repair:* never transport a derivation, only its end sequent.  **Prefixed cut:** from
+  `L : Δ₁ ⇒ W₁[A], Θ₁` at focus `u₁` and `R : W₂[A], Δ₂ ⇒ Θ₂` at focus `u₂` (`W₁`, `W₂` the
+  wrapper paths to one node `w`), conclude `Δ₁, P[Δ₂] ⇒ Θ₁, P[Θ₂]` at `u₁`, `P` the path
+  `u₁ → u₂`.  By `(weight A, hL + hR)`, wrappers weightless.  A crossing as last rule of `L`
+  changes `u₁`, `W₁`, `P` and is re-applied to the result, since crossings wrap and unwrap
+  **everything** (this is why nothing may be dropped); same for `R`.  Principal only when
+  `W₁ = W₂ = ∅`, `u₁ = u₂ = w`.  Axioms on unwrapped atoms only; there the other derivation is
+  moved by a chain of crossings (allowed: no height constraint in that case).
+* *Principal `□φ`:* `new` on the left (fresh `c`) against, on the right, `new` (fresh `c'`),
+  `down i`, or B's `up` using `□φ`.  Needs **retargeting the fresh child**, height kept: to `c'`
+  (eigen-world renaming, as `eigenRename`), to a remembered child `i` (weakening, `monoCtx`), and
+  for B **to the parent** (`up`/`down` exchanged, `m.box ↦ m.back`): the admissible form of
+  Brünnler's B structural rule, and the one new lemma of real size.  Checked on the rule list
+  above; not on every case.
+
+**6. Interpolation (Maehara).**  Crossings have one premise; the interpolant crosses with the same
+wrapper swap.  `new` with interpolant `I` at the fresh child (`⇑`-parts and local parts): in K the
+`⇑`-parts pull out (`◇(⇑ψ ∧ χ) ≡ ψ ∧ ◇χ`), giving a wrapper-free interpolant.  **With B they do
+not** when `ψ` mentions a child's object moved home: `◇∃m.(χ(m) ∧ ⇑ψ(m.back))`.  So Craig for B
+holds **in the language with `⇑`**, and that formula is §12.34's returning possibility.  This is
+where Fine's failure goes: the standard language cannot say it.  A root sequent has no `↓`, and
+neither has its interpolant.
+
+**7. Two implementations.**
+* (W) wrappers as connectives, focus calculus, prefixed cut: one ND system and one language, but
+  `Ctx` becomes a tree (`home`, children) under every existing file.
+* (N) **nested sequents as data**: a tree of nodes, each with its context and two lists; rules act
+  at any node; node contexts **computed** from local declarations (parent's via `boxIn`, child's
+  via `ret`; the alternation `m.back.box…` ends because types shrink).  `WFF` unchanged for the
+  calculus; `⇑` enters the language only for interpolants and ND.  Cut is Brünnler's deep cut; no
+  prefixes, no focus.  Much cheaper, and cut elimination can be tested before any language change.
+**Recommended: (N) first**, as a new judgement `GKN` beside `GK`, B only, weak form; then the ND
+rules for weak B with `⇑`; then interpolation.  **Cheapest real test:** a propositional KB
+prototype of (N) with cut elimination in Lean (a few hundred lines), before any quantifier work.
+
+**8. Verdict.**  B's calculus is no longer "open research" on paper: judgement form, rules, the
+cut measure and the interpolant are identified, and 5 shares the judgement.  Risks: the
+retargeting-to-parent lemma with first-class objects (the `ret` renaming under quantifiers and
+witnesses); computed node contexts in Lean; strong B's existence rules against retargeting.
+
+**§12.37, the prototype built (2026-11-16): `QML/KBNestedProto.lean`, namespace `KBN`.**
+Propositional KB, negation normal form, one-sided; a sequent is a list of **labelled** formulas, a
+label the path of child indices from the root (a nested sequent written flat, rules at any node).
+Builds, no `sorry`, standard axioms only.  About 470 lines.
+* Rules: `box` (`□A` at `τ` opens a fresh child with `A`), `dia` (`◇A` at `τ` puts `A` at any
+  existing **neighbour**: a child is K, **the parent is B**; one rule), `ax`, `and`, `or`.
+* ⭐`Der.subst`: derivations are closed, height kept, under any label map preserving adjacency
+  (`AdjPres`); the fresh child of a `box` is re-chosen by moving its subtree (`moveSub`).
+* ⭐`Der.retarget`: a fresh child retargeted to any neighbour of its parent, an existing child or
+  **the parent's parent**.  This was the lemma §12.37 called "of real size"; it is three lines from
+  `subst`, because retargeting to the parent is just another adjacency-preserving map.
+* `Der.weaken` (height kept; its `box` case renames the fresh child by `retarget`), `perm`,
+  `Prin`, ⭐`KBN.cut` (by weight then heights, as `GK.cut`).  The principal `□`/`◇` case: retarget
+  the `box` premise to the neighbour the `dia` rule used, cut the modal formula out of both
+  premises, cut the body at the neighbour.  K and B are the **same case**.
+* `KBN.b_axiom`: `p → □◇p`.
+* *What it settles:* the tree judgement supports cut for B with no prefixed cut statement and no
+  focus (rules act at any node).  *What it does not:* soundness and completeness of the prototype
+  (not proved), quantifiers, objects, the computed node contexts, strong B, interpolation.
+* *One thing learned:* cut is at a node that **has a formula** (`Pop`): a `dia` to a child needs the
+  child to exist, and cutting away its only formula must not delete it.  A full calculus should
+  carry the node set explicitly.
+
+### 12.38 The sequent calculus for 5: sketch *(2026-11-16, paper; the propositional part in Lean)*
+
+**1. Propositionally, 5 costs nothing (checked in Lean).**  The prototype (`QML/KBNestedProto.lean`)
+is now parametric: `Sys` (flags T, B, 4, 5), `Acc S` the tree's edges closed under the system's
+frame conditions, one `dia` rule ("`A` at any existing node `τ` sees"), one cut proof,
+`KBN.cut`, for all sixteen systems.  The frame conditions enter in one lemma (`AdjPres.adj`: a
+label map sending edges into `Acc` preserves `Acc`, because `Acc` is a closure).  `five_axiom`:
+`◇p → □◇p` by `eucl` on two edges of the root.  So §12.34's fear (hypersequents, a different
+judgement) is unfounded: 5 is the same tree, with more nodes visible from each node.  D is not in
+the prototype (it needs a rule creating a child with no principal formula, as `serial`).
+
+**2. What the tree looks like under 5.**  From a root `w`, Euclid makes the children of `w` see
+each other and themselves, and their descendants join them: everything below the root is one
+**cluster** `C`, with the root seeing a part `S ⊆ C` (the facts behind `GArrow.cmodel` and the
+hub).  With 4 as well, `S = C` and depth collapses: a child of a child is a sibling.  With T or B
+the root is in the cluster.  So a derivation's tree is "a root and a cluster": the grafted
+hypersequents of the literature (Kuznets–Lellmann, from memory), here simply what `Acc` computes.
+
+**3. The first-order calculus with 4 (K45, KD45, KB5, S5): expected to be easier than B.**
+The semantic work already done says what the node contexts are (`GCluPre`, `GCluNames`,
+`GCluDia`: uniformity).  In a cluster with 4 and 5:
+* a **necessary object** born at any node has exactly one value at every node of the cluster and
+  is necessary at each (`a ; side a b = b` and the side laws): it is **global** to the cluster;
+* a **possible object** has one extent, a set of cluster nodes, whichever node reads it: also
+  global, and "this node is in `x`'s extent" (`◇⁰_x ⊤`) is a property of the node alone, not of
+  the arrow it was reached by.  So `◇_x φ` is `◇ ◇⁰_x φ` with `◇⁰_x` absolute;
+* only objects of non-modal type are local to a node.
+So **a node context is a shared cluster context plus a local part**, and no node's context
+depends on a neighbour's.  That removes B's hard point (parent and child contexts computed from
+each other through `ret`).  Rules: `box` creates a cluster node; `□χ` at a node sends `χ` to every
+node it sees (`Acc`); `◇_x` creates a node with `◇⁰_x` present; quantifier rules at a node, modal
+typed eigenvariables entering the shared context.  Cut: the prototype's proof; retargeting a fresh
+node to an existing one is weakening of the local part.  The root, when outside the cluster (K45,
+KD45), has its own context, read downward only: K's existing treatment.
+
+**4. Interpolation with 4 and 5: plausible without any new operator.**  Maehara over the tree
+gives one interpolant per node; they must become one formula at the root.  Inside a cluster every
+node sees every node, so the component at `c` is reached from `b` by `◇`, and a shared object
+bound at `b` (`∃m:□A`) is read at `c` through the `□` view: `◇∃m.(I_b(m) ∧ ◇ I_c(m.box))`.  No
+`⇑` is needed (B needed it because the parent is not reachable by `◇` from the child without B's
+own axiom, and the interpolant must not use it).  Shared **possible** objects bind the same way.
+Unchecked: shared objects of the root against the cluster's (the root cannot name cluster-born
+objects; it never needs to unless B is on, and then the root is in the cluster); the split of
+`◇⁰_x` formulas; Fine's S5 example in this form (`FineExample` suggests it is avoided, since
+individuals do not cross `□`, only modal-typed objects do).
+
+**5. 5 without 4 (K5, KD5): blocked where completeness is.**  Without 4 arrows do not compose, so
+a cluster-born necessary object has values across the cluster but is not necessary there, and the
+arrows between cluster nodes are terms (`side d (side a b)`, …) whose identification needs the
+side laws (`side_side`, `side_loop`) to be confluent on the tree.  That is the K5/KD5 gap of the
+cube (F2: links only; the missing `◇`-gather).  The calculus can be written with arrow terms on
+the edges of `Acc`, but its cut proof needs exactly the coherence the semantics lacks.  **Do not
+build it before the gap is closed**; if the diagonal map `m.side : □A → □◇A` (§12.34, corrected)
+closes the gap, the node contexts become "necessary objects are global as possible objects", and
+item 3's design should adapt.
+
+**6. Strong 5.**  The gather (`FiveStrong`: a successor's necessary object is one of the root's)
+and the `◇`-gather are existence rules with no principal formula, as `T_dia` (§12.35 correction):
+cut permutes past them.  In the calculus they let a cluster-born shared object be bound **at the
+root**, which is what a root-level interpolant needs when the root is outside the cluster and
+both sides mention the object.  So strong 5 may be exactly the interpolation-relevant strength
+for K45/KD45; to check.
+
+**7. Order.**  (a) S5 first: no root outside the cluster, no B-specific context problem, and the
+existing S5 completeness; a first-order nested calculus `GKN` with the shared-plus-local contexts.
+(b) K45/KD45: add the outside root.  (c) B alone (KB, KTB, KDB): the computed contexts of §12.37.
+(d) K5/KD5 after the gap.  T's `TL` and the collapse carry over node by node.
