@@ -16924,3 +16924,50 @@ at names).  Complementary.
      (IH, same weight), `⟺ ◇⁰ᵀ_x χ` true by **soundness** of 2., the name sentence being true in
      the canonical environment by construction (the content *is* the name's value; `sat_eqH`).
   **No semantic lemma for the renaming is needed**, only 1.
+
+**§12.36, steps 2–3 built: reading at names, the round trip, the ND facts (2026-11-15).**
+* *Name a fresh free root, not a slot* (correction to the refinement above): `readNames` keeps the
+  slot index, so a slot name would collide with the formula's own binders; `bindFree` turns the
+  result into the slot formula (`TCanon.readSlot`).
+* `QML_v12m_ReadNamesSubst.lean`: `Subst.PreRead` (entries at renamed addresses, witnesses one level
+  out, and the `named` clause: a name goes where the identity content goes), `preRead_of/box/dia/
+  under/optIn/optInT`, ⭐`Term.subst_readNames`, ⭐`WFF.subst_readNames` (substituting into a
+  formula read at names; general in `ν`, every view).
+* `QML_v12m_TCanonRead.lean`: `VarSymb.NoAt`, `Ctx.NoAt` (stage contexts declare no `at` step —
+  to be proved for the stages), `TCanon.nameAt`, `readsName`, ⭐`roundTrip` (`Φ(x.at) = χ` in the
+  view, through the legal `c ↦ x.at`), `readSlot`, `nameSent` (`◇⁰ᵀ_x (x.at ≡ t)`), and the ND
+  facts ⭐`optT_named` (`nameSent t, ◇⁰ᵀ_x χ ⊢ Φ(t)`: `opt_fun`, Leibniz, `opt_out`) and
+  ⭐`named_optT` (the converse: `K_opt`, Leibniz with `eqH_symm`).  Strict build clean.
+* **The crux is closed on the syntactic side.**  Left for the tree: `Ctx.NoAt` for the stages, the
+  bridge from `IdName`'s sentence to `nameSent` (the instance of `optNameT`), then the frame (RT,
+  SuccT, extent with the self arrow, RDomT, rdenT), the term lemma, the truth lemma's new cases
+  (the `◇⁰ᵀ` one by `optT_named`/`named_optT` and soundness), completeness.
+
+**§12.36, the bridges built (2026-11-15):** `TCanon.instantiate_optNameT` (`optNameT` filled with a
+term in a larger context is `◇⁰ᵀ_y (y.at ≡ t)`) and `IdName.nameSent_mem` (an identity name's
+sentence is `nameSent` at its stage).  *Open:* `Ctx.NoAt` is stronger than needed (a user context
+may open identity witnesses itself; there `◇⁰ᵀ_x` is `χ` by reopening and no reading is needed);
+weaken `readsName`'s hypothesis to "`x.at`-prefixed addresses are undeclared" when the tree needs
+it.
+
+**§12.36, plan for the frame (step 4 on), to build next:**
+* *Where:* generalise M1 in place (`OCanonDom`, `OCanonModel`, `OCanonTerm`, `OCanonTruth`,
+  `OCanonCompleteness`), each file kept compiling; M1's `[ModalSys.NoT]` becomes `[ModalSys.TOpt]`
+  (T only with `Opt`), its statements the T-off special case.
+* *Frame:* `RT w w' := AccO hO w w' ∨ (ModalSys.T = true ∧ w' = w)`, `SuccT`; `refl` the right
+  disjunct; `trans`, `symm`, `side` as now (4, B, 5 off under `Opt`).
+* *Extent:* `extentT w x := {children that opened x} ∪ {self | IdPres w x}`.
+* *Raw objects and denotations:* `RDomO` over `SuccT`.  `rdenO (boxtm t)` at the self arrow:
+  `rdenO w i (collapse t)` (`collapses_boxIn_self`).  `rdenO (diatm x t)` at the self arrow (when
+  present): the body read at the identity content's name — `Term.readNames` of
+  `Term.collapse (collapses_diaIn_optInT) t` at `nameAt x c`, at the stage `i ⊔ d.i₀` of the chosen
+  name `d := IdPres.name` (terms only, so `Term.readNames` and a term round trip suffice).
+* *Term lemma (`interp_canonO`):* the self arrow's push of the canonical environment agrees with
+  the canonical environment read through the collapse (`Env.collapseAgree_self`,
+  `collapseAgree_diaIn_optInT`) and, for a possible term, through the name (content = the name's
+  value, by definition).
+* *Truth lemma:* `□` at the self arrow by `T_box` and `sat_boxHere`; `◇_x` at the self arrow by
+  `diaT`'s chain (bridge, `T_box`) and `sat_collapse`; ⭐`◇⁰ᵀ_x χ` by `optT_named`/`named_optT` at
+  the name, the IH at `readSlot`'s instance (same weight), and soundness for the semantic side
+  (the name sentence true by construction, `sat_eqH`).
+* *Completeness:* M1's two passes; `NoAt` for the stages (or the weakened hypothesis).
