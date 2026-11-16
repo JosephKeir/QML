@@ -46,6 +46,21 @@ end Canon
 
 variable [ModalSys]
 
+/-- ⭐A context declaring **no address that ends in an identity reading** (`u.at`).  Deeper
+    identity readings, an `at` step followed by a level step (`y.at.box` in a `□` view of an
+    identity view), are allowed: reading at a name at level 0 never touches them. -/
+def Ctx.NoTopAt (Γ : Ctx) : Prop := ∀ u T, Γ (.step u .at) = some T → False
+
+theorem Ctx.noTopAt_boxIn (Γ : Ctx) : Γ.boxIn.NoTopAt :=
+  fun _ T hv => by cases (show (none : Option VarType) = some T from hv)
+
+theorem Ctx.noTopAt_diaIn (Γ : Ctx) (x : VarSymb) : (Γ.diaIn x).NoTopAt :=
+  fun _ T hv => by cases (show (none : Option VarType) = some T from hv)
+
+omit [ModalSys] in
+theorem Ctx.NoTopAt.optIn' {Γ : Ctx} (h : Γ.NoTopAt) (y : VarSymb) : (Γ.optIn y).NoTopAt :=
+  fun u T hv => h u T (by rwa [Ctx.optIn_ne (fun he => by cases he)] at hv)
+
 theorem CtxExpr.noProjLast : ∀ e : CtxExpr, e.denote.NoProjLast
   | .empty => fun _ _ h => by simp [CtxExpr.denote, Ctx.empty] at h
   | .insertFree e _ T => (CtxExpr.noProjLast e).insert _ T
@@ -133,6 +148,11 @@ structure World where
   L : WorldLang
   hρ : ∀ n, L.ρ n = names N₀ depth n
   hfresh : ∀ m d n, depth ≤ d → (L.base m).RootFresh (.free (names N₀ d n))
+  /-- ⭐With T and `Opt` on, **the language declares no identity reading at its top**: a world's
+      own identity contents are named by Henkin roots (`TCanon.IdName`), never declared, so every
+      stage is read at names faithfully.  Route 2 (`completenessO`) reduces the contexts that
+      do declare one to those that do not. -/
+  noTopAt : ModalSys.T = true → ModalSys.Opt = true → ∀ m, (L.base m).NoTopAt
   T : Set (L.sys.Sentence σ)
   mcs : StageSys.IsMCS T
   /-- Henkin witnessing for `∃`, **at a declared root**: the chain witnesses an existential by

@@ -32,22 +32,12 @@ open Canon
 variable {σ : Signature} {N₀ : ℕ}
 
 variable (hO : ModalSys.Opt = true) [Countable σ.FuncSyms] [Countable σ.RelSyms]
-  (w₀ : World σ N₀) [ModalSys.WeakTO]
+  (w₀ : World σ N₀)
 
 /-- ⭐The canonical model with `Opt` on is a model proper: its `Ind` is equality. -/
 theorem indInvariantT : (modelT hO w₀).IndInvariant :=
   Model.indInvariant_of_eq (fun _ _ h => h)
     fun hS => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_BStrong hS)).elim
-
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.WeakTO] in
-/-- Weakening the name sentence. -/
-theorem nameSent_mono {Γ Γ' : Ctx} (h : Γ.Le Γ') (hT : ModalSys.T = true) {x : VarSymb}
-    {A : VarType} (hx : Γ.ref x = some (.VTypeDia A)) {a : Ann A} (t : Term σ Γ A a) :
-    WFF.mono h (TCanon.nameSent hT hO hx t) = TCanon.nameSent hT hO (h.ref hx) (Term.mono h t) := by
-  change WFF.optx hO .ident x _ (WFF.mono (h.optInK .ident x) (eqH hO A _ _)) =
-    WFF.optx hO .ident x _ (eqH hO A (Term.eta (.step x .at) A _)
-      (Term.mono (Ctx.le_optInT Γ' x) (Term.mono h t)))
-  rw [eqH_mono, Term.mono_eta, Term.mono_mono, Term.mono_mono]
 
 /-- ⭐**The name sentence is true**: at a stage past the name, `y` is realised at the world itself
     with its content `≡` to the name. -/
@@ -175,7 +165,7 @@ theorem identCase (n : ℕ) {w : World σ N₀} (hna : StagesNoAt w)
     _ ↔ (⟨i, .optx hO .ident y ⟨_, hyT⟩ χ⟩ : w.L.sys.Sentence σ) ∈ w.T :=
         (World.mem_lift (w := w) (φ := .optx hO .ident y ⟨_, hyT⟩ χ) hK).symm
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.WeakTO] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 /-- ⭐Under T with `Opt`, at the self arrow the `◇_x` view's witnesses are the identity witnesses
     of `x`'s identity view: the collapse onto it respects witnesses. -/
 theorem collapseOpt_diaIn_optInT_self {M : Model σ} (hT : ModalSys.T = true)

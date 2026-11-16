@@ -144,9 +144,6 @@ theorem Ctx.optIn_optInTs_comm {Γ : Ctx} (z : VarSymb) :
 
 theorem Ctx.noTopAt_empty : Ctx.empty.NoTopAt := fun _ _ h => by cases h
 
-theorem Ctx.noTopAt_diaIn (Γ : Ctx) (x : VarSymb) : (Γ.diaIn x).NoTopAt :=
-  fun _ T hv => by cases (show (none : Option VarType) = some T from hv)
-
 /-- ⭐**Identity openings move to the end of a presentation**: every presented context is a context
     with no identity reading at its top, presented, with the openings that took effect applied
     last. -/
@@ -260,7 +257,7 @@ theorem complete_optInT {C : Ctx} {y : VarSymb} {X : VarType} (hy : C.witT y = s
   exact (Provable.of_all hall hp).map
     (Proof.opt_out hO .ident y ⟨X, (Ctx.le_optInT C y).witT hy⟩)
 
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.WeakTO]
+variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
 /-- Completeness over the opened contexts of a presented context with no identity reading at its
     top, by the reduction, one opening at a time. -/
@@ -286,7 +283,7 @@ theorem completenessO (hO : ModalSys.Opt = true) {Γ : Ctx} [hp : Γ.Presented]
   subst hΓ
   exact complete_optInTs hO e' hf' hna L heff hval
 
-/-- ⭐**Soundness and completeness with `Opt` on, T included** (strong T off), for every presented
+/-- ⭐**Soundness and completeness with `Opt` on, T and strong T included**, for every presented
     context over a countable signature. -/
 theorem provable_iff_validO (hO : ModalSys.Opt = true) {Γ : Ctx} [Γ.Presented]
     {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} : Provable Δ φ ↔ ValidO Δ φ :=

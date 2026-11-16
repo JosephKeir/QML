@@ -15,8 +15,9 @@ reading at the top (`StagesNoAt`, `Ctx.NoTopAt`), which the truth lemma needs, p
 user's context declares none: identity views opened under a later view are allowed.  Contexts
 with an identity view opened at the top are the next step (§12.36, route 2).
 
-⭐`OCanon.completenessT`: with `Opt` on and strong T off, a sequent in a presented context declaring
-no identity reading that holds in every model is provable — K, D, KT and KDT, weak and strong D.
+⭐`OCanon.completenessT`: with `Opt` on, strong T included, a sequent in a presented context
+declaring no identity reading that holds in every model is provable — K, D, KT and KDT, weak and
+strong D and T.
 -/
 
 namespace V12M
@@ -62,7 +63,6 @@ theorem mem_witList {Γ : Ctx} [Γ.Presented] {P : VarSymb → Prop} {y : VarSym
   rfl
 
 variable {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms] (hO : ModalSys.Opt = true)
-  [ModalSys.WeakTO]
 
 include hO in
 /-- ⭐**Completeness with `Opt` on, T included**: a sequent in a presented context declaring no
@@ -92,7 +92,8 @@ theorem completenessT {Γ : Ctx} [Γ.Presented] (hΓ : Γ.NoTopAt) {Δ : List (W
       convert (List.mem_cons_self : φ.neg ∈ φ.neg :: Δ) using 1
       exact WFF.mono_refl _ _
   let w₁ : Canon.World σ (Ctx.Presented.bound Γ) :=
-    Canon.World.ofHenkin 0 L₀ (fun _ => rfl) (fun _ d n _ => hfresh d n) S₀ hS₀ none
+    Canon.World.ofHenkin 0 L₀ (fun _ => rfl) (fun _ d n _ => hfresh d n) (fun _ _ _ => hΓ)
+      S₀ hS₀ none
   -- presence, as the first pass decides it
   let P : VarSymb → Prop := fun y => ∃ hy : ∃ X, Γ.wit y = some X,
     (⟨(0, 0), WFF.optx hO .arrow y hy .top⟩ : w₁.L.sys.Sentence σ) ∈ w₁.T
@@ -130,7 +131,8 @@ theorem completenessT {Γ : Ctx} [Γ.Presented] (hΓ : Γ.NoTopAt) {Δ : List (W
       exact (World.mem_lift (w := w₁) (hlift m)).mp hp
     · exact h₀ ψ h
   let w₀ : Canon.World σ (Ctx.Presented.bound Γ) :=
-    Canon.World.ofHenkin 0 L₁ (fun _ => rfl) (fun _ d n _ => (hfresh d n).optIns Lr) S₁ hS₁ none
+    Canon.World.ofHenkin 0 L₁ (fun _ => rfl) (fun _ d n _ => (hfresh d n).optIns Lr)
+      (fun _ _ _ => hΓ.optIns' Lr) S₁ hS₁ none
   have hfirst : ∀ {m : ℕ} {ψ : WFF σ Γ 0}, (⟨(m, 0), ψ⟩ : w₁.L.sys.Sentence σ) ∈ w₁.T →
       (⟨(m, 0), WFF.mono (Ctx.le_optIns Γ Lr) ψ⟩ : w₀.L.sys.Sentence σ) ∈ w₀.T :=
     fun h => WorldLang.subset_finalT S₁ ⟨_, h, rfl⟩

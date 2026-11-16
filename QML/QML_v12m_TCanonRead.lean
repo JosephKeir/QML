@@ -41,10 +41,6 @@ theorem VarSymb.readNames_noAt {ν : VarSymb → Option VarSymb} :
 /-- A context declaring no identity reading (the stages of a world). -/
 def Ctx.NoAt (Γ : Ctx) : Prop := ∀ v T, Γ v = some T → v.NoAt
 
-/-- ⭐A context declaring **no address that ends in an identity reading** (`u.at`).  Deeper
-    identity readings, an `at` step followed by a level step (`y.at.box` in a `□` view of an
-    identity view), are allowed: reading at a name at level 0 never touches them. -/
-def Ctx.NoTopAt (Γ : Ctx) : Prop := ∀ u T, Γ (.step u .at) = some T → False
 
 omit [ModalSys] in
 theorem Ctx.NoAt.noTopAt {Γ : Ctx} (h : Γ.NoAt) : Γ.NoTopAt := fun _ T hv => (h _ T hv).1 rfl

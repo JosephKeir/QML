@@ -522,3 +522,14 @@ identity-present witnesses in the Henkin chain (M1's path; touches shared WorldL
 - 2026-11-16 (Opus): ROUTE 2 BUILT: KT/KDT with Opt COMPLETE FOR EVERY PRESENTED CONTEXT (TCanonOpenT: commutation, CtxExpr.normT, complete_optInT, completenessO, provable_iff_validO; TCanonKTAll: provable_iff_validO_KT/KDT, in TOP). Standard axioms. UNCOMMITTED. Next: retire M1 OCanon files (completenessO covers T off), strong T/NecT.
 - 2026-11-16 (Opus): M1's OCanon{Dom,Model,Term,Truth,Completeness} DELETED (superseded by TCanon*, completenessO); OCanonView/Child kept. Next for KT: strong T, NecT.
 - 2026-11-16 (Opus): strong T and NecT SCOPED (docs 12.36 'strong T and NecT: scope'): strong T needs only the canonical law posRet_exists: per-witness SelfIn (model fields quantify over all worlds) + CANONICAL FAITHFULNESS OF == (t == s in theory => equal raw denotations; the diamond case is the risk); NecT needs a new flag/rule/law (breadth: new Proof constructor in ~18 files + GK), canonical case then short. Order: strong T first.
+
+**2026-11-16, strong T started (uncommitted).** `World.noTopAt` field (T ∧ Opt → no top-level
+`at` in any base; every constructor supplies it), so `OCanon.World.stagesNoAt` holds at every
+world and `SelfIn` needs no refactor.  The witness comes from `T_dia` + `World.exW` (no Henkin
+change).  `QML_v12m_TCanonFaith.faithO` (≡ in the theory ⇒ equal `rdenO`): Var/𝟙/×/□ done, **◇ a
+`sorry`**.  Plan in docs §12.36 "strong T: first steps".  Later the same day: `faithO` done except the **self-arrow content** (one `sorry` in
+`faithO_dia`); the obstacle is that reading at a declared name, `R_{x→d}`, is not a substitution, so
+`[c ↦ d] ∘ R_{x→c} = R_{x→d}` needs a direct proof (option R in docs §12.36, est. 400-700 lines).  **Then option R built: STRONG T WITH Opt COMPLETE** (2026-11-16, uncommitted): ReadRen
+(`Term.subst_readRen`, `WFF.readNames_eqH`, `selfEq`, `selfCombine`), `faithO` sorry-free,
+TCanonRet (`exists_realHyp`, `posRet_rden`), modelT's real `posRet_exists`, WeakTO deleted,
+`ModalSys.KTSOpt` + `provable_iff_validO_KTS`.  Next: NecT.

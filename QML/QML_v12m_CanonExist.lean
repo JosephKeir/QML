@@ -51,6 +51,7 @@ variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 /-- The Henkin construction over a consistent starting theory gives a world. -/
 noncomputable def ofHenkin (d : ℕ) (L₀ : WorldLang) (hρ : ∀ n, L₀.ρ n = names N₀ d n)
     (hfresh : ∀ m d' n, d ≤ d' → (L₀.base m).RootFresh (.free (names N₀ d' n)))
+    (hnt : ModalSys.T = true → ModalSys.Opt = true → ∀ m, (L₀.base m).NoTopAt)
     (S₀ : Set ((L₀.pre []).Sentence σ)) (hS₀ : StageSys.Consistent S₀)
     (par : Option (World σ N₀)) : World σ N₀ where
   depth := d
@@ -58,6 +59,7 @@ noncomputable def ofHenkin (d : ℕ) (L₀ : WorldLang) (hρ : ∀ n, L₀.ρ n 
   L := L₀.final S₀
   hρ := hρ
   hfresh := hfresh
+  noTopAt := hnt
   T := L₀.finalT S₀
   mcs := WorldLang.finalT_isMCS hS₀
   exW := WorldLang.finalT_ex_witness hS₀
@@ -152,7 +154,8 @@ variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 noncomputable def boxWorld (w : World σ N₀) {i : ℕ × ℕ} (χ : WFF σ (w.L.ctx i).boxIn 0)
     (hχ : (⟨i, .box χ⟩ : w.L.sys.Sentence σ) ∉ w.T) : World σ N₀ :=
   World.ofHenkin (w.depth + 1) (boxLang w) (fun _ => rfl)
-    (fun m _ n hd => (w.fresh_deeper hd n (m, m)).boxIn) (boxStart w χ)
+    (fun m _ n hd => (w.fresh_deeper hd n (m, m)).boxIn) (fun _ _ _ => Ctx.noTopAt_boxIn _)
+    (boxStart w χ)
     (boxStart_consistent w χ hχ) (some w)
 
 theorem boxWorld_acc (w : World σ N₀) {i : ℕ × ℕ} (χ : WFF σ (w.L.ctx i).boxIn 0)
@@ -302,7 +305,8 @@ noncomputable def diaWorld (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}
     (hx : ∃ X, (w.L.ctx i).ref x = some (.VTypeDia X)) (χ : WFF σ ((w.L.ctx i).diaIn x) 0)
     (hχ : (⟨i, .dia x hx χ⟩ : w.L.sys.Sentence σ) ∈ w.T) : World σ N₀ :=
   World.ofHenkin (w.depth + 1) (diaLang w x) (fun _ => rfl)
-    (fun m _ n hd => (w.fresh_deeper hd n (m, m)).diaIn x) (diaStart w x χ)
+    (fun m _ n hd => (w.fresh_deeper hd n (m, m)).diaIn x)
+    (fun _ _ _ => Ctx.noTopAt_diaIn _ _) (diaStart w x χ)
     (diaStart_consistent w x hx χ hχ) (some w)
 
 theorem diaWorld_acc (w : World σ N₀) (x : VarSymb) {i : ℕ × ℕ}

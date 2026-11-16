@@ -82,7 +82,7 @@ theorem rdenO_eta_le {Γ₁ Γ₂ : Ctx} (h : Γ₁.Le Γ₂) {w : World σ N₀
     (Term.mono_eta h v T p₁).symm, rdenO_mono]
   exact rdenO_congr _ _ _ _ _ _
 
-variable [Countable σ.FuncSyms] [Countable σ.RelSyms] (w₀ : World σ N₀) [ModalSys.WeakTO]
+variable [Countable σ.FuncSyms] [Countable σ.RelSyms] (w₀ : World σ N₀)
 
 /-- The canonical value of a visible address: its η-expansion's denotation. -/
 noncomputable def canonVal (w : World σ N₀) (i : ℕ × ℕ) (v : VarSymb) (T : VarType)
@@ -249,7 +249,7 @@ theorem diaPush_agree_canonO (w : World σ N₀) (i : ℕ × ℕ) {x : VarSymb} 
 
 /-! ## The self arrow -/
 
-omit [Countable σ.FuncSyms] [Countable σ.RelSyms] [ModalSys.WeakTO] in
+omit [Countable σ.FuncSyms] [Countable σ.RelSyms] in
 theorem sig_readNames {ν : VarSymb → Option VarSymb} {k : ℕ} {Γ₁ Γ₂ : Ctx}
     (h : Ctx.ReadsNames ν k Γ₁ Γ₂) {T : VarType} {p q : Σ b : Ann T, Term σ Γ₁ T b}
     (e : p = q) :

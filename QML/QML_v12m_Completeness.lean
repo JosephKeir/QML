@@ -967,7 +967,8 @@ theorem completeness {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : W
       convert (List.mem_cons_self : φ.neg ∈ φ.neg :: Δ) using 1
       exact WFF.mono_refl _ _
   let w₀ : Canon.World σ (Ctx.Presented.bound Γ) :=
-    Canon.World.ofHenkin 0 L₀ (fun _ => rfl) (fun _ d n _ => hfresh d n) S₀ hS₀ none
+    Canon.World.ofHenkin 0 L₀ (fun _ => rfl) (fun _ d n _ => hfresh d n)
+      (fun _ hO _ => absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)) S₀ hS₀ none
   have hsat := hval (Canon.model w₀) (Canon.indInvariant w₀) (w := w₀)
     (Canon.canonEnv w₀ w₀ (0, 0))
     (Ctx.Presented.noProjLast Γ)

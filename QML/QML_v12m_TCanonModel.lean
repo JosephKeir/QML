@@ -1,12 +1,11 @@
-import QML.QML_v12m_TCanonDom
+import QML.QML_v12m_TCanonRet
 
 /-!
 # QML v12m — the canonical tree with `Opt` on, T included: the model
 
 The generalisation of `OCanonModel` (docs §12.36, step 4): the arrows are `RT` (proper children,
 and under T the world itself), so `refl` is the self arrow and `extract` reads a necessary object
-there.  Weak T only for now (`ModalSys.WeakTO`): strong T's law (`posRet_exists`) comes with
-NecT afterwards.
+there.  Strong T's law (`posRet_exists`) is `posRet_rden` (`QML_v12m_TCanonRet`).
 
 * ⭐`exists_diaO`: a possible formula `◇_x χ` holds at a child that opened `x`.  The bridge makes it
   `◇ ◇⁰_x χ`, so a `□`-failure child has `◇⁰_x χ`; that child decides `x`, and `◇⁰_x χ` rules out
@@ -19,14 +18,6 @@ namespace V12M
 set_option linter.unusedSectionVars false
 
 variable [ModalSys]
-
-/-- ⭐**Weak T** for the canonical tree with `Opt`: strong T is off (its law, `posRet_exists`, is
-    built with NecT afterwards).  Without T it holds outright. -/
-class ModalSys.WeakTO [ModalSys] : Prop where
-  noTStrong : ModalSys.T = true → ModalSys.TStrong = false
-
-instance ModalSys.WeakTO.of_noT [ModalSys] [ModalSys.NoT] : ModalSys.WeakTO :=
-  ⟨fun h => (ModalSys.NoT.absurd h).elim⟩
 
 namespace OCanon
 
@@ -278,8 +269,8 @@ def rootKeepO (hF : ModalSys.Four = true) {w : (frameO hO w₀).W} (_ : PEmpty.{
   (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
 
 /-- ⭐**The canonical model with `Opt` on, T included.**  Shapes, `Ret` and the 4/5 operations
-    are off with the flags that need them; `Ind` is equality; strong T is off (`WeakTO`). -/
-noncomputable def modelT [ModalSys.WeakTO] : Model.{0, 0} σ where
+    are off with the flags that need them; `Ind` is equality; strong T holds (`posRet_rden`). -/
+noncomputable def modelT : Model.{0, 0} σ where
   frame := frameO hO w₀
   relInterp r w args := canonRel w r args
   necEval := necEvalO hO w₀
@@ -312,7 +303,10 @@ noncomputable def modelT [ModalSys.WeakTO] : Model.{0, 0} σ where
   Ind_refl _ := rfl
   posSide_content hV := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Five hV)).elim
   necSide_exists hV := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Five hV)).elim
-  posRet_exists hT hS := absurd hS (by rw [ModalSys.WeakTO.noTStrong hT]; decide)
+  posRet_exists {A} {w} hT hS a := by
+    obtain ⟨p, hp, hm, he⟩ :=
+      posRet_rden hO hT hS w (fromDomO hO w₀ A w a) (definableO_fromDom hO w₀ A w a)
+    exact ⟨⟨p, hp⟩, hm, (toDomO_congr hO w₀ he _ _).trans (toDomO_fromDomO hO w₀ A w a)⟩
   Ret _ _ _ _ := False
   Ret_fwd := by intro _ _ _ _ _ _ _ h; exact h.elim
   Ret_conv hS := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_BStrong hS)).elim

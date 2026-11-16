@@ -104,17 +104,11 @@ theorem Ctx.NoTopAt.stage' {B : Ctx} (h : B.NoTopAt) (τ : ℕ → VarType) (ρ 
   | 0 => h
   | k + 1 => Ctx.NoTopAt.insert' (Ctx.NoTopAt.stage' h τ ρ k) _ _
 
-/-- A `□` view declares no identity reading at its top: its addresses end in `box` or `keep`. -/
-theorem Ctx.noTopAt_boxIn (Γ : Ctx) : Γ.boxIn.NoTopAt :=
-  fun _ T hv => by cases (show (none : Option VarType) = some T from hv)
-
-theorem Ctx.NoTopAt.optIn' {Γ : Ctx} (h : Γ.NoTopAt) (y : VarSymb) : (Γ.optIn y).NoTopAt :=
-  fun u T hv => h u T (by rwa [Ctx.optIn_ne (fun he => by cases he)] at hv)
-
-theorem Ctx.NoTopAt.optIns' {Γ : Ctx} (h : Γ.NoTopAt) :
-    ∀ L : List VarSymb, (Γ.optIns L).NoTopAt
-  | [] => h
-  | y :: L => Ctx.NoTopAt.optIn' (Ctx.NoTopAt.optIns' h L) y
+/-- ⭐**Every world's stages declare no identity reading at their top**, with T and `Opt` on: its
+    base does not (`World.noTopAt`), and the stages add only roots. -/
+theorem World.stagesNoAt (hT : ModalSys.T = true) (hO : ModalSys.Opt = true) (w : World σ N₀) :
+    StagesNoAt w :=
+  fun i => Ctx.NoTopAt.stage' (w.noTopAt hT hO i.1) _ _ i.2
 
 /-- The `□` view of a world's diagonal stage, with any witnesses opened, declares no identity
     reading at its top. -/

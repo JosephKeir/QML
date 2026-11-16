@@ -17190,6 +17190,77 @@ CONTEXT.**  Sorry-free, standard axioms only.
 * **Order:** strong T first (it builds the faithfulness lemma, with no new rule); then NecT, whose
   canonical case is then short and whose cost is the new constructor's breadth.
 
+**§12.36, strong T: first steps (2026-11-16).**
+* **The witness needs no Henkin change.**  The chain's strong T step (`WorldLang.retStep`) fires
+  only with `Opt` off, but none is needed: `T_dia` derives `∃c:◇A. ◇⁰ᵀ_c (c.at ≡ t)`, and the
+  world's `∃`-witness property (`World.exW`) gives a Henkin root for it, as `IdName` does.
+* **Bad worlds, settled structurally (built).**  A model law quantifies over every world, and the
+  frame's worlds are all of `World`, including ones whose stages declare a top-level `u.at`, where
+  `SelfIn` (hence any self arrow) fails, so `posRet_exists` would fail there.  Making `SelfIn`'s
+  condition per witness does not save it: the faithfulness lemma's `◇` case then compares a witness
+  with its condition against one without (a base `x` with `x.at` declared against a Henkin root),
+  and the extents differ at the self arrow.  Instead `World` has a field `noTopAt` (with T and
+  `Opt` on, no base stage declares a top-level `at`; vacuous otherwise), supplied by every
+  constructor: boxes and diamonds by `Ctx.noTopAt_boxIn`/`noTopAt_diaIn`, `OCanonChild.child` by
+  its `□` view, the KT roots by `hΓ` (route 2 reduces the rest), the `NoOpt` roots vacuously.  So
+  `OCanon.World.stagesNoAt` holds at **every** world, `SelfIn`'s conjunct is always available, and
+  no `SelfIn` refactor is needed.  (`Ctx.NoTopAt` and its view lemmas moved to `CanonWorld`.)
+* **Faithfulness must be syntactic, at every world.**  The semantic route (truth lemma, then
+  `Model.sat_eqH`) is circular (the law is a field of the model the truth lemma is about) and the
+  truth lemma also needs `DecidesO`, which a first-pass world lacks.  The syntactic lemma needs it
+  only at children, which decide (`AccO.decides`).
+* **Plan for the `◇` self case** (the risk): from `□ witEq` by `T_box` and `WFF.collapse_witEq`,
+  `witEqK .ident`: `◇⁰ᵀ_x ⊤ ∨ ◇⁰ᵀ_x' ⊤ → ◇⁰ᵀ_x ◇⁰ᵀ_x' (t̂ ≡ ŝ)`.  Presence: each side's `IdPres`
+  gives the other's (`opt_out`).  Contents: inside `x`'s view, `x.at ≡ d` (the name) gives
+  `readNames_x t̂ ≡ t̂` by Leibniz, likewise for `x'`; transitivity inside the two views, then
+  `opt_out` twice, gives `readNames_x t̂ ≡ readNames_x' ŝ` in the theory, and the induction at `A`
+  finishes.  Needs a term-level round trip (the term analogue of `TCanon.roundTrip`) and `≡`'s
+  transitivity (`Proof.eqH_symm` exists).
+* **Status (2026-11-16, uncommitted):** the `World.noTopAt` field is built and green
+  (`TCanonKTAll`, `Compactness`, `Completeness`); `QML_v12m_TCanonFaith` has `faithO` with the
+  `Var`, `𝟙`, `×` and `□` cases done and **the `◇` case a `sorry`** (not yet in any top module).
+  Next: the `◇` case (children first: presence by `AccO.decides` and `opt_reopen`, contents by
+  `opt_out` twice and the induction; then the self arrow as planned above, needing three lemmas:
+  reading a formula at a declared name, `WFF.readNames` commuting with `≡`, and `readNames`
+  fixing terms that do not mention the witness), then `posRet_exists` and dropping `WeakTO`.
+* **Progress (2026-11-16, later, uncommitted):** `faithO` is done except **the content at the self
+  arrow** (one `sorry`, `faithO_dia`): the `◇` extents agree at children (`AccO.opened_iff`,
+  `mem_pres`) and at the self arrow (`T_box`, `WFF.collapse_witEq`, `mem_pres` at the identity
+  kind), and contents agree at children (`mem_out₂`, the induction).
+* ⭐**The obstacle at the self arrow.**  The self content of `◇_x t` is `t̂` (the body collapsed)
+  read at `x`'s identity name `d`, `R_{x→d} t̂` (`readsNameIn`, `d` declared).  The theory talks
+  about readings only through `optT_named`, whose reading is at a *fresh* root `c`, bound and
+  instantiated: `[c ↦ d] (R_{x→c} χ)`.  Relating the two needs `[c ↦ d] ∘ R_{x→c} = R_{x→d}`,
+  and that is **not a substitution identity**: `R_{x→d}` sends `x.at` to `d` but `x` to itself,
+  which no coherent substitution does (`Subst.PreRead.named` fails), so `WFF.subst_readNames`
+  cannot be used, as it was for `roundTrip` (there the target is `x.at` itself, which is
+  coherent).  Using the name's own freshness (`c := d` at the stage before `d`) fails too: a term
+  of a later stage can mention `d`, or roots after it.
+* **Options.**  (R) Prove the renaming identity directly for terms, at every level (`Term.subst` of
+  `single c (tm (η d))` after `Term.readNames`, through `boxtm`/`diatm` and `Subst.box`/`dia`), plus
+  `WFF.readNames_eqH`; then `named_optT` gives `◇⁰ᵀ_x (t̂ ≡ (R t̂)↑)`, and transitivity inside the
+  two views does the rest.  No design change; new syntactic infrastructure, est. 400-700 lines,
+  the risk being the levels.  (S) The semantic route (truth lemma, `sat_eqH`) would need the truth
+  lemma at every world (it needs `DecidesO`, which first-pass worlds lack) and breaking the
+  circularity with the model's own law: frame restricted to deciding worlds and the law split off
+  the model.  More refactoring, not recommended.
+* **Option R built: STRONG T WITH `Opt` COMPLETE (2026-11-16).**
+  * `QML_v12m_ReadRen`: `Subst.ReadRen νc νd k Γ θ` (`θ` sends each address read at `νc` to the
+    address read at `νd`; only `PreRead`'s `ty` clause, since terms have no identity views),
+    closed under views (`readRen_box`, `readRen_dia`); ⭐`Term.subst_readRen` (the identity, by
+    induction on terms, as `Term.subst_readNames` with the reading at `νd` as the target);
+    ⭐`WFF.readNames_eqH`; at level 0 `TCanon.readRen_name`, `subst_readName`; ⭐`TCanon.selfEq`
+    (`◇⁰ᵀ_x (x.at ≡ d) ⊢ ◇⁰ᵀ_x (t ≡ (R_{x→d} t)↑)`, by `named_optT` with premise `u ≡ u`);
+    ⭐`TCanon.selfCombine` (pure logic in the two identity views).
+  * `QML_v12m_TCanonFaith`: ⭐`faithO` complete, every type, every world (`faithO_dia`).
+  * `QML_v12m_TCanonRet`: `WFF.subst_realHyp_single` (the `∃`'s instance at a Henkin root, as
+    `subst_realHyp_renameTm`), ⭐`exists_realHyp` (`T_dia` + `World.exW`, no Henkin change),
+    `Proof.optT_eq`, `selfTerm_eta`, ⭐`posRet_rden` (the law in raw form).
+  * `modelT` has the real `posRet_exists`; **`ModalSys.WeakTO` deleted** (nothing needs it);
+    `ModalSys.KTSOpt` (T, strong T, `Opt`) with `OCanon.provable_iff_valid_KTS` and
+    `provable_iff_validO_KTS` (every presented context).  `nameSent_mono` moved to `TCanonFaith`.
+  * Next: NecT (scope above).
+
 ### 12.37 The sequent calculus for B (and 5): paper check of the judgement form *(2026-11-16, paper)*
 
 The question §12.34 left open and the review called the programme's largest risk: is "a path with

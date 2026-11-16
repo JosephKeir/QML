@@ -167,10 +167,17 @@ theorem openStart_consistent : StageSys.Consistent (openStart hO w χ hχ) := by
     exact present_at hO w χ hχ ⟨X, hX⟩ hp
   · exact h₀ ψ h
 
+omit [ModalSys] in
+theorem _root_.V12M.Ctx.NoTopAt.optIns' {Γ : Ctx} (h : Γ.NoTopAt) :
+    ∀ L : List VarSymb, (Γ.optIns L).NoTopAt
+  | [] => h
+  | y :: L => Ctx.NoTopAt.optIn' (Ctx.NoTopAt.optIns' h L) y
+
 /-- ⭐**The child**: the second pass, over the opened language. -/
 noncomputable def child : World σ N₀ :=
   World.ofHenkin (w.depth + 1) (openLang w (present hO w χ hχ)) (fun _ => rfl)
     (fun m _ n hd => ((w.fresh_deeper hd n (m, m)).boxIn).optIns _)
+    (fun _ _ _ => (Ctx.noTopAt_boxIn _).optIns' _)
     (openStart hO w χ hχ) (openStart_consistent hO w χ hχ) (some w)
 
 /-- What the first pass has at a base stage, the child has, opened. -/
