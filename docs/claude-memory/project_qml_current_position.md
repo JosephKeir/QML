@@ -572,3 +572,10 @@ lemmas claim_path/or_path/bot_path) and QML_v12m_GKNToND (GKN.toND by induction 
 Inv — left atoms free; toND_root; ⭐GKN.provable_iff: ND ↔ cut-free GKN for K/KD).  qbuild TOP has
 GKNToND.  Docs §12.49 progress 7.  Next: §12.49 steps 2–6 (Opt, B ND-first, clusters,
 interpolation, strong forms) — to scope with the user.
+GKN step 2 scoped and paper-checked (2026-11-16, docs §12.50, uncommitted; 8aaf113 committed,
+not pushed): decided (O2) openings as a second per-node list after births, openings reach
+descendants, split 2a (Opt for K/KD) / 2b (T).  Paper check (i)–(v) ALL PASS.  (v), T's cut
+cases: boxR vs TL and diaT vs diaL need GKN.collapse (c's subtree folded into τ: new label map
+deleting a step, setup with Le off the subtree and Collapses k on it, names kept so no eigen
+renaming, edge/opening kinds collapse, boxL/fold/diaR into c become TL / diaT / reopenR+diaT at
+τ, so no height bound — fine, CutIH lighter weight any height).  Next: build 2a, then 2b.

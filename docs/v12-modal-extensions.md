@@ -18597,3 +18597,180 @@ ND and cut-free `GKN` prove the same sequents.**
 * `cut_step` and the induction need `maxHeartbeats` raised (4M).
 * *So for K and KD:* ND ↔ cut-free `GKN`, cut admissible in `GKN`, all syntactic.  *Next* (§12.49
   steps 2–6): `Opt`, B (ND-first, user's decision), clusters, interpolation, strong forms.
+
+### 12.50 `GKN` step 2 (`Opt`, then T): scope *(2026-11-16, paper)*
+
+**What `GK` has** (§12.33, §12.35), to be carried to the tree: `optL` (`◇⁰_y ψ` on the left moves
+the whole sequent into the view `Γ.optInK κ y`, no world crossed), `reopenR` (`◇⁰_y χ` on the right
+where `y` is opened is `χ`), the **folds** (`boxR`/`diaL`/`serial` put `◇⁰_u χ↑` in the premise's
+succedent for each `◇_u χ` among the chosen conclusions), and for T `TL` (`□φ` adds its collapse
+at the same level) and `diaT` (`◇_x φ` from its identity reading).  4 excludes `Opt`.
+
+**In `GKN`.**
+* *Openings live in a node, not as nodes* (§12.39 item 5).  A node's context becomes the edge's
+  view, then its births **and openings**: the tree records, per node, the witnesses opened there
+  (kind `κ`, witness `y`).  `optL` at `τ` adds an opening; `reopenR` is local.
+* *The folds become a propagation rule*: `◇_u χ` on the right at `τ` puts `◇⁰_u χ↑` on the right
+  at **any** child of `τ` (`¬◇_u χ` is `□¬◇⁰_u χ`, the bridge), beside `diaR` (which needs a
+  `◇_u`-child).
+* *T (`TL`, `diaT`) is local at a node*, as in `GK`.  The new work is in cut: `boxR` against `TL`
+  must **collapse a child into its parent**, the first-order form of the prototype's
+  retargeting onto the node itself (`Acc.refl`): `c`'s subtree moved onto `τ`, its formulas
+  collapsed (`WFF.collapse`, `GK.collapseD`'s tree version).  A relabelling that renames steps,
+  not only weakens.
+
+**Decisions.**
+1. *How openings sit in a node.*  (O1) one list of **events** per node, births and openings
+   interleaved in the order they happened (exactly `GK`'s sequence of context changes); (O2)
+   openings a second list applied after the births, with a commutation lemma (an opening and a
+   later birth commute; true when the birth is tree-fresh).  (O2) keeps `ctxAt` and every existing
+   lemma about births nearly unchanged; (O1) needs no commutation lemma but reworks
+   `birthsAt`/`closeB`.  **Recommended: (O2)**, after the commutation lemma is checked on paper.
+2. *Do a node's openings reach its descendants?*  Children's contexts are views of the parent's,
+   so computing them from the opened context makes an opening weaken every descendant, exactly as
+   a birth does (`ctxAt_addBirth`).  Semantically right (a later `boxR` from the opened sequent
+   sees the content's `□` views), and uniform with births.  **Recommended: yes.**
+3. *Split the step:* **2a** `Opt` for K and KD (equivalence with `GK` for K, KD with `Opt`);
+   **2b** T (KT, KDT; the collapse relabelling).
+
+**Paper check before Lean** (small): (i) `optL` at a node with children (decision 2);
+(ii) the cut cases: `reopenR` against `optL` (a redundant opening, transported away as `GK`
+does with `Ctx.optInK_eq_of_opened`), a fold against `diaL` (`diaL`'s vacant `◇_u`-child
+retargeted onto the fold's child **with an opening of `u` there**: the `◇_u` view against the `□`
+view opened at `u`); (iii) tree substitution with openings (`θ.optIn`/`optInT`; the witness
+fields of `Subst.Ok`/`Coh` stop being vacuous, which every `[ModalSys.NoOpt]` section of
+`QML_v12m_GKNSubst` relies on today); (iv) the reading: an opening closed by `◇⁰_y`, as a birth
+by `∃` (`K_opt`, `opt_bot`); (v) for 2b, the collapse relabelling against the path lemmas.
+
+**Breadth.**  Every `GKN` file gains cases: `GKN` (rules, fold), `GKNTree` (openings, `ctxAt`),
+`GKNRelabel` (openings mapped), `GKNEmbed` (`GK`'s `optL`, `reopenR`, folds, `TL`, `diaT`),
+`GKNSubst` (witness fields), `GKNCut` (the new principal cases), `GKNTrans`/`GKNToND` (the
+reading, the new rules).  **Size:** 2a about 2 500-4 000 lines; 2b about 1 500-2 500.  Step 1 came
+to about 5 800 lines against an estimate of 2 000-3 000, so these are revised upward from §12.49's
+1 000-2 000.
+
+**Decided (user, 2026-11-16):** recommendations 1–3: (O2) openings as a second list per node,
+applied after the births; a node's openings reach its descendants; the split 2a (`Opt`, K and KD)
+/ 2b (T).
+
+**Paper check, items (i)–(iv): 2a passes (2026-11-16).**  With T off only arrow openings occur
+(`witK .ident` needs T), so 2a is `Ctx.optIn` throughout.
+* *The representation has a precedent:* M1's tree opens a node's present witnesses as a list,
+  `Ctx.optIns` (`QML_v12m_OCanonView`: `le_optIns`, `Le.optIns`, `optIns_content`,
+  `optIns_le_of`, `RootFresh.optIns`).  So `ctxAt ρ = ((view).inserts births).optIns openings`,
+  with an invariant beside `Tree.OK`/`WitOK`: every opening at `ρ` is a witness of the node's
+  context before its openings (`insert` and `optIn` keep `wit`, so births never make a witness and
+  later growth keeps it, `Le.wit`).
+* *(O2)'s commutation lemma holds as an equality (arrow kind):*
+  `(Γ.optIn y).insert (free u) T = (Γ.insert (free u) T).optIn y`.  At `y.dia` both give `y`'s
+  content (`y.dia` is not `atBelow u`: only `.at` addresses are), elsewhere both are `insert`'s
+  value, and both keep `Γ.wit`.  The identity kind has its lemma already (`Ctx.insert_optInT_comm`,
+  KT tree); openings commute among themselves up to `optIns_le` (membership).  So `GK`'s
+  chronological contexts (an `allR` inside an opened view) embed into (O2)'s.
+* *(i) `optL` at a node with children:* the new tree has `ctxAt' ρ ≥ ctxAt ρ` at every node
+  (`Le.optIn` at the node, then `view_le`, `Le.inserts`, `Le.optIns` downward), and tree-freshness
+  is kept (`RootFresh.optIn`).  Decision 2 is exactly `ctxAt_addBirth`'s pattern.  **Passes.**
+* *(ii) cut, two new principal cases.*
+  * `reopenR` against `optL` on `◇⁰_y χ` at `τ`: `optL`'s premise is over the tree with a
+    **redundant** opening of `y` at `τ`.  Remove it by a relabelling along `idIdx`, once `TMap`'s
+    condition on openings is **semantic**: the target context at the image declares the content
+    (`optIns_le_of`'s hypothesis).  Then cut on `χ`, lighter.  `GK`'s transport along
+    `Ctx.optInK_eq_of_opened` is this relabelling.  **Passes.**
+  * The fold against `diaL` on `◇_u χ` at `τ`: cut `◇_u χ` against each premise (same formula,
+    smaller heights), getting `Δ ⇒ ⟨c, ◇⁰_u χ↑⟩, Θ` (the fold's child `c`, any edge) and
+    `⟨c′, χ′⟩, Δ′ ⇒ Θ′` over `D.addEdge c′ (dia u)`.  Retarget `diaL`'s vacant `◇_u`-child `c′`
+    onto `c` **with an opening of `u` at `c`**: the `◇_u` view sits inside the `□` view opened at
+    `u` (`Ctx.le_diaIn_boxIn_optIn`; with `Opt` on `u` is a witness of any child's view,
+    `boxIn_wit`, and `diaIn`'s witnesses are `boxIn`'s).  The result is over `D` with `u` opened
+    at `c`, which is `optL`'s premise at `c`: so `⟨c, ◇⁰_u χ↑⟩, Δ ⇒ Θ`, and cut on `◇⁰_u χ↑`
+    (weight `χ + 1 < χ + 2`).  Needs `EdgeKind.Compat` extended: a `◇_u`-edge may map onto a node
+    of either kind where `u` is opened.  **Passes.**
+  * No other new case: `◇⁰_y χ` with `y` unopened has no right rule, so it is never principal on
+    the left derivation's right.
+* *(iii) tree substitution with openings.*  The family opens as the node does
+  (`θ.optIn y (ι y)` per opening, `GK.subst`'s `optL` case; `Subst.ok_optIn`,
+  `Subst.coh_optIn`); the target's openings are the source's renamed by `ι`, as its edges'
+  witnesses are, which is what `Coh.openedTo` asks.  The witness clauses of `Subst.Ok`/`Coh`/
+  `Sim` become real: at the root `ok_idRen`, along edges the views' (`ok_box`, `ok_dia` and their
+  `Coh`/`Sim` partners are general), at births unchanged (`insert` keeps `wit`).
+  `sim_mono_of`'s witness clause needs a real proof (entries equal by construction).  **Passes**;
+  the heaviest Lean item: every `[ModalSys.NoOpt]` section of `QML_v12m_GKNSubst` is revisited.
+* *(iv) the reading.*  Openings closed by `◇⁰_y` inside the births' `∃`:
+  `Pc = closeB births (closeO openings tr)`, `closeO` the head innermost as `optIns`.  ND layer
+  by `Proof.K_opt` (side hypotheses enter **unboxed**: no world crossed) and `Proof.opt_bot`,
+  as `dia_or`.  The rules' holes: `optL` is `K_opt` with the rest of the node's reading as side
+  hypotheses (children's readings weakened, `claim_sub` with an openings field in `Ag`);
+  `reopenR` is `opt_reopen` contraposed; the fold is the bridge, `¬◇_u χ ⊢ □¬◇⁰_u χ`
+  (`Proof.opt_dia`), moved into the child by `pack_side`.  **Passes.**
+* *The design points this fixes for 2a:* the per-node openings list and its invariant; the
+  commutation lemma; rules `optL` (`Tree.addOpen`), `reopenR`, `foldR` (propagation to any child);
+  `TMap`'s semantic opening condition and widened edge compatibility; `SubSetup`'s target openings
+  renamed by `ι`; `closeO`.
+* *Left at the time:* item (v), 2b's collapse relabelling (`boxR` against `TL`: `GK.collapseD`'s
+  tree version, a child's subtree moved onto its parent, formulas collapsed); done below.
+
+**Paper check, item (v): 2b passes (2026-11-16).**  T's two principal cases in cut, and the one
+new lemma they need.
+* *The cases, as `GK`'s* (`QML_v12m_GKCut`: the `boxT` case, `diaTPrin`).
+  * `boxR` against `TL` on `□φ` at `τ`: cut `□φ` out of `TL`'s premise (smaller height), giving
+    `⟨τ, φᶜ⟩, Δ ⇒ Θ`; collapse `boxR`'s premise (over `D.addEdge c box`, `φ` at `c`) onto `τ`,
+    giving `Δ ⇒ ⟨τ, φᶜ⟩, Θ` over `D`; cut on `φᶜ` (`WFF.weight_collapse`: lighter).  The root
+    collapse is `collapses_boxIn_self`.
+  * `diaT` against `diaL` on `◇_x φ` at `τ`: cut `◇_x φ` out of both premises; collapse the
+    `diaL` premise (over `D.addEdge c (dia x)`, `φ` at `c` on the left) onto `τ` **with `x`
+    opened at `τ`, identity kind** (`collapses_diaIn_optInT`); that is `optL`'s premise at `τ`,
+    so `⟨τ, ◇⁰ᵀ_x φᶜ⟩, Δ ⇒ Θ`; cut on `◇⁰ᵀ_x φᶜ` against `diaT`'s premise (lighter).
+  * `CutIH` lets a lighter formula be cut at any heights, so the collapse **need not keep the
+    height** (`∃ m`), unlike `GK.collapseD`; this matters below.
+* *The lemma, `GKN.collapse`:* a derivation over `D` in which `c` is a child of `τ` (any subtree
+  below it) gives one over `D'`, `c`'s subtree folded into `τ`.
+  * *Nodes:* `c ↦ τ`, `ρ′ ++ c ↦ g(ρ′) ++ τ`, elsewhere `lmap g`.  `lmap` keeps lengths, so this
+    is a new map shape (one step deleted).  `c`'s children, and children `τ` makes later, take
+    target-fresh indices (`setIdx`, as `GKN.relabel`).
+  * *Contexts:* off `c`'s subtree `Le` (`TMap.le`'s pattern); at depth `k` in it
+    `Collapses k`.  Every step exists in `QML_v12m_Collapse`: `Collapses.boxIn`/`diaIn` along
+    edges, `.insert` at births, `optIn_zero`/`optIn_succ`/`optInT` at openings.  Missing: two
+    small lemmas, `Collapses` monotone in the target and antitone in the source along `Le`
+    (needed because contexts are computed: `c`'s view grows when `τ` does).
+  * *Edges and openings change kind:* an edge `dia x` at depth `k + 1` becomes `dia (x.collapse k)`
+    (`Collapses.diaIn`), so `Compat` here is collapse, not equality.  An arrow opening at `c`
+    becomes an identity opening at `τ` (`optIn_zero`); deeper ones map along.
+  * *Names are kept:* the target's births are the source's births, moved, so `TMap.names` and
+    `TMap.fresh` hold and **no eigenvariable is renamed**.  `GK.collapseD` renames because its
+    target is arbitrary; here it is not.  `Tree.OK` comes from `names`.  `WitOK` and the openings
+    invariant come from `Collapses.ty` and `Collapses.wit`: `witT y` at level 0,
+    `wit (y.collapse k)` deeper.
+  * *(O2) order:* `c`'s births land at `τ` after `τ`'s openings, so `τ`'s target context needs
+    the commutation lemma: 2a's for the arrow kind, `Ctx.insert_optInT_comm` for the identity
+    kind.
+* *The rules.*
+  * At a node in `c`'s subtree: the same rule at the image, formulas collapsed.  This is
+    `GK.collapseD`'s case list (`collapse_instantiate`, `collapse_bindFree`, `collapse_collapse`
+    for `TL`/`diaT`, the three kind cases of `optL`/`reopenR`), plus the parent-to-child rules
+    inside the subtree (`boxL` by `C.boxIn`, `diaR` by `C.diaIn`, the fold at level `k + 1`
+    staying arrow).
+  * Off the subtree: `mono`, as `GKN.relabel`.
+  * **New: rules at `τ` whose child is `c`.**
+    * `boxL` into `c` becomes `TL` at `τ`: `collapse_mono`, `collapses_boxIn_self` against the
+      root collapse; both send `u.box` to `u.here`.
+    * The fold into `c` becomes `diaT` at `τ`: a level-0 arrow opening is an identity opening.
+    * `diaR` into `c` (dia case only) becomes `reopenR` then `diaT` at `τ`, using `x` opened
+      there: two rules for one, hence no height bound.
+  * This is `GK`'s "re-derived by `TL`, `diaT`, `optL` and `reopenR`" spread through the
+    derivation instead of done at the end.
+* *The path lemmas and the reading are untouched:* the collapse is used only in cut.  `TL` and
+  `diaT` are local, so `toND` treats them as `GK.toND` does (`same_hole`), and the embedding
+  treats them as local rules.
+* *Precedent:* `GKN.relabel` (`TMap`, `setIdx`) for the tree, `GK.collapseD` for the formulas.
+  In the literature (from memory, unchecked): Brünnler's deep sequents for T, where the
+  structural rule merging a bracket into its parent is admissible.
+* *Design points for 2b:*
+  * the collapsing label map;
+  * a setup (`CSetup`, beside `SubSetup`) giving each node `Le` or `Collapses k`;
+  * `GKN.collapse` by height, its conclusion `∃ m`;
+  * the two monotonicity lemmas;
+  * `Compat` by collapse for edges and openings.
+
+  Size: about 700-1 100 lines (`GKN.relabel` about 150, `GK.collapseD` about 200, plus the map
+  and setup lemmas), inside 2b's 1 500-2 500.  **Every item of the paper check passes; step 2 can
+  be built, 2a first.**
