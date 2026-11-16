@@ -17100,6 +17100,59 @@ declaring no identity reading).  Sorry-free, standard axioms only.
   then go (names are shared, see the cleanup note above); (c) a `WeakTO` instance and corollary for
   `ModalSys.KTOpt`; (d) strong T (`posRet_exists`) and NecT; then M4a (4) per the roadmap.
 
+**§12.36, route 2 started (2026-11-16): the invariant weakened, and the real size of route 2.**
+* *Built:* `Ctx.NoTopAt` (no declared address **ends** in `at`) replaces `Ctx.NoAt`/`NoAtW`
+  throughout (`StagesNoAt`, `readsName`/`readsNameIn`/`roundTrip`/the ND facts, via
+  `VarSymb.readNames_raw`; `Term.readNames_noAt` now takes `Ctx.RefFix`, which passes into views
+  and follows from `NoTopAt`).  Reading at a name at level 0 never touches an address ending in a
+  level step, so **identity views opened under a later view (`y.at.box`) are now covered**; every
+  child satisfies `NoTopAt` outright.  `completenessT`/`provable_iff_validT` take `hΓ : Γ.NoTopAt`.
+* *Built:* `QML_v12m_TCanonKT.lean`: `ModalSys.KDTOpt`, `WeakTO` instances for `KTOpt`/`KDTOpt`,
+  ⭐`OCanon.provable_iff_valid_KT`, ⭐`OCanon.provable_iff_valid_KDT` (standard axioms only).  In
+  `TOP` in place of `TCanonCompleteness`.
+* **Finding: route 2 is larger than estimated.**  A top-level identity opening may be followed by
+  free declarations and arrow openings (`((Γ₀.optInT y).insertFree u T).optIn z`), so peeling it
+  is an induction on the presentation with **three** reductions, each "a sequent over `e'.denote`
+  extended by one step is a sequent over `e'.denote`":
+  1. identity opening (the planned one: `◇⁰ᵀ_y ⊤`, `◇⁰ᵀ_y` of the formulas; ND by `opt_reopen`,
+     `opt_out`; semantics by `optPushT`);
+  2. arrow opening (`◇⁰_z`; ND by `Proof.unopen`'s pattern; semantics by `optPush`);
+  3. a free declaration (generalisation on free variables: `∀`-closure; ND by `all_intro`/
+     `all_elim` and `bindFree`; semantics by `extend`), on the metatheory list anyway.
+  Base: `e.denote.NoTopAt` (always for `empty`, `boxIn`, `diaIn`), by `completenessT`.  The
+  validity notion for such contexts must quantify over environments respecting identity contents
+  (`env.OpenedT`, which soundness needs), vacuous under `NoTopAt`.
+* *Alternative (route 1, the tree branch):* at a root declaring `x.at`, use `x.at` itself as the
+  identity name: a second branch in `SelfIn`/`selfTerm`/`rdenO`/`identCase`, local to the root
+  (children never declare top-level `at` steps).  Comparable size; special-purpose.
+* *Recommendation:* route 2 as above: its three reductions are general metatheory (3 is
+  generalisation on constants), and the canonical tree keeps one case.
+* **Correction (user, 2026-11-16): the steps commute, so one reduction suffices.**  An identity
+  opening (adds `y.at`), an arrow opening (adds `z.dia`) and a free declaration (adds a root) only
+  add entries at distinct addresses; none hides (`Ctx.optIn` keeps every declaration; §12.15's
+  hiding was superseded) and none changes the witnesses.  An identity opening moved later keeps its
+  precondition (`y` reachable at its type is preserved by adding entries).  So every presented
+  context **equals** `Γ'.optInTs L` with `Γ'` presented and `NoTopAt` (the expression with its
+  top-level identity openings removed) — dropping, not moving, openings that were no-ops where they
+  stood (`y` not yet reachable, e.g. `y = z.dia` before `z` was opened).  Route 2 is then one
+  reduction iterated over `L`, plus that normal form (an induction on `CtxExpr` with two `Ctx`
+  equalities: `insert` and `optIn` commute with `optInT`).
+
+**§12.36, route 2 built (2026-11-16): ⭐KT AND KDT WITH `Opt` ARE COMPLETE FOR EVERY PRESENTED
+CONTEXT.**  Sorry-free, standard axioms only.
+* `QML_v12m_TCanonOpenT.lean`: `Ctx.ext'`, `Ctx.optInT_of_witT_none` (an ineffective opening is the
+  identity), ⭐`Ctx.insert_optInT_comm`, ⭐`Ctx.optIn_optInT_comm`; `Ctx.optInTs`, `Ctx.OptTEff`
+  (each opening takes effect) with their commutation over lists; ⭐`CtxExpr.normT` (every presented
+  context is `e'.denote.optInTs L`, `e'` fresh and `NoTopAt`); `CtxExpr.optInTs`,
+  `Ctx.presentedOptInTs`; `ValidO` (validity over environments respecting identity contents,
+  which soundness needs); ⭐`complete_optInT` (the one reduction: `◇⁰ᵀ_y ⊤` and `◇⁰ᵀ_y` of the
+  formulas over `C`; back in the view by `opt_reopen` and `opt_out`), `complete_optInTs`,
+  ⭐`completenessO`, ⭐`provable_iff_validO` (`[WeakTO]`, `Opt` on).
+* `QML_v12m_TCanonKTAll.lean`: ⭐`provable_iff_validO_KT`, ⭐`provable_iff_validO_KDT`.  In `TOP`.
+* *M1 retired (2026-11-16):* `OCanon{Dom,Model,Term,Truth,Completeness}` deleted (nothing else
+  imported them; `completenessO` covers T off, `WeakTO` holding there).  `OCanonView`, `OCanonChild`
+  stay (shared).  *Remaining for the KT tree:* strong T and NecT.
+
 ### 12.37 The sequent calculus for B (and 5): paper check of the judgement form *(2026-11-16, paper)*
 
 The question §12.34 left open and the review called the programme's largest risk: is "a path with

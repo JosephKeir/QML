@@ -90,9 +90,82 @@ theorem Ctx.RefNoAt.diaIn {Γ : Ctx} (h : Γ.RefNoAt) (x : VarSymb) : (Γ.diaIn 
 
 /-! ## Reading at names fixes a term with no `at` step -/
 
+/-- Every address the context reaches is fixed by reading at names at level `k`. -/
+def Ctx.RefFix (ν : VarSymb → Option VarSymb) (k : ℕ) (Γ : Ctx) : Prop :=
+  ∀ v T, Γ.ref v = some T → v.readNames ν k = v
+
+theorem Ctx.RefNoAt.refFix {ν : VarSymb → Option VarSymb} {k : ℕ} {Γ : Ctx} (h : Γ.RefNoAt) :
+    Γ.RefFix ν k :=
+  fun v T hv => VarSymb.readNames_noAt (h v T hv)
+
+/-- ⭐With no top-level identity reading, every reachable address is fixed at level 0. -/
+theorem Ctx.RefFix.of_noTopAt {ν : VarSymb → Option VarSymb} {Γ : Ctx} (h : Γ.NoTopAt) :
+    Γ.RefFix ν 0 := by
+  intro v
+  induction v with
+  | root _ => intro _ _; rfl
+  | step u s ih =>
+      intro T hv
+      by_cases hs : s.isStruct = true
+      · rw [Ctx.ref_step_proj _ _ hs] at hv
+        cases hU : Γ.ref u with
+        | none => rw [hU] at hv; cases hv
+        | some U => rw [VarSymb.readNames_struct hs, ih U hU]
+      · rw [Ctx.ref_step_nonproj _ _ hs] at hv
+        exact VarSymb.readNames_raw h (Bool.eq_false_iff.mpr hs) hv
+
+theorem Ctx.RefFix.boxIn {ν : VarSymb → Option VarSymb} {k : ℕ} {Γ : Ctx} (h : Γ.RefFix ν k) :
+    Γ.boxIn.RefFix ν (k + 1) := by
+  intro v
+  induction v with
+  | root _ => intro _ _; rfl
+  | step u s ih =>
+      intro T hv
+      by_cases hs : s.isStruct = true
+      · rw [Ctx.ref_step_proj _ _ hs] at hv
+        cases hU : Γ.boxIn.ref u with
+        | none => rw [hU] at hv; cases hv
+        | some U => rw [VarSymb.readNames_struct hs, ih U hU]
+      · rw [Ctx.ref_step_nonproj _ _ hs] at hv
+        have hl := Ctx.boxIn_level hv
+        rw [VarSymb.readNames_level_succ hl]
+        cases s with
+        | box => rw [h u _ (Ctx.boxIn_box hv).2]
+        | keep => rw [h u _ (Ctx.boxIn_keep hv).2.1]
+        | dia => cases (show (none : Option VarType) = some T from hv)
+        | _ => cases hl
+
+theorem Ctx.RefFix.diaIn {ν : VarSymb → Option VarSymb} {k : ℕ} {Γ : Ctx} (h : Γ.RefFix ν k)
+    (x : VarSymb) : (Γ.diaIn x).RefFix ν (k + 1) := by
+  intro v
+  induction v with
+  | root _ => intro _ _; rfl
+  | step u s ih =>
+      intro T hv
+      by_cases hs : s.isStruct = true
+      · rw [Ctx.ref_step_proj _ _ hs] at hv
+        cases hU : (Γ.diaIn x).ref u with
+        | none => rw [hU] at hv; cases hv
+        | some U => rw [VarSymb.readNames_struct hs, ih U hU]
+      · rw [Ctx.ref_step_nonproj _ _ hs] at hv
+        have hl := Ctx.diaIn_level hv
+        rw [VarSymb.readNames_level_succ hl]
+        cases s with
+        | dia =>
+            change (if u = x then (match Γ.ref x with
+              | some (.VTypeDia X) => some X | _ => none) else none) = some T at hv
+            split_ifs at hv with hux
+            subst hux
+            cases hx : Γ.ref u with
+            | none => rw [hx] at hv; cases hv
+            | some U => rw [h u U hx]
+        | box => rw [h u _ (Ctx.boxIn_box (Γ := Γ) hv).2]
+        | keep => rw [h u _ (Ctx.boxIn_keep (Γ := Γ) hv).2.1]
+        | _ => cases hl
+
 mutual
   theorem Func.readNames_noAt {σ : Signature} {ν : VarSymb → Option VarSymb} {k : ℕ}
-      {Γ₁ Γ₂ : Ctx} (h : Ctx.ReadsNames ν k Γ₁ Γ₂) (l : Γ₁.Le Γ₂) (hna : Γ₁.RefNoAt) :
+      {Γ₁ Γ₂ : Ctx} (h : Ctx.ReadsNames ν k Γ₁ Γ₂) (l : Γ₁.Le Γ₂) (hna : Γ₁.RefFix ν k) :
       {n : ℕ} → (f : Func σ Γ₁ n) → Func.readNames h f = Func.mono l f
     | _, .F _ => rfl
     | _, .eval g t => by
@@ -104,10 +177,10 @@ mutual
 
   /-- ⭐Reading at names fixes a term whose context reaches no `at` step. -/
   theorem Term.readNames_noAt {σ : Signature} {ν : VarSymb → Option VarSymb} {k : ℕ}
-      {Γ₁ Γ₂ : Ctx} (h : Ctx.ReadsNames ν k Γ₁ Γ₂) (l : Γ₁.Le Γ₂) (hna : Γ₁.RefNoAt) :
+      {Γ₁ Γ₂ : Ctx} (h : Ctx.ReadsNames ν k Γ₁ Γ₂) (l : Γ₁.Le Γ₂) (hna : Γ₁.RefFix ν k) :
       {T : VarType} → {a : Ann T} → (t : Term σ Γ₁ T a) →
       (⟨_, Term.readNames h t⟩ : Σ b, Term σ Γ₂ T b) = ⟨_, Term.mono l t⟩
-    | _, _, .var v hv => sig_var (VarSymb.readNames_noAt (hna v _ hv)) _ _
+    | _, _, .var v hv => sig_var (hna v _ hv) _ _
     | _, _, .func f => by
         change (⟨_, Term.func (Func.readNames h f)⟩ : Σ b, Term σ Γ₂ .Var b) =
           ⟨_, Term.func (Func.mono l f)⟩
@@ -119,7 +192,7 @@ mutual
     | _, _, .diatm x hx t => by
         have hxe : x.readNames ν k = x := by
           obtain ⟨X, hX⟩ := hx
-          exact VarSymb.readNames_noAt (hna x _ hX)
+          exact hna x _ hX
         have key : ∀ (y : VarSymb) (_hy : x = y) (P : ∃ X, Γ₂.ref y = some (.VTypeDia X))
             (h' : Ctx.ReadsNames ν (k + 1) (Γ₁.diaIn x) (Γ₂.diaIn y)),
             (⟨_, Term.diatm y P (Term.readNames h' t)⟩ : Σ b, Term σ Γ₂ _ b) =

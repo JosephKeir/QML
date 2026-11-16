@@ -41,6 +41,29 @@ theorem VarSymb.readNames_noAt {ν : VarSymb → Option VarSymb} :
 /-- A context declaring no identity reading (the stages of a world). -/
 def Ctx.NoAt (Γ : Ctx) : Prop := ∀ v T, Γ v = some T → v.NoAt
 
+/-- ⭐A context declaring **no address that ends in an identity reading** (`u.at`).  Deeper
+    identity readings, an `at` step followed by a level step (`y.at.box` in a `□` view of an
+    identity view), are allowed: reading at a name at level 0 never touches them. -/
+def Ctx.NoTopAt (Γ : Ctx) : Prop := ∀ u T, Γ (.step u .at) = some T → False
+
+omit [ModalSys] in
+theorem Ctx.NoAt.noTopAt {Γ : Ctx} (h : Γ.NoAt) : Γ.NoTopAt := fun _ T hv => (h _ T hv).1 rfl
+
+omit [ModalSys] in
+/-- A declared address of a context with no top-level identity reading is not renamed at
+    level 0: it is a root or ends in a level step. -/
+theorem VarSymb.readNames_raw {ν : VarSymb → Option VarSymb} {Γ : Ctx} (h : Γ.NoTopAt) :
+    ∀ {v : VarSymb} {T : VarType}, v.lastProj = false → Γ v = some T → v.readNames ν 0 = v
+  | .root _, _, _, _ => rfl
+  | .step u s, T, hlp, hv => by
+      have hs : s.isStruct = false := hlp
+      by_cases hat : s = .at
+      · subst hat
+        exact (h u T hv).elim
+      · have hp : s.isProj = false := by
+          cases s <;> first | exact absurd rfl hat | rfl | cases hs
+        exact VarSymb.readNames_level_zero hp
+
 namespace TCanon
 
 variable {σ : Signature} (hT : ModalSys.T = true) (hO : ModalSys.Opt = true)
@@ -77,7 +100,7 @@ theorem nameAt_dom {Γ : Ctx} [Γ.NoSlots] {x : VarSymb} {X : VarType}
 
 include hT hO in
 /-- ⭐Reading `x`'s identity view at a fresh root is well typed. -/
-theorem readsName {Γ : Ctx} (hfree : Γ.NoAt) {x : VarSymb} {A : VarType}
+theorem readsName {Γ : Ctx} (hfree : Γ.NoTopAt) {x : VarSymb} {A : VarType}
     (hx : Γ.ref x = some (.VTypeDia A)) {c : ℕ} (hc : Γ.RootFresh (.free c)) :
     Ctx.ReadsNames (nameAt x c) 0 (Γ.optInT x) (Γ.insert (.free c) A) := by
   have hxT := Ctx.witT_of hT hO hx
@@ -89,7 +112,7 @@ theorem readsName {Γ : Ctx} (hfree : Γ.NoAt) {x : VarSymb} {A : VarType}
       rw [VarSymb.readNames_at_named (nameAt_self x c)]
       exact Ctx.ref_insert_root Γ _ A
     · rw [Ctx.optInT_ne hvx] at hv
-      rw [VarSymb.readNames_noAt (hfree v T hv)]
+      rw [VarSymb.readNames_raw hfree hlp hv]
       have hrt : v.rt ≠ .free c := fun he => by rw [hc v he] at hv; cases hv
       rw [Ctx.ref_insert_ne A hrt, Ctx.ref_nonproj Γ hlp]
       exact hv
@@ -98,7 +121,7 @@ theorem readsName {Γ : Ctx} (hfree : Γ.NoAt) {x : VarSymb} {A : VarType}
 
 /-- ⭐**The round trip**: `x`'s identity view read at a fresh root, bound to the slot, and filled
     with `x.at` in the view, is the formula again. -/
-theorem roundTrip {Γ : Ctx} [Γ.Presented] (hfree : Γ.NoAt) {x : VarSymb} {A : VarType}
+theorem roundTrip {Γ : Ctx} [Γ.Presented] (hfree : Γ.NoTopAt) {x : VarSymb} {A : VarType}
     (hx : Γ.ref x = some (.VTypeDia A)) {c : ℕ} (hc : Γ.RootFresh (.free c))
     (χ : WFF σ (Γ.optInT x) 0) :
     WFF.instantiate Ctx.NoSlots.slots
@@ -114,7 +137,7 @@ theorem roundTrip {Γ : Ctx} [Γ.Presented] (hfree : Γ.NoAt) {x : VarSymb} {A :
       (Subst.single (.free c) (.tm (Term.eta (σ := σ) (.step x .at) A
         (Ctx.ref_optInT_content hxT))))
       (Subst.idRen (Γ.optInT x)) := by
-    refine Subst.preRead_of (fun v T _ hv => ?_) (fun _ y X _ => .refl _)
+    refine Subst.preRead_of (fun v T hlp hv => ?_) (fun _ y X _ => .refl _)
       (fun _ y n X hyn hy => ?_)
     · by_cases hvx : v = .step x .at
       · subst hvx
@@ -123,7 +146,7 @@ theorem roundTrip {Γ : Ctx} [Γ.Presented] (hfree : Γ.NoAt) {x : VarSymb} {A :
         rw [VarSymb.readNames_at_named (nameAt_self x c), Subst.at_single_root]
         exact .eta_ren _ _
       · rw [Ctx.optInT_ne hvx] at hv
-        rw [VarSymb.readNames_noAt (hfree v T hv),
+        rw [VarSymb.readNames_raw hfree hlp hv,
           Subst.single_at_ne (fun he => by rw [hc v he] at hv; cases hv)]
         exact .refl _
     · obtain ⟨rfl, rfl⟩ := nameAt_eq hyn
@@ -142,7 +165,7 @@ theorem roundTrip {Γ : Ctx} [Γ.Presented] (hfree : Γ.NoAt) {x : VarSymb} {A :
 
 /-- ⭐`x`'s identity view read at a fresh root and bound to the slot: a formula of `Γ` with a hole
     of the content type. -/
-abbrev readSlot {Γ : Ctx} [Γ.NoSlots] (hfree : Γ.NoAt) {x : VarSymb} {A : VarType}
+abbrev readSlot {Γ : Ctx} [Γ.NoSlots] (hfree : Γ.NoTopAt) {x : VarSymb} {A : VarType}
     (hx : Γ.ref x = some (.VTypeDia A)) {c : ℕ} (hc : Γ.RootFresh (.free c))
     (χ : WFF σ (Γ.optInT x) 0) : WFF σ (Γ.insert (.bnd 0) A) 1 :=
   WFF.bindFree c hc Ctx.NoSlots.slots A
@@ -198,7 +221,7 @@ theorem instantiate_optNameT {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (h : Γ.L
 /-- ⭐**Reading an identity view at a name**, one way: `◇⁰ᵀ_x (x.at ≡ t), ◇⁰ᵀ_x χ ⊢ Φ(t)`.
     Inside the view (one content, `opt_fun`), Leibniz along `≡` from the round trip; then out of
     the view (`opt_out`). -/
-def optT_named {Γ : Ctx} [Γ.Presented] (hfree : Γ.NoAt) {x : VarSymb} {A : VarType}
+def optT_named {Γ : Ctx} [Γ.Presented] (hfree : Γ.NoTopAt) {x : VarSymb} {A : VarType}
     (hx : Γ.ref x = some (.VTypeDia A)) {c : ℕ} (hc : Γ.RootFresh (.free c))
     (χ : WFF σ (Γ.optInT x) 0) {a : Ann A} (t : Term σ Γ A a) :
     Proof σ Γ [nameSent hT hO hx t, .optx hO .ident x ⟨A, Ctx.witT_of hT hO hx⟩ χ]
@@ -221,7 +244,7 @@ def optT_named {Γ : Ctx} [Γ.Presented] (hfree : Γ.NoAt) {x : VarSymb} {A : Va
     (.imp_elim (Proof.ofSubset (fun _ h => by simp at h) (.imp_intro k)) f)
 
 /-- ⭐**Reading an identity view at a name**, the other way: `◇⁰ᵀ_x (x.at ≡ t), Φ(t) ⊢ ◇⁰ᵀ_x χ`. -/
-def named_optT {Γ : Ctx} [Γ.Presented] (hfree : Γ.NoAt) {x : VarSymb} {A : VarType}
+def named_optT {Γ : Ctx} [Γ.Presented] (hfree : Γ.NoTopAt) {x : VarSymb} {A : VarType}
     (hx : Γ.ref x = some (.VTypeDia A)) {c : ℕ} (hc : Γ.RootFresh (.free c))
     (χ : WFF σ (Γ.optInT x) 0) {a : Ann A} (t : Term σ Γ A a) :
     Proof σ Γ [nameSent hT hO hx t,
@@ -252,7 +275,7 @@ variable (hT hO) in
 include hT hO in
 /-- ⭐Reading `x`'s identity view at a name **already declared** in the context (a Henkin root of a
     later stage than `x`'s, as in the canonical model): the target is the context itself. -/
-theorem readsNameIn {Γ : Ctx} (hfree : Γ.NoAt) {x : VarSymb} {A : VarType}
+theorem readsNameIn {Γ : Ctx} (hfree : Γ.NoTopAt) {x : VarSymb} {A : VarType}
     (hx : Γ.ref x = some (.VTypeDia A)) {c : ℕ} (hc : Γ.ref (.root (.free c)) = some A) :
     Ctx.ReadsNames (nameAt x c) 0 (Γ.optInT x) Γ := by
   have hxT := Ctx.witT_of hT hO hx
@@ -264,7 +287,7 @@ theorem readsNameIn {Γ : Ctx} (hfree : Γ.NoAt) {x : VarSymb} {A : VarType}
       rw [VarSymb.readNames_at_named (nameAt_self x c)]
       exact hc
     · rw [Ctx.optInT_ne hvx] at hv
-      rw [VarSymb.readNames_noAt (hfree v T hv), Ctx.ref_nonproj Γ hlp]
+      rw [VarSymb.readNames_raw hfree hlp hv, Ctx.ref_nonproj Γ hlp]
       exact hv
   · obtain ⟨rfl, rfl⟩ := nameAt_eq hyn
     exact ⟨A, (Ctx.le_optInT Γ y).ref hx, hc⟩

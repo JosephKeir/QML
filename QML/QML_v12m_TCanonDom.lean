@@ -89,62 +89,38 @@ theorem AccO.depth_ne {w w' : World σ N₀} (h : AccO hO w w') : w'.depth - w.d
 
 /-! ## No identity readings -/
 
-/-- A world's stages declare no identity reading (no `at` step). -/
-def StagesNoAt (w : World σ N₀) : Prop := ∀ i, (w.L.ctx i).NoAt
+/-- A world's stages declare no address ending in an identity reading (`Ctx.NoTopAt`). -/
+def StagesNoAt (w : World σ N₀) : Prop := ∀ i, (w.L.ctx i).NoTopAt
 
 omit [ModalSys] in
-theorem Ctx.NoAt.insert' {Γ : Ctx} (h : Γ.NoAt) (r : Root) (T : VarType) :
-    (Γ.insert r T).NoAt := by
-  intro v U hv
-  by_cases hvr : v = .root r
-  · subst hvr
-    trivial
-  · exact h v U (Ctx.insert_ne_some hv hvr)
+theorem Ctx.NoTopAt.insert' {Γ : Ctx} (h : Γ.NoTopAt) (r : Root) (T : VarType) :
+    (Γ.insert r T).NoTopAt :=
+  fun u U hv => h u U (Ctx.insert_ne_some hv (fun he => by cases he))
 
 omit [ModalSys] in
-/-- The stages over a base declaring no identity reading declare none. -/
-theorem Ctx.NoAt.stage' {B : Ctx} (h : B.NoAt) (τ : ℕ → VarType) (ρ : ℕ → ℕ) :
-    ∀ k, (B.stage τ ρ k).NoAt
+/-- The stages over a base with no top-level identity reading have none. -/
+theorem Ctx.NoTopAt.stage' {B : Ctx} (h : B.NoTopAt) (τ : ℕ → VarType) (ρ : ℕ → ℕ) :
+    ∀ k, (B.stage τ ρ k).NoTopAt
   | 0 => h
-  | k + 1 => Ctx.NoAt.insert' (Ctx.NoAt.stage' h τ ρ k) _ _
+  | k + 1 => Ctx.NoTopAt.insert' (Ctx.NoTopAt.stage' h τ ρ k) _ _
 
-/-- A `□` view of a context reaching no identity reading declares none. -/
-theorem Ctx.RefNoAt.boxIn_noAt {Γ : Ctx} (h : Γ.RefNoAt) : Γ.boxIn.NoAt := by
-  intro v T hv
-  match v with
-  | .step u .box => exact ⟨nofun, h u _ (Ctx.boxIn_box hv).2⟩
-  | .step u .keep => exact ⟨nofun, h u _ (Ctx.boxIn_keep hv).2.1⟩
-  | .root _ => cases hv
-  | .step _ .fst => cases hv
-  | .step _ .snd => cases hv
-  | .step _ .dia => cases hv
-  | .step _ .here => cases hv
-  | .step _ .at => cases hv
+/-- A `□` view declares no identity reading at its top: its addresses end in `box` or `keep`. -/
+theorem Ctx.noTopAt_boxIn (Γ : Ctx) : Γ.boxIn.NoTopAt :=
+  fun _ T hv => by cases (show (none : Option VarType) = some T from hv)
 
-theorem Ctx.NoAt.optIn' {Γ : Ctx} (h : Γ.NoAt) {y : VarSymb}
-    (hy : ∀ X, Γ.wit y = some X → y.NoAt) : (Γ.optIn y).NoAt := by
-  intro v T hv
-  by_cases hvy : v = .step y .dia
-  · subst hvy
-    rcases hw : Γ.wit y with _ | X
-    · rw [Ctx.optIn_content_none hw] at hv
-      exact h _ _ hv
-    · exact ⟨nofun, hy X hw⟩
-  · rw [Ctx.optIn_ne hvy] at hv
-    exact h v T hv
+theorem Ctx.NoTopAt.optIn' {Γ : Ctx} (h : Γ.NoTopAt) (y : VarSymb) : (Γ.optIn y).NoTopAt :=
+  fun u T hv => h u T (by rwa [Ctx.optIn_ne (fun he => by cases he)] at hv)
 
-theorem Ctx.NoAt.optIns' {Γ : Ctx} (h : Γ.NoAt) (hy : ∀ y X, Γ.wit y = some X → y.NoAt) :
-    ∀ L : List VarSymb, (Γ.optIns L).NoAt
+theorem Ctx.NoTopAt.optIns' {Γ : Ctx} (h : Γ.NoTopAt) :
+    ∀ L : List VarSymb, (Γ.optIns L).NoTopAt
   | [] => h
-  | y :: L => Ctx.NoAt.optIn' (Ctx.NoAt.optIns' h hy L) fun X hX =>
-      hy y X ((Ctx.optIns_wit Γ L y).symm.trans hX)
+  | y :: L => Ctx.NoTopAt.optIn' (Ctx.NoTopAt.optIns' h L) y
 
 /-- The `□` view of a world's diagonal stage, with any witnesses opened, declares no identity
-    reading when the world declares none. -/
-theorem bview_optIns_noAt {w : World σ N₀} (hna : StagesNoAt w) (m : ℕ) (L : List VarSymb) :
-    ((bview w m).optIns L).NoAt :=
-  Ctx.NoAt.optIns' (Ctx.RefNoAt.boxIn_noAt (Ctx.RefNoAt.of_noAt (hna (m, m))))
-    (fun y _ hy => Ctx.RefNoAt.of_noAt (hna (m, m)) y _ (Ctx.boxIn_wit.mp hy).2) L
+    reading at its top. -/
+theorem bview_optIns_noAt (w : World σ N₀) (m : ℕ) (L : List VarSymb) :
+    ((bview w m).optIns L).NoTopAt :=
+  Ctx.NoTopAt.optIns' (Ctx.noTopAt_boxIn _) L
 
 /-! ## The arrows -/
 
@@ -196,8 +172,8 @@ variable (hO) [Countable σ.FuncSyms] [Countable σ.RelSyms] (w : World σ N₀)
   (χ : WFF σ (w.L.ctx i).boxIn 0) (hχ : (⟨i, .box χ⟩ : w.L.sys.Sentence σ) ∉ w.T)
 
 /-- ⭐The `□`-failure child declares no identity reading where its parent declares none. -/
-theorem child_noAt (hna : StagesNoAt w) : StagesNoAt (child hO w χ hχ) := fun k =>
-  Ctx.NoAt.stage' (bview_optIns_noAt hna k.1 _) _ _ k.2
+theorem child_noAt (_hna : StagesNoAt w) : StagesNoAt (child hO w χ hχ) := fun k =>
+  Ctx.NoTopAt.stage' (bview_optIns_noAt w k.1 _) _ _ k.2
 
 include hχ in
 /-- ⭐**A non-necessary formula fails at some proper successor**, which declares no identity reading
@@ -617,12 +593,13 @@ theorem rdenO_selfTerm_boxIn {w : World σ N₀} {x : VarSymb} (hs : SelfIn hO w
         (selfTerm hs e (Term.mono (Ctx.le_boxIn_diaIn Γ x) b)).2 =
       rdenO hO w i e (Term.collapse (Ctx.collapses_boxIn_self hs.1 Γ) b) := by
   have e' : Γ.Le (w.L.ctx (i ⊔ hs.name.i₀)) := e.trans (w.L.ctx_le le_sup_left)
-  have hna : Γ.RefNoAt := fun v T hv => Ctx.RefNoAt.of_noAt (hs.2.2 _) v T (e'.ref hv)
+  have hna : Γ.RefFix (TCanon.nameAt x hs.name.c) 0 :=
+    fun v T hv => Ctx.RefFix.of_noTopAt (hs.2.2 _) v T (e'.ref hv)
   have R₀ : Ctx.ReadsNames (TCanon.nameAt x hs.name.c) 0 Γ (w.L.ctx (i ⊔ hs.name.i₀)) := by
     refine Ctx.ReadsNames.of_raw (fun v T hlp hv => ?_) (fun y X hy => e'.wit y X hy)
       (fun _ y n hyn => ?_)
     · have hr : Γ.ref v = some T := (Ctx.ref_nonproj Γ hlp).trans hv
-      rw [VarSymb.readNames_noAt (hna v T hr)]
+      rw [hna v T hr]
       exact e'.ref hr
     · obtain ⟨rfl, rfl⟩ := TCanon.nameAt_eq hyn
       obtain ⟨X, hX⟩ := hx

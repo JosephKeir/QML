@@ -11,9 +11,9 @@ first pass's theory, consistent because opening a present witness is conservativ
 there, and the canonical environment read back over `Γ` refutes the sequent.
 
 The generalisation of `OCanonCompleteness` (docs §12.36): the root also declares no identity
-reading (`StagesNoAt`), which the truth lemma needs, provided the user's context declares none and
-its witnesses have none in their addresses (`Ctx.NoAtW`).  Identity-opened contexts are the next
-step, by the conservativity of opening a present identity witness (§12.36, route 2).
+reading at the top (`StagesNoAt`, `Ctx.NoTopAt`), which the truth lemma needs, provided the
+user's context declares none: identity views opened under a later view are allowed.  Contexts
+with an identity view opened at the top are the next step (§12.36, route 2).
 
 ⭐`OCanon.completenessT`: with `Opt` on and strong T off, a sequent in a presented context declaring
 no identity reading that holds in every model is provable — K, D, KT and KDT, weak and strong D.
@@ -25,8 +25,6 @@ set_option linter.unusedSectionVars false
 
 variable [ModalSys]
 
-/-- A context declaring no identity reading, whose witnesses' addresses have none either. -/
-def Ctx.NoAtW (Γ : Ctx) : Prop := Γ.NoAt ∧ ∀ y X, Γ.wit y = some X → y.NoAt
 
 /-- The witnesses of a presented context are finitely many: a view's are the reachable possible
     addresses below it. -/
@@ -70,7 +68,7 @@ include hO in
 /-- ⭐**Completeness with `Opt` on, T included**: a sequent in a presented context declaring no
     identity reading that holds in every model, at every world, in every environment, is
     provable. -/
-theorem completenessT {Γ : Ctx} [Γ.Presented] (hΓ : Γ.NoAtW) {Δ : List (WFF σ Γ 0)}
+theorem completenessT {Γ : Ctx} [Γ.Presented] (hΓ : Γ.NoTopAt) {Δ : List (WFF σ Γ 0)}
     {φ : WFF σ Γ 0}
     (hval : ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
       Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ) :
@@ -148,7 +146,7 @@ theorem completenessT {Γ : Ctx} [Γ.Presented] (hΓ : Γ.NoAtW) {Δ : List (WFF
       exact hfirst (w₁.mcs.neg_mem_iff.mpr hn)
   -- the root declares no identity reading
   have hna : StagesNoAt w₀ := fun k =>
-    Ctx.NoAt.stage' (Ctx.NoAt.optIns' hΓ.1 hΓ.2 Lr) _ _ k.2
+    Ctx.NoTopAt.stage' (Ctx.NoTopAt.optIns' hΓ Lr) _ _ k.2
   -- the canonical environment read back over `Γ`
   have hle : Γ.Le (w₀.L.ctx (0, 0)) := Ctx.le_optIns Γ Lr
   have hag := Model.Env.agree_restrict hle (canonEnvO hO w₀ w₀ (0, 0))
@@ -167,13 +165,13 @@ include hO in
 /-- ⭐**Soundness and completeness with `Opt` on, T included**: over a countable signature, a
     sequent in a presented context declaring no identity reading is provable exactly when it holds
     in every model. -/
-theorem provable_iff_validT {Γ : Ctx} [Γ.Presented] (hΓ : Γ.NoAtW) {Δ : List (WFF σ Γ 0)}
+theorem provable_iff_validT {Γ : Ctx} [Γ.Presented] (hΓ : Γ.NoTopAt) {Δ : List (WFF σ Γ 0)}
     {φ : WFF σ Γ 0} :
     Provable Δ φ ↔ ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
       Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ :=
   ⟨fun ⟨p⟩ M hM _ env hnp =>
     Model.soundness p M hM env (Ctx.Presented.tame Γ) hnp
-      (fun _ _ _ hv => absurd rfl (hΓ.1 _ _ hv).1),
+      (fun z _ _ hv => (hΓ z _ hv).elim),
     completenessT hO hΓ⟩
 
 end OCanon

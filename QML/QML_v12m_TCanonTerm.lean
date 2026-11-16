@@ -261,7 +261,7 @@ theorem sig_readNames {ν : VarSymb → Option VarSymb} {k : ℕ} {Γ₁ Γ₂ :
     contents, vacuously. -/
 theorem canonEnvO_openedT {w : World σ N₀} (hna : StagesNoAt w) (i : ℕ × ℕ) :
     (canonEnvO hO w₀ w i).OpenedT :=
-  fun _ _ _ hv => absurd rfl (hna i _ _ hv).1
+  fun z _ _ hv => (hna i z _ hv).elim
 
 /-- ⭐**A witness realised at the world itself has there the value of its identity name.**  The
     content of its η-expansion at the self arrow is the η-expansion collapsed (`x.dia` to `x.at`)
@@ -346,7 +346,7 @@ theorem interp_dia_selfO {w : World σ N₀} {A : VarType}
       rw [dif_pos rfl]
       rfl
     · have hv' : (w.L.ctx (i ⊔ hs.name.i₀)) v = some T := by rwa [Ctx.optInT_ne hvx] at hv
-      rw [Model.Env.ref_congr _ (VarSymb.readNames_noAt (hs.2.2 _ v T hv')) _
+      rw [Model.Env.ref_congr _ (VarSymb.readNames_raw (hs.2.2 _) hlp hv') _
           ((Ctx.ref_nonproj _ hlp).trans hv'),
         Model.Env.ref_of_nonproj _ hlp _ hv']
       exact (Model.Env.agree_optPushT _ hop hxT hd v T hv').symm
