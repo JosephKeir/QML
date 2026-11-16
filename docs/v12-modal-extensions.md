@@ -18303,3 +18303,297 @@ far as is useful before building.  Open, for later: the working principle "only 
 point is shared and specific" (§12.47 item 2; proving it is the Craig proof itself), strong B with
 `Opt` (§12.12's checks, when strong B moves to `Opt` on), and K5/KD5 (gap).  **Next: the mechanical
 KT canonical model work (§12.36 plan).**
+
+### 12.49 The sequent calculus steps: scope *(2026-11-16, paper)*
+
+Roadmap Milestone 5, items 2-7 ("revised order", 2026-11-16), against what exists now.
+
+**Where `GK` stands.**  Cut, ND equivalence and Craig for K, KD, K4, KD4 (`Opt` off) and K, KD,
+KT, KDT (`Opt` on), 12 files, about 9 700 lines.  Excluded by `GKBase`: every strong form
+(`TStrongW`, `TStrong`, `DStrongW`, B's, 4's, 5's), B and 5.  The KT tree is now complete with
+both strong forms of T, so `GK` lags the ND side there.
+
+**Decision 0 (first): how a formula sits at a node.**  Three candidates (§12.39 item 6):
+* *(C) a computed context per node, formulas typed by it* — **recommended**.  A tree carries a
+  birth table `D` (which roots are born at which node, with their types); the context of node `τ`,
+  `ctxAt D τ : Ctx`, declares the addresses whose root's birthplace and walk end at `τ`.  A
+  sequent is a list of pairs `⟨τ, φ : WFF σ (ctxAt D τ) 0⟩`.  Why: every `WFF`/`Term` lemma keeps
+  its `Ctx` typing; growing the tree is weakening, `ctxAt D τ ≤ ctxAt D' τ` (`WFF.mono`, as `GK`'s
+  `allR` weakens today); the `□` rule's premise uses `(ctxAt D τ).boxIn ≤ ctxAt D (τ.k)`, an
+  equality up to `τ.k`'s own births without B, which is the "a branch is `GK`" test for free;
+  a relabelling acts on contexts by a step renaming, a `WFF`-level homomorphism like `collapse`.
+* *(L) formulas indexed by local declaration lists*: retypes everything; no reuse.
+* *(G) one global context with a "lives at `τ`" predicate*: formulas no longer carry their node in
+  their type, so every modal rule needs a local-to-global translation.
+* *Paper check before Lean (small):* under (C), (i) an eigenvariable rule at a node that already
+  has children, (ii) the `□` rule's premise, (iii) the cut proof's child retargeting, which for K
+  renames nothing (down steps have no index).
+
+**Steps.**
+1. *`GKN` for K and KD, `Opt` off*, contexts computed downward: tree data and `ctxAt`; local G3
+   rules at every node, `box` (fresh child) and `dia` (propagation to children), `serial`;
+   height-bounded derivations, weakening, relabelling (`KBNestedProto.Der.subst`), cut (the
+   prototype's proof, with `GK`'s first-order cases: quantifiers, `repl`); equivalence with `GK`
+   both ways.  *About 2 000-3 000 lines*, much adaptable from `GK` and the prototype.  The test of
+   the representation.
+2. *`Opt`*: witness views inside nodes, the folds as propagation, T's loop as the `collapse`
+   renaming, 4 as the `.keep` walk (M4a).  Open (§12.39 item 5): whether an opened view weakens
+   other nodes, and how it meets a relabelling.  Equivalence with `GK` for K, KD, KT, KDT, K4, KD4.
+   *About 1 000-2 000 lines.*
+3. *Weak B*: the step `.back k`, contexts that are a fixed point (finite: each step consumes a
+   `□`), the relabelling as a step renaming with `ret` an instance, cut.  *About 2 000-3 000
+   lines.*  **Two costs to flag:**
+   * a new `Step` constructor is breadth across every match on steps (as `Step.at` was, M2 step 1);
+   * ⚠ **the ND side has no counterpart yet**: ND's weak B is `B_dia` for **closed** formulas, while
+     `GKN`'s B moves objects home (`m.box ↦ m.back`) in open formulas.  Equivalence needs ND's B
+     with objects, i.e. `⇑` and its rule `□χ ⊢ ⇑χ'` (§12.40), which the roadmap put last (item 6),
+     and B with `Opt` (`optStage` still excludes it).  So step 3 either targets a new ND for B
+     (`⇑` moves earlier, with its soundness and the network's truth lemma) or proves cut for `GKN`-B
+     alone and leaves the equivalence for later.  A decision.
+4. *S5, K45, KD45* with cluster contexts (§12.38: walks inside a cluster identified by the
+   uniformity laws).
+5. *Interpolation*: per-node interpolants, then one formula.  For B, Craig is **open** for objects
+   born at a node after one or two neighbours exist (§12.40 cases 2-3; §12.41-12.42: the plain
+   language lacks Craig, `⇑` supplies the case-1 interpolant).  Cut elimination does not depend on
+   it.
+6. *Strong forms as existence rules* (both of T, strong D, then B's and 4's): cut permutes past an
+   existence rule with a side formula; Craig binds the eigenvariable (`∃u`/`∀u`).  Done once, in
+   `GKN`, rather than first in `GK`.
+
+**Alternative near-term item.**  Strong T (both forms) and strong D in the existing `GK` would make
+`GK` cover every system the KT tree covers: cut, ND equivalence, Craig; about 600-1 000 lines.
+But `GKN` restricted to a branch is `GK`, so this is work done twice unless `GK` is meant to stay
+beside `GKN`.
+
+**Decided (user, 2026-11-16).**  Representation (C).  Straight on to `GKN` (N: **nested**, as the
+prototype's `KBN`), not the strong forms in `GK` first.  Step 3's question is revisited on
+arrival; the user's leaning: B's ND rules (`⇑`, objects carried home), their soundness and
+completeness first, the sequent side after, **with paper checks of interpolation and of some form
+of cut elimination kept up while those rules are built**.
+
+**Decision 0's paper check (2026-11-16): (C) passes for K.**
+* *The data.*  A node is a label, a list of child indices **innermost first** (`k :: τ` is the
+  `k`-th child of `τ`), so that the context recursion is structural.  An edge carries its **kind**:
+  `□` (made by `□R` or `serial`) or `◇_x` (made by `◇_xL`, `x` an address of the parent).  A
+  **birth** is a root name, a type and the node where it was introduced (the end sequent's
+  declarations are born at the root).  `ctxAt D [] := Γ₀ +` the root's births;
+  `ctxAt D (k :: τ) := view_k (ctxAt D τ) +` `k :: τ`'s births, `view_k` being `boxIn` or `diaIn x`
+  by the edge's kind.  A tree sequent is two lists of `⟨τ, φ : WFF σ (ctxAt D τ) 0⟩`.
+* *(i) An eigenvariable at a node with children.*  Adding a birth `u : T` at `τ` makes `ctxAt τ`
+  an `insert`, and every descendant's context grows by `boxIn`/`diaIn` of it (`u.box` when
+  `T = □A`): `ctxAt D σ ≤ ctxAt D' σ` at **every** node (`Le.boxIn`, `Le.diaIn`, `Le.insert`),
+  given `u` tree-fresh (fresh for `Γ₀` and born nowhere, so fresh in every context, as
+  `RootFresh.boxIn`/`diaIn` show).  The premise is the whole sequent weakened node-wise plus the new
+  formula: `GK`'s `allR`, applied to every node.  **No problem.**
+* *(ii) The `□` rule's premise.*  `□φ` on the right at `τ` makes a fresh `□`-child `c` with `φ`;
+  `□χ` on the left at `τ` puts `χ` at any child of `τ` (either kind, `boxIn ≤ diaIn x`); `◇_x θ` on
+  the right puts `θ` at any `◇_x`-child.  Adding an edge changes `D`, so `ctxAt D τ` and
+  `ctxAt D' τ` are equal only propositionally; the uniform fix is the same node-wise weakening as
+  (i), along `ctxAt D σ ≤ ctxAt D' σ`.  **No casts needed.**
+* *(iii) Cut's retargeting.*  The modal cut cases retarget the principal rule's fresh child `c` to
+  a child `q` the cut formula reached: a `□`-child onto any child (`boxIn ≤ view_q`), a `◇_x`-child
+  onto a `◇_x`-child (same view).  `c`'s subtree moves under `q`, its births merged into `q`'s
+  (tree-fresh, so disjoint), child indices renamed apart.  Addresses carry **no** child index
+  without B, so every formula of the moved subtree is just weakened: retargeting is node-wise
+  weakening plus an index renaming.  **No step renaming in K**; it appears with B (`.back k`).
+* *Equivalence with `GK`, the plan.*  `GK → GKN`: each `GK` rule is a `GKN` rule at the root, a
+  modal rule followed by propagation into the new child (`GKN` keeps the parent's formulas, which
+  is weakening).  `GKN → GK`: through ND, by the usual formula translation of a tree sequent
+  (left formulas negated, children as `□`/`□_x` of their translations, each node's births
+  universally bound there), each `GKN` rule ND-derivable, then ND → `GK` (`GK.Der.ofProof`).
+* *Open for step 2 (`Opt`)*: a child that opens witnesses (`◇⁰` folds) has `optIns` in its view;
+  retargeting must then match openings, which is where §12.39 item 5's question lands.
+
+**Step 1, the first Lean file (`QML_v12m_GKNTree`):** labels, edge kinds, births, `ctxAt`,
+tree-freshness, node-wise weakening `ctxAt_mono`, tree sequents and their weakening.  Then the
+rules (`QML_v12m_GKN`), height monotonicity and weakening, relabelling, cut, the equivalence.
+
+**Step 1, progress (2026-11-16, uncommitted, green, no `sorry`).**
+* `QML_v12m_GKNTree`: labels (innermost first), `EdgeKind`, `Tree` (edges and births as
+  **finite lists**, newest first, so a fresh child index always exists), `Tree.ctxAt`,
+  `Tree.Fresh` and ⭐`Fresh.at`, ⭐`ctxAt_addEdge`, ⭐`ctxAt_addBirth` (growing the tree weakens
+  every node), `ctxAt_addBirth_off`, and the inclusions the rules take: `insert_le_addBirth`,
+  `boxIn_le_addEdge`, `diaIn_le_addEdge`.
+* `QML_v12m_GKN`: tree sequents (`GKN.LF`, `GKN.Seq`, node-wise `Seq.mono`), `GKN.Vacant`, and
+  ⭐the inductive `GKN σ n Γ₀ D Δ Θ` for K and KD: `GK`'s local rules at any node (eigenvariables
+  born at their node), `boxR`/`diaL` (a vacant child), `boxL`/`diaR` (propagation to a child),
+  `serial`; `GKN.mono_height`.  A rule moving a formula into a child takes the inclusion
+  `view ≤ ctxAt child` as an argument.
+* *Next:* the tree invariant (births tree-fresh, so a child's births are fresh in its view) and
+  the propagation inclusion from it; **relabelling** (`KBNestedProto.Der.subst`: label maps
+  sending edges to edges of the same or a larger view), which gives weakening (fresh child indices
+  renamed apart) and cut's retargeting; then the embedding `GK → GKN`, the semantics and
+  `GKN → ND`, and cut.
+
+**Step 1, progress 2 (2026-11-16, uncommitted, green, no `sorry`).**
+* `GKN`'s `Γ₀` is now a **parameter** of the inductive (`GKN σ Γ₀ n D Δ Θ`): it never changes.
+* The tree invariant ⭐`Tree.OK` (births distinct, at most one per name, every name free and fresh
+  for `Γ₀`), kept by `addEdge`/`addBirth`; `fresh_branch`; ⭐`view_le_ctxAt` (a child's context
+  contains its edge's view of the parent's) and from it the inclusions `boxL`/`diaR` take
+  (`boxIn_le_child`, `diaIn_le_child`); `ctxAt_slots`.
+* Relabelling (`QML_v12m_GKNRelabel`): ⭐`lmap g` (a child-index map, structural so subtrees go to
+  subtrees), `EdgeKind.Compat`, ⭐`Tree.ctx_le_of_map` (a map keeping edges, with views as large,
+  and births weakens each node's context into its image's), `GKN.TMap` (with `addBirth`,
+  `addEdge`), `exists_vacant` (fresh child indices), ⭐**`GKN.relabel`** (relabelling and
+  weakening at once; each new child gets a fresh image index, `setIdx`) and ⭐**`GKN.weaken`**.
+* *Next:* cut's retargeting as a `TMap` (a vacant `□`-child onto an existing child, a `◇_x`-child
+  onto a `◇_x`-child); the embedding `GK → GKN`; the semantics of a tree sequent and `GKN → ND`;
+  cut (the prototype's `cut_step` with `GK`'s first-order cases).
+
+**Step 1, progress 3 (2026-11-16, uncommitted, green).**  Retargeting: ⭐`TMap.retarget` (a vacant
+child onto an existing child with a view at least as large), `retarget_mono_sub`, and the two
+forms cut uses, ⭐`GKN.retargetR` (`boxR`'s child, formula on the right) and ⭐`GKN.retargetL`
+(`diaL`'s child, formula on the left).
+* **Found: both remaining pieces need substitution on trees.**  The embedding `GK → GKN` must
+  rename `GK`'s eigenvariables (fresh for their own context only) to tree-fresh names (an ancestor
+  may have a birth of the same name, invisible at the node unless boxed); cut's quantifier case
+  substitutes `allL`'s term for `allR`'s eigenvariable at its node **and below** (through `u.box`).
+  *Design:* a **tree substitution**, a substitution per node from `D.ctxAt σ` into the target
+  node's context, coherent with the edges (a child's is its parent's `θ.box`/`θ.dia x`, weakened,
+  and the identity on the child's births); `GKN.subst` by induction on derivations, each case
+  `GK.subst`'s with `GKN.relabel`'s tree handling.  Estimate 600-900 lines.  Then the embedding
+  (also needs the node contexts presented, `ctxAt` from `Γ₀`'s presentation by `insertFree`,
+  `boxIn`, `diaIn`) and cut.
+
+**Tree substitution: decided (user, 2026-11-16) and designed.**
+* *Correction:* the embedding `GK → GKN` does **not** need it.  By induction on height, `allR`'s
+  premise is renamed to a tree-fresh eigenvariable with `GK.subst` (single context, the node's)
+  before recursing; `boxR`'s premise is weakened into the new child (`GK.monoCtx`), after `boxL`
+  has propagated `Δ₁`.  It needs the node contexts **presented** (`GK.subst`'s target).  So tree
+  substitution is for **cut's quantifier case** only.
+* *The instance:* source tree `S`, target tree `D'` with the same edges and the same births except
+  one, `u : T` born at `τ₀` in `S`; a term `t` over `D'.ctxAt τ₀`.  The family
+  `Fam ρ : Subst σ (D'.ctxAt ρ)`, by recursion on `ρ`: the identity (`idRen`) off `τ₀`'s subtree
+  (the contexts agree there); `single (free u) (tm t)` at `τ₀`; below, the edge's view of the
+  parent's (`θ.box`, `θ.dia x (ι x)`) with each birth of the node renamed to itself
+  (`Subst.rename`, iterated: `renames`).  `Ok`/`Coh` per node by `ok_box`/`coh_box`,
+  `ok_dia`/`coh_dia`, `ok_rename`/`coh_rename`, with the index map evolving the same way.
+* *`GKN.subst`* by induction on derivations: each case `GK.subst`'s; growing both trees
+  (`addEdge`, `addBirth` at the same label and name) recomputes the family, and an agreement lemma
+  (the new family, restricted to the old context, `Sim` to the old one weakened) makes the old
+  formulas commute.
+* *Use in cut:* `allR` (eigenvariable `u` at `τ₀`) against `allL` (term `t`): substitute in the
+  `allR` premise, then cut on `φ(t)`; `exL` against `exR` likewise.
+* ⚠ **Found while designing (2026-11-16): the target tree's edges change too.**  A `◇_x`-edge
+  whose witness `x` is rooted at the eigenvariable (`u : ◇A` itself, or `u.box.box` for
+  `u : □□◇A` at a grandchild) becomes, after substituting `t`, a `◇_{ι x}`-edge (`Subst.dia`
+  lands in `Δ.diaIn (ι x)`, `ι` the index map).  So the target tree is the source's with
+  witnesses renamed along the family's index maps, computed node by node with the family.  In
+  cut's use the conclusion tree has no such edge (`u` is not born there yet); they arise inside
+  the `allR` premise, so `GKN.subst`'s recursion must create them in the target.  Revised
+  estimate for tree substitution: **1 000-1 500 lines**.
+* *Options:* (a) build it in full (family, index maps and target edges computed together by
+  recursion on labels); (b) the embedding `GK → GKN` first (no tree substitution, a few hundred
+  lines), cut after; (c) cut admissibility for K/KD semantically for now (soundness of `GKN`,
+  `GK → GKN`), the syntactic proof later; it would not test what B needs.  Recommended: (b), then
+  (a).
+
+**Step 1, progress 4: the embedding built (user chose (b) then (a), 2026-11-16; uncommitted,
+green, standard axioms).**  `QML_v12m_GKNEmbed`:
+* `Ctx.Presented.inserts`, `Tree.presentedView`, ⭐`Tree.presentedAt` (every node context is
+  presented, under the invariant).
+* `GKN.boxL_list`, `GKN.diaR_list` (propagating a list into a child); `GKN.exists_treeFresh`.
+* ⭐**`GK.toGKN`** (K and KD, `Opt` off, `Four = false`): a `GK` derivation over a context inside
+  a node's gives a `GKN` derivation with its sequent at that node.  Induction on the height;
+  `allR`/`exL` rename the eigenvariable to a tree-fresh one by `GK.subst` (`θ₀ = idRen`,
+  `rename`, `subst_weaken_rename`, `subst_bindFree`, `subst_ren`); `boxR`/`serial`/`diaL` make a
+  vacant child, propagate by `boxL_list`/`diaR_list`, and recurse there.
+* ⭐`GK.toGKN_root`, ⭐**`GKN.ofProof`**: every ND-provable sequent over a presented context has a
+  cut-free `GKN` derivation of its one-node tree sequent (with `GK.Der.ofProof`).
+* *So `GKN` is complete relative to ND for K and KD.*  Left for the equivalence: soundness
+  (`GKN → ND`, the tree sequent's formula translation).  *Next:* (a) tree substitution, then cut;
+  and the translation.
+
+**Tree substitution, refined (2026-11-16, before building; `Opt` off).**  Every substitution of the
+family is the **identity on addresses not rooted at the substituted eigenvariable `u`**, so:
+* one index map at every node, `ι := singleIdx (free u) (tm t)` (the identity off `u`);
+* the target tree's edges are the source's with witnesses renamed by `ι` (`EdgeKind.ren ι`), its
+  births the source's without `u` (names kept: tree-freshness transfers);
+* the family: `Fam ρ` = the edge's view of the parent's (`θ.box`, `θ.dia x (ι x)`, weakened into the
+  target node), with every root sent to itself (`rootsRen`), except `u ↦ t` at `τ₀`;
+* with `Opt` and T off only `Ok.ty` and `Coh.ty` carry content (the witness fields are gated).
+
+**Step 1, progress 5: tree substitution built (user chose (a), 2026-11-16; uncommitted, green,
+no sorry, standard axioms; about 1 000 lines, `QML_v12m_GKNSubst`).**
+* `SubSetup` (source and target trees; `edge` for non-root nodes only, the root's edge being
+  never read), `Fam` and ⭐`okCoh` (a substitution at every node with the one index map `ι`).
+* *Along edges:* ⭐`fam_box` (at the parent's `□` view, through either edge kind, by
+  `dia_eq_box_mono`), ⭐`fam_dia`; as equalities at visible addresses, turned into `Sim` by
+  `Subst.sim_mono_of` (Opt off) for `WFF.subst_mono_eq`.
+* *As the tree grows:* ⭐`fam_agree` — on a parent-closed set of nodes where the edges agree, the
+  bigger tree's family is the smaller's, weakened (`Subst.box_eq_mono_of`,
+  `Subst.dia_eq_mono_of`, `at_eq_mono_of`); a birth uses every node, a new edge the nodes off the
+  new child (vacancy keeps every formula there).  `lf_mono`: substitution commutes with
+  `Seq.mono` as the tree grows.  `SubSetup.addBirth`, `SubSetup.addEdge` (witness renamed),
+  `SubSetup.vacant`.
+* ⭐**`GKN.subst`**: height-preserving, every rule to itself; `allR`/`exL` keep the
+  eigenvariable's name (renamed to itself by `Subst.rename`, `subst_bindFree`); `diaL`/`diaR`
+  go to `ι x`.
+* ⭐**`GKN.instance_allR`, `GKN.instance_exL`**: cut's quantifier instances.  The premise over
+  `D.addBirth τ₀ u T`, unbound by `t` at `τ₀` (`SubSetup.unbind`; `fam_id`: the identity on `D`'s
+  contexts; `lf_unbind_new`: the new formula is `instantiate t (bindFree u φ)` by
+  `WFF.instantiate_bindFree`), over `D`, at the same height.
+* *New invariant* `Tree.WitOK` (every `◇`-edge's witness declared at its parent; `witOK_empty`,
+  `WitOK.addBirth`, `WitOK.addEdge`): needed so that `D`'s own witnesses are not rooted at `u`.
+  Cut carries it with `Tree.OK`.
+* *Next:* cut for `GKN` (the prototype's `cut_step` with `GK`'s first-order cases, `retargetR`/`L`
+  for the modal ones, `instance_allR`/`exL` for the quantifiers); then `GKN → ND`.
+
+**Step 1, progress 6: tree substitution generalised; CUT FOR GKN BUILT (2026-11-16; uncommitted,
+green, no sorry, standard axioms).**
+* *Found while scoping cut:* when the left derivation ends in a non-principal `allR`/`exL`, the
+  right one must be weakened into `D.addBirth τ v T`, and it may use `v` as an eigenvariable of
+  its own.  Relabelling keeps names (`TMap.names`), so it cannot do this, and neither could the
+  first tree substitution.  Following `GK.subst` (the proven path), **tree substitution now
+  renames every eigenvariable to a name fresh for the target**.
+* `QML_v12m_GKNSubst` (1 361 lines), general form: `SubSetup Γ₀ S S' ι E N`.  It carries one index
+  map `ι`, the entry `E ρ r` of each root born at `ρ` (a renaming or a term; `rootE` gives the
+  root itself off births), and the nodes `N` of the target's extra births; `Pop N Δ Θ` (each such
+  node carries a formula) keeps vacant children vacant.  `viewS` reads the target edge's witness,
+  so families with different `ι` compare without transport (`viewS_dia`, `viewS_box`).  Growth:
+  `addBirth` (the source name `v` to a target-fresh `v'`, index map `renameIdx ι v v'`,
+  `EBirth`), `addEdge` (`EEdge`); `fam_agree` takes the source and target edge agreement and the
+  roots' entries (`rootE_addBirth`, `rootE_addEdge`).  ⭐`GKN.subst [Γ₀.Presented]`.
+  Instances: ⭐`GKN.weakenBirth` (`SubSetup.weaken`: `ι = id`, `N = [τ]`, `fam_ren`: the identity
+  family), ⭐`GKN.instance_allR`/`instance_exL` (`SubSetup.unbind`, `unbindE`).
+* `QML_v12m_GKNCut` (665 lines): `weakenEdge` (relabelling by `TMap.ofAddEdge`); `CutIH` (over
+  every tree with `Tree.OK` and `Tree.WitOK`); `RightPrin`/`LeftPrin` (indexed by the formula);
+  ⭐`permLeft`, ⭐`permRight` (one case per rule: premises over the same tree by `upL`/`upR`, over
+  a grown tree with the other derivation weakened by `weakenBirth`/`weakenEdge` and the cut
+  formula weakened, `WFF.weight_mono`); ⭐`cut_step` (and/or/imp as `GK`; `∀`/`∃` by the
+  instances, `WFF.weight_instantiate`; `□`/`◇_x` by `retargetR`/`retargetL` onto the child the
+  other rule used, then the cut on the body at that child); ⭐**`GKN.cut`**.
+* Large case analyses need `maxHeartbeats` raised (2M for the permutations, 4M for `cut_step`).
+* *Next:* `GKN → ND` (the tree sequent's translation), then the equivalence for K/KD.
+
+**Step 1, progress 7: `GKN → ND` built, syntactically (user's choice, 2026-11-16; uncommitted,
+green, no sorry, standard axioms).  ⭐`GKN.provable_iff`: for K and KD, over a presented context,
+ND and cut-free `GKN` prove the same sequents.**
+* *The reading* (`QML_v12m_GKNTrans`, 816 lines): a tree sequent as a **refutation** at the root.
+  At a node, `tr D Δ Θ d ρ` is the conjunction of its hypotheses and negated conclusions
+  (`Seq.at`), and of each child's closed reading behind its edge (`pack`: `¬□¬` for a `□`-edge,
+  `◇_x` for a `◇_x`-edge), the child's births bound by `∃` (`closeB`, the head innermost); `d` is
+  the depth read (fuel).  `Pc` is the closed reading, over the edge's view of the parent's context
+  (`Vw`).
+* *ND layer:* `dpk_or`, `dia_or`, `ex_or`, `closeB_or` (monotone and distributing over `∨`, with
+  side hypotheses), `pack_or`/`pack_mono`/`pack_bot`, `mono_closeB`, `mono_pack` (weakening
+  commutes, `WFF.mono_bindFree`); births bindable (`BOK`, `Tree.bok`).
+* *Path lemmas* (from the rule's node, the **hole**, to the root): ⭐`claim_path` (across a grown
+  tree, by agreement `Ag` off the hole's subtree, with `claim_sub` for agreeing subtrees),
+  ⭐`or_path` (two premises, same tree), ⭐`bot_path` (a refutation at a reachable node).  Lists
+  equal only propositionally (births after a new birth) are handled by lemmas over list variables
+  closed by `subst` (`closed_of`, `closed_cons_of`, `closeB_nil`).
+* *Rules* (`QML_v12m_GKNToND`, 1 279 lines): ⭐`GKN.toND` by induction on the derivation, invariant
+  `Inv n d Δ Θ` — every right formula and left non-atom at a reachable node within depth `d` with
+  room for the height `n`; **left atoms free**, since `ref`/`repl` may put them anywhere (an
+  unreachable node is unread, `Pc_vis`; a right formula there would break the theorem, so the
+  invariant is needed).  Local rules: `same_hole` / `same_hole2` / `bot_hole`; `boxL`/`diaR`:
+  `pack_side`/`pack_diaside` (the parent's `□`/`□_x` hypotheses moved into the child) and
+  `tr_add`; `allR`/`exL`: `¬∀ ⊢ ∃¬` (`not_all`), then `∃` monotone, the premise's reading built
+  over its own tree and cast into the binder's context; `boxR`/`diaL`/`serial`: the new child's
+  reading (`new_child`), `dpk_of_neg`, `dia_mono_of`, `dpk_D` (seriality); `serial` at a node
+  deeper than `d` takes its hole at the ancestor at depth `d`.
+* ⭐`GKN.toND_root` (a one-node sequent: `Δ, ¬Θ ⊢ ⊥`, as `GK.toND`); ⭐`GKN.provable_iff`.
+* `cut_step` and the induction need `maxHeartbeats` raised (4M).
+* *So for K and KD:* ND ↔ cut-free `GKN`, cut admissible in `GKN`, all syntactic.  *Next* (§12.49
+  steps 2–6): `Opt`, B (ND-first, user's decision), clusters, interpolation, strong forms.

@@ -542,3 +542,33 @@ today's `TStrongW`.  NecT (scoped, docs §12.36 "NecT: scope") will be the new `
 `Model.necRet_exists`, rule `Proof.T_nec`, soundness, `Proof.subst` case, canonical
 `exists_necHyp`/`necRet_rden`, `ModalSys.KTNOpt`/`KTSNOpt` + `provable_iff_validO_KTN`/`_KTSN`
 (docs §12.36 "NecT: built").  The KT tree is complete with either strong form of T or both.
+
+**2026-11-16, GKN STEP 1 STARTED (uncommitted, green):** NecT committed b787547; sequent-calculus
+scope docs §12.49 (user: representation (C), straight to GKN, B's ND rules before GKN-B).
+`QML_v12m_GKNTree` (trees, `ctxAt`, freshness, weakening along the tree) and `QML_v12m_GKN`
+(tree sequents, the K/KD rules, `mono_height`).  Next: tree invariant, relabelling, weakening,
+`GK → GKN`, semantics, cut.
+GKN progress 2: Γ₀ a parameter; Tree.OK invariant and propagation inclusions; GKNRelabel
+(`lmap`, `ctx_le_of_map`, `TMap`, `exists_vacant`, `GKN.relabel`, `GKN.weaken`), all green.
+Next: retargeting, GK → GKN, semantics/GKN → ND, cut.
+GKN progress 3-4: retargeting (`TMap.retarget`, `GKN.retargetR/L`); tree substitution needed only
+for cut's quantifier case and found larger (target edges' witnesses renamed; 1000-1500 lines);
+user chose embedding first: QML_v12m_GKNEmbed (`GK.toGKN`, `GK.toGKN_root`, `GKN.ofProof`: ND →
+cut-free GKN for K/KD), green.  Next: tree substitution, cut, GKN → ND.
+GKN progress 5 (2026-11-16, uncommitted, green, no sorry, standard axioms): TREE SUBSTITUTION
+BUILT, QML_v12m_GKNSubst (~1000 lines): SubSetup/Fam/okCoh, fam_box/fam_dia (edges), fam_agree
+(growth), lf_mono, ⭐`GKN.subst` (height-preserving), ⭐`GKN.instance_allR`/`instance_exL` (cut's
+quantifier instances via SubSetup.unbind, fam_id, lf_unbind_new); new invariant Tree.WitOK.
+Docs §12.49 progress 5.  Next: cut for GKN, then GKN → ND.
+GKN progress 6 (2026-11-16, uncommitted, green, no sorry, standard axioms): tree substitution
+GENERALISED (renames every eigenvariable fresh for the target, as GK.subst; SubSetup Γ₀ S S' ι E N,
+extra births at populated nodes; GKN.weakenBirth, instance_allR/exL as instances) and ⭐GKN.cut
+BUILT (QML_v12m_GKNCut: weakenEdge, CutIH over all trees with OK+WitOK, RightPrin/LeftPrin,
+permLeft/permRight, cut_step, cut).  qbuild TOP has GKNCut.  Docs §12.49 progress 6.  Next: GKN →
+ND (route to decide: syntactic translation vs semantic soundness + completeness).
+GKN progress 7 (2026-11-16, uncommitted, green, no sorry, standard axioms): GKN → ND BUILT
+SYNTACTICALLY (user's choice): QML_v12m_GKNTrans (reading: tr/Pc, closeB/pack, ND layer, path
+lemmas claim_path/or_path/bot_path) and QML_v12m_GKNToND (GKN.toND by induction with invariant
+Inv — left atoms free; toND_root; ⭐GKN.provable_iff: ND ↔ cut-free GKN for K/KD).  qbuild TOP has
+GKNToND.  Docs §12.49 progress 7.  Next: §12.49 steps 2–6 (Opt, B ND-first, clusters,
+interpolation, strong forms) — to scope with the user.
