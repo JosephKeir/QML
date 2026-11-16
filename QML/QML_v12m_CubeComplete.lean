@@ -130,11 +130,11 @@ class ModalSys.CubeSys [ModalSys] : Prop extends ModalSys.NoOpt where
   hub_fiveS : ModalSys.hubFlags = true → ModalSys.FiveStrong = true → ModalSys.FourStrong = true
   /-- Strong B comes with weak B, so with 4 it comes with 5 (`four_B`). -/
   strongB : ModalSys.BStrong = true → ModalSys.B = true
-  strongT : ModalSys.BStrongW = true → ModalSys.T = true → ModalSys.TStrong = true
+  strongT : ModalSys.BStrongW = true → ModalSys.T = true → ModalSys.TStrongW = true
 
 /-- S5, with every strong form but strong B's. -/
 def ModalSys.S5 : ModalSys :=
-  { T := true, Four := true, TStrong := true, D := true, DStrong := true, B := true,
+  { T := true, Four := true, TStrongW := true, D := true, DStrongW := true, B := true,
     BStrong := false, BStrongW := false, FourStrong := true, FourStrongW := true,
     Five := true, FiveStrong := true }
 
@@ -152,7 +152,7 @@ theorem ModalSys.S5_cube : @ModalSys.CubeSys ModalSys.S5 :=
 
 /-- S5 with every strong form. -/
 def ModalSys.S5Strong : ModalSys :=
-  { T := true, Four := true, TStrong := true, D := true, DStrong := true, B := true,
+  { T := true, Four := true, TStrongW := true, D := true, DStrongW := true, B := true,
     BStrong := true, BStrongW := true, FourStrong := true, FourStrongW := true,
     Five := true, FiveStrong := true }
 
@@ -170,7 +170,7 @@ theorem ModalSys.S5Strong_cube : @ModalSys.CubeSys ModalSys.S5Strong :=
 
 /-- S5 with every strong form off, 4's lifts included. -/
 def ModalSys.S5NoLift : ModalSys :=
-  { T := true, Four := true, TStrong := false, D := false, DStrong := false, B := true,
+  { T := true, Four := true, TStrongW := false, D := false, DStrongW := false, B := true,
     BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
     Five := true, FiveStrong := false }
 
@@ -188,7 +188,7 @@ theorem ModalSys.S5NoLift_cube : @ModalSys.CubeSys ModalSys.S5NoLift :=
 
 /-- S5 with every flag on but 4's lifts. -/
 def ModalSys.S5StrongNoLift : ModalSys :=
-  { T := true, Four := true, TStrong := true, D := true, DStrong := true, B := true,
+  { T := true, Four := true, TStrongW := true, D := true, DStrongW := true, B := true,
     BStrong := true, BStrongW := true, FourStrong := false, FourStrongW := false,
     Five := true, FiveStrong := true }
 
@@ -206,7 +206,7 @@ theorem ModalSys.S5StrongNoLift_cube : @ModalSys.CubeSys ModalSys.S5StrongNoLift
 
 /-- KB5: weak B and 5, T and D off, with both of 4's lifts. -/
 def ModalSys.KB5 : ModalSys :=
-  { T := false, Four := true, TStrong := false, D := false, DStrong := false, B := true,
+  { T := false, Four := true, TStrongW := false, D := false, DStrongW := false, B := true,
     BStrong := false, BStrongW := false, FourStrong := true, FourStrongW := true,
     Five := true, FiveStrong := true }
 
@@ -224,7 +224,7 @@ theorem ModalSys.KB5_cube : @ModalSys.CubeSys ModalSys.KB5 :=
 
 /-- KDB5: KB5 with D in both strengths. -/
 def ModalSys.KDB5 : ModalSys :=
-  { T := false, Four := true, TStrong := false, D := true, DStrong := true, B := true,
+  { T := false, Four := true, TStrongW := false, D := true, DStrongW := true, B := true,
     BStrong := false, BStrongW := false, FourStrong := true, FourStrongW := true,
     Five := true, FiveStrong := true }
 
@@ -242,7 +242,7 @@ theorem ModalSys.KDB5_cube : @ModalSys.CubeSys ModalSys.KDB5 :=
 
 /-- KB5 with no strong form: 4's lifts off. -/
 def ModalSys.KB5NoLift : ModalSys :=
-  { T := false, Four := true, TStrong := false, D := false, DStrong := false, B := true,
+  { T := false, Four := true, TStrongW := false, D := false, DStrongW := false, B := true,
     BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
     Five := true, FiveStrong := false }
 
@@ -260,7 +260,7 @@ theorem ModalSys.KB5NoLift_cube : @ModalSys.CubeSys ModalSys.KB5NoLift :=
 
 /-- KDB5 with D in both strengths, 4's lifts off. -/
 def ModalSys.KDB5NoLift : ModalSys :=
-  { T := false, Four := true, TStrong := false, D := true, DStrong := true, B := true,
+  { T := false, Four := true, TStrongW := false, D := true, DStrongW := true, B := true,
     BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
     Five := true, FiveStrong := false }
 
@@ -278,7 +278,7 @@ theorem ModalSys.KDB5NoLift_cube : @ModalSys.CubeSys ModalSys.KDB5NoLift :=
 
 /-- K45 with no strong form. -/
 def ModalSys.K45NoLift : ModalSys :=
-  { T := false, Four := true, TStrong := false, D := false, DStrong := false, B := false,
+  { T := false, Four := true, TStrongW := false, D := false, DStrongW := false, B := false,
     BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
     Five := true, FiveStrong := false }
 
@@ -296,7 +296,7 @@ theorem ModalSys.K45NoLift_cube : @ModalSys.CubeSys ModalSys.K45NoLift :=
 
 /-- KD45 with D in both strengths, 4's lifts off. -/
 def ModalSys.KD45NoLift : ModalSys :=
-  { T := false, Four := true, TStrong := false, D := true, DStrong := true, B := false,
+  { T := false, Four := true, TStrongW := false, D := true, DStrongW := true, B := false,
     BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
     Five := true, FiveStrong := false }
 
@@ -314,7 +314,7 @@ theorem ModalSys.KD45NoLift_cube : @ModalSys.CubeSys ModalSys.KD45NoLift :=
 
 /-- K45 with 4's `□`-lift and not its `◇`-lift. -/
 def ModalSys.K45BoxLift : ModalSys :=
-  { T := false, Four := true, TStrong := false, D := false, DStrong := false, B := false,
+  { T := false, Four := true, TStrongW := false, D := false, DStrongW := false, B := false,
     BStrong := false, BStrongW := false, FourStrong := true, FourStrongW := false,
     Five := true, FiveStrong := false }
 
@@ -332,7 +332,7 @@ theorem ModalSys.K45BoxLift_cube : @ModalSys.CubeSys ModalSys.K45BoxLift :=
 
 /-- K45 with 4's `◇`-lift and not its `□`-lift. -/
 def ModalSys.K45DiaLift : ModalSys :=
-  { T := false, Four := true, TStrong := false, D := false, DStrong := false, B := false,
+  { T := false, Four := true, TStrongW := false, D := false, DStrongW := false, B := false,
     BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := true,
     Five := true, FiveStrong := false }
 
@@ -350,7 +350,7 @@ theorem ModalSys.K45DiaLift_cube : @ModalSys.CubeSys ModalSys.K45DiaLift :=
 
 /-- K45 with strong 5 and the `□`-lift it needs, without the `◇`-lift. -/
 def ModalSys.K45Strong5 : ModalSys :=
-  { T := false, Four := true, TStrong := false, D := false, DStrong := false, B := false,
+  { T := false, Four := true, TStrongW := false, D := false, DStrongW := false, B := false,
     BStrong := false, BStrongW := false, FourStrong := true, FourStrongW := false,
     Five := true, FiveStrong := true }
 
@@ -368,7 +368,7 @@ theorem ModalSys.K45Strong5_cube : @ModalSys.CubeSys ModalSys.K45Strong5 :=
 
 /-- KD45 with D in both strengths, strong 5 and the `□`-lift, without the `◇`-lift. -/
 def ModalSys.KD45Strong5 : ModalSys :=
-  { T := false, Four := true, TStrong := false, D := true, DStrong := true, B := false,
+  { T := false, Four := true, TStrongW := false, D := true, DStrongW := true, B := false,
     BStrong := false, BStrongW := false, FourStrong := true, FourStrongW := false,
     Five := true, FiveStrong := true }
 

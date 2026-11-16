@@ -396,7 +396,7 @@ theorem exists_extent_of_mem (w : World σ N₀) {i : ℕ × ℕ} (φ : WFF σ (
 /-- ⭐Under strong D every world has a witness with a successor in its extent: the axiom
     `∃x:◇𝟙. ◇_x ⊤` is in the theory, its Henkin witness gives a `◇_z ⊤`, and that has a
     successor (`exists_dia`).  This is the canonical model's `posSerial`. -/
-theorem exists_extent (hDS : ModalSys.DStrong = true) (w : World σ N₀) :
+theorem exists_extent (hDS : ModalSys.DStrongW = true) (w : World σ N₀) :
     ∃ (i : ℕ × ℕ) (z : VarSymb) (_ : ∃ X, (w.L.ctx i).ref z = some (.VTypeDia X)) (w' : Succ w),
       w' ∈ extent w z := by
   have hax : (⟨(0, 0), WFF.somePoss⟩ : w.L.sys.Sentence σ) ∈ w.T :=

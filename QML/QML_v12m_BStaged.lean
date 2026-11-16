@@ -139,7 +139,7 @@ abbrev WFF.retEx {σ : Signature} {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = tru
     `Here c t ⊢ ∃y:◇A. Here y t`, which is `∃`-introduction at `c`.  So a theory with Henkin
     witnesses has a `Here` atom for every term without a dedicated step for it. -/
 def Proof.retEx [ModalSys.NoOpt] {σ : Signature} {Γ : Ctx} [Γ.NoSlots] {Δ : List (WFF σ Γ 0)}
-    (hT : ModalSys.T = true) (hS : ModalSys.TStrong = true) {A : VarType} {a : Ann A}
+    (hT : ModalSys.T = true) (hS : ModalSys.TStrongW = true) {A : VarType} {a : Ann A}
     (t : Term σ Γ A a) (c : ℕ) (hc : Γ.RootFresh (.free c)) :
     Proof σ Γ Δ (WFF.retEx hT t) := by
   refine Proof.T_dia hT hS A t c hc ?_
@@ -161,7 +161,7 @@ variable {σ : Signature}
     contains `∃y:◇A. Here y t` (`Proof.retEx`), and Henkin witnessing (`exW`) declares the root:
     unlike the tree's chain, the network needs no term query (the tree's `World.retW`). -/
 theorem BWorld.retW [ModalSys.NoOpt] (w : BWorld σ) (hT : ModalSys.T = true)
-    (hS : ModalSys.TStrong = true)
+    (hS : ModalSys.TStrongW = true)
     (i : ℕ) {A : VarType} {a : Ann A} (t : Term σ (w.ctx i) A a) :
     ∃ (i' : ℕ) (hi : i ≤ i') (y : VarSymb) (hy : (w.ctx i').ref y = some (.VTypeDia A)),
       WFF.hereAt hT y hy (Term.mono (w.le hi) t) ∈ w.M i' := by

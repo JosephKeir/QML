@@ -281,7 +281,7 @@ theorem grealised_wit (hT : ModalSys.T = true) {s t : GW hF M₀} (h : GCh hF M�
 /-- ⭐Under strong D every world has a possible object of type `𝟙` with a nonempty extent: the
     axiom's Henkin witness is a possible term `◇_x u`, whose extent has the child made for `x`
     (`glexX`). -/
-theorem gposSerial_canon (hDS : ModalSys.DStrong = true) (s : GW hF M₀) :
+theorem gposSerial_canon (hDS : ModalSys.DStrongW = true) (s : GW hF M₀) :
     ∃ p : (gframe hF hM₀).Pos .VTypeOne s, Nonempty (gposEval hM₀ p).1 := by
   have hax : (WFF.somePoss : WFF σ ((gw hM₀ s).ctx 0) 0) ∈ (gw hM₀ s).M 0 :=
     BWorld.mem_of_provable (Δ := []) (fun _ h => by simp at h) ⟨Proof.D_ex hDS⟩
@@ -408,7 +408,7 @@ variable (hM₀)
     the datum's content there (`grden_eta_real`), and the atom relates that content and the term
     (`grel_here`). -/
 theorem gposRet_exists_canon {A : VarType} {s : GW hF M₀} (hT : ModalSys.T = true)
-    (hS : ModalSys.TStrong = true) (o : (gframe hF hM₀).Dom A s) :
+    (hS : ModalSys.TStrongW = true) (o : (gframe hF hM₀).Dom A s) :
     ∃ (p : (gframe hF hM₀).Pos A s) (hm : (gframe hF hM₀).reflAcc hT s ∈ (gposEval hM₀ p).1),
       gInd hM₀ ((gposEval hM₀ p).2 ⟨(gframe hF hM₀).reflAcc hT s, hm⟩) o := by
   obtain ⟨i, a', t, ht⟩ := gdefinable_fromDom hM₀ A s o

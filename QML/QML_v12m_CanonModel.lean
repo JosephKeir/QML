@@ -207,7 +207,7 @@ theorem domShape_toDom (hT : ModalSys.T = true) : ∀ (A : VarType) (w : World �
 /-- ⭐Under strong D every world has a possible object of type `𝟙` with a nonempty extent: the
     witness `z` of `exists_extent`, with the unit as content.  Its raw extent is `extent w z` by
     `rden`'s definition. -/
-theorem posSerial_canon (hDS : ModalSys.DStrong = true) (w : World σ N₀) :
+theorem posSerial_canon (hDS : ModalSys.DStrongW = true) (w : World σ N₀) :
     ∃ p : (frame w₀).Pos .VTypeOne w, Nonempty (posEval w₀ p).1 := by
   obtain ⟨i, z, hz, w', hw'⟩ := exists_extent hDS w
   exact ⟨⟨rden w i (Ctx.Le.refl _) (Term.diatm z hz .unit), definable_rden _ _⟩, ⟨⟨w', hw'⟩⟩⟩
@@ -234,7 +234,7 @@ theorem Ind_refl {A : VarType} {w : World σ N₀} (o : (frame w₀).Dom A w) : 
     content is co-named with the term (the datum's own atom and the chain's), so the two have
     related representatives (`DTerm.rel_of_coname`).  No naming, so no `◇`-freeness. -/
 theorem posRet_exists_canon {A : VarType} {w : World σ N₀} (hT : ModalSys.T = true)
-    (hS : ModalSys.TStrong = true) (a : (frame w₀).Dom A w) :
+    (hS : ModalSys.TStrongW = true) (a : (frame w₀).Dom A w) :
     ∃ (p : (frame w₀).Pos A w) (hm : (frame w₀).reflAcc hT w ∈ (posEval w₀ p).1),
       Ind w₀ ((posEval w₀ p).2 ⟨(frame w₀).reflAcc hT w, hm⟩) a := by
   obtain ⟨i, a', t, ht⟩ := definable_fromDom w₀ A w a

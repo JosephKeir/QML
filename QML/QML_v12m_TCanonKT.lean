@@ -17,13 +17,13 @@ namespace V12M
 
 /-- The system KDT with the box view of possible objects. -/
 def ModalSys.KDTOpt : ModalSys :=
-  { T := true, Four := false, TStrong := false, D := true, DStrong := false, B := false,
+  { T := true, Four := false, TStrongW := false, D := true, DStrongW := false, B := false,
     BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
     Five := false, FiveStrong := false, Opt := true }
 
 /-- KT with strong T and the box view of possible objects. -/
 def ModalSys.KTSOpt : ModalSys :=
-  { T := true, Four := false, TStrong := true, D := false, DStrong := false, B := false,
+  { T := true, Four := false, TStrongW := true, D := false, DStrongW := false, B := false,
     BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
     Five := false, FiveStrong := false, Opt := true }
 

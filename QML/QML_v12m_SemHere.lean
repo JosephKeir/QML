@@ -727,7 +727,7 @@ theorem sat_hereAt_extend {hO : ModalSys.Opt = false} {A : VarType} (r : Root)
 
 omit [Γ.NoSlots] in
 /-- The existential, as `WFF.ex` binds it. -/
-theorem sat_here_ex {hO : ModalSys.Opt = false} (hS : ModalSys.TStrong = true) {A : VarType}
+theorem sat_here_ex {hO : ModalSys.Opt = false} (hS : ModalSys.TStrongW = true) {A : VarType}
     {a : Ann A}
     (t : Term σ Γ A a) (hr : Γ.RootFresh (.bnd 0)) :
     M.sat env (WFF.ex (.VTypeDia A)

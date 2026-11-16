@@ -285,7 +285,7 @@ def HubDefP (A : VarType) (p : (cmodel hF hM₀ hX).frame.Pos A (groot hF M₀))
 
 /-- Under strong D the world asked about names a possible object of `𝟙` with a nonempty extent:
     its Henkin witness for the axiom, read at the hub (`apex_dia_iff`). -/
-theorem hubDefP_serial (hD : ModalSys.DStrong = true) :
+theorem hubDefP_serial (hD : ModalSys.DStrongW = true) :
     ∃ p : (cmodel hF hM₀ hX).frame.Pos .VTypeOne (groot hF M₀),
       HubDefP hF hM₀ hX hh .VTypeOne p ∧ Nonempty ((cmodel hF hM₀ hX).posEval p).1 := by
   have hax : (WFF.somePoss : WFF σ ((gsrcWorld hF M₀ hM₀ hh).ctx 0) 0) ∈

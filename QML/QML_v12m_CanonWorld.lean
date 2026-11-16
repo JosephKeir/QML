@@ -174,7 +174,7 @@ structure World where
       `posRet_exists` needs: the atom makes the witness realised (`Canon.realised_of_here`) and
       its content indistinguishable from the term's value (`DTerm.rel_of_coname`), so no naming is
       involved and `◇`-typed contents are covered too (§10.41). -/
-  retW : (hT : ModalSys.T = true) → ModalSys.TStrong = true → (hO : ModalSys.Opt = false) →
+  retW : (hT : ModalSys.T = true) → ModalSys.TStrongW = true → (hO : ModalSys.Opt = false) →
       ∀ (i : ℕ × ℕ) {A : VarType}
       {a : Ann A} (t : Term σ (L.ctx i) A a),
       ∃ (i' : ℕ × ℕ) (hi : i ≤ i') (y : VarSymb) (hy : (L.ctx i').ref y = some (.VTypeDia A)),

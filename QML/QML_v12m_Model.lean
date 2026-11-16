@@ -674,7 +674,7 @@ structure Model (σ : Signature) where
   /-- ⭐Strong D: some possible object has a nonempty extent.  Stated at `𝟙`, where the content
       carries nothing: `strength` then gives, for every necessary object, a possible object with
       the same extent whose content is that object's value — the `Nec → Pos` map, at every type. -/
-  posSerial : ModalSys.DStrong = true → ∀ w : frame.W,
+  posSerial : ModalSys.DStrongW = true → ∀ w : frame.W,
     ∃ p : frame.Pos .VTypeOne w, Nonempty (posFull p).1.1
   /-- ⭐**Indistinguishability**, which `Here` reads at its content (docs §10.23, §10.33): co-named
       objects are indistinguishable, not identical.  Only reflexivity is asked here; that related
@@ -709,7 +709,7 @@ structure Model (σ : Signature) where
       canonical model to choose one (and, if naturality were ever wanted, to make the choices
       cohere, which is what sank the `y.ret` design). -/
   posRet_exists : ∀ {A : VarType} {w : frame.W} (_hT : ModalSys.T = true)
-    (_hS : ModalSys.TStrong = true) (a : frame.Dom A w),
+    (_hS : ModalSys.TStrongW = true) (a : frame.Dom A w),
     ∃ (p : frame.Pos A w) (hm : frame.reflAcc _hT w ∈ (posFull p).1.1),
       Ind ((posFull p).1.2 ⟨frame.reflAcc _hT w, hm⟩) a
   /-- ⭐Strong B: **comes back as** (docs §11.20), what `Back` reads.  A carrier is given by its

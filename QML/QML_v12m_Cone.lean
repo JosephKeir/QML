@@ -63,7 +63,7 @@ structure ConeData (N : Model.{0, 0} σ) where
     DefN (.VTypeDia A) (N.ops.posKeep hF p)
   posSide : ∀ (hV : ModalSys.Five = true) {A : VarType} {p : N.frame.Pos A ρ}, DefP A p →
     DefN (.VTypeDia A) (N.ops.posSide hV p)
-  posSerial : ModalSys.DStrong = true →
+  posSerial : ModalSys.DStrongW = true →
     ∃ p : N.frame.Pos .VTypeOne ρ, DefP .VTypeOne p ∧ Nonempty (N.posEval p).1
   keepLiftN : ∀ (hF : ModalSys.Four = true) {A : VarType}
     (_hl : (VarType.VTypeBox A).liftableR = true) (a : N.frame.Acc ρ) (o : N.frame.Nec A a.1),

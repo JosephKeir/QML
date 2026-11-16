@@ -85,7 +85,7 @@ theorem exists_extentO_of_mem (w : World σ N₀) {i : ℕ × ℕ} (φ : WFF σ 
 
 /-- ⭐Under strong D every world has a witness with a child in its extent: the axiom
     `∃x:◇𝟙. ◇_x ⊤`, its Henkin witness, and `exists_diaO`. -/
-theorem exists_extentO (hDS : ModalSys.DStrong = true) (w : World σ N₀) :
+theorem exists_extentO (hDS : ModalSys.DStrongW = true) (w : World σ N₀) :
     ∃ (i : ℕ × ℕ) (z : VarSymb) (_ : ∃ X, (w.L.ctx i).ref z = some (.VTypeDia X))
       (w' : SuccO hO w), w' ∈ extentO w z := by
   have hax : (⟨(0, 0), WFF.somePoss⟩ : w.L.sys.Sentence σ) ∈ w.T :=
@@ -257,7 +257,7 @@ theorem eval_toDomO : ∀ {A B : VarType} (g : GFunc σ A B) (w : World σ N₀)
   | _, _, .dkeep hF, _, _, _ => (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
 
 /-- ⭐Under strong D every world has a possible object of type `𝟙` with a nonempty extent. -/
-theorem posSerialO (hDS : ModalSys.DStrong = true) (w : World σ N₀) :
+theorem posSerialO (hDS : ModalSys.DStrongW = true) (w : World σ N₀) :
     ∃ p : (frameO hO w₀).Pos .VTypeOne w, Nonempty (posEvalO hO w₀ p).1 := by
   obtain ⟨i, z, hz, w', hw'⟩ := exists_extentO hO hDS w
   exact ⟨⟨rdenO hO w i (Ctx.Le.refl _) (Term.diatm z hz .unit), definableO_rden _ _⟩,

@@ -25,8 +25,8 @@ variable [ModalSys] {σ : Signature}
     KD4, and K, KD, KT and KDT with `Opt` on (docs §12.33, §12.35). -/
 class ModalSys.GKBase [ModalSys] : Prop where
   tOpt : ModalSys.T = true → ModalSys.Opt = true
-  noTStrong : ModalSys.TStrong = false
-  noDStrong : ModalSys.DStrong = false
+  noTStrongW : ModalSys.TStrongW = false
+  noDStrongW : ModalSys.DStrongW = false
   noB : ModalSys.B = false
   noBStrong : ModalSys.BStrong = false
   noBStrongW : ModalSys.BStrongW = false
@@ -50,19 +50,19 @@ instance ModalSys.GKSys.toNoT [ModalSys] [ModalSys.GKSys] : ModalSys.NoT := by
 
 /-- KD: weak D. -/
 def ModalSys.KD : ModalSys :=
-  { T := false, Four := false, TStrong := false, D := true, DStrong := false, B := false,
+  { T := false, Four := false, TStrongW := false, D := true, DStrongW := false, B := false,
     BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
     Five := false, FiveStrong := false }
 
 /-- K4: weak 4. -/
 def ModalSys.K4 : ModalSys :=
-  { T := false, Four := true, TStrong := false, D := false, DStrong := false, B := false,
+  { T := false, Four := true, TStrongW := false, D := false, DStrongW := false, B := false,
     BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
     Five := false, FiveStrong := false }
 
 /-- KD4: weak D and weak 4. -/
 def ModalSys.KD4 : ModalSys :=
-  { T := false, Four := true, TStrong := false, D := true, DStrong := false, B := false,
+  { T := false, Four := true, TStrongW := false, D := true, DStrongW := false, B := false,
     BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
     Five := false, FiveStrong := false }
 
@@ -92,7 +92,7 @@ instance : @ModalSys.GKSys ModalSys.KD4 :=
 
 /-- KT with the box view of possible objects: weak T and `Opt` (docs §12.35). -/
 def ModalSys.KTOpt : ModalSys :=
-  { T := true, Four := false, TStrong := false, D := false, DStrong := false, B := false,
+  { T := true, Four := false, TStrongW := false, D := false, DStrongW := false, B := false,
     BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
     Five := false, FiveStrong := false, Opt := true }
 

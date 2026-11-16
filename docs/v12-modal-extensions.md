@@ -17261,6 +17261,53 @@ CONTEXT.**  Sorry-free, standard axioms only.
     `provable_iff_validO_KTS` (every presented context).  `nameSent_mono` moved to `TCanonFaith`.
   * Next: NecT (scope above).
 
+**Renamed (2026-11-16): `TStrong` → `TStrongW`, `DStrong` → `DStrongW`** (and
+`GKBase.noTStrong`/`noDStrong` → `noTStrongW`/`noDStrongW`).  The convention of B, 4 and 5: a plain
+`XStrong` is the **necessary-object** form (`BStrong`, `FourStrong`, `FiveStrong`), `XStrongW` the
+**possible-object** ("witnessed") form (`BStrongW`, `FourStrongW`).  Strong T and strong D were the
+exceptions; both are possible-object forms.  Sections before this note say `TStrong`/`DStrong` for
+what is now `TStrongW`/`DStrongW`; **NecT is the new `TStrong`**.
+
+**§12.36, NecT: scope (2026-11-16, after strong T; paper).**
+* **Principle.**  Every object is the here-value of a necessary object:
+  `Γ, u : □A, u.here ≡ t⁺ ⊢ φ⁺  ⟹  Γ ⊢ φ` (`u` fresh), the necessary-object cell beside strong T's
+  possible-object cell, as 4 has `FourStrong`/`FourStrongW`.  With `Opt` on, `≡` exists at every
+  type, so the **equation** form is statable (the 2026-09-19 note's reason for a schematic form,
+  "the equation is statable only at `◇`-free types", is gone); Leibniz gives the schema back.
+  `u.here` is already an address under T (`Ctx.ref_here_of`), and `(u.box).collapse 0 = u.here`.
+* **Not admissible.**  Semantically it says `necExtract` is onto, which weak T does not give (a
+  model whose `Nec` is only the rigid sections refutes it), so a rule is genuinely needed.
+  Shape: an `∃`-elimination like `T_dia` (the proven path), not an axiom with a slot formula.
+* **Flag.**  A new `TStrong : Bool := false` in `ModalSys` (the necessary-object form, by the
+  convention above; the default keeps every system literal valid), needing T; the rule takes `hO` (**`Opt` only**: the end state has `Opt` everywhere, and
+  the `Opt`-off languages lack `≡` at `◇` types).  The law is asked under T, `TStrong` and `Opt`,
+  so every `Opt`-off model discharges it from `NoOpt`.
+* **Independent of `TStrongW`** (strong T's possible-object form).  Neither implies the other (possible versus necessary objects).
+  The 2026-09-19 factorisation still holds: `T_dia` at `A` follows from `T_dia` at `𝟙`, NecT and
+  strength (`c := ◇_z u.box`, whose identity content collapses to `u.here ≡ t`).  So one *could*
+  later read `TStrongW` as its `𝟙` instance plus NecT; not proposed now (the built strong T stays as
+  is, and the two cells are separate, as 4's lifts are).
+* **Coherence, later.**  Strong B under T, at the identity arrow, makes every object the value of a
+  necessary one, so it contains NecT; when B gets `Opt`, a requirement field like `WCoh.strongT`.
+* **Steps and cost.**
+  1. Flag; model law `necRet_exists : T → TStrong → Opt → ∀ a : Dom A w, ∃ n : Nec A w,
+     necExtract n = a` (7 model constructions supply it, all but the KT tree vacuously); the
+     `Proof` constructor; soundness (`sat_eqH`, the here-value of an extended environment).
+     About 150-250 lines.
+  2. **Breadth**: every recursion over proofs (`T_dia` occurs in 19 files).  Most cases are
+     `absurd` from `NoOpt` or `GKBase`; the real ones are closure under substitution
+     (`ProofSubst`: the hypothesis under `renameTm`, as `subst_realHyp_renameTm` but simpler, with
+     no identity view), weakening and the semantic substitution lemmas.  About 300-500 lines.
+  3. **Canonical** (KT tree only): `exists_necHyp` (the rule + `ex_intro` + `World.exW`, and the
+     instance at a root, as `exists_realHyp`), `necRet_rden` (at the self arrow `η u` denotes
+     `η(u.here)`, by `rdenO_boxtm_self` and `Term.collapse_eta`, then `faithO`), `modelT`'s field.
+     Short now that `faithO` exists: about 100-200 lines.
+  4. Named systems (T + NecT; T + strong T + NecT) and the every-presented-context theorems.
+  Total about 600-1000 lines; low risk (breadth, not invention).
+* **GK** stays without strong T and NecT (`GKBase`); their cut and Craig come together later:
+  existence rules with a side formula, where cut permutes and Craig takes `∃u`/`∀u` over the
+  eigenvariable.
+
 ### 12.37 The sequent calculus for B (and 5): paper check of the judgement form *(2026-11-16, paper)*
 
 The question §12.34 left open and the review called the programme's largest risk: is "a path with

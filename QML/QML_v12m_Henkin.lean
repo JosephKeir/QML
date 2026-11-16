@@ -396,7 +396,7 @@ def retSet (hT : ModalSys.T = true) (hO : ModalSys.Opt = false) (l : List VarTyp
 /-- ⭐A strong T witness for a term keeps a theory consistent: a derivation of `⊥` uses finitely many
     of its hypotheses, each lifted to one stage, where they are all the one `Here` atom
     (`WFF.mono_hereAt`) and `T_dia` discharges the witness. -/
-theorem consistent_grow_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true)
+theorem consistent_grow_ret (hT : ModalSys.T = true) (hTS : ModalSys.TStrongW = true)
     (hO : ModalSys.Opt = false)
     {l : List VarType} {S : Set ((L.pre l).Sentence σ)} (hS : StageSys.Consistent S) {m : ℕ}
     {A : VarType} {a : Ann A} (t : Term σ (L.ctxL m l) A a) :
@@ -450,7 +450,7 @@ open Classical in
     the query's term, with the `Here` atom; otherwise a variable of unit type. -/
 noncomputable def retStep (m : ℕ) (l : List VarType) (q : L.RetQ σ m) :
     Σ A : VarType, Set ((L.pre (A :: l)).Sentence σ) :=
-  if h : ModalSys.T = true ∧ ModalSys.TStrong = true ∧ ModalSys.Opt = false ∧
+  if h : ModalSys.T = true ∧ ModalSys.TStrongW = true ∧ ModalSys.Opt = false ∧
       (L.ctxL m q.1).Le (L.ctxL m l) then
     ⟨.VTypeDia q.2.1, L.retSet h.1 h.2.2.1 l m (Term.mono h.2.2.2 q.2.2.2)⟩
   else ⟨.VTypeOne, ∅⟩
@@ -459,7 +459,7 @@ open Classical in
 theorem consistent_retStep {l : List VarType} {S : Set ((L.pre l).Sentence σ)}
     (hS : StageSys.Consistent S) (m : ℕ) (q : L.RetQ σ m) :
     StageSys.Consistent (grow l (L.retStep m l q).1 S ∪ (L.retStep m l q).2) := by
-  by_cases h : ModalSys.T = true ∧ ModalSys.TStrong = true ∧ ModalSys.Opt = false ∧
+  by_cases h : ModalSys.T = true ∧ ModalSys.TStrongW = true ∧ ModalSys.Opt = false ∧
       (L.ctxL m q.1).Le (L.ctxL m l)
   · have e : L.retStep m l q =
         ⟨.VTypeDia q.2.1, L.retSet h.1 h.2.2.1 l m (Term.mono h.2.2.2 q.2.2.2)⟩ := dif_pos h

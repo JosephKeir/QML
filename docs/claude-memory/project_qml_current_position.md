@@ -533,3 +533,7 @@ change).  `QML_v12m_TCanonFaith.faithO` (≡ in the theory ⇒ equal `rdenO`): V
 (`Term.subst_readRen`, `WFF.readNames_eqH`, `selfEq`, `selfCombine`), `faithO` sorry-free,
 TCanonRet (`exists_realHyp`, `posRet_rden`), modelT's real `posRet_exists`, WeakTO deleted,
 `ModalSys.KTSOpt` + `provable_iff_validO_KTS`.  Next: NecT.
+
+**2026-11-16, RENAME:** `TStrong` → `TStrongW`, `DStrong` → `DStrongW` (possible-object forms, as
+`BStrongW`/`FourStrongW`); plain `XStrong` = necessary-object form.  Older notes say `TStrong` for
+today's `TStrongW`.  NecT (scoped, docs §12.36 "NecT: scope") will be the new `TStrong`.

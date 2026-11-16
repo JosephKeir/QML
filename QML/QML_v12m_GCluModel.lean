@@ -418,7 +418,7 @@ theorem ceval_toDom (hX : CluFlags) : ∀ {A C : VarType} (g : GFunc σ A C) (s 
 /-- ⭐Under strong D every world has a possible object of type `𝟙` with a nonempty extent: the
     root's Henkin witness for the axiom, whose extent has the child made for its witness
     (`glexX`), read at the world (R4). -/
-theorem cposSerial (hX : CluFlags) (hDS : ModalSys.DStrong = true) (s : GW hF M₀) :
+theorem cposSerial (hX : CluFlags) (hDS : ModalSys.DStrongW = true) (s : GW hF M₀) :
     ∃ p : (cframe hF hM₀ hX).Pos .VTypeOne s, Nonempty (cposEval hM₀ hX p).1 := by
   have hax : (WFF.somePoss : WFF σ ((gw hM₀ (groot hF M₀)).ctx 0) 0) ∈
       (gw hM₀ (groot hF M₀)).M 0 :=
@@ -575,7 +575,7 @@ variable (hM₀)
     arrow of a possible object** (`gposRet_exists_canon`, the own arrow's content by
     `cden_own_content`). -/
 theorem cposRet_exists (hX : CluFlags) {A : VarType} {s : GW hF M₀} (hT : ModalSys.T = true)
-    (hS : ModalSys.TStrong = true) (o : (cframe hF hM₀ hX).Dom A s) :
+    (hS : ModalSys.TStrongW = true) (o : (cframe hF hM₀ hX).Dom A s) :
     ∃ (p : (cframe hF hM₀ hX).Pos A s)
       (hm : (cframe hF hM₀ hX).reflAcc hT s ∈ (cposEval hM₀ hX p).1),
       cInd hM₀ hX ((cposEval hM₀ hX p).2 ⟨(cframe hF hM₀ hX).reflAcc hT s, hm⟩) o := by

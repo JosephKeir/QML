@@ -254,7 +254,7 @@ theorem domShape_toDom (hSh : ModalSys.shaped = true) : ∀ (A : VarType) (s : B
 /-- ⭐Under strong D every world has a possible object of type `𝟙` with a nonempty extent: the
     axiom's Henkin witness is a possible term `◇_x u`, whose extent is `x`'s, which `exX` makes
     nonempty. -/
-theorem posSerial_canon (hDS : ModalSys.DStrong = true) (s : B.W) :
+theorem posSerial_canon (hDS : ModalSys.DStrongW = true) (s : B.W) :
     ∃ p : B.frame.Pos .VTypeOne s, Nonempty (B.posEval p).1 := by
   have hax : (WFF.somePoss : WFF σ ((B.w s).ctx 0) 0) ∈ (B.w s).M 0 :=
     BWorld.mem_of_provable (Δ := []) (fun _ h => by simp at h) ⟨Proof.D_ex hDS⟩
@@ -684,7 +684,7 @@ theorem rden_eta_real {s : B.W} {x : VarSymb} (hr : (B.w s).Realised x) {k : ℕ
     η-expansion has the own arrow in its extent, with the datum's content there (`rden_eta_real`);
     and the atom relates that content and the term (`rel_here`), which is what `Ind` asks. -/
 theorem posRet_exists_canon {A : VarType} {s : B.W} (hT : ModalSys.T = true)
-    (hS : ModalSys.TStrong = true) (o : B.frame.Dom A s) :
+    (hS : ModalSys.TStrongW = true) (o : B.frame.Dom A s) :
     ∃ (p : B.frame.Pos A s) (hm : B.frame.reflAcc hT s ∈ (B.posEval p).1),
       B.Ind ((B.posEval p).2 ⟨B.frame.reflAcc hT s, hm⟩) o := by
   obtain ⟨i, a', t, ht⟩ := B.definable_fromDom A s o

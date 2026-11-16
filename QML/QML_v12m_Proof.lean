@@ -239,7 +239,7 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       Proof σ Γ Δ (.box .bot) → Proof σ Γ Δ .bot
   -- Strong D
   /-- Some possible object has a nonempty extent (`WFF.somePoss`). -/
-  | D_ex {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hDS : ModalSys.DStrong = true) :
+  | D_ex {Γ : Ctx} {Δ : List (WFF σ Γ 0)} (hDS : ModalSys.DStrongW = true) :
       Proof σ Γ Δ WFF.somePoss
   -- Weak T
   /-- What is necessary holds here: the `□` view collapsed onto the current level. -/
@@ -447,7 +447,7 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
       what the truth lemma's `here` case needs and what no schema instance supplies (§2d,
       `Model.sat_here_ex`).  The chain now adds exactly that atom (`WorldLang.retSet`), and
       `Canon.spec_of_here` derives `RealDatum.spec` from it. -/
-  | T_dia {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) (hS : ModalSys.TStrong = true)
+  | T_dia {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) (hS : ModalSys.TStrongW = true)
       (A : VarType) {a : Ann A} (t : Term σ Γ A a) (c : ℕ)
       (hc : Γ.RootFresh (.free c))
       {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :

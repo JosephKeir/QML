@@ -113,7 +113,7 @@ variable {N₀ : ℕ} (hO : ModalSys.Opt = true)
 include hO in
 /-- ⭐**Strong T's witness in a world**: for every term, a Henkin root realised here by it, by the
     theory's own word (`T_dia`, then the `∃`-witness). -/
-theorem exists_realHyp (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true)
+theorem exists_realHyp (hT : ModalSys.T = true) (hTS : ModalSys.TStrongW = true)
     (w : World σ N₀) (i : ℕ × ℕ) {A : VarType} {a : Ann A} (t : Term σ (w.L.ctx i) A a) :
     ∃ (i' : ℕ × ℕ) (hi : i ≤ i') (c : ℕ)
       (hc : (w.L.ctx i').ref (.root (.free c)) = some (.VTypeDia A)),
@@ -172,7 +172,7 @@ variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
 
 /-- ⭐**Strong T's law in raw form**: every object of a world is the content, at the self arrow,
     of a definable possible object. -/
-theorem posRet_rden (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) (w : World σ N₀)
+theorem posRet_rden (hT : ModalSys.T = true) (hTS : ModalSys.TStrongW = true) (w : World σ N₀)
     {A : VarType} (o : RDomO hO A w) (ho : DefinableO hO A w o) :
     ∃ (p : RDomO hO (.VTypeDia A) w) (_ : DefinableO hO (.VTypeDia A) w p)
       (hm : SuccO.selfArr hT w ∈ p.1), p.2 ⟨_, hm⟩ = o := by

@@ -51,7 +51,7 @@ structure CluFlags : Prop where
   /-- Strong B comes with weak B, whose rules it assumes. -/
   bS : ModalSys.BStrong = true → ModalSys.B = true
   /-- Witnessed ways home are strong T's realisers, kept (`ModalSys.WCoh`). -/
-  bW : ModalSys.BStrong = true → ModalSys.BStrongW = true → ModalSys.TStrong = true
+  bW : ModalSys.BStrong = true → ModalSys.BStrongW = true → ModalSys.TStrongW = true
 
 theorem rpre (hX : CluFlags) (hM₀ : Theory.IsMCS M₀) (s : GW hF M₀) (i : ℕ) :
     PPreOk (rpath s) (groot hF M₀) s (rpath_eq s) i :=

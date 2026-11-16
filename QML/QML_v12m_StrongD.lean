@@ -156,7 +156,7 @@ theorem WFF.dia_top_congr {Γ : Ctx} {d : ℕ} {x y : VarSymb} (h : x = y)
 /-- ⭐**Strong D's schema**, `□φ(u.box) ⊢ ∃x:◇A. ◇_x φ(x.dia)`, derived from the axiom `D_ex`: the
     axiom's witness `z`, with `u`'s value put on it as content, witnesses the `∃`, and `K_dia`
     carries `□φ(u.box)` into `◇_z φ(u.box)`.  The eigenvariable `z` only has to be fresh. -/
-def Proof.D_schema (hDS : ModalSys.DStrong = true) {Γ : Ctx} [Γ.NoSlots] {A : VarType}
+def Proof.D_schema (hDS : ModalSys.DStrongW = true) {Γ : Ctx} [Γ.NoSlots] {A : VarType}
     {u : VarSymb} (hu : Γ.ref u = some (.VTypeBox A)) (z : ℕ) (hz : Γ.RootFresh (.free z))
     (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1) (_hO : ModalSys.Opt = false := by opt_off) :
     Proof σ Γ [WFF.boxHole hu ψ] (WFF.exDia A ψ) := by
@@ -184,7 +184,7 @@ def Proof.D_schema (hDS : ModalSys.DStrong = true) {Γ : Ctx} [Γ.NoSlots] {A : 
     exact Proof.lookup (List.mem_cons_of_mem _ List.mem_cons_self)
 
 /-- The schema in a presented context, with its eigenvariable chosen fresh. -/
-def Proof.D_schema' (hDS : ModalSys.DStrong = true) {Γ : Ctx} [Γ.Presented] {A : VarType}
+def Proof.D_schema' (hDS : ModalSys.DStrongW = true) {Γ : Ctx} [Γ.Presented] {A : VarType}
     {u : VarSymb} (hu : Γ.ref u = some (.VTypeBox A)) (ψ : WFF σ (Γ.boxIn.insert (.bnd 0) A) 1)
     (_hO : ModalSys.Opt = false := by opt_off) :
     Proof σ Γ [WFF.boxHole hu ψ] (WFF.exDia A ψ) :=

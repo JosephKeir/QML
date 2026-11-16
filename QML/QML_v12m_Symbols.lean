@@ -35,13 +35,16 @@ class ModalSys where
   T : Bool
   /-- Weak 4: necessary objects stay visible, restricted, inside `□` (`u.keep`). -/
   Four : Bool
-  /-- Strong T: every object has a possible object realised at the current world with it as its
-      content there.  Needs weak T, which the rules using it require. -/
-  TStrong : Bool
+  /-- Strong T, the **possible-object form** (`W`: witnessed, as `BStrongW`, `FourStrongW`): every
+      object has a possible object realised at the current world with it as its content there.
+      Needs weak T, which the rules using it require.  (Named `TStrong` before 2026-11-16; a plain
+      `XStrong` is a necessary-object form.) -/
+  TStrongW : Bool
   /-- Weak D: every world has an accessible world. -/
   D : Bool
-  /-- Strong D: some possible object has a nonempty extent, `⊢ ∃x:◇𝟙. ◇_x ⊤`. -/
-  DStrong : Bool
+  /-- Strong D, a **possible-object form** (`W`): some possible object has a nonempty extent,
+      `⊢ ∃x:◇𝟙. ◇_x ⊤`.  (Named `DStrong` before 2026-11-16; D needs no necessary-object form.) -/
+  DStrongW : Bool
   /-- Weak B: what is possibly necessary is true, for closed formulas, `◇□ψ ⊢ ψ`. -/
   B : Bool
   /-- Strong B: round trips are named — `Back` (an object comes back as a given value from every
@@ -214,10 +217,10 @@ theorem ModalSys.NoB.absurdLink [ModalSys] [ModalSys.NoB] (hV : ModalSys.Five = 
     ways home contains strong T at the own arrow (`Model.posRet_of_posBack`), and only strong T's
     rule introduces `Here` atoms, so a system with it and T has strong T too; completeness under
     `BStrongW` asks for this.  (It contains strong D as well, `Model.posSerial_of_posBack`, but
-    there no flag is needed: strong D's law is asked of a model only under `DStrong`, and its
+    there no flag is needed: strong D's law is asked of a model only under `DStrongW`, and its
     formula is derivable by naming a route, itself derivable, `Proof.ret_route_node`.) -/
 class ModalSys.WCoh [ModalSys] : Prop extends ModalSys.NoOpt where
-  strongT : ModalSys.BStrongW = true → ModalSys.T = true → ModalSys.TStrong = true
+  strongT : ModalSys.BStrongW = true → ModalSys.T = true → ModalSys.TStrongW = true
 
 /-- Under T and 4 a view shows only kept objects: the contents of `u` are `u.keep.here`. -/
 def ModalSys.keepOnly [ModalSys] : Bool := ModalSys.T && ModalSys.Four
