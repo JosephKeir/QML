@@ -85,11 +85,16 @@ class ModalSys where
       milestone (docs §12.10), and this field loses a disjunct with each.  Meanwhile their syntax
       may assume `Opt` off. -/
   optStage : Opt = true → (Four || B || BStrong || Five) = false := by decide
+  /-- ⭐Strong T, the **necessary-object form** (NecT, `docs/v12-modal-extensions.md` §12.36):
+      every object is the value here (`u.here`) of a necessary object, `Proof.T_nec`.  Needs weak
+      T and `Opt` (the rule states `u.here ≡ t`, and `≡` exists at every type only with `Opt` on),
+      which the rule requires; its law, `Model.necRet_exists`, is asked only then. -/
+  TStrong : Bool := false
 
 /-- The system K. -/
 def ModalSys.K : ModalSys :=
   ⟨false, false, false, false, false, false, false, false, false, false, false, false, false,
-    by decide⟩
+    by decide, false⟩
 
 /-- With 4 on, `Opt` is off (for now: `ModalSys.optStage`). -/
 theorem ModalSys.noOpt_of_Four [ModalSys] (h : ModalSys.Four = true) :

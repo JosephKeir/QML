@@ -712,6 +712,13 @@ structure Model (σ : Signature) where
     (_hS : ModalSys.TStrongW = true) (a : frame.Dom A w),
     ∃ (p : frame.Pos A w) (hm : frame.reflAcc _hT w ∈ (posFull p).1.1),
       Ind ((posFull p).1.2 ⟨frame.reflAcc _hT w, hm⟩) a
+  /-- ⭐Strong T, the **necessary-object form** (NecT, docs §12.36): every object is the value at
+      the self arrow of some necessary object — `necEval` at the own arrow is onto.  Asked only
+      with `Opt` on, where `Ind` is equality and the rule `Proof.T_nec` states it as `u.here ≡ t`.
+      Existential, as `posRet_exists`. -/
+  necRet_exists : ∀ {A : VarType} {w : frame.W} (_hT : ModalSys.T = true)
+    (_hS : ModalSys.TStrong = true) (_hO : ModalSys.Opt = true) (a : frame.Dom A w),
+    ∃ n : frame.Nec A w, necEval n (frame.reflAcc _hT w) = a
   /-- ⭐Strong B: **comes back as** (docs §11.20), what `Back` reads.  A carrier is given by its
       round-trip data: an out leg `S` (a set of arrows out), and for each of its arrows `a` the
       carrier's value at the end of every further arrow `b`.  Like `Ind`, a primitive of the model:

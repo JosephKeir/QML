@@ -1941,6 +1941,53 @@ theorem WFF.subst_realHyp_renameTm {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (hT 
   rw [← Term.mono_subst _ _ hθr hcr]
   exact sig_mono _ (Term.subst_mono_renameTm_sigma θ hθ hc hu hu' (.VTypeDia A) t)
 
+/-- ⭐**NecT's hypothesis is closed under substitution**: the eigenvariable's entry is the
+    η-expansion of the new one, whose value here is the new one's (`SubE.proj` at `here`,
+    `Term.collapse_eta`); the value travels as in `subst_realHyp_renameTm`. -/
+theorem WFF.subst_necHyp_renameTm {ι : VarSymb → VarSymb} {Γ Δ : Ctx} (hT : ModalSys.T = true)
+    (hO : ModalSys.Opt = true) (θ : Subst σ Δ) (hθ : Subst.Ok Γ θ) (hc : Subst.Coh ι Γ θ)
+    (hΓ : Γ.SlotsFrom 0) (hΔ : Δ.SlotsFrom 0) {u u' : ℕ} (hu : Γ.RootFresh (.free u))
+    (hu' : Δ.RootFresh (.free u')) {A : VarType} {a : Ann A} (t : Term σ Γ A a) :
+    WFF.subst (Subst.renameTmIdx σ ι u u' (.VTypeBox A) hu'.root)
+        (θ.renameTm u u' (.VTypeBox A) hu'.root)
+        (Subst.ok_renameTm hθ (.VTypeBox A) hu'.root)
+        (Subst.coh_renameTm hθ hc hu (.VTypeBox A) hu'.root)
+        (hΓ.insertFree u (.VTypeBox A)) (hΔ.insertFree u' (.VTypeBox A))
+        (WFF.necHyp hT hO (.root (.free u)) (Ctx.ref_insert_root Γ (.free u) (.VTypeBox A))
+          (Term.weaken hu.root (.VTypeBox A) t)) =
+      WFF.necHyp hT hO (.root (.free u')) (Ctx.ref_insert_root Δ (.free u') (.VTypeBox A))
+        (Term.weaken hu'.root (.VTypeBox A) (Term.subst ι θ hθ hc t)) := by
+  have hk : ModalSys.keepOnly = false := by
+    cases hk : ModalSys.keepOnly
+    · rfl
+    · have hF := (ModalSys.keepOnly_flags hk).2
+      have := ModalSys.noOpt_of_Four hF
+      rw [hO] at this
+      cases this
+  have hat := Subst.at_renameTm_root θ u u' (.VTypeBox A) hu'.root
+  set Δ' := Δ.insert (.free u') (.VTypeBox A)
+  have hr' : Δ'.ref (.root (.free u')) = some (.VTypeBox A) := Ctx.ref_insert_root Δ _ _
+  have hcol : (VarSymb.root (.free u')).inner.collapse 0 = .step (.root (.free u')) .here := by
+    rw [VarSymb.inner_box hk]
+    simp [VarSymb.collapse, Step.isProj]
+  have hat₁ : (θ.renameTm u u' (.VTypeBox A) hu'.root).at (.step (.root (.free u)) .here) =
+      .tm (Term.collapse (Ctx.collapses_boxIn_self hT Δ')
+        (Term.eta (VarSymb.root (.free u')).inner A (Ctx.ref_inner hr'))) := by
+    change (if Step.here.isStruct then
+      ((θ.renameTm u u' (.VTypeBox A) hu'.root).at (.root (.free u))).proj .here else _) = _
+    rw [if_pos (show Step.here.isStruct = true from rfl), hat]
+    change (if hT : ModalSys.T = true then _ else _) = _
+    rw [dif_pos hT]
+  have tmOf : ∀ {Ω : Ctx} {b b' : Ann A} {s : Term σ Ω A b} {s' : Term σ Ω A b'},
+      (⟨b, s⟩ : Σ c, Term σ Ω A c) = ⟨b', s'⟩ → SubE.tm s = SubE.tm s' := by
+    intro Ω b b' s s' e
+    cases e
+    rfl
+  rw [WFF.necHyp, WFF.necHyp, WFF.subst_eqH]
+  refine eqH_congr hO ((Term.subst_eta_tm _ _ _ A _ _ _ hat₁).trans
+    ((Term.collapse_eta _ _ A _).trans (Term.eta_congr hcol A _ _))) ?_
+  exact Term.subst_mono_renameTm_sigma θ hθ hc hu hu' (.VTypeBox A) t
+
 theorem sig_collapse {k : ℕ} {Γ₁ Γ₂ : Ctx} (hk : Ctx.Collapses k Γ₁ Γ₂) {A : VarType}
     {a a' : Ann A} {t : Term σ Γ₁ A a} {t' : Term σ Γ₁ A a'}
     (h : (⟨a, t⟩ : Σ b, Term σ Γ₁ A b) = ⟨a', t'⟩) :
@@ -3772,6 +3819,22 @@ def Proof.subst {σ : Signature} : {Γ : Ctx} → {Δs : List (WFF σ Γ 0)} →
               (List.map_congr_left fun χ _ =>
                 WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' (.VTypeDia A) χ))
           (Proof.conv (WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' (.VTypeDia A) _) ih))
+  | _, _, _, @Proof.T_nec _ _ _ _ hT hS hO A _ t c hcf _ _ p, Γ', _, ι, θ, hθ, hc, hΓ =>
+      have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
+      have hcf' : Γ'.RootFresh (.free (Ctx.Presented.bound Γ')) :=
+        Ctx.Presented.fresh_bound _ le_rfl
+      have ih := Proof.subst p (Γ' := Γ'.insert (.free (Ctx.Presented.bound Γ')) (.VTypeBox A))
+        (θ.renameTm c _ (.VTypeBox A) hcf'.root) (Subst.ok_renameTm hθ (.VTypeBox A) hcf'.root)
+        (Subst.coh_renameTm hθ hc hcf (.VTypeBox A) hcf'.root) (hΓ.insertFree c (.VTypeBox A))
+      Proof.T_nec hT hS hO A (Term.subst ι θ hθ hc t) (Ctx.Presented.bound Γ') hcf'
+        (Proof.castHyps
+          (by
+            simp only [List.map_cons, List.map_map, Function.comp_def]
+            exact congrArg₂ List.cons
+              (WFF.subst_necHyp_renameTm hT hO θ hθ hc hΓ hΓ' hcf hcf' t)
+              (List.map_congr_left fun χ _ =>
+                WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' (.VTypeBox A) χ))
+          (Proof.conv (WFF.subst_weaken_renameTm θ hθ hc hΓ hΓ' hcf hcf' (.VTypeBox A) _) ih))
   | _, _, _, @Proof.here_elim _ _ Γ _ _ hT hO x hx A a t a₁ bd ψ ph pb, Γ', _, ι, θ, hθ, hc, hΓ =>
       have hΓ' : Γ'.SlotsFrom 0 := Ctx.NoSlots.slots
       have hw : (θ.at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []

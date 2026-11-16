@@ -318,6 +318,7 @@ noncomputable def model : Model.{0, 0} σ where
   posSide_ext := fun hV => (ModalSys.NoFive.absurdFive hV).elim
   posSide_content := fun hV => (ModalSys.NoFive.absurdFive hV).elim
   posRet_exists hT hS a := posRet_exists_canon w₀ hT hS a
+  necRet_exists _ _ hO := absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
   posSerial hDS w := posSerial_canon w₀ hDS w
   necSide_exists := fun hV => (ModalSys.NoFive.absurdFive hV).elim
   Ret _ _ _ _ := False

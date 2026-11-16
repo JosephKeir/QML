@@ -402,6 +402,7 @@ macro "kflag" : tactic => `(tactic| first
   | exact absurd (ModalSys.GKBase.tOpt ‹ModalSys.T = true›)
       (by rw [ModalSys.noOpt_of_Four ‹ModalSys.Four = true›]; decide)
   | exact absurd ‹ModalSys.TStrongW = true› (by simp [ModalSys.GKBase.noTStrongW])
+  | exact absurd ‹ModalSys.TStrong = true› (by simp [ModalSys.GKBase.noTStrong])
   | exact absurd ‹ModalSys.DStrongW = true› (by simp [ModalSys.GKBase.noDStrongW])
   | exact absurd ‹ModalSys.B = true› (by simp [ModalSys.GKBase.noB])
   | exact absurd ‹ModalSys.BStrong = true› (by simp [ModalSys.GKBase.noBStrong])

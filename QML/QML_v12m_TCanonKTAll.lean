@@ -4,7 +4,8 @@ import QML.QML_v12m_TCanonOpenT
 # QML v12m — KT, KDT and strong KT with `Opt`: complete for every presented context
 
 `provable_iff_validO` (route 2, `QML_v12m_TCanonOpenT`) at the concrete systems `ModalSys.KTOpt`,
-`ModalSys.KDTOpt` and `ModalSys.KTSOpt` (strong T).
+`ModalSys.KDTOpt`, and strong T in either form or both: `ModalSys.KTSOpt`, `ModalSys.KTNOpt`,
+`ModalSys.KTSNOpt`.
 -/
 
 namespace V12M
@@ -44,5 +45,30 @@ theorem provable_iff_validO_KTS {σ : Signature} [Countable σ.FuncSyms] [Counta
   provable_iff_validO rfl
 
 end KTS
+
+section KTN
+
+attribute [local instance] ModalSys.KTNOpt
+
+/-- ⭐**KT with NecT and `Opt` is sound and complete for every presented context.** -/
+theorem provable_iff_validO_KTN {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
+    {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
+    Provable Δ φ ↔ ValidO Δ φ :=
+  provable_iff_validO rfl
+
+end KTN
+
+section KTSN
+
+attribute [local instance] ModalSys.KTSNOpt
+
+/-- ⭐**KT with both strong forms of T and `Opt` is sound and complete for every presented
+    context.** -/
+theorem provable_iff_validO_KTSN {σ : Signature} [Countable σ.FuncSyms] [Countable σ.RelSyms]
+    {Γ : Ctx} [Γ.Presented] {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
+    Provable Δ φ ↔ ValidO Δ φ :=
+  provable_iff_validO rfl
+
+end KTSN
 
 end V12M

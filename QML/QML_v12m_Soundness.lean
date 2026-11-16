@@ -102,6 +102,22 @@ theorem sat_realHyp_extend {M : Model.{u, v} σ} (hM : M.IndInvariant) (hT : Mod
   · rw [WFF.realHyp_noOpt hT (Bool.eq_false_iff.mpr hO)]
     exact (sat_hereAt_extend hT env r hr p t).mpr ⟨hm, hc⟩
 
+/-- ⭐**NecT's hypothesis holds of a necessary object whose value here is `t`'s**: `c.here`
+    denotes the value at the own arrow (`Env.ref_here`), and `≡` is identity (`sat_eqH`). -/
+theorem sat_necHyp_extend {M : Model.{u, v} σ} (hT : ModalSys.T = true)
+    (hO : ModalSys.Opt = true) {Γ : Ctx} {w : M.frame.W} (env : M.Env Γ w) (r : Root)
+    (hr : Γ.RootFresh r) {A : VarType} (n : M.frame.Nec A w) {a : Ann A} (t : Term σ Γ A a)
+    (hn : M.necEval n (M.frame.reflAcc hT w) = interp env t) :
+    M.sat (env.extend (T := .VTypeBox A) r n)
+      (WFF.necHyp hT hO (.root r) (Ctx.ref_insert_root Γ r (.VTypeBox A))
+        (Term.weaken hr.root (.VTypeBox A) t)) := by
+  have hslot : (env.extend (T := .VTypeBox A) r n).ref (.root r)
+      (Ctx.ref_insert_root Γ r (.VTypeBox A)) = n :=
+    Env.extend_root (T := .VTypeBox A) env r n (Ctx.ref_insert_root Γ r (.VTypeBox A))
+  rw [WFF.necHyp, sat_eqH hO, interp_eta,
+    Env.ref_here _ hT (Ctx.ref_insert_root Γ r (.VTypeBox A)), hslot]
+  exact hn.trans (interp_mono (Env.agree_extend (T := .VTypeBox A) env hr.root n) t).symm
+
 /-- A closed formula's truth depends only on the world. -/
 theorem sat_closed {M : Model.{u, v} σ} {Γ Γ' : Ctx} {w : M.frame.W} (env : M.Env Γ w)
     (env' : M.Env Γ' w) {d : ℕ} (ψ : WFF σ Ctx.empty d) :
@@ -550,6 +566,20 @@ theorem soundness {Γ : Ctx} {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} (p : P
       · -- An old hypothesis, merely weakened by the eigenvariable.
         obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
         exact (sat_weaken (T := .VTypeDia A) env hc.root q χ').mpr (hΔ χ' hχ')
+  | @T_nec Γ _ hT hS hO A a t c hc Δ φ p ih =>
+      -- Interpret the eigenvariable as a necessary object whose value here is `t`'s:
+      -- `necRet_exists` says there is one.
+      intro M hM w env hfin hnp hop hΔ
+      obtain ⟨n, hn⟩ := M.necRet_exists hT hS hO (interp env t)
+      refine (sat_weaken (T := .VTypeBox A) env hc.root n φ).mp
+        (ih M hM (env.extend (T := .VTypeBox A) (.free c) n) (hfin.insert hc _) (hnp.insert _ _)
+          (hop.extend hc.root _) ?_)
+      intro χ hχ
+      rcases List.mem_cons.mp hχ with h₁ | h₂
+      · subst h₁
+        exact sat_necHyp_extend hT hO env (.free c) hc n t hn
+      · obtain ⟨χ', hχ', rfl⟩ := List.mem_map.mp h₂
+        exact (sat_weaken (T := .VTypeBox A) env hc.root n χ').mpr (hΔ χ' hχ')
   | @here_elim Γ _ Δ hT hO x hx A a t a₁ bd ψ ph pb ihh ihb =>
       intro M hM w env hfin hnp hop hΔ
       exact sat_here_elim hT env hnp hfin hM hop hx t bd ψ (ihh M hM env hfin hnp hop hΔ)

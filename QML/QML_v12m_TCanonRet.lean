@@ -235,4 +235,98 @@ theorem posRet_rden (hT : ModalSys.T = true) (hTS : ModalSys.TStrongW = true) (w
 
 end OCanon
 
+
+/-! ## NecT: necessary objects with a given value here -/
+
+/-- ⭐**NecT's hypothesis, instantiated at a declared root**: `c₀.here ≡ t` becomes `c.here ≡ t`. -/
+theorem WFF.subst_necHyp_single (hT : ModalSys.T = true) (hO : ModalSys.Opt = true)
+    {Γ Γ' : Ctx} [Γ.NoSlots] [Γ'.NoSlots] (h : Γ.Le Γ') {c₀ c : ℕ}
+    (hc₀ : Γ.RootFresh (.free c₀)) {A : VarType}
+    (hc : Γ'.ref (.root (.free c)) = some (.VTypeBox A)) {a : Ann A} (t : Term σ Γ A a) :
+    WFF.subst (Subst.singleIdx (.free c₀) (.tm (Term.eta (.root (.free c)) (.VTypeBox A) hc)))
+        (Subst.single (.free c₀) (.tm (Term.eta (.root (.free c)) (.VTypeBox A) hc)))
+        (Subst.ok_single h rfl) (Subst.coh_single hc₀ h rfl)
+        ((Ctx.NoSlots.slots (Γ := Γ)).insertFree c₀ (.VTypeBox A)) Ctx.NoSlots.slots
+        (WFF.necHyp hT hO (.root (.free c₀)) (Ctx.ref_insert_root Γ (.free c₀) (.VTypeBox A))
+          (Term.weaken hc₀.root (.VTypeBox A) t)) =
+      WFF.necHyp hT hO (.root (.free c)) hc (Term.mono h t) := by
+  set e : SubE σ Γ' := .tm (Term.eta (.root (.free c)) (.VTypeBox A) hc)
+  have hθ : Subst.Ok (Γ.insert (.free c₀) (.VTypeBox A)) (Subst.single (.free c₀) e) :=
+    Subst.ok_single h rfl
+  have hcθ : Subst.Coh (Subst.singleIdx (.free c₀) e) (Γ.insert (.free c₀) (.VTypeBox A))
+      (Subst.single (.free c₀) e) := Subst.coh_single hc₀ h rfl
+  have hat : (Subst.single (.free c₀) e).at (.root (.free c₀)) = e := Subst.at_single_root _ _
+  have hcol : (VarSymb.root (.free c)).inner.collapse 0 = .step (.root (.free c)) .here := by
+    rw [VarSymb.inner_box (Subst.keepOnly_false hO)]
+    simp [VarSymb.collapse, Step.isProj]
+  have hat₁ : (Subst.single (.free c₀) e).at (.step (.root (.free c₀)) .here) =
+      .tm (Term.collapse (Ctx.collapses_boxIn_self hT Γ')
+        (Term.eta (VarSymb.root (.free c)).inner A (Ctx.ref_inner hc))) := by
+    change (if Step.here.isStruct then
+      ((Subst.single (.free c₀) e).at (.root (.free c₀))).proj .here else _) = _
+    rw [if_pos (show Step.here.isStruct = true from rfl), hat]
+    change (if hT : ModalSys.T = true then _ else _) = _
+    rw [dif_pos hT]
+  rw [WFF.necHyp, WFF.necHyp, WFF.subst_eqH]
+  refine eqH_congr hO ((Term.subst_eta_tm _ _ _ A _ _ _ hat₁).trans
+    ((Term.collapse_eta _ _ A _).trans (Term.eta_congr hcol A _ _))) ?_
+  rw [Term.weaken, Term.subst_mono]
+  exact (Term.subst_ren h _ _ _ (fun v T hv => Subst.single_at_ne (Ctx.ref_rt_ne hc₀ hv)) t)
+
+namespace OCanon
+
+open Canon
+
+variable {N₀ : ℕ} (hO : ModalSys.Opt = true)
+
+include hO in
+/-- ⭐**NecT's witness in a world**: for every term, a Henkin root `c : □A` with `c.here ≡ t`. -/
+theorem exists_necHyp (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true)
+    (w : World σ N₀) (i : ℕ × ℕ) {A : VarType} {a : Ann A} (t : Term σ (w.L.ctx i) A a) :
+    ∃ (i' : ℕ × ℕ) (hi : i ≤ i') (c : ℕ)
+      (hc : (w.L.ctx i').ref (.root (.free c)) = some (.VTypeBox A)),
+      (⟨i', WFF.necHyp hT hO (.root (.free c)) hc (Term.mono (w.L.ctx_le hi) t)⟩ :
+        w.L.sys.Sentence σ) ∈ w.T := by
+  have hc₀ := w.fresh_deeper (Nat.lt_succ_self w.depth) 0 i
+  set c₀ := names N₀ (w.depth + 1) 0
+  set R := WFF.necHyp hT hO (.root (.free c₀))
+    (Ctx.ref_insert_root (w.L.ctx i) (.free c₀) (.VTypeBox A))
+    (Term.weaken hc₀.root (.VTypeBox A) t)
+  have hE : (⟨i, .ex (.VTypeBox A) (WFF.bindFree c₀ hc₀ Ctx.NoSlots.slots (.VTypeBox A) R)⟩ :
+      w.L.sys.Sentence σ) ∈ w.T :=
+    World.mem_of_provable (Δ := []) (fun _ h => by simp at h)
+      ⟨Proof.T_nec hT hTS hO A t c₀ hc₀ (Δ := [])
+        (.ex_intro _ (Term.eta (.root (.free c₀)) (.VTypeBox A)
+            (Ctx.ref_insert_root _ _ _))
+          (Proof.conv ((WFF.instantiate_eta_openFree c₀ hc₀ Ctx.NoSlots.slots Ctx.NoSlots.slots
+              _).trans (WFF.openFree_bindFree c₀ hc₀ Ctx.NoSlots.slots R)).symm
+            (Proof.lookup List.mem_cons_self)))⟩
+  obtain ⟨i', hi, c, hc, hmem⟩ := w.exW hE
+  rw [WFF.instantiate_bindFree (w.L.ctx_le hi) c₀ hc₀ _ R,
+    WFF.subst_necHyp_single hT hO (w.L.ctx_le hi) hc₀ hc t] at hmem
+  exact ⟨i', hi, c, hc, hmem⟩
+
+variable [Countable σ.FuncSyms] [Countable σ.RelSyms]
+
+/-- ⭐**NecT's law in raw form**: every object of a world is the value at the self arrow of a
+    definable necessary object. -/
+theorem necRet_rden (hT : ModalSys.T = true) (hTS : ModalSys.TStrong = true) (w : World σ N₀)
+    {A : VarType} (o : RDomO hO A w) (ho : DefinableO hO A w o) :
+    ∃ (n : RDomO hO (.VTypeBox A) w) (_ : DefinableO hO (.VTypeBox A) w n),
+      n (SuccO.selfArr hT w) = o := by
+  obtain ⟨i, a, t, rfl⟩ := ho
+  obtain ⟨i', hi, c, hc, hmem⟩ := exists_necHyp hO hT hTS w i t
+  have hcol : (VarSymb.root (.free c)).inner.collapse 0 = .step (.root (.free c)) .here := by
+    rw [VarSymb.inner_box (Subst.keepOnly_false hO)]
+    simp [VarSymb.collapse, Step.isProj]
+  refine ⟨_, definableO_rden (Ctx.Le.refl _) (Term.eta (.root (.free c)) (.VTypeBox A) hc), ?_⟩
+  refine (rdenO_boxtm_self (Ctx.Le.refl _) _ (SuccO.selfArr hT w) (Nat.sub_self _)).trans ?_
+  rw [rdenO_sig ((Term.collapse_eta _ _ A _).trans (Term.eta_congr hcol A _
+    (Ctx.ref_here_of hT hc)))]
+  have := faithO hO A w i' _ _ hmem
+  rw [rdenO_mono' (w.L.ctx_le hi) t w i' i] at this
+  exact this
+
+end OCanon
+
 end V12M

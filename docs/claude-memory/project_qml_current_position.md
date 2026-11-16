@@ -537,3 +537,8 @@ TCanonRet (`exists_realHyp`, `posRet_rden`), modelT's real `posRet_exists`, Weak
 **2026-11-16, RENAME:** `TStrong` → `TStrongW`, `DStrong` → `DStrongW` (possible-object forms, as
 `BStrongW`/`FourStrongW`); plain `XStrong` = necessary-object form.  Older notes say `TStrong` for
 today's `TStrongW`.  NecT (scoped, docs §12.36 "NecT: scope") will be the new `TStrong`.
+
+**2026-11-16, NecT BUILT (uncommitted):** flag `TStrong` (necessary-object strong T), law
+`Model.necRet_exists`, rule `Proof.T_nec`, soundness, `Proof.subst` case, canonical
+`exists_necHyp`/`necRet_rden`, `ModalSys.KTNOpt`/`KTSNOpt` + `provable_iff_validO_KTN`/`_KTSN`
+(docs §12.36 "NecT: built").  The KT tree is complete with either strong form of T or both.

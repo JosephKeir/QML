@@ -99,6 +99,13 @@ def WFF.realHyp {σ : Signature} {Γ : Ctx} (hT : ModalSys.T = true) (x : VarSym
         (Term.mono (Ctx.le_optInT Γ x) t))
   else WFF.hereAt hT x hx t (Bool.eq_false_iff.mpr hO)
 
+/-- ⭐**"The necessary object at `x` has value `t` here"**, NecT's hypothesis (`Proof.T_nec`):
+    `x.here ≡ t`, with `Opt` on (`≡` at every type). -/
+abbrev WFF.necHyp {σ : Signature} {Γ : Ctx} (hT : ModalSys.T = true) (hO : ModalSys.Opt = true)
+    (x : VarSymb) {A : VarType} (hx : Γ.ref x = some (.VTypeBox A)) {a : Ann A}
+    (t : Term σ Γ A a) : WFF σ Γ 0 :=
+  eqH hO A (Term.eta (.step x .here) A (Ctx.ref_here_of hT hx)) t
+
 theorem WFF.realHyp_noOpt {σ : Signature} {Γ : Ctx} (hT : ModalSys.T = true)
     (hO : ModalSys.Opt = false) (x : VarSymb) {A : VarType}
     (hx : Γ.ref x = some (.VTypeDia A)) {a : Ann A} (t : Term σ Γ A a) :
@@ -456,6 +463,19 @@ inductive Proof (σ : Signature) : (Γ : Ctx) → List (WFF σ Γ 0) → WFF σ 
             (Term.weaken hc.root (.VTypeDia A) t) ::
           Δ.map (WFF.weaken hc.root (.VTypeDia A)))
           (φ.weaken hc.root (.VTypeDia A)) →
+      Proof σ Γ Δ φ
+  /-- ⭐**Strong T, the necessary-object form (NecT)**: every object is the value here of a
+      necessary object, as an `∃`-elimination like `T_dia`: the fresh `c : □A` and the single
+      hypothesis `c.here ≡ t`.  Its validity is `Model.necRet_exists`. -/
+  | T_nec {Γ : Ctx} [Γ.NoSlots] (hT : ModalSys.T = true) (hS : ModalSys.TStrong = true)
+      (hO : ModalSys.Opt = true) (A : VarType) {a : Ann A} (t : Term σ Γ A a) (c : ℕ)
+      (hc : Γ.RootFresh (.free c))
+      {Δ : List (WFF σ Γ 0)} {φ : WFF σ Γ 0} :
+      Proof σ (Γ.insert (.free c) (.VTypeBox A))
+        (WFF.necHyp hT hO (.root (.free c)) (Ctx.ref_insert_root Γ (.free c) (.VTypeBox A))
+            (Term.weaken hc.root (.VTypeBox A) t) ::
+          Δ.map (WFF.weaken hc.root (.VTypeBox A)))
+          (φ.weaken hc.root (.VTypeBox A)) →
       Proof σ Γ Δ φ
   -- Strong T, inwards: the realisation predicate
   /-- ⭐**Elimination**: if the possible object `◇_x`-with-content-`bd` is realised here by `t`, then

@@ -269,7 +269,8 @@ def rootKeepO (hF : ModalSys.Four = true) {w : (frameO hO w₀).W} (_ : PEmpty.{
   (ModalSys.opt_absurd hO (ModalSys.noOpt_of_Four hF)).elim
 
 /-- ⭐**The canonical model with `Opt` on, T included.**  Shapes, `Ret` and the 4/5 operations
-    are off with the flags that need them; `Ind` is equality; strong T holds (`posRet_rden`). -/
+    are off with the flags that need them; `Ind` is equality; strong T holds in both forms
+    (`posRet_rden`, `necRet_rden`). -/
 noncomputable def modelT : Model.{0, 0} σ where
   frame := frameO hO w₀
   relInterp r w args := canonRel w r args
@@ -307,6 +308,10 @@ noncomputable def modelT : Model.{0, 0} σ where
     obtain ⟨p, hp, hm, he⟩ :=
       posRet_rden hO hT hS w (fromDomO hO w₀ A w a) (definableO_fromDom hO w₀ A w a)
     exact ⟨⟨p, hp⟩, hm, (toDomO_congr hO w₀ he _ _).trans (toDomO_fromDomO hO w₀ A w a)⟩
+  necRet_exists {A} {w} hT hS _ a := by
+    obtain ⟨n, hn, he⟩ :=
+      necRet_rden hO hT hS w (fromDomO hO w₀ A w a) (definableO_fromDom hO w₀ A w a)
+    exact ⟨⟨n, hn⟩, (toDomO_congr hO w₀ he _ _).trans (toDomO_fromDomO hO w₀ A w a)⟩
   Ret _ _ _ _ := False
   Ret_fwd := by intro _ _ _ _ _ _ _ h; exact h.elim
   Ret_conv hS := (ModalSys.opt_absurd hO (ModalSys.noOpt_of_BStrong hS)).elim

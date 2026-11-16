@@ -17308,6 +17308,24 @@ what is now `TStrongW`/`DStrongW`; **NecT is the new `TStrong`**.
   existence rules with a side formula, where cut permutes and Craig takes `∃u`/`∀u` over the
   eigenvariable.
 
+**§12.36, NecT: built (2026-11-16, uncommitted).**  Steps 1-4 of the scope in one pass (a new
+`Proof` constructor and a new model law cannot go green separately).
+* `ModalSys.TStrong : Bool := false` (last field; `ModalSys.K`'s positional literal updated).
+* `Model.necRet_exists : T → TStrong → Opt → ∀ a, ∃ n, necEval n (reflAcc) = a`; the six
+  `Opt`-off models discharge it from `NoOpt`, `modelT` by `necRet_rden`.
+* `WFF.necHyp` (`x.here ≡ t`), ⭐`Proof.T_nec` (`∃`-elimination over a fresh `c : □A`).
+* Soundness: `sat_necHyp_extend` (`Env.ref_here`, `sat_eqH`) and the `T_nec` case.
+* Breadth was **two** recursions, not 19 files: `Proof.subst` (with
+  `WFF.subst_necHyp_renameTm`: the entry at `c.here` is `SubE.proj` at `here` of the new root's
+  η-expansion, i.e. its collapse) and soundness.  The other mentions of `T_dia` were uses, not
+  matches.
+* Canonical (`QML_v12m_TCanonRet`): `WFF.subst_necHyp_single`, ⭐`exists_necHyp`, ⭐`necRet_rden`
+  (`rdenO_boxtm_self`, `Term.collapse_eta` with `(c.box).collapse 0 = c.here`, then `faithO`):
+  about 100 lines, as estimated.
+* Named: `ModalSys.KTNOpt` (T + NecT), `ModalSys.KTSNOpt` (T + both strong forms), with
+  `OCanon.provable_iff_valid_KTN`/`_KTSN` and `provable_iff_validO_KTN`/`_KTSN` (every presented
+  context).
+
 ### 12.37 The sequent calculus for B (and 5): paper check of the judgement form *(2026-11-16, paper)*
 
 The question §12.34 left open and the review called the programme's largest risk: is "a path with

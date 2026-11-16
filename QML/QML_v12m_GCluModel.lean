@@ -768,6 +768,7 @@ noncomputable def cmodel (hX : CluFlags) : Model.{0, 0} σ where
   posRet_exists hT hS a := by
     obtain ⟨p, hm, hp⟩ := cposRet_exists hM₀ hX hT hS a
     exact ⟨p, hm, fun _ => hp, fun hT' => absurd (hT.symm.trans hT') (by decide)⟩
+  necRet_exists _ _ hO := absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
   Ret ℓ S val o := cRet hM₀ hX ℓ S val o
   Ret_fwd _ _ _ _ _ h := ⟨h.1, h.2.1⟩
   Ret_conv _ hA _ _ _ _ h := ⟨h.1, h.2, .inl hA⟩

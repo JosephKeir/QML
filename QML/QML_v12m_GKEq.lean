@@ -34,6 +34,7 @@ class ModalSys.GKBase [ModalSys] : Prop where
   noFourStrongW : ModalSys.FourStrongW = false
   noFive : ModalSys.Five = false
   noFiveStrong : ModalSys.FiveStrong = false
+  noTStrong : ModalSys.TStrong = false
 
 /-- **The systems of GK with `Opt` off**: K, KD, K4 and KD4 in the `◇⁰`-free language. -/
 class ModalSys.GKSys [ModalSys] : Prop extends ModalSys.GKBase, ModalSys.NoOpt
@@ -69,25 +70,25 @@ def ModalSys.KD4 : ModalSys :=
 instance : @ModalSys.GKSys ModalSys.K :=
   @ModalSys.GKSys.mk ModalSys.K
     (@ModalSys.GKBase.mk ModalSys.K (fun h => absurd h (by decide)) rfl rfl rfl rfl rfl
-      rfl rfl rfl rfl)
+      rfl rfl rfl rfl rfl)
     (@ModalSys.NoOpt.mk ModalSys.K rfl)
 
 instance : @ModalSys.GKSys ModalSys.KD :=
   @ModalSys.GKSys.mk ModalSys.KD
     (@ModalSys.GKBase.mk ModalSys.KD (fun h => absurd h (by decide)) rfl rfl rfl rfl rfl
-      rfl rfl rfl rfl)
+      rfl rfl rfl rfl rfl)
     (@ModalSys.NoOpt.mk ModalSys.KD rfl)
 
 instance : @ModalSys.GKSys ModalSys.K4 :=
   @ModalSys.GKSys.mk ModalSys.K4
     (@ModalSys.GKBase.mk ModalSys.K4 (fun h => absurd h (by decide)) rfl rfl rfl rfl rfl
-      rfl rfl rfl rfl)
+      rfl rfl rfl rfl rfl)
     (@ModalSys.NoOpt.mk ModalSys.K4 rfl)
 
 instance : @ModalSys.GKSys ModalSys.KD4 :=
   @ModalSys.GKSys.mk ModalSys.KD4
     (@ModalSys.GKBase.mk ModalSys.KD4 (fun h => absurd h (by decide)) rfl rfl rfl rfl rfl
-      rfl rfl rfl rfl)
+      rfl rfl rfl rfl rfl)
     (@ModalSys.NoOpt.mk ModalSys.KD4 rfl)
 
 /-- KT with the box view of possible objects: weak T and `Opt` (docs §12.35). -/
@@ -97,7 +98,7 @@ def ModalSys.KTOpt : ModalSys :=
     Five := false, FiveStrong := false, Opt := true }
 
 instance : @ModalSys.GKBase ModalSys.KTOpt :=
-  @ModalSys.GKBase.mk ModalSys.KTOpt (fun _ => rfl) rfl rfl rfl rfl rfl rfl rfl rfl rfl
+  @ModalSys.GKBase.mk ModalSys.KTOpt (fun _ => rfl) rfl rfl rfl rfl rfl rfl rfl rfl rfl rfl
 
 /-! ## Substitutions agreeing off the base-type addresses -/
 

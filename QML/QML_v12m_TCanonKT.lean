@@ -10,7 +10,9 @@ met with T on:
 
 * `ModalSys.KTOpt` (`QML_v12m_GKEq`, where GK's cut and Craig are stated for it): T and `Opt`;
 * `ModalSys.KDTOpt`: T, D and `Opt`;
-* `ModalSys.KTSOpt`: T, strong T and `Opt`.
+* `ModalSys.KTSOpt`: T, strong T (possible objects) and `Opt`;
+* `ModalSys.KTNOpt`: T, NecT (strong T, necessary objects) and `Opt`;
+* `ModalSys.KTSNOpt`: T, both strong forms and `Opt`.
 -/
 
 namespace V12M
@@ -26,6 +28,18 @@ def ModalSys.KTSOpt : ModalSys :=
   { T := true, Four := false, TStrongW := true, D := false, DStrongW := false, B := false,
     BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
     Five := false, FiveStrong := false, Opt := true }
+
+/-- KT with NecT (strong T's necessary-object form) and the box view of possible objects. -/
+def ModalSys.KTNOpt : ModalSys :=
+  { T := true, Four := false, TStrongW := false, D := false, DStrongW := false, B := false,
+    BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
+    Five := false, FiveStrong := false, Opt := true, TStrong := true }
+
+/-- KT with both strong forms of T and the box view of possible objects. -/
+def ModalSys.KTSNOpt : ModalSys :=
+  { T := true, Four := false, TStrongW := true, D := false, DStrongW := false, B := false,
+    BStrong := false, BStrongW := false, FourStrong := false, FourStrongW := false,
+    Five := false, FiveStrong := false, Opt := true, TStrong := true }
 
 section KT
 
@@ -70,5 +84,33 @@ theorem OCanon.provable_iff_valid_KTS {σ : Signature} [Countable σ.FuncSyms]
   OCanon.provable_iff_validT rfl hΓ
 
 end KTS
+
+section KTN
+
+attribute [local instance] ModalSys.KTNOpt
+
+/-- ⭐**KT with NecT and `Opt` is sound and complete**, in the same sense. -/
+theorem OCanon.provable_iff_valid_KTN {σ : Signature} [Countable σ.FuncSyms]
+    [Countable σ.RelSyms] {Γ : Ctx} [Γ.Presented] (hΓ : Γ.NoTopAt) {Δ : List (WFF σ Γ 0)}
+    {φ : WFF σ Γ 0} :
+    Provable Δ φ ↔ ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
+      Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ :=
+  OCanon.provable_iff_validT rfl hΓ
+
+end KTN
+
+section KTSN
+
+attribute [local instance] ModalSys.KTSNOpt
+
+/-- ⭐**KT with both strong forms of T and `Opt` is sound and complete**, in the same sense. -/
+theorem OCanon.provable_iff_valid_KTSN {σ : Signature} [Countable σ.FuncSyms]
+    [Countable σ.RelSyms] {Γ : Ctx} [Γ.Presented] (hΓ : Γ.NoTopAt) {Δ : List (WFF σ Γ 0)}
+    {φ : WFF σ Γ 0} :
+    Provable Δ φ ↔ ∀ (M : Model.{0, 0} σ), M.IndInvariant → ∀ {w : M.frame.W} (env : M.Env Γ w),
+      Γ.NoProjLast → (∀ ψ ∈ Δ, M.sat env ψ) → M.sat env φ :=
+  OCanon.provable_iff_validT rfl hΓ
+
+end KTSN
 
 end V12M

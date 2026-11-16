@@ -506,6 +506,7 @@ def cone : Model.{0, 0} σ where
         · exact False.elim r'
         exact congrArg (c.toC hT hB A s) (hInd _ _ (he ⟨s, ⟨r'⟩⟩))
   posRet_exists h := flagElim hT h
+  necRet_exists h := flagElim hT h
   Ret _ _ _ _ := False
   Ret_fwd _ _ _ _ _ h := False.elim h
   Ret_conv h := flagElim hS h
