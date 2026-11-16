@@ -17153,6 +17153,43 @@ CONTEXT.**  Sorry-free, standard axioms only.
   imported them; `completenessO` covers T off, `WeakTO` holding there).  `OCanonView`, `OCanonChild`
   stay (shared).  *Remaining for the KT tree:* strong T and NecT.
 
+**§12.36, strong T and NecT: scope (2026-11-16, paper).**
+* **Strong T** (`TStrong`).  The rule exists and is `Opt`-ready: `Proof.T_dia` is an `∃`-elimination
+  over a fresh `c : ◇A` with `realHyp c t`, which with `Opt` on is `◇⁰ᵀ_c (c.at ≡ t)`; soundness is
+  there.  What is missing is the canonical law `posRet_exists` (`modelT` excludes it by `WeakTO`).
+  1. *Witness:* for definable `o = ⟦t⟧`, `T_dia` gives `∃c:◇A. ◇⁰ᵀ_c (c.at ≡ t)` in the theory, a
+     Henkin root `c`, hence `IdPres c`, hence the self arrow in the extent of `⟦c⟧`.
+  2. **A model field quantifies over every world**, including worlds whose stages declare top-level
+     `at` steps, where `SelfIn` (which asks `StagesNoAt`) fails.  Fix: make `SelfIn`'s condition
+     **per witness** (`x.at` undeclared at every stage; a Henkin root's `c.at` never is), with
+     `readsNameIn` and `VarSymb.readNames_raw` relaxed accordingly (an unnamed `u.at` with `u` fixed
+     is fixed).  Small, and more robust anyway.
+  3. ⭐**Canonical faithfulness of `≡`** (the one real lemma): `t ≡ s` in a world's theory implies
+     `⟦t⟧ = ⟦s⟧` as raw objects, by induction on the type: `Var` by `World.cls_eq_iff`; products;
+     `□A` (`eqH` is `□(t.box ≡ s.box)`): children by `AccO.box`, the self arrow by `T_box`; `◇A`:
+     extents agree (children: presence is decided and `eqH`'s witness views agree; the self arrow:
+     `IdPres` agrees, through `T_box`) and contents agree by the induction.  Syntactic, so no
+     circularity with the truth lemma.  Then the content at the self arrow (the name `d`, with
+     `d ≡ t` from `opt_fun`) equals `o`.  The `◇` case is the risk.  Estimate 300–500 lines.
+  4. Drop `WeakTO` (keep it as the name of the weak case), restate `completenessO` with strong T.
+* **NecT** (`P(a) ⊢ ∃u:□A. P(u.here)`, law "every object is the self value of a necessary
+  object"): not in the system yet.
+  1. *Flag:* a new strength flag (e.g. `TStrongN`, requiring T), the grid's necessary cell beside
+     `TStrong`'s possible cell, as 4 has `FourStrong`/`FourStrongW`.  The 2026-09-19 note says
+     `T_dia` factorises through it; whether to keep both flags or derive one is a decision.
+  2. *Rule:* an `∃`-elimination like `T_dia`, over a fresh `u : □A` with `u.here ≡ t` (`Opt` on
+     only, since T needs `Opt`).  *Law:* `necRet_exists` (`necExtract n = a`).  Soundness easy.
+  3. **Cost is breadth:** a new `Proof` constructor means a case in every recursion over proofs
+     (`T_dia` appears in 18 files: substitution, weakening, admissibility, ND→GK, compactness, …),
+     and GK needs the rule too (an existence rule with a logical side formula: cut permutes,
+     Craig takes `∃u`/`∀u`).
+  4. *Canonical:* Henkin witness `u`; `⟦u⟧` at the self arrow is `⟦u.here⟧` (the collapse); the
+     same faithfulness lemma gives `= o`.
+  5. *Coherence:* strong B with T implies it (`backRet_exists` at the identity arrow): a requirement
+     field, as `WCoh.strongT`.
+* **Order:** strong T first (it builds the faithfulness lemma, with no new rule); then NecT, whose
+  canonical case is then short and whose cost is the new constructor's breadth.
+
 ### 12.37 The sequent calculus for B (and 5): paper check of the judgement form *(2026-11-16, paper)*
 
 The question §12.34 left open and the review called the programme's largest risk: is "a path with
