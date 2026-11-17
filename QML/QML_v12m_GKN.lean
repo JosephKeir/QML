@@ -12,8 +12,13 @@ formulas **at nodes**, `⟨τ, φ⟩` with `φ` over `D.ctxAt Γ₀ τ` (docs §
   * `boxR`: `□φ` on the right at `τ` makes a **vacant** `□`-child with `φ`;
   * `diaL`: `◇_x ψ` on the left at `τ` makes a vacant `◇_x`-child with `ψ`;
   * `boxL`: `□χ` on the left at `τ` puts `χ` at any child of `τ`;
-  * `diaR`: `◇_x θ` on the right at `τ` puts `θ` at any `◇_x`-child of `τ`;
+  * `diaR`: `◇_x θ` on the right at `τ` puts `θ` at any `◇_x`-child of `τ` (with `Opt`, or at
+    any child where `x` is opened: `foldR` then `reopenR`, one rule so that relabelling keeps
+    heights);
   * `serial` (D): a vacant `□`-child with nothing in it.
+* ⭐With `Opt` (docs §12.50): `optL` opens a witness's view **at the node** (`Tree.addOpen`; no
+  world crossed, the descendants see it too), `reopenR` is local, and `foldR`, the bridge
+  `◇_x θ = ◇ ◇⁰_x θ`, puts `◇⁰_x θ` on the right at **any** child (`GK`'s folds).
   A rule moving a formula into a child takes the inclusion of the parent's view in the child's
   context as an argument (a proposition, so any proof will do); `Tree` lemmas supply it.
 * Height-bounded, G3-style (principal formulas stay), as `GK`.
@@ -40,12 +45,29 @@ def Seq.mono {Γ₀ : Ctx} {D D' : Tree} (h : ∀ τ, (D.ctxAt Γ₀ τ).Le (D'.
     (L : Seq σ Γ₀ D) : Seq σ Γ₀ D' :=
   L.map fun p => ⟨p.1, WFF.mono (h p.1) p.2⟩
 
-/-- A node is **vacant**: no edge, birth or formula at it or below it. -/
+/-- A node is **vacant**: no edge, birth, opening or formula at it or below it. -/
 structure Vacant {Γ₀ : Ctx} (D : Tree) (c : Lab) (Δ Θ : Seq σ Γ₀ D) : Prop where
   edge : ∀ τ, c <:+ τ → D.edge τ = none
   births : ∀ b ∈ D.births, ¬ c <:+ b.1
+  opens : ∀ o ∈ D.opens, ¬ c <:+ o.1
   left : ∀ p ∈ Δ, ¬ c <:+ p.1
   right : ∀ p ∈ Θ, ¬ c <:+ p.1
+
+/-- ⭐**The fold of `◇_x θ`** (`GK`'s `WFF.optDia`): `◇⁰_x θ` in the `□` view, the bridge
+    `◇_x θ = ◇ ◇⁰_x θ` as a copy. -/
+def _root_.V12M.WFF.fold (hO : ModalSys.Opt = true) {Γ : Ctx} (x : VarSymb)
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) (θ : WFF σ (Γ.diaIn x) 0) : WFF σ Γ.boxIn 0 :=
+  WFF.optx hO .arrow x (hx.imp fun _ h => Ctx.boxIn_wit.mpr ⟨hO, h⟩)
+    (WFF.mono (hx.elim fun _ h => Ctx.le_diaIn_boxIn_optIn hO h) θ)
+
+/-- The fold commutes with weakening. -/
+theorem _root_.V12M.WFF.fold_mono (hO : ModalSys.Opt = true) {Γ Γ' : Ctx} (h : Γ.Le Γ')
+    (x : VarSymb) (hx : ∃ X, Γ.ref x = some (.VTypeDia X))
+    (hx' : ∃ X, Γ'.ref x = some (.VTypeDia X)) (θ : WFF σ (Γ.diaIn x) 0) :
+    WFF.fold hO x hx' (WFF.mono (h.diaIn x) θ) = WFF.mono h.boxIn (WFF.fold hO x hx θ) := by
+  unfold WFF.fold
+  change _ = WFF.optx hO .arrow x _ (WFF.mono (h.boxIn.optInK .arrow x) _)
+  rw [WFF.mono_mono, WFF.mono_mono]
 
 end GKN
 
@@ -153,10 +175,12 @@ inductive GKN (σ : Signature) (Γ₀ : Ctx) : ℕ → (D : Tree) → Seq σ Γ�
       (hle : (D.ctxAt Γ₀ τ).boxIn.Le (D.ctxAt Γ₀ (k :: τ))) :
       ⟨τ, WFF.box (Γ := D.ctxAt Γ₀ τ) χ⟩ ∈ Δ →
       GKN σ Γ₀ n D (⟨k :: τ, WFF.mono hle χ⟩ :: Δ) Θ → GKN σ Γ₀ (n + 1) D Δ Θ
-  /-- `diaR`: `◇_x θ` on the right at `τ` puts `θ` on the right at a `◇_x`-child of `τ`. -/
-  | diaR {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (τ : Lab) (k : ℕ) (x : VarSymb)
+  /-- `diaR`: `◇_x θ` on the right at `τ` puts `θ` on the right at a child of `τ` that the
+      `◇_x` view fits: a `◇_x`-child, or (`Opt`) a child where `x` is opened. -/
+  | diaR {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (τ : Lab) (k : ℕ) (e : EdgeKind) (x : VarSymb)
       (hx : ∃ X, (D.ctxAt Γ₀ τ).ref x = some (.VTypeDia X))
-      {θ : WFF σ ((D.ctxAt Γ₀ τ).diaIn x) 0} (he : D.edge (k :: τ) = some (.dia x))
+      {θ : WFF σ ((D.ctxAt Γ₀ τ).diaIn x) 0} (he : D.edge (k :: τ) = some e)
+      (hf : (EdgeKind.dia x).Fits (D.ctxAt Γ₀ (k :: τ)) e)
       (hle : ((D.ctxAt Γ₀ τ).diaIn x).Le (D.ctxAt Γ₀ (k :: τ))) :
       ⟨τ, .dia x hx θ⟩ ∈ Θ →
       GKN σ Γ₀ n D Δ (⟨k :: τ, WFF.mono hle θ⟩ :: Θ) → GKN σ Γ₀ (n + 1) D Δ Θ
@@ -166,6 +190,33 @@ inductive GKN (σ : Signature) (Γ₀ : Ctx) : ℕ → (D : Tree) → Seq σ Γ�
       GKN σ Γ₀ n (D.addEdge (k :: τ) .box)
         (Seq.mono (Tree.ctxAt_addEdge (hv.edge _ (List.suffix_refl _)) .box) Δ)
         (Seq.mono (Tree.ctxAt_addEdge (hv.edge _ (List.suffix_refl _)) .box) Θ) →
+      GKN σ Γ₀ (n + 1) D Δ Θ
+  -- The witness views (`Opt`, docs §12.50)
+  /-- `optL`: `◇⁰_y ψ` on the left at `τ` opens `y`'s view at `τ` (`Tree.addOpen`), with `ψ` on
+      the left there.  No world is crossed; the descendants see the opening. -/
+  | optL {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (hO : ModalSys.Opt = true) (τ : Lab)
+      (κ : WitKind) (y : VarSymb) (hy : ∃ X, (D.ctxAt Γ₀ τ).witK κ y = some X)
+      {ψ : WFF σ ((D.ctxAt Γ₀ τ).optInK κ y) 0}
+      (hle : ((D.ctxAt Γ₀ τ).optInK κ y).Le ((D.addOpen τ κ y).ctxAt Γ₀ τ)) :
+      ⟨τ, .optx hO κ y hy ψ⟩ ∈ Δ →
+      GKN σ Γ₀ n (D.addOpen τ κ y)
+        (⟨τ, WFF.mono hle ψ⟩ :: Seq.mono (Tree.ctxAt_addOpen τ κ y) Δ)
+        (Seq.mono (Tree.ctxAt_addOpen τ κ y) Θ) →
+      GKN σ Γ₀ (n + 1) D Δ Θ
+  /-- `reopenR`: where `y` is opened at `τ`, `◇⁰_y χ` on the right there is `χ`. -/
+  | reopenR {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (hO : ModalSys.Opt = true) (τ : Lab)
+      (κ : WitKind) (y : VarSymb) (hy : (D.ctxAt Γ₀ τ).Opened κ y)
+      {χ : WFF σ (D.ctxAt Γ₀ τ) 0} :
+      ⟨τ, .optx hO κ y (hy.imp fun _ h => h.1) (WFF.mono (Ctx.le_optInK _ κ y) χ)⟩ ∈ Θ →
+      GKN σ Γ₀ n D Δ (⟨τ, χ⟩ :: Θ) → GKN σ Γ₀ (n + 1) D Δ Θ
+  /-- `foldR`: `◇_x θ` on the right at `τ` puts its fold `◇⁰_x θ` on the right at a child of
+      `τ` (`¬◇_x θ` is `□¬◇⁰_x θ`). -/
+  | foldR {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (hO : ModalSys.Opt = true) (τ : Lab) (k : ℕ)
+      (e : EdgeKind) (x : VarSymb) (hx : ∃ X, (D.ctxAt Γ₀ τ).ref x = some (.VTypeDia X))
+      {θ : WFF σ ((D.ctxAt Γ₀ τ).diaIn x) 0} (he : D.edge (k :: τ) = some e)
+      (hle : (D.ctxAt Γ₀ τ).boxIn.Le (D.ctxAt Γ₀ (k :: τ))) :
+      ⟨τ, .dia x hx θ⟩ ∈ Θ →
+      GKN σ Γ₀ n D Δ (⟨k :: τ, WFF.mono hle (WFF.fold hO x hx θ)⟩ :: Θ) →
       GKN σ Γ₀ (n + 1) D Δ Θ
 
 namespace GKN
@@ -178,6 +229,24 @@ theorem Vacant.birthsAt {Γ₀ : Ctx} {D : Tree} {c : Lab} {Δ Θ : Seq σ Γ₀
   simp only [decide_eq_true_eq]
   intro he
   exact hv.births b hb (by rw [he])
+
+theorem Vacant.opensAt {Γ₀ : Ctx} {D : Tree} {c : Lab} {Δ Θ : Seq σ Γ₀ D}
+    (hv : Vacant D c Δ Θ) : D.opensAt c = [] := by
+  unfold Tree.opensAt
+  rw [List.map_eq_nil_iff, List.filter_eq_nil_iff]
+  intro o ho
+  simp only [decide_eq_true_eq]
+  intro he
+  exact hv.opens o ho (by rw [he])
+
+theorem Vacant.not_opensAt {Γ₀ : Ctx} {D : Tree} {c : Lab} {Δ Θ : Seq σ Γ₀ D}
+    (hv : Vacant D c Δ Θ) {σ' : Lab} {o : WitKind × VarSymb} (ho : o ∈ D.opensAt σ') :
+    ¬ c <:+ σ' := fun hs => by
+  unfold Tree.opensAt at ho
+  obtain ⟨o', ho', rfl⟩ := List.mem_map.mp ho
+  obtain ⟨hm', he⟩ := List.mem_filter.mp ho'
+  have : o'.1 = σ' := by simpa using he
+  exact hv.opens o' hm' (this ▸ hs)
 
 end GKN
 
@@ -233,11 +302,20 @@ theorem GKN.mono_height {n : ℕ} {Γ₀ : Ctx} {D : Tree} {Δ Θ : Seq σ Γ₀
   | boxL τ k e he hle h _ ih =>
       intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
       exact .boxL τ k e he hle h (ih (by omega))
-  | diaR τ k x hx he hle h _ ih =>
+  | diaR τ k e x hx he hf hle h _ ih =>
       intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
-      exact .diaR τ k x hx he hle h (ih (by omega))
+      exact .diaR τ k e x hx he hf hle h (ih (by omega))
   | serial hD τ k hv _ ih =>
       intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
       exact .serial hD τ k hv (ih (by omega))
+  | optL hO τ κ y hy hle h _ ih =>
+      intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
+      exact .optL hO τ κ y hy hle h (ih (by omega))
+  | reopenR hO τ κ y hy h _ ih =>
+      intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
+      exact .reopenR hO τ κ y hy h (ih (by omega))
+  | foldR hO τ k e x hx he hle h _ ih =>
+      intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
+      exact .foldR hO τ k e x hx he hle h (ih (by omega))
 
 end V12M

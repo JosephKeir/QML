@@ -18774,3 +18774,13 @@ new lemma they need.
   Size: about 700-1 100 lines (`GKN.relabel` about 150, `GK.collapseD` about 200, plus the map
   and setup lemmas), inside 2b's 1 500-2 500.  **Every item of the paper check passes; step 2 can
   be built, 2a first.**
+
+**Step 2a, progress 1 (2026-11-16, uncommitted).**  Built and green: `QML_v12m_CtxComm` (the
+commutation lemmas, the identity kind moved out of `QML_v12m_TCanonOpenT`); `GKNTree` (per-node
+openings after births, `Tree.OK.eff`: every opening took effect, `EdgeKind.Fits`); `GKN` (`optL`,
+`reopenR`, `foldR`; `diaR` widened to any child the `◇_x` view fits, which is `foldR` then
+`reopenR` as one rule, so relabelling keeps heights); `GKNRelabel` (`TMap`'s opening condition
+is semantic, `Ctx.Opened`); `GKNSubst` (T off, `Opt` general: the family opens what the node
+opens, and re-opening an opened witness changes nothing, `openS_agree`); `GKNCut` (the two new
+principal cases as checked on paper).  So **cut is admissible in `GKN` for K and KD with `Opt`**.
+Left: the reading into ND (`closeO`, item (iv)) and the embedding of `GK` with `Opt`.

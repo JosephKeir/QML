@@ -39,6 +39,14 @@ def Ctx.Presented.inserts {Γ : Ctx} (h : Γ.Presented) :
       obtain ⟨u, hu⟩ := hfr _ List.mem_cons_self
       cases hu)
 
+/-- Opened views of a presented context are presented. -/
+def _root_.V12M.Ctx.Presented.optInsK {Γ : Ctx} (h : Γ.Presented) :
+    ∀ L : List (WitKind × VarSymb), (Γ.optInsK L).Presented
+  | [] => h
+  | o :: L =>
+      have h' := Ctx.Presented.optInsK h L
+      ⟨.optIn h'.expr o.1 o.2, h'.fresh, congrArg (fun Δ => Ctx.optInK Δ o.1 o.2) h'.denote_eq⟩
+
 namespace GKN
 
 namespace Tree
@@ -57,12 +65,12 @@ noncomputable def presentedAt {Γ₀ : Ctx} (h0 : Γ₀.Presented) (h : D.OK Γ�
     ∀ τ, (D.ctxAt Γ₀ τ).Presented
   | [] => by
       simp only [ctxAt]
-      exact h0.inserts _ (birthsAt_pairwise h _) (fun b hb => h.fresh _ (mem_birthsAt.mp hb))
-        (fun b hb => h.free _ (mem_birthsAt.mp hb))
+      exact (h0.inserts _ (birthsAt_pairwise h _) (fun b hb => h.fresh _ (mem_birthsAt.mp hb))
+        (fun b hb => h.free _ (mem_birthsAt.mp hb))).optInsK _
   | k :: τ => by
       simp only [ctxAt]
-      refine (presentedView (k :: τ) (presentedAt h0 h τ)).inserts _ (birthsAt_pairwise h _)
-        (fun b hb => ?_) (fun b hb => h.free _ (mem_birthsAt.mp hb))
+      refine Ctx.Presented.optInsK ((presentedView (k :: τ) (presentedAt h0 h τ)).inserts _
+        (birthsAt_pairwise h _) (fun b hb => ?_) (fun b hb => h.free _ (mem_birthsAt.mp hb))) _
       have hb' := mem_birthsAt.mp hb
       have hfr : (D.ctxAt Γ₀ τ).RootFresh b.1 := by
         refine fresh_branch (h.fresh _ hb') τ fun b' hb'' hs he => ?_
@@ -124,7 +132,7 @@ theorem diaR_list {Γ₀ : Ctx} {D : Tree} {τ : Lab} {k : ℕ} {x : VarSymb}
           · have := hs List.mem_cons_self
             rwa [WFF.mono_mono] at this
           · exact hL θ' hθ')
-      exact ⟨m + 1, .diaR τ k x hx he hcL (hb θ List.mem_cons_self) d⟩
+      exact ⟨m + 1, .diaR τ k (.dia x) x hx he (.of_compat rfl) hcL (hb θ List.mem_cons_self) d⟩
 
 theorem mem_cons_of {α : Type*} {P : α → Prop} {a : α} {L : List α} (h0 : P a)
     (h : ∀ x ∈ L, P x) : ∀ x ∈ a :: L, P x := by
@@ -262,7 +270,7 @@ theorem GK.toGKN [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx} [h0
         (Subst.ok_rename hθ₀ T hfτ.root) (Subst.coh_rename hθ₀ hc₀ hu T hfτ.root)
         (hsΓ.insertFree u T) (hsτ.insertFree u' T) φ
       have hk := Tree.ctxAt_addBirth hu' τ T
-      have hleI := Tree.insert_le_addBirth (D := D) (Γ₀ := Γ₀) τ (.free u') T
+      have hleI := Tree.insert_le_addBirth (D := D) (Γ₀ := Γ₀) hu' τ T
       have hside : ∀ (L : List (WFF σ Γ 0)) (L' : Seq σ Γ₀ D),
           (∀ ψ ∈ L, (⟨τ, WFF.mono h ψ⟩ : LF σ Γ₀ D) ∈ L') →
           ∀ x ∈ (L.map (WFF.weaken hu.root T)).map (WFF.subst (VarSymb.renameIdx id u u')
@@ -309,7 +317,7 @@ theorem GK.toGKN [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx} [h0
         (Subst.ok_rename hθ₀ T hfτ.root) (Subst.coh_rename hθ₀ hc₀ hu T hfτ.root)
         (hsΓ.insertFree u T) (hsτ.insertFree u' T) φ
       have hk := Tree.ctxAt_addBirth hu' τ T
-      have hleI := Tree.insert_le_addBirth (D := D) (Γ₀ := Γ₀) τ (.free u') T
+      have hleI := Tree.insert_le_addBirth (D := D) (Γ₀ := Γ₀) hu' τ T
       have hside : ∀ (L : List (WFF σ Γ 0)) (L' : Seq σ Γ₀ D),
           (∀ ψ ∈ L, (⟨τ, WFF.mono h ψ⟩ : LF σ Γ₀ D) ∈ L') →
           ∀ x ∈ (L.map (WFF.weaken hu.root T)).map (WFF.subst (VarSymb.renameIdx id u u')
@@ -342,10 +350,10 @@ theorem GK.toGKN [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx} [h0
       obtain ⟨k, hv⟩ := exists_vacant τ D Δ' Θ'
       have hnone := hv.edge _ (List.suffix_refl _)
       have hk := Tree.ctxAt_addEdge (Γ₀ := Γ₀) hnone EdgeKind.box
-      have hok₁ := hok.addEdge (k :: τ) EdgeKind.box
+      have hok₁ := hok.addEdge hnone EdgeKind.box
       have he₁ : (D.addEdge (k :: τ) .box).edge (k :: τ) = some .box := by
         rw [Tree.edge_addEdge, if_pos rfl]
-      have hle₁ := Tree.boxIn_le_addEdge (Γ₀ := Γ₀) hnone hv.birthsAt
+      have hle₁ := Tree.boxIn_le_addEdge (Γ₀ := Γ₀) hnone hv.birthsAt hv.opensAt
       have hcL := Tree.boxIn_le_child hok₁ k τ
       have a : Γ.boxIn.Le ((D.addEdge (k :: τ) .box).ctxAt Γ₀ τ).boxIn := (h.trans (hk τ)).boxIn
       obtain ⟨m, d⟩ := boxL_list he₁ hcL a Δ₁ (Δ := Seq.mono hk Δ')
@@ -365,7 +373,7 @@ theorem GK.toGKN [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx} [h0
       obtain ⟨k, hv⟩ := exists_vacant τ D Δ' Θ'
       have hnone := hv.edge _ (List.suffix_refl _)
       have hk := Tree.ctxAt_addEdge (Γ₀ := Γ₀) hnone EdgeKind.box
-      have hok₁ := hok.addEdge (k :: τ) EdgeKind.box
+      have hok₁ := hok.addEdge hnone EdgeKind.box
       have he₁ : (D.addEdge (k :: τ) .box).edge (k :: τ) = some .box := by
         rw [Tree.edge_addEdge, if_pos rfl]
       have hcL := Tree.boxIn_le_child hok₁ k τ
@@ -386,11 +394,11 @@ theorem GK.toGKN [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx} [h0
       obtain ⟨k, hv⟩ := exists_vacant τ D Δ' Θ'
       have hnone := hv.edge _ (List.suffix_refl _)
       have hk := Tree.ctxAt_addEdge (Γ₀ := Γ₀) hnone (EdgeKind.dia x)
-      have hok₁ := hok.addEdge (k :: τ) (EdgeKind.dia x)
+      have hok₁ := hok.addEdge hnone (EdgeKind.dia x)
       have he₁ : (D.addEdge (k :: τ) (.dia x)).edge (k :: τ) = some (.dia x) := by
         rw [Tree.edge_addEdge, if_pos rfl]
       have hx' : ∃ X, (D.ctxAt Γ₀ τ).ref x = some (.VTypeDia X) := hx.imp fun _ hX => h.ref hX
-      have hle₁ := Tree.diaIn_le_addEdge (Γ₀ := Γ₀) hnone hv.birthsAt x
+      have hle₁ := Tree.diaIn_le_addEdge (Γ₀ := Γ₀) hnone hv.birthsAt hv.opensAt x
       have hcL := Tree.boxIn_le_child hok₁ k τ
       have a : Γ.boxIn.Le ((D.addEdge (k :: τ) (.dia x)).ctxAt Γ₀ τ).boxIn :=
         (h.trans (hk τ)).boxIn
@@ -432,7 +440,8 @@ theorem GK.toGKN [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx} [h0
 
 /-- The tree with one node and nothing born. -/
 theorem GKN.Tree.ok_empty {Γ₀ : Ctx} : (({} : GKN.Tree)).OK Γ₀ :=
-  ⟨List.nodup_nil, fun _ h => by simp at h, fun _ h => by simp at h, fun _ h => by simp at h⟩
+  ⟨List.nodup_nil, fun _ h => by simp at h, fun _ h => by simp at h, fun _ h => by simp at h,
+    fun _ => by simp [Tree.opensAt, Ctx.OptsEff]⟩
 
 /-- ⭐**`GK` embeds in `GKN` at the root**: a `GK` derivation of `Δ ⇒ Θ` over `Γ₀` gives a
     `GKN` derivation of the one-node tree sequent. -/

@@ -579,3 +579,25 @@ cases: boxR vs TL and diaT vs diaL need GKN.collapse (c's subtree folded into τ
 deleting a step, setup with Le off the subtree and Collapses k on it, names kept so no eigen
 renaming, edge/opening kinds collapse, boxL/fold/diaR into c become TL / diaT / reopenR+diaT at
 τ, so no height bound — fine, CutIH lighter weight any height).  Next: build 2a, then 2b.
+GKN STEP 2a IN PROGRESS (2026-11-16, uncommitted; 81408db pushed = docs §12.50). GREEN:
+QML_v12m_CtxComm (new: Ctx.ext', insert_optInT_comm moved from TCanonOpenT, insert_optIn_comm,
+insert_optInK_comm), GKNTree (Tree.opens; ctxAt = births then openings (optInsK); preAt;
+addOpen; OK.eff: every opening took effect with Opt on (OptsEff), OK.opened; EdgeKind.Fits: a
+◇_x edge may map onto a node where x is opened; ctx_le_of_map with openings), GKN (optL,
+reopenR, foldR; diaR generalised to any child the ◇_x view Fits, = foldR+reopenR, so relabelling
+keeps heights; Vacant.opens; WFF.fold), GKNRelabel (TMap.edge Fits, TMap.opens semantic,
+TMap.addOpen, retargetTo onto a larger tree), GKNEmbed (Opt-off embedding), GKNSubst (section
+NoT, Opt general: Fam = openS of base, openS_agree/content, okCoh, fam_agree with witnesses,
+fam_fit, SubSetup.opens/opensT/addOpen, subst cases optL/reopenR/foldR, wit_ren; 0 sorry).
+GKNCut GREEN (section NoT; TMap.ofAddOpen, weakenOpen, TMap.ofOpened, WitOK.addOpen,
+relabel_back, retargetTo_mono_sub; RightPrin.reopen/.fold/.dia with Fits, LeftPrin.opt;
+permLeft/permRight cases optL/reopenR/foldR/diaR; principal reopen-vs-opt (redundant opening
+relabelled away, cut ◇⁰ then χ) and fold-vs-dia (◇_x child retargeted onto the fold's child in
+D.addOpen c arrow x, cut ◇_x, optL, cut the fold, lighter); 0 sorry): GKN.cut holds for K and
+KD with or without Opt.
+BROKEN NEXT (builds stop here): GKNTrans/GKNToND — the reading must close a node's openings by
+◇⁰ inside its births: Pc = closeB births (closeO opens tr); closeO (head innermost, dite on
+Opt ∧ witness like closeB's RootFresh guard); ND lemmas closeO_or, closeO_bot, mono_closeO by
+Proof.K_opt / Proof.opt_bot (as dia_or); ~47 closeB sites; rule holes: optL = K_opt, reopenR =
+opt_reopen, foldR = opt_dia + pack_side, diaR into an opened child = foldR+reopenR. Then
+GKNEmbed with Opt (GK's optL, reopenR, folds → GKN) and GKN.provable_iff for Opt on.

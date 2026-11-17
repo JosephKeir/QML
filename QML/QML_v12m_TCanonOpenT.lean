@@ -1,5 +1,6 @@
 import QML.QML_v12m_TCanonKT
 import QML.QML_v12m_Compactness
+import QML.QML_v12m_CtxComm
 
 /-!
 # QML v12m — contexts with identity views opened at the top (route 2)
@@ -25,62 +26,6 @@ variable [ModalSys]
 open OCanon
 
 /-! ## Contexts: extensionality and commutation -/
-
-/-- Contexts with the same declarations and witnesses are equal. -/
-theorem Ctx.ext' {Γ Δ : Ctx} (h₁ : Γ.ty = Δ.ty) (h₂ : Γ.wit = Δ.wit) : Γ = Δ := by
-  cases Γ
-  cases Δ
-  cases h₁
-  cases h₂
-  rfl
-
-/-- Opening the identity view of an address that is not a possibility here changes nothing. -/
-theorem Ctx.optInT_of_witT_none {Γ : Ctx} {y : VarSymb} (h : Γ.witT y = none) :
-    Γ.optInT y = Γ := by
-  refine Ctx.ext' (funext fun v => ?_) rfl
-  change Γ.optInTTy y v = Γ v
-  unfold Ctx.optInTTy
-  by_cases hv : v = .step y .at
-  · rw [if_pos hv, h]
-  · rw [if_neg hv]
-
-/-- ⭐A fresh declaration commutes with an identity opening that takes effect. -/
-theorem Ctx.insert_optInT_comm {Γ : Ctx} {u : ℕ} (hu : Γ.RootFresh (.free u)) {y : VarSymb}
-    {X : VarType} (hy : Γ.witT y = some X) (T : VarType) :
-    (Γ.optInT y).insert (.free u) T = (Γ.insert (.free u) T).optInT y := by
-  have hyI : (Γ.insert (.free u) T).witT y = some X := (Ctx.le_insert (hu _ rfl) T).witT hy
-  have hrt : y.rt ≠ .free u := fun he => by
-    have h₁ := Ctx.ref_none_of_rootFresh hu y he
-    rw [(Ctx.witT_spec hy).2.2] at h₁
-    cases h₁
-  refine Ctx.ext' (funext fun v => ?_) rfl
-  change (if v = .root (.free u) then some T
-      else if v.atBelow (.free u) then none else Γ.optInTTy y v) =
-    (Γ.insert (.free u) T).optInTTy y v
-  unfold Ctx.optInTTy
-  by_cases hv : v = .step y .at
-  · subst hv
-    have hab : (VarSymb.step y .at).atBelow (.free u) = false := by
-      simp [VarSymb.atBelow, VarSymb.rt, hrt]
-    rw [if_neg (fun h => by cases h), if_pos rfl, if_pos rfl, hyI, hy, hab]
-    rfl
-  · rw [if_neg hv, if_neg hv]
-    rfl
-
-/-- ⭐An arrow opening commutes with an identity opening that takes effect. -/
-theorem Ctx.optIn_optInT_comm {Γ : Ctx} {y : VarSymb} {X : VarType} (hy : Γ.witT y = some X)
-    (z : VarSymb) : (Γ.optInT y).optIn z = (Γ.optIn z).optInT y := by
-  have hyI : (Γ.optIn z).witT y = some X := (Ctx.le_optIn Γ z).witT hy
-  refine Ctx.ext' (funext fun v => ?_) rfl
-  change (if v = .step z .dia then (match Γ.wit z with
-      | some X' => some X' | none => Γ.optInTTy y v) else Γ.optInTTy y v) =
-    (Γ.optIn z).optInTTy y v
-  unfold Ctx.optInTTy
-  by_cases hv : v = .step y .at
-  · subst hv
-    rw [if_neg (fun h => by cases h), if_pos rfl, if_pos rfl, hy, hyI]
-  · rw [if_neg hv, if_neg hv]
-    rfl
 
 /-! ## Several identity openings -/
 

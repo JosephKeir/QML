@@ -39,12 +39,15 @@ theorem EdgeKind.compat_refl : ∀ e : EdgeKind, e.Compat e
 /-- A tree maps into itself with a new edge into an absent node. -/
 theorem TMap.ofAddEdge {D : Tree} (h : D.OK Γ₀) {c : Lab} (hc : D.edge c = none)
     (e : EdgeKind) : TMap Γ₀ idIdx D (D.addEdge c e) where
-  ok := h.addEdge c e
+  ok := h.addEdge hc e
   edge c' e' he' := by
-    refine ⟨e', ?_, EdgeKind.compat_refl e'⟩
+    refine ⟨e', ?_, .of_compat (EdgeKind.compat_refl e')⟩
     rw [lmap_idIdx, Tree.edge_addEdge, if_neg (fun h => by rw [h, hc] at he'; cases he')]
     exact he'
   birth τ b hb := by rw [lmap_idIdx]; exact hb
+  opens τ o ho := by
+    rw [lmap_idIdx]
+    exact (h.opened τ o ho).mono (Tree.ctxAt_addEdge hc e τ)
   names b hb := ⟨b, hb, rfl⟩
 
 theorem relabel_id_eq {D D' : Tree} {hm : TMap Γ₀ idIdx D D'}
@@ -65,9 +68,56 @@ theorem weakenEdge {n : ℕ} (hs0 : Γ₀.SlotsFrom 0) {D : Tree} (hok : D.OK Γ
       rw [relabel_id_eq (hm := TMap.ofAddEdge hok hc e) (Tree.ctxAt_addEdge hc e)]
       exact List.Subset.refl _)
 
+/-- A tree maps into itself with a new opening that takes effect. -/
+theorem TMap.ofAddOpen {D : Tree} (h : D.OK Γ₀) (hO : ModalSys.Opt = true) {τ : Lab}
+    {κ : WitKind} {y : VarSymb} {X : VarType} (hy : (D.ctxAt Γ₀ τ).witK κ y = some X) :
+    TMap Γ₀ idIdx D (D.addOpen τ κ y) where
+  ok := h.addOpen hO hy
+  edge c' e' he' := ⟨e', by rw [lmap_idIdx]; exact he', .of_compat (EdgeKind.compat_refl e')⟩
+  birth τ' b hb := by rw [lmap_idIdx]; exact hb
+  opens τ' o ho := by
+    rw [lmap_idIdx]
+    exact (h.opened τ' o ho).mono (Tree.ctxAt_addOpen τ κ y τ')
+  names b hb := ⟨b, hb, rfl⟩
+
+/-- ⭐**Weakening by a new opening** that takes effect, height kept. -/
+theorem weakenOpen {n : ℕ} (hs0 : Γ₀.SlotsFrom 0) {D : Tree} (hok : D.OK Γ₀)
+    {Δ Θ : Seq σ Γ₀ D} (p : GKN σ Γ₀ n D Δ Θ) (hO : ModalSys.Opt = true) {τ : Lab}
+    {κ : WitKind} {y : VarSymb} {X : VarType} (hy : (D.ctxAt Γ₀ τ).witK κ y = some X) :
+    GKN σ Γ₀ n (D.addOpen τ κ y) (Seq.mono (Tree.ctxAt_addOpen τ κ y) Δ)
+      (Seq.mono (Tree.ctxAt_addOpen τ κ y) Θ) :=
+  GKN.relabel hs0 p idIdx _ (TMap.ofAddOpen hok hO hy) _ _
+    (by
+      rw [relabel_id_eq (hm := TMap.ofAddOpen hok hO hy) (Tree.ctxAt_addOpen τ κ y)]
+      exact List.Subset.refl _)
+    (by
+      rw [relabel_id_eq (hm := TMap.ofAddOpen hok hO hy) (Tree.ctxAt_addOpen τ κ y)]
+      exact List.Subset.refl _)
+
+/-- A **redundant opening** (the witness opened already) maps back into the tree. -/
+theorem TMap.ofOpened {D : Tree} (h : D.OK Γ₀) {τ : Lab} {κ : WitKind} {y : VarSymb}
+    (ho : (D.ctxAt Γ₀ τ).Opened κ y) : TMap Γ₀ idIdx (D.addOpen τ κ y) D where
+  ok := h
+  edge c' e' he' := ⟨e', by rw [lmap_idIdx]; exact he', .of_compat (EdgeKind.compat_refl e')⟩
+  birth τ' b hb := by rw [lmap_idIdx]; exact hb
+  opens τ' o hm := by
+    rw [lmap_idIdx]
+    rw [Tree.opensAt_addOpen] at hm
+    split_ifs at hm with hτ
+    · subst hτ
+      rcases List.mem_cons.mp hm with rfl | hm
+      · exact ho
+      · exact h.opened _ o hm
+    · exact h.opened τ' o hm
+  names b hb := ⟨b, hb, rfl⟩
+
+theorem _root_.V12M.GKN.Tree.WitOK.addOpen {D : Tree} (h : D.WitOK Γ₀) (τ : Lab) (κ : WitKind)
+    (y : VarSymb) : (D.addOpen τ κ y).WitOK Γ₀ := fun k ρ x he =>
+  (h k ρ x he).imp fun _ hX => (Tree.ctxAt_addOpen τ κ y ρ).ref hX
+
 theorem Vacant.sub {D : Tree} {c : Lab} {Δ Θ Δ' Θ' : Seq σ Γ₀ D} (hv : Vacant D c Δ Θ)
     (hΔ : Δ' ⊆ Δ) (hΘ : Θ' ⊆ Θ) : Vacant D c Δ' Θ' :=
-  ⟨hv.edge, hv.births, fun p hp => hv.left p (hΔ hp), fun p hp => hv.right p (hΘ hp)⟩
+  ⟨hv.edge, hv.births, hv.opens, fun p hp => hv.left p (hΔ hp), fun p hp => hv.right p (hΘ hp)⟩
 
 theorem both {a b : ℕ} {D : Tree} {Δ₁ Θ₁ Δ₂ Θ₂ : Seq σ Γ₀ D} (p : GKN σ Γ₀ a D Δ₁ Θ₁)
     (q : GKN σ Γ₀ b D Δ₂ Θ₂) : GKN σ Γ₀ (max a b) D Δ₁ Θ₁ ∧ GKN σ Γ₀ (max a b) D Δ₂ Θ₂ :=
@@ -121,11 +171,26 @@ inductive RightPrin (σ : Signature) (Γ₀ : Ctx) (D : Tree) (τ : Lab) :
           Seq.mono (Tree.ctxAt_addEdge (hv.edge _ (List.suffix_refl _)) .box)
             (⟨τ, WFF.box (Γ := D.ctxAt Γ₀ τ) φ⟩ :: Θ)) →
       RightPrin σ Γ₀ D τ (WFF.box φ) n Δ Θ
-  | dia (k : ℕ) (x : VarSymb) (hx : ∃ X, (D.ctxAt Γ₀ τ).ref x = some (.VTypeDia X))
-      {θ : WFF σ ((D.ctxAt Γ₀ τ).diaIn x) 0} (he : D.edge (k :: τ) = some (.dia x))
+  | dia (k : ℕ) (e : EdgeKind) (x : VarSymb) (hx : ∃ X, (D.ctxAt Γ₀ τ).ref x = some (.VTypeDia X))
+      {θ : WFF σ ((D.ctxAt Γ₀ τ).diaIn x) 0} (he : D.edge (k :: τ) = some e)
+      (hf : (EdgeKind.dia x).Fits (D.ctxAt Γ₀ (k :: τ)) e)
       (hle : ((D.ctxAt Γ₀ τ).diaIn x).Le (D.ctxAt Γ₀ (k :: τ))) {n n' : ℕ}
       {Δ Θ : Seq σ Γ₀ D} : n' < n →
       GKN σ Γ₀ n' D Δ (⟨k :: τ, WFF.mono hle θ⟩ :: ⟨τ, .dia x hx θ⟩ :: Θ) →
+      RightPrin σ Γ₀ D τ (.dia x hx θ) n Δ Θ
+  | reopen (hO : ModalSys.Opt = true) (κ : WitKind) (y : VarSymb)
+      (hy : (D.ctxAt Γ₀ τ).Opened κ y) {χ : WFF σ (D.ctxAt Γ₀ τ) 0} {n n' : ℕ}
+      {Δ Θ : Seq σ Γ₀ D} : n' < n →
+      GKN σ Γ₀ n' D Δ (⟨τ, χ⟩ :: ⟨τ, .optx hO κ y (hy.imp fun _ h => h.1)
+        (WFF.mono (Ctx.le_optInK _ κ y) χ)⟩ :: Θ) →
+      RightPrin σ Γ₀ D τ (.optx hO κ y (hy.imp fun _ h => h.1) (WFF.mono (Ctx.le_optInK _ κ y) χ))
+        n Δ Θ
+  | fold (hO : ModalSys.Opt = true) (k : ℕ) (e : EdgeKind) (x : VarSymb)
+      (hx : ∃ X, (D.ctxAt Γ₀ τ).ref x = some (.VTypeDia X))
+      {θ : WFF σ ((D.ctxAt Γ₀ τ).diaIn x) 0} (he : D.edge (k :: τ) = some e)
+      (hle : (D.ctxAt Γ₀ τ).boxIn.Le (D.ctxAt Γ₀ (k :: τ))) {n n' : ℕ}
+      {Δ Θ : Seq σ Γ₀ D} : n' < n →
+      GKN σ Γ₀ n' D Δ (⟨k :: τ, WFF.mono hle (WFF.fold hO x hx θ)⟩ :: ⟨τ, .dia x hx θ⟩ :: Θ) →
       RightPrin σ Γ₀ D τ (.dia x hx θ) n Δ Θ
 
 /-- ⭐**The cut formula principal on the left of the right derivation**, with that rule's
@@ -172,8 +237,16 @@ inductive LeftPrin (σ : Signature) (Γ₀ : Ctx) (D : Tree) (τ : Lab) :
             (⟨τ, .dia x hx ψ⟩ :: Δ))
         (Seq.mono (Tree.ctxAt_addEdge (hv.edge _ (List.suffix_refl _)) (.dia x)) Θ) →
       LeftPrin σ Γ₀ D τ (.dia x hx ψ) m Δ Θ
+  | opt (hO : ModalSys.Opt = true) (κ : WitKind) (y : VarSymb)
+      (hy : ∃ X, (D.ctxAt Γ₀ τ).witK κ y = some X) {ψ : WFF σ ((D.ctxAt Γ₀ τ).optInK κ y) 0}
+      (hle : ((D.ctxAt Γ₀ τ).optInK κ y).Le ((D.addOpen τ κ y).ctxAt Γ₀ τ)) {m m' : ℕ}
+      {Δ Θ : Seq σ Γ₀ D} : m' < m →
+      GKN σ Γ₀ m' (D.addOpen τ κ y)
+        (⟨τ, WFF.mono hle ψ⟩ :: Seq.mono (Tree.ctxAt_addOpen τ κ y) (⟨τ, .optx hO κ y hy ψ⟩ :: Δ))
+        (Seq.mono (Tree.ctxAt_addOpen τ κ y) Θ) →
+      LeftPrin σ Γ₀ D τ (.optx hO κ y hy ψ) m Δ Θ
 
-variable [ModalSys.NoOpt] [Γ₀.Presented]
+variable [ModalSys.NoT] [Γ₀.Presented]
 
 theorem wkn {n : ℕ} {D : Tree} (hok : D.OK Γ₀) {Δ Θ Δ' Θ' : Seq σ Γ₀ D}
     (p : GKN σ Γ₀ n D Δ Θ) (hΔ : Δ ⊆ Δ') (hΘ : Θ ⊆ Θ') : GKN σ Γ₀ n D Δ' Θ' :=
@@ -198,6 +271,43 @@ theorem upR {w s : ℕ} (ih : CutIH σ Γ₀ w s) {D : Tree} (hok : D.OK Γ₀) 
     (wkn hok q' h₁ (List.Subset.refl _))
 
 theorem sub_cons {α : Type*} (a : α) (L : List α) : L ⊆ a :: L := List.subset_cons_self _ _
+
+theorem Seq.relabel_cons {D D' : Tree} (g : Lab → ℕ → ℕ)
+    (h : ∀ τ, (D.ctxAt Γ₀ τ).Le (D'.ctxAt Γ₀ (lmap g τ))) (p : LF σ Γ₀ D) (L : Seq σ Γ₀ D) :
+    Seq.relabel g h (p :: L) = ⟨lmap g p.1, WFF.mono (h p.1) p.2⟩ :: Seq.relabel g h L := rfl
+
+/-- Weakening into a larger tree and relabelling back is nothing. -/
+theorem relabel_back {D D' : Tree} {hm : TMap Γ₀ idIdx D' D}
+    (hk : ∀ σ', (D.ctxAt Γ₀ σ').Le (D'.ctxAt Γ₀ σ')) (L : Seq σ Γ₀ D) :
+    Seq.relabel idIdx hm.le (Seq.mono hk L) = L := by
+  unfold Seq.relabel Seq.mono
+  rw [List.map_map]
+  conv_rhs => rw [← List.map_id L]
+  refine List.map_congr_left fun p _ => ?_
+  obtain ⟨ρ, ψ⟩ := p
+  change (⟨lmap idIdx ρ, WFF.mono _ (WFF.mono _ ψ)⟩ : LF σ Γ₀ D) = ⟨ρ, ψ⟩
+  rw [WFF.mono_mono, LF.mono_eq ψ (lmap_idIdx ρ) _ (Ctx.Le.refl _), WFF.mono_refl]
+
+/-- Retargeting into a larger tree leaves a weakened side that avoided the vacant child. -/
+theorem retargetTo_mono_sub {D D' : Tree} (hm : TMap Γ₀ idIdx D D') {τ : Lab} {k k₀ : ℕ}
+    {Δ Θ : Seq σ Γ₀ D} (hv : Vacant D (k :: τ) Δ Θ) {e e' : EdgeKind}
+    (hq : D'.edge (k₀ :: τ) = some e') (hc : e.Fits (D'.ctxAt Γ₀ (k₀ :: τ)) e')
+    {kk : ∀ σ', (D.ctxAt Γ₀ σ').Le ((D.addEdge (k :: τ) e).ctxAt Γ₀ σ')}
+    (kk' : ∀ σ', (D.ctxAt Γ₀ σ').Le (D'.ctxAt Γ₀ σ')) {L : Seq σ Γ₀ D}
+    (hL : ∀ p ∈ L, ¬ (k :: τ) <:+ p.1) :
+    Seq.relabel (setIdx idIdx τ k k₀) (hm.retargetTo hv hq hc).le (Seq.mono kk L) ⊆
+      Seq.mono kk' L := by
+  intro x hx
+  obtain ⟨q, hq', rfl⟩ := List.mem_map.mp hx
+  obtain ⟨p, hp, rfl⟩ := List.mem_map.mp hq'
+  have hl : lmap (setIdx idIdx τ k k₀) p.1 = p.1 := by
+    rw [lmap_setIdx_off idIdx p.1 (hL p hp), lmap_idIdx]
+  have e₁ : (⟨lmap (setIdx idIdx τ k k₀) p.1, WFF.mono ((hm.retargetTo hv hq hc).le p.1)
+      (WFF.mono (kk p.1) p.2)⟩ : LF σ Γ₀ D') = ⟨p.1, WFF.mono (kk' p.1) p.2⟩ := by
+    rw [WFF.mono_mono]
+    exact LF.mono_eq p.2 hl _ _
+  rw [e₁]
+  exact List.mem_map_of_mem hp
 
 /-! ## The cut moves up the left derivation -/
 
@@ -312,20 +422,45 @@ theorem permLeft {w s : ℕ} (ih : CutIH σ Γ₀ w s) {D : Tree} (hok : D.OK Γ
       obtain ⟨k', d⟩ := upL ih hok hW hw (by omega) q (sub_cons _ _) (List.Subset.refl _) p₁
         (List.Subset.refl _)
       exact .inl ⟨k' + 1, .boxL τ' k e he hle h d⟩
-  | @diaR n' _ _ _ τ' k x hx θ he hle h p₁ =>
+  | @diaR n' _ _ _ τ' k e x hx θ he hf hle h p₁ =>
       rcases List.mem_cons.mp h with he' | h
       · cases he'
-        exact .inr (.dia k x hx he hle (Nat.lt_succ_self _) p₁)
+        exact .inr (.dia k e x hx he hf hle (Nat.lt_succ_self _) p₁)
       · obtain ⟨k', d⟩ := upL ih hok hW hw (by omega) q (List.Subset.refl _)
           (sub_cons ⟨k :: τ', WFF.mono hle θ⟩ Θ) p₁ (by wk)
-        exact .inl ⟨k' + 1, .diaR τ' k x hx he hle h d⟩
+        exact .inl ⟨k' + 1, .diaR τ' k e x hx he hf hle h d⟩
+  | @optL n' _ _ _ hO τ' κ y hy ψ hle h p₁ =>
+      obtain ⟨X, hX⟩ := id hy
+      have hk := Tree.ctxAt_addOpen (D := D) (Γ₀ := Γ₀) τ' κ y
+      have hok' := hok.addOpen hO hX
+      have q' := weakenOpen hs0 hok q hO hX
+      haveI : ((D.addOpen τ' κ y).ctxAt Γ₀ τ).NoSlots := ⟨Tree.ctxAt_slots hs0 hok' τ⟩
+      obtain ⟨k, d⟩ := ih hok' (hW.addOpen τ' κ y) τ (WFF.mono (hk τ) A)
+        (.inr ⟨by rw [WFF.weight_mono]; exact hw, by omega⟩)
+        (Δ := ⟨τ', WFF.mono hle ψ⟩ :: Seq.mono hk Δ) (Θ := Seq.mono hk Θ)
+        (wkn hok' p₁ (List.Subset.refl _) (by wk)) (wkn hok' q' (by wk) (List.Subset.refl _))
+      exact .inl ⟨k + 1, .optL hO τ' κ y hy hle h d⟩
+  | @reopenR n' _ _ _ hO τ' κ y hy χ h p₁ =>
+      rcases List.mem_cons.mp h with he | h
+      · cases he
+        exact .inr (.reopen hO κ y hy (Nat.lt_succ_self _) p₁)
+      · obtain ⟨k, d⟩ := upL ih hok hW hw (by omega) q (List.Subset.refl _)
+          (sub_cons ⟨τ', χ⟩ Θ) p₁ (by wk)
+        exact .inl ⟨k + 1, .reopenR hO τ' κ y hy h d⟩
+  | @foldR n' _ _ _ hO τ' k e x hx θ he hle h p₁ =>
+      rcases List.mem_cons.mp h with he' | h
+      · cases he'
+        exact .inr (.fold hO k e x hx he hle (Nat.lt_succ_self _) p₁)
+      · obtain ⟨k', d⟩ := upL ih hok hW hw (by omega) q (List.Subset.refl _)
+          (sub_cons ⟨k :: τ', WFF.mono hle (WFF.fold hO x hx θ)⟩ Θ) p₁ (by wk)
+        exact .inl ⟨k' + 1, .foldR hO τ' k e x hx he hle h d⟩
   | @boxR n' _ _ _ τ' k φ hv hle h p₁ =>
       rcases List.mem_cons.mp h with he | h
       · cases he
         exact .inr (.box k hv hle (Nat.lt_succ_self _) p₁)
       · have hc := hv.edge _ (List.suffix_refl _)
         have hk := Tree.ctxAt_addEdge (Γ₀ := Γ₀) hc EdgeKind.box
-        have hok' := hok.addEdge (k :: τ') EdgeKind.box
+        have hok' := hok.addEdge hc EdgeKind.box
         have q' := weakenEdge hs0 hok q hc .box
         haveI : ((D.addEdge (k :: τ') .box).ctxAt Γ₀ τ).NoSlots :=
           ⟨Tree.ctxAt_slots hs0 hok' τ⟩
@@ -337,7 +472,7 @@ theorem permLeft {w s : ℕ} (ih : CutIH σ Γ₀ w s) {D : Tree} (hok : D.OK Γ
   | @serial n' _ _ _ hD τ' k hv p₁ =>
       have hc := hv.edge _ (List.suffix_refl _)
       have hk := Tree.ctxAt_addEdge (Γ₀ := Γ₀) hc EdgeKind.box
-      have hok' := hok.addEdge (k :: τ') EdgeKind.box
+      have hok' := hok.addEdge hc EdgeKind.box
       have q' := weakenEdge hs0 hok q hc .box
       haveI : ((D.addEdge (k :: τ') .box).ctxAt Γ₀ τ).NoSlots :=
         ⟨Tree.ctxAt_slots hs0 hok' τ⟩
@@ -348,7 +483,7 @@ theorem permLeft {w s : ℕ} (ih : CutIH σ Γ₀ w s) {D : Tree} (hok : D.OK Γ
   | @diaL n' _ _ _ τ' k x hx ψ hv hle h p₁ =>
       have hc := hv.edge _ (List.suffix_refl _)
       have hk := Tree.ctxAt_addEdge (Γ₀ := Γ₀) hc (EdgeKind.dia x)
-      have hok' := hok.addEdge (k :: τ') (EdgeKind.dia x)
+      have hok' := hok.addEdge hc (EdgeKind.dia x)
       have q' := weakenEdge hs0 hok q hc (.dia x)
       haveI : ((D.addEdge (k :: τ') (.dia x)).ctxAt Γ₀ τ).NoSlots :=
         ⟨Tree.ctxAt_slots hs0 hok' τ⟩
@@ -459,10 +594,32 @@ theorem permRight {w s : ℕ} (ih : CutIH σ Γ₀ w s) {D : Tree} (hok : D.OK �
       · obtain ⟨k', d⟩ := upR ih hok hW hw (by omega) p
           (Δ' := ⟨k :: τ', WFF.mono hle χ⟩ :: Δ) (sub_cons _ _) (List.Subset.refl _) q₁ (by wk)
         exact .inl ⟨k' + 1, .boxL τ' k e he hle h d⟩
-  | @diaR m' _ _ _ τ' k x hx θ he hle h q₁ =>
+  | @diaR m' _ _ _ τ' k e x hx θ he hf hle h q₁ =>
       obtain ⟨k', d⟩ := upR ih hok hW hw (by omega) p (List.Subset.refl _) (sub_cons _ _) q₁
         (List.Subset.refl _)
-      exact .inl ⟨k' + 1, .diaR τ' k x hx he hle h d⟩
+      exact .inl ⟨k' + 1, .diaR τ' k e x hx he hf hle h d⟩
+  | @reopenR m' _ _ _ hO τ' κ y hy χ h q₁ =>
+      obtain ⟨k', d⟩ := upR ih hok hW hw (by omega) p (List.Subset.refl _) (sub_cons _ _) q₁
+        (List.Subset.refl _)
+      exact .inl ⟨k' + 1, .reopenR hO τ' κ y hy h d⟩
+  | @foldR m' _ _ _ hO τ' k e x hx θ he hle h q₁ =>
+      obtain ⟨k', d⟩ := upR ih hok hW hw (by omega) p (List.Subset.refl _) (sub_cons _ _) q₁
+        (List.Subset.refl _)
+      exact .inl ⟨k' + 1, .foldR hO τ' k e x hx he hle h d⟩
+  | @optL m' _ _ _ hO τ' κ y hy ψ hle h q₁ =>
+      rcases List.mem_cons.mp h with he | h
+      · cases he
+        exact .inr (.opt hO κ y hy hle (Nat.lt_succ_self _) q₁)
+      · obtain ⟨X, hX⟩ := id hy
+        have hk := Tree.ctxAt_addOpen (D := D) (Γ₀ := Γ₀) τ' κ y
+        have hok' := hok.addOpen hO hX
+        have p' := weakenOpen hs0 hok p hO hX
+        haveI : ((D.addOpen τ' κ y).ctxAt Γ₀ τ).NoSlots := ⟨Tree.ctxAt_slots hs0 hok' τ⟩
+        obtain ⟨k, d⟩ := ih hok' (hW.addOpen τ' κ y) τ (WFF.mono (hk τ) A)
+          (.inr ⟨by rw [WFF.weight_mono]; exact hw, by omega⟩)
+          (Δ := ⟨τ', WFF.mono hle ψ⟩ :: Seq.mono hk Δ) (Θ := Seq.mono hk Θ)
+          (wkn hok' p' (by wk) (List.Subset.refl _)) (wkn hok' q₁ (by wk) (List.Subset.refl _))
+        exact .inl ⟨k + 1, .optL hO τ' κ y hy hle h d⟩
   | @allR m' _ _ _ τ' hs' v T' hv φ hle h q₁ =>
       have hk := Tree.ctxAt_addBirth hv τ' T'
       have hok' := hok.addBirth hv τ' T'
@@ -491,7 +648,7 @@ theorem permRight {w s : ℕ} (ih : CutIH σ Γ₀ w s) {D : Tree} (hok : D.OK �
   | @boxR m' _ _ _ τ' k φ hv hle h q₁ =>
       have hc := hv.edge _ (List.suffix_refl _)
       have hk := Tree.ctxAt_addEdge (Γ₀ := Γ₀) hc EdgeKind.box
-      have hok' := hok.addEdge (k :: τ') EdgeKind.box
+      have hok' := hok.addEdge hc EdgeKind.box
       have p' := weakenEdge hs0 hok p hc .box
       haveI : ((D.addEdge (k :: τ') .box).ctxAt Γ₀ τ).NoSlots :=
         ⟨Tree.ctxAt_slots hs0 hok' τ⟩
@@ -503,7 +660,7 @@ theorem permRight {w s : ℕ} (ih : CutIH σ Γ₀ w s) {D : Tree} (hok : D.OK �
   | @serial m' _ _ _ hD τ' k hv q₁ =>
       have hc := hv.edge _ (List.suffix_refl _)
       have hk := Tree.ctxAt_addEdge (Γ₀ := Γ₀) hc EdgeKind.box
-      have hok' := hok.addEdge (k :: τ') EdgeKind.box
+      have hok' := hok.addEdge hc EdgeKind.box
       have p' := weakenEdge hs0 hok p hc .box
       haveI : ((D.addEdge (k :: τ') .box).ctxAt Γ₀ τ).NoSlots :=
         ⟨Tree.ctxAt_slots hs0 hok' τ⟩
@@ -517,7 +674,7 @@ theorem permRight {w s : ℕ} (ih : CutIH σ Γ₀ w s) {D : Tree} (hok : D.OK �
         exact .inr (.dia k x hx hv hle (Nat.lt_succ_self _) q₁)
       · have hc := hv.edge _ (List.suffix_refl _)
         have hk := Tree.ctxAt_addEdge (Γ₀ := Γ₀) hc (EdgeKind.dia x)
-        have hok' := hok.addEdge (k :: τ') (EdgeKind.dia x)
+        have hok' := hok.addEdge hc (EdgeKind.dia x)
         have p' := weakenEdge hs0 hok p hc (.dia x)
         haveI : ((D.addEdge (k :: τ') (.dia x)).ctxAt Γ₀ τ).NoSlots :=
           ⟨Tree.ctxAt_slots hs0 hok' τ⟩
@@ -618,7 +775,7 @@ theorem cut_step {w s : ℕ} (ih : CutIH σ Γ₀ w s) {D : Tree} (hok : D.OK Γ
       cases P₂ with
       | @box k' e _ he hle' _ m' _ _ hm q₁ =>
       haveI : (D.ctxAt Γ₀ (k' :: τ)).NoSlots := ⟨Tree.ctxAt_slots hs0 hok _⟩
-      have R := GKN.retargetR hs0 hok hv he (e := .box) trivial hle hle' p₁
+      have R := GKN.retargetR hs0 hok hv he (e := .box) (.of_compat trivial) hle hle' p₁
       obtain ⟨_, D₁⟩ := ih hok hW τ _ (.inr ⟨hw, by omega⟩)
         (Θ := ⟨k' :: τ, WFF.mono hle' φ⟩ :: Θ)
         (wkn hok R (List.Subset.refl _) (by wk)) (wkn hok q (List.Subset.refl _) (by wk))
@@ -627,11 +784,11 @@ theorem cut_step {w s : ℕ} (ih : CutIH σ Γ₀ w s) {D : Tree} (hok : D.OK Γ
         (wkn hok p (by wk) (List.Subset.refl _)) (wkn hok q₁ (by wk) (List.Subset.refl _))
       exact ih hok hW (k' :: τ) (WFF.mono hle' φ)
         (.inl (by rw [WFF.weight_mono, ← hw]; simp only [WFF.weight]; omega)) D₁ E
-  | @dia k' x hx θ he hle _ n' _ _ hn p₁ =>
+  | @dia k' e' x hx θ he hf hle _ n' _ _ hn p₁ =>
       cases P₂ with
       | @dia k _ _ _ _ m' _ _ hv hle' hm q₁ =>
       haveI : (D.ctxAt Γ₀ (k' :: τ)).NoSlots := ⟨Tree.ctxAt_slots hs0 hok _⟩
-      have R := GKN.retargetL hs0 hok hv he (e := .dia x) rfl hle' hle q₁
+      have R := GKN.retargetL hs0 hok hv he (e := .dia x) hf hle' hle q₁
       obtain ⟨_, D₁⟩ := ih hok hW τ _ (.inr ⟨hw, by omega⟩)
         (Θ := ⟨k' :: τ, WFF.mono hle θ⟩ :: Θ)
         (wkn hok p₁ (List.Subset.refl _) (by wk)) (wkn hok q (List.Subset.refl _) (by wk))
@@ -640,6 +797,81 @@ theorem cut_step {w s : ℕ} (ih : CutIH σ Γ₀ w s) {D : Tree} (hok : D.OK Γ
         (wkn hok p (by wk) (List.Subset.refl _)) (wkn hok R (by wk) (List.Subset.refl _))
       exact ih hok hW (k' :: τ) (WFF.mono hle θ)
         (.inl (by rw [WFF.weight_mono, ← hw]; simp only [WFF.weight]; omega)) D₁ E
+  | @reopen hO κ y hy χ _ n' _ _ hn p₁ =>
+      cases P₂ with
+      | @opt _ _ _ _ _ hle _ m' _ _ hm q₁ =>
+      haveI : (D.ctxAt Γ₀ τ).NoSlots := ⟨Tree.ctxAt_slots hs0 hok τ⟩
+      have hk := Tree.ctxAt_addOpen (D := D) (Γ₀ := Γ₀) τ κ y
+      have hm₀ := TMap.ofOpened hok hy
+      -- the redundant opening removed
+      have R₀ := GKN.relabel hs0 q₁ idIdx D hm₀ _ _ (List.Subset.refl _) (List.Subset.refl _)
+      rw [Seq.relabel_cons, relabel_back (hm := hm₀) hk, relabel_back (hm := hm₀) hk] at R₀
+      have e₁ : (⟨lmap idIdx τ, WFF.mono (hm₀.le τ) (WFF.mono hle (WFF.mono
+          (Ctx.le_optInK _ κ y) χ))⟩ : LF σ Γ₀ D) = ⟨τ, χ⟩ := by
+        rw [WFF.mono_mono, WFF.mono_mono, LF.mono_eq χ (lmap_idIdx τ) _ (Ctx.Le.refl _),
+          WFF.mono_refl]
+      have R := wkn hok R₀ (cons_sub e₁ (List.Subset.refl _)) (List.Subset.refl _)
+      obtain ⟨_, D₁⟩ := ih hok hW τ _ (.inr ⟨hw, by omega⟩) (Θ := ⟨τ, χ⟩ :: Θ)
+        (wkn hok p₁ (List.Subset.refl _) (by wk)) (wkn hok q (List.Subset.refl _) (by wk))
+      obtain ⟨_, E⟩ := ih hok hW τ _ (.inr ⟨hw, by omega⟩) (Δ := ⟨τ, χ⟩ :: Δ)
+        (wkn hok p (by wk) (List.Subset.refl _)) (wkn hok R (by wk) (List.Subset.refl _))
+      exact ih hok hW τ χ
+        (.inl (by rw [← hw]; simp only [WFF.weight, WFF.weight_mono]; omega)) D₁ E
+  | @fold hO k e x hx θ he hle _ n' _ _ hn p₁ =>
+      cases P₂ with
+      | @dia k' _ _ _ _ m' _ _ hv hle' hm q₁ =>
+      haveI : (D.ctxAt Γ₀ τ).NoSlots := ⟨Tree.ctxAt_slots hs0 hok τ⟩
+      haveI : (D.ctxAt Γ₀ (k :: τ)).NoSlots := ⟨Tree.ctxAt_slots hs0 hok _⟩
+      obtain ⟨X, hX⟩ := id hx
+      have hwc : (D.ctxAt Γ₀ (k :: τ)).wit x = some X := by
+        rw [Tree.ctxAt_wit]
+        unfold Tree.view
+        split <;> exact Ctx.boxIn_wit.mpr ⟨hO, hX⟩
+      have hkO := Tree.ctxAt_addOpen (D := D) (Γ₀ := Γ₀) (k :: τ) .arrow x
+      have hokO := hok.addOpen (κ := .arrow) hO hwc
+      have hmO := TMap.ofAddOpen hok hO (κ := .arrow) hwc
+      have hq : (D.addOpen (k :: τ) .arrow x).edge (k :: τ) = some e := he
+      have hc : (EdgeKind.dia x).Fits ((D.addOpen (k :: τ) .arrow x).ctxAt Γ₀ (k :: τ)) e := by
+        refine .inr ⟨x, rfl, ?_⟩
+        rw [Tree.ctxAt_addOpen_self]
+        exact Ctx.opened_self (κ := .arrow) hwc
+      -- the `◇_x` child onto the fold's child, `x` opened there
+      have R₀ := GKN.relabel hs0 q₁ _ _ (hmO.retargetTo hv hq hc) _ _ (List.Subset.refl _)
+        (List.Subset.refl _)
+      rw [Seq.relabel_cons] at R₀
+      have R := wkn hokO R₀
+        (List.cons_subset_cons _ (retargetTo_mono_sub hmO hv hq hc hkO hv.left))
+        (retargetTo_mono_sub hmO hv hq hc hkO hv.right)
+      -- cut `◇_x θ` out over the opened tree
+      have p' := weakenOpen hs0 hok p hO (κ := .arrow) hwc
+      haveI : ((D.addOpen (k :: τ) .arrow x).ctxAt Γ₀ τ).NoSlots := ⟨Tree.ctxAt_slots hs0 hokO τ⟩
+      obtain ⟨_, E₁⟩ := ih hokO (hW.addOpen _ _ _) τ (WFF.mono (hkO τ) (.dia x hx θ))
+        (.inr ⟨by rw [WFF.weight_mono]; exact hw, by omega⟩)
+        (Δ := ⟨lmap (setIdx idIdx τ k' k) (k' :: τ),
+          WFF.mono ((hmO.retargetTo hv hq hc).le (k' :: τ)) (WFF.mono hle' θ)⟩ :: Seq.mono hkO Δ)
+        (Θ := Seq.mono hkO Θ)
+        (wkn hokO p' (sub_cons _ _) (by wk)) (wkn hokO R (by wk) (List.Subset.refl _))
+      -- `optL` at the fold's child
+      have hleO : ((D.ctxAt Γ₀ (k :: τ)).optInK .arrow x).Le
+          ((D.addOpen (k :: τ) .arrow x).ctxAt Γ₀ (k :: τ)) := by
+        rw [Tree.ctxAt_addOpen_self]
+        exact Ctx.Le.refl _
+      have eH : (⟨lmap (setIdx idIdx τ k' k) (k' :: τ),
+          WFF.mono ((hmO.retargetTo hv hq hc).le (k' :: τ)) (WFF.mono hle' θ)⟩ :
+            LF σ Γ₀ (D.addOpen (k :: τ) .arrow x)) =
+          ⟨k :: τ, WFF.mono hleO (WFF.mono (hle.optInK .arrow x)
+            (WFF.mono (hx.elim fun _ h => Ctx.le_diaIn_boxIn_optIn hO h) θ))⟩ := by
+        rw [WFF.mono_mono, WFF.mono_mono, WFF.mono_mono]
+        exact LF.mono_eq θ (by rw [lmap_setIdx_new, lmap_idIdx]) _ _
+      have E₂ : GKN σ Γ₀ _ D (⟨k :: τ, WFF.mono hle (WFF.fold hO x hx θ)⟩ :: Δ) Θ :=
+        .optL hO (k :: τ) .arrow x ⟨X, hwc⟩ hleO List.mem_cons_self
+          (wkn hokO E₁ (cons_sub eH (by wk)) (List.Subset.refl _))
+      obtain ⟨_, D₁⟩ := ih hok hW τ _ (.inr ⟨hw, by omega⟩)
+        (Θ := ⟨k :: τ, WFF.mono hle (WFF.fold hO x hx θ)⟩ :: Θ)
+        (wkn hok p₁ (List.Subset.refl _) (by wk)) (wkn hok q (List.Subset.refl _) (by wk))
+      exact ih hok hW (k :: τ) _
+        (.inl (by rw [← hw, WFF.weight_mono]; simp only [WFF.fold, WFF.weight, WFF.weight_mono]
+                  omega)) D₁ E₂
 
 theorem cutIH_all : ∀ w s, CutIH σ Γ₀ w s := by
   intro w
