@@ -18812,3 +18812,22 @@ the collapse relabelling of item (v), `GKN.collapse`, and the principal cases `b
 `diaT`/`diaL`.  For end sequents cut is already admissible with T, through ND
 (`GKN.provable_iff`, whose ND → `GKN` direction goes through `GK`'s cut).
 
+
+**Step 2b complete (2026-11-17, uncommitted).**  `QML_v12m_GKNCollapse`: ⭐`GKN.collapse` folds
+the subtree of a child `c = k :: τ` into `τ`.  The label map `cmap τ k g` is `lmap g` with the
+step into `c` deleted; the setup `CSetup` asks inclusion of contexts off `c`'s subtree and
+`Ctx.Collapses` at the depth below `c` on it (`CSetup.ctx`), edges and openings collapsed there
+(`EdgeKind.col`, `colOpen`: an arrow opening at `c` becomes an identity opening), births and
+names kept, so no eigenvariable is renamed.  A formula goes to its image by `CSetup.F` (collapse
+under `c`, weakening off it).  The induction on the derivation: each rule goes to itself, off
+`c`'s subtree as in relabelling, under it collapsed (`WFF.collapse_collapse` for `TL`/`diaT`,
+`Ctx.Collapses.opened` for `reopenR`, `WFF.collapse_optx` for `optL`, `WFF.collapse_fold_succ`);
+the rules at `τ` into `c` become T's, as paper-checked: `boxL` → `TL`, `foldR` → `diaT`, `diaR` →
+`diaT` then `reopenR` (`x` identity-opened at `τ` from `c`'s `◇_x` edge, or by collapsing an
+arrow opening of `x` at `c`).  Heights are not kept.  `GKNCut` now runs under `ModalSys.TOpt`
+(T implies `Opt`): `RightPrin.diaT`, `LeftPrin.T`, permutation cases for `TL` and `diaT`, and the
+principal cases `boxTPrin` and `diaTPrin`.  Each cuts the formula out of the premise over the
+grown tree, collapses the new child (onto `τ` through `CSetup.ofEdge`; for `◇_x` onto
+`D.addOpen τ .ident x`, then `optL`), cuts the formula out of the T rule's premise, and cuts the
+lighter formula at any heights.  So **cut is admissible in `GKN` for K, KD, KT and KDT** at any
+node of any tree with the invariants.  Step 2 is done.

@@ -606,3 +606,23 @@ embed, GKNSubst fully general (openS_stage, openS_contentT', fam_contentT, addre
 fam_agree/fam_ren_aux, rootsRen_okCoh T clauses, subst cases TL/diaT/ident optL/reopenR),
 toND TL/diaT; ⭐GKN.provable_iff for K/KD/KT/KDT. LEFT: tree-level cut with T (GKNCut still
 NoT; dismisses TL/diaT): GKN.collapse (docs §12.50 (v)) + principal boxR/TL, diaT/diaL.
+2b part 1 COMMITTED 951108e (not pushed). GKN.collapse IN PROGRESS (new file
+QML_v12m_GKNCollapse.lean, uncommitted, green so far, 0 sorry): stage 1 = cmap τ k g (lmap g with
+the step into c = k::τ deleted), cdepth, EdgeKind.col, colOpen (arrow at depth 0 → ident y;
+arrow at d+1 → arrow y.collapse d; ident → ident y.collapse d), Collapses.mono_right/mono_left/
+inserts_of/optInK_of/optInsK_of, CSetup (ok, hT, hO, edge_off Fits at cmap, edge_under col,
+edge_c ident-opened at cmap τ, birth, opens_off, opens_under colOpen, names, hc), ⭐CSetup.ctx
+(Le off c's subtree, Collapses (cdepth) under). Stage 2 = CSetup.addBirth/addOpen (openImg,
+wit_img)/addEdge (edgeImg, setIdx). NEXT stage 3: formula map F (collapse under / mono off),
+lf, lf_mono_sub, GKN.collapse by induction on the derivation (∃ m; rules at τ into c: boxL→TL,
+foldR→diaT, diaR→reopenR+diaT, diaR into opened c similarly), then stage 4: GKNCut drops NoT,
+RightPrin.box vs LeftPrin.boxT (TL) and diaT vs diaL principal cases via GKN.collapse with
+starting setups over D.addEdge c box → D and D.addEdge c (dia x) → D.addOpen τ ident x.
+GKN STEP 2b COMPLETE (2026-11-17, uncommitted, strict build green: 44 targets, 0 sorry): QML_v12m_GKNCollapse
+stage 3 = CSetup.F/lf (collapse under c, mono off), lf_mono_sub, Collapses.witK_col/optInKC/
+opened, WFF.collapse_optx, WFF.collapse_fold_succ, LF.col_eq, ⭐GKN.collapse (every rule; into c:
+boxL→TL, foldR→diaT, diaR→diaT+reopenR); stage 4 = CSetup.ofEdge, map_mono_off, cmap_idIdx_*,
+Seq.mono_self; GKNCut imports GKNCollapse, section [ModalSys.TOpt] (was NoT), RightPrin.diaT,
+LeftPrin.T, permLeft/permRight TL/diaT, ⭐boxTPrin, ⭐diaTPrin: ⭐GKN.cut for K/KD/KT/KDT.
+Docs §12.50 'Step 2b complete'.  Step 2 of §12.49 DONE.  Next: §12.49 step 3 (to scope with the
+user).
