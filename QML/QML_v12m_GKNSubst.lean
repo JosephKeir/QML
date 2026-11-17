@@ -19,8 +19,9 @@ carrying a formula, so that vacant children stay vacant).
   `GKN.instance_exL` (cut's quantifier instances: the eigenvariable unbound by a term).  They take
   `Tree.WitOK` (every `◇`-edge's witness declared at its parent), kept by every rule.
 
-With T off (`[ModalSys.NoT]`); `Opt` either way: a node's family opens what the node opens
-(`openS`), and re-opening an opened witness changes nothing (`openS_agree`).
+Any flags (T with `Opt` included): a node's family opens what the node opens (`openS`);
+re-opening an opened witness changes nothing (`openS_agree`); an identity opening's content is
+read off the stage it was made at (`openS_stage`, `fam_contentT`).
 -/
 
 namespace V12M
@@ -321,6 +322,131 @@ theorem openS_agree {Δ Γ : Ctx} {ι : VarSymb → VarSymb} :
               ← ih₂.openedT y X (ι y) hX hv' (ih₂ y _ hr []), SubE.mono_mono, SubE.mono_self, ih]
           · rw [Subst.optInT_ne _ _ hc, SubE.mono_mono, SubE.mono_self, ih]
 
+/-! ## Stages of a node's openings -/
+
+theorem openS_append {Δ : Ctx} (ι : VarSymb → VarSymb) :
+    ∀ (L₁ L₂ : List (WitKind × VarSymb)) (h : ∀ o ∈ L₁ ++ L₂, Δ.Opened o.1 (ι o.2))
+      (θ : Subst σ Δ), openS ι (L₁ ++ L₂) h θ =
+        openS ι L₁ (fun o ho => h o (List.mem_append_left _ ho))
+          (openS ι L₂ (fun o ho => h o (List.mem_append_right _ ho)) θ)
+  | [], _, _, _ => rfl
+  | o :: L₁, L₂, h, θ => by
+      change ((openS ι (L₁ ++ L₂) _ θ).optInK o.1 o.2 (ι o.2)).mono _ =
+        ((openS ι L₁ _ (openS ι L₂ _ θ)).optInK o.1 o.2 (ι o.2)).mono _
+      rw [openS_append ι L₁ L₂]
+
+theorem _root_.V12M.Ctx.optInsK_append (Γ : Ctx) :
+    ∀ L₁ L₂ : List (WitKind × VarSymb), Γ.optInsK (L₁ ++ L₂) = (Γ.optInsK L₂).optInsK L₁
+  | [], _ => rfl
+  | o :: L₁, L₂ => congrArg (fun C => Ctx.optInK C o.1 o.2) (Ctx.optInsK_append Γ L₁ L₂)
+
+theorem _root_.V12M.Ctx.OptsEff.append {Γ : Ctx} :
+    ∀ {L₁ L₂ : List (WitKind × VarSymb)}, Γ.OptsEff (L₁ ++ L₂) →
+      Γ.OptsEff L₂ ∧ (Γ.optInsK L₂).OptsEff L₁
+  | [], _, h => ⟨h, trivial⟩
+  | _ :: L₁, L₂, ⟨h, hO, hw⟩ => by
+      obtain ⟨h₂, h₁⟩ := Ctx.OptsEff.append (L₁ := L₁) h
+      refine ⟨h₂, h₁, hO, ?_⟩
+      rw [← Ctx.optInsK_append]
+      exact hw
+
+/-- ⭐**Later openings keep what a stage declared**: at an address declared after the last `L₂`
+    openings, the family is the stage's. -/
+theorem openS_stage {Δ Γ : Ctx} {ι : VarSymb → VarSymb} (L₁ L₂ : List (WitKind × VarSymb))
+    (h : ∀ o ∈ L₁ ++ L₂, Δ.Opened o.1 (ι o.2)) (θ : Subst σ Δ) (h₁ : Subst.Ok Γ θ)
+    (h₂ : Subst.Coh ι Γ θ) (he : Γ.OptsEff (L₁ ++ L₂)) {v : VarSymb} {U : VarType}
+    (hv : (Γ.optInsK L₂) v = some U) :
+    openS ι (L₁ ++ L₂) h θ v = openS ι L₂ (fun o ho => h o (List.mem_append_right _ ho)) θ v := by
+  obtain ⟨he₂, he₁⟩ := Ctx.OptsEff.append he
+  obtain ⟨k₁, k₂⟩ := openS_okCoh L₂ (fun o ho => h o (List.mem_append_right _ ho)) θ h₁ h₂ he₂
+  rw [openS_append]
+  exact openS_agree L₁ _ _ k₁ k₂ he₁ v U hv
+
+/-- ⭐**An identity opening's content**: the possible object's entry, read at the identity arrow,
+    at the stage the opening was made. -/
+theorem openS_contentT {Δ Γ : Ctx} {ι : VarSymb → VarSymb} (L₁ L₂ : List (WitKind × VarSymb))
+    (y : VarSymb) (h : ∀ o ∈ L₁ ++ (WitKind.ident, y) :: L₂, Δ.Opened o.1 (ι o.2))
+    (θ : Subst σ Δ) (h₁ : Subst.Ok Γ θ) (h₂ : Subst.Coh ι Γ θ)
+    (he : Γ.OptsEff (L₁ ++ (WitKind.ident, y) :: L₂)) :
+    openS ι (L₁ ++ (WitKind.ident, y) :: L₂) h θ (.step y .at) =
+      (((openS ι L₂ (fun o ho => h o (List.mem_append_right _ (List.mem_cons_of_mem _ ho))) θ).at
+        y).atBody (ι y)).mono
+        (Ctx.optInK_le_of (Γ := Δ) (Ξ := Δ) (κ := .ident) (y := ι y) (Ctx.Le.refl Δ)
+          (h (.ident, y) (List.mem_append_right _ List.mem_cons_self))) := by
+  obtain ⟨⟨-, -, X, hX⟩, -⟩ := Ctx.OptsEff.append he
+  have hX' : (Γ.optInsK L₂).witT y = some X := hX
+  rw [openS_stage L₁ ((WitKind.ident, y) :: L₂) h θ h₁ h₂ he (v := .step y .at)
+    (U := X) (Ctx.optInT_content hX')]
+  change SubE.mono _ ((Subst.optInT _ y _) (.step y .at)) = _
+  rw [Subst.optInT_content]
+
+theorem openS_congr_list {Δ : Ctx} (ι : VarSymb → VarSymb) {L L' : List (WitKind × VarSymb)}
+    (e : L = L') (h : ∀ o ∈ L, Δ.Opened o.1 (ι o.2)) (h' : ∀ o ∈ L', Δ.Opened o.1 (ι o.2))
+    (θ : Subst σ Δ) : openS ι L h θ = openS ι L' h' θ := by
+  subst e
+  rfl
+
+/-- ⭐An identity opening's content, read off the whole family's entry at the possible object. -/
+theorem openS_contentT' {Δ Γ : Ctx} {ι : VarSymb → VarSymb} {L : List (WitKind × VarSymb)}
+    (h : ∀ o ∈ L, Δ.Opened o.1 (ι o.2)) (θ : Subst σ Δ) (h₁ : Subst.Ok Γ θ)
+    (h₂ : Subst.Coh ι Γ θ) (he : Γ.OptsEff L) {y : VarSymb} (hm : (WitKind.ident, y) ∈ L) :
+    ∃ b : ((Δ.optInT (ι y)).Le Δ), openS ι L h θ (.step y .at) =
+      (((openS ι L h θ).at y).atBody (ι y)).mono b := by
+  obtain ⟨L₁, L₂, rfl⟩ := List.append_of_mem hm
+  obtain ⟨⟨he₂, -, X, hX⟩, -⟩ := Ctx.OptsEff.append he
+  have hX' : (Γ.optInsK L₂).witT y = some X := hX
+  have hr := (Ctx.witT_spec hX').2.2
+  have e₁ : L₁ ++ (WitKind.ident, y) :: L₂ = (L₁ ++ [(WitKind.ident, y)]) ++ L₂ := by simp
+  have he' : Γ.OptsEff ((L₁ ++ [(WitKind.ident, y)]) ++ L₂) := e₁ ▸ he
+  have h' : ∀ o ∈ (L₁ ++ [(WitKind.ident, y)]) ++ L₂, Δ.Opened o.1 (ι o.2) := fun o ho =>
+    h o (e₁ ▸ ho)
+  have hstage : ∀ v U, v.lastProj = false → (Γ.optInsK L₂) v = some U →
+      openS ι (L₁ ++ (WitKind.ident, y) :: L₂) h θ v =
+        (openS ι L₂ (fun o ho => h o (List.mem_append_right _ (List.mem_cons_of_mem _ ho))) θ
+          v).mono (Ctx.Le.refl Δ) := fun v U _ hv => by
+    rw [SubE.mono_self, openS_congr_list ι e₁ h h' θ]
+    exact openS_stage _ L₂ h' θ h₁ h₂ he' hv
+  have hat := Subst.at_eq_mono_of (Ctx.Le.refl Δ) hstage y _ hr
+  rw [SubE.mono_self] at hat
+  refine ⟨Ctx.optInK_le_of (Γ := Δ) (Ξ := Δ) (κ := .ident) (y := ι y) (Ctx.Le.refl Δ)
+    (h (.ident, y) (List.mem_append_right _ List.mem_cons_self)), ?_⟩
+  rw [openS_contentT L₁ L₂ y h θ h₁ h₂ he, hat]
+
+theorem _root_.V12M.SubE.atBody_mono_congr {Δ Δ' : Ctx} (e : SubE σ Δ) {z₁ z₂ : VarSymb}
+    (hz : z₁ = z₂) (b₁ : (Δ.optInT z₁).Le Δ') (b₂ : (Δ.optInT z₂).Le Δ') :
+    (e.atBody z₁).mono b₁ = (e.atBody z₂).mono b₂ := by
+  subst hz
+  rfl
+
+/-! ## The roots of a node -/
+
+theorem _root_.V12M.Ctx.ref_inserts_ne {Γ : Ctx} :
+    ∀ {L : List (Root × VarType)} {v : VarSymb}, (∀ b ∈ L, v.rt ≠ b.1) →
+      (Γ.inserts L).ref v = Γ.ref v
+  | [], _, _ => rfl
+  | b :: L, v, h => by
+      change ((Γ.inserts L).insert b.1 b.2).ref v = _
+      rw [Ctx.ref_insert_ne b.2 (h b List.mem_cons_self),
+        Ctx.ref_inserts_ne fun b' hb' => h b' (List.mem_cons_of_mem _ hb')]
+
+/-- With the roots of a context agreeing, so do the entries along its addresses. -/
+theorem rootsRen_at {Δ Γ : Ctx} {θ : Subst σ Δ} {er : Root → SubE σ Δ}
+    (hroot : ∀ r U, Γ (.root r) = some U → er r = θ (.root r)) :
+    ∀ y T, Γ.ref y = some T → (θ.rootsRen er).at y = θ.at y := by
+  intro y
+  induction y with
+  | root r => intro T hv; exact hroot r T hv
+  | step w s ih =>
+      intro T hv
+      change (if s.isStruct then ((θ.rootsRen er).at w).proj s else θ.rootsRen er (.step w s)) =
+        (if s.isStruct then (θ.at w).proj s else θ (.step w s))
+      split_ifs with hs
+      · rw [Ctx.ref_step_proj _ _ hs] at hv
+        cases hw : Γ.ref w with
+        | none => rw [hw] at hv; cases hv
+        | some W => rw [ih W hw]
+      · rfl
+
 theorem SubSetup.fam_root (hs : SubSetup Γ₀ S S' ι E N) (ρ : Lab) (r : Root) :
     hs.Fam ρ (.root r) = hs.rootE ρ r := by
   rw [hs.fam_eq, openS_ne _ _ _ _ _ fun _ _ h => by cases h]
@@ -351,8 +477,6 @@ namespace GKN
 variable {σ : Signature} {Γ₀ : Ctx} {S S' : Tree} {ι : VarSymb → VarSymb}
   {E : (ρ : Lab) → Root → SubE σ (S'.ctxAt Γ₀ ρ)} {N : List Lab}
 
-variable [ModalSys.NoT]
-
 theorem Tree.view_of_not_dia {D : Tree} {σ' : Lab} {Γ : Ctx}
     (h : ∀ x, D.edge σ' ≠ some (.dia x)) : D.view σ' Γ = Γ.boxIn := by
   cases he : D.edge σ' with
@@ -382,7 +506,8 @@ theorem SubSetup.not_born0 (hs : SubSetup Γ₀ S S' ι E N) {r : Root} {U : Var
 theorem rootsRen_okCoh {Δ Γ : Ctx} {θ : Subst σ Δ} {er : Root → SubE σ Δ}
     {L : List (Root × VarType)} (h₁ : Subst.Ok Γ θ) (h₂ : Subst.Coh ι Γ θ)
     (hroot : ∀ r U, Γ (.root r) = some U → er r = θ (.root r))
-    (hL : ∀ b ∈ L, (er b.1).OkRef b.2 ∧ ∀ p, (er b.1).idxAlong p = ι ((VarSymb.root b.1).ext p)) :
+    (hL : ∀ b ∈ L, (er b.1).OkRef b.2 ∧ ∀ p, (er b.1).idxAlong p = ι ((VarSymb.root b.1).ext p))
+    (hfr : ∀ b ∈ L, Γ.RootFresh b.1) :
     Subst.Ok (Γ.inserts L) (θ.rootsRen er) ∧ Subst.Coh ι (Γ.inserts L) (θ.rootsRen er) := by
   have hwit : (Γ.inserts L).wit = Γ.wit := Ctx.inserts_wit Γ L
   have hstep : ∀ w s U, (Γ.inserts L) (.step w s) = some U → Γ (.step w s) = some U := by
@@ -390,6 +515,16 @@ theorem rootsRen_okCoh {Δ Γ : Ctx} {θ : Subst σ Δ} {er : Root → SubE σ �
     rcases Ctx.inserts_cases hv with ⟨b, _, he, _⟩ | hv
     · cases he
     · exact hv
+  have hT : ∀ y X, (Γ.inserts L).witT y = some X → (Γ.inserts L) (.step y .at) = some X →
+      Γ.witT y = some X ∧ Γ.ref y = some (.VTypeDia X) := by
+    intro y X hy hyd
+    have hyd' := hstep _ _ _ hyd
+    have hrt : ∀ b ∈ L, y.rt ≠ b.1 := fun b hb he => by
+      rw [(hfr b hb).ty (.step y .at) he] at hyd'
+      cases hyd'
+    obtain ⟨hT, hO, hr⟩ := Ctx.witT_spec hy
+    rw [Ctx.ref_inserts_ne hrt] at hr
+    exact ⟨Ctx.witT_of hT hO hr, hr⟩
   have hok : Subst.Ok (Γ.inserts L) (θ.rootsRen er) := by
     refine ⟨fun v U hlp hv => ?_, fun hO y X hy => h₁.wit hO y X (by rwa [hwit] at hy)⟩
     rcases Ctx.inserts_cases hv with ⟨b, hb, rfl, rfl⟩ | hv
@@ -404,8 +539,14 @@ theorem rootsRen_okCoh {Δ Γ : Ctx} {θ : Subst σ Δ} {er : Root → SubE σ �
     (fun hO y X hy p => h₂.wit hO y X (by rwa [hwit] at hy) p)
     (fun hO y X z hy hyd hz => h₂.opened hO y X z (by rwa [hwit] at hy) (hstep _ _ _ hyd) hz)
     (fun hO y X z hy hyd hz => h₂.openedTo hO y X z (by rwa [hwit] at hy) (hstep _ _ _ hyd) hz)
-    (fun _ _ _ hy _ _ => (ModalSys.NoT.absurd (Ctx.witT_spec hy).1).elim)
-    (fun _ _ _ hy _ _ => (ModalSys.NoT.absurd (Ctx.witT_spec hy).1).elim)⟩
+    (fun y X z hy hyd hz => by
+      obtain ⟨hwT, hr⟩ := hT y X hy hyd
+      rw [rootsRen_at hroot y _ hr] at hz ⊢
+      exact h₂.openedT y X z hwT (hstep _ _ _ hyd) hz)
+    (fun y X z hy hyd hz => by
+      obtain ⟨hwT, hr⟩ := hT y X hy hyd
+      rw [rootsRen_at hroot y _ hr] at hz
+      exact h₂.openedToT y X z hwT (hstep _ _ _ hyd) hz)⟩
   rcases Ctx.inserts_cases hv with ⟨b, hb, rfl, rfl⟩ | hv
   · exact (hL b hb).2 p
   · have e := h₂ v U (by rwa [Ctx.ref_nonproj _ hlp]) p
@@ -426,8 +567,8 @@ theorem SubSetup.okCoh_id (hs : SubSetup Γ₀ S S' ι E N) (hle : Γ₀.Le (S'.
   refine ⟨h₁, Subst.coh_of h₁ (fun v U hlp hv p => ?_) (fun hO y X hy p => ?_)
     (fun hO y X z hy hyd hz => h₂.opened hO y X z hy hyd hz)
     (fun hO y X z hy hyd hz => h₂.openedTo hO y X z hy hyd hz)
-    (fun _ _ _ hy _ _ => (ModalSys.NoT.absurd (Ctx.witT_spec hy).1).elim)
-    (fun _ _ _ hy _ _ => (ModalSys.NoT.absurd (Ctx.witT_spec hy).1).elim)⟩
+    (fun y X z hy hyd hz => h₂.openedT y X z hy hyd hz)
+    (fun y X z hy hyd hz => h₂.openedToT y X z hy hyd hz)⟩
   · change (VarSymb.ext v p) = ι (v.ext p)
     exact (hs.fix0 hv p).symm
   · change (VarSymb.ext y p) = ι (y.ext p)
@@ -465,14 +606,16 @@ theorem SubSetup.baseOkCoh_of (hs : SubSetup Γ₀ S S' ι E N) :
         exact (Ctx.le_inserts _ (Tree.birthsAt_pairwise hs.ok _)
           fun b hb => hs.ok.fresh _ (Tree.mem_birthsAt.mp hb)).trans (Ctx.le_optInsK _ _)
       obtain ⟨h₁, h₂⟩ := hs.okCoh_id hle
-      refine rootsRen_okCoh h₁ h₂ (fun r U hv => ?_) fun b hb => ?_
+      refine rootsRen_okCoh h₁ h₂ (fun r U hv => ?_) (fun b hb => ?_)
+        fun b hb => hs.okS.fresh _ (Tree.mem_birthsAt.mp hb)
       · rw [hs.rootE_not (hs.not_born0 hv)]
         rfl
       · rw [hs.rootE_born ⟨b.2, hb⟩]
         exact ⟨hs.eok [] b hb, fun p => hs.eidx [] b p hb⟩
   | k :: ρ, ih => by
       obtain ⟨h₁, h₂⟩ := hs.viewS_okCoh k ρ (ih k ρ rfl).1 (ih k ρ rfl).2
-      refine rootsRen_okCoh h₁ h₂ (fun r U hv => ?_) fun b hb => ?_
+      refine rootsRen_okCoh h₁ h₂ (fun r U hv => ?_) (fun b hb => ?_)
+        fun b hb => Tree.view_fresh hs.okS k ρ hb
       · exfalso
         unfold Tree.view at hv
         split at hv <;> cases (show (none : Option VarType) = some U from hv)
@@ -502,6 +645,14 @@ theorem SubSetup.fam_base (hs : SubSetup Γ₀ S S' ι E N) (ρ : Lab) {v : VarS
     (hv : (S.preAt Γ₀ ρ) v = some U) : hs.Fam ρ v = hs.base ρ v := by
   rw [hs.fam_eq]
   exact openS_agree _ _ _ (hs.baseOkCoh ρ).1 (hs.baseOkCoh ρ).2 (hs.okS.eff ρ) v U hv
+
+/-- An identity opening's content in the family. -/
+theorem SubSetup.fam_contentT (hs : SubSetup Γ₀ S S' ι E N) {ρ : Lab} {y : VarSymb}
+    (ho : (WitKind.ident, y) ∈ S.opensAt ρ) :
+    ∃ b : (((S'.ctxAt Γ₀ ρ).optInT (ι y)).Le (S'.ctxAt Γ₀ ρ)),
+      hs.Fam ρ (.step y .at) = (((hs.Fam ρ).at y).atBody (ι y)).mono b := by
+  rw [hs.fam_eq]
+  exact openS_contentT' _ _ (hs.baseOkCoh ρ).1 (hs.baseOkCoh ρ).2 (hs.okS.eff ρ) ho
 
 /-- At a child, at the view's addresses, the family is the view of the parent's. -/
 theorem SubSetup.fam_step (hs : SubSetup Γ₀ S S' ι E N) (k : ℕ) (ρ : Lab) {w : VarSymb}
@@ -842,30 +993,80 @@ theorem SubSetup.fam_agree {S₁ S₁' S₂ S₂' : Tree} {ι₁ ι₂ : VarSymb
   obtain ⟨hb, hbw⟩ := hbase
   have hwit : ∀ y X, (S₁.ctxAt Γ₀ ρ).wit y = some X → (S₁.preAt Γ₀ ρ).wit y = some X :=
     fun y X hy => by rwa [Tree.ctxAt_eq_pre, Ctx.optInsK_wit] at hy
-  refine ⟨fun v U hl hv => ?_, fun y X hy => ?_⟩
-  · rw [Tree.ctxAt_eq_pre] at hv
-    rcases Ctx.optInsK_cases hv with hv | ⟨⟨κ, y⟩, ho, rfl⟩
-    · rw [hs₁.fam_base ρ hv, hs₂.fam_base ρ (hpre ρ hρ _ _ hv)]
-      exact hb _ U hl hv
-    · obtain ⟨X, hX, -⟩ := hs₁.okS.opened ρ _ ho
-      cases κ with
-      | ident => exact (ModalSys.NoT.absurd (Ctx.witT_spec hX).1).elim
-      | arrow =>
-          have hy := hwit y X hX
-          have ew := hbw y X hy
-          have hO := Ctx.OptsEff.opt (hs₁.okS.eff ρ) ho
-          have hι : ι₂ y = ι₁ y := by
-            have c₁ := (hs₁.baseOkCoh ρ).2.wit hO y X hy []
-            have c₂ := (hs₂.baseOkCoh ρ).2.wit hO y X ((hpre ρ hρ).wit y X hy) []
-            rw [ew, WitE.idxAlong_mono, c₁] at c₂
-            exact c₂.symm
-          change hs₂.Fam ρ (.step y .dia) = (hs₁.Fam ρ (.step y .dia)).mono (hle ρ)
-          rw [hs₁.fam_eq, hs₂.fam_eq, openS_content _ _ _ _ _ ho,
-            openS_content _ _ _ _ _ (hopen ρ hρ _ ho), ew, ← WitE.optBody_mono,
-            SubE.mono_mono, SubE.mono_mono]
-          exact WitE.optBody_mono_congr _ hι _ _
-  · rw [hs₁.wit_fam, hs₂.wit_fam]
-    exact hbw y X (hwit y X hy)
+  have key : ∀ v, (∀ U, v.lastProj = false → (S₁.ctxAt Γ₀ ρ) v = some U →
+      hs₂.Fam ρ v = (hs₁.Fam ρ v).mono (hle ρ)) ∧
+      (∀ T, (S₁.ctxAt Γ₀ ρ).ref v = some T →
+        (hs₂.Fam ρ).at v = ((hs₁.Fam ρ).at v).mono (hle ρ)) := by
+    intro v
+    induction v with
+    | root r =>
+        have hval : ∀ U, (VarSymb.root r).lastProj = false →
+            (S₁.ctxAt Γ₀ ρ) (.root r) = some U →
+            hs₂.Fam ρ (.root r) = (hs₁.Fam ρ (.root r)).mono (hle ρ) := fun U hl hv => by
+          rw [Tree.ctxAt_eq_pre] at hv
+          rcases Ctx.optInsK_cases hv with hv | ⟨_, _, he⟩
+          · rw [hs₁.fam_base ρ hv, hs₂.fam_base ρ (hpre ρ hρ _ _ hv)]
+            exact hb _ U hl hv
+          · cases he
+        exact ⟨hval, fun T hT => hval T rfl hT⟩
+    | step w st ih =>
+        have hval : ∀ U, (VarSymb.step w st).lastProj = false →
+            (S₁.ctxAt Γ₀ ρ) (.step w st) = some U →
+            hs₂.Fam ρ (.step w st) = (hs₁.Fam ρ (.step w st)).mono (hle ρ) := by
+          intro U hl hv
+          rw [Tree.ctxAt_eq_pre] at hv
+          rcases Ctx.optInsK_cases hv with hv | ⟨⟨κ, y⟩, ho, he⟩
+          · rw [hs₁.fam_base ρ hv, hs₂.fam_base ρ (hpre ρ hρ _ _ hv)]
+            exact hb _ U hl hv
+          · obtain ⟨rfl, rfl⟩ := VarSymb.step.inj he
+            obtain ⟨X, hX, -⟩ := hs₁.okS.opened ρ _ ho
+            cases κ with
+            | ident =>
+                have hr₁ := (Ctx.witT_spec hX).2.2
+                obtain ⟨X₂, hX₂, -⟩ := hs₂.okS.opened ρ _ (hopen ρ hρ _ ho)
+                have hr₂ := (Ctx.witT_spec hX₂).2.2
+                have hat := ih.2 _ hr₁
+                have hι : ι₂ w = ι₁ w := by
+                  have c₁ := (hs₁.okCoh ρ).2 w _ hr₁ []
+                  have c₂ := (hs₂.okCoh ρ).2 w _ hr₂ []
+                  rw [hat, SubE.idxAlong_mono, c₁] at c₂
+                  exact c₂.symm
+                obtain ⟨b₁, e₁⟩ := hs₁.fam_contentT ho
+                obtain ⟨b₂, e₂⟩ := hs₂.fam_contentT (hopen ρ hρ _ ho)
+                change hs₂.Fam ρ (.step w .at) = (hs₁.Fam ρ (.step w .at)).mono (hle ρ)
+                rw [e₁, e₂, hat, ← SubE.atBody_mono, SubE.mono_mono, SubE.mono_mono]
+                exact SubE.atBody_mono_congr _ hι _ _
+            | arrow =>
+                have hy := hwit w X hX
+                have ew := hbw w X hy
+                have hO := Ctx.OptsEff.opt (hs₁.okS.eff ρ) ho
+                have hι : ι₂ w = ι₁ w := by
+                  have c₁ := (hs₁.baseOkCoh ρ).2.wit hO w X hy []
+                  have c₂ := (hs₂.baseOkCoh ρ).2.wit hO w X ((hpre ρ hρ).wit w X hy) []
+                  rw [ew, WitE.idxAlong_mono, c₁] at c₂
+                  exact c₂.symm
+                change hs₂.Fam ρ (.step w .dia) = (hs₁.Fam ρ (.step w .dia)).mono (hle ρ)
+                rw [hs₁.fam_eq, hs₂.fam_eq, openS_content _ _ _ _ _ ho,
+                  openS_content _ _ _ _ _ (hopen ρ hρ _ ho), ew, ← WitE.optBody_mono,
+                  SubE.mono_mono, SubE.mono_mono]
+                exact WitE.optBody_mono_congr _ hι _ _
+        refine ⟨hval, fun T hT => ?_⟩
+        by_cases hsS : st.isStruct = true
+        · rw [Ctx.ref_step_proj _ _ hsS] at hT
+          cases hw : (S₁.ctxAt Γ₀ ρ).ref w with
+          | none => rw [hw] at hT; cases hT
+          | some W =>
+              change (if st.isStruct then ((hs₂.Fam ρ).at w).proj st
+                else hs₂.Fam ρ (.step w st)) =
+                SubE.mono _ (if st.isStruct then ((hs₁.Fam ρ).at w).proj st
+                  else hs₁.Fam ρ (.step w st))
+              rw [if_pos hsS, if_pos hsS, ih.2 W hw, SubE.proj_mono]
+        · have hl : (VarSymb.step w st).lastProj = false := Bool.eq_false_iff.mpr hsS
+          rw [Subst.at_nonproj _ hl, Subst.at_nonproj _ hl]
+          exact hval T hl (by rwa [Ctx.ref_nonproj _ hl] at hT)
+  refine ⟨fun v U hl hv => (key v).1 U hl hv, fun y X hy => ?_⟩
+  rw [hs₁.wit_fam, hs₂.wit_fam]
+  exact hbw y X (hwit y X hy)
 
 /-! ## Substituting a tree sequent -/
 
@@ -1155,22 +1356,34 @@ theorem SubSetup.wit_img (hs : SubSetup Γ₀ S S' ι E N) (hO : ModalSys.Opt = 
     ∃ X', (S'.ctxAt Γ₀ τ).wit (ι y) = some X' :=
   WitE.wit_of ((hs.okCoh τ).1.wit hO y X hX) ((hs.okCoh τ).2.wit hO y X hX [])
 
+/-- A source witness's image is a target witness, of either kind. -/
+theorem SubSetup.wit_imgK (hs : SubSetup Γ₀ S S' ι E N) (hO : ModalSys.Opt = true) {τ : Lab}
+    {κ : WitKind} {y : VarSymb} {X : VarType} (hX : (S.ctxAt Γ₀ τ).witK κ y = some X) :
+    ∃ X', (S'.ctxAt Γ₀ τ).witK κ (ι y) = some X' := by
+  cases κ with
+  | arrow => exact hs.wit_img hO hX
+  | ident =>
+      obtain ⟨hT, hO', hr⟩ := Ctx.witT_spec hX
+      obtain ⟨Y, hY⟩ := SubE.ref_witness (Subst.okRef_at (hs.okCoh τ).1 hr)
+        ((hs.okCoh τ).2 y _ hr [])
+      exact ⟨Y, Ctx.witT_of hT hO' hY⟩
+
 /-- The entries after a new opening: weakened. -/
 noncomputable def SubSetup.EOpen (E : (ρ : Lab) → Root → SubE σ (S'.ctxAt Γ₀ ρ)) (τ : Lab)
     (κ : WitKind) (z : VarSymb) :
     (ρ : Lab) → Root → SubE σ ((S'.addOpen τ κ z).ctxAt Γ₀ ρ) := fun ρ r =>
   (E ρ r).mono (Tree.ctxAt_addOpen τ κ z ρ)
 
-/-- ⭐**The setup survives a new arrow opening**, its witness renamed. -/
+/-- ⭐**The setup survives a new opening**, its witness renamed. -/
 theorem SubSetup.addOpen (hs : SubSetup Γ₀ S S' ι E N) (hO : ModalSys.Opt = true) {τ : Lab}
-    {y : VarSymb} {X : VarType} (hX : (S.ctxAt Γ₀ τ).wit y = some X) :
-    SubSetup Γ₀ (S.addOpen τ .arrow y) (S'.addOpen τ .arrow (ι y)) ι
-      (SubSetup.EOpen E τ .arrow (ι y)) N where
-  okS := hs.okS.addOpen (κ := .arrow) hO hX
-  ok := hs.ok.addOpen (κ := .arrow) hO (hs.wit_img hO hX).choose_spec
+    {κ : WitKind} {y : VarSymb} {X : VarType} (hX : (S.ctxAt Γ₀ τ).witK κ y = some X) :
+    SubSetup Γ₀ (S.addOpen τ κ y) (S'.addOpen τ κ (ι y)) ι
+      (SubSetup.EOpen E τ κ (ι y)) N where
+  okS := hs.okS.addOpen hO hX
+  ok := hs.ok.addOpen hO (hs.wit_imgK hO hX).choose_spec
   h0 := hs.h0
   edge := hs.edge
-  wit k ρ x he := (hs.wit k ρ x he).imp fun _ hX => (Tree.ctxAt_addOpen τ .arrow y ρ).ref hX
+  wit k ρ x he := (hs.wit k ρ x he).imp fun _ hX => (Tree.ctxAt_addOpen τ κ y ρ).ref hX
   eok ρ b hb := SubE.okRef_mono _ (hs.eok ρ b hb)
   eidx ρ b p hb := by
     unfold SubSetup.EOpen
@@ -1184,19 +1397,19 @@ theorem SubSetup.addOpen (hs : SubSetup Γ₀ S S' ι E N) (hO : ModalSys.Opt = 
     · subst hρ
       rcases List.mem_cons.mp ho with rfl | ho
       · rw [Tree.ctxAt_addOpen_self]
-        exact Ctx.opened_self (κ := .arrow) (hs.wit_img hO hX).choose_spec
+        exact Ctx.opened_self (hs.wit_imgK hO hX).choose_spec
       · exact (hs.opens _ o ho).mono (Tree.ctxAt_addOpen _ _ _ _)
     · exact (hs.opens ρ o ho).mono (Tree.ctxAt_addOpen _ _ _ _)
   opensT o ho := by
     rcases List.mem_cons.mp ho with rfl | ho
-    · exact Or.inl ⟨(τ, .arrow, y), List.mem_cons_self, rfl⟩
+    · exact Or.inl ⟨(τ, κ, y), List.mem_cons_self, rfl⟩
     · exact (hs.opensT o ho).imp_left fun ⟨o₀, h, e⟩ => ⟨o₀, List.mem_cons_of_mem _ h, e⟩
 
 theorem SubSetup.rootE_addOpen {D : Tree} (hs : SubSetup Γ₀ D S' ι E N) (hO : ModalSys.Opt = true)
-    {τ : Lab} {y : VarSymb} {X : VarType} (hX : (D.ctxAt Γ₀ τ).wit y = some X) :
+    {τ : Lab} {κ : WitKind} {y : VarSymb} {X : VarType} (hX : (D.ctxAt Γ₀ τ).witK κ y = some X) :
     ∀ ρ, True → ∀ r U, (D.ctxAt Γ₀ ρ) (.root r) = some U →
       (hs.addOpen hO hX).rootE ρ r =
-        (hs.rootE ρ r).mono (Tree.ctxAt_addOpen τ .arrow (ι y) ρ) := by
+        (hs.rootE ρ r).mono (Tree.ctxAt_addOpen τ κ (ι y) ρ) := by
   intro ρ _ r _ _
   by_cases hb : ∃ U, (r, U) ∈ D.birthsAt ρ
   · rw [hs.rootE_born hb, (hs.addOpen hO hX).rootE_born hb]
@@ -1206,29 +1419,45 @@ theorem SubSetup.rootE_addOpen {D : Tree} (hs : SubSetup Γ₀ D S' ι E N) (hO 
 
 /-- At the new opening's node, the family is the old one opened. -/
 theorem SubSetup.sim_addOpen {D : Tree} (hs : SubSetup Γ₀ D S' ι E N) (hO : ModalSys.Opt = true)
-    {τ : Lab} {y : VarSymb} {X : VarType} (hX : (D.ctxAt Γ₀ τ).wit y = some X)
-    (hle' : ((S'.ctxAt Γ₀ τ).optIn (ι y)).Le ((S'.addOpen τ .arrow (ι y)).ctxAt Γ₀ τ)) :
-    Subst.Sim ((D.ctxAt Γ₀ τ).optIn y) ((hs.addOpen hO hX).Fam τ)
-      (((hs.Fam τ).optIn y (ι y)).mono hle') := by
+    {τ : Lab} {κ : WitKind} {y : VarSymb} {X : VarType} (hX : (D.ctxAt Γ₀ τ).witK κ y = some X)
+    (hle' : ((S'.ctxAt Γ₀ τ).optInK κ (ι y)).Le ((S'.addOpen τ κ (ι y)).ctxAt Γ₀ τ)) :
+    Subst.Sim ((D.ctxAt Γ₀ τ).optInK κ y) ((hs.addOpen hO hX).Fam τ)
+      (((hs.Fam τ).optInK κ y (ι y)).mono hle') := by
   have hag := hs.fam_agree (hs.addOpen hO hX) (fun _ => True) (fun _ _ _ => trivial)
-    (Tree.ctxAt_addOpen τ .arrow (ι y)) (fun _ _ _ => rfl) (fun _ _ _ => rfl)
-    (hs.rootE_addOpen hO hX) (fun ρ _ => Tree.preAt_addOpen τ .arrow y ρ)
+    (Tree.ctxAt_addOpen τ κ (ι y)) (fun _ _ _ => rfl) (fun _ _ _ => rfl)
+    (hs.rootE_addOpen hO hX) (fun ρ _ => Tree.preAt_addOpen τ κ y ρ)
     (fun ρ _ o ho => by
       rw [Tree.opensAt_addOpen]
       split_ifs
       · exact List.mem_cons_of_mem _ ho
       · exact ho) τ trivial
+  have hmem : (κ, y) ∈ (D.addOpen τ κ y).opensAt τ := by
+    rw [Tree.opensAt_addOpen, if_pos rfl]
+    exact List.mem_cons_self
   refine Subst.sim_mono_of hle' (fun v U hl hv => ?_) (fun y' X' hy' => ?_)
-  · by_cases hc : v = .step y .dia
-    · subst hc
-      have hmem : (WitKind.arrow, y) ∈ (D.addOpen τ .arrow y).opensAt τ := by
-        rw [Tree.opensAt_addOpen, if_pos rfl]
-        exact List.mem_cons_self
-      rw [SubSetup.fam_eq, openS_content _ _ _ _ _ hmem, ← SubSetup.wit_fam, hag.2 y X hX,
-        Subst.optIn_content, ← WitE.optBody_mono, SubE.mono_mono]
-    · rw [Ctx.optIn_ne hc] at hv
-      rw [hag.1 v U hl hv, Subst.optIn_ne _ _ hc, SubE.mono_mono]
-  · rw [hag.2 y' X' hy', Subst.optIn_wit, WitE.mono_mono]
+  swap
+  · rw [hag.2 y' X' (by rwa [Ctx.optInK_wit] at hy'), Subst.optInK_wit, WitE.mono_mono]
+  cases κ with
+  | arrow =>
+      change (D.ctxAt Γ₀ τ).optIn y v = some U at hv
+      change _ = (((hs.Fam τ).optIn y (ι y)) v).mono hle'
+      by_cases hc : v = .step y .dia
+      · subst hc
+        rw [SubSetup.fam_eq, openS_content _ _ _ _ _ hmem, ← SubSetup.wit_fam, hag.2 y X hX,
+          Subst.optIn_content, ← WitE.optBody_mono, SubE.mono_mono]
+      · rw [Ctx.optIn_ne hc] at hv
+        rw [hag.1 v U hl hv, Subst.optIn_ne _ _ hc, SubE.mono_mono]
+  | ident =>
+      change (D.ctxAt Γ₀ τ).optInT y v = some U at hv
+      change _ = (((hs.Fam τ).optInT y (ι y)) v).mono hle'
+      by_cases hc : v = .step y .at
+      · subst hc
+        obtain ⟨b, e⟩ := (hs.addOpen hO hX).fam_contentT hmem
+        have hr := (Ctx.witT_spec (show (D.ctxAt Γ₀ τ).witT y = some X from hX)).2.2
+        have hat := Subst.at_eq_mono_of (Tree.ctxAt_addOpen τ .ident (ι y) τ) hag.1 y _ hr
+        rw [e, hat, Subst.optInT_content, ← SubE.atBody_mono, SubE.mono_mono]
+      · rw [Ctx.optInT_ne hc] at hv
+        rw [hag.1 v U hl hv, Subst.optInT_ne _ _ hc, SubE.mono_mono]
 
 /-- ⭐**Tree substitution**, height-preserving: a derivation over the source tree goes to one of
     the substituted tree sequent over the target tree, each rule to itself, every eigenvariable
@@ -1440,7 +1669,38 @@ theorem subst [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p
   | @optL n D Δ Θ hO τ κ y hy ψ hle h _ ih =>
       intro S' ι E N hs hN
       cases κ with
-      | ident => exact (ModalSys.NoT.absurd (Ctx.witT_spec hy.choose_spec).1).elim
+      | ident =>
+      obtain ⟨X, hX⟩ := id hy
+      have hθ := (hs.okCoh τ).1
+      have hc := (hs.okCoh τ).2
+      have hsτ := Tree.ctxAt_slots hs.h0 hs.okS τ
+      have hsτ' := Tree.ctxAt_slots hs.h0 hs.ok τ
+      have hs₂ := hs.addOpen hO hX
+      have hk := Tree.ctxAt_addOpen (D := D) (Γ₀ := Γ₀) τ .ident y
+      have hk' := Tree.ctxAt_addOpen (D := S') (Γ₀ := Γ₀) τ .ident (ι y)
+      have ih' := ih hs₂ ((hN.mono hk).cons_l _)
+      have hm : ∀ L : Seq σ Γ₀ D, (Seq.mono hk L).map hs₂.lf = Seq.mono hk' (L.map hs.lf) :=
+        fun L => hs.lf_mono hs₂ (fun _ => True) (fun _ _ _ => trivial) hk' (fun _ _ _ => rfl)
+          (fun _ _ _ => rfl) (hs.rootE_addOpen hO hX)
+          (fun ρ _ => Tree.preAt_addOpen τ .ident y ρ)
+          (fun ρ _ o ho => by
+            rw [Tree.opensAt_addOpen]
+            split_ifs
+            · exact List.mem_cons_of_mem _ ho
+            · exact ho) hk L (fun _ _ => trivial)
+      have hle' : ((S'.ctxAt Γ₀ τ).optInT (ι y)).Le ((S'.addOpen τ .ident (ι y)).ctxAt Γ₀ τ) := by
+        rw [Tree.ctxAt_addOpen_self]
+        exact Ctx.Le.refl _
+      have hθy := Subst.ok_optInT hθ hX (hc y _ (Ctx.witT_spec hX).2.2 [])
+      have hcy := Subst.coh_optInT hθ hc hX
+      have e₁ : hs₂.lf ⟨τ, WFF.mono hle ψ⟩ = ⟨τ, WFF.mono hle' (WFF.subst ι
+          ((hs.Fam τ).optInT y (ι y)) hθy hcy (hsτ.optInT y) (hsτ'.optInT _) ψ)⟩ :=
+        congrArg (Sigma.mk _) (WFF.subst_mono_eq hle hle' _ _ _ (hs₂.Fam τ) _ _ (hsτ.optInT y)
+          (Tree.ctxAt_slots hs.h0 hs₂.okS _) (hsτ'.optInT _) (Tree.ctxAt_slots hs.h0 hs₂.ok _)
+          (hs.sim_addOpen hO hX hle') ψ)
+      rw [List.map_cons, hm Δ, hm Θ, e₁] at ih'
+      exact .optL hO τ .ident (ι y) (hs.wit_imgK hO hX) hle' (List.mem_map_of_mem (f := hs.lf) h)
+        ih'
       | arrow =>
       obtain ⟨X, hX⟩ := id hy
       have hθ := (hs.okCoh τ).1
@@ -1478,7 +1738,21 @@ theorem subst [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p
       have ih' := ih hs (hN.cons_r _)
       rw [List.map_cons] at ih'
       cases κ with
-      | ident => exact (ModalSys.NoT.absurd (Ctx.witT_spec hy.choose_spec.1).1).elim
+      | ident =>
+          have hθ := (hs.okCoh τ).1
+          have hc := (hs.okCoh τ).2
+          have hsτ := Tree.ctxAt_slots hs.h0 hs.okS τ
+          have hsτ' := Tree.ctxAt_slots hs.h0 hs.ok τ
+          obtain ⟨X, hX, hXd⟩ := id hy
+          have hr := (Ctx.witT_spec hX).2.2
+          refine .reopenR hO τ .ident (ι y)
+            (hc.openedToT y X (ι y) hX hXd (hc y _ hr [])) ?_ ih'
+          obtain ⟨hT, hO', -⟩ := Ctx.witT_spec hX
+          obtain ⟨Y, hY⟩ := SubE.ref_witness (Subst.okRef_at hθ hr) (hc y _ hr [])
+          have e := congrArg (fun φ => (⟨τ, WFF.optx hO .ident (ι y)
+              ⟨Y, Ctx.witT_of hT hO' hY⟩ φ⟩ : LF σ Γ₀ S'))
+            (WFF.subst_optInT_mono (hs.Fam τ) hθ hc hX hsτ hsτ' (hsτ'.optInT _) χ)
+          exact (congrArg (· ∈ List.map hs.lf Θ) e).mp (List.mem_map_of_mem (f := hs.lf) h)
       | arrow =>
           have hθ := (hs.okCoh τ).1
           have hc := (hs.okCoh τ).2
@@ -1491,6 +1765,44 @@ theorem subst [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p
               (WitE.wit_of (hθ.wit hO y X hX) (hc.wit hO y X hX [])) φ⟩ : LF σ Γ₀ S'))
             (WFF.subst_optIn_mono (hs.Fam τ) hθ hc hO hX hsτ hsτ' (hsτ'.optIn _) χ)
           exact (congrArg (· ∈ List.map hs.lf Θ) e).mp (List.mem_map_of_mem (f := hs.lf) h)
+  | @TL n D Δ Θ hT τ hsτ φ h _ ih =>
+      intro S' ι E N hs hN
+      have ih' := ih hs (hN.cons_l _)
+      have hθ := (hs.okCoh τ).1
+      have hc := (hs.okCoh τ).2
+      have hsτ' := Tree.ctxAt_slots hs.h0 hs.ok τ
+      rw [List.map_cons, SubSetup.lf_mk] at ih'
+      refine .TL hT τ hsτ' (List.mem_map_of_mem (f := hs.lf) h) ?_
+      have e := WFF.collapse_subst (Ctx.collapses_boxIn_self hT _)
+        (Ctx.collapses_boxIn_self hT (S'.ctxAt Γ₀ τ)) (hs.Fam τ).box (Subst.ok_box hθ)
+        (Subst.coh_box hθ hc) (hs.Fam τ) hθ hc hsτ.boxIn hsτ hsτ'.boxIn hsτ'
+        (Subst.corr_box_self hT hθ) φ fun _ => Subst.corrW_box_self hT hθ
+      exact (congrArg (fun φ' => GKN σ Γ₀ n S' (⟨τ, φ'⟩ :: Δ.map hs.lf) (Θ.map hs.lf)) e).mpr
+        ih'
+  | @diaT n D Δ Θ hT hO τ hsτ x hx φ h _ ih =>
+      intro S' ι E N hs hN
+      have ih' := ih hs (hN.cons_r _)
+      have hθ := (hs.okCoh τ).1
+      have hc := (hs.okCoh τ).2
+      have hsτ' := Tree.ctxAt_slots hs.h0 hs.ok τ
+      have hw : ((hs.Fam τ).at x).idxAlong [] = ι x := hx.elim fun _ hX => hc x _ hX []
+      have hwx : ∃ X, (S'.ctxAt Γ₀ τ).ref (ι x) = some (.VTypeDia X) :=
+        hx.elim fun _ hX => SubE.ref_witness (Subst.okRef_at hθ hX) hw
+      rw [List.map_cons, SubSetup.lf_mk] at ih'
+      refine .diaT hT hO τ hsτ' (ι x) hwx (List.mem_map_of_mem (f := hs.lf) h) ?_
+      obtain ⟨X, hX⟩ := id hx
+      obtain ⟨Y, hY⟩ := id hwx
+      have hxT : (D.ctxAt Γ₀ τ).witT x = some X := Ctx.witT_of hT hO hX
+      have e := congrArg (WFF.optx hO .ident (ι x) (hwx.imp fun _ h => Ctx.witT_of hT hO h))
+        (WFF.collapse_subst (Ctx.collapses_diaIn_optInT hT hO _ hX)
+          (Ctx.collapses_diaIn_optInT hT hO (S'.ctxAt Γ₀ τ) hY)
+          ((hs.Fam τ).dia x (ι x)) (Subst.ok_dia hθ hx hw) (Subst.coh_dia hθ hc hx)
+          ((hs.Fam τ).optInT x (ι x)) (Subst.ok_optInT hθ hxT hw) (Subst.coh_optInT hθ hc hxT)
+          (hsτ.diaIn x) (hsτ.optInT x) (hsτ'.diaIn _) (hsτ'.optInT _)
+          (Subst.corr_dia_optInT hT hO hθ hc hX hw hY) φ
+          fun _ => Subst.corrW_dia_optInT hT hO hθ hc hX hw hY)
+      exact (congrArg (fun φ' => GKN σ Γ₀ n S' (Δ.map hs.lf) (⟨τ, φ'⟩ :: Θ.map hs.lf)) e).mpr
+        ih'
   | @foldR n D Δ Θ hO τ k e x hx θ he hle h _ ih =>
       intro S' ι E N hs hN
       have ih' := ih hs (hN.cons_r _)
@@ -1656,7 +1968,7 @@ end GKN
 
 namespace GKN
 
-variable {σ : Signature} {Γ₀ : Ctx} [ModalSys.NoT]
+variable {σ : Signature} {Γ₀ : Ctx}
 
 /-- The tree's `◇`-edges have witnesses of their parents' contexts (every rule keeps this; the
     empty tree has it). -/
@@ -1710,13 +2022,20 @@ theorem SubSetup.fam_ren_content (hs : SubSetup Γ₀ S S' ι E N) (D₀ : Tree)
     (hopen : ∀ ρ, D₀.opensAt ρ = S.opensAt ρ) (hιo : ∀ ρ, ∀ o ∈ S.opensAt ρ, ι o.2 = o.2)
     (ρ : Lab) (hat : ∀ k ρ', ρ = k :: ρ' → ∀ w U, (D₀.ctxAt Γ₀ ρ').ref w = some U →
       (hs.Fam ρ').at w = .ren w)
-    {o : WitKind × VarSymb} (ho : o ∈ S.opensAt ρ) : hs.Fam ρ (.step o.2 o.1.step) =
+    {o : WitKind × VarSymb}
+    (hatT : ∀ T, (D₀.ctxAt Γ₀ ρ).ref o.2 = some T → (hs.Fam ρ).at o.2 = .ren o.2)
+    (ho : o ∈ S.opensAt ρ) : hs.Fam ρ (.step o.2 o.1.step) =
       .ren (.step o.2 o.1.step) := by
   obtain ⟨κ, y⟩ := o
   have ho₀ : (κ, y) ∈ D₀.opensAt ρ := by rw [hopen]; exact ho
   obtain ⟨X, hX, -⟩ := hok₀.opened ρ _ ho₀
   cases κ with
-  | ident => exact (ModalSys.NoT.absurd (Ctx.witT_spec hX).1).elim
+  | ident =>
+      obtain ⟨b, e⟩ := hs.fam_contentT ho
+      change hs.Fam ρ (.step y .at) = _
+      rw [e, hatT _ (Ctx.witT_spec (show (D₀.ctxAt Γ₀ ρ).witT y = some X from hX)).2.2]
+      change SubE.ren (.step (ι y) .at) = _
+      exact congrArg (fun z => SubE.ren (VarSymb.step z .at)) (hιo ρ _ ho)
   | arrow =>
       have hb : (hs.base ρ).wit y = .ren y := by
         cases ρ with
@@ -1730,103 +2049,149 @@ theorem SubSetup.fam_ren_content (hs : SubSetup Γ₀ S S' ι E N) (D₀ : Tree)
       change SubE.ren (.step (ι y) .dia) = _
       exact congrArg (fun z => SubE.ren (VarSymb.step z .dia)) (hιo ρ _ ho)
 
+/-- The entry along a step, from the entry at the step's address and along its prefix. -/
+theorem at_ren_step {Δ Γ : Ctx} {θ : Subst σ Δ} {w : VarSymb} {st : Step}
+    (hval : ∀ U, (VarSymb.step w st).lastProj = false → Γ (.step w st) = some U →
+      θ (.step w st) = .ren (.step w st))
+    (hw : ∀ T, Γ.ref w = some T → θ.at w = .ren w) :
+    ∀ T, Γ.ref (.step w st) = some T → θ.at (.step w st) = .ren (.step w st) := by
+  intro T hT
+  by_cases hsS : st.isStruct = true
+  · rw [Ctx.ref_step_proj _ _ hsS] at hT
+    cases hW : Γ.ref w with
+    | none => rw [hW] at hT; cases hT
+    | some W =>
+        change (if st.isStruct then (θ.at w).proj st else θ (.step w st)) = _
+        rw [if_pos hsS, hw W hW]
+        rfl
+  · have hl : (VarSymb.step w st).lastProj = false := Bool.eq_false_iff.mpr hsS
+    rw [Subst.at_nonproj _ hl]
+    exact hval T hl (by rwa [Ctx.ref_nonproj _ hl] at hT)
+
 /-- ⭐**Where the roots go to themselves and the witnesses are fixed, the family is the identity**,
-    on any tree `D₀` with the source's edges. -/
+    on any tree `D₀` with the source's edges: at the addresses and along them. -/
+theorem SubSetup.fam_ren_aux (hs : SubSetup Γ₀ S S' ι E N) (D₀ : Tree)
+    (hedge : ∀ k ρ, D₀.edge (k :: ρ) = S.edge (k :: ρ))
+    (hr : ∀ ρ r U, (D₀.ctxAt Γ₀ ρ) (.root r) = some U → hs.rootE ρ r = .ren (.root r))
+    (hι : ∀ k ρ x, S.edge (k :: ρ) = some (.dia x) → ι x = x) (hok₀ : D₀.OK Γ₀)
+    (hopen : ∀ ρ, D₀.opensAt ρ = S.opensAt ρ) (hιo : ∀ ρ, ∀ o ∈ S.opensAt ρ, ι o.2 = o.2) :
+    ∀ ρ v, (∀ U, v.lastProj = false → (D₀.ctxAt Γ₀ ρ) v = some U → hs.Fam ρ v = .ren v) ∧
+      (∀ T, (D₀.ctxAt Γ₀ ρ).ref v = some T → (hs.Fam ρ).at v = .ren v) := by
+  intro ρ
+  induction ρ with
+  | nil =>
+      intro v
+      induction v with
+      | root r =>
+          have hval : ∀ U, (VarSymb.root r).lastProj = false →
+              (D₀.ctxAt Γ₀ []) (.root r) = some U → hs.Fam [] (.root r) = .ren (.root r) :=
+            fun U _ hv => by rw [hs.fam_root]; exact hr [] r U hv
+          exact ⟨hval, fun T hT => hval T rfl hT⟩
+      | step w s ihv =>
+          have hval : ∀ U, (VarSymb.step w s).lastProj = false →
+              (D₀.ctxAt Γ₀ []) (.step w s) = some U →
+              hs.Fam [] (.step w s) = .ren (.step w s) := by
+            intro U _ hv
+            by_cases hc : ∃ o ∈ S.opensAt [], VarSymb.step w s = .step o.2 o.1.step
+            · obtain ⟨o, ho, he⟩ := hc
+              rw [he]
+              exact hs.fam_ren_content D₀ hok₀ hopen hιo [] (fun _ _ h => by cases h)
+                (by obtain ⟨hw, -⟩ := VarSymb.step.inj he; rw [← hw]; exact ihv.2) ho
+            · push_neg at hc
+              rw [hs.fam_eq, openS_ne _ _ _ _ _ hc]
+              rfl
+          exact ⟨hval, at_ren_step hval ihv.2⟩
+  | cons k ρ ih =>
+      intro v
+      induction v with
+      | root r =>
+          have hval : ∀ U, (VarSymb.root r).lastProj = false →
+              (D₀.ctxAt Γ₀ (k :: ρ)) (.root r) = some U →
+              hs.Fam (k :: ρ) (.root r) = .ren (.root r) :=
+            fun U _ hv => by rw [hs.fam_root]; exact hr _ r U hv
+          exact ⟨hval, fun T hT => hval T rfl hT⟩
+      | step w s ihv =>
+          have hval : ∀ U, (VarSymb.step w s).lastProj = false →
+              (D₀.ctxAt Γ₀ (k :: ρ)) (.step w s) = some U →
+              hs.Fam (k :: ρ) (.step w s) = .ren (.step w s) := by
+            intro U hl hv
+            have hat : ∀ w U, (D₀.ctxAt Γ₀ ρ).ref w = some U → (hs.Fam ρ).at w = .ren w :=
+              fun w U h => (ih w).2 U h
+            by_cases hc : ∃ o ∈ S.opensAt (k :: ρ), VarSymb.step w s = .step o.2 o.1.step
+            · obtain ⟨o, ho, he⟩ := hc
+              rw [he]
+              exact hs.fam_ren_content D₀ hok₀ hopen hιo (k :: ρ)
+                (fun _ _ h w U hw => by cases h; exact hat w U hw)
+                (by obtain ⟨hw, -⟩ := VarSymb.step.inj he; rw [← hw]; exact ihv.2) ho
+            push_neg at hc
+            rw [Tree.ctxAt_eq_pre] at hv
+            rcases Ctx.optInsK_cases hv with hv | ⟨o, ho, he⟩
+            swap
+            · exact absurd he (hc o (by rw [← hopen]; exact ho))
+            simp only [Tree.preAt] at hv
+            rcases Ctx.inserts_cases hv with ⟨b, _, he, _⟩ | hv
+            · cases he
+            rw [hs.fam_eq, openS_ne _ _ _ _ _ hc, hs.base_step]
+            by_cases hd : ∃ x, S.edge (k :: ρ) = some (.dia x)
+            · obtain ⟨x, he⟩ := hd
+              have hιx := hι k ρ x he
+              rw [hs.viewS_dia he (hs.edge_dia he)]
+              rw [Tree.view_dia ((hedge k ρ).trans he)] at hv
+              cases s with
+              | dia =>
+                  change (if w = x then (match (D₀.ctxAt Γ₀ ρ).ref x with
+                    | some (.VTypeDia X) => some X | _ => none) else none) = some U at hv
+                  split_ifs at hv with hwx
+                  cases hX : (D₀.ctxAt Γ₀ ρ).ref x with
+                  | none => rw [hX] at hv; cases hv
+                  | some X =>
+                      change SubE.mono _ (if w = x then ((hs.Fam ρ).at x).diaBody (ι x)
+                        else SubE.hide) = _
+                      rw [if_pos hwx, hat x X hX]
+                      change SubE.ren (.step (ι x) .dia) = _
+                      rw [hιx, hwx]
+              | box =>
+                  obtain ⟨hk, hw⟩ := Ctx.boxIn_box (Γ := D₀.ctxAt Γ₀ ρ) hv
+                  change SubE.mono _ ((((hs.Fam ρ).at w).unbox).mono _) = _
+                  rw [hat w _ hw]
+                  change SubE.ren w.inner = _
+                  rw [VarSymb.inner_box hk]
+              | keep =>
+                  change SubE.mono _ ((((hs.Fam ρ).at w).keepE).mono _) = _
+                  rw [hat w _ (Ctx.boxIn_keep (Γ := D₀.ctxAt Γ₀ ρ) hv).2.1]
+                  rfl
+              | fst => cases hv
+              | snd => cases hv
+              | here => cases hv
+              | «at» => cases hv
+            · push_neg at hd
+              rw [hs.viewS_box hd]
+              rw [Tree.view_of_not_dia (D := D₀) fun x h => hd x ((hedge k ρ).symm.trans h)] at hv
+              cases s with
+              | box =>
+                  obtain ⟨hk, hw⟩ := Ctx.boxIn_box (Γ := D₀.ctxAt Γ₀ ρ) hv
+                  change SubE.mono _ ((hs.Fam ρ).at w).unbox = _
+                  rw [hat w _ hw]
+                  change SubE.ren w.inner = _
+                  rw [VarSymb.inner_box hk]
+              | keep =>
+                  change SubE.mono _ ((hs.Fam ρ).at w).keepE = _
+                  rw [hat w _ (Ctx.boxIn_keep (Γ := D₀.ctxAt Γ₀ ρ) hv).2.1]
+                  rfl
+              | dia => cases hv
+              | fst => cases hv
+              | snd => cases hv
+              | here => cases hv
+              | «at» => cases hv
+          exact ⟨hval, at_ren_step hval ihv.2⟩
+
 theorem SubSetup.fam_ren (hs : SubSetup Γ₀ S S' ι E N) (D₀ : Tree)
     (hedge : ∀ k ρ, D₀.edge (k :: ρ) = S.edge (k :: ρ))
     (hr : ∀ ρ r U, (D₀.ctxAt Γ₀ ρ) (.root r) = some U → hs.rootE ρ r = .ren (.root r))
     (hι : ∀ k ρ x, S.edge (k :: ρ) = some (.dia x) → ι x = x) (hok₀ : D₀.OK Γ₀)
     (hopen : ∀ ρ, D₀.opensAt ρ = S.opensAt ρ) (hιo : ∀ ρ, ∀ o ∈ S.opensAt ρ, ι o.2 = o.2) :
-    ∀ ρ v U, v.lastProj = false → (D₀.ctxAt Γ₀ ρ) v = some U → hs.Fam ρ v = .ren v := by
-  intro ρ
-  induction ρ with
-  | nil =>
-      intro v U _ hv
-      cases v with
-      | root r => rw [hs.fam_root]; exact hr [] r U hv
-      | step w s =>
-          by_cases hc : ∃ o ∈ S.opensAt [], VarSymb.step w s = .step o.2 o.1.step
-          · obtain ⟨o, ho, he⟩ := hc
-            rw [he]
-            exact hs.fam_ren_content D₀ hok₀ hopen hιo [] (fun _ _ h => by cases h) ho
-          · push_neg at hc
-            rw [hs.fam_eq, openS_ne _ _ _ _ _ hc]
-            rfl
-  | cons k ρ ih =>
-      intro v U hl hv
-      cases v with
-      | root r => rw [hs.fam_root]; exact hr _ r U hv
-      | step w s =>
-          have hat : ∀ w U, (D₀.ctxAt Γ₀ ρ).ref w = some U → (hs.Fam ρ).at w = .ren w :=
-            fun w U h => by
-              rw [Subst.at_eq_mono_of (Ctx.Le.refl _) (θ' := Subst.idRen (S'.ctxAt Γ₀ ρ)) ih w U h,
-                Subst.at_idRen]
-              rfl
-          by_cases hc : ∃ o ∈ S.opensAt (k :: ρ), VarSymb.step w s = .step o.2 o.1.step
-          · obtain ⟨o, ho, he⟩ := hc
-            rw [he]
-            exact hs.fam_ren_content D₀ hok₀ hopen hιo (k :: ρ)
-              (fun _ _ h w U hw => by cases h; exact hat w U hw) ho
-          push_neg at hc
-          rw [Tree.ctxAt_eq_pre] at hv
-          rcases Ctx.optInsK_cases hv with hv | ⟨o, ho, he⟩
-          swap
-          · exact absurd he (hc o (by rw [← hopen]; exact ho))
-          simp only [Tree.preAt] at hv
-          rcases Ctx.inserts_cases hv with ⟨b, _, he, _⟩ | hv
-          · cases he
-          rw [hs.fam_eq, openS_ne _ _ _ _ _ hc, hs.base_step]
-          by_cases hd : ∃ x, S.edge (k :: ρ) = some (.dia x)
-          · obtain ⟨x, he⟩ := hd
-            have hιx := hι k ρ x he
-            rw [hs.viewS_dia he (hs.edge_dia he)]
-            rw [Tree.view_dia ((hedge k ρ).trans he)] at hv
-            cases s with
-            | dia =>
-                change (if w = x then (match (D₀.ctxAt Γ₀ ρ).ref x with
-                  | some (.VTypeDia X) => some X | _ => none) else none) = some U at hv
-                split_ifs at hv with hwx
-                cases hX : (D₀.ctxAt Γ₀ ρ).ref x with
-                | none => rw [hX] at hv; cases hv
-                | some X =>
-                    change SubE.mono _ (if w = x then ((hs.Fam ρ).at x).diaBody (ι x)
-                      else SubE.hide) = _
-                    rw [if_pos hwx, hat x X hX]
-                    change SubE.ren (.step (ι x) .dia) = _
-                    rw [hιx, hwx]
-            | box =>
-                obtain ⟨hk, hw⟩ := Ctx.boxIn_box (Γ := D₀.ctxAt Γ₀ ρ) hv
-                change SubE.mono _ ((((hs.Fam ρ).at w).unbox).mono _) = _
-                rw [hat w _ hw]
-                change SubE.ren w.inner = _
-                rw [VarSymb.inner_box hk]
-            | keep =>
-                change SubE.mono _ ((((hs.Fam ρ).at w).keepE).mono _) = _
-                rw [hat w _ (Ctx.boxIn_keep (Γ := D₀.ctxAt Γ₀ ρ) hv).2.1]
-                rfl
-            | fst => cases hv
-            | snd => cases hv
-            | here => cases hv
-            | «at» => cases hv
-          · push_neg at hd
-            rw [hs.viewS_box hd]
-            rw [Tree.view_of_not_dia (D := D₀) fun x h => hd x ((hedge k ρ).symm.trans h)] at hv
-            cases s with
-            | box =>
-                obtain ⟨hk, hw⟩ := Ctx.boxIn_box (Γ := D₀.ctxAt Γ₀ ρ) hv
-                change SubE.mono _ ((hs.Fam ρ).at w).unbox = _
-                rw [hat w _ hw]
-                change SubE.ren w.inner = _
-                rw [VarSymb.inner_box hk]
-            | keep =>
-                change SubE.mono _ ((hs.Fam ρ).at w).keepE = _
-                rw [hat w _ (Ctx.boxIn_keep (Γ := D₀.ctxAt Γ₀ ρ) hv).2.1]
-                rfl
-            | dia => cases hv
-            | fst => cases hv
-            | snd => cases hv
-            | here => cases hv
-            | «at» => cases hv
+    ∀ ρ v U, v.lastProj = false → (D₀.ctxAt Γ₀ ρ) v = some U → hs.Fam ρ v = .ren v :=
+  fun ρ v => (hs.fam_ren_aux D₀ hedge hr hι hok₀ hopen hιo ρ v).1
 
 theorem SubSetup.at_ren (hs : SubSetup Γ₀ S S' ι E N) (D₀ : Tree)
     (hedge : ∀ k ρ, D₀.edge (k :: ρ) = S.edge (k :: ρ))

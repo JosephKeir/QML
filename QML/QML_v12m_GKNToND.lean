@@ -68,20 +68,33 @@ theorem pack_of_claim (hW : D.WitOK Γ₀) {τ : Lab} {j f : ℕ} (hj : j ∈ D.
 
 end Hole
 
-/-- Closing a node whose births gain the eigenvariable at the head. -/
-theorem closed_cons_of {V V' : Ctx} (hVV : V.Le V') {L L' : List (Root × VarType)} {v : ℕ}
-    {T : VarType} (hL : L' = (.free v, T) :: L) (hb : BOK V L) (hb' : BOK V' L')
-    {A : WFF σ (V.inserts L) 0} {B : WFF σ (V'.inserts L') 0}
-    (hA : (V.inserts L).Le (V'.inserts L)) (hfr : (V'.inserts L).RootFresh (.free v))
-    (hs : (V'.inserts L).SlotsFrom 0)
-    (hcast : (V'.inserts L').Le ((V'.inserts L).insert (.free v) T))
-    (p : Provable [WFF.mono hA A] (.ex T (WFF.bindFree v hfr hs T (WFF.mono hcast B)))) :
-    Provable [WFF.mono hVV (closeB L A)] (closeB L' B) := by
+/-- Closing a node whose births gain the eigenvariable at the head: the `∃` taken out of the
+    node's openings (`closeO_ex`). -/
+theorem closed_cons_of {V V' : Ctx} (hVV : V.Le V') {L L' : List (Root × VarType)}
+    {O O' : List (WitKind × VarSymb)} {v : ℕ} {T : VarType} (hL : L' = (.free v, T) :: L)
+    (hO : O' = O) (hb : NOK V L O) (hb' : NOK V' L' O') (hbO : (V'.inserts L).OptsEff O)
+    {A : WFF σ ((V.inserts L).optInsK O) 0} {B : WFF σ ((V'.inserts L').optInsK O') 0}
+    (hA : ((V.inserts L).optInsK O).Le ((V'.inserts L).optInsK O))
+    (hfr₁ : ((V'.inserts L).optInsK O).RootFresh (.free v)) (hs : (V'.inserts L).SlotsFrom 0)
+    (hcast : ((V'.inserts L').optInsK O').Le (((V'.inserts L).optInsK O).insert (.free v) T))
+    (p : Provable [WFF.mono hA A]
+      (.ex T (WFF.bindFree v hfr₁ (hs.optInsK O) T (WFF.mono hcast B)))) :
+    Provable [WFF.mono hVV (closeN L O A)] (closeN L' O' B) := by
   subst hL
-  rw [WFF.mono_refl] at p
-  rw [mono_closeB hVV hb hb'.2.2 A, closeB_cons hfr hs]
-  exact or_cases (closeB_or hb'.2.2 (H := []) (orl _ p)) (lk List.mem_cons_self)
+  subst O'
+  have hfr : (V'.inserts L).RootFresh (.free v) := Ctx.RootFresh.of_le (Ctx.le_optInsK _ _) hfr₁
+  have hbL' : BOK V' L := hb'.1.2.2
+  rw [mono_closeN hVV hb ⟨hbL', hbO⟩ A]
+  unfold closeN
+  rw [closeB_cons hfr hs]
+  refine or_cases (closeB_or hbL' (H := []) (orl _ ?_)) (lk List.mem_cons_self)
     (lk List.mem_cons_self)
+  have s₁ : Provable [closeO O (WFF.mono ((hVV.inserts L).optInsK O) A)]
+      (closeO O (.ex T (WFF.bindFree v hfr₁ (hs.optInsK O) T (WFF.mono hcast B)))) :=
+    or_cases (closeO_or hbO (H := []) (orl _ p)) (lk List.mem_cons_self) (lk List.mem_cons_self)
+  have s₂ := closeO_ex hbO T hs hfr hfr₁ hb'.2 (Ctx.insert_optInsK_le hfr T O) (WFF.mono hcast B)
+  rw [WFF.mono_mono, WFF.mono_refl] at s₂
+  exact chain s₁ (sub (by lsub) s₂)
 
 /-- `¬∀ ⊢ ∃¬`. -/
 theorem not_all {Γ : Ctx} [Γ.NoSlots] {v : ℕ} (hv : Γ.RootFresh (.free v)) (T : VarType)
@@ -109,6 +122,7 @@ theorem ag_same {Δ Θ Δ' Θ' : Seq σ Γ₀ D} {σ' : Lab} (hΔ : Δ'.at σ' =
   children := rfl
   edge _ := rfl
   births := rfl
+  opens := rfl
 
 theorem of_tr {Δ Θ : Seq σ Γ₀ D} {τ : Lab} {f : ℕ} {c : WFF σ (D.ctxAt Γ₀ τ) 0}
     (hc : c ∈ Δ.at τ ++ (Θ.at τ).map WFF.neg) : Provable [tr D Δ Θ f τ] c := by
@@ -127,7 +141,7 @@ theorem same_hole' (h0 : Γ₀.SlotsFrom 0) (hok : D.OK Γ₀) (hW : D.WitOK Γ�
     (q : Provable [Pc D Δ' Θ' d []] .bot) : Provable [Pc D Δ Θ d []] .bot := by
   have hc := claim_path (hk := fun _ => Ctx.Le.refl _) (hV := fun _ => Ctx.Le.refl _) h0 hok hok
     hW τ hd (fun σ' hσ => ag_same (hagree σ' hσ).1 (hagree σ' hσ).2)
-      (claim_of_tr (hk := fun _ => Ctx.Le.refl _) h0 hok hok rfl
+      (claim_of_tr (hk := fun _ => Ctx.Le.refl _) h0 hok hok rfl rfl
         (by rw [WFF.mono_refl]; exact hole _))
   unfold Claim at hc
   rw [WFF.mono_refl] at hc
@@ -273,7 +287,8 @@ theorem tr_add {D : Tree} {Δ Θ Δ' Θ' : Seq σ Γ₀ D} {c : Lab} {f : ℕ}
 
 /-! ## Rules that grow the tree -/
 
-theorem ctxAt_eq_vw (D : Tree) (ρ : Lab) : D.ctxAt Γ₀ ρ = (Vw D Γ₀ ρ).inserts (D.birthsAt ρ) := by
+theorem ctxAt_eq_vw (D : Tree) (ρ : Lab) :
+    D.ctxAt Γ₀ ρ = ((Vw D Γ₀ ρ).inserts (D.birthsAt ρ)).optInsK (D.opensAt ρ) := by
   cases ρ <;> rfl
 
 /-- A formula of the node, weakened along any inclusion, from the node's reading. -/
@@ -309,21 +324,65 @@ theorem hole_grow (hW : D.WitOK Γ₀) {τ : Lab} {f : ℕ} {H : List (WFF σ (D
 
 /-- Closing a node whose births gain the eigenvariable at the head. -/
 theorem claim_of_tr_cons (h0 : Γ₀.SlotsFrom 0) (hok : D.OK Γ₀) (hok' : D'.OK Γ₀) {ρ : Lab}
-    {v : ℕ} {T : VarType} (hb : D'.birthsAt ρ = (.free v, T) :: D.birthsAt ρ) {f : ℕ}
-    (hfr : ((Vw D' Γ₀ ρ).inserts (D.birthsAt ρ)).RootFresh (.free v))
+    {v : ℕ} {T : VarType} (hb : D'.birthsAt ρ = (.free v, T) :: D.birthsAt ρ)
+    (ho : D'.opensAt ρ = D.opensAt ρ) {f : ℕ}
+    (hbO : ((Vw D' Γ₀ ρ).inserts (D.birthsAt ρ)).OptsEff (D.opensAt ρ))
+    (hfr : (((Vw D' Γ₀ ρ).inserts (D.birthsAt ρ)).optInsK (D.opensAt ρ)).RootFresh (.free v))
     (hs : ((Vw D' Γ₀ ρ).inserts (D.birthsAt ρ)).SlotsFrom 0)
-    (hcast : (D'.ctxAt Γ₀ ρ).Le (((Vw D' Γ₀ ρ).inserts (D.birthsAt ρ)).insert (.free v) T))
-    (hA : (D.ctxAt Γ₀ ρ).Le ((Vw D' Γ₀ ρ).inserts (D.birthsAt ρ)))
+    (hcast : (D'.ctxAt Γ₀ ρ).Le
+      ((((Vw D' Γ₀ ρ).inserts (D.birthsAt ρ)).optInsK (D.opensAt ρ)).insert (.free v) T))
+    (hA : (D.ctxAt Γ₀ ρ).Le (((Vw D' Γ₀ ρ).inserts (D.birthsAt ρ)).optInsK (D.opensAt ρ)))
     (p : Provable [WFF.mono hA (tr D Δ Θ f ρ)]
-      (.ex T (WFF.bindFree v hfr hs T (WFF.mono hcast (tr D' Δ' Θ' f ρ))))) :
+      (.ex T (WFF.bindFree v hfr (hs.optInsK _) T (WFF.mono hcast (tr D' Δ' Θ' f ρ))))) :
     Claim Δ Θ Δ' Θ' hV f ρ := by
   cases ρ with
   | nil =>
-      exact closed_cons_of (hV []) hb (Tree.bok h0 hok []) (Tree.bok h0 hok' []) hA hfr hs
+      exact closed_cons_of (hV []) hb ho (Tree.nok h0 hok []) (Tree.nok h0 hok' []) hbO hA hfr
+        hs hcast p
+  | cons k ρ =>
+      exact closed_cons_of (hV (k :: ρ)) hb ho (Tree.nok h0 hok _) (Tree.nok h0 hok' _) hbO hA
+        hfr hs hcast p
+
+/-- Closing a node that gains an opening at the head. -/
+theorem closed_open_of {V V' : Ctx} (hVV : V.Le V') {L L' : List (Root × VarType)}
+    {O O' : List (WitKind × VarSymb)} {κ : WitKind} {y : VarSymb} (hL : L' = L)
+    (hO : O' = (κ, y) :: O) (hb : NOK V L O) (hb' : NOK V' L' O')
+    (hOn : ModalSys.Opt = true) (hy : ∃ X, ((V'.inserts L).optInsK O).witK κ y = some X)
+    {A : WFF σ ((V.inserts L).optInsK O) 0} {B : WFF σ ((V'.inserts L').optInsK O') 0}
+    (hA : ((V.inserts L).optInsK O).Le ((V'.inserts L).optInsK O))
+    (hcast : ((V'.inserts L').optInsK O').Le (((V'.inserts L).optInsK O).optInK κ y))
+    (p : Provable [WFF.mono hA A] (.optx hOn κ y hy (WFF.mono hcast B))) :
+    Provable [WFF.mono hVV (closeN L O A)] (closeN L' O' B) := by
+  subst L'
+  subst O'
+  have hbO : (V'.inserts L).OptsEff O := hb'.2.1
+  rw [mono_closeN hVV hb ⟨hb'.1, hbO⟩ A]
+  unfold closeN
+  rw [closeO_cons hOn hy]
+  refine or_cases (closeB_or hb'.1 (H := []) (orl _ ?_)) (lk List.mem_cons_self)
+    (lk List.mem_cons_self)
+  rw [WFF.mono_refl] at p
+  exact or_cases (closeO_or hbO (H := []) (orl _ p)) (lk List.mem_cons_self)
+    (lk List.mem_cons_self)
+
+/-- A node that gains an opening at the head: its closed reading, from the opened reading. -/
+theorem claim_of_tr_open (h0 : Γ₀.SlotsFrom 0) (hok : D.OK Γ₀) (hok' : D'.OK Γ₀) {ρ : Lab}
+    {κ : WitKind} {y : VarSymb} (hb : D'.birthsAt ρ = D.birthsAt ρ)
+    (ho : D'.opensAt ρ = (κ, y) :: D.opensAt ρ) {f : ℕ} (hOn : ModalSys.Opt = true)
+    (hy : ∃ X, (((Vw D' Γ₀ ρ).inserts (D.birthsAt ρ)).optInsK (D.opensAt ρ)).witK κ y = some X)
+    (hcast : (D'.ctxAt Γ₀ ρ).Le
+      ((((Vw D' Γ₀ ρ).inserts (D.birthsAt ρ)).optInsK (D.opensAt ρ)).optInK κ y))
+    (hA : (D.ctxAt Γ₀ ρ).Le (((Vw D' Γ₀ ρ).inserts (D.birthsAt ρ)).optInsK (D.opensAt ρ)))
+    (p : Provable [WFF.mono hA (tr D Δ Θ f ρ)]
+      (.optx hOn κ y hy (WFF.mono hcast (tr D' Δ' Θ' f ρ)))) :
+    Claim Δ Θ Δ' Θ' hV f ρ := by
+  cases ρ with
+  | nil =>
+      exact closed_open_of (hV []) hb ho (Tree.nok h0 hok []) (Tree.nok h0 hok' []) hOn hy hA
         hcast p
   | cons k ρ =>
-      exact closed_cons_of (hV (k :: ρ)) hb (Tree.bok h0 hok _) (Tree.bok h0 hok' _) hA
-        hfr hs hcast p
+      exact closed_open_of (hV (k :: ρ)) hb ho (Tree.nok h0 hok _) (Tree.nok h0 hok' _) hOn hy
+        hA hcast p
 
 end Grow
 
@@ -339,6 +398,22 @@ theorem vw_le_addBirth {D : Tree} {r : Root} (hf : D.Fresh Γ₀ r) (τ : Lab) (
   | [] => Ctx.Le.refl _
   | _ :: ρ => Tree.view_le_view (Tree.ctxAt_addBirth hf τ T ρ) fun e₁ he₁ =>
       ⟨e₁, he₁, EdgeKind.compat_refl e₁⟩
+
+theorem vw_le_addOpen {D : Tree} (τ : Lab) (κ : WitKind) (y : VarSymb) :
+    ∀ ρ, (Vw D Γ₀ ρ).Le (Vw (D.addOpen τ κ y) Γ₀ ρ)
+  | [] => Ctx.Le.refl _
+  | _ :: ρ => Tree.view_le_view (Tree.ctxAt_addOpen τ κ y ρ) fun e₁ he₁ =>
+      ⟨e₁, he₁, EdgeKind.compat_refl e₁⟩
+
+theorem vw_open_eq {D : Tree} (τ : Lab) (κ : WitKind) (y : VarSymb) :
+    Vw (D.addOpen τ κ y) Γ₀ τ = Vw D Γ₀ τ := by
+  cases τ with
+  | nil => rfl
+  | cons k ρ =>
+      change (D.addOpen (k :: ρ) κ y).view (k :: ρ) ((D.addOpen (k :: ρ) κ y).ctxAt Γ₀ ρ) =
+        D.view (k :: ρ) (D.ctxAt Γ₀ ρ)
+      rw [Tree.ctxAt_addOpen_off (D := D) ρ fun h' => by have := h'.length_le; simp at this]
+      rfl
 
 theorem children_addEdge_ne {D : Tree} {k : ℕ} {τ ρ : Lab} (e : EdgeKind) (h : ρ ≠ τ) :
     (D.addEdge (k :: τ) e).children ρ = D.children ρ := by
@@ -408,15 +483,15 @@ theorem tr_vis {D : Tree} {Δ Θ Δ₁ Θ₁ : Seq σ Γ₀ D} :
       have e := tr_vis f (j :: ρ) (Tree.reach_cons hr (Tree.mem_children.mp hj))
         fun σ' hσ hr' hl => h σ' ((List.suffix_cons j ρ).trans hσ) hr' (by
           simp only [List.length_cons] at hl; omega)
-      change pack _ _ _ (closeB _ (tr D Δ₁ Θ₁ f (j :: ρ))) =
-        pack _ _ _ (closeB _ (tr D Δ Θ f (j :: ρ)))
+      change pack _ _ _ (closeN _ _ (tr D Δ₁ Θ₁ f (j :: ρ))) =
+        pack _ _ _ (closeN _ _ (tr D Δ Θ f (j :: ρ)))
       rw [e]
 
 /-- A formula at a node the reading does not reach leaves it alone. -/
 theorem Pc_vis {D : Tree} {Δ Θ Δ₁ Θ₁ : Seq σ Γ₀ D} {d : ℕ}
     (h : ∀ σ', D.Reach σ' → σ'.length ≤ d → Δ₁.at σ' = Δ.at σ' ∧ Θ₁.at σ' = Θ.at σ') :
     Pc D Δ₁ Θ₁ d [] = Pc D Δ Θ d [] := by
-  change closeB _ (tr D Δ₁ Θ₁ d []) = closeB _ (tr D Δ Θ d [])
+  change closeN _ _ (tr D Δ₁ Θ₁ d []) = closeN _ _ (tr D Δ Θ d [])
   rw [tr_vis d [] (Tree.reach_nil D) fun σ' _ hr hl => h σ' hr (by simpa using hl)]
 
 theorem Seq.at_append_off {D : Tree} {L₁ L : Seq σ Γ₀ D} {ρ : Lab}
@@ -441,6 +516,23 @@ theorem ag_birth {D : Tree} {Δ Θ : Seq σ Γ₀ D} {v : ℕ} {T : VarType} {τ
   children := rfl
   edge _ := rfl
   births := by rw [Tree.birthsAt_addBirth, if_neg hσ]
+  opens := rfl
+
+theorem ag_open {D : Tree} {Δ Θ : Seq σ Γ₀ D} {κ : WitKind} {y : VarSymb} {τ : Lab}
+    (L₁ R₁ : Seq σ Γ₀ (D.addOpen τ κ y)) (h₁ : ∀ q ∈ L₁ ++ R₁, q.1 = τ) {σ' : Lab}
+    (hσ : σ' ≠ τ) :
+    Ag Δ Θ (L₁ ++ Seq.mono (Tree.ctxAt_addOpen τ κ y) Δ)
+      (R₁ ++ Seq.mono (Tree.ctxAt_addOpen τ κ y) Θ) (Tree.ctxAt_addOpen τ κ y) σ' where
+  left := by
+    rw [Seq.at_append_off fun q hq h' => hσ (h'.symm.trans (h₁ q (List.mem_append_left _ hq))),
+      Seq.at_mono]
+  right := by
+    rw [Seq.at_append_off fun q hq h' => hσ (h'.symm.trans (h₁ q (List.mem_append_right _ hq))),
+      Seq.at_mono]
+  children := rfl
+  edge _ := rfl
+  births := rfl
+  opens := by rw [Tree.opensAt_addOpen, if_neg hσ]
 
 theorem ag_edge {D : Tree} {Δ Θ : Seq σ Γ₀ D} {k : ℕ} {τ : Lab} {e : EdgeKind}
     (hc : D.edge (k :: τ) = none) (L₁ R₁ : Seq σ Γ₀ (D.addEdge (k :: τ) e))
@@ -456,6 +548,7 @@ theorem ag_edge {D : Tree} {Δ Θ : Seq σ Γ₀ D} {k : ℕ} {τ : Lab} {e : Ed
   children := children_addEdge_ne e hσ
   edge j := by rw [Tree.edge_addEdge, if_neg fun h' => hσ (List.cons.inj h').2]
   births := rfl
+  opens := rfl
 
 theorem inv_grow {D D' : Tree} (hk : ∀ ρ, (D.ctxAt Γ₀ ρ).Le (D'.ctxAt Γ₀ ρ))
     {Δ Θ : Seq σ Γ₀ D} {n d : ℕ} (hi : Inv (n + 1) d Δ Θ) (hreach : ∀ ρ, D.Reach ρ → D'.Reach ρ)
@@ -481,7 +574,7 @@ theorem reach_addEdge {D : Tree} {c : Lab} (e : EdgeKind) {ρ : Lab} (hρ : D.Re
   · exact hρ k ρ' hs
 
 theorem vw_birth_eq {D : Tree} {v : ℕ} {T : VarType} (τ : Lab) :
-    (Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ) = D.ctxAt Γ₀ τ := by
+    (Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ) = D.preAt Γ₀ τ := by
   cases τ with
   | nil => rfl
   | cons k ρ =>
@@ -491,23 +584,26 @@ theorem vw_birth_eq {D : Tree} {v : ℕ} {T : VarType} (τ : Lab) :
       rw [Tree.ctxAt_addBirth_off (D := D) ρ fun h' => by have := h'.length_le; simp at this]
       rfl
 
-theorem closeB_nil {V : Ctx} {L : List (Root × VarType)} (hL : L = [])
-    {H : List (WFF σ V 0)} {φ : WFF σ (V.inserts L) 0} (hcast : (V.inserts L).Le V)
-    (p : Provable H (WFF.mono hcast φ)) : Provable H (closeB L φ) := by
+theorem closeN_nil {V : Ctx} {L : List (Root × VarType)} {O : List (WitKind × VarSymb)}
+    (hL : L = []) (hO : O = []) {H : List (WFF σ V 0)} {φ : WFF σ ((V.inserts L).optInsK O) 0}
+    (hcast : ((V.inserts L).optInsK O).Le V)
+    (p : Provable H (WFF.mono hcast φ)) : Provable H (closeN L O φ) := by
   subst hL
+  subst hO
   rw [WFF.mono_refl] at p
   exact p
 
 /-- ⭐**A new child's closed reading**, from one hypothesis behind its edge: no births, no
     children, its formulas from the hypothesis. -/
 theorem new_child {D' : Tree} {Δ' Θ' : Seq σ Γ₀ D'} {k : ℕ} {τ : Lab}
-    {f : ℕ} (hL : D'.birthsAt (k :: τ) = []) (hch : ∀ j, D'.edge (j :: k :: τ) = none)
+    {f : ℕ} (hL : D'.birthsAt (k :: τ) = []) (hO : D'.opensAt (k :: τ) = [])
+    (hch : ∀ j, D'.edge (j :: k :: τ) = none)
     {y : WFF σ (Vw D' Γ₀ (k :: τ)) 0}
     (hcont : ∀ h : (Vw D' Γ₀ (k :: τ)).Le (D'.ctxAt Γ₀ (k :: τ)),
       ∀ φ ∈ Δ'.at (k :: τ) ++ (Θ'.at (k :: τ)).map WFF.neg, Provable [WFF.mono h y] φ) :
     Provable [y] (Pc D' Δ' Θ' f (k :: τ)) := by
   have e : D'.ctxAt Γ₀ (k :: τ) = Vw D' Γ₀ (k :: τ) :=
-    (ctxAt_eq_vw D' (k :: τ)).trans (by rw [hL]; rfl)
+    (ctxAt_eq_vw D' (k :: τ)).trans (by rw [hL, hO]; rfl)
   have loc : Provable [WFF.mono (Ctx.le_of_eq e.symm) y] (tr D' Δ' Θ' f (k :: τ)) := by
     cases f with
     | zero =>
@@ -518,7 +614,21 @@ theorem new_child {D' : Tree} {Δ' Θ' : Seq σ Γ₀ D'} {k : ℕ} {τ : Lab}
         exact absurd (hch j) (Tree.mem_children.mp hj)
   have q := prov_cast e loc
   rw [List.map_cons, List.map_nil, WFF.mono_mono, WFF.mono_refl] at q
-  exact closeB_nil hL (Ctx.le_of_eq e) q
+  exact closeN_nil hL hO (Ctx.le_of_eq e) q
+
+/-- `◇⁰` is monotone, with side hypotheses. -/
+theorem opt_mono {Γ : Ctx} (hO : ModalSys.Opt = true) (κ : WitKind) (y : VarSymb)
+    (hy : ∃ X, Γ.witK κ y = some X) {H : List (WFF σ Γ 0)} {A B : WFF σ (Γ.optInK κ y) 0}
+    (p : Provable (A :: H.map (WFF.mono (Ctx.le_optInK Γ κ y))) B) :
+    Provable (.optx hO κ y hy A :: H) (.optx hO κ y hy B) :=
+  or_cases (opt_or hO κ y hy (orl B p)) (lk List.mem_cons_self) (lk List.mem_cons_self)
+
+/-- The bridge, contraposed: `¬◇_x θ ⊢ □¬◇⁰_x θ`, the fold's negation boxed. -/
+theorem box_fold_neg {Γ : Ctx} (hO : ModalSys.Opt = true) (x : VarSymb)
+    (hx : ∃ X, Γ.ref x = some (.VTypeDia X)) {θ : WFF σ (Γ.diaIn x) 0} {H : List (WFF σ Γ 0)}
+    (h : (WFF.dia x hx θ).neg ∈ H) : Provable H (WFF.box (Γ := Γ) (WFF.fold hO x hx θ).neg) :=
+  dne (lam (contra (List.mem_cons_of_mem _ h)
+    ⟨Proof.opt_dia hO x hx (Proof.lookup List.mem_cons_self)⟩))
 
 theorem dpk_of_neg {Γ : Ctx} {A : WFF σ Γ.boxIn 0} {X : WFF σ Γ.boxIn 0}
     (hX : Provable [A.neg] X) : Provable [(WFF.box (Γ := Γ) A).neg] (dpk X) := by
@@ -590,7 +700,6 @@ theorem imp_or {Γ : Ctx} {H : List (WFF σ Γ 0)} {φ ψ : WFF σ Γ 0} (h : φ
 
 /-! ## ⭐GKN into natural deduction -/
 
-variable [ModalSys.NoOpt]
 
 set_option maxHeartbeats 4000000 in
 -- One case per rule of `GKN`, each rearranging a node's formulas (`tauto`): long, not stuck.
@@ -628,6 +737,39 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
         · exact (of_tr (in_content_l h)).map .and_elim_l
         · exact (of_tr (in_content_l h)).map .and_elim_r
         · exact of_tr hχ
+  | @TL n D Δ Θ hT τ hs φ h _ ih =>
+      intro hok hW d hi
+      haveI : (D.ctxAt Γ₀ τ).NoSlots := ⟨hs⟩
+      obtain ⟨hr, hτ⟩ : D.Reach τ ∧ τ.length + (n + 1) < d := hi.left _ h id
+      refine same_hole (τ := τ) h0 hok hW (by omega) (fun σ' hσ => ?_) (fun f χ hχ => ?_)
+        (ih hok hW d (inv_ext (τ := τ) hi hr (by omega)
+          [⟨τ, WFF.collapse (Ctx.collapses_boxIn_self hT _) hs.boxIn φ⟩] [] (by simp)))
+      · exact ⟨by rw [Seq.at_cons_ne (Ne.symm hσ)], rfl⟩
+      · rw [Seq.at_cons_self] at hχ
+        simp only [List.cons_append, List.mem_cons] at hχ
+        rcases hχ with rfl | hχ
+        · exact (of_tr (in_content_l h)).map (.T_box hT)
+        · exact of_tr hχ
+  | @diaT n D Δ Θ hT hO τ hs x hx φ h _ ih =>
+      intro hok hW d hi
+      haveI : (D.ctxAt Γ₀ τ).NoSlots := ⟨hs⟩
+      obtain ⟨hr, hτ⟩ : D.Reach τ ∧ τ.length + (n + 1) < d := hi.right _ h
+      refine same_hole (τ := τ) (Θ' := ⟨τ, WFF.diaId hT hO x hx φ⟩ :: Θ) h0 hok hW (by omega)
+        (fun σ' hσ => ⟨rfl, by rw [Seq.at_cons_ne (Ne.symm hσ)]⟩)
+        (fun f χ hχ => ?_)
+        (ih hok hW d (inv_ext (τ := τ) hi hr (by omega) [] [⟨τ, WFF.diaId hT hO x hx φ⟩]
+          (by simp)))
+      rw [Seq.at_cons_self] at hχ
+      simp only [List.map_cons, List.mem_append, List.mem_cons] at hχ
+      rcases hχ with hχ | rfl | hχ
+      · exact of_tr (List.mem_append_left _ hχ)
+      · have hb := dis (box_fold_neg hO x hx (H := [(WFF.dia x hx φ).neg]) List.mem_cons_self)
+          fun ℓ hℓ => by
+            rw [List.mem_singleton.mp hℓ]
+            exact of_tr (Δ := Δ) (f := f) (in_content_r h)
+        exact (congrArg (fun χ => Provable [tr D Δ Θ f τ] (WFF.neg χ))
+          (WFF.collapse_fold hT hO x hx φ)).mp (hb.map (Proof.T_box hT))
+      · exact of_tr (List.mem_append_right _ hχ)
   | @andR n D Δ Θ τ φ ψ h _ _ ih₁ ih₂ =>
       intro hok hW d hi
       obtain ⟨hr, hτ⟩ : D.Reach τ ∧ τ.length + (n + 1) < d := hi.right _ h
@@ -797,16 +939,16 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
               of_tr (in_content_l h)
             refine dis (pack_side (χs := [χ]) (A := Pc D Δ Θ f (j :: τ))
               (fun x he' => hW j τ x he') ?_) fun ℓ hℓ => ?_
-            · change Provable (closeB _ (tr D Δ Θ f (j :: τ)) :: _)
-                (closeB _ (tr D (⟨j :: τ, WFF.mono hle χ⟩ :: Δ) Θ f (j :: τ)))
-              refine or_cases (closeB_or (Tree.bok h0 hok (j :: τ)) (orl _ ?_))
+            · change Provable (closeN _ _ (tr D Δ Θ f (j :: τ)) :: _)
+                (closeN _ _ (tr D (⟨j :: τ, WFF.mono hle χ⟩ :: Δ) Θ f (j :: τ)))
+              refine or_cases (closeN_or (Tree.nok h0 hok (j :: τ)) (orl _ ?_))
                 (lk List.mem_cons_self) (lk List.mem_cons_self)
               refine tr_add (x := WFF.mono hle χ) (fun σ' hσ => ⟨Seq.at_cons_ne (Ne.symm hσ), rfl⟩)
                 (fun φ hφ => ?_) ?_
               · rw [Seq.at_cons_self] at hφ
                 simp only [List.cons_append, List.mem_cons] at hφ
                 exact hφ
-              · have e' : WFF.mono (Tree.bok h0 hok (j :: τ)).le
+              · have e' : WFF.mono (Tree.nok h0 hok (j :: τ)).le
                     (WFF.mono (Tree.boxIn_le_view (j :: τ) (D.ctxAt Γ₀ τ)) χ) =
                     WFF.mono hle χ := by rw [WFF.mono_mono]
                 refine (congrArg (fun y => Provable (tr D Δ Θ f (j :: τ) :: [y])
@@ -821,7 +963,7 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
             exact conj_elim ((lk List.mem_cons_self).map .and_elim_r) _
               (List.mem_map_of_mem (f := fun k => pack D (D.ctxAt Γ₀ τ) (k :: τ)
                 (Pc D Δ Θ f (k :: τ))) hj)
-  | @diaR n D Δ Θ τ k x hx θ he hle h _ ih =>
+  | @diaR n D Δ Θ τ k e x hx θ he hf hle h _ ih =>
       intro hok hW d hi
       obtain ⟨hr, hτ⟩ : D.Reach τ ∧ τ.length + (n + 1) < d := hi.right _ h
       have hrc := Tree.reach_cons hr (by rw [he]; exact Option.some_ne_none _)
@@ -841,32 +983,164 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
             exact of_tr hφ
           by_cases hjk : j = k
           · subst hjk
+            by_cases hed : e = .dia x
+            · subst hed
+              have hp : Provable [tr D Δ Θ (f + 1) τ]
+                  (pack D (D.ctxAt Γ₀ τ) (j :: τ) (Pc D Δ Θ f (j :: τ))) :=
+                conj_elim ((lk List.mem_cons_self).map .and_elim_r) _
+                  (List.mem_map_of_mem (f := fun k => pack D (D.ctxAt Γ₀ τ) (k :: τ)
+                    (Pc D Δ Θ f (k :: τ))) hj)
+              have hb : Provable [tr D Δ Θ (f + 1) τ] (WFF.boxx x hx θ.neg) :=
+                dis (boxx_neg x hx (L := [(WFF.dia x hx θ).neg]) List.mem_cons_self)
+                  fun ℓ hℓ => by
+                    rw [List.mem_singleton.mp hℓ]
+                    exact of_tr (in_content_r h)
+              refine dis (pack_diaside he hx (θs := [θ.neg]) (A := Pc D Δ Θ f (j :: τ)) ?_)
+                fun ℓ hℓ => ?_
+              · change Provable (closeN _ _ (tr D Δ Θ f (j :: τ)) :: _)
+                  (closeN _ _ (tr D Δ (⟨j :: τ, WFF.mono hle θ⟩ :: Θ) f (j :: τ)))
+                refine or_cases (closeN_or (Tree.nok h0 hok (j :: τ)) (orl _ ?_))
+                  (lk List.mem_cons_self) (lk List.mem_cons_self)
+                refine tr_add (x := (WFF.mono hle θ).neg)
+                  (fun σ' hσ => ⟨rfl, Seq.at_cons_ne (Ne.symm hσ)⟩) (fun φ hφ => ?_) ?_
+                · rw [Seq.at_cons_self] at hφ
+                  simp only [List.map_cons, List.mem_append, List.mem_cons] at hφ ⊢
+                  tauto
+                · have e' : WFF.mono (Tree.nok h0 hok (j :: τ)).le
+                      (WFF.mono (Ctx.le_of_eq (Tree.view_dia he).symm) θ.neg) =
+                      (WFF.mono hle θ).neg := by rw [WFF.mono_mono]; rfl
+                  refine (congrArg (fun y => Provable (tr D Δ Θ f (j :: τ) :: [y])
+                    (WFF.mono hle θ).neg) e').mpr (lk (List.mem_cons_of_mem _ List.mem_cons_self))
+              · simp only [List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil,
+                  or_false] at hℓ
+                rcases hℓ with rfl | rfl
+                · exact hp
+                · exact hb
+            · have ho : (D.ctxAt Γ₀ (j :: τ)).Opened .arrow x := by
+                rcases hf with hc | ⟨x', hx', ho⟩
+                · cases e with
+                  | box => exact hc.elim
+                  | dia z =>
+                      change x = z at hc
+                      subst hc
+                      exact absurd rfl hed
+                · cases hx'
+                  exact ho
+              have hO := (Tree.wit_child_opt ho.choose_spec.1).1
+              have hp : Provable [tr D Δ Θ (f + 1) τ]
+                  (pack D (D.ctxAt Γ₀ τ) (j :: τ) (Pc D Δ Θ f (j :: τ))) :=
+                conj_elim ((lk List.mem_cons_self).map .and_elim_r) _
+                  (List.mem_map_of_mem (f := fun k => pack D (D.ctxAt Γ₀ τ) (k :: τ)
+                    (Pc D Δ Θ f (k :: τ))) hj)
+              have hb : Provable [tr D Δ Θ (f + 1) τ]
+                  (WFF.box (Γ := D.ctxAt Γ₀ τ) (WFF.fold hO x hx θ).neg) :=
+                dis (box_fold_neg hO x hx (H := [(WFF.dia x hx θ).neg]) List.mem_cons_self)
+                  fun ℓ hℓ => by
+                    rw [List.mem_singleton.mp hℓ]
+                    exact of_tr (in_content_r h)
+              refine dis (pack_side (χs := [(WFF.fold hO x hx θ).neg]) (A := Pc D Δ Θ f (j :: τ))
+                (fun x' he' => hW j τ x' he') ?_) fun ℓ hℓ => ?_
+              · change Provable (closeN _ _ (tr D Δ Θ f (j :: τ)) :: _)
+                  (closeN _ _ (tr D Δ (⟨j :: τ, WFF.mono hle θ⟩ :: Θ) f (j :: τ)))
+                refine or_cases (closeN_or (Tree.nok h0 hok (j :: τ)) (orl _ ?_))
+                  (lk List.mem_cons_self) (lk List.mem_cons_self)
+                refine tr_add (x := (WFF.mono hle θ).neg)
+                  (fun σ' hσ => ⟨rfl, Seq.at_cons_ne (Ne.symm hσ)⟩) (fun φ hφ => ?_) ?_
+                · rw [Seq.at_cons_self] at hφ
+                  simp only [List.map_cons, List.mem_append, List.mem_cons] at hφ ⊢
+                  tauto
+                · have e' : WFF.mono (Tree.nok h0 hok (j :: τ)).le
+                      (WFF.mono (Tree.boxIn_le_view (j :: τ) (D.ctxAt Γ₀ τ))
+                        (WFF.fold hO x hx θ).neg) =
+                      (WFF.mono (Tree.boxIn_le_child hok j τ) (WFF.fold hO x hx θ)).neg := by
+                    rw [WFF.mono_mono]; rfl
+                  refine (congrArg (fun y => Provable (tr D Δ Θ f (j :: τ) :: [y])
+                    (WFF.mono hle θ).neg) e').mpr ?_
+                  refine lam (contra (List.mem_cons_of_mem _ (List.mem_cons_of_mem _
+                    List.mem_cons_self)) ?_)
+                  have r := Proof.opt_reopen hO .arrow x ho (Proof.lookup (Δ := WFF.mono hle θ ::
+                    tr D Δ Θ f (j :: τ) ::
+                      [(WFF.mono (Tree.boxIn_le_child hok j τ) (WFF.fold hO x hx θ)).neg])
+                    List.mem_cons_self)
+                  refine (congrArg (Provable _) ?_).mp ⟨r⟩
+                  change WFF.optx hO .arrow x _ (WFF.mono (Ctx.le_optInK _ .arrow x)
+                    (WFF.mono hle θ)) = WFF.optx hO .arrow x _
+                      (WFF.mono ((Tree.boxIn_le_child hok j τ).optInK .arrow x) (WFF.mono _ θ))
+                  rw [WFF.mono_mono, WFF.mono_mono]
+              · simp only [List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil,
+                  or_false] at hℓ
+                rcases hℓ with rfl | rfl
+                · exact hp
+                · exact hb
+          · rw [Pc_congr fun σ' hσ => ⟨rfl, Seq.at_cons_ne fun e' =>
+              off_sub (List.suffix_refl _) hjk σ' hσ (by rw [← e'])⟩]
+            exact conj_elim ((lk List.mem_cons_self).map .and_elim_r) _
+              (List.mem_map_of_mem (f := fun k => pack D (D.ctxAt Γ₀ τ) (k :: τ)
+                (Pc D Δ Θ f (k :: τ))) hj)
+  | @reopenR n D Δ Θ hO τ κ y hy χ h _ ih =>
+      intro hok hW d hi
+      obtain ⟨hr, hτ⟩ : D.Reach τ ∧ τ.length + (n + 1) < d := hi.right _ h
+      refine same_hole (τ := τ) (Θ' := ⟨τ, χ⟩ :: Θ) h0 hok hW (by omega)
+        (fun σ' hσ => ⟨rfl, by rw [Seq.at_cons_ne (Ne.symm hσ)]⟩)
+        (fun f χ' hχ => ?_)
+        (ih hok hW d (inv_ext (τ := τ) hi hr (by omega) [] [⟨τ, χ⟩] (by simp)))
+      rw [Seq.at_cons_self] at hχ
+      simp only [List.map_cons, List.mem_append, List.mem_cons] at hχ
+      rcases hχ with hχ | rfl | hχ
+      · exact of_tr (List.mem_append_left _ hχ)
+      · exact chain (of_tr (in_content_r h))
+          (lam (contra (List.mem_cons_of_mem _ List.mem_cons_self)
+            ⟨Proof.opt_reopen hO κ y hy (Proof.lookup List.mem_cons_self)⟩))
+      · exact of_tr (List.mem_append_right _ hχ)
+  | @foldR n D Δ Θ hO τ k e x hx θ he hle h _ ih =>
+      intro hok hW d hi
+      obtain ⟨hr, hτ⟩ : D.Reach τ ∧ τ.length + (n + 1) < d := hi.right _ h
+      have hrc := Tree.reach_cons hr (by rw [he]; exact Option.some_ne_none _)
+      have q := ih hok hW d (inv_ext (τ := k :: τ) hi hrc (by simp only [List.length_cons]; omega)
+        [] [⟨k :: τ, WFF.mono hle (WFF.fold hO x hx θ)⟩] (by simp))
+      have hne : (k :: τ) ≠ τ := fun h' => by have := congrArg List.length h'; simp at this
+      refine same_hole' (τ := τ) h0 hok hW (by omega)
+        (fun σ' hσ => ⟨rfl, Seq.at_cons_ne fun e' => hσ (by subst e'; exact List.suffix_cons k τ)⟩)
+        (fun f => ?_) q
+      cases f with
+      | zero =>
+          rw [tr_zero, tr_zero, Seq.at_cons_ne hne]
+          exact lk List.mem_cons_self
+      | succ f =>
+          refine hole_tr (fun φ hφ => ?_) (fun j hj => ?_)
+          · rw [Seq.at_cons_ne hne] at hφ
+            exact of_tr hφ
+          by_cases hjk : j = k
+          · subst hjk
             have hp : Provable [tr D Δ Θ (f + 1) τ]
                 (pack D (D.ctxAt Γ₀ τ) (j :: τ) (Pc D Δ Θ f (j :: τ))) :=
               conj_elim ((lk List.mem_cons_self).map .and_elim_r) _
                 (List.mem_map_of_mem (f := fun k => pack D (D.ctxAt Γ₀ τ) (k :: τ)
                   (Pc D Δ Θ f (k :: τ))) hj)
-            have hb : Provable [tr D Δ Θ (f + 1) τ] (WFF.boxx x hx θ.neg) :=
-              dis (boxx_neg x hx (L := [(WFF.dia x hx θ).neg]) List.mem_cons_self)
+            have hb : Provable [tr D Δ Θ (f + 1) τ]
+                (WFF.box (Γ := D.ctxAt Γ₀ τ) (WFF.fold hO x hx θ).neg) :=
+              dis (box_fold_neg hO x hx (H := [(WFF.dia x hx θ).neg]) List.mem_cons_self)
                 fun ℓ hℓ => by
                   rw [List.mem_singleton.mp hℓ]
                   exact of_tr (in_content_r h)
-            refine dis (pack_diaside he hx (θs := [θ.neg]) (A := Pc D Δ Θ f (j :: τ)) ?_)
-              fun ℓ hℓ => ?_
-            · change Provable (closeB _ (tr D Δ Θ f (j :: τ)) :: _)
-                (closeB _ (tr D Δ (⟨j :: τ, WFF.mono hle θ⟩ :: Θ) f (j :: τ)))
-              refine or_cases (closeB_or (Tree.bok h0 hok (j :: τ)) (orl _ ?_))
+            refine dis (pack_side (χs := [(WFF.fold hO x hx θ).neg]) (A := Pc D Δ Θ f (j :: τ))
+              (fun x' he' => hW j τ x' he') ?_) fun ℓ hℓ => ?_
+            · change Provable (closeN _ _ (tr D Δ Θ f (j :: τ)) :: _)
+                (closeN _ _ (tr D Δ (⟨j :: τ, WFF.mono hle (WFF.fold hO x hx θ)⟩ :: Θ) f (j :: τ)))
+              refine or_cases (closeN_or (Tree.nok h0 hok (j :: τ)) (orl _ ?_))
                 (lk List.mem_cons_self) (lk List.mem_cons_self)
-              refine tr_add (x := (WFF.mono hle θ).neg)
+              refine tr_add (x := (WFF.mono hle (WFF.fold hO x hx θ)).neg)
                 (fun σ' hσ => ⟨rfl, Seq.at_cons_ne (Ne.symm hσ)⟩) (fun φ hφ => ?_) ?_
               · rw [Seq.at_cons_self] at hφ
                 simp only [List.map_cons, List.mem_append, List.mem_cons] at hφ ⊢
                 tauto
-              · have e' : WFF.mono (Tree.bok h0 hok (j :: τ)).le
-                    (WFF.mono (Ctx.le_of_eq (Tree.view_dia he).symm) θ.neg) =
-                    (WFF.mono hle θ).neg := by rw [WFF.mono_mono]; rfl
+              · have e' : WFF.mono (Tree.nok h0 hok (j :: τ)).le
+                    (WFF.mono (Tree.boxIn_le_view (j :: τ) (D.ctxAt Γ₀ τ))
+                      (WFF.fold hO x hx θ).neg) =
+                    (WFF.mono hle (WFF.fold hO x hx θ)).neg := by rw [WFF.mono_mono]; rfl
                 refine (congrArg (fun y => Provable (tr D Δ Θ f (j :: τ) :: [y])
-                  (WFF.mono hle θ).neg) e').mpr (lk (List.mem_cons_of_mem _ List.mem_cons_self))
+                  (WFF.mono hle (WFF.fold hO x hx θ)).neg) e').mpr
+                  (lk (List.mem_cons_of_mem _ List.mem_cons_self))
             · simp only [List.map_cons, List.map_nil, List.mem_cons, List.not_mem_nil,
                 or_false] at hℓ
               rcases hℓ with rfl | rfl
@@ -877,6 +1151,61 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
             exact conj_elim ((lk List.mem_cons_self).map .and_elim_r) _
               (List.mem_map_of_mem (f := fun k => pack D (D.ctxAt Γ₀ τ) (k :: τ)
                 (Pc D Δ Θ f (k :: τ))) hj)
+  | @optL n D Δ Θ hO τ κ y hy ψ hle h _ ih =>
+      intro hok hW d hi
+      obtain ⟨hr, hτ⟩ : D.Reach τ ∧ τ.length + (n + 1) < d := hi.left _ h id
+      obtain ⟨X, hX⟩ := id hy
+      have hk := Tree.ctxAt_addOpen (D := D) (Γ₀ := Γ₀) τ κ y
+      have hok' := hok.addOpen hO hX
+      have q := ih hok' (hW.addOpen τ κ y) d (inv_grow hk hi (fun _ h => h) (τ := τ) hr
+        (by omega) [⟨τ, WFF.mono hle ψ⟩] [] (by simp))
+      have ho : (D.addOpen τ κ y).opensAt τ = (κ, y) :: D.opensAt τ := by
+        rw [Tree.opensAt_addOpen, if_pos rfl]
+      have hWe : ((Vw (D.addOpen τ κ y) Γ₀ τ).inserts (D.birthsAt τ)).optInsK (D.opensAt τ) =
+          D.ctxAt Γ₀ τ := by rw [vw_open_eq, ← ctxAt_eq_vw]
+      have hA : (D.ctxAt Γ₀ τ).Le (((Vw (D.addOpen τ κ y) Γ₀ τ).inserts (D.birthsAt τ)).optInsK
+          (D.opensAt τ)) := Ctx.le_of_eq hWe.symm
+      have hy' : ∃ X, (((Vw (D.addOpen τ κ y) Γ₀ τ).inserts (D.birthsAt τ)).optInsK
+          (D.opensAt τ)).witK κ y = some X := ⟨X, hA.witK hX⟩
+      have e₀ : (D.addOpen τ κ y).ctxAt Γ₀ τ = (((Vw (D.addOpen τ κ y) Γ₀ τ).inserts
+          (D.birthsAt τ)).optInsK (D.opensAt τ)).optInK κ y := by
+        rw [Tree.ctxAt_addOpen_self, hWe]
+      have hc := claim_path (Δ := Δ) (Θ := Θ) (d := d) (hk := hk) (hV := vw_le_addOpen τ κ y)
+        h0 hok hok' hW τ (by omega)
+        (fun σ' hσ => ag_open [⟨τ, WFF.mono hle ψ⟩] [] (by simp)
+          fun e => hσ (e ▸ List.suffix_refl _))
+        (claim_of_tr_open h0 hok hok' rfl ho hO hy' (Ctx.le_of_eq e₀) hA (by
+          have hpos := of_mono hA (f := d - τ.length)
+            (H := [WFF.mono hA (tr D Δ Θ (d - τ.length) τ)]) List.mem_cons_self
+            (in_content_l (Θ := Θ) h)
+          have loc : Provable [WFF.mono hle ψ, WFF.mono (hk τ) (tr D Δ Θ (d - τ.length) τ)]
+              (tr (D.addOpen τ κ y) ([⟨τ, WFF.mono hle ψ⟩] ++ Seq.mono hk Δ)
+                ([] ++ Seq.mono hk Θ) (d - τ.length) τ) := by
+            refine hole_grow (hk := hk) (hV := vw_le_addOpen τ κ y) hW
+              (List.mem_cons_of_mem _ List.mem_cons_self) rfl (fun _ => rfl)
+              (fun f' j _ _ => claim_sub h0 hok hok' hW f' (j :: τ) fun σ' hσ =>
+                ag_open [⟨τ, WFF.mono hle ψ⟩] [] (by simp) (not_sub_child hσ))
+              (fun φ' hφ => ?_)
+            rw [List.singleton_append, Seq.at_cons_self, Seq.at_mono, List.nil_append, Seq.at_mono,
+              List.cons_append, List.mem_cons, List.mem_append] at hφ
+            rcases hφ with rfl | hφ | hφ
+            · exact lk List.mem_cons_self
+            · obtain ⟨c, hc, rfl⟩ := List.mem_map.mp hφ
+              exact of_content (hk := hk) (List.mem_cons_of_mem _ List.mem_cons_self)
+                (List.mem_append_left _ hc)
+            · obtain ⟨y', hy'', rfl⟩ := List.mem_map.mp hφ
+              obtain ⟨c, hc, rfl⟩ := List.mem_map.mp hy''
+              exact of_content (hk := hk) (List.mem_cons_of_mem _ List.mem_cons_self)
+                (List.mem_append_right _ (List.mem_map_of_mem hc))
+          have q₂ := prov_cast e₀ loc
+          rw [List.map_cons, List.map_cons, List.map_nil, WFF.mono_mono, WFF.mono_mono] at q₂
+          refine chain hpos (sub (by lsub) (opt_mono hO κ y hy'
+            (H := [WFF.mono hA (tr D Δ Θ (d - τ.length) τ)]) ?_))
+          rw [List.map_cons, List.map_nil, WFF.mono_mono]
+          exact q₂))
+      unfold Claim at hc
+      rw [WFF.mono_refl] at hc
+      exact chain hc (sub (by lsub) q)
   | @allR n D Δ Θ τ hs v T hv φ hle h _ ih =>
       intro hok hW d hi
       obtain ⟨hr, hτ⟩ : D.Reach τ ∧ τ.length + (n + 1) < d := hi.right _ h
@@ -887,22 +1216,31 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
       have hb : (D.addBirth τ (.free v) T).birthsAt τ = (.free v, T) :: D.birthsAt τ := by
         rw [Tree.birthsAt_addBirth, if_pos rfl]
       have hWe := vw_birth_eq (Γ₀ := Γ₀) (D := D) (v := v) (T := T) τ
-      have hfr : ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).RootFresh
-          (.free v) := by rw [hWe]; exact hv.at τ
-      have hsW : ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).SlotsFrom 0 := by
-        rw [hWe]; exact hs
-      haveI : ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).NoSlots := ⟨hsW⟩
+      have hWe' : ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).optInsK
+          (D.opensAt τ) = D.ctxAt Γ₀ τ := by rw [hWe, Tree.ctxAt_eq_pre]
+      have hbO : ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).OptsEff
+          (D.opensAt τ) := by rw [hWe]; exact hok.eff τ
+      have hfr : (((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).optInsK
+          (D.opensAt τ)).RootFresh (.free v) := by rw [hWe']; exact hv.at τ
+      have hfrP := Ctx.RootFresh.of_le (Ctx.le_optInsK _ _) hfr
+      have hsW : (((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).optInsK
+          (D.opensAt τ)).SlotsFrom 0 := by rw [hWe']; exact hs
+      have hsP : ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).SlotsFrom 0 :=
+        hsW.of_le (Ctx.le_optInsK _ _)
+      haveI : (((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).optInsK
+          (D.opensAt τ)).NoSlots := ⟨hsW⟩
       have e₀ : (D.addBirth τ (.free v) T).ctxAt Γ₀ τ =
-          ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).insert (.free v) T := by
+          (((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).optInsK
+            (D.opensAt τ)).insert (.free v) T := by
         rw [ctxAt_eq_vw (D.addBirth τ (.free v) T) τ, hb]
-        rfl
-      have hA : (D.ctxAt Γ₀ τ).Le ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)) :=
-        Ctx.le_of_eq hWe.symm
+        exact (Ctx.insert_optInsK_eq hfrP T hbO).symm
+      have hA : (D.ctxAt Γ₀ τ).Le (((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts
+          (D.birthsAt τ)).optInsK (D.opensAt τ)) := Ctx.le_of_eq hWe'.symm
       have hc := claim_path (Δ := Δ) (Θ := Θ) (d := d) (hk := hk) (hV := vw_le_addBirth hv τ T)
         h0 hok hok' hW τ (by omega)
         (fun σ' hσ => ag_birth hv [] [⟨τ, WFF.mono hle φ⟩] (by simp)
           fun e => hσ (e ▸ List.suffix_refl _))
-        (claim_of_tr_cons h0 hok hok' hb hfr hsW (Ctx.le_of_eq e₀) hA (by
+        (claim_of_tr_cons h0 hok hok' hb rfl hbO hfr hsP (Ctx.le_of_eq e₀) hA (by
           have hneg := of_mono hA (f := d - τ.length)
             (H := [WFF.mono hA (tr D Δ Θ (d - τ.length) τ)]) List.mem_cons_self
             (in_content_r (Δ := Δ) h)
@@ -957,22 +1295,31 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
       have hb : (D.addBirth τ (.free v) T).birthsAt τ = (.free v, T) :: D.birthsAt τ := by
         rw [Tree.birthsAt_addBirth, if_pos rfl]
       have hWe := vw_birth_eq (Γ₀ := Γ₀) (D := D) (v := v) (T := T) τ
-      have hfr : ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).RootFresh
-          (.free v) := by rw [hWe]; exact hv.at τ
-      have hsW : ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).SlotsFrom 0 := by
-        rw [hWe]; exact hs
-      haveI : ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).NoSlots := ⟨hsW⟩
+      have hWe' : ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).optInsK
+          (D.opensAt τ) = D.ctxAt Γ₀ τ := by rw [hWe, Tree.ctxAt_eq_pre]
+      have hbO : ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).OptsEff
+          (D.opensAt τ) := by rw [hWe]; exact hok.eff τ
+      have hfr : (((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).optInsK
+          (D.opensAt τ)).RootFresh (.free v) := by rw [hWe']; exact hv.at τ
+      have hfrP := Ctx.RootFresh.of_le (Ctx.le_optInsK _ _) hfr
+      have hsW : (((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).optInsK
+          (D.opensAt τ)).SlotsFrom 0 := by rw [hWe']; exact hs
+      have hsP : ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).SlotsFrom 0 :=
+        hsW.of_le (Ctx.le_optInsK _ _)
+      haveI : (((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).optInsK
+          (D.opensAt τ)).NoSlots := ⟨hsW⟩
       have e₀ : (D.addBirth τ (.free v) T).ctxAt Γ₀ τ =
-          ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).insert (.free v) T := by
+          (((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)).optInsK
+            (D.opensAt τ)).insert (.free v) T := by
         rw [ctxAt_eq_vw (D.addBirth τ (.free v) T) τ, hb]
-        rfl
-      have hA : (D.ctxAt Γ₀ τ).Le ((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts (D.birthsAt τ)) :=
-        Ctx.le_of_eq hWe.symm
+        exact (Ctx.insert_optInsK_eq hfrP T hbO).symm
+      have hA : (D.ctxAt Γ₀ τ).Le (((Vw (D.addBirth τ (.free v) T) Γ₀ τ).inserts
+          (D.birthsAt τ)).optInsK (D.opensAt τ)) := Ctx.le_of_eq hWe'.symm
       have hc := claim_path (Δ := Δ) (Θ := Θ) (d := d) (hk := hk) (hV := vw_le_addBirth hv τ T)
         h0 hok hok' hW τ (by omega)
         (fun σ' hσ => ag_birth hv [⟨τ, WFF.mono hle φ⟩] [] (by simp)
           fun e => hσ (e ▸ List.suffix_refl _))
-        (claim_of_tr_cons h0 hok hok' hb hfr hsW (Ctx.le_of_eq e₀) hA (by
+        (claim_of_tr_cons h0 hok hok' hb rfl hbO hfr hsP (Ctx.le_of_eq e₀) hA (by
           have hpos := of_mono hA (f := d - τ.length)
             (H := [WFF.mono hA (tr D Δ Θ (d - τ.length) τ)]) List.mem_cons_self
             (in_content_l (Θ := Θ) h)
@@ -1020,7 +1367,7 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
       obtain ⟨hr, hτ⟩ : D.Reach τ ∧ τ.length + (n + 1) < d := hi.right _ h
       have hc := hv.edge _ (List.suffix_refl _)
       have hk := Tree.ctxAt_addEdge (Γ₀ := Γ₀) hc EdgeKind.box
-      have hok' := hok.addEdge (k :: τ) EdgeKind.box
+      have hok' := hok.addEdge hc EdgeKind.box
       have he₀ : (D.addEdge (k :: τ) .box).edge (k :: τ) = some .box := by
         rw [Tree.edge_addEdge, if_pos rfl]
       have hrc : (D.addEdge (k :: τ) .box).Reach (k :: τ) :=
@@ -1035,7 +1382,7 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
         (fun σ' hσ => ag_edge hc [] [⟨k :: τ, WFF.mono hle φ⟩] (by simp)
           (fun e => hσ (e ▸ List.suffix_refl _))
           fun e => hσ (by rw [e]; exact List.suffix_cons k τ))
-        (claim_of_tr h0 hok hok' rfl (by
+        (claim_of_tr h0 hok hok' rfl rfl (by
           obtain ⟨f', hf⟩ : ∃ f', d - τ.length = f' + 1 := ⟨d - τ.length - 1, by omega⟩
           rw [hf]
           refine hole_tr (fun φ' hφ => ?_) (fun j hj => ?_)
@@ -1051,7 +1398,7 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
           rcases (mem_children_addEdge .box).mp hj with rfl | hj
           · rw [pack_box (Or.inr he₀)]
             have hy := new_child (D' := D.addEdge (j :: τ) .box) (Δ' := [] ++ Seq.mono hk Δ)
-              (Θ' := [⟨j :: τ, WFF.mono hle φ⟩] ++ Seq.mono hk Θ) (f := f') hv.birthsAt
+              (Θ' := [⟨j :: τ, WFF.mono hle φ⟩] ++ Seq.mono hk Θ) (f := f') hv.birthsAt hv.opensAt
               (fun i => by
                 rw [Tree.edge_addEdge, if_neg fun h' => by
                   have := congrArg List.length h'; simp at this]
@@ -1087,7 +1434,7 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
       obtain ⟨hr, hτ⟩ : D.Reach τ ∧ τ.length + (n + 1) < d := hi.left _ h id
       have hc := hv.edge _ (List.suffix_refl _)
       have hk := Tree.ctxAt_addEdge (Γ₀ := Γ₀) hc (EdgeKind.dia x)
-      have hok' := hok.addEdge (k :: τ) (EdgeKind.dia x)
+      have hok' := hok.addEdge hc (EdgeKind.dia x)
       have he₀ : (D.addEdge (k :: τ) (.dia x)).edge (k :: τ) = some (.dia x) := by
         rw [Tree.edge_addEdge, if_pos rfl]
       have hrc : (D.addEdge (k :: τ) (.dia x)).Reach (k :: τ) :=
@@ -1107,7 +1454,7 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
         (fun σ' hσ => ag_edge hc [⟨k :: τ, WFF.mono hle ψ⟩] [] (by simp)
           (fun e => hσ (e ▸ List.suffix_refl _))
           fun e => hσ (by rw [e]; exact List.suffix_cons k τ))
-        (claim_of_tr h0 hok hok' rfl (by
+        (claim_of_tr h0 hok hok' rfl rfl (by
           obtain ⟨f', hf⟩ : ∃ f', d - τ.length = f' + 1 := ⟨d - τ.length - 1, by omega⟩
           rw [hf]
           refine hole_tr (fun φ' hφ => ?_) (fun j hj => ?_)
@@ -1124,7 +1471,7 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
           · rw [pack_dia he₀ hx']
             have hy := new_child (D' := D.addEdge (j :: τ) (.dia x))
               (Δ' := [⟨j :: τ, WFF.mono hle ψ⟩] ++ Seq.mono hk Δ)
-              (Θ' := [] ++ Seq.mono hk Θ) (f := f') hv.birthsAt
+              (Θ' := [] ++ Seq.mono hk Θ) (f := f') hv.birthsAt hv.opensAt
               (fun i => by
                 rw [Tree.edge_addEdge, if_neg fun h' => by
                   have := congrArg List.length h'; simp at this]
@@ -1158,7 +1505,7 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
       intro hok hW d hi
       have hc := hv.edge _ (List.suffix_refl _)
       have hk := Tree.ctxAt_addEdge (Γ₀ := Γ₀) hc EdgeKind.box
-      have hok' := hok.addEdge (k :: τ) EdgeKind.box
+      have hok' := hok.addEdge hc EdgeKind.box
       have he₀ : (D.addEdge (k :: τ) .box).edge (k :: τ) = some .box := by
         rw [Tree.edge_addEdge, if_pos rfl]
       have q := ih hok' (hW.addEdge hc .box fun _ _ _ _ he => by cases he) d
@@ -1182,7 +1529,7 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
           h0 hok hok' hW τ hτd
           (fun σ' hσ => ag_edge hc [] [] (by simp) (fun e => hσ (e ▸ List.suffix_refl _))
             fun e => hσ (by rw [e]; exact List.suffix_cons k τ))
-          (claim_of_tr h0 hok hok' rfl (by
+          (claim_of_tr h0 hok hok' rfl rfl (by
             cases hf : d - τ.length with
             | zero =>
                 rw [tr_zero (D.addEdge (k :: τ) .box)]
@@ -1193,7 +1540,7 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
                 · rw [pack_box (Or.inr he₀)]
                   have hy := new_child (D' := D.addEdge (j :: τ) .box)
                     (Δ' := [] ++ Seq.mono hk Δ) (Θ' := [] ++ Seq.mono hk Θ) (f := f')
-                    hv.birthsAt (fun i => by
+                    hv.birthsAt hv.opensAt (fun i => by
                       rw [Tree.edge_addEdge, if_neg fun h' => by
                         have := congrArg List.length h'; simp at this]
                       exact hv.edge _ (List.suffix_cons i _)) (y := .top)
@@ -1227,7 +1574,7 @@ theorem toND [Γ₀.Presented] {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (p 
           h0 hok hok' hW (τ.drop (τ.length - d)) hl₀.le
           (fun σ' hσ => ag_edge hc [] [] (by simp) (fun e => hσ (by rw [e]; exact hs₀))
             fun e => hσ (by rw [e]; exact hs₀.trans (List.suffix_cons k τ)))
-          (claim_of_tr h0 hok hok' rfl (by
+          (claim_of_tr h0 hok hok' rfl rfl (by
             rw [show d - (τ.drop (τ.length - d)).length = 0 by omega]
             exact step0 (ag_edge hc [] [] (by simp) hne₀ hne₁)))
         unfold Claim at hc'
@@ -1268,9 +1615,10 @@ theorem toND_root [Γ₀.Presented] {n : ℕ} {Δ Θ : List (WFF σ Γ₀ 0)}
 
 end GKN
 
-/-- ⭐**ND and cut-free `GKN` prove the same sequents** (K and KD, `Opt` off, over a presented
-    context): `GKN.ofProof` one way, `GKN.toND_root` the other. -/
-theorem GKN.provable_iff [ModalSys.GKSys] (hF : ModalSys.Four = false) {σ : Signature} {Γ₀ : Ctx}
+/-- ⭐**ND and cut-free `GKN` prove the same sequents** (K and KD, `Opt` on or off, and KT and
+    KDT, over a presented context): `GKN.ofProof` one way, `GKN.toND_root` the other. -/
+theorem GKN.provable_iff [ModalSys.GKBase] (hF : ModalSys.Four = false)
+    {σ : Signature} {Γ₀ : Ctx}
     [Γ₀.Presented] {Δ : List (WFF σ Γ₀ 0)} {φ : WFF σ Γ₀ 0} :
     Provable Δ φ ↔ ∃ m, GKN σ Γ₀ m {} (Δ.map fun ψ => ⟨[], ψ⟩) [⟨[], φ⟩] := by
   refine ⟨fun ⟨p⟩ => GKN.ofProof hF p, fun ⟨m, d⟩ => ?_⟩

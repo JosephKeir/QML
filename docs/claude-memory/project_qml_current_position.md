@@ -595,9 +595,14 @@ permLeft/permRight cases optL/reopenR/foldR/diaR; principal reopen-vs-opt (redun
 relabelled away, cut ◇⁰ then χ) and fold-vs-dia (◇_x child retargeted onto the fold's child in
 D.addOpen c arrow x, cut ◇_x, optL, cut the fold, lighter); 0 sorry): GKN.cut holds for K and
 KD with or without Opt.
-BROKEN NEXT (builds stop here): GKNTrans/GKNToND — the reading must close a node's openings by
-◇⁰ inside its births: Pc = closeB births (closeO opens tr); closeO (head innermost, dite on
-Opt ∧ witness like closeB's RootFresh guard); ND lemmas closeO_or, closeO_bot, mono_closeO by
-Proof.K_opt / Proof.opt_bot (as dia_or); ~47 closeB sites; rule holes: optL = K_opt, reopenR =
-opt_reopen, foldR = opt_dia + pack_side, diaR into an opened child = foldR+reopenR. Then
-GKNEmbed with Opt (GK's optL, reopenR, folds → GKN) and GKN.provable_iff for Opt on.
+GKN STEP 2a COMPLETE (2026-11-17, part 2 uncommitted): GKNTrans (closeO, closeN, NOK, opt_or,
+opt_bot', ⭐opt_ex = Barcan for ◇⁰ (needed: births sit before openings in a node's context),
+closeO_ex, Tree.nok), GKNToND (closed_cons_of/claim_of_tr_cons via closeO_ex, claim_of_tr_open,
+ag_open, vw_open_eq, cases optL/reopenR/foldR, diaR into an opened child; section NoT),
+GKNEmbed (foldR_list, foldK_list, GK optL/reopenR, folds in boxR/diaL/serial; GKBase+NoT),
+⭐GKN.provable_iff for K/KD with Opt on or off.
+GKN STEP 2b PROGRESS 1 (2026-11-17, uncommitted, strict build green): rules TL/diaT; relabel,
+embed, GKNSubst fully general (openS_stage, openS_contentT', fam_contentT, address induction in
+fam_agree/fam_ren_aux, rootsRen_okCoh T clauses, subst cases TL/diaT/ident optL/reopenR),
+toND TL/diaT; ⭐GKN.provable_iff for K/KD/KT/KDT. LEFT: tree-level cut with T (GKNCut still
+NoT; dismisses TL/diaT): GKN.collapse (docs §12.50 (v)) + principal boxR/TL, diaT/diaL.

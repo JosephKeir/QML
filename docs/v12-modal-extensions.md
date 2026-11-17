@@ -18784,3 +18784,31 @@ is semantic, `Ctx.Opened`); `GKNSubst` (T off, `Opt` general: the family opens w
 opens, and re-opening an opened witness changes nothing, `openS_agree`); `GKNCut` (the two new
 principal cases as checked on paper).  So **cut is admissible in `GKN` for K and KD with `Opt`**.
 Left: the reading into ND (`closeO`, item (iv)) and the embedding of `GK` with `Opt`.
+
+**Step 2a complete (2026-11-17).**  The reading (item (iv)): a node closes its openings by `◇⁰`
+inside its births' `∃` (`closeO`, `closeN = closeB ∘ closeO`; ND layer `opt_or`, `opt_bot'`,
+`closeO_or`, `closeO_bot`, `mono_closeO`).  One fact the paper check missed: because a node's
+context puts births before openings, **a birth made after an opening needs Barcan for `◇⁰`**,
+`◇⁰_y ∃u φ ⊢ ∃u ◇⁰_y φ` (`opt_ex`, then `closeO_ex` over a node's list).  Valid, since `◇⁰` crosses
+no world, and derivable with no new rule: `opt_bot'` against the negated conclusion, `∃`-elimination
+inside the view, `opt_reopen` there (the witness is opened), with the context equality
+`Ctx.insert_optInsK_eq` (a birth commutes with effective openings).  The rules' holes: `optL` by
+`K_opt` (`claim_of_tr_open`), `reopenR` by `opt_reopen`, `foldR` by the bridge contraposed
+(`box_fold_neg`) and `pack_side`, `diaR` into an opened child as `foldR` then `opt_reopen` inside.
+The embedding of `GK` with `Opt` (`optL`, `reopenR`, and the folds of `boxR`/`diaL`/`serial` as
+`foldR` at the new child, `foldK_list`).  So **`GKN.provable_iff`: ND and cut-free `GKN` prove the
+same sequents for K and KD, `Opt` on or off**, with `GKN.cut`.  Next: 2b (T, the collapse).
+
+**Step 2b, progress 1 (2026-11-17, uncommitted).**  `GKN` has T's rules `TL` and `diaT`, local at
+a node.  Relabelling and the embedding of `GK` take them (and identity openings) directly.
+**Tree substitution is general** (T included): an identity opening's content is the possible
+object's entry read at the identity arrow (`atBody`), taken at the stage the opening was made
+(`openS_stage`: later openings keep what a stage declared; `fam_contentT`).  So the agreement
+and identity lemmas go by induction on addresses (`fam_agree`'s `key`, `fam_ren_aux`): `y.at`
+needs the entry along `y`.  The reading takes `TL` by `T_box` and `diaT` by the bridge and
+`T_box` (`WFF.collapse_fold`).  So **`GKN.provable_iff` holds for K, KD, KT and KDT** (`Opt` on
+or off where T is off).  Left for 2b: **the tree-level cut with T** (`GKNCut` is still T off):
+the collapse relabelling of item (v), `GKN.collapse`, and the principal cases `boxR`/`TL` and
+`diaT`/`diaL`.  For end sequents cut is already admissible with T, through ND
+(`GKN.provable_iff`, whose ND → `GKN` direction goes through `GK`'s cut).
+

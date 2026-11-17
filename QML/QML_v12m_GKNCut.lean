@@ -17,7 +17,8 @@ weight of `A`, then on the sum of the heights (`GKN.CutIH`).
   `boxL` (`diaR`) used (`GKN.retargetR`/`L`); quantifiers: the eigenvariable unbound by the term
   (`GKN.instance_allR`/`exL`).
 
-K and KD, `Opt` off; the trees carry `Tree.OK` and `Tree.WitOK`, over a presented context.
+K and KD, `Opt` on or off (T off); the trees carry `Tree.OK` and `Tree.WitOK`, over a presented
+context.
 -/
 
 namespace V12M
@@ -429,6 +430,8 @@ theorem permLeft {w s : ℕ} (ih : CutIH σ Γ₀ w s) {D : Tree} (hok : D.OK Γ
       · obtain ⟨k', d⟩ := upL ih hok hW hw (by omega) q (List.Subset.refl _)
           (sub_cons ⟨k :: τ', WFF.mono hle θ⟩ Θ) p₁ (by wk)
         exact .inl ⟨k' + 1, .diaR τ' k e x hx he hf hle h d⟩
+  | TL hT => exact (ModalSys.NoT.absurd hT).elim
+  | diaT hT => exact (ModalSys.NoT.absurd hT).elim
   | @optL n' _ _ _ hO τ' κ y hy ψ hle h p₁ =>
       obtain ⟨X, hX⟩ := id hy
       have hk := Tree.ctxAt_addOpen (D := D) (Γ₀ := Γ₀) τ' κ y
@@ -598,6 +601,8 @@ theorem permRight {w s : ℕ} (ih : CutIH σ Γ₀ w s) {D : Tree} (hok : D.OK �
       obtain ⟨k', d⟩ := upR ih hok hW hw (by omega) p (List.Subset.refl _) (sub_cons _ _) q₁
         (List.Subset.refl _)
       exact .inl ⟨k' + 1, .diaR τ' k e x hx he hf hle h d⟩
+  | TL hT => exact (ModalSys.NoT.absurd hT).elim
+  | diaT hT => exact (ModalSys.NoT.absurd hT).elim
   | @reopenR m' _ _ _ hO τ' κ y hy χ h q₁ =>
       obtain ⟨k', d⟩ := upR ih hok hW hw (by omega) p (List.Subset.refl _) (sub_cons _ _) q₁
         (List.Subset.refl _)

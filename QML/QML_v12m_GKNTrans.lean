@@ -145,6 +145,27 @@ theorem closeB_cons {V : Ctx} {u : ℕ} {T : VarType} {L : List (Root × VarType
   rw [dif_pos ⟨hu, hs⟩]
 
 open Classical in
+/-- The openings closed by `◇⁰`, the head innermost (as `closeB` binds the births). -/
+noncomputable def closeO {P : Ctx} :
+    (L : List (WitKind × VarSymb)) → WFF σ (P.optInsK L) 0 → WFF σ P 0
+  | [], φ => φ
+  | o :: L, φ => closeO L (if h : ModalSys.Opt = true ∧ ∃ X, (P.optInsK L).witK o.1 o.2 = some X
+      then .optx h.1 o.1 o.2 h.2 φ else .top)
+
+open Classical in
+theorem closeO_cons {P : Ctx} {κ : WitKind} {y : VarSymb} {L : List (WitKind × VarSymb)}
+    (hO : ModalSys.Opt = true) (hy : ∃ X, (P.optInsK L).witK κ y = some X)
+    (φ : WFF σ (P.optInsK ((κ, y) :: L)) 0) :
+    closeO ((κ, y) :: L) φ = closeO L (.optx hO κ y hy φ) := by
+  change closeO L (dite _ _ _) = _
+  rw [dif_pos ⟨hO, hy⟩]
+
+/-- A node's closure: its openings by `◇⁰`, then its births by `∃`. -/
+noncomputable def closeN {V : Ctx} (B : List (Root × VarType)) (O : List (WitKind × VarSymb))
+    (φ : WFF σ ((V.inserts B).optInsK O) 0) : WFF σ V 0 :=
+  closeB B (closeO O φ)
+
+open Classical in
 /-- A child's reading behind its edge: `◇_x` for a `◇_x`-edge, `¬□¬` otherwise. -/
 noncomputable def pack (D : Tree) (Γ : Ctx) (c : Lab) (φ : WFF σ (D.view c Γ) 0) : WFF σ Γ 0 :=
   match he : D.edge c with
@@ -190,8 +211,8 @@ noncomputable def tr (D : Tree) (Δ Θ : Seq σ Γ₀ D) : ℕ → (ρ : Lab) �
   | d + 1, ρ => (conj (Δ.at ρ ++ (Θ.at ρ).map WFF.neg)).and
       (conj ((D.children ρ).map fun k =>
         pack D (D.ctxAt Γ₀ ρ) (k :: ρ)
-          (closeB (V := D.view (k :: ρ) (D.ctxAt Γ₀ ρ)) (D.birthsAt (k :: ρ))
-            (tr D Δ Θ d (k :: ρ)))))
+          (closeN (V := D.view (k :: ρ) (D.ctxAt Γ₀ ρ)) (D.birthsAt (k :: ρ))
+            (D.opensAt (k :: ρ)) (tr D Δ Θ d (k :: ρ)))))
 
 /-- The context a node's closed reading lives in: the end sequent's at the root, the edge's view
     of the parent's below. -/
@@ -201,9 +222,9 @@ def Vw (D : Tree) (Γ₀ : Ctx) : Lab → Ctx
 
 /-- ⭐**The closed reading of a node**: its reading with its births bound. -/
 noncomputable def Pc (D : Tree) (Δ Θ : Seq σ Γ₀ D) (d : ℕ) : (ρ : Lab) → WFF σ (Vw D Γ₀ ρ) 0
-  | [] => closeB (V := Γ₀) (D.birthsAt []) (tr D Δ Θ d [])
-  | k :: ρ => closeB (V := D.view (k :: ρ) (D.ctxAt Γ₀ ρ)) (D.birthsAt (k :: ρ))
-      (tr D Δ Θ d (k :: ρ))
+  | [] => closeN (V := Γ₀) (D.birthsAt []) (D.opensAt []) (tr D Δ Θ d [])
+  | k :: ρ => closeN (V := D.view (k :: ρ) (D.ctxAt Γ₀ ρ)) (D.birthsAt (k :: ρ))
+      (D.opensAt (k :: ρ)) (tr D Δ Θ d (k :: ρ))
 
 theorem tr_succ (D : Tree) (Δ Θ : Seq σ Γ₀ D) (d : ℕ) (ρ : Lab) :
     tr D Δ Θ (d + 1) ρ = (conj (Δ.at ρ ++ (Θ.at ρ).map WFF.neg)).and
@@ -426,6 +447,218 @@ theorem mono_closeB : ∀ {V V' : Ctx} (h : V.Le V') {L : List (Root × VarType)
       change WFF.ex T (WFF.mono ((h.inserts L).insert (.bnd 0) T) _) = _
       rw [WFF.mono_bindFree (h.inserts L) hfr hfr' hL₁.slots hL₁'.slots T A]
 
+/-! ## Opening the witnesses -/
+
+/-- `□⁰` of a negation from the negated `◇⁰`. -/
+theorem optBox_neg (hO : ModalSys.Opt = true) (κ : WitKind) (y : VarSymb)
+    (hy : ∃ X, Γ.witK κ y = some X) {H : List (WFF σ Γ 0)} {B : WFF σ (Γ.optInK κ y) 0}
+    (h : (WFF.optx hO κ y hy B).neg ∈ H) : Provable H (WFF.optBox hO κ y hy B.neg) := by
+  refine lam ?_
+  obtain ⟨q⟩ : Provable [B.neg.neg] B := dne (lk List.mem_cons_self)
+  have r : Proof σ Γ (WFF.optx hO κ y hy B.neg.neg ::
+      (([] : List (WFF σ (Γ.optInK κ y) 0)).map (WFF.optBox hO κ y hy) ++ []))
+      (WFF.optx hO κ y hy B) := Proof.K_opt hO κ y hy (Δ₁ := []) (Δ₂ := []) q
+  exact contra (List.mem_cons_of_mem _ h) (sub (by lsub) ⟨r⟩)
+
+/-- ⭐`◇⁰` is monotone and distributes over `∨`, with side hypotheses (no world crossed). -/
+theorem opt_or (hO : ModalSys.Opt = true) (κ : WitKind) (y : VarSymb)
+    (hy : ∃ X, Γ.witK κ y = some X) {H : List (WFF σ Γ 0)} {A B₁ B₂ : WFF σ (Γ.optInK κ y) 0}
+    (p : Provable (A :: H.map (WFF.mono (Ctx.le_optInK Γ κ y))) (B₁.or B₂)) :
+    Provable (.optx hO κ y hy A :: H) ((WFF.optx hO κ y hy B₁).or (WFF.optx hO κ y hy B₂)) := by
+  have k : Provable (A :: ([B₁.neg, B₂.neg] ++ H.map (WFF.mono (Ctx.le_optInK Γ κ y)))) .bot :=
+    or_cases (sub (by lsub) p) (contra (by simp) (lk List.mem_cons_self))
+      (contra (by simp) (lk List.mem_cons_self))
+  obtain ⟨k⟩ := k
+  refine byContra ((dis ⟨Proof.K_opt hO κ y hy (Δ₁ := H) (Δ₂ := [B₁.neg, B₂.neg]) k⟩ ?_).map
+    (.opt_bot hO κ y hy))
+  intro ℓ hℓ
+  simp only [List.map_cons, List.map_nil, List.cons_append, List.nil_append,
+    List.mem_cons] at hℓ
+  rcases hℓ with rfl | rfl | rfl | hℓ
+  · exact lk (List.mem_cons_of_mem _ List.mem_cons_self)
+  · exact dis (L := [_]) (optBox_neg hO κ y hy List.mem_cons_self) fun ℓ hℓ => by
+      rw [List.mem_singleton.mp hℓ]
+      exact lam (contra (List.mem_cons_of_mem _ List.mem_cons_self) (orl _ (lk List.mem_cons_self)))
+  · exact dis (L := [_]) (optBox_neg hO κ y hy List.mem_cons_self) fun ℓ hℓ => by
+      rw [List.mem_singleton.mp hℓ]
+      exact lam (contra (List.mem_cons_of_mem _ List.mem_cons_self) (orr _ (lk List.mem_cons_self)))
+  · exact lk (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ hℓ))
+
+/-- `◇⁰` keeps a refutation. -/
+theorem opt_bot' (hO : ModalSys.Opt = true) (κ : WitKind) (y : VarSymb)
+    (hy : ∃ X, Γ.witK κ y = some X) {H : List (WFF σ Γ 0)} {A : WFF σ (Γ.optInK κ y) 0}
+    (p : Provable (A :: H.map (WFF.mono (Ctx.le_optInK Γ κ y))) .bot) :
+    Provable (.optx hO κ y hy A :: H) .bot := by
+  obtain ⟨p⟩ := sub (L' := A :: (([] : List (WFF σ (Γ.optInK κ y) 0)) ++
+    H.map (WFF.mono (Ctx.le_optInK Γ κ y)))) (by lsub) p
+  exact sub (by lsub) ⟨.opt_bot hO κ y hy (Proof.K_opt hO κ y hy (Δ₂ := []) p)⟩
+
+
+/-- ⭐**Barcan for `◇⁰`**: `◇⁰_y ∃u A ⊢ ∃u ◇⁰_y A`, no world crossed; the body carried along the
+    birth's commutation with the opening (`hc`).  By `opt_bot'` against the negated conclusion,
+    `∃`-elimination inside the view, and `opt_reopen` there (`y` is opened). -/
+theorem opt_ex [Γ.NoSlots] (hO : ModalSys.Opt = true) (κ : WitKind) (y : VarSymb)
+    (hy : ∃ X, Γ.witK κ y = some X) {u : ℕ} (T : VarType) (hu : Γ.RootFresh (.free u))
+    (hu₁ : (Γ.optInK κ y).RootFresh (.free u))
+    (hy' : ∃ X, (Γ.insert (.free u) T).witK κ y = some X)
+    (hc : ((Γ.optInK κ y).insert (.free u) T).Le ((Γ.insert (.free u) T).optInK κ y))
+    (A : WFF σ ((Γ.optInK κ y).insert (.free u) T) 0) :
+    Provable [WFF.optx hO κ y hy (.ex T (WFF.bindFree u hu₁ Ctx.NoSlots.slots T A))]
+      (.ex T (WFF.bindFree u hu Ctx.NoSlots.slots T (WFF.optx hO κ y hy' (WFF.mono hc A)))) := by
+  obtain ⟨X₀, hX₀⟩ := id hy
+  have hle := Ctx.le_optInK Γ κ y
+  set B₀ := WFF.optx hO κ y hy' (WFF.mono hc A) with hB₀
+  set X := (WFF.ex T (WFF.bindFree u hu Ctx.NoSlots.slots T B₀) : WFF σ Γ 0) with hX
+  have hop : ((Γ.optInK κ y).insert (.free u) T).Opened κ y :=
+    (Ctx.opened_self hX₀).mono (Ctx.le_insert hu₁.root T)
+  have hB : Provable [A] (WFF.mono (hle.insert (.free u) T) B₀) := by
+    have r := Proof.opt_reopen hO κ y hop (Proof.lookup (Δ := [A]) List.mem_cons_self)
+    refine (congrArg (Provable [A]) ?_).mp ⟨r⟩
+    change WFF.optx hO κ y _ (WFF.mono (Ctx.le_optInK _ κ y) A) =
+      WFF.optx hO κ y _ (WFF.mono ((hle.insert (.free u) T).optInK κ y) (WFF.mono hc A))
+    rw [WFF.mono_mono]
+  have hmX : WFF.mono hle X = .ex T (WFF.bindFree u hu₁ Ctx.NoSlots.slots T
+      (WFF.mono (hle.insert (.free u) T) B₀)) := by
+    change WFF.ex T (WFF.mono (hle.insert (.bnd 0) T) _) = _
+    rw [WFF.mono_bindFree hle hu hu₁ Ctx.NoSlots.slots Ctx.NoSlots.slots T B₀]
+  have hXw : Provable [A] ((WFF.mono hle X).weaken hu₁.root T) := by
+    rw [hmX]
+    exact ex_self hu₁ T hB
+  refine byContra (sub (by lsub) (opt_bot' hO κ y hy (H := [X.neg]) ?_))
+  obtain ⟨q⟩ : Provable (A :: ([WFF.ex T (WFF.bindFree u hu₁ Ctx.NoSlots.slots T A),
+      WFF.mono hle X.neg]).map (WFF.weaken hu₁.root T)) .bot :=
+    contra (φ := (WFF.mono hle X).weaken hu₁.root T)
+      (List.mem_cons_of_mem _ (List.mem_cons_of_mem _ List.mem_cons_self)) (sub (by lsub) hXw)
+  exact ⟨Proof.ex_elim u T hu₁ (ψ := .bot) (Proof.lookup List.mem_cons_self) q⟩
+
+end ND
+
+section ND
+
+variable {Γ : Ctx}
+
+/-- ⭐**Closing the openings is monotone and distributes over `∨`**, with side hypotheses. -/
+theorem closeO_or : ∀ {P : Ctx} {L : List (WitKind × VarSymb)} (_ : P.OptsEff L)
+    {H : List (WFF σ P 0)} {A B₁ B₂ : WFF σ (P.optInsK L) 0},
+    Provable (A :: H.map (WFF.mono (Ctx.le_optInsK P L))) (B₁.or B₂) →
+    Provable (closeO L A :: H) ((closeO L B₁).or (closeO L B₂))
+  | _, [], _, H, _, _, _, p => by
+      rw [List.map_congr_left fun ψ _ => WFF.mono_refl _ ψ, List.map_id'] at p
+      exact p
+  | P, ⟨κ, y⟩ :: L, ⟨hL, hO, hy⟩, H, A, B₁, B₂, p => by
+      rw [closeO_cons hO hy, closeO_cons hO hy, closeO_cons hO hy]
+      refine closeO_or hL (opt_or hO κ y hy ?_)
+      rw [List.map_map]
+      refine (congrArg (fun H' => Provable (A :: H') (B₁.or B₂)) ?_).mp p
+      refine List.map_congr_left fun ψ _ => ?_
+      simp only [Function.comp, WFF.mono_mono]
+
+/-- Closing the openings keeps a refutation. -/
+theorem closeO_bot : ∀ {P : Ctx} {L : List (WitKind × VarSymb)} (_ : P.OptsEff L)
+    {H : List (WFF σ P 0)} {A : WFF σ (P.optInsK L) 0},
+    Provable (A :: H.map (WFF.mono (Ctx.le_optInsK P L))) .bot → Provable (closeO L A :: H) .bot
+  | _, [], _, H, _, p => by
+      rw [List.map_congr_left fun ψ _ => WFF.mono_refl _ ψ, List.map_id'] at p
+      exact p
+  | P, ⟨κ, y⟩ :: L, ⟨hL, hO, hy⟩, H, A, p => by
+      rw [closeO_cons hO hy]
+      refine closeO_bot hL (opt_bot' hO κ y hy ?_)
+      rw [List.map_map]
+      refine (congrArg (fun H' => Provable (A :: H') .bot) ?_).mp p
+      refine List.map_congr_left fun ψ _ => ?_
+      simp only [Function.comp, WFF.mono_mono]
+
+
+/-- ⭐**Barcan for a node's openings**: `closeO L (∃u A) ⊢ ∃u closeO L A`, the body carried along
+    the birth's commutation with the openings. -/
+theorem closeO_ex : ∀ {P : Ctx} {L : List (WitKind × VarSymb)} (_ : P.OptsEff L) {u : ℕ}
+    (T : VarType) (hs : P.SlotsFrom 0) (hu : P.RootFresh (.free u))
+    (hu₁ : (P.optInsK L).RootFresh (.free u)) (_ : (P.insert (.free u) T).OptsEff L)
+    (hc : ((P.optInsK L).insert (.free u) T).Le ((P.insert (.free u) T).optInsK L))
+    (A : WFF σ ((P.optInsK L).insert (.free u) T) 0),
+    Provable [closeO L (.ex T (WFF.bindFree u hu₁ (hs.optInsK L) T A))]
+      (.ex T (WFF.bindFree u hu hs T (closeO L (WFF.mono hc A))))
+  | _, [], _, _, T, _, _, _, _, hc, A => by
+      change Provable [WFF.ex T _] (WFF.ex T (WFF.bindFree _ _ _ T (WFF.mono hc A)))
+      rw [WFF.mono_refl]
+      exact lk List.mem_cons_self
+  | P, ⟨κ, y⟩ :: L, ⟨hL, hO, hy⟩, u, T, hs, hu, hu₁, ⟨hL', _, hy'⟩, hc, A => by
+      have hsQ := hs.optInsK L
+      haveI : (P.optInsK L).NoSlots := ⟨hsQ⟩
+      have huQ : (P.optInsK L).RootFresh (.free u) :=
+        Ctx.RootFresh.of_le (Ctx.le_optInK _ κ y) hu₁
+      have hyQ : ∃ X, ((P.optInsK L).insert (.free u) T).witK κ y = some X :=
+        hy.imp fun _ h => (Ctx.le_insert huQ.root T).witK h
+      have hc₁ := Ctx.insert_optInK_le huQ T κ y
+      have hcL := Ctx.insert_optInsK_le hu T L
+      have s₁ := opt_ex hO κ y hy T huQ hu₁ hyQ hc₁ A
+      have s₂ : Provable [closeO L (WFF.optx hO κ y hy
+          (.ex T (WFF.bindFree u hu₁ (hs.optInsK ((κ, y) :: L)) T A)))]
+          (closeO L (.ex T (WFF.bindFree u huQ hsQ T (WFF.optx hO κ y hyQ (WFF.mono hc₁ A))))) :=
+        or_cases (closeO_or hL (H := []) (orl _ s₁)) (lk List.mem_cons_self)
+          (lk List.mem_cons_self)
+      have ih := closeO_ex hL T hs hu huQ hL' hcL (WFF.optx hO κ y hyQ (WFF.mono hc₁ A))
+      have e : WFF.mono hcL (WFF.optx hO κ y hyQ (WFF.mono hc₁ A)) =
+          WFF.optx hO κ y hy' (WFF.mono hc A) := by
+        change WFF.optx hO κ y _ (WFF.mono (hcL.optInK κ y) (WFF.mono hc₁ A)) = _
+        rw [WFF.mono_mono]
+      rw [e] at ih
+      rw [closeO_cons hO hy, closeO_cons hO hy']
+      exact chain s₂ (sub (by lsub) ih)
+
+end ND
+
+/-- ⭐**Weakening commutes with closing the openings.** -/
+theorem mono_closeO : ∀ {P P' : Ctx} (h : P.Le P') {L : List (WitKind × VarSymb)}
+    (_ : P.OptsEff L) (_ : P'.OptsEff L) (A : WFF σ (P.optInsK L) 0),
+    WFF.mono h (closeO L A) = closeO L (WFF.mono (h.optInsK L) A)
+  | _, _, _, [], _, _, _ => rfl
+  | P, P', h, ⟨κ, y⟩ :: L, ⟨hL, hO, hy⟩, ⟨hL', _, hy'⟩, A => by
+      rw [closeO_cons hO hy, closeO_cons hO hy', mono_closeO h hL hL']
+      rfl
+
+/-- A node's closure is well formed: the births bind, the openings take effect. -/
+def NOK (V : Ctx) (B : List (Root × VarType)) (O : List (WitKind × VarSymb)) : Prop :=
+  BOK V B ∧ (V.inserts B).OptsEff O
+
+theorem NOK.le {V : Ctx} {B : List (Root × VarType)} {O : List (WitKind × VarSymb)}
+    (h : NOK V B O) : V.Le ((V.inserts B).optInsK O) :=
+  h.1.le.trans (Ctx.le_optInsK _ O)
+
+section ND
+
+theorem closeN_or {V : Ctx} {B : List (Root × VarType)} {O : List (WitKind × VarSymb)}
+    (hN : NOK V B O) {H : List (WFF σ V 0)} {A B₁ B₂ : WFF σ ((V.inserts B).optInsK O) 0}
+    (p : Provable (A :: H.map (WFF.mono hN.le)) (B₁.or B₂)) :
+    Provable (closeN B O A :: H) ((closeN B O B₁).or (closeN B O B₂)) := by
+  refine closeB_or hN.1 (closeO_or hN.2 ?_)
+  rw [List.map_map]
+  refine (congrArg (fun H' => Provable (A :: H') (B₁.or B₂)) ?_).mp p
+  refine List.map_congr_left fun ψ _ => ?_
+  simp only [Function.comp, WFF.mono_mono]
+
+theorem closeN_bot {V : Ctx} {B : List (Root × VarType)} {O : List (WitKind × VarSymb)}
+    (hN : NOK V B O) {H : List (WFF σ V 0)} {A : WFF σ ((V.inserts B).optInsK O) 0}
+    (p : Provable (A :: H.map (WFF.mono hN.le)) .bot) : Provable (closeN B O A :: H) .bot := by
+  refine closeB_bot hN.1 (closeO_bot hN.2 ?_)
+  rw [List.map_map]
+  refine (congrArg (fun H' => Provable (A :: H') .bot) ?_).mp p
+  refine List.map_congr_left fun ψ _ => ?_
+  simp only [Function.comp, WFF.mono_mono]
+
+end ND
+
+theorem mono_closeN {V V' : Ctx} (h : V.Le V') {B : List (Root × VarType)}
+    {O : List (WitKind × VarSymb)} (hN : NOK V B O) (hN' : NOK V' B O)
+    (A : WFF σ ((V.inserts B).optInsK O) 0) :
+    WFF.mono h (closeN B O A) = closeN B O (WFF.mono ((h.inserts B).optInsK O) A) := by
+  unfold closeN
+  rw [mono_closeB h hN.1 hN'.1, mono_closeO _ hN.2 hN'.2]
+
+section ND
+
+variable {Γ : Ctx}
+
 /-! ## Behind the edge -/
 
 theorem prov_cast {W W' : Ctx} (e : W = W') {L : List (WFF σ W 0)} {φ : WFF σ W 0}
@@ -551,6 +784,14 @@ theorem Tree.bok {D : Tree} (h0 : Γ₀.SlotsFrom 0) (hok : D.OK Γ₀) (ρ : La
       · exact hfr.diaIn _
       · exact hfr.boxIn
 
+/-- A node's closure is well formed over the context its closed reading lives in. -/
+theorem Tree.nok {D : Tree} (h0 : Γ₀.SlotsFrom 0) (hok : D.OK Γ₀) (ρ : Lab) :
+    NOK (Vw D Γ₀ ρ) (D.birthsAt ρ) (D.opensAt ρ) :=
+  ⟨Tree.bok h0 hok ρ, by
+    cases ρ with
+    | nil => exact hok.eff []
+    | cons k ρ => exact hok.eff (k :: ρ)⟩
+
 /-! ## ⭐From a node to the root, across a grown tree -/
 
 open NDP
@@ -564,6 +805,7 @@ structure Ag {D D' : Tree} (Δ Θ : Seq σ Γ₀ D) (Δ' Θ' : Seq σ Γ₀ D')
   children : D'.children ρ = D.children ρ
   edge : ∀ k, D'.edge (k :: ρ) = D.edge (k :: ρ)
   births : D'.birthsAt ρ = D.birthsAt ρ
+  opens : D'.opensAt ρ = D.opensAt ρ
 
 /-- The closed reading of the smaller tree, weakened, proves the bigger tree's. -/
 def Claim {D D' : Tree} (Δ Θ : Seq σ Γ₀ D) (Δ' Θ' : Seq σ Γ₀ D')
@@ -571,12 +813,15 @@ def Claim {D D' : Tree} (Δ Θ : Seq σ Γ₀ D) (Δ' Θ' : Seq σ Γ₀ D')
   Provable [WFF.mono (hV ρ) (Pc D Δ Θ f ρ)] (Pc D' Δ' Θ' f ρ)
 
 theorem closed_of {V V' : Ctx} (hVV : V.Le V') {L L' : List (Root × VarType)} (hL : L' = L)
-    (hb : BOK V L) (hb' : BOK V' L') {A : WFF σ (V.inserts L) 0} {B : WFF σ (V'.inserts L') 0}
-    (hA : (V.inserts L).Le (V'.inserts L')) (p : Provable [WFF.mono hA A] B) :
-    Provable [WFF.mono hVV (closeB L A)] (closeB L' B) := by
+    {O O' : List (WitKind × VarSymb)} (hO : O' = O) (hb : NOK V L O) (hb' : NOK V' L' O')
+    {A : WFF σ ((V.inserts L).optInsK O) 0} {B : WFF σ ((V'.inserts L').optInsK O') 0}
+    (hA : ((V.inserts L).optInsK O).Le ((V'.inserts L').optInsK O'))
+    (p : Provable [WFF.mono hA A] B) :
+    Provable [WFF.mono hVV (closeN L O A)] (closeN L' O' B) := by
   subst hL
-  rw [mono_closeB hVV hb hb' A]
-  exact or_cases (closeB_or hb' (H := []) (orl B p)) (lk List.mem_cons_self)
+  subst hO
+  rw [mono_closeN hVV hb hb' A]
+  exact or_cases (closeN_or hb' (H := []) (orl B p)) (lk List.mem_cons_self)
     (lk List.mem_cons_self)
 
 section Cross
@@ -585,13 +830,15 @@ variable {D D' : Tree} {Δ Θ : Seq σ Γ₀ D} {Δ' Θ' : Seq σ Γ₀ D'}
   {hk : ∀ ρ, (D.ctxAt Γ₀ ρ).Le (D'.ctxAt Γ₀ ρ)} {hV : ∀ ρ, (Vw D Γ₀ ρ).Le (Vw D' Γ₀ ρ)}
 
 theorem claim_of_tr (h0 : Γ₀.SlotsFrom 0) (hok : D.OK Γ₀) (hok' : D'.OK Γ₀) {ρ : Lab}
-    (hb : D'.birthsAt ρ = D.birthsAt ρ) {f : ℕ}
+    (hb : D'.birthsAt ρ = D.birthsAt ρ) (ho : D'.opensAt ρ = D.opensAt ρ) {f : ℕ}
     (p : Provable [WFF.mono (hk ρ) (tr D Δ Θ f ρ)] (tr D' Δ' Θ' f ρ)) :
     Claim Δ Θ Δ' Θ' hV f ρ := by
   cases ρ with
-  | nil => exact closed_of (hV []) hb (Tree.bok h0 hok []) (Tree.bok h0 hok' []) (hk []) p
+  | nil =>
+      exact closed_of (hV []) hb ho (Tree.nok h0 hok []) (Tree.nok h0 hok' []) (hk []) p
   | cons k ρ =>
-      exact closed_of (hV (k :: ρ)) hb (Tree.bok h0 hok _) (Tree.bok h0 hok' _) (hk (k :: ρ)) p
+      exact closed_of (hV (k :: ρ)) hb ho (Tree.nok h0 hok _) (Tree.nok h0 hok' _) (hk (k :: ρ))
+        p
 
 theorem content_eq {ρ : Lab} (ag : Ag Δ Θ Δ' Θ' hk ρ) :
     Δ'.at ρ ++ (Θ'.at ρ).map WFF.neg =
@@ -639,8 +886,10 @@ theorem stepS (hW : D.WitOK Γ₀) {ρ : Lab} (ag : Ag Δ Θ Δ' Θ' hk ρ) {f :
 theorem claim_sub (h0 : Γ₀.SlotsFrom 0) (hok : D.OK Γ₀) (hok' : D'.OK Γ₀) (hW : D.WitOK Γ₀) :
     ∀ f ρ, (∀ σ', ρ <:+ σ' → Ag Δ Θ Δ' Θ' hk σ') → Claim Δ Θ Δ' Θ' hV f ρ
   | 0, ρ, hA => claim_of_tr h0 hok hok' (hA ρ (List.suffix_refl _)).births
+      (hA ρ (List.suffix_refl _)).opens
       (step0 (hA ρ (List.suffix_refl _)))
   | f + 1, ρ, hA => claim_of_tr h0 hok hok' (hA ρ (List.suffix_refl _)).births
+      (hA ρ (List.suffix_refl _)).opens
       (stepS hW (hA ρ (List.suffix_refl _)) fun j _ =>
         claim_sub h0 hok hok' hW f (j :: ρ) fun σ' hσ =>
           hA σ' ((List.suffix_cons j ρ).trans hσ))
@@ -670,7 +919,7 @@ theorem claim_path (h0 : Γ₀.SlotsFrom 0) (hok : D.OK Γ₀) (hok' : D'.OK Γ�
         (fun σ' hσ => hA σ' fun h => hσ ((List.suffix_cons k ρ).trans h)) ?_
       rw [hf]
       have agρ := hA ρ fun h => by have := h.length_le; simp at this
-      refine claim_of_tr h0 hok hok' agρ.births (stepS (hV := hV) hW agρ fun j _ => ?_)
+      refine claim_of_tr h0 hok hok' agρ.births agρ.opens (stepS (hV := hV) hW agρ fun j _ => ?_)
       by_cases hj : j = k
       · subst hj
         exact hole
@@ -700,8 +949,8 @@ theorem tr_congr {Δ Θ Δ₁ Θ₁ : Seq σ Γ₀ D} :
       rw [tr_succ, tr_succ, (h ρ (List.suffix_refl _)).1, (h ρ (List.suffix_refl _)).2]
       refine congrArg (WFF.and _) (congrArg conj (List.map_congr_left fun j _ => ?_))
       have e := tr_congr f (j :: ρ) fun σ' hσ => h σ' ((List.suffix_cons j ρ).trans hσ)
-      change pack _ _ _ (closeB _ (tr D Δ₁ Θ₁ f (j :: ρ))) =
-        pack _ _ _ (closeB _ (tr D Δ Θ f (j :: ρ)))
+      change pack _ _ _ (closeN _ _ (tr D Δ₁ Θ₁ f (j :: ρ))) =
+        pack _ _ _ (closeN _ _ (tr D Δ Θ f (j :: ρ)))
       rw [e]
 
 theorem Pc_congr {Δ Θ Δ₁ Θ₁ : Seq σ Γ₀ D} {f : ℕ} {ρ : Lab}
@@ -709,10 +958,10 @@ theorem Pc_congr {Δ Θ Δ₁ Θ₁ : Seq σ Γ₀ D} {f : ℕ} {ρ : Lab}
     Pc D Δ₁ Θ₁ f ρ = Pc D Δ Θ f ρ := by
   cases ρ with
   | nil =>
-      change closeB _ (tr D Δ₁ Θ₁ f []) = closeB _ (tr D Δ Θ f [])
+      change closeN _ _ (tr D Δ₁ Θ₁ f []) = closeN _ _ (tr D Δ Θ f [])
       rw [tr_congr f [] h]
   | cons k ρ =>
-      change closeB _ (tr D Δ₁ Θ₁ f (k :: ρ)) = closeB _ (tr D Δ Θ f (k :: ρ))
+      change closeN _ _ (tr D Δ₁ Θ₁ f (k :: ρ)) = closeN _ _ (tr D Δ Θ f (k :: ρ))
       rw [tr_congr f (k :: ρ) h]
 
 theorem closed_or_tr (h0 : Γ₀.SlotsFrom 0) (hok : D.OK Γ₀) {ρ : Lab} {f : ℕ}
@@ -720,14 +969,14 @@ theorem closed_or_tr (h0 : Γ₀.SlotsFrom 0) (hok : D.OK Γ₀) {ρ : Lab} {f :
     (p : Provable [tr D Δ Θ f ρ] ((tr D Δ₁ Θ₁ f ρ).or (tr D Δ₂ Θ₂ f ρ))) :
     Provable [Pc D Δ Θ f ρ] ((Pc D Δ₁ Θ₁ f ρ).or (Pc D Δ₂ Θ₂ f ρ)) := by
   cases ρ with
-  | nil => exact closeB_or (Tree.bok h0 hok []) (H := []) p
-  | cons k ρ => exact closeB_or (Tree.bok h0 hok _) (H := []) p
+  | nil => exact closeN_or (Tree.nok h0 hok []) (H := []) p
+  | cons k ρ => exact closeN_or (Tree.nok h0 hok _) (H := []) p
 
 theorem closed_bot_tr (h0 : Γ₀.SlotsFrom 0) (hok : D.OK Γ₀) {ρ : Lab} {f : ℕ}
     {Δ Θ : Seq σ Γ₀ D} (p : Provable [tr D Δ Θ f ρ] .bot) : Provable [Pc D Δ Θ f ρ] .bot := by
   cases ρ with
-  | nil => exact closeB_bot (Tree.bok h0 hok []) (H := []) p
-  | cons k ρ => exact closeB_bot (Tree.bok h0 hok _) (H := []) p
+  | nil => exact closeN_bot (Tree.nok h0 hok []) (H := []) p
+  | cons k ρ => exact closeN_bot (Tree.nok h0 hok _) (H := []) p
 
 theorem conj_map_or {Γ : Ctx} {g g₁ g₂ : ℕ → WFF σ Γ 0} {k : ℕ}
     (hk : Provable [g k] ((g₁ k).or (g₂ k))) (he : ∀ j, j ≠ k → g₁ j = g j ∧ g₂ j = g j)

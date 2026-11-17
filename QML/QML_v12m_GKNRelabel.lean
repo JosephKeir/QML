@@ -417,6 +417,21 @@ theorem GKN.relabel {n : ℕ} {Γ₀ : Ctx} (hs0 : Γ₀.SlotsFrom 0) {D : Tree}
       exact .serial hD (lmap g τ) k' hv'
         (ih _ _ hm₁ _ _ (relabel_mono_sub hΔ fun p hp => lmap_setIdx_off g p.1 (hv.left p hp))
           (relabel_mono_sub hΘ fun p hp => lmap_setIdx_off g p.1 (hv.right p hp)))
+  | @TL n D Δ Θ hT τ hs φ h _ ih =>
+      intro g D' hm Δ' Θ' hΔ hΘ
+      have hs' := Tree.ctxAt_slots hs0 hm.ok (lmap g τ)
+      refine .TL hT (lmap g τ) hs' (hΔ (mem_relabel h)) (ih g D' hm _ _ (cons_sub ?_ hΔ) hΘ)
+      exact congrArg (Sigma.mk _) (WFF.collapse_mono _ _ (hm.le τ).boxIn (hm.le τ) _ _ φ).symm
+  | @diaT n D Δ Θ hT hO τ hs x hx φ h _ ih =>
+      intro g D' hm Δ' Θ' hΔ hΘ
+      have hs' := Tree.ctxAt_slots hs0 hm.ok (lmap g τ)
+      obtain ⟨X, hX⟩ := id hx
+      refine .diaT hT hO (lmap g τ) hs' x _ (hΘ (mem_relabel h))
+        (ih g D' hm _ _ hΔ (cons_sub ?_ hΘ))
+      change (⟨_, WFF.optx hO .ident x _ (WFF.mono ((hm.le τ).optInK .ident x) _)⟩ :
+        LF σ Γ₀ D') = _
+      exact congrArg (Sigma.mk _) (congrArg (WFF.optx hO .ident x _)
+        (WFF.collapse_mono _ _ ((hm.le τ).diaIn x) ((hm.le τ).optInT x) _ _ φ).symm)
 
 /-! ## Weakening -/
 

@@ -19,6 +19,8 @@ formulas **at nodes**, `⟨τ, φ⟩` with `φ` over `D.ctxAt Γ₀ τ` (docs §
 * ⭐With `Opt` (docs §12.50): `optL` opens a witness's view **at the node** (`Tree.addOpen`; no
   world crossed, the descendants see it too), `reopenR` is local, and `foldR`, the bridge
   `◇_x θ = ◇ ◇⁰_x θ`, puts `◇⁰_x θ` on the right at **any** child (`GK`'s folds).
+* ⭐With T (and so `Opt`): `TL` and `diaT`, local at a node as in `GK` (the collapse onto the
+  node, `WFF.collapse`).
   A rule moving a formula into a child takes the inclusion of the parent's view in the child's
   context as an argument (a proposition, so any proof will do); `Tree` lemmas supply it.
 * Height-bounded, G3-style (principal formulas stay), as `GK`.
@@ -218,6 +220,23 @@ inductive GKN (σ : Signature) (Γ₀ : Ctx) : ℕ → (D : Tree) → Seq σ Γ�
       ⟨τ, .dia x hx θ⟩ ∈ Θ →
       GKN σ Γ₀ n D Δ (⟨k :: τ, WFF.mono hle (WFF.fold hO x hx θ)⟩ :: Θ) →
       GKN σ Γ₀ (n + 1) D Δ Θ
+  -- Weak T (docs §12.35, §12.50)
+  /-- `TL`: `□φ` on the left at `τ` adds its collapse onto `τ` there. -/
+  | TL {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (hT : ModalSys.T = true) (τ : Lab)
+      (hs : (D.ctxAt Γ₀ τ).SlotsFrom 0) {φ : WFF σ (D.ctxAt Γ₀ τ).boxIn 0} :
+      ⟨τ, WFF.box (Γ := D.ctxAt Γ₀ τ) φ⟩ ∈ Δ →
+      GKN σ Γ₀ n D (⟨τ, WFF.collapse (Ctx.collapses_boxIn_self hT _) hs.boxIn φ⟩ :: Δ) Θ →
+      GKN σ Γ₀ (n + 1) D Δ Θ
+  /-- `diaT`: `◇_x φ` on the right at `τ` from its body read at the identity arrow there
+      (`WFF.diaId`). -/
+  | diaT {n : ℕ} {D : Tree} {Δ Θ : Seq σ Γ₀ D} (hT : ModalSys.T = true)
+      (hO : ModalSys.Opt = true) (τ : Lab) (hs : (D.ctxAt Γ₀ τ).SlotsFrom 0) (x : VarSymb)
+      (hx : ∃ X, (D.ctxAt Γ₀ τ).ref x = some (.VTypeDia X)) {φ : WFF σ ((D.ctxAt Γ₀ τ).diaIn x) 0} :
+      ⟨τ, .dia x hx φ⟩ ∈ Θ →
+      GKN σ Γ₀ n D Δ (⟨τ, WFF.optx hO .ident x (hx.imp fun _ h => Ctx.witT_of hT hO h)
+        (WFF.collapse (hx.elim fun _ h => Ctx.collapses_diaIn_optInT hT hO _ h) (hs.diaIn x) φ)⟩
+          :: Θ) →
+      GKN σ Γ₀ (n + 1) D Δ Θ
 
 namespace GKN
 
@@ -317,5 +336,11 @@ theorem GKN.mono_height {n : ℕ} {Γ₀ : Ctx} {D : Tree} {Δ Θ : Seq σ Γ₀
   | foldR hO τ k e x hx he hle h _ ih =>
       intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
       exact .foldR hO τ k e x hx he hle h (ih (by omega))
+  | TL hT τ hs h _ ih =>
+      intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
+      exact .TL hT τ hs h (ih (by omega))
+  | diaT hT hO τ hs x hx h _ ih =>
+      intro m hm; obtain ⟨m, rfl⟩ : ∃ k, m = k + 1 := ⟨m - 1, by omega⟩
+      exact .diaT hT hO τ hs x hx h (ih (by omega))
 
 end V12M

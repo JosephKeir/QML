@@ -308,6 +308,16 @@ def _root_.V12M.Ctx.OptsEff (Γ : Ctx) : List (WitKind × VarSymb) → Prop
   | [] => True
   | o :: L => Γ.OptsEff L ∧ ModalSys.Opt = true ∧ ∃ X, (Γ.optInsK L).witK o.1 o.2 = some X
 
+/-- A fresh birth commutes with openings that take effect. -/
+theorem _root_.V12M.Ctx.insert_optInsK_eq {Γ : Ctx} {u : ℕ} (hu : Γ.RootFresh (.free u))
+    (T : VarType) : ∀ {L : List (WitKind × VarSymb)}, Γ.OptsEff L →
+      (Γ.optInsK L).insert (.free u) T = (Γ.insert (.free u) T).optInsK L
+  | [], _ => rfl
+  | ⟨κ, y⟩ :: L, ⟨he, _, _, hX⟩ => by
+      change ((Γ.optInsK L).optInK κ y).insert (.free u) T =
+        ((Γ.insert (.free u) T).optInsK L).optInK κ y
+      rw [Ctx.insert_optInK_comm (hu.optInsK L) T hX, Ctx.insert_optInsK_eq hu T he]
+
 theorem _root_.V12M.Ctx.OptsEff.mono {Γ Γ' : Ctx} (h : Γ.Le Γ') :
     ∀ {L : List (WitKind × VarSymb)}, Γ.OptsEff L → Γ'.OptsEff L
   | [], _ => trivial
@@ -677,6 +687,21 @@ theorem birthsAt_pairwise {Γ₀ : Ctx} (h : D.OK Γ₀) (τ : Lab) :
       hne (h.uniq b hb b' hb' he)) h.nodup)
   unfold birthsAt
   exact List.pairwise_map.mpr (hp.filter _)
+
+/-- A child's births are fresh in its edge's view of the parent's context. -/
+theorem view_fresh {Γ₀ : Ctx} (h : D.OK Γ₀) (k : ℕ) (τ : Lab) {b : Root × VarType}
+    (hm : b ∈ D.birthsAt (k :: τ)) : (D.view (k :: τ) (D.ctxAt Γ₀ τ)).RootFresh b.1 := by
+  have hb := mem_birthsAt.mp hm
+  have hfr : (D.ctxAt Γ₀ τ).RootFresh b.1 := by
+    refine fresh_branch (h.fresh _ hb) τ fun b' hb' hs he => ?_
+    have := h.uniq b' hb' _ hb he
+    rw [this] at hs
+    have := hs.length_le
+    simp at this
+  unfold view
+  split
+  · exact hfr.diaIn _
+  · exact hfr.boxIn
 
 /-- A child's context before its openings contains its edge's view of the parent's, under the
     invariant: the child's births are fresh there. -/

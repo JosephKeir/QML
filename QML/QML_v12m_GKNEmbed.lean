@@ -6,7 +6,7 @@ import QML.QML_v12m_GKFromND
 /-!
 # QML v12m — `GK` embeds in `GKN`
 
-Every `GK` derivation of K or KD (`Opt` off) is a `GKN` derivation at a node of a tree (docs
+Every `GK` derivation of K or KD (`Opt` on or off) is a `GKN` derivation at a node of a tree (docs
 §12.49, "the embedding"): `GK`'s rules are `GKN`'s at the node, and a modal rule makes a vacant
 child, propagates the boxed hypotheses (and, for `◇_x`, the `◇_x` conclusions) into it, and goes
 on there.  `GK`'s eigenvariables are fresh only for their own context, so each is renamed to a
@@ -134,6 +134,66 @@ theorem diaR_list {Γ₀ : Ctx} {D : Tree} {τ : Lab} {k : ℕ} {x : VarSymb}
           · exact hL θ' hθ')
       exact ⟨m + 1, .diaR τ k (.dia x) x hx he (.of_compat rfl) hcL (hb θ List.mem_cons_self) d⟩
 
+theorem optDia_cases (hO : ModalSys.Opt = true) {Γ : Ctx} [Γ.NoSlots] (ψ : WFF σ Γ 0) :
+    WFF.optDia hO ψ = [] ∨ ∃ y hy θ, ψ = .dia y hy θ := by
+  cases ψ <;> first | exact .inr ⟨_, _, _, rfl⟩ | exact .inl rfl
+
+/-- ⭐`foldR` over a list: the `◇` conclusions at `τ` put their folds at the child `k :: τ`. -/
+theorem foldR_list {Γ₀ : Ctx} {D : Tree} (hO : ModalSys.Opt = true) {τ : Lab} {k : ℕ}
+    {e : EdgeKind} (he : D.edge (k :: τ) = some e)
+    (hcL : (D.ctxAt Γ₀ τ).boxIn.Le (D.ctxAt Γ₀ (k :: τ))) {A : Ctx} [A.NoSlots]
+    (a : A.Le (D.ctxAt Γ₀ τ)) {Δ : Seq σ Γ₀ D} :
+    ∀ (L : List (WFF σ A 0)) {Θ : Seq σ Γ₀ D},
+      (∀ ψ ∈ L, (⟨τ, WFF.mono a ψ⟩ : LF σ Γ₀ D) ∈ Θ) →
+      (∀ Θ'' : Seq σ Γ₀ D, Θ ⊆ Θ'' →
+        (∀ χ ∈ L.flatMap (WFF.optDia hO),
+          (⟨k :: τ, WFF.mono (a.boxIn.trans hcL) χ⟩ : LF σ Γ₀ D) ∈ Θ'') →
+          ∃ m, GKN σ Γ₀ m D Δ Θ'') →
+      ∃ m, GKN σ Γ₀ m D Δ Θ
+  | [], Θ, _, hk => hk Θ (List.Subset.refl _) fun _ h => by simp at h
+  | ψ :: L, Θ, hb, hk => by
+      rcases optDia_cases hO ψ with h0 | ⟨y, hy, θ, rfl⟩
+      · exact foldR_list hO he hcL a L (fun ψ' h' => hb ψ' (List.mem_cons_of_mem _ h'))
+          fun Θ'' hs hL => hk Θ'' hs fun χ hχ => by
+            rw [List.flatMap_cons, h0, List.nil_append] at hχ
+            exact hL χ hχ
+      · have hy' : ∃ X, (D.ctxAt Γ₀ τ).ref y = some (.VTypeDia X) := hy.imp fun _ h => a.ref h
+        have eF : WFF.mono hcL (WFF.fold hO y hy' (WFF.mono (a.diaIn y) θ)) =
+            WFF.mono (a.boxIn.trans hcL) (WFF.fold hO y hy θ) := by
+          rw [WFF.fold_mono hO a y hy hy' θ, WFF.mono_mono]
+        obtain ⟨m, d⟩ := foldR_list hO he hcL a L
+          (Θ := ⟨k :: τ, WFF.mono hcL (WFF.fold hO y hy' (WFF.mono (a.diaIn y) θ))⟩ :: Θ)
+          (fun ψ' h' => List.mem_cons_of_mem _ (hb ψ' (List.mem_cons_of_mem _ h')))
+          (fun Θ'' hs hL => hk Θ'' (fun z hz => hs (List.mem_cons_of_mem _ hz)) fun χ hχ => by
+            rw [List.flatMap_cons] at hχ
+            rcases List.mem_append.mp hχ with hχ | hχ
+            · have hχ' : χ = WFF.fold hO y hy θ := List.mem_singleton.mp hχ
+              subst hχ'
+              have := hs List.mem_cons_self
+              rwa [eF] at this
+            · exact hL χ hχ)
+        exact ⟨m + 1, .foldR hO τ k e y hy' he hcL (hb _ List.mem_cons_self) d⟩
+
+/-- The `◇` conclusions' copies (`kp4`, 4 off): their folds with `Opt`, nothing without. -/
+theorem foldK_list {Γ₀ : Ctx} {D : Tree} (hF : ModalSys.Four = false) {τ : Lab} {k : ℕ}
+    {e : EdgeKind} (he : D.edge (k :: τ) = some e)
+    (hcL : (D.ctxAt Γ₀ τ).boxIn.Le (D.ctxAt Γ₀ (k :: τ))) {A : Ctx} [A.NoSlots]
+    (a : A.Le (D.ctxAt Γ₀ τ)) {Δ : Seq σ Γ₀ D} (L : List (WFF σ A 0)) {Θ : Seq σ Γ₀ D}
+    (hb : ∀ ψ ∈ L, (⟨τ, WFF.mono a ψ⟩ : LF σ Γ₀ D) ∈ Θ)
+    (hk : ∀ Θ'' : Seq σ Γ₀ D, Θ ⊆ Θ'' →
+      (∀ χ ∈ kp4 L, (⟨k :: τ, WFF.mono (a.boxIn.trans hcL) χ⟩ : LF σ Γ₀ D) ∈ Θ'') →
+        ∃ m, GKN σ Γ₀ m D Δ Θ'') :
+    ∃ m, GKN σ Γ₀ m D Δ Θ := by
+  cases hO : ModalSys.Opt with
+  | false =>
+      refine hk Θ (List.Subset.refl _) fun χ hχ => ?_
+      rw [kp4_of_not hF hO] at hχ
+      cases hχ
+  | true =>
+      refine foldR_list hO he hcL a L hb fun Θ'' hs hL => hk Θ'' hs fun χ hχ => ?_
+      rw [kp4_of_opt hO] at hχ
+      exact hL χ hχ
+
 theorem mem_cons_of {α : Type*} {P : α → Prop} {a : α} {L : List α} (h0 : P a)
     (h : ∀ x ∈ L, P x) : ∀ x ∈ a :: L, P x := by
   intro x hx
@@ -164,9 +224,10 @@ open GKN
 
 variable {σ : Signature}
 
-/-- ⭐**`GK` embeds in `GKN`**, K and KD with `Opt` off: a `GK` derivation over a context inside
-    a node's gives a `GKN` derivation with its sequent at that node. -/
-theorem GK.toGKN [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx} [h0 : Γ₀.Presented] :
+/-- ⭐**`GK` embeds in `GKN`**, K and KD with `Opt` on or off: a `GK` derivation over a context
+    inside a node's gives a `GKN` derivation with its sequent at that node. -/
+theorem GK.toGKN [ModalSys.GKBase] (hF : ModalSys.Four = false) {Γ₀ : Ctx}
+    [h0 : Γ₀.Presented] :
     ∀ (n : ℕ) {Γ : Ctx} {Δ Θ : List (WFF σ Γ 0)}, GK σ n Γ Δ Θ →
       ∀ {D : Tree}, D.OK Γ₀ → ∀ {τ : Lab} (h : Γ.Le (D.ctxAt Γ₀ τ)) {Δ' Θ' : Seq σ Γ₀ D},
         (∀ φ ∈ Δ, (⟨τ, WFF.mono h φ⟩ : LF σ Γ₀ D) ∈ Δ') →
@@ -247,10 +308,64 @@ theorem GK.toGKN [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx} [h0
           fun x hx => List.mem_cons_of_mem _ (hΔ x hx)) hΘ
       exact ⟨m + 1, .repl τ hsτ (isAtom_mono hP) (Term.mono h t) (Term.mono h s)
         (hΔ _ h₁) hp₂ d⟩
-  | optL hO => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
-  | reopenR hO => exact absurd hO (by rw [ModalSys.NoOpt.noOpt]; decide)
-  | TL hT => exact (ModalSys.NoT.absurd hT).elim
-  | diaT hT => exact (ModalSys.NoT.absurd hT).elim
+  | @optL n' _ _ _ hO κ y hy ψ h₁ q =>
+      obtain ⟨X, hX⟩ := id hy
+      have hy' : ∃ X, (D.ctxAt Γ₀ τ).witK κ y = some X := ⟨X, h.witK hX⟩
+      have hk := Tree.ctxAt_addOpen (D := D) (Γ₀ := Γ₀) τ κ y
+      have hok₁ := hok.addOpen hO hy'.choose_spec
+      have hle : ((D.ctxAt Γ₀ τ).optInK κ y).Le ((D.addOpen τ κ y).ctxAt Γ₀ τ) := by
+        rw [Tree.ctxAt_addOpen_self]
+        exact Ctx.Le.refl _
+      obtain ⟨m, d⟩ := IH n' (Nat.lt_succ_self _) q hok₁ ((h.optInK κ y).trans hle)
+        (Δ' := ⟨τ, WFF.mono hle (WFF.mono (h.optInK κ y) ψ)⟩ :: Seq.mono hk Δ')
+        (Θ' := Seq.mono hk Θ')
+        (mem_cons_of (by rw [WFF.mono_mono]; exact List.mem_cons_self) fun φ hφ => by
+          obtain ⟨φ₀, hφ₀, rfl⟩ := List.mem_map.mp hφ
+          have hm := List.mem_map_of_mem (f := fun p : LF σ Γ₀ D =>
+            (⟨p.1, WFF.mono (hk p.1) p.2⟩ : LF σ Γ₀ (D.addOpen τ κ y))) (hΔ _ hφ₀)
+          dsimp only at hm
+          simp only [WFF.mono_mono] at hm ⊢
+          exact List.mem_cons_of_mem _ hm)
+        fun φ hφ => by
+          obtain ⟨φ₀, hφ₀, rfl⟩ := List.mem_map.mp hφ
+          have hm := List.mem_map_of_mem (f := fun p : LF σ Γ₀ D =>
+            (⟨p.1, WFF.mono (hk p.1) p.2⟩ : LF σ Γ₀ (D.addOpen τ κ y))) (hΘ _ hφ₀)
+          dsimp only at hm
+          simp only [WFF.mono_mono] at hm ⊢
+          exact hm
+      exact ⟨m + 1, .optL hO τ κ y hy' hle (hΔ _ h₁) d⟩
+  | @reopenR n' _ _ _ hO κ y hy χ h₁ q =>
+      have hy' : (D.ctxAt Γ₀ τ).Opened κ y := Ctx.Opened.mono h hy
+      obtain ⟨m, d⟩ := IH n' (Nat.lt_succ_self _) q hok h hΔ (Θ' := ⟨τ, WFF.mono h χ⟩ :: Θ')
+        (mem_cons_of List.mem_cons_self fun x hx => List.mem_cons_of_mem _ (hΘ x hx))
+      refine ⟨m + 1, .reopenR hO τ κ y hy' ?_ d⟩
+      have hm := hΘ _ h₁
+      refine (congrArg (· ∈ Θ') (congrArg (Sigma.mk τ) ?_)).mp hm
+      change WFF.optx hO κ y _ (WFF.mono (h.optInK κ y) (WFF.mono _ χ)) = _
+      rw [WFF.mono_mono, WFF.mono_mono]
+  | @TL n' _ _ _ _ hT φ h₁ q =>
+      obtain ⟨m, d⟩ := IH n' (Nat.lt_succ_self _) q hok h
+        (Δ' := ⟨τ, WFF.collapse (Ctx.collapses_boxIn_self hT _) hsτ.boxIn (WFF.mono h.boxIn φ)⟩ ::
+          Δ')
+        (mem_cons_of (by
+            rw [← WFF.collapse_mono (Ctx.collapses_boxIn_self hT _)
+              (Ctx.collapses_boxIn_self hT _) h.boxIn h]
+            exact List.mem_cons_self)
+          fun x hx => List.mem_cons_of_mem _ (hΔ x hx)) hΘ
+      exact ⟨m + 1, .TL hT τ hsτ (hΔ _ h₁) d⟩
+  | @diaT n' _ _ _ _ hT hO x hx φ h₁ q =>
+      have hx' : ∃ X, (D.ctxAt Γ₀ τ).ref x = some (.VTypeDia X) := hx.imp fun _ hX => h.ref hX
+      obtain ⟨m, d⟩ := IH n' (Nat.lt_succ_self _) q hok h hΔ
+        (Θ' := ⟨τ, WFF.optx hO .ident x (hx'.imp fun _ h => Ctx.witT_of hT hO h)
+          (WFF.collapse (hx'.elim fun _ h => Ctx.collapses_diaIn_optInT hT hO _ h) (hsτ.diaIn x)
+            (WFF.mono (h.diaIn x) φ))⟩ :: Θ')
+        (mem_cons_of (by
+            change (⟨τ, WFF.optx hO .ident x _ (WFF.mono (h.optInK .ident x) _)⟩ :
+              LF σ Γ₀ D) ∈ _
+            rw [← WFF.collapse_mono _ _ (h.diaIn x) (h.optInT x)]
+            exact List.mem_cons_self)
+          fun y hy => List.mem_cons_of_mem _ (hΘ y hy))
+      exact ⟨m + 1, .diaT hT hO τ hsτ x hx' (hΘ _ h₁) d⟩
   | @allR n' _ hns _ _ u T hu φ h₁ q =>
       obtain ⟨u', hu'⟩ := exists_treeFresh (Γ₀ := Γ₀) D
       have hsΓ : Γ.SlotsFrom 0 := hns.slots
@@ -346,7 +461,7 @@ theorem GK.toGKN [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx} [h0
       rw [e] at hp
       exact ⟨m + 1, .exL τ hsτ u' T hu' hleI hp d⟩
   | @boxR n' _ hns _ _ Δ₁ φ L h₁ h₂ h₃ q =>
-      rw [cp4_of_not hF, kp4_of_not hF ModalSys.NoOpt.noOpt, List.append_nil] at q
+      rw [cp4_of_not hF, List.append_nil] at q
       obtain ⟨k, hv⟩ := exists_vacant τ D Δ' Θ'
       have hnone := hv.edge _ (List.suffix_refl _)
       have hk := Tree.ctxAt_addEdge (Γ₀ := Γ₀) hnone EdgeKind.box
@@ -364,12 +479,18 @@ theorem GK.toGKN [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx} [h0
           dsimp only at hm
           rw [WFF.mono_mono] at hm
           exact hm)
-        (fun Δ'' _ hL => IH n' (Nat.lt_succ_self _) q hok₁ (a.trans hcL) hL
-          (mem_cons_of (by rw [WFF.mono_mono]; exact List.mem_cons_self)
-            fun _ h => by simp at h))
+        (fun Δ'' _ hL => foldK_list hF he₁ hcL (h.trans (hk τ)) L
+          (fun ψ hψ => by
+            have hm := List.mem_map_of_mem (f := fun p : LF σ Γ₀ D =>
+              (⟨p.1, WFF.mono (hk p.1) p.2⟩ : LF σ Γ₀ (D.addEdge (k :: τ) .box))) (hΘ _ (h₃ hψ))
+            dsimp only at hm
+            rw [WFF.mono_mono] at hm
+            exact List.mem_cons_of_mem _ hm)
+          fun Θ'' hs hF' => IH n' (Nat.lt_succ_self _) q hok₁ (a.trans hcL) hL
+            (mem_cons_of (hs (by rw [WFF.mono_mono]; exact List.mem_cons_self)) hF'))
       exact ⟨m + 1, .boxR τ k hv hle₁ (hΘ _ h₁) d⟩
   | @serial n' _ hns _ _ hD Δ₁ L h₂ h₃ q =>
-      rw [cp4_of_not hF, kp4_of_not hF ModalSys.NoOpt.noOpt, List.append_nil] at q
+      rw [cp4_of_not hF, List.append_nil] at q
       obtain ⟨k, hv⟩ := exists_vacant τ D Δ' Θ'
       have hnone := hv.edge _ (List.suffix_refl _)
       have hk := Tree.ctxAt_addEdge (Γ₀ := Γ₀) hnone EdgeKind.box
@@ -385,12 +506,17 @@ theorem GK.toGKN [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx} [h0
           dsimp only at hm
           rw [WFF.mono_mono] at hm
           exact hm)
-        (fun Δ'' _ hL => IH n' (Nat.lt_succ_self _) q hok₁ (a.trans hcL) hL
-          fun _ h => by simp at h)
+        (fun Δ'' _ hL => foldK_list hF he₁ hcL (h.trans (hk τ)) L
+          (fun ψ hψ => by
+            have hm := List.mem_map_of_mem (f := fun p : LF σ Γ₀ D =>
+              (⟨p.1, WFF.mono (hk p.1) p.2⟩ : LF σ Γ₀ (D.addEdge (k :: τ) .box))) (hΘ _ (h₃ hψ))
+            dsimp only at hm
+            rw [WFF.mono_mono] at hm
+            exact hm)
+          fun Θ'' _ hF' => IH n' (Nat.lt_succ_self _) q hok₁ (a.trans hcL) hL hF')
       exact ⟨m + 1, .serial hD τ k hv d⟩
   | @diaL n' _ hns _ _ x hx ψ Δ₁ Θ₁ L h₁ h₂ h₃ h₄ q =>
-      rw [cp4_of_not hF, kp4_of_not hF ModalSys.NoOpt.noOpt, List.append_nil, List.map_nil,
-        List.append_nil] at q
+      rw [cp4_of_not hF, List.append_nil] at q
       obtain ⟨k, hv⟩ := exists_vacant τ D Δ' Θ'
       have hnone := hv.edge _ (List.suffix_refl _)
       have hk := Tree.ctxAt_addEdge (Γ₀ := Γ₀) hnone (EdgeKind.dia x)
@@ -425,7 +551,15 @@ theorem GK.toGKN [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx} [h0
             dsimp only at hm
             rw [WFF.mono_mono] at hm
             exact hm)
-          (fun Θ'' _ hL' => IH n' (Nat.lt_succ_self _) q hok₁ (aD.trans hcD)
+          (fun Θ'' hs₀ hL' => foldK_list hF he₁ hcL (h.trans (hk τ)) L (Θ := Θ'')
+            (fun ψ hψ => by
+              have hm := List.mem_map_of_mem (f := fun p : LF σ Γ₀ D =>
+                (⟨p.1, WFF.mono (hk p.1) p.2⟩ : LF σ Γ₀ (D.addEdge (k :: τ) (.dia x))))
+                (hΘ _ (h₄ hψ))
+              dsimp only at hm
+              rw [WFF.mono_mono] at hm
+              exact hs₀ hm)
+            fun Θ''' hs hF' => IH n' (Nat.lt_succ_self _) q hok₁ (aD.trans hcD)
             (mem_cons_of (by
                 have := hsub List.mem_cons_self
                 rw [WFF.mono_mono] at this
@@ -435,7 +569,13 @@ theorem GK.toGKN [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx} [h0
                 have := hL χ hχ
                 rw [WFF.mono_mono]
                 exact this)
-            hL'))
+            fun θ hθ => by
+              rcases List.mem_append.mp hθ with hθ | hθ
+              · exact hs (hL' θ hθ)
+              · obtain ⟨χ, hχ, rfl⟩ := List.mem_map.mp hθ
+                have := hF' χ hχ
+                rw [WFF.mono_mono]
+                exact this))
       exact ⟨m + 1, .diaL τ k x hx' hv hle₁ (hΔ _ h₁) d⟩
 
 /-- The tree with one node and nothing born. -/
@@ -445,7 +585,7 @@ theorem GKN.Tree.ok_empty {Γ₀ : Ctx} : (({} : GKN.Tree)).OK Γ₀ :=
 
 /-- ⭐**`GK` embeds in `GKN` at the root**: a `GK` derivation of `Δ ⇒ Θ` over `Γ₀` gives a
     `GKN` derivation of the one-node tree sequent. -/
-theorem GK.toGKN_root [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx}
+theorem GK.toGKN_root [ModalSys.GKBase] (hF : ModalSys.Four = false) {Γ₀ : Ctx}
     [Γ₀.Presented] {n : ℕ} {Δ Θ : List (WFF σ Γ₀ 0)} (p : GK σ n Γ₀ Δ Θ) :
     ∃ m, GKN σ Γ₀ m {} (Δ.map fun φ => ⟨[], φ⟩) (Θ.map fun φ => ⟨[], φ⟩) := by
   refine GK.toGKN hF n p GKN.Tree.ok_empty (τ := []) (Ctx.Le.refl _) (fun φ hφ => ?_)
@@ -455,9 +595,10 @@ theorem GK.toGKN_root [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx
   · rw [WFF.mono_refl]
     exact List.mem_map_of_mem hφ
 
-/-- ⭐**Every ND-provable sequent has a cut-free `GKN` derivation**, K and KD with `Opt` off, over
-    a presented context: ND → `GK` (`GK.Der.ofProof`) → `GKN` (`GK.toGKN_root`). -/
-theorem GKN.ofProof [ModalSys.GKSys] (hF : ModalSys.Four = false) {Γ₀ : Ctx} [Γ₀.Presented]
+/-- ⭐**Every ND-provable sequent has a cut-free `GKN` derivation**, K and KD (`Opt` either
+    way), over a presented context: ND → `GK` (`GK.Der.ofProof`) → `GKN` (`GK.toGKN_root`). -/
+theorem GKN.ofProof [ModalSys.GKBase] (hF : ModalSys.Four = false) {Γ₀ : Ctx}
+    [Γ₀.Presented]
     {Δ : List (WFF σ Γ₀ 0)} {φ : WFF σ Γ₀ 0} (p : Proof σ Γ₀ Δ φ) :
     ∃ m, GKN σ Γ₀ m {} (Δ.map fun ψ => ⟨[], ψ⟩) [⟨[], φ⟩] := by
   obtain ⟨n, d⟩ := GK.Der.ofProof p
